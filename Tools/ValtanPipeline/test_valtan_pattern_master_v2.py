@@ -32,23 +32,27 @@ EXPECTED_SCRIPTED_SEQUENCE = {
         "VALTAN_HIGH_JUMP",
         "VALTAN_DASH_CHARGE",
         "VALTAN_FLOOR_WIPE_130",
+        "VALTAN_FIST_IN_OUT",
+        "VALTAN_WHIRLWIND",
         "VALTAN_ARENA_BREAK_109",
         "VALTAN_WHIRLWIND",
+        "VALTAN_FOUR_SLASH",
         "VALTAN_SIX_PIZZA_106",
-        "VALTAN_ATTACK_WHIRLWIND",
         "VALTAN_CHARGE",
         "VALTAN_SEQUENCE_FOUR",
+        "VALTAN_HIGH_JUMP",
         "VALTAN_COUNTER",
         "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
-        "VALTAN_ROAR_CHARGE",
-        "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
         "VALTAN_THREE",
-        "VALTAN_TERRAIN_DESTRUCTION",
+        "VALTAN_SEQUENCE_FOUR",
+        "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
         "VALTAN_WARP",
         "VALTAN_TRASH",
         "VALTAN_CATCH_BREATH",
         "VALTAN_CHARGE_2",
         "VALTAN_STRUGGLING",
+        "VALTAN_GHOST_RESPAWN_AUDITION",
+        "VALTAN_GHOST_FINALE",
     ],
 }
 
@@ -1647,8 +1651,12 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         self.assertEqual("AUDITION_ONLY", product["selectionMode"])
         self.assertIn("VALTAN_GHOST_FINALE", {
             row["patternId"] for row in master["decisionModel"]["manualAuditions"]})
-        self.assertNotIn("VALTAN_GHOST_FINALE", master["decisionModel"]["scriptedSequence"]["patternIds"],
-                         "adding the finale must not silently replace the user's saved Flow slots")
+        self.assertEqual(
+            [row["patternId"]
+             for row in self.docs[pipeline.SAVED_FLOW_REL]["flows"][0]["slots"]],
+            master["decisionModel"]["scriptedSequence"]["patternIds"],
+            "joining derived patterns must preserve the user's saved Flow slots exactly",
+        )
 
     def test_ghost_finale_rejects_invalid_owner_shape_and_recursive_graphs(self) -> None:
         base = self.docs[pipeline.GAMEPLAY_AUTHORING_REL]

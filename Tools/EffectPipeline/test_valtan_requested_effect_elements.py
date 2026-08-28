@@ -139,8 +139,8 @@ CUE_RUNTIME_EXPECTATIONS = {
     ),
     **{
         f"cue.valtan.phase2.warp.step-{leg:02d}.composite": (
-            "snapshot",
-            [0.0, 0.0, 0.0],
+            "follow",
+            [0.0, 0.0, 3.0],
             0,
         )
         for leg in range(2, 10)
@@ -483,39 +483,26 @@ class ValtanRequestedEffectElementsContractTest(unittest.TestCase):
         )
 
 
-    def test_portal_layer_count_and_trash_bindings_and_floor_resources(self) -> None:
+    def test_saved_portal_particle_and_trash_bindings_and_floor_resources(self) -> None:
         portal_asset = "effect.valtan.project-tuned.sequence.warp.portal"
         portal_elements = self._elements(portal_asset)
-        portal_generated = {
-            element_id
-            for element_id in portal_elements
-            if element_id.startswith(f"{GENERATED_PREFIX}warp.portal.")
-        }
-        self.assertEqual(len(portal_generated), 14)
-        self.assertIn(
-            f"{GENERATED_PREFIX}warp.portal-rush.forward-mesh",
-            portal_elements,
+        self.assertEqual(set(portal_elements), {"sprite_particle_2"})
+        portal = portal_elements["sprite_particle_2"]
+        self.assertEqual(portal.get("kind"), "particle")
+        self.assertEqual(
+            self._resources(portal).get("base"),
+            "Effect/DimensionMaster/Textures/BG_OCN_ETC_J/"
+            "bg_ocn_etc_magicsquare08a_d_kmk.dds",
         )
-        forward_mesh = portal_elements[
-            f"{GENERATED_PREFIX}warp.portal-rush.forward-mesh"
-        ]
-        self.assertStart(forward_mesh, 0.0)
+        self.assertStart(portal, 0.0)
         self.assertAlmostEqual(
-            float(forward_mesh["detail"]["timing"]["lifeTimeSeconds"]),
-            0.41,
-            places=6,
+            float(portal["detail"]["timing"]["lifeTimeSeconds"]), 5.0, places=6
         )
-        self.assertEqual(
-            self._resources(forward_mesh).get("meshModel"),
-            "Effect/Valtan/Meshes/FX_SM_00/fm_h_halfsphere_01_1.wmodel",
-        )
-        self.assertEqual(
-            {0.0, 0.063222},
-            {
-                round(self._start(portal_elements[element_id]), 6)
-                for element_id in portal_generated
-            },
-        )
+        particle = portal["detail"]["particle"]
+        self.assertEqual(particle.get("maxParticles"), 1)
+        self.assertEqual(particle.get("burstCount"), 1)
+        self.assertEqual(particle.get("lifeTimeSeconds"), [2, 2])
+        self.assertIs(portal.get("sourceRecipe", {}).get("enabled"), False)
 
         catalog_asset_ids = {
             row["effectAssetId"] for row in self.catalog.get("effects", [])
