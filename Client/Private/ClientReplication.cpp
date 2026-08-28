@@ -1809,6 +1809,24 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		}
 		else if (WORLD_ENTITY_KIND::BOSS == iter->second.eKind)
 		{
+			/* Raw, un-gated read of this tick's own eAction -- independent of
+			whether Apply_NetworkState/Apply_BossCombatState/Apply_BrokenArmorMask
+			below succeed. Apply_BossCombatState rejects a snapshot whose
+			iStateRevision matches the last-applied one but whose content differs
+			(Is_SameBossCombatState mismatch); if the Server's own BossCombat
+			sub-state does not bump iStateRevision on the kill tick, that check can
+			reject every post-death snapshot forever, leaving CCombatHUDViewModel's
+			own Apply_Boss()-gated eAction stuck non-DEAD for the rest of the
+			encounter (RaidClear/Return button never trigger, no matter how long
+			you wait) even though the boss really is dead. RaidClear only needs a
+			reliable death edge, not the rest of the gated boss state, so it reads
+			this flag instead of Get_Boss().eAction. */
+			if (INVALID_NET_ENTITY_ID == iter->second.iOwnerBossNetEntityId &&
+				WORLD_ENTITY_ACTION::DEAD == entity.eAction)
+			{
+				CCombatHUDViewModel::Get().Set_BossDeadRaw(true);
+			}
+
 			VALTAN_PRESENTATION_STATE latest{};
 			latest.isValid = true;
 			latest.iNetEntityId = entity.iNetEntityId;
