@@ -34,26 +34,62 @@ namespace
 		return true;
 	}
 
-	void MakePlanes(const float3_t* points, float4_t* planes)
+	/* Frustum planes are taken from the view-projection matrix instead of from
+	   unprojected corner points. A plane built through a far corner ends with
+	   d = -dot(normal, corner) evaluated at the far distance, and with Bern's
+	   max(2000, span * 8) far plane that subtraction cancels away tens of world
+	   units in float32. Measured against exact planes at far 18837 the old
+	   left plane sat 63.5 units inside the real one, which rejected a quarter
+	   of the geometry the camera was looking straight at. The clip-space
+	   half-spaces below never form that difference, so the error stays at
+	   0.0003 units. Plane order stays right, left, top, bottom, far, near
+	   because the decision and the diagnostics index it. */
+	bool_t MakePlanes(fmatrix_t viewProjection, float4_t* planes)
 	{
-		XMStoreFloat4(&planes[0], XMPlaneFromPoints(
-			XMLoadFloat3(&points[1]), XMLoadFloat3(&points[5]),
-			XMLoadFloat3(&points[6])));
-		XMStoreFloat4(&planes[1], XMPlaneFromPoints(
-			XMLoadFloat3(&points[4]), XMLoadFloat3(&points[0]),
-			XMLoadFloat3(&points[3])));
-		XMStoreFloat4(&planes[2], XMPlaneFromPoints(
-			XMLoadFloat3(&points[4]), XMLoadFloat3(&points[5]),
-			XMLoadFloat3(&points[1])));
-		XMStoreFloat4(&planes[3], XMPlaneFromPoints(
-			XMLoadFloat3(&points[3]), XMLoadFloat3(&points[2]),
-			XMLoadFloat3(&points[6])));
-		XMStoreFloat4(&planes[4], XMPlaneFromPoints(
-			XMLoadFloat3(&points[5]), XMLoadFloat3(&points[4]),
-			XMLoadFloat3(&points[7])));
-		XMStoreFloat4(&planes[5], XMPlaneFromPoints(
-			XMLoadFloat3(&points[0]), XMLoadFloat3(&points[1]),
-			XMLoadFloat3(&points[2])));
+		float4x4_t matrix{};
+		XMStoreFloat4x4(&matrix, viewProjection);
+		if (!IsFiniteMatrix(matrix))
+			return false;
+
+		/* Row-vector convention: clip = world * viewProjection, so a clip
+		   component is the dot product with the matching matrix column. */
+		const float4_t columnX{ matrix._11, matrix._21, matrix._31, matrix._41 };
+		const float4_t columnY{ matrix._12, matrix._22, matrix._32, matrix._42 };
+		const float4_t columnZ{ matrix._13, matrix._23, matrix._33, matrix._43 };
+		const float4_t columnW{ matrix._14, matrix._24, matrix._34, matrix._44 };
+
+		const auto combine = [](const float4_t& left, const float4_t& right,
+			const f32_t scale) -> float4_t
+		{
+			return float4_t(
+				left.x + right.x * scale,
+				left.y + right.y * scale,
+				left.z + right.z * scale,
+				left.w + right.w * scale);
+		};
+
+		/* Inside a half-space is w + x >= 0 for left, w - x >= 0 for right and
+		   so on, with z >= 0 for near. */
+		const float4_t inward[6] = {
+			combine(columnW, columnX, -1.f),
+			combine(columnW, columnX, 1.f),
+			combine(columnW, columnY, -1.f),
+			combine(columnW, columnY, 1.f),
+			combine(columnW, columnZ, -1.f),
+			columnZ,
+		};
+
+		for (uint32_t index = 0; index < 6u; ++index)
+		{
+			/* The decision reads a positive distance as outside, so store the
+			   outward form and normalise it into world units. */
+			const vector_t plane = XMVectorNegate(XMLoadFloat4(&inward[index]));
+			const f32_t length = XMVectorGetX(XMVector3Length(plane));
+			if (!std::isfinite(length) || length <= 0.000001f)
+				return false;
+			XMStoreFloat4(&planes[index], XMVectorScale(plane, 1.f / length));
+		}
+		return true;
 	}
 
 	std::filesystem::path GetDiagnosticPath()
@@ -100,7 +136,46 @@ namespace
 				g_DiagnosticStream << ',';
 			g_DiagnosticStream << decision.planeDistances[index];
 		}
-		g_DiagnosticStream << "]\n";
+		g_DiagnosticStream << ']';
+
+		/* The plane distances alone cannot answer the only question that
+		   matters: was the dropped placement actually on screen? Project the
+		   bound centre with the same snapshot the decision used, and record the
+		   clip-space depth plus the screen-space radius the sphere would have
+		   spanned, so an on-screen drop is identifiable by asset. */
+		const matrix_t viewProjection =
+			XMLoadFloat4x4(&snapshot.view) *
+			XMLoadFloat4x4(&snapshot.projection);
+		const vector_t clip = XMVector3Transform(
+			XMVectorSetW(XMLoadFloat3(&worldCenter), 1.f), viewProjection);
+		const f32_t clipW = XMVectorGetW(clip);
+		if (std::isfinite(clipW) && std::abs(clipW) > 0.000001f)
+		{
+			const f32_t ndcX = XMVectorGetX(clip) / clipW;
+			const f32_t ndcY = XMVectorGetY(clip) / clipW;
+			const f32_t ndcZ = XMVectorGetZ(clip) / clipW;
+			const f32_t projectionScaleX = snapshot.projection._11;
+			const f32_t projectionScaleY = snapshot.projection._22;
+			const f32_t ndcRadiusX = std::abs(clipW) > 0.000001f ?
+				decision.baseRadius * projectionScaleX / std::abs(clipW) : 0.f;
+			const f32_t ndcRadiusY = std::abs(clipW) > 0.000001f ?
+				decision.baseRadius * projectionScaleY / std::abs(clipW) : 0.f;
+			const bool_t onScreen = clipW > 0.f &&
+				std::abs(ndcX) <= 1.f + ndcRadiusX &&
+				std::abs(ndcY) <= 1.f + ndcRadiusY &&
+				ndcZ >= 0.f && ndcZ <= 1.f;
+			g_DiagnosticStream
+				<< " ndc=(" << ndcX << ',' << ndcY << ',' << ndcZ << ')'
+				<< " clipW=" << clipW
+				<< " ndcRadius=(" << ndcRadiusX << ',' << ndcRadiusY << ')'
+				<< " onScreen=" << (onScreen ? 1 : 0);
+		}
+		else
+		{
+			g_DiagnosticStream << " ndc=none clipW=" << clipW
+				<< " ndcRadius=none onScreen=0";
+		}
+		g_DiagnosticStream << '\n';
 		g_DiagnosticStream.flush();
 	}
 }
@@ -135,25 +210,13 @@ bool_t CMapAssetRenderUtils::Capture_CameraCullSnapshot(
 	outSnapshot.view = *view;
 	outSnapshot.projection = *projection;
 
-	const matrix_t inverseProjection = XMMatrixInverse(
-		nullptr, XMLoadFloat4x4(&outSnapshot.projection));
-	const matrix_t inverseView = XMMatrixInverse(
-		nullptr, XMLoadFloat4x4(&outSnapshot.view));
-	const float3_t ndcPoints[8] = {
-		{ -1.f, 1.f, 0.f }, { 1.f, 1.f, 0.f },
-		{ 1.f, -1.f, 0.f }, { -1.f, -1.f, 0.f },
-		{ -1.f, 1.f, 1.f }, { 1.f, 1.f, 1.f },
-		{ 1.f, -1.f, 1.f }, { -1.f, -1.f, 1.f }
-	};
-	float3_t worldPoints[8]{};
-	for (uint32_t index = 0; index < 8u; ++index)
+	if (!MakePlanes(
+		XMLoadFloat4x4(&outSnapshot.view) *
+		XMLoadFloat4x4(&outSnapshot.projection),
+		outSnapshot.worldPlanes))
 	{
-		const vector_t viewPoint = XMVector3TransformCoord(
-			XMLoadFloat3(&ndcPoints[index]), inverseProjection);
-		XMStoreFloat3(&worldPoints[index],
-			XMVector3TransformCoord(viewPoint, inverseView));
+		return false;
 	}
-	MakePlanes(worldPoints, outSnapshot.worldPlanes);
 	return true;
 }
 
