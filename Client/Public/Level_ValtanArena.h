@@ -97,6 +97,14 @@ private:
 	startFrame=90/holdFrame=296 at the source's 40fps) instead of looping forever. */
 	void Update_RaidClear(f32_t fTimeDelta);
 	void Render_RaidClear();
+	/* Item acquisition toast: real EFUI_ANNOUNCE frame art (announce_i3e3.dds), one item at a
+	time. Diffs CCombatHUDViewModel's own already-replicated inventory snapshot frame-to-frame
+	(itemIds present now that weren't in the previous frame) into a FIFO queue, then shows each
+	queued item's icon/name for ITEM_ANNOUNCE_HOLD_SECONDS before starting the next. The first
+	frame only captures a baseline (m_bItemAnnounceBaselineCaptured) instead of diffing, so
+	whatever the player already owns on Level entry never gets announced as newly acquired. */
+	void Update_ItemAnnounce(f32_t fTimeDelta);
+	void Render_ItemAnnounce();
 	/* Starts the overlay's reveal/hold timeline from 0 and fires its one-shot sound cue. Shared by
 	Update_RaidClear's real edge-trigger and Update_DebugRaidClearKey's forced trigger so both
 	paths play the same cue instead of the debug key silently skipping it. */
@@ -222,6 +230,19 @@ private:
 	since that edge -- negative means the overlay is not currently showing. */
 	bool_t m_bRaidClearWasBossDead = false;
 	f32_t m_fRaidClearElapsedSeconds = -1.f;
+	// RaidClear_ReturnButton's own request sequence, same one-writer pattern as
+	// CLevel_Bern::m_iNextNpcEntryConfirmSequence.
+	uint32_t m_iNextReturnToBernSequence = 1u;
+	unique_ptr<CHUDRuntimeView> m_pItemAnnounceView;
+	/* See Update_ItemAnnounce's own comment. False until the first frame's inventory snapshot is
+	captured as the "already owned" baseline. */
+	bool_t m_bItemAnnounceBaselineCaptured = false;
+	vector<string> m_ItemAnnounceObservedItemIds;
+	vector<string> m_ItemAnnounceQueue;
+	string m_strItemAnnounceCurrentItemId;
+	/* Negative means no toast is currently showing (queue may still be non-empty, waiting for
+	the next Update_ItemAnnounce tick to pop it). */
+	f32_t m_fItemAnnounceElapsedSeconds = -1.f;
 #ifdef _DEBUG
 	// O key: instantly show the Raid Clear overlay, to test it without waiting to kill Valtan.
 	bool_t m_bDebugRaidClearKeyDown = false;

@@ -1,0 +1,12 @@
+{
+  "schema": "lostark.valtan-clear-rewards",
+  "formatVersion": 1,
+  "items": [
+    "EQUIP_DESTINYBLAZE_HEAD",
+    "EQUIP_DESTINYBLAZE_SHOULDER",
+    "EQUIP_DESTINYBLAZE_TOP",
+    "EQUIP_DESTINYBLAZE_BOTTOM",
+    "EQUIP_DESTINYBLAZE_GLOVE",
+    "EQUIP_DESTINYBLAZE_WEAPON"
+  ]
+}

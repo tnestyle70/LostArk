@@ -1551,6 +1551,21 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		C2S_CONFIRM_NPC_ENTRY& message);
 
+	// Raid Clear screen's "돌아가기" button, Valtan Arena only. No target to
+	// name -- the button has no proximity requirement -- so this is just a
+	// request sequence, same shape as C2S_DESPAWN_ALL_WORLD_ENTITIES.
+	struct C2S_RETURN_TO_BERN
+	{
+		std::uint32_t iRequestSequence = 0;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_RETURN_TO_BERN& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_RETURN_TO_BERN& message);
+
 	// Same-room-only party invite: iTargetNetEntityId names another player
 	// currently replicated in this same CGameRoom (right-clicked locally).
 	// There is no cross-room player identity yet, so the Server rejects a

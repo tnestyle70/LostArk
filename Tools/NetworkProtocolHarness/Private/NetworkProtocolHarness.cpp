@@ -2048,11 +2048,50 @@ namespace
 			"Reject Truncated Revive Without Mutation");
 	}
 
+	void Test_ReturnToBernProtocol(TEST_RUNNER& testRunner)
+	{
+		testRunner.Require(
+			static_cast<std::uint16_t>(PACKET_TYPE::C2S_RETURN_TO_BERN) ==
+				static_cast<std::uint16_t>(
+					PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT) + 1u &&
+			Is_Known_Packet_Type(PACKET_TYPE::C2S_RETURN_TO_BERN),
+			"Return To Bern Packet Identity Is Append Only And Known");
+
+		C2S_RETURN_TO_BERN source{};
+		source.iRequestSequence = 77u;
+		CPacketWriter writer;
+		testRunner.Require(
+			Write_Message(writer, source) && 4u == writer.Get_Buffer().size(),
+			"Writer Return To Bern");
+		CPacketReader reader{ writer.Get_Buffer() };
+		C2S_RETURN_TO_BERN decoded{};
+		testRunner.Require(
+			Read_Message(reader, decoded) &&
+			decoded.iRequestSequence == source.iRequestSequence &&
+			0u == reader.Get_RemainingSize(),
+			"Return To Bern Round Trip");
+
+		C2S_RETURN_TO_BERN invalid{};
+		CPacketWriter invalidWriter;
+		testRunner.Require(!Write_Message(invalidWriter, invalid),
+			"Reject Zero Return To Bern Sequence");
+
+		std::vector<std::uint8_t> truncated = writer.Get_Buffer();
+		truncated.pop_back();
+		CPacketReader truncatedReader{ truncated };
+		C2S_RETURN_TO_BERN unchanged{};
+		unchanged.iRequestSequence = 99u;
+		testRunner.Require(
+			!Read_Message(truncatedReader, unchanged) &&
+			99u == unchanged.iRequestSequence,
+			"Reject Truncated Return To Bern Without Mutation");
+	}
+
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(44u == NETWORK_PROTOCOL_VERSION,
-				"Party, Expanded Destruction, Next Pattern And Boss Owner Use Protocol 44");
+			testRunner.Require(45u == NETWORK_PROTOCOL_VERSION,
+				"Return To Bern, Party, Next Pattern And Boss Owner Use Protocol 45");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -4514,8 +4553,8 @@ namespace
 		}
 
 		testRunner.Require(
-			44u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Protocol Version 44");
+			45u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Protocol Version 45");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -4542,8 +4581,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			44u == NETWORK_PROTOCOL_VERSION,
-			"Valtan Pattern Flow, Next And Boss Owner Contract Use Protocol 44");
+			45u == NETWORK_PROTOCOL_VERSION,
+			"Valtan Pattern Flow, Next, Boss Owner And Return Contract Use Protocol 45");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -5419,6 +5458,7 @@ int main()
 	Test_ValtanAuditionLifecycleProtocol(testRunner);
 	Test_ValtanPatternFlowProtocol(testRunner);
 	Test_ValtanDecisionTraceProtocol(testRunner);
+	Test_ReturnToBernProtocol(testRunner);
 	Test_PartyInviteProtocol(testRunner);
 	Test_ChatProtocol(testRunner);
 

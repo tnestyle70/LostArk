@@ -63,6 +63,18 @@ public:
 	click-handling code calls this instead of repeating the literal path. */
 	static void Play_UIButtonClickSound();
 
+	/* CMainApp is a single process-lifetime instance (see Create()/Free()), but
+	nothing previously exposed it back to a Level the way CLevel_Bern/
+	CLevel_ValtanArena expose Get_Active() to CMainApp -- Open_ItemUpgradeWindow()
+	below is the first case that needs the reverse direction (Bern's Schmidt NPC
+	interaction opening the Item Upgrade window CMainApp itself owns). */
+	static CMainApp* Get_Active() { return s_pActiveInstance; }
+	/* Opens the Item Upgrade preview the same way the P key's rising edge does
+	(same idle-state reset block), but idempotently -- a no-op if already open.
+	Used by CLevel_Bern's Schmidt NPC right-click interaction; P itself still
+	toggles (open when closed, close when open). */
+	void Open_ItemUpgradeWindow();
+
 #ifdef _DEBUG
 	static void Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle);
 #endif
@@ -152,6 +164,10 @@ private:
 	clicked, so the wait/result screens never show the old 100% fill behind them) and
 	Update_ItemUpgradeResultOkButton (same reset on dismiss) -- an idle, non-growing 0% state. */
 	void Reset_ItemUpgradeIdleGauge();
+	/* Returns a mutable reference into m_ItemUpgradeLevels, default-initializing an itemId's first
+	lookup to 10. Every reader/writer of an item's 재련 level goes through this so a never-seen
+	item and a previously-touched one behave identically. */
+	int32_t& ItemUpgradeLevelRef(const string& strItemId);
 	/* Hides (bVisible=false) or restores (true) the base window's own center-panel content --
 	item icon, gauge, recipe materials, 성장/재련 buttons, level-transition arrow -- so none of it
 	bleeds through behind the wait/success/fail modals. Real Lost Ark's wait/result screens read
@@ -193,6 +209,11 @@ private:
 	CLevel_ValtanArena::Update_RaidClear() fills from its own (Level-private)
 	m_pRaidClearView every frame the overlay is showing. */
 	void RenderRaidClearText();
+	/* Item acquisition toast headline -- same split as RenderRaidClearText, reading
+	CCombatHUDViewModel::Get_ItemAnnounceTextRects(), which CLevel_ValtanArena::Update_ItemAnnounce()
+	fills (rect AND the already-localized "OO을(를) 획득하였습니다" text) every frame a toast is
+	showing. */
+	void RenderItemAnnounceText();
 	/* Room-shared raid Esther gauge bar. Draws nothing when the snapshot says
 	the world has no Esther roster (maximum 0). */
 	void RenderEstherGauge();
@@ -247,18 +268,18 @@ private:
 	preview that ended up blocking everything else on screen. */
 	unique_ptr<CHUDRuntimeView> m_pItemUpgradeView = { nullptr };
 	bool_t m_bItemUpgradePreviewVisible = false;
-	/* Which of the 6 left-list rows (head/shoulder/top/bottom/glove/weapon, index-matched to
-	ITEM_UPGRADE_SLOTS in MainApp.cpp) is the current "재련 대상" -- Update_ItemUpgradeSelection()
-	is the only writer, on a left-list row click. Defaults to 2 ("상의") to match
-	ItemUpgrade_ListSelectedExample's originally-authored resting position. */
-	int32_t m_iItemUpgradeSelectedSlot = 2;
-	/* Real per-item level state, one per ITEM_UPGRADE_SLOTS entry -- all 6 start at 10 (no real
-	inventory/equipment data is wired in yet, but the level itself is a real tracked number now,
-	not a fixed display literal). Update_ItemUpgradeResultWaitClick increments the selected item's
-	entry by 1 the moment a 재련 attempt actually succeeds; a fail leaves it untouched. Every level
-	display in this preview (left list, right 재련 단계 ladder, center 현재/다음, success detail)
-	reads from this same array so they can never drift out of sync with each other. */
-	int32_t m_iItemUpgradeLevels[6] = { 10, 10, 10, 10, 10, 10 };
+	/* Index into BuildItemUpgradeSlots()'s current-frame result (real "combat"-category inventory
+	items) that is the current "재련 대상" -- Update_ItemUpgradeSelection() is the only writer, on
+	a left-list row click. The list is rebuilt from the live inventory every frame, so this index
+	is clamped against its size wherever it's read rather than a fixed 0..5 range. */
+	int32_t m_iItemUpgradeSelectedSlot = 0;
+	/* Real per-item level state, keyed by itemId (not a fixed-size array -- which equipment items
+	exist depends on the live inventory). ItemUpgradeLevelRef() default-inits an item's first
+	lookup to 10 and returns a mutable reference; Update_ItemUpgradeResultWaitClick increments the
+	selected item's entry by 1 the moment a 재련 attempt actually succeeds, a fail leaves it
+	untouched. Every level display in this preview (left list, right 재련 단계 ladder, center
+	현재/다음, success detail) reads through the same helper so they can never drift out of sync. */
+	unordered_map<string, int32_t> m_ItemUpgradeLevels;
 	bool_t m_bPDown = false;
 	/* Current held ItemUpgrade_GaugeFill percent (0..100), driven by the ItemUpgrade_LevelUpBtn
 	("성장") click state machine (see m_bItemUpgradeGrowing) instead of a free-running clock. Stays
@@ -430,6 +451,9 @@ private:
 	uint32_t m_iNextDebugGiveItemSequence = 1;
 	string m_strDebugItemStatus;
 #endif
+
+private:
+	static CMainApp* s_pActiveInstance;
 
 public:
 	static unique_ptr<CMainApp> Create();

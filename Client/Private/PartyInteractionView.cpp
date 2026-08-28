@@ -24,8 +24,11 @@ void Client::CPartyInteractionView::Initialize(
 		pDevice, pContext, L"UI/Party/PartyContextMenu_Layout.json");
 
 	/* Same first-draw-invisible issue CLevel_Bern's Valtan-entry popup had --
-	   see Level_Bern::Initialize's own warm-up comment. */
-	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), L" ",
+	   see Level_Bern::Initialize's own warm-up comment. A bare space doesn't
+	   actually warm anything (DirectXTK's SpriteFont::DrawString skips the
+	   SpriteBatch::Draw() call for a whitespace glyph, so Begin()/End() ran
+	   with nothing queued) -- a real non-degenerate glyph is required. */
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), L"\xD30C\xD2F0\xCD08\xB300",
 		float2_t(-1000.f, -1000.f), Colors::White, 0.f,
 		float2_t(0.5f, 0.5f), 1.f);
 }

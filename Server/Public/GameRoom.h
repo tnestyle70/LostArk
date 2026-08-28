@@ -6,6 +6,7 @@
 #include "WorldBootstrap.h"
 #include "GameplayCatalog.h"
 #include "ItemCatalog.h"
+#include "ValtanClearRewards.h"
 #include "PlayerSkillSystem.h"
 #include "CombatObjectRuntime.h"
 #include "ServerNavigation.h"
@@ -225,7 +226,10 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_ENTER_WORLD& enterWorld,
 			std::span<const STAGED_PLAYER_ENTRY> precedingEntries,
 			STAGED_PLAYER_ENTRY& staged,
-			LostArk::Shared::SESSION_DIAGNOSTIC_REASON& outReason, std::string& status);
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON& outReason, std::string& status,
+			const std::string& spawnPlacementOverrideId = {},
+			const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>&
+				carriedInventory = {});
 		bool Build_PlayerEntryFrames(STAGED_PLAYER_ENTRY& entry,
 			std::span<const STAGED_PLAYER_ENTRY> batch, std::string& status);
 		void Commit_PlayerEntry(const STAGED_PLAYER_ENTRY& entry);
@@ -233,7 +237,10 @@ namespace LostArk::Server
 		void Handle_Register(const std::shared_ptr<CClientSession>& session);
 		bool Join(
 			SESSION_ID sessionId,
-			const LostArk::Shared::C2S_ENTER_WORLD& enterWorld);
+			const LostArk::Shared::C2S_ENTER_WORLD& enterWorld,
+			const std::string& spawnPlacementOverrideId = {},
+			const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>&
+				carriedInventory = {});
 		void Leave(
 			SESSION_ID sessionId,
 			LostArk::Shared::PLAYER_DESPAWN_REASON reason, bool publishDeparture = true);
@@ -573,6 +580,15 @@ namespace LostArk::Server
 			std::uint64_t iTraceSequence = 0u;
 			LostArk::Shared::GameplayDataRevision DefinitionRevision{};
 		};
+		// Validates itemId against the loaded catalog and stacks quantity into
+		// player.Inventory, capped at maxStack and MAX_INVENTORY_ITEMS distinct
+		// stacks. Returns false (no-op) for an unknown item or a full inventory
+		// that would need a new stack. Shared by Handle_DebugGiveItem and the
+		// Valtan clear-reward grant in the world entity tick loop.
+		bool Grant_Item(
+			SERVER_PLAYER& player,
+			const std::string& itemId,
+			std::uint32_t quantity);
 		// Debug-only. Validates the item against the loaded catalog and
 		// stacks it into the player's inventory, capped at maxStack.
 		void Handle_DebugGiveItem(
@@ -600,6 +616,14 @@ namespace LostArk::Server
 		void Handle_ConfirmNpcEntry(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_CONFIRM_NPC_ENTRY& request);
+		// Raid Clear screen's "돌아가기" button -- the reverse trip. No proximity
+		// or party-leader gating (unlike Handle_ConfirmNpcEntry): any player in
+		// VALTAN_ARENA can return to BERN independently. Lands next to Bern's own
+		// Valtan-entry guide NPC via SERVER_WORLD_TRANSFER_REQUEST's
+		// strSpawnPlacementOverrideId. VALTAN_ARENA only; no-op for anything else.
+		void Handle_ReturnToBern(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_RETURN_TO_BERN& request);
 		/* Same-room-only: request.iTargetNetEntityId must resolve to a real
 		   player currently in this room's m_PlayerIdByEntityId. There is no
 		   cross-room player identity yet (nickname is display text only, see
@@ -993,6 +1017,7 @@ namespace LostArk::Server
 		CWorldBootstrap m_WorldBootstrap;
 		CGameplayCatalogGenerations m_GameplayCatalog;
 		CItemCatalog m_ItemCatalog;
+		CValtanClearRewards m_ValtanClearRewards;
 		CServerNavigation m_ServerNavigation;
 		CServerCollisionSystem m_ServerCollisionSystem;
 		CServerTriggerSystem m_ServerTriggerSystem;

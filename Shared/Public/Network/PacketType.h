@@ -5,7 +5,8 @@
 
 namespace LostArk::Shared
 {
-	/* 44 adds an immutable owner boss identity to world-entity spawn and a
+	/* 45 adds the Raid Clear screen's C2S_RETURN_TO_BERN command.
+	44 adds an immutable owner boss identity to world-entity spawn and a
 	reliable typed death reason to world-entity despawn.
 	43 adds live Product/Flow Next adoption with an observed predecessor.
 	42 adds resetless Valtan next-pattern reservation and correlated control.
@@ -13,7 +14,7 @@ namespace LostArk::Shared
 	expanded world destruction live-event bound. Each feature independently
 	used 40 before integration, so neither v40 peer is wire-compatible.
 	39 adds bounded Debug Valtan pattern-flow authoring playback. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 44;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 45;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -193,7 +194,13 @@ namespace LostArk::Shared
 		S2C_PARTY_INVITE_RECEIVED,
 		C2S_PARTY_INVITE_RESPOND,
 		S2C_PARTY_ROSTER,
-		S2C_PARTY_TRANSFER_RESULT
+		S2C_PARTY_TRANSFER_RESULT,
+
+		// Raid Clear screen's own "돌아가기" (return) button, Valtan Arena only.
+		// This append-only v45 identity is the reverse of C2S_CONFIRM_NPC_ENTRY.
+		// It carries only a request sequence and receives the ordinary typed
+		// S2C_ENTER_ACCEPTED/S2C_ENTER_REJECTED transfer result.
+		C2S_RETURN_TO_BERN
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -257,6 +264,7 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_USE_ITEM:
 		case PACKET_TYPE::C2S_DESPAWN_ALL_WORLD_ENTITIES:
 		case PACKET_TYPE::C2S_CONFIRM_NPC_ENTRY:
+		case PACKET_TYPE::C2S_RETURN_TO_BERN:
 		case PACKET_TYPE::C2S_PARTY_INVITE:
 		case PACKET_TYPE::S2C_PARTY_INVITE_RECEIVED:
 		case PACKET_TYPE::C2S_PARTY_INVITE_RESPOND:
