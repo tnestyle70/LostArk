@@ -17,19 +17,18 @@
 
 namespace
 {
+#ifdef _DEBUG
 	string Describe_ServerEndpoint()
 	{
 		return CNetworkManager::Resolve_ServerHost() + ":" +
 			to_string(CNetworkManager::DEFAULT_SERVER_PORT);
 	}
 
-#ifdef _DEBUG
 	string Describe_MapEditorServerEndpoint()
 	{
 		return CNetworkManager::Resolve_MapEditorServerHost() + ":" +
 			to_string(CNetworkManager::DEFAULT_SERVER_PORT);
 	}
-#endif
 
 	const char_t* Get_CharacterClassName(
 		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
@@ -53,7 +52,10 @@ namespace
 			return "Not selected";
 		}
 	}
+#endif
 }
+
+CLevel_Lobby* CLevel_Lobby::s_pActiveInstance = nullptr;
 
 CLevel_Lobby::CLevel_Lobby(
 	ComPtr<ID3D11Device> pDevice,
@@ -64,6 +66,8 @@ CLevel_Lobby::CLevel_Lobby(
 
 CLevel_Lobby::~CLevel_Lobby()
 {
+	if (s_pActiveInstance == this)
+		s_pActiveInstance = nullptr;
 }
 
 HRESULT CLevel_Lobby::Initialize()
@@ -71,6 +75,9 @@ HRESULT CLevel_Lobby::Initialize()
 	const HRESULT hr = __super::Initialize();
 	if (FAILED(hr))
 		return hr;
+	if (nullptr != s_pActiveInstance && s_pActiveInstance != this)
+		return E_FAIL;
+	s_pActiveInstance = this;
 
 	const filesystem::path bgmPath = CRuntimeAssetRoot::Resolve(
 		L"Sound/BGM/Lobby/bgm_wallpaperin.wav");
@@ -138,10 +145,16 @@ HRESULT CLevel_Lobby::Render()
 
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(TEXT("LostArk Lobby"));
-#endif
-
 	Render_StagePanel();
+#endif
 	return S_OK;
+}
+
+bool_t CLevel_Lobby::Can_SubmitProductCommand()
+{
+	return nullptr != s_pActiveInstance &&
+		ENTRY_STATE::IDLE == s_pActiveInstance->m_eEntryState &&
+		!CLevelTransitionService::Is_Pending();
 }
 
 void CLevel_Lobby::Consume_EnterRejected()
@@ -420,6 +433,7 @@ void CLevel_Lobby::Cancel_PendingEntry(
 	m_strStatus = reason;
 }
 
+#ifdef _DEBUG
 void CLevel_Lobby::Render_StagePanel()
 {
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -636,6 +650,7 @@ void CLevel_Lobby::Render_StagePanel()
 	}
 	ImGui::End();
 }
+#endif
 
 unique_ptr<CLevel_Lobby> CLevel_Lobby::Create(
 	ComPtr<ID3D11Device> pDevice,

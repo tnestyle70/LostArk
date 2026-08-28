@@ -1627,6 +1627,9 @@
     <None Include="..\..\Data\UI\Loading\LoadingLayout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
+    <None Include="..\..\Data\UI\Loading\LoadingRecovery.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
     <None Include="..\..\Data\UI\Lobby\Lobby_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
