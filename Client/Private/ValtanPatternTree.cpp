@@ -2060,10 +2060,16 @@ namespace
 		const std::set<std::string, std::less<>> WeightedPatternIds(
 			Out.NormalSelection.PatternIds.begin(),
 			Out.NormalSelection.PatternIds.end());
-		if (WeightedPatternIds != ManagedNormalPatternIds)
+		/* Every weighted-pool pattern must be a managed NORMAL pattern. The
+		   scripted-sequence-only entrance pattern is NORMAL with a positive
+		   weight but is not a pool member, so the pool is a subset, not the
+		   exact set (same as the pipeline's normalSelection projection). */
+		if (!std::includes(
+				ManagedNormalPatternIds.begin(), ManagedNormalPatternIds.end(),
+				WeightedPatternIds.begin(), WeightedPatternIds.end()))
 		{
 			strOutError =
-				"master normalSelection is not the exact managed normal pattern set";
+				"master normalSelection is not a subset of the managed normal pattern set";
 			return false;
 		}
 		for (const Client::VALTAN_COUNTER_REACTION_LAYER_VIEW& Layer :
@@ -4265,11 +4271,19 @@ namespace
 			const uint32_t iOwnerCount =
 				(bMechanic ? 1u : 0u) + (bCandidate ? 1u : 0u) +
 				(bManual ? 1u : 0u);
-			if (1u != iOwnerCount ||
+			/* A pattern owned only by the scripted sequence (entrance
+			   cinematic) has no automatic decision owner; the pipeline still
+			   treats it as a normal pattern with a positive weight. */
+			const bool_t bScriptedOnly = 0u == iOwnerCount &&
+				ScriptedSequence.PatternIds.end() != std::find(
+					ScriptedSequence.PatternIds.begin(),
+					ScriptedSequence.PatternIds.end(), strPatternId);
+			if ((1u != iOwnerCount && !bScriptedOnly) ||
 				!Is_NonNegativeInteger(pCompatibilityWeight) ||
 				((bMechanic || bManual) &&
 				 0.0 != pCompatibilityWeight->Get_Number()) ||
-				(bCandidate && 0.0 == pCompatibilityWeight->Get_Number()))
+				((bCandidate || bScriptedOnly) &&
+				 0.0 == pCompatibilityWeight->Get_Number()))
 			{
 				strOutError = "split gameplay pattern does not have exactly one decision owner: " +
 					strPatternId;
