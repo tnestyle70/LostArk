@@ -47,7 +47,7 @@ struct EFFECT_SPAWN_DESC final
 	std::string strOccurrenceId;
     f32_t fPlaybackRate = 1.f;
     f32_t fInitialSampleTimeSeconds = 0.f;
-	// Dedicated room-object entry points are the only callers that set these.
+	// Dedicated world-root entry points are the only callers that set these.
 	// The boss owner remains the budget/lifetime owner; this matrix is the
 	// independent network world anchor.
 	bool_t bUseWorldRoot = false;
@@ -314,6 +314,13 @@ public:
         std::string& strOutStatus);
 	static bool_t Spawn_WorldRoot(
 		const EFFECT_WORLD_ROOT_SPAWN_DESC& Desc,
+		EFFECT_WORLD_ROOT_HANDLE& OutHandle,
+		std::string& strOutStatus);
+	// RootWorld already includes the cue local transform and scale policy.
+	// Preserve the cue clock/stop policy while allocating through the same path.
+	static bool_t Spawn_WorldRoot(
+		const EFFECT_SPAWN_DESC& CueDesc,
+		const float4x4_t& RootWorld,
 		EFFECT_WORLD_ROOT_HANDLE& OutHandle,
 		std::string& strOutStatus);
 	static bool_t Spawn_LevelPlacement(

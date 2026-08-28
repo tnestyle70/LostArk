@@ -88,10 +88,11 @@ Client 문서 → 전송 packet → Server sequence가 모두 JSON의 **배열 �
 [ValtanPatternFlowDocument.cpp](C:/Users/user/Desktop/LostArk/Client/Private/ValtanPatternFlowDocument.cpp:261)
 
 - `Parse_Text`는 JSON 배열 순회 중 `stagedFlow.Slots.push_back()`으로 순서를 보존한다.
-- `Validate`는 최대 32슬롯, unique slotId, admitted patternId, pursuit 범위와 단조 증가 발급 번호를
+- `Validate`는 최대 255슬롯, unique slotId, admitted patternId, pursuit 범위와 단조 증가 발급 번호를
   검사한다. 같은 patternId를 여러 슬롯에서 참조하는 것은 허용한다.
 - `Serialize_Text`는 `flow.Slots[slotIndex]` 순서로 쓴다.
-- `Move_Slot`은 `std::iter_swap`으로 위치만 바꾸며 ID를 다시 발급하지 않는다.
+- `Move_Slot`은 복사본에서 위치를 바꾼 뒤 전체 Flow를 다시 검증하고 성공할 때만 commit한다.
+  stable slot ID와 `nextSlotOrdinal`은 다시 발급하지 않는다.
 - `Save`는 baseline SHA 비교 → serialize/parse/validate → durable temp → backup → 교체 직전 SHA
   재확인 → `MoveFileExW` 교체 → 저장 bytes 재검증 → baseline/draft commit 순서다.
 - Save 실패 시 기존 파일/draft를 보존하는 경로가 있고, 이번 검토에서 Save를 다시 호출하지 않았다.

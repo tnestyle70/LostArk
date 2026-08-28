@@ -46,6 +46,18 @@ struct BOSS_COMBAT_OBJECT_VISUAL_ENTRY final
 	std::string combatObjectArchetypeId;
 	std::string clientVisualId;
 	std::string effectAssetId;
+	// Presentation scale relative to the authoritative combat-object root.
+	float3_t worldScale = { 1.f, 1.f, 1.f };
+
+	float4x4_t Make_WorldRoot(const float3_t& position, const f32_t yawDegrees) const
+	{
+		float4x4_t root{};
+		DirectX::XMStoreFloat4x4(&root,
+			DirectX::XMMatrixScaling(worldScale.x, worldScale.y, worldScale.z) *
+			DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(yawDegrees)) *
+			DirectX::XMMatrixTranslation(position.x, position.y, position.z));
+		return root;
+	}
 };
 
 struct BOSS_ACTOR_ENTRY final
@@ -63,6 +75,9 @@ struct BOSS_ACTOR_ENTRY final
 	std::string archetypeId;
 	std::string visualAssetId;
 	f32_t presentationScale = {};
+	// Asset-unit conversion happens before the actor presentation transform.
+	f32_t bodyModelPreScale = {};
+	f32_t weaponModelPreScale = {};
 	std::string bodyModel;
 	std::string weaponModel;
 	/* Skinned armour pieces the boss wears on the body rig. They share the

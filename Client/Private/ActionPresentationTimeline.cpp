@@ -103,6 +103,45 @@ bool Client::CActionPresentationTimeline::Resolve_Sample(
 	return false;
 }
 
+bool Client::CActionPresentationTimeline::Resolve_PreviewSequenceSample(
+	const std::span<const ACTION_PRESENTATION_CLIP_TIMING> Clips,
+	const std::span<const float> WallBudgets,
+	const float fTimelineWallTimeSeconds,
+	ACTION_PRESENTATION_SAMPLE& OutSample)
+{
+	if (Clips.empty() || Clips.size() != WallBudgets.size() ||
+		!std::isfinite(fTimelineWallTimeSeconds) || fTimelineWallTimeSeconds < 0.f)
+		return false;
+	for (std::size_t i = 0u; i < Clips.size(); ++i)
+	{
+		float SourceDuration = 0.f, WallDuration = 0.f;
+		if (!std::isfinite(WallBudgets[i]) || WallBudgets[i] <= 0.f ||
+			!Resolve_ClipDuration(Clips[i], SourceDuration, WallDuration))
+			return false;
+	}
+	float Remaining = fTimelineWallTimeSeconds;
+	for (std::size_t i = 0u; i < Clips.size(); ++i)
+	{
+		// Millisecond stage boundaries can differ by a float rounding unit.
+		if (i + 1u < Clips.size() && Remaining + 0.000001f >= WallBudgets[i])
+		{
+			Remaining = (std::max)(0.f, Remaining - WallBudgets[i]);
+			continue;
+		}
+		float LocalWall = (std::min)(Remaining, WallBudgets[i]);
+		if (Clips[i].bLoop && LocalWall >= WallBudgets[i])
+			LocalWall = (std::max)(0.f, LocalWall - 0.000001f);
+		ACTION_PRESENTATION_SAMPLE Staged;
+		if (!Resolve_Sample(Clips.subspan(i, 1u), LocalWall, Staged))
+			return false;
+		Staged.iClipIndex = i;
+		Staged.fStageWallTimeSeconds = fTimelineWallTimeSeconds;
+		OutSample = Staged;
+		return true;
+	}
+	return false;
+}
+
 bool Client::CActionPresentationTimeline::Requires_ClipOccurrenceTransition(
 	const std::size_t iCurrentClipOccurrenceIndex,
 	const std::size_t iExpectedClipOccurrenceIndex,

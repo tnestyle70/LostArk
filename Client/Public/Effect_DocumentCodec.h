@@ -134,6 +134,15 @@ public:
 	static bool_t Validate_Artist31470ReconstructedRuntimeDrawable(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::string& strOutError);
+	/* Duplicates one authored selection as a single validated stage. Copies
+	   keep timing and payload; inheritance within the selection follows the
+	   new masters. Both outputs remain unchanged on failure. */
+	static bool_t Build_DuplicatedAuthoredElements(
+		const EFFECT_DOCUMENT_DESC& SourceDocument,
+		const std::vector<std::string>& SourceElementIds,
+		EFFECT_DOCUMENT_DESC& InOutDocument,
+		std::unordered_map<std::string, std::string>& OutDuplicatedElementIds,
+		std::string& strOutError);
 	static bool_t Build_GenericAuthoredElementStartingCopy(
 		const EFFECT_DOCUMENT_DESC& SourceDocument,
 		std::string_view strElementId,

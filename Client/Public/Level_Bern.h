@@ -91,6 +91,25 @@ private:
 	check ran inside. */
 	void Render_ValtanEntryModal();
 
+	/* npc.bern.schmidt's authored position (real placement in Data/Worlds/
+	LV_BER_BERNCASTLE/Gameplay.world.json, archetype NPC_SCHMIDT), loaded the same
+	way Ready_ValtanEntryNpcs loads its own guide NPCs -- kept as a separate
+	single-NPC lookup since it drives an unrelated interaction (opens the Item
+	Upgrade window, not a level transfer, and has no confirm modal). */
+	bool_t Ready_ItemUpgradeNpc(const std::string& areaId);
+	/* Same right-click ray-vs-sphere pick pattern as Update_ValtanEntryInteraction,
+	against the single Schmidt NPC position. Uses its own edge-detect state
+	(m_wasRightMouseDownForItemUpgradeNpcInteract) rather than sharing
+	m_wasRightMouseDownForNpcInteract -- both read the same live mouse button
+	each frame independently, which is safe since a click can only ever land
+	near one of the two NPCs. */
+	void Update_ItemUpgradeNpcInteraction();
+	/* Polled every frame: once m_isWalkingToItemUpgradeNpc is set, opens the Item
+	Upgrade window (via CMainApp::Get_Active()) as soon as the local character's
+	live position is back within interaction range of Schmidt -- no confirm
+	modal, unlike Advance_ValtanEntryWalk. */
+	void Advance_ItemUpgradeNpcWalk();
+
 #ifdef _DEBUG
 	bool_t Ready_DebugLevelChangeTriggers(const std::string& areaId);
 #endif
@@ -127,6 +146,11 @@ private:
 	bool_t m_wasRightMouseDownForNpcInteract = false;
 	std::uint32_t m_iNextNpcEntryConfirmSequence = 1u;
 	bool_t m_bBernBgmStarted = false;
+
+	bool_t m_hasItemUpgradeNpc = false;
+	float3_t m_vItemUpgradeNpcPosition{};
+	bool_t m_isWalkingToItemUpgradeNpc = false;
+	bool_t m_wasRightMouseDownForItemUpgradeNpcInteract = false;
 
 #ifdef _DEBUG
 	std::vector<shared_ptr<CTrigger_Box>> m_DebugLevelChangeTriggers;

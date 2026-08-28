@@ -81,6 +81,12 @@ public:
 	virtual bool Request_ConfirmNpcEntry(
 		std::uint32_t clientSequence,
 		const std::string& npcPlacementId) = 0;
+	// Raid Clear screen's own "돌아가기" (return) button, Valtan Arena only --
+	// the reverse trip of Request_ConfirmNpcEntry. No target NPC to name (the
+	// button has no proximity requirement); the Server lands the player back
+	// near Bern's own Valtan-entry guide NPC.
+	virtual bool Request_ReturnToBern(
+		std::uint32_t clientSequence) = 0;
 };
 
 }

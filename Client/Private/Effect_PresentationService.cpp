@@ -4,6 +4,7 @@
 #include "Effect_Catalog.h"
 #include "Effect_LoadPreparationJob.h"
 #include "Effect_Object.h"
+#include "Effect_Playback.h"
 #include "Effect_ProductPrewarmQueue.h"
 #include "Effect_ReconstructedExecution.h"
 #include "Effect_ScreenOverlayPresentation.h"
@@ -100,6 +101,8 @@ namespace
         std::string strRuntimeBoneName;
         Client::EFFECT_TRANSFORM_DESC SocketLocalTransform{};
 		bool_t bNormalizeSourceImportScale = false;
+		Client::EFFECT_ATTACHMENT_ORIENTATION eOrientation =
+			Client::EFFECT_ATTACHMENT_ORIENTATION::BONE;
     };
 
 	struct ARTIST_31470_ANCHOR_HISTORY_SAMPLE final
@@ -150,6 +153,17 @@ namespace
 			}
 			return nullptr != pBoss &&
 				pBoss->Try_Get_PresentationRootMatrix(&Out);
+		}
+
+		bool_t Try_Get_OwnerWorld(float4x4_t& Out) const
+		{
+			const std::shared_ptr<Engine::CTransform> pTransform =
+				nullptr != pBoss ? pBoss->Get_Transform() :
+				(nullptr != pCharacter ? pCharacter->Get_Transform() : nullptr);
+			if (nullptr == pTransform)
+				return false;
+			Out = *pTransform->Get_WorldMatrixPtr();
+			return true;
 		}
 
 		std::shared_ptr<Engine::CModel> Get_Model() const
@@ -1227,7 +1241,8 @@ namespace
                 AddRequest({
                     Element.ActionCueAttachment.strRuntimeAnchorSlotId,
                     Element.ActionCueAttachment.strRuntimeBoneName,
-                    Element.ActionCueAttachment.SocketLocalTransform });
+                    Element.ActionCueAttachment.SocketLocalTransform, false,
+					Element.ActionCueAttachment.eOrientation });
             }
             for (const Client::EFFECT_SOURCE_MODULE_DESC& Module :
                 Element.SourceRecipe.Modules)
@@ -1327,12 +1342,35 @@ namespace
 		   footprint cue cannot fall back to the resized boss scale. */
 		const matrix_t OwnerWorld =
 			XMLoadFloat4x4(&EffectivePresentationRoot);
+		float4x4_t ActualOwnerWorld{};
+		const bool_t bHasActualOwnerWorld =
+			Owner.Try_Get_OwnerWorld(ActualOwnerWorld);
         for (const SOURCE_ANCHOR_REQUEST& Request : Requests)
         {
             if (!pModel->Has_Bone(Request.strRuntimeBoneName.c_str()))
                 continue;
 			matrix_t BoneAnchorWorld;
-			if (Request.bNormalizeSourceImportScale)
+			if (Request.eOrientation ==
+				Client::EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW)
+			{
+				float4x4_t RawBone{};
+				float4x4_t OwnerYawAnchorWorld{};
+				XMStoreFloat4x4(&RawBone,
+					pModel->Get_BoneMatrix(Request.strRuntimeBoneName.c_str()));
+				if (!bHasActualOwnerWorld ||
+					!Client::CEffectPlayback::Build_OwnerYawBoneAnchorWorld(
+						RawBone, PresentationRoot, ActualOwnerWorld,
+						OwnerYawAnchorWorld))
+				{
+					continue;
+				}
+				BoneAnchorWorld = XMLoadFloat4x4(&OwnerYawAnchorWorld);
+			}
+			else if (Request.eOrientation != Client::EFFECT_ATTACHMENT_ORIENTATION::BONE)
+			{
+				continue;
+			}
+			else if (Request.bNormalizeSourceImportScale)
 			{
 				Client::EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC AnchorBuild;
 				XMStoreFloat4x4(&AnchorBuild.RawBone,
@@ -1372,7 +1410,8 @@ namespace
             XMStoreFloat4x4(&World,
                 SocketLocal *
 				BoneAnchorWorld);
-			if (Request.bNormalizeSourceImportScale &&
+			if ((Request.bNormalizeSourceImportScale ||
+				 Request.eOrientation == Client::EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW) &&
 				!Is_NonDegenerateAffineMatrix(World))
 				continue;
             InOutResult.emplace(Request.strRuntimeAnchorSlotId, World);
@@ -4178,9 +4217,33 @@ bool_t Client::CEffectPresentationService::Spawn_WorldRoot(
 	SpawnDesc.iActionStartTick = Desc.iSpawnTick;
 	SpawnDesc.strOccurrenceId = Desc.strOccurrenceId;
 	SpawnDesc.fInitialSampleTimeSeconds = Desc.fInitialSampleTimeSeconds;
+	return Spawn_WorldRoot(SpawnDesc, Desc.RootWorld, OutHandle, strOutStatus);
+}
+
+bool_t Client::CEffectPresentationService::Spawn_WorldRoot(
+	const EFFECT_SPAWN_DESC& CueDesc,
+	const float4x4_t& RootWorld,
+	EFFECT_WORLD_ROOT_HANDLE& OutHandle,
+	std::string& strOutStatus)
+{
+	OutHandle = {};
+	if (CueDesc.strEffectAssetId.empty() || CueDesc.strOccurrenceId.empty() ||
+		0u == CueDesc.iActionStartTick || nullptr == CueDesc.pBossOwner.lock() ||
+		!CueDesc.pOwner.expired() || CueDesc.bLevelOwned || CueDesc.bUseWorldRoot ||
+		0u != CueDesc.iWorldRootHandle || !Is_NonDegenerateAffineMatrix(RootWorld) ||
+		!Is_ValidCueScaleDescriptor(CueDesc.eScalePolicy, CueDesc.vWorldScale))
+	{
+		strOutStatus = "World-root boss cue descriptor is invalid.";
+		return false;
+	}
+	EFFECT_SPAWN_DESC SpawnDesc = CueDesc;
+	SpawnDesc.strAnchorSlotId = "root";
+	SpawnDesc.LocalTransform = {};
+	SpawnDesc.eScalePolicy = VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE;
+	SpawnDesc.vWorldScale = { 1.f, 1.f, 1.f };
 	SpawnDesc.bUseWorldRoot = true;
 	SpawnDesc.iWorldRootHandle = g_iNextWorldRootHandle;
-	SpawnDesc.WorldRoot = Desc.RootWorld;
+	SpawnDesc.WorldRoot = RootWorld;
 	if (!Spawn(SpawnDesc, strOutStatus))
 		return false;
 

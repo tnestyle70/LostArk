@@ -69,6 +69,8 @@ private:
 	bool_t Request_RevivePlayer(std::string& strOutStatus);
 	bool_t Reload_FlowDocument();
 	bool_t Save_FlowDocument();
+	bool_t Apply_SavedFlow();
+	void Render_FlowPublicationStatus();
 	void Refresh_PresentationFreshness(bool_t bForce = false);
 	void Synchronize_LiveSelection();
 	void Render_BossVerificationTab();
@@ -142,7 +144,7 @@ private:
 	std::string m_strFlowStatus =
 		"Load a saved Flow, then start it through the Server.";
 	std::string m_strNextPatternStatus =
-		"Choose a Next Pattern during an isolated audition or its completed hold.";
+		"Choose the next pattern during live Server playback or while Valtan is idle.";
 	std::string m_strCameraStatus;
 	std::string m_strDiagnosticStatus;
 	std::string m_strActionFeedback;

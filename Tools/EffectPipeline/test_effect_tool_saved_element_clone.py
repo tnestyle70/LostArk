@@ -27,6 +27,77 @@ class EffectToolSavedElementCloneTests(unittest.TestCase):
         cls.codec = EFFECT_CODEC_CPP.read_text(encoding="utf-8")
         cls.playback = EFFECT_PLAYBACK_CPP.read_text(encoding="utf-8")
 
+    def test_duplicate_button_uses_all_marks_and_reports_the_count(self) -> None:
+        start = self.cpp.index("const EFFECT_ELEMENT_DESC* pSelectedForDuplicate")
+        render = self.cpp[start : self.cpp.index("pSelectedForSeed", start)]
+        for token in (
+            "m_MarkedElementIds.empty()",
+            "std::all_of(m_ActiveDocument->Elements.begin()",
+            "m_MarkedElementIds.contains(Element.strElementId)",
+            '"Duplicate " + std::to_string(m_MarkedElementIds.size()) + " Marked"',
+            "ImGui::SmallButton(DuplicateLabel.c_str())",
+            "then Delete or Duplicate all marked",
+            "Copies stay marked and preserve timing",
+        ):
+            self.assertIn(token, render)
+
+    def test_duplicate_selection_commits_once_before_replacing_marks_or_detail(self) -> None:
+        duplicate = function_slice(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_DuplicateSelectedElement()",
+            "bool_t Client::CEffect_Tool::Try_DeleteSelectedElement()",
+        )
+        for token in (
+            "Has_UnappliedDetailDraft()",
+            "m_MarkedElementIds.empty() && m_strSelectedElementId.empty()",
+            "std::vector<std::string>(m_MarkedElementIds.begin(), m_MarkedElementIds.end())",
+            "CEffectDocumentCodec::Build_DuplicatedAuthoredElements(",
+            "DuplicateIds.find(m_strSelectedElementId)",
+            "CopiedMarks.insert(CopyId)",
+            "m_strPreviewIsolationElementId = strPreviousIsolationElement",
+        ):
+            self.assertIn(token, duplicate)
+        commit = "Try_CommitDocument(std::move(Staged))"
+        self.assertEqual(duplicate.count(commit), 1)
+        for mutation in (
+            "Reset_DetailDraft()",
+            "m_MarkedElementIds = std::move(CopiedMarks)",
+            "m_strSelectedElementId = DuplicateId",
+            "Start_WorldPreviewFromBeginning()",
+        ):
+            self.assertLess(duplicate.index(commit), duplicate.index(mutation))
+        self.assertNotIn("m_ActiveDocument =", duplicate)
+        self.assertNotIn("Save_Atomic", duplicate)
+        self.assertNotIn("Try_Save", duplicate)
+        self.assertNotIn("m_MarkedElementIds.clear()", duplicate)
+
+    def test_duplicate_stage_remaps_internal_masters_and_preserves_outputs_on_failure(self) -> None:
+        duplicate = function_slice(
+            self.codec,
+            "bool_t Client::CEffectDocumentCodec::Build_DuplicatedAuthoredElements(",
+            "bool_t Client::CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(",
+        )
+        for token in (
+            "Validate(SourceDocument, strOutError)",
+            "!Targets.insert(ElementId).second",
+            "UsedIds.contains(DuplicateId)",
+            "UsedIds.insert(DuplicateId)",
+            "DuplicateIds.size() != Targets.size()",
+            "EFFECT_ELEMENT_DESC Duplicate = Element",
+            "Resolve_EffectPortableOriginElementId(Element)",
+            "Duplicate.SourcePresentation = {}",
+            "MasterCopy = DuplicateIds.find(",
+            "Duplicate.TransformInheritance.strMasterElementId = MasterCopy->second",
+        ):
+            self.assertIn(token, duplicate)
+        commit = "Validate(Staged, strOutError)"
+        for output in (
+            "InOutDocument = std::move(Staged)",
+            "OutDuplicatedElementIds = std::move(DuplicateIds)",
+        ):
+            self.assertLess(duplicate.index(commit), duplicate.index(output))
+        self.assertNotIn(".fStartDelaySeconds =", duplicate)
+
     def test_refresh_stages_parsed_authored_documents_for_tree_projection(self) -> None:
         refresh = function_slice(
             self.cpp,

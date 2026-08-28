@@ -12,6 +12,9 @@
 using namespace Client;
 using namespace LostArk::Shared;
 
+int Run_ValtanPatternFlowServiceTests();
+int Run_ValtanTuningCommandServiceTests();
+
 namespace
 {
 	constexpr const char* BOSS = "boss.valtan.center";
@@ -50,8 +53,10 @@ namespace
 	{
 		S2C_VALTAN_AUDITION_LIFECYCLE Out{};
 		Out.iRequestSequence = Request.iRequestSequence;
-		Out.iRoomAuditionEpoch = VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID == Request.eOperation ?
-			EPOCH : Request.iPredecessorRoomAuditionEpoch;
+		Out.iRoomAuditionEpoch =
+			(VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID == Request.eOperation ||
+			 VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID == Request.eOperation) ?
+				EPOCH : Request.iPredecessorRoomAuditionEpoch;
 		Out.iPatternSequence = VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID == Request.eOperation ?
 			SEQUENCE : Request.iPredecessorPatternSequence + 1u;
 		Out.strPatternId = Request.strPatternId;
@@ -78,15 +83,25 @@ namespace
 		Fixture() { Service.Harness_Reset(); }
 		auto& Input() { return Service.Harness_Input(); }
 
-		void Start(const char* Pattern = A, const char* Consumer = "Boss Tool")
+		void StartAt(
+			const char* Pattern,
+			const uint32_t PatternSequence,
+			const char* Consumer = "Boss Tool")
 		{
 			Require(Service.Submit(Consumer, BOSS, Pattern, Status), "initial Play failed");
 			Current = Input().SentRequests.back();
 			Input().Results.push_back(Verdict(Current));
-			Input().Lifecycles.push_back(Event(Current, VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE));
+			auto Active = Event(Current, VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE);
+			Active.iPatternSequence = PatternSequence;
+			Input().Lifecycles.push_back(Active);
 			Service.Update();
 			Require(Service.Get_Snapshot().eState == VALTAN_PATTERN_AUDITION_STATE::ACTIVE,
 				"initial Play did not activate");
+		}
+
+		void Start(const char* Pattern = A, const char* Consumer = "Boss Tool")
+		{
+			StartAt(Pattern, SEQUENCE, Consumer);
 		}
 
 		C2S_VALTAN_AUDITION_REQUEST Queue(const char* Pattern = B)
@@ -121,7 +136,7 @@ namespace
 	{
 		Fixture F;
 		Require(!F.Service.Queue_NextPattern("Boss Tool", BOSS, B, F.Status),
-			"Next accepted without an audition");
+			"Next accepted without a live boss or audition");
 		Require(F.Service.Submit("Effect Tool", BOSS, A, F.Status), "Play failed");
 		F.Current = F.Input().SentRequests.back();
 		Require(!F.Service.Queue_NextPattern("Boss Tool", BOSS, B, F.Status),
@@ -411,8 +426,10 @@ namespace
 		F.Start();
 		auto Next = F.Reserve();
 		F.Input().bFlowInFlight = true;
+		F.Input().bFlowStartPending = true;
 		Require(!F.Service.Queue_NextPattern("Boss Tool", BOSS, C, F.Status),
-			"Next bypassed ordered Flow ownership");
+			"Next bypassed pending Flow restart");
+		F.Input().bFlowStartPending = false;
 		F.Input().bFlowInFlight = false;
 		F.Input().bSendSucceeds = false;
 		Require(!F.Service.Queue_NextPattern("Boss Tool", BOSS, C, F.Status) &&
@@ -448,6 +465,379 @@ namespace
 			!F.Service.Has_PlaybackOwnership(), "aborted Next resurrected");
 	}
 
+	void VerifyLiveProductWithoutIsolatedPlay()
+	{
+		Fixture F;
+		F.Input().bLiveBossValid = true;
+		F.Input().iLivePatternSequence = SEQUENCE;
+		Require(F.Service.Can_QueueNextPattern(BOSS, F.Status), "live Product Next picker was disabled");
+		const auto Next = F.Queue();
+		Require(Next.eOperation == VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID &&
+			Next.iPredecessorRoomAuditionEpoch == 0u && Next.iExpectedNextRequestSequence == 0u &&
+			Next.iPredecessorPatternSequence == SEQUENCE, "live Next invented an audition predecessor");
+		Require(F.Input().SentRequests.size() == 1u &&
+			F.Service.Get_Snapshot().eState == VALTAN_PATTERN_AUDITION_STATE::IDLE &&
+			F.Service.Has_PlaybackOwnership(), "live Next reset or fabricated the current audition");
+		(void)Wire(Next);
+		F.Input().Results.push_back(Verdict(Next));
+		F.Service.Update();
+		Require(F.Service.Has_PendingNextCommand() && !F.Service.Get_NextSnapshot().Is_Live(),
+			"epoch-zero echo was treated as an authoritative reservation");
+		F.Input().Lifecycles.push_back(Event(Next, VALTAN_AUDITION_LIFECYCLE_STATE::NEXT_RESERVED));
+		F.Service.Update();
+		Require(F.Service.Get_NextSnapshot().iRoomAuditionEpoch == EPOCH &&
+			F.Service.Get_NextSnapshot().iPredecessorPatternSequence == SEQUENCE &&
+			F.Service.Get_NextSnapshot().iExpectedPatternSequence == SEQUENCE + 1u &&
+			!F.Service.Has_PendingNextCommand(), "live reservation did not adopt its Server-issued epoch");
+		F.Input().Lifecycles.push_back(Event(Next, VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE));
+		F.Service.Update();
+		Require(F.Service.Get_Snapshot().strPatternId == B &&
+			F.Service.Get_Snapshot().iObservedPatternSequence == SEQUENCE + 1u,
+			"live Next did not promote its authoritative occurrence");
+		const auto Following = F.Queue(C);
+		Require(Following.eOperation == VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID &&
+			Following.iPredecessorRoomAuditionEpoch == EPOCH &&
+			Following.iPredecessorPatternSequence == SEQUENCE + 1u,
+			"promoted live Next did not continue the same isolated chain");
+	}
+
+	void VerifyLiveEpochIdentityAndExactRetry()
+	{
+		Fixture F;
+		F.Input().bLiveBossValid = true;
+		F.Input().iLivePatternSequence = SEQUENCE;
+		const auto Next = F.Queue();
+		for (int Field = 0; Field < 4; ++Field)
+		{
+			auto Wrong = Event(Next, VALTAN_AUDITION_LIFECYCLE_STATE::NEXT_RESERVED);
+			switch (Field)
+			{
+			case 0: ++Wrong.iRequestSequence; break;
+			case 1: Wrong.iRoomAuditionEpoch = 0u; break;
+			case 2: ++Wrong.iPatternSequence; break;
+			case 3: Wrong.strPatternId = C; break;
+			}
+			F.Input().Lifecycles.push_back(Wrong);
+			F.Service.Update();
+			Require(F.Service.Has_PendingNextCommand() && !F.Service.Get_NextSnapshot().Is_Live(),
+				"mismatched live lifecycle claimed the reservation");
+		}
+		auto WrongEcho = Verdict(Next);
+		WrongEcho.iPredecessorRoomAuditionEpoch = EPOCH;
+		F.Input().Results.push_back(WrongEcho);
+		F.Service.Update();
+		Require(F.Service.Has_PendingNextCommand(), "live result accepted a non-echoed epoch");
+		F.Input().Results.push_back(Verdict(Next));
+		F.Service.Update();
+		F.Advance(5001u);
+		Require(F.Service.Get_NextCommand().eState == VALTAN_NEXT_COMMAND_STATE::UNCONFIRMED &&
+			F.Service.Has_PlaybackOwnership(), "missing live lifecycle silently dropped ownership");
+		Require(F.Service.Retry_NextPatternCommand(F.Status) &&
+			Wire(Next) == Wire(F.Input().SentRequests.back()), "live retry changed its original request");
+		F.Input().bPresentationAvailable = false;
+		F.Input().Lifecycles.push_back(Event(Next, VALTAN_AUDITION_LIFECYCLE_STATE::NEXT_RESERVED));
+		F.Service.Update();
+		Require(F.Service.Get_NextSnapshot().Is_Live() &&
+			!F.Service.Get_NextSnapshot().isPresentationRevisionAvailable &&
+			!F.Service.Has_PendingNextCommand(), "matching live lifecycle could not resolve the retry");
+	}
+
+	void VerifyLiveLifecycleBeforeVerdict()
+	{
+		for (const auto State : { VALTAN_AUDITION_LIFECYCLE_STATE::NEXT_RESERVED,
+			VALTAN_AUDITION_LIFECYCLE_STATE::WAITING_FOR_PLAYER,
+			VALTAN_AUDITION_LIFECYCLE_STATE::PENDING,
+			VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE,
+			VALTAN_AUDITION_LIFECYCLE_STATE::COMPLETED,
+			VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED })
+		{
+			Fixture F;
+			F.Input().bLiveBossValid = true;
+			F.Input().iLivePatternSequence = SEQUENCE;
+			const auto Next = F.Queue();
+			F.Input().Lifecycles.push_back(Event(Next, State));
+			F.Service.Update();
+			Require(!F.Service.Has_PendingNextCommand(), "live lifecycle could not overtake its verdict");
+			const bool bPromoted = VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE == State ||
+				VALTAN_AUDITION_LIFECYCLE_STATE::COMPLETED == State;
+			if (bPromoted)
+				Require(F.Service.Get_Snapshot().iRequestSequence == Next.iRequestSequence &&
+					F.Service.Get_Snapshot().iRoomAuditionEpoch == EPOCH,
+					"live occurrence lost its identity without RESERVED or PENDING");
+			else
+				Require(F.Service.Get_NextSnapshot().iRequestSequence == Next.iRequestSequence &&
+					F.Service.Get_NextSnapshot().iRoomAuditionEpoch == EPOCH,
+					"live reservation lost its identity without a verdict");
+			F.Input().Results.push_back(Verdict(Next));
+			F.Service.Update();
+			Require(!F.Service.Has_PendingNextCommand() &&
+				(bPromoted || VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED == State ?
+					!F.Service.Get_NextSnapshot().Is_Live() : F.Service.Get_NextSnapshot().Is_Live()),
+				"late live verdict resurrected or regressed the reservation");
+		}
+	}
+
+	void VerifyLiveReservationReplacementAndClear()
+	{
+		Fixture F;
+		F.Input().bLiveBossValid = true;
+		F.Input().iLivePatternSequence = SEQUENCE;
+		const auto Next = F.Queue();
+		F.Input().Lifecycles.push_back(Event(Next, VALTAN_AUDITION_LIFECYCLE_STATE::NEXT_RESERVED));
+		F.Service.Update();
+		const auto Pin = F.Service.Get_NextSnapshot().PinnedDefinitionRevision;
+		const auto Replacement = F.Queue(C);
+		Require(Replacement.eOperation == VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID &&
+			Replacement.iPredecessorRoomAuditionEpoch == EPOCH &&
+			Replacement.iPredecessorPatternSequence == SEQUENCE &&
+			Replacement.iExpectedNextRequestSequence == Next.iRequestSequence &&
+			F.Service.Get_Snapshot().eState == VALTAN_PATTERN_AUDITION_STATE::IDLE,
+			"replacement needed a fabricated current audition instead of the reservation tuple");
+		F.Input().Results.push_back(Verdict(Replacement, VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE));
+		F.Service.Update();
+		Require(F.Service.Get_NextSnapshot().iRequestSequence == Next.iRequestSequence,
+			"rejected live replacement erased the approved reservation");
+		const auto Accepted = F.Queue(C);
+		F.Input().Results.push_back(Verdict(Accepted));
+		F.Service.Update();
+		Require(F.Service.Get_NextSnapshot().PinnedDefinitionRevision == Pin,
+			"live replacement lost its pin because there was no current audition snapshot");
+		Require(F.Service.Clear_NextPattern(F.Status), "live reservation could not be cancelled");
+		const auto Clear = F.Input().SentRequests.back();
+		Require(Clear.iPredecessorRoomAuditionEpoch == EPOCH &&
+			Clear.iPredecessorPatternSequence == SEQUENCE &&
+			Clear.iExpectedNextRequestSequence == Accepted.iRequestSequence && Clear.strPatternId == C,
+			"live clear did not use the adopted epoch and exact reservation identity");
+		(void)Wire(Replacement);
+		(void)Wire(Clear);
+		F.Input().Results.push_back(Verdict(Clear, VALTAN_AUDITION_RESULT::CLEARED));
+		F.Service.Update();
+		Require(!F.Service.Has_PlaybackOwnership(), "live cancellation kept stale playback ownership");
+	}
+
+	void VerifyLiveIdleConsumedPlayerWait()
+	{
+		Fixture F;
+		F.Input().bLiveBossValid = true;
+		const auto Next = F.Queue();
+		Require(Next.iPredecessorPatternSequence == 0u, "initial idle invented a completed predecessor");
+		(void)Wire(Next);
+		F.Input().Lifecycles.push_back(Event(Next, VALTAN_AUDITION_LIFECYCLE_STATE::NEXT_RESERVED));
+		F.Service.Update();
+		Require(!F.Service.Can_QueueNextPattern(BOSS, F.Status) &&
+			!F.Service.Clear_NextPattern(F.Status), "initial idle issued a forbidden zero-sequence CAS control");
+		F.Input().Lifecycles.push_back(Event(Next, VALTAN_AUDITION_LIFECYCLE_STATE::PENDING));
+		F.Input().Lifecycles.push_back(Event(Next, VALTAN_AUDITION_LIFECYCLE_STATE::WAITING_FOR_PLAYER));
+		F.Service.Update();
+		F.Advance(60000u);
+		Require(F.Service.Get_NextSnapshot().eState == VALTAN_NEXT_PATTERN_STATE::WAITING_FOR_PLAYER &&
+			F.Service.Get_NextSnapshot().bReservationConsumed &&
+			!F.Service.Clear_NextPattern(F.Status) &&
+			!F.Service.Queue_NextPattern("Boss Tool", BOSS, C, F.Status),
+			"idle player wait timed out or reopened the consumed reservation");
+		F.Input().Lifecycles.push_back(Event(Next, VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE));
+		F.Service.Update();
+		Require(F.Service.Get_Snapshot().iObservedPatternSequence == 1u &&
+			F.Service.Get_Snapshot().iRoomAuditionEpoch == EPOCH && F.Input().SentRequests.size() == 1u,
+			"idle Next did not start sequence one without a reset command");
+	}
+
+	void VerifyLiveFlowAndReadinessRevalidation()
+	{
+		Fixture F;
+		F.Input().bLiveBossValid = true;
+		F.Input().iLivePatternSequence = SEQUENCE;
+		F.Input().bFlowInFlight = true;
+		Require(F.Service.Can_QueueNextPattern(BOSS, F.Status), "active Flow disabled live Next");
+		F.Input().bFlowStartPending = true;
+		Require(!F.Service.Can_QueueNextPattern(BOSS, F.Status) &&
+			!F.Service.Queue_NextPattern("Boss Tool", BOSS, B, F.Status),
+			"Next submission did not recheck a newly pending Flow restart");
+		F.Input().bFlowStartPending = false;
+		const auto Rejected = F.Queue();
+		Require(Rejected.eOperation == VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID,
+			"active Flow used isolated Next without an authoritative epoch");
+		F.Input().Results.push_back(Verdict(Rejected, VALTAN_AUDITION_RESULT::REJECTED_NOT_OWNER));
+		F.Service.Update();
+		Require(!F.Service.Has_PlaybackOwnership() &&
+			F.Service.Get_NextSnapshot().eState == VALTAN_NEXT_PATTERN_STATE::REJECTED &&
+			F.Input().bFlowInFlight, "rejected Next cancelled the original Flow locally");
+		F.Input().bLiveBossAlive = false;
+		Require(!F.Service.Can_QueueNextPattern(BOSS, F.Status), "dead live boss enabled Next");
+		F.Input().bLiveBossAlive = true;
+		F.Input().iLivePatternSequence = (std::numeric_limits<uint32_t>::max)();
+		Require(!F.Service.Can_QueueNextPattern(BOSS, F.Status), "live predecessor sequence wrapped");
+		F.Input().iLivePatternSequence = SEQUENCE;
+		F.Input().bSendSucceeds = false;
+		const auto Sent = F.Input().SentRequests.size();
+		Require(!F.Service.Queue_NextPattern("Boss Tool", BOSS, B, F.Status) &&
+			!F.Service.Has_PendingNextCommand() && F.Input().SentRequests.size() == Sent,
+			"failed live send created ownership or consumed a request identity");
+		F.Input().bSendSucceeds = true;
+		const auto Next = F.Queue();
+		Require(Next.iRequestSequence == Rejected.iRequestSequence + 1u,
+			"failed live send consumed a request sequence");
+		F.Input().Lifecycles.push_back(Event(Next, VALTAN_AUDITION_LIFECYCLE_STATE::NEXT_RESERVED));
+		F.Service.Update();
+		F.Input().bFlowInFlight = false;
+		Require(F.Service.Get_NextSnapshot().Is_Live(), "live Flow Next lost ownership on Flow termination");
+	}
+
+	void VerifyNewWorldLiveNextAfterOldAudition()
+	{
+		for (const bool bPreviousLive : { false, true })
+		{
+			Fixture F;
+			F.Input().bLiveBossValid = true;
+			F.Input().iLivePatternSequence = SEQUENCE;
+			C2S_VALTAN_AUDITION_REQUEST OldRequest{};
+			if (bPreviousLive)
+				OldRequest = F.Queue();
+			else
+			{
+				F.Start();
+				OldRequest = F.Current;
+				F.Complete();
+			}
+			++F.Input().iWorldInboundGeneration;
+			F.Input().Lifecycles.push_back(Event(OldRequest, VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE));
+			F.Service.Update();
+			Require(!F.Service.Has_PlaybackOwnership(), "world change retained old live command ownership");
+			const auto Next = F.Queue(C);
+			F.Input().Results.push_back(Verdict(OldRequest));
+			F.Input().Lifecycles.push_back(Event(OldRequest, VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE));
+			F.Input().Lifecycles.push_back(Event(Next, VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE));
+			F.Service.Update();
+			Require(F.Service.Get_Snapshot().eState == VALTAN_PATTERN_AUDITION_STATE::ACTIVE &&
+				F.Service.Get_Snapshot().iRequestSequence == Next.iRequestSequence &&
+				F.Service.Get_Snapshot().iWorldInboundGeneration == F.Input().iWorldInboundGeneration,
+				"old terminal generation kept discarding the new live Next lifecycle");
+		}
+	}
+
+	void VerifyFlowResetInvalidatesCompletedAudition()
+	{
+		Fixture F;
+		F.Start();
+		F.Complete();
+		Require(F.Service.Get_Snapshot().eState == VALTAN_PATTERN_AUDITION_STATE::COMPLETED,
+			"fixture did not retain the isolated completed hold");
+		F.Input().bFlowInFlight = true;
+		F.Input().Lifecycles.push_back(Event(F.Current, VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED));
+		F.Service.Update();
+		Require(F.Service.Get_Snapshot().eState == VALTAN_PATTERN_AUDITION_STATE::ABORTED,
+			"Flow reset did not retire the exact completed isolated epoch");
+		F.Input().bFlowInFlight = false;
+		F.Input().bLiveBossValid = true;
+		F.Input().iLivePatternSequence = SEQUENCE + 8u;
+		const auto Next = F.Queue();
+		Require(Next.eOperation == VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID &&
+			Next.iPredecessorRoomAuditionEpoch == 0u &&
+			Next.iPredecessorPatternSequence == F.Input().iLivePatternSequence &&
+			Next.iExpectedNextRequestSequence == 0u,
+			"Next after completed Flow reused a retired isolated predecessor tuple");
+		(void)Wire(Next);
+		auto LiveReservation = Event(Next, VALTAN_AUDITION_LIFECYCLE_STATE::NEXT_RESERVED);
+		LiveReservation.PinnedDefinitionRevision.Bytes.fill(0x43u);
+		F.Input().Lifecycles.push_back(LiveReservation);
+		F.Service.Update();
+		Require(F.Service.Get_NextSnapshot().Is_Live() &&
+			F.Service.Get_NextSnapshot().PinnedDefinitionRevision ==
+				LiveReservation.PinnedDefinitionRevision,
+			"live Next inherited the retired isolated revision instead of its authoritative pin");
+		auto WrongRevision = Event(Next, VALTAN_AUDITION_LIFECYCLE_STATE::WAITING_FOR_PLAYER);
+		F.Input().Lifecycles.push_back(WrongRevision);
+		F.Service.Update();
+		Require(F.Service.Get_NextSnapshot().eState == VALTAN_NEXT_PATTERN_STATE::RESERVED &&
+			F.Service.Get_NextSnapshot().PinnedDefinitionRevision ==
+				LiveReservation.PinnedDefinitionRevision,
+			"a later live Next lifecycle changed its pinned definition revision");
+	}
+
+	void VerifyDataDrivenOccurrencesRetainRequestAndAdvanceNextPredecessor()
+	{
+		for (const char* PatternId : { A, "VALTAN_GHOST_FINALE" })
+		{
+			for (const uint32_t Initial : { SEQUENCE, (std::numeric_limits<uint32_t>::max)() })
+			{
+				for (const auto TerminalState : {
+					VALTAN_AUDITION_LIFECYCLE_STATE::COMPLETED,
+					VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED })
+				{
+					Fixture F;
+					F.StartAt(PatternId, Initial);
+					auto First = Event(F.Current, VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE);
+					First.iPatternSequence = Initial;
+					auto ActiveOccurrence = First;
+					ActiveOccurrence.iPatternSequence =
+						Initial == (std::numeric_limits<uint32_t>::max)() ? 1u : Initial + 1u;
+					F.Input().Lifecycles.push_back(ActiveOccurrence);
+					F.Service.Update();
+					Require(F.Service.Get_Snapshot().eState == VALTAN_PATTERN_AUDITION_STATE::ACTIVE &&
+						F.Service.Get_Snapshot().iObservedPatternSequence == ActiveOccurrence.iPatternSequence &&
+						F.Service.Get_Snapshot().iRequestSequence == F.Current.iRequestSequence &&
+						F.Service.Get_Snapshot().iRoomAuditionEpoch == EPOCH,
+						"data-driven occurrence lost its request/epoch or failed wrap-safe advance");
+
+					auto Stale = First;
+					auto Ambiguous = ActiveOccurrence;
+					Ambiguous.iPatternSequence += 0x80000000u;
+					auto WrongEpoch = ActiveOccurrence;
+					++WrongEpoch.iPatternSequence;
+					++WrongEpoch.iRoomAuditionEpoch;
+					auto WrongRequest = ActiveOccurrence;
+					++WrongRequest.iPatternSequence;
+					++WrongRequest.iRequestSequence;
+					auto WrongPattern = ActiveOccurrence;
+					++WrongPattern.iPatternSequence;
+					WrongPattern.strPatternId = B;
+					auto WrongRevision = ActiveOccurrence;
+					++WrongRevision.iPatternSequence;
+					WrongRevision.PinnedDefinitionRevision.Bytes.fill(0x43u);
+					auto ForwardTerminal = ActiveOccurrence;
+					++ForwardTerminal.iPatternSequence;
+					ForwardTerminal.eState = VALTAN_AUDITION_LIFECYCLE_STATE::COMPLETED;
+					for (const auto& Invalid : { Stale, Ambiguous, WrongEpoch, WrongRequest,
+						WrongPattern, WrongRevision, ForwardTerminal })
+					{
+						F.Input().Lifecycles.push_back(Invalid);
+					}
+					F.Service.Update();
+					Require(F.Service.Get_Snapshot().eState == VALTAN_PATTERN_AUDITION_STATE::ACTIVE &&
+						F.Service.Get_Snapshot().iObservedPatternSequence == ActiveOccurrence.iPatternSequence,
+						"stale, ambiguous, foreign, or forward-terminal lifecycle changed the occurrence");
+
+					auto PendingOccurrence = ActiveOccurrence;
+					++PendingOccurrence.iPatternSequence;
+					PendingOccurrence.eState = VALTAN_AUDITION_LIFECYCLE_STATE::PENDING;
+					F.Input().Lifecycles.push_back(PendingOccurrence);
+					F.Service.Update();
+					Require(F.Service.Get_Snapshot().eState == VALTAN_PATTERN_AUDITION_STATE::QUEUED &&
+						F.Service.Get_Snapshot().iObservedPatternSequence == PendingOccurrence.iPatternSequence,
+						"new PENDING occurrence did not become the authoritative cursor");
+					const auto Next = F.Queue();
+					Require(Next.iPredecessorPatternSequence == PendingOccurrence.iPatternSequence &&
+						Next.iPredecessorRoomAuditionEpoch == EPOCH,
+						"Next used an occurrence before the last emitted PENDING cursor");
+					(void)Wire(Next);
+
+					auto Terminal = PendingOccurrence;
+					Terminal.eState = TerminalState;
+					if (VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED == TerminalState)
+						Terminal.strReason = "harness abort after repeated occurrence";
+					F.Input().Lifecycles.push_back(Terminal);
+					F.Service.Update();
+					const VALTAN_PATTERN_AUDITION_STATE ExpectedState =
+						VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED == TerminalState ?
+						VALTAN_PATTERN_AUDITION_STATE::ABORTED : VALTAN_PATTERN_AUDITION_STATE::COMPLETED;
+					Require(F.Service.Get_Snapshot().eState == ExpectedState &&
+						F.Service.Get_Snapshot().iObservedPatternSequence == PendingOccurrence.iPatternSequence,
+						"terminal lifecycle did not reuse the last emitted occurrence cursor");
+				}
+			}
+		}
+	}
+
 	void VerifyInitialPlayTimeoutsStayBounded()
 	{
 		Fixture F;
@@ -481,6 +871,15 @@ int main()
 		{ "Flow conflict send rollback request exhaustion", VerifyFlowConflictSendRollbackAndExhaustion },
 		{ "Next abort and presentation isolation", VerifyNextAbortAndPresentationIsolation },
 		{ "initial Play 5s/15s timeouts", VerifyInitialPlayTimeoutsStayBounded },
+		{ "all data-driven occurrences keep request identity and refresh Next predecessor", VerifyDataDrivenOccurrencesRetainRequestAndAdvanceNextPredecessor },
+		{ "live Product Next without isolated Play", VerifyLiveProductWithoutIsolatedPlay },
+		{ "live epoch identity and exact retry", VerifyLiveEpochIdentityAndExactRetry },
+		{ "live lifecycle before verdict", VerifyLiveLifecycleBeforeVerdict },
+		{ "live reservation replacement and clear", VerifyLiveReservationReplacementAndClear },
+		{ "live idle consumed player wait", VerifyLiveIdleConsumedPlayerWait },
+		{ "live Flow and readiness revalidation", VerifyLiveFlowAndReadinessRevalidation },
+		{ "new world live Next after old audition", VerifyNewWorldLiveNextAfterOldAudition },
+		{ "Flow reset retires completed isolated predecessor", VerifyFlowResetInvalidatesCompletedAudition },
 	};
 	size_t Failed = 0u;
 	for (const auto& [Name, Test] : Tests)
@@ -494,5 +893,7 @@ int main()
 	}
 	std::cout << "ValtanPatternAuditionServiceHarness: " << Tests.size() - Failed
 		<< "/" << Tests.size() << " passed\n";
-	return 0u == Failed ? 0 : 1;
+	const int FlowFailures = Run_ValtanPatternFlowServiceTests();
+	const int TuningFailures = Run_ValtanTuningCommandServiceTests();
+	return 0u == Failed && 0 == FlowFailures && 0 == TuningFailures ? 0 : 1;
 }

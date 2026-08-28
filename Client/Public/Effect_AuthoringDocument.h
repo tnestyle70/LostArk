@@ -480,6 +480,9 @@ struct EFFECT_MATERIAL_DESC final
 {
 	std::string strTemplateId = "effect.standard";
 	std::string strSourceMaterialPath;
+	/* Opt-in colour decoding for generic authored material slots. Mask, noise,
+	   and dissolve remain linear; false preserves the historical DDS loader. */
+	bool_t bColorTexturesSRGB = false;
 	EFFECT_RENDER_PROFILE eRenderProfile =
 		EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ;
 	EFFECT_SOURCE_MATERIAL_DESC SourceMaterial;
@@ -766,6 +769,9 @@ struct EFFECT_PARTICLE_INITIAL_VELOCITY_DESC final
 	float2_t vSpeedRange = { 0.f, 0.f };
 	/* Half-angle of the CONE around the Element +Y axis, in degrees. */
 	f32_t fConeAngleDegrees = 0.f;
+	/* Optional uniform solid-angle sampling; false keeps the historical
+	   uniform-polar-angle distribution and random stream. */
+	bool_t bUniformSolidAngle = false;
 };
 
 struct EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC final
@@ -856,6 +862,12 @@ struct EFFECT_PARTICLE_DESC final
 	float2_t vEndSize = { 0.f, 0.f };
 	bool_t bLocalSpace = true;
 	bool_t bBillboard = true;
+	/* Direct-authored sprite dynamics. Defaults do not consume extra randoms
+	   or change the existing emitter-clock UV animation. */
+	f32_t fDrag = 0.f;
+	float2_t vRotationRangeDegrees = { 0.f, 0.f };
+	float2_t vSpinRangeDegreesPerSecond = { 0.f, 0.f };
+	bool_t bSubUVOverLife = false;
 	uint32_t iDynamicParameterComponentMask = 0u;
 	float4_t vDynamicParameterStart{};
 	float4_t vDynamicParameterEnd{};
@@ -1203,10 +1215,19 @@ struct EFFECT_SOURCE_PRESENTATION_DESC final
 	std::vector<EFFECT_SOURCE_PRESENTATION_PARAMETER_DESC> Parameters;
 };
 
+enum class EFFECT_ATTACHMENT_ORIENTATION : uint32_t
+{
+	BONE,
+	OWNER_YAW,
+	END
+};
+
 struct EFFECT_ACTION_CUE_ATTACHMENT_DESC final
 {
 	bool_t bEnabled = false;
 	bool_t bFollow = false;
+	EFFECT_ATTACHMENT_ORIENTATION eOrientation =
+		EFFECT_ATTACHMENT_ORIENTATION::BONE;
 	std::string strSourceAnchorSlotId;
 	std::string strRuntimeAnchorSlotId;
 	std::string strRuntimeBoneName;
@@ -1878,6 +1899,7 @@ inline bool_t Try_ApplyEffectMasterGroupTranslation(
 	{
 		return Left.bEnabled == Right.bEnabled &&
 			Left.bFollow == Right.bFollow &&
+			Left.eOrientation == Right.eOrientation &&
 			Left.strSourceAnchorSlotId == Right.strSourceAnchorSlotId &&
 			Left.strRuntimeAnchorSlotId == Right.strRuntimeAnchorSlotId &&
 			Left.strRuntimeBoneName == Right.strRuntimeBoneName &&

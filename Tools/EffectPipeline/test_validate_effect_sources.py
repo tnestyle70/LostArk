@@ -73,6 +73,168 @@ class EffectSourceValidatorTests(unittest.TestCase):
             source["elements"] = [{"resources": [{"assetId": resource_id}]}]
         self._write_json(path, source)
 
+    def test_native_particle_options_validate_without_source_fallback(self) -> None:
+        element = {
+            "id": "manual.hand.fire",
+            "kind": "particle",
+            "material": {"templateId": "effect.standard"},
+            "resources": [],
+            "detail": {
+                "uv": {"tileColumns": 4, "tileRows": 4},
+                "particle": {
+                    "billboard": True,
+                    "drag": 1,
+                    "rotationRangeDegrees": [0, 0],
+                    "spinRangeDegreesPerSecond": [55, 65],
+                    "subUVOverLife": True,
+                    "initialVelocity": {"mode": "cone", "speed": [0.2, 0.5], "uniformSolidAngle": True},
+                },
+            },
+        }
+        source = {"elements": [element]}
+        MODULE._validate_native_sprite_particle_options(source, "fixture")
+        cases = [
+            ("negative-drag", lambda e: e["detail"]["particle"].update(drag=-1)),
+            ("nonfinite-drag", lambda e: e["detail"]["particle"].update(drag=float("nan"))),
+            ("inverted-spin", lambda e: e["detail"]["particle"].update(spinRangeDegreesPerSecond=[65, 55])),
+            ("boolean-rotation", lambda e: e["detail"]["particle"].update(rotationRangeDegrees=[False, 1])),
+            ("numeric-life-uv", lambda e: e["detail"]["particle"].update(subUVOverLife=1)),
+            ("source-recipe", lambda e: e.update(sourceRecipe={"enabled": True})),
+            ("typed-material", lambda e: e["material"].update(execution={"enabled": True})),
+            ("non-billboard", lambda e: e["detail"]["particle"].update(billboard=False)),
+            ("emitter-clock", lambda e: e["detail"]["uv"].update(sequence=True)),
+            ("no-atlas", lambda e: e["detail"]["uv"].update(tileColumns=1, tileRows=1)),
+            ("non-cone", lambda e: e["detail"]["particle"]["initialVelocity"].update(mode="outward")),
+            ("invalid-cone-angle", lambda e: e["detail"]["particle"]["initialVelocity"].update(coneAngleDegrees=181)),
+            ("malformed-material", lambda e: e.update(material=[])),
+            ("malformed-resources", lambda e: e.update(resources={})),
+        ]
+        for label, mutate in cases:
+            with self.subTest(label=label):
+                candidate = json.loads(json.dumps(element))
+                mutate(candidate)
+                with self.assertRaises(MODULE.ContractError):
+                    MODULE._validate_native_sprite_particle_options({"elements": [candidate]}, "fixture")
+
+    def test_native_particle_defaults_do_not_reject_existing_source_rows(self) -> None:
+        MODULE._validate_native_sprite_particle_options({"elements": [{
+            "kind": "particle",
+            "sourceRecipe": {"enabled": True},
+            "detail": {"particle": {
+                "drag": 0, "rotationRangeDegrees": [0, 0],
+                "spinRangeDegreesPerSecond": [0, 0], "subUVOverLife": False,
+                "initialVelocity": {"uniformSolidAngle": False},
+            }},
+        }]}, "legacy")
+
+    def test_material_color_space_omission_false_and_true_are_compatible(self) -> None:
+        path = self.root / f"Data/Effects/Authored/{self.effect_id}.effect.json"
+        source = json.loads(path.read_text(encoding="utf-8"))
+        for flag in (None, False, True):
+            with self.subTest(flag=flag):
+                material = {"templateId": "effect.standard"}
+                if flag is not None:
+                    material["colorTexturesSRGB"] = flag
+                source["elements"] = [{"material": material}]
+                self._write_json(path, source)
+                self.assertEqual(MODULE.validate_repository(self.root).direct_source_count, 1)
+        MODULE._validate_authored_material_color_space({"elements": [{
+            "material": {
+                "templateId": "effect.source_material",
+                "colorTexturesSRGB": False,
+                "sourceProfile": {"enabled": True},
+                "execution": {"enabled": True, "failClosed": True},
+            },
+            "sourceRecipe": {"enabled": True},
+        }]}, "legacy")
+
+    def test_material_color_space_presence_requires_boolean(self) -> None:
+        path = self.root / f"Data/Effects/Authored/{self.effect_id}.effect.json"
+        source = json.loads(path.read_text(encoding="utf-8"))
+        for invalid in (None, 0, 1, "true", [], {}):
+            with self.subTest(value=invalid):
+                source["elements"] = [{"material": {
+                    "templateId": "effect.standard", "colorTexturesSRGB": invalid,
+                }}]
+                self._write_json(path, source)
+                with self.assertRaisesRegex(MODULE.ContractError, "colorTexturesSRGB must be a boolean"):
+                    MODULE.validate_repository(self.root)
+
+    def test_material_color_space_true_rejects_source_owned_execution(self) -> None:
+        element = {"material": {"templateId": "effect.standard", "colorTexturesSRGB": True}}
+        cases = (
+            ("source-template", lambda e: e["material"].update(templateId="effect.source_material")),
+            ("typed-template", lambda e: e["material"].update(templateId="effect.standard_color_v1")),
+            ("missing-template", lambda e: e["material"].pop("templateId")),
+            ("source-profile", lambda e: e["material"].update(sourceProfile={"enabled": True})),
+            ("source-recipe", lambda e: e.update(sourceRecipe={"enabled": True})),
+            ("execution-enabled", lambda e: e["material"].update(execution={"enabled": True})),
+            ("execution-fail-closed", lambda e: e["material"].update(execution={"failClosed": True})),
+            ("malformed-profile", lambda e: e["material"].update(sourceProfile=None)),
+            ("malformed-recipe", lambda e: e.update(sourceRecipe=[])),
+            ("malformed-execution", lambda e: e["material"].update(execution="disabled")),
+        )
+        for label, mutate in cases:
+            with self.subTest(label=label):
+                candidate = json.loads(json.dumps(element))
+                mutate(candidate)
+                with self.assertRaisesRegex(MODULE.ContractError, "ordinary authored standard material"):
+                    MODULE._validate_authored_material_color_space({"elements": [candidate]}, "fixture")
+
+    def test_owner_yaw_attachment_allows_shared_pair_and_default_bone(self) -> None:
+        attachment = {
+            "enabled": True, "follow": True, "orientation": "owner_yaw",
+            "sourceAnchorSlotId": "bip001-l-hand", "runtimeAnchorSlotId": "manual.hand",
+            "runtimeBoneName": "bip001-l-hand",
+            "socketLocalTransform": {"position": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1]},
+        }
+        source = {"version": 13, "elements": [
+            {"id": "manual.hand.fire", "actionCueAttachment": attachment},
+            {"id": "manual.hand.smoke", "actionCueAttachment": json.loads(json.dumps(attachment))},
+        ]}
+        MODULE._validate_attachment_orientations(source, "fixture")
+        for element in source["elements"]:
+            element["actionCueAttachment"].pop("orientation")
+        MODULE._validate_attachment_orientations(source, "legacy")
+
+    def test_owner_yaw_attachment_rejects_wrong_mode_and_conflicting_shared_id(self) -> None:
+        attachment = {
+            "enabled": True, "follow": True, "orientation": "owner_yaw",
+            "sourceAnchorSlotId": "bip001-l-hand", "runtimeAnchorSlotId": "manual.hand",
+            "runtimeBoneName": "bip001-l-hand",
+            "socketLocalTransform": {"position": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1]},
+        }
+        element = {"id": "manual.hand.fire", "actionCueAttachment": attachment}
+        cases = [
+            ("unknown", lambda s: s["elements"][0]["actionCueAttachment"].update(orientation="camera")),
+            ("non-string", lambda s: s["elements"][0]["actionCueAttachment"].update(orientation=1)),
+            ("disabled", lambda s: s["elements"][0]["actionCueAttachment"].update(enabled=False)),
+            ("snapshot", lambda s: s["elements"][0]["actionCueAttachment"].update(follow=False)),
+            ("source-version", lambda s: s.update(version=14)),
+            ("source-recipe", lambda s: s["elements"][0].update(sourceRecipe={"enabled": True})),
+            ("runtime-carrier", lambda s: s["elements"][0].update(runtimeCarrier={"kind": "cascadeRibbonV1"})),
+            ("conflicting-bone", lambda s: s["elements"][1]["actionCueAttachment"].update(runtimeBoneName="bip001-r-hand")),
+            ("conflicting-orientation", lambda s: s["elements"][1]["actionCueAttachment"].update(orientation="bone")),
+            ("conflicting-socket", lambda s: s["elements"][1]["actionCueAttachment"]["socketLocalTransform"].update(position=[0, 1, 0])),
+        ]
+        baseline = {"version": 13, "elements": [element, json.loads(json.dumps(element))]}
+        baseline["elements"][1]["id"] = "manual.hand.smoke"
+        for label, mutate in cases:
+            with self.subTest(label=label):
+                candidate = json.loads(json.dumps(baseline))
+                mutate(candidate)
+                with self.assertRaises(MODULE.ContractError):
+                    MODULE._validate_attachment_orientations(candidate, "fixture")
+                MODULE._validate_attachment_orientations(baseline, "unchanged baseline")
+
+    def test_repository_validation_consumes_attachment_orientation(self) -> None:
+        path = self.root / f"Data/Effects/Authored/{self.effect_id}.effect.json"
+        source = json.loads(path.read_text(encoding="utf-8"))
+        source["elements"] = [{"actionCueAttachment": {"orientation": "unknown"}}]
+        self._write_json(path, source)
+        with self.assertRaisesRegex(MODULE.ContractError, "attachment orientation"):
+            MODULE.validate_repository(self.root)
+
     def _write_overlay(self, resource_id: str) -> None:
         self.row["screenOverlayPresentationPath"] = (
             f"Effects/ScreenOverlays/{self.effect_id}.screen-overlay.json"
@@ -303,6 +465,14 @@ class EffectSourceValidatorTests(unittest.TestCase):
         with self.assertRaisesRegex(MODULE.ContractError, "not tracked by Git"):
             MODULE.validate_repository(self.root)
 
+        report = MODULE.validate_repository(self.root, allow_local_resources=True)
+        self.assertEqual(report.resource_file_count, 1)
+        self.assertEqual(report.local_untracked_resource_count, 1)
+        self.assertTrue(json.loads(report.as_json())["allowLocalResources"])
+        self._write_resource(resource_id, b"not-a-dds")
+        with self.assertRaisesRegex(MODULE.ContractError, "DDS magic is invalid"):
+            MODULE.validate_repository(self.root, allow_local_resources=True)
+
     def test_tracked_source_and_overlay_resource_closure_is_reported(self) -> None:
         model_id = "Effect/Test/model.wmodel"
         overlay_id = "Effect/Test/overlay.dds"
@@ -379,8 +549,10 @@ class EffectSourceValidatorTests(unittest.TestCase):
         )
         self._stage_lfs_resource(resource_path, staged_payload)
 
-        with self.assertRaisesRegex(MODULE.ContractError, "does not match working bytes"):
-            MODULE.validate_repository(self.root)
+        for allow_local in (False, True):
+            with self.subTest(allow_local_resources=allow_local):
+                with self.assertRaisesRegex(MODULE.ContractError, "does not match working bytes"):
+                    MODULE.validate_repository(self.root, allow_local_resources=allow_local)
 
     def test_dds_index_blob_must_be_an_lfs_pointer(self) -> None:
         resource_id = "Effect/Test/plain-index.dds"

@@ -61,6 +61,7 @@ namespace
 		using namespace LostArk::Server;
 		return (WORLD_BOOTSTRAP_KIND::BOSS == target.eKind ||
 			WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind) &&
+			LostArk::Shared::INVALID_NET_ENTITY_ID == target.iOwnerBossNetEntityId &&
 			SERVER_ENTITY_ACTION::DEAD != target.eAction &&
 			0u != target.iCurrentHp;
 	}

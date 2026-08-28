@@ -227,7 +227,7 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조와 `MonsterProfiles.json` formatVersion 2의 추적 유지 거리·회전·가속·감속·도착 감속 반경을 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 spawn-group bootstrap v4를 한 transaction으로 생성하며 Server pre-build가 이 publish를 강제한다. 제품 일반 몬스터는 Server에서 타깃 hysteresis, 공격 중 대상/방향 고정, navigation 경로 단축, 제한 회전과 가감속, 기존 원형 body sweep/slide를 사용하고 Client에서 2-tick transform 보간, occurrence 기반 결정적 공격 clip pool, 비공격 중 transient hit clip을 사용한다. presentation clip과 playback rate는 `MonsterCatalog.json` formatVersion 2가 소유하며 Server timing을 바꾸지 않는다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
 
-Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 Shared protocol v42 snapshot으로 보낸다. v42는 Debug Next Pattern의 예약·취소 command, CAS identity와 lifecycle을 추가한다. 기존 v41 이하 Server/Client와 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 Shared protocol v43 snapshot으로 보낸다. v43은 Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command를 추가하고 기존 예약·취소 CAS identity와 lifecycle을 유지한다. 기존 v42 이하 Server/Client와 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
 ### 최소 수련장 Area
 
@@ -311,6 +311,11 @@ stage하고, `Play Authoring Timeline`은 선택한 pattern 경로의 모든 sta
 transform과 stop window를 보존한다. `SERVER_PATTERN_STAGE` 독립 Effect는 이 cue 경로를,
 `SERVER_COMBAT_OBJECT` 독립 Effect는 replicated world root 경로를 사용한다. saved 문서 decode는
 Open/Play 전까지 지연한다.
+도넛도 `SERVER_COMBAT_OBJECT`이며 100ms foreground 뒤 2600ms 동안 독립적으로 유지된다.
+`BossCatalog` v5는 본체/유령의 model admission scale을 구분한다. 유령 finale와 사망 제거를
+사용하려면 gameplay bootstrap v26과 protocol v44의 Server/Client를 함께 빌드·배포해야 한다.
+중앙 cue anchor, 유령 Resources 상대 경로, 포탈·잡기·사망 lifecycle은
+`.md/TEAM/발탄인수인계서.md` 11.9~11.10에 정리한다.
 phase band는 Server encounter 메타데이터이며 All Effects의 반복 tree나 stage 숨김 filter로 사용하지
 않는다. 두 owner는 같은 Mesh, Sprite, Mesh Particle, Sprite Particle, Local Decal, Trail/Ribbon family를
 사용한다.
@@ -321,11 +326,16 @@ stage/validate/commit한다. 실행 중 occurrence는 이전 immutable document�
 `Data/Effects/EffectCatalog.json`과 `Data/Effects/Authored/*.effect.json`이 제품 Effect의 단일 입력이며,
 Editor Save 직후의 다음 재생과 다음 Client 실행이 같은 authored 파일을 소비한다. schema·catalog·source batch는
 `Tools/EffectPipeline/Validate-EffectSources.ps1`로 검증하고 다른 폴더로 복사하거나 publish하지 않는다.
+팀이 이미 공유한 로컬 Effect 리소스를 Git에 추가하지 않고 검사할 때만 `-AllowLocalResources`를 명시한다.
+정본 전체 회귀 명령은 이에 대응하는 `-AllowLocalEffectResources`를 받는다. 실제 파일과 안전 경로,
+기존 tracked 파일의 Git/LFS identity는 계속 검사하고, 미추적 로컬 파일 수를 별도로 보고한다.
+이 모드는 Git만으로 리소스 배포가 가능하다는 검증이 아니며 파일을 stage/upload하지 않는다.
 v15의 고급 trail/light projection도 같은 authored 문서의 typed `runtimeCarrier`에 inline 저장한다. runtime 재생은
 별도 Tool renderer 없이 `CEffectCatalog -> CEffectPresentationService -> CEffectObject` 한 경로만 사용한다.
 V1 Product 문서가 참조하는 DDS/WModel dependency closure는 `Client/Bin/Resources`의 같은 상대 asset ID로
-선별 추적되므로 팀원은 clone/pull 뒤 `git lfs pull`만 수행하면 같은 Effect payload를 받는다. 이 예외는 전체
-Resources pack이나 미참조 자산을 Git 정본으로 승격하지 않는다.
+선별 추적된 경우 팀원은 clone/pull 뒤 `git lfs pull`로 같은 Effect payload를 받는다. 별도로 합의한 local-only
+리소스는 같은 상대 경로에 이미 있어야 한다. 이 예외는 전체 Resources pack이나 미참조 자산을 Git 정본으로
+승격하지 않는다.
 
 #### Artist F와 Effect 화면 검증은 사용자 전용
 

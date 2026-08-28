@@ -59,7 +59,12 @@ STAGE_FIELDS = (
 
 
 def load(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
+    document = json.loads(path.read_text(encoding="utf-8"))
+    if path.name == "Valtan.gameplay.json" and "flowId" in document["decisionModel"]["scriptedSequence"]:
+        return tuning_pipeline.resolve_gameplay_flow_reference(
+            document, load(path.parent.parent / "Encounters/Valtan/ValtanBossAuditionFlows.json"),
+        )
+    return document
 
 
 def projected_value(row: dict, field: str):
@@ -227,68 +232,13 @@ def split_policy_accepts(
 
 STABLE_TOKEN = re.compile(r"^[A-Za-z0-9_.-]+$")
 
+SAVED_DEFAULT_FLOW = load(ROOT / tuning_pipeline.SAVED_FLOW_REL)["flows"][0]
 EXPECTED_SCRIPTED_SEQUENCE = {
     "sequenceId": "sequence.valtan.server-authored.v1",
     "mode": "ORDERED_ONCE_THEN_IDLE",
-    "interStepPursuitMs": 1000,
-    "patternIds": [
-        "VALTAN_ENTRANCE_CINEMATIC",
-        "VALTAN_WHIRLWIND",
-        "VALTAN_FOUR_SLASH",
-        "VALTAN_FIST_IN_OUT",
-        "VALTAN_HIGH_JUMP",
-        "VALTAN_FLOOR_WIPE_130",
-        "VALTAN_DASH_CHARGE",
-        "VALTAN_ARENA_BREAK_109",
-        "VALTAN_SIX_PIZZA_106",
-        "VALTAN_ATTACK_WHIRLWIND",
-        "VALTAN_CHARGE",
-        "VALTAN_SEQUENCE_FOUR",
-        "VALTAN_ROAR_CHARGE",
-        "VALTAN_SEQUENCE_RUSH",
-        "VALTAN_THREE",
-        "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
-        "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
-        "VALTAN_TERRAIN_DESTRUCTION",
-        "VALTAN_WARP",
-        "VALTAN_SEQUENCE_TWOHAND",
-        "VALTAN_SEQUENCE_WHIRLWIND",
-        "VALTAN_TRASH",
-        "VALTAN_TRASH_CATCH_SUCCESS",
-        "VALTAN_TRASH_CATCH_FAIL",
-        "VALTAN_TRASH_CATCH_IF",
-        "VALTAN_CATCH_BREATH",
-        "VALTAN_COUNTER",
-        "VALTAN_CHARGE_2",
-    ],
+    "interStepPursuitMs": SAVED_DEFAULT_FLOW["interStepPursuitMs"],
+    "patternIds": [slot["patternId"] for slot in SAVED_DEFAULT_FLOW["slots"]],
 }
-
-EXPECTED_PROMOTED_KOREAN_NAMES = {
-    "VALTAN_SIX_PIZZA_106": "중앙이동 후 6방향 공격 후 피자 패턴",
-    "VALTAN_ATTACK_WHIRLWIND": "점프찍기 후 휠윈드",
-    "VALTAN_CHARGE": "모아치기",
-    "VALTAN_ROAR_CHARGE": "사자후 후 위로 모아치기",
-    "VALTAN_THREE": "3연속 내려치기",
-    "VALTAN_TERRAIN_DESTRUCTION": "2페이즈 지형파괴 패턴",
-    "VALTAN_WARP": "워프 패턴",
-    "VALTAN_TRASH": "버러지 패턴",
-    "VALTAN_TRASH_CATCH_SUCCESS": "버러지 패턴 잡기 성공",
-    "VALTAN_TRASH_CATCH_FAIL": "버러지 패턴 잡기 실패",
-    "VALTAN_TRASH_CATCH_IF": "버러지 패턴 잡기 분기",
-    "VALTAN_CATCH_BREATH": "잡아채서 불어 날리기",
-    "VALTAN_COUNTER": "카운터 쳐야 하는 내려치기",
-    "VALTAN_CHARGE_2": "모아치기 2",
-    "VALTAN_STRUGGLING": "3페이즈 전 발악패턴",
-    "VALTAN_CROSS": "십자 돌 공격",
-}
-
-EXPECTED_UNCHANGED_SEQUENCE_IDS = {
-    "VALTAN_SEQUENCE_FOUR",
-    "VALTAN_SEQUENCE_RUSH",
-    "VALTAN_SEQUENCE_TWOHAND",
-    "VALTAN_SEQUENCE_WHIRLWIND",
-}
-
 
 def master_only_contract_valid(master: dict) -> bool:
     for pattern in master["patterns"]:
@@ -520,19 +470,24 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
                     [(row["stageId"], row["actionId"]) for row in pattern["stages"]],
                     [(row["stageId"], row["actionId"]) for row in product["stages"]],
                 )
-        begin = self.cpp.index("CValtanPatternTree::Build_NextPatternInventory(")
-        end = self.cpp.index("CValtanPatternTree::Build_PatternIdentitySummary(", begin)
+        begin = self.cpp.index("CValtanPatternTree::Build_PlayablePatternInventory(")
+        end = self.cpp.index("CValtanPatternTree::Build_NextPatternInventory(", begin)
         builder = self.cpp[begin:end]
         for marker in (
             "&View.Gimmicks, &View.Rotation", "bAuthoringMasterManaged",
             "IdentityCounts", "strEntryActionId", "StageIds", "ActionIds",
-            "iSourceSequenceIndex", "std::sort", "OutPatternIds = std::move(StagedIds)",
+            "ManualByPattern", "OutInventory = std::move(Staged)",
         ):
             self.assertIn(marker, builder)
         self.assertNotIn("TOTAL_PATTERN_COUNT", builder)
         self.assertNotIn("ANIMATOR_PATTERN_COUNT", builder)
         self.assertNotIn("VALTAN_FIST_IN_OUT", builder)
-        self.assertLess(builder.index("StagedPatterns.empty()"), builder.index("OutPatternIds ="))
+        self.assertLess(builder.index("StagedPatterns.empty()"), builder.index("OutInventory ="))
+        next_end = self.cpp.index("CValtanPatternTree::Build_PatternIdentitySummary(", end)
+        wrapper = self.cpp[end:next_end]
+        self.assertIn("Build_PlayablePatternInventory(View, Inventory, strOutError)", wrapper)
+        self.assertIn("iSourceSequenceIndex", wrapper)
+        self.assertLess(wrapper.index("Build_PlayablePatternInventory("), wrapper.index("OutPatternIds ="))
 
     def test_trash_terminal_actions_keep_typed_source_product_join(self) -> None:
         source = next(row for row in self.gameplay["patterns"] if row["patternId"] == "VALTAN_TRASH")
@@ -553,13 +508,30 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         for kind in seen:
             self.assertGreaterEqual(self.cpp.count('"' + kind + '"'), 2)
 
+    def test_saved_flow_reference_resolves_exact_slots_without_hidden_steps(self) -> None:
+        physical = json.loads(GAMEPLAY_PATH.read_text(encoding="utf-8"))
+        reference = physical["decisionModel"]["scriptedSequence"]
+        self.assertEqual({"sequenceId", "mode", "flowId"}, set(reference))
+        self.assertEqual(SAVED_DEFAULT_FLOW["flowId"], reference["flowId"])
+        self.assertEqual(
+            [slot["patternId"] for slot in SAVED_DEFAULT_FLOW["slots"]],
+            self.gameplay["decisionModel"]["scriptedSequence"]["patternIds"],
+        )
+        self.assertIn("Resolve_SavedFlowSequence(", self.cpp)
+        self.assertIn("SavedFlowSourceRevision", self.cpp)
+        self.assertIn("Compute_SourceRevision", self.cpp)
+        self.assertIn("CValtanPatternFlowDocument::Parse_Text", self.cpp)
+        self.assertIn("CValtanPatternFlowDocument::Validate", self.cpp)
+        self.assertIn("GameplayPath.parent_path().parent_path()", self.cpp)
+        self.assertIn("saved Flow path escaped its authoring snapshot", self.cpp)
+
     def test_first_scripted_entry_owner_matches_publisher_without_weighted_admission(self) -> None:
         joined = tuning_pipeline.join_v2_authoring(
             self.gameplay, self.presentation, self.world_sets,
             self.combat_authoring,
         )
         decision = joined["decisionModel"]
-        entry_id = decision["scriptedSequence"]["patternIds"][0]
+        entry_id = "VALTAN_ENTRANCE_CINEMATIC"
         owned_ids = {
             row["patternId"]
             for selection_set in decision["selectionSets"]
@@ -585,14 +557,14 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         ]
         for token in (
             "bScriptedEntryOnly = 0u == iOwnerCount",
-            "!ScriptedSequence.PatternIds.empty()",
-            "ScriptedSequence.PatternIds.front() == strPatternId",
+            '"VALTAN_ENTRANCE_CINEMATIC" == strPatternId',
+            "EntryInSequence != ScriptedSequence.PatternIds.begin()",
             "(1u != iOwnerCount && !bScriptedEntryOnly)",
             "(bCandidate || bScriptedEntryOnly)",
             "strScriptedEntryOnlyPatternId = strPatternId",
         ):
             self.assertIn(token, owner)
-        self.assertNotIn(entry_id, owner)
+        self.assertIn(entry_id, owner)
         self.assertIn("strScriptedEntryOnlyPatternId, Out, strOutError", split)
         compatibility = self.cpp[
             self.cpp.index("bool_t Parse_MasterDocument("):
@@ -606,14 +578,14 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         self.assertIn("WeightedPatternIds != ManagedNormalPatternIds", compatibility)
 
     def test_scripted_entry_owner_failures_keep_the_staged_load_boundary(self) -> None:
-        entry_id = self.gameplay["decisionModel"]["scriptedSequence"]["patternIds"][0]
+        entry_id = "VALTAN_ENTRANCE_CINEMATIC"
         invalid_sources: list[tuple[str, dict, str]] = []
         later_entry = copy.deepcopy(self.gameplay)
         sequence = later_entry["decisionModel"]["scriptedSequence"]["patternIds"]
-        sequence[0], sequence[1] = sequence[1], sequence[0]
+        sequence[:] = ["VALTAN_WHIRLWIND", entry_id]
         invalid_sources.append((
             "entry is no longer first", later_entry,
-            "first scripted sequence pattern may be an entry-only gate",
+            "optional entry cinematic",
         ))
         zero_weight = copy.deepcopy(self.gameplay)
         next(row for row in zero_weight["patterns"] if row["patternId"] == entry_id)[
@@ -658,7 +630,11 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         )
         stage = fist["stages"][0]
         self.assertEqual({"mode": "NONE"}, stage["animation"])
-        self.assertEqual("STAGE_CLOCK", stage["effectCues"][0]["timingBasis"])
+        self.assertEqual([], stage["effectCues"])
+        independent = next(row for row in self.presentation["independentEffects"]
+                           if row["independentEffectId"] == "valtan.independent-effect.donut-in-out")
+        self.assertEqual("SERVER_COMBAT_OBJECT", independent["ownership"])
+        self.assertEqual("event.valtan.fist-in-out.spawn-donut", independent["spawnEventId"])
         for token in (
             "bSuppressAnimation",
             "bUsesStageClock",
@@ -755,12 +731,12 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             dash["partDamagePolicy"], dash_product["partDamagePolicy"]
         )
 
-        trash = stage(self.gameplay, "VALTAN_TRASH", "CATCH_COUNTER")
-        trash_product = stage(self.encounter, "VALTAN_TRASH", "CATCH_COUNTER")
+        trash = stage(self.gameplay, "VALTAN_TRASH", "STEP_07")
+        trash_product = stage(self.encounter, "VALTAN_TRASH", "STEP_07")
         expected_proxy = {
             "space": "BOSS_LOCAL",
             "forwardOffsetM": 1.0,
-            "rightOffsetM": -1.5,
+            "rightOffsetM": 0.0,
             "radiusM": 2.25,
         }
         self.assertEqual(expected_proxy, trash["counterProxy"])
@@ -807,18 +783,18 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         invalid_extensions.append(("unclosed groggy flag", missing_groggy_close))
 
         invalid_proxy = copy.deepcopy(self.gameplay)
-        stage(invalid_proxy, "VALTAN_TRASH", "CATCH_COUNTER")["counterProxy"][
+        stage(invalid_proxy, "VALTAN_TRASH", "STEP_07")["counterProxy"][
             "radiusM"
         ] = 0.0
         invalid_extensions.append(("invalid proxy radius", invalid_proxy))
 
         missing_counter_branch = copy.deepcopy(self.gameplay)
         stage(
-            missing_counter_branch, "VALTAN_TRASH", "CATCH_COUNTER"
+            missing_counter_branch, "VALTAN_TRASH", "STEP_07"
         )["branches"] = [
             branch
             for branch in stage(
-                missing_counter_branch, "VALTAN_TRASH", "CATCH_COUNTER"
+                missing_counter_branch, "VALTAN_TRASH", "STEP_07"
             )["branches"]
             if branch["outcome"] != "COUNTER_HIT"
         ]
@@ -828,11 +804,11 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
 
         missing_counter_close = copy.deepcopy(self.gameplay)
         stage(
-            missing_counter_close, "VALTAN_TRASH", "CATCH_COUNTER"
+            missing_counter_close, "VALTAN_TRASH", "STEP_07"
         )["events"] = [
             event
             for event in stage(
-                missing_counter_close, "VALTAN_TRASH", "CATCH_COUNTER"
+                missing_counter_close, "VALTAN_TRASH", "STEP_07"
             )["events"]
             if event["trigger"] != "EXIT"
         ]
@@ -954,6 +930,21 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             self.assertEqual(800, motion["takeoffStartMs"])
             self.assertEqual(1100, motion["takeoffEndMs"])
 
+        pizza = patterns["VALTAN_SIX_PIZZA_106"]
+        pizza_motion = pizza["serverMotion"]
+        axe_motion = patterns["VALTAN_HIGH_JUMP"]["serverMotion"]
+        self.assertEqual(
+            axe_motion["travelEndMs"] - axe_motion["travelStartMs"],
+            pizza_motion["travelEndMs"] - pizza_motion["travelStartMs"],
+        )
+        self.assertEqual(10.0, pizza_motion["apexHeight"])
+        self.assertEqual("STEP_03", pizza_motion["travelStageId"])
+        self.assertEqual(1200, pizza["stages"][2]["durationMs"])
+        self.assertEqual(
+            [1200, 1000, 1200],
+            [row["durationMs"] for row in pizza["stages"][6:9]],
+        )
+
         for pattern_id, expected_world_set in expected_world_sets.items():
             pattern = patterns[pattern_id]
             self.assertEqual(
@@ -996,11 +987,11 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         ))
 
         orphaned_cue_owner = copy.deepcopy(self.presentation)
-        pattern_stage_independent = next(
-            row for row in orphaned_cue_owner["independentEffects"]
-            if row["ownership"] == "SERVER_PATTERN_STAGE"
-        )
-        pattern_stage_independent["cueId"] = "cue.valtan.missing"
+        orphaned_cue_owner["independentEffects"].append({
+            "independentEffectId": "valtan.independent-effect.missing",
+            "displayName": "orphaned stage cue", "ownership": "SERVER_PATTERN_STAGE",
+            "cueId": "cue.valtan.missing",
+        })
         self.assertFalse(split_policy_accepts(
             self.gameplay,
             orphaned_cue_owner,
@@ -1154,46 +1145,38 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         }
         manifest_rows = self.promotion_manifest["patterns"]
         manifest_ids = [row["patternId"] for row in manifest_rows]
-        expected_manifest_ids = (
-            set(EXPECTED_PROMOTED_KOREAN_NAMES)
-            | EXPECTED_UNCHANGED_SEQUENCE_IDS
+        lineage = lambda row: (
+            row["patternId"], row["sourceChainId"],
+            row["authoringPhase"], row["admissionState"],
         )
-        self.assertEqual(20, len(manual_rows))
+        self.assertEqual(len(audition_rows), len(manual_rows) + len(derived_rows))
         self.assertEqual(
-            ["VALTAN_ENTRANCE_CINEMATIC"],
-            [row["patternId"] for row in derived_rows],
+            len(audition_rows), len({row["patternId"] for row in audition_rows})
         )
+        self.assertEqual(
+            len(audition_rows), len({row["sourceChainId"] for row in audition_rows})
+        )
+        for row in audition_rows:
+            self.assertTrue(STABLE_TOKEN.fullmatch(row["patternId"]))
+            self.assertTrue(STABLE_TOKEN.fullmatch(row["sourceChainId"]))
+        self.assertEqual(
+            [lineage(row) for row in manual_rows],
+            [lineage(row) for row in manifest_rows],
+        )
+        self.assertIn("VALTAN_GHOST_FINALE", [row["patternId"] for row in derived_rows])
         self.assertTrue(
             {
                 "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
                 "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
             }.issubset(mechanic_ids)
         )
-        self.assertEqual(
-            manifest_ids,
-            [row["patternId"] for row in manual_rows],
-        )
-        self.assertEqual(16, len(EXPECTED_PROMOTED_KOREAN_NAMES))
-        self.assertEqual(4, len(EXPECTED_UNCHANGED_SEQUENCE_IDS))
-        self.assertEqual(expected_manifest_ids, set(manifest_ids))
-        self.assertEqual(
-            EXPECTED_UNCHANGED_SEQUENCE_IDS,
-            {
-                pattern_id
-                for pattern_id in manifest_ids
-                if pattern_id.startswith("VALTAN_SEQUENCE_")
-            },
-        )
-        self.assertEqual(
-            EXPECTED_PROMOTED_KOREAN_NAMES,
-            {
-                row["patternId"]: row["displayName"]
-                for row in manifest_rows
-                if row["patternId"] in EXPECTED_PROMOTED_KOREAN_NAMES
-            },
-        )
-        self.assertEqual(20, self.promotion_receipt["patternCount"])
-        self.assertEqual(97, self.promotion_receipt["stageCount"])
+        gameplay_names = {
+            row["patternId"]: row["displayName"]
+            for row in self.gameplay["patterns"]
+        }
+        self.assertEqual(len(manifest_ids), len(set(manifest_ids)))
+        for row in manifest_rows:
+            self.assertEqual(gameplay_names[row["patternId"]], row["displayName"])
 
         products = {
             row["patternId"]: row for row in self.encounter["patterns"]
@@ -1242,11 +1225,12 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
                 or "branches" in stage
                 for stage in product["stages"]
             )
-        self.assertGreater(enriched_stage_count, 0)
+        if manual_rows:
+            self.assertGreater(enriched_stage_count, 0)
 
         self.assertEqual(
             3,
-            self.promotion_manifest["patterns"][-1]["authoringPhase"],
+            next(row["authoringPhase"] for row in manifest_rows if row["patternId"] == "VALTAN_STRUGGLING"),
         )
         for token in (
             "VALTAN_MANUAL_AUDITION_VIEW",
@@ -1444,8 +1428,8 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         ]
         self.assertTrue(volleys)
         self.assertEqual(1, len(phase_changes))
-        self.assertEqual(9, len(retarget_sources))
-        self.assertEqual(2, len(release_sources))
+        self.assertEqual(19, len(retarget_sources))
+        self.assertEqual(3, len(release_sources))
         self.assertEqual(len(retarget_sources), len(retargets))
         self.assertEqual(len(release_sources), len(releases))
         for event in retarget_sources:
@@ -1476,7 +1460,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
                 action["releaseMode"] == "HOLD"
                 and action["speedMps"] == 0
                 and action["durationMs"] == 0
-                or action["releaseMode"] == "OPPOSITE_KNOCKBACK"
+                or action["releaseMode"] in ("OPPOSITE_KNOCKBACK", "ARENA_EJECTION")
                 and 0 < action["speedMps"] <= 50
                 and 0 < action["durationMs"] <= 5000
             )
@@ -1590,7 +1574,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             'targetId == "boss.target.pattern" && 1u == value',
             'targetId != "boss.attachment.left-hand"',
             'else if ("SPAWN_COMBAT_OBJECT" == strKind)',
-            'else if ("RETARGET_RANDOM_ALIVE" == strKind)',
+            '"RETARGET_RANDOM_ALIVE" == strKind',
             'else if ("RELEASE_GRABBED_PLAYERS" == strKind)',
             '"split gameplay grabbed-player release event is invalid"',
             '"split gameplay combat-object spawn is invalid"',

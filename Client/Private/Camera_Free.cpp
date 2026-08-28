@@ -2,10 +2,18 @@
 
 #include "Camera_Free.h"
 
+#include "CameraShakeService.h"
 #include "Transform.h"
 
 #include <algorithm>
 #include <cmath>
+
+namespace
+{
+	constexpr f32_t SHAKE_TRANSLATION_METERS_PER_UNIT = 0.01f;
+	constexpr f32_t MIN_SHAKE_FOVY = 10.f;
+	constexpr f32_t MAX_SHAKE_FOVY = 170.f;
+}
 
 CCamera_Free::CCamera_Free(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
     : CCamera { pDevice, pContext }
@@ -44,6 +52,10 @@ HRESULT CCamera_Free::Initialize(void* pArg)
 	if (FAILED(__super::Initialize(pArg)))
 		return E_FAIL;
 
+	m_fBaseFovy = m_fFovy;
+	m_vAppliedShakeOffset = {};
+	CCameraShakeService::Clear();
+
 	return S_OK;
 }
 
@@ -64,10 +76,16 @@ void CCamera_Free::Update(f32_t fTimeDelta)
 
 void CCamera_Free::Late_Update(f32_t fTimeDelta)
 {
+	Remove_AppliedCameraShake();
 	if (!m_bFollowEnabled)
+	{
+		CAMERA_SHAKE_SAMPLE Unused;
+		CCameraShakeService::Sample(fTimeDelta, Unused);
 		return;
+	}
 
 	Update_FollowCamera(fTimeDelta);
+	Apply_CameraShake(fTimeDelta);
 	if (m_bFollowEnabled)
 		__super::Update_PipeLine();
 }
@@ -137,6 +155,7 @@ void CCamera_Free::Frame_Area(
 	m_bFollowEnabled = false;
 	m_bFollowRequested = false;
 	m_bFollowInitialized = false;
+	m_vAppliedShakeOffset = {};
 	const vector_t lookAt = XMLoadFloat3(&center);
 	const vector_t eye = XMVectorSet(
 		center.x,
@@ -202,6 +221,7 @@ void CCamera_Free::Update_FollowCamera(f32_t fTimeDelta)
 	{
 		m_pTransformCom->Set_State(STATE::POSITION, vDesiredEye);
 		XMStoreFloat3(&m_vCurrentLookAt, vDesiredAt);
+		m_vAppliedShakeOffset = {};
 		m_bFollowInitialized = true;
 	}
 	else
@@ -274,6 +294,50 @@ void CCamera_Free::Update_FreeCamera(f32_t fTimeDelta)
 			m_pTransformCom->Get_State(STATE::RIGHT),
 			m_fMouseSensor * mouseMoveY * fTimeDelta);
 	}
+}
+
+void CCamera_Free::Remove_AppliedCameraShake()
+{
+	if (0.f != m_vAppliedShakeOffset.x ||
+		0.f != m_vAppliedShakeOffset.y ||
+		0.f != m_vAppliedShakeOffset.z)
+	{
+		m_pTransformCom->Set_State(
+			STATE::POSITION,
+			XMVectorSetW(
+				m_pTransformCom->Get_State(STATE::POSITION) -
+					XMLoadFloat3(&m_vAppliedShakeOffset),
+				1.f));
+		m_vAppliedShakeOffset = {};
+	}
+	m_fFovy = m_fBaseFovy;
+}
+
+void CCamera_Free::Apply_CameraShake(f32_t fTimeDelta)
+{
+	CAMERA_SHAKE_SAMPLE Sample;
+	const bool_t bActive = CCameraShakeService::Sample(fTimeDelta, Sample);
+	if (!bActive || !m_bFollowEnabled || Is_PresentationOverrideActive())
+		return;
+
+	const vector_t vLook =
+		XMVector3Normalize(m_pTransformCom->Get_State(STATE::LOOK));
+	const vector_t vRight =
+		XMVector3Normalize(m_pTransformCom->Get_State(STATE::RIGHT));
+	const vector_t vUp =
+		XMVector3Normalize(m_pTransformCom->Get_State(STATE::UP));
+	const vector_t vOffset =
+		(vLook * Sample.fForward + vRight * Sample.fRight + vUp * Sample.fUp) *
+		SHAKE_TRANSLATION_METERS_PER_UNIT;
+	XMStoreFloat3(&m_vAppliedShakeOffset, vOffset);
+	m_pTransformCom->Set_State(
+		STATE::POSITION,
+		XMVectorSetW(
+			m_pTransformCom->Get_State(STATE::POSITION) + vOffset,
+			1.f));
+	m_fFovy = std::clamp(
+		m_fBaseFovy + Sample.fFovDeltaDegrees,
+		MIN_SHAKE_FOVY, MAX_SHAKE_FOVY);
 }
 
 unique_ptr<CCamera_Free> CCamera_Free::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)

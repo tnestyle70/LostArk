@@ -37,7 +37,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS;_CONSOLE;NOMINMAX;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\Shared\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\Shared\Public;$(ProjectDir)..\..\..\Engine\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -55,8 +55,19 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\ValtanPatternAuditionServiceHarness.cpp" />
+    <ClCompile Include="..\Private\ValtanPatternFlowServiceTests.cpp" />
+    <ClCompile Include="..\Private\ValtanTuningCommandServiceTests.cpp" />
     <ClCompile Include="..\..\..\Client\Private\ValtanPatternAuditionService.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\ValtanPatternFlowService.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\ValtanTuningCommandService.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\DataJson.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\ActionPresentationTimeline.cpp" />
     <ClInclude Include="..\..\..\Client\Public\ValtanPatternAuditionService.h" />
+    <ClInclude Include="..\..\..\Client\Public\ValtanPatternFlowService.h" />
+    <ClInclude Include="..\..\..\Client\Public\ValtanTuningCommandService.h" />
+    <ClInclude Include="..\..\..\Client\Public\DataJson.h" />
+    <ClInclude Include="..\..\..\Client\Public\ActionPresentationTimeline.h" />
+    <ClInclude Include="..\..\..\Client\Public\ValtanPatternFlowDocument.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Shared\Default\Shared.vcxproj">

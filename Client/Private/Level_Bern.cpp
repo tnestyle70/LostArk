@@ -108,6 +108,12 @@ HRESULT CLevel_Bern::Initialize()
 			"[Level_Bern] Valtan-entry guide NPC positions unavailable; "
 			"right-click entry interaction is disabled.\n");
 	}
+	if (!Ready_ItemUpgradeNpc(pEntry->pMapAreaId))
+	{
+		OutputDebugStringA(
+			"[Level_Bern] Item Upgrade NPC (npc.bern.schmidt) position "
+			"unavailable; right-click interaction is disabled.\n");
+	}
 	m_pValtanEntryView = std::make_unique<CHUDRuntimeView>(
 		m_pDevice, m_pContext, L"UI/Bern/BernValtanEntry_Layout.json");
 
@@ -116,8 +122,17 @@ HRESULT CLevel_Bern::Initialize()
 	opened (confirmed determinate rect/measure that frame -- see
 	Render_ValtanEntryModalText), then worked normally every time after.
 	Off-screen warm-up draw so whatever GPU-side lazy init that first call
-	does happens here instead of on the popup's actual first appearance. */
-	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), L" ",
+	does happens here instead of on the popup's actual first appearance.
+	A single space (the original warm-up string here) turned out not to
+	actually fix this: DirectXTK's SpriteFont::DrawString skips the
+	SpriteBatch::Draw() call entirely for a whitespace glyph whose sprite
+	sheet subrect is 1x1 or smaller (true for the space glyph in most
+	fonts, this one included), so Begin()/End() ran with zero queued
+	sprites and never touched whatever the real first Draw() call lazily
+	sets up. Warming up with the exact real string ("레이드 입장") instead
+	guarantees at least one non-degenerate glyph quad is actually queued
+	and drawn. */
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), L"\xB808\xC774\xB4DC \xC785\xC7A5",
 		float2_t(-1000.f, -1000.f), Colors::White, 0.f,
 		float2_t(0.5f, 0.5f), 1.f);
 
@@ -212,6 +227,8 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 	}
 	Update_ValtanEntryInteraction();
 	Advance_ValtanEntryWalk();
+	Update_ItemUpgradeNpcInteraction();
+	Advance_ItemUpgradeNpcWalk();
 	if (m_isValtanEntryModalOpen)
 	{
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
@@ -615,6 +632,136 @@ void CLevel_Bern::Advance_ValtanEntryWalk()
 #ifdef _DEBUG
 	OutputDebugStringA("[Level_Bern][ValtanEntryText] modal opened this frame\n");
 #endif
+}
+
+bool_t CLevel_Bern::Ready_ItemUpgradeNpc(const std::string& areaId)
+{
+	// Real placement confirmed in Data/Worlds/LV_BER_BERNCASTLE/Gameplay.world.json:
+	// npc.bern.schmidt, archetype NPC_SCHMIDT, (143.069, 46.8328629, -104.165001).
+	constexpr const char* ITEM_UPGRADE_NPC_PLACEMENT_ID = "npc.bern.schmidt";
+
+	const std::filesystem::path documentPath = CProjectDataRoot::Resolve(
+		std::filesystem::path("Worlds") / areaId / "Gameplay.world.json");
+	std::error_code pathError;
+	if (documentPath.empty() ||
+		!std::filesystem::is_regular_file(documentPath, pathError) || pathError)
+	{
+		return false;
+	}
+
+	CWorldGameplayDocument document;
+	std::string status;
+	if (!document.Load(documentPath, areaId, status))
+		return false;
+
+	for (const WORLD_GAMEPLAY_PLACEMENT& placement : document.Get_Placements())
+	{
+		if (WORLD_PLACEMENT_KIND::NPC != placement.eKind ||
+			placement.placementId != ITEM_UPGRADE_NPC_PLACEMENT_ID)
+		{
+			continue;
+		}
+		m_vItemUpgradeNpcPosition = placement.position;
+		m_hasItemUpgradeNpc = true;
+		return true;
+	}
+	return false;
+}
+
+void CLevel_Bern::Update_ItemUpgradeNpcInteraction()
+{
+	const bool_t isRightMouseDown =
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::RB) & 0x80);
+	const bool_t isRightMousePressed =
+		isRightMouseDown && !m_wasRightMouseDownForItemUpgradeNpcInteract;
+	m_wasRightMouseDownForItemUpgradeNpcInteract = isRightMouseDown;
+
+	const shared_ptr<CCharacter> localCharacter =
+		m_Replication.Get_LocalCharacter();
+	if (!m_hasItemUpgradeNpc || !isRightMousePressed ||
+		0 == (CGameInstance::Get().Get_DIMouseState(DIM::RB) & 0x80) ||
+		nullptr == localCharacter ||
+		nullptr == m_pCamera || !m_pCamera->Is_FollowEnabled())
+	{
+		return;
+	}
+
+	vector_t rayOrigin{}, rayDirection{};
+	if (!CPlayerController::Try_PickWorldRay(rayOrigin, rayDirection))
+		return;
+	rayDirection = XMVector3Normalize(rayDirection);
+
+	constexpr f32_t NPC_CLICK_RADIUS = 1.5f;
+	const vector_t vNpcPos = XMLoadFloat3(&m_vItemUpgradeNpcPosition);
+	const f32_t fRayParameter = XMVectorGetX(XMVector3Dot(
+		XMVectorSubtract(vNpcPos, rayOrigin), rayDirection));
+	if (fRayParameter < 0.f)
+		return;
+	const vector_t vClosestPoint = XMVectorAdd(
+		rayOrigin, XMVectorScale(rayDirection, fRayParameter));
+	const f32_t fDistanceSq = XMVectorGetX(XMVector3LengthSq(
+		XMVectorSubtract(vNpcPos, vClosestPoint)));
+	if (fDistanceSq > NPC_CLICK_RADIUS * NPC_CLICK_RADIUS)
+		return;
+
+	m_PlayerController.Suppress_MoveClickThisFrame();
+	CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
+	m_isWalkingToItemUpgradeNpc = true;
+
+	/* Stop just inside interaction range, on the side the character is already
+	standing, instead of walking exactly onto the NPC's own point -- same
+	approach as Update_ValtanEntryInteraction. */
+	const shared_ptr<CTransform> transform = localCharacter->Get_Transform();
+	if (nullptr != transform)
+	{
+		const vector_t vCharacterPos = transform->Get_State(STATE::POSITION);
+		vector_t vTowardCharacter = XMVectorSubtract(vCharacterPos, vNpcPos);
+		vTowardCharacter = XMVectorSetY(vTowardCharacter, 0.f);
+		constexpr f32_t INTERACTION_RADIUS = 3.f;
+		float3_t goal{};
+		if (XMVectorGetX(XMVector3LengthSq(vTowardCharacter)) < 0.01f)
+		{
+			goal = m_vItemUpgradeNpcPosition;
+		}
+		else
+		{
+			vTowardCharacter = XMVector3Normalize(vTowardCharacter);
+			XMStoreFloat3(&goal, XMVectorAdd(
+				vNpcPos, XMVectorScale(vTowardCharacter, INTERACTION_RADIUS * 0.7f)));
+			goal.y = m_vItemUpgradeNpcPosition.y;
+		}
+		m_PlayerController.Request_MoveToPoint(goal);
+	}
+}
+
+void CLevel_Bern::Advance_ItemUpgradeNpcWalk()
+{
+	if (!m_isWalkingToItemUpgradeNpc)
+		return;
+
+	const shared_ptr<CCharacter> localCharacter = m_Replication.Get_LocalCharacter();
+	if (nullptr == localCharacter)
+	{
+		m_isWalkingToItemUpgradeNpc = false;
+		return;
+	}
+	const shared_ptr<CTransform> transform = localCharacter->Get_Transform();
+	if (nullptr == transform)
+		return;
+
+	// Same footprint Update_ItemUpgradeNpcInteraction stops the character at.
+	constexpr f32_t INTERACTION_RADIUS = 3.f;
+	const vector_t vCharacterPos = transform->Get_State(STATE::POSITION);
+	const vector_t vDelta = XMVectorSubtract(
+		vCharacterPos, XMLoadFloat3(&m_vItemUpgradeNpcPosition));
+	const f32_t fDistanceSq = XMVectorGetX(XMVector3LengthSq(
+		XMVectorSetY(vDelta, 0.f)));
+	if (fDistanceSq > INTERACTION_RADIUS * INTERACTION_RADIUS)
+		return;
+
+	m_isWalkingToItemUpgradeNpc = false;
+	if (CMainApp* pMainApp = CMainApp::Get_Active())
+		pMainApp->Open_ItemUpgradeWindow();
 }
 
 void CLevel_Bern::Render_ValtanEntryModal()

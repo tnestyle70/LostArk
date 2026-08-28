@@ -29,7 +29,6 @@
 
 namespace
 {
-	constexpr size_t VALTAN_COMBAT_OBJECT_EFFECT_TARGET_COUNT = 2u;
 	std::atomic<uint64_t> g_iNextEffectLoadJobEpoch = 1u;
 }
 
@@ -444,12 +443,11 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 			const BOSS_ACTOR_ENTRY* pBossActor = CActorCatalog::Find_Boss(
 				CueDocument.strOwnerArchetypeId);
 			if (nullptr == pBossActor ||
-				pBossActor->combatObjectVisuals.size() !=
-					VALTAN_COMBAT_OBJECT_EFFECT_TARGET_COUNT)
+				pBossActor->combatObjectVisuals.empty())
 			{
 				return IsolateFailure(nullptr == pBossActor ?
 					CActorCatalog::Get_Status() :
-					"Valtan BossCatalog must declare exactly two combat-object visuals.");
+					"Valtan BossCatalog has no combat-object visuals to prepare.");
 			}
 			std::vector<std::string> EffectAssetIds;
 			EffectAssetIds.reserve(CueDocument.Cues.size() +

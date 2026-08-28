@@ -101,17 +101,17 @@ CUE_CONTRACTS = {
     },
     "cue.valtan.requested.20260827.trash-catch-success.composite": (
         "VALTAN_TRASH_CATCH_SUCCESS",
-        "STEP_01",
+        "CATCH_COUNTER",
         "effect.valtan.project-tuned.sequence.trash-catch-success",
     ),
     "cue.valtan.requested.20260827.trash-catch-fail.composite": (
         "VALTAN_TRASH_CATCH_FAIL",
-        "STEP_01",
+        "RUSH_MISS",
         "effect.valtan.project-tuned.sequence.trash-catch-fail",
     ),
     "cue.valtan.requested.20260827.trash-catch-if.composite": (
         "VALTAN_TRASH_CATCH_IF",
-        "STEP_01",
+        "STEP_07",
         "effect.valtan.project-tuned.sequence.trash-catch-if",
     ),
     "cue.valtan.requested.20260827.catch-breath.composite": (
@@ -132,6 +132,11 @@ CUE_RUNTIME_EXPECTATIONS = {
         [0.0, 0.0, 0.0],
         0,
     ),
+    "cue.valtan.requested.20260827.six-pizza.composite": (
+        "snapshot",
+        [0.0, 0.0, 0.0],
+        0,
+    ),
     **{
         f"cue.valtan.phase2.warp.step-{leg:02d}.composite": (
             "follow",
@@ -140,6 +145,12 @@ CUE_RUNTIME_EXPECTATIONS = {
         )
         for leg in range(2, 10)
     },
+}
+
+CUE_ANCHOR_EXPECTATIONS = {
+    "cue.valtan.requested.20260827.terrain-3.semicircle": "arena.center",
+    "cue.valtan.requested.20260827.terrain-9.semicircle": "arena.center",
+    "cue.valtan.requested.20260827.six-pizza.composite": "arena.center.facing",
 }
 
 
@@ -472,39 +483,26 @@ class ValtanRequestedEffectElementsContractTest(unittest.TestCase):
         )
 
 
-    def test_portal_layer_count_and_trash_bindings_and_floor_resources(self) -> None:
+    def test_saved_portal_particle_and_trash_bindings_and_floor_resources(self) -> None:
         portal_asset = "effect.valtan.project-tuned.sequence.warp.portal"
         portal_elements = self._elements(portal_asset)
-        portal_generated = {
-            element_id
-            for element_id in portal_elements
-            if element_id.startswith(f"{GENERATED_PREFIX}warp.portal.")
-        }
-        self.assertEqual(len(portal_generated), 14)
-        self.assertIn(
-            f"{GENERATED_PREFIX}warp.portal-rush.forward-mesh",
-            portal_elements,
+        self.assertEqual(set(portal_elements), {"sprite_particle_2"})
+        portal = portal_elements["sprite_particle_2"]
+        self.assertEqual(portal.get("kind"), "particle")
+        self.assertEqual(
+            self._resources(portal).get("base"),
+            "Effect/DimensionMaster/Textures/BG_OCN_ETC_J/"
+            "bg_ocn_etc_magicsquare08a_d_kmk.dds",
         )
-        forward_mesh = portal_elements[
-            f"{GENERATED_PREFIX}warp.portal-rush.forward-mesh"
-        ]
-        self.assertStart(forward_mesh, 0.0)
+        self.assertStart(portal, 0.0)
         self.assertAlmostEqual(
-            float(forward_mesh["detail"]["timing"]["lifeTimeSeconds"]),
-            0.41,
-            places=6,
+            float(portal["detail"]["timing"]["lifeTimeSeconds"]), 5.0, places=6
         )
-        self.assertEqual(
-            self._resources(forward_mesh).get("meshModel"),
-            "Effect/Valtan/Meshes/FX_SM_00/fm_h_halfsphere_01_1.wmodel",
-        )
-        self.assertEqual(
-            {0.0, 0.063222},
-            {
-                round(self._start(portal_elements[element_id]), 6)
-                for element_id in portal_generated
-            },
-        )
+        particle = portal["detail"]["particle"]
+        self.assertEqual(particle.get("maxParticles"), 1)
+        self.assertEqual(particle.get("burstCount"), 1)
+        self.assertEqual(particle.get("lifeTimeSeconds"), [2, 2])
+        self.assertIs(portal.get("sourceRecipe", {}).get("enabled"), False)
 
         catalog_asset_ids = {
             row["effectAssetId"] for row in self.catalog.get("effects", [])
@@ -607,7 +605,10 @@ class ValtanRequestedEffectElementsContractTest(unittest.TestCase):
                 self.assertEqual(pattern_id, expected_pattern)
                 self.assertEqual(stage_id, expected_stage)
                 self.assertEqual(cue.get("effectAssetId"), expected_asset)
-                self.assertEqual(cue.get("anchorSlotId"), "root")
+                self.assertEqual(
+                    cue.get("anchorSlotId"),
+                    CUE_ANCHOR_EXPECTATIONS.get(cue_id, "root"),
+                )
                 self.assertEqual(cue.get("stopPolicy"), "natural")
                 self.assertEqual(cue.get("repeatPolicy"), "once")
                 runtime = CUE_RUNTIME_EXPECTATIONS.get(cue_id)
@@ -708,13 +709,14 @@ class ValtanRequestedEffectElementsContractTest(unittest.TestCase):
             "Effects/Authored/effect.valtan.sequence.charge.effect.json",
         )
 
-    def test_six_pizza_locks_one_player_then_tracks_aim(self) -> None:
+    def test_six_pizza_locks_one_player_and_facing_at_center(self) -> None:
         patterns = _index_unique(
             self.gameplay.get("patterns", []), "patternId", "gameplay pattern"
         )
         pizza = patterns["VALTAN_SIX_PIZZA_106"]
         self.assertEqual(pizza.get("targetPolicy"), "LOCK_RANDOM_ALIVE_ON_START")
-        self.assertEqual(pizza.get("aimPolicy"), "TRACK_TARGET_EACH_TICK")
+        self.assertEqual(pizza.get("aimPolicy"), "LOCK_FACING_ON_START")
+        self.assertIs(pizza.get("serverMotion", {}).get("moveToAnchorBeforeTakeoff"), True)
 
 
 class ValtanRequestedEffectMetadataProjectionTest(unittest.TestCase):

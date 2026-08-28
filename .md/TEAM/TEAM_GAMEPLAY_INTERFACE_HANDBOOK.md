@@ -337,6 +337,19 @@ commit한다. 성공 뒤 다음 cue spawn은 새 document를, 이미 재생 중�
 다음 Client 실행도 같은 source 문서를 읽으므로 별도 publish나 재시작 적용 절차가 없다. 전체 source 검증은
 `Tools/EffectPipeline/Validate-EffectSources.ps1`로 수행한다.
 
+Element 목록의 Shift/Ctrl 클릭은 다중 표시 집합을 만든다. Delete와 Duplicate는 표시된 집합을 우선하고,
+표시가 없으면 Detail에서 열린 한 Element를 사용한다. Duplicate는 내부 transform inheritance를 새 ID로
+연결하고 외부 master와 timing을 보존하며, 새 복제본을 다시 표시한다. 반복 타격 간격은 Start Delay로 편집한다.
+
+직접 저작한 Sprite Particle은 `drag`, `rotationRangeDegrees`, `spinRangeDegreesPerSecond`, `subUVOverLife`,
+`initialVelocity.uniformSolidAngle`을 사용할 수 있다. 기본값에서는 기존 재생을 유지한다. 입자별 SubUV는
+UV sequence/loop와 혼합하지 않는다. `material.colorTexturesSRGB`는 일반 material의 base/base2/emissive에만
+적용하고 mask/noise/dissolve는 linear로 유지한다. `actionCueAttachment.orientation=owner_yaw`는 실제 본 위치와
+owner의 unit 방향을 사용한다. Data Files의 `Load Saved Element for Editing`으로 이 native owner-yaw Sprite
+Particle을 복사할 때는 본 부착을 초기화하며 새 대상에서 `Attach Selected Element`로 다시 연결한다.
+SourceRecipe/FOLLOW 이력과 Trail을 임의로 떼어 복사하는 기능은 아니다. 기존 Data Files는 V2 문서를 직접
+읽지 않으며, 모아치기에 옮긴 손 불꽃·연기는 일반 authored Element이므로 같은 저장/복사 경로를 사용한다.
+
 Valtan 연결 Effect의 편집 진입은 `F1 → Boss Tool → Boss Verification → Pattern →
 Stage → Edit Linked Effect`다. `patternId/stageId/cueOccurrenceId/effectAssetId`의
 exact tuple을 현재 Product tree와 다시 대조해 문서를 연다. clip-bound cue는 기존
@@ -349,6 +362,10 @@ exact tuple을 현재 Product tree와 다시 대조해 문서를 연다. clip-bo
 
 V1 Product source가 실제 참조하는 DDS/WModel dependency closure는 같은 Resources-relative 경로로 Git/LFS에
 선별 추적한다. 팀원은 pull 뒤 `git lfs pull`을 수행하며, 전체 Resources pack과 미참조 파일은 포함하지 않는다.
+팀이 이미 공유해 Git에 올리지 않기로 한 파일은 해당 상대 경로의 local runtime 입력으로 유지한다.
+이 경우에만 validator의 `-AllowLocalResources`(전체 회귀는 `-AllowLocalEffectResources`)를 명시한다.
+파일 실재·안전 경로·내용과 기존 tracked identity 검사는 유지하고 local 미추적 개수를 보고한다.
+기본 Git closure 검사는 바뀌지 않으며 local 검증을 Git 배포 PASS로 기록하지 않는다.
 Valtan actor Product가 직접 참조하는 body, Parts1/Parts2, AnimSet과 weapon 다섯 WModel, 그리고 그 material
 table이 참조하는 body/parts TGA 12개와 weapon DDS 8개도 같은 pull-only closure에 포함한다. 따라서 새 clone은
 발탄 본체를 위해 별도 추출 WModel이나 material texture를 수동 복사하지 않는다.
@@ -509,22 +526,23 @@ CGameRoom::Tick
 -> CValtan presentation + world-root Effect + CCombatHUDViewModel
 ```
 
-발탄 저작 정본은 `Data/Valtan`의 다음 다섯 split source다.
+발탄 저작 정본은 `Data/Valtan`의 다음 다섯 split source와 저장 Flow 참조다.
 
 | source | 소유 내용 |
 |---|---|
 | `Valtan.gameplay.json` | Server pattern graph, decision, stage, action, hit, motion, volley |
 | `Valtan.presentation.json` | animation occurrence, Effect invocation, camera invocation, cue scale policy |
-| `Valtan.combatobjects.json` | combat-object origin, movement, hit geometry와 damage profile reference |
+| `Valtan.combatobjects.json` | combat-object origin, movement, hit geometry, damage profile reference와 optional 독립 `lifetimeMs` |
 | `Valtan.worldeventsets.json` | stable world-event set membership |
 | `Valtan.legacy-compatibility.json` | 아직 승격하지 않은 Product closure와 migration identity |
+| `Data/Encounters/Valtan/ValtanBossAuditionFlows.json` | `scriptedSequence.flowId`가 참조하는 default 순서와 inter-step pursuit |
 
-`Data/Valtan/Valtan.pattern.json`은 migration fixture이며 새 값을 저장하지 않는다. publisher가 다섯 source를 stable
+`Data/Valtan/Valtan.pattern.json`은 migration fixture이며 새 값을 저장하지 않는다. publisher가 split source와 Flow를 stable
 ID로 strict join해 `ValtanEncounter.json`, rotations, combat objects, world events, pattern bindings/cues와 Server
 bootstrap을 생성한다. 이 generated Product는 read-only이고 Server와 Arena가 split source를 두 번째 런타임으로
 직접 읽지 않는다.
 
-`Data/Actors/BossCatalog.json` format v4의 현재 Valtan `presentationScale: 1.0`은 replicated Arena와 Character/Boss
+`Data/Actors/BossCatalog.json` format v5의 현재 Valtan `presentationScale: 1.0`은 replicated Arena와 Character/Boss
 Preview가 함께 소비하는 Client actor scale이다. `BossProfiles.json`의 Server body radius는 현재 모델의
 몸통·다리 실측에 맞춘 `1.4m`이며 Client Debug collider는 같은 replicated radius를 표시한다. actor scale을
 body radius에 다시 곱하지 않는다. 공격 hit geometry와 장판 크기는 별도 저작 값이다.
@@ -534,10 +552,34 @@ Effect cue의 scale policy는 `OWNER_RELATIVE`, `GAMEPLAY_FOOTPRINT`,
 고치거나 sky-axe에 actor scale을 강제하지 않는다. Client `CValtan`의 로컬 AI는 Development preview 외 제품 정답이
 아니다. 세부 필드와 publish 절차는 `발탄인수인계서.md`를 따른다.
 
-Boss Tool의 Next는 isolated audition에 붙는 Server 권위 예약 한 칸이다. 현재 패턴의 최종 world/prop/hit
-commit 뒤 다음 fixed tick에서 시작하며 맵·플레이어·HP·cooldown을 reset하지 않는다. saved Ordered Flow와
-별개이고 공용 `CValtanPatternAuditionService`만 command/result/lifecycle을 소비한다. 예약·전멸 대기·취소와
-Trash 포획 분기의 상세 계약은 `발탄인수인계서.md`의 10.4, 11.9를 따른다.
+v5의 `bodyModelPreScale/weaponModelPreScale`은 모델 단위를 맞추는 admission 값이다. 본체는
+`0.0001/100.0`, `BOSS_VALTAN_GHOST`는 `0.01/1.0`을 사용한다. 유령은 기존 Server BOSS
+spawn/snapshot/despawn 경로의 종속 entity이며 `iOwnerBossNetEntityId`로 본체를 참조한다.
+primary HUD/BGM/툴 target은 본체만 소유한다. protocol v44는 이 owner와 typed 사망 despawn reason을
+추가하므로 Server/Client를 함께 배포한다. Server는 HP 0에서 전투 entity를 제거하고 Client만 유효한
+사망 clip 종료까지 기존 presentation을 보존한다. clip 없음·재생 실패·퇴장은 즉시 정리한다.
+
+Gameplay bootstrap v26은 `PORTAL_CROSS_ARENA`, `RETURN_TO_ARENA_CENTER`, `ARENA_EJECTION`,
+`NAVIGATION_BLOCKED`, `GHOST_PORTAL_LOOP`와 중앙 접근 옵션을 소비한다. `arena.center`는 중앙/yaw 0,
+`arena.center.facing`은 중앙/해당 occurrence의 서버 확정 yaw를 사용하는 snapshot cue anchor다.
+도넛은 `SPAWN_COMBAT_OBJECT`로 생성한 2600ms 독립 object이며 foreground INNER는 100ms다.
+기존 stage 피해와 cue를 중복 재생하지 않는다. 모든 element의 world birth anchor는 고정하고,
+element 자체의 scale curve는 계속 진행한다. 세부 ID와 실패 경계는 `발탄인수인계서.md` 11.9~11.10을 따른다.
+
+Boss Tool의 Next는 live Product, 같은 owner의 Flow/isolated 또는 idle에서 선택하는 Server 권위 예약 한 칸이다.
+현재 패턴의 최종 world/prop/hit commit 뒤 다음 fixed tick에서 시작하며 맵·플레이어·HP·cooldown을 reset하지 않는다.
+Flow 중에는 현재 occurrence 뒤 남은 재생만 종료하며 저장 배열을 수정하지 않는다. 공용
+`CValtanPatternAuditionService`만 command/result/lifecycle을 소비한다. `Save Flow`는 파일 저장 뒤 기존
+publisher/candidate/2PC로 다음 encounter의 Product 기본 순서를 적용한다. `Reload Flow`는 확정된 저장본의
+첫 배열 슬롯(화면 01)부터 기존 FLOW_START를 제출한다. 순서와 중복 Pattern을 보존하고 실패 시 이전 실행을 유지한다.
+예약·적용 상태·전멸 대기·취소와 Trash 포획 분기의 상세 계약은 `보스툴.md`와 `발탄인수인계서.md`의 10.4, 11.9를 따른다.
+
+패턴 선택은 `Build_PlayablePatternInventory`가 strict joined split 정의에서 만든 공통 집합을 사용한다.
+Boss Tool·Play/Repeat·Next·Flow·All Effects와 publisher 사이에 별도 고정 개수나 Core ID 목록을 두지 않는다.
+Core/Animator/Derived는 표시 분류이며 등록 총수는 Flow의 1~255슬롯 U8 전송 용량과 별개다. 256슬롯은
+저장·Product 투영·Client 전송·Server catalog에서 거부한다. 유령 finale와 도넛도
+같은 집합으로 선택한다. 새 패턴의 stable ID·stage/action 연결·소유자 검증은 유지하며 상세 확장 규격은
+`보스툴.md`의 Pattern 목록 정본을 따른다.
 
 Effect 시각 기준의 global bloom scatter 정본은 `Data/Rendering/Authored/RenderingProfiles.json`의 exact
 `bloomScatter: 1.0`이다. Rendering publisher는 float32 경계 검증 뒤 같은 값을 runtime JSON에 투영하며 Editor

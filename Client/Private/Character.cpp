@@ -1,6 +1,7 @@
 #include "Character.h"
 
 #include "AnimationSkillBindingDocument.h"
+#include "CameraShakeService.h"
 #include "Collider.h"
 #include "Effect_Catalog.h"
 #include "Effect_PresentationService.h"
@@ -280,6 +281,7 @@ void CCharacter::Reset_EffectCueCursor(
 {
 	m_fPreviousEffectCueStageWallSeconds = -1.f;
 	m_fPreviousSoundCueStageWallSeconds = -1.f;
+	m_fPreviousShakeCueStageWallSeconds = -1.f;
 	m_iEffectActionStartTick = iActionStartTick;
 	m_fEffectActionFacingYawDegrees = fActionFacingYawDegrees;
 	m_bHasEffectActionFacingYaw = true;
@@ -597,6 +599,108 @@ void CCharacter::Update_SoundCues()
 		}
 	}
 	m_fPreviousSoundCueStageWallSeconds = fCurrentStageWallSeconds;
+}
+
+void CCharacter::Update_CameraShakeCues()
+{
+	if (!m_isLocallyControlled || m_EffectCueDocument.Shakes.empty())
+		return;
+	if (nullptr == m_pBodyModel || nullptr == m_pChain ||
+		0u == m_iEffectActionStartTick || m_iChainStage < 0 ||
+		m_iChainStage >= static_cast<int32_t>(m_pChain->stages.size()))
+		return;
+	std::vector<ACTION_PRESENTATION_CLIP_TIMING> Timings;
+	if (!Build_ActiveStageTimeline(Timings))
+		return;
+	const std::vector<CLIP_STEP>& Clips =
+		m_pChain->stages[m_iChainStage].clips;
+	const f32_t fCurrentStageWallSeconds = (std::max)(
+		0.f, m_fActionPresentationSeconds);
+	const f32_t fPreviousStageWallSeconds =
+		m_fPreviousShakeCueStageWallSeconds;
+
+	for (std::size_t iCue = 0u;
+		iCue < m_EffectCueDocument.Shakes.size(); ++iCue)
+	{
+		const ANIMATION_CAMERA_SHAKE_CUE& Cue = m_EffectCueDocument.Shakes[iCue];
+		for (std::size_t iClip = 0u; iClip < Clips.size(); ++iClip)
+		{
+			if (Cue.strClipName != Clips[iClip].clip)
+				continue;
+			f32_t fSourceDurationSeconds = 0.f;
+			f32_t fWallDurationSeconds = 0.f;
+			if (!CActionPresentationTimeline::Resolve_ClipDuration(
+				Timings[iClip], fSourceDurationSeconds, fWallDurationSeconds))
+			{
+				continue;
+			}
+			const f32_t fCueSourceSeconds =
+				static_cast<f32_t>(Cue.iStartMs) * 0.001f;
+			f32_t fFirstOccurrenceWallSeconds = 0.f;
+			if (!CActionPresentationTimeline::Resolve_CueWallOffset(
+				Timings, iClip, fCueSourceSeconds, 0u,
+				fFirstOccurrenceWallSeconds))
+			{
+				continue;
+			}
+
+			uint64_t iFirstEpoch = 0u;
+			uint64_t iLastEpoch = 0u;
+			if (Timings[iClip].bLoop)
+			{
+				if (fCurrentStageWallSeconds <
+					fFirstOccurrenceWallSeconds)
+				{
+					continue;
+				}
+				if (fPreviousStageWallSeconds >=
+					fFirstOccurrenceWallSeconds)
+				{
+					iFirstEpoch = static_cast<uint64_t>(std::floor(
+						(fPreviousStageWallSeconds -
+							fFirstOccurrenceWallSeconds) /
+						fWallDurationSeconds)) + 1u;
+				}
+				iLastEpoch = static_cast<uint64_t>(std::floor((std::max)(
+					0.f, fCurrentStageWallSeconds -
+						fFirstOccurrenceWallSeconds) /
+					fWallDurationSeconds));
+				if (iFirstEpoch > iLastEpoch)
+					continue;
+				if (iLastEpoch - iFirstEpoch + 1u >
+					MAX_EFFECT_CUE_OCCURRENCES_PER_UPDATE)
+				{
+					iFirstEpoch = iLastEpoch -
+						MAX_EFFECT_CUE_OCCURRENCES_PER_UPDATE + 1u;
+				}
+			}
+
+			for (uint64_t iEpoch = iFirstEpoch;
+				iEpoch <= iLastEpoch; ++iEpoch)
+			{
+				f32_t fOccurrenceWallSeconds = 0.f;
+				if (!CActionPresentationTimeline::Resolve_CueWallOffset(
+					Timings, iClip, fCueSourceSeconds, iEpoch,
+					fOccurrenceWallSeconds) ||
+					fOccurrenceWallSeconds <=
+						fPreviousStageWallSeconds ||
+					fOccurrenceWallSeconds > fCurrentStageWallSeconds)
+				{
+					continue;
+				}
+				/* The shake runs on the wall clock like the source notify; a
+				late snapshot joins it mid-way instead of restarting it. */
+				CCameraShakeService::Trigger(
+					Cue.Spec,
+					(std::max)(0.f,
+						fCurrentStageWallSeconds - fOccurrenceWallSeconds));
+
+				if (iEpoch == (std::numeric_limits<uint64_t>::max)())
+					break;
+			}
+		}
+	}
+	m_fPreviousShakeCueStageWallSeconds = fCurrentStageWallSeconds;
 }
 
 void CCharacter::Commit_PendingClipChains()
@@ -1606,6 +1710,7 @@ void CCharacter::Update(f32_t fTimeDelta)
 			m_pTransformCom->Get_WorldMatrixPtr()));
 	Update_EffectCues();
 	Update_SoundCues();
+	Update_CameraShakeCues();
 }
 
 void CCharacter::Late_Update(f32_t fTimeDelta)

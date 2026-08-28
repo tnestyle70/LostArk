@@ -12,6 +12,7 @@ BALANCE_CPP = ROOT / "Client/Private/BalanceTool.cpp"
 BALANCE_H = ROOT / "Client/Public/BalanceTool.h"
 AUDITION_CPP = ROOT / "Client/Private/ValtanPatternAuditionService.cpp"
 AUDITION_H = ROOT / "Client/Public/ValtanPatternAuditionService.h"
+TUNING_COMMAND_CPP = ROOT / "Client/Private/ValtanTuningCommandService.cpp"
 EFFECT_CPP = ROOT / "Client/Private/Effect_Tool.cpp"
 BOSS_CPP = ROOT / "Client/Private/BossTool.cpp"
 PROJECT = ROOT / "Client/Default/Client.vcxproj"
@@ -47,6 +48,7 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         cls.balance_h = BALANCE_H.read_text(encoding="utf-8")
         cls.audition_cpp = AUDITION_CPP.read_text(encoding="utf-8")
         cls.audition_h = AUDITION_H.read_text(encoding="utf-8")
+        cls.tuning_command_cpp = TUNING_COMMAND_CPP.read_text(encoding="utf-8")
         cls.effect_cpp = EFFECT_CPP.read_text(encoding="utf-8")
         cls.boss_cpp = BOSS_CPP.read_text(encoding="utf-8")
         cls.project = PROJECT.read_text(encoding="utf-8")
@@ -303,6 +305,39 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         self.assertIn("BuildValtanDraftPatch", self.balance_h)
         self.assertIn("m_valtanSourceRevision", self.balance_h)
 
+    def test_pattern_validation_and_round_trip_do_not_require_a_fixed_inventory_size(self) -> None:
+        validate = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::ValidateDraft(std::string& status) const",
+        )
+        self.assertNotIn("livePatternCount", validate)
+        self.assertNotIn("33u", validate)
+        self.assertIn("m_patterns.empty()", validate)
+        self.assertIn("patternIds.insert(pattern.patternId)", validate)
+        round_trip = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(",
+        )
+        for forbidden in ("26u != safetyTool.m_legacyPatterns.size()", "33u != livePatternCount"):
+            self.assertNotIn(forbidden, round_trip)
+        self.assertIn(
+            "CValtanPatternTree::Build_PlayablePatternInventory(",
+            round_trip,
+        )
+        self.assertIn("playableInventory.Get_PatternCount()", round_trip)
+        self.assertNotIn(
+            "NormalSelection.PatternIds.size() +",
+            round_trip,
+        )
+        self.assertIn(
+            "managedPatternCount + safetyTool.m_legacyPatterns.size()",
+            round_trip,
+        )
+        self.assertIn(
+            "patterns->Get_Array().size() != tool.m_patterns.size()",
+            round_trip,
+        )
+
     def test_authoring_candidate_and_typed_hot_reload_are_distinct(self) -> None:
         for command in ("ValidateDraft", "SaveAuthoring", "PublishCandidate"):
             self.assertIn(command, self.balance_cpp)
@@ -315,9 +350,18 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         self.assertIn(
             'output.command != "PUBLISH_CANDIDATE"', self.balance_cpp
         )
-        self.assertIn(
-            'm_valtanCandidateApplyClass != "HOT_RELOAD"', self.balance_cpp
+        request_body = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::RequestValtanHotReload(",
         )
+        self.assertIn("CValtanTuningCommandService::Get().ApplyCandidate(", request_body)
+        self.assertIn("m_valtanCandidateRevision, m_valtanCandidateApplyClass", request_body)
+        apply_body = function_body(
+            self.tuning_command_cpp,
+            "bool Client::CValtanTuningCommandService::ApplyCandidate(",
+        )
+        self.assertIn('ApplyClass != "HOT_RELOAD"', apply_body)
+        self.assertIn('m_Snapshot.strApplyClass != "HOT_RELOAD"', self.tuning_command_cpp)
         self.assertIn(
             'm_valtanCandidateApplyClass == "HOT_RELOAD"', self.balance_cpp
         )
@@ -325,8 +369,9 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         self.assertIn("Apply class: %s", self.balance_cpp)
         self.assertIn("m_valtanCandidateApplyClass", self.balance_h)
         self.assertIn("RequestValtanHotReload", self.balance_cpp)
-        self.assertIn("Send_DataRevisionPrepareRequest", self.balance_cpp)
-        self.assertIn("GAMEPLAY_PRESENTATION_KNOWN_LANE_MASK", self.balance_cpp)
+        self.assertNotIn("Send_DataRevisionPrepareRequest", request_body)
+        self.assertIn("Send_DataRevisionPrepareRequest", self.tuning_command_cpp)
+        self.assertIn("GAMEPLAY_PRESENTATION_KNOWN_LANE_MASK", self.tuning_command_cpp)
         self.assertIn("const bool canApply", self.balance_cpp)
         self.assertIn("!m_dirty", self.balance_cpp)
         self.assertIn("ServerActiveRevision.Is_Valid()", self.balance_cpp)

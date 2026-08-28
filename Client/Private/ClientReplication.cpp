@@ -63,22 +63,6 @@ namespace
 			left.fYawDegrees == right.fYawDegrees;
 	}
 
-	float4x4_t Make_CombatObjectRoot(
-		const float positionX,
-		const float positionY,
-		const float positionZ,
-		const float yawDegrees)
-	{
-		float4x4_t root{};
-		DirectX::XMStoreFloat4x4(
-			&root,
-			DirectX::XMMatrixRotationY(
-				DirectX::XMConvertToRadians(yawDegrees)) *
-			DirectX::XMMatrixTranslation(
-				positionX, positionY, positionZ));
-		return root;
-	}
-
 	constexpr const char* VALTAN_LEFT_HAND_BONE = "bip001-l-hand";
 
 	bool Is_FiniteMatrix(const float4x4_t& matrix)
@@ -256,6 +240,7 @@ bool Client::CClientReplication::Update()
 		}
 	}
 
+	Update_DeathPresentations();
 	Update_PlayerAttachmentPresentations();
 	return allSucceeded;
 }
@@ -826,6 +811,35 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	const LostArk::Shared::S2C_WORLD_ENTITY_SPAWNED& spawned)
 {
 	using namespace LostArk::Shared;
+	S2C_WORLD_ENTITY_SPAWNED ownerIdentity{};
+	const S2C_WORLD_ENTITY_SPAWNED* owner = nullptr;
+	if (INVALID_NET_ENTITY_ID != spawned.iOwnerBossNetEntityId)
+	{
+		const auto foundOwner = m_WorldEntities.find(spawned.iOwnerBossNetEntityId);
+		if (foundOwner == m_WorldEntities.end())
+		{
+			m_strPendingPresentationFailure = "Dependent boss arrived before its owner.";
+			return false;
+		}
+		const std::shared_ptr<CValtan> owningBoss = foundOwner->second.pValtan.lock();
+		if (nullptr == owningBoss || CValtan::DEAD == owningBoss->Get_State())
+		{
+			m_strPendingPresentationFailure = "Dependent boss has no live owner presentation.";
+			return false;
+		}
+		ownerIdentity.iNetEntityId = foundOwner->first;
+		ownerIdentity.iOwnerBossNetEntityId = foundOwner->second.iOwnerBossNetEntityId;
+		ownerIdentity.eKind = foundOwner->second.eKind;
+		ownerIdentity.strEncounterId = foundOwner->second.strEncounterId;
+		owner = &ownerIdentity;
+	}
+	if (!Is_Valid_WorldEntitySpawnOwner(spawned, owner) ||
+		(("BOSS_VALTAN_GHOST" == spawned.strArchetypeId) !=
+		 (INVALID_NET_ENTITY_ID != spawned.iOwnerBossNetEntityId)))
+	{
+		m_strPendingPresentationFailure = "Invalid dependent boss ownership graph.";
+		return false;
+	}
 	const auto existing = m_WorldEntities.find(spawned.iNetEntityId);
 	if (existing != m_WorldEntities.end())
 	{
@@ -840,6 +854,8 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 			existing->second.eKind == spawned.eKind &&
 			existing->second.strArchetypeId == spawned.strArchetypeId &&
 			existing->second.strEncounterId == spawned.strEncounterId &&
+			existing->second.strPlacementId == spawned.strPlacementId &&
+			existing->second.iOwnerBossNetEntityId == spawned.iOwnerBossNetEntityId &&
 			existing->second.fCollisionRadius == spawned.fCollisionRadius;
 	}
 
@@ -1077,8 +1093,10 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	if (FAILED(CValtanPresentationAssetService::Ensure_Prototypes(
 		m_Desc.pDevice,
 		m_Desc.pContext,
-		m_Desc.iPrototypeLevelIndex)))
+		m_Desc.iPrototypeLevelIndex, spawned.strArchetypeId)))
 	{
+		m_strPendingPresentationFailure =
+			"Boss model admission failed: " + spawned.strArchetypeId;
 		return false;
 	}
 
@@ -1090,6 +1108,8 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		spawned.fPositionZ);
 	desc.fScale = pBoss->presentationScale;
 	desc.isServerAuthoritative = true;
+	desc.strArchetypeId = spawned.strArchetypeId;
+	desc.iOwnerBossNetEntityId = spawned.iOwnerBossNetEntityId;
 	desc.fCollisionRadius = spawned.fCollisionRadius;
 	std::shared_ptr<CGameObject> gameObject;
 	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
@@ -1124,6 +1144,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	presentation.strEncounterId = spawned.strEncounterId;
 	presentation.fCollisionRadius = spawned.fCollisionRadius;
 	presentation.pValtan = valtan;
+	presentation.iOwnerBossNetEntityId = spawned.iOwnerBossNetEntityId;
 #ifdef _DEBUG
 	valtan->Set_CombatColliderDebugVisible(
 		m_isCombatColliderDebugVisible);
@@ -1144,14 +1165,38 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	return inserted;
 }
 
+void Client::CClientReplication::Remove_DependentBossPresentations(
+	const LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId)
+{
+	std::vector<LostArk::Shared::NET_ENTITY_ID> children;
+	for (const auto& [entityId, presentation] : m_WorldEntities)
+	{
+		if (presentation.iOwnerBossNetEntityId == ownerBossNetEntityId)
+			children.push_back(entityId);
+	}
+	// Admission forbids nested ownership. Collect IDs before erasing map entries.
+	for (const LostArk::Shared::NET_ENTITY_ID child : children)
+	{
+		LostArk::Shared::S2C_WORLD_ENTITY_DESPAWNED despawned{};
+		despawned.iNetEntityId = child;
+		Apply_WorldEntityDespawn(despawned);
+	}
+}
+
 bool Client::CClientReplication::Apply_WorldEntityDespawn(
 	const LostArk::Shared::S2C_WORLD_ENTITY_DESPAWNED& despawned)
 {
-	if (LostArk::Shared::INVALID_NET_ENTITY_ID == despawned.iNetEntityId)
+	using LostArk::Shared::WORLD_ENTITY_DESPAWN_REASON;
+	if (LostArk::Shared::INVALID_NET_ENTITY_ID == despawned.iNetEntityId ||
+		(despawned.eReason != WORLD_ENTITY_DESPAWN_REASON::REMOVED &&
+		 despawned.eReason != WORLD_ENTITY_DESPAWN_REASON::DEAD))
+	{
 		return false;
+	}
 	const auto iter = m_WorldEntities.find(despawned.iNetEntityId);
 	if (m_WorldEntities.end() == iter)
 		return true;
+	Remove_DependentBossPresentations(despawned.iNetEntityId);
 	COMBAT_OBJECT_PRESENTATION_SINK combatObjectSink{ *this };
 	const size_t removedCombatObjects =
 		m_CombatObjectProjectionRuntime.Remove_Source(
@@ -1172,22 +1217,29 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 	if (const std::shared_ptr<CValtan> valtan = iter->second.pValtan.lock())
 	{
 		CEffectPresentationService::Stop_BossOwner(valtan);
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			m_Desc.iLayerLevelIndex,
-			m_Desc.strWorldEntityLayerTag,
-			valtan);
+		if (WORLD_ENTITY_DESPAWN_REASON::DEAD == despawned.eReason &&
+			valtan->Begin_NetworkDeathPresentation())
+		{
+			// A reliable death starts even if its last DEAD snapshot never arrived.
+			// Repeated despawns find no registry entry and cannot restart the clip.
+			m_DeathPresentations.emplace_back(valtan);
+		}
+		else
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_Desc.iLayerLevelIndex,
+				m_Desc.strWorldEntityLayerTag,
+				valtan);
+		}
 	}
 	if (m_ValtanPresentationState.isValid &&
 		m_ValtanPresentationState.iNetEntityId == despawned.iNetEntityId)
 	{
 		m_ValtanPresentationState = {};
-	}
-	/* Apply_Boss only fires while the BOSS-kind entity is still present in a snapshot, so once it
-	stops appearing (despawned) nothing ever tells the boss health bar HUD it's gone -- clear it
-	explicitly here instead of leaving stale HP on screen. */
-	if (LostArk::Shared::WORLD_ENTITY_KIND::BOSS == iter->second.eKind)
 		CCombatHUDViewModel::Get().Clear_Boss();
-	if (m_Desc.onWorldEntityDespawned)
+	}
+	if (m_Desc.onWorldEntityDespawned &&
+		LostArk::Shared::INVALID_NET_ENTITY_ID == iter->second.iOwnerBossNetEntityId)
 	{
 		m_Desc.onWorldEntityDespawned(
 			iter->second.strPlacementId,
@@ -1279,10 +1331,8 @@ bool Client::CClientReplication::Spawn_CombatObjectPresentation(
 	EFFECT_WORLD_ROOT_SPAWN_DESC desc;
 	desc.strEffectAssetId = visual->effectAssetId;
 	desc.pBossBudgetAndLifetimeOwner = boss;
-	desc.RootWorld = Make_CombatObjectRoot(
-		spawned.fPositionX,
-		spawned.fPositionY,
-		spawned.fPositionZ,
+	desc.RootWorld = visual->Make_WorldRoot(
+		float3_t(spawned.fPositionX, spawned.fPositionY, spawned.fPositionZ),
 		spawned.fYawDegrees);
 	desc.strOccurrenceId = "combatobject.instance." +
 		std::to_string(spawned.iCombatObjectId);
@@ -1302,14 +1352,25 @@ bool Client::CClientReplication::Update_CombatObjectPresentation(
 	const uint64_t handle,
 	const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot)
 {
+	const COMBAT_OBJECT_PROJECTION_RECORD* record =
+		m_CombatObjectProjectionRuntime.Find(snapshot.iCombatObjectId);
+	const auto source = m_WorldEntities.find(snapshot.iSourceNetEntityId);
+	if (nullptr == record || source == m_WorldEntities.end() ||
+		record->iSourceNetEntityId != snapshot.iSourceNetEntityId ||
+		record->iPresentationHandle != handle)
+	{
+		return false;
+	}
+	const BOSS_COMBAT_OBJECT_VISUAL_ENTRY* visual =
+		CActorCatalog::Find_BossCombatObjectVisual(source->second.strArchetypeId,
+			record->strCombatObjectArchetypeId, record->strClientVisualId);
+	if (nullptr == visual)
+		return false;
 	EFFECT_WORLD_ROOT_HANDLE effectHandle;
 	effectHandle.iValue = handle;
-	return CEffectPresentationService::Update_WorldRoot(
-		effectHandle,
-		Make_CombatObjectRoot(
-			snapshot.fPositionX,
-			snapshot.fPositionY,
-			snapshot.fPositionZ,
+	return CEffectPresentationService::Update_WorldRoot(effectHandle,
+		visual->Make_WorldRoot(
+			float3_t(snapshot.fPositionX, snapshot.fPositionY, snapshot.fPositionZ),
 			snapshot.fYawDegrees));
 }
 
@@ -1401,42 +1462,28 @@ void Client::CClientReplication::Update_PlayerAttachmentPresentations()
 		}
 		if (!attachment->second.bHasLocalOffset)
 		{
-			const float determinant = XMVectorGetX(
-				XMMatrixDeterminant(handWorld));
-			const float4x4_t& playerWorldStored =
-				*character->Get_Transform()->Get_WorldMatrixPtr();
-			if (!std::isfinite(determinant) ||
-				std::abs(determinant) <= 1.e-6f ||
-				!Is_FiniteMatrix(playerWorldStored))
+			float4x4_t localOffset{};
+			if (!CPlayerHandGripTransform::Build_LocalOffset(
+					*character->Get_Transform()->Get_WorldMatrixPtr(),
+					handWorldStored, localOffset))
 			{
 				++attachment;
 				continue;
 			}
-			const matrix_t handLocal =
-				XMLoadFloat4x4(&playerWorldStored) *
-				XMMatrixInverse(nullptr, handWorld);
-			XMStoreFloat4x4(
-				&attachment->second.LocalOffset, handLocal);
-			attachment->second.bHasLocalOffset =
-				Is_FiniteMatrix(attachment->second.LocalOffset);
-			if (!attachment->second.bHasLocalOffset)
-			{
-				++attachment;
-				continue;
-			}
+			attachment->second.LocalOffset = localOffset;
+			attachment->second.bHasLocalOffset = true;
 		}
 
-		/* One captured hand-local offset per player keeps a multi-capture stable
-		while the animation advances the actual left-hand bone. */
-		const matrix_t attachedWorld =
-			XMLoadFloat4x4(&attachment->second.LocalOffset) * handWorld;
+		/* The grip origin is fixed for every captured player. Only the captured
+		   orientation/scale follows the animated hand, never the hit distance. */
 		float4x4_t attachedStored{};
-		XMStoreFloat4x4(&attachedStored, attachedWorld);
-		if (!Is_FiniteMatrix(attachedStored))
+		if (!CPlayerHandGripTransform::Compose_World(
+				attachment->second.LocalOffset, handWorldStored, attachedStored))
 		{
 			++attachment;
 			continue;
 		}
+		const matrix_t attachedWorld = XMLoadFloat4x4(&attachedStored);
 
 		const std::shared_ptr<Engine::CTransform> transform =
 			character->Get_Transform();
@@ -1575,6 +1622,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			}
 		}
 	}
+	std::vector<NET_ENTITY_ID> deadBossOwners;
 	for (const WORLD_ENTITY_SNAPSHOT& entity : snapshot.Entities)
 	{
 		const auto iter = m_WorldEntities.find(entity.iNetEntityId);
@@ -1795,8 +1843,10 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			{
 				allSucceeded = false;
 			}
-			else
+			else if (INVALID_NET_ENTITY_ID == iter->second.iOwnerBossNetEntityId)
 			{
+				if (WORLD_ENTITY_ACTION::DEAD == entity.eAction)
+					deadBossOwners.push_back(entity.iNetEntityId);
 				m_ValtanPresentationState = std::move(latest);
 				CCombatHUDViewModel::Get().Apply_Boss(
 					snapshot.iServerTick,
@@ -1836,6 +1886,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			m_strPendingPresentationFailure = std::move(status);
 		}
 	}
+	for (const NET_ENTITY_ID owner : deadBossOwners)
+		Remove_DependentBossPresentations(owner);
 	for (const DAMAGE_EVENT& damageEvent : snapshot.DamageEvents)
 	{
 		if (!damageEvent.isOutgoing)
@@ -1989,6 +2041,26 @@ void Client::CClientReplication::Clear_DeferredLocalCharacterClassReplacement()
 	m_DeferredLocalCharacterClassReplacement = {};
 }
 
+void Client::CClientReplication::Update_DeathPresentations()
+{
+	for (auto iter = m_DeathPresentations.begin(); iter != m_DeathPresentations.end();)
+	{
+		const std::shared_ptr<CValtan> valtan = iter->lock();
+		if (nullptr != valtan && !valtan->Is_NetworkDeathPresentationComplete())
+		{
+			++iter;
+			continue;
+		}
+		if (nullptr != valtan)
+		{
+			CEffectPresentationService::Stop_BossOwner(valtan);
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_Desc.iLayerLevelIndex, m_Desc.strWorldEntityLayerTag, valtan);
+		}
+		iter = m_DeathPresentations.erase(iter);
+	}
+}
+
 void Client::CClientReplication::Reset_World()
 {
 	//?묒냽???딄꼈?????꾩옱 registry???댁븘?덈뒗 character瑜?紐⑤몢 layer?먯꽌 ?쒓굅?섍퀬,
@@ -2017,6 +2089,7 @@ void Client::CClientReplication::Reset_World()
 		(void)entityId;
 		if (const std::shared_ptr<CValtan> valtan = presentation.pValtan.lock())
 		{
+			CEffectPresentationService::Stop_BossOwner(valtan);
 			CGameInstance::Get().Remove_GameObject_from_Layer(
 				m_Desc.iLayerLevelIndex,
 				m_Desc.strWorldEntityLayerTag,
@@ -2031,6 +2104,16 @@ void Client::CClientReplication::Reset_World()
 		}
 	}
 	m_WorldEntities.clear();
+	for (const std::weak_ptr<CValtan>& deathPresentation : m_DeathPresentations)
+	{
+		if (const std::shared_ptr<CValtan> valtan = deathPresentation.lock())
+		{
+			CEffectPresentationService::Stop_BossOwner(valtan);
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_Desc.iLayerLevelIndex, m_Desc.strWorldEntityLayerTag, valtan);
+		}
+	}
+	m_DeathPresentations.clear();
 	m_Registry.Reset();
 	m_PlayerAttachments.clear();
 	m_LocalCharacterHandle = {};

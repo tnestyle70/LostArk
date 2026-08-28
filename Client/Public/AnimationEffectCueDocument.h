@@ -3,6 +3,7 @@
 #include "AnimationSkillBindingDocument.h"
 #include "Client_Defines.h"
 #include "Effect_AuthoringDocument.h"
+#include "CameraShakeService.h"
 #include "HitAreaWire.h"
 
 #include <cstddef>
@@ -95,6 +96,15 @@ struct ANIMATION_PROJECTILE_CUE final
     std::vector<HIT_AREA_SHAPE> Shapes;
 };
 
+/* A "SHAKE" .animevents row whose payload carries the source view-shake spec.
+   Rows with an empty payload (legacy extraction) are skipped at parse time. */
+struct ANIMATION_CAMERA_SHAKE_CUE final
+{
+    std::string strClipName;
+    uint32_t iStartMs = 0u;
+    CAMERA_SHAKE_SPEC Spec;
+};
+
 struct ANIMATION_EFFECT_CUE_DOCUMENT final
 {
 	uint32_t iFormatVersion = 6u;
@@ -107,6 +117,7 @@ struct ANIMATION_EFFECT_CUE_DOCUMENT final
     std::vector<ANIMATION_HIT_CUE> Hits;
     std::vector<ANIMATION_PROJECTILE_CUE> Projectiles;
     std::vector<ANIMATION_SOUND_CUE> Sounds;
+    std::vector<ANIMATION_CAMERA_SHAKE_CUE> Shakes;
 };
 
 /* A Tool preview candidate is an exact join between one Product animevents

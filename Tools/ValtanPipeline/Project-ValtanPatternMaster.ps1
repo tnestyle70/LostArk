@@ -5,6 +5,7 @@ param(
     [string]$MasterPath = 'Data/Valtan/Valtan.pattern.json',
     [string]$ReceiptPath = '',
     [string]$V2OutputPath = '',
+    [string]$ExpectedFlowRevision = '',
     [switch]$SkipProductDriftCheck,
     [string]$RepositoryRoot = ''
 )
@@ -540,6 +541,18 @@ function Get-Sha256Hex([string]$Path) {
     }
 }
 
+function Assert-ExpectedSavedFlowRevision {
+    if ([string]::IsNullOrWhiteSpace($ExpectedFlowRevision)) { return }
+    if ($ExpectedFlowRevision -cnotmatch '^[0-9a-f]{64}$') {
+        throw 'ExpectedFlowRevision must be a lowercase SHA-256.'
+    }
+    $flowPath = Join-Path $repoRoot 'Data\Encounters\Valtan\ValtanBossAuditionFlows.json'
+    if (-not [IO.File]::Exists($flowPath) -or
+        (Get-Sha256Hex $flowPath).ToLowerInvariant() -cne $ExpectedFlowRevision) {
+        throw 'Saved Flow revision changed before Product publication.'
+    }
+}
+
 if ($Mode -eq 'PublishV2') {
     $pipeline = Join-Path $PSScriptRoot 'valtan_tuning_pipeline.py'
     if (-not [IO.File]::Exists($pipeline)) {
@@ -573,6 +586,7 @@ if ($Mode -eq 'PublishV2') {
         if (-not $mutexHeld) {
             throw 'Timed out waiting for the Valtan split Product publisher.'
         }
+        Assert-ExpectedSavedFlowRevision
 
         $projectCommand = @($pipeline, '--repository-root', $repoRoot,
             'project-products', '--output-root', $projectionRoot)
@@ -605,8 +619,7 @@ if ($Mode -eq 'PublishV2') {
         }
 
         $manifestCommand = @($pipeline, '--repository-root', $repoRoot,
-            'source-manifest', '--authoring-root',
-            (Join-Path $repoRoot 'Intermediate\ValtanTuningAuthoring'))
+            'source-manifest', '--repository-only')
         $manifestText = (& python @manifestCommand | Out-String).Trim()
         if ($global:LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($manifestText)) {
             throw 'Valtan source CAS query failed before Product commit.'
@@ -617,6 +630,7 @@ if ($Mode -eq 'PublishV2') {
                 [string]$projectResult.payload.sourceManifestId) {
             throw 'Valtan sources changed before Product commit.'
         }
+        Assert-ExpectedSavedFlowRevision
 
         $stagedEntries = [Collections.Generic.List[object]]::new()
         foreach ($relativePath in $expectedRelativePaths) {
@@ -635,8 +649,10 @@ if ($Mode -eq 'PublishV2') {
                 "Valtan v2 Product $relativePath"))
         }
         if ($stagedEntries.Count -gt 0) {
+            Assert-ExpectedSavedFlowRevision
             Commit-StagedDocuments @($stagedEntries)
         }
+        Assert-ExpectedSavedFlowRevision
         Write-Host ("Valtan split Products committed: changed={0} artifacts={1}" -f `
             $stagedEntries.Count, $expectedRelativePaths.Count)
     }

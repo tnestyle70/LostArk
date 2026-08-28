@@ -4,6 +4,7 @@
 #include "Network/PacketMessages.h"
 
 #include <memory>
+#include <vector>
 
 namespace LostArk::Server
 {
@@ -31,6 +32,7 @@ namespace LostArk::Server
 		USE_ITEM,
 		DESPAWN_ALL_WORLD_ENTITIES,
 		CONFIRM_NPC_ENTRY,
+		RETURN_TO_BERN,
 		PARTY_INVITE,
 		PARTY_INVITE_RESPOND,
 		CHAT,
@@ -47,6 +49,15 @@ namespace LostArk::Server
 		std::shared_ptr<CClientSession> pSession;
 
 		LostArk::Shared::C2S_ENTER_WORLD EnterWorld;
+		/* Server-internal only, never part of the wire message -- see
+		SERVER_WORLD_TRANSFER_REQUEST::strSpawnPlacementOverrideId. Set only when
+		CServerApp::Transfer_SessionWorld builds this ENTER_WORLD command itself
+		(a real Client-sent C2S_ENTER_WORLD never populates it). */
+		std::string strSpawnPlacementOverrideId;
+		/* Server-internal only, never part of the wire message -- see
+		SERVER_WORLD_TRANSFER_REQUEST::CarriedInventory. Empty means grant the
+		default fresh-entry loadout. */
+		std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT> CarriedInventory;
 
 		LostArk::Shared::C2S_MOVE Move;
 
@@ -71,6 +82,7 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_USE_ITEM UseItem;
 		LostArk::Shared::C2S_DESPAWN_ALL_WORLD_ENTITIES DespawnAllWorldEntities;
 		LostArk::Shared::C2S_CONFIRM_NPC_ENTRY ConfirmNpcEntry;
+		LostArk::Shared::C2S_RETURN_TO_BERN ReturnToBern;
 		LostArk::Shared::C2S_PARTY_INVITE PartyInvite;
 		LostArk::Shared::C2S_PARTY_INVITE_RESPOND PartyInviteRespond;
 		LostArk::Shared::C2S_CHAT Chat;

@@ -1,0 +1,45 @@
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": { "width": 1280, "height": 720 },
+  "classes": ["Default"],
+  "slots": [
+    {
+      "id": "ItemAnnounce_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 290, "y": 511, "width": 700, "height": 108.68 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemAnnounce/ItemAnnounce_Frame.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "ItemAnnounce_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 344.03, "y": 558.28, "width": 40, "height": 40 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemUpgrade/lm_head_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "ItemAnnounce_TextBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 397.46, "y": 558.28, "width": 273.2, "height": 40 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 0 },
+      "layers": [],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    }
+  ]
+}

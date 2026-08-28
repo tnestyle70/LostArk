@@ -74,6 +74,33 @@ namespace
 		return true;
 	}
 
+	bool_t ReadCombatVisualWorldScale(
+		const DATA_JSON_VALUE& object,
+		float3_t& outScale)
+	{
+		const DATA_JSON_VALUE* scale = object.Find("worldScale");
+		if (nullptr == scale)
+			return true;
+		if (!scale->Is_Array() || scale->Get_Array().size() != 3u)
+			return false;
+		f32_t components[3]{};
+		for (size_t index = 0u; index < 3u; ++index)
+		{
+			const DATA_JSON_VALUE& component = scale->Get_Array()[index];
+			if (!component.Is_Number() ||
+				!std::isfinite(component.Get_Number()) ||
+				component.Get_Number() <= 0.0 || component.Get_Number() > 100.0)
+			{
+				return false;
+			}
+			components[index] = static_cast<f32_t>(component.Get_Number());
+			if (components[index] <= 0.f)
+				return false;
+		}
+		outScale = float3_t(components[0], components[1], components[2]);
+		return true;
+	}
+
 	bool_t ReadRequiredU32(
 		const DATA_JSON_VALUE& object,
 		const char_t* pName,
@@ -227,7 +254,7 @@ namespace
 		if (nullptr == pSchema || !pSchema->Is_String() ||
 			pSchema->Get_String() != "lostark.boss-catalog" ||
 			nullptr == pVersion || !pVersion->Is_Number() ||
-			pVersion->Get_Number() != 4.0 ||
+			pVersion->Get_Number() != 5.0 ||
 			nullptr == pEntries || !pEntries->Is_Array() ||
 			3u != root.Get_Object().size())
 		{
@@ -238,7 +265,7 @@ namespace
 		std::vector<BOSS_ACTOR_ENTRY> staged;
 		for (const DATA_JSON_VALUE& value : pEntries->Get_Array())
 		{
-			if (!value.Is_Object() || 13u != value.Get_Object().size())
+			if (!value.Is_Object() || 15u != value.Get_Object().size())
 				return false;
 			BOSS_ACTOR_ENTRY entry;
 			const DATA_JSON_VALUE* pClips = value.Find("presentationClips");
@@ -250,6 +277,8 @@ namespace
 				!ReadRequiredString(value, "visualAssetId", entry.visualAssetId) ||
 				!ReadRequiredNumber(
 					value, "presentationScale", entry.presentationScale) ||
+				!ReadRequiredNumber(value, "bodyModelPreScale", entry.bodyModelPreScale) ||
+				!ReadRequiredNumber(value, "weaponModelPreScale", entry.weaponModelPreScale) ||
 				!ReadRequiredString(value, "bodyModel", entry.bodyModel) ||
 				!ReadRequiredString(value, "weaponModel", entry.weaponModel) ||
 				!ReadRequiredString(value, "animationSetId", entry.animationSetId) ||
@@ -264,11 +293,16 @@ namespace
 				!ReadRequiredString(*pClips, "patternActive", entry.presentationClips.patternActive) ||
 				!ReadRequiredString(*pClips, "patternRecovery", entry.presentationClips.patternRecovery) ||
 				!ReadRequiredString(*pClips, "dead", entry.presentationClips.dead) ||
+				!IsStableId(entry.archetypeId) ||
 				!IsResourceId(entry.bodyModel) ||
 				!IsResourceId(entry.weaponModel) ||
 				!IsResourceId(entry.animationSetId) ||
 				entry.presentationScale <= 0.f ||
 				entry.presentationScale > 100.f ||
+				!std::isfinite(entry.bodyModelPreScale) ||
+				entry.bodyModelPreScale <= 0.f || entry.bodyModelPreScale > 100.f ||
+				!std::isfinite(entry.weaponModelPreScale) ||
+				entry.weaponModelPreScale <= 0.f || entry.weaponModelPreScale > 100.f ||
 				nullptr == pArmor || !pArmor->Is_Array() ||
 				pArmor->Get_Array().size() > 4u ||
 				pArmor->Get_Array().size() > MAX_BOSS_ARMOR_PARTS ||
@@ -276,7 +310,6 @@ namespace
 				pArmorParts->Get_Array().size() != pArmor->Get_Array().size() ||
 				nullptr == pCombatObjectVisuals ||
 				!pCombatObjectVisuals->Is_Array() ||
-				pCombatObjectVisuals->Get_Array().empty() ||
 				pCombatObjectVisuals->Get_Array().size() >
 					MAX_BOSS_COMBAT_OBJECT_VISUALS ||
 				!archetypes.insert(entry.archetypeId).second ||
@@ -320,7 +353,9 @@ namespace
 				pCombatObjectVisuals->Get_Array())
 			{
 				BOSS_COMBAT_OBJECT_VISUAL_ENTRY entryVisual;
-				if (!visual.Is_Object() || 3u != visual.Get_Object().size() ||
+				const size_t expectedVisualFields =
+					visual.Is_Object() && nullptr != visual.Find("worldScale") ? 4u : 3u;
+				if (!visual.Is_Object() || expectedVisualFields != visual.Get_Object().size() ||
 					!ReadRequiredString(
 						visual, "combatObjectArchetypeId",
 						entryVisual.combatObjectArchetypeId) ||
@@ -331,6 +366,7 @@ namespace
 					!IsStableId(entryVisual.combatObjectArchetypeId) ||
 					!IsStableId(entryVisual.clientVisualId) ||
 					!IsStableId(entryVisual.effectAssetId) ||
+					!ReadCombatVisualWorldScale(visual, entryVisual.worldScale) ||
 					!combatObjectArchetypeIds.insert(
 						entryVisual.combatObjectArchetypeId).second ||
 					!clientVisualIds.insert(entryVisual.clientVisualId).second)

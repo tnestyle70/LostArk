@@ -291,6 +291,47 @@ bool_t Client::CAnimationTargetService::Prepare_HistoricalPoseBinding(
 	const std::span<const std::string> BoneNames,
 	CAnimationHistoricalPoseBinding& OutBinding)
 {
+	return Prepare_HistoricalPoseBindingForAnimation(
+		iExpectedTargetGeneration, iExpectedAnimationIndex, {}, BoneNames, OutBinding);
+}
+
+bool_t Client::CAnimationTargetService::Prepare_HistoricalClipPoseBinding(
+	const uint64_t iExpectedTargetGeneration,
+	const std::string& strClipName,
+	const std::span<const std::string> BoneNames,
+	CAnimationHistoricalPoseBinding& OutBinding)
+{
+	if (strClipName.empty() ||
+		strClipName.find('\0') != std::string::npos ||
+		iExpectedTargetGeneration != Resolve_TargetGeneration())
+	{
+		return false;
+	}
+	const shared_ptr<Engine::CModel> Model = Resolve_Model();
+	if (nullptr == Model)
+		return false;
+	uint32_t iAnimationIndex = UINT32_MAX;
+	for (uint32_t i = 0u; i < Model->Get_NumAnimations(); ++i)
+	{
+		const char_t* pName = Model->Get_AnimationName(i);
+		if (nullptr == pName || strClipName != pName)
+			continue;
+		if (iAnimationIndex != UINT32_MAX)
+			return false;
+		iAnimationIndex = i;
+	}
+	return iAnimationIndex != UINT32_MAX &&
+		Prepare_HistoricalPoseBindingForAnimation(
+			iExpectedTargetGeneration, iAnimationIndex, strClipName, BoneNames, OutBinding);
+}
+
+bool_t Client::CAnimationTargetService::Prepare_HistoricalPoseBindingForAnimation(
+	const uint64_t iExpectedTargetGeneration,
+	const uint32_t iExpectedAnimationIndex,
+	const std::string& strExplicitClipName,
+	const std::span<const std::string> BoneNames,
+	CAnimationHistoricalPoseBinding& OutBinding)
+{
 	if (0u == iExpectedTargetGeneration ||
 		iExpectedTargetGeneration != Resolve_TargetGeneration() ||
 		BoneNames.empty())
@@ -300,16 +341,24 @@ bool_t Client::CAnimationTargetService::Prepare_HistoricalPoseBinding(
 
 	const shared_ptr<Engine::CModel> Model = Resolve_Model();
 	if (nullptr == Model ||
-		iExpectedAnimationIndex != Model->Get_CurrentAnimIndex() ||
+		(strExplicitClipName.empty() &&
+		 iExpectedAnimationIndex != Model->Get_CurrentAnimIndex()) ||
 		iExpectedAnimationIndex >= Model->Get_NumAnimations())
 	{
 		return false;
 	}
 
+	if (!strExplicitClipName.empty())
+	{
+		const char_t* pName = Model->Get_AnimationName(iExpectedAnimationIndex);
+		if (nullptr == pName || strExplicitClipName != pName)
+			return false;
+	}
 	CAnimationHistoricalPoseBinding Staged;
 	Staged.m_Model = Model;
 	Staged.m_iTargetGeneration = iExpectedTargetGeneration;
 	Staged.m_iAnimationIndex = iExpectedAnimationIndex;
+	Staged.m_strExplicitClipName = strExplicitClipName;
 	Staged.m_BoneIndices.reserve(BoneNames.size());
 	for (const std::string& BoneName : BoneNames)
 	{
@@ -366,7 +415,9 @@ bool_t Client::CAnimationTargetService::Sample_HistoricalPose(
 
 	const shared_ptr<Engine::CModel> Model = Binding.m_Model.lock();
 	if (nullptr == Model || Resolve_Model() != Model ||
-		Binding.m_iAnimationIndex != Model->Get_CurrentAnimIndex())
+		Binding.m_iAnimationIndex >= Model->Get_NumAnimations() ||
+		(Binding.m_strExplicitClipName.empty() &&
+		 Binding.m_iAnimationIndex != Model->Get_CurrentAnimIndex()))
 	{
 		return false;
 	}
@@ -378,12 +429,20 @@ bool_t Client::CAnimationTargetService::Sample_HistoricalPose(
 	const f32_t fTrackPositionTicks = (std::min)(
 		Binding.m_fDurationTicks,
 		fAnimationLocalTimeSeconds * Binding.m_fTickRate);
-	if (!std::isfinite(fTrackPositionTicks) ||
-		!Model->Sample_CurrentAnimationBoneCombinedMatrices(
+	if (!std::isfinite(fTrackPositionTicks))
+		return false;
+	const bool_t bSampled = Binding.m_strExplicitClipName.empty() ?
+		Model->Sample_CurrentAnimationBoneCombinedMatrices(
 			Binding.m_iAnimationIndex,
 			fTrackPositionTicks,
 			Binding.m_BoneIndices,
-			Staged.BoneCombinedMatrices) ||
+			Staged.BoneCombinedMatrices) :
+		Model->Sample_AnimationBoneCombinedMatrices(
+			Binding.m_strExplicitClipName.c_str(),
+			fTrackPositionTicks,
+			Binding.m_BoneIndices,
+			Staged.BoneCombinedMatrices);
+	if (!bSampled ||
 		Binding.m_iTargetGeneration != Resolve_TargetGeneration() ||
 		Resolve_Model() != Model)
 	{

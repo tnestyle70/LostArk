@@ -3093,6 +3093,17 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::CONFIRM_NPC_ENTRY;
 		command.ConfirmNpcEntry = request;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_RETURN_TO_BERN)
+	{
+		C2S_RETURN_TO_BERN request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_RETURN_TO_BERN");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::RETURN_TO_BERN;
+		command.ReturnToBern = request;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_PARTY_INVITE)
 	{
 		C2S_PARTY_INVITE request{};
@@ -4584,6 +4595,8 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	enterCommand.eType = ROOM_COMMAND_TYPE::ENTER_WORLD;
 	enterCommand.iSessionId = transfer.iSessionId;
 	enterCommand.EnterWorld = std::move(enterWorld);
+	enterCommand.strSpawnPlacementOverrideId = transfer.strSpawnPlacementOverrideId;
+	enterCommand.CarriedInventory = transfer.CarriedInventory;
 	if (!targetSimulation->Enqueue(std::move(enterCommand)))
 	{
 		ROOM_COMMAND targetRollback{};

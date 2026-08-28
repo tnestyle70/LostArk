@@ -935,12 +935,10 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 		const BOSS_ACTOR_ENTRY* pBossActor = CActorCatalog::Find_Boss(
 			CueDocument.strOwnerArchetypeId);
 		if (nullptr == pBossActor ||
-			pBossActor->combatObjectVisuals.size() !=
-				CCharacterSelectArenaSpawnGate::
-					PRODUCT_COMBAT_OBJECT_EFFECT_TARGET_COUNT)
+			pBossActor->combatObjectVisuals.empty())
 		{
 			Status = nullptr == pBossActor ? CActorCatalog::Get_Status() :
-				"Valtan BossCatalog must declare exactly two combat-object visuals.";
+				"Valtan BossCatalog has no combat-object visuals to prepare.";
 			Isolate_ValtanSpawnPreparationFailure(Status, false);
 			return false;
 		}

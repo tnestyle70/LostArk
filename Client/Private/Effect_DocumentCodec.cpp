@@ -103,6 +103,10 @@ namespace
 	{
 		"normal", "worldMark"
 	};
+	constexpr const char_t* ATTACHMENT_ORIENTATION_TOKENS[] =
+	{
+		"bone", "owner_yaw"
+	};
 	constexpr const char_t* AUTHORED_RUNTIME_CARRIER_KIND_TOKENS[] =
 	{
 		"cascadeRibbonV1", "animationTrailBakedEdgeV1",
@@ -4733,6 +4737,16 @@ namespace
 		Client::EFFECT_ACTION_CUE_ATTACHMENT_DESC& Out,
 		std::string& strOutError)
 	{
+		if (const Client::DATA_JSON_VALUE* pOrientation = Value.Find("orientation"))
+		{
+			if (!pOrientation->Is_String() ||
+				!Parse_Token(pOrientation->Get_String(), ATTACHMENT_ORIENTATION_TOKENS,
+					std::size(ATTACHMENT_ORIENTATION_TOKENS), Out.eOrientation))
+			{
+				strOutError = "Effect Action cue attachment orientation must be bone or owner_yaw.";
+				return false;
+			}
+		}
 		const Client::DATA_JSON_VALUE* pSocketLocal = Find_Field(
 			Value, "socketLocalTransform", Client::DATA_JSON_TYPE::OBJECT,
 			strOutError);
@@ -5037,7 +5051,9 @@ namespace
 		return Read_OptionalArray(*pVelocity, "speed", &Out.vSpeedRange.x, 2u,
 				strOutError) &&
 			Read_OptionalFloat(*pVelocity, "coneAngleDegrees",
-				Out.fConeAngleDegrees, strOutError);
+				Out.fConeAngleDegrees, strOutError) &&
+			Read_OptionalBool(*pVelocity, "uniformSolidAngle",
+				Out.bUniformSolidAngle, strOutError);
 	}
 
 	bool_t Read_ParticleTargetAttractor(
@@ -5159,6 +5175,14 @@ namespace
 			Read_Array(*pParticle, "endSize", &Out.Particle.vEndSize.x, 2u, strOutError) &&
 			Read_Bool(*pParticle, "localSpace", Out.Particle.bLocalSpace, strOutError) &&
 			Read_Bool(*pParticle, "billboard", Out.Particle.bBillboard, strOutError) &&
+			Read_OptionalFloat(*pParticle, "drag", Out.Particle.fDrag,
+				strOutError) &&
+			Read_OptionalArray(*pParticle, "rotationRangeDegrees",
+				&Out.Particle.vRotationRangeDegrees.x, 2u, strOutError) &&
+			Read_OptionalArray(*pParticle, "spinRangeDegreesPerSecond",
+				&Out.Particle.vSpinRangeDegreesPerSecond.x, 2u, strOutError) &&
+			Read_OptionalBool(*pParticle, "subUVOverLife",
+				Out.Particle.bSubUVOverLife, strOutError) &&
 			Read_OptionalUInt(*pParticle, "dynamicParameterComponentMask",
 				Out.Particle.iDynamicParameterComponentMask, strOutError) &&
 			Read_OptionalArray(*pParticle, "dynamicParameterStart",
@@ -5343,6 +5367,22 @@ namespace
 		Write_Float2(Output, Detail.Particle.vEndSize);
 		Output << ", \"localSpace\": " << (Detail.Particle.bLocalSpace ? "true" : "false")
 			<< ", \"billboard\": " << (Detail.Particle.bBillboard ? "true" : "false");
+		if (Detail.Particle.fDrag != 0.f)
+			Output << ", \"drag\": " << Detail.Particle.fDrag;
+		if (Detail.Particle.vRotationRangeDegrees.x != 0.f ||
+			Detail.Particle.vRotationRangeDegrees.y != 0.f)
+		{
+			Output << ", \"rotationRangeDegrees\": ";
+			Write_Float2(Output, Detail.Particle.vRotationRangeDegrees);
+		}
+		if (Detail.Particle.vSpinRangeDegreesPerSecond.x != 0.f ||
+			Detail.Particle.vSpinRangeDegreesPerSecond.y != 0.f)
+		{
+			Output << ", \"spinRangeDegreesPerSecond\": ";
+			Write_Float2(Output, Detail.Particle.vSpinRangeDegreesPerSecond);
+		}
+		if (Detail.Particle.bSubUVOverLife)
+			Output << ", \"subUVOverLife\": true";
 		/* Preserve the canonical typed-codec identity of existing v12/v13
 		   documents. Dynamic Parameter authoring is optional and is emitted only
 		   when at least one component is intentionally owned by the authored
@@ -5397,7 +5437,10 @@ namespace
 				<< "\", \"speed\": ";
 			Write_Float2(Output, Detail.Particle.InitialVelocity.vSpeedRange);
 			Output << ", \"coneAngleDegrees\": "
-				<< Detail.Particle.InitialVelocity.fConeAngleDegrees << " }";
+				<< Detail.Particle.InitialVelocity.fConeAngleDegrees;
+			if (Detail.Particle.InitialVelocity.bUniformSolidAngle)
+				Output << ", \"uniformSolidAngle\": true";
+			Output << " }";
 		}
 		if (!Detail.Particle.TargetAttractor.Is_Default())
 		{
@@ -6465,7 +6508,14 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			Attachment.SocketLocalTransform.vScale.x > 0.f &&
 			Attachment.SocketLocalTransform.vScale.y > 0.f &&
 			Attachment.SocketLocalTransform.vScale.z > 0.f;
+		const bool_t bOwnerYawAttachment = Attachment.eOrientation ==
+			EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW;
 		if (!bAttachmentTransformValid ||
+			Attachment.eOrientation >= EFFECT_ATTACHMENT_ORIENTATION::END ||
+			(bOwnerYawAttachment &&
+				(!Attachment.bEnabled || !Attachment.bFollow ||
+				 Document.bSourceContract || Element.SourceRecipe.bEnabled ||
+				 !Element.RuntimeCarrier.Is_Empty())) ||
 			((!Attachment.bEnabled || Attachment.bFollow) &&
 				0.f != Attachment.fSnapshotRootSourceBasisYawDegrees) ||
 			(Attachment.bEnabled &&
@@ -6492,6 +6542,17 @@ bool_t Client::CEffectDocumentCodec::Validate(
 		{
 			strOutError = "Effect Material Template is not registered: " +
 				Element.Material.strTemplateId;
+			return false;
+		}
+		if (Element.Material.bColorTexturesSRGB &&
+			(Element.Material.strTemplateId != EFFECT_STANDARD_MATERIAL_TEMPLATE_ID ||
+			 Element.Material.SourceMaterial.bEnabled ||
+			 Element.Material.Execution.bEnabled ||
+			 Element.Material.Execution.bFailClosed || Element.SourceRecipe.bEnabled))
+		{
+			strOutError =
+				"colorTexturesSRGB requires an ordinary authored standard material: " +
+				Element.strElementId;
 			return false;
 		}
 		if (Element.Material.strSourceMaterialPath.size() > 512u ||
@@ -7073,7 +7134,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			(EFFECT_PARTICLE_ORIENTATION_MODE::FIXED == Orientation.eMode ||
 			 (bManualParticle && !bMeshParticle &&
 			  EFFECT_PARTICLE_SPAWN_SHAPE::RING == Shape.eKind &&
-			  D.Particle.bLocalSpace && !D.Particle.bBillboard));
+			  !D.Particle.bBillboard));
 		const bool_t bInitialVelocityValid =
 			Emission.eMode < EFFECT_PARTICLE_VELOCITY_MODE::END &&
 			Is_Finite(Emission.vSpeedRange) &&
@@ -7083,6 +7144,46 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			Emission.fConeAngleDegrees <= 180.f &&
 			(EFFECT_PARTICLE_VELOCITY_MODE::FIXED == Emission.eMode ||
 				EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind);
+		const bool_t bHasNativeSpriteDynamics = D.Particle.fDrag != 0.f ||
+			D.Particle.vRotationRangeDegrees.x != 0.f ||
+			D.Particle.vRotationRangeDegrees.y != 0.f ||
+			D.Particle.vSpinRangeDegreesPerSecond.x != 0.f ||
+			D.Particle.vSpinRangeDegreesPerSecond.y != 0.f ||
+			D.Particle.bSubUVOverLife || Emission.bUniformSolidAngle;
+		const bool_t bNativeSpriteDynamicsValid =
+			std::isfinite(D.Particle.fDrag) &&
+			D.Particle.fDrag >= 0.f && D.Particle.fDrag <= 1000.f &&
+			Is_Finite(D.Particle.vRotationRangeDegrees) &&
+			Is_Finite(D.Particle.vSpinRangeDegreesPerSecond) &&
+			D.Particle.vRotationRangeDegrees.x >= -3600.f &&
+			D.Particle.vRotationRangeDegrees.y <= 3600.f &&
+			D.Particle.vRotationRangeDegrees.x <=
+				D.Particle.vRotationRangeDegrees.y &&
+			D.Particle.vSpinRangeDegreesPerSecond.x >= -3600.f &&
+			D.Particle.vSpinRangeDegreesPerSecond.y <= 3600.f &&
+			D.Particle.vSpinRangeDegreesPerSecond.x <=
+				D.Particle.vSpinRangeDegreesPerSecond.y &&
+			(!bHasNativeSpriteDynamics ||
+			 (bManualParticle && !bMeshParticle && D.Particle.bBillboard &&
+			  Element.Material.strTemplateId == EFFECT_STANDARD_MATERIAL_TEMPLATE_ID &&
+			  Element.Material.strSourceMaterialPath.empty() &&
+			  !Element.Material.SourceMaterial.bEnabled &&
+			  !Element.Material.Execution.bEnabled &&
+			  !Element.Material.Execution.bFailClosed &&
+			  !Element.Material.Execution.bAuthoringApproximate)) &&
+			(!Emission.bUniformSolidAngle ||
+			 (Emission.eMode == EFFECT_PARTICLE_VELOCITY_MODE::CONE &&
+			  Emission.vSpeedRange.x >= 0.f)) &&
+			(!D.Particle.bSubUVOverLife ||
+			 (!D.UV.bSequence && !D.UV.bLoop && D.UV.iTileIndex == 0 &&
+			  iTileCount > 1 && iTileCount <= UINT32_MAX));
+		if (!bNativeSpriteDynamicsValid)
+		{
+			strOutError =
+				"Effect native sprite particle dynamics or life SubUV contract is invalid: " +
+				Element.strElementId;
+			return false;
+		}
 		const EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC& Attractor =
 			D.Particle.TargetAttractor;
 		const bool_t bTargetAttractorValid =
@@ -7309,6 +7410,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 	{
 		return Left.bEnabled == Right.bEnabled &&
 			Left.bFollow == Right.bFollow &&
+			Left.eOrientation == Right.eOrientation &&
 			Left.strSourceAnchorSlotId == Right.strSourceAnchorSlotId &&
 			Left.strRuntimeAnchorSlotId == Right.strRuntimeAnchorSlotId &&
 			Left.strRuntimeBoneName == Right.strRuntimeBoneName &&
@@ -7317,6 +7419,27 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			SameTransform(Left.SocketLocalTransform,
 				Right.SocketLocalTransform);
 	};
+	std::unordered_map<std::string, const EFFECT_ACTION_CUE_ATTACHMENT_DESC*>
+		FollowAnchorsById;
+	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+	{
+		const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Attachment =
+			Element.ActionCueAttachment;
+		if (!Attachment.bEnabled || !Attachment.bFollow)
+			continue;
+		const auto [Iterator, bInserted] = FollowAnchorsById.emplace(
+			Attachment.strRuntimeAnchorSlotId, &Attachment);
+		if (!bInserted &&
+			(Iterator->second->strRuntimeBoneName != Attachment.strRuntimeBoneName ||
+			 Iterator->second->eOrientation != Attachment.eOrientation ||
+			 !SameTransform(Iterator->second->SocketLocalTransform,
+				Attachment.SocketLocalTransform)))
+		{
+			strOutError = "Effect follow anchor ID has conflicting bone, socket, or orientation: " +
+				Attachment.strRuntimeAnchorSlotId + ".";
+			return false;
+		}
+	}
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
 		const EFFECT_TRANSFORM_INHERITANCE_DESC& Inheritance =
@@ -8232,6 +8355,102 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 	return true;
 }
 
+bool_t Client::CEffectDocumentCodec::Build_DuplicatedAuthoredElements(
+	const EFFECT_DOCUMENT_DESC& SourceDocument,
+	const std::vector<std::string>& SourceElementIds,
+	EFFECT_DOCUMENT_DESC& InOutDocument,
+	std::unordered_map<std::string, std::string>& OutDuplicatedElementIds,
+	std::string& strOutError)
+{
+	if (SourceDocument.bSourceContract || SourceElementIds.empty())
+	{
+		strOutError = "Duplicate requires an authored Effect and selected Element IDs.";
+		return false;
+	}
+	if (!Validate(SourceDocument, strOutError))
+		return false;
+
+	std::unordered_set<std::string> Targets;
+	for (const std::string& ElementId : SourceElementIds)
+	{
+		if (!Is_StableId(ElementId) || !Targets.insert(ElementId).second)
+		{
+			strOutError = "Duplicate rejected an invalid or repeated selected Element ID.";
+			return false;
+		}
+	}
+
+	std::unordered_set<std::string> UsedIds;
+	for (const EFFECT_ELEMENT_DESC& Element : SourceDocument.Elements)
+		UsedIds.insert(Element.strElementId);
+	std::unordered_map<std::string, std::string> DuplicateIds;
+	const std::string Prefix = "authored.copy.";
+	for (const EFFECT_ELEMENT_DESC& Element : SourceDocument.Elements)
+	{
+		if (!Targets.contains(Element.strElementId))
+			continue;
+		if (Element.eKind == EFFECT_ELEMENT_KIND::LIGHT ||
+			Element.eKind == EFFECT_ELEMENT_KIND::SCREEN_POST)
+		{
+			strOutError = "Presentation Light and Screen Post duplication is not admitted.";
+			return false;
+		}
+		std::string DuplicateId;
+		for (size_t iCopy = 1u; iCopy <= UsedIds.size() + 1u; ++iCopy)
+		{
+			const std::string Suffix = "." + std::to_string(iCopy);
+			const size_t iMaximumSourceLength = 128u - Prefix.size() - Suffix.size();
+			DuplicateId = Prefix +
+				Element.strElementId.substr(0u, iMaximumSourceLength) + Suffix;
+			if (!UsedIds.contains(DuplicateId))
+				break;
+			DuplicateId.clear();
+		}
+		if (DuplicateId.empty())
+		{
+			strOutError = "Duplicate could not allocate a unique authored Element ID.";
+			return false;
+		}
+		UsedIds.insert(DuplicateId);
+		DuplicateIds.emplace(Element.strElementId, std::move(DuplicateId));
+	}
+	if (DuplicateIds.size() != Targets.size())
+	{
+		strOutError = "A selected Element no longer exists; nothing was duplicated.";
+		return false;
+	}
+
+	EFFECT_DOCUMENT_DESC Staged = SourceDocument;
+	Staged.Elements.clear();
+	Staged.Elements.reserve(SourceDocument.Elements.size() + DuplicateIds.size());
+	for (const EFFECT_ELEMENT_DESC& Element : SourceDocument.Elements)
+	{
+		Staged.Elements.push_back(Element);
+		const auto CopyId = DuplicateIds.find(Element.strElementId);
+		if (CopyId == DuplicateIds.end())
+			continue;
+		EFFECT_ELEMENT_DESC Duplicate = Element;
+		Duplicate.strElementId = CopyId->second;
+		Duplicate.strSourceNode = std::string(EFFECT_PORTABLE_AUTHORED_COPY_PREFIX) +
+			std::string(Resolve_EffectPortableOriginElementId(Element));
+		Duplicate.SourcePresentation = {};
+		if (Duplicate.TransformInheritance.bEnabled)
+		{
+			const auto MasterCopy = DuplicateIds.find(
+				Duplicate.TransformInheritance.strMasterElementId);
+			if (MasterCopy != DuplicateIds.end())
+				Duplicate.TransformInheritance.strMasterElementId = MasterCopy->second;
+		}
+		Staged.Elements.push_back(std::move(Duplicate));
+	}
+	if (!Validate(Staged, strOutError))
+		return false;
+	InOutDocument = std::move(Staged);
+	OutDuplicatedElementIds = std::move(DuplicateIds);
+	strOutError.clear();
+	return true;
+}
+
 bool_t Client::CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
 	const EFFECT_DOCUMENT_DESC& SourceDocument,
 	const std::string_view strElementId,
@@ -8544,11 +8763,34 @@ bool_t Client::CEffectDocumentCodec::Build_PortableAuthoredElementStartingCopy(
 			"Portable authored Saved Element copy cannot detach a native Renderer carrier; load the complete source-program Effect instead.";
 		return false;
 	}
-	if (Source->ActionCueAttachment.bFollow)
+	const bool_t bDetachNativeOwnerYawSprite =
+		Source->ActionCueAttachment.bEnabled &&
+		Source->ActionCueAttachment.bFollow &&
+		Source->ActionCueAttachment.eOrientation ==
+			EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW &&
+		Source->eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+		Source->Detail.Particle.bBillboard &&
+		(Source->strSourceNode.empty() ||
+		 Source->strSourceNode.starts_with("authored-copy:")) &&
+		!Source->SourceRecipe.bEnabled && Source->RuntimeCarrier.Is_Empty() &&
+		Source->Material.strTemplateId == EFFECT_STANDARD_MATERIAL_TEMPLATE_ID &&
+		Source->Material.strSourceMaterialPath.empty() &&
+		!Source->Material.SourceMaterial.bEnabled &&
+		!Source->Material.Execution.bEnabled &&
+		!Source->Material.Execution.bFailClosed &&
+		!Source->Material.Execution.bAuthoringApproximate &&
+		std::none_of(Source->ResourceBindings.begin(), Source->ResourceBindings.end(),
+			[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+			{ return Binding.strSlotId == EFFECT_MESH_SHAPE_SLOT_ID; });
+	if (bDetachNativeOwnerYawSprite && !Validate(SourceDocument, strOutError))
+		return false;
+	if (Source->ActionCueAttachment.bFollow && !bDetachNativeOwnerYawSprite)
 	{
 		/* A matching textual owner prefix does not prove that the target preview
 		   owns the source bone, clip, or fixed-step anchor history.  Snapshot/root
-		   attachments remain portable; FOLLOW rows require the complete Effect. */
+		   attachments remain portable; source-owned FOLLOW rows require the
+		   complete Effect. Native owner-yaw sprite emitters copy only their
+		   authored settings and must be attached again in the target Effect. */
 		strOutError =
 			"Portable authored Saved Element copy cannot detach a FOLLOW attachment from its owner animation history; load the complete Effect instead.";
 		return false;
@@ -8574,6 +8816,8 @@ bool_t Client::CEffectDocumentCodec::Build_PortableAuthoredElementStartingCopy(
 	   Effect Detail field cannot drift when this boundary evolves. */
 	Portable.Detail = Source->Detail;
 	Portable.ActionCueAttachment = Source->ActionCueAttachment;
+	if (bDetachNativeOwnerYawSprite)
+		Portable.ActionCueAttachment = {};
 	constexpr std::string_view AuthoredCopyPrefix = "authored-copy:";
 	Portable.strSourceNode =
 		Source->strSourceNode.starts_with(AuthoredCopyPrefix) &&
@@ -9601,6 +9845,7 @@ bool_t Client::CEffectDocumentCodec::Build_GenericAuthoredElementReimportStage(
 	{
 		return Left.bEnabled == Right.bEnabled &&
 			Left.bFollow == Right.bFollow &&
+			Left.eOrientation == Right.eOrientation &&
 			Left.strSourceAnchorSlotId == Right.strSourceAnchorSlotId &&
 			Left.strRuntimeAnchorSlotId == Right.strRuntimeAnchorSlotId &&
 			Left.strRuntimeBoneName == Right.strRuntimeBoneName &&
@@ -13169,6 +13414,16 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			}
 		}
 		const DATA_JSON_VALUE* pTemplateId = pMaterial->Find("templateId");
+		if (const DATA_JSON_VALUE* pColorTexturesSRGB =
+			pMaterial->Find("colorTexturesSRGB"))
+		{
+			if (!pColorTexturesSRGB->Is_Boolean())
+			{
+				strOutError = "Effect Material colorTexturesSRGB must be a boolean.";
+				return false;
+			}
+			Element.Material.bColorTexturesSRGB = pColorTexturesSRGB->Get_Boolean();
+		}
 		if (iSourceVersion >= 6u)
 		{
 			if (nullptr == pTemplateId || !pTemplateId->Is_String())
@@ -13517,6 +13772,8 @@ std::string Client::CEffectDocumentCodec::Serialize(
 			<< To_Token(Element.Material.eRenderProfile)
 			<< "\", \"sourceProfile\": ";
 		Write_SourceMaterialProfile(Output, Element.Material.SourceMaterial);
+		if (Element.Material.bColorTexturesSRGB)
+			Output << ", \"colorTexturesSRGB\": true";
 		if (Element.Material.Execution.bEnabled ||
 			Element.Material.Execution.bFailClosed)
 		{
@@ -13527,8 +13784,13 @@ std::string Client::CEffectDocumentCodec::Serialize(
 			<< "      \"actionCueAttachment\": { \"enabled\": "
 			<< (Element.ActionCueAttachment.bEnabled ? "true" : "false")
 			<< ", \"follow\": "
-			<< (Element.ActionCueAttachment.bFollow ? "true" : "false")
-			<< ", \"sourceAnchorSlotId\": \""
+			<< (Element.ActionCueAttachment.bFollow ? "true" : "false");
+		if (Element.ActionCueAttachment.eOrientation ==
+			EFFECT_ATTACHMENT_ORIENTATION::OWNER_YAW)
+		{
+			Output << ", \"orientation\": \"owner_yaw\"";
+		}
+		Output << ", \"sourceAnchorSlotId\": \""
 			<< CDataJson::Escape(
 				Element.ActionCueAttachment.strSourceAnchorSlotId)
 			<< "\", \"runtimeAnchorSlotId\": \""

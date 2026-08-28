@@ -14,6 +14,7 @@ below is a real Release-build feature, so the include is no longer guarded. */
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #include "HUDRuntimeView.h"
+#include "ItemCatalog.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MainApp.h"
@@ -372,6 +373,11 @@ HRESULT CLevel_ValtanArena::Initialize()
 		m_pRaidClearView->Set_SlotVisible(szSlotId, false);
 	m_pRaidClearView->Set_SlotVisible("RaidClear_TitleTextBox", false);
 
+	m_pItemAnnounceView = std::make_unique<CHUDRuntimeView>(
+		m_pDevice, m_pContext, L"UI/ItemAnnounce/ItemAnnounce_Layout.json");
+	m_pItemAnnounceView->Set_SlotVisible("ItemAnnounce_Frame", false);
+	m_pItemAnnounceView->Set_SlotVisible("ItemAnnounce_Icon", false);
+
 	Transition_RaidPreludeBgm(RAID_PRELUDE_BGM_STATE::M01_PROGRESS);
 	return S_OK;
 }
@@ -581,6 +587,7 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	m_PlayerController.Update(cameraAcceptsGameplay);
 	Update_DeadScene();
 	Update_RaidClear(fTimeDelta);
+	Update_ItemAnnounce(fTimeDelta);
 #ifdef _DEBUG
 	Update_DebugRaidClearKey();
 #endif
@@ -2712,6 +2719,7 @@ HRESULT CLevel_ValtanArena::Render()
 	m_PartyInteraction.Render(m_pPlayerCommandSink);
 	Render_DeadScene();
 	Render_RaidClear();
+	Render_ItemAnnounce();
 
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(TEXT("Valtan Arena Map"));
@@ -2904,6 +2912,12 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 
 	const bool_t isShowing = m_fRaidClearElapsedSeconds >= 0.f &&
 		m_fRaidClearElapsedSeconds < RAIDCLEAR_TOTAL_SECONDS;
+	/* The celebration overlay auto-hides at RAIDCLEAR_TOTAL_SECONDS and never
+	resets itself back to -1 afterward (only a fresh Trigger_RaidClear does),
+	so this stays true for the rest of this Level's session once reached --
+	exactly the "그 자리" moment the button replaces the finished overlay with. */
+	const bool_t isAfterRaidClear =
+		m_fRaidClearElapsedSeconds >= RAIDCLEAR_TOTAL_SECONDS;
 
 	/* Every real layer traced out of result_101's own 309-frame timeline (see the RESULT doc) --
 	the flat background flash, the five className-referenced EFUI_Effect glow/particle flipbooks
@@ -2924,11 +2938,52 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 			m_pRaidClearView->Set_SlotAlpha(szSlotId, fRevealAlpha);
 	}
 
+	/* "돌아가기" button -- appears once the celebration overlay's own reveal/hold
+	timeline finishes and every fading slot has hidden itself, taking that same
+	screen position rather than sitting on top of the still-playing overlay.
+	Same hover/click hit-test pattern as CLevel_Bern's ValtanEntry modal buttons
+	(Get_SlotRect + screen-space mouse rect), and the same one-shot Request_*
+	submission as its Request_ConfirmNpcEntry. No local hide-on-click --
+	CLevelTransitionService's real BERN switch (once the Server accepts the
+	transfer) tears this whole Level down anyway. */
+	if (isAfterRaidClear && nullptr != m_pPlayerCommandSink)
+	{
+		f32_t fButtonX = 0.f, fButtonY = 0.f, fButtonWidth = 0.f, fButtonHeight = 0.f;
+		if (m_pRaidClearView->Get_SlotRect("RaidClear_ReturnButton",
+			fButtonX, fButtonY, fButtonWidth, fButtonHeight))
+		{
+			ImGuiViewport* pViewport = ImGui::GetMainViewport();
+			if (nullptr != pViewport)
+			{
+				const float scaleX = pViewport->WorkSize.x / 1280.f;
+				const float scaleY = pViewport->WorkSize.y / 720.f;
+				const ImVec2 vMin(
+					pViewport->WorkPos.x + fButtonX * scaleX,
+					pViewport->WorkPos.y + fButtonY * scaleY);
+				const ImVec2 vMax(
+					vMin.x + fButtonWidth * scaleX, vMin.y + fButtonHeight * scaleY);
+				const ImVec2 vMouse = ImGui::GetMousePos();
+				const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
+					vMouse.y >= vMin.y && vMouse.y < vMax.y;
+				if (bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+				{
+					CMainApp::Play_UIButtonClickSound();
+					m_pPlayerCommandSink->Request_ReturnToBern(
+						m_iNextReturnToBernSequence++);
+				}
+			}
+		}
+	}
+
 	HUD_RAIDCLEAR_TEXT_RECTS textRects;
 	textRects.isValid = isShowing &&
 		m_pRaidClearView->Get_SlotRect("RaidClear_TitleTextBox",
 			textRects.fTitleX, textRects.fTitleY,
 			textRects.fTitleWidth, textRects.fTitleHeight);
+	textRects.isButtonValid = isAfterRaidClear &&
+		m_pRaidClearView->Get_SlotRect("RaidClear_ReturnButton",
+			textRects.fButtonX, textRects.fButtonY,
+			textRects.fButtonWidth, textRects.fButtonHeight);
 	CCombatHUDViewModel::Get().Set_RaidClearTextRects(textRects);
 }
 
@@ -2946,6 +3001,10 @@ void CLevel_ValtanArena::Render_RaidClear()
 	gameplay still visible behind it, same reasoning as Dead Scene's real dim. */
 	const bool_t isShowing = m_fRaidClearElapsedSeconds >= 0.f &&
 		m_fRaidClearElapsedSeconds < RAIDCLEAR_TOTAL_SECONDS;
+	// See Update_RaidClear's own comment -- stays true for the rest of this
+	// Level's session once the overlay's timeline finishes.
+	const bool_t isAfterRaidClear =
+		m_fRaidClearElapsedSeconds >= RAIDCLEAR_TOTAL_SECONDS;
 	if (isShowing)
 	{
 		ImGuiViewport* pViewport = ImGui::GetMainViewport();
@@ -2959,9 +3018,169 @@ void CLevel_ValtanArena::Render_RaidClear()
 		}
 	}
 
+	/* "돌아가기" button background -- same NormalButton/NormalButtonHover art and
+	hover-swap as CLevel_Bern's ValtanEntry modal buttons; the label itself is
+	drawn as text by CMainApp::RenderRaidClearText() like the headline below.
+	Shows only once the celebration overlay itself has finished and hidden --
+	it replaces the overlay in place, not layered on top of it. */
+	if (isAfterRaidClear)
+	{
+		f32_t fButtonX = 0.f, fButtonY = 0.f, fButtonWidth = 0.f, fButtonHeight = 0.f;
+		if (m_pRaidClearView->Get_SlotRect("RaidClear_ReturnButton",
+			fButtonX, fButtonY, fButtonWidth, fButtonHeight))
+		{
+			ImGuiViewport* pViewport = ImGui::GetMainViewport();
+			if (nullptr != pViewport)
+			{
+				const float scaleX = pViewport->WorkSize.x / 1280.f;
+				const float scaleY = pViewport->WorkSize.y / 720.f;
+				const ImVec2 vMin(
+					pViewport->WorkPos.x + fButtonX * scaleX,
+					pViewport->WorkPos.y + fButtonY * scaleY);
+				const ImVec2 vMax(
+					vMin.x + fButtonWidth * scaleX, vMin.y + fButtonHeight * scaleY);
+				const ImVec2 vMouse = ImGui::GetMousePos();
+				const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
+					vMouse.y >= vMin.y && vMouse.y < vMax.y;
+				ID3D11ShaderResourceView* pTexture = m_pRaidClearView->Load_Texture(
+					bHovered ?
+						"UI/ClassSelect/Common/NormalButtonHover.png" :
+						"UI/ClassSelect/Common/NormalButton.png");
+				if (nullptr != pTexture)
+				{
+					ImGui::GetForegroundDrawList(pViewport)->AddImage(
+						reinterpret_cast<ImTextureID>(pTexture), vMin, vMax);
+				}
+			}
+		}
+	}
+
 	/* Headline text is drawn by CMainApp::RenderRaidClearText(), called after
 	CImGuiLayer::EndFrame() -- same reason as Render_DeadScene() above. */
 	m_pRaidClearView->Render("Default", 0);
+}
+
+namespace
+{
+	constexpr f32_t ITEM_ANNOUNCE_HOLD_SECONDS = 2.f;
+
+	/* Standard Hangul syllable-block final-consonant test (Unicode Hangul Syllables block,
+	U+AC00..U+D7A3 = 28 trailing-consonant slots per syllable): (codepoint - 0xAC00) % 28 == 0
+	means the syllable has no final consonant. A non-Hangul last character (Latin, digit, ...)
+	falls back to "를" -- every real item name here ends in a Hangul syllable, so this only
+	matters if a future catalog entry doesn't. */
+	bool_t Has_HangulFinalConsonant(const wchar_t lastCharacter)
+	{
+		if (lastCharacter < 0xAC00 || lastCharacter > 0xD7A3)
+			return false;
+		return 0 != (lastCharacter - 0xAC00) % 28;
+	}
+
+	bool_t ConvertUtf8ToWide(const string& strUtf8, wstring& outWide)
+	{
+		outWide.clear();
+		if (strUtf8.empty())
+			return false;
+		const int iRequiredLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+			strUtf8.data(), static_cast<int>(strUtf8.size()), nullptr, 0);
+		if (iRequiredLength <= 0)
+			return false;
+		outWide.resize(static_cast<size_t>(iRequiredLength));
+		return iRequiredLength == MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+			strUtf8.data(), static_cast<int>(strUtf8.size()), outWide.data(), iRequiredLength);
+	}
+}
+
+void CLevel_ValtanArena::Update_ItemAnnounce(f32_t fTimeDelta)
+{
+	if (nullptr == m_pItemAnnounceView)
+		return;
+
+	/* Diff against the previous frame's own observed itemId set (not the previous frame's
+	inventory contents wholesale) -- an existing item's quantity going up (e.g. a potion restock)
+	must not requeue it, only a itemId this view has never observed before. */
+	const vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& currentInventory =
+		CCombatHUDViewModel::Get().Get_Inventory().Items;
+	if (!m_bItemAnnounceBaselineCaptured)
+	{
+		for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& item : currentInventory)
+			m_ItemAnnounceObservedItemIds.push_back(item.strItemId);
+		m_bItemAnnounceBaselineCaptured = true;
+	}
+	else
+	{
+		for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& item : currentInventory)
+		{
+			if (std::find(m_ItemAnnounceObservedItemIds.begin(),
+				m_ItemAnnounceObservedItemIds.end(), item.strItemId) !=
+				m_ItemAnnounceObservedItemIds.end())
+			{
+				continue;
+			}
+			m_ItemAnnounceObservedItemIds.push_back(item.strItemId);
+			m_ItemAnnounceQueue.push_back(item.strItemId);
+		}
+	}
+
+	if (m_fItemAnnounceElapsedSeconds >= 0.f)
+	{
+		m_fItemAnnounceElapsedSeconds += fTimeDelta;
+		if (m_fItemAnnounceElapsedSeconds >= ITEM_ANNOUNCE_HOLD_SECONDS)
+			m_fItemAnnounceElapsedSeconds = -1.f;
+	}
+
+	if (m_fItemAnnounceElapsedSeconds < 0.f && !m_ItemAnnounceQueue.empty())
+	{
+		m_strItemAnnounceCurrentItemId = m_ItemAnnounceQueue.front();
+		m_ItemAnnounceQueue.erase(m_ItemAnnounceQueue.begin());
+		m_fItemAnnounceElapsedSeconds = 0.f;
+
+		const ITEM_DEFINITION* pDefinition =
+			CItemCatalog::Find_ById(m_strItemAnnounceCurrentItemId);
+		if (nullptr != pDefinition && !pDefinition->strIconPath.empty())
+			m_pItemAnnounceView->Set_SlotTexture("ItemAnnounce_Icon", pDefinition->strIconPath);
+
+		const std::filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
+			L"Sound/UI/System/sys_item_itemgetepic1__202768724.wav");
+		CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+	}
+
+	const bool_t isShowing = m_fItemAnnounceElapsedSeconds >= 0.f;
+	m_pItemAnnounceView->Set_SlotVisible("ItemAnnounce_Frame", isShowing);
+	m_pItemAnnounceView->Set_SlotVisible("ItemAnnounce_Icon", isShowing);
+
+	HUD_ITEMANNOUNCE_TEXT_RECTS textRects;
+	textRects.isValid = isShowing && m_pItemAnnounceView->Get_SlotRect("ItemAnnounce_TextBox",
+		textRects.fTextX, textRects.fTextY, textRects.fTextWidth, textRects.fTextHeight);
+	if (textRects.isValid)
+	{
+		const ITEM_DEFINITION* pDefinition =
+			CItemCatalog::Find_ById(m_strItemAnnounceCurrentItemId);
+		wstring strItemName;
+		if (nullptr != pDefinition &&
+			ConvertUtf8ToWide(pDefinition->strDisplayName, strItemName))
+		{
+			// "을 획득하였습니다" / "를 획득하였습니다" -- particle chosen by the item name's
+			// last syllable's final consonant (Has_HangulFinalConsonant above).
+			const wstring strParticlePhrase = Has_HangulFinalConsonant(strItemName.back()) ?
+				L"\xC744 \xD68D\xB4DD\xD558\xC600\xC2B5\xB2C8\xB2E4" :  // "을 획득하였습니다"
+				L"\xB97C \xD68D\xB4DD\xD558\xC600\xC2B5\xB2C8\xB2E4";  // "를 획득하였습니다"
+			textRects.strText = strItemName + strParticlePhrase;
+		}
+	}
+	CCombatHUDViewModel::Get().Set_ItemAnnounceTextRects(textRects);
+}
+
+void CLevel_ValtanArena::Render_ItemAnnounce()
+{
+	if (nullptr == m_pItemAnnounceView)
+		return;
+
+	/* No screen dim, unlike Render_RaidClear -- this is a small corner-of-screen toast over
+	live gameplay, not a full-screen celebration moment. Name text is drawn by
+	CMainApp::RenderItemAnnounceText(), called after CImGuiLayer::EndFrame(), same reason as
+	Render_RaidClear's own headline. */
+	m_pItemAnnounceView->Render("Default", 0);
 }
 
 HRESULT CLevel_ValtanArena::Ready_Layer_Camera(

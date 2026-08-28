@@ -5,6 +5,7 @@
 #include "EncounterPatternReference.h"
 #include "ProjectDataRoot.h"
 #include "ValtanPatternEffectCueDocument.h"
+#include "ValtanPatternFlowDocument.h"
 
 #include <algorithm>
 #include <cmath>
@@ -22,20 +23,6 @@ namespace
 {
 	using Client::DATA_JSON_TYPE;
 	using Client::DATA_JSON_VALUE;
-
-	constexpr std::array<std::string_view,
-		Client::VALTAN_TOOL_AUDITION_INVENTORY::CORE_PATTERN_COUNT>
-		VALTAN_TOOL_AUDITION_CORE_PATTERN_IDS =
-	{
-		"VALTAN_WHIRLWIND",
-		"VALTAN_FOUR_SLASH",
-		"VALTAN_HIGH_JUMP",
-		"VALTAN_DASH_CHARGE",
-		"VALTAN_FLOOR_WIPE_130",
-		"VALTAN_ARENA_BREAK_109",
-		"VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
-		"VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK"
-	};
 
 	bool Read_TextDocument(
 		const std::filesystem::path& Path,
@@ -251,17 +238,41 @@ namespace
 		Out.reset();
 		if (nullptr == pValue || pValue->Is_Null())
 			return true;
-		if (!Has_ExactProperties(*pValue, { "kind", "distance" }))
-			return false;
 		const DATA_JSON_VALUE* pKind = Required(
 			*pValue, "kind", DATA_JSON_TYPE::STRING);
 		Client::VALTAN_STAGE_MOTION_VIEW Motion;
-		if (nullptr == pKind || pKind->Get_String().empty() ||
+		if (nullptr == pKind)
+			return false;
+		Motion.strKind = pKind->Get_String();
+		if ("PORTAL_TARGET_RUSH" == Motion.strKind)
+		{
+			if (!Has_ExactProperties(*pValue, { "kind" }))
+				return false;
+		}
+		else if ("PORTAL_CROSS_ARENA" == Motion.strKind)
+		{
+			const DATA_JSON_VALUE* pExtents = Required(
+				*pValue, "halfExtentsM", DATA_JSON_TYPE::ARRAY);
+			if (!Has_ExactProperties(*pValue, { "kind", "cornerIndex", "halfExtentsM" }) ||
+				!Read_RequiredUInt32(*pValue, "cornerIndex", Motion.iCornerIndex) ||
+				Motion.iCornerIndex > 3u || nullptr == pExtents ||
+				pExtents->Get_Array().size() != 2u)
+				return false;
+			for (size_t iAxis = 0u; iAxis < 2u; ++iAxis)
+			{
+				const DATA_JSON_VALUE& Extent = pExtents->Get_Array()[iAxis];
+				if (!Is_FiniteNumber(&Extent) || Extent.Get_Number() < 1.0 ||
+					Extent.Get_Number() > 100.0)
+					return false;
+				Motion.HalfExtentsM[iAxis] = static_cast<f32_t>(Extent.Get_Number());
+			}
+		}
+		else if ("FORWARD" != Motion.strKind ||
+			!Has_ExactProperties(*pValue, { "kind", "distance" }) ||
 			!Read_RequiredFiniteFloat(*pValue, "distance", Motion.fDistance))
 		{
 			return false;
 		}
-		Motion.strKind = pKind->Get_String();
 		Out = std::move(Motion);
 		return true;
 	}
@@ -401,7 +412,8 @@ namespace
 				const bool_t bHold = "HOLD" == pReleaseMode->Get_String() &&
 					0.f == Action.fSpeedMps && 0u == Action.iDurationMs;
 				const bool_t bOppositeKnockback =
-					"OPPOSITE_KNOCKBACK" == pReleaseMode->Get_String() &&
+					("OPPOSITE_KNOCKBACK" == pReleaseMode->Get_String() ||
+					 "ARENA_EJECTION" == pReleaseMode->Get_String()) &&
 					Action.fSpeedMps > 0.f && Action.iDurationMs > 0u;
 				if (!bHold && !bOppositeKnockback)
 					return false;
@@ -433,6 +445,16 @@ namespace
 			Action.strTrigger = pTrigger->Get_String();
 			Action.strKind = pKind->Get_String();
 			Action.strTargetId = pTarget->Get_String();
+			if ("RETURN_TO_ARENA_CENTER" == Action.strKind ||
+				"SPAWN_COMBAT_OBJECT" == Action.strKind)
+			{
+				const bool_t bTargetValid = "RETURN_TO_ARENA_CENTER" == Action.strKind ?
+					"boss.arena.center" == Action.strTargetId :
+					Is_StableToken(Action.strTargetId);
+				if ("ENTER" != Action.strTrigger || !bTargetValid ||
+					1.f != Action.fValue || 0u != Action.iDurationMs)
+					return false;
+			}
 			if ("DAMAGE_GRABBED_PLAYERS" == Action.strKind ||
 				"EXECUTE_GRABBED_PLAYERS" == Action.strKind)
 			{
@@ -479,6 +501,16 @@ namespace
 			Out.push_back(std::move(Branch));
 		}
 		return true;
+	}
+
+	bool_t Has_ValidNavigationBlockedCapture(
+		const std::vector<Client::VALTAN_STAGE_BRANCH_VIEW>& Branches,
+		const std::string_view strPlayerResponse)
+	{
+		return "CAPTURE" == strPlayerResponse || std::none_of(
+			Branches.begin(), Branches.end(),
+			[](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
+			{ return "NAVIGATION_BLOCKED" == Branch.strOutcome; });
 	}
 
 	bool_t Has_ClosedSplitStageFlag(
@@ -584,6 +616,14 @@ namespace
 				std::string(strPatternId) + "/" + std::string(strStageId);
 			return false;
 		}
+		const DATA_JSON_VALUE* pHit = Stage.Find("hit");
+		if (!Has_ValidNavigationBlockedCapture(Branches,
+				nullptr == pHit ? std::string{} : Read_String(*pHit, "playerResponse")))
+		{
+			strOutError = "split navigation-blocked branch requires a capture rush: " +
+				std::string(strPatternId) + "/" + std::string(strStageId);
+			return false;
+		}
 		if ("DESTROY_FIRST_ELIGIBLE" == strPartDamagePolicy &&
 			(!HasBranch("PART_DESTROYED") ||
 			 !Has_ClosedSplitStageFlag(Stage, "boss.flag.groggy")))
@@ -635,10 +675,11 @@ namespace
 		Out.reset();
 		if (nullptr == pValue || pValue->Is_Null())
 			return true;
-		if (!Has_ExactProperties(*pValue,
+		if (!Has_ExactPropertiesWithOptional(*pValue,
 				{ "kind", "anchorId", "landingPosition", "apexHeight",
 				  "travelStageId", "takeoffStartMs", "takeoffEndMs",
-				  "travelStartMs", "travelEndMs" }))
+				  "travelStartMs", "travelEndMs" },
+				{ "moveToAnchorBeforeTakeoff" }))
 		{
 			return false;
 		}
@@ -688,12 +729,68 @@ namespace
 			pValue->Find("travelStartMs")->Get_Number());
 		Motion.iTravelEndMs = static_cast<uint32_t>(
 			pValue->Find("travelEndMs")->Get_Number());
-		if (Motion.iTakeoffStartMs >= Motion.iTakeoffEndMs ||
+		if (const DATA_JSON_VALUE* pApproach = pValue->Find("moveToAnchorBeforeTakeoff"))
+		{
+			if (!pApproach->Is_Boolean())
+				return false;
+			Motion.bMoveToAnchorBeforeTakeoff = pApproach->Get_Boolean();
+		}
+		if ((Motion.bMoveToAnchorBeforeTakeoff && 0u == Motion.iTakeoffStartMs) ||
+			Motion.iTakeoffStartMs >= Motion.iTakeoffEndMs ||
 			Motion.iTravelStartMs >= Motion.iTravelEndMs)
 		{
 			return false;
 		}
 		Out = std::move(Motion);
+		return true;
+	}
+
+	bool_t Read_PatternFinale(
+		const DATA_JSON_VALUE* pValue,
+		std::optional<Client::VALTAN_PATTERN_FINALE_VIEW>& Out)
+	{
+		Out.reset();
+		if (nullptr == pValue)
+			return true;
+		if (!Has_ExactProperties(*pValue,
+				{ "kind", "ghostArchetypeId", "ghostPatternIds",
+				  "spawnHalfExtentsM", "maximumActiveGhosts" }))
+			return false;
+		Client::VALTAN_PATTERN_FINALE_VIEW Finale;
+		Finale.strKind = Read_String(*pValue, "kind");
+		Finale.strGhostArchetypeId = Read_String(*pValue, "ghostArchetypeId");
+		const DATA_JSON_VALUE* pPatterns = Required(
+			*pValue, "ghostPatternIds", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* pExtents = Required(
+			*pValue, "spawnHalfExtentsM", DATA_JSON_TYPE::ARRAY);
+		if ("GHOST_PORTAL_LOOP" != Finale.strKind ||
+			"BOSS_VALTAN_GHOST" != Finale.strGhostArchetypeId ||
+			!Read_RequiredUInt32(*pValue, "maximumActiveGhosts", Finale.iMaximumActiveGhosts) ||
+			1u != Finale.iMaximumActiveGhosts ||
+			nullptr == pPatterns || 3u != pPatterns->Get_Array().size() ||
+			nullptr == pExtents || 2u != pExtents->Get_Array().size())
+			return false;
+		std::set<std::string, std::less<>> PatternIds;
+		for (size_t iPattern = 0u; iPattern < 3u; ++iPattern)
+		{
+			const DATA_JSON_VALUE& Pattern = pPatterns->Get_Array()[iPattern];
+			if (!Pattern.Is_String() || !Is_StableToken(Pattern.Get_String()) ||
+				!PatternIds.insert(Pattern.Get_String()).second)
+				return false;
+			Finale.GhostPatternIds[iPattern] = Pattern.Get_String();
+		}
+		if (Finale.GhostPatternIds != std::array<std::string, 3u>{
+			"VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH", "VALTAN_SEQUENCE_FOUR" })
+			return false;
+		for (size_t iAxis = 0u; iAxis < 2u; ++iAxis)
+		{
+			const DATA_JSON_VALUE& Extent = pExtents->Get_Array()[iAxis];
+			if (!Is_FiniteNumber(&Extent) || Extent.Get_Number() < 1.0 ||
+				Extent.Get_Number() > 100.0)
+				return false;
+			Finale.SpawnHalfExtentsM[iAxis] = static_cast<f32_t>(Extent.Get_Number());
+		}
+		Out = std::move(Finale);
 		return true;
 	}
 
@@ -792,6 +889,7 @@ namespace
 		f32_t fMinimumRange = 0.f;
 		f32_t fMaximumRange = 0.f;
 		std::optional<Client::VALTAN_PATTERN_SERVER_MOTION_VIEW> ServerMotion;
+		std::optional<Client::VALTAN_PATTERN_FINALE_VIEW> Finale;
 		uint32_t iSourceSequenceIndex = 0u;
 		std::vector<Client::VALTAN_PRESENTATION_SOURCE_VIEW> PresentationSources;
 		std::vector<Client::VALTAN_PATTERN_REACTION_VIEW> Reactions;
@@ -804,6 +902,67 @@ namespace
 		std::string strAdmissionState;
 		std::vector<MASTER_STAGE> Stages;
 	};
+
+	bool_t Validate_FinitePatternStageGraph(
+		const MASTER_PATTERN& Pattern, std::string& strOutError)
+	{
+		std::map<std::string, size_t, std::less<>> StageByAction;
+		for (size_t iStage = 0u; iStage < Pattern.Stages.size(); ++iStage)
+		{
+			if (!StageByAction.emplace(Pattern.Stages[iStage].strActionId, iStage).second)
+			{
+				strOutError = "finite stage graph has a duplicated action: " + Pattern.strPatternId;
+				return false;
+			}
+		}
+		std::vector<std::vector<size_t>> Successors(Pattern.Stages.size());
+		std::vector<size_t> Incoming(Pattern.Stages.size(), 0u);
+		for (size_t iStage = 0u; iStage < Pattern.Stages.size(); ++iStage)
+		{
+			const MASTER_STAGE& Stage = Pattern.Stages[iStage];
+			const auto AddSuccessor = [&](const std::string& ActionId)
+			{
+				const auto Target = StageByAction.find(ActionId);
+				if (StageByAction.end() == Target)
+				{
+					strOutError = "finite stage graph has a dangling action: " +
+						Pattern.strPatternId + "/" + ActionId;
+					return false;
+				}
+				Successors[iStage].push_back(Target->second);
+				++Incoming[Target->second];
+				return true;
+			};
+			const auto Timeout = std::find_if(Stage.Branches.begin(), Stage.Branches.end(),
+				[](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
+				{ return "TIMEOUT" == Branch.strOutcome; });
+			// Split validation already requires the explicit default edge to
+			// match TIMEOUT, or the next sequential stage when TIMEOUT is absent.
+			if (Stage.Branches.end() == Timeout && iStage + 1u < Pattern.Stages.size() &&
+				!AddSuccessor(Pattern.Stages[iStage + 1u].strActionId))
+				return false;
+			for (const Client::VALTAN_STAGE_BRANCH_VIEW& Branch : Stage.Branches)
+				if (Branch.strNextActionId.has_value() && !AddSuccessor(*Branch.strNextActionId))
+					return false;
+		}
+		// Check every authored stage, including unreachable alternatives, without
+		// recursive traversal or a duration cap that could hide a graph loop.
+		std::vector<size_t> Ready;
+		Ready.reserve(Pattern.Stages.size());
+		for (size_t iStage = 0u; iStage < Incoming.size(); ++iStage)
+			if (0u == Incoming[iStage])
+				Ready.push_back(iStage);
+		for (size_t iReady = 0u; iReady < Ready.size(); ++iReady)
+			for (const size_t iSuccessor : Successors[Ready[iReady]])
+				if (0u == --Incoming[iSuccessor])
+					Ready.push_back(iSuccessor);
+		if (Ready.size() != Pattern.Stages.size())
+		{
+			strOutError = "finite stage graph contains a cycle: " + Pattern.strPatternId;
+			return false;
+		}
+		return true;
+	}
 
 	struct MASTER_SCRIPTED_SEQUENCE_VIEW final
 	{
@@ -929,9 +1088,8 @@ namespace
 		}
 		if (!pMotion->Is_Null())
 		{
-			if (!Has_ExactProperties(*pMotion, { "kind", "distance" }) ||
-				nullptr == Required(*pMotion, "kind", DATA_JSON_TYPE::STRING) ||
-				!Is_FiniteNumber(pMotion->Find("distance")))
+			std::optional<Client::VALTAN_STAGE_MOTION_VIEW> Motion;
+			if (!Read_StageMotion(pMotion, Motion))
 			{
 				strOutError = "master stage motion is invalid";
 				return false;
@@ -1171,6 +1329,7 @@ namespace
 			!Read_StageActions(
 				Value.Find("actions"), Out.iDurationMs, Out.Actions) ||
 			!Read_StageBranches(pBranches, Out.Branches) ||
+			!Has_ValidNavigationBlockedCapture(Out.Branches, Out.strPlayerResponse) ||
 			!Read_StageGameplayExtensions(Value, Out.strPartDamagePolicy,
 				Out.CounterProxy) ||
 			!Read_MasterCameraInvocations(
@@ -1313,38 +1472,10 @@ namespace
 		std::string& strOutError)
 	{
 		const DATA_JSON_VALUE* pMotion = Pattern.Find("serverMotion");
-		if (nullptr == pMotion)
-			return false;
-		if (pMotion->Is_Null())
-			return true;
-		if (!Has_ExactProperties(*pMotion,
-				{ "kind", "anchorId", "landingPosition", "apexHeight",
-				  "travelStageId", "takeoffStartMs", "takeoffEndMs",
-				  "travelStartMs", "travelEndMs" }) ||
-			nullptr == Required(*pMotion, "kind", DATA_JSON_TYPE::STRING) ||
-			nullptr == Required(*pMotion, "anchorId", DATA_JSON_TYPE::STRING) ||
-			nullptr == Required(
-				*pMotion, "travelStageId", DATA_JSON_TYPE::STRING) ||
-			!Is_FiniteNumber(pMotion->Find("apexHeight")) ||
-			!Is_NonNegativeInteger(pMotion->Find("takeoffStartMs")) ||
-			!Is_NonNegativeInteger(pMotion->Find("takeoffEndMs")) ||
-			!Is_NonNegativeInteger(pMotion->Find("travelStartMs")) ||
-			!Is_NonNegativeInteger(pMotion->Find("travelEndMs")))
+		std::optional<Client::VALTAN_PATTERN_SERVER_MOTION_VIEW> Motion;
+		if (nullptr == pMotion || !Read_PatternServerMotion(pMotion, Motion))
 		{
 			strOutError = "master serverMotion is invalid";
-			return false;
-		}
-		const DATA_JSON_VALUE* pLanding = Required(
-			*pMotion, "landingPosition", DATA_JSON_TYPE::ARRAY);
-		if (nullptr == pLanding || 3u != pLanding->Get_Array().size() ||
-			std::any_of(pLanding->Get_Array().begin(),
-				pLanding->Get_Array().end(),
-				[](const DATA_JSON_VALUE& Coordinate)
-				{
-					return !Is_FiniteNumber(&Coordinate);
-				}))
-		{
-			strOutError = "master serverMotion landingPosition is invalid";
 			return false;
 		}
 		return true;
@@ -1355,7 +1486,7 @@ namespace
 		MASTER_PATTERN& Out,
 		std::string& strOutError)
 	{
-		if (!Has_ExactProperties(Value,
+		if (!Has_ExactPropertiesWithOptional(Value,
 				{ "patternId", "category", "minimumPhase", "maximumPhase",
 				  "targetPolicy", "aimPolicy", "displayName", "actionId",
 				  "sourceActionIds", "sourceSequenceIndex", "presentationSources",
@@ -1365,7 +1496,7 @@ namespace
 				  "invulnerableWhileRunning", "selectionWeight",
 				  "maximumConsecutiveUses", "minimumRange", "maximumRange",
 				  "serverMotion", "reactions", "cameraCueIds",
-				  "worldEventTriggerRefs", "stages" }))
+				  "worldEventTriggerRefs", "stages" }, { "finale" }))
 		{
 			strOutError = "master pattern has unexpected properties";
 			return false;
@@ -1595,9 +1726,11 @@ namespace
 			Value.Find("minimumRange")->Get_Number());
 		Out.fMaximumRange = static_cast<f32_t>(
 			Value.Find("maximumRange")->Get_Number());
-		if (!Read_PatternServerMotion(Value.Find("serverMotion"), Out.ServerMotion))
+		if (!Read_PatternServerMotion(Value.Find("serverMotion"), Out.ServerMotion) ||
+			!Read_PatternFinale(Value.Find("finale"), Out.Finale) ||
+			(Out.Finale.has_value() && Out.bInvulnerableWhileRunning))
 		{
-			strOutError = "master serverMotion values are invalid";
+			strOutError = "master serverMotion/finale values are invalid";
 			return false;
 		}
 		Out.iSourceSequenceIndex = static_cast<uint32_t>(
@@ -2065,6 +2198,32 @@ namespace
 			}
 			Out.Patterns.push_back(std::move(Pattern));
 		}
+		std::set<std::string, std::less<>> FinitePatternIds = {
+			"VALTAN_TRASH", "VALTAN_TRASH_CATCH_IF",
+			"VALTAN_TRASH_CATCH_SUCCESS", "VALTAN_TRASH_CATCH_FAIL" };
+		for (const MASTER_PATTERN& Pattern : Out.Patterns)
+		{
+			if (!Pattern.Finale.has_value())
+				continue;
+			FinitePatternIds.insert(Pattern.strPatternId);
+			for (const std::string& ChildId : Pattern.Finale->GhostPatternIds)
+			{
+				const auto Child = std::find_if(Out.Patterns.begin(), Out.Patterns.end(),
+					[&ChildId](const MASTER_PATTERN& Candidate)
+					{ return Candidate.strPatternId == ChildId; });
+				if (Child == Out.Patterns.end() || ChildId == Pattern.strPatternId ||
+					Child->Finale.has_value() || !Child->WorldEventTriggerRefs.empty())
+				{
+					strOutError = "master finale has an unresolved, recursive or terrain ghost attack: " + ChildId;
+					return false;
+				}
+				FinitePatternIds.insert(ChildId);
+			}
+		}
+		for (const MASTER_PATTERN& Pattern : Out.Patterns)
+			if (FinitePatternIds.contains(Pattern.strPatternId) &&
+				!Validate_FinitePatternStageGraph(Pattern, strOutError))
+				return false;
 		std::set<std::string, std::less<>> ManagedNormalPatternIds;
 		for (const MASTER_PATTERN& Pattern : Out.Patterns)
 		{
@@ -2274,7 +2433,9 @@ namespace
 			return false;
 		return !Left.has_value() ||
 			(Left->strKind == Right->strKind &&
-			 Left->fDistance == Right->fDistance);
+			 Left->fDistance == Right->fDistance &&
+			 Left->iCornerIndex == Right->iCornerIndex &&
+			 Left->HalfExtentsM == Right->HalfExtentsM);
 	}
 
 	bool_t Equal_StageActions(
@@ -2377,7 +2538,8 @@ namespace
 			 Left->iTakeoffStartMs == Right->iTakeoffStartMs &&
 			 Left->iTakeoffEndMs == Right->iTakeoffEndMs &&
 			 Left->iTravelStartMs == Right->iTravelStartMs &&
-			 Left->iTravelEndMs == Right->iTravelEndMs);
+			 Left->iTravelEndMs == Right->iTravelEndMs &&
+			 Left->bMoveToAnchorBeforeTakeoff == Right->bMoveToAnchorBeforeTakeoff);
 	}
 
 	bool_t Equal_MasterPatternGameplay(
@@ -2407,7 +2569,8 @@ namespace
 				Master.iMaximumConsecutiveUses &&
 			Product.fMinimumRange == Master.fMinimumRange &&
 			Product.fMaximumRange == Master.fMaximumRange &&
-			Equal_PatternServerMotion(Product.ServerMotion, Master.ServerMotion);
+			Equal_PatternServerMotion(Product.ServerMotion, Master.ServerMotion) &&
+			Product.Finale == Master.Finale;
 	}
 
 	bool_t Assign_MasterWallBudgets(
@@ -3059,6 +3222,108 @@ namespace
 		return true;
 	}
 
+	bool_t Resolve_SavedFlowSequence(
+		const std::filesystem::path& GameplayPath,
+		DATA_JSON_VALUE& Gameplay,
+		std::string& strOutFlowRevision,
+		std::string& strOutError)
+	{
+		strOutFlowRevision.clear();
+		const DATA_JSON_VALUE* pDecision = Required(
+			Gameplay, "decisionModel", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* pSequence = nullptr == pDecision ? nullptr :
+			Required(*pDecision, "scriptedSequence", DATA_JSON_TYPE::OBJECT);
+		if (nullptr == pSequence || nullptr == pSequence->Find("flowId"))
+			return true; // The existing strict parser admits only the inline shape.
+		if (!Has_ExactProperties(*pSequence, { "sequenceId", "mode", "flowId" }) ||
+			!Is_StableToken(Read_String(*pSequence, "sequenceId")) ||
+			"ORDERED_ONCE_THEN_IDLE" != Read_String(*pSequence, "mode") ||
+			Client::CValtanPatternFlowDocument::DEFAULT_FLOW_ID !=
+				Read_String(*pSequence, "flowId"))
+		{
+			strOutError = "scriptedSequence saved Flow reference is invalid";
+			return false;
+		}
+
+		const DATA_JSON_VALUE* pPatterns = Required(
+			Gameplay, "patterns", DATA_JSON_TYPE::ARRAY);
+		if (nullptr == pPatterns || pPatterns->Get_Array().empty())
+		{
+			strOutError = "saved Flow requires split gameplay pattern definitions";
+			return false;
+		}
+		std::vector<std::string> AdmittedPatterns;
+		std::set<std::string, std::less<>> UniquePatternIds;
+		for (const DATA_JSON_VALUE& Pattern : pPatterns->Get_Array())
+		{
+			const std::string PatternId = Read_String(Pattern, "patternId");
+			if (!Is_StableToken(PatternId) || !UniquePatternIds.insert(PatternId).second)
+			{
+				strOutError = "saved Flow split pattern identity is invalid or duplicated: " + PatternId;
+				return false;
+			}
+			AdmittedPatterns.push_back(PatternId);
+		}
+
+		/* Immutable authoring restores must read their own Flow, never a newer
+		   workspace copy. Gameplay lives at <snapshot>/Data/Valtan/... . */
+		std::error_code PathError;
+		const std::filesystem::path DataRoot = std::filesystem::weakly_canonical(
+			GameplayPath.parent_path().parent_path(), PathError);
+		if (PathError || DataRoot.empty() ||
+			GameplayPath.parent_path().filename() != L"Valtan" ||
+			DataRoot.filename() != L"Data")
+		{
+			strOutError = "saved Flow gameplay path has no fixed Data/Valtan owner";
+			return false;
+		}
+		const std::filesystem::path FlowPath = std::filesystem::weakly_canonical(
+			DataRoot / L"Encounters" / L"Valtan" / L"ValtanBossAuditionFlows.json",
+			PathError);
+		const std::filesystem::path Relative = FlowPath.lexically_relative(DataRoot);
+		if (PathError || Relative.empty() || Relative.is_absolute() ||
+			*Relative.begin() == L"..")
+		{
+			strOutError = "saved Flow path escaped its authoring snapshot";
+			return false;
+		}
+		std::string FlowText;
+		Client::VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT FlowDocument;
+		if (!Read_TextDocument(FlowPath, FlowText, strOutError) ||
+			!Client::CValtanPatternFlowDocument::Parse_Text(
+				FlowText, FlowDocument, strOutError) ||
+			!Client::CValtanPatternFlowDocument::Validate(
+				FlowDocument, AdmittedPatterns, strOutError))
+			return false;
+		if (!Client::CValtanPatternFlowDocument::Compute_SourceRevision(
+				FlowText, strOutFlowRevision))
+		{
+			strOutError = "saved Flow source revision could not be computed";
+			return false;
+		}
+		const Client::VALTAN_PATTERN_FLOW_DEFINITION& Flow = FlowDocument.Flows.front();
+		if (Flow.Slots.empty())
+		{
+			strOutError = "the saved default Flow must contain at least one slot";
+			return false;
+		}
+		DATA_JSON_VALUE::ARRAY PatternIds;
+		for (const Client::VALTAN_PATTERN_FLOW_SLOT& Slot : Flow.Slots)
+			PatternIds.push_back(DATA_JSON_VALUE::String(Slot.strPatternId));
+		DATA_JSON_VALUE::OBJECT Sequence;
+		Sequence.emplace("sequenceId", *pSequence->Find("sequenceId"));
+		Sequence.emplace("mode", *pSequence->Find("mode"));
+		Sequence.emplace("interStepPursuitMs",
+			DATA_JSON_VALUE::Number(Flow.iInterStepPursuitMs));
+		Sequence.emplace("patternIds", DATA_JSON_VALUE::Array(std::move(PatternIds)));
+		DATA_JSON_VALUE::OBJECT Decision = pDecision->Get_Object();
+		Decision["scriptedSequence"] = DATA_JSON_VALUE::Object(std::move(Sequence));
+		DATA_JSON_VALUE::OBJECT Root = Gameplay.Get_Object();
+		Root["decisionModel"] = DATA_JSON_VALUE::Object(std::move(Decision));
+		Gameplay = DATA_JSON_VALUE::Object(std::move(Root));
+		return true;
+	}
+
 	bool_t Build_SplitDecisionProjection(
 		const DATA_JSON_VALUE& Decision,
 		DATA_JSON_VALUE& OutNormalSelection,
@@ -3104,7 +3369,8 @@ namespace
 			pScriptedSequence->Find("interStepPursuitMs")->Get_Number() > 10000.0 ||
 			nullptr == pScriptedPatterns ||
 			pScriptedPatterns->Get_Array().empty() ||
-			pScriptedPatterns->Get_Array().size() > 32u)
+			pScriptedPatterns->Get_Array().size() >
+				Client::CValtanPatternFlowDocument::MAX_SLOTS)
 		{
 			strOutError = "split gameplay scriptedSequence is invalid";
 			return false;
@@ -3115,15 +3381,13 @@ namespace
 		ScriptedSequence.strMode = Read_String(*pScriptedSequence, "mode");
 		ScriptedSequence.iInterStepPursuitMs = static_cast<uint32_t>(
 			pScriptedSequence->Find("interStepPursuitMs")->Get_Number());
-		std::set<std::string, std::less<>> ScriptedPatternIds;
 		for (const DATA_JSON_VALUE& PatternId : pScriptedPatterns->Get_Array())
 		{
 			if (DATA_JSON_TYPE::STRING != PatternId.Get_Type() ||
-				!Is_StableToken(PatternId.Get_String()) ||
-				!ScriptedPatternIds.insert(PatternId.Get_String()).second)
+				!Is_StableToken(PatternId.Get_String()))
 			{
 				strOutError =
-					"split gameplay scriptedSequence pattern is invalid or duplicated";
+					"split gameplay scriptedSequence pattern is invalid";
 				return false;
 			}
 			ScriptedSequence.PatternIds.push_back(PatternId.Get_String());
@@ -3357,8 +3621,8 @@ namespace
 				!Is_NonNegativeInteger(Manual.Find("authoringPhase")) ||
 				0.0 == Manual.Find("authoringPhase")->Get_Number() ||
 				Manual.Find("authoringPhase")->Get_Number() > 3.0 ||
-				"MANUAL_SERVER_AUDITION" !=
-					Read_String(Manual, "admissionState"))
+				("MANUAL_SERVER_AUDITION" != Read_String(Manual, "admissionState") &&
+				 "DERIVED_SERVER_PATTERN" != Read_String(Manual, "admissionState")))
 			{
 				strOutError = "split gameplay manual audition is invalid";
 				return false;
@@ -3501,17 +3765,19 @@ namespace
 			bOutWorldEvent = true;
 			return true;
 		}
-		else if ("RETARGET_RANDOM_ALIVE" == strKind)
+		else if ("RETARGET_RANDOM_ALIVE" == strKind ||
+			"RETURN_TO_ARENA_CENTER" == strKind)
 		{
 			if (!Has_ExactProperties(Event,
 					{ "eventId", "trigger", "kind" }) ||
 				"ENTER" != strTrigger)
 			{
-				strOutError = "split gameplay retarget event is invalid";
+				strOutError = "split gameplay retarget/arena return event is invalid";
 				return false;
 			}
-			Action.emplace("targetId",
-				DATA_JSON_VALUE::String("boss.target.pattern"));
+			Action.emplace("targetId", DATA_JSON_VALUE::String(
+				"RETURN_TO_ARENA_CENTER" == strKind ?
+					"boss.arena.center" : "boss.target.pattern"));
 			Action.emplace("value", DATA_JSON_VALUE::Number(1));
 		}
 		else if ("DAMAGE_GRABBED_PLAYERS" == strKind ||
@@ -3556,7 +3822,8 @@ namespace
 				0.0 == pSpeedMps->Get_Number() &&
 				0.0 == pDurationMs->Get_Number();
 			const bool_t bOppositeKnockback =
-				"OPPOSITE_KNOCKBACK" == strReleaseMode &&
+				("OPPOSITE_KNOCKBACK" == strReleaseMode ||
+				 "ARENA_EJECTION" == strReleaseMode) &&
 				pSpeedMps->Get_Number() > 0.0 &&
 				pDurationMs->Get_Number() > 0.0;
 			if (!bHold && !bOppositeKnockback)
@@ -3688,9 +3955,11 @@ namespace
 				Event, "combatObjectArchetypeId");
 			if (!Has_ExactProperties(Event,
 					{ "eventId", "trigger", "kind",
-					  "combatObjectArchetypeId" }) ||
+					  "combatObjectArchetypeId", "count" }) ||
 				"ENTER" != strTrigger ||
-				!Is_StableToken(strCombatObjectArchetypeId))
+				!Is_StableToken(strCombatObjectArchetypeId) ||
+				!Is_NonNegativeInteger(Event.Find("count")) ||
+				1.0 != Event.Find("count")->Get_Number())
 			{
 				strOutError = "split gameplay combat-object spawn is invalid";
 				return false;
@@ -3857,12 +4126,12 @@ namespace
 				pGameplayPatterns->Get_Array()[iPattern];
 			const DATA_JSON_VALUE& PresentationPattern =
 				pPresentationPatterns->Get_Array()[iPattern];
-			if (!Has_ExactProperties(GameplayPattern,
+			if (!Has_ExactPropertiesWithOptional(GameplayPattern,
 					{ "patternId", "displayName", "category",
 					  "compatibilitySelectionWeight", "actionId",
 					  "entryActionId", "targetPolicy", "aimPolicy", "eligibility",
 					  "invulnerableWhileRunning", "sourceActionIds", "serverMotion",
-					  "reactions", "stages" }) ||
+					  "reactions", "stages" }, { "finale" }) ||
 				!Has_ExactProperties(PresentationPattern,
 					{ "patternId", "sourceSequenceIndex", "presentationSources",
 					  "stages" }))
@@ -4309,11 +4578,20 @@ namespace
 			const uint32_t iOwnerCount =
 				(bMechanic ? 1u : 0u) + (bCandidate ? 1u : 0u) +
 				(bManual ? 1u : 0u);
-			/* The publisher permits only the first ordered step to be owned
-			   solely by scriptedSequence, never an arbitrary unowned row. */
+			/* The known cinematic stays an entry-only definition when a custom
+			   Flow omits it. Never promote an arbitrary unowned pattern. */
 			const bool_t bScriptedEntryOnly = 0u == iOwnerCount &&
-				!ScriptedSequence.PatternIds.empty() &&
-				ScriptedSequence.PatternIds.front() == strPatternId;
+				"VALTAN_ENTRANCE_CINEMATIC" == strPatternId;
+			const auto EntryInSequence = std::find(ScriptedSequence.PatternIds.begin(),
+				ScriptedSequence.PatternIds.end(), strPatternId);
+			if (bScriptedEntryOnly && EntryInSequence != ScriptedSequence.PatternIds.end() &&
+				(EntryInSequence != ScriptedSequence.PatternIds.begin() ||
+				 std::count(ScriptedSequence.PatternIds.begin(),
+					 ScriptedSequence.PatternIds.end(), strPatternId) != 1))
+			{
+				strOutError = "entry-only decision owner must occur only at the first slot: " + strPatternId;
+				return false;
+			}
 			if ((1u != iOwnerCount && !bScriptedEntryOnly) ||
 				!Is_NonNegativeInteger(pCompatibilityWeight) ||
 				((bMechanic || bManual) &&
@@ -4321,7 +4599,7 @@ namespace
 				((bCandidate || bScriptedEntryOnly) &&
 				 0.0 == pCompatibilityWeight->Get_Number()))
 			{
-				strOutError = "split gameplay pattern requires exactly one decision owner or the first scripted entry-only gate: " +
+				strOutError = "split gameplay pattern requires exactly one decision owner or the known entry-only gate: " +
 					strPatternId;
 				return false;
 			}
@@ -4341,6 +4619,8 @@ namespace
 				}
 				LegacyPattern.emplace(Field, *pValue);
 			}
+			if (const DATA_JSON_VALUE* pFinale = GameplayPattern.Find("finale"))
+				LegacyPattern.emplace("finale", *pFinale);
 			LegacyPattern.emplace("minimumPhase",
 				*pEligibility->Find("minimumGameplayPhase"));
 			LegacyPattern.emplace("maximumPhase",
@@ -4544,6 +4824,23 @@ namespace
 					*PresentationStage.Find("effectCues");
 				for (const DATA_JSON_VALUE& Cue : Cues.Get_Array())
 				{
+					const std::string Anchor = Read_String(Cue, "anchorSlotId");
+					if (Anchor.starts_with("arena.center"))
+					{
+						const bool_t bFacing = "arena.center.facing" == Anchor;
+						if ((!bFacing && "arena.center" != Anchor) ||
+							!Pattern.ServerMotion.has_value() ||
+							Pattern.ServerMotion->strKind != "LEAP_TO_ANCHOR" ||
+							!Pattern.ServerMotion->bMoveToAnchorBeforeTakeoff ||
+							Read_String(Cue, "followPolicy") != "snapshot" ||
+							(bFacing && (Pattern.strAimPolicy != "LOCK_FACING_ON_START" ||
+								Pattern.strTargetPolicy != "LOCK_RANDOM_ALIVE_ON_START")))
+						{
+							strOutError = "split arena center cue requires its fixed approach/facing contract: " +
+								Pattern.strPatternId + "/" + Stage.strStageId;
+							return false;
+						}
+					}
 					Stage.AuthoredCues.push_back(Build_SplitCueView(
 						Cue,
 						Pattern.strPatternId,
@@ -4617,6 +4914,7 @@ namespace
 		Out.fMinimumRange = Master.fMinimumRange;
 		Out.fMaximumRange = Master.fMaximumRange;
 		Out.ServerMotion = Master.ServerMotion;
+		Out.Finale = Master.Finale;
 		for (size_t iStage = 0u; iStage < Master.Stages.size(); ++iStage)
 		{
 			const MASTER_STAGE& Source = Master.Stages[iStage];
@@ -4883,7 +5181,8 @@ namespace
 				"interStepPursuitMs")->Get_Number() > 10000.0 ||
 			nullptr == pProductScriptedPatterns ||
 			pProductScriptedPatterns->Get_Array().empty() ||
-			pProductScriptedPatterns->Get_Array().size() > 32u ||
+			pProductScriptedPatterns->Get_Array().size() >
+				Client::CValtanPatternFlowDocument::MAX_SLOTS ||
 			nullptr == pRotationRows)
 		{
 			strOutError =
@@ -4891,7 +5190,6 @@ namespace
 			return false;
 		}
 		std::vector<std::string> ProductScriptedPatternIds;
-		std::set<std::string, std::less<>> UniqueProductScriptedPatternIds;
 		for (const DATA_JSON_VALUE& PatternId :
 			pProductScriptedPatterns->Get_Array())
 		{
@@ -4899,12 +5197,10 @@ namespace
 				Find_Pattern(View, PatternId.Get_String()) : nullptr;
 			if (!PatternId.Is_String() ||
 				!Is_StableToken(PatternId.Get_String()) ||
-				!UniqueProductScriptedPatternIds.insert(
-					PatternId.Get_String()).second ||
 				nullptr == pPattern)
 			{
 				strOutError =
-					"Valtan scripted-sequence Product pattern is invalid or duplicated";
+					"Valtan scripted-sequence Product pattern is invalid";
 				return false;
 			}
 			ProductScriptedPatternIds.push_back(PatternId.Get_String());
@@ -5531,75 +5827,38 @@ bool_t Client::VALTAN_TOOL_AUDITION_INVENTORY::Contains(
 		return PatternIds.end() != std::find(
 			PatternIds.begin(), PatternIds.end(), strPatternId);
 	};
-	return ContainsIn(CorePatternIds) || ContainsIn(AnimatorPatternIds);
+	return ContainsIn(CorePatternIds) || ContainsIn(AnimatorPatternIds) ||
+		ContainsIn(DerivedPatternIds);
 }
 
-bool_t Client::CValtanPatternTree::Build_ToolAuditionInventory(
+bool_t Client::CValtanPatternTree::Build_PlayablePatternInventory(
 	const VALTAN_PATTERN_TREE_VIEW& View,
 	VALTAN_TOOL_AUDITION_INVENTORY& OutInventory,
 	std::string& strOutError)
 {
-	VALTAN_TOOL_AUDITION_INVENTORY Staged;
-	std::set<std::string, std::less<>> UniquePatternIds;
-	for (const std::string_view strPatternId :
-		VALTAN_TOOL_AUDITION_CORE_PATTERN_IDS)
-	{
-		const VALTAN_PATTERN_VIEW* pPattern = Find_Pattern(View, strPatternId);
-		if (nullptr == pPattern ||
-			!UniquePatternIds.insert(pPattern->strPatternId).second)
-		{
-			strOutError =
-				"Valtan tool audition core Pattern is missing or duplicated: " +
-				std::string(strPatternId);
-			return false;
-		}
-		Staged.CorePatternIds.push_back(pPattern->strPatternId);
-	}
-
-	if (VALTAN_TOOL_AUDITION_INVENTORY::ANIMATOR_PATTERN_COUNT !=
-		View.ManualAuditions.size())
-	{
-		strOutError =
-			"Valtan tool audition inventory requires exactly 20 animator Patterns.";
-		return false;
-	}
+	std::map<std::string, const VALTAN_MANUAL_AUDITION_VIEW*, std::less<>> ManualByPattern;
+	std::set<std::string, std::less<>> ManualSourceChains;
 	for (const VALTAN_MANUAL_AUDITION_VIEW& Manual : View.ManualAuditions)
 	{
-		const VALTAN_PATTERN_VIEW* pPattern =
-			Find_Pattern(View, Manual.strPatternId);
-		if (nullptr == pPattern || !pPattern->bManualServerAudition ||
-			!UniquePatternIds.insert(Manual.strPatternId).second)
+		const VALTAN_PATTERN_VIEW* pPattern = Find_Pattern(View, Manual.strPatternId);
+		if (!Is_StableToken(Manual.strPatternId) || !Is_StableToken(Manual.strSourceChainId) ||
+			0u == Manual.iAuthoringPhase || Manual.iAuthoringPhase > 3u ||
+			("MANUAL_SERVER_AUDITION" != Manual.strAdmissionState &&
+			 "DERIVED_SERVER_PATTERN" != Manual.strAdmissionState) ||
+			!ManualByPattern.emplace(Manual.strPatternId, &Manual).second ||
+			!ManualSourceChains.insert(Manual.strSourceChainId).second ||
+			nullptr == pPattern || !pPattern->bAuthoringMasterManaged ||
+			!pPattern->bManualServerAudition || "AUDITION_ONLY" != pPattern->strSelectionMode ||
+			pPattern->strSourceAnimationChainId != Manual.strSourceChainId ||
+			pPattern->iAuthoringPhase != Manual.iAuthoringPhase ||
+			pPattern->strAdmissionState != Manual.strAdmissionState)
 		{
-			strOutError =
-				"Valtan tool animator Pattern is missing, invalid, or duplicated: " +
+			strOutError = "Playable Pattern manual owner is missing, invalid, or duplicated: " +
 				Manual.strPatternId;
 			return false;
 		}
-		Staged.AnimatorPatternIds.push_back(Manual.strPatternId);
 	}
 
-	if (VALTAN_TOOL_AUDITION_INVENTORY::CORE_PATTERN_COUNT !=
-			Staged.CorePatternIds.size() ||
-		VALTAN_TOOL_AUDITION_INVENTORY::ANIMATOR_PATTERN_COUNT !=
-			Staged.AnimatorPatternIds.size() ||
-		VALTAN_TOOL_AUDITION_INVENTORY::TOTAL_PATTERN_COUNT !=
-			UniquePatternIds.size())
-	{
-		strOutError =
-			"Valtan tool audition inventory did not close over exactly 28 Patterns.";
-		return false;
-	}
-
-	OutInventory = std::move(Staged);
-	strOutError.clear();
-	return true;
-}
-
-bool_t Client::CValtanPatternTree::Build_NextPatternInventory(
-	const VALTAN_PATTERN_TREE_VIEW& View,
-	std::vector<std::string>& OutPatternIds,
-	std::string& strOutError)
-{
 	std::vector<const VALTAN_PATTERN_VIEW*> StagedPatterns;
 	std::map<std::string, size_t, std::less<>> IdentityCounts;
 	for (const auto* pPatterns : { &View.Gimmicks, &View.Rotation })
@@ -5617,7 +5876,15 @@ bool_t Client::CValtanPatternTree::Build_NextPatternInventory(
 				Pattern.Stages.empty() || !Is_StableToken(Pattern.strEntryActionId) ||
 				Pattern.strEntryActionId != Pattern.Stages.front().strActionId)
 			{
-				strOutError = "Next Pattern split-owned identity or entry stage is invalid: " + Pattern.strPatternId;
+				strOutError = "Playable Pattern split-owned identity or entry stage is invalid: " + Pattern.strPatternId;
+				return false;
+			}
+			if (Pattern.bManualServerAudition != ManualByPattern.contains(Pattern.strPatternId) ||
+				(!Pattern.bManualServerAudition &&
+				 (!Pattern.strAdmissionState.empty() || !Pattern.strSourceAnimationChainId.empty() ||
+				  0u != Pattern.iAuthoringPhase)))
+			{
+				strOutError = "Playable Pattern manual metadata has no matching owner: " + Pattern.strPatternId;
 				return false;
 			}
 			std::set<std::string, std::less<>> StageIds;
@@ -5628,7 +5895,7 @@ bool_t Client::CValtanPatternTree::Build_NextPatternInventory(
 					!StageIds.insert(Stage.strStageId).second ||
 					!ActionIds.insert(Stage.strActionId).second)
 				{
-					strOutError = "Next Pattern stage identity is invalid or duplicated: " + Pattern.strPatternId;
+					strOutError = "Playable Pattern stage identity is invalid or duplicated: " + Pattern.strPatternId;
 					return false;
 				}
 			}
@@ -5637,7 +5904,7 @@ bool_t Client::CValtanPatternTree::Build_NextPatternInventory(
 	}
 	if (StagedPatterns.empty())
 	{
-		strOutError = "Next Pattern requires at least one strictly joined split-owned Product pattern.";
+		strOutError = "Playable Pattern requires at least one strictly joined split-owned Product pattern.";
 		return false;
 	}
 	std::sort(StagedPatterns.begin(), StagedPatterns.end(),
@@ -5647,10 +5914,41 @@ bool_t Client::CValtanPatternTree::Build_NextPatternInventory(
 				Left->iSourceSequenceIndex < Right->iSourceSequenceIndex :
 				Left->strPatternId < Right->strPatternId;
 		});
-	std::vector<std::string> StagedIds;
-	StagedIds.reserve(StagedPatterns.size());
+	VALTAN_TOOL_AUDITION_INVENTORY Staged;
 	for (const VALTAN_PATTERN_VIEW* pPattern : StagedPatterns)
-		StagedIds.push_back(pPattern->strPatternId);
+		if (!pPattern->bManualServerAudition)
+			Staged.CorePatternIds.push_back(pPattern->strPatternId);
+	/* Preserve the authored manual display order independently of Next's
+	   source-sequence ordering. Membership was validated in both directions. */
+	for (const VALTAN_MANUAL_AUDITION_VIEW& Manual : View.ManualAuditions)
+		("DERIVED_SERVER_PATTERN" == Manual.strAdmissionState ?
+			Staged.DerivedPatternIds : Staged.AnimatorPatternIds).push_back(Manual.strPatternId);
+	OutInventory = std::move(Staged);
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CValtanPatternTree::Build_NextPatternInventory(
+	const VALTAN_PATTERN_TREE_VIEW& View,
+	std::vector<std::string>& OutPatternIds,
+	std::string& strOutError)
+{
+	VALTAN_TOOL_AUDITION_INVENTORY Inventory;
+	if (!Build_PlayablePatternInventory(View, Inventory, strOutError))
+		return false;
+	std::vector<std::string> StagedIds;
+	StagedIds.reserve(Inventory.Get_PatternCount());
+	for (const auto* pIds : { &Inventory.CorePatternIds, &Inventory.AnimatorPatternIds,
+		&Inventory.DerivedPatternIds })
+		StagedIds.insert(StagedIds.end(), pIds->begin(), pIds->end());
+	std::sort(StagedIds.begin(), StagedIds.end(),
+		[&View](const std::string& LeftId, const std::string& RightId)
+		{
+			const VALTAN_PATTERN_VIEW* Left = Find_Pattern(View, LeftId);
+			const VALTAN_PATTERN_VIEW* Right = Find_Pattern(View, RightId);
+			return Left->iSourceSequenceIndex != Right->iSourceSequenceIndex ?
+				Left->iSourceSequenceIndex < Right->iSourceSequenceIndex : LeftId < RightId;
+		});
 	OutPatternIds = std::move(StagedIds);
 	strOutError.clear();
 	return true;
@@ -5663,11 +5961,11 @@ std::string Client::CValtanPatternTree::Build_PatternIdentitySummary(
 	Summary.imbue(std::locale::classic());
 	Summary << std::fixed << std::setprecision(3)
 		<< "Pattern ID: " << Pattern.strPatternId << "\nAuthoring: ";
-	if (Pattern.bManualServerAudition)
+	if ("DERIVED_SERVER_PATTERN" == Pattern.strAdmissionState)
+		Summary << "Derived server";
+	else if (Pattern.bManualServerAudition)
 		Summary << "Phase " << Pattern.iAuthoringPhase << " manual audition";
-	else if (VALTAN_TOOL_AUDITION_CORE_PATTERN_IDS.end() != std::find(
-		VALTAN_TOOL_AUDITION_CORE_PATTERN_IDS.begin(),
-		VALTAN_TOOL_AUDITION_CORE_PATTERN_IDS.end(), Pattern.strPatternId))
+	else if (Pattern.bAuthoringMasterManaged)
 		Summary << "Core server";
 	else
 		Summary << "outside shared audition inventory";
@@ -5955,6 +6253,13 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		strOutStatus = "Valtan normal-selection product load failed: " + Error;
 		return false;
 	}
+	std::string SavedFlowSourceRevision;
+	if (!Resolve_SavedFlowSequence(
+			GameplayPath, GameplayRoot, SavedFlowSourceRevision, Error))
+	{
+		strOutStatus = "Valtan saved Flow sequence resolution failed: " + Error;
+		return false;
+	}
 	MASTER_DOCUMENT MasterDocument;
 	if (!Parse_SplitMasterDocument(
 			GameplayRoot, PresentationRoot, MasterDocument, Error))
@@ -6203,6 +6508,7 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 	}
 
 	VALTAN_PATTERN_TREE_VIEW Staged;
+	Staged.strSavedFlowSourceRevision = std::move(SavedFlowSourceRevision);
 	size_t iResolvedCueCount = 0u;
 	std::set<std::string, std::less<>> ResolvedCombatObjectEffects;
 	for (const DATA_JSON_VALUE& PatternValue : pPatterns->Get_Array())
@@ -6256,7 +6562,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			!Read_RequiredFiniteFloat(
 				PatternValue, "maximumRange", Pattern.fMaximumRange) ||
 			!Read_PatternServerMotion(
-				PatternValue.Find("serverMotion"), Pattern.ServerMotion))
+				PatternValue.Find("serverMotion"), Pattern.ServerMotion) ||
+			!Read_PatternFinale(PatternValue.Find("finale"), Pattern.Finale) ||
+			(Pattern.Finale.has_value() && pInvulnerable->Get_Boolean()))
 		{
 			strOutStatus =
 				"Valtan encounter pattern gameplay projection is invalid: " +
@@ -6382,6 +6690,7 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					!Read_StageActions(StageValue.Find("actions"),
 						Stage.iDurationMs, Stage.Actions) ||
 					!Read_StageBranches(StageValue.Find("branches"), Stage.Branches) ||
+					!Has_ValidNavigationBlockedCapture(Stage.Branches, Stage.strPlayerResponse) ||
 					!Read_StageGameplayExtensions(StageValue,
 						Stage.strPartDamagePolicy, Stage.CounterProxy))
 				{

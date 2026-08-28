@@ -13,7 +13,7 @@ namespace LostArk::Server
 	/* The only gameplay bootstrap version this build reads. The publisher
 	stamps it and the loader refuses anything else, so a bump has to travel
 	through both sides at once instead of leaving one of them behind. */
-	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 25u;
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 26u;
 
 	/* One point on the displacement an animator baked into a clip. The player
 	reads it per skill and the boss per pattern stage, so it carries no owner in
@@ -366,7 +366,8 @@ namespace LostArk::Server
 		PROP_DESTROYED,
 		SUMMON_DEAD,
 		ALL_PLAYERS_GRABBED,
-		ANY_PLAYER_GRABBED
+		ANY_PLAYER_GRABBED,
+		NAVIGATION_BLOCKED
 	};
 
 	struct BOSS_PATTERN_STAGE_BRANCH final
@@ -399,14 +400,16 @@ namespace LostArk::Server
 		below so a counter drop cannot accidentally inherit a launch impulse. */
 		RELEASE_GRABBED_PLAYERS,
 		DAMAGE_GRABBED_PLAYERS,
-		EXECUTE_GRABBED_PLAYERS
+		EXECUTE_GRABBED_PLAYERS,
+		RETURN_TO_ARENA_CENTER
 	};
 
 	enum class BOSS_GRABBED_RELEASE_MODE : std::uint8_t
 	{
 		NONE,
 		HOLD,
-		OPPOSITE_KNOCKBACK
+		OPPOSITE_KNOCKBACK,
+		ARENA_EJECTION
 	};
 
 	enum class BOSS_COMBAT_OBJECT_VOLLEY_POLICY : std::uint8_t
@@ -484,7 +487,9 @@ namespace LostArk::Server
 	enum class BOSS_PATTERN_STAGE_MOTION_KIND : std::uint8_t
 	{
 		NONE,
-		FORWARD
+		FORWARD,
+		PORTAL_TARGET_RUSH,
+		PORTAL_CROSS_ARENA
 	};
 
 	struct BOSS_PATTERN_STAGE_MOTION final
@@ -492,6 +497,9 @@ namespace LostArk::Server
 		BOSS_PATTERN_STAGE_MOTION_KIND eKind =
 			BOSS_PATTERN_STAGE_MOTION_KIND::NONE;
 		float fDistance = 0.f;
+		std::uint32_t iCornerIndex = 0u;
+		float fHalfExtentsX = 0.f;
+		float fHalfExtentsZ = 0.f;
 		/* The travel the clip already carries. A stage that has one steps along
 		it exactly, the way a player skill does, instead of sliding at
 		fDistance / duration. Empty leaves the authored slide in place. */
@@ -595,6 +603,7 @@ namespace LostArk::Server
 		std::uint32_t iTakeoffEndMs = 0u;
 		std::uint32_t iTravelStartMs = 0u;
 		std::uint32_t iTravelEndMs = 0u;
+		bool bMoveToAnchorBeforeTakeoff = false;
 	};
 
 	enum class BOSS_PATTERN_ROTATION_SELECTION_MODE : std::uint8_t
@@ -667,6 +676,22 @@ namespace LostArk::Server
 		std::vector<std::string> PatternIds;
 	};
 
+	enum class BOSS_PATTERN_FINALE_KIND : std::uint8_t
+	{
+		NONE,
+		GHOST_PORTAL_LOOP
+	};
+
+	struct BOSS_PATTERN_FINALE final
+	{
+		BOSS_PATTERN_FINALE_KIND eKind = BOSS_PATTERN_FINALE_KIND::NONE;
+		std::string strGhostArchetypeId;
+		std::vector<std::string> GhostPatternIds;
+		float fSpawnHalfExtentsX = 0.f;
+		float fSpawnHalfExtentsZ = 0.f;
+		std::uint32_t iMaximumActiveGhosts = 0u;
+	};
+
 	struct BOSS_PATTERN_DEFINITION
 	{
 		std::string strEncounterId;
@@ -674,6 +699,7 @@ namespace LostArk::Server
 		std::string strActionId;
 		bool bAuthoringMasterManaged = false;
 		BOSS_PATTERN_MOTION Motion;
+		BOSS_PATTERN_FINALE Finale;
 		BOSS_PATTERN_SELECTION eSelection = BOSS_PATTERN_SELECTION::NORMAL;
 		BOSS_PATTERN_ARMOR_REQUIREMENT eArmorRequirement =
 			BOSS_PATTERN_ARMOR_REQUIREMENT::ANY;

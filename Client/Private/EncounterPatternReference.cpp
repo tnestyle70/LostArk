@@ -8,6 +8,7 @@
 #include <fstream>
 #include <initializer_list>
 #include <sstream>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace
@@ -202,6 +203,165 @@ namespace
 				});
 	}
 
+	bool_t Validate_FiniteStageGraph(const DATA_JSON_VALUE& pattern)
+	{
+		const DATA_JSON_VALUE* stages = pattern.Find("stages");
+		if (nullptr == stages || !stages->Is_Array() || stages->Get_Array().empty())
+			return false;
+		const auto& rows = stages->Get_Array();
+		std::unordered_map<std::string, size_t> stageByAction;
+		for (size_t index = 0u; index < rows.size(); ++index)
+		{
+			std::string action;
+			if (!Read_String(rows[index], "actionId", false, action) ||
+				!stageByAction.emplace(action, index).second)
+				return false;
+		}
+		std::vector<std::vector<size_t>> successors(rows.size());
+		std::vector<size_t> incoming(rows.size(), 0u);
+		for (size_t index = 0u; index < rows.size(); ++index)
+		{
+			bool hasTimeout = false;
+			const DATA_JSON_VALUE* branches = rows[index].Find("branches");
+			if (nullptr != branches)
+			{
+				if (!branches->Is_Array())
+					return false;
+				for (const DATA_JSON_VALUE& branch : branches->Get_Array())
+				{
+					std::string outcome;
+					const DATA_JSON_VALUE* target = branch.Find("nextActionId");
+					if (!Read_String(branch, "outcome", false, outcome) || nullptr == target)
+						return false;
+					hasTimeout = hasTimeout || outcome == "TIMEOUT";
+					if (target->Is_Null())
+						continue;
+					if (!target->Is_String())
+						return false;
+					const auto next = stageByAction.find(target->Get_String());
+					if (stageByAction.end() == next)
+						return false;
+					successors[index].push_back(next->second);
+					++incoming[next->second];
+				}
+			}
+			if (!hasTimeout && index + 1u < rows.size())
+			{
+				successors[index].push_back(index + 1u);
+				++incoming[index + 1u];
+			}
+		}
+		std::vector<size_t> ready;
+		for (size_t index = 0u; index < incoming.size(); ++index)
+			if (0u == incoming[index])
+				ready.push_back(index);
+		for (size_t index = 0u; index < ready.size(); ++index)
+			for (const size_t next : successors[ready[index]])
+				if (0u == --incoming[next])
+					ready.push_back(next);
+		return ready.size() == rows.size();
+	}
+
+	bool_t Validate_PatternServerMotion(const DATA_JSON_VALUE& pattern)
+	{
+		const DATA_JSON_VALUE* motion = pattern.Find("serverMotion");
+		if (nullptr == motion || motion->Is_Null())
+			return true;
+		if (!Is_ExactObjectWithOptional(*motion,
+			{ "kind", "anchorId", "landingPosition", "apexHeight", "travelStageId",
+			  "takeoffStartMs", "takeoffEndMs", "travelStartMs", "travelEndMs" },
+			{ "moveToAnchorBeforeTakeoff" }))
+			return false;
+		std::string kind, anchorId, travelStageId;
+		uint32_t takeoffStart = 0u, takeoffEnd = 0u, travelStart = 0u, travelEnd = 0u;
+		if (!Read_String(*motion, "kind", false, kind) ||
+			(kind != "LEAP_TO_ANCHOR" && kind != "LEAP_TO_TARGET") ||
+			!Read_String(*motion, "anchorId", false, anchorId) || !Is_StableId(anchorId) ||
+			!Read_String(*motion, "travelStageId", false, travelStageId) || !Is_StableId(travelStageId) ||
+			!Is_FiniteNumber(*motion, "apexHeight") ||
+			motion->Find("apexHeight")->Get_Number() <= 0.0 ||
+			motion->Find("apexHeight")->Get_Number() > 200.0 ||
+			!Read_Unsigned(*motion, "takeoffStartMs", UINT32_MAX, takeoffStart) ||
+			!Read_Unsigned(*motion, "takeoffEndMs", UINT32_MAX, takeoffEnd) ||
+			!Read_Unsigned(*motion, "travelStartMs", UINT32_MAX, travelStart) ||
+			!Read_Unsigned(*motion, "travelEndMs", UINT32_MAX, travelEnd) ||
+			takeoffStart >= takeoffEnd || travelStart >= travelEnd)
+			return false;
+		const DATA_JSON_VALUE* approach = motion->Find("moveToAnchorBeforeTakeoff");
+		if (nullptr != approach && (!approach->Is_Boolean() ||
+			(approach->Get_Boolean() && 0u == takeoffStart)))
+			return false;
+		const DATA_JSON_VALUE* landing = motion->Find("landingPosition");
+		if (nullptr == landing || !landing->Is_Array() || landing->Get_Array().size() != 3u ||
+			!std::all_of(landing->Get_Array().begin(), landing->Get_Array().end(),
+				[](const DATA_JSON_VALUE& value)
+				{ return value.Is_Number() && std::isfinite(value.Get_Number()) &&
+					std::abs(value.Get_Number()) <= 100000.0; }))
+			return false;
+		const DATA_JSON_VALUE* stages = pattern.Find("stages");
+		if (nullptr == stages || !stages->Is_Array() || stages->Get_Array().size() < 2u)
+			return false;
+		uint32_t firstDuration = 0u;
+		if (!Read_Unsigned(stages->Get_Array().front(), "durationMs", UINT32_MAX, firstDuration) ||
+			takeoffEnd > firstDuration)
+			return false;
+		const auto travel = std::find_if(stages->Get_Array().begin() + 1u,
+			stages->Get_Array().end(), [&travelStageId](const DATA_JSON_VALUE& stage)
+			{
+				const DATA_JSON_VALUE* id = stage.Find("stageId");
+				return nullptr != id && id->Is_String() && id->Get_String() == travelStageId;
+			});
+		uint32_t travelDuration = 0u;
+		return stages->Get_Array().end() != travel &&
+			Read_Unsigned(*travel, "durationMs", UINT32_MAX, travelDuration) &&
+			travelEnd <= travelDuration;
+	}
+
+	bool_t Validate_PatternFinale(
+		const DATA_JSON_VALUE& pattern, const DATA_JSON_VALUE::ARRAY& patterns)
+	{
+		const DATA_JSON_VALUE* finale = pattern.Find("finale");
+		if (nullptr == finale)
+			return true;
+		if (!Is_ExactObject(*finale, { "kind", "ghostArchetypeId", "ghostPatternIds",
+			"spawnHalfExtentsM", "maximumActiveGhosts" }))
+			return false;
+		std::string kind, archetype;
+		uint32_t maximumActive = 0u;
+		if (!Read_String(*finale, "kind", false, kind) || kind != "GHOST_PORTAL_LOOP" ||
+			!Read_String(*finale, "ghostArchetypeId", false, archetype) || archetype != "BOSS_VALTAN_GHOST" ||
+			!Read_Unsigned(*finale, "maximumActiveGhosts", 1u, maximumActive) || maximumActive != 1u ||
+			!Is_Boolean(pattern, "invulnerableWhileRunning") ||
+			pattern.Find("invulnerableWhileRunning")->Get_Boolean())
+			return false;
+		const DATA_JSON_VALUE* extents = finale->Find("spawnHalfExtentsM");
+		const DATA_JSON_VALUE* children = finale->Find("ghostPatternIds");
+		if (nullptr == extents || !extents->Is_Array() || extents->Get_Array().size() != 2u ||
+			nullptr == children || !children->Is_Array() || children->Get_Array().size() != 3u ||
+			!std::all_of(extents->Get_Array().begin(), extents->Get_Array().end(),
+				[](const DATA_JSON_VALUE& value)
+				{ return value.Is_Number() && std::isfinite(value.Get_Number()) &&
+					value.Get_Number() >= 1.0 && value.Get_Number() <= 100.0; }))
+			return false;
+		const char* expectedChildren[] = { "VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH", "VALTAN_SEQUENCE_FOUR" };
+		for (size_t index = 0u; index < children->Get_Array().size(); ++index)
+		{
+			const DATA_JSON_VALUE& childId = children->Get_Array()[index];
+			if (!childId.Is_String() || childId.Get_String() != expectedChildren[index])
+				return false;
+			const auto child = std::find_if(patterns.begin(), patterns.end(),
+				[&childId](const DATA_JSON_VALUE& candidate)
+				{
+					const DATA_JSON_VALUE* id = candidate.Find("patternId");
+					return nullptr != id && id->Is_String() && id->Get_String() == childId.Get_String();
+				});
+			if (patterns.end() == child || nullptr != child->Find("finale") ||
+				!Validate_FiniteStageGraph(*child))
+				return false;
+		}
+		return Validate_FiniteStageGraph(pattern);
+	}
+
 	bool_t Validate_StageMotion(
 		const DATA_JSON_VALUE& stage,
 		bool_t& outHasForwardMotion)
@@ -211,8 +371,24 @@ namespace
 		if (nullptr == motion)
 			return true;
 		std::string kind;
-		if (!Is_ExactObject(*motion, { "kind", "distance" }) ||
-			!Read_String(*motion, "kind", false, kind) || kind != "FORWARD" ||
+		if (!Read_String(*motion, "kind", false, kind))
+			return false;
+		if (kind == "PORTAL_TARGET_RUSH")
+			return Is_ExactObject(*motion, { "kind" });
+		if (kind == "PORTAL_CROSS_ARENA")
+		{
+			uint32_t cornerIndex = 0u;
+			const DATA_JSON_VALUE* extents = motion->Find("halfExtentsM");
+			if (!Is_ExactObject(*motion, { "kind", "cornerIndex", "halfExtentsM" }) ||
+				!Read_Unsigned(*motion, "cornerIndex", 3u, cornerIndex) ||
+				nullptr == extents || !extents->Is_Array() || extents->Get_Array().size() != 2u)
+				return false;
+			return std::all_of(extents->Get_Array().begin(), extents->Get_Array().end(),
+				[](const DATA_JSON_VALUE& value)
+				{ return value.Is_Number() && std::isfinite(value.Get_Number()) &&
+					value.Get_Number() >= 1.0 && value.Get_Number() <= 100.0; });
+		}
+		if (!Is_ExactObject(*motion, { "kind", "distance" }) || kind != "FORWARD" ||
 			!Is_FiniteNumber(*motion, "distance"))
 		{
 			return false;
@@ -368,10 +544,10 @@ namespace
 				const double speedMps = action.Find("speedMps")->Get_Number();
 				const bool_t isHold = releaseMode == "HOLD" &&
 					0.0 == speedMps && 0u == durationMs;
-				const bool_t isOppositeKnockback =
-					releaseMode == "OPPOSITE_KNOCKBACK" &&
+				const bool_t isKnockback =
+					(releaseMode == "OPPOSITE_KNOCKBACK" || releaseMode == "ARENA_EJECTION") &&
 					speedMps > 0.0 && speedMps <= 50.0 && durationMs > 0u;
-				if ((!isHold && !isOppositeKnockback) || speedMps < 0.0 ||
+				if ((!isHold && !isKnockback) || speedMps < 0.0 ||
 					speedMps > 50.0)
 				{
 					return false;
@@ -441,6 +617,9 @@ namespace
 			else if (kind == "RETARGET_RANDOM_ALIVE")
 				validKind = trigger == "ENTER" &&
 					targetId == "boss.target.pattern" && 1u == value;
+			else if (kind == "RETURN_TO_ARENA_CENTER")
+				validKind = trigger == "ENTER" &&
+					targetId == "boss.arena.center" && 1u == value;
 			if (!validKind || (trigger == "ENTER" ? 0u == value : 0u != value))
 				return false;
 
@@ -449,7 +628,7 @@ namespace
 				return false;
 			if (kind == "SPAWN_COMBAT_OBJECT" ||
 				kind == "SET_GAMEPLAY_PHASE" ||
-				kind == "RETARGET_RANDOM_ALIVE")
+				kind == "RETARGET_RANDOM_ALIVE" || kind == "RETURN_TO_ARENA_CENTER")
 				continue;
 
 			const std::string lifetimeKey = kind + "\n" + targetId;
@@ -483,7 +662,7 @@ namespace
 			outcome == "STAGGER_BROKEN" || outcome == "WALL_CONTACT" ||
 			outcome == "PART_DESTROYED" || outcome == "PROP_DESTROYED" ||
 			outcome == "SUMMON_DEAD" || outcome == "ALL_PLAYERS_GRABBED" ||
-			outcome == "ANY_PLAYER_GRABBED";
+			outcome == "ANY_PLAYER_GRABBED" || outcome == "NAVIGATION_BLOCKED";
 	}
 
 	bool_t Validate_StageBranches(
@@ -510,6 +689,7 @@ namespace
 		bool_t hasWallContact = false;
 		bool_t hasCounterHit = false;
 		bool_t hasStaggerBroken = false;
+		bool_t hasNavigationBlocked = false;
 		for (const DATA_JSON_VALUE& branch : branches->Get_Array())
 		{
 			std::string outcome;
@@ -537,8 +717,12 @@ namespace
 			hasWallContact = hasWallContact || outcome == "WALL_CONTACT";
 			hasCounterHit = hasCounterHit || outcome == "COUNTER_HIT";
 			hasStaggerBroken = hasStaggerBroken || outcome == "STAGGER_BROKEN";
+			hasNavigationBlocked = hasNavigationBlocked || outcome == "NAVIGATION_BLOCKED";
 		}
-		return hasTimeout && (!hasWallContact || hasForwardMotion) &&
+		const DATA_JSON_VALUE* response = stage.Find("playerResponse");
+		return (!hasNavigationBlocked || (nullptr != response && response->Is_String() &&
+			response->Get_String() == "CAPTURE")) &&
+			hasTimeout && (!hasWallContact || hasForwardMotion) &&
 			(!hasCounterHit || (hasCounterableEnter && hasCounterableExit)) &&
 			(!hasStaggerBroken || (hasStaggerEnter && hasStaggerExit));
 	}
@@ -616,7 +800,7 @@ bool_t Client::CEncounterPatternReference::Load(
 				"invulnerableWhileRunning", "selectionWeight",
 				"maximumConsecutiveUses", "minimumRange", "maximumRange",
 				"stages" },
-				{ "serverMotion" }))
+				{ "serverMotion", "finale" }))
 		{
 			outStatus = "Encounter pattern has unexpected properties";
 			return false;
@@ -894,6 +1078,17 @@ bool_t Client::CEncounterPatternReference::Load(
 			return false;
 		}
 
+		const bool_t isTrash = pattern.patternId == "VALTAN_TRASH" ||
+			pattern.patternId == "VALTAN_TRASH_CATCH_IF" ||
+			pattern.patternId == "VALTAN_TRASH_CATCH_SUCCESS" ||
+			pattern.patternId == "VALTAN_TRASH_CATCH_FAIL";
+		if (!Validate_PatternServerMotion(entry) ||
+			!Validate_PatternFinale(entry, patterns->Get_Array()) ||
+			(isTrash && !Validate_FiniteStageGraph(entry)))
+		{
+			outStatus = "Encounter pattern extensions are invalid: " + pattern.patternId;
+			return false;
+		}
 		staged.push_back(std::move(pattern));
 	}
 

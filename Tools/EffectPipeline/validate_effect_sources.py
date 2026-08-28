@@ -84,6 +84,8 @@ class ValidationReport:
     source_bytes: int
     resource_file_count: int
     resource_bytes: int
+    allow_local_resources: bool = False
+    local_untracked_resource_count: int = 0
 
     def as_json(self) -> str:
         return json.dumps(
@@ -95,6 +97,8 @@ class ValidationReport:
                 "sourceBytes": self.source_bytes,
                 "resourceFileCount": self.resource_file_count,
                 "resourceBytes": self.resource_bytes,
+                "allowLocalResources": self.allow_local_resources,
+                "localUntrackedResourceCount": self.local_untracked_resource_count,
                 "generatedArtifactCount": 0,
             },
             ensure_ascii=False,
@@ -343,8 +347,8 @@ def _parse_lfs_pointer(payload: bytes, path: str) -> tuple[str, int]:
 
 
 def _validate_runtime_resource_closure(
-    root: Path, resource_ids: set[str]
-) -> tuple[int, int]:
+    root: Path, resource_ids: set[str], *, allow_local_resources: bool = False
+) -> tuple[int, int, int]:
     resources_root = root / "Client/Bin/Resources"
     resource_bytes = 0
     missing: list[str] = []
@@ -362,6 +366,7 @@ def _validate_runtime_resource_closure(
             "Effect runtime resource files are missing: " + ", ".join(missing[:5])
         )
 
+    local_untracked_resource_count = 0
     index_entries = _git_index_resource_entries(root)
     if index_entries is not None:
         expected_by_path = {
@@ -370,11 +375,15 @@ def _validate_runtime_resource_closure(
         }
         expected_paths = set(expected_by_path)
         untracked = sorted(expected_paths - set(index_entries))
-        if untracked:
+        if untracked and not allow_local_resources:
             raise ContractError(
                 "Effect runtime resource closure is not tracked by Git: "
                 + ", ".join(untracked[:5])
             )
+        # Every local file was read and checked above. Opting into shared local
+        # resources does not relax staged/LFS identity checks for tracked files.
+        local_untracked_resource_count = len(untracked)
+        expected_paths.difference_update(untracked)
         staged_entries: dict[str, GitIndexEntry] = {}
         for path in sorted(expected_paths):
             entries = index_entries[path]
@@ -433,7 +442,7 @@ def _validate_runtime_resource_closure(
                     raise ContractError(
                         f"Effect WModel staged Git blob does not match working bytes: {path}"
                     )
-    return len(resource_ids), resource_bytes
+    return len(resource_ids), resource_bytes, local_untracked_resource_count
 
 
 def _require_stable_id(value: Any, field: str) -> str:
@@ -456,6 +465,180 @@ def _finite_vec3(value: Any, field: str) -> None:
         raise ContractError(f"{field} must be a three-number array")
     for index, component in enumerate(value):
         _finite_number(component, f"{field}[{index}]")
+
+
+def _validate_authored_material_color_space(source: dict[str, Any], relative: str) -> None:
+    """Opt-in color decoding must not override source-owned material execution."""
+    for index, element in enumerate(source.get("elements", [])):
+        if not isinstance(element, dict):
+            continue
+        material = element.get("material", {})
+        if not isinstance(material, dict) or "colorTexturesSRGB" not in material:
+            continue
+        owner = f"{relative}.elements[{index}].material.colorTexturesSRGB"
+        enabled = material["colorTexturesSRGB"]
+        if not isinstance(enabled, bool):
+            raise ContractError(f"{owner} must be a boolean")
+        if not enabled:
+            continue
+        source_profile = material.get("sourceProfile", {})
+        execution = material.get("execution", {})
+        source_recipe = element.get("sourceRecipe", {})
+        if (
+            material.get("templateId") != "effect.standard"
+            or not isinstance(source_profile, dict)
+            or not isinstance(execution, dict)
+            or not isinstance(source_recipe, dict)
+            or source_profile.get("enabled", False) is not False
+            or source_recipe.get("enabled", False) is not False
+            or execution.get("enabled", False) is not False
+            or execution.get("failClosed", False) is not False
+        ):
+            raise ContractError(f"{owner} requires an ordinary authored standard material")
+
+
+def _validate_attachment_orientations(source: dict[str, Any], relative: str) -> None:
+    anchors: dict[str, tuple[Any, ...]] = {}
+    for element in source.get("elements", []):
+        if not isinstance(element, dict) or "actionCueAttachment" not in element:
+            continue
+        attachment = element["actionCueAttachment"]
+        if not isinstance(attachment, dict):
+            raise ContractError(f"actionCueAttachment must be an object: {relative}")
+        orientation = attachment.get("orientation", "bone")
+        if not isinstance(orientation, str) or orientation not in ("bone", "owner_yaw"):
+            raise ContractError(f"attachment orientation must be bone or owner_yaw: {relative}")
+        if orientation == "owner_yaw":
+            recipe = element.get("sourceRecipe", {})
+            if (attachment.get("enabled") is not True or
+                    attachment.get("follow") is not True or
+                    source.get("version", 13) not in SUPPORTED_PRODUCT_DOCUMENT_VERSIONS or
+                    (isinstance(recipe, dict) and recipe.get("enabled", False)) or
+                    element.get("runtimeCarrier")):
+                raise ContractError(f"owner_yaw requires an enabled native follow attachment: {relative}")
+        if attachment.get("enabled") is not True or attachment.get("follow") is not True:
+            continue
+        slot = attachment.get("runtimeAnchorSlotId")
+        bone = attachment.get("runtimeBoneName")
+        if any(not isinstance(value, str) or not value.strip() or len(value.encode("utf-8")) > 128
+               for value in (slot, bone)):
+            raise ContractError(f"follow attachment requires stable slot and bone names: {relative}")
+        socket = attachment.get("socketLocalTransform")
+        if not isinstance(socket, dict):
+            raise ContractError(f"follow attachment requires a socket transform: {relative}")
+        values: list[float] = []
+        for field in ("position", "rotationDegrees", "scale"):
+            vector = socket.get(field)
+            if (not isinstance(vector, list) or len(vector) != 3 or
+                    any(isinstance(value, bool) or not isinstance(value, (int, float)) or
+                        not math.isfinite(value) or (field == "scale" and value <= 0)
+                        for value in vector)):
+                raise ContractError(f"follow attachment socket {field} is invalid: {relative}")
+            values.extend(vector)
+        descriptor = (bone, orientation, *values)
+        previous = anchors.setdefault(slot, descriptor)
+        if previous != descriptor:
+            raise ContractError(f"follow anchor ID has conflicting bone, socket, or orientation: {relative}: {slot}")
+
+
+def _validate_native_sprite_particle_options(source: dict[str, Any], relative: str) -> None:
+    """Keep optional manual particle controls out of source-owned execution."""
+    option_keys = {"drag", "rotationRangeDegrees", "spinRangeDegreesPerSecond", "subUVOverLife"}
+    for index, element in enumerate(source.get("elements", [])):
+        if not isinstance(element, dict):
+            continue
+        detail = element.get("detail", {})
+        particle = detail.get("particle", {}) if isinstance(detail, dict) else {}
+        if not isinstance(particle, dict):
+            continue
+        velocity = particle.get("initialVelocity", {})
+        if not isinstance(velocity, dict):
+            velocity = {}
+        if not option_keys.intersection(particle) and "uniformSolidAngle" not in velocity:
+            continue
+        owner = f"{relative}.elements[{index}].detail.particle"
+
+        def ordered_pair(key: str) -> list[float]:
+            raw = particle.get(key, [0, 0])
+            if not isinstance(raw, list) or len(raw) != 2:
+                raise ContractError(f"{owner}.{key} must be a two-number range")
+            values = [_finite_number(value, f"{owner}.{key}") for value in raw]
+            if not -3600 <= values[0] <= values[1] <= 3600:
+                raise ContractError(f"{owner}.{key} range is invalid")
+            return values
+
+        drag = _finite_number(particle.get("drag", 0), f"{owner}.drag")
+        if not 0 <= drag <= 1000:
+            raise ContractError(f"{owner}.drag must be within 0..1000")
+        rotation = ordered_pair("rotationRangeDegrees")
+        spin = ordered_pair("spinRangeDegreesPerSecond")
+        life_uv = particle.get("subUVOverLife", False)
+        solid_angle = velocity.get("uniformSolidAngle", False)
+        if not isinstance(life_uv, bool) or not isinstance(solid_angle, bool):
+            raise ContractError(f"{owner} life UV and solid-angle options must be booleans")
+        if not (drag or any(rotation) or any(spin) or life_uv or solid_angle):
+            continue
+        material = element.get("material", {})
+        if not isinstance(material, dict):
+            raise ContractError(f"{owner} material must be an object")
+        execution = material.get("execution", {})
+        source_profile = material.get("sourceProfile", {})
+        source_recipe = element.get("sourceRecipe", {})
+        source_presentation = element.get("sourcePresentation", {})
+        resources = element.get("resources", [])
+        if (
+            not all(isinstance(value, dict) for value in (
+                execution, source_profile, source_recipe, source_presentation
+            ))
+            or not isinstance(resources, list)
+            or not all(isinstance(binding, dict) for binding in resources)
+        ):
+            raise ContractError(f"{owner} material/source/resource contracts are malformed")
+        source_node = element.get("sourceNode", "")
+        if (
+            element.get("kind") != "particle"
+            or particle.get("billboard") is not True
+            or element.get("renderer")
+            or not isinstance(source_node, str)
+            or (source_node and not source_node.startswith("authored-copy:"))
+            or any(binding.get("slotId") == "meshModel" for binding in resources)
+            or source_recipe.get("enabled", False)
+            or source_presentation.get("enabled", False)
+            or material.get("templateId", "effect.standard") != "effect.standard"
+            or material.get("sourceMaterialPath", "")
+            or source_profile.get("enabled", False)
+            or execution.get("enabled", False)
+            or execution.get("failClosed", False)
+            or execution.get("authoringApproximate", False)
+        ):
+            raise ContractError(f"{owner} options require a direct-authored effect.standard sprite particle")
+        if solid_angle:
+            speed = velocity.get("speed", [0, 0])
+            if (
+                velocity.get("mode") != "cone"
+                or not isinstance(speed, list)
+                or len(speed) != 2
+                or not 0 <= _finite_number(speed[0], f"{owner}.initialVelocity.speed")
+                <= _finite_number(speed[1], f"{owner}.initialVelocity.speed")
+                or not 0 <= _finite_number(
+                    velocity.get("coneAngleDegrees", 0), f"{owner}.initialVelocity.coneAngleDegrees"
+                ) <= 180
+            ):
+                raise ContractError(f"{owner} uniformSolidAngle requires a cone and nonnegative speed range")
+        if life_uv:
+            uv = detail.get("uv", {})
+            if not isinstance(uv, dict):
+                raise ContractError(f"{owner} life SubUV requires an object UV block")
+            columns, rows = uv.get("tileColumns", 1), uv.get("tileRows", 1)
+            if (
+                type(columns) is not int or type(rows) is not int
+                or columns <= 0 or rows <= 0 or not 1 < columns * rows <= 0xFFFFFFFF
+                or uv.get("sequence", False) is not False
+                or uv.get("loop", False) is not False
+                or type(uv.get("tileIndex", 0)) is not int
+                or uv.get("tileIndex", 0) != 0
+            ):
+                raise ContractError(f"{owner}.subUVOverLife requires an atlas, tileIndex 0, and no emitter UV sequence/loop")
 
 
 def _validate_v15_runtime_extensions(source: dict[str, Any], relative: str) -> None:
@@ -659,7 +842,7 @@ def _validate_active_consumer_guard(root: Path) -> None:
                 )
 
 
-def validate_repository(root: Path) -> ValidationReport:
+def validate_repository(root: Path, *, allow_local_resources: bool = False) -> ValidationReport:
     root = root.resolve()
     data_root = root / "Data/Effects"
     catalog_path = data_root / "EffectCatalog.json"
@@ -719,6 +902,9 @@ def validate_repository(root: Path) -> ValidationReport:
             raise ContractError(f"direct source Effect ID mismatches its catalog row: {relative}")
         if not isinstance(source.get("elements"), list):
             raise ContractError(f"direct source elements must be an array: {relative}")
+        _validate_authored_material_color_space(source, relative)
+        _validate_native_sprite_particle_options(source, relative)
+        _validate_attachment_orientations(source, relative)
         resource_ids.update(_collect_runtime_resource_ids(source, relative))
         if version == 15:
             _validate_v15_runtime_extensions(source, relative)
@@ -793,8 +979,8 @@ def validate_repository(root: Path) -> ValidationReport:
         )
 
     _validate_active_consumer_guard(root)
-    resource_file_count, resource_bytes = _validate_runtime_resource_closure(
-        root, resource_ids
+    resource_file_count, resource_bytes, local_count = _validate_runtime_resource_closure(
+        root, resource_ids, allow_local_resources=allow_local_resources
     )
     return ValidationReport(
         direct_source_count=len(effect_ids),
@@ -802,6 +988,8 @@ def validate_repository(root: Path) -> ValidationReport:
         source_bytes=source_bytes,
         resource_file_count=resource_file_count,
         resource_bytes=resource_bytes,
+        allow_local_resources=allow_local_resources,
+        local_untracked_resource_count=local_count,
     )
 
 
@@ -812,9 +1000,15 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=Path(__file__).resolve().parents[2],
     )
+    parser.add_argument(
+        "--allow-local-resources", action="store_true",
+        help="Validate existing shared local resources without requiring untracked files in Git; tracked identity checks remain enabled.",
+    )
     args = parser.parse_args(argv)
     try:
-        report = validate_repository(args.repository_root)
+        report = validate_repository(
+            args.repository_root, allow_local_resources=args.allow_local_resources
+        )
     except ContractError as exc:
         print(f"Effect source validation failed: {exc}", file=sys.stderr)
         return 1

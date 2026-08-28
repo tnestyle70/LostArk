@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('Validate', 'ValidateDraft', 'SaveAuthoring', 'SourceManifest', 'PublishCandidate')]
+    [ValidateSet('Validate', 'ValidateDraft', 'SaveAuthoring', 'SourceManifest', 'PublishCandidate', 'PublishSavedFlow')]
     [string]$Mode = 'Validate',
     [string]$RepositoryRoot = '',
     [string]$CandidateRoot = 'Intermediate/ValtanTuningCandidates',
@@ -8,6 +8,7 @@ param(
     [string]$AuthoringRevision = '',
     [string]$SourceManifestPath = '',
     [string]$DraftPatchPath = '',
+    [string]$ExpectedFlowRevision = '',
     [ValidateSet('', 'after_stage', 'after_validate', 'after_revision_manifest',
         'before_promote', 'after_promote', 'before_pointer', 'after_pointer')]
     [string]$FailAt = ''
@@ -42,6 +43,19 @@ if (-not [string]::IsNullOrWhiteSpace($DraftPatchPath)) {
     }
 }
 switch ($Mode) {
+    'PublishSavedFlow' {
+        $candidatePath = if ([IO.Path]::IsPathRooted($CandidateRoot)) {
+            [IO.Path]::GetFullPath($CandidateRoot)
+        }
+        else {
+            [IO.Path]::GetFullPath((Join-Path $repoRoot $CandidateRoot))
+        }
+        $command += @('publish-saved-flow', '--candidate-root', $candidatePath,
+            '--expected-flow-revision', $ExpectedFlowRevision)
+        if (-not [string]::IsNullOrWhiteSpace($FailAt)) {
+            $command += @('--fail-at', $FailAt)
+        }
+    }
     'Validate' {
         $command += 'validate'
     }

@@ -789,8 +789,8 @@ private:
 	bool_t Try_ResetAuthoringResourceOverride(const std::string& strSlotId);
 	bool_t Try_ClearAuthoringOverrides();
     bool_t Try_ClearSelectedSlot();
-	bool_t Try_SetSelectedTrailFollowAnchor(const std::string& strBoneName);
-	bool_t Try_ClearSelectedTrailFollowAnchor();
+	bool_t Try_SetSelectedElementFollowAnchor(const std::string& strBoneName);
+	bool_t Try_ClearSelectedElementFollowAnchor();
     bool_t Try_CommitDocument(EFFECT_DOCUMENT_DESC&& Staged);
     bool_t Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER eFilter);
     bool_t Ensure_WorldPreviewObject();
@@ -991,7 +991,8 @@ private:
 		const std::shared_ptr<CEffectObject>& pObject,
 		const EFFECT_DOCUMENT_DESC& Document,
 		f32_t fEffectSampleSeconds,
-		std::string& strOutError);
+		std::string& strOutError,
+		bool_t bValidateOnly = false);
     bool_t Is_ProductCueVisible(f32_t fTimelineSeconds) const;
 	bool_t Restore_ValtanProductPreviewPlayback(
 		const optional<VALTAN_PRODUCT_PREVIEW>& Preview,
@@ -1008,6 +1009,11 @@ private:
     void Synchronize_LoadedSkillPreview();
 	void Select_PlayerPreviewCueCandidate(size_t iCandidateIndex);
     void Restart_SynchronizedAnimationSequence();
+	bool_t Resolve_SynchronizedAnimationClipStart(
+		const std::shared_ptr<Engine::CModel>& pModel,
+		const SYNCHRONIZED_ANIMATION_CLIP& Clip,
+		uint32_t& iOutAnimationIndex,
+		f32_t& fOutSourceStartTicks) const;
 	bool_t Start_SynchronizedAnimationClip(size_t iClipIndex, bool_t bPaused);
     void Seek_SynchronizedAnimationSequence(f32_t fTimeSeconds);
     void Set_SynchronizedAnimationPaused(bool_t bPaused);

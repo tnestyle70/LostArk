@@ -187,6 +187,9 @@ public:
 	bool Send_ConfirmNpcEntry(
 		std::uint32_t requestSequence,
 		std::string_view npcPlacementId);
+	// Raid Clear screen's "돌아가기" button, Valtan Arena only -- reverse trip
+	// of Send_ConfirmNpcEntry, no NPC target needed.
+	bool Send_ReturnToBern(std::uint32_t requestSequence);
 	/* Same-room-only party invite. The Server re-validates the target
 	NetEntityId is a real player in this room; the answer (if any) arrives
 	as an S2C_PARTY_INVITE_RECEIVED replication event on the target's own

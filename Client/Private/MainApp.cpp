@@ -51,6 +51,7 @@
 #include "ProfilerCaptureIO.h"
 #include "ValtanPatternAuditionService.h"
 #include "ValtanPatternFlowService.h"
+#include "ValtanTuningCommandService.h"
 #endif
 
 #include <algorithm>
@@ -92,25 +93,57 @@ namespace
 		return strResult;
 	}
 
-	/* Shared by RenderItemUpgradeListText (all 6 left-list rows), RenderItemUpgradeLevelText (the
-	big "selected item" name label), and Update_ItemUpgradeSelection (click-to-select + icon swap)
-	so the row order/name/icon triple has exactly one source instead of drifting across three
-	independent literals. Same placeholder "운명의 업화" set/order established earlier -- real
-	inventory/equipment data isn't wired in yet. */
+	/* Shared by RenderItemUpgradeListText (left-list rows), RenderItemUpgradeLevelText (the big
+	"selected item" name label), Update_ItemUpgradeSelection (click-to-select + icon swap), and
+	the success/fail detail text so the id/name/icon triple has exactly one source. Built fresh
+	from the real replicated inventory each time it's needed (cheap in-memory filter, same cost
+	class as CInventoryView::Render's own per-frame rebuild) rather than cached, so a fresh
+	S2C_INVENTORY_SNAPSHOT (e.g. right after the Valtan clear rewards land) is reflected the very
+	next frame with no separate invalidation path. */
 	struct ITEM_UPGRADE_SLOT_INFO
 	{
-		const wchar_t* pName;
-		const char* pIconPath;
+		string strItemId;
+		wstring strName;
+		string strIconPath;
 	};
-	const ITEM_UPGRADE_SLOT_INFO ITEM_UPGRADE_SLOTS[6] =
+
+	bool_t ConvertUtf8ToWide(const string& strUtf8, wstring& outWide)
 	{
-		{ L"\xC6B4\xBA85\xC758 \xC5C5\xD654 \xBA38\xB9AC\xC7A5\xC2DD", "UI/ItemUpgrade/lm_head_icon.png" },     // 운명의 업화 머리장식
-		{ L"\xC6B4\xBA85\xC758 \xC5C5\xD654 \xC5B4\xAE68\xC7A5\xC2DD", "UI/ItemUpgrade/lm_shoulder_icon.png" }, // 운명의 업화 어깨장식
-		{ L"\xC6B4\xBA85\xC758 \xC5C5\xD654 \xC0C1\xC758", "UI/ItemUpgrade/lm_top_icon.png" },                 // 운명의 업화 상의
-		{ L"\xC6B4\xBA85\xC758 \xC5C5\xD654 \xD558\xC758", "UI/ItemUpgrade/lm_bottom_icon.png" },              // 운명의 업화 하의
-		{ L"\xC6B4\xBA85\xC758 \xC5C5\xD654 \xC7A5\xAC11", "UI/ItemUpgrade/lm_glove_icon.png" },               // 운명의 업화 장갑
-		{ L"\xC6B4\xBA85\xC758 \xC5C5\xD654 \xC2DC\xACC4", "UI/ItemUpgrade/lm_weapon_icon.png" },              // 운명의 업화 시계
-	};
+		outWide.clear();
+		if (strUtf8.empty())
+			return false;
+		const int iRequiredLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+			strUtf8.data(), static_cast<int>(strUtf8.size()), nullptr, 0);
+		if (iRequiredLength <= 0)
+			return false;
+		outWide.resize(static_cast<size_t>(iRequiredLength));
+		return iRequiredLength == MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+			strUtf8.data(), static_cast<int>(strUtf8.size()), outWide.data(), iRequiredLength);
+	}
+
+	/* Only the "combat" (equipment) category slice of the real inventory -- consumables/materials
+	/currency ("use") never belong in a 재련 list. Order follows S2C_INVENTORY_SNAPSHOT's own
+	item order (Server-assigned on Grant_Item), not an authored literal order. */
+	vector<ITEM_UPGRADE_SLOT_INFO> BuildItemUpgradeSlots()
+	{
+		vector<ITEM_UPGRADE_SLOT_INFO> slots;
+		for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& item :
+			Client::CCombatHUDViewModel::Get().Get_Inventory().Items)
+		{
+			const ITEM_DEFINITION* pDefinition = CItemCatalog::Find_ById(item.strItemId);
+			if (nullptr == pDefinition || "combat" != pDefinition->strCategory)
+				continue;
+			wstring strName;
+			if (!ConvertUtf8ToWide(pDefinition->strDisplayName, strName))
+				continue;
+			ITEM_UPGRADE_SLOT_INFO info{};
+			info.strItemId = pDefinition->strItemId;
+			info.strName = std::move(strName);
+			info.strIconPath = pDefinition->strIconPath;
+			slots.push_back(std::move(info));
+		}
+		return slots;
+	}
 
 #ifdef _DEBUG
 
@@ -163,12 +196,17 @@ namespace
 	}
 }
 
+CMainApp* CMainApp::s_pActiveInstance = nullptr;
+
 CMainApp::CMainApp()
 {
+	s_pActiveInstance = this;
 }
 
 CMainApp::~CMainApp()
 {
+	if (this == s_pActiveInstance)
+		s_pActiveInstance = nullptr;
 	Free();
 }
 
@@ -177,6 +215,43 @@ void CMainApp::Play_UIButtonClickSound()
 	const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
 		L"Sound/UI/Select/ui_default_button_click2__59426200.wav");
 	CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+}
+
+void CMainApp::Open_ItemUpgradeWindow()
+{
+	if (nullptr == m_pItemUpgradeView || m_bItemUpgradePreviewVisible)
+		return;
+
+	m_bItemUpgradePreviewVisible = true;
+	/* Reopening always starts the gauge idle at 0 -- reset the state machine and hide
+	the 100%-only art so a completed run from a previous open doesn't carry over. */
+	m_iItemUpgradePreviousPercent = 0;
+	m_bItemUpgradeGrowing = false;
+	m_dItemUpgradeGrowStartSeconds = -1.0;
+	m_bItemUpgradeCoreFlashPending = false;
+	m_dItemUpgradeShockwaveScheduledAt = -1.0;
+	m_dItemUpgradeCompleteRevealStartSeconds = -1.0;
+	m_dItemUpgradeResultSettleAt = -1.0;
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_WingedRingGold", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_LevelUpMotion2Big", false);
+	m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", 0.f);
+	m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", 0.f);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_CompleteEffect", false);
+	m_eItemUpgradeAttemptResult = ITEM_UPGRADE_ATTEMPT_RESULT::NONE;
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessModalBg", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessOkBtn", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailModalBg", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailOkBtn", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitBg", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessEffect", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailEffect", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessDiamondWinged", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessDiamondFrame", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessItemIconMarker", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailDiamondFrame", false);
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailItemIconMarker", false);
+	Set_ItemUpgradeCenterPanelVisible(true);
 }
 
 #ifdef _DEBUG
@@ -377,44 +452,16 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			0 != (GetAsyncKeyState(0x50 /* VK_P */) & 0x8000);
 		if (pDown && !m_bPDown)
 		{
-			m_bItemUpgradePreviewVisible = !m_bItemUpgradePreviewVisible;
 			if (m_bItemUpgradePreviewVisible)
 			{
-				/* Reopening always starts the gauge idle at 0 -- reset the state machine and hide
-				the 100%-only art so a completed run from a previous open doesn't carry over. */
-				m_iItemUpgradePreviousPercent = 0;
-				m_bItemUpgradeGrowing = false;
-				m_dItemUpgradeGrowStartSeconds = -1.0;
-				m_bItemUpgradeCoreFlashPending = false;
-				m_dItemUpgradeShockwaveScheduledAt = -1.0;
-				m_dItemUpgradeCompleteRevealStartSeconds = -1.0;
-				m_dItemUpgradeResultSettleAt = -1.0;
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_WingedRingGold", false);
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_LevelUpMotion2Big", false);
-				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", 0.f);
-				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", 0.f);
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_CompleteEffect", false);
-				m_eItemUpgradeAttemptResult = ITEM_UPGRADE_ATTEMPT_RESULT::NONE;
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessModalBg", false);
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessOkBtn", false);
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailModalBg", false);
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailOkBtn", false);
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitBg", false);
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", false);
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessEffect", false);
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailEffect", false);
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessDiamondWinged", false);
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessDiamondFrame", false);
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessItemIconMarker", false);
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailDiamondFrame", false);
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailItemIconMarker", false);
-				Set_ItemUpgradeCenterPanelVisible(true);
-			}
-			else
-			{
+				m_bItemUpgradePreviewVisible = false;
 				// Closing mid-wait must not leave the looping wait sound behind with no
 				// screen visible to end it.
 				CGameInstance::Get().Stop_LoopingSound();
+			}
+			else
+			{
+				Open_ItemUpgradeWindow();
 			}
 		}
 		m_bPDown = pDown;
@@ -507,6 +554,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	   of which panel is visible or which tree row is expanded. */
 	CValtanPatternAuditionService::Get().Update();
 	CValtanPatternFlowService::Get().Update();
+	CValtanTuningCommandService::Get().Update();
 #endif
 	CGameInstance::Get().Update_Engine(fTimeDelta);
 	if (ETOUI(LEVEL::LOADING) !=
@@ -740,6 +788,7 @@ HRESULT CMainApp::Render()
 	RenderChargeGaugeText();
 	RenderDeadSceneText();
 	RenderRaidClearText();
+	RenderItemAnnounceText();
 	RenderDamageNumbers();
 	if (nullptr != m_pInventoryView)
 		m_pInventoryView->Render_Text();
@@ -1274,7 +1323,10 @@ void CMainApp::RenderCombatHUD()
 			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailEffect", false);
 
 			const bool_t bSuccess = m_bItemUpgradePendingAttemptSuccess;
-			const int32_t iSelectedSlot = std::clamp(m_iItemUpgradeSelectedSlot, 0, 5);
+			const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
+			const bool_t bHasSelection = !upgradeSlots.empty();
+			const int32_t iSelectedSlot = bHasSelection ? std::clamp(
+				m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(upgradeSlots.size()) - 1) : 0;
 			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessOkBtn", bSuccess);
 			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailOkBtn", !bSuccess);
 			// Real success_mc/fail_mc detail: a decorative frame + item icon sit behind the settled
@@ -1286,21 +1338,24 @@ void CMainApp::RenderCombatHUD()
 			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessDiamondFrame", true);
 			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessItemIconMarker", bSuccess);
 			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailItemIconMarker", !bSuccess);
-			if (bSuccess)
+			if (bHasSelection)
 			{
-				// Same real icon already shown in the base window's ItemUpgrade_SelectedItemIcon --
-				// the item being reforged doesn't change just because the result modal is up.
-				m_pItemUpgradeView->Set_SlotTexture(
-					"ItemUpgrade_SuccessItemIconMarker", ITEM_UPGRADE_SLOTS[iSelectedSlot].pIconPath);
-				// The actual level-up: a real 재련 success raises this item's own tracked level by 1,
-				// so the left list / right ladder / center 현재-다음 all read the new level once this
-				// result is dismissed. A fail leaves m_iItemUpgradeLevels untouched.
-				++m_iItemUpgradeLevels[iSelectedSlot];
-			}
-			else
-			{
-				m_pItemUpgradeView->Set_SlotTexture(
-					"ItemUpgrade_FailItemIconMarker", ITEM_UPGRADE_SLOTS[iSelectedSlot].pIconPath);
+				if (bSuccess)
+				{
+					// Same real icon already shown in the base window's ItemUpgrade_SelectedItemIcon --
+					// the item being reforged doesn't change just because the result modal is up.
+					m_pItemUpgradeView->Set_SlotTexture(
+						"ItemUpgrade_SuccessItemIconMarker", upgradeSlots[iSelectedSlot].strIconPath);
+					// The actual level-up: a real 재련 success raises this item's own tracked level by
+					// 1, so the left list / right ladder / center 현재-다음 all read the new level once
+					// this result is dismissed. A fail leaves the level untouched.
+					++ItemUpgradeLevelRef(upgradeSlots[iSelectedSlot].strItemId);
+				}
+				else
+				{
+					m_pItemUpgradeView->Set_SlotTexture(
+						"ItemUpgrade_FailItemIconMarker", upgradeSlots[iSelectedSlot].strIconPath);
+				}
 			}
 			m_dItemUpgradeResultSettleAt = -1.0;
 		}
@@ -1562,20 +1617,23 @@ void CMainApp::RenderItemUpgradeListText()
 	(buildUpGrade_txt / itemName_txt) confirmed in ItemBuildUpListRendererMc's own trace, though
 	this renderer is instantiated per-row purely by AS3 (no static per-row placement to trace an
 	exact position from), so the anchor rects here are a reasonable icon-relative placement for
-	the user to nudge in the Tool rather than an exact traced position. Level reads m_iItemUpgradeLevels[i]
-	directly -- all 6 start at 10, and the selected item's own entry actually increments on a real
-	재련 success (see Update_ItemUpgradeResultWaitClick), so this row updates for real afterward. */
+	the user to nudge in the Tool rather than an exact traced position. Rows only draw for items
+	actually present in the real "combat"-category inventory (BuildItemUpgradeSlots) -- fewer than
+	6 owned items just leaves the remaining ItemUpgrade_ListLevel/ItemUpgrade_ListItemName slots
+	blank, same as any other real inventory-backed list. */
+	const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
 	// real sampled reference pixels (list row level text):
 	// level = (255,189,74) same gold as curLevel_lb; name = (227,199,161) warm cream, not white.
 	const fvector_t vLevelColor = XMVectorSet(1.0f, 0.7412f, 0.2902f, 1.f); // #FFBD4A
 	const fvector_t vNameColor = XMVectorSet(0.8902f, 0.7804f, 0.6314f, 1.f); // #E3C7A1
-	for (int32_t i = 0; i < 6; ++i)
+	for (int32_t i = 0; i < 6 && i < static_cast<int32_t>(upgradeSlots.size()); ++i)
 	{
 		const string strLevelSlot = "ItemUpgrade_ListLevel" + to_string(i);
 		const string strNameSlot = "ItemUpgrade_ListItemName" + to_string(i);
-		const wstring strLevel = to_wstring(m_iItemUpgradeLevels[i]) + L"\xB2E8\xACC4"; // "N단계"
+		const wstring strLevel =
+			to_wstring(ItemUpgradeLevelRef(upgradeSlots[i].strItemId)) + L"\xB2E8\xACC4"; // "N단계"
 		DrawFit(strLevelSlot.c_str(), strLevel.c_str(), 0.765f, vLevelColor); // "18단계" (0.85 * 0.9)
-		DrawFit(strNameSlot.c_str(), ITEM_UPGRADE_SLOTS[i].pName, 0.72f, vNameColor); // 0.8 * 0.9
+		DrawFit(strNameSlot.c_str(), upgradeSlots[i].strName.c_str(), 0.72f, vNameColor); // 0.8 * 0.9
 	}
 
 	/* Right 재련 단계 list: 7 rows now (JSON grew GradeRowEmblem/GradeStripB/GradeRowText from 4 to
@@ -1585,18 +1643,20 @@ void CMainApp::RenderItemUpgradeListText()
 	bottom -> top), so row 0 (topmost) is 6 above the current level and row 6 (bottom, nearest the
 	gauge) is the selected item's own CURRENT level -- 10 -> 11 reforge highlights 10, the level
 	you're actually standing at, not 11 (that's the separate curLevel/nextLevel ">>>" display
-	elsewhere). Computed from m_iItemUpgradeLevels[selected] instead of a fixed literal so this
-	ladder shifts with the real level instead of staying frozen at the old 19/25 placeholder range.
-	GradeSelectedExample sits on row 6 to match. Non-selected rows sample as a muted gray (real
-	24/23/22단계 rows, (103,103,103)); the selected (현재) row uses gold for the level and white for
-	its stat, matching every other "selected" element in this window reading brighter than its
-	neighbors. Stat is a placeholder "공격력 +N" (N = that row's own level) until real per-level
-	balance data exists. */
+	elsewhere). Computed from the selected item's own tracked level instead of a fixed literal so
+	this ladder shifts with the real level instead of staying frozen at the old 19/25 placeholder
+	range. GradeSelectedExample sits on row 6 to match. Non-selected rows sample as a muted gray
+	(real 24/23/22단계 rows, (103,103,103)); the selected (현재) row uses gold for the level and
+	white for its stat, matching every other "selected" element in this window reading brighter
+	than its neighbors. Stat is a placeholder "공격력 +N" (N = that row's own level) until real
+	per-level balance data exists. */
 	const fvector_t vRowGray = XMVectorSet(0.4039f, 0.4039f, 0.4039f, 1.f); // #676767
 	const fvector_t vSelectedGold = XMVectorSet(1.0f, 0.7412f, 0.2902f, 1.f); // #FFBD4A
 	const int32_t ROW_COUNT = 7;
-	const int32_t iSelectedForLadder = std::clamp(m_iItemUpgradeSelectedSlot, 0, 5);
-	const int32_t iCurrentLevel = m_iItemUpgradeLevels[iSelectedForLadder];
+	const int32_t iSelectedForLadder = upgradeSlots.empty() ? -1 : std::clamp(
+		m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(upgradeSlots.size()) - 1);
+	const int32_t iCurrentLevel = (iSelectedForLadder >= 0) ?
+		ItemUpgradeLevelRef(upgradeSlots[iSelectedForLadder].strItemId) : 10;
 	int32_t ROW_LEVELS[ROW_COUNT];
 	for (int32_t i = 0; i < ROW_COUNT; ++i)
 		ROW_LEVELS[i] = iCurrentLevel + (ROW_COUNT - 1 - i);
@@ -1657,8 +1717,9 @@ void CMainApp::Update_ItemUpgradeSelection()
 
 	const ImVec2 vMouse = ImGui::GetMousePos();
 	const bool_t bClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+	const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
 
-	for (int32_t i = 0; i < 6; ++i)
+	for (int32_t i = 0; i < 6 && i < static_cast<int32_t>(upgradeSlots.size()); ++i)
 	{
 		const string strGradeBgSlot = "ItemUpgrade_ListGradeBg" + to_string(i);
 		f32_t fRowX = 0.f, fRowY = 0.f, fRowWidth = 0.f, fRowHeight = 0.f;
@@ -1692,7 +1753,7 @@ void CMainApp::Update_ItemUpgradeSelection()
 				"ItemUpgrade_ListSelectedExample", fTargetX, fTargetY);
 		}
 		m_pItemUpgradeView->Set_SlotTexture(
-			"ItemUpgrade_SelectedItemIcon", ITEM_UPGRADE_SLOTS[i].pIconPath);
+			"ItemUpgrade_SelectedItemIcon", upgradeSlots[i].strIconPath);
 		break;
 	}
 }
@@ -1935,6 +1996,11 @@ void CMainApp::Reset_ItemUpgradeIdleGauge()
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_CompleteEffect", false);
 }
 
+int32_t& CMainApp::ItemUpgradeLevelRef(const string& strItemId)
+{
+	return m_ItemUpgradeLevels.try_emplace(strItemId, 10).first->second;
+}
+
 void CMainApp::Set_ItemUpgradeCenterPanelVisible(bool_t bVisible)
 {
 	if (nullptr == m_pItemUpgradeView)
@@ -1985,15 +2051,18 @@ void CMainApp::RenderItemUpgradeLevelText()
 	// itemName_lb.color=13769983(0xD21CFF), curLevel_lb.color=16760138(0xFFBD4A),
 	// nextLevel_lb.color=12057344(0xB7FB00). The ">>>" arrow is a real animated
 	// flourish icon (ItemUpgrade_LevelArrow AnimationFrames), not text.
-	// "운명의 업화 상의" -- same legend-grade gold as buildup_gradebg_legend.png. The item name
-	// itself tracks m_iItemUpgradeSelectedSlot (Update_ItemUpgradeSelection), so it can't live in
-	// the fixed-literal SLOTS array below like CurLevel/NextLevel.
-	const int32_t iSelectedSlot = std::clamp(m_iItemUpgradeSelectedSlot, 0, 5);
+	// The item name/level tracks m_iItemUpgradeSelectedSlot (Update_ItemUpgradeSelection) into the
+	// real "combat"-category inventory (BuildItemUpgradeSlots) -- nothing to show while empty.
+	const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
+	if (upgradeSlots.empty())
+		return;
+	const int32_t iSelectedSlot = std::clamp(
+		m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(upgradeSlots.size()) - 1);
 	{
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (m_pItemUpgradeView->Get_SlotRect("ItemUpgrade_ItemNameLabel", fX, fY, fWidth, fHeight))
 		{
-			const wchar_t* pLabel = ITEM_UPGRADE_SLOTS[iSelectedSlot].pName;
+			const wchar_t* pLabel = upgradeSlots[iSelectedSlot].strName.c_str();
 			const float2_t vMeasured =
 				CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
 			const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (fHeight * 0.95f / vMeasured.y) : 1.f;
@@ -2006,9 +2075,10 @@ void CMainApp::RenderItemUpgradeLevelText()
 	}
 
 	// "N단계" / "(N+1)단계" -- reads the same real per-item level state everything else in this
-	// preview now shares (m_iItemUpgradeLevels), instead of a fixed "18단계"/"19단계" literal.
-	const wstring strCurLevel = to_wstring(m_iItemUpgradeLevels[iSelectedSlot]) + L"\xB2E8\xACC4";
-	const wstring strNextLevel = to_wstring(m_iItemUpgradeLevels[iSelectedSlot] + 1) + L"\xB2E8\xACC4";
+	// preview now shares (ItemUpgradeLevelRef), instead of a fixed "18단계"/"19단계" literal.
+	const int32_t iLevel = ItemUpgradeLevelRef(upgradeSlots[iSelectedSlot].strItemId);
+	const wstring strCurLevel = to_wstring(iLevel) + L"\xB2E8\xACC4";
+	const wstring strNextLevel = to_wstring(iLevel + 1) + L"\xB2E8\xACC4";
 	struct LEVEL_TEXT_ENTRY
 	{
 		const char* pSlotId;
@@ -2216,16 +2286,20 @@ void CMainApp::RenderItemUpgradeSuccessDetailText()
 	// Item name -- same selected-item name/gold-orange tone AND same real size (rect height 19.2,
 	// 0.95f ratio) as RenderItemUpgradeLevelText already draws over the base window's own
 	// ItemUpgrade_ItemNameLabel, directly under the icon.
-	const int32_t iSelectedSlot = std::clamp(m_iItemUpgradeSelectedSlot, 0, 5);
+	const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
+	if (upgradeSlots.empty())
+		return;
+	const int32_t iSelectedSlot = std::clamp(
+		m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(upgradeSlots.size()) - 1);
 	const fvector_t vGoldOrange = XMVectorSet(1.0f, 0.5686f, 0.0f, 1.f);
 	DrawCentered("ItemUpgrade_SuccessItemNameMarker",
-		ITEM_UPGRADE_SLOTS[iSelectedSlot].pName, 0.95f, vGoldOrange);
+		upgradeSlots[iSelectedSlot].strName.c_str(), 0.95f, vGoldOrange);
 
-	// Grade/level reached -- m_iItemUpgradeLevels[iSelectedSlot] is already incremented by the time
-	// this shows (Update_ItemUpgradeResultWaitClick bumps it the instant success is revealed), so
-	// this reads the real new level directly instead of a "+1" guess.
+	// Grade/level reached -- the selected item's level is already incremented by the time this
+	// shows (Update_ItemUpgradeResultWaitClick bumps it the instant success is revealed), so this
+	// reads the real new level directly instead of a "+1" guess.
 	const wstring strReachedLevel =
-		to_wstring(m_iItemUpgradeLevels[iSelectedSlot]) + L"\xB2E8\xACC4";
+		to_wstring(ItemUpgradeLevelRef(upgradeSlots[iSelectedSlot].strItemId)) + L"\xB2E8\xACC4";
 	DrawCentered("ItemUpgrade_SuccessGradeMarker", strReachedLevel.c_str(), 0.9f, vGoldOrange);
 
 	// "재련 성공" -- light green (연두), by explicit user request.
@@ -2273,10 +2347,14 @@ void CMainApp::RenderItemUpgradeFailDetailText()
 	// RenderItemUpgradeLevelText already draws over the base window's own ItemUpgrade_ItemNameLabel,
 	// directly under the icon (real failItemName_lb placement traced from fail_mc's timeline; no
 	// distinct color was recoverable for it, so this reuses success's confirmed tone).
-	const int32_t iSelectedSlot = std::clamp(m_iItemUpgradeSelectedSlot, 0, 5);
+	const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
+	if (upgradeSlots.empty())
+		return;
+	const int32_t iSelectedSlot = std::clamp(
+		m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(upgradeSlots.size()) - 1);
 	const fvector_t vGoldOrange = XMVectorSet(1.0f, 0.5686f, 0.0f, 1.f);
 	DrawCentered("ItemUpgrade_FailItemNameMarker",
-		ITEM_UPGRADE_SLOTS[iSelectedSlot].pName, 0.95f, vGoldOrange);
+		upgradeSlots[iSelectedSlot].strName.c_str(), 0.95f, vGoldOrange);
 
 	// "재련 실패" -- red, by explicit user request. A failed reforge does not change level, so unlike
 	// the success screen there is no grade/level marker here -- this sits directly under the name.
@@ -3080,7 +3158,7 @@ void CMainApp::RenderRaidClearText()
 		return;
 
 	const HUD_RAIDCLEAR_TEXT_RECTS& rects = CCombatHUDViewModel::Get().Get_RaidClearTextRects();
-	if (!rects.isValid)
+	if (!rects.isValid && !rects.isButtonValid)
 		return;
 
 	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
@@ -3088,18 +3166,66 @@ void CMainApp::RenderRaidClearText()
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	/* Real loc key traced from epicgatecommonclear.gfx's clearTF field (fontClass=$YoonGasiIIM,
-	white, initialText="[$]commander.dungeon_clear") -- this project has no loc-key table, so the
-	real Korean string it resolves to in the reference screenshot is used directly. */
-	const wstring strTitle = L"\xB358\xC804 \xD074\xB9AC\xC5B4"; // 던전 클리어
-	const float2_t vTitleMeasured =
-		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str());
-	const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ?
-		(rects.fTitleHeight * 0.6f / vTitleMeasured.y) : 1.f;
-	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str(),
-		float2_t((rects.fTitleX + rects.fTitleWidth * 0.5f) * textScaleX,
-			(rects.fTitleY + rects.fTitleHeight * 0.5f) * textScaleY),
-		Colors::White, 0.f, float2_t(0.5f, 0.5f), fTitleScale * textUiScale);
+	if (rects.isValid)
+	{
+		/* Real loc key traced from epicgatecommonclear.gfx's clearTF field (fontClass=$YoonGasiIIM,
+		white, initialText="[$]commander.dungeon_clear") -- this project has no loc-key table, so
+		the real Korean string it resolves to in the reference screenshot is used directly. */
+		const wstring strTitle = L"\xB358\xC804 \xD074\xB9AC\xC5B4"; // 던전 클리어
+		const float2_t vTitleMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str());
+		const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ?
+			(rects.fTitleHeight * 0.6f / vTitleMeasured.y) : 1.f;
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str(),
+			float2_t((rects.fTitleX + rects.fTitleWidth * 0.5f) * textScaleX,
+				(rects.fTitleY + rects.fTitleHeight * 0.5f) * textScaleY),
+			Colors::White, 0.f, float2_t(0.5f, 0.5f), fTitleScale * textUiScale);
+	}
+
+	// "돌아가기" -- RaidClear_ReturnButton's own label, same style/height ratio as
+	// RenderItemUpgradeButtonText's other NormalButton labels (0.6 of the button
+	// rect's own height, white, centered). Only appears once the celebration
+	// overlay itself has finished (isButtonValid), never together with isValid.
+	if (rects.isButtonValid)
+	{
+		const wstring strReturnLabel = L"\xB3CC\xC544\xAC00\xAE30"; // 돌아가기
+		const float2_t vReturnMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strReturnLabel.c_str());
+		const f32_t fScaleByHeight = (vReturnMeasured.y > 0.f) ?
+			(rects.fButtonHeight * 0.6f / vReturnMeasured.y) : 1.f;
+		const f32_t fScaleByWidth = (vReturnMeasured.x > 0.f) ?
+			(rects.fButtonWidth * 0.85f / vReturnMeasured.x) : 1.f;
+		const f32_t fReturnScale = (std::min)(fScaleByHeight, fScaleByWidth);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strReturnLabel.c_str(),
+			float2_t((rects.fButtonX + rects.fButtonWidth * 0.5f) * textScaleX,
+				(rects.fButtonY + rects.fButtonHeight * 0.5f) * textScaleY),
+			Colors::White, 0.f, float2_t(0.5f, 0.5f), fReturnScale * textUiScale);
+	}
+}
+
+void CMainApp::RenderItemAnnounceText()
+{
+	if (ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+		return;
+
+	const HUD_ITEMANNOUNCE_TEXT_RECTS& rects =
+		CCombatHUDViewModel::Get().Get_ItemAnnounceTextRects();
+	if (!rects.isValid || rects.strText.empty())
+		return;
+
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	const float2_t vMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), rects.strText.c_str());
+	const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (rects.fTextHeight * 0.7f / vMeasured.y) : 1.f;
+	const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (rects.fTextWidth * 0.95f / vMeasured.x) : 1.f;
+	const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), rects.strText.c_str(),
+		float2_t(rects.fTextX * textScaleX, (rects.fTextY + rects.fTextHeight * 0.5f) * textScaleY),
+		Colors::White, 0.f, float2_t(0.f, 0.5f), fScale * textUiScale);
 }
 
 void CMainApp::RenderChargeGauge()

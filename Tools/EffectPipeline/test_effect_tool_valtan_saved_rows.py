@@ -1425,22 +1425,23 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             render,
         )
 
-    def test_pattern_master_joins_two_independent_effects_once_at_root(self) -> None:
+    def test_pattern_master_joins_dynamic_independent_effects_once_at_root(self) -> None:
         master = json.loads(VALTAN_MASTER_PATH.read_text(encoding="utf-8"))
         self.assertEqual("lostark.valtan-pattern-master", master["schema"])
         self.assertEqual(1, master["formatVersion"])
         independent = master["independentEffects"]
+        independent_assets = {
+            row["independentEffectId"]: row["effectAssetId"]
+            for row in independent
+        }
+        self.assertEqual(len(independent), len(independent_assets))
         self.assertEqual(
-            {
-                "valtan.independent-effect.target-axe":
-                    "effect.valtan.sky-axe.active",
-                "valtan.independent-effect.donut-in-out":
-                    "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01",
-            },
-            {
-                row["independentEffectId"]: row["effectAssetId"]
-                for row in independent
-            },
+            "effect.valtan.sky-axe.active",
+            independent_assets["valtan.independent-effect.target-axe"],
+        )
+        self.assertEqual(
+            "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01",
+            independent_assets["valtan.independent-effect.donut-in-out"],
         )
         patterns = {row["patternId"]: row for row in master["patterns"]}
         self.assertEqual(7, len(patterns))
@@ -1511,12 +1512,14 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         ):
             self.assertIn(token, independent_render)
         for token in (
-            '"INDEPENDENT EFFECT (PATTERN 2 + AREA "',
+            '"INDEPENDENT EFFECT (PATTERN "',
+            "std::to_string(IndependentRows.size()) + \" + AREA \"",
             "m_ValtanAreaMapEffectDocument.Get_Surfaces().size() +",
             "m_ValtanAreaMapEffectDocument.Get_WorldEffects().size()",
-            '"PATTERN-OWNED INDEPENDENT EFFECT (2)"',
+            '"PATTERN-OWNED INDEPENDENT EFFECT ("',
         ):
             self.assertIn(token, tool_cpp)
+        self.assertNotIn('"PATTERN-OWNED INDEPENDENT EFFECT (2)"', tool_cpp)
 
     @unittest.skip(
         "All Effects no longer exposes local stage/clip authoring timelines."
@@ -1700,7 +1703,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         )
         stages = {stage["stageId"]: stage for stage in high_jump["stages"]}
         self.assertEqual(1933, stages["TAKEOFF"]["durationMs"])
-        self.assertEqual(4000, stages["AIRBORNE"]["durationMs"])
+        self.assertEqual(6500, stages["AIRBORNE"]["durationMs"])
         self.assertEqual(3200, stages["LAND"]["durationMs"])
         self.assertEqual(400, stages["RECOVERY"]["durationMs"])
         self.assertEqual("LAND", high_jump["serverMotion"]["travelStageId"])
@@ -1738,7 +1741,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             if row["combatObjectArchetypeId"]
             == "combatobject.valtan.high-jump.target-axe"
         )
-        self.assertEqual(4000, target_axe["lifeMs"])
+        self.assertEqual(stages["AIRBORNE"]["durationMs"], target_axe["lifeMs"])
         self.assertEqual(1, len(target_axe["hits"]))
         self.assertEqual(1200, target_axe["hits"][0]["atMs"])
         self.assertEqual(1, target_axe["hits"][0]["repeatCount"])
@@ -2192,7 +2195,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         clear_slot = function_slice(
             cpp_text,
             "bool_t Client::CEffect_Tool::Try_ClearSelectedSlot()",
-            "bool_t Client::CEffect_Tool::Try_SetSelectedTrailFollowAnchor(",
+            "bool_t Client::CEffect_Tool::Try_SetSelectedElementFollowAnchor(",
         )
         ordered_tokens = (
             "!bHasAuthoringOverride",
@@ -2306,23 +2309,23 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             model_view.index("ImGui::BeginDisabled(Has_ProductCuePreview());"),
         )
         for token in (
-            'ImGui::SeparatorText("Selected Trail Follow")',
-            'ImGui::Button("Attach Selected Trail to Bone")',
-            'ImGui::Button("Clear Selected Trail Follow")',
-            "EFFECT_ELEMENT_KIND::TRAIL == pSelectedTrail->eKind",
+            'ImGui::SeparatorText("Selected Element Follow")',
+            'ImGui::Button("Attach Selected Element to Bone")',
+            'ImGui::Button("Clear Selected Element Follow")',
+            "Can_EditElementFollowAttachment(*pSelectedFollowElement)",
         ):
             self.assertIn(token, model_view)
 
         setter = function_slice(
             cpp_text,
-            "bool_t Client::CEffect_Tool::Try_SetSelectedTrailFollowAnchor(",
-            "bool_t Client::CEffect_Tool::Try_ClearSelectedTrailFollowAnchor()",
+            "bool_t Client::CEffect_Tool::Try_SetSelectedElementFollowAnchor(",
+            "bool_t Client::CEffect_Tool::Try_ClearSelectedElementFollowAnchor()",
         )
         ordered_tokens = (
             "Has_UnappliedDetailDraft()",
             "EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource",
             "CAnimationTargetService::Resolve_AnchorTransform(",
-            "EFFECT_ELEMENT_KIND::TRAIL != Selected->eKind",
+            "!Can_EditElementFollowAttachment(*Selected)",
             "Attachment.bEnabled = true;",
             "Attachment.bFollow = true;",
             "Attachment.strRuntimeAnchorSlotId = Selected->strElementId;",
@@ -2371,6 +2374,79 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         )
         self.assertIn('"Trail UV Repeat Distance"', kind_detail)
         self.assertIn('"Trail Curve Step"', kind_detail)
+
+    def test_named_historical_clip_sampling_keeps_the_current_clip_contract(self) -> None:
+        target = (REPOSITORY_ROOT / "Client/Private/AnimationTargetService.cpp").read_text(encoding="utf-8")
+        current_prepare = function_slice(
+            target,
+            "bool_t Client::CAnimationTargetService::Prepare_HistoricalPoseBinding(",
+            "bool_t Client::CAnimationTargetService::Prepare_HistoricalClipPoseBinding(",
+        )
+        self.assertIn("iExpectedAnimationIndex, {}, BoneNames, OutBinding", current_prepare)
+        named_prepare = function_slice(
+            target,
+            "bool_t Client::CAnimationTargetService::Prepare_HistoricalClipPoseBinding(",
+            "bool_t Client::CAnimationTargetService::Prepare_HistoricalPoseBindingForAnimation(",
+        )
+        self.assertIn("iExpectedTargetGeneration != Resolve_TargetGeneration()", named_prepare)
+        self.assertIn("iAnimationIndex != UINT32_MAX", named_prepare)
+        self.assertIn("strClipName != pName", named_prepare)
+        sample = target[target.index("bool_t Client::CAnimationTargetService::Sample_HistoricalPose("):]
+        for token in (
+            "Binding.m_strExplicitClipName.empty()",
+            "Model->Sample_CurrentAnimationBoneCombinedMatrices(",
+            "Model->Sample_AnimationBoneCombinedMatrices(",
+            "Binding.m_iTargetGeneration != Resolve_TargetGeneration()",
+            "Resolve_Model() != Model",
+            "OutSample = std::move(Staged)",
+        ):
+            self.assertIn(token, sample)
+        for mutator in ("->Set_Animation(", "->Start_Animation(", "->Set_AnimTrackPosition(", "->Play_Animation("):
+            self.assertNotIn(mutator, named_prepare + sample)
+        model = (REPOSITORY_ROOT / "Engine/Private/Model.cpp").read_text(encoding="utf-8")
+        sampler = function_slice(
+            model,
+            "bool_t CModel::Sample_BoneCombinedMatricesForAnimation(",
+            "bool_t CModel::Set_BoneLocalMatrix(",
+        )
+        self.assertIn("bUseCurrentPoseAndBlend && iExpectedAnimationIndex != m_iCurrentAnimIndex", sampler)
+        self.assertIn("LocalTransforms[iBone] = m_BoneRestLocalTransforms[iBone]", sampler)
+        self.assertIn("bUseCurrentPoseAndBlend && m_fBlendElapsed < m_fBlendDuration", sampler)
+        self.assertIn("Sample_LocalBoneTransforms(", sampler)
+        for mutator in ("->Set_TrackPosition(", "->Update_TransformationMatrix(", "->Blend_TransformationMatrix("):
+            self.assertNotIn(mutator, sampler)
+        harness = (REPOSITORY_ROOT / "Tools/EffectRenderContractHarness/Private/EffectRenderContractHarness.cpp").read_text(encoding="utf-8")
+        self.assertGreaterEqual(harness.count("Validate_NamedHistoricalAnimationSamplingContract("), 2)
+        self.assertIn('"missing.contract.clip"', harness)
+        self.assertIn("SameState(Before, After)", harness)
+
+    def test_valtan_sequence_preflights_every_clip_before_model_or_state_commit(self) -> None:
+        cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        sequence = function_slice(
+            cpp_text,
+            "bool_t Client::CEffect_Tool::Play_ValtanStageSequence(",
+            "bool_t Client::CEffect_Tool::Try_PlayValtanSavedUnifiedEffect(",
+        )
+        start = function_slice(
+            cpp_text,
+            "bool_t Client::CEffect_Tool::Start_SynchronizedAnimationClip(",
+            "void Client::CEffect_Tool::Restart_SynchronizedAnimationSequence()",
+        )
+        self.assertIn(
+            "for (const SYNCHRONIZED_ANIMATION_CLIP& Clip : Staged)", sequence
+        )
+        self.assertLess(
+            sequence.index("Resolve_SynchronizedAnimationClipStart("),
+            sequence.index("m_SynchronizedAnimationClips = std::move(Staged)"),
+        )
+        self.assertIn("PreviousClips", sequence)
+        self.assertNotIn("Reset_SynchronizedAnimationSequence();", sequence)
+        self.assertLess(
+            start.index("Resolve_SynchronizedAnimationClipStart("),
+            start.index("Start_Animation("),
+        )
+        self.assertIn("Start_Animation(iAnimationIndex, bEngineLoop)", start)
+        self.assertNotIn("Start_Animation(Clip.strClipName", start)
 
     def test_dash_charge_project_tuned_segments_and_cues_are_exact(self) -> None:
         encounter = json.loads(ENCOUNTER_PATH.read_text(encoding="utf-8"))
