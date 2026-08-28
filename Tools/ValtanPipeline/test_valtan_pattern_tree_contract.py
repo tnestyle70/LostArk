@@ -280,6 +280,7 @@ EXPECTED_PROMOTED_KOREAN_NAMES = {
     "VALTAN_COUNTER": "카운터 쳐야 하는 내려치기",
     "VALTAN_CHARGE_2": "모아치기 2",
     "VALTAN_STRUGGLING": "3페이즈 전 발악패턴",
+    "VALTAN_CROSS": "십자 돌 공격",
 }
 
 EXPECTED_UNCHANGED_SEQUENCE_IDS = {
@@ -1012,7 +1013,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             set(EXPECTED_PROMOTED_KOREAN_NAMES)
             | EXPECTED_UNCHANGED_SEQUENCE_IDS
         )
-        self.assertEqual(20, len(manual_rows))
+        self.assertEqual(21, len(manual_rows))
         self.assertEqual([], derived_rows)
         self.assertTrue(
             {
@@ -1024,7 +1025,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             manifest_ids,
             [row["patternId"] for row in manual_rows],
         )
-        self.assertEqual(15, len(EXPECTED_PROMOTED_KOREAN_NAMES))
+        self.assertEqual(16, len(EXPECTED_PROMOTED_KOREAN_NAMES))
         self.assertEqual(5, len(EXPECTED_UNCHANGED_SEQUENCE_IDS))
         self.assertEqual(expected_manifest_ids, set(manifest_ids))
         self.assertEqual(
@@ -1043,7 +1044,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
                 if row["patternId"] in EXPECTED_PROMOTED_KOREAN_NAMES
             },
         )
-        self.assertEqual(20, self.promotion_receipt["patternCount"])
+        self.assertEqual(21, self.promotion_receipt["patternCount"])
         self.assertEqual(99, self.promotion_receipt["stageCount"])
 
         products = {

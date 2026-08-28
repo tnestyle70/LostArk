@@ -307,6 +307,12 @@
         "admissionState": "MANUAL_SERVER_AUDITION"
       },
       {
+        "patternId": "VALTAN_CROSS",
+        "sourceChainId": "cross",
+        "authoringPhase": 2,
+        "admissionState": "MANUAL_SERVER_AUDITION"
+      },
+      {
         "patternId": "VALTAN_STRUGGLING",
         "sourceChainId": "warp-jump-four-hand-twohand-roar-roar-dead",
         "authoringPhase": 3,
@@ -4239,6 +4245,56 @@
               "worldEventSetId": "worldeventset.valtan.terrain-destruction-9.floor30"
             }
           ],
+          "branches": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_CROSS",
+      "displayName": "십자 돌 공격",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.sequence.cross",
+      "entryActionId": "valtan.sequence.cross.step-01",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420602
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.cross.step-01",
+          "stageKind": "ACTIVE",
+          "durationMs": 3000,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
           "branches": []
         }
       ]

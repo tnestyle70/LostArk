@@ -27,9 +27,9 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
 
     def test_reviewed_chain_closure_and_stable_ids(self) -> None:
         gameplay, presentation, receipt = promotion.build_candidates(self.root)
-        self.assertEqual(30, len(gameplay["patterns"]))
-        self.assertEqual(30, len(presentation["patterns"]))
-        self.assertEqual(20, receipt["patternCount"])
+        self.assertEqual(31, len(gameplay["patterns"]))
+        self.assertEqual(31, len(presentation["patterns"]))
+        self.assertEqual(21, receipt["patternCount"])
         self.assertEqual(99, receipt["stageCount"])
         self.assertEqual(
             99,
@@ -283,7 +283,7 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
         )
         before = {relative: sha256(self.root / relative) for relative in tracked}
         result = promotion.run(self.root, "Validate")
-        self.assertEqual(20, result["patternCount"])
+        self.assertEqual(21, result["patternCount"])
         self.assertEqual(99, result["stageCount"])
         self.assertEqual(before, {relative: sha256(self.root / relative) for relative in tracked})
 

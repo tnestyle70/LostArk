@@ -15522,7 +15522,7 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 		if (!strSearch.empty())
 			ImGui::SetNextItemOpen(true, ImGuiCond_Always);
 		if (ImGui::TreeNodeEx(
-				"ANIMATOR PATTERNS (20)",
+				"ANIMATOR PATTERNS (21)",
 				ImGuiTreeNodeFlags_OpenOnArrow))
 		{
 			for (const VALTAN_PATTERN_VIEW* pPattern : AnimatorPatterns)

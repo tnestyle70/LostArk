@@ -48,6 +48,7 @@ EXPECTED_PROMOTED_KOREAN_NAMES = {
     "VALTAN_COUNTER": "카운터 쳐야 하는 내려치기",
     "VALTAN_CHARGE_2": "모아치기 2",
     "VALTAN_STRUGGLING": "3페이즈 전 발악패턴",
+    "VALTAN_CROSS": "십자 돌 공격",
 }
 
 EXPECTED_UNCHANGED_SEQUENCE_IDS = {
@@ -108,7 +109,7 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             pattern["patternId"] for pattern in self.presentation["patterns"]
         }
         self.assertEqual(gameplay_ids, presentation_ids)
-        self.assertEqual(30, len(gameplay_ids))
+        self.assertEqual(31, len(gameplay_ids))
 
         manifest_rows = self.promotion_manifest["patterns"]
         manifest_ids = [row["patternId"] for row in manifest_rows]
@@ -120,7 +121,7 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             set(EXPECTED_PROMOTED_KOREAN_NAMES)
             | EXPECTED_UNCHANGED_SEQUENCE_IDS
         )
-        self.assertEqual(15, len(EXPECTED_PROMOTED_KOREAN_NAMES))
+        self.assertEqual(16, len(EXPECTED_PROMOTED_KOREAN_NAMES))
         self.assertEqual(5, len(EXPECTED_UNCHANGED_SEQUENCE_IDS))
         self.assertEqual(manifest_ids, manual_ids)
         self.assertEqual(expected_manifest_ids, set(manifest_ids))

@@ -190,9 +190,9 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             ),
         )
         manual = self.gameplay["decisionModel"]["manualAuditions"]
-        self.assertEqual(20, len(manual))
+        self.assertEqual(21, len(manual))
         manual_ids = [row["patternId"] for row in manual]
-        self.assertEqual(20, len(set(manual_ids)))
+        self.assertEqual(21, len(set(manual_ids)))
         self.assertTrue(set(EXPECTED_CORE_PATTERN_IDS).isdisjoint(manual_ids))
 
         independent = {
@@ -221,7 +221,7 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             "m_ValtanToolAuditionInventory.CorePatternIds",
             "m_ValtanToolAuditionInventory.AnimatorPatternIds",
             "CORE SERVER PATTERNS (8)",
-            "ANIMATOR PATTERNS (20)",
+            "ANIMATOR PATTERNS (21)",
             "INDEPENDENT EFFECT (2)",
             "TOTAL_PATTERN_COUNT !=",
             "no legacy or replacement row was substituted",
@@ -450,8 +450,8 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             row["patternId"]
             for row in self.gameplay["decisionModel"]["manualAuditions"]
         ]
-        self.assertEqual(28, len(visible_pattern_ids))
-        self.assertEqual(28, len(set(visible_pattern_ids)))
+        self.assertEqual(29, len(visible_pattern_ids))
+        self.assertEqual(29, len(set(visible_pattern_ids)))
         for pattern_id in visible_pattern_ids:
             display_name = patterns[pattern_id]["displayName"]
             with self.subTest(pattern_id=pattern_id):
