@@ -11521,6 +11521,13 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		automaticBoss.iNetEntityId = 19700u;
 		for (std::uint32_t tick = 0u; tick < 8000u; ++tick)
 		{
+			SERVER_PLAYER& sequencePlayer = entrancePlayers.begin()->second;
+			if (PLAYER_ACTION_STATE::DEAD == sequencePlayer.eAction)
+			{
+				sequencePlayer.iCurrentHp = sequencePlayer.iMaximumHp;
+				sequencePlayer.eAction = PLAYER_ACTION_STATE::NONE;
+				sequencePlayer.isCombatReady = true;
+			}
 			if ("VALTAN_TRASH" == automaticBoss.strPatternId &&
 				("STEP_08" == automaticBoss.strPatternStageId ||
 				 "GROGGY" == automaticBoss.strPatternStageId))
@@ -11556,7 +11563,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			publishedTrashCounter && observedOrder == expectedOrder &&
 			"sequence.valtan.server-authored.v1" ==
 				automaticBoss.strRotationId &&
-			28u == automaticBoss.iRotationStepIndex &&
+			reviewSequence.iExpectedStepCount == automaticBoss.iRotationStepIndex &&
 			entrancePlayers.begin()->second.iCurrentHp > 0u &&
 			!automaticBoss.bAutomaticPatternSequenceStepRunning &&
 			automaticBoss.strPatternId.empty() &&
