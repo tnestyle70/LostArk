@@ -107,8 +107,8 @@ class ReleaseClientSurfaceContractTests(unittest.TestCase):
         self.assertNotIn('ImGui::Begin(\n\t\t\t"Loading recovery"', source)
         self.assertIn("Render_LoadingRecoveryProduct();", source)
         self.assertIn('"Loading progress"', source)
-		self.assertIn("DEFAULT_RETRY_RECT", source)
-		self.assertIn("AddRectFilled", source)
+        self.assertIn("DEFAULT_RETRY_RECT", source)
+        self.assertIn("AddRectFilled", source)
 
         slots = [slot["id"] for slot in recovery["slots"]]
         for slot_id in (
