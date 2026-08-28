@@ -7,6 +7,7 @@
 #include "NavPathFollower.h"
 #include "Network/PacketMessages.h"
 #include "ValtanPatternEffectCueDocument.h"
+#include "ValtanPatternShakeCueDocument.h"
 #include "ValtanPatternSoundCueDocument.h"
 
 #include <algorithm>
@@ -376,6 +377,14 @@ private:
 	std::unordered_set<std::string> m_AttemptedPatternSoundOccurrenceKeys;
 	bool_t m_bPatternSoundCueScanAgeValid = false;
 	f32_t m_fPatternSoundCueScanAgeSeconds = 0.f;
+	/* Boss camera-shake cues, same shape as the Sound cue registry. Every
+	   client that presents the boss feels its shakes; they are not gated on a
+	   locally controlled owner like player skill shakes. */
+	std::unordered_map<std::string,
+		std::vector<VALTAN_PATTERN_SHAKE_CUE>> m_PatternShakeCuesByActionId;
+	std::unordered_set<std::string> m_AttemptedPatternShakeOccurrenceKeys;
+	bool_t m_bPatternShakeCueScanAgeValid = false;
+	f32_t m_fPatternShakeCueScanAgeSeconds = 0.f;
 #ifdef _DEBUG
 	/* Display copy of the encounter stage hit shapes, keyed by the snapshot's
 	   stage actionId. The Server owns the judgment; this only mirrors it as a
@@ -423,6 +432,8 @@ private:
 	void Spawn_DuePatternEffectCues(f32_t fActionAgeSeconds);
 	void Load_PatternSoundCues();
 	void Spawn_DuePatternSoundCues(f32_t fActionAgeSeconds);
+	void Load_PatternShakeCues();
+	void Spawn_DuePatternShakeCues(f32_t fActionAgeSeconds);
 #ifdef _DEBUG
 	void Load_PatternHitAreaDebug();
 	void Draw_PatternHitAreaDebug() const;

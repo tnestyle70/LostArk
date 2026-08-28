@@ -24,7 +24,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.0000 d=0.2000 kind=HIT src=Effect asset="42061229" label="" win=NONE
   n t=0.0000 d=0.2000 kind=HIT src=Effect asset="42061231" label="" win=NONE
   n t=0.0000 d=0.0000 kind=HIT src=Effect asset="49000010" label="" win=NONE
-  n t=0.0000 d=0.2944 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.2944 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=9,50;y=6,50;z=6,50;fov=0,0" label="" win=NONE
   n t=0.0000 d=1.8333 kind=SOUND src=AKEvent asset="S_Systems.SYS_MONSTER_GROGGY" label="" win=NONE
   n t=0.0500 d=1.6333 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_FreezeStart1" label="" win=NONE
   n t=0.1000 d=1.7333 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack11_Cast3" label="" win=NONE
@@ -36,12 +36,12 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.4947 d=3.0053 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_02_08" label="" win=NONE
   n t=1.6665 d=0.3638 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" label="" win=NONE
   n t=1.6719 d=0.6000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
-  n t=1.6720 d=0.4000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.6720 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.1;x=4,50;y=4,50;z=4,50;fov=0,0" label="" win=NONE
   n t=1.7000 d=1.3667 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack08_Shot1" label="" win=NONE
   n t=1.7913 d=0.2004 kind=HIT src=Effect asset="42060901" label="" win=NONE
   n t=1.7913 d=0.2004 kind=HIT src=Effect asset="42060951" label="" win=NONE
   n t=2.2000 d=1.3000 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack08_Shot1" label="" win=NONE
-  n t=2.2195 d=0.4000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=2.2195 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.1;x=4,50;y=4,50;z=4,50;fov=0,0" label="" win=NONE
   n t=2.2211 d=0.2116 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" label="" win=NONE
   n t=2.2482 d=0.6000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=2.3000 d=0.2000 kind=HIT src=Effect asset="42060902" label="" win=NONE
@@ -49,7 +49,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=3.0000 d=0.5000 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack08_Shot2" label="" win=NONE
   n t=3.0076 d=0.2123 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" label="" win=NONE
   n t=3.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
-  n t=3.1000 d=0.4000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=3.1000 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.05;x=5,50;y=5,50;z=7,50;fov=0,0" label="" win=NONE
   n t=3.1341 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_01_01" label="" win=NONE
   n t=3.1381 d=0.2000 kind=HIT src=Effect asset="42060903" label="" win=NONE
   n t=3.1381 d=0.2000 kind=HIT src=Effect asset="42060953" label="" win=NONE
@@ -59,11 +59,11 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
 "mesh_att_battle_10_02" skill=420609 len=3.1667 name="레이드 발탄_4연속 베기"
   n t=0.0000 d=2.1000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_03" label="" win=NONE
   n t=0.0000 d=2.8970 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_02_08" label="" win=NONE
-  n t=0.0000 d=0.6000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.6000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0.6;out=0;x=1.5,60;y=1.5,60;z=1.5,60;fov=0,0" label="" win=NONE
   n t=0.5000 d=0.9667 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack08_Shot3" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_01_08" label="" win=NONE
   n t=0.6000 d=0.2000 kind=HIT src=Effect asset="42060904" label="" win=NONE
-  n t=0.6000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0;x=5,55;y=5,55;z=8,55;fov=0,0" label="" win=NONE
   n t=1.5000 d=1.6667 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack08_ShotVox2" label="" win=NONE
   n t=1.5000 d=1.4667 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack08_Shot4" label="" win=NONE
   n t=1.6241 d=0.5359 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" label="" win=NONE
@@ -71,7 +71,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=1.7000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_01_05" label="" win=NONE
   n t=1.7000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_01_02" label="" win=NONE
   n t=1.7000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=1.7000 d=1.3000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.7000 d=1.3000 kind=SHAKE src=ViewShake asset="dur=1.3;in=1.3;out=0;x=1.5,60;y=1.5,60;z=1.5,60;fov=0,0" label="" win=NONE
   n t=1.8000 d=0.2000 kind=HIT src=Effect asset="42060905" label="" win=NONE
   n t=1.8000 d=0.2000 kind=HIT src=Effect asset="42060955" label="" win=NONE
   n t=1.8000 d=0.2000 kind=HIT src=Effect asset="42060910" label="" win=NONE
@@ -80,12 +80,12 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=3.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=3.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=3.0000 d=0.1667 kind=HIT src=Effect asset="42060906" label="" win=NONE
-  n t=3.0000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=3.0000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.1;x=4,50;y=4,50;z=8,40;fov=0,0" label="" win=NONE
   n t=3.0000 d=0.1667 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack08_Shot5" label="" win=NONE
   n t=3.0700 d=0.0000 kind=STAGE src=MonsterMoveNextStage asset="" label="next" win=NONE
 "mesh_att_battle_11_01" skill=420611 len=1.8000 name="레이드 발탄_발구르기"
   n t=0.0010 d=1.2000 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack10_CastVox1" label="" win=NONE
-  n t=0.5946 d=0.3000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5946 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0;x=4,55;y=4,55;z=6,55;fov=0,0" label="" win=NONE
   n t=0.5950 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_05_02" label="" win=NONE
   n t=0.5968 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=0.5968 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
@@ -95,7 +95,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.6000 d=0.2000 kind=HIT src=Effect asset="42061135" label="" win=NONE
   n t=0.6000 d=1.2000 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack10_Cast1" label="" win=NONE
   n t=1.2612 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_05_02" label="" win=NONE
-  n t=1.2643 d=0.3000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.2643 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0;x=4,55;y=4,55;z=6,55;fov=0,0" label="" win=NONE
   n t=1.2647 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=1.2647 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=1.3000 d=0.2000 kind=HIT src=Effect asset="42061124" label="" win=NONE
@@ -119,7 +119,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.8000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_07_01" label="" win=NONE
   n t=0.8000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=0.8000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=0.8000 d=0.4000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.8000 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.05;x=5,30;y=5,30;z=7,30;fov=0,0" label="" win=NONE
   n t=1.1000 d=0.0000 kind=STAGE src=MonsterMoveNextStage asset="" label="next" win=NONE
 "mesh_att_battle_12_02" skill=420612 len=1.0000 name="레이드 발탄_구속시켜 돌진 잡기 후 내려찍기 시작 (군단장 스킬)"
   n t=0.0000 d=0.0000 kind=HIT src=Effect asset="42061212" label="" win=NONE
@@ -131,7 +131,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.2000 d=0.2000 kind=HIT src=Effect asset="42062902" label="" win=NONE
   n t=0.2106 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.2170 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
-  n t=0.2235 d=0.5011 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2235 d=0.5011 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.05;x=5,50;y=5,50;z=7,50;fov=0,0" label="" win=NONE
   n t=0.2300 d=0.2000 kind=HIT src=Effect asset="42061901" label="" win=NONE
   n t=0.2306 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_07_02" label="" win=NONE
   n t=0.2306 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
@@ -158,7 +158,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=2.0000 d=0.1000 kind=HIT src=Effect asset="42060055" label="" win=NONE
   n t=2.1000 d=0.7000 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack11_Shot4" label="" win=NONE
   n t=2.2000 d=0.3000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Trail_02" label="" win=NONE
-  n t=2.4129 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=2.4129 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.05;x=8,40;y=8,40;z=8,40;fov=0,0" label="" win=NONE
   n t=2.4195 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=2.4195 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=2.7000 d=0.0000 kind=STAGE src=MonsterMoveNextStage asset="" label="next" win=NONE
@@ -172,7 +172,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=3.5941 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_07_01" label="" win=NONE
   n t=3.5941 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=3.5941 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=3.5941 d=0.4008 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=3.5941 d=0.4008 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.05;x=5,30;y=5,30;z=7,30;fov=0,0" label="" win=NONE
 "mesh_att_battle_12_06" skill=420656 len=1.0000 name="레이드 발탄_초강력 내려찍기 콤보 종료 - 1 (군단장 스킬)"
   n t=0.0000 d=0.0000 kind=HIT src=Effect asset="42061900" label="" win=NONE
   n t=0.0000 d=0.2000 kind=HIT src=Effect asset="42060041" label="" win=NONE
@@ -194,7 +194,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.2680 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.2680 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=0.2680 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
-  n t=0.2680 d=0.7015 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2680 d=0.7015 kind=SHAKE src=ViewShake asset="dur=0.7;in=0;out=0.1;x=8,65;y=8,65;z=8,50;fov=0,0" label="" win=NONE
   n t=0.8000 d=0.2000 kind=HIT src=Effect asset="42060074" label="" win=NONE
   n t=0.8000 d=0.2000 kind=HIT src=Effect asset="42060078" label="" win=NONE
   n t=1.1000 d=0.0000 kind=STAGE src=MonsterMoveNextStage asset="" label="next" win=NONE
@@ -212,7 +212,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.0000 d=3.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_08_05" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_04" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=0.0000 d=3.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=3.0000 kind=SHAKE src=ViewShake asset="dur=5;in=3;out=0;x=1.5,70;y=1.5,70;z=1.5,70;fov=0,0" label="" win=NONE
   n t=0.0010 d=2.8500 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack29_Cast3" label="" win=NONE
   n t=0.5000 d=2.2333 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack20_ShotVox1" label="" win=NONE
   n t=2.9000 d=0.0000 kind=STAGE src=MonsterMoveNextStage asset="" label="next" win=NONE
@@ -225,7 +225,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.1500 d=0.2000 kind=HIT src=Effect asset="42061962" label="" win=NONE
   n t=0.1621 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=0.1621 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=0.1621 d=0.7041 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1621 d=0.7041 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.1;x=8,50;y=8,50;z=8,50;fov=0,0" label="" win=NONE
   n t=0.1628 d=1.1372 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_08_04" label="" win=NONE
   n t=0.7000 d=0.2000 kind=HIT src=Effect asset="42060042" label="" win=NONE
   n t=1.1500 d=0.1000 kind=HIT src=Effect asset="42060052" label="" win=NONE
@@ -241,7 +241,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=1.4297 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=1.4297 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=1.4297 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=1.4297 d=0.4014 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.4297 d=0.4014 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.05;x=5,30;y=5,30;z=7,30;fov=0,0" label="" win=NONE
   n t=1.4354 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_13_02" label="" win=NONE
   n t=1.4500 d=0.2000 kind=HIT src=Effect asset="42061202" label="" win=NONE
   n t=1.4549 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_BlowSlash_Atk_01" label="" win=NONE
@@ -297,7 +297,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.0010 d=0.7667 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_FootStep1" label="" win=NONE
   n t=0.2500 d=0.7500 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_FootStep1" label="" win=NONE
   n t=1.4000 d=0.0000 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack12_Shot3" label="" win=NONE
-  n t=1.4865 d=0.5106 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.4865 d=0.5106 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" label="" win=NONE
   n t=1.4871 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_07_02" label="" win=NONE
   n t=1.4871 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Crack_01_02" label="" win=NONE
   n t=1.5000 d=0.2000 kind=HIT src=Effect asset="42061207" label="" win=NONE
@@ -350,7 +350,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=1.0009 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_08_02" label="" win=NONE
   n t=1.0009 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_SK09_Exp_03" label="" win=NONE
   n t=1.0020 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
-  n t=1.0025 d=0.5448 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.0025 d=0.5448 kind=SHAKE src=ViewShake asset="dur=0.8;in=0;out=0.1;x=12,50;y=12,50;z=14,60;fov=0,0" label="" win=NONE
   n t=1.0055 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_08" label="" win=NONE
   n t=1.0055 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=1.5500 d=0.0000 kind=STAGE src=MonsterMoveNextStage asset="" label="next" win=NONE
@@ -382,7 +382,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.0000 d=0.5667 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_09_01" label="" win=NONE
   n t=0.0010 d=0.5657 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack25_Shot3" label="" win=NONE
   n t=0.1687 d=0.1308 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" label="" win=NONE
-  n t=0.2603 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2603 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.8;in=0;out=0;x=8,50;y=8,50;z=10,50;fov=0,0" label="" win=NONE
   n t=0.2605 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=0.2613 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.2618 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_09_02" label="" win=NONE
@@ -410,7 +410,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=1.6252 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_07_01" label="" win=NONE
   n t=1.6252 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=1.6252 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=1.6302 d=0.1901 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.6302 d=0.1901 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.05;x=5,30;y=5,30;z=7,30;fov=0,0" label="" win=NONE
   n t=1.7000 d=0.0000 kind=STAGE src=MonsterMoveNextStage asset="" label="next" win=NONE
 "mesh_att_battle_16_02" skill=420616 len=1.0000 name="레이드 발탄_지면파괴 사자후 콤보"
   n t=0.2000 d=0.2000 kind=HIT src=Effect asset="42061601" label="" win=NONE
@@ -427,7 +427,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.2000 d=0.2000 kind=HIT src=Effect asset="42061603" label="" win=NONE
   n t=0.2106 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.2170 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
-  n t=0.2235 d=0.4432 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2235 d=0.4432 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.05;x=5,50;y=5,50;z=7,50;fov=0,0" label="" win=NONE
   n t=0.2305 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_01_02" label="" win=NONE
   n t=0.2306 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_07_02" label="" win=NONE
   n t=0.2306 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
@@ -455,7 +455,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.0000 d=5.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_08_05" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_04" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=0.0000 d=5.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=5.0000 kind=SHAKE src=ViewShake asset="dur=5;in=3;out=0;x=1.5,70;y=1.5,70;z=1.5,70;fov=0,0" label="" win=NONE
   n t=0.0010 d=4.9990 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack15_Cast5" label="" win=NONE
   n t=0.0010 d=4.9990 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack15_ShotVox3" label="" win=NONE
   n t=4.9000 d=0.0000 kind=STAGE src=MonsterMoveNextStage asset="" label="next" win=NONE
@@ -464,7 +464,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.2896 d=0.3437 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" label="" win=NONE
   n t=0.3963 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=0.3963 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=0.3963 d=0.7066 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3963 d=0.7066 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.1;x=8,50;y=8,50;z=8,50;fov=0,0" label="" win=NONE
   n t=0.3970 d=1.1412 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_08_04" label="" win=NONE
   n t=0.4000 d=0.2000 kind=HIT src=Effect asset="42061605" label="" win=NONE
   n t=0.4000 d=0.2000 kind=HIT src=Effect asset="42061651" label="" win=NONE
@@ -483,7 +483,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=1.0000 d=2.0000 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack16_Shot2" label="" win=NONE
   n t=1.1500 d=0.2000 kind=HIT src=Effect asset="42061703" label="" win=NONE
   n t=1.1629 d=1.3797 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_SK09_Exp_03" label="" win=NONE
-  n t=1.1710 d=1.5943 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.1710 d=1.5943 kind=SHAKE src=ViewShake asset="dur=0.8;in=0;out=0.3;x=4,50;y=4,50;z=12,70;fov=0,0" label="" win=NONE
   n t=1.1719 d=1.3797 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_SK09_Exp_04" label="" win=NONE
   n t=1.1755 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_01_02" label="" win=NONE
   n t=1.1802 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
@@ -501,7 +501,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.0000 d=0.2000 kind=HIT src=Effect asset="42061732" label="" win=NONE
   n t=0.0000 d=0.2000 kind=HIT src=Effect asset="42061733" label="" win=NONE
   n t=0.0000 d=0.2000 kind=HIT src=Effect asset="42061734" label="" win=NONE
-  n t=0.0000 d=10.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=10.0000 kind=SHAKE src=ViewShake asset="dur=10;in=9;out=1;x=2,25;y=2,25;z=3,50;fov=0,0" label="" win=NONE
   n t=0.5000 d=0.2000 kind=HIT src=Effect asset="42061724" label="" win=NONE
   n t=2.1989 d=0.6000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=2.3228 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Light_04_1" label="" win=NONE
@@ -562,7 +562,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.7000 d=0.9667 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack18_Shot1" label="" win=NONE
   n t=0.7320 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_01_02" label="" win=NONE
   n t=0.7331 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
-  n t=0.7398 d=0.2747 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.7398 d=0.2747 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" label="" win=NONE
   n t=0.8000 d=0.1000 kind=HIT src=Effect asset="42062258" label="" win=NONE
   n t=0.8000 d=0.2000 kind=HIT src=Effect asset="42062203" label="" win=NONE
 "mesh_att_battle_18_03-2" skill=420622 len=1.6667 name="레이드 발탄_워프 돌진 콤보"
@@ -587,7 +587,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=1.1700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_11" label="" win=NONE
   n t=1.1740 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_01_02" label="" win=NONE
   n t=1.1751 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
-  n t=1.1818 d=0.2755 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.1818 d=0.2755 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" label="" win=NONE
   n t=1.2000 d=0.2000 kind=HIT src=Effect asset="42062402" label="" win=NONE
   n t=1.2000 d=0.2000 kind=HIT src=Effect asset="42062403" label="" win=NONE
   n t=1.5000 d=1.8000 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack11_Cast3" label="" win=NONE
@@ -596,7 +596,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=2.2000 d=0.2000 kind=HIT src=Effect asset="42062405" label="" win=NONE
   n t=2.2259 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_01_02" label="" win=NONE
   n t=2.2270 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
-  n t=2.2337 d=0.2763 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=2.2337 d=0.2763 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" label="" win=NONE
   n t=2.2536 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_12" label="" win=NONE
   n t=2.2536 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_13" label="" win=NONE
   n t=2.2536 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_11" label="" win=NONE
@@ -606,7 +606,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=3.2000 d=0.2000 kind=HIT src=Effect asset="42062407" label="" win=NONE
   n t=3.2148 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_01_02" label="" win=NONE
   n t=3.2159 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
-  n t=3.2226 d=0.2771 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=3.2226 d=0.2771 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" label="" win=NONE
   n t=3.2242 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_12" label="" win=NONE
   n t=3.2242 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_13" label="" win=NONE
   n t=3.2242 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_11" label="" win=NONE
@@ -616,7 +616,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=4.2000 d=0.2000 kind=HIT src=Effect asset="42062409" label="" win=NONE
   n t=4.2066 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_01_02" label="" win=NONE
   n t=4.2077 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
-  n t=4.2145 d=0.2779 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=4.2145 d=0.2779 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" label="" win=NONE
   n t=4.2201 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_12" label="" win=NONE
   n t=4.2201 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_13" label="" win=NONE
   n t=4.2201 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_04_11" label="" win=NONE
@@ -712,7 +712,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=1.4000 d=1.2333 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack01_Shot1" label="" win=NONE
   n t=1.4900 d=0.2800 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" label="" win=NONE
   n t=1.4900 d=0.5000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
-  n t=1.4900 d=0.3000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.4900 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=4,50;y=4,50;z=4,50;fov=0,0" label="" win=NONE
   n t=1.5500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_002_pr" label="" win=NONE
   n t=1.5700 d=0.2000 kind=HIT src=Effect asset="42060192" label="" win=NONE
   n t=1.5700 d=0.2000 kind=HIT src=Effect asset="42060101" label="" win=NONE
@@ -736,22 +736,22 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=1.8500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" label="" win=NONE
   n t=1.8500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" label="" win=NONE
   n t=1.8500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" label="" win=NONE
-  n t=1.8500 d=0.2000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.8500 d=0.2000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.05;x=6,50;y=6,50;z=6,50;fov=0,0" label="" win=NONE
   n t=2.0350 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" label="" win=NONE
   n t=2.0350 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" label="" win=NONE
   n t=2.0350 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" label="" win=NONE
   n t=2.0350 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" label="" win=NONE
-  n t=2.0350 d=0.1500 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=2.0350 d=0.1500 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0.05;x=4,50;y=4,50;z=6,50;fov=0,0" label="" win=NONE
   n t=2.2150 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" label="" win=NONE
   n t=2.2150 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" label="" win=NONE
   n t=2.2150 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" label="" win=NONE
   n t=2.2150 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" label="" win=NONE
-  n t=2.2150 d=0.1500 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=2.2150 d=0.1500 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0.05;x=4,50;y=4,50;z=6,50;fov=0,0" label="" win=NONE
   n t=2.4000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" label="" win=NONE
   n t=2.4000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" label="" win=NONE
   n t=2.4000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" label="" win=NONE
   n t=2.4000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Stone_01_1" label="" win=NONE
-  n t=2.4000 d=0.1000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=2.4000 d=0.1000 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0.05;x=4,50;y=4,50;z=6,50;fov=0,0" label="" win=NONE
   n t=2.4000 d=0.0000 kind=STAGE src=MonsterMoveNextStage asset="" label="next" win=NONE
 "mesh_att_battle_20_01" skill=420621 len=2.5000 name="레이드 발탄_점프 찍기 후 휠윈드"
   n t=0.0010 d=1.2350 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack19_Cast1" label="" win=NONE
@@ -769,12 +769,12 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=1.2545 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=1.2545 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_08" label="" win=NONE
   n t=1.2557 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_01_02" label="" win=NONE
-  n t=1.2567 d=0.2739 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.2567 d=0.2739 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" label="" win=NONE
   n t=1.3844 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_StoneWave_01_01" label="" win=NONE
   n t=1.3844 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_StoneWave_01_01" label="" win=NONE
   n t=1.3844 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_StoneWave_01_01" label="" win=NONE
   n t=1.3844 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_StoneWave_01_01" label="" win=NONE
-  n t=1.3876 d=0.9725 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.3876 d=0.9725 kind=SHAKE src=ViewShake asset="dur=1;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" label="" win=NONE
   n t=1.6039 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_StoneWave_01_01" label="" win=NONE
   n t=1.6039 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_StoneWave_01_01" label="" win=NONE
   n t=1.6039 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_StoneWave_01_01" label="" win=NONE
@@ -802,7 +802,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.0000 d=0.2000 kind=HIT src=Effect asset="42062156" label="" win=NONE
   n t=0.0000 d=0.2000 kind=HIT src=Effect asset="42062107" label="" win=NONE
   n t=0.0000 d=0.2000 kind=HIT src=Effect asset="42062108" label="" win=NONE
-  n t=0.0222 d=3.1778 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0222 d=3.1778 kind=SHAKE src=ViewShake asset="dur=3;in=0;out=0.1;x=4,40;y=3,40;z=3,40;fov=0,0" label="" win=NONE
   n t=0.0797 d=3.1169 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=0.2000 d=2.9334 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack15_Shot2" label="" win=NONE
   n t=1.2000 d=1.4657 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack13_ShotVox1" label="" win=NONE
@@ -859,7 +859,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.6680 d=0.6226 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Wave_02" label="" win=NONE
   n t=0.6809 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_08" label="" win=NONE
   n t=0.6809 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
-  n t=0.6832 d=0.7926 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6832 d=0.7926 kind=SHAKE src=ViewShake asset="dur=0.8;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" label="" win=NONE
   n t=1.7994 d=0.2006 kind=HIT src=Effect asset="42060090" label="" win=NONE
 "mesh_att_battle_21_04-1" skill=420623 len=2.0000 name="레이드 발탄_돌진 잡기 후 사자후"
   n t=0.6000 d=1.4000 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack20_Shot3" label="" win=NONE
@@ -873,7 +873,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.6680 d=0.6226 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Wave_02" label="" win=NONE
   n t=0.6809 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_08" label="" win=NONE
   n t=0.6809 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
-  n t=0.6832 d=0.7926 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6832 d=0.7926 kind=SHAKE src=ViewShake asset="dur=0.8;in=0;out=0.1;x=4,50;y=4,50;z=7,50;fov=0,0" label="" win=NONE
   n t=1.7994 d=0.2006 kind=HIT src=Effect asset="42060090" label="" win=NONE
 "mesh_att_battle_2_01" skill=420602 len=3.0000 name="레이드 발탄_내려찍기"
   n t=0.0100 d=2.9900 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack02_CastVox1" label="" win=NONE
@@ -891,7 +891,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=1.6174 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_02_01" label="" win=NONE
   n t=1.6174 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=1.6174 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=1.6174 d=0.4000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.6174 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.05;x=5,50;y=5,50;z=7,50;fov=0,0" label="" win=NONE
   n t=2.0000 d=0.0000 kind=STAGE src=MonsterMoveNextStage asset="" label="next" win=NONE
 "mesh_att_battle_2_02" skill=420602 len=1.2000 name="레이드 발탄_내려찍기"
   n t=0.0000 d=1.2000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_02_08" label="" win=NONE
@@ -909,7 +909,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.9630 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_02_02" label="" win=NONE
   n t=0.9630 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=0.9630 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=0.9630 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.9630 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.05;x=5,50;y=5,50;z=7,50;fov=0,0" label="" win=NONE
   n t=1.1000 d=0.0000 kind=STAGE src=MonsterMoveNextStage asset="" label="next" win=NONE
 "mesh_att_battle_2_03" skill=420661 len=2.1000 name="레이드 발탄_내려찍기_노멀 버전"
   n t=0.0000 d=1.2000 kind=COUNTER src=CounterAttack asset="" label="" win=NONE
@@ -923,7 +923,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=1.1906 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=1.1906 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_02_04" label="" win=NONE
   n t=1.1906 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
-  n t=1.1906 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.1906 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.05;x=5,50;y=5,50;z=7,50;fov=0,0" label="" win=NONE
   n t=1.2000 d=0.2000 kind=HIT src=Effect asset="42066104" label="" win=NONE
   n t=1.3000 d=0.2000 kind=HIT src=Effect asset="42060222" label="" win=NONE
   n t=1.3000 d=0.2000 kind=HIT src=Effect asset="42060223" label="" win=NONE
@@ -1019,7 +1019,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.1000 d=3.4333 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack18_Shot7" label="" win=NONE
   n t=0.1000 d=2.7333 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack18_ShotVox4" label="" win=NONE
   n t=0.7380 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
-  n t=0.7380 d=0.7938 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.7380 d=0.7938 kind=SHAKE src=ViewShake asset="dur=1;in=0;out=0.2;x=3,60;y=3,60;z=6,60;fov=0,0" label="" win=NONE
   n t=0.7397 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Wave_01_14" label="" win=NONE
   n t=0.7397 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Wave_01_22" label="" win=NONE
   n t=0.7397 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Atk_07_02" label="" win=NONE
@@ -1036,7 +1036,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.0000 d=0.1000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Shout_01" label="" win=NONE
   n t=0.0000 d=4.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Wave_01_3" label="" win=NONE
-  n t=0.0000 d=4.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=4.0000 kind=SHAKE src=ViewShake asset="dur=4;in=0;out=0.1;x=3,100;y=3,100;z=3,100;fov=0,0" label="" win=NONE
   n t=3.4000 d=0.6000 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack03_Cast2" label="" win=NONE
   n t=3.8700 d=0.0000 kind=STAGE src=MonsterMoveNextStage asset="" label="next" win=NONE
 "mesh_att_battle_5_01_start" skill=420603 len=1.4000 name="레이드 발탄_감금 사자후"
@@ -1051,7 +1051,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=1.2900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=1.2900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_08" label="" win=NONE
   n t=1.2900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Wave_01_1" label="" win=NONE
-  n t=1.2900 d=0.1100 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.2900 d=0.1100 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.05;x=3,60;y=3,60;z=5,60;fov=0,0" label="" win=NONE
   n t=1.3000 d=0.0000 kind=STAGE src=MonsterMoveNextStage asset="" label="next" win=NONE
 "mesh_att_battle_5_02_end" skill=420630 len=1.5000 name="레이드 발탄_1 페이즈 기믹 광역 즉사기"
   n t=0.0000 d=1.5000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_09_01" label="" win=NONE
@@ -1059,7 +1059,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.0010 d=1.0000 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack25_Shot2" label="" win=NONE
   n t=0.1000 d=0.2000 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" label="" win=NONE
   n t=0.2200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
-  n t=0.2200 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2200 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0;x=6,55;y=6,55;z=8,55;fov=0,0" label="" win=NONE
   n t=0.2300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=0.2300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=0.2300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_09_03" label="" win=NONE
@@ -1072,7 +1072,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.0000 d=2.5000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_09_01" label="" win=NONE
   n t=0.0000 d=0.2000 kind=HIT src=Effect asset="42060073" label="" win=NONE
   n t=0.0000 d=0.2000 kind=HIT src=Effect asset="42063082" label="" win=NONE
-  n t=0.0000 d=4.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=4.0000 kind=SHAKE src=ViewShake asset="dur=7.5;in=1;out=0;x=1.5,70;y=1.5,70;z=1.5,70;fov=0,0" label="" win=NONE
   n t=1.5000 d=4.5000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_09_01" label="" win=NONE
   n t=3.0000 d=0.2000 kind=HIT src=Effect asset="42063018" label="" win=NONE
   n t=3.9000 d=0.0000 kind=STAGE src=MonsterMoveNextStage asset="" label="next" win=NONE
@@ -1101,13 +1101,13 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.6000 d=1.9667 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack05_Cast1" label="" win=NONE
   n t=0.6398 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_03" label="" win=NONE
   n t=0.6591 d=5.4075 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_04_05" label="" win=NONE
-  n t=0.6666 d=1.9000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6666 d=1.9000 kind=SHAKE src=ViewShake asset="dur=1.9;in=1;out=0;x=1.5,50;y=1.5,50;z=1.5,50;fov=0,0" label="" win=NONE
   n t=1.0000 d=4.0667 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack05_CastVox1" label="" win=NONE
   n t=2.1000 d=1.1000 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack03_Cast2" label="" win=NONE
   n t=2.1600 d=1.8667 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack27_Cast2" label="" win=NONE
   n t=3.0000 d=1.3667 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack05_Shot1" label="" win=NONE
   n t=3.0513 d=0.1392 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" label="" win=NONE
-  n t=3.1175 d=0.8000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=3.1175 d=0.8000 kind=SHAKE src=ViewShake asset="dur=0.8;in=0;out=0.05;x=5,50;y=5,50;z=7,50;fov=0,0" label="" win=NONE
   n t=3.1505 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_04_01" label="" win=NONE
   n t=3.1505 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_04_02" label="" win=NONE
   n t=3.1505 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_04_03" label="" win=NONE
@@ -1128,7 +1128,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.5000 d=0.7000 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack05_ShotVox1" label="" win=NONE
   n t=0.5000 d=0.7000 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack05_Shot2" label="" win=NONE
   n t=0.7284 d=0.0750 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" label="" win=NONE
-  n t=0.7761 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.7761 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.05;x=6,85;y=6,85;z=8,85;fov=0,0" label="" win=NONE
   n t=0.7948 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_04_01" label="" win=NONE
   n t=0.7948 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_04_02" label="" win=NONE
   n t=0.7948 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_04_03" label="" win=NONE
@@ -1147,7 +1147,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.5000 d=1.0000 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack05_ShotVox2" label="" win=NONE
   n t=0.5000 d=0.0000 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack05_Shot3" label="" win=NONE
   n t=0.7284 d=0.0750 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" label="" win=NONE
-  n t=0.7761 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.7761 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.05;x=6,85;y=6,85;z=8,85;fov=0,0" label="" win=NONE
   n t=0.7948 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_04_02" label="" win=NONE
   n t=0.7948 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_04_02" label="" win=NONE
   n t=0.7948 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
@@ -1166,7 +1166,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.2297 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.2309 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_06_04" label="" win=NONE
   n t=0.2309 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
-  n t=0.2362 d=0.7000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2362 d=0.7000 kind=SHAKE src=ViewShake asset="dur=0.7;in=0;out=0.1;x=5,45;y=5,45;z=7,45;fov=0,0" label="" win=NONE
   n t=0.2400 d=0.2000 kind=HIT src=Effect asset="42061008" label="" win=NONE
   n t=0.2500 d=0.2000 kind=HIT src=Effect asset="42061031" label="" win=NONE
   n t=0.2500 d=0.2000 kind=HIT src=Effect asset="42061032" label="" win=NONE
@@ -1175,7 +1175,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=2.2400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=2.2400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_06_05" label="" win=NONE
   n t=2.2400 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
-  n t=2.2400 d=0.7000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=2.2400 d=0.7000 kind=SHAKE src=ViewShake asset="dur=0.7;in=0;out=0.1;x=5,45;y=5,45;z=7,45;fov=0,0" label="" win=NONE
 "mesh_att_battle_8_01_loop" skill=420610 len=5.5000 name="레이드 발탄_고공 점프 찍기"
   n t=0.0000 d=0.2007 kind=HIT src=Effect asset="42061044" label="" win=NONE
   n t=0.0000 d=0.2007 kind=HIT src=Effect asset="42061016" label="" win=NONE
@@ -1197,7 +1197,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=1.1250 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_06_03" label="" win=NONE
   n t=1.1250 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=1.1250 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=1.1315 d=0.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.1315 d=0.5000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.05;x=5,30;y=5,30;z=7,30;fov=0,0" label="" win=NONE
   n t=1.6000 d=0.2000 kind=HIT src=Effect asset="42061003" label="" win=NONE
   n t=1.6000 d=0.2000 kind=HIT src=Effect asset="42061001" label="" win=NONE
   n t=1.7500 d=0.0000 kind=STAGE src=MonsterMoveNextStage asset="" label="next" win=NONE
@@ -1207,7 +1207,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.1000 d=0.2836 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" label="" win=NONE
   n t=0.1000 d=0.6000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=0.1400 d=0.2000 kind=HIT src=Effect asset="42060601" label="" win=NONE
-  n t=0.1400 d=0.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1400 d=0.5000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.2;x=9,50;y=6,50;z=6,50;fov=0,0" label="" win=NONE
   n t=1.0000 d=0.0500 kind=HIT src=Effect asset="42060090" label="" win=NONE
 "mesh_att_battle_9_01_end-2" skill=420607 len=1.6000 name="레이드 발탄_큰 베기 (반격 성공)"
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_N.Par_N_RPBF_Light_04_01" label="" win=NONE
@@ -1216,7 +1216,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.0982 d=0.4394 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_BOEH_Trail_01_1" label="" win=NONE
   n t=0.1196 d=0.4573 kind=EFFECT src=Trails asset="FX_BS_01.Trail.Par_O_BOEH_Trail_01_2" label="" win=NONE
   n t=0.2000 d=0.3351 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Trail_01" label="" win=NONE
-  n t=0.2000 d=0.6000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2000 d=0.6000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.1;x=9,50;y=6,50;z=6,50;fov=0,0" label="" win=NONE
   n t=0.2004 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.2174 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_01_02" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_S.Par_S_RPBF_Trail_01_1" label="" win=NONE
@@ -1262,7 +1262,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.0000 d=0.2007 kind=HIT src=Effect asset="42060406" label="" win=NONE
   n t=0.0000 d=0.0000 kind=HIT src=Effect asset="49000010" label="" win=NONE
   n t=0.0000 d=0.1000 kind=HIT src=Effect asset="42060421" label="" win=NONE
-  n t=0.0000 d=0.2944 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.2944 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=9,100;y=10,100;z=10,100;fov=0,0" label="" win=NONE
   n t=0.0000 d=1.5000 kind=SOUND src=AKEvent asset="S_Systems.SYS_MONSTER_GROGGY" label="" win=NONE
   n t=0.0500 d=1.4500 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_FreezeStart1" label="" win=NONE
   n t=0.1000 d=1.4000 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack23_Shot1" label="" win=NONE
@@ -1277,7 +1277,7 @@ LOSTARK_ANIM_NOTIFY 1 "Valtan" 108
   n t=0.0010 d=2.5333 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack07_ShotVox1" label="" win=NONE
   n t=0.0010 d=2.6323 kind=SOUND src=AKEvent asset="S_Mob_G_Voltan2.G_Voltan2_Attack07_Shot1" label="" win=NONE
   n t=0.7380 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
-  n t=0.7380 d=0.7938 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.7380 d=0.7938 kind=SHAKE src=ViewShake asset="dur=1;in=0;out=0.2;x=3,60;y=3,60;z=3,60;fov=0,0" label="" win=NONE
   n t=0.7397 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_MN_RPBF_00_O.Par_O_RPBF_Atk_03_01" label="" win=NONE
   n t=0.7409 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=0.7424 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
