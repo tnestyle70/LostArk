@@ -3,6 +3,7 @@
 #include "ActorCatalog.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
 #include "Body_Valtan.h"
+#include "EffectV2_Runtime.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "RuntimeAssetRoot.h"
@@ -173,6 +174,7 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 	}
 
 	g_ReadyLevels.insert(iLevelIndex);
+	CEffectV2Runtime::Prewarm_Archetype(pDevice, pContext, "BOSS_VALTAN");
 	return S_OK;
 }
 

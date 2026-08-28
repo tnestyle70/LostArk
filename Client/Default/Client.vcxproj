@@ -141,6 +141,7 @@
     <ClInclude Include="..\Public\EffectV2_Object.h" />
     <ClInclude Include="..\Public\EffectV2_Document.h" />
     <ClInclude Include="..\Public\EffectV2_Runtime.h" />
+    <ClInclude Include="..\Public\EffectV2_Target.h" />
     <ClInclude Include="..\Public\HUDLayoutTool.h" />
     <ClInclude Include="..\Public\Level_Loading.h" />
     <ClInclude Include="..\public\Loader.h" />

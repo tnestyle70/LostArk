@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "EffectV2_Target.h"
 #include "GameObject.h"
 #include "Presentation_Manager.h"
 #include "VIBuffer_DynamicTrail.h"
@@ -20,6 +21,7 @@ NS_END
 NS_BEGIN(Client)
 
 class CNpc;
+class CValtan;
 
 class CEffectV2Object final : public CGameObject, public Engine::IPresentationProvider
 {
@@ -332,13 +334,16 @@ public:
 		std::string& strOutError);
 	static void Clear_ResourceCache();
 	void Set_FollowTarget(
-		const std::weak_ptr<CNpc>& pTarget,
+		const EFFECT_V2_TARGET& Target,
 		std::string strBone,
 		PIVOT_ROTATION eRotation);
 	void Clear_FollowTarget();
 	bool_t Has_FollowTarget() const { return m_bFollowTarget; }
+	static bool_t Resolve_TargetView(
+		const EFFECT_V2_TARGET& Target,
+		EFFECT_V2_TARGET_VIEW& OutView);
 	static bool_t Resolve_TargetPivot(
-		const CNpc& Npc,
+		const EFFECT_V2_TARGET_VIEW& View,
 		const std::string& strBone,
 		PIVOT_ROTATION eRotation,
 		float4x4_t& OutPivot);
@@ -401,7 +406,7 @@ private:
 	uint32_t m_iAppliedAnimationIndex = UINT32_MAX;
 	std::vector<PART> m_Parts;
 	bool_t m_bFollowTarget = false;
-	std::weak_ptr<CNpc> m_pFollowTarget;
+	EFFECT_V2_TARGET m_FollowTarget;
 	std::string m_strFollowBone;
 	PIVOT_ROTATION m_eFollowRotation = PIVOT_ROTATION::TARGET_YAW;
 	f32_t m_fTime = 0.f;

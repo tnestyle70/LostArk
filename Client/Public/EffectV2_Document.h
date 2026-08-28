@@ -39,7 +39,10 @@ struct EFFECT_V2_DOCUMENT final
 struct EFFECT_V2_BINDING final
 {
 	std::string strEffectId;
+	/* Exactly one of strClip (model clip start clock) or strStage (Server
+	   pattern stage actionId, stage-local clock) keys the binding. */
 	std::string strClip;
+	std::string strStage;
 	uint32_t iStartMs = 0u;
 	std::string strBone;
 	bool_t bFollowBone = true;
