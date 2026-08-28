@@ -5519,7 +5519,7 @@ bool_t Client::CValtanPatternTree::Build_ToolAuditionInventory(
 		View.ManualAuditions.size())
 	{
 		strOutError =
-			"Valtan tool audition inventory requires exactly 20 animator Patterns.";
+			"Valtan tool audition inventory requires exactly 21 animator Patterns.";
 		return false;
 	}
 	for (const VALTAN_MANUAL_AUDITION_VIEW& Manual : View.ManualAuditions)
@@ -5545,7 +5545,7 @@ bool_t Client::CValtanPatternTree::Build_ToolAuditionInventory(
 			UniquePatternIds.size())
 	{
 		strOutError =
-			"Valtan tool audition inventory did not close over exactly 28 Patterns.";
+			"Valtan tool audition inventory did not close over exactly 29 Patterns.";
 		return false;
 	}
 
