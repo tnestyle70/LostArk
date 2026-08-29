@@ -1266,19 +1266,28 @@ void Client::CCameraTool::Render_CueEditor()
 	/* Simple flow first: capture positions, review them in the pos list,
 	   fine-tune the selected one, then Start plays the connected path. The
 	   full editor stays available under Advanced. */
+	const bool_t playable = cue->Keyframes.size() >= 2u;
 	if (ImGui::Button("Capture Pos"))
 		(void)Append_CapturedPos(*cue);
 	ImGui::SameLine();
-	ImGui::BeginDisabled(m_iSelectedKeyframe < 0 || cue->Keyframes.size() <= 2u);
+	ImGui::BeginDisabled(m_iSelectedKeyframe < 0 || cue->Keyframes.empty());
 	if (ImGui::Button("Delete Pos"))
 		(void)Delete_SelectedPos(*cue);
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	if (ImGui::Button("Start"))
 	{
-		m_fPreviewSeconds = 0.f;
-		if (Apply_PreviewPose())
-			m_bPlaying = true;
+		if (!playable)
+		{
+			m_strStatus =
+				"Capture at least two positions before playing the path.";
+		}
+		else
+		{
+			m_fPreviewSeconds = 0.f;
+			if (Apply_PreviewPose())
+				m_bPlaying = true;
+		}
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Stop / Restore"))
@@ -1289,7 +1298,8 @@ void Client::CCameraTool::Render_CueEditor()
 	{
 		m_fPreviewSeconds = cursor;
 		m_bPlaying = false;
-		(void)Apply_PreviewPose();
+		if (playable)
+			(void)Apply_PreviewPose();
 	}
 
 	Render_KeyframeEditor(*cue);
@@ -1462,7 +1472,8 @@ void Client::CCameraTool::Render_KeyframeEditor(
 				m_bPlaying = false;
 				m_fPreviewSeconds =
 					static_cast<f32_t>(cue.Keyframes[index].iTimeMs) * 0.001f;
-				(void)Apply_PreviewPose();
+				if (cue.Keyframes.size() >= 2u)
+					(void)Apply_PreviewPose();
 				if (m_bLookAtDummyEnabled && !Sync_DummyFromSelectedScene(cue))
 				{
 					Disable_LookAtDummy(
@@ -1473,7 +1484,10 @@ void Client::CCameraTool::Render_KeyframeEditor(
 		ImGui::EndListBox();
 	}
 	ImGui::TextDisabled(
-		"Capture Pos appends here and clicking a pos moves the camera to it.");
+		"Capture Pos appends P1..PN and clicking a pos moves the camera to it.");
+	if (cue.Keyframes.size() < 2u)
+		ImGui::TextDisabled(
+			"Save and playback need at least two positions (a start and an end).");
 	if (m_iSelectedKeyframe < 0 ||
 		m_iSelectedKeyframe >= static_cast<int32_t>(cue.Keyframes.size()))
 	{
@@ -1510,7 +1524,11 @@ void Client::CCameraTool::Render_KeyframeEditor(
 	{
 		m_bPlaying = false;
 		m_fPreviewSeconds = static_cast<f32_t>(key.iTimeMs) * 0.001f;
-		(void)Apply_PreviewPose();
+		if (cue.Keyframes.size() >= 2u)
+			(void)Apply_PreviewPose();
+		else
+			m_strStatus =
+				"Capture at least two positions before previewing the path.";
 	}
 
 	if (m_iSelectedKeyframe > 0)
@@ -1995,19 +2013,9 @@ bool_t Client::CCameraTool::Create_Cut()
 		cue.iDurationMs = stage.iDurationMs;
 	}
 
-	/* Seed the two mandatory endpoint scenes from the current camera when a
-	   pipeline pose exists; the static fallback stays a valid authoring pose. */
-	VALTAN_CINEMATIC_CAMERA_KEYFRAME first{};
-	first.vEye = float3_t(0.f, 10.f, -10.f);
-	first.vLookAt = float3_t(0.f, 0.f, 0.f);
-	first.fFovYDegrees = 60.f;
-	(void)Capture_CurrentPose(cue, first);
-	VALTAN_CINEMATIC_CAMERA_KEYFRAME last = first;
-	first.iTimeMs = 0u;
-	last.iTimeMs = cue.iDurationMs;
-
-	/* Register the cut before generating scene IDs so each generated ID sees
-	   the previously committed one and stays globally unique. */
+	/* The cut starts with an empty pos list on purpose: the author captures
+	   P1..PN one by one. The strict save reparse still requires a start and an
+	   end, so Save and playback stay fail-closed below two positions. */
 	if (m_bNewCutTargetsDeath)
 	{
 		m_DraftDeathCue = std::move(cue);
@@ -2017,30 +2025,11 @@ bool_t Client::CCameraTool::Create_Cut()
 	{
 		m_DraftCues.push_back(std::move(cue));
 	}
-	VALTAN_CINEMATIC_CAMERA_CUE* draft = Find_DraftCue(name);
-	first.strSceneId = Make_UniqueSceneId(*draft);
-	draft->Keyframes.push_back(first);
-	last.strSceneId = Make_UniqueSceneId(*draft);
-	if (first.strSceneId.empty() || last.strSceneId.empty())
-	{
-		if (m_bNewCutTargetsDeath)
-		{
-			m_hasDraftDeathCue = false;
-			m_DraftDeathCue = VALTAN_CINEMATIC_CAMERA_CUE{};
-		}
-		else
-		{
-			m_DraftCues.pop_back();
-		}
-		m_strStatus = "No stable scene ID is available for the new cut.";
-		return false;
-	}
-	draft->Keyframes.push_back(last);
-
 	m_strSelectedCueId.clear();
 	Select_Cue(name);
 	m_szNewCutName[0] = '\0';
-	Mark_Dirty("Created a new camera cut draft. Save commits it.");
+	Mark_Dirty(
+		"Created an empty camera cut. Capture at least two positions, then Save.");
 	return true;
 }
 
@@ -2088,8 +2077,13 @@ void Client::CCameraTool::Respace_PosTimes(
 	VALTAN_CINEMATIC_CAMERA_CUE& cue)
 {
 	const size_t count = cue.Keyframes.size();
-	if (count < 2u)
+	if (0u == count)
 		return;
+	if (1u == count)
+	{
+		cue.Keyframes.front().iTimeMs = 0u;
+		return;
+	}
 	for (size_t index = 0u; index < count; ++index)
 	{
 		cue.Keyframes[index].iTimeMs = static_cast<uint32_t>(
@@ -2100,59 +2094,36 @@ void Client::CCameraTool::Respace_PosTimes(
 bool_t Client::CCameraTool::Append_CapturedPos(
 	VALTAN_CINEMATIC_CAMERA_CUE& cue)
 {
-	if (cue.Keyframes.size() < 2u)
+	if (cue.Keyframes.size() >= MAX_DOCUMENT_KEYFRAME_COUNT)
 	{
-		m_strStatus = "The cut is missing its two endpoint scenes.";
+		m_strStatus = "The cut already holds the maximum 64 positions.";
+		return false;
+	}
+	if (cue.iDurationMs < cue.Keyframes.size())
+	{
+		m_strStatus =
+			"Cue duration is too short to keep every pos one millisecond apart.";
 		return false;
 	}
 	Stop_Preview(false);
-	VALTAN_CINEMATIC_CAMERA_KEYFRAME captured = cue.Keyframes.back();
+	VALTAN_CINEMATIC_CAMERA_KEYFRAME captured{};
+	captured.fFovYDegrees = 60.f;
 	if (!Capture_CurrentPose(cue, captured))
 	{
 		m_strStatus =
 			"Pos capture failed: pipeline pose or replicated tracking frame is unavailable.";
 		return false;
 	}
-	/* A fresh cut seeds two identical endpoint scenes. The first capture then
-	   becomes the path's end instead of a third duplicate entry; every later
-	   capture appends and the whole path is respaced evenly, so capture the
-	   positions first and tune per-segment speeds afterwards. */
-	const VALTAN_CINEMATIC_CAMERA_KEYFRAME& first = cue.Keyframes.front();
-	VALTAN_CINEMATIC_CAMERA_KEYFRAME& last = cue.Keyframes.back();
-	const bool_t pristinePair = 2u == cue.Keyframes.size() &&
-		Distance(first.vEye, last.vEye) <= 0.0001f &&
-		Distance(first.vLookAt, last.vLookAt) <= 0.0001f &&
-		std::abs(first.fFovYDegrees - last.fFovYDegrees) <= 0.0001f;
-	if (pristinePair)
+	captured.strSceneId = Make_UniqueSceneId(cue);
+	if (captured.strSceneId.empty())
 	{
-		last.vEye = captured.vEye;
-		last.vLookAt = captured.vLookAt;
-		last.fFovYDegrees = captured.fFovYDegrees;
-		m_iSelectedKeyframe = 1;
+		m_strStatus = "No stable scene ID is available for another pos.";
+		return false;
 	}
-	else
-	{
-		if (cue.Keyframes.size() >= MAX_DOCUMENT_KEYFRAME_COUNT)
-		{
-			m_strStatus = "The cut already holds the maximum 64 positions.";
-			return false;
-		}
-		if (cue.iDurationMs < cue.Keyframes.size())
-		{
-			m_strStatus =
-				"Cue duration is too short to keep every pos one millisecond apart.";
-			return false;
-		}
-		captured.strSceneId = Make_UniqueSceneId(cue);
-		if (captured.strSceneId.empty())
-		{
-			m_strStatus = "No stable scene ID is available for another pos.";
-			return false;
-		}
-		cue.Keyframes.push_back(captured);
-		Respace_PosTimes(cue);
-		m_iSelectedKeyframe = static_cast<int32_t>(cue.Keyframes.size()) - 1;
-	}
+	captured.iTimeMs = 0u;
+	cue.Keyframes.push_back(captured);
+	Respace_PosTimes(cue);
+	m_iSelectedKeyframe = static_cast<int32_t>(cue.Keyframes.size()) - 1;
 	m_fPreviewSeconds = static_cast<f32_t>(cue.Keyframes[
 		static_cast<size_t>(m_iSelectedKeyframe)].iTimeMs) * 0.001f;
 	if (m_bLookAtDummyEnabled && !Sync_DummyFromSelectedScene(cue))
@@ -2173,18 +2144,21 @@ bool_t Client::CCameraTool::Delete_SelectedPos(
 		m_strStatus = "Select a pos to delete.";
 		return false;
 	}
-	if (cue.Keyframes.size() <= 2u)
-	{
-		m_strStatus = "A cut keeps at least its start and end pos.";
-		return false;
-	}
 	cue.Keyframes.erase(cue.Keyframes.begin() + m_iSelectedKeyframe);
 	Respace_PosTimes(cue);
-	m_iSelectedKeyframe = (std::min)(
-		m_iSelectedKeyframe,
-		static_cast<int32_t>(cue.Keyframes.size()) - 1);
-	m_fPreviewSeconds = static_cast<f32_t>(cue.Keyframes[
-		static_cast<size_t>(m_iSelectedKeyframe)].iTimeMs) * 0.001f;
+	if (cue.Keyframes.empty())
+	{
+		m_iSelectedKeyframe = -1;
+		m_fPreviewSeconds = 0.f;
+	}
+	else
+	{
+		m_iSelectedKeyframe = (std::min)(
+			m_iSelectedKeyframe,
+			static_cast<int32_t>(cue.Keyframes.size()) - 1);
+		m_fPreviewSeconds = static_cast<f32_t>(cue.Keyframes[
+			static_cast<size_t>(m_iSelectedKeyframe)].iTimeMs) * 0.001f;
+	}
 	if (m_bLookAtDummyEnabled && !Sync_DummyFromSelectedScene(cue))
 	{
 		m_bLookAtDummyEnabled = false;
