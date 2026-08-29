@@ -260,6 +260,43 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		S2C_COMBAT_OBJECT_DESPAWNED& despawned);
 
+	enum class COMBAT_OBJECT_PRESENTATION_EVENT_KIND : std::uint8_t
+	{
+		HIT_PULSE,
+		END
+	};
+
+	/* Reliable, self-contained occurrence. The gameplay Server never sends a
+	Sound or Effect asset name; presentation data joins the stable hit identity
+	to an asset locally. Keeping the pose in the event also permits a future 3D
+	audio/effect projection after the object despawns in the same room tick. */
+	struct S2C_COMBAT_OBJECT_PRESENTATION_EVENT
+	{
+		std::uint64_t iEventSequence = 0u;
+		std::uint32_t iServerTick = 0u;
+		COMBAT_OBJECT_ID iCombatObjectId = INVALID_COMBAT_OBJECT_ID;
+		NET_ENTITY_ID iSourceNetEntityId = INVALID_NET_ENTITY_ID;
+		COMBAT_OBJECT_PRESENTATION_EVENT_KIND eKind =
+			COMBAT_OBJECT_PRESENTATION_EVENT_KIND::END;
+		std::string strCombatObjectArchetypeId;
+		std::string strOwnerPatternId;
+		std::string strOwnerStageActionId;
+		std::string strHitId;
+		std::uint32_t iRepeatIndex = 0u;
+		float fPositionX = 0.f;
+		float fPositionY = 0.f;
+		float fPositionZ = 0.f;
+		float fYawDegrees = 0.f;
+		GameplayDataRevision PinnedDefinitionRevision{};
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_COMBAT_OBJECT_PRESENTATION_EVENT& event);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_COMBAT_OBJECT_PRESENTATION_EVENT& event);
+
 	//server와 client가 player제거으 byte 순서를 똑같이 사용하기 위해서이다.
 	//H 계약 : NetEntityId와 제거 이유 enun을 값으로 선언하고, writer/reaeder/
 	//overload를 공개한다.
@@ -884,6 +921,16 @@ namespace LostArk::Shared
 	// PLAY_ENTRANCE is the one operation that puts the encounter intro ledger
 	// back, so the first-appearance sweep runs again on a reset boss. Every other
 	// operation stages the intro as consumed and auditions its own pattern first.
+	enum class VALTAN_ARENA_PRESET : std::uint32_t
+	{
+		FRESH = 1u,
+		CIRCLE_WALLS_GONE,
+		THREE_OCLOCK_BROKEN,
+		NINE_OCLOCK_BROKEN,
+		BOTH_SIDES_BROKEN,
+		END
+	};
+
 	enum class VALTAN_AUDITION_OPERATION : std::uint8_t
 	{
 		ARM_HEALTH_BAR,
@@ -934,6 +981,9 @@ namespace LostArk::Shared
 		// Adopt the observed Product/owned Flow occurrence without an arena reset.
 		// The Server assigns a new audition epoch in the Next lifecycle.
 		QUEUE_NEXT_LIVE_PATTERN_ID,
+		// Workbench environment staging. The payload is one stable
+		// VALTAN_ARENA_PRESET and the Server owns every resulting mutation.
+		SET_ARENA_PRESET,
 		END
 	};
 
@@ -974,7 +1024,7 @@ namespace LostArk::Shared
 		// Usually an authored health bar. PLAY_PATTERN reuses it as a one-based
 		// encounter-pattern index, while PLAY_TIMELINE_ROW and START_FIGHT_PAGE
 		// reuse it as a timeline row's stable command ID. STOP_TIMELINE_ROW
-		// carries 0.
+		// carries 0. SET_ARENA_PRESET carries VALTAN_ARENA_PRESET.
 		std::uint32_t iTargetHealthBar = 0;
 		// Stable-ID operations encode these strings. Older operations keep their
 		// original wire shape and require hidden identity fields to stay empty.

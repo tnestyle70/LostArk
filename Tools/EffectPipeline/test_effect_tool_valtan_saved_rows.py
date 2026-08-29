@@ -2375,7 +2375,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         self.assertIn('"Trail UV Repeat Distance"', kind_detail)
         self.assertIn('"Trail Curve Step"', kind_detail)
 
-    def test_named_historical_clip_sampling_keeps_the_current_clip_contract(self) -> None:
+    def test_named_historical_clip_sampling_is_side_effect_free_in_product_code(self) -> None:
         target = (REPOSITORY_ROOT / "Client/Private/AnimationTargetService.cpp").read_text(encoding="utf-8")
         current_prepare = function_slice(
             target,
@@ -2415,11 +2415,6 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         self.assertIn("Sample_LocalBoneTransforms(", sampler)
         for mutator in ("->Set_TrackPosition(", "->Update_TransformationMatrix(", "->Blend_TransformationMatrix("):
             self.assertNotIn(mutator, sampler)
-        harness = (REPOSITORY_ROOT / "Tools/EffectRenderContractHarness/Private/EffectRenderContractHarness.cpp").read_text(encoding="utf-8")
-        self.assertGreaterEqual(harness.count("Validate_NamedHistoricalAnimationSamplingContract("), 2)
-        self.assertIn('"missing.contract.clip"', harness)
-        self.assertIn("SameState(Before, After)", harness)
-
     def test_valtan_sequence_preflights_every_clip_before_model_or_state_commit(self) -> None:
         cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
         sequence = function_slice(

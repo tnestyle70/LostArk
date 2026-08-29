@@ -7,6 +7,9 @@
 #include "CharacterPreviewPanel.h"
 #include "EncounterPatternReference.h"
 #include "ValtanPatternPreviewDocument.h"
+#include "ValtanPatternSoundCueDocument.h"
+#include "ValtanPatternShakeCueDocument.h"
+#include "ValtanCombatObjectSoundCueDocument.h"
 #include "ValtanPatternTree.h"
 
 #include <filesystem>
@@ -20,6 +23,10 @@ NS_BEGIN(Client)
 
 class CCharacter;
 class CValtan;
+class CBalanceTool;
+class CBossTool;
+struct EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST;
+struct CAMERA_TOOL_OPEN_REQUEST;
 
 class CAnimation_Tool final
 {
@@ -224,11 +231,17 @@ private:
 
 public:
 	explicit CAnimation_Tool(
-		shared_ptr<CCharacterPreviewPanel> pPreviewPanel);
+		shared_ptr<CCharacterPreviewPanel> pPreviewPanel,
+		CBalanceTool* pBalanceTool,
+		CBossTool* pBossTool);
 	~CAnimation_Tool();
 
 	void Update(f32_t fTimeDelta, bool_t bIsActiveTool);
 	void Render();
+	bool_t Consume_EffectToolOpenRequest(
+		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& outRequest);
+	bool_t Consume_CameraToolOpenRequest(
+		CAMERA_TOOL_OPEN_REQUEST& outRequest);
 
 private:
 	shared_ptr<Engine::CModel> Resolve_Model() const;
@@ -268,6 +281,13 @@ private:
 	   on disk and in memory so a failed save never costs saved chains. */
 	bool_t Save_CustomChainLibrary();
 	bool_t Reload_ValtanPatternMaster();
+	bool_t Reload_ValtanPatternSoundCues();
+	bool_t Reload_ValtanPatternShakeCues();
+	bool_t Reload_ValtanCombatObjectSoundCues();
+	void Render_ValtanPresentationLanes(
+		const VALTAN_PATTERN_VIEW& Pattern);
+	bool_t Preview_ValtanSoundAsset(
+		const std::string& strResourceAssetId);
 	std::vector<const VALTAN_PATTERN_VIEW*>
 		Collect_ValtanPatternMasterPatterns() const;
 	bool_t Build_ValtanPatternMasterTimeline(
@@ -451,6 +471,23 @@ private:
 	VALTAN_PATTERN_PREVIEW_PATH m_eValtanPatternMasterPath =
 		VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
 	std::string m_strValtanPatternMasterStatus;
+	VALTAN_PATTERN_SOUND_CUE_DOCUMENT m_ValtanPatternSoundCues;
+	bool_t m_bValtanPatternSoundCuesReady = false;
+	std::string m_strValtanPatternSoundCueStatus;
+	VALTAN_PATTERN_SHAKE_CUE_DOCUMENT m_ValtanPatternShakeCues;
+	bool_t m_bValtanPatternShakeCuesReady = false;
+	std::string m_strValtanPatternShakeCueStatus;
+	VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT m_ValtanCombatObjectSoundCues;
+	bool_t m_bValtanCombatObjectSoundCuesReady = false;
+	bool_t m_bValtanCombatObjectSoundCuesDirty = false;
+	std::string m_strValtanCombatObjectSoundCueStatus;
+	bool_t m_hasEffectToolOpenRequest = false;
+	std::string m_strEffectToolOpenPatternId;
+	std::string m_strEffectToolOpenStageId;
+	std::string m_strEffectToolOpenCueOccurrenceId;
+	std::string m_strEffectToolOpenEffectAssetId;
+	bool_t m_hasCameraToolOpenRequest = false;
+	std::string m_strCameraToolOpenCueId;
 	std::weak_ptr<Engine::CModel> m_ValtanPatternMasterModel;
 	std::weak_ptr<CValtan> m_ValtanPatternMasterBoss;
 	uint64_t m_iValtanPatternMasterTargetGeneration = 0u;
@@ -478,6 +515,10 @@ private:
 	/* Shared with Effect Tool through MainApp. This tool only contributes the
 	unsaved Animation document lock to that one preview session. */
 	shared_ptr<CCharacterPreviewPanel> m_pPreviewPanel;
+	/* Non-owning orchestration endpoints. MainApp creates these before the
+	   Workbench and owns all three until Client shutdown. */
+	CBalanceTool* m_pBalanceTool = nullptr;
+	CBossTool* m_pBossTool = nullptr;
 
 	std::vector<ANIM_EVENT> m_Events;
 	/* Empty until a character resolves; Sync_AssetName fills it from the spec. */

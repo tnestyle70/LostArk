@@ -4,6 +4,7 @@
 #include "CameraTool.h"
 #include "Effect_AuthoringDocument.h"
 #include "EncounterPatternReference.h"
+#include "Network/PacketMessages.h"
 #include "ValtanCinematicCameraDocument.h"
 #include "ValtanPatternFlowDocument.h"
 #include "ValtanPatternTree.h"
@@ -56,6 +57,16 @@ public:
 	void Open();
 	void Update(bool_t bToolVisible);
 	void Render();
+	/* Integrated Workbench route.  The caller supplies only the stable Product
+	   pattern identity; Boss Tool re-resolves its current Server-audition
+	   inventory before submitting through the existing typed service. */
+	bool_t Play_ServerPattern(
+		const std::string& strPatternId,
+		std::string& strOutStatus);
+	bool_t Set_ServerArenaPreset(
+		LostArk::Shared::VALTAN_ARENA_PRESET preset,
+		std::string& strOutStatus);
+	std::string Get_ServerArenaPresetStatus() const;
 	bool_t Consume_CameraToolOpenRequest(
 		CAMERA_TOOL_OPEN_REQUEST& outRequest);
 	bool_t Consume_EffectToolOpenRequest(

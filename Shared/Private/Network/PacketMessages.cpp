@@ -1463,6 +1463,103 @@ bool LostArk::Shared::Read_Message(
 
 bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer,
+	const S2C_COMBAT_OBJECT_PRESENTATION_EVENT& event)
+{
+	if (0u == event.iEventSequence || 0u == event.iServerTick ||
+		INVALID_COMBAT_OBJECT_ID == event.iCombatObjectId ||
+		INVALID_NET_ENTITY_ID == event.iSourceNetEntityId ||
+		COMBAT_OBJECT_PRESENTATION_EVENT_KIND::HIT_PULSE != event.eKind ||
+		!Is_Valid_StableId(event.strCombatObjectArchetypeId, false) ||
+		!Is_Valid_StableId(event.strOwnerPatternId, false) ||
+		!Is_Valid_StableId(event.strOwnerStageActionId, false) ||
+		!Is_Valid_StableId(event.strHitId, false) ||
+		event.iRepeatIndex >= 64u ||
+		!std::isfinite(event.fPositionX) ||
+		!std::isfinite(event.fPositionY) ||
+		!std::isfinite(event.fPositionZ) ||
+		!std::isfinite(event.fYawDegrees) ||
+		!event.PinnedDefinitionRevision.Is_Valid())
+	{
+		return false;
+	}
+
+	Write_U64(writer, event.iEventSequence);
+	writer.Write_U32(event.iServerTick);
+	Write_U64(writer, event.iCombatObjectId);
+	writer.Write_U32(event.iSourceNetEntityId);
+	writer.Write_U8(static_cast<std::uint8_t>(event.eKind));
+	if (!writer.Write_String(event.strCombatObjectArchetypeId,
+			MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(event.strOwnerPatternId,
+			MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(event.strOwnerStageActionId,
+			MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(event.strHitId,
+			MAX_STABLE_NETWORK_ID_BYTES))
+	{
+		return false;
+	}
+	writer.Write_U32(event.iRepeatIndex);
+	writer.Write_F32(event.fPositionX);
+	writer.Write_F32(event.fPositionY);
+	writer.Write_F32(event.fPositionZ);
+	writer.Write_F32(event.fYawDegrees);
+	return Write_GameplayDataRevision(writer, event.PinnedDefinitionRevision);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_COMBAT_OBJECT_PRESENTATION_EVENT& event)
+{
+	S2C_COMBAT_OBJECT_PRESENTATION_EVENT decoded{};
+	std::uint8_t rawKind = 0u;
+	if (!Read_U64(reader, decoded.iEventSequence) ||
+		!reader.Read_U32(decoded.iServerTick) ||
+		!Read_U64(reader, decoded.iCombatObjectId) ||
+		!reader.Read_U32(decoded.iSourceNetEntityId) ||
+		!reader.Read_U8(rawKind) ||
+		!reader.Read_String(decoded.strCombatObjectArchetypeId,
+			MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(decoded.strOwnerPatternId,
+			MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(decoded.strOwnerStageActionId,
+			MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(decoded.strHitId,
+			MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_U32(decoded.iRepeatIndex) ||
+		!reader.Read_F32(decoded.fPositionX) ||
+		!reader.Read_F32(decoded.fPositionY) ||
+		!reader.Read_F32(decoded.fPositionZ) ||
+		!reader.Read_F32(decoded.fYawDegrees) ||
+		!Read_GameplayDataRevision(reader, decoded.PinnedDefinitionRevision))
+	{
+		return false;
+	}
+	decoded.eKind =
+		static_cast<COMBAT_OBJECT_PRESENTATION_EVENT_KIND>(rawKind);
+	if (0u == decoded.iEventSequence || 0u == decoded.iServerTick ||
+		INVALID_COMBAT_OBJECT_ID == decoded.iCombatObjectId ||
+		INVALID_NET_ENTITY_ID == decoded.iSourceNetEntityId ||
+		COMBAT_OBJECT_PRESENTATION_EVENT_KIND::HIT_PULSE != decoded.eKind ||
+		!Is_Valid_StableId(decoded.strCombatObjectArchetypeId, false) ||
+		!Is_Valid_StableId(decoded.strOwnerPatternId, false) ||
+		!Is_Valid_StableId(decoded.strOwnerStageActionId, false) ||
+		!Is_Valid_StableId(decoded.strHitId, false) ||
+		decoded.iRepeatIndex >= 64u ||
+		!std::isfinite(decoded.fPositionX) ||
+		!std::isfinite(decoded.fPositionY) ||
+		!std::isfinite(decoded.fPositionZ) ||
+		!std::isfinite(decoded.fYawDegrees) ||
+		!decoded.PinnedDefinitionRevision.Is_Valid())
+	{
+		return false;
+	}
+	event = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
 	const C2S_SPAWN_WORLD_ENTITY& message)
 {
 	return Is_Valid_StableId(message.strPlacementId, false) &&
@@ -2714,6 +2811,14 @@ namespace
 				VALTAN_AUDITION_OPERATION::STOP_TIMELINE_ROW) == rawOperation)
 		{
 			return 0u == targetHealthBar;
+		}
+		if (static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::SET_ARENA_PRESET) == rawOperation)
+		{
+			return targetHealthBar >= static_cast<std::uint32_t>(
+					VALTAN_ARENA_PRESET::FRESH) &&
+				targetHealthBar < static_cast<std::uint32_t>(
+					VALTAN_ARENA_PRESET::END);
 		}
 
 		// These operations name an authored mechanic or a Debug view directly,

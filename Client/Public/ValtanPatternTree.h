@@ -80,6 +80,11 @@ struct VALTAN_COMBAT_OBJECT_EFFECT_VIEW final
 	std::string strEffectAssetId;
 	std::string strTrigger;
 	uint32_t iSpawnValue = 0u;
+	/* Combat-object-local Server contact clocks.  These are joined from
+	   ValtanCombatObjects.json so Workbench coverage can report an impact with
+	   no Sound cue instead of merely showing that an object spawned. */
+	std::vector<std::string> HitIds;
+	std::vector<uint32_t> HitOffsetsMs;
 };
 
 /* Stable ordered animation occurrence authored by the animation owner.  The

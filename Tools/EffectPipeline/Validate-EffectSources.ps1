@@ -1,5 +1,6 @@
 param(
     [string]$RepositoryRoot = '',
+    [string]$ResourceRoot = '',
     [switch]$AllowLocalResources
 )
 
@@ -13,6 +14,10 @@ else {
 
 $validator = Join-Path $PSScriptRoot 'validate_effect_sources.py'
 $validatorArguments = @($validator, '--repository-root', $RepositoryRoot)
+if (-not [string]::IsNullOrWhiteSpace($ResourceRoot)) {
+    $ResourceRoot = (Resolve-Path -LiteralPath $ResourceRoot).Path
+    $validatorArguments += @('--resource-root', $ResourceRoot)
+}
 if ($AllowLocalResources) {
     $validatorArguments += '--allow-local-resources'
 }

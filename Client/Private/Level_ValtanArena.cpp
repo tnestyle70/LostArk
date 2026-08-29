@@ -1259,6 +1259,9 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 	const bool_t isFightPageStart =
 		LostArk::Shared::VALTAN_AUDITION_OPERATION::START_FIGHT_PAGE ==
 			operation;
+	const bool_t isArenaPreset =
+		LostArk::Shared::VALTAN_AUDITION_OPERATION::SET_ARENA_PRESET ==
+			operation;
 	/* The pattern browser addresses the authored pattern order instead, and
 	sends a one-based index so the wire never carries the zero that means
 	"no bar". */
@@ -1282,10 +1285,19 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 		m_strAuditionStatus = "No authored fight page is selected.";
 		return false;
 	}
+	if (isArenaPreset &&
+		(explicitCommandPayload < static_cast<uint32_t>(
+			LostArk::Shared::VALTAN_ARENA_PRESET::FRESH) ||
+		 explicitCommandPayload >= static_cast<uint32_t>(
+			LostArk::Shared::VALTAN_ARENA_PRESET::END)))
+	{
+		m_strAuditionStatus = "Arena preset identity is invalid.";
+		return false;
+	}
 	const std::vector<uint32_t> bars =
 		Collect_AuditionHealthBars(m_ValtanEncounterReference);
 	if (!isBarless && !isPatternPlay && !isTimelinePlay &&
-		!isFightPageStart &&
+		!isFightPageStart && !isArenaPreset &&
 		m_iSelectedAuditionBarIndex >= bars.size())
 	{
 		m_strAuditionStatus = "No authored health-bar pattern is selected.";
@@ -1294,7 +1306,7 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 
 	const uint32_t sequence = 0u == m_iNextAuditionRequestSequence ?
 		1u : m_iNextAuditionRequestSequence;
-	const uint32_t commandPayload = isFightPageStart ?
+	const uint32_t commandPayload = (isFightPageStart || isArenaPreset) ?
 		explicitCommandPayload : (isPatternPlay ?
 		static_cast<uint32_t>(m_iSelectedAuditionPatternIndex + 1u) :
 		(isTimelinePlay ?
@@ -1318,6 +1330,17 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 	m_PendingAuditionRequest.iRetryCount = 0u;
 	m_strAuditionStatus = "Waiting for the Server verdict...";
 	return true;
+}
+
+bool_t CLevel_ValtanArena::Set_ArenaPreset(
+	const LostArk::Shared::VALTAN_ARENA_PRESET preset,
+	std::string& outStatus)
+{
+	const bool_t submitted = Submit_Audition(
+		LostArk::Shared::VALTAN_AUDITION_OPERATION::SET_ARENA_PRESET,
+		static_cast<uint32_t>(preset));
+	outStatus = m_strAuditionStatus;
+	return submitted;
 }
 
 void CLevel_ValtanArena::Start_AuthoredRotationPlayback(
@@ -1539,6 +1562,34 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 		"109 outer ring is pattern-only: attack and charge must leave all 30 intact.");
 	ImGui::TextDisabled(
 		"No jump clip exists in this model, so the Server owns the 109 leap as an authored arc.");
+
+	ImGui::SeparatorText("Arena Presets (Server authority)");
+	ImGui::TextDisabled(
+		"Each preset resets then commits wall, collision and navigation state together. The boss remains on hold until another pattern command.");
+	const auto setArenaPreset = [this](
+		const LostArk::Shared::VALTAN_ARENA_PRESET preset)
+	{
+		std::string status;
+		(void)Set_ArenaPreset(preset, status);
+	};
+	ImGui::BeginDisabled(focusedControlsDisabled);
+	if (ImGui::Button("Fresh / All Walls", ImVec2(170.f, 0.f)))
+		setArenaPreset(LostArk::Shared::VALTAN_ARENA_PRESET::FRESH);
+	ImGui::SameLine();
+	if (ImGui::Button("Circle / Walls Gone", ImVec2(180.f, 0.f)))
+		setArenaPreset(
+			LostArk::Shared::VALTAN_ARENA_PRESET::CIRCLE_WALLS_GONE);
+	if (ImGui::Button("Break 3 O'Clock", ImVec2(170.f, 0.f)))
+		setArenaPreset(
+			LostArk::Shared::VALTAN_ARENA_PRESET::THREE_OCLOCK_BROKEN);
+	ImGui::SameLine();
+	if (ImGui::Button("Break 9 O'Clock", ImVec2(180.f, 0.f)))
+		setArenaPreset(
+			LostArk::Shared::VALTAN_ARENA_PRESET::NINE_OCLOCK_BROKEN);
+	if (ImGui::Button("Break 3 + 9 O'Clock", ImVec2(358.f, 0.f)))
+		setArenaPreset(
+			LostArk::Shared::VALTAN_ARENA_PRESET::BOTH_SIDES_BROKEN);
+	ImGui::EndDisabled();
 
 	ImGui::SeparatorText("Fight page start");
 	ImGui::TextDisabled(

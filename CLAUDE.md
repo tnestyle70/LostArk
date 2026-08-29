@@ -28,7 +28,7 @@ Set-Location LostArk
 git lfs pull
 ```
 
-팀장이 전달한 runtime 리소스를 `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,UI}` 물리 폴더에 둔다. Git pull 재현이 명시된 V1 Effect는 Product 문서가 실제 참조하는 선별 dependency closure를 Git/LFS로 함께 받는다. 별도 asset-pack lock, ZIP hash, publish/hydrate/verify 절차는 사용하지 않는다.
+팀장이 전달한 runtime 리소스를 `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,Sound,UI}` 물리 폴더에 둔다. Git pull 재현이 명시된 V1 Effect는 Product 문서가 실제 참조하는 선별 dependency closure를 Git/LFS로 함께 받는다. 별도 asset-pack lock, ZIP hash, publish/hydrate/verify 절차는 사용하지 않는다.
 
 세팅 후 Debug 정본 회귀를 한 번 실행한다.
 
@@ -41,7 +41,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 
 ## 빌드
 
-**Visual Studio 2022**에서 `Framework.sln`을 연다. 제품과 계약 검증에 사용하는 프로젝트는 다음과 같다.
+**Visual Studio 2022**에서 `Framework.sln`을 연다. 기본 Solution Build는 아래 제품 네 프로젝트만 빌드한다. 하네스는 명시적인 검증 profile 또는 focused 명령에서만 빌드한다.
 
 - `Shared\Default\Shared.vcxproj` — Client/Server 공용 protocol 계약
 - `Engine\Default\Engine.vcxproj` — `Engine.dll` + `Engine.lib` 생성
@@ -49,7 +49,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - `Server\Default\Server.vcxproj` — 서버 권위 world/room 실행 파일
 - `Tools\NetworkProtocolHarness\Default\NetworkProtocolHarness.vcxproj` — protocol 회귀 하네스
 - `Tools\ValtanPatternAuditionServiceHarness\Default\ValtanPatternAuditionServiceHarness.vcxproj` — 실제 Client audition service의 Next lifecycle·재시도 계약 하네스, UI 실행 없음
-- `Tools\EffectRenderContractHarness\Default\EffectRenderContractHarness.vcxproj` — Effect stage/commit, compiled shader, WARP 계약 하네스
+- `Tools\EffectRenderContractHarness\Default\EffectRenderContractHarness.vcxproj` — 제품 CPP를 포함하지 않는 단일 CPP optional WARP 프로브. V1/V2 Product CSO draw/readback과 resource-root 경계만 focused 실행하며 솔루션·중앙 profile에는 넣지 않는다.
 - `Tools\PointLightFalloffContractHarness\Default\PointLightFalloffContractHarness.vcxproj` — Engine Deferred compiled shader 소비 계약 하네스
 
 (`Engine\External\imgui\examples\*`의 vcxproj들은 ImGui 원본에 딸려온 샘플이며 솔루션에 포함되지 않는다. 건드리지 않는다.)
@@ -57,14 +57,10 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 ### 빌드 순서 — 반드시 지킬 것
 
 ```
-1) Engine 빌드
-2) UpdateLib.bat [Debug|Release]   ← 인자 생략 시 Debug
-3) Shared + NetworkProtocolHarness + ValtanPatternAuditionServiceHarness 빌드/실행
-4) Server 빌드
-5) Client 빌드
-6) EffectRenderContractHarness + PointLightFalloffContractHarness 빌드/실행
-7) compiled shader closure/hash 검사
-8) Lobby/Bern/Valtan smoke + 변경 domain publisher validation
+1) Product: Engine -> UpdateLib -> Shared -> Server -> Client + product CSO closure
+2) Core: Product + NetworkProtocol + 실제 Server Character Select Core(private·shared world 격리) 1회 + publisher validation
+3) FullDiagnostic: Core + Character Select Party2/Party4 transfer + 변경 domain의 presentation/render/physics/model/server 광역 계약
+4) Lobby/Bern/Valtan/Development smoke는 사용자가 직접 실행·판정
 ```
 
 Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더에 생성한다.
@@ -87,8 +83,8 @@ Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더�
 Client 빌드는 Client가 소유하는 `Shader_*.hlsl`을 같은 구성의 module-adjacent `Shader_*.cso`로
 생성한다. 제품 런타임은 이 CSO만 `D3DX11CreateEffectFromMemory`로 열며 HLSL source compile로
 fallback하지 않는다. 누락·빈 파일·손상 bytecode·technique/pass/input-layout 불일치는 즉시 실패한다.
-`Tools/Build/Test-CompiledShaderClosure.ps1 -Configuration <Debug|Release>`는 Engine/Client의 23개
-producer와 Client/Effect/PointLight 소비 복사본의 존재 및 SHA-256 일치를 검사한다. CSO는 빌드
+`Tools/Build/Test-CompiledShaderClosure.ps1 -Configuration <Debug|Release> -Modules Product`는
+제품 Engine/Client producer와 Client 런타임 소비 복사본의 존재 및 SHA-256 일치를 검사한다. CSO는 빌드
 산출물이므로 Git에 커밋하지 않는다.
 
 `EngineSDK\`는 `.gitignore` 대상이다. **clean clone 직후에는 존재하지 않으므로 Client부터 빌드하면 반드시 실패한다.** 병렬 빌드(`/m`)로 한 번에 돌릴 때도 Engine → UpdateLib → Client 순서가 보장되지 않으면 race가 난다.
@@ -98,7 +94,9 @@ producer와 Client/Effect/PointLight 소비 복사본의 존재 및 SHA-256 일�
 - `CleanBuild.bat` — `.vs`, `EngineSDK`, Engine/Client의 Debug·Release 산출물과 각 프로젝트의 `x64` 중간 산출물 삭제
 - `CleanBuildV2.bat` — 위와 동일하며 이전 공용 출력 구조가 남긴 root exe/dll/pdb도 정리한다. `Resources`, `DataFiles`, `ShaderFiles`는 보존한다.
 
-정본 자동화는 `Tools/Build/Invoke-BuildAndRegression.ps1`이다. Client 작업 디렉터리를 반드시 `Client/Default`로 고정하고 셰이더·리소스 전제조건을 먼저 검사한다. 이 스크립트는 Client 뒤 두 shader 하네스를 빌드하고 compiled shader closure를 검사한 뒤 하네스를 실행한다. Effect 하네스는 Client에 비링크 ProjectReference를 두므로 clean/병렬 solution 빌드에서도 Client의 전체 CSO 생성이 끝난 뒤 복사한다. 개별 MSBuild를 직접 실행할 때도 위 순서를 그대로 따른다.
+`Intermediate/`는 컴파일러·링커·도구가 다시 만드는 중간 산출물 폴더다. 실행 중인 빌드가 없을 때 삭제해도 다음 빌드에서 재생성되며 소스나 저작 정본이 아니다. 모든 위치의 `Intermediate`는 팀 공용 `.gitignore` 대상이다.
+
+정본 자동화는 `Tools/Build/Invoke-BuildAndRegression.ps1`이다. 기본 `Core`는 Product와 protocol, Character Select Core live Server scenario를 실행하고, `-Profile Product`는 제품+CSO만, `-Profile FullDiagnostic`은 Party2/Party4 transfer와 변경 domain 광역 진단까지 실행한다. `-SkipBuild`는 기존 바이너리만 검사하므로 새 소스 반영 증거가 아니다. focused Effect WARP 프로브는 제품 빌드가 끝난 뒤 별도로 실행한다. Client 작업 디렉터리는 반드시 `Client/Default`로 고정한다.
 
 같은 working tree에서 Visual Studio와 자동화 빌드/publisher를 겹쳐 실행하지 않는다. 선언과 정의가 일치하는데
 `LNK2019`가 발생하면 broad clean보다 먼저 선택한 `Configuration|Platform`의 evaluated `IntDir/OutDir`와 provider
@@ -120,10 +118,10 @@ Loader worker에서 호출되는 shader/model/navigation/camera/character/part/V
 | 프로젝트 데이터 정본 | `Data/`의 catalog, imported, authoring, reference JSON/문서 | Git 일반 추적; 대용량 map 문서는 Git LFS |
 | 필수 바이너리 입력 | `Engine/ThirdPartyLib/` | **Git LFS** (`.gitattributes` 패턴) |
 | 실행 데이터 생성물 | `Client/Bin/DataFiles/`, `Server/Bin/DataFiles/` | `Data/`에서 publisher가 생성; 직접 편집 금지 |
-| 런타임 리소스 · 쿠킹 산출물 | `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,UI}` | 기본은 팀장 관리 물리 폴더; 명시된 feature의 exact dependency closure만 Git/LFS |
+| 런타임 리소스 · 쿠킹 산출물 | `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,Sound,UI}` | 기본은 팀장 관리 물리 폴더; 명시된 feature의 exact dependency closure만 Git/LFS |
 
 - clone 시 `git lfs install` 후 clone하거나, 이미 받았다면 `git lfs pull`을 실행해야 lib/DLL/DDS가 포인터가 아닌 실물이 된다.
-- `Client/Bin/Resources/` 최상위에는 위 여섯 폴더만 허용한다. `Resources/LostArk`, `Models`, `Textures`, `SourceData`, `Sound` 래퍼를 다시 만들지 않는다.
+- `Client/Bin/Resources/` 최상위에는 위 일곱 폴더만 허용한다. `Resources/LostArk`, `Models`, `Textures`, `SourceData` 래퍼를 다시 만들지 않는다.
 - raw 추출물과 SourceData는 runtime Resources에 넣지 않는다. 팀장이 채택한 쿠킹 결과만 물리 폴더에 둔다.
 - UI와 gameplay 설정 정본은 JSON이다. `.cfg`를 새로 만들거나 Resources에서 직접 읽지 않는다.
 - 빌드 산출물(`exe/dll/lib/pdb/cso`), `.vs`, `EngineSDK`, `_work`, `out`, `imgui.ini`는 전부 ignore 대상이다. **커밋에 섞여 들어가지 않게 할 것.**
@@ -231,11 +229,11 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 
 ### 최소 수련장 Area
 
-`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Debug Map Editor Test 진입이다. 제품 캐릭터 테스트는 `Lobby-approved WORLD_ID::CHARACTER_SELECT_ARENA -> LEVEL::CHARACTER_SELECT -> LV_LOBBY_CLASSSELECT_SL00`을 사용한다. Lobby가 port `7777`의 `S2C_ENTER_ACCEPTED` 전체 payload를 검증한 뒤에만 기존 socket을 one-shot handoff하며 offline Preview와 `Preview / Server Play` 분기는 없다. Character Select는 직접 connect/send하지 않고 queued snapshot을 `CClientReplication`으로 소비해 HUD, 우클릭 이동, class quick-slot 스킬을 Server snapshot으로 반영한다. class thumbnail 선택은 target asset을 admission한 뒤 typed class-change command를 즉시 제출한다. Server는 identity와 살아 있는 위치를 유지하고 새 profile로 전투 상태를 초기화하며, 사망 상태면 원래 spawn을 navigation projection한 위치에서 부활시킨다. Client는 snapshot class 변경을 보고 같은 entity presentation을 transactionally 교체하고 Controller sequence를 보존해 새 class skill을 계속 제출한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 우선하며 값이 없거나 `0.0.0.0`이면 현재 팀 endpoint `192.168.0.20`을 사용한다. 연결 실패·거부·5초 승인 timeout은 Lobby에 남고, 진입 후 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. Debug ImGui의 `Monster / Mid Boss (Lugaru) / Valtan` 선택과 `Spawn Selected`는 stable ID만 Server에 보내며, Server가 Character Select의 SpawnGroups 또는 disabled Valtan placement를 검증·활성화한다. Client local spawn은 없고 Valtan presentation asset만 Engine batch prototype commit으로 지연 준비한다. `Show Combat Colliders`는 Server가 복제한 radius의 Debug wire만 토글하며 damage에는 관여하지 않는다. Bern/Valtan map 진입도 마지막 Server 승인 class로 Lobby Server 승인이 필수다.
+`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Debug Map Editor Test 진입이다. 제품 캐릭터 테스트는 `Lobby-approved WORLD_ID::CHARACTER_SELECT_ARENA -> LEVEL::CHARACTER_SELECT -> LV_LOBBY_CLASSSELECT_SL00`을 사용한다. Lobby가 port `7777`의 `S2C_ENTER_ACCEPTED` 전체 payload를 검증한 뒤에만 기존 socket을 one-shot handoff하며 offline Preview와 `Preview / Server Play` 분기는 없다. Character Select는 직접 connect/send하지 않고 queued snapshot을 `CClientReplication`으로 소비해 HUD, 우클릭 이동, class quick-slot 스킬을 Server snapshot으로 반영한다. class thumbnail 선택은 target asset을 admission한 뒤 typed class-change command를 즉시 제출한다. Server는 identity와 살아 있는 위치를 유지하고 새 profile로 전투 상태를 초기화하며, 사망 상태면 원래 spawn을 navigation projection한 위치에서 부활시킨다. Client는 snapshot class 변경을 보고 같은 entity presentation을 transactionally 교체하고 Controller sequence를 보존해 새 class skill을 계속 제출한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 우선하며 값이 없거나 `0.0.0.0`이면 현재 팀 endpoint `10.207.18.103`을 사용한다. 연결 실패·거부·5초 승인 timeout은 Lobby에 남고, 진입 후 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. Debug ImGui의 `Monster / Mid Boss (Lugaru) / Valtan` 선택과 `Spawn Selected`는 stable ID만 Server에 보내며, Server가 Character Select의 SpawnGroups 또는 disabled Valtan placement를 검증·활성화한다. Client local spawn은 없고 Valtan presentation asset만 Engine batch prototype commit으로 지연 준비한다. `Show Combat Colliders`는 Server가 복제한 radius의 Debug wire만 토글하며 damage에는 관여하지 않는다. Bern/Valtan map 진입도 마지막 Server 승인 class로 Lobby Server 승인이 필수다.
 
 Server는 `CHARACTER_SELECT_ARENA` 진입 session마다 독립된 `CGameRoom` simulation을 만든다. 따라서 class 변경, 몬스터 소환, collider 판정과 damage는 모두 Server에서 실행되지만 다른 Character Select session과 player/entity/HP/damage snapshot을 공유하지 않는다. session 퇴장 시 queued `LEAVE`를 room tick이 소비하고 private simulation을 폐기한다. `BERN`, `VALTAN_ARENA`, `TRAINING_GROUND`는 world별 shared simulation을 유지한다.
 
-2026-09-30 23:59 KST까지 공유 LAN Server는 `Framework.slnLaunch`의 `Server + Client` profile로 `0.0.0.0:7777`에 수신하고, 같은 팀 LAN의 Client는 `192.168.0.20:7777`에 접속한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이며 모든 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행해 Git 제외 debugger 설정을 동기화한다. 공유 x64 debugger 설정과 코드 기본값도 같은 endpoint를 사용하며, 실제 `Ctrl+F5` 시작은 사용자가 수행한다. Visual Studio가 이전 값을 캐시하면 project Reload 또는 IDE 재시작이 필요하다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. 세부 설정, 동일 revision/build/resource 준비와 `10049` 진단은 `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`을 따른다.
+2026-09-30 23:59 KST까지 공유 LAN Server는 `Framework.slnLaunch`의 `Server + Client` profile로 `0.0.0.0:7777`에 수신하고, 같은 팀 LAN의 Client는 `10.207.18.103:7777`에 접속한다. Server PC는 현재 `Wi-Fi 2`에서 `10.207.18.103/24`를 소유한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이며 모든 에이전트는 pull 후 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행해 Git 제외 debugger 설정을 동기화한다. 공유 x64 debugger 설정과 코드 기본값도 같은 endpoint를 사용하며, 실제 `Ctrl+F5` 시작은 사용자가 수행한다. Visual Studio가 이전 값을 캐시하면 project Reload 또는 IDE 재시작이 필요하다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. 세부 설정, 동일 revision/build/resource 준비와 `10049` 진단은 `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`을 따른다.
 
 Lobby fallback은 Client의 first-terminal reason과 semantic recovery를 실행 파일 옆 process별 JSONL에
 보존하고 Lobby에 표시한다. direct LAN의 한 connection은 Client `localEndpoint`와 Server

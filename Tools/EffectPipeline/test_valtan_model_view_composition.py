@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import json
 import math
+import os
 import struct
 import sys
 import unittest
@@ -54,7 +55,10 @@ def raw_sha256(path: Path) -> str:
 class ValtanModelViewCompositionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.resource_root = REPOSITORY_ROOT / "Client/Bin/Resources"
+        configured_resource_root = os.environ.get("LOSTARK_RESOURCE_ROOT")
+        cls.resource_root = Path(configured_resource_root).resolve() if (
+            configured_resource_root
+        ) else (REPOSITORY_ROOT / "Client/Bin/Resources").resolve()
         cls.body_path = (
             cls.resource_root / "Character/Valtan/MN_RPBF_01.wmodel"
         )

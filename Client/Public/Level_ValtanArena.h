@@ -63,6 +63,18 @@ public:
 	{
 		return m_pPlayerCommandSink;
 	}
+#ifdef _DEBUG
+	/* Workbench route. The active Level retains the one request-sequence and
+	   retry owner used by its audition panel; callers never send packets or
+	   mutate wall visibility locally. */
+	bool_t Set_ArenaPreset(
+		LostArk::Shared::VALTAN_ARENA_PRESET preset,
+		std::string& outStatus);
+	const std::string& Get_ArenaAuditionStatus() const
+	{
+		return m_strAuditionStatus;
+	}
+#endif
 
 private:
 	HRESULT Ready_Layer_Camera(const wstring_t& strLayerTag);

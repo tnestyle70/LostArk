@@ -17,6 +17,7 @@ namespace Client
 		PLAYER_SPAWNED,
 		WORLD_ENTITY_SPAWNED,
 		COMBAT_OBJECT_SPAWNED,
+		COMBAT_OBJECT_PRESENTATION,
 		WORLD_ENTITY_DESPAWNED,
 		COMBAT_OBJECT_DESPAWNED,
 		PLAYER_DESPAWNED,
@@ -60,6 +61,8 @@ namespace Client
 		LostArk::Shared::S2C_PLAYER_SPAWNED PlayerSpawned;
 		LostArk::Shared::S2C_WORLD_ENTITY_SPAWNED WorldEntitySpawned;
 		LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED CombatObjectSpawned;
+		LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT
+			CombatObjectPresentation;
 		LostArk::Shared::S2C_WORLD_ENTITY_DESPAWNED WorldEntityDespawned;
 		LostArk::Shared::S2C_COMBAT_OBJECT_DESPAWNED CombatObjectDespawned;
 		LostArk::Shared::S2C_PLAYER_DESPAWNED PlayerDespawned;

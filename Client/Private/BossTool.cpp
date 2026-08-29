@@ -6,6 +6,7 @@
 #include "Effect_Catalog.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_Tool.h"
+#include "Level_ValtanArena.h"
 #include "NetworkManager.h"
 #include "PlayerCommandSink.h"
 #include "ProjectDataRoot.h"
@@ -440,6 +441,65 @@ bool_t Client::CBossTool::Submit_SelectedPattern()
 	m_bFollowLive = true;
 	m_strStatus = Status;
 	return true;
+}
+
+bool_t Client::CBossTool::Play_ServerPattern(
+	const std::string& strPatternId,
+	std::string& strOutStatus)
+{
+	if (strPatternId.empty())
+	{
+		strOutStatus = "Play Server Pattern requires a stable pattern ID.";
+		return false;
+	}
+	if ((!m_bGraphLoadAttempted || !m_bGraphReady) && !Reload_Graph())
+	{
+		strOutStatus = m_strStatus.empty() ?
+			"Boss Tool could not admit the current Valtan graph." : m_strStatus;
+		return false;
+	}
+	if (nullptr == Find_AuditionPattern(strPatternId))
+	{
+		strOutStatus = "Pattern is not in the current Server audition inventory: " +
+			strPatternId + ".";
+		return false;
+	}
+	m_strSelectedPatternId = strPatternId;
+	const bool_t submitted = Submit_SelectedPattern();
+	strOutStatus = m_strStatus;
+	return submitted;
+}
+
+bool_t Client::CBossTool::Set_ServerArenaPreset(
+	const LostArk::Shared::VALTAN_ARENA_PRESET preset,
+	std::string& strOutStatus)
+{
+#ifdef _DEBUG
+	CLevel_ValtanArena* const arena = CLevel_ValtanArena::Get_Active();
+	if (nullptr == arena)
+	{
+		strOutStatus =
+			"Arena Preset requires the Server-approved Valtan Arena level.";
+		return false;
+	}
+	return arena->Set_ArenaPreset(preset, strOutStatus);
+#else
+	(void)preset;
+	strOutStatus = "Arena presets are available only in Debug Developer Tools.";
+	return false;
+#endif
+}
+
+std::string Client::CBossTool::Get_ServerArenaPresetStatus() const
+{
+#ifdef _DEBUG
+	const CLevel_ValtanArena* const arena = CLevel_ValtanArena::Get_Active();
+	return nullptr == arena ?
+		std::string("Enter Valtan Arena to stage a Server environment preset.") :
+		arena->Get_ArenaAuditionStatus();
+#else
+	return "Arena presets are available only in Debug Developer Tools.";
+#endif
 }
 
 bool_t Client::CBossTool::Preview_SelectedFlowSlotIsolated()

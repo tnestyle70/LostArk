@@ -704,6 +704,174 @@ void Client::CBalanceTool::Open()
 	m_focusPending = true;
 }
 
+bool Client::CBalanceTool::Get_ValtanStageDurationDraft(
+	const std::string& patternId,
+	const std::string& stageId,
+	std::uint32_t& durationMs,
+	std::string& status) const
+{
+	const VALTAN_PATTERN_VIEW* pattern =
+		FindValtanPattern(m_valtanPatternTree, patternId);
+	if (nullptr == pattern)
+	{
+		status = "Valtan draft pattern is not admitted: " + patternId + ".";
+		return false;
+	}
+	const VALTAN_STAGE_VIEW* stage = FindValtanStage(*pattern, stageId);
+	if (nullptr == stage)
+	{
+		status = "Valtan draft stage is not admitted: " + patternId + "/" +
+			stageId + ".";
+		return false;
+	}
+	durationMs = stage->iDurationMs;
+	status.clear();
+	return true;
+}
+
+bool Client::CBalanceTool::Set_ValtanStageDurationDraft(
+	const std::string& patternId,
+	const std::string& stageId,
+	const std::uint32_t durationMs,
+	std::string& status)
+{
+	if (durationMs < 1u || durationMs > 600000u)
+	{
+		status = "Valtan stage duration must be between 1 and 600000 ms.";
+		return false;
+	}
+	VALTAN_PATTERN_VIEW* pattern =
+		FindValtanPattern(m_valtanPatternTree, patternId);
+	if (nullptr == pattern || !pattern->bAuthoringMasterManaged)
+	{
+		status = "Valtan stage edit rejected: pattern is not authoring-master managed: " +
+			patternId + ".";
+		return false;
+	}
+	VALTAN_STAGE_VIEW* stage = FindValtanStage(*pattern, stageId);
+	if (nullptr == stage)
+	{
+		status = "Valtan stage edit rejected: stage is not admitted: " +
+			patternId + "/" + stageId + ".";
+		return false;
+	}
+	if (stage->iDurationMs == durationMs)
+	{
+		status = "Valtan stage duration is unchanged.";
+		return true;
+	}
+	stage->iDurationMs = durationMs;
+	MarkDirty(true);
+	status = "Staged " + patternId + "/" + stageId + " duration at " +
+		std::to_string(durationMs) +
+		" ms. Press Save to validate, persist, build Product data, and apply when live update is available.";
+	return true;
+}
+
+bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)
+{
+	std::string stepStatus;
+	if (!Validate_ValtanDraft(stepStatus))
+	{
+		status = "Save validation failed; source and active runtime were preserved: " +
+			stepStatus;
+		return false;
+	}
+
+	const bool hadDirtyDraft = m_dirty;
+	if (hadDirtyDraft && !Save_ValtanAuthoring(stepStatus))
+	{
+		status = "Save authoring failed; active runtime was preserved: " +
+			stepStatus;
+		return false;
+	}
+
+	if (!Publish_ValtanCandidate(stepStatus))
+	{
+		status = hadDirtyDraft ?
+			"Authoring was saved, but Product bundle generation failed. The active runtime is unchanged; press Save again after fixing the diagnostic: " +
+				stepStatus :
+			"Product bundle generation failed; source and active runtime are unchanged: " +
+				stepStatus;
+		return false;
+	}
+
+	const std::string revisionLabel = m_valtanCandidateRevision.empty() ?
+		std::string("UNKNOWN") : m_valtanCandidateRevision.substr(0u, 12u);
+	if ("HOT_RELOAD" != m_valtanCandidateApplyClass)
+	{
+		status = "Saved Product revision " + revisionLabel +
+			". This change requires " +
+			(m_valtanCandidateApplyClass.empty() ? std::string("SERVER_RESTART") :
+				m_valtanCandidateApplyClass) +
+			"; the currently running encounter was left unchanged.";
+		return true;
+	}
+
+	const CNetworkManager::GAMEPLAY_REVISION_CLIENT_STATE& revisionState =
+		CNetworkManager::Get().Get_GameplayRevisionState();
+	if (!CNetworkManager::Get().Is_Connected() ||
+		!revisionState.ServerActiveRevision.Is_Valid())
+	{
+		status = "Saved Product revision " + revisionLabel +
+			". No admitted Debug Server revision is connected, so it will be active after Server restart/re-entry.";
+		return true;
+	}
+	if (CValtanTuningCommandService::Get().Has_PendingCommand())
+	{
+		status = "Saved Product revision " + revisionLabel +
+			". A previous live-update transaction is still pending; active runtime was not replaced.";
+		return true;
+	}
+	if (!Apply_ValtanRevision(stepStatus))
+	{
+		status = "Saved Product revision " + revisionLabel +
+			". Live apply was not submitted and the active runtime was preserved: " +
+			stepStatus;
+		return true;
+	}
+	status = "Saved Product revision " + revisionLabel +
+		" and submitted the Server/Client tick-boundary live update. Runtime becomes active only after the coordinator reports COMMITTED.";
+	return true;
+}
+
+bool Client::CBalanceTool::Validate_ValtanDraft(std::string& status)
+{
+	return RunValtanDraftCommand(L"ValidateDraft", status);
+}
+
+bool Client::CBalanceTool::Save_ValtanAuthoring(std::string& status)
+{
+	return RunValtanDraftCommand(L"SaveAuthoring", status);
+}
+
+bool Client::CBalanceTool::Publish_ValtanCandidate(std::string& status)
+{
+	return RunValtanDraftCommand(L"PublishCandidate", status);
+}
+
+bool Client::CBalanceTool::Apply_ValtanRevision(std::string& status)
+{
+	if (m_dirty)
+	{
+		status = "Apply Revision blocked: save the current Valtan authoring draft first.";
+		return false;
+	}
+	if (m_valtanCandidateRevision.empty())
+	{
+		status = "Apply Revision blocked: publish a candidate first.";
+		return false;
+	}
+	if ("HOT_RELOAD" != m_valtanCandidateApplyClass)
+	{
+		status = "Apply Revision blocked: candidate apply class is " +
+			(m_valtanCandidateApplyClass.empty() ? std::string("NONE") :
+				m_valtanCandidateApplyClass) + ".";
+		return false;
+	}
+	return RequestValtanHotReload(status);
+}
+
 void Client::CBalanceTool::MarkDirty(const bool changed)
 {
 	if (changed)
@@ -3399,7 +3567,7 @@ void Client::CBalanceTool::RenderLiveVerification()
 		ImGui::TextDisabled("Use a server-approved skill or let Valtan hit a player.");
 	ImGui::SeparatorText("Apply policy");
 	ImGui::TextWrapped(
-		"Validate checks the stable-ID draft without writes. Save Authoring creates an immutable authoring revision. Publish Candidate creates an inactive immutable runtime bundle. Apply remains fail-closed until every affected Server room and required Client presentation lane completes the revision handshake.");
+		"Save is the only author action. Internally it validates stable-ID joins, persists authoring, builds Product data, then requests a fail-closed live update when supported. A failed stage preserves the active runtime and reports the exact stopping point.");
 }
 #endif
 
@@ -5451,83 +5619,41 @@ void Client::CBalanceTool::Render()
 		m_bosses[m_selectedBoss].archetypeId == "BOSS_VALTAN";
 	if (valtanView)
 	{
-		ImGui::BeginDisabled(m_valtanSourceRevision.empty());
-		if (ImGui::Button("Validate Valtan Draft"))
-		{
-			std::string status;
-			RunValtanDraftCommand(L"ValidateDraft", status);
-			m_status = std::move(status);
-		}
-		ImGui::SameLine();
 		const bool splitJoinValidated =
 			VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED ==
 				m_valtanSourceJoin.state;
-		ImGui::BeginDisabled(!m_dirty || !splitJoinValidated);
-		if (ImGui::Button("Save Authoring"))
+		ImGui::BeginDisabled(
+			m_valtanSourceRevision.empty() || !splitJoinValidated);
+		if (ImGui::Button("Save"))
 		{
 			std::string status;
-			RunValtanDraftCommand(L"SaveAuthoring", status);
-			m_status = std::move(status);
-		}
-		ImGui::EndDisabled();
-		ImGui::SameLine();
-		ImGui::BeginDisabled(!splitJoinValidated);
-		if (ImGui::Button("Publish Candidate"))
-		{
-			std::string status;
-			RunValtanDraftCommand(L"PublishCandidate", status);
-			m_status = std::move(status);
-		}
-		ImGui::EndDisabled();
-		ImGui::EndDisabled();
-		ImGui::SameLine();
-		const CNetworkManager::GAMEPLAY_REVISION_CLIENT_STATE& revisionState =
-			CNetworkManager::Get().Get_GameplayRevisionState();
-		const bool candidateIsHotReload =
-			m_valtanCandidateApplyClass == "HOT_RELOAD";
-		const bool canApply = splitJoinValidated &&
-			!m_valtanCandidateRevision.empty() &&
-			candidateIsHotReload &&
-			!CValtanTuningCommandService::Get().Has_PendingCommand() &&
-			!m_dirty && CNetworkManager::Get().Is_Connected() &&
-			revisionState.ServerActiveRevision.Is_Valid();
-		ImGui::BeginDisabled(!canApply);
-		if (ImGui::Button("Apply Hot Reload"))
-		{
-			std::string status;
-			RequestValtanHotReload(status);
+			(void)Save_ValtanProduct(status);
 			m_status = std::move(status);
 		}
 		ImGui::EndDisabled();
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 		{
-			if (!m_valtanCandidateApplyClass.empty() &&
-				!candidateIsHotReload)
-			{
-				ImGui::SetTooltip(
-					"Apply Hot Reload is blocked for %s. This candidate requires the future controlled encounter reset/restart path.",
-					m_valtanCandidateApplyClass.c_str());
-			}
-			else
-			{
-				ImGui::SetTooltip(
-					"Apply starts a typed two-phase transaction. Server room staging and every required Client presentation lane must be READY before the next room-tick commit; any failure preserves the active revision.");
-			}
+			ImGui::SetTooltip(
+				"One action: validate joined stable IDs, save authoring, build Product data, and request a fail-closed live update when supported.");
 		}
+		const CNetworkManager::GAMEPLAY_REVISION_CLIENT_STATE& revisionState =
+			CNetworkManager::Get().Get_GameplayRevisionState();
+		const bool candidateIsHotReload =
+			m_valtanCandidateApplyClass == "HOT_RELOAD";
 		const ImVec4 applyClassColor = m_valtanCandidateApplyClass.empty() ?
 			ImVec4(0.55f, 0.55f, 0.55f, 1.f) :
 			(candidateIsHotReload ? ImVec4(0.35f, 0.85f, 0.45f, 1.f) :
 				ImVec4(1.f, 0.70f, 0.20f, 1.f));
-		ImGui::TextColored(applyClassColor, "Apply class: %s",
+		ImGui::TextColored(applyClassColor, "Runtime activation: %s",
 			m_valtanCandidateApplyClass.empty() ? "NONE" :
 				m_valtanCandidateApplyClass.c_str());
 		if (ImGui::IsItemHovered())
 		{
 			ImGui::SetTooltip(candidateIsHotReload ?
-				"HOT_RELOAD can use the current tick-boundary two-phase Apply path." :
-				"ENCOUNTER_RESET and SERVER_RESTART candidates remain immutable but cannot enter the current Hot Reload transaction.");
+				"Save submits the current tick-boundary Server/Client transaction when a Debug Server is connected." :
+				"This saved Product revision becomes active only after the required encounter reset or Server restart.");
 		}
-		ImGui::TextDisabled("Source %s | Authoring %s | Candidate %s | Draft %s",
+		ImGui::TextDisabled("Source %s | Authoring %s | Product %s | Draft %s",
 			m_valtanSourceRevision.empty() ? "NONE" :
 				m_valtanSourceRevision.substr(0u, 12u).c_str(),
 			m_valtanAuthoringRevision.empty() ? "NONE" :

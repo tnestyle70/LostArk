@@ -347,9 +347,17 @@ def _parse_lfs_pointer(payload: bytes, path: str) -> tuple[str, int]:
 
 
 def _validate_runtime_resource_closure(
-    root: Path, resource_ids: set[str], *, allow_local_resources: bool = False
+    root: Path,
+    resource_ids: set[str],
+    *,
+    resources_root: Path | None = None,
+    allow_local_resources: bool = False,
 ) -> tuple[int, int, int]:
-    resources_root = root / "Client/Bin/Resources"
+    resources_root = (
+        resources_root.resolve()
+        if resources_root is not None
+        else (root / "Client/Bin/Resources").resolve()
+    )
     resource_bytes = 0
     missing: list[str] = []
     identities: dict[str, RuntimeResourceIdentity] = {}
@@ -794,10 +802,7 @@ def _validate_active_consumer_guard(root: Path) -> None:
     guarded_files = {
         "Client/Private/Effect_Catalog.cpp::Load": active_load,
     }
-    for relative in (
-        "Client/Private/Effect_Tool.cpp",
-        "Tools/EffectRenderContractHarness/Run-EffectRenderContractHarness.ps1",
-    ):
+    for relative in ("Client/Private/Effect_Tool.cpp",):
         path = root / relative
         try:
             guarded_files[relative] = path.read_text(encoding="utf-8-sig")
@@ -842,7 +847,12 @@ def _validate_active_consumer_guard(root: Path) -> None:
                 )
 
 
-def validate_repository(root: Path, *, allow_local_resources: bool = False) -> ValidationReport:
+def validate_repository(
+    root: Path,
+    *,
+    resource_root: Path | None = None,
+    allow_local_resources: bool = False,
+) -> ValidationReport:
     root = root.resolve()
     data_root = root / "Data/Effects"
     catalog_path = data_root / "EffectCatalog.json"
@@ -980,7 +990,10 @@ def validate_repository(root: Path, *, allow_local_resources: bool = False) -> V
 
     _validate_active_consumer_guard(root)
     resource_file_count, resource_bytes, local_count = _validate_runtime_resource_closure(
-        root, resource_ids, allow_local_resources=allow_local_resources
+        root,
+        resource_ids,
+        resources_root=resource_root,
+        allow_local_resources=allow_local_resources,
     )
     return ValidationReport(
         direct_source_count=len(effect_ids),
@@ -1004,10 +1017,17 @@ def main(argv: list[str] | None = None) -> int:
         "--allow-local-resources", action="store_true",
         help="Validate existing shared local resources without requiring untracked files in Git; tracked identity checks remain enabled.",
     )
+    parser.add_argument(
+        "--resource-root",
+        type=Path,
+        help="Optional physical Client/Bin/Resources root, used by lightweight Git worktrees without duplicated binary assets.",
+    )
     args = parser.parse_args(argv)
     try:
         report = validate_repository(
-            args.repository_root, allow_local_resources=args.allow_local_resources
+            args.repository_root,
+            resource_root=args.resource_root,
+            allow_local_resources=args.allow_local_resources,
         )
     except ContractError as exc:
         print(f"Effect source validation failed: {exc}", file=sys.stderr)

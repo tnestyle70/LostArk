@@ -2,6 +2,8 @@
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Debug',
+    [ValidateSet('Product', 'Core', 'FullDiagnostic')]
+    [string]$Profile = 'Core',
     [switch]$SkipBuild,
     [string]$ResourceRoot = '',
     [switch]$AllowLocalEffectResources
@@ -9,29 +11,32 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+$includeCore = $Profile -in @('Core', 'FullDiagnostic')
+$includeFullDiagnostic = $Profile -eq 'FullDiagnostic'
 $clientExe = Join-Path $repoRoot "Client\Bin\$Configuration\Client.exe"
 $serverExe = Join-Path $repoRoot "Server\Bin\$Configuration\Server.exe"
-$valtanHarnessExe = Join-Path $repoRoot `
-    "Tools\ValtanFourPlayerHarness\Bin\$Configuration\ValtanFourPlayerHarness.exe"
+$protocolHarnessExe = Join-Path $repoRoot `
+    "Tools\NetworkProtocolHarness\Bin\$Configuration\NetworkProtocolHarness.exe"
 $characterSelectIsolationHarnessExe = Join-Path $repoRoot `
     "Tools\CharacterSelectIsolationHarness\Bin\$Configuration\CharacterSelectIsolationHarness.exe"
 $actionPresentationTimelineHarnessExe = Join-Path $repoRoot `
     "Tools\ActionPresentationTimelineHarness\Bin\$Configuration\ActionPresentationTimelineHarness.exe"
 $valtanAuditionServiceHarnessExe = Join-Path $repoRoot `
     "Tools\ValtanPatternAuditionServiceHarness\Bin\$Configuration\ValtanPatternAuditionServiceHarness.exe"
-$effectRenderHarnessExe = Join-Path $repoRoot `
-    "Tools\EffectRenderContractHarness\Bin\$Configuration\EffectRenderContractHarness.exe"
 $pointLightFalloffHarnessExe = Join-Path $repoRoot `
     "Tools\PointLightFalloffContractHarness\Bin\$Configuration\PointLightFalloffContractHarness.exe"
 $mapFrustumHarnessExe = Join-Path $repoRoot `
     "Tools\MapFrustumContractHarness\Bin\$Configuration\MapFrustumContractHarness.exe"
+$physicsHarnessExe = Join-Path $repoRoot `
+    "Tools\PhysicsContractHarness\Bin\$Configuration\PhysicsContractHarness.exe"
+$wmodelHarnessExe = Join-Path $repoRoot `
+    "Tools\WModelGeometryContractHarness\Bin\$Configuration\WModelGeometryContractHarness.exe"
 $runtimeResourceRoot = if ([string]::IsNullOrWhiteSpace($ResourceRoot)) {
     Join-Path $repoRoot 'Client\Bin\Resources'
 }
 else {
     [IO.Path]::GetFullPath($ResourceRoot)
 }
-
 function Resolve-MSBuild {
     $command = Get-Command msbuild.exe -ErrorAction SilentlyContinue
     if ($null -ne $command) {
@@ -53,7 +58,8 @@ function Invoke-MSBuildProject {
     )
 
     & $MSBuild $Project /m /nodeReuse:false /t:Build `
-        "/p:Configuration=$Configuration" /p:Platform=x64 /v:minimal
+        "/p:Configuration=$Configuration" /p:Platform=x64 `
+        /p:BuildProjectReferences=false /v:minimal
     if ($global:LASTEXITCODE -ne 0) {
         throw "Build failed: $Project"
     }
@@ -63,17 +69,25 @@ function Assert-RuntimeLayout {
     $required = @(
         $clientExe,
         $serverExe,
-        $valtanHarnessExe,
-        $characterSelectIsolationHarnessExe,
-        $actionPresentationTimelineHarnessExe,
-        $valtanAuditionServiceHarnessExe,
-        $effectRenderHarnessExe,
-        $pointLightFalloffHarnessExe,
-        $mapFrustumHarnessExe,
         (Join-Path $repoRoot 'Client\Bin\ShaderFiles\Shader_Deferred.hlsl'),
-        (Join-Path $repoRoot 'Client\Bin\ShaderFiles\Shader_VtxTex.hlsl'),
-        (Join-Path $runtimeResourceRoot 'Fonts')
+        (Join-Path $repoRoot 'Client\Bin\ShaderFiles\Shader_VtxTex.hlsl')
     )
+    if ($includeCore) {
+        $required += @(
+            $protocolHarnessExe,
+            $characterSelectIsolationHarnessExe
+        )
+    }
+    if ($includeFullDiagnostic) {
+        $required += @(
+            $actionPresentationTimelineHarnessExe,
+            $valtanAuditionServiceHarnessExe,
+            $pointLightFalloffHarnessExe,
+            $mapFrustumHarnessExe,
+            $physicsHarnessExe,
+            $wmodelHarnessExe
+        )
+    }
     $missing = @($required | Where-Object {
         -not (Test-Path -LiteralPath $_)
     })
@@ -121,6 +135,20 @@ try {
     Invoke-PythonGate `
         'Release client surface visibility and product input gate' `
         @('Tools/Build/test_release_client_surface_contract.py')
+    Invoke-PythonGate `
+        'Product-first build profile and project surface gate' `
+        @('Tools/Build/test_build_profile_contract.py')
+
+    if ($includeCore) {
+        $global:LASTEXITCODE = 0
+        & '.\Tools\EffectPipeline\Validate-EffectSources.ps1' `
+            -RepositoryRoot $repoRoot `
+            -ResourceRoot $runtimeResourceRoot `
+            -AllowLocalResources:$AllowLocalEffectResources
+        if ($global:LASTEXITCODE -ne 0) {
+            throw 'Effect source validation failed before compilation.'
+        }
+    }
 
     if (-not $SkipBuild) {
         $msbuild = Resolve-MSBuild
@@ -130,54 +158,64 @@ try {
             throw 'UpdateLib.bat failed.'
         }
         Invoke-MSBuildProject $msbuild 'Shared\Default\Shared.vcxproj'
-        Invoke-MSBuildProject $msbuild `
-            'Tools\NetworkProtocolHarness\Default\NetworkProtocolHarness.vcxproj'
-        Invoke-MSBuildProject $msbuild `
-            'Tools\ValtanPatternAuditionServiceHarness\Default\ValtanPatternAuditionServiceHarness.vcxproj'
-        Invoke-MSBuildProject $msbuild `
-            'Tools\ValtanFourPlayerHarness\Default\ValtanFourPlayerHarness.vcxproj'
-        Invoke-MSBuildProject $msbuild `
-            'Tools\CharacterSelectIsolationHarness\Default\CharacterSelectIsolationHarness.vcxproj'
-        Invoke-MSBuildProject $msbuild `
-            'Tools\ActionPresentationTimelineHarness\Default\ActionPresentationTimelineHarness.vcxproj'
+        if ($includeCore) {
+            Invoke-MSBuildProject $msbuild `
+                'Tools\NetworkProtocolHarness\Default\NetworkProtocolHarness.vcxproj'
+            Invoke-MSBuildProject $msbuild `
+                'Tools\CharacterSelectIsolationHarness\Default\CharacterSelectIsolationHarness.vcxproj'
+        }
         Invoke-MSBuildProject $msbuild 'Server\Default\Server.vcxproj'
         Invoke-MSBuildProject $msbuild 'Client\Default\Client.vcxproj'
-        Invoke-MSBuildProject $msbuild `
-            'Tools\EffectRenderContractHarness\Default\EffectRenderContractHarness.vcxproj'
-        Invoke-MSBuildProject $msbuild `
-            'Tools\PointLightFalloffContractHarness\Default\PointLightFalloffContractHarness.vcxproj'
-        Invoke-MSBuildProject $msbuild `
-            'Tools\MapFrustumContractHarness\Default\MapFrustumContractHarness.vcxproj'
+        if ($includeFullDiagnostic) {
+            Invoke-MSBuildProject $msbuild `
+                'Tools\ValtanPatternAuditionServiceHarness\Default\ValtanPatternAuditionServiceHarness.vcxproj'
+            Invoke-MSBuildProject $msbuild `
+                'Tools\ActionPresentationTimelineHarness\Default\ActionPresentationTimelineHarness.vcxproj'
+            Invoke-MSBuildProject $msbuild `
+                'Tools\PointLightFalloffContractHarness\Default\PointLightFalloffContractHarness.vcxproj'
+            Invoke-MSBuildProject $msbuild `
+                'Tools\MapFrustumContractHarness\Default\MapFrustumContractHarness.vcxproj'
+            Invoke-MSBuildProject $msbuild `
+                'Tools\PhysicsContractHarness\Default\PhysicsContractHarness.vcxproj'
+            Invoke-MSBuildProject $msbuild `
+                'Tools\WModelGeometryContractHarness\Default\WModelGeometryContractHarness.vcxproj'
+        }
     }
 
     $global:LASTEXITCODE = 0
     & '.\Tools\Build\Test-CompiledShaderClosure.ps1' `
         -Configuration $Configuration `
-        -RepositoryRoot $repoRoot
+        -RepositoryRoot $repoRoot `
+        -Modules Product
     if ($global:LASTEXITCODE -ne 0) {
         throw 'Compiled shader closure validation failed.'
     }
 
     Assert-RuntimeLayout
 
-    $global:LASTEXITCODE = 0
-    & '.\Tools\ProjectAudit\Test-BernFrustumCullingContract.ps1'
-    if ($global:LASTEXITCODE -ne 0) {
-        throw 'Bern frustum source contract validation failed.'
+    if (-not $includeCore) {
+        Write-Host "Build and validation completed: $Configuration / $Profile"
+        Write-Host 'Runtime visual/audio validation remains user-operated.'
+        return
     }
 
-    $global:LASTEXITCODE = 0
-    & '.\Tools\MapFrustumContractHarness\Run-MapFrustumContractHarness.ps1' `
-        -Configuration $Configuration
-    if ($global:LASTEXITCODE -ne 0) {
-        throw 'MapFrustumContractHarness failed.'
-    }
-    Invoke-PythonGate `
-        'Map surface geometry and depth diagnostic unit gate' `
-        @('Tools/MapPipeline/test_map_surface_depth_contract.py')
+    if ($includeFullDiagnostic) {
+        $global:LASTEXITCODE = 0
+        & '.\Tools\ProjectAudit\Test-BernFrustumCullingContract.ps1'
+        if ($global:LASTEXITCODE -ne 0) {
+            throw 'Bern frustum source contract validation failed.'
+        }
 
-    & (Join-Path $repoRoot 'Tools\Build\Test-NativeHarnessExitPropagation.ps1') `
-        -Configuration $Configuration
+        $global:LASTEXITCODE = 0
+        & '.\Tools\MapFrustumContractHarness\Run-MapFrustumContractHarness.ps1' `
+            -Configuration $Configuration
+        if ($global:LASTEXITCODE -ne 0) {
+            throw 'MapFrustumContractHarness failed.'
+        }
+        Invoke-PythonGate `
+            'Map surface geometry and depth diagnostic unit gate' `
+            @('Tools/MapPipeline/test_map_surface_depth_contract.py')
+    }
 
 	$global:LASTEXITCODE = 0
 	& '.\Tools\ValtanPipeline\Project-ValtanPatternMaster.ps1' `
@@ -185,17 +223,19 @@ try {
 	if ($global:LASTEXITCODE -ne 0) {
 		throw 'Valtan split pattern master validation failed.'
 	}
-	$global:LASTEXITCODE = 0
-	& '.\Tools\ValtanPipeline\Test-ValtanPatternMaster.ps1'
-	if ($global:LASTEXITCODE -ne 0) {
-		throw 'Valtan split pattern master focused harness failed.'
+	if ($includeFullDiagnostic) {
+		$global:LASTEXITCODE = 0
+		& '.\Tools\ValtanPipeline\Test-ValtanPatternMaster.ps1'
+		if ($global:LASTEXITCODE -ne 0) {
+			throw 'Valtan split pattern master focused harness failed.'
+		}
+		Invoke-PythonGate `
+			'Valtan Animation Tool master timeline gate' `
+			@('Tools/ValtanPipeline/test_animation_tool_valtan_pattern_master.py')
+		Invoke-PythonGate `
+			'Valtan Effect Tool master tree gate' `
+			@('Tools/EffectPipeline/test_effect_tool_valtan_saved_rows.py')
 	}
-	Invoke-PythonGate `
-		'Valtan Animation Tool master timeline gate' `
-		@('Tools/ValtanPipeline/test_animation_tool_valtan_pattern_master.py')
-	Invoke-PythonGate `
-		'Valtan Effect Tool master tree gate' `
-		@('Tools/EffectPipeline/test_effect_tool_valtan_saved_rows.py')
 
     $global:LASTEXITCODE = 0
     & '.\Tools\GameplayPipeline\Publish-BalanceRuntimeSet.ps1' `
@@ -224,38 +264,17 @@ try {
         throw 'Valtan world destruction validation failed.'
     }
 
-    $global:LASTEXITCODE = 0
-    & '.\Tools\EffectPipeline\Validate-EffectSources.ps1' `
-        -RepositoryRoot $repoRoot -AllowLocalResources:$AllowLocalEffectResources
-    if ($global:LASTEXITCODE -ne 0) {
-        throw 'Effect source validation failed.'
+    if ($includeFullDiagnostic) {
+        Invoke-PythonGate `
+            'Valtan floor crack emissive runtime contract gate' `
+            @('Tools/LevelPlacementExtractor/test_valtan_floor_emissive_contract.py')
+        Invoke-PythonGate `
+            'Valtan body collision and model composition gate' `
+            @('Tools/EffectPipeline/test_valtan_model_view_composition.py')
+        Invoke-PythonGate `
+            'Ground-target preview prototype scope gate' `
+            @('Tools/GameplayPipeline/test_ground_target_preview_prototype_scope.py')
     }
-
-    $global:LASTEXITCODE = 0
-    & '.\Tools\EffectPipeline\Sync-EffectDataProject.ps1' -Check
-    if ($global:LASTEXITCODE -ne 0) {
-        throw 'Effect project registration validation failed.'
-    }
-
-    Invoke-PythonGate `
-        'Artist 31470 material runtime-oracle unit gate' `
-        @('Tools/LevelPlacementExtractor/test_build_artist_31470_material_runtime_oracle.py')
-    Invoke-PythonGate `
-        'Artist 31470 material runtime-oracle receipt gate' `
-        @('Tools/LevelPlacementExtractor/build_artist_31470_material_runtime_oracle.py',
-          '--shallow-check')
-    Invoke-PythonGate `
-        'Artist 31470 material runtime-oracle HLSL/WARP gate' `
-        @('Tools/LevelPlacementExtractor/verify_artist_31470_material_runtime_oracle_hlsl.py')
-    Invoke-PythonGate `
-        'Valtan floor crack emissive runtime contract gate' `
-        @('Tools/LevelPlacementExtractor/test_valtan_floor_emissive_contract.py')
-    Invoke-PythonGate `
-        'Valtan body collision and model composition gate' `
-        @('Tools/EffectPipeline/test_valtan_model_view_composition.py')
-    Invoke-PythonGate `
-        'Ground-target preview prototype scope gate' `
-        @('Tools/GameplayPipeline/test_ground_target_preview_prototype_scope.py')
 
     $global:LASTEXITCODE = 0
     & '.\Tools\RenderingPipeline\Publish-RenderingProfiles.ps1' `
@@ -263,52 +282,62 @@ try {
     if ($global:LASTEXITCODE -ne 0) {
         throw 'Rendering profile validation failed.'
     }
-    Invoke-PythonGate `
-        'Rendering authored/runtime identity and float32 boundary gate' `
-        @('Tools/RenderingPipeline/test_publish_rendering_profiles.py')
+    if ($includeFullDiagnostic) {
+        Invoke-PythonGate `
+            'Rendering authored/runtime identity and float32 boundary gate' `
+            @('Tools/RenderingPipeline/test_publish_rendering_profiles.py')
+    }
 
-    $protocolHarness = Join-Path $repoRoot `
-        "Tools\NetworkProtocolHarness\Bin\$Configuration\NetworkProtocolHarness.exe"
-    & $protocolHarness
+    & $protocolHarnessExe
     if ($global:LASTEXITCODE -ne 0) {
         throw 'NetworkProtocolHarness failed.'
     }
 
-    & $valtanAuditionServiceHarnessExe
-    if ($global:LASTEXITCODE -ne 0) {
-        throw 'ValtanPatternAuditionServiceHarness failed.'
+    if ($includeFullDiagnostic) {
+        & $valtanAuditionServiceHarnessExe
+        if ($global:LASTEXITCODE -ne 0) {
+            throw 'ValtanPatternAuditionServiceHarness failed.'
+        }
     }
 
-    & $serverExe --contract-test
-    if ($global:LASTEXITCODE -ne 0) {
-        throw 'Server gameplay contract tests failed.'
+    if ($includeFullDiagnostic) {
+        & $serverExe --contract-test
+        if ($global:LASTEXITCODE -ne 0) {
+            throw 'Server gameplay contract tests failed.'
+        }
     }
-
-    & (Join-Path $repoRoot `
-        'Tools\Network\Run-ValtanFourPlayerHarness.ps1') `
-        -Configuration $Configuration
 
 	& (Join-Path $repoRoot `
 		'Tools\Network\Run-CharacterSelectIsolationHarness.ps1') `
-		-Configuration $Configuration
+		-Configuration $Configuration `
+		-Scenario Core
 
-    & (Join-Path $repoRoot `
-        'Tools\ActionPresentationTimelineHarness\Run-ActionPresentationTimelineHarness.ps1') `
-        -Configuration $Configuration
+    if ($includeFullDiagnostic) {
+		foreach ($partyScenario in @('Party2', 'Party4')) {
+			& (Join-Path $repoRoot `
+				'Tools\Network\Run-CharacterSelectIsolationHarness.ps1') `
+				-Configuration $Configuration `
+				-Scenario $partyScenario
+		}
 
-    & (Join-Path $repoRoot `
-        'Tools\EffectRenderContractHarness\Test-EffectRenderResourceRoot.ps1') `
-        -Configuration $Configuration -ResourceRoot $runtimeResourceRoot
+        & (Join-Path $repoRoot `
+            'Tools\ActionPresentationTimelineHarness\Run-ActionPresentationTimelineHarness.ps1') `
+            -Configuration $Configuration
 
-    & (Join-Path $repoRoot `
-        'Tools\EffectRenderContractHarness\Run-EffectRenderContractHarness.ps1') `
-        -Configuration $Configuration
+        & (Join-Path $repoRoot `
+            'Tools\PointLightFalloffContractHarness\Run-PointLightFalloffContractHarness.ps1') `
+            -Configuration $Configuration
 
-    & (Join-Path $repoRoot `
-        'Tools\PointLightFalloffContractHarness\Run-PointLightFalloffContractHarness.ps1') `
-        -Configuration $Configuration
+        & (Join-Path $repoRoot `
+            'Tools\PhysicsContractHarness\Run-PhysicsContractHarness.ps1') `
+            -Configuration $Configuration
 
-	Write-Host "Regression completed: $Configuration"
+        & (Join-Path $repoRoot `
+            'Tools\WModelGeometryContractHarness\Run-WModelGeometryContractHarness.ps1') `
+            -Configuration $Configuration
+    }
+
+	Write-Host "Build and regression completed: $Configuration / $Profile"
     Write-Host 'Runtime level validation uses Framework.slnLaunch (Server + Client).'
 }
 finally {

@@ -624,6 +624,37 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			}
 		}
 	}
+	/* Workbench Effect links use the same stable Product request as Boss Tool.
+	   The one-shot is drained by MainApp so the orchestration layer never owns
+	   Effect Tool internals or a second preview runtime. */
+	if (nullptr != m_pAnimationTool)
+	{
+		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST effectRequest;
+		if (m_pAnimationTool->Consume_EffectToolOpenRequest(effectRequest))
+		{
+			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) &&
+				nullptr != m_pEffectTool)
+			{
+				const bool_t bOpened =
+					m_pEffectTool->Open_ValtanProductEffect(effectRequest);
+				m_strToolStatus = bOpened ?
+					"Opened the Workbench Product Effect in Effect Tool." :
+					"Effect Tool opened, but the Workbench occurrence needs attention.";
+			}
+		}
+		CAMERA_TOOL_OPEN_REQUEST cameraRequest;
+		if (m_pAnimationTool->Consume_CameraToolOpenRequest(cameraRequest))
+		{
+			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::CAMERA)) &&
+				nullptr != m_pCameraTool)
+			{
+				const bool_t bOpened = m_pCameraTool->Open_Cue(cameraRequest);
+				m_strToolStatus = bOpened ?
+					"Opened the Workbench camera sequence in Camera Tool." :
+					"Camera Tool opened, but the Workbench cue needs attention.";
+			}
+		}
+	}
 	if (nullptr != m_pCameraTool)
 	{
 		m_pCameraTool->Update(
@@ -4453,9 +4484,17 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		if (nullptr == m_pCharacterPreviewPanel)
 			m_pCharacterPreviewPanel =
 				make_shared<CCharacterPreviewPanel>(m_pDevice, m_pContext);
+		/* The Workbench composes the existing domain owners. Balance keeps the
+		   single gameplay draft and Boss Tool keeps the Server audition route. */
+		if (nullptr == m_pBalanceTool)
+			m_pBalanceTool = make_unique<CBalanceTool>();
+		if (nullptr == m_pBossTool)
+			m_pBossTool = make_unique<CBossTool>(
+				make_shared<CNetworkPlayerCommandSink>());
 		if (nullptr == m_pAnimationTool)
 			m_pAnimationTool = make_unique<CAnimation_Tool>(
-				m_pCharacterPreviewPanel);
+				m_pCharacterPreviewPanel,
+				m_pBalanceTool.get(), m_pBossTool.get());
 		break;
 	case DEBUG_TOOL::EFFECT:
 		if (nullptr == m_pCharacterPreviewPanel)
@@ -4554,7 +4593,7 @@ void CMainApp::RenderDeveloperTools()
 	toolButton("Camera Tool", DEBUG_TOOL::CAMERA, true);
 	ImGui::SameLine();
 	toolButton(
-		"Animation Tool",
+		"Action Presentation Workbench",
 		DEBUG_TOOL::ANIMATION,
 		true);
 	ImGui::SameLine();

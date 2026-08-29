@@ -35103,6 +35103,7 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 0.0,
           "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.fist-in-out.donut.01",
           "trigger": "TIMED",
           "atMs": 1600,
           "repeatCount": 1,
@@ -35123,6 +35124,7 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 0.0,
           "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.fist-in-out.donut.01",
           "trigger": "TIMED",
           "atMs": 1600,
           "repeatCount": 1,
@@ -35134,7 +35136,7 @@
           "downMs": 0
         }
       ],
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
@@ -35321,6 +35323,7 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 0.0,
           "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.high-jump.target-axe.01",
           "trigger": "TIMED",
           "atMs": 1200,
           "repeatCount": 1,
@@ -35341,6 +35344,7 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 0.0,
           "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.high-jump.target-axe.01",
           "trigger": "TIMED",
           "atMs": 1200,
           "repeatCount": 1,
@@ -35539,6 +35543,7 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 0.0,
           "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.red-blade-wave.projectile.01",
           "trigger": "CONTACT",
           "atMs": 0,
           "repeatCount": 1,
@@ -35559,6 +35564,7 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 0.0,
           "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.red-blade-wave.projectile.01",
           "trigger": "CONTACT",
           "atMs": 0,
           "repeatCount": 1,

@@ -2303,6 +2303,8 @@ namespace
 		std::string strEffectAssetId;
 		std::string strOwnerPatternId;
 		std::string strOwnerStageActionId;
+		std::vector<std::string> HitIds;
+		std::vector<uint32_t> HitOffsetsMs;
 	};
 
 	Client::VALTAN_CLIP_OCCURRENCE_VIEW Build_ClipOccurrenceView(
@@ -6386,6 +6388,32 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			Object, "ownerPatternId");
 		Reference->second.strOwnerStageActionId = Read_String(
 			Object, "ownerStageActionId");
+		const DATA_JSON_VALUE* pHits = Object.Find("hits");
+		if (nullptr == pHits || !pHits->Is_Array() || pHits->Get_Array().empty())
+		{
+			strOutStatus =
+				"Valtan combat-object has no Server hit rows: " + strArchetypeId;
+			return false;
+		}
+		for (const DATA_JSON_VALUE& Hit : pHits->Get_Array())
+		{
+			uint32_t iHitOffsetMs = 0u;
+			const std::string strHitId = Read_String(Hit, "hitId");
+			if (!Hit.Is_Object() ||
+				strHitId.empty() ||
+				!Read_RequiredUInt32(Hit, "atMs", iHitOffsetMs) ||
+				std::find(Reference->second.HitIds.begin(),
+					Reference->second.HitIds.end(), strHitId) !=
+					Reference->second.HitIds.end())
+			{
+				strOutStatus =
+					"Valtan combat-object Server hit identity or clock is invalid: " +
+					strArchetypeId;
+				return false;
+			}
+			Reference->second.HitIds.push_back(strHitId);
+			Reference->second.HitOffsetsMs.push_back(iHitOffsetMs);
+		}
 		if (strClientVisualId != Reference->second.strClientVisualId ||
 			Reference->second.strOwnerPatternId.empty() ||
 			Reference->second.strOwnerStageActionId.empty() ||
@@ -6785,6 +6813,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 							Reference->second.strEffectAssetId;
 						View.strTrigger = Read_String(Action, "trigger");
 						View.iSpawnValue = static_cast<uint32_t>(SpawnValue);
+						View.HitIds = Reference->second.HitIds;
+						View.HitOffsetsMs = Reference->second.HitOffsetsMs;
 						Stage.CombatObjectEffects.push_back(std::move(View));
 					}
 				}

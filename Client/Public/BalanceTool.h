@@ -20,6 +20,34 @@ public:
 	CBalanceTool();
 	void Open();
 	void Render();
+	/* Action Presentation Workbench consumes this narrow stable-ID boundary
+	   instead of reaching into Balance Tool widgets or constructing a second
+	   Valtan draft.  Both windows therefore edit and publish one in-memory
+	   transaction. */
+	bool Get_ValtanStageDurationDraft(
+		const std::string& patternId,
+		const std::string& stageId,
+		std::uint32_t& durationMs,
+		std::string& status) const;
+	bool Set_ValtanStageDurationDraft(
+		const std::string& patternId,
+		const std::string& stageId,
+		std::uint32_t durationMs,
+		std::string& status);
+	/* One user-facing Save contract: validate the joined draft, durably save
+	   authoring when dirty, build the immutable Product runtime bundle, and
+	   request the existing two-phase live apply when it is currently safe.
+	   Internal stages remain explicit for rollback and diagnostics. */
+	bool Save_ValtanProduct(std::string& status);
+	bool Validate_ValtanDraft(std::string& status);
+	bool Save_ValtanAuthoring(std::string& status);
+	bool Publish_ValtanCandidate(std::string& status);
+	bool Apply_ValtanRevision(std::string& status);
+	bool Is_ValtanDraftDirty() const { return m_dirty; }
+	const std::string& Get_ValtanCandidateApplyClass() const
+	{
+		return m_valtanCandidateApplyClass;
+	}
 	/* Loads the tracked authoring documents and exercises the same serializer
 	used by Save without touching disk or launching the publisher. */
 	static bool Run_ReadOnlyRoundTripContractTest(std::string& status);

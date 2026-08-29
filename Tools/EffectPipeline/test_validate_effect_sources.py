@@ -26,7 +26,6 @@ class EffectSourceValidatorTests(unittest.TestCase):
         (self.root / "Data/Effects/ScreenOverlays").mkdir(parents=True)
         (self.root / "Client/Private").mkdir(parents=True)
         (self.root / "Tools/EffectPipeline").mkdir(parents=True)
-        (self.root / "Tools/EffectRenderContractHarness").mkdir(parents=True)
         self.effect_id = "effect.test.source"
         self.row = {
             "effectAssetId": self.effect_id,
@@ -364,9 +363,6 @@ class EffectSourceValidatorTests(unittest.TestCase):
         (self.root / "Client/Private/Effect_Tool.cpp").write_text(
             "Data/Effects/Authored is canonical\n", encoding="utf-8"
         )
-        (self.root / "Tools/EffectRenderContractHarness/Run-EffectRenderContractHarness.ps1").write_text(
-            "param()\n", encoding="utf-8"
-        )
 
     def test_positive_is_read_only_and_reports_unbound_references(self) -> None:
         self._write_source("effect.reference.baseline")
@@ -451,6 +447,24 @@ class EffectSourceValidatorTests(unittest.TestCase):
         self._set_source_resource("Effect/Test/missing.dds")
         with self.assertRaisesRegex(MODULE.ContractError, "resource files are missing"):
             MODULE.validate_repository(self.root)
+
+    def test_external_runtime_resource_root_supports_lightweight_worktree(self) -> None:
+        resource_id = "Effect/Test/shared.dds"
+        self._set_source_resource(resource_id)
+        with tempfile.TemporaryDirectory() as external_directory:
+            external_root = Path(external_directory)
+            resource_path = external_root / Path(resource_id)
+            resource_path.parent.mkdir(parents=True)
+            resource_path.write_bytes(b"DDS shared-worktree-resource")
+
+            report = MODULE.validate_repository(
+                self.root,
+                resource_root=external_root,
+                allow_local_resources=True,
+            )
+
+        self.assertEqual(report.resource_file_count, 1)
+        self.assertGreater(report.resource_bytes, 4)
 
     def test_unsafe_runtime_resource_id_is_rejected(self) -> None:
         self._set_source_resource("../outside.dds")

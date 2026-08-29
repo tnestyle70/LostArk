@@ -528,6 +528,7 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 		for (const BOSS_COMBAT_OBJECT_HIT& authored : definition.Hits)
 		{
 			SERVER_COMBAT_OBJECT_HIT_RUNTIME hit{};
+			hit.strHitId = authored.strHitId;
 			hit.eTrigger =
 				BOSS_COMBAT_OBJECT_HIT_TRIGGER::CONTACT == authored.eTrigger ?
 				SERVER_COMBAT_OBJECT_HIT_TRIGGER::CONTACT :
@@ -780,6 +781,35 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 				if (object.fElapsedMilliseconds < dueMilliseconds)
 					break;
 				firedFirstTimedPulse = true;
+				if (object.bReplicated &&
+					SERVER_COMBAT_OBJECT_SOURCE_KIND::WORLD_ENTITY ==
+						object.eSourceKind)
+				{
+					LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT event{};
+					event.iEventSequence = m_iNextPresentationEventSequence;
+					event.iServerTick = serverTick;
+					event.iCombatObjectId = object.iCombatObjectId;
+					event.iSourceNetEntityId = object.iSourceNetEntityId;
+					event.eKind = LostArk::Shared::
+						COMBAT_OBJECT_PRESENTATION_EVENT_KIND::HIT_PULSE;
+					event.strCombatObjectArchetypeId =
+						object.strCombatObjectArchetypeId;
+					event.strOwnerPatternId = object.LiveState.strOwnerPatternId;
+					event.strOwnerStageActionId =
+						object.LiveState.strOwnerStageActionId;
+					event.strHitId = hit.strHitId;
+					event.iRepeatIndex = hit.iAppliedTimedCount;
+					event.fPositionX = object.LiveState.CurrentPose.fPositionX;
+					event.fPositionY = object.LiveState.CurrentPose.fPositionY;
+					event.fPositionZ = object.LiveState.CurrentPose.fPositionZ;
+					event.fYawDegrees = object.LiveState.CurrentPose.fYawDegrees;
+					event.PinnedDefinitionRevision =
+						object.PinnedDefinitionRevision;
+					m_PendingPresentationEvents.push_back(std::move(event));
+					++m_iNextPresentationEventSequence;
+					if (0u == m_iNextPresentationEventSequence)
+						m_iNextPresentationEventSequence = 1u;
+				}
 				const std::uint32_t rawDamage =
 					hit.RepeatRawDamage[hit.iAppliedTimedCount];
 				if (nullptr != sourcePlayer)
@@ -899,6 +929,7 @@ void LostArk::Server::CCombatObjectRuntime::Reset()
 void LostArk::Server::CCombatObjectRuntime::Discard_PendingLifecycle()
 {
 	m_PendingSpawned.clear();
+	m_PendingPresentationEvents.clear();
 	m_PendingDespawned.clear();
 }
 
@@ -939,11 +970,15 @@ LostArk::Server::CCombatObjectRuntime::To_SpawnedMessage(
 
 void LostArk::Server::CCombatObjectRuntime::Drain_Lifecycle(
 	std::vector<LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED>& outSpawned,
+	std::vector<LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT>&
+		outPresentationEvents,
 	std::vector<LostArk::Shared::S2C_COMBAT_OBJECT_DESPAWNED>& outDespawned)
 {
 	outSpawned = std::move(m_PendingSpawned);
+	outPresentationEvents = std::move(m_PendingPresentationEvents);
 	outDespawned = std::move(m_PendingDespawned);
 	m_PendingSpawned.clear();
+	m_PendingPresentationEvents.clear();
 	m_PendingDespawned.clear();
 }
 

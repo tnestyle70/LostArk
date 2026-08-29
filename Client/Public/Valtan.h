@@ -10,6 +10,7 @@
 #include "ValtanPatternEffectCueDocument.h"
 #include "ValtanPatternShakeCueDocument.h"
 #include "ValtanPatternSoundCueDocument.h"
+#include "ValtanCombatObjectSoundCueDocument.h"
 
 #include <algorithm>
 #include <cmath>
@@ -277,6 +278,13 @@ public:
 		const LostArk::Shared::BOSS_COMBAT_SNAPSHOT& state);
 	bool_t Apply_BossCombatEvent(
 		const LostArk::Shared::BOSS_COMBAT_EVENT& event);
+	bool_t Apply_CombatObjectPresentationEvent(
+		const LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT& event,
+		std::string& strOutStatus);
+	/* Debug Workbench Save reloads only the Client presentation binding. Server
+	   hit identity and gameplay timing remain untouched. Failed reload keeps the
+	   previously admitted map. */
+	bool_t Reload_CombatObjectSoundCues(std::string& strOutStatus);
 	const std::string& Get_ServerActionId() const { return m_strServerActionId; }
 #ifdef _DEBUG
 	/* Process-local visual A/B only.  Server pattern timing and the Product V0
@@ -395,6 +403,9 @@ private:
 	std::unordered_set<std::string> m_AttemptedPatternSoundOccurrenceKeys;
 	bool_t m_bPatternSoundCueScanAgeValid = false;
 	f32_t m_fPatternSoundCueScanAgeSeconds = 0.f;
+	std::unordered_map<std::string, VALTAN_COMBAT_OBJECT_SOUND_CUE>
+		m_CombatObjectSoundCuesBySource;
+	std::uint64_t m_iLastCombatObjectPresentationEventSequence = 0u;
 	/* Boss camera-shake cues, same shape as the Sound cue registry. Every
 	   client that presents the boss feels its shakes; they are not gated on a
 	   locally controlled owner like player skill shakes. */
@@ -450,6 +461,7 @@ private:
 	void Spawn_DuePatternEffectCues(f32_t fActionAgeSeconds);
 	void Load_PatternSoundCues();
 	void Spawn_DuePatternSoundCues(f32_t fActionAgeSeconds);
+	void Load_CombatObjectSoundCues();
 	void Load_PatternShakeCues();
 	void Spawn_DuePatternShakeCues(f32_t fActionAgeSeconds);
 #ifdef _DEBUG
