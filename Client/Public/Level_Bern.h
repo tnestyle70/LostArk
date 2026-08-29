@@ -4,11 +4,16 @@
 #include "ClientReplication.h"
 #include "Level.h"
 #include "MapPlacementRuntime.h"
+#include "ValtanCinematicCameraDocument.h"
 
 #include "PartyInteractionView.h"
 #include "PlayerController.h"
 #include "WorldPlayerChatBubbleView.h"
 #include "WorldPlayerNameplateView.h"
+
+NS_BEGIN(Engine)
+class CTransform;
+NS_END
 
 NS_BEGIN(Client)
 
@@ -110,6 +115,16 @@ private:
 	modal, unlike Advance_ValtanEntryWalk. */
 	void Advance_ItemUpgradeNpcWalk();
 
+	/* Optional entrance cinematic: one authored camera cue from
+	Data/Encounters/Bern/BernEntranceCamera.json plays exactly once right after
+	entry through the same public product sampler the Valtan cinematics use.
+	A missing or invalid document isolates the cinematic and never blocks the
+	level; gameplay commands stay suppressed by the existing follow-disabled
+	contract while the override owns the camera. */
+	bool_t Ready_EntranceCinematic();
+	void Update_EntranceCinematic(f32_t fTimeDelta);
+	void End_EntranceCinematic();
+
 #ifdef _DEBUG
 	bool_t Ready_DebugLevelChangeTriggers(const std::string& areaId);
 #endif
@@ -151,6 +166,14 @@ private:
 	float3_t m_vItemUpgradeNpcPosition{};
 	bool_t m_isWalkingToItemUpgradeNpc = false;
 	bool_t m_wasRightMouseDownForItemUpgradeNpcInteract = false;
+
+	VALTAN_CINEMATIC_CAMERA_CUE m_EntranceCameraCue;
+	bool_t m_hasEntranceCameraCue = false;
+	bool_t m_bEntranceCinematicApplied = false;
+	bool_t m_bEntranceCinematicDone = false;
+	f32_t m_fEntranceCinematicSeconds = 0.f;
+	bool_t m_bEntranceRestoreFollowRequested = false;
+	weak_ptr<CTransform> m_pEntranceRestoreTarget;
 
 #ifdef _DEBUG
 	std::vector<shared_ptr<CTrigger_Box>> m_DebugLevelChangeTriggers;
