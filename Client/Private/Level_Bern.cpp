@@ -587,6 +587,18 @@ void CLevel_Bern::Update_EntranceCinematic(const f32_t fTimeDelta)
 		m_pCamera->Set_FollowEnabled(false);
 		m_pCamera->Set_FollowTarget(nullptr);
 	}
+	/* ESC skips the remainder through the same end path that restores the
+	   follow camera; the press edge keeps a held key from re-triggering. */
+	const bool_t isEscapeDown = 0 != (
+		CGameInstance::Get().Get_DIKeyState(DIK_ESCAPE) & 0x80);
+	const bool_t wasEscapePressed =
+		isEscapeDown && !m_wasEscapeDownForEntranceSkip;
+	m_wasEscapeDownForEntranceSkip = isEscapeDown;
+	if (wasEscapePressed)
+	{
+		End_EntranceCinematic();
+		return;
+	}
 	if (std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
 		m_fEntranceCinematicSeconds += (std::min)(fTimeDelta, 0.1f);
 	VALTAN_CINEMATIC_CAMERA_POSE pose{};

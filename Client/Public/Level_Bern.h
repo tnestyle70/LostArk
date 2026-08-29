@@ -173,6 +173,7 @@ private:
 	bool_t m_bEntranceCinematicDone = false;
 	f32_t m_fEntranceCinematicSeconds = 0.f;
 	bool_t m_bEntranceRestoreFollowRequested = false;
+	bool_t m_wasEscapeDownForEntranceSkip = false;
 	weak_ptr<CTransform> m_pEntranceRestoreTarget;
 
 #ifdef _DEBUG
