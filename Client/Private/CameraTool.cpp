@@ -25,6 +25,23 @@ namespace
 	constexpr uint32_t DEFAULT_CAMERA_SHAKE_DURATION_MS = 250u;
 	constexpr f32_t MIN_LOOK_AT_DUMMY_RADIUS = 0.05f;
 	constexpr f32_t MAX_LOOK_AT_DUMMY_RADIUS = 5.f;
+	/* Both mirror the document validator so a bad new cut fails here with a
+	   reason instead of only at the strict save reparse. */
+	constexpr size_t MAX_DOCUMENT_CUE_COUNT = 32u;
+	constexpr size_t MAX_CUT_NAME_LENGTH = 128u;
+	constexpr uint32_t DEFAULT_DEATH_CUT_DURATION_MS = 10000u;
+
+	bool_t Is_ValidCutName(const std::string& value)
+	{
+		return !value.empty() && value.size() <= MAX_CUT_NAME_LENGTH &&
+			std::all_of(value.begin(), value.end(), [](const char_t character)
+			{
+				return (character >= 'a' && character <= 'z') ||
+					(character >= 'A' && character <= 'Z') ||
+					(character >= '0' && character <= '9') ||
+					'_' == character || '-' == character || '.' == character;
+			});
+	}
 
 	class SCOPED_WIN32_HANDLE final
 	{
@@ -1123,7 +1140,8 @@ void Client::CCameraTool::Handle_PreviewPreemption()
 
 void Client::CCameraTool::Render_CueList()
 {
-	ImGui::SeparatorText("Cue List");
+	Render_CutManagement();
+	ImGui::SeparatorText("Cut List");
 	for (const VALTAN_CINEMATIC_CAMERA_CUE& cue : m_DraftCues)
 	{
 		if (ImGui::Selectable(
@@ -1142,6 +1160,102 @@ void Client::CCameraTool::Render_CueList()
 		{
 			Select_Cue(m_DraftDeathCue.strCueId);
 		}
+	}
+}
+
+void Client::CCameraTool::Render_CutManagement()
+{
+	ImGui::SeparatorText("Cut Management");
+	ImGui::SetNextItemWidth(-1.f);
+	ImGui::InputTextWithHint("##newCutName", "cut name (a-z 0-9 . _ -)",
+		m_szNewCutName, sizeof(m_szNewCutName));
+	ImGui::Checkbox("Death (clear) cut", &m_bNewCutTargetsDeath);
+	if (!m_bNewCutTargetsDeath)
+	{
+		const std::vector<ENCOUNTER_PATTERN_REFERENCE>& patterns =
+			m_Encounter.Get_Patterns();
+		if (patterns.empty())
+		{
+			ImGui::TextDisabled("Encounter reference has no patterns.");
+		}
+		else
+		{
+			m_iNewCutPatternIndex = (std::clamp)(
+				m_iNewCutPatternIndex, 0,
+				static_cast<int32_t>(patterns.size()) - 1);
+			const ENCOUNTER_PATTERN_REFERENCE& pattern =
+				patterns[static_cast<size_t>(m_iNewCutPatternIndex)];
+			ImGui::SetNextItemWidth(-1.f);
+			if (ImGui::BeginCombo("##newCutPattern", pattern.patternId.c_str()))
+			{
+				for (size_t index = 0u; index < patterns.size(); ++index)
+				{
+					if (ImGui::Selectable(
+						patterns[index].patternId.c_str(),
+						static_cast<int32_t>(index) == m_iNewCutPatternIndex))
+					{
+						m_iNewCutPatternIndex = static_cast<int32_t>(index);
+						m_iNewCutStageIndex = 0;
+					}
+				}
+				ImGui::EndCombo();
+			}
+			if (pattern.stages.empty())
+			{
+				ImGui::TextDisabled("Selected pattern has no stages.");
+			}
+			else
+			{
+				m_iNewCutStageIndex = (std::clamp)(
+					m_iNewCutStageIndex, 0,
+					static_cast<int32_t>(pattern.stages.size()) - 1);
+				const std::string selectedStage =
+					pattern.stages[static_cast<size_t>(m_iNewCutStageIndex)].stageId +
+					" | " + std::to_string(pattern.stages[
+						static_cast<size_t>(m_iNewCutStageIndex)].iDurationMs) + " ms";
+				ImGui::SetNextItemWidth(-1.f);
+				if (ImGui::BeginCombo("##newCutStage", selectedStage.c_str()))
+				{
+					for (size_t index = 0u; index < pattern.stages.size(); ++index)
+					{
+						const std::string label = pattern.stages[index].stageId +
+							" | " + std::to_string(pattern.stages[index].iDurationMs) +
+							" ms";
+						if (ImGui::Selectable(label.c_str(),
+							static_cast<int32_t>(index) == m_iNewCutStageIndex))
+						{
+							m_iNewCutStageIndex = static_cast<int32_t>(index);
+						}
+					}
+					ImGui::EndCombo();
+				}
+			}
+		}
+	}
+	if (ImGui::Button("New Cut"))
+		(void)Create_Cut();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(nullptr == Get_SelectedCue());
+	if (ImGui::Button("Delete Cut"))
+		ImGui::OpenPopup("Delete camera cut?");
+	ImGui::EndDisabled();
+	if (ImGui::BeginPopupModal(
+		"Delete camera cut?", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::TextWrapped(
+			"Delete '%s' from the draft? Save commits the removal; a cut that "
+			"the encounter or automated camera contract still expects will "
+			"fail those gates until they are updated.",
+			m_strSelectedCueId.c_str());
+		if (ImGui::Button("Delete"))
+		{
+			(void)Delete_SelectedCut();
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel"))
+			ImGui::CloseCurrentPopup();
+		ImGui::EndPopup();
 	}
 }
 
@@ -1783,5 +1897,176 @@ bool_t Client::CCameraTool::Delete_SelectedKeyframe(
 		Reset_LookAtDummy();
 	}
 	Mark_Dirty("Deleted the selected interior camera key.");
+	return true;
+}
+
+bool_t Client::CCameraTool::Create_Cut()
+{
+	if (!m_bLoaded || !m_Encounter.Is_Ready())
+	{
+		m_strStatus = "Reload the camera document before creating a cut.";
+		return false;
+	}
+	const std::string name(m_szNewCutName);
+	if (!Is_ValidCutName(name))
+	{
+		m_strStatus =
+			"Cut name must be 1-128 characters of a-z A-Z 0-9 . _ -";
+		return false;
+	}
+	if (nullptr != Find_DraftCue(name))
+	{
+		m_strStatus = "Cut name is already used: " + name;
+		return false;
+	}
+
+	VALTAN_CINEMATIC_CAMERA_CUE cue;
+	cue.strCueId = name;
+	if (m_bNewCutTargetsDeath)
+	{
+		if (m_hasDraftDeathCue)
+		{
+			m_strStatus =
+				"A death cut already exists: " + m_DraftDeathCue.strCueId;
+			return false;
+		}
+		cue.iDurationMs = DEFAULT_DEATH_CUT_DURATION_MS;
+	}
+	else
+	{
+		const std::vector<ENCOUNTER_PATTERN_REFERENCE>& patterns =
+			m_Encounter.Get_Patterns();
+		if (patterns.empty() || m_iNewCutPatternIndex < 0 ||
+			m_iNewCutPatternIndex >= static_cast<int32_t>(patterns.size()))
+		{
+			m_strStatus = "Select a valid pattern for the new cut.";
+			return false;
+		}
+		if (m_DraftCues.size() >= MAX_DOCUMENT_CUE_COUNT)
+		{
+			m_strStatus =
+				"The document already holds the maximum 32 pattern cuts.";
+			return false;
+		}
+		const ENCOUNTER_PATTERN_REFERENCE& pattern =
+			patterns[static_cast<size_t>(m_iNewCutPatternIndex)];
+		if (pattern.stages.empty() || m_iNewCutStageIndex < 0 ||
+			m_iNewCutStageIndex >= static_cast<int32_t>(pattern.stages.size()))
+		{
+			m_strStatus = "Select a valid stage for the new cut.";
+			return false;
+		}
+		const ENCOUNTER_STAGE_REFERENCE& stage =
+			pattern.stages[static_cast<size_t>(m_iNewCutStageIndex)];
+		if (0u == stage.iDurationMs)
+		{
+			m_strStatus = "Selected stage has no authored duration.";
+			return false;
+		}
+		const auto taken = std::find_if(
+			m_DraftCues.begin(), m_DraftCues.end(),
+			[&pattern, &stage](const VALTAN_CINEMATIC_CAMERA_CUE& existing)
+			{
+				return existing.strPatternId == pattern.patternId &&
+					existing.strStageId == stage.stageId;
+			});
+		if (m_DraftCues.end() != taken)
+		{
+			m_strStatus = "Stage already owns a cut: " + taken->strCueId;
+			return false;
+		}
+		cue.strPatternId = pattern.patternId;
+		cue.strStageId = stage.stageId;
+		cue.strStageActionId = stage.actionId;
+		cue.iStageIndex = static_cast<uint32_t>(m_iNewCutStageIndex);
+		cue.iDurationMs = stage.iDurationMs;
+	}
+
+	/* Seed the two mandatory endpoint scenes from the current camera when a
+	   pipeline pose exists; the static fallback stays a valid authoring pose. */
+	VALTAN_CINEMATIC_CAMERA_KEYFRAME first{};
+	first.vEye = float3_t(0.f, 10.f, -10.f);
+	first.vLookAt = float3_t(0.f, 0.f, 0.f);
+	first.fFovYDegrees = 60.f;
+	(void)Capture_CurrentPose(cue, first);
+	VALTAN_CINEMATIC_CAMERA_KEYFRAME last = first;
+	first.iTimeMs = 0u;
+	last.iTimeMs = cue.iDurationMs;
+
+	/* Register the cut before generating scene IDs so each generated ID sees
+	   the previously committed one and stays globally unique. */
+	if (m_bNewCutTargetsDeath)
+	{
+		m_DraftDeathCue = std::move(cue);
+		m_hasDraftDeathCue = true;
+	}
+	else
+	{
+		m_DraftCues.push_back(std::move(cue));
+	}
+	VALTAN_CINEMATIC_CAMERA_CUE* draft = Find_DraftCue(name);
+	first.strSceneId = Make_UniqueSceneId(*draft);
+	draft->Keyframes.push_back(first);
+	last.strSceneId = Make_UniqueSceneId(*draft);
+	if (first.strSceneId.empty() || last.strSceneId.empty())
+	{
+		if (m_bNewCutTargetsDeath)
+		{
+			m_hasDraftDeathCue = false;
+			m_DraftDeathCue = VALTAN_CINEMATIC_CAMERA_CUE{};
+		}
+		else
+		{
+			m_DraftCues.pop_back();
+		}
+		m_strStatus = "No stable scene ID is available for the new cut.";
+		return false;
+	}
+	draft->Keyframes.push_back(last);
+
+	m_strSelectedCueId.clear();
+	Select_Cue(name);
+	m_szNewCutName[0] = '\0';
+	Mark_Dirty("Created a new camera cut draft. Save commits it.");
+	return true;
+}
+
+bool_t Client::CCameraTool::Delete_SelectedCut()
+{
+	VALTAN_CINEMATIC_CAMERA_CUE* cue = Get_SelectedCue();
+	if (nullptr == cue)
+	{
+		m_strStatus = "Select a camera cut to delete.";
+		return false;
+	}
+	if (Is_DeathCueSelected())
+	{
+		m_hasDraftDeathCue = false;
+		m_DraftDeathCue = VALTAN_CINEMATIC_CAMERA_CUE{};
+	}
+	else
+	{
+		if (m_DraftCues.size() <= 1u)
+		{
+			m_strStatus =
+				"The document must keep at least one pattern cut.";
+			return false;
+		}
+		const std::string cueId = m_strSelectedCueId;
+		m_DraftCues.erase(std::find_if(
+			m_DraftCues.begin(), m_DraftCues.end(),
+			[&cueId](const VALTAN_CINEMATIC_CAMERA_CUE& candidate)
+			{ return candidate.strCueId == cueId; }));
+	}
+	Stop_Preview(true);
+	m_strSelectedCueId.clear();
+	m_iSelectedKeyframe = -1;
+	if (m_bLookAtDummyEnabled)
+		Disable_LookAtDummy(nullptr);
+	if (!m_DraftCues.empty())
+		Select_Cue(m_DraftCues.front().strCueId);
+	else if (m_hasDraftDeathCue)
+		Select_Cue(m_DraftDeathCue.strCueId);
+	Mark_Dirty("Deleted the selected camera cut draft. Save commits the removal.");
 	return true;
 }
