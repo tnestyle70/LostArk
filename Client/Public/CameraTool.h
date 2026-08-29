@@ -99,14 +99,17 @@ private:
 	void Render_CutManagement();
 	void Render_CueEditor();
 	void Render_KeyframeEditor(VALTAN_CINEMATIC_CAMERA_CUE& cue);
+	void Render_AdvancedEditor(VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	void Render_LookAtDummyEditor(VALTAN_CINEMATIC_CAMERA_CUE& cue);
-	void Render_PreviewControls(VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	void Mark_Dirty(const char_t* status);
 	bool_t Insert_Keyframe(VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	bool_t Insert_CapturedScene(VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	bool_t Delete_SelectedKeyframe(VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	bool_t Create_Cut();
 	bool_t Delete_SelectedCut();
+	bool_t Append_CapturedPos(VALTAN_CINEMATIC_CAMERA_CUE& cue);
+	bool_t Delete_SelectedPos(VALTAN_CINEMATIC_CAMERA_CUE& cue);
+	void Respace_PosTimes(VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	std::string Make_UniqueSceneId(
 		const VALTAN_CINEMATIC_CAMERA_CUE& cue) const;
 	f32_t Calculate_SegmentArcLength(

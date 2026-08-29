@@ -27,6 +27,7 @@ namespace
 	/* Both mirror the document validator so a bad new cut fails here with a
 	   reason instead of only at the strict save reparse. */
 	constexpr size_t MAX_DOCUMENT_CUE_COUNT = 32u;
+	constexpr size_t MAX_DOCUMENT_KEYFRAME_COUNT = 64u;
 	constexpr size_t MAX_CUT_NAME_LENGTH = 128u;
 	constexpr uint32_t DEFAULT_DEATH_CUT_DURATION_MS = 10000u;
 
@@ -1251,16 +1252,56 @@ void Client::CCameraTool::Render_CueEditor()
 	VALTAN_CINEMATIC_CAMERA_CUE* cue = Get_SelectedCue();
 	if (nullptr == cue)
 	{
-		ImGui::TextDisabled("Select a camera cue.");
+		ImGui::TextDisabled("Select a camera cut.");
 		return;
 	}
-	ImGui::SeparatorText("Cue Draft");
+	ImGui::SeparatorText("Cut Draft");
 	ImGui::Text("%s", cue->strCueId.c_str());
 	if (!Is_DeathCueSelected())
 	{
 		ImGui::TextDisabled("Pattern %s  |  Stage %s",
 			cue->strPatternId.c_str(), cue->strStageId.c_str());
 	}
+
+	/* Simple flow first: capture positions, review them in the pos list,
+	   fine-tune the selected one, then Start plays the connected path. The
+	   full editor stays available under Advanced. */
+	if (ImGui::Button("Capture Pos"))
+		(void)Append_CapturedPos(*cue);
+	ImGui::SameLine();
+	ImGui::BeginDisabled(m_iSelectedKeyframe < 0 || cue->Keyframes.size() <= 2u);
+	if (ImGui::Button("Delete Pos"))
+		(void)Delete_SelectedPos(*cue);
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	if (ImGui::Button("Start"))
+	{
+		m_fPreviewSeconds = 0.f;
+		if (Apply_PreviewPose())
+			m_bPlaying = true;
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Stop / Restore"))
+		Stop_Preview(true);
+	const f32_t maximum = static_cast<f32_t>(cue->iDurationMs) * 0.001f;
+	f32_t cursor = (std::clamp)(m_fPreviewSeconds, 0.f, maximum);
+	if (ImGui::SliderFloat("Time (s)", &cursor, 0.f, maximum, "%.3f"))
+	{
+		m_fPreviewSeconds = cursor;
+		m_bPlaying = false;
+		(void)Apply_PreviewPose();
+	}
+
+	Render_KeyframeEditor(*cue);
+	Render_AdvancedEditor(*cue);
+}
+
+void Client::CCameraTool::Render_AdvancedEditor(
+	VALTAN_CINEMATIC_CAMERA_CUE& cueReference)
+{
+	if (!ImGui::CollapsingHeader("Advanced (full editor)"))
+		return;
+	VALTAN_CINEMATIC_CAMERA_CUE* cue = &cueReference;
 
 	uint32_t duration = cue->iDurationMs;
 	if (ImGui::InputScalar("Duration (ms)", ImGuiDataType_U32, &duration))
@@ -1364,39 +1405,64 @@ void Client::CCameraTool::Render_CueEditor()
 	}
 	ImGui::TextDisabled("Path %s | Easing %s",
 		Interpolation_Label(cue->eInterpolation), Easing_Label(cue->eEasing));
+	ImGui::SliderFloat(
+		"Preview Rate (authoring only)", &m_fPreviewRate,
+		0.1f, 4.f, "%.2fx");
 
-	Render_PreviewControls(*cue);
-	Render_KeyframeEditor(*cue);
+	if (m_iSelectedKeyframe >= 0 &&
+		m_iSelectedKeyframe < static_cast<int32_t>(cue->Keyframes.size()))
+	{
+		VALTAN_CINEMATIC_CAMERA_KEYFRAME& key =
+			cue->Keyframes[static_cast<size_t>(m_iSelectedKeyframe)];
+		const bool_t endpoint = 0 == m_iSelectedKeyframe ||
+			m_iSelectedKeyframe == static_cast<int32_t>(cue->Keyframes.size()) - 1;
+		ImGui::BeginDisabled(endpoint);
+		uint32_t timeMs = key.iTimeMs;
+		if (ImGui::InputScalar("Key Time (ms)", ImGuiDataType_U32, &timeMs))
+		{
+			const size_t selected = static_cast<size_t>(m_iSelectedKeyframe);
+			const uint32_t minimumTime = cue->Keyframes[selected - 1u].iTimeMs + 1u;
+			const uint32_t maximumTime = cue->Keyframes[selected + 1u].iTimeMs - 1u;
+			key.iTimeMs = (std::clamp)(timeMs, minimumTime, maximumTime);
+			Mark_Dirty("Edited camera key time.");
+		}
+		ImGui::EndDisabled();
+		if (endpoint)
+			ImGui::TextDisabled(
+				"First and final scene times stay bound to 0 and cue duration.");
+	}
+	if (ImGui::Button("Insert Sampled Scene"))
+		(void)Insert_Keyframe(*cue);
+	ImGui::SameLine();
+	if (ImGui::Button("Capture New Scene"))
+		(void)Insert_CapturedScene(*cue);
+	ImGui::SameLine();
+	ImGui::BeginDisabled(m_iSelectedKeyframe <= 0 ||
+		m_iSelectedKeyframe >= static_cast<int32_t>(cue->Keyframes.size()) - 1);
+	if (ImGui::Button("Delete Scene"))
+		(void)Delete_SelectedKeyframe(*cue);
+	ImGui::EndDisabled();
 }
 
 void Client::CCameraTool::Render_KeyframeEditor(
 	VALTAN_CINEMATIC_CAMERA_CUE& cue)
 {
-	ImGui::SeparatorText("Saved Scenes");
-	if (ImGui::Button("Insert Sampled Scene"))
-		(void)Insert_Keyframe(cue);
-	ImGui::SameLine();
-	if (ImGui::Button("Capture New Scene"))
-		(void)Insert_CapturedScene(cue);
-	ImGui::SameLine();
-	ImGui::BeginDisabled(m_iSelectedKeyframe <= 0 ||
-		m_iSelectedKeyframe >= static_cast<int32_t>(cue.Keyframes.size()) - 1);
-	if (ImGui::Button("Delete Scene"))
-		(void)Delete_SelectedKeyframe(cue);
-	ImGui::EndDisabled();
-
-	if (ImGui::BeginListBox("##cameraScenes", ImVec2(420.f, 170.f)))
+	ImGui::SeparatorText("Pos List");
+	if (ImGui::BeginListBox("##cameraPosList", ImVec2(-1.f, 150.f)))
 	{
 		for (size_t index = 0u; index < cue.Keyframes.size(); ++index)
 		{
-			const std::string label = cue.Keyframes[index].strSceneId + " | " +
-				std::to_string(cue.Keyframes[index].iTimeMs) + " ms";
+			const std::string label = "P" + std::to_string(index + 1u) + " | " +
+				std::to_string(cue.Keyframes[index].iTimeMs) + " ms | " +
+				cue.Keyframes[index].strSceneId;
 			if (ImGui::Selectable(
 				label.c_str(), static_cast<int32_t>(index) == m_iSelectedKeyframe))
 			{
 				m_iSelectedKeyframe = static_cast<int32_t>(index);
+				m_bPlaying = false;
 				m_fPreviewSeconds =
 					static_cast<f32_t>(cue.Keyframes[index].iTimeMs) * 0.001f;
+				(void)Apply_PreviewPose();
 				if (m_bLookAtDummyEnabled && !Sync_DummyFromSelectedScene(cue))
 				{
 					Disable_LookAtDummy(
@@ -1406,6 +1472,8 @@ void Client::CCameraTool::Render_KeyframeEditor(
 		}
 		ImGui::EndListBox();
 	}
+	ImGui::TextDisabled(
+		"Capture Pos appends here and clicking a pos moves the camera to it.");
 	if (m_iSelectedKeyframe < 0 ||
 		m_iSelectedKeyframe >= static_cast<int32_t>(cue.Keyframes.size()))
 	{
@@ -1413,20 +1481,8 @@ void Client::CCameraTool::Render_KeyframeEditor(
 	}
 	VALTAN_CINEMATIC_CAMERA_KEYFRAME& key =
 		cue.Keyframes[static_cast<size_t>(m_iSelectedKeyframe)];
-	ImGui::Text("Scene ID: %s", key.strSceneId.c_str());
-	const bool_t endpoint = 0 == m_iSelectedKeyframe ||
-		m_iSelectedKeyframe == static_cast<int32_t>(cue.Keyframes.size()) - 1;
-	ImGui::BeginDisabled(endpoint);
-	uint32_t timeMs = key.iTimeMs;
-	if (ImGui::InputScalar("Key Time (ms)", ImGuiDataType_U32, &timeMs))
-	{
-		const size_t selected = static_cast<size_t>(m_iSelectedKeyframe);
-		const uint32_t minimumTime = cue.Keyframes[selected - 1u].iTimeMs + 1u;
-		const uint32_t maximumTime = cue.Keyframes[selected + 1u].iTimeMs - 1u;
-		key.iTimeMs = (std::clamp)(timeMs, minimumTime, maximumTime);
-		Mark_Dirty("Edited camera key time.");
-	}
-	ImGui::EndDisabled();
+	ImGui::SeparatorText("Fine Adjust");
+	ImGui::TextDisabled("Scene ID: %s", key.strSceneId.c_str());
 	if (ImGui::InputFloat3("Eye", &key.vEye.x, "%.3f"))
 		Mark_Dirty("Edited camera key eye.");
 	if (ImGui::InputFloat3("LookAt", &key.vLookAt.x, "%.3f"))
@@ -1464,7 +1520,7 @@ void Client::CCameraTool::Render_KeyframeEditor(
 		const f32_t arcLength = Calculate_SegmentArcLength(cue, right);
 		const f32_t currentSpeed = 0u == deltaMs ? 0.f :
 			arcLength / (static_cast<f32_t>(deltaMs) * 0.001f);
-		ImGui::SeparatorText("Incoming Segment Speed");
+		ImGui::SeparatorText("Speed");
 		ImGui::TextDisabled("Arc %.3f units | Current average %.3f units/s",
 			arcLength, currentSpeed);
 		ImGui::InputFloat(
@@ -1476,36 +1532,6 @@ void Client::CCameraTool::Render_KeyframeEditor(
 	}
 
 	Render_LookAtDummyEditor(cue);
-	if (endpoint)
-		ImGui::TextDisabled(
-			"First and final scene times stay bound to 0 and cue duration.");
-}
-
-void Client::CCameraTool::Render_PreviewControls(
-	VALTAN_CINEMATIC_CAMERA_CUE& cue)
-{
-	ImGui::SeparatorText("Product Sampler Preview");
-	if (ImGui::Button(m_bPlaying ? "Pause" : "Play"))
-	{
-		if (m_bPlaying)
-			m_bPlaying = false;
-		else if (Apply_PreviewPose())
-			m_bPlaying = true;
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("Stop / Restore"))
-		Stop_Preview(true);
-	ImGui::SliderFloat(
-		"Preview Rate (authoring only)", &m_fPreviewRate,
-		0.1f, 4.f, "%.2fx");
-	const f32_t maximum = static_cast<f32_t>(cue.iDurationMs) * 0.001f;
-	f32_t cursor = (std::clamp)(m_fPreviewSeconds, 0.f, maximum);
-	if (ImGui::SliderFloat("Time (s)", &cursor, 0.f, maximum, "%.3f"))
-	{
-		m_fPreviewSeconds = cursor;
-		m_bPlaying = false;
-		(void)Apply_PreviewPose();
-	}
 }
 
 void Client::CCameraTool::Render_LookAtDummyEditor(
@@ -2055,5 +2081,115 @@ bool_t Client::CCameraTool::Delete_SelectedCut()
 	else if (m_hasDraftDeathCue)
 		Select_Cue(m_DraftDeathCue.strCueId);
 	Mark_Dirty("Deleted the selected camera cut draft. Save commits the removal.");
+	return true;
+}
+
+void Client::CCameraTool::Respace_PosTimes(
+	VALTAN_CINEMATIC_CAMERA_CUE& cue)
+{
+	const size_t count = cue.Keyframes.size();
+	if (count < 2u)
+		return;
+	for (size_t index = 0u; index < count; ++index)
+	{
+		cue.Keyframes[index].iTimeMs = static_cast<uint32_t>(
+			(static_cast<uint64_t>(cue.iDurationMs) * index) / (count - 1u));
+	}
+}
+
+bool_t Client::CCameraTool::Append_CapturedPos(
+	VALTAN_CINEMATIC_CAMERA_CUE& cue)
+{
+	if (cue.Keyframes.size() < 2u)
+	{
+		m_strStatus = "The cut is missing its two endpoint scenes.";
+		return false;
+	}
+	Stop_Preview(false);
+	VALTAN_CINEMATIC_CAMERA_KEYFRAME captured = cue.Keyframes.back();
+	if (!Capture_CurrentPose(cue, captured))
+	{
+		m_strStatus =
+			"Pos capture failed: pipeline pose or replicated tracking frame is unavailable.";
+		return false;
+	}
+	/* A fresh cut seeds two identical endpoint scenes. The first capture then
+	   becomes the path's end instead of a third duplicate entry; every later
+	   capture appends and the whole path is respaced evenly, so capture the
+	   positions first and tune per-segment speeds afterwards. */
+	const VALTAN_CINEMATIC_CAMERA_KEYFRAME& first = cue.Keyframes.front();
+	VALTAN_CINEMATIC_CAMERA_KEYFRAME& last = cue.Keyframes.back();
+	const bool_t pristinePair = 2u == cue.Keyframes.size() &&
+		Distance(first.vEye, last.vEye) <= 0.0001f &&
+		Distance(first.vLookAt, last.vLookAt) <= 0.0001f &&
+		std::abs(first.fFovYDegrees - last.fFovYDegrees) <= 0.0001f;
+	if (pristinePair)
+	{
+		last.vEye = captured.vEye;
+		last.vLookAt = captured.vLookAt;
+		last.fFovYDegrees = captured.fFovYDegrees;
+		m_iSelectedKeyframe = 1;
+	}
+	else
+	{
+		if (cue.Keyframes.size() >= MAX_DOCUMENT_KEYFRAME_COUNT)
+		{
+			m_strStatus = "The cut already holds the maximum 64 positions.";
+			return false;
+		}
+		if (cue.iDurationMs < cue.Keyframes.size())
+		{
+			m_strStatus =
+				"Cue duration is too short to keep every pos one millisecond apart.";
+			return false;
+		}
+		captured.strSceneId = Make_UniqueSceneId(cue);
+		if (captured.strSceneId.empty())
+		{
+			m_strStatus = "No stable scene ID is available for another pos.";
+			return false;
+		}
+		cue.Keyframes.push_back(captured);
+		Respace_PosTimes(cue);
+		m_iSelectedKeyframe = static_cast<int32_t>(cue.Keyframes.size()) - 1;
+	}
+	m_fPreviewSeconds = static_cast<f32_t>(cue.Keyframes[
+		static_cast<size_t>(m_iSelectedKeyframe)].iTimeMs) * 0.001f;
+	if (m_bLookAtDummyEnabled && !Sync_DummyFromSelectedScene(cue))
+	{
+		m_bLookAtDummyEnabled = false;
+		Reset_LookAtDummy();
+	}
+	Mark_Dirty("Captured the current camera into the pos list.");
+	return true;
+}
+
+bool_t Client::CCameraTool::Delete_SelectedPos(
+	VALTAN_CINEMATIC_CAMERA_CUE& cue)
+{
+	if (m_iSelectedKeyframe < 0 ||
+		m_iSelectedKeyframe >= static_cast<int32_t>(cue.Keyframes.size()))
+	{
+		m_strStatus = "Select a pos to delete.";
+		return false;
+	}
+	if (cue.Keyframes.size() <= 2u)
+	{
+		m_strStatus = "A cut keeps at least its start and end pos.";
+		return false;
+	}
+	cue.Keyframes.erase(cue.Keyframes.begin() + m_iSelectedKeyframe);
+	Respace_PosTimes(cue);
+	m_iSelectedKeyframe = (std::min)(
+		m_iSelectedKeyframe,
+		static_cast<int32_t>(cue.Keyframes.size()) - 1);
+	m_fPreviewSeconds = static_cast<f32_t>(cue.Keyframes[
+		static_cast<size_t>(m_iSelectedKeyframe)].iTimeMs) * 0.001f;
+	if (m_bLookAtDummyEnabled && !Sync_DummyFromSelectedScene(cue))
+	{
+		m_bLookAtDummyEnabled = false;
+		Reset_LookAtDummy();
+	}
+	Mark_Dirty("Deleted the selected pos and respaced the path.");
 	return true;
 }
