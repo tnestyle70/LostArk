@@ -3,6 +3,7 @@
 #include "Level_Bern.h"
 #include "Level_CharacterSelect.h"
 #include "Level_Development.h"
+#include "Level_KakulSaydonArena.h"
 #include "Level_Lobby.h"
 #include "Level_ValtanArena.h"
 #include "Loader.h"
@@ -85,6 +86,13 @@ namespace
 		return CLevel_ValtanArena::Create(pDevice, pContext);
 	}
 
+	unique_ptr<CLevel> CreateKakulSaydonArena(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext)
+	{
+		return CLevel_KakulSaydonArena::Create(pDevice, pContext);
+	}
+
 	unique_ptr<CLevel> CreateDevelopment(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext)
@@ -97,7 +105,7 @@ namespace
 const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 	const LEVEL eLevel)
 {
-	static const std::array<CLIENT_LEVEL_DESCRIPTOR, 5> levels =
+	static const std::array<CLIENT_LEVEL_DESCRIPTOR, 6> levels =
 	{{
 		{
 			LEVEL::LOBBY,
@@ -143,6 +151,16 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			MakeFullMapScope(),
 			CreateValtanArena,
 			&CLoader::Ready_For_ValtanArena
+		},
+		{
+			LEVEL::KAKULSAYDON_ARENA,
+			CLIENT_LEVEL_KIND::PRODUCT,
+			"raid.kakul-saydon.arena",
+			"LV_LUT_MIDNIGHTC_ED",
+			"scene.development.neutral.v1",
+			MakeFullMapScope(),
+			CreateKakulSaydonArena,
+			&CLoader::Ready_For_KakulSaydonArena
 		},
 		{
 			LEVEL::DEVELOPMENT,

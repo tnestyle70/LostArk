@@ -134,6 +134,7 @@ private:
 	std::optional<size_t> m_iPendingClassIndex;
 	std::uint32_t m_iNextClassChangeSequence = 1u;
 	std::uint32_t m_iNextDespawnRequestSequence = 1u;
+	std::uint32_t m_iNextKakulArenaRequestSequence = 1u;
 	std::uint32_t m_iPendingClassChangeSequence = 0u;
 	CLASS_PRESENTATION_PREPARATION_STATE
 		m_eClassPresentationPreparationState =

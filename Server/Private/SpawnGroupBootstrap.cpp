@@ -30,6 +30,7 @@ namespace
 		case WORLD_ID::VALTAN_ARENA: return "VALTAN_ARENA";
 		case WORLD_ID::TRAINING_GROUND: return "TRAINING_GROUND";
 		case WORLD_ID::CHARACTER_SELECT_ARENA: return "CHARACTER_SELECT_ARENA";
+		case WORLD_ID::KAKULSAYDON_ARENA: return "KAKULSAYDON_ARENA";
 		default: return {};
 		}
 	}

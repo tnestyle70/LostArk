@@ -1601,6 +1601,26 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 	if (ImGui::Button("Enter Valtan Map"))
 		Enter_Stage(LOBBY_STAGE::VALTAN);
 	ImGui::SameLine();
+	if (ImGui::Button("Enter KakulSaydon Arena"))
+	{
+		const std::uint32_t requestSequence =
+			m_iNextKakulArenaRequestSequence++;
+		if (0u == m_iNextKakulArenaRequestSequence)
+			m_iNextKakulArenaRequestSequence = 1u;
+		if (nullptr != m_pWorldEntityCommandSink &&
+			m_pWorldEntityCommandSink->Request_EnterKakulSaydonArena(
+				requestSequence))
+		{
+			m_strStatus =
+				"KakulSaydon Server arena transfer requested.";
+		}
+		else
+		{
+			m_strStatus =
+				"KakulSaydon Server arena request could not be sent.";
+		}
+	}
+	ImGui::SameLine();
 	if (ImGui::Button("Back"))
 		Leave_ServerArena();
 	ImGui::EndDisabled();

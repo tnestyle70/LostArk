@@ -89,12 +89,16 @@
     },
     {
       "id": "LV_LUT_MIDNIGHTC_ED",
-      "kind": "development",
+      "kind": "product",
       "catalogType": "single",
       "sourceCatalog": "Data/Maps/Imported/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.mapassets",
       "sourcePlacements": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.mapplacements",
       "catalog": "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapassets",
       "placements": "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapplacements",
+      "navigationSource": "Data/Navigation/LV_LUT_MIDNIGHTC_ED.navsource",
+      "navigationPaint": "Data/Navigation/LV_LUT_MIDNIGHTC_ED.navpaint",
+      "navigationRuntime": "Client/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.navgrid",
+      "gameplayDocument": "Data/Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json",
       "placementCount": 2951,
       "assetCount": 292,
       "runtimeAssetRoot": "Map/LV_LUT_MIDNIGHTC_ED"

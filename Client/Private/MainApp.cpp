@@ -8,6 +8,7 @@
 #include "DataJson.h"
 #include "Effect_Catalog.h"
 #include "EstherCutinPresentationService.h"
+#include "EstherActionSoundCueDocument.h"
 #include "Effect_Object.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
@@ -20,6 +21,7 @@
 #include "Level_Lobby.h"
 #include "ActionPresentationTimeline.h"
 #include "Level_CharacterSelect.h"
+#include "Level_KakulSaydonArena.h"
 #include "Level_Loading.h"
 #include "Level_ValtanArena.h"
 #include "LobbyCommandService.h"
@@ -61,6 +63,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iterator>
+#include <limits>
 #include <random>
 #include <tuple>
 #include <cwchar>
@@ -451,6 +454,14 @@ HRESULT CMainApp::Initialize()
 	{
 		const std::string diagnostic =
 			"[MainApp] Sound Cue Catalog initialization failed: " + soundCatalogStatus + "\n";
+		OutputDebugStringA(diagnostic.c_str());
+	}
+	std::string estherActionSoundStatus;
+	if (!Client::CEstherActionSoundCueDocument::Load(estherActionSoundStatus))
+	{
+		const std::string diagnostic =
+			"[MainApp] Esther action Sound cues isolated: " +
+			estherActionSoundStatus + "\n";
 		OutputDebugStringA(diagnostic.c_str());
 	}
 
@@ -4449,6 +4460,8 @@ void CMainApp::Apply_LevelRequest()
 #ifdef _DEBUG
 	if (profileActivated && nullptr != m_pCameraTool)
 		m_pCameraTool->On_LevelChanged();
+	if (profileActivated && nullptr != m_pEffectToolV2)
+		m_pEffectToolV2->On_LevelChanged();
 #endif
 	const bool_t levelChanged = profileActivated &&
 		SUCCEEDED(CGameInstance::Get().Change_Level(
@@ -4606,6 +4619,8 @@ void CMainApp::SetDebugToolVisible(
 			m_pMapTool->SetOpen(false);
 		else if (DEBUG_TOOL::CAMERA == eTool && nullptr != m_pCameraTool)
 			m_pCameraTool->Deactivate();
+		else if (DEBUG_TOOL::EFFECT_V2 == eTool && nullptr != m_pEffectToolV2)
+			m_pEffectToolV2->Deactivate();
 	}
 }
 
@@ -4881,7 +4896,10 @@ void CMainApp::RefreshDebugResourceFiles()
 			startsWith(path, "Resources/UI/KakulSaydon/") ||
 			startsWith(path, "Resources/UI/LV_LUT_MIDNIGHTC_ED/") ||
 			startsWith(path, "Resources/Sound/KakulSaydon/") ||
+			startsWith(path, "Data/Animation/Reference/KakulSaydon/") ||
+			startsWith(path, "Data/Animation/Authored/KakulSaydon/") ||
 			startsWith(path, "Data/ResourceIntake/LV_LUT_MIDNIGHTC_ED") ||
+			startsWith(path, "Resources/Character/KakulSaydon/") ||
 			startsWith(path, "Resources/Character/MN_RPCT_00/") ||
 			startsWith(path, "Resources/Character/MN_RPCT_05/") ||
 			startsWith(path, "Resources/Character/MN_RPCT_06/") ||
@@ -4936,7 +4954,52 @@ void CMainApp::OpenDebugResourceFile(const size_t iFile)
 		(void)EnsureDebugTool(DEBUG_TOOL::ANIMATION);
 		(void)EnsureDebugTool(DEBUG_TOOL::BOSS);
 	}
+
+	/* A Kakul action/reference file names a concrete authoring profile, not just
+	   the broad Animation domain. Hand that stable profile to Workbench so the
+	   matching physical WModel and action document open together. Other Kakul
+	   resources continue to open only their existing owner Tool. */
+	const bool_t isKakulAnimationPath =
+		0u == file.strRelativePath.rfind(
+			"Data/Animation/Reference/KakulSaydon/", 0u) ||
+		0u == file.strRelativePath.rfind(
+			"Data/Animation/Authored/KakulSaydon/", 0u) ||
+		0u == file.strRelativePath.rfind(
+			"Resources/Character/KakulSaydon/", 0u);
+	const char_t* pKakulProfile = nullptr;
+	if (isKakulAnimationPath)
+	{
+		constexpr const char_t* profiles[] =
+		{
+			"MN_RPCT_00", "MN_RPCT_05", "MN_RPCT_06",
+			"MN_RPCT_07", "MN_RPCZ_00"
+		};
+		for (const char_t* pProfile : profiles)
+		{
+			if (std::string::npos != file.strRelativePath.find(pProfile))
+			{
+				pKakulProfile = pProfile;
+				break;
+			}
+		}
+	}
+	bool_t bKakulProfileOpened = false;
+	if (nullptr != pKakulProfile &&
+		SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::ANIMATION)) &&
+		nullptr != m_pAnimationTool)
+	{
+		bKakulProfileOpened = m_pAnimationTool->Open_KakulProfile(pKakulProfile);
+	}
 	m_iSelectedDebugResourceFile = iFile;
+	if (nullptr != pKakulProfile)
+	{
+		m_strToolStatus = bKakulProfileOpened ?
+			("Selected " + file.strRelativePath +
+			 ". Workbench opened the exact Kakul profile as Local Extracted Action Preview.") :
+			("Selected " + file.strRelativePath +
+			 ", but the Kakul profile preview could not open. Enter Development and preserve any unsaved draft.");
+		return;
+	}
 	m_strToolStatus = "Selected " + file.strRelativePath +
 		". Opened its existing domain owner; use Complete Play for Server truth.";
 }
@@ -5058,13 +5121,7 @@ void CMainApp::RefreshCompletePlayPatternOptions()
 	{
 		return;
 	}
-	const std::string previous =
-		m_CompletePlayPatternIds.empty() || m_iCompletePlayPattern < 0 ||
-		m_iCompletePlayPattern >=
-			static_cast<int32_t>(m_CompletePlayPatternIds.size()) ?
-			std::string{} :
-			m_CompletePlayPatternIds[
-				static_cast<size_t>(m_iCompletePlayPattern)];
+	const std::string previous = m_strCompletePlayPatternId;
 	m_CompletePlayPatternIds.clear();
 	m_CompletePlayPatternLabels.clear();
 	m_CompletePlayPatternIds.reserve(options.size());
@@ -5075,28 +5132,68 @@ void CMainApp::RefreshCompletePlayPatternOptions()
 		m_CompletePlayPatternLabels.push_back(
 			option.strPatternId + " | " + option.strDisplayName);
 	}
-	m_iCompletePlayPattern = 0;
-	if (!previous.empty())
+	m_strCompletePlayPatternId.clear();
+	if (!m_CompletePlayPatternIds.empty())
 	{
 		const auto found = std::find(
 			m_CompletePlayPatternIds.begin(),
 			m_CompletePlayPatternIds.end(), previous);
 		if (m_CompletePlayPatternIds.end() != found)
-		{
-			m_iCompletePlayPattern = static_cast<int32_t>(
-				std::distance(m_CompletePlayPatternIds.begin(), found));
-		}
+			m_strCompletePlayPatternId = *found;
+		else
+			m_strCompletePlayPatternId = m_CompletePlayPatternIds.front();
 	}
+}
+
+bool_t CMainApp::Debug_SelectCompletePlayPattern(
+	const std::string& strPatternId)
+{
+	if (strPatternId.empty())
+	{
+		m_strCompletePlayStatus =
+			"Complete Play selection requires a stable pattern ID.";
+		return false;
+	}
+	if (!m_bCompletePlayPatternLoadAttempted)
+		RefreshCompletePlayPatternOptions();
+	auto found = std::find(
+		m_CompletePlayPatternIds.begin(),
+		m_CompletePlayPatternIds.end(), strPatternId);
+	if (m_CompletePlayPatternIds.end() == found)
+	{
+		/* A domain owner may have refreshed its joined graph before the workspace
+		   inventory.  One bounded reload on the selection edge closes that skew. */
+		RefreshCompletePlayPatternOptions();
+		found = std::find(
+			m_CompletePlayPatternIds.begin(),
+			m_CompletePlayPatternIds.end(), strPatternId);
+	}
+	if (m_CompletePlayPatternIds.end() == found)
+	{
+		m_strCompletePlayStatus =
+			"Pattern is not in the current Server-admitted Complete Play inventory: " +
+			strPatternId + ".";
+		return false;
+	}
+	m_strCompletePlayPatternId = *found;
+	m_strCompletePlayStatus =
+		"Complete Play selection: " + m_strCompletePlayPatternId + ".";
+	return true;
+}
+
+const std::string& CMainApp::Debug_GetSelectedCompletePlayPatternId() const
+{
+	return m_strCompletePlayPatternId;
 }
 
 bool_t CMainApp::Debug_CompletePlaySelected(std::string& strOutStatus)
 {
 	if (!m_bCompletePlayPatternLoadAttempted)
 		RefreshCompletePlayPatternOptions();
-	if (nullptr == m_pBossTool || m_CompletePlayPatternIds.empty() ||
-		m_iCompletePlayPattern < 0 ||
-		m_iCompletePlayPattern >=
-			static_cast<int32_t>(m_CompletePlayPatternIds.size()))
+	if (nullptr == m_pBossTool || m_strCompletePlayPatternId.empty() ||
+		m_CompletePlayPatternIds.end() == std::find(
+			m_CompletePlayPatternIds.begin(),
+			m_CompletePlayPatternIds.end(), m_strCompletePlayPatternId))
 	{
 		strOutStatus =
 			"Complete Play requires one Server-admitted saved pattern selection.";
@@ -5104,8 +5201,7 @@ bool_t CMainApp::Debug_CompletePlaySelected(std::string& strOutStatus)
 		return false;
 	}
 	const bool_t submitted = m_pBossTool->Play_ServerPattern(
-		m_CompletePlayPatternIds[
-			static_cast<size_t>(m_iCompletePlayPattern)],
+		m_strCompletePlayPatternId,
 		strOutStatus);
 	m_strCompletePlayStatus = strOutStatus;
 	return submitted;
@@ -5131,31 +5227,36 @@ void CMainApp::RenderCompletePlayControls()
 
 	if (!m_CompletePlayPatternIds.empty())
 	{
-		m_iCompletePlayPattern = std::clamp(
-			m_iCompletePlayPattern, 0,
-			static_cast<int32_t>(m_CompletePlayPatternIds.size() - 1u));
-		if (ImGui::BeginCombo(
-			"Saved Pattern##CompletePlay",
-			m_CompletePlayPatternLabels[
-				static_cast<size_t>(m_iCompletePlayPattern)].c_str()))
+		ImGui::Text("Saved Patterns (%zu)", m_CompletePlayPatternIds.size());
+		if (ImGui::BeginChild(
+			"CompletePlayPatternInventory", ImVec2(0.f, 220.f), true))
 		{
-			for (size_t iPattern = 0u;
-				iPattern < m_CompletePlayPatternIds.size(); ++iPattern)
+			ImGuiListClipper clipper;
+			clipper.Begin(static_cast<int32_t>(
+				m_CompletePlayPatternIds.size()));
+			while (clipper.Step())
 			{
-				if (ImGui::Selectable(
-					m_CompletePlayPatternLabels[iPattern].c_str(),
-					static_cast<int32_t>(iPattern) ==
-						m_iCompletePlayPattern))
+				for (int32_t iPattern = clipper.DisplayStart;
+					iPattern < clipper.DisplayEnd; ++iPattern)
 				{
-					m_iCompletePlayPattern =
-						static_cast<int32_t>(iPattern);
+					if (ImGui::Selectable(
+						m_CompletePlayPatternLabels[
+							static_cast<size_t>(iPattern)].c_str(),
+						m_CompletePlayPatternIds[
+							static_cast<size_t>(iPattern)] ==
+							m_strCompletePlayPatternId))
+					{
+						(void)Debug_SelectCompletePlayPattern(
+							m_CompletePlayPatternIds[
+								static_cast<size_t>(iPattern)]);
+					}
 				}
 			}
-			ImGui::EndCombo();
 		}
+		ImGui::EndChild();
 	}
 	const bool_t canCompletePlay = nullptr != m_pBossTool &&
-		!m_CompletePlayPatternIds.empty() &&
+		!m_strCompletePlayPatternId.empty() &&
 		ETOUI(LEVEL::VALTAN_ARENA) ==
 			CGameInstance::Get().Get_CurrentLevelID();
 	ImGui::BeginDisabled(!canCompletePlay);
@@ -5182,79 +5283,165 @@ void CMainApp::RenderServerArenaActiveControls()
 	}
 	ImGui::TextDisabled(
 		"Shared control for Effect V1/V2, Boss, Map, UI and Workbench. Values are replicated Server actual state.");
-	if (ETOUI(LEVEL::VALTAN_ARENA) !=
-		CGameInstance::Get().Get_CurrentLevelID())
-	{
-		ImGui::TextDisabled(
-			"Enter Valtan from Lobby. No local wall, debris, collision or NavCell fallback exists.");
+	if (!ImGui::BeginTabBar("##ServerArenaActiveTabs"))
 		return;
-	}
-	if (nullptr == m_pBossTool)
+
+	if (ImGui::BeginTabItem("Valtan"))
 	{
-		m_pBossTool = make_unique<CBossTool>(
-			make_shared<CNetworkPlayerCommandSink>());
+		if (ETOUI(LEVEL::VALTAN_ARENA) !=
+			CGameInstance::Get().Get_CurrentLevelID())
+		{
+			ImGui::TextDisabled(
+				"Enter Valtan from Lobby. No local wall, debris, collision or NavCell fallback exists.");
+		}
+		else
+		{
+			if (nullptr == m_pBossTool)
+			{
+				m_pBossTool = make_unique<CBossTool>(
+					make_shared<CNetworkPlayerCommandSink>());
+			}
+
+			CBossTool::VALTAN_ARENA_ACTIVE_STATE state{};
+			std::string readStatus;
+			const bool_t ready = m_pBossTool->Get_ServerArenaActiveState(
+				state, readStatus);
+			const auto actualCheckbox = [](
+				const char_t* label, const bool_t actual)
+			{
+				bool_t value = actual;
+				ImGui::BeginDisabled(true);
+				ImGui::Checkbox(label, &value);
+				ImGui::EndDisabled();
+			};
+			actualCheckbox(
+				"Ordinary walls / debris sources Active##GlobalArena",
+				state.bOrdinaryWallsActive);
+			actualCheckbox(
+				"109 outer ring Active##GlobalArena",
+				state.bOuterRingActive);
+			actualCheckbox(
+				"3 o'clock floor / collision / Nav Active##GlobalArena",
+				state.bThreeOClockFloorActive);
+			actualCheckbox(
+				"9 o'clock floor / collision / Nav Active##GlobalArena",
+				state.bNineOClockFloorActive);
+			ImGui::TextDisabled(
+				"Active boxes are replicated facts. Arena mutations use exact Server presets because the encounter does not admit arbitrary wall/floor combinations.");
+			const auto presetButton = [this, ready](
+				const char_t* label,
+				const LostArk::Shared::VALTAN_ARENA_PRESET preset)
+			{
+				ImGui::BeginDisabled(!ready);
+				if (ImGui::SmallButton(label))
+				{
+					(void)m_pBossTool->Set_ServerArenaPreset(
+						preset, m_strServerArenaActiveStatus);
+				}
+				ImGui::EndDisabled();
+			};
+			presetButton("Fresh / All Walls##GlobalArenaPreset",
+				LostArk::Shared::VALTAN_ARENA_PRESET::FRESH);
+			ImGui::SameLine();
+			presetButton("Phase 2 / Walls Gone##GlobalArenaPreset",
+				LostArk::Shared::VALTAN_ARENA_PRESET::CIRCLE_WALLS_GONE);
+			presetButton("Break 3 O'Clock##GlobalArenaPreset",
+				LostArk::Shared::VALTAN_ARENA_PRESET::THREE_OCLOCK_BROKEN);
+			ImGui::SameLine();
+			presetButton("Break 9 O'Clock##GlobalArenaPreset",
+				LostArk::Shared::VALTAN_ARENA_PRESET::NINE_OCLOCK_BROKEN);
+			ImGui::SameLine();
+			presetButton("Break 3 + 9##GlobalArenaPreset",
+				LostArk::Shared::VALTAN_ARENA_PRESET::BOTH_SIDES_BROKEN);
+			ImGui::Text(
+				"Debris actors %u | active collision %u | active nav regions %u | nav revision %llu",
+				state.iDebrisActorCount,
+				state.iActiveCollisionCount,
+				state.iActiveNavigationRegionCount,
+				static_cast<unsigned long long>(state.iNavigationRevision));
+			if (!readStatus.empty())
+				ImGui::TextDisabled("%s", readStatus.c_str());
+			if (!m_strServerArenaActiveStatus.empty())
+				ImGui::TextWrapped("%s", m_strServerArenaActiveStatus.c_str());
+		}
+		ImGui::EndTabItem();
 	}
 
-	CBossTool::VALTAN_ARENA_ACTIVE_STATE state{};
-	std::string readStatus;
-	const bool_t ready = m_pBossTool->Get_ServerArenaActiveState(
-		state, readStatus);
-	const auto actualCheckbox = [](const char_t* label, const bool_t actual)
+	if (ImGui::BeginTabItem("KakulSaydon"))
 	{
-		bool_t value = actual;
-		ImGui::BeginDisabled(true);
-		ImGui::Checkbox(label, &value);
-		ImGui::EndDisabled();
-	};
-	actualCheckbox(
-		"Ordinary walls / debris sources Active##GlobalArena",
-		state.bOrdinaryWallsActive);
-	actualCheckbox(
-		"109 outer ring Active##GlobalArena",
-		state.bOuterRingActive);
-	actualCheckbox(
-		"3 o'clock floor / collision / Nav Active##GlobalArena",
-		state.bThreeOClockFloorActive);
-	actualCheckbox(
-		"9 o'clock floor / collision / Nav Active##GlobalArena",
-		state.bNineOClockFloorActive);
-	ImGui::TextDisabled(
-		"Active boxes are replicated facts. Arena mutations use exact Server presets because the encounter does not admit arbitrary wall/floor combinations.");
-	const auto presetButton = [this, ready](
-		const char_t* label,
-		const LostArk::Shared::VALTAN_ARENA_PRESET preset)
-	{
-		ImGui::BeginDisabled(!ready);
-		if (ImGui::SmallButton(label))
+		if (ETOUI(LEVEL::KAKULSAYDON_ARENA) !=
+			CGameInstance::Get().Get_CurrentLevelID())
 		{
-			(void)m_pBossTool->Set_ServerArenaPreset(
-				preset, m_strServerArenaActiveStatus);
+			ImGui::TextDisabled(
+				"Enter KakulSaydon Arena through Server admission. Stage controls never move a local Character directly.");
 		}
-		ImGui::EndDisabled();
-	};
-	presetButton("Fresh / All Walls##GlobalArenaPreset",
-		LostArk::Shared::VALTAN_ARENA_PRESET::FRESH);
-	ImGui::SameLine();
-	presetButton("Phase 2 / Walls Gone##GlobalArenaPreset",
-		LostArk::Shared::VALTAN_ARENA_PRESET::CIRCLE_WALLS_GONE);
-	presetButton("Break 3 O'Clock##GlobalArenaPreset",
-		LostArk::Shared::VALTAN_ARENA_PRESET::THREE_OCLOCK_BROKEN);
-	ImGui::SameLine();
-	presetButton("Break 9 O'Clock##GlobalArenaPreset",
-		LostArk::Shared::VALTAN_ARENA_PRESET::NINE_OCLOCK_BROKEN);
-	ImGui::SameLine();
-	presetButton("Break 3 + 9##GlobalArenaPreset",
-		LostArk::Shared::VALTAN_ARENA_PRESET::BOTH_SIDES_BROKEN);
-	ImGui::Text(
-		"Debris actors %u | active collision %u | active nav regions %u | nav revision %llu",
-		state.iDebrisActorCount,
-		state.iActiveCollisionCount,
-		state.iActiveNavigationRegionCount,
-		static_cast<unsigned long long>(state.iNavigationRevision));
-	if (!readStatus.empty())
-		ImGui::TextDisabled("%s", readStatus.c_str());
-	if (!m_strServerArenaActiveStatus.empty())
-		ImGui::TextWrapped("%s", m_strServerArenaActiveStatus.c_str());
+		else if (CLevel_KakulSaydonArena* pKakulArena =
+			CLevel_KakulSaydonArena::Get_Active())
+		{
+			const auto& stageMarkers = pKakulArena->Get_StageMarkers();
+			ImGui::Text(
+				"Runtime-projected stages (%zu)", stageMarkers.size());
+			ImGui::TextDisabled(
+				"SL identities come from the published StageMarkers document; no Mario/gate meaning or local coordinate is inferred.");
+			if (stageMarkers.empty())
+			{
+				ImGui::TextDisabled(
+					"No admitted Kakul StageMarkers are available in this Level instance.");
+			}
+			for (const auto& marker : stageMarkers)
+			{
+				std::string stageLabel = marker.strSourceLevelId;
+				const size_t separator = stageLabel.find_last_of('_');
+				if (std::string::npos != separator &&
+					separator + 1u < stageLabel.size())
+				{
+					stageLabel = stageLabel.substr(separator + 1u);
+				}
+				const std::string buttonLabel = stageLabel +
+					"##KakulStageTeleport_" + marker.strPlacementId;
+				const bool_t sequenceExhausted =
+					0u == m_iNextKakulStageTeleportRequestSequence;
+				ImGui::BeginDisabled(sequenceExhausted);
+				if (ImGui::SmallButton(buttonLabel.c_str()))
+				{
+					const std::uint32_t requestSequence =
+						m_iNextKakulStageTeleportRequestSequence;
+					if ((std::numeric_limits<std::uint32_t>::max)() ==
+						m_iNextKakulStageTeleportRequestSequence)
+					{
+						m_iNextKakulStageTeleportRequestSequence = 0u;
+					}
+					else
+					{
+						++m_iNextKakulStageTeleportRequestSequence;
+					}
+					(void)pKakulArena->Request_StageTeleport(
+						requestSequence, marker.strPlacementId,
+						m_strKakulStageTeleportStatus);
+				}
+				ImGui::EndDisabled();
+				ImGui::SameLine();
+				ImGui::TextWrapped(
+					"%s | %s",
+					marker.strDisplayNameKo.c_str(),
+					marker.strPlacementId.c_str());
+			}
+			if (0u == m_iNextKakulStageTeleportRequestSequence)
+			{
+				m_strKakulStageTeleportStatus =
+					"Kakul stage teleport request sequence is exhausted; restart the Client before another request.";
+			}
+		}
+		else
+		{
+			ImGui::TextDisabled(
+				"KakulSaydon Arena is selected, but its active Level instance is unavailable.");
+		}
+		ImGui::TextWrapped("%s", m_strKakulStageTeleportStatus.c_str());
+		ImGui::EndTabItem();
+	}
+
+	ImGui::EndTabBar();
 }
 
 void CMainApp::RenderDeveloperTools()

@@ -2138,6 +2138,77 @@ namespace
 			"Reject Truncated Revive Without Mutation");
 	}
 
+	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
+	{
+		testRunner.Require(
+			static_cast<std::uint16_t>(
+				PACKET_TYPE::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA) ==
+				static_cast<std::uint16_t>(
+					PACKET_TYPE::S2C_COMBAT_OBJECT_PRESENTATION_EVENT) + 1u &&
+			static_cast<std::uint16_t>(
+				PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_PLACEMENT) ==
+				static_cast<std::uint16_t>(
+					PACKET_TYPE::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA) + 1u &&
+			Is_Known_Packet_Type(
+				PACKET_TYPE::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA) &&
+			Is_Known_Packet_Type(
+				PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_PLACEMENT),
+			"Kakul Authoring Packet Identities Are Append Only And Known");
+
+		C2S_DEBUG_ENTER_KAKULSAYDON_ARENA enter{};
+		enter.iRequestSequence = 41u;
+		CPacketWriter enterWriter;
+		testRunner.Require(
+			Write_Message(enterWriter, enter) &&
+			4u == enterWriter.Get_Buffer().size(),
+			"Writer Kakul Arena Entry");
+		CPacketReader enterReader{ enterWriter.Get_Buffer() };
+		C2S_DEBUG_ENTER_KAKULSAYDON_ARENA decodedEnter{};
+		testRunner.Require(
+			Read_Message(enterReader, decodedEnter) &&
+			enter.iRequestSequence == decodedEnter.iRequestSequence &&
+			0u == enterReader.Get_RemainingSize(),
+			"Kakul Arena Entry Round Trip");
+		C2S_DEBUG_ENTER_KAKULSAYDON_ARENA invalidEnter{};
+		CPacketWriter invalidEnterWriter;
+		testRunner.Require(!Write_Message(invalidEnterWriter, invalidEnter),
+			"Reject Kakul Arena Entry Without Sequence");
+
+		C2S_DEBUG_TELEPORT_TO_PLACEMENT teleport{};
+		teleport.iRequestSequence = 42u;
+		teleport.strPlacementId = "stage.kakul.extracted-area-01";
+		CPacketWriter teleportWriter;
+		testRunner.Require(Write_Message(teleportWriter, teleport),
+			"Writer Kakul Stage Teleport");
+		CPacketReader teleportReader{ teleportWriter.Get_Buffer() };
+		C2S_DEBUG_TELEPORT_TO_PLACEMENT decodedTeleport{};
+		testRunner.Require(
+			Read_Message(teleportReader, decodedTeleport) &&
+			teleport.iRequestSequence == decodedTeleport.iRequestSequence &&
+			teleport.strPlacementId == decodedTeleport.strPlacementId &&
+			0u == teleportReader.Get_RemainingSize(),
+			"Kakul Stage Teleport Round Trip");
+
+		C2S_DEBUG_TELEPORT_TO_PLACEMENT invalidTeleport = teleport;
+		invalidTeleport.strPlacementId = "stage kakul invalid";
+		CPacketWriter invalidTeleportWriter;
+		testRunner.Require(
+			!Write_Message(invalidTeleportWriter, invalidTeleport),
+			"Reject Kakul Stage Teleport With Unstable Placement Id");
+
+		std::vector<std::uint8_t> truncated = teleportWriter.Get_Buffer();
+		truncated.pop_back();
+		CPacketReader truncatedReader{ truncated };
+		C2S_DEBUG_TELEPORT_TO_PLACEMENT unchanged{};
+		unchanged.iRequestSequence = 99u;
+		unchanged.strPlacementId = "stage.kakul.unchanged";
+		testRunner.Require(
+			!Read_Message(truncatedReader, unchanged) &&
+			99u == unchanged.iRequestSequence &&
+			"stage.kakul.unchanged" == unchanged.strPlacementId,
+			"Reject Truncated Kakul Teleport Without Mutation");
+	}
+
 	void Test_ReturnToBernProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
@@ -2180,8 +2251,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(46u == NETWORK_PROTOCOL_VERSION,
-				"Combat Object Presentation And Existing Contracts Use Protocol 46");
+			testRunner.Require(47u == NETWORK_PROTOCOL_VERSION,
+				"Kakul Authoring Commands And Existing Contracts Use Protocol 47");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -4771,8 +4842,8 @@ namespace
 		}
 
 		testRunner.Require(
-			46u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Protocol Version 46");
+			47u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Protocol Version 47");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -4799,8 +4870,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			46u == NETWORK_PROTOCOL_VERSION,
-			"Valtan Presentation And Existing Hot Reload Contracts Use Protocol 46");
+			47u == NETWORK_PROTOCOL_VERSION,
+			"Kakul Authoring And Existing Hot Reload Contracts Use Protocol 47");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -5663,6 +5734,7 @@ int main()
 	Test_UpdateSkillAimRoundTrip(testRunner);
 	Test_UseEstherSkillRoundTrip(testRunner);
 	Test_RevivePlayerRoundTrip(testRunner);
+	Test_KakulAuthoringCommandProtocol(testRunner);
 	Test_CharacterClassChangeRoundTrip(testRunner);
 	Test_WorldEntitySpawnCommandRoundTrip(testRunner);
 	Test_WorldSnapshotRoundTrip(testRunner);

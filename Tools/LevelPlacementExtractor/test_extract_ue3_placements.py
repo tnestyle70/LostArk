@@ -1,10 +1,14 @@
+import hashlib
+import json
 import struct
 import unittest
 
 from extract_ue3_placements import (
+    ExtractionError,
     ExportEntry,
     ImportEntry,
     Reader,
+    material_override_slots,
     resolve_component_actor,
 )
 
@@ -66,6 +70,57 @@ class PlacementActorResolutionTests(unittest.TestCase):
         self.assertIsNone(
             resolve_component_actor(component, imports, [actor, component])
         )
+
+
+class MaterialOverrideTests(unittest.TestCase):
+    @staticmethod
+    def material_imports(
+        class_name: str = "MaterialInstanceConstant",
+    ) -> list[ImportEntry]:
+        return [
+            ImportEntry(0, "Engine", class_name, -2, "Curtain_MI"),
+            ImportEntry(1, "Core", "Package", -3, "Material"),
+            ImportEntry(2, "Core", "Package", 0, "BG_RAD_KOUKUSATON_A"),
+        ]
+
+    def test_absent_and_empty_material_arrays_have_the_same_signature(self) -> None:
+        absent = material_override_slots({}, [], [])
+        empty = material_override_slots({"Materials": {"value": []}}, [], [])
+
+        expected = hashlib.sha256(b"[]").hexdigest()
+        self.assertFalse(absent["propertyPresent"])
+        self.assertTrue(empty["propertyPresent"])
+        self.assertEqual([], absent["slots"])
+        self.assertEqual(expected, absent["signatureSha256"])
+        self.assertEqual(expected, empty["signatureSha256"])
+
+    def test_order_and_authored_null_slots_are_preserved(self) -> None:
+        result = material_override_slots(
+            {"Materials": {"value": [-1, 0]}}, self.material_imports(), []
+        )
+
+        canonical = [
+            "materialinstanceconstant|bg_rad_koukusaton_a.material.curtain_mi",
+            None,
+        ]
+        expected = hashlib.sha256(
+            json.dumps(canonical, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        self.assertEqual([0, 1], [slot["slot"] for slot in result["slots"]])
+        self.assertEqual(
+            "BG_RAD_KOUKUSATON_A.Material.Curtain_MI",
+            result["slots"][0]["objectPath"],
+        )
+        self.assertIsNone(result["slots"][1]["objectPath"])
+        self.assertEqual(expected, result["signatureSha256"])
+
+    def test_non_material_override_reference_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ExtractionError, "Material/MIC"):
+            material_override_slots(
+                {"Materials": {"value": [-1]}},
+                self.material_imports("Texture2D"),
+                [],
+            )
 
 
 if __name__ == "__main__":

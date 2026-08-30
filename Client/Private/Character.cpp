@@ -5,6 +5,7 @@
 #include "Collider.h"
 #include "Effect_Catalog.h"
 #include "Effect_PresentationService.h"
+#include "EstherActionSoundCueDocument.h"
 #include "GameInstance.h"
 #include "HitAreaWire.h"
 #include "Navigation.h"
@@ -1387,6 +1388,14 @@ bool_t CCharacter::Apply_NetworkAction(
 	{
 		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
 			return false;
+		std::string soundStatus;
+		/* Presentation follows only a fully validated replicated occurrence.
+		   Repeated snapshots still pass here to advance this cursor without
+		   replaying an already-attempted cue. */
+		(void)CEstherActionSoundCueDocument::Play_Due(
+			ESTHER_ACTION_SOUND_OWNER_KIND::PLAYER_ACTION,
+			"PLAYER", "ESTHER_CAST", serverTick, actionStartTick,
+			m_EstherActionSoundState, soundStatus);
 		if (m_eNetworkAction == action &&
 			m_iLastNetworkActionStartTick == actionStartTick)
 		{

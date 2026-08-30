@@ -4225,7 +4225,8 @@
               "kind": "RELEASE_GRABBED_PLAYERS",
               "releaseMode": "HOLD",
               "speedMps": 0.0,
-              "durationMs": 0
+              "durationMs": 0,
+              "yawOffsetDegrees": 0.0
             },
             {
               "eventId": "event.valtan.trash.groggy.enter",
@@ -4708,7 +4709,8 @@
               "kind": "RELEASE_GRABBED_PLAYERS",
               "releaseMode": "HOLD",
               "speedMps": 0.0,
-              "durationMs": 0
+              "durationMs": 0,
+              "yawOffsetDegrees": 0.0
             },
             {
               "eventId": "event.valtan.sequence.rush-if.groggy.enter",
@@ -4847,7 +4849,8 @@
               "kind": "RELEASE_GRABBED_PLAYERS",
               "releaseMode": "ARENA_EJECTION",
               "speedMps": 24.0,
-              "durationMs": 500
+              "durationMs": 500,
+              "yawOffsetDegrees": 0.0
             }
           ],
           "branches": []

@@ -5,7 +5,8 @@
 
 namespace LostArk::Shared
 {
-	/* 46 adds a reliable semantic combat-object presentation event. The Server
+	/* 47 admits the KakulSaydon Arena as a Server-owned shared world.
+	46 adds a reliable semantic combat-object presentation event. The Server
 	transmits hit identity and world occurrence only; Client data resolves the
 	actual Sound/Effect asset.
 	45 adds the Raid Clear screen's C2S_RETURN_TO_BERN command.
@@ -17,7 +18,7 @@ namespace LostArk::Shared
 	expanded world destruction live-event bound. Each feature independently
 	used 40 before integration, so neither v40 peer is wire-compatible.
 	39 adds bounded Debug Valtan pattern-flow authoring playback. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 46;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 47;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -25,6 +26,7 @@ namespace LostArk::Shared
 		VALTAN_ARENA = 2,
 		TRAINING_GROUND = 3,
 		CHARACTER_SELECT_ARENA = 4,
+		KAKULSAYDON_ARENA = 5,
 		END
 	};
 
@@ -34,7 +36,8 @@ namespace LostArk::Shared
 		return WORLD_ID::BERN == worldId ||
 			WORLD_ID::VALTAN_ARENA == worldId ||
 			WORLD_ID::TRAINING_GROUND == worldId ||
-			WORLD_ID::CHARACTER_SELECT_ARENA == worldId;
+			WORLD_ID::CHARACTER_SELECT_ARENA == worldId ||
+			WORLD_ID::KAKULSAYDON_ARENA == worldId;
 	}
 
 	enum class CHARACTER_CLASS_ID : std::uint8_t
@@ -208,7 +211,13 @@ namespace LostArk::Shared
 		// Reliable one-shot edge for a room-owned combat object's semantic hit.
 		// Append-only: snapshot transform updates remain coalescible, this event
 		// remains an ordering barrier and can outlive same-tick object despawn.
-		S2C_COMBAT_OBJECT_PRESENTATION_EVENT
+		S2C_COMBAT_OBJECT_PRESENTATION_EVENT,
+
+		// Debug authoring navigation for the KakulSaydon vertical slice. Entry is
+		// still a Server room transfer and stage movement still lands on an exact
+		// authored PLAYER_SPAWN placement; the Client never sends a world transform.
+		C2S_DEBUG_ENTER_KAKULSAYDON_ARENA,
+		C2S_DEBUG_TELEPORT_TO_PLACEMENT
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -274,6 +283,8 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_CONFIRM_NPC_ENTRY:
 		case PACKET_TYPE::C2S_RETURN_TO_BERN:
 		case PACKET_TYPE::S2C_COMBAT_OBJECT_PRESENTATION_EVENT:
+		case PACKET_TYPE::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA:
+		case PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_PLACEMENT:
 		case PACKET_TYPE::C2S_PARTY_INVITE:
 		case PACKET_TYPE::S2C_PARTY_INVITE_RECEIVED:
 		case PACKET_TYPE::C2S_PARTY_INVITE_RESPOND:

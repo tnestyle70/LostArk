@@ -205,6 +205,9 @@ Client::CLevelTransitionService::Pump_ServerApprovedWorldTransfer(
 		case WORLD_ID::VALTAN_ARENA:
 			targetLevel = LEVEL::VALTAN_ARENA;
 			break;
+		case WORLD_ID::KAKULSAYDON_ARENA:
+			targetLevel = LEVEL::KAKULSAYDON_ARENA;
+			break;
 		default:
 			break;
 		}

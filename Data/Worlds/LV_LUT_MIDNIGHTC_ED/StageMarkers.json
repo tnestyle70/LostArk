@@ -1,0 +1,49 @@
+{
+  "schema": "lostark.kakul-stage-markers",
+  "formatVersion": 1,
+  "areaId": "LV_LUT_MIDNIGHTC_ED",
+  "revision": 1,
+  "semanticStatus": "SOURCE_LEVEL_ID_ONLY",
+  "stages": [
+    {
+      "stageId": "stage.kakul.sl01",
+      "placementId": "stage.kakul.sl01",
+      "displayNameKo": "LV_LUT_MIDNIGHTC_ED_SL01 복구 스테이지",
+      "sourceLevelId": "LV_LUT_MIDNIGHTC_ED_SL01",
+      "componentCellCount": 553,
+      "evidence": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.mapplacements sourceLevel=LV_LUT_MIDNIGHTC_ED_SL01; no Mario/gate semantic inferred"
+    },
+    {
+      "stageId": "stage.kakul.sl02",
+      "placementId": "stage.kakul.sl02",
+      "displayNameKo": "LV_LUT_MIDNIGHTC_ED_SL02 복구 스테이지",
+      "sourceLevelId": "LV_LUT_MIDNIGHTC_ED_SL02",
+      "componentCellCount": 49,
+      "evidence": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.mapplacements sourceLevel=LV_LUT_MIDNIGHTC_ED_SL02; no Mario/gate semantic inferred"
+    },
+    {
+      "stageId": "stage.kakul.sl03",
+      "placementId": "stage.kakul.sl03",
+      "displayNameKo": "LV_LUT_MIDNIGHTC_ED_SL03 복구 스테이지",
+      "sourceLevelId": "LV_LUT_MIDNIGHTC_ED_SL03",
+      "componentCellCount": 64,
+      "evidence": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.mapplacements sourceLevel=LV_LUT_MIDNIGHTC_ED_SL03; no Mario/gate semantic inferred"
+    },
+    {
+      "stageId": "stage.kakul.sl04",
+      "placementId": "stage.kakul.sl04",
+      "displayNameKo": "LV_LUT_MIDNIGHTC_ED_SL04 복구 스테이지",
+      "sourceLevelId": "LV_LUT_MIDNIGHTC_ED_SL04",
+      "componentCellCount": 50,
+      "evidence": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.mapplacements sourceLevel=LV_LUT_MIDNIGHTC_ED_SL04; no Mario/gate semantic inferred"
+    },
+    {
+      "stageId": "stage.kakul.sl05",
+      "placementId": "stage.kakul.sl05",
+      "displayNameKo": "LV_LUT_MIDNIGHTC_ED_SL05 복구 스테이지",
+      "sourceLevelId": "LV_LUT_MIDNIGHTC_ED_SL05",
+      "componentCellCount": 99,
+      "evidence": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.mapplacements sourceLevel=LV_LUT_MIDNIGHTC_ED_SL05; no Mario/gate semantic inferred"
+    }
+  ]
+}

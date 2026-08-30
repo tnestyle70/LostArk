@@ -893,11 +893,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			findStage(catchBreath, "STEP_04");
 		const auto hasAction = [](const BOSS_PATTERN_STAGE_DEFINITION* stage,
 			const BOSS_GRABBED_RELEASE_MODE mode,
-			const float speed, const std::uint32_t durationMs)
+			const float speed, const std::uint32_t durationMs,
+			const float yawOffsetDegrees)
 			{
 				return nullptr != stage && stage->Actions.end() != std::find_if(
 					stage->Actions.begin(), stage->Actions.end(),
-					[mode, speed, durationMs](
+					[mode, speed, durationMs, yawOffsetDegrees](
 						const BOSS_PATTERN_STAGE_ACTION& action)
 					{
 						return BOSS_PATTERN_STAGE_ACTION_KIND::
@@ -907,7 +908,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 							"boss.attachment.left-hand" == action.strTargetId &&
 							action.eReleaseMode == mode &&
 							action.fReleaseSpeedMps == speed &&
-							action.iDurationMs == durationMs;
+							action.iDurationMs == durationMs &&
+							action.fReleaseYawOffsetDegrees ==
+								yawOffsetDegrees;
 					});
 			};
 		const auto hasBossFlagAction = [](
@@ -979,7 +982,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			BOSS_PATTERN_HIT_SHAPE::BOX == trashRush->eHitShape &&
 			7u == trashRush->HitOffsetsMs.size() &&
 			hasAction(
-				trashRelease, BOSS_GRABBED_RELEASE_MODE::HOLD, 0.f, 0u),
+				trashRelease, BOSS_GRABBED_RELEASE_MODE::HOLD,
+				0.f, 0u, 0.f),
 			"Load the pre-charge Valtan counter window, frontal counter proxy, and groggy hold release contract");
 		tests.Require(
 			nullptr != dashGroggy &&
@@ -1007,7 +1011,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			hasAction(
 				catchRelease,
 				BOSS_GRABBED_RELEASE_MODE::ARENA_EJECTION,
-				24.f, 500u),
+				24.f, 500u, 0.f),
 			"Load the rear-cone grab and doubled 24m/s minimum-12m arena ejection");
 	}
 	{
@@ -1565,6 +1569,30 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				PLAYER_ACTION_STATE::GRABBED == rejected.eAction &&
 				rejected.iAttachmentOwnerNetEntityId == boss.iNetEntityId,
 				"Invalid ejection preflight preserves the captured player without partial detach");
+			BOSS_PATTERN_STAGE_ACTION leftRelease = release;
+			leftRelease.fReleaseYawOffsetDegrees = 90.f;
+			SERVER_PLAYER left = player;
+			const bool leftPrepared = room->Prepare_ArenaEjection(
+				left, boss, leftRelease, 13u);
+			BOSS_PATTERN_STAGE_ACTION rightRelease = release;
+			rightRelease.fReleaseYawOffsetDegrees = -90.f;
+			SERVER_PLAYER right = player;
+			const bool rightPrepared = room->Prepare_ArenaEjection(
+				right, boss, rightRelease, 14u);
+			tests.Require(leftPrepared && rightPrepared &&
+				std::fabs(left.fKnockbackDirectionX + 1.f) < 0.001f &&
+				std::fabs(left.fKnockbackDirectionZ) < 0.001f &&
+				std::fabs(right.fKnockbackDirectionX - 1.f) < 0.001f &&
+				std::fabs(right.fKnockbackDirectionZ) < 0.001f,
+				"Apply grabbed-player release yaw relative to the Server-owned boss facing");
+			BOSS_PATTERN_STAGE_ACTION invalidYaw = release;
+			invalidYaw.fReleaseYawOffsetDegrees = 181.f;
+			SERVER_PLAYER yawRejected = player;
+			tests.Require(!room->Prepare_ArenaEjection(
+				yawRejected, boss, invalidYaw, 15u) &&
+				PLAYER_ACTION_STATE::GRABBED == yawRejected.eAction &&
+				yawRejected.iAttachmentOwnerNetEntityId == boss.iNetEntityId,
+				"Reject out-of-range release yaw without partial attachment mutation");
 		}
 		{
 			auto room = prepareRoom();
@@ -16763,6 +16791,126 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				auditionBoss->PendingPatternIds.empty(),
 				expected.pContract);
 		}
+
+		/* Complete Play is a boss restart, not an implicit Fresh-arena preset.
+		   Keep the exact final-arena, prop, collision and navigation state while
+		   replacing only the boss-owned occurrence. */
+		const std::vector<WORLD_DESTRUCTION_GROUP_STATE>
+			completePlayDestructionBefore =
+				room.m_WorldDestructionRuntime.Get_GroupStates();
+		const std::vector<ENCOUNTER_PROP_SLOT_STATE>
+			completePlayPropsBefore =
+				room.m_EncounterPropRuntime.Get_SlotStates();
+		const std::uint32_t completePlayEncounterEpochBefore =
+			room.m_WorldDestructionRuntime.Get_EncounterEpoch();
+		const std::uint64_t completePlayNavigationRevisionBefore =
+			room.m_ServerNavigation.Get_Revision();
+		const std::uint64_t completePlayCollisionRevisionBefore =
+			room.m_ServerCollisionSystem.Get_Revision();
+		room.m_iPillarAuditionBreakTick = 999999u;
+		room.m_bPillarAuditionCycleArmed = true;
+
+		C2S_VALTAN_AUDITION_REQUEST completePlay{};
+		completePlay.iRequestSequence = 1u;
+		completePlay.eOperation =
+			VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID;
+		completePlay.strBossPlacementId = "boss.valtan.center";
+		completePlay.strPatternId = "VALTAN_FIST_IN_OUT";
+		const VALTAN_AUDITION_RESULT completePlayResult =
+			room.Evaluate_ValtanAudition(
+				AUDITION_SESSION, completePlay, reportedBar);
+
+		const std::vector<WORLD_DESTRUCTION_GROUP_STATE>
+			completePlayDestructionAfter =
+				room.m_WorldDestructionRuntime.Get_GroupStates();
+		const std::vector<ENCOUNTER_PROP_SLOT_STATE>
+			completePlayPropsAfter =
+				room.m_EncounterPropRuntime.Get_SlotStates();
+		const auto sameDestructionState = [](
+			const std::vector<WORLD_DESTRUCTION_GROUP_STATE>& leftStates,
+			const std::vector<WORLD_DESTRUCTION_GROUP_STATE>& rightStates)
+		{
+			return leftStates.size() == rightStates.size() &&
+				std::equal(
+				leftStates.begin(), leftStates.end(), rightStates.begin(),
+				[](const WORLD_DESTRUCTION_GROUP_STATE& left,
+					const WORLD_DESTRUCTION_GROUP_STATE& right)
+				{
+					return left.strGroupId == right.strGroupId &&
+						left.eState == right.eState &&
+						left.iStateVersion == right.iStateVersion &&
+						left.iStateStartTick == right.iStateStartTick &&
+						left.iCommitTick == right.iCommitTick &&
+						left.strPendingMutationId ==
+							right.strPendingMutationId;
+				});
+		};
+		const auto samePropState = [](
+			const std::vector<ENCOUNTER_PROP_SLOT_STATE>& leftStates,
+			const std::vector<ENCOUNTER_PROP_SLOT_STATE>& rightStates)
+		{
+			return leftStates.size() == rightStates.size() &&
+				std::equal(
+				leftStates.begin(), leftStates.end(), rightStates.begin(),
+				[](const ENCOUNTER_PROP_SLOT_STATE& left,
+					const ENCOUNTER_PROP_SLOT_STATE& right)
+				{
+					return left.strSlotId == right.strSlotId &&
+						left.eState == right.eState &&
+						left.iStateVersion == right.iStateVersion &&
+						left.iStateStartTick == right.iStateStartTick &&
+						left.iOccurrenceSequence ==
+							right.iOccurrenceSequence &&
+						left.fPositionX == right.fPositionX &&
+						left.fPositionZ == right.fPositionZ;
+				});
+		};
+		const bool sameDestruction = sameDestructionState(
+			completePlayDestructionBefore, completePlayDestructionAfter);
+		const bool sameProps = samePropState(
+			completePlayPropsBefore, completePlayPropsAfter);
+		auditionBoss = room.Find_AuditionBoss();
+		tests.Require(
+			VALTAN_AUDITION_RESULT::QUEUED == completePlayResult &&
+			sameDestruction && sameProps &&
+			completePlayEncounterEpochBefore ==
+				room.m_WorldDestructionRuntime.Get_EncounterEpoch() &&
+			completePlayNavigationRevisionBefore ==
+				room.m_ServerNavigation.Get_Revision() &&
+			completePlayCollisionRevisionBefore ==
+				room.m_ServerCollisionSystem.Get_Revision() &&
+			nullptr != auditionBoss &&
+			1u == auditionBoss->PendingPatternIds.size() &&
+			"VALTAN_FIST_IN_OUT" ==
+				auditionBoss->PendingPatternIds.front() &&
+			0u == room.m_iPillarAuditionBreakTick &&
+			!room.m_bPillarAuditionCycleArmed,
+			"Complete Play preserves the selected Server arena, Debris, collision and Nav while restarting only the boss pattern");
+
+		room.Tick(1.f / 30.f);
+		auditionBoss = room.Find_AuditionBoss();
+		const std::vector<WORLD_DESTRUCTION_GROUP_STATE>
+			completePlayDestructionStarted =
+				room.m_WorldDestructionRuntime.Get_GroupStates();
+		const std::vector<ENCOUNTER_PROP_SLOT_STATE>
+			completePlayPropsStarted =
+				room.m_EncounterPropRuntime.Get_SlotStates();
+		tests.Require(
+			nullptr != auditionBoss &&
+			"VALTAN_FIST_IN_OUT" == auditionBoss->strPatternId &&
+			CGameRoom::VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE ==
+				room.m_ValtanPatternIdAudition.ePhase &&
+			sameDestructionState(
+				completePlayDestructionBefore,
+				completePlayDestructionStarted) &&
+			samePropState(completePlayPropsBefore, completePlayPropsStarted) &&
+			completePlayEncounterEpochBefore ==
+				room.m_WorldDestructionRuntime.Get_EncounterEpoch() &&
+			completePlayNavigationRevisionBefore ==
+				room.m_ServerNavigation.Get_Revision() &&
+			completePlayCollisionRevisionBefore ==
+				room.m_ServerCollisionSystem.Get_Revision(),
+			"Complete Play starts the selected Server pattern on the first room tick without changing the chosen arena");
 #endif
 
 		room.m_Players.clear();

@@ -151,6 +151,9 @@ try {
             'KakulSaydon resource intake and world admission gate' `
             @('Tools/KakulSaydonPipeline/test_kakul_world_admission.py')
         Invoke-PythonGate `
+            'KakulSaydon Client product level contract gate' `
+            @('Tools/KakulSaydonPipeline/test_kakul_client_product_level_contract.py')
+        Invoke-PythonGate `
             'Valtan eight-player raid capacity gate' `
             @('Tools/Network/test_valtan_raid_capacity_contract.py')
         Invoke-PythonGate `

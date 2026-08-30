@@ -650,7 +650,7 @@ def author_trash_capture_flow(
         gameplay_stage("GROGGY", 4433, None, kind="GROGGY", events=[{
             "eventId": "event.valtan.trash.counter-release", "trigger": "ENTER",
             "kind": "RELEASE_GRABBED_PLAYERS", "releaseMode": "HOLD",
-            "speedMps": 0.0, "durationMs": 0,
+            "speedMps": 0.0, "durationMs": 0, "yawOffsetDegrees": 0.0,
         }] + flag("boss.flag.groggy", "groggy")),
     ]
 
@@ -1041,7 +1041,12 @@ def author_terrain_pairs(
 def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, Any]) -> None:
     """Author independent hazards and finite boss motion without editing saved Flow slots."""
     release = stage(pattern(gameplay, "VALTAN_CATCH_BREATH"), "STEP_04")["events"][0]
-    release.update(releaseMode="ARENA_EJECTION", speedMps=24.0, durationMs=500)
+    release.update(
+        releaseMode="ARENA_EJECTION",
+        speedMps=24.0,
+        durationMs=500,
+        yawOffsetDegrees=0.0,
+    )
     four = stage(pattern(gameplay, "VALTAN_SEQUENCE_FOUR"), "STEP_01")
     four["hit"]["shape"] = {"kind": "CROSS", "lengthM": 18.0, "halfWidthM": 2.5}
 

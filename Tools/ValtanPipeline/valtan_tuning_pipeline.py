@@ -2164,7 +2164,7 @@ def _event_fields(kind: str) -> tuple[str, ...]:
         "DAMAGE_GRABBED_PLAYERS": common + ("damageProfileId",),
         "EXECUTE_GRABBED_PLAYERS": common,
         "RELEASE_GRABBED_PLAYERS": common
-        + ("releaseMode", "speedMps", "durationMs"),
+        + ("releaseMode", "speedMps", "durationMs", "yawOffsetDegrees"),
     }.get(kind, ())
 
 
@@ -3369,15 +3369,26 @@ def validate_v2_master(
                         0,
                         5000,
                     )
+                    yaw_offset_degrees = number(
+                        event["yawOffsetDegrees"],
+                        f"event {event_id}.yawOffsetDegrees",
+                        -180,
+                        180,
+                    )
                     hold = (
                         event["releaseMode"] == "HOLD"
                         and speed_mps == 0
                         and release_duration_ms == 0
+                        and yaw_offset_degrees == 0
                     )
                     knockback = (
                         event["releaseMode"] in ("OPPOSITE_KNOCKBACK", "ARENA_EJECTION")
                         and speed_mps > 0
                         and release_duration_ms > 0
+                        and (
+                            event["releaseMode"] == "ARENA_EJECTION"
+                            or yaw_offset_degrees == 0
+                        )
                     )
                     if event["trigger"] not in ("ENTER", "EXIT") or not (
                         hold or knockback
@@ -4408,6 +4419,7 @@ def _compile_event(
             "releaseMode": event["releaseMode"],
             "speedMps": event["speedMps"],
             "durationMs": event["durationMs"],
+            "yawOffsetDegrees": event["yawOffsetDegrees"],
         }
     if event["kind"] in ("DAMAGE_GRABBED_PLAYERS", "EXECUTE_GRABBED_PLAYERS"):
         return {
@@ -5624,6 +5636,22 @@ DRAFT_PATCH_OPERATIONS = {
     "SET_PATTERN_RANGE": ("op", "patternId", "minimumRangeM", "maximumRangeM"),
     "SET_STAGE_DURATION": ("op", "patternId", "stageId", "durationMs"),
     "SET_STAGE_HIT": ("op", "patternId", "stageId", "hit"),
+    "SET_STAGE_GRABBED_RELEASE": (
+        "op",
+        "patternId",
+        "stageId",
+        "releaseMode",
+        "speedMps",
+        "durationMs",
+        "yawOffsetDegrees",
+    ),
+    "SET_EFFECT_CUE_LOCAL_YAW": (
+        "op",
+        "patternId",
+        "stageId",
+        "occurrenceId",
+        "localYawDegrees",
+    ),
     "SET_AXE_VOLLEY": (
         "op",
         "patternId",
@@ -6011,6 +6039,111 @@ def apply_draft_patch(
                     field="hit",
                 )
             stage["hit"] = copy.deepcopy(operation["hit"])
+        elif kind == "SET_STAGE_GRABBED_RELEASE":
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            stage = _draft_stage(pattern, operation["stageId"], ordinal)
+            events = [
+                row
+                for row in stage["events"]
+                if row.get("kind") == "RELEASE_GRABBED_PLAYERS"
+            ]
+            if len(events) != 1:
+                raise _draft_error(
+                    "stage must resolve exactly one grabbed-player release event",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="stageId",
+                    error_code="STABLE_ID_NOT_FOUND",
+                )
+            event = events[0]
+            release_mode = operation["releaseMode"]
+            if release_mode not in ("HOLD", "OPPOSITE_KNOCKBACK", "ARENA_EJECTION"):
+                raise _draft_error(
+                    "unsupported grabbed-player releaseMode",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="releaseMode",
+                )
+            speed_mps = number(
+                operation["speedMps"],
+                f"operations[{ordinal}].speedMps",
+                0,
+                50,
+            )
+            duration_ms = integer(
+                operation["durationMs"],
+                f"operations[{ordinal}].durationMs",
+                0,
+                5000,
+            )
+            yaw_offset_degrees = number(
+                operation["yawOffsetDegrees"],
+                f"operations[{ordinal}].yawOffsetDegrees",
+                -180,
+                180,
+            )
+            hold = release_mode == "HOLD" and speed_mps == 0 and duration_ms == 0
+            launch = (
+                release_mode in ("OPPOSITE_KNOCKBACK", "ARENA_EJECTION")
+                and speed_mps > 0
+                and duration_ms > 0
+                and (release_mode == "ARENA_EJECTION" or yaw_offset_degrees == 0)
+            )
+            if not (hold or launch) or (hold and yaw_offset_degrees != 0):
+                raise _draft_error(
+                    "grabbed-player release values are incoherent",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="releaseMode",
+                )
+            target = (kind, pattern["patternId"], stage["stageId"])
+            event["releaseMode"] = release_mode
+            event["speedMps"] = speed_mps
+            event["durationMs"] = duration_ms
+            event["yawOffsetDegrees"] = yaw_offset_degrees
+        elif kind == "SET_EFFECT_CUE_LOCAL_YAW":
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            stage = _draft_stage(pattern, operation["stageId"], ordinal)
+            occurrence_id = stable_id(
+                operation["occurrenceId"],
+                f"operations[{ordinal}].occurrenceId",
+            )
+            cues = [
+                row
+                for row in stage["effectCues"]
+                if row.get("occurrenceId") == occurrence_id
+            ]
+            if len(cues) != 1:
+                raise _draft_error(
+                    "effect cue occurrenceId must resolve exactly once in its stage",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="occurrenceId",
+                    error_code="STABLE_ID_NOT_FOUND",
+                )
+            cue = cues[0]
+            transform = cue.get("localTransform")
+            rotation = transform.get("rotationDegrees") if isinstance(transform, dict) else None
+            if not isinstance(rotation, list) or len(rotation) != 3:
+                raise _draft_error(
+                    "effect cue localTransform.rotationDegrees is invalid",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="localYawDegrees",
+                )
+            local_yaw = number(
+                operation["localYawDegrees"],
+                f"operations[{ordinal}].localYawDegrees",
+                -180,
+                180,
+            )
+            target = (kind, occurrence_id)
+            rotation[1] = local_yaw
         elif kind == "SET_AXE_VOLLEY":
             pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
             stage = _draft_stage(pattern, operation["stageId"], ordinal)

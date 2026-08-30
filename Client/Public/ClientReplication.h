@@ -4,6 +4,7 @@
 #include "Engine_Defines.h"
 #include "ClientReplicationEvent.h"
 #include "CombatObjectProjectionRuntime.h"
+#include "EstherActionSoundCueDocument.h"
 #include "NetObjectRegistry.h"
 #include "NpcPlacementPresentationService.h"
 #include "MonsterPresentationContract.h"
@@ -595,6 +596,7 @@ namespace Client
 			MONSTER_PRESENTATION_ACTION_STATE MonsterActionState;
 			std::string strActiveActionId;
 			std::size_t iActionClipIndex = 0u;
+			ESTHER_ACTION_SOUND_PLAYBACK_STATE EstherActionSoundState;
 			f32_t fCollisionRadius = 0.f;
 			std::weak_ptr<CNpc> pNpc;
 			std::weak_ptr<CValtan> pValtan;

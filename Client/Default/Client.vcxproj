@@ -30,6 +30,7 @@
     <ClInclude Include="..\Public\AnimationPreviewAssets.h" />
     <ClInclude Include="..\Public\AnimationAuthoringBridge.h" />
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h" />
+	<ClInclude Include="..\Public\KakulAnimationActionDocument.h" />
 	<ClInclude Include="..\Public\ValtanPatternFlowDocument.h" />
 	<ClInclude Include="..\Public\ValtanPatternFlowService.h" />
 	<ClInclude Include="..\Public\ValtanTuningCommandService.h" />
@@ -74,6 +75,7 @@
     <ClInclude Include="..\Public\Effect_VisualProgramCorpus.h" />
     <ClInclude Include="..\Public\AnimationEffectCueDocument.h" />
     <ClInclude Include="..\Public\SoundCueCatalog.h" />
+    <ClInclude Include="..\Public\EstherActionSoundCueDocument.h" />
     <ClInclude Include="..\Public\Effect_PresentationService.h" />
     <ClInclude Include="..\Public\Effect_ProductPrewarmQueue.h" />
 	<ClInclude Include="..\Private\CharacterSelectArenaSpawnGate.h" />
@@ -110,6 +112,7 @@
     <ClInclude Include="..\Public\UITextureCache.h" />
     <ClInclude Include="..\Public\UI_Sprite.h" />
     <ClInclude Include="..\Public\Level_Bern.h" />
+    <ClInclude Include="..\Public\Level_KakulSaydonArena.h" />
     <ClInclude Include="..\Public\Level_Development.h" />
     <ClInclude Include="..\Public\Level_Lobby.h" />
     <ClInclude Include="..\Public\LevelRegistry.h" />
@@ -201,6 +204,7 @@
     <ClCompile Include="..\Private\Animation_Tool.cpp" />
     <ClCompile Include="..\Private\AnimationAuthoringBridge.cpp" />
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp" />
+	<ClCompile Include="..\Private\KakulAnimationActionDocument.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternFlowDocument.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternFlowService.cpp" />
 	<ClCompile Include="..\Private\ValtanTuningCommandService.cpp" />
@@ -239,6 +243,7 @@
     <ClCompile Include="..\Private\Effect_VisualProgramCorpus.cpp" />
     <ClCompile Include="..\Private\AnimationEffectCueDocument.cpp" />
     <ClCompile Include="..\Private\SoundCueCatalog.cpp" />
+    <ClCompile Include="..\Private\EstherActionSoundCueDocument.cpp" />
     <ClCompile Include="..\Private\Effect_PresentationService.cpp" />
     <ClCompile Include="..\Private\Effect_ProductPrewarmQueue.cpp" />
     <ClCompile Include="..\Private\Level_CharacterSelect.cpp" />
@@ -264,6 +269,7 @@
     <ClCompile Include="..\Private\UITextureCache.cpp" />
     <ClCompile Include="..\Private\UI_Sprite.cpp" />
     <ClCompile Include="..\Private\Level_Bern.cpp" />
+    <ClCompile Include="..\Private\Level_KakulSaydonArena.cpp" />
     <ClCompile Include="..\Private\Level_Development.cpp" />
     <ClCompile Include="..\Private\Level_Lobby.cpp" />
     <ClCompile Include="..\Private\LevelRegistry.cpp" />
@@ -356,6 +362,8 @@
     <None Include="..\..\Data\Actors\CharacterCatalog.json" />
     <None Include="..\..\Data\Actors\NpcCatalog.json" />
     <None Include="..\..\Data\Actors\MonsterCatalog.json" />
+	<None Include="..\..\Data\Sound\CharacterSoundCatalog.json" />
+	<None Include="..\..\Data\Sound\EstherActionSoundCues.json" />
 	<None Include="..\..\Data\Rendering\Authored\RenderingProfiles.json" />
     <None Include="..\..\Data\Animation\Authored\Artist\Artist.animevents" />
     <None Include="..\..\Data\Animation\Authored\Artist\Artist.skillbindings.json" />
@@ -385,6 +393,14 @@
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.combatobjectsoundcues.json" />
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectv1aliases.json" />
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patternpreview.json" />
+	<None Include="..\..\Data\Animation\Reference\KakulSaydon\MN_RPCT_05.actionreference.json" />
+	<None Include="..\..\Data\Animation\Reference\KakulSaydon\MN_RPCT_06.actionreference.json" />
+	<None Include="..\..\Data\Animation\Reference\KakulSaydon\MN_RPCT_07.actionreference.json" />
+	<None Include="..\..\Data\Animation\Reference\KakulSaydon\MN_RPCZ_00.actionreference.json" />
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_05.actionbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_06.actionbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_07.actionbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCZ_00.actionbindings.json" />
     <None Include="..\..\Data\Animation\RootMotion\LanceMaster.rootmotion.json" />
     <None Include="..\..\Data\Animation\RootMotion\Warlord.rootmotion.json" />
     <None Include="..\..\Data\Animation\RootMotion\Artist.rootmotion.json" />

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import hashlib
 import json
 import math
 import re
@@ -1110,6 +1111,92 @@ def property_value(properties: dict[str, Any], name: str, default: Any) -> Any:
     return default
 
 
+def material_override_slots(
+    properties: dict[str, Any],
+    imports: list[ImportEntry],
+    exports: list[ExportEntry],
+) -> dict[str, Any]:
+    """Return the exact ordered UE3 component ``Materials`` override array."""
+
+    property_entry: dict[str, Any] | None = None
+    for key, entry in properties.items():
+        if key.casefold() == "materials":
+            property_entry = entry
+            break
+
+    if property_entry is None:
+        slots: list[dict[str, Any]] = []
+        property_present = False
+    else:
+        value = property_entry.get("value")
+        if not isinstance(value, list) or any(
+            not isinstance(item, int) for item in value
+        ):
+            raise ExtractionError(
+                "StaticMeshComponent Materials is not an object-reference array"
+            )
+        property_present = True
+        slots = []
+        for slot_index, package_index in enumerate(value):
+            if package_index == 0:
+                slots.append(
+                    {
+                        "slot": slot_index,
+                        "packageIndex": 0,
+                        "class": None,
+                        "objectPath": None,
+                    }
+                )
+                continue
+            object_path = package_ref_path(package_index, imports, exports)
+            class_name = (
+                imports[-package_index - 1].class_name
+                if package_index < 0 and 0 <= -package_index - 1 < len(imports)
+                else package_ref_name(
+                    exports[package_index - 1].class_index, imports, exports
+                )
+                if package_index > 0 and 0 <= package_index - 1 < len(exports)
+                else None
+            )
+            if (
+                not object_path
+                or not class_name
+                or object_path.startswith("<bad-")
+                or class_name.casefold()
+                not in {"material", "materialinstanceconstant"}
+            ):
+                raise ExtractionError(
+                    f"Materials[{slot_index}] is not an exact Material/MIC reference: "
+                    f"{package_index} ({class_name!r}, {object_path!r})"
+                )
+            slots.append(
+                {
+                    "slot": slot_index,
+                    "packageIndex": package_index,
+                    "class": class_name,
+                    "objectPath": object_path,
+                }
+            )
+
+    canonical = [
+        None
+        if slot["objectPath"] is None
+        else (
+            f"{str(slot['class']).casefold()}|"
+            f"{str(slot['objectPath']).casefold()}"
+        )
+        for slot in slots
+    ]
+    serialized = json.dumps(
+        canonical, ensure_ascii=False, separators=(",", ":")
+    ).encode("utf-8")
+    return {
+        "propertyPresent": property_present,
+        "slots": slots,
+        "signatureSha256": hashlib.sha256(serialized).hexdigest(),
+    }
+
+
 def vector(value: Any, default: tuple[float, float, float]) -> dict[str, float]:
     if isinstance(value, dict) and all(axis in value for axis in ("x", "y", "z")):
         return {axis: float(value[axis]) for axis in ("x", "y", "z")}
@@ -1131,7 +1218,11 @@ def extract_package(
     package_path: Path,
     logical_name: str,
     aes_key: str,
+    *,
+    schema_version: int = 2,
 ) -> dict[str, Any]:
+    if schema_version not in (1, 2):
+        raise ExtractionError(f"unsupported placement schema version {schema_version}")
     physical = package_path.read_bytes()
     summary = parse_summary(physical)
     logical = decompress_package(physical, summary, aes_key)
@@ -1260,8 +1351,7 @@ def extract_package(
                 for axis in ("x", "y", "z")
             }
 
-        placements.append(
-            {
+        placement = {
                 "placementId": f"{logical_name}:export:{component.index}",
                 "levelPackage": logical_name,
                 "actor": {
@@ -1296,10 +1386,62 @@ def extract_package(
                     "scale3D": resolved_scale,
                 },
             }
+        if schema_version == 2:
+            placement["materialOverrides"] = material_override_slots(
+                component_properties, imports, exports
+            )
+        placements.append(placement)
+
+    material_override_placements = [
+        item
+        for item in placements
+        if item.get("materialOverrides", {}).get("propertyPresent") is True
+    ]
+    material_slots = [
+        slot
+        for item in material_override_placements
+        for slot in item["materialOverrides"]["slots"]
+    ]
+    variants = {
+        (
+            item["asset"]["objectPath"].casefold(),
+            item.get("materialOverrides", {}).get(
+                "signatureSha256", hashlib.sha256(b"[]").hexdigest()
+            ),
+        )
+        for item in placements
+    }
+    summary_fields: dict[str, Any] = {
+        "placementCount": len(placements),
+        "uniqueStaticMeshCount": len(
+            {item["asset"]["objectPath"] for item in placements}
+        ),
+        "propertyErrorCount": len(property_errors),
+        "unresolvedPlacementCount": len(unresolved_placements),
+    }
+    if schema_version == 2:
+        summary_fields.update(
+            {
+                "materialOverridePlacementCount": len(material_override_placements),
+                "materialOverrideSlotCount": len(material_slots),
+                "materialOverrideNonNullSlotCount": sum(
+                    slot["objectPath"] is not None for slot in material_slots
+                ),
+                "materialOverrideNullSlotCount": sum(
+                    slot["objectPath"] is None for slot in material_slots
+                ),
+                "uniqueMaterialOverrideSignatureCount": len(
+                    {
+                        item["materialOverrides"]["signatureSha256"]
+                        for item in placements
+                    }
+                ),
+                "uniqueStaticMeshMaterialVariantCount": len(variants),
+            }
         )
 
     return {
-        "schemaVersion": 1,
+        "schemaVersion": schema_version,
         "source": {
             "logicalPackage": logical_name,
             "physicalPackage": str(package_path),
@@ -1311,14 +1453,7 @@ def extract_package(
             "exportCount": summary.export_count,
             "compressedChunkCount": len(summary.chunks),
         },
-        "summary": {
-            "placementCount": len(placements),
-            "uniqueStaticMeshCount": len(
-                {item["asset"]["objectPath"] for item in placements}
-            ),
-            "propertyErrorCount": len(property_errors),
-            "unresolvedPlacementCount": len(unresolved_placements),
-        },
+        "summary": summary_fields,
         "placements": placements,
         "propertyErrors": property_errors,
         "unresolvedPlacements": unresolved_placements,
@@ -1369,6 +1504,7 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--region", default="kr", choices=("kr", "na", "ru", "jp", "tw", "cn"))
     parser.add_argument("--aes-key", default=LOSTARK_KR_AES_KEY)
+    parser.add_argument("--schema-version", type=int, choices=(1, 2), default=2)
     parser.add_argument("packages", nargs="+")
     return parser.parse_args(argv)
 
@@ -1379,14 +1515,25 @@ def main(argv: Iterable[str] | None = None) -> int:
 
     manifest_packages: list[dict[str, Any]] = []
     all_asset_paths: set[str] = set()
+    all_variants: set[tuple[str, str]] = set()
+    all_override_signatures: set[str] = set()
     total_placements = 0
     total_property_errors = 0
     total_unresolved_placements = 0
+    total_override_placements = 0
+    total_override_slots = 0
+    total_non_null_slots = 0
+    total_null_slots = 0
     for logical_name in args.packages:
         physical_path = resolve_physical_package(
             args.umodel, args.package_root, logical_name, args.region
         )
-        result = extract_package(physical_path, logical_name, args.aes_key)
+        result = extract_package(
+            physical_path,
+            logical_name,
+            args.aes_key,
+            schema_version=args.schema_version,
+        )
         output_path = args.output / f"{logical_name}.placements.json"
         output_path.write_text(
             json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -1399,6 +1546,25 @@ def main(argv: Iterable[str] | None = None) -> int:
         all_asset_paths.update(
             item["asset"]["objectPath"] for item in result["placements"]
         )
+        for item in result["placements"]:
+            material_overrides = item.get("materialOverrides")
+            signature = (
+                material_overrides["signatureSha256"]
+                if material_overrides is not None
+                else hashlib.sha256(b"[]").hexdigest()
+            )
+            all_variants.add((item["asset"]["objectPath"].casefold(), signature))
+            all_override_signatures.add(signature)
+            if material_overrides is not None and material_overrides["propertyPresent"]:
+                total_override_placements += 1
+                slots = material_overrides["slots"]
+                total_override_slots += len(slots)
+                total_non_null_slots += sum(
+                    slot["objectPath"] is not None for slot in slots
+                )
+                total_null_slots += sum(
+                    slot["objectPath"] is None for slot in slots
+                )
         manifest_packages.append(
             {
                 "logicalPackage": logical_name,
@@ -1424,17 +1590,31 @@ def main(argv: Iterable[str] | None = None) -> int:
             )
         )
 
+    manifest_summary: dict[str, Any] = {
+        "packageCount": len(manifest_packages),
+        "placementCount": total_placements,
+        "uniqueStaticMeshCount": len(all_asset_paths),
+        "propertyErrorCount": total_property_errors,
+        "unresolvedPlacementCount": total_unresolved_placements,
+    }
+    if args.schema_version == 2:
+        manifest_summary.update(
+            {
+                "materialOverridePlacementCount": total_override_placements,
+                "materialOverrideSlotCount": total_override_slots,
+                "materialOverrideNonNullSlotCount": total_non_null_slots,
+                "materialOverrideNullSlotCount": total_null_slots,
+                "uniqueMaterialOverrideSignatureCount": len(
+                    all_override_signatures
+                ),
+                "uniqueStaticMeshMaterialVariantCount": len(all_variants),
+            }
+        )
     manifest = {
-        "schemaVersion": 1,
+        "schemaVersion": args.schema_version,
         "coordinateSystem": "UE3-native",
         "packages": manifest_packages,
-        "summary": {
-            "packageCount": len(manifest_packages),
-            "placementCount": total_placements,
-            "uniqueStaticMeshCount": len(all_asset_paths),
-            "propertyErrorCount": total_property_errors,
-            "unresolvedPlacementCount": total_unresolved_placements,
-        },
+        "summary": manifest_summary,
     }
     manifest_path = args.output / "placement_manifest.json"
     manifest_path.write_text(

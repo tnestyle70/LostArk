@@ -529,26 +529,31 @@ namespace
 				uint32_t durationMs = 0u;
 				if (!Is_ExactObject(action,
 						{ "trigger", "kind", "targetId", "releaseMode",
-						  "speedMps", "durationMs" }) ||
+						  "speedMps", "durationMs", "yawOffsetDegrees" }) ||
 					!Read_String(action, "trigger", false, trigger) ||
 					(trigger != "ENTER" && trigger != "EXIT") ||
 					!Read_String(action, "targetId", false, targetId) ||
 					targetId != "boss.attachment.left-hand" ||
 					!Read_String(action, "releaseMode", false, releaseMode) ||
 					!Is_FiniteNumber(action, "speedMps") ||
+					!Is_FiniteNumber(action, "yawOffsetDegrees") ||
 					!Read_Unsigned(action, "durationMs", 5000u, durationMs))
 				{
 					return false;
 				}
 
 				const double speedMps = action.Find("speedMps")->Get_Number();
+				const double yawOffsetDegrees =
+					action.Find("yawOffsetDegrees")->Get_Number();
 				const bool_t isHold = releaseMode == "HOLD" &&
-					0.0 == speedMps && 0u == durationMs;
+					0.0 == speedMps && 0u == durationMs &&
+					0.0 == yawOffsetDegrees;
 				const bool_t isKnockback =
 					(releaseMode == "OPPOSITE_KNOCKBACK" || releaseMode == "ARENA_EJECTION") &&
-					speedMps > 0.0 && speedMps <= 50.0 && durationMs > 0u;
+					speedMps > 0.0 && speedMps <= 50.0 && durationMs > 0u &&
+					(releaseMode == "ARENA_EJECTION" || 0.0 == yawOffsetDegrees);
 				if ((!isHold && !isKnockback) || speedMps < 0.0 ||
-					speedMps > 50.0)
+					speedMps > 50.0 || std::abs(yawOffsetDegrees) > 180.0)
 				{
 					return false;
 				}
