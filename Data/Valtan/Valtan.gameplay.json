@@ -4990,7 +4990,22 @@
             }
           },
           "motion": null,
-          "events": [],
+          "events": [
+            {
+              "eventId": "event.valtan.phase2.counter.groggy.enter",
+              "trigger": "ENTER",
+              "kind": "SET_BOSS_FLAG",
+              "flagId": "boss.flag.groggy",
+              "enabled": true
+            },
+            {
+              "eventId": "event.valtan.phase2.counter.groggy.exit",
+              "trigger": "EXIT",
+              "kind": "SET_BOSS_FLAG",
+              "flagId": "boss.flag.groggy",
+              "enabled": false
+            }
+          ],
           "branches": []
         }
       ]

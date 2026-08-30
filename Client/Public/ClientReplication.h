@@ -34,6 +34,46 @@ namespace Client
 	class CValtan;
 	class CDeployPropRuntime;
 
+	/* Pure fail-closed admission state used by the native authoring harness and
+	   the replicated primary Valtan consumer. Source saves may succeed while a
+	   live presentation reload fails; that failure must remain visible and keep
+	   Complete Play closed until the same authoritative consumer admits a later
+	   reload (or the world is reset). */
+	class CPrimaryValtanPresentationFreshnessGate final
+	{
+	public:
+		void Admit(const std::string_view strStatus = {})
+		{
+			m_isFresh = true;
+			m_strStatus.assign(strStatus);
+		}
+
+		void Reject(const std::string_view strDiagnostic)
+		{
+			m_isFresh = false;
+			m_strStatus = strDiagnostic.empty() ?
+				"Authoritative primary Valtan presentation reload failed." :
+				std::string(strDiagnostic);
+		}
+
+		bool_t Can_Play(std::string& strOutStatus) const
+		{
+			if (m_isFresh)
+			{
+				strOutStatus.clear();
+				return true;
+			}
+			strOutStatus =
+				"Complete Play is blocked because the authoritative primary "
+				"Valtan presentation cache is stale. " + m_strStatus;
+			return false;
+		}
+
+	private:
+		bool_t m_isFresh = true;
+		std::string m_strStatus;
+	};
+
 	// Level presentation이 읽는 복제 player snapshot이다. NetEntityId가 identity이며
 	// nickname과 class는 Server spawn record에서만 오고 Character 수명은 소유하지 않는다.
 	struct REPLICATED_PLAYER_VIEW
@@ -336,6 +376,16 @@ namespace Client
 		void Reset();
 		bool Has_WorldEntity(std::string_view archetypeId) const;
 		bool Try_Consume_PresentationFailure(std::string& outStatus);
+		/* Authoring reloads target the primary replicated Server-authoritative
+		   Valtan, never only the Development preview returned by
+		   CAnimationTargetService. A rejected active reload latches the freshness
+		   gate consumed by Boss Tool Complete Play. */
+		bool_t Reload_PrimaryValtanPresentationAuthoring(
+			std::string& strOutStatus);
+		bool_t Reload_PrimaryValtanCombatObjectSoundCues(
+			std::string& strOutStatus);
+		bool_t Can_Play_PrimaryValtanPresentation(
+			std::string& strOutStatus) const;
 		bool Try_Consume_WorldDestructionLiveEvent(
 			LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE& outEvent);
 #ifdef _DEBUG
@@ -437,6 +487,11 @@ namespace Client
 			const LostArk::Shared::S2C_WORLD_ENTITY_SPAWNED& spawned);
 		bool Apply_WorldEntityDespawn(
 			const LostArk::Shared::S2C_WORLD_ENTITY_DESPAWNED& despawned);
+		bool_t Resolve_PrimaryValtan(
+			std::string_view strArchetypeId,
+			LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId,
+			std::shared_ptr<CValtan>& pOutValtan,
+			std::string& strOutStatus) const;
 		void Remove_DependentBossPresentations(
 			LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId);
 		bool Apply_CombatObjectSpawn(
@@ -604,6 +659,10 @@ namespace Client
 		std::unordered_map<
 			LostArk::Shared::NET_ENTITY_ID,
 			WORLD_ENTITY_PRESENTATION> m_WorldEntities;
+		CPrimaryValtanPresentationFreshnessGate
+			m_PrimaryValtanJoinedPresentationFreshness;
+		CPrimaryValtanPresentationFreshnessGate
+			m_PrimaryValtanCombatObjectSoundFreshness;
 		/* The existing Layer owns death tails; they are no longer network entities. */
 		std::vector<std::weak_ptr<CValtan>> m_DeathPresentations;
 	};

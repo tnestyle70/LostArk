@@ -5210,13 +5210,24 @@ bool_t CMainApp::Debug_CompletePlaySelected(std::string& strOutStatus)
 		m_strCompletePlayPatternId,
 		strOutStatus);
 	m_strCompletePlayStatus = strOutStatus;
+	if (submitted)
+	{
+		m_bCompletePlayStatusTracking = true;
+		m_strCompletePlayTrackedPatternId = m_strCompletePlayPatternId;
+	}
 	return submitted;
 }
 
 void CMainApp::RenderCompletePlayControls()
 {
+	/* Global F1 Complete Play exists even when the Balance/Animation window was
+	   never opened.  Construct its read/admission owner here so a persisted
+	   authoring head or failed source load cannot bypass the Server-revision
+	   gate after a Client restart.  This does not open the Balance window. */
+	if (nullptr == m_pBalanceTool)
+		m_pBalanceTool = make_unique<CBalanceTool>();
 	if (!ImGui::CollapsingHeader(
-		"Complete Play (Server / Arena)",
+		"Valtan Complete Play (Server Boss Replay)",
 		ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		return;
@@ -5225,6 +5236,19 @@ void CMainApp::RenderCompletePlayControls()
 		"Shared by every open tool: semantic pattern ID -> Server stages/hits -> replicated animation, Effect, Sound, camera and world events.");
 	ImGui::TextDisabled(
 		"A raw clip or unsaved/unbound asset remains Local Asset Preview and cannot become Complete Play.");
+	ImGui::TextDisabled(
+		"Complete Play resets boss-owned replay state only; the current replicated arena walls, floors, debris, collision, and Nav state are preserved.");
+	if (m_bCompletePlayStatusTracking && nullptr != m_pBossTool)
+	{
+		std::string serverStatus;
+		bool_t inFlight = false;
+		if (m_pBossTool->Get_ServerPatternStatus(
+				m_strCompletePlayTrackedPatternId, serverStatus, inFlight))
+		{
+			m_strCompletePlayStatus = std::move(serverStatus);
+			m_bCompletePlayStatusTracking = inFlight;
+		}
+	}
 	if (!m_bCompletePlayPatternLoadAttempted ||
 		ImGui::SmallButton("Reload Complete Play Inventory"))
 	{
@@ -5261,10 +5285,14 @@ void CMainApp::RenderCompletePlayControls()
 		}
 		ImGui::EndChild();
 	}
+	std::string revisionGateStatus;
+	const bool_t isValtanArena = ETOUI(LEVEL::VALTAN_ARENA) ==
+		CGameInstance::Get().Get_CurrentLevelID();
+	const bool_t isServerRevisionReady = nullptr != m_pBossTool &&
+		m_pBossTool->Can_Play_ServerPattern(revisionGateStatus);
 	const bool_t canCompletePlay = nullptr != m_pBossTool &&
-		!m_strCompletePlayPatternId.empty() &&
-		ETOUI(LEVEL::VALTAN_ARENA) ==
-			CGameInstance::Get().Get_CurrentLevelID();
+		!m_strCompletePlayPatternId.empty() && isValtanArena &&
+		isServerRevisionReady;
 	ImGui::BeginDisabled(!canCompletePlay);
 	if (ImGui::Button("Complete Play##GlobalServerPattern"))
 	{
@@ -5273,8 +5301,16 @@ void CMainApp::RenderCompletePlayControls()
 	ImGui::EndDisabled();
 	if (!canCompletePlay)
 	{
-		ImGui::TextDisabled(
-			"Complete Play unlocks after Lobby -> Valtan Server admission. Local model view remains available in its owner tool.");
+		if (isValtanArena && !isServerRevisionReady &&
+			!revisionGateStatus.empty())
+		{
+			ImGui::TextDisabled("%s", revisionGateStatus.c_str());
+		}
+		else
+		{
+			ImGui::TextDisabled(
+				"Complete Play unlocks after Lobby -> Valtan Server admission. Local model view remains available in its owner tool.");
+		}
 	}
 	ImGui::TextWrapped("%s", m_strCompletePlayStatus.c_str());
 }
@@ -5312,6 +5348,13 @@ void CMainApp::RenderServerArenaActiveControls()
 			std::string readStatus;
 			const bool_t ready = m_pBossTool->Get_ServerArenaActiveState(
 				state, readStatus);
+			if (m_bServerArenaPresetStatusTracking)
+			{
+				m_strServerArenaActiveStatus =
+					m_pBossTool->Get_ServerArenaPresetStatus();
+				m_bServerArenaPresetStatusTracking =
+					m_pBossTool->Is_ServerArenaPresetPending();
+			}
 			const auto actualCheckbox = [](
 				const char_t* label, const bool_t actual)
 			{
@@ -5341,23 +5384,28 @@ void CMainApp::RenderServerArenaActiveControls()
 				ImGui::BeginDisabled(!ready);
 				if (ImGui::SmallButton(label))
 				{
-					(void)m_pBossTool->Set_ServerArenaPreset(
-						preset, m_strServerArenaActiveStatus);
+					std::string submitStatus;
+					const bool_t submitted =
+						m_pBossTool->Set_ServerArenaPreset(
+							preset, submitStatus);
+					m_strServerArenaActiveStatus = std::move(submitStatus);
+					if (submitted)
+						m_bServerArenaPresetStatusTracking = true;
 				}
 				ImGui::EndDisabled();
 			};
-			presetButton("Fresh / All Walls##GlobalArenaPreset",
+			presetButton("Fresh / Restore Entire Arena##GlobalArenaPreset",
 				LostArk::Shared::VALTAN_ARENA_PRESET::FRESH);
 			ImGui::SameLine();
-			presetButton("Phase 2 / Walls Gone##GlobalArenaPreset",
+			presetButton("Circle / Remove All Walls##GlobalArenaPreset",
 				LostArk::Shared::VALTAN_ARENA_PRESET::CIRCLE_WALLS_GONE);
-			presetButton("Break 3 O'Clock##GlobalArenaPreset",
+			presetButton("Break 3 O'Clock Floor##GlobalArenaPreset",
 				LostArk::Shared::VALTAN_ARENA_PRESET::THREE_OCLOCK_BROKEN);
 			ImGui::SameLine();
-			presetButton("Break 9 O'Clock##GlobalArenaPreset",
+			presetButton("Break 9 O'Clock Floor##GlobalArenaPreset",
 				LostArk::Shared::VALTAN_ARENA_PRESET::NINE_OCLOCK_BROKEN);
 			ImGui::SameLine();
-			presetButton("Break 3 + 9##GlobalArenaPreset",
+			presetButton("Final / Break 3 + 9 O'Clock Floors##GlobalArenaPreset",
 				LostArk::Shared::VALTAN_ARENA_PRESET::BOTH_SIDES_BROKEN);
 			ImGui::Text(
 				"Debris actors %u | active collision %u | active nav regions %u | nav revision %llu",

@@ -80,6 +80,20 @@ public:
 		std::string_view strCandidateRevision,
 		std::string_view strApplyClass,
 		std::string& strOutStatus);
+	/* Records the Product candidate (or the absence of one) produced after an
+	   immutable gameplay authoring save.  Complete Play uses this independent
+	   gate because restart-class and failed publications never enter the live
+	   ApplyCandidate transaction snapshot. */
+	void Record_GameplaySourceActivationExpectation(
+		std::string_view strCandidateRevision,
+		std::string_view strApplyClass,
+		std::string_view strStatus);
+	[[nodiscard]] bool Is_LatestGameplaySourceServerActive(
+		std::string& strOutStatus) const;
+	[[nodiscard]] bool Has_GameplaySourceActivationExpectation() const
+	{
+		return m_bGameplaySourceActivationObserved;
+	}
 	void Update();
 	[[nodiscard]] bool Has_PendingCommand() const;
 	/* Playback may consume a saved Flow only while the exact candidate produced
@@ -141,6 +155,10 @@ private:
 	uint32_t m_iNextRequestSequence = 1u;
 	void* m_hPublishProcess = nullptr;
 	std::filesystem::path m_PublishOutputPath;
+	bool m_bGameplaySourceActivationObserved = false;
+	std::string m_strGameplayCandidateRevision;
+	std::string m_strGameplayCandidateApplyClass;
+	std::string m_strGameplayActivationStatus;
 #if defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
 	VALTAN_TUNING_COMMAND_HARNESS_INPUT m_HarnessInput;
 #endif

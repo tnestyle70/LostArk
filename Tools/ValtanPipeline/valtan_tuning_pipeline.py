@@ -1088,24 +1088,87 @@ def _pattern_stage_fields(stage: Mapping[str, Any], *, joined: bool) -> tuple[st
 
 
 def _has_closed_stage_flag(stage: Mapping[str, Any], flag_id: str) -> bool:
+    return _stage_flag_contract(stage, flag_id) == "CLOSED"
+
+
+def _stage_flag_contract(stage: Mapping[str, Any], flag_id: str) -> str:
+    """Classify one typed stage flag as absent, exactly paired, or malformed."""
+
     events = stage.get("events")
     if not isinstance(events, list):
-        return False
-    return any(
-        event.get("kind") == "SET_BOSS_FLAG"
-        and event.get("trigger") == "ENTER"
-        and event.get("flagId") == flag_id
-        and event.get("enabled") is True
+        return "INVALID"
+    matches = [
+        event
         for event in events
         if isinstance(event, dict)
-    ) and any(
-        event.get("kind") == "SET_BOSS_FLAG"
-        and event.get("trigger") == "EXIT"
+        and event.get("kind") == "SET_BOSS_FLAG"
         and event.get("flagId") == flag_id
-        and event.get("enabled") is False
-        for event in events
-        if isinstance(event, dict)
-    )
+    ]
+    if not matches:
+        return "ABSENT"
+    enter = [
+        event
+        for event in matches
+        if event.get("trigger") == "ENTER" and event.get("enabled") is True
+    ]
+    exit_events = [
+        event
+        for event in matches
+        if event.get("trigger") == "EXIT" and event.get("enabled") is False
+    ]
+    return "CLOSED" if len(matches) == len(enter) + len(exit_events) == 2 and len(enter) == len(exit_events) == 1 else "INVALID"
+
+
+def _validate_pattern_counter_groggy_contract(
+    pattern: Mapping[str, Any], context: str
+) -> None:
+    stages = pattern.get("stages")
+    if not isinstance(stages, list):
+        raise PipelineError(f"{context}.stages must be an array")
+    action_stages = unique_index(stages, "actionId", f"{context} stage actions")
+    for stage in stages:
+        stage_id = stage.get("stageId")
+        branches = stage.get("branches")
+        if not isinstance(branches, list):
+            raise PipelineError(f"{context}/{stage_id}.branches must be an array")
+        outcomes = [branch.get("outcome") for branch in branches if isinstance(branch, dict)]
+        if len(outcomes) != len(branches) or len(set(outcomes)) != len(outcomes):
+            raise PipelineError(f"{context}/{stage_id} has a duplicate or invalid branch outcome")
+
+        counter_branches = [
+            branch for branch in branches if branch.get("outcome") == "COUNTER_HIT"
+        ]
+        counter_state = _stage_flag_contract(stage, "boss.flag.counterable")
+        if not counter_branches:
+            if counter_state != "ABSENT":
+                raise PipelineError(
+                    f"{context}/{stage_id} counterable flag is not owned by one COUNTER_HIT branch"
+                )
+        else:
+            branch = counter_branches[0]
+            target_action_id = branch.get("nextActionId")
+            target = action_stages.get(target_action_id)
+            if (
+                stage.get("stageKind") != "WINDUP"
+                or counter_state != "CLOSED"
+                or target is None
+                or target.get("stageKind") != "GROGGY"
+                or _stage_flag_contract(target, "boss.flag.groggy") != "CLOSED"
+            ):
+                raise PipelineError(
+                    f"{context}/{stage_id} COUNTER_HIT requires one closed WINDUP window and a closed same-pattern GROGGY target"
+                )
+
+        groggy_state = _stage_flag_contract(stage, "boss.flag.groggy")
+        if stage.get("stageKind") == "GROGGY":
+            if groggy_state != "CLOSED":
+                raise PipelineError(
+                    f"{context}/{stage_id} GROGGY stage requires one paired groggy flag transition"
+                )
+        elif groggy_state != "ABSENT":
+            raise PipelineError(
+                f"{context}/{stage_id} non-GROGGY stage owns a groggy flag transition"
+            )
 
 
 def _validate_pattern_stage_extensions(
@@ -1163,17 +1226,9 @@ def _validate_pattern_stage_extensions(
     number(proxy["forwardOffsetM"], f"{context}.counterProxy.forwardOffsetM", -20, 20)
     number(proxy["rightOffsetM"], f"{context}.counterProxy.rightOffsetM", -20, 20)
     number(proxy["radiusM"], f"{context}.counterProxy.radiusM", 0.1, 20)
-    has_counter_branch = any(
-        branch.get("outcome") == "COUNTER_HIT"
-        for branch in stage.get("branches", [])
-        if isinstance(branch, dict)
-    )
-    if not has_counter_branch or not _has_closed_stage_flag(
-        stage, "boss.flag.counterable"
-    ):
+    if stage.get("stageKind") != "WINDUP":
         raise PipelineError(
-            f"{context} counter proxy requires a closed counterable window and "
-            "COUNTER_HIT branch"
+            f"{context} counter proxy preset requires a WINDUP authoring stage"
         )
 
 
@@ -3513,6 +3568,9 @@ def validate_v2_master(
                 if invocation["durationPolicy"] != "EXPLICIT":
                     raise PipelineError("initial camera migration uses EXPLICIT duration")
                 integer(invocation["durationMs"], "camera invocation durationMs", 1, duration)
+        _validate_pattern_counter_groggy_contract(
+            pattern, f"pattern {pattern_id}"
+        )
     if not cue_ids.issubset(expected_cue_policies):
         raise PipelineError("managed cue scalePolicy migration table coverage drift")
     live_expected_scale_policy_counts = Counter(
@@ -4490,9 +4548,15 @@ def compile_pattern_product(
             projected["actions"] = actions
         if stage["branches"]:
             projected["branches"] = copy.deepcopy(stage["branches"])
-        for optional in ("partDamagePolicy", "counterProxy"):
-            if optional in stage:
-                projected[optional] = copy.deepcopy(stage[optional])
+        if "partDamagePolicy" in stage:
+            projected["partDamagePolicy"] = copy.deepcopy(stage["partDamagePolicy"])
+        has_counter_hit = any(
+            branch.get("outcome") == "COUNTER_HIT"
+            for branch in stage["branches"]
+            if isinstance(branch, dict)
+        )
+        if has_counter_hit and "counterProxy" in stage:
+            projected["counterProxy"] = copy.deepcopy(stage["counterProxy"])
         projected_stages.append(projected)
     if is_manual_audition:
         selection_fields = {
@@ -5654,6 +5718,14 @@ DRAFT_PATCH_OPERATIONS = {
     "SET_PATTERN_RANGE": ("op", "patternId", "minimumRangeM", "maximumRangeM"),
     "SET_STAGE_DURATION": ("op", "patternId", "stageId", "durationMs"),
     "SET_STAGE_HIT": ("op", "patternId", "stageId", "hit"),
+    "SET_STAGE_COUNTER_WINDOW": (
+        "op",
+        "patternId",
+        "stageId",
+        "enabled",
+        "successStageId",
+        "successActionId",
+    ),
     "SET_STAGE_GRABBED_RELEASE": (
         "op",
         "patternId",
@@ -5865,6 +5937,74 @@ def _draft_stage(
     return matches[0]
 
 
+def _counter_flag_event_id(
+    pattern_id: str, stage_id: str, flag_name: str, trigger: str
+) -> str:
+    identity = f"{pattern_id}.{stage_id}".lower()
+    slug = re.sub(r"[^a-z0-9.-]+", "-", identity).strip("-.")[:72]
+    digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:12]
+    return (
+        f"event.valtan.counter-authoring.{slug}.{flag_name}."
+        f"{trigger.lower()}.{digest}"
+    )
+
+
+def _draft_add_closed_flag(
+    stage: dict[str, Any],
+    pattern_id: str,
+    flag_id: str,
+    flag_name: str,
+    ordinal: int,
+) -> None:
+    state = _stage_flag_contract(stage, flag_id)
+    if state == "INVALID":
+        raise _draft_error(
+            f"typed counter authoring found an unpaired or duplicate {flag_id} transition",
+            operation_ordinal=ordinal,
+            pattern_id=pattern_id,
+            stage_id=stage["stageId"],
+            field="enabled",
+            error_code="COUNTER_FLAG_CONTRACT_INVALID",
+        )
+    if state == "CLOSED":
+        return
+    for trigger, enabled in (("ENTER", True), ("EXIT", False)):
+        stage["events"].append(
+            {
+                "eventId": _counter_flag_event_id(
+                    pattern_id, stage["stageId"], flag_name, trigger
+                ),
+                "trigger": trigger,
+                "kind": "SET_BOSS_FLAG",
+                "flagId": flag_id,
+                "enabled": enabled,
+            }
+        )
+
+
+def _draft_remove_closed_flag(
+    stage: dict[str, Any], pattern_id: str, flag_id: str, ordinal: int
+) -> None:
+    state = _stage_flag_contract(stage, flag_id)
+    if state == "INVALID":
+        raise _draft_error(
+            f"typed counter authoring found an unpaired or duplicate {flag_id} transition",
+            operation_ordinal=ordinal,
+            pattern_id=pattern_id,
+            stage_id=stage["stageId"],
+            field="enabled",
+            error_code="COUNTER_FLAG_CONTRACT_INVALID",
+        )
+    stage["events"] = [
+        event
+        for event in stage["events"]
+        if not (
+            event.get("kind") == "SET_BOSS_FLAG"
+            and event.get("flagId") == flag_id
+        )
+    ]
+
+
 def _validate_volley_layout(layout: Any, count: int, context: str) -> dict[str, Any]:
     if not isinstance(layout, dict):
         raise DraftPatchError(f"{context} must be an object", field="layout")
@@ -6057,6 +6197,139 @@ def apply_draft_patch(
                     field="hit",
                 )
             stage["hit"] = copy.deepcopy(operation["hit"])
+        elif kind == "SET_STAGE_COUNTER_WINDOW":
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            stage = _draft_stage(pattern, operation["stageId"], ordinal)
+            enabled = boolean(
+                operation["enabled"], f"operations[{ordinal}].enabled"
+            )
+            success_stage_id = stable_id(
+                operation["successStageId"],
+                f"operations[{ordinal}].successStageId",
+            )
+            success_action_id = stable_id(
+                operation["successActionId"],
+                f"operations[{ordinal}].successActionId",
+            )
+            success_stage = _draft_stage(pattern, success_stage_id, ordinal)
+            if stage.get("stageKind") != "WINDUP":
+                raise _draft_error(
+                    "typed counter authoring only admits a WINDUP source stage",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="stageId",
+                    error_code="COUNTER_SOURCE_KIND_INVALID",
+                )
+            if (
+                success_stage.get("actionId") != success_action_id
+                or success_stage.get("stageKind") != "GROGGY"
+            ):
+                raise _draft_error(
+                    "counter success target must resolve to the selected GROGGY stage/action in the same pattern",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=success_stage_id,
+                    field="successActionId",
+                    error_code="COUNTER_TARGET_INVALID",
+                )
+            counter_branches = [
+                branch
+                for branch in stage["branches"]
+                if branch.get("outcome") == "COUNTER_HIT"
+            ]
+            if len(counter_branches) > 1:
+                raise _draft_error(
+                    "typed counter authoring found duplicate COUNTER_HIT branches",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="enabled",
+                    error_code="COUNTER_BRANCH_DUPLICATE",
+                )
+            source_flag_state = _stage_flag_contract(
+                stage, "boss.flag.counterable"
+            )
+            if source_flag_state == "INVALID" or (
+                bool(counter_branches) != (source_flag_state == "CLOSED")
+            ):
+                raise _draft_error(
+                    "COUNTER_HIT and the paired counterable flag transition must already agree",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="enabled",
+                    error_code="COUNTER_SOURCE_CONTRACT_INVALID",
+                )
+            groggy_flag_state = _stage_flag_contract(
+                success_stage, "boss.flag.groggy"
+            )
+            if groggy_flag_state == "INVALID":
+                raise _draft_error(
+                    "selected GROGGY target has an unpaired or duplicate groggy flag transition",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=success_stage["stageId"],
+                    field="successStageId",
+                    error_code="COUNTER_TARGET_FLAG_INVALID",
+                )
+            if not enabled and (
+                not counter_branches
+                or counter_branches[0].get("nextActionId") != success_action_id
+            ):
+                raise _draft_error(
+                    "disabled counter target does not match the currently authored success action",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="successActionId",
+                    error_code="COUNTER_TARGET_STALE",
+                )
+
+            target = (kind, pattern["patternId"], stage["stageId"])
+            if enabled:
+                _draft_add_closed_flag(
+                    stage,
+                    pattern["patternId"],
+                    "boss.flag.counterable",
+                    "counterable",
+                    ordinal,
+                )
+                if counter_branches:
+                    counter_branches[0]["nextActionId"] = success_action_id
+                else:
+                    branch = {
+                        "outcome": "COUNTER_HIT",
+                        "nextActionId": success_action_id,
+                    }
+                    timeout_index = next(
+                        (
+                            index
+                            for index, candidate in enumerate(stage["branches"])
+                            if candidate.get("outcome") == "TIMEOUT"
+                        ),
+                        len(stage["branches"]),
+                    )
+                    stage["branches"].insert(timeout_index, branch)
+                _draft_add_closed_flag(
+                    success_stage,
+                    pattern["patternId"],
+                    "boss.flag.groggy",
+                    "groggy",
+                    ordinal,
+                )
+            else:
+                stage["branches"] = [
+                    branch
+                    for branch in stage["branches"]
+                    if branch.get("outcome") != "COUNTER_HIT"
+                ]
+                _draft_remove_closed_flag(
+                    stage,
+                    pattern["patternId"],
+                    "boss.flag.counterable",
+                    ordinal,
+                )
         elif kind == "SET_STAGE_GRABBED_RELEASE":
             pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
             stage = _draft_stage(pattern, operation["stageId"], ordinal)

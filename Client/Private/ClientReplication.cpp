@@ -445,6 +445,151 @@ bool Client::CClientReplication::Has_WorldEntity(
 	return false;
 }
 
+bool_t Client::CClientReplication::Resolve_PrimaryValtan(
+	const std::string_view strArchetypeId,
+	const LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId,
+	std::shared_ptr<CValtan>& pOutValtan,
+	std::string& strOutStatus) const
+{
+	pOutValtan.reset();
+	for (const auto& [entityId, presentation] : m_WorldEntities)
+	{
+		(void)entityId;
+		if (LostArk::Shared::WORLD_ENTITY_KIND::BOSS != presentation.eKind ||
+			presentation.strArchetypeId != strArchetypeId ||
+			presentation.iOwnerBossNetEntityId != iOwnerBossNetEntityId)
+		{
+			continue;
+		}
+
+		const std::shared_ptr<CValtan> Candidate = presentation.pValtan.lock();
+		if (nullptr == Candidate)
+		{
+			strOutStatus =
+				"The primary replicated Valtan registry entry has no live presentation consumer.";
+			return false;
+		}
+		if (nullptr != pOutValtan)
+		{
+			pOutValtan.reset();
+			strOutStatus =
+				"Multiple primary replicated Valtan presentation consumers were found.";
+			return false;
+		}
+		pOutValtan = Candidate;
+	}
+
+	strOutStatus = nullptr == pOutValtan ?
+		"No active primary replicated Valtan; the next admitted spawn will load the saved presentation source." :
+		"Resolved the authoritative primary replicated Valtan presentation consumer.";
+	return true;
+}
+
+bool_t Client::CClientReplication::Reload_PrimaryValtanPresentationAuthoring(
+	std::string& strOutStatus)
+{
+	static constexpr std::string_view PRIMARY_ARCHETYPE_ID = "BOSS_VALTAN";
+	static constexpr LostArk::Shared::NET_ENTITY_ID PRIMARY_OWNER_ID =
+		LostArk::Shared::INVALID_NET_ENTITY_ID;
+	std::shared_ptr<CValtan> PrimaryValtan;
+	std::string ResolveStatus;
+	if (!Resolve_PrimaryValtan(
+		PRIMARY_ARCHETYPE_ID, PRIMARY_OWNER_ID, PrimaryValtan, ResolveStatus))
+	{
+		m_PrimaryValtanJoinedPresentationFreshness.Reject(ResolveStatus);
+		m_strPendingPresentationFailure = ResolveStatus;
+		strOutStatus = ResolveStatus;
+		return false;
+	}
+	if (nullptr == PrimaryValtan)
+	{
+		std::string FreshnessStatus;
+		if (!m_PrimaryValtanJoinedPresentationFreshness.Can_Play(
+				FreshnessStatus))
+		{
+			strOutStatus = ResolveStatus + " " + FreshnessStatus +
+				" The next primary spawn must admit a successful joined reload.";
+			return false;
+		}
+		strOutStatus = ResolveStatus;
+		return true;
+	}
+
+	std::string ReloadStatus;
+	if (!PrimaryValtan->Reload_PatternPresentationAuthoring(ReloadStatus))
+	{
+		strOutStatus =
+			"Authoritative primary Valtan joined presentation reload rejected: " +
+			ReloadStatus;
+		m_PrimaryValtanJoinedPresentationFreshness.Reject(strOutStatus);
+		m_strPendingPresentationFailure = strOutStatus;
+		return false;
+	}
+	m_PrimaryValtanJoinedPresentationFreshness.Admit(ReloadStatus);
+	strOutStatus =
+		"Authoritative primary Valtan joined presentation reloaded. " +
+		ReloadStatus;
+	return true;
+}
+
+bool_t Client::CClientReplication::Reload_PrimaryValtanCombatObjectSoundCues(
+	std::string& strOutStatus)
+{
+	static constexpr std::string_view PRIMARY_ARCHETYPE_ID = "BOSS_VALTAN";
+	static constexpr LostArk::Shared::NET_ENTITY_ID PRIMARY_OWNER_ID =
+		LostArk::Shared::INVALID_NET_ENTITY_ID;
+	std::shared_ptr<CValtan> PrimaryValtan;
+	std::string ResolveStatus;
+	if (!Resolve_PrimaryValtan(
+		PRIMARY_ARCHETYPE_ID, PRIMARY_OWNER_ID, PrimaryValtan, ResolveStatus))
+	{
+		m_PrimaryValtanCombatObjectSoundFreshness.Reject(ResolveStatus);
+		m_strPendingPresentationFailure = ResolveStatus;
+		strOutStatus = ResolveStatus;
+		return false;
+	}
+	if (nullptr == PrimaryValtan)
+	{
+		std::string FreshnessStatus;
+		if (!m_PrimaryValtanCombatObjectSoundFreshness.Can_Play(
+				FreshnessStatus))
+		{
+			strOutStatus = ResolveStatus + " " + FreshnessStatus +
+				" The next primary spawn must admit a successful combat-object Sound reload.";
+			return false;
+		}
+		strOutStatus = ResolveStatus;
+		return true;
+	}
+
+	std::string ReloadStatus;
+	if (!PrimaryValtan->Reload_CombatObjectSoundCues(ReloadStatus))
+	{
+		strOutStatus =
+			"Authoritative primary Valtan combat-object Sound reload rejected: " +
+			ReloadStatus;
+		m_PrimaryValtanCombatObjectSoundFreshness.Reject(strOutStatus);
+		m_strPendingPresentationFailure = strOutStatus;
+		return false;
+	}
+	m_PrimaryValtanCombatObjectSoundFreshness.Admit(ReloadStatus);
+	strOutStatus =
+		"Authoritative primary Valtan combat-object Sound reloaded. " +
+		ReloadStatus;
+	return true;
+}
+
+bool_t Client::CClientReplication::Can_Play_PrimaryValtanPresentation(
+	std::string& strOutStatus) const
+{
+	if (!m_PrimaryValtanJoinedPresentationFreshness.Can_Play(strOutStatus))
+		return false;
+	if (!m_PrimaryValtanCombatObjectSoundFreshness.Can_Play(strOutStatus))
+		return false;
+	strOutStatus.clear();
+	return true;
+}
+
 bool Client::CClientReplication::Try_Consume_PresentationFailure(
 	std::string& outStatus)
 {
@@ -1151,6 +1296,15 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	presentation.fCollisionRadius = spawned.fCollisionRadius;
 	presentation.pValtan = valtan;
 	presentation.iOwnerBossNetEntityId = spawned.iOwnerBossNetEntityId;
+	const bool_t isPrimaryValtan = "BOSS_VALTAN" == spawned.strArchetypeId &&
+		LostArk::Shared::INVALID_NET_ENTITY_ID ==
+			spawned.iOwnerBossNetEntityId;
+	std::string JoinedReloadStatus;
+	std::string CombatObjectSoundReloadStatus;
+	const bool_t joinedReloaded = !isPrimaryValtan ||
+		valtan->Reload_PatternPresentationAuthoring(JoinedReloadStatus);
+	const bool_t combatObjectSoundReloaded = !isPrimaryValtan ||
+		valtan->Reload_CombatObjectSoundCues(CombatObjectSoundReloadStatus);
 #ifdef _DEBUG
 	valtan->Set_CombatColliderDebugVisible(
 		m_isCombatColliderDebugVisible);
@@ -1167,6 +1321,37 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 			m_Desc.iLayerLevelIndex,
 			m_Desc.strWorldEntityLayerTag,
 			valtan);
+	}
+	else if (isPrimaryValtan)
+	{
+		if (joinedReloaded)
+		{
+			m_PrimaryValtanJoinedPresentationFreshness.Admit(
+				JoinedReloadStatus);
+		}
+		else
+		{
+			const std::string Diagnostic =
+				"Primary replicated Valtan spawn could not admit the joined presentation cache: " +
+				JoinedReloadStatus;
+			m_PrimaryValtanJoinedPresentationFreshness.Reject(Diagnostic);
+			m_strPendingPresentationFailure = Diagnostic;
+		}
+		if (combatObjectSoundReloaded)
+		{
+			m_PrimaryValtanCombatObjectSoundFreshness.Admit(
+				CombatObjectSoundReloadStatus);
+		}
+		else
+		{
+			const std::string Diagnostic =
+				"Primary replicated Valtan spawn could not admit the combat-object Sound cache: " +
+				CombatObjectSoundReloadStatus;
+			m_PrimaryValtanCombatObjectSoundFreshness.Reject(Diagnostic);
+			if (!m_strPendingPresentationFailure.empty())
+				m_strPendingPresentationFailure += " ";
+			m_strPendingPresentationFailure += Diagnostic;
+		}
 	}
 	return inserted;
 }
@@ -1264,6 +1449,9 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 			iter->second.strArchetypeId);
 	}
 	m_WorldEntities.erase(iter);
+	/* A despawn must not erase a reload rejection. Complete Play remains blocked
+	   until Reset_World establishes a new world lifetime or a later primary spawn
+	   successfully reloads the authoritative caches. */
 	return true;
 }
 
@@ -2175,6 +2363,10 @@ void Client::CClientReplication::Reset_World()
 		}
 	}
 	m_WorldEntities.clear();
+	m_PrimaryValtanJoinedPresentationFreshness.Admit(
+		"Replicated world reset; the next primary Valtan spawn will reload authoring sources.");
+	m_PrimaryValtanCombatObjectSoundFreshness.Admit(
+		"Replicated world reset; the next primary Valtan spawn will reload authoring sources.");
 	for (const std::weak_ptr<CValtan>& deathPresentation : m_DeathPresentations)
 	{
 		if (const std::shared_ptr<CValtan> valtan = deathPresentation.lock())

@@ -2,6 +2,15 @@
 
 이 폴더는 팀원이 pull 후 가장 먼저 보는 살아 있는 public 계약의 정본이다. 날짜별 PLAN/RESULT는 구현 당시의 증거이므로 `.md/GB/<MM-DD>/`에 그대로 보존하고, 여기서 현재 유효한 문서만 연결한다.
 
+## PR #264 이후 main pull 전 1회 확인
+
+PR #264~#266 기준 PC가 PR #267 이후 `main`을 처음 받을 때는 pull 전에
+`Client/Bin/Resources` 전체가 팀장 Drive 또는 저장소 밖에 보존됐는지 확인한다. PR #267의 Git
+추적 해제는 작성자 PC의 ignore된 실물을 보존해도, 이전 commit에서 pull하는 PC의 기존 LFS 파일은
+삭제한다. 이미 pull해 Effect Catalog Load Failed가 발생했다면 `git lfs pull`만 반복하지 말고 Drive의
+최신 Resources 전체를 다시 둔 뒤 두 validator를 실행한다. 정확한 pull 전 보존, pull 후 복원과 검증은
+[Runtime 빌드 ZIP·Drive Resources 전달 가이드](RUNTIME_BUILD_DELIVERY_GUIDE.md)를 따른다.
+
 ## 2026-09-30까지 팀 LAN 세션 시작
 
 모든 팀원과 에이전트는 pull 후 다른 작업보다 먼저 아래 명령을 실행한다.
@@ -44,7 +53,7 @@ Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
 12. Map Destruction PhysX·Mesh Debris 작업법: `MAP_DESTRUCTION_PHYSX_HANDOFF.md`
 13. NPC 배치·상호작용 작업법: `NPC_OWNER_HANDOFF.md`
 14. 밸런스 Hot Reload 경계: `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`
-15. EXE/Data ZIP과 Drive Resource 분리 전달: `RUNTIME_BUILD_DELIVERY_GUIDE.md`
+15. PR #264 이후 main pull 이전과 EXE/Data ZIP·Drive Resource 분리 전달: `RUNTIME_BUILD_DELIVERY_GUIDE.md`
 16. 최근 Valtan·Bern·Party 통합 검증 증거: `../GB/08-28/2026-08-28_VALTAN_BERN_PARTY_INTEGRATION_RESULT.md`
 
 <!-- team-contract: vertical-slice-feature-owner; roles-are-not-file-permissions -->

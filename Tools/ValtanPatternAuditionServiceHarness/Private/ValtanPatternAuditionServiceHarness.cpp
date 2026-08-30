@@ -12,6 +12,7 @@
 int Run_ValtanPresentationContractTests();
 int Run_ValtanEncounterReferenceContractTests();
 int Run_ValtanPatternSoundCueDocumentContractTests();
+int Run_ValtanPatternAnimationBindingDocumentContractTests();
 
 using namespace Client;
 using namespace LostArk::Shared;
@@ -904,7 +905,10 @@ int main()
 		Run_ValtanEncounterReferenceContractTests();
 	const int PatternSoundCueFailures =
 		Run_ValtanPatternSoundCueDocumentContractTests();
+	const int AnimationBindingDocumentFailures =
+		Run_ValtanPatternAnimationBindingDocumentContractTests();
 	return 0u == Failed && 0 == FlowFailures && 0 == TuningFailures &&
 		0 == PresentationFailures && 0 == EncounterReferenceFailures &&
-		0 == PatternSoundCueFailures ? 0 : 1;
+		0 == PatternSoundCueFailures &&
+		0 == AnimationBindingDocumentFailures ? 0 : 1;
 }

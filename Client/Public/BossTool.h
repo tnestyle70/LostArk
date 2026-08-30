@@ -81,6 +81,17 @@ public:
 	bool_t Play_ServerPattern(
 		const std::string& strPatternId,
 		std::string& strOutStatus);
+	/* Complete Play must never race a saved gameplay candidate that has not
+	   reached the exact Server-active revision yet.  This gate is shared by the
+	   F1 button and every owner-tool route into the same Product audition. */
+	bool_t Can_Play_ServerPattern(std::string& strOutStatus) const;
+	/* Read-only projection of the process-wide Server verdict/lifecycle for the
+	   exact Boss Tool pattern request.  A different consumer or Pattern ID is
+	   never reported as this caller's Complete Play status. */
+	bool_t Get_ServerPatternStatus(
+		const std::string& strPatternId,
+		std::string& strOutStatus,
+		bool_t& bOutInFlight) const;
 	bool_t Get_ServerPatternOptions(
 		std::vector<SERVER_PATTERN_OPTION>& outOptions,
 		std::string& strOutStatus);
@@ -91,6 +102,7 @@ public:
 		VALTAN_ARENA_ACTIVE_STATE& outState,
 		std::string& strOutStatus) const;
 	std::string Get_ServerArenaPresetStatus() const;
+	bool_t Is_ServerArenaPresetPending() const;
 	bool_t Consume_CameraToolOpenRequest(
 		CAMERA_TOOL_OPEN_REQUEST& outRequest);
 	bool_t Consume_EffectToolOpenRequest(
