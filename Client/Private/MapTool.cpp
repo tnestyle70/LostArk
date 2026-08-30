@@ -5045,7 +5045,8 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 
 		if (descriptor.areaId == "LV_LOBBY_CLASSSELECT_SL00" ||
 			descriptor.areaId == "LV_BER_BERNCASTLE" ||
-			descriptor.areaId == "LV_LUT_HEARTRB_ED")
+			descriptor.areaId == "LV_LUT_HEARTRB_ED" ||
+			descriptor.areaId == "LV_LUT_MIDNIGHTC_ED")
 		{
 			std::string gameplay;
 			if (!ReadRequiredString(*selected, "gameplayDocument", gameplay))
