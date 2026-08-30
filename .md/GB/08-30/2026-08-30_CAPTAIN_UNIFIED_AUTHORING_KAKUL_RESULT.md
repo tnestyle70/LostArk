@@ -31,7 +31,7 @@ Presentation Workbench가 들어간 `c75e3623`이다.
   하나의 cross-domain transaction으로 함께 rollback하는 저장은 아직 아니다.
 - Debug FullDiagnostic는 코드 회귀가 아니라 원본 물리 Resources에서 Ghost Valtan body/AnimSet과 texture가
   삭제돼 정본 runner 전체 PASS를 선언할 수 없다.
-- 원본 `C:/Users/user/Desktop/LostArk`는 2,269건의 대규모 dirty 상태라 이번 commit을 자동 병합하지 않았다.
+- 원본 `C:/Users/user/Desktop/LostArk`는 작업 시작 시 2,269건의 대규모 dirty 상태라 이번 branch를 자동 병합하지 않았다.
 
 ## 2. 이미지에 보인 다른 작업의 읽기 전용 대조
 
@@ -56,13 +56,16 @@ Presentation Workbench가 들어간 `c75e3623`이다.
 
 | 경로 | branch / HEAD | 현재 상태 |
 |---|---|---|
-| `C:/Users/user/Desktop/LostArk` | `codex/release-runtime-finalization` / `9174f17c` | 총 2,269: modified 77, deleted 2,170, untracked 22 |
+| `C:/Users/user/Desktop/LostArk` | `codex/release-runtime-finalization` / `9174f17c` | 작업 시작 총 2,269: modified 77, deleted 2,170, untracked 22 |
 | `C:/Users/user/.codex/worktrees/4fc7/LostArk` | detached / `9174f17c` | 총 103: modified 47, deleted 1, untracked 55 |
 | `C:/Users/user/Desktop/CodexWorkTree/LostArk-action-presentation-tool` | `codex/action-presentation-integrated-tool` / `c75e3623` | clean |
 | `C:/Users/user/Desktop/CodexWorkTree/LostArk-captain-unified` | `codex/captain-unified-authoring-kakul` / `c75e3623` + 이번 변경 | commit 전 tracked 44, untracked status root 13 |
 
 원본의 2,170개 삭제를 이번 작업이 만든 것이 아니다. reset, checkout, stage, commit, worktree prune으로
 원본을 정리하지 않았다.
+
+최종 보고 직전 재측정은 총 2,259: modified 77, deleted 2,170, untracked 12다. 병렬 작업 중 untracked
+10개가 줄었고 tracked 상태는 그대로였으므로, 이 통합 세션이 원본을 정리한 결과로 계산하지 않는다.
 
 ### 3.2 2026-08-30 현재 Git 등록 worktree 29개
 
@@ -500,8 +503,10 @@ Server가 현재 `not-listening`인 것은 설정 실패가 아니다. 사용자
 
 ## 13. 사용자 수동 검증 순서
 
-원본은 대규모 dirty이므로 먼저 이번 integration commit을 안전하게 반영해야 한다. 원본을 clean하게
-보존하거나 다른 변경을 commit한 뒤 cherry-pick한다. 그 전에는 원본에서 `git add .`를 실행하지 않는다.
+원본은 대규모 dirty이므로 먼저 소유 작업별로 안전하게 보존해야 한다. 이번 결과는
+`origin/codex/captain-unified-authoring-kakul` branch 전체를 기준으로 반영한다. 최종 commit
+`7a92f219`만 단독 cherry-pick하면 부모인 `c75e3623` Action Presentation Workbench와 그 기준 main 변경이
+빠지므로 금지한다. 그 전에는 원본에서 `git add .`를 실행하지 않는다.
 
 반영 후:
 
@@ -524,7 +529,8 @@ Resource Files collection만 확인한다. Server Level처럼 보이면 오히�
 
 우선순위는 다음과 같다.
 
-1. 원본 dirty 2,269건을 소유 작업별 commit/보존하고 이번 integration commit을 cherry-pick한다.
+1. 원본 dirty를 소유 작업별 commit/보존하고 `origin/codex/captain-unified-authoring-kakul` branch 전체를
+   병합한다. `7a92f219` 단독 cherry-pick은 하지 않는다.
 2. Ghost Valtan exact body/AnimSet/textures를 원본 근거에서 재추출해 FullDiagnostic를 다시 실행한다.
 3. Gameplay + Sound joined Save를 stage/validate/commit/rollback 한 transaction으로 닫는다.
 4. Server publisher에 MSBuild Inputs/Outputs를 주고 no-op pre-build 비용을 제거한다.
