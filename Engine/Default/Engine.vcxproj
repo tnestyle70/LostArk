@@ -73,6 +73,10 @@
     <!-- Engine runtime deployment is controlled by the Client project. -->
     <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
   </PropertyGroup>
+  <PropertyGroup>
+    <!-- Keep solution and direct-project builds on one incremental cache. -->
+    <IntDir>$(ProjectDir)$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>..\Bin\Debug\</OutDir>
   </PropertyGroup>
