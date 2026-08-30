@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "areaId": "LV_LUT_MIDNIGHTC_ED",
+  "outputScope": "all",
+  "assetCount": 292,
+  "exactAssetCount": 292,
+  "outputExactAssetCount": 292,
+  "overlayAssetCount": 0,
+  "sourcePlacementCount": 2951,
+  "overlayPlacementCount": 0,
+  "renderProfileCount": 0,
+  "visibilityOverrideCount": 0,
+  "placementCount": 2951,
+  "sourceAnyNegativeScaleCount": 857,
+  "sourceReflectedCount": 837,
+  "sourceHiddenHelperCount": 83,
+  "sourceHiddenCategoryCounts": {
+    "deferred-fx": 31,
+    "module-proxy": 18,
+    "nav-helper": 83
+  },
+  "anyNegativeScaleCount": 857,
+  "reflectedCount": 837,
+  "hiddenHelperCount": 83,
+  "hiddenCategoryCounts": {
+    "deferred-fx": 31,
+    "module-proxy": 18,
+    "nav-helper": 83
+  },
+  "sourceLevelCounts": {
+    "LV_LUT_MIDNIGHTC_ED_PS": 109,
+    "LV_LUT_MIDNIGHTC_ED_SL01": 211,
+    "LV_LUT_MIDNIGHTC_ED_SL02": 1357,
+    "LV_LUT_MIDNIGHTC_ED_SL03": 348,
+    "LV_LUT_MIDNIGHTC_ED_SL04": 429,
+    "LV_LUT_MIDNIGHTC_ED_SL05": 497
+  },
+  "goldenPlacement": null,
+  "inputs": {
+    "assetManifest": "FA063F39926EFF89A54E130CD03C618027D5E1D2E6CD3C5D746CFE2A5397F9AB",
+    "runtimeManifest": "4C3855D593629A9CF0CFFD24D5C78A62140653B22C576C5507B09095F3E01FF1",
+    "placementDirectories": [
+      "C:/LostArkExtract/LV_LUT_MIDNIGHTC_ED_20260829/Placements"
+    ],
+    "placements": {
+      "LV_LUT_MIDNIGHTC_ED_PS.placements.json": "E5A3944EB36C3D508EE02FDE4C189F30448CEA0B8E9400D7500368D810250450",
+      "LV_LUT_MIDNIGHTC_ED_SL01.placements.json": "3A71F5382507BA72191139B2D8EB900128D90E87ABFA0722FF5378E3DBA57905",
+      "LV_LUT_MIDNIGHTC_ED_SL02.placements.json": "EB93ED405EB19AF090F0AD2AC38ADC24A5577618C86AE7A2270486DED97C1DB8",
+      "LV_LUT_MIDNIGHTC_ED_SL03.placements.json": "B3EE33C6F1A2A8CB6BC49AA82C3877D366371B52D5C8D93A4C151D1477AB80A6",
+      "LV_LUT_MIDNIGHTC_ED_SL04.placements.json": "8C53ED123B74D2DCD76AE430F8F5DE10953EC8D7BB01BA1C78ABDFBAA2184A53",
+      "LV_LUT_MIDNIGHTC_ED_SL05.placements.json": "354D09A9D6979AD11CDDE84D623C87511935B86E768C492A9F52F6A382E07A17"
+    },
+    "overlayManifest": null,
+    "renderProfileManifest": null
+  },
+  "outputs": {
+    "catalog": "5e986843d7d28e2f81c671a2539975b82dd0869d4409deb651daecabba58d0a7",
+    "placements": "03877c49500b12a7c8fd1e07d28320dad030c3d09369c890d132b570bd1c0470"
+  }
+}
