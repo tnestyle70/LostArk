@@ -10643,9 +10643,9 @@
         "type": "project-policy",
         "policyId": "project-effect-binding-v1"
       },
-      "sourceValue": "effect.dimensionmaster.skill.2050010",
+      "sourceValue": "",
       "transform": "identity",
-      "resultValue": "effect.dimensionmaster.skill.2050010"
+      "resultValue": ""
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -11522,9 +11522,9 @@
         "type": "project-policy",
         "policyId": "project-effect-binding-v1"
       },
-      "sourceValue": "effect.dimensionmaster.skill.2050100",
+      "sourceValue": "",
       "transform": "identity",
-      "resultValue": "effect.dimensionmaster.skill.2050100"
+      "resultValue": ""
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -11814,9 +11814,9 @@
         "type": "project-policy",
         "policyId": "project-effect-binding-v1"
       },
-      "sourceValue": "effect.dimensionmaster.skill.2050120",
+      "sourceValue": "",
       "transform": "identity",
-      "resultValue": "effect.dimensionmaster.skill.2050120"
+      "resultValue": ""
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -12106,9 +12106,9 @@
         "type": "project-policy",
         "policyId": "project-effect-binding-v1"
       },
-      "sourceValue": "effect.dimensionmaster.skill.2050160",
+      "sourceValue": "",
       "transform": "identity",
-      "resultValue": "effect.dimensionmaster.skill.2050160"
+      "resultValue": ""
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -12398,9 +12398,9 @@
         "type": "project-policy",
         "policyId": "project-effect-binding-v1"
       },
-      "sourceValue": "effect.dimensionmaster.skill.2050180",
+      "sourceValue": "",
       "transform": "identity",
-      "resultValue": "effect.dimensionmaster.skill.2050180"
+      "resultValue": ""
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -12690,9 +12690,9 @@
         "type": "project-policy",
         "policyId": "project-effect-binding-v1"
       },
-      "sourceValue": "effect.dimensionmaster.skill.2050210",
+      "sourceValue": "",
       "transform": "identity",
-      "resultValue": "effect.dimensionmaster.skill.2050210"
+      "resultValue": ""
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -12982,9 +12982,9 @@
         "type": "project-policy",
         "policyId": "project-effect-binding-v1"
       },
-      "sourceValue": "effect.dimensionmaster.skill.2050220",
+      "sourceValue": "",
       "transform": "identity",
-      "resultValue": "effect.dimensionmaster.skill.2050220"
+      "resultValue": ""
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -13274,9 +13274,9 @@
         "type": "project-policy",
         "policyId": "project-effect-binding-v1"
       },
-      "sourceValue": "effect.dimensionmaster.skill.2050230",
+      "sourceValue": "",
       "transform": "identity",
-      "resultValue": "effect.dimensionmaster.skill.2050230"
+      "resultValue": ""
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -13566,9 +13566,9 @@
         "type": "project-policy",
         "policyId": "project-effect-binding-v1"
       },
-      "sourceValue": "effect.dimensionmaster.skill.2050240",
+      "sourceValue": "",
       "transform": "identity",
-      "resultValue": "effect.dimensionmaster.skill.2050240"
+      "resultValue": ""
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -13858,9 +13858,9 @@
         "type": "project-policy",
         "policyId": "project-effect-binding-v1"
       },
-      "sourceValue": "effect.dimensionmaster.skill.2050500",
+      "sourceValue": "",
       "transform": "identity",
-      "resultValue": "effect.dimensionmaster.skill.2050500"
+      "resultValue": ""
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -14150,9 +14150,9 @@
         "type": "project-policy",
         "policyId": "project-effect-binding-v1"
       },
-      "sourceValue": "effect.dimensionmaster.skill.2050520",
+      "sourceValue": "",
       "transform": "identity",
-      "resultValue": "effect.dimensionmaster.skill.2050520"
+      "resultValue": ""
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -14442,9 +14442,9 @@
         "type": "project-policy",
         "policyId": "project-effect-binding-v1"
       },
-      "sourceValue": "effect.dimensionmaster.skill.2050540",
+      "sourceValue": "",
       "transform": "identity",
-      "resultValue": "effect.dimensionmaster.skill.2050540"
+      "resultValue": ""
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -35103,6 +35103,7 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 0.0,
           "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.fist-in-out.donut.01",
           "trigger": "TIMED",
           "atMs": 1600,
           "repeatCount": 1,
@@ -35123,6 +35124,7 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 0.0,
           "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.fist-in-out.donut.01",
           "trigger": "TIMED",
           "atMs": 1600,
           "repeatCount": 1,
@@ -35134,7 +35136,7 @@
           "downMs": 0
         }
       ],
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
@@ -35321,6 +35323,7 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 0.0,
           "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.high-jump.target-axe.01",
           "trigger": "TIMED",
           "atMs": 1200,
           "repeatCount": 1,
@@ -35341,6 +35344,7 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 0.0,
           "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.high-jump.target-axe.01",
           "trigger": "TIMED",
           "atMs": 1200,
           "repeatCount": 1,
@@ -35539,6 +35543,7 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 0.0,
           "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.red-blade-wave.projectile.01",
           "trigger": "CONTACT",
           "atMs": 0,
           "repeatCount": 1,
@@ -35559,6 +35564,7 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 0.0,
           "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.red-blade-wave.projectile.01",
           "trigger": "CONTACT",
           "atMs": 0,
           "repeatCount": 1,

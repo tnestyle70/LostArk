@@ -13,9 +13,9 @@
         "coverageChannel": "R",
         "validTint": [1.0, 0.72, 0.15, 0.7],
         "invalidTint": [1.0, 0.2, 0.1, 0.7],
-        "assetIdentityBasis": "SOURCE_EXTRACTED",
+        "assetIdentityBasis": "RUNTIME_RESOURCE",
         "usageBasis": "PROJECT_TUNED",
-        "sourceEvidence": "Data/Effects/Imported/DimensionMaster/skill.2050500.source-receipt.json"
+        "sourceEvidence": ""
       },
       "targetPreview": {
         "assetId": "Effect/DimensionMaster/Textures/FX_TEX_HIGH_02/fx_k_fsm_magiccircle_02.dds",

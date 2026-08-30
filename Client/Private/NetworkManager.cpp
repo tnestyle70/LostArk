@@ -736,7 +736,7 @@ std::string CNetworkManager::Resolve_ServerHost()
 {
 	/* The temporary team LAN endpoint is the direct-launch fallback. The
 	   process-local environment still wins so isolated tests can name loopback. */
-	constexpr char DEFAULT_SERVER_HOST[] = "192.168.0.20";
+	constexpr char DEFAULT_SERVER_HOST[] = "192.168.0.14";
 	constexpr char SERVER_HOST_ENVIRONMENT[] = "LOSTARK_SERVER_HOST";
 	char configuredHost[64]{};
 	const DWORD configuredLength = ::GetEnvironmentVariableA(
@@ -2730,6 +2730,30 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		event.eType =
 			Client::CLIENT_REPLICATION_EVENT_TYPE::COMBAT_OBJECT_SPAWNED;
 		event.CombatObjectSpawned = std::move(spawned);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_COMBAT_OBJECT_PRESENTATION_EVENT:
+	{
+		S2C_COMBAT_OBJECT_PRESENTATION_EVENT presentation{};
+		if (!Read_Message(reader, presentation) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (!Is_PresentationRevisionAvailable(
+				presentation.PinnedDefinitionRevision))
+		{
+			Record_PresentationIsolation(
+				presentation.PinnedDefinitionRevision,
+				"Combat-object presentation event");
+			break;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::
+			COMBAT_OBJECT_PRESENTATION;
+		event.CombatObjectPresentation = std::move(presentation);
 		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}
