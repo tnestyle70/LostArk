@@ -121,4 +121,3 @@ Client/Bin/Resources/Effect/Esther/Wei/Textures/FX_TEX_00/fx_a_fire_023.dds
 HEAD의 298행에서 이미 197행이었으며 이번 작업이 소유한 변화는 그 197행에서 26행을 제거해
 171행으로 만든 부분이다. balance provenance receipt도 이번 작업은 DimensionMaster 12개
 `sourceValue/resultValue` 동기화만 소유한다.
-

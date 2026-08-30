@@ -91,4 +91,3 @@ RECOVERY 400 ms다. AIRBORNE animation은 `mesh_att_battle_8_01_loop`의
 - Client Debug compile 또는 Product profile
 - `git diff --check`
 - 실제 Valtan Arena의 화면·소리·grab·damage 결과는 사용자가 F1 Workbench와 Server 실행으로 최종 판정
-

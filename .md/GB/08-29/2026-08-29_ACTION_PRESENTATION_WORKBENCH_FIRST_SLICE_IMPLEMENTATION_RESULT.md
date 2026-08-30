@@ -104,4 +104,3 @@ Product build의 기존 C4819/LNK4099 warning은 남아 있으나 새 compile/li
 8. `Server Replay / Live`를 눌러 실제 Arena에서 boss movement, axe spawn/hit/damage와 최종 타이밍을 판정한다.
 
 시각·음향 PASS는 이 사용자 관찰 뒤에만 기록한다.
-
