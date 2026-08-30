@@ -32,6 +32,7 @@ Git 승격은 원본의 대규모 dirty 상태를 건드리지 않도록 별도 
 `df1b6e2b`, 통합 Tool/Workbench `db9d8fee`, Lobby/UI `5b89d1d9`, 빌드 병목 정리 `8ae3dcc1`,
 공용 문서 이동 `5e919724`, PR #265 Camera 세 커밋 `0bad3aea`/`169ec389`/`b79678fc`, Bern camera/ESC
 `14f155c1`, 도끼 WAV LFS closure `834b4a3d`다. PR #265의 오래된 RESULT 문서는 복사하지 않고 이 결과서로 대체했다.
+main 통합 단위는 GitHub PR #266 `feat: promote physical canonical authoring integration`이다.
 
 ## Tool과 Complete Play
 
