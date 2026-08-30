@@ -72,9 +72,8 @@
 !/Engine/Bin/ShaderFiles/
 !/Engine/Bin/ShaderFiles/**
 
-# Client runtime directory: Resources are shared through Drive by default.
-# Feature PRs may force-add an exact dependency closure; already tracked files
-# remain visible to Git even though unselected local pack contents stay ignored.
+# Client runtime directory: Resources are shared through the team Drive and stay untracked.
+# Feature PRs record Resources-relative IDs and physical handoff paths; do not force-add payloads.
 /Client/Bin/*
 /Server/Bin/
 /Client/Bin/Resources/
