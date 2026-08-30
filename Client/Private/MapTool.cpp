@@ -8,6 +8,7 @@
 #include "DataJson.h"
 #include "GameInstance.h"
 #include "LevelTransitionService.h"
+#include "MainApp.h"
 #include "MapAssetObject.h"
 #include "MapEditorWorkspaceService.h"
 #include "MapNavigationContract.h"
@@ -534,7 +535,9 @@ void Client::CMapTool::SetOpen(const bool_t isOpen)
 		m_bDestructionSimulationClearRequested = true;
 }
 
-void Client::CMapTool::Update(f32_t fTimeDelta)
+void Client::CMapTool::Update(
+	f32_t fTimeDelta,
+	const bool_t bAllowWorldInput)
 {
 	const uint32_t currentLevelIndex =
 		CGameInstance::Get().Get_CurrentLevelID();
@@ -553,7 +556,8 @@ void Client::CMapTool::Update(f32_t fTimeDelta)
 	}
 	Update_DestructionSimulation(fTimeDelta, isMapAuthoringLevel);
 	Update_WorldInteraction(
-		isMapAuthoringLevel && !m_EditorAreaPreload.Is_Active());
+		bAllowWorldInput && isMapAuthoringLevel &&
+		!m_EditorAreaPreload.Is_Active());
 
 	if (m_bOpen && TOOL_MODE::WORLD_DESTRUCTION == m_eToolMode &&
 		m_bDestructionTimelinePlaying)
@@ -741,6 +745,17 @@ void Client::CMapTool::Render()
 	bool_t isOpen = m_bOpen;
 	if (ImGui::Begin("LostArk Map Tool", &isOpen))
 	{
+#ifdef _DEBUG
+		if (ImGui::Button("Complete Play (Server/Arena)##MapTool"))
+		{
+			if (CMainApp* const app = CMainApp::Get_Active())
+				(void)app->Debug_CompletePlaySelected(m_CompletePlayStatus);
+			else
+				m_CompletePlayStatus = "Complete Play workspace is unavailable.";
+		}
+		ImGui::SameLine();
+		ImGui::TextDisabled("%s", m_CompletePlayStatus.c_str());
+#endif
 		Render_WorkspaceBar(isMapAuthoringLevel);
 		ImGui::Separator();
 		Render_ModeBar();
@@ -4870,11 +4885,12 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 		return false;
 	}
 
-	const std::array<std::pair<const char_t*, const char_t*>, 4> targets =
+	const std::array<std::pair<const char_t*, const char_t*>, 5> targets =
 	{{
 		{ "LV_LOBBY_CLASSSELECT_SL00", "Character Select" },
 		{ "LV_BER_BERNCASTLE", "Bern" },
 		{ "LV_LUT_HEARTRB_ED", "Valtan" },
+		{ "LV_LUT_MIDNIGHTC_ED", "KakulSaydon / MidnightC ED" },
 		{ "LV_SHS_RCARENA_D", "Training Map" },
 	}};
 	std::vector<EDITOR_AREA_DESCRIPTOR> staged;
@@ -5005,7 +5021,7 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 			descriptor.navigationBlockers = ResolveDataCatalogPath(blockers);
 			descriptor.navigationPolicy =
 				EDITOR_NAVIGATION_POLICY::SOURCE_PAINT_BLOCKERS;
-			/* The editor area registry already hardcodes which four areas
+			/* The editor area registry already declares the explicit areas
 			   the Map Tool opens, so the destruction reference path is
 			   declared the same way instead of adding a field to the shared
 			   MapCatalog schema. Render_DestructionEncounterSource cross

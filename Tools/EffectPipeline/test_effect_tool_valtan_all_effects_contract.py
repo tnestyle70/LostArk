@@ -816,9 +816,18 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             if row["effectAssetId"].startswith("effect.valtan.")
         }
         self.assertGreaterEqual(len(valtan_catalog), 58)
+        retired_recovery_id = (
+            "effect.valtan.carrier-v1.attack.four-slash.recovery.clip-01"
+        )
+        self.assertNotIn(retired_recovery_id, valtan_catalog)
+        self.assertFalse(
+            (
+                REPOSITORY_ROOT
+                / f"Data/Effects/Authored/{retired_recovery_id}.effect.json"
+            ).exists()
+        )
         for effect_asset_id in set(cue_asset_ids) | {
             "effect.valtan.sky-axe.active",
-            "effect.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
         }:
             with self.subTest(effect_asset_id=effect_asset_id):
                 self.assertIn(effect_asset_id, valtan_catalog)
@@ -930,7 +939,7 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
     def test_existing_aggregate_is_opened_without_duplicate_creation(self) -> None:
         pattern = next(
             row for row in self.gameplay["patterns"]
-            if row["patternId"] == "VALTAN_STRUGGLING"
+            if row["patternId"] == "VALTAN_CHARGE"
         )
         aggregate_id = "effect." + pattern["actionId"]
         registered = next(
@@ -941,7 +950,7 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         preserved = json.loads(preserved_path.read_text(encoding="utf-8"))
         self.assertEqual(aggregate_id, preserved["effectAssetId"])
         ownership = json.loads(OWNERSHIP_JSON.read_text(encoding="utf-8"))
-        self.assertTrue(any(
+        self.assertFalse(any(
             row["patternId"] == pattern["patternId"]
             and row["effectAssetId"] == aggregate_id
             and row["state"] == "DRAFT_ATTACHED"
@@ -1279,7 +1288,7 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         self.assertEqual(1, document["formatVersion"])
         self.assertEqual("BOSS_VALTAN", document["bossArchetypeId"])
         self.assertIsInstance(document["bindings"], list)
-        self.assertTrue(document["bindings"])
+        self.assertEqual([], document["bindings"])
         seen_patterns: set[str] = set()
         seen_effects: set[str] = set()
         for binding in document["bindings"]:
@@ -1300,7 +1309,6 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             self.assertNotIn(effect_id, seen_effects)
             seen_patterns.add(pattern_id)
             seen_effects.add(effect_id)
-        self.assertIn("VALTAN_SEQUENCE_RUSH", seen_patterns)
         combined = self.ownership_header + self.ownership_cpp
         for token in (
             "Effects/ValtanPatternAuthoringEffects.json",
@@ -1328,7 +1336,6 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         for text in (project, filters):
             self.assertIn("ValtanPatternAuthoringEffectDocument.h", text)
             self.assertIn("ValtanPatternAuthoringEffectDocument.cpp", text)
-        self.assertIn("ValtanPatternAuthoringEffects.json", project)
 
 
 if __name__ == "__main__":

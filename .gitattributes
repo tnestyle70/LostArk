@@ -38,42 +38,6 @@
 # the hash and fails Publish-GameplayBalance.ps1's staleness check.
 *.py text eol=lf
 
-# Offline Valtan translated-shader evidence records raw source hashes.
-/Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/TranslatedShaders/*.hlsli text eol=lf
-
-# Material-family evidence records raw HLSL hashes. Keep both generated source
-# and every joined receipt byte-stable in core.autocrlf=true worktrees.
-/Data/Effects/TranslatedShaders/*.hlsli text eol=lf
-/Data/Effects/Contracts/effect-missing-family-inventory.v1.json text eol=lf
-/Data/Effects/Contracts/effect-family-shader-map-index.v1.json text eol=lf
-/Data/Effects/Contracts/effect-family-cooked-pixel-shaders.v1.json text eol=lf
-/Data/Effects/Contracts/effect-family-hlsl-translations.v1.json text eol=lf
-/Data/Effects/Contracts/effect-family-named-abi.v1.json text eol=lf
-/Data/Effects/Contracts/effect-family-time-varying-parity.v1.json text eol=lf
-/Data/Effects/Contracts/effect-child-parent-resolution.v1.json text eol=lf
-/Data/Effects/Contracts/effect-family-shader-inventory.v1.json text eol=lf
-
-# The Artist 31470 reconstructed runtime program has a frozen raw UTF-8/LF
-# identity. Keep this one generated candidate byte-exact on every checkout.
-/Data/Effects/Imported/Artist/Candidates/skill.31470.reconstructed-runtime-program.candidate.json text eol=lf
-
-# The native Artist 31470 source-contract carrier is raw-hash bound by the
-# reconstructed runtime Program and must be materialized as canonical LF.
-/Data/Effects/Imported/Artist/Candidates/effect.artist.skill.31470.native-v14.source-contract-candidate.effect.json text eol=lf
-
-# The Artist 31470 Material render-resource approval is raw-byte frozen and
-# must survive core.autocrlf=true clean checkouts without CRLF conversion.
-/Data/Effects/Imported/Artist/Materials/skill.31470.material-render-resource-binding-approved-v1.receipt.json text eol=lf
-
-# The Artist 31470 reconstructed render-resource authority records exact DDS
-# byte identities and must remain byte-stable in core.autocrlf=true checkouts.
-/Data/Effects/Imported/Artist/Materials/skill.31470.reconstructed-render-resource-authority.receipt.json text eol=lf
-
-# The material-program registry is a raw-byte reconstruction authority. Keep it
-# stable across fresh checkouts for offline evidence and authoring validation.
-/Data/Effects/MaterialPrograms/effect-material-program-registry.v1.json text eol=lf
-/Data/Effects/MaterialPrograms/Fragments/*.json text eol=lf
-
 # Representative-four V1 admission seals the raw V0 document bytes.  Preserve
 # the historical mixed line endings explicitly so a fresh checkout cannot
 # silently invalidate those five source identities.  The materializer emits
@@ -88,17 +52,6 @@
 /Data/Effects/Authored/effect.lancemaster.skill.34110.v1.unified.effect.json text eol=lf
 /Data/Effects/Authored/effect.warlord.skill.17110.clip2.v1.unified.effect.json text eol=lf
 /Data/Effects/Authored/effect.warlord.skill.17110.clip3.v1.unified.effect.json text eol=lf
-/Data/Effects/AuthoredCorrections/Generated/RepresentativeFour/representative-four-v1-standard-color.receipt.json text eol=lf
-
-# The independent legacy Product cue projection is frozen by its raw file SHA.
-# Keep the baseline byte-exact so its read-only verifier also passes fresh checkouts.
-/Data/Effects/Baselines/legacy-product-cue-projection-v1.json text eol=lf
-
-# The R8 offline raw-resource manifests freeze exact raw SHA-256 identities.
-# Keep them canonical LF so clean core.autocrlf=true checkouts remain verifiable.
-/Data/Effects/Imported/RawResourceInventory/R8.raw-resource-denominator.checkpoint.json text eol=lf
-/Data/Effects/Imported/RawResourceInventory/R8.raw-resource-inventory-v1.json text eol=lf
-
 # The LanceMaster BA4 legacy authoring document is the raw-byte base identity
 # for its visual-program overlay. Keep the pinned canonical LF bytes stable
 # across core.autocrlf=true worktrees.
@@ -123,21 +76,8 @@
 # chain and intentionally freezes its CRLF raw identity (e94ddf...). Preserve
 # that source identity while its v15 inline carrier/history remains canonical.
 /Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json text eol=crlf
-/Data/Effects/Imported/Valtan/*.json text eol=lf
-/Data/Effects/Imported/Valtan/**/*.json text eol=lf
-# The legacy base-buff action source is already raw-SHA bound as CRLF
-# (058c6dcd...). Keep this exact input identity until its catalog receipt is
-# deliberately migrated together with every consumer.
-/Data/Effects/Imported/Valtan/Valtan.basebuff-effect-source.json text eol=crlf
-/Data/Effects/Imported/Valtan/Valtan.420633.whirlwind-baked-edge-history.v1.json text eol=crlf
-
-# The DimensionMaster Glasshole02 recovery chain hashes generated receipts into
-# downstream receipts. Keep the complete target/receipt cohort LF-stable so a
-# clean checkout cannot change those identities through core.autocrlf.
-/Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3*.json text eol=lf
+# Keep the surviving DimensionMaster authored document LF-stable.
 /Data/Effects/Authored/effect.dimensionmaster.skill.2050120.clip3.unified.effect.json text eol=lf
-/Data/Effects/Imported/DimensionMaster/DimensionMaster.resource-source-manifest.json text eol=lf
-/Data/Effects/Contracts/ue3-exact-cooked-shader-variants.v1.json text eol=lf
 /Client/Bin/ShaderFiles/Shader_Ue3Glasshole02.hlsli text eol=lf
 /Client/Bin/ShaderFiles/Shader_Ue3Glasshole02Translation.hlsl text eol=lf
 /Client/Private/Effect_DocumentRenderer.cpp text eol=lf

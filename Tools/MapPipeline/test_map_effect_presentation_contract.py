@@ -16,7 +16,7 @@ from typing import Callable
 AREA_ID = "LV_LUT_HEARTRB_ED"
 PLACEMENT_ID = "7000000000000000002"
 GROUP_ID = "destroyable.group.valtan.floor30.brick.7000000000000000002"
-EFFECT_ID = "effect.valtan.environment.red-vortex-sky"
+EFFECT_ID = "effect.contract.map-presentation"
 PATTERN_ID = "VALTAN_FOUR_PILLARS_105"
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PUBLISHER = REPO_ROOT / "Tools" / "MapPipeline" / "Publish-MapAuthoring.ps1"

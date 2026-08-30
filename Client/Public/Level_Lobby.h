@@ -70,6 +70,8 @@ private:
 
 public:
 	static bool_t Can_SubmitProductCommand();
+	static bool_t Submit_ProductCommand(LOBBY_STAGE eStage);
+	static string Get_ProductStatus();
 	static unique_ptr<CLevel_Lobby> Create(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext);

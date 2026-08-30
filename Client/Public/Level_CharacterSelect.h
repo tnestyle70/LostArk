@@ -89,6 +89,8 @@ private:
 	void Render_CreateCharacterModal();
 	bool_t Enter_Stage(LOBBY_STAGE eStage);
 	void Render_CreateCharacterProductInputHost();
+	void Render_ProductStatus();
+	bool_t Is_ProductPointerHovered() const;
 #ifdef _DEBUG
 	void Render_SelectionPanel();
 #endif

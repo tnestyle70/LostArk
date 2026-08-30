@@ -156,7 +156,10 @@ public:
 
 	void Toggle();
 	void SetOpen(bool_t isOpen);
-	void Update(f32_t fTimeDelta);
+	/* Multiple authoring windows may stay visible at once. Only the workspace's
+	   focused input owner may mutate the world viewport; background document,
+	   preload and playback updates continue for every open Map Tool window. */
+	void Update(f32_t fTimeDelta, bool_t bAllowWorldInput = true);
 	void Render();
 
 	bool IsOpen() const;
@@ -409,6 +412,8 @@ private:
 	std::unique_ptr<CMapAssetPreview> m_pAssetPreview;
 	std::string m_SelectedAssetId;
 	std::string m_Status = "Enter AssetTest with F2";
+	std::string m_CompletePlayStatus =
+		"Complete Play uses the workspace's selected saved Server pattern.";
 	char m_Filter[128]{};
 	std::unordered_set<std::string> m_FavoriteAssetIds;
 

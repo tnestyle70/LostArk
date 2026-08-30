@@ -12,6 +12,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <iostream>
 #include <limits>
 #include <new>
@@ -51,6 +52,20 @@ namespace
 	// The caster's Esther call converted to fixed 30 Hz room ticks.
 	constexpr std::uint32_t ESTHER_CAST_TICKS =
 		(ESTHER_CAST_DURATION_MS * 30u + 999u) / 1000u;
+	constexpr const char* RAID_CLEAR_TEST_MODE_ENV =
+		"LOSTARK_RAID_CLEAR_TEST_MODE";
+
+	bool Is_RaidClearTestModeEnabled()
+	{
+		char* value = nullptr;
+		size_t valueLength = 0u;
+		if (0 != _dupenv_s(&value, &valueLength, RAID_CLEAR_TEST_MODE_ENV))
+			return false;
+		const bool enabled = nullptr != value && 2u == valueLength &&
+			'1' == value[0];
+		std::free(value);
+		return enabled;
+	}
 
 	std::uint64_t Current_UnixMilliseconds()
 	{
@@ -418,6 +433,42 @@ namespace
 	constexpr const char* FINAL_ARENA_FLOOR_B_ACTION_ID =
 		"valtan.mechanic.terrain-destruction-9.impact";
 	constexpr std::uint32_t FINAL_ARENA_FLOOR_B_STAGE_INDEX = 3u;
+
+	bool Resolve_ValtanArenaPreset(
+		const std::uint32_t rawPreset,
+		LostArk::Server::VALTAN_TIMELINE_ARENA_STATE& outState,
+		const char*& outLabel)
+	{
+		using LostArk::Shared::VALTAN_ARENA_PRESET;
+		using LostArk::Server::VALTAN_TIMELINE_ARENA_STATE;
+		switch (static_cast<VALTAN_ARENA_PRESET>(rawPreset))
+		{
+		case VALTAN_ARENA_PRESET::FRESH:
+			outState = VALTAN_TIMELINE_ARENA_STATE::FRESH;
+			outLabel = "Fresh / all walls intact";
+			return true;
+		case VALTAN_ARENA_PRESET::CIRCLE_WALLS_GONE:
+			outState = VALTAN_TIMELINE_ARENA_STATE::ALL_WALLS_GONE;
+			outLabel = "Circle / all walls gone";
+			return true;
+		case VALTAN_ARENA_PRESET::THREE_OCLOCK_BROKEN:
+			outState = VALTAN_TIMELINE_ARENA_STATE::FLOOR84_GONE;
+			outLabel = "3 o'clock broken";
+			return true;
+		case VALTAN_ARENA_PRESET::NINE_OCLOCK_BROKEN:
+			outState = VALTAN_TIMELINE_ARENA_STATE::FLOOR30_GONE;
+			outLabel = "9 o'clock broken";
+			return true;
+		case VALTAN_ARENA_PRESET::BOTH_SIDES_BROKEN:
+			outState = VALTAN_TIMELINE_ARENA_STATE::FLOOR84_AND_30_GONE;
+			outLabel = "3 and 9 o'clock broken";
+			return true;
+		case VALTAN_ARENA_PRESET::END:
+		default:
+			return false;
+		}
+	}
+
 	struct VALTAN_FIGHT_PAGE_POLICY final
 	{
 		const char* pTimelineRowId;
@@ -3445,6 +3496,8 @@ void LostArk::Server::CGameRoom::Handle_ReturnToBern(
 
 	if (WORLD_ID::VALTAN_ARENA != m_eWorldId)
 		return;
+	if (!m_bValtanRaidCleared && !Is_RaidClearTestModeEnabled())
+		return;
 
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionIter == m_PlayerIdBySessionId.end())
@@ -5224,6 +5277,10 @@ bool LostArk::Server::CGameRoom::Prepare_ValtanTimelineArenaState(
 		includeOuter = true;
 		includeFloor84 = true;
 		break;
+	case VALTAN_TIMELINE_ARENA_STATE::FLOOR30_GONE:
+		includeOuter = true;
+		includeFloor30 = true;
+		break;
 	case VALTAN_TIMELINE_ARENA_STATE::FLOOR84_AND_30_GONE:
 		includeOuter = true;
 		includeFloor84 = true;
@@ -6719,6 +6776,8 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 		const bool isOpenArenaView =
 			VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL == request.eOperation;
 		const bool isArenaStagingView = isFinalArenaView || isOpenArenaView;
+		const bool isArenaPreset =
+			VALTAN_AUDITION_OPERATION::SET_ARENA_PRESET == request.eOperation;
 		const bool isTimelinePlay =
 			VALTAN_AUDITION_OPERATION::PLAY_TIMELINE_ROW == request.eOperation;
 		const bool isTimelineStop =
@@ -6783,7 +6842,7 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			(VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR == request.eOperation ||
 				 VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE == request.eOperation ||
 				 isPillarCyclePlay || isWallAttackPlay || isArenaStagingView ||
-				 isPatternPlay || isTimelinePlay || isFightPageStart))
+				 isArenaPreset || isPatternPlay || isTimelinePlay || isFightPageStart))
 		{
 			(void)Activate_Encounter("boss.valtan.center");
 			boss = Find_AuditionBoss();
@@ -6828,6 +6887,82 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			SERVER_ENTITY_ACTION::DEAD == boss->eAction)
 		{
 			return VALTAN_AUDITION_RESULT::REJECTED_BOSS_DEAD;
+		}
+
+		if (isArenaPreset)
+		{
+			VALTAN_TIMELINE_ARENA_STATE arenaState =
+				VALTAN_TIMELINE_ARENA_STATE::FRESH;
+			const char* presetLabel = nullptr;
+			if (!Resolve_ValtanArenaPreset(
+					request.iTargetHealthBar, arenaState, presetLabel))
+			{
+				m_strStatus = "Valtan arena preset identity is invalid";
+				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+			}
+
+			const std::uint32_t presetTick =
+				0u == m_iServerTick ? 1u : m_iServerTick;
+			/* Prove the complete destruction graph against a copy before the live
+			   arena reset. A bad binding therefore cannot cost the inspected state. */
+			CWorldDestructionRuntime stagedRuntime =
+				m_WorldDestructionRuntime;
+			std::string presetStatus;
+			if (!stagedRuntime.Reset(presetStatus, presetTick))
+			{
+				m_strStatus = "Valtan arena preset reset preflight failed: " +
+					presetStatus;
+				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+			}
+			WORLD_DESTRUCTION_TRANSACTION stagedTransaction{};
+			std::vector<std::string> stagedExpectedGone;
+			if (!Prepare_ValtanTimelineArenaState(
+					stagedRuntime, *boss, arenaState, presetTick,
+					stagedTransaction, stagedExpectedGone, presetStatus) ||
+				(!stagedTransaction.Transitions.empty() &&
+				 !stagedRuntime.Commit(stagedTransaction, presetStatus)))
+			{
+				m_strStatus = "Valtan arena preset graph preflight failed: " +
+					presetStatus;
+				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+			}
+
+			if (!Reset_ValtanAuditionState(*boss, presetTick, presetStatus))
+			{
+				m_strStatus = std::move(presetStatus);
+				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+			}
+			WORLD_DESTRUCTION_TRANSACTION transaction{};
+			std::vector<std::string> expectedGone;
+			if (!Prepare_ValtanTimelineArenaState(
+					m_WorldDestructionRuntime, *boss, arenaState, presetTick,
+					transaction, expectedGone, presetStatus) ||
+				(!transaction.Transitions.empty() &&
+				 !Commit_WorldDestructionTransaction(
+					transaction, {}, presetTick, presetStatus)))
+			{
+				const std::string failure = presetStatus;
+				std::string rollbackStatus;
+				(void)Reset_ValtanAuditionState(
+					*boss, presetTick, rollbackStatus);
+				m_strStatus =
+					"Valtan arena preset commit rolled back to Fresh: " + failure;
+				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+			}
+
+			/* Keep the authoritative boss idle while the team inspects the chosen
+			   wall/floor state. Pattern buttons deliberately replace this hold. */
+			boss->bIntroPatternConsumed = true;
+			boss->bAutomaticPatternSequenceAuditionOverride = true;
+			boss->bAutomaticPatternSequenceAuditionHold = true;
+			boss->PendingPatternIds.clear();
+			currentHealthBar = CValtanBrain::Calculate_HealthBar(*boss);
+			m_iValtanAuditionArmedHealthBar = 0u;
+			m_ValtanAuditionSequenceBySessionId.insert_or_assign(
+				sessionId, request.iRequestSequence);
+			m_strStatus = std::string("Valtan arena preset staged: ") +
+				(nullptr == presetLabel ? "UNKNOWN" : presetLabel);
+			return VALTAN_AUDITION_RESULT::QUEUED;
 		}
 
 		const std::vector<BOSS_PATTERN_DEFINITION>* patterns =
@@ -7902,8 +8037,10 @@ bool LostArk::Server::CGameRoom::Broadcast_CombatObjectLifecycle()
 {
 	using namespace LostArk::Shared;
 	std::vector<S2C_COMBAT_OBJECT_SPAWNED> spawned;
+	std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT> presentationEvents;
 	std::vector<S2C_COMBAT_OBJECT_DESPAWNED> despawned;
-	m_CombatObjectRuntime.Drain_Lifecycle(spawned, despawned);
+	m_CombatObjectRuntime.Drain_Lifecycle(
+		spawned, presentationEvents, despawned);
 	for (const S2C_COMBAT_OBJECT_SPAWNED& message : spawned)
 	{
 		CPacketWriter writer;
@@ -7915,6 +8052,24 @@ bool LostArk::Server::CGameRoom::Broadcast_CombatObjectLifecycle()
 			const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
 			if (nullptr != session && !session->Send_Frame(
 				PACKET_TYPE::S2C_COMBAT_OBJECT_SPAWNED, writer.Get_Buffer()))
+			{
+				session->Request_Close();
+			}
+		}
+	}
+	for (const S2C_COMBAT_OBJECT_PRESENTATION_EVENT& message :
+		presentationEvents)
+	{
+		CPacketWriter writer;
+		if (!Write_Message(writer, message))
+			return false;
+		for (const auto& [sessionId, playerId] : m_PlayerIdBySessionId)
+		{
+			(void)playerId;
+			const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+			if (nullptr != session && !session->Send_Frame(
+				PACKET_TYPE::S2C_COMBAT_OBJECT_PRESENTATION_EVENT,
+				writer.Get_Buffer()))
 			{
 				session->Request_Close();
 			}
@@ -8230,6 +8385,11 @@ void LostArk::Server::CGameRoom::Rollback_Join(const SESSION_ID sessionId)
 
 bool LostArk::Server::CGameRoom::Is_PlayerAdmissionFull() const
 {
+	if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
+		m_Players.size() >= LostArk::Shared::MAX_VALTAN_RAID_PLAYERS)
+	{
+		return true;
+	}
 	return nullptr == Find_AvailablePlayerSpawn();
 }
 
@@ -8563,6 +8723,7 @@ bool LostArk::Server::CGameRoom::Reset_ValtanArenaWhenEmpty()
 	// its landing delay has no party left to land for.
 	m_PendingEstherSummons.clear();
 	m_EstherSkillSystem.Reset();
+	m_bValtanRaidCleared = false;
 	m_strStatus = "Valtan arena reset after the room became empty";
 	return true;
 }
@@ -12266,6 +12427,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			continue;
 		}
 		entity.bLootGranted = true;
+		m_bValtanRaidCleared = true;
 		for (const auto& [sessionId, playerId] : m_PlayerIdBySessionId)
 		{
 			const auto playerIter = m_Players.find(playerId);

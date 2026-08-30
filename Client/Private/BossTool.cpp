@@ -6,6 +6,7 @@
 #include "Effect_Catalog.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_Tool.h"
+#include "Level_ValtanArena.h"
 #include "NetworkManager.h"
 #include "PlayerCommandSink.h"
 #include "ProjectDataRoot.h"
@@ -450,6 +451,139 @@ bool_t Client::CBossTool::Submit_SelectedPattern()
 	m_bFollowLive = true;
 	m_strStatus = Status;
 	return true;
+}
+
+bool_t Client::CBossTool::Get_ServerPatternOptions(
+	std::vector<SERVER_PATTERN_OPTION>& outOptions,
+	std::string& strOutStatus)
+{
+	outOptions.clear();
+	if ((!m_bGraphLoadAttempted || !m_bGraphReady) && !Reload_Graph())
+	{
+		strOutStatus = m_strStatus.empty() ?
+			"Boss Tool could not admit the current Valtan graph." : m_strStatus;
+		return false;
+	}
+	const auto append = [this, &outOptions](
+		const std::vector<std::string>& patternIds)
+	{
+		for (const std::string& patternId : patternIds)
+		{
+			const VALTAN_PATTERN_VIEW* const pattern = Find_Pattern(patternId);
+			if (nullptr == pattern)
+				continue;
+			SERVER_PATTERN_OPTION option;
+			option.strPatternId = pattern->strPatternId;
+			option.strDisplayName = pattern->strDisplayName;
+			outOptions.push_back(std::move(option));
+		}
+	};
+	append(m_AuditionInventory.CorePatternIds);
+	append(m_AuditionInventory.AnimatorPatternIds);
+	append(m_AuditionInventory.DerivedPatternIds);
+	if (outOptions.empty())
+	{
+		strOutStatus = "The current Valtan graph admitted no Complete Play pattern.";
+		return false;
+	}
+	strOutStatus = "Loaded " + std::to_string(outOptions.size()) +
+		" Server-admitted Complete Play patterns.";
+	return true;
+}
+
+bool_t Client::CBossTool::Play_ServerPattern(
+	const std::string& strPatternId,
+	std::string& strOutStatus)
+{
+	if (strPatternId.empty())
+	{
+		strOutStatus = "Complete Play requires a stable pattern ID.";
+		return false;
+	}
+	if ((!m_bGraphLoadAttempted || !m_bGraphReady) && !Reload_Graph())
+	{
+		strOutStatus = m_strStatus.empty() ?
+			"Boss Tool could not admit the current Valtan graph." : m_strStatus;
+		return false;
+	}
+	if (nullptr == Find_AuditionPattern(strPatternId))
+	{
+		strOutStatus = "Pattern is not in the current Server audition inventory: " +
+			strPatternId + ".";
+		return false;
+	}
+	m_strSelectedPatternId = strPatternId;
+	const bool_t submitted = Submit_SelectedPattern();
+	strOutStatus = m_strStatus;
+	return submitted;
+}
+
+bool_t Client::CBossTool::Set_ServerArenaPreset(
+	const LostArk::Shared::VALTAN_ARENA_PRESET preset,
+	std::string& strOutStatus)
+{
+#ifdef _DEBUG
+	CLevel_ValtanArena* const arena = CLevel_ValtanArena::Get_Active();
+	if (nullptr == arena)
+	{
+		strOutStatus =
+			"Arena Preset requires the Server-approved Valtan Arena level.";
+		return false;
+	}
+	return arena->Set_ArenaPreset(preset, strOutStatus);
+#else
+	(void)preset;
+	strOutStatus = "Arena presets are available only in Debug Developer Tools.";
+	return false;
+#endif
+}
+
+bool_t Client::CBossTool::Get_ServerArenaActiveState(
+	VALTAN_ARENA_ACTIVE_STATE& outState,
+	std::string& strOutStatus) const
+{
+	outState = {};
+#ifdef _DEBUG
+	const CLevel_ValtanArena* const arena = CLevel_ValtanArena::Get_Active();
+	if (nullptr == arena)
+	{
+		strOutStatus =
+			"Arena Active requires the Server-approved Valtan Arena level.";
+		return false;
+	}
+	const CLevel_ValtanArena::ARENA_ACTIVE_STATE source =
+		arena->Get_ArenaActiveState();
+	outState.bSynchronized = source.bSynchronized;
+	outState.bOrdinaryWallsActive = source.bOrdinaryWallsActive;
+	outState.bOuterRingActive = source.bOuterRingActive;
+	outState.bThreeOClockFloorActive =
+		source.bThreeOClockFloorActive;
+	outState.bNineOClockFloorActive = source.bNineOClockFloorActive;
+	outState.iDebrisActorCount = source.iDebrisActorCount;
+	outState.iActiveCollisionCount = source.iActiveCollisionCount;
+	outState.iActiveNavigationRegionCount =
+		source.iActiveNavigationRegionCount;
+	outState.iNavigationRevision = source.iNavigationRevision;
+	strOutStatus = source.bSynchronized ?
+		"Server destruction, collision and navigation state synchronized." :
+		"Waiting for the Server destruction full-sync.";
+	return source.bSynchronized;
+#else
+	strOutStatus = "Arena Active is available only in Debug Developer Tools.";
+	return false;
+#endif
+}
+
+std::string Client::CBossTool::Get_ServerArenaPresetStatus() const
+{
+#ifdef _DEBUG
+	const CLevel_ValtanArena* const arena = CLevel_ValtanArena::Get_Active();
+	return nullptr == arena ?
+		std::string("Enter Valtan Arena to stage a Server environment preset.") :
+		arena->Get_ArenaAuditionStatus();
+#else
+	return "Arena presets are available only in Debug Developer Tools.";
+#endif
 }
 
 bool_t Client::CBossTool::Preview_SelectedFlowSlotIsolated()
@@ -1481,7 +1615,7 @@ void Client::CBossTool::Render_ActionBar()
 			pSelected->strDisplayName.c_str()));
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!bCanPlay);
-	if (ImGui::Button("Play Selected"))
+	if (ImGui::Button("Complete Play Selected"))
 		(void)Submit_SelectedPattern();
 	ImGui::EndDisabled();
 	ImGui::SameLine();

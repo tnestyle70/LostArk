@@ -37,6 +37,7 @@ namespace LostArk::Server
 
 	struct SERVER_COMBAT_OBJECT_HIT_RUNTIME final
 	{
+		std::string strHitId;
 		SERVER_COMBAT_OBJECT_HIT_TRIGGER eTrigger =
 			SERVER_COMBAT_OBJECT_HIT_TRIGGER::TIMED;
 		SERVER_COMBAT_OBJECT_CONTACT_SAMPLING eContactSampling =
@@ -198,6 +199,8 @@ namespace LostArk::Server
 
 		void Drain_Lifecycle(
 			std::vector<LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED>& outSpawned,
+			std::vector<LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT>&
+				outPresentationEvents,
 			std::vector<LostArk::Shared::S2C_COMBAT_OBJECT_DESPAWNED>& outDespawned);
 		void Build_LiveSpawnMessages(
 			std::uint32_t serverTick,
@@ -220,8 +223,11 @@ namespace LostArk::Server
 
 		std::vector<SERVER_COMBAT_OBJECT> m_Objects;
 		std::vector<LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED> m_PendingSpawned;
+		std::vector<LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT>
+			m_PendingPresentationEvents;
 		std::vector<LostArk::Shared::S2C_COMBAT_OBJECT_DESPAWNED> m_PendingDespawned;
 		LostArk::Shared::COMBAT_OBJECT_ID m_iNextCombatObjectId = 1u;
+		std::uint64_t m_iNextPresentationEventSequence = 1u;
 		std::uint64_t m_iRevision = 1u;
 	};
 }

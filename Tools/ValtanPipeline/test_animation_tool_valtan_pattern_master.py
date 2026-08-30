@@ -70,7 +70,7 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             "CValtanPatternTree::Load(Staged, Status)",
             "bAuthoringMasterManaged",
             "expected the 7 baseline managed patterns",
-            '"Valtan Pattern Master (Authoritative)"',
+            '"Valtan Action Presentation Workbench"',
             "Data/Valtan/Valtan.gameplay.json + Valtan.presentation.json",
         ):
             self.assertIn(token, combined)
@@ -434,7 +434,7 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             r"\{\s*if \(!m_pBodyModelCom->Start_Animation\(",
         )
         self.assertNotIn("CActionPresentationTimeline::Resolve_Sample", apply_pose)
-        self.assertIn('"Play Arena Presentation Locally"', self.cpp)
+        self.assertIn('"Pattern Offline"', self.cpp)
 
     def test_stage_wall_conversion_matches_the_dash_server_timeline(self) -> None:
         gameplay_dash = next(

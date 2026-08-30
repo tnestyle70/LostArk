@@ -196,6 +196,8 @@ private:
 	vector<string>		m_TextureAssetPaths;
 	int32_t				m_iLastScannedClass = -1;
 	string				m_strDataStatus;
+	string m_strCompletePlayStatus =
+		"Complete Play uses the workspace's selected saved Server pattern.";
 	/* False whenever the active document's on-disk file failed to parse/validate. Switch_Document's
 	auto-save must not fire while this is false, or a bad load (bug or a hand-edited file) would
 	silently overwrite the real file with whatever placeholder state is on screen. */

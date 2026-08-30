@@ -159,6 +159,8 @@ private:
 	void Update_ValtanTimeline(f32_t fTimeDelta);
 	void Stop_ValtanTimeline();
 	bool_t Try_LocateValtanStage(const std::string& strActionId, uint32_t iOffsetMs);
+	bool_t Try_PlayValtanServerPattern();
+	void Update_ValtanServerPatternStatus();
 	void Despawn_Target();
 	void Move_Target(const float3_t& vPosition, f32_t fYawDegrees);
 	void Update_Attach(f32_t fTimeDelta);
@@ -246,6 +248,7 @@ private:
 	f32_t m_fValtanTimelineSeconds = 0.f;
 	size_t m_iValtanTimelineStage = static_cast<size_t>(-1);
 	int32_t m_iValtanSpawnTimelineMs = 0;
+	std::string m_strValtanServerPatternStatus;
 
 	bool_t m_bTestOrbit = false;
 	float3_t m_vTestOrbitCenter = { 0.f, 0.f, 0.f };

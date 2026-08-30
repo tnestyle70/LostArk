@@ -832,7 +832,6 @@ private:
 	bool_t Try_PlayUnifiedModelCues(
 		const std::string& strEffectAssetId);
 	bool_t Try_CreateArtistFUnifiedDraft();
-	bool_t Try_CreateDimensionMasterTUnifiedDraft();
 	bool_t Try_ApplyArtistFTrackASeedData(
 		const EFFECT_RUNTIME_PROGRAM_EMITTER& Emitter,
 		const EFFECT_ELEMENT_DESC& SourceElement,

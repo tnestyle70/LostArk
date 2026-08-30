@@ -3,6 +3,7 @@
 #include "DataJson.h"
 #include "ProjectDataRoot.h"
 
+#include <algorithm>
 #include <fstream>
 
 std::unordered_map<std::string,
@@ -90,4 +91,23 @@ const std::vector<std::string>& Client::CSoundCueCatalog::Find_Variants(
 		return g_EmptyVariants;
 
 	return EventIterator->second;
+}
+
+std::vector<std::string> Client::CSoundCueCatalog::Collect_EventNames(
+	const std::string& strClassName)
+{
+	std::vector<std::string> names;
+	if (!s_bLoaded)
+		return names;
+	const auto classIterator = s_ClassEvents.find(strClassName);
+	if (s_ClassEvents.end() == classIterator)
+		return names;
+	names.reserve(classIterator->second.size());
+	for (const auto& [eventName, variants] : classIterator->second)
+	{
+		if (!variants.empty())
+			names.push_back(eventName);
+	}
+	std::sort(names.begin(), names.end());
+	return names;
 }

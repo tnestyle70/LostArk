@@ -63,6 +63,36 @@ public:
 	{
 		return m_pPlayerCommandSink;
 	}
+#ifdef _DEBUG
+	struct ARENA_ACTIVE_STATE final
+	{
+		bool_t bSynchronized = false;
+		bool_t bOrdinaryWallsActive = false;
+		bool_t bOuterRingActive = false;
+		bool_t bThreeOClockFloorActive = false;
+		bool_t bNineOClockFloorActive = false;
+		uint32_t iOrdinaryGroupCount = 0u;
+		uint32_t iOuterRingGroupCount = 0u;
+		uint32_t iThreeOClockGroupCount = 0u;
+		uint32_t iNineOClockGroupCount = 0u;
+		uint32_t iDebrisActorCount = 0u;
+		uint32_t iActiveCollisionCount = 0u;
+		uint32_t iActiveNavigationRegionCount = 0u;
+		uint64_t iNavigationRevision = 0u;
+	};
+
+	/* Workbench route. The active Level retains the one request-sequence and
+	   retry owner used by its audition panel; callers never send packets or
+	   mutate wall visibility locally. */
+	bool_t Set_ArenaPreset(
+		LostArk::Shared::VALTAN_ARENA_PRESET preset,
+		std::string& outStatus);
+	const std::string& Get_ArenaAuditionStatus() const
+	{
+		return m_strAuditionStatus;
+	}
+	ARENA_ACTIVE_STATE Get_ArenaActiveState() const;
+#endif
 
 private:
 	HRESULT Ready_Layer_Camera(const wstring_t& strLayerTag);
@@ -87,12 +117,12 @@ private:
 	/* Death-screen overlay: real deadscene.gfx panel art + revive button. Local
 	player only, unlimited revives (Handle_RevivePlayer already gates this to
 	VALTAN_ARENA and is free/no-cooldown by design). */
-	void Update_DeadScene();
+	void Update_DeadScene(bool_t isBlockedByRaidClear);
 	void Render_DeadScene();
 	/* Valtan clear celebration overlay: real EFUI_EPICGATECOMMONCLEAR trace (BgFlash/Emblem
 	art + "던전 클리어" headline). Edge-triggers off CCombatHUDViewModel's already-replicated
-	boss eAction (no new Shared/Server contract -- Server never auto-despawns a dead BOSS-kind
-	entity, so eAction==DEAD stays observable for as long as this Level's session lasts), then
+	primary-boss death latch. The reliable DEAD despawn is the normal terminal edge because the
+	Server removes the boss before it builds the following world snapshot, then
 	runs a fixed real-derived reveal/hold timeline (EpicGateCommonClearFrame's own
 	startFrame=90/holdFrame=296 at the source's 40fps) instead of looping forever. */
 	void Update_RaidClear(f32_t fTimeDelta);

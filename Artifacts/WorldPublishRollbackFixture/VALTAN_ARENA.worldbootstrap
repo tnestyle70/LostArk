@@ -1,6 +1,0 @@
-LOSTARK_WORLD_BOOTSTRAP	4	VALTAN_ARENA	LV_LUT_HEARTRB_ED	3	5
-boss.valtan.center	boss	BOSS_VALTAN	ENCOUNTER_VALTAN	151.25	22.97	-121.75	225	1	VALTAN_BASIC_SWING	valtan.attack.basic-swing	0	8	800	300	1200	damage.valtan.basic-swing
-player.spawn.valtan.entry	playerSpawn	-	-	144.75	23.06843	-131.75	45	1	-	-	0	0	0	0	0	-
-player.spawn.valtan.party02	playerSpawn	-	-	145.75	23.06843	-132.75	45	1	-	-	0	0	0	0	0	-
-player.spawn.valtan.party03	playerSpawn	-	-	146.75	23.06843	-133.75	45	1	-	-	0	0	0	0	0	-
-player.spawn.valtan.party04	playerSpawn	-	-	144.25	23.06202	-131.25	45	1	-	-	0	0	0	0	0	-

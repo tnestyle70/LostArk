@@ -618,7 +618,7 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_CONFIRM_NPC_ENTRY& request);
 		// Raid Clear screen's "돌아가기" button -- the reverse trip. No proximity
 		// or party-leader gating (unlike Handle_ConfirmNpcEntry): any player in
-		// VALTAN_ARENA can return to BERN independently. Lands next to Bern's own
+		// a cleared VALTAN_ARENA can return to BERN independently. Lands next to Bern's own
 		// Valtan-entry guide NPC via SERVER_WORLD_TRANSFER_REQUEST's
 		// strSpawnPlacementOverrideId. VALTAN_ARENA only; no-op for anything else.
 		void Handle_ReturnToBern(
@@ -1037,6 +1037,10 @@ namespace LostArk::Server
 		/* The four pillars come back four times in one fight, so they live in a
 		reversible prop runtime instead of a one-way destruction group. */
 		CEncounterPropRuntime m_EncounterPropRuntime;
+		/* Room-authoritative completion latch. The primary Product Valtan death
+		   raises it before that entity is reliably despawned; the last-player reset
+		   clears it for the next party. */
+		bool m_bValtanRaidCleared = false;
 		/* Debug audition only: the tick a whole pillar cycle shatters on, and
 		the flag the next raise turns into that tick. No product trigger for the
 		shatter is identified yet, so nothing else writes these. */

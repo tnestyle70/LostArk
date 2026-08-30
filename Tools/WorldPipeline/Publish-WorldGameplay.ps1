@@ -10,6 +10,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $stableIdPattern = '^[A-Za-z0-9_.-]{1,128}$'
+$valtanRaidPlayerCapacity = 8
 
 function Read-ProjectJson {
     param([string]$RelativePath)
@@ -847,8 +848,9 @@ function Convert-WorldDocument {
 	if ($enabledWorldEntityCount -gt 256) {
 		throw "World enabled persistent entity count exceeds snapshot capacity 256: $enabledWorldEntityCount"
 	}
-	if ($WorldId -eq 'VALTAN_ARENA' -and $enabledPlayerSpawnCount -ne 4) {
-		throw "Valtan Arena requires exactly four enabled player spawns; got $enabledPlayerSpawnCount."
+	if ($WorldId -eq 'VALTAN_ARENA' -and
+		$enabledPlayerSpawnCount -ne $valtanRaidPlayerCapacity) {
+		throw "Valtan Arena requires exactly $valtanRaidPlayerCapacity enabled player spawns; got $enabledPlayerSpawnCount."
 	}
 
     $sortedRows = @($rows | Sort-Object)

@@ -2,30 +2,5 @@
   "schema": "lostark.valtan-pattern-authoring-effects",
   "formatVersion": 1,
   "bossArchetypeId": "BOSS_VALTAN",
-  "bindings": [
-    {
-      "patternId": "VALTAN_SEQUENCE_RUSH",
-      "effectAssetId": "effect.valtan.sequence.rush",
-      "authoringPath": "Effects/Authored/effect.valtan.sequence.rush.effect.json",
-      "state": "DRAFT_ATTACHED"
-    },
-    {
-      "patternId": "VALTAN_STRUGGLING",
-      "effectAssetId": "effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead",
-      "authoringPath": "Effects/Authored/effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.effect.json",
-      "state": "DRAFT_ATTACHED"
-    },
-    {
-      "patternId": "VALTAN_SEQUENCE_TWOHAND",
-      "effectAssetId": "effect.valtan.sequence.twohand",
-      "authoringPath": "Effects/Authored/effect.valtan.sequence.twohand.effect.json",
-      "state": "DRAFT_ATTACHED"
-    },
-    {
-      "patternId": "VALTAN_SEQUENCE_WHIRLWIND",
-      "effectAssetId": "effect.valtan.sequence.whirlwind",
-      "authoringPath": "Effects/Authored/effect.valtan.sequence.whirlwind.effect.json",
-      "state": "DRAFT_ATTACHED"
-    }
-  ]
+  "bindings": []
 }
