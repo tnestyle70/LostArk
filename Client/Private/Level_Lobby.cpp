@@ -179,7 +179,7 @@ void CLevel_Lobby::Consume_EnterRejected()
 	if (WORLD_ID::VALTAN_ARENA == rejected.eWorldId)
 	{
 		Cancel_PendingEntry(
-			"Valtan raid is full (4/4). Lobby remains active.",
+			"Valtan raid is full (8/8). Lobby remains active.",
 			SESSION_DIAGNOSTIC_REASON::CLIENT_EXPECTED_ROOM_FULL,
 			"lobby.entry-room-full");
 		return;

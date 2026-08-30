@@ -1926,7 +1926,7 @@ void Client::CEffect_Tool_V2::Render_ValtanPatternSection()
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!bHasPattern);
-	if (ImGui::Button("Play Server / Arena"))
+	if (ImGui::Button("Complete Play (Server/Arena)"))
 		(void)Try_PlayValtanServerPattern();
 	ImGui::EndDisabled();
 	ImGui::SameLine();
@@ -2007,7 +2007,7 @@ bool_t Client::CEffect_Tool_V2::Try_PlayValtanServerPattern()
 		CGameInstance::Get().Get_CurrentLevelID())
 	{
 		m_strValtanServerPatternStatus =
-			"Play Server / Arena is available only after entering Valtan from Lobby.";
+			"Complete Play is available only after entering Valtan from Lobby.";
 		return false;
 	}
 

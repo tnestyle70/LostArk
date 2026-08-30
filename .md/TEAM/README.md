@@ -14,7 +14,7 @@ endpoint와 만료일 정본은 `../../Tools/Network/TeamLanEndpoint.json`, 실�
 `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`이다.
 빠른 IP 교체, 실제 4인 LAN, Character Select loopback 독립 테스트는
 [네트워크연결가이드.md](네트워크연결가이드.md)의 실행 순서를 따른다.
-현재 공유 Server endpoint는 같은 팀 LAN의 `10.207.18.103:7777`이다.
+현재 공유 Server endpoint는 같은 팀 LAN의 `192.168.0.14:7777`이다.
 현재 Server가 꺼져 있으면 `not-listening`이 정상일 수 있으며, 스크립트가 로컬 debugger 설정을
 동기화한 뒤 출력이 `server-host`이면 Visual Studio의 `Server + Client` profile, `client`이면
 Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.

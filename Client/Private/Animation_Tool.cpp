@@ -1863,6 +1863,278 @@ void Client::CAnimation_Tool::Update_ValtanPatternMasterHitAreaPreview()
 #endif
 }
 
+void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
+	const std::string& strPatternId,
+	const VALTAN_STAGE_VIEW& SavedStage)
+{
+	if (nullptr == m_pBalanceTool)
+	{
+		ImGui::TextDisabled(
+			"Typed Server gameplay draft is unavailable: Balance Tool owner is missing.");
+		return;
+	}
+
+	CBalanceTool::PATTERN_STAGE_EDIT Draft{};
+	std::string DraftStatus;
+	if (!m_pBalanceTool->Get_ValtanStageDraft(
+		strPatternId, SavedStage.strStageId, Draft, DraftStatus))
+	{
+		ImGui::TextDisabled("Draft unavailable: %s", DraftStatus.c_str());
+		return;
+	}
+	const auto SubmitDraft = [&]()
+	{
+		(void)m_pBalanceTool->Set_ValtanStageDraft(
+			strPatternId, SavedStage.strStageId, Draft, DraftStatus);
+		m_strValtanPatternMasterStatus = DraftStatus;
+	};
+
+	ImGui::SeparatorText("Server Stage Clock");
+	const uint32_t iOne = 1u;
+	const uint32_t iStepMs = 100u;
+	const uint32_t iFastStepMs = 1000u;
+	ImGui::BeginDisabled(!Draft.durationEditable);
+	ImGui::SetNextItemWidth(210.f);
+	if (ImGui::InputScalar(
+		"Server wall / blank timeline ms",
+		ImGuiDataType_U32, &Draft.durationMs,
+		&iStepMs, &iFastStepMs, "%u"))
+	{
+		Draft.durationMs = std::clamp(Draft.durationMs, 1u, 600000u);
+		SubmitDraft();
+	}
+	ImGui::EndDisabled();
+	if (!Draft.durationEditable)
+	{
+		ImGui::TextDisabled(
+			"Duration is read-only: manual Server audition is locked to the promoted animation wall-clock.");
+	}
+	if (Draft.durationMs != SavedStage.iDurationMs)
+	{
+		ImGui::TextColored(
+			ImVec4(1.f, 0.70f, 0.20f, 1.f),
+			"Draft %u ms | saved source %u ms",
+			Draft.durationMs, SavedStage.iDurationMs);
+	}
+	if ("VALTAN_HIGH_JUMP" == strPatternId &&
+		"AIRBORNE" == SavedStage.strStageId)
+	{
+		ImGui::TextWrapped(
+			"AIRBORNE duration is the boss stage/blank wall-clock. It extends the looping axe-flight animation, but it does not change a spawned axe's lifetime or its local hit atMs.");
+	}
+
+	ImGui::SeparatorText("Server Hit / Collider");
+	ImGui::TextDisabled("Action %s | stage kind %s",
+		Draft.actionId.c_str(), Draft.stageKind.c_str());
+	ImGui::TextDisabled("DamageProfile (read-only): %s",
+		Draft.damageProfileId.empty() ? "NONE" : Draft.damageProfileId.c_str());
+	ImGui::TextDisabled("Player response: %s | attachment: %s",
+		Draft.playerResponse.c_str(), Draft.attachmentSlot.c_str());
+	if (!Draft.hitEditable)
+	{
+		ImGui::TextDisabled(
+			"Collider NONE. Adding a new Server hit also requires a typed DamageProfile choice, so it remains in Balance Tool.");
+		return;
+	}
+
+	static constexpr const char_t* HIT_SHAPES[] = {
+		"CIRCLE", "RING", "CONE", "BOX", "CROSS", "SIX_DIRECTIONS" };
+	if (ImGui::BeginCombo("Collider shape", Draft.hitShape.c_str()))
+	{
+		for (const char_t* const pShape : HIT_SHAPES)
+		{
+			const bool_t bSelected = Draft.hitShape == pShape;
+			if (ImGui::Selectable(pShape, bSelected) && !bSelected)
+			{
+				const double fExtent = (std::max)({
+					1.0, Draft.hitOuterRadius, Draft.hitInnerRadius,
+					Draft.hitLength, Draft.hitHalfWidth });
+				Draft.hitShape = pShape;
+				Draft.hitOuterRadius = 0.0;
+				Draft.hitInnerRadius = 0.0;
+				Draft.hitAngleDegrees = 0.0;
+				Draft.hitLength = 0.0;
+				Draft.hitHalfWidth = 0.0;
+				if ("CIRCLE" == Draft.hitShape)
+					Draft.hitOuterRadius = fExtent;
+				else if ("RING" == Draft.hitShape)
+				{
+					Draft.hitOuterRadius = fExtent;
+					Draft.hitInnerRadius = (std::max)(0.1, fExtent * 0.5);
+				}
+				else if ("CONE" == Draft.hitShape)
+				{
+					Draft.hitAngleDegrees = 90.0;
+					Draft.hitLength = fExtent;
+				}
+				else
+				{
+					Draft.hitLength = fExtent;
+					Draft.hitHalfWidth = (std::max)(0.1, fExtent * 0.5);
+				}
+				SubmitDraft();
+			}
+			if (bSelected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+
+	const auto EditGeometry = [&](const char_t* const pLabel,
+		double& fValue, const double fMinimum, const double fMaximum)
+	{
+		const double fStep = 0.1;
+		const double fFastStep = 1.0;
+		ImGui::SetNextItemWidth(210.f);
+		if (!ImGui::InputDouble(
+			pLabel, &fValue, fStep, fFastStep, "%.3f"))
+		{
+			return;
+		}
+		fValue = std::clamp(fValue, fMinimum, fMaximum);
+		SubmitDraft();
+	};
+	if ("CIRCLE" == Draft.hitShape || "RING" == Draft.hitShape)
+	{
+		const double fMinimumOuter = "RING" == Draft.hitShape ?
+			Draft.hitInnerRadius + 0.001 : 0.001;
+		EditGeometry("Outer radius m", Draft.hitOuterRadius,
+			fMinimumOuter, 1000.0);
+	}
+	if ("RING" == Draft.hitShape)
+	{
+		EditGeometry("Inner radius m", Draft.hitInnerRadius,
+			0.001, (std::max)(0.001, Draft.hitOuterRadius - 0.001));
+	}
+	if ("CONE" == Draft.hitShape)
+	{
+		EditGeometry("Angle degrees", Draft.hitAngleDegrees, 0.001, 180.0);
+		EditGeometry("Length m", Draft.hitLength, 0.001, 1000.0);
+	}
+	if ("BOX" == Draft.hitShape || "CROSS" == Draft.hitShape ||
+		"SIX_DIRECTIONS" == Draft.hitShape)
+	{
+		EditGeometry("Length m", Draft.hitLength, 0.001, 1000.0);
+		EditGeometry("Half width m", Draft.hitHalfWidth, 0.001, 1000.0);
+	}
+
+	ImGui::SeparatorText("Server Hit Schedule");
+	if (!Draft.hitOffsetsMs.empty())
+	{
+		ImGui::TextDisabled(
+			"EXPLICIT_OFFSETS is read-only here; preserve the source contact ordering in Balance Tool.");
+		for (std::size_t iOffset = 0u;
+			iOffset < Draft.hitOffsetsMs.size(); ++iOffset)
+		{
+			ImGui::BulletText("hit %zu at stage +%u ms",
+				iOffset + 1u, Draft.hitOffsetsMs[iOffset]);
+		}
+	}
+	else
+	{
+		ImGui::SetNextItemWidth(180.f);
+		if (ImGui::InputScalar(
+			"Hit count", ImGuiDataType_U32, &Draft.hitCount,
+			&iOne, nullptr, "%u"))
+		{
+			Draft.hitCount = std::clamp(Draft.hitCount, 1u, 64u);
+			if (1u == Draft.hitCount)
+				Draft.hitIntervalMs = 0u;
+			else if (0u == Draft.hitIntervalMs)
+				Draft.hitIntervalMs = 1u;
+			SubmitDraft();
+		}
+		const uint32_t iMaximumDelay = Draft.durationMs - 1u;
+		ImGui::SetNextItemWidth(180.f);
+		if (ImGui::InputScalar(
+			"First hit offset ms", ImGuiDataType_U32, &Draft.hitDelayMs,
+			&iOne, &iStepMs, "%u"))
+		{
+			Draft.hitDelayMs = (std::min)(Draft.hitDelayMs, iMaximumDelay);
+			SubmitDraft();
+		}
+		ImGui::BeginDisabled(1u == Draft.hitCount);
+		ImGui::SetNextItemWidth(180.f);
+		if (ImGui::InputScalar(
+			"Hit interval ms", ImGuiDataType_U32, &Draft.hitIntervalMs,
+			&iOne, &iStepMs, "%u"))
+		{
+			const uint32_t iRemaining = Draft.durationMs - 1u -
+				(std::min)(Draft.hitDelayMs, Draft.durationMs - 1u);
+			const uint32_t iMaximumInterval = Draft.hitCount > 1u ?
+				iRemaining / (Draft.hitCount - 1u) : 0u;
+			Draft.hitIntervalMs = std::clamp(
+				Draft.hitIntervalMs, 1u, (std::max)(1u, iMaximumInterval));
+			SubmitDraft();
+		}
+		ImGui::EndDisabled();
+	}
+
+	ImGui::SeparatorText("Server Player Reaction");
+	const bool_t bCapture = "CAPTURE" == Draft.playerResponse;
+	ImGui::BeginDisabled(bCapture);
+	double fPushStep = 0.1;
+	double fPushFastStep = 1.0;
+	ImGui::SetNextItemWidth(190.f);
+	if (ImGui::InputDouble(
+		"Push range m", &Draft.pushRangeM,
+		fPushStep, fPushFastStep, "%.3f"))
+	{
+		Draft.pushRangeM = std::clamp(Draft.pushRangeM, -20.0, 20.0);
+		if (std::abs(Draft.pushRangeM) < 0.000001)
+		{
+			Draft.pushRangeM = 0.0;
+			Draft.pushMs = 0u;
+		}
+		else if (0u == Draft.pushMs)
+		{
+			Draft.pushMs = 1u;
+		}
+		SubmitDraft();
+	}
+	ImGui::BeginDisabled(0.0 == Draft.pushRangeM);
+	ImGui::SetNextItemWidth(190.f);
+	if (ImGui::InputScalar(
+		"Push duration ms", ImGuiDataType_U32, &Draft.pushMs,
+		&iOne, &iStepMs, "%u"))
+	{
+		Draft.pushMs = std::clamp(Draft.pushMs, 1u, 600000u);
+		SubmitDraft();
+	}
+	ImGui::EndDisabled();
+	if (ImGui::Checkbox("Knockdown", &Draft.knockdown))
+	{
+		Draft.downMs = Draft.knockdown ?
+			(std::max)(Draft.downMs, 1u) : 0u;
+		SubmitDraft();
+	}
+	ImGui::BeginDisabled(!Draft.knockdown);
+	ImGui::SetNextItemWidth(190.f);
+	if (ImGui::InputScalar(
+		"Down duration ms", ImGuiDataType_U32, &Draft.downMs,
+		&iOne, &iStepMs, "%u"))
+	{
+		Draft.downMs = std::clamp(Draft.downMs, 1u, 600000u);
+		SubmitDraft();
+	}
+	ImGui::EndDisabled();
+	ImGui::EndDisabled();
+	const char_t* const pDirectionPolicy = 0.0 == Draft.pushRangeM ? "NONE" :
+		(Draft.pushRangeM > 0.0 ? "AWAY_FROM_HIT_SOURCE" :
+			"TOWARD_HIT_SOURCE");
+	const double fPushSpeedMps = 0u == Draft.pushMs ? 0.0 :
+		std::abs(Draft.pushRangeM) * 1000.0 /
+		static_cast<double>(Draft.pushMs);
+	ImGui::TextDisabled(
+		"Direction policy (Server-derived): %s | derived speed %.3f m/s",
+		pDirectionPolicy, fPushSpeedMps);
+	if (bCapture)
+	{
+		ImGui::TextDisabled(
+			"CAPTURE owns attachment instead of push/knockdown; reaction values are read-only zero.");
+	}
+}
+
 void Client::CAnimation_Tool::Render_ValtanPresentationLanes(
 	const VALTAN_PATTERN_VIEW& Pattern)
 {
@@ -2024,14 +2296,33 @@ void Client::CAnimation_Tool::Render_ValtanPresentationLanes(
 					CombatObject.strCombatObjectArchetypeId.c_str(),
 					CombatObject.iSpawnValue,
 					CombatObject.strEffectAssetId.c_str());
+				ImGui::TextDisabled(
+					"  Product clock (read-only): life %u ms | %s | origin %s | direction %s | speed %.3f m/s | max %.3f m",
+					CombatObject.iLifetimeMs,
+					CombatObject.strKind.c_str(),
+					CombatObject.strOriginPolicy.c_str(),
+					CombatObject.strDirectionPolicy.c_str(),
+					CombatObject.fSpeedMps,
+					CombatObject.fMaximumDistanceM);
 				for (std::size_t iHit = 0u;
 					iHit < CombatObject.HitOffsetsMs.size(); ++iHit)
 				{
 					const char_t* pHitId = iHit < CombatObject.HitIds.size() ?
 						CombatObject.HitIds[iHit].c_str() : "MISSING_HIT_ID";
 					ImGui::TextDisabled(
-						"  Server hit %s at combat-object +%u ms",
-						pHitId, CombatObject.HitOffsetsMs[iHit]);
+						"  Server hit %s at combat-object +%u ms (local clock; stage duration %u ms)",
+						pHitId, CombatObject.HitOffsetsMs[iHit],
+						Stage.iDurationMs);
+				}
+				if ("VALTAN_HIGH_JUMP" == Pattern.strPatternId &&
+					"AIRBORNE" == Stage.strStageId)
+				{
+					ImGui::TextColored(
+						ImVec4(0.35f, 0.75f, 1.f, 1.f),
+						"  Separate clocks: AIRBORNE stage %u ms | axe lifetime %u ms | first axe-local hit atMs %u",
+						Stage.iDurationMs, CombatObject.iLifetimeMs,
+						CombatObject.HitOffsetsMs.empty() ? 0u :
+							CombatObject.HitOffsetsMs.front());
 				}
 			}
 
@@ -2225,6 +2516,42 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 		"Break 3 + 9 O'Clock",
 		LostArk::Shared::VALTAN_ARENA_PRESET::BOTH_SIDES_BROKEN);
 	ImGui::EndDisabled();
+
+	CBossTool::VALTAN_ARENA_ACTIVE_STATE activeState{};
+	std::string activeStateStatus;
+	const bool_t bActiveStateReady = nullptr != m_pBossTool &&
+		m_pBossTool->Get_ServerArenaActiveState(
+			activeState, activeStateStatus);
+	ImGui::SeparatorText("Arena Active (Server actual)");
+	ImGui::TextDisabled(
+		"Active boxes are replicated facts. Mutations use the five exact Server presets above.");
+	const auto actualCheckbox = [](const char_t* label, const bool_t active)
+	{
+		bool_t value = active;
+		ImGui::BeginDisabled(true);
+		ImGui::Checkbox(label, &value);
+		ImGui::EndDisabled();
+	};
+	ImGui::BeginDisabled(!bActiveStateReady);
+	actualCheckbox(
+		"Ordinary walls / debris sources Active",
+		activeState.bOrdinaryWallsActive);
+	actualCheckbox("109 outer ring Active", activeState.bOuterRingActive);
+	actualCheckbox(
+		"3 o'clock floor / collision / Nav Active",
+		activeState.bThreeOClockFloorActive);
+	actualCheckbox(
+		"9 o'clock floor / collision / Nav Active",
+		activeState.bNineOClockFloorActive);
+	ImGui::EndDisabled();
+	ImGui::Text(
+		"Debris actors %u | collision %u | nav regions %u | nav revision %llu",
+		activeState.iDebrisActorCount,
+		activeState.iActiveCollisionCount,
+		activeState.iActiveNavigationRegionCount,
+		static_cast<unsigned long long>(activeState.iNavigationRevision));
+	if (!activeStateStatus.empty())
+		ImGui::TextDisabled("%s", activeStateStatus.c_str());
 	if (nullptr != m_pBossTool)
 	{
 		const std::string arenaStatus =
@@ -2335,7 +2662,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 			pModel, *pSelected, m_eValtanPatternMasterPath);
 	}
 	ImGui::SameLine();
-	if (ImGui::Button("Server Replay / Live"))
+	if (ImGui::Button("Complete Play (Server/Arena)"))
 	{
 		std::string Status;
 		if (nullptr == m_pBossTool)
@@ -2595,46 +2922,8 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 				Stage.strActionId.c_str(), Stage.strStageKind.c_str(),
 				Stage.strServerDamageProfileId.empty() ? "NONE" :
 					Stage.strServerDamageProfileId.c_str());
-			if (nullptr != m_pBalanceTool)
-			{
-				uint32_t iDraftDurationMs = Stage.iDurationMs;
-				std::string DraftStatus;
-				if (m_pBalanceTool->Get_ValtanStageDurationDraft(
-					pSelected->strPatternId, Stage.strStageId,
-					iDraftDurationMs, DraftStatus))
-				{
-					const uint32_t iStepMs = 100u;
-					const uint32_t iFastStepMs = 1000u;
-					ImGui::SetNextItemWidth(190.f);
-					if (ImGui::InputScalar(
-						"Server wall / blank timeline ms",
-						ImGuiDataType_U32, &iDraftDurationMs,
-						&iStepMs, &iFastStepMs, "%u"))
-					{
-						iDraftDurationMs = std::clamp(
-							iDraftDurationMs, 1u, 600000u);
-						(void)m_pBalanceTool->Set_ValtanStageDurationDraft(
-							pSelected->strPatternId, Stage.strStageId,
-							iDraftDurationMs, DraftStatus);
-						m_strValtanPatternMasterStatus = DraftStatus;
-					}
-					if (iDraftDurationMs != Stage.iDurationMs)
-						ImGui::TextColored(
-							ImVec4(1.f, 0.70f, 0.20f, 1.f),
-							"Draft %u ms | saved source %u ms",
-							iDraftDurationMs, Stage.iDurationMs);
-					if ("VALTAN_HIGH_JUMP" == pSelected->strPatternId &&
-						"AIRBORNE" == Stage.strStageId)
-					{
-						ImGui::TextDisabled(
-							"Axe flight / blank timeline: mesh_att_battle_8_01_loop repeats to this Server boundary.");
-					}
-				}
-				else if (!DraftStatus.empty())
-				{
-					ImGui::TextDisabled("Draft unavailable: %s", DraftStatus.c_str());
-				}
-			}
+			Render_ValtanStageDraftInspector(
+				pSelected->strPatternId, Stage);
 			for (size_t iClip = 0u;
 				iClip < Stage.ClipOccurrences.size(); ++iClip)
 			{
@@ -2720,7 +3009,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternPreview(
 			static_cast<uint32_t>(m_iValtanPatternPreviewSelected + 1));
 	}
 	ImGui::SameLine();
-	if (ImGui::Button("Play Selected") && iPatternCount > 0)
+	if (ImGui::Button("Local Pattern Preview") && iPatternCount > 0)
 	{
 		const uint32_t Number =
 			static_cast<uint32_t>(m_iValtanPatternPreviewSelected + 1);

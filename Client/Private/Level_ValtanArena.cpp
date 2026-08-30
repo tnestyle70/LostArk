@@ -1343,6 +1343,72 @@ bool_t CLevel_ValtanArena::Set_ArenaPreset(
 	return submitted;
 }
 
+CLevel_ValtanArena::ARENA_ACTIVE_STATE
+CLevel_ValtanArena::Get_ArenaActiveState() const
+{
+	ARENA_ACTIVE_STATE snapshot{};
+	snapshot.bSynchronized =
+		m_Replication.Is_WorldDestructionSynchronized();
+	static constexpr std::string_view OUTER_RING_GROUP_PREFIX =
+		"destroyable.group.valtan.outerwall109.";
+	static constexpr std::string_view THREE_OCLOCK_GROUP_PREFIX =
+		"destroyable.group.valtan.floor84.";
+	static constexpr std::string_view NINE_OCLOCK_GROUP_PREFIX =
+		"destroyable.group.valtan.floor30.";
+	uint32_t ordinaryActive = 0u;
+	uint32_t outerActive = 0u;
+	uint32_t threeActive = 0u;
+	uint32_t nineActive = 0u;
+	for (const LostArk::Shared::WORLD_DESTRUCTION_STATE_WIRE& group :
+		m_Replication.Get_WorldDestructionGroupStates())
+	{
+		const std::string_view groupId(group.strGroupId);
+		const bool_t active =
+			LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::INTACT ==
+			group.eState;
+		if (groupId.starts_with(OUTER_RING_GROUP_PREFIX))
+		{
+			++snapshot.iOuterRingGroupCount;
+			outerActive += active ? 1u : 0u;
+		}
+		else if (groupId.starts_with(THREE_OCLOCK_GROUP_PREFIX))
+		{
+			++snapshot.iThreeOClockGroupCount;
+			threeActive += active ? 1u : 0u;
+		}
+		else if (groupId.starts_with(NINE_OCLOCK_GROUP_PREFIX))
+		{
+			++snapshot.iNineOClockGroupCount;
+			nineActive += active ? 1u : 0u;
+		}
+		else
+		{
+			++snapshot.iOrdinaryGroupCount;
+			ordinaryActive += active ? 1u : 0u;
+		}
+	}
+	snapshot.bOrdinaryWallsActive = 0u != snapshot.iOrdinaryGroupCount &&
+		ordinaryActive == snapshot.iOrdinaryGroupCount;
+	snapshot.bOuterRingActive = 0u != snapshot.iOuterRingGroupCount &&
+		outerActive == snapshot.iOuterRingGroupCount;
+	snapshot.bThreeOClockFloorActive =
+		0u != snapshot.iThreeOClockGroupCount &&
+		threeActive == snapshot.iThreeOClockGroupCount;
+	snapshot.bNineOClockFloorActive =
+		0u != snapshot.iNineOClockGroupCount &&
+		nineActive == snapshot.iNineOClockGroupCount;
+	snapshot.iDebrisActorCount = static_cast<uint32_t>(
+		m_WorldDestructionDebrisPresentationRuntime.Get_ActiveActorCount());
+	const LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_DIAGNOSTICS& diagnostics =
+		m_Replication.Get_WorldDestructionDiagnostics();
+	snapshot.iActiveCollisionCount =
+		diagnostics.iActiveWallCollisionCount;
+	snapshot.iActiveNavigationRegionCount =
+		diagnostics.iActiveNavBlockerRegionCount;
+	snapshot.iNavigationRevision = diagnostics.iNavigationRevision;
+	return snapshot;
+}
+
 void CLevel_ValtanArena::Start_AuthoredRotationPlayback(
 	const std::vector<std::string>& rotationOrder)
 {

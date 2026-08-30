@@ -8369,6 +8369,11 @@ void LostArk::Server::CGameRoom::Rollback_Join(const SESSION_ID sessionId)
 
 bool LostArk::Server::CGameRoom::Is_PlayerAdmissionFull() const
 {
+	if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
+		m_Players.size() >= LostArk::Shared::MAX_VALTAN_RAID_PLAYERS)
+	{
+		return true;
+	}
 	return nullptr == Find_AvailablePlayerSpawn();
 }
 

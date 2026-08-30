@@ -53,6 +53,24 @@ private:
 	};
 
 public:
+	struct VALTAN_ARENA_ACTIVE_STATE final
+	{
+		bool_t bSynchronized = false;
+		bool_t bOrdinaryWallsActive = false;
+		bool_t bOuterRingActive = false;
+		bool_t bThreeOClockFloorActive = false;
+		bool_t bNineOClockFloorActive = false;
+		uint32_t iDebrisActorCount = 0u;
+		uint32_t iActiveCollisionCount = 0u;
+		uint32_t iActiveNavigationRegionCount = 0u;
+		uint64_t iNavigationRevision = 0u;
+	};
+	struct SERVER_PATTERN_OPTION final
+	{
+		std::string strPatternId;
+		std::string strDisplayName;
+	};
+
 	explicit CBossTool(std::shared_ptr<IPlayerCommandSink> CommandSink);
 	void Open();
 	void Update(bool_t bToolVisible);
@@ -63,9 +81,15 @@ public:
 	bool_t Play_ServerPattern(
 		const std::string& strPatternId,
 		std::string& strOutStatus);
+	bool_t Get_ServerPatternOptions(
+		std::vector<SERVER_PATTERN_OPTION>& outOptions,
+		std::string& strOutStatus);
 	bool_t Set_ServerArenaPreset(
 		LostArk::Shared::VALTAN_ARENA_PRESET preset,
 		std::string& strOutStatus);
+	bool_t Get_ServerArenaActiveState(
+		VALTAN_ARENA_ACTIVE_STATE& outState,
+		std::string& strOutStatus) const;
 	std::string Get_ServerArenaPresetStatus() const;
 	bool_t Consume_CameraToolOpenRequest(
 		CAMERA_TOOL_OPEN_REQUEST& outRequest);

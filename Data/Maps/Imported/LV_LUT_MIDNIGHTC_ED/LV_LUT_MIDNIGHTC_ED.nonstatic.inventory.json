@@ -1,0 +1,67 @@
+{
+  "schema": "lostark.map-nonstatic-source-inventory",
+  "formatVersion": 1,
+  "areaId": "LV_LUT_MIDNIGHTC_ED",
+  "purpose": "Source evidence for non-static UE3 map components; not a runtime placement document.",
+  "sourceManifest": {
+    "physicalPath": "C:/LostArkExtract/LV_LUT_MIDNIGHTC_ED_20260829/Manifests/LV_LUT_MIDNIGHTC_ED.nonstatic-source.json",
+    "bytes": 1524716,
+    "sha256": "55dfd446e39cfd8b6d596d4eb96c8f89d615d3426bff2e7672250c20eb272ca1"
+  },
+  "sources": [
+    {
+      "logicalPackage": "LV_LUT_MIDNIGHTC_ED_PS",
+      "sourceBytes": 884846,
+      "sourceSha256": "f0e0ef3af6265839031fdb96517614936eea62eab629aeb6e02374b8c7573163",
+      "placementSha256": "e5a3944eb36c3d508ee02fde4c189f30448cea0b8e9400d7500368d810250450"
+    },
+    {
+      "logicalPackage": "LV_LUT_MIDNIGHTC_ED_SL01",
+      "sourceBytes": 1146425,
+      "sourceSha256": "f96a2159be2f26923550e89077266c70c8404bc6cd5ed7b6506a3b41c228cc58",
+      "placementSha256": "3a71f5382507ba72191139b2d8eb900128d90e87abfa0722ff5378e3dba57905"
+    },
+    {
+      "logicalPackage": "LV_LUT_MIDNIGHTC_ED_SL02",
+      "sourceBytes": 4953204,
+      "sourceSha256": "ecdf20cd82cfe1c72a21c08976dd7c048c2417e466d2101f56c01adf896073d3",
+      "placementSha256": "eb93ed405eb19af090f0ad2ac38adc24a5577618c86ae7a2270486ded97c1db8"
+    },
+    {
+      "logicalPackage": "LV_LUT_MIDNIGHTC_ED_SL03",
+      "sourceBytes": 1104514,
+      "sourceSha256": "9bd1172c76124b681e0d0bbd247ef57df5fb2c0e9eb77767fbf6a0281bf3c3b1",
+      "placementSha256": "b3ee33c6f1a2a8cb6bc49aa82c3877d366371b52d5c8d93a4c151d1477ab80a6"
+    },
+    {
+      "logicalPackage": "LV_LUT_MIDNIGHTC_ED_SL04",
+      "sourceBytes": 456358,
+      "sourceSha256": "aa2943e380a5cffaaf691d453d9129ade9d428375cf7d052ffc1ab2e21e23fb0",
+      "placementSha256": "8c53ed123b74d2dcd76ae430f8f5de10953ec8d7bb01ba1c78abdfbaa2184a53"
+    },
+    {
+      "logicalPackage": "LV_LUT_MIDNIGHTC_ED_SL05",
+      "sourceBytes": 928808,
+      "sourceSha256": "27d4ad76076c41684cdec73e6690c27259af9552a1e2587b16c7023b946c8db2",
+      "placementSha256": "354d09a9d6979ad11cdde84d623c87511935b86e768c492a9f52f6a382e07a17"
+    }
+  ],
+  "counts": {
+    "sourcePackages": 6,
+    "items": 211,
+    "decals": 33,
+    "particleEmitters": 54,
+    "uniqueParticleSystems": 9,
+    "lights": 116,
+    "fog": 1,
+    "waterComponents": 7,
+    "foliageActors": 2,
+    "motionOrInterpActors": 377,
+    "missingReferenceRecords": 7,
+    "opaquePayloads": 0
+  },
+  "runtimeAdmission": {
+    "state": "source-only",
+    "reason": "No lossless conversion from the UE3 component payloads to the existing map light/effect/water runtime contracts has been admitted."
+  }
+}

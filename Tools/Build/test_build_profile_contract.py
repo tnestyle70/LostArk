@@ -137,6 +137,28 @@ class BuildProfileContractTests(unittest.TestCase):
         self.assertNotIn("EffectRenderContractHarness", solution)
         self.assertNotIn("EffectRenderContractHarness", runner)
 
+    def test_action_presentation_harness_compile_items_have_filters(self) -> None:
+        project_root = ET.parse(
+            ROOT
+            / "Tools/ActionPresentationTimelineHarness/Default/ActionPresentationTimelineHarness.vcxproj"
+        ).getroot()
+        filters_root = ET.parse(
+            ROOT
+            / "Tools/ActionPresentationTimelineHarness/Default/ActionPresentationTimelineHarness.vcxproj.filters"
+        ).getroot()
+        namespace = {"m": "http://schemas.microsoft.com/developer/msbuild/2003"}
+        project_sources = {
+            node.attrib["Include"]
+            for node in project_root.findall(".//m:ClCompile", namespace)
+            if "Include" in node.attrib
+        }
+        filtered_sources = {
+            node.attrib["Include"]
+            for node in filters_root.findall(".//m:ClCompile", namespace)
+            if "Include" in node.attrib
+        }
+        self.assertEqual(project_sources, filtered_sources)
+
 
 if __name__ == "__main__":
     unittest.main()

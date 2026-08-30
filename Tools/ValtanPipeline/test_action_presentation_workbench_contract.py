@@ -43,6 +43,8 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         cls.animation_cpp = read("Client/Private/Animation_Tool.cpp")
         cls.balance_h = read("Client/Public/BalanceTool.h")
         cls.balance_cpp = read("Client/Private/BalanceTool.cpp")
+        cls.valtan_tree_h = read("Client/Public/ValtanPatternTree.h")
+        cls.valtan_tree_cpp = read("Client/Private/ValtanPatternTree.cpp")
         cls.boss_h = read("Client/Public/BossTool.h")
         cls.boss_cpp = read("Client/Private/BossTool.cpp")
         cls.level_h = read("Client/Public/Level_ValtanArena.h")
@@ -237,7 +239,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         for route in (
             "m_pBossTool->Play_ServerPattern",
             "m_pBossTool->Set_ServerArenaPreset",
-            "m_pBalanceTool->Set_ValtanStageDurationDraft",
+            "m_pBalanceTool->Set_ValtanStageDraft",
             "Consume_EffectToolOpenRequest",
             "Consume_CameraToolOpenRequest",
         ):
@@ -246,6 +248,91 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "m_pAnimationTool->Consume_CameraToolOpenRequest",
             self.main_cpp,
         )
+
+    def test_typed_stage_inspector_reuses_balance_draft_and_keeps_clocks_separate(
+        self,
+    ) -> None:
+        for token in (
+            "struct PATTERN_STAGE_EDIT final",
+            "hitOuterRadius",
+            "hitInnerRadius",
+            "hitAngleDegrees",
+            "hitLength",
+            "hitHalfWidth",
+            "hitCount",
+            "hitIntervalMs",
+            "hitDelayMs",
+            "damageProfileId",
+            "pushRangeM",
+            "pushMs",
+            "knockdown",
+            "downMs",
+            "Get_ValtanStageDraft",
+            "Set_ValtanStageDraft",
+        ):
+            self.assertIn(token, self.balance_h)
+
+        setter = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Set_ValtanStageDraft(",
+        )
+        for token in (
+            "FindValtanPattern",
+            "FindValtanStage",
+            "DamageProfile, response, and explicit-offset ownership are read-only",
+            "Manual Server audition duration is locked",
+            "IsValtanStageGeometryValid",
+            "finalIntervalHit",
+            "captureReactionValid",
+            "MarkDirty(true)",
+        ):
+            self.assertIn(token, setter)
+        for forbidden in ("ofstream", "CNetworkManager", "Send_"):
+            self.assertNotIn(forbidden, setter)
+        self.assertIn(
+            'readBoundedDouble(*hit, "pushRangeM", -20.0, 20.0',
+            self.balance_cpp,
+        )
+
+        inspector = function_body(
+            self.animation_cpp,
+            "void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(",
+        )
+        for token in (
+            "Get_ValtanStageDraft",
+            "Set_ValtanStageDraft",
+            'ImGui::SeparatorText("Server Stage Clock")',
+            'ImGui::SeparatorText("Server Hit / Collider")',
+            'ImGui::SeparatorText("Server Hit Schedule")',
+            'ImGui::SeparatorText("Server Player Reaction")',
+            "DamageProfile (read-only)",
+            "AWAY_FROM_HIT_SOURCE",
+            "TOWARD_HIT_SOURCE",
+            "derived speed %.3f m/s",
+            "AIRBORNE duration is the boss stage/blank wall-clock",
+        ):
+            self.assertIn(token, inspector)
+        for forbidden in ("CDataJson", "CNetworkManager", "ofstream"):
+            self.assertNotIn(forbidden, inspector)
+
+        for token in (
+            "strDirectionPolicy",
+            "fSpeedMps",
+            "fMaximumDistanceM",
+            "iLifetimeMs",
+        ):
+            self.assertIn(token, self.valtan_tree_h)
+            self.assertIn(token, self.valtan_tree_cpp)
+        lane = function_body(
+            self.animation_cpp,
+            "void Client::CAnimation_Tool::Render_ValtanPresentationLanes(",
+        )
+        for token in (
+            "Product clock (read-only): life %u ms",
+            "combat-object +%u ms (local clock; stage duration %u ms)",
+            "Separate clocks: AIRBORNE stage %u ms | axe lifetime %u ms | first axe-local hit atMs %u",
+        ):
+            self.assertIn(token, lane)
 
     def test_effect_v2_server_play_reuses_typed_audition_service(self) -> None:
         play = function_body(
@@ -268,7 +355,10 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "Set_Visible",
         ):
             self.assertNotIn(forbidden, play)
-        self.assertIn('ImGui::Button("Play Server / Arena")', self.effect_v2_cpp)
+        self.assertIn(
+            'ImGui::Button("Complete Play (Server/Arena)")',
+            self.effect_v2_cpp,
+        )
 
     def test_arena_presets_cross_the_single_level_request_owner(self) -> None:
         for token in (
@@ -314,6 +404,141 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             '"Break 3 + 9 O\'Clock"',
         ):
             self.assertIn(label, self.animation_cpp)
+
+        active_state = function_body(
+            self.level_cpp,
+            "CLevel_ValtanArena::Get_ArenaActiveState() const",
+        )
+        for token in (
+            "Get_WorldDestructionGroupStates",
+            "OUTER_RING_GROUP_PREFIX",
+            "THREE_OCLOCK_GROUP_PREFIX",
+            "NINE_OCLOCK_GROUP_PREFIX",
+            "Get_WorldDestructionDiagnostics",
+            "iActiveWallCollisionCount",
+            "iActiveNavBlockerRegionCount",
+            "iNavigationRevision",
+            "Get_ActiveActorCount",
+        ):
+            self.assertIn(token, active_state)
+
+        global_controls = function_body(
+            self.main_cpp,
+            "void CMainApp::RenderServerArenaActiveControls()",
+        )
+        for token in (
+            "Get_ServerArenaActiveState",
+            "Set_ServerArenaPreset",
+            "Active boxes are replicated facts",
+            "VALTAN_ARENA_PRESET::FRESH",
+            "VALTAN_ARENA_PRESET::CIRCLE_WALLS_GONE",
+            "VALTAN_ARENA_PRESET::THREE_OCLOCK_BROKEN",
+            "VALTAN_ARENA_PRESET::NINE_OCLOCK_BROKEN",
+            "VALTAN_ARENA_PRESET::BOTH_SIDES_BROKEN",
+            "active collision",
+            "active nav regions",
+        ):
+            self.assertIn(token, global_controls)
+        self.assertNotIn("Set_ServerArenaChannelActive", global_controls)
+        self.assertNotIn("Set_Visible", global_controls)
+
+    def test_debug_workspace_is_non_exclusive(self) -> None:
+        ensure = function_body(
+            self.main_cpp,
+            "HRESULT CMainApp::EnsureDebugTool(",
+        )
+        for forbidden in (
+            "DEBUG_TOOL::MAP != eTool",
+            "DEBUG_TOOL::CAMERA != eTool",
+            "m_eActiveDebugTool",
+        ):
+            self.assertNotIn(forbidden, ensure)
+        self.assertIn("SetDebugToolVisible(eTool, true)", ensure)
+
+        render = function_body(self.main_cpp, "HRESULT CMainApp::Render()")
+        for tool in (
+            "MAP",
+            "ANIMATION",
+            "EFFECT",
+            "EFFECT_V2",
+            "RENDERING",
+            "UI",
+            "BALANCE",
+            "BOSS",
+            "CAMERA",
+        ):
+            self.assertIn(
+                f"IsDebugToolVisible(DEBUG_TOOL::{tool})",
+                render,
+            )
+        self.assertNotIn("switch (m_eActiveDebugTool)", render)
+
+        for relative, token in (
+            ("Client/Private/MapTool.cpp", "Debug_CompletePlaySelected"),
+            ("Client/Private/HUDLayoutTool.cpp", "Debug_CompletePlaySelected"),
+            ("Client/Private/CameraTool.cpp", "Debug_CompletePlaySelected"),
+        ):
+            self.assertIn(token, read(relative), relative)
+
+        complete_play = function_body(
+            self.main_cpp,
+            "bool_t CMainApp::Debug_CompletePlaySelected(",
+        )
+        self.assertIn("m_pBossTool->Play_ServerPattern", complete_play)
+        self.assertNotIn("CNetworkManager", complete_play)
+
+        main_update = function_body(self.main_cpp, "void CMainApp::Update(")
+        for token in (
+            "m_eDebugInputOwner",
+            "DEBUG_TOOL::MAP == m_eDebugInputOwner",
+            "DEBUG_TOOL::ANIMATION == m_eDebugInputOwner",
+            "DEBUG_TOOL::CAMERA == m_eDebugInputOwner",
+        ):
+            self.assertIn(token, main_update)
+        self.assertIn("Explicit viewport/preview owner", self.main_cpp)
+        map_update = function_body(
+            read("Client/Private/MapTool.cpp"),
+            "void Client::CMapTool::Update(",
+        )
+        self.assertIn("bAllowWorldInput && isMapAuthoringLevel", map_update)
+
+    def test_resource_files_is_a_read_only_orchestration_index(self) -> None:
+        refresh = function_body(
+            self.main_cpp,
+            "void CMainApp::RefreshDebugResourceFiles()",
+        )
+        render = function_body(
+            self.main_cpp,
+            "void CMainApp::RenderDebugResourceFiles()",
+        )
+        open_file = function_body(
+            self.main_cpp,
+            "void CMainApp::OpenDebugResourceFile(",
+        )
+        for token in (
+            "CRuntimeAssetRoot::Get_ResourceRoot",
+            "CProjectDataRoot::Get",
+            '"DataFiles/Map"',
+            '"Data/Effects/V2"',
+            '"Resources/Sound"',
+            '"KakulSaydon"',
+            '"Resources/Map/LV_LUT_MIDNIGHTC_ED/"',
+            '"Resources/Character/MN_RPCT_05/"',
+        ):
+            self.assertIn(token, refresh)
+        for forbidden in (
+            "copy_file",
+            "copy(",
+            "rename(",
+            "remove(",
+            "ofstream",
+        ):
+            self.assertNotIn(forbidden, refresh + open_file)
+        self.assertIn("ImGuiListClipper", render)
+        self.assertIn("OpenDebugResourceFile(iFile)", render)
+        self.assertIn("EnsureDebugTool(file.eTool)", open_file)
+        self.assertIn("DEBUG_TOOL::ANIMATION", open_file)
+        self.assertIn("DEBUG_TOOL::BOSS", open_file)
 
 
 if __name__ == "__main__":

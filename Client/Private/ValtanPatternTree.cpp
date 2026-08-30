@@ -2303,6 +2303,12 @@ namespace
 		std::string strEffectAssetId;
 		std::string strOwnerPatternId;
 		std::string strOwnerStageActionId;
+		std::string strKind;
+		std::string strOriginPolicy;
+		std::string strDirectionPolicy;
+		f32_t fSpeedMps = 0.f;
+		f32_t fMaximumDistanceM = 0.f;
+		uint32_t iLifetimeMs = 0u;
 		std::vector<std::string> HitIds;
 		std::vector<uint32_t> HitOffsetsMs;
 	};
@@ -6388,6 +6394,29 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			Object, "ownerPatternId");
 		Reference->second.strOwnerStageActionId = Read_String(
 			Object, "ownerStageActionId");
+		Reference->second.strKind = Read_String(Object, "kind");
+		Reference->second.strOriginPolicy = Read_String(
+			Object, "originPolicy");
+		Reference->second.strDirectionPolicy = Read_String(
+			Object, "directionPolicy");
+		if (!Read_RequiredFiniteFloat(
+				Object, "speedMps", Reference->second.fSpeedMps) ||
+			!Read_RequiredFiniteFloat(Object, "maximumDistanceM",
+				Reference->second.fMaximumDistanceM) ||
+			!Read_RequiredUInt32(
+				Object, "lifeMs", Reference->second.iLifetimeMs) ||
+			Reference->second.strKind.empty() ||
+			Reference->second.strOriginPolicy.empty() ||
+			Reference->second.strDirectionPolicy.empty() ||
+			Reference->second.fSpeedMps < 0.f ||
+			Reference->second.fMaximumDistanceM < 0.f ||
+			0u == Reference->second.iLifetimeMs)
+		{
+			strOutStatus =
+				"Valtan combat-object Product motion/timing is invalid: " +
+				strArchetypeId;
+			return false;
+		}
 		const DATA_JSON_VALUE* pHits = Object.Find("hits");
 		if (nullptr == pHits || !pHits->Is_Array() || pHits->Get_Array().empty())
 		{
@@ -6813,6 +6842,15 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 							Reference->second.strEffectAssetId;
 						View.strTrigger = Read_String(Action, "trigger");
 						View.iSpawnValue = static_cast<uint32_t>(SpawnValue);
+						View.strKind = Reference->second.strKind;
+						View.strOriginPolicy =
+							Reference->second.strOriginPolicy;
+						View.strDirectionPolicy =
+							Reference->second.strDirectionPolicy;
+						View.fSpeedMps = Reference->second.fSpeedMps;
+						View.fMaximumDistanceM =
+							Reference->second.fMaximumDistanceM;
+						View.iLifetimeMs = Reference->second.iLifetimeMs;
 						View.HitIds = Reference->second.HitIds;
 						View.HitOffsetsMs = Reference->second.HitOffsetsMs;
 						Stage.CombatObjectEffects.push_back(std::move(View));

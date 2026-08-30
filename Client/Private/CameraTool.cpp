@@ -6,6 +6,7 @@
 #include "Bounding_Sphere.h"
 #include "Collider.h"
 #include "GameInstance.h"
+#include "MainApp.h"
 #include "ProjectDataRoot.h"
 #include "ValtanCinematicCameraController.h"
 
@@ -351,6 +352,18 @@ void Client::CCameraTool::Render()
 	}
 	ImGui::EndDisabled();
 	ImGui::SameLine();
+#ifdef _DEBUG
+	if (ImGui::Button("Complete Play (Server/Arena)##CameraTool"))
+	{
+		if (CMainApp* const app = CMainApp::Get_Active())
+			(void)app->Debug_CompletePlaySelected(m_strCompletePlayStatus);
+		else
+			m_strCompletePlayStatus = "Complete Play workspace is unavailable.";
+	}
+	ImGui::SameLine();
+	ImGui::TextDisabled("%s", m_strCompletePlayStatus.c_str());
+	ImGui::SameLine();
+#endif
 	ImGui::TextDisabled("%s", m_bDirty ? "UNSAVED DRAFT" : "SOURCE MATCHED");
 
 	if (ImGui::BeginPopupModal(

@@ -611,7 +611,7 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
         )
     for token in (
         '"Play Effect" : "Play Effect + Owner Animation"',
-        'ImGui::SmallButton("Play Server Owner")',
+        'ImGui::SmallButton("Complete Play Owner")',
         "bCanPlayServerOwner",
         "Try_PlayValtanServerPattern(*pOwnerPattern)",
     ):
@@ -1503,7 +1503,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         for token in (
             'ImGui::SmallButton("Open Editor")',
             '"Play Effect" : "Play Effect + Owner Animation"',
-            'ImGui::SmallButton("Play Server Owner")',
+            'ImGui::SmallButton("Complete Play Owner")',
             "Try_OpenValtanStandaloneEffect",
             "Try_PlayValtanStandaloneEffect",
             "Try_PlayValtanSavedUnifiedEffect",
@@ -1825,7 +1825,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         self.assertIn(
             "iOwnerTimelineDurationMs, true, iEffectStartMs", independent
         )
-        self.assertIn('ImGui::SmallButton("Play Server Owner")', independent)
+        self.assertIn('ImGui::SmallButton("Complete Play Owner")', independent)
         self.assertIn("World preview root:", independent)
 
     def test_effect_detail_has_one_working_owner_per_manual_tuning_axis(self) -> None:

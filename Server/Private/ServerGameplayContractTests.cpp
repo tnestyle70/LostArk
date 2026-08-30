@@ -7852,7 +7852,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		world.Get_AreaId() == "LV_LUT_HEARTRB_ED",
 		"Preserve world area ID across placement parsing");
 	tests.Require(
-		4u == static_cast<std::size_t>(std::count_if(
+		MAX_VALTAN_RAID_PLAYERS == static_cast<std::size_t>(std::count_if(
 			world.Get_Placements().begin(),
 			world.Get_Placements().end(),
 			[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
@@ -7860,7 +7860,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				return WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind &&
 					placement.isEnabled;
 			})),
-		"Load exactly four enabled Valtan player spawns");
+		"Load exactly the configured Valtan raid capacity as enabled player spawns");
 	tests.Require(navigation.Load("LV_LUT_HEARTRB_ED"),
 		"Load Valtan server navigation");
 	std::vector<SERVER_NAV_POINT> path;
@@ -14436,19 +14436,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			raidRoom.m_PlayerIdByEntityId.emplace(entityId, playerId);
 		};
 
-		if (raidRoom.Is_Ready() && 4u == playerSpawns.size())
-		{
-			for (std::size_t index = 0; index < playerSpawns.size(); ++index)
-			{
-				addPlayer(
-					1001u + index,
-					static_cast<PLAYER_ID>(2001u + index),
-					static_cast<NET_ENTITY_ID>(3001u + index),
-					*playerSpawns[index]);
-			}
-		}
 		std::vector<std::shared_ptr<CClientSession>> registeredSessions;
-		for (SESSION_ID sessionId = 1001u; sessionId <= 1005u; ++sessionId)
+		for (SESSION_ID sessionId = 1001u; sessionId <= 1009u; ++sessionId)
 		{
 			auto session = std::make_shared<CClientSession>(
 				sessionId, INVALID_SOCKET,
@@ -14457,6 +14446,28 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			raidRoom.Handle_Register(session);
 			registeredSessions.push_back(std::move(session));
 		}
+		bool firstEightJoined = raidRoom.Is_Ready() &&
+			MAX_VALTAN_RAID_PLAYERS == playerSpawns.size();
+		for (std::size_t index = 0u;
+			firstEightJoined && index < MAX_VALTAN_RAID_PLAYERS; ++index)
+		{
+			C2S_ENTER_WORLD entry{};
+			entry.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+			entry.eWorldId = WORLD_ID::VALTAN_ARENA;
+			entry.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			entry.strNickName = "RaidFixture" + std::to_string(index + 1u);
+			firstEightJoined = raidRoom.Join(1001u + index, entry) &&
+				raidRoom.m_Players.size() == index + 1u;
+		}
+		const auto firstPlayerOwner =
+			raidRoom.m_PlayerIdBySessionId.find(1001u);
+		const PLAYER_ID firstRaidPlayerId =
+			raidRoom.m_PlayerIdBySessionId.end() == firstPlayerOwner ?
+				0u : firstPlayerOwner->second;
+		const auto firstPlayer = raidRoom.m_Players.find(firstRaidPlayerId);
+		const NET_ENTITY_ID firstRaidEntityId =
+			raidRoom.m_Players.end() == firstPlayer ?
+				0u : firstPlayer->second.iNetEntityId;
 		const PLAYER_ID allocatorBeforeFull = raidRoom.m_iNextPlayerId;
 		const NET_ENTITY_ID entityAllocatorBeforeFull = raidRoom.m_iNextNetEntityId;
 		const std::size_t playersBeforeFull = raidRoom.m_Players.size();
@@ -14464,47 +14475,49 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			raidRoom.m_PlayerIdBySessionId.size();
 		const std::size_t entityOwnersBeforeFull =
 			raidRoom.m_PlayerIdByEntityId.size();
-		C2S_ENTER_WORLD fifthEntry{};
-		fifthEntry.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
-		fifthEntry.eWorldId = WORLD_ID::VALTAN_ARENA;
-		fifthEntry.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
-		fifthEntry.strNickName = "FifthRaidFixture";
-		const bool fifthRejected = !raidRoom.Join(1005u, fifthEntry);
-		const CLIENT_SESSION_CLOSE_DIAGNOSTIC fifthDiagnostic =
+		C2S_ENTER_WORLD ninthEntry{};
+		ninthEntry.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+		ninthEntry.eWorldId = WORLD_ID::VALTAN_ARENA;
+		ninthEntry.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		ninthEntry.strNickName = "NinthRaidFixture";
+		const bool ninthRejected = !raidRoom.Join(1009u, ninthEntry);
+		const CLIENT_SESSION_CLOSE_DIAGNOSTIC ninthDiagnostic =
 			registeredSessions.back()->Get_CloseDiagnostic();
 		tests.Require(
-			raidRoom.Is_Ready() && 4u == playerSpawns.size() &&
+			firstEightJoined && raidRoom.Is_Ready() &&
+			MAX_VALTAN_RAID_PLAYERS == playerSpawns.size() &&
 			raidRoom.Is_PlayerAdmissionFull() &&
 			nullptr == raidRoom.Find_AvailablePlayerSpawn() &&
-			fifthRejected &&
+			ninthRejected &&
 			SESSION_DIAGNOSTIC_REASON::SERVER_EXPECTED_ROOM_FULL ==
-				fifthDiagnostic.eReason &&
+				ninthDiagnostic.eReason &&
 			std::string::npos !=
-				fifthDiagnostic.strContext.find("activePlayers=4") &&
+				ninthDiagnostic.strContext.find("activePlayers=8") &&
 			std::string::npos !=
-				fifthDiagnostic.strContext.find(
-					"registeredSessionsIncludingCandidate=5") &&
+				ninthDiagnostic.strContext.find(
+					"registeredSessionsIncludingCandidate=9") &&
 			std::string::npos !=
-				fifthDiagnostic.strContext.find("candidateSessionId=1005") &&
+				ninthDiagnostic.strContext.find("candidateSessionId=1009") &&
 			std::string::npos !=
-				fifthDiagnostic.strContext.find("candidateRegistered=true") &&
+				ninthDiagnostic.strContext.find("candidateRegistered=true") &&
 			std::string::npos !=
-				fifthDiagnostic.strContext.find("enabledPlayerSpawns=4") &&
+				ninthDiagnostic.strContext.find("enabledPlayerSpawns=8") &&
 			std::string::npos !=
-				fifthDiagnostic.strContext.find("sessionId=1001") &&
+				ninthDiagnostic.strContext.find("sessionId=1001") &&
 			std::string::npos !=
-				fifthDiagnostic.strContext.find("playerId=2001") &&
+				ninthDiagnostic.strContext.find(
+					"playerId=" + std::to_string(firstRaidPlayerId)) &&
 			std::string::npos !=
-				fifthDiagnostic.strContext.find("peer=unknown:0") &&
-			fifthDiagnostic.strContext.size() <= 1024u &&
+				ninthDiagnostic.strContext.find("peer=unknown:0") &&
+			ninthDiagnostic.strContext.size() <= 1024u &&
 			allocatorBeforeFull == raidRoom.m_iNextPlayerId &&
 			entityAllocatorBeforeFull == raidRoom.m_iNextNetEntityId &&
 			playersBeforeFull == raidRoom.m_Players.size() &&
 			sessionOwnersBeforeFull == raidRoom.m_PlayerIdBySessionId.size() &&
 			entityOwnersBeforeFull == raidRoom.m_PlayerIdByEntityId.size(),
-			"Reject a fifth Valtan admission as room full without mutating room ownership or allocators");
+			"Reject a ninth Valtan admission as room full without mutating room ownership or allocators");
 		registeredSessions.back()->Request_Close();
-		raidRoom.m_Sessions.erase(1005u);
+		raidRoom.m_Sessions.erase(1009u);
 
 		const std::string releasedSpawnId =
 			playerSpawns.size() < 2u ? std::string{} :
@@ -14514,14 +14527,32 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			raidRoom.Find_AvailablePlayerSpawn();
 		const bool releasedSlotAvailable = nullptr != releasedSpawn &&
 			releasedSpawn->strPlacementId == releasedSpawnId;
-		if (releasedSlotAvailable)
-		{
-			addPlayer(1010u, 2010u, 3010u, *releasedSpawn);
-		}
+		auto replacementSession = std::make_shared<CClientSession>(
+			1010u, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		replacementSession->m_isSendRunning.store(true);
+		raidRoom.Handle_Register(replacementSession);
+		registeredSessions.push_back(replacementSession);
+		C2S_ENTER_WORLD replacementEntry{};
+		replacementEntry.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+		replacementEntry.eWorldId = WORLD_ID::VALTAN_ARENA;
+		replacementEntry.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+		replacementEntry.strNickName = "ReplacementRaidFixture";
+		const bool replacementJoined = releasedSlotAvailable &&
+			raidRoom.Join(1010u, replacementEntry);
+		const auto replacementOwner =
+			raidRoom.m_PlayerIdBySessionId.find(1010u);
+		const auto replacementPlayer =
+			raidRoom.m_PlayerIdBySessionId.end() == replacementOwner ?
+				raidRoom.m_Players.end() :
+				raidRoom.m_Players.find(replacementOwner->second);
 		tests.Require(
-			releasedSlotAvailable && raidRoom.Is_PlayerAdmissionFull() &&
-			4u == raidRoom.m_Players.size(),
-			"Release a disconnected Valtan slot and admit a replacement into the same stable spawn");
+			replacementJoined &&
+			raidRoom.m_Players.end() != replacementPlayer &&
+			releasedSpawnId == replacementPlayer->second.strSpawnPlacementId &&
+			raidRoom.Is_PlayerAdmissionFull() &&
+			MAX_VALTAN_RAID_PLAYERS == raidRoom.m_Players.size(),
+			"Join eight Valtan players through the real admission path, reject the ninth, and admit a replacement into the released stable spawn");
 
 		const WORLD_BOOTSTRAP_PLACEMENT* bossTrigger =
 			raidRoom.Find_Placement("Stage_Boss");
@@ -14574,7 +14605,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		dynamicMonster.strSpawnGroupId = "spawn.valtan.stage01";
 		raidRoom.m_WorldEntities.push_back(std::move(dynamicMonster));
 		DAMAGE_EVENT damageEvent{};
-		damageEvent.iTargetNetEntityId = 3001u;
+		damageEvent.iTargetNetEntityId = firstRaidEntityId;
 		damageEvent.iAmount = 1u;
 		raidRoom.m_TickDamageEvents.push_back(damageEvent);
 		raidRoom.m_iServerTick = 777u;

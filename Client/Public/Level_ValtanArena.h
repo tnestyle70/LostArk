@@ -64,6 +64,23 @@ public:
 		return m_pPlayerCommandSink;
 	}
 #ifdef _DEBUG
+	struct ARENA_ACTIVE_STATE final
+	{
+		bool_t bSynchronized = false;
+		bool_t bOrdinaryWallsActive = false;
+		bool_t bOuterRingActive = false;
+		bool_t bThreeOClockFloorActive = false;
+		bool_t bNineOClockFloorActive = false;
+		uint32_t iOrdinaryGroupCount = 0u;
+		uint32_t iOuterRingGroupCount = 0u;
+		uint32_t iThreeOClockGroupCount = 0u;
+		uint32_t iNineOClockGroupCount = 0u;
+		uint32_t iDebrisActorCount = 0u;
+		uint32_t iActiveCollisionCount = 0u;
+		uint32_t iActiveNavigationRegionCount = 0u;
+		uint64_t iNavigationRevision = 0u;
+	};
+
 	/* Workbench route. The active Level retains the one request-sequence and
 	   retry owner used by its audition panel; callers never send packets or
 	   mutate wall visibility locally. */
@@ -74,6 +91,7 @@ public:
 	{
 		return m_strAuditionStatus;
 	}
+	ARENA_ACTIVE_STATE Get_ArenaActiveState() const;
 #endif
 
 private:

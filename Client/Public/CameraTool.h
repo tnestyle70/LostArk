@@ -138,6 +138,8 @@ private:
 	std::string m_strSelectedCueId;
 	std::string m_strPendingOpenCueId;
 	std::string m_strStatus = "Reload the Valtan cinematic camera document.";
+	std::string m_strCompletePlayStatus =
+		"Complete Play uses the workspace's selected saved Server pattern.";
 	int32_t m_iSelectedKeyframe = -1;
 	f32_t m_fPreviewSeconds = 0.f;
 	f32_t m_fPreviewRate = 1.f;

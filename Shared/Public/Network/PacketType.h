@@ -294,6 +294,12 @@ namespace LostArk::Shared
 	// Run-CharacterSelectIsolationHarness.ps1's 4/4 ROOM_FULL contract).
 	inline constexpr std::size_t MAX_PARTY_MEMBERS = 4;
 
+	// Network players admitted to one Valtan raid room. Party ownership remains
+	// a four-member contract; the remaining raid seats may be occupied by a
+	// second party or, later, Server-owned raid AI without widening party wire
+	// messages or nickname identity semantics.
+	inline constexpr std::size_t MAX_VALTAN_RAID_PLAYERS = 8;
+
 	// Matches CChatWindowView::INPUT_BUFFER_SIZE (including the terminator),
 	// so a locally-typeable line always round-trips.
 	inline constexpr std::size_t MAX_CHAT_TEXT_BYTES = 256;

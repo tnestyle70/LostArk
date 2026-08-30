@@ -80,6 +80,15 @@ struct VALTAN_COMBAT_OBJECT_EFFECT_VIEW final
 	std::string strEffectAssetId;
 	std::string strTrigger;
 	uint32_t iSpawnValue = 0u;
+	/* Read-only Product diagnostics.  Combat-object timing is authored and
+	   published by the Valtan combat-object pipeline, not by stage-duration
+	   editing, so Workbench must show these as a separate clock. */
+	std::string strKind;
+	std::string strOriginPolicy;
+	std::string strDirectionPolicy;
+	f32_t fSpeedMps = 0.f;
+	f32_t fMaximumDistanceM = 0.f;
+	uint32_t iLifetimeMs = 0u;
 	/* Combat-object-local Server contact clocks.  These are joined from
 	   ValtanCombatObjects.json so Workbench coverage can report an impact with
 	   no Sound cue instead of merely showing that an object spawned. */

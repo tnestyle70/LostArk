@@ -106,6 +106,9 @@
     <Filter Include="96.DataFiles\Navigation">
       <UniqueIdentifier>{e808332f-5828-48f5-bab9-fc6884b75aa6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\ResourceIntake">
+      <UniqueIdentifier>{5df6b13f-cf63-4518-a72d-7b99725c8d25}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\UI">
       <UniqueIdentifier>{d2366f07-bf45-415a-af35-4a70fdd20190}</UniqueIdentifier>
     </Filter>
@@ -1447,6 +1450,9 @@
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.maplights.json">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.mapplacements">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapeffects.json">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
@@ -1567,6 +1573,18 @@
     <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapplacements">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.build.receipt.json">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.mapassets">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.mapplacements">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.nonstatic.inventory.json">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
     <None Include="..\..\Data\Maps\Imported\LV_SHS_RCARENA_D\LV_SHS_RCARENA_D.mapassets">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
@@ -1575,6 +1593,9 @@
     </None>
     <None Include="..\..\Data\Maps\MapCatalog.json">
       <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\ResourceIntake\LV_LUT_MIDNIGHTC_ED.resource-intake.json">
+      <Filter>96.DataFiles\ResourceIntake</Filter>
     </None>
     <None Include="..\..\Data\Navigation\LV_BER_BERNCASTLE.navsource">
       <Filter>96.DataFiles\Navigation</Filter>

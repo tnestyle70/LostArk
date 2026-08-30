@@ -17,6 +17,37 @@ class DATA_JSON_VALUE;
 class CBalanceTool final
 {
 public:
+	/* Typed Valtan stage draft shared by Balance Tool and Action Presentation
+	   Workbench.  Stable identities and DamageProfile ownership are read-only
+	   at this boundary; only the Server gameplay timing, hit geometry/schedule,
+	   and player reaction values are staged here. */
+	struct PATTERN_STAGE_EDIT final
+	{
+		std::string stageId;
+		std::string actionId;
+		std::string stageKind;
+		std::uint32_t durationMs = 0;
+		std::string hitShape;
+		double hitOuterRadius = 0.0;
+		double hitInnerRadius = 0.0;
+		double hitAngleDegrees = 0.0;
+		double hitLength = 0.0;
+		double hitHalfWidth = 0.0;
+		std::uint32_t hitCount = 0;
+		std::uint32_t hitIntervalMs = 0;
+		std::uint32_t hitDelayMs = 0;
+		std::vector<std::uint32_t> hitOffsetsMs;
+		std::string damageProfileId;
+		double pushRangeM = 0.0;
+		std::uint32_t pushMs = 0;
+		bool knockdown = false;
+		std::uint32_t downMs = 0;
+		std::string playerResponse = "DAMAGE";
+		std::string attachmentSlot = "NONE";
+		bool durationEditable = false;
+		bool hitEditable = false;
+	};
+
 	CBalanceTool();
 	void Open();
 	void Render();
@@ -33,6 +64,16 @@ public:
 		const std::string& patternId,
 		const std::string& stageId,
 		std::uint32_t durationMs,
+		std::string& status);
+	bool Get_ValtanStageDraft(
+		const std::string& patternId,
+		const std::string& stageId,
+		PATTERN_STAGE_EDIT& stage,
+		std::string& status) const;
+	bool Set_ValtanStageDraft(
+		const std::string& patternId,
+		const std::string& stageId,
+		const PATTERN_STAGE_EDIT& stage,
 		std::string& status);
 	/* One user-facing Save contract: validate the joined draft, durably save
 	   authoring when dirty, build the immutable Product runtime bundle, and
@@ -164,28 +205,6 @@ private:
 		std::uint32_t arenaRandomCount = 4u;
 		double arenaRandomRadiusM = 14.0;
 		double arenaHeightToleranceM = 1.0;
-	};
-
-	struct PATTERN_STAGE_EDIT
-	{
-		std::string stageId;
-		std::string actionId;
-		std::string stageKind;
-		std::uint32_t durationMs = 0;
-		std::string hitShape;
-		double hitOuterRadius = 0.0;
-		double hitInnerRadius = 0.0;
-		double hitAngleDegrees = 0.0;
-		double hitLength = 0.0;
-		double hitHalfWidth = 0.0;
-		std::uint32_t hitCount = 0;
-		std::uint32_t hitIntervalMs = 0;
-		std::uint32_t hitDelayMs = 0;
-		std::string damageProfileId;
-		double pushRangeM = 0.0;
-		std::uint32_t pushMs = 0;
-		bool knockdown = false;
-		std::uint32_t downMs = 0;
 	};
 
 	struct PATTERN_EDIT

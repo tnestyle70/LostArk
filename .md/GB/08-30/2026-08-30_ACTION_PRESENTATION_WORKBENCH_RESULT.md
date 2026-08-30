@@ -279,7 +279,7 @@ configuration별 compiler object, PDB, incremental link, tool scratch 같은 재
 
 ## 12. 사용자 수동 검증 순서
 
-1. LAN endpoint `10.207.18.103:7777`의 Server를 시작한다.
+1. LAN endpoint `192.168.0.14:7777`의 Server를 시작한다.
 2. `Client/Default` working directory로 Debug Client를 실행한다.
 3. Lobby의 `Valtan`으로 Server 승인 입장한다.
 4. F1에서 `Action Presentation Workbench`를 연다.

@@ -56,9 +56,13 @@
 #endif
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
+#include <iterator>
 #include <random>
+#include <tuple>
 #include <cwchar>
 #include <fstream>
 
@@ -584,15 +588,22 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	CEffectPresentationService::Synchronize_FollowAnchors();
 	CEffectPresentationService::Update(fTimeDelta);
 
-#ifdef _DEBUG
+	#ifdef _DEBUG
 	if (nullptr != m_pMapTool)
-		m_pMapTool->Update(fTimeDelta);
+	{
+		m_pMapTool->Update(
+			fTimeDelta,
+			m_bDeveloperToolsVisible &&
+			IsDebugToolVisible(DEBUG_TOOL::MAP) &&
+			DEBUG_TOOL::MAP == m_eDebugInputOwner);
+	}
 	if (nullptr != m_pAnimationTool)
 	{
 		m_pAnimationTool->Update(
 			fTimeDelta,
 			m_bDeveloperToolsVisible &&
-			DEBUG_TOOL::ANIMATION == m_eActiveDebugTool);
+			IsDebugToolVisible(DEBUG_TOOL::ANIMATION) &&
+			DEBUG_TOOL::ANIMATION == m_eDebugInputOwner);
 	}
 	if (nullptr != m_pEffectTool)
 		m_pEffectTool->Update(fTimeDelta);
@@ -600,7 +611,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	{
 		m_pBossTool->Update(
 			m_bDeveloperToolsVisible &&
-			DEBUG_TOOL::BOSS == m_eActiveDebugTool);
+			IsDebugToolVisible(DEBUG_TOOL::BOSS));
 		CAMERA_TOOL_OPEN_REQUEST cameraRequest;
 		if (m_pBossTool->Consume_CameraToolOpenRequest(cameraRequest))
 		{
@@ -660,7 +671,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		m_pCameraTool->Update(
 			fTimeDelta,
 			m_bDeveloperToolsVisible &&
-			DEBUG_TOOL::CAMERA == m_eActiveDebugTool);
+			IsDebugToolVisible(DEBUG_TOOL::CAMERA) &&
+			DEBUG_TOOL::CAMERA == m_eDebugInputOwner);
 	}
 #endif
 
@@ -774,51 +786,64 @@ HRESULT CMainApp::Render()
 		if (m_bDeveloperToolsVisible)
 		{
 			RenderDeveloperTools();
-			switch (m_eActiveDebugTool)
+			/* The authoring workspace is deliberately non-exclusive. Each domain owner
+			   keeps its own window and draft; Resource Files only orchestrates focus and
+			   typed deep-links. */
+			const auto focusNextWindow = [this](const DEBUG_TOOL eTool)
 			{
-			case DEBUG_TOOL::MAP:
-				if (nullptr != m_pMapTool)
-					m_pMapTool->Render();
-				break;
-			case DEBUG_TOOL::ANIMATION:
-				if (nullptr != m_pAnimationTool)
-					m_pAnimationTool->Render();
-				break;
-			case DEBUG_TOOL::EFFECT:
-				if (nullptr != m_pEffectTool)
-					m_pEffectTool->Render();
-				break;
-			case DEBUG_TOOL::EFFECT_V2:
-				if (nullptr != m_pEffectToolV2)
-					m_pEffectToolV2->Render();
-				break;
-			case DEBUG_TOOL::RENDERING:
+				if (m_eDebugWindowFocusPending != eTool)
+					return;
+				ImGui::SetNextWindowFocus();
+				m_eDebugWindowFocusPending = DEBUG_TOOL::NONE;
+			};
+			if (IsDebugToolVisible(DEBUG_TOOL::MAP) && nullptr != m_pMapTool)
+			{
+				focusNextWindow(DEBUG_TOOL::MAP);
+				m_pMapTool->Render();
+			}
+			if (IsDebugToolVisible(DEBUG_TOOL::ANIMATION) &&
+				nullptr != m_pAnimationTool)
+			{
+				focusNextWindow(DEBUG_TOOL::ANIMATION);
+				m_pAnimationTool->Render();
+			}
+			if (IsDebugToolVisible(DEBUG_TOOL::EFFECT) && nullptr != m_pEffectTool)
+			{
+				focusNextWindow(DEBUG_TOOL::EFFECT);
+				m_pEffectTool->Render();
+			}
+			if (IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2) &&
+				nullptr != m_pEffectToolV2)
+			{
+				focusNextWindow(DEBUG_TOOL::EFFECT_V2);
+				m_pEffectToolV2->Render();
+			}
+			if (IsDebugToolVisible(DEBUG_TOOL::RENDERING))
+			{
+				focusNextWindow(DEBUG_TOOL::RENDERING);
 				RenderRenderingWorkbench();
-				break;
-			case DEBUG_TOOL::UI:
-				/* Skill Window's slots (tripod plate, node glows, ...) are placed and dragged
-				right in this same canvas, exactly like Combat HUD/Screen UI/Loading Screen --
-				CHUDLayoutTool::Render_Canvas already draws and hit-tests m_Slots generically
-				regardless of which document tab is active, so no separate preview window is
-				needed (an earlier version of this code opened one; it only ended up floating
-				over this window and blocking it instead of helping). */
-				if (nullptr != m_pHUDLayoutTool)
-					m_pHUDLayoutTool->Render();
-				break;
-			case DEBUG_TOOL::BALANCE:
-				if (nullptr != m_pBalanceTool)
-					m_pBalanceTool->Render();
-				break;
-			case DEBUG_TOOL::BOSS:
-				if (nullptr != m_pBossTool)
-					m_pBossTool->Render();
-				break;
-			case DEBUG_TOOL::CAMERA:
-				if (nullptr != m_pCameraTool)
-					m_pCameraTool->Render();
-				break;
-			default:
-				break;
+			}
+			/* Skill Window's slots are still authored by their existing UI owner;
+			   rendering it alongside other tools does not create a second UI runtime. */
+			if (IsDebugToolVisible(DEBUG_TOOL::UI) && nullptr != m_pHUDLayoutTool)
+			{
+				focusNextWindow(DEBUG_TOOL::UI);
+				m_pHUDLayoutTool->Render();
+			}
+			if (IsDebugToolVisible(DEBUG_TOOL::BALANCE) && nullptr != m_pBalanceTool)
+			{
+				focusNextWindow(DEBUG_TOOL::BALANCE);
+				m_pBalanceTool->Render();
+			}
+			if (IsDebugToolVisible(DEBUG_TOOL::BOSS) && nullptr != m_pBossTool)
+			{
+				focusNextWindow(DEBUG_TOOL::BOSS);
+				m_pBossTool->Render();
+			}
+			if (IsDebugToolVisible(DEBUG_TOOL::CAMERA) && nullptr != m_pCameraTool)
+			{
+				focusNextWindow(DEBUG_TOOL::CAMERA);
+				m_pCameraTool->Render();
 			}
 
 			if (m_bProfilerVisible)
@@ -4461,13 +4486,50 @@ HRESULT CMainApp::ReadyDebugTools()
 	return S_OK;
 }
 
+bool_t CMainApp::IsDebugToolVisible(const DEBUG_TOOL eTool) const
+{
+	const size_t iTool = static_cast<size_t>(eTool);
+	return DEBUG_TOOL::NONE != eTool && DEBUG_TOOL::COUNT != eTool &&
+		iTool < m_DebugToolVisible.size() && m_DebugToolVisible[iTool];
+}
+
+void CMainApp::SetDebugToolVisible(
+	const DEBUG_TOOL eTool,
+	const bool_t bVisible)
+{
+	const size_t iTool = static_cast<size_t>(eTool);
+	if (DEBUG_TOOL::NONE == eTool || DEBUG_TOOL::COUNT == eTool ||
+		iTool >= m_DebugToolVisible.size())
+	{
+		return;
+	}
+
+	m_DebugToolVisible[iTool] = bVisible;
+	if (!bVisible)
+	{
+		if (m_eDebugInputOwner == eTool)
+			m_eDebugInputOwner = DEBUG_TOOL::NONE;
+		if (m_eDebugWindowFocusPending == eTool)
+			m_eDebugWindowFocusPending = DEBUG_TOOL::NONE;
+		if (DEBUG_TOOL::MAP == eTool && nullptr != m_pMapTool)
+			m_pMapTool->SetOpen(false);
+		else if (DEBUG_TOOL::CAMERA == eTool && nullptr != m_pCameraTool)
+			m_pCameraTool->Deactivate();
+	}
+}
+
+void CMainApp::CloseAllDebugTools()
+{
+	for (size_t iTool = static_cast<size_t>(DEBUG_TOOL::NONE) + 1u;
+		iTool < static_cast<size_t>(DEBUG_TOOL::COUNT); ++iTool)
+	{
+		SetDebugToolVisible(static_cast<DEBUG_TOOL>(iTool), false);
+	}
+	m_strToolStatus = "All authoring windows hidden; domain drafts remain owned by their tools.";
+}
+
 HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 {
-	if (nullptr != m_pMapTool && DEBUG_TOOL::MAP != eTool)
-		m_pMapTool->SetOpen(false);
-	if (nullptr != m_pCameraTool && DEBUG_TOOL::CAMERA != eTool)
-		m_pCameraTool->Deactivate();
-
 	switch (eTool)
 	{
 	case DEBUG_TOOL::MAP:
@@ -4548,8 +4610,559 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		return E_INVALIDARG;
 	}
 
-	m_eActiveDebugTool = eTool;
+	SetDebugToolVisible(eTool, true);
+	m_eDebugInputOwner = eTool;
+	m_eDebugWindowFocusPending = eTool;
 	return S_OK;
+}
+
+void CMainApp::RefreshDebugResourceFiles()
+{
+	struct RESOURCE_ROOT
+	{
+		const char_t* pDomain;
+		const char_t* pSource;
+		filesystem::path Root;
+		const char_t* pStablePrefix;
+		DEBUG_TOOL eTool;
+	};
+
+	const filesystem::path resourceRoot =
+		CRuntimeAssetRoot::Get_ResourceRoot();
+	const filesystem::path dataRoot = CProjectDataRoot::Get();
+	const filesystem::path publishedDataRoot =
+		resourceRoot.parent_path() / L"DataFiles";
+	const std::array<RESOURCE_ROOT, 27> roots = {{
+		{ "Character / Animation", "Resources", resourceRoot / L"Character",
+			"Resources/Character", DEBUG_TOOL::ANIMATION },
+		{ "Character / Animation", "Data", dataRoot / L"Animation",
+			"Data/Animation", DEBUG_TOOL::ANIMATION },
+		{ "Boss / Pattern", "Data", dataRoot / L"Valtan",
+			"Data/Valtan", DEBUG_TOOL::ANIMATION },
+		{ "Boss / Pattern", "Data", dataRoot / L"Encounters",
+			"Data/Encounters", DEBUG_TOOL::BOSS },
+		{ "Boss / Pattern", "Data", dataRoot / L"Actors",
+			"Data/Actors", DEBUG_TOOL::BOSS },
+		{ "Effect V1", "Resources", resourceRoot / L"Effect",
+			"Resources/Effect", DEBUG_TOOL::EFFECT },
+		{ "Effect V1", "Data", dataRoot / L"Effects" / L"Authored",
+			"Data/Effects/Authored", DEBUG_TOOL::EFFECT },
+		{ "Effect V1", "Data", dataRoot / L"Effects" / L"Assemblies",
+			"Data/Effects/Assemblies", DEBUG_TOOL::EFFECT },
+		{ "Effect V2", "Data", dataRoot / L"Effects" / L"V2",
+			"Data/Effects/V2", DEBUG_TOOL::EFFECT_V2 },
+		{ "Sound", "Resources", resourceRoot / L"Sound",
+			"Resources/Sound", DEBUG_TOOL::ANIMATION },
+		{ "Sound", "Data", dataRoot / L"Sound",
+			"Data/Sound", DEBUG_TOOL::ANIMATION },
+		{ "Map / World / Navigation", "Resources", resourceRoot / L"Map",
+			"Resources/Map", DEBUG_TOOL::MAP },
+		{ "Map / World / Navigation", "Resources", resourceRoot / L"Deploy",
+			"Resources/Deploy", DEBUG_TOOL::MAP },
+		{ "Map / World / Navigation", "Data", dataRoot / L"Maps",
+			"Data/Maps", DEBUG_TOOL::MAP },
+		{ "Map / World / Navigation", "Data", dataRoot / L"Worlds",
+			"Data/Worlds", DEBUG_TOOL::MAP },
+		{ "Map / World / Navigation", "Data", dataRoot / L"Navigation",
+			"Data/Navigation", DEBUG_TOOL::MAP },
+		{ "Map / World / Navigation", "Published", publishedDataRoot / L"Map",
+			"DataFiles/Map", DEBUG_TOOL::MAP },
+		{ "Map / World / Navigation", "Published", publishedDataRoot / L"World",
+			"DataFiles/World", DEBUG_TOOL::MAP },
+		{ "Map / World / Navigation", "Published", publishedDataRoot / L"Navigation",
+			"DataFiles/Navigation", DEBUG_TOOL::MAP },
+		{ "UI / Fonts", "Resources", resourceRoot / L"UI",
+			"Resources/UI", DEBUG_TOOL::UI },
+		{ "UI / Fonts", "Resources", resourceRoot / L"Fonts",
+			"Resources/Fonts", DEBUG_TOOL::UI },
+		{ "UI / Fonts", "Data", dataRoot / L"UI",
+			"Data/UI", DEBUG_TOOL::UI },
+		{ "Gameplay / Rendering", "Data", dataRoot / L"Balance",
+			"Data/Balance", DEBUG_TOOL::BALANCE },
+		{ "Gameplay / Rendering", "Data", dataRoot / L"Items",
+			"Data/Items", DEBUG_TOOL::BALANCE },
+		{ "Gameplay / Rendering", "Data", dataRoot / L"Rendering",
+			"Data/Rendering", DEBUG_TOOL::RENDERING },
+		{ "Gameplay / Rendering", "Published", publishedDataRoot / L"Rendering",
+			"DataFiles/Rendering", DEBUG_TOOL::RENDERING },
+		{ "Gameplay / Rendering", "Data", dataRoot / L"ResourceIntake",
+			"Data/ResourceIntake", DEBUG_TOOL::MAP },
+	}};
+
+	auto pathToUtf8 = [](const filesystem::path& path)
+	{
+		const u8string utf8 = path.generic_u8string();
+		return string(utf8.begin(), utf8.end());
+	};
+	auto lowerAscii = [](string value)
+	{
+		std::transform(value.begin(), value.end(), value.begin(),
+			[](const unsigned char character)
+			{
+				return static_cast<char_t>(std::tolower(character));
+			});
+		return value;
+	};
+
+	m_bDebugResourceScanAttempted = true;
+	m_DebugResourceFiles.clear();
+	m_iSelectedDebugResourceFile = static_cast<size_t>(-1);
+	constexpr size_t MAX_RESOURCE_FILES = 50000u;
+	std::error_code error;
+	for (const RESOURCE_ROOT& root : roots)
+	{
+		error.clear();
+		if (!filesystem::is_directory(root.Root, error) || error)
+			continue;
+
+		filesystem::recursive_directory_iterator iterator(
+			root.Root,
+			filesystem::directory_options::skip_permission_denied,
+			error);
+		const filesystem::recursive_directory_iterator end;
+		for (; !error && iterator != end; iterator.increment(error))
+		{
+			if (m_DebugResourceFiles.size() >= MAX_RESOURCE_FILES)
+				break;
+			if (!iterator->is_regular_file(error) || error)
+			{
+				error.clear();
+				continue;
+			}
+			const filesystem::path relative =
+				iterator->path().lexically_relative(root.Root);
+			if (relative.empty())
+				continue;
+
+			DEBUG_RESOURCE_FILE file;
+			file.strDomain = root.pDomain;
+			file.strSource = root.pSource;
+			file.strRelativePath = std::string(root.pStablePrefix) + "/" +
+				pathToUtf8(relative);
+			file.strSearchText = lowerAscii(
+				file.strDomain + " " + file.strSource + " " +
+				file.strRelativePath);
+			file.eTool = root.eTool;
+			m_DebugResourceFiles.push_back(std::move(file));
+		}
+		if (m_DebugResourceFiles.size() >= MAX_RESOURCE_FILES)
+			break;
+	}
+
+	/* Data itself is also scanned above to expose catalogs that have no dedicated
+	   domain root. Remove exact duplicate stable paths while retaining the more
+	   specific domain entry inserted first. */
+	std::stable_sort(
+		m_DebugResourceFiles.begin(), m_DebugResourceFiles.end(),
+		[](const DEBUG_RESOURCE_FILE& left, const DEBUG_RESOURCE_FILE& right)
+		{
+			return std::tie(left.strRelativePath, left.strDomain) <
+				std::tie(right.strRelativePath, right.strDomain);
+		});
+	m_DebugResourceFiles.erase(
+		std::unique(
+			m_DebugResourceFiles.begin(), m_DebugResourceFiles.end(),
+			[](const DEBUG_RESOURCE_FILE& left, const DEBUG_RESOURCE_FILE& right)
+			{
+				return left.strRelativePath == right.strRelativePath;
+			}),
+		m_DebugResourceFiles.end());
+
+	/* KakulSaydon is a user-facing collection, not a replacement for package or
+	   Area identity. Present the extracted closure under one virtual branch while
+	   keeping paths such as LV_LUT_MIDNIGHTC_ED and MN_RPCT_05 unchanged. */
+	const auto startsWith = [](const string& value, const char_t* prefix)
+	{
+		return 0u == value.rfind(prefix, 0u);
+	};
+	std::vector<DEBUG_RESOURCE_FILE> kakulCollection;
+	for (const DEBUG_RESOURCE_FILE& file : m_DebugResourceFiles)
+	{
+		const string& path = file.strRelativePath;
+		const bool_t isKakul =
+			startsWith(path, "Resources/Map/LV_LUT_MIDNIGHTC_ED/") ||
+			startsWith(path, "Data/Maps/Imported/LV_LUT_MIDNIGHTC_ED/") ||
+			startsWith(path, "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/") ||
+			startsWith(path, "DataFiles/Map/LV_LUT_MIDNIGHTC_ED") ||
+			startsWith(path, "Resources/Effect/KakulSaydon/") ||
+			startsWith(path, "Resources/Effect/LV_LUT_MIDNIGHTC_ED/") ||
+			startsWith(path, "Resources/UI/KakulSaydon/") ||
+			startsWith(path, "Resources/UI/LV_LUT_MIDNIGHTC_ED/") ||
+			startsWith(path, "Resources/Sound/KakulSaydon/") ||
+			startsWith(path, "Data/ResourceIntake/LV_LUT_MIDNIGHTC_ED") ||
+			startsWith(path, "Resources/Character/MN_RPCT_00/") ||
+			startsWith(path, "Resources/Character/MN_RPCT_05/") ||
+			startsWith(path, "Resources/Character/MN_RPCT_06/") ||
+			startsWith(path, "Resources/Character/MN_RPCZ_00/") ||
+			startsWith(path, "Resources/Character/WP_MN_RPCT_05/") ||
+			startsWith(path, "Resources/Character/WP_MN_RPCT_06/");
+		if (!isKakul)
+			continue;
+		DEBUG_RESOURCE_FILE collectionFile = file;
+		collectionFile.strDomain = "KakulSaydon";
+		collectionFile.strSearchText = lowerAscii(
+			collectionFile.strDomain + " " + collectionFile.strSource + " " +
+			collectionFile.strRelativePath);
+		kakulCollection.push_back(std::move(collectionFile));
+	}
+	m_DebugResourceFiles.insert(
+		m_DebugResourceFiles.end(),
+		std::make_move_iterator(kakulCollection.begin()),
+		std::make_move_iterator(kakulCollection.end()));
+	std::stable_sort(
+		m_DebugResourceFiles.begin(), m_DebugResourceFiles.end(),
+		[](const DEBUG_RESOURCE_FILE& left, const DEBUG_RESOURCE_FILE& right)
+		{
+			return std::tie(left.strDomain, left.strSource, left.strRelativePath) <
+				std::tie(right.strDomain, right.strSource, right.strRelativePath);
+		});
+
+	m_strDebugResourceStatus = "Indexed " +
+		std::to_string(m_DebugResourceFiles.size()) +
+		" files from the active Resources and Data roots.";
+	if (m_DebugResourceFiles.size() >= MAX_RESOURCE_FILES)
+		m_strDebugResourceStatus += " Scan stopped at the 50,000-file safety limit.";
+}
+
+void CMainApp::OpenDebugResourceFile(const size_t iFile)
+{
+	if (iFile >= m_DebugResourceFiles.size())
+		return;
+	const DEBUG_RESOURCE_FILE& file = m_DebugResourceFiles[iFile];
+	if (FAILED(EnsureDebugTool(file.eTool)))
+	{
+		m_strToolStatus = "Resource selected, but its domain tool failed to initialize: " +
+			file.strRelativePath;
+		return;
+	}
+
+	/* Boss and pattern rows are a joined domain: Workbench owns the lanes and
+	   Boss Tool owns the Server command. Opening both is intentional and does
+	   not duplicate either runtime. */
+	if ("Boss / Pattern" == file.strDomain)
+	{
+		(void)EnsureDebugTool(DEBUG_TOOL::ANIMATION);
+		(void)EnsureDebugTool(DEBUG_TOOL::BOSS);
+	}
+	m_iSelectedDebugResourceFile = iFile;
+	m_strToolStatus = "Selected " + file.strRelativePath +
+		". Opened its existing domain owner; use Complete Play for Server truth.";
+}
+
+void CMainApp::RenderDebugResourceFiles()
+{
+	ImGui::SeparatorText("Resource Files");
+	ImGui::TextDisabled(
+		"One index, existing domain owners. Selecting a file never copies or republishes it.");
+	if (ImGui::SmallButton("Refresh Resource Files") ||
+		!m_bDebugResourceScanAttempted)
+	{
+		RefreshDebugResourceFiles();
+	}
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(360.f);
+	ImGui::InputTextWithHint(
+		"##ResourceFilesSearch",
+		"Search path/domain...",
+		m_DebugResourceSearch.data(),
+		m_DebugResourceSearch.size());
+	ImGui::TextWrapped("%s", m_strDebugResourceStatus.c_str());
+
+	string search = m_DebugResourceSearch.data();
+	std::transform(search.begin(), search.end(), search.begin(),
+		[](const unsigned char character)
+		{
+			return static_cast<char_t>(std::tolower(character));
+		});
+	constexpr std::array<const char_t*, 9> domains = {{
+		"KakulSaydon",
+		"Character / Animation",
+		"Boss / Pattern",
+		"Effect V1",
+		"Effect V2",
+		"Sound",
+		"Map / World / Navigation",
+		"UI / Fonts",
+		"Gameplay / Rendering",
+	}};
+
+	for (size_t iDomain = 0u; iDomain < domains.size(); ++iDomain)
+	{
+		std::vector<size_t> matches;
+		for (size_t iFile = 0u; iFile < m_DebugResourceFiles.size(); ++iFile)
+		{
+			const DEBUG_RESOURCE_FILE& file = m_DebugResourceFiles[iFile];
+			if (file.strDomain == domains[iDomain] &&
+				(search.empty() || string::npos != file.strSearchText.find(search)))
+			{
+				matches.push_back(iFile);
+			}
+		}
+
+		ImGui::PushID(static_cast<int32_t>(iDomain));
+		const ImGuiTreeNodeFlags flags = matches.empty() ?
+			ImGuiTreeNodeFlags_Leaf : ImGuiTreeNodeFlags_None;
+		if (ImGui::TreeNodeEx(
+			"Domain", flags, "%s (%zu)", domains[iDomain], matches.size()))
+		{
+			if (0 == std::strcmp(domains[iDomain], "KakulSaydon"))
+			{
+				ImGui::TextDisabled(
+					"Virtual collection only: stable Area/package asset IDs are preserved. Playable Kakul sound mapping is still unresolved and is not fabricated here.");
+			}
+			if (matches.empty())
+			{
+				ImGui::TextDisabled("No matching file in the active physical roots.");
+			}
+			else
+			{
+				const float_t childHeight = (std::min)(
+					260.f, 24.f * static_cast<float_t>(matches.size()) + 8.f);
+				if (ImGui::BeginChild(
+					"ResourceRows", ImVec2(0.f, childHeight), true))
+				{
+					ImGuiListClipper clipper;
+					clipper.Begin(static_cast<int32_t>(matches.size()));
+					while (clipper.Step())
+					{
+						for (int32_t iRow = clipper.DisplayStart;
+							iRow < clipper.DisplayEnd; ++iRow)
+						{
+							const size_t iFile = matches[static_cast<size_t>(iRow)];
+							const DEBUG_RESOURCE_FILE& file =
+								m_DebugResourceFiles[iFile];
+							ImGui::PushID(static_cast<int32_t>(iFile));
+							const std::string label = "[" + file.strSource + "] " +
+								file.strRelativePath;
+							if (ImGui::Selectable(
+								label.c_str(),
+								iFile == m_iSelectedDebugResourceFile))
+							{
+								OpenDebugResourceFile(iFile);
+							}
+							ImGui::PopID();
+						}
+					}
+				}
+				ImGui::EndChild();
+			}
+			ImGui::TreePop();
+		}
+		ImGui::PopID();
+	}
+}
+
+void CMainApp::RefreshCompletePlayPatternOptions()
+{
+	if (nullptr == m_pBossTool)
+	{
+		m_pBossTool = make_unique<CBossTool>(
+			make_shared<CNetworkPlayerCommandSink>());
+	}
+	m_bCompletePlayPatternLoadAttempted = true;
+	std::vector<CBossTool::SERVER_PATTERN_OPTION> options;
+	if (!m_pBossTool->Get_ServerPatternOptions(
+			options, m_strCompletePlayStatus))
+	{
+		return;
+	}
+	const std::string previous =
+		m_CompletePlayPatternIds.empty() || m_iCompletePlayPattern < 0 ||
+		m_iCompletePlayPattern >=
+			static_cast<int32_t>(m_CompletePlayPatternIds.size()) ?
+			std::string{} :
+			m_CompletePlayPatternIds[
+				static_cast<size_t>(m_iCompletePlayPattern)];
+	m_CompletePlayPatternIds.clear();
+	m_CompletePlayPatternLabels.clear();
+	m_CompletePlayPatternIds.reserve(options.size());
+	m_CompletePlayPatternLabels.reserve(options.size());
+	for (const CBossTool::SERVER_PATTERN_OPTION& option : options)
+	{
+		m_CompletePlayPatternIds.push_back(option.strPatternId);
+		m_CompletePlayPatternLabels.push_back(
+			option.strPatternId + " | " + option.strDisplayName);
+	}
+	m_iCompletePlayPattern = 0;
+	if (!previous.empty())
+	{
+		const auto found = std::find(
+			m_CompletePlayPatternIds.begin(),
+			m_CompletePlayPatternIds.end(), previous);
+		if (m_CompletePlayPatternIds.end() != found)
+		{
+			m_iCompletePlayPattern = static_cast<int32_t>(
+				std::distance(m_CompletePlayPatternIds.begin(), found));
+		}
+	}
+}
+
+bool_t CMainApp::Debug_CompletePlaySelected(std::string& strOutStatus)
+{
+	if (!m_bCompletePlayPatternLoadAttempted)
+		RefreshCompletePlayPatternOptions();
+	if (nullptr == m_pBossTool || m_CompletePlayPatternIds.empty() ||
+		m_iCompletePlayPattern < 0 ||
+		m_iCompletePlayPattern >=
+			static_cast<int32_t>(m_CompletePlayPatternIds.size()))
+	{
+		strOutStatus =
+			"Complete Play requires one Server-admitted saved pattern selection.";
+		m_strCompletePlayStatus = strOutStatus;
+		return false;
+	}
+	const bool_t submitted = m_pBossTool->Play_ServerPattern(
+		m_CompletePlayPatternIds[
+			static_cast<size_t>(m_iCompletePlayPattern)],
+		strOutStatus);
+	m_strCompletePlayStatus = strOutStatus;
+	return submitted;
+}
+
+void CMainApp::RenderCompletePlayControls()
+{
+	if (!ImGui::CollapsingHeader(
+		"Complete Play (Server / Arena)",
+		ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		return;
+	}
+	ImGui::TextDisabled(
+		"Shared by every open tool: semantic pattern ID -> Server stages/hits -> replicated animation, Effect, Sound, camera and world events.");
+	ImGui::TextDisabled(
+		"A raw clip or unsaved/unbound asset remains Local Asset Preview and cannot become Complete Play.");
+	if (!m_bCompletePlayPatternLoadAttempted ||
+		ImGui::SmallButton("Reload Complete Play Inventory"))
+	{
+		RefreshCompletePlayPatternOptions();
+	}
+
+	if (!m_CompletePlayPatternIds.empty())
+	{
+		m_iCompletePlayPattern = std::clamp(
+			m_iCompletePlayPattern, 0,
+			static_cast<int32_t>(m_CompletePlayPatternIds.size() - 1u));
+		if (ImGui::BeginCombo(
+			"Saved Pattern##CompletePlay",
+			m_CompletePlayPatternLabels[
+				static_cast<size_t>(m_iCompletePlayPattern)].c_str()))
+		{
+			for (size_t iPattern = 0u;
+				iPattern < m_CompletePlayPatternIds.size(); ++iPattern)
+			{
+				if (ImGui::Selectable(
+					m_CompletePlayPatternLabels[iPattern].c_str(),
+					static_cast<int32_t>(iPattern) ==
+						m_iCompletePlayPattern))
+				{
+					m_iCompletePlayPattern =
+						static_cast<int32_t>(iPattern);
+				}
+			}
+			ImGui::EndCombo();
+		}
+	}
+	const bool_t canCompletePlay = nullptr != m_pBossTool &&
+		!m_CompletePlayPatternIds.empty() &&
+		ETOUI(LEVEL::VALTAN_ARENA) ==
+			CGameInstance::Get().Get_CurrentLevelID();
+	ImGui::BeginDisabled(!canCompletePlay);
+	if (ImGui::Button("Complete Play##GlobalServerPattern"))
+	{
+		(void)Debug_CompletePlaySelected(m_strCompletePlayStatus);
+	}
+	ImGui::EndDisabled();
+	if (!canCompletePlay)
+	{
+		ImGui::TextDisabled(
+			"Complete Play unlocks after Lobby -> Valtan Server admission. Local model view remains available in its owner tool.");
+	}
+	ImGui::TextWrapped("%s", m_strCompletePlayStatus.c_str());
+}
+
+void CMainApp::RenderServerArenaActiveControls()
+{
+	if (!ImGui::CollapsingHeader(
+		"Server Arena Active",
+		ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		return;
+	}
+	ImGui::TextDisabled(
+		"Shared control for Effect V1/V2, Boss, Map, UI and Workbench. Values are replicated Server actual state.");
+	if (ETOUI(LEVEL::VALTAN_ARENA) !=
+		CGameInstance::Get().Get_CurrentLevelID())
+	{
+		ImGui::TextDisabled(
+			"Enter Valtan from Lobby. No local wall, debris, collision or NavCell fallback exists.");
+		return;
+	}
+	if (nullptr == m_pBossTool)
+	{
+		m_pBossTool = make_unique<CBossTool>(
+			make_shared<CNetworkPlayerCommandSink>());
+	}
+
+	CBossTool::VALTAN_ARENA_ACTIVE_STATE state{};
+	std::string readStatus;
+	const bool_t ready = m_pBossTool->Get_ServerArenaActiveState(
+		state, readStatus);
+	const auto actualCheckbox = [](const char_t* label, const bool_t actual)
+	{
+		bool_t value = actual;
+		ImGui::BeginDisabled(true);
+		ImGui::Checkbox(label, &value);
+		ImGui::EndDisabled();
+	};
+	actualCheckbox(
+		"Ordinary walls / debris sources Active##GlobalArena",
+		state.bOrdinaryWallsActive);
+	actualCheckbox(
+		"109 outer ring Active##GlobalArena",
+		state.bOuterRingActive);
+	actualCheckbox(
+		"3 o'clock floor / collision / Nav Active##GlobalArena",
+		state.bThreeOClockFloorActive);
+	actualCheckbox(
+		"9 o'clock floor / collision / Nav Active##GlobalArena",
+		state.bNineOClockFloorActive);
+	ImGui::TextDisabled(
+		"Active boxes are replicated facts. Arena mutations use exact Server presets because the encounter does not admit arbitrary wall/floor combinations.");
+	const auto presetButton = [this, ready](
+		const char_t* label,
+		const LostArk::Shared::VALTAN_ARENA_PRESET preset)
+	{
+		ImGui::BeginDisabled(!ready);
+		if (ImGui::SmallButton(label))
+		{
+			(void)m_pBossTool->Set_ServerArenaPreset(
+				preset, m_strServerArenaActiveStatus);
+		}
+		ImGui::EndDisabled();
+	};
+	presetButton("Fresh / All Walls##GlobalArenaPreset",
+		LostArk::Shared::VALTAN_ARENA_PRESET::FRESH);
+	ImGui::SameLine();
+	presetButton("Phase 2 / Walls Gone##GlobalArenaPreset",
+		LostArk::Shared::VALTAN_ARENA_PRESET::CIRCLE_WALLS_GONE);
+	presetButton("Break 3 O'Clock##GlobalArenaPreset",
+		LostArk::Shared::VALTAN_ARENA_PRESET::THREE_OCLOCK_BROKEN);
+	ImGui::SameLine();
+	presetButton("Break 9 O'Clock##GlobalArenaPreset",
+		LostArk::Shared::VALTAN_ARENA_PRESET::NINE_OCLOCK_BROKEN);
+	ImGui::SameLine();
+	presetButton("Break 3 + 9##GlobalArenaPreset",
+		LostArk::Shared::VALTAN_ARENA_PRESET::BOTH_SIDES_BROKEN);
+	ImGui::Text(
+		"Debris actors %u | active collision %u | active nav regions %u | nav revision %llu",
+		state.iDebrisActorCount,
+		state.iActiveCollisionCount,
+		state.iActiveNavigationRegionCount,
+		static_cast<unsigned long long>(state.iNavigationRevision));
+	if (!readStatus.empty())
+		ImGui::TextDisabled("%s", readStatus.c_str());
+	if (!m_strServerArenaActiveStatus.empty())
+		ImGui::TextWrapped("%s", m_strServerArenaActiveStatus.c_str());
 }
 
 void CMainApp::RenderDeveloperTools()
@@ -4580,10 +5193,23 @@ void CMainApp::RenderDeveloperTools()
 		const bool_t isEnabled)
 	{
 		ImGui::BeginDisabled(!isEnabled);
-		if (ImGui::Button(pLabel))
+		const bool_t bVisible = IsDebugToolVisible(eTool);
+		const std::string label =
+			std::string(bVisible ? "Hide " : "Open ") + pLabel;
+		if (ImGui::Button(label.c_str()))
 		{
-			m_strToolStatus = SUCCEEDED(EnsureDebugTool(eTool)) ?
-				"Tool opened." : "Tool initialization failed.";
+			if (bVisible)
+			{
+				SetDebugToolVisible(eTool, false);
+				m_strToolStatus = std::string(pLabel) +
+					" hidden; its domain draft was not discarded.";
+			}
+			else
+			{
+				m_strToolStatus = SUCCEEDED(EnsureDebugTool(eTool)) ?
+					std::string(pLabel) + " opened alongside existing tools." :
+					std::string(pLabel) + " initialization failed.";
+			}
 		}
 		ImGui::EndDisabled();
 	};
@@ -4601,14 +5227,67 @@ void CMainApp::RenderDeveloperTools()
 	ImGui::SameLine();
 	toolButton("Effect Tool v2", DEBUG_TOOL::EFFECT_V2, true);
 
-	toolButton("Map Tool", DEBUG_TOOL::MAP, isMapEditorWorkspace);
+	toolButton("Map Tool", DEBUG_TOOL::MAP, true);
 	ImGui::SameLine();
 	toolButton("Rendering Workbench", DEBUG_TOOL::RENDERING, true);
 	ImGui::SameLine();
 	toolButton("HUD Layout Tool", DEBUG_TOOL::UI, true);
 	ImGui::SameLine();
 	toolButton("Balance Tool", DEBUG_TOOL::BALANCE, true);
+	ImGui::SameLine();
+	if (ImGui::Button("Close All Tools"))
+		CloseAllDebugTools();
+	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 9>
+		TOOL_FOCUS_OPTIONS = {{
+			{ DEBUG_TOOL::MAP, "Map Tool" },
+			{ DEBUG_TOOL::ANIMATION, "Action Presentation Workbench" },
+			{ DEBUG_TOOL::EFFECT, "Effect Tool" },
+			{ DEBUG_TOOL::EFFECT_V2, "Effect Tool v2" },
+			{ DEBUG_TOOL::RENDERING, "Rendering Workbench" },
+			{ DEBUG_TOOL::UI, "HUD Layout Tool" },
+			{ DEBUG_TOOL::BALANCE, "Balance Tool" },
+			{ DEBUG_TOOL::BOSS, "Boss Tool" },
+			{ DEBUG_TOOL::CAMERA, "Camera Tool" },
+		}};
+	const char_t* pInputOwnerLabel = "None";
+	for (const auto& [eTool, pLabel] : TOOL_FOCUS_OPTIONS)
+	{
+		if (eTool == m_eDebugInputOwner)
+		{
+			pInputOwnerLabel = pLabel;
+			break;
+		}
+	}
+	ImGui::SetNextItemWidth(310.f);
+	if (ImGui::BeginCombo("Explicit viewport/preview owner", pInputOwnerLabel))
+	{
+		for (const auto& [eTool, pLabel] : TOOL_FOCUS_OPTIONS)
+		{
+			if (!IsDebugToolVisible(eTool))
+				continue;
+			const bool_t isSelected = eTool == m_eDebugInputOwner;
+			if (ImGui::Selectable(pLabel, isSelected))
+			{
+				m_eDebugInputOwner = eTool;
+				m_eDebugWindowFocusPending = eTool;
+			}
+			if (isSelected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+	ImGui::TextDisabled(
+		"Open windows keep rendering; only this explicitly selected owner may mutate the world viewport, model preview or preview camera.");
 	ImGui::TextWrapped("%s", m_strToolStatus.c_str());
+	if (!isMapEditorWorkspace && IsDebugToolVisible(DEBUG_TOOL::MAP))
+	{
+		ImGui::TextDisabled(
+			"Map Tool is open in inspect-only mode. Enter Lobby > Test > Map Editor to save map placement/navigation.");
+	}
+
+	RenderDebugResourceFiles();
+	RenderCompletePlayControls();
+	RenderServerArenaActiveControls();
 
 	ImGui::SeparatorText("Diagnostics");
 	const ImGuiIO& io = ImGui::GetIO();

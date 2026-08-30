@@ -12798,13 +12798,13 @@ bool_t Client::CEffect_Tool::Can_PlayValtanServerPattern(
 	strOutReason.clear();
 	if (Pattern.strPatternId.empty())
 	{
-		strOutReason = "Play Server requires one stable Pattern ID.";
+		strOutReason = "Complete Play requires one stable Pattern ID.";
 		return false;
 	}
 	if (nullptr == Resolve_ValtanServerPatternBossPlacement(
 			CGameInstance::Get().Get_CurrentLevelID()))
 	{
-		strOutReason = "Play Server is available only in Valtan Arena.";
+		strOutReason = "Complete Play is available only in Valtan Arena.";
 		return false;
 	}
 	if (!CNetworkManager::Get().Is_Connected())
@@ -12850,7 +12850,7 @@ bool_t Client::CEffect_Tool::Can_PlayValtanServerPattern(
 		CValtanPatternAuditionService::Get().Get_Snapshot();
 	if (Audition.Is_InFlight())
 	{
-		strOutReason = "Play Server is " +
+		strOutReason = "Complete Play is " +
 			std::string(Describe_ValtanPatternAuditionState(Audition.eState)) +
 			" for " + Audition.strPatternId + " (owner " +
 			Audition.strConsumerId + ").";
@@ -13713,7 +13713,7 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 		Can_PlayValtanServerPattern(Pattern, ServerPlayReason);
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!bCanPlayServer);
-	if (ImGui::SmallButton("Play Server"))
+	if (ImGui::SmallButton("Complete Play (Server/Arena)"))
 	{
 		if (m_strSelectedValtanPatternId != Pattern.strPatternId)
 			m_SelectedValtanPatternEffect.reset();
@@ -14090,7 +14090,7 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 			ImGui::EndDisabled();
 			ImGui::SameLine();
 			ImGui::BeginDisabled(DraftPath.empty());
-			if (ImGui::SmallButton("Play Effect + Pattern"))
+			if (ImGui::SmallButton("Local Effect + Pattern Preview"))
 			{
 				VALTAN_PATTERN_EFFECT_SELECTION Selection;
 				Selection.eKind =
@@ -14381,7 +14381,7 @@ void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(
 				"The independent Effect lost its stable owner Pattern.";
 		ImGui::SameLine();
 		ImGui::BeginDisabled(!bCanPlayServerOwner);
-		if (ImGui::SmallButton("Play Server Owner") &&
+		if (ImGui::SmallButton("Complete Play Owner") &&
 			nullptr != pOwnerPattern)
 			Try_PlayValtanServerPattern(*pOwnerPattern);
 		ImGui::EndDisabled();
@@ -14407,7 +14407,7 @@ void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(
 		if (bCombatObjectOwner && bActive)
 		{
 			ImGui::TextDisabled(
-				"World preview root: (%.2f, %.2f, %.2f) | actual target tracking and hit timing require Play Server Owner",
+				"World preview root: (%.2f, %.2f, %.2f) | actual target tracking and hit timing require Complete Play Owner",
 				m_PreviewWorldRoot._41, m_PreviewWorldRoot._42,
 				m_PreviewWorldRoot._43);
 		}
@@ -15482,7 +15482,7 @@ void Client::CEffect_Tool::Render_ValtanAreaStaticEffectSection(
 			if (nullptr == ownerPattern)
 				serverReason = "No exact Server activation owner Pattern was resolved.";
 			ImGui::BeginDisabled(!canPlayServer);
-			if (ImGui::SmallButton("Play Server Activation Owner") &&
+			if (ImGui::SmallButton("Complete Play Activation Owner") &&
 				nullptr != ownerPattern)
 			{
 				Try_PlayValtanServerPattern(*ownerPattern);
@@ -15762,7 +15762,7 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 		ImGui::EndDisabled();
 		ImGui::SameLine();
 		ImGui::BeginDisabled(Path.empty());
-		if (ImGui::Button("Play Effect + Pattern"))
+		if (ImGui::Button("Local Effect + Pattern Preview"))
 		{
 			Try_OpenValtanPatternDraftEffect(
 				Path, pSelectedBinding->strEffectAssetId,
@@ -15990,7 +15990,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 		if (Has_UnsavedWork())
 		{
 			ImGui::TextDisabled(
-				"Play Server uses the current Server Product; unsaved Effect edits are not included.");
+				"Complete Play uses the current Server Product; unsaved Effect edits are not included.");
 		}
 	}
 	else

@@ -284,6 +284,9 @@ private:
 	bool_t Reload_ValtanPatternSoundCues();
 	bool_t Reload_ValtanPatternShakeCues();
 	bool_t Reload_ValtanCombatObjectSoundCues();
+	void Render_ValtanStageDraftInspector(
+		const std::string& strPatternId,
+		const VALTAN_STAGE_VIEW& SavedStage);
 	void Render_ValtanPresentationLanes(
 		const VALTAN_PATTERN_VIEW& Pattern);
 	bool_t Preview_ValtanSoundAsset(

@@ -690,6 +690,96 @@ namespace
 			{ return stage.strStageId == stageId; });
 		return pattern.Stages.end() == found ? nullptr : &*found;
 	}
+
+	CBalanceTool::PATTERN_STAGE_EDIT BuildValtanStageDraft(
+		const VALTAN_PATTERN_VIEW& pattern,
+		const VALTAN_STAGE_VIEW& stage)
+	{
+		CBalanceTool::PATTERN_STAGE_EDIT draft{};
+		draft.stageId = stage.strStageId;
+		draft.actionId = stage.strActionId;
+		draft.stageKind = stage.strStageKind;
+		draft.durationMs = stage.iDurationMs;
+		draft.hitShape = stage.strHitShape;
+		draft.hitOuterRadius = stage.fHitOuterRadius;
+		draft.hitInnerRadius = stage.fHitInnerRadius;
+		draft.hitAngleDegrees = stage.fHitAngleDegrees;
+		draft.hitLength = stage.fHitLength;
+		draft.hitHalfWidth = stage.fHitHalfWidth;
+		draft.hitCount = stage.iHitCount;
+		draft.hitIntervalMs = stage.iHitIntervalMs;
+		draft.hitDelayMs = stage.iHitDelayMs;
+		draft.hitOffsetsMs = stage.HitOffsetsMs;
+		draft.damageProfileId = stage.strServerDamageProfileId;
+		draft.pushRangeM = stage.fPushRangeM;
+		draft.pushMs = stage.iPushMs;
+		draft.knockdown = stage.bKnockdown;
+		draft.downMs = stage.iDownMs;
+		draft.playerResponse = stage.strPlayerResponse;
+		draft.attachmentSlot = stage.strAttachmentSlot;
+		draft.durationEditable = !pattern.bManualServerAudition;
+		/* Adding/removing a hit also owns DamageProfile selection.  Workbench
+		   deliberately keeps that ownership in Balance Tool and edits only an
+		   already admitted hit contract. */
+		draft.hitEditable = "NONE" != stage.strHitShape;
+		return draft;
+	}
+
+	bool IsValtanStageGeometryValid(
+		const CBalanceTool::PATTERN_STAGE_EDIT& stage)
+	{
+		const bool finite = std::isfinite(stage.hitOuterRadius) &&
+			std::isfinite(stage.hitInnerRadius) &&
+			std::isfinite(stage.hitAngleDegrees) &&
+			std::isfinite(stage.hitLength) &&
+			std::isfinite(stage.hitHalfWidth);
+		if (!finite)
+			return false;
+		if ("NONE" == stage.hitShape)
+		{
+			return 0.0 == stage.hitOuterRadius &&
+				0.0 == stage.hitInnerRadius &&
+				0.0 == stage.hitAngleDegrees &&
+				0.0 == stage.hitLength &&
+				0.0 == stage.hitHalfWidth;
+		}
+		if ("CIRCLE" == stage.hitShape)
+		{
+			return stage.hitOuterRadius > 0.0 &&
+				stage.hitOuterRadius <= 1000.0 &&
+				0.0 == stage.hitInnerRadius &&
+				0.0 == stage.hitAngleDegrees &&
+				0.0 == stage.hitLength &&
+				0.0 == stage.hitHalfWidth;
+		}
+		if ("RING" == stage.hitShape)
+		{
+			return stage.hitInnerRadius > 0.0 &&
+				stage.hitOuterRadius > stage.hitInnerRadius &&
+				stage.hitOuterRadius <= 1000.0 &&
+				0.0 == stage.hitAngleDegrees &&
+				0.0 == stage.hitLength &&
+				0.0 == stage.hitHalfWidth;
+		}
+		if ("CONE" == stage.hitShape)
+		{
+			return stage.hitAngleDegrees > 0.0 &&
+				stage.hitAngleDegrees <= 180.0 &&
+				stage.hitLength > 0.0 && stage.hitLength <= 1000.0 &&
+				0.0 == stage.hitOuterRadius &&
+				0.0 == stage.hitInnerRadius &&
+				0.0 == stage.hitHalfWidth;
+		}
+		const bool boxLike = "BOX" == stage.hitShape ||
+			"CROSS" == stage.hitShape ||
+			"SIX_DIRECTIONS" == stage.hitShape;
+		return boxLike && stage.hitLength > 0.0 &&
+			stage.hitLength <= 1000.0 && stage.hitHalfWidth > 0.0 &&
+			stage.hitHalfWidth <= 1000.0 &&
+			0.0 == stage.hitOuterRadius &&
+			0.0 == stage.hitInnerRadius &&
+			0.0 == stage.hitAngleDegrees;
+	}
 }
 
 
@@ -710,22 +800,10 @@ bool Client::CBalanceTool::Get_ValtanStageDurationDraft(
 	std::uint32_t& durationMs,
 	std::string& status) const
 {
-	const VALTAN_PATTERN_VIEW* pattern =
-		FindValtanPattern(m_valtanPatternTree, patternId);
-	if (nullptr == pattern)
-	{
-		status = "Valtan draft pattern is not admitted: " + patternId + ".";
+	PATTERN_STAGE_EDIT stage{};
+	if (!Get_ValtanStageDraft(patternId, stageId, stage, status))
 		return false;
-	}
-	const VALTAN_STAGE_VIEW* stage = FindValtanStage(*pattern, stageId);
-	if (nullptr == stage)
-	{
-		status = "Valtan draft stage is not admitted: " + patternId + "/" +
-			stageId + ".";
-		return false;
-	}
-	durationMs = stage->iDurationMs;
-	status.clear();
+	durationMs = stage.durationMs;
 	return true;
 }
 
@@ -735,11 +813,45 @@ bool Client::CBalanceTool::Set_ValtanStageDurationDraft(
 	const std::uint32_t durationMs,
 	std::string& status)
 {
-	if (durationMs < 1u || durationMs > 600000u)
+	PATTERN_STAGE_EDIT stage{};
+	if (!Get_ValtanStageDraft(patternId, stageId, stage, status))
+		return false;
+	stage.durationMs = durationMs;
+	return Set_ValtanStageDraft(patternId, stageId, stage, status);
+}
+
+bool Client::CBalanceTool::Get_ValtanStageDraft(
+	const std::string& patternId,
+	const std::string& stageId,
+	PATTERN_STAGE_EDIT& stage,
+	std::string& status) const
+{
+	const VALTAN_PATTERN_VIEW* pattern =
+		FindValtanPattern(m_valtanPatternTree, patternId);
+	if (nullptr == pattern || !pattern->bAuthoringMasterManaged)
 	{
-		status = "Valtan stage duration must be between 1 and 600000 ms.";
+		status = "Valtan draft pattern is not authoring-master managed: " +
+			patternId + ".";
 		return false;
 	}
+	const VALTAN_STAGE_VIEW* admitted = FindValtanStage(*pattern, stageId);
+	if (nullptr == admitted)
+	{
+		status = "Valtan draft stage is not admitted: " + patternId + "/" +
+			stageId + ".";
+		return false;
+	}
+	stage = BuildValtanStageDraft(*pattern, *admitted);
+	status.clear();
+	return true;
+}
+
+bool Client::CBalanceTool::Set_ValtanStageDraft(
+	const std::string& patternId,
+	const std::string& stageId,
+	const PATTERN_STAGE_EDIT& candidate,
+	std::string& status)
+{
 	VALTAN_PATTERN_VIEW* pattern =
 		FindValtanPattern(m_valtanPatternTree, patternId);
 	if (nullptr == pattern || !pattern->bAuthoringMasterManaged)
@@ -755,16 +867,131 @@ bool Client::CBalanceTool::Set_ValtanStageDurationDraft(
 			patternId + "/" + stageId + ".";
 		return false;
 	}
-	if (stage->iDurationMs == durationMs)
+	const PATTERN_STAGE_EDIT current = BuildValtanStageDraft(*pattern, *stage);
+	if (candidate.stageId != current.stageId ||
+		candidate.actionId != current.actionId ||
+		candidate.stageKind != current.stageKind ||
+		candidate.damageProfileId != current.damageProfileId ||
+		candidate.playerResponse != current.playerResponse ||
+		candidate.attachmentSlot != current.attachmentSlot ||
+		candidate.hitOffsetsMs != current.hitOffsetsMs)
 	{
-		status = "Valtan stage duration is unchanged.";
+		status = "Valtan stage edit rejected: stable identity, DamageProfile, response, and explicit-offset ownership are read-only in Workbench.";
+		return false;
+	}
+	if (candidate.durationMs < 1u || candidate.durationMs > 600000u)
+	{
+		status = "Valtan stage duration must be between 1 and 600000 ms.";
+		return false;
+	}
+	if (!current.durationEditable &&
+		candidate.durationMs != current.durationMs)
+	{
+		status = "Manual Server audition duration is locked to its promoted animation wall-clock: " +
+			patternId + "/" + stageId + ".";
+		return false;
+	}
+	const bool hitChanged =
+		candidate.hitShape != current.hitShape ||
+		candidate.hitOuterRadius != current.hitOuterRadius ||
+		candidate.hitInnerRadius != current.hitInnerRadius ||
+		candidate.hitAngleDegrees != current.hitAngleDegrees ||
+		candidate.hitLength != current.hitLength ||
+		candidate.hitHalfWidth != current.hitHalfWidth ||
+		candidate.hitCount != current.hitCount ||
+		candidate.hitIntervalMs != current.hitIntervalMs ||
+		candidate.hitDelayMs != current.hitDelayMs ||
+		candidate.pushRangeM != current.pushRangeM ||
+		candidate.pushMs != current.pushMs ||
+		candidate.knockdown != current.knockdown ||
+		candidate.downMs != current.downMs;
+	if (hitChanged && !current.hitEditable)
+	{
+		status = "Valtan stage hit edit rejected: adding a new hit also requires a typed DamageProfile choice in Balance Tool.";
+		return false;
+	}
+	if (("NONE" == current.hitShape) != ("NONE" == candidate.hitShape))
+	{
+		status = "Valtan stage hit edit rejected: Workbench cannot add or remove the DamageProfile-owned hit contract.";
+		return false;
+	}
+	if (!IsValtanStageGeometryValid(candidate))
+	{
+		status = "Valtan stage collider geometry is invalid: " + patternId +
+			"/" + stageId + ".";
+		return false;
+	}
+	if ("NONE" == candidate.hitShape)
+	{
+		if (0u != candidate.hitCount || 0u != candidate.hitIntervalMs ||
+			0u != candidate.hitDelayMs || !candidate.damageProfileId.empty() ||
+			0.0 != candidate.pushRangeM || 0u != candidate.pushMs ||
+			candidate.knockdown || 0u != candidate.downMs)
+		{
+			status = "Valtan NONE stage cannot own a hit schedule or player reaction.";
+			return false;
+		}
+	}
+	else
+	{
+		const bool explicitOffsets = !candidate.hitOffsetsMs.empty();
+		const bool explicitScheduleValid = explicitOffsets &&
+			candidate.hitCount == candidate.hitOffsetsMs.size() &&
+			0u == candidate.hitIntervalMs && 0u == candidate.hitDelayMs &&
+			candidate.hitOffsetsMs.back() < candidate.durationMs;
+		const std::uint64_t finalIntervalHit =
+			static_cast<std::uint64_t>(candidate.hitDelayMs) +
+			static_cast<std::uint64_t>(candidate.hitCount -
+				(0u == candidate.hitCount ? 0u : 1u)) *
+			candidate.hitIntervalMs;
+		const bool intervalScheduleValid = !explicitOffsets &&
+			candidate.hitCount > 0u && candidate.hitCount <= 64u &&
+			(1u == candidate.hitCount ? 0u == candidate.hitIntervalMs :
+				candidate.hitIntervalMs > 0u) &&
+			finalIntervalHit < candidate.durationMs;
+		const bool validPush = std::isfinite(candidate.pushRangeM) &&
+			std::abs(candidate.pushRangeM) <= 20.0 &&
+			candidate.pushMs <= 600000u && candidate.downMs <= 600000u &&
+			((0.0 == candidate.pushRangeM) == (0u == candidate.pushMs)) &&
+			(candidate.knockdown == (0u != candidate.downMs));
+		const bool captureReactionValid =
+			"CAPTURE" != candidate.playerResponse ||
+			(0.0 == candidate.pushRangeM && 0u == candidate.pushMs &&
+				!candidate.knockdown && 0u == candidate.downMs);
+		if ((!explicitScheduleValid && !intervalScheduleValid) ||
+			candidate.damageProfileId.empty() || !validPush ||
+			!captureReactionValid)
+		{
+			status = "Valtan stage hit schedule or player reaction is invalid: " +
+				patternId + "/" + stageId + ".";
+			return false;
+		}
+	}
+
+	const bool durationChanged = candidate.durationMs != current.durationMs;
+	if (!durationChanged && !hitChanged)
+	{
+		status = "Valtan stage draft is unchanged.";
 		return true;
 	}
-	stage->iDurationMs = durationMs;
+	stage->iDurationMs = candidate.durationMs;
+	stage->strHitShape = candidate.hitShape;
+	stage->fHitOuterRadius = static_cast<float>(candidate.hitOuterRadius);
+	stage->fHitInnerRadius = static_cast<float>(candidate.hitInnerRadius);
+	stage->fHitAngleDegrees = static_cast<float>(candidate.hitAngleDegrees);
+	stage->fHitLength = static_cast<float>(candidate.hitLength);
+	stage->fHitHalfWidth = static_cast<float>(candidate.hitHalfWidth);
+	stage->iHitCount = candidate.hitCount;
+	stage->iHitIntervalMs = candidate.hitIntervalMs;
+	stage->iHitDelayMs = candidate.hitDelayMs;
+	stage->fPushRangeM = static_cast<float>(candidate.pushRangeM);
+	stage->iPushMs = candidate.pushMs;
+	stage->bKnockdown = candidate.knockdown;
+	stage->iDownMs = candidate.downMs;
 	MarkDirty(true);
-	status = "Staged " + patternId + "/" + stageId + " duration at " +
-		std::to_string(durationMs) +
-		" ms. Press Save to validate, persist, build Product data, and apply when live update is available.";
+	status = "Staged typed Server gameplay edit for " + patternId + "/" +
+		stageId +
+		". Press Save to validate the joined revision before Product generation.";
 	return true;
 }
 
@@ -2063,7 +2290,7 @@ bool Client::CBalanceTool::RestoreValtanSavedAuthoring(
 				if (!ReadString(*hit, "serverDamageProfileId", damageId) ||
 					0u != damageId.rfind("damage.valtan.", 0u) ||
 					!savedDamageIds.contains(damageId) ||
-					!readBoundedDouble(*hit, "pushRangeM", 0.0, 20.0,
+					!readBoundedDouble(*hit, "pushRangeM", -20.0, 20.0,
 						pushRange) ||
 					!readBoundedU32(*hit, "pushMs", 0u, 600000u, pushMs) ||
 					!ReadBoolean(*hit, "knockdown", knockdown) ||

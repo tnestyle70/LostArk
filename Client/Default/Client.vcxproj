@@ -454,6 +454,7 @@
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.maplights.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapeffects.json" />
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_SHS_RCARENA_D\LV_SHS_RCARENA_D.mapplacements" />
     <None Include="..\..\Data\Maps\Editor\ACTIVE.maparea" />
     <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapset" />
@@ -493,9 +494,14 @@
     <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.deployplacements" />
     <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapassets" />
     <None Include="..\..\Data\Maps\Imported\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapplacements" />
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.build.receipt.json" />
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.mapassets" />
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.mapplacements" />
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.nonstatic.inventory.json" />
     <None Include="..\..\Data\Maps\Imported\LV_SHS_RCARENA_D\LV_SHS_RCARENA_D.mapassets" />
     <None Include="..\..\Data\Maps\Imported\LV_SHS_RCARENA_D\LV_SHS_RCARENA_D.mapplacements" />
     <None Include="..\..\Data\Maps\MapCatalog.json" />
+    <None Include="..\..\Data\ResourceIntake\LV_LUT_MIDNIGHTC_ED.resource-intake.json" />
     <None Include="..\..\Data\Navigation\LV_BER_BERNCASTLE.navsource" />
     <None Include="..\..\Data\Navigation\LV_BER_BERNCASTLE.navpaint" />
     <None Include="..\..\Data\Navigation\LV_DEV_TRAINING_GROUND.navgrid.json" />
@@ -623,11 +629,11 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>..\Bin\Debug\</OutDir>
-    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=10.207.18.103</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.14</LocalDebuggerEnvironment>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>..\Bin\Release\</OutDir>
-    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=10.207.18.103</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.0.14</LocalDebuggerEnvironment>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
