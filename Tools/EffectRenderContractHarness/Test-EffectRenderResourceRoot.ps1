@@ -41,7 +41,7 @@ function Invoke-RootCase {
         # Capture it so the negative cases can assert the real exit and reason.
         $ErrorActionPreference = 'Continue'
         $global:LASTEXITCODE = -1
-        $lines = @(& $executable $repoRoot '--validate-resource-root' 2>&1)
+        $lines = @(& $executable $repoRoot $Configuration '--validate-resource-root' 2>&1)
         $nativeExit = $global:LASTEXITCODE
     }
     finally {

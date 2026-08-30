@@ -4,7 +4,10 @@ param(
     [ValidateSet("Debug", "Release")]
     [string]$Configuration,
 
-    [string]$RepositoryRoot
+    [string]$RepositoryRoot,
+
+    [ValidateSet("Product", "All")]
+    [string]$Modules = "All"
 )
 
 Set-StrictMode -Version Latest
@@ -227,28 +230,29 @@ $clientConsumers = Get-DirectShaderConsumers @(
 
 $effectHarnessConsumers = $clientConsumers
 
-$modules = @(
-    [pscustomobject]@{
-        Name = "Client"
-        ProjectPath = $clientProjectPath
-        Directory = $clientOutputDirectory
-        Consumers = $clientConsumers
-    },
-    [pscustomobject]@{
+$modulesToValidate = [System.Collections.Generic.List[object]]::new()
+$modulesToValidate.Add([pscustomobject]@{
+    Name = "Client"
+    ProjectPath = $clientProjectPath
+    Directory = $clientOutputDirectory
+    Consumers = $clientConsumers
+})
+if ($Modules -eq "All") {
+    $modulesToValidate.Add([pscustomobject]@{
         Name = "EffectRenderContractHarness"
         ProjectPath = Join-Path $repositoryPath "Tools\EffectRenderContractHarness\Default\EffectRenderContractHarness.vcxproj"
         Directory = Join-Path $repositoryPath "Tools\EffectRenderContractHarness\Bin\$Configuration"
         Consumers = $effectHarnessConsumers
-    },
-    [pscustomobject]@{
+    })
+    $modulesToValidate.Add([pscustomobject]@{
         Name = "PointLightFalloffContractHarness"
         ProjectPath = Join-Path $repositoryPath "Tools\PointLightFalloffContractHarness\Default\PointLightFalloffContractHarness.vcxproj"
         Directory = Join-Path $repositoryPath "Tools\PointLightFalloffContractHarness\Bin\$Configuration"
         Consumers = @("Shader_Deferred.hlsl")
-    }
-)
+    })
+}
 
-foreach ($module in $modules) {
+foreach ($module in $modulesToValidate) {
     $projectText = if (Test-Path -LiteralPath $module.ProjectPath -PathType Leaf) {
         Get-Content -LiteralPath $module.ProjectPath -Raw
     }
@@ -310,6 +314,6 @@ if ($script:failures.Count -gt 0) {
 
 Write-Host "Compiled shader closure PASS for $Configuration|$platform" -ForegroundColor Green
 Write-Host "  active FxCompile producers : $($producers.Count)"
-foreach ($module in $modules) {
+foreach ($module in $modulesToValidate) {
     Write-Host "  $($module.Name) consumers : $(@($module.Consumers | Sort-Object -Unique).Count)"
 }

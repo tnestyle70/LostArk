@@ -1,6 +1,0 @@
-LOSTARK_WORLD_BOOTSTRAP	4	BERN	LV_BER_BERNCASTLE	4	5
-player.spawn.bern.entry	playerSpawn	-	-	144.8	42.7	-70.3	180	1	-	-	0	0	0	0	0	-
-player.spawn.bern.party02	playerSpawn	-	-	145.8	42.7	-70.3	180	1	-	-	0	0	0	0	0	-
-player.spawn.bern.party03	playerSpawn	-	-	143.8	42.7	-70.3	180	1	-	-	0	0	0	0	0	-
-player.spawn.bern.party04	playerSpawn	-	-	144.8	42.7	-71.3	180	1	-	-	0	0	0	0	0	-
-trigger.bern.to-valtan	triggerBox	-	-	144.8	42.7	-60.3	0	1	2	2	2	1	1	changeLevel	1	VALTAN_ARENA

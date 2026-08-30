@@ -16,6 +16,7 @@
 **/[Dd]ebug/
 **/[Rr]elease/
 **/[Oo]bj/
+**/[Ii]ntermediate/
 **/ipch/
 
 # Compiler, linker, and debugger outputs

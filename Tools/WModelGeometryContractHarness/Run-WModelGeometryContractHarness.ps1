@@ -15,6 +15,11 @@ function Assert-ExactExitCode {
     }
 }
 
+function Test-JsonInteger {
+    param([object]$Value)
+    return $Value -is [int] -or $Value -is [long]
+}
+
 function Test-WriterIndependentManifestSemantics {
     param([string]$Path)
     try {
@@ -25,11 +30,11 @@ function Test-WriterIndependentManifestSemantics {
         return $false
     }
     try {
-        if ($manifest.formatVersion.GetType() -ne [int] -or
-            $manifest.decodedByteCount.GetType() -ne [int] -or
-            $manifest.expected.materialIndex.GetType() -ne [int] -or
-            $manifest.expected.vertexCount.GetType() -ne [int] -or
-            $manifest.expected.sourceFidelityFlags.GetType() -ne [int] -or
+        if (-not (Test-JsonInteger $manifest.formatVersion) -or
+            -not (Test-JsonInteger $manifest.decodedByteCount) -or
+            -not (Test-JsonInteger $manifest.expected.materialIndex) -or
+            -not (Test-JsonInteger $manifest.expected.vertexCount) -or
+            -not (Test-JsonInteger $manifest.expected.sourceFidelityFlags) -or
             $manifest.expected.externalAuthentication.GetType() -ne [bool] -or
             $manifest.expected.productAdmission.GetType() -ne [bool]) {
             return $false
