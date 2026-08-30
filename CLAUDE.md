@@ -28,7 +28,7 @@ Set-Location LostArk
 git lfs pull
 ```
 
-팀장이 전달한 runtime 리소스를 `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,UI}` 물리 폴더에 둔다. Git pull 재현이 명시된 V1 Effect는 Product 문서가 실제 참조하는 선별 dependency closure를 Git/LFS로 함께 받는다. 별도 asset-pack lock, ZIP hash, publish/hydrate/verify 절차는 사용하지 않는다.
+팀장이 전달한 runtime 리소스를 `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,Sound,UI}` 물리 폴더에 둔다. Git pull 재현이 명시된 Effect·Sound feature는 Product 문서가 실제 참조하는 선별 dependency closure를 Git/LFS로 함께 받는다. 별도 asset-pack lock, ZIP hash, publish/hydrate/verify 절차는 사용하지 않는다.
 
 세팅 후 Debug 정본 회귀를 한 번 실행한다.
 
@@ -116,10 +116,10 @@ Loader worker에서 호출되는 shader/model/navigation/camera/character/part/V
 | 프로젝트 데이터 정본 | `Data/`의 catalog, imported, authoring, reference JSON/문서 | Git 일반 추적; 대용량 map 문서는 Git LFS |
 | 필수 바이너리 입력 | `Engine/ThirdPartyLib/` | **Git LFS** (`.gitattributes` 패턴) |
 | 실행 데이터 생성물 | `Client/Bin/DataFiles/`, `Server/Bin/DataFiles/` | `Data/`에서 publisher가 생성; 직접 편집 금지 |
-| 런타임 리소스 · 쿠킹 산출물 | `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,UI}` | 기본은 팀장 관리 물리 폴더; 명시된 feature의 exact dependency closure만 Git/LFS |
+| 런타임 리소스 · 쿠킹 산출물 | `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,Sound,UI}` | 기본은 팀장 관리 물리 폴더; 명시된 feature의 exact dependency closure만 Git/LFS |
 
 - clone 시 `git lfs install` 후 clone하거나, 이미 받았다면 `git lfs pull`을 실행해야 lib/DLL/DDS가 포인터가 아닌 실물이 된다.
-- `Client/Bin/Resources/` 최상위에는 위 여섯 폴더만 허용한다. `Resources/LostArk`, `Models`, `Textures`, `SourceData`, `Sound` 래퍼를 다시 만들지 않는다.
+- `Client/Bin/Resources/` 최상위에는 위 일곱 폴더만 허용한다. `Resources/LostArk`, `Models`, `Textures`, `SourceData` 래퍼를 다시 만들지 않는다.
 - raw 추출물과 SourceData는 runtime Resources에 넣지 않는다. 팀장이 채택한 쿠킹 결과만 물리 폴더에 둔다.
 - UI와 gameplay 설정 정본은 JSON이다. `.cfg`를 새로 만들거나 Resources에서 직접 읽지 않는다.
 - 빌드 산출물(`exe/dll/lib/pdb/cso`), `.vs`, `EngineSDK`, `_work`, `out`, `imgui.ini`는 전부 ignore 대상이다. **커밋에 섞여 들어가지 않게 할 것.**

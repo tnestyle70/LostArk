@@ -199,7 +199,7 @@ Client/Bin/Resources/
 ```
 
 - 코드와 `Tools/ModelAssetConverter`는 Git/LFS로 공유합니다.
-- 대용량 `Client/Bin/Resources` 결과물은 asset pack으로 배포하며, 최상위에는 `Fonts`, `Character`, `Deploy`, `Effect`, `Map`, `UI`만 둡니다.
+- 대용량 `Client/Bin/Resources` 결과물은 asset pack으로 배포하며, 최상위에는 `Fonts`, `Character`, `Deploy`, `Effect`, `Map`, `Sound`, `UI`만 둡니다.
 - 팀원은 각자 같은 컨버터와 같은 WMA2/WMODEL 포맷을 사용합니다.
 - `.wmodel` 이름은 달라도 상관없습니다. 내부 magic/section 포맷이 같으면 모두 같은 `CModel` 파이프라인으로 렌더됩니다.
 - zip을 만들기 전 `info`, Engine/Client 빌드, AssetTest 실행을 확인합니다.
