@@ -44,7 +44,8 @@ Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
 12. Map Destruction PhysX·Mesh Debris 작업법: `MAP_DESTRUCTION_PHYSX_HANDOFF.md`
 13. NPC 배치·상호작용 작업법: `NPC_OWNER_HANDOFF.md`
 14. 밸런스 Hot Reload 경계: `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`
-15. 최근 Valtan·Bern·Party 통합 검증 증거: `../GB/08-28/2026-08-28_VALTAN_BERN_PARTY_INTEGRATION_RESULT.md`
+15. EXE/Data ZIP과 Drive Resource 분리 전달: `RUNTIME_BUILD_DELIVERY_GUIDE.md`
+16. 최근 Valtan·Bern·Party 통합 검증 증거: `../GB/08-28/2026-08-28_VALTAN_BERN_PARTY_INTEGRATION_RESULT.md`
 
 <!-- team-contract: vertical-slice-feature-owner; roles-are-not-file-permissions -->
 
@@ -69,6 +70,7 @@ Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
 | `MAP_DESTRUCTION_PHYSX_HANDOFF.md` | MapTool 파괴 preview의 Mesh Emitter, PhysX, trigger/effect 연결 절차가 바뀔 때 |
 | `NPC_OWNER_HANDOFF.md` | NPC catalog/placement/publish/runtime 계층, 쿠킹 절차, 상호작용 계약이 바뀔 때 |
 | `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md` | 수치 정본, 튜닝 절차, runtime reload 정책이 바뀔 때 |
+| `RUNTIME_BUILD_DELIVERY_GUIDE.md` | EXE/Data ZIP 설치 경계나 Drive Resource 전달 정책이 바뀔 때 |
 | `네트워크연결가이드.md` | endpoint 교체, 4인 LAN, Character Select loopback 격리 테스트 실행 절차가 바뀔 때 |
 | `Tools/Network/TeamLanEndpoint.json` | 임시 팀 Server 주소나 만료일이 바뀔 때 |
 | 날짜별 `*_RESULT.md` | 실행한 검증과 당시 완료/미완료 증거를 남길 때 |
