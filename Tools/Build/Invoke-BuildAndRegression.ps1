@@ -145,6 +145,9 @@ try {
             'Action Presentation Workbench joined-domain gate' `
             @('Tools/ValtanPipeline/test_action_presentation_workbench_contract.py')
         Invoke-PythonGate `
+            'Bern entrance camera authored runtime gate' `
+            @('Tools/ValtanPipeline/test_bern_entrance_camera_contract.py')
+        Invoke-PythonGate `
             'KakulSaydon resource intake and world admission gate' `
             @('Tools/KakulSaydonPipeline/test_kakul_world_admission.py')
         Invoke-PythonGate `

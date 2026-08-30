@@ -1,0 +1,256 @@
+{
+  "schema": "lostark.level-entrance-camera",
+  "formatVersion": 1,
+  "levelId": "BERN",
+  "provenance": "PROJECT_AUTHORED",
+  "cue": {
+    "cueId": "bern.entrance",
+    "durationMs": 16000,
+    "interpolation": "CATMULL_ROM",
+    "easing": "LINEAR",
+    "shakeAmplitude": 0,
+    "shakeDurationMs": 0,
+    "keyframes": [
+      {
+        "sceneId": "camera.scene.auto.1",
+        "timeMs": 0,
+        "eye": [
+          138.066956,
+          46.2239189,
+          -24.0591393
+        ],
+        "lookAt": [
+          138.78212,
+          44.4352875,
+          -33.8718529
+        ],
+        "fovYDegrees": 60
+      },
+      {
+        "sceneId": "camera.scene.auto.2",
+        "timeMs": 664,
+        "eye": [
+          138.644348,
+          44.779911,
+          -31.9811325
+        ],
+        "lookAt": [
+          138.294312,
+          44.439827,
+          -41.9692154
+        ],
+        "fovYDegrees": 60
+      },
+      {
+        "sceneId": "camera.scene.auto.3",
+        "timeMs": 1330,
+        "eye": [
+          135.473404,
+          45.0033646,
+          -39.4290085
+        ],
+        "lookAt": [
+          134.690536,
+          43.4362679,
+          -49.2743797
+        ],
+        "fovYDegrees": 60
+      },
+      {
+        "sceneId": "camera.scene.auto.4",
+        "timeMs": 2145,
+        "eye": [
+          138.8358,
+          43.5354767,
+          -48.6407356
+        ],
+        "lookAt": [
+          138.209732,
+          43.5766869,
+          -58.6210327
+        ],
+        "fovYDegrees": 60
+      },
+      {
+        "sceneId": "camera.scene.auto.5",
+        "timeMs": 2961,
+        "eye": [
+          135.892319,
+          43.7138329,
+          -58.1201134
+        ],
+        "lookAt": [
+          136.48114,
+          44.1950722,
+          -68.091156
+        ],
+        "fovYDegrees": 60
+      },
+      {
+        "sceneId": "camera.scene.auto.6",
+        "timeMs": 4035,
+        "eye": [
+          137.414673,
+          45.1009827,
+          -71.0213776
+        ],
+        "lookAt": [
+          136.487061,
+          43.69244,
+          -80.8781281
+        ],
+        "fovYDegrees": 60
+      },
+      {
+        "sceneId": "camera.scene.auto.7",
+        "timeMs": 5378,
+        "eye": [
+          149.622498,
+          48.7096214,
+          -81.2476273
+        ],
+        "lookAt": [
+          141.381836,
+          43.54245,
+          -78.9255829
+        ],
+        "fovYDegrees": 60
+      },
+      {
+        "sceneId": "camera.scene.auto.8",
+        "timeMs": 6352,
+        "eye": [
+          141.502747,
+          50.4915848,
+          -89.6872787
+        ],
+        "lookAt": [
+          140.695084,
+          43.5650139,
+          -82.5199738
+        ],
+        "fovYDegrees": 60
+      },
+      {
+        "sceneId": "camera.scene.auto.9",
+        "timeMs": 7537,
+        "eye": [
+          127.451736,
+          53.3390503,
+          -88.1593094
+        ],
+        "lookAt": [
+          133.07576,
+          45.8750954,
+          -84.6012573
+        ],
+        "fovYDegrees": 60
+      },
+      {
+        "sceneId": "camera.scene.auto.10",
+        "timeMs": 8577,
+        "eye": [
+          135.389572,
+          47.3288803,
+          -80.3735352
+        ],
+        "lookAt": [
+          139.468369,
+          43.694355,
+          -88.7493134
+        ],
+        "fovYDegrees": 60
+      },
+      {
+        "sceneId": "camera.scene.auto.11",
+        "timeMs": 9960,
+        "eye": [
+          137.116913,
+          48.4540176,
+          -97.0762177
+        ],
+        "lookAt": [
+          137.817642,
+          47.6193237,
+          -107.016655
+        ],
+        "fovYDegrees": 60
+      },
+      {
+        "sceneId": "camera.scene.auto.12",
+        "timeMs": 11407,
+        "eye": [
+          136.514679,
+          51.2883835,
+          -114.4272
+        ],
+        "lookAt": [
+          136.764206,
+          52.9633408,
+          -124.282768
+        ],
+        "fovYDegrees": 60
+      },
+      {
+        "sceneId": "camera.scene.auto.13",
+        "timeMs": 12739,
+        "eye": [
+          141.546341,
+          56.4445572,
+          -128.946869
+        ],
+        "lookAt": [
+          140.123276,
+          53.8779831,
+          -138.506561
+        ],
+        "fovYDegrees": 60
+      },
+      {
+        "sceneId": "camera.scene.auto.14",
+        "timeMs": 13946,
+        "eye": [
+          142.534546,
+          53.3519287,
+          -143.265045
+        ],
+        "lookAt": [
+          135.081848,
+          52.9385605,
+          -149.919846
+        ],
+        "fovYDegrees": 60
+      },
+      {
+        "sceneId": "camera.scene.auto.15",
+        "timeMs": 14799,
+        "eye": [
+          137.622147,
+          53.1230812,
+          -152.392487
+        ],
+        "lookAt": [
+          136.3983,
+          54.9609985,
+          -162.14566
+        ],
+        "fovYDegrees": 60
+      },
+      {
+        "sceneId": "camera.scene.auto.16",
+        "timeMs": 16000,
+        "eye": [
+          137.054031,
+          55.5522995,
+          -166.78537
+        ],
+        "lookAt": [
+          137.506958,
+          51.5476532,
+          -175.937286
+        ],
+        "fovYDegrees": 60
+      }
+    ]
+  }
+}

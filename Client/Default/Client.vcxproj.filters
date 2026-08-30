@@ -1384,6 +1384,9 @@
 	<None Include="..\..\Data\Valtan\Valtan.legacy-compatibility.json">
 	  <Filter>96.DataFiles\Valtan</Filter>
 	</None>
+	<None Include="..\..\Data\Encounters\Bern\BernEntranceCamera.json">
+	  <Filter>96.DataFiles\Encounters</Filter>
+	</None>
 	<None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json">
 	  <Filter>96.DataFiles\Encounters</Filter>
 	</None>

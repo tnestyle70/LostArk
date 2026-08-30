@@ -431,6 +431,7 @@
 	<None Include="..\..\Data\Valtan\Valtan.combatobjects.json" />
 	<None Include="..\..\Data\Valtan\Valtan.worldeventsets.json" />
 	<None Include="..\..\Data\Valtan\Valtan.legacy-compatibility.json" />
+	<None Include="..\..\Data\Encounters\Bern\BernEntranceCamera.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanCombatObjects.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanDebugAudition.json" />
