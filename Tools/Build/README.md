@@ -1,21 +1,29 @@
 # Build and regression harness
 
-Run from the repository root, or use an absolute script path from another directory:
+Run the default Core profile from the repository root, or use an absolute script path from another directory:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug
 ```
 
-The script builds Engine, refreshes EngineSDK with UpdateLib, and builds Shared,
-Server, Client and the registered console harnesses. It checks the compiled shader
-closure, publisher contracts, numerical tests and headless harnesses. It does not
+Profiles are cumulative by intent, but broad diagnostics are never part of a normal
+Visual Studio Solution Build:
+
+- `-Profile Product`: Engine, UpdateLib, Shared, Server, Client and product CSO closure.
+- `-Profile Core` (default): Product plus publisher validation, NetworkProtocol, and
+  one real-Server Character Select `Core` isolation scenario.
+- `-Profile FullDiagnostic`: Core plus Character Select `Party2`/`Party4` transfer,
+  presentation, map, point-light, physics, WModel and broad Server diagnostics for
+  affected domains.
+
+The script does not
 launch Client or perform Lobby/Bern/Valtan/Development visual smoke. Those checks
 belong to the user, through `Framework.slnLaunch` (Server + Client), with the
 Client working directory set to `Client/Default`.
 
-`-SkipBuild` repeats the checks against existing binaries; it does not prove that
-those binaries contain later source changes. Missing harness executables remain
-an error. Run Debug and Release separately. Runtime Resources are managed
+`-SkipBuild` repeats the selected profile against existing binaries; it does not prove
+that those binaries contain later source changes. Missing executables selected by
+that profile remain an error. Run Debug and Release separately. Runtime Resources are managed
 directly by the team lead and are not an immutable-pack/hash gate.
 
 When the team already shares local Effect resources and does not want them added
@@ -27,8 +35,10 @@ not proof of Git-only asset delivery. Without the flag, the Git closure check is
 unchanged. Neither mode stages or uploads resources.
 
 Effect and resource admission is performed by the domain publishers, focused
-Python/WARP checks, and the Client Debug/Release builds. The regression command
-does not build or execute a second Client frontend.
+checks, and the Client Debug/Release builds. The deleted Imported Artist 31470
+corpus is not restored merely to satisfy the old broad EffectRender executable;
+that executable remains outside active profiles until its unique assertions use
+current Product fixtures. No profile builds or executes a second Client frontend.
 
 ## Map frustum and surface diagnostics
 
@@ -37,7 +47,7 @@ does not build or execute a second Client frontend.
 and sphere predicate. It checks the Bern cancellation regression, all six clip
 planes, tangency, small camera changes, invalid-input rollback and rejection
 grace. It does not initialize Client, exercise instance-buffer uploads, or judge
-rendered pixels. The normal regression command builds and runs it; an isolated
+rendered pixels. `-Profile FullDiagnostic` builds and runs it; an isolated
 repeat after building that configuration is:
 
 ```powershell
@@ -53,12 +63,16 @@ python -B Tools/MapPipeline/test_map_surface_depth_contract.py --resource-root C
   --expected-y-change LV_LOBBY_CLASSSELECT_SL00:export:405=-0.002 `
   --expected-y-change LV_LOBBY_CLASSSELECT_SL00:export:427=-0.002 `
   --expected-y-change LV_LOBBY_CLASSSELECT_SL00:export:436=-0.002 `
+  --expected-y-change LV_LOBBY_CLASSSELECT_SL00:export:444=-0.002 `
   --expected-y-change LV_LOBBY_CLASSSELECT_SL00:export:458=0.002 `
-  --expected-y-change LV_LOBBY_CLASSSELECT_SL00:export:471=-0.002
+  --expected-y-change LV_LOBBY_CLASSSELECT_SL00:export:471=-0.002 `
+  --expected-y-change LV_LOBBY_CLASSSELECT_SL00:export:474=-0.004
 ```
 
-These arguments describe the five approved edge corrections relative to Imported;
+These arguments describe the seven approved edge corrections relative to Imported;
 the two existing central corrections are checked separately. They do not modify
-placements. Without a camera log it reports `cameraDepthStatus="not_requested"`; geometry
+placements. The report covers all six pair combinations in the 442/444/458/474
+bridge K4 and separates whole-polygon near-coplanar counts from signed bevel/slope
+crossings. Without a camera log it reports `cameraDepthStatus="not_requested"`; geometry
 overlap is not a visual or GPU depth-test PASS. No new F1 capture panel is part of
 the initial frustum fix.

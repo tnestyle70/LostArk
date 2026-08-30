@@ -39,7 +39,7 @@ if not exist "%ENGINE_BIN%\Shader_Deferred.cso" (
 )
 
 xcopy /y/s ".\Engine\Public\*.*" ".\EngineSDK\inc\" || exit /b 1
-xcopy /y "%ENGINE_BIN%\*.lib" "%ENGINE_SDK_LIB%\" || exit /b 1
+xcopy /y "%ENGINE_BIN%\Engine.lib" "%ENGINE_SDK_LIB%\" || exit /b 1
 xcopy /y ".\Engine\ThirdPartyLib\*.lib" ".\EngineSDK\lib\" || exit /b 1
 xcopy /y "%ENGINE_BIN%\Engine.dll" "%CLIENT_BIN%\" || exit /b 1
 xcopy /y "%ENGINE_BIN%\Shader_Cell.cso" "%CLIENT_BIN%\" || exit /b 1

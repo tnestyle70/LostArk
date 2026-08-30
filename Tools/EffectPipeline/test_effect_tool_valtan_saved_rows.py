@@ -2739,11 +2739,11 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                 cue["scalePolicy"],
             )
 
-    def test_base_saved_projection_inventory_requires_explicit_migration(self) -> None:
+    def test_base_saved_projection_inventory_has_no_retired_tombstones(self) -> None:
         # FIST_IN_OUT is intentionally one animation-free INNER stage now. The
-        # old OUTER/RECOVERY generated reference documents remain inert empty
-        # tombstones on disk, but are no longer runtime rows in the pattern.
-        retired_fist_reference_tombstones = {
+        # old OUTER/RECOVERY generated reference documents are retired from both
+        # the runtime projection and the physical Authored source inventory.
+        retired_fist_reference_ids = {
             "effect.valtan.fist-in-out.outer",
             "effect.valtan.fist-in-out.recovery",
         }
@@ -2801,18 +2801,17 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             for effect_ids in projected.values()
             for effect_id in effect_ids
         }
-        self.assertTrue(retired_fist_reference_tombstones.isdisjoint(flattened_ids))
+        self.assertTrue(retired_fist_reference_ids.isdisjoint(flattened_ids))
         catalog = {
             row["effectAssetId"]: row
             for row in json.loads(
                 SOURCE_CATALOG_PATH.read_text(encoding="utf-8")
             )["effects"]
         }
-        for effect_id in retired_fist_reference_tombstones:
+        for effect_id in retired_fist_reference_ids:
             path = AUTHORED_ROOT / f"{effect_id}.effect.json"
-            document = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual([], document.get("elements"), effect_id)
-            self.assertEqual([], document.get("modelCues"), effect_id)
+            self.assertNotIn(effect_id, catalog)
+            self.assertFalse(path.exists(), path)
         nonempty_candidates = 0
         empty_shells = 0
         empty_effect_ids: set[str] = set()
@@ -2838,7 +2837,8 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             cue["effectAssetId"]
             for cue in json.loads(CUE_PATH.read_text(encoding="utf-8"))["cues"]
         }
-        self.assertTrue(empty_effect_ids)
+        self.assertEqual(0, empty_shells)
+        self.assertEqual(set(), empty_effect_ids)
         self.assertTrue(empty_effect_ids.isdisjoint(product_effect_ids))
 
     def test_all_declared_v0_product_cues_remain_canonical_and_nonempty(self) -> None:
@@ -2992,7 +2992,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             )
         )
 
-    def test_recovered_floor_wipe_and_center_landing_sources_are_catalogued(
+    def test_floor_wipe_is_catalogued_and_retired_center_landing_is_absent(
         self,
     ) -> None:
         source_catalog = {
@@ -3007,10 +3007,8 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             "Effects/Authored/effect.valtan.floor-wipe-130.effect.json",
             source_catalog[floor_id]["authoringPath"],
         )
-        self.assertEqual(
-            "Effects/Authored/effect.valtan.high-jump.center-landing.active.effect.json",
-            source_catalog[center_id]["authoringPath"],
-        )
+        self.assertNotIn(center_id, source_catalog)
+        self.assertFalse((AUTHORED_ROOT / f"{center_id}.effect.json").exists())
         floor = json.loads(
             (
                 REPOSITORY_ROOT / "Data" /
@@ -3048,21 +3046,6 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                     element["sourceRecipe"]["emitterDelaySeconds"],
                     places=7,
                 )
-        center = json.loads(
-            (
-                REPOSITORY_ROOT / "Data" /
-                source_catalog[center_id]["authoringPath"]
-            ).read_text(encoding="utf-8")
-        )
-        self.assertEqual(
-            {
-                "sprite_particle_2",
-                "authored.copy.authored.copy.donut.impact.wave.black.1.1",
-            },
-            {row["id"] for row in center["elements"]},
-        )
-        self.assertTrue(all(row["visible"] for row in center["elements"]))
-
     def test_v1_alias_sidecar_is_exactly_six_valid_pairs(self) -> None:
         aliases = json.loads(V1_ALIAS_PATH.read_text(encoding="utf-8"))["aliases"]
         cue_ids = {

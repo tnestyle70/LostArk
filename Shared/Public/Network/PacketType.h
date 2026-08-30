@@ -5,7 +5,10 @@
 
 namespace LostArk::Shared
 {
-	/* 45 adds the Raid Clear screen's C2S_RETURN_TO_BERN command.
+	/* 46 adds a reliable semantic combat-object presentation event. The Server
+	transmits hit identity and world occurrence only; Client data resolves the
+	actual Sound/Effect asset.
+	45 adds the Raid Clear screen's C2S_RETURN_TO_BERN command.
 	44 adds an immutable owner boss identity to world-entity spawn and a
 	reliable typed death reason to world-entity despawn.
 	43 adds live Product/Flow Next adoption with an observed predecessor.
@@ -14,7 +17,7 @@ namespace LostArk::Shared
 	expanded world destruction live-event bound. Each feature independently
 	used 40 before integration, so neither v40 peer is wire-compatible.
 	39 adds bounded Debug Valtan pattern-flow authoring playback. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 45;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 46;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -200,7 +203,12 @@ namespace LostArk::Shared
 		// This append-only v45 identity is the reverse of C2S_CONFIRM_NPC_ENTRY.
 		// It carries only a request sequence and receives the ordinary typed
 		// S2C_ENTER_ACCEPTED/S2C_ENTER_REJECTED transfer result.
-		C2S_RETURN_TO_BERN
+		C2S_RETURN_TO_BERN,
+
+		// Reliable one-shot edge for a room-owned combat object's semantic hit.
+		// Append-only: snapshot transform updates remain coalescible, this event
+		// remains an ordering barrier and can outlive same-tick object despawn.
+		S2C_COMBAT_OBJECT_PRESENTATION_EVENT
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -265,6 +273,7 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_DESPAWN_ALL_WORLD_ENTITIES:
 		case PACKET_TYPE::C2S_CONFIRM_NPC_ENTRY:
 		case PACKET_TYPE::C2S_RETURN_TO_BERN:
+		case PACKET_TYPE::S2C_COMBAT_OBJECT_PRESENTATION_EVENT:
 		case PACKET_TYPE::C2S_PARTY_INVITE:
 		case PACKET_TYPE::S2C_PARTY_INVITE_RECEIVED:
 		case PACKET_TYPE::C2S_PARTY_INVITE_RESPOND:
@@ -284,6 +293,12 @@ namespace LostArk::Shared
 	// Same as Character Select Arena's own room cap (see
 	// Run-CharacterSelectIsolationHarness.ps1's 4/4 ROOM_FULL contract).
 	inline constexpr std::size_t MAX_PARTY_MEMBERS = 4;
+
+	// Network players admitted to one Valtan raid room. Party ownership remains
+	// a four-member contract; the remaining raid seats may be occupied by a
+	// second party or, later, Server-owned raid AI without widening party wire
+	// messages or nickname identity semantics.
+	inline constexpr std::size_t MAX_VALTAN_RAID_PLAYERS = 8;
 
 	// Matches CChatWindowView::INPUT_BUFFER_SIZE (including the terminator),
 	// so a locally-typeable line always round-trips.

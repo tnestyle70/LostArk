@@ -6,6 +6,8 @@
 #include "Network/PacketMessages.h"
 #include "RenderingProfileService.h"
 
+#include <filesystem>
+
 NS_BEGIN(Engine)
 class CImGuiLayer;
 NS_END
@@ -32,7 +34,7 @@ class CMainApp final
 {
 #ifdef _DEBUG
 private:
-	enum class DEBUG_TOOL
+		enum class DEBUG_TOOL
 	{
 		NONE,
 		MAP,
@@ -43,7 +45,17 @@ private:
 		UI,
 		BALANCE,
 		BOSS,
-		CAMERA
+		CAMERA,
+		COUNT
+	};
+
+	struct DEBUG_RESOURCE_FILE
+	{
+		string strDomain;
+		string strSource;
+		string strRelativePath;
+		string strSearchText;
+		DEBUG_TOOL eTool = DEBUG_TOOL::NONE;
 	};
 #endif
 
@@ -77,6 +89,10 @@ public:
 
 #ifdef _DEBUG
 	static void Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle);
+	/* Shortcut used by domain tools that do not own a boss/pattern selection.
+	   The selected stable pattern remains owned by the workspace header and the
+	   command still crosses CBossTool -> CValtanPatternAuditionService. */
+	bool_t Debug_CompletePlaySelected(std::string& strOutStatus);
 #endif
 
 private:
@@ -108,9 +124,9 @@ private:
 	z-order reason as Render_Text(). */
 	void RenderQuickSlotKeyLabels();
 	/* Lobby's authored Test/Character Select/Valtan/Bern buttons -- screen-space hit test against
-	their stable Lobby_Layout.json slots, submitting the matching CLobbyCommandService typed
-	command only while the active Lobby is idle. The generic runtime view draws idle art; this adds
-	hover feedback and click handling before EndFrame(). */
+	their stable Lobby_Layout.json slots, submitting the matching typed command only while the
+	active Lobby is idle. A missing/old partial layout atomically falls back to the same four rects
+	and product textures. This also draws the Release status line before EndFrame(). */
 	void Render_LobbyButtons();
 	/* White labels for the four authored Lobby command buttons. Called after EndFrame() like the
 	other LOA-font text, for the same z-order reason as RenderQuickSlotKeyLabels. */
@@ -235,6 +251,15 @@ private:
 #ifdef _DEBUG
 	HRESULT ReadyDebugTools();
 	HRESULT EnsureDebugTool(DEBUG_TOOL eTool);
+	bool_t IsDebugToolVisible(DEBUG_TOOL eTool) const;
+	void SetDebugToolVisible(DEBUG_TOOL eTool, bool_t bVisible);
+	void CloseAllDebugTools();
+	void RefreshDebugResourceFiles();
+	void RenderDebugResourceFiles();
+	void OpenDebugResourceFile(size_t iFile);
+	void RefreshCompletePlayPatternOptions();
+	void RenderCompletePlayControls();
+	void RenderServerArenaActiveControls();
 	void UpdateDebugToolShortcut();
 	void RenderDeveloperTools();
 	void RenderRenderingWorkbench();
@@ -431,7 +456,28 @@ private:
 	bool_t m_bDeveloperToolsVisible = false;
 	bool_t m_bProfilerVisible = false;
 	bool_t m_bRenderQualityDraftInitialized = false;
-	DEBUG_TOOL m_eActiveDebugTool = DEBUG_TOOL::NONE;
+	array<bool_t, static_cast<size_t>(DEBUG_TOOL::COUNT)>
+		m_DebugToolVisible = {};
+	/* Visibility is deliberately independent from focus. At most one open tool
+	   owns raw world-viewport input, while every visible tool may keep rendering
+	   and advancing its non-input document state. */
+	DEBUG_TOOL m_eDebugInputOwner = DEBUG_TOOL::NONE;
+	DEBUG_TOOL m_eDebugWindowFocusPending = DEBUG_TOOL::NONE;
+	vector<DEBUG_RESOURCE_FILE> m_DebugResourceFiles;
+	array<char_t, 192> m_DebugResourceSearch = {};
+	bool_t m_bDebugResourceScanAttempted = false;
+	size_t m_iSelectedDebugResourceFile =
+		static_cast<size_t>(-1);
+	string m_strDebugResourceStatus =
+		"Resource Files has not been indexed yet.";
+	string m_strServerArenaActiveStatus =
+		"Enter the Server-approved Valtan Arena to inspect Active state.";
+	vector<string> m_CompletePlayPatternIds;
+	vector<string> m_CompletePlayPatternLabels;
+	int32_t m_iCompletePlayPattern = 0;
+	bool_t m_bCompletePlayPatternLoadAttempted = false;
+	string m_strCompletePlayStatus =
+		"Select a saved semantic pattern, then submit Complete Play to the Server.";
 	RENDER_QUALITY_SETTINGS m_RenderQualityDraft = {};
 	SCENE_RENDERING_PROFILE m_SceneRenderingDraft = {};
 	string m_strRenderingDraftProfileId;

@@ -1,10 +1,53 @@
 # Character Select 중앙 회귀·모서리 표면 일렁임 수정 구현 계획서
 
-- 갱신일: 2026-08-28
-- 문서 종류: 구현 계획서. 2026-08-28 사용자 승인 뒤 여섯 겹침 쌍을 다섯 placement의 최소 Y 교정으로 분리하고, 안전한 visual publisher 계약과 focused 검증까지 반영했다. asset·shader·near/far는 변경하지 않았고 Client를 실행하지 않았다.
+- 갱신일: 2026-08-29
+- 문서 종류: 구현 계획서. 2026-08-29 사용자 승인값으로 bridge K4 네 조각의 Y를 모두 유일하게 만들고, K4 여섯 조합과 인접 483/490/495를 다시 검사했다. asset·shader·near/far는 변경하지 않았고 Client를 실행하지 않았다.
 - 같은 Area의 기존 작업이므로 08-09 파일을 갱신한다. [기존 중앙부 RESULT](C:/Users/user/Desktop/LostArk/.md/GB/08-09/2026-08-09_CHARACTER_SELECT_CENTER_DEPTH_SEPARATION_RESULT.md)의 완료 이력과 이번 모서리 재발을 구분한다.
 - 베른의 덩어리 단위 소멸은 [베른 프러스텀 컬링 계획](C:/Users/user/Desktop/LostArk/.md/GB/08-25/2026-08-25_BERN_FRUSTUM_CULLING_DIAGNOSTIC_AND_STABILITY_PLAN.md)에서 다룬다.
 - 베른 core 수학 수정과 Character Select 배치 교정은 서로 다른 원인과 변경 단위로 유지한다. Character Select는 승인된 여섯 geometry 겹침만 교정했으며 새 ImGui 진단 패널은 제품에 반영하지 않았다.
+
+## 2026-08-29 승인 K4 전체 유일 Y 반영
+
+### 승인 입력과 변경 경계
+
+사용자가 export 458의 `-142.733918m`가 실제 화면의 상단 문제를 해결했다고 확인했다. 따라서 458을 방향 기준으로 보존하고, 같은 bridge K4의 나머지 세 조각을 다음처럼 모두 다른 Y로 둔다.
+
+| source export | 최종 Y(m) | 기존 Imported 대비 | 역할 |
+|---:|---:|---:|---|
+| 458 | -142.733918 | +0.002 | 사용자 확인 anchor, 유지 |
+| 442 | -142.735918 | 0 | 원본 기준면, 유지 |
+| 444 | -142.737918 | -0.002 | 이번 추가 교정 |
+| 474 | -142.739918 | -0.004 | 이번 추가 교정 |
+
+수정 정본은 `Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL00/LV_LOBBY_CLASSSELECT_SL00.mapplacements`다. runtime `Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL00.mapplacements`는 직접 편집하지 않고 `Publish-MapAuthoring.ps1`의 `Validate -> Check -> Publish -> Check` 순서로만 생성한다. `Data/Maps/Imported`는 추출 보존본이므로 수정하지 않는다.
+
+이번 변경은 placement Y, surface 진단 계약, 실행 안내와 PLAN/RESULT만 다룬다. model, texture, shader, material, navigation, camera, C++ runtime과 공개 schema는 변경하지 않는다. 2026-08-28의 다섯 edge 교정을 합치면 승인된 edge 교정은 일곱 placement이고, 기존 중앙 490/495까지 포함한 Imported 대비 변경 placement는 아홉 개다.
+
+### geometry 판단과 자동 계약
+
+K4 네 조각은 조합상 정확히 여섯 쌍이다. 진단기는 일부 두 쌍만 표본화하지 않고 `itertools.combinations((442, 444, 458, 474), 2)`와 동일한 후보 집합을 고정한다. 성공 기준은 다음과 같다.
+
+1. 여섯 K4 쌍의 양의 XZ 교차 면적에서 `maximumAbsoluteYGapMeters <= 0.0002m`인 whole-polygon near-plane 쌍이 모두 0이어야 한다.
+2. 평탄한 top-face의 signed crossing은 여섯 쌍 모두 0이어야 한다.
+3. K4와 인접 483/490/495는 모든 WModel mesh 조합에서 near-plane 쌍이 0이어야 한다.
+4. 약 10~12도 경사·bevel의 국소 signed crossing은 별도 진단 수치로 보존한다. 사용자 확인을 통과한 442/458에도 같은 종류가 있으므로 전체 signed crossing 0을 gate로 만들지 않는다.
+5. Imported 대비 허용 Y 변경, 803 placement 수, Authoring/runtime byte identity와 제품 scope를 보존한다.
+
+[surface 진단 test](C:/Users/user/Desktop/LostArk/Tools/MapPipeline/test_map_surface_depth_contract.py)는 K4 여섯 조합을 포함한 열 후보를 출력하고 near-plane과 signed crossing을 분리한다. 합성 test는 signed crossing 분리와 K4 조합 완전성을 고정한다. 기존 검증기의 제품 CLI는 후보별 지정 `meshIndex`를 사용하므로, 모든 mesh 조합의 인접 bevel 검사는 이번 작업에서 읽기 전용 보조 scan으로 추가 확인하고 제품 gate 확장은 별도 범위로 남긴다.
+
+### 검증·시간 측정 순서
+
+focused 완료 순서는 다음과 같다.
+
+1. surface 단위 test와 Map Effect+surface 결합 test를 실행한다.
+2. publisher `Validate`, publish 전 expected mismatch `Check`, `Publish`, 최종 `Check`를 실행한다.
+3. 실제 Resources CLI에 기존 다섯 correction과 새 444/474 correction을 모두 `--expected-y-change`로 전달한다.
+4. 모든 mesh 조합의 K4 x 483/490/495를 읽기 전용으로 검사한다.
+5. Debug/Release Server는 `Server.vcxproj /t:Rebuild`, `/m`, `/nodeReuse:false`, `BuildProjectReferences=false`, x64로 각각 한 번 측정한다.
+6. 하네스 컴파일 병목은 정본 `FullDiagnostic`의 12개 프로젝트를 완전 Clean한 뒤 정본 순서로 빌드하고, Clean과 compile 시간을 분리한다. Python/PowerShell 실행형 회귀 시간은 C++ compile 시간에 섞지 않는다.
+7. 정본 `Invoke-BuildAndRegression.ps1 -Profile FullDiagnostic`의 실제 종료 상태도 별도로 기록한다. 다른 dirty 변경의 gate가 실패하면 이번 K4 PASS로 위장하거나 고치지 않는다.
+
+자동 검증은 데이터·geometry·컴파일 계약까지다. Character Select Client 진입과 아래 두 귀퉁이, 474/483 인접 bevel, 한 면만 남겼을 때의 texture shimmer는 사용자가 직접 판정한다. 실제 카메라 capture가 없으므로 수치 근사만으로 visual PASS를 선언하지 않는다.
 
 ## G00. 이미 수정된 중앙부와 새 모서리 후보를 구분한다
 

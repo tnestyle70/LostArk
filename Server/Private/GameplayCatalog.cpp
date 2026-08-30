@@ -1841,23 +1841,24 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			BOSS_COMBAT_OBJECT_HIT hit{};
 			std::uint32_t hitIndex = 0;
 			std::uint32_t knockdown = 0;
-			if (19u != fields.size() || !IsStableId(fields[1]) ||
+			if (20u != fields.size() || !IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) || !ParseNumber(fields[3], hitIndex) ||
-				!ParseBossCombatObjectHitTrigger(fields[4], hit.eTrigger) ||
-				!ParseNumber(fields[5], hit.iAtMs) ||
-				!ParseNumber(fields[6], hit.iRepeatCount) ||
-				!ParseNumber(fields[7], hit.iRepeatIntervalMs) ||
-				!ParseBossPatternHitShape(fields[8], hit.eHitShape) ||
-				!ParseNumber(fields[9], hit.fHitOuterRadius) ||
-				!ParseNumber(fields[10], hit.fHitInnerRadius) ||
-				!ParseNumber(fields[11], hit.fHitAngleDegrees) ||
-				!ParseNumber(fields[12], hit.fHitLength) ||
-				!ParseNumber(fields[13], hit.fHitHalfWidth) ||
-				!IsStableId(fields[14]) ||
-				!ParseNumber(fields[15], hit.fPushRangeM) ||
-				!ParseNumber(fields[16], hit.iPushMs) ||
-				!ParseNumber(fields[17], knockdown) || knockdown > 1u ||
-				!ParseNumber(fields[18], hit.iDownMs) ||
+				!IsStableId(fields[4]) ||
+				!ParseBossCombatObjectHitTrigger(fields[5], hit.eTrigger) ||
+				!ParseNumber(fields[6], hit.iAtMs) ||
+				!ParseNumber(fields[7], hit.iRepeatCount) ||
+				!ParseNumber(fields[8], hit.iRepeatIntervalMs) ||
+				!ParseBossPatternHitShape(fields[9], hit.eHitShape) ||
+				!ParseNumber(fields[10], hit.fHitOuterRadius) ||
+				!ParseNumber(fields[11], hit.fHitInnerRadius) ||
+				!ParseNumber(fields[12], hit.fHitAngleDegrees) ||
+				!ParseNumber(fields[13], hit.fHitLength) ||
+				!ParseNumber(fields[14], hit.fHitHalfWidth) ||
+				!IsStableId(fields[15]) ||
+				!ParseNumber(fields[16], hit.fPushRangeM) ||
+				!ParseNumber(fields[17], hit.iPushMs) ||
+				!ParseNumber(fields[18], knockdown) || knockdown > 1u ||
+				!ParseNumber(fields[19], hit.iDownMs) ||
 				0u == hit.iRepeatCount || hit.iRepeatCount > 64u ||
 				(1u == hit.iRepeatCount ? 0u != hit.iRepeatIntervalMs :
 					0u == hit.iRepeatIntervalMs) ||
@@ -1878,7 +1879,12 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			if (m_BossCombatObjects.end() == owner ||
 				owner->second.strEncounterId != std::string(fields[1]) ||
 				hitIndex != owner->second.Hits.size() ||
-				hitIndex >= owner->second.iExpectedHitCount)
+				hitIndex >= owner->second.iExpectedHitCount ||
+				std::any_of(owner->second.Hits.begin(), owner->second.Hits.end(),
+					[&fields](const BOSS_COMBAT_OBJECT_HIT& existing)
+					{
+						return existing.strHitId == fields[4];
+					}))
 			{
 				m_strStatus = "Boss combat object hit does not follow its owner";
 				return false;
@@ -1931,7 +1937,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				m_strStatus = "Boss combat object hit shape is invalid";
 				return false;
 			}
-			hit.strDamageProfileId = fields[14];
+			hit.strHitId = fields[4];
+			hit.strDamageProfileId = fields[15];
 			hit.bKnockdown = 0u != knockdown;
 			owner->second.Hits.push_back(std::move(hit));
 		}

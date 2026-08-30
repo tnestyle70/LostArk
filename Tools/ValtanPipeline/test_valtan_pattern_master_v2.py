@@ -3732,9 +3732,13 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 check=False,
             )
         self.assertNotEqual(0, completed.returncode)
+        # Windows PowerShell may hard-wrap a terminating error at the host
+        # console width even though the subprocess streams are captured.  The
+        # diagnostic contract is its text, not those presentation-only breaks.
+        diagnostic = "".join((completed.stdout + completed.stderr).split())
         self.assertIn(
-            "triggerHealthBar must equal the final phase-1 WINDOW.toHealthBar",
-            completed.stdout + completed.stderr,
+            "triggerHealthBarmustequalthefinalphase-1WINDOW.toHealthBar",
+            diagnostic,
         )
 
     def test_gameplay_publisher_rejects_raw_finale_order_invulnerability_and_late_cycle(self) -> None:

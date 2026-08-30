@@ -440,6 +440,8 @@ namespace Client
 			LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId);
 		bool Apply_CombatObjectSpawn(
 			const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned);
+		bool Apply_CombatObjectPresentationEvent(
+			const LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT& event);
 		bool Apply_CombatObjectDespawn(
 			const LostArk::Shared::S2C_COMBAT_OBJECT_DESPAWNED& despawned);
 		//snapshot??netentityid瑜??ㅼ젣 client character濡??댁꽍?섎뒗 ?⑥닔

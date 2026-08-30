@@ -4,12 +4,15 @@
   "flows": [
     {
       "flowId": "flow.valtan.boss-tool.default",
-      "nextSlotOrdinal": 38,
+      "nextSlotOrdinal": 41,
       "interStepPursuitMs": 1000,
       "slots": [
         { "slotId": "flow.valtan.boss-tool.default.slot.000001", "patternId": "VALTAN_WHIRLWIND" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000002", "patternId": "VALTAN_FOUR_SLASH" },
+        { "slotId": "flow.valtan.boss-tool.default.slot.000038", "patternId": "VALTAN_WHIRLWIND" },
+        { "slotId": "flow.valtan.boss-tool.default.slot.000040", "patternId": "VALTAN_FIST_IN_OUT" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000003", "patternId": "VALTAN_HIGH_JUMP" },
+        { "slotId": "flow.valtan.boss-tool.default.slot.000039", "patternId": "VALTAN_WHIRLWIND" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000004", "patternId": "VALTAN_DASH_CHARGE" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000005", "patternId": "VALTAN_FLOOR_WIPE_130" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000031", "patternId": "VALTAN_FIST_IN_OUT" },

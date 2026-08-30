@@ -252,13 +252,11 @@ namespace Client
 
 		const HUD_PLAYER_STATE& Get_Player() const { return m_Player; }
 		const HUD_BOSS_STATE& Get_Boss() const { return m_Boss; }
-		/* Set directly from the raw incoming WORLD_ENTITY_SNAPSHOT.eAction
-		(CClientReplication::Apply_WorldSnapshot), independent of whether Apply_Boss's
-		own BossCombat-revision-gated validation succeeds that tick -- see the
-		Set_BossDeadRaw call site's own comment for why the gated path can get stuck
-		forever. Never reset back to false; a boss that reached DEAD stays DEAD for
-		the rest of this Level's session, same as Get_Boss().eAction would if the
-		gate weren't buggy. */
+		/* Set from either the raw incoming WORLD_ENTITY_SNAPSHOT.eAction or the
+		reliable DEAD despawn. The latter is the normal terminal edge because the
+		Server may remove the boss before producing a final DEAD snapshot. The latch
+		stays true only for this replication/world lifetime; Reset_RuntimeState clears
+		it before another Level session can observe it. */
 		void Set_BossDeadRaw(bool isDead) { m_bBossDeadRaw = m_bBossDeadRaw || isDead; }
 		bool Get_BossDeadRaw() const { return m_bBossDeadRaw; }
 		std::uint32_t Get_EstherGauge() const { return m_iEstherGauge; }

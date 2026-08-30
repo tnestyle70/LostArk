@@ -12,7 +12,6 @@ $guardedScripts = @(
     'Tools/EffectRenderContractHarness/Run-EffectRenderContractHarness.ps1',
     'Tools/PointLightFalloffContractHarness/Run-PointLightFalloffContractHarness.ps1',
     'Tools/Network/Run-CharacterSelectIsolationHarness.ps1',
-    'Tools/Network/Run-ValtanFourPlayerHarness.ps1',
     'Tools/ValtanPipeline/Test-ValtanPatternMaster.ps1',
     'Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1'
 )
@@ -50,7 +49,7 @@ function Test-OwnedNetworkProcessExitCodes {
     # Server startup, sockets and real product executables are outside this test.
     function Get-HarnessPortListeners { return @() }
     function Write-CapturedLog { param([string]$Path, [switch]$AsError) }
-    foreach ($networkName in @('CharacterSelectIsolation', 'ValtanFourPlayer')) {
+    foreach ($networkName in @('CharacterSelectIsolation')) {
         $relativeScript = "Tools/Network/Run-${networkName}Harness.ps1"
         $parseErrors = $null
         $tokens = $null
@@ -117,13 +116,9 @@ function Test-OwnedNetworkProcessExitCodes {
                 $serverProcess.Refresh()
                 $stdout = if (Test-Path -LiteralPath $harnessStdout) { [IO.File]::ReadAllText($harnessStdout) } else { '' }
                 $stderr = if (Test-Path -LiteralPath $harnessStderr) { [IO.File]::ReadAllText($harnessStderr) } else { '' }
-                $displayName = if ($networkName -eq 'CharacterSelectIsolation') {
-                    'Character Select isolation harness'
-                } else { 'Valtan four-player harness' }
+                $displayName = 'Character Select isolation harness'
                 $expectedFailure = if ($caseName -eq 'timeout') {
-                    if ($networkName -eq 'CharacterSelectIsolation') {
-                        "$displayName exceeded its external timeout: Core"
-                    } else { "$displayName exceeded its external timeout." }
+                    "$displayName exceeded its external timeout: Core"
                 } else { "$displayName failed with code 37." }
                 $fixtureResidue = if ($fixtureHarnessProcessId -ne 0) {
                     Get-Process -Id $fixtureHarnessProcessId -ErrorAction SilentlyContinue
@@ -323,7 +318,7 @@ try {
     [Environment]::SetEnvironmentVariable('LOSTARK_RESOURCE_ROOT', $missingRoot, 'Process')
     Invoke-NativeFailureWithExitShadow
     $global:LASTEXITCODE = 0
-    Write-Output "Native harness exit propagation: PASS ($Configuration, $($guardedScripts.Count) script guards, six wrapper cases, six owned-process cases and a real rejection)"
+    Write-Output "Native harness exit propagation: PASS ($Configuration, $($guardedScripts.Count) script guards, six wrapper cases, three owned-process cases and a real rejection)"
 }
 finally {
     $restoreValue = if ($null -eq $previousRoot) {

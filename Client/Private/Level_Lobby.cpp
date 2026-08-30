@@ -157,6 +157,25 @@ bool_t CLevel_Lobby::Can_SubmitProductCommand()
 		!CLevelTransitionService::Is_Pending();
 }
 
+bool_t CLevel_Lobby::Submit_ProductCommand(const LOBBY_STAGE eStage)
+{
+	if (!Can_SubmitProductCommand())
+		return false;
+#ifdef _DEBUG
+	if (LOBBY_STAGE::TEST == eStage)
+	{
+		return CLobbyCommandService::Request(
+			eStage, LOBBY_COMMAND_PURPOSE::MAP_EDITOR_WORKSPACE);
+	}
+#endif
+	return CLobbyCommandService::Request(eStage);
+}
+
+string CLevel_Lobby::Get_ProductStatus()
+{
+	return nullptr != s_pActiveInstance ? s_pActiveInstance->m_strStatus : string{};
+}
+
 void CLevel_Lobby::Consume_EnterRejected()
 {
 	using namespace LostArk::Shared;
@@ -179,7 +198,7 @@ void CLevel_Lobby::Consume_EnterRejected()
 	if (WORLD_ID::VALTAN_ARENA == rejected.eWorldId)
 	{
 		Cancel_PendingEntry(
-			"Valtan raid is full (4/4). Lobby remains active.",
+			"Valtan human player slots are full. Lobby remains active.",
 			SESSION_DIAGNOSTIC_REASON::CLIENT_EXPECTED_ROOM_FULL,
 			"lobby.entry-room-full");
 		return;

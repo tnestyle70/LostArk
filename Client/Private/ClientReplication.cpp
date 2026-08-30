@@ -179,6 +179,11 @@ bool Client::CClientReplication::Update()
 				event.CombatObjectSpawned) && allSucceeded;
 			break;
 
+		case CLIENT_REPLICATION_EVENT_TYPE::COMBAT_OBJECT_PRESENTATION:
+			allSucceeded = Apply_CombatObjectPresentationEvent(
+				event.CombatObjectPresentation) && allSucceeded;
+			break;
+
 		case CLIENT_REPLICATION_EVENT_TYPE::WORLD_ENTITY_DESPAWNED:
 			allSucceeded =
 				Apply_WorldEntityDespawn(event.WorldEntityDespawned) &&
@@ -1196,6 +1201,18 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 	const auto iter = m_WorldEntities.find(despawned.iNetEntityId);
 	if (m_WorldEntities.end() == iter)
 		return true;
+	/* A DEAD despawn is the reliable terminal edge for a boss. The Server removes
+	   the entity before it builds that tick's world snapshot, so a final snapshot
+	   with eAction == DEAD is explicitly not guaranteed. Latch the primary boss
+	   death before removing its presentation; dependent bosses must not complete
+	   the raid. */
+	if (WORLD_ENTITY_DESPAWN_REASON::DEAD == despawned.eReason &&
+		LostArk::Shared::WORLD_ENTITY_KIND::BOSS == iter->second.eKind &&
+		LostArk::Shared::INVALID_NET_ENTITY_ID ==
+			iter->second.iOwnerBossNetEntityId)
+	{
+		CCombatHUDViewModel::Get().Set_BossDeadRaw(true);
+	}
 	Remove_DependentBossPresentations(despawned.iNetEntityId);
 	COMBAT_OBJECT_PRESENTATION_SINK combatObjectSink{ *this };
 	const size_t removedCombatObjects =
@@ -1278,6 +1295,32 @@ bool Client::CClientReplication::Apply_CombatObjectSpawn(
 	if (nullptr != record && 0u == record->iPresentationHandle)
 		m_strPendingPresentationFailure = std::move(status);
 	return true;
+}
+
+bool Client::CClientReplication::Apply_CombatObjectPresentationEvent(
+	const LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT& event)
+{
+	const auto source = m_WorldEntities.find(event.iSourceNetEntityId);
+	if (source == m_WorldEntities.end() ||
+		LostArk::Shared::WORLD_ENTITY_KIND::BOSS != source->second.eKind)
+	{
+		m_strPendingPresentationFailure =
+			"Combat-object presentation event has no live boss owner.";
+		return false;
+	}
+	const std::shared_ptr<CValtan> boss = source->second.pValtan.lock();
+	if (nullptr == boss)
+	{
+		m_strPendingPresentationFailure =
+			"Combat-object presentation event boss projection expired.";
+		return false;
+	}
+	std::string status;
+	const bool_t applied =
+		boss->Apply_CombatObjectPresentationEvent(event, status);
+	if (!applied)
+		m_strPendingPresentationFailure = std::move(status);
+	return applied;
 }
 
 bool Client::CClientReplication::Apply_CombatObjectDespawn(

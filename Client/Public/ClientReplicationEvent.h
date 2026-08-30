@@ -10,13 +10,14 @@
 
 namespace Client
 {
-	//이벤트가 생성인지 삭제인지를 나타낸다.
-	//추후에 이동과 스킬 등등 동기화
+	// Identifies the ordered replication event kind.
+	// Movement and action events can extend this list without splitting the queue.
 	enum class CLIENT_REPLICATION_EVENT_TYPE
 	{
 		PLAYER_SPAWNED,
 		WORLD_ENTITY_SPAWNED,
 		COMBAT_OBJECT_SPAWNED,
+		COMBAT_OBJECT_PRESENTATION,
 		WORLD_ENTITY_DESPAWNED,
 		COMBAT_OBJECT_DESPAWNED,
 		PLAYER_DESPAWNED,
@@ -60,6 +61,8 @@ namespace Client
 		LostArk::Shared::S2C_PLAYER_SPAWNED PlayerSpawned;
 		LostArk::Shared::S2C_WORLD_ENTITY_SPAWNED WorldEntitySpawned;
 		LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED CombatObjectSpawned;
+		LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT
+			CombatObjectPresentation;
 		LostArk::Shared::S2C_WORLD_ENTITY_DESPAWNED WorldEntityDespawned;
 		LostArk::Shared::S2C_COMBAT_OBJECT_DESPAWNED CombatObjectDespawned;
 		LostArk::Shared::S2C_PLAYER_DESPAWNED PlayerDespawned;

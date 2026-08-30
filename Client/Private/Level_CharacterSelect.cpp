@@ -30,6 +30,7 @@
 #include "ValtanPresentationAssetService.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 
 namespace
@@ -242,6 +243,7 @@ HRESULT CLevel_CharacterSelect::Render()
 	Render_ClassList();
 	Render_ArenaSpawnButtons();
 	Render_CreateCharacterProductInputHost();
+	Render_ProductStatus();
 	return S_OK;
 }
 
@@ -820,6 +822,8 @@ void CLevel_CharacterSelect::Update_ServerArena()
 				CLIENT_REPLICATION_FAILED);
 		return;
 	}
+	if (Is_ProductPointerHovered())
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
 	if (!m_isCreateCharacterModalOpen &&
 		!Is_ClassPresentationPreparationPending())
 	{
@@ -1127,6 +1131,7 @@ void CLevel_CharacterSelect::Open_CreateCharacterModal()
 	}
 
 	m_isCreateCharacterModalOpen = true;
+	m_strStatus = "Enter a 1-32 byte nickname, then confirm.";
 	ImGui::OpenPopup("Create Character");
 }
 
@@ -1143,8 +1148,7 @@ bool_t CLevel_CharacterSelect::Confirm_CreateCharacter()
 	const std::string nickname{ m_NicknameDraft.data() };
 	if (!LostArk::Shared::Is_Valid_PlayerNickname(nickname))
 	{
-		m_strStatus =
-			"Nickname must be valid UTF-8, contain 1-32 bytes, and contain no control or edge whitespace.";
+		m_strStatus = "Use 1-32 UTF-8 bytes with no control or edge whitespace.";
 		return false;
 	}
 
@@ -1167,6 +1171,7 @@ void CLevel_CharacterSelect::Cancel_CreateCharacter()
 {
 	CCharacterSelectionState::Cancel_PendingCreation();
 	m_isCreateCharacterModalOpen = false;
+	m_strStatus = "Character creation canceled.";
 	ImGui::CloseCurrentPopup();
 }
 
@@ -1325,6 +1330,36 @@ void CLevel_CharacterSelect::Render_CreateCharacterModal()
 		ImGui::CloseCurrentPopup();
 	}
 
+	if (m_isCreateCharacterModalOpen && !m_strStatus.empty())
+	{
+		f32_t fStatusX = 400.f;
+		f32_t fStatusY = 340.f;
+		f32_t fStatusWidth = 480.f;
+		f32_t fStatusHeight = 20.f;
+		f32_t fAuthoredX = 0.f, fAuthoredY = 0.f;
+		f32_t fAuthoredWidth = 0.f, fAuthoredHeight = 0.f;
+		if (m_pClassSelectView->Get_SlotRect(
+			"CreateCharacterModal_StatusText", fAuthoredX, fAuthoredY,
+			fAuthoredWidth, fAuthoredHeight) &&
+			std::isfinite(fAuthoredX) && std::isfinite(fAuthoredY) &&
+			std::isfinite(fAuthoredWidth) && std::isfinite(fAuthoredHeight) &&
+			fAuthoredWidth > 0.f && fAuthoredHeight > 0.f)
+		{
+			fStatusX = fAuthoredX;
+			fStatusY = fAuthoredY;
+			fStatusWidth = fAuthoredWidth;
+			fStatusHeight = fAuthoredHeight;
+		}
+		const ImVec2 vStatusPos = Fn_ToScreen(fStatusX + 4.f, fStatusY + 2.f);
+		const f32_t fFontSize = 12.f * (std::min)(scaleX, scaleY);
+		const f32_t fWrapWidth = (fStatusWidth - 8.f) * scaleX;
+		pDrawList->AddText(ImGui::GetFont(), fFontSize,
+			ImVec2(vStatusPos.x + 1.f, vStatusPos.y + 1.f),
+			IM_COL32(0, 0, 0, 230), m_strStatus.c_str(), nullptr, fWrapWidth);
+		pDrawList->AddText(ImGui::GetFont(), fFontSize, vStatusPos,
+			IM_COL32(255, 210, 120, 255), m_strStatus.c_str(), nullptr, fWrapWidth);
+	}
+
 	ImGui::EndPopup();
 }
 
@@ -1402,6 +1437,49 @@ void CLevel_CharacterSelect::Render_CreateCharacterProductInputHost()
 		Render_CreateCharacterModal();
 	}
 	ImGui::End();
+}
+
+void CLevel_CharacterSelect::Render_ProductStatus()
+{
+#ifndef _DEBUG
+	if (nullptr == m_pClassSelectView || m_isCreateCharacterModalOpen || m_strStatus.empty())
+		return;
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	if (nullptr == pViewport)
+		return;
+
+	f32_t fX = 300.f;
+	f32_t fY = 24.f;
+	f32_t fWidth = 600.f;
+	f32_t fHeight = 54.f;
+	f32_t fAuthoredX = 0.f, fAuthoredY = 0.f;
+	f32_t fAuthoredWidth = 0.f, fAuthoredHeight = 0.f;
+	if (m_pClassSelectView->Get_SlotRect(
+		"CharacterSelect_StatusText", fAuthoredX, fAuthoredY,
+		fAuthoredWidth, fAuthoredHeight) &&
+		std::isfinite(fAuthoredX) && std::isfinite(fAuthoredY) &&
+		std::isfinite(fAuthoredWidth) && std::isfinite(fAuthoredHeight) &&
+		fAuthoredWidth > 0.f && fAuthoredHeight > 0.f)
+	{
+		fX = fAuthoredX;
+		fY = fAuthoredY;
+		fWidth = fAuthoredWidth;
+		fHeight = fAuthoredHeight;
+	}
+	const f32_t fScaleX = pViewport->WorkSize.x / 1280.f;
+	const f32_t fScaleY = pViewport->WorkSize.y / 720.f;
+	const ImVec2 vPos(
+		pViewport->WorkPos.x + (fX + 8.f) * fScaleX,
+		pViewport->WorkPos.y + (fY + 6.f) * fScaleY);
+	const f32_t fFontSize = 16.f * (std::min)(fScaleX, fScaleY);
+	const f32_t fWrapWidth = (fWidth - 16.f) * fScaleX;
+	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+	pDrawList->AddText(ImGui::GetFont(), fFontSize,
+		ImVec2(vPos.x + 1.f, vPos.y + 1.f), IM_COL32(0, 0, 0, 220),
+		m_strStatus.c_str(), nullptr, fWrapWidth);
+	pDrawList->AddText(ImGui::GetFont(), fFontSize, vPos,
+		IM_COL32(255, 225, 150, 255), m_strStatus.c_str(), nullptr, fWrapWidth);
+#endif
 }
 
 #ifdef _DEBUG
@@ -1627,10 +1705,129 @@ namespace
 	constexpr f32_t THUMB_MARGIN_TOP = 10.f;
 	constexpr f32_t THUMB_MARGIN_BOTTOM = 10.f;
 
+	struct CHARACTER_SELECT_PRODUCT_SLOT final
+	{
+		const char_t* pSlotId;
+		const char_t* pIdlePath;
+		const char_t* pHoverPath;
+		f32_t fX;
+		f32_t fY;
+		f32_t fWidth;
+		f32_t fHeight;
+	};
+
+	constexpr std::array<CHARACTER_SELECT_PRODUCT_SLOT, 5> PRODUCT_BUTTON_SLOTS =
+	{{
+		{ "SpawnMonsterButton", "UI/ClassSelect/Common/SpawnMonsterButton.png",
+			"UI/ClassSelect/Common/SpawnMonsterButtonHover.png",
+			1036.84436f, 624.437317f, 70.f, 69.f },
+		{ "BossSpawnButton", "UI/ClassSelect/Common/BossSpawnButton.png",
+			"UI/ClassSelect/Common/BossSpawnButtonHover.png",
+			1099.70178f, 624.437317f, 70.f, 69.f },
+		{ "SpawnCancelButton", "UI/ClassSelect/Common/SpawnCancelButton.png",
+			"UI/ClassSelect/Common/SpawnCancelButtonHover.png",
+			1165.41553f, 624.437317f, 70.f, 69.f },
+		{ "CreateCharacterButton", "UI/ClassSelect/Common/CreateCharacterButton.png",
+			"UI/ClassSelect/Common/CreateCharacterButtonHover.png",
+			1105.71472f, 565.714478f, 140.f, 47.f },
+		{ "GoBackIcon", "UI/ClassSelect/Common/GoBackIcon.png",
+			"UI/ClassSelect/Common/GoBackIconHover.png",
+			44.7142868f, 674.648804f, 40.f, 39.f },
+	}};
+
+	bool_t Is_ValidProductSlotRect(
+		const f32_t fX, const f32_t fY, const f32_t fWidth, const f32_t fHeight)
+	{
+		return std::isfinite(fX) && std::isfinite(fY) &&
+			std::isfinite(fWidth) && std::isfinite(fHeight) &&
+			fWidth > 0.f && fHeight > 0.f;
+	}
+
+	const CHARACTER_SELECT_PRODUCT_SLOT* Find_ProductButtonSlot(const char_t* pSlotId)
+	{
+		for (const CHARACTER_SELECT_PRODUCT_SLOT& Slot : PRODUCT_BUTTON_SLOTS)
+		{
+			if (0 == std::strcmp(Slot.pSlotId, pSlotId))
+				return &Slot;
+		}
+		return nullptr;
+	}
+
+	bool_t Has_CompleteProductButtonSlots(CHUDRuntimeView* pView)
+	{
+		if (nullptr == pView)
+			return false;
+		for (const CHARACTER_SELECT_PRODUCT_SLOT& Slot : PRODUCT_BUTTON_SLOTS)
+		{
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			if (!pView->Get_SlotRect(Slot.pSlotId, fX, fY, fWidth, fHeight) ||
+				!Is_ValidProductSlotRect(fX, fY, fWidth, fHeight))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	void Resolve_ProductButtonRect(
+		CHUDRuntimeView* pView,
+		const CHARACTER_SELECT_PRODUCT_SLOT& Slot,
+		const bool_t hasCompleteAuthoredSlots,
+		f32_t& outX, f32_t& outY, f32_t& outWidth, f32_t& outHeight)
+	{
+		if (hasCompleteAuthoredSlots && nullptr != pView &&
+			pView->Get_SlotRect(Slot.pSlotId, outX, outY, outWidth, outHeight) &&
+			Is_ValidProductSlotRect(outX, outY, outWidth, outHeight))
+		{
+			return;
+		}
+		outX = Slot.fX;
+		outY = Slot.fY;
+		outWidth = Slot.fWidth;
+		outHeight = Slot.fHeight;
+	}
+
 	string Build_ClassSelectAssetPath(const char* pClassName, const char* pFileName)
 	{
 		return string("UI/ClassSelect/") + pClassName + "/" + pFileName;
 	}
+}
+
+bool_t CLevel_CharacterSelect::Is_ProductPointerHovered() const
+{
+	if (MODE::SERVER_ARENA != m_eMode || nullptr == m_pClassSelectView)
+		return false;
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	if (nullptr == pViewport)
+		return false;
+
+	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
+	const f32_t fScaleY = pViewport->WorkSize.y / REF_HEIGHT;
+	const ImVec2 vMouse = ImGui::GetMousePos();
+	const auto IsHovered = [&](const f32_t fX, const f32_t fY,
+		const f32_t fWidth, const f32_t fHeight)
+	{
+		const f32_t fMinX = pViewport->WorkPos.x + fX * fScaleX;
+		const f32_t fMinY = pViewport->WorkPos.y + fY * fScaleY;
+		return vMouse.x >= fMinX && vMouse.x < fMinX + fWidth * fScaleX &&
+			vMouse.y >= fMinY && vMouse.y < fMinY + fHeight * fScaleY;
+	};
+
+	const bool_t hasCompleteAuthoredButtons =
+		Has_CompleteProductButtonSlots(m_pClassSelectView.get());
+	for (const CHARACTER_SELECT_PRODUCT_SLOT& Slot : PRODUCT_BUTTON_SLOTS)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		Resolve_ProductButtonRect(m_pClassSelectView.get(), Slot,
+			hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
+		if (IsHovered(fX, fY, fWidth, fHeight))
+			return true;
+	}
+
+	/* Class rows and their expanded thumbnail occupy this stable authored right-side panel.
+	Blocking the panel before PlayerController::Update keeps a class-selection LMB from also
+	becoming a Server basic-attack command in the same frame. */
+	return IsHovered(940.f, 48.f, 320.f, 540.f);
 }
 
 void CLevel_CharacterSelect::Render_ClassList()
@@ -1664,6 +1861,13 @@ void CLevel_CharacterSelect::Render_ClassList()
 	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_TextBox", false);
 	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_ConfirmButton", false);
 	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_CancelButton", false);
+	const bool_t hasCompleteProductButtons =
+		Has_CompleteProductButtonSlots(m_pClassSelectView.get());
+	for (const CHARACTER_SELECT_PRODUCT_SLOT& Slot : PRODUCT_BUTTON_SLOTS)
+	{
+		m_pClassSelectView->Set_SlotVisible(
+			Slot.pSlotId, hasCompleteProductButtons);
+	}
 	m_pClassSelectView->Render(strSelectedClass, 0);
 
 	ImGuiViewport* pViewport = ImGui::GetMainViewport();
@@ -1880,6 +2084,8 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
 	const f32_t fScaleY = pViewport->WorkSize.y / REF_HEIGHT;
 	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+	const bool_t hasCompleteAuthoredButtons =
+		Has_CompleteProductButtonSlots(m_pClassSelectView.get());
 
 	const auto Fn_ToScreen = [&](f32_t fX, f32_t fY) -> ImVec2
 	{
@@ -1904,32 +2110,64 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 			vMouse.y >= outTopLeft.y && vMouse.y < outBotRight.y;
 	};
 
+	/* The authored spawn icon rects overlap by a few pixels. Resolve the visually topmost slot
+	first (later draw order wins) so one physical click can submit exactly one typed command. */
+	const char_t* pHoveredSpawnSlotId = nullptr;
+	constexpr const char_t* SPAWN_HIT_ORDER[] =
+	{
+		"SpawnCancelButton", "BossSpawnButton", "SpawnMonsterButton"
+	};
+	if (bInteractable)
+	{
+		for (const char_t* pSlotId : SPAWN_HIT_ORDER)
+		{
+			const CHARACTER_SELECT_PRODUCT_SLOT* pSlot = Find_ProductButtonSlot(pSlotId);
+			if (nullptr == pSlot)
+				continue;
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
+				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
+			ImVec2 vTopLeft, vBotRight;
+			if (Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight))
+			{
+				pHoveredSpawnSlotId = pSlotId;
+				break;
+			}
+		}
+	}
+
 	/* ARENA_SPAWN_OPTIONS[1] (Mid Boss / Lugaru) has no button in this row -- only reachable
 	through the ImGui debug radio list -- so the middle button maps to option index 2 (Valtan),
 	not the array's own middle entry. */
-	struct SPAWN_BUTTON final { const char_t* pSlotId; const char_t* pHoverPath; size_t iOptionIndex; };
+	struct SPAWN_BUTTON final { const char_t* pSlotId; size_t iOptionIndex; };
 	constexpr SPAWN_BUTTON SPAWN_BUTTONS[] =
 	{
-		{ "SpawnMonsterButton", "UI/ClassSelect/Common/SpawnMonsterButtonHover.png", 0u },
-		{ "BossSpawnButton", "UI/ClassSelect/Common/BossSpawnButtonHover.png", 2u },
+		{ "SpawnMonsterButton", 0u },
+		{ "BossSpawnButton", 2u },
 	};
 
 	for (const SPAWN_BUTTON& Button : SPAWN_BUTTONS)
 	{
-		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-		if (!m_pClassSelectView->Get_SlotRect(Button.pSlotId, fX, fY, fWidth, fHeight))
+		const CHARACTER_SELECT_PRODUCT_SLOT* pSlot =
+			Find_ProductButtonSlot(Button.pSlotId);
+		if (nullptr == pSlot)
 			continue;
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
+			hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
 
 		ImVec2 vTopLeft, vBotRight;
-		const bool_t bHitTest = Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
-		const bool_t bHovered = bInteractable && bHitTest;
+		Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
+		const bool_t bHovered = nullptr != pHoveredSpawnSlotId &&
+			0 == std::strcmp(pHoveredSpawnSlotId, Button.pSlotId);
 
-		if (bHovered)
+		if (!hasCompleteAuthoredButtons || bHovered)
 		{
-			if (ID3D11ShaderResourceView* pHoverSRV =
-				m_pClassSelectView->Load_Texture(Button.pHoverPath))
+			const char_t* pTexturePath = bHovered ? pSlot->pHoverPath : pSlot->pIdlePath;
+			if (ID3D11ShaderResourceView* pSRV =
+				m_pClassSelectView->Load_Texture(pTexturePath))
 			{
-				pDrawList->AddImage(pHoverSRV, vTopLeft, vBotRight);
+				pDrawList->AddImage(pSRV, vTopLeft, vBotRight);
 			}
 		}
 
@@ -1945,31 +2183,37 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 	its left created in this room -- C2S_DESPAWN_ALL_WORLD_ENTITIES, mirroring how the other two
 	buttons already call Request_SelectedArenaSpawn/IWorldEntityCommandSink. */
 	{
+		const CHARACTER_SELECT_PRODUCT_SLOT* pSlot =
+			Find_ProductButtonSlot("SpawnCancelButton");
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-		if (m_pClassSelectView->Get_SlotRect("SpawnCancelButton", fX, fY, fWidth, fHeight))
+		if (nullptr != pSlot)
 		{
+			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
+				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
 			ImVec2 vTopLeft, vBotRight;
-			const bool_t bHovered = bInteractable &&
-				Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
-			if (bHovered)
+			Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
+			const bool_t bHovered = nullptr != pHoveredSpawnSlotId &&
+				0 == std::strcmp(pHoveredSpawnSlotId, pSlot->pSlotId);
+			if (!hasCompleteAuthoredButtons || bHovered)
 			{
-				if (ID3D11ShaderResourceView* pHoverSRV = m_pClassSelectView->Load_Texture(
-					"UI/ClassSelect/Common/SpawnCancelButtonHover.png"))
+				const char_t* pTexturePath = bHovered ? pSlot->pHoverPath : pSlot->pIdlePath;
+				if (ID3D11ShaderResourceView* pSRV =
+					m_pClassSelectView->Load_Texture(pTexturePath))
 				{
-					pDrawList->AddImage(pHoverSRV, vTopLeft, vBotRight);
+					pDrawList->AddImage(pSRV, vTopLeft, vBotRight);
 				}
-				if (bClicked && nullptr != m_pWorldEntityCommandSink)
-				{
-					CMainApp::Play_UIButtonClickSound();
-					m_pWorldEntityCommandSink->Request_DespawnAllWorldEntities(
-						m_iNextDespawnRequestSequence++);
-					/* Request_SelectedArenaSpawn refuses to resend once
-					m_ArenaSpawnAccepted[index] is true (see its own gate check) -- that flag only
-					meant "don't ask the Server to spawn something it already told us exists", but
-					never got cleared on despawn, so re-spawning either option silently no-op'd
-					after a revert even though the Server-side entity was really gone. */
-					m_ArenaSpawnAccepted.fill(false);
-				}
+			}
+			if (bHovered && bClicked && nullptr != m_pWorldEntityCommandSink)
+			{
+				CMainApp::Play_UIButtonClickSound();
+				m_pWorldEntityCommandSink->Request_DespawnAllWorldEntities(
+					m_iNextDespawnRequestSequence++);
+				/* Request_SelectedArenaSpawn refuses to resend once
+				m_ArenaSpawnAccepted[index] is true (see its own gate check) -- that flag only
+				meant "don't ask the Server to spawn something it already told us exists", but
+				never got cleared on despawn, so re-spawning either option silently no-op'd
+				after a revert even though the Server-side entity was really gone. */
+				m_ArenaSpawnAccepted.fill(false);
 			}
 		}
 	}
@@ -1980,24 +2224,29 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 	isConnecting/isReturning/transitionPending via MODE::SERVER_ARENA and the other two checks;
 	m_iPendingClassIndex is the one condition bInteractable does not already include. */
 	{
+		const CHARACTER_SELECT_PRODUCT_SLOT* pSlot =
+			Find_ProductButtonSlot("CreateCharacterButton");
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-		if (m_pClassSelectView->Get_SlotRect("CreateCharacterButton", fX, fY, fWidth, fHeight))
+		if (nullptr != pSlot)
 		{
+			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
+				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
 			ImVec2 vTopLeft, vBotRight;
 			const bool_t bHovered = bInteractable && !m_iPendingClassIndex.has_value() &&
 				Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
-			if (bHovered)
+			if (!hasCompleteAuthoredButtons || bHovered)
 			{
-				if (ID3D11ShaderResourceView* pHoverSRV = m_pClassSelectView->Load_Texture(
-					"UI/ClassSelect/Common/CreateCharacterButtonHover.png"))
+				const char_t* pTexturePath = bHovered ? pSlot->pHoverPath : pSlot->pIdlePath;
+				if (ID3D11ShaderResourceView* pSRV =
+					m_pClassSelectView->Load_Texture(pTexturePath))
 				{
-					pDrawList->AddImage(pHoverSRV, vTopLeft, vBotRight);
+					pDrawList->AddImage(pSRV, vTopLeft, vBotRight);
 				}
-				if (bClicked)
-				{
-					CMainApp::Play_UIButtonClickSound();
-					Request_CreateCharacterButtonClick();
-				}
+			}
+			if (bHovered && bClicked)
+			{
+				CMainApp::Play_UIButtonClickSound();
+				Request_CreateCharacterButtonClick();
 			}
 		}
 	}
@@ -2006,18 +2255,24 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 	bInteractable -- an escape hatch should stay clickable through pending/preparing states, only
 	guarded against firing again mid-transition. */
 	{
+		const CHARACTER_SELECT_PRODUCT_SLOT* pSlot =
+			Find_ProductButtonSlot("GoBackIcon");
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-		if (m_pClassSelectView->Get_SlotRect("GoBackIcon", fX, fY, fWidth, fHeight))
+		if (nullptr != pSlot)
 		{
+			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
+				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
 			ImVec2 vTopLeft, vBotRight;
-			const bool_t bHovered = !CLevelTransitionService::Is_Pending() &&
+			const bool_t bHovered = !m_isCreateCharacterModalOpen &&
+				!CLevelTransitionService::Is_Pending() &&
 				Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
-			if (bHovered)
+			if (!hasCompleteAuthoredButtons || bHovered)
 			{
-				if (ID3D11ShaderResourceView* pHoverSRV =
-					m_pClassSelectView->Load_Texture("UI/ClassSelect/Common/GoBackIconHover.png"))
+				const char_t* pTexturePath = bHovered ? pSlot->pHoverPath : pSlot->pIdlePath;
+				if (ID3D11ShaderResourceView* pSRV =
+					m_pClassSelectView->Load_Texture(pTexturePath))
 				{
-					pDrawList->AddImage(pHoverSRV, vTopLeft, vBotRight);
+					pDrawList->AddImage(pSRV, vTopLeft, vBotRight);
 				}
 			}
 			if (bHovered && bClicked)
@@ -2048,54 +2303,68 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 	const float textScaleX = vViewportSize.x / 1280.f;
 	const float textScaleY = vViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
+	const bool_t hasCompleteAuthoredButtons =
+		Has_CompleteProductButtonSlots(m_pClassSelectView.get());
 
-	for (const SPAWN_LABEL& Label : LABELS)
+	if (!m_isCreateCharacterModalOpen)
 	{
-		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-		if (!m_pClassSelectView->Get_SlotRect(Label.pSlotId, fX, fY, fWidth, fHeight))
-			continue;
-
-		const f32_t fLabelCenterX = fX + fWidth * 0.5f;
-
-		const float2_t vMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), Label.pLabel);
-		/* "작게" -- small label under a 70px icon, so cap by height too (same lesson as the
-		Lobby button label: height-only scaling on a wide multi-glyph string runs it too big).
-		Width cap tightened from 1.3x to 0.75x icon width -- the icons themselves sit only ~63px
-		apart center-to-center (real extracted rects), so the wider cap let neighboring labels'
-		edges overlap and read as one run-on string. */
-		const f32_t fScaleByHeight = (vMeasured.y > 0.f) ?
-			(fHeight * 0.2f / vMeasured.y) : 1.f;
-		const f32_t fScaleByWidth = (vMeasured.x > 0.f) ?
-			(fWidth * 0.75f / vMeasured.x) : 1.f;
-		const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
-		/* Centered anchor like every other Draw_Text call in this codebase (see
-		RenderQuickSlotKeyLabels), offset down by half the scaled glyph height so the label sits
-		just under the icon instead of straddling its bottom edge. */
-		const f32_t fLabelCenterY =
-			fY + fHeight + 4.f + vMeasured.y * fScale * 0.5f;
-		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), Label.pLabel,
-			float2_t(fLabelCenterX * textScaleX, fLabelCenterY * textScaleY),
-			Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
-	}
-
-	/* CreateCharacterButton: label centered inside the button itself (Lobby's
-	Lobby_CreateCharacterButton uses the same "\xCE90..." literal/font for the same text). */
-	{
-		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-		if (m_pClassSelectView->Get_SlotRect("CreateCharacterButton", fX, fY, fWidth, fHeight))
+		for (const SPAWN_LABEL& Label : LABELS)
 		{
-			const wchar_t* pLabel = L"\xCE90\xB9AD\xD130 \xC0DD\xC131"; // "캐릭터 생성"
+			const CHARACTER_SELECT_PRODUCT_SLOT* pSlot =
+				Find_ProductButtonSlot(Label.pSlotId);
+			if (nullptr == pSlot)
+				continue;
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
+				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
+
+			const f32_t fLabelCenterX = fX + fWidth * 0.5f;
+
 			const float2_t vMeasured =
-				CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+				CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), Label.pLabel);
+			/* "작게" -- small label under a 70px icon, so cap by height too (same lesson as the
+			Lobby button label: height-only scaling on a wide multi-glyph string runs it too big).
+			Width cap tightened from 1.3x to 0.75x icon width -- the icons themselves sit only ~63px
+			apart center-to-center (real extracted rects), so the wider cap let neighboring labels'
+			edges overlap and read as one run-on string. */
 			const f32_t fScaleByHeight = (vMeasured.y > 0.f) ?
-				(fHeight * 0.32f / vMeasured.y) : 1.f;
+				(fHeight * 0.2f / vMeasured.y) : 1.f;
 			const f32_t fScaleByWidth = (vMeasured.x > 0.f) ?
-				(fWidth * 0.8f / vMeasured.x) : 1.f;
+				(fWidth * 0.75f / vMeasured.x) : 1.f;
 			const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
-			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
-				float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
+			/* Centered anchor like every other Draw_Text call in this codebase (see
+			RenderQuickSlotKeyLabels), offset down by half the scaled glyph height so the label sits
+			just under the icon instead of straddling its bottom edge. */
+			const f32_t fLabelCenterY =
+				fY + fHeight + 4.f + vMeasured.y * fScale * 0.5f;
+			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), Label.pLabel,
+				float2_t(fLabelCenterX * textScaleX, fLabelCenterY * textScaleY),
 				Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+		}
+
+		/* CreateCharacterButton: label centered inside the button itself (Lobby's
+		Lobby_CreateCharacterButton uses the same literal/font for the same text). */
+		{
+			const CHARACTER_SELECT_PRODUCT_SLOT* pSlot =
+				Find_ProductButtonSlot("CreateCharacterButton");
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			if (nullptr != pSlot)
+			{
+				Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
+					hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
+				const wchar_t* pLabel = L"\xCE90\xB9AD\xD130 \xC0DD\xC131"; // "캐릭터 생성"
+				const float2_t vMeasured =
+					CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+				const f32_t fScaleByHeight = (vMeasured.y > 0.f) ?
+					(fHeight * 0.32f / vMeasured.y) : 1.f;
+				const f32_t fScaleByWidth = (vMeasured.x > 0.f) ?
+					(fWidth * 0.8f / vMeasured.x) : 1.f;
+				const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
+				CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
+					float2_t((fX + fWidth * 0.5f) * textScaleX,
+						(fY + fHeight * 0.5f) * textScaleY),
+					Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+			}
 		}
 	}
 

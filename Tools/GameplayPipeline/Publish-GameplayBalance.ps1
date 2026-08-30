@@ -2684,14 +2684,17 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 		++$hitIndex) {
 		$hit = $combatObject.hits[$hitIndex]
 		Assert-ExactProperties $hit @(
-			'trigger','atMs','repeatCount','repeatIntervalMs','hitShape',
+			'hitId','trigger','atMs','repeatCount','repeatIntervalMs','hitShape',
 			'hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength',
 			'hitHalfWidth','serverDamageProfileId','pushRangeM','pushMs',
 			'knockdown','downMs') 'Valtan combat object hit'
-		foreach ($field in @('trigger','hitShape','serverDamageProfileId')) {
+		foreach ($field in @('hitId','trigger','hitShape','serverDamageProfileId')) {
 			Assert-JsonString $hit.$field `
 				"Valtan combat object $combatObjectId hit $field"
 		}
+		$hitId = [string]$hit.hitId
+		Assert-StableId $hitId `
+			"Valtan combat object $combatObjectId hit ID"
 		Assert-StableId $hit.serverDamageProfileId `
 			"Valtan combat object $combatObjectId hit damage profile"
 		foreach ($field in @('atMs','repeatCount','repeatIntervalMs','pushMs','downMs')) {
@@ -2771,7 +2774,7 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 		}
 		$combatObjectRows.Add((@(
 			'BOSSCOMBATOBJECTHIT', $combatObjectDocument.encounterId,
-			$combatObjectId, $hitIndex, $trigger, $atMs, $repeatCount,
+			$combatObjectId, $hitIndex, $hitId, $trigger, $atMs, $repeatCount,
 			$repeatIntervalMs, $shape,
 			(Format-InvariantFloat $outer 'combat object hit outer radius'),
 			(Format-InvariantFloat $inner 'combat object hit inner radius'),

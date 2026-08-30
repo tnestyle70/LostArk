@@ -269,6 +269,7 @@ namespace LostArk::Server
 
 	struct BOSS_COMBAT_OBJECT_HIT final
 	{
+		std::string strHitId;
 		BOSS_COMBAT_OBJECT_HIT_TRIGGER eTrigger =
 			BOSS_COMBAT_OBJECT_HIT_TRIGGER::TIMED;
 		std::uint32_t iAtMs = 0;
@@ -760,7 +761,9 @@ namespace LostArk::Server
 		ORDINARY_WALLS_GONE,
 		ALL_WALLS_GONE,
 		FLOOR84_GONE,
-		FLOOR84_AND_30_GONE
+		FLOOR84_AND_30_GONE,
+		/* Debug preset only: Product chronology reaches 30 after 84. */
+		FLOOR30_GONE
 	};
 
 	enum class VALTAN_TIMELINE_PROP_STATE : std::uint8_t

@@ -4,6 +4,7 @@
 
 #include "Camera_Free.h"
 #include "Character.h"
+#include "DataJson.h"
 #include "GameInstance.h"
 #include "HUDRuntimeView.h"
 #include "LevelRegistry.h"
@@ -16,16 +17,302 @@
 #include "RuntimeAssetRoot.h"
 #include "Transform.h"
 #include "Trigger_Box.h"
+#include "ValtanCinematicCameraController.h"
 #include "WorldGameplayDocument.h"
 
 #include <algorithm>
 #include <cfloat>
+#include <cmath>
 #include <filesystem>
+#include <fstream>
+#include <initializer_list>
+#include <sstream>
+#include <unordered_set>
 
 namespace
 {
 	constexpr const wchar_t* BERN_CASTLE_BGM_ASSET_ID =
 		L"Sound/BGM/BernCastle/bgm_berntown_mscene01_thecapital.wav";
+
+	/* Bern entrance cinematic: an authoring-owned single camera cue that plays
+	   once on entry. The validation mirrors the pattern-free death-cue rules of
+	   the Valtan cinematic camera document so both consume the same sampler. */
+	constexpr uint64_t BERN_ENTRANCE_CINEMATIC_OWNER_ID = 0x4245524E43494E45ull;
+	constexpr const char_t* BERN_ENTRANCE_CAMERA_SCHEMA =
+		"lostark.level-entrance-camera";
+	constexpr uint32_t BERN_ENTRANCE_CAMERA_FORMAT_VERSION = 1u;
+	constexpr uint32_t BERN_ENTRANCE_MAX_DURATION_MS = 60000u;
+	constexpr size_t BERN_ENTRANCE_MAX_KEYFRAME_COUNT = 64u;
+	constexpr f32_t BERN_ENTRANCE_MAX_SHAKE_AMPLITUDE = 2.f;
+	constexpr uint32_t BERN_ENTRANCE_MAX_SHAKE_DURATION_MS = 1000u;
+	constexpr f32_t BERN_ENTRANCE_MAX_WORLD_COORDINATE = 100000.f;
+
+	bool_t Is_EntranceStableId(const std::string& value)
+	{
+		return !value.empty() && value.size() <= 128u &&
+			std::all_of(value.begin(), value.end(), [](const char_t character)
+			{
+				return (character >= 'a' && character <= 'z') ||
+					(character >= 'A' && character <= 'Z') ||
+					(character >= '0' && character <= '9') ||
+					'_' == character || '-' == character || '.' == character;
+			});
+	}
+
+	bool_t Is_ExactEntranceObject(
+		const DATA_JSON_VALUE& value,
+		const std::initializer_list<const char_t*> keys)
+	{
+		if (!value.Is_Object() || value.Get_Object().size() != keys.size())
+			return false;
+		return std::all_of(keys.begin(), keys.end(),
+			[&value](const char_t* key) { return nullptr != value.Find(key); });
+	}
+
+	bool_t Read_EntranceString(
+		const DATA_JSON_VALUE& parent,
+		const char_t* key,
+		std::string& outValue)
+	{
+		const DATA_JSON_VALUE* value = parent.Find(key);
+		if (nullptr == value || !value->Is_String() ||
+			value->Get_String().empty())
+		{
+			return false;
+		}
+		outValue = value->Get_String();
+		return true;
+	}
+
+	bool_t Read_EntranceUnsigned(
+		const DATA_JSON_VALUE& parent,
+		const char_t* key,
+		const uint32_t maximum,
+		uint32_t& outValue)
+	{
+		const DATA_JSON_VALUE* value = parent.Find(key);
+		if (nullptr == value || !value->Is_Number() ||
+			value->Was_FloatingPointToken())
+		{
+			return false;
+		}
+		const double number = value->Get_Number();
+		if (!std::isfinite(number) || number < 0.0 ||
+			number > static_cast<double>(maximum) ||
+			std::floor(number) != number)
+		{
+			return false;
+		}
+		outValue = static_cast<uint32_t>(number);
+		return true;
+	}
+
+	bool_t Read_EntranceFloat3(
+		const DATA_JSON_VALUE& parent,
+		const char_t* key,
+		float3_t& outValue)
+	{
+		const DATA_JSON_VALUE* value = parent.Find(key);
+		if (nullptr == value || !value->Is_Array() ||
+			3u != value->Get_Array().size())
+		{
+			return false;
+		}
+		f32_t components[3]{};
+		for (size_t index = 0u; index < 3u; ++index)
+		{
+			const DATA_JSON_VALUE& component = value->Get_Array()[index];
+			if (!component.Is_Number() ||
+				!std::isfinite(component.Get_Number()) ||
+				std::abs(component.Get_Number()) >
+					BERN_ENTRANCE_MAX_WORLD_COORDINATE)
+			{
+				return false;
+			}
+			components[index] = static_cast<f32_t>(component.Get_Number());
+		}
+		outValue = float3_t(components[0], components[1], components[2]);
+		return true;
+	}
+
+	bool_t Parse_BernEntranceCamera(
+		const std::filesystem::path& path,
+		VALTAN_CINEMATIC_CAMERA_CUE& outCue,
+		std::string& outStatus)
+	{
+		std::ifstream input(path, std::ios::binary);
+		if (path.empty() || !input.is_open())
+		{
+			outStatus = "entrance camera document is unreadable";
+			return false;
+		}
+		std::ostringstream buffer;
+		buffer << input.rdbuf();
+		if (input.bad())
+		{
+			outStatus = "entrance camera document read failed";
+			return false;
+		}
+
+		DATA_JSON_VALUE root;
+		std::string parseError;
+		DATA_JSON_PARSE_LIMITS limits{};
+		limits.iMaximumBytes = 256u * 1024u;
+		limits.iMaximumDepth = 16u;
+		limits.iMaximumValues = 4096u;
+		if (!CDataJson::Parse(buffer.str(), root, parseError, limits))
+		{
+			outStatus = "entrance camera parse failed: " + parseError;
+			return false;
+		}
+		if (!Is_ExactEntranceObject(root,
+			{ "schema", "formatVersion", "levelId", "provenance", "cue" }))
+		{
+			outStatus = "entrance camera root has unexpected properties";
+			return false;
+		}
+		std::string schema;
+		std::string levelId;
+		std::string provenance;
+		uint32_t formatVersion = 0u;
+		if (!Read_EntranceString(root, "schema", schema) ||
+			BERN_ENTRANCE_CAMERA_SCHEMA != schema ||
+			!Read_EntranceUnsigned(root, "formatVersion",
+				BERN_ENTRANCE_CAMERA_FORMAT_VERSION, formatVersion) ||
+			BERN_ENTRANCE_CAMERA_FORMAT_VERSION != formatVersion ||
+			!Read_EntranceString(root, "levelId", levelId) ||
+			"BERN" != levelId ||
+			!Read_EntranceString(root, "provenance", provenance) ||
+			"PROJECT_AUTHORED" != provenance)
+		{
+			outStatus = "entrance camera header is invalid";
+			return false;
+		}
+
+		const DATA_JSON_VALUE* cueValue = root.Find("cue");
+		if (nullptr == cueValue || !Is_ExactEntranceObject(*cueValue,
+			{ "cueId", "durationMs", "interpolation", "easing",
+				"shakeAmplitude", "shakeDurationMs", "keyframes" }))
+		{
+			outStatus = "entrance camera cue has unexpected properties";
+			return false;
+		}
+		VALTAN_CINEMATIC_CAMERA_CUE cue;
+		std::string interpolation;
+		std::string easing;
+		if (!Read_EntranceString(*cueValue, "cueId", cue.strCueId) ||
+			!Is_EntranceStableId(cue.strCueId) ||
+			!Read_EntranceUnsigned(*cueValue, "durationMs",
+				BERN_ENTRANCE_MAX_DURATION_MS, cue.iDurationMs) ||
+			0u == cue.iDurationMs ||
+			!Read_EntranceString(*cueValue, "interpolation", interpolation) ||
+			!Read_EntranceString(*cueValue, "easing", easing))
+		{
+			outStatus = "entrance camera cue identity is invalid";
+			return false;
+		}
+		if ("LINEAR" == interpolation)
+			cue.eInterpolation = VALTAN_CINEMATIC_CAMERA_INTERPOLATION::LINEAR;
+		else if ("CATMULL_ROM" == interpolation)
+			cue.eInterpolation =
+				VALTAN_CINEMATIC_CAMERA_INTERPOLATION::CATMULL_ROM;
+		else
+		{
+			outStatus = "entrance camera interpolation is unsupported";
+			return false;
+		}
+		if ("LINEAR" == easing)
+			cue.eEasing = VALTAN_CINEMATIC_CAMERA_EASING::LINEAR;
+		else if ("SMOOTHSTEP" == easing)
+			cue.eEasing = VALTAN_CINEMATIC_CAMERA_EASING::SMOOTHSTEP;
+		else if ("HOLD" == easing)
+			cue.eEasing = VALTAN_CINEMATIC_CAMERA_EASING::HOLD;
+		else
+		{
+			outStatus = "entrance camera easing is unsupported";
+			return false;
+		}
+		const DATA_JSON_VALUE* amplitude = cueValue->Find("shakeAmplitude");
+		if (nullptr == amplitude || !amplitude->Is_Number() ||
+			!std::isfinite(amplitude->Get_Number()) ||
+			amplitude->Get_Number() < 0.0 ||
+			amplitude->Get_Number() >
+				static_cast<double>(BERN_ENTRANCE_MAX_SHAKE_AMPLITUDE) ||
+			!Read_EntranceUnsigned(*cueValue, "shakeDurationMs",
+				BERN_ENTRANCE_MAX_SHAKE_DURATION_MS, cue.iShakeDurationMs))
+		{
+			outStatus = "entrance camera shake is invalid";
+			return false;
+		}
+		cue.fShakeAmplitude = static_cast<f32_t>(amplitude->Get_Number());
+		if ((cue.fShakeAmplitude > 0.f) != (0u != cue.iShakeDurationMs) ||
+			cue.iShakeDurationMs > cue.iDurationMs)
+		{
+			outStatus = "entrance camera shake pair is invalid";
+			return false;
+		}
+
+		const DATA_JSON_VALUE* keyframes = cueValue->Find("keyframes");
+		if (nullptr == keyframes || !keyframes->Is_Array() ||
+			keyframes->Get_Array().size() < 2u ||
+			keyframes->Get_Array().size() > BERN_ENTRANCE_MAX_KEYFRAME_COUNT)
+		{
+			outStatus = "entrance camera keyframe array is invalid";
+			return false;
+		}
+		std::unordered_set<std::string> sceneIds;
+		uint32_t previousTime = 0u;
+		for (size_t index = 0u; index < keyframes->Get_Array().size(); ++index)
+		{
+			const DATA_JSON_VALUE& keyframeValue =
+				keyframes->Get_Array()[index];
+			if (!Is_ExactEntranceObject(keyframeValue,
+				{ "sceneId", "timeMs", "eye", "lookAt", "fovYDegrees" }))
+			{
+				outStatus = "entrance camera keyframe has unexpected properties";
+				return false;
+			}
+			VALTAN_CINEMATIC_CAMERA_KEYFRAME keyframe;
+			const DATA_JSON_VALUE* fov = keyframeValue.Find("fovYDegrees");
+			if (!Read_EntranceString(keyframeValue, "sceneId",
+					keyframe.strSceneId) ||
+				!Is_EntranceStableId(keyframe.strSceneId) ||
+				!sceneIds.insert(keyframe.strSceneId).second ||
+				!Read_EntranceUnsigned(keyframeValue, "timeMs",
+					cue.iDurationMs, keyframe.iTimeMs) ||
+				!Read_EntranceFloat3(keyframeValue, "eye", keyframe.vEye) ||
+				!Read_EntranceFloat3(keyframeValue, "lookAt",
+					keyframe.vLookAt) ||
+				nullptr == fov || !fov->Is_Number() ||
+				!std::isfinite(fov->Get_Number()) ||
+				fov->Get_Number() < 10.0 || fov->Get_Number() > 120.0 ||
+				(0u == index && 0u != keyframe.iTimeMs) ||
+				(index > 0u && keyframe.iTimeMs <= previousTime))
+			{
+				outStatus = "entrance camera keyframe is invalid";
+				return false;
+			}
+			keyframe.fFovYDegrees = static_cast<f32_t>(fov->Get_Number());
+			const vector_t eye = XMLoadFloat3(&keyframe.vEye);
+			const vector_t lookAt = XMLoadFloat3(&keyframe.vLookAt);
+			if (XMVectorGetX(XMVector3LengthSq(lookAt - eye)) <= 0.000001f)
+			{
+				outStatus = "entrance camera eye and lookAt must differ";
+				return false;
+			}
+			previousTime = keyframe.iTimeMs;
+			cue.Keyframes.push_back(keyframe);
+		}
+		if (previousTime != cue.iDurationMs)
+		{
+			outStatus =
+				"entrance camera final keyframe must match cue duration";
+			return false;
+		}
+		outCue = std::move(cue);
+		outStatus = "entrance camera cue is ready";
+		return true;
+	}
 }
 
 CLevel_Bern* CLevel_Bern::s_pActiveInstance = nullptr;
@@ -40,6 +327,8 @@ CLevel_Bern::CLevel_Bern(
 
 CLevel_Bern::~CLevel_Bern()
 {
+	End_EntranceCinematic();
+
 	if (m_bBernBgmStarted)
 		CGameInstance::Get().Stop_Music();
 
@@ -72,6 +361,8 @@ HRESULT CLevel_Bern::Initialize()
 	{
 		return E_FAIL;
 	}
+
+	(void)Ready_EntranceCinematic();
 
 	CClientReplication::DESC replicationDesc{};
 	replicationDesc.pDevice = m_pDevice;
@@ -203,6 +494,8 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 			"[Level_Bern] Failed to bind local character camera.\n");
 	}
 
+	Update_EntranceCinematic(fTimeDelta);
+
 	const shared_ptr<CCharacter> localCharacter =
 		m_Replication.Get_LocalCharacter();
 
@@ -238,6 +531,106 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 	m_PlayerController.Update(
 		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled());
 
+}
+
+bool_t CLevel_Bern::Ready_EntranceCinematic()
+{
+	const std::filesystem::path path = CProjectDataRoot::Resolve(
+		L"Encounters/Bern/BernEntranceCamera.json");
+	std::error_code fileError;
+	if (path.empty() || !std::filesystem::is_regular_file(path, fileError))
+		return false;
+	std::string status;
+	if (!Parse_BernEntranceCamera(path, m_EntranceCameraCue, status))
+	{
+		OutputDebugStringA((
+			"[Level_Bern] Entrance cinematic was isolated: " +
+			status + "\n").c_str());
+		m_EntranceCameraCue = VALTAN_CINEMATIC_CAMERA_CUE{};
+		return false;
+	}
+	m_hasEntranceCameraCue = true;
+	return true;
+}
+
+void CLevel_Bern::Update_EntranceCinematic(const f32_t fTimeDelta)
+{
+	if (!m_hasEntranceCameraCue || m_bEntranceCinematicDone ||
+		nullptr == m_pCamera)
+	{
+		return;
+	}
+	if (!m_bEntranceCinematicApplied)
+	{
+		m_bEntranceRestoreFollowRequested = m_pCamera->Is_FollowRequested();
+		m_pEntranceRestoreTarget = m_pCamera->Get_FollowTarget();
+		m_pCamera->Set_FollowEnabled(false);
+		m_pCamera->Set_FollowTarget(nullptr);
+		if (!m_pCamera->Begin_PresentationOverride(
+			BERN_ENTRANCE_CINEMATIC_OWNER_ID,
+			CCamera::PRESENTATION_PRIORITY::SERVER_CINEMATIC))
+		{
+			m_pCamera->Set_FollowTarget(m_pEntranceRestoreTarget.lock());
+			m_pCamera->Set_FollowEnabled(m_bEntranceRestoreFollowRequested);
+			m_bEntranceCinematicDone = true;
+			return;
+		}
+		m_bEntranceCinematicApplied = true;
+		m_fEntranceCinematicSeconds = 0.f;
+	}
+	else if (nullptr != m_pCamera->Get_FollowTarget())
+	{
+		/* Replication rebinds the follow camera once the local character
+		   spawns; keep the newest target for the restore and strip it while
+		   the entrance override owns the view. */
+		m_pEntranceRestoreTarget = m_pCamera->Get_FollowTarget();
+		m_pCamera->Set_FollowEnabled(false);
+		m_pCamera->Set_FollowTarget(nullptr);
+	}
+	/* ESC skips the remainder through the same end path that restores the
+	   follow camera; the press edge keeps a held key from re-triggering. */
+	const bool_t isEscapeDown = 0 != (
+		CGameInstance::Get().Get_DIKeyState(DIK_ESCAPE) & 0x80);
+	const bool_t wasEscapePressed =
+		isEscapeDown && !m_wasEscapeDownForEntranceSkip;
+	m_wasEscapeDownForEntranceSkip = isEscapeDown;
+	if (wasEscapePressed)
+	{
+		End_EntranceCinematic();
+		return;
+	}
+	if (std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
+		m_fEntranceCinematicSeconds += (std::min)(fTimeDelta, 0.1f);
+	VALTAN_CINEMATIC_CAMERA_POSE pose{};
+	if (!CValtanCinematicCameraController::Sample_Cue(
+		m_EntranceCameraCue, m_fEntranceCinematicSeconds, pose) ||
+		!m_pCamera->Apply_PresentationPose(
+			BERN_ENTRANCE_CINEMATIC_OWNER_ID,
+			pose.vEye, pose.vLookAt, pose.fFovYDegrees))
+	{
+		End_EntranceCinematic();
+		return;
+	}
+	if (m_fEntranceCinematicSeconds >=
+		static_cast<f32_t>(m_EntranceCameraCue.iDurationMs) * 0.001f)
+	{
+		End_EntranceCinematic();
+	}
+}
+
+void CLevel_Bern::End_EntranceCinematic()
+{
+	if (m_bEntranceCinematicApplied && nullptr != m_pCamera)
+	{
+		(void)m_pCamera->End_PresentationOverride(
+			BERN_ENTRANCE_CINEMATIC_OWNER_ID);
+		m_pCamera->Set_FollowTarget(m_pEntranceRestoreTarget.lock());
+		m_pCamera->Set_FollowEnabled(m_bEntranceRestoreFollowRequested);
+	}
+	m_pEntranceRestoreTarget.reset();
+	m_bEntranceRestoreFollowRequested = false;
+	m_bEntranceCinematicApplied = false;
+	m_bEntranceCinematicDone = true;
 }
 
 HRESULT CLevel_Bern::Render()

@@ -774,6 +774,28 @@
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
+      "id": "CharacterSelect_StatusText",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 300, "y": 24, "width": 600, "height": 54 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "CreateCharacterModal_StatusText",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 400, "y": 340, "width": 480, "height": 20 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
       "id": "New_Slot",
       "ownerClass": null,
       "type": 0,

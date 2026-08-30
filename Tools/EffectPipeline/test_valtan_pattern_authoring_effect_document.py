@@ -74,18 +74,9 @@ class ValtanPatternAuthoringEffectDocumentTests(unittest.TestCase):
     def setUp(self) -> None:
         self.seed = json.loads(DOCUMENT_PATH.read_text(encoding="utf-8"))
 
-    def test_repository_seed_preserves_rush_and_the_requested_empty_struggling_draft(self) -> None:
+    def test_repository_seed_is_a_valid_empty_draft_contract(self) -> None:
         self.assertTrue(validates(self.seed))
-        actual = {
-            (row["patternId"], row["effectAssetId"])
-            for row in self.seed["bindings"]
-        }
-        # Other valid Drafts created by the user must not invalidate these seeds.
-        for required in (
-            ("VALTAN_SEQUENCE_RUSH", "effect.valtan.sequence.rush"),
-            ("VALTAN_STRUGGLING", "effect.valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead"),
-        ):
-            self.assertIn(required, actual)
+        self.assertEqual(self.seed["bindings"], [])
 
     def test_one_binding_has_no_animation_or_runtime_fields(self) -> None:
         document = copy.deepcopy(self.seed)

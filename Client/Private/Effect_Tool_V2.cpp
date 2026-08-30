@@ -17,6 +17,7 @@
 #include "RuntimeAssetRoot.h"
 #include "Shader.h"
 #include "Valtan.h"
+#include "ValtanPatternAuditionService.h"
 #include "ValtanPresentationAssetService.h"
 
 #include "DirectXTK/DDSTextureLoader.h"
@@ -33,6 +34,11 @@
 
 namespace
 {
+	constexpr const char* VALTAN_EFFECT_TOOL_V2_AUDITION_CONSUMER_ID =
+		"effect-tool-v2";
+	constexpr const char* VALTAN_ARENA_BOSS_PLACEMENT_ID =
+		"boss.valtan.center";
+
 	constexpr uint32_t MAX_PREVIEW_LOADS_PER_FRAME = 2u;
 	constexpr size_t MAX_PREVIEW_DIMENSION = 512u;
 	constexpr uint32_t MODEL_THUMBNAIL_SIZE = 128u;
@@ -79,6 +85,7 @@ Client::CEffect_Tool_V2::~CEffect_Tool_V2() = default;
 
 void Client::CEffect_Tool_V2::Render()
 {
+	Update_ValtanServerPatternStatus();
 	m_iLoadsThisFrame = 0u;
 	if (!m_bScanned)
 		Scan_Resources();
@@ -1892,7 +1899,8 @@ void Client::CEffect_Tool_V2::Render_ValtanPatternSection()
 		m_iValtanPatternSelection < static_cast<int32_t>(m_ValtanPatterns.size());
 	ImGui::BeginDisabled(!bHasPattern);
 	if (ImGui::Button(m_bValtanTimelineActive ?
-		(m_bValtanTimelinePaused ? "Resume" : "Pause") : "Play Pattern"))
+		(m_bValtanTimelinePaused ? "Resume Offline" : "Pause Offline") :
+		"Pattern Offline"))
 	{
 		if (!m_bValtanTimelineActive)
 		{
@@ -1917,6 +1925,11 @@ void Client::CEffect_Tool_V2::Render_ValtanPatternSection()
 	}
 	ImGui::EndDisabled();
 	ImGui::SameLine();
+	ImGui::BeginDisabled(!bHasPattern);
+	if (ImGui::Button("Complete Play (Server/Arena)"))
+		(void)Try_PlayValtanServerPattern();
+	ImGui::EndDisabled();
+	ImGui::SameLine();
 	ImGui::BeginDisabled(!m_bValtanTimelineActive);
 	if (ImGui::Button("Stop"))
 		Stop_ValtanTimeline();
@@ -1935,6 +1948,10 @@ void Client::CEffect_Tool_V2::Render_ValtanPatternSection()
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::Checkbox("Loop##Pattern", &m_bValtanTimelineLoop);
+	if (!m_strValtanServerPatternStatus.empty())
+		ImGui::TextWrapped("Server: %s", m_strValtanServerPatternStatus.c_str());
+	ImGui::TextDisabled(
+		"Arena playback uses the saved V2 document/bindings on the replicated boss. Unsaved tuning remains in the local model preview.");
 	if (!m_bValtanTimelineActive)
 	{
 		ImGui::TextDisabled("Play a pattern to scrub its stages and place the spawn point.");
@@ -1975,6 +1992,50 @@ void Client::CEffect_Tool_V2::Render_ValtanPatternSection()
 		ImGui::TextDisabled("Binding will store stage %s +%u ms (Server stage clock).",
 			m_ValtanTimeline[iSpawnStage].strActionId.c_str(), iSpawnOffsetMs);
 	}
+}
+
+bool_t Client::CEffect_Tool_V2::Try_PlayValtanServerPattern()
+{
+	if (!Ensure_ValtanTree() || m_iValtanPatternSelection < 0 ||
+		m_iValtanPatternSelection >= static_cast<int32_t>(m_ValtanPatterns.size()))
+	{
+		m_strValtanServerPatternStatus =
+			"Select one admitted Valtan pattern before Server playback.";
+		return false;
+	}
+	if (ETOUI(LEVEL::VALTAN_ARENA) !=
+		CGameInstance::Get().Get_CurrentLevelID())
+	{
+		m_strValtanServerPatternStatus =
+			"Complete Play is available only after entering Valtan from Lobby.";
+		return false;
+	}
+
+	const VALTAN_PATTERN_VIEW& Pattern =
+		*m_ValtanPatterns[static_cast<size_t>(m_iValtanPatternSelection)];
+	std::string status;
+	const bool_t submitted = CValtanPatternAuditionService::Get().Submit(
+		VALTAN_EFFECT_TOOL_V2_AUDITION_CONSUMER_ID,
+		VALTAN_ARENA_BOSS_PLACEMENT_ID,
+		Pattern.strPatternId,
+		status);
+	m_strValtanServerPatternStatus = std::move(status);
+	return submitted;
+}
+
+void Client::CEffect_Tool_V2::Update_ValtanServerPatternStatus()
+{
+	const VALTAN_PATTERN_AUDITION_SNAPSHOT& snapshot =
+		CValtanPatternAuditionService::Get().Get_Snapshot();
+	if (snapshot.strConsumerId !=
+		VALTAN_EFFECT_TOOL_V2_AUDITION_CONSUMER_ID ||
+		snapshot.strPatternId.empty())
+	{
+		return;
+	}
+	m_strValtanServerPatternStatus =
+		std::string(Describe_ValtanPatternAuditionState(snapshot.eState)) +
+		" | " + snapshot.strStatus;
 }
 
 bool_t Client::CEffect_Tool_V2::Load_Bindings(const std::string& strArchetypeId)

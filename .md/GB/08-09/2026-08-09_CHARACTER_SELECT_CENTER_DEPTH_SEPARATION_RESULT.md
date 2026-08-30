@@ -1,5 +1,89 @@
 # Character Select 중앙 보정·모서리 z-fighting 교정 결과
 
+## 2026-08-29 bridge K4 전체 유일 Y 교정 결과
+
+### 실제 반영값과 파일
+
+사용자가 화면에서 해결됐다고 확인한 458의 `-142.733918m`를 anchor로 유지하고, 같은 bridge K4의 444와 474를 추가로 내렸다. 네 조각의 최종 Y는 모두 유일하다.
+
+| source export / stable placement ID | 변경 전 Y(m) | 최종 Y(m) | Imported 대비 |
+|---|---:|---:|---:|
+| 458 / `17033911184007117021` | -142.733918 | -142.733918 | +0.002 |
+| 442 / `13004387245150734382` | -142.735918 | -142.735918 | 0 |
+| 444 / `9728074828520549347` | -142.735918 | -142.737918 | -0.002 |
+| 474 / `9567686591551344922` | -142.735918 | -142.739918 | -0.004 |
+
+실제 변경 단위는 다음 여섯 파일이다.
+
+- [Authoring mapplacements](C:/Users/user/Desktop/LostArk/Data/Maps/Authoring/LV_LOBBY_CLASSSELECT_SL00/LV_LOBBY_CLASSSELECT_SL00.mapplacements): 444와 474의 Y를 수정한 정본.
+- [runtime mapplacements](C:/Users/user/Desktop/LostArk/Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL00.mapplacements): publisher가 Authoring에서 생성한 제품 입력.
+- [surface depth contract](C:/Users/user/Desktop/LostArk/Tools/MapPipeline/test_map_surface_depth_contract.py): K4 여섯 조합, signed crossing 별도 진단, 조합 완전성 test.
+- [Build README](C:/Users/user/Desktop/LostArk/Tools/Build/README.md): 새 444/474 expected correction과 열 후보 실행 계약.
+- [구현 계획서](C:/Users/user/Desktop/LostArk/.md/GB/08-09/2026-08-09_CHARACTER_SELECT_CENTER_DEPTH_SEPARATION_IMPLEMENTATION_PLAN.md)와 이 RESULT: 최신 결정, 증거, 미검증 경계.
+
+Imported, mapasset catalog, WModel, DDS, shader, material, navigation, camera, C++ runtime은 수정하지 않았다. Authoring/runtime은 각각 203,139 byte로 byte-identical이고 SHA-256은 `677e9af7cf01f23ba2fa571b5ffb988ef3d5ce4ff9c98dd2c2395d9d36055ff5`다. 2026-08-28의 다섯 edge correction과 이번 두 개를 합친 edge correction은 일곱 placement이며, 기존 중앙 490/495까지 합치면 Imported와 다른 placement는 아홉 개다.
+
+### 여섯 조합과 인접 geometry 결과
+
+458의 성공을 방향 anchor로 삼되, 네 origin Y가 다르다는 사실만으로 종료하지 않았다. 실제 WModel vertex에 placement S x R x T를 적용하고, K4 네 조각의 여섯 조합에서 양의 XZ 교차 polygon과 보간 Y를 다시 계산했다.
+
+| K4 쌍 | 명목 Y 간격 | 교정 전 near-plane 쌍 | 교정 후 | 교정 후 mesh0 signed crossing |
+|---|---:|---:|---:|---:|
+| 442 / 444 | 2mm | 307 | 0 | 57 |
+| 442 / 458 | 2mm | 0 | 0 | 57 |
+| 442 / 474 | 4mm | 1,023 | 0 | 12 |
+| 444 / 458 | 4mm | 0 | 0 | 12 |
+| 444 / 474 | 2mm | 307 | 0 | 57 |
+| 458 / 474 | 6mm | 0 | 0 | 0 |
+
+K4 near-plane 합계는 `1,637 -> 0`이다. 기준은 교차 polygon 전체의 `maximumAbsoluteYGapMeters <= 0.2mm`다. 평탄한 top-face만 분리하면 여섯 쌍의 signed crossing도 모두 0이다. 표의 남은 crossing은 약 10~12도 경사·bevel이고, 이미 사용자 확인을 통과한 442/458에도 57쌍이 있으므로 “raw crossing 전체 0”은 성공 조건이 아니다.
+
+K4 각각과 483/490/495를 WModel의 모든 mesh 조합으로 검사한 결과 12개 조합 모두 near-plane 0이었다. 인접 signed crossing은 대부분 그대로였고 474/483의 bridge mesh1 x MagicFloor mesh0 국소 bevel만 `39 -> 40`으로 한 쌍 증가했다. 넓은 평행면 재발은 아니지만 사용자가 아래 귀퉁이를 볼 때 함께 확인해야 한다. 내부 모델 고저차 때문에 일부 수평 triangle의 실제 최소 간격은 약 0.35346mm까지 내려간다. 기존 0.2mm gate는 통과하고 시작 카메라 1280x720 근사에서는 최소 약 6.12 D24 step이지만, 실제 camera capture가 아니므로 visual PASS 증거로 쓰지 않는다.
+
+### publisher·focused 검증
+
+실제 적용 순서는 `Validate -> publish 전 Check(expected exit 1, 무변경) -> Publish -> Check`였다. Publish 뒤 Authoring/runtime hash가 일치했다.
+
+| 실행 항목 | 결과 |
+|---|---|
+| `Publish-MapAuthoring.ps1 -Mode Validate` | PASS, 803 placements / 2 files |
+| publish 전 `-Mode Check` | 예상대로 exit 1, runtime mutation 없음 |
+| `-Mode Publish` | PASS, runtime 생성 |
+| publish 후 `-Mode Check` | PASS |
+| `python -B -m unittest Tools.MapPipeline.test_map_surface_depth_contract` | 23 tests PASS, 0.041초 |
+| Map Effect + surface 결합 unittest | 37 tests PASS, 49.905초 |
+| 실제 Resources surface CLI | 열 후보 near-plane 0, K4 여섯 조합 포함, `cameraDepthStatus=not_requested` |
+| Authoring/runtime byte identity | PASS, 위 SHA-256 일치 |
+
+실제 Resources CLI에는 기존 405/427/436/458/471과 새 444/474의 Imported 대비 correction을 모두 명시했다. 444는 `-0.002`, 474는 `-0.004`, 458은 `+0.002`다. 진단기는 near-plane과 signed crossing을 서로 다른 field로 출력하며, unit test가 K4 후보 집합이 정확히 여섯 조합인지 고정한다.
+
+### Debug/Release build와 병목 측정
+
+모든 수치는 같은 PC에서 x64, `/m`, `/nodeReuse:false`, `BuildProjectReferences=false`로 한 번씩 측정한 wall time이다. Server 수치는 pre-build publisher를 포함한 `Server.vcxproj /t:Rebuild`다. FullDiagnostic compile 수치는 12개 프로젝트를 완전 Clean한 뒤 Engine -> UpdateLib -> Shared -> Core 하네스 2개 -> Server -> Client -> 진단 하네스 6개 순서로 빌드한 시간이며 실행형 회귀는 제외했다.
+
+| 측정 | Debug | Release | 상태 |
+|---|---:|---:|---|
+| Server 단독 full rebuild | 45.819초 | 45.672초 | 둘 다 PASS |
+| FullDiagnostic 12-project Clean | 2.589초 | 2.931초 | 둘 다 PASS, compile 시간에서 제외 |
+| FullDiagnostic 12-project clean compile | 294.846초 | 666.883초 | 둘 다 PASS |
+
+Release clean compile은 Debug의 약 2.26배다. 로그상 주 병목은 Server가 아니라 Client Release 셰이더 full compile과 LTCG다. Release Client는 50,366 functions를, Server는 21,044 functions를 usable IPDB/IOBJ 없이 전체 코드 생성했다. ActionPresentationTimeline 등 Release 하네스도 각각 LTCG를 수행했다. Server만 보면 Debug/Release가 모두 약 45.7~45.8초라 구성 차이가 거의 없다. 과거 동일 조건의 기준 시간이 없으므로 이번 한 번의 수치만으로 최근 최적화의 개선률을 주장하지 않는다.
+
+정본 `Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile FullDiagnostic -AllowLocalEffectResources`는 완전 compile과 회귀를 진행한 뒤 645.276초에 **FAIL**했다. 그 직전 가장 긴 `test_valtan_pattern_master_v2.py` 73 tests는 365.121초에 PASS했지만, 이어진 `test_animation_tool_valtan_pattern_master.py` 12 tests 중 두 문자열 source-contract가 실패했다.
+
+- `test_animation_tool_loads_the_shared_typed_projection`: 기존 `"Valtan Pattern Master (Authoritative)"` 문자열을 기대하지만 현재 코드에 없음.
+- `test_complete_timeline_uses_server_wall_and_source_clocks`: 기존 `"Play Arena Presentation Locally"` 문자열을 기대하지만 현재 코드에 없음.
+
+이는 이번 mapplacement·surface 변경과 무관한 현재 dirty tree의 Animation Tool UI/test 계약 drift다. 컴파일 성공이나 K4 focused PASS로 광역 회귀 PASS를 대신하지 않았고, 사용자 요청 범위를 벗어나므로 관련 C++/test는 수정하지 않았다. Release는 12-project clean compile까지 성공했으며, 같은 configuration-independent Python source gate를 다시 365초 실행해 PASS처럼 기록하지 않았다. 빌드에는 현재 로컬 Effect resource 3개를 명시적으로 허용했지만 source/resource validation 자체는 통과했다. C4819, C4828, X3577, X4000, LNK4099 등 기존 warning은 있었고 컴파일 오류는 없었다.
+
+### 남은 사용자 판정
+
+자동 검증으로 확정한 범위는 정본/runtime 동기화, K4 여섯 조합의 넓은 near-plane 제거, 인접 배치에서의 near-plane 비재발과 Debug/Release 컴파일이다. Client/UI는 실행하지 않았으므로 아래 왼쪽·아래 오른쪽의 실제 visual PASS는 아직 사용자 판정 대기다.
+
+사용자는 팀 Server가 실행 중인 상태에서 Client를 직접 시작해 Lobby -> Character Select로 진입하고, 처음 카메라에서 아래 두 귀퉁이와 474/483 인접 bevel을 확인한다. 한 표면만 남긴 상태에서도 무늬가 반짝이면 geometry가 아니라 기존 mip 부재 후보를 다음 범위로 다룬다. 현재 LAN endpoint `10.207.18.103:7777`은 이 작업 시작 시 `not-listening`이었고 로컬 role은 `client`였으므로, Server가 꺼진 상태에서는 시각 확인을 시작할 수 없다.
+
+---
+
 ## 2026-08-28 모서리 z-fighting 배치 교정 결과
 
 ### 실제 반영 상태

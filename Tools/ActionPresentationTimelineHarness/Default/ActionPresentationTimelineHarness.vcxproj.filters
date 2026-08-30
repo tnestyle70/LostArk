@@ -22,6 +22,12 @@
     <ClCompile Include="..\..\..\Client\Private\ValtanPatternSoundCueDocument.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ValtanPatternShakeCueDocument.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\CameraShakeService.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_DocumentCodec.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

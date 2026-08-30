@@ -43,6 +43,13 @@ namespace
 		return slot == "arena.center" || slot == "arena.center.facing";
 	}
 
+	std::string Make_CombatObjectSoundSourceKey(
+		const std::string_view archetypeId,
+		const std::string_view hitId)
+	{
+		return std::string(archetypeId) + "\n" + std::string(hitId);
+	}
+
 	constexpr f32_t VALTAN_SERVER_TICK_HZ = 30.f;
 	constexpr f32_t VALTAN_PRESENTATION_SEEK_EPSILON_SECONDS = 1.f / 120.f;
 	constexpr f32_t HIT_FLASH_DURATION_SECONDS = 0.12f;
@@ -312,6 +319,7 @@ HRESULT CValtan::Initialize(void* pArg)
 	Load_PatternBindings();
 	Load_PatternEffectCues();
 	Load_PatternSoundCues();
+	Load_CombatObjectSoundCues();
 	Load_PatternShakeCues();
 #ifdef _DEBUG
 	if (m_isServerAuthoritative)
@@ -1330,6 +1338,92 @@ void CValtan::Spawn_DuePatternSoundCues(const f32_t fActionAgeSeconds)
 			CGameInstance::Get().Play_Sound(SoundPath.wstring(), 1.f);
 		}
 	}
+}
+
+void CValtan::Load_CombatObjectSoundCues()
+{
+	std::string status;
+	if (!Reload_CombatObjectSoundCues(status))
+	{
+		OutputDebugStringA((
+			"[Client][Valtan] combat-object Sound cues isolated: " + status +
+			"\n").c_str());
+	}
+}
+
+bool_t CValtan::Reload_CombatObjectSoundCues(std::string& status)
+{
+	VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT document;
+	if (!CValtanCombatObjectSoundCueDocument::Load_Source(document, status))
+		return false;
+	std::unordered_map<std::string, VALTAN_COMBAT_OBJECT_SOUND_CUE> staged;
+	staged.reserve(document.Cues.size());
+	for (const VALTAN_COMBAT_OBJECT_SOUND_CUE& cue : document.Cues)
+	{
+		const std::string key = Make_CombatObjectSoundSourceKey(
+			cue.strCombatObjectArchetypeId, cue.strHitId);
+		if (!staged.emplace(key, cue).second)
+		{
+			status = "Duplicate combat-object Sound source: " + cue.strBindingId;
+			return false;
+		}
+	}
+	m_CombatObjectSoundCuesBySource = std::move(staged);
+	status = "Reloaded " +
+		std::to_string(m_CombatObjectSoundCuesBySource.size()) +
+		" combat-object Sound binding(s).";
+	return true;
+}
+
+bool_t CValtan::Apply_CombatObjectPresentationEvent(
+	const LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT& event,
+	std::string& outStatus)
+{
+	using namespace LostArk::Shared;
+	outStatus.clear();
+	if (!m_isServerAuthoritative || 0u == event.iEventSequence ||
+		COMBAT_OBJECT_PRESENTATION_EVENT_KIND::HIT_PULSE != event.eKind)
+	{
+		outStatus = "Combat-object presentation event is invalid for this boss.";
+		return false;
+	}
+	if (event.iEventSequence <= m_iLastCombatObjectPresentationEventSequence)
+		return true;
+	m_iLastCombatObjectPresentationEventSequence = event.iEventSequence;
+
+	const std::string key = Make_CombatObjectSoundSourceKey(
+		event.strCombatObjectArchetypeId, event.strHitId);
+	const auto found = m_CombatObjectSoundCuesBySource.find(key);
+	if (m_CombatObjectSoundCuesBySource.end() == found)
+	{
+		/* Semantic events are broader than the currently required Sound lane.
+		An unbound hit is intentionally silent; joined validation decides which
+		Product hits are required and reports those gaps in the Workbench. */
+		return true;
+	}
+	const VALTAN_COMBAT_OBJECT_SOUND_CUE& cue = found->second;
+	const std::vector<std::string>& variants =
+		CSoundCueCatalog::Find_Variants("Valtan", cue.strSoundEvent);
+	if (variants.empty())
+	{
+		outStatus = "Combat-object Sound event has no catalog asset: " +
+			cue.strSoundEvent;
+		return false;
+	}
+	const std::size_t variantIndex = static_cast<std::size_t>(
+		(event.iEventSequence - 1u) % variants.size());
+	const std::filesystem::path soundPath =
+		CRuntimeAssetRoot::Resolve(variants[variantIndex]);
+	if (soundPath.empty() ||
+		FAILED(CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f)))
+	{
+		outStatus = "Combat-object Sound asset could not play: " +
+			variants[variantIndex];
+		return false;
+	}
+	outStatus = "Played " + cue.strBindingId + " for Server hit " +
+		event.strHitId + ".";
+	return true;
 }
 
 void CValtan::Load_PatternShakeCues()

@@ -329,8 +329,18 @@ void CLevel_Loading::Render_LoadingRecoveryProduct()
 		PRODUCT_RECT& outRect)
 	{
 		outRect = DefaultRect;
-		return nullptr != m_pRecoveryView && m_pRecoveryView->Get_SlotRect(
-			pSlotId, outRect.fX, outRect.fY, outRect.fWidth, outRect.fHeight);
+		PRODUCT_RECT AuthoredRect{};
+		if (nullptr == m_pRecoveryView || !m_pRecoveryView->Get_SlotRect(
+			pSlotId, AuthoredRect.fX, AuthoredRect.fY,
+			AuthoredRect.fWidth, AuthoredRect.fHeight) ||
+			!std::isfinite(AuthoredRect.fX) || !std::isfinite(AuthoredRect.fY) ||
+			!std::isfinite(AuthoredRect.fWidth) || !std::isfinite(AuthoredRect.fHeight) ||
+			AuthoredRect.fWidth <= 0.f || AuthoredRect.fHeight <= 0.f)
+		{
+			return false;
+		}
+		outRect = AuthoredRect;
+		return true;
 	};
 
 	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
