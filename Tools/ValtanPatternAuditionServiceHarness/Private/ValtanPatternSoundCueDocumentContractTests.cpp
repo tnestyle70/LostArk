@@ -1,15 +1,25 @@
 #include "AnimationSkillBindingDocument.h"
 #include "Effect_DocumentCodec.h"
 #include "EncounterPatternReference.h"
+#include "SoundCueCatalog.h"
 #include "ValtanPatternSoundCueDocument.h"
 
+#include <Windows.h>
+
 #include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <sstream>
 #include <string>
+#include <thread>
+#include <unordered_map>
+#include <vector>
 
 // AnimationSkillBindingDocument.cpp also owns Effect-tree staging. Keep that
 // unrelated codec boundary fail-closed instead of pulling the 14k-line Effect
@@ -25,6 +35,60 @@ bool_t Client::CEffectDocumentCodec::Load(
 
 namespace
 {
+	class SCOPED_TEST_DIRECTORY final
+	{
+	public:
+		explicit SCOPED_TEST_DIRECTORY(std::filesystem::path path)
+			: Path(std::move(path))
+		{
+		}
+		~SCOPED_TEST_DIRECTORY()
+		{
+			std::error_code cleanupError;
+			std::filesystem::remove_all(Path, cleanupError);
+		}
+
+	private:
+		std::filesystem::path Path;
+	};
+
+	class SCOPED_ENVIRONMENT_VARIABLE final
+	{
+	public:
+		explicit SCOPED_ENVIRONMENT_VARIABLE(const wchar_t* name)
+			: Name(name)
+		{
+			const DWORD required = GetEnvironmentVariableW(
+				Name.c_str(), nullptr, 0u);
+			if (0u == required)
+				return;
+			std::vector<wchar_t> value(required);
+			const DWORD copied = GetEnvironmentVariableW(
+				Name.c_str(), value.data(), required);
+			if (0u != copied && copied < required)
+			{
+				HadValue = true;
+				Previous.assign(value.data(), copied);
+			}
+		}
+		~SCOPED_ENVIRONMENT_VARIABLE()
+		{
+			SetEnvironmentVariableW(Name.c_str(),
+				HadValue ? Previous.c_str() : nullptr);
+		}
+
+		bool Set(const std::filesystem::path& value)
+		{
+			return FALSE != SetEnvironmentVariableW(
+				Name.c_str(), value.c_str());
+		}
+
+	private:
+		std::wstring Name;
+		std::wstring Previous;
+		bool HadValue = false;
+	};
+
 	bool Require(const bool condition, const char* message)
 	{
 		if (!condition)
@@ -36,6 +100,94 @@ namespace
 	{
 		std::ifstream stream(path, std::ios::binary);
 		return { std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>() };
+	}
+
+	bool WriteText(const std::filesystem::path& path,
+		const std::string& text)
+	{
+		std::ofstream output(path, std::ios::binary | std::ios::trunc);
+		output.write(text.data(), static_cast<std::streamsize>(text.size()));
+		return output.good();
+	}
+
+	std::string ReplaceOnce(std::string text,
+		const std::string& needle, const std::string& replacement)
+	{
+		const std::size_t offset = text.find(needle);
+		if (std::string::npos != offset)
+			text.replace(offset, needle.size(), replacement);
+		return text;
+	}
+
+	bool HasStagingArtifact(const std::filesystem::path& destination)
+	{
+		const std::string prefix = destination.filename().string() + ".tmp.";
+		std::error_code iterationError;
+		for (std::filesystem::directory_iterator iterator(
+			destination.parent_path(), iterationError), end;
+			!iterationError && iterator != end;
+			iterator.increment(iterationError))
+		{
+			if (iterator->path().filename().string().starts_with(prefix))
+				return true;
+		}
+		return false;
+	}
+
+	bool CopyFixture(const std::filesystem::path& source,
+		const std::filesystem::path& destination)
+	{
+		std::error_code error;
+		std::filesystem::create_directories(destination.parent_path(), error);
+		if (error)
+			return false;
+		std::filesystem::copy_file(source, destination,
+			std::filesystem::copy_options::overwrite_existing, error);
+		return !error;
+	}
+
+	bool LoadValtanModelClipSourceDurations(
+		const std::filesystem::path& root,
+		std::unordered_map<std::string, f32_t>& outDurations)
+	{
+		std::istringstream input(ReadText(root /
+			"Data/Animation/Reference/Valtan/Valtan.animnotify"));
+		std::unordered_map<std::string, f32_t> staged;
+		std::string line;
+		while (std::getline(input, line))
+		{
+			if (line.empty() || '"' != line.front())
+				continue;
+			const std::size_t nameEnd = line.find('"', 1u);
+			const std::size_t durationBegin = line.find(" len=", nameEnd);
+			if (std::string::npos == nameEnd ||
+				std::string::npos == durationBegin)
+			{
+				return false;
+			}
+			const std::size_t valueBegin = durationBegin + 5u;
+			const std::size_t valueEnd = line.find(' ', valueBegin);
+			try
+			{
+				const f32_t duration = std::stof(line.substr(valueBegin,
+					std::string::npos == valueEnd ? std::string::npos :
+					valueEnd - valueBegin));
+				if (!std::isfinite(duration) || duration <= 0.f ||
+					!staged.emplace(line.substr(1u, nameEnd - 1u),
+						duration).second)
+				{
+					return false;
+				}
+			}
+			catch (...)
+			{
+				return false;
+			}
+		}
+		if (staged.empty())
+			return false;
+		outDurations = std::move(staged);
+		return true;
 	}
 
 	std::string SoundCueText(const Client::VALTAN_PATTERN_SOUND_CUE& cue)
@@ -175,11 +327,735 @@ namespace
 			return false;
 		return true;
 	}
+
+	bool VerifyAuthoringSave(const std::filesystem::path& root)
+	{
+		using namespace Client;
+		const std::filesystem::path testRoot =
+			std::filesystem::temp_directory_path() /
+			("LostArkValtanPatternSoundAuthoringHarness-" +
+			 std::to_string(GetCurrentProcessId()) + "-" +
+			 std::to_string(GetTickCount64()));
+		SCOPED_TEST_DIRECTORY cleanup(testRoot);
+		const std::filesystem::path dataRoot = testRoot / "Data";
+		const std::filesystem::path destination = dataRoot /
+			"Animation/Authored/Valtan/Valtan.patternsoundcues.json";
+		const std::filesystem::path bindingPath = dataRoot /
+			"Animation/Authored/Valtan/Valtan.patternbindings.json";
+		const std::filesystem::path encounterPath = dataRoot /
+			"Encounters/Valtan/ValtanEncounter.json";
+		const std::filesystem::path catalogPath = dataRoot /
+			"Sound/CharacterSoundCatalog.json";
+		if (!Require(CopyFixture(root /
+				"Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json",
+				destination) &&
+			CopyFixture(root /
+				"Data/Animation/Authored/Valtan/Valtan.patternbindings.json",
+				bindingPath) &&
+			CopyFixture(root /
+				"Data/Encounters/Valtan/ValtanEncounter.json", encounterPath) &&
+			CopyFixture(root /
+				"Data/Sound/CharacterSoundCatalog.json", catalogPath),
+			"could not create isolated pattern Sound authoring fixture"))
+		{
+			return false;
+		}
+
+		SCOPED_ENVIRONMENT_VARIABLE dataEnvironment(
+			L"LOSTARK_PROJECT_DATA_ROOT");
+		SCOPED_ENVIRONMENT_VARIABLE resourceEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		if (!Require(dataEnvironment.Set(dataRoot) &&
+			resourceEnvironment.Set(root / "Client/Bin/Resources"),
+			"could not redirect Data/Resources roots for Sound authoring"))
+		{
+			return false;
+		}
+
+		std::string status;
+		const bool catalogLoaded = CSoundCueCatalog::Load(status);
+		if (!Require(catalogLoaded,
+			("real Valtan Sound catalog did not load: " + status).c_str()))
+		{
+			return false;
+		}
+		std::unordered_map<std::string, f32_t> modelClipDurations;
+		if (!Require(LoadValtanModelClipSourceDurations(
+				root, modelClipDurations) &&
+			modelClipDurations.contains("mesh_att_battle_1_01") &&
+			modelClipDurations.contains("mesh_att_battle_1_02"),
+			"could not load real Valtan model-like source durations"))
+		{
+			return false;
+		}
+		VALTAN_PATTERN_SOUND_CUE_DOCUMENT loaded;
+		std::string authoringBaseline;
+		const bool sourceLoaded =
+			CValtanPatternSoundCueDocument::Load_ForAuthoring(
+				loaded, authoringBaseline, status);
+		if (!Require(sourceLoaded && 566u == loaded.Cues.size() &&
+			authoringBaseline == ReadText(destination),
+			("strict full Valtan pattern Sound load failed: " + status).c_str()))
+		{
+			return false;
+		}
+		const std::string initialSourceBytes = authoringBaseline;
+		auto failedLoadDocument = loaded;
+		failedLoadDocument.strOwnerArchetypeId = "sentinel.owner";
+		const auto failedLoadDocumentBefore = failedLoadDocument;
+		std::string failedLoadBaseline = "sentinel-baseline";
+		if (!Require(WriteText(destination, "{}\n") &&
+			!CValtanPatternSoundCueDocument::Load_ForAuthoring(
+				failedLoadDocument, failedLoadBaseline, status) &&
+			failedLoadDocument == failedLoadDocumentBefore &&
+			failedLoadBaseline == "sentinel-baseline" &&
+			WriteText(destination, initialSourceBytes),
+			"failed CAS authoring load changed its document/baseline outputs"))
+		{
+			return false;
+		}
+
+		const auto countRows = [&loaded](const std::string_view patternId,
+			const std::string_view stageId, const std::string_view actionId,
+			const std::string_view clipOccurrenceId)
+		{
+			return static_cast<std::size_t>(std::count_if(
+				loaded.Cues.begin(), loaded.Cues.end(),
+				[=](const VALTAN_PATTERN_SOUND_CUE& cue)
+				{
+					return cue.strPatternId == patternId &&
+						cue.strStageId == stageId &&
+						cue.strActionId == actionId &&
+						cue.strClipOccurrenceId == clipOccurrenceId;
+				}));
+		};
+		if (!Require(2u == countRows("VALTAN_TRASH", "STEP_07",
+				"valtan.sequence.center-trash-rush-if.step-07",
+				"valtan.sequence.center-trash-rush-if.step-07.clip-01") &&
+			3u == countRows("VALTAN_TRASH", "CATCH_COUNTER",
+				"valtan.sequence.center-trash-rush-if.catch-counter",
+				"valtan.sequence.center-trash-rush-if.catch-counter.clip-01") &&
+			2u == countRows("VALTAN_TRASH_CATCH_IF", "STEP_07",
+				"valtan.sequence.rush-if.step-07",
+				"valtan.sequence.rush-if.step-07.clip-01") &&
+			3u == countRows("VALTAN_TRASH_CATCH_IF", "CATCH_COUNTER",
+				"valtan.sequence.rush-if.catch-counter",
+				"valtan.sequence.rush-if.catch-counter.clip-01"),
+			"Trash/catch-if counter-window Sound occurrence rows drifted"))
+		{
+			return false;
+		}
+
+		CEncounterPatternReference encounter;
+		BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT animation;
+		if (!Require(encounter.Load(encounterPath, status) &&
+			CValtanPatternAnimationBindingDocument::Parse_Text(
+				ReadText(bindingPath), animation, status),
+			("real Valtan timing dependencies failed: " + status).c_str()))
+		{
+			return false;
+		}
+		const auto fullStructuralDocument = loaded;
+		const bool fullStrongAdmission =
+			CValtanPatternSoundCueDocument::Validate_Joined(
+				loaded, encounter, animation, modelClipDurations, status);
+		if (!Require(!fullStrongAdmission && loaded == fullStructuralDocument,
+			"structural full-row load did not remain separate from strong runtime admission"))
+		{
+			return false;
+		}
+
+		const auto editable = std::find_if(
+			loaded.Cues.begin(), loaded.Cues.end(),
+			[](const VALTAN_PATTERN_SOUND_CUE& cue)
+			{
+				return
+					"cue.sound.valtan.sequence.center-trash-rush-if.step-07.clip-01.01.occurrence.01" ==
+					cue.strOccurrenceId;
+			});
+		const auto nonLoopEditable = std::find_if(
+			loaded.Cues.begin(), loaded.Cues.end(),
+			[](const VALTAN_PATTERN_SOUND_CUE& cue)
+			{
+				return
+					"cue.sound.valtan.attack.swing.active.clip.01.01.occurrence.01" ==
+					cue.strOccurrenceId;
+			});
+		const auto loopEditable = std::find_if(
+			loaded.Cues.begin(), loaded.Cues.end(),
+			[](const VALTAN_PATTERN_SOUND_CUE& cue)
+			{
+				return
+					"cue.sound.valtan.attack.swing.active.clip.02.02.occurrence.01" ==
+					cue.strOccurrenceId;
+			});
+		const auto legacyInvalidEditable = std::find_if(
+			loaded.Cues.begin(), loaded.Cues.end(),
+			[](const VALTAN_PATTERN_SOUND_CUE& cue)
+			{
+				return
+					"cue.sound.valtan.attack.backstep.windup.clip.01.02.occurrence.01" ==
+					cue.strOccurrenceId;
+			});
+		if (!Require(loaded.Cues.end() != editable &&
+			loaded.Cues.end() != nonLoopEditable &&
+			loaded.Cues.end() != loopEditable &&
+			loaded.Cues.end() != legacyInvalidEditable,
+			"real Sound fixture lost focused strong/grandfather rows"))
+		{
+			return false;
+		}
+		const std::size_t editableIndex = static_cast<std::size_t>(
+			editable - loaded.Cues.begin());
+		const std::size_t nonLoopEditableIndex = static_cast<std::size_t>(
+			nonLoopEditable - loaded.Cues.begin());
+		const std::size_t loopEditableIndex = static_cast<std::size_t>(
+			loopEditable - loaded.Cues.begin());
+		const std::size_t legacyInvalidEditableIndex =
+			static_cast<std::size_t>(legacyInvalidEditable - loaded.Cues.begin());
+
+		const std::vector<std::string> eventNames =
+			CSoundCueCatalog::Collect_EventNames("Valtan");
+		const auto alternateEvent = std::find_if(eventNames.begin(),
+			eventNames.end(), [](const std::string& eventName)
+			{
+				return eventName.starts_with("G_Voltan1_");
+			});
+		if (!Require(eventNames.end() != alternateEvent,
+			"Valtan catalog has no alternate Voltan1 Sound event"))
+		{
+			return false;
+		}
+
+		auto draft = loaded;
+		draft.Cues[editableIndex].strSoundBank = "S_Mob_G_Voltan1";
+		draft.Cues[editableIndex].strSoundEvent = *alternateEvent;
+		draft.Cues[editableIndex].iStartMs = 100u;
+		draft.Cues[loopEditableIndex].eRepeatPolicy =
+			VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP;
+		if (!Require(CValtanPatternSoundCueDocument::Save_Atomic(
+			draft, modelClipDurations, authoringBaseline, status),
+			("typed Valtan pattern Sound save failed: " + status).c_str()))
+		{
+			return false;
+		}
+		VALTAN_PATTERN_SOUND_CUE_DOCUMENT reloaded;
+		if (!Require(CValtanPatternSoundCueDocument::Load_AuthoringSource(
+				reloaded, status) && reloaded == draft,
+			("typed Valtan pattern Sound reload drifted: " + status).c_str()))
+		{
+			return false;
+		}
+
+		VALTAN_PATTERN_SOUND_CUE_ADD_ROW addRow;
+		addRow.strPatternId = draft.Cues[editableIndex].strPatternId;
+		addRow.strStageId = draft.Cues[editableIndex].strStageId;
+		addRow.strActionId = draft.Cues[editableIndex].strActionId;
+		addRow.strClipOccurrenceId =
+			draft.Cues[editableIndex].strClipOccurrenceId;
+		addRow.strSoundBank = "S_Mob_G_Voltan1";
+		addRow.strSoundEvent = *alternateEvent;
+		addRow.eRepeatPolicy = VALTAN_PATTERN_SOUND_REPEAT_POLICY::ONCE;
+		addRow.iStartMs = 150u;
+		auto addedDocument = draft;
+		VALTAN_PATTERN_SOUND_CUE_ROW_ID addedRowId;
+		if (!Require(CValtanPatternSoundCueDocument::Add_AuthoringRow(
+				addedDocument, addRow, modelClipDurations, addedRowId, status) &&
+			addedDocument.Cues.size() == draft.Cues.size() + 1u &&
+			addedRowId.strBindingId == "cue.sound.authoring." +
+				addRow.strClipOccurrenceId + ".0001" &&
+			addedRowId.strOccurrenceId ==
+				addedRowId.strBindingId + ".occurrence.01",
+			("typed Valtan pattern Sound Add Row failed: " + status).c_str()) ||
+			!Require(CValtanPatternSoundCueDocument::Save_Atomic(
+				addedDocument, modelClipDurations, authoringBaseline, status),
+				("typed added Sound row did not save: " + status).c_str()) ||
+			!Require(CValtanPatternSoundCueDocument::Load_AuthoringSource(
+				reloaded, status) && reloaded == addedDocument,
+				("typed added Sound row did not reload exactly: " + status).c_str()))
+		{
+			return false;
+		}
+
+		auto wrongRemoveDocument = reloaded;
+		VALTAN_PATTERN_SOUND_CUE_ROW_ID wrongRemoveId = addedRowId;
+		wrongRemoveId.strOccurrenceId += ".stale";
+		if (!Require(!CValtanPatternSoundCueDocument::Remove_AuthoringRow(
+				wrongRemoveDocument, wrongRemoveId, status) &&
+			wrongRemoveDocument == reloaded,
+			"partial Sound row key removed a non-exact row"))
+		{
+			return false;
+		}
+		auto removedDocument = reloaded;
+		if (!Require(CValtanPatternSoundCueDocument::Remove_AuthoringRow(
+				removedDocument, addedRowId, status) &&
+			removedDocument == draft,
+			("typed Valtan pattern Sound Remove Row failed: " + status).c_str()) ||
+			!Require(CValtanPatternSoundCueDocument::Save_Atomic(
+				removedDocument, modelClipDurations, authoringBaseline, status),
+				("typed removed Sound row did not save: " + status).c_str()) ||
+			!Require(CValtanPatternSoundCueDocument::Load_AuthoringSource(
+				reloaded, status) && reloaded == draft,
+				("typed removed Sound row did not reload exactly: " + status).c_str()))
+		{
+			return false;
+		}
+		const std::string admittedBytes = ReadText(destination);
+		if (!Require(authoringBaseline == admittedBytes &&
+			admittedBytes.find("\"repeatPolicy\": \"each_loop\"") !=
+				std::string::npos &&
+			admittedBytes.find("\"startMs\": 100") != std::string::npos &&
+			admittedBytes.find(*alternateEvent) != std::string::npos,
+			"saved Sound source omitted edited event/timing/repeat state"))
+		{
+			return false;
+		}
+
+		const auto rejectsWithDurationsWithoutMutation =
+			[&](const VALTAN_PATTERN_SOUND_CUE_DOCUMENT& candidate,
+				const std::unordered_map<std::string, f32_t>& durations,
+				const std::string& label)
+			{
+				const auto candidateBefore = candidate;
+				const std::string baselineBefore = authoringBaseline;
+				const bool rejected =
+					!CValtanPatternSoundCueDocument::Save_Atomic(
+						candidate, durations, authoringBaseline, status);
+				VALTAN_PATTERN_SOUND_CUE_DOCUMENT after;
+				const bool preserved =
+					CValtanPatternSoundCueDocument::Load_AuthoringSource(
+						after, status) && after == draft;
+				return Require(rejected && candidate == candidateBefore &&
+					authoringBaseline == baselineBefore &&
+					ReadText(destination) == admittedBytes && preserved &&
+					!HasStagingArtifact(destination),
+					(label + " changed the file/input or left staging state").c_str());
+			};
+		const auto rejectsWithoutMutation =
+			[&](const VALTAN_PATTERN_SOUND_CUE_DOCUMENT& candidate,
+				const std::string& label)
+			{
+				return rejectsWithDurationsWithoutMutation(
+					candidate, modelClipDurations, label);
+			};
+		const auto rejectsAddWithoutMutation =
+			[&](const VALTAN_PATTERN_SOUND_CUE_ADD_ROW& candidateRow,
+				const std::unordered_map<std::string, f32_t>& durations,
+				const std::string& label)
+			{
+				auto candidateDocument = draft;
+				const auto documentBefore = candidateDocument;
+				VALTAN_PATTERN_SOUND_CUE_ROW_ID created{
+					"sentinel.binding", "sentinel.occurrence" };
+				const auto createdBefore = created;
+				const bool rejected =
+					!CValtanPatternSoundCueDocument::Add_AuthoringRow(
+						candidateDocument, candidateRow, durations,
+						created, status);
+				return Require(rejected && candidateDocument == documentBefore &&
+					created == createdBefore && authoringBaseline == admittedBytes &&
+					ReadText(destination) == admittedBytes,
+					(label + " changed Add Row outputs or source bytes").c_str());
+			};
+
+		auto invalidAdd = addRow;
+		invalidAdd.strClipOccurrenceId =
+			"valtan.sequence.center-trash-rush-if.step-07.clip-stale";
+		if (!rejectsAddWithoutMutation(invalidAdd, modelClipDurations,
+			"Add Row with no owned clip occurrence"))
+		{
+			return false;
+		}
+		invalidAdd = addRow;
+		invalidAdd.strSoundBank = "S_Mob_G_Voltan2";
+		invalidAdd.strSoundEvent = "G_Voltan2_UnknownWorkbenchEvent";
+		if (!rejectsAddWithoutMutation(invalidAdd, modelClipDurations,
+			"Add Row with no catalog event"))
+		{
+			return false;
+		}
+		invalidAdd.strPatternId = draft.Cues[loopEditableIndex].strPatternId;
+		invalidAdd.strStageId = draft.Cues[loopEditableIndex].strStageId;
+		invalidAdd.strActionId = draft.Cues[loopEditableIndex].strActionId;
+		invalidAdd.strClipOccurrenceId =
+			draft.Cues[loopEditableIndex].strClipOccurrenceId;
+		invalidAdd.strSoundBank = draft.Cues[loopEditableIndex].strSoundBank;
+		invalidAdd.strSoundEvent = draft.Cues[loopEditableIndex].strSoundEvent;
+		invalidAdd.eRepeatPolicy = VALTAN_PATTERN_SOUND_REPEAT_POLICY::ONCE;
+		invalidAdd.iStartMs = 2500u;
+		if (!rejectsAddWithoutMutation(invalidAdd, modelClipDurations,
+			"Add Row outside a playMs-zero model source window"))
+		{
+			return false;
+		}
+		std::unordered_map<std::string, f32_t> noAddDurations;
+		if (!rejectsAddWithoutMutation(addRow, noAddDurations,
+			"Add Row without current model durations"))
+		{
+			return false;
+		}
+
+		auto duplicateAddedDocument = draft;
+		VALTAN_PATTERN_SOUND_CUE_ROW_ID duplicateAddedRowId;
+		if (!Require(CValtanPatternSoundCueDocument::Add_AuthoringRow(
+				duplicateAddedDocument, addRow, modelClipDurations,
+				duplicateAddedRowId, status),
+			("could not stage duplicate Add Row coverage: " + status).c_str()))
+		{
+			return false;
+		}
+		const auto duplicateAddedRow = std::find_if(
+			duplicateAddedDocument.Cues.begin(),
+			duplicateAddedDocument.Cues.end(),
+			[&duplicateAddedRowId](const VALTAN_PATTERN_SOUND_CUE& cue)
+			{
+				return cue.strBindingId == duplicateAddedRowId.strBindingId;
+			});
+		if (!Require(duplicateAddedDocument.Cues.end() != duplicateAddedRow,
+			"staged Add Row lost its deterministic ID before duplicate coverage"))
+		{
+			return false;
+		}
+		duplicateAddedDocument.Cues.push_back(*duplicateAddedRow);
+		if (!rejectsWithoutMutation(
+			duplicateAddedDocument, "duplicate added stable row identity"))
+		{
+			return false;
+		}
+
+		auto removedDependencyDocument = draft;
+		const VALTAN_PATTERN_SOUND_CUE_ROW_ID existingRowId{
+			draft.Cues[editableIndex].strBindingId,
+			draft.Cues[editableIndex].strOccurrenceId };
+		if (!Require(CValtanPatternSoundCueDocument::Remove_AuthoringRow(
+				removedDependencyDocument, existingRowId, status),
+			("could not stage removed-row duration coverage: " + status).c_str()) ||
+			!rejectsWithDurationsWithoutMutation(removedDependencyDocument,
+				noAddDurations, "removed row without current model durations"))
+		{
+			return false;
+		}
+
+		auto invalid = draft;
+		invalid.Cues[editableIndex].strSoundBank = "S_Mob_G_Voltan2";
+		invalid.Cues[editableIndex].strSoundEvent =
+			"G_Voltan2_UnknownWorkbenchEvent";
+		if (!rejectsWithoutMutation(invalid, "unknown Sound event"))
+			return false;
+		invalid = draft;
+		invalid.Cues[editableIndex].strSoundBank = "S_Mob_G_Voltan9";
+		if (!rejectsWithoutMutation(invalid, "unknown Sound bank identity"))
+			return false;
+		invalid = draft;
+		invalid.Cues[editableIndex].strActionId = "valtan.stale.sound-action";
+		if (!rejectsWithoutMutation(invalid, "stale action identity"))
+			return false;
+		invalid = draft;
+		invalid.Cues[editableIndex].strClipOccurrenceId =
+			"valtan.stale.sound-action.clip-01";
+		if (!rejectsWithoutMutation(invalid, "stale clip occurrence identity"))
+			return false;
+		invalid = draft;
+		invalid.Cues[1u].strBindingId = invalid.Cues[0u].strBindingId;
+		if (!rejectsWithoutMutation(invalid, "duplicate binding identity"))
+			return false;
+		invalid = draft;
+		invalid.Cues[1u].strOccurrenceId = invalid.Cues[0u].strOccurrenceId;
+		if (!rejectsWithoutMutation(invalid, "duplicate occurrence identity"))
+			return false;
+		invalid = draft;
+		invalid.Cues[loopEditableIndex].iStartMs = 2500u;
+		if (!rejectsWithoutMutation(invalid,
+			"playMs-zero cue at the model source end"))
+			return false;
+		invalid = draft;
+		invalid.Cues[nonLoopEditableIndex].eRepeatPolicy =
+			VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP;
+		if (!rejectsWithoutMutation(invalid, "each_loop on non-loop occurrence"))
+			return false;
+		invalid = draft;
+		++invalid.Cues[legacyInvalidEditableIndex].iStartMs;
+		if (!rejectsWithoutMutation(invalid,
+			"editing a grandfathered runtime-isolated cue"))
+		{
+			return false;
+		}
+
+		std::unordered_map<std::string, f32_t> invalidDurations;
+		if (!rejectsWithDurationsWithoutMutation(draft, invalidDurations,
+			"duration-free strong save"))
+		{
+			return false;
+		}
+		auto timingCandidate = draft;
+		timingCandidate.Cues[loopEditableIndex].iStartMs = 201u;
+		invalidDurations = modelClipDurations;
+		invalidDurations.erase("mesh_att_battle_1_01");
+		if (!rejectsWithDurationsWithoutMutation(
+			timingCandidate, invalidDurations,
+			"missing prior model clip duration"))
+		{
+			return false;
+		}
+		invalidDurations = modelClipDurations;
+		invalidDurations["mesh_att_battle_1_02"] =
+			(std::numeric_limits<f32_t>::quiet_NaN)();
+		if (!rejectsWithDurationsWithoutMutation(
+			timingCandidate, invalidDurations,
+			"non-finite model clip duration"))
+		{
+			return false;
+		}
+		invalidDurations = modelClipDurations;
+		invalidDurations["mesh_att_battle_1_01"] = 5.5f;
+		if (!rejectsWithDurationsWithoutMutation(
+			timingCandidate, invalidDurations,
+			"prior clip wall pushes the cue beyond the stage"))
+		{
+			return false;
+		}
+
+		const std::string animationBindingBytes = ReadText(bindingPath);
+		const std::string clipIdentityNeedle =
+			"\"clipOccurrenceId\": \"" + addRow.strClipOccurrenceId + "\"";
+		const std::string staleAnimationBindings = ReplaceOnce(
+			animationBindingBytes, clipIdentityNeedle,
+			"\"clipOccurrenceId\": \"" + addRow.strClipOccurrenceId +
+			".stale\"");
+		const std::string dependencyBaselineBefore = authoringBaseline;
+		const auto dependencyDraftBefore = draft;
+		if (!Require(staleAnimationBindings != animationBindingBytes &&
+			WriteText(bindingPath, staleAnimationBindings),
+			"could not stage stale Animation dependency coverage"))
+		{
+			return false;
+		}
+		const bool staleDependencySave =
+			CValtanPatternSoundCueDocument::Save_Atomic(
+				draft, modelClipDurations, authoringBaseline, status);
+		if (!Require(!staleDependencySave && draft == dependencyDraftBefore &&
+			authoringBaseline == dependencyBaselineBefore &&
+			ReadText(destination) == admittedBytes &&
+			!HasStagingArtifact(destination) &&
+			WriteText(bindingPath, animationBindingBytes),
+			"stale Animation dependency changed Sound source/draft/CAS baseline"))
+		{
+			return false;
+		}
+
+		/* The dependency may change after every semantic/timing check has passed
+		   but before the Sound ReplaceFile. The harness hook fires at that exact
+		   boundary; both joined owners must retain the Sound destination and CAS
+		   baseline while their external bytes are restored for the next case. */
+		{
+			SCOPED_ENVIRONMENT_VARIABLE dependencyMutationEnvironment(
+				L"LOSTARK_TEST_VALTAN_SOUND_MUTATE_DEPENDENCY_BEFORE_COMMIT");
+			const auto rejectsMidSaveDependencyMutation =
+			[&](const std::filesystem::path& dependencyPath,
+				const std::string& dependencyBytes,
+				const char* label)
+			{
+				const std::string soundBytesBefore = ReadText(destination);
+				const std::string baselineBefore = authoringBaseline;
+				const auto draftBefore = draft;
+				if (!dependencyMutationEnvironment.Set(dependencyPath))
+					return Require(false, label);
+				const bool saved = CValtanPatternSoundCueDocument::Save_Atomic(
+					draft, modelClipDurations, authoringBaseline, status);
+				const std::string mutatedDependencyBytes =
+					ReadText(dependencyPath);
+				const bool restored =
+					WriteText(dependencyPath, dependencyBytes);
+				return Require(!saved && draft == draftBefore &&
+					authoringBaseline == baselineBefore &&
+					ReadText(destination) == soundBytesBefore &&
+					mutatedDependencyBytes == dependencyBytes + " " &&
+					restored && !HasStagingArtifact(destination) &&
+					status.find("stale joined owners at commit") !=
+						std::string::npos,
+					label);
+			};
+			if (!rejectsMidSaveDependencyMutation(
+					bindingPath, animationBindingBytes,
+					"mid-save Animation dependency mutation changed Sound source/draft/CAS baseline") ||
+				!rejectsMidSaveDependencyMutation(
+					encounterPath, ReadText(encounterPath),
+					"mid-save Encounter dependency mutation changed Sound source/draft/CAS baseline"))
+			{
+				return false;
+			}
+		}
+
+		const std::string catalogBytes = ReadText(catalogPath);
+		const std::vector<std::string>& editedVariants =
+			CSoundCueCatalog::Find_Variants(
+				"Valtan", draft.Cues[editableIndex].strSoundEvent);
+		if (!Require(!editedVariants.empty(),
+			"edited Sound event has no variant for missing-asset coverage"))
+		{
+			return false;
+		}
+		const std::string invalidAssetId =
+			"Sound/Valtan/workbench-missing-pattern-sound.wav";
+		const std::string brokenCatalog = ReplaceOnce(catalogBytes,
+			editedVariants.front(), invalidAssetId);
+		if (!Require(brokenCatalog != catalogBytes &&
+			WriteText(catalogPath, brokenCatalog) &&
+			CSoundCueCatalog::Load(status),
+			"could not stage catalog missing-asset coverage"))
+		{
+			return false;
+		}
+		const auto assetCandidateBefore = draft;
+		const bool assetSave =
+			CValtanPatternSoundCueDocument::Save_Atomic(
+				draft, modelClipDurations, authoringBaseline, status);
+		if (!Require(!assetSave && draft == assetCandidateBefore &&
+			authoringBaseline == admittedBytes &&
+			ReadText(destination) == admittedBytes &&
+			!HasStagingArtifact(destination),
+			"missing catalog asset changed the admitted Sound source"))
+		{
+			return false;
+		}
+		if (!Require(WriteText(catalogPath, catalogBytes) &&
+			CSoundCueCatalog::Load(status) &&
+			CValtanPatternSoundCueDocument::Load_AuthoringSource(
+				reloaded, status) && reloaded == draft,
+			"could not restore the valid Sound catalog after asset rejection"))
+		{
+			return false;
+		}
+
+		/* A second Workbench instance commits a valid editable change after this
+		first instance loaded. The first instance must reject its now-stale draft
+		without overwriting either the external bytes or its own baseline. */
+		auto externalDocument = draft;
+		externalDocument.Cues[editableIndex].iStartMs = 101u;
+		std::string externalBaseline = authoringBaseline;
+		if (!Require(CValtanPatternSoundCueDocument::Save_Atomic(
+				externalDocument, modelClipDurations, externalBaseline, status),
+			("could not stage a second-editor Sound save: " + status).c_str()))
+		{
+			return false;
+		}
+		const std::string externalBytes = ReadText(destination);
+		const std::string staleBaselineBefore = authoringBaseline;
+		const auto staleDraftBefore = draft;
+		const bool staleSave = CValtanPatternSoundCueDocument::Save_Atomic(
+			draft, modelClipDurations, authoringBaseline, status);
+		if (!Require(!staleSave && draft == staleDraftBefore &&
+			authoringBaseline == staleBaselineBefore &&
+			externalBaseline == externalBytes &&
+			ReadText(destination) == externalBytes &&
+			!HasStagingArtifact(destination),
+			"stale Sound draft overwrote external editable bytes or advanced its baseline"))
+		{
+			return false;
+		}
+		if (!Require(CValtanPatternSoundCueDocument::Save_Atomic(
+				draft, modelClipDurations, externalBaseline, status) &&
+			externalBaseline == admittedBytes &&
+			ReadText(destination) == admittedBytes,
+			("could not restore admitted bytes after stale-save coverage: " +
+				status).c_str()))
+		{
+			return false;
+		}
+
+		/* Mutate the destination after the sibling temp appears. The second exact
+		baseline comparison immediately before commit must preserve that writer's
+		bytes, reject this save, remove the temp, and leave this baseline stale. */
+		auto midSaveCandidate = draft;
+		midSaveCandidate.Cues[editableIndex].iStartMs = 202u;
+		std::atomic_bool sawSiblingTemp{ false };
+		std::atomic_bool wroteExternalBytes{ false };
+		std::thread externalWriter([&]()
+			{
+				const auto deadline = std::chrono::steady_clock::now() +
+					std::chrono::seconds(10);
+				while (std::chrono::steady_clock::now() < deadline)
+				{
+					if (HasStagingArtifact(destination))
+					{
+						sawSiblingTemp.store(true, std::memory_order_release);
+						wroteExternalBytes.store(
+							WriteText(destination, externalBytes),
+							std::memory_order_release);
+						return;
+					}
+					std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				}
+			});
+		const std::string midSaveBaselineBefore = authoringBaseline;
+		const bool midSave = CValtanPatternSoundCueDocument::Save_Atomic(
+			midSaveCandidate, modelClipDurations, authoringBaseline, status);
+		externalWriter.join();
+		if (!Require(!midSave &&
+			sawSiblingTemp.load(std::memory_order_acquire) &&
+			wroteExternalBytes.load(std::memory_order_acquire) &&
+			authoringBaseline == midSaveBaselineBefore &&
+			ReadText(destination) == externalBytes &&
+			!HasStagingArtifact(destination),
+			"mid-save Sound mutation was overwritten or advanced the stale baseline"))
+		{
+			return false;
+		}
+		std::string adoptedExternalBaseline = externalBytes;
+		if (!Require(CValtanPatternSoundCueDocument::Save_Atomic(
+				draft, modelClipDurations, adoptedExternalBaseline, status) &&
+			adoptedExternalBaseline == admittedBytes &&
+			ReadText(destination) == admittedBytes,
+			("could not recover admitted Sound bytes after mid-save mutation: " +
+				status).c_str()))
+		{
+			return false;
+		}
+		authoringBaseline = std::move(adoptedExternalBaseline);
+
+		auto blocked = draft;
+		blocked.Cues[editableIndex].iStartMs = 201u;
+		const HANDLE lock = CreateFileW(destination.c_str(), GENERIC_READ,
+			FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,
+			nullptr);
+		if (!Require(INVALID_HANDLE_VALUE != lock,
+			"could not lock pattern Sound destination for replace failure"))
+		{
+			return false;
+		}
+		const bool blockedSave =
+			CValtanPatternSoundCueDocument::Save_Atomic(
+				blocked, modelClipDurations, authoringBaseline, status);
+		CloseHandle(lock);
+		if (!Require(!blockedSave && authoringBaseline == admittedBytes &&
+			ReadText(destination) == admittedBytes &&
+			!HasStagingArtifact(destination),
+			"locked atomic replace changed source or left a temp file") ||
+			!Require(CValtanPatternSoundCueDocument::Load_AuthoringSource(
+				reloaded, status) && reloaded == draft,
+			"locked replace failure changed reloadable Sound state"))
+		{
+			return false;
+		}
+		if (!Require(CValtanPatternSoundCueDocument::Save_Atomic(
+				blocked, modelClipDurations, authoringBaseline, status) &&
+			authoringBaseline == ReadText(destination) &&
+			CValtanPatternSoundCueDocument::Load_AuthoringSource(
+				reloaded, status) && reloaded == blocked,
+			("Sound save did not recover after lock release: " + status).c_str()))
+		{
+			return false;
+		}
+		return true;
+	}
 }
 
 int Run_ValtanPatternSoundCueDocumentContractTests()
 {
 	if (!VerifySoundCueIsolation(std::filesystem::current_path()))
+		return 1;
+	if (!VerifyAuthoringSave(std::filesystem::current_path()))
 		return 1;
 	std::cout << "Valtan pattern Sound cue document contracts: PASS\n";
 	return 0;

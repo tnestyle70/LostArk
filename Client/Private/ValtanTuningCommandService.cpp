@@ -150,6 +150,68 @@ bool Client::CValtanTuningCommandService::Is_SavedPatternFlowServerActive(
 		Observation.ServerActiveRevision == CandidateRevision;
 }
 
+void Client::CValtanTuningCommandService::
+	Record_GameplaySourceActivationExpectation(
+		const std::string_view strCandidateRevision,
+		const std::string_view strApplyClass,
+		const std::string_view strStatus)
+{
+	m_bGameplaySourceActivationObserved = true;
+	m_strGameplayCandidateRevision = std::string(strCandidateRevision);
+	m_strGameplayCandidateApplyClass = std::string(strApplyClass);
+	m_strGameplayActivationStatus = std::string(strStatus);
+	if (!m_strGameplayCandidateRevision.empty() &&
+		!Is_LowerSha256(m_strGameplayCandidateRevision))
+	{
+		m_strGameplayActivationStatus =
+			"The saved gameplay source produced an invalid candidate revision; Server activation cannot be confirmed.";
+		m_strGameplayCandidateRevision.clear();
+		m_strGameplayCandidateApplyClass.clear();
+	}
+}
+
+bool Client::CValtanTuningCommandService::
+	Is_LatestGameplaySourceServerActive(std::string& strOutStatus) const
+{
+	using namespace LostArk::Shared;
+	if (!m_bGameplaySourceActivationObserved)
+	{
+		strOutStatus.clear();
+		return true;
+	}
+
+	GameplayDataRevision CandidateRevision;
+	if (m_strGameplayCandidateRevision.empty() ||
+		!Try_Parse_GameplayDataRevision(
+			m_strGameplayCandidateRevision, CandidateRevision))
+	{
+		strOutStatus =
+			"Complete Play is blocked because the latest saved gameplay source has no admitted Product candidate.";
+		if (!m_strGameplayActivationStatus.empty())
+			strOutStatus += " " + m_strGameplayActivationStatus;
+		return false;
+	}
+
+	const REVISION_OBSERVATION Observation = Read_RevisionObservation();
+	if (Observation.bConnected &&
+		Observation.ServerActiveRevision.Is_Valid() &&
+		Observation.ServerActiveRevision == CandidateRevision)
+	{
+		strOutStatus.clear();
+		return true;
+	}
+
+	strOutStatus =
+		"Complete Play is blocked until the latest saved gameplay candidate is the Server-active revision";
+	if (!m_strGameplayCandidateApplyClass.empty())
+		strOutStatus += " (apply class " +
+			m_strGameplayCandidateApplyClass + ")";
+	strOutStatus += ".";
+	if (!m_strGameplayActivationStatus.empty())
+		strOutStatus += " " + m_strGameplayActivationStatus;
+	return false;
+}
+
 bool Client::CValtanTuningCommandService::Publish_SavedPatternFlow(
 	const std::string_view strSavedRevision, std::string& strOutStatus)
 {
@@ -615,6 +677,10 @@ void Client::CValtanTuningCommandService::Harness_Reset()
 	m_iPublishStartedAtMilliseconds = 0u;
 	m_iApplyStartedAtMilliseconds = 0u;
 	m_iNextRequestSequence = 1u;
+	m_bGameplaySourceActivationObserved = false;
+	m_strGameplayCandidateRevision.clear();
+	m_strGameplayCandidateApplyClass.clear();
+	m_strGameplayActivationStatus.clear();
 	m_HarnessInput = {};
 }
 #endif

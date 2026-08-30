@@ -415,6 +415,17 @@ bool_t Client::CBossTool::Submit_SelectedPattern()
 {
 	m_bReviveFeedbackPending = false;
 	m_strActionFeedback.clear();
+	std::string RevisionStatus;
+	if (!Can_Play_ServerPattern(RevisionStatus))
+	{
+		m_strStatus = std::move(RevisionStatus);
+		if (m_bRepeat)
+		{
+			m_bRepeat = false;
+			m_strRepeatPatternId.clear();
+		}
+		return false;
+	}
 	if (nullptr == Find_AuditionPattern(m_strSelectedPatternId))
 	{
 		m_strStatus = "Select a valid Valtan pattern first.";
@@ -441,6 +452,42 @@ bool_t Client::CBossTool::Submit_SelectedPattern()
 		m_strSelectedPatternId : std::string{};
 	m_bFollowLive = true;
 	m_strStatus = Status;
+	return true;
+}
+
+bool_t Client::CBossTool::Can_Play_ServerPattern(
+	std::string& strOutStatus) const
+{
+	const CValtanTuningCommandService& Tuning =
+		CValtanTuningCommandService::Get();
+	if (Tuning.Has_PendingCommand())
+	{
+		strOutStatus =
+			"Complete Play is blocked until the pending gameplay revision reaches a terminal Server result.";
+		return false;
+	}
+	if (!Tuning.Is_LatestGameplaySourceServerActive(strOutStatus))
+		return false;
+
+	const VALTAN_TUNING_COMMAND_SNAPSHOT& Publication =
+		Tuning.Get_Snapshot();
+	if (!Publication.strCandidateRevision.empty() &&
+		!Publication.bCandidateIsServerActive)
+	{
+		strOutStatus =
+			"Complete Play is blocked because the latest saved gameplay candidate is not the Server-active revision.";
+		if (!Publication.strStatus.empty())
+			strOutStatus += " " + Publication.strStatus;
+		return false;
+	}
+	if (const CLevel_ValtanArena* const pArena =
+			CLevel_ValtanArena::Get_Active())
+	{
+		if (!pArena->Can_Play_PrimaryValtanPresentation(strOutStatus))
+			return false;
+	}
+
+	strOutStatus.clear();
 	return true;
 }
 
@@ -507,6 +554,24 @@ bool_t Client::CBossTool::Play_ServerPattern(
 	const bool_t submitted = Submit_SelectedPattern();
 	strOutStatus = m_strStatus;
 	return submitted;
+}
+
+bool_t Client::CBossTool::Get_ServerPatternStatus(
+	const std::string& strPatternId,
+	std::string& strOutStatus,
+	bool_t& bOutInFlight) const
+{
+	bOutInFlight = false;
+	const VALTAN_PATTERN_AUDITION_SNAPSHOT& snapshot =
+		CValtanPatternAuditionService::Get().Get_Snapshot();
+	if (CONSUMER_ID != snapshot.strConsumerId ||
+		strPatternId != snapshot.strPatternId || snapshot.strStatus.empty())
+	{
+		return false;
+	}
+	strOutStatus = snapshot.strStatus;
+	bOutInFlight = snapshot.Is_InFlight();
+	return true;
 }
 
 bool_t Client::CBossTool::Set_ServerArenaPreset(
@@ -577,6 +642,16 @@ std::string Client::CBossTool::Get_ServerArenaPresetStatus() const
 #endif
 }
 
+bool_t Client::CBossTool::Is_ServerArenaPresetPending() const
+{
+#ifdef _DEBUG
+	const CLevel_ValtanArena* const arena = CLevel_ValtanArena::Get_Active();
+	return nullptr != arena && arena->Is_ArenaPresetRequestPending();
+#else
+	return false;
+#endif
+}
+
 bool_t Client::CBossTool::Preview_SelectedFlowSlotIsolated()
 {
 	const VALTAN_PATTERN_FLOW_SLOT* pSlot = Find_SelectedFlowSlot();
@@ -589,6 +664,12 @@ bool_t Client::CBossTool::Preview_SelectedFlowSlotIsolated()
 	{
 		m_strFlowStatus =
 			"Isolated preview is unavailable while Server Flow playback or a Start request is active.";
+		return false;
+	}
+	std::string RevisionStatus;
+	if (!Can_Play_ServerPattern(RevisionStatus))
+	{
+		m_strFlowStatus = std::move(RevisionStatus);
 		return false;
 	}
 
@@ -661,6 +742,12 @@ bool_t Client::CBossTool::Start_Flow(const bool_t bFromSelectedSlot)
 	if (StartSlotId.empty())
 	{
 		m_strFlowStatus = "Select a Flow slot to use Start Here.";
+		return false;
+	}
+	std::string RevisionStatus;
+	if (!Can_Play_ServerPattern(RevisionStatus))
+	{
+		m_strFlowStatus = std::move(RevisionStatus);
 		return false;
 	}
 	if (CValtanPatternFlowService::Get().Has_PendingStart() ||
@@ -1069,7 +1156,13 @@ void Client::CBossTool::Render_NextPatternCard()
 	if (VALTAN_NEXT_COMMAND_STATE::UNCONFIRMED == Command.eState)
 	{
 		if (ImGui::Button("Retry Same Next Command"))
-			(void)Service.Retry_NextPatternCommand(m_strNextPatternStatus);
+		{
+			std::string RevisionStatus;
+			if (!Can_Play_ServerPattern(RevisionStatus))
+				m_strNextPatternStatus = std::move(RevisionStatus);
+			else
+				(void)Service.Retry_NextPatternCommand(m_strNextPatternStatus);
+		}
 	}
 	const HUD_PLAYER_STATE& Player = CCombatHUDViewModel::Get().Get_Player();
 	if (Next.Is_Live() && Player.isValid && 0u == Player.iCurrentHp)
@@ -1129,8 +1222,13 @@ void Client::CBossTool::Render_NextPatternPicker()
 				/* Selecting Next owns this decision even if the Server rejects it. */
 				m_bRepeat = false;
 				m_strRepeatPatternId.clear();
-				(void)Service.Queue_NextPattern(CONSUMER_ID, BOSS_PLACEMENT_ID,
-					PatternId, m_strNextPatternStatus);
+				std::string RevisionStatus;
+				if (!Can_Play_ServerPattern(RevisionStatus))
+					m_strNextPatternStatus = std::move(RevisionStatus);
+				else
+					(void)Service.Queue_NextPattern(
+						CONSUMER_ID, BOSS_PLACEMENT_ID,
+						PatternId, m_strNextPatternStatus);
 				ImGui::CloseCurrentPopup();
 			}
 			ImGui::TextDisabled("%s", PatternId.c_str());
@@ -1479,7 +1577,11 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 	if (VALTAN_PATTERN_FLOW_START_STATE::UNCONFIRMED == StartCommand.eState &&
 		ImGui::Button("Retry Same Flow Start"))
 	{
-		(void)FlowService.Retry_Start(m_strFlowStatus);
+		std::string RevisionStatus;
+		if (!Can_Play_ServerPattern(RevisionStatus))
+			m_strFlowStatus = std::move(RevisionStatus);
+		else
+			(void)FlowService.Retry_Start(m_strFlowStatus);
 	}
 	if (FLOW_PREVIEW_CONSUMER_ID == Isolated.strConsumerId &&
 		VALTAN_PATTERN_AUDITION_STATE::IDLE != Isolated.eState &&

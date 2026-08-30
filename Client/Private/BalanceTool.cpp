@@ -691,6 +691,160 @@ namespace
 		return pattern.Stages.end() == found ? nullptr : &*found;
 	}
 
+	const VALTAN_STAGE_VIEW* FindValtanStageByAction(
+		const VALTAN_PATTERN_VIEW& pattern, const std::string& actionId)
+	{
+		const auto found = std::find_if(pattern.Stages.begin(), pattern.Stages.end(),
+			[&](const VALTAN_STAGE_VIEW& stage)
+			{ return stage.strActionId == actionId; });
+		return pattern.Stages.end() == found ? nullptr : &*found;
+	}
+
+	int ValtanFlagContractState(
+		const VALTAN_STAGE_VIEW& stage, const std::string_view flagId)
+	{
+		uint32_t total = 0u;
+		uint32_t entered = 0u;
+		uint32_t exited = 0u;
+		for (const VALTAN_STAGE_ACTION_VIEW& action : stage.Actions)
+		{
+			if ("SET_BOSS_FLAG" != action.strKind || flagId != action.strTargetId)
+				continue;
+			++total;
+			if ("ENTER" == action.strTrigger && 1.f == action.fValue)
+				++entered;
+			if ("EXIT" == action.strTrigger && 0.f == action.fValue)
+				++exited;
+		}
+		if (0u == total)
+			return 0;
+		return 2u == total && 1u == entered && 1u == exited ? 1 : -1;
+	}
+
+	bool ReadValtanCounterWindow(
+		const VALTAN_PATTERN_VIEW& pattern,
+		const VALTAN_STAGE_VIEW& stage,
+		CBalanceTool::VALTAN_COUNTER_WINDOW_EDIT& output,
+		std::string& status)
+	{
+		output = {};
+		const std::vector<const VALTAN_STAGE_BRANCH_VIEW*> branches = [&]()
+		{
+			std::vector<const VALTAN_STAGE_BRANCH_VIEW*> rows;
+			for (const VALTAN_STAGE_BRANCH_VIEW& branch : stage.Branches)
+			{
+				if ("COUNTER_HIT" == branch.strOutcome)
+					rows.push_back(&branch);
+			}
+			return rows;
+		}();
+		const int counterState = ValtanFlagContractState(
+			stage, "boss.flag.counterable");
+		if (branches.empty())
+		{
+			if (0 != counterState)
+			{
+				status = "Counter draft has an unowned counterable flag: " +
+					pattern.strPatternId + "/" + stage.strStageId + ".";
+				return false;
+			}
+			return true;
+		}
+		if (1u != branches.size() || 1 != counterState ||
+			"WINDUP" != stage.strStageKind ||
+			!branches.front()->strNextActionId.has_value())
+		{
+			status = "Counter draft requires one paired WINDUP window and one COUNTER_HIT branch: " +
+				pattern.strPatternId + "/" + stage.strStageId + ".";
+			return false;
+		}
+		const VALTAN_STAGE_VIEW* target = FindValtanStageByAction(
+			pattern, *branches.front()->strNextActionId);
+		if (nullptr == target || "GROGGY" != target->strStageKind ||
+			1 != ValtanFlagContractState(*target, "boss.flag.groggy"))
+		{
+			status = "Counter success must resolve to one paired same-pattern GROGGY stage/action: " +
+				pattern.strPatternId + "/" + stage.strStageId + ".";
+			return false;
+		}
+		output.enabled = true;
+		output.successStageId = target->strStageId;
+		output.successActionId = target->strActionId;
+		return true;
+	}
+
+	void RemoveValtanFlagActions(
+		VALTAN_STAGE_VIEW& stage, const std::string_view flagId)
+	{
+		std::erase_if(stage.Actions,
+			[flagId](const VALTAN_STAGE_ACTION_VIEW& action)
+			{
+				return "SET_BOSS_FLAG" == action.strKind &&
+					flagId == action.strTargetId;
+			});
+	}
+
+	void AddValtanClosedFlagActions(
+		VALTAN_STAGE_VIEW& stage, const std::string& flagId)
+	{
+		VALTAN_STAGE_ACTION_VIEW enter;
+		enter.strTrigger = "ENTER";
+		enter.strKind = "SET_BOSS_FLAG";
+		enter.strTargetId = flagId;
+		enter.fValue = 1.f;
+		stage.Actions.push_back(std::move(enter));
+		VALTAN_STAGE_ACTION_VIEW exit;
+		exit.strTrigger = "EXIT";
+		exit.strKind = "SET_BOSS_FLAG";
+		exit.strTargetId = flagId;
+		exit.fValue = 0.f;
+		stage.Actions.push_back(std::move(exit));
+	}
+
+	bool IsValtanCounterOwnedAction(const VALTAN_STAGE_ACTION_VIEW& action)
+	{
+		return "SET_BOSS_FLAG" == action.strKind &&
+			("boss.flag.counterable" == action.strTargetId ||
+			 "boss.flag.groggy" == action.strTargetId);
+	}
+
+	std::vector<const VALTAN_STAGE_ACTION_VIEW*> CollectValtanNonCounterActions(
+		const VALTAN_STAGE_VIEW& stage)
+	{
+		std::vector<const VALTAN_STAGE_ACTION_VIEW*> rows;
+		for (const VALTAN_STAGE_ACTION_VIEW& action : stage.Actions)
+		{
+			if (!IsValtanCounterOwnedAction(action))
+				rows.push_back(&action);
+		}
+		return rows;
+	}
+
+	std::vector<const VALTAN_STAGE_BRANCH_VIEW*> CollectValtanNonCounterBranches(
+		const VALTAN_STAGE_VIEW& stage)
+	{
+		std::vector<const VALTAN_STAGE_BRANCH_VIEW*> rows;
+		for (const VALTAN_STAGE_BRANCH_VIEW& branch : stage.Branches)
+		{
+			if ("COUNTER_HIT" != branch.strOutcome)
+				rows.push_back(&branch);
+		}
+		return rows;
+	}
+
+	bool EqualValtanCounterProxy(
+		const std::optional<VALTAN_COUNTER_PROXY_VIEW>& left,
+		const std::optional<VALTAN_COUNTER_PROXY_VIEW>& right)
+	{
+		if (left.has_value() != right.has_value())
+			return false;
+		return !left.has_value() ||
+			(left->strSpace == right->strSpace &&
+			 left->fForwardOffsetM == right->fForwardOffsetM &&
+			 left->fRightOffsetM == right->fRightOffsetM &&
+			 left->fRadiusM == right->fRadiusM);
+	}
+
 	CBalanceTool::PATTERN_STAGE_EDIT BuildValtanStageDraft(
 		const VALTAN_PATTERN_VIEW& pattern,
 		const VALTAN_STAGE_VIEW& stage)
@@ -865,7 +1019,16 @@ namespace
 
 Client::CBalanceTool::CBalanceTool()
 {
-	Reload();
+	if (!Reload() &&
+		!CValtanTuningCommandService::Get().
+			Has_GameplaySourceActivationExpectation())
+	{
+		CValtanTuningCommandService::Get().
+			Record_GameplaySourceActivationExpectation(
+				{}, {},
+				"Valtan source admission failed while initializing the Complete Play revision gate: " +
+				m_status);
+	}
 }
 
 void Client::CBalanceTool::Open()
@@ -1260,6 +1423,160 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 	return true;
 }
 
+bool Client::CBalanceTool::Get_ValtanCounterWindowDraft(
+	const std::string& patternId,
+	const std::string& stageId,
+	VALTAN_COUNTER_WINDOW_EDIT& counter,
+	std::string& status) const
+{
+	const VALTAN_PATTERN_VIEW* pattern =
+		FindValtanPattern(m_valtanPatternTree, patternId);
+	if (nullptr == pattern || !pattern->bAuthoringMasterManaged)
+	{
+		status = "Valtan counter draft pattern is not authoring-master managed: " +
+			patternId + ".";
+		return false;
+	}
+	const VALTAN_STAGE_VIEW* stage = FindValtanStage(*pattern, stageId);
+	if (nullptr == stage)
+	{
+		status = "Valtan counter draft stage is stale or missing: " + patternId +
+			"/" + stageId + ".";
+		return false;
+	}
+	if (!ReadValtanCounterWindow(*pattern, *stage, counter, status))
+		return false;
+	status.clear();
+	return true;
+}
+
+bool Client::CBalanceTool::Set_ValtanCounterWindowDraft(
+	const std::string& patternId,
+	const std::string& stageId,
+	const VALTAN_COUNTER_WINDOW_EDIT& counter,
+	std::string& status)
+{
+	VALTAN_PATTERN_VIEW* currentPattern =
+		FindValtanPattern(m_valtanPatternTree, patternId);
+	if (nullptr == currentPattern || !currentPattern->bAuthoringMasterManaged)
+	{
+		status = "Valtan counter edit rejected: pattern is not authoring-master managed: " +
+			patternId + ".";
+		return false;
+	}
+	VALTAN_STAGE_VIEW* currentStage = FindValtanStage(*currentPattern, stageId);
+	if (nullptr == currentStage)
+	{
+		status = "Valtan counter edit rejected: source stage is stale or missing: " +
+			patternId + "/" + stageId + ".";
+		return false;
+	}
+	VALTAN_COUNTER_WINDOW_EDIT current;
+	if (!ReadValtanCounterWindow(
+			*currentPattern, *currentStage, current, status))
+	{
+		return false;
+	}
+	if (counter.enabled == current.enabled &&
+		(!counter.enabled ||
+		 (counter.successStageId == current.successStageId &&
+		  counter.successActionId == current.successActionId)))
+	{
+		status = "Valtan counter window draft is unchanged.";
+		return true;
+	}
+	if ("WINDUP" != currentStage->strStageKind)
+	{
+		status = "Valtan counter edit rejected: only an existing WINDUP stage can own a Counter window: " +
+			patternId + "/" + stageId + ".";
+		return false;
+	}
+	if (!counter.enabled && current.enabled &&
+		((!counter.successStageId.empty() &&
+		  counter.successStageId != current.successStageId) ||
+		 (!counter.successActionId.empty() &&
+		  counter.successActionId != current.successActionId)))
+	{
+		status = "Valtan counter edit rejected: disabled target IDs are stale.";
+		return false;
+	}
+
+	VALTAN_PATTERN_TREE_VIEW stagedTree = m_valtanPatternTree;
+	VALTAN_PATTERN_VIEW* stagedPattern = FindValtanPattern(stagedTree, patternId);
+	VALTAN_STAGE_VIEW* stagedStage = nullptr == stagedPattern ? nullptr :
+		FindValtanStage(*stagedPattern, stageId);
+	if (nullptr == stagedPattern || nullptr == stagedStage)
+	{
+		status = "Valtan counter edit rejected while staging stable IDs.";
+		return false;
+	}
+	RemoveValtanFlagActions(*stagedStage, "boss.flag.counterable");
+	std::erase_if(stagedStage->Branches,
+		[](const VALTAN_STAGE_BRANCH_VIEW& branch)
+		{ return "COUNTER_HIT" == branch.strOutcome; });
+
+	if (counter.enabled)
+	{
+		VALTAN_STAGE_VIEW* target = FindValtanStage(
+			*stagedPattern, counter.successStageId);
+		if (nullptr == target || target == stagedStage ||
+			target->strActionId != counter.successActionId ||
+			"GROGGY" != target->strStageKind)
+		{
+			status = "Valtan counter edit rejected: successStageId/successActionId must resolve to one same-pattern GROGGY stage.";
+			return false;
+		}
+		const int groggyState = ValtanFlagContractState(
+			*target, "boss.flag.groggy");
+		if (groggyState < 0)
+		{
+			status = "Valtan counter edit rejected: selected GROGGY target has an unpaired or duplicate flag transition.";
+			return false;
+		}
+		AddValtanClosedFlagActions(
+			*stagedStage, "boss.flag.counterable");
+		VALTAN_STAGE_BRANCH_VIEW branch;
+		branch.strOutcome = "COUNTER_HIT";
+		branch.strNextActionId = target->strActionId;
+		const auto timeout = std::find_if(
+			stagedStage->Branches.begin(), stagedStage->Branches.end(),
+			[](const VALTAN_STAGE_BRANCH_VIEW& row)
+			{ return "TIMEOUT" == row.strOutcome; });
+		stagedStage->Branches.insert(timeout, std::move(branch));
+		if (0 == groggyState)
+			AddValtanClosedFlagActions(*target, "boss.flag.groggy");
+	}
+	/* CounterProxy is an authoring geometry preset. Disabling removes only the
+	   authoritative flag/branch; Product projection omits the dormant preset. */
+
+	for (const VALTAN_STAGE_VIEW& candidateStage : stagedPattern->Stages)
+	{
+		VALTAN_COUNTER_WINDOW_EDIT ignored;
+		if (!ReadValtanCounterWindow(
+				*stagedPattern, candidateStage, ignored, status))
+		{
+			return false;
+		}
+		const int groggyState = ValtanFlagContractState(
+			candidateStage, "boss.flag.groggy");
+		if (("GROGGY" == candidateStage.strStageKind && 1 != groggyState) ||
+			("GROGGY" != candidateStage.strStageKind && 0 != groggyState))
+		{
+			status = "Valtan counter edit rejected: staged Groggy flag closure is invalid: " +
+				patternId + "/" + candidateStage.strStageId + ".";
+			return false;
+		}
+	}
+
+	*currentPattern = std::move(*stagedPattern);
+	MarkDirty(true);
+	status = "Staged typed Counter window for " + patternId + "/" + stageId +
+		(counter.enabled ? " -> " + counter.successStageId + "/" +
+			counter.successActionId : " -> DISABLED") +
+		". Press Save to validate and publish the Server-authoritative branch.";
+	return true;
+}
+
 bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)
 {
 	std::string stepStatus;
@@ -1280,6 +1597,11 @@ bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)
 
 	if (!Publish_ValtanCandidate(stepStatus))
 	{
+		if (hadDirtyDraft)
+		{
+			CValtanTuningCommandService::Get().
+				Record_GameplaySourceActivationExpectation({}, {}, stepStatus);
+		}
 		status = hadDirtyDraft ?
 			"Authoring was saved, but Product bundle generation failed. The active runtime is unchanged; press Save again after fixing the diagnostic: " +
 				stepStatus :
@@ -1290,6 +1612,9 @@ bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)
 
 	const std::string revisionLabel = m_valtanCandidateRevision.empty() ?
 		std::string("UNKNOWN") : m_valtanCandidateRevision.substr(0u, 12u);
+	CValtanTuningCommandService::Get().
+		Record_GameplaySourceActivationExpectation(
+			m_valtanCandidateRevision, m_valtanCandidateApplyClass, stepStatus);
 	if ("HOT_RELOAD" != m_valtanCandidateApplyClass)
 	{
 		status = "Saved Product revision " + revisionLabel +
@@ -1853,6 +2178,15 @@ bool Client::CBalanceTool::Reload()
 	m_valtanSourceJoin = std::move(valtanSourceJoin);
 	m_valtanCandidateRevision.clear();
 	m_valtanCandidateApplyClass.clear();
+	if (!m_valtanAuthoringRevision.empty() &&
+		!CValtanTuningCommandService::Get().
+			Has_GameplaySourceActivationExpectation())
+	{
+		CValtanTuningCommandService::Get().
+			Record_GameplaySourceActivationExpectation(
+				{}, {},
+				"A saved Valtan authoring head was resumed in this process. Press Save once to publish its exact Product candidate and confirm the Server-active revision before Complete Play.");
+	}
 	if (VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED !=
 		m_valtanSourceJoin.state)
 	{
@@ -3321,6 +3655,101 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 					stage.strStageKind.c_str(), stage.iDurationMs,
 					stage.strSequenceRole.c_str(), stage.iAuthoringRepeatCount,
 					stage.strAnimationEndPolicy.c_str());
+				if ("WINDUP" == stage.strStageKind)
+				{
+					VALTAN_COUNTER_WINDOW_EDIT counter;
+					std::string counterStatus;
+					if (Get_ValtanCounterWindowDraft(
+							pattern.strPatternId, stage.strStageId,
+							counter, counterStatus))
+					{
+						const auto FirstGroggy = std::find_if(
+							pattern.Stages.begin(), pattern.Stages.end(),
+							[](const VALTAN_STAGE_VIEW& candidate)
+							{ return "GROGGY" == candidate.strStageKind; });
+						bool enabled = counter.enabled;
+						ImGui::BeginDisabled(!enabled &&
+							pattern.Stages.end() == FirstGroggy);
+						if (ImGui::Checkbox(
+								"Counter window (Server authority)", &enabled))
+						{
+							counter.enabled = enabled;
+							if (enabled && counter.successStageId.empty() &&
+								pattern.Stages.end() != FirstGroggy)
+							{
+								counter.successStageId = FirstGroggy->strStageId;
+								counter.successActionId = FirstGroggy->strActionId;
+							}
+							const bool staged = Set_ValtanCounterWindowDraft(
+								pattern.strPatternId, stage.strStageId,
+								counter, counterStatus);
+							m_status = std::move(counterStatus);
+							if (staged)
+							{
+								ImGui::EndDisabled();
+								ImGui::TreePop();
+								ImGui::PopID();
+								ImGui::PopID();
+								ImGui::PopID();
+								return;
+							}
+						}
+						ImGui::EndDisabled();
+						if (counter.enabled)
+						{
+							const std::string preview = counter.successStageId +
+								" / " + counter.successActionId;
+							if (ImGui::BeginCombo(
+									"Counter success Groggy stage/action",
+									preview.c_str()))
+							{
+								for (const VALTAN_STAGE_VIEW& candidate :
+									pattern.Stages)
+								{
+									if ("GROGGY" != candidate.strStageKind)
+										continue;
+									const bool selected =
+										candidate.strStageId == counter.successStageId &&
+										candidate.strActionId == counter.successActionId;
+									const std::string label = candidate.strStageId +
+										" / " + candidate.strActionId;
+									if (ImGui::Selectable(label.c_str(), selected))
+									{
+										VALTAN_COUNTER_WINDOW_EDIT changed = counter;
+										changed.successStageId = candidate.strStageId;
+										changed.successActionId = candidate.strActionId;
+										const bool staged = Set_ValtanCounterWindowDraft(
+											pattern.strPatternId, stage.strStageId,
+											changed, counterStatus);
+										m_status = std::move(counterStatus);
+										if (staged)
+										{
+											ImGui::EndCombo();
+											ImGui::TreePop();
+											ImGui::PopID();
+											ImGui::PopID();
+											ImGui::PopID();
+											return;
+										}
+									}
+									if (selected)
+										ImGui::SetItemDefaultFocus();
+								}
+								ImGui::EndCombo();
+							}
+						}
+						else
+						{
+							ImGui::TextDisabled(
+								"Enable to select a same-pattern GROGGY stage/action.");
+						}
+					}
+					else
+					{
+						ImGui::TextColored(ImVec4(1.f, 0.45f, 0.3f, 1.f),
+							"Counter contract invalid: %s", counterStatus.c_str());
+					}
+				}
 				ImGui::TextWrapped(
 					"Hit %s | count %u | interval %u | delay %u | damage %s | push %.2f/%u ms | knockdown %s/%u ms",
 					stage.strHitShape.c_str(), stage.iHitCount,
@@ -4854,19 +5283,87 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 						<< ", \"durationMs\": " << stage.iDurationMs << " }";
 					append(operation);
 				}
-				if (stage.Actions.size() != loadedStage->Actions.size())
+				VALTAN_COUNTER_WINDOW_EDIT counter;
+				VALTAN_COUNTER_WINDOW_EDIT loadedCounter;
+				if (!ReadValtanCounterWindow(
+						pattern, stage, counter, status) ||
+					!ReadValtanCounterWindow(
+						*loaded, *loadedStage, loadedCounter, status))
 				{
-					status = "Loaded stage action inventory changed: " +
+					return false;
+				}
+				const bool counterChanged =
+					counter.enabled != loadedCounter.enabled ||
+					(counter.enabled && loadedCounter.enabled &&
+					 (counter.successStageId != loadedCounter.successStageId ||
+					  counter.successActionId != loadedCounter.successActionId));
+				if (counterChanged)
+				{
+					const VALTAN_COUNTER_WINDOW_EDIT& target = counter.enabled ?
+						counter : loadedCounter;
+					if (target.successStageId.empty() || target.successActionId.empty())
+					{
+						status = "Counter draft lost its stable success target: " +
+							pattern.strPatternId + "/" + stage.strStageId + ".";
+						return false;
+					}
+					std::ostringstream operation;
+					operation << "    { \"op\": \"SET_STAGE_COUNTER_WINDOW\", "
+						"\"patternId\": " << Quote(pattern.strPatternId)
+						<< ", \"stageId\": " << Quote(stage.strStageId)
+						<< ", \"enabled\": " << (counter.enabled ? "true" : "false")
+						<< ", \"successStageId\": " << Quote(target.successStageId)
+						<< ", \"successActionId\": " << Quote(target.successActionId)
+						<< " }";
+					append(operation);
+				}
+				if (!EqualValtanCounterProxy(stage.CounterProxy,
+						loadedStage->CounterProxy))
+				{
+					status = "Counter proxy geometry preset changed outside its typed owner: " +
+						pattern.strPatternId + "/" + stage.strStageId + ".";
+					return false;
+				}
+				const std::vector<const VALTAN_STAGE_BRANCH_VIEW*> branches =
+					CollectValtanNonCounterBranches(stage);
+				const std::vector<const VALTAN_STAGE_BRANCH_VIEW*> loadedBranches =
+					CollectValtanNonCounterBranches(*loadedStage);
+				if (branches.size() != loadedBranches.size())
+				{
+					status = "Loaded non-Counter branch inventory changed: " +
+						pattern.strPatternId + "/" + stage.strStageId + ".";
+					return false;
+				}
+				for (std::size_t branchIndex = 0u;
+					branchIndex < branches.size(); ++branchIndex)
+				{
+					if (branches[branchIndex]->strOutcome !=
+							loadedBranches[branchIndex]->strOutcome ||
+						branches[branchIndex]->strNextActionId !=
+							loadedBranches[branchIndex]->strNextActionId)
+					{
+						status = "Loaded non-Counter branch stable identity changed: " +
+							pattern.strPatternId + "/" + stage.strStageId + ".";
+						return false;
+					}
+				}
+				const std::vector<const VALTAN_STAGE_ACTION_VIEW*> actions =
+					CollectValtanNonCounterActions(stage);
+				const std::vector<const VALTAN_STAGE_ACTION_VIEW*> loadedActions =
+					CollectValtanNonCounterActions(*loadedStage);
+				if (actions.size() != loadedActions.size())
+				{
+					status = "Loaded non-Counter stage action inventory changed: " +
 						pattern.strPatternId + "/" + stage.strStageId + ".";
 					return false;
 				}
 				for (std::size_t actionIndex = 0u;
-					actionIndex < stage.Actions.size(); ++actionIndex)
+					actionIndex < actions.size(); ++actionIndex)
 				{
 					const VALTAN_STAGE_ACTION_VIEW& action =
-						stage.Actions[actionIndex];
+						*actions[actionIndex];
 					const VALTAN_STAGE_ACTION_VIEW& loadedAction =
-						loadedStage->Actions[actionIndex];
+						*loadedActions[actionIndex];
 					if (!EqualValtanActionStableFields(action, loadedAction))
 					{
 						status = "Loaded stage action stable identity changed: " +

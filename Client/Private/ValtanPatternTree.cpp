@@ -640,12 +640,115 @@ namespace
 			return false;
 		}
 		if (CounterProxy.has_value() &&
-			(!HasBranch("COUNTER_HIT") ||
-			 !Has_ClosedSplitStageFlag(Stage, "boss.flag.counterable")))
+			"WINDUP" != Read_String(Stage, "stageKind"))
 		{
-			strOutError = "split gameplay counterProxy contract is invalid: " +
+			strOutError = "split gameplay counterProxy preset requires WINDUP: " +
 				std::string(strPatternId) + "/" + std::string(strStageId);
 			return false;
+		}
+		return true;
+	}
+
+	bool_t Validate_SplitCounterGroggyContract(
+		const DATA_JSON_VALUE& GameplayPattern,
+		const std::string_view strPatternId,
+		std::string& strOutError)
+	{
+		const DATA_JSON_VALUE* pStages = Required(
+			GameplayPattern, "stages", DATA_JSON_TYPE::ARRAY);
+		if (nullptr == pStages)
+			return false;
+
+		const auto FlagState = [](const DATA_JSON_VALUE& Stage,
+			const std::string_view strFlagId)
+		{
+			const DATA_JSON_VALUE* pEvents = Required(
+				Stage, "events", DATA_JSON_TYPE::ARRAY);
+			if (nullptr == pEvents)
+				return -1;
+			uint32_t iTotal = 0u;
+			uint32_t iEnter = 0u;
+			uint32_t iExit = 0u;
+			for (const DATA_JSON_VALUE& Event : pEvents->Get_Array())
+			{
+				if ("SET_BOSS_FLAG" != Read_String(Event, "kind") ||
+					strFlagId != Read_String(Event, "flagId"))
+				{
+					continue;
+				}
+				++iTotal;
+				const DATA_JSON_VALUE* pEnabled = Required(
+					Event, "enabled", DATA_JSON_TYPE::BOOLEAN);
+				if (nullptr == pEnabled)
+					continue;
+				const std::string strTrigger = Read_String(Event, "trigger");
+				if ("ENTER" == strTrigger && pEnabled->Get_Boolean())
+					++iEnter;
+				if ("EXIT" == strTrigger && !pEnabled->Get_Boolean())
+					++iExit;
+			}
+			if (0u == iTotal)
+				return 0;
+			return 2u == iTotal && 1u == iEnter && 1u == iExit ? 1 : -1;
+		};
+
+		for (const DATA_JSON_VALUE& Stage : pStages->Get_Array())
+		{
+			const std::string strStageId = Read_String(Stage, "stageId");
+			std::vector<Client::VALTAN_STAGE_BRANCH_VIEW> Branches;
+			if (!Read_StageBranches(Stage.Find("branches"), Branches))
+				return false;
+			const auto Counter = std::find_if(
+				Branches.begin(), Branches.end(),
+				[](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
+				{ return "COUNTER_HIT" == Branch.strOutcome; });
+			const int iCounterState = FlagState(Stage, "boss.flag.counterable");
+			if (Branches.end() == Counter)
+			{
+				if (0 != iCounterState)
+				{
+					strOutError = "split counterable flag has no COUNTER_HIT owner: " +
+						std::string(strPatternId) + "/" + strStageId;
+					return false;
+				}
+			}
+			else
+			{
+				const DATA_JSON_VALUE* pTarget = nullptr;
+				if (Counter->strNextActionId.has_value())
+				{
+					for (const DATA_JSON_VALUE& Candidate : pStages->Get_Array())
+					{
+						if (*Counter->strNextActionId ==
+							Read_String(Candidate, "actionId"))
+						{
+							pTarget = &Candidate;
+							break;
+						}
+					}
+				}
+				if ("WINDUP" != Read_String(Stage, "stageKind") ||
+					1 != iCounterState || nullptr == pTarget ||
+					"GROGGY" != Read_String(*pTarget, "stageKind") ||
+					1 != FlagState(*pTarget, "boss.flag.groggy"))
+				{
+					strOutError =
+						"split COUNTER_HIT requires a closed WINDUP window and same-pattern GROGGY target: " +
+						std::string(strPatternId) + "/" + strStageId;
+					return false;
+				}
+			}
+
+			const int iGroggyState = FlagState(Stage, "boss.flag.groggy");
+			if (("GROGGY" == Read_String(Stage, "stageKind") &&
+				 1 != iGroggyState) ||
+				("GROGGY" != Read_String(Stage, "stageKind") &&
+				 0 != iGroggyState))
+			{
+				strOutError = "split groggy stage flag transition is invalid: " +
+					std::string(strPatternId) + "/" + strStageId;
+				return false;
+			}
 		}
 		return true;
 	}
@@ -2537,6 +2640,12 @@ namespace
 		const Client::VALTAN_STAGE_VIEW& Product,
 		const MASTER_STAGE& Master)
 	{
+		const bool_t bCounterEnabled = Master.Branches.end() != std::find_if(
+			Master.Branches.begin(), Master.Branches.end(),
+			[](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
+			{ return "COUNTER_HIT" == Branch.strOutcome; });
+		const std::optional<Client::VALTAN_COUNTER_PROXY_VIEW> ProductCounterProxy =
+			bCounterEnabled ? Master.CounterProxy : std::nullopt;
 		return Product.strStageId == Master.strStageId &&
 			Product.strActionId == Master.strActionId &&
 			Product.strStageKind == Master.strStageKind &&
@@ -2556,7 +2665,7 @@ namespace
 			Product.strPlayerResponse == Master.strPlayerResponse &&
 			Product.strAttachmentSlot == Master.strAttachmentSlot &&
 			Product.strPartDamagePolicy == Master.strPartDamagePolicy &&
-			Equal_CounterProxy(Product.CounterProxy, Master.CounterProxy) &&
+			Equal_CounterProxy(Product.CounterProxy, ProductCounterProxy) &&
 			Product.fPushRangeM == Master.fPushRangeM &&
 			Product.iPushMs == Master.iPushMs &&
 			Product.bKnockdown == Master.bKnockdown &&
@@ -4569,6 +4678,11 @@ namespace
 				LegacyStage.emplace("cameraInvocations", *pCamera);
 				LegacyStages.push_back(
 					DATA_JSON_VALUE::Object(std::move(LegacyStage)));
+			}
+			if (!Validate_SplitCounterGroggyContract(
+					GameplayPattern, strPatternId, strOutError))
+			{
+				return false;
 			}
 
 			const DATA_JSON_VALUE* pEligibility = Required(

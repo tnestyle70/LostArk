@@ -58,6 +58,7 @@
     <ClCompile Include="..\Private\ValtanPatternAuditionServiceHarness.cpp" />
 	<ClCompile Include="..\Private\ValtanEncounterReferenceContractTests.cpp" />
     <ClCompile Include="..\Private\ValtanPatternFlowServiceTests.cpp" />
+	<ClCompile Include="..\Private\ValtanPatternAnimationBindingDocumentContractTests.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternSoundCueDocumentContractTests.cpp" />
     <ClCompile Include="..\Private\ValtanPresentationContractTests.cpp" />
     <ClCompile Include="..\Private\ValtanTuningCommandServiceTests.cpp" />
@@ -67,6 +68,8 @@
 	<ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp" />
     <ClCompile Include="..\..\..\Client\Private\DataJson.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\ProjectDataRoot.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\RuntimeAssetRoot.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\SoundCueCatalog.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\ValtanPatternSoundCueDocument.cpp" />
     <ClCompile Include="..\..\..\Client\Private\ActionPresentationTimeline.cpp" />
     <ClCompile Include="..\..\..\Client\Private\CameraShakeService.cpp" />
@@ -77,6 +80,8 @@
     <ClInclude Include="..\..\..\Client\Public\ValtanPatternFlowService.h" />
     <ClInclude Include="..\..\..\Client\Public\ValtanTuningCommandService.h" />
     <ClInclude Include="..\..\..\Client\Public\DataJson.h" />
+	<ClInclude Include="..\..\..\Client\Public\RuntimeAssetRoot.h" />
+	<ClInclude Include="..\..\..\Client\Public\SoundCueCatalog.h" />
     <ClInclude Include="..\..\..\Client\Public\ActionPresentationTimeline.h" />
     <ClInclude Include="..\..\..\Client\Public\CameraShakeService.h" />
     <ClInclude Include="..\..\..\Client\Public\EncounterPatternReference.h" />

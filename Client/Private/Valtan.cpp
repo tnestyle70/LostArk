@@ -501,8 +501,23 @@ void CValtan::Clear_PatternHitAreaPreview()
 
 void CValtan::Load_PatternBindings()
 {
+	std::string Status;
+	if (!Reload_PatternBindings(Status))
+	{
+		OutputDebugStringA((
+			"[Client][Valtan] pattern bindings rejected; catalog clips remain: " +
+			Status + "\n").c_str());
+	}
+}
+
+bool_t CValtan::Reload_PatternBindings(std::string& strOutStatus)
+{
 	if (nullptr == m_pBodyModelCom)
-		return;
+	{
+		strOutStatus =
+			"Valtan pattern binding reload requires an admitted body model.";
+		return false;
+	}
 	std::vector<std::string> availableClips;
 	availableClips.reserve(m_pBodyModelCom->Get_NumAnimations());
 	for (uint32_t index = 0u;
@@ -513,15 +528,10 @@ void CValtan::Load_PatternBindings()
 			availableClips.emplace_back(clip);
 	}
 	Client::BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT document;
-	std::string status;
 	if (!Client::CValtanPatternAnimationBindingDocument::Load(
-			"Valtan", "BOSS_VALTAN", availableClips, document, status))
+			"Valtan", "BOSS_VALTAN", availableClips, document, strOutStatus))
 	{
-		const std::string message =
-			"[Client][Valtan] pattern bindings rejected; catalog clips remain: " +
-			status + "\n";
-		OutputDebugStringA(message.c_str());
-		return;
+		return false;
 	}
 	std::unordered_map<std::string,
 		std::vector<Client::BOSS_PATTERN_ANIMATION_CLIP>> staged;
@@ -539,14 +549,84 @@ void CValtan::Load_PatternBindings()
 				std::span<const Client::BOSS_PATTERN_ANIMATION_CLIP>(
 					binding.Clips.data(), binding.Clips.size()), Timings))
 		{
-			OutputDebugStringA((
-				"[Client][Valtan] pattern binding source segment rejected: " +
-				binding.strActionId + "\n").c_str());
-			return;
+			strOutStatus =
+				"Valtan pattern binding reload rejected a model source segment: " +
+				binding.strActionId;
+			return false;
 		}
 		staged.emplace(binding.strActionId, binding.Clips);
 	}
 	m_PatternClipByActionId = std::move(staged);
+	m_iPatternPresentationClipOccurrenceIndex =
+		(std::numeric_limits<std::size_t>::max)();
+	strOutStatus = "Reloaded " +
+		std::to_string(m_PatternClipByActionId.size()) +
+		" Valtan Product animation action binding(s).";
+	return true;
+}
+
+bool_t CValtan::Reload_PatternPresentationAuthoring(
+	std::string& strOutStatus)
+{
+	const auto PreviousBindings = m_PatternClipByActionId;
+	const auto PreviousEffectCues = m_PatternEffectCuesByActionId;
+	const auto PreviousArenaCenters = m_PatternArenaCenterAnchors;
+	const auto PreviousEffectAttempts = m_AttemptedPatternEffectOccurrenceKeys;
+	const bool_t PreviousEffectScanValid = m_bPatternEffectCueScanAgeValid;
+	const f32_t PreviousEffectScanAge = m_fPatternEffectCueScanAgeSeconds;
+	const auto PreviousSoundCues = m_PatternSoundCuesByActionId;
+	const auto PreviousSoundAttempts = m_AttemptedPatternSoundOccurrenceKeys;
+	const bool_t PreviousSoundScanValid = m_bPatternSoundCueScanAgeValid;
+	const f32_t PreviousSoundScanAge = m_fPatternSoundCueScanAgeSeconds;
+	const auto PreviousShakeCues = m_PatternShakeCuesByActionId;
+	const auto PreviousShakeAttempts = m_AttemptedPatternShakeOccurrenceKeys;
+	const bool_t PreviousShakeScanValid = m_bPatternShakeCueScanAgeValid;
+	const f32_t PreviousShakeScanAge = m_fPatternShakeCueScanAgeSeconds;
+	const std::size_t PreviousClipOccurrenceIndex =
+		m_iPatternPresentationClipOccurrenceIndex;
+
+	const auto RestorePrevious = [this,
+		&PreviousBindings, &PreviousEffectCues, &PreviousArenaCenters,
+		&PreviousEffectAttempts, PreviousEffectScanValid,
+		PreviousEffectScanAge, &PreviousSoundCues, &PreviousSoundAttempts,
+		PreviousSoundScanValid, PreviousSoundScanAge,
+		&PreviousShakeCues, &PreviousShakeAttempts, PreviousShakeScanValid,
+		PreviousShakeScanAge, PreviousClipOccurrenceIndex]()
+	{
+		m_PatternClipByActionId = PreviousBindings;
+		m_PatternEffectCuesByActionId = PreviousEffectCues;
+		m_PatternArenaCenterAnchors = PreviousArenaCenters;
+		m_AttemptedPatternEffectOccurrenceKeys = PreviousEffectAttempts;
+		m_bPatternEffectCueScanAgeValid = PreviousEffectScanValid;
+		m_fPatternEffectCueScanAgeSeconds = PreviousEffectScanAge;
+		m_PatternSoundCuesByActionId = PreviousSoundCues;
+		m_AttemptedPatternSoundOccurrenceKeys = PreviousSoundAttempts;
+		m_bPatternSoundCueScanAgeValid = PreviousSoundScanValid;
+		m_fPatternSoundCueScanAgeSeconds = PreviousSoundScanAge;
+		m_PatternShakeCuesByActionId = PreviousShakeCues;
+		m_AttemptedPatternShakeOccurrenceKeys = PreviousShakeAttempts;
+		m_bPatternShakeCueScanAgeValid = PreviousShakeScanValid;
+		m_fPatternShakeCueScanAgeSeconds = PreviousShakeScanAge;
+		m_iPatternPresentationClipOccurrenceIndex =
+			PreviousClipOccurrenceIndex;
+	};
+
+	std::string StepStatus;
+	if (!Reload_PatternBindings(StepStatus) ||
+		!Reload_PatternEffectCues(StepStatus) ||
+		!Reload_PatternSoundCues(StepStatus) ||
+		!Reload_PatternShakeCues(StepStatus))
+	{
+		RestorePrevious();
+		strOutStatus =
+			"Valtan joined presentation reload rejected; every previous animation/effect/sound/shake cache was restored: " +
+			StepStatus;
+		return false;
+	}
+
+	strOutStatus = "Reloaded the joined Valtan animation/effect/sound/shake "
+		"presentation caches from their typed Product owners.";
+	return true;
 }
 
 bool_t CValtan::Apply_PatternPresentationSample(
@@ -707,15 +787,22 @@ void CValtan::Reset_LocalPatternPresentationSample()
 
 void CValtan::Load_PatternEffectCues()
 {
-	VALTAN_PATTERN_EFFECT_CUE_DOCUMENT Document;
 	std::string Status;
-	if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
-			Document, Status))
+	if (!Reload_PatternEffectCues(Status))
 	{
 		OutputDebugStringA((
 			"[Client][Valtan] pattern Effect cues isolated: " + Status +
 			"\n").c_str());
-		return;
+	}
+}
+
+bool_t CValtan::Reload_PatternEffectCues(std::string& Status)
+{
+	VALTAN_PATTERN_EFFECT_CUE_DOCUMENT Document;
+	if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
+			Document, Status))
+	{
+		return false;
 	}
 
 	std::unordered_map<std::string,
@@ -729,9 +816,8 @@ void CValtan::Load_PatternEffectCues()
 		VALTAN_PATTERN_TREE_VIEW view;
 		if (!CValtanPatternTree::Load(view, Status))
 		{
-			OutputDebugStringA(("[Client][Valtan] arena-center cue projection rejected: " +
-				Status + "\n").c_str());
-			return;
+			Status = "Valtan arena-center cue projection rejected: " + Status;
+			return false;
 		}
 		for (const std::vector<VALTAN_PATTERN_VIEW>* group : { &view.Gimmicks, &view.Rotation })
 		{
@@ -743,9 +829,9 @@ void CValtan::Load_PatternEffectCues()
 				if (!std::isfinite(landing[0]) || !std::isfinite(landing[1]) ||
 					!std::isfinite(landing[2]))
 				{
-					OutputDebugStringA(("[Client][Valtan] arena-center landing is not finite: " +
-						pattern.strPatternId + "\n").c_str());
-					return;
+					Status = "Valtan arena-center landing is not finite: " +
+						pattern.strPatternId;
+					return false;
 				}
 				StagedArenaCenters.emplace(pattern.strPatternId,
 					float3_t(landing[0], landing[1], landing[2]));
@@ -762,28 +848,25 @@ void CValtan::Load_PatternEffectCues()
 			(nullptr == m_pBodyModelCom ||
 			 !m_pBodyModelCom->Has_Bone(Cue.strAnchorSlotId.c_str()))))
 		{
-			OutputDebugStringA((
-				"[Client][Valtan] pattern Effect cue anchor rejected: " +
-				Cue.strBindingId + "\n").c_str());
-			return;
+			Status = "Valtan pattern Effect cue anchor rejected: " +
+				Cue.strBindingId;
+			return false;
 		}
 		const auto Binding = m_PatternClipByActionId.find(Cue.strActionId);
 		if (m_PatternClipByActionId.end() == Binding)
 		{
-			OutputDebugStringA((
-				"[Client][Valtan] pattern Effect cue action binding rejected: " +
-				Cue.strOccurrenceId + "\n").c_str());
-			return;
+			Status = "Valtan pattern Effect cue action binding rejected: " +
+				Cue.strOccurrenceId;
+			return false;
 		}
 		if (Cue.bUsesStageClock)
 		{
 			if (!Binding->second.empty() || !Cue.strClipOccurrenceId.empty() ||
 				Cue.iStartMs >= Cue.iStageDurationMs)
 			{
-				OutputDebugStringA((
-					"[Client][Valtan] stage-clock Effect cue NONE binding rejected: " +
-					Cue.strOccurrenceId + "\n").c_str());
-				return;
+				Status = "Valtan stage-clock Effect cue NONE binding rejected: " +
+					Cue.strOccurrenceId;
+				return false;
 			}
 			Staged[Cue.strActionId].push_back(Cue);
 			continue;
@@ -797,10 +880,9 @@ void CValtan::Load_PatternEffectCues()
 			});
 		if (Binding->second.end() == Clip)
 		{
-			OutputDebugStringA((
-				"[Client][Valtan] pattern Effect cue clip occurrence rejected: " +
-				Cue.strOccurrenceId + "\n").c_str());
-			return;
+			Status = "Valtan pattern Effect cue clip occurrence rejected: " +
+				Cue.strOccurrenceId;
+			return false;
 		}
 		if (!Cue.bUsesLegacyStageWallTime)
 		{
@@ -813,10 +895,9 @@ void CValtan::Load_PatternEffectCues()
 							Binding->second.data(), Binding->second.size()),
 						Built))
 				{
-					OutputDebugStringA((
-						"[Client][Valtan] pattern Effect cue timeline rejected: " +
-						Cue.strOccurrenceId + "\n").c_str());
-					return;
+					Status = "Valtan pattern Effect cue timeline rejected: " +
+						Cue.strOccurrenceId;
+					return false;
 				}
 				Timings = TimingsByAction.emplace(
 					Cue.strActionId, std::move(Built)).first;
@@ -840,10 +921,9 @@ void CValtan::Load_PatternEffectCues()
 				fCueStartWallSeconds * 1000.f >=
 					static_cast<f32_t>(Cue.iStageDurationMs))
 			{
-				OutputDebugStringA((
-					"[Client][Valtan] pattern Effect cue source start rejected: " +
-					Cue.strOccurrenceId + "\n").c_str());
-				return;
+				Status = "Valtan pattern Effect cue source start rejected: " +
+					Cue.strOccurrenceId;
+				return false;
 			}
 			if (Cue.bHasSourceEnd)
 			{
@@ -857,10 +937,9 @@ void CValtan::Load_PatternEffectCues()
 					 fCueEndWallSeconds * 1000.f >
 						static_cast<f32_t>(Cue.iStageDurationMs) + 0.01f))
 				{
-					OutputDebugStringA((
-						"[Client][Valtan] pattern Effect cue source end rejected: " +
-						Cue.strOccurrenceId + "\n").c_str());
-					return;
+					Status = "Valtan pattern Effect cue source end rejected: " +
+						Cue.strOccurrenceId;
+					return false;
 				}
 			}
 		}
@@ -883,6 +962,10 @@ void CValtan::Load_PatternEffectCues()
 	m_AttemptedPatternEffectOccurrenceKeys.clear();
 	m_bPatternEffectCueScanAgeValid = false;
 	m_fPatternEffectCueScanAgeSeconds = 0.f;
+	Status = "Reloaded " +
+		std::to_string(m_PatternEffectCuesByActionId.size()) +
+		" Valtan Pattern Effect action binding(s).";
+	return true;
 }
 
 void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
@@ -1089,15 +1172,20 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 
 void CValtan::Load_PatternSoundCues()
 {
-	VALTAN_PATTERN_SOUND_CUE_DOCUMENT Document;
 	std::string Status;
-	if (!CValtanPatternSoundCueDocument::Load_Source(Document, Status))
+	if (!Reload_PatternSoundCues(Status))
 	{
 		OutputDebugStringA((
 			"[Client][Valtan] pattern Sound cues isolated: " + Status +
 			"\n").c_str());
-		return;
 	}
+}
+
+bool_t CValtan::Reload_PatternSoundCues(std::string& Status)
+{
+	VALTAN_PATTERN_SOUND_CUE_DOCUMENT Document;
+	if (!CValtanPatternSoundCueDocument::Load_Source(Document, Status))
+		return false;
 
 	std::unordered_map<std::string,
 		std::vector<VALTAN_PATTERN_SOUND_CUE>> Staged;
@@ -1213,6 +1301,11 @@ void CValtan::Load_PatternSoundCues()
 	m_AttemptedPatternSoundOccurrenceKeys.clear();
 	m_bPatternSoundCueScanAgeValid = false;
 	m_fPatternSoundCueScanAgeSeconds = 0.f;
+	Status = "Reloaded " +
+		std::to_string(m_PatternSoundCuesByActionId.size()) +
+		" Valtan Pattern Sound action binding(s); isolated " +
+		std::to_string(iRejectedCueCount) + " invalid cue(s).";
+	return true;
 }
 
 void CValtan::Spawn_DuePatternSoundCues(const f32_t fActionAgeSeconds)
@@ -1428,15 +1521,20 @@ bool_t CValtan::Apply_CombatObjectPresentationEvent(
 
 void CValtan::Load_PatternShakeCues()
 {
-	VALTAN_PATTERN_SHAKE_CUE_DOCUMENT Document;
 	std::string Status;
-	if (!CValtanPatternShakeCueDocument::Load_Source(Document, Status))
+	if (!Reload_PatternShakeCues(Status))
 	{
 		OutputDebugStringA((
 			"[Client][Valtan] pattern Shake cues isolated: " + Status +
 			"\n").c_str());
-		return;
 	}
+}
+
+bool_t CValtan::Reload_PatternShakeCues(std::string& Status)
+{
+	VALTAN_PATTERN_SHAKE_CUE_DOCUMENT Document;
+	if (!CValtanPatternShakeCueDocument::Load_Source(Document, Status))
+		return false;
 
 	std::unordered_map<std::string,
 		std::vector<VALTAN_PATTERN_SHAKE_CUE>> Staged;
@@ -1546,6 +1644,11 @@ void CValtan::Load_PatternShakeCues()
 	m_AttemptedPatternShakeOccurrenceKeys.clear();
 	m_bPatternShakeCueScanAgeValid = false;
 	m_fPatternShakeCueScanAgeSeconds = 0.f;
+	Status = "Reloaded " +
+		std::to_string(m_PatternShakeCuesByActionId.size()) +
+		" Valtan Pattern Shake action binding(s); isolated " +
+		std::to_string(iRejectedCueCount) + " invalid cue(s).";
+	return true;
 }
 
 void CValtan::Spawn_DuePatternShakeCues(const f32_t fActionAgeSeconds)

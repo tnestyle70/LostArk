@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace Client
@@ -180,6 +181,30 @@ namespace Client
 			std::string_view expectedBossArchetypeId,
 			const std::vector<std::string>& availableClips,
 			BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& outDocument,
+			std::string& outStatus);
+		/* Authoring load also returns the exact admitted destination bytes. The
+		   Workbench must retain this token and present it to Save_Atomic so an
+		   external edit cannot be overwritten by a stale in-memory draft. */
+		static bool_t Load_ForAuthoring(
+			std::string_view animationAssetId,
+			std::string_view expectedBossArchetypeId,
+			const std::vector<std::string>& availableClips,
+			BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& outDocument,
+			std::string& outBaselineSourceBytes,
+			std::string& outStatus);
+		/* Authored saves use formatVersion 3 so occurrence identity, playback
+		   windows, loop policy, and explicit NONE admission cannot be lost.
+		   Validate -> durable sibling temp -> strict reparse/validate -> atomic
+		   replace. Every failure preserves the caller document and destination. */
+		static bool_t Save_Atomic(
+			const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& document,
+			std::string_view animationAssetId,
+			std::string_view expectedBossArchetypeId,
+			const std::vector<std::string>& availableClips,
+			const std::unordered_map<std::string, f32_t>&
+				clipSourceDurationSecondsByName,
+			std::string_view expectedBaselineSourceBytes,
+			std::string& outCommittedSourceBytes,
 			std::string& outStatus);
 	};
 

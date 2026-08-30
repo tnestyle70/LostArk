@@ -427,6 +427,41 @@ namespace
 			F.Input().SentRequests.front().iTransactionSequence == (std::numeric_limits<uint32_t>::max)(),
 			"request identity wrapped into a previous session-local command");
 	}
+
+	void VerifyGameplaySourceActivationGate()
+	{
+		Fixture F;
+		Require(!F.Service.Has_GameplaySourceActivationExpectation(),
+			"a reset process retained a historical gameplay activation expectation");
+		Require(F.Service.Is_LatestGameplaySourceServerActive(F.Status),
+			"an untouched process fabricated a gameplay activation mismatch");
+
+		F.Service.Record_GameplaySourceActivationExpectation(
+			{}, {}, "candidate projection failed");
+		Require(F.Service.Has_GameplaySourceActivationExpectation() &&
+			!F.Service.Is_LatestGameplaySourceServerActive(F.Status) &&
+			F.Status.find("no admitted Product candidate") != std::string::npos &&
+			F.Status.find("candidate projection failed") != std::string::npos,
+			"a saved source with failed candidate publication authorized old Server playback");
+
+		F.Service.Record_GameplaySourceActivationExpectation(
+			Revision('b'), "ENCOUNTER_RESET", "controlled reset required");
+		Require(!F.Service.Is_LatestGameplaySourceServerActive(F.Status) &&
+			F.Status.find("ENCOUNTER_RESET") != std::string::npos,
+			"a restart-class candidate authorized the previous Server revision");
+		F.Input().ServerActiveRevision = Identity('b');
+		Require(F.Service.Is_LatestGameplaySourceServerActive(F.Status),
+			"the exact Server-active restart candidate did not release playback");
+		F.Input().bConnected = false;
+		Require(!F.Service.Is_LatestGameplaySourceServerActive(F.Status),
+			"a disconnected observation authorized saved gameplay playback");
+
+		F.Service.Record_GameplaySourceActivationExpectation(
+			"not-a-revision", "HOT_RELOAD", "invalid publisher output");
+		Require(!F.Service.Is_LatestGameplaySourceServerActive(F.Status) &&
+			F.Status.find("invalid candidate revision") != std::string::npos,
+			"an invalid saved gameplay candidate failed open");
+	}
 }
 
 int Run_ValtanTuningCommandServiceTests()
@@ -444,7 +479,8 @@ int Run_ValtanTuningCommandServiceTests()
 		{ "new connection/world cannot adopt an old commit", VerifyConnectionAndWorldChangeCannotAdoptOldCommit },
 		{ "already active is distinct and current-world checked", VerifyAlreadyActiveAndFreshnessAreTruthful },
 		{ "input/Release policy and failed process creation", VerifyValidationPolicyAndFailedSpawn },
-		{ "unsupported apply class and sequence exhaustion", VerifyUnsupportedApplyClassAndSequenceExhaustion }
+		{ "unsupported apply class and sequence exhaustion", VerifyUnsupportedApplyClassAndSequenceExhaustion },
+		{ "saved gameplay source requires exact Server-active candidate", VerifyGameplaySourceActivationGate }
 	};
 	int Failed = 0;
 	for (const auto& [Name, Test] : Tests)

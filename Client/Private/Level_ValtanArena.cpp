@@ -623,6 +623,26 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 #endif
 }
 
+bool_t CLevel_ValtanArena::Reload_PrimaryValtanPresentationAuthoring(
+	std::string& strOutStatus)
+{
+	return m_Replication.Reload_PrimaryValtanPresentationAuthoring(
+		strOutStatus);
+}
+
+bool_t CLevel_ValtanArena::Reload_PrimaryValtanCombatObjectSoundCues(
+	std::string& strOutStatus)
+{
+	return m_Replication.Reload_PrimaryValtanCombatObjectSoundCues(
+		strOutStatus);
+}
+
+bool_t CLevel_ValtanArena::Can_Play_PrimaryValtanPresentation(
+	std::string& strOutStatus) const
+{
+	return m_Replication.Can_Play_PrimaryValtanPresentation(strOutStatus);
+}
+
 #ifdef _DEBUG
 namespace
 {
@@ -1365,6 +1385,13 @@ bool_t CLevel_ValtanArena::Set_ArenaPreset(
 		static_cast<uint32_t>(preset));
 	outStatus = m_strAuditionStatus;
 	return submitted;
+}
+
+bool_t CLevel_ValtanArena::Is_ArenaPresetRequestPending() const
+{
+	return m_PendingAuditionRequest.Is_Active() &&
+		LostArk::Shared::VALTAN_AUDITION_OPERATION::SET_ARENA_PRESET ==
+			m_PendingAuditionRequest.eOperation;
 }
 
 CLevel_ValtanArena::ARENA_ACTIVE_STATE

@@ -2241,10 +2241,47 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             branch for branch in trash_counter["branches"]
             if branch["outcome"] != "COUNTER_HIT"
         ]
+        trash_counter["events"] = [
+            event for event in trash_counter["events"]
+            if not (
+                event.get("kind") == "SET_BOSS_FLAG"
+                and event.get("flagId") == "boss.flag.counterable"
+            )
+        ]
+        pipeline.validate_gameplay_authoring(unowned_proxy)
+        dormant_master = pipeline.join_v2_authoring(
+            unowned_proxy,
+            self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        self.assertIn(
+            "counterProxy",
+            stage(dormant_master, "VALTAN_TRASH", "STEP_07"),
+        )
+        dormant_pattern = next(
+            row for row in dormant_master["patterns"]
+            if row["patternId"] == "VALTAN_TRASH"
+        )
+        dormant_product = pipeline.compile_pattern_product(
+            dormant_master, dormant_pattern
+        )
+        self.assertNotIn(
+            "counterProxy",
+            next(
+                row for row in dormant_product["stages"]
+                if row["stageId"] == "STEP_07"
+            ),
+        )
+
+        wrong_kind_proxy = copy.deepcopy(unowned_proxy)
+        stage(
+            wrong_kind_proxy, "VALTAN_TRASH", "STEP_07"
+        )["stageKind"] = "ACTIVE"
         with self.assertRaisesRegex(
-            pipeline.PipelineError, "COUNTER_HIT branch"
+            pipeline.PipelineError, "WINDUP authoring stage"
         ):
-            pipeline.validate_gameplay_authoring(unowned_proxy)
+            pipeline.validate_gameplay_authoring(wrong_kind_proxy)
 
         incoherent_target = copy.deepcopy(gameplay)
         catch = next(
