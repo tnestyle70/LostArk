@@ -180,6 +180,12 @@ public:
 	S2C_WORLD_ENTITY_DESPAWNED per removed entity through the normal
 	replication event queue -- no separate result message. */
 	bool Send_DespawnAllWorldEntities(std::uint32_t requestSequence);
+	/* Debug-only authoring commands. Both remain requests: Server transfer and
+	Server snapshots are the only accepted world/position results. */
+	bool Send_DebugEnterKakulSaydonArena(std::uint32_t requestSequence);
+	bool Send_DebugTeleportToPlacement(
+		std::uint32_t requestSequence,
+		std::string_view placementId);
 	/* Bern's Valtan-entry confirm window's confirm button. The Server re-validates
 	proximity to the named guide NPC and answers through the same
 	S2C_ENTER_ACCEPTED/S2C_ENTER_REJECTED world-transfer flow the old automatic

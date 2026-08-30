@@ -6,6 +6,7 @@
 #include "CharacterCatalog.h"
 #include "CombatHUDViewModel.h"
 #include "Effect_PresentationService.h"
+#include "EstherActionSoundCueDocument.h"
 #include "GameInstance.h"
 #include "MapNavigationContract.h"
 #include "Model.h"
@@ -1709,6 +1710,15 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				actor->actionClips.find(entity.strActionId);
 			if (actionClip != actor->actionClips.end())
 			{
+				std::string soundStatus;
+				/* Reliable spawn carries the action id but not its Server start tick.
+				   The first snapshot supplies the authoritative occurrence clock;
+				   subsequent snapshots advance/deduplicate the same cue cursor. */
+				(void)CEstherActionSoundCueDocument::Play_Due(
+					ESTHER_ACTION_SOUND_OWNER_KIND::NPC_ACTION,
+					iter->second.strArchetypeId, entity.strActionId,
+					snapshot.iServerTick, entity.iActionStartTick,
+					iter->second.EstherActionSoundState, soundStatus);
 				const std::vector<std::string>& chain = actionClip->second;
 				if (iter->second.strActiveActionId != entity.strActionId)
 				{

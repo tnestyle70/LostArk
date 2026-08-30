@@ -277,17 +277,6 @@ class Fixture:
             "Level_KakulSaydonArena.h\nLevel_KakulSaydonArena.cpp\n",
         )
 
-        sound_id = f"Sound/{COLLECTION_NAME}/KAKUL_ENTER.wav"
-        self.write_json(
-            "Data/Sound/CharacterSoundCatalog.json",
-            {
-                "formatVersion": 1,
-                "classes": {COLLECTION_NAME: {"KAKUL_ENTER": [sound_id]}},
-            },
-        )
-        self.write_bytes(f"Client/Bin/Resources/{sound_id}", b"RIFF-fixture")
-
-
 CLIENT_LEVEL_TOKEN = "KAKULSAYDON_ARENA"
 
 
@@ -329,7 +318,6 @@ class KakulWorldAdmissionTests(unittest.TestCase):
         self.assertTrue(all(mode.permitted for mode in report.modes))
         self.assertEqual(PRODUCT_MODE, report.highest_permitted_mode)
         self.assertEqual(1, report.result(PRODUCT_MODE).facts["stablePlayerSpawnCount"])
-        self.assertEqual(1, report.result(PRODUCT_MODE).facts["playableSoundAssetCount"])
         payload = report.as_json(PRODUCT_MODE)
         self.assertEqual(AREA_ID, payload["canonicalAreaId"])
         self.assertEqual(COLLECTION_NAME, payload["collectionName"])

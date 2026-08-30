@@ -105,6 +105,12 @@ public:
 	~CEffect_Tool_V2();
 
 	void Render();
+	/* Visibility and Level lifetime are separate from the authored slot/document
+	   draft.  Deactivation releases spawned preview actors and playback while
+	   preserving the draft; a Level change additionally invalidates Level-owned
+	   weak targets before the next render. */
+	void Deactivate();
+	void On_LevelChanged();
 
 private:
 	void Scan_Resources();

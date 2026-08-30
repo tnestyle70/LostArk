@@ -179,7 +179,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
         update = function_body(self.main_cpp, "void CMainApp::Update(")
         begin = update.index("EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST effectRequest;")
         route = update[begin:update.index("if (nullptr != m_pCameraTool)", begin)]
-        self.assertEqual(1, route.count("Consume_EffectToolOpenRequest(effectRequest)"))
+        self.assertEqual(2, route.count("Consume_EffectToolOpenRequest(effectRequest)"))
         self.assertLess(
             route.index("EnsureDebugTool(DEBUG_TOOL::EFFECT)"),
             route.index("Open_ValtanProductEffect(effectRequest)"),
@@ -216,7 +216,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, verification)
         for marker in (
-            'ImGui::Button("Play Selected")',
+            'ImGui::Button("Complete Play Selected")',
             'ImGui::Checkbox("Repeat"',
             'ImGui::Button("Stop After Current")',
             'ImGui::CollapsingHeader("Why / Advanced diagnostics")',
@@ -503,7 +503,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
         self.assertNotIn("Render_AuditionPanel();", update)
         self.assertIn("Update_AuditionTransaction();", update)
 
-    def test_boss_and_effect_share_replay_but_boss_alone_controls_it(self) -> None:
+    def test_boss_and_effect_share_replay_through_main_app_selection(self) -> None:
         for source in (self.balance_cpp, self.balance_h):
             self.assertNotIn("Play Server Pattern", source)
             self.assertNotIn("Play Server", source)
@@ -511,12 +511,21 @@ class ValtanBossToolContractTests(unittest.TestCase):
             self.assertNotIn("CValtanPatternAuditionService", source)
             self.assertNotIn("Request_RevivePlayer", source)
         for marker in (
-            "CValtanPatternAuditionService::Get().Submit",
-            'ImGui::SmallButton("Play Server")',
-            'ImGui::SmallButton("Play Server Owner")',
-            "VALTAN_EFFECT_TOOL_AUDITION_CONSUMER_ID",
+            "Debug_SelectCompletePlayPattern",
+            "Debug_CompletePlaySelected",
+            'ImGui::SmallButton("Complete Play (Server/Arena)")',
+            'ImGui::SmallButton("Complete Play Owner")',
         ):
             self.assertIn(marker, self.effect_cpp)
+        self.assertNotIn(
+            "CValtanPatternAuditionService::Get().Submit",
+            self.effect_cpp,
+        )
+        self.assertNotIn(
+            "VALTAN_EFFECT_TOOL_AUDITION_CONSUMER_ID",
+            self.effect_cpp,
+        )
+        self.assertIn("m_pBossTool->Play_ServerPattern", self.main_cpp)
         for forbidden in (
             "Request_RevivePlayer",
             "Stop After Current",

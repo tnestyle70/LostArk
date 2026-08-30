@@ -533,7 +533,7 @@ false이므로 V1 Product coverage는 아직 `0/3,683`이다.
 | `Data/Effects/Authored/*.effect.json` | stable element, composition, carrier/resource/material 선택과 v15 inline runtime carrier/history |
 | `Data/Effects/Contracts`와 Imported receipts | source identity, exact variant, evidence와 admission 상태 |
 | `Data/Effects/EffectCatalog.json` | Product EffectAssetId와 exact authored 상대 경로 admission |
-| `Client/Bin/Resources/Effect`와 필요한 Character model | Product 문서가 참조하는 DDS/WModel binary; pull-only V1은 최소 dependency closure만 Git/LFS 추적 |
+| `Client/Bin/Resources/Effect`와 필요한 Character model | Product 문서가 참조하는 Drive-owned DDS/WModel binary; Git 추적 금지 |
 | `Effect_AuthoringDocument.h` | element, renderer, resource, material execution descriptor schema |
 | `Effect_VisualProgramCorpus.*` | 같은 authored document pointer에서 만드는 transient `ADAPTER_PACKET_V1` projection. disk corpus를 읽거나 쓰지 않음 |
 | `Effect_MaterialTemplate.h` | profile ID, typed constant/packet 구성 계약 |

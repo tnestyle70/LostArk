@@ -33,6 +33,7 @@
 #include "Logic_LanceMaster.h"
 #include "Logic_Slayer.h"
 #include "Logic_Warlord.h"
+#include "MainApp.h"
 #include "MapEffectPresentationRuntime.h"
 #include "Model.h"
 #include "NetworkManager.h"
@@ -88,8 +89,6 @@ namespace
 		"mesh_idle_battle_1";
 	constexpr const char_t* VALTAN_ARENA_BOSS_PLACEMENT_ID =
 		"boss.valtan.center";
-	constexpr const char_t* VALTAN_EFFECT_TOOL_AUDITION_CONSUMER_ID =
-		"Effect Tool";
 	constexpr const char_t* VALTAN_AREA_ID = "LV_LUT_HEARTRB_ED";
 	constexpr const char_t* VALTAN_AREA_MAP_EFFECT_SOURCE =
 		"Maps/Authoring/LV_LUT_HEARTRB_ED/"
@@ -116,6 +115,17 @@ namespace
 	{
 		return ETOUI(Client::LEVEL::VALTAN_ARENA) == iLevel ?
 			VALTAN_ARENA_BOSS_PLACEMENT_ID : nullptr;
+	}
+
+	void Select_SharedCompletePlayPattern(
+		const std::string& strPatternId)
+	{
+#ifdef _DEBUG
+		if (CMainApp* const pApp = CMainApp::Get_Active())
+			(void)pApp->Debug_SelectCompletePlayPattern(strPatternId);
+#else
+		UNREFERENCED_PARAMETER(strPatternId);
+#endif
 	}
 
 	bool Remove_EffectDocumentIfCanonical(
@@ -3166,6 +3176,7 @@ bool_t Client::CEffect_Tool::Open_ValtanProductEffect(
 		return Reject(std::move(PathStatus));
 
 	m_strSelectedValtanPatternId = pPattern->strPatternId;
+	Select_SharedCompletePlayPattern(m_strSelectedValtanPatternId);
 	m_SelectedValtanPatternEffect.reset();
 	Copy_Buffer(m_AllEffectsSearch.data(), m_AllEffectsSearch.size(),
 		std::string{});
@@ -12866,39 +12877,36 @@ bool_t Client::CEffect_Tool::Try_PlayValtanServerPattern(
 		return false;
 	}
 
-	const char_t* pBossPlacementId =
-		Resolve_ValtanServerPatternBossPlacement(
-			CGameInstance::Get().Get_CurrentLevelID());
-	if (nullptr == pBossPlacementId)
-	{
-		m_strValtanServerPatternStatusPatternId = Pattern.strPatternId;
-		m_strValtanServerPatternStatus =
-			"Valtan Arena changed before Play Server could submit.";
-		return false;
-	}
-
-	std::string Status;
-	if (!CValtanPatternAuditionService::Get().Submit(
-			VALTAN_EFFECT_TOOL_AUDITION_CONSUMER_ID,
-			pBossPlacementId,
-			Pattern.strPatternId,
-			Status))
-	{
-		m_strValtanServerPatternStatusPatternId = Pattern.strPatternId;
-		m_strValtanServerPatternStatus = std::move(Status);
-		return false;
-	}
 	m_strValtanServerPatternStatusPatternId = Pattern.strPatternId;
-	m_strValtanServerPatternStatus = std::move(Status);
-	return true;
+#ifdef _DEBUG
+	CMainApp* const pApp = CMainApp::Get_Active();
+	if (nullptr == pApp)
+	{
+		m_strValtanServerPatternStatus =
+			"Complete Play workspace is unavailable.";
+		return false;
+	}
+	if (!pApp->Debug_SelectCompletePlayPattern(Pattern.strPatternId))
+	{
+		m_strValtanServerPatternStatus =
+			"The selected Effect pattern is not in the shared Server inventory.";
+		return false;
+	}
+	return pApp->Debug_CompletePlaySelected(
+		m_strValtanServerPatternStatus);
+#else
+	m_strValtanServerPatternStatus =
+		"Complete Play is available only in a Debug authoring build.";
+	return false;
+#endif
 }
 
 void Client::CEffect_Tool::Update_ValtanServerPatternAudition()
 {
 	const VALTAN_PATTERN_AUDITION_SNAPSHOT& Audition =
 		CValtanPatternAuditionService::Get().Get_Snapshot();
-	if (VALTAN_EFFECT_TOOL_AUDITION_CONSUMER_ID !=
-			Audition.strConsumerId || Audition.strPatternId.empty())
+	if (Audition.strPatternId.empty() ||
+		Audition.strPatternId != m_strValtanServerPatternStatusPatternId)
 	{
 		return;
 	}
@@ -13158,6 +13166,7 @@ bool_t Client::CEffect_Tool::Try_CreateValtanPatternEffect(
 		Refresh_ValtanPatternAuthoringEffects();
 	const bool_t bDataFilesReloaded = Refresh_DataFiles();
 	m_strSelectedValtanPatternId = Pattern.strPatternId;
+	Select_SharedCompletePlayPattern(m_strSelectedValtanPatternId);
 	VALTAN_PATTERN_EFFECT_SELECTION CreatedSelection;
 	CreatedSelection.eKind =
 		VALTAN_PATTERN_EFFECT_SELECTION_KIND::DRAFT_ATTACHED;
@@ -13701,6 +13710,7 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 		if (m_strSelectedValtanPatternId != Pattern.strPatternId)
 			m_SelectedValtanPatternEffect.reset();
 		m_strSelectedValtanPatternId = Pattern.strPatternId;
+		Select_SharedCompletePlayPattern(m_strSelectedValtanPatternId);
 	}
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("Pattern ID: %s", Pattern.strPatternId.c_str());
@@ -13714,6 +13724,7 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 		if (m_strSelectedValtanPatternId != Pattern.strPatternId)
 			m_SelectedValtanPatternEffect.reset();
 		m_strSelectedValtanPatternId = Pattern.strPatternId;
+		Select_SharedCompletePlayPattern(m_strSelectedValtanPatternId);
 		Try_PlayValtanServerPattern(Pattern);
 	}
 	ImGui::EndDisabled();
@@ -13912,6 +13923,8 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 					Selection.CueIds).begin();
 				Selection.CueIds.erase(UniqueEnd, Selection.CueIds.end());
 				m_strSelectedValtanPatternId = Pattern.strPatternId;
+				Select_SharedCompletePlayPattern(
+					m_strSelectedValtanPatternId);
 				m_SelectedValtanPatternEffect = std::move(Selection);
 			};
 			ImGui::PushID(Row.strEffectAssetId.c_str());
@@ -14069,6 +14082,8 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 				Selection.strPatternId = Pattern.strPatternId;
 				Selection.strEffectAssetId = pBinding->strEffectAssetId;
 				m_strSelectedValtanPatternId = Pattern.strPatternId;
+				Select_SharedCompletePlayPattern(
+					m_strSelectedValtanPatternId);
 				m_SelectedValtanPatternEffect = std::move(Selection);
 			}
 			ImGui::BeginDisabled(DraftPath.empty() || bActiveDraft);
@@ -15631,6 +15646,21 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 			VisiblePatternIds.size(),
 			m_ValtanToolAuditionInventory.Get_PatternCount());
 	}
+
+#ifdef _DEBUG
+	if (CMainApp* const pApp = CMainApp::Get_Active())
+	{
+		const std::string& strSharedPatternId =
+			pApp->Debug_GetSelectedCompletePlayPatternId();
+		if (!strSharedPatternId.empty() &&
+			VisiblePatternIds.contains(strSharedPatternId) &&
+			m_strSelectedValtanPatternId != strSharedPatternId)
+		{
+			m_strSelectedValtanPatternId = strSharedPatternId;
+			m_SelectedValtanPatternEffect.reset();
+		}
+	}
+#endif
 
 	const VALTAN_PATTERN_VIEW* pSelectedPattern =
 		m_strSelectedValtanPatternId.empty() ? nullptr :
@@ -20643,6 +20673,8 @@ bool_t Client::CEffect_Tool::Execute_PendingDocumentLoad(
 		if (!Pending.strValtanPatternId.empty())
 		{
 			m_strSelectedValtanPatternId = Pending.strValtanPatternId;
+			Select_SharedCompletePlayPattern(
+				m_strSelectedValtanPatternId);
 			m_SelectedValtanPatternEffect.reset();
 			m_strValtanPatternEffectStatus =
 				"Opened the existing aggregate Effect for authoring only: " +

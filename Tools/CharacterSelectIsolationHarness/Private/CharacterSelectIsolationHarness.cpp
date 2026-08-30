@@ -24,6 +24,8 @@
 #include <utility>
 #include <vector>
 
+int Run_ClientPresentationPrimitiveContractTests();
+
 namespace
 {
 	using namespace LostArk::Shared;
@@ -40,6 +42,7 @@ namespace
 		std::uint32_t iTimeoutMilliseconds = 4000u;
 		std::uint32_t iBernPartySize = 0u;
 		bool isG02IdentityFast = false;
+		bool isPresentationContractOnly = false;
 	};
 
 	bool Parse_Unsigned(
@@ -69,6 +72,7 @@ namespace
 		bool hasTimeout = false;
 		bool hasG02IdentityFast = false;
 		bool hasBernPartySize = false;
+		bool hasPresentationContractOnly = false;
 		for (int index = 1; index < argumentCount; ++index)
 		{
 			const std::string_view argument(arguments[index]);
@@ -126,15 +130,29 @@ namespace
 				hasBernPartySize = true;
 				continue;
 			}
+			if ("--presentation-contract-only" == argument &&
+				!hasPresentationContractOnly)
+			{
+				options.isPresentationContractOnly = true;
+				hasPresentationContractOnly = true;
+				continue;
+			}
 
 			error = "Usage: CharacterSelectIsolationHarness [--host IPv4] "
 				"[--port 1..65535] [--timeout-ms 1000..4000] "
-				"[--g02-identity-fast | --bern-party-size 2|4]";
+				"[--g02-identity-fast | --bern-party-size 2|4 | "
+				"--presentation-contract-only]";
 			return false;
 		}
 		if (hasG02IdentityFast && hasBernPartySize)
 		{
 			error = "--g02-identity-fast and --bern-party-size cannot be combined";
+			return false;
+		}
+		if (hasPresentationContractOnly &&
+			(hasHost || hasPort || hasTimeout || hasG02IdentityFast || hasBernPartySize))
+		{
+			error = "--presentation-contract-only cannot be combined with a network scenario";
 			return false;
 		}
 
@@ -1546,6 +1564,9 @@ int main(const int argumentCount, char** arguments)
 		std::cerr << "[FAILURE] " << error << '\n';
 		return 2;
 	}
+	const int presentationFailures = Run_ClientPresentationPrimitiveContractTests();
+	if (0 != presentationFailures || options.isPresentationContractOnly)
+		return presentationFailures;
 
 	const CWinsockScope winsock;
 	if (!winsock.Is_Ready())

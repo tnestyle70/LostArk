@@ -134,6 +134,7 @@ private:
 	std::optional<size_t> m_iPendingClassIndex;
 	std::uint32_t m_iNextClassChangeSequence = 1u;
 	std::uint32_t m_iNextDespawnRequestSequence = 1u;
+	std::uint32_t m_iNextKakulArenaRequestSequence = 1u;
 	std::uint32_t m_iPendingClassChangeSequence = 0u;
 	CLASS_PRESENTATION_PREPARATION_STATE
 		m_eClassPresentationPreparationState =
@@ -168,6 +169,9 @@ private:
 		LostArk::Shared::MAX_NICKNAME_BYTES + 1u> m_NicknameDraft{};
 	bool_t m_isCreateCharacterModalOpen = false;
 	bool_t m_hasCreateCharacterButtonClick = false;
+	/* A Server-approved world transfer hands the live socket to the target
+	   Product Level. Ordinary Back/failure destruction still owns the close. */
+	bool_t m_preserveServerConnectionForTransfer = false;
 #ifdef _DEBUG
 	bool_t m_isCombatColliderDebugVisible = false;
 	bool_t m_isSkillHitAreaDebugVisible = true;

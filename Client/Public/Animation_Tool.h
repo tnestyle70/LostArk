@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "AnimationSkillBindingDocument.h"
+#include "KakulAnimationActionDocument.h"
 #include "AnimationEffectCueDocument.h"
 #include "CharacterPreviewPanel.h"
 #include "EncounterPatternReference.h"
@@ -242,6 +243,9 @@ public:
 		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& outRequest);
 	bool_t Consume_CameraToolOpenRequest(
 		CAMERA_TOOL_OPEN_REQUEST& outRequest);
+	/* Typed Resource Files handoff for one extracted Kakul profile. 07 is an
+	   authoring profile alias whose physical preview body is MN_RPCT_05. */
+	bool_t Open_KakulProfile(const std::string& profileId);
 
 private:
 	shared_ptr<Engine::CModel> Resolve_Model() const;
@@ -366,6 +370,30 @@ private:
 	void Render_SkillBindingReloadConfirmation(
 		const shared_ptr<Engine::CModel>& pModel,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass);
+	void Render_KakulActionBindings(
+		const shared_ptr<Engine::CModel>& pModel);
+	bool_t Load_KakulActionBindings(
+		const shared_ptr<Engine::CModel>& pModel);
+	bool_t Save_KakulActionBindings(
+		const shared_ptr<Engine::CModel>& pModel);
+	KAKUL_ANIMATION_ACTION_BINDING* Find_KakulActionBinding(
+		std::uint32_t iSourceActionId,
+		const std::string& strStageId,
+		const std::string& strSlotId);
+	void Upsert_KakulActionBinding(
+		const KAKUL_ANIMATION_ACTION_SLOT_REFERENCE& ReferenceSlot,
+		std::uint32_t iSourceActionId,
+		const std::string& strStageId,
+		const std::string& strRuntimeClip,
+		std::uint32_t iSourceStartMs,
+		std::uint32_t iPlayMs,
+		f32_t fPlayRate,
+		bool_t bLoop);
+	void Remove_KakulActionBinding(
+		std::uint32_t iSourceActionId,
+		const std::string& strStageId,
+		const std::string& strSlotId);
+	void Reset_KakulActionDocumentState(bool_t bClearProfile);
 
 	bool_t Save_Events(const shared_ptr<Engine::CModel>& pModel);
 	bool_t Load_Events(const shared_ptr<Engine::CModel>& pModel);
@@ -565,6 +593,17 @@ private:
 	int32_t m_iSelectedSkillStage = 0;
 	int32_t m_iSelectedSkillClip = 0;
 	std::string m_SkillBindingStatus;
+	std::string m_strKakulProfileId;
+	KAKUL_ANIMATION_ACTION_REFERENCE_DOCUMENT m_KakulActionReference;
+	KAKUL_ANIMATION_ACTION_AUTHORED_DOCUMENT m_KakulActionAuthored;
+	bool_t m_bKakulActionLoadAttempted = false;
+	bool_t m_bKakulActionDirty = false;
+	bool_t m_bKakulActionReloadConfirmationRequested = false;
+	int32_t m_iSelectedKakulAction = -1;
+	int32_t m_iSelectedKakulStage = 0;
+	int32_t m_iSelectedKakulSlot = 0;
+	char m_KakulActionFilter[128]{};
+	std::string m_strKakulActionStatus;
 	/* Which kinds Import_Notifies takes. Effects alone run to a few thousand
 	rows, so being able to pull in just hits and cancels matters. */
 	bool_t m_bImportKind[ETOI(EVENT_KIND::END)]{};

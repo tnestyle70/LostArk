@@ -10,6 +10,7 @@
 #include "EffectV2_Object.h"
 #include "EffectV2_Runtime.h"
 #include "GameInstance.h"
+#include "MainApp.h"
 #include "Model.h"
 #include "Npc.h"
 #include "NpcPresentationAssetService.h"
@@ -34,10 +35,8 @@
 
 namespace
 {
-	constexpr const char* VALTAN_EFFECT_TOOL_V2_AUDITION_CONSUMER_ID =
-		"effect-tool-v2";
-	constexpr const char* VALTAN_ARENA_BOSS_PLACEMENT_ID =
-		"boss.valtan.center";
+	constexpr const wchar_t* EFFECT_V2_PREVIEW_LAYER_TAG =
+		L"Layer_EffectPreviewV2";
 
 	constexpr uint32_t MAX_PREVIEW_LOADS_PER_FRAME = 2u;
 	constexpr size_t MAX_PREVIEW_DIMENSION = 512u;
@@ -81,7 +80,39 @@ Client::CEffect_Tool_V2::CEffect_Tool_V2(
 {
 }
 
-Client::CEffect_Tool_V2::~CEffect_Tool_V2() = default;
+Client::CEffect_Tool_V2::~CEffect_Tool_V2()
+{
+	Deactivate();
+}
+
+void Client::CEffect_Tool_V2::Deactivate()
+{
+	Stop_ValtanTimeline();
+	m_bTestOrbit = false;
+	if (const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock())
+	{
+		pPreview->Clear_FollowTarget();
+		pPreview->Set_Hidden(true);
+		pPreview->Finish();
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			CGameInstance::Get().Get_CurrentLevelID(),
+			EFFECT_V2_PREVIEW_LAYER_TAG, pPreview);
+	}
+	m_pPreview.reset();
+	Despawn_Target();
+	m_fTargetLastClipSeconds = -1.f;
+	m_strPreviewStatus =
+		"Effect Tool v2 hidden: active preview/playback released; authored draft preserved.";
+}
+
+void Client::CEffect_Tool_V2::On_LevelChanged()
+{
+	Deactivate();
+	m_Target.Reset();
+	m_TargetBoneNames.clear();
+	m_strAttachStatus =
+		"Level changed: spawn a new preview target in the active Level.";
+}
 
 void Client::CEffect_Tool_V2::Render()
 {
@@ -1082,7 +1113,7 @@ bool_t Client::CEffect_Tool_V2::Spawn_Preview(
 	std::shared_ptr<CGameObject> pGameObject;
 	if (FAILED(GameInstance.Add_GameObject_to_Layer(
 		ETOUI(LEVEL::STATIC), L"Prototype_GameObject_EffectPreviewV2",
-		GameInstance.Get_CurrentLevelID(), L"Layer_EffectPreviewV2",
+		GameInstance.Get_CurrentLevelID(), EFFECT_V2_PREVIEW_LAYER_TAG,
 		&Desc, &pGameObject)))
 	{
 		m_strPreviewStatus = "Create failed: " +
@@ -1838,6 +1869,11 @@ bool_t Client::CEffect_Tool_V2::Try_LocateValtanStage(
 				if (Stage.strActionId != strActionId)
 					continue;
 				m_iValtanPatternSelection = static_cast<int32_t>(iPattern);
+#ifdef _DEBUG
+				if (CMainApp* const pApp = CMainApp::Get_Active())
+					(void)pApp->Debug_SelectCompletePlayPattern(
+						Pattern.strPatternId);
+#endif
 				m_eValtanPath = ePath;
 				m_iValtanSpawnTimelineMs = static_cast<int32_t>(
 					Stage.iStartMs + (std::min)(iOffsetMs, Stage.iDurationMs));
@@ -1867,6 +1903,28 @@ void Client::CEffect_Tool_V2::Render_ValtanPatternSection()
 			m_bValtanTreeLoaded = false;
 		return;
 	}
+
+#ifdef _DEBUG
+	if (CMainApp* const pApp = CMainApp::Get_Active())
+	{
+		const std::string& strSharedPatternId =
+			pApp->Debug_GetSelectedCompletePlayPatternId();
+		if (!strSharedPatternId.empty())
+		{
+			const auto Found = std::find_if(
+				m_ValtanPatterns.begin(), m_ValtanPatterns.end(),
+				[&strSharedPatternId](const VALTAN_PATTERN_VIEW* pPattern)
+				{
+					return nullptr != pPattern &&
+						pPattern->strPatternId == strSharedPatternId;
+				});
+			m_iValtanPatternSelection =
+				m_ValtanPatterns.end() == Found ? -1 :
+				static_cast<int32_t>(
+					std::distance(m_ValtanPatterns.begin(), Found));
+		}
+	}
+#endif
 	const char* pPatternLabel =
 		m_iValtanPatternSelection >= 0 &&
 		m_iValtanPatternSelection < static_cast<int32_t>(m_ValtanPatterns.size()) ?
@@ -1882,6 +1940,11 @@ void Client::CEffect_Tool_V2::Render_ValtanPatternSection()
 			if (ImGui::Selectable(strLabel.c_str(), iIndex == m_iValtanPatternSelection))
 			{
 				m_iValtanPatternSelection = iIndex;
+#ifdef _DEBUG
+				if (CMainApp* const pApp = CMainApp::Get_Active())
+					(void)pApp->Debug_SelectCompletePlayPattern(
+						Pattern.strPatternId);
+#endif
 				if (m_bValtanTimelineActive)
 					Stop_ValtanTimeline();
 			}
@@ -2003,33 +2066,43 @@ bool_t Client::CEffect_Tool_V2::Try_PlayValtanServerPattern()
 			"Select one admitted Valtan pattern before Server playback.";
 		return false;
 	}
-	if (ETOUI(LEVEL::VALTAN_ARENA) !=
-		CGameInstance::Get().Get_CurrentLevelID())
-	{
-		m_strValtanServerPatternStatus =
-			"Complete Play is available only after entering Valtan from Lobby.";
-		return false;
-	}
-
 	const VALTAN_PATTERN_VIEW& Pattern =
 		*m_ValtanPatterns[static_cast<size_t>(m_iValtanPatternSelection)];
-	std::string status;
-	const bool_t submitted = CValtanPatternAuditionService::Get().Submit(
-		VALTAN_EFFECT_TOOL_V2_AUDITION_CONSUMER_ID,
-		VALTAN_ARENA_BOSS_PLACEMENT_ID,
-		Pattern.strPatternId,
-		status);
-	m_strValtanServerPatternStatus = std::move(status);
-	return submitted;
+#ifdef _DEBUG
+	CMainApp* const pApp = CMainApp::Get_Active();
+	if (nullptr == pApp)
+	{
+		m_strValtanServerPatternStatus =
+			"Complete Play workspace is unavailable.";
+		return false;
+	}
+	if (!pApp->Debug_SelectCompletePlayPattern(Pattern.strPatternId))
+	{
+		m_strValtanServerPatternStatus =
+			"The selected V2 pattern is not in the shared Server inventory.";
+		return false;
+	}
+	return pApp->Debug_CompletePlaySelected(
+		m_strValtanServerPatternStatus);
+#else
+	m_strValtanServerPatternStatus =
+		"Complete Play is available only in a Debug authoring build.";
+	return false;
+#endif
 }
 
 void Client::CEffect_Tool_V2::Update_ValtanServerPatternStatus()
 {
 	const VALTAN_PATTERN_AUDITION_SNAPSHOT& snapshot =
 		CValtanPatternAuditionService::Get().Get_Snapshot();
-	if (snapshot.strConsumerId !=
-		VALTAN_EFFECT_TOOL_V2_AUDITION_CONSUMER_ID ||
-		snapshot.strPatternId.empty())
+	if (snapshot.strPatternId.empty() ||
+		m_iValtanPatternSelection < 0 ||
+		m_iValtanPatternSelection >=
+			static_cast<int32_t>(m_ValtanPatterns.size()) ||
+		nullptr == m_ValtanPatterns[
+			static_cast<size_t>(m_iValtanPatternSelection)] ||
+		snapshot.strPatternId != m_ValtanPatterns[
+			static_cast<size_t>(m_iValtanPatternSelection)]->strPatternId)
 	{
 		return;
 	}

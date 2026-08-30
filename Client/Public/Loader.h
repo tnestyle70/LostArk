@@ -82,6 +82,7 @@ private:
 	HRESULT Ready_For_CharacterSelect();
 	HRESULT Ready_For_Bern();
 	HRESULT Ready_For_ValtanArena();
+	HRESULT Ready_For_KakulSaydonArena();
 	HRESULT Ready_For_Development();
 
 	HRESULT Ready_MapArea(

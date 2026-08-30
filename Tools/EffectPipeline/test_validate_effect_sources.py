@@ -26,7 +26,6 @@ class EffectSourceValidatorTests(unittest.TestCase):
         (self.root / "Data/Effects/ScreenOverlays").mkdir(parents=True)
         (self.root / "Client/Private").mkdir(parents=True)
         (self.root / "Tools/EffectPipeline").mkdir(parents=True)
-        (self.root / "Tools/EffectRenderContractHarness").mkdir(parents=True)
         self.effect_id = "effect.test.source"
         self.row = {
             "effectAssetId": self.effect_id,
@@ -364,9 +363,6 @@ class EffectSourceValidatorTests(unittest.TestCase):
         (self.root / "Client/Private/Effect_Tool.cpp").write_text(
             "Data/Effects/Authored is canonical\n", encoding="utf-8"
         )
-        (self.root / "Tools/EffectRenderContractHarness/Run-EffectRenderContractHarness.ps1").write_text(
-            "param()\n", encoding="utf-8"
-        )
 
     def _write_valtan_draft(self, bindings: list[dict[str, object]]) -> None:
         self._write_json(
@@ -573,21 +569,20 @@ class EffectSourceValidatorTests(unittest.TestCase):
         with self.assertRaisesRegex(MODULE.ContractError, "unsafe Resources-relative"):
             MODULE.validate_repository(self.root)
 
-    def test_untracked_runtime_resource_is_rejected_in_git_worktree(self) -> None:
+    def test_drive_owned_runtime_resource_is_validated_in_git_worktree(self) -> None:
         resource_id = "Effect/Test/untracked.dds"
         self._set_source_resource(resource_id)
         self._write_resource(resource_id, b"DDS untracked")
         self._git("init", "--quiet")
-        with self.assertRaisesRegex(MODULE.ContractError, "not tracked by Git"):
-            MODULE.validate_repository(self.root)
-
-        report = MODULE.validate_repository(self.root, allow_local_resources=True)
+        report = MODULE.validate_repository(self.root)
         self.assertEqual(report.resource_file_count, 1)
         self.assertEqual(report.local_untracked_resource_count, 1)
         self.assertTrue(json.loads(report.as_json())["allowLocalResources"])
+        with self.assertRaisesRegex(MODULE.ContractError, "not tracked by Git"):
+            MODULE.validate_repository(self.root, allow_local_resources=False)
         self._write_resource(resource_id, b"not-a-dds")
         with self.assertRaisesRegex(MODULE.ContractError, "DDS magic is invalid"):
-            MODULE.validate_repository(self.root, allow_local_resources=True)
+            MODULE.validate_repository(self.root)
 
     def test_tracked_source_and_overlay_resource_closure_is_reported(self) -> None:
         model_id = "Effect/Test/model.wmodel"

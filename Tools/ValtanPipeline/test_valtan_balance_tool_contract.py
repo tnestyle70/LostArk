@@ -224,13 +224,16 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         self.assertIn('phasePolicyKind == "AUTHORED_PATTERN_EVENT"', self.balance_cpp)
         self.assertNotIn("boss.phaseTwoHpPercent", self.balance_cpp)
 
-    def test_single_audition_service_owns_queue_for_two_ui_submitters(self) -> None:
+    def test_single_audition_service_is_submitted_only_by_shared_boss_owner(self) -> None:
         self.assertIn("class CValtanPatternAuditionService", self.audition_h)
         self.assertIn("Try_Consume_ValtanPatternAuditionByIdResult", self.audition_cpp)
         self.assertIn('"Boss Tool"', self.boss_cpp)
         self.assertIn("CValtanPatternAuditionService::Get().Submit", self.boss_cpp)
         self.assertIn('"Effect Tool"', self.effect_cpp)
-        self.assertIn("CValtanPatternAuditionService::Get().Submit", self.effect_cpp)
+        self.assertNotIn("CValtanPatternAuditionService::Get().Submit", self.effect_cpp)
+        self.assertIn("Debug_SelectCompletePlayPattern", self.effect_cpp)
+        self.assertIn("Debug_CompletePlaySelected", self.effect_cpp)
+        self.assertIn("m_pBossTool->Play_ServerPattern", self.main_app_cpp)
         self.assertNotIn("CValtanPatternAuditionService", self.balance_cpp)
         self.assertNotIn("Request_RevivePlayer", self.balance_cpp)
         self.assertNotIn("Request_RevivePlayer", self.effect_cpp)
@@ -341,7 +344,18 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
     def test_authoring_candidate_and_typed_hot_reload_are_distinct(self) -> None:
         for command in ("ValidateDraft", "SaveAuthoring", "PublishCandidate"):
             self.assertIn(command, self.balance_cpp)
-        self.assertIn('ImGui::Button("Apply Hot Reload")', self.balance_cpp)
+        save_product = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)",
+        )
+        for command in (
+            "Validate_ValtanDraft",
+            "Save_ValtanAuthoring",
+            "Publish_ValtanCandidate",
+            "Apply_ValtanRevision",
+        ):
+            self.assertIn(command, save_product)
+        self.assertNotIn('ImGui::Button("Apply Hot Reload")', self.balance_cpp)
 
     def test_candidate_apply_class_is_strict_and_blocks_hot_reload(self) -> None:
         self.assertIn("std::string applyClass;", self.balance_cpp)
@@ -366,18 +380,51 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
             'm_valtanCandidateApplyClass == "HOT_RELOAD"', self.balance_cpp
         )
         self.assertIn("m_valtanCandidateApplyClass.clear();", self.balance_cpp)
-        self.assertIn("Apply class: %s", self.balance_cpp)
+        self.assertIn("Runtime activation: %s", self.balance_cpp)
         self.assertIn("m_valtanCandidateApplyClass", self.balance_h)
         self.assertIn("RequestValtanHotReload", self.balance_cpp)
         self.assertNotIn("Send_DataRevisionPrepareRequest", request_body)
         self.assertIn("Send_DataRevisionPrepareRequest", self.tuning_command_cpp)
         self.assertIn("GAMEPLAY_PRESENTATION_KNOWN_LANE_MASK", self.tuning_command_cpp)
-        self.assertIn("const bool canApply", self.balance_cpp)
+        self.assertIn("Has_PendingCommand()", self.balance_cpp)
         self.assertIn("!m_dirty", self.balance_cpp)
         self.assertIn("ServerActiveRevision.Is_Valid()", self.balance_cpp)
         self.assertIn("Runtime active pointer is unchanged", self.balance_cpp)
         self.assertIn("m_valtanAuthoringRevision", self.balance_h)
         self.assertIn("m_valtanCandidateRevision", self.balance_h)
+
+    def test_high_jump_axe_count_has_one_typed_normalization_boundary(self) -> None:
+        getter = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Get_ValtanHighJumpAxeCountDraft(",
+        )
+        setter = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Set_ValtanHighJumpAxeCountDraft(",
+        )
+        for token in (
+            '"VALTAN_HIGH_JUMP"',
+            '"AIRBORNE"',
+            '"event.valtan.high-jump.airborne.spawn-target-axe"',
+            "m_valtanSourceRevision.empty()",
+        ):
+            self.assertIn(token, getter)
+        for token in (
+            "countPerAlivePlayer < 1u || countPerAlivePlayer > 8u",
+            'candidate.layoutKind = "TARGET_CENTER"',
+            'candidate.layoutKind = "RADIAL_AROUND_TARGET"',
+            "360.0 /",
+            "candidate.arenaRandomCount",
+            "requiredCapacity > 64u",
+            "MarkDirty(true)",
+        ):
+            self.assertIn(token, setter)
+        render = function_body(
+            self.balance_cpp,
+            "void Client::CBalanceTool::RenderValtanManagedPattern(",
+        )
+        self.assertIn("Set_ValtanHighJumpAxeCountDraft", render)
+        self.assertIn("SET_AXE_VOLLEY", self.balance_cpp)
 
     def test_client_alias_ready_requires_byte_identical_all_lane_artifacts(self) -> None:
         self.assertIn("ValidateByteIdenticalCandidatePresentation", self.network_cpp)

@@ -100,7 +100,7 @@ class ValidationReport:
     source_bytes: int
     resource_file_count: int
     resource_bytes: int
-    allow_local_resources: bool = False
+    allow_local_resources: bool = True
     local_untracked_resource_count: int = 0
 
     def as_json(self) -> str:
@@ -367,7 +367,7 @@ def _validate_runtime_resource_closure(
     resource_ids: set[str],
     *,
     resources_root: Path | None = None,
-    allow_local_resources: bool = False,
+    allow_local_resources: bool = True,
 ) -> tuple[int, int, int]:
     resources_root = (
         resources_root.resolve()
@@ -818,10 +818,7 @@ def _validate_active_consumer_guard(root: Path) -> None:
     guarded_files = {
         "Client/Private/Effect_Catalog.cpp::Load": active_load,
     }
-    for relative in (
-        "Client/Private/Effect_Tool.cpp",
-        "Tools/EffectRenderContractHarness/Run-EffectRenderContractHarness.ps1",
-    ):
+    for relative in ("Client/Private/Effect_Tool.cpp",):
         path = root / relative
         try:
             guarded_files[relative] = path.read_text(encoding="utf-8-sig")
@@ -1076,7 +1073,7 @@ def validate_repository(
     root: Path,
     *,
     resource_root: Path | None = None,
-    allow_local_resources: bool = False,
+    allow_local_resources: bool = True,
 ) -> ValidationReport:
     root = root.resolve()
     data_root = root / "Data/Effects"
@@ -1261,8 +1258,14 @@ def main(argv: list[str] | None = None) -> int:
         default=Path(__file__).resolve().parents[2],
     )
     parser.add_argument(
-        "--allow-local-resources", action="store_true",
-        help="Validate existing shared local resources without requiring untracked files in Git; tracked identity checks remain enabled.",
+        "--allow-local-resources",
+        action="store_true",
+        default=True,
+        help=(
+            "Compatibility flag. Drive-owned local Resources are accepted by "
+            "default; tracked identity checks remain enabled when a referenced "
+            "file is present in the Git index."
+        ),
     )
     parser.add_argument(
         "--resource-root",

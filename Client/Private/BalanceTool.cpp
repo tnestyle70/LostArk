@@ -717,12 +717,92 @@ namespace
 		draft.downMs = stage.iDownMs;
 		draft.playerResponse = stage.strPlayerResponse;
 		draft.attachmentSlot = stage.strAttachmentSlot;
+		draft.actions = stage.Actions;
+		draft.productCues = stage.ProductCues;
+		for (const VALTAN_CLIP_OCCURRENCE_VIEW& occurrence :
+			stage.ClipOccurrences)
+		{
+			draft.productCues.insert(
+				draft.productCues.end(), occurrence.ProductCues.begin(),
+				occurrence.ProductCues.end());
+		}
 		draft.durationEditable = !pattern.bManualServerAudition;
 		/* Adding/removing a hit also owns DamageProfile selection.  Workbench
 		   deliberately keeps that ownership in Balance Tool and edits only an
 		   already admitted hit contract. */
 		draft.hitEditable = "NONE" != stage.strHitShape;
 		return draft;
+	}
+
+	bool EqualValtanActionStableFields(
+		const VALTAN_STAGE_ACTION_VIEW& left,
+		const VALTAN_STAGE_ACTION_VIEW& right)
+	{
+		return left.strTrigger == right.strTrigger &&
+			left.strKind == right.strKind &&
+			left.strTargetId == right.strTargetId &&
+			left.fValue == right.fValue;
+	}
+
+	bool EqualValtanCueExceptLocalYaw(
+		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& left,
+		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& right)
+	{
+		return left.strBindingId == right.strBindingId &&
+			left.strOccurrenceId == right.strOccurrenceId &&
+			left.strPatternId == right.strPatternId &&
+			left.strStageId == right.strStageId &&
+			left.strActionId == right.strActionId &&
+			left.strClipOccurrenceId == right.strClipOccurrenceId &&
+			left.strEffectAssetId == right.strEffectAssetId &&
+			left.strV1EffectAssetId == right.strV1EffectAssetId &&
+			left.strAnchorSlotId == right.strAnchorSlotId &&
+			left.eFollowPolicy == right.eFollowPolicy &&
+			left.eStopPolicy == right.eStopPolicy &&
+			left.strFollowPolicy == right.strFollowPolicy &&
+			left.strStopPolicy == right.strStopPolicy &&
+			left.strRepeatPolicy == right.strRepeatPolicy &&
+			left.eScalePolicy == right.eScalePolicy &&
+			left.strScalePolicy == right.strScalePolicy &&
+			left.vWorldScale.x == right.vWorldScale.x &&
+			left.vWorldScale.y == right.vWorldScale.y &&
+			left.vWorldScale.z == right.vWorldScale.z &&
+			left.bHasExplicitScalePolicy == right.bHasExplicitScalePolicy &&
+			left.bUsesStageClock == right.bUsesStageClock &&
+			left.iStageOffsetMs == right.iStageOffsetMs &&
+			left.iSourceStartMs == right.iSourceStartMs &&
+			left.iSourceEndMs == right.iSourceEndMs &&
+			left.iStageDurationMs == right.iStageDurationMs &&
+			left.bHasSourceEnd == right.bHasSourceEnd &&
+			left.LocalTransform.vPosition.x == right.LocalTransform.vPosition.x &&
+			left.LocalTransform.vPosition.y == right.LocalTransform.vPosition.y &&
+			left.LocalTransform.vPosition.z == right.LocalTransform.vPosition.z &&
+			left.LocalTransform.vRotationDegrees.x ==
+				right.LocalTransform.vRotationDegrees.x &&
+			left.LocalTransform.vRotationDegrees.z ==
+				right.LocalTransform.vRotationDegrees.z &&
+			left.LocalTransform.vScale.x == right.LocalTransform.vScale.x &&
+			left.LocalTransform.vScale.y == right.LocalTransform.vScale.y &&
+			left.LocalTransform.vScale.z == right.LocalTransform.vScale.z;
+	}
+
+	std::vector<const VALTAN_PRODUCT_EFFECT_CUE_VIEW*> CollectValtanProductCues(
+		const VALTAN_STAGE_VIEW& stage)
+	{
+		std::vector<const VALTAN_PRODUCT_EFFECT_CUE_VIEW*> cues;
+		cues.reserve(stage.ProductCues.size() + stage.ClipOccurrences.size());
+		for (const VALTAN_PRODUCT_EFFECT_CUE_VIEW& cue : stage.ProductCues)
+			cues.push_back(&cue);
+		for (const VALTAN_CLIP_OCCURRENCE_VIEW& occurrence :
+			stage.ClipOccurrences)
+		{
+			for (const VALTAN_PRODUCT_EFFECT_CUE_VIEW& cue :
+				occurrence.ProductCues)
+			{
+				cues.push_back(&cue);
+			}
+		}
+		return cues;
 	}
 
 	bool IsValtanStageGeometryValid(
@@ -794,6 +874,23 @@ void Client::CBalanceTool::Open()
 	m_focusPending = true;
 }
 
+void Client::CBalanceTool::Open_Valtan()
+{
+	Open();
+	m_showPlayers = false;
+	const auto found = std::find_if(
+		m_bosses.begin(), m_bosses.end(),
+		[](const BOSS_EDIT& boss)
+		{
+			return "BOSS_VALTAN" == boss.archetypeId;
+		});
+	if (m_bosses.end() != found)
+	{
+		m_selectedBoss = static_cast<std::size_t>(
+			std::distance(m_bosses.begin(), found));
+	}
+}
+
 bool Client::CBalanceTool::Get_ValtanStageDurationDraft(
 	const std::string& patternId,
 	const std::string& stageId,
@@ -818,6 +915,79 @@ bool Client::CBalanceTool::Set_ValtanStageDurationDraft(
 		return false;
 	stage.durationMs = durationMs;
 	return Set_ValtanStageDraft(patternId, stageId, stage, status);
+}
+
+bool Client::CBalanceTool::Get_ValtanHighJumpAxeCountDraft(
+	std::uint32_t& draftCount,
+	std::uint32_t& savedCount,
+	std::uint32_t& arenaRandomCount,
+	std::uint32_t& maximumTotalObjects,
+	std::string& status) const
+{
+	if ("VALTAN_HIGH_JUMP" != m_valtanAxeVolley.patternId ||
+		"AIRBORNE" != m_valtanAxeVolley.stageId ||
+		"event.valtan.high-jump.airborne.spawn-target-axe" !=
+			m_valtanAxeVolley.eventId ||
+		m_valtanSourceRevision.empty() ||
+		m_valtanAxeVolley.countPerResolvedTarget < 1u ||
+		m_valtanAxeVolley.countPerResolvedTarget > 8u)
+	{
+		status = "Valtan high-jump axe-volley draft is unavailable.";
+		return false;
+	}
+	draftCount = m_valtanAxeVolley.countPerResolvedTarget;
+	savedCount = m_loadedValtanAxeVolley.countPerResolvedTarget;
+	arenaRandomCount = m_valtanAxeVolley.arenaRandomCount;
+	maximumTotalObjects = m_valtanAxeVolley.maximumTotalObjects;
+	status = "Valtan high-jump axe-volley draft is ready.";
+	return true;
+}
+
+bool Client::CBalanceTool::Set_ValtanHighJumpAxeCountDraft(
+	const std::uint32_t countPerAlivePlayer,
+	std::string& status)
+{
+	if (countPerAlivePlayer < 1u || countPerAlivePlayer > 8u)
+	{
+		status = "Axes per alive player must be in the inclusive range 1..8.";
+		return false;
+	}
+	if (countPerAlivePlayer == m_valtanAxeVolley.countPerResolvedTarget)
+	{
+		status = "Valtan high-jump axe count is unchanged.";
+		return true;
+	}
+
+	VALTAN_AXE_VOLLEY_EDIT candidate = m_valtanAxeVolley;
+	const std::uint32_t previousCount = candidate.countPerResolvedTarget;
+	candidate.countPerResolvedTarget = countPerAlivePlayer;
+	if (1u == countPerAlivePlayer)
+	{
+		candidate.layoutKind = "TARGET_CENTER";
+		candidate.radiusM = 0.0;
+		candidate.startAngleDegrees = 0.0;
+		candidate.angleStepDegrees = 0.0;
+	}
+	else if (1u == previousCount)
+	{
+		candidate.layoutKind = "RADIAL_AROUND_TARGET";
+		candidate.radiusM = 3.0;
+		candidate.angleStepDegrees = 360.0 /
+			static_cast<double>(countPerAlivePlayer);
+	}
+	const std::uint32_t requiredCapacity =
+		countPerAlivePlayer + candidate.arenaRandomCount;
+	if (requiredCapacity > 64u)
+	{
+		status = "Valtan high-jump axe capacity exceeds the Product limit.";
+		return false;
+	}
+	candidate.maximumTotalObjects = (std::max)(
+		candidate.maximumTotalObjects, requiredCapacity);
+	m_valtanAxeVolley = std::move(candidate);
+	MarkDirty(true);
+	status = "Staged SET_AXE_VOLLEY for VALTAN_HIGH_JUMP/AIRBORNE. Press Save to validate and apply the Product revision.";
+	return true;
 }
 
 bool Client::CBalanceTool::Get_ValtanStageDraft(
@@ -878,6 +1048,82 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 	{
 		status = "Valtan stage edit rejected: stable identity, DamageProfile, response, and explicit-offset ownership are read-only in Workbench.";
 		return false;
+	}
+	if (candidate.actions.size() != current.actions.size() ||
+		candidate.productCues.size() != current.productCues.size())
+	{
+		status = "Valtan stage edit rejected: joined action/effect inventory is read-only.";
+		return false;
+	}
+	bool releaseChanged = false;
+	for (std::size_t index = 0u; index < current.actions.size(); ++index)
+	{
+		const VALTAN_STAGE_ACTION_VIEW& savedAction = current.actions[index];
+		const VALTAN_STAGE_ACTION_VIEW& draftAction = candidate.actions[index];
+		if (!EqualValtanActionStableFields(savedAction, draftAction))
+		{
+			status = "Valtan stage action edit rejected: trigger, kind, target and stable value are read-only.";
+			return false;
+		}
+		const bool isRelease =
+			"RELEASE_GRABBED_PLAYERS" == savedAction.strKind;
+		if (!isRelease)
+		{
+			if (draftAction.strReleaseMode != savedAction.strReleaseMode ||
+				draftAction.fSpeedMps != savedAction.fSpeedMps ||
+				draftAction.iDurationMs != savedAction.iDurationMs ||
+				draftAction.fYawOffsetDegrees !=
+					savedAction.fYawOffsetDegrees)
+			{
+				status = "Only RELEASE_GRABBED_PLAYERS policy is editable in Workbench.";
+				return false;
+			}
+			continue;
+		}
+		const bool hold = "HOLD" == draftAction.strReleaseMode &&
+			0.f == draftAction.fSpeedMps && 0u == draftAction.iDurationMs &&
+			0.f == draftAction.fYawOffsetDegrees;
+		const bool launch =
+			("OPPOSITE_KNOCKBACK" == draftAction.strReleaseMode ||
+			 "ARENA_EJECTION" == draftAction.strReleaseMode) &&
+			draftAction.fSpeedMps > 0.f && draftAction.fSpeedMps <= 50.f &&
+			draftAction.iDurationMs > 0u && draftAction.iDurationMs <= 5000u &&
+			std::isfinite(draftAction.fYawOffsetDegrees) &&
+			std::abs(draftAction.fYawOffsetDegrees) <= 180.f;
+		if (!std::isfinite(draftAction.fSpeedMps) || (!hold && !launch))
+		{
+			status = "Grabbed-player release mode, speed, duration or yaw is invalid.";
+			return false;
+		}
+		releaseChanged = releaseChanged ||
+			draftAction.strReleaseMode != savedAction.strReleaseMode ||
+			draftAction.fSpeedMps != savedAction.fSpeedMps ||
+			draftAction.iDurationMs != savedAction.iDurationMs ||
+			draftAction.fYawOffsetDegrees != savedAction.fYawOffsetDegrees;
+	}
+	bool effectYawChanged = false;
+	for (std::size_t index = 0u; index < current.productCues.size(); ++index)
+	{
+		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& savedCue =
+			current.productCues[index];
+		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& draftCue =
+			candidate.productCues[index];
+		if (!EqualValtanCueExceptLocalYaw(savedCue, draftCue) ||
+			draftCue.strOccurrenceId.empty() ||
+			draftCue.strPatternId != patternId ||
+			draftCue.strStageId != stageId)
+		{
+			status = "Valtan Effect cue edit rejected: stable occurrence, asset, anchor, policies, timing and non-Y transform are read-only.";
+			return false;
+		}
+		const float yaw = draftCue.LocalTransform.vRotationDegrees.y;
+		if (!std::isfinite(yaw) || std::abs(yaw) > 180.f)
+		{
+			status = "Valtan Effect local Y rotation must be finite and within -180..180 degrees.";
+			return false;
+		}
+		effectYawChanged = effectYawChanged ||
+			yaw != savedCue.LocalTransform.vRotationDegrees.y;
 	}
 	if (candidate.durationMs < 1u || candidate.durationMs > 600000u)
 	{
@@ -969,7 +1215,8 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 	}
 
 	const bool durationChanged = candidate.durationMs != current.durationMs;
-	if (!durationChanged && !hitChanged)
+	if (!durationChanged && !hitChanged && !releaseChanged &&
+		!effectYawChanged)
 	{
 		status = "Valtan stage draft is unchanged.";
 		return true;
@@ -988,6 +1235,24 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 	stage->iPushMs = candidate.pushMs;
 	stage->bKnockdown = candidate.knockdown;
 	stage->iDownMs = candidate.downMs;
+	stage->Actions = candidate.actions;
+	const auto ApplyCueYaw = [&candidate](VALTAN_PRODUCT_EFFECT_CUE_VIEW& cue)
+	{
+		const auto found = std::find_if(
+			candidate.productCues.begin(), candidate.productCues.end(),
+			[&cue](const VALTAN_PRODUCT_EFFECT_CUE_VIEW& draftCue)
+			{
+				return draftCue.strOccurrenceId == cue.strOccurrenceId;
+			});
+		if (candidate.productCues.end() != found)
+			cue.LocalTransform.vRotationDegrees.y =
+				found->LocalTransform.vRotationDegrees.y;
+	};
+	for (VALTAN_PRODUCT_EFFECT_CUE_VIEW& cue : stage->ProductCues)
+		ApplyCueYaw(cue);
+	for (VALTAN_CLIP_OCCURRENCE_VIEW& occurrence : stage->ClipOccurrences)
+		for (VALTAN_PRODUCT_EFFECT_CUE_VIEW& cue : occurrence.ProductCues)
+			ApplyCueYaw(cue);
 	MarkDirty(true);
 	status = "Staged typed Server gameplay edit for " + patternId + "/" +
 		stageId +
@@ -3145,30 +3410,15 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 							object.iSpawnValue);
 					if (isAxeVolley)
 					{
-						const std::uint32_t previousCount =
+						std::uint32_t candidateCount =
 							m_valtanAxeVolley.countPerResolvedTarget;
-						if (EditU32("Axes per alive player",
-							m_valtanAxeVolley.countPerResolvedTarget, 1u, 8u))
+						if (EditU32(
+							"Axes per alive player", candidateCount, 1u, 8u))
 						{
-							if (1u == m_valtanAxeVolley.countPerResolvedTarget)
-							{
-								m_valtanAxeVolley.layoutKind = "TARGET_CENTER";
-								m_valtanAxeVolley.radiusM = 0.0;
-								m_valtanAxeVolley.startAngleDegrees = 0.0;
-								m_valtanAxeVolley.angleStepDegrees = 0.0;
-							}
-							else if (1u == previousCount)
-							{
-								m_valtanAxeVolley.layoutKind = "RADIAL_AROUND_TARGET";
-								m_valtanAxeVolley.radiusM = 3.0;
-								m_valtanAxeVolley.angleStepDegrees = 360.0 /
-									m_valtanAxeVolley.countPerResolvedTarget;
-							}
-							m_valtanAxeVolley.maximumTotalObjects = (std::max)(
-								m_valtanAxeVolley.maximumTotalObjects,
-								m_valtanAxeVolley.countPerResolvedTarget +
-									m_valtanAxeVolley.arenaRandomCount);
-							MarkDirty(true);
+							std::string axeStatus;
+							(void)Set_ValtanHighJumpAxeCountDraft(
+								candidateCount, axeStatus);
+							m_status = std::move(axeStatus);
 						}
 						if (m_valtanAxeVolley.countPerResolvedTarget > 1u)
 						{
@@ -4602,6 +4852,87 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 						"\"patternId\": " << Quote(pattern.strPatternId)
 						<< ", \"stageId\": " << Quote(stage.strStageId)
 						<< ", \"durationMs\": " << stage.iDurationMs << " }";
+					append(operation);
+				}
+				if (stage.Actions.size() != loadedStage->Actions.size())
+				{
+					status = "Loaded stage action inventory changed: " +
+						pattern.strPatternId + "/" + stage.strStageId + ".";
+					return false;
+				}
+				for (std::size_t actionIndex = 0u;
+					actionIndex < stage.Actions.size(); ++actionIndex)
+				{
+					const VALTAN_STAGE_ACTION_VIEW& action =
+						stage.Actions[actionIndex];
+					const VALTAN_STAGE_ACTION_VIEW& loadedAction =
+						loadedStage->Actions[actionIndex];
+					if (!EqualValtanActionStableFields(action, loadedAction))
+					{
+						status = "Loaded stage action stable identity changed: " +
+							pattern.strPatternId + "/" + stage.strStageId + ".";
+						return false;
+					}
+					const bool releaseChanged =
+						action.strReleaseMode != loadedAction.strReleaseMode ||
+						action.fSpeedMps != loadedAction.fSpeedMps ||
+						action.iDurationMs != loadedAction.iDurationMs ||
+						action.fYawOffsetDegrees !=
+							loadedAction.fYawOffsetDegrees;
+					if (!releaseChanged)
+						continue;
+					if ("RELEASE_GRABBED_PLAYERS" != action.strKind)
+					{
+						status = "Only grabbed-player release fields may differ in a stage action draft.";
+						return false;
+					}
+					std::ostringstream operation;
+					operation << "    { \"op\": \"SET_STAGE_GRABBED_RELEASE\", "
+						"\"patternId\": " << Quote(pattern.strPatternId)
+						<< ", \"stageId\": " << Quote(stage.strStageId)
+						<< ", \"releaseMode\": " << Quote(action.strReleaseMode)
+						<< ", \"speedMps\": " << FormatJsonNumber(action.fSpeedMps)
+						<< ", \"durationMs\": " << action.iDurationMs
+						<< ", \"yawOffsetDegrees\": "
+						<< FormatJsonNumber(action.fYawOffsetDegrees) << " }";
+					append(operation);
+				}
+
+				const std::vector<const VALTAN_PRODUCT_EFFECT_CUE_VIEW*> cues =
+					CollectValtanProductCues(stage);
+				const std::vector<const VALTAN_PRODUCT_EFFECT_CUE_VIEW*> loadedCues =
+					CollectValtanProductCues(*loadedStage);
+				if (cues.size() != loadedCues.size())
+				{
+					status = "Loaded stage Effect cue inventory changed: " +
+						pattern.strPatternId + "/" + stage.strStageId + ".";
+					return false;
+				}
+				for (const VALTAN_PRODUCT_EFFECT_CUE_VIEW* const cue : cues)
+				{
+					const auto loadedCue = std::find_if(
+						loadedCues.begin(), loadedCues.end(),
+						[cue](const VALTAN_PRODUCT_EFFECT_CUE_VIEW* const row)
+						{
+							return row->strOccurrenceId == cue->strOccurrenceId;
+						});
+					if (loadedCues.end() == loadedCue ||
+						!EqualValtanCueExceptLocalYaw(**loadedCue, *cue))
+					{
+						status = "Loaded Effect cue stable contract changed: " +
+							cue->strOccurrenceId + ".";
+						return false;
+					}
+					const float yaw = cue->LocalTransform.vRotationDegrees.y;
+					if (yaw == (*loadedCue)->LocalTransform.vRotationDegrees.y)
+						continue;
+					std::ostringstream operation;
+					operation << "    { \"op\": \"SET_EFFECT_CUE_LOCAL_YAW\", "
+						"\"patternId\": " << Quote(pattern.strPatternId)
+						<< ", \"stageId\": " << Quote(stage.strStageId)
+						<< ", \"occurrenceId\": " << Quote(cue->strOccurrenceId)
+						<< ", \"localYawDegrees\": "
+						<< FormatJsonNumber(yaw) << " }";
 					append(operation);
 				}
 				const bool hitChanged =

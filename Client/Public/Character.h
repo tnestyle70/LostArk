@@ -6,6 +6,7 @@
 #include "ContainerObject.h"
 #include "CharacterSpec.h"
 #include "DeferredMaterialRenderUtils.h"
+#include "EstherActionSoundCueDocument.h"
 #include "NavPathFollower.h"
 #include "Network/PacketMessages.h"
 
@@ -243,6 +244,7 @@ private:
 	LostArk::Shared::PLAYER_STANCE_ID m_eStance =
 		LostArk::Shared::PLAYER_STANCE_ID::NONE;
 	std::uint32_t m_iLastNetworkActionStartTick = 0;
+	ESTHER_ACTION_SOUND_PLAYBACK_STATE m_EstherActionSoundState;
 	f32_t m_fActionPresentationSeconds = 0.f;
 	ANIMATION_EFFECT_CUE_DOCUMENT m_EffectCueDocument;
 	f32_t m_fPreviousEffectCueStageWallSeconds = -1.f;

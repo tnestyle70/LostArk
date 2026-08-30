@@ -27,6 +27,31 @@ struct VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT final
 	std::vector<VALTAN_COMBAT_OBJECT_SOUND_CUE> Cues;
 };
 
+/* Opaque recovery state for a joined Workbench Save. Once Begin returns
+   true, the caller must resolve the replacement exactly once with Commit or
+   Rollback. The previous source remains recoverable until then. */
+class VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT final
+{
+	friend class CValtanCombatObjectSoundCueDocument;
+
+public:
+	VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT() = default;
+	VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT(
+		const VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT&) = delete;
+	VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT& operator=(
+		const VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT&) = delete;
+	VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT(
+		VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT&&) noexcept = default;
+	VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT& operator=(
+		VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT&&) noexcept = default;
+
+private:
+	std::filesystem::path Destination;
+	std::filesystem::path Rollback;
+	bool_t bHadPrevious = false;
+	bool_t bActive = false;
+};
+
 /* Joins a presentation-only Sound binding to the Server-owned semantic hit.
 The combat object Product document proves the source tuple exists; the Server
 still transmits only that tuple and never learns an asset path. */
@@ -48,9 +73,25 @@ public:
 	static bool_t Validate_SourceDraft(
 		const VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT& document,
 		std::string& strOutStatus);
+	/* Recoverable whole-file replacement used by the Workbench's joined Save.
+	   Begin validates and promotes the Sound source while retaining its exact
+	   previous bytes. Commit discards that recovery copy only after the
+	   gameplay Product save succeeds; Rollback restores it when a later domain
+	   fails. */
+	static bool_t Begin_SourceReplacement(
+		const VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT& document,
+		VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT& transaction,
+		std::string& strOutStatus);
+	static bool_t Commit_SourceReplacement(
+		VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT& transaction,
+		std::string& strOutStatus);
+	static bool_t Rollback_SourceReplacement(
+		VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT& transaction,
+		std::string& strOutStatus);
 	/* Whole-file atomic replace. Validation runs before the destination is
 	   touched, so malformed joins or missing catalog assets preserve the
-	   previous admitted source. */
+	   previous admitted source. Standalone callers use the same recoverable
+	   primitive and immediately commit it. */
 	static bool_t Save_Source(
 		const VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT& document,
 		std::string& strOutStatus);

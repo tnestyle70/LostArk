@@ -441,7 +441,7 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         )
         for token in (
             "m_strSelectedValtanPatternId = Pattern.strPatternId",
-            'ImGui::SmallButton("Play Server")',
+            'ImGui::SmallButton("Complete Play (Server/Arena)")',
             "Try_PlayValtanServerPattern(Pattern)",
             "Pattern.Stages",
             "Stage.ProductCues",
@@ -454,7 +454,7 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             "Try_OpenValtanSavedReferenceEffect",
             "iReferenceEffectStartMs",
             "Unpublished Pattern Draft",
-            "Play Effect + Pattern",
+            "Local Effect + Pattern Preview",
             "Try_OpenValtanPatternDraftEffect",
         ):
             self.assertIn(token, pattern)
@@ -583,7 +583,7 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         self.assertIn("Try_OpenValtanPatternDraftEffect", create)
         self.assertNotIn("Try_OpenValtanStandaloneEffect", create)
 
-    def test_server_play_is_arena_only_and_reuses_typed_audition(self) -> None:
+    def test_server_play_is_arena_only_and_reuses_shared_complete_play(self) -> None:
         resolver = source_section(
             self.cpp,
             "const char_t* Resolve_ValtanServerPatternBossPlacement(",
@@ -616,12 +616,15 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             "Player.isCombatReady",
         ):
             self.assertIn(gate, can_play)
-        self.assertIn("CValtanPatternAuditionService::Get().Submit", play)
-        self.assertIn("VALTAN_EFFECT_TOOL_AUDITION_CONSUMER_ID", play)
+        self.assertIn("CMainApp::Get_Active", play)
+        self.assertIn("Debug_SelectCompletePlayPattern", play)
+        self.assertIn("Debug_CompletePlaySelected", play)
+        self.assertNotIn("CValtanPatternAuditionService::Get().Submit", play)
+        self.assertNotIn("VALTAN_EFFECT_TOOL_AUDITION_CONSUMER_ID", play)
         self.assertIn(
-            "VALTAN_EFFECT_TOOL_AUDITION_CONSUMER_ID !=",
+            "Audition.strPatternId != m_strValtanServerPatternStatusPatternId",
             update,
-            "Effect Tool must not display another consumer's lifecycle as its own",
+            "Effect Tool follows only the shared selection's lifecycle",
         )
         for local_preview in (
             "Play_ValtanAuthoringTimeline",
@@ -713,9 +716,9 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             "Try_OpenValtanStandaloneEffect",
             "Try_PlayValtanStandaloneEffect",
             "iEffectStartMs",
-            'ImGui::SmallButton("Play Server Owner")',
+            'ImGui::SmallButton("Complete Play Owner")',
             "Try_PlayValtanServerPattern(*pOwnerPattern)",
-            "actual target tracking and hit timing require Play Server",
+            "actual target tracking and hit timing require Complete Play Owner",
         ):
             self.assertIn(token, independent)
         self.assertIn(

@@ -29,7 +29,10 @@ EXPECTED_SCRIPTED_SEQUENCE = {
     "patternIds": [
         "VALTAN_WHIRLWIND",
         "VALTAN_FOUR_SLASH",
+        "VALTAN_WHIRLWIND",
+        "VALTAN_FIST_IN_OUT",
         "VALTAN_HIGH_JUMP",
+        "VALTAN_WHIRLWIND",
         "VALTAN_DASH_CHARGE",
         "VALTAN_FLOOR_WIPE_130",
         "VALTAN_FIST_IN_OUT",
@@ -1437,13 +1440,15 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             [branch["outcome"] for branch in trash_counter["branches"]],
         )
         self.assertEqual(
-            ("HOLD", 0.0, 0),
+            ("HOLD", 0.0, 0, 0.0),
             tuple(
                 next(
                     event for event in trash_release["events"]
                     if event["kind"] == "RELEASE_GRABBED_PLAYERS"
                 )[key]
-                for key in ("releaseMode", "speedMps", "durationMs")
+                for key in (
+                    "releaseMode", "speedMps", "durationMs", "yawOffsetDegrees"
+                )
             ),
         )
         self.assertEqual(
@@ -1455,13 +1460,15 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            ("ARENA_EJECTION", 24.0, 500),
+            ("ARENA_EJECTION", 24.0, 500, 0.0),
             tuple(
                 next(
                     event for event in catch_release["events"]
                     if event["kind"] == "RELEASE_GRABBED_PLAYERS"
                 )[key]
-                for key in ("releaseMode", "speedMps", "durationMs")
+                for key in (
+                    "releaseMode", "speedMps", "durationMs", "yawOffsetDegrees"
+                )
             ),
         )
 
@@ -1497,6 +1504,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 "releaseMode": "HOLD",
                 "speedMps": 0.0,
                 "durationMs": 0,
+                "yawOffsetDegrees": 0.0,
             },
             projected_trash["GROGGY"]["actions"],
         )
@@ -1515,6 +1523,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 "releaseMode": "ARENA_EJECTION",
                 "speedMps": 24.0,
                 "durationMs": 500,
+                "yawOffsetDegrees": 0.0,
             },
             projected_catch["STEP_04"]["actions"],
         )
@@ -1539,6 +1548,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 "releaseMode": "HOLD",
                 "speedMps": 0.0,
                 "durationMs": 0,
+                "yawOffsetDegrees": 0.0,
             },
             "VALTAN_TRASH",
             "STEP_07",
@@ -2521,6 +2531,107 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             ]
             self.assertEqual(20, weight_entry["resultValue"])
 
+    def test_workbench_release_yaw_and_sector_cue_yaw_are_typed_and_atomic(self) -> None:
+        joined = pipeline.join_v2_authoring(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+            self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+            self.docs[pipeline.SAVED_FLOW_REL],
+        )
+        sector_occurrence = (
+            "cue.valtan.requested.20260827.six-pizza.composite.occurrence.01"
+        )
+        patch = {
+            "schema": pipeline.DRAFT_PATCH_SCHEMA,
+            "formatVersion": 1,
+            "sourceRevision": self.source_manifest["sourceManifestId"],
+            "operations": [
+                {
+                    "op": "SET_STAGE_GRABBED_RELEASE",
+                    "patternId": "VALTAN_CATCH_BREATH",
+                    "stageId": "STEP_04",
+                    "releaseMode": "ARENA_EJECTION",
+                    "speedMps": 30.0,
+                    "durationMs": 700,
+                    "yawOffsetDegrees": 90.0,
+                },
+                {
+                    "op": "SET_EFFECT_CUE_LOCAL_YAW",
+                    "patternId": "VALTAN_SIX_PIZZA_106",
+                    "stageId": "STEP_01",
+                    "occurrenceId": sector_occurrence,
+                    "localYawDegrees": -30.0,
+                },
+            ],
+        }
+        candidate, _, _, count = pipeline.apply_draft_patch(
+            joined,
+            self.docs[pipeline.BOSS_PROFILES_REL],
+            self.docs[pipeline.DAMAGE_REL],
+            patch,
+            self.source_manifest["sourceManifestId"],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        self.assertEqual(2, count)
+        release_stage = next(
+            stage
+            for pattern in candidate["patterns"]
+            if pattern["patternId"] == "VALTAN_CATCH_BREATH"
+            for stage in pattern["stages"]
+            if stage["stageId"] == "STEP_04"
+        )
+        release = next(
+            event
+            for event in release_stage["events"]
+            if event["kind"] == "RELEASE_GRABBED_PLAYERS"
+        )
+        self.assertEqual((30.0, 700, 90.0), (
+            release["speedMps"], release["durationMs"],
+            release["yawOffsetDegrees"],
+        ))
+        sector_stage = next(
+            stage
+            for pattern in candidate["patterns"]
+            if pattern["patternId"] == "VALTAN_SIX_PIZZA_106"
+            for stage in pattern["stages"]
+            if stage["stageId"] == "STEP_01"
+        )
+        sector = next(
+            cue for cue in sector_stage["effectCues"]
+            if cue["occurrenceId"] == sector_occurrence
+        )
+        self.assertEqual("arena.center.facing", sector["anchorSlotId"])
+        self.assertEqual(-30.0, sector["localTransform"]["rotationDegrees"][1])
+
+        invalid = copy.deepcopy(patch)
+        invalid["operations"][0]["yawOffsetDegrees"] = 181.0
+        with self.assertRaises(pipeline.PipelineError):
+            pipeline.apply_draft_patch(
+                joined,
+                self.docs[pipeline.BOSS_PROFILES_REL],
+                self.docs[pipeline.DAMAGE_REL],
+                invalid,
+                self.source_manifest["sourceManifestId"],
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+
+        ignored = copy.deepcopy(patch)
+        ignored["operations"] = [copy.deepcopy(patch["operations"][0])]
+        ignored["operations"][0]["releaseMode"] = "OPPOSITE_KNOCKBACK"
+        with self.assertRaises(pipeline.DraftPatchError):
+            pipeline.apply_draft_patch(
+                joined,
+                self.docs[pipeline.BOSS_PROFILES_REL],
+                self.docs[pipeline.DAMAGE_REL],
+                ignored,
+                self.source_manifest["sourceManifestId"],
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+
     def test_per_set_weight_mechanic_and_scripted_sequence_round_trip_to_v4_bootstrap(
         self,
     ) -> None:
@@ -2773,7 +2884,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.docs[pipeline.WORLD_SET_REL], self.docs[pipeline.COMBAT_AUTHORING_REL],
             flow_document,
         )
-        expected = ["VALTAN_HIGH_JUMP", "VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH", "VALTAN_WHIRLWIND"]
+        expected = [row["patternId"] for row in flow["slots"]]
         sequence = joined["decisionModel"]["scriptedSequence"]
         self.assertEqual(expected, sequence["patternIds"])
         self.assertEqual(4321, sequence["interStepPursuitMs"])

@@ -44,12 +44,18 @@ public:
 		std::uint32_t downMs = 0;
 		std::string playerResponse = "DAMAGE";
 		std::string attachmentSlot = "NONE";
+		/* Full joined family rows are copied into the shared draft so Workbench
+		   can show every saved action/effect value. Only grabbed-player release
+		   policy and Effect local Y rotation are mutable at this boundary. */
+		std::vector<VALTAN_STAGE_ACTION_VIEW> actions;
+		std::vector<VALTAN_PRODUCT_EFFECT_CUE_VIEW> productCues;
 		bool durationEditable = false;
 		bool hitEditable = false;
 	};
 
 	CBalanceTool();
 	void Open();
+	void Open_Valtan();
 	void Render();
 	/* Action Presentation Workbench consumes this narrow stable-ID boundary
 	   instead of reaching into Balance Tool widgets or constructing a second
@@ -74,6 +80,15 @@ public:
 		const std::string& patternId,
 		const std::string& stageId,
 		const PATTERN_STAGE_EDIT& stage,
+		std::string& status);
+	bool Get_ValtanHighJumpAxeCountDraft(
+		std::uint32_t& draftCount,
+		std::uint32_t& savedCount,
+		std::uint32_t& arenaRandomCount,
+		std::uint32_t& maximumTotalObjects,
+		std::string& status) const;
+	bool Set_ValtanHighJumpAxeCountDraft(
+		std::uint32_t countPerAlivePlayer,
 		std::string& status);
 	/* One user-facing Save contract: validate the joined draft, durably save
 	   authoring when dirty, build the immutable Product runtime bundle, and

@@ -8,8 +8,6 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $guardedScripts = @(
     'Tools/Build/Invoke-BuildAndRegression.ps1',
-    'Tools/ActionPresentationTimelineHarness/Run-ActionPresentationTimelineHarness.ps1',
-    'Tools/EffectRenderContractHarness/Run-EffectRenderContractHarness.ps1',
     'Tools/PointLightFalloffContractHarness/Run-PointLightFalloffContractHarness.ps1',
     'Tools/Network/Run-CharacterSelectIsolationHarness.ps1',
     'Tools/ValtanPipeline/Test-ValtanPatternMaster.ps1',
@@ -170,8 +168,6 @@ function Test-WrapperStderrAndExitCodes {
     $delayVariable = 'LOSTARK_NATIVE_HARNESS_PROBE_DELAY_MS'
     $previousDelay = [Environment]::GetEnvironmentVariable($delayVariable, 'Process')
     $wrapperNames = @(
-        'ActionPresentationTimelineHarness',
-        'EffectRenderContractHarness',
         'PointLightFalloffContractHarness'
     )
     try {
@@ -285,45 +281,6 @@ internal static class NativeExitProbe
     }
 }
 
-$previousRoot = [Environment]::GetEnvironmentVariable('LOSTARK_RESOURCE_ROOT', 'Process')
-$missingRoot = Join-Path $repoRoot ('.codex_tmp\missing-native-exit-probe-' + [Guid]::NewGuid().ToString('N'))
-function Invoke-NativeFailureWithExitShadow {
-    # Deliberately reproduce callers that keep a local success sentinel.
-    $LASTEXITCODE = 0
-    $failure = $null
-    $lines = [Collections.Generic.List[string]]::new()
-    try {
-        & (Join-Path $repoRoot 'Tools/EffectRenderContractHarness/Run-EffectRenderContractHarness.ps1') `
-            -Configuration $Configuration -ValidateResourceRootOnly 2>&1 |
-            ForEach-Object { $lines.Add($_.ToString()) }
-    }
-    catch {
-        $failure = $_
-    }
-    if ($null -eq $failure) {
-        throw 'A real native failure was masked by the caller exit-code sentinel.'
-    }
-    $nativeExitCode = $global:LASTEXITCODE
-    $output = $lines -join [Environment]::NewLine
-    if ($nativeExitCode -ne 2 -or $LASTEXITCODE -ne 0 -or
-        $failure.Exception.Message -ne 'EffectRenderContractHarness failed with exit code 2' -or
-        $output -notmatch 'harness resource root is unavailable:') {
-        throw "Unexpected native-failure probe: exit=$nativeExitCode error=$($failure.Exception.Message) output=$output. Rebuild the harness if it does not support --validate-resource-root."
-    }
-    Write-Output 'PASS actual EffectRenderContractHarness invalid resource root: native exit 2 and rejection reason'
-}
-
-try {
-    Test-WrapperStderrAndExitCodes
-    [Environment]::SetEnvironmentVariable('LOSTARK_RESOURCE_ROOT', $missingRoot, 'Process')
-    Invoke-NativeFailureWithExitShadow
-    $global:LASTEXITCODE = 0
-    Write-Output "Native harness exit propagation: PASS ($Configuration, $($guardedScripts.Count) script guards, six wrapper cases, three owned-process cases and a real rejection)"
-}
-finally {
-    $restoreValue = if ($null -eq $previousRoot) {
-        [Management.Automation.Language.NullString]::Value
-    }
-    else { $previousRoot }
-    [Environment]::SetEnvironmentVariable('LOSTARK_RESOURCE_ROOT', $restoreValue, 'Process')
-}
+Test-WrapperStderrAndExitCodes
+$global:LASTEXITCODE = 0
+Write-Output "Native harness exit propagation: PASS ($Configuration, $($guardedScripts.Count) script guards, two wrapper cases and three owned-process cases)"

@@ -2,13 +2,23 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\Private\ValtanPatternAuditionServiceHarness.cpp" />
+	<ClCompile Include="..\Private\ValtanEncounterReferenceContractTests.cpp" />
     <ClCompile Include="..\Private\ValtanPatternFlowServiceTests.cpp" />
+	<ClCompile Include="..\Private\ValtanPatternSoundCueDocumentContractTests.cpp" />
+    <ClCompile Include="..\Private\ValtanPresentationContractTests.cpp" />
     <ClCompile Include="..\Private\ValtanTuningCommandServiceTests.cpp" />
     <ClCompile Include="..\..\..\Client\Private\ValtanPatternAuditionService.cpp" />
     <ClCompile Include="..\..\..\Client\Private\ValtanPatternFlowService.cpp" />
     <ClCompile Include="..\..\..\Client\Private\ValtanTuningCommandService.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp" />
     <ClCompile Include="..\..\..\Client\Private\DataJson.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\ProjectDataRoot.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\ValtanPatternSoundCueDocument.cpp" />
     <ClCompile Include="..\..\..\Client\Private\ActionPresentationTimeline.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\CameraShakeService.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\EncounterPatternReference.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\ValtanCinematicCameraController.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\ValtanCinematicCameraDocument.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\Client\Public\ValtanPatternAuditionService.h" />
@@ -16,6 +26,11 @@
     <ClInclude Include="..\..\..\Client\Public\ValtanTuningCommandService.h" />
     <ClInclude Include="..\..\..\Client\Public\DataJson.h" />
     <ClInclude Include="..\..\..\Client\Public\ActionPresentationTimeline.h" />
+    <ClInclude Include="..\..\..\Client\Public\CameraShakeService.h" />
+    <ClInclude Include="..\..\..\Client\Public\EncounterPatternReference.h" />
+    <ClInclude Include="..\..\..\Client\Public\MonsterPresentationContract.h" />
+    <ClInclude Include="..\..\..\Client\Public\ValtanCinematicCameraController.h" />
+    <ClInclude Include="..\..\..\Client\Public\ValtanCinematicCameraDocument.h" />
     <ClInclude Include="..\..\..\Client\Public\ValtanPatternFlowDocument.h" />
   </ItemGroup>
 </Project>

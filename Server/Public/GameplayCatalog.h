@@ -468,6 +468,10 @@ namespace LostArk::Server
 		BOSS_GRABBED_RELEASE_MODE eReleaseMode =
 			BOSS_GRABBED_RELEASE_MODE::NONE;
 		float fReleaseSpeedMps = 0.f;
+		/* Relative to the Server-owned boss facing only for ARENA_EJECTION. Zero
+		   preserves the original backward direction; HOLD and
+		   OPPOSITE_KNOCKBACK must keep it at zero. */
+		float fReleaseYawOffsetDegrees = 0.f;
 		BOSS_COMBAT_OBJECT_VOLLEY Volley;
 	};
 

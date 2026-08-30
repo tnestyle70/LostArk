@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from build_maptool_scene import (
+    EMPTY_MATERIAL_SIGNATURE,
     IMPORTED_ID_BIT,
     classify_non_visual_asset,
     compile_scene,
@@ -16,6 +17,7 @@ from build_maptool_scene import (
     directx_row_matrix_from_quaternion,
     imported_id,
     is_non_visual_helper_asset,
+    material_signature_from_slots,
     parse_args,
     scale_flags,
 )
@@ -112,15 +114,23 @@ class MapToolSceneCompileTests(unittest.TestCase):
         path.write_text(json.dumps(value), encoding="utf-8")
 
     @staticmethod
-    def asset(asset_id: str) -> dict:
-        return {
+    def asset(
+        asset_id: str,
+        *,
+        full_path: str | None = None,
+        material_signature: str | None = None,
+    ) -> dict:
+        result = {
             "assetId": asset_id,
             "objectName": asset_id,
-            "fullPath": f"test.mesh.{asset_id}",
+            "fullPath": full_path or f"test.mesh.{asset_id}",
             "sourceCategory": "StaticMesh",
             "logicalPackage": "TEST",
             "rootImport": "TEST",
         }
+        if material_signature is not None:
+            result["materialSignatureSha256"] = material_signature
+        return result
 
     @staticmethod
     def placement(source_id: str, asset_id: str, level: str) -> dict:
@@ -305,6 +315,144 @@ class MapToolSceneCompileTests(unittest.TestCase):
                 set(receipt["inputs"]["placements"]),
                 {"single.placements.json"},
             )
+
+    def test_v2_joins_same_mesh_path_by_ordered_material_signature(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            runtime_root = root / "runtime"
+            placements_directory = root / "placements"
+            runtime_root.mkdir()
+            slots = [
+                {
+                    "slot": 0,
+                    "packageIndex": -1,
+                    "class": "MaterialInstanceConstant",
+                    "objectPath": "TEST.Material.Curtain_MI",
+                },
+                {
+                    "slot": 1,
+                    "packageIndex": 0,
+                    "class": None,
+                    "objectPath": None,
+                },
+            ]
+            override_signature = material_signature_from_slots(slots)
+            full_path = "test.mesh.shared_mesh"
+            assets = [
+                self.asset(
+                    "asset_base",
+                    full_path=full_path,
+                    material_signature=EMPTY_MATERIAL_SIGNATURE,
+                ),
+                self.asset(
+                    "asset_override",
+                    full_path=full_path,
+                    material_signature=override_signature,
+                ),
+            ]
+            asset_manifest = root / "assets.json"
+            runtime_manifest = root / "runtime.json"
+            self.write_json(asset_manifest, {"areaId": "TEST", "assets": assets})
+            self.write_json(
+                runtime_manifest,
+                {
+                    "areaId": "TEST",
+                    "assets": [
+                        {"assetId": "asset_base", "model": "base.wmodel"},
+                        {"assetId": "asset_override", "model": "override.wmodel"},
+                    ],
+                },
+            )
+            (runtime_root / "base.wmodel").write_bytes(b"WMOD-base")
+            (runtime_root / "override.wmodel").write_bytes(b"WMOD-override")
+            base_placement = self.placement("source_base", "ignored", "LEVEL_A")
+            base_placement["asset"]["objectPath"] = full_path
+            base_placement["materialOverrides"] = {
+                "propertyPresent": False,
+                "slots": [],
+                "signatureSha256": EMPTY_MATERIAL_SIGNATURE,
+            }
+            override_placement = self.placement(
+                "source_override", "ignored", "LEVEL_A"
+            )
+            override_placement["asset"]["objectPath"] = full_path
+            override_placement["materialOverrides"] = {
+                "propertyPresent": True,
+                "slots": slots,
+                "signatureSha256": override_signature,
+            }
+            self.write_json(
+                placements_directory / "source.placements.json",
+                {
+                    "schemaVersion": 2,
+                    "propertyErrors": [],
+                    "unresolvedPlacements": [],
+                    "placements": [base_placement, override_placement],
+                },
+            )
+
+            arguments = self.arguments(
+                root,
+                asset_manifest,
+                runtime_manifest,
+                runtime_root,
+                placements_directory,
+            )
+            receipt = compile_scene(arguments)
+            rows = arguments.placement_output.read_text(encoding="utf-8").splitlines()
+            self.assertIn(
+                '"asset_base"', next(row for row in rows if '"source_base"' in row)
+            )
+            self.assertIn(
+                '"asset_override"',
+                next(row for row in rows if '"source_override"' in row),
+            )
+            self.assertEqual(2, receipt["exactAssetCount"])
+
+    def test_v2_rejects_forged_material_signature(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            runtime_root = root / "runtime"
+            placements_directory = root / "placements"
+            runtime_root.mkdir()
+            asset_manifest = root / "assets.json"
+            runtime_manifest = root / "runtime.json"
+            self.write_json(
+                asset_manifest,
+                {"areaId": "TEST", "assets": [self.asset("asset_a")]},
+            )
+            self.write_json(
+                runtime_manifest,
+                {
+                    "areaId": "TEST",
+                    "assets": [{"assetId": "asset_a", "model": "asset_a.wmodel"}],
+                },
+            )
+            (runtime_root / "asset_a.wmodel").write_bytes(b"WMOD-a")
+            placement = self.placement("source_a", "asset_a", "LEVEL_A")
+            placement["materialOverrides"] = {
+                "propertyPresent": False,
+                "slots": [],
+                "signatureSha256": "0" * 64,
+            }
+            self.write_json(
+                placements_directory / "source.placements.json",
+                {
+                    "schemaVersion": 2,
+                    "propertyErrors": [],
+                    "unresolvedPlacements": [],
+                    "placements": [placement],
+                },
+            )
+            arguments = self.arguments(
+                root,
+                asset_manifest,
+                runtime_manifest,
+                runtime_root,
+                placements_directory,
+            )
+            with self.assertRaisesRegex(ValueError, "signature mismatch"):
+                compile_scene(arguments)
 
     def test_parser_accepts_repeated_placements_dir(self):
         argv = [
