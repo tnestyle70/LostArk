@@ -117,16 +117,16 @@ namespace
 		KAKUL_ACTION_PROFILES = {
 			KAKUL_ACTION_PROFILE_CONTRACT{
 				"MN_RPCT_05", "MN_RPCT_05",
-				"Character/KakulSaydon/MN_RPCT_05/MN_RPCT_05" },
+				"Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05" },
 			KAKUL_ACTION_PROFILE_CONTRACT{
 				"MN_RPCT_06", "MN_RPCT_06",
-				"Character/KakulSaydon/MN_RPCT_06/MN_RPCT_06" },
+				"Character/KoukuSaton/MN_RPCT_06/MN_RPCT_06" },
 			KAKUL_ACTION_PROFILE_CONTRACT{
 				"MN_RPCT_07", "MN_RPCT_05",
-				"Character/KakulSaydon/MN_RPCT_05/MN_RPCT_05" },
+				"Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05" },
 			KAKUL_ACTION_PROFILE_CONTRACT{
 				"MN_RPCZ_00", "MN_RPCZ_00",
-				"Character/KakulSaydon/MN_RPCZ_00/MN_RPCZ_00" },
+				"Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00" },
 		};
 
 	const KAKUL_ACTION_PROFILE_CONTRACT* Find_KakulActionProfile(
@@ -567,7 +567,7 @@ bool_t Client::CAnimation_Tool::Open_KakulProfile(
 	const bool_t bClipOnlyDonor = "MN_RPCT_00" == profileId;
 	if (nullptr == pProfile && !bClipOnlyDonor)
 	{
-		m_Status = "Kakul action profile is not admitted: " + profileId;
+		m_Status = "KoukuSaton action profile is not admitted: " + profileId;
 		return false;
 	}
 	const char_t* pPreviewAsset = bClipOnlyDonor ?
@@ -577,12 +577,12 @@ bool_t Client::CAnimation_Tool::Open_KakulProfile(
 		m_strKakulProfileId != profileId)
 	{
 		m_Status =
-			"Save or discard the current Animation document before opening another Kakul profile.";
+			"Save or discard the current Animation document before opening another KoukuSaton profile.";
 		return false;
 	}
 	if (!m_pPreviewPanel->Select_TargetAsset(pPreviewAsset))
 	{
-		m_Status = "Kakul profile selected, but its physical preview body could not open: " +
+		m_Status = "KoukuSaton profile selected, but its physical preview body could not open: " +
 			m_pPreviewPanel->Get_Status();
 		return false;
 	}
@@ -593,7 +593,7 @@ bool_t Client::CAnimation_Tool::Open_KakulProfile(
 	m_strKakulProfileId = profileId;
 	m_Status = bClipOnlyDonor ?
 		"Opened MN_RPCT_00 as a local clip donor preview; action profiles 05/07 consume this clip vocabulary." :
-		("Opened Kakul extracted action profile " + profileId +
+		("Opened KoukuSaton extracted action profile " + profileId +
 		 " as a local REFERENCE_ONLY preview.");
 	return true;
 }
@@ -945,7 +945,7 @@ void Client::CAnimation_Tool::Render()
 	m_pPreviewPanel->Set_SessionLock(
 		CHARACTER_PREVIEW_LOCK_OWNER::ANIMATION_TOOL,
 		isTargetLocked,
-		"Save or discard Animation Events, Skill Bindings, Kakul Action Bindings, and Workbench Sound bindings before changing target.");
+		"Save or discard Animation Events, Skill Bindings, KoukuSaton Action Bindings, and Workbench Sound bindings before changing target.");
 	m_pPreviewPanel->Refresh_Level();
 
 	if (!ImGui::Begin(
@@ -1034,7 +1034,7 @@ void Client::CAnimation_Tool::Render()
 		}
 		else if ("MN_RPCT_00" == m_AssetName)
 		{
-			ImGui::SeparatorText("Kakul Clip Donor");
+			ImGui::SeparatorText("KoukuSaton Clip Donor");
 			ImGui::TextWrapped(
 				"MN_RPCT_00 exposes its physical clips for local preview. Select the "
 				"MN_RPCT_05 or MN_RPCT_07 action profile in Resource Files to edit "
@@ -2815,7 +2815,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 	ImGui::TextWrapped(
 		"One joined view over Server Stage, Animation, Effect, Sound Asset, and Combat Object. Pattern Offline samples the Product animation locally; Server Replay/Live submits the same stable pattern ID to the real Arena authority, where movement, hit, grab, damage, Effect, and Sound run.");
 	ImGui::TextDisabled(
-		"Encounter target: Valtan (Product Server authority). KakulSaydon remains unavailable until a Product world, encounter, pattern source, and Server runtime are admitted.");
+		"Encounter target: Valtan (Product Server authority). KoukuSaton Arena is admitted; its boss/pattern Server vertical slice remains deferred.");
 	ImGui::SeparatorText("Applied Product Sources / Editability");
 	ImGui::BulletText(
 		"EDIT + SAVE: Data/Valtan/Valtan.gameplay.json | Server stage clock, collider, hit schedule and player reaction");
@@ -3098,7 +3098,8 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 	{
 		std::string Status;
 		std::string SoundStatus;
-		const bool_t bSoundReady = !m_bValtanCombatObjectSoundCuesDirty ||
+		const bool_t bSoundDirty = m_bValtanCombatObjectSoundCuesDirty;
+		const bool_t bSoundReady = !bSoundDirty ||
 			CValtanCombatObjectSoundCueDocument::Validate_SourceDraft(
 				m_ValtanCombatObjectSoundCues, SoundStatus);
 		if (!bSoundReady)
@@ -3106,35 +3107,72 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 			Status = "Save validation failed; Product and Sound source were preserved: " +
 				SoundStatus;
 		}
-		else if (m_pBalanceTool->Save_ValtanProduct(Status))
+		else
 		{
-			if (m_bValtanCombatObjectSoundCuesDirty)
+			/* Product save may publish/apply a gameplay revision, so every fallible
+			   Sound write must finish first while its previous bytes remain
+			   recoverable. A Product failure restores those exact bytes; after a
+			   Product success only non-semantic backup cleanup remains. */
+			VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT SoundReplacement;
+			const bool_t bSoundPrepared = !bSoundDirty ||
+				CValtanCombatObjectSoundCueDocument::Begin_SourceReplacement(
+					m_ValtanCombatObjectSoundCues, SoundReplacement, SoundStatus);
+			if (!bSoundPrepared)
 			{
-				const std::string ProductStatus = Status;
-				if (CValtanCombatObjectSoundCueDocument::Save_Source(
-						m_ValtanCombatObjectSoundCues, SoundStatus))
-				{
-					m_bValtanCombatObjectSoundCuesDirty = false;
-					std::string RuntimeStatus =
-						"No active Valtan; binding applies on the next spawn.";
-					if (const shared_ptr<CValtan> Boss =
-							CAnimationTargetService::Resolve_Boss())
-					{
-						(void)Boss->Reload_CombatObjectSoundCues(RuntimeStatus);
-					}
-					Status = ProductStatus + " " + SoundStatus + " " + RuntimeStatus;
-					(void)Reload_ValtanPatternMaster();
-				}
-				else
-				{
-					Status = ProductStatus +
-						" Product is saved, but Sound source was not replaced: " +
-						SoundStatus;
-				}
+				Status =
+					"Save staging failed; gameplay Product/runtime and Sound source were preserved: " +
+					SoundStatus;
 			}
 			else
 			{
-				(void)Reload_ValtanPatternMaster();
+				std::string ProductStatus;
+				if (!m_pBalanceTool->Save_ValtanProduct(ProductStatus))
+				{
+					if (bSoundDirty)
+					{
+						std::string RollbackStatus;
+						const bool_t bRolledBack =
+							CValtanCombatObjectSoundCueDocument::
+								Rollback_SourceReplacement(
+									SoundReplacement, RollbackStatus);
+						Status = bRolledBack ?
+							"Save failed; gameplay Product/runtime and Sound source were preserved: " :
+							"SAVE ROLLBACK FAILED; inspect the retained Sound recovery copy: ";
+						Status += ProductStatus + " " + RollbackStatus;
+					}
+					else
+					{
+						Status = ProductStatus;
+					}
+				}
+				else if (bSoundDirty)
+				{
+					std::string CommitStatus;
+					if (!CValtanCombatObjectSoundCueDocument::
+							Commit_SourceReplacement(SoundReplacement, CommitStatus))
+					{
+						Status = ProductStatus +
+							" Sound replacement commit invariant failed: " + CommitStatus;
+					}
+					else
+					{
+						m_bValtanCombatObjectSoundCuesDirty = false;
+						std::string RuntimeStatus =
+							"No active Valtan; binding applies on the next spawn.";
+						if (const shared_ptr<CValtan> Boss =
+								CAnimationTargetService::Resolve_Boss())
+						{
+							(void)Boss->Reload_CombatObjectSoundCues(RuntimeStatus);
+						}
+						Status = ProductStatus + " " + CommitStatus + " " + RuntimeStatus;
+						(void)Reload_ValtanPatternMaster();
+					}
+				}
+				else
+				{
+					Status = ProductStatus;
+					(void)Reload_ValtanPatternMaster();
+				}
 			}
 		}
 		m_strValtanPatternMasterStatus = std::move(Status);
@@ -5049,7 +5087,7 @@ bool_t Client::CAnimation_Tool::Load_KakulActionBindings(
 	if (nullptr == pProfile || nullptr == pModel)
 	{
 		m_strKakulActionStatus =
-			"No exact Kakul action profile and physical WModel are selected.";
+			"No exact KoukuSaton action profile and physical WModel are selected.";
 		return false;
 	}
 
@@ -5065,7 +5103,7 @@ bool_t Client::CAnimation_Tool::Load_KakulActionBindings(
 		Status))
 	{
 		m_strKakulActionStatus =
-			"Load rejected; current Kakul action draft preserved: " + Status;
+			"Load rejected; current KoukuSaton action draft preserved: " + Status;
 		return false;
 	}
 
@@ -5125,7 +5163,7 @@ bool_t Client::CAnimation_Tool::Save_KakulActionBindings(
 		m_KakulActionReference.Actions.empty())
 	{
 		m_strKakulActionStatus =
-			"Kakul action Save requires a validated profile reference and physical WModel.";
+			"KoukuSaton action Save requires a validated profile reference and physical WModel.";
 		return false;
 	}
 	std::string Status;
@@ -5138,7 +5176,7 @@ bool_t Client::CAnimation_Tool::Save_KakulActionBindings(
 		Status))
 	{
 		m_strKakulActionStatus =
-			"Save rejected; destination and current Kakul bindings preserved: " +
+			"Save rejected; destination and current KoukuSaton bindings preserved: " +
 			Status;
 		return false;
 	}
@@ -5150,7 +5188,7 @@ bool_t Client::CAnimation_Tool::Save_KakulActionBindings(
 void Client::CAnimation_Tool::Render_KakulActionBindings(
 	const shared_ptr<Engine::CModel>& pModel)
 {
-	ImGui::SeparatorText("Kakul Extracted Action Sequences");
+	ImGui::SeparatorText("KoukuSaton Extracted Action Sequences");
 	ImGui::TextColored(
 		ImVec4(0.95f, 0.75f, 0.2f, 1.f),
 		"Local Extracted Action Preview / REFERENCE_ONLY");
@@ -5189,10 +5227,10 @@ void Client::CAnimation_Tool::Render_KakulActionBindings(
 		m_strKakulProfileId.c_str(),
 		m_KakulActionReference.Actions.size(),
 		m_KakulActionAuthored.Bindings.size());
-	if (ImGui::Button("Save Kakul Action Bindings"))
+	if (ImGui::Button("Save KoukuSaton Action Bindings"))
 		(void)Save_KakulActionBindings(pModel);
 	ImGui::SameLine();
-	if (ImGui::Button("Reload Kakul Action Bindings"))
+	if (ImGui::Button("Reload KoukuSaton Action Bindings"))
 	{
 		if (m_bKakulActionDirty)
 			m_bKakulActionReloadConfirmationRequested = true;
@@ -5206,15 +5244,15 @@ void Client::CAnimation_Tool::Render_KakulActionBindings(
 	}
 	if (m_bKakulActionReloadConfirmationRequested)
 	{
-		ImGui::OpenPopup("Discard unsaved Kakul Action Bindings?");
+		ImGui::OpenPopup("Discard unsaved KoukuSaton Action Bindings?");
 		m_bKakulActionReloadConfirmationRequested = false;
 	}
 	if (ImGui::BeginPopupModal(
-		"Discard unsaved Kakul Action Bindings?", nullptr,
+		"Discard unsaved KoukuSaton Action Bindings?", nullptr,
 		ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::TextUnformatted(
-			"Reload replaces only the unsaved sparse Kakul slot overrides.");
+			"Reload replaces only the unsaved sparse KoukuSaton slot overrides.");
 		if (ImGui::Button("Discard Overrides and Reload"))
 		{
 			if (Load_KakulActionBindings(pModel))

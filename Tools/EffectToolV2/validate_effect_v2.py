@@ -6,8 +6,9 @@ import argparse
 import collections
 import json
 import math
+import os
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Mapping
 
 
 AUTHORED_SCHEMA = "lostark.effect-v2"
@@ -16,6 +17,10 @@ EFFECT_TYPES = {"Decal", "Mesh", "Particle", "ScreenPost", "Texture", "Trail"}
 SLOT_NAMES = ("mesh", "base", "noise", "mask", "emissive", "dissolve")
 TEXTURE_SLOT_NAMES = ("base", "noise", "mask", "emissive", "dissolve")
 ROTATIONS = {"Bone", "TargetYaw"}
+RESOURCE_ROOT_ENVIRONMENTS = (
+    "LOSTARK_RESOURCE_ROOT",
+    "LOSTARK_SHARED_ASSET_ROOT",
+)
 
 
 class ContractError(ValueError):
@@ -53,6 +58,45 @@ def _require_relative_asset(asset_id: str, slot: str, owner: str) -> None:
         raise ContractError(
             f"{owner} {slot} must reference {expected_suffix}: {asset_id}"
         )
+
+
+def resolve_resource_root(
+    repository_root: Path,
+    explicit_root: Path | None = None,
+    environment: Mapping[str, str] | None = None,
+) -> Path:
+    values = os.environ if environment is None else environment
+    candidate = explicit_root
+    if candidate is None:
+        for name in RESOURCE_ROOT_ENVIRONMENTS:
+            configured = values.get(name, "").strip()
+            if configured:
+                candidate = Path(configured)
+                break
+    if candidate is None:
+        candidate = repository_root / "Client/Bin/Resources"
+    try:
+        resolved = candidate.resolve()
+    except OSError as exc:
+        raise ContractError(
+            f"Effect V2 resource root is unavailable: {candidate}: {exc}"
+        ) from exc
+    if not resolved.is_dir():
+        raise ContractError(f"Effect V2 resource root is unavailable: {resolved}")
+    return resolved
+
+
+def _resolve_resource_asset(
+    resource_root: Path, asset_id: str, slot: str, owner: str
+) -> Path:
+    try:
+        physical = resource_root.joinpath(*PurePosixPath(asset_id).parts).resolve()
+        physical.relative_to(resource_root)
+    except (OSError, ValueError) as exc:
+        raise ContractError(
+            f"{owner} {slot} escapes Resources after canonicalization: {asset_id}"
+        ) from exc
+    return physical
 
 
 def _validate_numbers(value: Any, owner: str) -> None:
@@ -106,7 +150,9 @@ def _validate_authored(
             _require_relative_asset(asset_id, slot, effect_id)
             if not asset_id:
                 continue
-            physical = resource_root.joinpath(*PurePosixPath(asset_id).parts)
+            physical = _resolve_resource_asset(
+                resource_root, asset_id, slot, effect_id
+            )
             if not physical.is_file():
                 raise ContractError(
                     f"Effect V2 resource is missing: {effect_id}: {slot}: {asset_id}"
@@ -177,6 +223,7 @@ def _validate_bindings(binding_root: Path, authored: dict[str, Path]) -> int:
 
 
 def validate(repository_root: Path, resource_root: Path) -> dict[str, int]:
+    resource_root = resolve_resource_root(repository_root, resource_root)
     v2_root = repository_root / "Data/Effects/V2"
     authored, usage = _validate_authored(v2_root / "Authored", resource_root)
     binding_count = _validate_bindings(v2_root / "Bindings", authored)
@@ -195,12 +242,10 @@ def main() -> int:
     parser.add_argument("--resource-root", type=Path)
     arguments = parser.parse_args()
     repository_root = arguments.repository_root.resolve()
-    resource_root = (
-        arguments.resource_root.resolve()
-        if arguments.resource_root
-        else repository_root / "Client/Bin/Resources"
-    )
     try:
+        resource_root = resolve_resource_root(
+            repository_root, arguments.resource_root
+        )
         report = validate(repository_root, resource_root)
     except ContractError as exc:
         print(f"Effect V2 validation failed: {exc}")

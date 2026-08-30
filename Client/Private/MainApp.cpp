@@ -4875,7 +4875,7 @@ void CMainApp::RefreshDebugResourceFiles()
 			}),
 		m_DebugResourceFiles.end());
 
-	/* KakulSaydon is a user-facing collection, not a replacement for package or
+	/* KoukuSaton is a user-facing collection, not a replacement for package or
 	   Area identity. Present the extracted closure under one virtual branch while
 	   keeping paths such as LV_LUT_MIDNIGHTC_ED and MN_RPCT_05 unchanged. */
 	const auto startsWith = [](const string& value, const char_t* prefix)
@@ -4891,15 +4891,17 @@ void CMainApp::RefreshDebugResourceFiles()
 			startsWith(path, "Data/Maps/Imported/LV_LUT_MIDNIGHTC_ED/") ||
 			startsWith(path, "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/") ||
 			startsWith(path, "DataFiles/Map/LV_LUT_MIDNIGHTC_ED") ||
-			startsWith(path, "Resources/Effect/KakulSaydon/") ||
+			startsWith(path, "Resources/Effect/KoukuSaton/") ||
 			startsWith(path, "Resources/Effect/LV_LUT_MIDNIGHTC_ED/") ||
-			startsWith(path, "Resources/UI/KakulSaydon/") ||
+			startsWith(path, "Resources/UI/KoukuSaton/") ||
 			startsWith(path, "Resources/UI/LV_LUT_MIDNIGHTC_ED/") ||
-			startsWith(path, "Resources/Sound/KakulSaydon/") ||
+			startsWith(path, "Resources/Sound/KoukuSaton/") ||
+			startsWith(path, "Data/Animation/Reference/KoukuSaton/") ||
 			startsWith(path, "Data/Animation/Reference/KakulSaydon/") ||
+			startsWith(path, "Data/Animation/Authored/KoukuSaton/") ||
 			startsWith(path, "Data/Animation/Authored/KakulSaydon/") ||
 			startsWith(path, "Data/ResourceIntake/LV_LUT_MIDNIGHTC_ED") ||
-			startsWith(path, "Resources/Character/KakulSaydon/") ||
+			startsWith(path, "Resources/Character/KoukuSaton/") ||
 			startsWith(path, "Resources/Character/MN_RPCT_00/") ||
 			startsWith(path, "Resources/Character/MN_RPCT_05/") ||
 			startsWith(path, "Resources/Character/MN_RPCT_06/") ||
@@ -4909,7 +4911,7 @@ void CMainApp::RefreshDebugResourceFiles()
 		if (!isKakul)
 			continue;
 		DEBUG_RESOURCE_FILE collectionFile = file;
-		collectionFile.strDomain = "KakulSaydon";
+		collectionFile.strDomain = "KoukuSaton";
 		collectionFile.strSearchText = lowerAscii(
 			collectionFile.strDomain + " " + collectionFile.strSource + " " +
 			collectionFile.strRelativePath);
@@ -4955,17 +4957,21 @@ void CMainApp::OpenDebugResourceFile(const size_t iFile)
 		(void)EnsureDebugTool(DEBUG_TOOL::BOSS);
 	}
 
-	/* A Kakul action/reference file names a concrete authoring profile, not just
+	/* A KoukuSaton action/reference file names a concrete authoring profile, not just
 	   the broad Animation domain. Hand that stable profile to Workbench so the
 	   matching physical WModel and action document open together. Other Kakul
 	   resources continue to open only their existing owner Tool. */
 	const bool_t isKakulAnimationPath =
 		0u == file.strRelativePath.rfind(
+			"Data/Animation/Reference/KoukuSaton/", 0u) ||
+		0u == file.strRelativePath.rfind(
 			"Data/Animation/Reference/KakulSaydon/", 0u) ||
+		0u == file.strRelativePath.rfind(
+			"Data/Animation/Authored/KoukuSaton/", 0u) ||
 		0u == file.strRelativePath.rfind(
 			"Data/Animation/Authored/KakulSaydon/", 0u) ||
 		0u == file.strRelativePath.rfind(
-			"Resources/Character/KakulSaydon/", 0u);
+			"Resources/Character/KoukuSaton/", 0u);
 	const char_t* pKakulProfile = nullptr;
 	if (isKakulAnimationPath)
 	{
@@ -4995,9 +5001,9 @@ void CMainApp::OpenDebugResourceFile(const size_t iFile)
 	{
 		m_strToolStatus = bKakulProfileOpened ?
 			("Selected " + file.strRelativePath +
-			 ". Workbench opened the exact Kakul profile as Local Extracted Action Preview.") :
+				 ". Workbench opened the exact KoukuSaton profile as Local Extracted Action Preview.") :
 			("Selected " + file.strRelativePath +
-			 ", but the Kakul profile preview could not open. Enter Development and preserve any unsaved draft.");
+				 ", but the KoukuSaton profile preview could not open. Enter Development and preserve any unsaved draft.");
 		return;
 	}
 	m_strToolStatus = "Selected " + file.strRelativePath +
@@ -5030,7 +5036,7 @@ void CMainApp::RenderDebugResourceFiles()
 			return static_cast<char_t>(std::tolower(character));
 		});
 	constexpr std::array<const char_t*, 9> domains = {{
-		"KakulSaydon",
+		"KoukuSaton",
 		"Character / Animation",
 		"Boss / Pattern",
 		"Effect V1",
@@ -5060,10 +5066,10 @@ void CMainApp::RenderDebugResourceFiles()
 		if (ImGui::TreeNodeEx(
 			"Domain", flags, "%s (%zu)", domains[iDomain], matches.size()))
 		{
-			if (0 == std::strcmp(domains[iDomain], "KakulSaydon"))
+			if (0 == std::strcmp(domains[iDomain], "KoukuSaton"))
 			{
 				ImGui::TextDisabled(
-					"Virtual collection only: stable Area/package asset IDs are preserved. Playable Kakul sound mapping is still unresolved and is not fabricated here.");
+					"Virtual collection only: stable Area/package asset IDs are preserved. Playable KoukuSaton sound mapping is still unresolved and is not fabricated here.");
 			}
 			if (matches.empty())
 			{
@@ -5367,13 +5373,13 @@ void CMainApp::RenderServerArenaActiveControls()
 		ImGui::EndTabItem();
 	}
 
-	if (ImGui::BeginTabItem("KakulSaydon"))
+	if (ImGui::BeginTabItem("KoukuSaton"))
 	{
 		if (ETOUI(LEVEL::KAKULSAYDON_ARENA) !=
 			CGameInstance::Get().Get_CurrentLevelID())
 		{
 			ImGui::TextDisabled(
-				"Enter KakulSaydon Arena through Server admission. Stage controls never move a local Character directly.");
+				"Enter KoukuSaton Arena through Server admission. Stage controls never move a local Character directly.");
 		}
 		else if (CLevel_KakulSaydonArena* pKakulArena =
 			CLevel_KakulSaydonArena::Get_Active())
@@ -5386,7 +5392,7 @@ void CMainApp::RenderServerArenaActiveControls()
 			if (stageMarkers.empty())
 			{
 				ImGui::TextDisabled(
-					"No admitted Kakul StageMarkers are available in this Level instance.");
+					"No admitted KoukuSaton StageMarkers are available in this Level instance.");
 			}
 			for (const auto& marker : stageMarkers)
 			{
@@ -5429,13 +5435,13 @@ void CMainApp::RenderServerArenaActiveControls()
 			if (0u == m_iNextKakulStageTeleportRequestSequence)
 			{
 				m_strKakulStageTeleportStatus =
-					"Kakul stage teleport request sequence is exhausted; restart the Client before another request.";
+					"KoukuSaton stage teleport request sequence is exhausted; restart the Client before another request.";
 			}
 		}
 		else
 		{
 			ImGui::TextDisabled(
-				"KakulSaydon Arena is selected, but its active Level instance is unavailable.");
+				"KoukuSaton Arena is selected, but its active Level instance is unavailable.");
 		}
 		ImGui::TextWrapped("%s", m_strKakulStageTeleportStatus.c_str());
 		ImGui::EndTabItem();

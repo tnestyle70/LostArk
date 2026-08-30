@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Fail-closed admission report for the KakulSaydon raid Area.
+"""Fail-closed admission report for the KoukuSaton raid Area.
 
-The display collection name is ``KakulSaydon``.  It never replaces the stable
+The display collection name is ``KoukuSaton``.  It never replaces the stable
 source/Area identity ``LV_LUT_MIDNIGHTC_ED``.  This validator is deliberately
 read-only: it does not copy extracted resources, invent navigation, publish a
 world, or add a Client/Server Level.
@@ -29,7 +29,7 @@ from typing import Any, Iterable
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 AREA_ID = "LV_LUT_MIDNIGHTC_ED"
-COLLECTION_NAME = "KakulSaydon"
+COLLECTION_NAME = "KoukuSaton"
 WORLD_ID = "KAKULSAYDON_ARENA"
 CLIENT_LEVEL = "KAKULSAYDON_ARENA"
 
@@ -699,7 +699,7 @@ def _validate_resource_collection(root: Path) -> ModeResult:
         stage.issue(
             "resource-collection.payload.missing",
             "Client/Bin/Resources",
-            "no KakulSaydon stable resource payload was found; aliases alone are not assets",
+            "no KoukuSaton stable resource payload was found; aliases alone are not assets",
         )
     stage.result.facts["availableResourceRoots"] = available_roots
     stage.result.permitted = not stage.result.own_findings
@@ -983,7 +983,7 @@ def format_human(
     if detail_limit < 0:
         raise ValueError("detail_limit must be nonnegative")
     lines = [
-        f"KakulSaydon admission: collection={COLLECTION_NAME} canonicalArea={AREA_ID}",
+        f"KoukuSaton admission: collection={COLLECTION_NAME} canonicalArea={AREA_ID}",
         f"Repository: {report.root}",
         "Spawn: arbitrary random world positions are forbidden; use stable nav-valid slots.",
     ]

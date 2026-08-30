@@ -553,10 +553,7 @@ def build_receipt(resource_hashes: dict[str, str]) -> dict[str, Any]:
         },
         "firstPixel": {
             "automaticStatus": "REFERENCE_RT0_NONZERO",
-            "harness": (
-                "Tools/EffectRenderContractHarness/"
-                "Run-EffectRenderContractHarness.ps1"
-            ),
+            "harness": "Tools/Build/Test-CompiledShaderClosure.ps1",
             "visualStatus": "PENDING_USER_REVIEW",
         },
         "runtimeMaterial": {

@@ -82,7 +82,7 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 
 #### pull 후 공유 Server에 들어가는 순서
 
-Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 protocol v42 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. v41 이하 빌드는 v42와 호환되지 않는다.
+Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v47 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
 
 ```powershell
 git switch main
@@ -364,8 +364,9 @@ exact tuple을 현재 Product tree와 다시 대조해 문서를 연다. clip-bo
 
 V1 Product source가 실제 참조하는 DDS/WModel dependency closure는 팀장 Drive의 같은
 Resources-relative 경로에 둔다. Git은 authored source와 asset ID만 전달한다.
-물리 pack 검증에는 validator의 `-AllowLocalResources`(전체 회귀는 `-AllowLocalEffectResources`)를
-명시하고 파일 실재·안전 경로·내용과 local 미추적 개수를 보고한다. 이 검증을 Git 배포 PASS로 기록하지 않는다.
+물리 pack은 기본 validator와 전체 회귀가 파일 실재·안전 경로·내용과 local 미추적 개수를 검사한다.
+`-AllowLocalResources`와 `-AllowLocalEffectResources`는 과거 명령 호환용이므로 생략할 수 있다. 이 검증을
+Git 배포 PASS로 기록하지 않는다.
 Valtan actor Product가 직접 참조하는 body, Parts1/Parts2, AnimSet과 weapon 다섯 WModel, 그리고 그 material
 table이 참조하는 body/parts TGA 12개와 weapon DDS 8개도 같은 Drive 전달 묶음에 포함한다. 새 clone은
 실행 전에 팀장에게서 이 물리 리소스를 같은 상대 경로로 전달받는다.

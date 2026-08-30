@@ -854,13 +854,15 @@ bool_t Client::CEffectV2Document::Load_DocumentFile(
 		strOutError = "Cannot open: " + Path.string();
 		return false;
 	}
-	if (!Parse_Document(Text, OutDocument, strOutError))
+	EFFECT_V2_DOCUMENT Staged;
+	if (!Parse_Document(Text, Staged, strOutError))
 		return false;
-	if (OutDocument.strEffectId != strEffectId)
+	if (Staged.strEffectId != strEffectId)
 	{
 		strOutError = "effectId does not match the file name.";
 		return false;
 	}
+	OutDocument = std::move(Staged);
 	return true;
 }
 
@@ -876,7 +878,11 @@ bool_t Client::CEffectV2Document::Load_BindingsFile(
 		strOutError = "Cannot open: " + Path.string();
 		return false;
 	}
-	return Parse_Bindings(Text, strArchetypeId, OutBindings, strOutError);
+	std::vector<EFFECT_V2_BINDING> Staged;
+	if (!Parse_Bindings(Text, strArchetypeId, Staged, strOutError))
+		return false;
+	OutBindings = std::move(Staged);
+	return true;
 }
 
 bool_t Client::CEffectV2Document::Write_AtomicFile(

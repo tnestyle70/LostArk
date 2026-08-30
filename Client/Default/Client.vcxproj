@@ -527,6 +527,8 @@
     <None Include="..\..\Data\Navigation\LV_LUT_HEARTRB_ED.navblockers" />
     <None Include="..\..\Data\Navigation\LV_LUT_HEARTRB_ED.navpaint" />
     <None Include="..\..\Data\Navigation\LV_LUT_HEARTRB_ED.navsource" />
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navpaint" />
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navsource" />
     <None Include="..\..\Data\UI\BossUI\BossUI.json" />
     <None Include="..\..\Data\UI\Esther\EstherUI.json" />
     <None Include="..\..\Data\UI\Inventory\InventoryUI.json" />
@@ -550,6 +552,8 @@
     <None Include="..\..\Data\Worlds\LV_LOBBY_CLASSSELECT_SL00\SpawnGroups.world.json" />
     <None Include="..\..\Data\Worlds\LV_LUT_HEARTRB_ED\Gameplay.world.json" />
     <None Include="..\..\Data\Worlds\LV_LUT_HEARTRB_ED\SpawnGroups.world.json" />
+    <None Include="..\..\Data\Worlds\LV_LUT_MIDNIGHTC_ED\Gameplay.world.json" />
+    <None Include="..\..\Data\Worlds\LV_LUT_MIDNIGHTC_ED\StageMarkers.json" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMesh.hlsl" />
@@ -759,8 +763,8 @@
     <EngineCellShaderSource>$(EngineBinaryRoot)Shader_Cell.cso</EngineCellShaderSource>
     <EngineDeferredShaderSource>$(EngineBinaryRoot)Shader_Deferred.cso</EngineDeferredShaderSource>
   </PropertyGroup>
-  <Target Name="ValidateValtanSplitProducts" BeforeTargets="ClCompile" Condition="'$(Platform)'=='x64'">
-    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\ValtanPipeline\Project-ValtanPatternMaster.ps1&quot; -Mode ValidateV2" />
+  <Target Name="ValidateClientBuildDomains" BeforeTargets="ClCompile" Condition="'$(Platform)'=='x64'">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\Build\Invoke-BuildDomainOwner.ps1&quot; -Owner Client -ResourceRoot &quot;$(ProjectDir)..\Bin\Resources&quot;" />
   </Target>
   <Target Name="PrepareEngineSdk" BeforeTargets="ClCompile" DependsOnTargets="ResolveProjectReferences" Condition="'$(Platform)'=='x64'">
     <ItemGroup>

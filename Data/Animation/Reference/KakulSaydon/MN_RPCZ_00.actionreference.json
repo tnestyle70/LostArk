@@ -3,9 +3,9 @@
   "formatVersion": 1,
   "authority": "REFERENCE_ONLY",
   "profileId": "MN_RPCZ_00",
-  "modelAssetId": "Character/KakulSaydon/MN_RPCZ_00/MN_RPCZ_00",
+  "modelAssetId": "Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00",
   "sourceEvidenceSha256": "5be43c0c94364e658d0d79eb6356fd4049fd761571f85d4b3c9d168e2637d879",
-  "referenceRevision": "99648cf9ccea1a1675df5c61285f42b2a286d89b7c115e12c479b688bebd3276",
+  "referenceRevision": "0b916c63a681a0996deca673102525f84dcd6d1b241e0aba732c8306c742692a",
   "actions": [
     {
       "sourceActionId": 0,

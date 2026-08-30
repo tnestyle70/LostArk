@@ -169,6 +169,9 @@ private:
 		LostArk::Shared::MAX_NICKNAME_BYTES + 1u> m_NicknameDraft{};
 	bool_t m_isCreateCharacterModalOpen = false;
 	bool_t m_hasCreateCharacterButtonClick = false;
+	/* A Server-approved world transfer hands the live socket to the target
+	   Product Level. Ordinary Back/failure destruction still owns the close. */
+	bool_t m_preserveServerConnectionForTransfer = false;
 #ifdef _DEBUG
 	bool_t m_isCombatColliderDebugVisible = false;
 	bool_t m_isSkillHitAreaDebugVisible = true;

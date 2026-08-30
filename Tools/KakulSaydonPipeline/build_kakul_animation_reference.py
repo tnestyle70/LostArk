@@ -27,7 +27,7 @@ DEFAULT_SOURCE_ROOT = Path(
     "RemainingCharacterExtraction-20260829/ActionNameSources"
 )
 DEFAULT_RUNTIME_ROOT = (
-    REPO_ROOT / "Client/Bin/Resources/Character/KakulSaydon"
+    REPO_ROOT / "Client/Bin/Resources/Character/KoukuSaton"
 )
 DEFAULT_OUTPUT_ROOT = REPO_ROOT / "Data/Animation"
 DEFAULT_MODEL_INFO_TOOL = (
@@ -135,25 +135,25 @@ PROFILE_SPECS = (
     ProfileSpec(
         "MN_RPCT_05",
         "MN_RPCT_05",
-        "Character/KakulSaydon/MN_RPCT_05/MN_RPCT_05",
+        "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05",
         uses_rpct05_retime=True,
     ),
     ProfileSpec(
         "MN_RPCT_06",
         "MN_RPCT_06",
-        "Character/KakulSaydon/MN_RPCT_06/MN_RPCT_06",
+        "Character/KoukuSaton/MN_RPCT_06/MN_RPCT_06",
         runtime_prefix="mn_rpct_06_sk.ao_",
     ),
     ProfileSpec(
         "MN_RPCT_07",
         "MN_RPCT_05",
-        "Character/KakulSaydon/MN_RPCT_05/MN_RPCT_05",
+        "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05",
         uses_rpct05_retime=True,
     ),
     ProfileSpec(
         "MN_RPCZ_00",
         "MN_RPCZ_00",
-        "Character/KakulSaydon/MN_RPCZ_00/MN_RPCZ_00",
+        "Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00",
         runtime_prefix="rpcz00_",
         uses_rpcz_structure=True,
     ),

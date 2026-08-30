@@ -1,3 +1,5 @@
+// Product shader closure owns this one-file WARP fixture. It intentionally
+// compiles in a temporary directory and never recompiles Client product CPPs.
 #include <Windows.h>
 
 #include <d3d11.h>
@@ -142,7 +144,7 @@ namespace
             const fs::path Candidate = fs::path(Configured);
             if (!Is_Directory(Candidate))
             {
-                OutError = "harness resource root is unavailable: " +
+                OutError = "Product Effect resource root is unavailable: " +
                     To_Utf8(Candidate.wstring());
                 return std::nullopt;
             }
@@ -151,7 +153,7 @@ namespace
         const fs::path DefaultRoot = RepositoryRoot / L"Client/Bin/Resources";
         if (!Is_Directory(DefaultRoot))
         {
-            OutError = "harness resource root is unavailable: " +
+            OutError = "Product Effect resource root is unavailable: " +
                 To_Utf8(DefaultRoot.wstring());
             return std::nullopt;
         }
@@ -495,7 +497,7 @@ int wmain(int ArgumentCount, wchar_t** ppArguments)
 {
     if (ArgumentCount < 2)
     {
-        std::cerr << "usage: EffectRenderContractHarness <repository-root> "
+        std::cerr << "usage: ProductEffectShaderWarpProbe <repository-root> "
                      "[Debug|Release] [--validate-resource-root]\n";
         return 64;
     }
@@ -529,7 +531,7 @@ int wmain(int ArgumentCount, wchar_t** ppArguments)
         !Is_Within(*ResourceRoot, ResourceRoot->parent_path());
     if (!BoundaryValidated)
     {
-        std::cerr << "harness resource asset path boundary validation failed\n";
+        std::cerr << "Product Effect resource asset path boundary validation failed\n";
         return EXIT_RESOURCE_ROOT;
     }
     if (ValidateResourceRootOnly)
@@ -608,6 +610,7 @@ int wmain(int ArgumentCount, wchar_t** ppArguments)
               << Json_Escape(To_Utf8(AdapterDesc.Description))
               << "\",\"v1LitPixels\":" << V1LitPixels
               << ",\"v2LitPixels\":" << V2LitPixels
+              << ",\"assetPathBoundaryValidated\":true"
               << ",\"resourceRoot\":\""
               << Json_Escape(To_Utf8(ResourceRoot->wstring())) << "\"}\n";
     return 0;

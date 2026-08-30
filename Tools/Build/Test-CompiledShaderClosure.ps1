@@ -174,6 +174,278 @@ function Get-FileHashValue {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
 }
 
+function Invoke-ProductEffectShaderWarpProbe {
+    $sourcePath = Join-Path $repositoryPath `
+        'Tools\RenderingPipeline\ProductEffectShaderWarpProbe.cpp'
+    if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
+        Add-Failure "Product Effect shader WARP probe source is missing: $sourcePath"
+        return
+    }
+
+    $programFilesX86 = ${env:ProgramFiles(x86)}
+    $vswhere = Join-Path $programFilesX86 `
+        'Microsoft Visual Studio\Installer\vswhere.exe'
+    if (-not (Test-Path -LiteralPath $vswhere -PathType Leaf)) {
+        Add-Failure "Product Effect shader WARP probe requires vswhere: $vswhere"
+        return
+    }
+    $installationPath = [string](@(& $vswhere -latest -products * `
+        -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+        -property installationPath) | Select-Object -First 1)
+    if ([string]::IsNullOrWhiteSpace($installationPath)) {
+        Add-Failure 'Product Effect shader WARP probe could not locate Visual Studio C++ tools.'
+        return
+    }
+    $vsDevCmd = Join-Path $installationPath 'Common7\Tools\VsDevCmd.bat'
+    if (-not (Test-Path -LiteralPath $vsDevCmd -PathType Leaf)) {
+        Add-Failure "Product Effect shader WARP probe requires VsDevCmd: $vsDevCmd"
+        return
+    }
+
+    $generatedRoot = [IO.Path]::GetFullPath(
+        (Join-Path $repositoryPath '.codex_tmp'))
+    $probeRoot = Join-Path $generatedRoot `
+        ('product-effect-shader-warp-' + [Guid]::NewGuid().ToString('N'))
+    try {
+        New-Item -ItemType Directory -Path $probeRoot -Force | Out-Null
+        $probeExecutable = Join-Path $probeRoot 'ProductEffectShaderWarpProbe.exe'
+        $probeObject = Join-Path $probeRoot 'ProductEffectShaderWarpProbe.obj'
+        $compilerPdb = Join-Path $probeRoot 'ProductEffectShaderWarpProbe.compiler.pdb'
+        $linkPdb = Join-Path $probeRoot 'ProductEffectShaderWarpProbe.pdb'
+        $engineSdkIncludes = Join-Path $repositoryPath 'EngineSDK\Inc'
+        $thirdPartyLibraries = Join-Path $repositoryPath 'Engine\ThirdPartyLib'
+        $runtimeOptions = if ($Configuration -eq 'Debug') {
+            '/MDd /D_DEBUG'
+        }
+        else {
+            '/MD /DNDEBUG'
+        }
+        $effectsLibrary = if ($Configuration -eq 'Debug') {
+            'Effects11d.lib'
+        }
+        else {
+            'Effects11.lib'
+        }
+        $compileCommand =
+            'call "{0}" -no_logo -arch=x64 -host_arch=x64 && ' +
+            'cl.exe /nologo /std:c++20 /EHsc /W4 /utf-8 {1} ' +
+            '/DUNICODE /D_UNICODE /I"{2}" "{3}" /Fo:"{4}" /Fd:"{5}" ' +
+            '/Fe:"{6}" /link /INCREMENTAL:NO /PDB:"{7}" /LIBPATH:"{8}" ' +
+            '{9} d3d11.lib dxgi.lib'
+        $compileCommand = $compileCommand -f $vsDevCmd, $runtimeOptions,
+            $engineSdkIncludes, $sourcePath, $probeObject, $compilerPdb,
+            $probeExecutable, $linkPdb, $thirdPartyLibraries, $effectsLibrary
+        $previousNativeErrorAction = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Continue'
+            $global:LASTEXITCODE = -1
+            $compileOutput = @(& $env:COMSPEC /d /s /c $compileCommand 2>&1)
+            $compileExitCode = $global:LASTEXITCODE
+        }
+        finally {
+            $ErrorActionPreference = $previousNativeErrorAction
+        }
+        if ($compileExitCode -ne 0 -or
+            -not (Test-Path -LiteralPath $probeExecutable -PathType Leaf)) {
+            Add-Failure (
+                "Product Effect shader WARP probe compile failed with code " +
+                "${compileExitCode}: $($compileOutput -join ' ')")
+            return
+        }
+
+        $externalResourceRoot = Join-Path $probeRoot 'external-resources'
+        New-Item -ItemType Directory -Path $externalResourceRoot -Force |
+            Out-Null
+        $defaultResourceRoot = Join-Path $repositoryPath `
+            'Client\Bin\Resources'
+        $missingResourceRoot = Join-Path $probeRoot 'missing-resources'
+        $previousResourceRoot = [Environment]::GetEnvironmentVariable(
+            'LOSTARK_RESOURCE_ROOT', 'Process')
+        $previousSharedRoot = [Environment]::GetEnvironmentVariable(
+            'LOSTARK_SHARED_ASSET_ROOT', 'Process')
+        $setRootEnvironment = {
+            param(
+                [string]$Name,
+                [AllowNull()][AllowEmptyString()][object]$Value
+            )
+            if ($null -eq $Value) {
+                $Value = [System.Management.Automation.Language.NullString]::Value
+            }
+            [Environment]::SetEnvironmentVariable(
+                $Name, $Value, 'Process')
+        }
+        $invokeRootCase = {
+            param(
+                [string]$Name,
+                [AllowNull()][AllowEmptyString()][object]$Primary,
+                [AllowNull()][AllowEmptyString()][object]$Shared,
+                [AllowNull()][string]$Expected,
+                [int]$ExpectedExit
+            )
+            & $setRootEnvironment 'LOSTARK_RESOURCE_ROOT' $Primary
+            & $setRootEnvironment 'LOSTARK_SHARED_ASSET_ROOT' $Shared
+            $previousRootCaseErrorAction = $ErrorActionPreference
+            try {
+                $ErrorActionPreference = 'Continue'
+                $global:LASTEXITCODE = -1
+                $rootOutput = @(& $probeExecutable $repositoryPath `
+                    $Configuration '--validate-resource-root' 2>&1)
+                $rootExitCode = $global:LASTEXITCODE
+            }
+            finally {
+                $ErrorActionPreference = $previousRootCaseErrorAction
+            }
+            if ($rootExitCode -ne $ExpectedExit) {
+                Add-Failure (
+                    "Product Effect resource-root case '$Name' returned " +
+                    "$rootExitCode, expected ${ExpectedExit}: " +
+                    ($rootOutput -join ' '))
+                return $false
+            }
+            if ($ExpectedExit -eq 0) {
+                $rootJson = @($rootOutput | Where-Object {
+                    $_.ToString().TrimStart().StartsWith('{')
+                } | Select-Object -Last 1)
+                if ($rootJson.Count -ne 1) {
+                    Add-Failure (
+                        "Product Effect resource-root case '$Name' emitted " +
+                        "no result: " + ($rootOutput -join ' '))
+                    return $false
+                }
+                try {
+                    $rootResult = $rootJson[0].ToString() | ConvertFrom-Json
+                }
+                catch {
+                    Add-Failure (
+                        "Product Effect resource-root case '$Name' emitted " +
+                        "invalid JSON: $($_.Exception.Message)")
+                    return $false
+                }
+                $selectedRoot = [IO.Path]::GetFullPath(
+                    [string]$rootResult.resourceRoot).TrimEnd('\', '/')
+                $expectedRoot = [IO.Path]::GetFullPath(
+                    $Expected).TrimEnd('\', '/')
+                if (-not [StringComparer]::OrdinalIgnoreCase.Equals(
+                        $selectedRoot, $expectedRoot) -or
+                    $rootResult.assetPathBoundaryValidated -ne $true) {
+                    Add-Failure (
+                        "Product Effect resource-root case '$Name' selected " +
+                        "'$selectedRoot', expected '$expectedRoot', or lost " +
+                        'the canonical asset boundary.')
+                    return $false
+                }
+            }
+            elseif (($rootOutput -join ' ') -notmatch
+                'Product Effect resource root is unavailable:') {
+                Add-Failure (
+                    "Product Effect resource-root case '$Name' lost the " +
+                    'invalid configured-root failure reason.')
+                return $false
+            }
+            return $true
+        }
+        $resourceRootCases = @(
+            [pscustomobject]@{ Name = 'external primary';
+                Primary = $externalResourceRoot; Shared = $null;
+                Expected = $externalResourceRoot; Exit = 0 },
+            [pscustomobject]@{ Name = 'primary takes precedence';
+                Primary = $externalResourceRoot; Shared = $missingResourceRoot;
+                Expected = $externalResourceRoot; Exit = 0 },
+            [pscustomobject]@{ Name = 'shared root fallback';
+                Primary = $null; Shared = $externalResourceRoot;
+                Expected = $externalResourceRoot; Exit = 0 },
+            [pscustomobject]@{ Name = 'repository default';
+                Primary = $null; Shared = $null;
+                Expected = $defaultResourceRoot; Exit = 0 },
+            [pscustomobject]@{ Name = 'empty roots use repository default';
+                Primary = ''; Shared = '';
+                Expected = $defaultResourceRoot; Exit = 0 },
+            [pscustomobject]@{ Name = 'empty primary permits shared fallback';
+                Primary = ''; Shared = $externalResourceRoot;
+                Expected = $externalResourceRoot; Exit = 0 },
+            [pscustomobject]@{ Name = 'invalid primary cannot fall back';
+                Primary = $missingResourceRoot; Shared = $externalResourceRoot;
+                Expected = $null; Exit = 2 },
+            [pscustomobject]@{ Name = 'invalid shared cannot fall back';
+                Primary = $null; Shared = $missingResourceRoot;
+                Expected = $null; Exit = 2 }
+        )
+        try {
+            foreach ($rootCase in $resourceRootCases) {
+                if (-not (& $invokeRootCase -Name $rootCase.Name `
+                        -Primary $rootCase.Primary -Shared $rootCase.Shared `
+                        -Expected $rootCase.Expected `
+                        -ExpectedExit $rootCase.Exit)) {
+                    return
+                }
+            }
+        }
+        finally {
+            & $setRootEnvironment 'LOSTARK_RESOURCE_ROOT' $previousResourceRoot
+            & $setRootEnvironment 'LOSTARK_SHARED_ASSET_ROOT' $previousSharedRoot
+            $global:LASTEXITCODE = 0
+        }
+        Write-Host '  Product Effect resource-root cases : 8'
+
+        try {
+            $ErrorActionPreference = 'Continue'
+            $global:LASTEXITCODE = -1
+            $probeOutput = @(& $probeExecutable $repositoryPath $Configuration 2>&1)
+            $probeExitCode = $global:LASTEXITCODE
+        }
+        finally {
+            $ErrorActionPreference = $previousNativeErrorAction
+        }
+        if ($probeExitCode -ne 0) {
+            Add-Failure (
+                "Product Effect shader WARP probe failed with code " +
+                "${probeExitCode}: $($probeOutput -join ' ')")
+            return
+        }
+        $jsonLine = @($probeOutput | Where-Object {
+            $_.ToString().TrimStart().StartsWith('{')
+        } | Select-Object -Last 1)
+        if ($jsonLine.Count -ne 1) {
+            Add-Failure (
+                "Product Effect shader WARP probe emitted no result: " +
+                ($probeOutput -join ' '))
+            return
+        }
+        try {
+            $result = $jsonLine[0].ToString() | ConvertFrom-Json
+        }
+        catch {
+            Add-Failure "Product Effect shader WARP result is invalid JSON: $($_.Exception.Message)"
+            return
+        }
+        if ($result.driver -ne 'WARP' -or
+            [int64]$result.v1LitPixels -le 0 -or
+            [int64]$result.v2LitPixels -le 0 -or
+            $result.assetPathBoundaryValidated -ne $true -or
+            [string]::IsNullOrWhiteSpace([string]$result.resourceRoot)) {
+            Add-Failure (
+                "Product Effect shader WARP result is incomplete: " +
+                ($jsonLine[0].ToString()))
+        }
+        else {
+            Write-Host (
+                "  Product Effect WARP pixels : V1=$($result.v1LitPixels), " +
+                "V2=$($result.v2LitPixels)")
+        }
+    }
+    finally {
+        if (Test-Path -LiteralPath $probeRoot -PathType Container) {
+            $resolvedProbeRoot = (Resolve-Path -LiteralPath $probeRoot).Path
+            if (-not $resolvedProbeRoot.StartsWith(
+                $generatedRoot.TrimEnd('\') + '\',
+                [StringComparison]::OrdinalIgnoreCase)) {
+                throw "Product Effect shader WARP cleanup escaped generated root: $resolvedProbeRoot"
+            }
+            Remove-Item -LiteralPath $resolvedProbeRoot -Recurse -Force
+        }
+    }
+}
+
 $clientProjectPath = Join-Path $repositoryPath "Client\Default\Client.vcxproj"
 $engineProjectPath = Join-Path $repositoryPath "Engine\Default\Engine.vcxproj"
 $clientOutputDirectory = Join-Path $repositoryPath "Client\Bin\$Configuration"
@@ -228,8 +500,6 @@ $clientConsumers = Get-DirectShaderConsumers @(
     (Join-Path $repositoryPath "Client\Private")
 )
 
-$effectHarnessConsumers = $clientConsumers
-
 $modulesToValidate = [System.Collections.Generic.List[object]]::new()
 $modulesToValidate.Add([pscustomobject]@{
     Name = "Client"
@@ -238,12 +508,6 @@ $modulesToValidate.Add([pscustomobject]@{
     Consumers = $clientConsumers
 })
 if ($Modules -eq "All") {
-    $modulesToValidate.Add([pscustomobject]@{
-        Name = "EffectRenderContractHarness"
-        ProjectPath = Join-Path $repositoryPath "Tools\EffectRenderContractHarness\Default\EffectRenderContractHarness.vcxproj"
-        Directory = Join-Path $repositoryPath "Tools\EffectRenderContractHarness\Bin\$Configuration"
-        Consumers = $effectHarnessConsumers
-    })
     $modulesToValidate.Add([pscustomobject]@{
         Name = "PointLightFalloffContractHarness"
         ProjectPath = Join-Path $repositoryPath "Tools\PointLightFalloffContractHarness\Default\PointLightFalloffContractHarness.vcxproj"
@@ -303,6 +567,8 @@ foreach ($module in $modulesToValidate) {
 
     }
 }
+
+Invoke-ProductEffectShaderWarpProbe
 
 if ($script:failures.Count -gt 0) {
     Write-Host "Compiled shader closure FAILED for $Configuration|$platform" -ForegroundColor Red

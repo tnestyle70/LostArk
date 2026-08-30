@@ -1684,6 +1684,12 @@
     <None Include="..\..\Data\Navigation\LV_LUT_HEARTRB_ED.navsource">
       <Filter>96.DataFiles\Navigation</Filter>
     </None>
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navpaint">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navsource">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
     <None Include="..\..\Data\UI\BossUI\BossUI.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
@@ -1753,6 +1759,12 @@
 	<None Include="..\..\Data\Worlds\LV_LUT_HEARTRB_ED\SpawnGroups.world.json">
 	  <Filter>96.DataFiles\Worlds</Filter>
 	</None>
+    <None Include="..\..\Data\Worlds\LV_LUT_MIDNIGHTC_ED\Gameplay.world.json">
+      <Filter>96.DataFiles\Worlds</Filter>
+    </None>
+    <None Include="..\..\Data\Worlds\LV_LUT_MIDNIGHTC_ED\StageMarkers.json">
+      <Filter>96.DataFiles\Worlds</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxTex.hlsl">

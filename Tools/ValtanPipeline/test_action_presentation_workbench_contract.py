@@ -60,6 +60,9 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         cls.room_cpp = read("Server/Private/GameRoom.cpp")
         cls.combat_runtime_cpp = read("Server/Private/CombatObjectRuntime.cpp")
         cls.valtan_cpp = read("Client/Private/Valtan.cpp")
+        cls.combat_sound_document_h = read(
+            "Client/Public/ValtanCombatObjectSoundCueDocument.h"
+        )
         cls.combat_sound_document_cpp = read(
             "Client/Private/ValtanCombatObjectSoundCueDocument.cpp"
         )
@@ -231,11 +234,24 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         self.assertIn("m_pBalanceTool->Save_ValtanProduct", workbench)
         for sound_save_token in (
             "Validate_SourceDraft",
-            "Save_Source",
+            "Begin_SourceReplacement",
+            "Commit_SourceReplacement",
+            "Rollback_SourceReplacement",
             "Reload_CombatObjectSoundCues",
             "m_bValtanCombatObjectSoundCuesDirty",
         ):
             self.assertIn(sound_save_token, workbench)
+        sound_begin = workbench.index("Begin_SourceReplacement")
+        product_save = workbench.index("m_pBalanceTool->Save_ValtanProduct")
+        sound_rollback = workbench.index("Rollback_SourceReplacement")
+        sound_commit = workbench.index("Commit_SourceReplacement")
+        self.assertLess(sound_begin, product_save)
+        self.assertLess(product_save, sound_rollback)
+        self.assertLess(sound_rollback, sound_commit)
+        self.assertIn(
+            "gameplay Product/runtime and Sound source were preserved",
+            workbench,
+        )
 
         reload_guard = re.search(
             r"ImGui::BeginDisabled\((?P<guard>.*?)\);\s*"
@@ -274,6 +290,52 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         )
         for token in ("MoveFileExW", "MOVEFILE_REPLACE_EXISTING"):
             self.assertIn(token, self.combat_sound_document_cpp)
+
+    def test_joined_save_sound_replacement_keeps_exact_recovery_bytes(self) -> None:
+        for declaration in (
+            "Begin_SourceReplacement",
+            "Commit_SourceReplacement",
+            "Rollback_SourceReplacement",
+        ):
+            self.assertIn(declaration, self.combat_sound_document_h)
+
+        begin = function_body(
+            self.combat_sound_document_cpp,
+            "bool_t Client::CValtanCombatObjectSoundCueDocument::Begin_SourceReplacement(",
+        )
+        for token in (
+            "Validate_SourceDraft",
+            "Write_StagedSource",
+            "CopyFileW",
+            "MoveFileExW",
+            "MOVEFILE_REPLACE_EXISTING",
+            "MOVEFILE_WRITE_THROUGH",
+            "transaction.bActive = true",
+        ):
+            self.assertIn(token, begin)
+        self.assertLess(begin.index("CopyFileW"), begin.index("MoveFileExW"))
+
+        rollback = function_body(
+            self.combat_sound_document_cpp,
+            "bool_t Client::CValtanCombatObjectSoundCueDocument::Rollback_SourceReplacement(",
+        )
+        for token in (
+            "transaction.Rollback.c_str()",
+            "transaction.Destination.c_str()",
+            "MOVEFILE_REPLACE_EXISTING",
+            "MOVEFILE_WRITE_THROUGH",
+            "DeleteFileW",
+        ):
+            self.assertIn(token, rollback)
+
+        standalone_save = function_body(
+            self.combat_sound_document_cpp,
+            "bool_t Client::CValtanCombatObjectSoundCueDocument::Save_Source(",
+        )
+        self.assertLess(
+            standalone_save.index("Begin_SourceReplacement"),
+            standalone_save.index("Commit_SourceReplacement"),
+        )
 
     def test_workbench_uses_stable_domain_boundaries_not_network(self) -> None:
         combined = self.animation_h + "\n" + self.animation_cpp
@@ -720,7 +782,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             '"DataFiles/Map"',
             '"Data/Effects/V2"',
             '"Resources/Sound"',
-            '"KakulSaydon"',
+            '"KoukuSaton"',
             '"Resources/Map/LV_LUT_MIDNIGHTC_ED/"',
             '"Resources/Character/MN_RPCT_05/"',
         ):

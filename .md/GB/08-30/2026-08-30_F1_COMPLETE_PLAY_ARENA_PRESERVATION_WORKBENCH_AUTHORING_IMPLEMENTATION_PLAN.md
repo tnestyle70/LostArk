@@ -170,3 +170,110 @@ section만 `Complete Play` coverage에 포함한다.
 - Debug/Release Core, `git diff --check`, JSON/XML parse
 
 Kakul 화면 결과, stage 위치, map/effect/animation fidelity는 최종적으로 사용자가 직접 판정한다.
+
+## G10. 물리 정본과 커밋 증거 경계
+
+현재 작업은 `C:\Users\user\Desktop\LostArk` 한 물리 폴더에서만 통합한다. 다른 worktree의 파일을
+폴더 단위로 덮어쓰지 않고, 현재 branch의 누적 커밋과 다른 작업자의 미커밋 파일을 먼저 보존한다.
+개발 중 dirty build는 컴파일 진단으로만 사용하고 최종 PASS 증거로 승격하지 않는다.
+
+최종 검증은 다음 identity를 같은 실행 증거에 묶는다.
+
+- exact Git HEAD와 dirty 여부
+- Data·source·shader input fingerprint
+- domain publisher/validator receipt와 재사용 여부
+- Debug/Release Client.exe, Server.exe와 대응 PDB의 SHA-256, 크기, 수정 시각
+- 각 publish, compile/link, harness 단계의 경과 시간
+
+`-SkipBuild`는 위 source/input과 binary receipt가 정확히 일치할 때만 허용한다. source, Data, project,
+shader가 바뀌었거나 EXE/PDB pair가 다른 경우에는 stale binary 검증을 거부한다.
+
+## G11. Effect V1/V2와 Drive Resource 보존
+
+Effect Tool V2는 삭제 대상이 아니다. 현재 정본은 V2 파일 80개, Authored 75개, Binding 4개,
+TextureSlotUsage 1개이며 Esther NPC와 Valtan hand 제품 소비자가 존재한다. V2 validator와 runtime consumer,
+Tool을 통합 Workbench의 authoring owner로 보존한다.
+
+V1은 Catalog 171 / Authored 171의 exact closure를 보존한다. 삭제 대상은 현재 Product consumer가 없는
+과거 후보 생성·복구·증거용 apply/build/materialize/promote/replay corpus다. caller와 Data consumer를
+확인하지 않은 Effect asset이나 물리 resource는 삭제하지 않는다.
+
+`Client/Bin/Resources`는 팀장의 Drive 물리 정본이다. Git index에서는 추적하지 않지만 실제 파일은
+그 자리에 보존한다. EXE/Data 전달 ZIP은 실행 바이너리와 generated DataFiles만 포함하고 Resource payload는
+포함하지 않는다. 설치기는 허용 경로, SHA-256, staging, rollback을 검증하며 Resource 경로를 덮어쓰려는
+ZIP을 거부한다.
+
+## G12. Domain publisher와 build receipt
+
+하나의 build domain graph가 Valtan Product, Effect V2, World Gameplay, Navigation, Destruction,
+Gameplay Balance, Item, Reward의 입력·도구·출력을 소유한다. 같은 fingerprint의 domain은 한 번만
+publish 또는 validate하고 이후 Product/Core 단계는 receipt를 재사용한다.
+
+Server/Client project의 기존 pre-build hook은 Visual Studio 단독 빌드 안전망으로 보존한다. 중앙 runner가
+receipt를 실제로 검증한 경우에만 명시적 MSBuild property로 중복 hook을 건너뛴다. Effect V2와
+`ValidateV2`를 제거하거나 빈 성공으로 대체하지 않는다.
+
+목표 실행 흐름은 다음과 같다.
+
+```text
+Git HEAD + dirty/source diff
+-> changed domain fingerprint
+-> domain별 publish/materialize/validate 1회
+-> receipt의 output hash 검증
+-> Engine/Shared/Server/Client compile/link
+-> 영향 harness
+-> CSO closure
+-> EXE/PDB/source identity evidence
+-> 사용자 visual/audio smoke
+```
+
+## G13. Broad harness 제거와 assertion 이관
+
+기본 Solution Build는 Engine, Shared, Server, Client 네 제품만 유지한다. 강한 계약인
+NetworkProtocol, CharacterSelectIsolation, WModelGeometry는 보존하고 변경 domain에서만 실행한다.
+Physics, PointLight, ValtanPatternAudition은 domain-only 진단으로 제한한다.
+
+- MapFrustumContractHarness: water assertion을 MapPipeline으로 이관한 뒤 solution, runner, 문서와 물리
+  프로젝트를 제거한다.
+- ActionPresentationTimelineHarness: sound/effect/camera/monster/party assertions를 작은 기존 domain
+  harness로 이관하고 broad project를 제거한다.
+- EffectRenderContractHarness: compiled shader/WARP/resource-root/stage-commit의 고유 assertion을
+  Product CSO closure와 V2 focused contract로 이관한 뒤 물리 project와 runner를 제거한다.
+
+assertion 이관은 문자열 존재 검사만으로 대체하지 않는다. 가능한 항목은 실제 parser/evaluator 또는 native
+실행 계약으로 유지하고, 남은 harness가 제품 CPP를 직접 재컴파일하면 정확한 수와 후속 library 경계를
+RESULT에 남긴다.
+
+## G14. Tools와 제품 compile critical path 정리
+
+이번 변경에서 caller 0이 확인된 HUD `.cfg` 일회성 DataMigration과 빈 ProjectAudit/Profiler 잔재를
+정리한다. EffectPipeline과 LevelPlacementExtractor의 대량 복원 corpus는 active validator와 Kakul/map
+추출 consumer의 dependency closure를 먼저 분리한 뒤 의미 단위로 제거한다. `MaterialEvaluatorHarness`,
+`ModelAssetConverter/Bin`, Valtan tuning transaction 경로를 이름만 보고 삭제하지 않는다.
+
+다음 compile 병목은 별도 검증 가능한 수직 슬라이스로 분리한다.
+
+- Server 제품에서 Full-only `ServerGameplayContractTests.cpp`와
+  `WorldDestructionBootstrapContractTests.cpp`를 contract executable/library로 분리
+- Release Client critical path에서 Tool/Preview/Diagnostic TU를 editor target 또는 library로 분리
+- `Effect_Tool.cpp`, `Effect_DocumentRenderer.cpp`, `Effect_DocumentCodec.cpp`, `MapTool.cpp`,
+  `Animation_Tool.cpp`를 실제 책임 단위로 분해
+- ActorX FBX 변환 구현을 CharacterAnimationIntake 흐름으로 통일하고 Sound intake owner를 분리
+- UpdateLib와 Client SDK/runtime 배포의 중복 copy owner를 하나로 통일
+
+디스크 캐시 정리는 compile 최적화와 분리한다. `Intermediate/ValtanTuningAuthoring`,
+`ValtanTuningCandidates`, `ValtanTuningRuntime`은 일반 cache가 아니므로 삭제하지 않는다. 정확한 active
+IntDir가 아닌 stale output만 경로를 재확인한 뒤 정리한다.
+
+## G15. 최종 자동 검증과 사용자 인계
+
+모든 구현 변경을 의미 단위 커밋으로 닫은 뒤 같은 clean HEAD에서 Debug/Release Product와 Core를 실행한다.
+모든 domain이 바뀐 경우에만 FullDiagnostic을 확장한다. 실행하지 않은 publisher나 harness를 PASS로 쓰지
+않고, Client/UI 화면과 소리는 사용자가 다음 경로에서 직접 판정한다.
+
+- 여섯 캐릭터 Character Select와 4캐릭터 우선 스킬 smoke
+- Valtan Arena의 F1 wall preset, 선택 pattern Complete Play, slot/Effect/Sound
+- 4인 party 입장과 보스 사망 뒤 presentation
+- Kakul Arena 진입, SL01~SL05 Server teleport, Workbench action binding
+
+최종 RESULT는 `구현 완료`, `자동 검증`, `사용자 수동 검증 대기`, `남은 구조 병목`을 서로 분리한다.

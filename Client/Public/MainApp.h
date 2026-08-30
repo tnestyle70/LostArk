@@ -479,7 +479,7 @@ private:
 		"Enter the Server-approved Valtan Arena to inspect Active state.";
 	uint32_t m_iNextKakulStageTeleportRequestSequence = 1u;
 	string m_strKakulStageTeleportStatus =
-		"Enter the Server-approved KakulSaydon Arena to inspect SL01-SL05 stages.";
+		"Enter the Server-approved KoukuSaton Arena to inspect SL01-SL05 stages.";
 	vector<string> m_CompletePlayPatternIds;
 	vector<string> m_CompletePlayPatternLabels;
 	/* Stable identity is the selection authority.  UI indices are derived from

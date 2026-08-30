@@ -10,6 +10,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+if ($SkipBuild -and $Profile -ne 'Product') {
+    throw '-SkipBuild is supported only for Product. Core/FullDiagnostic require freshly built harness executables and PDBs.'
+}
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $includeCore = $Profile -in @('Core', 'FullDiagnostic')
 $includeFullDiagnostic = $Profile -eq 'FullDiagnostic'
@@ -19,8 +22,6 @@ $protocolHarnessExe = Join-Path $repoRoot `
     "Tools\NetworkProtocolHarness\Bin\$Configuration\NetworkProtocolHarness.exe"
 $characterSelectIsolationHarnessExe = Join-Path $repoRoot `
     "Tools\CharacterSelectIsolationHarness\Bin\$Configuration\CharacterSelectIsolationHarness.exe"
-$actionPresentationTimelineHarnessExe = Join-Path $repoRoot `
-    "Tools\ActionPresentationTimelineHarness\Bin\$Configuration\ActionPresentationTimelineHarness.exe"
 $valtanAuditionServiceHarnessExe = Join-Path $repoRoot `
     "Tools\ValtanPatternAuditionServiceHarness\Bin\$Configuration\ValtanPatternAuditionServiceHarness.exe"
 $pointLightFalloffHarnessExe = Join-Path $repoRoot `
@@ -34,6 +35,32 @@ $runtimeResourceRoot = if ([string]::IsNullOrWhiteSpace($ResourceRoot)) {
 }
 else {
     [IO.Path]::GetFullPath($ResourceRoot)
+}
+$domainManifestPath = Join-Path $PSScriptRoot 'BuildDomains.json'
+$domainPipelinePath = Join-Path $PSScriptRoot 'BuildDomainPipeline.psm1'
+$buildReceiptRoot = Join-Path $repoRoot 'out\BuildPipeline\receipts'
+$buildEvidenceRoot = Join-Path $repoRoot 'out\BuildPipeline\runs'
+Import-Module $domainPipelinePath -Force
+$buildDomainManifest = Read-BuildDomainManifest $domainManifestPath
+$script:buildStepRecords = [Collections.Generic.List[object]]::new()
+$script:buildDomainResults = [Collections.Generic.List[object]]::new()
+$script:buildStartedUtc = [DateTime]::UtcNow.ToString('o')
+$script:buildRunTimer = [Diagnostics.Stopwatch]::StartNew()
+$script:buildStartGitIdentity = $null
+$script:buildStartProductSourceInputSha256 = ''
+
+function Add-BuildStepRecord {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][string]$Result,
+        [Parameter(Mandatory = $true)][long]$ElapsedMilliseconds
+    )
+
+    $script:buildStepRecords.Add([pscustomobject][ordered]@{
+        name = $Name
+        result = $Result
+        elapsedMs = $ElapsedMilliseconds
+    }) | Out-Null
 }
 
 function Resolve-MSBuild {
@@ -56,11 +83,20 @@ function Invoke-MSBuildProject {
         [string]$Project
     )
 
-    & $MSBuild $Project /m /nodeReuse:false /t:Build `
-        "/p:Configuration=$Configuration" /p:Platform=x64 `
-        /p:BuildProjectReferences=false /v:minimal
-    if ($global:LASTEXITCODE -ne 0) {
-        throw "Build failed: $Project"
+    $timer = [Diagnostics.Stopwatch]::StartNew()
+    $result = 'FAIL'
+    try {
+        & $MSBuild $Project /m /nodeReuse:false /t:Build `
+            "/p:Configuration=$Configuration" /p:Platform=x64 `
+            /p:BuildProjectReferences=false /v:minimal
+        if ($global:LASTEXITCODE -ne 0) {
+            throw "Build failed: $Project"
+        }
+        $result = 'PASS'
+    }
+    finally {
+        $timer.Stop()
+        Add-BuildStepRecord "msbuild:$Project" $result $timer.ElapsedMilliseconds
     }
 }
 
@@ -79,7 +115,6 @@ function Assert-RuntimeLayout {
     }
     if ($includeFullDiagnostic) {
         $required += @(
-            $actionPresentationTimelineHarnessExe,
             $valtanAuditionServiceHarnessExe,
             $pointLightFalloffHarnessExe,
             $physicsHarnessExe,
@@ -102,6 +137,7 @@ function Invoke-PythonGate {
 
     $python = (Get-Command python -ErrorAction Stop).Source
     $pythonExitCode = -1
+    $timer = [Diagnostics.Stopwatch]::StartNew()
     $previousErrorActionPreference = $ErrorActionPreference
     try {
         # unittest writes successful progress to stderr.  Windows PowerShell
@@ -117,12 +153,92 @@ function Invoke-PythonGate {
     }
     finally {
         $ErrorActionPreference = $previousErrorActionPreference
+        $timer.Stop()
+        $result = if ($pythonExitCode -eq 0) { 'PASS' } else { 'FAIL' }
+        Add-BuildStepRecord "python:$Description" $result $timer.ElapsedMilliseconds
     }
     if ($pythonExitCode -ne 0) {
         throw "$Description failed."
     }
 }
 
+function Assert-SkipBuildProductFreshness {
+    $timer = [Diagnostics.Stopwatch]::StartNew()
+    $result = 'FAIL'
+    try {
+        $freshness = Test-BuildProductReceipt $repoRoot $buildDomainManifest `
+            $Configuration $buildReceiptRoot
+        if (-not $freshness.Fresh) {
+            throw "-SkipBuild rejected stale product output: $($freshness.Reason). Run without -SkipBuild first."
+        }
+        $result = 'PASS'
+    }
+    finally {
+        $timer.Stop()
+        Add-BuildStepRecord 'product:freshness' $result $timer.ElapsedMilliseconds
+    }
+}
+
+function Invoke-SelectedBuildDomains {
+    foreach ($domain in @(Get-BuildDomainsForProfile $buildDomainManifest $Profile)) {
+        $timer = [Diagnostics.Stopwatch]::StartNew()
+        $result = 'FAIL'
+        try {
+            $domainResult = Invoke-BuildDomain $repoRoot $domain `
+                $runtimeResourceRoot $buildReceiptRoot
+            $script:buildDomainResults.Add($domainResult) | Out-Null
+            $result = if ($domainResult.reused) { 'REUSED' } else { 'PASS' }
+            Write-Host "Build domain $($domainResult.domainId): $result"
+        }
+        finally {
+            $timer.Stop()
+            Add-BuildStepRecord "domain:$($domain.id)" $result `
+                $timer.ElapsedMilliseconds
+        }
+    }
+}
+
+function Write-CurrentProductReceipt {
+    $timer = [Diagnostics.Stopwatch]::StartNew()
+    $result = 'FAIL'
+    try {
+        $path = Write-BuildProductReceipt $repoRoot $buildDomainManifest `
+            $Configuration $buildReceiptRoot
+        $result = 'PASS'
+        Write-Host "Product build receipt: $path"
+    }
+    finally {
+        $timer.Stop()
+        Add-BuildStepRecord 'product:receipt' $result $timer.ElapsedMilliseconds
+    }
+}
+
+function Capture-BuildStartIdentity {
+    $script:buildStartGitIdentity = Get-BuildGitIdentity $repoRoot
+    $source = Get-BuildProductSourceFingerprint $repoRoot `
+        $buildDomainManifest $Configuration
+    $script:buildStartProductSourceInputSha256 =
+        [string]$source.sourceInputSha256
+}
+
+function Write-CurrentBuildEvidence {
+    $stability = Assert-BuildRunStability $repoRoot $buildDomainManifest `
+        $Configuration $runtimeResourceRoot $buildReceiptRoot `
+        $script:buildStartGitIdentity `
+        $script:buildStartProductSourceInputSha256 `
+        @($script:buildDomainResults)
+    $script:buildRunTimer.Stop()
+    $path = Write-BuildRunEvidence $repoRoot $Configuration $Profile `
+        ([bool]$SkipBuild) @($script:buildStepRecords) `
+        @($script:buildDomainResults) $buildEvidenceRoot $stability `
+        $script:buildStartedUtc $script:buildRunTimer.ElapsedMilliseconds
+    Write-Host "Build evidence: $path"
+}
+
+$productRunLockPath = Join-Path (Join-Path $buildReceiptRoot 'locks') `
+    "product.$($Configuration.ToLowerInvariant()).lock"
+$productRunLock = Enter-BuildExclusiveLock $productRunLockPath 300000 `
+    "$Configuration product build/run"
 Push-Location $repoRoot
 $previousResourceRoot = [Environment]::GetEnvironmentVariable(
     'LOSTARK_RESOURCE_ROOT', 'Process')
@@ -136,6 +252,9 @@ try {
     Invoke-PythonGate `
         'Product-first build profile and project surface gate' `
         @('Tools/Build/test_build_profile_contract.py')
+    Invoke-PythonGate `
+        'Build-domain fingerprint, receipt, and freshness gate' `
+        @('Tools/Build/test_build_domain_pipeline_receipts.py')
 
     if ($includeCore) {
         Invoke-PythonGate `
@@ -145,10 +264,10 @@ try {
             'Bern entrance camera authored runtime gate' `
             @('Tools/ValtanPipeline/test_bern_entrance_camera_contract.py')
         Invoke-PythonGate `
-            'KakulSaydon resource intake and world admission gate' `
+            'KoukuSaton resource intake and world admission gate' `
             @('Tools/KakulSaydonPipeline/test_kakul_world_admission.py')
         Invoke-PythonGate `
-            'KakulSaydon Client product level contract gate' `
+            'KoukuSaton Client product level contract gate' `
             @('Tools/KakulSaydonPipeline/test_kakul_client_product_level_contract.py')
         Invoke-PythonGate `
             'Valtan eight-player raid capacity gate' `
@@ -156,6 +275,9 @@ try {
         Invoke-PythonGate `
             'Effect Tool V2 authored document gate' `
             @('Tools/EffectToolV2/test_validate_effect_v2.py')
+        Invoke-PythonGate `
+            'Effect Tool V2 Product transaction gate' `
+            @('Tools/EffectToolV2/test_effect_v2_product_contract.py')
         Invoke-PythonGate `
             'Team LAN endpoint contract gate' `
             @('Tools/Network/test_team_lan_endpoint_contract.py')
@@ -170,13 +292,16 @@ try {
         }
     }
 
+    Invoke-SelectedBuildDomains
+    Capture-BuildStartIdentity
+
+    if ($SkipBuild) {
+        Assert-SkipBuildProductFreshness
+    }
+
     if (-not $SkipBuild) {
         $msbuild = Resolve-MSBuild
         Invoke-MSBuildProject $msbuild 'Engine\Default\Engine.vcxproj'
-        & cmd /c ".\UpdateLib.bat $Configuration"
-        if ($global:LASTEXITCODE -ne 0) {
-            throw 'UpdateLib.bat failed.'
-        }
         Invoke-MSBuildProject $msbuild 'Shared\Default\Shared.vcxproj'
         if ($includeCore) {
             Invoke-MSBuildProject $msbuild `
@@ -190,8 +315,6 @@ try {
             Invoke-MSBuildProject $msbuild `
                 'Tools\ValtanPatternAuditionServiceHarness\Default\ValtanPatternAuditionServiceHarness.vcxproj'
             Invoke-MSBuildProject $msbuild `
-                'Tools\ActionPresentationTimelineHarness\Default\ActionPresentationTimelineHarness.vcxproj'
-            Invoke-MSBuildProject $msbuild `
                 'Tools\PointLightFalloffContractHarness\Default\PointLightFalloffContractHarness.vcxproj'
             Invoke-MSBuildProject $msbuild `
                 'Tools\PhysicsContractHarness\Default\PhysicsContractHarness.vcxproj'
@@ -200,18 +323,32 @@ try {
         }
     }
 
-    $global:LASTEXITCODE = 0
-    & '.\Tools\Build\Test-CompiledShaderClosure.ps1' `
-        -Configuration $Configuration `
-        -RepositoryRoot $repoRoot `
-        -Modules Product
-    if ($global:LASTEXITCODE -ne 0) {
-        throw 'Compiled shader closure validation failed.'
+    $shaderTimer = [Diagnostics.Stopwatch]::StartNew()
+    $shaderResult = 'FAIL'
+    try {
+        $global:LASTEXITCODE = 0
+        & '.\Tools\Build\Test-CompiledShaderClosure.ps1' `
+            -Configuration $Configuration `
+            -RepositoryRoot $repoRoot `
+            -Modules Product
+        if ($global:LASTEXITCODE -ne 0) {
+            throw 'Compiled shader closure validation failed.'
+        }
+        $shaderResult = 'PASS'
+    }
+    finally {
+        $shaderTimer.Stop()
+        Add-BuildStepRecord 'product:compiled-shader-closure' $shaderResult `
+            $shaderTimer.ElapsedMilliseconds
     }
 
     Assert-RuntimeLayout
+    if (-not $SkipBuild) {
+        Write-CurrentProductReceipt
+    }
 
     if (-not $includeCore) {
+        Write-CurrentBuildEvidence
         Write-Host "Build and validation completed: $Configuration / $Profile"
         Write-Host 'Runtime visual/audio validation remains user-operated.'
         return
@@ -228,12 +365,6 @@ try {
             @('Tools/MapPipeline/test_map_surface_depth_contract.py')
     }
 
-	$global:LASTEXITCODE = 0
-	& '.\Tools\ValtanPipeline\Project-ValtanPatternMaster.ps1' `
-		-Mode ValidateV2
-	if ($global:LASTEXITCODE -ne 0) {
-		throw 'Valtan split pattern master validation failed.'
-	}
 	if ($includeFullDiagnostic) {
 		$global:LASTEXITCODE = 0
 		& '.\Tools\ValtanPipeline\Test-ValtanPatternMaster.ps1'
@@ -244,23 +375,12 @@ try {
 			'Valtan Animation Tool master timeline gate' `
 			@('Tools/ValtanPipeline/test_animation_tool_valtan_pattern_master.py')
 		Invoke-PythonGate `
+			'Valtan pattern sound cue exact-join gate' `
+			@('Tools/ValtanPipeline/test_valtan_pattern_sound_cue_contract.py')
+		Invoke-PythonGate `
 			'Valtan Effect Tool master tree gate' `
 			@('Tools/EffectPipeline/test_effect_tool_valtan_saved_rows.py')
 	}
-
-    $global:LASTEXITCODE = 0
-    & '.\Tools\GameplayPipeline\Publish-BalanceRuntimeSet.ps1' `
-        -Mode Validate
-    if ($global:LASTEXITCODE -ne 0) {
-        throw 'Gameplay balance validation failed.'
-    }
-
-    $global:LASTEXITCODE = 0
-    & '.\Tools\NavigationPipeline\Publish-ServerNavigation.ps1' `
-        -Mode Validate
-    if ($global:LASTEXITCODE -ne 0) {
-        throw 'Server navigation validation failed.'
-    }
 
     $global:LASTEXITCODE = 0
     & '.\Tools\WorldPipeline\Split-ValtanIndependentWallGroups.ps1' `
@@ -268,13 +388,6 @@ try {
     if ($global:LASTEXITCODE -ne 0) {
         throw 'Valtan wall navigation footprint validation failed.'
     }
-    $global:LASTEXITCODE = 0
-    & '.\Tools\WorldPipeline\Publish-ValtanWorldDestruction.ps1' `
-        -Mode Validate
-    if ($global:LASTEXITCODE -ne 0) {
-        throw 'Valtan world destruction validation failed.'
-    }
-
     if ($includeFullDiagnostic) {
         Invoke-PythonGate `
             'Valtan floor crack emissive runtime contract gate' `
@@ -332,10 +445,6 @@ try {
 		}
 
         & (Join-Path $repoRoot `
-            'Tools\ActionPresentationTimelineHarness\Run-ActionPresentationTimelineHarness.ps1') `
-            -Configuration $Configuration
-
-        & (Join-Path $repoRoot `
             'Tools\PointLightFalloffContractHarness\Run-PointLightFalloffContractHarness.ps1') `
             -Configuration $Configuration
 
@@ -348,6 +457,7 @@ try {
             -Configuration $Configuration
     }
 
+    Write-CurrentBuildEvidence
 	Write-Host "Build and regression completed: $Configuration / $Profile"
     Write-Host 'Runtime level validation uses Framework.slnLaunch (Server + Client).'
 }
@@ -355,4 +465,6 @@ finally {
     [Environment]::SetEnvironmentVariable(
         'LOSTARK_RESOURCE_ROOT', $previousResourceRoot, 'Process')
     Pop-Location
+    $script:buildRunTimer.Stop()
+    $productRunLock.Dispose()
 }

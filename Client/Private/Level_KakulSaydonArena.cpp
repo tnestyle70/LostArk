@@ -196,7 +196,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	{
 		CLevelTransitionService::Report_NetworkRecovery(
 			"level-kakul-saydon.network-connection-lost",
-			"KakulSaydon replication observed a disconnected Server session.");
+			"KoukuSaton replication observed a disconnected Server session.");
 		CNetworkManager::Get().Close_ServerConnection();
 		if (CLevelTransitionService::Request_Load(
 			LEVEL::LOBBY,
@@ -234,14 +234,14 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 	const std::uintmax_t fileBytes = std::filesystem::file_size(path, fileError);
 	if (path.empty() || fileError || 0u == fileBytes || fileBytes > 256u * 1024u)
 	{
-		outStatus = "Kakul StageMarkers document is missing or exceeds 256 KiB.";
+		outStatus = "KoukuSaton StageMarkers document is missing or exceeds 256 KiB.";
 		return false;
 	}
 
 	std::ifstream input(path, std::ios::binary);
 	if (!input)
 	{
-		outStatus = "Kakul StageMarkers document could not be opened.";
+		outStatus = "KoukuSaton StageMarkers document could not be opened.";
 		return false;
 	}
 	const std::string text{
@@ -249,7 +249,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 		std::istreambuf_iterator<char>() };
 	if (input.bad() || text.size() != fileBytes)
 	{
-		outStatus = "Kakul StageMarkers document could not be read completely.";
+		outStatus = "KoukuSaton StageMarkers document could not be read completely.";
 		return false;
 	}
 
@@ -264,7 +264,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 			{ "schema", "formatVersion", "worldId", "areaId", "revision",
 				"semanticStatus", "stages" }))
 	{
-		outStatus = "Kakul StageMarkers root is invalid: " + parseError;
+		outStatus = "KoukuSaton StageMarkers root is invalid: " + parseError;
 		return false;
 	}
 
@@ -288,7 +288,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 		nullptr == stages || stages->Get_Array().empty() ||
 		stages->Get_Array().size() > 64u)
 	{
-		outStatus = "Kakul StageMarkers header is invalid.";
+		outStatus = "KoukuSaton StageMarkers header is invalid.";
 		return false;
 	}
 
@@ -301,7 +301,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 		if (!Has_ExactProperties(value,
 			{ "stageId", "placementId", "displayNameKo", "sourceLevelId" }))
 		{
-			outStatus = "Kakul StageMarkers stage has unexpected properties.";
+			outStatus = "KoukuSaton StageMarkers stage has unexpected properties.";
 			return false;
 		}
 		const DATA_JSON_VALUE* stageId = Required(value, "stageId", DATA_JSON_TYPE::STRING);
@@ -318,7 +318,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 			!stagedIds.emplace(stageId->Get_String()).second ||
 			!stagedPlacementIds.emplace(placementId->Get_String()).second)
 		{
-			outStatus = "Kakul StageMarkers stage identity or evidence is invalid.";
+			outStatus = "KoukuSaton StageMarkers stage identity or evidence is invalid.";
 			return false;
 		}
 		stagedMarkers.push_back({
@@ -328,7 +328,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 
 	m_StageMarkers = std::move(stagedMarkers);
 	m_StageMarkerPlacementIds = std::move(stagedPlacementIds);
-	outStatus = "Kakul StageMarkers loaded.";
+	outStatus = "KoukuSaton StageMarkers loaded.";
 	return true;
 }
 
@@ -339,27 +339,27 @@ bool_t Client::CLevel_KakulSaydonArena::Request_StageTeleport(
 {
 	if (0u == requestSequence || placementId.empty())
 	{
-		outStatus = "Kakul stage teleport request identity is invalid.";
+		outStatus = "KoukuSaton stage teleport request identity is invalid.";
 		return false;
 	}
 	if (m_StageMarkerPlacementIds.empty())
 	{
-		outStatus = "Kakul StageMarkers are not authored; teleport is isolated.";
+		outStatus = "KoukuSaton StageMarkers are not authored; teleport is isolated.";
 		return false;
 	}
 	if (!m_StageMarkerPlacementIds.contains(std::string(placementId)))
 	{
-		outStatus = "Kakul stage marker placement ID is not authored.";
+		outStatus = "KoukuSaton stage marker placement ID is not authored.";
 		return false;
 	}
 	if (nullptr == m_pWorldEntityCommandSink ||
 		!m_pWorldEntityCommandSink->Request_StageTeleport(
 			requestSequence, placementId))
 	{
-		outStatus = "Kakul stage teleport command was rejected.";
+		outStatus = "KoukuSaton stage teleport command was rejected.";
 		return false;
 	}
-	outStatus = "Kakul stage teleport command submitted.";
+	outStatus = "KoukuSaton stage teleport command submitted.";
 	return true;
 }
 

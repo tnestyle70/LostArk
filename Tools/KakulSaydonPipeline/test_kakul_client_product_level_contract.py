@@ -29,6 +29,8 @@ class KakulClientProductLevelContractTests(unittest.TestCase):
         cls.loader_cpp = read("Client/Private/Loader.cpp")
         cls.registry = read("Client/Private/LevelRegistry.cpp")
         cls.transition = read("Client/Private/LevelTransitionService.cpp")
+        cls.character_select = read("Client/Private/Level_CharacterSelect.cpp")
+        cls.character_select_h = read("Client/Public/Level_CharacterSelect.h")
 
     def test_registry_owns_exact_product_identity(self) -> None:
         descriptor = re.search(
@@ -114,7 +116,7 @@ class KakulClientProductLevelContractTests(unittest.TestCase):
         for token in (
             'ImGui::BeginTabBar("##ServerArenaActiveTabs")',
             'ImGui::BeginTabItem("Valtan")',
-            'ImGui::BeginTabItem("KakulSaydon")',
+            'ImGui::BeginTabItem("KoukuSaton")',
             "VALTAN_ARENA_PRESET::FRESH",
             "VALTAN_ARENA_PRESET::CIRCLE_WALLS_GONE",
             "VALTAN_ARENA_PRESET::THREE_OCLOCK_BROKEN",
@@ -174,6 +176,61 @@ class KakulClientProductLevelContractTests(unittest.TestCase):
         for name in ("Level_KakulSaydonArena.h", "Level_KakulSaydonArena.cpp"):
             self.assertEqual(1, project.count(name))
             self.assertEqual(1, filters.count(name))
+
+    def test_character_select_consumes_transfer_before_replication(self) -> None:
+        start = self.character_select.index(
+            "void CLevel_CharacterSelect::Update_ServerArena()"
+        )
+        end = self.character_select.index(
+            "void CLevel_CharacterSelect::Fail_ServerArena", start
+        )
+        body = self.character_select[start:end]
+        transfer = body.index("Pump_ServerApprovedWorldTransfer")
+        replication = body.index("m_Replication.Update")
+        self.assertLess(transfer, replication)
+        self.assertIn("LEVEL::CHARACTER_SELECT", body[:replication])
+
+    def test_character_select_hands_live_socket_to_approved_target(self) -> None:
+        self.assertIn(
+            "bool_t m_preserveServerConnectionForTransfer = false;",
+            self.character_select_h,
+        )
+        update_start = self.character_select.index(
+            "void CLevel_CharacterSelect::Update_ServerArena()"
+        )
+        update_end = self.character_select.index(
+            "void CLevel_CharacterSelect::Fail_ServerArena", update_start
+        )
+        update = self.character_select[update_start:update_end]
+        self.assertRegex(
+            update,
+            r"REQUESTED\s*==\s*transferResult[\s\S]*"
+            r"m_preserveServerConnectionForTransfer\s*=\s*true",
+        )
+
+        destructor_start = self.character_select.index(
+            "CLevel_CharacterSelect::~CLevel_CharacterSelect()"
+        )
+        destructor_end = self.character_select.index(
+            "HRESULT CLevel_CharacterSelect::Initialize()", destructor_start
+        )
+        destructor = self.character_select[destructor_start:destructor_end]
+        self.assertRegex(
+            destructor,
+            r"if\s*\(!m_preserveServerConnectionForTransfer\)\s*"
+            r"CNetworkManager::Get\(\)\.Close_ServerConnection\(\)",
+        )
+
+        return_start = self.character_select.index(
+            "void CLevel_CharacterSelect::Return_ServerArenaToLobby"
+        )
+        return_end = self.character_select.index(
+            "bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn", return_start
+        )
+        self.assertIn(
+            "CNetworkManager::Get().Close_ServerConnection()",
+            self.character_select[return_start:return_end],
+        )
 
 
 if __name__ == "__main__":

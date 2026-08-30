@@ -104,6 +104,72 @@ class EffectV2ValidatorTests(unittest.TestCase):
         with self.assertRaisesRegex(VALIDATOR.ContractError, "escapes Resources"):
             VALIDATOR.validate(self.root, self.resource_root)
 
+    def test_resource_root_primary_precedes_shared_and_default(self) -> None:
+        primary = self.root / "primary-resources"
+        shared = self.root / "shared-resources"
+        primary.mkdir()
+        shared.mkdir()
+        resolved = VALIDATOR.resolve_resource_root(
+            self.root,
+            environment={
+                "LOSTARK_RESOURCE_ROOT": str(primary),
+                "LOSTARK_SHARED_ASSET_ROOT": str(shared),
+            },
+        )
+        self.assertEqual(primary.resolve(), resolved)
+
+    def test_resource_root_shared_fallback_and_empty_default(self) -> None:
+        shared = self.root / "shared-resources"
+        shared.mkdir()
+        self.assertEqual(
+            shared.resolve(),
+            VALIDATOR.resolve_resource_root(
+                self.root,
+                environment={
+                    "LOSTARK_RESOURCE_ROOT": "",
+                    "LOSTARK_SHARED_ASSET_ROOT": str(shared),
+                },
+            ),
+        )
+        self.assertEqual(
+            self.resource_root.resolve(),
+            VALIDATOR.resolve_resource_root(
+                self.root,
+                environment={
+                    "LOSTARK_RESOURCE_ROOT": "",
+                    "LOSTARK_SHARED_ASSET_ROOT": "",
+                },
+            ),
+        )
+
+    def test_invalid_configured_resource_root_cannot_fall_back(self) -> None:
+        shared = self.root / "shared-resources"
+        shared.mkdir()
+        missing = self.root / "missing-resources"
+        with self.assertRaisesRegex(
+            VALIDATOR.ContractError, "resource root is unavailable"
+        ):
+            VALIDATOR.resolve_resource_root(
+                self.root,
+                environment={
+                    "LOSTARK_RESOURCE_ROOT": str(missing),
+                    "LOSTARK_SHARED_ASSET_ROOT": str(shared),
+                },
+            )
+
+    def test_invalid_shared_resource_root_cannot_fall_back_to_default(self) -> None:
+        missing = self.root / "missing-resources"
+        with self.assertRaisesRegex(
+            VALIDATOR.ContractError, "resource root is unavailable"
+        ):
+            VALIDATOR.resolve_resource_root(
+                self.root,
+                environment={
+                    "LOSTARK_RESOURCE_ROOT": "",
+                    "LOSTARK_SHARED_ASSET_ROOT": str(missing),
+                },
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

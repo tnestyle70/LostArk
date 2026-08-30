@@ -49,15 +49,19 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - `Server\Default\Server.vcxproj` — 서버 권위 world/room 실행 파일
 - `Tools\NetworkProtocolHarness\Default\NetworkProtocolHarness.vcxproj` — protocol 회귀 하네스
 - `Tools\ValtanPatternAuditionServiceHarness\Default\ValtanPatternAuditionServiceHarness.vcxproj` — 실제 Client audition service의 Next lifecycle·재시도 계약 하네스, UI 실행 없음
-- `Tools\EffectRenderContractHarness\Default\EffectRenderContractHarness.vcxproj` — Effect stage/commit, compiled shader, WARP 계약 하네스. 삭제된 Imported Artist corpus 결합을 제거하고 assertions를 이관할 때까지 활성 profile에서 격리
 - `Tools\PointLightFalloffContractHarness\Default\PointLightFalloffContractHarness.vcxproj` — Engine Deferred compiled shader 소비 계약 하네스
 
 (`Engine\External\imgui\examples\*`의 vcxproj들은 ImGui 원본에 딸려온 샘플이며 솔루션에 포함되지 않는다. 건드리지 않는다.)
 
+EffectRender 광역 프로젝트는 퇴역했다. V2 document stage/commit과 resource-root 경계는
+`Tools\EffectToolV2` focused contract가 검증하고, `Test-CompiledShaderClosure.ps1`는
+`Tools\RenderingPipeline\ProductEffectShaderWarpProbe.cpp` 한 파일만 임시 컴파일해 현재 Product의
+V1/V2 CSO를 WARP로 draw/readback한다. 이 probe는 Client 제품 CPP나 영구 프로젝트/cache를 만들지 않는다.
+
 ### 빌드 순서 — 반드시 지킬 것
 
 ```
-1) Product: Engine -> UpdateLib -> Shared -> Server -> Client + product CSO closure
+1) Product: domain receipt validation/publish -> Engine -> Shared -> Server -> Client + product CSO closure
 2) Core: Product + NetworkProtocol + 실제 Server Character Select Core(private·shared world 격리) 1회 + publisher validation
 3) FullDiagnostic: Core + Character Select Party2/Party4 transfer + 변경 domain의 presentation/render/physics/model/server 광역 계약
 4) Lobby/Bern/Valtan/Development smoke는 사용자가 직접 실행·판정
@@ -69,7 +73,10 @@ Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더�
 - Client: `Client\Bin\Debug\`, `Client\Bin\Release\`
 - Engine import library: `EngineSDK\lib\Debug\`, `EngineSDK\lib\Release\`
 
-`UpdateLib.bat`은 선택한 구성의 Engine 산출물로 `EngineSDK\`와 Client runtime 폴더를 갱신한다.
+정본 runner는 `UpdateLib.bat`을 별도로 호출하지 않는다. `Client.vcxproj`의
+`PrepareEngineSdk`, `DeployClientCompiledShaders`, `DeployClientRuntimeDependencies`가 선택한
+구성의 Engine 산출물로 `EngineSDK\`와 Client runtime 폴더를 한 번만 갱신하는 단일 소유자다.
+`UpdateLib.bat`은 수동 호환용 보조 명령일 뿐 정본 자동화 단계가 아니다.
 
 - `Engine\Public\*.*` → `EngineSDK\inc\`
 - `Engine\Bin\<Configuration>\*.lib` → `EngineSDK\lib\<Configuration>\`
@@ -87,14 +94,14 @@ fallback하지 않는다. 누락·빈 파일·손상 bytecode·technique/pass/in
 producer와 Client/Effect/PointLight 소비 복사본의 존재 및 SHA-256 일치를 검사한다. CSO는 빌드
 산출물이므로 Git에 커밋하지 않는다.
 
-`EngineSDK\`는 `.gitignore` 대상이다. **clean clone 직후에는 존재하지 않으므로 Client부터 빌드하면 반드시 실패한다.** 병렬 빌드(`/m`)로 한 번에 돌릴 때도 Engine → UpdateLib → Client 순서가 보장되지 않으면 race가 난다. x64 Debug/Release 제품 프로젝트는 `/MP`를 사용하되 이 dependency 순서는 그대로 유지한다.
+`EngineSDK\`는 `.gitignore` 대상이다. **clean clone에서 Engine 산출물 없이 Client부터 빌드하면 반드시 실패한다.** 정본 runner는 Engine을 먼저 빌드하고 마지막 Client 빌드의 `PrepareEngineSdk`가 SDK를 준비하므로 중복 복사나 병렬 race를 만들지 않는다. x64 Debug/Release 제품 프로젝트는 `/MP`를 사용하되 이 dependency 순서는 그대로 유지한다.
 
 ### 정리 스크립트
 
 - `CleanBuild.bat` — `.vs`, `EngineSDK`, Engine/Client의 Debug·Release 산출물과 각 프로젝트의 `x64` 중간 산출물 삭제
 - `CleanBuildV2.bat` — 위와 동일하며 이전 공용 출력 구조가 남긴 root exe/dll/pdb도 정리한다. `Resources`, `DataFiles`, `ShaderFiles`는 보존한다.
 
-정본 자동화는 `Tools/Build/Invoke-BuildAndRegression.ps1`이다. 기본 `Core`는 제품과 중복 컴파일 없는 protocol 계약 및 Character Select `Core` live Server scenario 한 번을 실행하고, `-Profile Product`는 제품+CSO만, `-Profile FullDiagnostic`은 Character Select `Party2`/`Party4` transfer와 변경 domain 광역 진단까지 실행한다. `-SkipBuild`는 기존 바이너리만 검사하므로 새 소스 반영 증거가 아니다. 삭제된 Imported Artist corpus를 강제하는 EffectRender 광역 실행은 활성 profile에서 격리되어 있으며, 현재 Product fixture 기반 검증으로 이관하기 전까지 완료 gate로 사용하지 않는다. Client 작업 디렉터리는 반드시 `Client/Default`로 고정한다.
+정본 자동화는 `Tools/Build/Invoke-BuildAndRegression.ps1`이다. 기본 `Core`는 제품과 중복 컴파일 없는 protocol 계약 및 Character Select `Core` live Server scenario 한 번을 실행하고, `-Profile Product`는 제품+CSO만, `-Profile FullDiagnostic`은 Character Select `Party2`/`Party4` transfer와 변경 domain 광역 진단까지 실행한다. `Tools/Build/BuildDomains.json`의 validation/publisher는 입력·도구·물리 Resources와 생성 output fingerprint가 같은 경우 `out/BuildPipeline/receipts`를 재사용한다. `-SkipBuild`는 현재 source closure 및 정확한 Engine/Shared/Server/Client EXE·DLL·LIB/PDB hash가 직전 product receipt와 모두 일치할 때만 허용하고, 불일치는 publisher 실행 전 거부한다. 성공 실행의 HEAD+dirty identity, source/input hash, binary/PDB hash, 단계별 시간은 `out/BuildPipeline/runs`에 남긴다. 퇴역한 EffectRender 광역 실행을 복원하지 않으며, 현재 Product/V2 fixture와 CSO closure가 그 고유 계약을 검증한다. Client 작업 디렉터리는 반드시 `Client/Default`로 고정한다.
 
 같은 working tree에서 Visual Studio와 자동화 빌드/publisher를 겹쳐 실행하지 않는다. 선언과 정의가 일치하는데
 `LNK2019`가 발생하면 broad clean보다 먼저 선택한 `Configuration|Platform`의 evaluated `IntDir/OutDir`와 provider
@@ -206,12 +213,12 @@ CPrototype (추상, enable_shared_from_this)
 레벨은 `Client_Defines.h`의 enum이다.
 
 ```cpp
-enum class LEVEL { STATIC, LOADING, LOBBY, CHARACTER_SELECT, BERN, VALTAN_ARENA, DEVELOPMENT, END };
+enum class LEVEL { STATIC, LOADING, LOBBY, CHARACTER_SELECT, BERN, VALTAN_ARENA, KAKULSAYDON_ARENA, DEVELOPMENT, END };
 ```
 
 시작 Level은 항상 `LOBBY`다. Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령을 제공하고 `CLevelRegistry`가 각 `LEVEL`의 생성 함수, Loader 함수, map area와 load scope를 연결한다. 별도 실행 시나리오 catalog, 문자열 기반 Level 분기, direct `Change_Level` 호출을 추가하지 않는다.
 
-`LEVEL::STATIC`은 전환 시에도 살아남는 영구 레벨이고, 나머지는 `Change_Level`에서 정리된다. 각 레벨 인덱스는 `map<wstring_t, shared_ptr<CLayer>>`를 가지며, `CLayer`는 `list<shared_ptr<CGameObject>>`를 들고 매 프레임 `Priority_Update → Update → Late_Update`를 구동한다.
+`LEVEL::STATIC`은 전환 시에도 살아남는 영구 레벨이고, 나머지는 `Change_Level`에서 정리된다. KakulSaydon은 Lobby 버튼을 늘리지 않고 Debug Character Select의 typed Server transfer로 진입한다. 각 레벨 인덱스는 `map<wstring_t, shared_ptr<CLayer>>`를 가지며, `CLayer`는 `list<shared_ptr<CGameObject>>`를 들고 매 프레임 `Priority_Update → Update → Late_Update`를 구동한다.
 
 ### 레벨 전환 흐름
 
@@ -223,7 +230,7 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조와 `MonsterProfiles.json` formatVersion 2의 추적 유지 거리·회전·가속·감속·도착 감속 반경을 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 spawn-group bootstrap v4를 한 transaction으로 생성하며 Server pre-build가 이 publish를 강제한다. 제품 일반 몬스터는 Server에서 타깃 hysteresis, 공격 중 대상/방향 고정, navigation 경로 단축, 제한 회전과 가감속, 기존 원형 body sweep/slide를 사용하고 Client에서 2-tick transform 보간, occurrence 기반 결정적 공격 clip pool, 비공격 중 transient hit clip을 사용한다. presentation clip과 playback rate는 `MonsterCatalog.json` formatVersion 2가 소유하며 Server timing을 바꾸지 않는다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
 
-Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 Shared protocol v43 snapshot으로 보낸다. v43은 Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command를 추가하고 기존 예약·취소 CAS identity와 lifecycle을 유지한다. 기존 v42 이하 Server/Client와 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v47 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
 ### 최소 수련장 Area
 
@@ -311,7 +318,7 @@ transform과 stop window를 보존한다. `SERVER_PATTERN_STAGE` 독립 Effect�
 Open/Play 전까지 지연한다.
 도넛도 `SERVER_COMBAT_OBJECT`이며 100ms foreground 뒤 2600ms 동안 독립적으로 유지된다.
 `BossCatalog` v5는 본체/유령의 model admission scale을 구분한다. 유령 finale와 사망 제거를
-사용하려면 gameplay bootstrap v26과 protocol v44의 Server/Client를 함께 빌드·배포해야 한다.
+사용하려면 gameplay bootstrap v26과 현재 protocol v47의 Server/Client를 함께 빌드·배포해야 한다.
 중앙 cue anchor, 유령 Resources 상대 경로, 포탈·잡기·사망 lifecycle은
 `.md/TEAM/발탄인수인계서.md` 11.9~11.10에 정리한다.
 phase band는 Server encounter 메타데이터이며 All Effects의 반복 tree나 stage 숨김 filter로 사용하지
@@ -324,10 +331,11 @@ stage/validate/commit한다. 실행 중 occurrence는 이전 immutable document�
 `Data/Effects/EffectCatalog.json`과 `Data/Effects/Authored/*.effect.json`이 제품 Effect의 단일 입력이며,
 Editor Save 직후의 다음 재생과 다음 Client 실행이 같은 authored 파일을 소비한다. schema·catalog·source batch는
 `Tools/EffectPipeline/Validate-EffectSources.ps1`로 검증하고 다른 폴더로 복사하거나 publish하지 않는다.
-팀이 이미 공유한 로컬 Effect 리소스를 Git에 추가하지 않고 검사할 때만 `-AllowLocalResources`를 명시한다.
-정본 전체 회귀 명령은 이에 대응하는 `-AllowLocalEffectResources`를 받는다. 실제 파일과 안전 경로,
-Resources는 Git 추적 대상이 아니므로 validator는 안전한 상대 경로, 파일 실재와 로컬 파일 수를 검사한다.
-이 모드는 Git만으로 리소스 배포가 가능하다는 검증이 아니며 파일을 stage/upload하지 않는다.
+Resources는 팀장 Drive 물리 입력이므로 기본 validator와 정본 전체 회귀는 Git 비추적 파일을 그대로 검사한다.
+기존 `-AllowLocalResources`와 `-AllowLocalEffectResources`는 과거 명령 호환용으로만 남아 있으며 생략해도
+안전한 상대 경로, 파일 실재, DDS/WModel 내용과 로컬 파일 수를 같은 강도로 검사한다. 이미 Git index에
+있는 최소 dependency는 기존 index/LFS identity 검사도 유지한다. 이 검증은 Git만으로 리소스 배포가
+가능하다는 PASS가 아니며 파일을 stage/upload하지 않는다.
 v15의 고급 trail/light projection도 같은 authored 문서의 typed `runtimeCarrier`에 inline 저장한다. runtime 재생은
 별도 Tool renderer 없이 `CEffectCatalog -> CEffectPresentationService -> CEffectObject` 한 경로만 사용한다.
 V1 Product 문서가 참조하는 DDS/WModel dependency closure는 팀장 Drive의
@@ -454,7 +462,7 @@ ViewModel/임시 overlay다. layout JSON으로 최종 image widget을 생성하�
 1. Engine 쪽에 `CComponent`(또는 `CVIBuffer`) 파생 클래스를 만든다.
 2. `Create()`는 `unique_ptr`, `Clone()`은 `shared_ptr<CPrototype>`를 반환한다.
 3. `Add_Prototype`으로 등록하고, `CGameObject`의 템플릿 `Add_Component<T>()`로 붙인다.
-4. **공개 헤더(`Engine/Public/`)를 건드렸다면 `UpdateLib.bat`을 다시 돌려야 Client가 새 헤더를 본다.** 공개 API 변경은 팀 전체에 영향을 주므로 반드시 공유한다.
+4. **공개 헤더(`Engine/Public/`)를 건드렸다면 Engine 뒤 Client까지 정본 Product 빌드를 실행한다.** Client의 `PrepareEngineSdk`가 새 헤더를 반영한다. 공개 API 변경은 팀 전체에 영향을 주므로 반드시 공유한다.
 
 ## 주요 매크로 · 타입
 
@@ -583,4 +591,4 @@ snapshot까지 직접 구현해야 하며, Server 담당 파일이라는 이유�
 - `new`/`delete` 직접 사용 금지. 스마트 포인터, `ComPtr`, `Safe_Delete`/`Safe_Release`를 쓴다.
 - 서브시스템 소유권이 헷갈리면 위 "서브시스템 소유권" 표를 본다.
 - 기존 소스는 주변 주석의 언어와 파일별 인코딩을 그대로 맞춘다. 저장소 전체가 하나의 인코딩이라는 가정을 금지한다.
-- 빌드가 깨진 채로 커밋하지 않는다. `Engine/Public/` 변경 후에는 `UpdateLib.bat` → Client 빌드까지 확인한다.
+- 빌드가 깨진 채로 커밋하지 않는다. `Engine/Public/` 변경 후에는 정본 Product runner로 Engine → Client 빌드와 SDK 반영까지 확인한다.

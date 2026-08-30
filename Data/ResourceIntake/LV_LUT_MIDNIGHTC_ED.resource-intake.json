@@ -3,11 +3,11 @@
   "formatVersion": 2,
   "intakeId": "raid.37081.lv-lut-midnightc-ed",
   "aliasContract": {
-    "alias": "KakulSaydon",
+    "alias": "KoukuSaton",
     "kind": "user-folder-alias",
     "canonical": false,
     "canonicalAreaId": "LV_LUT_MIDNIGHTC_ED",
-    "cleanupPolicy": "Remove only the exact-empty Map/KakulSaydon alias after canonical geometry validates; preserve other user-owned KakulSaydon physical roots."
+    "cleanupPolicy": "Remove only the exact-empty Map/KoukuSaton alias after canonical geometry validates; preserve other user-owned KoukuSaton physical roots."
   },
   "canonicalIdentity": {
     "zoneId": 37081,
@@ -2581,13 +2581,13 @@
         "runtimeCookedSequences": 0,
         "runtimeModels": [
           {
-            "assetId": "Character/KakulSaydon/WP_MN_RPCT_07/wp_mn_rpct_07l_sk.wmodel",
+            "assetId": "Character/KoukuSaton/WP_MN_RPCT_07/wp_mn_rpct_07l_sk.wmodel",
             "bone": "bone001",
             "bytes": 1762132,
             "sha256": "52588d7ac54c814fa9a1170f3ec3d9fb6f6647dda6160dac76c46d12ec3fde2d"
           },
           {
-            "assetId": "Character/KakulSaydon/WP_MN_RPCT_07/wp_mn_rpct_07r_sk.wmodel",
+            "assetId": "Character/KoukuSaton/WP_MN_RPCT_07/wp_mn_rpct_07r_sk.wmodel",
             "bone": "bone001",
             "bytes": 1763108,
             "sha256": "7198ed739ac374c9ec81e700a0df4edd1b6ca8e0efde8d9ffc46c94efc1df7b3"
@@ -2606,13 +2606,13 @@
         "runtimeCookedSequences": 0,
         "runtimeModels": [
           {
-            "assetId": "Character/KakulSaydon/WP_MN_RPCT_08/wp_mn_rpct_08_sk.wmodel",
+            "assetId": "Character/KoukuSaton/WP_MN_RPCT_08/wp_mn_rpct_08_sk.wmodel",
             "bone": "wp_mn_rpct_08_sk",
             "bytes": 210996,
             "sha256": "7758df5ad5baa6a5fc9917241a0ccc958b72ca4793e47dc94c5a7519b2a311d8"
           },
           {
-            "assetId": "Character/KakulSaydon/WP_MN_RPCT_08/wp_mn_rpct_08_1_sk.wmodel",
+            "assetId": "Character/KoukuSaton/WP_MN_RPCT_08/wp_mn_rpct_08_1_sk.wmodel",
             "bone": "b_root",
             "bytes": 210996,
             "sha256": "d19e27d7ad72474484531df4672acfdb07793e4ca0859dcbd3466b2a2c2f1b87"
@@ -2624,20 +2624,20 @@
     },
     "physicalPayload": {
       "runtimeRoots": [
-        "Client/Bin/Resources/Character/KakulSaydon/MN_RPCT_00",
-        "Client/Bin/Resources/Character/KakulSaydon/MN_RPCT_05",
-        "Client/Bin/Resources/Character/KakulSaydon/MN_RPCT_06",
-        "Client/Bin/Resources/Character/KakulSaydon/MN_RPCZ_00",
-        "Client/Bin/Resources/Character/KakulSaydon/WP_MN_RPCT_05",
-        "Client/Bin/Resources/Character/KakulSaydon/WP_MN_RPCT_06",
-        "Client/Bin/Resources/Character/KakulSaydon/WP_MN_RPCT_07",
-        "Client/Bin/Resources/Character/KakulSaydon/WP_MN_RPCT_08"
+        "Client/Bin/Resources/Character/KoukuSaton/MN_RPCT_00",
+        "Client/Bin/Resources/Character/KoukuSaton/MN_RPCT_05",
+        "Client/Bin/Resources/Character/KoukuSaton/MN_RPCT_06",
+        "Client/Bin/Resources/Character/KoukuSaton/MN_RPCZ_00",
+        "Client/Bin/Resources/Character/KoukuSaton/WP_MN_RPCT_05",
+        "Client/Bin/Resources/Character/KoukuSaton/WP_MN_RPCT_06",
+        "Client/Bin/Resources/Character/KoukuSaton/WP_MN_RPCT_07",
+        "Client/Bin/Resources/Character/KoukuSaton/WP_MN_RPCT_08"
       ],
       "fileCount": 63,
       "bytes": 519532776,
       "runtimeWmodelAnimationSectionCount": 640,
       "aggregateSha256": "b4cfaf6fe785a04aed2f9c8708c91fb46e074470e1038e7eaf56558c44a247d9",
-      "aggregateAlgorithm": "sha256(utf8(sorted ordinal relativePath<TAB>bytes<TAB>fileSha256<LF>)); root=Character/KakulSaydon; canonical package roots only",
+      "aggregateAlgorithm": "sha256(utf8(sorted ordinal relativePath<TAB>bytes<TAB>fileSha256<LF>)); root=Character/KoukuSaton; canonical package roots only",
       "externalZeroAnimationCookRoot": "C:/LostArkExtract/LV_LUT_MIDNIGHTC_ED_20260829/AnimationClosureAudit-20260830/ZeroAnimationCook",
       "gitTrackedFileCount": 0,
       "gitStagedFileCount": 0,
@@ -2724,7 +2724,7 @@
     "admissionState": "source-closure-verified",
     "productRuntimeComplete": false,
     "physicalPayload": {
-      "runtimeRoot": "Client/Bin/Resources/Effect/KakulSaydon",
+      "runtimeRoot": "Client/Bin/Resources/Effect/KoukuSaton",
       "wmodelCount": 101,
       "wmodelBytes": 3477406,
       "wmodelAggregateSha256": "f65b1759836c19768c9293a4b5eed1ec181d1c16b568ee34be0b605b25e0b191",
@@ -2915,8 +2915,8 @@
       "receiptSha256": "8d3e3e49263a59575e406f793a83de440ef8dffacbb3e7a43ca1ae59221bb0b7",
       "validation": "LV_LUT_MIDNIGHTC_ED.sound-runtime-closure.validation.json",
       "validationSha256": "4ebdfe70a835843bf6614aea2cb350da0c05a2f35d80b279174ddd282d9eda79",
-      "runtimeRoot": "Client/Bin/Resources/Sound/KakulSaydon",
-      "runtimeRelativeRoot": "Sound/KakulSaydon",
+      "runtimeRoot": "Client/Bin/Resources/Sound/KoukuSaton",
+      "runtimeRelativeRoot": "Sound/KoukuSaton",
       "actionIdentityCount": 476,
       "authoredCompanionIdentityCount": 2,
       "midnightCBgmIdentityCount": 18,
@@ -2978,7 +2978,7 @@
       },
       "runtimeConsumer": "unsupported",
       "rasterPhysicalPayload": {
-        "runtimeRoot": "Client/Bin/Resources/UI/KakulSaydon",
+        "runtimeRoot": "Client/Bin/Resources/UI/KoukuSaton",
         "components": [
           {
             "logicalPackage": "VS",
@@ -3107,20 +3107,20 @@
     "canonicalSourceRoot": "C:/LostArkExtract/LV_LUT_MIDNIGHTC_ED_20260829/CanonicalSource",
     "mapRuntimeRoot": "Client/Bin/Resources/Map/LV_LUT_MIDNIGHTC_ED",
     "characterPackageRoots": [
-      "Character/KakulSaydon/MN_RPCT_00",
-      "Character/KakulSaydon/MN_RPCT_05",
-      "Character/KakulSaydon/MN_RPCT_06",
-      "Character/KakulSaydon/MN_RPCZ_00",
-      "Character/KakulSaydon/WP_MN_RPCT_05",
-      "Character/KakulSaydon/WP_MN_RPCT_06",
-      "Character/KakulSaydon/WP_MN_RPCT_07",
-      "Character/KakulSaydon/WP_MN_RPCT_08"
+      "Character/KoukuSaton/MN_RPCT_00",
+      "Character/KoukuSaton/MN_RPCT_05",
+      "Character/KoukuSaton/MN_RPCT_06",
+      "Character/KoukuSaton/MN_RPCZ_00",
+      "Character/KoukuSaton/WP_MN_RPCT_05",
+      "Character/KoukuSaton/WP_MN_RPCT_06",
+      "Character/KoukuSaton/WP_MN_RPCT_07",
+      "Character/KoukuSaton/WP_MN_RPCT_08"
     ],
-    "effectPhysicalRoot": "Effect/KakulSaydon",
-    "uiRasterPhysicalRoot": "UI/KakulSaydon",
-    "soundRuntimeRoot": "Sound/KakulSaydon",
+    "effectPhysicalRoot": "Effect/KoukuSaton",
+    "uiRasterPhysicalRoot": "UI/KoukuSaton",
+    "soundRuntimeRoot": "Sound/KoukuSaton",
     "audioRoots": [
-      "Sound/KakulSaydon"
+      "Sound/KoukuSaton"
     ],
     "gitPolicy": "Track Data/Tools/docs only; keep all Client/Bin/Resources runtime payload untracked and do not stage the extracted physical pack."
   }

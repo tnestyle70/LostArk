@@ -1,3 +1,6 @@
+#include <Windows.h>
+#include <ObjIdl.h>
+
 #include "ActionPresentationTimeline.h"
 #include "CameraShakeService.h"
 #include "EncounterPatternReference.h"
@@ -37,7 +40,7 @@ namespace
 	{
 		if (Condition)
 			return true;
-		std::cerr << "ActionPresentationTimelineHarness: "
+		std::cerr << "ValtanPresentationContracts: "
 			<< pMessage << '\n';
 		return false;
 	}
@@ -879,13 +882,13 @@ namespace
 		std::string Status;
 		if (!Encounter.Load(EncounterPath, Status))
 		{
-			std::cerr << "ActionPresentationTimelineHarness: Valtan encounter "
+			std::cerr << "ValtanPresentationContracts: Valtan encounter "
 				"reference did not load: " << Status << '\n';
 			return false;
 		}
 		if (!Document.Load(CameraPath, Encounter, Status))
 		{
-			std::cerr << "ActionPresentationTimelineHarness: Valtan cinematic "
+			std::cerr << "ValtanPresentationContracts: Valtan cinematic "
 				"camera document did not load: " << Status << '\n';
 			return false;
 		}
@@ -1753,14 +1756,11 @@ namespace
 	}
 }
 
-bool VerifyClientPartyRegression(const std::filesystem::path& root);
-
-int main()
+int Run_ValtanPresentationContractTests()
 {
 	if (!VerifyFiniteDeathPresentationClock() ||
 		!VerifyAdjacentExplicitSourceWindows() ||
 		!VerifyCameraShakeSpec() ||
-		!VerifyClientPartyRegression(std::filesystem::current_path()) ||
 		!VerifyLegacyNaturalEndCompatibility() ||
 		!VerifyClipOccurrenceTransitions() ||
 		!VerifyCompletedAnimationClockRelease() ||
@@ -1776,6 +1776,6 @@ int main()
 		return 1;
 	}
 
-	std::cout << "ActionPresentationTimelineHarness: PASS\n";
+	std::cout << "Valtan presentation contracts: PASS\n";
 	return 0;
 }
