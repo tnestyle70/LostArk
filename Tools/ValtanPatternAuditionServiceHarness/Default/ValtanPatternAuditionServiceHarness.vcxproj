@@ -35,7 +35,8 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalOptions>/MP /utf-8 %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS;_CONSOLE;NOMINMAX;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\Shared\Public;$(ProjectDir)..\..\..\Engine\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
@@ -55,18 +56,33 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\ValtanPatternAuditionServiceHarness.cpp" />
+	<ClCompile Include="..\Private\ValtanEncounterReferenceContractTests.cpp" />
     <ClCompile Include="..\Private\ValtanPatternFlowServiceTests.cpp" />
+	<ClCompile Include="..\Private\ValtanPatternSoundCueDocumentContractTests.cpp" />
+    <ClCompile Include="..\Private\ValtanPresentationContractTests.cpp" />
     <ClCompile Include="..\Private\ValtanTuningCommandServiceTests.cpp" />
     <ClCompile Include="..\..\..\Client\Private\ValtanPatternAuditionService.cpp" />
     <ClCompile Include="..\..\..\Client\Private\ValtanPatternFlowService.cpp" />
     <ClCompile Include="..\..\..\Client\Private\ValtanTuningCommandService.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp" />
     <ClCompile Include="..\..\..\Client\Private\DataJson.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\ProjectDataRoot.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\ValtanPatternSoundCueDocument.cpp" />
     <ClCompile Include="..\..\..\Client\Private\ActionPresentationTimeline.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\CameraShakeService.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\EncounterPatternReference.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\ValtanCinematicCameraController.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\ValtanCinematicCameraDocument.cpp" />
     <ClInclude Include="..\..\..\Client\Public\ValtanPatternAuditionService.h" />
     <ClInclude Include="..\..\..\Client\Public\ValtanPatternFlowService.h" />
     <ClInclude Include="..\..\..\Client\Public\ValtanTuningCommandService.h" />
     <ClInclude Include="..\..\..\Client\Public\DataJson.h" />
     <ClInclude Include="..\..\..\Client\Public\ActionPresentationTimeline.h" />
+    <ClInclude Include="..\..\..\Client\Public\CameraShakeService.h" />
+    <ClInclude Include="..\..\..\Client\Public\EncounterPatternReference.h" />
+    <ClInclude Include="..\..\..\Client\Public\MonsterPresentationContract.h" />
+    <ClInclude Include="..\..\..\Client\Public\ValtanCinematicCameraController.h" />
+    <ClInclude Include="..\..\..\Client\Public\ValtanCinematicCameraDocument.h" />
     <ClInclude Include="..\..\..\Client\Public\ValtanPatternFlowDocument.h" />
   </ItemGroup>
   <ItemGroup>

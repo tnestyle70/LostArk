@@ -5,6 +5,7 @@
 #include "SoundCueCatalog.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <filesystem>
 #include <fstream>
@@ -143,6 +144,56 @@ namespace
 		}
 		output << "  ]\n}\n";
 		return output.str();
+	}
+
+	std::wstring Make_TransactionSuffix()
+	{
+		static std::atomic_uint64_t sequence{ 0u };
+		return L"." + std::to_wstring(GetCurrentProcessId()) + L"." +
+			std::to_wstring(GetTickCount64()) + L"." +
+			std::to_wstring(sequence.fetch_add(1u, std::memory_order_relaxed));
+	}
+
+	bool_t Write_StagedSource(const std::filesystem::path& path,
+		const std::string& text, std::string& outStatus)
+	{
+		const HANDLE file = CreateFileW(path.c_str(), GENERIC_WRITE, 0u,
+			nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+		if (INVALID_HANDLE_VALUE == file)
+		{
+			outStatus = "Valtan Sound cue staging file could not be created (Win32 " +
+				std::to_string(GetLastError()) + ").";
+			return false;
+		}
+
+		bool_t wrote = true;
+		std::size_t offset = 0u;
+		while (offset < text.size())
+		{
+			const DWORD requested = static_cast<DWORD>(std::min<std::size_t>(
+				text.size() - offset, static_cast<std::size_t>(MAXDWORD)));
+			DWORD written = 0u;
+			if (!WriteFile(file, text.data() + offset, requested, &written,
+					nullptr) || 0u == written)
+			{
+				wrote = false;
+				break;
+			}
+			offset += written;
+		}
+		const bool_t durable = wrote && FlushFileBuffers(file);
+		const DWORD writeError = durable ? ERROR_SUCCESS : GetLastError();
+		const bool_t closed = CloseHandle(file);
+		const DWORD closeError = closed ? ERROR_SUCCESS : GetLastError();
+		if (!durable || !closed)
+		{
+			DeleteFileW(path.c_str());
+			outStatus = "Valtan Sound cue staging write failed (Win32 " +
+				std::to_string(durable ? closeError : writeError) +
+				"); previous source preserved.";
+			return false;
+		}
+		return true;
 	}
 
 	bool_t Validate_CatalogAssets(
@@ -377,10 +428,16 @@ bool_t Client::CValtanCombatObjectSoundCueDocument::Validate_SourceDraft(
 	return true;
 }
 
-bool_t Client::CValtanCombatObjectSoundCueDocument::Save_Source(
+bool_t Client::CValtanCombatObjectSoundCueDocument::Begin_SourceReplacement(
 	const VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT& document,
+	VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT& transaction,
 	std::string& outStatus)
 {
+	if (transaction.bActive)
+	{
+		outStatus = "Valtan Sound cue source replacement is already active.";
+		return false;
+	}
 	if (!Validate_SourceDraft(document, outStatus))
 		return false;
 	const std::filesystem::path destination = Resolve_Path();
@@ -397,35 +454,137 @@ bool_t Client::CValtanCombatObjectSoundCueDocument::Save_Source(
 			directoryError.message();
 		return false;
 	}
+	const std::wstring suffix = Make_TransactionSuffix();
 	std::filesystem::path temporary = destination;
-	temporary += L".tmp";
+	temporary += L".stage" + suffix;
+	std::filesystem::path rollback = destination;
+	rollback += L".rollback" + suffix;
 	std::error_code cleanupError;
 	std::filesystem::remove(temporary, cleanupError);
+	std::filesystem::remove(rollback, cleanupError);
+	if (!Write_StagedSource(temporary, Serialize_Document(document), outStatus))
+		return false;
+
+	cleanupError.clear();
+	const bool_t hadPrevious =
+		std::filesystem::is_regular_file(destination, cleanupError);
+	const bool_t destinationExists =
+		std::filesystem::exists(destination, cleanupError);
+	if (cleanupError || (destinationExists && !hadPrevious))
 	{
-		std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
-		const std::string serialized = Serialize_Document(document);
-		if (!output ||
-			!output.write(serialized.data(),
-				static_cast<std::streamsize>(serialized.size())) ||
-			!output.flush())
-		{
-			output.close();
-			std::filesystem::remove(temporary, cleanupError);
-			outStatus =
-				"Valtan Sound cue temporary write failed; previous source preserved.";
-			return false;
-		}
+		std::filesystem::remove(temporary, cleanupError);
+		outStatus =
+			"Valtan Sound cue destination is not a replaceable regular file.";
+		return false;
+	}
+	if (hadPrevious && !CopyFileW(destination.c_str(), rollback.c_str(), TRUE))
+	{
+		const DWORD error = GetLastError();
+		std::filesystem::remove(temporary, cleanupError);
+		outStatus = "Valtan Sound cue rollback copy failed (Win32 " +
+			std::to_string(error) + "); previous source preserved.";
+		return false;
 	}
 	if (!MoveFileExW(temporary.c_str(), destination.c_str(),
 			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
 	{
 		const DWORD error = GetLastError();
 		std::filesystem::remove(temporary, cleanupError);
-		outStatus = "Valtan Sound cue atomic replace failed (Win32 " +
+		std::filesystem::remove(rollback, cleanupError);
+		outStatus = "Valtan Sound cue recoverable replace failed (Win32 " +
 			std::to_string(error) + "); previous source preserved.";
 		return false;
 	}
+	transaction.Destination = destination;
+	transaction.Rollback = rollback;
+	transaction.bHadPrevious = hadPrevious;
+	transaction.bActive = true;
+	outStatus = "Prepared " + std::to_string(document.Cues.size()) +
+		" recoverable Server-hit-qualified Valtan Sound cue(s).";
+	return true;
+}
+
+bool_t Client::CValtanCombatObjectSoundCueDocument::Commit_SourceReplacement(
+	VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT& transaction,
+	std::string& outStatus)
+{
+	if (!transaction.bActive || transaction.Destination.empty())
+	{
+		outStatus = "No active Valtan Sound cue source replacement to commit.";
+		return false;
+	}
+	const std::string rollbackPath = transaction.Rollback.string();
+	std::error_code cleanupError;
+	if (transaction.bHadPrevious)
+		std::filesystem::remove(transaction.Rollback, cleanupError);
+	transaction = {};
+	if (cleanupError)
+	{
+		outStatus =
+			"Valtan Sound cue source was committed; rollback-copy cleanup was deferred: " +
+			cleanupError.message() + " (" + rollbackPath + ").";
+		return true;
+	}
+	outStatus = "Committed Valtan Sound cue source replacement.";
+	return true;
+}
+
+bool_t Client::CValtanCombatObjectSoundCueDocument::Rollback_SourceReplacement(
+	VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT& transaction,
+	std::string& outStatus)
+{
+	if (!transaction.bActive || transaction.Destination.empty())
+	{
+		outStatus = "No active Valtan Sound cue source replacement to roll back.";
+		return false;
+	}
+	if (transaction.bHadPrevious)
+	{
+		if (transaction.Rollback.empty() ||
+			!MoveFileExW(transaction.Rollback.c_str(),
+				transaction.Destination.c_str(),
+				MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+		{
+			outStatus = "Valtan Sound cue rollback failed (Win32 " +
+				std::to_string(GetLastError()) + "); recovery copy remains at " +
+				transaction.Rollback.string() + ".";
+			return false;
+		}
+	}
+	else
+	{
+		const bool_t removed = DeleteFileW(transaction.Destination.c_str());
+		const DWORD error = removed ? ERROR_SUCCESS : GetLastError();
+		if (!removed && ERROR_FILE_NOT_FOUND != error)
+		{
+			outStatus =
+				"Valtan Sound cue rollback could not remove the newly created source (Win32 " +
+				std::to_string(error) + ").";
+			return false;
+		}
+	}
+	transaction = {};
+	outStatus = "Restored the previous Valtan Sound cue source.";
+	return true;
+}
+
+bool_t Client::CValtanCombatObjectSoundCueDocument::Save_Source(
+	const VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT& document,
+	std::string& outStatus)
+{
+	VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT transaction;
+	if (!Begin_SourceReplacement(document, transaction, outStatus))
+		return false;
+	std::string commitStatus;
+	if (!Commit_SourceReplacement(transaction, commitStatus))
+	{
+		std::string rollbackStatus;
+		(void)Rollback_SourceReplacement(transaction, rollbackStatus);
+		outStatus = "Valtan Sound cue commit failed: " + commitStatus + " " +
+			rollbackStatus;
+		return false;
+	}
 	outStatus = "Saved " + std::to_string(document.Cues.size()) +
-		" Server-hit-qualified Valtan Sound cue(s).";
+		" Server-hit-qualified Valtan Sound cue(s). " + commitStatus;
 	return true;
 }

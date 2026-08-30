@@ -9,5 +9,9 @@
     <ClCompile Include="..\Private\CharacterSelectIsolationHarness.cpp">
       <Filter>Private</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\ClientPresentationPrimitiveContractTests.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ActionPresentationTimeline.cpp" />
   </ItemGroup>
 </Project>

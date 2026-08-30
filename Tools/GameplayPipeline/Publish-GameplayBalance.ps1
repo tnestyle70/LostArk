@@ -2134,19 +2134,30 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 
 				$actionReleaseMode = 'NONE'
 				$actionReleaseSpeedMps = 0.0
+				$actionReleaseYawOffsetDegrees = 0.0
 				if ($actionKind -ceq 'RELEASE_GRABBED_PLAYERS') {
 					Assert-ExactProperties $stageAction @(
 						'trigger','kind','targetId','releaseMode','speedMps',
-						'durationMs') 'encounter grabbed-player release action'
+						'durationMs','yawOffsetDegrees') 'encounter grabbed-player release action'
 					Assert-JsonString $stageAction.releaseMode `
 						'grabbed-player releaseMode'
 					Assert-JsonNumber $stageAction.speedMps `
 						'grabbed-player release speedMps'
 					Assert-JsonInteger $stageAction.durationMs `
 						'grabbed-player release durationMs' 0 5000
+					Assert-JsonNumber $stageAction.yawOffsetDegrees `
+						'grabbed-player release yawOffsetDegrees'
 					$actionValue = [uint32]0
 					$actionReleaseMode = [string]$stageAction.releaseMode
 					$actionReleaseSpeedMps = [double]$stageAction.speedMps
+					$actionReleaseYawOffsetDegrees =
+						[double]$stageAction.yawOffsetDegrees
+					if ([double]::IsNaN($actionReleaseYawOffsetDegrees) -or
+						[double]::IsInfinity($actionReleaseYawOffsetDegrees) -or
+						$actionReleaseYawOffsetDegrees -lt -180.0 -or
+						$actionReleaseYawOffsetDegrees -gt 180.0) {
+						throw 'grabbed-player release yawOffsetDegrees must be finite and within -180..180'
+					}
 				}
 				else {
 					Assert-ExactProperties $stageAction @(
@@ -2204,11 +2215,14 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 							$actionTargetId -ceq 'boss.attachment.left-hand' -and
 							(($actionReleaseMode -ceq 'HOLD' -and
 							  $actionReleaseSpeedMps -eq 0.0 -and
-							  $actionDurationMs -eq 0) -or
+							  $actionDurationMs -eq 0 -and
+							  $actionReleaseYawOffsetDegrees -eq 0.0) -or
 							 ($actionReleaseMode -cin @('OPPOSITE_KNOCKBACK','ARENA_EJECTION') -and
 							  $actionReleaseSpeedMps -gt 0.0 -and
 							  $actionReleaseSpeedMps -le 50.0 -and
-							  $actionDurationMs -gt 0))
+							  $actionDurationMs -gt 0 -and
+							  ($actionReleaseMode -ceq 'ARENA_EJECTION' -or
+							   $actionReleaseYawOffsetDegrees -eq 0.0)))
 					}
 					'DAMAGE_GRABBED_PLAYERS' {
 						$validTypedAction = $actionTrigger -ceq 'ENTER' -and
@@ -2295,7 +2309,9 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 					$stageActionRowFields += @(
 						$actionReleaseMode,
 						(Format-InvariantFloat $actionReleaseSpeedMps `
-							'grabbed-player release speedMps'))
+							'grabbed-player release speedMps'),
+						(Format-InvariantSignedFloat $actionReleaseYawOffsetDegrees `
+							'grabbed-player release yawOffsetDegrees'))
 				}
 				$patternRows.Add(($stageActionRowFields -join "`t"))
 			}

@@ -1302,6 +1302,42 @@ bool CNetworkManager::Send_DebugKillSelf(
 }
 #endif
 
+bool CNetworkManager::Send_DebugEnterKakulSaydonArena(
+	const std::uint32_t requestSequence)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_DEBUG_ENTER_KAKULSAYDON_ARENA message{};
+	message.iRequestSequence = requestSequence;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_DebugTeleportToPlacement(
+	const std::uint32_t requestSequence,
+	const std::string_view placementId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_DEBUG_TELEPORT_TO_PLACEMENT message{};
+	message.iRequestSequence = requestSequence;
+	message.strPlacementId.assign(placementId.begin(), placementId.end());
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_PLACEMENT,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_ChangeCharacterClass(
 	const std::uint32_t clientSequence,
 	const LostArk::Shared::CHARACTER_CLASS_ID characterClass)

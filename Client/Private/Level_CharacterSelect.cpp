@@ -138,7 +138,8 @@ CLevel_CharacterSelect::~CLevel_CharacterSelect()
 	if (this == s_pActiveInstance)
 		s_pActiveInstance = nullptr;
 	CAnimationTargetService::Unbind(m_pActiveCharacter);
-	CNetworkManager::Get().Close_ServerConnection();
+	if (!m_preserveServerConnectionForTransfer)
+		CNetworkManager::Get().Close_ServerConnection();
 	m_Replication.Reset();
 	CCombatHUDViewModel::Get().Reset_RuntimeState();
 	m_MapRuntime.Clear();
@@ -740,6 +741,23 @@ bool_t CLevel_CharacterSelect::Commit_ServerArena()
 
 void CLevel_CharacterSelect::Update_ServerArena()
 {
+	/* A Debug arena transfer publishes S2C_ENTER_ACCEPTED before the target
+	world's spawn/snapshot events. Consume that authority edge first so this
+	Character Select replication instance never tries to present Kakul entities
+	with the Character Select map/prototype scope. */
+	const SERVER_WORLD_TRANSFER_PUMP_RESULT transferResult =
+		CLevelTransitionService::Pump_ServerApprovedWorldTransfer(
+			LEVEL::CHARACTER_SELECT);
+	if (SERVER_WORLD_TRANSFER_PUMP_RESULT::REQUESTED == transferResult)
+	{
+		m_preserveServerConnectionForTransfer = true;
+		return;
+	}
+	if (SERVER_WORLD_TRANSFER_PUMP_RESULT::RECOVERY_REQUESTED == transferResult)
+	{
+		return;
+	}
+
 	Consume_ClassChangeResults();
 	LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT spawnResult{};
 	while (CNetworkManager::Get().Try_Consume_WorldEntitySpawnResult(
@@ -1600,6 +1618,26 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 	ImGui::SameLine();
 	if (ImGui::Button("Enter Valtan Map"))
 		Enter_Stage(LOBBY_STAGE::VALTAN);
+	ImGui::SameLine();
+	if (ImGui::Button("Enter KoukuSaton Arena"))
+	{
+		const std::uint32_t requestSequence =
+			m_iNextKakulArenaRequestSequence++;
+		if (0u == m_iNextKakulArenaRequestSequence)
+			m_iNextKakulArenaRequestSequence = 1u;
+		if (nullptr != m_pWorldEntityCommandSink &&
+			m_pWorldEntityCommandSink->Request_EnterKakulSaydonArena(
+				requestSequence))
+		{
+			m_strStatus =
+				"KoukuSaton Server arena transfer requested.";
+		}
+		else
+		{
+			m_strStatus =
+				"KoukuSaton Server arena request could not be sent.";
+		}
+	}
 	ImGui::SameLine();
 	if (ImGui::Button("Back"))
 		Leave_ServerArena();

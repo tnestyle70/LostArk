@@ -286,6 +286,16 @@ namespace LostArk::Server
 		void Handle_DebugKillSelf(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_DEBUG_KILL_SELF& debugKillSelf);
+		/* Debug-only Character Select audition entry. This stages the ordinary
+		Server world-transfer transaction; it never changes a Client level directly. */
+		void Handle_DebugEnterKakulSaydonArena(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA& request);
+		/* Debug-only authored waypoint audition. The placement must be a Kakul
+		playerSpawn waypoint and Server navigation remains the position authority. */
+		void Handle_DebugTeleportToPlacement(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DEBUG_TELEPORT_TO_PLACEMENT& request);
 		void Handle_ChangeCharacterClass(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS& request);

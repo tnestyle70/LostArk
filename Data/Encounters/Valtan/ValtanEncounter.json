@@ -3756,7 +3756,8 @@
               "targetId": "boss.attachment.left-hand",
               "releaseMode": "HOLD",
               "speedMps": 0.0,
-              "durationMs": 0
+              "durationMs": 0,
+              "yawOffsetDegrees": 0.0
             },
             {
               "trigger": "ENTER",
@@ -4297,7 +4298,8 @@
               "targetId": "boss.attachment.left-hand",
               "releaseMode": "HOLD",
               "speedMps": 0.0,
-              "durationMs": 0
+              "durationMs": 0,
+              "yawOffsetDegrees": 0.0
             },
             {
               "trigger": "ENTER",
@@ -4440,7 +4442,8 @@
               "targetId": "boss.attachment.left-hand",
               "releaseMode": "ARENA_EJECTION",
               "speedMps": 24.0,
-              "durationMs": 500
+              "durationMs": 500,
+              "yawOffsetDegrees": 0.0
             }
           ]
         }

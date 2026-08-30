@@ -4475,6 +4475,25 @@
     "Sound/Character/Warlord/pc_gunlancer_m_sk_warspear1_fx042_2__873415757.wav"
    ]
   },
+  "Esther": {
+   "PC_Common_FX_Active1": [
+    "Sound/Asther/pc_common_fx_active1__69934885.wav",
+    "Sound/Asther/pc_common_fx_active1__189796468.wav"
+   ],
+   "PC_Common_FX_Active2": [
+    "Sound/Asther/pc_common_fx_active2__978136622.wav",
+    "Sound/Asther/pc_common_fx_active2__716288987.wav"
+   ],
+   "Silian1_Attack9_Cast1": [
+    "Sound/Asther/silian1_attack9_cast1__413869541.wav"
+   ],
+   "Silian1_Attack9_Shot1": [
+    "Sound/Asther/silian1_attack9_shot1__208313800.wav"
+   ],
+   "Silian1_Attack9_Shot2": [
+   "Sound/Asther/silian1_attack9_shot2__262622594.wav"
+   ]
+  },
   "Valtan": {
    "G_Voltan2_Attack19_Cast2": [
     "Sound/Valtan/g_voltan2_attack19_cast2__40312614.wav"

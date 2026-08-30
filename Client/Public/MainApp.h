@@ -89,9 +89,14 @@ public:
 
 #ifdef _DEBUG
 	static void Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle);
-	/* Shortcut used by domain tools that do not own a boss/pattern selection.
-	   The selected stable pattern remains owned by the workspace header and the
-	   command still crosses CBossTool -> CValtanPatternAuditionService. */
+	/* Every domain tool writes one stable Pattern ID into this process-wide
+	   workspace selection before Complete Play.  The tools retain their local
+	   draft/row state, but none owns a second Server replay selection or queue. */
+	bool_t Debug_SelectCompletePlayPattern(const std::string& strPatternId);
+	const std::string& Debug_GetSelectedCompletePlayPatternId() const;
+	/* Shortcut used by every Complete Play button.  Submission still crosses
+	   CBossTool -> CValtanPatternAuditionService and never resets Arena world,
+	   navigation, wall, or debris state. */
 	bool_t Debug_CompletePlaySelected(std::string& strOutStatus);
 #endif
 
@@ -472,9 +477,14 @@ private:
 		"Resource Files has not been indexed yet.";
 	string m_strServerArenaActiveStatus =
 		"Enter the Server-approved Valtan Arena to inspect Active state.";
+	uint32_t m_iNextKakulStageTeleportRequestSequence = 1u;
+	string m_strKakulStageTeleportStatus =
+		"Enter the Server-approved KoukuSaton Arena to inspect SL01-SL05 stages.";
 	vector<string> m_CompletePlayPatternIds;
 	vector<string> m_CompletePlayPatternLabels;
-	int32_t m_iCompletePlayPattern = 0;
+	/* Stable identity is the selection authority.  UI indices are derived from
+	   this value each frame and are never persisted as selection state. */
+	string m_strCompletePlayPatternId;
 	bool_t m_bCompletePlayPatternLoadAttempted = false;
 	string m_strCompletePlayStatus =
 		"Select a saved semantic pattern, then submit Complete Play to the Server.";

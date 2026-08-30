@@ -987,12 +987,95 @@ function Convert-EncounterPropsDocument {
     }
 }
 
+function Convert-KakulStageMarkersDocument {
+    $areaId = 'LV_LUT_MIDNIGHTC_ED'
+    $worldId = 'KAKULSAYDON_ARENA'
+    $relativePath = "Data/Worlds/$areaId/StageMarkers.json"
+    $document = Read-ProjectJson $relativePath
+    Assert-ExactProperties $document @(
+        'schema','formatVersion','areaId','revision','semanticStatus','stages') `
+        'Kakul StageMarkers root'
+    Assert-JsonInteger $document.formatVersion 'Kakul StageMarkers formatVersion' 1 1
+    Assert-JsonInteger $document.revision 'Kakul StageMarkers revision' 1 2147483647
+    if ($document.schema -ne 'lostark.kakul-stage-markers' -or
+        $document.areaId -ne $areaId -or
+        $document.semanticStatus -ne 'SOURCE_LEVEL_ID_ONLY') {
+        throw 'Kakul StageMarkers header is invalid.'
+    }
+
+    $gameplay = Read-ProjectJson "Data/Worlds/$areaId/Gameplay.world.json"
+    $placements = @{}
+    foreach ($placement in @($gameplay.placements)) {
+        $placements[[string]$placement.placementId] = $placement
+    }
+
+    $stageIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $placementIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $runtimeStages = [Collections.Generic.List[object]]::new()
+    foreach ($stage in @($document.stages)) {
+        Assert-ExactProperties $stage @(
+            'stageId','placementId','displayNameKo','sourceLevelId',
+            'componentCellCount','evidence') 'Kakul StageMarkers stage'
+        Assert-StableId $stage.stageId 'Kakul stageId'
+        Assert-StableId $stage.placementId 'Kakul stage placementId'
+        Assert-StableId $stage.sourceLevelId 'Kakul sourceLevelId'
+        Assert-JsonInteger $stage.componentCellCount `
+            "Kakul stage $($stage.stageId) componentCellCount" 1 2147483647
+        Assert-JsonString $stage.displayNameKo `
+            "Kakul stage $($stage.stageId) displayNameKo"
+        Assert-JsonString $stage.evidence `
+            "Kakul stage $($stage.stageId) evidence"
+        if (-not ([string]$stage.stageId).StartsWith('stage.kakul.', [StringComparison]::Ordinal) -or
+            $stage.stageId -ne $stage.placementId -or
+            [string]::IsNullOrWhiteSpace([string]$stage.displayNameKo) -or
+            [string]::IsNullOrWhiteSpace([string]$stage.evidence) -or
+            -not $stageIds.Add([string]$stage.stageId) -or
+            -not $placementIds.Add([string]$stage.placementId)) {
+            throw "Kakul stage identity is invalid or duplicated: $($stage.stageId)"
+        }
+        if (-not $placements.ContainsKey([string]$stage.placementId)) {
+            throw "Kakul stage placement is missing from Gameplay.world.json: $($stage.placementId)"
+        }
+        $placement = $placements[[string]$stage.placementId]
+        if ($placement.kind -ne 'playerSpawn' -or [bool]$placement.enabled) {
+            throw "Kakul stage placement must be a disabled playerSpawn: $($stage.placementId)"
+        }
+        $runtimeStages.Add([ordered]@{
+            stageId = [string]$stage.stageId
+            placementId = [string]$stage.placementId
+            displayNameKo = [string]$stage.displayNameKo
+            sourceLevelId = [string]$stage.sourceLevelId
+        })
+    }
+    if ($runtimeStages.Count -eq 0 -or $runtimeStages.Count -gt 64) {
+        throw "Kakul StageMarkers count is invalid: $($runtimeStages.Count)"
+    }
+
+    $runtime = [ordered]@{
+        schema = 'lostark.kakul-stage-markers-runtime'
+        formatVersion = 1
+        worldId = $worldId
+        areaId = $areaId
+        revision = [int]$document.revision
+        semanticStatus = 'SOURCE_LEVEL_ID_ONLY'
+        stages = @($runtimeStages)
+    }
+    return [pscustomobject]@{
+        WorldId = $worldId
+        AreaId = $areaId
+        Count = $runtimeStages.Count
+        Json = ($runtime | ConvertTo-Json -Depth 6)
+    }
+}
+
 $actorIds = Get-ActorIds
 $encounterProfiles = Get-EncounterProfiles
 $monsterProfiles = Get-MonsterProfiles
+$kakulStageMarkers = Convert-KakulStageMarkersDocument
 $spawnDocuments = @(
     (Convert-SpawnGroupsDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId 'BERN' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
     (Convert-SpawnGroupsDocument -AreaId 'LV_LUT_HEARTRB_ED' -WorldId 'VALTAN_ARENA' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
+    (Convert-SpawnGroupsDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId 'KAKULSAYDON_ARENA' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
     (Convert-SpawnGroupsDocument -AreaId 'LV_DEV_TRAINING_GROUND' -WorldId 'TRAINING_GROUND' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
     (Convert-SpawnGroupsDocument -AreaId 'LV_LOBBY_CLASSSELECT_SL00' -WorldId 'CHARACTER_SELECT_ARENA' -ActorIds $actorIds -MonsterProfiles $monsterProfiles)
 )
@@ -1001,12 +1084,14 @@ foreach ($spawn in $spawnDocuments) { $spawnByWorld[$spawn.WorldId] = $spawn }
 $encounterPropDocuments = @(
     (Convert-EncounterPropsDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId 'BERN'),
     (Convert-EncounterPropsDocument -AreaId 'LV_LUT_HEARTRB_ED' -WorldId 'VALTAN_ARENA'),
+    (Convert-EncounterPropsDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId 'KAKULSAYDON_ARENA'),
     (Convert-EncounterPropsDocument -AreaId 'LV_DEV_TRAINING_GROUND' -WorldId 'TRAINING_GROUND'),
     (Convert-EncounterPropsDocument -AreaId 'LV_LOBBY_CLASSSELECT_SL00' -WorldId 'CHARACTER_SELECT_ARENA')
 )
 $worlds = @(
     (Convert-WorldDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId 'BERN' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.BERN.GroupIds),
     (Convert-WorldDocument -AreaId 'LV_LUT_HEARTRB_ED' -WorldId 'VALTAN_ARENA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.VALTAN_ARENA.GroupIds),
+    (Convert-WorldDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId 'KAKULSAYDON_ARENA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.KAKULSAYDON_ARENA.GroupIds),
     (Convert-WorldDocument -AreaId 'LV_DEV_TRAINING_GROUND' -WorldId 'TRAINING_GROUND' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.TRAINING_GROUND.GroupIds),
     (Convert-WorldDocument -AreaId 'LV_LOBBY_CLASSSELECT_SL00' -WorldId 'CHARACTER_SELECT_ARENA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.CHARACTER_SELECT_ARENA.GroupIds)
 )
@@ -1066,6 +1151,19 @@ if ($Mode -eq 'Publish') {
 		}
 		$clientWorldRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot 'Client/Bin/DataFiles/World'))
 		[IO.Directory]::CreateDirectory($clientWorldRoot) | Out-Null
+		$stagedKakulMarkers = Join-Path $stagingRoot 'KAKULSAYDON_ARENA.stagemarkers.json'
+		[IO.File]::WriteAllText(
+			$stagedKakulMarkers,
+			$kakulStageMarkers.Json,
+			[Text.UTF8Encoding]::new($false))
+		$promotions.Add([ordered]@{
+			World = $kakulStageMarkers
+			Staged = $stagedKakulMarkers
+			Destination = Join-Path $clientWorldRoot 'KAKULSAYDON_ARENA.stagemarkers.json'
+			Rollback = Join-Path $clientWorldRoot ".KAKULSAYDON_ARENA.stagemarkers.rollback.$transactionId"
+			HadPrevious = $false
+			Promoted = $false
+		})
 		foreach ($world in $worlds) {
 			$staged = Join-Path $stagingRoot "$($world.WorldId).npcpresentation.json"
 			$jsonLines = [Collections.Generic.List[string]]::new()

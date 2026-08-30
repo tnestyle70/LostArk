@@ -3,11 +3,11 @@
   "formatVersion": 2,
   "intakeId": "raid.37081.lv-lut-midnightc-ed",
   "aliasContract": {
-    "alias": "KakulSaydon",
+    "alias": "KoukuSaton",
     "kind": "user-folder-alias",
     "canonical": false,
     "canonicalAreaId": "LV_LUT_MIDNIGHTC_ED",
-    "cleanupPolicy": "Remove only exact-empty alias directories after canonical destinations validate."
+    "cleanupPolicy": "Remove only the exact-empty Map/KoukuSaton alias after canonical geometry validates; preserve other user-owned KoukuSaton physical roots."
   },
   "canonicalIdentity": {
     "zoneId": 37081,
@@ -2411,7 +2411,7 @@
           "sourceObjectRoot": "BUFF_Monster1",
           "uniqueEvents": 1,
           "occurrences": 10,
-          "canonicalBankId": null
+          "canonicalBankId": "BUFF_MONSTER1"
         },
         {
           "sourceObjectRoot": "BUFF_Raid_Koukusaton1",
@@ -2447,17 +2447,17 @@
           "sourceObjectRoot": "S_PaticleSound",
           "uniqueEvents": 1,
           "occurrences": 1,
-          "canonicalBankId": null
+          "canonicalBankId": "S_PATICLESOUND"
         },
         {
           "sourceObjectRoot": "S_Systems",
           "uniqueEvents": 2,
           "occurrences": 14,
-          "canonicalBankId": null
+          "canonicalBankId": "S_SYSTEMS"
         }
       ],
       "productAdmitted": false,
-      "reason": "UPK AkBank/AkEvent metadata is not decoded Wwise media and no safe Resources-relative WAV identity exists."
+      "reason": "Exact Wwise bank/event/media resolution and a Resources-relative PCM WAV dependency closure exist, but no Product audio runtime binding was created."
     },
     "structuralClassCounts": {
       "seqvar_object": 1372,
@@ -2539,11 +2539,32 @@
         "materialDependency": "MN_RPCT_05"
       },
       "MN_RPCZ_00": {
+        "sourcePackageSha256": "fb87460ad33011c96ed24d13363e9341c31a3b47d2f83ca5d09975bb635be627",
+        "sourceAnimSetCount": 4,
+        "sourceAnimSequenceExportCount": 119,
+        "externalAnimationImportCount": 0,
         "mainSequences": 86,
         "eventSequences": 5,
-        "collisionSequences": 23,
+        "additionalSequenceSet": {
+          "sequenceCount": 23,
+          "uniqueNewBodyClipCount": 0,
+          "reason": "Every identity in mn_rpcz_00-1_ani duplicates the main body PSA."
+        },
+        "ropeSequenceCount": 5,
+        "ropeRigBoneCount": 22,
         "cookedSequences": 91,
-        "actionMissingClipCount": 27
+        "runtimeWmodelSha256": "8d5a66797b7300f5a69038ab9c218ffc1c95aeed659b2ee96b193d762083d63e",
+        "actionReferencedUniqueClipCount": 97,
+        "actionNamesWithoutExactPackageAnimation": 27,
+        "canonicalPsaFilesScanned": 12,
+        "compatibleSourceClipCount": 0,
+        "genericActionStateCounts": {
+          "stand": 13,
+          "move": 8,
+          "die": 6
+        },
+        "closureState": "closed-no-exact-source-animation-do-not-fabricate",
+        "reason": "Twenty-six names do not occur in any canonical PSA. Idle_Normal_1_1 occurs only on the incompatible 60-bone MN_RPCT_01 rig; MN_RPCZ_00 has 100 bones. These LOA STAND/MOVE/DIE branches are not missing package exports."
       },
       "WP_MN_RPCT_05": {
         "runtimeCookedSequences": 1
@@ -2552,31 +2573,75 @@
         "runtimeCookedSequences": 16
       },
       "WP_MN_RPCT_07": {
+        "sourceSkeletalMeshCount": 2,
+        "sourceAnimSetCount": 0,
+        "sourceAnimSequenceCount": 0,
+        "externalAnimationImportCount": 0,
+        "runtimeCookedModelCount": 2,
         "runtimeCookedSequences": 0,
-        "sourceOnly": true,
-        "reason": "No canonical PSA has the exact one-bone skeleton identity; no animation was guessed."
+        "runtimeModels": [
+          {
+            "assetId": "Character/KoukuSaton/WP_MN_RPCT_07/wp_mn_rpct_07l_sk.wmodel",
+            "bone": "bone001",
+            "bytes": 1762132,
+            "sha256": "52588d7ac54c814fa9a1170f3ec3d9fb6f6647dda6160dac76c46d12ec3fde2d"
+          },
+          {
+            "assetId": "Character/KoukuSaton/WP_MN_RPCT_07/wp_mn_rpct_07r_sk.wmodel",
+            "bone": "bone001",
+            "bytes": 1763108,
+            "sha256": "7198ed739ac374c9ec81e700a0df4edd1b6ca8e0efde8d9ffc46c94efc1df7b3"
+          }
+        ],
+        "canonicalAnimationState": "zero-authored-animation",
+        "reason": "The source package exports and imports no AnimSet or AnimSequence. Exact meshes, one-bone skeletons, materials, and textures were cooked without inventing a PSA."
       },
       "WP_MN_RPCT_08": {
+        "sourceSkeletalMeshCount": 2,
+        "sourceStaticMeshCount": 1,
+        "sourceAnimSetCount": 0,
+        "sourceAnimSequenceCount": 0,
+        "externalAnimationImportCount": 0,
+        "runtimeCookedModelCount": 2,
         "runtimeCookedSequences": 0,
-        "sourceOnly": true,
-        "reason": "No canonical PSA has either exact one-bone skeleton identity; no animation was guessed."
+        "runtimeModels": [
+          {
+            "assetId": "Character/KoukuSaton/WP_MN_RPCT_08/wp_mn_rpct_08_sk.wmodel",
+            "bone": "wp_mn_rpct_08_sk",
+            "bytes": 210996,
+            "sha256": "7758df5ad5baa6a5fc9917241a0ccc958b72ca4793e47dc94c5a7519b2a311d8"
+          },
+          {
+            "assetId": "Character/KoukuSaton/WP_MN_RPCT_08/wp_mn_rpct_08_1_sk.wmodel",
+            "bone": "b_root",
+            "bytes": 210996,
+            "sha256": "d19e27d7ad72474484531df4672acfdb07793e4ca0859dcbd3466b2a2c2f1b87"
+          }
+        ],
+        "canonicalAnimationState": "zero-authored-animation",
+        "reason": "The source package exports and imports no AnimSet or AnimSequence. Exact meshes, one-bone skeletons, materials, and textures were cooked without inventing a PSA."
       }
     },
     "physicalPayload": {
       "runtimeRoots": [
-        "Client/Bin/Resources/Character/MN_RPCT_00",
-        "Client/Bin/Resources/Character/MN_RPCT_05",
-        "Client/Bin/Resources/Character/MN_RPCT_06",
-        "Client/Bin/Resources/Character/MN_RPCZ_00",
-        "Client/Bin/Resources/Character/WP_MN_RPCT_05",
-        "Client/Bin/Resources/Character/WP_MN_RPCT_06"
+        "Client/Bin/Resources/Character/KoukuSaton/MN_RPCT_00",
+        "Client/Bin/Resources/Character/KoukuSaton/MN_RPCT_05",
+        "Client/Bin/Resources/Character/KoukuSaton/MN_RPCT_06",
+        "Client/Bin/Resources/Character/KoukuSaton/MN_RPCZ_00",
+        "Client/Bin/Resources/Character/KoukuSaton/WP_MN_RPCT_05",
+        "Client/Bin/Resources/Character/KoukuSaton/WP_MN_RPCT_06",
+        "Client/Bin/Resources/Character/KoukuSaton/WP_MN_RPCT_07",
+        "Client/Bin/Resources/Character/KoukuSaton/WP_MN_RPCT_08"
       ],
-      "fileCount": 52,
-      "bytes": 506671752,
+      "fileCount": 63,
+      "bytes": 519532776,
       "runtimeWmodelAnimationSectionCount": 640,
-      "aggregateSha256": "26645d933497ebc1b9a44ad6a67c371882e9aee018597c41bbaf1bbd05f39529",
+      "aggregateSha256": "b4cfaf6fe785a04aed2f9c8708c91fb46e074470e1038e7eaf56558c44a247d9",
+      "aggregateAlgorithm": "sha256(utf8(sorted ordinal relativePath<TAB>bytes<TAB>fileSha256<LF>)); root=Character/KoukuSaton; canonical package roots only",
+      "externalZeroAnimationCookRoot": "C:/LostArkExtract/LV_LUT_MIDNIGHTC_ED_20260829/AnimationClosureAudit-20260830/ZeroAnimationCook",
       "gitTrackedFileCount": 0,
-      "admissionState": "ignored-cmodel-input-installed-mn-rpct05-249-partial-rpcz-closure",
+      "gitStagedFileCount": 0,
+      "admissionState": "ignored-cmodel-input-installed-exact-package-animation-closure",
       "productRuntimeComplete": false
     },
     "sequenceNameEvidence": {
@@ -2659,7 +2724,7 @@
     "admissionState": "source-closure-verified",
     "productRuntimeComplete": false,
     "physicalPayload": {
-      "runtimeRoot": "Client/Bin/Resources/Effect/KakulSaydon",
+      "runtimeRoot": "Client/Bin/Resources/Effect/KoukuSaton",
       "wmodelCount": 101,
       "wmodelBytes": 3477406,
       "wmodelAggregateSha256": "f65b1759836c19768c9293a4b5eed1ec181d1c16b568ee34be0b605b25e0b191",
@@ -2677,20 +2742,127 @@
   },
   "soundUiCinematicInventory": {
     "canonicalSoundPackages": [
-      "S_MOB_G_KOUKU1",
-      "S_MOB_G_KOUKUSATAN1",
-      "S_BGM_COMMANDERRAID",
-      "S_SCENE_OCEAN3_3",
-      "S_AMB_AIR_MODE1",
       "S_AMB_ACT_BIRD",
       "S_AMB_ACT_OBJECT",
       "S_AMB_ACT_WALLA",
-      "S_BGM_MODE"
+      "S_AMB_AIR_MODE1",
+      "S_BGM_COMMANDERRAID",
+      "S_BGM_MODE",
+      "S_MOB_G_BIGSATAN1",
+      "S_MOB_G_CUKSATAN1",
+      "S_MOB_G_KOUKU1",
+      "S_MOB_G_KOUKUSATAN1",
+      "S_PATICLESOUND",
+      "S_SCENE_OCEAN3_3"
     ],
     "soundEventCounts": {
+      "S_AMB_ACT_BIRD": 83,
+      "S_AMB_ACT_OBJECT": 194,
+      "S_AMB_ACT_WALLA": 158,
+      "S_AMB_AIR_MODE1": 338,
+      "S_BGM_COMMANDERRAID": 275,
+      "S_BGM_MODE": 484,
+      "S_MOB_G_BIGSATAN1": 54,
+      "S_MOB_G_CUKSATAN1": 81,
       "S_MOB_G_KOUKU1": 154,
       "S_MOB_G_KOUKUSATAN1": 395,
-      "S_BGM_COMMANDERRAID": 275
+      "S_PATICLESOUND": 15,
+      "S_SCENE_OCEAN3_3": 81,
+      "totalUniqueEvents": 2312
+    },
+    "resolvedWwiseBanks": [
+      {
+        "canonicalPackage": "S_AMB_ACT_BIRD",
+        "logicalPck": "SOUND_AMB_ACT",
+        "bankId": 235804971
+      },
+      {
+        "canonicalPackage": "S_AMB_ACT_OBJECT",
+        "logicalPck": "SOUND_AMB_ACT",
+        "bankId": 603093807
+      },
+      {
+        "canonicalPackage": "S_AMB_ACT_WALLA",
+        "logicalPck": "SOUND_AMB_ACT",
+        "bankId": 4211986511
+      },
+      {
+        "canonicalPackage": "S_AMB_AIR_MODE1",
+        "logicalPck": "SOUND_AMB_AIR1",
+        "bankId": 88926232
+      },
+      {
+        "canonicalPackage": "S_BGM_COMMANDERRAID",
+        "logicalPck": "SOUND_BGM_COMMANDERRAID",
+        "bankId": 792876931
+      },
+      {
+        "canonicalPackage": "S_BGM_MODE",
+        "logicalPck": "SOUND_BGM_MODE",
+        "bankId": 575335710
+      },
+      {
+        "canonicalPackage": "S_MOB_G_BIGSATAN1",
+        "logicalPck": "SOUND_MOB_GLOBAL1",
+        "bankId": 487524139
+      },
+      {
+        "canonicalPackage": "S_MOB_G_CUKSATAN1",
+        "logicalPck": "SOUND_MOB_GLOBAL1",
+        "bankId": 2704561506
+      },
+      {
+        "canonicalPackage": "S_MOB_G_KOUKU1",
+        "logicalPck": "SOUND_MOB_GLOBAL3",
+        "bankId": 166743361
+      },
+      {
+        "canonicalPackage": "S_MOB_G_KOUKUSATAN1",
+        "logicalPck": "SOUND_MOB_GLOBAL3",
+        "bankId": 881974850
+      },
+      {
+        "canonicalPackage": "S_PATICLESOUND",
+        "logicalPck": "SOUND_DEFAULT",
+        "bankId": 3370536921
+      },
+      {
+        "canonicalPackage": "S_SCENE_OCEAN3_3",
+        "logicalPck": "SOUND_SCENE_OCEAN1",
+        "bankId": 2755353966
+      },
+      {
+        "canonicalPackage": "BUFF_MONSTER1",
+        "logicalPck": "SOUND_BUFF1",
+        "bankId": 1172773797,
+        "scope": "action-dependency"
+      },
+      {
+        "canonicalPackage": "BUFF_RAID_KOUKUSATON1",
+        "logicalPck": "SOUND_BUFF1",
+        "bankId": 447236216,
+        "scope": "action-dependency"
+      },
+      {
+        "canonicalPackage": "S_SYSTEMS",
+        "logicalPck": "SOUND_THEME",
+        "bankId": 2450321888,
+        "scope": "system-ui-dependency"
+      }
+    ],
+    "supplementalActionAndUiEvents": {
+      "buffEventIdentities": [
+        "BUFF_MONSTER1.mob_koukusaon1_roulette1_active1",
+        "BUFF_RAID_KOUKUSATON1.pc_buff_raid_koukusaton1_timebomb1",
+        "BUFF_RAID_KOUKUSATON1.pc_buff_raid_koukusaton1_timebomb1_2d",
+        "BUFF_RAID_KOUKUSATON1.pc_buff_raid_koukusaton1_timebomb2",
+        "BUFF_RAID_KOUKUSATON1.pc_buff_raid_koukusaton1_timebomb2_2d"
+      ],
+      "systemUiEventIdentities": [
+        "S_SYSTEMS.sys_monster_freeze1",
+        "S_SYSTEMS.sys_monster_freeze1_nonducking",
+        "S_SYSTEMS.sys_commander_raid_tab_koukusaton1"
+      ]
     },
     "lpkSelection": {
       "archive": "data3.lpk",
@@ -2701,7 +2873,8 @@
       "selectionSha256": "283bede9c547d7c8bf23b527c2b33f8026a709cd80b75b0b2f3f0309af179927",
       "outputSetSha256": "4d928b25c7faec159b3920ab974319cf99ea13d9fbc53d25a0b3e1055ccda012",
       "playableMediaFiles": 0,
-      "runtimeEventToMediaMapping": "unresolved"
+      "outputKind": "LOA action-and-particle metadata",
+      "runtimeEventToMediaMapping": "resolved-separately-through-Wwise-PCK-bank-event-media"
     },
     "wwisePhysicalInventory": {
       "wemFiles": 1189,
@@ -2709,7 +2882,60 @@
       "pckFiles": 184,
       "pckBytes": 18999539477,
       "totalBytes": 21523298103,
-      "eventToMediaMapping": "unresolved"
+      "eventToMediaMapping": "resolved-for-canonical-packages-and-direct-dependency-selection"
+    },
+    "fullPlayableExtraction": {
+      "externalRoot": "C:/LostArkExtract/LV_LUT_MIDNIGHTC_ED_20260829/SoundPlayableExtraction-20260830",
+      "receipt": "LV_LUT_MIDNIGHTC_ED.sound-extraction.receipt.json",
+      "receiptSha256": "3f8f8eef35d79bddb24041110728b9994d676f00abd62adaef9d462b9fc64600",
+      "scope": "package-level canonical plus supplemental-bank media; non-selected bank media is external provenance only",
+      "canonicalPackageCount": 12,
+      "canonicalEventCount": 2312,
+      "playableCanonicalEventCount": 1702,
+      "supplementalActionEventCount": 44,
+      "supplementalSystemUiEventCount": 3,
+      "uniqueSelectedLogicalPckCount": 14,
+      "standaloneMediaFiles": 1189,
+      "wavFiles": 3521,
+      "bytes": 12378614408,
+      "durationSeconds": 67779.03,
+      "aggregateSha256": "e85946c2b4de6c107c664179f3131a2948699bceccf6752889c7b00c5cd25ccb",
+      "exactRelatedEventScope": {
+        "identityCount": 2320,
+        "bankMatchedIdentityCount": 2296,
+        "playableIdentityCount": 1710,
+        "logicalTxtpVariantCount": 2616,
+        "globalUniqueMediaCount": 3426
+      },
+      "storageState": "external-complete-corpus-not-copied-wholesale-to-Resources"
+    },
+    "directPhysicalPayload": {
+      "externalRoot": "C:/LostArkExtract/LV_LUT_MIDNIGHTC_ED_20260829/SoundRuntimeClosure-20260830",
+      "receipt": "LV_LUT_MIDNIGHTC_ED.sound-runtime-closure.receipt.json",
+      "receiptSha256": "8d3e3e49263a59575e406f793a83de440ef8dffacbb3e7a43ca1ae59221bb0b7",
+      "validation": "LV_LUT_MIDNIGHTC_ED.sound-runtime-closure.validation.json",
+      "validationSha256": "4ebdfe70a835843bf6614aea2cb350da0c05a2f35d80b279174ddd282d9eda79",
+      "runtimeRoot": "Client/Bin/Resources/Sound/KoukuSaton",
+      "runtimeRelativeRoot": "Sound/KoukuSaton",
+      "actionIdentityCount": 476,
+      "authoredCompanionIdentityCount": 2,
+      "midnightCBgmIdentityCount": 18,
+      "commanderRaidUiIdentityCount": 1,
+      "totalIdentityCount": 497,
+      "playableIdentityCount": 495,
+      "controlOnlyIdentityCount": 2,
+      "logicalTxtpVariantCount": 968,
+      "uniqueMediaCount": 1087,
+      "wavPathCount": 1088,
+      "bytes": 1056169208,
+      "durationSeconds": 5525.628,
+      "aggregateSha256": "fae7e4515a2981860b0c99cf4a9b4e4c587dfa9fd509d1d539d986b6fcec3320",
+      "format": "PCM signed 16-bit little-endian, 48000 Hz, mono or stereo",
+      "sourceAuthoredSilentMediaCount": 1,
+      "filenameIdentityPolicy": "selected-event identity is primary; all-source aliases are provenance only",
+      "gitTrackedFileCount": 0,
+      "gitStagedFileCount": 0,
+      "admissionState": "playable-media-wav-closure-installed-no-runtime-binding"
     },
     "ui": {
       "package": "VS",
@@ -2752,7 +2978,7 @@
       },
       "runtimeConsumer": "unsupported",
       "rasterPhysicalPayload": {
-        "runtimeRoot": "Client/Bin/Resources/UI/KakulSaydon",
+        "runtimeRoot": "Client/Bin/Resources/UI/KoukuSaton",
         "components": [
           {
             "logicalPackage": "VS",
@@ -2809,18 +3035,46 @@
       "nav-helper": 83
     },
     "runtimeStatic": {
-      "runtimeManifestSha256": "4c3855d593629a9cf0cffd24d5c78a62140653b22c576c5507b09095f3e01ff1",
-      "installReceiptSha256": "c278b15e97da9a2bcf52155a722d934658f929cb5e015b8abe70c340b4576164",
+      "runtimeManifestSha256": "9f6b439d5025c693c1b0b3b370003ba0fab35da6ce808ef32dca412c7696f116",
+      "installReceiptSha256": "60e9c37cf2dbe50db1db3831077af91b36571c0a328f6d2353dc23907b687391",
       "admissionState": "geometry-preview-partial-material",
       "wmodelCount": 292,
-      "ownedFileCount": 1414,
-      "installedBytesIncludingReceipt": 343242379,
-      "textureSlotsComplete": 255,
-      "textureSlotsIncomplete": 37,
+      "ownedFileCount": 2554,
+      "totalFileCountIncludingReceipt": 2555,
+      "installedBytesIncludingReceipt": 378669844,
+      "physicalAggregateSha256": "3be0ae99afc8f75cd3d3d06e67e8c249de728c8c7d132a1efea30eb74c2ad51b",
+      "physicalAggregateAlgorithm": "sha256(utf8(sorted ordinal relativePath<TAB>bytes<TAB>fileSha256<LF>)); includes install receipt",
+      "textureDependencyClosureComplete": 292,
+      "textureDependencyClosureIncomplete": 0,
+      "physicalMissingTextureCount": 0,
+      "materialSlotTextureDependencyRows": 2578,
+      "parameterTextureDependencyRows": 2244,
+      "materialGraphReferencedTextureRows": 334,
+      "unboundTextureDependencyRows": 1313,
+      "runtimeBindableVisibleColorAssetCount": 255,
+      "runtimeBindableVisibleColorIncompleteAssetCount": 37,
+      "runtimeBindableVisibleColorIncompleteSlotCount": 38,
+      "incompleteSlotClassification": {
+        "authoredNullOverride": 23,
+        "umodelEmptyMaterial3": 7,
+        "proceduralSpotlightWithoutNamedSupportedLane": 8
+      },
       "materialComplete": 0,
       "materialIncomplete": 292,
       "assetsWithSourceOnlyUnsupported": 292,
       "sourceOnlyUnsupportedRows": 364,
+      "newExactDependencyFiles": {
+        "total": 1140,
+        "dds": 876,
+        "tga": 264,
+        "existingPathDeleted": 0,
+        "existingFileShaChanged": 0
+      },
+      "coverageMeaning": {
+        "textureDependencyClosure": "All exact named texture parameters and UModel ReferencedTextures resolve to canonical object identity, source hash, and a physical runtime file; this does not claim a CMaterial binding.",
+        "runtimeBindableVisibleColor": "This is a CMaterial/ModelAssetConverter capability boundary, not a physical extraction gap. Authored-null, UModel-empty, and procedural spotlight slots are not remapped to a false diffuse or emissive role.",
+        "material": "materialComplete would require every source scalar, vector, render, and texture semantic to be expressible by the current CMaterial/WMaterial runtime; the current count is 0 of 292."
+      },
       "catalogSha256": "5e986843d7d28e2f81c671a2539975b82dd0869d4409deb651daecabba58d0a7",
       "placementSha256": "03877c49500b12a7c8fd1e07d28320dad030c3d09369c890d132b570bd1c0470"
     },
@@ -2853,20 +3107,20 @@
     "canonicalSourceRoot": "C:/LostArkExtract/LV_LUT_MIDNIGHTC_ED_20260829/CanonicalSource",
     "mapRuntimeRoot": "Client/Bin/Resources/Map/LV_LUT_MIDNIGHTC_ED",
     "characterPackageRoots": [
-      "Character/MN_RPCT_00",
-      "Character/MN_RPCT_05",
-      "Character/MN_RPCT_06",
-      "Character/MN_RPCZ_00",
-      "Character/WP_MN_RPCT_05",
-      "Character/WP_MN_RPCT_06"
+      "Character/KoukuSaton/MN_RPCT_00",
+      "Character/KoukuSaton/MN_RPCT_05",
+      "Character/KoukuSaton/MN_RPCT_06",
+      "Character/KoukuSaton/MN_RPCZ_00",
+      "Character/KoukuSaton/WP_MN_RPCT_05",
+      "Character/KoukuSaton/WP_MN_RPCT_06",
+      "Character/KoukuSaton/WP_MN_RPCT_07",
+      "Character/KoukuSaton/WP_MN_RPCT_08"
     ],
-    "effectPhysicalRoot": "Effect/KakulSaydon",
-    "uiRasterPhysicalRoot": "UI/KakulSaydon",
-    "soundRuntimeRoot": null,
+    "effectPhysicalRoot": "Effect/KoukuSaton",
+    "uiRasterPhysicalRoot": "UI/KoukuSaton",
+    "soundRuntimeRoot": "Sound/KoukuSaton",
     "audioRoots": [
-      "Character/<canonical>/Sound",
-      "Map/LV_LUT_MIDNIGHTC_ED/Sound",
-      "UI/<Domain>/Sound"
+      "Sound/KoukuSaton"
     ],
     "gitPolicy": "Track Data/Tools/docs only; keep all Client/Bin/Resources runtime payload untracked and do not stage the extracted physical pack."
   }

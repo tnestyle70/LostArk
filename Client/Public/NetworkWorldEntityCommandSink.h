@@ -12,5 +12,10 @@ namespace Client
 			std::string_view placementId) override;
 		bool Request_DespawnAllWorldEntities(
 			std::uint32_t requestSequence) override;
+		bool Request_EnterKakulSaydonArena(
+			std::uint32_t requestSequence) override;
+		bool Request_StageTeleport(
+			std::uint32_t requestSequence,
+			std::string_view placementId) override;
 	};
 }

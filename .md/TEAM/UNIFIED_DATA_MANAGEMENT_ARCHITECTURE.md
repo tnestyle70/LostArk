@@ -490,7 +490,7 @@ sidecar를 두 번째 정본으로 만들지 않는다.
 |---|---|
 | `Data/Effects/Authored/<EffectAssetId>.effect.json` | element/module/local transform/lifetime/render property/resource dependency |
 | `Data/Effects/EffectCatalog.json` | admitted EffectAssetId와 exact authored 상대 경로 |
-| `Client/Bin/Resources/Effect/*` | texture/model binary payload; V1 Product가 참조하는 최소 closure는 pull 재현용 Git/LFS 입력 |
+| `Client/Bin/Resources/Effect/*` | 팀장 Drive가 전달하는 texture/model binary payload; Git 추적 금지 |
 | Animation `.animevents` | 언제, 어디에, 어떤 attachment 정책으로 EffectAssetId를 호출하는지 |
 
 Effect Tool은 Active Document를 `parse -> validate -> stage -> commit`하고 Preview도 제품과 같은 Effect
@@ -499,8 +499,8 @@ runtime을 사용한다. Preview 전용 두 번째 emitter 구현을 만들지 �
 이전 bytes로 복원하고 기존 target을 유지한다. 다음 Client 실행도 같은 authored 파일을 직접 읽으며
 `Client/Bin/DataFiles/Effect` 복사본과 Effect publisher는 없다. 전체 정적 검증은
 `Tools/EffectPipeline/Validate-EffectSources.ps1`가 담당한다.
-V1 pull 재현 closure는 authored Product 문서에서 도달 가능한 Resources-relative DDS/WModel만 포함하며,
-별도 runtime manifest나 두 번째 asset catalog를 만들지 않는다.
+V1 Product dependency는 authored 문서의 Resources-relative DDS/WModel ID로만 기록하고,
+물리 binary는 Drive의 같은 상대 경로에서 받는다. 별도 runtime Resource manifest나 두 번째 asset catalog를 만들지 않는다.
 
 ### 11.3 Effect와 damage 분리
 
@@ -1018,7 +1018,7 @@ definition을 혼동하지 않는다. 모든 field에 receipt가 있다는 사�
 ### 18.3 Effect 담당
 
 1. Effect Tool에서 EffectAssetId와 element/module/resource를 저작한다.
-2. Save는 `Data/Effects/Authored` 파일과 다음-spawn Product target을 한 transaction으로 교체한다. binary는 기본적으로 Resources 물리 폴더로 관리하되, pull-only V1은 현재 Product가 참조하는 최소 dependency closure를 Git/LFS로 함께 관리한다.
+2. Save는 `Data/Effects/Authored` 파일과 다음-spawn Product target을 한 transaction으로 교체한다. binary는 Drive-owned Resources 물리 폴더로만 관리하고 Git에 추적하지 않는다.
 3. `EffectCatalog.json` source admission과 `Validate-EffectSources.ps1` 검증 뒤 Animation cue에서 ID를 선택한다.
 4. collider/damage timing은 Effect 문서에 저장하지 않는다.
 5. Preview, 다음 제품 spawn과 다음 Client 실행은 같은 authored 파일과 Effect runtime을 사용한다.

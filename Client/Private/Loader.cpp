@@ -707,6 +707,56 @@ HRESULT CLoader::Ready_For_ValtanArena()
 	return S_OK;
 }
 
+HRESULT CLoader::Ready_For_KakulSaydonArena()
+{
+	CNpcPresentationAssetService::Begin_LevelLoad(
+		ETOUI(LEVEL::KAKULSAYDON_ARENA));
+	CNpcPlacementPresentationService::Begin_LevelLoad(
+		ETOUI(LEVEL::KAKULSAYDON_ARENA));
+	if (FAILED(CNpcPlacementPresentationService::Load(
+		ETOUI(LEVEL::KAKULSAYDON_ARENA), "KAKULSAYDON_ARENA")))
+	{
+		/* The world remains enterable when it has no authored NPC placement
+		   presentation yet. Reliable Server entities retain their catalog idle
+		   fallback, while the missing optional binding is reported explicitly. */
+		OutputDebugStringA(("[Loader][NpcPresentation] " +
+			CNpcPlacementPresentationService::Get_Status() + "\n").c_str());
+	}
+	CMonsterPresentationAssetService::Begin_LevelLoad(
+		ETOUI(LEVEL::KAKULSAYDON_ARENA));
+
+	CLevelResourceRollbackScope rollback(
+		ETOUI(LEVEL::KAKULSAYDON_ARENA));
+	Set_Status(TEXT("KoukuSaton: arena map"));
+
+	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
+		CLevelRegistry::Find(LEVEL::KAKULSAYDON_ARENA);
+	if (nullptr == pEntry || nullptr == pEntry->pMapAreaId ||
+		FAILED(Ready_MapArea(
+			ETOUI(LEVEL::KAKULSAYDON_ARENA),
+			pEntry->pMapAreaId,
+			pEntry->MapLoadScope)))
+	{
+		return E_FAIL;
+	}
+
+	Set_Status(TEXT("KoukuSaton: server-approved character rendering"));
+	const std::array selectedClass =
+	{
+		CNetworkManager::Get().Get_LocalCharacterClass()
+	};
+	if (FAILED(Ready_Character_Rendering(
+		ETOUI(LEVEL::KAKULSAYDON_ARENA),
+		selectedClass)))
+	{
+		return E_FAIL;
+	}
+
+	Set_Status(TEXT("KoukuSaton arena loading complete"));
+	rollback.Commit();
+	return S_OK;
+}
+
 HRESULT CLoader::Ready_For_Development()
 {
 	CLevelResourceRollbackScope rollback(

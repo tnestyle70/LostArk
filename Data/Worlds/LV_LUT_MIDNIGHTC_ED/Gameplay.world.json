@@ -1,0 +1,125 @@
+{
+  "schema": "lostark.world-gameplay",
+  "formatVersion": 6,
+  "areaId": "LV_LUT_MIDNIGHTC_ED",
+  "revision": 1,
+  "placements": [
+    {
+      "placementId": "player.spawn.kakul.party01",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        66.0,
+        0.02,
+        -102.0
+      ],
+      "yawDegrees": 0.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.kakul.party02",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        62.0,
+        0.02,
+        -98.0
+      ],
+      "yawDegrees": 0.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.kakul.party03",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        66.0,
+        0.1,
+        -94.0
+      ],
+      "yawDegrees": 0.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.kakul.party04",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        62.0,
+        0.02,
+        -106.0
+      ],
+      "yawDegrees": 0.0,
+      "enabled": true
+    },
+    {
+      "placementId": "stage.kakul.sl01",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        66.0,
+        0.02,
+        -102.0
+      ],
+      "yawDegrees": 0.0,
+      "enabled": false
+    },
+    {
+      "placementId": "stage.kakul.sl02",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        -1198.0,
+        -11.653881,
+        -958.0
+      ],
+      "yawDegrees": 0.0,
+      "enabled": false
+    },
+    {
+      "placementId": "stage.kakul.sl03",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        2.0,
+        3.540005,
+        330.0
+      ],
+      "yawDegrees": 0.0,
+      "enabled": false
+    },
+    {
+      "placementId": "stage.kakul.sl04",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        -2.0,
+        1.299005,
+        730.0
+      ],
+      "yawDegrees": 0.0,
+      "enabled": false
+    },
+    {
+      "placementId": "stage.kakul.sl05",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [
+        -2.0,
+        1.317626,
+        942.0
+      ],
+      "yawDegrees": 0.0,
+      "enabled": false
+    }
+  ]
+}

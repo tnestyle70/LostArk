@@ -51,13 +51,18 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         cls.level_h = read("Client/Public/Level_ValtanArena.h")
         cls.level_cpp = read("Client/Private/Level_ValtanArena.cpp")
         cls.effect_v2_cpp = read("Client/Private/Effect_Tool_V2.cpp")
+        cls.effect_v1_cpp = read("Client/Private/Effect_Tool.cpp")
         cls.main_cpp = read("Client/Private/MainApp.cpp")
+        cls.main_h = read("Client/Public/MainApp.h")
         cls.packet_h = read("Shared/Public/Network/PacketMessages.h")
         cls.packet_cpp = read("Shared/Private/Network/PacketMessages.cpp")
         cls.packet_type_h = read("Shared/Public/Network/PacketType.h")
         cls.room_cpp = read("Server/Private/GameRoom.cpp")
         cls.combat_runtime_cpp = read("Server/Private/CombatObjectRuntime.cpp")
         cls.valtan_cpp = read("Client/Private/Valtan.cpp")
+        cls.combat_sound_document_h = read(
+            "Client/Public/ValtanCombatObjectSoundCueDocument.h"
+        )
         cls.combat_sound_document_cpp = read(
             "Client/Private/ValtanCombatObjectSoundCueDocument.cpp"
         )
@@ -160,7 +165,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
         for token in (
             "S2C_COMBAT_OBJECT_PRESENTATION_EVENT",
-            "NETWORK_PROTOCOL_VERSION = 46;",
+            "NETWORK_PROTOCOL_VERSION = 47;",
         ):
             self.assertIn(token, self.packet_type_h)
         for token in (
@@ -174,6 +179,42 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "Play_Sound",
         ):
             self.assertIn(token, self.valtan_cpp)
+
+    def test_trash_capture_preimpact_has_the_authored_slam_sound(self) -> None:
+        sounds = json.loads(read(
+            "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json"
+        ))["cues"]
+        bindings = json.loads(read(
+            "Data/Animation/Authored/Valtan/Valtan.patternbindings.json"
+        ))["bindings"]
+        catalog = json.loads(read("Data/Sound/CharacterSoundCatalog.json"))
+        expected_patterns = {
+            "VALTAN_TRASH", "VALTAN_TRASH_CATCH_IF",
+            "VALTAN_TRASH_CATCH_SUCCESS",
+        }
+        slam = [
+            row for row in sounds
+            if row["stageId"] == "CATCH_PRE_IMPACT"
+            and row["soundEvent"] == "G_Voltan2_Attack12_Shot3"
+        ]
+        self.assertEqual(expected_patterns, {row["patternId"] for row in slam})
+        self.assertEqual(3, len(slam))
+        clips = {
+            clip["clipOccurrenceId"]: clip
+            for binding in bindings
+            for clip in binding.get("clips", [])
+            if isinstance(clip, dict)
+        }
+        for cue in slam:
+            clip = clips[cue["clipOccurrenceId"]]
+            self.assertEqual(1200, cue["startMs"] - clip["sourceStartMs"])
+            self.assertLess(cue["startMs"],
+                            clip["sourceStartMs"] + clip["playMs"])
+        variants = catalog["classes"]["Valtan"]["G_Voltan2_Attack12_Shot3"]
+        self.assertEqual([
+            "Sound/Valtan/g_voltan2_attack12_shot3__382941727.wav"
+        ], variants)
+        self.assertTrue((ROOT / "Client/Bin/Resources" / variants[0]).is_file())
 
     def test_only_one_user_facing_save_drives_explicit_internal_stages(self) -> None:
         workbench = function_body(
@@ -193,11 +234,24 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         self.assertIn("m_pBalanceTool->Save_ValtanProduct", workbench)
         for sound_save_token in (
             "Validate_SourceDraft",
-            "Save_Source",
+            "Begin_SourceReplacement",
+            "Commit_SourceReplacement",
+            "Rollback_SourceReplacement",
             "Reload_CombatObjectSoundCues",
             "m_bValtanCombatObjectSoundCuesDirty",
         ):
             self.assertIn(sound_save_token, workbench)
+        sound_begin = workbench.index("Begin_SourceReplacement")
+        product_save = workbench.index("m_pBalanceTool->Save_ValtanProduct")
+        sound_rollback = workbench.index("Rollback_SourceReplacement")
+        sound_commit = workbench.index("Commit_SourceReplacement")
+        self.assertLess(sound_begin, product_save)
+        self.assertLess(product_save, sound_rollback)
+        self.assertLess(sound_rollback, sound_commit)
+        self.assertIn(
+            "gameplay Product/runtime and Sound source were preserved",
+            workbench,
+        )
 
         reload_guard = re.search(
             r"ImGui::BeginDisabled\((?P<guard>.*?)\);\s*"
@@ -237,6 +291,52 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         for token in ("MoveFileExW", "MOVEFILE_REPLACE_EXISTING"):
             self.assertIn(token, self.combat_sound_document_cpp)
 
+    def test_joined_save_sound_replacement_keeps_exact_recovery_bytes(self) -> None:
+        for declaration in (
+            "Begin_SourceReplacement",
+            "Commit_SourceReplacement",
+            "Rollback_SourceReplacement",
+        ):
+            self.assertIn(declaration, self.combat_sound_document_h)
+
+        begin = function_body(
+            self.combat_sound_document_cpp,
+            "bool_t Client::CValtanCombatObjectSoundCueDocument::Begin_SourceReplacement(",
+        )
+        for token in (
+            "Validate_SourceDraft",
+            "Write_StagedSource",
+            "CopyFileW",
+            "MoveFileExW",
+            "MOVEFILE_REPLACE_EXISTING",
+            "MOVEFILE_WRITE_THROUGH",
+            "transaction.bActive = true",
+        ):
+            self.assertIn(token, begin)
+        self.assertLess(begin.index("CopyFileW"), begin.index("MoveFileExW"))
+
+        rollback = function_body(
+            self.combat_sound_document_cpp,
+            "bool_t Client::CValtanCombatObjectSoundCueDocument::Rollback_SourceReplacement(",
+        )
+        for token in (
+            "transaction.Rollback.c_str()",
+            "transaction.Destination.c_str()",
+            "MOVEFILE_REPLACE_EXISTING",
+            "MOVEFILE_WRITE_THROUGH",
+            "DeleteFileW",
+        ):
+            self.assertIn(token, rollback)
+
+        standalone_save = function_body(
+            self.combat_sound_document_cpp,
+            "bool_t Client::CValtanCombatObjectSoundCueDocument::Save_Source(",
+        )
+        self.assertLess(
+            standalone_save.index("Begin_SourceReplacement"),
+            standalone_save.index("Commit_SourceReplacement"),
+        )
+
     def test_workbench_uses_stable_domain_boundaries_not_network(self) -> None:
         combined = self.animation_h + "\n" + self.animation_cpp
         for forbidden in (
@@ -248,7 +348,9 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, combined)
         for route in (
-            "m_pBossTool->Play_ServerPattern",
+            "CMainApp::Get_Active",
+            "Debug_SelectCompletePlayPattern",
+            "Debug_CompletePlaySelected",
             "m_pBossTool->Set_ServerArenaPreset",
             "m_pBalanceTool->Set_ValtanStageDraft",
             "Consume_EffectToolOpenRequest",
@@ -313,6 +415,10 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "Get_ValtanStageDraft",
             "Set_ValtanStageDraft",
             'ImGui::SeparatorText("Server Stage Clock")',
+            'ImGui::SeparatorText("Stage Identity / Motion")',
+            'ImGui::SeparatorText("Server Stage Actions")',
+            'ImGui::SeparatorText("Branches / Counter Proxy")',
+            'ImGui::SeparatorText("Effect Cue Details")',
             'ImGui::SeparatorText("Server Hit / Collider")',
             'ImGui::SeparatorText("Server Hit Schedule")',
             'ImGui::SeparatorText("Server Player Reaction")',
@@ -321,10 +427,26 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "TOWARD_HIT_SOURCE",
             "derived speed %.3f m/s",
             "AIRBORNE duration is the boss stage/blank wall-clock",
+            '"Release yaw offset deg"',
+            '"Local Y rotation deg"',
+            '"arena.center.facing"',
         ):
             self.assertIn(token, inspector)
         for forbidden in ("CDataJson", "CNetworkManager", "ofstream"):
             self.assertNotIn(forbidden, inspector)
+
+        for token in (
+            "SET_STAGE_GRABBED_RELEASE",
+            "SET_EFFECT_CUE_LOCAL_YAW",
+            "fYawOffsetDegrees",
+            "strOccurrenceId",
+        ):
+            self.assertIn(token, self.balance_cpp + self.valtan_tree_h)
+        self.assertNotRegex(
+            inspector,
+            r"Collider NONE[\s\S]{0,180}return;",
+            "event-only stages must continue to render Action/Effect families",
+        )
 
         for token in (
             "strDirectionPolicy",
@@ -345,23 +467,21 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         ):
             self.assertIn(token, lane)
 
-    def test_effect_v2_server_play_reuses_typed_audition_service(self) -> None:
+    def test_effect_v2_server_play_reuses_shared_complete_play_owner(self) -> None:
         play = function_body(
             self.effect_v2_cpp,
             "bool_t Client::CEffect_Tool_V2::Try_PlayValtanServerPattern(",
         )
         for token in (
-            "LEVEL::VALTAN_ARENA",
-            "CValtanPatternAuditionService::Get().Submit",
+            "CMainApp::Get_Active",
+            "Debug_SelectCompletePlayPattern",
+            "Debug_CompletePlaySelected",
             "Pattern.strPatternId",
-            '"boss.valtan.center"',
         ):
-            if token == '"boss.valtan.center"':
-                self.assertIn(token, self.effect_v2_cpp)
-            else:
-                self.assertIn(token, play)
+            self.assertIn(token, play)
         for forbidden in (
             "CNetworkManager::",
+            "CValtanPatternAuditionService::Get().Submit",
             "Send_ValtanAudition",
             "Set_Visible",
         ):
@@ -498,6 +618,54 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         self.assertIn("m_pBossTool->Play_ServerPattern", complete_play)
         self.assertNotIn("CNetworkManager", complete_play)
 
+        for token in (
+            "Debug_SelectCompletePlayPattern",
+            "Debug_GetSelectedCompletePlayPatternId",
+            "m_strCompletePlayPatternId",
+        ):
+            self.assertIn(token, self.main_h + self.main_cpp)
+        self.assertNotIn("m_iCompletePlayPattern", self.main_h + self.main_cpp)
+
+        for source in (
+            self.animation_cpp,
+            self.effect_v1_cpp,
+            self.effect_v2_cpp,
+            self.boss_cpp,
+            read("Client/Private/MapTool.cpp"),
+            read("Client/Private/HUDLayoutTool.cpp"),
+            read("Client/Private/CameraTool.cpp"),
+        ):
+            if "Complete Play" in source:
+                self.assertIn("Debug_CompletePlaySelected", source)
+
+        for source in (
+            self.animation_cpp,
+            self.effect_v1_cpp,
+            self.effect_v2_cpp,
+        ):
+            self.assertIn("Debug_SelectCompletePlayPattern", source)
+
+    def test_effect_v2_hide_and_level_change_release_preview_not_draft(self) -> None:
+        deactivate = function_body(
+            self.effect_v2_cpp,
+            "void Client::CEffect_Tool_V2::Deactivate()",
+        )
+        for token in (
+            "Stop_ValtanTimeline()",
+            "Clear_FollowTarget()",
+            "Remove_GameObject_from_Layer",
+            "Despawn_Target()",
+        ):
+            self.assertIn(token, deactivate)
+        for forbidden in (
+            "m_SlotBindings.clear",
+            "m_Documents.clear",
+            "m_szEffectId[0]",
+        ):
+            self.assertNotIn(forbidden, deactivate)
+        self.assertIn("m_pEffectToolV2->Deactivate()", self.main_cpp)
+        self.assertIn("m_pEffectToolV2->On_LevelChanged()", self.main_cpp)
+
         main_update = function_body(self.main_cpp, "void CMainApp::Update(")
         for token in (
             "m_eDebugInputOwner",
@@ -512,6 +680,88 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "void Client::CMapTool::Update(",
         )
         self.assertIn("bAllowWorldInput && isMapAuthoringLevel", map_update)
+
+    def test_complete_play_preserves_server_arena_and_uses_scroll_selection(
+        self,
+    ) -> None:
+        controls = function_body(
+            self.main_cpp,
+            "void CMainApp::RenderCompletePlayControls()",
+        )
+        self.assertRegex(
+            controls,
+            r'ImGui::BeginChild\(\s*"CompletePlayPatternInventory"',
+        )
+        for token in (
+            "ImGuiListClipper",
+            "ImGui::Selectable",
+            "Debug_CompletePlaySelected",
+        ):
+            self.assertIn(token, controls)
+        for forbidden in (
+            "BeginCombo",
+            "Set_ServerArenaPreset",
+            "VALTAN_ARENA_PRESET::FRESH",
+        ):
+            self.assertNotIn(forbidden, controls)
+
+        pattern_play = function_body(self.room_cpp, "if (isPatternIdPlay)")
+        self.assertIn("Reset_ValtanBossOnlyAuditionState", pattern_play)
+        self.assertNotIn("Reset_ValtanAuditionState", pattern_play)
+        for preserved_owner in (
+            "m_WorldDestructionRuntime",
+            "m_EncounterPropRuntime",
+            "m_ServerCollisionSystem.Reset_RuntimeStates",
+            "m_ServerNavigation.Reset_RuntimeBlockers",
+        ):
+            self.assertNotIn(preserved_owner, pattern_play)
+
+    def test_workbench_exposes_applied_sources_and_valtan_balance_owner(
+        self,
+    ) -> None:
+        workbench = function_body(
+            self.animation_cpp,
+            "void Client::CAnimation_Tool::Render_ValtanPatternMaster(",
+        )
+        for token in (
+            '"Applied Product Sources / Editability"',
+            "Data/Valtan/Valtan.gameplay.json",
+            "Data/Balance/BossProfiles.json and DamageProfiles.json",
+            "Data/Valtan/Valtan.presentation.json",
+            '"Open Valtan Balance / Gameplay"',
+            "m_pBalanceTool->Open_Valtan()",
+            "Animation Sequence Intake is an offline reviewed source",
+        ):
+            self.assertIn(token, workbench)
+
+        self.assertIn("void Open_Valtan();", self.balance_h)
+        open_valtan = function_body(
+            self.balance_cpp,
+            "void Client::CBalanceTool::Open_Valtan()",
+        )
+        for token in ("Open();", "m_showPlayers = false", '"BOSS_VALTAN"'):
+            self.assertIn(token, open_valtan)
+
+    def test_high_jump_axe_count_uses_the_typed_product_draft(self) -> None:
+        inspector = function_body(
+            self.animation_cpp,
+            "void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(",
+        )
+        for token in (
+            '"VALTAN_HIGH_JUMP"',
+            '"AIRBORNE"',
+            '"Axes per alive player"',
+            "Get_ValtanHighJumpAxeCountDraft",
+            "Set_ValtanHighJumpAxeCountDraft",
+            '"PER_ALIVE_PLAYER draft %u | saved %u',
+        ):
+            self.assertIn(token, inspector)
+        for forbidden in (
+            "m_valtanAxeVolley",
+            "SET_AXE_VOLLEY",
+            "Data/Valtan/Valtan.gameplay.json",
+        ):
+            self.assertNotIn(forbidden, inspector)
 
     def test_resource_files_is_a_read_only_orchestration_index(self) -> None:
         refresh = function_body(
@@ -532,7 +782,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             '"DataFiles/Map"',
             '"Data/Effects/V2"',
             '"Resources/Sound"',
-            '"KakulSaydon"',
+            '"KoukuSaton"',
             '"Resources/Map/LV_LUT_MIDNIGHTC_ED/"',
             '"Resources/Character/MN_RPCT_05/"',
         ):

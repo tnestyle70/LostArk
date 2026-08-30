@@ -82,9 +82,15 @@
     <Filter Include="96.DataFiles\Animation\Authored\Valtan">
       <UniqueIdentifier>{29249b04-68b3-43f4-9782-7d6435d7a9bb}</UniqueIdentifier>
     </Filter>
+	<Filter Include="96.DataFiles\Animation\Authored\KakulSaydon">
+	  <UniqueIdentifier>{f48d9034-9d19-4725-8cab-0584ae5d6e95}</UniqueIdentifier>
+	</Filter>
     <Filter Include="96.DataFiles\Animation\Reference">
       <UniqueIdentifier>{4402f87c-21c5-4861-a522-78384ae40740}</UniqueIdentifier>
     </Filter>
+	<Filter Include="96.DataFiles\Animation\Reference\KakulSaydon">
+	  <UniqueIdentifier>{461e3d79-aeef-4655-b7c8-cc964a1d807c}</UniqueIdentifier>
+	</Filter>
     <Filter Include="96.DataFiles\Animation\RootMotion">
       <UniqueIdentifier>{2f6a1c94-3d58-49b1-9a07-6c1d8b4e7f30}</UniqueIdentifier>
     </Filter>
@@ -118,6 +124,9 @@
     <Filter Include="96.DataFiles\Items">
       <UniqueIdentifier>{f3a5b6c7-2d4e-4f1a-9b8c-6a1e2d3c4b5a}</UniqueIdentifier>
     </Filter>
+	<Filter Include="96.DataFiles\Sound">
+	  <UniqueIdentifier>{eab74703-45c2-4df2-bf31-39b0ec5b2826}</UniqueIdentifier>
+	</Filter>
 	<Filter Include="96.DataFiles\Valtan">
 	  <UniqueIdentifier>{83fe2f0e-1466-4ac1-87ca-ae319536eb14}</UniqueIdentifier>
 	</Filter>
@@ -159,6 +168,9 @@
     </Filter>
     <Filter Include="01.Levels\04. ValtanArena">
       <UniqueIdentifier>{a4c9a668-668d-40d1-95bb-17c06b9257fa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01.Levels\04. KakulSaydonArena">
+      <UniqueIdentifier>{1b61a221-773c-4b61-9693-50cfdfd47852}</UniqueIdentifier>
     </Filter>
     <Filter Include="04. Network">
       <UniqueIdentifier>{82310efc-790a-485f-b427-faf8083dc8e8}</UniqueIdentifier>
@@ -204,6 +216,9 @@
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
+	<ClCompile Include="..\Private\KakulAnimationActionDocument.cpp">
+	  <Filter>03. Tools\04. Animation</Filter>
+	</ClCompile>
 	<ClCompile Include="..\Private\ValtanPatternFlowDocument.cpp">
 	  <Filter>03. Tools\03. UI</Filter>
 	</ClCompile>
@@ -423,6 +438,9 @@
     <ClCompile Include="..\Private\SoundCueCatalog.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
+	<ClCompile Include="..\Private\EstherActionSoundCueDocument.cpp">
+	  <Filter>03. Tools\02. Effect</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\Effect_PresentationService.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
@@ -500,6 +518,9 @@
     </ClCompile>
     <ClCompile Include="..\Private\Level_Bern.cpp">
       <Filter>01.Levels\02. Bern</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Level_KakulSaydonArena.cpp">
+      <Filter>01.Levels\04. KakulSaydonArena</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Level_ValtanArena.cpp">
       <Filter>01.Levels\04. ValtanArena</Filter>
@@ -790,6 +811,9 @@
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
+	<ClInclude Include="..\Public\KakulAnimationActionDocument.h">
+	  <Filter>03. Tools\04. Animation</Filter>
+	</ClInclude>
 	<ClInclude Include="..\Public\ValtanPatternFlowDocument.h">
 	  <Filter>03. Tools\03. UI</Filter>
 	</ClInclude>
@@ -903,6 +927,9 @@
     </ClInclude>
     <ClInclude Include="..\Public\Level_Bern.h">
       <Filter>01.Levels\02. Bern</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Level_KakulSaydonArena.h">
+      <Filter>01.Levels\04. KakulSaydonArena</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Level_ValtanArena.h">
       <Filter>01.Levels\04. ValtanArena</Filter>
@@ -1117,6 +1144,9 @@
     <ClInclude Include="..\Public\SoundCueCatalog.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
+	<ClInclude Include="..\Public\EstherActionSoundCueDocument.h">
+	  <Filter>03. Tools\02. Effect</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\AnimationEffectCueDocument.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
@@ -1158,6 +1188,12 @@
 	</None>
 	<None Include="..\..\Data\Actors\MonsterCatalog.json">
 	  <Filter>96.DataFiles\Actors</Filter>
+	</None>
+	<None Include="..\..\Data\Sound\CharacterSoundCatalog.json">
+	  <Filter>96.DataFiles\Sound</Filter>
+	</None>
+	<None Include="..\..\Data\Sound\EstherActionSoundCues.json">
+	  <Filter>96.DataFiles\Sound</Filter>
 	</None>
 	<None Include="..\..\Data\Rendering\Authored\RenderingProfiles.json">
 	  <Filter>96.DataFiles\Rendering\Authored</Filter>
@@ -1261,6 +1297,9 @@
     <None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectcues.json">
       <Filter>96.DataFiles\Animation\Authored\Valtan</Filter>
     </None>
+	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patternsoundcues.json">
+	  <Filter>96.DataFiles\Animation\Authored\Valtan</Filter>
+	</None>
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.combatobjectsoundcues.json">
 	  <Filter>96.DataFiles\Animation\Authored\Valtan</Filter>
 	</None>
@@ -1269,6 +1308,30 @@
 	</None>
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patternpreview.json">
 	  <Filter>96.DataFiles\Animation\Authored\Valtan</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Reference\KakulSaydon\MN_RPCT_05.actionreference.json">
+	  <Filter>96.DataFiles\Animation\Reference\KakulSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Reference\KakulSaydon\MN_RPCT_06.actionreference.json">
+	  <Filter>96.DataFiles\Animation\Reference\KakulSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Reference\KakulSaydon\MN_RPCT_07.actionreference.json">
+	  <Filter>96.DataFiles\Animation\Reference\KakulSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Reference\KakulSaydon\MN_RPCZ_00.actionreference.json">
+	  <Filter>96.DataFiles\Animation\Reference\KakulSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_05.actionbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_06.actionbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_07.actionbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCZ_00.actionbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
 	</None>
     <None Include="..\..\Data\Animation\Reference\Artist\Artist.animnotify">
       <Filter>96.DataFiles\Animation\Reference</Filter>
@@ -1624,6 +1687,12 @@
     <None Include="..\..\Data\Navigation\LV_LUT_HEARTRB_ED.navsource">
       <Filter>96.DataFiles\Navigation</Filter>
     </None>
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navpaint">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
+    <None Include="..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navsource">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
     <None Include="..\..\Data\UI\BossUI\BossUI.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
@@ -1693,6 +1762,12 @@
 	<None Include="..\..\Data\Worlds\LV_LUT_HEARTRB_ED\SpawnGroups.world.json">
 	  <Filter>96.DataFiles\Worlds</Filter>
 	</None>
+    <None Include="..\..\Data\Worlds\LV_LUT_MIDNIGHTC_ED\Gameplay.world.json">
+      <Filter>96.DataFiles\Worlds</Filter>
+    </None>
+    <None Include="..\..\Data\Worlds\LV_LUT_MIDNIGHTC_ED\StageMarkers.json">
+      <Filter>96.DataFiles\Worlds</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxTex.hlsl">

@@ -23,6 +23,8 @@ namespace LostArk::Server
 		USE_ESTHER_SKILL,
 		REVIVE_PLAYER,
 		DEBUG_KILL_SELF,
+		DEBUG_ENTER_KAKULSAYDON_ARENA,
+		DEBUG_TELEPORT_TO_PLACEMENT,
 		CHANGE_CHARACTER_CLASS,
 		SPAWN_WORLD_ENTITY,
 		VALTAN_AUDITION,
@@ -68,6 +70,10 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_USE_ESTHER_SKILL UseEstherSkill;
 		LostArk::Shared::C2S_REVIVE_PLAYER RevivePlayer;
 		LostArk::Shared::C2S_DEBUG_KILL_SELF DebugKillSelf;
+		LostArk::Shared::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA
+			DebugEnterKakulSaydonArena;
+		LostArk::Shared::C2S_DEBUG_TELEPORT_TO_PLACEMENT
+			DebugTeleportToPlacement;
 		LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS ChangeCharacterClass;
 
 		LostArk::Shared::C2S_SPAWN_WORLD_ENTITY SpawnWorldEntity;

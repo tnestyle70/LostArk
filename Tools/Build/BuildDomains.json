@@ -1,0 +1,412 @@
+{
+  "schema": "lostark.build-domain-graph",
+  "formatVersion": 1,
+  "domains": [
+    {
+      "id": "valtan.product",
+      "kind": "validation",
+      "profiles": ["Product", "Core", "FullDiagnostic"],
+      "inputs": [
+        "Data/Valtan/**",
+        "Data/Encounters/Valtan/**",
+        "Data/Animation/Authored/Valtan/**",
+        "Data/Actors/BossCatalog.json",
+        "Data/Balance/**",
+        "Data/Effects/EffectCatalog.json",
+        "Data/Effects/Authored/effect.valtan.*.effect.json"
+      ],
+      "tools": [
+        "Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1",
+        "Tools/ValtanPipeline/Format-PreservingJsonArray.ps1",
+        "Tools/ValtanPipeline/valtan_tuning_pipeline.py"
+      ],
+      "outputs": [],
+      "requiredOutputPatterns": [],
+      "action": {
+        "executable": "powershell.exe",
+        "arguments": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1",
+          "-Mode",
+          "ValidateV2",
+          "-RepositoryRoot",
+          "{repositoryRoot}"
+        ]
+      }
+    },
+    {
+      "id": "map.kakul",
+      "kind": "publisher",
+      "profiles": ["Product", "Core", "FullDiagnostic"],
+      "inputs": [
+        "Data/Maps/Imported/LV_LUT_MIDNIGHTC_ED/**",
+        "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/**",
+        "Data/Maps/MapCatalog.json"
+      ],
+      "tools": ["Tools/MapPipeline/Publish-MapAuthoring.ps1"],
+      "outputs": [
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapassets",
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapplacements"
+      ],
+      "requiredOutputPatterns": [
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapassets",
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapplacements"
+      ],
+      "action": {
+        "executable": "powershell.exe",
+        "arguments": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "Tools/MapPipeline/Publish-MapAuthoring.ps1",
+          "-AreaId",
+          "LV_LUT_MIDNIGHTC_ED",
+          "-ProjectRoot",
+          "{repositoryRoot}",
+          "-Mode",
+          "Publish"
+        ]
+      }
+    },
+    {
+      "id": "effect.v2",
+      "kind": "validation",
+      "profiles": ["Core", "FullDiagnostic"],
+      "inputs": ["Data/Effects/V2/**"],
+      "tools": ["Tools/EffectToolV2/validate_effect_v2.py"],
+      "resourceReferenceDocuments": [
+        "Data/Effects/V2/Authored/*.effectv2.json"
+      ],
+      "resourceReferenceFields": [
+        "slots.mesh",
+        "slots.base",
+        "slots.noise",
+        "slots.mask",
+        "slots.emissive",
+        "slots.dissolve"
+      ],
+      "outputs": [],
+      "requiredOutputPatterns": [],
+      "action": {
+        "executable": "python",
+        "arguments": [
+          "-B",
+          "Tools/EffectToolV2/validate_effect_v2.py",
+          "--repository-root",
+          "{repositoryRoot}",
+          "--resource-root",
+          "{resourceRoot}"
+        ]
+      }
+    },
+    {
+      "id": "world.gameplay",
+      "kind": "publisher",
+      "profiles": ["Product", "Core", "FullDiagnostic"],
+      "inputs": [
+        "Data/Worlds/**",
+        "Data/Actors/**",
+        "Data/Balance/MonsterProfiles.json",
+        "Data/Encounters/Valtan/ValtanEncounter.json",
+        "Data/Maps/Authoring/**/*.deployplacements"
+      ],
+      "tools": ["Tools/WorldPipeline/Publish-WorldGameplay.ps1"],
+      "outputs": [
+        "Server/Bin/DataFiles/World/*.worldbootstrap",
+        "Server/Bin/DataFiles/World/*.spawngroupsbootstrap",
+        "Server/Bin/DataFiles/World/*.encounterpropsbootstrap",
+        "Client/Bin/DataFiles/World/*.npcpresentation.json",
+        "Client/Bin/DataFiles/World/*.stagemarkers.json"
+      ],
+      "requiredOutputPatterns": [
+        "Server/Bin/DataFiles/World/BERN.worldbootstrap",
+        "Server/Bin/DataFiles/World/CHARACTER_SELECT_ARENA.worldbootstrap",
+        "Server/Bin/DataFiles/World/KAKULSAYDON_ARENA.worldbootstrap",
+        "Server/Bin/DataFiles/World/TRAINING_GROUND.worldbootstrap",
+        "Server/Bin/DataFiles/World/VALTAN_ARENA.worldbootstrap",
+        "Client/Bin/DataFiles/World/KAKULSAYDON_ARENA.stagemarkers.json"
+      ],
+      "action": {
+        "executable": "powershell.exe",
+        "arguments": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "Tools/WorldPipeline/Publish-WorldGameplay.ps1",
+          "-Mode",
+          "Publish"
+        ]
+      }
+    },
+    {
+      "id": "navigation",
+      "kind": "publisher",
+      "profiles": ["Product", "Core", "FullDiagnostic"],
+      "inputs": ["Data/Navigation/**", "Data/Worlds/**"],
+      "tools": ["Tools/NavigationPipeline/Publish-ServerNavigation.ps1"],
+      "outputs": [
+        "Server/Bin/DataFiles/Navigation/*.navgrid",
+        "Server/Bin/DataFiles/Navigation/*.navblockers",
+        "Server/Bin/DataFiles/Navigation/*.navpolicy",
+        "Client/Bin/DataFiles/Navigation/*.navgrid",
+        "Client/Bin/DataFiles/Navigation/*.navblockers",
+        "Client/Bin/DataFiles/Navigation/*.navpolicy"
+      ],
+      "requiredOutputPatterns": [
+        "Server/Bin/DataFiles/Navigation/LV_LUT_HEARTRB_ED.navgrid",
+        "Server/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.navgrid",
+        "Client/Bin/DataFiles/Navigation/LV_LUT_HEARTRB_ED.navgrid",
+        "Client/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.navgrid"
+      ],
+      "action": {
+        "executable": "powershell.exe",
+        "arguments": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+          "-Mode",
+          "Publish"
+        ]
+      }
+    },
+    {
+      "id": "world.destruction",
+      "kind": "publisher",
+      "profiles": ["Product", "Core", "FullDiagnostic"],
+      "inputs": [
+        "Data/Encounters/Valtan/**",
+        "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/**",
+        "Data/Navigation/LV_LUT_HEARTRB_ED.navblockers",
+        "Data/Worlds/LV_LUT_HEARTRB_ED/Gameplay.world.json",
+        "Client/Bin/DataFiles/Navigation/LV_LUT_HEARTRB_ED.navgrid"
+      ],
+      "tools": [
+        "Tools/WorldPipeline/Publish-ValtanWorldDestruction.ps1",
+        "Tools/WorldPipeline/ValtanWallNavigation.ps1"
+      ],
+      "outputs": [
+        "Server/Bin/DataFiles/World/VALTAN_ARENA.worlddestructionbootstrap",
+        "Client/Bin/DataFiles/World/LV_LUT_HEARTRB_ED.worlddestruction.json",
+        "Client/Bin/DataFiles/World/LV_LUT_HEARTRB_ED.worlddestructionpresentation.json"
+      ],
+      "requiredOutputPatterns": [
+        "Server/Bin/DataFiles/World/VALTAN_ARENA.worlddestructionbootstrap",
+        "Client/Bin/DataFiles/World/LV_LUT_HEARTRB_ED.worlddestruction.json",
+        "Client/Bin/DataFiles/World/LV_LUT_HEARTRB_ED.worlddestructionpresentation.json"
+      ],
+      "action": {
+        "executable": "powershell.exe",
+        "arguments": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "Tools/WorldPipeline/Publish-ValtanWorldDestruction.ps1",
+          "-Mode",
+          "Publish"
+        ]
+      }
+    },
+    {
+      "id": "gameplay.balance",
+      "kind": "publisher",
+      "profiles": ["Product", "Core", "FullDiagnostic"],
+      "inputs": [
+        "Data/Balance/**",
+        "Data/Actors/BossCatalog.json",
+        "Data/Animation/HitShapes/**",
+        "Data/Animation/Reference/Valtan/**",
+        "Data/Animation/RootMotion/**",
+        "Data/Encounters/Valtan/**",
+        "Data/Valtan/**"
+      ],
+      "tools": [
+        "Tools/GameplayPipeline/Publish-GameplayBalance.ps1",
+        "Tools/GameplayPipeline/Export-OfficialBalanceReceipt.py",
+        "Tools/GameplayPipeline/Publish-FileTransaction.ps1"
+      ],
+      "outputs": ["Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap"],
+      "requiredOutputPatterns": [
+        "Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap"
+      ],
+      "action": {
+        "executable": "powershell.exe",
+        "arguments": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "Tools/GameplayPipeline/Publish-GameplayBalance.ps1",
+          "-Mode",
+          "Publish",
+          "-SkipValtanSplitProjection"
+        ]
+      }
+    },
+    {
+      "id": "items.catalog",
+      "kind": "publisher",
+      "profiles": ["Product", "Core", "FullDiagnostic"],
+      "inputs": ["Data/Items/ItemCatalog.json"],
+      "tools": [
+        "Tools/GameplayPipeline/Publish-ItemCatalog.ps1",
+        "Tools/GameplayPipeline/Publish-FileTransaction.ps1"
+      ],
+      "outputs": ["Server/Bin/DataFiles/Items/Items.bootstrap"],
+      "requiredOutputPatterns": ["Server/Bin/DataFiles/Items/Items.bootstrap"],
+      "action": {
+        "executable": "powershell.exe",
+        "arguments": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "Tools/GameplayPipeline/Publish-ItemCatalog.ps1",
+          "-Mode",
+          "Publish"
+        ]
+      }
+    },
+    {
+      "id": "valtan.rewards",
+      "kind": "publisher",
+      "profiles": ["Product", "Core", "FullDiagnostic"],
+      "inputs": [
+        "Data/Valtan/Valtan.clearrewards.json",
+        "Data/Items/ItemCatalog.json"
+      ],
+      "tools": ["Tools/ValtanPipeline/Publish-ValtanClearRewards.ps1"],
+      "outputs": ["Server/Bin/DataFiles/Valtan/ClearRewards.bootstrap"],
+      "requiredOutputPatterns": [
+        "Server/Bin/DataFiles/Valtan/ClearRewards.bootstrap"
+      ],
+      "action": {
+        "executable": "powershell.exe",
+        "arguments": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "Tools/ValtanPipeline/Publish-ValtanClearRewards.ps1",
+          "-Mode",
+          "Publish"
+        ]
+      }
+    }
+  ],
+  "product": {
+    "inputs": [
+      "Engine/Private/**",
+      "Engine/Public/**",
+      "Engine/External/imgui/**/*.h",
+      "Engine/External/imgui/**/*.cpp",
+      "Engine/ThirdPartyLib/*.lib",
+      "Engine/ThirdPartyLib/FMOD/Inc/**",
+      "Engine/ThirdPartyLib/FMOD/Lib/*.lib",
+      "Engine/ThirdPartyLib/FMOD/Bin/fmod.dll",
+      "Engine/ThirdPartyLib/PhysX/Inc/**",
+      "Engine/ThirdPartyLib/PhysX/Lib/{configuration}/*.lib",
+      "Engine/ThirdPartyLib/PhysX/Bin/{configuration}/*.dll",
+      "Engine/ThirdPartyLib/Assimp/Bin/{configuration}/*.dll",
+      "Engine/Bin/ShaderFiles/**/*.hlsl",
+      "Engine/Bin/ShaderFiles/**/*.hlsli",
+      "Engine/Default/Engine.vcxproj",
+      "Shared/Private/**",
+      "Shared/Public/**",
+      "Shared/Default/Shared.vcxproj",
+      "Server/Private/**",
+      "Server/Public/**",
+      "Server/Default/Server.vcxproj",
+      "Client/Private/**",
+      "Client/Public/**",
+      "Client/Bin/ShaderFiles/**/*.hlsl",
+      "Client/Bin/ShaderFiles/**/*.hlsli",
+      "Client/Default/Client.vcxproj",
+      "Tools/Build/Invoke-BuildAndRegression.ps1",
+      "Tools/Build/Invoke-BuildDomainOwner.ps1",
+      "Tools/Build/Test-CompiledShaderClosure.ps1",
+      "Tools/Build/BuildDomains.json",
+      "Tools/Build/BuildDomainPipeline.psm1"
+    ],
+    "outputs": [
+      "Engine/Bin/{configuration}/Engine.dll",
+      "Engine/Bin/{configuration}/Engine.pdb",
+      "Engine/Bin/{configuration}/Engine.lib",
+      "Engine/Bin/{configuration}/Shader_Cell.cso",
+      "Engine/Bin/{configuration}/Shader_Deferred.cso",
+      "Shared/Bin/{configuration}/Shared.lib",
+      "Shared/Bin/{configuration}/Shared.pdb",
+      "Server/Bin/{configuration}/Server.exe",
+      "Server/Bin/{configuration}/Server.pdb",
+      "Client/Bin/{configuration}/Client.exe",
+      "Client/Bin/{configuration}/Client.pdb",
+      "Client/Bin/{configuration}/Engine.dll",
+      "Client/Bin/{configuration}/Shader_Cell.cso",
+      "Client/Bin/{configuration}/Shader_Deferred.cso",
+      "Client/Bin/{configuration}/fmod.dll",
+      "Client/Bin/{configuration}/{assimpRuntimeName}",
+      "Client/Bin/{configuration}/PhysX_64.dll",
+      "Client/Bin/{configuration}/PhysXCommon_64.dll",
+      "Client/Bin/{configuration}/PhysXFoundation_64.dll",
+      "EngineSDK/lib/{configuration}/Engine.lib"
+    ],
+    "outputsByConfiguration": {
+      "Debug": ["Client/Bin/Debug/Engine.pdb"],
+      "Release": []
+    },
+    "deploymentPairs": [
+      {
+        "source": "Engine/Bin/{configuration}/Engine.dll",
+        "destination": "Client/Bin/{configuration}/Engine.dll"
+      },
+      {
+        "source": "Engine/Bin/{configuration}/Engine.lib",
+        "destination": "EngineSDK/lib/{configuration}/Engine.lib"
+      },
+      {
+        "source": "Engine/Bin/{configuration}/Shader_Cell.cso",
+        "destination": "Client/Bin/{configuration}/Shader_Cell.cso"
+      },
+      {
+        "source": "Engine/Bin/{configuration}/Shader_Deferred.cso",
+        "destination": "Client/Bin/{configuration}/Shader_Deferred.cso"
+      },
+      {
+        "source": "Engine/ThirdPartyLib/FMOD/Bin/fmod.dll",
+        "destination": "Client/Bin/{configuration}/fmod.dll"
+      },
+      {
+        "source": "Engine/ThirdPartyLib/Assimp/Bin/{configuration}/{assimpRuntimeName}",
+        "destination": "Client/Bin/{configuration}/{assimpRuntimeName}"
+      },
+      {
+        "source": "Engine/ThirdPartyLib/PhysX/Bin/{configuration}/PhysX_64.dll",
+        "destination": "Client/Bin/{configuration}/PhysX_64.dll"
+      },
+      {
+        "source": "Engine/ThirdPartyLib/PhysX/Bin/{configuration}/PhysXCommon_64.dll",
+        "destination": "Client/Bin/{configuration}/PhysXCommon_64.dll"
+      },
+      {
+        "source": "Engine/ThirdPartyLib/PhysX/Bin/{configuration}/PhysXFoundation_64.dll",
+        "destination": "Client/Bin/{configuration}/PhysXFoundation_64.dll"
+      }
+    ],
+    "deploymentPairsByConfiguration": {
+      "Debug": [
+        {
+          "source": "Engine/Bin/Debug/Engine.pdb",
+          "destination": "Client/Bin/Debug/Engine.pdb"
+        }
+      ],
+      "Release": []
+    }
+  }
+}

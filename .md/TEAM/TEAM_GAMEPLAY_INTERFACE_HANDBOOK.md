@@ -82,7 +82,7 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 
 #### pull 후 공유 Server에 들어가는 순서
 
-Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 protocol v42 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. v41 이하 빌드는 v42와 호환되지 않는다.
+Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v47 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
 
 ```powershell
 git switch main
@@ -362,15 +362,14 @@ exact tuple을 현재 Product tree와 다시 대조해 문서를 연다. clip-bo
 해당 `Authored/*.effect.json`이 각각 소유한다. unlink는 cue 연결만 지우며 사용자 Effect
 파일과 catalog를 자동 삭제하지 않는다.
 
-V1 Product source가 실제 참조하는 DDS/WModel dependency closure는 같은 Resources-relative 경로로 Git/LFS에
-선별 추적한다. 팀원은 pull 뒤 `git lfs pull`을 수행하며, 전체 Resources pack과 미참조 파일은 포함하지 않는다.
-팀이 이미 공유해 Git에 올리지 않기로 한 파일은 해당 상대 경로의 local runtime 입력으로 유지한다.
-이 경우에만 validator의 `-AllowLocalResources`(전체 회귀는 `-AllowLocalEffectResources`)를 명시한다.
-파일 실재·안전 경로·내용과 기존 tracked identity 검사는 유지하고 local 미추적 개수를 보고한다.
-기본 Git closure 검사는 바뀌지 않으며 local 검증을 Git 배포 PASS로 기록하지 않는다.
+V1 Product source가 실제 참조하는 DDS/WModel dependency closure는 팀장 Drive의 같은
+Resources-relative 경로에 둔다. Git은 authored source와 asset ID만 전달한다.
+물리 pack은 기본 validator와 전체 회귀가 파일 실재·안전 경로·내용과 local 미추적 개수를 검사한다.
+`-AllowLocalResources`와 `-AllowLocalEffectResources`는 과거 명령 호환용이므로 생략할 수 있다. 이 검증을
+Git 배포 PASS로 기록하지 않는다.
 Valtan actor Product가 직접 참조하는 body, Parts1/Parts2, AnimSet과 weapon 다섯 WModel, 그리고 그 material
-table이 참조하는 body/parts TGA 12개와 weapon DDS 8개도 같은 pull-only closure에 포함한다. 따라서 새 clone은
-발탄 본체를 위해 별도 추출 WModel이나 material texture를 수동 복사하지 않는다.
+table이 참조하는 body/parts TGA 12개와 weapon DDS 8개도 같은 Drive 전달 묶음에 포함한다. 새 clone은
+실행 전에 팀장에게서 이 물리 리소스를 같은 상대 경로로 전달받는다.
 
 Character는 cue/anchor/HIT metadata를 먼저 commit하고 Product ID만 revision별 queue에 등록한다.
 등록 frame에는 resource 작업을 하지 않으며 다음 frame부터 main thread가 target 하나씩 parse,
@@ -736,7 +735,7 @@ powershell -ExecutionPolicy Bypass -File Tools/NavigationPipeline/Publish-Server
 
 `Client/Bin/Resources`는 `Fonts, Character, Deploy, Effect, Map, Sound, UI` 일곱 root만 허용한다. asset ID는 Resources 상대 경로이며 절대 경로, drive-qualified 경로, `..` 탈출을 금지한다.
 
-runtime payload는 기본적으로 팀장이 `Client/Bin/Resources` 물리 폴더로 관리한다. pull-only 재현이 명시된 feature는 Product가 실제 참조하는 최소 dependency closure만 Git/LFS에 포함할 수 있다. AssetPacks lock, immutable manifest, ZIP hash, Snapshot/Publish/Hydrate/Verify를 팀 완료 조건으로 사용하지 않는다. 코드와 데이터에는 Resources 상대 asset ID만 저장하고 팀원별 절대 경로 하드코딩은 금지한다.
+runtime payload는 팀장이 `Client/Bin/Resources` 물리 폴더로 관리하고 Git에는 추적하지 않는다. AssetPacks lock, immutable Resource manifest, Resource ZIP hash, Snapshot/Publish/Hydrate/Verify를 팀 완료 조건으로 사용하지 않는다. 코드와 데이터에는 Resources 상대 asset ID만 저장하고 팀원별 절대 경로 하드코딩은 금지한다.
 
 팀원이 branch를 pull한 뒤 최초 실행하는 순서는 다음과 같다.
 
@@ -747,7 +746,7 @@ git lfs pull
 → 담당 public interface에서 작업 시작
 ```
 
-기능은 `main`이 아닌 별도 branch/PR로 전달한다. 코드, 소비 데이터, project/filter 등록, harness, RESULT를 같은 검증 단위로 묶는다. build output, `EngineSDK`, `.vs`, `.codex_tmp`, `_work`, `imgui.ini`, 그리고 승인된 최소 dependency closure 밖의 Resources payload를 stage하지 않는다.
+기능은 `main`이 아닌 별도 branch/PR로 전달한다. 코드, 소비 데이터, project/filter 등록, harness, RESULT를 같은 검증 단위로 묶는다. build output, `EngineSDK`, `.vs`, `.codex_tmp`, `_work`, `imgui.ini`, `Client/Bin/Resources` payload를 stage하지 않는다.
 
 ## 11. 완료 검증
 

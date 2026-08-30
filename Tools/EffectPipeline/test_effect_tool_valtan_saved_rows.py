@@ -108,10 +108,6 @@ RETIRED_CANARY_LIVE_FILES = (
     REPOSITORY_ROOT / "Client/Public/Effect_DocumentRenderer.h",
     REPOSITORY_ROOT / "Client/Default/Client.vcxproj",
     REPOSITORY_ROOT / "Client/Default/Client.vcxproj.filters",
-    REPOSITORY_ROOT
-    / "Tools/EffectRenderContractHarness/Default/EffectRenderContractHarness.vcxproj",
-    REPOSITORY_ROOT
-    / "Tools/EffectRenderContractHarness/Default/EffectRenderContractHarness.vcxproj.filters",
 )
 RETIRED_CANARY_DEDICATED_PATHS = (
     REPOSITORY_ROOT / "Client/Public/Effect_ValtanTranslatedCanaryRuntime.h",
@@ -611,7 +607,7 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
         )
     for token in (
         '"Play Effect" : "Play Effect + Owner Animation"',
-        'ImGui::SmallButton("Play Server Owner")',
+        'ImGui::SmallButton("Complete Play Owner")',
         "bCanPlayServerOwner",
         "Try_PlayValtanServerPattern(*pOwnerPattern)",
     ):
@@ -1503,7 +1499,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         for token in (
             'ImGui::SmallButton("Open Editor")',
             '"Play Effect" : "Play Effect + Owner Animation"',
-            'ImGui::SmallButton("Play Server Owner")',
+            'ImGui::SmallButton("Complete Play Owner")',
             "Try_OpenValtanStandaloneEffect",
             "Try_PlayValtanStandaloneEffect",
             "Try_PlayValtanSavedUnifiedEffect",
@@ -1825,7 +1821,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         self.assertIn(
             "iOwnerTimelineDurationMs, true, iEffectStartMs", independent
         )
-        self.assertIn('ImGui::SmallButton("Play Server Owner")', independent)
+        self.assertIn('ImGui::SmallButton("Complete Play Owner")', independent)
         self.assertIn("World preview root:", independent)
 
     def test_effect_detail_has_one_working_owner_per_manual_tuning_axis(self) -> None:
@@ -2415,10 +2411,6 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         self.assertIn("Sample_LocalBoneTransforms(", sampler)
         for mutator in ("->Set_TrackPosition(", "->Update_TransformationMatrix(", "->Blend_TransformationMatrix("):
             self.assertNotIn(mutator, sampler)
-        harness = (REPOSITORY_ROOT / "Tools/EffectRenderContractHarness/Private/EffectRenderContractHarness.cpp").read_text(encoding="utf-8")
-        self.assertGreaterEqual(harness.count("Validate_NamedHistoricalAnimationSamplingContract("), 2)
-        self.assertIn('"missing.contract.clip"', harness)
-        self.assertIn("SameState(Before, After)", harness)
 
     def test_valtan_sequence_preflights_every_clip_before_model_or_state_commit(self) -> None:
         cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")

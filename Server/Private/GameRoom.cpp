@@ -987,6 +987,7 @@ LostArk::Server::CGameRoom::CGameRoom(
 	if ((LostArk::Shared::WORLD_ID::VALTAN_ARENA == worldId ||
 		LostArk::Shared::WORLD_ID::TRAINING_GROUND == worldId ||
 		LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA == worldId ||
+		LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == worldId ||
 		LostArk::Shared::WORLD_ID::BERN == worldId) &&
 		!m_ServerNavigation.Load(m_WorldBootstrap.Get_AreaId()))
 	{
@@ -1576,6 +1577,14 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			break;
 		case ROOM_COMMAND_TYPE::DEBUG_KILL_SELF:
 			Handle_DebugKillSelf(command.iSessionId, command.DebugKillSelf);
+			break;
+		case ROOM_COMMAND_TYPE::DEBUG_ENTER_KAKULSAYDON_ARENA:
+			Handle_DebugEnterKakulSaydonArena(
+				command.iSessionId, command.DebugEnterKakulSaydonArena);
+			break;
+		case ROOM_COMMAND_TYPE::DEBUG_TELEPORT_TO_PLACEMENT:
+			Handle_DebugTeleportToPlacement(
+				command.iSessionId, command.DebugTeleportToPlacement);
 			break;
 		case ROOM_COMMAND_TYPE::CHANGE_CHARACTER_CLASS:
 			Handle_ChangeCharacterClass(
@@ -2841,6 +2850,143 @@ void LostArk::Server::CGameRoom::Handle_DebugKillSelf(
 	player.iComboStage = 0u;
 	player.hasBufferedComboInput = false;
 	player.PendingCommand.Clear();
+#endif
+}
+
+void LostArk::Server::CGameRoom::Handle_DebugEnterKakulSaydonArena(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA& request)
+{
+#ifndef _DEBUG
+	(void)sessionId;
+	(void)request;
+	return;
+#else
+	using namespace LostArk::Shared;
+	if (WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId ||
+		0u == request.iRequestSequence)
+	{
+		return;
+	}
+
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (sessionIter == m_PlayerIdBySessionId.end())
+		return;
+	const auto playerIter = m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end())
+		return;
+	const SERVER_PLAYER& player = playerIter->second;
+	if (INVALID_SESSION_ID == player.iSessionId ||
+		CHARACTER_CLASS_ID::END == player.eCharacterClass ||
+		player.strNickName.empty())
+	{
+		return;
+	}
+
+	const bool isAlreadyStaged = std::any_of(
+		m_PendingWorldTransfers.begin(), m_PendingWorldTransfers.end(),
+		[sessionId](const SERVER_WORLD_TRANSFER_REQUEST& pending)
+		{
+			return pending.iSessionId == sessionId ||
+				std::find(pending.PartyBatchSessionIds.begin(),
+					pending.PartyBatchSessionIds.end(), sessionId) !=
+				pending.PartyBatchSessionIds.end();
+		});
+	if (isAlreadyStaged)
+		return;
+
+	SERVER_WORLD_TRANSFER_REQUEST transfer{};
+	transfer.iSessionId = player.iSessionId;
+	transfer.eTargetWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+	transfer.eCharacterClass = player.eCharacterClass;
+	transfer.strNickName = player.strNickName;
+	transfer.iPartyRequestSequence = request.iRequestSequence;
+	transfer.CarriedInventory = player.Inventory;
+	m_PendingWorldTransfers.push_back(std::move(transfer));
+#endif
+}
+
+void LostArk::Server::CGameRoom::Handle_DebugTeleportToPlacement(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_DEBUG_TELEPORT_TO_PLACEMENT& request)
+{
+#ifndef _DEBUG
+	(void)sessionId;
+	(void)request;
+	return;
+#else
+	using namespace LostArk::Shared;
+	constexpr const char* STAGE_WAYPOINT_PREFIX = "stage.kakul.";
+	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId ||
+		0u == request.iRequestSequence ||
+		0u != request.strPlacementId.rfind(STAGE_WAYPOINT_PREFIX, 0u))
+	{
+		return;
+	}
+
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (sessionIter == m_PlayerIdBySessionId.end())
+		return;
+	const auto playerIter = m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end())
+		return;
+	SERVER_PLAYER& player = playerIter->second;
+	if (0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction ||
+		PLAYER_ACTION_STATE::FALLING == player.eAction)
+	{
+		return;
+	}
+
+	const WORLD_BOOTSTRAP_PLACEMENT* waypoint =
+		Find_Placement(request.strPlacementId);
+	if (nullptr == waypoint ||
+		WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN != waypoint->eKind ||
+		!m_ServerCollisionSystem.Is_PlayerSpawnClear(*waypoint) ||
+		!m_ServerNavigation.Is_PointWalkableExact(
+			waypoint->fPositionX, waypoint->fPositionZ))
+	{
+		return;
+	}
+	SERVER_NAV_POINT ground{};
+	if (!m_ServerNavigation.Sample_Position(
+		waypoint->fPositionX, waypoint->fPositionZ, ground))
+	{
+		return;
+	}
+
+	player.fPositionX = ground.x;
+	player.fPositionY = ground.y;
+	player.fPositionZ = ground.z;
+	player.fYawDegrees = waypoint->fYawDegrees;
+	player.eAction = PLAYER_ACTION_STATE::NONE;
+	player.iCurrentSkillId = INVALID_SKILL_ID;
+	player.Clear_SkillTarget();
+	player.iActionStartTick = 0u;
+	player.Clear_Attachment();
+	player.fFallVelocityY = 0.f;
+	player.iFallDeathTick = 0u;
+	player.fActionElapsedSeconds = 0.f;
+	player.hasAppliedSkillDamage = false;
+	player.iAppliedHitMask = 0u;
+	player.iSpawnedProjectileMask = 0u;
+	player.Projectiles.clear();
+	m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
+	player.iComboStage = 0u;
+	player.hasBufferedComboInput = false;
+	player.PendingCommand.Clear();
+	player.hasReleasedHold = false;
+	player.TriggerMove = {};
+	player.hasMoveGoal = false;
+	player.MovePath.clear();
+	player.iMovePathIndex = 0u;
+	player.fKnockbackDirectionX = 0.f;
+	player.fKnockbackDirectionZ = 0.f;
+	player.fKnockbackSpeed = 0.f;
+	player.fKnockbackRemainingSeconds = 0.f;
+	player.iKnockdownEndTick = 0u;
+	player.iHitReactionGraceEndTick = 0u;
+	player.isCombatReady = true;
+	m_ServerTriggerSystem.Remove_Player(player.iPlayerId);
 #endif
 }
 
@@ -5126,11 +5272,15 @@ bool LostArk::Server::CGameRoom::Reset_ValtanBossOnlyAuditionState(
 		&boss, "Flow replaced by an authoritative audition restart");
 	#endif
 	boss = std::move(stagedBoss);
+	/* A boss-only restart preserves the arena and props, but no Debug pillar
+	   reservation from the replaced occurrence may fire during the new one. */
+	m_iPillarAuditionBreakTick = 0u;
+	m_bPillarAuditionCycleArmed = false;
 	(void)Release_PlayerAttachments(
 		boss.iNetEntityId, 0.f, 0u, false, 0u, resetTick);
-	/* Character Select has no Valtan wall, floor or prop runtime. Cancel only
-	   objects emitted by this boss; the private player's active combat objects
-	   belong to a different source and survive the audition reset. */
+	/* Complete Play preserves Valtan Arena wall, floor, prop, collision and Nav
+	   state. Cancel only objects emitted by this boss; player-owned combat
+	   objects belong to a different source and survive the audition reset. */
 	m_CombatObjectRuntime.Cancel_Source(boss.iNetEntityId);
 	m_TickBossCombatEvents.clear();
 	m_iValtanAuditionArmedHealthBar = 0u;
@@ -6701,28 +6851,19 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			const std::uint32_t resetTick =
 				0u == m_iServerTick ? 1u : m_iServerTick;
 			std::string resetStatus;
-			if (isCharacterSelectArena)
+			/* Preflight the canonical boss replacement before mutating the live
+			   occurrence. Both supported worlds use this boss-only reset: Complete
+			   Play must never imply a Fresh-arena preset. */
+			SERVER_WORLD_ENTITY resetProbe{};
+			if (!Build_ValtanBossOnlyAuditionReset(
+					*boss, resetTick, resetProbe, resetStatus))
 			{
-				/* Preflight the spawn reset before mutating the live boss. This also
-				   proves the private-room player remains engaged at the canonical
-				   placement after a previous moving pattern displaced the boss. */
-				SERVER_WORLD_ENTITY resetProbe{};
-				if (!Build_ValtanBossOnlyAuditionReset(
-						*boss, resetTick, resetProbe, resetStatus))
-				{
-					m_strStatus = std::move(resetStatus);
-					return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
-				}
-				if (!Has_EngagedAuditionPlayer(resetProbe))
-					return VALTAN_AUDITION_RESULT::REJECTED_PLAYER_NOT_ENGAGED;
-				if (!Reset_ValtanBossOnlyAuditionState(
-						*boss, resetTick, resetStatus))
-				{
-					m_strStatus = std::move(resetStatus);
-					return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
-				}
+				m_strStatus = std::move(resetStatus);
+				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
 			}
-			else if (!Reset_ValtanAuditionState(
+			if (!Has_EngagedAuditionPlayer(resetProbe))
+				return VALTAN_AUDITION_RESULT::REJECTED_PLAYER_NOT_ENGAGED;
+			if (!Reset_ValtanBossOnlyAuditionState(
 					*boss, resetTick, resetStatus))
 			{
 				m_strStatus = std::move(resetStatus);
@@ -9674,7 +9815,8 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 				"boss.target.pattern" != action.strTargetId ||
 				1u != action.iValue || 0u != action.iDurationMs ||
 				BOSS_GRABBED_RELEASE_MODE::NONE != action.eReleaseMode ||
-				0.f != action.fReleaseSpeedMps)
+				0.f != action.fReleaseSpeedMps ||
+				0.f != action.fReleaseYawOffsetDegrees)
 			{
 				m_strStatus = "Boss retarget stage action is invalid";
 				return false;
@@ -9696,16 +9838,21 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 		{
 			const bool hold = BOSS_GRABBED_RELEASE_MODE::HOLD ==
 				action.eReleaseMode && 0.f == action.fReleaseSpeedMps &&
-				0u == action.iDurationMs;
+				0u == action.iDurationMs &&
+				0.f == action.fReleaseYawOffsetDegrees;
 			const bool knockback =
 				(BOSS_GRABBED_RELEASE_MODE::OPPOSITE_KNOCKBACK ==
 					action.eReleaseMode ||
 				 BOSS_GRABBED_RELEASE_MODE::ARENA_EJECTION == action.eReleaseMode) &&
 					action.fReleaseSpeedMps > 0.f &&
 					action.fReleaseSpeedMps <= 50.f &&
-					action.iDurationMs > 0u && action.iDurationMs <= 5000u;
+					action.iDurationMs > 0u && action.iDurationMs <= 5000u &&
+					(BOSS_GRABBED_RELEASE_MODE::ARENA_EJECTION ==
+						action.eReleaseMode || 0.f == action.fReleaseYawOffsetDegrees);
 			if ("boss.attachment.left-hand" != action.strTargetId ||
 				0u != action.iValue || !std::isfinite(action.fReleaseSpeedMps) ||
+				!std::isfinite(action.fReleaseYawOffsetDegrees) ||
+				std::abs(action.fReleaseYawOffsetDegrees) > 180.f ||
 				(!hold && !knockback))
 			{
 				m_strStatus = "Boss grabbed-player release action is invalid";
@@ -9761,6 +9908,7 @@ bool LostArk::Server::CGameRoom::Prepare_GrabbedPlayerImpact(
 		0u != action.iValue || 0u != action.iDurationMs ||
 		BOSS_GRABBED_RELEASE_MODE::NONE != action.eReleaseMode ||
 		0.f != action.fReleaseSpeedMps ||
+		0.f != action.fReleaseYawOffsetDegrees ||
 		(execution && "boss.attachment.left-hand" != action.strTargetId))
 	{
 		m_strStatus = "Grabbed-player impact action or owner is invalid";
@@ -11458,12 +11606,17 @@ bool LostArk::Server::CGameRoom::Prepare_ArenaEjection(
 	if (BOSS_GRABBED_RELEASE_MODE::ARENA_EJECTION != action.eReleaseMode ||
 		!m_ServerNavigation.Is_Loaded() ||
 		!std::isfinite(action.fReleaseSpeedMps) || action.fReleaseSpeedMps <= 0.f ||
+		action.fReleaseSpeedMps > 50.f || 0u == action.iDurationMs ||
+		action.iDurationMs > 5000u ||
+		!std::isfinite(action.fReleaseYawOffsetDegrees) ||
+		std::abs(action.fReleaseYawOffsetDegrees) > 180.f ||
 		!std::isfinite(boss.fYawDegrees))
 	{
 		m_strStatus = "Arena ejection policy or navigation is invalid";
 		return false;
 	}
-	const float yaw = boss.fYawDegrees * DEGREES_TO_RADIANS;
+	const float yaw = (boss.fYawDegrees + action.fReleaseYawOffsetDegrees) *
+		DEGREES_TO_RADIANS;
 	const float directionX = -std::sin(yaw);
 	const float directionZ = -std::cos(yaw);
 	constexpr float maximumDistance = 128.f;

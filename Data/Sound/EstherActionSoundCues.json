@@ -1,0 +1,33 @@
+{
+  "schema": "lostark.esther-action-sound-cues",
+  "formatVersion": 1,
+  "fixedTickHz": 30,
+  "cues": [
+    {
+      "cueId": "sound.esther.player.cast.active1.project-tuned-edge",
+      "ownerKind": "PLAYER_ACTION",
+      "ownerId": "PLAYER",
+      "actionId": "ESTHER_CAST",
+      "catalogOwnerId": "Esther",
+      "soundEvent": "PC_Common_FX_Active1",
+      "startMs": 0,
+      "lateToleranceMs": 500,
+      "volume": 1.0,
+      "once": true,
+      "timingBasis": "PROJECT_TUNED_EDGE"
+    },
+    {
+      "cueId": "sound.esther.silian.strike.cast1.project-tuned-edge",
+      "ownerKind": "NPC_ACTION",
+      "ownerId": "NPC_59030",
+      "actionId": "esther.strike",
+      "catalogOwnerId": "Esther",
+      "soundEvent": "Silian1_Attack9_Cast1",
+      "startMs": 0,
+      "lateToleranceMs": 500,
+      "volume": 1.0,
+      "once": true,
+      "timingBasis": "PROJECT_TUNED_EDGE"
+    }
+  ]
+}

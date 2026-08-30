@@ -56,7 +56,12 @@ shard는 baseline count/asset 참조와 중복 ID, `Imported` 밖 shard 경로�
 
 ```powershell
 python -B -m unittest Tools.MapPipeline.test_map_effect_presentation_contract
+powershell -ExecutionPolicy Bypass -File Tools/MapPipeline/Test-MapWaterRenderContract.ps1
 ```
+
+`Test-MapWaterRenderContract.ps1`은 fallback map shader의 water binding,
+water pass 15~17과 deferred emissive pass 18의 비중첩을 source contract로
+검사한다. 물리 리소스를 수정하거나 Client 화면을 판정하지 않는다.
 
 ## gameplay publish
 

@@ -7,6 +7,7 @@
 #include "Effect_DocumentCodec.h"
 #include "Effect_Tool.h"
 #include "Level_ValtanArena.h"
+#include "MainApp.h"
 #include "NetworkManager.h"
 #include "PlayerCommandSink.h"
 #include "ProjectDataRoot.h"
@@ -1616,7 +1617,28 @@ void Client::CBossTool::Render_ActionBar()
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!bCanPlay);
 	if (ImGui::Button("Complete Play Selected"))
-		(void)Submit_SelectedPattern();
+	{
+#ifdef _DEBUG
+		if (CMainApp* const pApp = CMainApp::Get_Active())
+		{
+			if (pApp->Debug_SelectCompletePlayPattern(
+					m_strSelectedPatternId))
+			{
+				(void)pApp->Debug_CompletePlaySelected(m_strStatus);
+			}
+			else
+			{
+				m_strStatus =
+					"Selected Boss pattern is not in the shared Server inventory.";
+			}
+		}
+		else
+			m_strStatus = "Complete Play workspace is unavailable.";
+#else
+		m_strStatus =
+			"Complete Play is available only in a Debug authoring build.";
+#endif
+	}
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::BeginDisabled(nullptr == pSelected || bNextOwnsPlayback || bFlowOwnsPlayback);
@@ -1683,6 +1705,33 @@ void Client::CBossTool::Render_ActionBar()
 
 void Client::CBossTool::Render_PatternList()
 {
+	/* Selection made in Effect/Workbench/F1 is reflected here before the list
+	   renders.  Repeat is a Boss-only lifecycle and must not silently continue
+	   against a different shared selection. */
+#ifdef _DEBUG
+	if (CMainApp* const pApp = CMainApp::Get_Active())
+	{
+		const std::string& strSharedPatternId =
+			pApp->Debug_GetSelectedCompletePlayPatternId();
+		const VALTAN_PATTERN_VIEW* pShared =
+			Find_AuditionPattern(strSharedPatternId);
+		if (nullptr != pShared &&
+			m_strSelectedPatternId != strSharedPatternId)
+		{
+			m_strSelectedPatternId = strSharedPatternId;
+			m_strSelectedStageId = pShared->Stages.empty() ?
+				std::string{} : pShared->Stages.front().strStageId;
+			m_bFollowLive = false;
+			if (m_bRepeat || !m_strRepeatPatternId.empty())
+			{
+				m_bRepeat = false;
+				m_strRepeatPatternId.clear();
+				m_strActionFeedback =
+					"Repeat stopped after another Tool selected a different Pattern.";
+			}
+		}
+	}
+#endif
 	ImGui::TextUnformatted("Patterns");
 	ImGui::SetNextItemWidth(-1.f);
 	ImGui::InputTextWithHint(
@@ -1764,6 +1813,11 @@ void Client::CBossTool::Render_PatternList()
 					m_strActionFeedback.clear();
 				}
 				m_strSelectedPatternId = pPattern->strPatternId;
+				#ifdef _DEBUG
+				if (CMainApp* const pApp = CMainApp::Get_Active())
+					(void)pApp->Debug_SelectCompletePlayPattern(
+						m_strSelectedPatternId);
+				#endif
 				m_strSelectedStageId = pPattern->Stages.empty() ?
 					std::string{} : pPattern->Stages.front().strStageId;
 				m_bFollowLive = false;

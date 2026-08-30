@@ -223,16 +223,9 @@
       <AdditionalDependencies>Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-  <Target Name="PublishWorldGameplay" BeforeTargets="ClCompile">
-    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\WorldPipeline\Publish-WorldGameplay.ps1&quot; -Mode Publish" />
-	<Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\WorldPipeline\Publish-ValtanWorldDestruction.ps1&quot; -Mode Publish" />
+  <Target Name="PublishServerBuildDomains" BeforeTargets="ClCompile" Condition="'$(Platform)'=='x64'">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\Build\Invoke-BuildDomainOwner.ps1&quot; -Owner Server" />
   </Target>
-	<Target Name="PublishGameplayRuntime" BeforeTargets="ClCompile">
-		<Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\GameplayPipeline\Publish-GameplayBalance.ps1&quot; -Mode Publish" />
-		<Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\GameplayPipeline\Publish-ItemCatalog.ps1&quot; -Mode Publish" />
-		<Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\ValtanPipeline\Publish-ValtanClearRewards.ps1&quot; -Mode Publish" />
-		<Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\NavigationPipeline\Publish-ServerNavigation.ps1&quot; -Mode Publish" />
-	</Target>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
 </Project>

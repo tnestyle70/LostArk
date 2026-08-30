@@ -9,6 +9,10 @@
 #include <utility>
 #include <vector>
 
+int Run_ValtanPresentationContractTests();
+int Run_ValtanEncounterReferenceContractTests();
+int Run_ValtanPatternSoundCueDocumentContractTests();
+
 using namespace Client;
 using namespace LostArk::Shared;
 
@@ -895,5 +899,12 @@ int main()
 		<< "/" << Tests.size() << " passed\n";
 	const int FlowFailures = Run_ValtanPatternFlowServiceTests();
 	const int TuningFailures = Run_ValtanTuningCommandServiceTests();
-	return 0u == Failed && 0 == FlowFailures && 0 == TuningFailures ? 0 : 1;
+	const int PresentationFailures = Run_ValtanPresentationContractTests();
+	const int EncounterReferenceFailures =
+		Run_ValtanEncounterReferenceContractTests();
+	const int PatternSoundCueFailures =
+		Run_ValtanPatternSoundCueDocumentContractTests();
+	return 0u == Failed && 0 == FlowFailures && 0 == TuningFailures &&
+		0 == PresentationFailures && 0 == EncounterReferenceFailures &&
+		0 == PatternSoundCueFailures ? 0 : 1;
 }

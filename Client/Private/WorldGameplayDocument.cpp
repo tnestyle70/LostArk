@@ -1007,6 +1007,8 @@ bool_t Client::CWorldGameplayDocument::Is_Valid(
 						return LostArk::Shared::WORLD_ID::BERN ==
 								event.eTargetWorldId ||
 							LostArk::Shared::WORLD_ID::VALTAN_ARENA ==
+								event.eTargetWorldId ||
+							LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA ==
 								event.eTargetWorldId;
 					}
 					return WORLD_TRIGGER_EVENT_KIND::END != event.eKind &&
@@ -1230,6 +1232,7 @@ const char_t* Client::CWorldGameplayDocument::WorldId_ToString(
 	{
 	case WORLD_ID::BERN: return "BERN";
 	case WORLD_ID::VALTAN_ARENA: return "VALTAN_ARENA";
+	case WORLD_ID::KAKULSAYDON_ARENA: return "KAKULSAYDON_ARENA";
 	default: return "invalid";
 	}
 }
@@ -1243,6 +1246,8 @@ bool_t Client::CWorldGameplayDocument::Try_ParseWorldId(
 		outWorldId = WORLD_ID::BERN;
 	else if ("VALTAN_ARENA" == value)
 		outWorldId = WORLD_ID::VALTAN_ARENA;
+	else if ("KAKULSAYDON_ARENA" == value)
+		outWorldId = WORLD_ID::KAKULSAYDON_ARENA;
 	else
 		return false;
 	return true;

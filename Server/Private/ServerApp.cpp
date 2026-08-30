@@ -2469,7 +2469,8 @@ int LostArk::Server::CServerApp::Run(
 
 	if (!stageSharedSimulation(WORLD_ID::BERN) ||
 		!stageSharedSimulation(WORLD_ID::VALTAN_ARENA) ||
-		!stageSharedSimulation(WORLD_ID::TRAINING_GROUND))
+		!stageSharedSimulation(WORLD_ID::TRAINING_GROUND) ||
+		!stageSharedSimulation(WORLD_ID::KAKULSAYDON_ARENA))
 	{
 		return 1;
 	}
@@ -2530,7 +2531,8 @@ int LostArk::Server::CServerApp::Run(
 	const bool useHeadlessMode = headless ||
 		0 == ::_isatty(::_fileno(stdin));
 	std::cout << "Listening on " << bindAddress << ':' << port
-		<< " with shared BERN, VALTAN_ARENA, TRAINING_GROUND and "
+		<< " with shared BERN, VALTAN_ARENA, TRAINING_GROUND, "
+		<< "KAKULSAYDON_ARENA and "
 		<< "session-private CHARACTER_SELECT_ARENA simulations.";
 	if (0u == automaticShutdownMilliseconds && useHeadlessMode)
 	{
@@ -2810,6 +2812,30 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		}
 		command.eType = ROOM_COMMAND_TYPE::DEBUG_KILL_SELF;
 		command.DebugKillSelf = debugKillSelf;
+	}
+	else if (frame.ePacketType ==
+		PACKET_TYPE::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA)
+	{
+		C2S_DEBUG_ENTER_KAKULSAYDON_ARENA request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_DEBUG_ENTER_KAKULSAYDON_ARENA");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::DEBUG_ENTER_KAKULSAYDON_ARENA;
+		command.DebugEnterKakulSaydonArena = request;
+	}
+	else if (frame.ePacketType ==
+		PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_PLACEMENT)
+	{
+		C2S_DEBUG_TELEPORT_TO_PLACEMENT request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			closeMalformedPayload("C2S_DEBUG_TELEPORT_TO_PLACEMENT");
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::DEBUG_TELEPORT_TO_PLACEMENT;
+		command.DebugTeleportToPlacement = std::move(request);
 	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_CHANGE_CHARACTER_CLASS)
 	{

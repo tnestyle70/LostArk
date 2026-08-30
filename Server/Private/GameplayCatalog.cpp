@@ -566,26 +566,32 @@ namespace
 		const std::uint32_t value,
 		const std::uint32_t durationMs,
 		const LostArk::Server::BOSS_GRABBED_RELEASE_MODE releaseMode,
-		const float releaseSpeedMps)
+		const float releaseSpeedMps,
+		const float releaseYawOffsetDegrees)
 	{
 		using LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND;
 		using LostArk::Server::BOSS_PATTERN_STAGE_ACTION_TRIGGER;
 		using LostArk::Server::BOSS_GRABBED_RELEASE_MODE;
 		if (!std::isfinite(releaseSpeedMps) || releaseSpeedMps < 0.f ||
-			releaseSpeedMps > 50.f)
+			releaseSpeedMps > 50.f || !std::isfinite(releaseYawOffsetDegrees) ||
+			std::abs(releaseYawOffsetDegrees) > 180.f)
 			return false;
 		if (BOSS_PATTERN_STAGE_ACTION_KIND::RELEASE_GRABBED_PLAYERS == kind)
 		{
 			if ("boss.attachment.left-hand" != targetId || 0u != value)
 				return false;
 			if (BOSS_GRABBED_RELEASE_MODE::HOLD == releaseMode)
-				return 0.f == releaseSpeedMps && 0u == durationMs;
+				return 0.f == releaseSpeedMps && 0u == durationMs &&
+					0.f == releaseYawOffsetDegrees;
 			return (BOSS_GRABBED_RELEASE_MODE::OPPOSITE_KNOCKBACK == releaseMode ||
 				BOSS_GRABBED_RELEASE_MODE::ARENA_EJECTION == releaseMode) &&
-				releaseSpeedMps > 0.f && durationMs > 0u && durationMs <= 5000u;
+				releaseSpeedMps > 0.f && durationMs > 0u && durationMs <= 5000u &&
+				(BOSS_GRABBED_RELEASE_MODE::ARENA_EJECTION == releaseMode ||
+				 0.f == releaseYawOffsetDegrees);
 		}
 		if (BOSS_GRABBED_RELEASE_MODE::NONE != releaseMode ||
-			0.f != releaseSpeedMps || 0u != durationMs)
+			0.f != releaseSpeedMps || 0.f != releaseYawOffsetDegrees ||
+			0u != durationMs)
 		{
 			return false;
 		}
@@ -2767,7 +2773,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		{
 			std::uint32_t actionOrder = 0;
 			BOSS_PATTERN_STAGE_ACTION action{};
-			const bool hasReleaseFields = 12u == fields.size();
+			const bool hasReleaseFields = 12u == fields.size() ||
+				13u == fields.size();
 			if ((10u != fields.size() && !hasReleaseFields) ||
 				!IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) || !IsStableId(fields[3]) ||
@@ -2780,11 +2787,14 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				(hasReleaseFields &&
 				 (!ParseBossGrabbedReleaseMode(
 					fields[10], action.eReleaseMode) ||
-				  !ParseNumber(fields[11], action.fReleaseSpeedMps))) ||
+				  !ParseNumber(fields[11], action.fReleaseSpeedMps) ||
+				  (13u == fields.size() &&
+				   !ParseNumber(fields[12], action.fReleaseYawOffsetDegrees)))) ||
 				!IsValidBossPatternStageAction(
 					action.eTrigger, action.eKind, fields[7],
 					action.iValue, action.iDurationMs,
-					action.eReleaseMode, action.fReleaseSpeedMps))
+					action.eReleaseMode, action.fReleaseSpeedMps,
+					action.fReleaseYawOffsetDegrees))
 			{
 				m_strStatus = "Boss pattern stage action row is invalid";
 				return false;
@@ -3889,7 +3899,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 						!IsValidBossPatternStageAction(
 							action.eTrigger, action.eKind, action.strTargetId,
 							action.iValue, action.iDurationMs,
-							action.eReleaseMode, action.fReleaseSpeedMps))
+							action.eReleaseMode, action.fReleaseSpeedMps,
+							action.fReleaseYawOffsetDegrees))
 					{
 						validActions = false;
 						continue;

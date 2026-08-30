@@ -492,6 +492,37 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		C2S_DEBUG_KILL_SELF& message);
 
+	/* Debug-only Character Select -> KakulSaydon Server transfer. The ordinary
+	S2C_ENTER_ACCEPTED result remains the single level-transition authority. */
+	struct C2S_DEBUG_ENTER_KAKULSAYDON_ARENA
+	{
+		std::uint32_t iRequestSequence = 0;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_DEBUG_ENTER_KAKULSAYDON_ARENA& message);
+
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_DEBUG_ENTER_KAKULSAYDON_ARENA& message);
+
+	/* Debug-only stage navigation. strPlacementId must name an authored
+	PLAYER_SPAWN row in the current KakulSaydon world bootstrap. */
+	struct C2S_DEBUG_TELEPORT_TO_PLACEMENT
+	{
+		std::uint32_t iRequestSequence = 0;
+		std::string strPlacementId;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_DEBUG_TELEPORT_TO_PLACEMENT& message);
+
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_DEBUG_TELEPORT_TO_PLACEMENT& message);
+
 	struct C2S_CHANGE_CHARACTER_CLASS
 	{
 		std::uint32_t iClientSequence = 0;

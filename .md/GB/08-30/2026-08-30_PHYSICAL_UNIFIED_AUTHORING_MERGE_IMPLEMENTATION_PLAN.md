@@ -81,7 +81,8 @@ Valtan Arena player spawn slot과 Server admission 상한은 8로 확장하고 p
 
 `Framework.sln` 기본 Build는 Engine, Shared, Server, Client만 유지한다.
 EffectRenderContractHarness와 ValtanFourPlayerHarness는 solution과 표준 runner에서 제거한다.
-남겨 둔 EffectRender source는 제품 CPP를 재컴파일하지 않는 좁은 WARP probe만 보존한다.
+EffectRender project/source 대신 RenderingPipeline의 한 파일 WARP probe를 Product CSO closure가
+임시 컴파일하며, 제품 CPP 재컴파일과 영구 harness cache는 만들지 않는다.
 
 Core에는 다음 빠른 gate를 직접 연결한다.
 

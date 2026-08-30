@@ -1951,6 +1951,61 @@ bool LostArk::Shared::Read_Message(
 
 bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer,
+	const C2S_DEBUG_ENTER_KAKULSAYDON_ARENA& message)
+{
+	if (0u == message.iRequestSequence)
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_DEBUG_ENTER_KAKULSAYDON_ARENA& message)
+{
+	C2S_DEBUG_ENTER_KAKULSAYDON_ARENA decoded{};
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		0u == decoded.iRequestSequence)
+	{
+		return false;
+	}
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_DEBUG_TELEPORT_TO_PLACEMENT& message)
+{
+	if (0u == message.iRequestSequence ||
+		!Is_Valid_StableId(message.strPlacementId, false))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	return writer.Write_String(
+		message.strPlacementId, MAX_STABLE_NETWORK_ID_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_DEBUG_TELEPORT_TO_PLACEMENT& message)
+{
+	C2S_DEBUG_TELEPORT_TO_PLACEMENT decoded{};
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		0u == decoded.iRequestSequence ||
+		!reader.Read_String(
+			decoded.strPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!Is_Valid_StableId(decoded.strPlacementId, false))
+	{
+		return false;
+	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
 	const C2S_CHANGE_CHARACTER_CLASS& message)
 {
 	if (0u == message.iClientSequence ||

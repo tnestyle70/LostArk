@@ -405,7 +405,7 @@ namespace
 				Client::VALTAN_STAGE_ACTION_VIEW Action;
 				if (!Has_ExactProperties(Value,
 						{ "trigger", "kind", "targetId", "releaseMode",
-						  "speedMps", "durationMs" }) ||
+						  "speedMps", "durationMs", "yawOffsetDegrees" }) ||
 					nullptr == pTrigger || nullptr == pKind ||
 					nullptr == pTarget || nullptr == pReleaseMode ||
 					("ENTER" != pTrigger->Get_String() &&
@@ -415,17 +415,23 @@ namespace
 						Value, "speedMps", Action.fSpeedMps) ||
 					!Read_RequiredUInt32(
 						Value, "durationMs", Action.iDurationMs) ||
+					!Read_RequiredFiniteFloat(
+						Value, "yawOffsetDegrees", Action.fYawOffsetDegrees) ||
 					Action.fSpeedMps < 0.f || Action.fSpeedMps > 50.f ||
-					Action.iDurationMs > 5000u)
+					Action.iDurationMs > 5000u ||
+					std::abs(Action.fYawOffsetDegrees) > 180.f)
 				{
 					return false;
 				}
 				const bool_t bHold = "HOLD" == pReleaseMode->Get_String() &&
-					0.f == Action.fSpeedMps && 0u == Action.iDurationMs;
+					0.f == Action.fSpeedMps && 0u == Action.iDurationMs &&
+					0.f == Action.fYawOffsetDegrees;
 				const bool_t bOppositeKnockback =
 					("OPPOSITE_KNOCKBACK" == pReleaseMode->Get_String() ||
 					 "ARENA_EJECTION" == pReleaseMode->Get_String()) &&
-					Action.fSpeedMps > 0.f && Action.iDurationMs > 0u;
+					Action.fSpeedMps > 0.f && Action.iDurationMs > 0u &&
+					("ARENA_EJECTION" == pReleaseMode->Get_String() ||
+					 0.f == Action.fYawOffsetDegrees);
 				if (!bHold && !bOppositeKnockback)
 					return false;
 				Action.strTrigger = pTrigger->Get_String();
@@ -1112,7 +1118,7 @@ namespace
 			{
 				if (!Has_ExactProperties(Action,
 						{ "trigger", "kind", "targetId", "releaseMode",
-						  "speedMps", "durationMs" }) ||
+						  "speedMps", "durationMs", "yawOffsetDegrees" }) ||
 					nullptr == Required(
 						Action, "trigger", DATA_JSON_TYPE::STRING) ||
 					nullptr == Required(
@@ -1120,9 +1126,37 @@ namespace
 					nullptr == Required(
 						Action, "releaseMode", DATA_JSON_TYPE::STRING) ||
 					!Is_FiniteNumber(Action.Find("speedMps")) ||
-					!Is_NonNegativeInteger(Action.Find("durationMs")))
+					!Is_NonNegativeInteger(Action.Find("durationMs")) ||
+					!Is_FiniteNumber(Action.Find("yawOffsetDegrees")))
 				{
 					strOutError = "master grabbed-player release action is invalid";
+					return false;
+				}
+				const std::string strTrigger = Read_String(Action, "trigger");
+				const std::string strTargetId = Read_String(Action, "targetId");
+				const std::string strReleaseMode =
+					Read_String(Action, "releaseMode");
+				const double fSpeedMps = Read_Number(Action, "speedMps");
+				const double fDurationMs = Read_Number(Action, "durationMs");
+				const double fYawOffsetDegrees =
+					Read_Number(Action, "yawOffsetDegrees");
+				const bool_t bHold = "HOLD" == strReleaseMode &&
+					0.0 == fSpeedMps && 0.0 == fDurationMs &&
+					0.0 == fYawOffsetDegrees;
+				const bool_t bLaunch =
+					("OPPOSITE_KNOCKBACK" == strReleaseMode ||
+					 "ARENA_EJECTION" == strReleaseMode) &&
+					fSpeedMps > 0.0 && fSpeedMps <= 50.0 &&
+					fDurationMs > 0.0 && fDurationMs <= 5000.0 &&
+					("ARENA_EJECTION" == strReleaseMode ||
+					 0.0 == fYawOffsetDegrees);
+				if (("ENTER" != strTrigger && "EXIT" != strTrigger) ||
+					"boss.attachment.left-hand" != strTargetId ||
+					std::abs(fYawOffsetDegrees) > 180.0 ||
+					(!bHold && !bLaunch))
+				{
+					strOutError =
+						"master grabbed-player release action is incoherent";
 					return false;
 				}
 				continue;
@@ -2473,7 +2507,8 @@ namespace
 				Left[i].fValue != Right[i].fValue ||
 				Left[i].strReleaseMode != Right[i].strReleaseMode ||
 				Left[i].fSpeedMps != Right[i].fSpeedMps ||
-				Left[i].iDurationMs != Right[i].iDurationMs)
+				Left[i].iDurationMs != Right[i].iDurationMs ||
+				Left[i].fYawOffsetDegrees != Right[i].fYawOffsetDegrees)
 			{
 				return false;
 			}
@@ -3825,15 +3860,19 @@ namespace
 			const std::string strReleaseMode = Read_String(Event, "releaseMode");
 			const DATA_JSON_VALUE* pSpeedMps = Event.Find("speedMps");
 			const DATA_JSON_VALUE* pDurationMs = Event.Find("durationMs");
+			const DATA_JSON_VALUE* pYawOffsetDegrees =
+				Event.Find("yawOffsetDegrees");
 			if (!Has_ExactProperties(Event,
 					{ "eventId", "trigger", "kind", "releaseMode",
-					  "speedMps", "durationMs" }) ||
+					  "speedMps", "durationMs", "yawOffsetDegrees" }) ||
 				("ENTER" != strTrigger && "EXIT" != strTrigger) ||
 				!Is_FiniteNumber(pSpeedMps) ||
 				!Is_NonNegativeInteger(pDurationMs) ||
+				!Is_FiniteNumber(pYawOffsetDegrees) ||
 				pSpeedMps->Get_Number() < 0.0 ||
 				pSpeedMps->Get_Number() > 50.0 ||
-				pDurationMs->Get_Number() > 5000.0)
+				pDurationMs->Get_Number() > 5000.0 ||
+				std::abs(pYawOffsetDegrees->Get_Number()) > 180.0)
 			{
 				strOutError =
 					"split gameplay grabbed-player release event is invalid";
@@ -3841,12 +3880,15 @@ namespace
 			}
 			const bool_t bHold = "HOLD" == strReleaseMode &&
 				0.0 == pSpeedMps->Get_Number() &&
-				0.0 == pDurationMs->Get_Number();
+				0.0 == pDurationMs->Get_Number() &&
+				0.0 == pYawOffsetDegrees->Get_Number();
 			const bool_t bOppositeKnockback =
 				("OPPOSITE_KNOCKBACK" == strReleaseMode ||
 				 "ARENA_EJECTION" == strReleaseMode) &&
 				pSpeedMps->Get_Number() > 0.0 &&
-				pDurationMs->Get_Number() > 0.0;
+				pDurationMs->Get_Number() > 0.0 &&
+				("ARENA_EJECTION" == strReleaseMode ||
+				 0.0 == pYawOffsetDegrees->Get_Number());
 			if (!bHold && !bOppositeKnockback)
 			{
 				strOutError =
@@ -3859,6 +3901,7 @@ namespace
 				DATA_JSON_VALUE::String(strReleaseMode));
 			Action.emplace("speedMps", *pSpeedMps);
 			Action.emplace("durationMs", *pDurationMs);
+			Action.emplace("yawOffsetDegrees", *pYawOffsetDegrees);
 		}
 		else if ("SPAWN_COMBAT_OBJECT_VOLLEY" == strKind)
 		{

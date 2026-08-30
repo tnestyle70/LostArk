@@ -92,18 +92,20 @@ feature closure에 넣지 않았다.
 `Fonts, Character, Deploy, Effect, Map, Sound, UI` 일곱 root로 교정했다. C++ runtime은 원래부터 Resources containment만
 검사해 코드 변경은 필요 없었고, 과거 날짜별 RESULT의 여섯-root 기록은 당시 증거로 보존했다.
 
-## KakulSaydon
+## KoukuSaton
 
-원본 물리 폴더의 다음 roots를 정본으로 사용한다.
+물리 Resources의 사용자 컬렉션 이름은 `KoukuSaton`이며, protocol·world·Area·authoring의 기존 stable ID는
+`KAKULSAYDON_ARENA`, `LV_LUT_MIDNIGHTC_ED`, `Data/Animation/.../KakulSaydon`으로 보존한다.
 
 - `Resources/Map/LV_LUT_MIDNIGHTC_ED`
-- `Resources/Effect/KakulSaydon`
-- `Resources/UI/KakulSaydon`
-- `Resources/Character` 아래 원본 KakulSaydon 모델 roots
+- `Resources/Character/KoukuSaton`
+- `Resources/Effect/KoukuSaton`
+- `Resources/Sound/KoukuSaton`
 
-Client project에는 Kakul Map/Authoring/Imported/ResourceIntake Data 8개가 등록됐다. MapTool의 Development geometry preview와
-resource collection은 허용된다. World/Nav/Boss/Pattern/Sound 수직 슬라이스가 없으므로 Product Server Level admission은
-validator가 의도적으로 차단한다. 즉 현재 상태를 “쿠크 레이드 레벨 완성”으로 기록하지 않는다.
+현재 Product Server Level admission, 2,951개 map placement, selected replicated player와 F1 `SL01`~`SL05` typed Server
+teleport가 구현되어 있다. Character Select가 승인된 world transfer 중 live socket을 닫던 수명 버그도 수정했다.
+KoukuSaton boss/NPC/pattern vertical slice와 Arena 안의 별도 Workbench character preview는 아직 구현 완료가 아니며,
+이번 검증에서 맵 진입·플레이어 이동·맵 배치를 넘어 완료로 주장하지 않는다.
 
 ## Solution과 빌드 병목
 
@@ -111,8 +113,8 @@ validator가 의도적으로 차단한다. 즉 현재 상태를 “쿠크 레이
 - 기본 Build 대상: Engine, Shared, Server, Client만
 - Product CPP entry/unique: 259/259, 중복 0
 - Core CPP entry/unique: 261/261, 중복 0
-- EffectRenderContractHarness와 ValtanFourPlayerHarness는 solution/runner에서 제거
-- EffectRender의 남은 좁은 probe는 ProjectReference 0, 제품 CPP 재컴파일 0
+- EffectRenderContractHarness와 ValtanFourPlayerHarness는 solution/runner/물리 project source에서 제거
+- RenderingPipeline의 한 파일 Product WARP probe는 ProjectReference 0, 제품 CPP 재컴파일 0
 - Debug/Release x64 제품 프로젝트의 `/MP` 활성 상태 보존
 
 남은 빌드 구조 병목은 Engine direct-project build와 solution build가 서로 다른 Intermediate cache를 사용하는 문제다.

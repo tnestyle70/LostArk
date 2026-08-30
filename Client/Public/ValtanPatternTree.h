@@ -134,6 +134,10 @@ struct VALTAN_STAGE_ACTION_VIEW final
 	std::string strReleaseMode;
 	f32_t fSpeedMps = 0.f;
 	uint32_t iDurationMs = 0u;
+	/* Added to the Server-selected boss facing only for ARENA_EJECTION. Zero
+	   keeps the original backward launch; HOLD and OPPOSITE_KNOCKBACK require
+	   zero so the inspector cannot save an ignored value. */
+	f32_t fYawOffsetDegrees = 0.f;
 };
 
 /* Presentation invokes a camera cue from one authoritative Server stage.

@@ -1478,22 +1478,43 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         for event in release_sources:
             self.assertEqual({
                 "eventId", "trigger", "kind", "releaseMode",
-                "speedMps", "durationMs",
+                "speedMps", "durationMs", "yawOffsetDegrees",
             }, set(event))
         for action in releases:
             self.assertEqual({
                 "trigger", "kind", "targetId", "releaseMode",
-                "speedMps", "durationMs",
+                "speedMps", "durationMs", "yawOffsetDegrees",
             }, set(action))
             self.assertEqual("boss.attachment.left-hand", action["targetId"])
+            self.assertGreaterEqual(action["yawOffsetDegrees"], -180)
+            self.assertLessEqual(action["yawOffsetDegrees"], 180)
             self.assertTrue(
                 action["releaseMode"] == "HOLD"
                 and action["speedMps"] == 0
                 and action["durationMs"] == 0
+                and action["yawOffsetDegrees"] == 0
                 or action["releaseMode"] in ("OPPOSITE_KNOCKBACK", "ARENA_EJECTION")
                 and 0 < action["speedMps"] <= 50
                 and 0 < action["durationMs"] <= 5000
+                and (
+                    action["releaseMode"] == "ARENA_EJECTION"
+                    or action["yawOffsetDegrees"] == 0
+                )
             )
+
+        release_field_contract = (
+            '"speedMps", "durationMs", "yawOffsetDegrees"'
+        )
+        self.assertGreaterEqual(self.cpp.count(release_field_contract), 3)
+        self.assertIn(release_field_contract, self.encounter_reference_cpp)
+        self.assertIn(
+            'std::abs(yawOffsetDegrees) > 180.0',
+            self.encounter_reference_cpp,
+        )
+        self.assertIn(
+            '"master grabbed-player release action is incoherent"', self.cpp
+        )
+        self.assertIn('"boss.attachment.left-hand" != strTargetId', self.cpp)
         for volley in volleys:
             self.assertEqual({
                 "trigger", "kind", "targetId", "targetingPolicy",

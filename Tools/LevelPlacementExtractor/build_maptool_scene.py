@@ -17,6 +17,7 @@ BASIS = (
 IMPORTED_ID_BIT = 1 << 63
 EDITOR_ID_MASK = IMPORTED_ID_BIT - 1
 QUATERNION_EPSILON = 1.0e-6
+EMPTY_MATERIAL_SIGNATURE = hashlib.sha256(b"[]").hexdigest()
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -236,16 +237,99 @@ def sha256(path: Path) -> str:
     return digest.hexdigest().upper()
 
 
+def material_signature_from_slots(
+    slots: Any, *, require_package_index: bool = False
+) -> str:
+    if not isinstance(slots, list):
+        raise ValueError("material override slots must be an array")
+    canonical: list[str | None] = []
+    for expected_slot, slot in enumerate(slots):
+        if not isinstance(slot, dict) or slot.get("slot") != expected_slot:
+            raise ValueError("material override slots are not ordered and contiguous")
+        class_name = slot.get("class")
+        object_path = slot.get("objectPath")
+        package_index = slot.get("packageIndex")
+        if require_package_index and not isinstance(package_index, int):
+            raise ValueError("material override packageIndex is not an integer")
+        if class_name is None and object_path is None:
+            if require_package_index and package_index != 0:
+                raise ValueError("authored null material slot must use packageIndex 0")
+            canonical.append(None)
+            continue
+        if (
+            not isinstance(class_name, str)
+            or not isinstance(object_path, str)
+            or not object_path
+            or class_name.casefold()
+            not in {"material", "materialinstanceconstant"}
+        ):
+            raise ValueError("material override slot is not an exact Material/MIC identity")
+        if require_package_index and package_index == 0:
+            raise ValueError("non-null material slot cannot use packageIndex 0")
+        canonical.append(f"{class_name.casefold()}|{object_path.casefold()}")
+    serialized = json.dumps(
+        canonical, ensure_ascii=False, separators=(",", ":")
+    ).encode("utf-8")
+    return hashlib.sha256(serialized).hexdigest()
+
+
+def placement_material_signature(
+    placement: dict[str, Any], schema_version: int
+) -> str:
+    if schema_version == 1:
+        if "materialOverrides" in placement:
+            raise ValueError("schema v1 placement contains materialOverrides")
+        return EMPTY_MATERIAL_SIGNATURE
+    material_overrides = placement.get("materialOverrides")
+    if not isinstance(material_overrides, dict):
+        raise ValueError("schema v2 placement is missing materialOverrides")
+    if not isinstance(material_overrides.get("propertyPresent"), bool):
+        raise ValueError("invalid materialOverrides.propertyPresent")
+    slots = material_overrides.get("slots")
+    if material_overrides["propertyPresent"] is False and slots != []:
+        raise ValueError("absent Materials property cannot contain override slots")
+    computed = material_signature_from_slots(slots, require_package_index=True)
+    claimed = material_overrides.get("signatureSha256")
+    if claimed != computed:
+        raise ValueError(
+            f"material override signature mismatch: {claimed!r} != {computed}"
+        )
+    return computed
+
+
+def asset_material_signature(asset: dict[str, Any]) -> str:
+    signature = asset.get("materialSignatureSha256", EMPTY_MATERIAL_SIGNATURE)
+    if (
+        not isinstance(signature, str)
+        or len(signature) != 64
+        or signature != signature.casefold()
+        or any(character not in "0123456789abcdef" for character in signature)
+    ):
+        raise ValueError(f"invalid asset material signature: {signature!r}")
+    return signature
+
+
 def iter_placements(paths: Iterable[Path]) -> Iterable[dict[str, Any]]:
     for path in sorted(
         paths,
         key=lambda value: (value.name.casefold(), value.as_posix().casefold()),
     ):
         document = load_json(path)
-        if document.get("schemaVersion") != 1 or document.get("propertyErrors"):
+        schema_version = document.get("schemaVersion")
+        if (
+            schema_version not in (1, 2)
+            or document.get("propertyErrors")
+            or document.get("unresolvedPlacements")
+        ):
             raise ValueError(f"invalid placement source: {path}")
         for placement in document.get("placements", []):
-            yield placement
+            if not isinstance(placement, dict):
+                raise ValueError(f"invalid placement row: {path}")
+            result = dict(placement)
+            result["_materialSignatureSha256"] = placement_material_signature(
+                placement, schema_version
+            )
+            yield result
 
 
 def normalize_placement_directories(value: Any) -> list[Path]:
@@ -362,9 +446,17 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
     if len(visibility_by_source) != len(visibility_overrides):
         raise ValueError("duplicate visibility override sourcePlacementId")
 
-    assets_by_path = {str(asset["fullPath"]).lower(): asset for asset in assets}
+    assets_by_variant: dict[tuple[str, str], dict[str, Any]] = {}
+    for asset in assets:
+        variant_key = (
+            str(asset["fullPath"]).casefold(),
+            asset_material_signature(asset),
+        )
+        if variant_key in assets_by_variant:
+            raise ValueError(f"duplicate asset variant key: {variant_key}")
+        assets_by_variant[variant_key] = asset
     runtime_by_id = {str(asset["assetId"]): asset for asset in runtime_assets}
-    if len(assets_by_path) != len(assets) or len(runtime_by_id) != len(runtime_assets):
+    if len(runtime_by_id) != len(runtime_assets):
         raise ValueError("duplicate asset key")
     if set(str(asset["assetId"]) for asset in assets) != set(runtime_by_id):
         raise ValueError("asset/runtime manifest set mismatch")
@@ -379,6 +471,9 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
         model_path = (Path("Map") / area_id / model_relative).as_posix()
         source_group = token(str(asset["sourceCategory"]).lower(), "groupId")
         evidence = "UE3 ImportTable exact: " + str(asset["fullPath"])
+        material_signature = asset_material_signature(asset)
+        if material_signature != EMPTY_MATERIAL_SIGNATURE:
+            evidence += "; ordered material signature: " + material_signature
         prototype_tag = "Prototype_Component_Model_" + asset_id
         if asset_id in catalog_ids or prototype_tag in prototype_tags:
             raise ValueError(f"duplicate generated catalog key: {asset_id}")
@@ -458,10 +553,13 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
         if previous is not None and previous != source_id:
             raise ValueError(f"runtime ID collision: {previous!r} / {source_id!r}")
         seen_runtime_ids[runtime_id] = source_id
-        object_path = str(placement["asset"]["objectPath"]).lower()
-        asset = assets_by_path.get(object_path)
+        object_path = str(placement["asset"]["objectPath"]).casefold()
+        material_signature = str(placement["_materialSignatureSha256"])
+        asset = assets_by_variant.get((object_path, material_signature))
         if asset is None:
-            raise ValueError(f"asset join missing: {object_path}")
+            raise ValueError(
+                f"asset variant join missing: {object_path} / {material_signature}"
+            )
         hidden_category = classify_non_visual_asset(asset)
         visible = hidden_category is None
         if source_id in visibility_by_source:
