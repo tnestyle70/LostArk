@@ -1278,7 +1278,8 @@ HRESULT Client::CEffectV2Object::Render_Decal(const uint32_t iPass)
 		FAILED(GameInstance.Bind_RT_SRV(TEXT("Target_Depth"), m_pShader, "g_DepthTexture")) ||
 		FAILED(GameInstance.Bind_RT_SRV(TEXT("Target_Normal"), m_pShader, "g_NormalTexture")))
 		return E_FAIL;
-	const uint32_t iDecalPass = BLEND_MODE::ADDITIVE == m_Params.eBlend ? 1u : 0u;
+	const uint32_t iDecalPass = BLEND_MODE::ADDITIVE == m_Params.eBlend ? 1u :
+		BLEND_MODE::MULTIPLY == m_Params.eBlend ? 2u : 0u;
 	UNREFERENCED_PARAMETER(iPass);
 	if (FAILED(m_pShader->Begin(iDecalPass)) ||
 		FAILED(m_pRect->Bind_Resources()) ||
@@ -1297,6 +1298,7 @@ HRESULT Client::CEffectV2Object::Render()
 		return E_FAIL;
 	}
 	const uint32_t iPass = BLEND_MODE::SOLID == m_Params.eBlend ? 4u :
+		BLEND_MODE::MULTIPLY == m_Params.eBlend ? (m_Params.bDepthTest ? 5u : 6u) :
 		static_cast<uint32_t>(m_Params.eBlend) + (m_Params.bDepthTest ? 0u : 2u);
 	switch (m_eShape)
 	{
@@ -1348,7 +1350,7 @@ HRESULT Client::CEffectV2Object::Render()
 					m_strStatus = "Bone matrix bind failed.";
 					return E_FAIL;
 				}
-				if (FAILED(m_pShader->Begin(5u)) || FAILED(m_pModel->Render(iMesh)))
+				if (FAILED(m_pShader->Begin(7u)) || FAILED(m_pModel->Render(iMesh)))
 				{
 					m_strStatus = "Outline draw failed.";
 					return E_FAIL;

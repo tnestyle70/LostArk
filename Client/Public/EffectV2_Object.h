@@ -58,6 +58,7 @@ public:
 		ALPHA,
 		ADDITIVE,
 		SOLID,
+		MULTIPLY,
 		END
 	};
 

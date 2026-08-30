@@ -2993,7 +2993,7 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 
 	ImGui::SeparatorText("Blend");
 	int32_t iBlend = static_cast<int32_t>(P.eBlend);
-	if (ImGui::Combo("Blend", &iBlend, "Alpha\0Additive\0Opaque\0"))
+	if (ImGui::Combo("Blend", &iBlend, "Alpha\0Additive\0Opaque\0Multiply\0"))
 		P.eBlend = static_cast<CEffectV2Object::BLEND_MODE>(iBlend);
 	ImGui::BeginDisabled(CEffectV2Object::BLEND_MODE::SOLID == P.eBlend ||
 		CEffectV2Object::SHAPE::DECAL == eShape);
@@ -3002,7 +3002,7 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 	if (CEffectV2Object::SHAPE::DECAL == eShape)
 	{
 		ImGui::SameLine();
-		ImGui::TextDisabled("(decal: Alpha/Additive only, no depth test)");
+		ImGui::TextDisabled("(decal: Alpha/Additive/Multiply, no depth test)");
 	}
 	if (CEffectV2Object::SHAPE::SPRITE == pPreview->Shape())
 	{

@@ -13,7 +13,7 @@ namespace
 {
 	const char* EFFECT_TYPE_KEYS[] = { "Mesh", "Texture", "Particle", "Decal", "Trail", "ScreenPost" };
 	const char* SCREEN_POST_PROFILE_KEYS[] = { "ZoomBlur", "RgbNoise", "FilmNoise" };
-	const char* BLEND_KEYS[] = { "Alpha", "Additive", "Opaque" };
+	const char* BLEND_KEYS[] = { "Alpha", "Additive", "Opaque", "Multiply" };
 	const char* CLIP_CHANNEL_KEYS[] = { "RGB", "Alpha" };
 	const char* PIVOT_ROTATION_KEYS[] = { "Bone", "TargetYaw", "World" };
 	const char* SLOT_KEYS[] = { "mesh", "base", "noise", "mask", "emissive", "dissolve" };
