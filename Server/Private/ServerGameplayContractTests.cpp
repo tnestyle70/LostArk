@@ -33,6 +33,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -6073,6 +6074,92 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Classify transfer ingress failure and guarantee target rollback cleanup");
 	}
 	{
+		constexpr const char* RAID_CLEAR_TEST_MODE_ENV =
+			"LOSTARK_RAID_CLEAR_TEST_MODE";
+		char* previousValue = nullptr;
+		size_t previousValueLength = 0u;
+		const bool hadPreviousValue = 0 == _dupenv_s(
+			&previousValue, &previousValueLength, RAID_CLEAR_TEST_MODE_ENV) &&
+			nullptr != previousValue;
+		const std::string savedValue = hadPreviousValue ? previousValue : "";
+		std::free(previousValue);
+		(void)_putenv_s(RAID_CLEAR_TEST_MODE_ENV, "");
+
+		auto addReturnPlayer = [](CGameRoom& room,
+			const SESSION_ID sessionId, const PLAYER_ID playerId,
+			const NET_ENTITY_ID entityId)
+		{
+			SERVER_PLAYER player{};
+			player.iSessionId = sessionId;
+			player.iPlayerId = playerId;
+			player.iNetEntityId = entityId;
+			player.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+			player.strNickName = "RaidClearReturnFixture";
+			player.iCurrentHp = 100u;
+			player.iMaximumHp = 100u;
+			player.isCombatReady = true;
+			room.m_Players.emplace(playerId, player);
+			room.m_PlayerIdBySessionId.emplace(sessionId, playerId);
+			room.m_PlayerIdByEntityId.emplace(entityId, playerId);
+		};
+
+		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
+		constexpr SESSION_ID RETURN_SESSION = 42000u;
+		addReturnPlayer(room, RETURN_SESSION, 42001u, 42002u);
+		const bool encounterActivated =
+			room.Activate_Encounter("boss.valtan.center");
+		C2S_RETURN_TO_BERN request{};
+		request.iRequestSequence = 1u;
+		room.Handle_ReturnToBern(RETURN_SESSION, request);
+		const bool rejectedBeforeClear = room.m_PendingWorldTransfers.empty();
+
+		auto primaryBoss = std::find_if(
+			room.m_WorldEntities.begin(), room.m_WorldEntities.end(),
+			[](const SERVER_WORLD_ENTITY& entity)
+			{
+				return WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind &&
+				INVALID_NET_ENTITY_ID == entity.iOwnerBossNetEntityId &&
+				"BOSS_VALTAN" == entity.strArchetypeId &&
+				"boss.valtan.center" == entity.strPlacementId;
+			});
+		const bool foundPrimaryBoss = primaryBoss != room.m_WorldEntities.end();
+		if (foundPrimaryBoss)
+		{
+			primaryBoss->iCurrentHp = 0u;
+			primaryBoss->eAction = SERVER_ENTITY_ACTION::DEAD;
+			room.Update_WorldEntities(1.f / 30.f);
+		}
+		request.iRequestSequence = 2u;
+		room.Handle_ReturnToBern(RETURN_SESSION, request);
+		const bool acceptedAfterClear =
+			room.m_bValtanRaidCleared &&
+			1u == room.m_PendingWorldTransfers.size() &&
+			WORLD_ID::BERN ==
+				room.m_PendingWorldTransfers.front().eTargetWorldId &&
+			"npc.bern.beda.guide" ==
+				room.m_PendingWorldTransfers.front().strSpawnPlacementOverrideId;
+
+		CGameRoom previewRoom{ WORLD_ID::VALTAN_ARENA };
+		constexpr SESSION_ID PREVIEW_SESSION = 42100u;
+		addReturnPlayer(previewRoom, PREVIEW_SESSION, 42101u, 42102u);
+		(void)_putenv_s(RAID_CLEAR_TEST_MODE_ENV, "1");
+		request.iRequestSequence = 1u;
+		previewRoom.Handle_ReturnToBern(PREVIEW_SESSION, request);
+		const bool explicitTestModeAccepted =
+			1u == previewRoom.m_PendingWorldTransfers.size();
+
+		(void)_putenv_s(RAID_CLEAR_TEST_MODE_ENV,
+			hadPreviousValue ? savedValue.c_str() : "");
+		tests.Require(
+			room.Is_Ready() && encounterActivated && rejectedBeforeClear &&
+			foundPrimaryBoss &&
+			acceptedAfterClear,
+			"Authorize Return to Bern only after the primary Product Valtan clear");
+		tests.Require(
+			previewRoom.Is_Ready() && explicitTestModeAccepted,
+			"Allow an explicit Release Raid Clear test mode to exercise the Return button");
+	}
+	{
 		CGameRoom room{ WORLD_ID::TRAINING_GROUND };
 		const std::size_t commandCount =
 			CGameRoom::MAX_COMMANDS_DRAINED_PER_TICK + 5u;
@@ -7852,7 +7939,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		world.Get_AreaId() == "LV_LUT_HEARTRB_ED",
 		"Preserve world area ID across placement parsing");
 	tests.Require(
-		4u == static_cast<std::size_t>(std::count_if(
+		MAX_VALTAN_RAID_PLAYERS == static_cast<std::size_t>(std::count_if(
 			world.Get_Placements().begin(),
 			world.Get_Placements().end(),
 			[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
@@ -7860,7 +7947,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				return WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind &&
 					placement.isEnabled;
 			})),
-		"Load exactly four enabled Valtan player spawns");
+		"Load exactly the configured Valtan raid capacity as enabled player spawns");
 	tests.Require(navigation.Load("LV_LUT_HEARTRB_ED"),
 		"Load Valtan server navigation");
 	std::vector<SERVER_NAV_POINT> path;
@@ -11772,9 +11859,11 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				static_cast<std::uint32_t>(object.iLockedTargetNetEntityId));
 		}
 		std::vector<S2C_COMBAT_OBJECT_SPAWNED> initialSpawned;
+		std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT>
+			initialPresentationEvents;
 		std::vector<S2C_COMBAT_OBJECT_DESPAWNED> initialDespawned;
 		volleyRoom.m_CombatObjectRuntime.Drain_Lifecycle(
-			initialSpawned, initialDespawned);
+			initialSpawned, initialPresentationEvents, initialDespawned);
 		std::vector<COMBAT_OBJECT_SNAPSHOT> initialSnapshots;
 		const bool builtInitialSnapshots =
 			volleyRoom.m_CombatObjectRuntime.Build_Snapshots(initialSnapshots);
@@ -11812,6 +11901,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		}
 		const bool reliableAndSnapshotPins =
 			7u == initialSpawned.size() && initialDespawned.empty() &&
+			initialPresentationEvents.empty() &&
 			7u == initialSnapshots.size() &&
 			std::all_of(initialSpawned.begin(), initialSpawned.end(),
 				[&volleyRevision](const S2C_COMBAT_OBJECT_SPAWNED& message)
@@ -11884,6 +11974,38 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			volleyRoom.m_Players, volleyRoom.m_WorldEntities,
 			volleyRoom.m_GameplayCatalog, 1.f / 30.f, 937u,
 			volleyDamageEvents);
+		std::vector<S2C_COMBAT_OBJECT_SPAWNED> spawnedAtPulse;
+		std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT> pulseEvents;
+		std::vector<S2C_COMBAT_OBJECT_DESPAWNED> despawnedAtPulse;
+		volleyRoom.m_CombatObjectRuntime.Drain_Lifecycle(
+			spawnedAtPulse, pulseEvents, despawnedAtPulse);
+		bool semanticPulseEvents = spawnedAtPulse.empty() &&
+			despawnedAtPulse.empty() && pulseEvents.size() == liveObjects.size();
+		for (std::size_t index = 0u;
+			semanticPulseEvents && index < pulseEvents.size(); ++index)
+		{
+			const S2C_COMBAT_OBJECT_PRESENTATION_EVENT& event =
+				pulseEvents[index];
+			CPacketWriter writer;
+			semanticPulseEvents =
+				event.iEventSequence == index + 1u &&
+				event.iCombatObjectId == liveObjects[index].iCombatObjectId &&
+				event.iSourceNetEntityId == volleyBoss->iNetEntityId &&
+				event.eKind ==
+					COMBAT_OBJECT_PRESENTATION_EVENT_KIND::HIT_PULSE &&
+				event.strCombatObjectArchetypeId ==
+					"combatobject.valtan.high-jump.target-axe" &&
+				event.strOwnerPatternId == "VALTAN_HIGH_JUMP" &&
+				event.strOwnerStageActionId ==
+					"valtan.attack.high-jump.airborne" &&
+				event.strHitId ==
+					"hit.valtan.high-jump.target-axe.01" &&
+				0u == event.iRepeatIndex &&
+				event.PinnedDefinitionRevision == volleyRevision &&
+				Write_Message(writer, event);
+		}
+		tests.Require(semanticPulseEvents,
+			"Emit one reliable semantic hit event per HIGH_JUMP axe pulse");
 		bool fixedAfterFirstPulse = firstPulsePoses.size() == liveObjects.size();
 		for (std::size_t index = 0u;
 			fixedAfterFirstPulse && index < liveObjects.size(); ++index)
@@ -12262,14 +12384,17 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					*volleyDefinition, &oneMoreVolley,
 					volleyRoom.m_GameplayCatalog, 1u, 999u, capacityStatus);
 			std::vector<S2C_COMBAT_OBJECT_SPAWNED> pendingAfterFailure;
+			std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT>
+				presentationAfterFailure;
 			std::vector<S2C_COMBAT_OBJECT_DESPAWNED> despawnedAfterFailure;
 			volleyRoom.m_CombatObjectRuntime.Drain_Lifecycle(
-				pendingAfterFailure, despawnedAfterFailure);
+				pendingAfterFailure, presentationAfterFailure,
+				despawnedAfterFailure);
 			tests.Require(
 				filledSnapshotCapacity &&
 				128u == volleyRoom.m_CombatObjectRuntime.Get_LiveObjects().size() &&
 				!acceptedOverSnapshot && rejectedTransaction.Objects.empty() &&
-				pendingAfterFailure.empty(),
+				pendingAfterFailure.empty() && presentationAfterFailure.empty(),
 				"Reject object 129 before allocation and emit no partial lifecycle edge");
 			*typedVolleyAction = originalVolleyAction;
 		}
@@ -13420,7 +13545,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.active\tTIMEOUT\tvaltan.test.spawn\n"
 				"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\tTIMEOUT\t-\n"
 				"BOSSCOMBATOBJECT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\tcombatobject.visual.valtan.test.v1\tVALTAN_TEST\tvaltan.test.spawn\tFIXED_AREA\tLOCKED_TARGET_UNTIL_FIRST_PULSE\tNONE\t0\t0\t0\t0\t1000\t1\n"
-				"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
+				"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\thit.valtan.test.01\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
 				"PATTERNSTAGEACTION\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\t0\tENTER\tSPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t1\t0\n"
 				"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 				"SKILL\t34120\tLANCE_MASTER\tQ\tlancemaster.skill.34120\t10000\t2266"
@@ -13508,7 +13633,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.active\tTIMEOUT\tvaltan.test.spawn\n"
 					"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\tTIMEOUT\t-\n"
 					"BOSSCOMBATOBJECT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\tcombatobject.visual.valtan.test.v1\tVALTAN_TEST\tvaltan.test.spawn\tFIXED_AREA\tLOCKED_TARGET_UNTIL_FIRST_PULSE\tNONE\t0\t0\t0\t0\t1000\t1\n"
-					"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
+					"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\thit.valtan.test.01\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
 					"PATTERNSTAGEACTION\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\t0\tENTER\tSPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t1\t0\n"
 					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 					"SKILL\t34020\tLANCE_MASTER\tSPACE\tlancemaster.skill.34020"
@@ -13591,7 +13716,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.active\tTIMEOUT\tvaltan.test.spawn\n"
 					"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\tTIMEOUT\t-\n"
 					"BOSSCOMBATOBJECT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\tcombatobject.visual.valtan.test.v1\tVALTAN_TEST\tvaltan.test.spawn\tFIXED_AREA\tLOCKED_TARGET_UNTIL_FIRST_PULSE\tNONE\t0\t0\t0\t0\t1000\t1\n"
-					"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
+					"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\thit.valtan.test.01\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
 					"PATTERNSTAGEACTION\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\t0\tENTER\tSPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t1\t0\n"
 					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 					"SKILL\t34020\tLANCE_MASTER\tSPACE\tlancemaster.skill.34020\t8000\t900\t0\t242\t0\t6\t0\t\tACTIVE\tLANCE_MASTER_LONG_SPEAR\tNONE\n"
@@ -13700,7 +13825,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.active\tTIMEOUT\tvaltan.test.spawn\n"
 			"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\tTIMEOUT\t-\n"
 			"BOSSCOMBATOBJECT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\tcombatobject.visual.valtan.test.v1\tVALTAN_TEST\tvaltan.test.spawn\tFIXED_AREA\tLOCKED_TARGET_UNTIL_FIRST_PULSE\tNONE\t0\t0\t0\t0\t1000\t1\n"
-			"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
+			"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\thit.valtan.test.01\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
 			"PATTERNSTAGEACTION\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\t0\tENTER\tSPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t1\t0\n";
 		const bool acceptedContactDelay =
 			loadWithPatternStageRows(acceptedContactDelayRows, {});
@@ -13729,7 +13854,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.active\tTIMEOUT\tvaltan.test.spawn\n"
 				"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\tTIMEOUT\t-\n"
 				"BOSSCOMBATOBJECT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\tcombatobject.visual.valtan.test.v1\tVALTAN_TEST\tvaltan.test.spawn\tFIXED_AREA\tLOCKED_TARGET_UNTIL_FIRST_PULSE\tNONE\t0\t0\t0\t0\t1000\t1\n"
-				"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
+				"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\thit.valtan.test.01\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
 				"PATTERNSTAGEACTION\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\t0\tENTER\tSPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t1\t0\n",
 				{}),
 			"Reject a hit delay at or beyond its stage duration");
@@ -13740,7 +13865,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.active\tTIMEOUT\tvaltan.test.spawn\n"
 				"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\tTIMEOUT\t-\n"
 				"BOSSCOMBATOBJECT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\tcombatobject.visual.valtan.test.v1\tVALTAN_TEST\tvaltan.test.spawn\tFIXED_AREA\tLOCKED_TARGET_UNTIL_FIRST_PULSE\tNONE\t0\t0\t0\t0\t1000\t1\n"
-				"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
+				"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\thit.valtan.test.01\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
 				"PATTERNSTAGEACTION\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\t0\tENTER\tSPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t1\t0\n",
 				{}),
 			"Reject a hit delay on a stage without a hit shape");
@@ -13751,7 +13876,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.active\tTIMEOUT\tvaltan.test.spawn\n"
 			"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\tTIMEOUT\t-\n"
 			"BOSSCOMBATOBJECT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\tcombatobject.visual.valtan.test.v1\tVALTAN_TEST\tvaltan.test.spawn\tFIXED_AREA\tLOCKED_TARGET_UNTIL_FIRST_PULSE\tNONE\t0\t0\t0\t0\t1000\t1\n"
-			"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
+			"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\thit.valtan.test.01\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
 			"PATTERNSTAGEACTION\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\t0\tENTER\tSPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t1\t0\n";
 		const std::vector<std::string> validExplicitHitOffsets{
 			"PATTERNSTAGEHITOFFSET\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.active\t0\t100",
@@ -13839,7 +13964,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.active\tTIMEOUT\tvaltan.test.spawn\n"
 					"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\tTIMEOUT\t-\n"
 					"BOSSCOMBATOBJECT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\tcombatobject.visual.valtan.test.v1\tVALTAN_TEST\tvaltan.test.spawn\tFIXED_AREA\tLOCKED_TARGET_UNTIL_FIRST_PULSE\tNONE\t0\t0\t0\t0\t1000\t1\n"
-					"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34010\t0\t0\t0\t0\n"
+					"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\thit.valtan.test.01\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34010\t0\t0\t0\t0\n"
 					"PATTERNSTAGEACTION\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\t0\tENTER\tSPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t1\t0\n"
 					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 					"SKILL\t34010\tLANCE_MASTER\tLMB\tlancemaster.skill.34010"
@@ -14398,19 +14523,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			raidRoom.m_PlayerIdByEntityId.emplace(entityId, playerId);
 		};
 
-		if (raidRoom.Is_Ready() && 4u == playerSpawns.size())
-		{
-			for (std::size_t index = 0; index < playerSpawns.size(); ++index)
-			{
-				addPlayer(
-					1001u + index,
-					static_cast<PLAYER_ID>(2001u + index),
-					static_cast<NET_ENTITY_ID>(3001u + index),
-					*playerSpawns[index]);
-			}
-		}
 		std::vector<std::shared_ptr<CClientSession>> registeredSessions;
-		for (SESSION_ID sessionId = 1001u; sessionId <= 1005u; ++sessionId)
+		for (SESSION_ID sessionId = 1001u; sessionId <= 1009u; ++sessionId)
 		{
 			auto session = std::make_shared<CClientSession>(
 				sessionId, INVALID_SOCKET,
@@ -14419,6 +14533,28 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			raidRoom.Handle_Register(session);
 			registeredSessions.push_back(std::move(session));
 		}
+		bool firstEightJoined = raidRoom.Is_Ready() &&
+			MAX_VALTAN_RAID_PLAYERS == playerSpawns.size();
+		for (std::size_t index = 0u;
+			firstEightJoined && index < MAX_VALTAN_RAID_PLAYERS; ++index)
+		{
+			C2S_ENTER_WORLD entry{};
+			entry.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+			entry.eWorldId = WORLD_ID::VALTAN_ARENA;
+			entry.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			entry.strNickName = "RaidFixture" + std::to_string(index + 1u);
+			firstEightJoined = raidRoom.Join(1001u + index, entry) &&
+				raidRoom.m_Players.size() == index + 1u;
+		}
+		const auto firstPlayerOwner =
+			raidRoom.m_PlayerIdBySessionId.find(1001u);
+		const PLAYER_ID firstRaidPlayerId =
+			raidRoom.m_PlayerIdBySessionId.end() == firstPlayerOwner ?
+				0u : firstPlayerOwner->second;
+		const auto firstPlayer = raidRoom.m_Players.find(firstRaidPlayerId);
+		const NET_ENTITY_ID firstRaidEntityId =
+			raidRoom.m_Players.end() == firstPlayer ?
+				0u : firstPlayer->second.iNetEntityId;
 		const PLAYER_ID allocatorBeforeFull = raidRoom.m_iNextPlayerId;
 		const NET_ENTITY_ID entityAllocatorBeforeFull = raidRoom.m_iNextNetEntityId;
 		const std::size_t playersBeforeFull = raidRoom.m_Players.size();
@@ -14426,47 +14562,49 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			raidRoom.m_PlayerIdBySessionId.size();
 		const std::size_t entityOwnersBeforeFull =
 			raidRoom.m_PlayerIdByEntityId.size();
-		C2S_ENTER_WORLD fifthEntry{};
-		fifthEntry.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
-		fifthEntry.eWorldId = WORLD_ID::VALTAN_ARENA;
-		fifthEntry.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
-		fifthEntry.strNickName = "FifthRaidFixture";
-		const bool fifthRejected = !raidRoom.Join(1005u, fifthEntry);
-		const CLIENT_SESSION_CLOSE_DIAGNOSTIC fifthDiagnostic =
+		C2S_ENTER_WORLD ninthEntry{};
+		ninthEntry.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+		ninthEntry.eWorldId = WORLD_ID::VALTAN_ARENA;
+		ninthEntry.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		ninthEntry.strNickName = "NinthRaidFixture";
+		const bool ninthRejected = !raidRoom.Join(1009u, ninthEntry);
+		const CLIENT_SESSION_CLOSE_DIAGNOSTIC ninthDiagnostic =
 			registeredSessions.back()->Get_CloseDiagnostic();
 		tests.Require(
-			raidRoom.Is_Ready() && 4u == playerSpawns.size() &&
+			firstEightJoined && raidRoom.Is_Ready() &&
+			MAX_VALTAN_RAID_PLAYERS == playerSpawns.size() &&
 			raidRoom.Is_PlayerAdmissionFull() &&
 			nullptr == raidRoom.Find_AvailablePlayerSpawn() &&
-			fifthRejected &&
+			ninthRejected &&
 			SESSION_DIAGNOSTIC_REASON::SERVER_EXPECTED_ROOM_FULL ==
-				fifthDiagnostic.eReason &&
+				ninthDiagnostic.eReason &&
 			std::string::npos !=
-				fifthDiagnostic.strContext.find("activePlayers=4") &&
+				ninthDiagnostic.strContext.find("activePlayers=8") &&
 			std::string::npos !=
-				fifthDiagnostic.strContext.find(
-					"registeredSessionsIncludingCandidate=5") &&
+				ninthDiagnostic.strContext.find(
+					"registeredSessionsIncludingCandidate=9") &&
 			std::string::npos !=
-				fifthDiagnostic.strContext.find("candidateSessionId=1005") &&
+				ninthDiagnostic.strContext.find("candidateSessionId=1009") &&
 			std::string::npos !=
-				fifthDiagnostic.strContext.find("candidateRegistered=true") &&
+				ninthDiagnostic.strContext.find("candidateRegistered=true") &&
 			std::string::npos !=
-				fifthDiagnostic.strContext.find("enabledPlayerSpawns=4") &&
+				ninthDiagnostic.strContext.find("enabledPlayerSpawns=8") &&
 			std::string::npos !=
-				fifthDiagnostic.strContext.find("sessionId=1001") &&
+				ninthDiagnostic.strContext.find("sessionId=1001") &&
 			std::string::npos !=
-				fifthDiagnostic.strContext.find("playerId=2001") &&
+				ninthDiagnostic.strContext.find(
+					"playerId=" + std::to_string(firstRaidPlayerId)) &&
 			std::string::npos !=
-				fifthDiagnostic.strContext.find("peer=unknown:0") &&
-			fifthDiagnostic.strContext.size() <= 1024u &&
+				ninthDiagnostic.strContext.find("peer=unknown:0") &&
+			ninthDiagnostic.strContext.size() <= 1024u &&
 			allocatorBeforeFull == raidRoom.m_iNextPlayerId &&
 			entityAllocatorBeforeFull == raidRoom.m_iNextNetEntityId &&
 			playersBeforeFull == raidRoom.m_Players.size() &&
 			sessionOwnersBeforeFull == raidRoom.m_PlayerIdBySessionId.size() &&
 			entityOwnersBeforeFull == raidRoom.m_PlayerIdByEntityId.size(),
-			"Reject a fifth Valtan admission as room full without mutating room ownership or allocators");
+			"Reject a ninth Valtan admission as room full without mutating room ownership or allocators");
 		registeredSessions.back()->Request_Close();
-		raidRoom.m_Sessions.erase(1005u);
+		raidRoom.m_Sessions.erase(1009u);
 
 		const std::string releasedSpawnId =
 			playerSpawns.size() < 2u ? std::string{} :
@@ -14476,14 +14614,32 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			raidRoom.Find_AvailablePlayerSpawn();
 		const bool releasedSlotAvailable = nullptr != releasedSpawn &&
 			releasedSpawn->strPlacementId == releasedSpawnId;
-		if (releasedSlotAvailable)
-		{
-			addPlayer(1010u, 2010u, 3010u, *releasedSpawn);
-		}
+		auto replacementSession = std::make_shared<CClientSession>(
+			1010u, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		replacementSession->m_isSendRunning.store(true);
+		raidRoom.Handle_Register(replacementSession);
+		registeredSessions.push_back(replacementSession);
+		C2S_ENTER_WORLD replacementEntry{};
+		replacementEntry.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+		replacementEntry.eWorldId = WORLD_ID::VALTAN_ARENA;
+		replacementEntry.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+		replacementEntry.strNickName = "ReplacementRaidFixture";
+		const bool replacementJoined = releasedSlotAvailable &&
+			raidRoom.Join(1010u, replacementEntry);
+		const auto replacementOwner =
+			raidRoom.m_PlayerIdBySessionId.find(1010u);
+		const auto replacementPlayer =
+			raidRoom.m_PlayerIdBySessionId.end() == replacementOwner ?
+				raidRoom.m_Players.end() :
+				raidRoom.m_Players.find(replacementOwner->second);
 		tests.Require(
-			releasedSlotAvailable && raidRoom.Is_PlayerAdmissionFull() &&
-			4u == raidRoom.m_Players.size(),
-			"Release a disconnected Valtan slot and admit a replacement into the same stable spawn");
+			replacementJoined &&
+			raidRoom.m_Players.end() != replacementPlayer &&
+			releasedSpawnId == replacementPlayer->second.strSpawnPlacementId &&
+			raidRoom.Is_PlayerAdmissionFull() &&
+			MAX_VALTAN_RAID_PLAYERS == raidRoom.m_Players.size(),
+			"Join eight Valtan players through the real admission path, reject the ninth, and admit a replacement into the released stable spawn");
 
 		const WORLD_BOOTSTRAP_PLACEMENT* bossTrigger =
 			raidRoom.Find_Placement("Stage_Boss");
@@ -14536,7 +14692,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		dynamicMonster.strSpawnGroupId = "spawn.valtan.stage01";
 		raidRoom.m_WorldEntities.push_back(std::move(dynamicMonster));
 		DAMAGE_EVENT damageEvent{};
-		damageEvent.iTargetNetEntityId = 3001u;
+		damageEvent.iTargetNetEntityId = firstRaidEntityId;
 		damageEvent.iAmount = 1u;
 		raidRoom.m_TickDamageEvents.push_back(damageEvent);
 		raidRoom.m_iServerTick = 777u;
@@ -16293,15 +16449,28 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		play.iRequestSequence = 4u;
 		play.eOperation = VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR;
 		play.iTargetHealthBar = 30u;
+		const VALTAN_AUDITION_RESULT playResult =
+			room.Evaluate_ValtanAudition(AUDITION_SESSION, play, reportedBar);
+		SERVER_WORLD_ENTITY* playBoss = room.Find_AuditionBoss();
+		const bool playContract = VALTAN_AUDITION_RESULT::QUEUED == playResult &&
+			30u == reportedBar && nullptr != playBoss &&
+			31u == (nullptr == playBoss ?
+				0u : playBoss->iLastEvaluatedHealthBar) &&
+			112500u == (nullptr == playBoss ? 0u : playBoss->iCurrentHp);
+		if (!playContract)
+		{
+			std::cerr << "[DIAGNOSTIC] Valtan one-click result=" <<
+				static_cast<std::uint32_t>(playResult) <<
+				" reportedBar=" << reportedBar <<
+				" boss=" << (nullptr != playBoss) <<
+				" lastBar=" << (nullptr == playBoss ?
+					0u : playBoss->iLastEvaluatedHealthBar) <<
+				" hp=" << (nullptr == playBoss ? 0u : playBoss->iCurrentHp) <<
+				" status=" << room.m_strStatus << '\n';
+		}
+		auditionBoss = playBoss;
 		tests.Require(
-			VALTAN_AUDITION_RESULT::QUEUED ==
-				room.Evaluate_ValtanAudition(
-					AUDITION_SESSION, play, reportedBar) &&
-			30u == reportedBar && nullptr != auditionBoss &&
-			31u == (nullptr == auditionBoss ?
-				0u : auditionBoss->iLastEvaluatedHealthBar) &&
-			11250u == (nullptr == auditionBoss ?
-				0u : auditionBoss->iCurrentHp),
+			playContract,
 			"Prime and cross one authored bar atomically for one-click audition");
 
 		arm.iRequestSequence = 5u;
@@ -16311,7 +16480,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			VALTAN_AUDITION_RESULT::ARMED == armResult &&
 			110u == reportedBar &&
 			nullptr != auditionBoss &&
-			41250u == (nullptr == auditionBoss ? 0u : auditionBoss->iCurrentHp) &&
+			412500u == (nullptr == auditionBoss ? 0u : auditionBoss->iCurrentHp) &&
 			110u == (nullptr == auditionBoss ?
 				0u : auditionBoss->iLastEvaluatedHealthBar),
 			"Arm the audition one bar above the target without crossing it");
@@ -16320,7 +16489,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			VALTAN_AUDITION_RESULT::DUPLICATE_IGNORED ==
 				room.Evaluate_ValtanAudition(AUDITION_SESSION, arm, reportedBar) &&
 			nullptr != auditionBoss &&
-			41250u == (nullptr == auditionBoss ? 0u : auditionBoss->iCurrentHp),
+			412500u == (nullptr == auditionBoss ? 0u : auditionBoss->iCurrentHp),
 			"Answer a resent Valtan audition sequence without moving the boss");
 
 		cross.iRequestSequence = 6u;
@@ -16330,7 +16499,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			VALTAN_AUDITION_RESULT::QUEUED == crossResult &&
 			TARGET_BAR == reportedBar &&
 			nullptr != auditionBoss &&
-			40875u == (nullptr == auditionBoss ? 0u : auditionBoss->iCurrentHp) &&
+			408750u == (nullptr == auditionBoss ? 0u : auditionBoss->iCurrentHp) &&
 			110u == (nullptr == auditionBoss ?
 				0u : auditionBoss->iLastEvaluatedHealthBar) &&
 			(nullptr == auditionBoss || auditionBoss->PendingPatternIds.empty()),
@@ -16395,7 +16564,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			auditionBoss->strPatternId.empty() &&
 			auditionBoss->TriggeredPatternIds.empty() &&
 			110u == auditionBoss->iLastEvaluatedHealthBar &&
-			40875u == auditionBoss->iCurrentHp,
+			408750u == auditionBoss->iCurrentHp,
 			"Reset a running audition and queue 109 again from one repeatable Play request");
 
 		C2S_VALTAN_AUDITION_REQUEST wallAttack{};
@@ -16517,6 +16686,83 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			acceptedOpenArena && 105u == openArenaStates.size() &&
 			99u == removedWallCount && 6u == intactFloorCount,
 			"Remove every wall for the open-arena view while all six floor sectors stay intact");
+
+		struct ARENA_PRESET_EXPECTATION final
+		{
+			VALTAN_ARENA_PRESET ePreset = VALTAN_ARENA_PRESET::END;
+			std::size_t iDespawned = 0u;
+			std::size_t iIntactFloor84 = 0u;
+			std::size_t iIntactFloor30 = 0u;
+			const char* pContract = nullptr;
+		};
+		const std::array<ARENA_PRESET_EXPECTATION, 5u> presetExpectations{
+			ARENA_PRESET_EXPECTATION{
+				VALTAN_ARENA_PRESET::FRESH, 0u, 3u, 3u,
+				"Reset the Server arena preset to all walls and floor groups intact" },
+			ARENA_PRESET_EXPECTATION{
+				VALTAN_ARENA_PRESET::CIRCLE_WALLS_GONE, 99u, 3u, 3u,
+				"Stage the circular Server arena with every wall gone and every floor group intact" },
+			ARENA_PRESET_EXPECTATION{
+				VALTAN_ARENA_PRESET::THREE_OCLOCK_BROKEN, 102u, 0u, 3u,
+				"Stage only the 3 o'clock floor break after opening the Server arena" },
+			ARENA_PRESET_EXPECTATION{
+				VALTAN_ARENA_PRESET::NINE_OCLOCK_BROKEN, 102u, 3u, 0u,
+				"Stage only the 9 o'clock floor break without requiring the 3 o'clock chronology" },
+			ARENA_PRESET_EXPECTATION{
+				VALTAN_ARENA_PRESET::BOTH_SIDES_BROKEN, 105u, 0u, 0u,
+				"Stage both independent floor breaks through one Server-authoritative preset" }
+		};
+		for (std::size_t index = 0u;
+			index < presetExpectations.size(); ++index)
+		{
+			const ARENA_PRESET_EXPECTATION& expected =
+				presetExpectations[index];
+			C2S_VALTAN_AUDITION_REQUEST presetRequest{};
+			presetRequest.iRequestSequence =
+				12u + static_cast<std::uint32_t>(index);
+			presetRequest.eOperation =
+				VALTAN_AUDITION_OPERATION::SET_ARENA_PRESET;
+			presetRequest.iTargetHealthBar =
+				static_cast<std::uint32_t>(expected.ePreset);
+			const bool acceptedPreset =
+				VALTAN_AUDITION_RESULT::QUEUED ==
+					room.Evaluate_ValtanAudition(
+						AUDITION_SESSION, presetRequest, reportedBar);
+			for (std::uint32_t tick = 0u; tick < 9u; ++tick)
+				room.Tick(1.f / 30.f);
+
+			std::size_t despawned = 0u;
+			std::size_t intactFloor84 = 0u;
+			std::size_t intactFloor30 = 0u;
+			const std::vector<WORLD_DESTRUCTION_GROUP_STATE> states =
+				room.m_WorldDestructionRuntime.Get_GroupStates();
+			for (const WORLD_DESTRUCTION_GROUP_STATE& state : states)
+			{
+				if (WORLD_DESTRUCTION_STATE::DESPAWNED == state.eState)
+					++despawned;
+				if (0u == state.strGroupId.rfind(
+						"destroyable.group.valtan.floor84.", 0u) &&
+					WORLD_DESTRUCTION_STATE::INTACT == state.eState)
+				{
+					++intactFloor84;
+				}
+				if (0u == state.strGroupId.rfind(
+						"destroyable.group.valtan.floor30.", 0u) &&
+					WORLD_DESTRUCTION_STATE::INTACT == state.eState)
+				{
+					++intactFloor30;
+				}
+			}
+			tests.Require(
+				acceptedPreset && 105u == states.size() &&
+				expected.iDespawned == despawned &&
+				expected.iIntactFloor84 == intactFloor84 &&
+				expected.iIntactFloor30 == intactFloor30 &&
+				nullptr != auditionBoss &&
+				auditionBoss->bAutomaticPatternSequenceAuditionHold &&
+				auditionBoss->PendingPatternIds.empty(),
+				expected.pContract);
+		}
 #endif
 
 		room.m_Players.clear();
@@ -19872,15 +20118,13 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		only thing that can open it. */
 		constexpr float FALL_RAIL_X = 155.25f;
 		constexpr float FALL_RAIL_Z = -107.25f;
-		/* The same-level projection reaches at most twenty cells of 0.5 m, so a
-		revive that steps out of the hole cannot land further than this away no
-		matter how the floor is repainted. The arena entry spawn is over a hundred
-		metres away, which is exactly the regression this bound is here to catch. */
-		constexpr float ARENA_REVIVE_MAX_METERS = 10.5f;
 		/* The arena core the audition bait stands on. It belongs to no collapse
-		region at all and has to stay solid through both stages. */
+		region at all and has to stay solid through both stages. Product revive
+		uses the boss.valtan.center placement, whose navigation projection remains
+		within this small core neighborhood rather than the remote entry spawn. */
 		constexpr float ARENA_CORE_X = 154.296f;
 		constexpr float ARENA_CORE_Z = -125.219f;
+		constexpr float ARENA_CENTER_REVIVE_MAX_METERS = 5.f;
 		const std::string railConditionId =
 			"condition.valtan.floor30.rail.7000000000000000001.collapsed";
 
@@ -19992,13 +20236,15 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 
 		/* The arena progression triggers are room-wide triggerOnce, so a revive
 		that returns to the entry spawn leaves the player outside a boss fight no
-		surviving trigger can let them back into. */
-		const float reviveDeltaX = revived.fPositionX - FALL_RAIL_X;
-		const float reviveDeltaZ = revived.fPositionZ - FALL_RAIL_Z;
+		surviving trigger can let them back into. The authoritative center is also
+		far enough from the collapsed rail that the next tick cannot re-enter FALLING. */
+		const float reviveDeltaX = revived.fPositionX - ARENA_CORE_X;
+		const float reviveDeltaZ = revived.fPositionZ - ARENA_CORE_Z;
 		tests.Require(
 			reviveDeltaX * reviveDeltaX + reviveDeltaZ * reviveDeltaZ <=
-				ARENA_REVIVE_MAX_METERS * ARENA_REVIVE_MAX_METERS,
-			"Revive a fall death beside the hole instead of at the arena entry spawn");
+				ARENA_CENTER_REVIVE_MAX_METERS *
+				ARENA_CENTER_REVIVE_MAX_METERS,
+			"Revive a fall death at the safe arena center instead of the entry spawn or void edge");
 
 		room.Tick(1.f / 30.f);
 		tests.Require(

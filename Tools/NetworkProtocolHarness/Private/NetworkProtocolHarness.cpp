@@ -1284,6 +1284,96 @@ namespace
 		CPacketWriter invalidDespawnWriter;
 		testRunner.Require(!Write_Message(invalidDespawnWriter, invalidDespawn),
 			"Reject Combat Object Despawn Without ID");
+
+		testRunner.Require(
+			static_cast<std::uint16_t>(
+				PACKET_TYPE::S2C_COMBAT_OBJECT_PRESENTATION_EVENT) ==
+				static_cast<std::uint16_t>(
+					PACKET_TYPE::C2S_RETURN_TO_BERN) + 1u &&
+			Is_Known_Packet_Type(
+				PACKET_TYPE::S2C_COMBAT_OBJECT_PRESENTATION_EVENT),
+			"Combat Object Presentation Packet Identity Is Append Only And Known");
+		S2C_COMBAT_OBJECT_PRESENTATION_EVENT presentation{};
+		presentation.iEventSequence = 17u;
+		presentation.iServerTick = 126u;
+		presentation.iCombatObjectId = source.iCombatObjectId;
+		presentation.iSourceNetEntityId = source.iSourceNetEntityId;
+		presentation.eKind =
+			COMBAT_OBJECT_PRESENTATION_EVENT_KIND::HIT_PULSE;
+		presentation.strCombatObjectArchetypeId =
+			source.strCombatObjectArchetypeId;
+		presentation.strOwnerPatternId = "VALTAN_HIGH_JUMP";
+		presentation.strOwnerStageActionId =
+			"valtan.attack.high-jump.airborne";
+		presentation.strHitId = "hit.valtan.high-jump.target-axe.01";
+		presentation.iRepeatIndex = 0u;
+		presentation.fPositionX = source.fPositionX;
+		presentation.fPositionY = source.fPositionY;
+		presentation.fPositionZ = source.fPositionZ;
+		presentation.fYawDegrees = source.fYawDegrees;
+		presentation.PinnedDefinitionRevision =
+			source.PinnedDefinitionRevision;
+		CPacketWriter presentationWriter;
+		const bool wrotePresentation =
+			Write_Message(presentationWriter, presentation);
+		CPacketReader presentationReader{
+			presentationWriter.Get_Buffer() };
+		S2C_COMBAT_OBJECT_PRESENTATION_EVENT decodedPresentation{};
+		testRunner.Require(
+			wrotePresentation &&
+			Read_Message(presentationReader, decodedPresentation) &&
+			0u == presentationReader.Get_RemainingSize() &&
+			decodedPresentation.iEventSequence ==
+				presentation.iEventSequence &&
+			decodedPresentation.iServerTick == presentation.iServerTick &&
+			decodedPresentation.iCombatObjectId ==
+				presentation.iCombatObjectId &&
+			decodedPresentation.iSourceNetEntityId ==
+				presentation.iSourceNetEntityId &&
+			decodedPresentation.eKind == presentation.eKind &&
+			decodedPresentation.strCombatObjectArchetypeId ==
+				presentation.strCombatObjectArchetypeId &&
+			decodedPresentation.strOwnerPatternId ==
+				presentation.strOwnerPatternId &&
+			decodedPresentation.strOwnerStageActionId ==
+				presentation.strOwnerStageActionId &&
+			decodedPresentation.strHitId == presentation.strHitId &&
+			decodedPresentation.iRepeatIndex == presentation.iRepeatIndex &&
+			decodedPresentation.fPositionX == presentation.fPositionX &&
+			decodedPresentation.fPositionY == presentation.fPositionY &&
+			decodedPresentation.fPositionZ == presentation.fPositionZ &&
+			decodedPresentation.fYawDegrees == presentation.fYawDegrees &&
+			decodedPresentation.PinnedDefinitionRevision ==
+				presentation.PinnedDefinitionRevision,
+			"Combat Object Presentation Event Round Trip");
+
+		S2C_COMBAT_OBJECT_PRESENTATION_EVENT invalidPresentation = presentation;
+		invalidPresentation.strHitId = "../invalid";
+		CPacketWriter invalidPresentationWriter;
+		testRunner.Require(
+			!Write_Message(invalidPresentationWriter, invalidPresentation) &&
+			invalidPresentationWriter.Get_Buffer().empty(),
+			"Reject Unstable Combat Object Presentation Hit ID Before Write");
+		invalidPresentation = presentation;
+		invalidPresentation.eKind =
+			COMBAT_OBJECT_PRESENTATION_EVENT_KIND::END;
+		CPacketWriter invalidPresentationKindWriter;
+		testRunner.Require(
+			!Write_Message(invalidPresentationKindWriter, invalidPresentation),
+			"Reject Unknown Combat Object Presentation Kind");
+
+		std::vector<std::uint8_t> truncatedPresentation =
+			presentationWriter.Get_Buffer();
+		truncatedPresentation.pop_back();
+		CPacketReader truncatedPresentationReader{ truncatedPresentation };
+		S2C_COMBAT_OBJECT_PRESENTATION_EVENT unchangedPresentation{};
+		unchangedPresentation.iEventSequence = 999u;
+		unchangedPresentation.strHitId = "sentinel";
+		testRunner.Require(
+			!Read_Message(truncatedPresentationReader, unchangedPresentation) &&
+			999u == unchangedPresentation.iEventSequence &&
+			"sentinel" == unchangedPresentation.strHitId,
+			"Reject Truncated Combat Object Presentation Event Atomically");
 	}
 	//유효하지 않은 입력에 대한 테스트 
 	void Test_InvalidEnterAcceptedPayloads(
@@ -2090,8 +2180,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(45u == NETWORK_PROTOCOL_VERSION,
-				"Return To Bern, Party, Next Pattern And Boss Owner Use Protocol 45");
+			testRunner.Require(46u == NETWORK_PROTOCOL_VERSION,
+				"Combat Object Presentation And Existing Contracts Use Protocol 46");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -2546,6 +2636,55 @@ namespace
 			!decoded.Players[1].hasSkillTarget &&
 			!decoded.Players[1].isCombatReady,
 			"World Snapshot Players Round Trip");
+
+		/* A four-human/four-server-bot raid still reaches each real Client as
+		   eight replicated combat actors. This is deliberately a wire-capacity
+		   contract only: bots do not open sockets and their command authority is
+		   owned by the Server gameplay contract. */
+		{
+			constexpr std::size_t RAID_PARTICIPANT_COUNT = 8u;
+			S2C_WORLD_SNAPSHOT eightParticipants = source;
+			while (eightParticipants.Players.size() < RAID_PARTICIPANT_COUNT)
+			{
+				PLAYER_SNAPSHOT participant = second;
+				participant.iNetEntityId = static_cast<NET_ENTITY_ID>(
+					100u + eightParticipants.Players.size());
+				eightParticipants.Players.push_back(participant);
+			}
+
+			std::vector<std::uint8_t> eightParticipantPayload;
+			S2C_WORLD_SNAPSHOT decodedEightParticipants{};
+			bool roundTripped = Build_WorldSnapshotPayload(
+				eightParticipants, eightParticipantPayload);
+			if (roundTripped)
+			{
+				CPacketReader eightParticipantReader{ eightParticipantPayload };
+				roundTripped = Read_Message(
+					eightParticipantReader, decodedEightParticipants) &&
+					0u == eightParticipantReader.Get_RemainingSize();
+			}
+			if (roundTripped &&
+				RAID_PARTICIPANT_COUNT == decodedEightParticipants.Players.size())
+			{
+				for (std::size_t index = 0u;
+					index < RAID_PARTICIPANT_COUNT; ++index)
+				{
+					if (decodedEightParticipants.Players[index].iNetEntityId !=
+						static_cast<NET_ENTITY_ID>(100u + index))
+					{
+						roundTripped = false;
+						break;
+					}
+				}
+			}
+			else
+			{
+				roundTripped = false;
+			}
+			testRunner.Require(
+				roundTripped,
+				"Eight Raid Participant World Snapshot Round Trip");
+		}
 
 		testRunner.Require(
 			decoded.Entities[0].iNetEntityId == 900 &&
@@ -3626,6 +3765,83 @@ namespace
 		{
 			/* Timeline PLAY addresses one authored chronological row by a stable
 			non-zero command ID. STOP names the active playback itself, not a row. */
+			{
+				/* Arena environment buttons carry one typed preset instead of
+				   overloading a health bar or sending local visibility mutations. */
+				const std::array<VALTAN_ARENA_PRESET, 5u> presets{
+					VALTAN_ARENA_PRESET::FRESH,
+					VALTAN_ARENA_PRESET::CIRCLE_WALLS_GONE,
+					VALTAN_ARENA_PRESET::THREE_OCLOCK_BROKEN,
+					VALTAN_ARENA_PRESET::NINE_OCLOCK_BROKEN,
+					VALTAN_ARENA_PRESET::BOTH_SIDES_BROKEN };
+				for (std::size_t index = 0u; index < presets.size(); ++index)
+				{
+					C2S_VALTAN_AUDITION_REQUEST presetRequest{};
+					presetRequest.iRequestSequence =
+						40u + static_cast<std::uint32_t>(index);
+					presetRequest.eOperation =
+						VALTAN_AUDITION_OPERATION::SET_ARENA_PRESET;
+					presetRequest.iTargetHealthBar =
+						static_cast<std::uint32_t>(presets[index]);
+					CPacketWriter presetWriter;
+					C2S_VALTAN_AUDITION_REQUEST decodedPreset{};
+					const bool wrotePreset =
+						Write_Message(presetWriter, presetRequest);
+					CPacketReader presetReader{ presetWriter.Get_Buffer() };
+					testRunner.Require(
+						wrotePreset &&
+						Read_Message(presetReader, decodedPreset) &&
+						0u == presetReader.Get_RemainingSize() &&
+						decodedPreset.eOperation == presetRequest.eOperation &&
+						decodedPreset.iTargetHealthBar ==
+							presetRequest.iTargetHealthBar,
+						"Valtan Arena Preset Round Trips Its Typed Identity");
+				}
+
+				for (const std::uint32_t invalidPreset : {
+					0u,
+					static_cast<std::uint32_t>(VALTAN_ARENA_PRESET::END) })
+				{
+					C2S_VALTAN_AUDITION_REQUEST invalidPresetRequest{};
+					invalidPresetRequest.iRequestSequence = 49u;
+					invalidPresetRequest.eOperation =
+						VALTAN_AUDITION_OPERATION::SET_ARENA_PRESET;
+					invalidPresetRequest.iTargetHealthBar = invalidPreset;
+					CPacketWriter invalidPresetWriter;
+					testRunner.Require(
+						!Write_Message(invalidPresetWriter, invalidPresetRequest),
+						"Reject An Unknown Valtan Arena Preset Identity");
+				}
+
+				C2S_VALTAN_AUDITION_REQUEST validPreset{};
+				validPreset.iRequestSequence = 50u;
+				validPreset.eOperation =
+					VALTAN_AUDITION_OPERATION::SET_ARENA_PRESET;
+				validPreset.iTargetHealthBar = static_cast<std::uint32_t>(
+					VALTAN_ARENA_PRESET::FRESH);
+				CPacketWriter validPresetWriter;
+				(void)Write_Message(validPresetWriter, validPreset);
+				std::vector<std::uint8_t> malformedPreset =
+					validPresetWriter.Get_Buffer();
+				malformedPreset[5] = 0u;
+				malformedPreset[6] = 0u;
+				malformedPreset[7] = 0u;
+				malformedPreset[8] = 0u;
+				CPacketReader malformedPresetReader{ malformedPreset };
+				C2S_VALTAN_AUDITION_REQUEST unchangedPreset{};
+				unchangedPreset.iRequestSequence = 777u;
+				unchangedPreset.eOperation =
+					VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE;
+				unchangedPreset.iTargetHealthBar = 159u;
+				testRunner.Require(
+					!Read_Message(malformedPresetReader, unchangedPreset) &&
+					777u == unchangedPreset.iRequestSequence &&
+					VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE ==
+						unchangedPreset.eOperation &&
+					159u == unchangedPreset.iTargetHealthBar,
+					"Reject An Invalid Arena Preset Without Mutating Destination");
+			}
+
 			testRunner.Require(
 				8u == static_cast<std::uint8_t>(
 					VALTAN_AUDITION_OPERATION::PLAY_TIMELINE_ROW) &&
@@ -3636,7 +3852,9 @@ namespace
 				11u == static_cast<std::uint8_t>(
 					VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID) &&
 				12u == static_cast<std::uint8_t>(
-					VALTAN_AUDITION_OPERATION::START_FIGHT_PAGE),
+					VALTAN_AUDITION_OPERATION::START_FIGHT_PAGE) &&
+				16u == static_cast<std::uint8_t>(
+					VALTAN_AUDITION_OPERATION::SET_ARENA_PRESET),
 				"Valtan Timeline Operations Preserve Existing Wire Ordinals");
 
 			C2S_VALTAN_AUDITION_REQUEST timelinePlay{};
@@ -4553,8 +4771,8 @@ namespace
 		}
 
 		testRunner.Require(
-			45u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Protocol Version 45");
+			46u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Protocol Version 46");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -4581,8 +4799,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			45u == NETWORK_PROTOCOL_VERSION,
-			"Valtan Pattern Flow, Next, Boss Owner And Return Contract Use Protocol 45");
+			46u == NETWORK_PROTOCOL_VERSION,
+			"Valtan Presentation And Existing Hot Reload Contracts Use Protocol 46");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =

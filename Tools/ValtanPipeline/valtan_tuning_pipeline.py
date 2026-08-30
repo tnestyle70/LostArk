@@ -5008,6 +5008,7 @@ def _compile_combat_products(
             flat = _flat_from_shape(hit["shape"])
             flat.update(
                 {
+                    "hitId": hit["hitId"],
                     "trigger": hit["trigger"]["kind"],
                     "atMs": hit["trigger"].get("atMs", 0),
                     "repeatCount": hit["repeat"]["count"],

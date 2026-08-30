@@ -1,0 +1,14 @@
+{
+  "schema": "lostark.valtan-combat-object-sound-cues",
+  "formatVersion": 1,
+  "ownerArchetypeId": "BOSS_VALTAN",
+  "cues": [
+    {
+      "bindingId": "cue.sound.valtan.combatobject.high-jump.target-axe.hit.01",
+      "combatObjectArchetypeId": "combatobject.valtan.high-jump.target-axe",
+      "hitId": "hit.valtan.high-jump.target-axe.01",
+      "soundBank": "S_Mob_G_Voltan2",
+      "soundEvent": "G_Voltan2_Attack09_ProjExp1"
+    }
+  ]
+}

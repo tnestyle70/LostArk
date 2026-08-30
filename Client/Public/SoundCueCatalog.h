@@ -27,6 +27,10 @@ public:
 	static const std::vector<std::string>& Find_Variants(
 		const std::string& strClassName,
 		const std::string& strEventName);
+	/* Sorted copy for authoring UI. Runtime lookup remains Find_Variants;
+	   callers never retain references into the mutable load cache. */
+	static std::vector<std::string> Collect_EventNames(
+		const std::string& strClassName);
 
 private:
 	static std::unordered_map<std::string,

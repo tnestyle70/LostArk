@@ -2,7 +2,7 @@
     "schema":  "lostark.world-gameplay",
     "formatVersion":  6,
     "areaId":  "LV_LUT_HEARTRB_ED",
-    "revision":  568,
+    "revision":  570,
     "placements":  [
                        {
                            "placementId":  "collision.valtan.wallgroup.3705102.9335938568718910930",
@@ -1508,6 +1508,58 @@
                                              149.25,
                                              22.96,
                                              -117.25
+                                         ],
+                           "yawDegrees":  120,
+                           "enabled":  true
+                       },
+                       {
+                           "placementId":  "player_5",
+                           "kind":  "playerSpawn",
+                           "archetypeId":  null,
+                           "encounterId":  null,
+                           "position":  [
+                                             149.25,
+                                             23.0301952,
+                                             -118.25
+                                         ],
+                           "yawDegrees":  120,
+                           "enabled":  true
+                       },
+                       {
+                           "placementId":  "player_6",
+                           "kind":  "playerSpawn",
+                           "archetypeId":  null,
+                           "encounterId":  null,
+                           "position":  [
+                                             147.25,
+                                             23.0337677,
+                                             -116.75
+                                         ],
+                           "yawDegrees":  120,
+                           "enabled":  true
+                       },
+                       {
+                           "placementId":  "player_7",
+                           "kind":  "playerSpawn",
+                           "archetypeId":  null,
+                           "encounterId":  null,
+                           "position":  [
+                                             148.25,
+                                             23.0273571,
+                                             -119.25
+                                         ],
+                           "yawDegrees":  120,
+                           "enabled":  true
+                       },
+                       {
+                           "placementId":  "player_8",
+                           "kind":  "playerSpawn",
+                           "archetypeId":  null,
+                           "encounterId":  null,
+                           "position":  [
+                                             150.25,
+                                             23.0904732,
+                                             -117.75
                                          ],
                            "yawDegrees":  120,
                            "enabled":  true
