@@ -1297,6 +1297,9 @@
     <None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectcues.json">
       <Filter>96.DataFiles\Animation\Authored\Valtan</Filter>
     </None>
+	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patternsoundcues.json">
+	  <Filter>96.DataFiles\Animation\Authored\Valtan</Filter>
+	</None>
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.combatobjectsoundcues.json">
 	  <Filter>96.DataFiles\Animation\Authored\Valtan</Filter>
 	</None>

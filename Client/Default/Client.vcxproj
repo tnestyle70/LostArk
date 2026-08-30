@@ -390,6 +390,7 @@
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.animevents" />
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.skillbindings.json" />
     <None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectcues.json" />
+	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patternsoundcues.json" />
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.combatobjectsoundcues.json" />
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectv1aliases.json" />
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patternpreview.json" />
