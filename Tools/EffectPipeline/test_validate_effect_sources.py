@@ -368,11 +368,111 @@ class EffectSourceValidatorTests(unittest.TestCase):
             "param()\n", encoding="utf-8"
         )
 
+    def _write_valtan_draft(self, bindings: list[dict[str, object]]) -> None:
+        self._write_json(
+            self.root / MODULE.VALTAN_DRAFT_PATH,
+            {
+                "schema": "lostark.valtan-pattern-authoring-effects",
+                "formatVersion": 1,
+                "bossArchetypeId": "BOSS_VALTAN",
+                "bindings": bindings,
+            },
+        )
+
+    def _write_runtime_reachability_contract(self, effect_id: str) -> None:
+        for relative in MODULE.PLAYER_EFFECT_EVENT_PATHS:
+            path = self.root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                f'"clip" EFFECT startms=0 payload="{effect_id}" effectref=asset\n',
+                encoding="utf-8",
+            )
+        self._write_json(
+            self.root / MODULE.VALTAN_CUE_PATH,
+            {
+                "schema": "lostark.valtan-pattern-effect-cues",
+                "formatVersion": 4,
+                "ownerArchetypeId": "BOSS_VALTAN",
+                "cues": [],
+            },
+        )
+        self._write_json(
+            self.root / MODULE.VALTAN_BOSS_CATALOG_PATH,
+            {
+                "schema": "lostark.boss-catalog",
+                "formatVersion": 5,
+                "bosses": [
+                    {"archetypeId": "BOSS_VALTAN", "combatObjectVisuals": []}
+                ],
+            },
+        )
+        self._write_json(
+            self.root / MODULE.VALTAN_V1_ALIAS_PATH,
+            {
+                "schema": "lostark.valtan-pattern-effect-v1-aliases",
+                "formatVersion": 1,
+                "ownerArchetypeId": "BOSS_VALTAN",
+                "aliases": [],
+            },
+        )
+
     def test_positive_is_read_only_and_reports_unbound_references(self) -> None:
         self._write_source("effect.reference.baseline")
         report = MODULE.validate_repository(self.root)
         self.assertEqual(report.direct_source_count, 1)
         self.assertEqual(report.unbound_reference_count, 1)
+
+    def test_empty_draft_contract_rejects_orphaned_authored_source(self) -> None:
+        self._write_valtan_draft([])
+        self._write_source("effect.test.orphan")
+        with self.assertRaisesRegex(MODULE.ContractError, "no Product or draft owner"):
+            MODULE.validate_repository(self.root)
+
+    def test_declared_draft_source_is_accepted(self) -> None:
+        draft_id = "effect.test.draft"
+        self._write_source(draft_id)
+        self._write_valtan_draft(
+            [
+                {
+                    "patternId": "VALTAN_TEST_DRAFT",
+                    "effectAssetId": draft_id,
+                    "authoringPath": f"Effects/Authored/{draft_id}.effect.json",
+                    "state": "DRAFT_ATTACHED",
+                }
+            ]
+        )
+        report = MODULE.validate_repository(self.root)
+        self.assertEqual(report.unbound_reference_count, 1)
+
+    def test_player_skill_effect_must_resolve_to_product_catalog(self) -> None:
+        self._write_json(
+            self.root / MODULE.PLAYER_SKILLS_PATH,
+            {"skills": [{"effectId": "effect.test.retired"}]},
+        )
+        with self.assertRaisesRegex(MODULE.ContractError, "PlayerSkills Effect references"):
+            MODULE.validate_repository(self.root)
+
+    def test_product_catalog_must_equal_runtime_reachability_set(self) -> None:
+        self._write_runtime_reachability_contract(self.effect_id)
+        self._write_valtan_draft([])
+        self.assertEqual(MODULE.validate_repository(self.root).direct_source_count, 1)
+
+        unused_id = "effect.test.unused"
+        unused_row = {
+            "effectAssetId": unused_id,
+            "payloadKind": MODULE.DIRECT_KIND,
+            "authoringPath": f"Effects/Authored/{unused_id}.effect.json",
+        }
+        self._write_source(unused_id)
+        self._write_catalog([self.row, unused_row])
+        with self.assertRaisesRegex(MODULE.ContractError, "no runtime consumer"):
+            MODULE.validate_repository(self.root)
+
+    def test_runtime_effect_reference_must_resolve_to_product_catalog(self) -> None:
+        self._write_runtime_reachability_contract("effect.test.missing")
+        self._write_valtan_draft([])
+        with self.assertRaisesRegex(MODULE.ContractError, "missing from catalog"):
+            MODULE.validate_repository(self.root)
 
     def test_duplicate_id_is_rejected(self) -> None:
         self._write_catalog([self.row, dict(self.row)])
@@ -451,6 +551,22 @@ class EffectSourceValidatorTests(unittest.TestCase):
         self._set_source_resource("Effect/Test/missing.dds")
         with self.assertRaisesRegex(MODULE.ContractError, "resource files are missing"):
             MODULE.validate_repository(self.root)
+
+    def test_external_runtime_resource_root_supports_lightweight_worktree(self) -> None:
+        resource_id = "Effect/Test/shared.dds"
+        self._set_source_resource(resource_id)
+        with tempfile.TemporaryDirectory() as external_directory:
+            external_root = Path(external_directory)
+            resource_path = external_root / Path(resource_id)
+            resource_path.parent.mkdir(parents=True)
+            resource_path.write_bytes(b"DDS shared-worktree-resource")
+            report = MODULE.validate_repository(
+                self.root,
+                resource_root=external_root,
+                allow_local_resources=True,
+            )
+        self.assertEqual(report.resource_file_count, 1)
+        self.assertGreater(report.resource_bytes, 4)
 
     def test_unsafe_runtime_resource_id_is_rejected(self) -> None:
         self._set_source_resource("../outside.dds")

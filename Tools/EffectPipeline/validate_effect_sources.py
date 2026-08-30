@@ -71,6 +71,22 @@ CARRIER_KEYS = {
         "edgeLane",
     ),
 }
+PLAYER_EFFECT_EVENT_PATHS = (
+    "Data/Animation/Authored/Artist/Artist.animevents",
+    "Data/Animation/Authored/DimensionMaster/DimensionMaster.animevents",
+    "Data/Animation/Authored/LanceMaster/LanceMaster.animevents",
+    "Data/Animation/Authored/Warlord/Warlord.animevents",
+)
+VALTAN_CUE_PATH = "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
+VALTAN_V1_ALIAS_PATH = (
+    "Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json"
+)
+VALTAN_BOSS_CATALOG_PATH = "Data/Actors/BossCatalog.json"
+PLAYER_SKILLS_PATH = "Data/Balance/PlayerSkills.json"
+VALTAN_DRAFT_PATH = "Data/Effects/ValtanPatternAuthoringEffects.json"
+EFFECT_ASSET_PAYLOAD = re.compile(
+    r'\bpayload="([^"]+)"[^\r\n]*\beffectref=asset\b'
+)
 
 
 class ContractError(RuntimeError):
@@ -347,9 +363,17 @@ def _parse_lfs_pointer(payload: bytes, path: str) -> tuple[str, int]:
 
 
 def _validate_runtime_resource_closure(
-    root: Path, resource_ids: set[str], *, allow_local_resources: bool = False
+    root: Path,
+    resource_ids: set[str],
+    *,
+    resources_root: Path | None = None,
+    allow_local_resources: bool = False,
 ) -> tuple[int, int, int]:
-    resources_root = root / "Client/Bin/Resources"
+    resources_root = (
+        resources_root.resolve()
+        if resources_root is not None
+        else (root / "Client/Bin/Resources").resolve()
+    )
     resource_bytes = 0
     missing: list[str] = []
     identities: dict[str, RuntimeResourceIdentity] = {}
@@ -842,7 +866,218 @@ def _validate_active_consumer_guard(root: Path) -> None:
                 )
 
 
-def validate_repository(root: Path, *, allow_local_resources: bool = False) -> ValidationReport:
+def _validate_player_skill_effect_references(
+    root: Path, product_effect_ids: set[str]
+) -> set[str]:
+    path = root / PLAYER_SKILLS_PATH
+    if not path.is_file():
+        return set()
+    document, _ = _read_json(path)
+    skills = document.get("skills")
+    if not isinstance(skills, list):
+        raise ContractError("PlayerSkills.skills must be an array")
+
+    references: set[str] = set()
+    for index, skill in enumerate(skills):
+        if not isinstance(skill, dict):
+            raise ContractError(f"PlayerSkills row {index} must be an object")
+        effect_id = skill.get("effectId")
+        if not isinstance(effect_id, str):
+            raise ContractError(f"PlayerSkills row {index}.effectId must be a string")
+        if not effect_id:
+            continue
+        references.add(
+            _require_stable_id(effect_id, f"PlayerSkills row {index}.effectId")
+        )
+
+    missing = sorted(references - product_effect_ids)
+    if missing:
+        raise ContractError(
+            f"PlayerSkills Effect references are missing from catalog: {missing[:5]}"
+        )
+    return references
+
+
+def _validate_declared_draft_effects(
+    root: Path, product_effect_ids: set[str]
+) -> tuple[set[str], bool]:
+    path = root / VALTAN_DRAFT_PATH
+    if not path.is_file():
+        return set(), False
+    document, _ = _read_json(path)
+    if tuple(document.keys()) != (
+        "schema",
+        "formatVersion",
+        "bossArchetypeId",
+        "bindings",
+    ):
+        raise ContractError("Valtan draft Effect root fields/order are invalid")
+    if (
+        document.get("schema") != "lostark.valtan-pattern-authoring-effects"
+        or document.get("formatVersion") != 1
+        or document.get("bossArchetypeId") != "BOSS_VALTAN"
+    ):
+        raise ContractError("Valtan draft Effect document identity is invalid")
+    bindings = document.get("bindings")
+    if not isinstance(bindings, list):
+        raise ContractError("Valtan draft Effect bindings must be an array")
+
+    draft_ids: set[str] = set()
+    pattern_ids: set[str] = set()
+    for index, binding in enumerate(bindings):
+        if not isinstance(binding, dict) or tuple(binding.keys()) != (
+            "patternId",
+            "effectAssetId",
+            "authoringPath",
+            "state",
+        ):
+            raise ContractError(f"Valtan draft Effect binding {index} is invalid")
+        pattern_id = binding.get("patternId")
+        if not isinstance(pattern_id, str) or not pattern_id:
+            raise ContractError(f"Valtan draft Effect binding {index}.patternId is invalid")
+        if pattern_id in pattern_ids:
+            raise ContractError(f"duplicate Valtan draft pattern ID: {pattern_id}")
+        pattern_ids.add(pattern_id)
+        effect_id = _require_stable_id(
+            binding.get("effectAssetId"),
+            f"Valtan draft Effect binding {index}.effectAssetId",
+        )
+        if effect_id in draft_ids:
+            raise ContractError(f"duplicate Valtan draft Effect ID: {effect_id}")
+        draft_ids.add(effect_id)
+        expected_path = f"Effects/Authored/{effect_id}.effect.json"
+        if binding.get("authoringPath") != expected_path:
+            raise ContractError(
+                f"Valtan draft Effect path must be identity-derived: {effect_id}"
+            )
+        if binding.get("state") != "DRAFT_ATTACHED":
+            raise ContractError(f"Valtan draft Effect state is invalid: {effect_id}")
+
+    collisions = sorted(draft_ids & product_effect_ids)
+    if collisions:
+        raise ContractError(
+            f"Valtan draft Effects also appear in Product catalog: {collisions[:5]}"
+        )
+    return draft_ids, True
+
+
+def _read_effect_asset_payloads(path: Path, owner: str) -> set[str]:
+    try:
+        text = path.read_text(encoding="utf-8-sig")
+    except (OSError, UnicodeError) as exc:
+        raise ContractError(f"{owner} is unreadable: {path}: {exc}") from exc
+    references: set[str] = set()
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        if "effectref=asset" not in line:
+            continue
+        match = EFFECT_ASSET_PAYLOAD.search(line)
+        if match is None:
+            raise ContractError(
+                f"{owner} asset Effect row has no parseable payload: line {line_number}"
+            )
+        references.add(
+            _require_stable_id(match.group(1), f"{owner} line {line_number} payload")
+        )
+    return references
+
+
+def _validate_product_effect_reachability(
+    root: Path,
+    product_effect_ids: set[str],
+    player_skill_effect_ids: set[str],
+) -> None:
+    relative_paths = (
+        *PLAYER_EFFECT_EVENT_PATHS,
+        VALTAN_CUE_PATH,
+        VALTAN_BOSS_CATALOG_PATH,
+        VALTAN_V1_ALIAS_PATH,
+    )
+    existing = [relative for relative in relative_paths if (root / relative).is_file()]
+    if not existing:
+        return
+    missing_contracts = [
+        relative for relative in relative_paths if not (root / relative).is_file()
+    ]
+    if missing_contracts:
+        raise ContractError(
+            f"Effect reachability contracts are missing: {missing_contracts[:5]}"
+        )
+
+    reachable_ids = set(player_skill_effect_ids)
+    for relative in PLAYER_EFFECT_EVENT_PATHS:
+        reachable_ids.update(
+            _read_effect_asset_payloads(root / relative, relative)
+        )
+
+    cue_document, _ = _read_json(root / VALTAN_CUE_PATH)
+    cues = cue_document.get("cues")
+    if not isinstance(cues, list):
+        raise ContractError("Valtan pattern Effect cues must be an array")
+    for index, cue in enumerate(cues):
+        if not isinstance(cue, dict):
+            raise ContractError(f"Valtan pattern Effect cue {index} must be an object")
+        reachable_ids.add(
+            _require_stable_id(
+                cue.get("effectAssetId"),
+                f"Valtan pattern Effect cue {index}.effectAssetId",
+            )
+        )
+
+    boss_document, _ = _read_json(root / VALTAN_BOSS_CATALOG_PATH)
+    bosses = boss_document.get("bosses")
+    if not isinstance(bosses, list):
+        raise ContractError("BossCatalog.bosses must be an array")
+    valtan_rows = [
+        boss for boss in bosses
+        if isinstance(boss, dict) and boss.get("archetypeId") == "BOSS_VALTAN"
+    ]
+    if len(valtan_rows) != 1:
+        raise ContractError("BossCatalog must contain exactly one BOSS_VALTAN row")
+    visuals = valtan_rows[0].get("combatObjectVisuals")
+    if not isinstance(visuals, list):
+        raise ContractError("BOSS_VALTAN combatObjectVisuals must be an array")
+    for index, visual in enumerate(visuals):
+        if not isinstance(visual, dict):
+            raise ContractError(f"BOSS_VALTAN combatObjectVisual {index} is invalid")
+        reachable_ids.add(
+            _require_stable_id(
+                visual.get("effectAssetId"),
+                f"BOSS_VALTAN combatObjectVisual {index}.effectAssetId",
+            )
+        )
+
+    alias_document, _ = _read_json(root / VALTAN_V1_ALIAS_PATH)
+    aliases = alias_document.get("aliases")
+    if not isinstance(aliases, list):
+        raise ContractError("Valtan V1 Effect aliases must be an array")
+    for index, alias in enumerate(aliases):
+        if not isinstance(alias, dict):
+            raise ContractError(f"Valtan V1 Effect alias {index} is invalid")
+        for field in ("effectAssetId", "v1EffectAssetId"):
+            reachable_ids.add(
+                _require_stable_id(
+                    alias.get(field), f"Valtan V1 Effect alias {index}.{field}"
+                )
+            )
+
+    missing_product = sorted(reachable_ids - product_effect_ids)
+    if missing_product:
+        raise ContractError(
+            f"runtime Effect references are missing from catalog: {missing_product[:5]}"
+        )
+    unreachable_product = sorted(product_effect_ids - reachable_ids)
+    if unreachable_product:
+        raise ContractError(
+            f"catalog Effect IDs have no runtime consumer: {unreachable_product[:5]}"
+        )
+
+
+def validate_repository(
+    root: Path,
+    *,
+    resource_root: Path | None = None,
+    allow_local_resources: bool = False,
+) -> ValidationReport:
     root = root.resolve()
     data_root = root / "Data/Effects"
     catalog_path = data_root / "EffectCatalog.json"
@@ -951,6 +1186,10 @@ def validate_repository(root: Path, *, allow_local_resources: bool = False) -> V
     if not effect_ids:
         raise ContractError("EffectCatalog has no direct-authored Product rows")
 
+    player_skill_effect_ids = _validate_player_skill_effect_references(
+        root, effect_ids
+    )
+
     authored_ids = {
         path.name[: -len(".effect.json")]
         for path in authored_root.glob("*.effect.json")
@@ -959,6 +1198,24 @@ def validate_repository(root: Path, *, allow_local_resources: bool = False) -> V
     missing = sorted(effect_ids - authored_ids)
     if missing:
         raise ContractError(f"catalog direct source files are missing: {missing[:5]}")
+    draft_effect_ids, draft_contract_present = _validate_declared_draft_effects(
+        root, effect_ids
+    )
+    if draft_contract_present:
+        missing_drafts = sorted(draft_effect_ids - authored_ids)
+        if missing_drafts:
+            raise ContractError(
+                f"declared Valtan draft Effect files are missing: {missing_drafts[:5]}"
+            )
+        orphaned = sorted(authored_ids - effect_ids - draft_effect_ids)
+        if orphaned:
+            raise ContractError(
+                f"Authored Effect files have no Product or draft owner: {orphaned[:5]}"
+            )
+
+    _validate_product_effect_reachability(
+        root, effect_ids, player_skill_effect_ids
+    )
 
     retired_paths = (
         root / "Client/Bin/DataFiles/Effect",
@@ -980,7 +1237,10 @@ def validate_repository(root: Path, *, allow_local_resources: bool = False) -> V
 
     _validate_active_consumer_guard(root)
     resource_file_count, resource_bytes, local_count = _validate_runtime_resource_closure(
-        root, resource_ids, allow_local_resources=allow_local_resources
+        root,
+        resource_ids,
+        resources_root=resource_root,
+        allow_local_resources=allow_local_resources,
     )
     return ValidationReport(
         direct_source_count=len(effect_ids),
@@ -1004,10 +1264,17 @@ def main(argv: list[str] | None = None) -> int:
         "--allow-local-resources", action="store_true",
         help="Validate existing shared local resources without requiring untracked files in Git; tracked identity checks remain enabled.",
     )
+    parser.add_argument(
+        "--resource-root",
+        type=Path,
+        help="Optional physical Client/Bin/Resources root, used by lightweight Git worktrees without duplicated binary assets.",
+    )
     args = parser.parse_args(argv)
     try:
         report = validate_repository(
-            args.repository_root, allow_local_resources=args.allow_local_resources
+            args.repository_root,
+            resource_root=args.resource_root,
+            allow_local_resources=args.allow_local_resources,
         )
     except ContractError as exc:
         print(f"Effect source validation failed: {exc}", file=sys.stderr)
