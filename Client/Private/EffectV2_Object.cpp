@@ -582,6 +582,7 @@ void Client::CEffectV2Object::Clear_FollowTarget()
 	m_bFollowTarget = false;
 	m_FollowTarget.Reset();
 	m_strFollowBone.clear();
+	XMStoreFloat4x4(&m_FollowLocal, XMMatrixIdentity());
 }
 
 bool_t Client::CEffectV2Object::Resolve_TargetView(
@@ -670,15 +671,29 @@ bool_t Client::CEffectV2Object::Resolve_TargetPivot(
 	return true;
 }
 
+void Client::CEffectV2Object::Stop_Emission()
+{
+	if (SHAPE::PARTICLE == m_eShape || SHAPE::TRAIL == m_eShape)
+		m_bEmissionStopped = true;
+	else
+		m_bFinished = true;
+}
+
 void Client::CEffectV2Object::Update(const f32_t fTimeDelta)
 {
 	if (m_bFollowTarget)
 	{
 		EFFECT_V2_TARGET_VIEW View;
+		float4x4_t Pivot;
 		if (!Resolve_TargetView(m_FollowTarget, View) ||
-			!Resolve_TargetPivot(View, m_strFollowBone, m_eFollowRotation, m_PivotWorld))
+			!Resolve_TargetPivot(View, m_strFollowBone, m_eFollowRotation, Pivot))
 		{
 			m_bFinished = true;
+		}
+		else
+		{
+			XMStoreFloat4x4(&m_PivotWorld,
+				XMLoadFloat4x4(&m_FollowLocal) * XMLoadFloat4x4(&Pivot));
 		}
 	}
 	if (!m_bFinished)

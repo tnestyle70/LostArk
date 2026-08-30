@@ -325,6 +325,9 @@ public:
 	uint32_t Trail_PointCount() const { return static_cast<uint32_t>(m_TrailPoints.size()); }
 	bool_t Is_Finished() const { return m_bFinished; }
 	void Finish() { m_bFinished = true; }
+	/* Deactivate: particle/trail stop spawning and finish when their last
+	   element dies; every other shape has nothing to drain and finishes now. */
+	void Stop_Emission();
 	bool_t Is_Hidden() const { return m_bHidden; }
 	void Set_Hidden(const bool_t bHidden) { m_bHidden = bHidden; }
 	void Restart();
@@ -339,6 +342,9 @@ public:
 		std::string strBone,
 		PIVOT_ROTATION eRotation);
 	void Clear_FollowTarget();
+	/* Applied as Local x bone pivot every frame while following, so a group
+	   child keeps its offset/yaw on a moving bone. Identity by default. */
+	void Set_FollowLocal(const float4x4_t& Local) { m_FollowLocal = Local; }
 	bool_t Has_FollowTarget() const { return m_bFollowTarget; }
 	static bool_t Resolve_TargetView(
 		const EFFECT_V2_TARGET& Target,
@@ -410,6 +416,11 @@ private:
 	EFFECT_V2_TARGET m_FollowTarget;
 	std::string m_strFollowBone;
 	PIVOT_ROTATION m_eFollowRotation = PIVOT_ROTATION::TARGET_YAW;
+	float4x4_t m_FollowLocal = {
+		1.f, 0.f, 0.f, 0.f,
+		0.f, 1.f, 0.f, 0.f,
+		0.f, 0.f, 1.f, 0.f,
+		0.f, 0.f, 0.f, 1.f };
 	f32_t m_fTime = 0.f;
 	bool_t m_bFinished = false;
 	bool_t m_bEmissionStopped = false;

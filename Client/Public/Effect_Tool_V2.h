@@ -173,6 +173,12 @@ private:
 	void Snap_PivotToTarget();
 	bool_t Save_Bindings();
 	bool_t Load_Bindings(const std::string& strArchetypeId);
+	void Render_GroupWindow();
+	void Scan_Groups();
+	bool_t Load_Group(const std::string& strGroupId);
+	bool_t Save_Group();
+	bool_t Play_GroupPreview();
+	void Stop_GroupPreview();
 	static bool_t Collect_BoneNames(
 		const std::string& strModelAssetId,
 		std::vector<std::string>& OutNames);
@@ -239,6 +245,15 @@ private:
 	int32_t m_iSpawnFrame = 0;
 	std::vector<EFFECT_BINDING> m_Bindings;
 	std::string m_strAttachStatus;
+
+	bool_t m_bGroupWindowOpen = false;
+	bool_t m_bGroupsScanned = false;
+	std::vector<std::string> m_Groups;
+	EFFECT_V2_GROUP m_Group;
+	char m_szGroupId[96] = {};
+	std::string m_strBindingGroupId;
+	uint32_t m_iGroupPreviewHandle = 0u;
+	std::string m_strGroupStatus;
 
 	VALTAN_PATTERN_TREE_VIEW m_ValtanTree;
 	bool_t m_bValtanTreeLoaded = false;
