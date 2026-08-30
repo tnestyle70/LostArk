@@ -76,10 +76,6 @@ namespace
 		"Effects/AuthoredCorrections/Artist/"
 		"effect.artist.skill.31470.source-authoring-overlay.json";
 	constexpr uint32_t DIMENSION_MASTER_T_SKILL_ID = 2050500u;
-	constexpr const char_t* DIMENSION_MASTER_T_BASELINE_EFFECT_ASSET_ID =
-		"effect.dimensionmaster.skill.2050500.authored-baseline";
-	constexpr const char_t* DIMENSION_MASTER_T_SOURCE_EFFECT_ASSET_ID =
-		"effect.dimensionmaster.skill.2050500";
 	constexpr const char_t* DIMENSION_MASTER_T_UNIFIED_EFFECT_ASSET_ID =
 		"effect.dimensionmaster.skill.2050500.unified";
 	constexpr const char_t* VALTAN_EXACT_HISTORY_BINDING_ID =
@@ -12798,13 +12794,13 @@ bool_t Client::CEffect_Tool::Can_PlayValtanServerPattern(
 	strOutReason.clear();
 	if (Pattern.strPatternId.empty())
 	{
-		strOutReason = "Play Server requires one stable Pattern ID.";
+		strOutReason = "Complete Play requires one stable Pattern ID.";
 		return false;
 	}
 	if (nullptr == Resolve_ValtanServerPatternBossPlacement(
 			CGameInstance::Get().Get_CurrentLevelID()))
 	{
-		strOutReason = "Play Server is available only in Valtan Arena.";
+		strOutReason = "Complete Play is available only in Valtan Arena.";
 		return false;
 	}
 	if (!CNetworkManager::Get().Is_Connected())
@@ -12850,7 +12846,7 @@ bool_t Client::CEffect_Tool::Can_PlayValtanServerPattern(
 		CValtanPatternAuditionService::Get().Get_Snapshot();
 	if (Audition.Is_InFlight())
 	{
-		strOutReason = "Play Server is " +
+		strOutReason = "Complete Play is " +
 			std::string(Describe_ValtanPatternAuditionState(Audition.eState)) +
 			" for " + Audition.strPatternId + " (owner " +
 			Audition.strConsumerId + ").";
@@ -13713,7 +13709,7 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 		Can_PlayValtanServerPattern(Pattern, ServerPlayReason);
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!bCanPlayServer);
-	if (ImGui::SmallButton("Play Server"))
+	if (ImGui::SmallButton("Complete Play (Server/Arena)"))
 	{
 		if (m_strSelectedValtanPatternId != Pattern.strPatternId)
 			m_SelectedValtanPatternEffect.reset();
@@ -14090,7 +14086,7 @@ void Client::CEffect_Tool::Render_ValtanPatternNode(
 			ImGui::EndDisabled();
 			ImGui::SameLine();
 			ImGui::BeginDisabled(DraftPath.empty());
-			if (ImGui::SmallButton("Play Effect + Pattern"))
+			if (ImGui::SmallButton("Local Effect + Pattern Preview"))
 			{
 				VALTAN_PATTERN_EFFECT_SELECTION Selection;
 				Selection.eKind =
@@ -14381,7 +14377,7 @@ void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(
 				"The independent Effect lost its stable owner Pattern.";
 		ImGui::SameLine();
 		ImGui::BeginDisabled(!bCanPlayServerOwner);
-		if (ImGui::SmallButton("Play Server Owner") &&
+		if (ImGui::SmallButton("Complete Play Owner") &&
 			nullptr != pOwnerPattern)
 			Try_PlayValtanServerPattern(*pOwnerPattern);
 		ImGui::EndDisabled();
@@ -14407,7 +14403,7 @@ void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(
 		if (bCombatObjectOwner && bActive)
 		{
 			ImGui::TextDisabled(
-				"World preview root: (%.2f, %.2f, %.2f) | actual target tracking and hit timing require Play Server Owner",
+				"World preview root: (%.2f, %.2f, %.2f) | actual target tracking and hit timing require Complete Play Owner",
 				m_PreviewWorldRoot._41, m_PreviewWorldRoot._42,
 				m_PreviewWorldRoot._43);
 		}
@@ -15482,7 +15478,7 @@ void Client::CEffect_Tool::Render_ValtanAreaStaticEffectSection(
 			if (nullptr == ownerPattern)
 				serverReason = "No exact Server activation owner Pattern was resolved.";
 			ImGui::BeginDisabled(!canPlayServer);
-			if (ImGui::SmallButton("Play Server Activation Owner") &&
+			if (ImGui::SmallButton("Complete Play Activation Owner") &&
 				nullptr != ownerPattern)
 			{
 				Try_PlayValtanServerPattern(*ownerPattern);
@@ -15762,7 +15758,7 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 		ImGui::EndDisabled();
 		ImGui::SameLine();
 		ImGui::BeginDisabled(Path.empty());
-		if (ImGui::Button("Play Effect + Pattern"))
+		if (ImGui::Button("Local Effect + Pattern Preview"))
 		{
 			Try_OpenValtanPatternDraftEffect(
 				Path, pSelectedBinding->strEffectAssetId,
@@ -15990,7 +15986,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 		if (Has_UnsavedWork())
 		{
 			ImGui::TextDisabled(
-				"Play Server uses the current Server Product; unsaved Effect edits are not included.");
+				"Complete Play uses the current Server Product; unsaved Effect edits are not included.");
 		}
 	}
 	else
@@ -25520,126 +25516,6 @@ bool_t Client::CEffect_Tool::Try_CreateArtistFUnifiedDraft()
 	m_SourceElementPresetSelection.reset();
 	m_strElementStatus =
 		"Created Artist F Unified draft with 33 editable Elements, 28 typed Track A Material recipes, fixed particle bursts/local-space, editable constant-one DynamicParameter fallbacks, root snapshots, and five exact emit-start follow poses. Five unsupported Material rows remain explicit bounded generic starters; product mapping was unchanged.";
-	return true;
-}
-
-bool_t Client::CEffect_Tool::Try_CreateDimensionMasterTUnifiedDraft()
-{
-	if (Has_UnsavedWork())
-	{
-		m_strElementStatus =
-			"Save or discard the current Effect changes before creating the DimensionMaster T Unified draft.";
-		return false;
-	}
-	const std::filesystem::path AuthoredRoot = CProjectDataRoot::Resolve(
-		std::filesystem::path(L"Effects") / L"Authored");
-	const std::filesystem::path BaselinePath = AuthoredRoot /
-		(std::filesystem::path(DIMENSION_MASTER_T_BASELINE_EFFECT_ASSET_ID).wstring() +
-		 L".effect.json");
-	const std::filesystem::path SourcePath = AuthoredRoot /
-		(std::filesystem::path(DIMENSION_MASTER_T_SOURCE_EFFECT_ASSET_ID).wstring() +
-		 L".effect.json");
-	const std::filesystem::path Path = AuthoredRoot /
-		(std::filesystem::path(DIMENSION_MASTER_T_UNIFIED_EFFECT_ASSET_ID).wstring() +
-		 L".effect.json");
-	if (AuthoredRoot.empty() || std::filesystem::is_regular_file(Path))
-	{
-		m_strElementStatus = AuthoredRoot.empty() ?
-			"DimensionMaster T Unified path escaped Data/Effects/Authored." :
-			"DimensionMaster T Unified draft already exists. Use Load Unified Effect.";
-		return false;
-	}
-
-	EFFECT_DOCUMENT_DESC Baseline;
-	EFFECT_DOCUMENT_DESC Source;
-	std::string Error;
-	if (!CEffectDocumentCodec::Load(BaselinePath, Baseline, Error) ||
-		!CEffectDocumentCodec::Validate_Drawable(Baseline, Error) ||
-		Baseline.strEffectAssetId !=
-			DIMENSION_MASTER_T_BASELINE_EFFECT_ASSET_ID ||
-		Baseline.Elements.size() != 35u || !Baseline.ModelCues.empty())
-	{
-		m_strElementStatus = Error.empty() ?
-			"DimensionMaster T baseline must contain exactly 35 drawable Elements and no Model Cue." : Error;
-		return false;
-	}
-	if (!CEffectDocumentCodec::Load(SourcePath, Source, Error) ||
-		Source.strEffectAssetId != DIMENSION_MASTER_T_SOURCE_EFFECT_ASSET_ID ||
-		Source.ModelCues.size() != 1u ||
-		Source.ModelCues.front().strCueId != "dimension_summon" ||
-		Source.ModelCues.front().strModelAssetId !=
-			"Character/DimensionMaster/DimensionMaster_DimensionSummon.wmodel" ||
-		Source.ModelCues.front().strClipName !=
-			"sk_swp_dms_00_sk_sk_dimensionprison")
-	{
-		m_strElementStatus = Error.empty() ?
-			"DimensionMaster T source must resolve the one exact dimension_summon Model Cue." : Error;
-		return false;
-	}
-
-	EFFECT_DOCUMENT_DESC Candidate = Baseline;
-	Candidate.strEffectAssetId = DIMENSION_MASTER_T_UNIFIED_EFFECT_ASSET_ID;
-	Candidate.strDisplayName = "DimensionMaster T Unified Effect";
-	Candidate.ModelCues = Source.ModelCues;
-	const std::string Canonical = CEffectDocumentCodec::Serialize(Candidate);
-	EFFECT_DOCUMENT_DESC RoundTripped;
-	if (!CEffectDocumentCodec::Parse(Canonical, RoundTripped, Error) ||
-		!CEffectDocumentCodec::Validate_Drawable(RoundTripped, Error) ||
-		RoundTripped.Elements.size() != 35u ||
-		RoundTripped.ModelCues.size() != 1u ||
-		CEffectDocumentCodec::Serialize(RoundTripped) != Canonical)
-	{
-		m_strElementStatus = Error.empty() ?
-			"DimensionMaster T Unified draft failed canonical validation." : Error;
-		return false;
-	}
-
-	const bool_t bPreviousPreviewIsSource =
-		m_ProductPreview.has_value() && m_SourcePreviewDocument.has_value();
-	const optional<EFFECT_DOCUMENT_DESC> PreviousPreview =
-		bPreviousPreviewIsSource ?
-			m_SourcePreviewDocument : m_ActiveDocument;
-	const EFFECT_PREVIEW_FILTER ePreviousFilter = m_ePreviewFilter;
-	const f32_t fPreviousTime = m_fPreviewTimeSeconds;
-	m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
-	m_fPreviewTimeSeconds = 0.f;
-	if (!Stage_WorldPreview(RoundTripped))
-	{
-		m_ePreviewFilter = ePreviousFilter;
-		m_fPreviewTimeSeconds = fPreviousTime;
-		m_strElementStatus =
-			"DimensionMaster T Unified preview preflight failed: " +
-			m_strPreviewStatus;
-		return false;
-	}
-	if (!CEffectDocumentCodec::Save_AtomicIfUnchanged(
-		Path, RoundTripped, std::string_view{}, Error))
-	{
-		m_ePreviewFilter = ePreviousFilter;
-		m_fPreviewTimeSeconds = fPreviousTime;
-		if (PreviousPreview.has_value())
-			Stage_WorldPreview(*PreviousPreview, bPreviousPreviewIsSource);
-		else
-			Hide_WorldPreview();
-		m_strElementStatus = Error.empty() ?
-			"DimensionMaster T Unified draft could not be saved." : Error;
-		return false;
-	}
-	if (!Try_LoadDocumentPathStaged(Path, EFFECT_DOCUMENT_SOURCE::AUTHORED,
-		DIMENSION_MASTER_T_UNIFIED_EFFECT_ASSET_ID, true))
-	{
-		m_ePreviewFilter = ePreviousFilter;
-		m_fPreviewTimeSeconds = fPreviousTime;
-		if (PreviousPreview.has_value())
-			Stage_WorldPreview(*PreviousPreview, bPreviousPreviewIsSource);
-		else
-			Hide_WorldPreview();
-		m_strElementStatus =
-			"DimensionMaster T Unified draft was saved, but could not be opened. Use Load Unified Effect to retry.";
-		return false;
-	}
-	m_strElementStatus =
-		"Created DimensionMaster T Unified draft with 35 editable Elements and one editable Dimension Summon. Product mapping was unchanged.";
 	return true;
 }
 

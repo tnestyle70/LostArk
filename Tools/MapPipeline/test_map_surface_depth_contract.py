@@ -2,7 +2,7 @@
 """CPU surface diagnostics; never launches Client or decides visual fidelity.
 
 No arguments runs the synthetic unit tests.  --resource-root and --area-id
-inspect the six recorded Character Select placement pairs and print JSON.
+inspect the ten recorded Character Select placement pairs and print JSON.
 Triangle indices are diagnostic locations; only string placement/source IDs
 identify records.  This module never edits an authoring or runtime input.
 """
@@ -19,6 +19,7 @@ import sys
 import tempfile
 import unittest
 from dataclasses import dataclass, replace
+from itertools import combinations
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
@@ -322,8 +323,12 @@ MAGICFLOOR = "MAP_FB0D0FFCBE97_BG_GDOGODS_MAGICFLOOR03D_SM"
 # Explicit witnesses from the 2026-08-28 investigation, not an all-map search.
 CANDIDATES = (
     (402, 405, FLOOR02, 1, (-762.85, 197.60)),
-    (458, 474, BRIDGE, 0, (-773.95, 197.30)),
+    (442, 444, BRIDGE, 0, (-771.008422, 198.196519)),
     (442, 458, BRIDGE, 0, (-772.00, 195.20)),
+    (442, 474, BRIDGE, 0, (-778.720213, 190.793485)),
+    (444, 458, BRIDGE, 0, (-778.770718, 204.249202)),
+    (444, 474, BRIDGE, 0, (-772.683817, 198.561561)),
+    (458, 474, BRIDGE, 0, (-773.95, 197.30)),
     (425, 427, FLOOR22, 0, (-770.20, 187.70)),
     (435, 436, FLOOR22, 0, (-762.10, 199.25)),
     (469, 471, MAGICFLOOR, 0, (-778.60, 198.20)),
@@ -378,8 +383,9 @@ def scan_pair(left: list[Triangle], right: list[Triangle],
     for index, (_, box) in b.items():
         for cell in spatial_cells(box):
             grid.setdefault(cell, []).append(index)
-    checked = overlaps = close = 0
+    checked = overlaps = close = crossings = 0
     examples = []
+    crossing_examples = []
     for index, (triangle, box) in a.items():
         candidates = {i for cell in spatial_cells(box) for i in grid.get(cell, ())}
         for other in sorted(candidates):
@@ -391,6 +397,13 @@ def scan_pair(left: list[Triangle], right: list[Triangle],
             if result is None:
                 continue
             overlaps += 1
+            low, high = result["signedYDeltaRangeMeters"]
+            if result["xzAreaSquareMeters"] > AREA_EPSILON and low <= 0 <= high:
+                crossings += 1
+                crossing_examples.append({"triangleIndices": [index, other], **result})
+                crossing_examples.sort(
+                    key=lambda r: (-r["xzAreaSquareMeters"], r["maximumAbsoluteYGapMeters"]))
+                del crossing_examples[12:]
             if result["maximumAbsoluteYGapMeters"] > threshold:
                 continue
             close += 1
@@ -400,7 +413,10 @@ def scan_pair(left: list[Triangle], right: list[Triangle],
     return {"heightBandMeters": [-143.3, -142.4], "maximumNearPlaneGapMeters": threshold,
             "aabbCandidateComparisons": checked, "triangleOverlapCount": overlaps,
             "nearPlaneTrianglePairCount": close, "nearPlaneExamples": examples,
-            "unlistedNearPlanePairs": close-len(examples)}
+            "unlistedNearPlanePairs": close-len(examples),
+            "signedCrossingTrianglePairCount": crossings,
+            "signedCrossingExamples": crossing_examples,
+            "unlistedSignedCrossingPairs": crossings-len(crossing_examples)}
 
 
 def top_at_point(triangles: list[Triangle], point: Vec) -> tuple[int, float] | None:
@@ -574,7 +590,7 @@ def diagnose_resources(repo: Path, resource_root: Path, area: str,
             "cameraDepthScope": "recorded witness triangle pairs; no scene occlusion or pixel sampling",
             "arithmeticNote": "float32 is a CPU approximation; GPU FMA/rasterizer rounding is not reproduced",
             "placementPreservation": {"imported": len(imported), "authoring": len(authored), "runtime": len(published),
-                "centralCorrectionScope": "placement Y preservation; geometry scan covers the six edge candidate pairs",
+                "centralCorrectionScope": "placement Y preservation; geometry scan covers the ten edge candidate pairs, including all six bridge K4 combinations",
                 "productScopePlacements": len(scope), "productScopeAssets": len({p.asset_id for p in scope}),
                 "centralCorrections": [{"sourcePlacementId": source_id(e),
                     "placementId": authored[source_id(e)].placement_id,
@@ -710,6 +726,19 @@ class SurfaceDepthContractTests(unittest.TestCase):
         report = scan_pair(left, [triangle])
         self.assertEqual(report["aabbCandidateComparisons"], 1)
         self.assertEqual(report["nearPlaneTrianglePairCount"], 1)
+
+    def test_scan_reports_signed_crossing_separately_from_near_coplanar(self) -> None:
+        flat = ((0.0,-142.7,0.0), (2.0,-142.7,0.0), (0.0,-142.7,2.0))
+        crossing = ((0.0,-142.71,0.0), (2.0,-142.69,0.0), (0.0,-142.7,2.0))
+        report = scan_pair([flat], [crossing])
+        self.assertEqual(report["nearPlaneTrianglePairCount"], 0)
+        self.assertEqual(report["signedCrossingTrianglePairCount"], 1)
+
+    def test_bridge_k4_candidate_set_covers_all_six_pairs(self) -> None:
+        bridge_exports = {442, 444, 458, 474}
+        actual = {tuple(sorted(candidate[:2])) for candidate in CANDIDATES
+                  if candidate[2] == BRIDGE and set(candidate[:2]) <= bridge_exports}
+        self.assertEqual(actual, set(combinations(sorted(bridge_exports), 2)))
 
     def test_preservation_accepts_only_approved_y_changes(self) -> None:
         before = self.placement()

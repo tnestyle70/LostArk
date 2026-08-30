@@ -32,6 +32,7 @@ below is a real Release-build feature, so the include is no longer guarded. */
 #include <array>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <initializer_list>
@@ -52,6 +53,20 @@ namespace
 		L"Sound/BGM/Valtan/M01_KeepGoing__992459057.wav";
 	constexpr const wchar_t* VALTAN_BGM_M04_ASSET_ID =
 		L"Sound/BGM/Valtan/M04_KeepGoing2__106505321.wav";
+	constexpr const char* RAID_CLEAR_TEST_MODE_ENV =
+		"LOSTARK_RAID_CLEAR_TEST_MODE";
+
+	bool_t Is_RaidClearTestModeEnabled()
+	{
+		char* value = nullptr;
+		size_t valueLength = 0u;
+		if (0 != _dupenv_s(&value, &valueLength, RAID_CLEAR_TEST_MODE_ENV))
+			return false;
+		const bool_t enabled = nullptr != value && 2u == valueLength &&
+			'1' == value[0];
+		std::free(value);
+		return enabled;
+	}
 	constexpr std::array<std::string_view, 4> VALTAN_PILLAR_SLOT_IDS = {
 		"pillar.valtan.slot00", "pillar.valtan.slot01",
 		"pillar.valtan.slot02", "pillar.valtan.slot03" };
@@ -583,16 +598,25 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	it by accident. This only disables that trigger; an already-pending incoming
 	invite (Try_Consume_PartyInviteReceived, inside Update() itself) is unrelated
 	and still shown regardless. */
-	if (m_PartyInteraction.Update(
+	/* Raid Clear is the topmost product modal. Update it before any gameplay or
+	   lower-priority product interaction so its click cannot also become an
+	   attack, movement command, revive, or party action in this frame. */
+	Update_RaidClear(fTimeDelta);
+	const bool_t isRaidClearActive = m_fRaidClearElapsedSeconds >= 0.f;
+	if (!isRaidClearActive && m_PartyInteraction.Update(
 		m_Replication, m_pPlayerCommandSink, m_NameplatePlayers,
 		false))
 	{
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
 	}
-	m_PlayerController.Update(cameraAcceptsGameplay);
-	Update_DeadScene();
-	Update_RaidClear(fTimeDelta);
+	if (isRaidClearActive)
+	{
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, true);
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
+	}
+	m_PlayerController.Update(cameraAcceptsGameplay && !isRaidClearActive);
+	Update_DeadScene(isRaidClearActive);
 	Update_ItemAnnounce(fTimeDelta);
 #ifdef _DEBUG
 	Update_DebugRaidClearKey();
@@ -1259,6 +1283,9 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 	const bool_t isFightPageStart =
 		LostArk::Shared::VALTAN_AUDITION_OPERATION::START_FIGHT_PAGE ==
 			operation;
+	const bool_t isArenaPreset =
+		LostArk::Shared::VALTAN_AUDITION_OPERATION::SET_ARENA_PRESET ==
+			operation;
 	/* The pattern browser addresses the authored pattern order instead, and
 	sends a one-based index so the wire never carries the zero that means
 	"no bar". */
@@ -1282,10 +1309,19 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 		m_strAuditionStatus = "No authored fight page is selected.";
 		return false;
 	}
+	if (isArenaPreset &&
+		(explicitCommandPayload < static_cast<uint32_t>(
+			LostArk::Shared::VALTAN_ARENA_PRESET::FRESH) ||
+		 explicitCommandPayload >= static_cast<uint32_t>(
+			LostArk::Shared::VALTAN_ARENA_PRESET::END)))
+	{
+		m_strAuditionStatus = "Arena preset identity is invalid.";
+		return false;
+	}
 	const std::vector<uint32_t> bars =
 		Collect_AuditionHealthBars(m_ValtanEncounterReference);
 	if (!isBarless && !isPatternPlay && !isTimelinePlay &&
-		!isFightPageStart &&
+		!isFightPageStart && !isArenaPreset &&
 		m_iSelectedAuditionBarIndex >= bars.size())
 	{
 		m_strAuditionStatus = "No authored health-bar pattern is selected.";
@@ -1294,7 +1330,7 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 
 	const uint32_t sequence = 0u == m_iNextAuditionRequestSequence ?
 		1u : m_iNextAuditionRequestSequence;
-	const uint32_t commandPayload = isFightPageStart ?
+	const uint32_t commandPayload = (isFightPageStart || isArenaPreset) ?
 		explicitCommandPayload : (isPatternPlay ?
 		static_cast<uint32_t>(m_iSelectedAuditionPatternIndex + 1u) :
 		(isTimelinePlay ?
@@ -1318,6 +1354,83 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 	m_PendingAuditionRequest.iRetryCount = 0u;
 	m_strAuditionStatus = "Waiting for the Server verdict...";
 	return true;
+}
+
+bool_t CLevel_ValtanArena::Set_ArenaPreset(
+	const LostArk::Shared::VALTAN_ARENA_PRESET preset,
+	std::string& outStatus)
+{
+	const bool_t submitted = Submit_Audition(
+		LostArk::Shared::VALTAN_AUDITION_OPERATION::SET_ARENA_PRESET,
+		static_cast<uint32_t>(preset));
+	outStatus = m_strAuditionStatus;
+	return submitted;
+}
+
+CLevel_ValtanArena::ARENA_ACTIVE_STATE
+CLevel_ValtanArena::Get_ArenaActiveState() const
+{
+	ARENA_ACTIVE_STATE snapshot{};
+	snapshot.bSynchronized =
+		m_Replication.Is_WorldDestructionSynchronized();
+	static constexpr std::string_view OUTER_RING_GROUP_PREFIX =
+		"destroyable.group.valtan.outerwall109.";
+	static constexpr std::string_view THREE_OCLOCK_GROUP_PREFIX =
+		"destroyable.group.valtan.floor84.";
+	static constexpr std::string_view NINE_OCLOCK_GROUP_PREFIX =
+		"destroyable.group.valtan.floor30.";
+	uint32_t ordinaryActive = 0u;
+	uint32_t outerActive = 0u;
+	uint32_t threeActive = 0u;
+	uint32_t nineActive = 0u;
+	for (const LostArk::Shared::WORLD_DESTRUCTION_STATE_WIRE& group :
+		m_Replication.Get_WorldDestructionGroupStates())
+	{
+		const std::string_view groupId(group.strGroupId);
+		const bool_t active =
+			LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::INTACT ==
+			group.eState;
+		if (groupId.starts_with(OUTER_RING_GROUP_PREFIX))
+		{
+			++snapshot.iOuterRingGroupCount;
+			outerActive += active ? 1u : 0u;
+		}
+		else if (groupId.starts_with(THREE_OCLOCK_GROUP_PREFIX))
+		{
+			++snapshot.iThreeOClockGroupCount;
+			threeActive += active ? 1u : 0u;
+		}
+		else if (groupId.starts_with(NINE_OCLOCK_GROUP_PREFIX))
+		{
+			++snapshot.iNineOClockGroupCount;
+			nineActive += active ? 1u : 0u;
+		}
+		else
+		{
+			++snapshot.iOrdinaryGroupCount;
+			ordinaryActive += active ? 1u : 0u;
+		}
+	}
+	snapshot.bOrdinaryWallsActive = 0u != snapshot.iOrdinaryGroupCount &&
+		ordinaryActive == snapshot.iOrdinaryGroupCount;
+	snapshot.bOuterRingActive = 0u != snapshot.iOuterRingGroupCount &&
+		outerActive == snapshot.iOuterRingGroupCount;
+	snapshot.bThreeOClockFloorActive =
+		0u != snapshot.iThreeOClockGroupCount &&
+		threeActive == snapshot.iThreeOClockGroupCount;
+	snapshot.bNineOClockFloorActive =
+		0u != snapshot.iNineOClockGroupCount &&
+		nineActive == snapshot.iNineOClockGroupCount;
+	snapshot.iDebrisActorCount = static_cast<uint32_t>(
+		m_WorldDestructionDebrisPresentationRuntime.Get_ActiveActorCount());
+	const LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_DIAGNOSTICS& diagnostics =
+		m_Replication.Get_WorldDestructionDiagnostics();
+	snapshot.iActiveCollisionCount =
+		diagnostics.iActiveWallCollisionCount;
+	snapshot.iActiveNavigationRegionCount =
+		diagnostics.iActiveNavBlockerRegionCount;
+	snapshot.iNavigationRevision = diagnostics.iNavigationRevision;
+	return snapshot;
 }
 
 void CLevel_ValtanArena::Start_AuthoredRotationPlayback(
@@ -1539,6 +1652,34 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 		"109 outer ring is pattern-only: attack and charge must leave all 30 intact.");
 	ImGui::TextDisabled(
 		"No jump clip exists in this model, so the Server owns the 109 leap as an authored arc.");
+
+	ImGui::SeparatorText("Arena Presets (Server authority)");
+	ImGui::TextDisabled(
+		"Each preset resets then commits wall, collision and navigation state together. The boss remains on hold until another pattern command.");
+	const auto setArenaPreset = [this](
+		const LostArk::Shared::VALTAN_ARENA_PRESET preset)
+	{
+		std::string status;
+		(void)Set_ArenaPreset(preset, status);
+	};
+	ImGui::BeginDisabled(focusedControlsDisabled);
+	if (ImGui::Button("Fresh / All Walls", ImVec2(170.f, 0.f)))
+		setArenaPreset(LostArk::Shared::VALTAN_ARENA_PRESET::FRESH);
+	ImGui::SameLine();
+	if (ImGui::Button("Circle / Walls Gone", ImVec2(180.f, 0.f)))
+		setArenaPreset(
+			LostArk::Shared::VALTAN_ARENA_PRESET::CIRCLE_WALLS_GONE);
+	if (ImGui::Button("Break 3 O'Clock", ImVec2(170.f, 0.f)))
+		setArenaPreset(
+			LostArk::Shared::VALTAN_ARENA_PRESET::THREE_OCLOCK_BROKEN);
+	ImGui::SameLine();
+	if (ImGui::Button("Break 9 O'Clock", ImVec2(180.f, 0.f)))
+		setArenaPreset(
+			LostArk::Shared::VALTAN_ARENA_PRESET::NINE_OCLOCK_BROKEN);
+	if (ImGui::Button("Break 3 + 9 O'Clock", ImVec2(358.f, 0.f)))
+		setArenaPreset(
+			LostArk::Shared::VALTAN_ARENA_PRESET::BOTH_SIDES_BROKEN);
+	ImGui::EndDisabled();
 
 	ImGui::SeparatorText("Fight page start");
 	ImGui::TextDisabled(
@@ -2734,14 +2875,15 @@ HRESULT CLevel_ValtanArena::Render()
 	return S_OK;
 }
 
-void CLevel_ValtanArena::Update_DeadScene()
+void CLevel_ValtanArena::Update_DeadScene(
+	const bool_t isBlockedByRaidClear)
 {
 	if (nullptr == m_pDeadSceneView)
 		return;
 
 	using LostArk::Shared::PLAYER_ACTION_STATE;
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	const bool_t isDead = player.isValid &&
+	const bool_t isDead = !isBlockedByRaidClear && player.isValid &&
 		PLAYER_ACTION_STATE::DEAD == player.eAction;
 
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_PanelBg", isDead);
@@ -2757,7 +2899,10 @@ void CLevel_ValtanArena::Update_DeadScene()
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_TitleTextMarker", false);
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_ReviveMessageMarker", false);
 	if (!isDead)
+	{
+		CCombatHUDViewModel::Get().Set_DeadSceneTextRects({});
 		return;
+	}
 
 	/* RenderDeadSceneText() (CMainApp, after EndFrame()) has no access to this Level's
 	m_pDeadSceneView -- push the live, Tool-editable rects through the same Level -> ViewModel ->
@@ -2901,13 +3046,11 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 	if (nullptr == m_pRaidClearView)
 		return;
 
-	/* Reads the raw, un-gated death flag (CCombatHUDViewModel::Get_BossDeadRaw())
-	instead of Get_Boss().eAction -- the latter only updates when Apply_Boss's own
-	BossCombat-revision-gated validation succeeds, which can reject every
-	post-death snapshot forever if the Server's BossCombat sub-state doesn't bump
-	iStateRevision on the kill tick (see Set_BossDeadRaw's own comment). Item
-	Announce never had this problem because it reads the inventory snapshot
-	directly, with no equivalent gate -- this makes RaidClear just as robust. */
+	/* Reads the un-gated death latch (CCombatHUDViewModel::Get_BossDeadRaw())
+	instead of Get_Boss().eAction. CClientReplication raises it from either a raw
+	DEAD snapshot or, normally, the reliable DEAD despawn that removes the boss
+	before the next snapshot. BossCombat revision validation therefore cannot
+	hide the terminal edge from Raid Clear. */
 	const bool_t isBossDead = CCombatHUDViewModel::Get().Get_BossDeadRaw();
 
 	/* Edge-trigger only -- no "boss alive again -> hide" branch, so
@@ -2916,6 +3059,18 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 	if (isBossDead && !m_bRaidClearWasBossDead)
 		Trigger_RaidClear();
 	m_bRaidClearWasBossDead = isBossDead;
+
+	/* Release has no Debug O-key path. An explicit process environment opt-in
+	   lets QA open the final Return button immediately in a Release Client; the
+	   Server requires the same opt-in to accept a pre-clear test transfer. The
+	   default product path remains entirely driven by the authoritative death. */
+	if (!isBossDead && m_fRaidClearElapsedSeconds < 0.f &&
+		Is_RaidClearTestModeEnabled())
+	{
+		m_fRaidClearElapsedSeconds = RAIDCLEAR_TOTAL_SECONDS;
+		OutputDebugStringA(
+			"[Level_ValtanArena] Raid Clear Release test mode enabled.\n");
+	}
 
 	if (m_fRaidClearElapsedSeconds >= 0.f)
 		m_fRaidClearElapsedSeconds += fTimeDelta;

@@ -375,9 +375,13 @@ void Client::CCombatHUDViewModel::Reset_RuntimeState()
 {
 	m_Player = {};
 	m_Boss = {};
+	m_bBossDeadRaw = false;
 	m_DamageEvents.clear();
 	m_iEstherGauge = 0;
 	m_iEstherGaugeMaximum = 0;
 	m_EstherCutinRequest = {};
+	m_DeadSceneTextRects = {};
+	m_RaidClearTextRects = {};
+	m_ItemAnnounceTextRects = {};
 	m_Inventory = {};
 }

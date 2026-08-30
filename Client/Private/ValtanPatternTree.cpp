@@ -2303,6 +2303,14 @@ namespace
 		std::string strEffectAssetId;
 		std::string strOwnerPatternId;
 		std::string strOwnerStageActionId;
+		std::string strKind;
+		std::string strOriginPolicy;
+		std::string strDirectionPolicy;
+		f32_t fSpeedMps = 0.f;
+		f32_t fMaximumDistanceM = 0.f;
+		uint32_t iLifetimeMs = 0u;
+		std::vector<std::string> HitIds;
+		std::vector<uint32_t> HitOffsetsMs;
 	};
 
 	Client::VALTAN_CLIP_OCCURRENCE_VIEW Build_ClipOccurrenceView(
@@ -6386,6 +6394,55 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			Object, "ownerPatternId");
 		Reference->second.strOwnerStageActionId = Read_String(
 			Object, "ownerStageActionId");
+		Reference->second.strKind = Read_String(Object, "kind");
+		Reference->second.strOriginPolicy = Read_String(
+			Object, "originPolicy");
+		Reference->second.strDirectionPolicy = Read_String(
+			Object, "directionPolicy");
+		if (!Read_RequiredFiniteFloat(
+				Object, "speedMps", Reference->second.fSpeedMps) ||
+			!Read_RequiredFiniteFloat(Object, "maximumDistanceM",
+				Reference->second.fMaximumDistanceM) ||
+			!Read_RequiredUInt32(
+				Object, "lifeMs", Reference->second.iLifetimeMs) ||
+			Reference->second.strKind.empty() ||
+			Reference->second.strOriginPolicy.empty() ||
+			Reference->second.strDirectionPolicy.empty() ||
+			Reference->second.fSpeedMps < 0.f ||
+			Reference->second.fMaximumDistanceM < 0.f ||
+			0u == Reference->second.iLifetimeMs)
+		{
+			strOutStatus =
+				"Valtan combat-object Product motion/timing is invalid: " +
+				strArchetypeId;
+			return false;
+		}
+		const DATA_JSON_VALUE* pHits = Object.Find("hits");
+		if (nullptr == pHits || !pHits->Is_Array() || pHits->Get_Array().empty())
+		{
+			strOutStatus =
+				"Valtan combat-object has no Server hit rows: " + strArchetypeId;
+			return false;
+		}
+		for (const DATA_JSON_VALUE& Hit : pHits->Get_Array())
+		{
+			uint32_t iHitOffsetMs = 0u;
+			const std::string strHitId = Read_String(Hit, "hitId");
+			if (!Hit.Is_Object() ||
+				strHitId.empty() ||
+				!Read_RequiredUInt32(Hit, "atMs", iHitOffsetMs) ||
+				std::find(Reference->second.HitIds.begin(),
+					Reference->second.HitIds.end(), strHitId) !=
+					Reference->second.HitIds.end())
+			{
+				strOutStatus =
+					"Valtan combat-object Server hit identity or clock is invalid: " +
+					strArchetypeId;
+				return false;
+			}
+			Reference->second.HitIds.push_back(strHitId);
+			Reference->second.HitOffsetsMs.push_back(iHitOffsetMs);
+		}
 		if (strClientVisualId != Reference->second.strClientVisualId ||
 			Reference->second.strOwnerPatternId.empty() ||
 			Reference->second.strOwnerStageActionId.empty() ||
@@ -6785,6 +6842,17 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 							Reference->second.strEffectAssetId;
 						View.strTrigger = Read_String(Action, "trigger");
 						View.iSpawnValue = static_cast<uint32_t>(SpawnValue);
+						View.strKind = Reference->second.strKind;
+						View.strOriginPolicy =
+							Reference->second.strOriginPolicy;
+						View.strDirectionPolicy =
+							Reference->second.strDirectionPolicy;
+						View.fSpeedMps = Reference->second.fSpeedMps;
+						View.fMaximumDistanceM =
+							Reference->second.fMaximumDistanceM;
+						View.iLifetimeMs = Reference->second.iLifetimeMs;
+						View.HitIds = Reference->second.HitIds;
+						View.HitOffsetsMs = Reference->second.HitOffsetsMs;
 						Stage.CombatObjectEffects.push_back(std::move(View));
 					}
 				}

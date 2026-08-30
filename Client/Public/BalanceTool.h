@@ -17,9 +17,78 @@ class DATA_JSON_VALUE;
 class CBalanceTool final
 {
 public:
+	/* Typed Valtan stage draft shared by Balance Tool and Action Presentation
+	   Workbench.  Stable identities and DamageProfile ownership are read-only
+	   at this boundary; only the Server gameplay timing, hit geometry/schedule,
+	   and player reaction values are staged here. */
+	struct PATTERN_STAGE_EDIT final
+	{
+		std::string stageId;
+		std::string actionId;
+		std::string stageKind;
+		std::uint32_t durationMs = 0;
+		std::string hitShape;
+		double hitOuterRadius = 0.0;
+		double hitInnerRadius = 0.0;
+		double hitAngleDegrees = 0.0;
+		double hitLength = 0.0;
+		double hitHalfWidth = 0.0;
+		std::uint32_t hitCount = 0;
+		std::uint32_t hitIntervalMs = 0;
+		std::uint32_t hitDelayMs = 0;
+		std::vector<std::uint32_t> hitOffsetsMs;
+		std::string damageProfileId;
+		double pushRangeM = 0.0;
+		std::uint32_t pushMs = 0;
+		bool knockdown = false;
+		std::uint32_t downMs = 0;
+		std::string playerResponse = "DAMAGE";
+		std::string attachmentSlot = "NONE";
+		bool durationEditable = false;
+		bool hitEditable = false;
+	};
+
 	CBalanceTool();
 	void Open();
 	void Render();
+	/* Action Presentation Workbench consumes this narrow stable-ID boundary
+	   instead of reaching into Balance Tool widgets or constructing a second
+	   Valtan draft.  Both windows therefore edit and publish one in-memory
+	   transaction. */
+	bool Get_ValtanStageDurationDraft(
+		const std::string& patternId,
+		const std::string& stageId,
+		std::uint32_t& durationMs,
+		std::string& status) const;
+	bool Set_ValtanStageDurationDraft(
+		const std::string& patternId,
+		const std::string& stageId,
+		std::uint32_t durationMs,
+		std::string& status);
+	bool Get_ValtanStageDraft(
+		const std::string& patternId,
+		const std::string& stageId,
+		PATTERN_STAGE_EDIT& stage,
+		std::string& status) const;
+	bool Set_ValtanStageDraft(
+		const std::string& patternId,
+		const std::string& stageId,
+		const PATTERN_STAGE_EDIT& stage,
+		std::string& status);
+	/* One user-facing Save contract: validate the joined draft, durably save
+	   authoring when dirty, build the immutable Product runtime bundle, and
+	   request the existing two-phase live apply when it is currently safe.
+	   Internal stages remain explicit for rollback and diagnostics. */
+	bool Save_ValtanProduct(std::string& status);
+	bool Validate_ValtanDraft(std::string& status);
+	bool Save_ValtanAuthoring(std::string& status);
+	bool Publish_ValtanCandidate(std::string& status);
+	bool Apply_ValtanRevision(std::string& status);
+	bool Is_ValtanDraftDirty() const { return m_dirty; }
+	const std::string& Get_ValtanCandidateApplyClass() const
+	{
+		return m_valtanCandidateApplyClass;
+	}
 	/* Loads the tracked authoring documents and exercises the same serializer
 	used by Save without touching disk or launching the publisher. */
 	static bool Run_ReadOnlyRoundTripContractTest(std::string& status);
@@ -136,28 +205,6 @@ private:
 		std::uint32_t arenaRandomCount = 4u;
 		double arenaRandomRadiusM = 14.0;
 		double arenaHeightToleranceM = 1.0;
-	};
-
-	struct PATTERN_STAGE_EDIT
-	{
-		std::string stageId;
-		std::string actionId;
-		std::string stageKind;
-		std::uint32_t durationMs = 0;
-		std::string hitShape;
-		double hitOuterRadius = 0.0;
-		double hitInnerRadius = 0.0;
-		double hitAngleDegrees = 0.0;
-		double hitLength = 0.0;
-		double hitHalfWidth = 0.0;
-		std::uint32_t hitCount = 0;
-		std::uint32_t hitIntervalMs = 0;
-		std::uint32_t hitDelayMs = 0;
-		std::string damageProfileId;
-		double pushRangeM = 0.0;
-		std::uint32_t pushMs = 0;
-		bool knockdown = false;
-		std::uint32_t downMs = 0;
 	};
 
 	struct PATTERN_EDIT

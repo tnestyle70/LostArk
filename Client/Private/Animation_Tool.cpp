@@ -5,15 +5,21 @@
 #include "ActionPresentationTimeline.h"
 #include "AnimationPreviewAssets.h"
 #include "AnimationTargetService.h"
+#include "BalanceTool.h"
+#include "BossTool.h"
+#include "CameraTool.h"
 #include "Character.h"
 #include "DataJson.h"
 #include "Effect_Catalog.h"
+#include "Effect_Tool.h"
 #include "EffectAuthoringTransfer.h"
 #include "GameInstance.h"
 #include "HitAreaWire.h"
 #include "Model.h"
 #include "Part_Body.h"
 #include "ProjectDataRoot.h"
+#include "RuntimeAssetRoot.h"
+#include "SoundCueCatalog.h"
 #include "Transform.h"
 #include "Valtan.h"
 
@@ -74,7 +80,7 @@ namespace
 			L"Valtan.presentation.debug.json",
 			"Data/Valtan/Valtan.presentation.debug.json",
 			"valtan.debug",
-			"Valtan Custom Chain",
+			"Valtan Animation Sequence Intake",
 			"mesh_idle_battle_1"
 		},
 		CUSTOM_CHAIN_PROFILE{
@@ -82,7 +88,7 @@ namespace
 			L"Valtan.presentation.debug.json",
 			"Data/Valtan/Valtan.presentation.debug.json",
 			"valtan.debug",
-			"Valtan Custom Chain (Ghost body)",
+			"Valtan Animation Sequence Intake (Ghost body)",
 			"mesh_idle_battle_1"
 		}
 	};
@@ -283,8 +289,12 @@ namespace
 }
 
 Client::CAnimation_Tool::CAnimation_Tool(
-	shared_ptr<CCharacterPreviewPanel> pPreviewPanel)
+	shared_ptr<CCharacterPreviewPanel> pPreviewPanel,
+	CBalanceTool* const pBalanceTool,
+	CBossTool* const pBossTool)
 	: m_pPreviewPanel(std::move(pPreviewPanel))
+	, m_pBalanceTool(pBalanceTool)
+	, m_pBossTool(pBossTool)
 {
 }
 
@@ -293,6 +303,35 @@ Client::CAnimation_Tool::~CAnimation_Tool()
 	if (nullptr != m_pPreviewPanel)
 		m_pPreviewPanel->Set_SessionLock(
 			CHARACTER_PREVIEW_LOCK_OWNER::ANIMATION_TOOL, false, {});
+}
+
+bool_t Client::CAnimation_Tool::Consume_EffectToolOpenRequest(
+	EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& outRequest)
+{
+	if (!m_hasEffectToolOpenRequest)
+		return false;
+	outRequest.strPatternId = std::move(m_strEffectToolOpenPatternId);
+	outRequest.strStageId = std::move(m_strEffectToolOpenStageId);
+	outRequest.strCueOccurrenceId =
+		std::move(m_strEffectToolOpenCueOccurrenceId);
+	outRequest.strEffectAssetId = std::move(m_strEffectToolOpenEffectAssetId);
+	m_strEffectToolOpenPatternId.clear();
+	m_strEffectToolOpenStageId.clear();
+	m_strEffectToolOpenCueOccurrenceId.clear();
+	m_strEffectToolOpenEffectAssetId.clear();
+	m_hasEffectToolOpenRequest = false;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Consume_CameraToolOpenRequest(
+	CAMERA_TOOL_OPEN_REQUEST& outRequest)
+{
+	if (!m_hasCameraToolOpenRequest)
+		return false;
+	outRequest.strCueId = std::move(m_strCameraToolOpenCueId);
+	m_strCameraToolOpenCueId.clear();
+	m_hasCameraToolOpenRequest = false;
+	return true;
 }
 
 void Client::CAnimation_Tool::Update(
@@ -449,7 +488,8 @@ shared_ptr<Client::CCharacter> Client::CAnimation_Tool::Resolve_Character() cons
 
 bool_t Client::CAnimation_Tool::Is_AnyDocumentDirty() const
 {
-	return m_bDirty || m_bSkillBindingDirty;
+	return m_bDirty || m_bSkillBindingDirty ||
+		m_bValtanCombatObjectSoundCuesDirty;
 }
 
 bool_t Client::CAnimation_Tool::Sync_AssetName()
@@ -529,6 +569,8 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	m_iValtanPatternMasterDurationMs = 0u;
 	m_eValtanPatternMasterPath = VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
 	m_strValtanPatternMasterStatus.clear();
+	m_hasCameraToolOpenRequest = false;
+	m_strCameraToolOpenCueId.clear();
 	m_ValtanPatternMasterModel.reset();
 	m_ValtanPatternMasterBoss.reset();
 	m_iValtanPatternMasterTargetGeneration = 0u;
@@ -779,11 +821,11 @@ void Client::CAnimation_Tool::Render()
 	m_pPreviewPanel->Set_SessionLock(
 		CHARACTER_PREVIEW_LOCK_OWNER::ANIMATION_TOOL,
 		isTargetLocked,
-		"Save or discard Animation Events and Skill Bindings before changing target.");
+		"Save or discard Animation Events, Skill Bindings, and Workbench Sound bindings before changing target.");
 	m_pPreviewPanel->Refresh_Level();
 
 	if (!ImGui::Begin(
-		"LostArk Animation Tool",
+		"Action Presentation Workbench",
 		nullptr,
 		ImGuiWindowFlags_AlwaysVerticalScrollbar))
 	{
@@ -868,12 +910,12 @@ void Client::CAnimation_Tool::Render()
 			   hand-assembled chain workflow opens for it. Playback reuses the
 			   same transport window the source sequences use, which reads the
 			   playlist rather than any Valtan document. */
-			ImGui::SeparatorText("Custom Chain");
+			ImGui::SeparatorText("Animation Sequence Intake");
 			ImGui::TextWrapped(
 				"No pattern master is admitted for this body. Chains assembled "
-				"here are saved to its own debug document and are not promoted "
-				"with the product Valtan chains.");
-			if (ImGui::SmallButton("Open Custom Chain Window"))
+				"here are saved as Animation Intake and are not Product patterns "
+				"until the reviewed promotion pipeline admits them.");
+			if (ImGui::SmallButton("Open Animation Sequence Intake"))
 				m_bShowValtanCustomChainWindow = true;
 			if (m_bShowValtanCustomChainWindow)
 				Render_ValtanCustomChainWindow(pModel);
@@ -1203,6 +1245,13 @@ bool_t Client::CAnimation_Tool::Reload_ValtanPatternMaster()
 	}
 
 	m_ValtanPatternMasterView = std::move(Staged);
+	/* Sound is a fail-open presentation lane.  Its loader still stages the
+	   complete document and only commits on a valid gameplay/animation join;
+	   a rejected refresh preserves the last admitted lane while animation and
+	   Server gameplay remain usable. */
+	(void)Reload_ValtanPatternSoundCues();
+	(void)Reload_ValtanPatternShakeCues();
+	(void)Reload_ValtanCombatObjectSoundCues();
 	const std::vector<const VALTAN_PATTERN_VIEW*> Patterns =
 		Collect_ValtanPatternMasterPatterns();
 	m_iValtanPatternMasterSelected = std::clamp(
@@ -1214,6 +1263,89 @@ bool_t Client::CAnimation_Tool::Reload_ValtanPatternMaster()
 		std::to_string(iManagedPatternCount) + " authoring-master managed) from "
 		"Data/Valtan/Valtan.gameplay.json + Valtan.presentation.json. " +
 		Status;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Reload_ValtanPatternSoundCues()
+{
+	VALTAN_PATTERN_SOUND_CUE_DOCUMENT Staged;
+	std::string Status;
+	if (!CValtanPatternSoundCueDocument::Load_Source(Staged, Status))
+	{
+		m_strValtanPatternSoundCueStatus =
+			"Sound lane reload rejected; the previous admitted lane was preserved: " +
+			Status;
+		return false;
+	}
+	m_ValtanPatternSoundCues = std::move(Staged);
+	m_bValtanPatternSoundCuesReady = true;
+	m_strValtanPatternSoundCueStatus =
+		"Admitted " + std::to_string(m_ValtanPatternSoundCues.Cues.size()) +
+		" Valtan sound cue occurrences.";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Reload_ValtanPatternShakeCues()
+{
+	VALTAN_PATTERN_SHAKE_CUE_DOCUMENT Staged;
+	std::string Status;
+	if (!CValtanPatternShakeCueDocument::Load_Source(Staged, Status))
+	{
+		m_strValtanPatternShakeCueStatus =
+			"Camera/Shake lane reload rejected; the previous admitted lane was preserved: " +
+			Status;
+		return false;
+	}
+	m_ValtanPatternShakeCues = std::move(Staged);
+	m_bValtanPatternShakeCuesReady = true;
+	m_strValtanPatternShakeCueStatus =
+		"Admitted " + std::to_string(m_ValtanPatternShakeCues.Cues.size()) +
+		" Valtan camera-shake cue occurrences.";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Reload_ValtanCombatObjectSoundCues()
+{
+	VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT Staged;
+	std::string Status;
+	if (!CValtanCombatObjectSoundCueDocument::Load_Source(Staged, Status))
+	{
+		m_strValtanCombatObjectSoundCueStatus =
+			"Server-hit Sound lane reload rejected; the previous admitted lane was preserved: " +
+			Status;
+		return false;
+	}
+	m_ValtanCombatObjectSoundCues = std::move(Staged);
+	m_bValtanCombatObjectSoundCuesReady = true;
+	m_strValtanCombatObjectSoundCueStatus =
+		"Admitted " +
+		std::to_string(m_ValtanCombatObjectSoundCues.Cues.size()) +
+		" Server-hit-qualified Valtan Sound cue(s).";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Preview_ValtanSoundAsset(
+	const std::string& strResourceAssetId)
+{
+	const std::filesystem::path SoundPath =
+		CRuntimeAssetRoot::Resolve(strResourceAssetId);
+	std::error_code Error;
+	if (SoundPath.empty() ||
+		!std::filesystem::is_regular_file(SoundPath, Error) || Error)
+	{
+		m_strValtanPatternSoundCueStatus =
+			"Sound asset preview rejected: Resources-relative asset is missing or invalid: " +
+			strResourceAssetId + ".";
+		return false;
+	}
+	if (FAILED(CGameInstance::Get().Play_Sound(SoundPath.wstring(), 1.f)))
+	{
+		m_strValtanPatternSoundCueStatus =
+			"Sound asset preview failed: " + strResourceAssetId + ".";
+		return false;
+	}
+	m_strValtanPatternSoundCueStatus =
+		"Previewing sound asset: " + strResourceAssetId + ".";
 	return true;
 }
 
@@ -1731,12 +1863,703 @@ void Client::CAnimation_Tool::Update_ValtanPatternMasterHitAreaPreview()
 #endif
 }
 
+void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
+	const std::string& strPatternId,
+	const VALTAN_STAGE_VIEW& SavedStage)
+{
+	if (nullptr == m_pBalanceTool)
+	{
+		ImGui::TextDisabled(
+			"Typed Server gameplay draft is unavailable: Balance Tool owner is missing.");
+		return;
+	}
+
+	CBalanceTool::PATTERN_STAGE_EDIT Draft{};
+	std::string DraftStatus;
+	if (!m_pBalanceTool->Get_ValtanStageDraft(
+		strPatternId, SavedStage.strStageId, Draft, DraftStatus))
+	{
+		ImGui::TextDisabled("Draft unavailable: %s", DraftStatus.c_str());
+		return;
+	}
+	const auto SubmitDraft = [&]()
+	{
+		(void)m_pBalanceTool->Set_ValtanStageDraft(
+			strPatternId, SavedStage.strStageId, Draft, DraftStatus);
+		m_strValtanPatternMasterStatus = DraftStatus;
+	};
+
+	ImGui::SeparatorText("Server Stage Clock");
+	const uint32_t iOne = 1u;
+	const uint32_t iStepMs = 100u;
+	const uint32_t iFastStepMs = 1000u;
+	ImGui::BeginDisabled(!Draft.durationEditable);
+	ImGui::SetNextItemWidth(210.f);
+	if (ImGui::InputScalar(
+		"Server wall / blank timeline ms",
+		ImGuiDataType_U32, &Draft.durationMs,
+		&iStepMs, &iFastStepMs, "%u"))
+	{
+		Draft.durationMs = std::clamp(Draft.durationMs, 1u, 600000u);
+		SubmitDraft();
+	}
+	ImGui::EndDisabled();
+	if (!Draft.durationEditable)
+	{
+		ImGui::TextDisabled(
+			"Duration is read-only: manual Server audition is locked to the promoted animation wall-clock.");
+	}
+	if (Draft.durationMs != SavedStage.iDurationMs)
+	{
+		ImGui::TextColored(
+			ImVec4(1.f, 0.70f, 0.20f, 1.f),
+			"Draft %u ms | saved source %u ms",
+			Draft.durationMs, SavedStage.iDurationMs);
+	}
+	if ("VALTAN_HIGH_JUMP" == strPatternId &&
+		"AIRBORNE" == SavedStage.strStageId)
+	{
+		ImGui::TextWrapped(
+			"AIRBORNE duration is the boss stage/blank wall-clock. It extends the looping axe-flight animation, but it does not change a spawned axe's lifetime or its local hit atMs.");
+	}
+
+	ImGui::SeparatorText("Server Hit / Collider");
+	ImGui::TextDisabled("Action %s | stage kind %s",
+		Draft.actionId.c_str(), Draft.stageKind.c_str());
+	ImGui::TextDisabled("DamageProfile (read-only): %s",
+		Draft.damageProfileId.empty() ? "NONE" : Draft.damageProfileId.c_str());
+	ImGui::TextDisabled("Player response: %s | attachment: %s",
+		Draft.playerResponse.c_str(), Draft.attachmentSlot.c_str());
+	if (!Draft.hitEditable)
+	{
+		ImGui::TextDisabled(
+			"Collider NONE. Adding a new Server hit also requires a typed DamageProfile choice, so it remains in Balance Tool.");
+		return;
+	}
+
+	static constexpr const char_t* HIT_SHAPES[] = {
+		"CIRCLE", "RING", "CONE", "BOX", "CROSS", "SIX_DIRECTIONS" };
+	if (ImGui::BeginCombo("Collider shape", Draft.hitShape.c_str()))
+	{
+		for (const char_t* const pShape : HIT_SHAPES)
+		{
+			const bool_t bSelected = Draft.hitShape == pShape;
+			if (ImGui::Selectable(pShape, bSelected) && !bSelected)
+			{
+				const double fExtent = (std::max)({
+					1.0, Draft.hitOuterRadius, Draft.hitInnerRadius,
+					Draft.hitLength, Draft.hitHalfWidth });
+				Draft.hitShape = pShape;
+				Draft.hitOuterRadius = 0.0;
+				Draft.hitInnerRadius = 0.0;
+				Draft.hitAngleDegrees = 0.0;
+				Draft.hitLength = 0.0;
+				Draft.hitHalfWidth = 0.0;
+				if ("CIRCLE" == Draft.hitShape)
+					Draft.hitOuterRadius = fExtent;
+				else if ("RING" == Draft.hitShape)
+				{
+					Draft.hitOuterRadius = fExtent;
+					Draft.hitInnerRadius = (std::max)(0.1, fExtent * 0.5);
+				}
+				else if ("CONE" == Draft.hitShape)
+				{
+					Draft.hitAngleDegrees = 90.0;
+					Draft.hitLength = fExtent;
+				}
+				else
+				{
+					Draft.hitLength = fExtent;
+					Draft.hitHalfWidth = (std::max)(0.1, fExtent * 0.5);
+				}
+				SubmitDraft();
+			}
+			if (bSelected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+
+	const auto EditGeometry = [&](const char_t* const pLabel,
+		double& fValue, const double fMinimum, const double fMaximum)
+	{
+		const double fStep = 0.1;
+		const double fFastStep = 1.0;
+		ImGui::SetNextItemWidth(210.f);
+		if (!ImGui::InputDouble(
+			pLabel, &fValue, fStep, fFastStep, "%.3f"))
+		{
+			return;
+		}
+		fValue = std::clamp(fValue, fMinimum, fMaximum);
+		SubmitDraft();
+	};
+	if ("CIRCLE" == Draft.hitShape || "RING" == Draft.hitShape)
+	{
+		const double fMinimumOuter = "RING" == Draft.hitShape ?
+			Draft.hitInnerRadius + 0.001 : 0.001;
+		EditGeometry("Outer radius m", Draft.hitOuterRadius,
+			fMinimumOuter, 1000.0);
+	}
+	if ("RING" == Draft.hitShape)
+	{
+		EditGeometry("Inner radius m", Draft.hitInnerRadius,
+			0.001, (std::max)(0.001, Draft.hitOuterRadius - 0.001));
+	}
+	if ("CONE" == Draft.hitShape)
+	{
+		EditGeometry("Angle degrees", Draft.hitAngleDegrees, 0.001, 180.0);
+		EditGeometry("Length m", Draft.hitLength, 0.001, 1000.0);
+	}
+	if ("BOX" == Draft.hitShape || "CROSS" == Draft.hitShape ||
+		"SIX_DIRECTIONS" == Draft.hitShape)
+	{
+		EditGeometry("Length m", Draft.hitLength, 0.001, 1000.0);
+		EditGeometry("Half width m", Draft.hitHalfWidth, 0.001, 1000.0);
+	}
+
+	ImGui::SeparatorText("Server Hit Schedule");
+	if (!Draft.hitOffsetsMs.empty())
+	{
+		ImGui::TextDisabled(
+			"EXPLICIT_OFFSETS is read-only here; preserve the source contact ordering in Balance Tool.");
+		for (std::size_t iOffset = 0u;
+			iOffset < Draft.hitOffsetsMs.size(); ++iOffset)
+		{
+			ImGui::BulletText("hit %zu at stage +%u ms",
+				iOffset + 1u, Draft.hitOffsetsMs[iOffset]);
+		}
+	}
+	else
+	{
+		ImGui::SetNextItemWidth(180.f);
+		if (ImGui::InputScalar(
+			"Hit count", ImGuiDataType_U32, &Draft.hitCount,
+			&iOne, nullptr, "%u"))
+		{
+			Draft.hitCount = std::clamp(Draft.hitCount, 1u, 64u);
+			if (1u == Draft.hitCount)
+				Draft.hitIntervalMs = 0u;
+			else if (0u == Draft.hitIntervalMs)
+				Draft.hitIntervalMs = 1u;
+			SubmitDraft();
+		}
+		const uint32_t iMaximumDelay = Draft.durationMs - 1u;
+		ImGui::SetNextItemWidth(180.f);
+		if (ImGui::InputScalar(
+			"First hit offset ms", ImGuiDataType_U32, &Draft.hitDelayMs,
+			&iOne, &iStepMs, "%u"))
+		{
+			Draft.hitDelayMs = (std::min)(Draft.hitDelayMs, iMaximumDelay);
+			SubmitDraft();
+		}
+		ImGui::BeginDisabled(1u == Draft.hitCount);
+		ImGui::SetNextItemWidth(180.f);
+		if (ImGui::InputScalar(
+			"Hit interval ms", ImGuiDataType_U32, &Draft.hitIntervalMs,
+			&iOne, &iStepMs, "%u"))
+		{
+			const uint32_t iRemaining = Draft.durationMs - 1u -
+				(std::min)(Draft.hitDelayMs, Draft.durationMs - 1u);
+			const uint32_t iMaximumInterval = Draft.hitCount > 1u ?
+				iRemaining / (Draft.hitCount - 1u) : 0u;
+			Draft.hitIntervalMs = std::clamp(
+				Draft.hitIntervalMs, 1u, (std::max)(1u, iMaximumInterval));
+			SubmitDraft();
+		}
+		ImGui::EndDisabled();
+	}
+
+	ImGui::SeparatorText("Server Player Reaction");
+	const bool_t bCapture = "CAPTURE" == Draft.playerResponse;
+	ImGui::BeginDisabled(bCapture);
+	double fPushStep = 0.1;
+	double fPushFastStep = 1.0;
+	ImGui::SetNextItemWidth(190.f);
+	if (ImGui::InputDouble(
+		"Push range m", &Draft.pushRangeM,
+		fPushStep, fPushFastStep, "%.3f"))
+	{
+		Draft.pushRangeM = std::clamp(Draft.pushRangeM, -20.0, 20.0);
+		if (std::abs(Draft.pushRangeM) < 0.000001)
+		{
+			Draft.pushRangeM = 0.0;
+			Draft.pushMs = 0u;
+		}
+		else if (0u == Draft.pushMs)
+		{
+			Draft.pushMs = 1u;
+		}
+		SubmitDraft();
+	}
+	ImGui::BeginDisabled(0.0 == Draft.pushRangeM);
+	ImGui::SetNextItemWidth(190.f);
+	if (ImGui::InputScalar(
+		"Push duration ms", ImGuiDataType_U32, &Draft.pushMs,
+		&iOne, &iStepMs, "%u"))
+	{
+		Draft.pushMs = std::clamp(Draft.pushMs, 1u, 600000u);
+		SubmitDraft();
+	}
+	ImGui::EndDisabled();
+	if (ImGui::Checkbox("Knockdown", &Draft.knockdown))
+	{
+		Draft.downMs = Draft.knockdown ?
+			(std::max)(Draft.downMs, 1u) : 0u;
+		SubmitDraft();
+	}
+	ImGui::BeginDisabled(!Draft.knockdown);
+	ImGui::SetNextItemWidth(190.f);
+	if (ImGui::InputScalar(
+		"Down duration ms", ImGuiDataType_U32, &Draft.downMs,
+		&iOne, &iStepMs, "%u"))
+	{
+		Draft.downMs = std::clamp(Draft.downMs, 1u, 600000u);
+		SubmitDraft();
+	}
+	ImGui::EndDisabled();
+	ImGui::EndDisabled();
+	const char_t* const pDirectionPolicy = 0.0 == Draft.pushRangeM ? "NONE" :
+		(Draft.pushRangeM > 0.0 ? "AWAY_FROM_HIT_SOURCE" :
+			"TOWARD_HIT_SOURCE");
+	const double fPushSpeedMps = 0u == Draft.pushMs ? 0.0 :
+		std::abs(Draft.pushRangeM) * 1000.0 /
+		static_cast<double>(Draft.pushMs);
+	ImGui::TextDisabled(
+		"Direction policy (Server-derived): %s | derived speed %.3f m/s",
+		pDirectionPolicy, fPushSpeedMps);
+	if (bCapture)
+	{
+		ImGui::TextDisabled(
+			"CAPTURE owns attachment instead of push/knockdown; reaction values are read-only zero.");
+	}
+}
+
+void Client::CAnimation_Tool::Render_ValtanPresentationLanes(
+	const VALTAN_PATTERN_VIEW& Pattern)
+{
+	struct JOINED_COMBAT_OBJECT_SOUND final
+	{
+		VALTAN_COMBAT_OBJECT_SOUND_CUE* pCue = nullptr;
+		uint32_t iHitOffsetMs = 0u;
+	};
+	const std::vector<std::string> ValtanSoundEventNames =
+		CSoundCueCatalog::Collect_EventNames("Valtan");
+
+	ImGui::SeparatorText("Joined Presentation Lanes");
+	ImGui::TextDisabled(
+		"Server Stage -> Animation -> Effect -> Sound Asset -> Camera/Shake -> World Event -> Combat Object");
+	if (!m_strValtanPatternSoundCueStatus.empty())
+		ImGui::TextWrapped("Sound: %s", m_strValtanPatternSoundCueStatus.c_str());
+	if (!m_strValtanPatternShakeCueStatus.empty())
+		ImGui::TextWrapped("Camera/Shake: %s",
+			m_strValtanPatternShakeCueStatus.c_str());
+	if (!m_strValtanCombatObjectSoundCueStatus.empty())
+		ImGui::TextWrapped("Server-hit Sound: %s",
+			m_strValtanCombatObjectSoundCueStatus.c_str());
+
+	for (std::size_t iStage = 0u; iStage < Pattern.Stages.size(); ++iStage)
+	{
+		const VALTAN_STAGE_VIEW& Stage = Pattern.Stages[iStage];
+		std::vector<const VALTAN_PATTERN_SOUND_CUE*> SoundCues;
+		if (m_bValtanPatternSoundCuesReady)
+		{
+			for (const VALTAN_PATTERN_SOUND_CUE& Cue :
+				m_ValtanPatternSoundCues.Cues)
+			{
+				if (Cue.strPatternId == Pattern.strPatternId &&
+					Cue.strStageId == Stage.strStageId)
+				{
+					SoundCues.push_back(&Cue);
+				}
+			}
+		}
+		std::vector<const VALTAN_PATTERN_SHAKE_CUE*> ShakeCues;
+		if (m_bValtanPatternShakeCuesReady)
+		{
+			for (const VALTAN_PATTERN_SHAKE_CUE& Cue :
+				m_ValtanPatternShakeCues.Cues)
+			{
+				if (Cue.strPatternId == Pattern.strPatternId &&
+					Cue.strStageId == Stage.strStageId)
+				{
+					ShakeCues.push_back(&Cue);
+				}
+			}
+		}
+		std::vector<const VALTAN_WORLD_EVENT_TRIGGER_REF_VIEW*> WorldEvents;
+		for (const VALTAN_WORLD_EVENT_TRIGGER_REF_VIEW& Event :
+			Pattern.WorldEventTriggerRefs)
+		{
+			if (Event.strPatternId == Pattern.strPatternId &&
+				Event.strStageId == Stage.strStageId)
+			{
+				WorldEvents.push_back(&Event);
+			}
+		}
+		std::vector<JOINED_COMBAT_OBJECT_SOUND> CombatObjectSoundCues;
+		std::size_t iMissingCombatObjectSounds = 0u;
+		for (const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& CombatObject :
+			Stage.CombatObjectEffects)
+		{
+			if (CombatObject.HitIds.size() != CombatObject.HitOffsetsMs.size())
+			{
+				iMissingCombatObjectSounds += (std::max)(
+					CombatObject.HitIds.size(), CombatObject.HitOffsetsMs.size());
+				continue;
+			}
+			for (std::size_t iHit = 0u; iHit < CombatObject.HitIds.size(); ++iHit)
+			{
+				VALTAN_COMBAT_OBJECT_SOUND_CUE* pJoinedCue = nullptr;
+				if (m_bValtanCombatObjectSoundCuesReady)
+				{
+					const auto Found = std::find_if(
+						m_ValtanCombatObjectSoundCues.Cues.begin(),
+						m_ValtanCombatObjectSoundCues.Cues.end(),
+						[&CombatObject, &iHit](
+							const VALTAN_COMBAT_OBJECT_SOUND_CUE& Cue)
+						{
+							return Cue.strCombatObjectArchetypeId ==
+									CombatObject.strCombatObjectArchetypeId &&
+								Cue.strHitId == CombatObject.HitIds[iHit];
+						});
+					if (Found != m_ValtanCombatObjectSoundCues.Cues.end())
+						pJoinedCue = &*Found;
+				}
+				if (nullptr == pJoinedCue)
+				{
+					++iMissingCombatObjectSounds;
+					continue;
+				}
+				CombatObjectSoundCues.push_back(
+					{ pJoinedCue, CombatObject.HitOffsetsMs[iHit] });
+			}
+		}
+
+		ImGui::PushID(static_cast<int32_t>(iStage));
+		const std::string StageLabel = Stage.strStageId + " | " +
+			std::to_string(Stage.iDurationMs) + " ms | animation " +
+			std::to_string(Stage.ClipOccurrences.size()) + " | effect " +
+			std::to_string(Stage.ProductCues.size() +
+				Stage.CombatObjectEffects.size()) + " | sound " +
+			std::to_string(SoundCues.size() + CombatObjectSoundCues.size()) +
+			" | camera/shake " +
+			std::to_string(Stage.CameraInvocations.size() + ShakeCues.size()) +
+			" | world " + std::to_string(WorldEvents.size());
+		if (ImGui::TreeNodeEx(
+			StageLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			ImGui::TextDisabled("Server action: %s", Stage.strActionId.c_str());
+
+			ImGui::SeparatorText("Animation");
+			if (Stage.bSuppressAnimation)
+				ImGui::TextDisabled("NONE (hold current boss pose)");
+			for (const VALTAN_CLIP_OCCURRENCE_VIEW& Clip :
+				Stage.ClipOccurrences)
+			{
+				ImGui::BulletText(
+					"%s | %s | source +%u ms | play %u ms | wall %u ms",
+					Clip.strClipOccurrenceId.c_str(), Clip.strClipName.c_str(),
+					Clip.iSourceStartMs, Clip.iPlayMs, Clip.iAuthoringWallMs);
+			}
+
+			ImGui::SeparatorText("Effect");
+			if (Stage.ProductCues.empty() && Stage.CombatObjectEffects.empty())
+				ImGui::TextDisabled("No Product Effect cue on this stage.");
+			for (std::size_t iCue = 0u; iCue < Stage.ProductCues.size(); ++iCue)
+			{
+				const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue =
+					Stage.ProductCues[iCue];
+				ImGui::PushID(static_cast<int32_t>(iCue));
+				ImGui::BulletText(
+					"%s | %s | anchor %s | %s",
+					Cue.strOccurrenceId.c_str(), Cue.strEffectAssetId.c_str(),
+					Cue.strAnchorSlotId.c_str(),
+					Cue.bUsesStageClock ? "stage clock" :
+						Cue.strClipOccurrenceId.c_str());
+				ImGui::SameLine();
+				if (ImGui::SmallButton("Open Effect Tool"))
+				{
+					m_strEffectToolOpenPatternId = Pattern.strPatternId;
+					m_strEffectToolOpenStageId = Stage.strStageId;
+					m_strEffectToolOpenCueOccurrenceId = Cue.strOccurrenceId;
+					m_strEffectToolOpenEffectAssetId = Cue.strEffectAssetId;
+					m_hasEffectToolOpenRequest = true;
+				}
+				ImGui::PopID();
+			}
+			for (const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& CombatObject :
+				Stage.CombatObjectEffects)
+			{
+				ImGui::BulletText(
+					"Server combat object %s x%u -> %s",
+					CombatObject.strCombatObjectArchetypeId.c_str(),
+					CombatObject.iSpawnValue,
+					CombatObject.strEffectAssetId.c_str());
+				ImGui::TextDisabled(
+					"  Product clock (read-only): life %u ms | %s | origin %s | direction %s | speed %.3f m/s | max %.3f m",
+					CombatObject.iLifetimeMs,
+					CombatObject.strKind.c_str(),
+					CombatObject.strOriginPolicy.c_str(),
+					CombatObject.strDirectionPolicy.c_str(),
+					CombatObject.fSpeedMps,
+					CombatObject.fMaximumDistanceM);
+				for (std::size_t iHit = 0u;
+					iHit < CombatObject.HitOffsetsMs.size(); ++iHit)
+				{
+					const char_t* pHitId = iHit < CombatObject.HitIds.size() ?
+						CombatObject.HitIds[iHit].c_str() : "MISSING_HIT_ID";
+					ImGui::TextDisabled(
+						"  Server hit %s at combat-object +%u ms (local clock; stage duration %u ms)",
+						pHitId, CombatObject.HitOffsetsMs[iHit],
+						Stage.iDurationMs);
+				}
+				if ("VALTAN_HIGH_JUMP" == Pattern.strPatternId &&
+					"AIRBORNE" == Stage.strStageId)
+				{
+					ImGui::TextColored(
+						ImVec4(0.35f, 0.75f, 1.f, 1.f),
+						"  Separate clocks: AIRBORNE stage %u ms | axe lifetime %u ms | first axe-local hit atMs %u",
+						Stage.iDurationMs, CombatObject.iLifetimeMs,
+						CombatObject.HitOffsetsMs.empty() ? 0u :
+							CombatObject.HitOffsetsMs.front());
+				}
+			}
+
+			ImGui::SeparatorText("Sound");
+			if (SoundCues.empty() && CombatObjectSoundCues.empty())
+				ImGui::TextDisabled("No Sound cue on this stage.");
+			for (std::size_t iCue = 0u; iCue < SoundCues.size(); ++iCue)
+			{
+				const VALTAN_PATTERN_SOUND_CUE& Cue = *SoundCues[iCue];
+				ImGui::PushID(static_cast<int32_t>(iCue));
+				ImGui::BulletText(
+					"%s | event %s | clip +%u ms | %s",
+					Cue.strOccurrenceId.c_str(), Cue.strSoundEvent.c_str(),
+					Cue.iStartMs,
+					VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP ==
+						Cue.eRepeatPolicy ? "each loop" : "once");
+				const std::vector<std::string>& Variants =
+					CSoundCueCatalog::Find_Variants("Valtan", Cue.strSoundEvent);
+				if (Variants.empty())
+				{
+					ImGui::TextColored(
+						ImVec4(1.f, 0.35f, 0.25f, 1.f),
+						"  MISSING: event has no WAV asset variant.");
+				}
+				for (std::size_t iVariant = 0u;
+					iVariant < Variants.size(); ++iVariant)
+				{
+					ImGui::PushID(static_cast<int32_t>(iVariant));
+					if (ImGui::SmallButton("Preview WAV"))
+						(void)Preview_ValtanSoundAsset(Variants[iVariant]);
+					ImGui::SameLine();
+					ImGui::TextDisabled("%s", Variants[iVariant].c_str());
+					ImGui::PopID();
+				}
+				ImGui::PopID();
+			}
+			if (!CombatObjectSoundCues.empty())
+				ImGui::SeparatorText("Server Hit Sound");
+			ImGui::PushID("server-hit-sounds");
+			for (std::size_t iCue = 0u;
+				iCue < CombatObjectSoundCues.size(); ++iCue)
+			{
+				const JOINED_COMBAT_OBJECT_SOUND& Joined =
+					CombatObjectSoundCues[iCue];
+				VALTAN_COMBAT_OBJECT_SOUND_CUE& Cue = *Joined.pCue;
+				ImGui::PushID(static_cast<int32_t>(iCue));
+				ImGui::BulletText(
+					"%s | %s + %s | event %s | object +%u ms",
+					Cue.strBindingId.c_str(),
+					Cue.strCombatObjectArchetypeId.c_str(), Cue.strHitId.c_str(),
+					Cue.strSoundEvent.c_str(), Joined.iHitOffsetMs);
+				ImGui::SetNextItemWidth(360.f);
+				if (ImGui::BeginCombo("Impact Sound Event", Cue.strSoundEvent.c_str()))
+				{
+					for (const std::string& EventName : ValtanSoundEventNames)
+					{
+						const bool_t bSelected = EventName == Cue.strSoundEvent;
+						if (ImGui::Selectable(EventName.c_str(), bSelected) && !bSelected)
+						{
+							Cue.strSoundEvent = EventName;
+							m_bValtanCombatObjectSoundCuesDirty = true;
+							m_strValtanCombatObjectSoundCueStatus =
+								"UNSAVED: " + Cue.strBindingId + " -> " + EventName;
+						}
+						if (bSelected)
+							ImGui::SetItemDefaultFocus();
+					}
+					ImGui::EndCombo();
+				}
+				const std::vector<std::string>& Variants =
+					CSoundCueCatalog::Find_Variants("Valtan", Cue.strSoundEvent);
+				for (std::size_t iVariant = 0u;
+					iVariant < Variants.size(); ++iVariant)
+				{
+					ImGui::PushID(static_cast<int32_t>(iVariant));
+					if (ImGui::SmallButton("Preview Impact WAV"))
+						(void)Preview_ValtanSoundAsset(Variants[iVariant]);
+					ImGui::SameLine();
+					ImGui::TextDisabled("%s", Variants[iVariant].c_str());
+					ImGui::PopID();
+				}
+				ImGui::PopID();
+			}
+			ImGui::PopID();
+			if (0u != iMissingCombatObjectSounds)
+			{
+				ImGui::TextColored(
+					ImVec4(1.f, 0.25f, 0.20f, 1.f),
+					"COVERAGE GAP: %zu Server combat-object hit(s) have no exact Sound binding.",
+					iMissingCombatObjectSounds);
+			}
+
+			ImGui::SeparatorText("Camera / Shake");
+			if (Stage.CameraInvocations.empty() && ShakeCues.empty())
+				ImGui::TextDisabled("No Camera or Shake cue on this stage.");
+			for (std::size_t iCue = 0u;
+				iCue < Stage.CameraInvocations.size(); ++iCue)
+			{
+				const VALTAN_CAMERA_INVOCATION_VIEW& Invocation =
+					Stage.CameraInvocations[iCue];
+				ImGui::PushID(static_cast<int32_t>(iCue));
+				ImGui::BulletText(
+					"%s -> %s | %s +%u ms | %s %u ms",
+					Invocation.strCameraInvocationId.c_str(),
+					Invocation.strCameraCueId.c_str(),
+					Invocation.strTrigger.c_str(), Invocation.iStartOffsetMs,
+					Invocation.strDurationPolicy.c_str(), Invocation.iDurationMs);
+				ImGui::SameLine();
+				if (ImGui::SmallButton("Open Camera Tool"))
+				{
+					m_strCameraToolOpenCueId = Invocation.strCameraCueId;
+					m_hasCameraToolOpenRequest = true;
+				}
+				ImGui::PopID();
+			}
+			ImGui::PushID("camera-shakes");
+			for (std::size_t iCue = 0u; iCue < ShakeCues.size(); ++iCue)
+			{
+				const VALTAN_PATTERN_SHAKE_CUE& Cue = *ShakeCues[iCue];
+				ImGui::PushID(static_cast<int32_t>(iCue));
+				ImGui::BulletText(
+					"%s | %s +%u ms | %.3f s | F/R/U/FOV amp %.3g/%.3g/%.3g/%.3g | %s",
+					Cue.strOccurrenceId.c_str(), Cue.strClipOccurrenceId.c_str(),
+					Cue.iStartMs, Cue.Spec.fDurationSeconds,
+					Cue.Spec.Forward.fAmplitude, Cue.Spec.Right.fAmplitude,
+					Cue.Spec.Up.fAmplitude, Cue.Spec.Fov.fAmplitude,
+					VALTAN_PATTERN_SHAKE_REPEAT_POLICY::EACH_LOOP ==
+						Cue.eRepeatPolicy ? "each loop" : "once");
+				ImGui::PopID();
+			}
+			ImGui::PopID();
+
+			ImGui::SeparatorText("World Event / Runtime UI");
+			if (WorldEvents.empty())
+				ImGui::TextDisabled("No world-event trigger on this stage.");
+			for (const VALTAN_WORLD_EVENT_TRIGGER_REF_VIEW* const pEvent :
+				WorldEvents)
+			{
+				ImGui::BulletText(
+					"%s/%s -> %s",
+					pEvent->strPatternId.c_str(), pEvent->strStageId.c_str(),
+					pEvent->strTriggerKind.c_str());
+			}
+			ImGui::TextDisabled(
+				"HUD/UI observes replicated Server state; this stage does not author a second UI command path.");
+
+			ImGui::TreePop();
+		}
+		ImGui::PopID();
+	}
+}
+
 void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 	const shared_ptr<Engine::CModel>& pModel)
 {
-	ImGui::SeparatorText("Valtan Pattern Master (Authoritative)");
+	ImGui::SeparatorText("Valtan Action Presentation Workbench");
 	ImGui::TextWrapped(
-		"Primary animator workflow. Data/Valtan/Valtan.gameplay.json owns the ordered Server-stage wall clock and Data/Valtan/Valtan.presentation.json owns the animation occurrences joined onto it; each stage declares EXACT, HOLD_LAST_POSE, or LOOP_TO_STAGE_END, and each occurrence owns sourceStartMs, playMs, playRate, and repeatUntilStageEnd. Play samples the same Product binding and CValtan presentation path as Arena, locally on this preview boss. Server movement, Effects, Sound, hit and damage are not run here.");
+		"One joined view over Server Stage, Animation, Effect, Sound Asset, and Combat Object. Pattern Offline samples the Product animation locally; Server Replay/Live submits the same stable pattern ID to the real Arena authority, where movement, hit, grab, damage, Effect, and Sound run.");
+	ImGui::TextDisabled(
+		"Encounter target: Valtan (Product Server authority). KakulSaydon remains unavailable until a Product world, encounter, pattern source, and Server runtime are admitted.");
+
+	ImGui::SeparatorText("Server Arena Environment");
+	ImGui::TextDisabled(
+		"These presets use the active Valtan room's destruction transaction; no wall, collision or navigation state is changed locally.");
+	ImGui::PushID("WorkbenchArenaPreset");
+	ImGui::BeginDisabled(nullptr == m_pBossTool);
+	const auto arenaPresetButton = [this](
+		const char_t* label,
+		const LostArk::Shared::VALTAN_ARENA_PRESET preset)
+	{
+		if (!ImGui::Button(label))
+			return;
+		std::string status;
+		(void)m_pBossTool->Set_ServerArenaPreset(preset, status);
+		m_strValtanPatternMasterStatus = std::move(status);
+	};
+	arenaPresetButton(
+		"Fresh / All Walls", LostArk::Shared::VALTAN_ARENA_PRESET::FRESH);
+	ImGui::SameLine();
+	arenaPresetButton(
+		"Circle / Walls Gone",
+		LostArk::Shared::VALTAN_ARENA_PRESET::CIRCLE_WALLS_GONE);
+	arenaPresetButton(
+		"Break 3 O'Clock",
+		LostArk::Shared::VALTAN_ARENA_PRESET::THREE_OCLOCK_BROKEN);
+	ImGui::SameLine();
+	arenaPresetButton(
+		"Break 9 O'Clock",
+		LostArk::Shared::VALTAN_ARENA_PRESET::NINE_OCLOCK_BROKEN);
+	arenaPresetButton(
+		"Break 3 + 9 O'Clock",
+		LostArk::Shared::VALTAN_ARENA_PRESET::BOTH_SIDES_BROKEN);
+	ImGui::EndDisabled();
+
+	CBossTool::VALTAN_ARENA_ACTIVE_STATE activeState{};
+	std::string activeStateStatus;
+	const bool_t bActiveStateReady = nullptr != m_pBossTool &&
+		m_pBossTool->Get_ServerArenaActiveState(
+			activeState, activeStateStatus);
+	ImGui::SeparatorText("Arena Active (Server actual)");
+	ImGui::TextDisabled(
+		"Active boxes are replicated facts. Mutations use the five exact Server presets above.");
+	const auto actualCheckbox = [](const char_t* label, const bool_t active)
+	{
+		bool_t value = active;
+		ImGui::BeginDisabled(true);
+		ImGui::Checkbox(label, &value);
+		ImGui::EndDisabled();
+	};
+	ImGui::BeginDisabled(!bActiveStateReady);
+	actualCheckbox(
+		"Ordinary walls / debris sources Active",
+		activeState.bOrdinaryWallsActive);
+	actualCheckbox("109 outer ring Active", activeState.bOuterRingActive);
+	actualCheckbox(
+		"3 o'clock floor / collision / Nav Active",
+		activeState.bThreeOClockFloorActive);
+	actualCheckbox(
+		"9 o'clock floor / collision / Nav Active",
+		activeState.bNineOClockFloorActive);
+	ImGui::EndDisabled();
+	ImGui::Text(
+		"Debris actors %u | collision %u | nav regions %u | nav revision %llu",
+		activeState.iDebrisActorCount,
+		activeState.iActiveCollisionCount,
+		activeState.iActiveNavigationRegionCount,
+		static_cast<unsigned long long>(activeState.iNavigationRevision));
+	if (!activeStateStatus.empty())
+		ImGui::TextDisabled("%s", activeStateStatus.c_str());
+	if (nullptr != m_pBossTool)
+	{
+		const std::string arenaStatus =
+			m_pBossTool->Get_ServerArenaPresetStatus();
+		if (!arenaStatus.empty())
+			ImGui::TextWrapped("Arena: %s", arenaStatus.c_str());
+	}
+	ImGui::PopID();
 
 	if (!m_bValtanPatternMasterLoadAttempted)
 	{
@@ -1744,14 +2567,20 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 		Reload_ValtanPatternMaster();
 	}
 	ImGui::BeginDisabled(
-		m_bValtanPatternMasterPlaying || m_bValtanPatternPreviewPlaying);
+		m_bValtanPatternMasterPlaying || m_bValtanPatternPreviewPlaying ||
+		m_bValtanCombatObjectSoundCuesDirty);
 	if (ImGui::SmallButton("Reload Valtan Pattern Master"))
 		Reload_ValtanPatternMaster();
 	ImGui::EndDisabled();
+	if (m_bValtanCombatObjectSoundCuesDirty && ImGui::IsItemHovered(
+			ImGuiHoveredFlags_AllowWhenDisabled))
+	{
+		ImGui::SetTooltip("Save the edited Server-hit Sound binding before reload.");
+	}
 
 	/* Opened ahead of the baseline admission below: assembling a chain by
 	   hand must stay possible even when the master itself refuses to load. */
-	if (ImGui::SmallButton("Open Custom Chain Window"))
+	if (ImGui::SmallButton("Open Animation Sequence Intake"))
 		m_bShowValtanCustomChainWindow = true;
 	if (m_bShowValtanCustomChainWindow)
 		Render_ValtanCustomChainWindow(pModel);
@@ -1826,10 +2655,22 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 	}
 	ImGui::EndDisabled();
 
-	if (ImGui::Button("Play Arena Presentation Locally"))
+	ImGui::SeparatorText("Playback Modes");
+	if (ImGui::Button("Pattern Offline"))
 	{
 		Start_ValtanPatternMasterPreview(
 			pModel, *pSelected, m_eValtanPatternMasterPath);
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Complete Play (Server/Arena)"))
+	{
+		std::string Status;
+		if (nullptr == m_pBossTool)
+			Status = "Server Replay/Live is unavailable: Boss Tool service is missing.";
+		else
+			(void)m_pBossTool->Play_ServerPattern(
+				pSelected->strPatternId, Status);
+		m_strValtanPatternMasterStatus = std::move(Status);
 	}
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!m_bValtanPatternMasterPlaying);
@@ -1846,6 +2687,69 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 			pModel, "Valtan Pattern Master preview stopped; idle restored.");
 	}
 	ImGui::EndDisabled();
+
+	ImGui::SeparatorText("Authoring Revision");
+	const bool_t bDraftDirty = nullptr != m_pBalanceTool &&
+		m_pBalanceTool->Is_ValtanDraftDirty();
+	ImGui::TextDisabled(
+		"%s | gameplay wall clock and presentation remain separate joined domains",
+		bDraftDirty ? "UNSAVED GAMEPLAY DRAFT" : "saved source");
+	if (m_bValtanCombatObjectSoundCuesDirty)
+		ImGui::TextColored(ImVec4(1.f, 0.75f, 0.2f, 1.f),
+			"UNSAVED SERVER-HIT SOUND BINDING");
+	ImGui::BeginDisabled(nullptr == m_pBalanceTool);
+	if (ImGui::Button("Save"))
+	{
+		std::string Status;
+		std::string SoundStatus;
+		const bool_t bSoundReady = !m_bValtanCombatObjectSoundCuesDirty ||
+			CValtanCombatObjectSoundCueDocument::Validate_SourceDraft(
+				m_ValtanCombatObjectSoundCues, SoundStatus);
+		if (!bSoundReady)
+		{
+			Status = "Save validation failed; Product and Sound source were preserved: " +
+				SoundStatus;
+		}
+		else if (m_pBalanceTool->Save_ValtanProduct(Status))
+		{
+			if (m_bValtanCombatObjectSoundCuesDirty)
+			{
+				const std::string ProductStatus = Status;
+				if (CValtanCombatObjectSoundCueDocument::Save_Source(
+						m_ValtanCombatObjectSoundCues, SoundStatus))
+				{
+					m_bValtanCombatObjectSoundCuesDirty = false;
+					std::string RuntimeStatus =
+						"No active Valtan; binding applies on the next spawn.";
+					if (const shared_ptr<CValtan> Boss =
+							CAnimationTargetService::Resolve_Boss())
+					{
+						(void)Boss->Reload_CombatObjectSoundCues(RuntimeStatus);
+					}
+					Status = ProductStatus + " " + SoundStatus + " " + RuntimeStatus;
+					(void)Reload_ValtanPatternMaster();
+				}
+				else
+				{
+					Status = ProductStatus +
+						" Product is saved, but Sound source was not replaced: " +
+						SoundStatus;
+				}
+			}
+			else
+			{
+				(void)Reload_ValtanPatternMaster();
+			}
+		}
+		m_strValtanPatternMasterStatus = std::move(Status);
+	}
+	ImGui::EndDisabled();
+	if (nullptr != m_pBalanceTool)
+	{
+		ImGui::TextDisabled("Runtime activation: %s",
+			m_pBalanceTool->Get_ValtanCandidateApplyClass().empty() ? "NONE" :
+				m_pBalanceTool->Get_ValtanCandidateApplyClass().c_str());
+	}
 
 	ImGui::SetNextItemWidth(120.f);
 	if (ImGui::SliderFloat(
@@ -2018,6 +2922,8 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 				Stage.strActionId.c_str(), Stage.strStageKind.c_str(),
 				Stage.strServerDamageProfileId.empty() ? "NONE" :
 					Stage.strServerDamageProfileId.c_str());
+			Render_ValtanStageDraftInspector(
+				pSelected->strPatternId, Stage);
 			for (size_t iClip = 0u;
 				iClip < Stage.ClipOccurrences.size(); ++iClip)
 			{
@@ -2039,6 +2945,8 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 		}
 		ImGui::PopID();
 	}
+
+	Render_ValtanPresentationLanes(*pSelected);
 }
 
 void Client::CAnimation_Tool::Render_ValtanPatternPreview(
@@ -2101,7 +3009,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternPreview(
 			static_cast<uint32_t>(m_iValtanPatternPreviewSelected + 1));
 	}
 	ImGui::SameLine();
-	if (ImGui::Button("Play Selected") && iPatternCount > 0)
+	if (ImGui::Button("Local Pattern Preview") && iPatternCount > 0)
 	{
 		const uint32_t Number =
 			static_cast<uint32_t>(m_iValtanPatternPreviewSelected + 1);
@@ -2774,7 +3682,8 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 		"Assemble a chain by hand out of the model's own clips. Seconds carry "
 		"the same meaning the source cuts do: 0 plays the clip's native length, "
 		"a shorter value cuts it, a longer one loops it until the step is "
-		"filled. Steps live for this session only and are not authoring data.");
+		"filled. Save Animation Intake writes the review source only; it does "
+		"not silently replace Server gameplay or Product presentation.");
 
 	const bool_t bBusy =
 		m_bValtanPatternPreviewPlaying || m_bValtanPatternMasterPlaying;
@@ -2809,7 +3718,7 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 		Load_CustomChainLibrary();
 	}
 
-	ImGui::SeparatorText("Saved chains");
+	ImGui::SeparatorText("Saved Animation Intake");
 	ImGui::TextDisabled("%s", pProfile->pFileLabel);
 	ImGui::BeginDisabled(bBusy);
 	ImGui::SetNextItemWidth(160.f);
@@ -2824,7 +3733,7 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 	ImGui::InputTextWithHint("##chaintargetstage", "target stageId",
 		m_CustomChainTargetStageId, sizeof(m_CustomChainTargetStageId));
 
-	if (ImGui::Button("Save Chain"))
+	if (ImGui::Button("Save Animation Intake"))
 	{
 		if ('\0' == m_CustomChainId[0])
 		{

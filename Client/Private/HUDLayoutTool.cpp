@@ -5,6 +5,7 @@
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
 #include "CombatHUDViewModel.h"
+#include "MainApp.h"
 
 #include <fstream>
 #include <filesystem>
@@ -535,6 +536,17 @@ void Client::CHUDLayoutTool::Render()
 
 	ImGui::TextUnformatted("F1: open / close the editor tool workspace   |   drag box body to move, drag yellow corner to resize.");
 	ImGui::TextUnformatted("Drag this window onto Map Tool to dock as a tab.");
+#ifdef _DEBUG
+	if (ImGui::Button("Complete Play (Server/Arena)##HUDTool"))
+	{
+		if (CMainApp* const app = CMainApp::Get_Active())
+			(void)app->Debug_CompletePlaySelected(m_strCompletePlayStatus);
+		else
+			m_strCompletePlayStatus = "Complete Play workspace is unavailable.";
+	}
+	ImGui::SameLine();
+	ImGui::TextDisabled("%s", m_strCompletePlayStatus.c_str());
+#endif
 
 	if (ImGui::BeginTabBar("HUDDocuments"))
 	{
