@@ -25,8 +25,6 @@ $valtanAuditionServiceHarnessExe = Join-Path $repoRoot `
     "Tools\ValtanPatternAuditionServiceHarness\Bin\$Configuration\ValtanPatternAuditionServiceHarness.exe"
 $pointLightFalloffHarnessExe = Join-Path $repoRoot `
     "Tools\PointLightFalloffContractHarness\Bin\$Configuration\PointLightFalloffContractHarness.exe"
-$mapFrustumHarnessExe = Join-Path $repoRoot `
-    "Tools\MapFrustumContractHarness\Bin\$Configuration\MapFrustumContractHarness.exe"
 $physicsHarnessExe = Join-Path $repoRoot `
     "Tools\PhysicsContractHarness\Bin\$Configuration\PhysicsContractHarness.exe"
 $wmodelHarnessExe = Join-Path $repoRoot `
@@ -84,7 +82,6 @@ function Assert-RuntimeLayout {
             $actionPresentationTimelineHarnessExe,
             $valtanAuditionServiceHarnessExe,
             $pointLightFalloffHarnessExe,
-            $mapFrustumHarnessExe,
             $physicsHarnessExe,
             $wmodelHarnessExe
         )
@@ -197,8 +194,6 @@ try {
             Invoke-MSBuildProject $msbuild `
                 'Tools\PointLightFalloffContractHarness\Default\PointLightFalloffContractHarness.vcxproj'
             Invoke-MSBuildProject $msbuild `
-                'Tools\MapFrustumContractHarness\Default\MapFrustumContractHarness.vcxproj'
-            Invoke-MSBuildProject $msbuild `
                 'Tools\PhysicsContractHarness\Default\PhysicsContractHarness.vcxproj'
             Invoke-MSBuildProject $msbuild `
                 'Tools\WModelGeometryContractHarness\Default\WModelGeometryContractHarness.vcxproj'
@@ -224,16 +219,9 @@ try {
 
     if ($includeFullDiagnostic) {
         $global:LASTEXITCODE = 0
-        & '.\Tools\ProjectAudit\Test-BernFrustumCullingContract.ps1'
+        & '.\Tools\MapPipeline\Test-MapWaterRenderContract.ps1'
         if ($global:LASTEXITCODE -ne 0) {
-            throw 'Bern frustum source contract validation failed.'
-        }
-
-        $global:LASTEXITCODE = 0
-        & '.\Tools\MapFrustumContractHarness\Run-MapFrustumContractHarness.ps1' `
-            -Configuration $Configuration
-        if ($global:LASTEXITCODE -ne 0) {
-            throw 'MapFrustumContractHarness failed.'
+            throw 'Map water render contract validation failed.'
         }
         Invoke-PythonGate `
             'Map surface geometry and depth diagnostic unit gate' `

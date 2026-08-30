@@ -40,21 +40,16 @@ corpus is not restored merely to satisfy the old broad EffectRender executable;
 that executable remains outside active profiles until its unique assertions use
 current Product fixtures. No profile builds or executes a second Client frontend.
 
-## Map frustum and surface diagnostics
+## Map surface diagnostics
 
-`MapFrustumContractHarness` compiles the production
-`Client/Private/MapAssetRenderUtils.cpp` and exercises its explicit camera builder
-and sphere predicate. It checks the Bern cancellation regression, all six clip
-planes, tangency, small camera changes, invalid-input rollback and rejection
-grace. It does not initialize Client, exercise instance-buffer uploads, or judge
-rendered pixels. `-Profile FullDiagnostic` builds and runs it; an isolated
-repeat after building that configuration is:
+`-Profile FullDiagnostic` keeps the map-water binding/pass assertion with the
+MapPipeline that owns map presentation validation:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File Tools/MapFrustumContractHarness/Run-MapFrustumContractHarness.ps1 -Configuration Debug
+powershell -ExecutionPolicy Bypass -File Tools/MapPipeline/Test-MapWaterRenderContract.ps1
 ```
 
-The regression also runs the synthetic tests in
+The profile also runs the synthetic tests in
 `Tools/MapPipeline/test_map_surface_depth_contract.py`. Actual Character Select
 surface inspection is read-only and requires the local map resources:
 

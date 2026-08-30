@@ -38,6 +38,7 @@ class BuildProfileContractTests(unittest.TestCase):
         self.assertEqual(product_guids, set(build_rows))
         self.assertNotIn('= "EffectRenderContractHarness"', solution)
         self.assertNotIn('= "ValtanFourPlayerHarness"', solution)
+        self.assertNotIn('= "MapFrustumContractHarness"', solution)
 
     def test_product_runner_is_explicit_and_has_no_retired_harness(self) -> None:
         runner = read("Tools/Build/Invoke-BuildAndRegression.ps1")
@@ -47,8 +48,11 @@ class BuildProfileContractTests(unittest.TestCase):
             "EffectRenderContractHarness",
             "ValtanFourPlayerHarness",
             "Run-ValtanFourPlayerHarness",
+            "MapFrustumContractHarness",
+            "Test-BernFrustumCullingContract",
         ):
             self.assertNotIn(retired, runner)
+        self.assertIn("Tools\\MapPipeline\\Test-MapWaterRenderContract.ps1", runner)
 
         product_projects = (
             "'Engine\\Default\\Engine.vcxproj'",
@@ -85,6 +89,20 @@ class BuildProfileContractTests(unittest.TestCase):
             "Tools/Network/Run-ValtanFourPlayerHarness.ps1",
         ):
             self.assertFalse((ROOT / relative).exists())
+
+    def test_map_frustum_harness_is_physically_retired(self) -> None:
+        for relative in (
+            "Tools/MapFrustumContractHarness/Default/MapFrustumContractHarness.vcxproj",
+            "Tools/MapFrustumContractHarness/Default/MapFrustumContractHarness.vcxproj.filters",
+            "Tools/MapFrustumContractHarness/Private/MapFrustumContractHarness.cpp",
+            "Tools/MapFrustumContractHarness/Run-MapFrustumContractHarness.ps1",
+            "Tools/ProjectAudit/Test-BernFrustumCullingContract.ps1",
+            "Tools/ProjectAudit/Test-MapWaterRenderContract.ps1",
+        ):
+            self.assertFalse((ROOT / relative).exists(), relative)
+        self.assertTrue(
+            (ROOT / "Tools/MapPipeline/Test-MapWaterRenderContract.ps1").is_file()
+        )
 
     def test_product_projects_enable_parallel_x64_compilation(self) -> None:
         for relative in (

@@ -104,4 +104,3 @@ Require-IncreasingMarkers $shader @(
 ) 'The fallback object shader pass contract is invalid.'
 
 Write-Host 'Map water render contract: PASS'
-
