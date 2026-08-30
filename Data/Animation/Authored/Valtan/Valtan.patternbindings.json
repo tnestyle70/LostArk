@@ -3869,6 +3869,20 @@
           "loop": false
         }
       ]
+    },
+    {
+      "actionId": "valtan.cinematic.entrance-idle.hold",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.cinematic.entrance-idle.hold.clip.01",
+          "clip": "mesh_idle_battle_1",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     }
   ]
 }

@@ -15,8 +15,7 @@ namespace
 
 bool LostArk::Server::CServerTriggerSystem::Initialize(
 	const std::vector<WORLD_BOOTSTRAP_PLACEMENT>& placements,
-	std::string& outStatus,
-	const bool enableDebugValtanStageBypass)
+	std::string& outStatus)
 {
 	std::vector<RUNTIME_TRIGGER> staged;
 	for (const WORLD_BOOTSTRAP_PLACEMENT& placement : placements)
@@ -43,15 +42,8 @@ bool LostArk::Server::CServerTriggerSystem::Initialize(
 		staged.push_back({ placement });
 	}
 	m_Triggers = std::move(staged);
-#ifdef _DEBUG
-	m_bDebugValtanStageBypass = enableDebugValtanStageBypass;
-#else
-	(void)enableDebugValtanStageBypass;
-	m_bDebugValtanStageBypass = false;
-#endif
 	outStatus = "Initialized server triggers: " +
-		std::to_string(m_Triggers.size()) +
-		(m_bDebugValtanStageBypass ? ", ValtanStageBypass=1" : "");
+		std::to_string(m_Triggers.size());
 	return true;
 }
 
@@ -129,17 +121,6 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 			const WORLD_TRIGGER_ACTION& action =
 				trigger.Definition.TriggerActions.front();
 			bool fired = false;
-#ifdef _DEBUG
-			WORLD_TRIGGER_ACTION bypassMove{};
-			if (m_bDebugValtanStageBypass &&
-				"Stage_Boss" != trigger.Definition.strPlacementId &&
-				Build_ValtanStageBypassMove(
-					trigger.Definition.strPlacementId, bypassMove))
-			{
-				fired = Begin_MovePlayer(player, bypassMove, actionStartTick);
-			}
-			else
-#endif
 			if (WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER == action.eKind)
 			{
 				fired = Begin_MovePlayer(player, action, actionStartTick);
@@ -157,17 +138,6 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 			{
 				fired = activateTarget(action.eKind, action.strTargetId);
 			}
-#ifdef _DEBUG
-			/* Stage_Boss keeps its real activateEncounter action, then places the
-			player at the authored 159-bar wall-charge bait point before the room's
-			boss update runs in this same tick. */
-			if (fired && m_bDebugValtanStageBypass &&
-				"Stage_Boss" == trigger.Definition.strPlacementId &&
-				Place_PlayerAtValtanAuditionBait(player, actionStartTick))
-			{
-				/* Placement is completed inside the typed helper. */
-			}
-#endif
 			if (fired && trigger.Definition.isTriggerOnce)
 			{
 				trigger.hasFired = true;
@@ -182,61 +152,20 @@ bool LostArk::Server::CServerTriggerSystem::Place_PlayerAtValtanAuditionBait(
 	SERVER_PLAYER& player,
 	const std::uint32_t actionStartTick) const
 {
+	/* Explicit boss-pattern audition commands keep their known arena bait point.
+	Normal trigger traversal never calls this helper and always consumes the
+	authored Gameplay.world.json action in both Debug and Release. */
 	WORLD_TRIGGER_ACTION move{};
-	if (!Build_ValtanStageBypassMove("Stage_Boss", move) ||
-		!Begin_MovePlayer(player, move, actionStartTick))
-	{
+	move.eKind = WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER;
+	move.fTargetX = 154.296f;
+	move.fTargetY = 22.970f;
+	move.fTargetZ = -125.219f;
+	move.fDurationSeconds = 0.01f;
+	move.fArcHeight = 0.f;
+	if (!Begin_MovePlayer(player, move, actionStartTick))
 		return false;
-	}
 	return Update_PlayerMotion(player, move.fDurationSeconds) &&
 		LostArk::Shared::PLAYER_ACTION_STATE::NONE == player.eAction;
-}
-
-bool LostArk::Server::CServerTriggerSystem::Build_ValtanStageBypassMove(
-	const std::string& triggerPlacementId,
-	WORLD_TRIGGER_ACTION& outAction)
-{
-	/* These destinations stop just before the next authored trigger. The player
-	still walks into every next stage deliberately, while the long blocked route
-	and its unkillable audition monsters no longer prevent reaching Valtan. */
-	struct BYPASS_DESTINATION final
-	{
-		const char* pTriggerPlacementId;
-		float x;
-		float y;
-		float z;
-		float duration;
-		float arcHeight;
-	};
-	/* Stage_1 is deliberately absent. It is the stage whose spawn group is being
-	built, so it has to run its real activateSpawnGroup action and let the wave
-	be fought. Every later stage keeps the shortcut, which is still how boss work
-	reaches Valtan without clearing the whole corridor. */
-	static constexpr BYPASS_DESTINATION DESTINATIONS[] =
-	{
-		{ "Stage_MiniBoss", 86.110f, 14.627f, -93.033f, 0.75f, 1.2f },
-		{ "Stage_2", 94.762f, 15.511f, -90.633f, 0.55f, 0.8f },
-		{ "Stage_3", 126.450f, 23.061f, -94.750f, 0.90f, 2.0f },
-		{ "Stage_Boss", 154.296f, 22.970f, -125.219f, 0.01f, 0.f }
-	};
-	const auto found = std::find_if(
-		std::begin(DESTINATIONS), std::end(DESTINATIONS),
-		[&triggerPlacementId](const BYPASS_DESTINATION& destination)
-		{
-			return triggerPlacementId == destination.pTriggerPlacementId;
-		});
-	if (std::end(DESTINATIONS) == found)
-		return false;
-
-	WORLD_TRIGGER_ACTION staged{};
-	staged.eKind = WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER;
-	staged.fTargetX = found->x;
-	staged.fTargetY = found->y;
-	staged.fTargetZ = found->z;
-	staged.fDurationSeconds = found->duration;
-	staged.fArcHeight = found->arcHeight;
-	outAction = staged;
-	return true;
 }
 #endif
 

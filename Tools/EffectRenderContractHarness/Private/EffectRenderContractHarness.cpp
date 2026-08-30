@@ -3565,6 +3565,7 @@ namespace
 		AppendPattern("VALTAN_DYNAMIC_DERIVED_A", 32u, "DERIVED_SERVER_PATTERN");
 		AppendPattern("VALTAN_DYNAMIC_DERIVED_B", 31u, "DERIVED_SERVER_PATTERN");
 		AppendPattern("VALTAN_ENTRANCE_CINEMATIC", 0u);
+		AppendPattern("VALTAN_ENTRANCE_CINEMATIC_IDLE", 0u);
 		for (uint32_t Index = 1u; Index <= Client::CValtanPatternFlowDocument::MAX_SLOTS; ++Index)
 			AppendPattern("VALTAN_DYNAMIC_CORE_" + std::to_string(Index), 100u + Index);
 		Client::VALTAN_PATTERN_VIEW Legacy;
@@ -3641,6 +3642,27 @@ namespace
 		EntryFlow.Flows.front().Slots[0].strPatternId = "VALTAN_ENTRANCE_CINEMATIC";
 		if (!Require(!Client::CValtanPatternFlowDocument::Validate(EntryFlow, Next, Status) &&
 			!Status.empty(), "a repeated entry was admitted"))
+			return false;
+		EntryFlow.Flows.front().Slots[1].strPatternId =
+			"VALTAN_ENTRANCE_CINEMATIC_IDLE";
+		if (!Require(!Client::CValtanPatternFlowDocument::Validate(EntryFlow, Next, Status) &&
+			!Status.empty(), "both mutually exclusive entries were admitted"))
+			return false;
+		EntryFlow.Flows.front().Slots[0].strPatternId =
+			"VALTAN_ENTRANCE_CINEMATIC_IDLE";
+		EntryFlow.Flows.front().Slots[1].strPatternId = "VALTAN_DYNAMIC_CORE_0";
+		if (!Require(Client::CValtanPatternFlowDocument::Validate(EntryFlow, Next, Status),
+				"the idle entrance at the first Flow slot was rejected"))
+			return false;
+		std::swap(EntryFlow.Flows.front().Slots[0].strPatternId,
+			EntryFlow.Flows.front().Slots[1].strPatternId);
+		if (!Require(!Client::CValtanPatternFlowDocument::Validate(EntryFlow, Next, Status) &&
+			!Status.empty(), "the idle entrance after another Flow slot was admitted"))
+			return false;
+		EntryFlow.Flows.front().Slots[0].strPatternId =
+			"VALTAN_ENTRANCE_CINEMATIC_IDLE";
+		if (!Require(!Client::CValtanPatternFlowDocument::Validate(EntryFlow, Next, Status) &&
+			!Status.empty(), "a repeated idle entrance was admitted"))
 			return false;
 
 		const auto RejectWithoutMutation = [&](const Client::VALTAN_PATTERN_TREE_VIEW& Invalid)
@@ -3956,6 +3978,7 @@ namespace
 			return Result;
 		};
 		const std::string EntryId = "VALTAN_ENTRANCE_CINEMATIC";
+		const std::string IdleEntryId = "VALTAN_ENTRANCE_CINEMATIC_IDLE";
 		const std::string EntrySequence = InlineGameplay(
 			R"(["VALTAN_ENTRANCE_CINEMATIC","VALTAN_WHIRLWIND"])");
 		const size_t EntryOffset = EntrySequence.find("\"" + EntryId + "\"",
@@ -3972,6 +3995,10 @@ namespace
 		ZeroWeightGameplay.replace(WeightBegin, WeightEnd - WeightBegin, "0");
 		const std::string SwappedGameplay = InlineGameplay(
 			R"(["VALTAN_WHIRLWIND","VALTAN_ENTRANCE_CINEMATIC"])");
+		const std::string SwappedIdleGameplay = InlineGameplay(
+			R"(["VALTAN_WHIRLWIND","VALTAN_ENTRANCE_CINEMATIC_IDLE"])");
+		const std::string MixedEntryGameplay = InlineGameplay(
+			R"(["VALTAN_ENTRANCE_CINEMATIC","VALTAN_ENTRANCE_CINEMATIC_IDLE","VALTAN_WHIRLWIND"])");
 
 		TEMP_SOURCE_CATALOG_FIXTURE EntryFixture;
 		std::error_code FileError;
@@ -4025,7 +4052,13 @@ namespace
 			EntryId, NextIds, RejectedSlotId, Status);
 		const bool_t bDuplicatePreserved = bDuplicateRejected &&
 			EditableFlow.Get_Draft() == AfterEntry;
-		const bool_t bEntryMoveRejected = bDuplicatePreserved &&
+		std::string RejectedAlternateSlotId;
+		const bool_t bAlternateEntryRejected = bDuplicatePreserved &&
+			!EditableFlow.Add_Slot(
+				IdleEntryId, NextIds, RejectedAlternateSlotId, Status);
+		const bool_t bAlternateEntryPreserved = bAlternateEntryRejected &&
+			EditableFlow.Get_Draft() == AfterEntry;
+		const bool_t bEntryMoveRejected = bAlternateEntryPreserved &&
 			!EditableFlow.Move_Slot(EntrySlotId, 1, NextIds, Status);
 		const bool_t bEntryMovePreserved = bEntryMoveRejected &&
 			EditableFlow.Get_Draft() == AfterEntry;
@@ -4085,6 +4118,8 @@ namespace
 				"Add ENTRY did not insert one fresh stable slot before the saved order") ||
 			!Require(bDuplicatePreserved,
 				"a rejected duplicate ENTRY changed the loaded Flow draft") ||
+			!Require(bAlternateEntryPreserved,
+				"adding the alternate entry beside an existing entry changed the loaded Flow draft") ||
 			!Require(bEntryMovePreserved && bCrossEntryMovePreserved,
 				"an invalid ENTRY move changed the loaded Flow draft") ||
 			!Require(bOrdinaryMoveRestored,
@@ -4134,18 +4169,24 @@ namespace
 				!WriteBytes(FixtureFlow, FlowJson))
 				return false;
 		}
-		auto FirstEntryFlow = FlowDocument;
-		FirstEntryFlow.Flows.front().Slots.resize(2u);
-		FirstEntryFlow.Flows.front().Slots[0].strPatternId = EntryId;
-		FirstEntryFlow.Flows.front().Slots[1].strPatternId = "VALTAN_WHIRLWIND";
-		if (!Require(Client::CValtanPatternFlowDocument::Validate(FirstEntryFlow, NextIds, Status),
-				"saved Flow rejected its single first entry") ||
-			!WriteBytes(FixtureFlow, Client::CValtanPatternFlowDocument::Serialize_Text(FirstEntryFlow)) ||
-			!Require(Client::CValtanPatternTree::Load_FromAuthoringPaths(
-				FixtureGameplay, PresentationPath, SnapshotView, Status,
-				Client::VALTAN_PATTERN_TREE_LOAD_POLICY::RESTORE_AUTHORING_SNAPSHOT),
-				"source-local Flow entry did not join the current Product topology") ||
-			!WriteBytes(FixtureFlow, FlowJson))
+		for (const std::string& FirstEntryId : { EntryId, IdleEntryId })
+		{
+			auto FirstEntryFlow = FlowDocument;
+			FirstEntryFlow.Flows.front().Slots.resize(2u);
+			FirstEntryFlow.Flows.front().Slots[0].strPatternId = FirstEntryId;
+			FirstEntryFlow.Flows.front().Slots[1].strPatternId = "VALTAN_WHIRLWIND";
+			if (!Require(Client::CValtanPatternFlowDocument::Validate(
+					FirstEntryFlow, NextIds, Status),
+					"saved Flow rejected one of its single first entries") ||
+				!WriteBytes(FixtureFlow,
+					Client::CValtanPatternFlowDocument::Serialize_Text(FirstEntryFlow)) ||
+				!Require(Client::CValtanPatternTree::Load_FromAuthoringPaths(
+					FixtureGameplay, PresentationPath, SnapshotView, Status,
+					Client::VALTAN_PATTERN_TREE_LOAD_POLICY::RESTORE_AUTHORING_SNAPSHOT),
+					"source-local Flow entry did not join the current Product topology"))
+				return false;
+		}
+		if (!WriteBytes(FixtureFlow, FlowJson))
 			return false;
 
 		const auto* const BeforeGimmicks = View.Gimmicks.data();
@@ -4178,10 +4219,17 @@ namespace
 					View.iIntroRotationIndex == iBeforeIntro && Summaries(View) == BeforeSummaries,
 					"invalid Flow/entry authoring mutated the admitted Product view");
 		};
-		for (const std::string& InvalidGameplay : { SwappedGameplay, ZeroWeightGameplay })
+		const std::pair<std::string, std::string> InvalidEntryGameplays[] = {
+			{ SwappedGameplay, EntryId },
+			{ SwappedIdleGameplay, IdleEntryId },
+			{ MixedEntryGameplay, IdleEntryId },
+			{ ZeroWeightGameplay, EntryId }
+		};
+		for (const auto& [InvalidGameplay, ExpectedEntryId] : InvalidEntryGameplays)
 			if (!WriteBytes(FixtureGameplay, InvalidGameplay) || !RejectedWithoutMutation() ||
 				!Require(Status.find("decision owner") != std::string::npos &&
-					Status.find(EntryId) != std::string::npos, "entry rejection lost its decision-owner reason"))
+					Status.find(ExpectedEntryId) != std::string::npos,
+					"entry rejection lost its decision-owner reason"))
 				return false;
 		const auto ReplacePatternField = [&](const char* pPatternId,
 			const char* pField, const char* pValue, const char* pStageId = nullptr)

@@ -27,6 +27,7 @@ EXPECTED_SCRIPTED_SEQUENCE = {
     "mode": "ORDERED_ONCE_THEN_IDLE",
     "interStepPursuitMs": 1000,
     "patternIds": [
+        "VALTAN_ENTRANCE_CINEMATIC_IDLE",
         "VALTAN_WHIRLWIND",
         "VALTAN_FOUR_SLASH",
         "VALTAN_HIGH_JUMP",
@@ -2520,6 +2521,17 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ("pattern:VALTAN_WHIRLWIND", "patterns[16].selectionWeight")
             ]
             self.assertEqual(20, weight_entry["resultValue"])
+            idle_entries = [
+                row
+                for row in receipt["entries"]
+                if row["targetId"] == "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE"
+            ]
+            self.assertEqual(22, len(idle_entries))
+            self.assertTrue(all(row["basis"] == "PROJECT_TUNED" for row in idle_entries))
+            self.assertEqual(35, receipt["coverage"]["encounterPatternCount"])
+            self.assertEqual(
+                len(receipt["entries"]), receipt["coverage"]["fieldEntryCount"]
+            )
 
     def test_per_set_weight_mechanic_and_scripted_sequence_round_trip_to_v4_bootstrap(
         self,
@@ -2741,7 +2753,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             )
             candidate_pointer_before = (candidate_root / "current-candidate.json").read_bytes()
             changed_flow = pipeline.read_saved_flow_document(revision_root)
-            changed_flow["flows"][0]["slots"][0:2] = reversed(changed_flow["flows"][0]["slots"][0:2])
+            changed_flow["flows"][0]["slots"][1:3] = reversed(changed_flow["flows"][0]["slots"][1:3])
             candidate_flow_path.write_bytes(pipeline.json_text(changed_flow).encode("utf-8"))
             changed_manifest = copy.deepcopy(manifest)
             flow_artifact = next(
@@ -2766,7 +2778,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         flow_document = copy.deepcopy(self.docs[pipeline.SAVED_FLOW_REL])
         flow = flow_document["flows"][0]
         original = copy.deepcopy(flow["slots"])
-        flow["slots"] = [original[2], original[0], original[1], original[6]]
+        flow["slots"] = [original[3], original[1], original[2], original[7]]
         flow["interStepPursuitMs"] = 4321
         joined = pipeline.join_v2_authoring(
             physical, self.docs[pipeline.PRESENTATION_AUTHORING_REL],
@@ -2798,7 +2810,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             pattern_id = pattern["patternId"]
             with self.subTest(pattern=pattern_id):
                 expected = [pattern_id, "VALTAN_WHIRLWIND"]
-                if pattern_id != pipeline.OPTIONAL_ENTRY_PATTERN_ID:
+                if pattern_id not in pipeline.OPTIONAL_ENTRY_PATTERN_IDS:
                     expected.append(pattern_id)
                 document = self.make_saved_flow(expected)
                 joined = pipeline.join_v2_authoring(
@@ -2889,7 +2901,14 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         invalid("pursuit zero", lambda doc: doc["flows"][0].update(interStepPursuitMs=0))
         invalid("empty", lambda doc: doc["flows"][0].update(slots=[]))
         invalid("unknown pattern", lambda doc: doc["flows"][0]["slots"][0].update(patternId="VALTAN_UNKNOWN"))
-        invalid("entry after first slot", lambda doc: doc["flows"][0]["slots"][1].update(patternId="VALTAN_ENTRANCE_CINEMATIC"))
+        invalid("original entry after first slot", lambda doc: doc["flows"][0]["slots"][1].update(patternId="VALTAN_ENTRANCE_CINEMATIC"))
+        invalid("idle entry after first slot", lambda doc: doc["flows"][0]["slots"][1].update(patternId="VALTAN_ENTRANCE_CINEMATIC_IDLE"))
+        mixed_entries = self.make_saved_flow([
+            "VALTAN_ENTRANCE_CINEMATIC",
+            "VALTAN_ENTRANCE_CINEMATIC_IDLE",
+            "VALTAN_WHIRLWIND",
+        ])
+        cases.append(("mutually exclusive entries", mixed_entries))
         invalid("legacy-only pattern", lambda doc: doc["flows"][0]["slots"][0].update(patternId="VALTAN_SWING"))
         invalid("duplicate slot", lambda doc: doc["flows"][0]["slots"][1].update(slotId=doc["flows"][0]["slots"][0]["slotId"]))
         invalid("foreign slot", lambda doc: doc["flows"][0]["slots"][0].update(slotId="flow.other.slot.000001"))
@@ -2980,7 +2999,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             loaded, _, _ = pipeline.load_authoring_revision(root, authoring_root, pointer["revisionId"], sources, docs)
             self.assertEqual(EXPECTED_SCRIPTED_SEQUENCE, loaded["decisionModel"]["scriptedSequence"])
             changed = pipeline.read_saved_flow_document(root)
-            changed["flows"][0]["slots"][0:2] = reversed(changed["flows"][0]["slots"][0:2])
+            changed["flows"][0]["slots"][1:3] = reversed(changed["flows"][0]["slots"][1:3])
             (root / pipeline.SAVED_FLOW_REL).write_text(pipeline.json_text(changed), encoding="utf-8")
             updated = pipeline.source_manifest(root)
             self.assertNotEqual(sources["sourceManifestId"], updated["sourceManifestId"])
@@ -3340,7 +3359,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     self.docs[pipeline.COMBAT_AUTHORING_REL],
                 )
 
-    def test_only_known_cinematic_may_remain_dormant_without_a_decision_owner(self) -> None:
+    def test_only_known_cinematics_may_remain_dormant_without_a_decision_owner(self) -> None:
         joined = pipeline.join_v2_authoring(
             self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
             self.docs[pipeline.PRESENTATION_AUTHORING_REL],
@@ -3348,7 +3367,9 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
         sequence = joined["decisionModel"]["scriptedSequence"]["patternIds"]
-        self.assertEqual("VALTAN_WHIRLWIND", sequence[0])
+        entry_ids = pipeline.OPTIONAL_ENTRY_PATTERN_IDS
+        self.assertEqual("VALTAN_ENTRANCE_CINEMATIC_IDLE", sequence[0])
+        self.assertEqual(1, sum(pattern_id in entry_ids for pattern_id in sequence))
         self.assertNotIn("VALTAN_ENTRANCE_CINEMATIC", sequence)
         owned = {
             candidate["patternId"]
@@ -3361,27 +3382,49 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             audition["patternId"]
             for audition in joined["decisionModel"]["manualAuditions"]
         }
-        self.assertNotIn("VALTAN_ENTRANCE_CINEMATIC", owned)
+        for entry_id in entry_ids:
+            self.assertNotIn(entry_id, owned)
         pipeline.validate_v2_master(
             joined,
             self.docs[pipeline.WORLD_SET_REL],
             self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
-        explicit_entry = copy.deepcopy(joined)
-        explicit_entry["decisionModel"]["scriptedSequence"]["patternIds"].insert(
-            0, pipeline.OPTIONAL_ENTRY_PATTERN_ID
-        )
-        pipeline.validate_v2_master(
-            explicit_entry, self.docs[pipeline.WORLD_SET_REL],
-            self.docs[pipeline.COMBAT_AUTHORING_REL],
-        )
-        repeated_entry = copy.deepcopy(explicit_entry)
-        repeated_entry["decisionModel"]["scriptedSequence"]["patternIds"][1] = (
-            pipeline.OPTIONAL_ENTRY_PATTERN_ID
-        )
-        with self.assertRaisesRegex(pipeline.PipelineError, "optional entry cinematic"):
+        without_entry = copy.deepcopy(joined)
+        without_entry["decisionModel"]["scriptedSequence"]["patternIds"] = [
+            pattern_id for pattern_id in sequence if pattern_id not in entry_ids
+        ]
+        for entry_id in entry_ids:
+            with self.subTest(entry_id=entry_id):
+                explicit_entry = copy.deepcopy(without_entry)
+                explicit_entry["decisionModel"]["scriptedSequence"][
+                    "patternIds"
+                ].insert(0, entry_id)
+                pipeline.validate_v2_master(
+                    explicit_entry, self.docs[pipeline.WORLD_SET_REL],
+                    self.docs[pipeline.COMBAT_AUTHORING_REL],
+                )
+                repeated_entry = copy.deepcopy(explicit_entry)
+                repeated_entry["decisionModel"]["scriptedSequence"][
+                    "patternIds"
+                ].insert(1, entry_id)
+                with self.assertRaisesRegex(
+                    pipeline.PipelineError, "optional entry cinematic"
+                ):
+                    pipeline.validate_v2_master(
+                        repeated_entry, self.docs[pipeline.WORLD_SET_REL],
+                        self.docs[pipeline.COMBAT_AUTHORING_REL],
+                    )
+
+        mixed_entries = copy.deepcopy(without_entry)
+        mixed_entries["decisionModel"]["scriptedSequence"]["patternIds"][:0] = [
+            "VALTAN_ENTRANCE_CINEMATIC",
+            "VALTAN_ENTRANCE_CINEMATIC_IDLE",
+        ]
+        with self.assertRaisesRegex(
+            pipeline.PipelineError, "optional entry cinematic"
+        ):
             pipeline.validate_v2_master(
-                repeated_entry, self.docs[pipeline.WORLD_SET_REL],
+                mixed_entries, self.docs[pipeline.WORLD_SET_REL],
                 self.docs[pipeline.COMBAT_AUTHORING_REL],
             )
 
@@ -3394,7 +3437,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             ]
         with self.assertRaisesRegex(
             pipeline.PipelineError,
-            "only VALTAN_ENTRANCE_CINEMATIC may be a dormant entry-only definition",
+            "only the optional entrance cinematics may be dormant entry-only definitions",
         ):
             pipeline.validate_v2_master(
                 invalid,

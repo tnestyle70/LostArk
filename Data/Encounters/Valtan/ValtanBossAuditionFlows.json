@@ -4,9 +4,10 @@
   "flows": [
     {
       "flowId": "flow.valtan.boss-tool.default",
-      "nextSlotOrdinal": 38,
+      "nextSlotOrdinal": 39,
       "interStepPursuitMs": 1000,
       "slots": [
+        { "slotId": "flow.valtan.boss-tool.default.slot.000038", "patternId": "VALTAN_ENTRANCE_CINEMATIC_IDLE" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000001", "patternId": "VALTAN_WHIRLWIND" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000002", "patternId": "VALTAN_FOUR_SLASH" },
         { "slotId": "flow.valtan.boss-tool.default.slot.000003", "patternId": "VALTAN_HIGH_JUMP" },

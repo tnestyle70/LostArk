@@ -36,6 +36,9 @@ SAVED_FLOW_MAX_SLOTS = 255
 DEFAULT_SAVED_FLOW_ID = "flow.valtan.boss-tool.default"
 SAVED_FLOW_MAX_BYTES = 256 * 1024
 OPTIONAL_ENTRY_PATTERN_ID = "VALTAN_ENTRANCE_CINEMATIC"
+OPTIONAL_ENTRY_PATTERN_IDS = frozenset(
+    (OPTIONAL_ENTRY_PATTERN_ID, "VALTAN_ENTRANCE_CINEMATIC_IDLE")
+)
 PRESENTATION_AUTHORING_REL = "Data/Valtan/Valtan.presentation.json"
 DEBUG_PRESENTATION_REL = "Data/Valtan/Valtan.presentation.debug.json"
 ANIMATION_PROMOTION_MANIFEST_REL = (
@@ -138,6 +141,7 @@ ARCHIVED_LEGACY_PATTERN_IDS = frozenset(
 CURRENT_MIGRATION_MANAGED_PATTERN_IDS = frozenset(
     (
         "VALTAN_ENTRANCE_CINEMATIC",
+        "VALTAN_ENTRANCE_CINEMATIC_IDLE",
         "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
         "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
     )
@@ -2338,6 +2342,7 @@ def validate_saved_flow_document(
         raise PipelineError("saved Flow admitted inventory is invalid or duplicated")
     slot_ids: set[str] = set()
     maximum_ordinal = 0
+    optional_entry_count = 0
     for ordinal, slot in enumerate(slots):
         context = f"saved Flow slots[{ordinal}]"
         exact(slot, ("slotId", "patternId"), context)
@@ -2356,8 +2361,12 @@ def validate_saved_flow_document(
         pattern_id = slot["patternId"]
         if not isinstance(pattern_id, str) or pattern_id not in admitted:
             raise PipelineError(f"{context}.patternId is not in the Boss Tool inventory")
-        if pattern_id == OPTIONAL_ENTRY_PATTERN_ID and ordinal != 0:
-            raise PipelineError("the optional entry cinematic must occur exactly once at the first step")
+        if pattern_id in OPTIONAL_ENTRY_PATTERN_IDS:
+            optional_entry_count += 1
+            if optional_entry_count > 1 or ordinal != 0:
+                raise PipelineError(
+                    "at most one optional entry cinematic may occur, and only at the first step"
+                )
         slot_ids.add(slot_id)
         maximum_ordinal = max(maximum_ordinal, int(match.group(1)))
     if next_ordinal <= maximum_ordinal:
@@ -2473,11 +2482,17 @@ def _validate_scripted_sequence(
             raise PipelineError(
                 f"scriptedSequence names no managed pattern: {pattern_id}"
             )
-    if OPTIONAL_ENTRY_PATTERN_ID in pattern_ids and (
-        pattern_ids[0] != OPTIONAL_ENTRY_PATTERN_ID
-        or pattern_ids.count(OPTIONAL_ENTRY_PATTERN_ID) != 1
+    optional_entry_patterns = tuple(
+        pattern_id
+        for pattern_id in pattern_ids
+        if pattern_id in OPTIONAL_ENTRY_PATTERN_IDS
+    )
+    if len(optional_entry_patterns) > 1 or (
+        optional_entry_patterns and pattern_ids[0] != optional_entry_patterns[0]
     ):
-        raise PipelineError("the optional entry cinematic must occur exactly once at the first step")
+        raise PipelineError(
+            "at most one optional entry cinematic may occur, and only at the first step"
+        )
     return pattern_ids
 
 
@@ -3024,13 +3039,16 @@ def validate_v2_master(
     decision_owned_patterns = (
         candidate_patterns | mechanic_patterns | manual_patterns
     )
-    # The reviewed entrance remains a loadable definition when a custom Flow
-    # omits it. It is not automatically prepended and is never a weighted owner.
+    # Both reviewed entrances remain loadable definitions when a custom Flow
+    # omits them. Neither is automatically prepended or a weighted owner.
+    owned_optional_entries = decision_owned_patterns & OPTIONAL_ENTRY_PATTERN_IDS
+    if owned_optional_entries:
+        raise PipelineError(
+            "optional entry cinematics must not be weighted, mechanic, or manual owners: "
+            + ", ".join(sorted(owned_optional_entries))
+        )
     scripted_entry_only_patterns = (
-        {OPTIONAL_ENTRY_PATTERN_ID}
-        if OPTIONAL_ENTRY_PATTERN_ID in pattern_by_id
-        and OPTIONAL_ENTRY_PATTERN_ID not in decision_owned_patterns
-        else set()
+        set(pattern_by_id) & OPTIONAL_ENTRY_PATTERN_IDS
     )
     if (
         decision_owned_patterns | scripted_entry_only_patterns
@@ -3038,7 +3056,7 @@ def validate_v2_master(
     ):
         raise PipelineError(
             "decision model must own every managed pattern exactly once; only "
-            "VALTAN_ENTRANCE_CINEMATIC may be a dormant entry-only definition"
+            "the optional entrance cinematics may be dormant entry-only definitions"
         )
     event_ids: set[str] = set()
     expected_cue_policies = {
@@ -6324,6 +6342,48 @@ def project_provenance_receipt(root: Path, projected_outputs: Mapping[str, str])
             "an official basis."
         )
         changed += 1
+    projected_encounter = projected_documents.get(ENCOUNTER_REL)
+    if projected_encounter is not None:
+        live_patterns = [
+            pattern
+            for pattern in projected_encounter["patterns"]
+            if pattern["selectionMode"] != "AUDITION_ONLY"
+        ]
+        for pattern_index, pattern in enumerate(live_patterns):
+            target_id = f"pattern:{pattern['patternId']}"
+            for field_name, field_value in pattern.items():
+                target_field = f"patterns[{pattern_index}].{field_name}"
+                key = (ENCOUNTER_REL, target_id, target_field)
+                if key in seen:
+                    continue
+                receipt["entries"].append(
+                    {
+                        "targetDocument": ENCOUNTER_REL,
+                        "targetId": target_id,
+                        "targetField": target_field,
+                        "basis": "PROJECT_TUNED",
+                        "source": {
+                            "type": "project-policy",
+                            "policyId": "balance-tool-authored-override-v1",
+                        },
+                        "sourceValue": copy.deepcopy(field_value),
+                        "transform": "Balance Tool authored override",
+                        "resultValue": copy.deepcopy(field_value),
+                        "note": (
+                            "Added through the F1 Balance Tool authoring contract; "
+                            "official source binding is not claimed."
+                        ),
+                    }
+                )
+                seen.add(key)
+                changed += 1
+        receipt["coverage"]["encounterPatternCount"] = len(live_patterns)
+    receipt["entries"].sort(
+        key=lambda entry: (
+            entry["targetDocument"], entry["targetId"], entry["targetField"]
+        )
+    )
+    receipt["coverage"]["fieldEntryCount"] = len(receipt["entries"])
     if receipt["coverage"].get("fieldEntryCount") != len(receipt["entries"]):
         raise PipelineError("balance provenance fieldEntryCount drift")
     for entry in receipt["entries"]:

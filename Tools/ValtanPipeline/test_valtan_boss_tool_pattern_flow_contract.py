@@ -51,6 +51,10 @@ SCHEMA = "lostark.valtan-boss-audition-flows"
 FLOW_ID = "flow.valtan.boss-tool.default"
 MAX_SLOTS = 255
 STABLE_ID = re.compile(r"[A-Za-z0-9_.-]{1,128}")
+OPTIONAL_ENTRY_PATTERN_IDS = frozenset({
+    "VALTAN_ENTRANCE_CINEMATIC",
+    "VALTAN_ENTRANCE_CINEMATIC_IDLE",
+})
 
 
 
@@ -106,6 +110,7 @@ def validate_document(document: object, admitted_pattern_ids: list[str]) -> None
         raise ValueError("inventory")
     slot_ids: set[str] = set()
     maximum_ordinal = 0
+    optional_entry_count = 0
     prefix = FLOW_ID + ".slot."
     for slot_index, slot in enumerate(slots):
         if not isinstance(slot, dict) or set(slot) != {"slotId", "patternId"}:
@@ -128,8 +133,10 @@ def validate_document(document: object, admitted_pattern_ids: list[str]) -> None
             or pattern_id not in admitted
         ):
             raise ValueError("pattern id")
-        if pattern_id == "VALTAN_ENTRANCE_CINEMATIC" and slot_index != 0:
-            raise ValueError("entry position")
+        if pattern_id in OPTIONAL_ENTRY_PATTERN_IDS:
+            optional_entry_count += 1
+            if optional_entry_count > 1 or slot_index != 0:
+                raise ValueError("entry position")
         slot_ids.add(slot_id)
         maximum_ordinal = max(maximum_ordinal, int(slot_id[-6:]))
     if flow["nextSlotOrdinal"] <= maximum_ordinal:
@@ -193,14 +200,31 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         self.assertEqual(len(slots), len({slot["slotId"] for slot in slots}))
         self.assertLess(len(slots), len(self.inventory))
 
-    def test_entry_cinematic_is_optional_and_only_valid_at_the_first_slot(self) -> None:
-        entry = "VALTAN_ENTRANCE_CINEMATIC"
-        for pattern_ids in ([entry, "VALTAN_WHIRLWIND"], ["VALTAN_WHIRLWIND"]):
+    def test_entry_cinematics_are_optional_mutually_exclusive_and_first_only(self) -> None:
+        original_entry = "VALTAN_ENTRANCE_CINEMATIC"
+        idle_entry = "VALTAN_ENTRANCE_CINEMATIC_IDLE"
+        for pattern_ids in (
+            [original_entry, "VALTAN_WHIRLWIND"],
+            [idle_entry, "VALTAN_WHIRLWIND"],
+            ["VALTAN_WHIRLWIND"],
+        ):
             with self.subTest(valid=pattern_ids):
                 validate_document(make_document(pattern_ids), self.inventory)
-        for pattern_ids in (["VALTAN_WHIRLWIND", entry], [entry, entry]):
+        for pattern_ids in (
+            ["VALTAN_WHIRLWIND", original_entry],
+            ["VALTAN_WHIRLWIND", idle_entry],
+            [original_entry, original_entry],
+            [idle_entry, idle_entry],
+            [original_entry, idle_entry],
+            [idle_entry, original_entry],
+        ):
             with self.subTest(invalid=pattern_ids), self.assertRaisesRegex(ValueError, "entry position"):
                 validate_document(make_document(pattern_ids), self.inventory)
+
+        saved_ids = [slot["patternId"] for slot in self.flow["flows"][0]["slots"]]
+        self.assertEqual(idle_entry, saved_ids[0])
+        self.assertEqual(1, saved_ids.count(idle_entry))
+        self.assertNotIn(original_entry, saved_ids)
 
     def test_duplicate_pattern_ids_are_valid_but_duplicate_slot_ids_are_not(self) -> None:
         duplicate_pattern = make_document(["VALTAN_WHIRLWIND", "VALTAN_WHIRLWIND"])
@@ -380,7 +404,9 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.source.index("bool_t Client::CValtanPatternFlowDocument::Add_Slot(") :
             self.source.index("bool_t Client::CValtanPatternFlowDocument::Move_Slot(")
         ]
-        self.assertIn("OPTIONAL_ENTRY_PATTERN_ID == patternId", add_body)
+        self.assertIn("Is_OptionalEntryPatternId(patternId)", add_body)
+        self.assertIn("OPTIONAL_ENTRY_PATTERN_ID", self.source)
+        self.assertIn("OPTIONAL_IDLE_ENTRY_PATTERN_ID", self.source)
         self.assertIn("flow.Slots.insert(flow.Slots.begin(), StagedSlot)", add_body)
         self.assertIn("flow.Slots.push_back(StagedSlot)", add_body)
         self.assertLess(add_body.index("Validate(staged"), add_body.index("m_Draft = std::move(staged)"))

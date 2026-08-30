@@ -1,4 +1,4 @@
-﻿#include "ServerGameplayContractTests.h"
+#include "ServerGameplayContractTests.h"
 
 #include "ClientSession.h"
 #include "BossCombatRuntime.h"
@@ -833,6 +833,14 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			sequence->PatternIds.size() <= MAX_VALTAN_PATTERN_FLOW_SLOTS &&
 			sequence->iExpectedStepCount == sequence->PatternIds.size(),
 			"Load the saved Product sequence as exact ordered occurrences without a fixed review-list length");
+		tests.Require(
+			nullptr != sequence && !sequence->PatternIds.empty() &&
+			"VALTAN_ENTRANCE_CINEMATIC_IDLE" == sequence->PatternIds.front() &&
+			1 == std::count(sequence->PatternIds.begin(), sequence->PatternIds.end(),
+				"VALTAN_ENTRANCE_CINEMATIC_IDLE") &&
+			0 == std::count(sequence->PatternIds.begin(), sequence->PatternIds.end(),
+				"VALTAN_ENTRANCE_CINEMATIC"),
+			"Select only entrance cinematic 2 at the first saved Product slot");
 		const auto* patterns = catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
 		tests.Require(
 			nullptr != patterns && nullptr != sequence &&
@@ -4480,12 +4488,16 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			findPattern("VALTAN_ARENA_BREAK_109");
 		const BOSS_PATTERN_DEFINITION* entranceCinematic =
 			findPattern("VALTAN_ENTRANCE_CINEMATIC");
+		const BOSS_PATTERN_DEFINITION* idleEntranceCinematic =
+			findPattern("VALTAN_ENTRANCE_CINEMATIC_IDLE");
 		const BOSS_PATTERN_STAGE_DEFINITION* entranceEstablish =
 			findStage("VALTAN_ENTRANCE_CINEMATIC", "ESTABLISH");
 		const BOSS_PATTERN_STAGE_DEFINITION* entranceArenaReveal =
 			findStage("VALTAN_ENTRANCE_CINEMATIC", "ARENA_REVEAL");
 		const BOSS_PATTERN_STAGE_DEFINITION* entranceHeroHandoff =
 			findStage("VALTAN_ENTRANCE_CINEMATIC", "HERO_HANDOFF");
+		const BOSS_PATTERN_STAGE_DEFINITION* idleEntranceHold =
+			findStage("VALTAN_ENTRANCE_CINEMATIC_IDLE", "HOLD");
 		const auto hasAction = [](
 			const BOSS_PATTERN_STAGE_DEFINITION* stage,
 			const BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
@@ -4611,6 +4623,31 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		tests.Require(
 			entranceCameraGateExact,
 			"Load the exact invulnerable 19.867-second Valtan entrance camera gate");
+
+		const bool idleEntranceCameraGateExact =
+			nullptr != idleEntranceCinematic &&
+			"valtan.cinematic.entrance-idle" == idleEntranceCinematic->strActionId &&
+			BOSS_PATTERN_SELECTION::NORMAL == idleEntranceCinematic->eSelection &&
+			idleEntranceCinematic->bInvulnerableWhileRunning &&
+			BOSS_PATTERN_TARGET_POLICY::NONE ==
+				idleEntranceCinematic->eTargetPolicy &&
+			BOSS_PATTERN_AIM_POLICY::NONE == idleEntranceCinematic->eAimPolicy &&
+			BOSS_PATTERN_MOTION_KIND::NONE == idleEntranceCinematic->Motion.eKind &&
+			1u == idleEntranceCinematic->Stages.size() &&
+			nullptr != idleEntranceHold &&
+			"valtan.cinematic.entrance-idle.hold" == idleEntranceHold->strActionId &&
+			BOSS_PATTERN_STAGE_KIND::ACTIVE == idleEntranceHold->eStageKind &&
+			12500u == idleEntranceHold->iDurationMs &&
+			BOSS_PATTERN_HIT_SHAPE::NONE == idleEntranceHold->eHitShape &&
+			idleEntranceHold->strDamageProfileId.empty() &&
+			0u == idleEntranceHold->iHitCount &&
+			BOSS_PATTERN_STAGE_MOTION_KIND::NONE == idleEntranceHold->Motion.eKind &&
+			idleEntranceHold->Actions.empty() &&
+			1u == idleEntranceHold->Branches.size() &&
+			hasBranch(idleEntranceHold, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT, "");
+		tests.Require(
+			idleEntranceCameraGateExact,
+			"Load the exact invulnerable non-damaging 12.5-second idle entrance camera gate");
 
 		const bool reactiveTopologyExact = nullptr != patterns &&
 			nullptr != parryStance && 2u == parryStance->Actions.size() &&
@@ -9977,8 +10014,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			109u == transitionBar && 1u == phaseActionCount && exactPhaseAction,
 			"Advance Valtan to phase two only on 109 IMPACT ENTER");
 
-		/* The wipe and both authored terrain-destruction auditions are protected
-		while they run. The wipe still fires on the bar its own name carries. */
+		/* Both entrance camera gates, the wipe, and both authored
+		terrain-destruction auditions are protected while they run. The wipe
+		still fires on the bar its own name carries. */
 		const BOSS_PATTERN_DEFINITION* wipePattern = nullptr;
 		const BOSS_PATTERN_DEFINITION* terrainThreePattern = nullptr;
 		const BOSS_PATTERN_DEFINITION* terrainNinePattern = nullptr;
@@ -10005,8 +10043,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			terrainThreePattern->bInvulnerableWhileRunning &&
 			nullptr != terrainNinePattern &&
 			terrainNinePattern->bInvulnerableWhileRunning &&
-			130u == wipePattern->iTriggerHealthBar && 4u == invulnerableCount,
-			"Protect the entrance camera gate, 130-bar wipe, and both terrain-destruction auditions");
+			130u == wipePattern->iTriggerHealthBar && 5u == invulnerableCount,
+			"Protect both entrance camera gates, the 130-bar wipe, and both terrain-destruction auditions");
 
 		/* Its second smash is arena wide and lethal to any authored player pool,
 		which is what makes it a wipe rather than a large hit. */
@@ -13234,10 +13272,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	}
 
 	{
-		/* Stage_1 is the stage whose wave is being built, so it runs its real
-		activateSpawnGroup action in Debug as well. The later stages keep the
-		shortcut, which is what still carries boss work to Valtan without
-		clearing the corridor. Stage_MiniBoss stands in for those here. */
+		/* Debug and Release must both execute the action authored on the trigger.
+		There is no hardcoded stage-route shortcut or replacement coordinate. */
 		WORLD_BOOTSTRAP_PLACEMENT trigger{};
 		trigger.strPlacementId = "Stage_MiniBoss";
 		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
@@ -13246,16 +13282,20 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		trigger.fHalfExtentY = 2.f;
 		trigger.fHalfExtentZ = 2.f;
 		trigger.isTriggerOnce = true;
-		WORLD_TRIGGER_ACTION activate{};
-		activate.eKind = WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP;
-		activate.strTargetId = "spawn.valtan.stage02.miniboss";
-		trigger.TriggerActions.push_back(activate);
+		WORLD_TRIGGER_ACTION move{};
+		move.eKind = WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER;
+		move.fTargetX = 51.67f;
+		move.fTargetY = 10.14f;
+		move.fTargetZ = -81.9f;
+		move.fDurationSeconds = 0.8f;
+		move.fArcHeight = 0.f;
+		trigger.TriggerActions.push_back(move);
 
 		CServerTriggerSystem triggerSystem;
 		std::string triggerStatus;
 		tests.Require(
-			triggerSystem.Initialize({ trigger }, triggerStatus, true),
-			"Initialize the Debug Valtan stage-route bypass");
+			triggerSystem.Initialize({ trigger }, triggerStatus),
+			"Initialize the authored Valtan miniboss-stage trigger");
 		std::map<PLAYER_ID, SERVER_PLAYER> players;
 		SERVER_PLAYER player{};
 		player.iPlayerId = 404u;
@@ -13266,39 +13306,35 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		std::size_t activationCount = 0u;
 		triggerSystem.Evaluate_Entries(
 			players, 41u, transfers,
-			[&activationCount](WORLD_TRIGGER_ACTION_KIND, const std::string&)
+			[&activationCount](
+				const WORLD_TRIGGER_ACTION_KIND, const std::string&)
 			{
 				++activationCount;
 				return true;
 			});
-#ifdef _DEBUG
 		const SERVER_PLAYER& moving = players.begin()->second;
 		tests.Require(
 			0u == activationCount &&
 			PLAYER_ACTION_STATE::TRIGGER_MOVE == moving.eAction &&
 			moving.TriggerMove.isActive &&
-			std::abs(moving.TriggerMove.fTargetX - 86.110f) < 0.001f &&
-			std::abs(moving.TriggerMove.fTargetZ + 93.033f) < 0.001f,
-			"Bypass a later Valtan stage group and move toward the next trigger in Debug");
-		triggerSystem.Update_PlayerMotion(players.begin()->second, 1.f);
+			std::abs(moving.TriggerMove.fTargetX - 51.67f) < 0.001f &&
+			std::abs(moving.TriggerMove.fTargetY - 10.14f) < 0.001f &&
+			std::abs(moving.TriggerMove.fTargetZ + 81.9f) < 0.001f &&
+			std::abs(moving.TriggerMove.fDurationSeconds - 0.8f) < 0.001f &&
+			std::abs(moving.TriggerMove.fArcHeight) < 0.001f,
+			"Execute the authored miniboss-stage move in Debug and Release");
+		triggerSystem.Update_PlayerMotion(players.begin()->second, 0.8f);
 		tests.Require(
 			PLAYER_ACTION_STATE::NONE == players.begin()->second.eAction &&
-			std::abs(players.begin()->second.fPositionX - 86.110f) < 0.001f &&
-			std::abs(players.begin()->second.fPositionZ + 93.033f) < 0.001f,
-			"Complete the Debug stage bypass at the authored next-stage approach point");
-#else
-		tests.Require(
-			1u == activationCount &&
-			PLAYER_ACTION_STATE::NONE == players.begin()->second.eAction,
-			"Keep the original Valtan spawn-group trigger unchanged in Release");
-#endif
+			std::abs(players.begin()->second.fPositionX - 51.67f) < 0.001f &&
+			std::abs(players.begin()->second.fPositionY - 10.14f) < 0.001f &&
+			std::abs(players.begin()->second.fPositionZ + 81.9f) < 0.001f,
+			"Complete the authored miniboss-stage move at its exact target");
 	}
 
 	{
-		/* Stage_1 is exempt from the Debug shortcut on purpose: it is the wave
-		being built, so stepping into it has to run the real activation even with
-		the bypass switched on. Without this the corridor's first fight is
-		unreachable in a Debug session. */
+		/* The first stage follows the same authored-action path as every later
+		Valtan trigger, independent of the build configuration. */
 		WORLD_BOOTSTRAP_PLACEMENT trigger{};
 		trigger.strPlacementId = "Stage_1";
 		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
@@ -13315,8 +13351,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		CServerTriggerSystem triggerSystem;
 		std::string triggerStatus;
 		tests.Require(
-			triggerSystem.Initialize({ trigger }, triggerStatus, true),
-			"Initialize the Debug bypass with Stage_1 present");
+			triggerSystem.Initialize({ trigger }, triggerStatus),
+			"Initialize the authored Stage_1 trigger");
 		std::map<PLAYER_ID, SERVER_PLAYER> players;
 		SERVER_PLAYER player{};
 		player.iPlayerId = 405u;
@@ -13341,7 +13377,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			1u == activationCount &&
 			"spawn.valtan.stage01" == activatedTargetId &&
 			PLAYER_ACTION_STATE::NONE == players.begin()->second.eAction,
-			"Activate the Stage_1 wave instead of bypassing it, Debug included");
+			"Execute the authored Stage_1 spawn-group action in Debug and Release");
 	}
 
 	{
@@ -14628,14 +14664,44 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			loaded && Reject_CorruptSpawnAnchorReloadTransactionally(
 				spawnBootstrap),
 			"Reject nonfinite or out-of-range spawn anchors and preserve the admitted bootstrap");
+		const std::array<std::string_view, 3u> valtanSpawnGroupIds{
+			"spawn.valtan.stage01",
+			"spawn.valtan.stage02.miniboss",
+			"spawn.valtan.stage03" };
+		const bool independentGroupAuthoringExact = loaded && std::all_of(
+			valtanSpawnGroupIds.begin(), valtanSpawnGroupIds.end(),
+			[&spawnBootstrap](const std::string_view groupId)
+			{
+				const auto found = std::find_if(
+					spawnBootstrap.Get_Groups().begin(),
+					spawnBootstrap.Get_Groups().end(),
+					[groupId](const SPAWN_GROUP_DEFINITION& definition)
+					{ return definition.strSpawnGroupId == groupId; });
+				return spawnBootstrap.Get_Groups().end() != found &&
+					found->strRequiredCompletedGroupId.empty() &&
+					0u != found->iMaxAlive && !found->Waves.empty() &&
+					std::all_of(found->Waves.begin(), found->Waves.end(),
+						[](const SPAWN_GROUP_WAVE& wave)
+						{ return !wave.strWaveId.empty() && !wave.Entries.empty(); });
+			});
+		tests.Require(
+			independentGroupAuthoringExact,
+			"Keep all three Valtan groups independently activatable with authored waves");
+
+		CSpawnGroupRuntime independentRuntime;
+		std::string independentStatus;
+		tests.Require(
+			independentRuntime.Initialize(spawnBootstrap, independentStatus) &&
+			independentRuntime.Activate("spawn.valtan.stage01") &&
+			independentRuntime.Activate("spawn.valtan.stage02.miniboss") &&
+			independentRuntime.Activate("spawn.valtan.stage03"),
+			"Activate every Valtan group without another group's completion prerequisite");
+
 		CSpawnGroupRuntime spawnRuntime;
 		std::string spawnStatus;
 		tests.Require(
 			spawnRuntime.Initialize(spawnBootstrap, spawnStatus),
 			"Initialize Valtan spawn group runtime");
-		tests.Require(
-			!spawnRuntime.Activate("spawn.valtan.stage02.miniboss"),
-			"Reject miniboss group before Stage 1 completion");
 		tests.Require(
 			spawnRuntime.Activate("spawn.valtan.stage01"),
 			"Activate Stage 1 spawn group exactly once");
@@ -14676,8 +14742,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			spawnRuntime.Is_Completed("spawn.valtan.stage01"),
 			"Schedule all Stage 1 waves and complete after all entities clear");
 		tests.Require(
-			spawnRuntime.Activate("spawn.valtan.stage02.miniboss"),
-			"Unlock miniboss group after Stage 1 completion");
+			!spawnRuntime.Activate("spawn.valtan.stage01"),
+			"Keep the completed Stage 1 ONCE group from activating again");
 	}
 
 	{
@@ -16300,7 +16366,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			30u == reportedBar && nullptr != auditionBoss &&
 			31u == (nullptr == auditionBoss ?
 				0u : auditionBoss->iLastEvaluatedHealthBar) &&
-			11250u == (nullptr == auditionBoss ?
+			112500u == (nullptr == auditionBoss ?
 				0u : auditionBoss->iCurrentHp),
 			"Prime and cross one authored bar atomically for one-click audition");
 
@@ -16311,7 +16377,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			VALTAN_AUDITION_RESULT::ARMED == armResult &&
 			110u == reportedBar &&
 			nullptr != auditionBoss &&
-			41250u == (nullptr == auditionBoss ? 0u : auditionBoss->iCurrentHp) &&
+			412500u == (nullptr == auditionBoss ? 0u : auditionBoss->iCurrentHp) &&
 			110u == (nullptr == auditionBoss ?
 				0u : auditionBoss->iLastEvaluatedHealthBar),
 			"Arm the audition one bar above the target without crossing it");
@@ -16320,7 +16386,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			VALTAN_AUDITION_RESULT::DUPLICATE_IGNORED ==
 				room.Evaluate_ValtanAudition(AUDITION_SESSION, arm, reportedBar) &&
 			nullptr != auditionBoss &&
-			41250u == (nullptr == auditionBoss ? 0u : auditionBoss->iCurrentHp),
+			412500u == (nullptr == auditionBoss ? 0u : auditionBoss->iCurrentHp),
 			"Answer a resent Valtan audition sequence without moving the boss");
 
 		cross.iRequestSequence = 6u;
@@ -16330,7 +16396,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			VALTAN_AUDITION_RESULT::QUEUED == crossResult &&
 			TARGET_BAR == reportedBar &&
 			nullptr != auditionBoss &&
-			40875u == (nullptr == auditionBoss ? 0u : auditionBoss->iCurrentHp) &&
+			408750u == (nullptr == auditionBoss ? 0u : auditionBoss->iCurrentHp) &&
 			110u == (nullptr == auditionBoss ?
 				0u : auditionBoss->iLastEvaluatedHealthBar) &&
 			(nullptr == auditionBoss || auditionBoss->PendingPatternIds.empty()),
@@ -16395,7 +16461,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			auditionBoss->strPatternId.empty() &&
 			auditionBoss->TriggeredPatternIds.empty() &&
 			110u == auditionBoss->iLastEvaluatedHealthBar &&
-			40875u == auditionBoss->iCurrentHp,
+			408750u == auditionBoss->iCurrentHp,
 			"Reset a running audition and queue 109 again from one repeatable Play request");
 
 		C2S_VALTAN_AUDITION_REQUEST wallAttack{};
@@ -19872,11 +19938,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		only thing that can open it. */
 		constexpr float FALL_RAIL_X = 155.25f;
 		constexpr float FALL_RAIL_Z = -107.25f;
-		/* The same-level projection reaches at most twenty cells of 0.5 m, so a
-		revive that steps out of the hole cannot land further than this away no
-		matter how the floor is repainted. The arena entry spawn is over a hundred
-		metres away, which is exactly the regression this bound is here to catch. */
-		constexpr float ARENA_REVIVE_MAX_METERS = 10.5f;
+		/* Revive owns one stable, authored arena anchor. Navigation projection may
+		move that point to the nearest cell centre, but it must not fall back to the
+		route's initial player spawn outside the boss arena. */
+		constexpr float ARENA_REVIVE_ANCHOR_TOLERANCE_METERS = 1.f;
 		/* The arena core the audition bait stands on. It belongs to no collapse
 		region at all and has to stay solid through both stages. */
 		constexpr float ARENA_CORE_X = 154.296f;
@@ -19990,15 +20055,21 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				revived.fPositionX, revived.fPositionZ),
 			"Revive a fall death on walkable ground and immediately restore Valtan target admission");
 
-		/* The arena progression triggers are room-wide triggerOnce, so a revive
-		that returns to the entry spawn leaves the player outside a boss fight no
-		surviving trigger can let them back into. */
-		const float reviveDeltaX = revived.fPositionX - FALL_RAIL_X;
-		const float reviveDeltaZ = revived.fPositionZ - FALL_RAIL_Z;
+		/* The arena progression triggers are room-wide triggerOnce. Pin the revive
+		to the authored boss-centre anchor so changing the initial route spawn can
+		never strand a revived player outside the completed trigger chain. */
+		const WORLD_BOOTSTRAP_PLACEMENT* arenaReviveAnchor =
+			room.Find_Placement("boss.valtan.center");
+		const float reviveDeltaX = nullptr == arenaReviveAnchor ? 0.f :
+			revived.fPositionX - arenaReviveAnchor->fPositionX;
+		const float reviveDeltaZ = nullptr == arenaReviveAnchor ? 0.f :
+			revived.fPositionZ - arenaReviveAnchor->fPositionZ;
 		tests.Require(
+			nullptr != arenaReviveAnchor &&
 			reviveDeltaX * reviveDeltaX + reviveDeltaZ * reviveDeltaZ <=
-				ARENA_REVIVE_MAX_METERS * ARENA_REVIVE_MAX_METERS,
-			"Revive a fall death beside the hole instead of at the arena entry spawn");
+				ARENA_REVIVE_ANCHOR_TOLERANCE_METERS *
+				ARENA_REVIVE_ANCHOR_TOLERANCE_METERS,
+			"Revive a fall death at the authored arena anchor instead of the route entry spawn");
 
 		room.Tick(1.f / 30.f);
 		tests.Require(

@@ -948,8 +948,7 @@ LostArk::Server::CGameRoom::CGameRoom(
 		return;
 	}
 	if (!m_ServerTriggerSystem.Initialize(
-		m_WorldBootstrap.Get_Placements(), m_strStatus,
-		LostArk::Shared::WORLD_ID::VALTAN_ARENA == worldId))
+		m_WorldBootstrap.Get_Placements(), m_strStatus))
 	{
 		return;
 	}

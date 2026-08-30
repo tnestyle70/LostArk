@@ -1373,6 +1373,9 @@ foreach ($managedPattern in $managedGameplay.patterns) {
 	}
 }
 $patternIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$optionalEntryPatternIds = @(
+	'VALTAN_ENTRANCE_CINEMATIC',
+	'VALTAN_ENTRANCE_CINEMATIC_IDLE')
 $actionIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $healthBarTriggerKeys =
 	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -1454,6 +1457,10 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				[double][uint32]$encounterDocument.fixedTickHz) / 1000.0)
 	}
 	$selectionMode = [string]$pattern.selectionMode
+	if ([string]$pattern.patternId -cin $optionalEntryPatternIds -and
+		$selectionMode -cne 'NORMAL') {
+		throw "Optional Valtan entry pattern must remain NORMAL: $($pattern.patternId)"
+	}
 	$category = [string]$pattern.category
 	$targetPolicy = [string]$pattern.targetPolicy
 	$aimPolicy = [string]$pattern.aimPolicy
@@ -2476,8 +2483,8 @@ foreach ($pattern in $liveEncounterPatterns) {
 		}
 	}
 }
-if ($liveEncounterPatterns.Count -ne 34 -or
-	$authoredStageCount -ne 132 -or
+if ($liveEncounterPatterns.Count -ne 35 -or
+	$authoredStageCount -ne 133 -or
 	$authoredStageActionCount -ne 26 -or
 	$authoredStageBranchCount -ne 24 -or
 	$authoredStageMotionCount -ne 2) {
@@ -3294,11 +3301,12 @@ foreach ($rotation in @($rotationDocument.rotations)) {
 		if ($rotationOwners.Count -ne 1) {
 			throw "Valtan pattern rotation names no pattern: $rotationPatternId"
 		}
-		# A scripted mechanic is owned by its own bar, and the entrance is owned by
-		# introPatternId. Neither may be replayed from a rotation step.
+		# A scripted mechanic is owned by its own bar. The intro and either
+		# optional cinematic entrance are entry-only and never rotation steps.
 		if ([string]$rotationOwners[0].selectionMode -cne 'NORMAL' -or
 			[string]$rotationPatternId -ceq `
-				[string]$encounterDocument.introPatternId) {
+				[string]$encounterDocument.introPatternId -or
+			[string]$rotationPatternId -cin $optionalEntryPatternIds) {
 			throw "Valtan pattern rotation step is not a normal pattern: $rotationPatternId"
 		}
 		if ([string]$rotation.selectionMode -ceq 'WEIGHTED_POOL' -and
@@ -3357,6 +3365,7 @@ if ([string]$scriptedSequence.mode -cne 'ORDERED_ONCE_THEN_IDLE' -or
 	throw 'Valtan scripted pattern sequence contract is invalid.'
 }
 $scriptedStepIndex = 0
+$scriptedEntryCount = 0
 foreach ($scriptedPatternIdValue in @($scriptedSequence.patternIds)) {
 	Assert-JsonString $scriptedPatternIdValue 'Valtan scripted patternId'
 	$scriptedPatternId = [string]$scriptedPatternIdValue
@@ -3364,9 +3373,16 @@ foreach ($scriptedPatternIdValue in @($scriptedSequence.patternIds)) {
 	$scriptedOwners = @($encounterDocument.patterns | Where-Object {
 		[string]$_.patternId -ceq $scriptedPatternId
 	})
-	if ($scriptedOwners.Count -ne 1 -or
-		($scriptedPatternId -ceq 'VALTAN_ENTRANCE_CINEMATIC' -and
-		 $scriptedStepIndex -ne 0)) {
+	$isOptionalEntry = $scriptedPatternId -cin $optionalEntryPatternIds
+	if ($isOptionalEntry) {
+		++$scriptedEntryCount
+	}
+	if ($scriptedOwners.Count -ne 1) {
+		throw "Valtan scripted sequence step is invalid: $scriptedPatternId"
+	}
+	if ($isOptionalEntry -and
+		($scriptedStepIndex -ne 0 -or $scriptedEntryCount -gt 1 -or
+		 [string]$scriptedOwners[0].selectionMode -cne 'NORMAL')) {
 		throw "Valtan scripted sequence step is invalid: $scriptedPatternId"
 	}
 	$patternRows.Add((@(

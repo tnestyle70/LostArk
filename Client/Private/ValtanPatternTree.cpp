@@ -24,6 +24,17 @@ namespace
 	using Client::DATA_JSON_TYPE;
 	using Client::DATA_JSON_VALUE;
 
+	constexpr std::string_view CINEMATIC_ENTRY_PATTERN_ID =
+		"VALTAN_ENTRANCE_CINEMATIC";
+	constexpr std::string_view IDLE_CINEMATIC_ENTRY_PATTERN_ID =
+		"VALTAN_ENTRANCE_CINEMATIC_IDLE";
+
+	bool_t Is_OptionalEntryPatternId(const std::string_view PatternId)
+	{
+		return CINEMATIC_ENTRY_PATTERN_ID == PatternId ||
+			IDLE_CINEMATIC_ENTRY_PATTERN_ID == PatternId;
+	}
+
 	bool Read_TextDocument(
 		const std::filesystem::path& Path,
 		std::string& OutText,
@@ -2062,7 +2073,7 @@ namespace
 
 	bool_t Parse_MasterDocument(
 		const DATA_JSON_VALUE& Root,
-		const std::string& strScriptedEntryOnlyPatternId,
+		const std::set<std::string, std::less<>>& ScriptedEntryOnlyPatternIds,
 		MASTER_DOCUMENT& Out,
 		std::string& strOutError)
 	{
@@ -2233,15 +2244,17 @@ namespace
 		const std::set<std::string, std::less<>> WeightedPatternIds(
 			Out.NormalSelection.PatternIds.begin(),
 			Out.NormalSelection.PatternIds.end());
-		/* An entry-only first scripted step retains NORMAL Product metadata,
-		   but the split decision model does not put it in the weighted pool. */
-		if (!strScriptedEntryOnlyPatternId.empty() &&
-			(0u == ManagedNormalPatternIds.erase(strScriptedEntryOnlyPatternId) ||
-			 WeightedPatternIds.contains(strScriptedEntryOnlyPatternId)))
+		/* Optional entry definitions retain NORMAL Product metadata, but the
+		   split decision model does not put either one in the weighted pool. */
+		for (const std::string& PatternId : ScriptedEntryOnlyPatternIds)
 		{
-			strOutError =
-				"master scripted entry-only gate must be an unweighted NORMAL pattern";
-			return false;
+			if (0u == ManagedNormalPatternIds.erase(PatternId) ||
+				WeightedPatternIds.contains(PatternId))
+			{
+				strOutError =
+					"master optional entry-only gate must be an unweighted NORMAL pattern";
+				return false;
+			}
 		}
 		if (WeightedPatternIds != ManagedNormalPatternIds)
 		{
@@ -4118,7 +4131,7 @@ namespace
 		std::set<std::string, std::less<>> EventIds;
 		std::set<std::string, std::less<>> CameraInvocationIds;
 		DATA_JSON_VALUE::ARRAY LegacyPatterns;
-		std::string strScriptedEntryOnlyPatternId;
+		std::set<std::string, std::less<>> ScriptedEntryOnlyPatternIds;
 		for (size_t iPattern = 0u;
 			iPattern < pGameplayPatterns->Get_Array().size(); ++iPattern)
 		{
@@ -4578,10 +4591,12 @@ namespace
 			const uint32_t iOwnerCount =
 				(bMechanic ? 1u : 0u) + (bCandidate ? 1u : 0u) +
 				(bManual ? 1u : 0u);
-			/* The known cinematic stays an entry-only definition when a custom
-			   Flow omits it. Never promote an arbitrary unowned pattern. */
-			const bool_t bScriptedEntryOnly = 0u == iOwnerCount &&
-				"VALTAN_ENTRANCE_CINEMATIC" == strPatternId;
+			/* Both reviewed cinematics stay entry-only definitions when a custom
+			   Flow omits them. Never promote an arbitrary unowned pattern. */
+			const bool_t bOptionalEntryPattern =
+				Is_OptionalEntryPatternId(strPatternId);
+			const bool_t bScriptedEntryOnly =
+				bOptionalEntryPattern && 0u == iOwnerCount;
 			const auto EntryInSequence = std::find(ScriptedSequence.PatternIds.begin(),
 				ScriptedSequence.PatternIds.end(), strPatternId);
 			if (bScriptedEntryOnly && EntryInSequence != ScriptedSequence.PatternIds.end() &&
@@ -4592,19 +4607,20 @@ namespace
 				strOutError = "entry-only decision owner must occur only at the first slot: " + strPatternId;
 				return false;
 			}
-			if ((1u != iOwnerCount && !bScriptedEntryOnly) ||
+			if ((bOptionalEntryPattern && !bScriptedEntryOnly) ||
+				(!bOptionalEntryPattern && 1u != iOwnerCount) ||
 				!Is_NonNegativeInteger(pCompatibilityWeight) ||
 				((bMechanic || bManual) &&
 				 0.0 != pCompatibilityWeight->Get_Number()) ||
 				((bCandidate || bScriptedEntryOnly) &&
 				 0.0 == pCompatibilityWeight->Get_Number()))
 			{
-				strOutError = "split gameplay pattern requires exactly one decision owner or the known entry-only gate: " +
+				strOutError = "split gameplay pattern requires exactly one decision owner or an optional entry-only gate: " +
 					strPatternId;
 				return false;
 			}
 			if (bScriptedEntryOnly)
-				strScriptedEntryOnlyPatternId = strPatternId;
+				ScriptedEntryOnlyPatternIds.insert(strPatternId);
 			DATA_JSON_VALUE::OBJECT LegacyPattern;
 			LegacyPattern.emplace("patternId", DATA_JSON_VALUE::String(strPatternId));
 			for (const std::string& Field :
@@ -4767,7 +4783,7 @@ namespace
 			DATA_JSON_VALUE::Array(std::move(LegacyPatterns)));
 		if (!Parse_MasterDocument(
 				DATA_JSON_VALUE::Object(std::move(LegacyRoot)),
-				strScriptedEntryOnlyPatternId, Out, strOutError))
+				ScriptedEntryOnlyPatternIds, Out, strOutError))
 		{
 			return false;
 		}

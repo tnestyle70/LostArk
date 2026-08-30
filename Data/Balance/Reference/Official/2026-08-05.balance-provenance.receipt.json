@@ -47,8 +47,8 @@
     "skillDefinitionCount": 94,
     "damageProfileCount": 109,
     "bossProfileCount": 2,
-    "encounterPatternCount": 34,
-    "fieldEntryCount": 3336,
+    "encounterPatternCount": 35,
+    "fieldEntryCount": 3358,
     "bossPartCount": 2,
     "bossCombatObjectCount": 3
   },
@@ -35787,9 +35787,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 57,
+      "sourceValue": 58,
       "transform": "Balance Tool authored override",
-      "resultValue": 57,
+      "resultValue": 58,
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
@@ -41168,6 +41168,360 @@
       "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
       "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC",
       "targetField": "patterns[33].triggerOrder",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 0,
+      "transform": "Balance Tool authored override",
+      "resultValue": 0,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].actionId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "valtan.cinematic.entrance-idle",
+      "transform": "Balance Tool authored override",
+      "resultValue": "valtan.cinematic.entrance-idle",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].aimPolicy",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "Balance Tool authored override",
+      "resultValue": "NONE",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].armorRequirement",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "ANY",
+      "transform": "Balance Tool authored override",
+      "resultValue": "ANY",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].category",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "NORMAL",
+      "transform": "Balance Tool authored override",
+      "resultValue": "NORMAL",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].displayName",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "발탄 등장 컷신 2 - Idle 고정 궤도",
+      "transform": "Balance Tool authored override",
+      "resultValue": "발탄 등장 컷신 2 - Idle 고정 궤도",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].invulnerableWhileRunning",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": true,
+      "transform": "Balance Tool authored override",
+      "resultValue": true,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].maximumConsecutiveUses",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 1,
+      "transform": "Balance Tool authored override",
+      "resultValue": 1,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].maximumHealthBar",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 160,
+      "transform": "Balance Tool authored override",
+      "resultValue": 160,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].maximumPhase",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 3,
+      "transform": "Balance Tool authored override",
+      "resultValue": 3,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].maximumRange",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 100.0,
+      "transform": "Balance Tool authored override",
+      "resultValue": 100.0,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].minimumHealthBar",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 1,
+      "transform": "Balance Tool authored override",
+      "resultValue": 1,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].minimumPhase",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 1,
+      "transform": "Balance Tool authored override",
+      "resultValue": 1,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].minimumRange",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "Balance Tool authored override",
+      "resultValue": 0.0,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].patternId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "transform": "Balance Tool authored override",
+      "resultValue": "VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].phaseRequirement",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "ANY",
+      "transform": "Balance Tool authored override",
+      "resultValue": "ANY",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].selectionMode",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "NORMAL",
+      "transform": "Balance Tool authored override",
+      "resultValue": "NORMAL",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].selectionWeight",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 1,
+      "transform": "Balance Tool authored override",
+      "resultValue": 1,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].sourceActionIds",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": [
+        420633
+      ],
+      "transform": "Balance Tool authored override",
+      "resultValue": [
+        420633
+      ],
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].stages",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": [
+        {
+          "stageId": "HOLD",
+          "actionId": "valtan.cinematic.entrance-idle.hold",
+          "stageKind": "ACTIVE",
+          "durationMs": 12500,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ],
+      "transform": "Balance Tool authored override",
+      "resultValue": [
+        {
+          "stageId": "HOLD",
+          "actionId": "valtan.cinematic.entrance-idle.hold",
+          "stageKind": "ACTIVE",
+          "durationMs": 12500,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ],
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].targetPolicy",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "Balance Tool authored override",
+      "resultValue": "NONE",
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].triggerHealthBar",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 0,
+      "transform": "Balance Tool authored override",
+      "resultValue": 0,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
+      "targetId": "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "targetField": "patterns[34].triggerOrder",
       "basis": "PROJECT_TUNED",
       "source": {
         "type": "project-policy",

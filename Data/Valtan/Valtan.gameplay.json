@@ -5454,6 +5454,56 @@
           "branches": []
         }
       ]
+    },
+    {
+      "patternId": "VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "displayName": "발탄 등장 컷신 2 - Idle 고정 궤도",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 1,
+      "actionId": "valtan.cinematic.entrance-idle",
+      "entryActionId": "valtan.cinematic.entrance-idle.hold",
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 1,
+        "maximumHealthBarInclusive": 160,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 100.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 1
+        }
+      },
+      "invulnerableWhileRunning": true,
+      "sourceActionIds": [
+        420633
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "HOLD",
+          "actionId": "valtan.cinematic.entrance-idle.hold",
+          "stageKind": "ACTIVE",
+          "durationMs": 12500,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [],
+          "branches": []
+        }
+      ]
     }
   ]
 }

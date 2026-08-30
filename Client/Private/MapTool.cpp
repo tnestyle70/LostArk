@@ -7460,14 +7460,13 @@ bool_t Client::CMapTool::Validate_DestructionExternalReferences(
 				" has a missing mutation or group";
 			return false;
 		}
+		/* A wall that never crosses a base-walkable cell owns no blocker to
+		open when it breaks, so an empty navigation closure is authored, not
+		missing. Publish-ValtanWorldDestruction.ps1 accepts zero or one
+		region and demanding one here blocks the Area on data the publisher
+		already admits. The declared regions are still checked below. */
 		const bool requiresNavigation = binding.isEnabled &&
 			DESTRUCTION_TRIGGER_KIND::COLLISION_IMPACT == binding.eTriggerKind;
-		if (requiresNavigation && group->navigationRegionIds.empty())
-		{
-			outStatus = "Save blocked: enabled binding " + binding.bindingId +
-				" requires a navigation blocker region";
-			return false;
-		}
 		if (binding.isEnabled && group->memberPlacementIds.empty())
 		{
 			outStatus = "Save blocked: enabled binding " + binding.bindingId +

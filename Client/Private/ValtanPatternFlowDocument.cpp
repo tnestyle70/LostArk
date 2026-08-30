@@ -32,6 +32,14 @@ namespace
 	constexpr std::size_t SHA256_BYTE_COUNT = 32u;
 	constexpr std::string_view OPTIONAL_ENTRY_PATTERN_ID =
 		"VALTAN_ENTRANCE_CINEMATIC";
+	constexpr std::string_view OPTIONAL_IDLE_ENTRY_PATTERN_ID =
+		"VALTAN_ENTRANCE_CINEMATIC_IDLE";
+
+	bool_t Is_OptionalEntryPatternId(const std::string_view patternId)
+	{
+		return OPTIONAL_ENTRY_PATTERN_ID == patternId ||
+			OPTIONAL_IDLE_ENTRY_PATTERN_ID == patternId;
+	}
 
 	const DATA_JSON_VALUE* Required(
 		const DATA_JSON_VALUE& object,
@@ -415,13 +423,19 @@ bool_t Client::CValtanPatternFlowDocument::Validate(
 
 	std::unordered_set<std::string> slotIds;
 	std::uint64_t maximumUsedOrdinal = 0u;
+	bool_t bHasEntryPattern = false;
 	for (std::size_t slotIndex = 0u; slotIndex < flow.Slots.size(); ++slotIndex)
 	{
 		const VALTAN_PATTERN_FLOW_SLOT& slot = flow.Slots[slotIndex];
-		if (OPTIONAL_ENTRY_PATTERN_ID == slot.strPatternId && 0u != slotIndex)
+		if (Is_OptionalEntryPatternId(slot.strPatternId))
 		{
-			outStatus = "The optional entry cinematic must occur exactly once at the first step.";
-			return false;
+			if (bHasEntryPattern || 0u != slotIndex)
+			{
+				outStatus =
+					"At most one optional entry cinematic may occur, and only at the first step.";
+				return false;
+			}
+			bHasEntryPattern = true;
 		}
 		std::uint64_t ordinal = 0u;
 		if (!Is_StableId(slot.strSlotId) ||
@@ -727,7 +741,7 @@ bool_t Client::CValtanPatternFlowDocument::Add_Slot(
 	VALTAN_PATTERN_FLOW_DEFINITION& flow = staged.Flows.front();
 	const std::string slotId = Build_SlotId(
 		flow.strFlowId, flow.iNextSlotOrdinal);
-	const bool_t bEntryPattern = OPTIONAL_ENTRY_PATTERN_ID == patternId;
+	const bool_t bEntryPattern = Is_OptionalEntryPatternId(patternId);
 	const VALTAN_PATTERN_FLOW_SLOT StagedSlot{
 		slotId, std::string(patternId) };
 	if (bEntryPattern)

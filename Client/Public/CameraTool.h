@@ -96,14 +96,20 @@ private:
 	void Handle_PreviewPreemption();
 
 	void Render_CueList();
+	void Render_CutManagement();
 	void Render_CueEditor();
 	void Render_KeyframeEditor(VALTAN_CINEMATIC_CAMERA_CUE& cue);
+	void Render_AdvancedEditor(VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	void Render_LookAtDummyEditor(VALTAN_CINEMATIC_CAMERA_CUE& cue);
-	void Render_PreviewControls(VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	void Mark_Dirty(const char_t* status);
 	bool_t Insert_Keyframe(VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	bool_t Insert_CapturedScene(VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	bool_t Delete_SelectedKeyframe(VALTAN_CINEMATIC_CAMERA_CUE& cue);
+	bool_t Create_Cut();
+	bool_t Delete_SelectedCut();
+	bool_t Append_CapturedPos(VALTAN_CINEMATIC_CAMERA_CUE& cue);
+	bool_t Delete_SelectedPos(VALTAN_CINEMATIC_CAMERA_CUE& cue);
+	void Respace_PosTimes(VALTAN_CINEMATIC_CAMERA_CUE& cue);
 	std::string Make_UniqueSceneId(
 		const VALTAN_CINEMATIC_CAMERA_CUE& cue) const;
 	f32_t Calculate_SegmentArcLength(
@@ -142,6 +148,12 @@ private:
 	f32_t m_fPreviewSeconds = 0.f;
 	f32_t m_fPreviewRate = 1.f;
 	f32_t m_fTargetSegmentSpeed = 5.f;
+	/* New-cut authoring inputs. The typed name becomes the stable cueId and the
+	   pattern/stage selection satisfies the document's one-cue-per-stage rule. */
+	char_t m_szNewCutName[129] = {};
+	int32_t m_iNewCutPatternIndex = 0;
+	int32_t m_iNewCutStageIndex = 0;
+	bool_t m_bNewCutTargetsDeath = false;
 	float3_t m_vLookAtDummyWorld = {};
 	f32_t m_fLookAtDummyRadius = 0.35f;
 	std::shared_ptr<Engine::CCollider> m_pLookAtDummyCollider;

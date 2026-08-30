@@ -6061,6 +6061,50 @@
           "cameraInvocations": []
         }
       ]
+    },
+    {
+      "patternId": "VALTAN_ENTRANCE_CINEMATIC_IDLE",
+      "sourceSequenceIndex": 4,
+      "presentationSources": [
+        {
+          "sourceActionId": 420633,
+          "sequenceIndex": 4,
+          "role": "PRIMARY"
+        }
+      ],
+      "stages": [
+        {
+          "stageId": "HOLD",
+          "actionId": "valtan.cinematic.entrance-idle.hold",
+          "sequenceRole": "HOLD",
+          "animation": {
+            "endPolicy": "LOOP_TO_STAGE_END",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.cinematic.entrance-idle.hold.clip.01",
+                "clip": "mesh_idle_battle_1",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 0,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": true
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": [
+            {
+              "cameraInvocationId": "camera.valtan.entrance-idle.orbit.invocation",
+              "cameraCueId": "camera.valtan.entrance-idle.orbit",
+              "trigger": "ENTER",
+              "startOffsetMs": 0,
+              "durationPolicy": "EXPLICIT",
+              "durationMs": 12000
+            }
+          ]
+        }
+      ]
     }
   ],
   "independentEffects": [
