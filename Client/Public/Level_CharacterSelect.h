@@ -21,6 +21,7 @@ class CCamera_Free;
 class CCharacter;
 class CHUDRuntimeView;
 class CCharacterSelectArenaSpawnGate;
+class CRaidEntryPreviewView;
 class IPlayerCommandSink;
 class IWorldEntityCommandSink;
 
@@ -100,6 +101,15 @@ private:
 	the same hand-rolled mouse-vs-rect pattern Render_ClassList already uses for the class list. */
 	void Render_ArenaSpawnButtons();
 
+#ifdef _DEBUG
+	/* O opens a visual-only preview of the same "군단장 레이드 입장" panel
+	   Level_Bern's guide NPC uses (CRaidEntryPreviewView, shared so this isn't
+	   a second runtime of the same role) -- there is no NPC, no walk, and no
+	   real entry command here, purely so the panel's layout can be checked
+	   from Character Select too. Entrance/Decline just close it. */
+	void Update_RaidEntryDebugPreviewKey();
+#endif
+
 public:
 	/* SpawnMonsterButton/BossSpawnButton/SpawnCancelButton's small labels ("몬스터 소환"/"보스
 	소환"/"되돌리기"). CGameInstance::Draw_Text submits immediately, but Render_ArenaSpawnButtons'
@@ -108,6 +118,21 @@ public:
 	m_pClassSelectView is private to this level, so CMainApp reaches it through Get_Active()
 	instead of a second CHUDRuntimeView of its own. */
 	void Render_ArenaSpawnLabels();
+#ifdef _DEBUG
+	/* Same split as Render_ArenaSpawnLabels just above, plus the
+	   GetForegroundDrawList() submission-order requirement
+	   CRaidEntryPreviewView::Render() documents -- CMainApp calls this after
+	   the combat HUD renders, and RenderText() after CImGuiLayer::EndFrame(). */
+	void Render_RaidEntryDebugPreview();
+	void Render_RaidEntryDebugPreviewText();
+	/* CMainApp uses this to skip RenderCombatHUD/RenderSkillIcons/RenderQuickSlot
+	   (and this level's own Render_SelectionPanel) while the preview is open --
+	   those all draw the player's class HUD chrome, which otherwise bleeds
+	   through the same screen region as the preview's left info column and
+	   panel frame. Out-of-line: keeps CRaidEntryPreviewView's definition out of
+	   this header's own compile requirement for unrelated includers. */
+	bool_t Is_DebugRaidEntryPreviewOpen() const;
+#endif
 	static CLevel_CharacterSelect* Get_Active() { return s_pActiveInstance; }
 	/* Authored and Debug Create Character buttons only stage this request. The common hidden
 	product input host consumes it once and calls OpenPopup/BeginPopupModal under one stable ImGui
@@ -175,6 +200,8 @@ private:
 #ifdef _DEBUG
 	bool_t m_isCombatColliderDebugVisible = false;
 	bool_t m_isSkillHitAreaDebugVisible = true;
+	unique_ptr<CRaidEntryPreviewView> m_pDebugRaidEntryPreviewView;
+	bool_t m_wasODownForRaidEntryDebugPreview = false;
 #endif
 	string m_strStatus =
 		"Waiting for the Lobby-approved Server character.";

@@ -25,6 +25,7 @@
 #include "NetworkPlayerCommandSink.h"
 #include "NetworkWorldEntityCommandSink.h"
 #include "PlayableCharacterAssetService.h"
+#include "RaidEntryPreviewView.h"
 #include "Transform.h"
 #include "ValtanPatternEffectCueDocument.h"
 #include "ValtanPresentationAssetService.h"
@@ -203,6 +204,11 @@ HRESULT CLevel_CharacterSelect::Initialize()
 		L"UI/ClassSelect/ClassSelect_Layout.json",
 		CHUDRuntimeView::DRAW_TARGET::FOREGROUND);
 
+#ifdef _DEBUG
+	m_pDebugRaidEntryPreviewView =
+		std::make_unique<CRaidEntryPreviewView>(m_pDevice, m_pContext);
+#endif
+
 	m_eMode = MODE::CONNECTING;
 	Reset_ArenaSpawnRequest();
 	m_ArenaSpawnAccepted.fill(false);
@@ -216,6 +222,9 @@ HRESULT CLevel_CharacterSelect::Initialize()
 void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
+#ifdef _DEBUG
+	Update_RaidEntryDebugPreviewKey();
+#endif
 	switch (m_eMode)
 	{
 	case MODE::CONNECTING:
@@ -239,7 +248,11 @@ HRESULT CLevel_CharacterSelect::Render()
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(
 		TEXT("LostArk Character Select - Server Arena"));
-	Render_SelectionPanel();
+	/* The debug status window would otherwise sit right where the O-key raid-
+	   entry preview's left info column and panel frame want to draw -- hidden
+	   while that preview is open instead of fighting it for the same space. */
+	if (!Is_DebugRaidEntryPreviewOpen())
+		Render_SelectionPanel();
 #endif
 	Render_ClassList();
 	Render_ArenaSpawnButtons();
@@ -2455,6 +2468,43 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 		}
 	}
 }
+
+#ifdef _DEBUG
+void CLevel_CharacterSelect::Update_RaidEntryDebugPreviewKey()
+{
+	if (nullptr == m_pDebugRaidEntryPreviewView ||
+		m_pDebugRaidEntryPreviewView->Is_Open() || ImGui::GetIO().WantTextInput)
+	{
+		return;
+	}
+	const bool_t isODown =
+		0 != (CGameInstance::Get().Get_DIKeyState(DIK_O) & 0x80);
+	const bool_t wasOPressed = isODown && !m_wasODownForRaidEntryDebugPreview;
+	m_wasODownForRaidEntryDebugPreview = isODown;
+	if (wasOPressed)
+		m_pDebugRaidEntryPreviewView->Open();
+}
+
+void CLevel_CharacterSelect::Render_RaidEntryDebugPreview()
+{
+	if (nullptr == m_pDebugRaidEntryPreviewView)
+		return;
+	// Visual-only: no real NPC, no command sink -- Entrance just closes it too.
+	(void)m_pDebugRaidEntryPreviewView->Render();
+}
+
+void CLevel_CharacterSelect::Render_RaidEntryDebugPreviewText()
+{
+	if (nullptr != m_pDebugRaidEntryPreviewView)
+		m_pDebugRaidEntryPreviewView->RenderText();
+}
+
+bool_t CLevel_CharacterSelect::Is_DebugRaidEntryPreviewOpen() const
+{
+	return nullptr != m_pDebugRaidEntryPreviewView &&
+		m_pDebugRaidEntryPreviewView->Is_Open();
+}
+#endif
 
 unique_ptr<CLevel_CharacterSelect> CLevel_CharacterSelect::Create(
 	ComPtr<ID3D11Device> pDevice,

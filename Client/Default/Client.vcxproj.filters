@@ -603,6 +603,9 @@
     <ClCompile Include="..\Private\PartyInteractionView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\RaidEntryPreviewView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\UITextureCache.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -1019,6 +1022,9 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\PartyInteractionView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\RaidEntryPreviewView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\UITextureCache.h">
@@ -1715,6 +1721,9 @@
       <Filter>96.DataFiles\UI</Filter>
     </None>
     <None Include="..\..\Data\UI\Bern\BernValtanEntry_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\Bern\ValtanRaidEntry_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
     <None Include="..\..\Data\UI\Party\PartyInviteConfirm_Layout.json">

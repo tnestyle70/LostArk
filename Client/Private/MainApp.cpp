@@ -786,24 +786,59 @@ HRESULT CMainApp::Render()
 		gated on that the first time, so it kept bleeding through underneath. */
 		const bool_t skillWindowOpenForPreview =
 			nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
+		/* The O-key raid-entry preview's left info column/panel frame sit in the
+		   same screen region as this class HUD (portrait, skill icons, identity
+		   gauge) -- skip drawing the class HUD chrome entirely while that debug
+		   preview is open instead of letting the two fight for the same pixels. */
+		const bool_t isCharSelectDebugPreviewOpen =
+			ETOUI(LEVEL::CHARACTER_SELECT) == hudLevel &&
+			nullptr != CLevel_CharacterSelect::Get_Active() &&
+			CLevel_CharacterSelect::Get_Active()->Is_DebugRaidEntryPreviewOpen();
 		if (nullptr != m_pHUDLayoutTool && hudPlayer.isValid &&
-			supportsAuthoredHUD && !skillWindowOpenForPreview)
+			supportsAuthoredHUD && !skillWindowOpenForPreview &&
+			!isCharSelectDebugPreviewOpen)
 		{
 			m_pHUDLayoutTool->Render_RuntimePreview(
 				GetHUDLayoutClassId(hudPlayer.eCharacterClass));
 		}
+		if (!isCharSelectDebugPreviewOpen)
+		{
 	#endif
-		RenderCombatHUD();
-		RenderBossHealthBar();
-		RenderChargeGauge();
-		RenderEstherGauge();
-		/* RenderQuickSlot only draws the extracted QuickSlot.gfx on-use flash overlay -- it does
-		not draw icon art, cooldown sweep, or keybind text for any class, so it is additive on top
-		of the existing icon/cooldown rendering below, not a replacement for it. Disabling these
-		two calls previously took every class's skill icons off screen, not just LanceMaster's. */
-		RenderSkillIcons();
-		RenderSkillCooldowns();
-		RenderQuickSlot();
+			RenderCombatHUD();
+			RenderBossHealthBar();
+			RenderChargeGauge();
+			RenderEstherGauge();
+			/* RenderQuickSlot only draws the extracted QuickSlot.gfx on-use flash overlay -- it does
+			not draw icon art, cooldown sweep, or keybind text for any class, so it is additive on top
+			of the existing icon/cooldown rendering below, not a replacement for it. Disabling these
+			two calls previously took every class's skill icons off screen, not just LanceMaster's. */
+			RenderSkillIcons();
+			RenderSkillCooldowns();
+			RenderQuickSlot();
+	#ifdef _DEBUG
+		}
+	#endif
+		/* Must run after the combat HUD renders above: Render_ValtanEntryModal's
+		   art draws to ImGui::GetForegroundDrawList(), the same shared list
+		   RenderCombatHUD/RenderBossHealthBar/RenderSkillIcons/RenderQuickSlot
+		   just used, and that list composites in real submission order -- calling
+		   it earlier let the always-on combat HUD paint over the full-screen
+		   raid-entry panel. */
+		if (ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID())
+		{
+			if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
+				pBern->Render_ValtanEntryModal();
+		}
+#ifdef _DEBUG
+		/* O-key visual-only preview of the same raid-entry panel from Character
+		   Select -- same foreground-drawlist ordering requirement as Bern's real
+		   one above. See CLevel_CharacterSelect::Update_RaidEntryDebugPreviewKey. */
+		if (ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID())
+		{
+			if (CLevel_CharacterSelect* pCharacterSelectDebug = CLevel_CharacterSelect::Get_Active())
+				pCharacterSelectDebug->Render_RaidEntryDebugPreview();
+		}
+#endif
 		if (nullptr != m_pChatWindowView)
 		{
 			/* Only in actual in-game play (Bern/Valtan), not Character Select -- more levels join
@@ -941,7 +976,12 @@ HRESULT CMainApp::Render()
 	if (ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID())
 	{
 		if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active())
+		{
 			pCharacterSelect->Render_ArenaSpawnLabels();
+#ifdef _DEBUG
+			pCharacterSelect->Render_RaidEntryDebugPreviewText();
+#endif
+		}
 	}
 	if (ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID())
 	{
