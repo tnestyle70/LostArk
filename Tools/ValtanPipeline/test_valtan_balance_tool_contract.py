@@ -389,6 +389,43 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         self.assertIn("Has_PendingCommand()", self.balance_cpp)
         self.assertIn("!m_dirty", self.balance_cpp)
         self.assertIn("ServerActiveRevision.Is_Valid()", self.balance_cpp)
+
+    def test_saved_gameplay_source_blocks_replay_until_exact_server_candidate(self) -> None:
+        save_product = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)",
+        )
+        replay_gate = function_body(
+            self.boss_cpp,
+            "bool_t Client::CBossTool::Can_Play_ServerPattern(",
+        )
+        activation_gate = function_body(
+            self.tuning_command_cpp,
+            "Is_LatestGameplaySourceServerActive(std::string& strOutStatus) const",
+        )
+        reload_balance = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Reload()",
+        )
+        construct_balance = function_body(
+            self.balance_cpp,
+            "Client::CBalanceTool::CBalanceTool()",
+        )
+
+        self.assertEqual(
+            2, save_product.count("Record_GameplaySourceActivationExpectation")
+        )
+        self.assertIn("hadDirtyDraft", save_product)
+        self.assertIn("m_valtanCandidateRevision", save_product)
+        self.assertIn("m_valtanCandidateApplyClass", save_product)
+        self.assertIn("Is_LatestGameplaySourceServerActive", replay_gate)
+        self.assertIn("Read_RevisionObservation", activation_gate)
+        self.assertIn("Observation.ServerActiveRevision == CandidateRevision", activation_gate)
+        self.assertIn("no admitted Product candidate", activation_gate)
+        self.assertIn("Has_GameplaySourceActivationExpectation", reload_balance)
+        self.assertIn("A saved Valtan authoring head was resumed", reload_balance)
+        self.assertIn("if (!Reload()", construct_balance)
+        self.assertIn("Record_GameplaySourceActivationExpectation", construct_balance)
         self.assertIn("Runtime active pointer is unchanged", self.balance_cpp)
         self.assertIn("m_valtanAuthoringRevision", self.balance_h)
         self.assertIn("m_valtanCandidateRevision", self.balance_h)

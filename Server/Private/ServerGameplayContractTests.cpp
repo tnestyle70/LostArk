@@ -1428,6 +1428,129 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		{
 			auto room = prepareRoom();
 			SERVER_WORLD_ENTITY& boss = room->m_WorldEntities.front();
+			bool valid = true;
+			bool outsideRejected = false;
+			bool proxyGeometryLoaded = false;
+			bool outsideProxyRejected = false;
+			bool insideAccepted = false;
+			bool selectedAuthoredGroggy = false;
+			for (std::uint32_t tick = 2000u; tick < 2800u && valid; ++tick)
+			{
+				if (!outsideRejected && 0u != boss.iPatternSequence &&
+					"STEP_07" != boss.strPatternStageId)
+				{
+					BOSS_INCOMING_HIT outsideWindow{};
+					outsideWindow.iCounterPower = 1u;
+					outsideWindow.iServerTick = tick;
+					outsideWindow.fSourceX = boss.fPositionX;
+					outsideWindow.fSourceZ = boss.fPositionZ;
+					outsideRejected = !CBossCombatRuntime::Apply_PlayerHit(
+						boss, outsideWindow).bCounterTriggered;
+				}
+				if (!insideAccepted && "STEP_07" == boss.strPatternStageId)
+				{
+					proxyGeometryLoaded = boss.bPatternHasCounterProxy &&
+						1.f == boss.fPatternCounterProxyForwardOffsetM &&
+						0.f == boss.fPatternCounterProxyRightOffsetM &&
+						2.25f == boss.fPatternCounterProxyRadiusM;
+					const float radians = boss.fYawDegrees *
+						3.14159265358979323846f / 180.f;
+					const float forwardX = std::sin(radians);
+					const float forwardZ = std::cos(radians);
+					const float rightX = forwardZ;
+					const float rightZ = -forwardX;
+					const float proxyX = boss.fPositionX +
+						forwardX * boss.fPatternCounterProxyForwardOffsetM +
+						rightX * boss.fPatternCounterProxyRightOffsetM;
+					const float proxyZ = boss.fPositionZ +
+						forwardZ * boss.fPatternCounterProxyForwardOffsetM +
+						rightZ * boss.fPatternCounterProxyRightOffsetM;
+					BOSS_INCOMING_HIT outsideProxy{};
+					outsideProxy.iCounterPower = 1u;
+					outsideProxy.iServerTick = tick;
+					outsideProxy.fSourceX = proxyX +
+						boss.fPatternCounterProxyRadiusM + 1.f;
+					outsideProxy.fSourceZ = proxyZ;
+					outsideProxyRejected =
+						!CBossCombatRuntime::Apply_PlayerHit(
+							boss, outsideProxy).bCounterTriggered &&
+						CBossCombatRuntime::Has_Flag(boss.BossCombat,
+							SERVER_BOSS_COMBAT_FLAG::COUNTERABLE);
+					BOSS_INCOMING_HIT insideProxy{};
+					insideProxy.iCounterPower = 1u;
+					insideProxy.iServerTick = tick;
+					insideProxy.fSourceX = proxyX;
+					insideProxy.fSourceZ = proxyZ;
+					insideAccepted = CBossCombatRuntime::Apply_PlayerHit(
+						boss, insideProxy).bCounterTriggered;
+				}
+				valid = advance(*room, tick);
+				selectedAuthoredGroggy = selectedAuthoredGroggy ||
+					("GROGGY" == boss.strPatternStageId &&
+					 "valtan.sequence.center-trash-rush-if.groggy" ==
+						boss.strActionId &&
+					 CBossCombatRuntime::Has_Flag(
+						boss.BossCombat, SERVER_BOSS_COMBAT_FLAG::GROGGY));
+				if (selectedAuthoredGroggy)
+					break;
+			}
+
+			auto disabledRoom = prepareRoom();
+			SERVER_WORLD_ENTITY& disabledBoss =
+				disabledRoom->m_WorldEntities.front();
+			bool disabledValid = true;
+			bool disabledAttempted = false;
+			bool disabledRejected = false;
+			bool disabledEnteredGroggy = false;
+			bool disabledAdvancedPastWindow = false;
+			for (std::uint32_t tick = 3000u;
+				tick < 3800u && disabledValid; ++tick)
+			{
+				if (!disabledAttempted &&
+					"STEP_07" == disabledBoss.strPatternStageId)
+				{
+					disabledAttempted = true;
+					(void)CBossCombatRuntime::Set_Flag(
+						disabledBoss.BossCombat,
+						SERVER_BOSS_COMBAT_FLAG::COUNTERABLE, false);
+					const float radians = disabledBoss.fYawDegrees *
+						3.14159265358979323846f / 180.f;
+					BOSS_INCOMING_HIT disabledHit{};
+					disabledHit.iCounterPower = 1u;
+					disabledHit.iServerTick = tick;
+					disabledHit.fSourceX = disabledBoss.fPositionX +
+						std::sin(radians) *
+							disabledBoss.fPatternCounterProxyForwardOffsetM +
+						std::cos(radians) *
+							disabledBoss.fPatternCounterProxyRightOffsetM;
+					disabledHit.fSourceZ = disabledBoss.fPositionZ +
+						std::cos(radians) *
+							disabledBoss.fPatternCounterProxyForwardOffsetM -
+						std::sin(radians) *
+							disabledBoss.fPatternCounterProxyRightOffsetM;
+					disabledRejected = !CBossCombatRuntime::Apply_PlayerHit(
+						disabledBoss, disabledHit).bCounterTriggered;
+				}
+				disabledValid = advance(*disabledRoom, tick);
+				disabledEnteredGroggy = disabledEnteredGroggy ||
+					"GROGGY" == disabledBoss.strPatternStageId;
+				disabledAdvancedPastWindow = disabledAdvancedPastWindow ||
+					(disabledAttempted &&
+					 "STEP_07" != disabledBoss.strPatternStageId);
+				if (disabledAdvancedPastWindow)
+					break;
+			}
+			tests.Require(
+				valid && outsideRejected && proxyGeometryLoaded &&
+				outsideProxyRejected && insideAccepted &&
+				selectedAuthoredGroggy && disabledValid &&
+				disabledAttempted && disabledRejected &&
+				disabledAdvancedPastWindow && !disabledEnteredGroggy,
+				"Trash counter window fixed-tick admission: authored proxy geometry accepts only in-range hits; outside-window/range/disabled do not transition");
+		}
+		{
+			auto room = prepareRoom();
+			SERVER_WORLD_ENTITY& boss = room->m_WorldEntities.front();
 			boss.iPatternSequence = 5u;
 			boss.strPatternId = "VALTAN_TRASH";
 			boss.strActionId = stageById("EXECUTE_TAIL").strActionId;
@@ -3106,6 +3229,39 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"PATTERNPOLICY\tENCOUNTER_VALTAN\tVALTAN_CATCH_BREATH\t"
 			"NORMAL\t1\t3\tLOCK_RANDOM_ALIVE_BEHIND_ON_START_BROKEN\t"
 			"LOCK_FACING_ON_START");
+		const std::string trashCounterStagePrefix =
+			"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TRASH\t6\tSTEP_07\t"
+			"valtan.sequence.center-trash-rush-if.step-07\tWINDUP\t1000";
+		std::string invalidTrashCounterKindBootstrap = bootstrapText;
+		const bool madeInvalidTrashCounterKind = replaceBootstrapRow(
+			invalidTrashCounterKindBootstrap, trashCounterStagePrefix,
+			"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TRASH\t6\tSTEP_07\t"
+			"valtan.sequence.center-trash-rush-if.step-07\tACTIVE\t1000");
+		const std::string trashGroggyExitRow =
+			"PATTERNSTAGEACTION\tENCOUNTER_VALTAN\tVALTAN_TRASH\t"
+			"valtan.sequence.center-trash-rush-if.groggy\t2\tEXIT\t"
+			"SET_BOSS_FLAG\tboss.flag.groggy\t0\t0";
+		std::string unpairedTrashGroggyBootstrap = bootstrapText;
+		const bool removedTrashGroggyExit = removeBootstrapRow(
+			unpairedTrashGroggyBootstrap, trashGroggyExitRow);
+		const std::string trashCounterBranchRow =
+			"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TRASH\t"
+			"valtan.sequence.center-trash-rush-if.step-07\tCOUNTER_HIT\t"
+			"valtan.sequence.center-trash-rush-if.groggy";
+		std::string crossPatternTrashCounterBootstrap = bootstrapText;
+		const bool madeCrossPatternTrashCounter = replaceBootstrapRow(
+			crossPatternTrashCounterBootstrap, trashCounterBranchRow,
+			"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TRASH\t"
+			"valtan.sequence.center-trash-rush-if.step-07\tCOUNTER_HIT\t"
+			"valtan.sequence.rush-if.groggy");
+		const std::string trashCounterTimeoutRow =
+			"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TRASH\t"
+			"valtan.sequence.center-trash-rush-if.step-07\tTIMEOUT\t"
+			"valtan.sequence.center-trash-rush-if.step-08";
+		std::string duplicateTrashCounterBranchBootstrap = bootstrapText;
+		const bool madeDuplicateTrashCounterBranch = replaceBootstrapRow(
+			duplicateTrashCounterBranchBootstrap, trashCounterTimeoutRow,
+			trashCounterBranchRow);
 		const auto rejectsSequenceVariant = [
 			&loadBootstrapVariant](const std::wstring_view suffix,
 				const std::string& bytes, const std::string_view statusNeedle)
@@ -3169,6 +3325,26 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				L"rear-target-policy-invalid", invalidRearTargetPolicyBootstrap,
 				"pattern policy row is invalid"),
 			"Reject invalid Dash part-damage, trash counter-proxy, and rear-target policy refinements transactionally");
+		tests.Require(
+			madeInvalidTrashCounterKind && rejectsSequenceVariant(
+				L"trash-counter-stage-kind", invalidTrashCounterKindBootstrap,
+				"branch or action contract"),
+			"Reject a non-WINDUP managed Counter stage without replacing the active generation");
+		tests.Require(
+			removedTrashGroggyExit && rejectsSequenceVariant(
+				L"trash-counter-groggy-unpaired", unpairedTrashGroggyBootstrap,
+				"branch or action contract"),
+			"Reject an unpaired managed Groggy flag without replacing the active generation");
+		tests.Require(
+			madeCrossPatternTrashCounter && rejectsSequenceVariant(
+				L"trash-counter-cross-pattern", crossPatternTrashCounterBootstrap,
+				""),
+			"Reject a cross-pattern managed Counter target without replacing the active generation");
+		tests.Require(
+			madeDuplicateTrashCounterBranch && rejectsSequenceVariant(
+				L"trash-counter-duplicate-branch", duplicateTrashCounterBranchBootstrap,
+				"branch"),
+			"Reject a duplicate managed Counter branch without replacing the active generation");
 
 		const auto rejectsRuntimeRefinement = [&bootstrapText, &replaceBootstrapRow,
 			&rejectsSequenceVariant](const wchar_t* suffix, const std::string& before,

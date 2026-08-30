@@ -281,9 +281,12 @@ public:
 	bool_t Apply_CombatObjectPresentationEvent(
 		const LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT& event,
 		std::string& strOutStatus);
-	/* Debug Workbench Save reloads only the Client presentation binding. Server
-	   hit identity and gameplay timing remain untouched. Failed reload keeps the
-	   previously admitted map. */
+	/* Debug Workbench Save reloads only Client presentation documents. Server
+	   hit identity and gameplay timing remain untouched. Each reload stages the
+	   complete replacement and keeps the previously admitted map on failure. */
+	bool_t Reload_PatternBindings(std::string& strOutStatus);
+	bool_t Reload_PatternPresentationAuthoring(std::string& strOutStatus);
+	bool_t Reload_PatternSoundCues(std::string& strOutStatus);
 	bool_t Reload_CombatObjectSoundCues(std::string& strOutStatus);
 	const std::string& Get_ServerActionId() const { return m_strServerActionId; }
 #ifdef _DEBUG
@@ -458,11 +461,13 @@ private:
 		std::size_t iCurrentClipOccurrenceIndex,
 		std::size_t& iOutClipOccurrenceIndex);
 	void Load_PatternEffectCues();
+	bool_t Reload_PatternEffectCues(std::string& strOutStatus);
 	void Spawn_DuePatternEffectCues(f32_t fActionAgeSeconds);
 	void Load_PatternSoundCues();
 	void Spawn_DuePatternSoundCues(f32_t fActionAgeSeconds);
 	void Load_CombatObjectSoundCues();
 	void Load_PatternShakeCues();
+	bool_t Reload_PatternShakeCues(std::string& strOutStatus);
 	void Spawn_DuePatternShakeCues(f32_t fActionAgeSeconds);
 #ifdef _DEBUG
 	void Load_PatternHitAreaDebug();

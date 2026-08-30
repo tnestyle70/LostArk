@@ -53,6 +53,16 @@ public:
 		bool hitEditable = false;
 	};
 
+	/* One typed Server-gameplay edge: a WINDUP stage owns the paired
+	   counterable flag and COUNTER_HIT branch, while its selected same-pattern
+	   GROGGY stage/action owns the paired groggy flag transition. */
+	struct VALTAN_COUNTER_WINDOW_EDIT final
+	{
+		bool enabled = false;
+		std::string successStageId;
+		std::string successActionId;
+	};
+
 	CBalanceTool();
 	void Open();
 	void Open_Valtan();
@@ -80,6 +90,16 @@ public:
 		const std::string& patternId,
 		const std::string& stageId,
 		const PATTERN_STAGE_EDIT& stage,
+		std::string& status);
+	bool Get_ValtanCounterWindowDraft(
+		const std::string& patternId,
+		const std::string& stageId,
+		VALTAN_COUNTER_WINDOW_EDIT& counter,
+		std::string& status) const;
+	bool Set_ValtanCounterWindowDraft(
+		const std::string& patternId,
+		const std::string& stageId,
+		const VALTAN_COUNTER_WINDOW_EDIT& counter,
 		std::string& status);
 	bool Get_ValtanHighJumpAxeCountDraft(
 		std::uint32_t& draftCount,

@@ -63,6 +63,16 @@ public:
 	{
 		return m_pPlayerCommandSink;
 	}
+	/* Workbench authoring must reload the replicated primary Server consumer,
+	   not only the Development preview target. These wrappers keep the Level's
+	   replication owner as the single route and expose its freshness admission
+	   to Complete Play. */
+	bool_t Reload_PrimaryValtanPresentationAuthoring(
+		std::string& strOutStatus);
+	bool_t Reload_PrimaryValtanCombatObjectSoundCues(
+		std::string& strOutStatus);
+	bool_t Can_Play_PrimaryValtanPresentation(
+		std::string& strOutStatus) const;
 #ifdef _DEBUG
 	struct ARENA_ACTIVE_STATE final
 	{
@@ -91,6 +101,7 @@ public:
 	{
 		return m_strAuditionStatus;
 	}
+	bool_t Is_ArenaPresetRequestPending() const;
 	ARENA_ACTIVE_STATE Get_ArenaActiveState() const;
 #endif
 

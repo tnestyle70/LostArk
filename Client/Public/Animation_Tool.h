@@ -14,6 +14,7 @@
 #include "ValtanPatternTree.h"
 
 #include <filesystem>
+#include <string_view>
 #include <unordered_set>
 
 NS_BEGIN(Engine)
@@ -84,6 +85,26 @@ private:
 		NONE,
 		SOURCE_REFERENCE,
 		EFFECT_ASSET_ID,
+	};
+
+	/* The Valtan Outliner persists semantic identity, never a vector position.
+	   m_iValtanPatternMasterSelected remains a derived compatibility cursor for
+	   the existing preview transport only. */
+	enum class VALTAN_WORKBENCH_SELECTION_KIND
+	{
+		TARGET,
+		PATTERN,
+		STAGE,
+	};
+
+	enum class VALTAN_WORKBENCH_DETAIL_OWNER
+	{
+		GAMEPLAY,
+		ANIMATION,
+		EFFECT,
+		SOUND,
+		CAMERA,
+		WORLD,
 	};
 
 	/* Extracted combat values shared by an authored HIT and a reference row, so
@@ -288,11 +309,25 @@ private:
 	bool_t Reload_ValtanPatternSoundCues();
 	bool_t Reload_ValtanPatternShakeCues();
 	bool_t Reload_ValtanCombatObjectSoundCues();
+	bool_t Load_ValtanAnimationBindingDraft(
+		const shared_ptr<Engine::CModel>& pModel);
+	bool_t Render_ValtanAnimationBindingInspector(
+		const shared_ptr<Engine::CModel>& pModel,
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const VALTAN_STAGE_VIEW& Stage);
+	void Render_ValtanCounterWindowInspector(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const VALTAN_STAGE_VIEW& SavedStage);
+	bool_t Render_ValtanPatternSoundInspector(
+		const shared_ptr<Engine::CModel>& pModel,
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const VALTAN_STAGE_VIEW& Stage);
 	void Render_ValtanStageDraftInspector(
-		const std::string& strPatternId,
+		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& SavedStage);
 	void Render_ValtanPresentationLanes(
-		const VALTAN_PATTERN_VIEW& Pattern);
+		const VALTAN_PATTERN_VIEW& Pattern,
+		std::string_view strStageFilter = {});
 	bool_t Preview_ValtanSoundAsset(
 		const std::string& strResourceAssetId);
 	std::vector<const VALTAN_PATTERN_VIEW*>
@@ -495,6 +530,21 @@ private:
 	   sequence judged here reads smoother than the live boss until the boss
 	   owner adopts the same value. */
 	f32_t m_fPreviewBlendSeconds = 0.12f;
+	VALTAN_WORKBENCH_SELECTION_KIND m_eValtanWorkbenchSelection =
+		VALTAN_WORKBENCH_SELECTION_KIND::STAGE;
+	VALTAN_WORKBENCH_DETAIL_OWNER m_eValtanWorkbenchDetailOwner =
+		VALTAN_WORKBENCH_DETAIL_OWNER::GAMEPLAY;
+	std::string m_strValtanWorkbenchPatternId;
+	std::string m_strValtanWorkbenchStageId;
+	BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT
+		m_ValtanPatternAnimationBindingDraft;
+	bool_t m_bValtanPatternAnimationBindingLoadAttempted = false;
+	bool_t m_bValtanPatternAnimationBindingReady = false;
+	bool_t m_bValtanPatternAnimationBindingDirty = false;
+	std::string m_strValtanPatternAnimationBindingBaselineSourceBytes;
+	std::string m_strValtanPatternAnimationBindingStatus;
+	std::string m_strValtanAnimationBindingDetailActionId;
+	std::string m_strValtanAnimationBindingNewClip;
 	int32_t m_iValtanPatternMasterSelected = 0;
 	std::size_t m_iValtanPatternMasterItem = 0u;
 	f32_t m_fValtanPatternMasterItemElapsedSeconds = 0.f;
@@ -504,7 +554,14 @@ private:
 	std::string m_strValtanPatternMasterStatus;
 	VALTAN_PATTERN_SOUND_CUE_DOCUMENT m_ValtanPatternSoundCues;
 	bool_t m_bValtanPatternSoundCuesReady = false;
+	bool_t m_bValtanPatternSoundCuesDirty = false;
+	std::string m_strValtanPatternSoundCueBaselineSourceBytes;
 	std::string m_strValtanPatternSoundCueStatus;
+	std::string m_strValtanPatternSoundAddClipOccurrenceId;
+	std::string m_strValtanPatternSoundAddEvent;
+	uint32_t m_iValtanPatternSoundAddStartMs = 0u;
+	VALTAN_PATTERN_SOUND_REPEAT_POLICY m_eValtanPatternSoundAddRepeatPolicy =
+		VALTAN_PATTERN_SOUND_REPEAT_POLICY::ONCE;
 	VALTAN_PATTERN_SHAKE_CUE_DOCUMENT m_ValtanPatternShakeCues;
 	bool_t m_bValtanPatternShakeCuesReady = false;
 	std::string m_strValtanPatternShakeCueStatus;
@@ -550,6 +607,7 @@ private:
 	   Workbench and owns all three until Client shutdown. */
 	CBalanceTool* m_pBalanceTool = nullptr;
 	CBossTool* m_pBossTool = nullptr;
+	bool_t m_bResetWorkbenchLayoutRequested = false;
 
 	std::vector<ANIM_EVENT> m_Events;
 	/* Empty until a character resolves; Sync_AssetName fills it from the spec. */
@@ -602,6 +660,7 @@ private:
 	int32_t m_iSelectedKakulAction = -1;
 	int32_t m_iSelectedKakulStage = 0;
 	int32_t m_iSelectedKakulSlot = 0;
+	f32_t m_fKakulActionListWidth = 320.f;
 	char m_KakulActionFilter[128]{};
 	std::string m_strKakulActionStatus;
 	/* Which kinds Import_Notifies takes. Effects alone run to a few thousand

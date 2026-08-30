@@ -211,19 +211,22 @@ class BuildProfileContractTests(unittest.TestCase):
         )
         self.assertGreaterEqual(valtan_project.count("/MP /utf-8"), 1)
         self.assertGreaterEqual(character_project.count("/MP /utf-8"), 4)
-        # The focused native Sound document suite consumes the product animation
-        # binding parser, project-root resolver, and Sound cue parser in addition
-        # to the nine pre-existing Valtan presentation/service sources.
+        # The focused native Animation/Pattern Sound document suites consume the
+        # product animation binding parser, project/runtime-root resolvers, Sound
+        # catalog, and Pattern Sound parser in addition to the nine pre-existing
+        # Valtan presentation/service sources.
         for sound_contract_source in (
             "AnimationSkillBindingDocument.cpp",
             "ProjectDataRoot.cpp",
+            "RuntimeAssetRoot.cpp",
+            "SoundCueCatalog.cpp",
             "ValtanPatternSoundCueDocument.cpp",
         ):
             self.assertIn(
                 f"..\\..\\..\\Client\\Private\\{sound_contract_source}",
                 valtan_project,
             )
-        self.assertEqual(12, valtan_project.count("..\\..\\..\\Client\\Private\\"))
+        self.assertEqual(14, valtan_project.count("..\\..\\..\\Client\\Private\\"))
         self.assertEqual(1, character_project.count("..\\..\\..\\Client\\Private\\"))
 
         valtan_tests = read(

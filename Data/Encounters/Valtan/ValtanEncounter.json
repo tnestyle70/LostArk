@@ -4589,7 +4589,23 @@
           "pushRangeM": 0.0,
           "pushMs": 0,
           "knockdown": false,
-          "downMs": 0
+          "downMs": 0,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "SET_BOSS_FLAG",
+              "targetId": "boss.flag.groggy",
+              "value": 1,
+              "durationMs": 0
+            },
+            {
+              "trigger": "EXIT",
+              "kind": "SET_BOSS_FLAG",
+              "targetId": "boss.flag.groggy",
+              "value": 0,
+              "durationMs": 0
+            }
+          ]
         }
       ]
     },

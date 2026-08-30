@@ -477,6 +477,7 @@ private:
 		"Resource Files has not been indexed yet.";
 	string m_strServerArenaActiveStatus =
 		"Enter the Server-approved Valtan Arena to inspect Active state.";
+	bool_t m_bServerArenaPresetStatusTracking = false;
 	uint32_t m_iNextKakulStageTeleportRequestSequence = 1u;
 	string m_strKakulStageTeleportStatus =
 		"Enter the Server-approved KoukuSaton Arena to inspect SL01-SL05 stages.";
@@ -486,6 +487,8 @@ private:
 	   this value each frame and are never persisted as selection state. */
 	string m_strCompletePlayPatternId;
 	bool_t m_bCompletePlayPatternLoadAttempted = false;
+	bool_t m_bCompletePlayStatusTracking = false;
+	string m_strCompletePlayTrackedPatternId;
 	string m_strCompletePlayStatus =
 		"Select a saved semantic pattern, then submit Complete Play to the Server.";
 	RENDER_QUALITY_SETTINGS m_RenderQualityDraft = {};

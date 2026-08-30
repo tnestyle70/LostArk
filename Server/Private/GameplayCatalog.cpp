@@ -4065,15 +4065,105 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 								targetId == action.strTargetId;
 						});
 				};
-				if (hasCounterHit)
+				const auto hasBossFlagValue = [&stage](
+					const BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
+					const std::string_view targetId,
+					const std::uint32_t value)
 				{
+					return std::any_of(stage.Actions.begin(), stage.Actions.end(),
+						[trigger, targetId, value](
+							const BOSS_PATTERN_STAGE_ACTION& action)
+						{
+							return trigger == action.eTrigger &&
+								BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG ==
+									action.eKind &&
+								targetId == action.strTargetId &&
+								value == action.iValue;
+						});
+				};
+				const auto hasBossFlag = [&stage](const std::string_view targetId)
+				{
+					return std::any_of(stage.Actions.begin(), stage.Actions.end(),
+						[targetId](const BOSS_PATTERN_STAGE_ACTION& action)
+						{
+							return BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG ==
+									action.eKind && targetId == action.strTargetId;
+						});
+				};
+				const bool hasCounterableFlag = hasBossFlag("boss.flag.counterable");
+				const bool hasGroggyFlag = hasBossFlag("boss.flag.groggy");
+				if (pattern.bAuthoringMasterManaged && hasCounterHit)
+				{
+					const auto counterBranch = std::find_if(
+						stage.Branches.begin(), stage.Branches.end(),
+						[](const BOSS_PATTERN_STAGE_BRANCH& branch)
+						{
+							return BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT ==
+								branch.eOutcome;
+						});
+					const auto counterTarget = counterBranch == stage.Branches.end() ?
+						pattern.Stages.end() : std::find_if(
+							pattern.Stages.begin(), pattern.Stages.end(),
+							[&counterBranch](
+								const BOSS_PATTERN_STAGE_DEFINITION& candidate)
+							{
+								return candidate.strActionId ==
+									counterBranch->strNextActionId;
+							});
+					const auto targetHasGroggyAction =
+						[&counterTarget, &pattern](
+							const BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
+							const std::uint32_t value)
+					{
+							return counterTarget != pattern.Stages.end() &&
+								std::any_of(
+									counterTarget->Actions.begin(),
+									counterTarget->Actions.end(),
+									[trigger, value](
+										const BOSS_PATTERN_STAGE_ACTION& action)
+									{
+										return trigger == action.eTrigger &&
+											BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG ==
+												action.eKind &&
+											"boss.flag.groggy" == action.strTargetId &&
+											value == action.iValue;
+									});
+						};
+					validBranches = validBranches &&
+						BOSS_PATTERN_STAGE_KIND::WINDUP == stage.eStageKind &&
+						counterTarget != pattern.Stages.end() &&
+						BOSS_PATTERN_STAGE_KIND::GROGGY ==
+							counterTarget->eStageKind;
 					validActions = validActions &&
-						hasStageAction(BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER,
-							BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG,
-							"boss.flag.counterable") &&
-						hasStageAction(BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT,
-							BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG,
-							"boss.flag.counterable");
+						hasBossFlagValue(
+							BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER,
+							"boss.flag.counterable", 1u) &&
+						hasBossFlagValue(
+							BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT,
+							"boss.flag.counterable", 0u) &&
+						targetHasGroggyAction(
+							BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 1u) &&
+							targetHasGroggyAction(
+								BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT, 0u);
+				}
+				if (pattern.bAuthoringMasterManaged)
+				{
+					if (!hasCounterHit && hasCounterableFlag)
+						validActions = false;
+					if (BOSS_PATTERN_STAGE_KIND::GROGGY == stage.eStageKind)
+					{
+						validActions = validActions &&
+							hasBossFlagValue(
+								BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER,
+								"boss.flag.groggy", 1u) &&
+							hasBossFlagValue(
+								BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT,
+								"boss.flag.groggy", 0u);
+					}
+					else if (hasGroggyFlag)
+					{
+						validActions = false;
+					}
 				}
 				if ((stage.bHasCounterProxy && !hasCounterHit) ||
 					(BOSS_PATTERN_PART_DAMAGE_POLICY::DESTROY_FIRST_ELIGIBLE ==

@@ -42,6 +42,16 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.animation_h = read("Client/Public/Animation_Tool.h")
         cls.animation_cpp = read("Client/Private/Animation_Tool.cpp")
+        cls.animation_binding_h = read(
+            "Client/Public/AnimationSkillBindingDocument.h"
+        )
+        cls.animation_binding_cpp = read(
+            "Client/Private/AnimationSkillBindingDocument.cpp"
+        )
+        cls.animation_binding_harness = read(
+            "Tools/ValtanPatternAuditionServiceHarness/Private/"
+            "ValtanPatternAnimationBindingDocumentContractTests.cpp"
+        )
         cls.balance_h = read("Client/Public/BalanceTool.h")
         cls.balance_cpp = read("Client/Private/BalanceTool.cpp")
         cls.valtan_tree_h = read("Client/Public/ValtanPatternTree.h")
@@ -50,6 +60,8 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         cls.boss_cpp = read("Client/Private/BossTool.cpp")
         cls.level_h = read("Client/Public/Level_ValtanArena.h")
         cls.level_cpp = read("Client/Private/Level_ValtanArena.cpp")
+        cls.client_replication_h = read("Client/Public/ClientReplication.h")
+        cls.client_replication_cpp = read("Client/Private/ClientReplication.cpp")
         cls.effect_v2_cpp = read("Client/Private/Effect_Tool_V2.cpp")
         cls.effect_v1_cpp = read("Client/Private/Effect_Tool.cpp")
         cls.main_cpp = read("Client/Private/MainApp.cpp")
@@ -60,11 +72,19 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         cls.room_cpp = read("Server/Private/GameRoom.cpp")
         cls.combat_runtime_cpp = read("Server/Private/CombatObjectRuntime.cpp")
         cls.valtan_cpp = read("Client/Private/Valtan.cpp")
+        cls.valtan_h = read("Client/Public/Valtan.h")
         cls.combat_sound_document_h = read(
             "Client/Public/ValtanCombatObjectSoundCueDocument.h"
         )
         cls.combat_sound_document_cpp = read(
             "Client/Private/ValtanCombatObjectSoundCueDocument.cpp"
+        )
+        cls.pattern_sound_document_cpp = read(
+            "Client/Private/ValtanPatternSoundCueDocument.cpp"
+        )
+        cls.pattern_sound_harness = read(
+            "Tools/ValtanPatternAuditionServiceHarness/Private/"
+            "ValtanPatternSoundCueDocumentContractTests.cpp"
         )
 
     def test_primary_window_has_one_workbench_identity(self) -> None:
@@ -81,6 +101,628 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             self.main_cpp,
             r'toolButton\(\s*"Animation Tool"\s*,',
         )
+
+    def test_workbench_layout_resists_narrow_ini_and_keeps_kakul_detail_visible(
+        self,
+    ) -> None:
+        render = function_body(
+            self.animation_cpp,
+            "void Client::CAnimation_Tool::Render()",
+        )
+        for token in (
+            "WORKBENCH_DEFAULT_WIDTH",
+            "WORKBENCH_DEFAULT_HEIGHT",
+            "ImGui::GetMainViewport()",
+            "ImGui::SetNextWindowSizeConstraints",
+            "m_bResetWorkbenchLayoutRequested",
+            "ImGuiCond_Always",
+            'ImGui::SmallButton("Reset Workbench Layout")',
+        ):
+            self.assertIn(token, render)
+        self.assertRegex(
+            self.animation_cpp,
+            r"WORKBENCH_DEFAULT_WIDTH\s*=\s*1180\.f",
+        )
+        self.assertRegex(
+            self.animation_cpp,
+            r"WORKBENCH_DEFAULT_HEIGHT\s*=\s*760\.f",
+        )
+        self.assertIn(
+            "bool_t m_bResetWorkbenchLayoutRequested = false;",
+            self.animation_h,
+        )
+
+        kakul = function_body(
+            self.animation_cpp,
+            "void Client::CAnimation_Tool::Render_KakulActionBindings(",
+        )
+        for token in (
+            "KAKUL_ACTION_LIST_MIN_WIDTH",
+            "KAKUL_ACTION_DETAIL_MIN_WIDTH",
+            'ImGui::InvisibleButton("##KakulActionSplitter"',
+            "ImGui::GetIO().MouseDelta.x",
+            "m_fKakulActionListWidth",
+            '"##KakulActionDetail"',
+        ):
+            self.assertIn(token, kakul)
+
+    def test_valtan_workbench_has_stable_three_plus_one_pane_shell(self) -> None:
+        for token in (
+            "enum class VALTAN_WORKBENCH_SELECTION_KIND",
+            "m_eValtanWorkbenchSelection",
+            "m_strValtanWorkbenchPatternId",
+            "m_strValtanWorkbenchStageId",
+        ):
+            self.assertIn(token, self.animation_h)
+
+        workbench = function_body(
+            self.animation_cpp,
+            "void Client::CAnimation_Tool::Render_ValtanPatternMaster(",
+        )
+        for token in (
+            '"##ValtanWorkbenchMain"',
+            "ImGuiTableFlags_Resizable",
+            '"Master / Outliner"',
+            '"Preview / Transport"',
+            '"Persistent Detail"',
+            '"##ValtanWorkbenchOutliner"',
+            '"##ValtanWorkbenchPreview"',
+            '"##ValtanWorkbenchDetail"',
+            '"##ValtanWorkbenchDataFiles"',
+            "Pattern.strPatternId",
+            "Stage.strStageId",
+            "m_strValtanWorkbenchPatternId",
+            "m_strValtanWorkbenchStageId",
+            "Render_ValtanStageDraftInspector(",
+            "Data/Animation/Authored/Valtan/Valtan.patternbindings.json",
+            "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json",
+            "Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json",
+            "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json",
+            "Data/Animation/Authored/Valtan/Valtan.patternshakecues.json",
+            "Data/Encounters/Valtan/ValtanCinematicCamera.json",
+            "Data/Encounters/Valtan/ValtanWorldEvents.json",
+            "m_hasEffectToolOpenRequest",
+            "m_hasCameraToolOpenRequest",
+        ):
+            self.assertIn(token, workbench)
+        self.assertRegex(
+            workbench,
+            r'ImGui::BeginTable\(\s*"##ValtanWorkbenchMain"\s*,\s*3\s*,',
+        )
+        self.assertNotRegex(
+            workbench,
+            r'InputTextMultiline\([^\n]*(?:JSON|Json|json)',
+        )
+
+        lanes = function_body(
+            self.animation_cpp,
+            "void Client::CAnimation_Tool::Render_ValtanPresentationLanes(",
+        )
+        self.assertIn("strStageFilter", lanes)
+        self.assertIn("Stage.strStageId != strStageFilter", lanes)
+        self.assertRegex(
+            workbench,
+            r"Render_ValtanPresentationLanes\(\s*\*pSelected,\s*"
+            r"pSelectedStage->strStageId\s*\)",
+        )
+
+    def test_persistent_detail_uses_typed_valtan_animation_binding_owner(
+        self,
+    ) -> None:
+        for token in (
+            "enum class VALTAN_WORKBENCH_DETAIL_OWNER",
+            "m_eValtanWorkbenchDetailOwner",
+            "m_ValtanPatternAnimationBindingDraft",
+            "m_bValtanPatternAnimationBindingDirty",
+            "Render_ValtanAnimationBindingInspector",
+        ):
+            self.assertIn(token, self.animation_h)
+
+        inspector = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Render_ValtanAnimationBindingInspector(",
+        )
+        loader = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Load_ValtanAnimationBindingDraft(",
+        )
+        self.assertIn(
+            "CValtanPatternAnimationBindingDocument::Load_ForAuthoring(", loader
+        )
+        self.assertIn(
+            "m_strValtanPatternAnimationBindingBaselineSourceBytes", loader
+        )
+        for token in (
+            "CValtanPatternAnimationBindingDocument::Save_Atomic(",
+            '"Add Sequence Slot"',
+            '"Set Blank / NONE Draft"',
+            "bSuppressAnimation",
+            "strClipOccurrenceId",
+            "strMappingBasis = \"PROJECT_AUTHORED\"",
+            '"Counter true',
+            '"Counter false',
+            "Groggy transition sequence slot",
+            '"MISSING CONTRACT',
+        ):
+            self.assertIn(token, inspector)
+
+        workbench = function_body(
+            self.animation_cpp,
+            "void Client::CAnimation_Tool::Render_ValtanPatternMaster(",
+        )
+        self.assertIn(
+            "Render_ValtanAnimationBindingInspector(", workbench
+        )
+        self.assertIn("VALTAN_WORKBENCH_DETAIL_OWNER::ANIMATION", workbench)
+        self.assertIn("m_bValtanPatternAnimationBindingDirty", workbench)
+        self.assertIn(
+            "EDITABLE IN PERSISTENT DETAIL / typed owner Save", workbench
+        )
+
+    def test_persistent_detail_exposes_first_ui_admission_rows(self) -> None:
+        inspector = function_body(
+            self.animation_cpp,
+            "void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(",
+        )
+        for token in (
+            '"Server wall / blank timeline ms"',
+            '"VALTAN_HIGH_JUMP"',
+            '"AIRBORNE"',
+            '"RELEASE_GRABBED_PLAYERS"',
+            '"Typed row %zu',
+            '"Release yaw offset deg"',
+            "yawOffsetDegrees=%.3f",
+            '"Set 180 deg Draft"',
+            '"Saved yawOffsetDegrees',
+        ):
+            self.assertIn(token, inspector)
+
+        counter = function_body(
+            self.animation_cpp,
+            "void Client::CAnimation_Tool::Render_ValtanCounterWindowInspector(",
+        )
+        for token in ('"Counterable true', '"Counterable false'):
+            self.assertIn(token, counter)
+
+        sound = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Render_ValtanPatternSoundInspector(",
+        )
+        for token in (
+            "Cue.strBindingId",
+            "Cue.strOccurrenceId",
+            "Cue.strSoundBank",
+            "Cue.strSoundEvent",
+        ):
+            self.assertIn(token, sound)
+
+        workbench = function_body(
+            self.animation_cpp,
+            "void Client::CAnimation_Tool::Render_ValtanPatternMaster(",
+        )
+        self.assertIn("Render_ValtanPatternSoundInspector(", workbench)
+        self.assertRegex(
+            workbench,
+            r"if \(Render_ValtanPatternSoundInspector\([\s\S]*?"
+            r"bReloadPatternMasterAfterSave = true;",
+        )
+        self.assertRegex(
+            workbench,
+            r'Pattern\.strDisplayName\s*\+\s*" \| "\s*\+\s*'
+            r'Pattern\.strPatternId',
+        )
+
+    def test_counter_and_pattern_sound_use_landed_typed_owner_apis(self) -> None:
+        for token in (
+            "Render_ValtanCounterWindowInspector",
+            "Render_ValtanPatternSoundInspector",
+            "m_bValtanPatternSoundCuesDirty",
+        ):
+            self.assertIn(token, self.animation_h)
+
+        counter = function_body(
+            self.animation_cpp,
+            "void Client::CAnimation_Tool::Render_ValtanCounterWindowInspector(",
+        )
+        for token in (
+            "Get_ValtanCounterWindowDraft(",
+            "Set_ValtanCounterWindowDraft(",
+            '"Counter Enabled"',
+            '"GROGGY"',
+            "successStageId",
+            "successActionId",
+            '"Counterable ENTER=true / EXIT=false"',
+            '"Groggy ENTER=true / EXIT=false"',
+            '"TIMEOUT/default branch',
+        ):
+            self.assertIn(token, counter)
+
+        sound = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Render_ValtanPatternSoundInspector(",
+        )
+        for token in (
+            '"Save Pattern Sound"',
+            "CValtanPatternSoundCueDocument::Save_Atomic(",
+            '"Sound Event"',
+            "CSoundCueCatalog::Collect_EventNames(\"Valtan\")",
+            "Cue.strSoundBank",
+            "Cue.strSoundEvent",
+            '"startMs"',
+            '"once"',
+            '"each_loop"',
+            "m_bValtanPatternSoundCuesDirty = true",
+            "CValtanPatternSoundCueDocument::Add_AuthoringRow(",
+            "CValtanPatternSoundCueDocument::Remove_AuthoringRow(",
+            '"Add Exact Pattern Sound Row"',
+            '"Remove Exact Pattern Sound Row"',
+            "CreatedRowId.strBindingId",
+            "PendingRemoveRowId.strOccurrenceId",
+            "ClipSourceDurationSecondsByName",
+            "CActionPresentationTimeline::Resolve_ClipDuration(",
+            "CActionPresentationTimeline::Resolve_CueWallOffset(",
+            "fEffectiveSourceEndMilliseconds",
+            "fRemainingStageWallSeconds",
+            '"Runtime-equivalent source window:',
+        ):
+            self.assertIn(token, sound)
+        duration_lookup = function_body(
+            self.animation_cpp,
+            "CollectModelClipSourceDurationSeconds(",
+        )
+        for token in (
+            "pModel->Get_NumAnimations()",
+            "pModel->Get_AnimationName(",
+            "pModel->Get_AnimationTickPerSecond(",
+            "pModel->Get_AnimationProgress(",
+        ):
+            self.assertIn(token, duration_lookup)
+
+        self.assertRegex(
+            sound,
+            r"CValtanPatternSoundCueDocument::Save_Atomic\(\s*"
+            r"m_ValtanPatternSoundCues\s*,\s*"
+            r"ClipSourceDurationSecondsByName\s*,",
+        )
+
+        reload_sound = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Reload_ValtanPatternSoundCues(",
+        )
+        self.assertIn(
+            "CValtanPatternSoundCueDocument::Load_ForAuthoring(", reload_sound
+        )
+        self.assertIn(
+            "m_strValtanPatternSoundCueBaselineSourceBytes", reload_sound
+        )
+        self.assertIn("m_bValtanPatternSoundCuesDirty = false", reload_sound)
+        self.assertIn("m_bValtanPatternSoundCuesDirty", function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Is_AnyDocumentDirty() const",
+        ))
+
+        self.assertIn("Reload_PatternSoundCues", self.valtan_h)
+        runtime_reload = function_body(
+            self.valtan_cpp,
+            "bool_t CValtan::Reload_PatternSoundCues(",
+        )
+        self.assertIn("m_PatternSoundCuesByActionId = std::move(Staged)", runtime_reload)
+
+    def test_pattern_sound_save_locks_exact_join_dependencies_through_commit(
+        self,
+    ) -> None:
+        save = function_body(
+            self.pattern_sound_document_cpp,
+            "bool_t Client::CValtanPatternSoundCueDocument::Save_Atomic(",
+        )
+        for token in (
+            "SOUND_JOINED_OWNER_SOURCE_SNAPSHOT",
+            "Resolve_EncounterPath()",
+            'CValtanPatternAnimationBindingDocument::Resolve_Path("Valtan")',
+            "DependencySnapshots[0u].SourceBytes",
+            "DependencySnapshots[1u].SourceBytes",
+            "SOUND_JOINED_OWNER_COMMIT_GUARD CommitGuard",
+            "CommitGuard.Lock_AndVerify(",
+        ):
+            self.assertIn(token, save)
+        for token in (
+            "FILE_SHARE_READ",
+            "Encounter/Animation bytes changed while staging",
+            "SOUND_AUTHORING_SAVE_MUTEX",
+        ):
+            self.assertIn(token, self.pattern_sound_document_cpp)
+        hook = "LOSTARK_TEST_VALTAN_SOUND_MUTATE_DEPENDENCY_BEFORE_COMMIT"
+        self.assertIn(hook, self.pattern_sound_document_cpp)
+        self.assertIn(hook, self.pattern_sound_harness)
+        self.assertIn("mid-save Animation dependency mutation", self.pattern_sound_harness)
+        self.assertIn("mid-save Encounter dependency mutation", self.pattern_sound_harness)
+
+    def test_valtan_animation_binding_save_is_cas_and_dependency_closed(self) -> None:
+        for token in (
+            "Load_ForAuthoring(",
+            "expectedBaselineSourceBytes",
+            "outCommittedSourceBytes",
+        ):
+            self.assertIn(token, self.animation_binding_h)
+
+        save = function_body(
+            self.animation_binding_cpp,
+            "bool_t Client::CValtanPatternAnimationBindingDocument::Save_Atomic(",
+        )
+        for token in (
+            "admittedSourceBytes != expectedBaselineSourceBytes",
+            "commitSourceBytes != expectedBaselineSourceBytes",
+            "Validate_BossPatternSaveClosure(",
+            "baselineDocument",
+            "clipSourceDurationSecondsByName",
+            "std::array<JOINED_OWNER_SOURCE_SNAPSHOT, 4u> dependencySnapshots",
+            "dependencyCommitGuard.Lock_AndVerify(",
+            "outCommittedSourceBytes = serialized",
+        ):
+            self.assertIn(token, save)
+
+        closure = function_body(
+            self.animation_binding_cpp,
+            "bool_t Validate_BossPatternSaveClosure(",
+        )
+        for token in (
+            "Validate_RequiredActions(",
+            "Validate_ChangedBindingModelTimings(",
+            "encounterSourceBytes",
+            "encounterPath, std::move(encounterSourceBytes)",
+            'asset + ".patterneffectcues.json"',
+            'asset + ".patternsoundcues.json"',
+            'asset + ".patternshakecues.json"',
+        ):
+            self.assertIn(token, closure)
+
+        for token in (
+            '"missing Encounter-required action"',
+            '"cue-linked occurrence delete"',
+            '"cue-linked action NONE"',
+            '"cue-linked timing window"',
+            '"missing current model duration changed the file or draft"',
+            '"stale CAS Save overwrote an external source mutation"',
+            '"dependent Sound owner"',
+            '"Encounter owner"',
+            '" commit-time CAS did not reject/retain an external mutation"',
+        ):
+            self.assertIn(token, self.animation_binding_harness)
+
+    def test_animation_save_reloads_runtime_then_defers_joined_view_refresh(
+        self,
+    ) -> None:
+        self.assertIn("Reload_PatternBindings", self.valtan_h)
+        runtime_reload = function_body(
+            self.valtan_cpp,
+            "bool_t CValtan::Reload_PatternBindings(",
+        )
+        for token in (
+            "CValtanPatternAnimationBindingDocument::Load(",
+            "Build_PatternTimeline(",
+            "staged.emplace(",
+            "m_PatternClipByActionId = std::move(staged)",
+            "m_iPatternPresentationClipOccurrenceIndex",
+        ):
+            self.assertIn(token, runtime_reload)
+        self.assertLess(
+            runtime_reload.index("Build_PatternTimeline("),
+            runtime_reload.index("m_PatternClipByActionId = std::move(staged)"),
+        )
+        self.assertNotIn("m_PatternClipByActionId.clear", runtime_reload)
+
+        inspector = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Render_ValtanAnimationBindingInspector(",
+        )
+        for token in (
+            "if (!Boss->Reload_PatternPresentationAuthoring(PreviewStatus))",
+            '"Secondary preview joined reload rejected: "',
+        ):
+            self.assertIn(token, inspector)
+        self.assertIn("bReloadJoinedWorkbenchAfterSave = true", inspector)
+
+        joined_reload = function_body(
+            self.valtan_cpp,
+            "bool_t CValtan::Reload_PatternPresentationAuthoring(",
+        )
+        for token in (
+            "PreviousBindings",
+            "PreviousEffectCues",
+            "PreviousSoundCues",
+            "PreviousShakeCues",
+            "Reload_PatternBindings(StepStatus)",
+            "Reload_PatternEffectCues(StepStatus)",
+            "Reload_PatternSoundCues(StepStatus)",
+            "Reload_PatternShakeCues(StepStatus)",
+            "RestorePrevious()",
+            "m_PatternClipByActionId = PreviousBindings",
+            "m_PatternEffectCuesByActionId = PreviousEffectCues",
+            "m_PatternSoundCuesByActionId = PreviousSoundCues",
+            "m_PatternShakeCuesByActionId = PreviousShakeCues",
+        ):
+            self.assertIn(token, joined_reload)
+
+        workbench = function_body(
+            self.animation_cpp,
+            "void Client::CAnimation_Tool::Render_ValtanPatternMaster(",
+        )
+        save_call = workbench.index("Render_ValtanAnimationBindingInspector(")
+        deferred_reload = workbench.rindex("if (bReloadPatternMasterAfterSave)")
+        self.assertLess(save_call, deferred_reload)
+        deferred = workbench[deferred_reload:]
+        self.assertIn("if (Reload_ValtanPatternMaster())", deferred)
+        self.assertIn("Joined Workbench reload rejected", deferred)
+        self.assertIn("previous admitted view preserved", deferred)
+        self.assertIn("ReloadDiagnostic", deferred)
+
+    def test_saved_presentation_reloads_authoritative_primary_valtan_and_gates_play(
+        self,
+    ) -> None:
+        for token in (
+            "Reload_PrimaryValtanPresentationAuthoring",
+            "Reload_PrimaryValtanCombatObjectSoundCues",
+            "Can_Play_PrimaryValtanPresentation",
+        ):
+            self.assertIn(token, self.client_replication_h)
+            self.assertIn(token, self.level_h)
+        self.assertIn(
+            "CPrimaryValtanPresentationFreshnessGate", self.client_replication_h
+        )
+
+        joined_reload = function_body(
+            self.client_replication_cpp,
+            "bool_t Client::CClientReplication::Reload_PrimaryValtanPresentationAuthoring(",
+        )
+        for token in (
+            '"BOSS_VALTAN"',
+            "INVALID_NET_ENTITY_ID",
+            "Reload_PatternPresentationAuthoring(",
+            "m_PrimaryValtanJoinedPresentationFreshness.Reject(",
+        ):
+            self.assertIn(token, joined_reload)
+
+        combat_reload = function_body(
+            self.client_replication_cpp,
+            "bool_t Client::CClientReplication::Reload_PrimaryValtanCombatObjectSoundCues(",
+        )
+        self.assertIn("Reload_CombatObjectSoundCues(", combat_reload)
+        self.assertIn(
+            "m_PrimaryValtanCombatObjectSoundFreshness.Reject(", combat_reload
+        )
+
+        can_play = function_body(
+            self.boss_cpp,
+            "bool_t Client::CBossTool::Can_Play_ServerPattern(",
+        )
+        self.assertIn("Can_Play_PrimaryValtanPresentation(", can_play)
+
+        animation_inspector = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Render_ValtanAnimationBindingInspector(",
+        )
+        sound_inspector = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Render_ValtanPatternSoundInspector(",
+        )
+        workbench = function_body(
+            self.animation_cpp,
+            "void Client::CAnimation_Tool::Render_ValtanPatternMaster(",
+        )
+        self.assertIn("Reload_PrimaryValtanPresentationAuthoring(", animation_inspector)
+        self.assertIn("Reload_PrimaryValtanPresentationAuthoring(", sound_inspector)
+        self.assertIn("Reload_PrimaryValtanCombatObjectSoundCues(", workbench)
+        self.assertIn("VerifyAuthoritativeFreshnessGate", self.animation_binding_harness)
+
+    def test_every_boss_server_pattern_start_entry_checks_presentation_freshness(
+        self,
+    ) -> None:
+        def require_gate_before(body: str, submission: str) -> None:
+            gate = body.index("Can_Play_ServerPattern(")
+            submit = body.index(submission)
+            self.assertLess(gate, submit)
+
+        direct = function_body(
+            self.boss_cpp,
+            "bool_t Client::CBossTool::Submit_SelectedPattern()",
+        )
+        require_gate_before(direct, "CValtanPatternAuditionService::Get().Submit(")
+
+        isolated = function_body(
+            self.boss_cpp,
+            "bool_t Client::CBossTool::Preview_SelectedFlowSlotIsolated()",
+        )
+        require_gate_before(isolated, "CValtanPatternAuditionService::Get().Submit(")
+
+        flow_start = function_body(
+            self.boss_cpp,
+            "bool_t Client::CBossTool::Start_Flow(",
+        )
+        require_gate_before(flow_start, "CValtanPatternFlowService::Get().Start(")
+
+        next_picker = function_body(
+            self.boss_cpp,
+            "void Client::CBossTool::Render_NextPatternPicker()",
+        )
+        require_gate_before(next_picker, "Service.Queue_NextPattern(")
+
+        next_card = function_body(
+            self.boss_cpp,
+            "void Client::CBossTool::Render_NextPatternCard()",
+        )
+        next_gate = next_card.index("Can_Play_ServerPattern(")
+        self.assertLess(next_card.index("Service.Clear_NextPattern("), next_gate)
+        self.assertLess(next_gate, next_card.index("Service.Retry_NextPatternCommand("))
+
+        flow_detail = function_body(
+            self.boss_cpp,
+            "void Client::CBossTool::Render_FlowSelectedSlot()",
+        )
+        flow_gate = flow_detail.index("Can_Play_ServerPattern(")
+        self.assertLess(flow_detail.index("Stop_AfterCurrent("), flow_gate)
+        self.assertLess(flow_gate, flow_detail.index("FlowService.Retry_Start("))
+
+    def test_primary_valtan_freshness_latches_across_despawn_until_reset_or_reload(
+        self,
+    ) -> None:
+        despawn = function_body(
+            self.client_replication_cpp,
+            "bool Client::CClientReplication::Apply_WorldEntityDespawn(",
+        )
+        self.assertNotIn(
+            "m_PrimaryValtanJoinedPresentationFreshness.Admit(", despawn
+        )
+        self.assertNotIn(
+            "m_PrimaryValtanCombatObjectSoundFreshness.Admit(", despawn
+        )
+        self.assertIn("A despawn must not erase a reload rejection", despawn)
+
+        reset = function_body(
+            self.client_replication_cpp,
+            "void Client::CClientReplication::Reset_World(",
+        )
+        self.assertIn(
+            "m_PrimaryValtanJoinedPresentationFreshness.Admit(", reset
+        )
+        self.assertIn(
+            "m_PrimaryValtanCombatObjectSoundFreshness.Admit(", reset
+        )
+        self.assertIn(
+            "despawn/no-consumer lifecycle cleared a rejected freshness gate",
+            self.animation_binding_harness,
+        )
+
+    def test_joined_tracks_are_one_full_width_sequencer_between_main_and_files(
+        self,
+    ) -> None:
+        workbench = function_body(
+            self.animation_cpp,
+            "void Client::CAnimation_Tool::Render_ValtanPatternMaster(",
+        )
+        main = workbench.index('"##ValtanWorkbenchMain"')
+        sequencer = workbench.index('"##ValtanWorkbenchSequencer"')
+        data_files = workbench.index('"##ValtanWorkbenchDataFiles"')
+        self.assertLess(main, sequencer)
+        self.assertLess(sequencer, data_files)
+        self.assertEqual(1, workbench.count("Render_ValtanPresentationLanes("))
+        self.assertIn('"Sequencer / Joined Tracks"', workbench)
+        self.assertIn('"Joined Tracks", "READ-ONLY COMPOSITE', workbench)
+        self.assertNotIn("Codec READY / no Product owner path bound", workbench)
+        self.assertNotIn("No selected .sequence.json owner", workbench)
+
+        lanes = function_body(
+            self.animation_cpp,
+            "void Client::CAnimation_Tool::Render_ValtanPresentationLanes(",
+        )
+        for token in (
+            '"##JoinedTrackSegments"',
+            '"Animation"',
+            '"Effect"',
+            '"Sound"',
+            '"Camera"',
+            '"World"',
+        ):
+            self.assertIn(token, lanes)
 
     def test_joined_lanes_expose_sound_assets_and_combat_hit_gap(self) -> None:
         lane = function_body(
