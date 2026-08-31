@@ -943,6 +943,7 @@ namespace LostArk::Server
 			bool knockdown,
 			std::uint32_t downMs,
 			std::uint32_t serverTick);
+		void Restore_PatternBoundPlayer(SERVER_PLAYER& player);
 		void Update_Players(float fixedDeltaSeconds);
 		bool Prepare_ArenaEjection(
 			SERVER_PLAYER& staged,

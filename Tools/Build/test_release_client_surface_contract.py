@@ -55,6 +55,41 @@ class ReleaseClientSurfaceContractTests(unittest.TestCase):
         self.assertIn("Is_ValidProductRect", main)
         self.assertIn("LOBBY_COMMAND_PURPOSE::MAP_EDITOR_WORKSPACE", source)
 
+        panel = re.search(
+            r"void CLevel_Lobby::Render_StagePanel\(\)\s*"
+            r"\{(?P<body>.*?)\n\}\n#endif",
+            source,
+            re.S,
+        )
+        self.assertIsNotNone(panel)
+        for raw_detail in (
+            "Describe_ServerEndpoint",
+            "Remote endpoint",
+            "Local endpoint",
+            "WSA",
+            "C2S_",
+            "S2C_",
+            "Capture path",
+            "Recovery detail",
+            "Protocol:",
+        ):
+            self.assertNotIn(raw_detail, panel.group("body"))
+        self.assertNotIn('m_strStatus = "Server connection failed for "', source)
+        self.assertNotIn('m_strStatus = "C2S_ENTER_WORLD', source)
+        self.assertIn(
+            '"Could not connect to Server. Check that Server is running, then try again."',
+            source,
+        )
+        self.assertIn(
+            '"Could not send the entry request. Check the Server connection, then try again."',
+            source,
+        )
+        self.assertIn(
+            'm_strStatus = "Entry request sent. Waiting for Server approval."',
+            source,
+        )
+        self.assertGreaterEqual(source.count("diagnosticDetail"), 4)
+
     def test_character_select_visible_panel_is_debug_only_but_modal_host_is_common(self) -> None:
         header = read("Client/Public/Level_CharacterSelect.h")
         source = read("Client/Private/Level_CharacterSelect.cpp")

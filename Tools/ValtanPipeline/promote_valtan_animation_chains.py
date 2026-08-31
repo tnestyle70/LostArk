@@ -38,6 +38,9 @@ PRESENTATION_REL = "Data/Valtan/Valtan.presentation.json"
 PATTERN_SOUND_REL = (
     "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json"
 )
+EFFECT_V2_BINDINGS_REL = (
+    "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"
+)
 RECEIPT_REL = "Data/Valtan/Valtan.animation-chain-promotion.receipt.json"
 ANIM_NOTIFY_REL = "Data/Animation/Reference/Valtan/Valtan.animnotify"
 CREATE_REQUEST_SCHEMA = "lostark.valtan-animation-pattern-create-request"
@@ -1432,6 +1435,8 @@ def validate_and_project(
 def _validate_pattern_sound_dependencies_against_candidate_products(
     repo_root: Path,
     outputs: Mapping[str, str],
+    *,
+    sound_source_bytes: bytes | None = None,
 ) -> None:
     """Join the physical Sound owner to the exact candidate Product closure.
 
@@ -1460,7 +1465,11 @@ def _validate_pattern_sound_dependencies_against_candidate_products(
         return _read_json_bytes(text.encode("utf-8"), repo_root / relative)
 
     sound_path = repo_root / PATTERN_SOUND_REL
-    sound = _read_json(sound_path)
+    sound = (
+        _read_json(sound_path)
+        if sound_source_bytes is None
+        else _read_json_bytes(sound_source_bytes, sound_path)
+    )
     _exact(
         sound,
         ("schema", "formatVersion", "ownerArchetypeId", "cues"),
@@ -1692,6 +1701,190 @@ def _validate_pattern_sound_dependencies_against_candidate_products(
                 "Valtan Pattern Sound dependency startMs is outside its candidate clip segment: "
                 f"{occurrence_id} -> {action_id}/{clip_occurrence_id}"
             )
+
+
+def _validate_effect_v2_bindings_against_candidate_products(
+    repo_root: Path,
+    outputs: Mapping[str, str],
+    binding_source_bytes: bytes,
+) -> None:
+    """Validate one staged BOSS_VALTAN V2 binding owner without publishing it.
+
+    The C++ editor validates its in-memory catalog before invoking Save.  The
+    repository writer repeats the stable-ID and clock joins while holding the
+    common writer lock so an external Effect/Pattern writer cannot turn that
+    preflight into a dangling binding before the generation is committed.
+    """
+
+    pipeline = _load_v2_pipeline(repo_root)
+    binding_path = repo_root / EFFECT_V2_BINDINGS_REL
+    document = _read_json_bytes(binding_source_bytes, binding_path)
+    _exact(
+        document,
+        ("schema", "formatVersion", "archetypeId", "bindings"),
+        "BOSS_VALTAN Effect V2 bindings",
+    )
+    if (
+        document["schema"] != "lostark.effect-v2-bindings"
+        or document["formatVersion"] != 1
+        or document["archetypeId"] != "BOSS_VALTAN"
+    ):
+        raise PromotionError("BOSS_VALTAN Effect V2 binding header is invalid")
+    rows = document["bindings"]
+    if not isinstance(rows, list) or len(rows) > 4096:
+        raise PromotionError("BOSS_VALTAN Effect V2 bindings must be an array <= 4096")
+
+    authored_ids: set[str] = set()
+    authored_root = repo_root / "Data/Effects/V2/Authored"
+    for path in sorted(authored_root.glob("*.effectv2.json")):
+        authored = _read_json(path)
+        effect_id = _stable(authored.get("effectId"), f"Effect V2 authored {path.name}")
+        if effect_id in authored_ids:
+            raise PromotionError(f"duplicate Effect V2 effectId: {effect_id}")
+        authored_ids.add(effect_id)
+    if not authored_ids:
+        raise PromotionError("Effect V2 authored catalog is empty")
+
+    group_children: dict[str, list[tuple[str, int]]] = {}
+    group_root = repo_root / "Data/Effects/V2/Groups"
+    for path in sorted(group_root.glob("*.effectv2group.json")):
+        group = _read_json(path)
+        group_id = _stable(group.get("groupId"), f"Effect V2 group {path.name}")
+        if group_id in authored_ids or group_id in group_children:
+            raise PromotionError(f"duplicate/colliding Effect V2 groupId: {group_id}")
+        children = group.get("children")
+        if not isinstance(children, list) or not children:
+            raise PromotionError(f"Effect V2 group children are invalid: {group_id}")
+        clocks: list[tuple[str, int]] = []
+        for ordinal, child in enumerate(children):
+            if not isinstance(child, dict):
+                raise PromotionError(f"Effect V2 group child is invalid: {group_id}/{ordinal}")
+            effect_id = _stable(
+                child.get("effectId"), f"Effect V2 group {group_id} child {ordinal}"
+            )
+            if effect_id not in authored_ids:
+                raise PromotionError(
+                    f"Effect V2 group child has no authored effect: {group_id}/{effect_id}"
+                )
+            start_ms = _integer(
+                child.get("startMs", 0),
+                f"Effect V2 group {group_id} child {ordinal}.startMs",
+            )
+            if start_ms > 600000:
+                raise PromotionError(f"Effect V2 group child clock exceeds 600000 ms: {group_id}")
+            clocks.append((effect_id, start_ms))
+        group_children[group_id] = clocks
+
+    animation_text = outputs.get(pipeline.BINDINGS_REL)
+    if not isinstance(animation_text, str):
+        raise PromotionError("Effect V2 admission is missing the candidate Animation Product")
+    animation = _read_json_bytes(
+        animation_text.encode("utf-8"), repo_root / pipeline.BINDINGS_REL
+    )
+    action_ids = {
+        binding.get("actionId")
+        for binding in animation.get("bindings", [])
+        if isinstance(binding, dict)
+        and isinstance(binding.get("actionId"), str)
+    }
+    clip_ids = {
+        clip.get("clip")
+        for binding in animation.get("bindings", [])
+        if isinstance(binding, dict)
+        for clip in binding.get("clips", [])
+        if isinstance(clip, dict) and isinstance(clip.get("clip"), str)
+    }
+
+    row_fields = {
+        "startMs", "bone", "followBone", "rotation", "stopWithClip",
+        "offset", "yawDegrees",
+    }
+    identities: set[tuple[Any, ...]] = set()
+    validated: list[tuple[str | None, str | None, str | None, str | None, int]] = []
+    for ordinal, row in enumerate(rows):
+        context = f"BOSS_VALTAN Effect V2 bindings[{ordinal}]"
+        if not isinstance(row, dict):
+            raise PromotionError(f"{context} must be an object")
+        effect_id = row.get("effectId")
+        group_id = row.get("group")
+        stage_id = row.get("stage")
+        clip_id = row.get("clip")
+        has_effect = isinstance(effect_id, str) and bool(effect_id)
+        has_group = isinstance(group_id, str) and bool(group_id)
+        has_stage = isinstance(stage_id, str) and bool(stage_id)
+        has_clip = isinstance(clip_id, str) and bool(clip_id)
+        if has_effect == has_group or has_stage == has_clip:
+            raise PromotionError(
+                f"{context} requires exactly one effectId/group and stage/clip"
+            )
+        expected_fields = set(row_fields)
+        expected_fields.add("effectId" if has_effect else "group")
+        expected_fields.add("stage" if has_stage else "clip")
+        if set(row) != expected_fields:
+            raise PromotionError(f"{context} fields are not exact")
+        if has_effect:
+            effect_id = _stable(effect_id, f"{context}.effectId")
+            if effect_id not in authored_ids:
+                raise PromotionError(f"{context} has no authored effect: {effect_id}")
+        else:
+            group_id = _stable(group_id, f"{context}.group")
+            if group_id not in group_children:
+                raise PromotionError(f"{context} has no group: {group_id}")
+        if has_stage:
+            stage_id = _stable(stage_id, f"{context}.stage")
+            if stage_id not in action_ids:
+                raise PromotionError(f"{context} has no candidate Stage action: {stage_id}")
+        else:
+            clip_id = _stable(clip_id, f"{context}.clip")
+            if clip_id not in clip_ids:
+                raise PromotionError(f"{context} has no candidate Animation clip: {clip_id}")
+        start_ms = _integer(row.get("startMs"), f"{context}.startMs")
+        if start_ms > 600000:
+            raise PromotionError(f"{context}.startMs exceeds 600000")
+        if not isinstance(row.get("bone"), str) or len(row["bone"]) > 160:
+            raise PromotionError(f"{context}.bone is invalid")
+        if not isinstance(row.get("followBone"), bool) or not isinstance(
+            row.get("stopWithClip"), bool
+        ):
+            raise PromotionError(f"{context} boolean fields are invalid")
+        if row.get("rotation") not in {"Bone", "TargetYaw", "World"}:
+            raise PromotionError(f"{context}.rotation is invalid")
+        offset = row.get("offset")
+        if not isinstance(offset, list) or len(offset) != 3 or any(
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(float(value))
+            for value in offset
+        ):
+            raise PromotionError(f"{context}.offset is invalid")
+        yaw = row.get("yawDegrees")
+        if (
+            isinstance(yaw, bool)
+            or not isinstance(yaw, (int, float))
+            or not math.isfinite(float(yaw))
+        ):
+            raise PromotionError(f"{context}.yawDegrees is invalid")
+        identity = (effect_id, group_id, stage_id, clip_id, start_ms, row["bone"])
+        if identity in identities:
+            raise PromotionError(f"duplicate Effect V2 binding row: {identity}")
+        identities.add(identity)
+        validated.append((effect_id, group_id, stage_id, clip_id, start_ms))
+
+    for effect_id, _group_id, stage_id, clip_id, start_ms in validated:
+        if effect_id is None:
+            continue
+        for _leaf_id, group_id, group_stage, group_clip, group_start_ms in validated:
+            if group_id is None or stage_id != group_stage or clip_id != group_clip:
+                continue
+            if any(
+                child_effect_id == effect_id
+                and group_start_ms + child_start_ms == start_ms
+                for child_effect_id, child_start_ms in group_children[group_id]
+            ):
+                raise PromotionError(
+                    "Effect V2 leaf overlaps the same group child at the same clock: "
+                    f"{effect_id}/{group_id}@{start_ms}"
+                )
 
 
 def _validate_create_request(request: dict[str, Any]) -> dict[str, Any]:
@@ -2610,6 +2803,10 @@ def commit_typed_authoring_patch(
     draft_patch_path: Path,
     *,
     authoring_root: Path | None = None,
+    pattern_sound_baseline_path: Path | None = None,
+    pattern_sound_candidate_path: Path | None = None,
+    effect_v2_baseline_path: Path | None = None,
+    effect_v2_candidate_path: Path | None = None,
     lock_timeout_seconds: float = 0.0,
     inject_failure_after: int | None = None,
 ) -> dict[str, Any]:
@@ -2655,6 +2852,21 @@ def commit_typed_authoring_patch(
     except ValueError as exc:
         raise PromotionError("AuthoringRoot must remain below the repository") from exc
     resolved_authoring_root.mkdir(parents=True, exist_ok=True)
+
+    def read_owner_pair(
+        owner: str,
+        baseline_path: Path | None,
+        candidate_path: Path | None,
+    ) -> tuple[bytes, bytes] | None:
+        if (baseline_path is None) != (candidate_path is None):
+            raise PromotionError(f"{owner} baseline/candidate paths must be paired")
+        if baseline_path is None or candidate_path is None:
+            return None
+        baseline = _read_bytes_or_none(baseline_path.resolve())
+        candidate = _read_bytes_or_none(candidate_path.resolve())
+        if not baseline or not candidate:
+            raise PromotionError(f"{owner} baseline/candidate staging files are empty or missing")
+        return baseline, candidate
 
     with _exclusive_transaction_lock(
         repo_root, timeout_seconds=lock_timeout_seconds
@@ -2724,9 +2936,29 @@ def commit_typed_authoring_patch(
                 docs.get(pipeline.SAVED_FLOW_REL),
             )
             outputs = validate_and_project(repo_root, gameplay, presentation)
-            _validate_pattern_sound_dependencies_against_candidate_products(
-                repo_root, outputs
+            pattern_sound_pair = read_owner_pair(
+                "Pattern Sound",
+                pattern_sound_baseline_path,
+                pattern_sound_candidate_path,
             )
+            effect_v2_pair = read_owner_pair(
+                "Effect V2",
+                effect_v2_baseline_path,
+                effect_v2_candidate_path,
+            )
+            _validate_pattern_sound_dependencies_against_candidate_products(
+                repo_root,
+                outputs,
+                sound_source_bytes=(
+                    None
+                    if pattern_sound_pair is None
+                    else pattern_sound_pair[1]
+                ),
+            )
+            if effect_v2_pair is not None:
+                _validate_effect_v2_bindings_against_candidate_products(
+                    repo_root, outputs, effect_v2_pair[1]
+                )
 
             target_payloads: dict[Path, bytes] = {
                 repo_root / GAMEPLAY_REL: _json_text(gameplay).encode("utf-8"),
@@ -2734,6 +2966,15 @@ def commit_typed_authoring_patch(
             }
             for relative, text in outputs.items():
                 target_payloads[repo_root / relative] = text.encode("utf-8")
+            provided_baselines: dict[Path, bytes] = {}
+            if pattern_sound_pair is not None:
+                pattern_sound_target = repo_root / PATTERN_SOUND_REL
+                target_payloads[pattern_sound_target] = pattern_sound_pair[1]
+                provided_baselines[pattern_sound_target] = pattern_sound_pair[0]
+            if effect_v2_pair is not None:
+                effect_v2_target = repo_root / EFFECT_V2_BINDINGS_REL
+                target_payloads[effect_v2_target] = effect_v2_pair[1]
+                provided_baselines[effect_v2_target] = effect_v2_pair[0]
             expected_baselines = {
                 path: _read_bytes_or_none(path) for path in target_payloads
             }
@@ -2741,6 +2982,12 @@ def commit_typed_authoring_patch(
                 raise PromotionError(
                     "typed Pattern source/Product closure contains a missing owner"
                 )
+            for path, provided_baseline in provided_baselines.items():
+                if expected_baselines[path] != provided_baseline:
+                    raise PromotionError(
+                        f"{path.relative_to(repo_root).as_posix()} changed after the Composition draft began"
+                    )
+                expected_baselines[path] = provided_baseline
             if pipeline.source_manifest(repo_root) != current_sources:
                 raise PromotionError(
                     "Valtan source/Product closure changed while the typed patch was staged"

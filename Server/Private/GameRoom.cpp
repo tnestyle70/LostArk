@@ -389,6 +389,51 @@ namespace
 		return currentTick == targetTick ||
 			static_cast<std::int32_t>(currentTick - targetTick) > 0;
 	}
+
+	std::uint32_t DurationMillisecondsToServerTicks(
+		const std::uint32_t durationMs)
+	{
+		return static_cast<std::uint32_t>((
+			static_cast<std::uint64_t>(durationMs) * SERVER_TICK_HZ + 999u) /
+			1000u);
+	}
+
+	void Cancel_PlayerActionForPatternStatus(SERVER_PLAYER& player)
+	{
+		player.eAction = PLAYER_ACTION_STATE::NONE;
+		player.iCurrentSkillId = INVALID_SKILL_ID;
+		player.Clear_SkillTarget();
+		player.iActionStartTick = 0u;
+		player.Clear_Attachment();
+		player.fFallVelocityY = 0.f;
+		player.iFallDeathTick = 0u;
+		player.fActionElapsedSeconds = 0.f;
+		player.fSkillAimDirectionX = 0.f;
+		player.fSkillAimDirectionZ = 1.f;
+		player.fSkillAimDistance = 0.f;
+		player.hasAppliedSkillDamage = false;
+		player.iAppliedHitMask = 0u;
+		player.iSpawnedProjectileMask = 0u;
+		player.Projectiles.clear();
+		player.iComboStage = 0u;
+		player.hasBufferedComboInput = false;
+		player.PendingCommand.Clear();
+		player.fBufferedComboAimX = 0.f;
+		player.fBufferedComboAimZ = 1.f;
+		player.fBufferedComboAimDistance = 0.f;
+		player.hasReleasedHold = false;
+		player.TriggerMove = {};
+		player.hasMoveGoal = false;
+		player.MovePath.clear();
+		player.iMovePathIndex = 0u;
+		player.fKnockbackDirectionX = 0.f;
+		player.fKnockbackDirectionZ = 0.f;
+		player.fKnockbackSpeed = 0.f;
+		player.fKnockbackRemainingSeconds = 0.f;
+		player.iKnockdownEndTick = 0u;
+		player.iHitReactionGraceEndTick = 0u;
+		player.isCombatReady = false;
+	}
 #ifdef _DEBUG
 	constexpr const char* VALTAN_ARENA_AUDITION_PLACEMENT_ID =
 		"boss.valtan.center";
@@ -521,6 +566,8 @@ namespace
 		player.Clear_SkillTarget();
 		player.iActionStartTick = 0u;
 		player.Clear_Attachment();
+		player.Clear_PatternBindStatus();
+		player.Clear_SilenceStatus();
 		player.fFallVelocityY = 0.f;
 		player.iFallDeathTick = 0u;
 		player.fActionElapsedSeconds = 0.f;
@@ -2531,7 +2578,8 @@ void LostArk::Server::CGameRoom::Handle_Move(
 		return;
 	}
 #endif
-	if (LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction ||
+	if (player.bPatternBound ||
+		LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction ||
 		0u == player.iCurrentHp ||
 		player.fKnockbackRemainingSeconds > 0.f)
 	{
@@ -2607,7 +2655,8 @@ void LostArk::Server::CGameRoom::Commit_PendingPlayerCommand(
 	const SERVER_PENDING_PLAYER_COMMAND pending = player.PendingCommand;
 	player.PendingCommand.Clear();
 	player.hasBufferedComboInput = false;
-	if (LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction ||
+	if (player.bPatternBound ||
+		LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction ||
 		0u == player.iCurrentHp ||
 		player.fKnockbackRemainingSeconds > 0.f)
 	{
@@ -2627,6 +2676,11 @@ void LostArk::Server::CGameRoom::Commit_PendingPlayerCommand(
 
 	if (PLAYER_PENDING_COMMAND_KIND::SKILL == pending.eKind)
 	{
+		if (0u != player.iSilenceEndTick &&
+			!Has_ReachedServerTick(actionStartTick, player.iSilenceEndTick))
+		{
+			return;
+		}
 		LostArk::Shared::C2S_USE_SKILL command{};
 		command.iClientSequence = pending.iClientSequence;
 		command.iSkillId = pending.iSkillId;
@@ -2660,7 +2714,10 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 			sessionId, "C2S_USE_SKILL", "missing-player-state");
 		return;
 	}
-	if (playerIter->second.fKnockbackRemainingSeconds > 0.f)
+	if (playerIter->second.bPatternBound ||
+		playerIter->second.fKnockbackRemainingSeconds > 0.f ||
+		(0u != playerIter->second.iSilenceEndTick &&
+		 !Has_ReachedServerTick(m_iServerTick, playerIter->second.iSilenceEndTick)))
 		return;
 
 #ifdef _DEBUG
@@ -2783,6 +2840,8 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.Clear_SkillTarget();
 	player.iActionStartTick = 0u;
 	player.Clear_Attachment();
+	player.Clear_PatternBindStatus();
+	player.Clear_SilenceStatus();
 	player.fFallVelocityY = 0.f;
 	player.iFallDeathTick = 0u;
 	player.fActionElapsedSeconds = 0.f;
@@ -2968,6 +3027,8 @@ void LostArk::Server::CGameRoom::Handle_DebugTeleportToPlacement(
 	player.Clear_SkillTarget();
 	player.iActionStartTick = 0u;
 	player.Clear_Attachment();
+	player.Clear_PatternBindStatus();
+	player.Clear_SilenceStatus();
 	player.fFallVelocityY = 0.f;
 	player.iFallDeathTick = 0u;
 	player.fActionElapsedSeconds = 0.f;
@@ -3013,7 +3074,10 @@ void LostArk::Server::CGameRoom::Handle_ReleaseSkill(
 			sessionId, "C2S_RELEASE_SKILL", "missing-player-state");
 		return;
 	}
-	if (playerIter->second.fKnockbackRemainingSeconds > 0.f)
+	if (playerIter->second.bPatternBound ||
+		playerIter->second.fKnockbackRemainingSeconds > 0.f ||
+		(0u != playerIter->second.iSilenceEndTick &&
+		 !Has_ReachedServerTick(m_iServerTick, playerIter->second.iSilenceEndTick)))
 		return;
 
 	m_PlayerSkillSystem.Release(
@@ -3040,7 +3104,10 @@ void LostArk::Server::CGameRoom::Handle_UpdateSkillAim(
 			sessionId, "C2S_UPDATE_SKILL_AIM", "missing-player-state");
 		return;
 	}
-	if (playerIter->second.fKnockbackRemainingSeconds > 0.f)
+	if (playerIter->second.bPatternBound ||
+		playerIter->second.fKnockbackRemainingSeconds > 0.f ||
+		(0u != playerIter->second.iSilenceEndTick &&
+		 !Has_ReachedServerTick(m_iServerTick, playerIter->second.iSilenceEndTick)))
 		return;
 
 	m_PlayerSkillSystem.Update_Aim(
@@ -3292,6 +3359,8 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.Clear_SkillTarget();
 	staged.iActionStartTick = 0u;
 	staged.Clear_Attachment();
+	staged.Clear_PatternBindStatus();
+	staged.Clear_SilenceStatus();
 	staged.TriggerMove = {};
 	staged.fKnockbackRemainingSeconds = 0.f;
 	staged.fKnockbackSpeed = 0.f;
@@ -8061,6 +8130,10 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iCurrentIdentity = player.iCurrentIdentity;
 		snapshot.iMaximumIdentity = player.iMaximumIdentity;
 		snapshot.isCombatReady = player.isCombatReady;
+		snapshot.isPatternBound = player.bPatternBound;
+		snapshot.iPatternBindEndTick = player.iPatternBindEndTick;
+		snapshot.iSilenceEndTick = player.iSilenceEndTick;
+		snapshot.iSilenceDurationTicks = player.iSilenceDurationTicks;
 		snapshot.iComboStage = player.iComboStage;
 		/* Collect, sort, then truncate: cutting during unordered_map iteration
 		made the surviving cooldowns depend on hash order. Signed difference keeps
@@ -9187,7 +9260,9 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 		}
 		if (0u != action.iDurationMs &&
 			BOSS_PATTERN_STAGE_ACTION_KIND::RELEASE_GRABBED_PLAYERS !=
-				action.eKind)
+				action.eKind &&
+			BOSS_PATTERN_STAGE_ACTION_KIND::SET_PLAYER_BIND != action.eKind &&
+			BOSS_PATTERN_STAGE_ACTION_KIND::SET_PLAYER_SILENCE != action.eKind)
 		{
 			m_strStatus = "Unsupported boss stage action: " + action.strTargetId;
 			return false;
@@ -9239,6 +9314,68 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 			(void)CBossCombatRuntime::Set_Shield(
 				stagedCombat, action.iValue);
 			break;
+		case BOSS_PATTERN_STAGE_ACTION_KIND::SET_PLAYER_BIND:
+		{
+			const bool entering =
+				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger;
+			if ("player.status.bind" != action.strTargetId ||
+				(entering ?
+					(10000u != action.iValue || action.iDurationMs < 100u ||
+					 action.iDurationMs > 120000u) :
+					(0u != action.iValue || 0u != action.iDurationMs)))
+			{
+				m_strStatus = "Boss player-bind stage action is invalid";
+				return false;
+			}
+			if (!entering)
+				break;
+			const auto target = std::find_if(
+				m_Players.begin(), m_Players.end(),
+				[&boss](const auto& entry)
+				{
+					return entry.second.iNetEntityId ==
+						boss.iPatternTargetEntityId;
+				});
+			if (m_Players.end() == target ||
+				INVALID_NET_ENTITY_ID == boss.iPatternTargetEntityId ||
+				0u == target->second.iCurrentHp ||
+				!target->second.isCombatReady || target->second.bPatternBound ||
+				PLAYER_ACTION_STATE::DEAD == target->second.eAction ||
+				PLAYER_ACTION_STATE::FALLING == target->second.eAction ||
+				PLAYER_ACTION_STATE::GRABBED == target->second.eAction ||
+				!m_ServerNavigation.Is_Loaded() ||
+				!m_ServerNavigation.Is_PointWalkableExact(
+					target->second.fPositionX, target->second.fPositionZ))
+			{
+				m_strStatus = "Boss player-bind target is not an admitted alive target";
+				return false;
+			}
+			SERVER_NAV_POINT ground{};
+			if (!m_ServerNavigation.Sample_Position(
+				target->second.fPositionX, target->second.fPositionZ, ground) ||
+				std::abs(ground.y - target->second.fPositionY) > 1.5f ||
+				!std::isfinite(target->second.fPositionY + 10.f))
+			{
+				m_strStatus = "Boss player-bind restore pose is not navigable";
+				return false;
+			}
+			break;
+		}
+		case BOSS_PATTERN_STAGE_ACTION_KIND::SET_PLAYER_SILENCE:
+		{
+			const bool entering =
+				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger;
+			if ("player.status.silence" != action.strTargetId ||
+				(entering ?
+					(1u != action.iValue || action.iDurationMs < 100u ||
+					 action.iDurationMs > 120000u) :
+					(0u != action.iValue || 0u != action.iDurationMs)))
+			{
+				m_strStatus = "Boss player-silence stage action is invalid";
+				return false;
+			}
+			break;
+		}
 		case BOSS_PATTERN_STAGE_ACTION_KIND::SET_GAMEPLAY_PHASE:
 		{
 			const BOSS_RUNTIME_PROFILE* profile =
@@ -9286,11 +9423,21 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 					action.strTargetId;
 				return false;
 			}
+			const bool perAlivePlayerVolley = isTypedVolley &&
+				BOSS_COMBAT_OBJECT_VOLLEY_POLICY::PER_ALIVE_PLAYER ==
+					action.Volley.ePolicy;
+			const bool bossRelativeVolley = isTypedVolley &&
+				BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
+					action.Volley.ePolicy;
 			if (isTypedVolley &&
-				(BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER !=
-					definition->eOriginPolicy ||
-				 BOSS_COMBAT_OBJECT_VOLLEY_POLICY::PER_ALIVE_PLAYER !=
-					action.Volley.ePolicy ||
+				((!perAlivePlayerVolley && !bossRelativeVolley) ||
+				 (perAlivePlayerVolley &&
+					BOSS_COMBAT_OBJECT_ORIGIN_POLICY::
+						LOCKED_TARGET_PER_ALIVE_PLAYER !=
+						definition->eOriginPolicy) ||
+				 (bossRelativeVolley &&
+					BOSS_COMBAT_OBJECT_ORIGIN_POLICY::BOSS_POSITION !=
+						definition->eOriginPolicy) ||
 				 action.Volley.iSpawnCount < 1u ||
 				 spawnWaveOrdinal >= action.Volley.iSpawnCount ||
 				 action.Volley.iMaximumTotalObjects > 64u))
@@ -9345,6 +9492,67 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 				{
 					break;
 				}
+			}
+			if (bossRelativeVolley)
+			{
+				const std::uint32_t count =
+					action.Volley.iCountPerResolvedTarget;
+				if (count < 2u || count > 8u || action.iValue != count ||
+					BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL !=
+						action.Volley.eLayout ||
+					action.Volley.fRadiusM <= 0.f ||
+					action.Volley.bAllowOverlap ||
+					1u != action.Volley.iSpawnCount ||
+					0u != action.Volley.iArenaRandomCount ||
+					!m_ServerNavigation.Is_Loaded())
+				{
+					m_strStatus =
+						"Boss-relative combat object volley is invalid";
+					return false;
+				}
+				std::array<std::pair<float, float>, 8u> points{};
+				for (std::uint32_t ordinal = 0u; ordinal < count; ++ordinal)
+				{
+					const float degrees = boss.fYawDegrees +
+						action.Volley.fStartAngleDegrees +
+						action.Volley.fAngleStepDegrees *
+							static_cast<float>(ordinal);
+					const float radians = degrees * DEGREES_TO_RADIANS;
+					const float x = boss.fPositionX +
+						std::sin(radians) * action.Volley.fRadiusM;
+					const float z = boss.fPositionZ +
+						std::cos(radians) * action.Volley.fRadiusM;
+					if (!std::isfinite(x) || !std::isfinite(z) ||
+						!m_ServerNavigation.Is_PointWalkableExact(x, z))
+					{
+						m_strStatus =
+							"Boss-relative combat object leaves navigable arena";
+						return false;
+					}
+					for (std::uint32_t existingOrdinal = 0u;
+						existingOrdinal < ordinal; ++existingOrdinal)
+					{
+						const auto& [existingX, existingZ] =
+							points[existingOrdinal];
+						const float deltaX = x - existingX;
+						const float deltaZ = z - existingZ;
+						if (deltaX * deltaX + deltaZ * deltaZ <=
+							VOLLEY_SPACING_EPSILON)
+						{
+							m_strStatus =
+								"Boss-relative combat object positions overlap";
+							return false;
+						}
+					}
+					points[ordinal] = { x, z };
+				}
+				if (!m_CombatObjectRuntime.Stage_BossCombatObject(
+					combatObjectTransaction, boss, nullptr, *definition,
+					&action.Volley, catalog, count, serverTick, m_strStatus))
+				{
+					return false;
+				}
+				break;
 			}
 			if (BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER ==
 				definition->eOriginPolicy)
@@ -9809,6 +10017,107 @@ bool LostArk::Server::CGameRoom::Commit_BossPatternPlayerStageActions(
 						std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
 				}
 			}
+			continue;
+		}
+		if (BOSS_PATTERN_STAGE_ACTION_KIND::SET_PLAYER_BIND == action.eKind)
+		{
+			std::map<PLAYER_ID, SERVER_PLAYER> stagedPlayers;
+			if (BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger)
+			{
+				const auto target = std::find_if(
+					m_Players.begin(), m_Players.end(),
+					[&boss](const auto& entry)
+					{
+						return entry.second.iNetEntityId ==
+							boss.iPatternTargetEntityId;
+					});
+				if (m_Players.end() == target)
+					return false;
+				SERVER_PLAYER staged = target->second;
+				const float restoreX = staged.fPositionX;
+				const float restoreY = staged.fPositionY;
+				const float restoreZ = staged.fPositionZ;
+				const float restoreYaw = staged.fYawDegrees;
+				const bool restoreCombatReady = staged.isCombatReady;
+				Cancel_PlayerActionForPatternStatus(staged);
+				staged.bPatternBound = true;
+				staged.iPatternBindOwnerNetEntityId = boss.iNetEntityId;
+				staged.iPatternBindSequence = boss.iPatternSequence;
+				staged.iPatternBindEndTick = Add_ServerTicksSkippingReservedZero(
+					0u == serverTick ? 1u : serverTick,
+					DurationMillisecondsToServerTicks(action.iDurationMs));
+				staged.fPatternBindRestoreX = restoreX;
+				staged.fPatternBindRestoreY = restoreY;
+				staged.fPatternBindRestoreZ = restoreZ;
+				staged.fPatternBindRestoreYawDegrees = restoreYaw;
+				staged.bPatternBindRestoreCombatReady = restoreCombatReady;
+				staged.fPositionY = restoreY +
+					static_cast<float>(action.iValue) / 1000.f;
+				stagedPlayers.emplace(target->first, std::move(staged));
+			}
+			else
+			{
+				for (const auto& [playerId, player] : m_Players)
+				{
+					if (!player.bPatternBound ||
+						player.iPatternBindOwnerNetEntityId != boss.iNetEntityId ||
+						player.iPatternBindSequence != boss.iPatternSequence)
+					{
+						continue;
+					}
+					SERVER_PLAYER staged = player;
+					Restore_PatternBoundPlayer(staged);
+					stagedPlayers.emplace(playerId, std::move(staged));
+				}
+			}
+			for (auto& [playerId, staged] : stagedPlayers)
+			{
+				m_CombatObjectRuntime.Cancel_Source(staged.iNetEntityId);
+				m_Players.at(playerId) = std::move(staged);
+			}
+			continue;
+		}
+		if (BOSS_PATTERN_STAGE_ACTION_KIND::SET_PLAYER_SILENCE == action.eKind)
+		{
+			std::map<PLAYER_ID, SERVER_PLAYER> stagedPlayers;
+			for (const auto& [playerId, player] : m_Players)
+			{
+				if (BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger &&
+					(0u == player.iCurrentHp ||
+					 PLAYER_ACTION_STATE::DEAD == player.eAction))
+				{
+					continue;
+				}
+				if (BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT == trigger &&
+					(player.iSilenceOwnerNetEntityId != boss.iNetEntityId ||
+					 player.iSilencePatternSequence != boss.iPatternSequence))
+				{
+					continue;
+				}
+				SERVER_PLAYER staged = player;
+				if (BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger)
+				{
+					staged.iSilenceOwnerNetEntityId = boss.iNetEntityId;
+					staged.iSilencePatternSequence = boss.iPatternSequence;
+					staged.iSilenceEndTick = Add_ServerTicksSkippingReservedZero(
+						0u == serverTick ? 1u : serverTick,
+						DurationMillisecondsToServerTicks(action.iDurationMs));
+					staged.iSilenceDurationTicks =
+						DurationMillisecondsToServerTicks(action.iDurationMs);
+					if (PLAYER_PENDING_COMMAND_KIND::SKILL ==
+						staged.PendingCommand.eKind)
+					{
+						staged.PendingCommand.Clear();
+					}
+				}
+				else
+				{
+					staged.Clear_SilenceStatus();
+				}
+				stagedPlayers.emplace(playerId, std::move(staged));
+			}
+			for (auto& [playerId, staged] : stagedPlayers)
+				m_Players.at(playerId) = std::move(staged);
 			continue;
 		}
 		if (BOSS_PATTERN_STAGE_ACTION_KIND::DAMAGE_GRABBED_PLAYERS == action.eKind ||
@@ -11014,6 +11323,47 @@ a fall when the authored ground under the player is gone, advances a running
 fall, and turns it into the ordinary death the revive path already
 understands. Returning true is what keeps trigger motion, skills and movement
 from running at all this tick. */
+void LostArk::Server::CGameRoom::Restore_PatternBoundPlayer(
+	SERVER_PLAYER& player)
+{
+	SERVER_NAV_POINT ground{};
+	if (m_ServerNavigation.Is_Loaded())
+	{
+		if (m_ServerNavigation.Is_PointWalkableExact(
+			player.fPatternBindRestoreX, player.fPatternBindRestoreZ) &&
+			m_ServerNavigation.Sample_Position(
+				player.fPatternBindRestoreX,
+				player.fPatternBindRestoreZ, ground))
+		{
+			player.fPositionX = player.fPatternBindRestoreX;
+			player.fPositionY = player.fPatternBindRestoreY;
+			player.fPositionZ = player.fPatternBindRestoreZ;
+		}
+		else if (m_ServerNavigation.Project_PointOnSameLevel(
+			player.fPatternBindRestoreX, player.fPatternBindRestoreZ, ground) ||
+			m_ServerNavigation.Project_Point(
+				player.fPatternBindRestoreX, player.fPatternBindRestoreZ, ground))
+		{
+			player.fPositionX = ground.x;
+			player.fPositionY = ground.y;
+			player.fPositionZ = ground.z;
+		}
+	}
+	else
+	{
+		player.fPositionX = player.fPatternBindRestoreX;
+		player.fPositionY = player.fPatternBindRestoreY;
+		player.fPositionZ = player.fPatternBindRestoreZ;
+	}
+	player.fYawDegrees = player.fPatternBindRestoreYawDegrees;
+	player.eAction = 0u == player.iCurrentHp ?
+		LostArk::Shared::PLAYER_ACTION_STATE::DEAD :
+		LostArk::Shared::PLAYER_ACTION_STATE::NONE;
+	player.isCombatReady = 0u != player.iCurrentHp &&
+		player.bPatternBindRestoreCombatReady;
+	player.Clear_PatternBindStatus();
+}
+
 bool LostArk::Server::CGameRoom::Update_PlayerFall(
 	SERVER_PLAYER& player,
 	const float fixedDeltaSeconds,
@@ -11064,6 +11414,50 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 	for (auto& [playerId, player] : m_Players)
 	{
 		(void)playerId;
+		const auto ownsLivePatternOccurrence =
+			[this](const LostArk::Shared::NET_ENTITY_ID ownerEntityId,
+				const std::uint32_t patternSequence)
+			{
+				return std::any_of(
+					m_WorldEntities.begin(), m_WorldEntities.end(),
+					[ownerEntityId, patternSequence](
+						const SERVER_WORLD_ENTITY& entity)
+					{
+						return entity.iNetEntityId == ownerEntityId &&
+							entity.iPatternSequence == patternSequence &&
+							0u != entity.iCurrentHp &&
+							SERVER_ENTITY_ACTION::DEAD != entity.eAction;
+					});
+			};
+		if (0u == player.iCurrentHp ||
+			LostArk::Shared::PLAYER_ACTION_STATE::DEAD == player.eAction)
+		{
+			/* A lethal hit does not strand the replicated body ten metres above
+			the arena. Restore the admitted pose first, while preserving DEAD and
+			combat-disabled state, then release both occurrence owners. */
+			if (player.bPatternBound)
+				Restore_PatternBoundPlayer(player);
+			player.Clear_SilenceStatus();
+		}
+		else
+		{
+			if (player.bPatternBound &&
+				(Has_ReachedServerTick(updateTick, player.iPatternBindEndTick) ||
+				 !ownsLivePatternOccurrence(
+					player.iPatternBindOwnerNetEntityId,
+					player.iPatternBindSequence)))
+			{
+				Restore_PatternBoundPlayer(player);
+			}
+			if (0u != player.iSilenceEndTick &&
+				(Has_ReachedServerTick(updateTick, player.iSilenceEndTick) ||
+				 !ownsLivePatternOccurrence(
+					player.iSilenceOwnerNetEntityId,
+					player.iSilencePatternSequence)))
+			{
+				player.Clear_SilenceStatus();
+			}
+		}
 #ifdef _DEBUG
 		if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
 			VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE !=
@@ -11081,6 +11475,18 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			}
 		}
 #endif
+		if (player.bPatternBound)
+		{
+			player.eAction = LostArk::Shared::PLAYER_ACTION_STATE::NONE;
+			player.iCurrentSkillId = LostArk::Shared::INVALID_SKILL_ID;
+			player.iActionStartTick = 0u;
+			player.hasMoveGoal = false;
+			player.MovePath.clear();
+			player.iMovePathIndex = 0u;
+			player.PendingCommand.Clear();
+			player.isCombatReady = false;
+			continue;
+		}
 		if (Update_PlayerAttachment(player, updateTick))
 			continue;
 		if (Update_PlayerFall(player, fixedDeltaSeconds, updateTick))

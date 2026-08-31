@@ -14,6 +14,7 @@
 //race�� �����ϱ� ���ؼ� atomic header�� �߰�
 #include <atomic>
 #include <deque>
+#include <memory>
 //���� ���� race�� ���� ���ؼ� mutex ���� �� ���
 #include <mutex>
 #include <thread>
@@ -42,21 +43,19 @@ public:
 
 	enum class PRESENTATION_CANDIDATE_PREFLIGHT_RESULT : std::uint8_t
 	{
-		BYTE_IDENTICAL_ALIAS_READY = 0u,
-		REENTRY_REQUIRED,
+		CURRENT_GENERATION_READY = 0u,
 		REJECTED,
 	};
 
-	/* The current Valtan tuning slice admits a candidate presentation revision
-	   only as a byte-identical alias of the bootstrap generation.  A candidate
-	   that changes any required Client lane remains fail-closed until that lane
-	   gains a real immutable loader. */
+	/* A prepared Valtan revision owns one exact receipt for the typed
+	   presentation closure that was saved before PREPARE.  The Server revision
+	   remains the CAS identity; the receipt prevents a later physical edit from
+	   being relabelled as that already prepared generation. */
 	struct GAMEPLAY_REVISION_CLIENT_STATE final
 	{
-		/* Captured once at world admission. PREPARE compares candidates with
-		   this immutable view of the presentation generation that the world was
-		   admitted against; it must never re-label newly edited repository bytes
-		   as the already loaded generation. */
+		/* Captured at world admission for the entry revision and read-only entry
+		   diagnostics. PREPARE does not compare against these historical bytes; it
+		   captures the current saved typed closure into StagedPresentationReceipt. */
 		bool hasPresentationArtifactBaseline = false;
 		std::vector<PRESENTATION_ARTIFACT_BASELINE>
 			PresentationArtifactBaseline;
@@ -88,8 +87,12 @@ public:
 		LostArk::Shared::GameplayDataRevision StagedPresentationAlias{};
 		std::uint32_t iStagedPresentationTransactionSequence = 0u;
 		std::uint32_t iStagedPresentationLaneMask = 0u;
+		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT
+			StagedPresentationReceipt;
 		std::vector<LostArk::Shared::GameplayDataRevision>
 			AvailablePresentationAliases;
+		std::vector<Client::VALTAN_PRESENTATION_GENERATION_RECEIPT>
+			AvailablePresentationReceipts;
 		LostArk::Shared::DATA_REVISION_PREPARE_STATUS eLatestPrepareResponse =
 			LostArk::Shared::DATA_REVISION_PREPARE_STATUS::NACK;
 		bool hasLatestResult = false;
@@ -352,15 +355,13 @@ public:
 		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& outReceipt,
 		std::string& status) const;
 	/* Read-only Debug truth for tools that reload repository presentation JSON.
-	   Availability alone means the world-entry generation exists; this also
-	   proves the current allowlisted source files still match that immutable
-	   world-entry baseline. */
+	   This validates the current typed closure under canonical reader admission;
+	   it is not a comparison with historical world-entry bytes. */
 	[[nodiscard]] bool Is_CurrentPresentationBaselineIntact(
 		std::string& status) const;
-	/* The current revision coordinator can stage only byte-identical aliases.
-	   Validate the immutable candidate before sending PREPARE so a real Product
-	   presentation change is reported as REENTRY_REQUIRED instead of becoming a
-	   late participant NACK. */
+	/* Validate that the immutable candidate is exactly the current saved typed
+	   closure before sending PREPARE. New Pattern/Stage topology and new Effect
+	   paths are admitted when they belong to that validated closure. */
 	[[nodiscard]] PRESENTATION_CANDIDATE_PREFLIGHT_RESULT
 		Preflight_PresentationCandidate(
 			const LostArk::Shared::GameplayDataRevision& candidateRevision,
@@ -472,6 +473,8 @@ private:
 	std::deque<LostArk::Shared::S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE>
 		m_ValtanPatternFlowLifecycleEvents;
 	GAMEPLAY_REVISION_CLIENT_STATE m_GameplayRevisionState;
+	std::unique_ptr<Client::CValtanPresentationGenerationReadAdmission>
+		m_pStagedPresentationAdmission;
 	VALTAN_DECISION_TRACE_CLIENT_STATE m_ValtanDecisionTraceState;
 	std::uint64_t m_iWorldInboundGeneration = 1u;
 

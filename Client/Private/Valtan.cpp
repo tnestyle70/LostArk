@@ -356,22 +356,33 @@ void CValtan::Load_PatternHitAreaDebug()
 	{
 		for (const ENCOUNTER_STAGE_REFERENCE& stage : pattern.stages)
 		{
-			if (stage.actionId.empty() || stage.hitShape.empty() ||
-				"NONE" == stage.hitShape || 0u == stage.iHitCount)
+			const bool_t bHasStageHit = !stage.hitShape.empty() &&
+				"NONE" != stage.hitShape && 0u != stage.iHitCount;
+			if (stage.actionId.empty() ||
+				(!bHasStageHit && !stage.bHasCounterProxy))
 			{
 				continue;
 			}
 			PATTERN_HIT_AREA_DEBUG area{};
-			area.strHitShape = stage.hitShape;
-			area.fOuterRadius = stage.fHitOuterRadius;
-			area.fInnerRadius = stage.fHitInnerRadius;
-			area.fAngleDegrees = stage.fHitAngleDegrees;
-			area.fLength = stage.fHitLength;
-			area.fHalfWidth = stage.fHitHalfWidth;
-			area.iHitCount = stage.iHitCount;
-			area.iHitIntervalMs = stage.iHitIntervalMs;
-			area.iHitDelayMs = stage.iHitDelayMs;
-			area.HitOffsetsMs = stage.hitOffsetsMs;
+			if (bHasStageHit)
+			{
+				area.strHitShape = stage.hitShape;
+				area.fOuterRadius = stage.fHitOuterRadius;
+				area.fInnerRadius = stage.fHitInnerRadius;
+				area.fAngleDegrees = stage.fHitAngleDegrees;
+				area.fLength = stage.fHitLength;
+				area.fHalfWidth = stage.fHitHalfWidth;
+				area.iHitCount = stage.iHitCount;
+				area.iHitIntervalMs = stage.iHitIntervalMs;
+				area.iHitDelayMs = stage.iHitDelayMs;
+				area.HitOffsetsMs = stage.hitOffsetsMs;
+			}
+			area.bHasCounterProxy = stage.bHasCounterProxy;
+			area.fCounterProxyForwardOffsetM =
+				stage.fCounterProxyForwardOffsetM;
+			area.fCounterProxyRightOffsetM =
+				stage.fCounterProxyRightOffsetM;
+			area.fCounterProxyRadiusM = stage.fCounterProxyRadiusM;
 			m_PatternHitAreaByActionId.emplace(
 				stage.actionId, std::move(area));
 		}
@@ -414,11 +425,13 @@ void CValtan::Draw_PatternHitAreaDebug() const
 			break;
 		}
 	}
-	if (!isHitWindow)
+	if (!isHitWindow && !area.bHasCounterProxy)
 		return;
 
 	constexpr uint32_t PATTERN_HIT_COLOR_RGBA =
 		255u | (60u << 8) | (200u << 16) | (255u << 24);
+	constexpr uint32_t COUNTER_PROXY_COLOR_RGBA =
+		60u | (180u << 8) | (255u << 16) | (255u << 24);
 	constexpr f32_t METERS_TO_UNITS = 100.f;
 	const matrix_t World =
 		XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr());
@@ -429,48 +442,55 @@ void CValtan::Draw_PatternHitAreaDebug() const
 	{
 		return static_cast<int32_t>(fMeters * METERS_TO_UNITS + 0.5f);
 	};
+	const vector_t vBaseRight = XMVector3Normalize(XMVector3Cross(
+		XMVectorSet(0.f, 1.f, 0.f, 0.f), vLook));
 	const auto Draw_WithYawOffset = [&](const f32_t fYawOffsetDegrees,
-		const HIT_AREA_SHAPE& Shape)
+		const f32_t fForwardOffsetM, const f32_t fRightOffsetM,
+		const HIT_AREA_SHAPE& Shape, const uint32_t iColor)
 	{
 		const vector_t vRotatedLook = XMVector3Rotate(vLook,
 			XMQuaternionRotationAxis(XMVectorSet(0.f, 1.f, 0.f, 0.f),
 				XMConvertToRadians(fYawOffsetDegrees)));
 		const vector_t vRight = XMVector3Normalize(XMVector3Cross(
 			XMVectorSet(0.f, 1.f, 0.f, 0.f), vRotatedLook));
+		const vector_t vRootPosition = vPosition +
+			vLook * (fForwardOffsetM * METERS_TO_UNITS) +
+			vBaseRight * (fRightOffsetM * METERS_TO_UNITS);
 		float4x4_t Root{};
 		XMStoreFloat4x4(&Root, XMMatrixSet(
 			XMVectorGetX(vRight), 0.f, XMVectorGetZ(vRight), 0.f,
 			0.f, 1.f, 0.f, 0.f,
 			XMVectorGetX(vRotatedLook), 0.f, XMVectorGetZ(vRotatedLook), 0.f,
-			XMVectorGetX(vPosition), XMVectorGetY(vPosition),
-			XMVectorGetZ(vPosition), 1.f));
-		CHitAreaWire::Draw(Root, Shape, PATTERN_HIT_COLOR_RGBA);
+			XMVectorGetX(vRootPosition), XMVectorGetY(vRootPosition),
+			XMVectorGetZ(vRootPosition), 1.f));
+		CHitAreaWire::Draw(Root, Shape, iColor);
 	};
 
 	HIT_AREA_SHAPE Shape{};
-	if ("CIRCLE" == area.strHitShape || "RING" == area.strHitShape)
+	if (isHitWindow &&
+		("CIRCLE" == area.strHitShape || "RING" == area.strHitShape))
 	{
 		Shape.iAreaType = 1;
 		Shape.iAreaRange = ToUnits(area.fOuterRadius);
 		Shape.iAreaInner = ToUnits(area.fInnerRadius);
-		Draw_WithYawOffset(0.f, Shape);
+		Draw_WithYawOffset(0.f, 0.f, 0.f, Shape, PATTERN_HIT_COLOR_RGBA);
 	}
-	else if ("CONE" == area.strHitShape)
+	else if (isHitWindow && "CONE" == area.strHitShape)
 	{
 		Shape.iAreaType = 3;
 		Shape.iAreaRange = ToUnits(area.fLength);
 		Shape.iAreaAngle = static_cast<int32_t>(area.fAngleDegrees + 0.5f);
-		Draw_WithYawOffset(0.f, Shape);
+		Draw_WithYawOffset(0.f, 0.f, 0.f, Shape, PATTERN_HIT_COLOR_RGBA);
 	}
-	else if ("BOX" == area.strHitShape)
+	else if (isHitWindow && "BOX" == area.strHitShape)
 	{
 		Shape.iAreaType = 2;
 		Shape.iAreaRange = ToUnits(area.fLength);
 		Shape.iAreaAngle = ToUnits(area.fHalfWidth * 2.f);
-		Draw_WithYawOffset(0.f, Shape);
+		Draw_WithYawOffset(0.f, 0.f, 0.f, Shape, PATTERN_HIT_COLOR_RGBA);
 	}
-	else if ("CROSS" == area.strHitShape ||
-		"SIX_DIRECTIONS" == area.strHitShape)
+	else if (isHitWindow && ("CROSS" == area.strHitShape ||
+		"SIX_DIRECTIONS" == area.strHitShape))
 	{
 		/* The server tests centered strips spanning [-length, +length] along
 		   each strip axis and +-halfWidth across: forward and right for CROSS,
@@ -479,14 +499,24 @@ void CValtan::Draw_PatternHitAreaDebug() const
 		Shape.iAreaOffsetX = -ToUnits(area.fLength);
 		Shape.iAreaRange = ToUnits(area.fLength * 2.f);
 		Shape.iAreaAngle = ToUnits(area.fHalfWidth * 2.f);
-		Draw_WithYawOffset(0.f, Shape);
+		Draw_WithYawOffset(0.f, 0.f, 0.f, Shape, PATTERN_HIT_COLOR_RGBA);
 		if ("CROSS" == area.strHitShape)
-			Draw_WithYawOffset(90.f, Shape);
+			Draw_WithYawOffset(90.f, 0.f, 0.f, Shape, PATTERN_HIT_COLOR_RGBA);
 		else
 		{
-			Draw_WithYawOffset(60.f, Shape);
-			Draw_WithYawOffset(-60.f, Shape);
+			Draw_WithYawOffset(60.f, 0.f, 0.f, Shape, PATTERN_HIT_COLOR_RGBA);
+			Draw_WithYawOffset(-60.f, 0.f, 0.f, Shape, PATTERN_HIT_COLOR_RGBA);
 		}
+	}
+	if (area.bHasCounterProxy)
+	{
+		HIT_AREA_SHAPE CounterShape{};
+		CounterShape.iAreaType = 1;
+		CounterShape.iAreaRange = ToUnits(area.fCounterProxyRadiusM);
+		Draw_WithYawOffset(
+			0.f, area.fCounterProxyForwardOffsetM,
+			area.fCounterProxyRightOffsetM, CounterShape,
+			COUNTER_PROXY_COLOR_RGBA);
 	}
 }
 
@@ -614,10 +644,18 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	CValtanCanonicalProductReadAdmission CanonicalAdmission;
 	Client::CValtanPresentationGenerationReadAdmission GenerationAdmission;
 	if (bExact ?
-		!GenerationAdmission.Acquire_Receipt(
+		!GenerationAdmission.Acquire_ExactReceipt(
 			*pExpectedServerRevision, *pExpectedReceipt, strOutStatus) :
 		!CanonicalAdmission.Acquire(strOutStatus))
 	{
+		return false;
+	}
+	Client::VALTAN_PRESENTATION_GENERATION_RECEIPT CurrentPresentationReceipt;
+	if (bExact && !GenerationAdmission.Try_Get_CurrentReceipt(
+			CurrentPresentationReceipt))
+	{
+		strOutStatus =
+			"Valtan presentation reload did not retain its current typed-source receipt.";
 		return false;
 	}
 
@@ -705,7 +743,7 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	auto StagedShakeCues = std::move(m_PatternShakeCuesByActionId);
 	const bool_t bJoinedPresentationGenerationUnchanged =
 		bExact && PreviousPresentationReceipt.Is_Valid() &&
-		PreviousPresentationReceipt == *pExpectedReceipt;
+		PreviousPresentationReceipt == CurrentPresentationReceipt;
 	const bool_t bPatternSoundGenerationUnchanged =
 		bJoinedPresentationGenerationUnchanged &&
 		PreviousSoundSourceReceipt.Is_Valid() &&
@@ -751,7 +789,8 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 		m_fPatternSoundCueScanAgeSeconds = 0.f;
 	}
 	if (bExact)
-		m_PresentationGenerationReceipt = *pExpectedReceipt;
+		m_PresentationGenerationReceipt =
+			std::move(CurrentPresentationReceipt);
 
 	strOutStatus =
 		bExact ?
@@ -1109,20 +1148,34 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 			Stage.strActionId, static_cast<uint32_t>(iStage));
 		StagedBindings.emplace(Stage.strActionId, std::move(Clips));
 #ifdef _DEBUG
-		if (!Stage.strHitShape.empty() && "NONE" != Stage.strHitShape &&
-			0u != Stage.iHitCount)
+		const bool_t bHasStageHit = !Stage.strHitShape.empty() &&
+			"NONE" != Stage.strHitShape && 0u != Stage.iHitCount;
+		if (bHasStageHit || Stage.CounterProxy.has_value())
 		{
 			PATTERN_HIT_AREA_DEBUG Area{};
-			Area.strHitShape = Stage.strHitShape;
-			Area.fOuterRadius = Stage.fHitOuterRadius;
-			Area.fInnerRadius = Stage.fHitInnerRadius;
-			Area.fAngleDegrees = Stage.fHitAngleDegrees;
-			Area.fLength = Stage.fHitLength;
-			Area.fHalfWidth = Stage.fHitHalfWidth;
-			Area.iHitCount = Stage.iHitCount;
-			Area.iHitIntervalMs = Stage.iHitIntervalMs;
-			Area.iHitDelayMs = Stage.iHitDelayMs;
-			Area.HitOffsetsMs = Stage.HitOffsetsMs;
+			if (bHasStageHit)
+			{
+				Area.strHitShape = Stage.strHitShape;
+				Area.fOuterRadius = Stage.fHitOuterRadius;
+				Area.fInnerRadius = Stage.fHitInnerRadius;
+				Area.fAngleDegrees = Stage.fHitAngleDegrees;
+				Area.fLength = Stage.fHitLength;
+				Area.fHalfWidth = Stage.fHitHalfWidth;
+				Area.iHitCount = Stage.iHitCount;
+				Area.iHitIntervalMs = Stage.iHitIntervalMs;
+				Area.iHitDelayMs = Stage.iHitDelayMs;
+				Area.HitOffsetsMs = Stage.HitOffsetsMs;
+			}
+			if (Stage.CounterProxy.has_value())
+			{
+				Area.bHasCounterProxy = true;
+				Area.fCounterProxyForwardOffsetM =
+					Stage.CounterProxy->fForwardOffsetM;
+				Area.fCounterProxyRightOffsetM =
+					Stage.CounterProxy->fRightOffsetM;
+				Area.fCounterProxyRadiusM =
+					Stage.CounterProxy->fRadiusM;
+			}
 			StagedHitAreas.emplace(Stage.strActionId, std::move(Area));
 		}
 #endif
@@ -1999,6 +2052,45 @@ bool_t CValtan::Apply_CombatObjectPresentationEvent(
 		return true;
 	m_iLastCombatObjectPresentationEventSequence = event.iEventSequence;
 
+	/* HIT_PULSE owns a self-contained Server pose so the terminal Effect may
+	   still be presented when the combat object despawns in the same room tick.
+	   The active/root Effect remains owned by the combat-object projection;
+	   this pulse is a separate natural-lifetime occurrence and therefore does
+	   not change the existing despawn path. */
+	bool_t hitEffectSucceeded = true;
+	bool_t hitEffectConfigured = false;
+	std::string hitEffectStatus;
+	const BOSS_ACTOR_ENTRY* actor = CActorCatalog::Find_Boss(m_strArchetypeId);
+	if (nullptr != actor)
+	{
+		const auto visual = std::find_if(actor->combatObjectVisuals.begin(),
+			actor->combatObjectVisuals.end(),
+			[&event](const BOSS_COMBAT_OBJECT_VISUAL_ENTRY& candidate)
+			{
+				return candidate.combatObjectArchetypeId ==
+					event.strCombatObjectArchetypeId;
+			});
+		if (actor->combatObjectVisuals.end() != visual &&
+			!visual->hitEffectAssetId.empty())
+		{
+			hitEffectConfigured = true;
+			EFFECT_WORLD_ROOT_SPAWN_DESC desc;
+			desc.strEffectAssetId = visual->hitEffectAssetId;
+			desc.pBossBudgetAndLifetimeOwner =
+				std::static_pointer_cast<CValtan>(shared_from_this());
+			desc.RootWorld = visual->Make_WorldRoot(
+				float3_t(event.fPositionX, event.fPositionY, event.fPositionZ),
+				event.fYawDegrees);
+			desc.strOccurrenceId = "combatobject.hit." +
+				std::to_string(event.iCombatObjectId) + "." +
+				std::to_string(event.iEventSequence);
+			desc.iSpawnTick = event.iServerTick;
+			EFFECT_WORLD_ROOT_HANDLE handle;
+			hitEffectSucceeded = CEffectPresentationService::Spawn_WorldRoot(
+				desc, handle, hitEffectStatus);
+		}
+	}
+
 	const std::string key = Make_CombatObjectSoundSourceKey(
 		event.strCombatObjectArchetypeId, event.strHitId);
 	const auto found = m_CombatObjectSoundCuesBySource.find(key);
@@ -2007,6 +2099,14 @@ bool_t CValtan::Apply_CombatObjectPresentationEvent(
 		/* Semantic events are broader than the currently required Sound lane.
 		An unbound hit is intentionally silent; joined validation decides which
 		Product hits are required and reports those gaps in the Workbench. */
+		if (!hitEffectSucceeded)
+		{
+			outStatus = std::move(hitEffectStatus);
+			return false;
+		}
+		if (hitEffectConfigured)
+			outStatus = "Played combat-object hit Effect for Server hit " +
+				event.strHitId + ".";
 		return true;
 	}
 	const VALTAN_COMBAT_OBJECT_SOUND_CUE& cue = found->second;
@@ -2024,8 +2124,13 @@ bool_t CValtan::Apply_CombatObjectPresentationEvent(
 	if (soundPath.empty() ||
 		FAILED(CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f)))
 	{
-		outStatus = "Combat-object Sound asset could not play: " +
-			variants[variantIndex];
+		outStatus = (!hitEffectSucceeded ? hitEffectStatus + " " : "") +
+			"Combat-object Sound asset could not play: " + variants[variantIndex];
+		return false;
+	}
+	if (!hitEffectSucceeded)
+	{
+		outStatus = std::move(hitEffectStatus);
 		return false;
 	}
 	outStatus = "Played " + cue.strBindingId + " for Server hit " +

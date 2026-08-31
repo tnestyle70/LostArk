@@ -106,6 +106,11 @@ private:
 		bool_t bEffectV2Binding = false;
 		bool_t bEffectV2Group = false;
 		uint32_t iEffectV2BindingStartMs = 0u;
+		/* Clip-bound bindings are source rows shared by every matching model
+		   occurrence.  The projected occurrence keeps UI selection unique while
+		   the exact binding key remains clip-qualified. */
+		std::string strEffectV2ClipOccurrenceId;
+		f32_t fEffectV2ClipPlayRate = 1.f;
 	};
 
 	/* Cached reverse projection from an exact PRIMARY source Sequence to the
@@ -149,7 +154,7 @@ public:
 
 private:
 	bool_t Reload_Canonical();
-	bool_t Save_Publish_Reload();
+	bool_t Save_Reload();
 	bool_t Is_PatternSoundDraftDirty(std::string& strOutStatus) const;
 	bool_t Validate_ManualStageTopologySoundDependencies(
 		const VALTAN_PATTERN_VIEW& CandidatePattern,
@@ -288,10 +293,6 @@ private:
 		const VALTAN_PATTERN_SOUND_CUE& Current,
 		uint32_t iSourceStartMs,
 		std::string& strOutStatus);
-	void Render_DataFiles(
-		const VALTAN_PATTERN_VIEW* pPattern,
-		const VALTAN_STAGE_VIEW* pStage,
-		bool_t bPatternMutationAdmitted);
 	void Render_SemanticLinkedRows(
 		const VALTAN_PATTERN_VIEW* pPattern,
 		const VALTAN_STAGE_VIEW* pStage);
@@ -378,7 +379,7 @@ private:
 	bool_t m_bSequencerWindowVisible = true;
 	bool_t m_bDetailsWindowVisible = true;
 	bool_t m_bResourcesWindowVisible = true;
-	bool_t m_bSessionWindowVisible = true;
+	bool_t m_bSessionWindowVisible = false;
 	bool_t m_bBossPatternWindowVisible = false;
 	bool_t m_bBossPatternFocusRequested = false;
 	bool_t m_bBossPatternFitRequested = false;
@@ -424,6 +425,8 @@ private:
 		"Load the canonical Valtan graph to begin composition.";
 	std::string m_strPatternSaveStatus;
 	std::string m_strSoundStatus;
+	LostArk::Shared::GameplayDataRevision
+		m_LastPatternSoundAutoApplyRevision{};
 	std::vector<std::string> m_PatternSoundEvents;
 	std::string m_strSoundAddClipOccurrenceId;
 	std::string m_strSoundAddEvent;
@@ -443,6 +446,8 @@ private:
 	std::string m_strAnimationSequenceFilterQuery;
 	bool_t m_bAnimationSequenceFilterDirty = true;
 	bool_t m_bAnimationSequenceLoadAttempted = false;
+	int32_t m_iAnimationSequenceCategory = 0;
+	std::string m_strSelectedSequenceStableId;
 	int32_t m_iSelectedSequenceSkillId = -1;
 	int32_t m_iSelectedSequenceIndex = -1;
 	std::string m_strSourceSequenceServerPatternId;

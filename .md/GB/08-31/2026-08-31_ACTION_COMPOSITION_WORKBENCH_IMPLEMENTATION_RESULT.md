@@ -1,5 +1,37 @@
 # Action Composition Workbench 구현 결과
 
+## 2026-08-31 현재 교정 상태 — 아래 과거 PASS보다 우선
+
+이 문서의 뒤쪽에는 여러 중간 revision에서 기록한 PASS와 완료 표현이 누적돼 있다. 현재 dirty
+worktree와 사용자의 최신 요구에는 그대로 적용할 수 없다. 특히 다음 주장은 철회한다.
+
+- 과거 presentation manifest의 SHA/bytes/inventory 불일치를 entry/replay fail-close의 정상 계약으로
+  본 주장
+- V2 Group이 목록·binding·source test만으로 실제 재생까지 완료됐다는 주장
+- 무력화·속박·침묵 Pattern ID가 존재한다는 이유로 gameplay가 구현됐다는 주장
+- fixed `arena.center.facing`만으로 Six Pizza의 회전 sector와 late Element inheritance가 완료됐다는 주장
+- UI source-token test나 과거 Debug/Release receipt를 현재 최종 EXE의 PASS로 확장한 주장
+
+현재 물리 폴더 기준 상태는 다음과 같다.
+
+| 항목 | 구현 상태 | 자동 검증 | 사용자 visual |
+|---|---|---|---|
+| stale SHA/bytes entry blocker | Network entry가 current typed closure + Server gameplay revision을 사용하도록 소스 교정 | focused Python 8건과 diff-check PASS, 빌드 미실행 | 미검증 |
+| Counter Logic box/proxy | C++ draft adapter, `SET_STAGE_COUNTER_PROXY`, Sequencer Box Detail, success/timeout Stage·Action stable ID와 generic forward target 계약 반영 | Client source oracle 5/5 PASS; pipeline exact schema 동반 교정과 3연속 Counter source migration은 진행 중 | 미검증 |
+| 무력화·속박·침묵 | 무력화 gauge/분기, locked-target 속박(+10m/제어 차단/전 경로 pose 복구), 5초 침묵(skill command 차단/HUD mask)의 typed source·Shared·Server·Client 소비를 소스에 연결 | status focused oracle 6/6, source join/validate 37 Pattern, JSON/PowerShell parse PASS; Product projection·C++ build/native harness는 아직 | 미검증 |
+| Ground Roar 네 돌 | 발탄 yaw 기준 0/90/180/270의 독립 Server object 4개, 5초 terminal explode pulse 후 despawn 및 Composition `Combat Object x4` 5초 tail 소스 반영 | Ground/Portal focused Python 합계 14/14 PASS, Client split/Product BOSS_RELATIVE loader source oracle 5/5 PASS; C++ build/native harness 실행 전 | 미검증 |
+| Six Pizza 누적 회전 | 랜덤 플레이어를 향해 Server가 잠근 facing을 `arena.center.facing` root에 고정하고 초기 sector와 모든 delayed Element가 같은 world root를 상속하도록 소스·native oracle 반영 | target snapshot·root inheritance·Composition focused Python 15/15 PASS; C++ build/native oracle 재실행 전 | 미검증 |
+| 버러지/3연속 Counter | 버러지는 capture·all/partial·Counter→Groggy의 finite typed branch가 존재하나 retry는 terminal; 3연속 Counter는 sealed legacy/Product에만 존재 | 독립 감사로 `COUNTER_HIT→GROGGY` 강제 4계층과 retry cycle reject를 재현; generic success target 및 3회 acyclic unroll 구현 중 | 미검증 |
+| 잡기/왼손/날리기 | `BOSS_LEFT_HAND` typed capture, 실제 left-hand bone world matrix attachment, `ARENA_EJECTION` speed/duration/yaw editor와 Server boss-facing 상대 launch 소스 존재 | capture serialization·release yaw·projector lossless focused 4/4 PASS; C++ build/native rollback 재실행 전 | 미검증 |
+| Portal | `VALTAN_WARP` source 8회, 16m, 500ms retarget, 800ms travel, 1000ms gap 및 Composition Delay/Rush/Gap Logic box 반영 | Ground 포함 focused 13/13 PASS; 정식 Product projection 및 빌드 미실행 | 미검증 |
+| Effect V2 Group | 잘못된 4개 clip ID 교정, Arena Clone의 V2 snapshot 선행 load, direct Group child 실패 전파 및 append 후 preview restage 소스 반영 | V2 validator 22, catalog 8, Product 4 및 repository validator PASS; Workbench V2 focused oracle PASS, C++ build/사용자 재생 전 | 기존 실패 후 재검증 대기 |
+| Collider trigger 저작 | Damage/Capture hit, Counter hurt proxy, Bind/Stagger status의 서로 다른 판정 방향·수명·rollback owner를 실측해 PLAN과 Box Detail을 분리 중 | 현재 shape 6종, interval/explicit-offset schedule, damage/push/knockdown, Capture+left hand, boss-local Counter proxy의 실제 consumer를 확인; authorable anchor/continuous lifetime/multiple occurrence는 아직 신규 schema/runtime 미구현 | 미검증 |
+| Tool 프레임 저하 | Effect Tool 첫 열기에서 176개/63.6MB Authored JSON을 동기 parse하던 경로와 닫힌 tree row 선계산을 제거하고 catalog metadata + 선택 문서 lazy decode로 교정 | lazy metadata focused oracle 9/9와 focused diff-check PASS; C++ build/사용자 FPS smoke는 아직 | 기존 0 FPS 재현, 교정 후 검증 대기 |
+
+이 시점 이후 완료 기준은 `typed source 저장 -> projector Product -> actual canonical loader -> Server
+consumer -> Composition 동일 표현 -> 실패 rollback`이다. 구현/자동 검증/사용자 수동 검증을 분리하며,
+이번 교정 이후 아직 Debug/Release 빌드는 실행하지 않았다.
+
 ## 결론
 
 이번 변경은 기존 Animation Tool에 Pattern 저작 UI를 계속 누적하지 않고, F1에서 독립적으로

@@ -839,13 +839,27 @@ namespace
 				{ return "TIMEOUT" == branch.strOutcome; });
 			if (Timeout == stage.Branches.end())
 				continue;
+			const bool counterOwnsTimeout = stage.CounterProxy.has_value() ||
+				stage.Branches.end() != std::find_if(
+					stage.Branches.begin(), stage.Branches.end(),
+					[](const VALTAN_STAGE_BRANCH_VIEW& branch)
+					{ return "COUNTER_HIT" == branch.strOutcome; });
+			const auto timeoutTarget = !Timeout->strNextActionId.has_value() ?
+				pattern.Stages.end() : std::find_if(
+					pattern.Stages.begin(), pattern.Stages.end(),
+					[&Timeout](const VALTAN_STAGE_VIEW& candidate)
+					{ return candidate.strActionId == *Timeout->strNextActionId; });
 			if (std::find_if(
 					std::next(Timeout), stage.Branches.end(),
 					[](const VALTAN_STAGE_BRANCH_VIEW& branch)
 					{ return "TIMEOUT" == branch.strOutcome; }) != stage.Branches.end() ||
-				Timeout->strNextActionId != expectedNext)
+				(!counterOwnsTimeout && Timeout->strNextActionId != expectedNext) ||
+				(counterOwnsTimeout &&
+				 (pattern.Stages.end() == timeoutTarget ||
+				  static_cast<std::size_t>(timeoutTarget - pattern.Stages.begin()) <=
+					  index)))
 			{
-				status = "Manual Stage topology has a non-linear TIMEOUT/default edge: " +
+				status = "Manual Stage topology has an invalid linear/default or forward Counter TIMEOUT edge: " +
 					pattern.strPatternId + "/" + stage.strStageId + ".";
 				return false;
 			}
@@ -864,9 +878,16 @@ namespace
 				index + 1u < pattern.Stages.size() ?
 					std::optional<std::string>{ pattern.Stages[index + 1u].strActionId } :
 					std::nullopt;
+			const bool counterOwnsTimeout =
+				pattern.Stages[index].CounterProxy.has_value() ||
+				pattern.Stages[index].Branches.end() != std::find_if(
+					pattern.Stages[index].Branches.begin(),
+					pattern.Stages[index].Branches.end(),
+					[](const VALTAN_STAGE_BRANCH_VIEW& branch)
+					{ return "COUNTER_HIT" == branch.strOutcome; });
 			for (VALTAN_STAGE_BRANCH_VIEW& branch : pattern.Stages[index].Branches)
 			{
-				if ("TIMEOUT" == branch.strOutcome)
+				if ("TIMEOUT" == branch.strOutcome && !counterOwnsTimeout)
 					branch.strNextActionId = nextAction;
 			}
 		}
@@ -1207,6 +1228,12 @@ namespace
 		return pattern.Stages.end() == found ? nullptr : &*found;
 	}
 
+	bool IsValtanCounterSuccessStageKind(const std::string_view stageKind)
+	{
+		return "WINDUP" == stageKind || "GROGGY" == stageKind ||
+			"RECOVERY" == stageKind;
+	}
+
 	int ValtanFlagContractState(
 		const VALTAN_STAGE_VIEW& stage, const std::string_view flagId)
 	{
@@ -1235,19 +1262,18 @@ namespace
 		std::string& status)
 	{
 		output = {};
-		const std::vector<const VALTAN_STAGE_BRANCH_VIEW*> branches = [&]()
+		std::vector<const VALTAN_STAGE_BRANCH_VIEW*> counterBranches;
+		std::vector<const VALTAN_STAGE_BRANCH_VIEW*> timeoutBranches;
+		for (const VALTAN_STAGE_BRANCH_VIEW& branch : stage.Branches)
 		{
-			std::vector<const VALTAN_STAGE_BRANCH_VIEW*> rows;
-			for (const VALTAN_STAGE_BRANCH_VIEW& branch : stage.Branches)
-			{
-				if ("COUNTER_HIT" == branch.strOutcome)
-					rows.push_back(&branch);
-			}
-			return rows;
-		}();
+			if ("COUNTER_HIT" == branch.strOutcome)
+				counterBranches.push_back(&branch);
+			if ("TIMEOUT" == branch.strOutcome)
+				timeoutBranches.push_back(&branch);
+		}
 		const int counterState = ValtanFlagContractState(
 			stage, "boss.flag.counterable");
-		if (branches.empty())
+		if (counterBranches.empty())
 		{
 			if (0 != counterState)
 			{
@@ -1255,28 +1281,69 @@ namespace
 					pattern.strPatternId + "/" + stage.strStageId + ".";
 				return false;
 			}
+			if (stage.CounterProxy.has_value() &&
+				(1u != timeoutBranches.size() ||
+				 !timeoutBranches.front()->strNextActionId.has_value()))
+			{
+				status = "Dormant Counter draft must preserve exactly one typed TIMEOUT branch: " +
+					pattern.strPatternId + "/" + stage.strStageId + ".";
+				return false;
+			}
+			if (1u == timeoutBranches.size() &&
+				timeoutBranches.front()->strNextActionId.has_value())
+			{
+				const VALTAN_STAGE_VIEW* const timeoutTarget =
+					FindValtanStageByAction(
+						pattern, *timeoutBranches.front()->strNextActionId);
+				if (nullptr != timeoutTarget)
+				{
+					output.timeoutStageId = timeoutTarget->strStageId;
+					output.timeoutActionId = timeoutTarget->strActionId;
+				}
+				else if (stage.CounterProxy.has_value())
+				{
+					status = "Dormant Counter TIMEOUT target is missing from the same Pattern: " +
+						pattern.strPatternId + "/" + stage.strStageId + ".";
+					return false;
+				}
+			}
 			return true;
 		}
-		if (1u != branches.size() || 1 != counterState ||
+		if (1u != counterBranches.size() || 1u != timeoutBranches.size() ||
+			1 != counterState ||
 			"WINDUP" != stage.strStageKind ||
-			!branches.front()->strNextActionId.has_value())
+			!counterBranches.front()->strNextActionId.has_value() ||
+			!timeoutBranches.front()->strNextActionId.has_value())
 		{
-			status = "Counter draft requires one paired WINDUP window and one COUNTER_HIT branch: " +
+			status = "Counter draft requires one paired WINDUP window plus exactly one COUNTER_HIT and TIMEOUT branch: " +
 				pattern.strPatternId + "/" + stage.strStageId + ".";
 			return false;
 		}
 		const VALTAN_STAGE_VIEW* target = FindValtanStageByAction(
-			pattern, *branches.front()->strNextActionId);
-		if (nullptr == target || "GROGGY" != target->strStageKind ||
-			1 != ValtanFlagContractState(*target, "boss.flag.groggy"))
+			pattern, *counterBranches.front()->strNextActionId);
+		const VALTAN_STAGE_VIEW* timeoutTarget = FindValtanStageByAction(
+			pattern, *timeoutBranches.front()->strNextActionId);
+		if (nullptr == target || nullptr == timeoutTarget ||
+			!IsValtanCounterSuccessStageKind(target->strStageKind))
 		{
-			status = "Counter success must resolve to one paired same-pattern GROGGY stage/action: " +
+			status = "Counter success/timeout must resolve to same-pattern typed Stage actions: " +
+				pattern.strPatternId + "/" + stage.strStageId + ".";
+			return false;
+		}
+		const int groggyState = ValtanFlagContractState(
+			*target, "boss.flag.groggy");
+		if (("GROGGY" == target->strStageKind && 1 != groggyState) ||
+			("GROGGY" != target->strStageKind && 0 != groggyState))
+		{
+			status = "Counter success target has an invalid conditional Groggy flag transition: " +
 				pattern.strPatternId + "/" + stage.strStageId + ".";
 			return false;
 		}
 		output.enabled = true;
 		output.successStageId = target->strStageId;
 		output.successActionId = target->strActionId;
+		output.timeoutStageId = timeoutTarget->strStageId;
+		output.timeoutActionId = timeoutTarget->strActionId;
 		return true;
 	}
 
@@ -1291,20 +1358,30 @@ namespace
 			CBalanceTool::VALTAN_COUNTER_WINDOW_EDIT counter;
 			if (!ReadValtanCounterWindow(pattern, source, counter, status))
 				return false;
-			if (!counter.enabled)
-				continue;
 
-			const auto target = std::find_if(
-				pattern.Stages.begin(), pattern.Stages.end(),
-				[&counter](const VALTAN_STAGE_VIEW& candidate)
-				{ return candidate.strStageId == counter.successStageId; });
-			if (pattern.Stages.end() == target ||
-				static_cast<std::size_t>(target - pattern.Stages.begin()) <=
-					sourceIndex)
+			const auto IsLaterStage = [&](const std::string& targetStageId)
 			{
-				status = "Counter topology rejected: every COUNTER_HIT must target a later same-Pattern GROGGY Stage so the finite Server graph cannot cycle: " +
+				const auto target = std::find_if(
+					pattern.Stages.begin(), pattern.Stages.end(),
+					[&targetStageId](const VALTAN_STAGE_VIEW& candidate)
+					{ return candidate.strStageId == targetStageId; });
+				return pattern.Stages.end() != target &&
+					static_cast<std::size_t>(target - pattern.Stages.begin()) >
+						sourceIndex;
+			};
+			const bool dormantCounterTimeout = !counter.enabled &&
+				source.CounterProxy.has_value();
+			if (!counter.enabled && !dormantCounterTimeout)
+				continue;
+			if ((counter.enabled &&
+				 (!IsLaterStage(counter.successStageId) ||
+				  !IsLaterStage(counter.timeoutStageId))) ||
+				(dormantCounterTimeout &&
+				 !IsLaterStage(counter.timeoutStageId)))
+			{
+				status = "Counter topology rejected: typed success/TIMEOUT targets must remain later same-Pattern Stages so the finite Server graph cannot cycle: " +
 					pattern.strPatternId + "/" + source.strStageId + " -> " +
-					counter.successStageId + ".";
+					counter.successStageId + " / " + counter.timeoutStageId + ".";
 				return false;
 			}
 		}
@@ -1360,12 +1437,13 @@ namespace
 	}
 
 	std::vector<const VALTAN_STAGE_BRANCH_VIEW*> CollectValtanNonCounterBranches(
-		const VALTAN_STAGE_VIEW& stage)
+		const VALTAN_STAGE_VIEW& stage, const bool counterOwnsTimeout)
 	{
 		std::vector<const VALTAN_STAGE_BRANCH_VIEW*> rows;
 		for (const VALTAN_STAGE_BRANCH_VIEW& branch : stage.Branches)
 		{
-			if ("COUNTER_HIT" != branch.strOutcome)
+			if ("COUNTER_HIT" != branch.strOutcome &&
+				(!counterOwnsTimeout || "TIMEOUT" != branch.strOutcome))
 				rows.push_back(&branch);
 		}
 		return rows;
@@ -2753,18 +2831,18 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 		"PORTAL_TARGET_RUSH" == current.motionKind;
 	const bool hitOffsetsChanged =
 		candidate.hitOffsetsMs != current.hitOffsetsMs;
+	const bool responseChanged =
+		candidate.playerResponse != current.playerResponse ||
+		candidate.attachmentSlot != current.attachmentSlot;
 	if (candidate.stageId != current.stageId ||
 		candidate.actionId != current.actionId ||
-		candidate.playerResponse != current.playerResponse ||
-		candidate.attachmentSlot != current.attachmentSlot ||
 		candidate.motionKind != current.motionKind ||
 		candidate.stageKindEditable != current.stageKindEditable ||
 		candidate.animationEditable != current.animationEditable ||
 		candidate.portalRushMotionEditable !=
-			current.portalRushMotionEditable ||
-		(!portalRushMotion && hitOffsetsChanged))
+			current.portalRushMotionEditable)
 	{
-		status = "Valtan stage edit rejected: stable identity, DamageProfile, response, and explicit-offset ownership are read-only outside typed portal rush; motion kind is always read-only in Workbench.";
+		status = "Valtan stage edit rejected: stable identity, DamageProfile, response, and motion kind are read-only in this Stage editor.";
 		return false;
 	}
 	if (stageKindChanged)
@@ -3086,7 +3164,7 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 		candidate.pushRangeM != current.pushRangeM ||
 		candidate.pushMs != current.pushMs ||
 		candidate.knockdown != current.knockdown ||
-		candidate.downMs != current.downMs;
+		candidate.downMs != current.downMs || responseChanged;
 	if (isWaitStage &&
 		(stageKindChanged || animationChanged || hitChanged ||
 		 portalRushMotionChanged || releaseChanged || effectYawChanged))
@@ -3134,7 +3212,11 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 		const bool explicitScheduleValid = explicitOffsets &&
 			candidate.hitCount == candidate.hitOffsetsMs.size() &&
 			0u == candidate.hitIntervalMs && 0u == candidate.hitDelayMs &&
-			candidate.hitOffsetsMs.back() < candidate.durationMs;
+			candidate.hitOffsetsMs.back() < candidate.durationMs &&
+			candidate.hitOffsetsMs.end() == std::adjacent_find(
+				candidate.hitOffsetsMs.begin(), candidate.hitOffsetsMs.end(),
+				[](const std::uint32_t left, const std::uint32_t right)
+				{ return left >= right; });
 		const std::uint64_t finalIntervalHit =
 			static_cast<std::uint64_t>(candidate.hitDelayMs) +
 			static_cast<std::uint64_t>(candidate.hitCount -
@@ -3150,16 +3232,44 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 			candidate.pushMs <= 600000u && candidate.downMs <= 600000u &&
 			((0.0 == candidate.pushRangeM) == (0u == candidate.pushMs)) &&
 			(candidate.knockdown == (0u != candidate.downMs));
+		const bool typedResponseValid =
+			("DAMAGE" == candidate.playerResponse &&
+			 "NONE" == candidate.attachmentSlot) ||
+			("CAPTURE" == candidate.playerResponse &&
+			 "BOSS_LEFT_HAND" == candidate.attachmentSlot);
 		const bool captureReactionValid =
 			"CAPTURE" != candidate.playerResponse ||
 			(0.0 == candidate.pushRangeM && 0u == candidate.pushMs &&
 				!candidate.knockdown && 0u == candidate.downMs);
 		if ((!explicitScheduleValid && !intervalScheduleValid) ||
 			candidate.damageProfileId.empty() || !damageProfileKnown || !validPush ||
-			!captureReactionValid)
+			!typedResponseValid || !captureReactionValid)
 		{
 			status = "Valtan stage hit schedule or player reaction is invalid: " +
 				patternId + "/" + stageId + ".";
+			return false;
+		}
+	}
+	if (responseChanged)
+	{
+		const bool ownsRelease = std::any_of(
+			pattern->Stages.begin(), pattern->Stages.end(),
+			[](const VALTAN_STAGE_VIEW& owner)
+			{
+				return owner.Actions.end() != std::find_if(
+					owner.Actions.begin(), owner.Actions.end(),
+					[](const VALTAN_STAGE_ACTION_VIEW& action)
+					{
+						return "RELEASE_GRABBED_PLAYERS" == action.strKind;
+					});
+			});
+		const bool addCapture =
+			"DAMAGE" == current.playerResponse &&
+			"CAPTURE" == candidate.playerResponse &&
+			"BOSS_LEFT_HAND" == candidate.attachmentSlot && ownsRelease;
+		if (!addCapture)
+		{
+			status = "Valtan Collider response edit rejected: only Damage -> Grab inside an existing typed left-hand capture/release Pattern is admitted. Removing Capture requires the whole grab topology transaction.";
 			return false;
 		}
 	}
@@ -3189,6 +3299,8 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 	stage->iPushMs = candidate.pushMs;
 	stage->bKnockdown = candidate.knockdown;
 	stage->iDownMs = candidate.downMs;
+	stage->strPlayerResponse = candidate.playerResponse;
+	stage->strAttachmentSlot = candidate.attachmentSlot;
 	if (portalRushMotion && stage->Motion.has_value())
 	{
 		stage->Motion->iRetargetDelayMs = candidate.portalRetargetDelayMs;
@@ -3392,7 +3504,9 @@ bool Client::CBalanceTool::Set_ValtanCounterWindowDraft(
 	if (counter.enabled == current.enabled &&
 		(!counter.enabled ||
 		 (counter.successStageId == current.successStageId &&
-		  counter.successActionId == current.successActionId)))
+		  counter.successActionId == current.successActionId &&
+		  counter.timeoutStageId == current.timeoutStageId &&
+		  counter.timeoutActionId == current.timeoutActionId)))
 	{
 		status = "Valtan counter window draft is unchanged.";
 		return true;
@@ -3407,7 +3521,11 @@ bool Client::CBalanceTool::Set_ValtanCounterWindowDraft(
 		((!counter.successStageId.empty() &&
 		  counter.successStageId != current.successStageId) ||
 		 (!counter.successActionId.empty() &&
-		  counter.successActionId != current.successActionId)))
+		  counter.successActionId != current.successActionId) ||
+		 (!counter.timeoutStageId.empty() &&
+		  counter.timeoutStageId != current.timeoutStageId) ||
+		 (!counter.timeoutActionId.empty() &&
+		  counter.timeoutActionId != current.timeoutActionId)))
 	{
 		status = "Valtan counter edit rejected: disabled target IDs are stale.";
 		return false;
@@ -3431,18 +3549,36 @@ bool Client::CBalanceTool::Set_ValtanCounterWindowDraft(
 	{
 		VALTAN_STAGE_VIEW* target = FindValtanStage(
 			*stagedPattern, counter.successStageId);
+		VALTAN_STAGE_VIEW* timeoutTarget = FindValtanStage(
+			*stagedPattern, counter.timeoutStageId);
 		if (nullptr == target || target == stagedStage ||
 			target->strActionId != counter.successActionId ||
-			"GROGGY" != target->strStageKind)
+			!IsValtanCounterSuccessStageKind(target->strStageKind) ||
+			nullptr == timeoutTarget || timeoutTarget == stagedStage ||
+			timeoutTarget->strActionId != counter.timeoutActionId)
 		{
-			status = "Valtan counter edit rejected: successStageId/successActionId must resolve to one same-pattern GROGGY stage.";
+			status = "Valtan counter edit rejected: success and timeout stable IDs must resolve to same-pattern typed Stages.";
 			return false;
 		}
 		const int groggyState = ValtanFlagContractState(
 			*target, "boss.flag.groggy");
-		if (groggyState < 0)
+		if (("GROGGY" == target->strStageKind && groggyState < 0) ||
+			("GROGGY" != target->strStageKind && 0 != groggyState))
 		{
-			status = "Valtan counter edit rejected: selected GROGGY target has an unpaired or duplicate flag transition.";
+			status = "Valtan counter edit rejected: selected success target has an invalid conditional Groggy flag transition.";
+			return false;
+		}
+		auto timeout = std::find_if(
+			stagedStage->Branches.begin(), stagedStage->Branches.end(),
+			[](const VALTAN_STAGE_BRANCH_VIEW& row)
+			{ return "TIMEOUT" == row.strOutcome; });
+		if (stagedStage->Branches.end() != timeout &&
+			stagedStage->Branches.end() != std::find_if(
+				std::next(timeout), stagedStage->Branches.end(),
+				[](const VALTAN_STAGE_BRANCH_VIEW& row)
+				{ return "TIMEOUT" == row.strOutcome; }))
+		{
+			status = "Valtan counter edit rejected: source Stage owns duplicate TIMEOUT branches.";
 			return false;
 		}
 		AddValtanClosedFlagActions(
@@ -3450,13 +3586,30 @@ bool Client::CBalanceTool::Set_ValtanCounterWindowDraft(
 		VALTAN_STAGE_BRANCH_VIEW branch;
 		branch.strOutcome = "COUNTER_HIT";
 		branch.strNextActionId = target->strActionId;
-		const auto timeout = std::find_if(
-			stagedStage->Branches.begin(), stagedStage->Branches.end(),
-			[](const VALTAN_STAGE_BRANCH_VIEW& row)
-			{ return "TIMEOUT" == row.strOutcome; });
-		stagedStage->Branches.insert(timeout, std::move(branch));
-		if (0 == groggyState)
+		if (stagedStage->Branches.end() == timeout)
+		{
+			stagedStage->Branches.push_back(std::move(branch));
+			VALTAN_STAGE_BRANCH_VIEW timeoutBranch;
+			timeoutBranch.strOutcome = "TIMEOUT";
+			timeoutBranch.strNextActionId = timeoutTarget->strActionId;
+			stagedStage->Branches.push_back(std::move(timeoutBranch));
+		}
+		else
+		{
+			timeout->strNextActionId = timeoutTarget->strActionId;
+			stagedStage->Branches.insert(timeout, std::move(branch));
+		}
+		if ("GROGGY" == target->strStageKind && 0 == groggyState)
 			AddValtanClosedFlagActions(*target, "boss.flag.groggy");
+		if (!stagedStage->CounterProxy.has_value())
+		{
+			VALTAN_COUNTER_PROXY_VIEW proxy;
+			proxy.strSpace = "BOSS_LOCAL";
+			proxy.fForwardOffsetM = 1.f;
+			proxy.fRightOffsetM = 0.f;
+			proxy.fRadiusM = 2.25f;
+			stagedStage->CounterProxy = std::move(proxy);
+		}
 	}
 	/* CounterProxy is an authoring geometry preset. Disabling removes only the
 	   authoritative flag/branch; Product projection omits the dormant preset. */
@@ -3490,8 +3643,100 @@ bool Client::CBalanceTool::Set_ValtanCounterWindowDraft(
 	MarkDirty(true);
 	status = "Staged typed Counter window for " + patternId + "/" + stageId +
 		(counter.enabled ? " -> " + counter.successStageId + "/" +
-			counter.successActionId : " -> DISABLED") +
+			counter.successActionId + " | timeout -> " +
+			counter.timeoutStageId + "/" + counter.timeoutActionId :
+			" -> DISABLED") +
 		". Press Save to validate and publish the Server-authoritative branch.";
+	return true;
+}
+
+bool Client::CBalanceTool::Get_ValtanCounterProxyDraft(
+	const std::string& patternId,
+	const std::string& stageId,
+	VALTAN_COUNTER_PROXY_EDIT& proxy,
+	std::string& status) const
+{
+	proxy = {};
+	if (!Require_ValtanAuthoringAdmission(
+			"Valtan Counter area draft", status))
+	{
+		return false;
+	}
+	const VALTAN_PATTERN_VIEW* const pattern =
+		FindValtanPattern(m_valtanPatternTree, patternId);
+	const VALTAN_STAGE_VIEW* const stage = nullptr == pattern ? nullptr :
+		FindValtanStage(*pattern, stageId);
+	if (nullptr == pattern || !pattern->bAuthoringMasterManaged ||
+		nullptr == stage)
+	{
+		status = "Counter area is unavailable for the selected Pattern/Stage.";
+		return false;
+	}
+	if (stage->CounterProxy.has_value())
+	{
+		proxy.exists = true;
+		proxy.forwardOffsetM = stage->CounterProxy->fForwardOffsetM;
+		proxy.rightOffsetM = stage->CounterProxy->fRightOffsetM;
+		proxy.radiusM = stage->CounterProxy->fRadiusM;
+	}
+	status.clear();
+	return true;
+}
+
+bool Client::CBalanceTool::Set_ValtanCounterProxyDraft(
+	const std::string& patternId,
+	const std::string& stageId,
+	const VALTAN_COUNTER_PROXY_EDIT& proxy,
+	std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission(
+			"Valtan Counter area edit", status))
+	{
+		return false;
+	}
+	VALTAN_PATTERN_VIEW* const pattern =
+		FindValtanPattern(m_valtanPatternTree, patternId);
+	VALTAN_STAGE_VIEW* const stage = nullptr == pattern ? nullptr :
+		FindValtanStage(*pattern, stageId);
+	if (nullptr == pattern || !pattern->bAuthoringMasterManaged ||
+		nullptr == stage)
+	{
+		status = "Counter area edit lost the selected Pattern/Stage.";
+		return false;
+	}
+	VALTAN_COUNTER_WINDOW_EDIT counter;
+	if (!ReadValtanCounterWindow(*pattern, *stage, counter, status) ||
+		!counter.enabled || "WINDUP" != stage->strStageKind)
+	{
+		if (status.empty())
+			status = "Counter area requires an enabled Counter box on a WINDUP Stage.";
+		return false;
+	}
+	if (!proxy.exists || !std::isfinite(proxy.forwardOffsetM) ||
+		!std::isfinite(proxy.rightOffsetM) || !std::isfinite(proxy.radiusM) ||
+		proxy.forwardOffsetM < -20.f || proxy.forwardOffsetM > 20.f ||
+		proxy.rightOffsetM < -20.f || proxy.rightOffsetM > 20.f ||
+		proxy.radiusM < 0.1f || proxy.radiusM > 20.f)
+	{
+		status = "Counter area requires finite offsets -20..20 m and radius 0.1..20 m.";
+		return false;
+	}
+	if (stage->CounterProxy.has_value() &&
+		stage->CounterProxy->fForwardOffsetM == proxy.forwardOffsetM &&
+		stage->CounterProxy->fRightOffsetM == proxy.rightOffsetM &&
+		stage->CounterProxy->fRadiusM == proxy.radiusM)
+	{
+		status = "Counter area is unchanged.";
+		return true;
+	}
+	VALTAN_COUNTER_PROXY_VIEW changed;
+	changed.strSpace = "BOSS_LOCAL";
+	changed.fForwardOffsetM = proxy.forwardOffsetM;
+	changed.fRightOffsetM = proxy.rightOffsetM;
+	changed.fRadiusM = proxy.radiusM;
+	stage->CounterProxy = std::move(changed);
+	MarkDirty(true);
+	status = "Counter Box area staged for " + patternId + "/" + stageId + ".";
 	return true;
 }
 
@@ -3591,6 +3836,23 @@ bool Client::CBalanceTool::Save_ValtanCanonicalProduct(std::string& status)
 	{
 		status =
 			"Canonical source/Product commit failed; the previous admitted generation was preserved: " +
+			stepStatus;
+		return false;
+	}
+	status = std::move(stepStatus);
+	return true;
+}
+
+bool Client::CBalanceTool::Save_ValtanCompositionProduct(
+	const VALTAN_COMPOSITION_OWNER_DRAFTS& ownerDrafts,
+	std::string& status)
+{
+	std::string stepStatus;
+	if (!RunValtanDraftCommand(
+			L"CommitCanonicalDraft", stepStatus, &ownerDrafts))
+	{
+		status =
+			"Composition Save failed; Pattern, Sound, and Effect V2 files were preserved: " +
 			stepStatus;
 		return false;
 	}
@@ -5630,22 +5892,34 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 							pattern.strPatternId, stage.strStageId,
 							counter, counterStatus))
 					{
-						const auto FirstGroggy = std::find_if(
-							pattern.Stages.begin(), pattern.Stages.end(),
+						const auto firstSuccess = std::find_if(
+							pattern.Stages.begin() + static_cast<std::ptrdiff_t>(stageIndex + 1u),
+							pattern.Stages.end(),
 							[](const VALTAN_STAGE_VIEW& candidate)
-							{ return "GROGGY" == candidate.strStageKind; });
+							{ return IsValtanCounterSuccessStageKind(candidate.strStageKind); });
+						const auto firstTimeout =
+							stageIndex + 1u < pattern.Stages.size() ?
+							pattern.Stages.begin() + static_cast<std::ptrdiff_t>(
+								stageIndex + 1u) : pattern.Stages.end();
 						bool enabled = counter.enabled;
 						ImGui::BeginDisabled(!enabled &&
-							pattern.Stages.end() == FirstGroggy);
+							(pattern.Stages.end() == firstSuccess ||
+							 pattern.Stages.end() == firstTimeout));
 						if (ImGui::Checkbox(
 								"Counter window (Server authority)", &enabled))
 						{
 							counter.enabled = enabled;
 							if (enabled && counter.successStageId.empty() &&
-								pattern.Stages.end() != FirstGroggy)
+								pattern.Stages.end() != firstSuccess)
 							{
-								counter.successStageId = FirstGroggy->strStageId;
-								counter.successActionId = FirstGroggy->strActionId;
+								counter.successStageId = firstSuccess->strStageId;
+								counter.successActionId = firstSuccess->strActionId;
+							}
+							if (enabled && counter.timeoutStageId.empty() &&
+								pattern.Stages.end() != firstTimeout)
+							{
+								counter.timeoutStageId = firstTimeout->strStageId;
+								counter.timeoutActionId = firstTimeout->strActionId;
 							}
 							const bool staged = Set_ValtanCounterWindowDraft(
 								pattern.strPatternId, stage.strStageId,
@@ -5667,19 +5941,23 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 							const std::string preview = counter.successStageId +
 								" / " + counter.successActionId;
 							if (ImGui::BeginCombo(
-									"Counter success Groggy stage/action",
+									"Counter success stage/action",
 									preview.c_str()))
 							{
-								for (const VALTAN_STAGE_VIEW& candidate :
-									pattern.Stages)
+								for (std::size_t candidateIndex = stageIndex + 1u;
+									candidateIndex < pattern.Stages.size(); ++candidateIndex)
 								{
-									if ("GROGGY" != candidate.strStageKind)
+									const VALTAN_STAGE_VIEW& candidate =
+										pattern.Stages[candidateIndex];
+									if (!IsValtanCounterSuccessStageKind(
+											candidate.strStageKind))
 										continue;
 									const bool selected =
 										candidate.strStageId == counter.successStageId &&
 										candidate.strActionId == counter.successActionId;
-									const std::string label = candidate.strStageId +
-										" / " + candidate.strActionId;
+									const std::string label = candidate.strStageKind +
+										" | " + candidate.strStageId + " / " +
+										candidate.strActionId;
 									if (ImGui::Selectable(label.c_str(), selected))
 									{
 										VALTAN_COUNTER_WINDOW_EDIT changed = counter;
@@ -5704,11 +5982,52 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 								}
 								ImGui::EndCombo();
 							}
+							const std::string timeoutPreview = counter.timeoutStageId +
+								" / " + counter.timeoutActionId;
+							if (ImGui::BeginCombo(
+									"Counter timeout stage/action",
+									timeoutPreview.c_str()))
+							{
+								for (std::size_t candidateIndex = stageIndex + 1u;
+									candidateIndex < pattern.Stages.size(); ++candidateIndex)
+								{
+									const VALTAN_STAGE_VIEW& candidate =
+										pattern.Stages[candidateIndex];
+									const bool selected =
+										candidate.strStageId == counter.timeoutStageId &&
+										candidate.strActionId == counter.timeoutActionId;
+									const std::string label = candidate.strStageKind +
+										" | " + candidate.strStageId + " / " +
+										candidate.strActionId;
+									if (ImGui::Selectable(label.c_str(), selected))
+									{
+										VALTAN_COUNTER_WINDOW_EDIT changed = counter;
+										changed.timeoutStageId = candidate.strStageId;
+										changed.timeoutActionId = candidate.strActionId;
+										const bool staged = Set_ValtanCounterWindowDraft(
+											pattern.strPatternId, stage.strStageId,
+											changed, counterStatus);
+										m_status = std::move(counterStatus);
+										if (staged)
+										{
+											ImGui::EndCombo();
+											ImGui::TreePop();
+											ImGui::PopID();
+											ImGui::PopID();
+											ImGui::PopID();
+											return;
+										}
+									}
+									if (selected)
+										ImGui::SetItemDefaultFocus();
+								}
+								ImGui::EndCombo();
+							}
 						}
 						else
 						{
 							ImGui::TextDisabled(
-								"Enable to select a same-pattern GROGGY stage/action.");
+								"Enable to select forward success and timeout Stage actions.");
 						}
 					}
 					else
@@ -6457,11 +6776,11 @@ void Client::CBalanceTool::RenderLiveVerification()
 
 bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 {
-	if (m_players.size() != 6u || m_skills.size() != 94u ||
-		m_damageProfiles.size() != 108u || m_bosses.size() != 1u ||
-		m_patterns.empty())
+	if (m_players.empty() || m_skills.empty() ||
+		m_damageProfiles.empty() || m_bosses.empty() || m_patterns.empty())
 	{
-		status = "Draft required collections are incomplete.";
+		status =
+			"Draft requires non-empty Player, Skill, Damage, Boss, and Pattern collections.";
 		return false;
 	}
 	const auto isKnownStance = [](const std::string& value)
@@ -6472,9 +6791,12 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 	};
 	std::uint32_t maximumPlayerResource = 0u;
 	std::uint32_t maximumPlayerIdentity = 0u;
+	std::unordered_set<std::string> playerClasses;
 	for (const PLAYER_EDIT& player : m_players)
 	{
-		if (0u == player.maximumHp || 0u == player.maximumResource ||
+		if (player.characterClass.empty() ||
+			!playerClasses.insert(player.characterClass).second ||
+			0u == player.maximumHp || 0u == player.maximumResource ||
 			0u == player.resourceRegenPerSecond || 0u == player.attackPower ||
 			0u == player.defense || player.resourceRegenPerSecond > player.maximumResource ||
 			!std::isfinite(player.moveSpeed) || player.moveSpeed <= 0.f ||
@@ -6514,7 +6836,9 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 		const bool isStandup = "STANDUP" == skill.skillKind;
 		if (0u == skill.skillId || 0u == skill.actionDurationMs ||
 			!skillIds.insert(skill.skillId).second ||
-			skill.characterClass.empty() || skill.inputSlot.empty() ||
+			skill.characterClass.empty() ||
+			!playerClasses.contains(skill.characterClass) ||
+			skill.inputSlot.empty() ||
 			skill.displayName.empty() || skill.actionId.empty() ||
 			skill.hitTimeMs > skill.actionDurationMs ||
 			skill.resourceCost > maximumPlayerResource ||
@@ -6603,17 +6927,23 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 			return false;
 		}
 	}
+	std::unordered_set<std::string> damageProfileIds;
 	for (const DAMAGE_EDIT& damage : m_damageProfiles)
 	{
-		if (damage.damageProfileId.empty() || 0u == damage.damageRatePercent)
+		if (damage.damageProfileId.empty() ||
+			!damageProfileIds.insert(damage.damageProfileId).second ||
+			0u == damage.damageRatePercent)
 		{
 			status = "Damage profile draft is invalid: " + damage.damageProfileId;
 			return false;
 		}
 	}
+	std::unordered_set<std::string> bossArchetypeIds;
 	for (const BOSS_EDIT& boss : m_bosses)
 	{
-		if (boss.archetypeId.empty() || boss.encounterId.empty() ||
+		if (boss.archetypeId.empty() ||
+			!bossArchetypeIds.insert(boss.archetypeId).second ||
+			boss.encounterId.empty() ||
 			0u == boss.maximumHp || 0u == boss.maximumHealthBars ||
 			boss.maximumHealthBars > 1000u || 0u == boss.attackPower ||
 			!std::isfinite(boss.collisionRadius) || boss.collisionRadius <= 0.f ||
@@ -6631,11 +6961,17 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 			return false;
 		}
 	}
+	const auto encounterBoss = std::find_if(
+		m_bosses.begin(), m_bosses.end(),
+		[this](const BOSS_EDIT& boss)
+		{
+			return boss.archetypeId == m_encounterBossArchetypeId;
+		});
 	if (m_encounterId.empty() || m_encounterBossArchetypeId.empty() ||
 		"server" != m_encounterAuthority || 30u != m_fixedTickHz ||
 		m_encounterIntroPatternId.empty() ||
-		m_encounterBossArchetypeId != m_bosses.front().archetypeId ||
-		m_encounterId != m_bosses.front().encounterId)
+		m_bosses.end() == encounterBoss ||
+		m_encounterId != encounterBoss->encounterId)
 	{
 		status = "Encounter draft header is invalid.";
 		return false;
@@ -6654,12 +6990,12 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 		const bool validSelection = normal ?
 			(pattern.minimumHealthBar >= 1u &&
 				pattern.maximumHealthBar >= pattern.minimumHealthBar &&
-				pattern.maximumHealthBar <= m_bosses[m_selectedBoss].maximumHealthBars &&
+				pattern.maximumHealthBar <= encounterBoss->maximumHealthBars &&
 				0u == pattern.triggerHealthBar && 0u == pattern.triggerOrder &&
 				pattern.selectionWeight > 0u && pattern.maximumConsecutiveUses > 0u) :
 			(healthBar ? (0u == pattern.minimumHealthBar &&
 				0u == pattern.maximumHealthBar && pattern.triggerHealthBar >= 1u &&
-				pattern.triggerHealthBar <= m_bosses[m_selectedBoss].maximumHealthBars &&
+				pattern.triggerHealthBar <= encounterBoss->maximumHealthBars &&
 				pattern.triggerOrder > 0u && 0u == pattern.selectionWeight &&
 				0u == pattern.maximumConsecutiveUses) :
 			(manualAudition && 0u == pattern.minimumHealthBar &&
@@ -7280,7 +7616,9 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 					const bool targetChanged = currentCounter.enabled &&
 						loadedCounter.enabled &&
 						(currentCounter.successStageId != loadedCounter.successStageId ||
-						 currentCounter.successActionId != loadedCounter.successActionId);
+						 currentCounter.successActionId != loadedCounter.successActionId ||
+						 currentCounter.timeoutStageId != loadedCounter.timeoutStageId ||
+						 currentCounter.timeoutActionId != loadedCounter.timeoutActionId);
 					if (loadedCounter.enabled && !currentCounter.enabled)
 					{
 						std::ostringstream operation;
@@ -7291,7 +7629,11 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 							<< ", \"successStageId\": "
 							<< Quote(loadedCounter.successStageId)
 							<< ", \"successActionId\": "
-							<< Quote(loadedCounter.successActionId) << " }";
+							<< Quote(loadedCounter.successActionId)
+							<< ", \"timeoutStageId\": "
+							<< Quote(loadedCounter.timeoutStageId)
+							<< ", \"timeoutActionId\": "
+							<< Quote(loadedCounter.timeoutActionId) << " }";
 						appendTopology(counterDisableOperations, operation);
 						VALTAN_STAGE_VIEW* const normalizedStage = FindValtanStage(
 							counterNormalizedLoaded, currentStage.strStageId);
@@ -7323,7 +7665,11 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 						<< ", \"successStageId\": "
 						<< Quote(currentCounter.successStageId)
 						<< ", \"successActionId\": "
-						<< Quote(currentCounter.successActionId) << " }";
+						<< Quote(currentCounter.successActionId)
+						<< ", \"timeoutStageId\": "
+						<< Quote(currentCounter.timeoutStageId)
+						<< ", \"timeoutActionId\": "
+						<< Quote(currentCounter.timeoutActionId) << " }";
 					appendTopology(counterEnableOperations, operation);
 					if (targetChanged)
 					{
@@ -7347,6 +7693,18 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 							return false;
 						}
 						branch->strNextActionId = currentCounter.successActionId;
+						const auto timeout = std::find_if(
+							normalizedStage->Branches.begin(),
+							normalizedStage->Branches.end(),
+							[](const VALTAN_STAGE_BRANCH_VIEW& candidate)
+							{ return "TIMEOUT" == candidate.strOutcome; });
+						if (normalizedStage->Branches.end() == timeout)
+						{
+							status = "Counter retarget baseline lost its stable timeout edge: " +
+								pattern.strPatternId + "/" + currentStage.strStageId + ".";
+							return false;
+						}
+						timeout->strNextActionId = currentCounter.timeoutActionId;
 					}
 				}
 				/* A dependency-free Counter source may itself be removed after the
@@ -7374,7 +7732,11 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 						<< ", \"successStageId\": "
 						<< Quote(loadedCounter.successStageId)
 						<< ", \"successActionId\": "
-						<< Quote(loadedCounter.successActionId) << " }";
+						<< Quote(loadedCounter.successActionId)
+						<< ", \"timeoutStageId\": "
+						<< Quote(loadedCounter.timeoutStageId)
+						<< ", \"timeoutActionId\": "
+						<< Quote(loadedCounter.timeoutActionId) << " }";
 					appendTopology(counterDisableOperations, operation);
 					VALTAN_STAGE_VIEW* const normalizedStage = FindValtanStage(
 						counterNormalizedLoaded, loadedStage.strStageId);
@@ -7535,21 +7897,57 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 							<< ", \"successStageId\": "
 							<< Quote(counter.successStageId)
 							<< ", \"successActionId\": "
-							<< Quote(counter.successActionId) << " }";
+							<< Quote(counter.successActionId)
+							<< ", \"timeoutStageId\": "
+							<< Quote(counter.timeoutStageId)
+							<< ", \"timeoutActionId\": "
+							<< Quote(counter.timeoutActionId) << " }";
 						appendTopology(counterEnableOperations, operation);
 					}
 				}
 				if (!EqualValtanCounterProxy(stage.CounterProxy,
 						loadedStage->CounterProxy))
 				{
-					status = "Counter proxy geometry preset changed outside its typed owner: " +
-						pattern.strPatternId + "/" + stage.strStageId + ".";
-					return false;
+					if (!stage.CounterProxy.has_value())
+					{
+						status = "Counter Box area removal is not supported; delete the Counter box to disable it.";
+						return false;
+					}
+					VALTAN_COUNTER_WINDOW_EDIT counter;
+					if (!ReadValtanCounterWindow(pattern, stage, counter, status) ||
+						!counter.enabled)
+					{
+						status = "Counter Box area can change only while its Counter window is enabled: " +
+							pattern.strPatternId + "/" + stage.strStageId + ".";
+						return false;
+					}
+					const VALTAN_COUNTER_PROXY_VIEW& proxy = *stage.CounterProxy;
+					std::ostringstream operation;
+					operation << "    { \"op\": \"SET_STAGE_COUNTER_PROXY\", "
+						"\"patternId\": " << Quote(pattern.strPatternId)
+						<< ", \"stageId\": " << Quote(stage.strStageId)
+						<< ", \"forwardOffsetM\": " << FormatJsonNumber(proxy.fForwardOffsetM)
+						<< ", \"rightOffsetM\": " << FormatJsonNumber(proxy.fRightOffsetM)
+						<< ", \"radiusM\": " << FormatJsonNumber(proxy.fRadiusM)
+						<< " }";
+					append(operation);
 				}
+				const bool counterOwnsTimeout =
+					stage.CounterProxy.has_value() ||
+					loadedStage->CounterProxy.has_value() ||
+					stage.Branches.end() != std::find_if(
+						stage.Branches.begin(), stage.Branches.end(),
+						[](const VALTAN_STAGE_BRANCH_VIEW& branch)
+						{ return "COUNTER_HIT" == branch.strOutcome; }) ||
+					loadedStage->Branches.end() != std::find_if(
+						loadedStage->Branches.begin(), loadedStage->Branches.end(),
+						[](const VALTAN_STAGE_BRANCH_VIEW& branch)
+						{ return "COUNTER_HIT" == branch.strOutcome; });
 				const std::vector<const VALTAN_STAGE_BRANCH_VIEW*> branches =
-					CollectValtanNonCounterBranches(stage);
+					CollectValtanNonCounterBranches(stage, counterOwnsTimeout);
 				const std::vector<const VALTAN_STAGE_BRANCH_VIEW*> loadedBranches =
-					CollectValtanNonCounterBranches(*loadedStage);
+					CollectValtanNonCounterBranches(
+						*loadedStage, counterOwnsTimeout);
 				if (branches.size() != loadedBranches.size())
 				{
 					status = "Loaded non-Counter branch inventory changed: " +
@@ -7793,7 +8191,9 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 					stage.fPushRangeM != loadedStage->fPushRangeM ||
 					stage.iPushMs != loadedStage->iPushMs ||
 					stage.bKnockdown != loadedStage->bKnockdown ||
-					stage.iDownMs != loadedStage->iDownMs;
+					stage.iDownMs != loadedStage->iDownMs ||
+					stage.strPlayerResponse != loadedStage->strPlayerResponse ||
+					stage.strAttachmentSlot != loadedStage->strAttachmentSlot;
 				if (!hitChanged)
 					continue;
 				std::ostringstream hit;
@@ -7977,7 +8377,9 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 }
 
 bool Client::CBalanceTool::RunValtanDraftCommand(
-	const wchar_t* const mode, std::string& status)
+	const wchar_t* const mode,
+	std::string& status,
+	const VALTAN_COMPOSITION_OWNER_DRAFTS* const pOwnerDrafts)
 {
 	if (nullptr == mode || (0 != std::wcscmp(mode, L"ValidateDraft") &&
 		0 != std::wcscmp(mode, L"SaveAuthoring") &&
@@ -8012,19 +8414,96 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 			pathError.message() + ".";
 		return false;
 	}
+	const std::wstring temporaryStem =
+		L"LostArk.ValtanDraft." + std::to_wstring(GetCurrentProcessId()) + L"." +
+		std::to_wstring(GetTickCount64());
 	const std::filesystem::path patchPath = temporaryDirectory /
-		(L"LostArk.ValtanDraft." + std::to_wstring(GetCurrentProcessId()) + L"." +
-			std::to_wstring(GetTickCount64()) + L".json");
+		(temporaryStem + L".json");
+	std::vector<std::filesystem::path> temporaryPaths{ patchPath };
+	const auto CleanupTemporaryPaths = [&temporaryPaths]()
+	{
+		for (const std::filesystem::path& path : temporaryPaths)
+		{
+			std::error_code cleanupError;
+			std::filesystem::remove(path, cleanupError);
+		}
+	};
 	if (!DurableWrite(patchPath, patchText, status))
 		return false;
 	std::wstring arguments = L"-Mode " + std::wstring(mode) +
 		L" -DraftPatchPath \"" + patchPath.wstring() + L"\"";
+	if (nullptr != pOwnerDrafts)
+	{
+		if (0 != std::wcscmp(mode, L"CommitCanonicalDraft"))
+		{
+			CleanupTemporaryPaths();
+			status = "Composition owner drafts are valid only for one canonical Save.";
+			return false;
+		}
+		const bool hasPatternSoundBaseline =
+			!pOwnerDrafts->patternSoundBaselineBytes.empty();
+		const bool hasPatternSoundCandidate =
+			!pOwnerDrafts->patternSoundCandidateBytes.empty();
+		const bool hasEffectV2Baseline =
+			!pOwnerDrafts->effectV2BaselineBytes.empty();
+		const bool hasEffectV2Candidate =
+			!pOwnerDrafts->effectV2CandidateBytes.empty();
+		if (hasPatternSoundBaseline != hasPatternSoundCandidate ||
+			hasEffectV2Baseline != hasEffectV2Candidate)
+		{
+			CleanupTemporaryPaths();
+			status = "Composition owner baseline/candidate pairs are incomplete.";
+			return false;
+		}
+		const auto StageOwnerPair = [&](const wchar_t* const label,
+			const std::string& baselineBytes,
+			const std::string& candidateBytes,
+			const wchar_t* const baselineArgument,
+			const wchar_t* const candidateArgument) -> bool_t
+		{
+			if (baselineBytes.empty())
+				return true;
+			const std::filesystem::path baselinePath = temporaryDirectory /
+				(temporaryStem + L"." + label + L".baseline.json");
+			const std::filesystem::path candidatePath = temporaryDirectory /
+				(temporaryStem + L"." + label + L".candidate.json");
+			temporaryPaths.push_back(baselinePath);
+			temporaryPaths.push_back(candidatePath);
+			if (!DurableWrite(baselinePath, baselineBytes, status) ||
+				!DurableWrite(candidatePath, candidateBytes, status))
+			{
+				return false;
+			}
+			arguments += L" ";
+			arguments += baselineArgument;
+			arguments += L" \"" + baselinePath.wstring() + L"\" ";
+			arguments += candidateArgument;
+			arguments += L" \"" + candidatePath.wstring() + L"\"";
+			return true;
+		};
+		if (!StageOwnerPair(
+				L"PatternSound",
+				pOwnerDrafts->patternSoundBaselineBytes,
+				pOwnerDrafts->patternSoundCandidateBytes,
+				L"-PatternSoundBaselinePath",
+				L"-PatternSoundCandidatePath") ||
+			!StageOwnerPair(
+				L"EffectV2",
+				pOwnerDrafts->effectV2BaselineBytes,
+				pOwnerDrafts->effectV2CandidateBytes,
+				L"-EffectV2BaselinePath",
+				L"-EffectV2CandidatePath"))
+		{
+			CleanupTemporaryPaths();
+			return false;
+		}
+	}
 	std::string captured;
 	std::string processStatus;
 	const bool processSucceeded = RunPipeline(
 		L"ValtanPipeline\\Publish-ValtanTuningRuntimeSet.ps1",
 		arguments.c_str(), processStatus, &captured);
-	std::filesystem::remove(patchPath, pathError);
+	CleanupTemporaryPaths();
 	VALTAN_PIPELINE_RESULT result;
 	std::string parseStatus;
 	if (!ParseValtanPipelineResult(captured, result, parseStatus))
@@ -8101,21 +8580,19 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 		if (!IsLowerSha256(result.sourceRevision) ||
 			!result.candidateRevision.empty() ||
 			!result.hasOperationCountField ||
-			!result.hasArtifactCountField ||
 			!result.hasChangedCountField ||
 			!result.hasRuntimeActivationField ||
-			result.artifactCount < 9u ||
 			result.runtimeActivation != "NOT_ACTIVATED")
 		{
 			status =
-				"Canonical Pattern commit returned an invalid source/Product/runtime closure.";
+				"Pattern Save returned an invalid transaction result.";
 			return false;
 		}
 		const std::string committedRevision = result.sourceRevision;
 		if (!Reload())
 		{
 			status =
-				"Canonical Pattern source/Product bytes committed, but the joined editor reload was rejected: " +
+				"Pattern files were saved, but the editor could not load them: " +
 				m_status;
 			return false;
 		}
@@ -8124,9 +8601,9 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 				m_valtanSourceJoin.state)
 		{
 			status =
-				"Canonical Pattern bytes were committed, but the editor did not reload the exact admitted source generation " +
+				"Pattern files were saved, but the editor loaded a different saved revision than " +
 				committedRevision.substr(0u, 12u) +
-				". Save completion is rejected until source/Product admission converges.";
+				". Reload the current files before editing again.";
 			return false;
 		}
 		if (0u != result.changedCount)
@@ -8134,13 +8611,13 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 			CValtanTuningCommandService::Get().
 				Record_GameplaySourceActivationExpectation(
 					{}, "NOT_ACTIVATED",
-					"The canonical source/Product generation is saved locally. Complete Play and Restart require a separately admitted immutable runtime generation with an exact Server-active revision match.");
+					"Pattern data was saved locally. Restart or re-enter the Server arena to load the saved revision.");
 		}
-		status = "Committed canonical Valtan source/Product generation " +
+		status = "Saved Valtan Pattern data " +
 			committedRevision.substr(0u, 12u) +
 			(0u == result.changedCount ?
-				" with no byte changes. Local authoring reload remains admitted and no runtime activation expectation was created." :
-				". Local authoring reload is admitted; runtime is NOT_ACTIVATED and Complete Play/Restart stay blocked until an exact immutable Server-active revision is observed.");
+				" with no file changes." :
+				" and loaded it back into the editor. Restart or re-enter the Server arena to use it there.");
 		return true;
 	}
 	if (!IsLowerSha256(result.candidateRevision) ||
@@ -8684,14 +9161,23 @@ bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
 		Field(playerRoot, "players", DATA_JSON_TYPE::ARRAY);
 	const DATA_JSON_VALUE* skills =
 		Field(skillRoot, "skills", DATA_JSON_TYPE::ARRAY);
+	const DATA_JSON_VALUE* damageProfiles =
+		Field(damageRoot, "profiles", DATA_JSON_TYPE::ARRAY);
+	const DATA_JSON_VALUE* bosses =
+		Field(bossRoot, "bosses", DATA_JSON_TYPE::ARRAY);
 	const DATA_JSON_VALUE* patterns =
 		Field(encounterRoot, "patterns", DATA_JSON_TYPE::ARRAY);
-	if (nullptr == players || players->Get_Array().size() != 6u ||
-		nullptr == skills || skills->Get_Array().size() != 94u ||
+	if (nullptr == players ||
+		players->Get_Array().size() != tool.m_players.size() ||
+		nullptr == skills || skills->Get_Array().size() != tool.m_skills.size() ||
+		nullptr == damageProfiles ||
+		damageProfiles->Get_Array().size() != tool.m_damageProfiles.size() ||
+		nullptr == bosses || bosses->Get_Array().size() != tool.m_bosses.size() ||
 		nullptr == patterns ||
 		patterns->Get_Array().size() != tool.m_patterns.size())
 	{
-		status = "Balance Tool round-trip changed required collections or Pattern identities.";
+		status =
+			"Balance Tool round-trip changed collection membership or Pattern identities.";
 		return false;
 	}
 

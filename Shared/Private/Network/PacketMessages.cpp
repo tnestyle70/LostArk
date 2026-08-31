@@ -116,6 +116,18 @@ namespace
 			0 != snapshot.iMaximumResource &&
 			snapshot.iCurrentResource <= snapshot.iMaximumResource &&
 			snapshot.iCurrentIdentity <= snapshot.iMaximumIdentity &&
+			((0u == snapshot.iSilenceEndTick) ==
+			 (0u == snapshot.iSilenceDurationTicks)) &&
+			snapshot.iSilenceDurationTicks <= 3600u &&
+			(snapshot.isPatternBound ?
+				(snapshot.iPatternBindEndTick != 0u &&
+				 snapshot.iCurrentHp != 0u && !snapshot.isCombatReady &&
+				 LostArk::Shared::PLAYER_LOCOMOTION_STATE::IDLE ==
+					snapshot.eLocomotionState &&
+				 LostArk::Shared::PLAYER_ACTION_STATE::NONE == snapshot.eAction &&
+				 LostArk::Shared::INVALID_SKILL_ID == snapshot.iSkillId &&
+				 0u == snapshot.iComboStage) :
+				(0u == snapshot.iPatternBindEndTick)) &&
 			Is_Valid_Cooldowns(snapshot.Cooldowns) &&
 			snapshot.iComboStage <= LostArk::Shared::MAX_COMBO_STAGES &&
 			(0 == snapshot.iComboStage ||
@@ -2199,6 +2211,10 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(player.iCurrentIdentity);
 		writer.Write_U32(player.iMaximumIdentity);
 		writer.Write_U8(player.isCombatReady ? 1u : 0u);
+		writer.Write_U8(player.isPatternBound ? 1u : 0u);
+		writer.Write_U32(player.iPatternBindEndTick);
+		writer.Write_U32(player.iSilenceEndTick);
+		writer.Write_U32(player.iSilenceDurationTicks);
 		writer.Write_U8(player.iComboStage);
 		writer.Write_U8(static_cast<std::uint8_t>(player.Cooldowns.size()));
 		for (const SKILL_COOLDOWN_SNAPSHOT& cooldown : player.Cooldowns)
@@ -2349,6 +2365,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		std::uint8_t rawAttachmentSlot = 0;
 		std::uint8_t rawHasSkillTarget = 0;
 		std::uint8_t rawCombatReady = 0;
+		std::uint8_t rawPatternBound = 0;
 		std::uint8_t cooldownCount = 0;
 
         if (!reader.Read_U32(player.iNetEntityId) ||
@@ -2381,6 +2398,11 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(player.iMaximumIdentity) ||
 			!reader.Read_U8(rawCombatReady) ||
 			rawCombatReady > 1u ||
+			!reader.Read_U8(rawPatternBound) ||
+			rawPatternBound > 1u ||
+			!reader.Read_U32(player.iPatternBindEndTick) ||
+			!reader.Read_U32(player.iSilenceEndTick) ||
+			!reader.Read_U32(player.iSilenceDurationTicks) ||
 			!reader.Read_U8(player.iComboStage) ||
 			player.iComboStage > MAX_COMBO_STAGES ||
 			!reader.Read_U8(cooldownCount) ||
@@ -2399,6 +2421,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			static_cast<PLAYER_ATTACHMENT_SLOT>(rawAttachmentSlot);
 		player.hasSkillTarget = 0u != rawHasSkillTarget;
 		player.isCombatReady = 0u != rawCombatReady;
+		player.isPatternBound = 0u != rawPatternBound;
 		player.Cooldowns.reserve(cooldownCount);
 		for (std::uint8_t cooldownIndex = 0;
 			cooldownIndex < cooldownCount;

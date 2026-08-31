@@ -390,13 +390,6 @@ void Client::CActionCompositionWorkbench::Render_BossPatternWindow(
 		m_eRequestedResourceDomain = RESOURCE_DOMAIN::EFFECT;
 		m_bResourceDomainSelectionRequested = true;
 	}
-	ImGui::SameLine();
-	if (ImGui::SmallButton("Logic Templates"))
-	{
-		m_bResourcesWindowVisible = true;
-		m_eRequestedResourceDomain = RESOURCE_DOMAIN::LOGIC;
-		m_bResourceDomainSelectionRequested = true;
-	}
 
 	if (nullptr == pPattern)
 	{

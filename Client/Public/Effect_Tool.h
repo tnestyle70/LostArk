@@ -777,8 +777,6 @@ private:
     bool_t Try_SaveDocument();
     size_t Count_ProductCueMappings(
         const std::string& strEffectAssetId) const;
-    bool_t Can_HotReloadSavedProduct() const;
-    bool_t Try_HotReloadSavedProduct();
     bool_t Try_SaveDocumentAs(const std::string& strAssetId);
 	bool_t Try_SaveSelectedAdapterElementAsGenericAuthoredCopy(
 		const std::string& strAssetId);
@@ -807,6 +805,11 @@ private:
 		const std::string& strExpectedEffectAssetId,
 		const std::string& strElementId);
     bool_t Refresh_ResourceCatalog();
+    bool_t Refresh_ResourceCatalogDomain(
+        const std::string& strDomainId,
+        bool_t bForceRefresh);
+    bool_t Activate_ResourceCatalogDomain(
+        const std::string& strDomainId);
     void Select_AuthoringDomain(const std::string& strDomainId);
     bool_t Select_AuthoringDomainForClass(
         LostArk::Shared::CHARACTER_CLASS_ID eClass);
@@ -1072,7 +1075,6 @@ private:
     void Refresh_RuntimeEquivalence();
     std::string Describe_ProductPlaybackAuthoredDivergence(
         const std::string& strProductEffectAssetId);
-    const char_t* Runtime_SyncLabel() const;
     EFFECT_ELEMENT_DESC* Find_SelectedElement();
     const EFFECT_ELEMENT_DESC* Find_SelectedElement() const;
 	EFFECT_MODEL_CUE_DESC* Find_SelectedModelCue();
@@ -1133,6 +1135,11 @@ private:
 	optional<PENDING_DOCUMENT_LOAD> m_PendingDocumentLoad;
     vector<EFFECT_RESOURCE_CATALOG_ENTRY> m_ResourceCatalog;
     vector<EFFECT_RESOURCE_DOMAIN_CATALOG> m_ResourceDomains;
+    std::unordered_map<std::string,
+        std::vector<EFFECT_RESOURCE_CATALOG_ENTRY>>
+        m_ResourceCatalogByDomain;
+    std::unordered_map<std::string, EFFECT_RESOURCE_DOMAIN_CATALOG>
+        m_ResourceDomainCatalogById;
     vector<size_t> m_VisibleResourceIndices;
     vector<EFFECT_SKILL_TREE_ENTRY> m_AllEffects;
 	/* Session state, rebuilt by Refresh. A failed reload keeps the previous
@@ -1344,7 +1351,6 @@ private:
 	f32_t m_fReconstructedSourceRuntimeClockSeconds = 0.f;
 	f32_t m_fReconstructedSourceRuntimeTailSeconds = 0.f;
 	string m_strDocumentStatus;
-	string m_strSaveHotReloadStatus;
 	string m_strDirectAuthoredEditableStatus;
 	string m_strActiveDocumentDrawableError;
     shared_ptr<const EFFECT_DOCUMENT_DESC> m_pRuntimeEquivalenceDocument;

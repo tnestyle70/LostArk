@@ -1521,9 +1521,13 @@ namespace
 		boss.iPatternStageDurationMs = stage.iDurationMs;
 		boss.iPatternStageFirstEvaluationTick = evaluatesOnEntryTick ?
 			serverTick : NextServerTickSkippingReservedZero(serverTick);
+		boss.fPatternStageOriginX = boss.fPositionX;
+		boss.fPatternStageOriginZ = boss.fPositionZ;
+		boss.fPatternStageOriginYawDegrees = boss.fYawDegrees;
 		boss.iAppliedPatternStageSpawnWaveCount = 0u;
 		boss.ePatternStageMotionKind = stage.Motion.eKind;
 		boss.PortalStageHitTargets.clear();
+		boss.PatternActiveWindowHitTargets.clear();
 		CValtanBrain::Configure_PortalMotion(boss, stage);
 		boss.strActionId = stage.strActionId;
 		boss.strDamageProfileId = stage.strDamageProfileId;
@@ -1546,6 +1550,15 @@ namespace
 		boss.iPatternHitIntervalMs = stage.iHitIntervalMs;
 		boss.iPatternHitDelayMs = stage.iHitDelayMs;
 		boss.iAppliedPatternHitCount = 0u;
+		boss.ePatternHitAnchorKind = stage.eHitAnchorKind;
+		boss.fPatternHitAnchorForwardOffsetM =
+			stage.fHitAnchorForwardOffsetM;
+		boss.fPatternHitAnchorRightOffsetM = stage.fHitAnchorRightOffsetM;
+		boss.fPatternHitAnchorYawOffsetDegrees =
+			stage.fHitAnchorYawOffsetDegrees;
+		boss.ePatternHitActivationKind = stage.eHitActivationKind;
+		boss.iPatternHitActivationStartMs = stage.iHitActivationStartMs;
+		boss.iPatternHitActivationLifetimeMs = stage.iHitActivationLifetimeMs;
 		boss.bPatternWallContact = stage.bWallContact;
 		boss.bPatternPiercesCover = stage.bPiercesCover;
 		boss.fPatternPushRangeM = stage.fPushRangeM;
@@ -1804,6 +1817,7 @@ namespace
 		boss.bPortalMotionActive = false;
 		boss.bPortalRushTargetLocked = false;
 		boss.PortalStageHitTargets.clear();
+		boss.PatternActiveWindowHitTargets.clear();
 		boss.fPortalLastHitSampleX = 0.f;
 		boss.fPortalLastHitSampleZ = 0.f;
 		boss.bPatternMoveToAnchorBeforeTakeoff = false;
@@ -1820,6 +1834,18 @@ namespace
 		boss.iPatternHitCount = 0u;
 		boss.iPatternHitDelayMs = 0u;
 		boss.iAppliedPatternHitCount = 0u;
+		boss.ePatternHitAnchorKind =
+			BOSS_PATTERN_HIT_ANCHOR_KIND::BOSS_CURRENT;
+		boss.fPatternHitAnchorForwardOffsetM = 0.f;
+		boss.fPatternHitAnchorRightOffsetM = 0.f;
+		boss.fPatternHitAnchorYawOffsetDegrees = 0.f;
+		boss.ePatternHitActivationKind =
+			BOSS_PATTERN_HIT_ACTIVATION_KIND::PULSE_SCHEDULE;
+		boss.iPatternHitActivationStartMs = 0u;
+		boss.iPatternHitActivationLifetimeMs = 0u;
+		boss.fPatternStageOriginX = 0.f;
+		boss.fPatternStageOriginZ = 0.f;
+		boss.fPatternStageOriginYawDegrees = 0.f;
 		boss.bPatternWallContact = false;
 		boss.bPatternPiercesCover = false;
 		boss.fPatternPushRangeM = 0.f;
@@ -1970,33 +1996,68 @@ namespace
 	   line from the boss to the player against the standing prop's circle, so a
 	   player beside the stele is still exposed and one directly behind it is not.
 	   A stage that is authored to pierce cover never reaches here. */
+	struct PATTERN_HIT_TRANSFORM final
+	{
+		float fPositionX = 0.f;
+		float fPositionZ = 0.f;
+		float fYawDegrees = 0.f;
+	};
+
+	PATTERN_HIT_TRANSFORM ResolvePatternHitTransform(
+		const SERVER_WORLD_ENTITY& boss)
+	{
+		const bool stageOrigin =
+			BOSS_PATTERN_HIT_ANCHOR_KIND::STAGE_ORIGIN ==
+				boss.ePatternHitAnchorKind;
+		const float basisX = stageOrigin ?
+			boss.fPatternStageOriginX : boss.fPositionX;
+		const float basisZ = stageOrigin ?
+			boss.fPatternStageOriginZ : boss.fPositionZ;
+		const float basisYaw = stageOrigin ?
+			boss.fPatternStageOriginYawDegrees : boss.fYawDegrees;
+		const float yawRadians = basisYaw * DEGREES_TO_RADIANS;
+		const float forwardX = std::sin(yawRadians);
+		const float forwardZ = std::cos(yawRadians);
+		const float rightX = std::cos(yawRadians);
+		const float rightZ = -std::sin(yawRadians);
+		return {
+			basisX + forwardX * boss.fPatternHitAnchorForwardOffsetM +
+				rightX * boss.fPatternHitAnchorRightOffsetM,
+			basisZ + forwardZ * boss.fPatternHitAnchorForwardOffsetM +
+				rightZ * boss.fPatternHitAnchorRightOffsetM,
+			basisYaw + boss.fPatternHitAnchorYawOffsetDegrees
+		};
+	}
+
 	bool IsShieldedByCover(
-		const SERVER_WORLD_ENTITY& boss,
+		const PATTERN_HIT_TRANSFORM& hitTransform,
 		const SERVER_PLAYER& player,
 		const std::vector<LostArk::Shared::CombatCollision::CIRCLE_XZ>&
 			coverCircles)
 	{
 		return std::any_of(
 			coverCircles.begin(), coverCircles.end(),
-			[&boss, &player](
+			[&hitTransform, &player](
 				const LostArk::Shared::CombatCollision::CIRCLE_XZ& circle)
 			{
 				return LostArk::Shared::CombatCollision::Segment_IntersectsCircle(
-					boss.fPositionX, boss.fPositionZ,
+					hitTransform.fPositionX, hitTransform.fPositionZ,
 					player.fPositionX, player.fPositionZ, circle);
 			});
 	}
 
 	bool ContainsPatternHit(
 		const SERVER_WORLD_ENTITY& boss,
-		const SERVER_PLAYER& player)
+		const SERVER_PLAYER& player,
+		const PATTERN_HIT_TRANSFORM& hitTransform)
 	{
 		const LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ playerBody{
 			player.fPositionX,
 			player.fPositionZ,
 			LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_X
 		};
-		const float yawRadians = boss.fYawDegrees * DEGREES_TO_RADIANS;
+		const float yawRadians =
+			hitTransform.fYawDegrees * DEGREES_TO_RADIANS;
 		const float forwardX = std::sin(yawRadians);
 		const float forwardZ = std::cos(yawRadians);
 		switch (boss.ePatternHitShape)
@@ -2004,23 +2065,23 @@ namespace
 		case BOSS_PATTERN_HIT_SHAPE::CIRCLE:
 			return LostArk::Shared::CombatCollision::Circles_Overlap(
 				LostArk::Shared::CombatCollision::CIRCLE_XZ{
-					boss.fPositionX,
-					boss.fPositionZ,
+					hitTransform.fPositionX,
+					hitTransform.fPositionZ,
 					boss.fPatternHitOuterRadius
 				},
 				playerBody);
 		case BOSS_PATTERN_HIT_SHAPE::RING:
 			return LostArk::Shared::CombatCollision::Circle_IntersectsRing(
 				playerBody,
-				boss.fPositionX,
-				boss.fPositionZ,
+				hitTransform.fPositionX,
+				hitTransform.fPositionZ,
 				boss.fPatternHitInnerRadius,
 				boss.fPatternHitOuterRadius);
 		case BOSS_PATTERN_HIT_SHAPE::CONE:
 			return LostArk::Shared::CombatCollision::Circle_IntersectsCone(
 				playerBody,
-				boss.fPositionX,
-				boss.fPositionZ,
+				hitTransform.fPositionX,
+				hitTransform.fPositionZ,
 				forwardX,
 				forwardZ,
 				boss.fPatternHitLength,
@@ -2033,8 +2094,8 @@ namespace
 					(boss.fPositionZ - boss.fPortalLastHitSampleZ) * forwardZ) : 0.f;
 			return LostArk::Shared::CombatCollision::Circle_IntersectsForwardBox(
 				playerBody,
-				boss.bPortalMotionActive ? boss.fPortalLastHitSampleX : boss.fPositionX,
-				boss.bPortalMotionActive ? boss.fPortalLastHitSampleZ : boss.fPositionZ,
+				boss.bPortalMotionActive ? boss.fPortalLastHitSampleX : hitTransform.fPositionX,
+				boss.bPortalMotionActive ? boss.fPortalLastHitSampleZ : hitTransform.fPositionZ,
 				forwardX,
 				forwardZ,
 				boss.fPatternHitLength + portalTravel,
@@ -2043,8 +2104,8 @@ namespace
 		case BOSS_PATTERN_HIT_SHAPE::CROSS:
 			return LostArk::Shared::CombatCollision::Circle_IntersectsCross(
 				playerBody,
-				boss.fPositionX,
-				boss.fPositionZ,
+				hitTransform.fPositionX,
+				hitTransform.fPositionZ,
 				forwardX,
 				forwardZ,
 				boss.fPatternHitLength,
@@ -2052,8 +2113,8 @@ namespace
 		case BOSS_PATTERN_HIT_SHAPE::SIX_DIRECTIONS:
 			return LostArk::Shared::CombatCollision::Circle_IntersectsSixDirections(
 				playerBody,
-				boss.fPositionX,
-				boss.fPositionZ,
+				hitTransform.fPositionX,
+				hitTransform.fPositionZ,
 				forwardX,
 				forwardZ,
 				boss.fPatternHitLength,
@@ -2083,19 +2144,29 @@ namespace
 		const std::uint32_t rawDamage = CGameplayCatalog::Resolve_Damage(
 			nullptr == bossProfile ? 0u : bossProfile->iAttackPower,
 			catalog.Find_DamageRatePercent(boss.strDamageProfileId));
+		const PATTERN_HIT_TRANSFORM hitTransform =
+			ResolvePatternHitTransform(boss);
+		const bool activeWindow =
+			BOSS_PATTERN_HIT_ACTIVATION_KIND::ACTIVE_WINDOW ==
+				boss.ePatternHitActivationKind;
 		for (auto& [playerId, player] : players)
 		{
 			(void)playerId;
+			const bool alreadyHit = activeWindow ?
+				boss.PatternActiveWindowHitTargets.end() != std::find(
+					boss.PatternActiveWindowHitTargets.begin(),
+					boss.PatternActiveWindowHitTargets.end(), player.iNetEntityId) :
+				(boss.bPortalMotionActive &&
+				 boss.PortalStageHitTargets.end() != std::find(
+					boss.PortalStageHitTargets.begin(),
+					boss.PortalStageHitTargets.end(), player.iNetEntityId));
 			/* A successful player counter answers the hit instead of taking it,
 			so it is consulted before any damage is resolved. */
 			if (0u == player.iCurrentHp || !player.isCombatReady ||
-				(boss.bPortalMotionActive &&
-					boss.PortalStageHitTargets.end() != std::find(
-						boss.PortalStageHitTargets.begin(),
-						boss.PortalStageHitTargets.end(), player.iNetEntityId)) ||
-				!ContainsPatternHit(boss, player) ||
+				alreadyHit ||
+				!ContainsPatternHit(boss, player, hitTransform) ||
 				(!boss.bPatternPiercesCover &&
-					IsShieldedByCover(boss, player, coverCircles)))
+					IsShieldedByCover(hitTransform, player, coverCircles)))
 			{
 				continue;
 			}
@@ -2106,8 +2177,8 @@ namespace
 			}
 			SERVER_WORLD_TO_PLAYER_HIT incoming{};
 			incoming.iRawDamage = rawDamage;
-			incoming.fSourceX = boss.fPositionX;
-			incoming.fSourceZ = boss.fPositionZ;
+			incoming.fSourceX = hitTransform.fPositionX;
+			incoming.fSourceZ = hitTransform.fPositionZ;
 			incoming.fPushRangeM = boss.fPatternPushRangeM;
 			incoming.iPushMs = boss.iPatternPushMs;
 			incoming.bKnockdown = boss.bPatternKnockdown;
@@ -2119,6 +2190,8 @@ namespace
 			if (boss.bPortalMotionActive &&
 				SERVER_COMBAT_HIT_RESULT::LANDED == hitResult)
 				boss.PortalStageHitTargets.push_back(player.iNetEntityId);
+			if (activeWindow && SERVER_COMBAT_HIT_RESULT::LANDED == hitResult)
+				boss.PatternActiveWindowHitTargets.push_back(player.iNetEntityId);
 			if (SERVER_COMBAT_HIT_RESULT::LANDED == hitResult &&
 				BOSS_PATTERN_PLAYER_RESPONSE::CAPTURE ==
 					boss.ePatternPlayerResponse &&
@@ -2638,6 +2711,19 @@ void LostArk::Server::CValtanBrain::Update(
 		boss.fPositionZ = boss.fPortalStartZ +
 			(boss.fPortalEndZ - boss.fPortalStartZ) * ratio;
 		boss.fPositionY = boss.fSpawnPositionY;
+	}
+	if (BOSS_PATTERN_HIT_ACTIVATION_KIND::ACTIVE_WINDOW ==
+		boss.ePatternHitActivationKind &&
+		HasElapsedMilliseconds(
+			elapsedStageTicks, boss.iPatternHitActivationStartMs) &&
+		!HasElapsedMilliseconds(
+			elapsedStageTicks,
+			boss.iPatternHitActivationStartMs +
+				boss.iPatternHitActivationLifetimeMs))
+	{
+		ApplyPatternHit(
+			boss, players, catalog, serverTick, coverCircles,
+			outDamageEvents, outCaptureRequests);
 	}
 	while (boss.iAppliedPatternHitCount < boss.iPatternHitCount)
 	{

@@ -95,6 +95,33 @@ class EffectV2ValidatorTests(unittest.TestCase):
     def _write_group(self, group: dict) -> None:
         self._write_json(self.group_root / f"{group['groupId']}.effectv2group.json", group)
 
+    def _write_boss_valtan_clip_fixture(
+        self, binding_clip: str, canonical_clip: str
+    ) -> None:
+        (self.binding_root / "NPC_TEST.effectv2bindings.json").unlink()
+        binding = copy.deepcopy(self.binding)
+        binding["archetypeId"] = "BOSS_VALTAN"
+        binding["bindings"][0]["clip"] = binding_clip
+        self._write_json(
+            self.binding_root / "BOSS_VALTAN.effectv2bindings.json", binding
+        )
+        self._write_json(
+            self.root / "Data/Valtan/Valtan.presentation.json",
+            {
+                "patterns": [
+                    {
+                        "stages": [
+                            {
+                                "animation": {
+                                    "occurrences": [{"clip": canonical_clip}]
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+        )
+
     def _group_binding(self) -> dict:
         binding = copy.deepcopy(self.binding)
         row = binding["bindings"][0]
@@ -112,6 +139,22 @@ class EffectV2ValidatorTests(unittest.TestCase):
     def test_exact_authored_binding_and_resource_join_passes(self) -> None:
         report = VALIDATOR.validate(self.root, self.resource_root)
         self.assertEqual(report, {"authored": 1, "bindings": 1, "groups": 0, "textures": 1})
+
+    def test_boss_valtan_clip_binding_joins_canonical_inventory(self) -> None:
+        self._write_boss_valtan_clip_fixture(
+            "mesh_att_battle_19_01", "mesh_att_battle_19_01"
+        )
+        report = VALIDATOR.validate(self.root, self.resource_root)
+        self.assertEqual(report["bindings"], 1)
+
+    def test_boss_valtan_legacy_clip_binding_fails_closed(self) -> None:
+        self._write_boss_valtan_clip_fixture(
+            "att_battle_19_01", "mesh_att_battle_19_01"
+        )
+        with self.assertRaisesRegex(
+            VALIDATOR.ContractError, "absent from the canonical BOSS_VALTAN"
+        ):
+            VALIDATOR.validate(self.root, self.resource_root)
 
     def test_missing_resource_fails_closed(self) -> None:
         (self.resource_root / "Effect/Test/base.dds").unlink()

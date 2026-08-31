@@ -219,7 +219,8 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             "Patch_ValtanCompositionPatternSound(",
             "Add_ValtanCompositionPatternSound(",
             "Remove_ValtanCompositionPatternSound(",
-            "Save_ValtanCompositionPatternSounds(",
+            "Prepare_ValtanCompositionPatternSoundSave(",
+            "Accept_ValtanCompositionPatternSoundSave(",
             "Retry_ValtanCompositionPatternSoundRuntimeApply(",
             "Is_ValtanCompositionPatternSoundRuntimeReady(",
         ):
@@ -240,7 +241,7 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             self.animation_cpp,
         )
         self.assertIn(
-            "Pattern Sound SOURCE SAVED (separate from Pattern Save & Apply)",
+            "Pattern Sound saved and loaded.",
             self.animation_cpp,
         )
         self.assertNotIn(
@@ -268,18 +269,17 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
         ):
             self.assertIn(token, patch_body)
 
-    def test_detail_exposes_event_start_repeat_and_separate_save(self) -> None:
+    def test_detail_exposes_event_start_repeat_and_one_composition_save(self) -> None:
         for token in (
             "Pattern Sound Typed Source",
             "Sound Event",
             "Source startMs",
             "Repeat Policy",
-            "Save Sound Owner",
-            "Save & Apply",
+            'ImGui::Button("Save##CompositionSequencer")',
             "Add Sound Row",
             "Remove Selected Sound Row",
-            "Save & Apply does not silently save Sound",
-            "Effect timing and Sound timing remain unsaved drafts",
+            "Sequencer Save button stores Pattern, Animation, Effect and Sound changes together",
+            "Effect timing and Sound timing remain unsaved until Save",
         ):
             self.assertIn(token, self.workbench_cpp)
 
@@ -331,7 +331,7 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
         )
         self.assertLess(add_call, timeline_invalidation)
 
-    def test_cross_owner_dirty_state_blocks_dangling_dependency_writes(self) -> None:
+    def test_one_save_validates_cross_owner_dependencies_before_writes(self) -> None:
         sequence_start = self.workbench_cpp.index(
             "bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage("
         )
@@ -349,23 +349,22 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
         )
 
         save_start = self.workbench_cpp.index(
-            "bool_t Client::CActionCompositionWorkbench::Save_Publish_Reload()"
+            "bool_t Client::CActionCompositionWorkbench::Save_Reload()"
         )
         save_end = self.workbench_cpp.index(
             "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
             save_start,
         )
         save_body = self.workbench_cpp[save_start:save_end]
-        self.assertIn("Is_PatternSoundDraftDirty(SoundStatus)", save_body)
+        self.assertIn("const bool_t bSaveSound = Is_PatternSoundDraftDirty(SoundStatus)", save_body)
         self.assertLess(
-            save_body.index("Is_PatternSoundDraftDirty(SoundStatus)"),
-            save_body.index("Save_ValtanCanonicalProduct(SaveStatus)"),
+            save_body.index("Validate_ValtanCompositionPatternSoundGraphDependencies("),
+            save_body.index("Save_ValtanCompositionProduct("),
         )
         for token in (
             "bPatternMutationAdmitted",
-            "Sound owner draft is pending.",
-            "Create Pattern is blocked until the Pattern Sound source draft",
-            "bMutationAdmitted && !m_bAuthoringDraftDirty",
+            "Prepare_ValtanCompositionPatternSoundSave(",
+            "Accept_ValtanCompositionPatternSoundSave(",
             "Tune / Remove Existing Server Collider / Hit Schedule",
             "Add Manual Audition Server Collider / Hit Schedule",
             "View Collider Authority (New Add Unavailable)",
@@ -376,7 +375,7 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             self.workbench_cpp,
         )
 
-    def test_reload_discard_and_runtime_apply_are_fail_closed(self) -> None:
+    def test_reload_discard_and_runtime_apply_are_automatic_and_fail_closed(self) -> None:
         reload_start = self.workbench_cpp.index(
             "bool_t Client::CActionCompositionWorkbench::Reload_Canonical()"
         )
@@ -426,7 +425,6 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             "Review Discard Sound Draft",
             "Confirm Discard + Reload Sound Owner",
             "Cancel Discard",
-            "Retry Apply Saved Sound",
             "m_bConfirmDiscardPatternSoundDraft",
         ):
             self.assertIn(token, self.workbench_cpp + self.workbench_h)
@@ -445,14 +443,15 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
         save_body = self.animation_cpp[save_start:save_end]
         for token in (
             "m_bValtanPatternSoundRuntimeApplyReady",
-            "ACTIVE CONSUMER APPLY DEFERRED",
+            "Pattern Sound saved and loaded.",
             "return bDraftReloaded;",
         ):
             self.assertIn(token, save_body)
         self.assertNotIn(
             "Apply_ValtanCompositionPatternSoundsToActiveConsumers(", save_body
         )
-        self.assertIn("ApplySoundToExactRuntime", self.workbench_cpp)
+        self.assertNotIn("Retry Apply Saved Sound", self.workbench_cpp)
+        self.assertIn("m_LastPatternSoundAutoApplyRevision", self.workbench_cpp)
         self.assertIn(
             "Get_ServerActivePatternRevision(", self.workbench_cpp
         )
@@ -473,10 +472,10 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
         self.assertNotIn("Get_ServerActivePatternRevision(", toolbar)
         self.assertIn('"Server: %s"', toolbar)
         self.assertIn(
-            "Server not ready. Save and restart Server, then re-enter the arena.",
+            "Saved data is newer than this Valtan arena.",
             toolbar,
         )
-        self.assertIn(
+        self.assertNotIn(
             'ImGui::CollapsingHeader("Advanced Diagnostics")',
             self.workbench_cpp,
         )
@@ -504,23 +503,12 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
         self.assertIn(
             "Get_ServerActivePatternRevision(", self.boss_cpp
         )
-        apply_start = self.workbench_cpp.index(
-            "const auto ApplySoundToExactRuntime ="
-        )
-        apply_end = self.workbench_cpp.index(
-            "if (m_bAuthoringDraftDirty)", apply_start
-        )
-        apply_body = self.workbench_cpp[apply_start:apply_end]
-        self.assertGreaterEqual(
-            apply_body.count("Get_ServerActivePatternRevision("), 2
-        )
-        self.assertLess(
-            apply_body.index("Retry_ValtanCompositionPatternSoundRuntimeApply("),
-            apply_body.rindex("Get_ServerActivePatternRevision("),
-        )
-        self.assertIn(
-            "Invalidate_ValtanCompositionPatternSoundRuntimeApply(", apply_body
-        )
+        toolbar = self.workbench_cpp[
+            self.workbench_cpp.index("bool_t Client::CActionCompositionWorkbench::Render_Toolbar("):
+            self.workbench_cpp.index("void Client::CActionCompositionWorkbench::Render_Browser(")
+        ]
+        self.assertIn("Retry_ValtanCompositionPatternSoundRuntimeApply(", toolbar)
+        self.assertIn("m_LastPatternSoundAutoApplyRevision", toolbar)
 
     def test_runtime_consumer_receipt_is_enforced_at_boss_command_boundary(self) -> None:
         gate_start = self.client_replication_h.index(
@@ -937,7 +925,7 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             legacy_body.index("Set_ValtanStageDraft("),
         )
         save_start = self.workbench_cpp.index(
-            "bool_t Client::CActionCompositionWorkbench::Save_Publish_Reload()"
+            "bool_t Client::CActionCompositionWorkbench::Save_Reload()"
         )
         save_end = self.workbench_cpp.index(
             "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(", save_start
@@ -947,7 +935,7 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             save_body.index(
                 "Validate_ValtanCompositionPatternSoundGraphDependencies("
             ),
-            save_body.index("Save_ValtanCanonicalProduct(SaveStatus)"),
+            save_body.index("Save_ValtanCompositionProduct("),
         )
 
     def test_unrelated_soundless_save_does_not_readmit_unchanged_sound_debt(self) -> None:

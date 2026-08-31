@@ -1657,6 +1657,52 @@ bool_t Client::CValtanPatternSoundCueDocument::Remove_AuthoringRow(
 	return true;
 }
 
+bool_t Client::CValtanPatternSoundCueDocument::Serialize_TransactionCandidate(
+	const VALTAN_PATTERN_SOUND_CUE_DOCUMENT& Document,
+	std::string& strOutSerialized,
+	std::string& strOutStatus)
+{
+	strOutSerialized.clear();
+	if (1u != Document.iFormatVersion ||
+		"BOSS_VALTAN" != Document.strOwnerArchetypeId ||
+		Document.Cues.empty() || Document.Cues.size() > 1024u)
+	{
+		strOutStatus =
+			"Pattern Sound transaction candidate has an invalid owner header or cue count.";
+		return false;
+	}
+	for (const VALTAN_PATTERN_SOUND_CUE& Cue : Document.Cues)
+	{
+		if (!Is_StableId(Cue.strBindingId) ||
+			!Is_StableId(Cue.strOccurrenceId) ||
+			!Is_StableId(Cue.strPatternId) ||
+			!Is_StableId(Cue.strStageId) ||
+			!Is_StableId(Cue.strActionId) ||
+			!Is_StableId(Cue.strClipOccurrenceId) ||
+			Cue.strSoundBank.empty() || Cue.strSoundEvent.empty() ||
+			(Cue.eRepeatPolicy != VALTAN_PATTERN_SOUND_REPEAT_POLICY::ONCE &&
+			 Cue.eRepeatPolicy !=
+				VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP))
+		{
+			strOutStatus =
+				"Pattern Sound transaction candidate contains an invalid typed cue row.";
+			return false;
+		}
+	}
+	const std::string Serialized = Serialize_Document(Document);
+	std::size_t iDeclaredCues = 0u;
+	if (!Count_DeclaredCues(Serialized, iDeclaredCues) ||
+		iDeclaredCues != Document.Cues.size())
+	{
+		strOutStatus =
+			"Pattern Sound transaction candidate failed strict serialization verification.";
+		return false;
+	}
+	strOutSerialized = Serialized;
+	strOutStatus = "Prepared Pattern Sound candidate bytes for the Composition transaction.";
+	return true;
+}
+
 bool_t Client::CValtanPatternSoundCueDocument::Save_Atomic(
 	const VALTAN_PATTERN_SOUND_CUE_DOCUMENT& Document,
 	const std::unordered_map<std::string, f32_t>&

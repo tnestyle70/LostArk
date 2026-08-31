@@ -823,6 +823,16 @@
       "authoringPath": "Effects/Authored/effect.valtan.project-tuned.sequence.trash.effect.json"
     },
     {
+      "effectAssetId": "effect.valtan.ground-roar.rock.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.ground-roar.rock.active.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.ground-roar.rock.explode",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.ground-roar.rock.explode.effect.json"
+    },
+    {
       "effectAssetId": "effect.valtan.sequence.charge",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.valtan.sequence.charge.effect.json"

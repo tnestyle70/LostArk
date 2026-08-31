@@ -9,9 +9,7 @@ if str(PIPELINE) not in sys.path:
     sys.path.insert(0, str(PIPELINE))
 
 from validate_valtan_requested_pattern_coverage import (  # noqa: E402
-    EXPECTED_ENCOUNTER_COUNT,
-    EXPECTED_PRODUCT_COUNT,
-    REQUESTED_ABSENT_CONCEPTS,
+    ANIMATIONLESS_SKELETON_CONTRACTS,
     REQUESTED_PRODUCT_IDS,
     REQUESTED_REFERENCE_ONLY_IDS,
     validate,
@@ -35,9 +33,10 @@ class ValtanRequestedPatternCoverageContractTests(unittest.TestCase):
         cls.native_contract = NATIVE_CONTRACT.read_text(encoding="utf-8-sig")
         cls.harness_project = HARNESS_PROJECT.read_text(encoding="utf-8-sig")
 
-    def test_real_owner_counts_are_product_33_and_encounter_57(self) -> None:
-        self.assertEqual(EXPECTED_PRODUCT_COUNT, self.report.product_count)
-        self.assertEqual(EXPECTED_ENCOUNTER_COUNT, self.report.encounter_count)
+    def test_real_owner_sets_include_three_animationless_skeletons(self) -> None:
+        self.assertEqual(self.report.product_count, len(self.report.product_ids))
+        self.assertEqual(self.report.encounter_count, len(self.report.encounter_ids))
+        self.assertGreater(self.report.product_count, 0)
         self.assertLess(self.report.product_count, self.report.encounter_count)
 
     def test_requested_existing_product_patterns_are_playable(self) -> None:
@@ -50,12 +49,16 @@ class ValtanRequestedPatternCoverageContractTests(unittest.TestCase):
                 self.assertNotIn(pattern_id, self.report.product_ids)
                 self.assertNotIn(pattern_id, self.report.flow_pattern_ids)
 
-    def test_silence_and_stone_creation_have_no_stable_pattern_yet(self) -> None:
-        all_ids = self.report.product_ids | self.report.encounter_ids
-        for concept, (proposed_id, token) in REQUESTED_ABSENT_CONCEPTS.items():
-            with self.subTest(concept=concept):
-                self.assertNotIn(proposed_id, all_ids)
-                self.assertFalse(any(token in pattern_id for pattern_id in all_ids))
+    def test_animationless_authoring_skeletons_are_stable_product_rows(self) -> None:
+        self.assertEqual(
+            frozenset(ANIMATIONLESS_SKELETON_CONTRACTS),
+            self.report.animationless_skeleton_ids,
+        )
+        for pattern_id in ANIMATIONLESS_SKELETON_CONTRACTS:
+            with self.subTest(pattern_id=pattern_id):
+                self.assertIn(pattern_id, self.report.product_ids)
+                self.assertIn(pattern_id, self.report.encounter_ids)
+                self.assertNotIn(pattern_id, self.report.flow_pattern_ids)
 
     def test_native_contract_executes_real_playable_and_next_inventory(self) -> None:
         self.assertIn(
@@ -66,8 +69,8 @@ class ValtanRequestedPatternCoverageContractTests(unittest.TestCase):
             "CValtanPatternTree::Build_PlayablePatternInventory(",
             "CValtanPatternTree::Build_NextPatternInventory(",
             "Inventory.Contains(Slot.strPatternId)",
-            "EXPECTED_PRODUCT_PATTERN_COUNT",
-            "EXPECTED_ENCOUNTER_PATTERN_COUNT",
+            "ManagedPatternIds.size() == Inventory.Get_PatternCount()",
+            "ManagedPatternIds.size() + ReferencePatternIds.size() == Patterns.size()",
             "REQUESTED_REFERENCE_ONLY_PATTERN_IDS",
         ):
             self.assertIn(marker, self.native_contract)

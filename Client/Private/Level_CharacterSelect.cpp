@@ -1004,6 +1004,8 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 			pBossActor->combatObjectVisuals)
 		{
 			EffectAssetIds.push_back(Visual.effectAssetId);
+			if (!Visual.hitEffectAssetId.empty())
+				EffectAssetIds.push_back(Visual.hitEffectAssetId);
 		}
 		if (!ProductAdmission.Validate_StillCurrent(Status))
 		{

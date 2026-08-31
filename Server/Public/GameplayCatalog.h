@@ -13,7 +13,7 @@ namespace LostArk::Server
 	/* The only gameplay bootstrap version this build reads. The publisher
 	stamps it and the loader refuses anything else, so a bump has to travel
 	through both sides at once instead of leaving one of them behind. */
-	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 27u;
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 28u;
 
 	/* One point on the displacement an animator baked into a clip. The player
 	reads it per skill and the boss per pattern stage, so it carries no owner in
@@ -288,6 +288,16 @@ namespace LostArk::Server
 		std::uint32_t iDownMs = 0;
 	};
 
+	/* A presentation pulse belongs to the same authoritative object lifetime as
+	   a damage hit, but intentionally carries no shape or damage profile. The
+	   room emits the existing reliable combat-object presentation event at the
+	   authored time, including at the terminal lifetime edge. */
+	struct BOSS_COMBAT_OBJECT_PRESENTATION_PULSE final
+	{
+		std::string strPresentationEventId;
+		std::uint32_t iAtMs = 0;
+	};
+
 	struct BOSS_COMBAT_OBJECT_DEFINITION final
 	{
 		std::string strEncounterId;
@@ -305,8 +315,9 @@ namespace LostArk::Server
 		float fSpeedMps = 0.f;
 		float fMaximumDistanceM = 0.f;
 		std::uint32_t iLifeMs = 0;
-		std::uint32_t iExpectedHitCount = 0;
+		std::uint32_t iExpectedEventCount = 0;
 		std::vector<BOSS_COMBAT_OBJECT_HIT> Hits;
+		std::vector<BOSS_COMBAT_OBJECT_PRESENTATION_PULSE> PresentationPulses;
 	};
 
 	enum class BOSS_PATTERN_STAGE_KIND
@@ -391,6 +402,8 @@ namespace LostArk::Server
 		SET_BOSS_FLAG,
 		SET_STAGGER_GAUGE,
 		SET_SHIELD,
+		SET_PLAYER_BIND,
+		SET_PLAYER_SILENCE,
 		SET_GAMEPLAY_PHASE,
 		SPAWN_COMBAT_OBJECT,
 		SPAWN_COMBAT_OBJECT_VOLLEY,
@@ -416,7 +429,10 @@ namespace LostArk::Server
 	enum class BOSS_COMBAT_OBJECT_VOLLEY_POLICY : std::uint8_t
 	{
 		NONE,
-		PER_ALIVE_PLAYER
+		PER_ALIVE_PLAYER,
+		/* Resolve one radial layout around the live Server boss pose. Authored
+		angles are relative to the boss yaw, never world-absolute. */
+		BOSS_RELATIVE
 	};
 
 	enum class BOSS_COMBAT_OBJECT_LAYOUT_KIND : std::uint8_t
@@ -479,6 +495,18 @@ namespace LostArk::Server
 	{
 		DAMAGE,
 		CAPTURE
+	};
+
+	enum class BOSS_PATTERN_HIT_ANCHOR_KIND : std::uint8_t
+	{
+		BOSS_CURRENT,
+		STAGE_ORIGIN
+	};
+
+	enum class BOSS_PATTERN_HIT_ACTIVATION_KIND : std::uint8_t
+	{
+		PULSE_SCHEDULE,
+		ACTIVE_WINDOW
 	};
 
 	enum class BOSS_PATTERN_PART_DAMAGE_POLICY : std::uint8_t
@@ -551,6 +579,20 @@ namespace LostArk::Server
 		cannot be represented by one delay plus a uniform interval. Empty keeps
 		the legacy schedule above. */
 		std::vector<std::uint32_t> HitOffsetsMs;
+		/* Spatial hit authority is independent from Effect presentation. The
+		default follows the current boss transform and preserves every existing
+		pulse-authored stage. */
+		BOSS_PATTERN_HIT_ANCHOR_KIND eHitAnchorKind =
+			BOSS_PATTERN_HIT_ANCHOR_KIND::BOSS_CURRENT;
+		float fHitAnchorForwardOffsetM = 0.f;
+		float fHitAnchorRightOffsetM = 0.f;
+		float fHitAnchorYawOffsetDegrees = 0.f;
+		/* ACTIVE_WINDOW evaluates overlap on every fixed tick and records each
+		landed target once. PULSE_SCHEDULE keeps iHitCount/delay/offsets verbatim. */
+		BOSS_PATTERN_HIT_ACTIVATION_KIND eHitActivationKind =
+			BOSS_PATTERN_HIT_ACTIVATION_KIND::PULSE_SCHEDULE;
+		std::uint32_t iHitActivationStartMs = 0u;
+		std::uint32_t iHitActivationLifetimeMs = 0u;
 		/* Official player push of this stage's hit: metres over iPushMs, a
 		negative range pulls the player toward the boss. */
 		float fPushRangeM = 0.f;

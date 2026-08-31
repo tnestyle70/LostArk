@@ -2,6 +2,11 @@
 
 ## 목표
 
+> 2026-08-31 범위 정정: 이 문서는 더 이상 Blueprint UI 자체를 최종 목표로 삼지 않는다.
+> 사용자가 실제로 만들려는 Valtan Pattern을 `Data -> Shared -> Server -> Client presentation ->
+> Composition Sequencer -> 실행형 oracle`로 하나씩 닫는 구현 계획서다. UI shell, source JSON 추가,
+> source-token test만으로 완료를 선언하지 않는다.
+
 이미 병합된 Action Composition Workbench를 다시 만들지 않는다. 현재 가능한 Pattern 생성,
 Animation·Effect·Sound Resource 연결, Stage clock/gap 조정, Sequencer box 편집과 읽기 전용
 Boss Pattern graph를 그대로 사용한다. 이번 후속 작업은 다음 한 흐름을 안전하게 닫는다.
@@ -21,25 +26,44 @@ Blueprint는 새 JSON, 새 runtime VM, 새 Server authority가 아니다. `Data/
 presentation 정본을 편집하는 UI projection이고, Boss Tool은 Publish된 revision을 재생하는
 검증 도구다.
 
+이번 구현의 필수 범위는 다음과 같다.
+
+| 수직 슬라이스 | 완료 계약 |
+|---|---|
+| Counter Logic box | `VALTAN_TRASH`, `VALTAN_TRIPLE_COUNTER`의 exact Stage counter window, proxy offset/radius, success next-window/Groggy/Recovery와 timeout failure branch를 Sequencer box와 Box Detail에서 편집하고 Server fixed-tick으로 검증 |
+| 입장·재생 admission | 오래된 파일 SHA/bytes/generation/inventory snapshot 때문에 Lobby entry·Save·Complete Play가 막히지 않게 제거. JSON/schema/stable ID/path 검증, actual canonical load, Server gameplay revision CAS, rollback은 유지 |
+| 무력화 Pattern | `VALTAN_STAGGER_SLOT` 빈 topology에서 시작해 Server stagger gauge, damage contribution, depleted branch와 구형 Effect presentation을 구현 |
+| 속박 Pattern | `VALTAN_BIND_SLOT`에서 random alive player를 Server가 lock하고 약 10m 상승, 5초 이동/스킬 제한, 안전한 복귀와 disconnect/death rollback을 구현 |
+| 침묵 Pattern | `VALTAN_SILENCE_SLOT`에서 5초 Server skill-use reject와 Client HUD cooldown-mask presentation을 구현. UI mask는 권위가 아님 |
+| 땅구르기 후 사자후 | `VALTAN_GROUND_ROAR`에서 boss-relative yaw `0/90/180/270`의 정확히 네 rock combat object를 생성하고 5000ms 뒤 explode Effect와 함께 despawn |
+| Six Pizza | random alive target 기준 Server-locked facing을 sector root에 적용하고, 늦게 생성되는 모든 Effect Element도 같은 회전 root/누적 회전을 소비 |
+| 버러지 Pattern | Counter success Groggy, timeout rush, capture, left-hand attach, all/any grabbed 분기, miss/retry terminal을 유한 graph로 구현 |
+| 3연속 Counter | 세 Counter window를 실제 Stage box로 표시하고 success progress/failure/마지막 실패 전멸 분기를 Server에서 검증 |
+| 잡기 후 날리기 | server hit collider만 capture 권위로 사용하고 `BossModel * LeftHandBone * localOffset` anchor, release velocity/duration/yaw를 Box Detail에서 편집 |
+| Collider Trigger 저작 | 선택한 Collider box에서 exact start/lifetime, Circle/Ring/Cone/Box 크기, Boss Root/Left Hand/locked target anchor, Damage/Grab/Counter/Bind 계열 typed trigger를 편집한다. Effect geometry는 판정으로 승격하지 않고 Server fixed-tick 소비와 Client debug mirror를 같은 값으로 검증 |
+| Portal | `VALTAN_WARP`의 정확히 8회 돌진을 16m, 회차 사이 1000ms gap으로 source/Product/Server/Composition timeline에 동일하게 표시 |
+| V2 Group | Effect Tool V2 Group preview와 Composition exact binding이 같은 group/leaf runtime을 통해 실제 재생되고 cache refresh 후 즉시 restage |
+
+사용자가 Animation Sequence를 찾아 Pattern slot에 넣는 선택 작업은 사용자 저작 범위다. 구현은 빈
+Pattern slot, 실제 typed owner Save, Server 기능, Sequencer 가시화와 실패 rollback을 제공한다.
+
 ## G00. 현재 물리 폴더 기준선
 
 ### 저장소 상태
 
-2026-08-31 실측 기준:
+2026-08-31 현재 물리 폴더 실측 기준:
 
 ```text
-canonical base : origin/main f9e6b8500d5fa09080bb5a8a7b428b32fa351610
-merged PR      : #274 codex/composition-workbench
-target branch  : codex/valtan-pattern-blueprint-authoring
-shared worktree: 계획 도중 타 세션이 codex/kakul-saydon-animation-pattern-authoring으로
-                 전환했고 Workbench/Animation/test 변경을 가진 dirty 상태
+canonical base : origin/main 8180fd2d6de6e45e6ab1a62a1d26a64fe0c301cc
+target branch  : codex/simple-authoring-ux
+shared worktree: 여러 수직 슬라이스의 tracked/untracked 변경이 공존하는 dirty 상태
 LAN role       : server-host, Server + Client profile
 ```
 
-`codex/composition-workbench`의 tree와 `origin/main` tree는 byte-identical하다. 이 PLAN은
-과거 WIP가 아니라 PR #274가 병합된 물리 source를 기준으로 한다. 실제 구현과 commit은 타 세션
-변경을 보존한 뒤 target branch의 별도 clean worktree 또는 안전하게 복귀한 checkout에서만
-시작한다. 현재 공유 dirty worktree에서 자동 stage/commit하지 않는다.
+현재 HEAD와 `origin/main`은 동일하지만 물리 worktree는 dirty다. 이 PLAN은 커밋 이력의 완료
+주장이 아니라 현재 물리 source/data/consumer를 기준으로 한다. 사용자 소유
+`Data/Effects/Authored/effect.valtan.sky-axe.active.effect.json`과 관계없는 untracked Map Product는
+보존한다. 명시적 요청 전에는 자동 stage/commit/push하지 않는다.
 
 ### 데이터 정본과 생성물
 
@@ -233,22 +257,23 @@ drag source outcome pin
 실패하면 draft와 이전 graph snapshot을 그대로 유지하고 exact reason을 edge inspector와 Session에
 동시에 표시한다.
 
-## G03. Counter -> Groggy 첫 vertical slice
+## G03. Counter Success typed target과 3연속 Counter vertical slice
 
 기존 `CBalanceTool::Get_ValtanCounterWindowDraft`와
 `Set_ValtanCounterWindowDraft`를 재사용한다. 두 번째 Counter writer를 만들지 않는다.
 
 ```text
-[STEP_07 WINDUP]
-  COUNTER_HIT o----------------> [GROGGY]
-  TIMEOUT     o----------------> [STEP_08]
+[WINDUP]
+  COUNTER_HIT o----------------> [다음 WINDUP | GROGGY | RECOVERY]
+  TIMEOUT     o----------------> [같은 Pattern의 뒤쪽 failure Stage]
 ```
 
 ### Blueprint가 소유할 항목
 
 - Counter Enabled/Disabled
 - `COUNTER_HIT` target connect/retarget/disconnect
-- 같은 Pattern의 뒤쪽 `GROGGY` Stage 후보 필터
+- 같은 Pattern의 뒤쪽 `WINDUP`, `GROGGY`, `RECOVERY` success Stage 후보 필터
+- exact `TIMEOUT` failure Stage/action 표시와 보존
 - 구조 변경 preview와 validation 결과
 
 ### Details가 계속 소유할 수치
@@ -262,12 +287,17 @@ drag source outcome pin
 ### admission
 
 - source Stage는 `WINDUP`이어야 한다.
-- target은 같은 Pattern의 source보다 뒤쪽 `GROGGY` Stage/action이어야 한다.
+- success/timeout target은 같은 Pattern의 source보다 뒤쪽 Stage/action이어야 한다.
+- success target은 다음 Counter의 `WINDUP`, 반격 성공의 `GROGGY`, 마지막 정상 종료의
+  `RECOVERY` 중 하나다. 다른 kind, cross-Pattern, backward, cycle target은 거부한다.
 - mutation 결과에는 enter/exit `boss.flag.counterable` event와 branch가 함께 존재해야 한다.
 - 완전히 부재한 counter/groggy flag pair는 기존 writer가 함께 materialize할 수 있다. 한쪽만 있는
   pair, duplicate event, branch와 flag가 서로 다른 target을 가리키는 부분 상태는 거부한다.
-- target GROGGY에는 mutation 후 groggy enter/exit flag pair가 존재해야 한다.
-- cross-Pattern target, 자기 자신, earlier Stage와 duplicate `COUNTER_HIT`은 거부한다.
+- target이 `GROGGY`일 때만 mutation 후 groggy enter/exit flag pair를 요구하거나 생성한다.
+  다음 `WINDUP`과 `RECOVERY`에는 groggy flag를 생성하지 않는다.
+- Counter disable은 `COUNTER_HIT`과 paired counterable flag만 제거하며 기존 `TIMEOUT` 흐름은
+  보존한다.
+- 자기 자신, earlier Stage와 duplicate `COUNTER_HIT`/`TIMEOUT`은 거부한다.
 
 현재 `VALTAN_TRASH`의 실제 연결을 native fixture로 고정한다.
 
@@ -275,6 +305,37 @@ drag source outcome pin
 STEP_07 COUNTER_HIT -> valtan.sequence.center-trash-rush-if.groggy
 STEP_07 TIMEOUT     -> valtan.sequence.center-trash-rush-if.step-08
 ```
+
+`VALTAN_TRIPLE_COUNTER`는 sealed legacy row를 단순 복사하지 않는다. pipeline, canonical Client
+loader, typed draft owner와 Server Product admission에 남아 있는 `COUNTER_HIT -> GROGGY` 강제를
+먼저 위 계약으로 일반화한 뒤 다음 finite graph를 split source로 승격한다.
+
+```text
+COUNTER_1 1800 ms
+├─ COUNTER_HIT -> COUNTER_2
+└─ TIMEOUT     -> FAIL_1 (18 m damage) -> COUNTER_2
+
+COUNTER_2 1600 ms
+├─ COUNTER_HIT -> COUNTER_3
+└─ TIMEOUT     -> FAIL_2 (18 m damage) -> COUNTER_3
+
+COUNTER_3 1400 ms
+├─ COUNTER_HIT -> RECOVERY
+└─ TIMEOUT     -> FAIL_3 (100 m wipe) -> RECOVERY
+
+RECOVERY 1200 ms -> END
+```
+
+같은 transaction에서 `Valtan.gameplay.json`/`Valtan.presentation.json`에 managed pattern을 추가하고,
+`Valtan.legacy-compatibility.json`의 sealed entry와 gameplay의 세 `REFERENCE_ONLY_LEGACY` reaction
+layer를 제거한다. generated Encounter/binding/cue Product는 projector만 생성한다. 기존 Product가
+실제로 사용하던 groggy start/loop/end clip과 첫 carrier cue의 의미는 보존하되 공격 animation을
+복원했다고 주장하지 않는다.
+
+버러지 retry는 back-edge를 추가하지 않는다. 현재 finite graph validator가 cycle을 의도적으로
+거부하므로 Counter/Rush attempt를 stable Stage/action ID로 세 번 명시적으로 unroll하고 세 번째
+miss만 terminal `RUSH_MISS`로 보낸다. 각 attempt의 capture, Counter success Groggy, all/partial
+grabbed 분기는 Server fixed-tick oracle로 따로 검증한다.
 
 ## G04. Sequencer 구조 편집과 명시적 공백
 
@@ -382,19 +443,24 @@ source가 다르다.
 local Arena Clone
   current authoring catalog snapshot + local Pattern draft
   -> immediate cache refresh/restage
-  -> Server state, Server-active revision, world-entry manifest를 바꾸지 않음
+  -> Server state와 Server-active gameplay revision을 바꾸지 않음
 
 saved Product / Server Valtan
-  build/publish가 봉인한 immutable presentation generation
+  현재 typed physical presentation closure
   + Server-active gameplay revision
-  -> world re-entry 뒤 Complete Play / Restart
+  -> canonical reload 뒤 Complete Play / Restart
 ```
 
-따라서 `Reload Complete Play Inventory`나 Effect V2 catalog reload는 local inventory/view만
-갱신한다. 이미 입장한 world가 고정한 presentation manifest를 새 generation으로 승격하지 않으며,
-binding/group/leaf bytes가 manifest와 달라졌다면 Complete Play는 계속 fail-closed해야 한다.
-Product 확인은 필요한 publish/build, Server restart와 arena re-entry 뒤 exact generation이 다시
-일치한 경우에만 가능하다.
+따라서 Effect V2 catalog reload는 authoring snapshot과 Arena Clone을 즉시 갱신한다. 입장 시점에
+캡처한 파일 byte count/SHA/inventory generation을 이후의 Save·Complete Play 차단 조건으로 사용하지
+않는다. 재생 시점에는 현재 binding/group/leaf를 typed parse/validate하고, 같은 read transaction 안에서
+파일이 바뀌었으면 candidate를 버리고 이전 admitted view를 유지한다. Server가 고정하는 것은 gameplay
+revision과 exact Pattern occurrence이며 presentation 파일의 과거 SHA가 아니다.
+
+이 정정은 검증을 없애는 것이 아니다. malformed JSON/schema/stable ID/path, missing group/leaf,
+duplicate expanded occurrence, canonical graph load 실패는 계속 거부한다. 단, 실패 이유는 사용자가
+고칠 수 있는 한 줄 상태와 owning Tool deep-link로 표시하고 raw endpoint/WSA/SHA dump를 기본 UI에
+노출하지 않는다.
 
 ### Pattern Save와 기존 Sound debt의 no-new-debt 검증
 
@@ -555,6 +621,250 @@ Server locked facing 계약, Client arena-center matrix helper, 늦게 시작하
 동일 root 합성과 실패 시 이전 matrix 보존이다. 사용자의 Client 육안 판정 전에는 visual PASS로
 기록하지 않는다.
 
+## G08-A. stale SHA/bytes 차단 제거와 실제 admission
+
+### 보존할 검증
+
+```text
+current typed source/Product parse
+-> schema/stable ID/reference/path validate
+-> candidate stage
+-> same-read still-current 확인
+-> canonical graph admission
+-> commit 또는 이전 admitted view 보존
+```
+
+- `NetworkManager` world entry는 Server가 승인한 gameplay revision과 protocol만 pin한다.
+- `ValtanPresentationGenerationAdmission`은 과거 receipt의 byte count/SHA를 현재 파일과 비교해
+  entry/replay를 막지 않는다. 현재 physical closure를 typed parse한 결과만 candidate로 사용한다.
+- `BossTool`, Composition, Lobby의 기본 UI에서는 raw SHA, WSA, packet, endpoint provenance dump를
+  제거한다. 실패는 `Pattern data invalid`, `Server not ready`, `Reload required`처럼 한 줄로 표시한다.
+- `Validate_StillCurrent`, exact Server revision CAS, partial-write rollback, canonical loader 실패 차단은
+  제거하지 않는다. "diagnostics 삭제"를 검증 삭제로 해석하지 않는다.
+
+실행 oracle은 (1) presentation 파일이 world entry 뒤 합법적으로 교체돼도 gameplay revision이 같고
+현재 closure가 유효하면 reload/replay 가능, (2) malformed candidate는 이전 view 보존, (3) Server
+gameplay revision stale은 reject, (4) mid-read replacement는 commit하지 않음을 각각 고정한다.
+
+## G08-B. Counter, 버러지, 3연속 Counter
+
+Sequencer의 `Logic` lane에는 generic 텍스트가 아니라 exact Stage-owned Counter box를 그린다.
+
+```text
+Counter box
+  stableId      = <pattern>/<stage>/logic/counter
+  startMs       = Stage start
+  durationMs    = Stage duration
+  proxy.anchor  = BOSS_LOCAL
+  proxy.offset  = x/z
+  proxy.radiusM = positive range
+  success       = COUNTER_HIT -> GROGGY/progress
+  timeout       = TIMEOUT -> authored failure target
+```
+
+- Logic `+`는 선택 Stage에 Counter를 materialize하고 기본 proxy를 명시적으로 저장한다.
+- box body drag는 occurrence 시작을 바꾸지 않는다. Counter는 Stage clock 소유이므로 right-trim 또는
+  Box Detail duration이 Stage duration을 바꾼다.
+- Box Detail은 enable, proxy offset X/Z, radius, success/failure target을 보여준다. `Delete`는 해당
+  Counter flag/proxy/branch만 제거하고 Stage/Animation을 지우지 않는다.
+- `VALTAN_TRASH`는 STEP_07 success Groggy와 timeout capture/rush를 보존하면서 finite miss/retry를
+  실제 Stage bundle로 저장한다. capture 후 `ANY_PLAYER_GRABBED`, `ALL_PLAYERS_GRABBED`,
+  counter success release, timeout execute/slam을 Server trace로 검증한다.
+- `VALTAN_TRIPLE_COUNTER`는 세 Counter Stage를 각각 별도 box로 표시한다. 성공은 다음 window/progress,
+  실패는 authored failure, 마지막 실패는 wipe/terminal로 구분한다. 한 bool을 세 구간에 공유하지 않는다.
+
+## G08-C. 무력화·속박·침묵 Pattern
+
+세 Pattern은 source에 빈 5000ms Stage와 `animation.mode = NONE`으로 먼저 존재한다. 빈 slot 자체를
+완료로 기록하지 않고 다음 gameplay consumer가 연결된 뒤에만 Pattern slice가 완료된다.
+
+### 무력화
+
+```text
+Pattern start -> stagger shield/gauge active
+eligible Server damage -> gauge decrement
+gauge <= 0 -> STAGGER_SUCCESS/GROGGY branch
+timeout      -> authored failure/terminal
+Client       -> snapshot gauge + surrounding sphere Effect presentation
+```
+
+게이지와 damage contribution은 Server Balance/gameplay owner가 소유한다. ImGui는 값과 branch를
+편집하고 HUD/Effect는 snapshot을 표시할 뿐 로컬 damage로 감소시키지 않는다.
+
+### 속박
+
+```text
+random alive target lock
+-> Server movement/skill restraint
+-> target Y + 10m presentation/authoritative pose policy
+-> 5000ms hold
+-> navigation-projected release position
+```
+
+death, disconnect, level transfer, Pattern cancel에서 restraint와 attachment를 반드시 해제한다. Client
+transform 강제만으로 구현하지 않는다.
+
+### 침묵
+
+```text
+Pattern silence window 5000ms
+-> Server rejects skill commands for affected player(s)
+-> snapshot status end tick
+-> Client quick-slot cooldown mask presentation
+```
+
+HUD mask red/height는 presentation이며 Server silence authority를 대신하지 않는다. 종료·cancel·re-entry
+후 status가 남지 않는 native oracle을 둔다.
+
+## G08-D. 땅구르기 후 사자후 네 방향 돌
+
+`VALTAN_GROUND_ROAR`의 typed Server action이 exact 네 combat object를 생성한다.
+
+```text
+pattern/boss transform at spawn
+  + yaw 0   -> rock occurrence 0
+  + yaw 90  -> rock occurrence 1
+  + yaw 180 -> rock occurrence 2
+  + yaw 270 -> rock occurrence 3
+
+each rock: visible active Effect -> lifetime 5000ms -> reliable explode event -> hit Effect -> despawn
+```
+
+- 네 occurrence는 vector index가 아니라 stable occurrence ID를 가진다.
+- boss yaw를 두 번 더하거나 world cardinal로 고정하지 않는다.
+- 사용자가 지정하지 않은 damage/radius를 임의로 추가하지 않는다. visual-only typed object가 불가능하면
+  실제 기존 authored 근거를 사용하고 PROJECT_TUNED 값으로 명시한다.
+- rollback/Pattern cancel/room teardown에서 남은 rock을 모두 제거한다.
+- Sequencer Effect/Logic lane에는 네 spawn과 5000ms lifetime/explosion을 한 clock으로 표시한다.
+
+## G08-E. Six Pizza 회전 root
+
+기존 `arena.center.facing` 고정 facing은 첫 단계일 뿐이다. 실제 완료 계약은 다음과 같다.
+
+```text
+random alive player snapshot
+-> Server locks pizza root yaw
+-> sector rotation track evaluates root yaw(t)
+-> every early/late Element evaluates Transform = arena center * root yaw(t/terminal) * local element
+-> landing/impact uses the same locked/final root, never raw player yaw independently
+```
+
+Effect element별 yaw 복사로 우회하지 않고 composite invocation의 typed rotation root 하나를 사용한다.
+data -> snapshot -> matrix -> early sector spawn -> late element spawn native test에서 동일 root identity와
+각도를 검증한다. anchor/facing source가 없으면 fallback 회전으로 정상처럼 재생하지 않는다.
+
+## G08-F. 잡기 후 날리기와 left-hand anchor
+
+- capture query는 Server hit collider만 사용한다. 노란 Effect geometry나 Client PhysX는 잡기 판정이 아니다.
+- attachment transform은 `BossWorld * LeftHandBoneWorld/Model * authoredLocalOffset`의 한 helper를
+  Server snapshot과 Client presentation이 같은 stable attachment slot 의미로 소비한다.
+- Box Detail에는 collider shape/offset/range, attachment slot/local offset, release speed, duration,
+  yaw, knockdown/down duration을 표시한다.
+- Counter/cancel/death/disconnect는 release와 상태 rollback을 수행한다.
+- release velocity/rotation은 Pattern source와 Server action이 소유하며 Client가 임의 계산하지 않는다.
+
+## G08-G. Portal 8회 돌진
+
+정본 Pattern은 legacy 별도 portal Pattern이 아니라 `VALTAN_WARP`다.
+
+```text
+STEP_02 ... STEP_09 (8 rush stages)
+  retargetDelay = 500ms
+  distance      = 16m
+  speed         = 20m/s
+  travel        = 800ms
+  postRushGap   = 1000ms
+  stage clock   = 2300ms
+```
+
+각 Stage의 authored motion samples는 500..1250ms, 50ms 간격으로 16개이며 기존 8m 구간을 16m로
+늘린다. Composition Logic lane은 각 Stage마다 `Target Delay`, `Rush`, `Gap` 세 box를 보여주며
+generic Motion 한 줄로 축약하지 않는다. source -> publisher Product -> Server trajectory/retarget trace ->
+Composition exact box count/timing이 같은 값을 가져야 완료다.
+
+## G08-H. Effect V2 Group 실제 재생
+
+```text
+Effect Tool V2 Group Save
+-> groupId + ordered children admitted snapshot
+-> Composition exact binding occurrence
+-> Arena Clone Sync_StageAuthoring
+-> shared V2 runtime expand group children
+-> renderer spawn/update/stop
+
+Product playback
+-> generated binding
+-> Sync_Stage
+-> the same expand/render path
+```
+
+단순 목록 표시와 binding JSON 저장을 재생 PASS로 쓰지 않는다. group catalog snapshot reload 뒤 이전
+cache가 남는지, group duration/child local timing이 0-width로 축약되는지, authored/Product selector가
+다른 ID namespace를 쓰는지 실제 원인을 재현한다. focused oracle은 2-child group의 start/update/stop,
+missing leaf rollback, reload 후 changed child timing, Arena Clone/Product 동등 occurrence를 검증한다.
+
+## G08-I. Composition의 최종 표현
+
+사용자 기본 화면에는 다음만 남긴다.
+
+```text
+[Patterns/Stages] [Resources] [Preview]
+[Sequencer: Stage Animation Effect Sound Logic Collider Camera]
+[Box Detail]
+[Save] [Server Replay]
+```
+
+- Save 버튼은 선택 owner들의 typed transaction을 orchestration한다. publisher/diagnostic 절차를 버튼으로
+  늘어놓지 않는다.
+- 선택 box만 Box Detail을 연다. 삭제/복제/trim은 exact stable occurrence에만 적용한다.
+- Logic lane은 Counter/Silence/Bind/Stagger/Portal motion/Grab branch를 typed box로 보여준다.
+- render frame에서는 filesystem 순회, JSON parse, physical hashing, canonical reload를 하지 않는다.
+- raw diagnostics는 기본 UI에서 제거하되 structured log와 focused harness는 유지한다.
+
+## G08-J. Collider box와 typed Server trigger
+
+Collider lane은 Effect box의 mesh/particle bounds를 복사하지 않는다. 하나의 `Collider` UI
+카테고리에서도 판정 방향과 owner가 다르므로 다음 typed adapter로 분리한다.
+
+| Box category | 실제 owner와 판정 |
+|---|---|
+| Damage | Stage `hit.shape + hit.schedule + serverDamageProfileId`; Server boss-to-player overlap |
+| Grab | 위 Stage hit에 `playerResponse=CAPTURE`, `attachmentSlot=BOSS_LEFT_HAND`; 성공한 player만 left-hand attachment |
+| Counter | WINDUP `counterProxy`와 `COUNTER_HIT/TIMEOUT`; player-attack-to-boss admission |
+| Bind | `SET_PLAYER_BIND`의 locked target/status clock. 임의 Effect overlap으로 속박시키지 않으며, 별도 area-bind가 필요할 때만 typed hit response를 추가 |
+| Stagger receiver | Boss body가 player damage에서 stagger contribution을 받는 상태 계약. boss attack hit shape와 혼합하지 않음 |
+| None | 판정 없음. Effect/Animation만 보이는 presentation box |
+
+선택한 box의 `Box Detail`은 해당 category에 존재하는 값만 노출한다.
+
+```text
+Collider Box Detail
+  Category       Damage | Grab | Counter | Bind | Stagger Receiver | None
+  Clock          Start ms / Lifetime ms / Tick interval or explicit offsets
+  Shape          Circle | Ring | Cone | Box | Cross | Six Directions
+  Anchor         Boss Root | Boss Left Hand | Locked Target | World
+  Local pose     forward/right/up offset, yaw
+  Geometry       radius / inner radius / angle / length / half width
+  Trigger result Damage Profile | Capture Slot | Counter branch | Bind duration
+  Reaction       push distance / push duration / knockdown / down duration
+  [Delete Box]
+```
+
+현재 Stage hit는 boss root/facing 기준의 discrete schedule이고 Counter proxy는 Stage 전체 clock의
+continuous admission이다. 새 UI는 이 차이를 숨기지 않는다. `Lifetime`을 넣기 위해 discrete hit를
+매 프레임 재판정하는 두 번째 경로를 만들지 않고, source schema에 명시적인 schedule kind와
+once-per-target/repeat policy를 추가할 때만 Server fixed-tick runtime까지 같은 변경으로 확장한다.
+
+최소 구현 순서는 다음과 같다.
+
+1. 기존 Damage/Grab hit와 Counter proxy를 category별 box로 투영하고 실제 start/end를 표시한다.
+2. 기존 shape/schedule/reaction 값을 Box Detail의 typed adapter로 저장한다.
+3. Grab은 attachment slot과 release action dependency를 한 transaction으로 검증한다.
+4. anchor/offset/lifetime 신규 필드는 pipeline, Gameplay bootstrap, `CGameplayCatalog`,
+   `CValtanBrain/CServerCollisionSystem`, Client debug mirror가 모두 소비할 때만 활성화한다.
+5. invalid shape, unknown trigger, hit schedule overrun, missing damage/grab dependency와 중간 실패가
+   기존 source bytes와 active Server occurrence를 보존하는 oracle을 추가한다.
+
 ## G09. 자동 검증
 
 ### focused contract
@@ -681,17 +991,23 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 
 ## G11. 커밋과 PR 분리
 
-1. UI 단일 책임과 explicit preview route
-2. Counter typed pin authoring과 native graph oracle
-3. Resource/frame zero-I/O oracle
-4. Stage Bundle transaction과 rollback
-5. Grab/Rush outcome adapter
-6. 버러지 finite retry content
-7. Save/revision/Boss replay 통합 검증
+1. stale SHA/bytes entry/replay blocker 제거와 admission rollback oracle
+2. UI 단일 Save/Box Detail/zero warm-frame I/O
+3. Counter typed box + `VALTAN_TRIPLE_COUNTER` Server trace
+4. 버러지 finite retry/capture/Groggy branch
+5. 무력화 gameplay + gauge snapshot/Effect
+6. 속박 gameplay + restraint/release rollback
+7. 침묵 gameplay + skill reject/HUD presentation
+8. Ground Roar four-rock combat-object lifetime/explosion
+9. Six Pizza rotation root와 late Element inheritance
+10. grab-after-turn left-hand anchor/release tuning
+11. Portal eight-rush source/Product/Server/Composition contract
+12. Effect V2 Group authoring/Product playback 동등 경로
+13. Save/canonical reload/Server replay 통합 검증과 PLAN/RESULT 정합성
 
-각 커밋은 자신이 변경한 source/schema/project 등록/harness/PLAN·RESULT를 함께 포함한다. 버러지
-retry와 Boss audition Flow graph runtime, Portal, Pizza, Silence, 3연속 Counter를 하나의 PR에
-묶지 않는다.
+각 커밋은 자신이 변경한 source/schema/project 등록/harness/PLAN·RESULT를 함께 포함한다. 사용자가
+최종적으로 하나의 PR을 원하더라도 위 검증 단위별 commit 경계는 유지한다. 현재 dirty tree 전체를
+검증 없이 `git add .`로 한 커밋에 넣지 않는다.
 
 ## Milestone별 완료 조건
 
@@ -722,4 +1038,8 @@ retry와 Boss audition Flow graph runtime, Portal, Pizza, Silence, 3연속 Count
 - 실패 시 draft/source/Product/previous admitted view의 rollback 계약이 증명된다.
 - warm frame의 filesystem/JSON/hash/graph rebuild가 0이다.
 - 현재 버러지 Counter/Groggy가 회귀하지 않고 finite retry는 실제 유한 Stage graph로 저장된다.
+- 무력화·속박·침묵은 빈 Pattern slot이 아니라 실제 Server consumer와 종료 rollback을 가진다.
+- Ground Roar는 정확히 네 rock과 5000ms explosion/despawn, Six Pizza는 late Element까지 같은 회전
+  root, Portal은 8 x (500ms target + 800ms travel + 1000ms gap)로 실행/표시된다.
+- V2 Group은 Arena Clone과 Product replay 양쪽에서 같은 child occurrence를 재생한다.
 - Debug Core, Release Product, 필요한 FullDiagnostic과 사용자 수동 검증 결과가 RESULT에 분리된다.

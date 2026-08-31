@@ -3153,7 +3153,8 @@ void CMainApp::RenderBossHealthBar()
 
 	/* Stagger/paralyzation gauge (real paralyzationGauge -- background + fill + hollow
 	purple-bordered track, char 473 in TargetGrade_Boss). The Server snapshot owns
-	current/maximum; presentation only crops the existing fill art inside the authored track. */
+	current/maximum progress; presentation shows the remaining amount so admitted
+	stagger damage visibly depletes the yellow gauge toward the break. */
 	f32_t fStaggerBgX = 0.f, fStaggerBgY = 0.f, fStaggerBgWidth = 0.f, fStaggerBgHeight = 0.f;
 	if (m_pBossUIView->Get_SlotRect(
 		"Boss_StaggerBg", fStaggerBgX, fStaggerBgY, fStaggerBgWidth, fStaggerBgHeight))
@@ -3180,10 +3181,12 @@ void CMainApp::RenderBossHealthBar()
 		const ImVec2 vStaggerTrackMax{
 			vStaggerTrackMin.x + fStaggerTrackWidth * scaleX,
 			vStaggerTrackMin.y + fStaggerTrackHeight * scaleY };
-		if (0u != boss.iMaximumStagger && 0u != boss.iCurrentStagger)
+		if (0u != boss.iMaximumStagger)
 		{
 			const f32_t fStaggerRatio = (std::clamp)(
-				static_cast<f32_t>(boss.iCurrentStagger) /
+				static_cast<f32_t>(
+					boss.iMaximumStagger - (std::min)(
+						boss.iCurrentStagger, boss.iMaximumStagger)) /
 					static_cast<f32_t>(boss.iMaximumStagger),
 				0.f, 1.f);
 			if (ID3D11ShaderResourceView* pStaggerFillSRV =

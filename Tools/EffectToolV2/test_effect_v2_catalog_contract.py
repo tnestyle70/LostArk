@@ -13,6 +13,7 @@ FILTERS = ROOT / "Client/Default/Client.vcxproj.filters"
 AUTHORED = ROOT / "Data/Effects/V2/Authored"
 GROUPS = ROOT / "Data/Effects/V2/Groups"
 BOSS_BINDINGS = ROOT / "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"
+VALTAN_PRESENTATION = ROOT / "Data/Valtan/Valtan.presentation.json"
 
 
 def read(path: Path) -> str:
@@ -26,6 +27,34 @@ def function_tail(text: str, signature: str, next_signature: str) -> str:
 
 
 class EffectV2CatalogContractTests(unittest.TestCase):
+    def test_boss_clip_bindings_join_the_canonical_presentation_inventory(self) -> None:
+        presentation = json.loads(VALTAN_PRESENTATION.read_text(encoding="utf-8"))
+        canonical_clips: set[str] = set()
+
+        def collect(value: object) -> None:
+            if isinstance(value, dict):
+                clip = value.get("clip")
+                if isinstance(clip, str) and clip:
+                    canonical_clips.add(clip)
+                for child in value.values():
+                    collect(child)
+            elif isinstance(value, list):
+                for child in value:
+                    collect(child)
+
+        collect(presentation)
+        bindings = json.loads(BOSS_BINDINGS.read_text(encoding="utf-8"))["bindings"]
+        clip_bindings = [binding for binding in bindings if "clip" in binding]
+        self.assertTrue(clip_bindings)
+        for binding in clip_bindings:
+            self.assertIn(binding["clip"], canonical_clips)
+        impact_clips = [
+            binding["clip"]
+            for binding in clip_bindings
+            if binding.get("group") == "boss.valtan.impact"
+        ]
+        self.assertEqual(impact_clips, ["mesh_att_battle_19_01"] * 4)
+
     def test_catalog_is_registered_as_one_effect_v2_source_pair(self) -> None:
         project = read(PROJECT)
         filters = read(FILTERS)
@@ -42,8 +71,12 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             "const std::vector<EFFECT_V2_DOCUMENT>&",
             "const std::vector<EFFECT_V2_GROUP>&",
             "const std::vector<EFFECT_V2_BINDING>&",
+            "const std::vector<std::string>&",
             "Find_Document(",
             "Find_Group(",
+            "Get_Diagnostics()",
+            "Has_IsolatedItems()",
+            "Can_MutateBossValtanBindings()",
         ):
             self.assertIn(token, header)
 
@@ -61,7 +94,7 @@ class EffectV2CatalogContractTests(unittest.TestCase):
         self.assertNotIn("Render", header)
         self.assertNotIn("Tick", header)
 
-    def test_explicit_reload_stages_cross_validates_then_commits_once(self) -> None:
+    def test_explicit_reload_commits_one_strict_valid_subset(self) -> None:
         source = read(SOURCE)
         reload_body = function_tail(
             source,
@@ -69,12 +102,12 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             "bool_t Client::CEffectV2Catalog::Commit_BossValtanBindingsLocked(",
         )
         ordered = (
-            "Stage_Documents(StagedDocuments",
-            "Stage_Groups(StagedGroups",
-            "CEffectV2Document::Load_BindingsFile(",
-            "Cross_Validate(",
-            "Validate_NoLeafGroupClockOverlap(",
+            "!Stage_Documents(",
+            "!Stage_Groups(",
+            "Stage_BossValtanBindings(",
+            "Isolate_InvalidCrossReferences(",
             "std::make_shared<EFFECT_V2_CATALOG_SNAPSHOT>()",
+            "pStaged->m_Diagnostics = std::move(Diagnostics);",
             "pStaged->m_iRevision = iPreviousRevision + 1u;",
             "m_pSnapshot = std::move(pStaged);",
         )
@@ -96,9 +129,10 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             "Cross_Validate(",
             "CEffectV2Document::Serialize_Bindings(",
             "CEffectV2Document::Parse_Bindings(",
-            "Stage_Documents(DiskDocuments",
-            "Stage_Groups(DiskGroups",
-            "CEffectV2Document::Load_BindingsFile(",
+            "!Stage_Documents(",
+            "!Stage_Groups(",
+            "Stage_BossValtanBindings(",
+            "Isolate_InvalidCrossReferences(",
             "strDiskBaseline != strSnapshotBaseline",
             "CEffectV2Document::Write_AtomicFile(",
             "m_pSnapshot = std::move(pCandidate);",
@@ -106,13 +140,76 @@ class EffectV2CatalogContractTests(unittest.TestCase):
         positions = [commit_body.index(token) for token in ordered]
         self.assertEqual(positions, sorted(positions))
         self.assertIn("BOSS_VALTAN.effectv2bindings.json", commit_body)
-        self.assertIn("Product publish + Server restart", commit_body)
+        self.assertIn("Runtime caches were refreshed", commit_body)
+        self.assertIn("CEffectV2Runtime::Invalidate_Caches();", commit_body)
         self.assertIn("source changed; reload", commit_body)
         self.assertIn("Matches_DocumentBaseline(", commit_body)
         self.assertIn("Matches_GroupBaseline(", commit_body)
         self.assertIn("DiskDocuments, DiskGroups,", commit_body)
         self.assertIn("Validate_NoLeafGroupClockOverlap(", commit_body)
         self.assertEqual(commit_body.count("m_pSnapshot ="), 1)
+
+    def test_malformed_sources_are_isolated_per_item(self) -> None:
+        source = read(SOURCE)
+        documents = function_tail(
+            source,
+            "\tbool_t Stage_Documents(",
+            "\tbool_t Stage_Groups(",
+        )
+        self.assertIn("Load_DocumentFile(", documents)
+        self.assertIn("Skipped Effect V2 document", documents)
+        self.assertIn("continue;", documents)
+
+        bindings = function_tail(
+            source,
+            "\tbool_t Stage_BossValtanBindings(",
+            "\tbool_t Cross_Validate(",
+        )
+        for token in (
+            "CDataJson::Parse(",
+            "for (size_t iRow = 0u; iRow < Rows.size(); ++iRow)",
+            "CEffectV2Document::Parse_Bindings(",
+            "Skipped BOSS_VALTAN Effect V2 binding row",
+            "bOutComplete = false;",
+            "continue;",
+        ):
+            self.assertIn(token, bindings)
+
+        isolation = function_tail(
+            source,
+            "\tbool_t Isolate_InvalidCrossReferences(",
+            "\tstd::string Format_IsolationSummary(",
+        )
+        for token in (
+            "ValidGroups",
+            "missing authored leaf",
+            "ValidBindings",
+            "unavailable resource",
+            "Validate_NoLeafGroupClockOverlap(",
+            "Groups = std::move(ValidGroups);",
+            "Bindings = std::move(ValidBindings);",
+        ):
+            self.assertIn(token, isolation)
+
+    def test_valtan_runtime_uses_catalog_revision_and_valid_subset(self) -> None:
+        runtime = read(ROOT / "Client/Private/EffectV2_Runtime.cpp")
+        ensure = function_tail(
+            runtime,
+            "\tconst BINDING_SET& Ensure_Bindings(",
+            "\tconst DOCUMENT_ENTRY& Ensure_Document(",
+        )
+        for token in (
+            "strArchetypeId == VALTAN_ARCHETYPE_ID",
+            "if (Set.bLoaded)",
+            "Catalog.Reload_BossValtan(",
+            "pSnapshot->Get_Revision()",
+            "pSnapshot->Get_BossValtanBindings()",
+        ):
+            self.assertIn(token, ensure)
+        self.assertLess(
+            ensure.index("if (Set.bLoaded)"),
+            ensure.index("Catalog.Reload_BossValtan("),
+        )
 
     def test_stage_binding_mutations_use_one_typed_exact_key(self) -> None:
         header = read(HEADER)
@@ -157,6 +254,8 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             "\tbool_t Resolve_UniqueStageBindingIndex(",
         )
         for field in (
+			"Binding.strStage == Key.strStageActionId",
+			"Binding.strClip == Key.strClipName",
             "Binding.strBone == Key.strBone",
             "Binding.bFollowBone == Key.bFollowBone",
             "Binding.eRotation == Key.eRotation",
@@ -170,13 +269,14 @@ class EffectV2CatalogContractTests(unittest.TestCase):
 
         key_factory = function_tail(
             source,
-            "Client::EFFECT_V2_STAGE_BINDING_KEY::From_StageBinding(",
+            "Client::EFFECT_V2_STAGE_BINDING_KEY::From_Binding(",
             "Client::CEffectV2Catalog& Client::CEffectV2Catalog::Get()",
         )
         for field in (
             "Binding.strGroupId",
             "Binding.strEffectId",
             "Binding.strStage",
+            "Binding.strClip",
             "Binding.iStartMs",
             "Binding.strBone",
             "Binding.bFollowBone",
@@ -192,7 +292,14 @@ class EffectV2CatalogContractTests(unittest.TestCase):
         ) : source.index(
             "std::shared_ptr<const Client::EFFECT_V2_CATALOG_SNAPSHOT>"
         )]
-        self.assertEqual(wrapper_region.count("Mutate_BossValtanStageBinding("), 4)
+        self.assertEqual(wrapper_region.count("Mutate_BossValtanStageBinding("), 8)
+        for token in (
+            "Stage_AppendBossValtanStageBinding(",
+            "Stage_RemoveBossValtanStageBinding(",
+            "Stage_DuplicateBossValtanStageBinding(",
+            "Stage_UpdateBossValtanStageBindingStart(",
+        ):
+            self.assertIn(token, wrapper_region)
 
     def test_new_boss_mutations_reject_foreign_subjects_and_overlaps(self) -> None:
         source = read(SOURCE)

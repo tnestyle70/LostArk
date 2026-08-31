@@ -69,11 +69,24 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             "VALTAN_PATTERN_TREE_VIEW m_ValtanPatternMasterView;",
             "CValtanPatternTree::Load(Staged, Status)",
             "bAuthoringMasterManaged",
-            "expected the 7 baseline managed patterns",
             '"Valtan Action Presentation Workbench"',
             "Data/Valtan/Valtan.gameplay.json + Valtan.presentation.json",
         ):
             self.assertIn(token, combined)
+        reload_pattern_data = function_slice(
+            self.cpp,
+            "bool_t Client::CAnimation_Tool::Reload_ValtanPatternMaster()",
+            "bool_t Client::CAnimation_Tool::Reload_ValtanPatternSoundCues()",
+        )
+        self.assertIn("0u == iEditablePatternCount", reload_pattern_data)
+        self.assertNotIn("expected the 7 baseline", reload_pattern_data)
+        self.assertNotIn("required pattern is missing", reload_pattern_data)
+        self.assertNotIn("VALTAN_PATTERN_MASTER_ORDER", combined)
+        self.assertNotIn("five admitted normal patterns", combined)
+        self.assertIn(
+            "m_ValtanPatternMasterView.NormalSelection.PatternIds.size()",
+            combined,
+        )
 
     def test_live_pattern_inventory_is_a_dynamic_stable_id_join(self) -> None:
         gameplay_ids = [pattern["patternId"] for pattern in self.gameplay["patterns"]]
@@ -186,9 +199,10 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             "bool_t Client::CAnimation_Tool::Build_ValtanPatternMasterTimeline(",
             "bool_t Client::CAnimation_Tool::Start_ValtanPatternMasterPreview(",
         )
-        self.assertIn("AppendProductPresentation", collect)
+        self.assertIn("AppendEditablePatterns", collect)
         self.assertIn("!Pattern.Stages.empty()", collect)
-        self.assertNotIn("Pattern.bAuthoringMasterManaged &&", collect)
+        self.assertIn("Pattern.bAuthoringMasterManaged &&", collect)
+        self.assertIn("Collected.insert(Pattern.strPatternId).second", collect)
         self.assertNotIn("!Pattern.bAuthoringMasterManaged", build)
 
     def test_recovered_floor_wipe_and_arena_break_sequences_are_exact(self) -> None:

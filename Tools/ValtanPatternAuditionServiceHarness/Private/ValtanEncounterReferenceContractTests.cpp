@@ -224,20 +224,31 @@ namespace
 			text.replace(begin, end - begin, mutation.replacement);
 			return text;
 		};
+		auto dynamicFinale = replaceField(original,
+			{ "VALTAN_GHOST_FINALE", "finale", "maximumActiveGhosts", "2" });
+		dynamicFinale = replaceField(std::move(dynamicFinale),
+			{ "VALTAN_GHOST_FINALE", "finale", "ghostPatternIds",
+			  "[\"VALTAN_FOUR_SLASH\",\"VALTAN_WHIRLWIND\"]" });
+		CEncounterPatternReference dynamicFinaleReference;
+		if (!Require(!dynamicFinale.empty() && writeFixture(dynamicFinale) &&
+			dynamicFinaleReference.Load(fixture.File, status) &&
+			nullptr != dynamicFinaleReference.Find_Pattern("VALTAN_GHOST_FINALE"),
+			"data-driven two-child reordered finale was rejected"))
+			return false;
 		const char* extensionError = "Encounter pattern extensions are invalid:";
 		const FieldMutation malformedFields[] =
 		{
 			{ "VALTAN_GHOST_FINALE", "finale", "kind", "\"UNKNOWN_FINALE\"", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "ghostArchetypeId", "\"BOSS_VALTAN\"", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "maximumActiveGhosts", "0", extensionError },
-			{ "VALTAN_GHOST_FINALE", "finale", "maximumActiveGhosts", "2", extensionError },
+			{ "VALTAN_GHOST_FINALE", "finale", "maximumActiveGhosts", "65", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "maximumActiveGhosts", "true", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "maximumActiveGhosts", "1,\"unsupported\":1", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "spawnHalfExtentsM", "[0,10]", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "spawnHalfExtentsM", "[10,101]", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "spawnHalfExtentsM", "[10]", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "ghostPatternIds",
-				"[\"VALTAN_FOUR_SLASH\",\"VALTAN_WHIRLWIND\",\"VALTAN_SEQUENCE_FOUR\"]", extensionError },
+				"[]", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "ghostPatternIds",
 				"[\"VALTAN_WHIRLWIND\",\"VALTAN_WHIRLWIND\",\"VALTAN_SEQUENCE_FOUR\"]", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "ghostPatternIds",

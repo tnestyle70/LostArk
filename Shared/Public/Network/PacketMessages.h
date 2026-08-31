@@ -285,6 +285,8 @@ namespace LostArk::Shared
 		std::string strCombatObjectArchetypeId;
 		std::string strOwnerPatternId;
 		std::string strOwnerStageActionId;
+		/* Damage-backed pulses carry their hitId. A visual-only typed combat
+		object carries its stable presentationEventId in the same wire field. */
 		std::string strHitId;
 		std::uint32_t iRepeatIndex = 0u;
 		float fPositionX = 0.f;
@@ -661,6 +663,14 @@ namespace LostArk::Shared
 		std::uint32_t iCurrentIdentity = 0;
 		std::uint32_t iMaximumIdentity = 0;
 		bool isCombatReady = true;
+		/* Pattern bind is a Server-authoritative control lock. The deadline lets a
+		late Client present the remaining window without deciding its lifetime. */
+		bool isPatternBound = false;
+		std::uint32_t iPatternBindEndTick = 0;
+		/* Zero means skills are enabled. A non-zero Server deadline masks every
+		product skill slot while movement remains available. */
+		std::uint32_t iSilenceEndTick = 0;
+		std::uint32_t iSilenceDurationTicks = 0;
 		// 0 outside a staged action, 1-based stage index while one runs: combo
 		// stages, and start/loop/end for a HOLD skill. The server owns it; the
 		// client must not count stages itself.
