@@ -5,6 +5,7 @@
   "groups": [
     "boss.valtan.impact",
     "boss.valtan.pounding",
-    "boss.valtan.pounding.chase"
+    "boss.valtan.pounding.chase",
+    "boss.valtan.twohand"
   ]
 }
