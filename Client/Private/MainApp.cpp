@@ -3071,6 +3071,12 @@ void CMainApp::Hide_BossHealthBar()
 	constexpr const char_t* BOSS_UI_ALL_SLOTS[] = {
 		"Boss_Frame", "Boss_FillBehind", "Boss_Fill", "Boss_StaggerBg", "Boss_StaggerFill",
 		"Boss_StaggerTrack", "Boss_Separator", "Boss_TickFlash", "Boss_HitGlow",
+		/* Position-only markers for the labels RenderBossHealthBarText draws. They carry real
+		boss_text_placeholder.png art that the old manual draw path never submitted, so unlike a
+		marker with no layer they have a CUI_Sprite of their own and would otherwise sit on
+		screen permanently -- LEVEL::STATIC keeps them across every Level, including Character
+		Select and Lobby. Nothing ever shows these. */
+		"Boss_TitleText", "Boss_HPText", "Boss_BarCountText",
 	};
 	for (const char_t* pSlotId : BOSS_UI_ALL_SLOTS)
 		m_pBossUIView->Set_SlotVisible(pSlotId, false);

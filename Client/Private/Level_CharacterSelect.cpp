@@ -1557,7 +1557,7 @@ void CLevel_CharacterSelect::Render_ProductStatus()
 	/* The status strings are ASCII, so the byte-wise widen is exact. */
 	const wstring_t strStatusWide(m_strStatus.begin(), m_strStatus.end());
 	const float2_t vMeasured =
-		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strStatusWide.c_str());
+		CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), strStatusWide.c_str());
 	if (vMeasured.y <= 0.f)
 		return;
 	f32_t fScale = (16.f / vMeasured.y) * fUiScale;
@@ -1567,10 +1567,10 @@ void CLevel_CharacterSelect::Render_ProductStatus()
 	if (vMeasured.x * fScale > fMaxWidth && vMeasured.x > 0.f)
 		fScale = fMaxWidth / vMeasured.x;
 	const float2_t vPos((fX + 8.f) * fScaleX, (fY + 6.f) * fScaleY);
-	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strStatusWide.c_str(),
+	CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strStatusWide.c_str(),
 		float2_t(vPos.x + 1.f, vPos.y + 1.f),
 		XMVectorSet(0.f, 0.f, 0.f, 220.f / 255.f), 0.f, float2_t(0.f, 0.f), fScale);
-	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strStatusWide.c_str(),
+	CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strStatusWide.c_str(),
 		vPos,
 		XMVectorSet(1.f, 225.f / 255.f, 150.f / 255.f, 1.f), 0.f,
 		float2_t(0.f, 0.f), fScale);
@@ -2189,7 +2189,7 @@ void CLevel_CharacterSelect::Render_ClassListText()
 		if (wide.empty())
 			return;
 		const float2_t vMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), wide.c_str());
+			CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), wide.c_str());
 		if (vMeasured.y <= 0.f)
 			return;
 		const f32_t fScale = (fSize / vMeasured.y) * fUiScale;
@@ -2197,7 +2197,7 @@ void CLevel_CharacterSelect::Render_ClassListText()
 		constexpr f32_t fOffsets[][2] = { {0.f, 0.f}, {1.f, 0.f}, {0.f, 1.f}, {1.f, 1.f} };
 		for (const f32_t (&Offset)[2] : fOffsets)
 		{
-			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), wide.c_str(),
+			CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), wide.c_str(),
 				float2_t(vPos.x + Offset[0], vPos.y + Offset[1]),
 				vColor, 0.f, vPivot, fScale);
 		}
@@ -2225,12 +2225,12 @@ void CLevel_CharacterSelect::Render_ClassListText()
 		if (wide.empty())
 			return;
 		const float2_t vMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), wide.c_str());
+			CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), wide.c_str());
 		if (vMeasured.y <= 0.f)
 			return;
 		/* ImGui's own AddText used the atlas's default 16px size for these. */
 		const f32_t fScale = (16.f / vMeasured.y) * fUiScale;
-		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), wide.c_str(),
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), wide.c_str(),
 			float2_t(fX * fScaleX, fY * fScaleY),
 			vColor, 0.f, float2_t(0.f, 0.f), fScale);
 	};
@@ -2640,11 +2640,11 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 				const fvector_t& vColor) -> f32_t
 			{
 				const float2_t vMeasured =
-					CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pText);
+					CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), pText);
 				if (vMeasured.y <= 0.f)
 					return 0.f;
 				const f32_t fScale = (TEXT_HEIGHT / vMeasured.y) * textUiScale;
-				CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pText,
+				CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), pText,
 					float2_t(fScreenX, fCenterScreenY),
 					vColor, 0.f, float2_t(0.f, 0.5f), fScale);
 				return vMeasured.x * fScale;
@@ -2690,7 +2690,7 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 			}
 			const wstring_t strStatusWide(m_strStatus.begin(), m_strStatus.end());
 			const float2_t vMeasured =
-				CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strStatusWide.c_str());
+				CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), strStatusWide.c_str());
 			if (vMeasured.y > 0.f)
 			{
 				f32_t fScale = (14.f / vMeasured.y) * textUiScale;
@@ -2701,10 +2701,10 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 					fScale = fMaxWidth / vMeasured.x;
 				const float2_t vPosition(
 					(fStatusX + 4.f) * textScaleX, (fStatusY + 2.f) * textScaleY);
-				CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strStatusWide.c_str(),
+				CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strStatusWide.c_str(),
 					float2_t(vPosition.x + 1.f, vPosition.y + 1.f),
 					XMVectorSet(0.f, 0.f, 0.f, 0.9f), 0.f, float2_t(0.f, 0.f), fScale);
-				CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strStatusWide.c_str(),
+				CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strStatusWide.c_str(),
 					vPosition,
 					XMVectorSet(1.f, 210.f / 255.f, 120.f / 255.f, 1.f), 0.f,
 					float2_t(0.f, 0.f), fScale);
