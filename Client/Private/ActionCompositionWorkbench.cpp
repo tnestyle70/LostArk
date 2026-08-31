@@ -2209,6 +2209,56 @@ bool_t Client::CActionCompositionWorkbench::Duplicate_SelectedTimelineBox(
 	const VALTAN_STAGE_VIEW& Stage,
 	std::string& strOutStatus)
 {
+	const auto SelectedV2 = std::find_if(
+		m_TimelineItems.begin(), m_TimelineItems.end(),
+		[this, &Pattern, &Stage](const TIMELINE_ITEM& Item)
+		{
+			return Item.bEffectV2Binding &&
+				Item.strPatternId == Pattern.strPatternId &&
+				Item.strStageId == Stage.strStageId &&
+				Item.strStableId == m_strSelectedStableId;
+		});
+	if (m_TimelineItems.end() != SelectedV2)
+	{
+		const std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot =
+			CEffectV2Catalog::Get().Get_Snapshot();
+		const EFFECT_V2_BINDING* const pSourceBinding = nullptr == pSnapshot ?
+			nullptr : ResolveEffectV2Binding(
+				*pSnapshot, Stage.strActionId, SelectedV2->strStableId);
+		if (nullptr == pSourceBinding)
+		{
+			strOutStatus =
+				"V2 Duplicate lost its exact saved binding row. Refresh Effect Resources and select the box again.";
+			return false;
+		}
+		if (0u == Stage.iDurationMs)
+		{
+			strOutStatus =
+				"V2 Duplicate requires a non-empty Stage clock.";
+			return false;
+		}
+		const uint32_t iSourceClockMs = (std::min)(
+			SelectedV2->iEffectV2BindingStartMs, Stage.iDurationMs);
+		const uint32_t iDuplicateStartMs = iSourceClockMs < Stage.iDurationMs ?
+			iSourceClockMs + 1u : iSourceClockMs - 1u;
+		const EFFECT_V2_STAGE_BINDING_KEY Key =
+			EFFECT_V2_STAGE_BINDING_KEY::From_StageBinding(*pSourceBinding);
+		if (!CEffectV2Catalog::Get().Duplicate_BossValtanStageBinding(
+				Key, iDuplicateStartMs, strOutStatus))
+		{
+			return false;
+		}
+		m_iEffectV2CatalogRevision =
+			CEffectV2Catalog::Get().Get_Revision();
+		m_eDetailOwner = DETAIL_OWNER::EFFECT;
+		EFFECT_V2_BINDING DuplicateBinding = *pSourceBinding;
+		DuplicateBinding.iStartMs = iDuplicateStartMs;
+		m_strSelectedStableId =
+			BuildEffectV2BindingStableId(DuplicateBinding);
+		Refresh_EffectV2LocalPreviewAfterMutation(&Pattern, strOutStatus);
+		return true;
+	}
+
 	switch (m_eDetailOwner)
 	{
 	case DETAIL_OWNER::ANIMATION:
@@ -2317,6 +2367,43 @@ bool_t Client::CActionCompositionWorkbench::Delete_SelectedTimelineBox(
 	const VALTAN_STAGE_VIEW& Stage,
 	std::string& strOutStatus)
 {
+	const auto SelectedV2 = std::find_if(
+		m_TimelineItems.begin(), m_TimelineItems.end(),
+		[this, &Pattern, &Stage](const TIMELINE_ITEM& Item)
+		{
+			return Item.bEffectV2Binding &&
+				Item.strPatternId == Pattern.strPatternId &&
+				Item.strStageId == Stage.strStageId &&
+				Item.strStableId == m_strSelectedStableId;
+		});
+	if (m_TimelineItems.end() != SelectedV2)
+	{
+		const std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot =
+			CEffectV2Catalog::Get().Get_Snapshot();
+		const EFFECT_V2_BINDING* const pSourceBinding = nullptr == pSnapshot ?
+			nullptr : ResolveEffectV2Binding(
+				*pSnapshot, Stage.strActionId, SelectedV2->strStableId);
+		if (nullptr == pSourceBinding)
+		{
+			strOutStatus =
+				"V2 Delete lost its exact saved binding row. Refresh Effect Resources and select the box again.";
+			return false;
+		}
+		const EFFECT_V2_STAGE_BINDING_KEY Key =
+			EFFECT_V2_STAGE_BINDING_KEY::From_StageBinding(*pSourceBinding);
+		if (!CEffectV2Catalog::Get().Remove_BossValtanStageBinding(
+				Key, strOutStatus))
+		{
+			return false;
+		}
+		m_iEffectV2CatalogRevision =
+			CEffectV2Catalog::Get().Get_Revision();
+		m_strSelectedStableId = Stage.strStageId;
+		m_strEffectEditIdentity.clear();
+		Refresh_EffectV2LocalPreviewAfterMutation(&Pattern, strOutStatus);
+		return true;
+	}
+
 	switch (m_eDetailOwner)
 	{
 	case DETAIL_OWNER::ANIMATION:
@@ -2624,6 +2711,50 @@ bool_t Client::CActionCompositionWorkbench::Play_EffectivePreview(
 	m_eStagedPreviewPath = m_ePreviewPath;
 	m_bPreviewOwnerClaimRequested = true;
 	return true;
+}
+
+void Client::CActionCompositionWorkbench::
+Refresh_EffectV2LocalPreviewAfterMutation(
+	const VALTAN_PATTERN_VIEW* const pPattern,
+	std::string& strInOutStatus)
+{
+	const CAnimation_Tool::COMPOSITION_PREVIEW_STATE Preview =
+		nullptr == m_pAnimationTool ?
+			CAnimation_Tool::COMPOSITION_PREVIEW_STATE{} :
+			m_pAnimationTool->Get_ValtanCompositionPreviewState();
+	const bool_t bRestartLocalClone = nullptr != pPattern &&
+		Preview.bPlaying && Preview.strPatternId == pPattern->strPatternId;
+	if (bRestartLocalClone)
+	{
+		std::string StopStatus;
+		m_pAnimationTool->Stop_ValtanCompositionPattern(StopStatus);
+	}
+	Invalidate_TimelineCache();
+
+	const std::string ResourceStatus = strInOutStatus;
+	if (!bRestartLocalClone)
+	{
+		strInOutStatus = ResourceStatus +
+			" Local V2 resources reloaded; the next Arena Clone Play reads this binding. Server Saved Revision / Complete Play is unchanged.";
+		return;
+	}
+
+	std::string PreviewStatus;
+	const uint32_t iRestorePositionMs = (std::min)(
+		Preview.iPositionMs, m_iTimelineDurationMs);
+	if (!Play_EffectivePreview(*pPattern, PreviewStatus) ||
+		!Seek_EffectivePreview(
+			*pPattern, iRestorePositionMs, Preview.bPaused, PreviewStatus))
+	{
+		strInOutStatus = ResourceStatus +
+			" Resource save succeeded, but Arena Clone restart failed: " +
+			PreviewStatus +
+			" Server Saved Revision / Complete Play is unchanged.";
+		return;
+	}
+	m_iPlayheadMs = iRestorePositionMs;
+	strInOutStatus = ResourceStatus +
+		" Local V2 resources reloaded and the Arena Clone was restarted at the same timeline position. Server Saved Revision / Complete Play is unchanged.";
 }
 
 uint32_t Client::CActionCompositionWorkbench::Resolve_ClipSourceToStageMs(
@@ -2952,28 +3083,38 @@ void Client::CActionCompositionWorkbench::Build_Timeline(
 		}
 		if (nullptr != pEffectV2Snapshot && pEffectV2Snapshot->Is_Ready())
 		{
-			std::size_t iV2Ordinal = 0u;
 			for (const EFFECT_V2_BINDING& Binding :
 				pEffectV2Snapshot->Get_BossValtanBindings())
 			{
 				if (Binding.strStage != Stage.strActionId)
 					continue;
-				const std::string& strResourceId = Binding.strGroupId.empty() ?
-					Binding.strEffectId : Binding.strGroupId;
+				const bool_t bGroup = !Binding.strGroupId.empty();
+				const std::string& strResourceId = bGroup ?
+					Binding.strGroupId : Binding.strEffectId;
+				if (!IsBossValtanEffectV2Resource(strResourceId))
+					continue;
+				const uint32_t iLocalStartMs = (std::min)(
+					Binding.iStartMs, iStageDurationMs);
+				const uint32_t iGroupSpanMs = bGroup ?
+					ResolveEffectV2GroupSpanMs(*pEffectV2Snapshot, Binding) : 0u;
+				const uint32_t iLocalEndMs = bGroup ?
+					static_cast<uint32_t>((std::min)(
+						static_cast<uint64_t>(iStageDurationMs),
+						static_cast<uint64_t>(iLocalStartMs) + iGroupSpanMs)) :
+					iLocalStartMs;
 				const std::string strStableId =
-					"effect-v2/" + Stage.strActionId + "/" +
-					std::to_string(iV2Ordinal++) + "/" + strResourceId;
+					BuildEffectV2BindingStableId(Binding);
 				m_TimelineItems.push_back({
 					DETAIL_OWNER::EFFECT, TIMELINE_LANE::EFFECT,
 					Pattern.strPatternId, Stage.strStageId, strStableId,
 					strResourceId,
 					std::string("V2 ") +
-						(Binding.strGroupId.empty() ? "Leaf | " : "Group | ") +
-						strResourceId,
-					iStageStartMs + (std::min)(
-						Binding.iStartMs, iStageDurationMs),
-					iStageStartMs + (std::min)(
-						Binding.iStartMs, iStageDurationMs), false });
+						(bGroup ? "Group | " : "Leaf | ") + strResourceId,
+					iStageStartMs + iLocalStartMs,
+					iStageStartMs + iLocalEndMs, false, 0u,
+					bGroup ? EFFECT_V2_GROUP_MINIMUM_WIDTH_PX :
+						EFFECT_V2_LEAF_MINIMUM_WIDTH_PX,
+					true, bGroup, Binding.iStartMs });
 			}
 		}
 
@@ -3057,10 +3198,6 @@ void Client::CActionCompositionWorkbench::Build_Timeline(
 void Client::CActionCompositionWorkbench::Pack_TimelineSubrows()
 {
 	m_TimelineLaneSubrowCounts.fill(1u);
-	/* A point event renders at least four pixels wide. At the minimum supported
-	   40 px/sec zoom that is 100 ms, so packing against this conservative window
-	   prevents click-through overlap at every zoom without warm-frame sorting. */
-	constexpr uint64_t MINIMUM_VISUAL_DURATION_MS = 100u;
 	for (std::size_t iLane = 0u; iLane < m_TimelineLaneSubrowCounts.size(); ++iLane)
 	{
 		const TIMELINE_LANE eLane = static_cast<TIMELINE_LANE>(iLane);
@@ -3086,6 +3223,14 @@ void Client::CActionCompositionWorkbench::Pack_TimelineSubrows()
 		for (const std::size_t iItem : LaneItems)
 		{
 			TIMELINE_ITEM& Item = m_TimelineItems[iItem];
+			const float fDisplayWidthPx = ResolveTimelineDisplayWidthPx(
+				Item.strLabel, Item.fMinimumDisplayWidthPx);
+			const uint64_t iDisplayDurationMs = static_cast<uint64_t>(
+				std::ceil(static_cast<double>(fDisplayWidthPx) * 1000.0 /
+					static_cast<double>(m_fTimelinePixelsPerSecond)));
+			const uint64_t iVisualEndMs = (std::max)(
+				static_cast<uint64_t>(Item.iEndMs),
+				static_cast<uint64_t>(Item.iStartMs) + iDisplayDurationMs);
 			std::size_t iSubrow = 0u;
 			for (; iSubrow < SubrowVisualEndMs.size(); ++iSubrow)
 			{
@@ -3095,10 +3240,6 @@ void Client::CActionCompositionWorkbench::Pack_TimelineSubrows()
 					break;
 				}
 			}
-			const uint64_t iVisualEndMs = (std::max)(
-				static_cast<uint64_t>(Item.iEndMs),
-				static_cast<uint64_t>(Item.iStartMs) +
-					MINIMUM_VISUAL_DURATION_MS);
 			if (iSubrow == SubrowVisualEndMs.size())
 				SubrowVisualEndMs.push_back(iVisualEndMs);
 			else
@@ -6864,6 +7005,7 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 	{
 		m_fTimelinePixelsPerSecond = (std::clamp)(
 			m_fTimelinePixelsPerSecond, 40.f, 500.f);
+		Pack_TimelineSubrows();
 	}
 	if (nullptr == pPattern)
 	{
@@ -7000,10 +7142,12 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 		m_TimelineItems.end() != SelectedTimelineBox;
 	const bool_t bSelectedSoundBox = bTimelineBoxSelected &&
 		DETAIL_OWNER::SOUND == SelectedTimelineBox->eOwner;
+	const bool_t bSelectedV2Box = bTimelineBoxSelected &&
+		SelectedTimelineBox->bEffectV2Binding;
 	const bool_t bSelectedBoxMutationAdmitted = bTimelineBoxSelected &&
-		(bSelectedSoundBox ?
+		(bSelectedV2Box ? bMutationAdmitted : (bSelectedSoundBox ?
 			(bMutationAdmitted && !m_bAuthoringDraftDirty) :
-			bPatternMutationAdmitted);
+			bPatternMutationAdmitted));
 	ImGui::SeparatorText("Selected Box");
 	if (bTimelineBoxSelected)
 	{
@@ -7035,7 +7179,7 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 	}
 	ImGui::EndDisabled();
 	ImGui::TextDisabled(
-		"Animation body drag reorders and right-edge drag trims. Effect/Sound body drag changes occurrence time. Duplicate inserts a typed copy; Delete never changes a collider by inference.");
+		"Animation body drag reorders and right-edge drag trims. Effect/Sound/V2 body drag changes occurrence time. V2 Duplicate/Delete saves the binding immediately; Pattern-owned boxes use Save & Apply.");
 	Render_PatternDurationControl(
 		*pPattern, bPatternMutationAdmitted);
 	Render_SelectedStageGapControl(
@@ -7050,10 +7194,14 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 			"Timeline display capped at %u ms; authored duration is %u ms.",
 			iRenderDurationMs, m_iTimelineDurationMs);
 	}
-	const float fCanvasWidth = (std::max)(
+	const float fClockCanvasWidth = (std::max)(
 		520.f,
 		static_cast<float>((std::max)(iRenderDurationMs, 1u)) *
 			m_fTimelinePixelsPerSecond * 0.001f);
+	/* Keep a point occurrence at the end of the Stage fully clickable without
+	   changing its authored clock or extending the ruler's semantic duration. */
+	const float fCanvasWidth = fClockCanvasWidth +
+		TIMELINE_LABEL_MAXIMUM_WIDTH_PX;
 	const float fAvailableHeight = (std::max)(
 		150.f, ImGui::GetContentRegionAvail().y);
 	if (!ImGui::BeginChild(

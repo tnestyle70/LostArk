@@ -233,6 +233,7 @@
         "Data/Encounters/Valtan/**",
         "Data/Valtan/**",
         "Data/Effects/EffectCatalog.json",
+        "Data/Effects/V2/**",
         "Data/Effects/Authored/effect.valtan.*.effect.json"
       ],
       "tools": [

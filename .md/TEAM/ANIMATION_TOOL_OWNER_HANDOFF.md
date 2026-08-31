@@ -197,6 +197,46 @@ Effect Tool은 Animation clip과 marker vector를 직접 편집하지 않는다.
 선택한 `EffectAssetId`를 typed request로 제출할 뿐이며, Animation Tool에서 marker가 만들어지고 Save되기
 전에는 binding이 영구 저장됐다고 표시하지 않는다.
 
+### 7.1 Effect Tool V2 Group과 Action Composition binding 경계
+
+Effect Tool V2는 V2 leaf body와 재사용 가능한 Group body를 함께 소유한다.
+
+```text
+Data/Effects/V2/Authored/<effectId>.effectv2.json
+  leaf의 mesh/texture/particle/decal/trail body와 effect-local 수명
+
+Data/Effects/V2/Groups/<groupId>.effectv2group.json
+  ordered leaf children
+  + child-local start/duration/stop/offset/yaw/scale
+
+Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json
+  Action Composition이 소유하는 exact Pattern occurrence
+  + groupId 또는 direct leaf reference
+  + stage/clip clock, start, anchor/follow/rotation/placement
+```
+
+- Composition에서 Group을 Pattern에 붙일 때 group children을 `Valtan.gameplay.json`이나
+  `Valtan.presentation.json`에 펼쳐 복사하지 않는다. Effect Tool V2가 group body를 Save하고
+  Composition은 `groupId` occurrence만 저장한다.
+- Composition의 기본 palette는 `boss.valtan.*` Group 우선이다. direct leaf는
+  `Advanced / Direct Leaves`에서만 같은 boss scope로 연다. 다른 owner의 leaf를 발탄 Pattern에
+  연결하지 않는다.
+- group binding이 펼치는 동일 leaf와 direct leaf의 expanded clock이 같으면 중복 재생이므로
+  editor와 validator가 저장을 거부한다.
+- 선택 animation box에 Group을 붙이면 그 box의 stable occurrence와 Stage-local start가 binding
+  command의 baseline이다. Delete/Duplicate는 group body가 아니라 선택 exact binding row 하나만
+  바꾸며 vector index를 identity로 쓰지 않는다.
+- Composition에서 보이는 Group block 길이는 child max end의 display span이다. 이 표시는
+  Pattern Stage duration이나 Group semantic duration을 자동으로 바꾸지 않는다.
+- local Arena Clone은 저장 직후 Effect V2 catalog/runtime cache를 invalidation하고 현재 clock을
+  restage해 저작 결과를 확인한다. Product Server Valtan은 publish/build와 Server restart,
+  world re-entry가 봉인한 immutable presentation generation만 사용한다. `Reload Complete Play
+  Inventory`는 이 Server generation을 갱신하지 않는다.
+
+Animation Tool은 이 세 파일 중 Group body나 V2 binding을 편집하지 않는다. Animation/Composition이
+공유하는 것은 선택 clip occurrence와 Stage-local clock뿐이며, Product 판정은 계속 Server Pattern
+action과 fixed tick이 소유한다.
+
 ## 8. Character Preview Panel이 소유하는 것
 
 공용 Character Preview Panel은 다음을 소유한다.
