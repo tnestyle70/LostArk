@@ -176,7 +176,7 @@ namespace
 	"selected item" name label), Update_ItemUpgradeSelection (click-to-select + icon swap), and
 	the success/fail detail text so the id/name/icon triple has exactly one source. Built fresh
 	from the real replicated inventory each time it's needed (cheap in-memory filter, same cost
-	class as CInventoryView::Render's own per-frame rebuild) rather than cached, so a fresh
+	class as CInventoryView::Update's own per-frame rebuild) rather than cached, so a fresh
 	S2C_INVENTORY_SNAPSHOT (e.g. right after the Valtan clear rewards land) is reflected the very
 	next frame with no separate invalidation path. */
 	struct ITEM_UPGRADE_SLOT_INFO
@@ -1101,6 +1101,12 @@ void CMainApp::RenderCombatHUD()
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
 		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
 	{
+		/* m_pInventoryView's CUI_Sprite slots live under LEVEL::STATIC (so the panel survives a
+		Bern<->Valtan transition instead of resetting) -- unlike the old ImGui pass, which simply
+		stopped being called and drew nothing, they keep showing their last state across a level
+		change unless told otherwise. */
+		if (nullptr != m_pInventoryView)
+			m_pInventoryView->Hide();
 		return;
 	}
 
@@ -1109,6 +1115,8 @@ void CMainApp::RenderCombatHUD()
 	if (!player.isValid || 0u == player.iMaximumHp ||
 		0u == player.iMaximumResource)
 	{
+		if (nullptr != m_pInventoryView)
+			m_pInventoryView->Hide();
 		return;
 	}
 
@@ -1479,7 +1487,7 @@ void CMainApp::RenderCombatHUD()
 	if (nullptr != m_pSkillWindowView)
 		m_pSkillWindowView->Render(player.eCharacterClass);
 	if (nullptr != m_pInventoryView)
-		m_pInventoryView->Render(CCombatHUDViewModel::Get().Get_Inventory().Items);
+		m_pInventoryView->Update(CCombatHUDViewModel::Get().Get_Inventory().Items);
 	/* P-toggled static preview of the real traced ItemUpgradeUI.json art/positions -- see the
 	m_pItemUpgradeView declaration comment in MainApp.h. No per-slot gameplay logic (no real
 	Server 재련 data exists yet), just the same generic Render("Default", 0) pass Esther/Boss UI

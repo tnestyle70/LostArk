@@ -1472,6 +1472,1306 @@
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 788.717407, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 821.697205, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 854.677002, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 887.656677, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 920.636475, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 953.616272, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 986.59613, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1019.57581, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_8",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1052.55554, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_9",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1085.5354, "y": 88.9000015, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_10",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 788.717407, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_11",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 821.697205, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_12",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 854.677002, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_13",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 887.656677, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_14",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 920.636475, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_15",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 953.616272, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_16",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 986.59613, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_17",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1019.57581, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_18",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1052.55554, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_19",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1085.5354, "y": 121.879799, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_20",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 788.717407, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_21",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 821.697205, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_22",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 854.677002, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_23",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 887.656677, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_24",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 920.636475, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_25",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 953.616272, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_26",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 986.59613, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_27",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1019.57581, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_28",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1052.55554, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_29",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1085.5354, "y": 154.859604, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_30",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 788.717407, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_31",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 821.697205, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_32",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 854.677002, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_33",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 887.656677, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_34",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 920.636475, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_35",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 953.616272, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_36",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 986.59613, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_37",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1019.57581, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_38",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1052.55554, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_39",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1085.5354, "y": 187.839294, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_40",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 788.717407, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_41",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 821.697205, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_42",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 854.677002, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_43",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 887.656677, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_44",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 920.636475, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_45",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 953.616272, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_46",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 986.59613, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_47",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1019.57581, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_48",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1052.55554, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_49",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1085.5354, "y": 220.819107, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_50",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 788.717407, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_51",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 821.697205, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_52",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 854.677002, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_53",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 887.656677, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_54",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 920.636475, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_55",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 953.616272, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_56",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 986.59613, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_57",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1019.57581, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_58",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1052.55554, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_59",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1085.5354, "y": 253.798904, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_60",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 788.717407, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_61",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 821.697205, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_62",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 854.677002, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_63",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 887.656677, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_64",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 920.636475, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_65",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 953.616272, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_66",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 986.59613, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_67",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1019.57581, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_68",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1052.55554, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_69",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1085.5354, "y": 286.778687, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_70",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 788.717407, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_71",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 821.697205, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_72",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 854.677002, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_73",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 887.656677, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_74",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 920.636475, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_75",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 953.616272, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_76",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 986.59613, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_77",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1019.57581, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_78",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1052.55554, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_79",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1085.5354, "y": 319.758392, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_80",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 788.717407, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_81",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 821.697205, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_82",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 854.677002, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_83",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 887.656677, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_84",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 920.636475, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_85",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 953.616272, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_86",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 986.59613, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_87",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1019.57581, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_88",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1052.55554, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_89",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1085.5354, "y": 352.73819, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_90",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 788.717407, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_91",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 821.697205, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_92",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 854.677002, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_93",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 887.656677, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_94",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 920.636475, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_95",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 953.616272, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_96",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 986.59613, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_97",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1019.57581, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_98",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1052.55554, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Inventory_ItemIcon_99",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1085.5354, "y": 385.717987, "width": 31.4797993, "height": 31.4797993 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     }
   ]
 }

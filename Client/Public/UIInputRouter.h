@@ -39,6 +39,24 @@ public:
 	   Is_RightClickEdge()), the real dismiss gesture for the Party context menu -- not a left
 	   click. */
 	bool_t Is_RightClickEdge() const;
+	/* Left button currently held, independent of any rect -- for a multi-frame drag gesture
+	(press on frame N, keep moving through frame N+k, release on frame N+k) that Is_Clicked's
+	single-frame edge can't express by itself. */
+	bool_t Is_LeftDown() const { return m_bLeftDownThisFrame; }
+	/* Real left-click up-edge this frame, independent of any rect -- the drag-release
+	counterpart to Is_LeftClickEdge. */
+	bool_t Is_LeftReleaseEdge() const { return !m_bLeftDownThisFrame && m_bLeftDownLastFrame; }
+	/* Current cursor position converted into the caller's own document reference-resolution
+	units (the inverse of the scaling Is_Hovered applies) -- for a drag gesture that needs the
+	real mouse delta/position between frames, not just a hit-test bool. False (position
+	unmodified) if the cursor or viewport size can't be read this frame. */
+	bool_t Get_MousePosition(f32_t fRefWidth, f32_t fRefHeight, f32_t& outX, f32_t& outY) const;
+	/* Raw client-area pixel position, with no reference-resolution conversion -- the same space
+	ImGui::GetMousePos() reads in this single-viewport game (WorkPos is always (0,0) here), for a
+	caller that has to hand a drop position to an ImGui screen not yet migrated (e.g.
+	CInventoryView::Try_Consume_ItemDrop's contract with CMainApp::Render_ItemQuickSlots). False
+	if the cursor can't be read this frame. */
+	bool_t Get_ClientCursorPosition(f32_t& outX, f32_t& outY) const;
 	/* A modal/full-screen UI screen claims the mouse for the whole frame regardless of which
 	specific widget (if any) is hovered -- its own dim backdrop swallowing clicks, matching
 	BeginPopupModal's own behavior. */

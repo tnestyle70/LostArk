@@ -71,6 +71,36 @@ bool_t Client::CUIInputRouter::Is_RightClickEdge() const
 	return m_bRightDownThisFrame && !m_bRightDownLastFrame;
 }
 
+bool_t Client::CUIInputRouter::Get_MousePosition(
+	f32_t fRefWidth, f32_t fRefHeight, f32_t& outX, f32_t& outY) const
+{
+	::POINT cursor{};
+	if (!GetCursorPos(&cursor) || !ScreenToClient(g_hWnd, &cursor))
+		return false;
+
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	if (vViewportSize.x <= 0.f || vViewportSize.y <= 0.f ||
+		fRefWidth <= 0.f || fRefHeight <= 0.f)
+	{
+		return false;
+	}
+
+	outX = static_cast<f32_t>(cursor.x) * fRefWidth / vViewportSize.x;
+	outY = static_cast<f32_t>(cursor.y) * fRefHeight / vViewportSize.y;
+	return true;
+}
+
+bool_t Client::CUIInputRouter::Get_ClientCursorPosition(f32_t& outX, f32_t& outY) const
+{
+	::POINT cursor{};
+	if (!GetCursorPos(&cursor) || !ScreenToClient(g_hWnd, &cursor))
+		return false;
+
+	outX = static_cast<f32_t>(cursor.x);
+	outY = static_cast<f32_t>(cursor.y);
+	return true;
+}
+
 void Client::CUIInputRouter::Claim_Mouse_This_Frame()
 {
 	m_bMouseClaimedThisFrame = true;
