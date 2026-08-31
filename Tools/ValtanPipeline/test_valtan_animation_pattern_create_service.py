@@ -55,6 +55,7 @@ class ValtanAnimationPatternCreateServiceTests(unittest.TestCase):
             promotion.GAMEPLAY_REL,
             promotion.PRESENTATION_REL,
             promotion.RECEIPT_REL,
+            promotion.ROOT_MOTION_REL,
             promotion.ANIM_NOTIFY_REL,
         ):
             source = REPOSITORY_ROOT / relative
@@ -141,6 +142,12 @@ class ValtanAnimationPatternCreateServiceTests(unittest.TestCase):
                 for row in gameplay["patterns"]
                 if row["patternId"] == "VALTAN_WORKBENCH_NEW_PATTERN"
             )
+            root_motion = promotion._read_json(
+                self.root / promotion.ROOT_MOTION_REL
+            )
+            root_motion["patterns"].append(
+                {"patternId": pattern_id, "stages": []}
+            )
             return {
                 FAKE_PRODUCT_REL: json.dumps(
                     {
@@ -151,15 +158,21 @@ class ValtanAnimationPatternCreateServiceTests(unittest.TestCase):
                     },
                     sort_keys=True,
                 )
-                + "\n"
+                + "\n",
+                promotion.ROOT_MOTION_REL: json.dumps(
+                    root_motion,
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
             }
 
         with mock.patch.object(
             promotion, "_load_root_curves", return_value=self.root_curves
         ), mock.patch.object(
             promotion,
-            "_product_projection_relatives",
-            return_value=(FAKE_PRODUCT_REL,),
+            "_transaction_projection_relatives",
+            return_value=(FAKE_PRODUCT_REL, promotion.ROOT_MOTION_REL),
         ), mock.patch.object(
             promotion, "validate_and_project", side_effect=project
         ):
@@ -182,6 +195,9 @@ class ValtanAnimationPatternCreateServiceTests(unittest.TestCase):
         presentation = json.loads(targets[self.root / promotion.PRESENTATION_REL])
         receipt = json.loads(targets[self.root / promotion.RECEIPT_REL])
         product = json.loads(targets[self.root / FAKE_PRODUCT_REL])
+        root_motion = json.loads(
+            targets[self.root / promotion.ROOT_MOTION_REL]
+        )
         pattern = next(
             row for row in gameplay["patterns"]
             if row["patternId"] == "VALTAN_WORKBENCH_NEW_PATTERN"
@@ -201,6 +217,10 @@ class ValtanAnimationPatternCreateServiceTests(unittest.TestCase):
 
         self.assertEqual("MANUAL_SERVER_AUDITION", manual["admissionState"])
         self.assertEqual("AUDITION_ONLY", product["selectionMode"])
+        self.assertIn(
+            "VALTAN_WORKBENCH_NEW_PATTERN",
+            {row["patternId"] for row in root_motion["patterns"]},
+        )
         self.assertEqual("NONE", pattern["targetPolicy"])
         self.assertEqual("NONE", pattern["aimPolicy"])
         self.assertIsNone(pattern["serverMotion"])
@@ -421,6 +441,48 @@ class ValtanAnimationPatternCreateServiceTests(unittest.TestCase):
             {path: promotion._read_bytes_or_none(path) for path in targets},
         )
         self.assertFalse(list(self.root.rglob("*.tmp")))
+
+    def test_general_apply_commits_candidate_root_motion_with_products(self) -> None:
+        root_motion = promotion._read_json(
+            self.root / promotion.ROOT_MOTION_REL
+        )
+        root_motion["patterns"].append(
+            {"patternId": "VALTAN_GENERAL_APPLY_FIXTURE", "stages": []}
+        )
+        outputs = {
+            FAKE_PRODUCT_REL: json.dumps(
+                {"schema": "fixture", "formatVersion": 1}
+            )
+            + "\n",
+            promotion.ROOT_MOTION_REL: json.dumps(
+                root_motion, ensure_ascii=False, indent=2
+            )
+            + "\n",
+        }
+        receipt = {"patternCount": 1, "stageCount": 1, "patterns": [
+            {"occurrences": [{}]}
+        ]}
+        with mock.patch.object(
+            promotion,
+            "build_candidates",
+            return_value=(
+                {"candidate": "gameplay"},
+                {"candidate": "presentation"},
+                receipt,
+            ),
+        ), mock.patch.object(
+            promotion, "validate_and_project", return_value=outputs
+        ):
+            result = promotion.run(self.root, "Apply")
+
+        self.assertEqual(2, result["projectedArtifactCount"])
+        committed_root_motion = promotion._read_json(
+            self.root / promotion.ROOT_MOTION_REL
+        )
+        self.assertIn(
+            "VALTAN_GENERAL_APPLY_FIXTURE",
+            {row["patternId"] for row in committed_root_motion["patterns"]},
+        )
 
     def test_replace_and_primary_rollback_failure_still_restore_exact_baselines(self) -> None:
         targets, baselines, _result = self.prepare(self.request())

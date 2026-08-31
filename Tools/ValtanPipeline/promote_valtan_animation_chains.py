@@ -41,6 +41,7 @@ PATTERN_SOUND_REL = (
 EFFECT_V2_BINDINGS_REL = (
     "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"
 )
+ROOT_MOTION_REL = "Data/Animation/RootMotion/Valtan.rootmotion.json"
 RECEIPT_REL = "Data/Valtan/Valtan.animation-chain-promotion.receipt.json"
 ANIM_NOTIFY_REL = "Data/Animation/Reference/Valtan/Valtan.animnotify"
 CREATE_REQUEST_SCHEMA = "lostark.valtan-animation-pattern-create-request"
@@ -728,6 +729,21 @@ def _preserve_manual_gameplay_enrichment(
         ):
             if field in existing_stage:
                 generated_stage[field] = copy.deepcopy(existing_stage[field])
+        # A gameplay motion can legitimately outlive the reviewed animation
+        # slice (for example the 2.3 s Portal rush uses a looping 0.9 s clip).
+        # Refreshing animation lineage must not shrink the Server stage below
+        # the already-authored motion clock.
+        existing_duration_ms = existing_stage.get("durationMs")
+        generated_duration_ms = generated_stage.get("durationMs")
+        if (
+            existing_stage.get("motion") is not None
+            and isinstance(existing_duration_ms, int)
+            and not isinstance(existing_duration_ms, bool)
+            and isinstance(generated_duration_ms, int)
+            and not isinstance(generated_duration_ms, bool)
+            and existing_duration_ms > generated_duration_ms
+        ):
+            generated_stage["durationMs"] = existing_duration_ms
         next_action = generated_stage["defaultNextActionId"]
         if next_action is not None and next_action not in generated_action_ids:
             raise PromotionError(
@@ -1370,6 +1386,35 @@ def _product_projection_relatives(repo_root: Path) -> tuple[str, ...]:
     )
 
 
+def _transaction_projection_relatives(repo_root: Path) -> tuple[str, ...]:
+    """Every derived document committed with a split authoring generation."""
+
+    return (*_product_projection_relatives(repo_root), ROOT_MOTION_REL)
+
+
+def _project_candidate_root_motion(
+    repo_root: Path,
+    encounter: dict[str, Any],
+    bindings: dict[str, Any],
+) -> str:
+    root_text = str(repo_root)
+    if root_text not in sys.path:
+        sys.path.insert(0, root_text)
+    try:
+        from Tools.ValtanActionExtractor import build_valtan_rootmotion
+
+        document, _notes = build_valtan_rootmotion.build(
+            repo_root,
+            encounter_document=encounter,
+            bindings_document=bindings,
+        )
+    except (ImportError, OSError, KeyError, TypeError, ValueError) as exc:
+        raise PromotionError(
+            f"cannot project candidate Valtan root motion: {exc}"
+        ) from exc
+    return _json_text(document)
+
+
 def validate_and_project(
     repo_root: Path,
     gameplay: dict[str, Any],
@@ -1421,6 +1466,11 @@ def validate_and_project(
         )
         outputs[pipeline.PROVENANCE_REL] = pipeline.project_provenance_receipt(
             repo_root, {**outputs, **balance_outputs}
+        )
+        outputs[ROOT_MOTION_REL] = _project_candidate_root_motion(
+            repo_root,
+            json.loads(outputs[pipeline.ENCOUNTER_REL]),
+            json.loads(outputs[pipeline.BINDINGS_REL]),
         )
     except (KeyError, TypeError, ValueError, pipeline.PipelineError) as exc:
         raise PromotionError(f"promoted split/Product validation failed: {exc}") from exc
@@ -2157,7 +2207,7 @@ def prepare_create_pattern_transaction(
         gameplay_document=gameplay,
         presentation_document=presentation,
     )
-    product_relatives = _product_projection_relatives(repo_root)
+    product_relatives = _transaction_projection_relatives(repo_root)
     if len(product_relatives) != len(set(product_relatives)):
         raise PromotionError("Product projection target closure contains duplicates")
     for relative in product_relatives:

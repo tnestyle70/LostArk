@@ -346,6 +346,7 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
                 {
                     "stageId": "STEP_01",
                     "actionId": "valtan.sequence.warp.step-01",
+                    "durationMs": 900,
                     "stageKind": "ACTIVE",
                     "defaultNextActionId": None,
                     "hit": {"shape": {"kind": "NONE"}},
@@ -362,7 +363,14 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
             "stages": [
                 {
                     **generated_gameplay["stages"][0],
+                    "durationMs": 2300,
                     "hit": {"shape": {"kind": "BOX"}},
+                    "motion": {
+                        "kind": "PORTAL_TARGET_RUSH",
+                        "retargetDelayMs": 500,
+                        "speedMps": 20.0,
+                        "distanceM": 16.0,
+                    },
                     "events": [{"eventId": "event.valtan.warp.portal"}],
                 }
             ],
@@ -376,6 +384,7 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
         self.assertEqual(
             "BOX", preserved_gameplay["stages"][0]["hit"]["shape"]["kind"]
         )
+        self.assertEqual(2300, preserved_gameplay["stages"][0]["durationMs"])
 
         generated_presentation = {
             "patternId": "VALTAN_WARP",
@@ -451,7 +460,7 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
         trash_p = phase_two.pattern(presentation, "VALTAN_TRASH")
         self.assertEqual(phase_two.pattern(saved_g, "VALTAN_TRASH"), trash)
         self.assertEqual(phase_two.pattern(saved_p, "VALTAN_TRASH"), trash_p)
-        self.assertEqual(14, len(trash["stages"]))
+        self.assertEqual(22, len(trash["stages"]))
         counter = phase_two.stage(trash, "STEP_07")
         captured_hold = phase_two.stage(trash, "CATCH_COUNTER")
         pre_impact = phase_two.stage(trash, "CATCH_PRE_IMPACT")

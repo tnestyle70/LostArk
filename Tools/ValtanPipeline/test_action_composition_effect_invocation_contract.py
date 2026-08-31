@@ -230,7 +230,7 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
             '"Open Saved Product Effect Body"',
             '"Save + Reload Before Opening Effect Body"',
             "Request_EffectOwner(*pSavedPattern, *pSavedStage, *pSavedCue)",
-            "draft-only Add/Update rows cannot open an asset-only fallback",
+            "Effect body deep-link requires this invocation to exist in the saved Pattern.",
         ):
             self.assertIn(token, gate)
         self.assertIn(
@@ -292,15 +292,17 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
         self.assertIn("never infers hit geometry", details)
         self.assertNotIn("Cue.LocalTransform.vScale.x *", details)
 
-    def test_stale_preview_is_stop_only_and_reload_clears_effect_edit_copy(self) -> None:
+    def test_stale_preview_is_stop_only_and_reload_stages_effect_catalog_once(self) -> None:
         reload_body = body(
             self.workbench,
             "bool_t Client::CActionCompositionWorkbench::Reload_Canonical()",
         )
         self.assertIn("Reset_EffectCueEditor();", reload_body)
-        self.assertIn("m_SemanticValtanEffectAssetIds.clear();", reload_body)
-        self.assertIn("m_bSemanticValtanEffectLoadAttempted = false;", reload_body)
-        self.assertNotIn("Reload_SemanticValtanEffects();", reload_body)
+        self.assertIn("Reload_SemanticValtanEffects();", reload_body)
+        self.assertLess(
+            reload_body.index("m_eAdmission = ADMISSION_STATE::ADMITTED;"),
+            reload_body.rindex("Reload_SemanticValtanEffects();"),
+        )
         preview = body(
             self.workbench,
             "void Client::CActionCompositionWorkbench::Render_Preview(",

@@ -1605,8 +1605,12 @@ bool_t Client::CActionCompositionWorkbench::Reload_Canonical()
 	/* A stable cue identity may now describe different source fields. Never let
 	   the previous generation's editable value copy overwrite a fresh admit. */
 	Reset_EffectCueEditor();
-	m_SemanticValtanEffectAssetIds.clear();
-	m_bSemanticValtanEffectLoadAttempted = false;
+	/* Effect V2 clip bindings are part of the primary Sequencer projection, not
+	   an optional Resource-tab detail. Stage the fixed BOSS_VALTAN catalog once
+	   with the canonical graph so the first timeline frame already contains its
+	   group boxes. Reload_SemanticValtanEffects reads only the authored Valtan
+	   catalogs here; it never walks the repository or runs per frame. */
+	Reload_SemanticValtanEffects();
 	Invalidate_TimelineCache();
 	Normalize_Selection();
 	return true;

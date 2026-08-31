@@ -101,7 +101,7 @@ class ActionCompositionEffectV2ClipProjectionContract(unittest.TestCase):
         self.assertIn('"Clip source start (ms)"', details)
         self.assertIn("Item.fEffectV2ClipPlayRate", timeline_render)
 
-    def test_valtan_struggling_impact_rows_have_real_clip_join_targets(self) -> None:
+    def test_valtan_struggling_v2_groups_have_exact_clip_join_targets(self) -> None:
         presentation = json.loads(PRESENTATION.read_text(encoding="utf-8-sig"))
         bindings = json.loads(BINDINGS.read_text(encoding="utf-8-sig"))["bindings"]
         struggling = next(
@@ -110,26 +110,50 @@ class ActionCompositionEffectV2ClipProjectionContract(unittest.TestCase):
             if pattern["patternId"] == "VALTAN_STRUGGLING"
         )
         occurrences = {
-            occurrence["clip"]: occurrence
+            occurrence["clip"]: (stage["stageId"], stage["animation"]["endPolicy"], occurrence)
             for stage in struggling["stages"]
             for occurrence in stage["animation"]["occurrences"]
         }
-        impact_rows = [
-            row
+        expected_occurrences = {
+            "mesh_att_battle_19_01": ("STEP_04", "EXACT", 5000, False),
+            "mesh_att_battle_19_02": ("STEP_05", "EXACT", 1500, False),
+            "mesh_att_battle_19_03": ("STEP_06", "LOOP_TO_STAGE_END", 0, True),
+            "mesh_att_battle_19_04": ("STEP_07", "EXACT", 2600, False),
+        }
+        for clip, expected in expected_occurrences.items():
+            stage_id, end_policy, occurrence = occurrences[clip]
+            self.assertEqual(expected[0], stage_id)
+            self.assertEqual(expected[1], end_policy)
+            self.assertEqual(expected[2], occurrence["playMs"])
+            self.assertEqual(expected[3], occurrence["repeatUntilStageEnd"])
+
+        joined_rows = sorted(
+            (
+                row["clip"],
+                row["group"],
+                row["startMs"],
+            )
             for row in bindings
-            if row.get("group") == "boss.valtan.impact"
-            and row.get("clip") == "mesh_att_battle_19_01"
-        ]
-        self.assertEqual(4, len(impact_rows))
-        impact_occurrence = occurrences["mesh_att_battle_19_01"]
-        self.assertEqual(5000, impact_occurrence["playMs"])
+            if row.get("clip") in expected_occurrences and row.get("group")
+        )
         self.assertEqual(
-            [1233, 2233, 3233, 4200],
-            sorted(row["startMs"] for row in impact_rows),
+            sorted([
+                ("mesh_att_battle_19_01", "boss.valtan.impact", 1233),
+                ("mesh_att_battle_19_01", "boss.valtan.impact", 2233),
+                ("mesh_att_battle_19_01", "boss.valtan.impact", 3233),
+                ("mesh_att_battle_19_01", "boss.valtan.impact", 4200),
+                ("mesh_att_battle_19_02", "boss.valtan.pounding.chase", 0),
+                ("mesh_att_battle_19_03", "boss.valtan.pounding", 200),
+                ("mesh_att_battle_19_03", "boss.valtan.pounding", 400),
+                ("mesh_att_battle_19_04", "boss.valtan.twohand", 1033),
+            ]),
+            joined_rows,
         )
-        self.assertTrue(
-            all(row["startMs"] < impact_occurrence["playMs"] for row in impact_rows)
-        )
+        for clip, _group, start_ms in joined_rows:
+            occurrence = occurrences[clip][2]
+            if occurrence["repeatUntilStageEnd"]:
+                continue
+            self.assertLess(start_ms, occurrence["playMs"])
 
 
 if __name__ == "__main__":

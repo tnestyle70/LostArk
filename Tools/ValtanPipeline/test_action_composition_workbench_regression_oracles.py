@@ -1506,7 +1506,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertIn("m_iTimelineCacheDraftGeneration", cache_gate)
         self.assertIn("return;", cache_gate)
 
-    def test_resource_catalogs_load_only_in_the_open_resource_domain(self) -> None:
+    def test_large_animation_catalog_is_lazy_and_v2_timeline_catalog_is_eager(self) -> None:
         open_valtan = function_body(
             self.workbench_cpp,
             "bool_t Client::CActionCompositionWorkbench::Open_Valtan()",
@@ -1521,7 +1521,13 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         for body in (open_valtan, reload_canonical, render):
             self.assertNotIn("Reload_AnimationSequences(", body)
+        for body in (open_valtan, render):
             self.assertNotIn("Reload_SemanticValtanEffects(", body)
+        self.assertIn("Reload_SemanticValtanEffects();", reload_canonical)
+        self.assertLess(
+            reload_canonical.index("m_eAdmission = ADMISSION_STATE::ADMITTED;"),
+            reload_canonical.rindex("Reload_SemanticValtanEffects();"),
+        )
 
         sequence_browser = function_body(
             self.workbench_cpp,

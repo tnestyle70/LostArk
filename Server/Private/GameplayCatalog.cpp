@@ -4537,7 +4537,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				if (!validBranches || !validActions)
 				{
 					m_strStatus =
-						"Boss pattern stage branch or action contract is invalid";
+						"Boss pattern stage branch or action contract is invalid: " +
+						pattern.strPatternId + "/" + stage.strStageId;
 					return false;
 				}
 			}
