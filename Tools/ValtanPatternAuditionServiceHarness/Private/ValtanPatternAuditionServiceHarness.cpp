@@ -13,6 +13,7 @@
 int Run_ValtanPresentationContractTests();
 int Run_ValtanEncounterReferenceContractTests();
 int Run_ValtanCanonicalGraphContractTests();
+int Run_ActionCompositionGraphModelContractTests();
 int Run_ValtanPatternSoundCueDocumentContractTests();
 int Run_ValtanPatternAnimationBindingDocumentContractTests();
 int Run_ValtanPatternEffectCueAuthoringContractTests();
@@ -1333,6 +1334,8 @@ int main()
 		Run_ValtanEncounterReferenceContractTests();
 	const int CanonicalGraphFailures =
 		Run_ValtanCanonicalGraphContractTests();
+	const int CompositionGraphFailures =
+		Run_ActionCompositionGraphModelContractTests();
 	const int PatternSoundCueFailures =
 		Run_ValtanPatternSoundCueDocumentContractTests();
 	const int AnimationBindingDocumentFailures =
@@ -1344,6 +1347,7 @@ int main()
 	return 0u == Failed && 0 == FlowFailures && 0 == TuningFailures &&
 		0 == PresentationFailures && 0 == EncounterReferenceFailures &&
 		0 == CanonicalGraphFailures &&
+		0 == CompositionGraphFailures &&
 		0 == PatternSoundCueFailures &&
 		0 == AnimationBindingDocumentFailures &&
 		0 == EffectCueAuthoringFailures &&

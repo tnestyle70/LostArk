@@ -358,11 +358,12 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         )
         for command in (
             "Validate_ValtanDraft",
-            "Save_ValtanAuthoring",
+            "Save_ValtanCanonicalProduct",
             "Publish_ValtanCandidate",
             "Apply_ValtanRevision",
         ):
             self.assertIn(command, save_product)
+        self.assertNotIn("Save_ValtanAuthoring", save_product)
         self.assertNotIn('ImGui::Button("Apply Hot Reload")', self.balance_cpp)
 
     def test_candidate_apply_class_is_strict_and_blocks_hot_reload(self) -> None:

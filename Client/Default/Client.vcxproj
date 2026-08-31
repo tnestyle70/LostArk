@@ -45,6 +45,7 @@
     <ClInclude Include="..\Public\BalanceTool.h" />
       <ClInclude Include="..\Public\BossTool.h" />
 	  <ClInclude Include="..\Public\CameraTool.h" />
+	<ClInclude Include="..\Public\ActionCompositionGraphModel.h" />
 	<ClInclude Include="..\Public\ActionCompositionWorkbench.h" />
     <ClInclude Include="..\Public\Animation_Tool.h" />
     <ClInclude Include="..\Public\Character.h" />
@@ -150,6 +151,7 @@
     <ClInclude Include="..\public\Effect_Tool.h" />
     <ClInclude Include="..\Public\Effect_Tool_V2.h" />
     <ClInclude Include="..\Public\EffectV2_Object.h" />
+    <ClInclude Include="..\Public\EffectV2_Catalog.h" />
     <ClInclude Include="..\Public\EffectV2_Document.h" />
     <ClInclude Include="..\Public\EffectV2_Runtime.h" />
     <ClInclude Include="..\Public\EffectV2_Target.h" />
@@ -198,6 +200,8 @@
   </ItemGroup>
   <ItemGroup>
 	<ClCompile Include="..\Private\ActionCompositionWorkbench.cpp" />
+	<ClCompile Include="..\Private\ActionCompositionWorkbench_Blueprint.cpp" />
+	<ClCompile Include="..\Private\ActionCompositionGraphModel.cpp" />
 	<ClCompile Include="..\Private\ActionPresentationTimeline.cpp" />
 	<ClCompile Include="..\Private\CameraShakeService.cpp" />
 	<ClCompile Include="..\Private\ValtanCinematicCameraController.cpp" />
@@ -312,6 +316,7 @@
     </ClCompile>
     <ClCompile Include="..\Private\Effect_Tool_V2.cpp" />
     <ClCompile Include="..\Private\EffectV2_Object.cpp" />
+    <ClCompile Include="..\Private\EffectV2_Catalog.cpp" />
     <ClCompile Include="..\Private\EffectV2_Document.cpp" />
     <ClCompile Include="..\Private\EffectV2_Runtime.cpp" />
     <ClCompile Include="..\Private\HUDLayoutTool.cpp" />

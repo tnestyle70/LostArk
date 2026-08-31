@@ -4775,6 +4775,17 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		if (nullptr == m_pBossTool)
 			m_pBossTool = make_unique<CBossTool>(
 				make_shared<CNetworkPlayerCommandSink>());
+		/* Composition exposes Server Pattern playback without opening the Boss
+		   Tool window.  Admit that owner's canonical inventory on this explicit
+		   tool-open edge so its cheap revision observer is usable immediately;
+		   never hide a rejected load behind a disabled button forever. */
+		{
+			std::string BossGraphStatus;
+			if (!m_pBossTool->Reload_CanonicalGraph(BossGraphStatus))
+				m_strToolStatus =
+					"Composition opened, but Boss Pattern Server playback is read-only: " +
+					BossGraphStatus;
+		}
 		if (nullptr == m_pAnimationTool)
 			m_pAnimationTool = make_unique<CAnimation_Tool>(
 				m_pCharacterPreviewPanel,

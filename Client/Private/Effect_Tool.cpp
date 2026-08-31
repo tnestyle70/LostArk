@@ -1991,6 +1991,37 @@ namespace
         return true;
     }
 
+	bool Validate_RegistryBoundAuditionSourceFreshness(
+		const std::filesystem::path& SourceDocumentPath,
+		const std::string_view strExpectedRawSha256,
+		std::string& strOutStatus)
+	{
+		std::error_code FileError;
+		const std::uintmax_t iFileSize = std::filesystem::file_size(
+			SourceDocumentPath, FileError);
+		if (SourceDocumentPath.empty() || strExpectedRawSha256.size() != 64u ||
+			FileError || 0u == iFileSize ||
+			iFileSize > 64u * 1024u * 1024u)
+		{
+			strOutStatus =
+				"Registry-bound audition source is missing, empty, or exceeds 64 MiB.";
+			return false;
+		}
+		std::string SourceBytes;
+		if (!Read_TextFile(SourceDocumentPath, SourceBytes, strOutStatus))
+			return false;
+		const std::string ActualSha256 =
+			Client::CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(SourceBytes);
+		if (ActualSha256 != strExpectedRawSha256)
+		{
+			strOutStatus =
+				"Registry-bound audition source changed after its catalog pin. Refresh the index only after sourceDocumentRawSha256 is deliberately updated.";
+			return false;
+		}
+		strOutStatus.clear();
+		return true;
+	}
+
     std::vector<Client::ANIMATION_SKILL_CLIP> Flatten_BindingClips(
         const Client::ANIMATION_SKILL_BINDING& Binding)
     {
@@ -6954,9 +6985,16 @@ void Client::CEffect_Tool::Render_Detail(
 	Render_SizeDetail(Element, bChanged);
 	const bool_t bParticleMasterNamedEmission =
 		Is_ParticleMasterEmissionProgram(Element);
+	const bool_t bLockProjectTunedCarrierColor =
+		Element.Material.Execution.bEnabled &&
+		Element.Material.Execution.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+		(Element.Material.Execution.iOpcode == 1003u ||
+		 Element.Material.Execution.iOpcode == 1004u);
 	Render_ColorDetail(Element.Detail, bChanged,
 		Has_EffectiveEmissiveRadianceInput(Element),
-		bParticleMasterNamedEmission);
+		bParticleMasterNamedEmission,
+		bLockProjectTunedCarrierColor);
 	Render_LinearRevealDetail(Element, bChanged);
 	Render_AuthoringMaterialParameters(Element, bChanged);
 	if (ImGui::CollapsingHeader("Advanced Authoring"))
@@ -6964,7 +7002,8 @@ void Client::CEffect_Tool::Render_Detail(
 		Render_UVDetail(Element.Detail, bChanged);
 		Render_UVKeyframes(Element, bChanged);
 		Render_KindDetail(Element, bChanged);
-		Render_LerpDetail(Element.Detail, bChanged);
+		Render_LerpDetail(Element.Detail, bChanged,
+			bLockProjectTunedCarrierColor);
 	}
 	if (!ImGui::CollapsingHeader("Advanced Diagnostics"))
 		return;
@@ -7460,10 +7499,12 @@ void Client::CEffect_Tool::Render_ColorDetail(
     EFFECT_DETAIL_DESC& Detail,
     bool_t& bChanged,
     const bool_t bHasEmissiveRadianceInput,
-    const bool_t bParticleMasterNamedEmission)
+    const bool_t bParticleMasterNamedEmission,
+	const bool_t bLockProjectTunedCarrierColor)
 {
     if (!ImGui::CollapsingHeader("Color", ImGuiTreeNodeFlags_DefaultOpen))
         return;
+	ImGui::BeginDisabled(bLockProjectTunedCarrierColor);
     bChanged |= DragFloat4(
         "Color Offset", Detail.Color.vColorOffset, 0.01f, -10.f, 10.f);
     bChanged |= DragFloat4(
@@ -7498,6 +7539,12 @@ void Client::CEffect_Tool::Render_ColorDetail(
 	bChanged |= ImGui::DragFloat("Radial Intensity",
 		&Detail.Color.fRadialIntensity, 0.01f, -100.f, 100.f, "%.3f",
 		ImGuiSliderFlags_AlwaysClamp);
+	ImGui::EndDisabled();
+	if (bLockProjectTunedCarrierColor)
+	{
+		ImGui::TextDisabled(
+			"Carrier Color is locked for opcode 1003/1004. Tune radiance, coverage, edge, refraction, and emission in Project Tuned Surface so the typed packet remains the only color authority.");
+	}
 }
 
 void Client::CEffect_Tool::Render_LinearRevealDetail(
@@ -8001,10 +8048,537 @@ void Client::CEffect_Tool::Render_SizeDetail(
 	}
 }
 
+bool_t Client::CEffect_Tool::Render_ProjectTunedSurfaceParameters(
+	EFFECT_ELEMENT_DESC& Element,
+	bool_t& bChanged)
+{
+	constexpr uint32_t WATER_DROPLET_BURST_OPCODE = 1003u;
+	constexpr uint32_t GLASS_MESH_OPCODE = 1004u;
+	const EFFECT_MATERIAL_EXECUTION_DESC& Execution =
+		Element.Material.Execution;
+	const bool_t bReservedProjectTunedOpcode =
+		Execution.iOpcode == WATER_DROPLET_BURST_OPCODE ||
+		Execution.iOpcode == GLASS_MESH_OPCODE;
+	if (!bReservedProjectTunedOpcode)
+		return false;
+	const bool_t bProjectTunedRuntimeV2 = Execution.bEnabled &&
+		Execution.eFidelity ==
+			EFFECT_MATERIAL_EXECUTION_FIDELITY::PROJECT_TUNED_APPROX &&
+		Execution.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2;
+	/* These two packets are deliberately edited by semantic name. Packed index
+	   remains transport ABI and never becomes an artist-facing control. Returning
+	   true even for a malformed packet keeps the generic +/-100000 editor hidden. */
+	struct SCALAR_CONTROL_DESC final
+	{
+		std::string_view strName;
+		std::string_view strLabel;
+		std::string_view strTooltip;
+		f32_t fMinimum = 0.f;
+		f32_t fMaximum = 1.f;
+		f32_t fStep = 0.01f;
+		const char* pFormat = "%.3f";
+	};
+	struct VECTOR_CONTROL_DESC final
+	{
+		std::string_view strName;
+		std::string_view strLabel;
+		std::string_view strTooltip;
+		f32_t fRgbMaximum = 1.f;
+		bool_t bEditAlpha = false;
+	};
+
+	static constexpr std::array<std::string_view, 16u> WATER_SCALAR_NAMES = {{
+		"water.noise-tiling", "water.pan-x", "water.pan-y",
+		"water.second-octave-scale", "water.flow-warp",
+		"water.mask-threshold", "water.edge-softness", "water.rim-width",
+		"water.coverage-power", "water.body-strength",
+		"water.rim-strength", "water.distortion-strength",
+		"water.alpha-gain", "water.fade-start-seconds",
+		"water.fade-end-seconds", "water.card-feather"
+	}};
+	static constexpr std::array<std::string_view, 2u> WATER_VECTOR_NAMES = {{
+		"water.body-color", "water.rim-color"
+	}};
+	static constexpr std::array<std::array<f32_t, 2u>, 16u>
+		WATER_SCALAR_BOUNDS = {{
+		{{ 0.01f, 16.f }}, {{ -8.f, 8.f }}, {{ -8.f, 8.f }},
+		{{ 0.5f, 8.f }}, {{ 0.f, 0.25f }}, {{ 0.f, 1.f }},
+		{{ 0.1f, 8.f }}, {{ 0.001f, 0.5f }}, {{ 0.1f, 4.f }},
+		{{ 0.f, 8.f }}, {{ 0.f, 8.f }}, {{ -0.025f, 0.025f }},
+		{{ 0.f, 4.f }}, {{ 0.f, 5.f }}, {{ 0.001f, 5.f }},
+		{{ 0.001f, 0.49f }}
+	}};
+	static constexpr std::array<SCALAR_CONTROL_DESC, 10u> WATER_CONTROLS = {{
+		{ "water.mask-threshold", "Coverage Cutoff",
+			"Fluid-mask cutoff. Lower values retain more of the droplet card.",
+			0.f, 1.f, 0.001f, "%.3f" },
+		{ "water.edge-softness", "Edge AA Width",
+			"Multiplies derivative-based mask antialiasing; this is not blur radius.",
+			0.1f, 8.f, 0.01f, "%.3f" },
+		{ "water.rim-width", "Fluid Rim Width",
+			"Distance between the outer fluid threshold and the bright inner rim.",
+			0.001f, 0.5f, 0.001f, "%.3f" },
+		{ "water.coverage-power", "Body Coverage Power",
+			"Shapes body coverage after the texture mask without changing the card silhouette.",
+			0.1f, 4.f, 0.01f, "%.3f" },
+		{ "water.body-strength", "Body Radiance",
+			"Linear-HDR strength of the droplet body.",
+			0.f, 8.f, 0.01f, "%.3f" },
+		{ "water.rim-strength", "Rim Radiance",
+			"Linear-HDR strength of the texture and spherical Fresnel rim.",
+			0.f, 8.f, 0.01f, "%.3f" },
+		{ "water.flow-warp", "Flow Warp (UV)",
+			"Maximum signed-flow displacement applied before sampling the fluid mask.",
+			0.f, 0.25f, 0.001f, "%.4f" },
+		{ "water.distortion-strength", "Refraction / Distortion (UV)",
+			"Signed RT1 distortion strength. Zero disables scene refraction.",
+			-0.025f, 0.025f, 0.0001f, "%.5f" },
+		{ "water.fade-start-seconds", "Surface Fade Start (s)",
+			"Effect-local time at which the project-tuned surface begins fading.",
+			0.f, 5.f, 0.001f, "%.4f" },
+		{ "water.fade-end-seconds", "Surface Fade End (s)",
+			"Effect-local time at which the project-tuned surface reaches zero.",
+			0.f, 5.f, 0.001f, "%.4f" }
+	}};
+	static constexpr std::array<VECTOR_CONTROL_DESC, 2u> WATER_COLORS = {{
+		{ "water.body-color", "Body Tint (Linear HDR)",
+			"Linear RGB 0..4; alpha multiplies body radiance (0..1).",
+			4.f, true },
+		{ "water.rim-color", "Rim Tint (Linear HDR)",
+			"Linear RGB 0..8; alpha multiplies rim radiance (0..1).",
+			8.f, true }
+	}};
+
+	static constexpr std::array<std::string_view, 8u> GLASS_SCALAR_NAMES = {{
+		"CoverageGain", "BodyOpacity", "FresnelPower", "EdgeGain",
+		"CrackGain", "RefractionStrength", "DistortionClamp", "EmissionGain"
+	}};
+	static constexpr std::array<std::string_view, 2u> GLASS_VECTOR_NAMES = {{
+		"BodyTintLinear", "EdgeTintLinear"
+	}};
+	static constexpr std::array<std::array<f32_t, 2u>, 8u>
+		GLASS_SCALAR_BOUNDS = {{
+		{{ 0.f, 4.f }}, {{ 0.f, 1.f }}, {{ 0.25f, 16.f }},
+		{{ 0.f, 8.f }}, {{ 0.f, 4.f }}, {{ -0.025f, 0.025f }},
+		{{ 0.f, 0.025f }}, {{ 0.f, 8.f }}
+	}};
+	static constexpr std::array<SCALAR_CONTROL_DESC, 8u> GLASS_CONTROLS = {{
+		{ "CoverageGain", "Coverage Gain",
+			"Amplifies mesh coverage before the final bounded opacity calculation.",
+			0.f, 4.f, 0.01f, "%.3f" },
+		{ "BodyOpacity", "Body Opacity",
+			"Linear opacity of the glass body before Fresnel and crack accents.",
+			0.f, 1.f, 0.005f, "%.3f" },
+		{ "FresnelPower", "Fresnel Power",
+			"Higher values make the view-angle edge band narrower.",
+			0.25f, 16.f, 0.05f, "%.3f" },
+		{ "EdgeGain", "Edge Gain",
+			"Strength of the view-angle glass edge.",
+			0.f, 8.f, 0.01f, "%.3f" },
+		{ "CrackGain", "Crack Gain",
+			"Strength of crack/coverage detail sampled from the glass texture lane.",
+			0.f, 4.f, 0.01f, "%.3f" },
+		{ "RefractionStrength", "Refraction Strength (UV)",
+			"Signed multiplier for the raw RT1 screen-distortion direction.",
+			-0.025f, 0.025f, 0.0001f, "%.5f" },
+		{ "DistortionClamp", "Maximum Distortion (UV)",
+			"Absolute RT1 clamp applied after Refraction Strength.",
+			0.f, 0.025f, 0.0001f, "%.5f" },
+		{ "EmissionGain", "Emission Gain",
+			"Linear-HDR emission multiplier for the glass body and edge.",
+			0.f, 8.f, 0.01f, "%.3f" }
+	}};
+	static constexpr std::array<VECTOR_CONTROL_DESC, 2u> GLASS_COLORS = {{
+		{ "BodyTintLinear", "Body Tint (Linear HDR)",
+			"Linear RGB 0..4; alpha is bounded to 0..1.", 4.f, true },
+		{ "EdgeTintLinear", "Edge Tint (Linear HDR)",
+			"Linear RGB 0..8; alpha is bounded to 0..1.", 8.f, true }
+	}};
+
+	const auto MatchesOrderedScalars = [&Execution](const auto& Names,
+		const size_t iCount)
+	{
+		if (Execution.iScalarCount != iCount ||
+			Execution.Scalars.size() != iCount || iCount > Names.size())
+		{
+			return false;
+		}
+		for (size_t i = 0u; i < iCount; ++i)
+		{
+			if (Execution.Scalars[i].strName != Names[i] ||
+				Execution.Scalars[i].iPackedIndex != i)
+			{
+				return false;
+			}
+		}
+		return true;
+	};
+	const auto MatchesOrderedVectors = [&Execution](const auto& Names)
+	{
+		if (Execution.iVectorCount != Names.size() ||
+			Execution.Vectors.size() != Names.size())
+		{
+			return false;
+		}
+		for (size_t i = 0u; i < Names.size(); ++i)
+		{
+			if (Execution.Vectors[i].strName != Names[i] ||
+				Execution.Vectors[i].iPackedIndex != i)
+			{
+				return false;
+			}
+		}
+		return true;
+	};
+	const auto MatchesScalarBounds = [&Execution](const auto& Bounds)
+	{
+		if (Execution.Scalars.size() != Bounds.size())
+			return false;
+		for (size_t i = 0u; i < Bounds.size(); ++i)
+		{
+			const f32_t fValue = Execution.Scalars[i].fValue;
+			if (!std::isfinite(fValue) || fValue < Bounds[i][0u] ||
+				fValue > Bounds[i][1u])
+			{
+				return false;
+			}
+		}
+		return true;
+	};
+	const auto MatchesVectorBounds = [&Execution](
+		const std::array<f32_t, 2u>& RgbMaximums)
+	{
+		if (Execution.Vectors.size() != RgbMaximums.size())
+			return false;
+		for (size_t i = 0u; i < RgbMaximums.size(); ++i)
+		{
+			const float4_t Value = Execution.Vectors[i].vValue;
+			if (!std::isfinite(Value.x) || !std::isfinite(Value.y) ||
+				!std::isfinite(Value.z) || !std::isfinite(Value.w) ||
+				Value.x < 0.f || Value.y < 0.f || Value.z < 0.f ||
+				Value.x > RgbMaximums[i] || Value.y > RgbMaximums[i] ||
+				Value.z > RgbMaximums[i] || Value.w < 0.f || Value.w > 1.f)
+			{
+				return false;
+			}
+		}
+		return true;
+	};
+	const bool_t bWater = Execution.iOpcode == WATER_DROPLET_BURST_OPCODE;
+	const bool_t bGlass = Execution.iOpcode == GLASS_MESH_OPCODE;
+	const size_t iGlassScalarCount = Execution.Scalars.size();
+	const bool_t bPacketEnvelopeValid = bProjectTunedRuntimeV2 &&
+		!Execution.bFailClosed && !Execution.bAuthoringApproximate &&
+		Execution.iVersion == 1u && Execution.iPassIndex == 1u &&
+		Execution.strRasterizerState == "RS_Cull_None" &&
+		Execution.strDepthStencilState == "DSS_ReadOnly" &&
+		Execution.strBlendState == "BS_EffectAlpha" &&
+		Execution.iStencilReference == 0u &&
+		Execution.iDynamicConsumedMask == 0u &&
+		Execution.iDynamicSuppressedMask == 0x0fu &&
+		Execution.iParticleColorPolicy == 2u &&
+		Execution.iParticleColorConsumedMask == 0x08u &&
+		Execution.iParticleColorSuppressedMask == 0x07u &&
+		Execution.iStaticInputCount == 0u &&
+		Execution.iStaticSelectedMask == 0u &&
+		Execution.iStaticConsumedMask == 0u &&
+		Execution.iStaticSuppressedMask == 0u &&
+		Execution.iRenderInputCount == 6u &&
+		Execution.iRenderConsumedMask == 0x2fu &&
+		Execution.iRenderSuppressedMask == 0x10u &&
+		Execution.ArtistParameters.empty() && Execution.Colors.empty();
+	const bool_t bWaterPacketShape = bWater &&
+		Execution.iTextureLaneCount == 2u && Execution.iTextureMask == 0x03u &&
+		Execution.TextureLanes.size() == 2u && Execution.iInputCount == 16u &&
+		Execution.InputConsumedMask == std::array<uint32_t, 2u>{ 0xffffu, 0u };
+	const bool_t bGlassPacketShape = bGlass &&
+		Execution.iTextureLaneCount == 1u && Execution.iTextureMask == 0x01u &&
+		Execution.TextureLanes.size() == 1u && Execution.iInputCount == 8u &&
+		Execution.InputConsumedMask == std::array<uint32_t, 2u>{ 0xffu, 0u };
+	const bool_t bCarrierValid =
+		Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+		!Element.Material.SourceMaterial.bEnabled &&
+		Element.Material.eRenderProfile ==
+			EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ &&
+		(!bGlass || Resolve_AuthoringFamily(Element) ==
+			EFFECT_AUTHORING_FAMILY::MESH_PARTICLE);
+	const bool_t bOccurrenceValid =
+		(bWater && Element.strElementId ==
+			"project-tuned.water-burst.2050230.01") ||
+		(bGlass && Element.strElementId ==
+			"project-tuned.glass-mirror-shards.2050230.01");
+	const bool_t bSemanticAbiValid = bPacketEnvelopeValid &&
+		bCarrierValid && bOccurrenceValid &&
+		((bWater && MatchesOrderedScalars(
+			WATER_SCALAR_NAMES, WATER_SCALAR_NAMES.size()) &&
+			MatchesOrderedVectors(WATER_VECTOR_NAMES) &&
+			MatchesScalarBounds(WATER_SCALAR_BOUNDS) &&
+			MatchesVectorBounds({ 4.f, 8.f }) && bWaterPacketShape &&
+			Execution.Scalars[14u].fValue > Execution.Scalars[13u].fValue) ||
+		 (bGlass && iGlassScalarCount == GLASS_SCALAR_NAMES.size() &&
+			MatchesOrderedScalars(GLASS_SCALAR_NAMES, iGlassScalarCount) &&
+			MatchesOrderedVectors(GLASS_VECTOR_NAMES) &&
+			MatchesScalarBounds(GLASS_SCALAR_BOUNDS) &&
+			MatchesVectorBounds({ 4.f, 8.f }) && bGlassPacketShape));
+
+	if (!ImGui::CollapsingHeader(
+			"Project Tuned Surface###MaterialParameters",
+			ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		return true;
+	}
+	ImGui::TextDisabled(
+		"Semantic controls only. Packed indices/registers stay hidden and Apply stages the complete typed packet.");
+	if (!bSemanticAbiValid)
+	{
+		ImGui::TextColored(ImVec4(1.f, 0.45f, 0.25f, 1.f),
+			"Surface controls locked: opcode %u carrier/name/index ABI is incomplete or changed.",
+			Execution.iOpcode);
+		ImGui::TextDisabled(
+			"The raw Material Parameters fallback remains hidden so a malformed typed packet cannot be edited ambiguously.");
+		return true;
+	}
+
+	const auto FindScalar = [&Element](const std::string_view strName)
+		-> const EFFECT_MATERIAL_SCALAR_PARAMETER_DESC*
+	{
+		const auto Found = std::find_if(
+			Element.Material.Execution.Scalars.begin(),
+			Element.Material.Execution.Scalars.end(),
+			[strName](const EFFECT_MATERIAL_SCALAR_PARAMETER_DESC& Value)
+			{ return Value.strName == strName; });
+		return Found == Element.Material.Execution.Scalars.end() ?
+			nullptr : &*Found;
+	};
+	const auto FindVector = [&Element](const std::string_view strName)
+		-> const EFFECT_MATERIAL_VECTOR_PARAMETER_DESC*
+	{
+		const auto Found = std::find_if(
+			Element.Material.Execution.Vectors.begin(),
+			Element.Material.Execution.Vectors.end(),
+			[strName](const EFFECT_MATERIAL_VECTOR_PARAMETER_DESC& Value)
+			{ return Value.strName == strName; });
+		return Found == Element.Material.Execution.Vectors.end() ?
+			nullptr : &*Found;
+	};
+	const auto FindScalarOverride = [&Element](const std::string_view strName)
+		-> const EFFECT_AUTHORING_SCALAR_OVERRIDE_DESC*
+	{
+		const auto Found = std::find_if(
+			Element.AuthoringOverrides.Scalars.begin(),
+			Element.AuthoringOverrides.Scalars.end(),
+			[strName](const EFFECT_AUTHORING_SCALAR_OVERRIDE_DESC& Value)
+			{ return Value.strName == strName; });
+		return Found == Element.AuthoringOverrides.Scalars.end() ?
+			nullptr : &*Found;
+	};
+	const auto HasColorOverride = [&Element](const std::string_view strName)
+	{
+		return std::any_of(Element.AuthoringOverrides.Colors.begin(),
+			Element.AuthoringOverrides.Colors.end(),
+			[strName](const EFFECT_AUTHORING_COLOR_OVERRIDE_DESC& Value)
+			{ return Value.strName == strName; });
+	};
+
+	const auto RenderScalar = [this, &Element, &bChanged, &FindScalar,
+		&FindScalarOverride](const SCALAR_CONTROL_DESC& Control,
+		const f32_t fMinimum, const f32_t fMaximum)
+	{
+		const EFFECT_MATERIAL_SCALAR_PARAMETER_DESC* pParameter =
+			FindScalar(Control.strName);
+		if (nullptr == pParameter || fMaximum < fMinimum)
+			return;
+		ImGui::PushID(Control.strName.data());
+		f32_t fValue = pParameter->fValue;
+		if (ImGui::DragFloat(Control.strLabel.data(), &fValue, Control.fStep,
+			fMinimum, fMaximum, Control.pFormat,
+			ImGuiSliderFlags_AlwaysClamp))
+		{
+			fValue = std::clamp(fValue, fMinimum, fMaximum);
+			std::string strError;
+			if (CEffectDocumentCodec::Set_AuthoringScalarOverride(
+					Element, Control.strName, fValue, strError))
+			{
+				bChanged = true;
+			}
+			else
+			{
+				m_strDetailStatus =
+					"Project Tuned scalar rejected: " + strError;
+			}
+		}
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("%s\nAllowed: %g .. %g",
+				Control.strTooltip.data(), fMinimum, fMaximum);
+		const EFFECT_AUTHORING_SCALAR_OVERRIDE_DESC* pOverride =
+			FindScalarOverride(Control.strName);
+		if (nullptr != pOverride)
+		{
+			ImGui::SameLine();
+			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f), "Modified");
+			bool_t bResetKeepsFadeInterval = true;
+			if (Control.strName == "water.fade-start-seconds")
+			{
+				const EFFECT_MATERIAL_SCALAR_PARAMETER_DESC* pFadeEnd =
+					FindScalar("water.fade-end-seconds");
+				bResetKeepsFadeInterval = nullptr != pFadeEnd &&
+					pFadeEnd->fValue > pOverride->fCompilerValue;
+			}
+			else if (Control.strName == "water.fade-end-seconds")
+			{
+				const EFFECT_MATERIAL_SCALAR_PARAMETER_DESC* pFadeStart =
+					FindScalar("water.fade-start-seconds");
+				bResetKeepsFadeInterval = nullptr != pFadeStart &&
+					pOverride->fCompilerValue > pFadeStart->fValue;
+			}
+			if (!bResetKeepsFadeInterval)
+			{
+				ImGui::SameLine();
+				ImGui::TextDisabled(
+					"Reset the other fade boundary first");
+			}
+			else
+			{
+				ImGui::SameLine();
+				if (ImGui::SmallButton("Reset to Baseline"))
+				{
+					std::string strError;
+					if (CEffectDocumentCodec::Reset_AuthoringScalarOverride(
+							Element, Control.strName, strError))
+					{
+						bChanged = true;
+					}
+					else
+					{
+						m_strDetailStatus =
+							"Project Tuned scalar reset rejected: " +
+							strError;
+					}
+				}
+			}
+		}
+		ImGui::PopID();
+	};
+	const auto RenderVector = [this, &Element, &bChanged, &FindVector,
+		&HasColorOverride](const VECTOR_CONTROL_DESC& Control)
+	{
+		const EFFECT_MATERIAL_VECTOR_PARAMETER_DESC* pParameter =
+			FindVector(Control.strName);
+		if (nullptr == pParameter)
+			return;
+		ImGui::PushID(Control.strName.data());
+		float4_t vValue = pParameter->vValue;
+		const bool_t bEdited = Control.bEditAlpha ?
+			ImGui::ColorEdit4(Control.strLabel.data(), &vValue.x,
+				ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR) :
+			ImGui::ColorEdit3(Control.strLabel.data(), &vValue.x,
+				ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
+		if (bEdited)
+		{
+			vValue.x = std::clamp(vValue.x, 0.f, Control.fRgbMaximum);
+			vValue.y = std::clamp(vValue.y, 0.f, Control.fRgbMaximum);
+			vValue.z = std::clamp(vValue.z, 0.f, Control.fRgbMaximum);
+			if (Control.bEditAlpha)
+				vValue.w = std::clamp(vValue.w, 0.f, 1.f);
+			std::string strError;
+			if (CEffectDocumentCodec::Set_AuthoringColorOverride(
+					Element, Control.strName, vValue, strError))
+			{
+				bChanged = true;
+			}
+			else
+			{
+				m_strDetailStatus =
+					"Project Tuned color rejected: " + strError;
+			}
+		}
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("%s\nRGB allowed: 0 .. %g%s",
+				Control.strTooltip.data(), Control.fRgbMaximum,
+				Control.bEditAlpha ? "; alpha: 0 .. 1" : "");
+		if (HasColorOverride(Control.strName))
+		{
+			ImGui::SameLine();
+			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f), "Modified");
+			ImGui::SameLine();
+			if (ImGui::SmallButton("Reset to Baseline"))
+			{
+				std::string strError;
+				if (CEffectDocumentCodec::Reset_AuthoringColorOverride(
+						Element, Control.strName, strError))
+				{
+					bChanged = true;
+				}
+				else
+				{
+					m_strDetailStatus =
+						"Project Tuned color reset rejected: " + strError;
+				}
+			}
+		}
+		ImGui::PopID();
+	};
+
+	if (bWater)
+	{
+		ImGui::SeparatorText("Water Tint");
+		for (const VECTOR_CONTROL_DESC& Control : WATER_COLORS)
+			RenderVector(Control);
+		ImGui::SeparatorText("Water Coverage");
+		for (size_t i = 0u; i < 6u; ++i)
+			RenderScalar(WATER_CONTROLS[i], WATER_CONTROLS[i].fMinimum,
+				WATER_CONTROLS[i].fMaximum);
+		ImGui::SeparatorText("Water Flow / Refraction");
+		for (size_t i = 6u; i < 8u; ++i)
+			RenderScalar(WATER_CONTROLS[i], WATER_CONTROLS[i].fMinimum,
+				WATER_CONTROLS[i].fMaximum);
+		ImGui::SeparatorText("Water Surface Timing");
+		const EFFECT_MATERIAL_SCALAR_PARAMETER_DESC* pFadeEnd =
+			FindScalar("water.fade-end-seconds");
+		const f32_t fFadeStartMaximum = nullptr == pFadeEnd ?
+			std::nextafter(5.f,
+				-(std::numeric_limits<f32_t>::infinity)()) :
+			std::nextafter((std::min)(5.f, pFadeEnd->fValue),
+				-(std::numeric_limits<f32_t>::infinity)());
+		RenderScalar(WATER_CONTROLS[8u], WATER_CONTROLS[8u].fMinimum,
+			fFadeStartMaximum);
+		const EFFECT_MATERIAL_SCALAR_PARAMETER_DESC* pFadeStart =
+			FindScalar("water.fade-start-seconds");
+		const f32_t fFadeEndMinimum = nullptr == pFadeStart ?
+			std::nextafter(0.f,
+				(std::numeric_limits<f32_t>::infinity)()) :
+			std::nextafter((std::max)(0.f, pFadeStart->fValue),
+				(std::numeric_limits<f32_t>::infinity)());
+		RenderScalar(WATER_CONTROLS[9u], fFadeEndMinimum,
+			WATER_CONTROLS[9u].fMaximum);
+	}
+	else
+	{
+		ImGui::SeparatorText("Glass Tint");
+		for (const VECTOR_CONTROL_DESC& Control : GLASS_COLORS)
+			RenderVector(Control);
+		ImGui::SeparatorText("Glass Coverage / Edge");
+		for (size_t i = 0u; i < 5u; ++i)
+			RenderScalar(GLASS_CONTROLS[i], GLASS_CONTROLS[i].fMinimum,
+				GLASS_CONTROLS[i].fMaximum);
+		ImGui::SeparatorText("Glass Refraction");
+		for (size_t i = 5u; i < 7u; ++i)
+			RenderScalar(GLASS_CONTROLS[i], GLASS_CONTROLS[i].fMinimum,
+				GLASS_CONTROLS[i].fMaximum);
+		ImGui::SeparatorText("Glass Emission");
+		RenderScalar(GLASS_CONTROLS[7u], GLASS_CONTROLS[7u].fMinimum,
+			GLASS_CONTROLS[7u].fMaximum);
+	}
+	return true;
+}
+
 void Client::CEffect_Tool::Render_AuthoringMaterialParameters(
 	EFFECT_ELEMENT_DESC& Element,
 	bool_t& bChanged)
 {
+	if (Render_ProjectTunedSurfaceParameters(Element, bChanged))
+		return;
 	if (Element.Material.strTemplateId == EFFECT_STANDARD_MATERIAL_TEMPLATE_ID &&
 		!Element.Material.SourceMaterial.bEnabled &&
 		!Element.Material.Execution.bEnabled &&
@@ -9221,7 +9795,8 @@ void Client::CEffect_Tool::Render_SourceDistributionDetail(
 
 void Client::CEffect_Tool::Render_LerpDetail(
     EFFECT_DETAIL_DESC& Detail,
-    bool_t& bChanged)
+    bool_t& bChanged,
+	const bool_t bLockProjectTunedCarrierColor)
 {
     if (!ImGui::CollapsingHeader("Linear Lerp",
         ImGuiTreeNodeFlags_DefaultOpen))
@@ -9263,6 +9838,7 @@ void Client::CEffect_Tool::Render_LerpDetail(
     if (Lerp.bVelocity)
         bChanged |= DragFloat3("Velocity End",
             Lerp.vEndVelocityPerSecond, 0.01f, -1000.f, 1000.f);
+	ImGui::BeginDisabled(bLockProjectTunedCarrierColor);
     RenderLerpToggle("Lerp ColorOffset", Lerp.bColorOffset);
     if (Lerp.bColorOffset)
         bChanged |= DragFloat4(
@@ -9277,6 +9853,12 @@ void Client::CEffect_Tool::Render_LerpDetail(
 		bChanged |= ImGui::DragFloat("Emissive Intensity End##lerp",
 			&Lerp.fEndEmissiveIntensity, 0.05f, 0.f, 100.f, "%.3f",
 			ImGuiSliderFlags_AlwaysClamp);
+	ImGui::EndDisabled();
+	if (bLockProjectTunedCarrierColor)
+	{
+		ImGui::TextDisabled(
+			"Carrier color/emission lerps are locked for opcode 1003/1004; Project Tuned Surface owns those channels.");
+	}
 	if (Detail.Mesh.RingFill.bEnabled)
 	{
 		ImGui::SeparatorText("Mesh Ring Fill");
@@ -10157,10 +10739,11 @@ void Client::CEffect_Tool::Initialize_CatalogMetadataView()
 		return;
 	}
 
-	/* The Effect catalog is already admitted by the runtime loader.  The first
-	   visible frame consumes only that in-memory identity set: recursive
-	   Resources/Data discovery and authored document decode remain explicit
-	   Refresh/Open/Play operations. */
+	/* Seed a failure-preserving tree from the already admitted runtime catalog,
+	   then perform the same Product/source join as the visible Refresh button.
+	   This runs once per Effect Tool instance, so Saved counts and Product cues
+	   are usable on the first visible frame without turning Render into a disk
+	   polling loop.  Open/Play still own full authored document decoding. */
 	std::vector<EFFECT_DATA_FILE_ENTRY> StagedDataFiles;
 	std::set<std::string> StagedDomains;
 	std::unordered_map<std::string, DIRECT_AUTHORED_EDITABLE_ENTRY>
@@ -10270,11 +10853,23 @@ void Client::CEffect_Tool::Initialize_CatalogMetadataView()
 	}
 	m_strDocumentStatus =
 		"Catalog metadata ready: " + std::to_string(m_DataFiles.size()) +
-		" meaningful entries. Refresh Index performs explicit disk re-admission.";
+		" meaningful entries. Building the automatic initial index join.";
 	m_strDirectAuthoredEditableStatus =
-		"Catalog metadata view is ready; exact source identity is deferred to Open or Play.";
+		"Catalog metadata view is ready; joining exact authored source identities.";
 	m_strUnifiedCandidateStatus =
-		"Initial Effect lists use admitted catalog metadata only. Refresh Index joins Product ownership and diagnostics.";
+		"Building the initial Product ownership and authored source index.";
+
+	const bool_t bInitialProductIndexReady = Refresh_AllEffects(true);
+	const bool_t bInitialAuthoredIndexReady = Refresh_DataFiles();
+	if (!bInitialProductIndexReady || !bInitialAuthoredIndexReady)
+	{
+		const std::string Detail = !bInitialProductIndexReady ?
+			m_strElementStatus : m_strDocumentStatus;
+		m_strUnifiedCandidateStatus =
+			"Automatic initial Effect index join was incomplete; the admitted base catalog remains available.";
+		if (!Detail.empty())
+			m_strUnifiedCandidateStatus += " " + Detail;
+	}
 }
 
 bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
@@ -10290,6 +10885,8 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 	};
 	const std::filesystem::path CatalogPath = CProjectDataRoot::Resolve(
 		std::filesystem::path(L"Effects") / L"EffectCatalog.json");
+	const std::filesystem::path AuditionCatalogPath = CProjectDataRoot::Resolve(
+		std::filesystem::path(L"Effects") / L"EffectAuditionCatalog.json");
 	const std::filesystem::path AuthoredRoot = CProjectDataRoot::Resolve(
 		std::filesystem::path(L"Effects") / L"Authored");
 	std::string SkillCatalogStatus;
@@ -10374,7 +10971,8 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 	EFFECT_DIRECT_AUTHORED_SOURCE_INDEX SourceIndex;
 	std::string SourceIndexStatus;
 	if (!CEffectDirectAuthoredSourceIndex::Build(
-			CatalogPath, AuthoredRoot, ScannedFiles, PlayerSkillOwners,
+			CatalogPath, AuditionCatalogPath, AuthoredRoot, ScannedFiles,
+			PlayerSkillOwners,
 			BossPatternOwners, BossCombatObjectOwners,
 			SourceIndex, SourceIndexStatus))
 	{
@@ -10394,6 +10992,14 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 	{
 		DIRECT_AUTHORED_EDITABLE_ENTRY Staged;
 		Staged.Path = Source.Path;
+		Staged.bRegistryBoundAuditionOnly =
+			Source.bRegistryBoundAuditionOnly;
+		Staged.bAuditionSourceFreshnessValid =
+			Source.bAuditionSourceFreshnessValid;
+		Staged.strSourceEffectAssetId = Source.strSourceEffectAssetId;
+		Staged.SourceDocumentPath = Source.SourceDocumentPath;
+		Staged.strSourceDocumentRawSha256 =
+			Source.strSourceDocumentRawSha256;
 		Staged.LastWriteTime = Source.LastWriteTime;
 		Staged.iFileSize = Source.iFileSize;
 		const auto Existing = m_DirectAuthoredEditableEntries.find(
@@ -10401,6 +11007,16 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 		if (Existing != m_DirectAuthoredEditableEntries.end() &&
 			Existing->second.Path.lexically_normal() ==
 				Staged.Path.lexically_normal() &&
+			Existing->second.bRegistryBoundAuditionOnly ==
+				Staged.bRegistryBoundAuditionOnly &&
+			Existing->second.bAuditionSourceFreshnessValid ==
+				Staged.bAuditionSourceFreshnessValid &&
+			Existing->second.strSourceEffectAssetId ==
+				Staged.strSourceEffectAssetId &&
+			Existing->second.SourceDocumentPath.lexically_normal() ==
+				Staged.SourceDocumentPath.lexically_normal() &&
+			Existing->second.strSourceDocumentRawSha256 ==
+				Staged.strSourceDocumentRawSha256 &&
 			Existing->second.LastWriteTime == Staged.LastWriteTime &&
 			Existing->second.iFileSize == Staged.iFileSize)
 		{
@@ -10544,6 +11160,21 @@ Client::CEffect_Tool::Resolve_DirectAuthoredEditablePath(
 		return nullptr;
 	}
 	DIRECT_AUTHORED_EDITABLE_ENTRY& Entry = Iterator->second;
+	if (Entry.bRegistryBoundAuditionOnly)
+	{
+		std::string FreshnessStatus;
+		if (!Entry.bAuditionSourceFreshnessValid ||
+			!Validate_RegistryBoundAuditionSourceFreshness(
+				Entry.SourceDocumentPath,
+				Entry.strSourceDocumentRawSha256, FreshnessStatus))
+		{
+			Entry.strStatus = Entry.bAuditionSourceFreshnessValid ?
+				FreshnessStatus :
+				"Registry-bound audition source pin was stale when the index was refreshed. Correct the source/hash pair, then Refresh Index.";
+			strOutStatus = Entry.strStatus;
+			return nullptr;
+		}
+	}
 	std::error_code FileError;
 	const std::filesystem::file_time_type LastWriteTime =
 		std::filesystem::last_write_time(Entry.Path, FileError);
@@ -10581,7 +11212,8 @@ Client::CEffect_Tool::Resolve_DirectAuthoredEditablePath(
 		Entry.bIdentityObserved = true;
 		if (Entry.bIdentityValid)
 		{
-			Entry.strStatus =
+			Entry.strStatus = Entry.bRegistryBoundAuditionOnly ?
+				"Validated the writable registry-bound audition document and its pinned Product source. Save updates only this audition candidate; Product cues cannot consume its Effect ID." :
 				"Validated the writable Data/Effects/Authored document. "
 				"Save commits this file as the canonical Product source when the exact ID is mapped by a gameplay cue. The next spawn uses it immediately; a failed activation restores the previous disk and prepared target.";
 		}
@@ -10599,6 +11231,78 @@ Client::CEffect_Tool::Resolve_DirectAuthoredEditablePath(
 	}
 	strOutStatus = Entry.strStatus;
 	return Entry.bIdentityValid ? &Entry.Path : nullptr;
+}
+
+bool_t Client::CEffect_Tool::Validate_ActiveRegistryBoundAuditionFreshness(
+	std::string& strOutStatus) const
+{
+	if (!m_ActiveDocument.has_value() ||
+		!m_ActiveRegistryBoundAuditionProvenance.has_value() ||
+		m_ActiveDocument->strEffectAssetId !=
+			m_ActiveRegistryBoundAuditionProvenance->strEffectAssetId)
+	{
+		strOutStatus.clear();
+		return true;
+	}
+
+	const REGISTRY_BOUND_AUDITION_PROVENANCE& Provenance =
+		*m_ActiveRegistryBoundAuditionProvenance;
+	EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY Expected;
+	Expected.strEffectAssetId = Provenance.strEffectAssetId;
+	Expected.Path = Provenance.DocumentPath;
+	Expected.bRegistryBoundAuditionOnly = true;
+	Expected.strSourceEffectAssetId = Provenance.strSourceEffectAssetId;
+	Expected.SourceDocumentPath = Provenance.SourceDocumentPath;
+	Expected.strSourceDocumentRawSha256 =
+		Provenance.strSourceDocumentRawSha256;
+	std::string CatalogStatus;
+	if (!CEffectDirectAuthoredSourceIndex::
+			Validate_RegistryBoundAuditionCatalogProvenanceFresh(
+				CProjectDataRoot::Resolve(
+					std::filesystem::path(L"Effects") / L"EffectCatalog.json"),
+				CProjectDataRoot::Resolve(
+					std::filesystem::path(L"Effects") /
+					L"EffectAuditionCatalog.json"),
+				CProjectDataRoot::Resolve(
+					std::filesystem::path(L"Effects") / L"Authored"),
+				Expected, CatalogStatus))
+	{
+		strOutStatus =
+			"Live EffectCatalog provenance validation failed. " + CatalogStatus;
+		return false;
+	}
+	const auto Current = m_DirectAuthoredEditableEntries.find(
+		Provenance.strEffectAssetId);
+	if (Current == m_DirectAuthoredEditableEntries.end() ||
+		!Current->second.bRegistryBoundAuditionOnly)
+	{
+		strOutStatus =
+			"Registry-bound audition metadata disappeared or was reclassified after this document was opened. Refresh Index, then reopen the exact audition row.";
+		return false;
+	}
+	const DIRECT_AUTHORED_EDITABLE_ENTRY& Entry = Current->second;
+	if (Entry.Path.lexically_normal() !=
+			Provenance.DocumentPath.lexically_normal() ||
+		Entry.strSourceEffectAssetId != Provenance.strSourceEffectAssetId ||
+		Entry.SourceDocumentPath.lexically_normal() !=
+			Provenance.SourceDocumentPath.lexically_normal() ||
+		Entry.strSourceDocumentRawSha256 !=
+			Provenance.strSourceDocumentRawSha256)
+	{
+		strOutStatus =
+			"Registry-bound audition metadata changed after this document was opened. Reopen the audition row before Play or Save.";
+		return false;
+	}
+	if (!Entry.bAuditionSourceFreshnessValid)
+	{
+		strOutStatus =
+			"Registry-bound audition source pin was stale when the index was refreshed. Correct the source/hash pair, Refresh Index, and reopen the audition row.";
+		return false;
+	}
+	return Validate_RegistryBoundAuditionSourceFreshness(
+		Entry.SourceDocumentPath,
+		Entry.strSourceDocumentRawSha256,
+		strOutStatus);
 }
 
 bool_t Client::CEffect_Tool::Is_UnifiedEffectActive(
@@ -10814,6 +11518,14 @@ bool_t Client::CEffect_Tool::Try_PlayActiveUnifiedEffect()
 		m_strPreviewStatus = m_strActiveDocumentDrawableError.empty() ?
 			"The saved Effect is not drawable." :
 			m_strActiveDocumentDrawableError;
+		return false;
+	}
+	std::string FreshnessStatus;
+	if (!Validate_ActiveRegistryBoundAuditionFreshness(FreshnessStatus))
+	{
+		m_strPreviewStatus =
+			"Play rejected: registry-bound audition source freshness failed. " +
+			FreshnessStatus;
 		return false;
 	}
 	std::string ReadinessError;
@@ -17971,8 +18683,21 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
 			Try_ApplyDraftAndSave();
 		ImGui::EndDisabled();
         ImGui::SameLine();
+		const bool_t bRegistryBoundAuditionActive =
+			m_ActiveDocument.has_value() &&
+			m_ActiveRegistryBoundAuditionProvenance.has_value() &&
+			m_ActiveDocument->strEffectAssetId ==
+				m_ActiveRegistryBoundAuditionProvenance->strEffectAssetId;
+		ImGui::BeginDisabled(bRegistryBoundAuditionActive);
         if (ImGui::Button("Save As"))
             Try_SaveDocumentAs(m_NewAssetId.data());
+		ImGui::EndDisabled();
+		if (bRegistryBoundAuditionActive && ImGui::IsItemHovered(
+				ImGuiHoveredFlags_AllowWhenDisabled))
+		{
+			ImGui::SetTooltip(
+				"Registry-bound audition candidates keep their exact catalog ID; use Save Changes instead.");
+		}
         ImGui::SameLine();
         if (ImGui::Button("Reload Saved"))
             Try_ReloadActiveDocument();
@@ -18634,6 +19359,7 @@ bool_t Client::CEffect_Tool::Try_CreateDocument()
 	Release_WorldPreview(true);
     Clear_ProductCuePreview();
     m_ActiveDocument = std::move(Document);
+	m_ActiveRegistryBoundAuditionProvenance.reset();
     Set_ActiveDocumentDrawableStatus(bDrawable, std::move(DrawableError));
     m_ActiveDocumentPath.clear();
 	m_strActiveDocumentBaselineCanonical.clear();
@@ -20008,6 +20734,14 @@ bool_t Client::CEffect_Tool::Try_SaveDocument()
             "Save refuses to replace an existing Authored file from New; use Save As.";
         return false;
     }
+	std::string FreshnessStatus;
+	if (!Validate_ActiveRegistryBoundAuditionFreshness(FreshnessStatus))
+	{
+		m_strDocumentStatus =
+			"Save rejected: registry-bound audition source freshness failed. " +
+			FreshnessStatus;
+		return false;
+	}
     const size_t iProductCueMappingCount =
         Count_ProductCueMappings(m_ActiveDocument->strEffectAssetId);
     const bool_t bRegisteredDirectProduct =
@@ -20143,6 +20877,22 @@ bool_t Client::CEffect_Tool::Try_SaveDocumentAs(
             "Apply or Revert the open Detail draft before Save As.";
         return false;
     }
+	std::string FreshnessStatus;
+	if (!Validate_ActiveRegistryBoundAuditionFreshness(FreshnessStatus))
+	{
+		m_strDocumentStatus =
+			"Save As rejected: registry-bound audition source freshness failed. " +
+			FreshnessStatus;
+		return false;
+	}
+	if (m_ActiveRegistryBoundAuditionProvenance.has_value() &&
+		m_ActiveDocument->strEffectAssetId ==
+			m_ActiveRegistryBoundAuditionProvenance->strEffectAssetId)
+	{
+		m_strDocumentStatus =
+			"Registry-bound audition candidates cannot be saved under another Effect ID. Use Save Changes so the exact catalog row, document, and source pin remain one contract.";
+		return false;
+	}
 	const bool_t bWasVisualProgramCopy =
 		EFFECT_DOCUMENT_SOURCE::RUNTIME_VISUAL_PROGRAM ==
 			m_eActiveDocumentSource;
@@ -20736,6 +21486,67 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
 			"Static Area Effect load requires one exact typed placement transform.";
 		return false;
 	}
+	optional<REGISTRY_BOUND_AUDITION_PROVENANCE> StagedAuditionProvenance;
+	if (EFFECT_DOCUMENT_SOURCE::AUTHORED == eSource)
+	{
+		const auto Current = m_DirectAuthoredEditableEntries.find(
+			Staged.strEffectAssetId);
+		const bool_t bReloadingKnownAudition =
+			m_ActiveRegistryBoundAuditionProvenance.has_value() &&
+			m_ActiveRegistryBoundAuditionProvenance->strEffectAssetId ==
+				Staged.strEffectAssetId;
+		if (Current != m_DirectAuthoredEditableEntries.end() &&
+			Current->second.bRegistryBoundAuditionOnly)
+		{
+			const DIRECT_AUTHORED_EDITABLE_ENTRY& Entry = Current->second;
+			std::string FreshnessStatus;
+			EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY Expected;
+			Expected.strEffectAssetId = Staged.strEffectAssetId;
+			Expected.Path = Entry.Path;
+			Expected.bRegistryBoundAuditionOnly = true;
+			Expected.strSourceEffectAssetId = Entry.strSourceEffectAssetId;
+			Expected.SourceDocumentPath = Entry.SourceDocumentPath;
+			Expected.strSourceDocumentRawSha256 =
+				Entry.strSourceDocumentRawSha256;
+			if (!CEffectDirectAuthoredSourceIndex::
+					Validate_RegistryBoundAuditionCatalogProvenanceFresh(
+						CProjectDataRoot::Resolve(
+							std::filesystem::path(L"Effects") /
+							L"EffectCatalog.json"),
+						CProjectDataRoot::Resolve(
+							std::filesystem::path(L"Effects") /
+							L"EffectAuditionCatalog.json"),
+						CProjectDataRoot::Resolve(
+							std::filesystem::path(L"Effects") / L"Authored"),
+						Expected, FreshnessStatus) ||
+				!Entry.bAuditionSourceFreshnessValid ||
+				!Validate_RegistryBoundAuditionSourceFreshness(
+					Entry.SourceDocumentPath,
+					Entry.strSourceDocumentRawSha256,
+					FreshnessStatus))
+			{
+				m_strDocumentStatus =
+					"Open rejected: registry-bound audition source freshness failed. " +
+					(!FreshnessStatus.empty() ? FreshnessStatus :
+					 (Entry.bAuditionSourceFreshnessValid ?
+						"Live audition provenance validation failed." :
+						"Correct the source/hash pair and Refresh Index first."));
+				return false;
+			}
+			StagedAuditionProvenance = REGISTRY_BOUND_AUDITION_PROVENANCE{
+				Staged.strEffectAssetId,
+				Entry.Path,
+				Entry.strSourceEffectAssetId,
+				Entry.SourceDocumentPath,
+				Entry.strSourceDocumentRawSha256 };
+		}
+		else if (bReloadingKnownAudition)
+		{
+			m_strDocumentStatus =
+				"Open rejected: the active registry-bound audition row disappeared or was reclassified. Refresh Index and reopen only after restoring its audition metadata.";
+			return false;
+		}
+	}
 	Reset_RuntimeOccurrenceTuningSession();
 	m_pSelectedVisualSourceProjection = std::move(pStagedVisualProjection);
     Release_WorldPreview(true);
@@ -20759,6 +21570,8 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
 	if (RetainedProductPreview.has_value())
 		m_ProductPreview = std::move(RetainedProductPreview);
 	m_ActiveDocument = std::move(Staged);
+	m_ActiveRegistryBoundAuditionProvenance =
+		std::move(StagedAuditionProvenance);
     Set_ActiveDocumentDrawableStatus(bDrawable, PreviewStatus);
     m_ActiveDocumentPath = Path;
 	m_strActiveDocumentBaselineCanonical = CanonicalBaseline;
@@ -28311,6 +29124,21 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 	const EFFECT_DOCUMENT_DESC& Document,
 	const bool_t bAllowReadOnlySourceProjection)
 {
+	std::string FreshnessStatus;
+	if (!Validate_ActiveRegistryBoundAuditionFreshness(FreshnessStatus))
+	{
+		/* Every preview entry point converges here, including the direct
+		   Particle System and selected-Element audition buttons.  Once an
+		   authoring-registry row or its pinned Product source changes, no
+		   derivative of the previously opened audition document may stage. */
+		Release_WorldPreview(true);
+		m_bPreviewPlaying = false;
+		m_bPreviewVisibleRequested = false;
+		m_strPreviewStatus =
+			"Preview staging rejected: registry-bound audition source freshness failed. " +
+			FreshnessStatus;
+		return false;
+	}
 	const EFFECT_DOCUMENT_DESC PreviewDocument =
 		Build_PreviewDocument(Document);
 	const bool_t bOwnerYawAttachment = Has_OwnerYawFollowAttachments(PreviewDocument);
@@ -29437,6 +30265,17 @@ void Client::CEffect_Tool::Reset_ProductCueSnapshot()
 
 void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
 {
+	std::string FreshnessStatus;
+	if (!Validate_ActiveRegistryBoundAuditionFreshness(FreshnessStatus))
+	{
+		Release_WorldPreview(true);
+		m_bPreviewPlaying = false;
+		m_bPreviewVisibleRequested = false;
+		m_strPreviewStatus =
+			"Play rejected: registry-bound audition source freshness failed. " +
+			FreshnessStatus;
+		return;
+	}
 	if (EFFECT_DOCUMENT_PREVIEW_INTENT::VALTAN_PATTERN_DRAFT ==
 			m_eActiveDocumentPreviewIntent &&
 		!Prepare_ActiveValtanPatternDraftTimeline(false))
@@ -30768,6 +31607,7 @@ void Client::CEffect_Tool::Discard_ActiveDocument()
     Clear_ProductCuePreview();
 	Reset_RuntimeOccurrenceTuningSession();
     m_ActiveDocument.reset();
+	m_ActiveRegistryBoundAuditionProvenance.reset();
     Clear_ActiveDocumentDrawableStatus();
     m_ActiveDocumentPath.clear();
 	m_strActiveDocumentBaselineCanonical.clear();

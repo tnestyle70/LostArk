@@ -9792,12 +9792,22 @@ bool LostArk::Server::CGameRoom::Commit_BossPatternPlayerStageActions(
 			boss.fPatternTargetLastPositionX = selected.fPositionX;
 			boss.fPatternTargetLastPositionY = selected.fPositionY;
 			boss.fPatternTargetLastPositionZ = selected.fPositionZ;
-			const float deltaX = selected.fPositionX - boss.fPositionX;
-			const float deltaZ = selected.fPositionZ - boss.fPositionZ;
-			if (deltaX * deltaX + deltaZ * deltaZ > 0.000001f)
+			if (BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH ==
+				stage->Motion.eKind)
 			{
-				boss.fYawDegrees =
-					std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
+				/* Select the leg target now, but keep the previous facing through the
+				   authored wait. A zero-delay leg locks on this same ENTER commit. */
+				CValtanBrain::Try_LockPortalTargetRush(boss, 0u);
+			}
+			else
+			{
+				const float deltaX = selected.fPositionX - boss.fPositionX;
+				const float deltaZ = selected.fPositionZ - boss.fPositionZ;
+				if (deltaX * deltaX + deltaZ * deltaZ > 0.000001f)
+				{
+					boss.fYawDegrees =
+						std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
+				}
 			}
 			continue;
 		}

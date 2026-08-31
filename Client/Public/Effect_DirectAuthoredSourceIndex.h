@@ -70,6 +70,11 @@ struct EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY final
 	std::string strClientVisualId;
 	std::string strEffectAssetId;
 	std::filesystem::path Path;
+	bool bRegistryBoundAuditionOnly = false;
+	bool bAuditionSourceFreshnessValid = true;
+	std::string strSourceEffectAssetId;
+	std::filesystem::path SourceDocumentPath;
+	std::string strSourceDocumentRawSha256;
 	std::filesystem::file_time_type LastWriteTime{};
 	uint64_t iFileSize = 0u;
 };
@@ -91,9 +96,11 @@ public:
 	   metadata. Exact source-path admission is independent from Product-owner
 	   joins: an owner failure leaves eOwnerKind == END but never removes an
 	   otherwise valid authored document from Entries. A catalog-level error
-	   preserves InOutIndex; invalid source rows are isolated. */
+	   preserves InOutIndex; invalid rows are isolated, while a structurally valid
+	   audition with a stale source pin remains visible but freshness-locked. */
 	static bool Build(
 		const std::filesystem::path& CatalogPath,
+		const std::filesystem::path& AuditionCatalogPath,
 		const std::filesystem::path& AuthoredRoot,
 		const std::vector<EFFECT_DIRECT_AUTHORED_SCANNED_FILE>& ScannedFiles,
 		const EFFECT_DIRECT_AUTHORED_OWNER_SET& ValidOwners,
@@ -101,6 +108,16 @@ public:
 		const EFFECT_DIRECT_AUTHORED_BOSS_COMBAT_OBJECT_OWNER_MAP&
 			ValidBossCombatObjectOwners,
 		EFFECT_DIRECT_AUTHORED_SOURCE_INDEX& InOutIndex,
+		std::string& strOutStatus);
+
+	/* Re-reads the catalog for an already opened registry-bound audition. This
+	   prevents Play/Save from trusting an index snapshot after the exact row or
+	   its ordinary Product source row was deleted, reclassified, or retargeted. */
+	static bool Validate_RegistryBoundAuditionCatalogProvenanceFresh(
+		const std::filesystem::path& ProductCatalogPath,
+		const std::filesystem::path& AuditionCatalogPath,
+		const std::filesystem::path& AuthoredRoot,
+		const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Expected,
 		std::string& strOutStatus);
 };
 

@@ -1839,7 +1839,7 @@ namespace
 			!Is_StableToken(pPatternId->Get_String()) ||
 			pDisplay->Get_String().empty() || !Is_StableToken(pAction->Get_String()) ||
 			!Is_NonNegativeInteger(pSourceSequence) ||
-			0.0 == pSourceSequence->Get_Number() || nullptr == pStages ||
+			4096.0 < pSourceSequence->Get_Number() || nullptr == pStages ||
 			pStages->Get_Array().empty())
 		{
 			strOutError = "master pattern identity is invalid";
@@ -1913,7 +1913,7 @@ namespace
 				!Is_NonNegativeInteger(Source.Find("sourceActionId")) ||
 				0.0 == Source.Find("sourceActionId")->Get_Number() ||
 				!Is_NonNegativeInteger(Source.Find("sequenceIndex")) ||
-				0.0 == Source.Find("sequenceIndex")->Get_Number() ||
+				4096.0 < Source.Find("sequenceIndex")->Get_Number() ||
 				nullptr == Required(Source, "role", DATA_JSON_TYPE::STRING))
 			{
 				strOutError = "master presentation source row is invalid";

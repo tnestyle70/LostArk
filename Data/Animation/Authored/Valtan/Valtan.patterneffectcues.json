@@ -2295,7 +2295,7 @@
       "clipOccurrenceId": "valtan.sequence.warp.step-02.clip-01",
       "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
       "anchorSlotId": "root",
-      "followPolicy": "follow",
+      "followPolicy": "snapshot",
       "stopPolicy": "natural",
       "repeatPolicy": "once",
       "sourceStartMs": 0,
@@ -2304,7 +2304,7 @@
         "position": [
           0.0,
           0.0,
-          3.0
+          0.0
         ],
         "rotationDegrees": [
           0.0,
@@ -2330,7 +2330,7 @@
       "clipOccurrenceId": "valtan.sequence.warp.step-03.clip-01",
       "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
       "anchorSlotId": "root",
-      "followPolicy": "follow",
+      "followPolicy": "snapshot",
       "stopPolicy": "natural",
       "repeatPolicy": "once",
       "sourceStartMs": 0,
@@ -2339,7 +2339,7 @@
         "position": [
           0.0,
           0.0,
-          3.0
+          0.0
         ],
         "rotationDegrees": [
           0.0,
@@ -2365,7 +2365,7 @@
       "clipOccurrenceId": "valtan.sequence.warp.step-04.clip-01",
       "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
       "anchorSlotId": "root",
-      "followPolicy": "follow",
+      "followPolicy": "snapshot",
       "stopPolicy": "natural",
       "repeatPolicy": "once",
       "sourceStartMs": 0,
@@ -2374,7 +2374,7 @@
         "position": [
           0.0,
           0.0,
-          3.0
+          0.0
         ],
         "rotationDegrees": [
           0.0,
@@ -2400,7 +2400,7 @@
       "clipOccurrenceId": "valtan.sequence.warp.step-05.clip-01",
       "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
       "anchorSlotId": "root",
-      "followPolicy": "follow",
+      "followPolicy": "snapshot",
       "stopPolicy": "natural",
       "repeatPolicy": "once",
       "sourceStartMs": 0,
@@ -2409,7 +2409,7 @@
         "position": [
           0.0,
           0.0,
-          3.0
+          0.0
         ],
         "rotationDegrees": [
           0.0,
@@ -2435,7 +2435,7 @@
       "clipOccurrenceId": "valtan.sequence.warp.step-06.clip-01",
       "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
       "anchorSlotId": "root",
-      "followPolicy": "follow",
+      "followPolicy": "snapshot",
       "stopPolicy": "natural",
       "repeatPolicy": "once",
       "sourceStartMs": 0,
@@ -2444,7 +2444,7 @@
         "position": [
           0.0,
           0.0,
-          3.0
+          0.0
         ],
         "rotationDegrees": [
           0.0,
@@ -2470,7 +2470,7 @@
       "clipOccurrenceId": "valtan.sequence.warp.step-07.clip-01",
       "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
       "anchorSlotId": "root",
-      "followPolicy": "follow",
+      "followPolicy": "snapshot",
       "stopPolicy": "natural",
       "repeatPolicy": "once",
       "sourceStartMs": 0,
@@ -2479,7 +2479,7 @@
         "position": [
           0.0,
           0.0,
-          3.0
+          0.0
         ],
         "rotationDegrees": [
           0.0,
@@ -2505,7 +2505,7 @@
       "clipOccurrenceId": "valtan.sequence.warp.step-08.clip-01",
       "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
       "anchorSlotId": "root",
-      "followPolicy": "follow",
+      "followPolicy": "snapshot",
       "stopPolicy": "natural",
       "repeatPolicy": "once",
       "sourceStartMs": 0,
@@ -2514,7 +2514,7 @@
         "position": [
           0.0,
           0.0,
-          3.0
+          0.0
         ],
         "rotationDegrees": [
           0.0,
@@ -2540,7 +2540,7 @@
       "clipOccurrenceId": "valtan.sequence.warp.step-09.clip-01",
       "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
       "anchorSlotId": "root",
-      "followPolicy": "follow",
+      "followPolicy": "snapshot",
       "stopPolicy": "natural",
       "repeatPolicy": "once",
       "sourceStartMs": 0,
@@ -2549,7 +2549,7 @@
         "position": [
           0.0,
           0.0,
-          3.0
+          0.0
         ],
         "rotationDegrees": [
           0.0,
@@ -2818,6 +2818,41 @@
       "stageId": "STEP_09",
       "actionId": "valtan.sequence.ghost-finale.step-09",
       "clipOccurrenceId": "valtan.sequence.ghost-finale.step-09.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
+      "anchorSlotId": "root",
+      "followPolicy": "snapshot",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
+      }
+    },
+    {
+      "bindingId": "cue.valtan.phase2.warp.step-10.composite",
+      "occurrenceId": "cue.valtan.phase2.warp.step-10.composite.occurrence.01",
+      "patternId": "VALTAN_WARP",
+      "stageId": "STEP_10",
+      "actionId": "valtan.sequence.warp.step-10",
+      "clipOccurrenceId": "valtan.sequence.warp.step-10.clip-01",
       "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
       "anchorSlotId": "root",
       "followPolicy": "snapshot",

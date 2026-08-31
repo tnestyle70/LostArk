@@ -284,6 +284,7 @@ class BuildProfileContractTests(unittest.TestCase):
         native_contract_sources = (
             "ValtanPatternAuditionService.cpp",
             "ValtanPatternTree.cpp",
+            "ActionCompositionGraphModel.cpp",
             "ValtanPresentationGenerationAdmission.cpp",
             "ValtanPatternFlowDocument.cpp",
             "ValtanPatternEffectCueDocument.cpp",

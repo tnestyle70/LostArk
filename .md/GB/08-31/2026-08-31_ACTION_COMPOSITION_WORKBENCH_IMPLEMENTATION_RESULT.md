@@ -43,9 +43,11 @@ Pattern
   넣을 수 있다.
 - occurrence는 vector index가 아니라 `.composition.clip.NN` stable ID를 사용한다. 삭제 뒤
   Append도 기존 ID와 충돌하지 않는 다음 빈 번호를 선택한다.
-- Replace는 같은 clip occurrence를 재정렬할 때 기존 stable ID와 mapping basis를 보존한다.
-  다른 clip으로 바꾸면 새 ID와 `PROJECT_AUTHORED` mapping을 발급하며, 기존 Effect·Sound·Shake가
-  그 occurrence를 참조하면 명시적 remove/retarget 전까지 fail-closed한다.
+- Replace는 exact clip을 먼저 재사용하고, 기존/신규 양쪽에서 유일한 `_start/_loop/_end` 역할만
+  같은 논리 occurrence로 재사용한다. 역할 안에서 clip이 바뀌면 `PROJECT_AUTHORED`로 표시하고
+  Effect·Sound·Shake source window를 후보 graph에서 다시 검증한다. 반복 loop처럼 역할이
+  모호하거나 새로 추가된 box는 새 stable ID를 발급하며 dependency는 임의 대상을 따라가지 않고
+  fail-closed한다.
 - Stage 안에서 occurrence reorder/remove/trim을 지원한다. 마지막 slot이 무한/native-duration
   policy인 동안 뒤에 Append하는 잘못된 clock 구성은 거부한다.
 - 선택 animation chain은 기존 Create Pattern transaction으로 전달하며, 생성 성공 뒤 새
@@ -221,9 +223,13 @@ Debug Core에는 실제 `CValtanPatternTree::Load`를 호출하는
 ## 의도적으로 완료라고 부르지 않는 경계
 
 - Camera/Light/World lane은 inspection/deep-link이며 key add/drag/trim/save adapter가 없다.
-- Sound/Camera/World에는 공통 local seek/stop transport가 없다.
-- Effect invocation은 typed Details add/update/remove를 지원하지만 일반 timeline block
-  drag/trim/key authoring은 아직 없다. Effect asset 내부 element 편집은 Effect Tool deep-link다.
+- Arena Clone의 공통 Play/Seek/Stop은 Animation, Effect invocation과 collider mirror를 같은 Pattern
+  clock에서 검증한다. Sound/Camera/World는 현재 inspection 또는 각 runtime owner 경로이며 clone의
+  공통 local transport에 포함됐다고 보지 않는다.
+- Effect invocation은 typed Details add/update/remove와 timeline body move를 지원하고,
+  `cue_end` invocation은 오른쪽 trim으로 끝 시간을 조정한다. Effect asset 내부 element 편집은
+  Effect Tool deep-link다. Sound cue는 point occurrence 이동만 지원하며 가짜 duration trim을 만들지
+  않는다.
 - Stage당 다중 collider, bone/Effect element anchor에서 collider를 새로 만드는 기능은 없다.
 - 임의 중간 blank key는 없고 trailing gap 또는 별도 Stage만 지원한다.
 - 기존 release action 수치는 편집하지만 새 capture/grab/release topology 전체 생성은 지원하지
@@ -287,3 +293,253 @@ Level navigation, Effect unlink/build guard 변경이 함께 존재하고, 현�
   차단했다. 프로세스를 사용자가 종료한 뒤 같은 source revision으로 다시 빌드해야 한다.
 - Workbench 지속 FPS, 확대한 Sequencer 높이와 gap drag/save 결과는 새 EXE에서 사용자 수동
   검증이 필요하다. 실행 중이던 화면은 수정 전 EXE이므로 이번 교정의 visual 증거가 아니다.
+
+## 2026-08-31 Create Pattern 3 FPS / Details Save 교정
+
+### 재현 원인과 소스 구현
+
+- 사용자가 수정 전 Debug EXE에서 `Create New Pattern` 탭을 열었을 때 2.7~3 FPS를 확인했다.
+  `Composition Session` 창이 가려진 것과는 무관하다.
+- 탭 render wrapper가 `m_bValtanPatternMasterLoadAttempted`를 검사하면서도 reload 전에 latch를
+  세우지 않았다. 그 결과 탭이 열린 동안 매 frame `Reload_ValtanPatternMaster`가 실행되어
+  canonical Pattern tree와 Sound/Shake/Combat Object Sound source를 반복해서 읽고 join했다.
+- reload 호출 전에 attempt latch를 세워 최초 command edge에서만 file-backed load를 실행한다.
+  실패해도 render rate로 자동 재시도하지 않으며 명시적 Reload command가 재시도를 소유한다.
+- `Composition Details` 상단에 `UNSAVED PATTERN DRAFT`와 `Save Pattern`을 추가했다. 버튼은
+  admitted Pattern draft가 실제로 dirty이고 별도 Sound owner dependency가 깨끗할 때만 열린다.
+  Details는 save request만 남기고, 같은 frame의 모든 window가 immutable Pattern/Stage view 사용을
+  끝낸 뒤 `Save_Publish_Reload`를 실행한다. 따라서 canonical storage 교체 뒤 stale pointer로 다른
+  패널을 계속 그리지 않는다.
+- `Pattern` owner 표시는 `Pattern Root / Flow`로 바꾸고, branch/action Logic은 Pattern root와 같은
+  것이 아니라 Sequencer `Logic` lane에서 선택해 `Gameplay / Logic / Collider` typed detail로
+  편집한다는 안내를 추가했다.
+
+### 이번 교정 자동 검증
+
+- 새 회귀 oracle은 Create Pattern 최초 load latch가 reload보다 먼저 실행되는지 검사한다.
+- 새 회귀 oracle은 Details Save가 직접 canonical storage를 교체하지 않고 모든 window render 뒤
+  처리되는지 검사한다.
+- focused Workbench/F1 suite: 138/138 PASS
+- `Project-ValtanPatternMaster.ps1 -Mode ValidateV2`: PASS
+- requested Pattern coverage validator: PASS, Product 33 / Encounter 57
+- `Publish-GameplayBalance.ps1 -Mode Validate -SkipValtanSplitProjection`: PASS,
+  57 patterns / 255 stages / 52 audition rows
+- 변경 파일 대상 `git diff --check`: PASS
+
+### 빌드와 수동 확인 대기
+
+- 이 소스 교정의 새 Debug/Release EXE는 아직 생성하지 않았다. 검증 시점에 사용자가 확인 중인
+  `Client.exe` PID 24936, `Server.exe` PID 60348와 Visual Studio `MSBuild` PID 50784/55788가 같은
+  checkout/output을 사용 중이므로 자동 runner를 중첩하지 않았다.
+- 사용자가 실행과 VS build를 종료한 뒤 exact source revision에서 Debug `FullDiagnostic`과 Release
+  `Product`를 실행해야 한다.
+- 새 Debug EXE에서 `Create New Pattern` 탭을 30초 이상 열어 둔 지속 FPS, Details의 dirty 표시와
+  `Save Pattern` 결과는 사용자 수동 판정 전까지 visual PASS가 아니다.
+
+## 2026-08-31 Save rollback / Boss Pattern Blueprint / Preview 권위 분리
+
+### Save 실패 재현과 교정
+
+- 사용자 화면의 실제 실패 이유는 Stage duration 8,000 ms가 아니라
+  `Pattern Sound dependency does not resolve exactly one candidate Pattern/Stage:
+  VALTAN_BACKSTEP_ATTACK/SWEEP`였다. 저장 전 Sound graph 검증이 Complete Play용
+  `m_PlayableInventory` 필터 목록을 전체 canonical dependency 목록으로 잘못 재사용해,
+  Product에는 존재하지만 개별 Complete Play 대상이 아닌 legacy-compatible Pattern을 누락했다.
+- Browser는 계속 Complete Play inventory만 표시한다. Save와 manual Stage topology Sound
+  preflight만 `Gimmicks + Rotation` 전체 canonical Pattern을 수집하는 별도 helper를 사용한다.
+  화면 목록과 저장 dependency closure가 다시 섞이지 않게 경계를 분리했다.
+- Details와 Session Save는 마지막 결과를 `LAST SAVE: SAVED` 또는 `LAST SAVE: FAILED`로
+  보존하고, 실패 시 정확한 validator 원인을 바로 아래 표시한다.
+- 후속 Composition 즉시 튜닝 slice에서
+  `Data/Valtan/Valtan.gameplay.json`의 `VALTAN_HIGH_JUMP/AIRBORNE` 정본을 8,000 ms로
+  변경하고 Product를 다시 투영했다. LOOP animation wall과 target-axe lifetime도 8,000 ms를
+  따르며, axe hit은 각 object 생성 기준 +1,200 ms를 유지한다.
+
+### Boss Pattern Blueprint와 Details 경계
+
+- 선택 Pattern용 일곱 번째 opt-in 창
+  `Composition Boss Pattern###CompositionBossPatternWindow`를 추가했다. JSON이나 catalog를
+  render에서 다시 읽지 않고, 이미 조립된 effective `VALTAN_PATTERN_VIEW`를 순수 graph model에
+  투영한다.
+- graph는 Stage node와 authored/derived branch edge, default/selected/maximum 경로 시간을
+  표시한다. node와 edge 선택은 기존 stable selection/Details를 재사용하고, outcome 선택은
+  preview-only route다. 임의 wire 생성/삭제는 아직 typed writer가 없어 read-only다.
+- manual Pattern의 Stage 추가, 이동, 삭제는 Blueprint의 선택 node 도구로 옮겼다. Details에서는
+  Stage duration/gap, motion, collider, reaction, Counter 등 선택 element의 수치만 튜닝한다.
+  WAIT/GAP은 animation NONE인 실제 Server Stage clock으로 저장한다.
+- pure graph model은 duplicate Stage/action/outcome, dangling target와 cycle을 거부하고 실패 시
+  이전 snapshot을 보존한다. 네이티브 계약은 `VALTAN_DASH_CHARGE`의 default 6,050 ms,
+  WALL_CONTACT 선택 11,050 ms, maximum 11,550 ms 및 determinism/hit-test를 검증한다.
+
+### Animation source preview와 Server Valtan
+
+- `Selected Sequence` 상세와 Preview/Replace/Append/Create 동작을 긴 virtualized 목록 위로 옮겼다.
+- raw `.clipseq/.clipcuts` source는 `Layer_AnimationPreview`의 collision-free
+  `isServerAuthoritative=false` Valtan clone에서만 재생한다. 버튼을
+  `Preview Sequence on Arena Clone`으로 명시하고 클릭 frame에 Composition preview-owner claim도
+  함께 queue해, 다른 domain deep-link 뒤 다음 update에서 preview가 즉시 정지하는 경우를 막았다.
+- 실제 Arena 본체는 저장된 stable Pattern만
+  `BossTool -> ValtanPatternAuditionService -> C2S PLAY_PATTERN_ID -> Server -> snapshot`으로
+  재생한다. 선택 source의 `PresentationSources`를 Complete Play inventory에 역매핑하고, 한 source를
+  여러 Pattern이 사용하면 explicit owner combo를 표시한다. 매핑이 없으면
+  Create Pattern -> Save/Publish -> Server revision 활성화 뒤 재생하도록 안내한다. raw clip 이름을
+  Server authority command로 보내거나 현재 선택 Pattern을 임의 owner로 추측하지 않는다.
+- `420605/sequence 3` 지진 찍기는 돌 생성 바닥 찍기의 가장 강한 source 후보이고, 일반 그로기는
+  `400430/sequence 0`, 카운터 성공 그로기는 `420631/sequence 3..5` 후보이다. 시각 검증만이면
+  Effect asset 내부에 4개 rock element와 5초 지연 explosion element를 저작할 수 있다. 그러나
+  개별 위치·판정·수명·despawn을 갖는 제품 돌 4개는 Effect cue가 아니라 Server combat-object
+  occurrence여야 한다. 기존 timed hit/lifetime/runtime join 기반은 있으나 boss 기준 고정 4방향
+  layout과 일반 combat-object Workbench 저작 adapter는 아직 후속 수직 슬라이스다.
+
+### 이번 자동 검증
+
+- focused Workbench/F1 Python suite: 148/148 PASS
+- `ActionCompositionGraphModelContractTests`: 6/6 PASS
+- `ValtanPatternAuditionServiceHarness` 전체 실행: exit 0
+- 새 Client source MSVC C++20 syntax-only compile: PASS
+- `Project-ValtanPatternMaster.ps1 -Mode ValidateV2`: PASS
+- `Publish-ValtanTuningRuntimeSet.ps1 -Mode Validate`: PASS
+- requested Pattern coverage: PASS, Product 33 / Encounter 57
+- `Publish-GameplayBalance.ps1 -Mode Validate -SkipValtanSplitProjection`: PASS,
+  57 patterns / 255 stages / 52 audition rows
+- Client/Harness project와 filter XML parse: PASS
+
+### 빌드와 사용자 화면 확인 대기
+
+- 현재 `Client.exe` PID 43704, `Server.exe` PID 28916, Visual Studio PID 31472가 실행 중이므로
+  Client link를 포함한 표준 build를 중첩하지 않았다. focused native harness만 별도 출력으로
+  build/run했다.
+- 사용자가 기존 Client/Server를 닫은 뒤 새 Debug build가 필요하다. 새 EXE에서 Save 성공 표시와
+  재로드 뒤 8,000 ms 유지, Blueprint node/edge 선택, raw sequence clone 재생, owning saved Pattern의
+  Server Valtan 재생을 각각 확인해야 하며 이 visual smoke는 아직 PASS가 아니다.
+
+## 2026-08-31 통합 회귀 교정 및 Debug Product 빌드
+
+### 그래프 lifecycle
+
+- Blueprint는 live Balance generation을 다시 읽지 않고, Sequencer와 같은 immutable Pattern view의
+  generation을 입력으로 받는다. 따라서 reload와 render가 같은 frame에 교차해도 stale graph가 새
+  generation으로 잘못 고정되지 않는다.
+- manual Pattern의 암시적 `TIMEOUT`은 vector의 즉시 다음 Stage로 연결한다. 명시적으로 저작한
+  `TIMEOUT` target과 canonical event branch는 그대로 보존한다.
+- Stage insert/move/remove 성공 시 preview route override를 비우고 route generation을 올린다.
+  `Reset Route`를 제공하며, topology가 바뀐 frame과 rejected projection은 node/edge hit를 받지 않는다.
+- edge 선택은 source branch ordinal과 Pattern/Stage/action/outcome/target stable identity를 다시 검증한다.
+
+### source identity와 preview owner
+
+- Create New Pattern intake가 사용자가 고른 `(sourceActionId, sourceSequenceIndex)`를 typed request와
+  promotion manifest까지 보존한다. sequence `0`도 Python publisher와 Client parser가 같은 범위로
+  인정한다.
+- source에서 saved Pattern을 역조회할 때 exact `PRIMARY`만 owner로 인정한다. `REFERENCE`는 재생
+  후보로 승격하지 않으며, canonical generation별 reverse index를 캐시해 Resources 창에서 매 frame
+  전체 Pattern inventory를 복사·정렬·스캔하지 않는다.
+- arena clone이 실제 preview 시작에 성공한 뒤에만 Composition viewport ownership을 요청한다.
+- saved Pattern의 Server 재생은 현재 Server-active revision과 Pattern Sound runtime readiness만
+  검사한다. 별개의 local draft dirty 상태는 immutable active revision 재생을 막지 않는다.
+- Composition을 처음 열 때 Boss Tool canonical graph도 같은 explicit open action에서 stage/reload한다.
+
+### 자동 검증
+
+- focused Python 계약: 165/165 PASS
+  - Workbench regression 39
+  - presentation contract 45
+  - manual topology 11
+  - create service 19
+  - create Workbench 7
+  - Animation Tool master 12
+  - Sound owner 14
+  - sequence identity 3
+  - occurrence timing 6
+  - Effect invocation 9
+- `ActionCompositionGraphModelContractTests`: 9/9 PASS
+- `ValtanPatternAuditionServiceHarness` 전체 실행: exit 0
+- `Tools/Build/test_build_profile_contract.py`: 11/11 PASS. 새 native graph source를 허용된 focused
+  Client source 표면에 명시했다.
+- `Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product`: PASS
+  - Engine, Shared, Server, Client compile/link PASS
+  - Product Effect resource-root 8 cases PASS
+  - compiled shader closure PASS, V1/V2 WARP pixels 각각 1352
+  - receipt: `out/BuildPipeline/receipts/product.debug.receipt.json`
+  - evidence: `out/BuildPipeline/runs/20260831T040229448Z-debug-product-a28bb869.json`
+
+### 남은 사용자 판정
+
+- 새 `Client/Bin/Debug/Client.exe`는 생성됐다. Save 후 reload 유지, Blueprint route 선택/초기화,
+  clone source preview와 saved active revision Server Valtan 재생의 화면 결과는 사용자가 직접
+  확인해야 하며 아직 visual PASS로 기록하지 않는다.
+
+## 2026-08-31 Sequencer 본질 편집 루프 마감
+
+### Sequence와 box 편집
+
+- 선택한 source Sequence가 3 clips이면 Replace/Append 결과도 정확히 3개의 Animation box로
+  materialize한다. Groggy의 명시적 start/loop/end HOLD chain만 기존 Server Stage보다 길 때
+  start/end를 보존하고 loop 구간을 Stage clock에 맞춘다. start/end/one-shot clip을 반복으로
+  추측하지 않는다.
+- Animation box body drag는 Stage 내부 순서를 stable occurrence ID 기준으로 바꾼다. Animation
+  오른쪽 trim은 source/play window를, Effect body drag와 `cue_end` 오른쪽 trim은 invocation
+  occurrence를, Sound body drag는 point timing을 typed owner draft에 반영한다.
+- 선택 box 공통 도구에 `Duplicate Selected Box`, `Delete Selected Box`를 추가했다. Animation,
+  Effect, Sound 모두 새 stable occurrence ID를 사용하며, dependency 검증을 통과한 뒤에만 draft가
+  바뀐다.
+- Animation/Effect/Sound lane의 `+`는 선택 Pattern/Stage/Animation box의 stable ID를 보존한 채
+  큰 `Composition Resources` 창을 열고 해당 domain tab으로 이동한다. Animation Sequence는
+  Replace/Append, Effect와 Sound는 선택 resource를 Stage 뒤에 Add할 수 있다. 긴 catalog는
+  `ImGuiListClipper`로 visible row만 그린다.
+
+### 생성에서 다시 편집으로 이어지는 흐름
+
+- `Use for Create New Pattern` 성공 시 `Composition Patterns > Create New Pattern` tab을 자동으로
+  열고 focus한다. 이 화면에서 stable Pattern ID와 `Display name`을 편집하고 Validate 후 Apply한다.
+- 생성 transaction이 성공하면 canonical reload 후 새 Pattern을 선택하고 `Patterns / Stages` tab으로
+  돌아온다. 이어서 다른 source Sequence를 고르고 `Append to Stage Slots`를 누르면 기존 clip 뒤에
+  정확한 box가 추가되고 Stage duration이 합산 wall clock만큼 늘어난다.
+
+### 통합 preview와 branch clock
+
+- Sequencer에 Play/Pause/Stop/Restart/Loop와 scrub을 두고 선택 branch의 실제 Stage path만 하나의
+  clock으로 만든다. branch 변경은 이전 preview를 정지하고, `Play Selected Stage (All Slots)`는
+  해당 Stage가 속한 deterministic path를 찾은 뒤 Arena Clone에서 Animation, Effect와 collider
+  mirror를 함께 시작한다.
+- Sound native clip duration inventory는 resolved Valtan model별로 캐시하며 Level 변경 또는 model
+  소멸 때 폐기한다. Sound resource catalog render에서는 전체 animation scan을 하지 않고 Add command
+  시점에 한 번 authoritative validation한다.
+
+### 검증과 남은 실행 경계
+
+- Action Composition focused contract: 93/93 PASS.
+- Create service/Workbench까지 합친 관련 contract: 119/119 PASS.
+- Client Debug x64 `ClCompile`: PASS. 현재 저장소의 기존 CP949/C4819 warning만 있고 compile error는
+  없다.
+- 최신 변경 대상 `git diff --check`: PASS(LF/CRLF 안내만 출력).
+- Pattern/Animation/Effect draft는 `Save & Apply`, Sound draft는 별도 `Save Sound Owner`가 소유한다.
+  저장 버튼을 누르기 전 timeline 변경은 실행 중 Server pattern 정본이 아니다.
+- 이 절의 최종 Product link는 사용자가 실행 중인 Client가 output을 점유한 동안 수행하지 않는다.
+  새 EXE에서 Create tab 자동 이동, Sequence Append, box Duplicate/Delete/drag/trim, branch preview의
+  화면 결과는 사용자 visual 판정 전까지 PASS로 기록하지 않는다.
+
+## 2026-08-31 Create Pattern Python 실행 별칭 수정
+
+- Create Pattern의 `patternId`와 `displayName` 검증을 통과한 뒤에도 Python backend가 시작되지 않던
+  원인은 WindowsApps의 정상 `python.exe` App Execution Alias를
+  `std::filesystem::is_regular_file()`와 `weakly_canonical()`로 거부한 것이었다. 이 PC의 alias는
+  0-byte reparse point지만 실제 `Python 3.14.4`를 실행한다.
+- resolver는 `SearchPathW`가 찾은 고정 실행 경로를 `GetFileAttributesW`로 검사해 누락 경로와
+  directory는 계속 거부한다. filesystem target resolution 없이 `lexically_normal()`만 적용해
+  non-directory App Execution Alias를 `CreateProcessW` 대상으로 인정한다. 사용자 입력은 계속
+  JSON request 안에만 전달하며 shell을 사용하지 않는다.
+- Composition data-only 창은 preview `m_AssetName`이 비어 있어도 Create baseline SHA를 고정 정본
+  `Data/Valtan/Valtan.presentation.debug.json`에서 읽는다. 선택 Sequence를 별도로 saved intake로
+  저장할 필요가 없다.
+- 같은 clip을 여러 recovered action이 공유할 때 CURRENT_CHAIN의 명시적 `(sourceActionId,
+  sourceSequenceIndex)`가 primary presentation identity를 소유한다. `Valtan.animnotify` action은
+  exact source tuple이 없는 기존 saved chain의 fallback으로만 사용한다.
+- `patternId`는 파일명이 아니며 영문/숫자/`_-.` stable ID다. `.json`을 붙이지 않는다.
+  한글 저작 이름은 별도 `Display name`에 입력한다.
+- focused Workbench/Create/route 계약: 70/70 PASS. 현재 호스트에서 명시적 WindowsApps
+  `python.exe --version`도 exit 0이다. 사용자가 입력한 `VALTAN_GROUND_TICK`, action 400440,
+  sequence 0, `mesh_att_battle_11_01` CURRENT_CHAIN 전체 Validate dry-run도 PASS했다.
+- 수정본 `Animation_Tool.cpp` Client Debug x64 compile과 `Client.exe` link는 PASS했다. 실행 중인
+  Server/Data를 유지하기 위해 정본 Product 재투영은 하지 않았고 Client project만 다시 링크했다.
+  새 EXE의 실제 Validate/Apply 화면 결과는 사용자 확인 전이다.

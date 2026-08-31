@@ -14,6 +14,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -46,6 +47,32 @@ namespace
         UINT Width = 64u;
         UINT Height = 64u;
     };
+
+    struct TARGET_STATS final
+    {
+        size_t NonZeroPixels = 0u;
+        size_t NonFinitePixels = 0u;
+    };
+
+    enum class DRAW_PREPARATION
+    {
+        STANDARD_V1,
+        GLASS_V1_VALID,
+        GLASS_V1_INVALID_MASK,
+        GLASS_V1_INVALID_SCALAR_NAN,
+        GLASS_V1_INVALID_ZERO_NORMAL,
+        GLASS_V1_INVALID_CAMERA_NAN,
+        V2,
+    };
+
+    bool Is_Glass_Preparation(const DRAW_PREPARATION Preparation)
+    {
+        return Preparation == DRAW_PREPARATION::GLASS_V1_VALID ||
+            Preparation == DRAW_PREPARATION::GLASS_V1_INVALID_MASK ||
+            Preparation == DRAW_PREPARATION::GLASS_V1_INVALID_SCALAR_NAN ||
+            Preparation == DRAW_PREPARATION::GLASS_V1_INVALID_ZERO_NORMAL ||
+            Preparation == DRAW_PREPARATION::GLASS_V1_INVALID_CAMERA_NAN;
+    }
 
     std::wstring Get_Environment(const wchar_t* pName)
     {
@@ -269,6 +296,53 @@ namespace
         return true;
     }
 
+    bool Create_Deterministic_Glass_Fixture(
+        ID3D11Device* pDevice,
+        ComPtr<ID3D11ShaderResourceView>& OutView,
+        ComPtr<ID3D11SamplerState>& OutSampler,
+        std::string& OutError)
+    {
+        constexpr std::array<unsigned char, 16> Pixels = {
+            224u, 48u, 192u, 255u, 176u, 224u, 96u, 255u,
+            240u, 112u, 64u, 255u, 160u, 240u, 208u, 255u};
+        D3D11_TEXTURE2D_DESC Desc{};
+        Desc.Width = 2u;
+        Desc.Height = 2u;
+        Desc.MipLevels = 1u;
+        Desc.ArraySize = 1u;
+        Desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        Desc.SampleDesc.Count = 1u;
+        Desc.Usage = D3D11_USAGE_IMMUTABLE;
+        Desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        D3D11_SUBRESOURCE_DATA Initial{};
+        Initial.pSysMem = Pixels.data();
+        Initial.SysMemPitch = 2u * 4u;
+        ComPtr<ID3D11Texture2D> Texture;
+        if (FAILED(pDevice->CreateTexture2D(
+                &Desc, &Initial, Texture.GetAddressOf())) ||
+            FAILED(pDevice->CreateShaderResourceView(
+                Texture.Get(), nullptr, OutView.GetAddressOf())))
+        {
+            OutError = "WARP deterministic glass SRV creation failed";
+            return false;
+        }
+
+        D3D11_SAMPLER_DESC SamplerDesc{};
+        SamplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+        SamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+        SamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+        SamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+        SamplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+        SamplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+        if (FAILED(pDevice->CreateSamplerState(
+                &SamplerDesc, OutSampler.GetAddressOf())))
+        {
+            OutError = "WARP deterministic glass sampler creation failed";
+            return false;
+        }
+        return true;
+    }
+
     bool Set_Matrix(
         ID3DX11Effect* pEffect, const char* pName,
         const std::array<float, 16>& Matrix, std::string& OutError)
@@ -311,6 +385,51 @@ namespace
         return true;
     }
 
+    bool Set_Int(
+        ID3DX11Effect* pEffect, const char* pName,
+        int Value, std::string& OutError)
+    {
+        ID3DX11EffectScalarVariable* pVariable =
+            pEffect->GetVariableByName(pName)->AsScalar();
+        if (!pVariable->IsValid() || FAILED(pVariable->SetInt(Value)))
+        {
+            OutError = std::string("effect integer is unavailable: ") + pName;
+            return false;
+        }
+        return true;
+    }
+
+    bool Set_Float(
+        ID3DX11Effect* pEffect, const char* pName,
+        float Value, std::string& OutError)
+    {
+        ID3DX11EffectScalarVariable* pVariable =
+            pEffect->GetVariableByName(pName)->AsScalar();
+        if (!pVariable->IsValid() || FAILED(pVariable->SetFloat(Value)))
+        {
+            OutError = std::string("effect float is unavailable: ") + pName;
+            return false;
+        }
+        return true;
+    }
+
+    template <size_t Count>
+    bool Set_Float4_Array(
+        ID3DX11Effect* pEffect, const char* pName,
+        const std::array<std::array<float, 4>, Count>& Value,
+        std::string& OutError)
+    {
+        ID3DX11EffectVectorVariable* pVariable =
+            pEffect->GetVariableByName(pName)->AsVector();
+        if (!pVariable->IsValid() || FAILED(pVariable->SetFloatVectorArray(
+                Value.front().data(), 0u, static_cast<UINT>(Count))))
+        {
+            OutError = std::string("effect vector array is unavailable: ") + pName;
+            return false;
+        }
+        return true;
+    }
+
     bool Prepare_V1(
         ID3DX11Effect* pEffect,
         ID3D11ShaderResourceView* pWhite,
@@ -340,6 +459,88 @@ namespace
             !pTexture->IsValid() || FAILED(pTexture->SetResource(pWhite)))
         {
             OutError = "V1 packet or texture binding is unavailable";
+            return false;
+        }
+        return true;
+    }
+
+    bool Prepare_Glass_V1(
+        ID3DX11Effect* pEffect,
+        ID3D11ShaderResourceView* pGlass,
+        const DRAW_PREPARATION Preparation,
+        std::string& OutError)
+    {
+        const std::array<float, 16> Identity = {
+            1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f,
+            0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f};
+        std::array<float, 16> NormalMatrix = Identity;
+        if (Preparation == DRAW_PREPARATION::GLASS_V1_INVALID_ZERO_NORMAL)
+            NormalMatrix.fill(0.f);
+        const float QuietNan = (std::numeric_limits<float>::quiet_NaN)();
+        const std::array<float, 4> CameraPosition =
+            Preparation == DRAW_PREPARATION::GLASS_V1_INVALID_CAMERA_NAN ?
+            std::array<float, 4>{QuietNan, 0.f, 2.f, 1.f} :
+            std::array<float, 4>{0.f, 0.f, 2.f, 1.f};
+        std::array<std::array<float, 4>, 13> ScalarBlocks{};
+        ScalarBlocks[0] = {1.2f, 0.12f, 4.f, 1.8f};
+        ScalarBlocks[1] = {1.25f, 0.01f, 0.02f, 1.f};
+        if (Preparation == DRAW_PREPARATION::GLASS_V1_INVALID_SCALAR_NAN)
+            ScalarBlocks[0][0] = QuietNan;
+        std::array<std::array<float, 4>, 3> Vectors{};
+        Vectors[0] = {0.08f, 0.24f, 0.55f, 1.f};
+        Vectors[1] = {0.55f, 0.9f, 1.f, 1.f};
+        if (!Set_Matrix(pEffect, "g_WorldMatrix", Identity, OutError) ||
+            !Set_Matrix(pEffect, "g_NormalMatrix", NormalMatrix, OutError) ||
+            !Set_Matrix(pEffect, "g_ViewMatrix", Identity, OutError) ||
+            !Set_Matrix(pEffect, "g_ProjMatrix", Identity, OutError) ||
+            !Set_Float4(pEffect, "g_CameraPosition", CameraPosition, OutError) ||
+            !Set_Float4(pEffect, "g_ColorMultiply", {1.f, 1.f, 1.f, 1.f}, OutError) ||
+            !Set_Float4(pEffect, "g_ColorOffset", {0.f, 0.f, 0.f, 0.f}, OutError) ||
+            !Set_Float(pEffect, "g_EmissiveIntensity", 1.f, OutError) ||
+            !Set_Int(pEffect, "g_StandardColorV1Enabled", 0, OutError) ||
+            !Set_Int(pEffect, "g_SourceTextureMask", 0x01, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2Enabled", 1, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2Opcode", 1004, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2TextureLaneCount", 1, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2TextureMask", 0x01, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2DynamicConsumedMask", 0, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2DynamicSuppressedMask", 0x0f, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2ParticleColorPolicy", 2, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2ParticleColorConsumedMask",
+                Preparation == DRAW_PREPARATION::GLASS_V1_INVALID_MASK ?
+                    0x0f : 0x08, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2ParticleColorSuppressedMask", 0x07, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2ScalarCount", 8, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2VectorCount", 2, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2InputCount", 8, OutError) ||
+            !Set_Int4(pEffect, "g_RuntimeMaterialV2InputConsumedMask",
+                {0xff, 0, 0, 0}, OutError) ||
+            !Set_Int4(pEffect, "g_RuntimeMaterialV2InputSuppressedMask",
+                {0, 0, 0, 0}, OutError) ||
+            !Set_Int4(pEffect, "g_RuntimeMaterialV2VectorComponentConsumedMask",
+                {0x0f, 0x0f, 0, 0}, OutError) ||
+            !Set_Int4(pEffect, "g_RuntimeMaterialV2VectorComponentSuppressedMask",
+                {0, 0, 0, 0}, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2StaticInputCount", 0, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2StaticSelectedMask", 0, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2StaticConsumedMask", 0, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2StaticSuppressedMask", 0, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2RenderInputCount", 6, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2RenderConsumedMask", 0x2f, OutError) ||
+            !Set_Int(pEffect, "g_RuntimeMaterialV2RenderSuppressedMask", 0x10, OutError) ||
+            !Set_Float4_Array(pEffect, "g_RuntimeMaterialV2ScalarBlocks",
+                ScalarBlocks, OutError) ||
+            !Set_Float4_Array(pEffect, "g_RuntimeMaterialV2Vectors",
+                Vectors, OutError))
+        {
+            return false;
+        }
+
+        ID3DX11EffectShaderResourceVariable* pTexture =
+            pEffect->GetVariableByName("g_SourceTexture0")->AsShaderResource();
+        if (!pTexture->IsValid() || FAILED(pTexture->SetResource(pGlass)))
+        {
+            OutError = "glass V1 texture binding is unavailable";
             return false;
         }
         return true;
@@ -396,16 +597,88 @@ namespace
         return true;
     }
 
+    bool Inspect_Target(
+        ID3D11DeviceContext* pContext,
+        RENDER_TARGETS& Targets,
+        size_t TargetIndex,
+        bool ExpectNonZero,
+        TARGET_STATS& OutStats,
+        std::string& OutError)
+    {
+        if (TargetIndex >= Targets.Textures.size())
+        {
+            OutError = "WARP target inspection index is invalid";
+            return false;
+        }
+        pContext->CopyResource(
+            Targets.Readback.Get(), Targets.Textures[TargetIndex].Get());
+        D3D11_MAPPED_SUBRESOURCE Mapped{};
+        if (FAILED(pContext->Map(
+                Targets.Readback.Get(), 0u, D3D11_MAP_READ, 0u, &Mapped)))
+        {
+            OutError = "WARP glass target readback map failed";
+            return false;
+        }
+        OutStats = {};
+        for (UINT Y = 0u; Y < Targets.Height; ++Y)
+        {
+            const float* pRow = reinterpret_cast<const float*>(
+                static_cast<const unsigned char*>(Mapped.pData) +
+                static_cast<size_t>(Y) * Mapped.RowPitch);
+            for (UINT X = 0u; X < Targets.Width; ++X)
+            {
+                const float* pPixel = pRow + static_cast<size_t>(X) * 4u;
+                const bool Finite = std::isfinite(pPixel[0]) &&
+                    std::isfinite(pPixel[1]) && std::isfinite(pPixel[2]) &&
+                    std::isfinite(pPixel[3]);
+                if (!Finite)
+                {
+                    ++OutStats.NonFinitePixels;
+                    continue;
+                }
+                if (std::abs(pPixel[0]) > 1.0e-6f ||
+                    std::abs(pPixel[1]) > 1.0e-6f ||
+                    std::abs(pPixel[2]) > 1.0e-6f ||
+                    std::abs(pPixel[3]) > 1.0e-6f)
+                {
+                    ++OutStats.NonZeroPixels;
+                }
+            }
+        }
+        pContext->Unmap(Targets.Readback.Get(), 0u);
+        if (0u != OutStats.NonFinitePixels)
+        {
+            OutError = "glass opcode 1004 produced non-finite WARP pixels";
+            return false;
+        }
+        if (ExpectNonZero && 0u == OutStats.NonZeroPixels)
+        {
+            OutError = "glass opcode 1004 produced zero WARP pixels";
+            return false;
+        }
+        if (!ExpectNonZero && 0u != OutStats.NonZeroPixels)
+        {
+            OutError = "glass opcode 1004 invalid fixture did not fail closed on RT" +
+                std::to_string(TargetIndex) + " (nonzeroPixels=" +
+                std::to_string(OutStats.NonZeroPixels) + ")";
+            return false;
+        }
+        return true;
+    }
+
     bool Draw_Compiled_Effect(
         ID3D11Device* pDevice,
         ID3D11DeviceContext* pContext,
         RENDER_TARGETS& Targets,
         ID3D11Buffer* pVertexBuffer,
         ID3D11ShaderResourceView* pWhite,
+        ID3D11ShaderResourceView* pGlass,
+        ID3D11SamplerState* pGlassSampler,
         const fs::path& CompiledEffect,
         const char* pPassName,
-        bool IsV1,
+        DRAW_PREPARATION Preparation,
         size_t& OutLitPixels,
+        size_t& OutDistortionPixels,
         std::string& OutError)
     {
         const std::vector<unsigned char> Bytes = Read_Bytes(CompiledEffect, OutError);
@@ -459,9 +732,26 @@ namespace
             OutError = "compiled effect input signature rejected the fixture";
             return false;
         }
-        if (!(IsV1 ? Prepare_V1(Effect.Get(), pWhite, OutError) :
-                     Prepare_V2(Effect.Get(), OutError)))
-            return false;
+        switch (Preparation)
+        {
+        case DRAW_PREPARATION::STANDARD_V1:
+            if (!Prepare_V1(Effect.Get(), pWhite, OutError))
+                return false;
+            break;
+        case DRAW_PREPARATION::GLASS_V1_VALID:
+        case DRAW_PREPARATION::GLASS_V1_INVALID_MASK:
+        case DRAW_PREPARATION::GLASS_V1_INVALID_SCALAR_NAN:
+        case DRAW_PREPARATION::GLASS_V1_INVALID_ZERO_NORMAL:
+        case DRAW_PREPARATION::GLASS_V1_INVALID_CAMERA_NAN:
+            if (!Prepare_Glass_V1(
+                    Effect.Get(), pGlass, Preparation, OutError))
+                return false;
+            break;
+        case DRAW_PREPARATION::V2:
+            if (!Prepare_V2(Effect.Get(), OutError))
+                return false;
+            break;
+        }
 
         const std::array<float, 4> Clear = {0.f, 0.f, 0.f, 0.f};
         pContext->ClearRenderTargetView(Targets.Views[0].Get(), Clear.data());
@@ -487,9 +777,34 @@ namespace
             OutError = "compiled effect pass application failed";
             return false;
         }
+        if (Is_Glass_Preparation(Preparation))
+        {
+            pContext->PSSetSamplers(5u, 1u, &pGlassSampler);
+        }
         pContext->Draw(3u, 0u);
         pContext->OMSetRenderTargets(0u, nullptr, nullptr);
-        return Count_Lit_Pixels(pContext, Targets, OutLitPixels, OutError);
+        OutDistortionPixels = 0u;
+        if (!Is_Glass_Preparation(Preparation))
+        {
+            return Count_Lit_Pixels(
+                pContext, Targets, OutLitPixels, OutError);
+        }
+        const bool ExpectNonZero =
+            Preparation == DRAW_PREPARATION::GLASS_V1_VALID;
+        TARGET_STATS Rt0Stats{};
+        TARGET_STATS Rt1Stats{};
+        if (!Inspect_Target(
+                pContext, Targets, 0u, ExpectNonZero, Rt0Stats, OutError) ||
+            !Inspect_Target(
+                pContext, Targets, 1u, ExpectNonZero, Rt1Stats, OutError))
+        {
+            OutError += " (preparation=" +
+                std::to_string(static_cast<int>(Preparation)) + ")";
+            return false;
+        }
+        OutLitPixels = Rt0Stats.NonZeroPixels;
+        OutDistortionPixels = Rt1Stats.NonZeroPixels;
+        return true;
     }
 }
 
@@ -556,8 +871,13 @@ int wmain(int ArgumentCount, wchar_t** ppArguments)
 
     RENDER_TARGETS Targets;
     ComPtr<ID3D11ShaderResourceView> White;
+    ComPtr<ID3D11ShaderResourceView> DeterministicGlassSrv;
+    ComPtr<ID3D11SamplerState> DeterministicGlassSampler;
     if (!Create_Targets(Device.Get(), Targets, Error) ||
-        !Create_White_Texture(Device.Get(), White, Error))
+        !Create_White_Texture(Device.Get(), White, Error) ||
+        !Create_Deterministic_Glass_Fixture(
+            Device.Get(), DeterministicGlassSrv,
+            DeterministicGlassSampler, Error))
     {
         std::cerr << Error << '\n';
         return EXIT_RENDER_CONTRACT;
@@ -587,14 +907,65 @@ int wmain(int ArgumentCount, wchar_t** ppArguments)
     const fs::path ShaderRoot = RepositoryRoot / L"Client/Bin" / Configuration;
     size_t V1LitPixels = 0u;
     size_t V2LitPixels = 0u;
+    size_t UnusedDistortionPixels = 0u;
+    size_t GlassRt0Pixels = 0u;
+    size_t GlassRt1Pixels = 0u;
+    size_t InvalidGlassRt0Pixels = 0u;
+    size_t InvalidGlassRt1Pixels = 0u;
+    size_t InvalidNanScalarGlassRt0Pixels = 0u;
+    size_t InvalidNanScalarGlassRt1Pixels = 0u;
+    size_t InvalidZeroNormalGlassRt0Pixels = 0u;
+    size_t InvalidZeroNormalGlassRt1Pixels = 0u;
+    size_t InvalidNanCameraGlassRt0Pixels = 0u;
+    size_t InvalidNanCameraGlassRt1Pixels = 0u;
     if (!Draw_Compiled_Effect(
             Device.Get(), Context.Get(), Targets, VertexBuffer.Get(), White.Get(),
+            DeterministicGlassSrv.Get(), DeterministicGlassSampler.Get(),
             ShaderRoot / L"Shader_VtxEffectMeshPreview.cso",
-            "OpaqueBackDepthWrite", true, V1LitPixels, Error) ||
+            "OpaqueBackDepthWrite", DRAW_PREPARATION::STANDARD_V1,
+            V1LitPixels, UnusedDistortionPixels, Error) ||
         !Draw_Compiled_Effect(
             Device.Get(), Context.Get(), Targets, VertexBuffer.Get(), White.Get(),
+            DeterministicGlassSrv.Get(), DeterministicGlassSampler.Get(),
+            ShaderRoot / L"Shader_VtxEffectMeshPreview.cso",
+            "AlphaTwoSidedDepthRead", DRAW_PREPARATION::GLASS_V1_VALID,
+            GlassRt0Pixels, GlassRt1Pixels, Error) ||
+        !Draw_Compiled_Effect(
+            Device.Get(), Context.Get(), Targets, VertexBuffer.Get(), White.Get(),
+            DeterministicGlassSrv.Get(), DeterministicGlassSampler.Get(),
+            ShaderRoot / L"Shader_VtxEffectMeshPreview.cso",
+            "AlphaTwoSidedDepthRead", DRAW_PREPARATION::GLASS_V1_INVALID_MASK,
+            InvalidGlassRt0Pixels, InvalidGlassRt1Pixels, Error) ||
+        !Draw_Compiled_Effect(
+            Device.Get(), Context.Get(), Targets, VertexBuffer.Get(), White.Get(),
+            DeterministicGlassSrv.Get(), DeterministicGlassSampler.Get(),
+            ShaderRoot / L"Shader_VtxEffectMeshPreview.cso",
+            "AlphaTwoSidedDepthRead",
+            DRAW_PREPARATION::GLASS_V1_INVALID_SCALAR_NAN,
+            InvalidNanScalarGlassRt0Pixels,
+            InvalidNanScalarGlassRt1Pixels, Error) ||
+        !Draw_Compiled_Effect(
+            Device.Get(), Context.Get(), Targets, VertexBuffer.Get(), White.Get(),
+            DeterministicGlassSrv.Get(), DeterministicGlassSampler.Get(),
+            ShaderRoot / L"Shader_VtxEffectMeshPreview.cso",
+            "AlphaTwoSidedDepthRead",
+            DRAW_PREPARATION::GLASS_V1_INVALID_ZERO_NORMAL,
+            InvalidZeroNormalGlassRt0Pixels,
+            InvalidZeroNormalGlassRt1Pixels, Error) ||
+        !Draw_Compiled_Effect(
+            Device.Get(), Context.Get(), Targets, VertexBuffer.Get(), White.Get(),
+            DeterministicGlassSrv.Get(), DeterministicGlassSampler.Get(),
+            ShaderRoot / L"Shader_VtxEffectMeshPreview.cso",
+            "AlphaTwoSidedDepthRead",
+            DRAW_PREPARATION::GLASS_V1_INVALID_CAMERA_NAN,
+            InvalidNanCameraGlassRt0Pixels,
+            InvalidNanCameraGlassRt1Pixels, Error) ||
+        !Draw_Compiled_Effect(
+            Device.Get(), Context.Get(), Targets, VertexBuffer.Get(), White.Get(),
+            DeterministicGlassSrv.Get(), DeterministicGlassSampler.Get(),
             ShaderRoot / L"Shader_EffectMeshV2.cso",
-            "AlphaNoDepth", false, V2LitPixels, Error))
+            "AlphaNoDepth", DRAW_PREPARATION::V2,
+            V2LitPixels, UnusedDistortionPixels, Error))
     {
         std::cerr << Error << '\n';
         return EXIT_RENDER_CONTRACT;
@@ -610,6 +981,22 @@ int wmain(int ArgumentCount, wchar_t** ppArguments)
               << Json_Escape(To_Utf8(AdapterDesc.Description))
               << "\",\"v1LitPixels\":" << V1LitPixels
               << ",\"v2LitPixels\":" << V2LitPixels
+              << ",\"glassRt0Pixels\":" << GlassRt0Pixels
+              << ",\"glassRt1Pixels\":" << GlassRt1Pixels
+              << ",\"invalidGlassRt0Pixels\":" << InvalidGlassRt0Pixels
+              << ",\"invalidGlassRt1Pixels\":" << InvalidGlassRt1Pixels
+              << ",\"invalidNanScalarGlassRt0Pixels\":"
+              << InvalidNanScalarGlassRt0Pixels
+              << ",\"invalidNanScalarGlassRt1Pixels\":"
+              << InvalidNanScalarGlassRt1Pixels
+              << ",\"invalidZeroNormalGlassRt0Pixels\":"
+              << InvalidZeroNormalGlassRt0Pixels
+              << ",\"invalidZeroNormalGlassRt1Pixels\":"
+              << InvalidZeroNormalGlassRt1Pixels
+              << ",\"invalidNanCameraGlassRt0Pixels\":"
+              << InvalidNanCameraGlassRt0Pixels
+              << ",\"invalidNanCameraGlassRt1Pixels\":"
+              << InvalidNanCameraGlassRt1Pixels
               << ",\"assetPathBoundaryValidated\":true"
               << ",\"resourceRoot\":\""
               << Json_Escape(To_Utf8(ResourceRoot->wstring())) << "\"}\n";

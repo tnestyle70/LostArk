@@ -74,7 +74,7 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             EFFECT_CATALOG_JSON.read_text(encoding="utf-8")
         )
 
-    def test_first_visible_frames_use_in_memory_catalog_metadata_only(self) -> None:
+    def test_first_visible_frame_auto_joins_product_and_authored_indexes_once(self) -> None:
         render = source_section(
             self.cpp,
             "void Client::CEffect_Tool::Render()",
@@ -102,8 +102,19 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             "m_bResourceCatalogRefreshAttempted ||",
             "m_bAllEffectsRefreshAttempted ||",
             "m_bDataFilesRefreshAttempted",
+            "const bool_t bInitialProductIndexReady = Refresh_AllEffects(true);",
+            "const bool_t bInitialAuthoredIndexReady = Refresh_DataFiles();",
+            "Automatic initial Effect index join was incomplete",
         ):
             self.assertIn(token, metadata)
+        self.assertLess(
+            metadata.index("m_bCatalogMetadataViewInitialized = true;"),
+            metadata.index("Refresh_AllEffects(true);"),
+        )
+        self.assertLess(
+            metadata.index("Refresh_AllEffects(true);"),
+            metadata.index("Refresh_DataFiles();"),
+        )
         for forbidden in (
             "recursive_directory_iterator",
             "CEffectDocumentCodec::Load",

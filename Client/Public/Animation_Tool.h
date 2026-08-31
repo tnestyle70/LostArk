@@ -16,6 +16,7 @@
 
 #include <filesystem>
 #include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 
 NS_BEGIN(Engine)
@@ -42,10 +43,12 @@ public:
 		bool_t bModelReady = false;
 		bool_t bPlaying = false;
 		bool_t bPaused = false;
+		bool_t bSourceSequencePlaying = false;
 		uint32_t iPositionMs = 0u;
 		uint32_t iDurationMs = 0u;
 		std::string strPatternId;
 		std::string strStatus;
+		std::string strSourceSequenceStatus;
 	};
 
 	struct COMPOSITION_SEQUENCE_CLIP_VIEW final
@@ -399,9 +402,11 @@ public:
 		bool_t& bOutLoop,
 		std::string& strOutStatus) const;
 	/* Cross-owner dependency admission.  A Pattern/Animation mutation may not
-	   delete a Sound-qualified clip occurrence, reuse its stable occurrence ID
-	   for another clip, or move its cue outside the candidate Stage/model
-	   timeline.  Stages with no Sound rows remain valid without a model. */
+	   delete a Sound-qualified clip occurrence or move its cue outside the
+	   candidate Stage/model timeline.  An explicit PROJECT_AUTHORED resource
+	   replacement may preserve the logical occurrence ID only after the new
+	   source window/repeat policy is revalidated.  Stages with no Sound rows
+	   remain valid without a model. */
 	bool_t Validate_ValtanCompositionPatternSoundStageDependencies(
 		const VALTAN_PATTERN_VIEW& BaselinePattern,
 		const VALTAN_STAGE_VIEW& BaselineStage,
@@ -493,6 +498,11 @@ private:
 	/* Whole-file atomic replace. A rejected write leaves the previous library
 	   on disk and in memory so a failed save never costs saved chains. */
 	bool_t Save_CustomChainLibrary();
+	/* Exact source identity is attached only while the current hand-built chain
+	   is still the untouched copy staged from one extracted Sequence.  Any
+	   manual edit drops the identity instead of publishing a misleading
+	   (actionId, sequenceIndex) owner for a different chain. */
+	void Invalidate_ValtanPatternCreateExactSourceSelection();
 	void Render_ValtanPatternCreatePanel();
 	bool_t Build_ValtanPatternCreateRequest(
 		std::string& strOutRequest,
@@ -747,6 +757,9 @@ private:
 	std::string m_strValtanPatternCreateActiveRequestSha256;
 	std::string m_strValtanPatternCreateValidatedRequestSha256;
 	std::string m_strValtanPatternCreateActivePatternId;
+	bool_t m_bValtanPatternCreateExactSourceSelection = false;
+	int32_t m_iValtanPatternCreateSourceActionId = -1;
+	int32_t m_iValtanPatternCreateSourceSequenceIndex = -1;
 	bool_t m_bValtanPatternCreateActiveApply = false;
 	bool_t m_bValtanPatternCreateHasExitCode = false;
 	uint32_t m_iValtanPatternCreateExitCode = 0u;
@@ -791,6 +804,12 @@ private:
 		m_ValtanPatternSoundRuntimeAppliedRevision{};
 	std::string m_strValtanPatternSoundCueBaselineSourceBytes;
 	std::string m_strValtanPatternSoundCueStatus;
+	/* Sound Detail can ask for the same clip window every ImGui frame.  Cache
+	   immutable native durations per resolved model instead of walking every
+	   animation on each draw; authoring mutations still revalidate on submit. */
+	mutable std::weak_ptr<Engine::CModel> m_ValtanPatternSoundDurationModel;
+	mutable std::unordered_map<std::string, f32_t>
+		m_ValtanPatternSoundClipDurations;
 	std::string m_strValtanPatternSoundAddClipOccurrenceId;
 	std::string m_strValtanPatternSoundAddEvent;
 	uint32_t m_iValtanPatternSoundAddStartMs = 0u;

@@ -611,6 +611,93 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 #endif
 }
 
+bool_t CLevel_ValtanArena::Try_Get_AuthoringPreviewPlacement(
+	float3_t& OutPosition,
+	std::string& strOutSource) const
+{
+	OutPosition = {};
+	strOutSource.clear();
+
+	/* Screen-right keeps the clone next to the actor from the current camera's
+	   point of view instead of using world +X. Flattening it prevents a pitched
+	   raid camera from moving the model above/below the floor. */
+	vector_t vScreenRight = XMVectorSet(1.f, 0.f, 0.f, 0.f);
+	if (nullptr != m_pCamera)
+	{
+		const shared_ptr<CTransform> pCameraTransform =
+			dynamic_pointer_cast<CTransform>(
+				m_pCamera->Get_Component(g_strTransformComTag));
+		if (nullptr != pCameraTransform)
+		{
+			vector_t vCandidate = pCameraTransform->Get_State(STATE::RIGHT);
+			vCandidate = XMVectorSetY(vCandidate, 0.f);
+			vCandidate = XMVectorSetW(vCandidate, 0.f);
+			if (XMVectorGetX(XMVector3LengthSq(vCandidate)) > 0.000001f)
+				vScreenRight = XMVector3Normalize(vCandidate);
+		}
+	}
+
+	const shared_ptr<CCharacter> pLocalCharacter =
+		m_Replication.Get_LocalCharacter();
+	if (nullptr != pLocalCharacter &&
+		nullptr != pLocalCharacter->Get_Transform())
+	{
+		const vector_t vPlayerPosition =
+			pLocalCharacter->Get_Transform()->Get_State(STATE::POSITION);
+		constexpr f32_t PREVIEW_OFFSET_METERS = 3.25f;
+		const array<f32_t, 2u> Directions = { 1.f, -1.f };
+		for (const f32_t fDirection : Directions)
+		{
+			const vector_t vCandidate = XMVectorSetW(
+				vPlayerPosition +
+				vScreenRight * (PREVIEW_OFFSET_METERS * fDirection),
+				1.f);
+			float3_t Candidate{};
+			XMStoreFloat3(&Candidate, vCandidate);
+			float3_t Sampled{};
+			if (pLocalCharacter->Try_SampleTargetGround(
+					Candidate.x, Candidate.z, Sampled))
+			{
+				OutPosition = Sampled;
+				strOutSource = fDirection > 0.f ?
+					"replicated local player / camera-right / Navigation" :
+					"replicated local player / camera-left / Navigation";
+				return true;
+			}
+		}
+
+		/* A missing Client Navigation component must not make the explicitly
+		   requested Model View disappear. The replicated player point is still a
+		   valid arena anchor; only the optional floor clamp was unavailable. */
+		const vector_t vFallback = XMVectorSetW(
+			vPlayerPosition + vScreenRight * PREVIEW_OFFSET_METERS, 1.f);
+		XMStoreFloat3(&OutPosition, vFallback);
+		strOutSource =
+			"replicated local player / camera-right / unclamped fallback";
+		return true;
+	}
+
+	const VALTAN_PRESENTATION_STATE& Boss =
+		m_Replication.Get_ValtanPresentationState();
+	if (Boss.isValid &&
+		std::isfinite(Boss.vPosition.x) &&
+		std::isfinite(Boss.vPosition.y) &&
+		std::isfinite(Boss.vPosition.z))
+	{
+		const vector_t vBossPosition = XMLoadFloat3(&Boss.vPosition);
+		const vector_t vFallback = XMVectorSetW(
+			vBossPosition + vScreenRight * 4.5f, 1.f);
+		XMStoreFloat3(&OutPosition, vFallback);
+		strOutSource =
+			"primary replicated Valtan / camera-right fallback";
+		return true;
+	}
+
+	strOutSource =
+		"waiting for the replicated local player or primary Valtan";
+	return false;
+}
+
 bool_t CLevel_ValtanArena::Reload_PrimaryValtanPresentationAuthoring(
 	const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
 	std::string& strOutStatus)

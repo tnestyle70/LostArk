@@ -8,13 +8,16 @@
 #include "CameraTool.h"
 #include "Effect_Catalog.h"
 #include "Effect_Tool.h"
+#include "EffectV2_Catalog.h"
 #include "MainApp.h"
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <iomanip>
+#include <functional>
 #include <limits>
+#include <numeric>
 #include <sstream>
 #include <string_view>
 
@@ -164,6 +167,174 @@ namespace
 				return candidate;
 		}
 		return {};
+	}
+
+	std::vector<std::string> SplitResourcePath(const std::string_view value)
+	{
+		std::vector<std::string> Segments;
+		std::size_t iStart = 0u;
+		for (std::size_t i = 0u; i <= value.size(); ++i)
+		{
+			const bool_t bBoundary = i == value.size() || '.' == value[i] ||
+				'/' == value[i] || ':' == value[i];
+			if (!bBoundary)
+				continue;
+			if (i > iStart)
+				Segments.emplace_back(value.substr(iStart, i - iStart));
+			iStart = i + 1u;
+		}
+		return Segments;
+	}
+
+	void InsertResourceTree(
+		Client::COMPOSITION_RESOURCE_TREE_NODE& Root,
+		const std::vector<std::string>& CategorySegments,
+		const std::size_t iLeafIndex)
+	{
+		Client::COMPOSITION_RESOURCE_TREE_NODE* pNode = &Root;
+		std::string strPath;
+		for (const std::string& Segment : CategorySegments)
+		{
+			if (Segment.empty())
+				continue;
+			if (!strPath.empty())
+				strPath += '/';
+			strPath += Segment;
+			auto Child = std::find_if(
+				pNode->Children.begin(), pNode->Children.end(),
+				[&Segment](const Client::COMPOSITION_RESOURCE_TREE_NODE& Candidate)
+				{ return Candidate.strSegment == Segment; });
+			if (pNode->Children.end() == Child)
+			{
+				Client::COMPOSITION_RESOURCE_TREE_NODE NewChild;
+				NewChild.strSegment = Segment;
+				NewChild.strStablePath = strPath;
+				pNode->Children.push_back(std::move(NewChild));
+				Child = std::prev(pNode->Children.end());
+			}
+			pNode = &*Child;
+		}
+		pNode->LeafIndices.push_back(iLeafIndex);
+	}
+
+	std::size_t FinalizeResourceTree(
+		Client::COMPOSITION_RESOURCE_TREE_NODE& Node)
+	{
+		std::sort(
+			Node.Children.begin(), Node.Children.end(),
+			[](const Client::COMPOSITION_RESOURCE_TREE_NODE& Left,
+				const Client::COMPOSITION_RESOURCE_TREE_NODE& Right)
+			{ return Left.strSegment < Right.strSegment; });
+		Node.iRecursiveLeafCount = Node.LeafIndices.size();
+		for (Client::COMPOSITION_RESOURCE_TREE_NODE& Child : Node.Children)
+			Node.iRecursiveLeafCount += FinalizeResourceTree(Child);
+		return Node.iRecursiveLeafCount;
+	}
+
+	void RenderResourceTree(
+		const Client::COMPOSITION_RESOURCE_TREE_NODE& Node,
+		const std::function<void(std::size_t)>& RenderLeaf)
+	{
+		for (const Client::COMPOSITION_RESOURCE_TREE_NODE& Child : Node.Children)
+		{
+			ImGui::PushID(Child.strStablePath.c_str());
+			const std::string Label = Child.strSegment + " (" +
+				std::to_string(Child.iRecursiveLeafCount) + ")";
+			if (ImGui::TreeNodeEx(Label.c_str(), ImGuiTreeNodeFlags_SpanAvailWidth))
+			{
+				RenderResourceTree(Child, RenderLeaf);
+				ImGui::TreePop();
+			}
+			ImGui::PopID();
+		}
+		for (const std::size_t iLeafIndex : Node.LeafIndices)
+			RenderLeaf(iLeafIndex);
+	}
+
+	const char_t* EffectV2TypeLabel(const int32_t iType)
+	{
+		switch (static_cast<Client::EFFECT_V2_TYPE>(iType))
+		{
+		case Client::EFFECT_V2_TYPE::MESH: return "Mesh";
+		case Client::EFFECT_V2_TYPE::TEXTURE: return "Texture";
+		case Client::EFFECT_V2_TYPE::PARTICLE: return "Particle";
+		case Client::EFFECT_V2_TYPE::DECAL: return "Decal";
+		case Client::EFFECT_V2_TYPE::TRAIL: return "Trail";
+		case Client::EFFECT_V2_TYPE::SCREEN_POST: return "Screen Post";
+		default: return "Unknown";
+		}
+	}
+
+	std::string ClipReplacementRole(const std::string& clip)
+	{
+		const std::string normalized = Lower(clip);
+		if (std::string::npos != normalized.find("_start"))
+			return "start";
+		if (std::string::npos != normalized.find("_loop"))
+			return "loop";
+		if (std::string::npos != normalized.find("_end"))
+			return "end";
+		return {};
+	}
+
+	bool_t FitCompositionSequenceCutsToStage(
+		const std::vector<uint32_t>& RequestedCutsMs,
+		const uint32_t iStageDurationMs,
+		std::vector<uint32_t>& OutFittedCutsMs,
+		std::string& Status)
+	{
+		OutFittedCutsMs = RequestedCutsMs;
+		const uint64_t iRequestedTotalMs = std::accumulate(
+			RequestedCutsMs.begin(), RequestedCutsMs.end(), uint64_t{ 0u });
+		if (iRequestedTotalMs <= iStageDurationMs)
+			return true;
+		if (RequestedCutsMs.size() < 3u)
+		{
+			Status =
+				"Replace rejected: this Sequence is longer than the selected Server Stage. Only a start / loop / end HOLD chain can be fitted without guessing which authored edge to trim.";
+			return false;
+		}
+
+		const std::size_t iMiddleCount = RequestedCutsMs.size() - 2u;
+		const uint64_t iFixedEdgeMs =
+			static_cast<uint64_t>(RequestedCutsMs.front()) +
+			RequestedCutsMs.back();
+		if (iFixedEdgeMs + iMiddleCount > iStageDurationMs)
+		{
+			Status =
+				"Replace rejected: the Sequence start/end cuts leave no positive loop window inside the selected Server Stage clock.";
+			return false;
+		}
+
+		uint64_t iRemainingBudgetMs = iStageDurationMs - iFixedEdgeMs;
+		uint64_t iRemainingRequestedMs = std::accumulate(
+			RequestedCutsMs.begin() + 1u, RequestedCutsMs.end() - 1u,
+			uint64_t{ 0u });
+		for (std::size_t iClip = 1u;
+			iClip + 1u < RequestedCutsMs.size(); ++iClip)
+		{
+			const std::size_t iRemainingClipCount =
+				RequestedCutsMs.size() - iClip - 2u;
+			uint64_t iAllocationMs = iRemainingBudgetMs;
+			if (0u != iRemainingClipCount)
+			{
+				const uint64_t iProportionalMs = 0u == iRemainingRequestedMs ?
+					1u :
+					(iRemainingBudgetMs * RequestedCutsMs[iClip]) /
+						iRemainingRequestedMs;
+				iAllocationMs = (std::clamp)(
+					iProportionalMs,
+					uint64_t{ 1u },
+					iRemainingBudgetMs - iRemainingClipCount);
+			}
+			OutFittedCutsMs[iClip] = static_cast<uint32_t>(iAllocationMs);
+			iRemainingBudgetMs -= iAllocationMs;
+			iRemainingRequestedMs -= (std::min)(
+				iRemainingRequestedMs,
+				static_cast<uint64_t>(RequestedCutsMs[iClip]));
+		}
+		Status = "Fitted the extracted HOLD chain to the existing Server Stage clock.";
+		return true;
 	}
 
 	std::string StableEffectIdFragment(std::string value)
@@ -606,11 +777,12 @@ namespace
 						Cue.strOccurrenceId + ".";
 					return false;
 				}
-				if (BaselineClip->strClipName != CandidateClip->strClipName)
+				if (BaselineClip->strClipName != CandidateClip->strClipName &&
+					"PROJECT_AUTHORED" != CandidateClip->strMappingBasis)
 				{
 					Status =
-						"Stage mutation rejected before the typed draft changed: Pattern Shake-qualified clipOccurrenceId cannot be reused for another clip; retarget or remove it explicitly first: " +
-						Cue.strClipOccurrenceId + ".";
+						"Stage mutation rejected before the typed draft changed: Pattern Shake-qualified clipOccurrenceId can change its resource only through an explicit PROJECT_AUTHORED slot replacement: " +
+							Cue.strClipOccurrenceId + ".";
 					return false;
 				}
 				if (!ValidateClipSourceDependencyWindow(
@@ -666,6 +838,8 @@ void Client::CActionCompositionWorkbench::Reload_SemanticValtanEffects()
 	m_bSemanticValtanEffectLoadAttempted = true;
 	m_SemanticValtanEffectAssetIds.clear();
 	m_FilteredEffectAssetIndices.clear();
+	m_FilteredEffectV2DocumentIndices.clear();
+	m_FilteredEffectV2GroupIndices.clear();
 	m_bEffectFilterDirty = true;
 	for (const std::string& EffectAssetId : CEffectCatalog::Get_EffectAssetIds())
 	{
@@ -683,14 +857,74 @@ void Client::CActionCompositionWorkbench::Reload_SemanticValtanEffects()
 			m_SemanticValtanEffectAssetIds.begin(),
 			m_SemanticValtanEffectAssetIds.end()),
 		m_SemanticValtanEffectAssetIds.end());
-	if (!m_strEffectAddAssetId.empty() &&
-		m_SemanticValtanEffectAssetIds.end() == std::find(
-			m_SemanticValtanEffectAssetIds.begin(),
-			m_SemanticValtanEffectAssetIds.end(),
-			m_strEffectAddAssetId))
+
+	std::string V2Status;
+	const bool_t bV2Reloaded =
+		CEffectV2Catalog::Get().Reload_BossValtan(V2Status);
+	const std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pV2Snapshot =
+		CEffectV2Catalog::Get().Get_Snapshot();
+	if (nullptr != pV2Snapshot && pV2Snapshot->Is_Ready())
+	{
+		m_EffectV2DocumentIds.clear();
+		m_EffectV2DocumentTypes.clear();
+		m_EffectV2GroupIds.clear();
+		m_EffectV2DocumentIds.reserve(
+			pV2Snapshot->Get_Documents().size());
+		m_EffectV2DocumentTypes.reserve(
+			pV2Snapshot->Get_Documents().size());
+		for (const EFFECT_V2_DOCUMENT& Document :
+			pV2Snapshot->Get_Documents())
+		{
+			m_EffectV2DocumentIds.push_back(Document.strEffectId);
+			m_EffectV2DocumentTypes.push_back(
+				static_cast<int32_t>(Document.eType));
+		}
+		m_EffectV2GroupIds.reserve(pV2Snapshot->Get_Groups().size());
+		for (const EFFECT_V2_GROUP& Group : pV2Snapshot->Get_Groups())
+			m_EffectV2GroupIds.push_back(Group.strGroupId);
+		m_iEffectV2CatalogRevision = pV2Snapshot->Get_Revision();
+	}
+	else
+	{
+		m_EffectV2DocumentIds.clear();
+		m_EffectV2DocumentTypes.clear();
+		m_EffectV2GroupIds.clear();
+		m_iEffectV2CatalogRevision = 0u;
+	}
+	m_strEffectCatalogStatus =
+		"V1 authored " + std::to_string(m_SemanticValtanEffectAssetIds.size()) +
+		" | V2 leaf " + std::to_string(m_EffectV2DocumentIds.size()) +
+		" | V2 group " + std::to_string(m_EffectV2GroupIds.size());
+	if (!bV2Reloaded && !V2Status.empty())
+		m_strEffectCatalogStatus += " | V2 reload preserved previous snapshot: " +
+			V2Status;
+
+	bool_t bSelectedExists = m_strEffectAddAssetId.empty();
+	if (!bSelectedExists)
+	{
+		const std::vector<std::string>* pOwner = nullptr;
+		switch (m_eEffectAddResourceKind)
+		{
+		case EFFECT_RESOURCE_KIND::V1_PATTERN:
+			pOwner = &m_SemanticValtanEffectAssetIds;
+			break;
+		case EFFECT_RESOURCE_KIND::V2_LEAF:
+			pOwner = &m_EffectV2DocumentIds;
+			break;
+		case EFFECT_RESOURCE_KIND::V2_GROUP:
+			pOwner = &m_EffectV2GroupIds;
+			break;
+		default:
+			break;
+		}
+		bSelectedExists = nullptr != pOwner && pOwner->end() != std::find(
+			pOwner->begin(), pOwner->end(), m_strEffectAddAssetId);
+	}
+	if (!bSelectedExists)
 	{
 		m_strEffectAddAssetId.clear();
 	}
+	Invalidate_TimelineCache();
 }
 
 void Client::CActionCompositionWorkbench::Reset_EffectCueEditor()
@@ -742,7 +976,7 @@ const char_t* Client::CActionCompositionWorkbench::Owner_Label(
 {
 	switch (eOwner)
 	{
-	case DETAIL_OWNER::PATTERN: return "Pattern";
+	case DETAIL_OWNER::PATTERN: return "Pattern Root / Flow";
 	case DETAIL_OWNER::GAMEPLAY_STAGE: return "Gameplay / Logic / Collider";
 	case DETAIL_OWNER::ANIMATION: return "Animation Sequence";
 	case DETAIL_OWNER::EFFECT: return "Effect";
@@ -809,6 +1043,118 @@ Client::CActionCompositionWorkbench::Collect_Patterns() const
 			return pLeft->strPatternId < pRight->strPatternId;
 		});
 	return Patterns;
+}
+
+std::vector<const Client::VALTAN_PATTERN_VIEW*>
+Client::CActionCompositionWorkbench::
+Collect_CanonicalPatternsForDependencyValidation() const
+{
+	/* The browser is intentionally filtered to Complete Play inventory rows,
+	   but cross-owner Sound validation must receive the complete canonical
+	   graph.  Legacy-compatible Patterns can own admitted Sound rows even when
+	   they are not individually playable from the Workbench browser. */
+	std::vector<const VALTAN_PATTERN_VIEW*> Patterns;
+	Patterns.reserve(m_CanonicalView.Get_PatternCount());
+	for (const VALTAN_PATTERN_VIEW& Pattern : m_CanonicalView.Gimmicks)
+		Patterns.push_back(&Pattern);
+	for (const VALTAN_PATTERN_VIEW& Pattern : m_CanonicalView.Rotation)
+		Patterns.push_back(&Pattern);
+	return Patterns;
+}
+
+void Client::CActionCompositionWorkbench::
+Invalidate_SourceSequenceOwnerIndex()
+{
+	m_SourceSequenceOwnerIndex.clear();
+	m_iSourceSequenceOwnerIndexGeneration = ~std::uint64_t{ 0u };
+	m_strSourceSequenceServerPatternId.clear();
+}
+
+void Client::CActionCompositionWorkbench::Ensure_SourceSequenceOwnerIndex()
+{
+	if (m_iSourceSequenceOwnerIndexGeneration ==
+		m_iCanonicalDisplayGeneration)
+	{
+		return;
+	}
+
+	std::vector<SOURCE_SEQUENCE_OWNER_INDEX_ENTRY> Staged;
+	const std::vector<const VALTAN_PATTERN_VIEW*> Patterns = Collect_Patterns();
+	Staged.reserve(Patterns.size());
+	for (const VALTAN_PATTERN_VIEW* const pPattern : Patterns)
+	{
+		if (nullptr == pPattern)
+			continue;
+		for (const VALTAN_PRESENTATION_SOURCE_VIEW& Source :
+			pPattern->PresentationSources)
+		{
+			/* REFERENCE rows are research/provenance links, not a claim that the
+			   Product Pattern directly owns this raw Sequence for Server Play. */
+			if ("PRIMARY" != Source.strRole)
+				continue;
+			auto Entry = std::find_if(
+				Staged.begin(), Staged.end(),
+				[&Source](const SOURCE_SEQUENCE_OWNER_INDEX_ENTRY& Candidate)
+				{
+					return Candidate.iSourceActionId ==
+							Source.iSourceActionId &&
+						Candidate.iSequenceIndex == Source.iSequenceIndex;
+				});
+			if (Entry == Staged.end())
+			{
+				SOURCE_SEQUENCE_OWNER_INDEX_ENTRY Candidate;
+				Candidate.iSourceActionId = Source.iSourceActionId;
+				Candidate.iSequenceIndex = Source.iSequenceIndex;
+				Staged.push_back(std::move(Candidate));
+				Entry = Staged.end() - 1;
+			}
+			if (Entry->Owners.end() == std::find(
+					Entry->Owners.begin(), Entry->Owners.end(), pPattern))
+			{
+				Entry->Owners.push_back(pPattern);
+			}
+		}
+	}
+	std::sort(
+		Staged.begin(), Staged.end(),
+		[](const SOURCE_SEQUENCE_OWNER_INDEX_ENTRY& Left,
+			const SOURCE_SEQUENCE_OWNER_INDEX_ENTRY& Right)
+		{
+			if (Left.iSourceActionId != Right.iSourceActionId)
+				return Left.iSourceActionId < Right.iSourceActionId;
+			return Left.iSequenceIndex < Right.iSequenceIndex;
+		});
+	m_SourceSequenceOwnerIndex = std::move(Staged);
+	m_iSourceSequenceOwnerIndexGeneration = m_iCanonicalDisplayGeneration;
+}
+
+const Client::CActionCompositionWorkbench::
+	SOURCE_SEQUENCE_OWNER_INDEX_ENTRY*
+Client::CActionCompositionWorkbench::Find_SourceSequenceOwners(
+	const uint32_t iSourceActionId,
+	const uint32_t iSequenceIndex) const
+{
+	const std::uint64_t iKey =
+		(static_cast<std::uint64_t>(iSourceActionId) << 32u) |
+		static_cast<std::uint64_t>(iSequenceIndex);
+	const auto Found = std::lower_bound(
+		m_SourceSequenceOwnerIndex.begin(),
+		m_SourceSequenceOwnerIndex.end(), iKey,
+		[](const SOURCE_SEQUENCE_OWNER_INDEX_ENTRY& Entry,
+			const std::uint64_t iCandidateKey)
+		{
+			const std::uint64_t iEntryKey =
+				(static_cast<std::uint64_t>(Entry.iSourceActionId) << 32u) |
+				static_cast<std::uint64_t>(Entry.iSequenceIndex);
+			return iEntryKey < iCandidateKey;
+		});
+	if (Found == m_SourceSequenceOwnerIndex.end() ||
+		Found->iSourceActionId != iSourceActionId ||
+		Found->iSequenceIndex != iSequenceIndex)
+	{
+		return nullptr;
+	}
+	return &*Found;
 }
 
 const Client::VALTAN_PATTERN_VIEW*
@@ -985,6 +1331,8 @@ bool_t Client::CActionCompositionWorkbench::Reload_Canonical()
 		{
 			m_CanonicalView = std::move(Staged);
 			m_PlayableInventory = Inventory;
+			++m_iCanonicalDisplayGeneration;
+			Invalidate_SourceSequenceOwnerIndex();
 			m_strPinnedAuthoringSourceRevision.clear();
 			m_strPinnedCanonicalSourceRevision.clear();
 			m_bAuthoringDraftDirty = false;
@@ -1071,6 +1419,8 @@ bool_t Client::CActionCompositionWorkbench::Reload_Canonical()
 
 	m_CanonicalView = std::move(Staged);
 	m_PlayableInventory = Inventory;
+	++m_iCanonicalDisplayGeneration;
+	Invalidate_SourceSequenceOwnerIndex();
 	m_strPinnedAuthoringSourceRevision = std::move(AuthoringRevision);
 	m_strPinnedCanonicalSourceRevision =
 		std::move(CanonicalSourceRevision);
@@ -1083,6 +1433,7 @@ bool_t Client::CActionCompositionWorkbench::Reload_Canonical()
 		m_strPinnedCanonicalSourceRevision + ".";
 	m_PatternSoundEvents =
 		m_pAnimationTool->Collect_ValtanCompositionPatternSoundEvents();
+	m_bSoundFilterDirty = true;
 	m_PatternShakes = std::move(StagedPatternShakes);
 	m_bPatternShakesReady = bStagedPatternShakesReady;
 	m_strShakeStatus = std::move(StagedShakeStatus);
@@ -1137,6 +1488,7 @@ bool_t Client::CActionCompositionWorkbench::Reload_Canonical()
 		{
 			m_PatternSoundEvents =
 				m_pAnimationTool->Collect_ValtanCompositionPatternSoundEvents();
+			m_bSoundFilterDirty = true;
 		}
 	}
 	else
@@ -1300,8 +1652,8 @@ bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage(
 	}
 	std::vector<uint32_t> NativeDurationsMs;
 	NativeDurationsMs.reserve(Selected->Clips.size());
-	std::size_t iOverlongCount = 0u;
-	std::size_t iOverlongIndex = Selected->Clips.size();
+	std::vector<uint32_t> RequestedCutsMs;
+	RequestedCutsMs.reserve(Selected->Clips.size());
 	for (std::size_t iClip = 0u; iClip < Selected->Clips.size(); ++iClip)
 	{
 		const CAnimation_Tool::COMPOSITION_SEQUENCE_CLIP_VIEW& Clip =
@@ -1321,17 +1673,73 @@ bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage(
 			return false;
 		}
 		NativeDurationsMs.push_back(iNativeDurationMs);
-		if (Clip.iDurationMs > iNativeDurationMs)
+		RequestedCutsMs.push_back(Clip.iDurationMs);
+	}
+
+	std::vector<uint32_t> FittedCutsMs = RequestedCutsMs;
+	std::string FitStatus;
+	const uint64_t iRequestedSequenceMs = std::accumulate(
+		RequestedCutsMs.begin(), RequestedCutsMs.end(), uint64_t{ 0u });
+	if (!bAppend && iRequestedSequenceMs > Draft.durationMs)
+	{
+		const bool_t bDeterministicHoldChain =
+			3u == Selected->Clips.size() &&
+			"start" == ClipReplacementRole(
+				Selected->Clips[0u].strClipName) &&
+			"loop" == ClipReplacementRole(
+				Selected->Clips[1u].strClipName) &&
+			"end" == ClipReplacementRole(
+				Selected->Clips[2u].strClipName);
+		if ("HOLD" != Selected->strMode || !bDeterministicHoldChain ||
+			!FitCompositionSequenceCutsToStage(
+				RequestedCutsMs, Draft.durationMs, FittedCutsMs, FitStatus))
 		{
-			++iOverlongCount;
-			iOverlongIndex = iClip;
+			m_strStatus = FitStatus.empty() ?
+				"Replace rejected: the selected Sequence exceeds the existing Server Stage clock and has no deterministic HOLD-chain fit policy." :
+				std::move(FitStatus);
+			return false;
 		}
 	}
-	if (iOverlongCount > 1u ||
-		(1u == iOverlongCount && iOverlongIndex + 1u != Selected->Clips.size()))
+
+	struct EXPANDED_SEQUENCE_CLIP final
 	{
-		m_strStatus =
-			"Sequence slot edit rejected without mutation: this extracted .clipcuts row contains a non-final or multiple native-overlong loop step. One Stage cannot preserve that order; promote it through an atomic manual Pattern topology instead.";
+		std::string strClip;
+		uint32_t iPlayMs = 0u;
+	};
+	std::vector<EXPANDED_SEQUENCE_CLIP> ExpandedClips;
+	for (std::size_t iClip = 0u; iClip < Selected->Clips.size(); ++iClip)
+	{
+		uint32_t iRemainingMs = FittedCutsMs[iClip];
+		if (iRemainingMs > NativeDurationsMs[iClip] &&
+			"loop" != ClipReplacementRole(
+				Selected->Clips[iClip].strClipName))
+		{
+			m_strStatus =
+				"Sequence slot edit rejected: only an explicit _loop clip may be materialized more than once; start/end/one-shot clips are never repeated by inference.";
+			return false;
+		}
+		while (iRemainingMs > NativeDurationsMs[iClip])
+		{
+			ExpandedClips.push_back({
+				Selected->Clips[iClip].strClipName,
+				NativeDurationsMs[iClip] });
+			iRemainingMs -= NativeDurationsMs[iClip];
+			if (ExpandedClips.size() > 4096u)
+			{
+				m_strStatus =
+					"Sequence slot edit rejected: native-loop materialization exceeds 4096 exact occurrences.";
+				return false;
+			}
+		}
+		if (0u != iRemainingMs)
+		{
+			ExpandedClips.push_back({
+				Selected->Clips[iClip].strClipName, iRemainingMs });
+		}
+	}
+	if (ExpandedClips.empty())
+	{
+		m_strStatus = "Sequence slot edit rejected: fitted Sequence is empty.";
 		return false;
 	}
 
@@ -1339,54 +1747,92 @@ bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage(
 		bAppend ? Draft.animationSlots :
 		std::vector<CBalanceTool::ANIMATION_SLOT_EDIT>{};
 	const std::size_t iExistingCount = Draft.animationSlots.size();
-	/* Removed occurrence IDs remain reserved for this Replace transaction.
-	   A different clip must never inherit an occurrence identity just because
-	   it occupies the same vector index.  Existing dependencies can therefore
-	   either keep the exact same clip occurrence, or fail closed until their
-	   Effect/Sound/Shake owner explicitly removes or retargets them. */
+	/* Replace treats an occurrence ID as the stable logical timeline slot.  It
+	   preserves an exact clip first and then a unique semantic start/loop/end
+	   role.  Ambiguous repeated roles deliberately receive new IDs so a linked
+	   Effect/Sound/Shake row can fail closed instead of silently following an
+	   arbitrary loop.  A changed unique role is marked PROJECT_AUTHORED and all
+	   dependency source windows are revalidated before the draft changes. */
 	std::vector<CBalanceTool::ANIMATION_SLOT_EDIT> ReservedSlots =
 		Draft.animationSlots;
 	std::vector<bool_t> ReusedExistingSlots(iExistingCount, false);
+	std::vector<std::size_t> ReusableSlots(
+		ExpandedClips.size(), iExistingCount);
+	if (!bAppend)
+	{
+		for (std::size_t iClip = 0u; iClip < ExpandedClips.size(); ++iClip)
+		{
+			for (std::size_t iExisting = 0u;
+				iExisting < iExistingCount; ++iExisting)
+			{
+				if (!ReusedExistingSlots[iExisting] &&
+					Draft.animationSlots[iExisting].clip ==
+						ExpandedClips[iClip].strClip)
+				{
+					ReusableSlots[iClip] = iExisting;
+					ReusedExistingSlots[iExisting] = true;
+					break;
+				}
+			}
+		}
+		for (std::size_t iClip = 0u; iClip < ExpandedClips.size(); ++iClip)
+		{
+			if (ReusableSlots[iClip] < iExistingCount)
+				continue;
+			const std::string Role =
+				ClipReplacementRole(ExpandedClips[iClip].strClip);
+			if (Role.empty())
+				continue;
+			const std::size_t iUnassignedNewRoleCount =
+				static_cast<std::size_t>(std::count_if(
+					ExpandedClips.begin(), ExpandedClips.end(),
+					[&ExpandedClips, &ReusableSlots, iExistingCount, &Role](
+						const EXPANDED_SEQUENCE_CLIP& Candidate)
+					{
+						const std::size_t iCandidate = static_cast<std::size_t>(
+							&Candidate - ExpandedClips.data());
+						return ReusableSlots[iCandidate] == iExistingCount &&
+							Role == ClipReplacementRole(Candidate.strClip);
+					}));
+			std::size_t iUniqueExisting = iExistingCount;
+			std::size_t iUnassignedExistingRoleCount = 0u;
+			for (std::size_t iExisting = 0u;
+				iExisting < iExistingCount; ++iExisting)
+			{
+				if (!ReusedExistingSlots[iExisting] &&
+					Role == ClipReplacementRole(
+						Draft.animationSlots[iExisting].clip))
+				{
+					iUniqueExisting = iExisting;
+					++iUnassignedExistingRoleCount;
+				}
+			}
+			if (1u == iUnassignedNewRoleCount &&
+				1u == iUnassignedExistingRoleCount)
+			{
+				ReusableSlots[iClip] = iUniqueExisting;
+				ReusedExistingSlots[iUniqueExisting] = true;
+			}
+		}
+	}
 	uint64_t iDurationMs = 0u;
 	for (const CBalanceTool::ANIMATION_SLOT_EDIT& Slot : Slots)
 		iDurationMs += static_cast<uint64_t>(std::llround(
 			static_cast<double>(Slot.playMs) / Slot.playRate));
-	for (std::size_t iClip = 0u; iClip < Selected->Clips.size(); ++iClip)
+	for (std::size_t iClip = 0u; iClip < ExpandedClips.size(); ++iClip)
 	{
 		CBalanceTool::ANIMATION_SLOT_EDIT Slot;
 		bool_t bReusedIdentity = false;
-		std::size_t iReusableSlot = iExistingCount;
-		if (!bAppend)
-		{
-			/* Prefer an unchanged same-position occurrence, then preserve a
-			   matching unused occurrence when the same clips were reordered. */
-			if (iClip < iExistingCount && !ReusedExistingSlots[iClip] &&
-				Draft.animationSlots[iClip].clip ==
-					Selected->Clips[iClip].strClipName)
-			{
-				iReusableSlot = iClip;
-			}
-			else
-			{
-				for (std::size_t iExisting = 0u;
-					iExisting < iExistingCount; ++iExisting)
-				{
-					if (!ReusedExistingSlots[iExisting] &&
-						Draft.animationSlots[iExisting].clip ==
-							Selected->Clips[iClip].strClipName)
-					{
-						iReusableSlot = iExisting;
-						break;
-					}
-				}
-			}
-		}
+		const std::size_t iReusableSlot = ReusableSlots[iClip];
 		if (iReusableSlot < iExistingCount)
 		{
 			Slot.clipOccurrenceId =
 				Draft.animationSlots[iReusableSlot].clipOccurrenceId;
-			Slot.mappingBasis = Draft.animationSlots[iReusableSlot].mappingBasis;
-			ReusedExistingSlots[iReusableSlot] = true;
+			Slot.mappingBasis =
+				Draft.animationSlots[iReusableSlot].clip ==
+					ExpandedClips[iClip].strClip ?
+					Draft.animationSlots[iReusableSlot].mappingBasis :
+					"PROJECT_AUTHORED";
 			bReusedIdentity = true;
 		}
 		else
@@ -1401,18 +1847,15 @@ bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage(
 			}
 			Slot.mappingBasis = "PROJECT_AUTHORED";
 		}
-		Slot.clip = Selected->Clips[iClip].strClipName;
+		Slot.clip = ExpandedClips[iClip].strClip;
 		Slot.sourceStartMs = 0u;
 		Slot.playRate = 1.0;
-		const bool_t bLoopToFillStep =
-			Selected->Clips[iClip].iDurationMs > NativeDurationsMs[iClip];
-		Slot.playMs = bLoopToFillStep ?
-			0u : Selected->Clips[iClip].iDurationMs;
-		Slot.repeatUntilStageEnd = bLoopToFillStep;
+		Slot.playMs = ExpandedClips[iClip].iPlayMs;
+		Slot.repeatUntilStageEnd = false;
 		if (!bReusedIdentity)
 			ReservedSlots.push_back(Slot);
 		Slots.push_back(std::move(Slot));
-		iDurationMs += Selected->Clips[iClip].iDurationMs;
+		iDurationMs += ExpandedClips[iClip].iPlayMs;
 	}
 	if (iDurationMs < 1u || iDurationMs > 600000u)
 	{
@@ -1420,18 +1863,11 @@ bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage(
 		return false;
 	}
 	Draft.animationSlots = std::move(Slots);
-	Draft.animationEndPolicy = 0u == iOverlongCount ?
-		"EXACT" : "LOOP_TO_STAGE_END";
-	const bool_t bOneRepeatedClip = Draft.animationSlots.size() > 1u &&
-		std::all_of(Draft.animationSlots.begin() + 1u,
-			Draft.animationSlots.end(),
-			[&Draft](const CBalanceTool::ANIMATION_SLOT_EDIT& Slot)
-			{
-				return Slot.clip == Draft.animationSlots.front().clip;
-			});
-	Draft.animationRepeatCount = bOneRepeatedClip ?
-		static_cast<uint32_t>(Draft.animationSlots.size()) : 1u;
-	Draft.durationMs = static_cast<uint32_t>(iDurationMs);
+	if (bAppend)
+		Draft.durationMs = static_cast<uint32_t>(iDurationMs);
+	Draft.animationEndPolicy = iDurationMs == Draft.durationMs ?
+		"EXACT" : "HOLD_LAST_POSE";
+	Draft.animationRepeatCount = 1u;
 	if (!SetValtanStageDraftWithSoundDependencyAdmission(
 			m_pAnimationTool, m_pBalanceTool,
 			m_bPatternShakesReady ? &m_PatternShakes : nullptr,
@@ -1440,11 +1876,439 @@ bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage(
 		m_strStatus = std::move(Status);
 		return false;
 	}
+	if (!Draft.animationSlots.empty())
+	{
+		const std::size_t iSelectedSlot = bAppend ?
+			(std::min)(iExistingCount, Draft.animationSlots.size() - 1u) : 0u;
+		m_strSelectedStableId =
+			Draft.animationSlots[iSelectedSlot].clipOccurrenceId;
+		m_eDetailOwner = DETAIL_OWNER::ANIMATION;
+	}
 	m_strStatus = std::string(bAppend ? "Appended " : "Replaced with ") +
-		std::to_string(Selected->Clips.size()) +
-		" extracted Sequence slots in the shared authoring draft. Press Save Pattern + Validate + Publish.";
+		std::to_string(ExpandedClips.size()) +
+		" exact Sequence slots in the shared authoring draft; Server Stage clock " +
+		std::to_string(Draft.durationMs) + " ms was " +
+		(bAppend ? "extended" : "preserved") +
+		(FitStatus.empty() ? ". " : ". " + FitStatus + " ") +
+		"Press Save & Apply.";
 	Invalidate_TimelineCache();
 	return true;
+}
+
+bool_t Client::CActionCompositionWorkbench::Remove_AnimationOccurrence(
+	const VALTAN_PATTERN_VIEW& Pattern,
+	const VALTAN_STAGE_VIEW& Stage,
+	const std::string& strClipOccurrenceId,
+	std::string& strOutStatus)
+{
+	if (nullptr == m_pAnimationTool || nullptr == m_pBalanceTool ||
+		strClipOccurrenceId.empty())
+	{
+		strOutStatus =
+			"Delete requires one selected Animation box and both typed owners.";
+		return false;
+	}
+	CBalanceTool::PATTERN_STAGE_EDIT Draft;
+	if (!m_pBalanceTool->Get_ValtanStageDraft(
+			Pattern.strPatternId, Stage.strStageId, Draft, strOutStatus))
+	{
+		return false;
+	}
+	const auto Found = std::find_if(
+		Draft.animationSlots.begin(), Draft.animationSlots.end(),
+		[&strClipOccurrenceId](
+			const CBalanceTool::ANIMATION_SLOT_EDIT& Slot)
+		{
+			return Slot.clipOccurrenceId == strClipOccurrenceId;
+		});
+	if (Draft.animationSlots.end() == Found)
+	{
+		strOutStatus =
+			"Delete rejected: the selected Animation box is not in the current Stage draft.";
+		return false;
+	}
+	Draft.animationSlots.erase(Found);
+	if (Draft.animationSlots.empty())
+	{
+		Draft.animationEndPolicy = "NONE";
+		Draft.animationRepeatCount = 0u;
+	}
+	else
+	{
+		uint32_t iWallMs = 0u;
+		if (ComputeExactAnimationWallMs(Draft, iWallMs))
+		{
+			if (iWallMs > Draft.durationMs)
+			{
+				strOutStatus =
+					"Delete rejected: remaining Animation boxes exceed the preserved Server Stage clock.";
+				return false;
+			}
+			Draft.animationEndPolicy = iWallMs == Draft.durationMs ?
+				"EXACT" : "HOLD_LAST_POSE";
+		}
+		Draft.animationRepeatCount = 1u;
+	}
+	if (!SetValtanStageDraftWithSoundDependencyAdmission(
+			m_pAnimationTool, m_pBalanceTool,
+			m_bPatternShakesReady ? &m_PatternShakes : nullptr,
+			Pattern, Stage, Draft, strOutStatus))
+	{
+		return false;
+	}
+	m_strSelectedStableId = Draft.animationSlots.empty() ?
+		Stage.strStageId : Draft.animationSlots.front().clipOccurrenceId;
+	m_eDetailOwner = Draft.animationSlots.empty() ?
+		DETAIL_OWNER::GAMEPLAY_STAGE : DETAIL_OWNER::ANIMATION;
+	Invalidate_TimelineCache();
+	strOutStatus =
+		"Deleted the selected Animation box; the Server Stage clock was preserved. Use Save & Apply when ready.";
+	return true;
+}
+
+bool_t Client::CActionCompositionWorkbench::Duplicate_AnimationOccurrence(
+	const VALTAN_PATTERN_VIEW& Pattern,
+	const VALTAN_STAGE_VIEW& Stage,
+	const std::string& strClipOccurrenceId,
+	std::string& strOutStatus)
+{
+	if (nullptr == m_pAnimationTool || nullptr == m_pBalanceTool ||
+		strClipOccurrenceId.empty())
+	{
+		strOutStatus =
+			"Duplicate requires one selected Animation box and both typed owners.";
+		return false;
+	}
+	CBalanceTool::PATTERN_STAGE_EDIT Draft;
+	if (!m_pBalanceTool->Get_ValtanStageDraft(
+			Pattern.strPatternId, Stage.strStageId, Draft, strOutStatus))
+	{
+		return false;
+	}
+	const auto Found = std::find_if(
+		Draft.animationSlots.begin(), Draft.animationSlots.end(),
+		[&strClipOccurrenceId](
+			const CBalanceTool::ANIMATION_SLOT_EDIT& Slot)
+		{
+			return Slot.clipOccurrenceId == strClipOccurrenceId;
+		});
+	if (Draft.animationSlots.end() == Found ||
+		Found->repeatUntilStageEnd || 0u == Found->playMs)
+	{
+		strOutStatus =
+			"Duplicate rejected: select one finite Animation box; an open-ended loop must be converted to exact occurrences first.";
+		return false;
+	}
+	CBalanceTool::ANIMATION_SLOT_EDIT Duplicate = *Found;
+	Duplicate.clipOccurrenceId = BuildNextCompositionSlotId(
+		Pattern.strPatternId, Stage.strStageId, Draft.animationSlots);
+	Duplicate.mappingBasis = "PROJECT_AUTHORED";
+	if (Duplicate.clipOccurrenceId.empty())
+	{
+		strOutStatus =
+			"Duplicate rejected: no free stable Animation occurrence ID is available.";
+		return false;
+	}
+	const std::size_t iInsertIndex = static_cast<std::size_t>(
+		Found - Draft.animationSlots.begin()) + 1u;
+	Draft.animationSlots.insert(
+		Draft.animationSlots.begin() +
+			static_cast<std::ptrdiff_t>(iInsertIndex), Duplicate);
+	uint32_t iAnimationWallMs = 0u;
+	if (!ComputeExactAnimationWallMs(Draft, iAnimationWallMs))
+	{
+		strOutStatus =
+			"Duplicate rejected: the resulting Animation boxes do not have one finite exact clock.";
+		return false;
+	}
+	if (iAnimationWallMs > Draft.durationMs)
+		Draft.durationMs = iAnimationWallMs;
+	Draft.animationEndPolicy = iAnimationWallMs == Draft.durationMs ?
+		"EXACT" : "HOLD_LAST_POSE";
+	const bool_t bOneRepeatedClip = Draft.animationSlots.size() > 1u &&
+		std::all_of(
+			Draft.animationSlots.begin() + 1u, Draft.animationSlots.end(),
+			[&Draft](const CBalanceTool::ANIMATION_SLOT_EDIT& Slot)
+			{
+				return Slot.clip == Draft.animationSlots.front().clip;
+			});
+	Draft.animationRepeatCount = bOneRepeatedClip ?
+		static_cast<uint32_t>(Draft.animationSlots.size()) : 1u;
+	if (!SetValtanStageDraftWithSoundDependencyAdmission(
+			m_pAnimationTool, m_pBalanceTool,
+			m_bPatternShakesReady ? &m_PatternShakes : nullptr,
+			Pattern, Stage, Draft, strOutStatus))
+	{
+		return false;
+	}
+	m_eDetailOwner = DETAIL_OWNER::ANIMATION;
+	m_strSelectedStableId = Duplicate.clipOccurrenceId;
+	Invalidate_TimelineCache();
+	strOutStatus =
+		"Duplicated the selected Animation box immediately after its source; the Server Stage clock now matches the exact boxes. Use Save & Apply when ready.";
+	return true;
+}
+
+bool_t Client::CActionCompositionWorkbench::Reorder_AnimationOccurrence(
+	const VALTAN_PATTERN_VIEW& Pattern,
+	const VALTAN_STAGE_VIEW& Stage,
+	const std::string& strClipOccurrenceId,
+	const std::size_t iTargetIndex,
+	std::string& strOutStatus)
+{
+	if (nullptr == m_pAnimationTool || nullptr == m_pBalanceTool ||
+		strClipOccurrenceId.empty())
+	{
+		strOutStatus =
+			"Animation drag requires one selected box and both typed owners.";
+		return false;
+	}
+	CBalanceTool::PATTERN_STAGE_EDIT Draft;
+	if (!m_pBalanceTool->Get_ValtanStageDraft(
+			Pattern.strPatternId, Stage.strStageId, Draft, strOutStatus))
+	{
+		return false;
+	}
+	const auto Found = std::find_if(
+		Draft.animationSlots.begin(), Draft.animationSlots.end(),
+		[&strClipOccurrenceId](
+			const CBalanceTool::ANIMATION_SLOT_EDIT& Slot)
+		{
+			return Slot.clipOccurrenceId == strClipOccurrenceId;
+		});
+	if (Draft.animationSlots.end() == Found)
+	{
+		strOutStatus =
+			"Animation drag rejected: the selected box is not in the current Stage draft.";
+		return false;
+	}
+	const std::size_t iSourceIndex = static_cast<std::size_t>(
+		Found - Draft.animationSlots.begin());
+	const std::size_t iClampedTarget = (std::min)(
+		iTargetIndex, Draft.animationSlots.size() - 1u);
+	if (iSourceIndex == iClampedTarget)
+	{
+		strOutStatus = "Animation box order is unchanged.";
+		return true;
+	}
+	CBalanceTool::ANIMATION_SLOT_EDIT Moving = std::move(*Found);
+	Draft.animationSlots.erase(
+		Draft.animationSlots.begin() +
+			static_cast<std::ptrdiff_t>(iSourceIndex));
+	Draft.animationSlots.insert(
+		Draft.animationSlots.begin() +
+			static_cast<std::ptrdiff_t>((std::min)(
+				iClampedTarget, Draft.animationSlots.size())),
+		std::move(Moving));
+	if (!SetValtanStageDraftWithSoundDependencyAdmission(
+			m_pAnimationTool, m_pBalanceTool,
+			m_bPatternShakesReady ? &m_PatternShakes : nullptr,
+			Pattern, Stage, Draft, strOutStatus))
+	{
+		return false;
+	}
+	Invalidate_TimelineCache();
+	strOutStatus =
+		"Reordered the selected Animation box; linked Effect/Sound/Shake rows kept the same stable occurrence. Use Save & Apply when ready.";
+	return true;
+}
+
+bool_t Client::CActionCompositionWorkbench::Duplicate_SelectedTimelineBox(
+	const VALTAN_PATTERN_VIEW& Pattern,
+	const VALTAN_STAGE_VIEW& Stage,
+	std::string& strOutStatus)
+{
+	switch (m_eDetailOwner)
+	{
+	case DETAIL_OWNER::ANIMATION:
+		return Duplicate_AnimationOccurrence(
+			Pattern, Stage, m_strSelectedStableId, strOutStatus);
+	case DETAIL_OWNER::EFFECT:
+	{
+		if (nullptr == m_pBalanceTool)
+		{
+			strOutStatus = "Effect Duplicate requires the typed Pattern owner.";
+			return false;
+		}
+		const std::size_t iMatchCount = static_cast<std::size_t>(std::count_if(
+			Stage.ProductCues.begin(), Stage.ProductCues.end(),
+			[this](const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue)
+			{ return Cue.strOccurrenceId == m_strSelectedStableId; }));
+		const auto Found = std::find_if(
+			Stage.ProductCues.begin(), Stage.ProductCues.end(),
+			[this](const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue)
+			{ return Cue.strOccurrenceId == m_strSelectedStableId; });
+		if (1u != iMatchCount || Stage.ProductCues.end() == Found)
+		{
+			strOutStatus =
+				"Effect Duplicate requires one exact selected invocation box.";
+			return false;
+		}
+		VALTAN_PRODUCT_EFFECT_CUE_VIEW Duplicate = *Found;
+		Duplicate.strBindingId = BuildNextCompositionEffectCueId(Pattern, Stage);
+		if (Duplicate.strBindingId.empty())
+		{
+			strOutStatus =
+				"Effect Duplicate rejected: no free stable invocation ID is available.";
+			return false;
+		}
+		Duplicate.strOccurrenceId =
+			Duplicate.strBindingId + ".occurrence.01";
+		if (!m_pBalanceTool->Add_ValtanStageEffectCue(
+				Pattern.strPatternId, Stage.strStageId, Stage.strActionId,
+				Duplicate, strOutStatus))
+		{
+			return false;
+		}
+		m_eDetailOwner = DETAIL_OWNER::EFFECT;
+		m_strSelectedStableId = Duplicate.strOccurrenceId;
+		m_strEffectEditIdentity.clear();
+		Invalidate_TimelineCache();
+		strOutStatus =
+			"Duplicated the selected Effect box at the same exact occurrence time; drag or trim the copy, then Save & Apply.";
+		return true;
+	}
+	case DETAIL_OWNER::SOUND:
+	{
+		if (nullptr == m_pAnimationTool)
+		{
+			strOutStatus = "Sound Duplicate requires the typed Sound owner.";
+			return false;
+		}
+		bool_t bDirty = false;
+		std::string DraftStatus;
+		const VALTAN_PATTERN_SOUND_CUE_DOCUMENT* const pSounds =
+			m_pAnimationTool->Get_ValtanCompositionPatternSoundDraft(
+				bDirty, DraftStatus);
+		if (nullptr == pSounds)
+		{
+			strOutStatus = std::move(DraftStatus);
+			return false;
+		}
+		const auto Found = std::find_if(
+			pSounds->Cues.begin(), pSounds->Cues.end(),
+			[this, &Pattern, &Stage](const VALTAN_PATTERN_SOUND_CUE& Cue)
+			{
+				return Cue.strOccurrenceId == m_strSelectedStableId &&
+					Cue.strPatternId == Pattern.strPatternId &&
+					Cue.strStageId == Stage.strStageId &&
+					Cue.strActionId == Stage.strActionId;
+			});
+		if (pSounds->Cues.end() == Found)
+		{
+			strOutStatus =
+				"Sound Duplicate requires one exact selected Sound box.";
+			return false;
+		}
+		VALTAN_PATTERN_SOUND_CUE_ROW_ID Created;
+		if (!m_pAnimationTool->Add_ValtanCompositionPatternSound(
+				Pattern, Stage, Found->strClipOccurrenceId,
+				Found->strSoundEvent, Found->iStartMs,
+				Found->eRepeatPolicy, Created, strOutStatus))
+		{
+			return false;
+		}
+		m_eDetailOwner = DETAIL_OWNER::SOUND;
+		m_strSelectedStableId = Created.strOccurrenceId;
+		m_strSoundStatus = strOutStatus;
+		Invalidate_TimelineCache();
+		return true;
+	}
+	default:
+		strOutStatus =
+			"Duplicate is available for a selected Animation, Effect, or Sound box.";
+		return false;
+	}
+}
+
+bool_t Client::CActionCompositionWorkbench::Delete_SelectedTimelineBox(
+	const VALTAN_PATTERN_VIEW& Pattern,
+	const VALTAN_STAGE_VIEW& Stage,
+	std::string& strOutStatus)
+{
+	switch (m_eDetailOwner)
+	{
+	case DETAIL_OWNER::ANIMATION:
+		return Remove_AnimationOccurrence(
+			Pattern, Stage, m_strSelectedStableId, strOutStatus);
+	case DETAIL_OWNER::EFFECT:
+	{
+		if (nullptr == m_pBalanceTool)
+		{
+			strOutStatus = "Effect Delete requires the typed Pattern owner.";
+			return false;
+		}
+		const auto Found = std::find_if(
+			Stage.ProductCues.begin(), Stage.ProductCues.end(),
+			[this](const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue)
+			{ return Cue.strOccurrenceId == m_strSelectedStableId; });
+		if (Stage.ProductCues.end() == Found)
+		{
+			strOutStatus = "Effect Delete requires one exact invocation box.";
+			return false;
+		}
+		if (!m_pBalanceTool->Remove_ValtanStageEffectCue(
+				Pattern.strPatternId, Stage.strStageId, Stage.strActionId,
+				Found->strBindingId, Found->strOccurrenceId,
+				Found->strEffectAssetId, Found->strClipOccurrenceId,
+				strOutStatus))
+		{
+			return false;
+		}
+		m_strSelectedStableId = Stage.strStageId;
+		m_strEffectEditIdentity.clear();
+		Invalidate_TimelineCache();
+		return true;
+	}
+	case DETAIL_OWNER::SOUND:
+	{
+		if (nullptr == m_pAnimationTool)
+		{
+			strOutStatus = "Sound Delete requires the typed Sound owner.";
+			return false;
+		}
+		bool_t bDirty = false;
+		std::string DraftStatus;
+		const VALTAN_PATTERN_SOUND_CUE_DOCUMENT* const pSounds =
+			m_pAnimationTool->Get_ValtanCompositionPatternSoundDraft(
+				bDirty, DraftStatus);
+		if (nullptr == pSounds)
+		{
+			strOutStatus = std::move(DraftStatus);
+			return false;
+		}
+		const auto Found = std::find_if(
+			pSounds->Cues.begin(), pSounds->Cues.end(),
+			[this, &Pattern, &Stage](const VALTAN_PATTERN_SOUND_CUE& Cue)
+			{
+				return Cue.strOccurrenceId == m_strSelectedStableId &&
+					Cue.strPatternId == Pattern.strPatternId &&
+					Cue.strStageId == Stage.strStageId &&
+					Cue.strActionId == Stage.strActionId;
+			});
+		if (pSounds->Cues.end() == Found)
+		{
+			strOutStatus = "Sound Delete requires one exact Sound box.";
+			return false;
+		}
+		VALTAN_PATTERN_SOUND_CUE_ROW_ID RowId;
+		RowId.strBindingId = Found->strBindingId;
+		RowId.strOccurrenceId = Found->strOccurrenceId;
+		if (!m_pAnimationTool->Remove_ValtanCompositionPatternSound(
+				Pattern, Stage, RowId, strOutStatus))
+		{
+			return false;
+		}
+		m_strSelectedStableId = Stage.strStageId;
+		m_strSoundStatus = strOutStatus;
+		Invalidate_TimelineCache();
+		return true;
+	}
+	default:
+		strOutStatus =
+			"Delete is available for a selected Animation, Effect, or Sound box.";
+		return false;
+	}
 }
 
 bool_t Client::CActionCompositionWorkbench::Apply_AnimationOccurrenceTiming(
@@ -1527,7 +2391,7 @@ bool_t Client::CActionCompositionWorkbench::Apply_AnimationOccurrenceTiming(
 	}
 	strOutStatus = "Staged Animation occurrence timing for " +
 		strClipOccurrenceId +
-		". Save Pattern + Validate + Publish to commit the typed source owner.";
+		". Use Save & Apply to commit the typed source owner.";
 	return true;
 }
 
@@ -1642,8 +2506,12 @@ bool_t Client::CActionCompositionWorkbench::Seek_EffectivePreview(
 		if (!Play_EffectivePreview(Pattern, status))
 			return false;
 	}
-	return m_pAnimationTool->Seek_ValtanCompositionPattern(
-		Pattern.strPatternId, iPositionMs, bPause, status);
+	const bool_t bSeeked =
+		m_pAnimationTool->Seek_ValtanCompositionPattern(
+			Pattern.strPatternId, iPositionMs, bPause, status);
+	if (bSeeked)
+		m_bPreviewOwnerClaimRequested = true;
+	return bSeeked;
 }
 
 bool_t Client::CActionCompositionWorkbench::Play_EffectivePreview(
@@ -1663,6 +2531,7 @@ bool_t Client::CActionCompositionWorkbench::Play_EffectivePreview(
 	m_iPreviewDraftGeneration = nullptr == m_pBalanceTool ? 0u :
 		m_pBalanceTool->Get_ValtanDraftGeneration();
 	m_eStagedPreviewPath = m_ePreviewPath;
+	m_bPreviewOwnerClaimRequested = true;
 	return true;
 }
 
@@ -1693,8 +2562,10 @@ uint32_t Client::CActionCompositionWorkbench::Resolve_ClipSourceToStageMs(
 void Client::CActionCompositionWorkbench::Invalidate_TimelineCache()
 {
 	m_strTimelineCachePatternId.clear();
+	m_eTimelineCachePreviewPath = VALTAN_PATTERN_PREVIEW_PATH::END;
 	m_iTimelineCacheDraftGeneration = ~std::uint64_t{ 0u };
 	m_iTimelineCacheSoundGeneration = ~std::uint64_t{ 0u };
+	m_iTimelineCacheEffectV2Revision = ~std::uint64_t{ 0u };
 }
 
 void Client::CActionCompositionWorkbench::Invalidate_EffectivePatternCache()
@@ -1721,9 +2592,13 @@ void Client::CActionCompositionWorkbench::Ensure_TimelineCache(
 		m_pBalanceTool->Get_ValtanDraftGeneration();
 	const std::uint64_t iSoundGeneration = nullptr == m_pAnimationTool ? 0u :
 		m_pAnimationTool->Get_ValtanCompositionPatternSoundDraftGeneration();
+	const std::uint64_t iEffectV2Revision =
+		CEffectV2Catalog::Get().Get_Revision();
 	if (m_strTimelineCachePatternId == pPattern->strPatternId &&
+		m_eTimelineCachePreviewPath == m_ePreviewPath &&
 		m_iTimelineCacheDraftGeneration == iDraftGeneration &&
-		m_iTimelineCacheSoundGeneration == iSoundGeneration)
+		m_iTimelineCacheSoundGeneration == iSoundGeneration &&
+		m_iTimelineCacheEffectV2Revision == iEffectV2Revision)
 	{
 		m_iPlayheadMs = (std::min)(m_iPlayheadMs, m_iTimelineDurationMs);
 		return;
@@ -1743,9 +2618,41 @@ void Client::CActionCompositionWorkbench::Build_Timeline(
 		nullptr == m_pAnimationTool ? nullptr :
 		m_pAnimationTool->Get_ValtanCompositionPatternSoundDraft(
 			bPatternSoundDirty, PatternSoundStatus);
-	uint64_t iStageBaseMs = 0u;
-	for (const VALTAN_STAGE_VIEW& Stage : Pattern.Stages)
+	const std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pEffectV2Snapshot =
+		CEffectV2Catalog::Get().Get_Snapshot();
+	std::vector<const VALTAN_STAGE_VIEW*> PreviewStages;
+	std::string PreviewPathStatus;
+	if (!CValtanPatternTree::Build_PreviewStagePath(
+			Pattern, m_ePreviewPath, PreviewStages, PreviewPathStatus))
 	{
+		if (VALTAN_PATTERN_PREVIEW_PATH::NORMAL == m_ePreviewPath ||
+			!CValtanPatternTree::Build_PreviewStagePath(
+				Pattern, VALTAN_PATTERN_PREVIEW_PATH::NORMAL,
+				PreviewStages, PreviewPathStatus))
+		{
+			m_iTimelineDurationMs = 0u;
+			m_strTimelineCachePatternId = Pattern.strPatternId;
+			m_eTimelineCachePreviewPath = m_ePreviewPath;
+			m_iTimelineCacheDraftGeneration = nullptr == m_pBalanceTool ? 0u :
+				m_pBalanceTool->Get_ValtanDraftGeneration();
+			m_iTimelineCacheSoundGeneration = nullptr == m_pAnimationTool ? 0u :
+				m_pAnimationTool->Get_ValtanCompositionPatternSoundDraftGeneration();
+			m_iTimelineCacheEffectV2Revision =
+				CEffectV2Catalog::Get().Get_Revision();
+			m_strStatus = "Sequencer branch rejected: " + PreviewPathStatus;
+			return;
+		}
+		m_ePreviewPath = VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
+		m_iPreviewDraftGeneration = 0u;
+		m_strStatus =
+			"Selected branch is unavailable for this Pattern; Sequencer returned to Normal / Timeout.";
+	}
+	uint64_t iStageBaseMs = 0u;
+	for (const VALTAN_STAGE_VIEW* const pStage : PreviewStages)
+	{
+		if (nullptr == pStage)
+			continue;
+		const VALTAN_STAGE_VIEW& Stage = *pStage;
 		uint32_t iStageDurationMs = Stage.iDurationMs;
 		CBalanceTool::PATTERN_STAGE_EDIT StageDraft;
 		bool_t bHasStageDraft = false;
@@ -1952,6 +2859,32 @@ void Client::CActionCompositionWorkbench::Build_Timeline(
 				iStageStartMs + (std::min)(Object.iLifetimeMs, iStageDurationMs),
 				false });
 		}
+		if (nullptr != pEffectV2Snapshot && pEffectV2Snapshot->Is_Ready())
+		{
+			std::size_t iV2Ordinal = 0u;
+			for (const EFFECT_V2_BINDING& Binding :
+				pEffectV2Snapshot->Get_BossValtanBindings())
+			{
+				if (Binding.strStage != Stage.strActionId)
+					continue;
+				const std::string& strResourceId = Binding.strGroupId.empty() ?
+					Binding.strEffectId : Binding.strGroupId;
+				const std::string strStableId =
+					"effect-v2/" + Stage.strActionId + "/" +
+					std::to_string(iV2Ordinal++) + "/" + strResourceId;
+				m_TimelineItems.push_back({
+					DETAIL_OWNER::EFFECT, TIMELINE_LANE::EFFECT,
+					Pattern.strPatternId, Stage.strStageId, strStableId,
+					strResourceId,
+					std::string("V2 ") +
+						(Binding.strGroupId.empty() ? "Leaf | " : "Group | ") +
+						strResourceId,
+					iStageStartMs + (std::min)(
+						Binding.iStartMs, iStageDurationMs),
+					iStageStartMs + (std::min)(
+						Binding.iStartMs, iStageDurationMs), false });
+			}
+		}
 
 		if (nullptr != pPatternSounds)
 		{
@@ -2022,10 +2955,12 @@ void Client::CActionCompositionWorkbench::Build_Timeline(
 	m_iTimelineDurationMs = static_cast<uint32_t>(SaturatingU32(iStageBaseMs));
 	Pack_TimelineSubrows();
 	m_strTimelineCachePatternId = Pattern.strPatternId;
+	m_eTimelineCachePreviewPath = m_ePreviewPath;
 	m_iTimelineCacheDraftGeneration = nullptr == m_pBalanceTool ? 0u :
 		m_pBalanceTool->Get_ValtanDraftGeneration();
 	m_iTimelineCacheSoundGeneration = nullptr == m_pAnimationTool ? 0u :
 		m_pAnimationTool->Get_ValtanCompositionPatternSoundDraftGeneration();
+	m_iTimelineCacheEffectV2Revision = CEffectV2Catalog::Get().Get_Revision();
 }
 
 void Client::CActionCompositionWorkbench::Pack_TimelineSubrows()
@@ -2111,7 +3046,8 @@ Validate_ManualStageTopologySoundDependencies(
 	}
 	std::vector<VALTAN_PATTERN_VIEW> BaselinePatterns;
 	std::vector<VALTAN_PATTERN_VIEW> CandidatePatterns;
-	const std::vector<const VALTAN_PATTERN_VIEW*> Patterns = Collect_Patterns();
+	const std::vector<const VALTAN_PATTERN_VIEW*> Patterns =
+		Collect_CanonicalPatternsForDependencyValidation();
 	BaselinePatterns.reserve(Patterns.size());
 	CandidatePatterns.reserve(Patterns.size());
 	bool_t bCandidateReplaced = false;
@@ -2177,7 +3113,7 @@ bool_t Client::CActionCompositionWorkbench::Save_Publish_Reload()
 	{
 		m_eAdmission = ADMISSION_STATE::STALE_PRESERVED;
 		m_strStatus =
-			"Save blocked: the Balance draft and Workbench canonical view no longer share their pinned source generation. Reload Canonical before editing or publishing. " +
+			"Save & Apply blocked: the draft and Workbench view no longer share the same data generation. Reload Canonical before editing or saving. " +
 			CurrentRevisionStatus;
 		return false;
 	}
@@ -2185,19 +3121,20 @@ bool_t Client::CActionCompositionWorkbench::Save_Publish_Reload()
 	if (Is_PatternSoundDraftDirty(SoundStatus))
 	{
 		m_strStatus =
-			"Canonical Save blocked: save or discard the Pattern Sound draft before changing its Pattern/Animation dependency generation. " +
+			"Save & Apply blocked: save or discard the Pattern Sound draft before changing its Pattern/Animation data generation. " +
 			SoundStatus;
 		return false;
 	}
 	if (nullptr == m_pAnimationTool)
 	{
 		m_strStatus =
-			"Canonical Save blocked: Pattern Sound dependency owner is unavailable.";
+			"Save & Apply blocked: Pattern Sound data is unavailable.";
 		return false;
 	}
 	std::vector<VALTAN_PATTERN_VIEW> BaselinePatterns;
 	std::vector<VALTAN_PATTERN_VIEW> CandidatePatterns;
-	const std::vector<const VALTAN_PATTERN_VIEW*> Patterns = Collect_Patterns();
+	const std::vector<const VALTAN_PATTERN_VIEW*> Patterns =
+		Collect_CanonicalPatternsForDependencyValidation();
 	BaselinePatterns.reserve(Patterns.size());
 	CandidatePatterns.reserve(Patterns.size());
 	for (const VALTAN_PATTERN_VIEW* const pPattern : Patterns)
@@ -2209,7 +3146,7 @@ bool_t Client::CActionCompositionWorkbench::Save_Publish_Reload()
 				pPattern->strPatternId, Candidate, SoundStatus))
 		{
 			m_strStatus =
-				"Canonical Save blocked: the effective candidate Pattern graph could not be assembled for Pattern Sound dependency admission: " +
+				"Save & Apply blocked: the complete Pattern graph could not be assembled for Pattern Sound validation: " +
 				SoundStatus;
 			return false;
 		}
@@ -2220,7 +3157,7 @@ bool_t Client::CActionCompositionWorkbench::Save_Publish_Reload()
 				BaselinePatterns, CandidatePatterns, SoundStatus))
 	{
 		m_strStatus =
-			"Canonical Save blocked before source/Product mutation by native Animation admission: " +
+			"Save & Apply blocked before data files changed by Animation validation: " +
 			SoundStatus;
 		return false;
 	}
@@ -2229,14 +3166,14 @@ bool_t Client::CActionCompositionWorkbench::Save_Publish_Reload()
 				BaselinePatterns, CandidatePatterns, SoundStatus))
 	{
 		m_strStatus =
-			"Canonical Save blocked before source/Product mutation: " +
+			"Save & Apply blocked before data files changed: " +
 			SoundStatus;
 		return false;
 	}
 	std::string SaveStatus;
 	if (!m_pBalanceTool->Save_ValtanCanonicalProduct(SaveStatus))
 	{
-		m_strStatus = "Canonical source / Product Save failed; the previous admitted graph remains active: " +
+		m_strStatus = "Save & Apply could not write the validated data files; the previous active graph remains unchanged: " +
 			SaveStatus;
 		return false;
 	}
@@ -2247,7 +3184,7 @@ bool_t Client::CActionCompositionWorkbench::Save_Publish_Reload()
 		(void)m_pBossTool->Reload_CanonicalGraph(LocalReloadStatus);
 		(void)Reload_Canonical();
 		m_strStatus =
-			"SOURCE/PRODUCT COMMIT succeeded, but immutable runtime candidate publication failed. Local editor data was reloaded data-only; active Client presentation and Server playback remain on the previous admitted revision: " +
+			"Validated data files were saved, but Server apply preparation failed. Local tools reloaded the saved data; active Client presentation and Server playback remain unchanged: " +
 			RuntimeStatus + " " + LocalReloadStatus;
 		return false;
 	}
@@ -2256,19 +3193,19 @@ bool_t Client::CActionCompositionWorkbench::Save_Publish_Reload()
 	{
 		(void)Reload_Canonical();
 		m_strStatus =
-			"Source/Product commit and immutable candidate publication succeeded, but Boss Tool local canonical reload was rejected. Active Client presentation was not advanced: " +
+			"Data files were saved and Server apply was prepared, but Boss Tool could not reload them. Active Client presentation was not advanced: " +
 			ToolReloadStatus;
 		return false;
 	}
 	if (!Reload_Canonical())
 	{
-		m_strStatus = "Source/Product commit, immutable candidate publication and Boss Tool local reload succeeded, but Workbench data-only reload was rejected: " +
+		m_strStatus = "Data files were saved and Server apply was prepared, but Workbench could not reload them: " +
 			m_strStatus;
 		return false;
 	}
 	m_strStatus =
-		"SAVE -> VALIDATE -> SOURCE/PRODUCT COMMIT -> IMMUTABLE CANDIDATE PUBLISH -> DATA-ONLY CANONICAL RELOAD complete. "
-		"Active Client presentation, Restart and Complete Play remain blocked until the exact candidate revision is Server-active; a changed presentation generation reports REENTRY_REQUIRED instead of applying a mixed revision. " +
+		"SAVE & APPLY: data files saved, validation passed, and local tools reloaded. "
+		"Server apply status follows; Restart and Complete Play remain blocked until the exact saved revision is active, and presentation changes can require re-entry. " +
 		SaveStatus + " " + ToolReloadStatus + " " + RuntimeStatus;
 	return true;
 }
@@ -2277,6 +3214,9 @@ bool_t Client::CActionCompositionWorkbench::Render_Toolbar(
 	const VALTAN_PATTERN_VIEW* const pPattern,
 	const bool_t bMutationAdmitted)
 {
+	ImGui::SeparatorText("Save / Validate / Server Apply");
+	ImGui::TextDisabled(
+		"Editing and local Arena Clone playback live in Sequencer. This panel commits JSON, validates generated products, then controls only the saved Server-active revision.");
 	if (ImGui::Button("Reset Layout"))
 		m_bResetLayoutRequested = true;
 	ImGui::SameLine();
@@ -2288,15 +3228,17 @@ bool_t Client::CActionCompositionWorkbench::Render_Toolbar(
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!bMutationAdmitted || nullptr == m_pBalanceTool);
 	bool_t bCanonicalViewMayHaveChanged = false;
-	if (ImGui::Button("Save Pattern + Validate + Publish"))
+	if (ImGui::Button("Save & Apply##CompositionSession"))
 	{
-		(void)Save_Publish_Reload();
+		m_bPatternSaveSucceeded = Save_Publish_Reload();
+		m_bPatternSaveResultAvailable = true;
+		m_strPatternSaveStatus = m_strStatus;
 		bCanonicalViewMayHaveChanged = true;
 	}
 	ImGui::EndDisabled();
 	if (bCanonicalViewMayHaveChanged)
 		return true;
-	ImGui::SameLine();
+	ImGui::SeparatorText("Saved Server Revision");
 	std::string ServerPlayStatus;
 	std::string SoundRuntimeStatus;
 	LostArk::Shared::GameplayDataRevision ExpectedServerRevision{};
@@ -2313,7 +3255,7 @@ bool_t Client::CActionCompositionWorkbench::Render_Toolbar(
 		bServerRevisionAdmitted && bSoundRuntimeReady;
 	ImGui::BeginDisabled(nullptr == pPattern || !bMutationAdmitted ||
 		!bServerPlayAdmitted);
-	if (ImGui::Button("Complete Play"))
+	if (ImGui::Button("Play Saved Active Revision on Server Valtan"))
 	{
 		std::string Status;
 #ifdef _DEBUG
@@ -2450,6 +3392,16 @@ void Client::CActionCompositionWorkbench::Render_Browser(
 	const VALTAN_PATTERN_VIEW* const pEffectiveSelectedPattern)
 {
 	ImGui::SeparatorText("Pattern / Stage Browser");
+	ImGui::BeginDisabled(nullptr == pEffectiveSelectedPattern);
+	if (ImGui::Button("Open Boss Pattern"))
+	{
+		m_bBossPatternWindowVisible = true;
+		m_bBossPatternFocusRequested = true;
+		m_bBossPatternFitRequested = true;
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::TextDisabled("Logic branches + Stage structure");
 	ImGui::SetNextItemWidth(-1.f);
 	ImGui::InputTextWithHint(
 		"##CompositionPatternSearch", "Search Pattern ID or display name...",
@@ -2550,6 +3502,18 @@ void Client::CActionCompositionWorkbench::Render_SequenceBrowser(
 			if (bMatches)
 				m_FilteredAnimationSequenceIndices.push_back(iSequence);
 		}
+		m_AnimationResourceTree = {};
+		for (const std::size_t iSequence :
+			m_FilteredAnimationSequenceIndices)
+		{
+			const CAnimation_Tool::COMPOSITION_SEQUENCE_VIEW& Sequence =
+				m_AnimationSequences[iSequence];
+			InsertResourceTree(
+				m_AnimationResourceTree,
+				{ Sequence.strMode.empty() ? "UNCLASSIFIED" : Sequence.strMode },
+				iSequence);
+		}
+		(void)FinalizeResourceTree(m_AnimationResourceTree);
 		m_strAnimationSequenceFilterQuery = Query;
 		m_bAnimationSequenceFilterDirty = false;
 	}
@@ -2565,98 +3529,240 @@ void Client::CActionCompositionWorkbench::Render_SequenceBrowser(
 		});
 	const CAnimation_Tool::COMPOSITION_SEQUENCE_VIEW* pSelected =
 		m_AnimationSequences.end() == Selected ? nullptr : &*Selected;
-
-	ImGuiListClipper Clipper;
-	Clipper.Begin(static_cast<int32_t>(m_FilteredAnimationSequenceIndices.size()));
-	while (Clipper.Step())
+	if (nullptr != pSelected)
 	{
-		for (int32_t iRow = Clipper.DisplayStart;
-			iRow < Clipper.DisplayEnd; ++iRow)
+		ImGui::SeparatorText("Selected Sequence");
+		ImGui::TextWrapped("%s", pSelected->strDisplayName.c_str());
+		ImGui::TextDisabled("Action %d | Sequence %d | %s",
+			pSelected->iSkillId, pSelected->iSequenceIndex,
+			pSelected->strMode.c_str());
+		for (std::size_t iClip = 0u; iClip < pSelected->Clips.size(); ++iClip)
 		{
-			const std::size_t iSequence =
-				m_FilteredAnimationSequenceIndices[static_cast<std::size_t>(iRow)];
+			const CAnimation_Tool::COMPOSITION_SEQUENCE_CLIP_VIEW& Clip =
+				pSelected->Clips[iClip];
+			ImGui::BulletText("%02zu  %s  | %u ms%s", iClip + 1u,
+				Clip.strClipName.c_str(), Clip.iDurationMs,
+				Clip.bUsesNativeDuration ? " native" : " cut");
+		}
+		const CAnimation_Tool::COMPOSITION_PREVIEW_STATE SourcePreview =
+			nullptr == m_pAnimationTool ?
+				CAnimation_Tool::COMPOSITION_PREVIEW_STATE{} :
+				m_pAnimationTool->Get_ValtanCompositionPreviewState();
+		ImGui::TextColored(
+			SourcePreview.bModelReady ?
+				ImVec4(0.35f, 0.86f, 0.45f, 1.f) :
+				ImVec4(1.f, 0.72f, 0.24f, 1.f),
+			"Preview target: ARENA CLONE %s | Source: %s | Server Valtan: UNCHANGED",
+			SourcePreview.bModelReady ? "READY" : "WILL STAGE ON CLICK",
+			SourcePreview.bSourceSequencePlaying ? "PLAYING" : "IDLE");
+		if (!SourcePreview.strSourceSequenceStatus.empty())
+			ImGui::TextWrapped("%s",
+				SourcePreview.strSourceSequenceStatus.c_str());
+		ImGui::TextDisabled(
+			"Raw Sequence preview needs only its admitted source catalog and Valtan CModel; it does not require a canonical Pattern revision.");
+		ImGui::BeginDisabled(nullptr == m_pAnimationTool);
+		if (ImGui::Button("Preview Sequence on Arena Clone"))
+		{
+			std::string Status;
+			/* A failed Arena/model/source resolve must not steal viewport input
+			   from another tool.  Claim Composition ownership only after the local
+			   clone transaction has actually started. */
+			if (m_pAnimationTool->Preview_ValtanCompositionSequence(
+					pSelected->iSkillId, pSelected->iSequenceIndex, Status))
+			{
+				m_bPreviewOwnerClaimRequested = true;
+			}
+			m_strStatus = std::move(Status);
+		}
+		ImGui::EndDisabled();
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		{
+			ImGui::SetTooltip(
+				"Spawns/uses the collision-free local Valtan Model View in the current Valtan Arena. This does not mutate the Server boss.");
+		}
+		ImGui::BeginDisabled(nullptr == pPattern || nullptr == pStage ||
+			!bMutationAdmitted || nullptr == m_pBalanceTool);
+		if (ImGui::Button("Replace Stage Slots"))
+			(void)Apply_SelectedSequenceToStage(*pPattern, *pStage, false);
+		ImGui::SameLine();
+		if (ImGui::Button("Append to Stage Slots"))
+			(void)Apply_SelectedSequenceToStage(*pPattern, *pStage, true);
+		ImGui::EndDisabled();
+		ImGui::BeginDisabled(nullptr == m_pAnimationTool || !bMutationAdmitted);
+		if (ImGui::Button("Use for Create New Pattern"))
+		{
+			std::string Status;
+			if (m_pAnimationTool->Stage_ValtanCompositionIntakeSequence(
+				pSelected->iSkillId, pSelected->iSequenceIndex,
+				nullptr == pPattern ? std::string{} : pPattern->strPatternId,
+				nullptr == pStage ? std::string{} : pStage->strStageId,
+				Status))
+			{
+				m_bPatternsWindowVisible = true;
+				m_iRequestedPatternTab = 1;
+			}
+			m_strStatus = std::move(Status);
+		}
+		ImGui::EndDisabled();
+
+		const SOURCE_SEQUENCE_OWNER_INDEX_ENTRY* pSourceOwnerEntry = nullptr;
+		if (pSelected->iSkillId >= 0 && pSelected->iSequenceIndex >= 0)
+		{
+			Ensure_SourceSequenceOwnerIndex();
+			pSourceOwnerEntry = Find_SourceSequenceOwners(
+				static_cast<uint32_t>(pSelected->iSkillId),
+				static_cast<uint32_t>(pSelected->iSequenceIndex));
+		}
+		static const std::vector<const VALTAN_PATTERN_VIEW*> NoSourceOwners;
+		const std::vector<const VALTAN_PATTERN_VIEW*>& SourceOwners =
+			nullptr == pSourceOwnerEntry ? NoSourceOwners :
+				pSourceOwnerEntry->Owners;
+		const auto SelectedSourceOwner = std::find_if(
+			SourceOwners.begin(), SourceOwners.end(),
+			[this](const VALTAN_PATTERN_VIEW* const pCandidate)
+			{
+				return nullptr != pCandidate &&
+					pCandidate->strPatternId ==
+						m_strSourceSequenceServerPatternId;
+			});
+		if (!SourceOwners.empty() && SelectedSourceOwner == SourceOwners.end())
+		{
+			const auto CurrentPatternOwner = std::find_if(
+				SourceOwners.begin(), SourceOwners.end(),
+				[pPattern](const VALTAN_PATTERN_VIEW* const pCandidate)
+				{
+					return nullptr != pPattern && nullptr != pCandidate &&
+						pCandidate->strPatternId == pPattern->strPatternId;
+				});
+			m_strSourceSequenceServerPatternId =
+				(CurrentPatternOwner == SourceOwners.end() ?
+					SourceOwners.front() : *CurrentPatternOwner)->strPatternId;
+		}
+		const VALTAN_PATTERN_VIEW* pServerPattern = nullptr;
+		for (const VALTAN_PATTERN_VIEW* const pCandidate : SourceOwners)
+		{
+			if (nullptr != pCandidate && pCandidate->strPatternId ==
+				m_strSourceSequenceServerPatternId)
+			{
+				pServerPattern = pCandidate;
+				break;
+			}
+		}
+		if (SourceOwners.size() > 1u)
+		{
+			const char_t* const pPreview = nullptr == pServerPattern ?
+				"Select owning Pattern" : pServerPattern->strDisplayName.c_str();
+			ImGui::SetNextItemWidth(-1.f);
+			if (ImGui::BeginCombo("Server Pattern##SourceSequenceOwner", pPreview))
+			{
+				for (const VALTAN_PATTERN_VIEW* const pCandidate : SourceOwners)
+				{
+					if (nullptr == pCandidate)
+						continue;
+					const bool_t bSelectedOwner = pCandidate == pServerPattern;
+					const std::string Label = pCandidate->strDisplayName + " | " +
+						pCandidate->strPatternId;
+					if (ImGui::Selectable(Label.c_str(), bSelectedOwner))
+						m_strSourceSequenceServerPatternId =
+							pCandidate->strPatternId;
+					if (bSelectedOwner)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+		}
+		else if (nullptr != pServerPattern)
+		{
+			ImGui::TextDisabled("Owning saved Pattern: %s | %s",
+				pServerPattern->strDisplayName.c_str(),
+				pServerPattern->strPatternId.c_str());
+		}
+		std::string ServerPlayStatus;
+		std::string SoundRuntimeStatus;
+		LostArk::Shared::GameplayDataRevision ExpectedServerRevision{};
+		const bool_t bServerRevisionAdmitted = nullptr != m_pBossTool &&
+			m_pBossTool->Observe_ServerActivePatternRevision(
+				ExpectedServerRevision, ServerPlayStatus);
+		const bool_t bSoundRuntimeReady = nullptr != m_pAnimationTool &&
+			bServerRevisionAdmitted &&
+			m_pAnimationTool->Is_ValtanCompositionPatternSoundRuntimeReady(
+				ExpectedServerRevision, SoundRuntimeStatus);
+		const bool_t bCanPlayServerPattern = nullptr != pServerPattern &&
+			bServerRevisionAdmitted && bSoundRuntimeReady;
+		ImGui::BeginDisabled(!bCanPlayServerPattern);
+		if (ImGui::Button(
+				"Play Owning Saved Active Revision on Server Valtan"))
+		{
+			std::string Status;
+#ifdef _DEBUG
+			if (CMainApp* const pApp = CMainApp::Get_Active();
+				nullptr != pApp &&
+				pApp->Debug_SelectCompletePlayPattern(
+					pServerPattern->strPatternId))
+			{
+				(void)pApp->Debug_CompletePlaySelected(Status);
+			}
+			else
+			{
+				Status =
+					"Server Pattern Play selection was rejected by the admitted inventory.";
+			}
+#else
+			Status =
+				"Server Pattern Play is unavailable outside a Debug Client.";
+#endif
+			m_strStatus = std::move(Status);
+		}
+		ImGui::EndDisabled();
+		if (!SourceOwners.empty())
+		{
+			ImGui::TextDisabled(
+				"Server target: SAVED ACTIVE REVISION. Unsaved local Pattern drafts are not sent.");
+		}
+		if (SourceOwners.empty())
+		{
+			ImGui::TextDisabled(
+				"No saved Pattern owns this raw source. Use Create New Pattern, Save & Apply, then Server Play.");
+		}
+		else if (!bServerRevisionAdmitted && !ServerPlayStatus.empty())
+		{
+			ImGui::TextDisabled("Server Play unavailable: %s",
+				ServerPlayStatus.c_str());
+		}
+		else if (!bSoundRuntimeReady && !SoundRuntimeStatus.empty())
+		{
+			ImGui::TextDisabled("Server Play unavailable: %s",
+				SoundRuntimeStatus.c_str());
+		}
+	}
+
+	ImGui::SeparatorText("Animation Sequence Tree");
+	RenderResourceTree(
+		m_AnimationResourceTree,
+		[this, &pSelected](const std::size_t iSequence)
+		{
 			const CAnimation_Tool::COMPOSITION_SEQUENCE_VIEW& Sequence =
 				m_AnimationSequences[iSequence];
-		ImGui::PushID(Sequence.iSkillId);
-		ImGui::PushID(Sequence.iSequenceIndex);
-		const bool_t bSelected = Sequence.iSkillId ==
-			m_iSelectedSequenceSkillId && Sequence.iSequenceIndex ==
-			m_iSelectedSequenceIndex;
-		const std::string Label = Sequence.strDisplayName + " | " +
-			Sequence.strMode + " | " + std::to_string(Sequence.Clips.size()) +
-			" clips";
-		if (ImGui::Selectable(Label.c_str(), bSelected))
-		{
-			m_iSelectedSequenceSkillId = Sequence.iSkillId;
-			m_iSelectedSequenceIndex = Sequence.iSequenceIndex;
-			pSelected = &Sequence;
-		}
-		if (ImGui::IsItemHovered())
-			ImGui::SetTooltip("Source action %d / sequence %d",
-				Sequence.iSkillId, Sequence.iSequenceIndex);
-		ImGui::PopID();
-		ImGui::PopID();
-		}
-	}
-	if (nullptr == pSelected)
-	{
-		pSelected = [&]() -> const CAnimation_Tool::COMPOSITION_SEQUENCE_VIEW*
-		{
-			const auto Found = std::find_if(
-				m_AnimationSequences.begin(), m_AnimationSequences.end(),
-				[this](const CAnimation_Tool::COMPOSITION_SEQUENCE_VIEW& Sequence)
-				{
-					return Sequence.iSkillId == m_iSelectedSequenceSkillId &&
-						Sequence.iSequenceIndex == m_iSelectedSequenceIndex;
-				});
-			return Found == m_AnimationSequences.end() ? nullptr : &*Found;
-		}();
-	}
-	if (nullptr == pSelected)
-		return;
-
-	ImGui::SeparatorText("Selected Sequence");
-	ImGui::TextWrapped("%s", pSelected->strDisplayName.c_str());
-	ImGui::TextDisabled("Action %d | Sequence %d | %s",
-		pSelected->iSkillId, pSelected->iSequenceIndex,
-		pSelected->strMode.c_str());
-	for (std::size_t iClip = 0u; iClip < pSelected->Clips.size(); ++iClip)
-	{
-		const CAnimation_Tool::COMPOSITION_SEQUENCE_CLIP_VIEW& Clip =
-			pSelected->Clips[iClip];
-		ImGui::BulletText("%02zu  %s  | %u ms%s", iClip + 1u,
-			Clip.strClipName.c_str(), Clip.iDurationMs,
-			Clip.bUsesNativeDuration ? " native" : " cut");
-	}
-	ImGui::BeginDisabled(nullptr == m_pAnimationTool || !bMutationAdmitted);
-	if (ImGui::Button("Preview Source Sequence"))
-	{
-		std::string Status;
-		(void)m_pAnimationTool->Preview_ValtanCompositionSequence(
-			pSelected->iSkillId, pSelected->iSequenceIndex, Status);
-		m_strStatus = std::move(Status);
-	}
-	ImGui::EndDisabled();
-	ImGui::BeginDisabled(nullptr == pPattern || nullptr == pStage ||
-		!bMutationAdmitted || nullptr == m_pBalanceTool);
-	if (ImGui::Button("Replace Stage Slots"))
-		(void)Apply_SelectedSequenceToStage(*pPattern, *pStage, false);
-	ImGui::SameLine();
-	if (ImGui::Button("Append to Stage Slots"))
-		(void)Apply_SelectedSequenceToStage(*pPattern, *pStage, true);
-	ImGui::EndDisabled();
-	ImGui::BeginDisabled(nullptr == m_pAnimationTool || !bMutationAdmitted);
-	if (ImGui::Button("Use for Create New Pattern"))
-	{
-		std::string Status;
-		(void)m_pAnimationTool->Stage_ValtanCompositionIntakeSequence(
-			pSelected->iSkillId, pSelected->iSequenceIndex,
-			nullptr == pPattern ? std::string{} : pPattern->strPatternId,
-			nullptr == pStage ? std::string{} : pStage->strStageId,
-			Status);
-		m_strStatus = std::move(Status);
-	}
-	ImGui::EndDisabled();
+			ImGui::PushID(Sequence.iSkillId);
+			ImGui::PushID(Sequence.iSequenceIndex);
+			const bool_t bSelected = Sequence.iSkillId ==
+				m_iSelectedSequenceSkillId && Sequence.iSequenceIndex ==
+				m_iSelectedSequenceIndex;
+			const std::string Label = Sequence.strDisplayName + " | seq " +
+				std::to_string(Sequence.iSequenceIndex) + " | " +
+				std::to_string(Sequence.Clips.size()) + " clips";
+			if (ImGui::Selectable(Label.c_str(), bSelected))
+			{
+				m_iSelectedSequenceSkillId = Sequence.iSkillId;
+				m_iSelectedSequenceIndex = Sequence.iSequenceIndex;
+				pSelected = &Sequence;
+			}
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Source action %d / sequence %d",
+					Sequence.iSkillId, Sequence.iSequenceIndex);
+			ImGui::PopID();
+			ImGui::PopID();
+		});
 }
 
 void Client::CActionCompositionWorkbench::Render_Preview(
@@ -2706,8 +3812,15 @@ void Client::CActionCompositionWorkbench::Render_Preview(
 			&iPreviewPath,
 			"Normal / Timeout\0Counter Hit -> Groggy\0Wall Contact -> Groggy\0Wall Contact -> Part Break\0"))
 	{
+		if (Preview.bPlaying && nullptr != m_pAnimationTool)
+		{
+			std::string StopStatus;
+			m_pAnimationTool->Stop_ValtanCompositionPattern(StopStatus);
+		}
 		m_ePreviewPath = static_cast<VALTAN_PATTERN_PREVIEW_PATH>(iPreviewPath);
 		m_iPreviewDraftGeneration = 0u;
+		m_iPlayheadMs = 0u;
+		Invalidate_TimelineCache();
 	}
 	ImGui::SameLine();
 	ImGui::TextDisabled("%s", PreviewPathLabel(m_ePreviewPath));
@@ -2764,7 +3877,8 @@ void Client::CActionCompositionWorkbench::Render_Preview(
 	}
 	ImGui::EndDisabled();
 
-	if (Preview.bPlaying && Preview.strPatternId == m_strSelectedPatternId)
+	if (Preview.bPlaying && Preview.strPatternId == m_strSelectedPatternId &&
+		m_eStagedPreviewPath == m_ePreviewPath)
 		m_iPlayheadMs = Preview.iPositionMs;
 	const uint32_t iDurationMs = (std::max)(m_iTimelineDurationMs, 1u);
 	int32_t iPlayhead = static_cast<int32_t>((std::min)(
@@ -2898,130 +4012,126 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 	};
 	if (Pattern.bManualServerAudition)
 	{
-		ImGui::SeparatorText("Manual Stage Topology");
+		ImGui::SeparatorText("Stage Structure");
 		FocusDetailSection(bFocusTopology);
-		std::string TopologyStatus;
-		const bool_t bTopologyEditable =
-			m_pBalanceTool->Can_Edit_ValtanManualStageTopology(
-				Pattern.strPatternId, TopologyStatus);
-		if (!bTopologyEditable)
-		{
-			ImGui::TextWrapped(
-				"Topology is read-only: %s", TopologyStatus.c_str());
-		}
-		int32_t iInsertDurationMs = static_cast<int32_t>(
-			(std::min)(m_iManualStageInsertDurationMs, 600000u));
-		bool_t bTopologyChanged = false;
-		ImGui::BeginDisabled(!bMutationAdmitted || !bTopologyEditable);
-		if (ImGui::DragInt(
-				"New Stage Duration (ms)", &iInsertDurationMs, 10.f,
-				1, 600000, "%d ms", ImGuiSliderFlags_AlwaysClamp))
-		{
-			m_iManualStageInsertDurationMs =
-				static_cast<uint32_t>((std::max)(iInsertDurationMs, 1));
-		}
-		const auto InsertStage = [&](const char_t* const pRole)
-		{
-			std::string NewStageId;
-			std::string NewActionId;
-			std::string Status;
-			if (!BuildNextManualStageIdentity(
-					Pattern, NewStageId, NewActionId))
-			{
-				m_strStatus =
-					"Manual Stage insertion rejected: no free stable Stage/Action suffix remains.";
-				return false;
-			}
-			if (!m_pBalanceTool->Insert_ValtanManualStageAfter(
-					Pattern.strPatternId, Stage.strStageId,
-					NewStageId, NewActionId, pRole,
-					m_iManualStageInsertDurationMs, Status))
-			{
-				m_strStatus = std::move(Status);
-				return false;
-			}
-			m_strSelectedStageId = NewStageId;
-			m_strSelectedStableId = NewStageId;
-			m_eDetailOwner = DETAIL_OWNER::GAMEPLAY_STAGE;
-			m_strStatus = std::move(Status);
-			return true;
-		};
-		if (ImGui::SmallButton("Insert ACTIVE After"))
-			bTopologyChanged = InsertStage("ACTIVE");
-		ImGui::SameLine();
-		if (ImGui::SmallButton("Insert WINDUP After"))
-			bTopologyChanged = InsertStage("WINDUP");
-		if (ImGui::SmallButton("Insert GROGGY After"))
-			bTopologyChanged = InsertStage("GROGGY");
-		ImGui::SameLine();
-		if (ImGui::SmallButton("Insert WAIT / Gap After"))
-			bTopologyChanged = InsertStage("WAIT");
-
-		const auto Selected = std::find_if(
-			Pattern.Stages.begin(), Pattern.Stages.end(),
-			[&Stage](const VALTAN_STAGE_VIEW& Candidate)
-			{ return Candidate.strStageId == Stage.strStageId; });
-		const std::size_t iStageIndex = Selected == Pattern.Stages.end() ?
-			Pattern.Stages.size() : static_cast<std::size_t>(
-				Selected - Pattern.Stages.begin());
-		ImGui::BeginDisabled(0u == iStageIndex || iStageIndex >= Pattern.Stages.size());
-		if (ImGui::SmallButton("Move Stage Up") && iStageIndex > 0u)
-		{
-			std::string Status;
-			bTopologyChanged = m_pBalanceTool->Move_ValtanManualStage(
-				Pattern.strPatternId, Stage.strStageId,
-				Pattern.Stages[iStageIndex - 1u].strStageId, true, Status);
-			m_strStatus = std::move(Status);
-		}
-		ImGui::EndDisabled();
-		ImGui::SameLine();
-		ImGui::BeginDisabled(iStageIndex + 1u >= Pattern.Stages.size());
-		if (ImGui::SmallButton("Move Stage Down") &&
-			iStageIndex + 1u < Pattern.Stages.size())
-		{
-			std::string Status;
-			bTopologyChanged = m_pBalanceTool->Move_ValtanManualStage(
-				Pattern.strPatternId, Stage.strStageId,
-				Pattern.Stages[iStageIndex + 1u].strStageId, false, Status);
-			m_strStatus = std::move(Status);
-		}
-		ImGui::EndDisabled();
-		ImGui::SameLine();
-		ImGui::BeginDisabled(Pattern.Stages.size() <= 1u ||
-			iStageIndex >= Pattern.Stages.size());
-		if (ImGui::SmallButton("Remove Stage") &&
-			Pattern.Stages.size() > 1u && iStageIndex < Pattern.Stages.size())
-		{
-			VALTAN_PATTERN_VIEW Candidate = Pattern;
-			Candidate.Stages.erase(
-				Candidate.Stages.begin() + static_cast<std::ptrdiff_t>(iStageIndex));
-			Candidate.strEntryActionId = Candidate.Stages.front().strActionId;
-			std::string Status;
-			if (Validate_ManualStageTopologySoundDependencies(
-					Candidate, Status) &&
-				m_pBalanceTool->Remove_ValtanManualStage(
-					Pattern.strPatternId, Stage.strStageId, Status))
-			{
-				const std::size_t iReplacement = (std::min)(
-					iStageIndex, Candidate.Stages.size() - 1u);
-				m_strSelectedStageId = Candidate.Stages[iReplacement].strStageId;
-				m_strSelectedStableId = m_strSelectedStageId;
-				m_eDetailOwner = DETAIL_OWNER::GAMEPLAY_STAGE;
-				bTopologyChanged = true;
-			}
-			m_strStatus = std::move(Status);
-		}
-		ImGui::EndDisabled();
-		ImGui::EndDisabled();
 		ImGui::TextDisabled(
-			"WAIT is saved as sequenceRole WAIT + ACTIVE Server clock + animation NONE. Existing Stage/Action IDs never change; remove fails while Counter, Sound, Effect, Camera, World, hit, motion, or action dependencies remain.");
-		if (bTopologyChanged)
-			return;
+			"Add, move, or delete Stage nodes in Composition Boss Pattern. Details owns only the selected Stage's typed clocks, motion, collider, reactions, and Logic values.");
+		if (ImGui::SmallButton("Open Boss Pattern Structure"))
+		{
+			m_bBossPatternWindowVisible = true;
+			m_bBossPatternFocusRequested = true;
+		}
 	}
 	else
 	{
 		ImGui::TextDisabled(
 			"Stage add/remove/reorder is disabled for canonical rotation/gimmick Patterns.");
+	}
+	bool_t bWarpRushAppliedThisFrame = false;
+	if ("VALTAN_WARP" == Pattern.strPatternId)
+	{
+		ImGui::SeparatorText("Warp Rush - All 8 Legs");
+		FocusDetailSection(bFocusMotion);
+		CBalanceTool::VALTAN_WARP_RUSH_EDIT RushDraft{};
+		std::string RushStatus;
+		const bool_t bRushReady =
+			m_pBalanceTool->Get_ValtanWarpRushDraft(RushDraft, RushStatus);
+		if (!bRushReady)
+		{
+			ImGui::TextWrapped("All-leg WARP draft unavailable: %s",
+				RushStatus.c_str());
+		}
+		else
+		{
+			ImGui::TextDisabled(
+				"STEP_02..STEP_09 share one Server motion contract. A change is normalized and committed to the in-memory Pattern draft only after all eight legs validate.");
+			bool_t bRushChanged = false;
+			ImGui::BeginDisabled(!bMutationAdmitted);
+			int32_t iRetargetDelay = static_cast<int32_t>(
+				RushDraft.retargetDelayMs);
+			if (ImGui::DragInt(
+					"Delay Before Rush (ms)##WarpAllLegs", &iRetargetDelay,
+					5.f, 0, 120000,
+					"%d ms", ImGuiSliderFlags_AlwaysClamp))
+			{
+				RushDraft.retargetDelayMs = static_cast<uint32_t>(iRetargetDelay);
+				bRushChanged = true;
+			}
+			const double fMinimumSpeedMps = 0.1;
+			const double fMaximumSpeedMps = 1000.0;
+			const double fMinimumDistanceM = 0.000001;
+			const double fMaximumDistanceM = 1000.0;
+			bRushChanged |= ImGui::DragScalar(
+				"Rush Speed (m/s)##WarpAllLegs", ImGuiDataType_Double,
+				&RushDraft.speedMps, 0.05f, &fMinimumSpeedMps,
+				&fMaximumSpeedMps, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			bRushChanged |= ImGui::DragScalar(
+				"Rush Distance (m)##WarpAllLegs", ImGuiDataType_Double,
+				&RushDraft.distanceM, 0.05f, &fMinimumDistanceM,
+				&fMaximumDistanceM, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			int32_t iTrailingGap = static_cast<int32_t>(
+				RushDraft.trailingGapMs);
+			if (ImGui::DragInt(
+					"Portal Gap After Rush (ms)##WarpAllLegs", &iTrailingGap,
+					5.f, 0, 120000, "%d ms",
+					ImGuiSliderFlags_AlwaysClamp))
+			{
+				RushDraft.trailingGapMs = static_cast<uint32_t>(iTrailingGap);
+				bRushChanged = true;
+			}
+			ImGui::EndDisabled();
+
+			if (bRushChanged)
+			{
+				CBalanceTool::PATTERN_STAGE_EDIT NormalizedStage{};
+				if (m_pBalanceTool->Get_ValtanStageDraft(
+						"VALTAN_WARP", "STEP_02", NormalizedStage, RushStatus))
+				{
+					NormalizedStage.portalRetargetDelayMs =
+						RushDraft.retargetDelayMs;
+					NormalizedStage.portalSpeedMps = RushDraft.speedMps;
+					NormalizedStage.portalDistanceM = RushDraft.distanceM;
+					if (CBalanceTool::Normalize_ValtanPortalRushDraft(
+							NormalizedStage, RushDraft.trailingGapMs,
+							RushStatus))
+					{
+						RushDraft.retargetDelayMs =
+							NormalizedStage.portalRetargetDelayMs;
+						RushDraft.speedMps = NormalizedStage.portalSpeedMps;
+						RushDraft.distanceM = NormalizedStage.portalDistanceM;
+						RushDraft.travelMs = RushDraft.distanceM /
+							RushDraft.speedMps * 1000.0;
+						RushDraft.hitCount = NormalizedStage.hitCount;
+						if (m_pBalanceTool->Set_ValtanWarpRushDraft(
+								RushDraft, RushStatus))
+						{
+							const std::string AppliedStatus = RushStatus;
+							CBalanceTool::VALTAN_WARP_RUSH_EDIT Refreshed{};
+							std::string RefreshStatus;
+							if (m_pBalanceTool->Get_ValtanWarpRushDraft(
+									Refreshed, RefreshStatus))
+							{
+								RushDraft = Refreshed;
+							}
+							RushStatus = AppliedStatus;
+							bWarpRushAppliedThisFrame = true;
+							Invalidate_TimelineCache();
+						}
+					}
+				}
+				m_strStatus = RushStatus;
+			}
+			ImGui::Text(
+				"Computed leg total %u ms = delay %u ms + travel %.3f ms + portal gap %u ms",
+				RushDraft.legDurationMs, RushDraft.retargetDelayMs,
+				RushDraft.travelMs, RushDraft.trailingGapMs);
+			ImGui::TextDisabled(
+				"Swept hit count %u at 50 ms. Portal visuals use boss-root snapshots at Stage boundaries; they do not predict or expose a Server-authoritative endpoint.",
+				RushDraft.hitCount);
+			ImGui::TextColored(
+				ImVec4(1.f, 0.70f, 0.20f, 1.f),
+				"Distance endpoint currently bypasses navigation clamp; keep it inside the arena.");
+		}
 	}
 	FocusDetailSection(bFocusStageClock);
 	bool_t bChanged = false;
@@ -3043,7 +4153,7 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 			bChanged = true;
 		}
 		ImGui::TextDisabled(
-			"Manual Pattern only: retag this existing stable Stage, or use Manual Stage Topology above to add a dedicated WINDUP/GROGGY/WAIT Stage.");
+			"Manual Pattern only: retag this existing stable Stage here, or add a dedicated WINDUP/GROGGY/WAIT node in Composition Boss Pattern.");
 	}
 	else
 	{
@@ -3053,7 +4163,9 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 	uint32_t iAnimationWallMs = 0u;
 	const bool_t bExactWallKnown =
 		ComputeExactAnimationWallMs(Draft, iAnimationWallMs);
-	if (Draft.durationEditable && Draft.animationEditable &&
+	const bool_t bWarpLegClockOwned = Draft.portalRushMotionEditable;
+	if (!bWarpLegClockOwned && Draft.durationEditable &&
+		Draft.animationEditable &&
 		"LOOP_TO_STAGE_END" != Draft.animationEndPolicy && bExactWallKnown)
 	{
 		ImGui::TextDisabled("Animation Sequence wall: %u ms", iAnimationWallMs);
@@ -3076,7 +4188,7 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 		ImGui::TextDisabled(
 			"EXACT means 0 ms gap; a positive gap holds the final pose. A true clip-between-clip blank is authored as its own WAIT/HOLD Stage.");
 	}
-	else
+	else if (!bWarpLegClockOwned)
 	{
 		int32_t iDurationMs = static_cast<int32_t>((std::min)(
 			Draft.durationMs, static_cast<uint32_t>(INT32_MAX)));
@@ -3098,6 +4210,11 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 				m_strStatus = std::move(ClockStatus);
 			}
 		}
+	}
+	if (bWarpLegClockOwned)
+	{
+		ImGui::TextDisabled(
+			"Stage duration is derived for all eight legs from delay + distance/speed travel + Portal Gap After Rush above.");
 	}
 	if (!Draft.durationEditable)
 		ImGui::TextDisabled("Stage duration is locked by its typed gameplay policy.");
@@ -3423,22 +4540,8 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 	}
 
 	if (Draft.portalRushMotionEditable)
-	{
-		ImGui::SeparatorText("Portal / Charge Motion");
-		FocusDetailSection(bFocusMotion);
-		int32_t iRetargetDelay = static_cast<int32_t>(Draft.portalRetargetDelayMs);
-		if (ImGui::DragInt("Retarget Delay (ms)", &iRetargetDelay, 5.f, 0, 10000))
-		{
-			Draft.portalRetargetDelayMs = static_cast<uint32_t>(iRetargetDelay);
-			bChanged = true;
-		}
-		bChanged |= ImGui::DragScalar(
-			"Charge Velocity (m/s)", ImGuiDataType_Double,
-			&Draft.portalSpeedMps, 0.05f, nullptr, nullptr, "%.2f");
-		bChanged |= ImGui::DragScalar(
-			"Charge Distance (m)", ImGuiDataType_Double,
-			&Draft.portalDistanceM, 0.05f, nullptr, nullptr, "%.2f");
-	}
+		ImGui::TextDisabled(
+			"This selected leg's portal motion is owned by Warp Rush - All 8 Legs above.");
 
 	if (SelectedBranch != Stage.Branches.end() && bFocusReadOnlyBranch)
 	{
@@ -3544,7 +4647,7 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 				"Counter is authored only on a WINDUP Stage and must target a later GROGGY Stage in the same Pattern.");
 	}
 
-	if (bChanged)
+	if (bChanged && !bWarpRushAppliedThisFrame)
 	{
 		std::string Status;
 		if (SetValtanStageDraftWithSoundDependencyAdmission(
@@ -3827,6 +4930,42 @@ void Client::CActionCompositionWorkbench::Render_Details(
 {
 	ImGui::SeparatorText("Details");
 	ImGui::Text("Owner: %s", Owner_Label(m_eDetailOwner));
+	if (m_bAuthoringDraftDirty)
+	{
+		ImGui::TextColored(
+			ImVec4(1.f, 0.72f, 0.25f, 1.f),
+			"UNSAVED PATTERN DRAFT");
+	}
+	else
+	{
+		ImGui::TextDisabled("Pattern draft: saved");
+	}
+	ImGui::SameLine();
+	const bool_t bCanSavePattern = nullptr != pPattern &&
+		bPatternMutationAdmitted && m_bAuthoringDraftDirty &&
+		nullptr != m_pBalanceTool;
+	ImGui::BeginDisabled(!bCanSavePattern);
+	if (ImGui::Button("Save & Apply##CompositionDetails"))
+		m_bSavePatternRequested = true;
+	ImGui::EndDisabled();
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+	{
+		ImGui::SetTooltip(
+			bCanSavePattern ?
+			"Save the validated Pattern and request a safe Server apply. The result below says whether it is active, pending, or needs restart/re-entry." :
+			"Save & Apply is enabled for an admitted unsaved Pattern draft after separate Sound owner changes are saved or discarded.");
+	}
+	if (m_bPatternSaveResultAvailable)
+	{
+		ImGui::TextColored(
+			m_bPatternSaveSucceeded ?
+				ImVec4(0.40f, 0.90f, 0.48f, 1.f) :
+				ImVec4(1.f, 0.38f, 0.30f, 1.f),
+			m_bPatternSaveSucceeded ?
+				"LAST SAVE: SAVED - APPLY STATUS BELOW" :
+				"LAST SAVE & APPLY: FAILED");
+		ImGui::TextWrapped("%s", m_strPatternSaveStatus.c_str());
+	}
 	if (nullptr == pPattern)
 	{
 		ImGui::TextDisabled("Select one canonical Pattern.");
@@ -3872,10 +5011,10 @@ void Client::CActionCompositionWorkbench::Render_Details(
 			ImGui::PopStyleColor();
 		ImGui::EndDisabled();
 	};
-	OwnerButton("Pattern", DETAIL_OWNER::PATTERN, true,
+	OwnerButton("Pattern Root", DETAIL_OWNER::PATTERN, true,
 		pPattern->strPatternId);
 	ImGui::SameLine();
-	OwnerButton("Gameplay / Collider", DETAIL_OWNER::GAMEPLAY_STAGE,
+	OwnerButton("Gameplay / Logic / Collider", DETAIL_OWNER::GAMEPLAY_STAGE,
 		nullptr != pStage,
 		nullptr == pStage ? std::string{} : pStage->strStageId);
 	ImGui::SameLine();
@@ -3902,6 +5041,8 @@ void Client::CActionCompositionWorkbench::Render_Details(
 			pStage->CameraInvocations.front().strCameraInvocationId);
 	if (DETAIL_OWNER::PATTERN == m_eDetailOwner || nullptr == pStage)
 	{
+		ImGui::TextDisabled(
+			"Pattern Root is whole-pattern metadata and flow context. Edit branches and typed actions from Logic lane blocks.");
 		ImGui::TextWrapped("%s", pPattern->strDisplayName.c_str());
 		ImGui::TextDisabled("%s", pPattern->strPatternId.c_str());
 		ImGui::Text("Category: %s", pPattern->strCategory.c_str());
@@ -3918,7 +5059,7 @@ void Client::CActionCompositionWorkbench::Render_Details(
 			ImGui::BulletText(
 				"Sequence slots: select a Stage, open Animation Detail, then Replace/Append an exact source Sequence.");
 			ImGui::BulletText(
-				"Internal gap: open Gameplay Detail and Insert WAIT / Gap After, or tune the trailing Stage gap.");
+				"Internal gap: add a WAIT / GAP node in Composition Boss Pattern, or tune the selected Stage's trailing gap in Details.");
 			ImGui::BulletText(
 				"Server collider: open a non-WAIT Stage's Gameplay Detail and Add Server Collider; Effect geometry is never copied into hit authority.");
 			ImGui::BulletText(
@@ -4470,7 +5611,7 @@ void Client::CActionCompositionWorkbench::Render_Details(
 			if (!bEffectBodyDeepLinkAdmitted)
 			{
 				ImGui::TextDisabled(
-					"Effect body deep-link requires this exact invocation to match one occurrence in the admitted saved Product. Save Pattern + Validate + Publish, then reload; draft-only Add/Update rows cannot open an asset-only fallback.");
+					"Effect body deep-link requires this exact invocation to match one occurrence in the admitted saved Product. Use Save & Apply, then reload; draft-only Add/Update rows cannot open an asset-only fallback.");
 			}
 		}
 
@@ -4568,7 +5709,7 @@ void Client::CActionCompositionWorkbench::Render_Details(
 		ImGui::TextWrapped(
 			"Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json");
 		ImGui::TextDisabled(
-			"This is an independent source-owner transaction. Pattern Save + Validate + Publish does not silently save Sound, and Sound Save does not publish gameplay/presentation Products.");
+			"Sound is a separate source-owner transaction. Save & Apply does not silently save Sound, and Save Sound Owner does not apply Pattern gameplay/presentation changes.");
 		if (nullptr == pStage || nullptr == pPatternSounds ||
 			nullptr == m_pAnimationTool)
 		{
@@ -4655,7 +5796,7 @@ void Client::CActionCompositionWorkbench::Render_Details(
 		if (m_bAuthoringDraftDirty)
 		{
 			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.2f, 1.f),
-				"Save Pattern + Validate + Publish before editing its dependency-qualified Sound rows.");
+				"Use Save & Apply before editing its dependency-qualified Sound rows.");
 		}
 		if (bPatternSoundDirty)
 		{
@@ -4687,6 +5828,7 @@ void Client::CActionCompositionWorkbench::Render_Details(
 				{
 					m_PatternSoundEvents =
 						m_pAnimationTool->Collect_ValtanCompositionPatternSoundEvents();
+					m_bSoundFilterDirty = true;
 				}
 				m_strSoundStatus = std::move(Status);
 				Invalidate_TimelineCache();
@@ -4712,6 +5854,7 @@ void Client::CActionCompositionWorkbench::Render_Details(
 				{
 					m_PatternSoundEvents =
 						m_pAnimationTool->Collect_ValtanCompositionPatternSoundEvents();
+					m_bSoundFilterDirty = true;
 				}
 				m_bConfirmDiscardPatternSoundDraft = false;
 				m_strSoundStatus = std::move(Status);
@@ -5318,7 +6461,7 @@ bool_t Client::CActionCompositionWorkbench::Apply_EffectOccurrenceTiming(
 	}
 	m_strEffectEditIdentity.clear();
 	strOutStatus +=
-		" Timeline edit remains an unsaved Valtan.presentation.json draft; Save + Validate + Publish was not invoked.";
+		" Timeline edit remains unsaved; use Save & Apply when the timing is ready.";
 	return true;
 }
 
@@ -5512,7 +6655,7 @@ void Client::CActionCompositionWorkbench::Render_SelectedStageGapControl(
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::TextDisabled(
-		"%s | Animation %u ms -> Stage %u ms | Save to publish",
+		"%s | Animation %u ms -> Stage %u ms | Save & Apply when ready",
 		pStage->strStageId.c_str(), iAnimationWallMs, Draft.durationMs);
 	ImGui::PopID();
 }
@@ -5526,7 +6669,80 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 	ImGui::TextDisabled(
 		"One Server Pattern clock. Drag an Effect/Sound body to move its exact occurrence; Effect right trim is available only for once + cue_end. Stage/Animation right trims keep their existing typed clocks.");
 	ImGui::TextDisabled(
-		"Track state: Effect timing = Valtan.presentation.json DRAFT; Sound = TYPED SOURCE EDIT / PLAYBACK INSPECTION with point timing in its separate owner DRAFT; neither drag auto-saves, publishes, or applies. Camera/World = INSPECTION ONLY.");
+		"LIVE: Animation + V1/V2 Effect + collider mirror on the Arena Clone. Logic/Stage are clock rows; Sound/Camera/World remain inspection-only during local seek.");
+	ImGui::TextDisabled(
+		"Effect timing and Sound timing remain unsaved drafts until Save & Apply; Camera/World are inspection only.");
+	CAnimation_Tool::COMPOSITION_PREVIEW_STATE Preview;
+	if (nullptr != m_pAnimationTool)
+	{
+		m_pAnimationTool->Set_ValtanCompositionLoop(m_bLoopPreview);
+		Preview = m_pAnimationTool->Get_ValtanCompositionPreviewState();
+	}
+	if (Preview.bPlaying && nullptr != pPattern &&
+		Preview.strPatternId == pPattern->strPatternId &&
+		m_eStagedPreviewPath == m_ePreviewPath)
+	{
+		m_iPlayheadMs = Preview.iPositionMs;
+	}
+	ImGui::BeginDisabled(nullptr == m_pAnimationTool || nullptr == pPattern ||
+		!bMutationAdmitted);
+	if (ImGui::Button(Preview.bPlaying && !Preview.bPaused ? "Pause" : "Play"))
+	{
+		std::string Status;
+		if (Preview.bPlaying)
+		{
+			(void)Seek_EffectivePreview(
+				*pPattern, Preview.iPositionMs, !Preview.bPaused, Status);
+		}
+		else
+		{
+			(void)Play_EffectivePreview(*pPattern, Status);
+		}
+		m_strStatus = std::move(Status);
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(nullptr == m_pAnimationTool || !Preview.bPlaying);
+	if (ImGui::Button("Stop"))
+	{
+		std::string Status;
+		m_pAnimationTool->Stop_ValtanCompositionPattern(Status);
+		m_strStatus = std::move(Status);
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(nullptr == m_pAnimationTool || nullptr == pPattern ||
+		!bMutationAdmitted);
+	if (ImGui::Button("Restart"))
+	{
+		std::string Status;
+		(void)Play_EffectivePreview(*pPattern, Status);
+		m_strStatus = std::move(Status);
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	(void)ImGui::Checkbox("Loop", &m_bLoopPreview);
+	ImGui::SameLine();
+	ImGui::TextDisabled(
+		"%u / %u ms", m_iPlayheadMs, m_iTimelineDurationMs);
+	int32_t iPreviewPath = static_cast<int32_t>(m_ePreviewPath);
+	ImGui::SetNextItemWidth(250.f);
+	if (ImGui::Combo(
+			"Preview Branch", &iPreviewPath,
+			"Normal / Timeout\0Counter Hit -> Groggy\0Wall Contact -> Groggy\0Wall Contact -> Part Break\0"))
+	{
+		if (Preview.bPlaying && nullptr != m_pAnimationTool)
+		{
+			std::string StopStatus;
+			m_pAnimationTool->Stop_ValtanCompositionPattern(StopStatus);
+		}
+		m_ePreviewPath = static_cast<VALTAN_PATTERN_PREVIEW_PATH>(iPreviewPath);
+		m_iPreviewDraftGeneration = 0u;
+		m_iPlayheadMs = 0u;
+		Invalidate_TimelineCache();
+	}
+	ImGui::SameLine();
+	ImGui::TextDisabled("%s", PreviewPathLabel(m_ePreviewPath));
 	ImGui::SetNextItemWidth(220.f);
 	if (ImGui::SliderFloat(
 			"Zoom (px/sec)", &m_fTimelinePixelsPerSecond,
@@ -5540,6 +6756,172 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 		ImGui::TextDisabled("Select one Pattern to build its joined tracks.");
 		return;
 	}
+	const VALTAN_STAGE_VIEW* const pSelectedStage = Find_SelectedStage(pPattern);
+	ImGui::BeginDisabled(
+		nullptr == pSelectedStage || nullptr == m_pAnimationTool ||
+		!bMutationAdmitted);
+	if (ImGui::Button("Play Selected Stage (All Slots)") &&
+		nullptr != pSelectedStage)
+	{
+		const std::array<VALTAN_PATTERN_PREVIEW_PATH, 5u> CandidatePaths = {
+			m_ePreviewPath,
+			VALTAN_PATTERN_PREVIEW_PATH::NORMAL,
+			VALTAN_PATTERN_PREVIEW_PATH::COUNTER_GROGGY,
+			VALTAN_PATTERN_PREVIEW_PATH::WALL_GROGGY,
+			VALTAN_PATTERN_PREVIEW_PATH::PART_BREAK,
+		};
+		bool_t bFoundPath = false;
+		uint32_t iSelectedStageStartMs = 0u;
+		std::set<VALTAN_PATTERN_PREVIEW_PATH> TriedPaths;
+		std::string Status;
+		for (const VALTAN_PATTERN_PREVIEW_PATH eCandidatePath : CandidatePaths)
+		{
+			if (!TriedPaths.insert(eCandidatePath).second)
+				continue;
+			std::vector<const VALTAN_STAGE_VIEW*> CandidateStages;
+			if (!CValtanPatternTree::Build_PreviewStagePath(
+					*pPattern, eCandidatePath, CandidateStages, Status))
+			{
+				continue;
+			}
+			uint64_t iStageStartMs = 0u;
+			for (const VALTAN_STAGE_VIEW* const pCandidateStage :
+				CandidateStages)
+			{
+				if (nullptr == pCandidateStage)
+					continue;
+				if (pCandidateStage->strActionId ==
+					pSelectedStage->strActionId)
+				{
+					m_ePreviewPath = eCandidatePath;
+					iSelectedStageStartMs = static_cast<uint32_t>(
+						SaturatingU32(iStageStartMs));
+					bFoundPath = true;
+					break;
+				}
+				iStageStartMs += pCandidateStage->iDurationMs;
+			}
+			if (bFoundPath)
+				break;
+		}
+		if (bFoundPath)
+		{
+			m_iPreviewDraftGeneration = 0u;
+			Invalidate_TimelineCache();
+			m_iPlayheadMs = iSelectedStageStartMs;
+			(void)Seek_EffectivePreview(
+				*pPattern, iSelectedStageStartMs, false, Status);
+		}
+		else
+		{
+			Status =
+				"Selected Stage is not reachable on any admitted preview branch.";
+		}
+		m_strStatus = std::move(Status);
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::TextDisabled(
+		"Starts this Stage on the Arena Clone with Animation, Effect and collider mirror joined on one clock.");
+	const auto SelectedSequence = std::find_if(
+		m_AnimationSequences.begin(), m_AnimationSequences.end(),
+		[this](const CAnimation_Tool::COMPOSITION_SEQUENCE_VIEW& Sequence)
+		{
+			return Sequence.iSkillId == m_iSelectedSequenceSkillId &&
+				Sequence.iSequenceIndex == m_iSelectedSequenceIndex;
+		});
+	ImGui::SeparatorText("Selected Sequence -> Selected Stage");
+	if (SelectedSequence == m_AnimationSequences.end())
+	{
+		ImGui::TextDisabled(
+			"Choose one Animation resource on the left; click an Animation block below to choose its Stage.");
+	}
+	else
+	{
+		ImGui::Text("%s | %zu clips",
+			SelectedSequence->strDisplayName.c_str(),
+			SelectedSequence->Clips.size());
+		ImGui::SameLine();
+		ImGui::TextDisabled("-> %s",
+			nullptr == pSelectedStage ? "select a Stage" :
+				pSelectedStage->strStageId.c_str());
+		ImGui::BeginDisabled(nullptr == m_pAnimationTool);
+		if (ImGui::Button("Preview Candidate on Arena Clone"))
+		{
+			std::string Status;
+			if (m_pAnimationTool->Preview_ValtanCompositionSequence(
+					SelectedSequence->iSkillId,
+					SelectedSequence->iSequenceIndex, Status))
+			{
+				m_bPreviewOwnerClaimRequested = true;
+			}
+			m_strStatus = std::move(Status);
+		}
+		ImGui::EndDisabled();
+		ImGui::SameLine();
+		ImGui::BeginDisabled(
+			nullptr == pSelectedStage || !bPatternMutationAdmitted);
+		if (ImGui::Button("Replace Stage Slots"))
+			(void)Apply_SelectedSequenceToStage(
+				*pPattern, *pSelectedStage, false);
+		ImGui::SameLine();
+		if (ImGui::Button("Append to Stage Slots"))
+			(void)Apply_SelectedSequenceToStage(
+				*pPattern, *pSelectedStage, true);
+		ImGui::EndDisabled();
+	}
+	const auto SelectedTimelineBox = std::find_if(
+		m_TimelineItems.begin(), m_TimelineItems.end(),
+		[this, pPattern, pSelectedStage](const TIMELINE_ITEM& Item)
+		{
+			return nullptr != pSelectedStage &&
+				Item.strPatternId == pPattern->strPatternId &&
+				Item.strStageId == pSelectedStage->strStageId &&
+				Item.strStableId == m_strSelectedStableId &&
+				(Item.eOwner == DETAIL_OWNER::ANIMATION ||
+				 Item.eOwner == DETAIL_OWNER::EFFECT ||
+				 Item.eOwner == DETAIL_OWNER::SOUND);
+		});
+	const bool_t bTimelineBoxSelected =
+		m_TimelineItems.end() != SelectedTimelineBox;
+	const bool_t bSelectedSoundBox = bTimelineBoxSelected &&
+		DETAIL_OWNER::SOUND == SelectedTimelineBox->eOwner;
+	const bool_t bSelectedBoxMutationAdmitted = bTimelineBoxSelected &&
+		(bSelectedSoundBox ?
+			(bMutationAdmitted && !m_bAuthoringDraftDirty) :
+			bPatternMutationAdmitted);
+	ImGui::SeparatorText("Selected Box");
+	if (bTimelineBoxSelected)
+	{
+		ImGui::TextDisabled("%s | %s",
+			Owner_Label(SelectedTimelineBox->eOwner),
+			SelectedTimelineBox->strLabel.c_str());
+	}
+	else
+	{
+		ImGui::TextDisabled(
+			"Click one Animation, Effect, or Sound box to edit it.");
+	}
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!bSelectedBoxMutationAdmitted);
+	if (ImGui::Button("Duplicate Selected Box"))
+	{
+		std::string Status;
+		(void)Duplicate_SelectedTimelineBox(
+			*pPattern, *pSelectedStage, Status);
+		m_strStatus = std::move(Status);
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Delete Selected Box"))
+	{
+		std::string Status;
+		(void)Delete_SelectedTimelineBox(
+			*pPattern, *pSelectedStage, Status);
+		m_strStatus = std::move(Status);
+	}
+	ImGui::EndDisabled();
+	ImGui::TextDisabled(
+		"Animation body drag reorders and right-edge drag trims. Effect/Sound body drag changes occurrence time. Duplicate inserts a typed copy; Delete never changes a collider by inference.");
 	Render_PatternDurationControl(
 		*pPattern, bPatternMutationAdmitted);
 	Render_SelectedStageGapControl(
@@ -5589,20 +6971,25 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 		pDrawList->AddText(ImVec2(fX + 3.f, RulerMin.y + 3.f),
 			IM_COL32(200, 204, 212, 255), Label.c_str());
 	}
-	if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+	if (ImGui::IsItemActive() &&
+		ImGui::IsMouseDown(ImGuiMouseButton_Left))
 	{
 		const float fLocalX = (std::clamp)(
 			ImGui::GetIO().MousePos.x - RulerMin.x, 0.f, fCanvasWidth);
-		m_iPlayheadMs = static_cast<uint32_t>((std::min)(
+		const uint32_t iRequestedPlayheadMs = static_cast<uint32_t>((std::min)(
 			static_cast<double>(iRenderDurationMs),
 			static_cast<double>(fLocalX) * 1000.0 /
 				static_cast<double>(m_fTimelinePixelsPerSecond)));
-		if (nullptr != m_pAnimationTool && bMutationAdmitted)
+		if (iRequestedPlayheadMs != m_iPlayheadMs || ImGui::IsItemActivated())
 		{
-			std::string Status;
-			(void)Seek_EffectivePreview(
-				*pPattern, m_iPlayheadMs, true, Status);
-			m_strStatus = std::move(Status);
+			m_iPlayheadMs = iRequestedPlayheadMs;
+			if (nullptr != m_pAnimationTool && bMutationAdmitted)
+			{
+				std::string Status;
+				(void)Seek_EffectivePreview(
+					*pPattern, m_iPlayheadMs, true, Status);
+				m_strStatus = std::move(Status);
+			}
 		}
 	}
 
@@ -5685,6 +7072,16 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 			fSubrowY + TIMELINE_ROW_HEIGHT - 3.f);
 		pDrawList->AddRectFilled(
 			BlockMin, BlockMax, Lane_Color(Item.eLane), 3.f);
+		const bool_t bSelectedBlock =
+			Item.strPatternId == m_strSelectedPatternId &&
+			Item.strStageId == m_strSelectedStageId &&
+			Item.strStableId == m_strSelectedStableId;
+		if (bSelectedBlock)
+		{
+			pDrawList->AddRect(
+				BlockMin, BlockMax, IM_COL32(255, 224, 92, 255),
+				3.f, 0, 2.f);
+		}
 		const ImVec4 TextClipRect(
 			BlockMin.x, BlockMin.y, BlockMax.x, BlockMax.y);
 		pDrawList->AddText(
@@ -5754,10 +7151,15 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 			m_strTimelineTrimPatternId == Item.strPatternId &&
 			m_strTimelineTrimStageId == Item.strStageId &&
 			m_strTimelineTrimStableId == Item.strStableId;
-		const bool_t bMoveOwner =
+		const bool_t bAnimationMove =
+			DETAIL_OWNER::ANIMATION == Item.eOwner &&
+			TIMELINE_LANE::ANIMATION == Item.eLane && Item.bEditable &&
+			ItemStage != pPattern->Stages.end();
+		const bool_t bMoveOwner = bAnimationMove ||
 			(nullptr != pEffectCue && !pEffectCue->bUsesStageClock) ||
 			nullptr != pSoundCue;
 		const bool_t bMoveMutationAdmitted =
+			(bAnimationMove && bPatternMutationAdmitted) ||
 			(nullptr != pEffectCue && bPatternMutationAdmitted) ||
 			(nullptr != pSoundCue && bSoundMoveAdmitted);
 		const bool_t bThisMoveActive = m_bTimelineMoveActive &&
@@ -5813,7 +7215,8 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 				m_iTimelineMoveMouseStartMs = static_cast<uint32_t>(
 					std::llround(fMouseTimelineMs));
 				m_iTimelineMoveSourceStartMs = nullptr != pEffectCue ?
-					pEffectCue->iSourceStartMs : pSoundCue->iStartMs;
+					pEffectCue->iSourceStartMs :
+					(nullptr != pSoundCue ? pSoundCue->iStartMs : 0u);
 				m_iTimelineMoveSourceEndMs = nullptr != pEffectCue &&
 					pEffectCue->bHasSourceEnd ? pEffectCue->iSourceEndMs : 0u;
 			}
@@ -5936,7 +7339,32 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 			const int64_t iWallDeltaMs = static_cast<int64_t>(std::llround(
 				fMouseTimelineMs)) -
 				static_cast<int64_t>(m_iTimelineMoveMouseStartMs);
-			if (nullptr != pEffectCue)
+			if (bAnimationMove)
+			{
+				const uint32_t iDropMs = static_cast<uint32_t>(
+					std::llround(fMouseTimelineMs));
+				std::size_t iTargetIndex = 0u;
+				for (const TIMELINE_ITEM& Candidate : TimelineItems)
+				{
+					if (TIMELINE_LANE::ANIMATION != Candidate.eLane ||
+						DETAIL_OWNER::ANIMATION != Candidate.eOwner ||
+						Candidate.strStageId != Item.strStageId ||
+						Candidate.strStableId == Item.strStableId)
+					{
+						continue;
+					}
+					const uint32_t iMidpointMs = Candidate.iStartMs +
+						(Candidate.iEndMs - Candidate.iStartMs) / 2u;
+					if (iDropMs >= iMidpointMs)
+						++iTargetIndex;
+				}
+				std::string Status;
+				(void)Reorder_AnimationOccurrence(
+					*pPattern, *ItemStage, Item.strStableId,
+					iTargetIndex, Status);
+				m_strStatus = std::move(Status);
+			}
+			else if (nullptr != pEffectCue)
 			{
 				const auto Clip = std::find_if(
 					ItemStage->ClipOccurrences.begin(),
@@ -6347,7 +7775,7 @@ void Client::CActionCompositionWorkbench::Render_DataFiles(
 	const VALTAN_STAGE_VIEW* const pStage,
 	const bool_t bPatternMutationAdmitted)
 {
-	ImGui::SeparatorText("Data Files / Validation / Publish");
+	ImGui::SeparatorText("Data Files / Validation / Server Apply");
 	if (!ImGui::BeginTabBar("##CompositionDataAndCreateTabs"))
 		return;
 	if (ImGui::BeginTabItem("Owners / Validation"))
@@ -6418,8 +7846,10 @@ void Client::CActionCompositionWorkbench::Render_WindowMenu()
 		ImGui::MenuItem("Sequencer", nullptr, &m_bSequencerWindowVisible);
 		ImGui::MenuItem("Details", nullptr, &m_bDetailsWindowVisible);
 		ImGui::MenuItem("Resources", nullptr, &m_bResourcesWindowVisible);
-		ImGui::MenuItem("Session / Validation", nullptr,
+		ImGui::MenuItem("Save / Validate / Server", nullptr,
 			&m_bSessionWindowVisible);
+		ImGui::MenuItem("Boss Pattern", nullptr,
+			&m_bBossPatternWindowVisible);
 		ImGui::Separator();
 		if (ImGui::MenuItem("Show All"))
 		{
@@ -6429,6 +7859,7 @@ void Client::CActionCompositionWorkbench::Render_WindowMenu()
 			m_bDetailsWindowVisible = true;
 			m_bResourcesWindowVisible = true;
 			m_bSessionWindowVisible = true;
+			m_bBossPatternWindowVisible = true;
 		}
 		if (ImGui::MenuItem("Reset Window Layout"))
 			m_bResetLayoutRequested = true;
@@ -6452,7 +7883,7 @@ bool_t Client::CActionCompositionWorkbench::Render_SessionWindow(
 	ImGui::SetNextWindowPos(Layout.SessionPos, Condition);
 	ImGui::SetNextWindowSize(Layout.SessionSize, Condition);
 	if (!ImGui::Begin(
-			"Composition Session / Validation###CompositionSessionWindow",
+			"Composition Save / Validate / Server###CompositionSessionWindow",
 			&m_bSessionWindowVisible, ImGuiWindowFlags_MenuBar))
 	{
 		Render_WindowMenu();
@@ -6482,6 +7913,11 @@ void Client::CActionCompositionWorkbench::Render_PatternsWindow(
 		BuildCompositionDefaultLayout(pViewport);
 	const ImGuiCond Condition = m_bApplyResetLayoutThisFrame ?
 		ImGuiCond_Always : ImGuiCond_FirstUseEver;
+	if (m_iRequestedPatternTab >= 0)
+	{
+		ImGui::SetNextWindowCollapsed(false, ImGuiCond_Always);
+		ImGui::SetNextWindowFocus();
+	}
 	ImGui::SetNextWindowPos(Layout.PatternsPos, Condition);
 	ImGui::SetNextWindowSize(Layout.PatternsSize, Condition);
 	if (!ImGui::Begin(
@@ -6495,12 +7931,18 @@ void Client::CActionCompositionWorkbench::Render_PatternsWindow(
 	Render_WindowMenu();
 	if (ImGui::BeginTabBar("##CompositionPatternDomainTabs"))
 	{
-		if (ImGui::BeginTabItem("Patterns / Stages"))
+		if (ImGui::BeginTabItem(
+				"Patterns / Stages", nullptr,
+				0 == m_iRequestedPatternTab ?
+					ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None))
 		{
 			Render_Browser(pPattern);
 			ImGui::EndTabItem();
 		}
-		if (ImGui::BeginTabItem("Create New Pattern"))
+		if (ImGui::BeginTabItem(
+				"Create New Pattern", nullptr,
+				1 == m_iRequestedPatternTab ?
+					ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None))
 		{
 			ImGui::BeginDisabled(!bPatternMutationAdmitted);
 			if (nullptr != m_pAnimationTool)
@@ -6516,6 +7958,7 @@ void Client::CActionCompositionWorkbench::Render_PatternsWindow(
 			ImGui::EndTabItem();
 		}
 		ImGui::EndTabBar();
+		m_iRequestedPatternTab = -1;
 	}
 	ImGui::End();
 }
@@ -6611,11 +8054,46 @@ void Client::CActionCompositionWorkbench::Request_LaneAuthoring(
 	const VALTAN_PATTERN_VIEW& Pattern,
 	const VALTAN_STAGE_VIEW& Stage)
 {
-	const auto OpenResources = [this](const RESOURCE_DOMAIN eDomain)
+	const auto OpenResources = [this, &Pattern, &Stage](
+		const RESOURCE_DOMAIN eDomain)
 	{
 		m_eRequestedResourceDomain = eDomain;
 		m_bResourceDomainSelectionRequested = true;
 		m_bResourcesWindowVisible = true;
+		m_bResourcesWindowExpandRequested = true;
+		m_bResourcesWindowFocusRequested = true;
+		m_strResourceTargetPatternId = Pattern.strPatternId;
+		m_strResourceTargetStageId = Stage.strStageId;
+		const auto SelectedClip = std::find_if(
+			Stage.ClipOccurrences.begin(), Stage.ClipOccurrences.end(),
+			[this](const VALTAN_CLIP_OCCURRENCE_VIEW& Clip)
+			{
+				return Clip.strClipOccurrenceId == m_strSelectedStableId;
+			});
+		m_strResourceTargetClipOccurrenceId =
+			Stage.ClipOccurrences.end() != SelectedClip ?
+				SelectedClip->strClipOccurrenceId :
+				(Stage.ClipOccurrences.empty() ? std::string{} :
+					Stage.ClipOccurrences.back().strClipOccurrenceId);
+		if (RESOURCE_DOMAIN::EFFECT == eDomain)
+			m_strEffectAddClipOccurrenceId =
+				m_strResourceTargetClipOccurrenceId;
+		if (RESOURCE_DOMAIN::SOUND == eDomain)
+		{
+			m_strSoundAddClipOccurrenceId =
+				m_strResourceTargetClipOccurrenceId;
+			const auto SoundClip = std::find_if(
+				Stage.ClipOccurrences.begin(), Stage.ClipOccurrences.end(),
+				[this](const VALTAN_CLIP_OCCURRENCE_VIEW& Clip)
+				{
+					return Clip.strClipOccurrenceId ==
+						m_strResourceTargetClipOccurrenceId;
+				});
+			m_iSoundAddStartMs = Stage.ClipOccurrences.end() == SoundClip ?
+				0u : SoundClip->iSourceStartMs;
+			m_eSoundAddRepeatPolicy =
+				VALTAN_PATTERN_SOUND_REPEAT_POLICY::ONCE;
+		}
 	};
 
 	switch (eLane)
@@ -6641,12 +8119,26 @@ void Client::CActionCompositionWorkbench::Request_LaneAuthoring(
 	case TIMELINE_LANE::EFFECT:
 		OpenResources(RESOURCE_DOMAIN::EFFECT);
 		Select_Stage(Pattern, Stage, DETAIL_OWNER::EFFECT, Stage.strStageId);
+		m_strEffectAddClipOccurrenceId =
+			m_strResourceTargetClipOccurrenceId;
 		m_strStatus =
 			"Effect catalog and typed invocation Details opened for the selected Stage.";
 		break;
 	case TIMELINE_LANE::SOUND:
 		OpenResources(RESOURCE_DOMAIN::SOUND);
 		Select_Stage(Pattern, Stage, DETAIL_OWNER::SOUND, Stage.strStageId);
+		m_strSoundAddClipOccurrenceId =
+			m_strResourceTargetClipOccurrenceId;
+		if (const auto TargetClip = std::find_if(
+				Stage.ClipOccurrences.begin(), Stage.ClipOccurrences.end(),
+				[this](const VALTAN_CLIP_OCCURRENCE_VIEW& Clip)
+				{
+					return Clip.strClipOccurrenceId ==
+						m_strSoundAddClipOccurrenceId;
+				}); TargetClip != Stage.ClipOccurrences.end())
+		{
+			m_iSoundAddStartMs = TargetClip->iSourceStartMs;
+		}
 		m_strStatus =
 			"Sound event catalog and typed Pattern Sound row editor opened for the selected Stage.";
 		break;
@@ -6689,6 +8181,7 @@ void Client::CActionCompositionWorkbench::Request_LaneAuthoring(
 void Client::CActionCompositionWorkbench::Render_ResourcesWindow(
 	const VALTAN_PATTERN_VIEW* const pPattern,
 	const VALTAN_STAGE_VIEW* const pStage,
+	const bool_t bMutationAdmitted,
 	const bool_t bPatternMutationAdmitted)
 {
 	if (!m_bResourcesWindowVisible)
@@ -6698,8 +8191,27 @@ void Client::CActionCompositionWorkbench::Render_ResourcesWindow(
 		BuildCompositionDefaultLayout(pViewport);
 	const ImGuiCond Condition = m_bApplyResetLayoutThisFrame ?
 		ImGuiCond_Always : ImGuiCond_FirstUseEver;
-	ImGui::SetNextWindowPos(Layout.ResourcesPos, Condition);
-	ImGui::SetNextWindowSize(Layout.ResourcesSize, Condition);
+	if (m_bResourcesWindowExpandRequested && nullptr != pViewport)
+	{
+		const ImVec2 ExpandedPos(
+			pViewport->WorkPos.x + pViewport->WorkSize.x * 0.08f,
+			pViewport->WorkPos.y + pViewport->WorkSize.y * 0.12f);
+		const ImVec2 ExpandedSize(
+			pViewport->WorkSize.x * 0.62f,
+			pViewport->WorkSize.y * 0.72f);
+		ImGui::SetNextWindowPos(ExpandedPos, ImGuiCond_Always);
+		ImGui::SetNextWindowSize(ExpandedSize, ImGuiCond_Always);
+		ImGui::SetNextWindowCollapsed(false, ImGuiCond_Always);
+	}
+	else
+	{
+		ImGui::SetNextWindowPos(Layout.ResourcesPos, Condition);
+		ImGui::SetNextWindowSize(Layout.ResourcesSize, Condition);
+	}
+	if (m_bResourcesWindowFocusRequested)
+		ImGui::SetNextWindowFocus();
+	m_bResourcesWindowExpandRequested = false;
+	m_bResourcesWindowFocusRequested = false;
 	if (!ImGui::Begin(
 			"Composition Resources###CompositionResourcesWindow",
 			&m_bResourcesWindowVisible, ImGuiWindowFlags_MenuBar))
@@ -6709,8 +8221,33 @@ void Client::CActionCompositionWorkbench::Render_ResourcesWindow(
 		return;
 	}
 	Render_WindowMenu();
+	const VALTAN_PATTERN_VIEW* pResourcePattern = pPattern;
+	if (!m_strResourceTargetPatternId.empty() &&
+		(nullptr == pResourcePattern ||
+		 pResourcePattern->strPatternId != m_strResourceTargetPatternId))
+	{
+		pResourcePattern = nullptr;
+	}
+	const VALTAN_STAGE_VIEW* pResourceStage = nullptr;
+	if (nullptr != pResourcePattern)
+	{
+		const std::string& strTargetStageId =
+			m_strResourceTargetStageId.empty() && nullptr != pStage ?
+				pStage->strStageId : m_strResourceTargetStageId;
+		const auto TargetStage = std::find_if(
+			pResourcePattern->Stages.begin(), pResourcePattern->Stages.end(),
+			[&strTargetStageId](const VALTAN_STAGE_VIEW& Candidate)
+			{ return Candidate.strStageId == strTargetStageId; });
+		if (pResourcePattern->Stages.end() != TargetStage)
+			pResourceStage = &*TargetStage;
+	}
 	ImGui::TextDisabled(
 		"Only the opened typed catalog is loaded; Render never scans repository files.");
+	ImGui::TextDisabled("Append target: %s / %s",
+		nullptr == pResourcePattern ? "UNAVAILABLE" :
+			pResourcePattern->strPatternId.c_str(),
+		nullptr == pResourceStage ? "UNAVAILABLE" :
+			pResourceStage->strStageId.c_str());
 	const auto ResourceTabFlags = [this](const RESOURCE_DOMAIN eDomain)
 	{
 		return m_bResourceDomainSelectionRequested &&
@@ -6726,7 +8263,8 @@ void Client::CActionCompositionWorkbench::Render_ResourcesWindow(
 		{
 			bResourceSelectionConsumed |= m_bResourceDomainSelectionRequested &&
 				RESOURCE_DOMAIN::ANIMATION == m_eRequestedResourceDomain;
-			Render_SequenceBrowser(pPattern, pStage, bPatternMutationAdmitted);
+			Render_SequenceBrowser(
+				pResourcePattern, pResourceStage, bPatternMutationAdmitted);
 			ImGui::EndTabItem();
 		}
 		if (ImGui::BeginTabItem(
@@ -6739,9 +8277,11 @@ void Client::CActionCompositionWorkbench::Render_ResourcesWindow(
 				Reload_SemanticValtanEffects();
 			if (ImGui::Button("Refresh Effect Catalog"))
 				Reload_SemanticValtanEffects();
+			if (!m_strEffectCatalogStatus.empty())
+				ImGui::TextWrapped("%s", m_strEffectCatalogStatus.c_str());
 			ImGui::SetNextItemWidth(-1.f);
 			if (ImGui::InputTextWithHint(
-				"##CompositionResourceEffectSearch", "Search effect.valtan.*...",
+				"##CompositionResourceEffectSearch", "Search V1/V2 Effect or group...",
 				m_EffectSearch.data(), m_EffectSearch.size()))
 			{
 				m_bEffectFilterDirty = true;
@@ -6750,6 +8290,8 @@ void Client::CActionCompositionWorkbench::Render_ResourcesWindow(
 			if (m_bEffectFilterDirty || m_strEffectFilterQuery != Query)
 			{
 				m_FilteredEffectAssetIndices.clear();
+				m_FilteredEffectV2DocumentIndices.clear();
+				m_FilteredEffectV2GroupIndices.clear();
 				m_FilteredEffectAssetIndices.reserve(
 					m_SemanticValtanEffectAssetIds.size());
 				for (std::size_t i = 0u;
@@ -6761,30 +8303,263 @@ void Client::CActionCompositionWorkbench::Render_ResourcesWindow(
 						m_FilteredEffectAssetIndices.push_back(i);
 					}
 				}
+				for (std::size_t i = 0u; i < m_EffectV2DocumentIds.size(); ++i)
+				{
+					if (ContainsInsensitive(m_EffectV2DocumentIds[i], Query))
+						m_FilteredEffectV2DocumentIndices.push_back(i);
+				}
+				for (std::size_t i = 0u; i < m_EffectV2GroupIds.size(); ++i)
+				{
+					if (ContainsInsensitive(m_EffectV2GroupIds[i], Query))
+						m_FilteredEffectV2GroupIndices.push_back(i);
+				}
+
+				m_EffectV1ResourceTree = {};
+				for (const std::size_t i : m_FilteredEffectAssetIndices)
+				{
+					std::vector<std::string> Segments =
+						SplitResourcePath(m_SemanticValtanEffectAssetIds[i]);
+					if (!Segments.empty())
+						Segments.pop_back();
+					InsertResourceTree(m_EffectV1ResourceTree, Segments, i);
+				}
+				(void)FinalizeResourceTree(m_EffectV1ResourceTree);
+				m_EffectV2DocumentResourceTree = {};
+				for (const std::size_t i : m_FilteredEffectV2DocumentIndices)
+				{
+					std::vector<std::string> Segments{
+						EffectV2TypeLabel(m_EffectV2DocumentTypes[i]) };
+					std::vector<std::string> IdSegments =
+						SplitResourcePath(m_EffectV2DocumentIds[i]);
+					if (!IdSegments.empty())
+						IdSegments.pop_back();
+					Segments.insert(
+						Segments.end(), IdSegments.begin(), IdSegments.end());
+					InsertResourceTree(
+						m_EffectV2DocumentResourceTree, Segments, i);
+				}
+				(void)FinalizeResourceTree(m_EffectV2DocumentResourceTree);
+				m_EffectV2GroupResourceTree = {};
+				for (const std::size_t i : m_FilteredEffectV2GroupIndices)
+				{
+					std::vector<std::string> Segments =
+						SplitResourcePath(m_EffectV2GroupIds[i]);
+					if (!Segments.empty())
+						Segments.pop_back();
+					InsertResourceTree(m_EffectV2GroupResourceTree, Segments, i);
+				}
+				(void)FinalizeResourceTree(m_EffectV2GroupResourceTree);
 				m_strEffectFilterQuery = Query;
 				m_bEffectFilterDirty = false;
 			}
-			ImGuiListClipper Clipper;
-			Clipper.Begin(static_cast<int32_t>(m_FilteredEffectAssetIndices.size()));
-			while (Clipper.Step())
+			ImGui::SeparatorText("Selected Effect -> Append Target");
+			const char_t* const pEffectKind =
+				EFFECT_RESOURCE_KIND::V1_PATTERN == m_eEffectAddResourceKind ?
+					"V1 Pattern" :
+					(EFFECT_RESOURCE_KIND::V2_LEAF == m_eEffectAddResourceKind ?
+						"V2 Leaf" : "V2 Group");
+			ImGui::TextWrapped("%s | %s", pEffectKind,
+				m_strEffectAddAssetId.empty() ?
+					"Select one Effect below." :
+					m_strEffectAddAssetId.c_str());
+			const VALTAN_CLIP_OCCURRENCE_VIEW* pEffectTargetClip = nullptr;
+			if (nullptr != pResourceStage)
 			{
-				for (int32_t i = Clipper.DisplayStart; i < Clipper.DisplayEnd; ++i)
-				{
-					const std::string& AssetId =
-						m_SemanticValtanEffectAssetIds[
-							m_FilteredEffectAssetIndices[static_cast<std::size_t>(i)]];
-					const bool_t bSelected = AssetId == m_strEffectAddAssetId;
-					if (ImGui::Selectable(AssetId.c_str(), bSelected))
+				const auto TargetClip = std::find_if(
+					pResourceStage->ClipOccurrences.begin(),
+					pResourceStage->ClipOccurrences.end(),
+					[this](const VALTAN_CLIP_OCCURRENCE_VIEW& Clip)
 					{
-						m_strEffectAddAssetId = AssetId;
-						if (nullptr != pPattern && nullptr != pStage)
-						{
-							m_eDetailOwner = DETAIL_OWNER::EFFECT;
-							m_strSelectedStableId = pStage->strStageId;
-							m_bDetailsWindowVisible = true;
-						}
+						return Clip.strClipOccurrenceId ==
+							m_strEffectAddClipOccurrenceId;
+					});
+				if (pResourceStage->ClipOccurrences.end() != TargetClip)
+					pEffectTargetClip = &*TargetClip;
+			}
+			const bool_t bV1Selection =
+				EFFECT_RESOURCE_KIND::V1_PATTERN == m_eEffectAddResourceKind;
+			const char_t* const pEffectClipPreview =
+				nullptr == pEffectTargetClip ?
+					"Select Animation box" :
+					pEffectTargetClip->strClipName.c_str();
+			ImGui::BeginDisabled(!bV1Selection);
+			if (ImGui::BeginCombo(
+					"Attach to Animation Box##ResourceEffect",
+					pEffectClipPreview))
+			{
+				if (nullptr != pResourceStage)
+				{
+					for (const VALTAN_CLIP_OCCURRENCE_VIEW& Clip :
+						pResourceStage->ClipOccurrences)
+					{
+						const bool_t bSelected = Clip.strClipOccurrenceId ==
+							m_strEffectAddClipOccurrenceId;
+						const std::string Label = Clip.strClipName + " | " +
+							Clip.strClipOccurrenceId;
+						if (ImGui::Selectable(Label.c_str(), bSelected))
+							m_strEffectAddClipOccurrenceId =
+								Clip.strClipOccurrenceId;
 					}
 				}
+				ImGui::EndCombo();
+			}
+			ImGui::EndDisabled();
+			const bool_t bEffectAppendAdmitted =
+				nullptr != pResourcePattern && nullptr != pResourceStage &&
+				nullptr != pEffectTargetClip && nullptr != m_pBalanceTool &&
+				bPatternMutationAdmitted &&
+				"WAIT" != pResourceStage->strSequenceRole &&
+				!m_strEffectAddAssetId.empty() && bV1Selection;
+			ImGui::BeginDisabled(!bEffectAppendAdmitted);
+			if (ImGui::Button("Append V1 Effect to Pattern Draft") &&
+				bEffectAppendAdmitted)
+			{
+				VALTAN_PRODUCT_EFFECT_CUE_VIEW Cue;
+				Cue.strBindingId = BuildNextCompositionEffectCueId(
+					*pResourcePattern, *pResourceStage);
+				Cue.strOccurrenceId = Cue.strBindingId + ".occurrence.01";
+				Cue.strPatternId = pResourcePattern->strPatternId;
+				Cue.strStageId = pResourceStage->strStageId;
+				Cue.strActionId = pResourceStage->strActionId;
+				Cue.strClipOccurrenceId =
+					pEffectTargetClip->strClipOccurrenceId;
+				Cue.strEffectAssetId = m_strEffectAddAssetId;
+				Cue.strAnchorSlotId = "root";
+				Cue.eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
+				Cue.strFollowPolicy = "follow";
+				Cue.eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
+				Cue.strStopPolicy = "natural";
+				Cue.strRepeatPolicy = "once";
+				Cue.eScalePolicy =
+					VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE;
+				Cue.strScalePolicy = "OWNER_RELATIVE";
+				Cue.bHasExplicitScalePolicy = true;
+				Cue.iSourceStartMs = pEffectTargetClip->iSourceStartMs;
+				Cue.iStageDurationMs = pResourceStage->iDurationMs;
+				std::string Status;
+				if (!Cue.strBindingId.empty() &&
+					m_pBalanceTool->Add_ValtanStageEffectCue(
+						pResourcePattern->strPatternId,
+						pResourceStage->strStageId,
+						pResourceStage->strActionId, Cue, Status))
+				{
+					m_eDetailOwner = DETAIL_OWNER::EFFECT;
+					m_strSelectedStableId = Cue.strOccurrenceId;
+					m_strEffectEditIdentity.clear();
+					m_bDetailsWindowVisible = true;
+					Invalidate_TimelineCache();
+				}
+				m_strStatus = Cue.strBindingId.empty() ?
+					"Effect append rejected: no free stable invocation ID is available." :
+					std::move(Status);
+			}
+			ImGui::EndDisabled();
+
+			const uint32_t iStepMs = 1u;
+			const uint32_t iFastStepMs = 100u;
+			ImGui::BeginDisabled(bV1Selection || nullptr == pResourceStage);
+			if (ImGui::InputScalar(
+					"Stage-local start (ms)##ResourceEffectV2",
+					ImGuiDataType_U32, &m_iEffectV2AddStartMs,
+					&iStepMs, &iFastStepMs, "%u") && nullptr != pResourceStage)
+			{
+				m_iEffectV2AddStartMs = (std::min)(
+					m_iEffectV2AddStartMs, pResourceStage->iDurationMs);
+			}
+			ImGui::EndDisabled();
+			const bool_t bV2AppendAdmitted = !bV1Selection &&
+				nullptr != pResourceStage && bMutationAdmitted &&
+				!m_strEffectAddAssetId.empty();
+			ImGui::BeginDisabled(!bV2AppendAdmitted);
+			if (ImGui::Button("Append + Save V2 Stage Binding") &&
+				bV2AppendAdmitted)
+			{
+				std::string Status;
+				if (CEffectV2Catalog::Get().Append_BossValtanStageBinding(
+						m_strEffectAddAssetId,
+						EFFECT_RESOURCE_KIND::V2_GROUP ==
+							m_eEffectAddResourceKind,
+						pResourceStage->strActionId,
+						m_iEffectV2AddStartMs, Status))
+				{
+					m_iEffectV2CatalogRevision =
+						CEffectV2Catalog::Get().Get_Revision();
+					Invalidate_TimelineCache();
+				}
+				m_strEffectCatalogStatus = Status;
+				m_strStatus = std::move(Status);
+			}
+			ImGui::EndDisabled();
+			if (!bV1Selection)
+			{
+				ImGui::TextDisabled(
+					"V2 owns Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json. This button saves it immediately; Product publish + Server restart is still required.");
+			}
+
+			ImGui::SeparatorText("All Effect Resources");
+			if (ImGui::TreeNodeEx(
+					"V1 Pattern Effects", ImGuiTreeNodeFlags_SpanAvailWidth))
+			{
+				RenderResourceTree(
+					m_EffectV1ResourceTree,
+					[this](const std::size_t i)
+					{
+						const std::string& AssetId =
+							m_SemanticValtanEffectAssetIds[i];
+						const bool_t bSelected =
+							EFFECT_RESOURCE_KIND::V1_PATTERN ==
+								m_eEffectAddResourceKind &&
+							AssetId == m_strEffectAddAssetId;
+						if (ImGui::Selectable(AssetId.c_str(), bSelected))
+						{
+							m_eEffectAddResourceKind =
+								EFFECT_RESOURCE_KIND::V1_PATTERN;
+							m_strEffectAddAssetId = AssetId;
+						}
+					});
+				ImGui::TreePop();
+			}
+			if (ImGui::TreeNodeEx(
+					"V2 Authored Effects", ImGuiTreeNodeFlags_SpanAvailWidth))
+			{
+				RenderResourceTree(
+					m_EffectV2DocumentResourceTree,
+					[this](const std::size_t i)
+					{
+						const std::string& AssetId = m_EffectV2DocumentIds[i];
+						const bool_t bSelected =
+							EFFECT_RESOURCE_KIND::V2_LEAF ==
+								m_eEffectAddResourceKind &&
+							AssetId == m_strEffectAddAssetId;
+						if (ImGui::Selectable(AssetId.c_str(), bSelected))
+						{
+							m_eEffectAddResourceKind =
+								EFFECT_RESOURCE_KIND::V2_LEAF;
+							m_strEffectAddAssetId = AssetId;
+						}
+					});
+				ImGui::TreePop();
+			}
+			if (ImGui::TreeNodeEx(
+					"V2 Effect Groups", ImGuiTreeNodeFlags_SpanAvailWidth))
+			{
+				RenderResourceTree(
+					m_EffectV2GroupResourceTree,
+					[this](const std::size_t i)
+					{
+						const std::string& AssetId = m_EffectV2GroupIds[i];
+						const bool_t bSelected =
+							EFFECT_RESOURCE_KIND::V2_GROUP ==
+								m_eEffectAddResourceKind &&
+							AssetId == m_strEffectAddAssetId;
+						if (ImGui::Selectable(AssetId.c_str(), bSelected))
+						{
+							m_eEffectAddResourceKind =
+								EFFECT_RESOURCE_KIND::V2_GROUP;
+							m_strEffectAddAssetId = AssetId;
+						}
+					});
+				ImGui::TreePop();
 			}
 			ImGui::EndTabItem();
 		}
@@ -6794,16 +8569,145 @@ void Client::CActionCompositionWorkbench::Render_ResourcesWindow(
 		{
 			bResourceSelectionConsumed |= m_bResourceDomainSelectionRequested &&
 				RESOURCE_DOMAIN::SOUND == m_eRequestedResourceDomain;
-			for (const std::string& Event : m_PatternSoundEvents)
+			if (m_strSoundAddEvent.empty() && !m_PatternSoundEvents.empty())
+				m_strSoundAddEvent = m_PatternSoundEvents.front();
+			ImGui::SetNextItemWidth(-1.f);
+			if (ImGui::InputTextWithHint(
+					"##CompositionResourceSoundSearch", "Search Sound event...",
+					m_SoundSearch.data(), m_SoundSearch.size()))
 			{
-				const bool_t bSelected = Event == m_strSoundAddEvent;
-				if (ImGui::Selectable(Event.c_str(), bSelected))
-				{
-					m_strSoundAddEvent = Event;
-					m_eDetailOwner = DETAIL_OWNER::SOUND;
-					m_bDetailsWindowVisible = true;
-				}
+				m_bSoundFilterDirty = true;
 			}
+			const std::string SoundQuery = m_SoundSearch.data();
+			if (m_bSoundFilterDirty || m_strSoundFilterQuery != SoundQuery)
+			{
+				m_FilteredSoundEventIndices.clear();
+				m_SoundResourceTree = {};
+				for (std::size_t i = 0u; i < m_PatternSoundEvents.size(); ++i)
+				{
+					if (!ContainsInsensitive(m_PatternSoundEvents[i], SoundQuery))
+						continue;
+					m_FilteredSoundEventIndices.push_back(i);
+					std::vector<std::string> Segments =
+						SplitResourcePath(m_PatternSoundEvents[i]);
+					if (!Segments.empty())
+						Segments.pop_back();
+					InsertResourceTree(m_SoundResourceTree, Segments, i);
+				}
+				(void)FinalizeResourceTree(m_SoundResourceTree);
+				m_strSoundFilterQuery = SoundQuery;
+				m_bSoundFilterDirty = false;
+			}
+			const VALTAN_CLIP_OCCURRENCE_VIEW* pSoundTargetClip = nullptr;
+			if (nullptr != pResourceStage)
+			{
+				const auto TargetClip = std::find_if(
+					pResourceStage->ClipOccurrences.begin(),
+					pResourceStage->ClipOccurrences.end(),
+					[this](const VALTAN_CLIP_OCCURRENCE_VIEW& Clip)
+					{
+						return Clip.strClipOccurrenceId ==
+							m_strSoundAddClipOccurrenceId;
+					});
+				if (pResourceStage->ClipOccurrences.end() != TargetClip)
+					pSoundTargetClip = &*TargetClip;
+			}
+			ImGui::SeparatorText("Selected Sound -> Append Target");
+			ImGui::TextWrapped("%s",
+				m_strSoundAddEvent.empty() ?
+					"Select one Sound event below." :
+					m_strSoundAddEvent.c_str());
+			const char_t* const pSoundClipPreview =
+				nullptr == pSoundTargetClip ?
+					"Select Animation box" :
+					pSoundTargetClip->strClipName.c_str();
+			if (ImGui::BeginCombo(
+					"Attach to Animation Box##ResourceSound",
+					pSoundClipPreview))
+			{
+				if (nullptr != pResourceStage)
+				{
+					for (const VALTAN_CLIP_OCCURRENCE_VIEW& Clip :
+						pResourceStage->ClipOccurrences)
+					{
+						const bool_t bSelected = Clip.strClipOccurrenceId ==
+							m_strSoundAddClipOccurrenceId;
+						const std::string Label = Clip.strClipName + " | " +
+							Clip.strClipOccurrenceId;
+						if (ImGui::Selectable(Label.c_str(), bSelected))
+						{
+							m_strSoundAddClipOccurrenceId =
+								Clip.strClipOccurrenceId;
+							m_iSoundAddStartMs = Clip.iSourceStartMs;
+							m_eSoundAddRepeatPolicy =
+								VALTAN_PATTERN_SOUND_REPEAT_POLICY::ONCE;
+						}
+					}
+				}
+				ImGui::EndCombo();
+			}
+			/* Keep the catalog render O(visible rows).  Native model-window
+			   validation can walk all animations, so the authoritative Add API does
+			   that once on click instead of doing it every ImGui frame. */
+			const bool_t bSoundTargetReady =
+				nullptr != pResourceStage && nullptr != pSoundTargetClip &&
+				nullptr != m_pAnimationTool;
+			ImGui::BeginDisabled(!bSoundTargetReady);
+			const uint32_t iStepMs = 1u;
+			const uint32_t iFastStepMs = 100u;
+			if (ImGui::InputScalar(
+				"Source start (ms)##ResourceSound", ImGuiDataType_U32,
+				&m_iSoundAddStartMs, &iStepMs, &iFastStepMs, "%u"))
+			{
+				m_iSoundAddStartMs = (std::min)(
+					m_iSoundAddStartMs, uint32_t{ 600000u });
+			}
+			ImGui::EndDisabled();
+			const bool_t bSoundAppendAdmitted =
+				nullptr != pResourcePattern && nullptr != pResourceStage &&
+				nullptr != pSoundTargetClip && nullptr != m_pAnimationTool &&
+				bMutationAdmitted && !m_bAuthoringDraftDirty &&
+				bSoundTargetReady && !m_strSoundAddEvent.empty();
+			ImGui::BeginDisabled(!bSoundAppendAdmitted);
+			if (ImGui::Button("Append Selected Sound to Stage") &&
+				bSoundAppendAdmitted)
+			{
+				VALTAN_PATTERN_SOUND_CUE_ROW_ID Created;
+				std::string Status;
+				if (m_pAnimationTool->Add_ValtanCompositionPatternSound(
+						*pResourcePattern, *pResourceStage,
+						pSoundTargetClip->strClipOccurrenceId,
+						m_strSoundAddEvent, m_iSoundAddStartMs,
+						m_eSoundAddRepeatPolicy, Created, Status))
+				{
+					m_eDetailOwner = DETAIL_OWNER::SOUND;
+					m_strSelectedStableId = Created.strOccurrenceId;
+					m_bDetailsWindowVisible = true;
+					Invalidate_TimelineCache();
+				}
+				m_strSoundStatus = Status;
+				m_strStatus = std::move(Status);
+			}
+			ImGui::EndDisabled();
+			if (!bSoundAppendAdmitted && m_bAuthoringDraftDirty)
+			{
+				ImGui::TextDisabled(
+					"Save & Apply Pattern/Animation/Effect changes before editing the separate Sound owner draft.");
+			}
+			ImGui::SeparatorText("Sound Event Tree");
+			RenderResourceTree(
+				m_SoundResourceTree,
+				[this](const std::size_t i)
+				{
+					const std::string& Event = m_PatternSoundEvents[i];
+					const bool_t bSelected = Event == m_strSoundAddEvent;
+					if (ImGui::Selectable(Event.c_str(), bSelected))
+					{
+						m_strSoundAddEvent = Event;
+						m_eDetailOwner = DETAIL_OWNER::SOUND;
+						m_bDetailsWindowVisible = true;
+					}
+				});
 			ImGui::EndTabItem();
 		}
 		if (ImGui::BeginTabItem(
@@ -6826,47 +8730,56 @@ void Client::CActionCompositionWorkbench::Render_ResourcesWindow(
 				RESOURCE_DOMAIN::LOGIC == m_eRequestedResourceDomain;
 			ImGui::TextUnformatted("Counter Window");
 			ImGui::TextDisabled("WINDUP -> COUNTER_HIT -> same-Pattern GROGGY");
-			ImGui::BeginDisabled(nullptr == pPattern || nullptr == pStage);
+			ImGui::BeginDisabled(
+				nullptr == pResourcePattern || nullptr == pResourceStage);
 			if (ImGui::Button("Open Counter -> Groggy Detail") &&
-				nullptr != pPattern && nullptr != pStage)
+				nullptr != pResourcePattern && nullptr != pResourceStage)
 			{
 				m_bDetailsWindowVisible = true;
 				Select_Stage(
-					*pPattern, *pStage, DETAIL_OWNER::GAMEPLAY_STAGE,
-					pStage->strStageId + "/branch/COUNTER_HIT/authoring");
+					*pResourcePattern, *pResourceStage,
+					DETAIL_OWNER::GAMEPLAY_STAGE,
+					pResourceStage->strStageId +
+						"/branch/COUNTER_HIT/authoring");
 			}
 			ImGui::EndDisabled();
 
 			ImGui::SeparatorText("Portal / Charge Motion");
-			const bool_t bHasMotion = nullptr != pStage && pStage->Motion.has_value();
-			ImGui::BeginDisabled(nullptr == pPattern || !bHasMotion);
+			const bool_t bHasMotion = nullptr != pResourceStage &&
+				pResourceStage->Motion.has_value();
+			ImGui::BeginDisabled(nullptr == pResourcePattern || !bHasMotion);
 			if (ImGui::Button("Open Motion Detail") &&
-				nullptr != pPattern && bHasMotion)
+				nullptr != pResourcePattern && bHasMotion)
 			{
 				m_bDetailsWindowVisible = true;
 				Select_Stage(
-					*pPattern, *pStage, DETAIL_OWNER::GAMEPLAY_STAGE,
-					pStage->strStageId + "/motion/" + pStage->Motion->strKind);
+					*pResourcePattern, *pResourceStage,
+					DETAIL_OWNER::GAMEPLAY_STAGE,
+					pResourceStage->strStageId + "/motion/" +
+						pResourceStage->Motion->strKind);
 			}
 			ImGui::EndDisabled();
 
 			ImGui::SeparatorText("Grab / Release");
-			const auto Release = nullptr == pStage ?
+			const auto Release = nullptr == pResourceStage ?
 				std::vector<VALTAN_STAGE_ACTION_VIEW>::const_iterator{} :
 				std::find_if(
-					pStage->Actions.begin(), pStage->Actions.end(),
+					pResourceStage->Actions.begin(),
+					pResourceStage->Actions.end(),
 					[](const VALTAN_STAGE_ACTION_VIEW& Action)
 					{ return "RELEASE_GRABBED_PLAYERS" == Action.strKind; });
-			const bool_t bHasRelease = nullptr != pStage &&
-				Release != pStage->Actions.end();
-			ImGui::BeginDisabled(nullptr == pPattern || !bHasRelease);
+			const bool_t bHasRelease = nullptr != pResourceStage &&
+				Release != pResourceStage->Actions.end();
+			ImGui::BeginDisabled(nullptr == pResourcePattern || !bHasRelease);
 			if (ImGui::Button("Open Grab Release Detail") &&
-				nullptr != pPattern && bHasRelease)
+				nullptr != pResourcePattern && bHasRelease)
 			{
 				m_bDetailsWindowVisible = true;
 				Select_Stage(
-					*pPattern, *pStage, DETAIL_OWNER::GAMEPLAY_STAGE,
-					pStage->strStageId + "/action/" + Release->strKind + "/" +
+					*pResourcePattern, *pResourceStage,
+					DETAIL_OWNER::GAMEPLAY_STAGE,
+					pResourceStage->strStageId + "/action/" +
+						Release->strKind + "/" +
 						Release->strTargetId);
 			}
 			ImGui::EndDisabled();
@@ -6893,6 +8806,8 @@ void Client::CActionCompositionWorkbench::Render()
 		if (m_pAnimationTool->Consume_ValtanCompositionPatternCreated(
 				CreatedPatternId))
 		{
+			m_bPatternsWindowVisible = true;
+			m_iRequestedPatternTab = 0;
 			if (Reload_Canonical())
 			{
 				const auto FindCreated = [&CreatedPatternId](
@@ -6985,6 +8900,12 @@ void Client::CActionCompositionWorkbench::Render()
 	}
 	const VALTAN_PATTERN_VIEW* const pPattern = bEffectivePatternReady ?
 		&m_EffectivePatternCache : pSavedPattern;
+	/* This generation belongs to the immutable pPattern selected above.  A
+	   Sequencer widget can advance the live Balance draft later in this frame,
+	   but the Boss Pattern projection must not label this older view with that
+	   newer generation. */
+	const std::uint64_t iPatternViewDraftGeneration = bEffectivePatternReady ?
+		m_iEffectivePatternCacheDraftGeneration : 0u;
 	if (nullptr != pPattern)
 	{
 		if (pPattern->Stages.empty())
@@ -7032,13 +8953,26 @@ void Client::CActionCompositionWorkbench::Render()
 		m_bApplyResetLayoutThisFrame = false;
 		return;
 	}
+	Render_BossPatternWindow(
+		pPattern, iPatternViewDraftGeneration,
+		bMutationAdmitted, bPatternMutationAdmitted);
 	Render_PatternsWindow(
 		pPattern, pStage, bPatternMutationAdmitted);
 	Render_PreviewWindow(pPattern, bMutationAdmitted);
 	Render_DetailsWindow(
 		pPattern, pStage, bMutationAdmitted, bPatternMutationAdmitted);
 	Render_ResourcesWindow(
-		pPattern, pStage, bPatternMutationAdmitted);
+		pPattern, pStage, bMutationAdmitted, bPatternMutationAdmitted);
+	if (m_bSavePatternRequested)
+	{
+		/* Details only queues this command.  All windows finish using this
+		   frame's immutable Pattern/Stage views before a successful save reloads
+		   and replaces the canonical storage. */
+		m_bSavePatternRequested = false;
+		m_bPatternSaveSucceeded = Save_Publish_Reload();
+		m_bPatternSaveResultAvailable = true;
+		m_strPatternSaveStatus = m_strStatus;
+	}
 	m_bApplyResetLayoutThisFrame = false;
 }
 

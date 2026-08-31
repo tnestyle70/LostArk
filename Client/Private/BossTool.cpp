@@ -393,9 +393,28 @@ bool_t Client::CBossTool::Reload_Graph()
 		m_strFlowStatus = StagedFlowStatus;
 		const VALTAN_PATTERN_FLOW_DEFINITION* pFlow =
 			m_FlowDocument.Get_DefaultFlow();
-		if (nullptr != pFlow && !pFlow->Slots.empty())
-			m_strSelectedFlowSlotId = pFlow->Slots.front().strSlotId;
+		if (nullptr != pFlow && !pFlow->Nodes.empty())
+			m_strSelectedFlowSlotId = pFlow->strEntryNodeId;
 	}
+	const VALTAN_PATTERN_FLOW_DEFINITION* const pCommittedFlow =
+		m_FlowDocument.Get_DefaultFlow();
+	if (nullptr != pCommittedFlow &&
+		pCommittedFlow->Nodes.end() == std::find_if(
+			pCommittedFlow->Nodes.begin(), pCommittedFlow->Nodes.end(),
+			[this](const VALTAN_PATTERN_FLOW_NODE& node)
+			{ return node.strNodeId == m_strSelectedFlowSlotId; }))
+	{
+		m_strSelectedFlowSlotId = pCommittedFlow->strEntryNodeId;
+	}
+	if (nullptr != pCommittedFlow &&
+		pCommittedFlow->Edges.end() == std::find_if(
+			pCommittedFlow->Edges.begin(), pCommittedFlow->Edges.end(),
+			[this](const VALTAN_PATTERN_FLOW_EDGE& edge)
+			{ return edge.strEdgeId == m_strSelectedFlowEdgeId; }))
+	{
+		m_strSelectedFlowEdgeId.clear();
+	}
+	m_strFlowLinkSourceNodeId.clear();
 
 	const VALTAN_PATTERN_VIEW* pSelected =
 		Find_AuditionPattern(m_strSelectedPatternId);
@@ -1043,10 +1062,10 @@ bool_t Client::CBossTool::Is_ServerArenaPresetPending() const
 
 bool_t Client::CBossTool::Preview_SelectedFlowSlotIsolated()
 {
-	const VALTAN_PATTERN_FLOW_SLOT* pSlot = Find_SelectedFlowSlot();
-	if (nullptr == pSlot || nullptr == Find_AuditionPattern(pSlot->strPatternId))
+	const VALTAN_PATTERN_FLOW_NODE* pNode = Find_SelectedFlowNode();
+	if (nullptr == pNode || nullptr == Find_AuditionPattern(pNode->strPatternId))
 	{
-		m_strFlowStatus = "Select a valid saved Flow slot first.";
+		m_strFlowStatus = "Select a valid saved Flow node first.";
 		return false;
 	}
 	if (CValtanPatternFlowService::Get().Has_PlaybackOwnership())
@@ -1073,7 +1092,7 @@ bool_t Client::CBossTool::Preview_SelectedFlowSlotIsolated()
 	if (!CValtanPatternAuditionService::Get().Submit(
 			FLOW_PREVIEW_CONSUMER_ID,
 			BOSS_PLACEMENT_ID,
-			pSlot->strPatternId,
+			pNode->strPatternId,
 			ExpectedRevision,
 			PinnedSoundReceipt,
 			Status))
@@ -1091,7 +1110,7 @@ bool_t Client::CBossTool::Start_Flow(const bool_t bFromSelectedSlot)
 	if (Tuning.Has_PendingCommand())
 	{
 		m_strFlowStatus =
-			"Resolve the pending saved Flow publication or Server application before playback.";
+			"Wait for the pending saved Flow apply result before playback.";
 		return false;
 	}
 	const VALTAN_PATTERN_FLOW_DEFINITION* pFlow =
@@ -1212,7 +1231,7 @@ bool_t Client::CBossTool::Reload_FlowDocument()
 {
 	if (CValtanTuningCommandService::Get().Has_PendingCommand())
 	{
-		m_strFlowStatus = "Wait for the saved Flow publication/application result before Reload.";
+		m_strFlowStatus = "Wait for the saved Flow apply result before Reload.";
 		return false;
 	}
 	std::string Status;
@@ -1224,9 +1243,10 @@ bool_t Client::CBossTool::Reload_FlowDocument()
 	m_bConfirmDiscardDirtyFlow = false;
 	const VALTAN_PATTERN_FLOW_DEFINITION* pFlow =
 		m_FlowDocument.Get_DefaultFlow();
-	m_strSelectedFlowSlotId =
-		nullptr != pFlow && !pFlow->Slots.empty() ?
-			pFlow->Slots.front().strSlotId : std::string{};
+	m_strSelectedFlowSlotId = nullptr != pFlow && !pFlow->Nodes.empty() ?
+		pFlow->strEntryNodeId : std::string{};
+	m_strSelectedFlowEdgeId.clear();
+	m_strFlowLinkSourceNodeId.clear();
 	m_strFlowStatus =
 		"Reloaded the saved Flow from disk. Server playback was not changed.";
 	return true;
@@ -1242,7 +1262,7 @@ bool_t Client::CBossTool::Save_FlowDocument()
 	}
 	if (CValtanTuningCommandService::Get().Has_PendingCommand())
 	{
-		m_strFlowStatus = "Resolve the pending gameplay publication/application before Save.";
+		m_strFlowStatus = "Wait for the pending gameplay apply result before Save.";
 		return false;
 	}
 	std::string Status;
@@ -1252,12 +1272,22 @@ bool_t Client::CBossTool::Save_FlowDocument()
 		return false;
 	}
 	m_bConfirmDiscardDirtyFlow = false;
+	const VALTAN_PATTERN_FLOW_DEFINITION* const pSavedFlow =
+		m_FlowDocument.Get_DefaultFlow();
+	if (nullptr == pSavedFlow ||
+		!CValtanPatternFlowDocument::Has_LegacyLinearProjection(*pSavedFlow))
+	{
+		m_strFlowStatus = Status +
+			" Graph draft saved to disk. Server Apply was not attempted; "
+			"this topology requires the Server graph runtime.";
+		return true;
+	}
 	std::string PublishStatus;
 	const bool bSubmitted = CValtanTuningCommandService::Get().Publish_SavedPatternFlow(
 		m_FlowDocument.Get_SourceRevision(), PublishStatus);
 	m_strFlowStatus = Status + (bSubmitted ? " Applying the saved default order: " :
 		" Saved, but the Server order has not changed: ") + PublishStatus;
-	return true; // Disk save succeeded; publication has its own exact result.
+	return true; // Disk save succeeded; Server apply has its own exact result.
 }
 
 bool_t Client::CBossTool::Apply_SavedFlow()
@@ -1272,6 +1302,15 @@ bool_t Client::CBossTool::Apply_SavedFlow()
 		!m_FlowDocument.Verify_SourceRevision(Status))
 	{
 		m_strFlowStatus = "Save or Reload a clean Flow before applying it: " + Status;
+		return false;
+	}
+	const VALTAN_PATTERN_FLOW_DEFINITION* const pSavedFlow =
+		m_FlowDocument.Get_DefaultFlow();
+	if (nullptr == pSavedFlow ||
+		!CValtanPatternFlowDocument::Has_LegacyLinearProjection(*pSavedFlow))
+	{
+		m_strFlowStatus =
+			"Graph draft is saved. Server Apply requires graph runtime projection support.";
 		return false;
 	}
 	CValtanTuningCommandService& Service = CValtanTuningCommandService::Get();
@@ -1301,12 +1340,22 @@ void Client::CBossTool::Render_FlowPublicationStatus()
 			ImGui::TextDisabled("Candidate: %.12s", Publication.strCandidateRevision.c_str());
 	}
 	ImGui::TextDisabled("Current runs keep their order. New runs use the admitted order; Reload starts slot 01.");
+	const VALTAN_PATTERN_FLOW_DEFINITION* const pSavedFlow =
+		m_FlowDocument.Get_DefaultFlow();
+	const bool_t bHasServerProjection = nullptr != pSavedFlow &&
+		CValtanPatternFlowDocument::Has_LegacyLinearProjection(*pSavedFlow);
 	ImGui::BeginDisabled(!m_bGraphMutationAdmitted ||
 		Service.Has_PendingCommand() || !m_FlowDocument.Is_Ready() ||
-		m_FlowDocument.Is_Dirty());
-	if (ImGui::Button("Apply Saved Flow"))
+		m_FlowDocument.Is_Dirty() || !bHasServerProjection);
+	if (ImGui::Button("Retry Apply Saved Flow"))
 		(void)Apply_SavedFlow();
 	ImGui::EndDisabled();
+	if (!bHasServerProjection &&
+		ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+	{
+		ImGui::SetTooltip(
+			"This graph is saved as an authoring draft; Server graph runtime projection is not implemented yet.");
+	}
 }
 
 void Client::CBossTool::Synchronize_LiveSelection()
@@ -1413,8 +1462,13 @@ void Client::CBossTool::Render_BossVerificationTab()
 
 void Client::CBossTool::Render_PatternFlowTab()
 {
-	ImGui::TextDisabled(
-		"Reload reads disk only. Save publishes/applies. Restart performs a Fresh arena reset and starts the saved slot.");
+	const VALTAN_PATTERN_FLOW_DEFINITION* const pCurrentFlow =
+		m_FlowDocument.Get_DefaultFlow();
+	const bool_t bHasServerProjection = nullptr != pCurrentFlow &&
+		CValtanPatternFlowDocument::Has_LegacyLinearProjection(*pCurrentFlow);
+	ImGui::TextDisabled(bHasServerProjection ?
+		"Reload reads disk only. Save validates, stores, and applies. Restart performs a Fresh arena reset and starts the saved node." :
+		"Reload reads disk only. Graph draft Save is durable; Server Apply waits for graph runtime projection support.");
 	if (!m_bGraphMutationAdmitted)
 	{
 		ImGui::TextWrapped("%s", m_strStatus.c_str());
@@ -1460,7 +1514,8 @@ void Client::CBossTool::Render_PatternFlowTab()
 	ImGui::SameLine();
 	ImGui::BeginDisabled(
 		bPlaybackLocked || !m_FlowDocument.Is_Ready() || !m_FlowDocument.Is_Dirty());
-	if (ImGui::Button("Save + Publish Flow"))
+	if (ImGui::Button(bHasServerProjection ?
+		"Save & Apply Flow" : "Save Graph Draft"))
 		(void)Save_FlowDocument();
 	ImGui::EndDisabled();
 	ImGui::EndDisabled();
@@ -1497,6 +1552,11 @@ void Client::CBossTool::Render_PatternFlowTab()
 	}
 
 	Render_FlowPublicationStatus();
+	ImGui::Checkbox("Node Graph Editor", &m_bFlowGraphEditor);
+	ImGui::SameLine();
+	ImGui::TextDisabled(m_bFlowGraphEditor ?
+		"Edit stable v2 nodes and finite COMPLETED links." :
+		"Inspect the Server-compatible ordered projection.");
 
 	/* Keep Next independent of draft admission and selection. Small windows
 	   scroll this parent; both right-side children retain usable minimums. */
@@ -1513,15 +1573,22 @@ void Client::CBossTool::Render_PatternFlowTab()
 			ImGuiTableFlags_SizingStretchProp))
 	{
 		ImGui::TableSetupColumn(
-			"Ordered Slots", ImGuiTableColumnFlags_WidthFixed, 430.f);
+			m_bFlowGraphEditor ? "Node Graph" : "Ordered Slots",
+			ImGuiTableColumnFlags_WidthFixed, 430.f);
 		ImGui::TableSetupColumn(
-			"Selected Slot", ImGuiTableColumnFlags_WidthStretch);
+			m_bFlowGraphEditor ? "Selected Node / Edge" : "Selected Slot",
+			ImGuiTableColumnFlags_WidthStretch);
 		ImGui::TableNextRow();
 		ImGui::TableSetColumnIndex(0);
 		if (ImGui::BeginChild("##bossFlowSlotsPane", ImVec2(0.f, fColumnHeight)))
 		{
 			if (m_bGraphReady && m_FlowDocument.Is_Ready())
-				Render_FlowSlotList();
+			{
+				if (m_bFlowGraphEditor)
+					Render_FlowGraphEditor();
+				else
+					Render_FlowSlotList();
+			}
 			else
 				ImGui::TextWrapped("Flow slots are unavailable. Next runtime state is still visible on the right.");
 		}
@@ -1710,6 +1777,223 @@ void Client::CBossTool::Render_NextPatternPicker()
 	ImGui::EndChild();
 	ImGui::EndDisabled();
 	ImGui::EndPopup();
+}
+
+void Client::CBossTool::Render_FlowGraphEditor()
+{
+	const VALTAN_PATTERN_FLOW_DEFINITION* const pFlow =
+		m_FlowDocument.Get_DefaultFlow();
+	if (nullptr == pFlow)
+	{
+		ImGui::TextDisabled("No admitted Flow graph is loaded.");
+		return;
+	}
+	const VALTAN_PATTERN_FLOW_SNAPSHOT& Playback =
+		CValtanPatternFlowService::Get().Get_Snapshot();
+	const bool_t bPlaybackLocked =
+		CValtanPatternFlowService::Get().Has_PlaybackOwnership();
+	const bool_t bEditingLocked =
+		bPlaybackLocked || !m_bGraphMutationAdmitted;
+	ImGui::Text("Node Graph  |  %zu nodes / %zu edges",
+		pFlow->Nodes.size(), pFlow->Edges.size());
+	ImGui::SameLine();
+	ImGui::BeginDisabled(bEditingLocked);
+	if (ImGui::Button("Add Pattern Node..."))
+		ImGui::OpenPopup("##addBossFlowGraphNode");
+	ImGui::EndDisabled();
+	/* Inserting a node replaces the document draft.  Do not dereference the
+	   pre-popup Flow pointer again in the same frame. */
+	if (Render_AddPatternNodePopup())
+		return;
+	if (CValtanPatternFlowDocument::Has_LegacyLinearProjection(*pFlow))
+	{
+		ImGui::TextColored(
+			ImVec4(0.38f, 0.88f, 0.58f, 1.f),
+			"LINEAR SERVER PROJECTION READY");
+	}
+	else
+	{
+		ImGui::TextColored(
+			ImVec4(1.f, 0.72f, 0.25f, 1.f),
+			"GRAPH AUTHORING DRAFT");
+		ImGui::TextDisabled(
+			"Save is durable; Server Apply remains fail-closed until graph runtime projection admits this topology.");
+	}
+
+	if (ImGui::BeginChild(
+		"##bossPatternFlowGraphCanvas", ImVec2(0.f, 0.f), true))
+	{
+		for (std::size_t index = 0u; index < pFlow->Nodes.size(); ++index)
+		{
+			const VALTAN_PATTERN_FLOW_NODE& Node = pFlow->Nodes[index];
+			const VALTAN_PATTERN_VIEW* const pPattern =
+				Find_AuditionPattern(Node.strPatternId);
+			const std::string Name = nullptr != pPattern &&
+				!pPattern->strDisplayName.empty() ?
+					pPattern->strDisplayName : Node.strPatternId;
+			const bool_t bSelected =
+				m_strSelectedFlowSlotId == Node.strNodeId;
+			const bool_t bEntry = pFlow->strEntryNodeId == Node.strNodeId;
+			const bool_t bLive =
+				Playback.strCurrentSlotId == Node.strNodeId;
+			const bool_t bLinkSource =
+				m_strFlowLinkSourceNodeId == Node.strNodeId;
+			ImGui::PushID(Node.strNodeId.c_str());
+			char_t hiddenLabel[64]{};
+			std::snprintf(hiddenLabel, sizeof(hiddenLabel),
+				"##flowGraphNode%zu", index);
+			if (ImGui::Selectable(
+				hiddenLabel, bSelected, ImGuiSelectableFlags_None,
+				ImVec2(0.f, 58.f)))
+			{
+				m_strSelectedFlowSlotId = Node.strNodeId;
+				m_strSelectedFlowEdgeId.clear();
+			}
+			const ImVec2 Minimum = ImGui::GetItemRectMin();
+			const ImVec2 Maximum = ImGui::GetItemRectMax();
+			const ImU32 Border = bSelected ? IM_COL32(255, 205, 84, 255) :
+				(bEntry ? IM_COL32(82, 224, 142, 255) :
+					(bLive ? IM_COL32(82, 194, 235, 255) :
+						IM_COL32(105, 122, 148, 255)));
+			ImGui::GetWindowDrawList()->AddRect(
+				Minimum, Maximum, Border, 5.f, 0, bSelected ? 3.f : 2.f);
+			std::string Header = std::to_string(index + 1u) +
+				(bEntry ? "  [START]" : "") +
+				(bLive ? "  [LIVE]" : "") +
+				(bLinkSource ? "  [LINK SOURCE]" : "");
+			ImGui::GetWindowDrawList()->AddText(
+				ImVec2(Minimum.x + 9.f, Minimum.y + 7.f),
+				Border, Header.c_str());
+			ImGui::GetWindowDrawList()->AddText(
+				ImVec2(Minimum.x + 9.f, Minimum.y + 27.f),
+				IM_COL32(238, 242, 248, 255), Name.c_str());
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip(
+					"Node: %s\nPattern: %s\nWatchdog: %u ms",
+					Node.strNodeId.c_str(), Node.strPatternId.c_str(),
+					Node.iWatchdogMs);
+			}
+
+			const auto outgoing = std::find_if(
+				pFlow->Edges.begin(), pFlow->Edges.end(),
+				[&Node](const VALTAN_PATTERN_FLOW_EDGE& edge)
+				{
+					return edge.strFromNodeId == Node.strNodeId;
+				});
+			if (pFlow->Edges.end() == outgoing)
+			{
+				ImGui::TextDisabled("       [TERMINAL HOLD]");
+			}
+			else
+			{
+				const bool_t bEdgeSelected =
+					m_strSelectedFlowEdgeId == outgoing->strEdgeId;
+				const std::string EdgeLabel =
+					(outgoing->iMaxTraversals.has_value() ?
+						"  LOOP COMPLETED -> " : "  DOWN COMPLETED -> ") +
+					outgoing->strToNodeId + "  | " +
+					std::to_string(outgoing->iPursuitMs) + " ms" +
+					(outgoing->iMaxTraversals.has_value() ?
+						"  | max " + std::to_string(*outgoing->iMaxTraversals) :
+						std::string{});
+				ImGui::PushID(outgoing->strEdgeId.c_str());
+				if (ImGui::Selectable(
+					EdgeLabel.c_str(), bEdgeSelected,
+					ImGuiSelectableFlags_None, ImVec2(0.f, 24.f)))
+				{
+					m_strSelectedFlowEdgeId = outgoing->strEdgeId;
+					m_strSelectedFlowSlotId = Node.strNodeId;
+				}
+				if (ImGui::IsItemHovered())
+					ImGui::SetTooltip("Edge: %s", outgoing->strEdgeId.c_str());
+				ImGui::PopID();
+			}
+			ImGui::Spacing();
+			ImGui::PopID();
+		}
+	}
+	ImGui::EndChild();
+}
+
+bool_t Client::CBossTool::Render_AddPatternNodePopup()
+{
+	if (!ImGui::BeginPopup("##addBossFlowGraphNode"))
+		return false;
+	bool_t bDocumentMutated = false;
+	const bool_t bPlaybackLocked =
+		CValtanPatternFlowService::Get().Has_PlaybackOwnership();
+	ImGui::BeginDisabled(bPlaybackLocked || !m_bGraphMutationAdmitted);
+	ImGui::TextUnformatted("Insert Pattern Node after selected node");
+	ImGui::SetNextItemWidth(360.f);
+	ImGui::InputTextWithHint(
+		"##flowGraphPatternSearch", "Search Pattern...",
+		m_FlowPatternSearch.data(), m_FlowPatternSearch.size());
+	const std::string Query = m_FlowPatternSearch.data();
+	const std::vector<std::string> AdmittedIds = Build_AdmittedPatternIds();
+	if (ImGui::BeginChild(
+		"##flowGraphPatternChoices", ImVec2(420.f, 330.f), true))
+	{
+		const auto RenderIds = [this, &Query, &AdmittedIds,
+			&bDocumentMutated](
+			const std::vector<std::string>& PatternIds)
+		{
+			for (const std::string& PatternId : PatternIds)
+			{
+				if (bDocumentMutated)
+					break;
+				const VALTAN_PATTERN_VIEW* const pPattern =
+					Find_AuditionPattern(PatternId);
+				if (nullptr == pPattern ||
+					(!Contains_CaseInsensitive(pPattern->strPatternId, Query) &&
+					 !Contains_CaseInsensitive(pPattern->strDisplayName, Query)))
+				{
+					continue;
+				}
+				ImGui::PushID(PatternId.c_str());
+				const char_t* const pLabel = pPattern->strDisplayName.empty() ?
+					pPattern->strPatternId.c_str() :
+					pPattern->strDisplayName.c_str();
+				if (ImGui::Selectable(pLabel, false))
+				{
+					std::string NodeId;
+					std::string Status;
+					if (m_FlowDocument.Insert_Node_After(
+							m_strSelectedFlowSlotId, PatternId,
+							AdmittedIds, NodeId, Status))
+					{
+						m_strSelectedFlowSlotId = NodeId;
+						m_strSelectedFlowEdgeId.clear();
+						bDocumentMutated = true;
+						ImGui::CloseCurrentPopup();
+					}
+					m_strFlowStatus = std::move(Status);
+				}
+				if (ImGui::IsItemHovered())
+					ImGui::SetTooltip("%s",
+						CValtanPatternTree::Build_PatternIdentitySummary(
+							*pPattern).c_str());
+				ImGui::PopID();
+			}
+		};
+		ImGui::SeparatorText("CORE SERVER PATTERNS");
+		RenderIds(m_AuditionInventory.CorePatternIds);
+		if (!bDocumentMutated)
+		{
+			ImGui::SeparatorText("ANIMATOR PATTERNS");
+			RenderIds(m_AuditionInventory.AnimatorPatternIds);
+		}
+		if (!bDocumentMutated &&
+			!m_AuditionInventory.DerivedPatternIds.empty())
+		{
+			ImGui::SeparatorText("DERIVED SERVER PATTERNS");
+			RenderIds(m_AuditionInventory.DerivedPatternIds);
+		}
+	}
+	ImGui::EndChild();
+	ImGui::EndDisabled();
+	ImGui::EndPopup();
+	return bDocumentMutated;
 }
 
 void Client::CBossTool::Render_FlowSlotList()
@@ -1912,28 +2196,33 @@ void Client::CBossTool::Render_AddPatternPopup()
 
 void Client::CBossTool::Render_FlowSelectedSlot()
 {
-	const VALTAN_PATTERN_FLOW_DEFINITION* pFlow =
+	const VALTAN_PATTERN_FLOW_DEFINITION* const pFlow =
 		m_FlowDocument.Get_DefaultFlow();
-	const VALTAN_PATTERN_FLOW_SLOT* pSlot = Find_SelectedFlowSlot();
-	const VALTAN_PATTERN_VIEW* pPattern = nullptr == pSlot ? nullptr :
-		Find_AuditionPattern(pSlot->strPatternId);
 	if (nullptr == pFlow)
 		return;
+	const VALTAN_PATTERN_FLOW_NODE* const pNode = Find_SelectedFlowNode();
+	const VALTAN_PATTERN_FLOW_EDGE* const pEdge = Find_SelectedFlowEdge();
+	const VALTAN_PATTERN_FLOW_SLOT* const pSlot = Find_SelectedFlowSlot();
+	const VALTAN_PATTERN_VIEW* const pPattern = nullptr == pNode ? nullptr :
+		Find_AuditionPattern(pNode->strPatternId);
+	CValtanPatternFlowService& FlowService = CValtanPatternFlowService::Get();
+	const bool_t bPlaybackLocked = FlowService.Has_PlaybackOwnership();
+	const bool_t bEditingLocked =
+		bPlaybackLocked || !m_bGraphMutationAdmitted;
+	const std::vector<std::string> AdmittedIds = Build_AdmittedPatternIds();
 
-	if (nullptr == pSlot || nullptr == pPattern)
+	if (nullptr == pNode || nullptr == pPattern)
 	{
-		ImGui::TextUnformatted("Select a Flow slot on the left.");
+		ImGui::TextUnformatted("Select a Flow node on the left.");
 	}
 	else
 	{
-		const auto SlotAt = std::find_if(
-			pFlow->Slots.begin(), pFlow->Slots.end(),
-			[this](const VALTAN_PATTERN_FLOW_SLOT& Slot)
-			{
-				return Slot.strSlotId == m_strSelectedFlowSlotId;
-			});
-		const size_t Ordinal = pFlow->Slots.end() == SlotAt ? 0u :
-			static_cast<size_t>(std::distance(pFlow->Slots.begin(), SlotAt)) + 1u;
+		const auto NodeAt = std::find_if(
+			pFlow->Nodes.begin(), pFlow->Nodes.end(),
+			[this](const VALTAN_PATTERN_FLOW_NODE& Node)
+			{ return Node.strNodeId == m_strSelectedFlowSlotId; });
+		const size_t Ordinal = pFlow->Nodes.end() == NodeAt ? 0u :
+			static_cast<size_t>(std::distance(pFlow->Nodes.begin(), NodeAt)) + 1u;
 		ImGui::Text(
 			"%02zu  %s", Ordinal,
 			pPattern->strDisplayName.empty() ?
@@ -1941,13 +2230,248 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 				pPattern->strDisplayName.c_str());
 		if (ImGui::IsItemHovered())
 			ImGui::SetTooltip(
-				"Slot: %s\nPattern: %s",
-				pSlot->strSlotId.c_str(), pSlot->strPatternId.c_str());
+				"Node: %s\nPattern: %s",
+				pNode->strNodeId.c_str(), pNode->strPatternId.c_str());
 		ImGui::TextWrapped("%s",
 			CValtanPatternTree::Build_PatternIdentitySummary(*pPattern).c_str());
+
+		ImGui::SeparatorText("Node Structure");
+		ImGui::BeginDisabled(bEditingLocked);
+		ImGui::BeginDisabled(pFlow->strEntryNodeId == pNode->strNodeId);
+		if (ImGui::Button("Make Start Node"))
+		{
+			std::string Status;
+			if (m_FlowDocument.Set_EntryNode(
+					pNode->strNodeId, AdmittedIds, Status))
+			{
+				m_strFlowStatus = std::move(Status);
+				ImGui::EndDisabled();
+				ImGui::EndDisabled();
+				return;
+			}
+			m_strFlowStatus = std::move(Status);
+		}
+		ImGui::EndDisabled();
+		ImGui::SameLine();
+		ImGui::BeginDisabled(pFlow->Nodes.size() <= 1u);
+		if (ImGui::Button("Delete Node"))
+		{
+			const std::string RemovedNodeId = pNode->strNodeId;
+			std::string Status;
+			if (m_FlowDocument.Remove_Node(
+					RemovedNodeId, AdmittedIds, Status))
+			{
+				const VALTAN_PATTERN_FLOW_DEFINITION* const pUpdated =
+					m_FlowDocument.Get_DefaultFlow();
+				m_strSelectedFlowSlotId = nullptr == pUpdated ?
+					std::string{} : pUpdated->strEntryNodeId;
+				m_strSelectedFlowEdgeId.clear();
+				if (m_strFlowLinkSourceNodeId == RemovedNodeId)
+					m_strFlowLinkSourceNodeId.clear();
+				m_strFlowStatus = std::move(Status);
+				ImGui::EndDisabled();
+				ImGui::EndDisabled();
+				return;
+			}
+			m_strFlowStatus = std::move(Status);
+		}
+		ImGui::EndDisabled();
+
+		bool_t bWatchdogEnabled = 0u != pNode->iWatchdogMs;
+		if (ImGui::Checkbox("Node Timeout Watchdog", &bWatchdogEnabled))
+		{
+			std::string Status;
+			const std::uint32_t Watchdog = bWatchdogEnabled ?
+				CValtanPatternFlowDocument::MIN_NODE_WATCHDOG_MS : 0u;
+			if (m_FlowDocument.Set_NodeWatchdogMs(
+					pNode->strNodeId, Watchdog, AdmittedIds, Status))
+			{
+				m_strFlowStatus = std::move(Status);
+				ImGui::EndDisabled();
+				return;
+			}
+			m_strFlowStatus = std::move(Status);
+		}
+		if (0u != pNode->iWatchdogMs)
+		{
+			int32_t WatchdogMs = static_cast<int32_t>(pNode->iWatchdogMs);
+			ImGui::SetNextItemWidth(230.f);
+			if (ImGui::SliderInt(
+				"Watchdog (ms)", &WatchdogMs,
+				static_cast<int32_t>(
+					CValtanPatternFlowDocument::MIN_NODE_WATCHDOG_MS),
+				static_cast<int32_t>(
+					CValtanPatternFlowDocument::MAX_NODE_WATCHDOG_MS),
+				"%d ms", ImGuiSliderFlags_AlwaysClamp))
+			{
+				std::string Status;
+				if (m_FlowDocument.Set_NodeWatchdogMs(
+						pNode->strNodeId,
+						static_cast<std::uint32_t>(WatchdogMs),
+						AdmittedIds, Status))
+				{
+					m_strFlowStatus = std::move(Status);
+					ImGui::EndDisabled();
+					return;
+				}
+				m_strFlowStatus = std::move(Status);
+			}
+		}
+
+		if (m_strFlowLinkSourceNodeId.empty())
+		{
+			if (ImGui::Button("Begin COMPLETED Link"))
+			{
+				m_strFlowLinkSourceNodeId = pNode->strNodeId;
+				m_strSelectedFlowEdgeId.clear();
+				m_strFlowStatus =
+					"Link source selected. Choose a target node, then connect a finite back-edge.";
+			}
+		}
+		else
+		{
+			ImGui::TextWrapped("Link source: %s",
+				m_strFlowLinkSourceNodeId.c_str());
+			int32_t Traversals = static_cast<int32_t>(
+				m_iFlowLinkMaximumTraversals);
+			ImGui::SetNextItemWidth(230.f);
+			if (ImGui::SliderInt(
+				"Back-edge traversals", &Traversals, 1,
+				static_cast<int32_t>(
+					CValtanPatternFlowDocument::MAX_EDGE_TRAVERSALS),
+				"%d", ImGuiSliderFlags_AlwaysClamp))
+			{
+				m_iFlowLinkMaximumTraversals =
+					static_cast<std::uint32_t>(Traversals);
+			}
+			ImGui::TextDisabled(
+				"Target is visited once normally, then this many bounded returns.");
+			if (ImGui::Button("Connect Source -> Selected"))
+			{
+				std::string EdgeId;
+				std::string Status;
+				if (m_FlowDocument.Connect_CompletedEdge(
+						m_strFlowLinkSourceNodeId, pNode->strNodeId,
+						pFlow->iDefaultPursuitMs,
+						m_iFlowLinkMaximumTraversals,
+						AdmittedIds, EdgeId, Status))
+				{
+					m_strSelectedFlowEdgeId = EdgeId;
+					m_strFlowLinkSourceNodeId.clear();
+					m_strFlowStatus = std::move(Status);
+					ImGui::EndDisabled();
+					return;
+				}
+				m_strFlowStatus = std::move(Status);
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel Link"))
+			{
+				m_strFlowLinkSourceNodeId.clear();
+				m_strFlowStatus = "Cancelled the pending Flow link.";
+			}
+		}
+		ImGui::EndDisabled();
 	}
 
-	CValtanPatternFlowService& FlowService = CValtanPatternFlowService::Get();
+	if (nullptr != pEdge)
+	{
+		ImGui::SeparatorText("Selected Edge");
+		ImGui::TextWrapped("%s", pEdge->strEdgeId.c_str());
+		ImGui::TextDisabled("%s -> %s", pEdge->strFromNodeId.c_str(),
+			pEdge->strToNodeId.c_str());
+		ImGui::BeginDisabled(bEditingLocked);
+		int32_t EdgePursuitMs = static_cast<int32_t>(pEdge->iPursuitMs);
+		ImGui::SetNextItemWidth(230.f);
+		if (ImGui::SliderInt(
+			"Edge pursuit (ms)", &EdgePursuitMs, 100, 10000,
+			"%d ms", ImGuiSliderFlags_AlwaysClamp))
+		{
+			std::string Status;
+			if (m_FlowDocument.Set_EdgePursuitMs(
+					pEdge->strEdgeId,
+					static_cast<std::uint32_t>(EdgePursuitMs),
+					AdmittedIds, Status))
+			{
+				m_strFlowStatus = std::move(Status);
+				ImGui::EndDisabled();
+				return;
+			}
+			m_strFlowStatus = std::move(Status);
+		}
+		if (pEdge->iMaxTraversals.has_value())
+		{
+			int32_t Traversals = static_cast<int32_t>(
+				*pEdge->iMaxTraversals);
+			ImGui::SetNextItemWidth(230.f);
+			if (ImGui::SliderInt(
+				"Finite returns", &Traversals, 1,
+				static_cast<int32_t>(
+					CValtanPatternFlowDocument::MAX_EDGE_TRAVERSALS),
+				"%d", ImGuiSliderFlags_AlwaysClamp))
+			{
+				std::string Status;
+				if (m_FlowDocument.Set_EdgeMaxTraversals(
+						pEdge->strEdgeId,
+						static_cast<std::uint32_t>(Traversals),
+						AdmittedIds, Status))
+				{
+					m_strFlowStatus = std::move(Status);
+					ImGui::EndDisabled();
+					return;
+				}
+				m_strFlowStatus = std::move(Status);
+			}
+		}
+		else
+		{
+			ImGui::TextDisabled(
+				"Forward path edge. Only the one cycle-closing edge owns a finite cap.");
+		}
+		if (ImGui::Button("Delete Edge"))
+		{
+			std::string Status;
+			if (m_FlowDocument.Remove_Edge(
+					pEdge->strEdgeId, AdmittedIds, Status))
+			{
+				m_strSelectedFlowEdgeId.clear();
+				m_strFlowStatus = std::move(Status);
+				ImGui::EndDisabled();
+				return;
+			}
+			m_strFlowStatus = std::move(Status);
+		}
+		ImGui::EndDisabled();
+	}
+
+	ImGui::SeparatorText("Graph Safety");
+	int32_t MaxTransitions = static_cast<int32_t>(
+		pFlow->iMaxTransitionsPerRun);
+	ImGui::BeginDisabled(bEditingLocked);
+	ImGui::SetNextItemWidth(230.f);
+	if (ImGui::SliderInt(
+		"Max transitions / run", &MaxTransitions,
+		static_cast<int32_t>(
+			CValtanPatternFlowDocument::MIN_TRANSITIONS_PER_RUN),
+		static_cast<int32_t>(
+			CValtanPatternFlowDocument::MAX_TRANSITIONS_PER_RUN),
+		"%d", ImGuiSliderFlags_AlwaysClamp))
+	{
+		std::string Status;
+		if (m_FlowDocument.Set_MaxTransitionsPerRun(
+				static_cast<std::uint32_t>(MaxTransitions),
+				AdmittedIds, Status))
+		{
+			m_strFlowStatus = std::move(Status);
+			ImGui::EndDisabled();
+			return;
+		}
+		m_strFlowStatus = std::move(Status);
+	}
+	ImGui::EndDisabled();
+	ImGui::TextDisabled(
+		"A capped back-edge becomes terminal hold when exhausted; validation rejects runs that exceed this watchdog.");
+
 	const VALTAN_PATTERN_FLOW_SNAPSHOT& Playback = FlowService.Get_Snapshot();
 	const VALTAN_PATTERN_AUDITION_SNAPSHOT& Isolated =
 		CValtanPatternAuditionService::Get().Get_Snapshot();
@@ -1957,7 +2481,7 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 		Boss.isValid && Player.isValid && 0u != Player.iCurrentHp &&
 		Player.isCombatReady;
 	const bool_t bCanPreview = m_bGraphMutationAdmitted &&
-		nullptr != pSlot && nullptr != pPattern &&
+		nullptr != pNode && nullptr != pPattern &&
 		bRuntimeReady && !FlowService.Has_PlaybackOwnership() &&
 		!CValtanPatternAuditionService::Get().Has_PlaybackOwnership();
 	ImGui::BeginDisabled(!bCanPreview);
@@ -1968,17 +2492,22 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 		"Uses the same Server single-pattern path as Play Selected.");
 
 	ImGui::SeparatorText("Flow Playback");
-	int32_t PursuitMs = static_cast<int32_t>(pFlow->iInterStepPursuitMs);
-	ImGui::BeginDisabled(FlowService.Has_PlaybackOwnership());
+	int32_t PursuitMs = static_cast<int32_t>(pFlow->iDefaultPursuitMs);
+	ImGui::BeginDisabled(bEditingLocked);
 	ImGui::SetNextItemWidth(190.f);
 	if (ImGui::SliderInt(
 			"Inter-step pursuit (ms)", &PursuitMs,
 			100, 10000, "%d ms", ImGuiSliderFlags_AlwaysClamp))
 	{
 		std::string Status;
-		(void)m_FlowDocument.Set_InterStepPursuitMs(
-			static_cast<uint32_t>(PursuitMs), Status);
-		m_strFlowStatus = Status;
+		if (m_FlowDocument.Set_InterStepPursuitMs(
+				static_cast<uint32_t>(PursuitMs), Status))
+		{
+			m_strFlowStatus = std::move(Status);
+			ImGui::EndDisabled();
+			return;
+		}
+		m_strFlowStatus = std::move(Status);
 	}
 	ImGui::EndDisabled();
 	const bool_t bSavedClean = m_FlowDocument.Is_Ready() &&
@@ -1990,9 +2519,12 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 		DraftValidationStatus);
 	const CValtanTuningCommandService& Tuning =
 		CValtanTuningCommandService::Get();
+	const bool_t bHasServerProjection =
+		CValtanPatternFlowDocument::Has_LegacyLinearProjection(*pFlow);
 	const bool_t bCanStart = m_bGraphMutationAdmitted &&
 		bRuntimeReady && bSavedClean && bDraftAdmitted &&
-		!pFlow->Slots.empty() && !Tuning.Has_PendingCommand() &&
+		bHasServerProjection && !pFlow->Slots.empty() &&
+		!Tuning.Has_PendingCommand() &&
 		!Is_ServerArenaPresetPending() &&
 		Tuning.Is_SavedPatternFlowServerActive(
 			m_FlowDocument.Get_SourceRevision()) &&
@@ -2085,6 +2617,11 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 			ImGui::TextWrapped(
 				"Inventory validation: %s", DraftValidationStatus.c_str());
 	}
+	if (!bHasServerProjection && !Playback.Is_InFlight())
+	{
+		ImGui::TextDisabled(
+			"This v2 graph can be saved, but Server Flow playback stays disabled until the graph runtime admits watchdogs/back-edges/per-edge pursuit.");
+	}
 }
 
 void Client::CBossTool::Render_LiveSummary()
@@ -2152,7 +2689,7 @@ void Client::CBossTool::Render_LiveSummary()
 				"presentation UNAVAILABLE" :
 				(m_bPresentationBaselineIntact ?
 					"core presentation matches workspace" :
-					"workspace changed; restart/publish");
+					"workspace changed; restart/apply");
 		}
 		ImGui::TextWrapped(
 			"Live: %s / %s  |  %s  |  Phase %u  |  HP %u bars  |  %s",
@@ -3258,6 +3795,38 @@ Client::CBossTool::Find_SelectedFlowSlot() const
 			return Candidate.strSlotId == m_strSelectedFlowSlotId;
 		});
 	return Slot == pFlow->Slots.end() ? nullptr : &*Slot;
+}
+
+const Client::VALTAN_PATTERN_FLOW_NODE*
+Client::CBossTool::Find_SelectedFlowNode() const
+{
+	const VALTAN_PATTERN_FLOW_DEFINITION* const pFlow =
+		m_FlowDocument.Get_DefaultFlow();
+	if (nullptr == pFlow || m_strSelectedFlowSlotId.empty())
+		return nullptr;
+	const auto Node = std::find_if(
+		pFlow->Nodes.begin(), pFlow->Nodes.end(),
+		[this](const VALTAN_PATTERN_FLOW_NODE& Candidate)
+		{
+			return Candidate.strNodeId == m_strSelectedFlowSlotId;
+		});
+	return Node == pFlow->Nodes.end() ? nullptr : &*Node;
+}
+
+const Client::VALTAN_PATTERN_FLOW_EDGE*
+Client::CBossTool::Find_SelectedFlowEdge() const
+{
+	const VALTAN_PATTERN_FLOW_DEFINITION* const pFlow =
+		m_FlowDocument.Get_DefaultFlow();
+	if (nullptr == pFlow || m_strSelectedFlowEdgeId.empty())
+		return nullptr;
+	const auto Edge = std::find_if(
+		pFlow->Edges.begin(), pFlow->Edges.end(),
+		[this](const VALTAN_PATTERN_FLOW_EDGE& Candidate)
+		{
+			return Candidate.strEdgeId == m_strSelectedFlowEdgeId;
+		});
+	return Edge == pFlow->Edges.end() ? nullptr : &*Edge;
 }
 
 std::vector<std::string> Client::CBossTool::Build_AdmittedPatternIds() const

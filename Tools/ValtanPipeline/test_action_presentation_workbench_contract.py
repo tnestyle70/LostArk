@@ -48,6 +48,9 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         cls.composition_cpp = read(
             "Client/Private/ActionCompositionWorkbench.cpp"
         )
+        cls.composition_blueprint_cpp = read(
+            "Client/Private/ActionCompositionWorkbench_Blueprint.cpp"
+        )
         cls.animation_binding_h = read(
             "Client/Public/AnimationSkillBindingDocument.h"
         )
@@ -127,7 +130,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             '"Composition Sequencer###CompositionSequencerWindow"',
             '"Composition Details###CompositionDetailsWindow"',
             '"Composition Resources###CompositionResourcesWindow"',
-            '"Composition Session / Validation###CompositionSessionWindow"',
+            '"Composition Save / Validate / Server###CompositionSessionWindow"',
         ):
             self.assertIn(window, self.composition_cpp)
         self.assertIn(
@@ -452,12 +455,15 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         for existing_vertical_slice in (
             '"Replace Stage Slots"',
             '"Append to Stage Slots"',
-            '"Insert WAIT / Gap After"',
+            '"WAIT / GAP##BossPatternAdd"',
             '"Add Server Collider"',
             '"Counter Enabled"',
             '"Counter Success Groggy"',
         ):
-            self.assertIn(existing_vertical_slice, self.composition_cpp)
+            self.assertIn(
+                existing_vertical_slice,
+                self.composition_cpp + self.composition_blueprint_cpp,
+            )
 
         for release_mode in (
             '"Release Mode"',
@@ -610,8 +616,85 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             'asset.pBossArchetypeId } == "BOSS_VALTAN"',
             "CValtanPresentationAssetService::Ensure_Prototypes(",
             "CAnimationTargetService::Bind_Preview(",
+            'TEXT("Layer_AnimationPreview")',
+            "desc.fCollisionRadius = 0.f",
+            "desc.isServerAuthoritative = false",
         ):
             self.assertIn(token, select_asset)
+
+        placement = function_body(
+            self.level_cpp,
+            "bool_t CLevel_ValtanArena::Try_Get_AuthoringPreviewPlacement(",
+        )
+        for token in (
+            "m_Replication.Get_LocalCharacter()",
+            "Try_SampleTargetGround(",
+            "STATE::RIGHT",
+            "Get_ValtanPresentationState()",
+        ):
+            self.assertIn(token, placement)
+        self.assertNotIn("Set_State(", placement)
+        self.assertNotIn("CNetworkManager", placement)
+
+        select_target = function_body(
+            self.character_preview_cpp,
+            "bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(",
+        )
+        self.assertIn("Try_Get_AuthoringPreviewPlacement(", select_target)
+        self.assertIn("Target=ARENA CLONE", select_target)
+        self.assertIn("Server Valtan=UNCHANGED", select_target)
+
+        sequence_preview = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Preview_ValtanCompositionSequence(",
+        )
+        for token in (
+            "Target=ARENA CLONE",
+            "Get_CurrentAnimIndex()",
+            "Server Valtan=UNCHANGED",
+        ):
+            self.assertIn(token, sequence_preview)
+
+        preview_state = function_body(
+            self.animation_cpp,
+            "Client::CAnimation_Tool::Get_ValtanCompositionPreviewState() const",
+        )
+        for token in (
+            "bSourceSequencePlaying",
+            "m_iValtanPatternPreviewItem",
+            "Get_CurrentAnimIndex()",
+            "strSourceSequenceStatus",
+        ):
+            self.assertIn(token, preview_state)
+
+        model_stage = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Stage_ValtanCompositionPreview(",
+        )
+        self.assertNotIn("Reload_ValtanPatternMaster", model_stage)
+        self.assertNotIn("m_eValtanPatternMasterAdmission", model_stage)
+        self.assertIn('Select_TargetAsset("Valtan")', model_stage)
+
+        draft_pattern = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Play_ValtanCompositionDraftPattern(",
+        )
+        self.assertIn("Reload_ValtanPatternMaster()", draft_pattern)
+
+        sequence_browser = function_body(
+            self.composition_cpp,
+            "void Client::CActionCompositionWorkbench::Render_SequenceBrowser(",
+        )
+        preview_button = sequence_browser.index(
+            'ImGui::Button("Preview Sequence on Arena Clone")'
+        )
+        preview_gate = sequence_browser.rfind(
+            "ImGui::BeginDisabled(", 0, preview_button
+        )
+        self.assertNotIn(
+            "m_eAdmission",
+            sequence_browser[preview_gate:preview_button],
+        )
 
     def test_valtan_arena_auto_preview_is_identity_and_generation_driven(self) -> None:
         render = function_body(
@@ -856,7 +939,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         for token in (
             "AUTHORING OWNER: Data/Valtan/Valtan.presentation.json",
             "READ-ONLY GENERATED PRODUCT:",
-            "Direct Product Save is blocked",
+            "Sequence rows are read-only until a typed presentation-source adapter stages them",
             "Stage.ClipOccurrences",
             "strClipOccurrenceId",
             "ProductBinding->Clips.size()",
@@ -1187,7 +1270,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "AUTHORING OWNER: Data/Valtan/Valtan.presentation.json",
             "READ-ONLY GENERATED PRODUCT: Data/Animation/Authored/Valtan/Valtan.patternbindings.json",
             "Reload Read-only Animation Product",
-            "Direct Product Save is blocked",
+            "Sequence rows are read-only until a typed presentation-source adapter stages them",
         ):
             self.assertIn(token, inspector)
         for forbidden in (
@@ -1625,7 +1708,13 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             self.animation_cpp,
             "void Client::CAnimation_Tool::Render_ValtanPatternMaster(",
         )
-        self.assertEqual(1, len(re.findall(r'ImGui::Button\(\s*"Save"', workbench)))
+        self.assertEqual(
+            1,
+            len(re.findall(
+                r'ImGui::Button\(\s*"Save & Apply##ValtanPatternMaster"',
+                workbench,
+            )),
+        )
         for forbidden_label in (
             '"Validate Joined"',
             '"Save Domain"',
@@ -1667,10 +1756,11 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "bool Client::CBalanceTool::Save_ValtanProduct(",
         )
         validation = save.index("Validate_ValtanDraft")
-        authoring = save.index("Save_ValtanAuthoring")
+        canonical = save.index("Save_ValtanCanonicalProduct")
         product = save.index("Publish_ValtanCandidate")
-        self.assertLess(validation, authoring)
-        self.assertLess(authoring, product)
+        self.assertLess(validation, product)
+        self.assertLess(canonical, product)
+        self.assertNotIn("Save_ValtanAuthoring", save)
         self.assertIn("Apply_ValtanRevision", save)
         apply_revision = function_body(
             self.balance_cpp,
@@ -2086,7 +2176,8 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
         )
         complete_play = function_body(
-            toolbar, 'if (ImGui::Button("Complete Play"))'
+            toolbar,
+            'if (ImGui::Button("Play Saved Active Revision on Server Valtan"))',
         )
         restart = function_body(
             toolbar, 'if (ImGui::Button("Restart Pattern"))'
@@ -2243,6 +2334,32 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, render)
         self.assertIn("EnsureDebugTool(file.eTool)", open_file)
+
+    def test_composition_first_open_admits_boss_server_inventory(self) -> None:
+        ensure = function_body(
+            self.main_cpp,
+            "HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)",
+        )
+        composition = ensure[
+            ensure.index("case DEBUG_TOOL::COMPOSITION:") :
+            ensure.index("case DEBUG_TOOL::ANIMATION:")
+        ]
+        self.assertIn("m_pBossTool->Reload_CanonicalGraph", composition)
+        self.assertLess(
+            composition.index("m_pBossTool->Reload_CanonicalGraph"),
+            composition.index("m_pActionCompositionWorkbench->Open_Valtan"),
+        )
+
+    def test_native_master_parser_accepts_canonical_sequence_zero(self) -> None:
+        parser = function_body(
+            self.valtan_tree_cpp,
+            "bool_t Parse_MasterPattern(",
+        )
+        self.assertNotIn("0.0 == pSourceSequence->Get_Number()", parser)
+        self.assertNotIn(
+            '0.0 == Source.Find("sequenceIndex")->Get_Number()', parser
+        )
+        self.assertGreaterEqual(parser.count("4096.0 <"), 2)
 
 
 if __name__ == "__main__":

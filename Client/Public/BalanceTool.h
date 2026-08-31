@@ -78,6 +78,22 @@ public:
 		bool animationEditable = false;
 	};
 
+	/* VALTAN_WARP owns eight identical Server rush legs (STEP_02..STEP_09).
+	   Expose them as one typed authoring value so a UI can never leave a
+	   half-updated portal pattern behind.  Delay/speed/distance/trailing gap
+	   are authored inputs; the Stage clock, travel, and hit count are derived
+	   atomically for all eight legs. */
+	struct VALTAN_WARP_RUSH_EDIT final
+	{
+		std::uint32_t legDurationMs = 0u;
+		std::uint32_t retargetDelayMs = 0u;
+		double speedMps = 0.0;
+		double distanceM = 0.0;
+		double travelMs = 0.0;
+		std::uint32_t trailingGapMs = 0u;
+		std::uint32_t hitCount = 0u;
+	};
+
 	/* One typed Server-gameplay edge: a WINDUP stage owns the paired
 	   counterable flag and COUNTER_HIT branch, while its selected same-pattern
 	   GROGGY stage/action owns the paired groggy flag transition. */
@@ -142,6 +158,19 @@ public:
 		const std::string& patternId,
 		const std::string& stageId,
 		const PATTERN_STAGE_EDIT& stage,
+		std::string& status);
+	/* The normalizer is shared by every portal-rush editor. It validates the
+	   four authored inputs, derives ceil(delay + travel + trailing gap), and
+	   regenerates the exact 50 ms travel-only swept-hit schedule. */
+	static bool Normalize_ValtanPortalRushDraft(
+		PATTERN_STAGE_EDIT& stage,
+		std::uint32_t trailingGapMs,
+		std::string& status);
+	bool Get_ValtanWarpRushDraft(
+		VALTAN_WARP_RUSH_EDIT& rush,
+		std::string& status) const;
+	bool Set_ValtanWarpRushDraft(
+		const VALTAN_WARP_RUSH_EDIT& rush,
 		std::string& status);
 	/* Pattern Effect invocations are presentation-source rows, not generated
 	   Product rows and not Effect document bodies.  These explicit adapters
@@ -216,8 +245,9 @@ public:
 	bool Set_ValtanHighJumpAxeCountDraft(
 		std::uint32_t countPerAlivePlayer,
 		std::string& status);
-	/* One user-facing Save contract: validate the joined draft, durably save
-	   authoring when dirty, build the immutable Product runtime bundle, and
+	/* One user-facing Save contract: validate the joined draft, atomically
+	   commit canonical split JSON/Product data when dirty, build the immutable
+	   runtime bundle, and
 	   request the existing two-phase live apply when it is currently safe.
 	   Internal stages remain explicit for rollback and diagnostics. */
 	bool Save_ValtanProduct(std::string& status);

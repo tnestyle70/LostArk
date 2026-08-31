@@ -86,6 +86,18 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
     if (0u != g_RuntimeMaterialV2Enabled)
     {
         if (g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_PROJECT_TUNED_GLASS_MESH_V1)
+        {
+            const float3 pixelWorldNormal = normalize(input.normal);
+            const float3 pixelViewNormal = normalize(
+                mul(float4(pixelWorldNormal, 0.f), g_ViewMatrix).xyz);
+            return Shade_EffectProjectTunedGlassMeshV1(
+                input.uv, input.worldPosition, pixelWorldNormal,
+                pixelViewNormal.xy,
+                g_CameraPosition.xyz,
+                g_ColorMultiply + g_ColorOffset);
+        }
+        if (g_RuntimeMaterialV2Opcode ==
                 RUNTIME_MATERIAL_V2_PROJECT_TUNED_BASE_COVERAGE_SRGB ||
             g_RuntimeMaterialV2Opcode ==
                 RUNTIME_MATERIAL_V2_PROJECT_TUNED_BASE_COVERAGE_LINEAR)

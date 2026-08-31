@@ -3822,14 +3822,14 @@
               "sourceStartMs": 0,
               "sourceEndMs": null,
               "anchorSlotId": "root",
-              "followPolicy": "follow",
+              "followPolicy": "snapshot",
               "stopPolicy": "natural",
               "repeatPolicy": "once",
               "localTransform": {
                 "position": [
                   0.0,
                   0.0,
-                  3.0
+                  0.0
                 ],
                 "rotationDegrees": [
                   0.0,
@@ -3878,14 +3878,14 @@
               "sourceStartMs": 0,
               "sourceEndMs": null,
               "anchorSlotId": "root",
-              "followPolicy": "follow",
+              "followPolicy": "snapshot",
               "stopPolicy": "natural",
               "repeatPolicy": "once",
               "localTransform": {
                 "position": [
                   0.0,
                   0.0,
-                  3.0
+                  0.0
                 ],
                 "rotationDegrees": [
                   0.0,
@@ -3934,14 +3934,14 @@
               "sourceStartMs": 0,
               "sourceEndMs": null,
               "anchorSlotId": "root",
-              "followPolicy": "follow",
+              "followPolicy": "snapshot",
               "stopPolicy": "natural",
               "repeatPolicy": "once",
               "localTransform": {
                 "position": [
                   0.0,
                   0.0,
-                  3.0
+                  0.0
                 ],
                 "rotationDegrees": [
                   0.0,
@@ -3990,14 +3990,14 @@
               "sourceStartMs": 0,
               "sourceEndMs": null,
               "anchorSlotId": "root",
-              "followPolicy": "follow",
+              "followPolicy": "snapshot",
               "stopPolicy": "natural",
               "repeatPolicy": "once",
               "localTransform": {
                 "position": [
                   0.0,
                   0.0,
-                  3.0
+                  0.0
                 ],
                 "rotationDegrees": [
                   0.0,
@@ -4046,14 +4046,14 @@
               "sourceStartMs": 0,
               "sourceEndMs": null,
               "anchorSlotId": "root",
-              "followPolicy": "follow",
+              "followPolicy": "snapshot",
               "stopPolicy": "natural",
               "repeatPolicy": "once",
               "localTransform": {
                 "position": [
                   0.0,
                   0.0,
-                  3.0
+                  0.0
                 ],
                 "rotationDegrees": [
                   0.0,
@@ -4102,14 +4102,14 @@
               "sourceStartMs": 0,
               "sourceEndMs": null,
               "anchorSlotId": "root",
-              "followPolicy": "follow",
+              "followPolicy": "snapshot",
               "stopPolicy": "natural",
               "repeatPolicy": "once",
               "localTransform": {
                 "position": [
                   0.0,
                   0.0,
-                  3.0
+                  0.0
                 ],
                 "rotationDegrees": [
                   0.0,
@@ -4158,14 +4158,14 @@
               "sourceStartMs": 0,
               "sourceEndMs": null,
               "anchorSlotId": "root",
-              "followPolicy": "follow",
+              "followPolicy": "snapshot",
               "stopPolicy": "natural",
               "repeatPolicy": "once",
               "localTransform": {
                 "position": [
                   0.0,
                   0.0,
-                  3.0
+                  0.0
                 ],
                 "rotationDegrees": [
                   0.0,
@@ -4214,14 +4214,14 @@
               "sourceStartMs": 0,
               "sourceEndMs": null,
               "anchorSlotId": "root",
-              "followPolicy": "follow",
+              "followPolicy": "snapshot",
               "stopPolicy": "natural",
               "repeatPolicy": "once",
               "localTransform": {
                 "position": [
                   0.0,
                   0.0,
-                  3.0
+                  0.0
                 ],
                 "rotationDegrees": [
                   0.0,
@@ -4258,7 +4258,41 @@
               }
             ]
           },
-          "effectCues": [],
+          "effectCues": [
+            {
+              "cueId": "cue.valtan.phase2.warp.step-10.composite",
+              "scalePolicy": {
+                "kind": "OWNER_RELATIVE"
+              },
+              "occurrenceId": "cue.valtan.phase2.warp.step-10.composite.occurrence.01",
+              "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
+              "clipOccurrenceId": "valtan.sequence.warp.step-10.clip-01",
+              "sourceStartMs": 0,
+              "sourceEndMs": null,
+              "anchorSlotId": "root",
+              "followPolicy": "snapshot",
+              "stopPolicy": "natural",
+              "repeatPolicy": "once",
+              "localTransform": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rotationDegrees": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": [
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              },
+              "mappingBasis": "PROJECT_AUTHORED"
+            }
+          ],
           "cameraInvocations": []
         }
       ]
@@ -6052,6 +6086,41 @@
                 "mappingBasis": "PROJECT_AUTHORED",
                 "sourceStartMs": 0,
                 "playMs": 3667,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_GROUND_ROAR",
+      "sourceSequenceIndex": 0,
+      "presentationSources": [
+        {
+          "sourceActionId": 400440,
+          "sequenceIndex": 0,
+          "role": "PRIMARY"
+        }
+      ],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.sequence.sequence.400440.0.step-01",
+          "sequenceRole": "STEP",
+          "animation": {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.sequence.sequence.400440.0.step-01.clip-01",
+                "clip": "mesh_att_battle_11_01",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 1800,
                 "playRate": 1.0,
                 "repeatUntilStageEnd": false
               }

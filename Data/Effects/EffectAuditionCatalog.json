@@ -1,0 +1,14 @@
+{
+  "formatVersion": 1,
+  "effects": [
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050230.mirror-particle-canary.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050230.mirror-particle-canary.unified.effect.json",
+      "runtimeAdmission": "REGISTRY_BOUND_AUDITION_ONLY",
+      "fidelityClass": "PROJECT_TUNED_APPROX",
+      "sourceEffectAssetId": "effect.dimensionmaster.skill.2050230.unified",
+      "sourceDocumentRawSha256": "afab680bd36b4efcc4baf654c4848a1f3571a29cbc338b0ed58fec940de60e09"
+    }
+  ]
+}

@@ -159,7 +159,7 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             self.animation_cpp,
         )
         self.assertIn(
-            "Pattern Sound SOURCE SAVED (separate from Pattern Save/Publish)",
+            "Pattern Sound SOURCE SAVED (separate from Pattern Save & Apply)",
             self.animation_cpp,
         )
         self.assertNotIn(
@@ -194,11 +194,11 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             "Source startMs",
             "Repeat Policy",
             "Save Sound Owner",
-            "Save Pattern + Validate + Publish",
+            "Save & Apply",
             "Add Sound Row",
             "Remove Selected Sound Row",
-            "Pattern Save + Validate + Publish does not silently save Sound",
-            "Sound = TYPED SOURCE EDIT / PLAYBACK INSPECTION",
+            "Save & Apply does not silently save Sound",
+            "Effect timing and Sound timing remain unsaved drafts",
         ):
             self.assertIn(token, self.workbench_cpp)
 
@@ -860,6 +860,29 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             ),
             save_body.index("Save_ValtanCanonicalProduct(SaveStatus)"),
         )
+
+    def test_sound_window_native_durations_are_cached_per_model(self) -> None:
+        self.assertIn(
+            "m_ValtanPatternSoundDurationModel", self.animation_h
+        )
+        self.assertIn(
+            "m_ValtanPatternSoundClipDurations", self.animation_h
+        )
+        start = self.animation_cpp.index(
+            "Resolve_ValtanCompositionPatternSoundWindow("
+        )
+        end = self.animation_cpp.index(
+            "Validate_ValtanCompositionPatternSoundStageDependencies(", start
+        )
+        window = self.animation_cpp[start:end]
+        self.assertIn(
+            "m_ValtanPatternSoundDurationModel.lock() != pModel", window
+        )
+        self.assertEqual(
+            1, window.count("CollectModelClipSourceDurationSeconds(pModel)")
+        )
+        self.assertIn("if (nullptr == pModel)", window)
+        self.assertIn("m_ValtanPatternSoundClipDurations.clear()", window)
 
 
 if __name__ == "__main__":

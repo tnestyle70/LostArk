@@ -75,6 +75,8 @@ class ValtanAnimationPatternCreateWorkbenchContractTests(unittest.TestCase):
             '"aimPolicy"',
             '"SAVED_INTAKE_CHAIN"',
             '"CURRENT_CHAIN"',
+            '"sourceActionId"',
+            '"sourceSequenceIndex"',
             '"NATIVE_CLIP_LENGTHS"',
             '"PROJECT_AUTHORED"',
         ):
@@ -87,6 +89,35 @@ class ValtanAnimationPatternCreateWorkbenchContractTests(unittest.TestCase):
             '"reactions"',
         ):
             self.assertNotIn(forbidden, builder)
+
+    def test_data_only_create_resolves_the_fixed_valtan_intake_source(self) -> None:
+        builder = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Build_ValtanPatternCreateRequest(",
+        )
+        self.assertIn('L"Valtan.presentation.debug.json"', builder)
+        self.assertIn("CProjectDataRoot::Resolve", builder)
+        self.assertNotIn("Get_CustomChainFilePath()", builder)
+        self.assertIn("SourcePath.empty()", builder)
+
+    def test_selected_sequence_identity_survives_create_request(self) -> None:
+        stage = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Stage_ValtanCompositionIntakeSequence(",
+        )
+        builder = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Build_ValtanPatternCreateRequest(",
+        )
+        self.assertIn(
+            "m_iValtanPatternCreateSourceActionId = iSkillId", stage
+        )
+        self.assertIn(
+            "m_iValtanPatternCreateSourceSequenceIndex = iSequenceIndex", stage
+        )
+        self.assertIn("m_iValtanPatternCreateSourceActionId", builder)
+        self.assertIn("m_iValtanPatternCreateSourceSequenceIndex", builder)
+        self.assertNotIn('"sourceSequenceIndex": 1', self.backend)
 
     def test_process_boundary_uses_request_file_without_a_shell(self) -> None:
         start = function_body(
@@ -106,6 +137,23 @@ class ValtanAnimationPatternCreateWorkbenchContractTests(unittest.TestCase):
             self.assertIn(token, start)
         for forbidden in ("system(", "_popen(", "popen(", "ShellExecute"):
             self.assertNotIn(forbidden, start)
+
+    def test_python_resolver_accepts_windows_app_execution_alias(self) -> None:
+        resolver = function_body(
+            self.animation_cpp,
+            "bool_t Resolve_PythonExecutable(",
+        )
+        for token in (
+            "SearchPathW",
+            "lexically_normal",
+            "GetFileAttributesW",
+            "INVALID_FILE_ATTRIBUTES",
+            "FILE_ATTRIBUTE_DIRECTORY",
+            "App Execution Alias",
+        ):
+            self.assertIn(token, resolver)
+        self.assertNotIn("!std::filesystem::is_regular_file", resolver)
+        self.assertNotIn("std::filesystem::weakly_canonical(", resolver)
 
     def test_success_reloads_joined_master_and_typed_boss_inventory(self) -> None:
         poll = function_body(

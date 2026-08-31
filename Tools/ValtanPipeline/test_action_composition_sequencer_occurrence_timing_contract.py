@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import unittest
+import re
 from pathlib import Path
 
 
@@ -93,7 +94,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
         ):
             self.assertNotIn(preserved, patch)
         self.assertNotIn("Save_Publish_Reload(", patch)
-        self.assertIn("Save + Validate + Publish was not invoked", patch)
+        self.assertIn("use Save & Apply when the timing is ready", patch)
 
     def test_sound_timing_patch_changes_only_point_start_in_separate_owner_draft(self) -> None:
         patch = body(
@@ -133,6 +134,8 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
             "Apply_EffectOccurrenceTiming",
             "Resolve_ValtanCompositionPatternSoundWindow",
             "Apply_PatternSoundOccurrenceTiming",
+            "bAnimationMove",
+            "Reorder_AnimationOccurrence",
         ):
             self.assertIn(token, timeline)
         self.assertIn('"cue_end" == pEffectCue->strStopPolicy', timeline)
@@ -143,6 +146,141 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
 
         self.assertIn("bool_t bMutationAdmitted,", self.header)
         self.assertIn("bool_t bPatternMutationAdmitted);", self.header)
+
+    def test_selected_box_toolbar_dispatches_typed_duplicate_and_delete(self) -> None:
+        timeline = body(
+            self.source,
+            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+        )
+        self.assertIn('ImGui::Button("Duplicate Selected Box")', timeline)
+        self.assertIn('ImGui::Button("Delete Selected Box")', timeline)
+        self.assertIn("Duplicate_SelectedTimelineBox(", timeline)
+        self.assertIn("Delete_SelectedTimelineBox(", timeline)
+
+        duplicate = body(
+            self.source,
+            "bool_t Client::CActionCompositionWorkbench::Duplicate_SelectedTimelineBox(",
+        )
+        for token in (
+            "Duplicate_AnimationOccurrence(",
+            "Add_ValtanStageEffectCue(",
+            "Add_ValtanCompositionPatternSound(",
+        ):
+            self.assertIn(token, duplicate)
+
+        delete = body(
+            self.source,
+            "bool_t Client::CActionCompositionWorkbench::Delete_SelectedTimelineBox(",
+        )
+        for token in (
+            "Remove_AnimationOccurrence(",
+            "Remove_ValtanStageEffectCue(",
+            "Remove_ValtanCompositionPatternSound(",
+        ):
+            self.assertIn(token, delete)
+
+    def test_drawn_timeline_uses_the_same_preview_branch_clock(self) -> None:
+        timeline = body(
+            self.source,
+            "void Client::CActionCompositionWorkbench::Build_Timeline(",
+        )
+        self.assertIn("Build_PreviewStagePath(", timeline)
+        self.assertIn("for (const VALTAN_STAGE_VIEW* const pStage : PreviewStages)", timeline)
+        self.assertNotIn("for (const VALTAN_STAGE_VIEW& Stage : Pattern.Stages)", timeline)
+        self.assertIn("m_eTimelineCachePreviewPath", self.header)
+
+        render = body(
+            self.source,
+            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+        )
+        self.assertIn('ImGui::Button("Play Selected Stage (All Slots)")', render)
+        self.assertIn("Build_PreviewStagePath(", render)
+
+    def test_sequencer_exposes_the_common_preview_transport(self) -> None:
+        timeline = body(
+            self.source,
+            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+        )
+        self.assertIn(
+            'Preview.bPlaying && !Preview.bPaused ? "Pause" : "Play"',
+            timeline,
+        )
+        self.assertIn("Play_EffectivePreview(", timeline)
+        self.assertIn('ImGui::Button("Stop")', timeline)
+        self.assertIn("Stop_ValtanCompositionPattern(", timeline)
+        self.assertTrue(
+            'ImGui::Button("Restart")' in timeline
+            or 'ImGui::Button("Restart Preview")' in timeline,
+            "the Sequencer must expose a Restart transport action",
+        )
+
+    def test_ruler_active_drag_scrubs_the_effective_arena_preview(self) -> None:
+        timeline = body(
+            self.source,
+            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+        )
+        ruler_start = timeline.index('"##TimelineRuler"')
+        ruler_end = timeline.index(
+            "const std::vector<TIMELINE_ITEM>& TimelineItems", ruler_start
+        )
+        ruler = timeline[ruler_start:ruler_end]
+        self.assertTrue(
+            "ImGui::IsItemActive()" in ruler
+            or "ImGui::IsMouseDragging(" in ruler
+            or "ImGui::IsMouseDown(" in ruler,
+            "the ruler must keep sampling the cursor while the left-button drag is active",
+        )
+        self.assertIn("m_iPlayheadMs", ruler)
+        self.assertIn("Seek_EffectivePreview(", ruler)
+
+    def test_selected_sequence_actions_are_available_above_the_timeline(self) -> None:
+        timeline = body(
+            self.source,
+            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+        )
+        self.assertIn('ImGui::Button("Replace Stage Slots")', timeline)
+        self.assertIn('ImGui::Button("Append to Stage Slots")', timeline)
+        self.assertGreaterEqual(
+            timeline.count("Apply_SelectedSequenceToStage("),
+            2,
+            "Replace and Append must both reuse the typed Stage-slot mutation path",
+        )
+        self.assertRegex(
+            timeline,
+            re.compile(
+                r"Apply_SelectedSequenceToStage\(\s*\*pPattern,\s*\*\w+,\s*false\s*\)"
+            ),
+        )
+        self.assertRegex(
+            timeline,
+            re.compile(
+                r"Apply_SelectedSequenceToStage\(\s*\*pPattern,\s*\*\w+,\s*true\s*\)"
+            ),
+        )
+
+    def test_successful_play_and_seek_request_composition_preview_ownership(self) -> None:
+        play = body(
+            self.source,
+            "bool_t Client::CActionCompositionWorkbench::Play_EffectivePreview(",
+        )
+        self.assertIn("m_bPreviewOwnerClaimRequested = true", play)
+        play_call = play.index("Play_ValtanCompositionDraftPattern(")
+        play_claim = play.index(
+            "m_bPreviewOwnerClaimRequested = true", play_call
+        )
+        self.assertLess(play_call, play_claim)
+        self.assertLess(play_claim, play.rindex("return true"))
+
+        seek = body(
+            self.source,
+            "bool_t Client::CActionCompositionWorkbench::Seek_EffectivePreview(",
+        )
+        self.assertIn("m_bPreviewOwnerClaimRequested = true", seek)
+        seek_call = seek.index("Seek_ValtanCompositionPattern(")
+        seek_claim = seek.index(
+            "m_bPreviewOwnerClaimRequested = true", seek_call
+        )
+        self.assertLess(seek_call, seek_claim)
 
     def test_natural_and_each_loop_effects_never_expose_right_trim(self) -> None:
         self.assertTrue(

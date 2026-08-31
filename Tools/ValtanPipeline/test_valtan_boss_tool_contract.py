@@ -585,7 +585,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
             "Validate_StillCurrent",
         ):
             self.assertIn(marker, self.network_h + self.network_cpp)
-        self.assertIn("workspace changed; restart/publish", self.boss_cpp)
+        self.assertIn("workspace changed; restart/apply", self.boss_cpp)
         for marker in (
             "CEffectCatalog::Find_Loaded",
             "CEffectDocumentCodec::Serialize",

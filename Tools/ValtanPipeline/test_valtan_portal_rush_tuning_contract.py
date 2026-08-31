@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import copy
 import json
+import math
+import struct
 import sys
 import unittest
 from pathlib import Path
@@ -84,15 +86,15 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
                         min(offsets), stage["motion"]["retargetDelayMs"]
                     )
 
-    def test_existing_portal_cue_owners_are_listed_without_synthetic_edges(self) -> None:
+    def test_each_rush_boundary_is_a_root_snapshot_not_a_predicted_endpoint(self) -> None:
         authored = pipeline.read_json(
             self.root
             / "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
         )
         warp_cues = [row for row in authored["cues"] if row["patternId"] == "VALTAN_WARP"]
-        self.assertEqual(8, len(warp_cues))
+        self.assertEqual(9, len(warp_cues))
         self.assertEqual(
-            {f"STEP_{index:02d}" for index in range(2, 10)},
+            {f"STEP_{index:02d}" for index in range(2, 11)},
             {row["stageId"] for row in warp_cues},
         )
         for index, cue in enumerate(warp_cues, start=2):
@@ -108,39 +110,93 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
                 "effect.valtan.project-tuned.sequence.warp.portal",
                 cue["effectAssetId"],
             )
+            self.assertEqual("root", cue["anchorSlotId"])
+            self.assertEqual("snapshot", cue["followPolicy"])
+            self.assertEqual([0.0, 0.0, 0.0], cue["localTransform"]["position"])
 
-    def test_typed_draft_updates_motion_and_swept_schedule_atomically(self) -> None:
-        source_stage = copy.deepcopy(self.warp_legs(self.joined_master())[0])
-        source_stage["hit"]["schedule"]["offsetsMs"] = list(range(450, 900, 50))
-        candidate = self.apply(
-            [
-                {
-                    "op": "SET_STAGE_PORTAL_RUSH_MOTION",
-                    "patternId": "VALTAN_WARP",
-                    "stageId": "STEP_02",
-                    "retargetDelayMs": 450,
-                    "speedMps": 20.0,
-                    "distanceM": 9.0,
-                },
-                {
-                    "op": "SET_STAGE_HIT",
-                    "patternId": "VALTAN_WARP",
-                    "stageId": "STEP_02",
-                    "hit": source_stage["hit"],
-                },
-            ]
-        )
-        stage = self.warp_legs(candidate)[0]
-        self.assertEqual(
-            {
-                "kind": "PORTAL_TARGET_RUSH",
-                "retargetDelayMs": 450,
-                "speedMps": 20.0,
-                "distanceM": 9.0,
-            },
-            stage["motion"],
-        )
-        self.assertEqual(list(range(450, 900, 50)), stage["hit"]["schedule"]["offsetsMs"])
+    def test_all_eight_rush_legs_project_one_derived_gap_contract(self) -> None:
+        operations: list[dict] = []
+        source_legs = self.warp_legs(self.joined_master())
+        expected_offsets = list(range(600, 1100, 50))
+        for index, source_stage in enumerate(source_legs, start=2):
+            stage_id = f"STEP_{index:02d}"
+            hit = copy.deepcopy(source_stage["hit"])
+            hit["schedule"]["offsetsMs"] = expected_offsets
+            operations.extend(
+                [
+                    {
+                        "op": "SET_STAGE_DURATION",
+                        "patternId": "VALTAN_WARP",
+                        "stageId": stage_id,
+                        "durationMs": 1350,
+                    },
+                    {
+                        "op": "SET_STAGE_PORTAL_RUSH_MOTION",
+                        "patternId": "VALTAN_WARP",
+                        "stageId": stage_id,
+                        "retargetDelayMs": 600,
+                        "speedMps": 16.0,
+                        "distanceM": 8.0,
+                    },
+                    {
+                        "op": "SET_STAGE_HIT",
+                        "patternId": "VALTAN_WARP",
+                        "stageId": stage_id,
+                        "hit": hit,
+                    },
+                ]
+            )
+        candidate = self.apply(operations)
+        product_outputs = pipeline.project_v2_products(self.root, self.docs, candidate)
+        product = json.loads(product_outputs[pipeline.ENCOUNTER_REL])
+
+        for owner in (candidate, product):
+            with self.subTest(owner=owner.get("schema")):
+                for stage in self.warp_legs(owner):
+                    self.assertEqual(1350, stage["durationMs"])
+                    self.assertEqual(
+                        {
+                            "kind": "PORTAL_TARGET_RUSH",
+                            "retargetDelayMs": 600,
+                            "speedMps": 16.0,
+                            "distanceM": 8.0,
+                        },
+                        stage["motion"],
+                    )
+                    offsets = (
+                        stage["hit"]["schedule"]["offsetsMs"]
+                        if "hit" in stage
+                        else stage["hitOffsetsMs"]
+                    )
+                    self.assertEqual(expected_offsets, offsets)
+
+    def test_mixed_warp_leg_clock_is_rejected(self) -> None:
+        gameplay = copy.deepcopy(self.docs[pipeline.GAMEPLAY_AUTHORING_REL])
+        self.warp_legs(gameplay)[0]["durationMs"] = 901
+        with self.assertRaisesRegex(
+            pipeline.PipelineError, "must share one derived"
+        ):
+            pipeline.validate_gameplay_authoring(gameplay)
+
+    def test_float_storage_is_canonical_before_50ms_boundary_sampling(self) -> None:
+        def float32(value: float) -> float:
+            return struct.unpack("<f", struct.pack("<f", value))[0]
+
+        exact_storage = float32(0.15)
+        exact_bits = struct.unpack("<I", struct.pack("<f", exact_storage))[0]
+        lower_storage = struct.unpack(
+            "<f", struct.pack("<I", exact_bits - 1)
+        )[0]
+        for distance_m, expected_duration, expected_offsets in (
+            (lower_storage, 550, [500]),
+            (exact_storage, 551, [500, 550]),
+        ):
+            travel_ms = distance_m / float32(3.0) * 1000.0
+            self.assertEqual(expected_duration, math.ceil(500 + travel_ms))
+            self.assertEqual(
+                expected_offsets,
+                list(range(500, math.ceil(500 + travel_ms), 50)),
+            )
 
     def test_overrun_wrong_owner_and_stale_pre_delay_hits_fail_closed(self) -> None:
         overrun = {
@@ -191,16 +247,78 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
         self.assertIn("$patternStageMotionKindByKey", publisher)
         self.assertIn("-cne 'PORTAL_TARGET_RUSH'", publisher)
 
-        workbench = (self.root / "Client/Private/Animation_Tool.cpp").read_text(
+        animation_tool = (self.root / "Client/Private/Animation_Tool.cpp").read_text(
             encoding="utf-8-sig"
         )
+        composition = (
+            self.root / "Client/Private/ActionCompositionWorkbench.cpp"
+        ).read_text(encoding="utf-8-sig")
         balance = (self.root / "Client/Private/BalanceTool.cpp").read_text(
             encoding="utf-8-sig"
         )
-        self.assertIn("Retarget / wait delay ms", workbench)
-        self.assertIn("Rush speed m/s", workbench)
-        self.assertIn("Rush distance m", workbench)
-        self.assertIn("Binding %s | occurrence %s", workbench)
+        header = (self.root / "Client/Public/BalanceTool.h").read_text(
+            encoding="utf-8-sig"
+        )
+        self.assertIn("Retarget / wait delay ms", animation_tool)
+        self.assertIn("Rush speed m/s", animation_tool)
+        self.assertIn("Rush distance m", animation_tool)
+        self.assertIn("Portal Gap After Rush (ms)", animation_tool)
+        self.assertIn(
+            "!Draft.durationEditable || Draft.portalRushMotionEditable",
+            animation_tool,
+        )
+        self.assertIn("Binding %s | occurrence %s", animation_tool)
+        self.assertIn("Normalize_ValtanPortalRushDraft", animation_tool)
+        self.assertNotIn("const auto NormalizePortalRush", animation_tool)
+        self.assertIn("Warp Rush — All 8 Legs", composition)
+        self.assertIn("Delay Before Rush (ms)##WarpAllLegs", composition)
+        self.assertIn("Rush Speed (m/s)##WarpAllLegs", composition)
+        self.assertIn("Rush Distance (m)##WarpAllLegs", composition)
+        self.assertIn(
+            "Portal Gap After Rush (ms)##WarpAllLegs", composition
+        )
+        self.assertIn("else if (!bWarpLegClockOwned)", composition)
+        self.assertIn(
+            "Distance endpoint currently bypasses navigation clamp",
+            composition,
+        )
+        self.assertIn("Normalize_ValtanPortalRushDraft", composition)
+        self.assertIn("struct VALTAN_WARP_RUSH_EDIT final", header)
+        self.assertIn("Get_ValtanWarpRushDraft", header)
+        self.assertIn("Set_ValtanWarpRushDraft", header)
+        setter_start = balance.index(
+            "bool Client::CBalanceTool::Set_ValtanWarpRushDraft("
+        )
+        setter_end = balance.index(
+            "bool Client::CBalanceTool::Get_ValtanPatternDraft(", setter_start
+        )
+        setter = balance[setter_start:setter_end]
+        self.assertIn("VALTAN_PATTERN_TREE_VIEW staged = m_valtanPatternTree", setter)
+        self.assertEqual(1, setter.count("m_valtanPatternTree = std::move(staged)"))
+        self.assertLess(
+            setter.index("for (const char* const stageId"),
+            setter.index("m_valtanPatternTree = std::move(staged)"),
+        )
+        self.assertIn("stage->HitOffsetsMs = draft.hitOffsetsMs", setter)
+        self.assertIn("stage->iHitCount = draft.hitCount", setter)
+        self.assertIn("stage->iDurationMs = draft.durationMs", setter)
+        self.assertIn("RetargetPortalRushLoopToStageEnd", setter)
+        self.assertIn("rush.trailingGapMs", setter)
+        normalizer_start = balance.index(
+            "bool Client::CBalanceTool::Normalize_ValtanPortalRushDraft("
+        )
+        normalizer_end = balance.index(
+            "bool Client::CBalanceTool::Get_ValtanWarpRushDraft(",
+            normalizer_start,
+        )
+        normalizer = balance[normalizer_start:normalizer_end]
+        self.assertLess(
+            normalizer.index("static_cast<float>(stage.portalDistanceM)"),
+            normalizer.index("const double travelMs"),
+        )
+        self.assertIn("std::ceil(totalMs)", normalizer)
+        self.assertIn("stage.hitOffsetsMs.size() < 64u", normalizer)
+        self.assertIn("totalMs > 120000.0", normalizer)
         self.assertIn("SET_STAGE_PORTAL_RUSH_MOTION", balance)
 
 

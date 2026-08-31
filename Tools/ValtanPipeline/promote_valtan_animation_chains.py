@@ -565,17 +565,31 @@ def _manual_presentation_pattern(
     source_action_ids: list[int],
     stages: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    primary_action_id = promotion.get("sourceActionId", source_action_ids[0])
+    if primary_action_id not in source_action_ids:
+        raise PromotionError(
+            "reviewed primary source action is absent from the promoted Animation chain: "
+            f"{primary_action_id}"
+        )
+    primary_sequence_index = promotion.get("sourceSequenceIndex", 1)
+    ordered_source_action_ids = [primary_action_id] + [
+        source_action_id
+        for source_action_id in source_action_ids
+        if source_action_id != primary_action_id
+    ]
     sources = [
         {
             "sourceActionId": source_action_id,
-            "sequenceIndex": 1,
+            "sequenceIndex": (
+                primary_sequence_index if index == 0 else 1
+            ),
             "role": "PRIMARY" if index == 0 else "REFERENCE",
         }
-        for index, source_action_id in enumerate(source_action_ids)
+        for index, source_action_id in enumerate(ordered_source_action_ids)
     ]
     return {
         "patternId": promotion["patternId"],
-        "sourceSequenceIndex": 1,
+        "sourceSequenceIndex": primary_sequence_index,
         "presentationSources": sources,
         "stages": [
             {
@@ -827,7 +841,12 @@ def build_candidates(
                 "authoringPhase",
                 "admissionState",
             ),
-            ("targetPolicy", "aimPolicy", "sourceActionId"),
+            (
+                "targetPolicy",
+                "aimPolicy",
+                "sourceActionId",
+                "sourceSequenceIndex",
+            ),
             f"promotion[{ordinal}]",
         )
         chain_id = _stable(promotion["sourceChainId"], f"promotion[{ordinal}].sourceChainId")
@@ -865,6 +884,20 @@ def build_candidates(
                 f"promotion[{ordinal}].sourceActionId",
                 1,
             )
+        if "sourceSequenceIndex" in promotion:
+            if "sourceActionId" not in promotion:
+                raise PromotionError(
+                    f"promotion sourceSequenceIndex requires sourceActionId: {chain_id}"
+                )
+            source_sequence_index = _integer(
+                promotion["sourceSequenceIndex"],
+                f"promotion[{ordinal}].sourceSequenceIndex",
+                0,
+            )
+            if source_sequence_index > 4096:
+                raise PromotionError(
+                    f"promotion[{ordinal}].sourceSequenceIndex must be <= 4096"
+                )
 
     intake_chain_ids: list[str] = []
     for ordinal, row in enumerate(intake_only):
@@ -1113,24 +1146,19 @@ def build_candidates(
             curve = curves.get(resolved_clip)
             if curve is None:
                 raise PromotionError(f"clip is absent from the reviewed WModel: {source_clip}")
-            source_action_id = clip_skills.get(resolved_clip)
+            notified_source_action_id = clip_skills.get(resolved_clip)
             reviewed_source_action_id = promotion.get("sourceActionId")
-            if source_action_id is None:
-                if reviewed_source_action_id is None:
-                    raise PromotionError(
-                        f"clip has no Valtan.animnotify source action: {resolved_clip}"
-                    )
+            # One model clip can be reused by several recovered .clipseq actions.
+            # For a CURRENT_CHAIN created from the Composition browser, the exact
+            # reviewed action/sequence tuple is the primary presentation owner;
+            # Valtan.animnotify remains only the legacy saved-chain fallback.
+            if reviewed_source_action_id is not None:
                 source_action_id = reviewed_source_action_id
-            elif (
-                reviewed_source_action_id is not None
-                and reviewed_source_action_id != source_action_id
-            ):
+            elif notified_source_action_id is not None:
+                source_action_id = notified_source_action_id
+            else:
                 raise PromotionError(
-                    f"reviewed source action contradicts Valtan.animnotify: {resolved_clip}"
-                )
-            if source_action_id not in set(clip_skills.values()):
-                raise PromotionError(
-                    f"reviewed source action is absent from Valtan.animnotify: {source_action_id}"
+                    f"clip has no Valtan.animnotify source action: {resolved_clip}"
                 )
             if source_action_id not in source_action_ids:
                 source_action_ids.append(source_action_id)
@@ -1343,6 +1371,9 @@ def validate_and_project(
     repo_root: Path,
     gameplay: dict[str, Any],
     presentation: dict[str, Any],
+    *,
+    debug_document: dict[str, Any] | None = None,
+    promotion_manifest: dict[str, Any] | None = None,
 ) -> dict[str, str]:
     pipeline = _load_v2_pipeline(repo_root)
 
@@ -1359,6 +1390,21 @@ def validate_and_project(
             docs[pipeline.WORLD_SET_REL],
             docs[pipeline.COMBAT_AUTHORING_REL],
             docs.get(pipeline.SAVED_FLOW_REL),
+        )
+        pipeline.validate_manual_audition_animation_lineage(
+            joined,
+            debug_document
+            if debug_document is not None
+            else pipeline.read_json(
+                pipeline.repo_path(repo_root, pipeline.DEBUG_PRESENTATION_REL)
+            ),
+            promotion_manifest
+            if promotion_manifest is not None
+            else pipeline.read_json(
+                pipeline.repo_path(
+                    repo_root, pipeline.ANIMATION_PROMOTION_MANIFEST_REL
+                )
+            ),
         )
         pipeline.validate_legacy_manifest(
             docs[pipeline.LEGACY_REL],
@@ -1717,11 +1763,33 @@ def _validate_create_request(request: dict[str, Any]) -> dict[str, Any]:
         )
         _stable(selection["sourceChainId"], "saved intake sourceChainId")
     elif selection_kind == "CURRENT_CHAIN":
-        _exact(
+        _required_with_optional(
             selection,
             ("selectionKind", "chain"),
+            ("sourceActionId", "sourceSequenceIndex"),
             "Create New Pattern current intakeChain",
         )
+        has_source_action = "sourceActionId" in selection
+        has_source_sequence = "sourceSequenceIndex" in selection
+        if has_source_action != has_source_sequence:
+            raise PromotionError(
+                "Create New Pattern exact source action and sequence must be authored together"
+            )
+        if has_source_action:
+            _integer(
+                selection["sourceActionId"],
+                "Create New Pattern sourceActionId",
+                1,
+            )
+            source_sequence_index = _integer(
+                selection["sourceSequenceIndex"],
+                "Create New Pattern sourceSequenceIndex",
+                0,
+            )
+            if source_sequence_index > 4096:
+                raise PromotionError(
+                    "Create New Pattern sourceSequenceIndex must be <= 4096"
+                )
         chain = selection["chain"]
         if not isinstance(chain, dict):
             raise PromotionError("Create New Pattern current chain must be an object")
@@ -1835,6 +1903,9 @@ def _stage_create_pattern_documents(
         "targetPolicy": request["targetPolicy"],
         "aimPolicy": request["aimPolicy"],
     }
+    if selection_kind == "CURRENT_CHAIN" and "sourceActionId" in selection:
+        promotion["sourceActionId"] = selection["sourceActionId"]
+        promotion["sourceSequenceIndex"] = selection["sourceSequenceIndex"]
     manifest_patterns.insert(insert_index, promotion)
     debug_payload = _json_text(debug).encode("utf-8")
     manifest["sourceDocument"]["sha256"] = _sha256_bytes(debug_payload)
@@ -1903,7 +1974,13 @@ def prepare_create_pattern_transaction(
                 f"Product projection collides with an authoring target: {relative}"
             )
         expected_baselines[path] = _read_bytes_or_none(path)
-    outputs = validate_and_project(repo_root, staged_gameplay, staged_presentation)
+    outputs = validate_and_project(
+        repo_root,
+        staged_gameplay,
+        staged_presentation,
+        debug_document=staged_debug,
+        promotion_manifest=staged_manifest,
+    )
     if set(outputs) != set(product_relatives):
         raise PromotionError(
             "Product projection target closure changed during Create New Pattern"

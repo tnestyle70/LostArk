@@ -338,7 +338,7 @@ def validate_editor_admission_isolation_contract(
 
     catalog_rows = index_cpp[
         index_cpp.index(
-            "for (const DATA_JSON_VALUE& CatalogEntry : pEffects->Get_Array())",
+            "for (const CATALOG_ROW_REF& RowRef : CatalogRows)",
             index_cpp.index("RecordOwnerJoinUnavailable"),
         ) : index_cpp.index("std::sort(Staged.Entries.begin()")
     ]
@@ -347,7 +347,7 @@ def validate_editor_admission_isolation_contract(
             "one malformed direct-authored catalog row must not reject every editor-ready document"
         )
     for token in (
-        'RecordUnavailable("EffectCatalog.json contains a non-object row.")',
+        '"EffectCatalog.json contains a non-object row."',
         "EffectCatalog.json contains a malformed direct-authored row.",
         "DuplicateAssetIds.emplace(strAssetId)",
         "std::erase_if(Staged.Entries",
@@ -1712,7 +1712,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         )
         stages = {stage["stageId"]: stage for stage in high_jump["stages"]}
         self.assertEqual(1933, stages["TAKEOFF"]["durationMs"])
-        self.assertEqual(6500, stages["AIRBORNE"]["durationMs"])
+        self.assertEqual(8000, stages["AIRBORNE"]["durationMs"])
         self.assertEqual(3200, stages["LAND"]["durationMs"])
         self.assertEqual(400, stages["RECOVERY"]["durationMs"])
         self.assertEqual("LAND", high_jump["serverMotion"]["travelStageId"])

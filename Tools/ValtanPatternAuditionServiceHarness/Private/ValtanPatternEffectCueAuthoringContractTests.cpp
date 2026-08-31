@@ -7,11 +7,13 @@
 #include <array>
 #include <bit>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <set>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <sstream>
 #include <tuple>
 #include <vector>
 
@@ -161,6 +163,103 @@ namespace
 		Require(!Error, "Effect authored source scan failed");
 		Require(!Result.empty(), "Effect authored source scan was empty");
 		return Result;
+	}
+
+	void VerifyRegistryBoundAuditionSourceIndexContract(
+		const std::filesystem::path& CatalogPath,
+		const std::filesystem::path& AuditionCatalogPath,
+		const std::filesystem::path& AuthoredRoot,
+		const std::vector<EFFECT_DIRECT_AUTHORED_SCANNED_FILE>& ScannedFiles,
+		const EFFECT_DIRECT_AUTHORED_SOURCE_INDEX& FreshIndex)
+	{
+		constexpr std::string_view CANDIDATE_ID =
+			"effect.dimensionmaster.skill.2050230.mirror-particle-canary.unified";
+		constexpr std::string_view SOURCE_ID =
+			"effect.dimensionmaster.skill.2050230.unified";
+		constexpr std::string_view SOURCE_SHA256 =
+			"afab680bd36b4efcc4baf654c4848a1f3571a29cbc338b0ed58fec940de60e09";
+		const auto FindCandidate = [&](const EFFECT_DIRECT_AUTHORED_SOURCE_INDEX& Index)
+		{
+			return std::find_if(Index.Entries.begin(), Index.Entries.end(),
+				[](const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Entry)
+				{
+					return Entry.strEffectAssetId == CANDIDATE_ID;
+				});
+		};
+		const auto FreshCandidate = FindCandidate(FreshIndex);
+		Require(FreshCandidate != FreshIndex.Entries.end() &&
+			FreshCandidate->bRegistryBoundAuditionOnly &&
+			FreshCandidate->bAuditionSourceFreshnessValid &&
+			FreshCandidate->strSourceEffectAssetId == SOURCE_ID &&
+			FreshCandidate->strSourceDocumentRawSha256 == SOURCE_SHA256 &&
+			!FreshCandidate->SourceDocumentPath.empty(),
+			"registry-bound audition source-index metadata was not admitted fresh");
+		std::string LiveStatus;
+		Require(CEffectDirectAuthoredSourceIndex::
+				Validate_RegistryBoundAuditionCatalogProvenanceFresh(
+					CatalogPath, AuditionCatalogPath, AuthoredRoot,
+					*FreshCandidate, LiveStatus),
+			"fresh registry-bound audition live provenance was rejected");
+
+		std::ifstream Input(AuditionCatalogPath, std::ios::binary);
+		std::ostringstream Buffer;
+		Buffer << Input.rdbuf();
+		Require(Input.good() || Input.eof(),
+			"could not read EffectAuditionCatalog for stale-pin fixture");
+		std::string StaleCatalog = Buffer.str();
+		const size_t iPin = StaleCatalog.find(SOURCE_SHA256);
+		Require(iPin != std::string::npos &&
+			StaleCatalog.find(SOURCE_SHA256, iPin + SOURCE_SHA256.size()) ==
+				std::string::npos,
+			"audition source pin fixture was absent or ambiguous");
+		StaleCatalog.replace(iPin, SOURCE_SHA256.size(), 64u, '0');
+
+		std::error_code TempError;
+		const std::filesystem::path TempRoot =
+			std::filesystem::temp_directory_path(TempError);
+		Require(!TempError && !TempRoot.empty(),
+			"temporary directory is unavailable for stale-pin fixture");
+		const std::filesystem::path StaleCatalogPath = TempRoot /
+			("lostark-effect-catalog-stale-pin-" +
+			 std::to_string(static_cast<uint32_t>(GetCurrentProcessId())) +
+			 ".json");
+		struct SCOPED_TEMP_FILE final
+		{
+			std::filesystem::path Path;
+			~SCOPED_TEMP_FILE()
+			{
+				std::error_code RemoveError;
+				std::filesystem::remove(Path, RemoveError);
+			}
+		} Cleanup{ StaleCatalogPath };
+		{
+			std::ofstream Output(StaleCatalogPath,
+				std::ios::binary | std::ios::trunc);
+			Output.write(StaleCatalog.data(),
+				static_cast<std::streamsize>(StaleCatalog.size()));
+			Require(Output.good(),
+				"could not write stale-pin EffectAuditionCatalog fixture");
+		}
+		LiveStatus.clear();
+		Require(!CEffectDirectAuthoredSourceIndex::
+				Validate_RegistryBoundAuditionCatalogProvenanceFresh(
+					CatalogPath, StaleCatalogPath, AuthoredRoot,
+					*FreshCandidate, LiveStatus) && !LiveStatus.empty(),
+			"live audition provenance did not reject a catalog pin changed after open");
+
+		EFFECT_DIRECT_AUTHORED_SOURCE_INDEX StaleIndex;
+		std::string Status;
+		Require(CEffectDirectAuthoredSourceIndex::Build(
+				CatalogPath, StaleCatalogPath, AuthoredRoot,
+				ScannedFiles, {}, {}, {},
+				StaleIndex, Status),
+			"stale audition pin incorrectly failed the whole Tool source index");
+		const auto StaleCandidate = FindCandidate(StaleIndex);
+		Require(StaleCandidate != StaleIndex.Entries.end() &&
+			StaleCandidate->bRegistryBoundAuditionOnly &&
+			!StaleCandidate->bAuditionSourceFreshnessValid &&
+			StaleIndex.iUnavailableCount >= 1u,
+			"stale audition pin was not preserved as a freshness-locked Tool row");
 	}
 
 	const VALTAN_STAGE_VIEW* FindStage(
@@ -326,16 +425,24 @@ namespace
 
 		const std::filesystem::path CatalogPath = CProjectDataRoot::Resolve(
 			std::filesystem::path(L"Effects") / L"EffectCatalog.json");
+		const std::filesystem::path AuditionCatalogPath =
+			CProjectDataRoot::Resolve(
+				std::filesystem::path(L"Effects") /
+				L"EffectAuditionCatalog.json");
 		const std::filesystem::path AuthoredRoot = CProjectDataRoot::Resolve(
 			std::filesystem::path(L"Effects") / L"Authored");
 		EFFECT_DIRECT_AUTHORED_SOURCE_INDEX SourceIndex;
 		const auto ScannedFiles = ScanAuthoredEffects(AuthoredRoot);
 		if (!CEffectDirectAuthoredSourceIndex::Build(
-				CatalogPath, AuthoredRoot, ScannedFiles, {}, {}, {},
+				CatalogPath, AuditionCatalogPath, AuthoredRoot,
+				ScannedFiles, {}, {}, {},
 				SourceIndex, Status))
 		{
 			throw std::runtime_error(Status);
 		}
+		VerifyRegistryBoundAuditionSourceIndexContract(
+			CatalogPath, AuditionCatalogPath, AuthoredRoot,
+			ScannedFiles, SourceIndex);
 		std::set<std::string, std::less<>> SourceEffectIds;
 		for (const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Entry :
 			SourceIndex.Entries)
@@ -522,7 +629,7 @@ namespace
 		Require(bDirty && OriginalGraph == CaptureCueGraph(Tree),
 			"Effect cue Add/Update/Remove did not restore the original graph");
 
-		std::cout << "ValtanPatternEffectCueAuthoringContractTests: 9/9 passed"
+		std::cout << "ValtanPatternEffectCueAuthoringContractTests: 11/11 passed"
 			<< (Selection.bMovesClip ? " (cross-clip update)\n" :
 				" (single-clip retime update)\n");
 	}

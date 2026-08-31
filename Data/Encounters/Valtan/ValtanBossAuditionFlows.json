@@ -1,41 +1,358 @@
 {
   "schema": "lostark.valtan-boss-audition-flows",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "flows": [
     {
       "flowId": "flow.valtan.boss-tool.default",
-      "nextSlotOrdinal": 41,
-      "interStepPursuitMs": 1000,
-      "slots": [
-        { "slotId": "flow.valtan.boss-tool.default.slot.000001", "patternId": "VALTAN_WHIRLWIND" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000002", "patternId": "VALTAN_FOUR_SLASH" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000038", "patternId": "VALTAN_WHIRLWIND" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000040", "patternId": "VALTAN_FIST_IN_OUT" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000003", "patternId": "VALTAN_HIGH_JUMP" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000039", "patternId": "VALTAN_WHIRLWIND" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000004", "patternId": "VALTAN_DASH_CHARGE" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000005", "patternId": "VALTAN_FLOOR_WIPE_130" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000031", "patternId": "VALTAN_FIST_IN_OUT" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000032", "patternId": "VALTAN_WHIRLWIND" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000006", "patternId": "VALTAN_ARENA_BREAK_109" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000030", "patternId": "VALTAN_WHIRLWIND" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000033", "patternId": "VALTAN_FOUR_SLASH" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000009", "patternId": "VALTAN_SIX_PIZZA_106" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000011", "patternId": "VALTAN_CHARGE" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000012", "patternId": "VALTAN_SEQUENCE_FOUR" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000036", "patternId": "VALTAN_HIGH_JUMP" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000026", "patternId": "VALTAN_COUNTER" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000007", "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000015", "patternId": "VALTAN_THREE" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000037", "patternId": "VALTAN_SEQUENCE_FOUR" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000008", "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000018", "patternId": "VALTAN_WARP" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000021", "patternId": "VALTAN_TRASH" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000025", "patternId": "VALTAN_CATCH_BREATH" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000027", "patternId": "VALTAN_CHARGE_2" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000028", "patternId": "VALTAN_STRUGGLING" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000034", "patternId": "VALTAN_GHOST_RESPAWN_AUDITION" },
-        { "slotId": "flow.valtan.boss-tool.default.slot.000035", "patternId": "VALTAN_GHOST_FINALE" }
+      "entryNodeId": "flow.valtan.boss-tool.default.slot.000001",
+      "nextNodeOrdinal": 41,
+      "nextEdgeOrdinal": 29,
+      "defaultPursuitMs": 1000,
+      "maxTransitionsPerRun": 255,
+      "nodes": [
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000001",
+          "patternId": "VALTAN_WHIRLWIND",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000002",
+          "patternId": "VALTAN_FOUR_SLASH",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000038",
+          "patternId": "VALTAN_WHIRLWIND",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000040",
+          "patternId": "VALTAN_FIST_IN_OUT",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000003",
+          "patternId": "VALTAN_HIGH_JUMP",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000039",
+          "patternId": "VALTAN_WHIRLWIND",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000004",
+          "patternId": "VALTAN_DASH_CHARGE",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000005",
+          "patternId": "VALTAN_FLOOR_WIPE_130",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000031",
+          "patternId": "VALTAN_FIST_IN_OUT",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000032",
+          "patternId": "VALTAN_WHIRLWIND",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000006",
+          "patternId": "VALTAN_ARENA_BREAK_109",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000030",
+          "patternId": "VALTAN_WHIRLWIND",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000033",
+          "patternId": "VALTAN_FOUR_SLASH",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000009",
+          "patternId": "VALTAN_SIX_PIZZA_106",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000011",
+          "patternId": "VALTAN_CHARGE",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000012",
+          "patternId": "VALTAN_SEQUENCE_FOUR",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000036",
+          "patternId": "VALTAN_HIGH_JUMP",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000026",
+          "patternId": "VALTAN_COUNTER",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000007",
+          "patternId": "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000015",
+          "patternId": "VALTAN_THREE",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000037",
+          "patternId": "VALTAN_SEQUENCE_FOUR",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000008",
+          "patternId": "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000018",
+          "patternId": "VALTAN_WARP",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000021",
+          "patternId": "VALTAN_TRASH",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000025",
+          "patternId": "VALTAN_CATCH_BREATH",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000027",
+          "patternId": "VALTAN_CHARGE_2",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000028",
+          "patternId": "VALTAN_STRUGGLING",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000034",
+          "patternId": "VALTAN_GHOST_RESPAWN_AUDITION",
+          "watchdogMs": 0
+        },
+        {
+          "nodeId": "flow.valtan.boss-tool.default.slot.000035",
+          "patternId": "VALTAN_GHOST_FINALE",
+          "watchdogMs": 0
+        }
+      ],
+      "edges": [
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000001",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000001",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000002",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000002",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000002",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000038",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000003",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000038",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000040",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000004",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000040",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000003",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000005",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000003",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000039",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000006",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000039",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000004",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000007",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000004",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000005",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000008",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000005",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000031",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000009",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000031",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000032",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000010",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000032",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000006",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000011",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000006",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000030",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000012",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000030",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000033",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000013",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000033",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000009",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000014",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000009",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000011",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000015",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000011",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000012",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000016",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000012",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000036",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000017",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000036",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000026",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000018",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000026",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000007",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000019",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000007",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000015",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000020",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000015",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000037",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000021",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000037",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000008",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000022",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000008",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000018",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000023",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000018",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000021",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000024",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000021",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000025",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000025",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000025",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000027",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000026",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000027",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000028",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000027",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000028",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000034",
+          "pursuitMs": 1000
+        },
+        {
+          "edgeId": "flow.valtan.boss-tool.default.edge.000028",
+          "fromNodeId": "flow.valtan.boss-tool.default.slot.000034",
+          "outcome": "COMPLETED",
+          "toNodeId": "flow.valtan.boss-tool.default.slot.000035",
+          "pursuitMs": 1000
+        }
       ]
     }
   ]
