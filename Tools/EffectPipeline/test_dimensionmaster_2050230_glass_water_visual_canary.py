@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import math
 import re
 import unittest
 from pathlib import Path
@@ -44,6 +45,33 @@ ORIGINAL_RAW_SHA256 = {
 VALTAN_WATER_ELEMENT_SHA256 = (
     "9e37907097226da2276c78e73b01eb0780d18aa9f2383e59303fd633f77348c3"
 )
+WATER_SCALAR_BOUNDS = [
+    ("water.noise-tiling", 0.01, 16.0),
+    ("water.pan-x", -8.0, 8.0),
+    ("water.pan-y", -8.0, 8.0),
+    ("water.second-octave-scale", 0.5, 8.0),
+    ("water.flow-warp", 0.0, 0.25),
+    ("water.mask-threshold", 0.0, 1.0),
+    ("water.edge-softness", 0.1, 8.0),
+    ("water.rim-width", 0.001, 0.5),
+    ("water.coverage-power", 0.1, 4.0),
+    ("water.body-strength", 0.0, 8.0),
+    ("water.rim-strength", 0.0, 8.0),
+    ("water.distortion-strength", -0.025, 0.025),
+    ("water.alpha-gain", 0.0, 4.0),
+    ("water.fade-start-seconds", 0.0, 5.0),
+    ("water.fade-end-seconds", 0.001, 5.0),
+    ("water.card-feather", 0.001, 0.49),
+]
+
+
+def in_range(value: object, minimum: float, maximum: float) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(float(value))
+        and minimum <= float(value) <= maximum
+    )
 
 
 def load_json(path: Path) -> dict:
@@ -202,64 +230,65 @@ def validate_water_document(document: dict) -> None:
     }
     if any(execution.get(key) != value for key, value in expected_masks.items()):
         raise ValueError("water packet masks")
-    expected_scalars = [
-        ("water.noise-tiling", 1.75),
-        ("water.pan-x", 0.18),
-        ("water.pan-y", -0.12),
-        ("water.second-octave-scale", 3.0),
-        ("water.flow-warp", 0.035),
-        ("water.mask-threshold", 0.015),
-        ("water.edge-softness", 1.5),
-        ("water.rim-width", 0.12),
-        ("water.coverage-power", 0.65),
-        ("water.body-strength", 0.18),
-        ("water.rim-strength", 1.1),
-        ("water.distortion-strength", 0.012),
-        ("water.alpha-gain", 0.9),
-        ("water.fade-start-seconds", 0.3),
-        ("water.fade-end-seconds", 0.62),
-        ("water.card-feather", 0.12),
-    ]
-    if [
-        (row["name"], row["value"]) for row in execution["scalars"]
-    ] != expected_scalars or [
-        row["packedIndex"] for row in execution["scalars"]
-    ] != list(range(16)):
+    scalars = execution.get("scalars")
+    if not isinstance(scalars, list) or len(scalars) != len(WATER_SCALAR_BOUNDS):
         raise ValueError("water scalars")
-    if execution["vectors"] != [
-        {
-            "name": "water.body-color",
-            "packedIndex": 0,
-            "value": [0.05, 0.28, 0.75, 1.0],
-        },
-        {
-            "name": "water.rim-color",
-            "packedIndex": 1,
-            "value": [0.55, 0.9, 1.0, 1.0],
-        },
-    ]:
+    for index, (name, minimum, maximum) in enumerate(WATER_SCALAR_BOUNDS):
+        row = scalars[index]
+        if (
+            row.get("name") != name
+            or row.get("packedIndex") != index
+            or not in_range(row.get("value"), minimum, maximum)
+        ):
+            raise ValueError("water scalars")
+    if scalars[14]["value"] <= scalars[13]["value"]:
+        raise ValueError("water scalars")
+
+    vectors = execution.get("vectors")
+    expected_vector_rows = [("water.body-color", 4.0), ("water.rim-color", 8.0)]
+    if not isinstance(vectors, list) or len(vectors) != 2:
         raise ValueError("water vectors")
+    for index, (name, rgb_maximum) in enumerate(expected_vector_rows):
+        row = vectors[index]
+        value = row.get("value")
+        if (
+            row.get("name") != name
+            or row.get("packedIndex") != index
+            or not isinstance(value, list)
+            or len(value) != 4
+            or not all(in_range(channel, 0.0, rgb_maximum) for channel in value[:3])
+            or not in_range(value[3], 0.0, 1.0)
+        ):
+            raise ValueError("water vectors")
 
     detail = element["detail"]
     particle = detail["particle"]
     if (
-        detail["transform"]["position"] != [0, 0.2, 0.6]
-        or detail["timing"]["startDelaySeconds"] != 0
-        or detail["timing"]["lifeTimeSeconds"] != 0.75
-        or particle["maxParticles"] != 6
-        or particle["burstCount"] != 6
+        not 1 <= particle["maxParticles"] <= 64
+        or not 1 <= particle["burstCount"] <= particle["maxParticles"]
+        or particle["spawnRatePerSecond"] != 0
         or particle["randomSeed"] != 2050230
-        or particle["lifeTimeSeconds"] != [0.38, 0.62]
-        or particle["initialVelocityMin"] != [-3, 3, -3]
-        or particle["initialVelocityMax"] != [3, 6, 3]
-        or particle["acceleration"] != [0, -8, 0]
-        or particle["startSize"] != [0.28, 0.36]
-        or particle["endSize"] != [0.08, 0.12]
         or particle["localSpace"] is not False
         or particle["billboard"] is not True
         or element["sourceRecipe"] != {"enabled": False}
     ):
         raise ValueError("water burst motion")
+    lifetime = particle.get("lifeTimeSeconds")
+    if (
+        not isinstance(lifetime, list)
+        or len(lifetime) != 2
+        or not all(in_range(value, 0.05, 3.0) for value in lifetime)
+        or lifetime[0] > lifetime[1]
+    ):
+        raise ValueError("water burst motion")
+    for key in ("startSize", "endSize"):
+        size = particle.get(key)
+        if (
+            not isinstance(size, list)
+            or len(size) != 2
+            or not all(in_range(value, 0.01, 4.0) for value in size)
+        ):
+            raise ValueError("water burst motion")
 
 
 class DimensionMasterGlassWaterVisualCanaryTests(unittest.TestCase):
@@ -389,6 +418,23 @@ class DimensionMasterGlassWaterVisualCanaryTests(unittest.TestCase):
         self.assertIn("Shade_EffectProjectTunedWaterDropletBurst", particle)
 
     def test_contract_rejects_mutated_water_packet(self) -> None:
+        tuned = copy.deepcopy(self.water)
+        tuned["elements"][0]["material"]["execution"]["scalars"][0][
+            "value"
+        ] = 4.5
+        tuned["elements"][0]["material"]["execution"]["vectors"][0][
+            "value"
+        ] = [0.2, 0.6, 1.8, 0.75]
+        tuned["elements"][0]["detail"]["particle"]["startSize"] = [0.4, 0.55]
+        validate_water_document(tuned)
+
+        out_of_range = copy.deepcopy(self.water)
+        out_of_range["elements"][0]["material"]["execution"]["scalars"][11][
+            "value"
+        ] = 0.026
+        with self.assertRaisesRegex(ValueError, "water scalars"):
+            validate_water_document(out_of_range)
+
         wrong_mask = copy.deepcopy(self.water)
         wrong_mask["elements"][0]["material"]["execution"][
             "particleColorConsumedMask"

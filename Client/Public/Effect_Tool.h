@@ -393,11 +393,25 @@ private:
 	struct DIRECT_AUTHORED_EDITABLE_ENTRY final
 	{
 		std::filesystem::path Path;
+		bool_t bRegistryBoundAuditionOnly = false;
+		bool_t bAuditionSourceFreshnessValid = true;
+		std::string strSourceEffectAssetId;
+		std::filesystem::path SourceDocumentPath;
+		std::string strSourceDocumentRawSha256;
 		std::filesystem::file_time_type LastWriteTime{};
 		uint64_t iFileSize = 0u;
 		bool_t bIdentityObserved = false;
 		bool_t bIdentityValid = false;
 		std::string strStatus;
+	};
+
+	struct REGISTRY_BOUND_AUDITION_PROVENANCE final
+	{
+		std::string strEffectAssetId;
+		std::filesystem::path DocumentPath;
+		std::string strSourceEffectAssetId;
+		std::filesystem::path SourceDocumentPath;
+		std::string strSourceDocumentRawSha256;
 	};
 
     struct PENDING_DOCUMENT_LOAD final
@@ -695,7 +709,8 @@ private:
         EFFECT_DETAIL_DESC& Detail,
         bool_t& bChanged,
         bool_t bHasEmissiveRadianceInput,
-        bool_t bParticleMasterNamedEmission);
+        bool_t bParticleMasterNamedEmission,
+		bool_t bLockProjectTunedCarrierColor);
 	void Render_LinearRevealDetail(
 		EFFECT_ELEMENT_DESC& Element,
 		bool_t& bChanged);
@@ -703,6 +718,9 @@ private:
     void Render_UVKeyframes(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
 	void Render_TimingDetail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
 	void Render_SizeDetail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
+	bool_t Render_ProjectTunedSurfaceParameters(
+		EFFECT_ELEMENT_DESC& Element,
+		bool_t& bChanged);
 	void Render_AuthoringMaterialParameters(
 		EFFECT_ELEMENT_DESC& Element,
 		bool_t& bChanged);
@@ -736,7 +754,10 @@ private:
 	void Render_ComponentSelectionDetail();
 	void Render_EmitterSelectionDetail();
 	void Render_SourceModuleSelectionDetail();
-    void Render_LerpDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
+    void Render_LerpDetail(
+		EFFECT_DETAIL_DESC& Detail,
+		bool_t& bChanged,
+		bool_t bLockProjectTunedCarrierColor);
     void Render_AnimationControls(
         const std::shared_ptr<Engine::CModel>& pModel);
     void Refresh_AnimationClipLabels(
@@ -819,6 +840,8 @@ private:
 	const std::filesystem::path* Resolve_DirectAuthoredEditablePath(
 		const std::string& strEffectAssetId,
 		std::string& strOutStatus);
+	bool_t Validate_ActiveRegistryBoundAuditionFreshness(
+		std::string& strOutStatus) const;
 	bool_t Is_UnifiedEffectActive(
 		const UNIFIED_EFFECT_CACHE& Cache) const;
 	bool_t Validate_UnifiedEffectPreviewReadiness(
@@ -1064,6 +1087,8 @@ private:
     uint32_t m_iWorldPreviewLevel = UINT32_MAX;
 
     optional<EFFECT_DOCUMENT_DESC> m_ActiveDocument;
+	optional<REGISTRY_BOUND_AUDITION_PROVENANCE>
+		m_ActiveRegistryBoundAuditionProvenance;
 	optional<EFFECT_DOCUMENT_DESC> m_SourcePreviewDocument;
     optional<EFFECT_PRODUCT_PREVIEW> m_ProductPreview;
 	optional<VALTAN_PRODUCT_PREVIEW> m_ValtanProductPreview;

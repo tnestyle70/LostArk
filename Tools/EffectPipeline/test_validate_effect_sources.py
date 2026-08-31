@@ -33,6 +33,7 @@ class EffectSourceValidatorTests(unittest.TestCase):
             "authoringPath": f"Effects/Authored/{self.effect_id}.effect.json",
         }
         self._write_catalog([self.row])
+        self._write_audition_catalog([])
         self._write_source(self.effect_id)
         self._write_consumers()
 
@@ -49,6 +50,12 @@ class EffectSourceValidatorTests(unittest.TestCase):
             {"formatVersion": 1, "effects": rows},
         )
 
+    def _write_audition_catalog(self, rows: list[dict[str, object]]) -> None:
+        self._write_json(
+            self.root / "Data/Effects/EffectAuditionCatalog.json",
+            {"formatVersion": 1, "effects": rows},
+        )
+
     def _write_source(self, effect_id: str, *, document_id: str | None = None) -> None:
         self._write_json(
             self.root / f"Data/Effects/Authored/{effect_id}.effect.json",
@@ -62,6 +69,30 @@ class EffectSourceValidatorTests(unittest.TestCase):
                 "elements": [],
             },
         )
+
+    def _audition_row(
+        self,
+        effect_id: str,
+        *,
+        source_effect_id: str | None = None,
+        source_hash: str | None = None,
+    ) -> dict[str, object]:
+        source_effect_id = source_effect_id or self.effect_id
+        source_path = (
+            self.root
+            / f"Data/Effects/Authored/{source_effect_id}.effect.json"
+        )
+        if source_hash is None:
+            source_hash = hashlib.sha256(source_path.read_bytes()).hexdigest()
+        return {
+            "effectAssetId": effect_id,
+            "payloadKind": MODULE.DIRECT_KIND,
+            "authoringPath": f"Effects/Authored/{effect_id}.effect.json",
+            "runtimeAdmission": "REGISTRY_BOUND_AUDITION_ONLY",
+            "fidelityClass": "PROJECT_TUNED_APPROX",
+            "sourceEffectAssetId": source_effect_id,
+            "sourceDocumentRawSha256": source_hash,
+        }
 
     def _set_source_resource(self, resource_id: str, *, model: bool = False) -> None:
         path = self.root / f"Data/Effects/Authored/{self.effect_id}.effect.json"
@@ -462,6 +493,57 @@ class EffectSourceValidatorTests(unittest.TestCase):
         self._write_source(unused_id)
         self._write_catalog([self.row, unused_row])
         with self.assertRaisesRegex(MODULE.ContractError, "no runtime consumer"):
+            MODULE.validate_repository(self.root)
+
+    def test_unbound_audition_row_is_excluded_from_product_reachability(self) -> None:
+        audition_id = "effect.test.audition.unified"
+        self._write_source(audition_id)
+        self._write_audition_catalog([self._audition_row(audition_id)])
+        self._write_runtime_reachability_contract(self.effect_id)
+        self._write_valtan_draft([])
+
+        report = MODULE.validate_repository(self.root)
+
+        self.assertEqual(report.direct_source_count, 2)
+
+    def test_audition_source_must_be_an_ordinary_product_row(self) -> None:
+        source_audition_id = "effect.test.source-audition.unified"
+        target_audition_id = "effect.test.target-audition.unified"
+        self._write_source(source_audition_id)
+        self._write_source(target_audition_id)
+        source_row = self._audition_row(source_audition_id)
+        target_row = self._audition_row(
+            target_audition_id,
+            source_effect_id=source_audition_id,
+        )
+        self._write_audition_catalog([source_row, target_row])
+
+        with self.assertRaisesRegex(
+            MODULE.ContractError, "source is not an ordinary Product row"
+        ):
+            MODULE.validate_repository(self.root)
+
+    def test_audition_source_hash_must_match_current_raw_document(self) -> None:
+        audition_id = "effect.test.audition.unified"
+        self._write_source(audition_id)
+        row = self._audition_row(audition_id, source_hash="0" * 64)
+        self._write_audition_catalog([row])
+
+        with self.assertRaisesRegex(
+            MODULE.ContractError, "source hash mismatches current source document"
+        ):
+            MODULE.validate_repository(self.root)
+
+    def test_product_reference_cannot_target_an_audition_row(self) -> None:
+        audition_id = "effect.test.audition.unified"
+        self._write_source(audition_id)
+        self._write_audition_catalog([self._audition_row(audition_id)])
+        self._write_runtime_reachability_contract(audition_id)
+        self._write_valtan_draft([])
+
+        with self.assertRaisesRegex(
+            MODULE.ContractError, "runtime Effect references are missing from catalog"
+        ):
             MODULE.validate_repository(self.root)
 
     def test_runtime_effect_reference_must_resolve_to_product_catalog(self) -> None:

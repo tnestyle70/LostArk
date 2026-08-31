@@ -7,6 +7,8 @@
 #include <cctype>
 #include <cwchar>
 #include <fstream>
+#include <iomanip>
+#include <iterator>
 #include <limits>
 #include <sstream>
 #include <string_view>
@@ -14,6 +16,8 @@
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
+
+#pragma comment(lib, "bcrypt.lib")
 
 namespace
 {
@@ -37,6 +41,43 @@ namespace
 			return false;
 		}
 		strOutText = Buffer.str();
+		return true;
+	}
+
+	bool_t Read_BoundedBinaryFile(const std::filesystem::path& Path,
+		const std::uintmax_t iMaximumBytes,
+		std::string& strOutBytes, std::string& strOutStatus)
+	{
+		strOutBytes.clear();
+		std::error_code Error;
+		const std::uintmax_t iFileSize =
+			std::filesystem::file_size(Path, Error);
+		if (Path.empty() || Error || 0u == iFileSize ||
+			iFileSize > iMaximumBytes)
+		{
+			strOutStatus =
+				"Registry-bound audition source is missing, empty, or too large: " +
+				Path.string();
+			return false;
+		}
+		std::ifstream Input(Path, std::ios::binary);
+		if (!Input)
+		{
+			strOutStatus =
+				"Could not open registry-bound audition source: " + Path.string();
+			return false;
+		}
+		strOutBytes.assign(std::istreambuf_iterator<char>(Input),
+			std::istreambuf_iterator<char>());
+		if (strOutBytes.size() != iFileSize)
+		{
+			strOutBytes.clear();
+			strOutStatus =
+				"Could not read complete registry-bound audition source: " +
+				Path.string();
+			return false;
+		}
+		strOutStatus.clear();
 		return true;
 	}
 
@@ -157,10 +198,349 @@ namespace
 					(Character >= 'a' && Character <= 'f');
 			});
 	}
+
+	std::string Compute_Sha256Hex(const std::string_view Value)
+	{
+		BCRYPT_ALG_HANDLE Algorithm = nullptr;
+		BCRYPT_HASH_HANDLE Hash = nullptr;
+		DWORD iObjectSize = 0u;
+		DWORD iResultSize = 0u;
+		std::vector<uint8_t> Object;
+		std::array<uint8_t, 32u> Digest{};
+		bool_t bSuccess = false;
+		if (Value.size() <= (std::numeric_limits<ULONG>::max)() &&
+			BCryptOpenAlgorithmProvider(
+				&Algorithm, BCRYPT_SHA256_ALGORITHM, nullptr, 0u) >= 0 &&
+			BCryptGetProperty(Algorithm, BCRYPT_OBJECT_LENGTH,
+				reinterpret_cast<PUCHAR>(&iObjectSize), sizeof(iObjectSize),
+				&iResultSize, 0u) >= 0)
+		{
+			Object.resize(iObjectSize);
+			bSuccess = BCryptCreateHash(Algorithm, &Hash, Object.data(),
+				iObjectSize, nullptr, 0u, 0u) >= 0 &&
+				BCryptHashData(Hash, reinterpret_cast<PUCHAR>(
+					const_cast<char*>(Value.data())),
+					static_cast<ULONG>(Value.size()), 0u) >= 0 &&
+				BCryptFinishHash(Hash, Digest.data(),
+					static_cast<ULONG>(Digest.size()), 0u) >= 0;
+		}
+		if (nullptr != Hash)
+			BCryptDestroyHash(Hash);
+		if (nullptr != Algorithm)
+			BCryptCloseAlgorithmProvider(Algorithm, 0u);
+		if (!bSuccess)
+			return {};
+		std::ostringstream Output;
+		Output << std::hex << std::setfill('0');
+		for (const uint8_t Byte : Digest)
+			Output << std::setw(2) << static_cast<uint32_t>(Byte);
+		return Output.str();
+	}
+
+	bool_t Try_ResolveCatalogAuthoredPath(
+		const std::filesystem::path& AuthoredRoot,
+		const std::string_view strAuthoringPath,
+		const std::string_view strExpectedAssetId,
+		const std::filesystem::path& ExpectedPath,
+		std::string& strOutStatus)
+	{
+		if (strAuthoringPath.empty() ||
+			strAuthoringPath.find('\\') != std::string_view::npos ||
+			strAuthoringPath.find(':') != std::string_view::npos ||
+			strAuthoringPath.starts_with('/') ||
+			strAuthoringPath.ends_with('/') ||
+			strAuthoringPath.find("//") != std::string_view::npos)
+		{
+			strOutStatus =
+				"Registry-bound audition catalog authoringPath is unsafe.";
+			return false;
+		}
+		const std::filesystem::path RelativePath{
+			std::string(strAuthoringPath) };
+		std::vector<std::string> Components;
+		for (const std::filesystem::path& Component : RelativePath)
+		{
+			const std::string Token = Component.generic_string();
+			if (Token.empty() || Token == "." || Token == "..")
+			{
+				Components.clear();
+				break;
+			}
+			Components.push_back(Token);
+		}
+		std::string strDerivedAssetId;
+		if (RelativePath.empty() || RelativePath.is_absolute() ||
+			RelativePath.has_root_path() ||
+			RelativePath.generic_string() != std::string(strAuthoringPath) ||
+			Components.size() < 3u || Components[0] != "Effects" ||
+			Components[1] != "Authored" ||
+			!Try_DeriveAssetId(RelativePath, strDerivedAssetId) ||
+			strDerivedAssetId != strExpectedAssetId)
+		{
+			strOutStatus =
+				"Registry-bound audition catalog authoringPath/Effect ID changed.";
+			return false;
+		}
+
+		std::error_code Error;
+		const std::filesystem::path CanonicalAuthoredRoot =
+			std::filesystem::weakly_canonical(AuthoredRoot, Error);
+		if (Error || CanonicalAuthoredRoot.empty())
+		{
+			strOutStatus =
+				"Registry-bound audition Authored root is unavailable.";
+			return false;
+		}
+		std::filesystem::path ResolvedPath = CanonicalAuthoredRoot;
+		for (size_t iComponent = 2u; iComponent < Components.size(); ++iComponent)
+			ResolvedPath /= Components[iComponent];
+		Error.clear();
+		ResolvedPath = std::filesystem::weakly_canonical(ResolvedPath, Error);
+		if (Error || ResolvedPath.empty() ||
+			!Is_StrictDescendant(CanonicalAuthoredRoot, ResolvedPath) ||
+			!std::filesystem::is_regular_file(ResolvedPath, Error) || Error)
+		{
+			strOutStatus =
+				"Registry-bound audition catalog authoringPath no longer resolves to an admitted file.";
+			return false;
+		}
+		Error.clear();
+		const std::filesystem::path CanonicalExpectedPath =
+			std::filesystem::weakly_canonical(ExpectedPath, Error);
+		if (Error || CanonicalExpectedPath.empty())
+		{
+			strOutStatus =
+				"Registry-bound audition expected document path is unavailable.";
+			return false;
+		}
+		Error.clear();
+		if (!std::filesystem::equivalent(
+				ResolvedPath, CanonicalExpectedPath, Error) || Error)
+		{
+			strOutStatus =
+				"Registry-bound audition catalog authoringPath changed after open.";
+			return false;
+		}
+		return true;
+	}
+}
+
+bool Client::CEffectDirectAuthoredSourceIndex::
+	Validate_RegistryBoundAuditionCatalogProvenanceFresh(
+		const std::filesystem::path& ProductCatalogPath,
+		const std::filesystem::path& AuditionCatalogPath,
+		const std::filesystem::path& AuthoredRoot,
+		const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Expected,
+		std::string& strOutStatus)
+{
+	strOutStatus.clear();
+	if (ProductCatalogPath.empty() || AuditionCatalogPath.empty() ||
+		AuthoredRoot.empty() ||
+		!Expected.bRegistryBoundAuditionOnly ||
+		Expected.strEffectAssetId.empty() || Expected.Path.empty() ||
+		Expected.strSourceEffectAssetId.empty() ||
+		Expected.SourceDocumentPath.empty() ||
+		!Is_LowerHexSha256(Expected.strSourceDocumentRawSha256) ||
+		Expected.strEffectAssetId == Expected.strSourceEffectAssetId)
+	{
+		strOutStatus =
+			"Registry-bound audition open-time provenance is incomplete.";
+		return false;
+	}
+	const auto ReadCatalog = [&strOutStatus](
+		const std::filesystem::path& Path, const std::string_view strLabel,
+		DATA_JSON_VALUE& OutRoot,
+		const DATA_JSON_VALUE*& pOutEffects)
+	{
+		std::error_code FileError;
+		const std::uintmax_t iCatalogBytes =
+			std::filesystem::file_size(Path, FileError);
+		if (FileError || 0u == iCatalogBytes ||
+			iCatalogBytes > 16u * 1024u * 1024u)
+		{
+			strOutStatus = std::string(strLabel) +
+				" is missing, empty, or too large for live audition validation.";
+			return false;
+		}
+		std::string Text;
+		std::string Error;
+		if (!Read_TextFile(Path, Text, Error))
+		{
+			strOutStatus = Error;
+			return false;
+		}
+		DATA_JSON_PARSE_LIMITS Limits;
+		Limits.iMaximumBytes = 16u * 1024u * 1024u;
+		Limits.iMaximumDepth = 16u;
+		Limits.iMaximumValues = 100'000u;
+		if (!CDataJson::Parse(Text, OutRoot, Error, Limits) ||
+			!OutRoot.Is_Object() || OutRoot.Get_Object().size() != 2u ||
+			OutRoot.Get_ObjectInsertionOrder() !=
+				std::vector<std::string>{ "formatVersion", "effects" })
+		{
+			strOutStatus = std::string(strLabel) +
+				" changed to an invalid root during audition: " + Error;
+			return false;
+		}
+		const DATA_JSON_VALUE* pVersion = OutRoot.Find("formatVersion");
+		pOutEffects = OutRoot.Find("effects");
+		if (nullptr == pVersion || !pVersion->Is_Number() ||
+			pVersion->Was_FloatingPointToken() ||
+			pVersion->Get_Number() != 1.0 || nullptr == pOutEffects ||
+			!pOutEffects->Is_Array())
+		{
+			strOutStatus = std::string(strLabel) +
+				" version/effects changed during audition.";
+			return false;
+		}
+		return true;
+	};
+	DATA_JSON_VALUE ProductRoot;
+	DATA_JSON_VALUE AuditionRoot;
+	const DATA_JSON_VALUE* pProductEffects = nullptr;
+	const DATA_JSON_VALUE* pAuditionEffects = nullptr;
+	if (!ReadCatalog(ProductCatalogPath, "EffectCatalog.json", ProductRoot,
+			pProductEffects) ||
+		!ReadCatalog(AuditionCatalogPath, "EffectAuditionCatalog.json",
+			AuditionRoot, pAuditionEffects))
+	{
+		return false;
+	}
+
+	const DATA_JSON_VALUE* pAuditionRow = nullptr;
+	const DATA_JSON_VALUE* pSourceRow = nullptr;
+	size_t iAuditionRows = 0u;
+	size_t iSourceRows = 0u;
+	for (const DATA_JSON_VALUE& Row : pAuditionEffects->Get_Array())
+	{
+		if (!Row.Is_Object())
+			continue;
+		const DATA_JSON_VALUE* pAssetId = Row.Find("effectAssetId");
+		if (nullptr == pAssetId || !pAssetId->Is_String())
+			continue;
+		if (pAssetId->Get_String() == Expected.strEffectAssetId)
+		{
+			pAuditionRow = &Row;
+			++iAuditionRows;
+		}
+	}
+	for (const DATA_JSON_VALUE& Row : pProductEffects->Get_Array())
+	{
+		if (!Row.Is_Object())
+			continue;
+		const DATA_JSON_VALUE* pAssetId = Row.Find("effectAssetId");
+		if (nullptr == pAssetId || !pAssetId->Is_String())
+			continue;
+		if (pAssetId->Get_String() == Expected.strSourceEffectAssetId)
+		{
+			pSourceRow = &Row;
+			++iSourceRows;
+		}
+		if (pAssetId->Get_String() == Expected.strEffectAssetId)
+			++iAuditionRows;
+	}
+	for (const DATA_JSON_VALUE& Row : pAuditionEffects->Get_Array())
+	{
+		if (!Row.Is_Object())
+			continue;
+		const DATA_JSON_VALUE* pAssetId = Row.Find("effectAssetId");
+		if (nullptr != pAssetId && pAssetId->Is_String() &&
+			pAssetId->Get_String() == Expected.strSourceEffectAssetId)
+		{
+			++iSourceRows;
+		}
+	}
+	if (1u != iAuditionRows || nullptr == pAuditionRow ||
+		1u != iSourceRows || nullptr == pSourceRow)
+	{
+		strOutStatus =
+			"Registry-bound audition row or its ordinary Product source row disappeared, crossed registries, or became ambiguous after open.";
+		return false;
+	}
+
+	const std::vector<std::string>& AuditionKeys =
+		pAuditionRow->Get_ObjectInsertionOrder();
+	const bool_t bAuditionShape =
+		AuditionKeys == std::vector<std::string>{
+			"effectAssetId", "payloadKind", "authoringPath",
+			"runtimeAdmission", "fidelityClass", "sourceEffectAssetId",
+			"sourceDocumentRawSha256" } ||
+		AuditionKeys == std::vector<std::string>{
+			"effectAssetId", "payloadKind", "authoringPath",
+			"screenOverlayPresentationPath", "runtimeAdmission",
+			"fidelityClass", "sourceEffectAssetId",
+			"sourceDocumentRawSha256" };
+	const DATA_JSON_VALUE* pPayloadKind = pAuditionRow->Find("payloadKind");
+	const DATA_JSON_VALUE* pAuthoringPath = pAuditionRow->Find("authoringPath");
+	const DATA_JSON_VALUE* pRuntimeAdmission =
+		pAuditionRow->Find("runtimeAdmission");
+	const DATA_JSON_VALUE* pFidelityClass =
+		pAuditionRow->Find("fidelityClass");
+	const DATA_JSON_VALUE* pSourceEffectAssetId =
+		pAuditionRow->Find("sourceEffectAssetId");
+	const DATA_JSON_VALUE* pSourceDocumentRawSha256 =
+		pAuditionRow->Find("sourceDocumentRawSha256");
+	if (!bAuditionShape || nullptr == pPayloadKind ||
+		!pPayloadKind->Is_String() ||
+		pPayloadKind->Get_String() != "DIRECT_AUTHORED_DOCUMENT" ||
+		nullptr == pAuthoringPath || !pAuthoringPath->Is_String() ||
+		nullptr == pRuntimeAdmission || !pRuntimeAdmission->Is_String() ||
+		pRuntimeAdmission->Get_String() != "REGISTRY_BOUND_AUDITION_ONLY" ||
+		nullptr == pFidelityClass || !pFidelityClass->Is_String() ||
+		pFidelityClass->Get_String() != "PROJECT_TUNED_APPROX" ||
+		nullptr == pSourceEffectAssetId || !pSourceEffectAssetId->Is_String() ||
+		pSourceEffectAssetId->Get_String() != Expected.strSourceEffectAssetId ||
+		nullptr == pSourceDocumentRawSha256 ||
+		!pSourceDocumentRawSha256->Is_String() ||
+		pSourceDocumentRawSha256->Get_String() !=
+			Expected.strSourceDocumentRawSha256 ||
+		!Try_ResolveCatalogAuthoredPath(AuthoredRoot,
+			pAuthoringPath->Get_String(), Expected.strEffectAssetId,
+			Expected.Path, strOutStatus))
+	{
+		if (strOutStatus.empty())
+		{
+			strOutStatus =
+				"Registry-bound audition row was reclassified or retargeted after open.";
+		}
+		return false;
+	}
+
+	const std::vector<std::string>& SourceKeys =
+		pSourceRow->Get_ObjectInsertionOrder();
+	const bool_t bSourceShape =
+		SourceKeys == std::vector<std::string>{
+			"effectAssetId", "payloadKind", "authoringPath" } ||
+		SourceKeys == std::vector<std::string>{
+			"effectAssetId", "payloadKind", "authoringPath",
+			"screenOverlayPresentationPath" };
+	const DATA_JSON_VALUE* pSourcePayloadKind =
+		pSourceRow->Find("payloadKind");
+	const DATA_JSON_VALUE* pSourceAuthoringPath =
+		pSourceRow->Find("authoringPath");
+	if (!bSourceShape || nullptr == pSourcePayloadKind ||
+		!pSourcePayloadKind->Is_String() ||
+		pSourcePayloadKind->Get_String() != "DIRECT_AUTHORED_DOCUMENT" ||
+		nullptr == pSourceAuthoringPath || !pSourceAuthoringPath->Is_String() ||
+		!Try_ResolveCatalogAuthoredPath(AuthoredRoot,
+			pSourceAuthoringPath->Get_String(),
+			Expected.strSourceEffectAssetId,
+			Expected.SourceDocumentPath, strOutStatus))
+	{
+		if (strOutStatus.empty())
+		{
+			strOutStatus =
+				"Registry-bound audition ordinary source row was reclassified or retargeted after open.";
+		}
+		return false;
+	}
+	strOutStatus.clear();
+	return true;
 }
 
 bool Client::CEffectDirectAuthoredSourceIndex::Build(
 	const std::filesystem::path& CatalogPath,
+	const std::filesystem::path& AuditionCatalogPath,
 	const std::filesystem::path& AuthoredRoot,
 	const std::vector<EFFECT_DIRECT_AUTHORED_SCANNED_FILE>& ScannedFiles,
 	const EFFECT_DIRECT_AUTHORED_OWNER_SET& ValidOwners,
@@ -171,11 +551,14 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 	std::string& strOutStatus)
 {
 	std::string Text;
+	std::string AuditionText;
 	std::string Error;
-	if (CatalogPath.empty() || AuthoredRoot.empty() ||
-		!Read_TextFile(CatalogPath, Text, Error))
+	if (CatalogPath.empty() || AuditionCatalogPath.empty() ||
+		AuthoredRoot.empty() || !Read_TextFile(CatalogPath, Text, Error) ||
+		!Read_TextFile(AuditionCatalogPath, AuditionText, Error))
 	{
-		strOutStatus = CatalogPath.empty() || AuthoredRoot.empty() ?
+		strOutStatus = CatalogPath.empty() || AuditionCatalogPath.empty() ||
+			AuthoredRoot.empty() ?
 			"Direct authored source index path is empty." : Error;
 		return false;
 	}
@@ -191,22 +574,54 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 		return false;
 	}
 	DATA_JSON_VALUE Root;
-	if (!CDataJson::Parse(Text, Root, Error) || !Root.Is_Object())
+	DATA_JSON_VALUE AuditionRoot;
+	const auto ParseCatalogRoot = [&Error](const std::string& Raw,
+		const std::string_view strLabel, DATA_JSON_VALUE& OutRoot,
+		const DATA_JSON_VALUE*& pOutEffects, std::string& strStatus)
 	{
-		strOutStatus =
-			"Could not parse EffectCatalog.json: " + Error;
+		if (!CDataJson::Parse(Raw, OutRoot, Error) || !OutRoot.Is_Object())
+		{
+			strStatus = "Could not parse " + std::string(strLabel) + ": " + Error;
+			return false;
+		}
+		const DATA_JSON_VALUE* pVersion = OutRoot.Find("formatVersion");
+		pOutEffects = OutRoot.Find("effects");
+		if (OutRoot.Get_Object().size() != 2u ||
+			OutRoot.Get_ObjectInsertionOrder() !=
+				std::vector<std::string>{ "formatVersion", "effects" } ||
+			nullptr == pVersion ||
+			pVersion->Get_Type() != DATA_JSON_TYPE::NUMBER ||
+			pVersion->Was_FloatingPointToken() ||
+			pVersion->Get_Number() != 1.0 || nullptr == pOutEffects ||
+			pOutEffects->Get_Type() != DATA_JSON_TYPE::ARRAY)
+		{
+			strStatus = std::string(strLabel) +
+				" rejected the exact source-index root contract.";
+			return false;
+		}
+		return true;
+	};
+	const DATA_JSON_VALUE* pEffects = nullptr;
+	const DATA_JSON_VALUE* pAuditionEffects = nullptr;
+	if (!ParseCatalogRoot(Text, "EffectCatalog.json", Root,
+			pEffects, strOutStatus) ||
+		!ParseCatalogRoot(AuditionText, "EffectAuditionCatalog.json",
+			AuditionRoot, pAuditionEffects, strOutStatus))
+	{
 		return false;
 	}
-	const DATA_JSON_VALUE* pVersion = Root.Find("formatVersion");
-	const DATA_JSON_VALUE* pEffects = Root.Find("effects");
-	if (Root.Get_Object().size() != 2u || nullptr == pVersion ||
-		pVersion->Get_Type() != DATA_JSON_TYPE::NUMBER ||
-		pVersion->Get_Number() != 1.0 || nullptr == pEffects ||
-		pEffects->Get_Type() != DATA_JSON_TYPE::ARRAY)
+	struct CATALOG_ROW_REF final
 	{
-		strOutStatus = "EffectCatalog.json rejected the exact source-index root contract.";
-		return false;
-	}
+		const DATA_JSON_VALUE* pRow = nullptr;
+		bool_t bAuditionRegistry = false;
+	};
+	std::vector<CATALOG_ROW_REF> CatalogRows;
+	CatalogRows.reserve(pEffects->Get_Array().size() +
+		pAuditionEffects->Get_Array().size());
+	for (const DATA_JSON_VALUE& Row : pEffects->Get_Array())
+		CatalogRows.push_back({ &Row, false });
+	for (const DATA_JSON_VALUE& Row : pAuditionEffects->Get_Array())
+		CatalogRows.push_back({ &Row, true });
 
 	std::unordered_map<std::string, const EFFECT_DIRECT_AUTHORED_SCANNED_FILE*>
 		ScannedByAssetId;
@@ -215,15 +630,18 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 		ScannedByAssetId.try_emplace(File.strEffectAssetId, &File);
 
 	EFFECT_DIRECT_AUTHORED_SOURCE_INDEX Staged;
-	Staged.Entries.reserve(pEffects->Get_Array().size());
+	Staged.Entries.reserve(CatalogRows.size());
 	std::unordered_set<std::string> DirectAssetIds;
-	DirectAssetIds.reserve(pEffects->Get_Array().size());
+	DirectAssetIds.reserve(CatalogRows.size());
 	std::unordered_set<std::string> DuplicateAssetIds;
-	DuplicateAssetIds.reserve(pEffects->Get_Array().size());
+	DuplicateAssetIds.reserve(CatalogRows.size());
 	std::unordered_set<std::string> NonAuditionDirectAssetIds;
 	NonAuditionDirectAssetIds.reserve(pEffects->Get_Array().size());
-	for (const DATA_JSON_VALUE& CatalogEntry : pEffects->Get_Array())
+	for (const CATALOG_ROW_REF& RowRef : CatalogRows)
 	{
+		if (RowRef.bAuditionRegistry)
+			continue;
+		const DATA_JSON_VALUE& CatalogEntry = *RowRef.pRow;
 		if (!CatalogEntry.Is_Object())
 			continue;
 		const DATA_JSON_VALUE* pPayloadKind = CatalogEntry.Find("payloadKind");
@@ -252,11 +670,14 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 			Staged.strFirstOwnerJoinUnavailable = std::move(Status);
 	};
 
-	for (const DATA_JSON_VALUE& CatalogEntry : pEffects->Get_Array())
+	for (const CATALOG_ROW_REF& RowRef : CatalogRows)
 	{
+		const DATA_JSON_VALUE& CatalogEntry = *RowRef.pRow;
 		if (!CatalogEntry.Is_Object())
 		{
-			RecordUnavailable("EffectCatalog.json contains a non-object row.");
+			RecordUnavailable(RowRef.bAuditionRegistry ?
+				"EffectAuditionCatalog.json contains a non-object row." :
+				"EffectCatalog.json contains a non-object row.");
 			continue;
 		}
 		const DATA_JSON_VALUE* pPayloadKind = CatalogEntry.Find("payloadKind");
@@ -313,7 +734,9 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 			 !pSourceEffectAssetId->Get_String().empty() &&
 			 pSourceDocumentRawSha256->Get_Type() == DATA_JSON_TYPE::STRING &&
 			 Is_LowerHexSha256(pSourceDocumentRawSha256->Get_String()));
-		if ((!bOrdinaryShape && !bAuditionShape) || nullptr == pAssetId ||
+		const bool_t bRegistryShapeValid = RowRef.bAuditionRegistry ?
+			bAuditionShape : bOrdinaryShape;
+		if (!bRegistryShapeValid || nullptr == pAssetId ||
 			pAssetId->Get_Type() != DATA_JSON_TYPE::STRING ||
 			pAssetId->Get_String().empty() || nullptr == pAuthoringPath ||
 			pAuthoringPath->Get_Type() != DATA_JSON_TYPE::STRING ||
@@ -321,6 +744,8 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 			!bOptionalScreenOverlayPathValid || !bAuditionIdentityValid)
 		{
 			RecordUnavailable(
+				RowRef.bAuditionRegistry ?
+				"EffectAuditionCatalog.json contains a malformed audition row." :
 				"EffectCatalog.json contains a malformed direct-authored row.");
 			continue;
 		}
@@ -340,6 +765,14 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 
 		EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY Entry;
 		Entry.strEffectAssetId = strAssetId;
+		if (bAuditionShape)
+		{
+			Entry.bRegistryBoundAuditionOnly = true;
+			Entry.strSourceEffectAssetId =
+				pSourceEffectAssetId->Get_String();
+			Entry.strSourceDocumentRawSha256 =
+				pSourceDocumentRawSha256->Get_String();
+		}
 		if (Try_ParsePlayerOwner(
 				strAssetId, Entry.eCharacterClass, Entry.iSkillId))
 		{
@@ -566,6 +999,42 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 		{
 			return DuplicateAssetIds.contains(Entry.strEffectAssetId);
 		});
+	std::unordered_map<std::string, std::filesystem::path>
+		OrdinarySourcePaths;
+	OrdinarySourcePaths.reserve(Staged.Entries.size());
+	for (const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Entry : Staged.Entries)
+	{
+		if (!Entry.bRegistryBoundAuditionOnly)
+			OrdinarySourcePaths.emplace(Entry.strEffectAssetId, Entry.Path);
+	}
+	for (EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Entry : Staged.Entries)
+	{
+		if (!Entry.bRegistryBoundAuditionOnly)
+			continue;
+		const auto Source = OrdinarySourcePaths.find(
+			Entry.strSourceEffectAssetId);
+		std::string SourceBytes;
+		std::string FreshnessStatus;
+		if (Source == OrdinarySourcePaths.end())
+		{
+			Entry.bAuditionSourceFreshnessValid = false;
+			RecordUnavailable(
+				"registry-bound audition source is not an admitted ordinary row: " +
+				Entry.strEffectAssetId);
+			continue;
+		}
+		Entry.SourceDocumentPath = Source->second;
+		if (!Read_BoundedBinaryFile(Entry.SourceDocumentPath,
+				64u * 1024u * 1024u, SourceBytes, FreshnessStatus) ||
+			Compute_Sha256Hex(SourceBytes) !=
+				Entry.strSourceDocumentRawSha256)
+		{
+			Entry.bAuditionSourceFreshnessValid = false;
+			RecordUnavailable(
+				"registry-bound audition source hash is stale: " +
+				Entry.strEffectAssetId);
+		}
+	}
 	std::sort(Staged.Entries.begin(), Staged.Entries.end(),
 		[](const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Left,
 			const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Right)
@@ -588,7 +1057,7 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 		" DIRECT_AUTHORED_DOCUMENT source paths.";
 	if (0u != Staged.iUnavailableCount)
 	{
-		strOutStatus += " Isolated " +
+		strOutStatus += " Isolated or locked " +
 			std::to_string(Staged.iUnavailableCount) +
 			" unavailable rows; first: " + Staged.strFirstUnavailable;
 	}
