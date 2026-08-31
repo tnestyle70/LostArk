@@ -2264,6 +2264,27 @@ Validate_ValtanCompositionPatternSoundStageDependencies(
 		strOutStatus = "No Pattern Sound dependency is attached to this Stage.";
 		return true;
 	}
+	const bool_t bValidateTimingWindow =
+		BaselineStage.strActionId != CandidateStage.strActionId ||
+		BaselineStage.iDurationMs != CandidateStage.iDurationMs ||
+		BaselineStage.ClipOccurrences.size() !=
+			CandidateStage.ClipOccurrences.size() ||
+		!std::equal(
+			BaselineStage.ClipOccurrences.begin(),
+			BaselineStage.ClipOccurrences.end(),
+			CandidateStage.ClipOccurrences.begin(),
+			[](const VALTAN_CLIP_OCCURRENCE_VIEW& Baseline,
+				const VALTAN_CLIP_OCCURRENCE_VIEW& Candidate)
+			{
+				return Baseline.strClipOccurrenceId ==
+						Candidate.strClipOccurrenceId &&
+					Baseline.strClipName == Candidate.strClipName &&
+					Baseline.strMappingBasis == Candidate.strMappingBasis &&
+					Baseline.iSourceStartMs == Candidate.iSourceStartMs &&
+					Baseline.iPlayMs == Candidate.iPlayMs &&
+					Baseline.fPlayRate == Candidate.fPlayRate &&
+					Baseline.bLoop == Candidate.bLoop;
+			});
 
 	for (const VALTAN_PATTERN_SOUND_CUE* const pCue : Rows)
 	{
@@ -2324,6 +2345,15 @@ Validate_ValtanCompositionPatternSoundStageDependencies(
 			return false;
 		}
 
+		/* Canonical Save must preserve exact owner/action/occurrence identity for
+		   every Sound row, including legacy rows.  A pre-existing timing debt in
+		   an otherwise unchanged Stage is not re-admitted here: strict source
+		   window admission is required only when this save changes a field that
+		   can affect the Sound wall clock.  Direct Stage mutations that alter
+		   those fields therefore cannot create or extend that debt. */
+		if (!bValidateTimingWindow)
+			continue;
+
 		uint32_t iMinimumStartMs = 0u;
 		uint32_t iMaximumStartMs = 0u;
 		bool_t bLoop = false;
@@ -2348,7 +2378,9 @@ Validate_ValtanCompositionPatternSoundStageDependencies(
 		}
 	}
 	strOutStatus = "Validated " + std::to_string(Rows.size()) +
-		" Pattern Sound dependency row(s) against the candidate Stage.";
+		" Pattern Sound dependency row(s) against the candidate Stage" +
+		(bValidateTimingWindow ? " with strict timing admission." :
+			"; unchanged timing debt was not expanded.");
 	return true;
 }
 

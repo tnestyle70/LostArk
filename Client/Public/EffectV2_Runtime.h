@@ -10,6 +10,8 @@
 
 NS_BEGIN(Client)
 
+class EFFECT_V2_CATALOG_SNAPSHOT;
+
 class CEffectV2Runtime final
 {
 public:
@@ -27,6 +29,16 @@ public:
 		const EFFECT_V2_TARGET& Target,
 		const char_t* pActionId,
 		f32_t fAgeSeconds,
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext);
+	/* Local Action Composition preview only. The caller supplies an immutable
+	   authoring snapshot, so refreshing a group/binding never invalidates or
+	   reloads the Product runtime caches used by Server-authoritative actors. */
+	static void Sync_StageAuthoring(
+		const EFFECT_V2_TARGET& Target,
+		const char_t* pActionId,
+		f32_t fAgeSeconds,
+		std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext);
 	/* Destructive seek/reset for a tool-owned local preview target.  Product

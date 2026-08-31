@@ -8,6 +8,7 @@
 #include "Body_Valtan.h"
 #include "Collider.h"
 #include "CameraShakeService.h"
+#include "EffectV2_Catalog.h"
 #include "EffectV2_Runtime.h"
 #include "Effect_PresentationService.h"
 #include "EncounterPatternReference.h"
@@ -942,11 +943,23 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 		m_iLocalPreviewStageIndex = LocalStage->second;
 		Spawn_DuePatternEffectCues(fActionAgeSeconds);
 	}
-	Client::CEffectV2Runtime::Sync_Stage(
+	const Client::EFFECT_V2_TARGET EffectV2Target =
 		Client::EFFECT_V2_TARGET::From_Valtan(
-			static_pointer_cast<CValtan>(shared_from_this())),
-		std::string(actionId).c_str(), fActionAgeSeconds,
-		m_pDevice, m_pContext);
+			static_pointer_cast<CValtan>(shared_from_this()));
+	const std::string StageActionId(actionId);
+	if (m_bLocalPatternAuthoringPreview)
+	{
+		Client::CEffectV2Runtime::Sync_StageAuthoring(
+			EffectV2Target, StageActionId.c_str(), fActionAgeSeconds,
+			Client::CEffectV2Catalog::Get().Get_Snapshot(),
+			m_pDevice, m_pContext);
+	}
+	else
+	{
+		Client::CEffectV2Runtime::Sync_Stage(
+			EffectV2Target, StageActionId.c_str(), fActionAgeSeconds,
+			m_pDevice, m_pContext);
+	}
 	return true;
 }
 

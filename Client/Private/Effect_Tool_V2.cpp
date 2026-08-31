@@ -1228,9 +1228,9 @@ bool_t Client::CEffect_Tool_V2::Save_Document()
 		m_strDocumentStatus = strError;
 		return false;
 	}
-	CEffectV2Runtime::Invalidate_Caches();
 	m_bDocumentsScanned = false;
-	m_strDocumentStatus = "Saved " + strEffectId + ".effectv2.json";
+	m_strDocumentStatus = "Saved " + strEffectId +
+		".effectv2.json. The current authoring preview is unchanged; Product runtime remains on its admitted revision until restart.";
 	return true;
 }
 
@@ -2174,8 +2174,8 @@ bool_t Client::CEffect_Tool_V2::Save_Bindings()
 		m_strAttachStatus = strError;
 		return false;
 	}
-	CEffectV2Runtime::Invalidate_Caches();
-	m_strAttachStatus = "Saved " + m_strTargetArchetypeId + ".effectv2bindings.json";
+	m_strAttachStatus = "Saved " + m_strTargetArchetypeId +
+		".effectv2bindings.json. Product runtime remains on its admitted revision until restart.";
 	return true;
 }
 
@@ -2618,9 +2618,9 @@ bool_t Client::CEffect_Tool_V2::Save_Group()
 		m_strGroupStatus = strError;
 		return false;
 	}
-	CEffectV2Runtime::Invalidate_Caches();
 	m_bGroupsScanned = false;
-	m_strGroupStatus = "Saved " + strGroupId + ".effectv2group.json";
+	m_strGroupStatus = "Saved " + strGroupId +
+		".effectv2group.json. Restart Group Preview to read the saved authoring revision; Product runtime remains unchanged.";
 	return true;
 }
 

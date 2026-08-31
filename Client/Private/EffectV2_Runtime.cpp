@@ -1,5 +1,6 @@
 #include "EffectV2_Runtime.h"
 #include "ActorCatalog.h"
+#include "EffectV2_Catalog.h"
 #include "EffectV2_Document.h"
 #include "EffectV2_Object.h"
 #include "GameInstance.h"
@@ -79,6 +80,8 @@ namespace
 		f32_t fStageLastSeconds = -1.f;
 		std::vector<PENDING_SPAWN> StagePending;
 		std::vector<SPAWNED_EFFECT> Spawned;
+		std::shared_ptr<const Client::EFFECT_V2_CATALOG_SNAPSHOT>
+			pAuthoringSnapshot;
 	};
 
 	struct FREE_GROUP final
@@ -280,7 +283,8 @@ namespace
 	   duration capping every child stop. A rejected group adds nothing. */
 	void Expand_Binding(
 		const Client::EFFECT_V2_BINDING& Binding,
-		std::vector<PENDING_SPAWN>& Out)
+		std::vector<PENDING_SPAWN>& Out,
+		const Client::EFFECT_V2_CATALOG_SNAPSHOT* const pSnapshot = nullptr)
 	{
 		if (Binding.strGroupId.empty())
 		{
@@ -290,10 +294,21 @@ namespace
 			Out.push_back(std::move(Pending));
 			return;
 		}
-		const GROUP_ENTRY& Entry = Ensure_Group(Binding.strGroupId);
-		if (Entry.bFailed)
+		if (nullptr != pSnapshot)
+		{
+			const Client::EFFECT_V2_GROUP* const pGroup =
+				pSnapshot->Find_Group(Binding.strGroupId);
+			if (nullptr == pGroup)
+			{
+				Report("authoring group missing: " + Binding.strGroupId);
+				return;
+			}
+			Expand_Group(*pGroup, Binding, Out);
 			return;
-		Expand_Group(Entry.Group, Binding, Out);
+		}
+		const GROUP_ENTRY& Entry = Ensure_Group(Binding.strGroupId);
+		if (!Entry.bFailed)
+			Expand_Group(Entry.Group, Binding, Out);
 	}
 
 	/* Child scale rides on top of the document: the scale track is
@@ -328,14 +343,28 @@ namespace
 		const bool_t bStageBound,
 		std::vector<SPAWNED_EFFECT>& Spawned,
 		const ComPtr<ID3D11Device>& pDevice,
-		const ComPtr<ID3D11DeviceContext>& pContext)
+		const ComPtr<ID3D11DeviceContext>& pContext,
+		const Client::EFFECT_V2_CATALOG_SNAPSHOT* const pSnapshot = nullptr)
 	{
 		Pending.bSpawned = true;
-		const DOCUMENT_ENTRY& Entry = Ensure_Document(Pending.Binding.strEffectId);
-		if (Entry.bFailed || !Ensure_Prototype(pDevice, pContext))
+		const Client::EFFECT_V2_DOCUMENT* pDocument = nullptr;
+		if (nullptr != pSnapshot)
+		{
+			pDocument = pSnapshot->Find_Document(Pending.Binding.strEffectId);
+			if (nullptr == pDocument)
+				Report("authoring document missing: " + Pending.Binding.strEffectId);
+		}
+		else
+		{
+			const DOCUMENT_ENTRY& Entry =
+				Ensure_Document(Pending.Binding.strEffectId);
+			if (!Entry.bFailed)
+				pDocument = &Entry.Document;
+		}
+		if (nullptr == pDocument || !Ensure_Prototype(pDevice, pContext))
 			return;
 		CGameInstance& GameInstance = CGameInstance::Get();
-		Client::CEffectV2Object::DESC Desc = Entry.Document.Desc;
+		Client::CEffectV2Object::DESC Desc = pDocument->Desc;
 		XMStoreFloat4x4(&Desc.PivotWorld,
 			XMLoadFloat4x4(&Pending.Local) * XMLoadFloat4x4(&Pivot));
 		std::shared_ptr<CGameObject> pGameObject;
@@ -353,18 +382,18 @@ namespace
 		if (nullptr == pObject)
 			return;
 		for (uint32_t iPart = 0u;
-			iPart < Entry.Document.Parts.size() && iPart < pObject->Part_Count(); ++iPart)
+			iPart < pDocument->Parts.size() && iPart < pObject->Part_Count(); ++iPart)
 		{
-			pObject->Part_Visible(iPart) = Entry.Document.Parts[iPart].bVisible;
-			if (!Entry.Document.Parts[iPart].strBaseAssetId.empty())
-				(void)pObject->Set_PartBase(iPart, Entry.Document.Parts[iPart].strBaseAssetId);
+			pObject->Part_Visible(iPart) = pDocument->Parts[iPart].bVisible;
+			if (!pDocument->Parts[iPart].strBaseAssetId.empty())
+				(void)pObject->Set_PartBase(iPart, pDocument->Parts[iPart].strBaseAssetId);
 		}
-		if (!Entry.Document.strAnimationClip.empty())
+		if (!pDocument->strAnimationClip.empty())
 		{
 			for (uint32_t iClip = 0u; iClip < pObject->Animation_Count(); ++iClip)
 			{
 				const char_t* pName = pObject->Animation_Name(iClip);
-				if (nullptr != pName && Entry.Document.strAnimationClip == pName)
+				if (nullptr != pName && pDocument->strAnimationClip == pName)
 				{
 					pObject->Params().iAnimationIndex = iClip;
 					break;
@@ -378,7 +407,7 @@ namespace
 			pObject->Set_FollowLocal(Pending.Local);
 		}
 		if (NO_CHILD != Pending.iChildIndex)
-			Apply_ChildScale(*pObject, Entry.Document, Pending.vScale);
+			Apply_ChildScale(*pObject, *pDocument, Pending.vScale);
 		SPAWNED_EFFECT Effect;
 		Effect.pObject = pObject;
 		Effect.bStopWithClip = Pending.Binding.bStopWithClip;
@@ -406,7 +435,9 @@ namespace
 				" for " + Pending.Binding.strEffectId);
 			return;
 		}
-		Spawn(Pending, Pivot, State.Target, bStageBound, State.Spawned, pDevice, pContext);
+		Spawn(
+			Pending, Pivot, State.Target, bStageBound, State.Spawned,
+			pDevice, pContext, State.pAuthoringSnapshot.get());
 	}
 
 	/* Applies each child's stop once when the lane clock passes it. With
@@ -496,6 +527,93 @@ namespace
 			}
 		}
 		State.Spawned.clear();
+	}
+
+	void Sync_Stage_Impl(
+		const Client::EFFECT_V2_TARGET& Target,
+		const char_t* const pActionId,
+		const f32_t fAgeSeconds,
+		std::shared_ptr<const Client::EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext)
+	{
+		if (!Target.Is_Valid() || g_IgnoredTargets.contains(Target.pKey))
+			return;
+		const std::string strActionId = nullptr != pActionId ? pActionId : "";
+		const auto Found = g_TargetStates.find(Target.pKey);
+		if (Found == g_TargetStates.end() && strActionId.empty())
+			return;
+		const std::string* const pArchetypeId = Resolve_Archetype(Target);
+		if (nullptr == pArchetypeId)
+			return;
+		TARGET_STATE& State = Found != g_TargetStates.end() ?
+			Found->second : g_TargetStates[Target.pKey];
+		State.Target = Target;
+		State.strArchetypeId = *pArchetypeId;
+		const bool_t bSnapshotChanged = State.pAuthoringSnapshot != pSnapshot;
+		if (State.strStage != strActionId || bSnapshotChanged)
+		{
+			State.strStage = strActionId;
+			State.fStageLastSeconds = -1.f;
+			Prune_Spawned(State, false, true);
+			State.StagePending.clear();
+			State.pAuthoringSnapshot = std::move(pSnapshot);
+			if (!strActionId.empty())
+			{
+				if (nullptr != State.pAuthoringSnapshot &&
+					State.pAuthoringSnapshot->Is_Ready())
+				{
+					for (const Client::EFFECT_V2_BINDING& Binding :
+						State.pAuthoringSnapshot->Get_BossValtanBindings())
+					{
+						if (Binding.strStage == strActionId)
+						{
+							Expand_Binding(
+								Binding, State.StagePending,
+								State.pAuthoringSnapshot.get());
+						}
+					}
+				}
+				else if (nullptr == State.pAuthoringSnapshot)
+				{
+					const BINDING_SET& Set = Ensure_Bindings(*pArchetypeId);
+					if (!Set.bFailed)
+					{
+						for (const Client::EFFECT_V2_BINDING& Binding : Set.Bindings)
+						{
+							if (Binding.strStage == strActionId)
+								Expand_Binding(Binding, State.StagePending);
+						}
+					}
+				}
+			}
+		}
+		if (State.StagePending.empty() || !std::isfinite(fAgeSeconds) ||
+			fAgeSeconds < 0.f)
+		{
+			Prune_Spawned(State, false, false);
+			return;
+		}
+		if (fAgeSeconds < State.fStageLastSeconds)
+		{
+			for (PENDING_SPAWN& Pending : State.StagePending)
+				Pending.bSpawned = false;
+		}
+		State.fStageLastSeconds = fAgeSeconds;
+		Client::EFFECT_V2_TARGET_VIEW View;
+		if (!Client::CEffectV2Object::Resolve_TargetView(State.Target, View))
+			return;
+		for (PENDING_SPAWN& Pending : State.StagePending)
+		{
+			if (!Pending.bSpawned &&
+				fAgeSeconds >= Ms_ToSeconds(Pending.Binding.iStartMs))
+			{
+				Spawn_OnTarget(
+					State, Pending, View, true, pDevice, pContext);
+			}
+		}
+		Apply_ChildStops(State.Spawned, fAgeSeconds, true, true);
+		Prune_Spawned(State, false, false);
 	}
 }
 
@@ -587,58 +705,21 @@ void Client::CEffectV2Runtime::Sync_Stage(
 	const ComPtr<ID3D11Device>& pDevice,
 	const ComPtr<ID3D11DeviceContext>& pContext)
 {
-	if (!Target.Is_Valid() || g_IgnoredTargets.contains(Target.pKey))
-		return;
-	const std::string strActionId = nullptr != pActionId ? pActionId : "";
-	const auto Found = g_TargetStates.find(Target.pKey);
-	if (Found == g_TargetStates.end() && strActionId.empty())
-		return;
-	const std::string* pArchetypeId = Resolve_Archetype(Target);
-	if (nullptr == pArchetypeId)
-		return;
-	TARGET_STATE& State = Found != g_TargetStates.end() ?
-		Found->second : g_TargetStates[Target.pKey];
-	State.Target = Target;
-	State.strArchetypeId = *pArchetypeId;
-	if (State.strStage != strActionId)
-	{
-		State.strStage = strActionId;
-		State.fStageLastSeconds = -1.f;
-		Prune_Spawned(State, false, true);
-		State.StagePending.clear();
-		const BINDING_SET& Set = Ensure_Bindings(*pArchetypeId);
-		if (!Set.bFailed && !strActionId.empty())
-		{
-			for (const EFFECT_V2_BINDING& Binding : Set.Bindings)
-			{
-				if (!Binding.strStage.empty() && Binding.strStage == strActionId)
-					Expand_Binding(Binding, State.StagePending);
-			}
-		}
-	}
-	if (State.StagePending.empty() || !std::isfinite(fAgeSeconds) || fAgeSeconds < 0.f)
-	{
-		Prune_Spawned(State, false, false);
-		return;
-	}
-	if (fAgeSeconds < State.fStageLastSeconds)
-	{
-		for (PENDING_SPAWN& Pending : State.StagePending)
-			Pending.bSpawned = false;
-	}
-	State.fStageLastSeconds = fAgeSeconds;
-	EFFECT_V2_TARGET_VIEW View;
-	if (!CEffectV2Object::Resolve_TargetView(State.Target, View))
-		return;
-	for (PENDING_SPAWN& Pending : State.StagePending)
-	{
-		if (Pending.bSpawned)
-			continue;
-		if (fAgeSeconds >= Ms_ToSeconds(Pending.Binding.iStartMs))
-			Spawn_OnTarget(State, Pending, View, true, pDevice, pContext);
-	}
-	Apply_ChildStops(State.Spawned, fAgeSeconds, true, true);
-	Prune_Spawned(State, false, false);
+	Sync_Stage_Impl(
+		Target, pActionId, fAgeSeconds, nullptr, pDevice, pContext);
+}
+
+void Client::CEffectV2Runtime::Sync_StageAuthoring(
+	const EFFECT_V2_TARGET& Target,
+	const char_t* pActionId,
+	const f32_t fAgeSeconds,
+	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
+	const ComPtr<ID3D11Device>& pDevice,
+	const ComPtr<ID3D11DeviceContext>& pContext)
+{
+	Sync_Stage_Impl(
+		Target, pActionId, fAgeSeconds, std::move(pSnapshot),
+		pDevice, pContext);
 }
 
 void Client::CEffectV2Runtime::Reset_LocalPreviewTarget(

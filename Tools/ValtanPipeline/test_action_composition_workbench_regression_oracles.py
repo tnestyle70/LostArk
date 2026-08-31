@@ -189,7 +189,9 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             self.workbench_cpp,
             "void Client::CActionCompositionWorkbench::Render()",
         )
-        self.assertIn("UNSAVED PATTERN DRAFT", details)
+        self.assertIn('"SAVED"', details)
+        self.assertIn('"SAVE FAILED"', details)
+        self.assertIn('"UNSAVED"', details)
         self.assertIn('ImGui::Button("Save & Apply##CompositionDetails")', details)
         self.assertIn("m_bSavePatternRequested = true", details)
 
@@ -200,9 +202,13 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertLess(consume, save)
         self.assertNotIn("Render_", render[save:])
 
-        self.assertIn("LAST SAVE: SAVED - APPLY STATUS BELOW", details)
-        self.assertIn("LAST SAVE & APPLY: FAILED", details)
-        self.assertIn("m_strPatternSaveStatus", details)
+        self.assertIn("Advanced Diagnostics for the exact reason", details)
+        toolbar = function_body(
+            self.workbench_cpp,
+            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
+        )
+        self.assertIn("m_strPatternSaveStatus", toolbar)
+        self.assertIn('"Pattern: %s"', toolbar)
         self.assertIn("m_bPatternSaveSucceeded = Save_Publish_Reload()", render)
 
     def test_sound_save_admission_uses_the_complete_canonical_graph(self) -> None:
@@ -1371,9 +1377,9 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             self.main_cpp,
             "bool_t CMainApp::Debug_OpenBossPatternFlow(",
         )
-        self.assertIn('ImGui::Button("Queue as Next")', toolbar)
+        self.assertIn('ImGui::Button("Queue Next"', toolbar)
         self.assertIn("Queue_NextServerPattern", toolbar)
-        self.assertIn('ImGui::Button("Pattern Flow...")', toolbar)
+        self.assertIn('ImGui::Button("Pattern Flow"', toolbar)
         self.assertIn("Debug_OpenBossPatternFlow", toolbar)
 
         self.assertIn("Acquire_ServerPlaybackAdmission", queue)
@@ -1409,7 +1415,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             "void Client::CActionCompositionWorkbench::Render_Details(",
         )
 
-        self.assertIn('ImGui::Button("Reload Canonical")', toolbar)
+        self.assertIn('ImGui::Button("Reload Canonical"', toolbar)
         self.assertIn("return true", toolbar)
         self.assertIn("bCanonicalViewMayHaveChanged", toolbar)
         self.assertIn("Render_Toolbar", session)
@@ -1420,6 +1426,49 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         sound_end_disabled = details.index("ImGui::EndDisabled();", sound_button)
         sound_return = details.index("if (bSoundSaveRequested)", sound_button)
         self.assertLess(sound_end_disabled, sound_return)
+
+    def test_session_keeps_actions_visible_and_hides_raw_diagnostics_by_default(self) -> None:
+        toolbar = function_body(
+            self.workbench_cpp,
+            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
+        )
+        diagnostics = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render_DataFiles(",
+        )
+        linked = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render_SemanticLinkedRows(",
+        )
+
+        for action_table in (
+            "##CompositionPrimaryActions",
+            "##CompositionServerActions",
+            "##CompositionToolActions",
+        ):
+            self.assertIn(action_table, toolbar)
+        self.assertNotIn("ImGui::SameLine", toolbar)
+        for summary in (
+            '"SAVED"',
+            '"UNSAVED"',
+            '"SAVE FAILED"',
+            '"SAVED / SERVER PENDING"',
+            "Save failed before writing files. Open Advanced Diagnostics.",
+            "Server not ready. Save and restart Server, then re-enter the arena.",
+        ):
+            self.assertIn(summary, toolbar)
+
+        self.assertIn('ImGui::CollapsingHeader("Advanced Diagnostics")', diagnostics)
+        self.assertNotIn("ImGuiTreeNodeFlags_DefaultOpen", diagnostics)
+        self.assertIn("m_strPatternSaveStatus", diagnostics)
+        self.assertIn("m_strDisplayProvenance", diagnostics)
+        self.assertLess(
+            diagnostics.index('ImGui::CollapsingHeader("Advanced Diagnostics")'),
+            diagnostics.index("Render_SemanticLinkedRows(pPattern, pStage)"),
+        )
+        self.assertIn("!pStage->ProductCues.empty()", linked)
+        self.assertIn("bFoundSound && ImGui::CollapsingHeader", linked)
+        self.assertIn("bFoundCamera && ImGui::CollapsingHeader", linked)
 
     def test_manual_pattern_stage_role_is_a_typed_detail_not_an_id_rewrite(self) -> None:
         details = function_body(
@@ -1534,9 +1583,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             self.workbench_cpp,
             "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
         )
-        command_edge = toolbar.index(
-            'ImGui::Button("Play Saved Active Revision on Server Valtan")'
-        )
+        command_edge = toolbar.index('ImGui::Button("Play on Server"')
         select_edge = toolbar.index("Debug_SelectCompletePlayPattern", command_edge)
         play_edge = toolbar.index("Debug_CompletePlaySelected", select_edge)
         self.assertLess(command_edge, select_edge)

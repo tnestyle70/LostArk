@@ -1436,7 +1436,13 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         self.assertEqual(1, document["formatVersion"])
         self.assertEqual("BOSS_VALTAN", document["bossArchetypeId"])
         self.assertIsInstance(document["bindings"], list)
-        self.assertEqual([], document["bindings"])
+        self.assertEqual(
+            {("VALTAN_CROSS", "effect.valtan.sequence.cross")},
+            {
+                (binding["patternId"], binding["effectAssetId"])
+                for binding in document["bindings"]
+            },
+        )
         seen_patterns: set[str] = set()
         seen_effects: set[str] = set()
         for binding in document["bindings"]:

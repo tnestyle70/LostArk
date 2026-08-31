@@ -3214,31 +3214,59 @@ bool_t Client::CActionCompositionWorkbench::Render_Toolbar(
 	const VALTAN_PATTERN_VIEW* const pPattern,
 	const bool_t bMutationAdmitted)
 {
-	ImGui::SeparatorText("Save / Validate / Server Apply");
-	ImGui::TextDisabled(
-		"Editing and local Arena Clone playback live in Sequencer. This panel commits JSON, validates generated products, then controls only the saved Server-active revision.");
-	if (ImGui::Button("Reset Layout"))
-		m_bResetLayoutRequested = true;
-	ImGui::SameLine();
-	if (ImGui::Button("Reload Canonical"))
-	{
-		(void)Reload_Canonical();
-		return true;
-	}
-	ImGui::SameLine();
-	ImGui::BeginDisabled(!bMutationAdmitted || nullptr == m_pBalanceTool);
+	ImGui::SeparatorText("Pattern Save");
+	const bool_t bSavedServerPending = m_bPatternSaveResultAvailable &&
+		!m_bPatternSaveSucceeded &&
+		(std::string::npos != m_strPatternSaveStatus.find(
+			"Validated data files were saved") ||
+		std::string::npos != m_strPatternSaveStatus.find(
+			"Data files were saved"));
+	const bool_t bLastSaveFailed = m_bAuthoringDraftDirty &&
+		m_bPatternSaveResultAvailable && !m_bPatternSaveSucceeded &&
+		!bSavedServerPending;
+	const char_t* const pSaveSummary = bSavedServerPending ?
+		"SAVED / SERVER PENDING" : (!m_bAuthoringDraftDirty ?
+			"SAVED" : (bLastSaveFailed ? "SAVE FAILED" : "UNSAVED"));
+	const ImVec4 SaveSummaryColor =
+		!m_bAuthoringDraftDirty && !bSavedServerPending ?
+		ImVec4(0.35f, 0.86f, 0.45f, 1.f) :
+		(bLastSaveFailed ? ImVec4(1.f, 0.38f, 0.30f, 1.f) :
+			ImVec4(1.f, 0.76f, 0.25f, 1.f));
+	ImGui::TextColored(SaveSummaryColor, "Pattern: %s", pSaveSummary);
+	if (bLastSaveFailed)
+		ImGui::TextWrapped(
+			"Save failed before writing files. Open Advanced Diagnostics.");
+	else if (bSavedServerPending)
+		ImGui::TextWrapped(
+			"Files are saved. Restart Server, then re-enter the arena.");
+
 	bool_t bCanonicalViewMayHaveChanged = false;
-	if (ImGui::Button("Save & Apply##CompositionSession"))
+	if (ImGui::BeginTable(
+			"##CompositionPrimaryActions", 2,
+			ImGuiTableFlags_SizingStretchSame))
 	{
-		m_bPatternSaveSucceeded = Save_Publish_Reload();
-		m_bPatternSaveResultAvailable = true;
-		m_strPatternSaveStatus = m_strStatus;
-		bCanonicalViewMayHaveChanged = true;
+		ImGui::TableNextColumn();
+		ImGui::BeginDisabled(!bMutationAdmitted || nullptr == m_pBalanceTool);
+		if (ImGui::Button(
+				"Save & Apply##CompositionSession", ImVec2(-1.f, 0.f)))
+		{
+			m_bPatternSaveSucceeded = Save_Publish_Reload();
+			m_bPatternSaveResultAvailable = true;
+			m_strPatternSaveStatus = m_strStatus;
+			bCanonicalViewMayHaveChanged = true;
+		}
+		ImGui::EndDisabled();
+		ImGui::TableNextColumn();
+		if (ImGui::Button("Reload Canonical", ImVec2(-1.f, 0.f)))
+		{
+			(void)Reload_Canonical();
+			bCanonicalViewMayHaveChanged = true;
+		}
+		ImGui::EndTable();
 	}
-	ImGui::EndDisabled();
 	if (bCanonicalViewMayHaveChanged)
 		return true;
-	ImGui::SeparatorText("Saved Server Revision");
+
 	std::string ServerPlayStatus;
 	std::string SoundRuntimeStatus;
 	LostArk::Shared::GameplayDataRevision ExpectedServerRevision{};
@@ -3253,137 +3281,117 @@ bool_t Client::CActionCompositionWorkbench::Render_Toolbar(
 			ExpectedServerRevision, SoundRuntimeStatus);
 	const bool_t bServerPlayAdmitted =
 		bServerRevisionAdmitted && bSoundRuntimeReady;
-	ImGui::BeginDisabled(nullptr == pPattern || !bMutationAdmitted ||
-		!bServerPlayAdmitted);
-	if (ImGui::Button("Play Saved Active Revision on Server Valtan"))
+	ImGui::SeparatorText("Server Playback");
+	ImGui::TextColored(
+		bServerPlayAdmitted ? ImVec4(0.35f, 0.86f, 0.45f, 1.f) :
+			ImVec4(1.f, 0.76f, 0.25f, 1.f),
+		"Server: %s", bServerPlayAdmitted ? "READY" : "NOT READY");
+	if (!bServerPlayAdmitted)
 	{
-		std::string Status;
+		ImGui::TextWrapped(nullptr == pPattern ?
+			"Select a Pattern to enable Server playback." :
+			"Server not ready. Save and restart Server, then re-enter the arena.");
+	}
+	if (ImGui::BeginTable(
+			"##CompositionServerActions", 3,
+			ImGuiTableFlags_SizingStretchSame))
+	{
+		ImGui::TableNextColumn();
+		ImGui::BeginDisabled(nullptr == pPattern || !bMutationAdmitted ||
+			!bServerPlayAdmitted);
+		if (ImGui::Button("Play on Server", ImVec2(-1.f, 0.f)))
+		{
+			std::string Status;
 #ifdef _DEBUG
-		if (CMainApp* const pApp = CMainApp::Get_Active();
-			nullptr != pApp &&
-			pApp->Debug_SelectCompletePlayPattern(pPattern->strPatternId))
-		{
-			(void)pApp->Debug_CompletePlaySelected(Status);
-		}
-		else
-		{
-			Status = "Complete Play selection was rejected by the admitted inventory.";
-		}
+			if (CMainApp* const pApp = CMainApp::Get_Active();
+				nullptr != pApp &&
+				pApp->Debug_SelectCompletePlayPattern(pPattern->strPatternId))
+			{
+				(void)pApp->Debug_CompletePlaySelected(Status);
+			}
+			else
+			{
+				Status = "Complete Play selection was rejected by the admitted inventory.";
+			}
 #else
-		Status = "Complete Play authoring control is unavailable outside a Debug Client.";
+			Status = "Complete Play authoring control is unavailable outside a Debug Client.";
 #endif
-		m_strStatus = std::move(Status);
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("Restart Pattern"))
-	{
-		std::string Status;
-		if (nullptr == m_pBossTool ||
-			!m_pBossTool->Restart_ServerPattern(pPattern->strPatternId, Status))
-		{
-			m_strStatus = Status;
-		}
-		else
-		{
 			m_strStatus = std::move(Status);
 		}
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("Queue as Next"))
-	{
-		std::string Status;
-		if (nullptr == m_pBossTool ||
-			!m_pBossTool->Queue_NextServerPattern(
-				pPattern->strPatternId, Status))
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) &&
+			!bServerPlayAdmitted)
 		{
-			m_strStatus = std::move(Status);
+			ImGui::SetTooltip(
+				"Server playback is not ready. Open Advanced Diagnostics for the exact reason.");
 		}
-		else
+		ImGui::TableNextColumn();
+		if (ImGui::Button("Restart", ImVec2(-1.f, 0.f)))
 		{
-			m_strStatus = std::move(Status);
+			std::string Status;
+			if (nullptr == m_pBossTool ||
+				!m_pBossTool->Restart_ServerPattern(
+					pPattern->strPatternId, Status))
+			{
+				m_strStatus = Status;
+			}
+			else
+			{
+				m_strStatus = std::move(Status);
+			}
 		}
-	}
-	ImGui::EndDisabled();
-	if (!bSoundRuntimeReady && !SoundRuntimeStatus.empty())
-	{
-		ImGui::TextColored(
-			ImVec4(1.f, 0.58f, 0.22f, 1.f),
-			"Server playback blocked by Pattern Sound runtime apply: %s",
-			SoundRuntimeStatus.c_str());
-	}
-	if (!bServerPlayAdmitted && !ServerPlayStatus.empty())
-	{
-		ImGui::SameLine();
-		ImGui::TextDisabled("Runtime pending: %s", ServerPlayStatus.c_str());
-	}
-	ImGui::SameLine();
-	ImGui::BeginDisabled(!bMutationAdmitted || nullptr == m_pBossTool);
-	if (ImGui::Button("Fresh / Restore Arena"))
-	{
-		std::string Status;
-		(void)m_pBossTool->Set_ServerArenaPreset(
-			LostArk::Shared::VALTAN_ARENA_PRESET::FRESH, Status);
-		m_strStatus = std::move(Status);
-	}
-	ImGui::EndDisabled();
-	ImGui::SameLine();
-	if (ImGui::Button("Animation Clips / Create Pattern"))
-		m_bOpenAnimationToolRequested = true;
-	ImGui::SameLine();
-	if (ImGui::Button("Pattern Flow..."))
-	{
-		std::string Status;
-#ifdef _DEBUG
-		CMainApp* const pApp = CMainApp::Get_Active();
-		if (nullptr == pApp || !pApp->Debug_OpenBossPatternFlow(Status))
-			m_strStatus = std::move(Status);
-		else
-			m_strStatus = std::move(Status);
-#else
-		Status = "Pattern Flow authoring is unavailable outside a Debug Client.";
-		m_strStatus = std::move(Status);
-#endif
+		ImGui::TableNextColumn();
+		if (ImGui::Button("Queue Next", ImVec2(-1.f, 0.f)))
+		{
+			std::string Status;
+			if (nullptr == m_pBossTool ||
+				!m_pBossTool->Queue_NextServerPattern(
+					pPattern->strPatternId, Status))
+			{
+				m_strStatus = std::move(Status);
+			}
+			else
+			{
+				m_strStatus = std::move(Status);
+			}
+		}
+		ImGui::EndDisabled();
+		ImGui::EndTable();
 	}
 
-	ImGui::TextColored(
-		bMutationAdmitted ? ImVec4(0.35f, 0.86f, 0.45f, 1.f) :
-			ImVec4(1.f, 0.58f, 0.22f, 1.f),
-		"Canonical: %s", Admission_Label());
-	if (m_bAuthoringDraftDirty)
+	ImGui::SeparatorText("Tools");
+	if (ImGui::BeginTable(
+			"##CompositionToolActions", 3,
+			ImGuiTableFlags_SizingStretchSame))
 	{
-		ImGui::SameLine();
-		ImGui::TextColored(
-			ImVec4(1.f, 0.76f, 0.25f, 1.f), "| AUTHORING DRAFT");
-	}
-	if (m_bPatternSoundDependencyDirty)
-	{
-		ImGui::SameLine();
-		ImGui::TextColored(
-			ImVec4(1.f, 0.62f, 0.20f, 1.f),
-			"| SOUND OWNER DRAFT / PATTERN MUTATION LOCKED");
-	}
-	ImGui::SameLine();
-	ImGui::TextDisabled(
-		"| Pattern %s | Stage %s | Detail %s",
-		nullptr == pPattern ? "NONE" : pPattern->strPatternId.c_str(),
-		m_strSelectedStageId.empty() ? "NONE" : m_strSelectedStageId.c_str(),
-		Owner_Label(m_eDetailOwner));
-	if (!m_strDisplayProvenance.empty())
-		ImGui::TextDisabled("Display provenance: %s",
-			m_strDisplayProvenance.c_str());
-	if (!bMutationAdmitted)
-	{
-		if (ADMISSION_STATE::ADMITTED == m_eAdmission &&
-			m_bPatternSoundDependencyDirty)
+		ImGui::TableNextColumn();
+		ImGui::BeginDisabled(!bMutationAdmitted || nullptr == m_pBossTool);
+		if (ImGui::Button("Restore Arena", ImVec2(-1.f, 0.f)))
 		{
-			ImGui::TextWrapped(
-				"Pattern/Sequence mutation, canonical Save, Complete Play, Restart, arena mutation and timeline trim are blocked until the dependency-qualified Sound draft is saved or discarded. Sound Detail remains editable and owns its separate Save.");
+			std::string Status;
+			(void)m_pBossTool->Set_ServerArenaPreset(
+				LostArk::Shared::VALTAN_ARENA_PRESET::FRESH, Status);
+			m_strStatus = std::move(Status);
 		}
-		else
+		ImGui::EndDisabled();
+		ImGui::TableNextColumn();
+		if (ImGui::Button("Animation Clips", ImVec2(-1.f, 0.f)))
+			m_bOpenAnimationToolRequested = true;
+		ImGui::TableNextColumn();
+		if (ImGui::Button("Pattern Flow", ImVec2(-1.f, 0.f)))
 		{
-			ImGui::TextWrapped(
-				"Read-only diagnostic mode. Save, Complete Play, Restart, arena mutation and timeline trim are blocked until a fresh canonical graph is ADMITTED.");
+			std::string Status;
+#ifdef _DEBUG
+			CMainApp* const pApp = CMainApp::Get_Active();
+			if (nullptr == pApp || !pApp->Debug_OpenBossPatternFlow(Status))
+				m_strStatus = std::move(Status);
+			else
+				m_strStatus = std::move(Status);
+#else
+			Status = "Pattern Flow authoring is unavailable outside a Debug Client.";
+			m_strStatus = std::move(Status);
+#endif
 		}
+		ImGui::EndTable();
 	}
 	return false;
 }
@@ -4930,17 +4938,24 @@ void Client::CActionCompositionWorkbench::Render_Details(
 {
 	ImGui::SeparatorText("Details");
 	ImGui::Text("Owner: %s", Owner_Label(m_eDetailOwner));
-	if (m_bAuthoringDraftDirty)
-	{
-		ImGui::TextColored(
-			ImVec4(1.f, 0.72f, 0.25f, 1.f),
-			"UNSAVED PATTERN DRAFT");
-	}
-	else
-	{
-		ImGui::TextDisabled("Pattern draft: saved");
-	}
-	ImGui::SameLine();
+	const bool_t bSavedServerPending = m_bPatternSaveResultAvailable &&
+		!m_bPatternSaveSucceeded &&
+		(std::string::npos != m_strPatternSaveStatus.find(
+			"Validated data files were saved") ||
+		std::string::npos != m_strPatternSaveStatus.find(
+			"Data files were saved"));
+	const bool_t bLastSaveFailed = m_bAuthoringDraftDirty &&
+		m_bPatternSaveResultAvailable && !m_bPatternSaveSucceeded &&
+		!bSavedServerPending;
+	const char_t* const pSaveSummary = bSavedServerPending ?
+		"SAVED / SERVER PENDING" : (!m_bAuthoringDraftDirty ?
+			"SAVED" : (bLastSaveFailed ? "SAVE FAILED" : "UNSAVED"));
+	const ImVec4 SaveSummaryColor =
+		!m_bAuthoringDraftDirty && !bSavedServerPending ?
+		ImVec4(0.35f, 0.86f, 0.45f, 1.f) :
+		(bLastSaveFailed ? ImVec4(1.f, 0.38f, 0.30f, 1.f) :
+			ImVec4(1.f, 0.72f, 0.25f, 1.f));
+	ImGui::TextColored(SaveSummaryColor, "Pattern: %s", pSaveSummary);
 	const bool_t bCanSavePattern = nullptr != pPattern &&
 		bPatternMutationAdmitted && m_bAuthoringDraftDirty &&
 		nullptr != m_pBalanceTool;
@@ -4955,16 +4970,10 @@ void Client::CActionCompositionWorkbench::Render_Details(
 			"Save the validated Pattern and request a safe Server apply. The result below says whether it is active, pending, or needs restart/re-entry." :
 			"Save & Apply is enabled for an admitted unsaved Pattern draft after separate Sound owner changes are saved or discarded.");
 	}
-	if (m_bPatternSaveResultAvailable)
+	if (bLastSaveFailed)
 	{
-		ImGui::TextColored(
-			m_bPatternSaveSucceeded ?
-				ImVec4(0.40f, 0.90f, 0.48f, 1.f) :
-				ImVec4(1.f, 0.38f, 0.30f, 1.f),
-			m_bPatternSaveSucceeded ?
-				"LAST SAVE: SAVED - APPLY STATUS BELOW" :
-				"LAST SAVE & APPLY: FAILED");
-		ImGui::TextWrapped("%s", m_strPatternSaveStatus.c_str());
+		ImGui::TextDisabled(
+			"Open Save / Validate / Server > Advanced Diagnostics for the exact reason.");
 	}
 	if (nullptr == pPattern)
 	{
@@ -7589,14 +7598,13 @@ void Client::CActionCompositionWorkbench::Render_SemanticLinkedRows(
 		}
 	}
 
-	if (ImGui::CollapsingHeader(
+	if ((!pStage->ProductCues.empty() ||
+			!pStage->IndependentEffectIds.empty()) &&
+		ImGui::CollapsingHeader(
 			"Exact Effect Invocations", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		if (pStage->ProductCues.empty())
-		{
-			ImGui::TextDisabled("No exact Effect invocation is linked to this Stage.");
-		}
-		else if (BeginLinkedTable("##CompositionSemanticEffectRows"))
+		if (!pStage->ProductCues.empty() &&
+			BeginLinkedTable("##CompositionSemanticEffectRows"))
 		{
 			for (const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue : pStage->ProductCues)
 			{
@@ -7623,19 +7631,28 @@ void Client::CActionCompositionWorkbench::Render_SemanticLinkedRows(
 		}
 	}
 
-	if (ImGui::CollapsingHeader(
+	bool_t bSoundDirty = false;
+	std::string SoundStatus;
+	const VALTAN_PATTERN_SOUND_CUE_DOCUMENT* const pSounds =
+		ADMISSION_STATE::ADMITTED == m_eAdmission &&
+		nullptr != m_pAnimationTool ?
+		m_pAnimationTool->Get_ValtanCompositionPatternSoundDraft(
+			bSoundDirty, SoundStatus) : nullptr;
+	bool_t bFoundSound = false;
+	if (nullptr != pSounds)
+	{
+		bFoundSound = std::any_of(
+			pSounds->Cues.begin(), pSounds->Cues.end(),
+			[pPattern, pStage](const VALTAN_PATTERN_SOUND_CUE& Cue)
+			{
+				return Cue.strPatternId == pPattern->strPatternId &&
+					Cue.strStageId == pStage->strStageId;
+			});
+	}
+	if (bFoundSound && ImGui::CollapsingHeader(
 			"Pattern Sound Events", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		bool_t bSoundDirty = false;
-		std::string SoundStatus;
-		const VALTAN_PATTERN_SOUND_CUE_DOCUMENT* const pSounds =
-			ADMISSION_STATE::ADMITTED == m_eAdmission &&
-			nullptr != m_pAnimationTool ?
-			m_pAnimationTool->Get_ValtanCompositionPatternSoundDraft(
-				bSoundDirty, SoundStatus) : nullptr;
-		bool_t bFoundSound = false;
-		if (nullptr != pSounds &&
-			BeginLinkedTable("##CompositionSemanticSoundRows"))
+		if (BeginLinkedTable("##CompositionSemanticSoundRows"))
 		{
 			for (const VALTAN_PATTERN_SOUND_CUE& Cue : pSounds->Cues)
 			{
@@ -7659,27 +7676,26 @@ void Client::CActionCompositionWorkbench::Render_SemanticLinkedRows(
 			}
 			ImGui::EndTable();
 		}
-		if (nullptr == pSounds)
-		{
-			ImGui::TextDisabled(
-				"Pattern Sound rows require a fresh FULL_JOIN admission: %s",
-				SoundStatus.empty() ? "source owner unavailable" :
-					SoundStatus.c_str());
-		}
-		else if (!bFoundSound)
-		{
-			ImGui::TextDisabled("No Pattern Sound event is linked to this Stage.");
-		}
-		else if (bSoundDirty)
+		if (bSoundDirty)
 		{
 			ImGui::TextDisabled(
 				"Rows include the unsaved typed Sound-owner draft generation.");
 		}
 	}
 
-	if (ImGui::CollapsingHeader("Camera / Light References"))
+	bool_t bFoundCamera = !pStage->CameraInvocations.empty();
+	if (!bFoundCamera && m_bPatternShakesReady)
 	{
-		bool_t bFoundCamera = false;
+		bFoundCamera = std::any_of(
+			m_PatternShakes.Cues.begin(), m_PatternShakes.Cues.end(),
+			[pPattern, pStage](const VALTAN_PATTERN_SHAKE_CUE& Cue)
+			{
+				return Cue.strPatternId == pPattern->strPatternId &&
+					Cue.strStageId == pStage->strStageId;
+			});
+	}
+	if (bFoundCamera && ImGui::CollapsingHeader("Camera / Light References"))
+	{
 		if ((!pStage->CameraInvocations.empty() || m_bPatternShakesReady) &&
 			BeginLinkedTable("##CompositionSemanticCameraRows"))
 		{
@@ -7717,10 +7733,6 @@ void Client::CActionCompositionWorkbench::Render_SemanticLinkedRows(
 			}
 			ImGui::EndTable();
 		}
-		if (!bFoundCamera)
-			ImGui::TextDisabled("No Camera cue or shake is linked to this Stage.");
-		ImGui::TextDisabled(
-			"Light refs: no standalone typed Light reference exists in this admitted Pattern/Stage schema.");
 	}
 
 	if (ImGui::CollapsingHeader("World / Light Event References"))
@@ -7775,21 +7787,59 @@ void Client::CActionCompositionWorkbench::Render_DataFiles(
 	const VALTAN_STAGE_VIEW* const pStage,
 	const bool_t bPatternMutationAdmitted)
 {
-	ImGui::SeparatorText("Data Files / Validation / Server Apply");
-	if (!ImGui::BeginTabBar("##CompositionDataAndCreateTabs"))
+	if (!ImGui::CollapsingHeader("Advanced Diagnostics"))
 		return;
-	if (ImGui::BeginTabItem("Owners / Validation"))
+	if (ImGui::Button("Reset Layout"))
+		m_bResetLayoutRequested = true;
+	ImGui::TextColored(
+		bPatternMutationAdmitted ? ImVec4(0.35f, 0.86f, 0.45f, 1.f) :
+			ImVec4(1.f, 0.58f, 0.22f, 1.f),
+		"Admission: %s", Admission_Label());
+	if (m_bPatternSoundDependencyDirty)
+		ImGui::TextColored(
+			ImVec4(1.f, 0.62f, 0.20f, 1.f), "Sound owner draft is pending.");
+	if (nullptr != pPattern)
 	{
-		ImGui::TextWrapped("%s", m_strStatus.c_str());
-		if (!m_strSoundStatus.empty())
-			ImGui::TextDisabled("Sound lane: %s", m_strSoundStatus.c_str());
-		if (!m_strShakeStatus.empty())
-			ImGui::TextDisabled("Camera shake lane: %s", m_strShakeStatus.c_str());
-		if (!m_strCombatObjectSoundStatus.empty())
-			ImGui::TextDisabled("Combat-object Sound lane: %s",
-				m_strCombatObjectSoundStatus.c_str());
-		Render_SemanticLinkedRows(pPattern, pStage);
-		if (nullptr != pPattern && ImGui::BeginTable(
+		ImGui::TextDisabled("Pattern: %s", pPattern->strPatternId.c_str());
+		if (nullptr != pStage)
+		{
+			ImGui::TextDisabled("Stage: %s", pStage->strStageId.c_str());
+			ImGui::TextDisabled("Action: %s", pStage->strActionId.c_str());
+		}
+		ImGui::TextDisabled("Detail owner: %s", Owner_Label(m_eDetailOwner));
+	}
+	if (!m_strDisplayProvenance.empty())
+		ImGui::TextWrapped("Provenance: %s", m_strDisplayProvenance.c_str());
+	if (m_bPatternSaveResultAvailable && !m_strPatternSaveStatus.empty())
+		ImGui::TextWrapped("Last save: %s", m_strPatternSaveStatus.c_str());
+	if (!m_strStatus.empty())
+		ImGui::TextWrapped("Last operation: %s", m_strStatus.c_str());
+	if (!m_strSoundStatus.empty())
+		ImGui::TextDisabled("Sound lane: %s", m_strSoundStatus.c_str());
+	if (!m_strShakeStatus.empty())
+		ImGui::TextDisabled("Camera shake lane: %s", m_strShakeStatus.c_str());
+	if (!m_strCombatObjectSoundStatus.empty())
+		ImGui::TextDisabled("Combat-object Sound lane: %s",
+			m_strCombatObjectSoundStatus.c_str());
+
+	std::string ServerPlayStatus;
+	std::string SoundRuntimeStatus;
+	LostArk::Shared::GameplayDataRevision ExpectedServerRevision{};
+	const bool_t bServerRevisionAdmitted = nullptr != m_pBossTool &&
+		m_pBossTool->Observe_ServerActivePatternRevision(
+			ExpectedServerRevision, ServerPlayStatus);
+	const bool_t bSoundRuntimeReady = nullptr != m_pAnimationTool &&
+		bServerRevisionAdmitted &&
+		m_pAnimationTool->Is_ValtanCompositionPatternSoundRuntimeReady(
+			ExpectedServerRevision, SoundRuntimeStatus);
+	if (!ServerPlayStatus.empty())
+		ImGui::TextWrapped("Server revision: %s", ServerPlayStatus.c_str());
+	if (!bSoundRuntimeReady && !SoundRuntimeStatus.empty())
+		ImGui::TextWrapped("Server Sound runtime: %s",
+			SoundRuntimeStatus.c_str());
+
+	Render_SemanticLinkedRows(pPattern, pStage);
+	if (nullptr != pPattern && ImGui::BeginTable(
 				"##CompositionOwnerFiles", 3,
 				ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
 				ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp))
@@ -7818,21 +7868,8 @@ void Client::CActionCompositionWorkbench::Render_DataFiles(
 				"Camera presentation service");
 			Row("World", "Data/Valtan/Valtan.gameplay.json / Area typed owners",
 				"Server world event consumer");
-			ImGui::EndTable();
-		}
-		if (nullptr != pPattern)
-		{
-			ImGui::TextDisabled("Selected Pattern: %s", pPattern->strPatternId.c_str());
-			if (nullptr != pStage)
-			{
-				ImGui::SameLine();
-				ImGui::TextDisabled("| Stage: %s | Action: %s",
-					pStage->strStageId.c_str(), pStage->strActionId.c_str());
-			}
-		}
-		ImGui::EndTabItem();
+		ImGui::EndTable();
 	}
-	ImGui::EndTabBar();
 }
 
 void Client::CActionCompositionWorkbench::Render_WindowMenu()
