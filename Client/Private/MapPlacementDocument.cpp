@@ -33,7 +33,15 @@ namespace
 		const float length = XMVectorGetX(XMVector4Length(value));
 		if (!std::isfinite(length) || length < 0.000001f)
 			return false;
-		vector_t normalized = XMQuaternionNormalize(value);
+		/* A saved quaternion is parsed again during linked-save verification.
+		   Re-normalizing an already-unit float quaternion is not bitwise
+		   idempotent, so the second parse could differ by one ULP and reject a
+		   valid save. Preserve values already inside the unit tolerance while
+		   still canonicalizing genuinely non-unit authoring input. */
+		constexpr float UNIT_QUATERNION_TOLERANCE = 0.0001f;
+		vector_t normalized =
+			std::abs(length - 1.f) <= UNIT_QUATERNION_TOLERANCE ?
+			value : XMQuaternionNormalize(value);
 		if (XMVectorGetW(normalized) < 0.f)
 			normalized = XMVectorNegate(normalized);
 		XMStoreFloat4(&record.rotationQuaternion, normalized);
@@ -150,7 +158,8 @@ bool_t CMapPlacementDocument::Write(
 	const std::string& areaId,
 	const std::vector<MAP_PLACEMENT_RECORD>& records,
 	const CMapAssetCatalog& catalog,
-	std::string& outStatus)
+	std::string& outStatus,
+	std::vector<MAP_PLACEMENT_RECORD>* outStoredRecords)
 {
 	if (records.size() > MAX_PLACEMENT_COUNT || areaId != catalog.Get_AreaId())
 	{
@@ -215,6 +224,8 @@ bool_t CMapPlacementDocument::Write(
 	}
 	outStatus = "Saved placement document v2: " +
 		std::to_string(normalized.size());
+	if (nullptr != outStoredRecords)
+		*outStoredRecords = std::move(normalized);
 	return true;
 }
 

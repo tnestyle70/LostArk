@@ -402,6 +402,15 @@ function Get-BuildGitIdentity {
     param([Parameter(Mandatory = $true)][string]$RepositoryRoot)
 
     $root = [IO.Path]::GetFullPath($RepositoryRoot)
+    # git prints paths as raw UTF-8 bytes under core.quotepath=false. A parent
+    # console on the ANSI code page (msbuild, CP949) decodes Korean file names
+    # into replacement characters, and GetFullPath then rejects the path. The
+    # identity hashes below must also read identical bytes on every machine,
+    # so the whole enumeration decodes as UTF-8 and the caller encoding is
+    # restored on exit.
+    $previousOutputEncoding = [Console]::OutputEncoding
+    [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+    try {
     $head = (& git -C $root rev-parse --verify HEAD).Trim().ToLowerInvariant()
     if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve build HEAD.' }
     $branch = (& git -C $root branch --show-current).Trim()
@@ -450,6 +459,10 @@ function Get-BuildGitIdentity {
         dirty = $dirtyLines.Count -ne 0
         dirtyPathCount = $dirtyLines.Count
         dirtyIdentitySha256 = Get-BuildCanonicalSha256 $dirtyIdentity
+    }
+    }
+    finally {
+        [Console]::OutputEncoding = $previousOutputEncoding
     }
 }
 

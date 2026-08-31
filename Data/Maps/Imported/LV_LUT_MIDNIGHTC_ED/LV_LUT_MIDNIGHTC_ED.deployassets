@@ -1,0 +1,3 @@
+LOSTARK_DEPLOY_PROP_CATALOG 3 "LV_LUT_MIDNIGHTC_ED" 2
+"DEPLOY_ITR_02283" ANIM "Paper lever ITR_02283" "Map/LV_LUT_MIDNIGHTC_ED/AnimatedProps/DEPLOY_ITR_02283/DEPLOY_ITR_02283.wmodel" "Prototype_Component_Model_DEPLOY_ITR_02283" "" "" 1 0 "SOURCE_EXACT ITR_02283 SkeletalMesh3 with itr_02283_ani PSA" "off" "go_on"
+"DEPLOY_BG_RAD_KOUKUSATON_PAPERSTAGE" ANIM "Paper stage bridge" "Map/LV_LUT_MIDNIGHTC_ED/AnimatedProps/DEPLOY_BG_RAD_KOUKUSATON_PAPERSTAGE/DEPLOY_BG_RAD_KOUKUSATON_PAPERSTAGE.wmodel" "Prototype_Component_Model_DEPLOY_BG_RAD_KOUKUSATON_PAPERSTAGE" "" "" 1 0 "SOURCE_EXACT cine_prob_09_s2_2012 paperstage with evt2_paperstage_open01 PSA" "evt2_paperstage_open01" "evt2_paperstage_open01"

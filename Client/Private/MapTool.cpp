@@ -1,6 +1,7 @@
 #include "imgui.h"
 
 #include "MapTool.h"
+#include "WorldSequenceToolPanel.h"
 
 #include "ActorCatalog.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
@@ -45,6 +46,336 @@
 
 namespace
 {
+	struct AUTHORING_FILE_BACKUP
+	{
+		std::filesystem::path destination;
+		std::filesystem::path backup;
+		bool_t hadOriginal = false;
+	};
+
+	class SCOPED_AUTHORING_SAVE_LOCK final
+	{
+	public:
+		SCOPED_AUTHORING_SAVE_LOCK() = default;
+		~SCOPED_AUTHORING_SAVE_LOCK()
+		{
+			if (INVALID_HANDLE_VALUE != m_Handle)
+				CloseHandle(m_Handle);
+		}
+
+		SCOPED_AUTHORING_SAVE_LOCK(const SCOPED_AUTHORING_SAVE_LOCK&) = delete;
+		SCOPED_AUTHORING_SAVE_LOCK& operator=(
+			const SCOPED_AUTHORING_SAVE_LOCK&) = delete;
+
+		bool_t Acquire(
+			const std::filesystem::path& sequencePath,
+			std::string& outStatus)
+		{
+			if (INVALID_HANDLE_VALUE != m_Handle || sequencePath.empty())
+			{
+				outStatus = "Linked authoring save lock path is invalid";
+				return false;
+			}
+			std::filesystem::path lockPath = sequencePath;
+			lockPath += L".linked-save.lock";
+			m_Handle = CreateFileW(lockPath.c_str(),
+				GENERIC_READ | GENERIC_WRITE | DELETE, 0, nullptr, OPEN_ALWAYS,
+				FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+			if (INVALID_HANDLE_VALUE == m_Handle)
+			{
+				const DWORD error = GetLastError();
+				if (ERROR_SHARING_VIOLATION == error ||
+					ERROR_LOCK_VIOLATION == error)
+				{
+					outStatus =
+						"This Area is being loaded or saved by another MapTool process";
+				}
+				else
+				{
+					outStatus = "Could not open Area authoring lock " +
+						lockPath.filename().string() + " (Windows error " +
+						std::to_string(error) + ")";
+				}
+				return false;
+			}
+			return true;
+		}
+
+	private:
+		HANDLE m_Handle = INVALID_HANDLE_VALUE;
+	};
+
+	bool_t PrepareAuthoringBackup(
+		const std::filesystem::path& destination,
+		AUTHORING_FILE_BACKUP& outBackup,
+		std::string& outStatus)
+	{
+		if (destination.empty())
+		{
+			outStatus = "Linked authoring save has an empty destination";
+			return false;
+		}
+		outBackup = {};
+		outBackup.destination = destination;
+		outBackup.backup = destination;
+		outBackup.backup += L".world-sequence-transaction.bak";
+		std::error_code error;
+		const bool_t destinationExists =
+			std::filesystem::exists(destination, error);
+		if (error)
+		{
+			outStatus = "Could not inspect linked authoring destination";
+			return false;
+		}
+		outBackup.hadOriginal = destinationExists &&
+			std::filesystem::is_regular_file(destination, error);
+		if (error || (destinationExists && !outBackup.hadOriginal))
+		{
+			outStatus = "Linked authoring destination is not a regular file";
+			return false;
+		}
+		if (!outBackup.hadOriginal)
+		{
+			std::filesystem::remove(outBackup.backup, error);
+			if (error)
+			{
+				outStatus = "Could not clear stale linked authoring backup";
+				return false;
+			}
+			return true;
+		}
+		std::filesystem::copy_file(destination, outBackup.backup,
+			std::filesystem::copy_options::overwrite_existing, error);
+		if (error)
+		{
+			outStatus = "Could not create linked authoring rollback backup";
+			return false;
+		}
+		return true;
+	}
+
+	bool_t RestoreAuthoringBackup(const AUTHORING_FILE_BACKUP& backup)
+	{
+		if (backup.hadOriginal)
+		{
+			std::error_code error;
+			if (!std::filesystem::is_regular_file(backup.backup, error) || error)
+				return false;
+			std::filesystem::path restore = backup.destination;
+			restore += L".world-sequence-restore.tmp";
+			std::filesystem::copy_file(backup.backup, restore,
+				std::filesystem::copy_options::overwrite_existing, error);
+			if (error)
+				return false;
+			const bool_t committed =
+				ReplaceFileW(backup.destination.c_str(), restore.c_str(), nullptr,
+					REPLACEFILE_WRITE_THROUGH, nullptr, nullptr) ||
+				MoveFileExW(restore.c_str(), backup.destination.c_str(),
+					MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+			if (!committed)
+				std::filesystem::remove(restore, error);
+			return committed;
+		}
+		std::error_code error;
+		const bool_t destinationExists =
+			std::filesystem::exists(backup.destination, error);
+		if (error || (destinationExists &&
+			!std::filesystem::is_regular_file(backup.destination, error)) || error)
+		{
+			return false;
+		}
+		if (destinationExists)
+			std::filesystem::remove(backup.destination, error);
+		return !error;
+	}
+
+	void DiscardAuthoringBackup(const AUTHORING_FILE_BACKUP& backup)
+	{
+		std::error_code error;
+		std::filesystem::remove(backup.backup, error);
+	}
+
+	std::filesystem::path GetAuthoringTransactionMarker(
+		const std::filesystem::path& sequencePath)
+	{
+		std::filesystem::path marker = sequencePath;
+		marker += L".world-sequence-transaction.pending";
+		return marker;
+	}
+
+	bool_t WriteAuthoringTransactionMarker(
+		const AUTHORING_FILE_BACKUP& placementBackup,
+		const AUTHORING_FILE_BACKUP& sequenceBackup,
+		std::string& outStatus)
+	{
+		const std::filesystem::path marker =
+			GetAuthoringTransactionMarker(sequenceBackup.destination);
+		std::filesystem::path temporary = marker;
+		temporary += L".tmp";
+		std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+		if (!output)
+		{
+			outStatus = "Could not create linked authoring transaction marker";
+			return false;
+		}
+		output << "lostark-world-sequence-transaction-v1\n"
+			<< "mapHadOriginal=" << (placementBackup.hadOriginal ? 1 : 0) << "\n"
+			<< "sequenceHadOriginal=" << (sequenceBackup.hadOriginal ? 1 : 0) << "\n";
+		output.flush();
+		bool_t written = output.good();
+		output.close();
+		written = written && !output.fail();
+		if (!written || !MoveFileExW(temporary.c_str(), marker.c_str(),
+			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+		{
+			std::error_code error;
+			std::filesystem::remove(temporary, error);
+			outStatus = "Could not commit linked authoring transaction marker";
+			return false;
+		}
+		return true;
+	}
+
+	bool_t ClearAuthoringTransactionMarker(
+		const std::filesystem::path& sequencePath)
+	{
+		std::error_code error;
+		const bool_t removed = std::filesystem::remove(
+			GetAuthoringTransactionMarker(sequencePath), error);
+		return removed && !error;
+	}
+
+	bool_t RecoverAuthoringTransactionUnderLock(
+		const std::filesystem::path& placementPath,
+		const std::filesystem::path& sequencePath,
+		std::string& outStatus)
+	{
+		const std::filesystem::path marker =
+			GetAuthoringTransactionMarker(sequencePath);
+		std::error_code error;
+		if (!std::filesystem::exists(marker, error))
+		{
+			if (error)
+			{
+				outStatus = "Could not inspect linked authoring transaction marker";
+				return false;
+			}
+			return true;
+		}
+		if (!std::filesystem::is_regular_file(marker, error) || error)
+		{
+			outStatus = "Linked authoring transaction marker is invalid";
+			return false;
+		}
+		constexpr uintmax_t MAX_TRANSACTION_MARKER_BYTES = 512u;
+		const uintmax_t markerBytes = std::filesystem::file_size(marker, error);
+		if (error || markerBytes > MAX_TRANSACTION_MARKER_BYTES)
+		{
+			outStatus = error ?
+				"Could not inspect linked authoring transaction marker size" :
+				"Linked authoring transaction marker exceeds its bounded read limit";
+			return false;
+		}
+		std::ifstream input(marker, std::ios::binary);
+		std::string markerText(static_cast<size_t>(markerBytes), '\0');
+		if (!markerText.empty())
+			input.read(markerText.data(),
+				static_cast<std::streamsize>(markerText.size()));
+		if (!input || input.bad() ||
+			input.gcount() != static_cast<std::streamsize>(markerText.size()) ||
+			std::char_traits<char_t>::eof() != input.peek())
+		{
+			outStatus =
+				"Linked authoring transaction marker changed or failed while reading";
+			return false;
+		}
+		std::istringstream markerInput(markerText);
+		std::string header;
+		std::string mapFlag;
+		std::string sequenceFlag;
+		std::string extra;
+		if (!std::getline(markerInput, header) ||
+			!std::getline(markerInput, mapFlag) ||
+			!std::getline(markerInput, sequenceFlag) ||
+			std::getline(markerInput, extra) ||
+			header != "lostark-world-sequence-transaction-v1" ||
+			(mapFlag != "mapHadOriginal=0" && mapFlag != "mapHadOriginal=1") ||
+			(sequenceFlag != "sequenceHadOriginal=0" &&
+				sequenceFlag != "sequenceHadOriginal=1"))
+		{
+			outStatus = "Linked authoring transaction marker content is invalid";
+			return false;
+		}
+		AUTHORING_FILE_BACKUP placementBackup;
+		placementBackup.destination = placementPath;
+		placementBackup.backup = placementPath;
+		placementBackup.backup += L".world-sequence-transaction.bak";
+		placementBackup.hadOriginal = mapFlag.back() == '1';
+		AUTHORING_FILE_BACKUP sequenceBackup;
+		sequenceBackup.destination = sequencePath;
+		sequenceBackup.backup = sequencePath;
+		sequenceBackup.backup += L".world-sequence-transaction.bak";
+		sequenceBackup.hadOriginal = sequenceFlag.back() == '1';
+		const bool_t mapRestored = RestoreAuthoringBackup(placementBackup);
+		const bool_t sequenceRestored = RestoreAuthoringBackup(sequenceBackup);
+		if (!mapRestored || !sequenceRestored)
+		{
+			outStatus = "Linked authoring recovery is blocked; preserve backups " +
+				placementBackup.backup.filename().string() + " and " +
+				sequenceBackup.backup.filename().string();
+			return false;
+		}
+		if (!ClearAuthoringTransactionMarker(sequencePath))
+		{
+			outStatus = "Linked authoring recovery restored files but could not clear marker";
+			return false;
+		}
+		DiscardAuthoringBackup(placementBackup);
+		DiscardAuthoringBackup(sequenceBackup);
+		outStatus = "Recovered an interrupted linked map/sequence save";
+		return true;
+	}
+
+	bool_t AreExactlySamePlacementRecords(
+		const std::vector<MAP_PLACEMENT_RECORD>& expected,
+		const std::vector<MAP_PLACEMENT_RECORD>& actual)
+	{
+		if (expected.size() != actual.size())
+			return false;
+		const auto sameFloat = [](const f32_t left, const f32_t right)
+		{
+			return left == right;
+		};
+		for (size_t index = 0u; index < expected.size(); ++index)
+		{
+			const MAP_PLACEMENT_RECORD& left = expected[index];
+			const MAP_PLACEMENT_RECORD& right = actual[index];
+			if (left.placementId != right.placementId ||
+				left.sourcePlacementId != right.sourcePlacementId ||
+				left.sourceLevel != right.sourceLevel ||
+				left.transformSource != right.transformSource ||
+				left.assetId != right.assetId || left.visible != right.visible ||
+				!sameFloat(left.position.x, right.position.x) ||
+				!sameFloat(left.position.y, right.position.y) ||
+				!sameFloat(left.position.z, right.position.z) ||
+				!sameFloat(left.rotationQuaternion.x,
+					right.rotationQuaternion.x) ||
+				!sameFloat(left.rotationQuaternion.y,
+					right.rotationQuaternion.y) ||
+				!sameFloat(left.rotationQuaternion.z,
+					right.rotationQuaternion.z) ||
+				!sameFloat(left.rotationQuaternion.w,
+					right.rotationQuaternion.w) ||
+				!sameFloat(left.signedScale.x, right.signedScale.x) ||
+				!sameFloat(left.signedScale.y, right.signedScale.y) ||
+				!sameFloat(left.signedScale.z, right.signedScale.z))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
 	/* How long one frame may spend admitting map model prototypes while an
 	   Area switch is in flight. Bern is 1003 prototypes over 1.8 GB, so the
 	   editor spreads that work instead of stalling inside a single frame. */
@@ -76,6 +407,84 @@ namespace
 	{
 		return std::isfinite(value.x) && std::isfinite(value.y) &&
 			std::isfinite(value.z);
+	}
+
+	bool_t IsFiniteQuaternion(const float4_t& value)
+	{
+		return std::isfinite(value.x) && std::isfinite(value.y) &&
+			std::isfinite(value.z) && std::isfinite(value.w);
+	}
+
+	/* Animated Prop authoring edits a whole placement pose in degrees and
+	   stores the normalized quaternion the Deploy placement row owns. The
+	   World Sequence panel keeps its own equivalent for keyframe offsets. */
+	float3_t DeployQuaternionToEulerDegrees(const float4_t& value)
+	{
+		/* Exact inverse of XMQuaternionRotationRollPitchYaw (M = Mz*Mx*My,
+		   row-vector). Yaw and roll use atan2 so Y keeps the full +-180
+		   range; only pitch stays asin-limited to +-90. */
+		constexpr f32_t radiansToDegrees = 180.f / DirectX::XM_PI;
+		float4x4_t rotation{};
+		XMStoreFloat4x4(&rotation, XMMatrixRotationQuaternion(
+			XMLoadFloat4(&value)));
+		const f32_t sinPitch =
+			(std::max)(-1.f, (std::min)(1.f, -rotation._32));
+		const f32_t pitch = std::asin(sinPitch);
+		f32_t yaw = 0.f;
+		f32_t roll = 0.f;
+		if (std::abs(sinPitch) < 0.99999f)
+		{
+			yaw = std::atan2(rotation._31, rotation._33);
+			roll = std::atan2(rotation._12, rotation._22);
+		}
+		else
+		{
+			yaw = std::atan2(-rotation._13, rotation._11);
+		}
+		return float3_t(pitch * radiansToDegrees, yaw * radiansToDegrees,
+			roll * radiansToDegrees);
+	}
+
+	float4_t DeployEulerDegreesToQuaternion(const float3_t& value)
+	{
+		constexpr f32_t degreesToRadians = DirectX::XM_PI / 180.f;
+		vector_t quaternion = XMQuaternionRotationRollPitchYaw(
+			value.x * degreesToRadians,
+			value.y * degreesToRadians,
+			value.z * degreesToRadians);
+		quaternion = XMQuaternionNormalize(quaternion);
+		if (XMVectorGetW(quaternion) < 0.f)
+			quaternion = XMVectorNegate(quaternion);
+		float4_t result{};
+		XMStoreFloat4(&result, quaternion);
+		return result;
+	}
+
+	void ShowAuthoringHelp(const char_t* text)
+	{
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+			ImGui::SetTooltip("%s", text);
+	}
+
+	bool_t MatchesAnimatedPropFilter(
+		const std::string& label,
+		const std::string& assetId,
+		const char_t* filter)
+	{
+		if (nullptr == filter || '\0' == *filter)
+			return true;
+		const auto lowered = [](std::string value)
+		{
+			std::transform(value.begin(), value.end(), value.begin(),
+				[](const unsigned char character)
+				{
+					return static_cast<char_t>(std::tolower(character));
+				});
+			return value;
+		};
+		const std::string needle = lowered(filter);
+		return std::string::npos != lowered(label).find(needle) ||
+			std::string::npos != lowered(assetId).find(needle);
 	}
 
 	std::string Editor_AreaShortName(const std::string& areaId)
@@ -485,6 +894,8 @@ HRESULT Client::CMapTool::Initialize(
 		std::make_unique<NAVIGATION_RENDER_RESOURCES>();
 	auto destructionSimulationController =
 		std::make_unique<CDestructionSimulationController>();
+	auto worldSequenceToolPanel =
+		std::make_unique<CWorldSequenceToolPanel>();
 	navigationResources->pBatch =
 		make_shared<PrimitiveBatch<VertexPositionColor>>(pContext.Get());
 	navigationResources->pEffect =
@@ -512,6 +923,7 @@ HRESULT Client::CMapTool::Initialize(
 	m_pNavigationRenderResources = std::move(navigationResources);
 	m_pDestructionSimulationController =
 		std::move(destructionSimulationController);
+	m_pWorldSequenceToolPanel = std::move(worldSequenceToolPanel);
 	return S_OK;
 }
 
@@ -529,6 +941,17 @@ void Client::CMapTool::SetOpen(const bool_t isOpen)
 		m_bDestructionTimelinePlaying = false;
 		m_bDestructionPickArmed = false;
 		m_bDestructionAddMemberArmed = false;
+		if (nullptr != m_pWorldSequenceToolPanel && m_Catalog.Is_Ready())
+		{
+			m_pWorldSequenceToolPanel->Stop_AndRestore(
+				m_iAuthoringLevelIndex, m_Catalog, m_Placements,
+				m_DeployRuntime);
+			if (m_pWorldSequenceToolPanel->Is_PreviewActive())
+			{
+				m_Status = m_pWorldSequenceToolPanel->Get_Status();
+				return;
+			}
+		}
 	}
 	m_bOpen = isOpen;
 	if (!m_bOpen)
@@ -546,6 +969,17 @@ void Client::CMapTool::Update(
 		CMapEditorWorkspaceService::Is_Active();
 	Handle_LevelTransition(currentLevelIndex, isMapAuthoringLevel);
 	Update_EditorAreaPreload();
+	if (nullptr != m_pWorldSequenceToolPanel && m_Catalog.Is_Ready())
+	{
+		m_pWorldSequenceToolPanel->Update(
+			fTimeDelta,
+			isMapAuthoringLevel && m_bOpen &&
+				TOOL_MODE::WORLD_SEQUENCE == m_eToolMode,
+			m_iAuthoringLevelIndex,
+			m_Catalog,
+			m_Placements,
+			m_DeployRuntime);
+	}
 	if (isMapAuthoringLevel && nullptr != m_pMapLightPresentation &&
 		!m_pMapLightPresentation->Submit_Frame() &&
 		!m_bMapLightSubmissionFailureReported)
@@ -656,6 +1090,7 @@ void Client::CMapTool::Update_WorldInteraction(bool_t isAssetTest)
 		m_bSpawnAnchorPlacementArmed = false;
 		m_bDestructionPickArmed = false;
 		m_bDestructionAddMemberArmed = false;
+		m_bAnimatedPropPlacementArmed = false;
 		m_eNavigationBoundsState = NAV_BOUNDS_STATE::IDLE;
 		m_Status = "Placement cancelled";
 		if (TOOL_MODE::NAVIGATION == m_eToolMode)
@@ -724,6 +1159,15 @@ void Client::CMapTool::Update_WorldInteraction(bool_t isAssetTest)
 			Try_PlaceWorldGameplay();
 		return;
 	}
+	if (TOOL_MODE::WORLD_SEQUENCE == m_eToolMode)
+	{
+		/* Sequence targets are selected from the stable Map Objects list.
+		   Only an explicitly armed Animated Prop placement consumes a
+		   viewport click; ordinary map placement never falls through. */
+		if (m_bAnimatedPropPlacementArmed && mousePressed)
+			(void)Try_PlaceSelectedDeploy();
+		return;
+	}
 
 	if (PLACEMENT_STATE::ARMED == m_ePlacementState && mousePressed)
 		Try_PlaceSelected();
@@ -760,7 +1204,9 @@ void Client::CMapTool::Render()
 		ImGui::Separator();
 		Render_ModeBar();
 		ImGui::Separator();
+		ImGui::BeginDisabled(m_EditorAreaPreload.Is_Active());
 		Render_ActiveMode(isMapAuthoringLevel);
+		ImGui::EndDisabled();
 	}
 
 	ImGui::End();
@@ -961,9 +1407,41 @@ void Client::CMapTool::Render_WorkspaceBar(const bool_t isAssetTest)
 	if (ImGui::Button("Focus Area") && !Focus_ActiveEditorAreaCamera())
 		m_Status = m_CameraStatus;
 	ImGui::EndDisabled();
+
+	/* Sublevel jumps. The shortcut poll lives here so the keys exist only
+	   while this bar is on screen, which is only inside the isolated
+	   Development editor shell. */
+	Update_EditorSublevelJumpShortcuts();
+	if (!m_EditorSublevelJumps.empty())
+	{
+		ImGui::TextDisabled(
+			"Sublevel jump (number row or keypad):");
+		for (size_t index = 0u; index < m_EditorSublevelJumps.size(); ++index)
+		{
+			const EDITOR_SUBLEVEL_JUMP& jump = m_EditorSublevelJumps[index];
+			if (index < 9u)
+				ImGui::SameLine();
+			const std::string caption = index < 9u ?
+				std::to_string(index + 1u) + ". " + jump.label :
+				jump.label;
+			if (ImGui::Button(caption.c_str()))
+				(void)Jump_ToEditorSublevel(index);
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip(
+					"%s\n%zu placements\ncenter %.0f, %.0f, %.0f",
+					jump.label.c_str(), jump.placementCount,
+					jump.center.x, jump.center.y, jump.center.z);
+			}
+		}
+	}
 	if ("LV_BER_BERNCASTLE" == m_Catalog.Get_AreaId())
 	{
 		ImGui::SameLine();
+		const bool_t sequenceOwnsPreviewTargets =
+			nullptr != m_pWorldSequenceToolPanel &&
+			m_pWorldSequenceToolPanel->Is_PreviewActive();
+		ImGui::BeginDisabled(sequenceOwnsPreviewTargets);
 		if (ImGui::Checkbox(
 			"Show Bern Landscape",
 			&m_bShowBernLandscape))
@@ -972,6 +1450,13 @@ void Client::CMapTool::Render_WorkspaceBar(const bool_t isAssetTest)
 			m_Status = m_bShowBernLandscape ?
 				"Bern Landscape preview enabled" :
 				"Bern Landscape hidden; authoring data preserved";
+		}
+		ImGui::EndDisabled();
+		if (sequenceOwnsPreviewTargets && ImGui::IsItemHovered(
+			ImGuiHoveredFlags_AllowWhenDisabled))
+		{
+			ImGui::SetTooltip(
+				"연출 미리보기를 Stop / Restore한 뒤 Landscape 표시를 변경할 수 있습니다.");
 		}
 	}
 	ImGui::SameLine();
@@ -1047,16 +1532,29 @@ void Client::CMapTool::Render_WorkspaceBar(const bool_t isAssetTest)
 
 bool_t Client::CMapTool::Save_AllAuthoring()
 {
+	if (nullptr != m_pWorldSequenceToolPanel &&
+		m_pWorldSequenceToolPanel->Is_Ready())
+	{
+		std::string sequenceStatus;
+		if (!m_pWorldSequenceToolPanel->Validate(
+			m_Catalog, m_Placements, m_DeployRuntime, sequenceStatus))
+		{
+			m_Status = sequenceStatus;
+			return false;
+		}
+	}
 	if (!m_WorldNpcBatchDraft.empty())
 	{
 		m_WorldGameplayStatus =
 			"Confirm or Discard the staged NPC batch before saving";
+		m_Status = m_WorldGameplayStatus;
 		return false;
 	}
 	if (m_bDestructionSimulationElementDraftDirty)
 	{
 		m_DestructionSimulationStatus =
 			"Apply or Revert the debris Detail draft before saving";
+		m_Status = m_DestructionSimulationStatus;
 		return false;
 	}
 	if (m_DestructionDocument.Is_Ready() &&
@@ -1072,24 +1570,61 @@ bool_t Client::CMapTool::Save_AllAuthoring()
 			return false;
 		}
 	}
-	if (m_bDirty && !Save_Placements())
+	/* World sequence animation tracks reference Deploy placements by their
+	   stable runtime ID, so the Deploy document is replaced first and the
+	   linked map/sequence transaction only runs once it is on disk. */
+	if (m_bDeployDirty && !Save_DeployPlacements())
+		return false;
+	bool_t savedLinkedMapAndSequences = false;
+	if (nullptr != m_pWorldSequenceToolPanel &&
+		m_pWorldSequenceToolPanel->Is_Ready())
+	{
+		if (m_bDirty || m_pWorldSequenceToolPanel->Is_Dirty())
+		{
+			if (!Save_PlacementsAndWorldSequences())
+				return false;
+			savedLinkedMapAndSequences = true;
+		}
+	}
+	if (!savedLinkedMapAndSequences && m_bDirty && !Save_Placements())
 		return false;
 	if (m_bSpawnGroupsDirty && !Save_SpawnGroups())
+	{
+		m_Status = m_WorldGameplayStatus;
 		return false;
+	}
 	if ((m_bWorldGameplayDirty || m_bWorldNpcBehaviorDraftDirty) &&
 		!Save_WorldGameplay())
+	{
+		m_Status = m_WorldGameplayStatus;
 		return false;
+	}
 	if ((m_NavigationDocument.Is_Dirty() ||
 		m_RuntimeBlockerDocument.Is_Dirty()) && !Save_Navigation())
 	{
+		m_Status = m_NavigationStatus;
 		return false;
 	}
 	if ((m_DestructionDocument.Is_Dirty() ||
 		m_DestructionSimulationDocument.Is_Dirty()) &&
 		!Save_DestructionAuthoringPair())
 	{
+		m_Status = m_DestructionStatus;
 		return false;
 	}
+	if (!savedLinkedMapAndSequences &&
+		nullptr != m_pWorldSequenceToolPanel &&
+		m_pWorldSequenceToolPanel->Is_Dirty())
+	{
+		std::string sequenceStatus;
+		if (!m_pWorldSequenceToolPanel->Save(
+			m_Catalog, m_Placements, m_DeployRuntime, sequenceStatus))
+		{
+			m_Status = sequenceStatus;
+			return false;
+		}
+	}
+	m_Status = "Saved all changed MapTool authoring documents";
 	return true;
 }
 
@@ -1108,6 +1643,12 @@ void Client::CMapTool::Render_ActiveMode(bool_t isAssetTest)
 	case TOOL_MODE::WORLD_DESTRUCTION:
 		ImGui::BeginDisabled(!isAssetTest);
 		Render_WorldDestructionPanel(isAssetTest);
+		ImGui::EndDisabled();
+		break;
+
+	case TOOL_MODE::WORLD_SEQUENCE:
+		ImGui::BeginDisabled(!isAssetTest);
+		Render_WorldSequencePanel(isAssetTest);
 		ImGui::EndDisabled();
 		break;
 
@@ -1162,6 +1703,353 @@ void Client::CMapTool::Render_MapAssetsPanel(bool_t isAssetTest)
 	}
 	Render_AssetPreview();
 	ImGui::EndDisabled();
+}
+
+void Client::CMapTool::Render_WorldSequencePanel(const bool_t isAssetTest)
+{
+	if (nullptr == m_pWorldSequenceToolPanel)
+	{
+		ImGui::TextDisabled("World Sequence tool is unavailable.");
+		return;
+	}
+	if (isAssetTest)
+	{
+		Render_AnimatedPropsAuthoring();
+		ImGui::Separator();
+	}
+	m_pWorldSequenceToolPanel->Render(
+		isAssetTest,
+		m_iAuthoringLevelIndex,
+		m_Catalog,
+		m_Placements,
+		m_iSelectedPlacementId,
+		m_DeployRuntime);
+	if (m_pWorldSequenceToolPanel->Consume_ReloadAllRequest())
+	{
+		const bool_t reloaded = Load_Placements();
+		if (!reloaded && nullptr != m_pWorldSequenceToolPanel)
+		{
+			m_pWorldSequenceToolPanel->Report_ReloadAllResult(false, m_Status);
+		}
+		return;
+	}
+	if (m_pWorldSequenceToolPanel->Consume_SaveAllRequest())
+	{
+		const bool_t saved = Save_AllAuthoring();
+		m_pWorldSequenceToolPanel->Report_SaveAllResult(saved, m_Status);
+	}
+}
+
+void Client::CMapTool::Render_AnimatedPropsAuthoring()
+{
+	if (!ImGui::CollapsingHeader("Animated Props (Deploy ANIM)",
+		ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		return;
+	}
+
+	const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
+	if (nullptr == active || active->sourceDeployCatalog.empty() ||
+		active->sourceDeployPlacements.empty())
+	{
+		ImGui::TextDisabled(
+			"This Area declares no Deploy prop catalog, so animated props cannot be authored here.");
+		return;
+	}
+	if (!m_DeployRuntime.Get_Catalog().Is_Ready())
+	{
+		ImGui::TextWrapped("DeployProp catalog is not loaded: %s",
+			m_DeployRuntime.Get_Status().c_str());
+		if (ImGui::Button("Reload Deploy Props"))
+			(void)Load_DeployProps();
+		return;
+	}
+
+	ImGui::TextDisabled(
+		"Only cooked .wmodel assets registered in the Area catalog are listed; raw glTF/PSA bundles are never runtime assets.");
+	/* Korean: only cooked .wmodel assets registered in the catalog appear
+	   here, and a raw glTF/PSA bundle cannot be placed. MapTool.cpp compiles
+	   without /utf-8, so operator help is written as explicit UTF-8 bytes. */
+	static const char_t* const ANIMATED_PROP_HELP_ASSETS =
+		"\xEC\xB9\xB4\xED\x83\x88\xEB\xA1\x9C\xEA\xB7\xB8\xEC\x97\x90 "
+		"\xEB\x93\xB1\xEB\xA1\x9D\xEB\x90\x9C \xEC\xA1\xB0\xEB\xA6\xAC "
+		"\xEC\x99\x84\xEB\xA3\x8C .wmodel \xEC\x9E\x90\xEC\x82\xB0\xEB"
+		"\xA7\x8C \xEB\xB3\xB4\xEC\x9E\x85\xEB\x8B\x88\xEB\x8B\xA4. \xEC"
+		"\x9B\x90\xEB\xB3\xB8 glTF/PSA\xEB\x8A\x94 \xEB\xB0\xB0\xEC\xB9"
+		"\x98\xED\x95\xA0 \xEC\x88\x98 \xEC\x97\x86\xEC\x8A\xB5\xEB\x8B"
+		"\x88\xEB\x8B\xA4.";
+	/* Korean: arm placement, then click the ground in the viewport to drop
+	   the prop there; Esc cancels. */
+	static const char_t* const ANIMATED_PROP_HELP_ARM =
+		"\xEB\xB0\xB0\xEC\xB9\x98\xEB\xA5\xBC \xEC\x8B\x9C\xEC\x9E\x91"
+		"\xED\x95\x9C \xEB\x92\xA4 \xEB\xB7\xB0\xED\x8F\xAC\xED\x8A\xB8"
+		"\xEC\x97\x90\xEC\x84\x9C \xEC\xA7\x80\xEB\xA9\xB4\xEC\x9D\x84 "
+		"\xED\x81\xB4\xEB\xA6\xAD\xED\x95\x98\xEB\xA9\xB4 \xEA\xB7\xB8 "
+		"\xEC\x9E\x90\xEB\xA6\xAC\xEC\x97\x90 \xEB\x86\x93\xEC\x9E\x85"
+		"\xEB\x8B\x88\xEB\x8B\xA4. Esc\xEB\xA1\x9C \xEC\xB7\xA8\xEC\x86"
+		"\x8C\xED\x95\xA9\xEB\x8B\x88\xEB\x8B\xA4.";
+	/* Korean: only PROJECT rows authored here can be edited or removed;
+	   SOURCE rows extracted from the original data are read-only. */
+	static const char_t* const ANIMATED_PROP_HELP_PLACED =
+		"\xEC\x97\xAC\xEA\xB8\xB0\xEC\x84\x9C \xEB\xA7\x8C\xEB\x93\xA0 PR"
+		"OJECT \xEB\xB0\xB0\xEC\xB9\x98\xEB\xA7\x8C \xED\x8E\xB8\xEC\xA7"
+		"\x91\xEA\xB3\xBC \xEC\x82\xAD\xEC\xA0\x9C\xEA\xB0\x80 \xEB\x90"
+		"\x98\xEA\xB3\xA0 SOURCE \xEB\xB0\xB0\xEC\xB9\x98\xEB\x8A\x94 "
+		"\xEC\x9D\xBD\xEA\xB8\xB0 \xEC\xA0\x84\xEC\x9A\xA9\xEC\x9E\x85"
+		"\xEB\x8B\x88\xEB\x8B\xA4.";
+	/* Korean: Apply is what writes the draft into the world object and the
+	   authoring document. */
+	static const char_t* const ANIMATED_PROP_HELP_APPLY =
+		"Apply\xEB\xA5\xBC \xEB\x88\x8C\xEB\x9F\xAC\xEC\x95\xBC \xEC\x8B"
+		"\xA4\xEC\xA0\x9C \xEC\x9B\x94\xEB\x93\x9C \xEC\x98\xA4\xEB\xB8"
+		"\x8C\xEC\xA0\x9D\xED\x8A\xB8\xEC\x99\x80 \xEB\xAC\xB8\xEC\x84"
+		"\x9C\xEC\x97\x90 \xEB\xB0\x98\xEC\x98\x81\xEB\x90\xA9\xEB\x8B"
+		"\x88\xEB\x8B\xA4.";
+	/* Korean: Save replaces only the Area .deployplacements source; runtime
+	   uptake is the separate publish step. */
+	static const char_t* const ANIMATED_PROP_HELP_SAVE =
+		"Save\xEB\x8A\x94 Area\xEC\x9D\x98 .deployplacements \xEC\x9B\x90"
+		"\xEB\xB3\xB8\xEB\xA7\x8C \xEA\xB5\x90\xEC\xB2\xB4\xED\x95\xA9"
+		"\xEB\x8B\x88\xEB\x8B\xA4. \xEB\x9F\xB0\xED\x83\x80\xEC\x9E\x84 "
+		"\xEB\xB0\x98\xEC\x98\x81\xEC\x9D\x80 publish \xEB\x8B\xA8\xEA"
+		"\xB3\x84\xEC\x9E\x85\xEB\x8B\x88\xEB\x8B\xA4.";
+
+	const DEPLOY_PROP_ASSET_ENTRY* selectedAsset = Get_SelectedDeployAsset();
+	if (nullptr == selectedAsset ||
+		DEPLOY_PROP_MODEL_KIND::ANIM != selectedAsset->kind)
+	{
+		m_bAnimatedPropPlacementArmed = false;
+	}
+	const DEPLOY_RUNTIME_ENTRY* selectedPlacement = Get_SelectedAnimatedProp();
+	const bool_t hasSelectedPlacement = nullptr != selectedPlacement;
+	const bool_t isSelectionEditable = hasSelectedPlacement &&
+		DEPLOY_PROP_PLACEMENT_PROVENANCE::PROJECT_AUTHORED ==
+			selectedPlacement->placement.provenance;
+	if (hasSelectedPlacement && m_iAnimatedPropDraftPlacementId !=
+		selectedPlacement->placement.runtimePlacementId)
+	{
+		Sync_AnimatedPropTransformDraft();
+	}
+	else if (!hasSelectedPlacement && 0u != m_iAnimatedPropDraftPlacementId)
+	{
+		Sync_AnimatedPropTransformDraft();
+	}
+
+	if (ImGui::BeginTable("##animated-prop-authoring", 2,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable |
+		ImGuiTableFlags_SizingStretchProp))
+	{
+		ImGui::TableSetupColumn("Catalog Assets",
+			ImGuiTableColumnFlags_WidthStretch, 1.f);
+		ImGui::TableSetupColumn("Placed Animated Props",
+			ImGuiTableColumnFlags_WidthStretch, 1.f);
+		ImGui::TableHeadersRow();
+		ImGui::TableNextRow();
+
+		ImGui::TableSetColumnIndex(0);
+		ImGui::SetNextItemWidth(-1.f);
+		ImGui::InputTextWithHint("##animated-prop-filter", "Filter assets",
+			m_AnimatedPropFilter, std::size(m_AnimatedPropFilter));
+		ImGui::BeginChild("AnimatedPropAssets", ImVec2(0.f, 170.f), true);
+		size_t listedAssets = 0;
+		for (const DEPLOY_PROP_ASSET_ENTRY& asset :
+			m_DeployRuntime.Get_Catalog().Get_Assets())
+		{
+			if (DEPLOY_PROP_MODEL_KIND::ANIM != asset.kind ||
+				!MatchesAnimatedPropFilter(
+					asset.label, asset.id, m_AnimatedPropFilter))
+			{
+				continue;
+			}
+			++listedAssets;
+			ImGui::PushID(asset.id.c_str());
+			if (ImGui::Selectable(asset.label.c_str(),
+				asset.id == m_SelectedDeployAssetId))
+			{
+				m_SelectedDeployAssetId = asset.id;
+				m_Status = "Selected animated prop asset " + asset.id;
+			}
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+			{
+				ImGui::SetTooltip(
+					"%s\ncooked model: %s\nintact clip: %s\nfractured clip: %s\n%s",
+					asset.id.c_str(),
+					asset.intactRelativePath.generic_string().c_str(),
+					asset.animationRoles.intactClip.empty() ?
+						"(none)" : asset.animationRoles.intactClip.c_str(),
+					asset.animationRoles.fracturedClip.empty() ?
+						"(none)" : asset.animationRoles.fracturedClip.c_str(),
+					asset.evidence.c_str());
+			}
+			ImGui::PopID();
+		}
+		if (0 == listedAssets)
+			ImGui::TextDisabled("No cooked ANIM asset matches the filter.");
+		ImGui::EndChild();
+		ShowAuthoringHelp(ANIMATED_PROP_HELP_ASSETS);
+		ImGui::BeginDisabled(nullptr == selectedAsset);
+		if (ImGui::Button(m_bAnimatedPropPlacementArmed ?
+			"Cancel Placement" : "Place In Viewport"))
+		{
+			m_bAnimatedPropPlacementArmed = !m_bAnimatedPropPlacementArmed;
+			m_Status = m_bAnimatedPropPlacementArmed ?
+				"Animated prop placement armed. Click the ground in the viewport." :
+				"Animated prop placement cancelled";
+		}
+		ImGui::EndDisabled();
+		ShowAuthoringHelp(ANIMATED_PROP_HELP_ARM);
+
+		ImGui::TableSetColumnIndex(1);
+		ImGui::BeginChild("AnimatedPropPlacements", ImVec2(0.f, 190.f), true);
+		size_t listedPlacements = 0;
+		for (const DEPLOY_RUNTIME_ENTRY& entry : m_DeployRuntime.Get_Entries())
+		{
+			const DEPLOY_PROP_ASSET_ENTRY* asset =
+				m_DeployRuntime.Get_Catalog().Find(entry.placement.assetId);
+			if (nullptr == asset ||
+				DEPLOY_PROP_MODEL_KIND::ANIM != asset->kind)
+			{
+				continue;
+			}
+			++listedPlacements;
+			const bool_t authored =
+				DEPLOY_PROP_PLACEMENT_PROVENANCE::PROJECT_AUTHORED ==
+				entry.placement.provenance;
+			const std::string label = "#" +
+				std::to_string(entry.placement.runtimePlacementId) + "  " +
+				asset->label + (authored ? "  [PROJECT]" : "  [SOURCE]");
+			ImGui::PushID(reinterpret_cast<void*>(static_cast<uintptr_t>(
+				entry.placement.runtimePlacementId)));
+			if (ImGui::Selectable(label.c_str(),
+				m_iSelectedAnimatedPropPlacementId ==
+					entry.placement.runtimePlacementId))
+			{
+				m_iSelectedAnimatedPropPlacementId =
+					entry.placement.runtimePlacementId;
+				Sync_AnimatedPropTransformDraft();
+			}
+			if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+			{
+				std::string clipSummary;
+				if (nullptr != entry.object)
+				{
+					for (const DEPLOY_PROP_ANIMATION_CLIP& clip :
+						entry.object->Get_AnimationClips())
+					{
+						clipSummary += "\n  " + clip.name + "  " +
+							std::to_string(clip.durationSeconds) + " s";
+					}
+				}
+				if (clipSummary.empty())
+					clipSummary = "\n  (no clip is readable on this instance)";
+				ImGui::SetTooltip("%s\n%s\nclips:%s",
+					entry.placement.assetId.c_str(),
+					entry.placement.sourcePlacementId.c_str(),
+					clipSummary.c_str());
+			}
+			ImGui::PopID();
+		}
+		if (0 == listedPlacements)
+		{
+			ImGui::TextDisabled(
+				"No animated prop is placed in this Area yet.");
+		}
+		ImGui::EndChild();
+		ShowAuthoringHelp(ANIMATED_PROP_HELP_PLACED);
+		ImGui::EndTable();
+	}
+
+	ImGui::BeginDisabled(!isSelectionEditable);
+	bool_t transformEdited = false;
+	ImGui::DragFloat3("Position##animated-prop",
+		&m_AnimatedPropDraftPosition.x, 0.05f);
+	transformEdited |= ImGui::IsItemDeactivatedAfterEdit();
+	float3_t rotationDegrees =
+		DeployQuaternionToEulerDegrees(m_AnimatedPropDraftRotation);
+	if (ImGui::DragFloat3("Rotation (deg)##animated-prop",
+		&rotationDegrees.x, 0.25f, -360.f, 360.f, "%.1f"))
+	{
+		m_AnimatedPropDraftRotation =
+			DeployEulerDegreesToQuaternion(rotationDegrees);
+	}
+	transformEdited |= ImGui::IsItemDeactivatedAfterEdit();
+	ImGui::DragFloat("Uniform Scale##animated-prop",
+		&m_fAnimatedPropDraftScale, 0.01f, 0.01f, 100.f, "%.3f",
+		ImGuiSliderFlags_AlwaysClamp);
+	transformEdited |= ImGui::IsItemDeactivatedAfterEdit();
+	if (transformEdited)
+		(void)Apply_AnimatedPropTransform();
+	if (ImGui::Button("Apply Transform"))
+		(void)Apply_AnimatedPropTransform();
+	ShowAuthoringHelp(ANIMATED_PROP_HELP_APPLY);
+	ImGui::SameLine();
+	if (ImGui::Button("Revert Draft"))
+		Sync_AnimatedPropTransformDraft();
+	ImGui::SameLine();
+	if (ImGui::Button("Remove Placement"))
+		(void)Remove_SelectedAnimatedProp();
+	ImGui::EndDisabled();
+
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!hasSelectedPlacement);
+	if (ImGui::Button("Focus"))
+	{
+		const DEPLOY_RUNTIME_ENTRY* target = Get_SelectedAnimatedProp();
+		float3_t center{};
+		float3_t halfExtents{};
+		shared_ptr<CCamera_Free> camera = m_pAssetTestCamera.lock();
+		if (nullptr == camera && Find_AssetTestCamera())
+			camera = m_pAssetTestCamera.lock();
+		if (nullptr == target || nullptr == target->object ||
+			!target->object->Get_WorldBounds(center, halfExtents))
+		{
+			m_Status =
+				"Animated prop focus needs a placed prop with model bounds";
+		}
+		else if (nullptr == camera)
+		{
+			m_Status = "ASSET_TEST camera is unavailable";
+		}
+		else
+		{
+			const f32_t radius = (std::max)(2.f,
+				(std::max)(halfExtents.x, halfExtents.z) * 3.f);
+			camera->Frame_Area(center, radius);
+			m_Status = "Camera framed animated prop #" +
+				std::to_string(target->placement.runtimePlacementId);
+		}
+	}
+	ImGui::EndDisabled();
+	if (hasSelectedPlacement && !isSelectionEditable)
+	{
+		ImGui::TextDisabled(
+			"The selected placement came from the source extraction and is read-only.");
+	}
+
+	ImGui::Separator();
+	ImGui::BeginDisabled(!m_bDeployDirty);
+	if (ImGui::Button("Save Animated Props"))
+		(void)Save_DeployPlacements();
+	ImGui::EndDisabled();
+	ShowAuthoringHelp(ANIMATED_PROP_HELP_SAVE);
+	ImGui::SameLine();
+	ImGui::Text("Placements: %zu%s",
+		m_DeployRuntime.Get_Catalog().Get_Placements().size(),
+		m_bDeployDirty ? "  *unsaved" : "");
+	ImGui::SameLine();
+	if (ImGui::Button("Reload Animated Props"))
+	{
+		if (m_bDeployDirty)
+		{
+			m_Status =
+				"Save or discard the animated prop changes before reloading";
+		}
+		else if (Load_DeployProps())
+		{
+			m_iSelectedAnimatedPropPlacementId = 0u;
+			Sync_AnimatedPropTransformDraft();
+		}
+	}
 }
 
 void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
@@ -2823,6 +3711,14 @@ std::filesystem::path Client::CMapTool::Get_SpawnGroupsPath() const
 	const std::filesystem::path gameplayPath = Get_WorldGameplayPath();
 	return gameplayPath.empty() ? std::filesystem::path{} :
 		gameplayPath.parent_path() / L"SpawnGroups.world.json";
+}
+
+std::filesystem::path Client::CMapTool::Get_WorldSequencePath() const
+{
+	const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
+	return nullptr == active ? std::filesystem::path{} :
+		active->sourcePlacements.parent_path() /
+		std::filesystem::path(active->areaId + ".worldsequences.json");
 }
 
 bool_t Client::CMapTool::Load_EncounterReference()
@@ -4512,6 +5408,8 @@ bool_t Client::CMapTool::ConsumesWorldLeftMouse() const
 				m_bSpawnAnchorPlacementArmed)) ||
 		(TOOL_MODE::WORLD_DESTRUCTION == m_eToolMode &&
 			m_bDestructionPickArmed) ||
+		(TOOL_MODE::WORLD_SEQUENCE == m_eToolMode &&
+			m_bAnimatedPropPlacementArmed) ||
 		PLACEMENT_STATE::ARMED == m_ePlacementState;
 }
 
@@ -4987,7 +5885,8 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 
 		if (descriptor.areaId == "LV_LOBBY_CLASSSELECT_SL00" ||
 			descriptor.areaId == "LV_BER_BERNCASTLE" ||
-			descriptor.areaId == "LV_LUT_HEARTRB_ED")
+			descriptor.areaId == "LV_LUT_HEARTRB_ED" ||
+			descriptor.areaId == "LV_LUT_MIDNIGHTC_ED")
 		{
 			std::string source;
 			std::string paint;
@@ -5045,7 +5944,8 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 
 		if (descriptor.areaId == "LV_LOBBY_CLASSSELECT_SL00" ||
 			descriptor.areaId == "LV_BER_BERNCASTLE" ||
-			descriptor.areaId == "LV_LUT_HEARTRB_ED")
+			descriptor.areaId == "LV_LUT_HEARTRB_ED" ||
+			descriptor.areaId == "LV_LUT_MIDNIGHTC_ED")
 		{
 			std::string gameplay;
 			if (!ReadRequiredString(*selected, "gameplayDocument", gameplay))
@@ -5091,13 +5991,16 @@ Client::CMapTool::Get_ActiveEditorArea() const
 
 bool_t Client::CMapTool::Has_UnsavedAuthoring() const
 {
-	return m_bDirty || m_bWorldGameplayDirty || m_bSpawnGroupsDirty ||
+	return m_bDirty || m_bDeployDirty || m_bWorldGameplayDirty ||
+		m_bSpawnGroupsDirty ||
 		m_bWorldNpcBehaviorDraftDirty || !m_WorldNpcBatchDraft.empty() ||
 		m_NavigationDocument.Is_Dirty() ||
 		m_RuntimeBlockerDocument.Is_Dirty() ||
 		m_DestructionDocument.Is_Dirty() ||
 		m_DestructionSimulationDocument.Is_Dirty() ||
-		m_bDestructionSimulationElementDraftDirty;
+		m_bDestructionSimulationElementDraftDirty ||
+		(nullptr != m_pWorldSequenceToolPanel &&
+			m_pWorldSequenceToolPanel->Is_Dirty());
 }
 
 bool_t Client::CMapTool::Begin_EditorAreaSwitch(const size_t descriptorIndex)
@@ -5110,9 +6013,32 @@ bool_t Client::CMapTool::Begin_EditorAreaSwitch(const size_t descriptorIndex)
 		m_Status = "Map editor Area switch is unavailable";
 		return false;
 	}
+	if (nullptr != m_pWorldSequenceToolPanel && m_Catalog.Is_Ready())
+	{
+		m_pWorldSequenceToolPanel->Stop_AndRestore(
+			m_iAuthoringLevelIndex, m_Catalog, m_Placements,
+			m_DeployRuntime);
+		if (m_pWorldSequenceToolPanel->Is_PreviewActive())
+		{
+			m_Status = m_pWorldSequenceToolPanel->Get_Status();
+			return false;
+		}
+	}
 
 	const EDITOR_AREA_DESCRIPTOR& descriptor =
 		m_EditorAreas[descriptorIndex];
+	const std::filesystem::path worldSequencePath =
+		descriptor.sourcePlacements.parent_path() /
+		std::filesystem::path(descriptor.areaId + ".worldsequences.json");
+	std::string recoveryStatus;
+	SCOPED_AUTHORING_SAVE_LOCK authoringLock;
+	if (!authoringLock.Acquire(worldSequencePath, recoveryStatus) ||
+		!RecoverAuthoringTransactionUnderLock(
+		descriptor.sourcePlacements, worldSequencePath, recoveryStatus))
+	{
+		m_Status = recoveryStatus;
+		return false;
+	}
 	std::error_code error;
 	if (!std::filesystem::is_regular_file(descriptor.sourceCatalog, error) ||
 		error ||
@@ -5214,6 +6140,18 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 
 	const EDITOR_AREA_DESCRIPTOR& descriptor =
 		m_EditorAreas[descriptorIndex];
+	const std::filesystem::path worldSequencePath =
+		descriptor.sourcePlacements.parent_path() /
+		std::filesystem::path(descriptor.areaId + ".worldsequences.json");
+	std::string recoveryStatus;
+	SCOPED_AUTHORING_SAVE_LOCK authoringLock;
+	if (!authoringLock.Acquire(worldSequencePath, recoveryStatus) ||
+		!RecoverAuthoringTransactionUnderLock(
+		descriptor.sourcePlacements, worldSequencePath, recoveryStatus))
+	{
+		m_Status = recoveryStatus;
+		return false;
+	}
 	std::error_code error;
 	if (!std::filesystem::is_regular_file(descriptor.sourceCatalog, error) ||
 		error ||
@@ -5246,6 +6184,10 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		m_Status = stagedStatus;
 		return false;
 	}
+	/* The sequence document reference-validates Deploy animation tracks, so
+	   it is loaded once this Area's Deploy runtime has been staged below. */
+	auto stagedWorldSequencePanel =
+		std::make_unique<CWorldSequenceToolPanel>();
 
 	CWorldGameplayDocument stagedWorld;
 	CSpawnGroupDocument stagedSpawnGroups;
@@ -5423,6 +6365,30 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		m_Catalog = std::move(previousCatalog);
 		return false;
 	}
+	if (!stagedWorldSequencePanel->Load_Area(
+		worldSequencePath, descriptor.sourcePlacements, descriptor.areaId,
+		stagedCatalog, records, stagedDeployRuntime,
+		stagedStatus))
+	{
+		Remove_PlacementRuntime(stagedPlacements, stagedBatches);
+		stagedDeployRuntime.Clear();
+		m_Catalog = std::move(previousCatalog);
+		m_Status = stagedStatus;
+		return false;
+	}
+	std::vector<MAP_PLACEMENT_RECORD> stableLinkedRecords;
+	if (!CMapPlacementDocument::Read(descriptor.sourcePlacements,
+		stagedCatalog, stableLinkedRecords, stagedStatus) ||
+		!AreExactlySamePlacementRecords(records, stableLinkedRecords) ||
+		!stagedWorldSequencePanel->Matches_LinkedSourceBaseline(stagedStatus))
+	{
+		Remove_PlacementRuntime(stagedPlacements, stagedBatches);
+		stagedDeployRuntime.Clear();
+		m_Catalog = std::move(previousCatalog);
+		m_Status = "Linked map/sequence source changed while the Area was loading: " +
+			stagedStatus;
+		return false;
+	}
 	if (stagedDestruction.Is_Ready() &&
 		!Validate_DestructionExternalReferences(
 			stagedDestruction,
@@ -5468,7 +6434,28 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	}
 
 	/* The staged runtime owns preview seams into the current Deploy runtime.
-	   Release them before the Area transaction move-assigns that owner. */
+	   Release them before the Area transaction move-assigns that owner. The
+	   previous catalog must be used because m_Catalog currently stages the
+	   destination Area. */
+	if (nullptr != m_pWorldSequenceToolPanel && previousCatalog.Is_Ready())
+	{
+		m_pWorldSequenceToolPanel->Stop_AndRestore(
+			m_iAuthoringLevelIndex, previousCatalog, m_Placements,
+			m_DeployRuntime);
+		if (m_pWorldSequenceToolPanel->Is_PreviewActive())
+		{
+			const std::string restoreFailure =
+				m_pWorldSequenceToolPanel->Get_Status();
+			Remove_PlacementRuntime(stagedPlacements, stagedBatches);
+			stagedDeployRuntime.Clear();
+			Remove_WorldTriggerBoxes(stagedTriggerBoxes);
+			Remove_WorldNpcPreviews(stagedNpcPreviews);
+			Remove_WorldTriggerBoxes(stagedSpawnAnchorBoxes);
+			m_Catalog = std::move(previousCatalog);
+			m_Status = restoreFailure;
+			return false;
+		}
+	}
 	if (nullptr != m_pDestructionSimulationController)
 		m_pDestructionSimulationController->Clear();
 	m_bDestructionSimulationClearRequested = false;
@@ -5478,6 +6465,7 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	Remove_WorldNpcPreviews(m_WorldNpcPreviews);
 	m_Placements = std::move(stagedPlacements);
 	m_StaticBatches = std::move(stagedBatches);
+	m_pWorldSequenceToolPanel = std::move(stagedWorldSequencePanel);
 	m_DeployRuntime = std::move(stagedDeployRuntime);
 	m_WorldGameplayDocument = std::move(stagedWorld);
 	m_WorldTriggerBoxes = std::move(stagedTriggerBoxes);
@@ -5527,6 +6515,12 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	m_SelectedDestructionStageId.clear();
 	m_SelectedDestructionPatternId.clear();
 	m_iSelectedDeployPlacementId = 0;
+	m_bDeployDirty = false;
+	m_bAnimatedPropPlacementArmed = false;
+	m_SelectedDeployAssetId.clear();
+	m_AnimatedPropFilter[0] = '\0';
+	m_iSelectedAnimatedPropPlacementId = 0;
+	Sync_AnimatedPropTransformDraft();
 	m_DestructionPreviewPreviousStates.clear();
 	m_bDestructionPickArmed = false;
 	m_bDestructionAddMemberArmed = false;
@@ -5580,6 +6574,7 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		descriptor.areaId + ") / " + std::to_string(m_Placements.size()) +
 		" placements. Runtime publish is separate.";
 	Set_EnvironmentPhase(ENVIRONMENT_PHASE::BASELINE);
+	Rebuild_EditorSublevelJumps();
 
 	if (!Focus_ActiveEditorAreaCamera())
 		m_Status += " Camera focus unavailable: " + m_CameraStatus;
@@ -5594,6 +6589,12 @@ void Client::CMapTool::Handle_LevelTransition(
 		currentLevelIndex : ETOUI(LEVEL::END);
 	if (targetLevelIndex == m_iAuthoringLevelIndex)
 		return;
+	if (nullptr != m_pWorldSequenceToolPanel && m_Catalog.Is_Ready())
+	{
+		m_pWorldSequenceToolPanel->Stop_AndRestore(
+			m_iAuthoringLevelIndex, m_Catalog, m_Placements,
+			m_DeployRuntime);
+	}
 	if (nullptr != m_pDestructionSimulationController)
 		m_pDestructionSimulationController->Clear();
 	Reset_DestructionSimulationUI();
@@ -5614,12 +6615,17 @@ void Client::CMapTool::Handle_LevelTransition(
 	m_iWorldNpcBatchDraftBaseRevision = 0;
 	m_bWorldNpcBatchCopySelectedBehavior = false;
 	m_bSpawnAnchorPlacementArmed = false;
+	m_bAnimatedPropPlacementArmed = false;
 	m_SelectedWorldPlacementId.clear();
 	m_SelectedSpawnAnchorId.clear();
 	m_SelectedSpawnGroupId.clear();
 	m_SelectedSpawnWaveId.clear();
 	m_iSelectedPlacementId = 0;
 	m_SelectedAssetId.clear();
+	m_SelectedDeployAssetId.clear();
+	m_AnimatedPropFilter[0] = '\0';
+	m_iSelectedAnimatedPropPlacementId = 0;
+	Sync_AnimatedPropTransformDraft();
 	m_pAssetTestCamera.reset();
 	if (nullptr != m_pAssetPreview)
 		m_pAssetPreview->Reset_LevelResources();
@@ -5631,12 +6637,15 @@ void Client::CMapTool::Handle_LevelTransition(
 	m_SpawnAnchorBoxes.clear();
 	m_iNextPlacementId = 1;
 	m_bDirty = false;
+	m_bDeployDirty = false;
 	m_bWorldGameplayDirty = false;
 	m_bSpawnGroupsDirty = false;
 	m_SpawnGroupDocument.Reset();
 	m_DestructionSimulationDocument.Clear();
 	m_pMapLightPresentation.reset();
 	m_bMapLightSubmissionFailureReported = false;
+	if (nullptr != m_pWorldSequenceToolPanel)
+		m_pWorldSequenceToolPanel->Reset();
 	m_Catalog = CMapAssetCatalog{};
 	m_EditorAreas.clear();
 	m_iActiveEditorArea = SIZE_MAX;
@@ -5749,6 +6758,117 @@ bool_t Client::CMapTool::Focus_ActiveEditorAreaCamera()
 	camera->Frame_Area(center, radius);
 	m_CameraStatus = "Camera focused on " + descriptor->label;
 	return true;
+}
+
+/* An extracted Area can span several authored sublevels that sit thousands of
+   units apart, so walking between them is impractical. Grouping the committed
+   placements by their authored sourceLevel gives one framing target per space
+   without hard-coding any single Area's coordinates. */
+void Client::CMapTool::Rebuild_EditorSublevelJumps()
+{
+	m_EditorSublevelJumps.clear();
+
+	struct SUBLEVEL_BOUNDS final
+	{
+		float3_t minimum{};
+		float3_t maximum{};
+		size_t count = 0u;
+	};
+	std::map<std::string, SUBLEVEL_BOUNDS> bounds;
+	for (const PLACED_ENTRY& entry : m_Placements)
+	{
+		if (entry.record.sourceLevel.empty())
+			continue;
+		const float3_t& position = entry.record.position;
+		const auto [iter, inserted] = bounds.try_emplace(
+			entry.record.sourceLevel, SUBLEVEL_BOUNDS{ position, position, 0u });
+		SUBLEVEL_BOUNDS& value = iter->second;
+		if (!inserted)
+		{
+			value.minimum.x = (std::min)(value.minimum.x, position.x);
+			value.minimum.y = (std::min)(value.minimum.y, position.y);
+			value.minimum.z = (std::min)(value.minimum.z, position.z);
+			value.maximum.x = (std::max)(value.maximum.x, position.x);
+			value.maximum.y = (std::max)(value.maximum.y, position.y);
+			value.maximum.z = (std::max)(value.maximum.z, position.z);
+		}
+		++value.count;
+	}
+
+	/* A single group is the whole Area, which the Focus Area button already
+	   frames, so publishing one shortcut for it would only add a redundant key. */
+	if (bounds.size() < 2u)
+		return;
+
+	for (const auto& [sourceLevel, value] : bounds)
+	{
+		EDITOR_SUBLEVEL_JUMP jump;
+		jump.label = sourceLevel;
+		jump.center = float3_t(
+			(value.minimum.x + value.maximum.x) * 0.5f,
+			(value.minimum.y + value.maximum.y) * 0.5f,
+			(value.minimum.z + value.maximum.z) * 0.5f);
+		/* Same framing allowance the Area focus uses, so a jump lands at a
+		   comparable distance instead of inside the geometry. */
+		jump.radius = (std::max)(50.f,
+			(std::max)(value.maximum.x - value.minimum.x,
+				value.maximum.z - value.minimum.z) * 0.35f);
+		jump.placementCount = value.count;
+		m_EditorSublevelJumps.push_back(std::move(jump));
+	}
+}
+
+bool_t Client::CMapTool::Jump_ToEditorSublevel(const size_t jumpIndex)
+{
+	if (jumpIndex >= m_EditorSublevelJumps.size())
+		return false;
+
+	shared_ptr<CCamera_Free> camera = m_pAssetTestCamera.lock();
+	if (nullptr == camera)
+	{
+		if (!Find_AssetTestCamera())
+			return false;
+		camera = m_pAssetTestCamera.lock();
+	}
+	if (nullptr == camera)
+	{
+		m_CameraStatus = "ASSET_TEST camera reacquisition failed";
+		return false;
+	}
+
+	const EDITOR_SUBLEVEL_JUMP& jump = m_EditorSublevelJumps[jumpIndex];
+	camera->Frame_Area(jump.center, jump.radius);
+	m_CameraStatus = "Camera jumped to " + jump.label + " (" +
+		std::to_string(jump.placementCount) + " placements)";
+	return true;
+}
+
+/* Driven from the workspace bar, which only the isolated Development editor
+   shell renders. The keys therefore stop existing outside that shell, outside
+   an Area that produced jump targets, and while a text field has focus. */
+void Client::CMapTool::Update_EditorSublevelJumpShortcuts()
+{
+	if (m_EditorSublevelJumps.empty() || ImGui::GetIO().WantTextInput)
+		return;
+
+	static constexpr ImGuiKey ROW_KEYS[] = {
+		ImGuiKey_1, ImGuiKey_2, ImGuiKey_3, ImGuiKey_4, ImGuiKey_5,
+		ImGuiKey_6, ImGuiKey_7, ImGuiKey_8, ImGuiKey_9 };
+	static constexpr ImGuiKey PAD_KEYS[] = {
+		ImGuiKey_Keypad1, ImGuiKey_Keypad2, ImGuiKey_Keypad3,
+		ImGuiKey_Keypad4, ImGuiKey_Keypad5, ImGuiKey_Keypad6,
+		ImGuiKey_Keypad7, ImGuiKey_Keypad8, ImGuiKey_Keypad9 };
+	const size_t bound = (std::min)(
+		m_EditorSublevelJumps.size(), std::size(ROW_KEYS));
+	for (size_t index = 0u; index < bound; ++index)
+	{
+		if (ImGui::IsKeyPressed(ROW_KEYS[index], false) ||
+			ImGui::IsKeyPressed(PAD_KEYS[index], false))
+		{
+			(void)Jump_ToEditorSublevel(index);
+			return;
+		}
+	}
 }
 
 bool_t Client::CMapTool::Load_NavigationDocument()
@@ -6397,8 +7517,32 @@ void Client::CMapTool::Remove_AllPlacements()
 	m_bDirty = true;
 }
 
-bool_t Client::CMapTool::Save_Placements()
+bool_t Client::CMapTool::Save_Placements(
+	const bool_t linkedTransactionAlreadyLocked,
+	vector<MAP_PLACEMENT_RECORD>* outSavedRecords)
 {
+	if (!linkedTransactionAlreadyLocked &&
+		nullptr != m_pWorldSequenceToolPanel &&
+		m_pWorldSequenceToolPanel->Is_Ready())
+	{
+		return Save_PlacementsAndWorldSequences();
+	}
+	SCOPED_AUTHORING_SAVE_LOCK authoringLock;
+	std::string linkedStatus;
+	if (!linkedTransactionAlreadyLocked)
+	{
+		const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
+		const std::filesystem::path placementPath = nullptr != active ?
+			active->sourcePlacements : std::filesystem::path{};
+		const std::filesystem::path sequencePath = Get_WorldSequencePath();
+		if (!authoringLock.Acquire(sequencePath, linkedStatus) ||
+			!RecoverAuthoringTransactionUnderLock(
+				placementPath, sequencePath, linkedStatus))
+		{
+			m_Status = linkedStatus;
+			return false;
+		}
+	}
 	vector<MAP_PLACEMENT_RECORD> document;
 	document.reserve(m_Placements.size());
 	for (const PLACED_ENTRY& entry : m_Placements)
@@ -6426,14 +7570,188 @@ bool_t Client::CMapTool::Save_Placements()
 	const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
 	const std::filesystem::path authoringPath = nullptr != active ?
 		active->sourcePlacements : std::filesystem::path{};
+	vector<MAP_PLACEMENT_RECORD> storedDocument;
 	if (authoringPath.empty() ||
 		!CMapPlacementDocument::Write(
 		authoringPath, m_Catalog.Get_AreaId(),
-		document, m_Catalog, m_Status))
+		document, m_Catalog, m_Status, &storedDocument))
 		return false;
+	document = std::move(storedDocument);
 
 	m_bDirty = false;
 	m_Status += " (authoring only; publish step required)";
+	if (nullptr != outSavedRecords)
+		*outSavedRecords = document;
+	return true;
+}
+
+bool_t Client::CMapTool::Save_PlacementsAndWorldSequences()
+{
+	if (nullptr == m_pWorldSequenceToolPanel ||
+		!m_pWorldSequenceToolPanel->Is_Ready())
+	{
+		m_Status = "Linked map and sequence save is unavailable";
+		return false;
+	}
+	const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
+	const std::filesystem::path placementPath = nullptr != active ?
+		active->sourcePlacements : std::filesystem::path{};
+	const std::filesystem::path sequencePath = Get_WorldSequencePath();
+	AUTHORING_FILE_BACKUP placementBackup;
+	AUTHORING_FILE_BACKUP sequenceBackup;
+	std::string transactionStatus;
+	SCOPED_AUTHORING_SAVE_LOCK authoringLock;
+	if (!authoringLock.Acquire(sequencePath, transactionStatus) ||
+		!RecoverAuthoringTransactionUnderLock(
+		placementPath, sequencePath, transactionStatus))
+	{
+		m_Status = transactionStatus;
+		return false;
+	}
+	if (!m_pWorldSequenceToolPanel->Matches_LinkedSourceBaseline(
+		transactionStatus))
+	{
+		m_Status = transactionStatus + ". Reload before saving.";
+		return false;
+	}
+	if (!PrepareAuthoringBackup(
+		placementPath, placementBackup, transactionStatus))
+	{
+		m_Status = transactionStatus;
+		return false;
+	}
+	if (!PrepareAuthoringBackup(
+		sequencePath, sequenceBackup, transactionStatus))
+	{
+		DiscardAuthoringBackup(placementBackup);
+		DiscardAuthoringBackup(sequenceBackup);
+		m_Status = transactionStatus;
+		return false;
+	}
+	if (!WriteAuthoringTransactionMarker(
+		placementBackup, sequenceBackup, transactionStatus))
+	{
+		DiscardAuthoringBackup(placementBackup);
+		DiscardAuthoringBackup(sequenceBackup);
+		m_Status = transactionStatus;
+		return false;
+	}
+
+	const bool_t mapWasDirty = m_bDirty;
+	const bool_t sequenceWasDirty = m_pWorldSequenceToolPanel->Is_Dirty();
+	vector<MAP_PLACEMENT_RECORD> intendedPlacements;
+	CWorldSequenceToolPanel verification;
+	bool_t verificationReady = false;
+	bool_t saved = Save_Placements(true, &intendedPlacements);
+	if (saved)
+	{
+		saved = m_pWorldSequenceToolPanel->Save(
+			m_Catalog, m_Placements, m_DeployRuntime, transactionStatus);
+		if (!saved)
+			m_Status = transactionStatus;
+	}
+	if (saved)
+	{
+		std::vector<MAP_PLACEMENT_RECORD> verifiedPlacements;
+		if (!CMapPlacementDocument::Read(
+			placementPath, m_Catalog, verifiedPlacements, transactionStatus))
+		{
+			saved = false;
+			m_Status = "Linked save verification failed for Map Placements: " +
+				transactionStatus;
+		}
+		else if (!AreExactlySamePlacementRecords(
+			intendedPlacements, verifiedPlacements))
+		{
+			saved = false;
+			m_Status =
+				"Linked save verification found different Map Placement content";
+		}
+		else
+		{
+			if (!verification.Load_Area(sequencePath, placementPath,
+				m_Catalog.Get_AreaId(), m_Catalog, verifiedPlacements,
+				m_DeployRuntime, transactionStatus))
+			{
+				saved = false;
+				m_Status = "Linked save verification failed for World Sequences: " +
+					transactionStatus;
+			}
+			else
+			{
+				std::vector<MAP_PLACEMENT_RECORD> stableVerifiedPlacements;
+				if (!CMapPlacementDocument::Read(placementPath, m_Catalog,
+					stableVerifiedPlacements, transactionStatus) ||
+					!AreExactlySamePlacementRecords(
+						verifiedPlacements, stableVerifiedPlacements) ||
+					!verification.Matches_LinkedSourceBaseline(transactionStatus))
+				{
+					saved = false;
+					m_Status =
+						"Linked save verification source changed during final read: " +
+						transactionStatus;
+				}
+				else if (!m_pWorldSequenceToolPanel->Has_SameDocument(verification))
+				{
+					saved = false;
+					m_Status =
+						"Linked save verification found different World Sequence content";
+				}
+				else
+				{
+					verificationReady = true;
+				}
+			}
+		}
+	}
+	if (saved && (!verificationReady ||
+		!verification.Matches_LinkedSourceBaseline(transactionStatus)))
+	{
+		saved = false;
+		m_Status = "Linked save source changed before commit: " +
+			transactionStatus;
+	}
+	if (!saved)
+	{
+		const std::string saveFailure = m_Status;
+		const bool_t mapRestored = RestoreAuthoringBackup(placementBackup);
+		const bool_t sequenceRestored = RestoreAuthoringBackup(sequenceBackup);
+		m_bDirty = mapWasDirty;
+		if (sequenceWasDirty)
+			m_pWorldSequenceToolPanel->Restore_DirtyAfterFailedTransaction();
+		if (mapRestored && sequenceRestored &&
+			ClearAuthoringTransactionMarker(sequencePath))
+		{
+			DiscardAuthoringBackup(placementBackup);
+			DiscardAuthoringBackup(sequenceBackup);
+			m_Status = "Linked map/sequence save rolled back: " + saveFailure;
+		}
+		else
+		{
+			m_Status = "CRITICAL: linked save recovery is locked; preserve " +
+				placementBackup.backup.filename().string() + " and " +
+				sequenceBackup.backup.filename().string();
+		}
+		return false;
+	}
+	if (!ClearAuthoringTransactionMarker(sequencePath))
+	{
+		const bool_t mapRestored = RestoreAuthoringBackup(placementBackup);
+		const bool_t sequenceRestored = RestoreAuthoringBackup(sequenceBackup);
+		m_bDirty = mapWasDirty;
+		if (sequenceWasDirty)
+			m_pWorldSequenceToolPanel->Restore_DirtyAfterFailedTransaction();
+		m_Status = mapRestored && sequenceRestored ?
+			"Linked save marker cleanup failed; original files were restored, the "
+			"editor baseline stayed unchanged, and the pending marker was preserved" :
+			"CRITICAL: marker cleanup rollback failed; pending "
+			"marker and backups were preserved";
+		return false;
+	}
+	m_pWorldSequenceToolPanel->Adopt_VerifiedLinkedSourceBaseline(verification);
+	DiscardAuthoringBackup(placementBackup);
+	DiscardAuthoringBackup(sequenceBackup);
+	m_Status = "Saved linked Map Placements and World Sequences";
 	return true;
 }
 
@@ -6447,16 +7765,50 @@ bool_t Client::CMapTool::Load_Placements()
 	const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
 	const std::filesystem::path authoringPath = nullptr != active ?
 		active->sourcePlacements : std::filesystem::path{};
+	const std::filesystem::path sequencePath = Get_WorldSequencePath();
+	SCOPED_AUTHORING_SAVE_LOCK authoringLock;
+	if (!authoringLock.Acquire(sequencePath, loadStatus) ||
+		!RecoverAuthoringTransactionUnderLock(
+		authoringPath, sequencePath, loadStatus))
+	{
+		m_Status = loadStatus;
+		return false;
+	}
 	std::error_code authoringError;
 	const bool_t hasAuthoring =
 		!authoringPath.empty() &&
 		std::filesystem::is_regular_file(
 			authoringPath, authoringError);
-	if (authoringError || !hasAuthoring ||
-		!CMapPlacementDocument::Read(
-			authoringPath, m_Catalog, document, loadStatus))
+	if (authoringError || !hasAuthoring)
+	{
+		m_Status = authoringError ?
+			"Could not inspect map placement authoring source" :
+			"Map placement authoring source is missing";
+		return false;
+	}
+	if (!CMapPlacementDocument::Read(
+		authoringPath, m_Catalog, document, loadStatus))
 	{
 		m_Status = loadStatus;
+		return false;
+	}
+	auto stagedWorldSequencePanel =
+		std::make_unique<CWorldSequenceToolPanel>();
+	if (!stagedWorldSequencePanel->Load_Area(
+		Get_WorldSequencePath(), authoringPath, m_Catalog.Get_AreaId(),
+		m_Catalog, document, m_DeployRuntime, loadStatus))
+	{
+		m_Status = loadStatus;
+		return false;
+	}
+	std::vector<MAP_PLACEMENT_RECORD> stableLinkedDocument;
+	if (!CMapPlacementDocument::Read(authoringPath, m_Catalog,
+		stableLinkedDocument, loadStatus) ||
+		!AreExactlySamePlacementRecords(document, stableLinkedDocument) ||
+		!stagedWorldSequencePanel->Matches_LinkedSourceBaseline(loadStatus))
+	{
+		m_Status = "Linked map/sequence source changed while Reload was staging: " +
+			loadStatus;
 		return false;
 	}
 
@@ -6469,10 +7821,23 @@ bool_t Client::CMapTool::Load_Placements()
 		m_Status = "Map runtime staging rolled back";
 		return false;
 	}
+	if (nullptr != m_pWorldSequenceToolPanel)
+	{
+		m_pWorldSequenceToolPanel->Stop_AndRestore(
+			m_iAuthoringLevelIndex, m_Catalog, m_Placements,
+			m_DeployRuntime);
+		if (m_pWorldSequenceToolPanel->Is_PreviewActive())
+		{
+			Remove_PlacementRuntime(stagedPlacements, stagedBatches);
+			m_Status = m_pWorldSequenceToolPanel->Get_Status();
+			return false;
+		}
+	}
 
 	Remove_PlacementRuntime(m_Placements, m_StaticBatches);
 	m_Placements = std::move(stagedPlacements);
 	m_StaticBatches = std::move(stagedBatches);
+	m_pWorldSequenceToolPanel = std::move(stagedWorldSequencePanel);
 	m_iSelectedPlacementId = 0;
 	m_iNextPlacementId = 1;
 	for (const PLACED_ENTRY& entry : m_Placements)
@@ -6514,6 +7879,10 @@ bool_t Client::CMapTool::Load_DeployProps()
 		return false;
 	m_DeployRuntime = std::move(stagedRuntime);
 	m_DeployPhase = DEPLOY_PROP_STATE::INTACT;
+	m_bDeployDirty = false;
+	m_bAnimatedPropPlacementArmed = false;
+	m_iSelectedAnimatedPropPlacementId = 0u;
+	Sync_AnimatedPropTransformDraft();
 	m_Status = "Loaded " + std::to_string(m_Placements.size()) +
 		" map placements + " +
 		std::to_string(m_DeployRuntime.Get_Entries().size()) +
@@ -6568,6 +7937,361 @@ bool_t Client::CMapTool::Stage_DeployProps(
 		return false;
 	}
 	return true;
+}
+
+bool_t Client::CMapTool::Commit_DeployCatalog(
+	CDeployPropCatalog catalog,
+	const std::string& successStatus)
+{
+	if (!catalog.Is_Ready() || m_iAuthoringLevelIndex >= ETOUI(LEVEL::END))
+	{
+		m_Status = "DeployProp catalog commit is unavailable";
+		return false;
+	}
+
+	/* Sequence preview and destruction preview both own live seams into the
+	   Deploy objects this commit replaces. Release them before the runtime
+	   that owns those objects is rebuilt, and refuse the commit when a
+	   preview cannot be restored. */
+	if (nullptr != m_pWorldSequenceToolPanel && m_Catalog.Is_Ready())
+	{
+		m_pWorldSequenceToolPanel->Stop_AndRestore(
+			m_iAuthoringLevelIndex, m_Catalog, m_Placements, m_DeployRuntime);
+		if (m_pWorldSequenceToolPanel->Is_PreviewActive())
+		{
+			m_Status = m_pWorldSequenceToolPanel->Get_Status();
+			return false;
+		}
+	}
+	Restore_DestructionPreview();
+	if (nullptr != m_pDestructionSimulationController)
+		m_pDestructionSimulationController->Clear();
+
+	if (!Ensure_DeployAuthoringPrototypes(catalog))
+		return false;
+
+	CDeployPropRuntime stagedRuntime;
+	if (!stagedRuntime.Load(m_iAuthoringLevelIndex, std::move(catalog)))
+	{
+		m_Status = stagedRuntime.Get_Status();
+		return false;
+	}
+
+	m_DeployRuntime = std::move(stagedRuntime);
+	if (DEPLOY_PROP_STATE::INTACT != m_DeployPhase &&
+		!m_DeployRuntime.Set_State_All(m_DeployPhase))
+	{
+		m_DeployPhase = DEPLOY_PROP_STATE::INTACT;
+	}
+	m_bDeployDirty = true;
+	m_Status = successStatus;
+	return true;
+}
+
+bool_t Client::CMapTool::Save_DeployPlacements()
+{
+	const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
+	if (nullptr == active || active->sourceDeployCatalog.empty() ||
+		active->sourceDeployPlacements.empty())
+	{
+		m_Status = "This Area declares no Deploy placement authoring document";
+		return false;
+	}
+	if (!m_DeployRuntime.Get_Catalog().Is_Ready())
+	{
+		m_Status = "DeployProp catalog is not loaded";
+		return false;
+	}
+
+	CDeployPropCatalog saved = m_DeployRuntime.Get_Catalog();
+	if (!saved.Save_Placements(active->sourceDeployPlacements))
+	{
+		m_Status = saved.Get_Status();
+		return false;
+	}
+
+	/* The replaced file is the only input the next load reads, so read it
+	   back and require the exact rows this tool intended before clearing
+	   the dirty flag. */
+	CDeployPropCatalog verification;
+	if (!verification.Load(
+		active->sourceDeployCatalog,
+		active->sourceDeployPlacements,
+		active->areaId))
+	{
+		m_Status = "DeployProp placement save verification failed: " +
+			verification.Get_Status();
+		return false;
+	}
+	const std::vector<DEPLOY_PROP_PLACEMENT>& intended = saved.Get_Placements();
+	const std::vector<DEPLOY_PROP_PLACEMENT>& stored =
+		verification.Get_Placements();
+	bool_t identical = intended.size() == stored.size();
+	for (size_t index = 0; identical && index < intended.size(); ++index)
+	{
+		const DEPLOY_PROP_PLACEMENT& left = intended[index];
+		const DEPLOY_PROP_PLACEMENT& right = stored[index];
+		identical =
+			left.runtimePlacementId == right.runtimePlacementId &&
+			left.deployActorId == right.deployActorId &&
+			left.propDefinitionId == right.propDefinitionId &&
+			left.sourcePlacementId == right.sourcePlacementId &&
+			left.assetId == right.assetId &&
+			left.position.x == right.position.x &&
+			left.position.y == right.position.y &&
+			left.position.z == right.position.z &&
+			left.rotationQuaternion.x == right.rotationQuaternion.x &&
+			left.rotationQuaternion.y == right.rotationQuaternion.y &&
+			left.rotationQuaternion.z == right.rotationQuaternion.z &&
+			left.rotationQuaternion.w == right.rotationQuaternion.w &&
+			left.uniformScale == right.uniformScale &&
+			left.destructible == right.destructible &&
+			left.stateOffActionId == right.stateOffActionId &&
+			left.triggerBinaryOccurrenceCount ==
+				right.triggerBinaryOccurrenceCount &&
+			left.provenance == right.provenance;
+	}
+	if (!identical)
+	{
+		m_Status =
+			"DeployProp placement save verification found different content";
+		return false;
+	}
+
+	m_bDeployDirty = false;
+	m_Status = "Saved " + std::to_string(stored.size()) +
+		" Deploy placements (authoring only; publish step required)";
+	return true;
+}
+
+bool_t Client::CMapTool::Try_PlaceSelectedDeploy()
+{
+	const DEPLOY_PROP_ASSET_ENTRY* asset = Get_SelectedDeployAsset();
+	if (nullptr == asset)
+	{
+		m_Status = "Select an animated prop asset before placing";
+		return false;
+	}
+	if (DEPLOY_PROP_MODEL_KIND::ANIM != asset->kind)
+	{
+		m_Status = "Only cooked ANIM Deploy assets are placed by this tool";
+		return false;
+	}
+
+	float3_t position{};
+	if (!Try_PickPlacementPosition(position))
+	{
+		m_Status = "No valid surface under the cursor";
+		return false;
+	}
+
+	const uint64_t placementId = Allocate_AnimatedPropPlacementId();
+	if (0u == placementId)
+	{
+		m_Status = "No editor Deploy placement ID is available";
+		return false;
+	}
+
+	DEPLOY_PROP_PLACEMENT placement{};
+	placement.runtimePlacementId = placementId;
+	placement.sourcePlacementId = "editor:" +
+		m_DeployRuntime.Get_Catalog().Get_AreaId() + ":" +
+		std::to_string(placementId);
+	placement.assetId = asset->id;
+	placement.position = position;
+	placement.rotationQuaternion = float4_t(0.f, 0.f, 0.f, 1.f);
+	placement.uniformScale = 1.f;
+	placement.provenance =
+		DEPLOY_PROP_PLACEMENT_PROVENANCE::PROJECT_AUTHORED;
+
+	const std::string label = asset->label;
+	CDeployPropCatalog staged = m_DeployRuntime.Get_Catalog();
+	if (!staged.Add_ProjectAuthoredPlacement(placement))
+	{
+		m_Status = staged.Get_Status();
+		return false;
+	}
+	if (!Commit_DeployCatalog(std::move(staged),
+		"Placed " + label + " as animated prop #" +
+		std::to_string(placementId) +
+		"; placement remains armed (Esc cancels)."))
+	{
+		return false;
+	}
+
+	m_iSelectedAnimatedPropPlacementId = placementId;
+	Sync_AnimatedPropTransformDraft();
+	return true;
+}
+
+bool_t Client::CMapTool::Apply_AnimatedPropTransform()
+{
+	const DEPLOY_RUNTIME_ENTRY* selected = Get_SelectedAnimatedProp();
+	if (nullptr == selected)
+	{
+		m_Status = "Select a placed animated prop first";
+		return false;
+	}
+	if (DEPLOY_PROP_PLACEMENT_PROVENANCE::PROJECT_AUTHORED !=
+		selected->placement.provenance)
+	{
+		m_Status = "Source-extracted Deploy placements are read-only";
+		return false;
+	}
+	if (m_iAnimatedPropDraftPlacementId !=
+		selected->placement.runtimePlacementId)
+	{
+		m_Status = "The transform draft does not belong to the selection";
+		return false;
+	}
+	if (!IsFinite(m_AnimatedPropDraftPosition) ||
+		!IsFiniteQuaternion(m_AnimatedPropDraftRotation) ||
+		!std::isfinite(m_fAnimatedPropDraftScale) ||
+		m_fAnimatedPropDraftScale <= 0.000001f)
+	{
+		m_Status = "The transform draft is not a valid placement transform";
+		return false;
+	}
+
+	DEPLOY_PROP_PLACEMENT updated = selected->placement;
+	updated.position = m_AnimatedPropDraftPosition;
+	updated.rotationQuaternion = m_AnimatedPropDraftRotation;
+	updated.uniformScale = m_fAnimatedPropDraftScale;
+
+	CDeployPropCatalog staged = m_DeployRuntime.Get_Catalog();
+	if (!staged.Update_ProjectAuthoredPlacement(updated))
+	{
+		m_Status = staged.Get_Status();
+		return false;
+	}
+	if (!Commit_DeployCatalog(std::move(staged),
+		"Applied the transform of animated prop #" +
+		std::to_string(updated.runtimePlacementId)))
+	{
+		return false;
+	}
+
+	Sync_AnimatedPropTransformDraft();
+	return true;
+}
+
+bool_t Client::CMapTool::Remove_SelectedAnimatedProp()
+{
+	const DEPLOY_RUNTIME_ENTRY* selected = Get_SelectedAnimatedProp();
+	if (nullptr == selected)
+	{
+		m_Status = "Select a placed animated prop first";
+		return false;
+	}
+	if (DEPLOY_PROP_PLACEMENT_PROVENANCE::PROJECT_AUTHORED !=
+		selected->placement.provenance)
+	{
+		m_Status = "Source-extracted Deploy placements cannot be removed";
+		return false;
+	}
+
+	const uint64_t placementId = selected->placement.runtimePlacementId;
+	const bool_t wasDirty = m_bDeployDirty;
+	CDeployPropCatalog restore = m_DeployRuntime.Get_Catalog();
+	CDeployPropCatalog staged = restore;
+	if (!staged.Remove_ProjectAuthoredPlacement(placementId))
+	{
+		m_Status = staged.Get_Status();
+		return false;
+	}
+	if (!Commit_DeployCatalog(std::move(staged),
+		"Removed animated prop #" + std::to_string(placementId)))
+	{
+		return false;
+	}
+
+	/* A world sequence animation track may still bind the removed placement.
+	   The sequence document owns that reference rule, so ask its validator
+	   and put the Deploy runtime back when the removal orphans a slot. */
+	std::string sequenceStatus;
+	if (nullptr != m_pWorldSequenceToolPanel &&
+		m_pWorldSequenceToolPanel->Is_Ready() &&
+		!m_pWorldSequenceToolPanel->Validate(
+			m_Catalog, m_Placements, m_DeployRuntime, sequenceStatus))
+	{
+		const std::string failure =
+			"Animated prop #" + std::to_string(placementId) +
+			" is still used by a world sequence: " + sequenceStatus;
+		if (!Commit_DeployCatalog(std::move(restore),
+			"Restored animated prop #" + std::to_string(placementId)))
+		{
+			return false;
+		}
+		m_bDeployDirty = wasDirty;
+		m_Status = failure;
+		return false;
+	}
+
+	m_iSelectedAnimatedPropPlacementId = 0u;
+	Sync_AnimatedPropTransformDraft();
+	return true;
+}
+
+uint64_t Client::CMapTool::Allocate_AnimatedPropPlacementId() const
+{
+	/* Deploy placements share the map placement ID domain rule: an extracted
+	   SOURCE_EXACT row keeps the high bit set, so a project-authored row must
+	   stay at or below MAX_EDITOR_PLACEMENT_ID and can never impersonate one. */
+	uint64_t candidate = 1u;
+	for (const DEPLOY_PROP_PLACEMENT& row :
+		m_DeployRuntime.Get_Catalog().Get_Placements())
+	{
+		if (row.runtimePlacementId >
+			CMapPlacementDocument::MAX_EDITOR_PLACEMENT_ID)
+		{
+			continue;
+		}
+		if (row.runtimePlacementId >= candidate)
+			candidate = row.runtimePlacementId + 1u;
+	}
+	return candidate > CMapPlacementDocument::MAX_EDITOR_PLACEMENT_ID ?
+		0u : candidate;
+}
+
+const Client::DEPLOY_PROP_ASSET_ENTRY*
+Client::CMapTool::Get_SelectedDeployAsset() const
+{
+	if (m_SelectedDeployAssetId.empty())
+		return nullptr;
+	return m_DeployRuntime.Get_Catalog().Find(m_SelectedDeployAssetId);
+}
+
+const Client::DEPLOY_RUNTIME_ENTRY*
+Client::CMapTool::Get_SelectedAnimatedProp() const
+{
+	if (0u == m_iSelectedAnimatedPropPlacementId)
+		return nullptr;
+	const std::vector<DEPLOY_RUNTIME_ENTRY>& entries =
+		m_DeployRuntime.Get_Entries();
+	const auto iter = std::find_if(entries.begin(), entries.end(),
+		[this](const DEPLOY_RUNTIME_ENTRY& entry)
+		{
+			return entry.placement.runtimePlacementId ==
+				m_iSelectedAnimatedPropPlacementId;
+		});
+	return iter == entries.end() ? nullptr : &*iter;
+}
+
+void Client::CMapTool::Sync_AnimatedPropTransformDraft()
+{
+	const DEPLOY_RUNTIME_ENTRY* selected = Get_SelectedAnimatedProp();
+	if (nullptr == selected)
+	{
+		m_iAnimatedPropDraftPlacementId = 0u;
+		m_AnimatedPropDraftPosition = {};
+		m_AnimatedPropDraftRotation = float4_t(0.f, 0.f, 0.f, 1.f);
+		m_fAnimatedPropDraftScale = 1.f;
+		return;
+	}
+	m_iAnimatedPropDraftPlacementId = selected->placement.runtimePlacementId;
+	m_AnimatedPropDraftPosition = selected->placement.position;
+	m_AnimatedPropDraftRotation = selected->placement.rotationQuaternion;
+	m_fAnimatedPropDraftScale = selected->placement.uniformScale;
 }
 
 void Client::CMapTool::Remove_DeployProps()
@@ -10503,6 +12227,21 @@ void Client::CMapTool::Render_ModeBar()
 	}
 	ImGui::SameLine();
 	if (ImGui::RadioButton(
+		"World Sequence",
+		TOOL_MODE::WORLD_SEQUENCE == m_eToolMode))
+	{
+		Restore_DestructionPreview();
+		m_eToolMode = TOOL_MODE::WORLD_SEQUENCE;
+		m_ePlacementState = PLACEMENT_STATE::IDLE;
+		m_bWorldGameplayPlacementArmed = false;
+		m_bWorldTriggerTargetPickArmed = false;
+		m_bSpawnAnchorPlacementArmed = false;
+		m_bNavigationStrokeActive = false;
+		m_bDestructionPickArmed = false;
+		m_bDestructionAddMemberArmed = false;
+	}
+	ImGui::SameLine();
+	if (ImGui::RadioButton(
 		"Navigation",
 		TOOL_MODE::NAVIGATION == m_eToolMode))
 	{
@@ -10531,6 +12270,24 @@ void Client::CMapTool::Render_ModeBar()
 		nullptr != m_pDestructionSimulationController)
 	{
 		m_bDestructionSimulationClearRequested = true;
+	}
+	if (TOOL_MODE::WORLD_SEQUENCE == previousMode &&
+		TOOL_MODE::WORLD_SEQUENCE != m_eToolMode)
+	{
+		m_bAnimatedPropPlacementArmed = false;
+	}
+	if (TOOL_MODE::WORLD_SEQUENCE == previousMode &&
+		TOOL_MODE::WORLD_SEQUENCE != m_eToolMode &&
+		nullptr != m_pWorldSequenceToolPanel && m_Catalog.Is_Ready())
+	{
+		m_pWorldSequenceToolPanel->Stop_AndRestore(
+			m_iAuthoringLevelIndex, m_Catalog, m_Placements,
+			m_DeployRuntime);
+		if (m_pWorldSequenceToolPanel->Is_PreviewActive())
+		{
+			m_eToolMode = previousMode;
+			m_Status = m_pWorldSequenceToolPanel->Get_Status();
+		}
 	}
 }
 
@@ -11050,13 +12807,20 @@ void Client::CMapTool::Render_NavigationOverlay()
 void Client::CMapTool::Render_Toolbar()
 {
 	if (ImGui::Button("Save"))
-		Save_Placements();
+		Save_AllAuthoring();
 	ImGui::TextDisabled("Data/Maps authoring; publish required");
 	ImGui::SameLine();
 	if (ImGui::Button("Reload"))
 	{
-		if (Load_Placements())
+		if (m_bDeployDirty)
+		{
+			m_Status =
+				"Save or discard the animated prop changes before reloading";
+		}
+		else if (Load_Placements())
+		{
 			Load_DeployProps();
+		}
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Clear"))

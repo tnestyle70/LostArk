@@ -11,6 +11,10 @@
 namespace
 {
 	constexpr f32_t SHAKE_TRANSLATION_METERS_PER_UNIT = 0.01f;
+	/* An extracted authoring Area can span thousands of units, so holding
+	   either Shift scales only the free-camera step for crossing it. The
+	   camera keeps the speed its level authored for ordinary work. */
+	constexpr f32_t FREE_CAMERA_SPRINT_SCALE = 30.f;
 	constexpr f32_t MIN_SHAKE_FOVY = 10.f;
 	constexpr f32_t MAX_SHAKE_FOVY = 170.f;
 }
@@ -264,14 +268,20 @@ void CCamera_Free::Update_FreeCamera(f32_t fTimeDelta)
 			CGameInstance::Get().Get_DIKeyState(keyCode);
 	};
 
+	const bool_t sprintHeld = !textInputActive &&
+		(0 != (keyState(DIK_LSHIFT) & 0x80) ||
+		 0 != (keyState(DIK_RSHIFT) & 0x80));
+	const f32_t fMoveDelta = sprintHeld ?
+		fTimeDelta * FREE_CAMERA_SPRINT_SCALE : fTimeDelta;
+
 	if (!textInputActive && keyState(DIK_W) & 0x80)
-		m_pTransformCom->Go_Straight(fTimeDelta);
+		m_pTransformCom->Go_Straight(fMoveDelta);
 	if (!textInputActive && keyState(DIK_S) & 0x80)
-		m_pTransformCom->Go_Backward(fTimeDelta);
+		m_pTransformCom->Go_Backward(fMoveDelta);
 	if (!textInputActive && keyState(DIK_A) & 0x80)
-		m_pTransformCom->Go_Left(fTimeDelta);
+		m_pTransformCom->Go_Left(fMoveDelta);
 	if (!textInputActive && keyState(DIK_D) & 0x80)
-		m_pTransformCom->Go_Right(fTimeDelta);
+		m_pTransformCom->Go_Right(fMoveDelta);
 
 	if (!m_bMouseLookEnabled)
 		return;

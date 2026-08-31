@@ -22,6 +22,20 @@ enum class DEPLOY_PROP_STATE
 	DESPAWNED,
 };
 
+enum class DEPLOY_PROP_PLACEMENT_PROVENANCE
+{
+	SOURCE_EXACT,
+	PROJECT_AUTHORED,
+};
+
+struct DEPLOY_PROP_ANIMATION_ROLES
+{
+	/* Empty means that entering the state changes no animation. Catalog v2
+	   rows are migrated in memory to the historical on/off logical names. */
+	std::string intactClip;
+	std::string fracturedClip;
+};
+
 struct DEPLOY_PROP_ASSET_ENTRY
 {
 	std::string id;
@@ -36,6 +50,8 @@ struct DEPLOY_PROP_ASSET_ENTRY
 	std::wstring fracturedPrototypeTag;
 	f32_t emissiveIntensity = 1.f;
 	bool_t deferredEmissiveOverlay = false;
+	DEPLOY_PROP_ANIMATION_ROLES animationRoles;
+	bool_t strictAnimationRoles = false;
 };
 
 struct DEPLOY_PROP_PLACEMENT
@@ -51,6 +67,8 @@ struct DEPLOY_PROP_PLACEMENT
 	bool_t destructible = false;
 	uint32_t stateOffActionId = {};
 	uint32_t triggerBinaryOccurrenceCount = {};
+	DEPLOY_PROP_PLACEMENT_PROVENANCE provenance =
+		DEPLOY_PROP_PLACEMENT_PROVENANCE::SOURCE_EXACT;
 };
 
 class CDeployPropCatalog final
@@ -60,6 +78,12 @@ public:
 	bool_t Load(const std::filesystem::path& catalogPath,
 		const std::filesystem::path& placementPath,
 		const std::string& expectedAreaId);
+	bool_t Save_Placements();
+	bool_t Save_Placements(const std::filesystem::path& placementPath);
+	bool_t Add_ProjectAuthoredPlacement(DEPLOY_PROP_PLACEMENT placement);
+	bool_t Update_ProjectAuthoredPlacement(
+		const DEPLOY_PROP_PLACEMENT& placement);
+	bool_t Remove_ProjectAuthoredPlacement(uint64_t runtimePlacementId);
 
 	const DEPLOY_PROP_ASSET_ENTRY* Find(const std::string& assetId) const;
 	const std::vector<DEPLOY_PROP_ASSET_ENTRY>& Get_Assets() const { return m_Assets; }
@@ -72,6 +96,7 @@ private:
 	std::vector<DEPLOY_PROP_ASSET_ENTRY> m_Assets;
 	std::vector<DEPLOY_PROP_PLACEMENT> m_Placements;
 	std::string m_AreaId;
+	std::filesystem::path m_PlacementPath;
 	std::string m_Status = "DeployProp catalog not loaded";
 	bool_t m_bReady = false;
 };
