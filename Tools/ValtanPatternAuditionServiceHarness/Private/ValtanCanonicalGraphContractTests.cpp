@@ -212,6 +212,162 @@ namespace
 		}
 	}
 
+	void VerifyFlowDocumentV2AuthoringContract()
+	{
+		std::string Status;
+		std::ifstream Input(
+			CValtanPatternFlowDocument::Resolve_Path(), std::ios::binary);
+		Require(static_cast<bool_t>(Input),
+			"v2 Flow contract could not open its authoring document");
+		const std::string Source{
+			std::istreambuf_iterator<char>(Input),
+			std::istreambuf_iterator<char>() };
+		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT ParsedSource;
+		Require(CValtanPatternFlowDocument::Parse_Text(
+			Source, ParsedSource, Status),
+			"v2 Flow contract could not parse its authoring document");
+		std::vector<std::string> AdmittedPatternIds;
+		std::set<std::string, std::less<>> AdmittedSet;
+		for (const VALTAN_PATTERN_FLOW_NODE& Node :
+			ParsedSource.Flows.front().Nodes)
+		{
+			if (AdmittedSet.insert(Node.strPatternId).second)
+				AdmittedPatternIds.push_back(Node.strPatternId);
+		}
+		if (AdmittedSet.insert("VALTAN_ENTRANCE_CINEMATIC").second)
+			AdmittedPatternIds.push_back("VALTAN_ENTRANCE_CINEMATIC");
+
+		CValtanPatternFlowDocument Document;
+		Require(Document.Load(AdmittedPatternIds, Status),
+			"v2 Flow document did not load");
+		const VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT Canonical =
+			Document.Get_Draft();
+		Require(2u == Canonical.iFormatVersion && 1u == Canonical.Flows.size(),
+			"v2 Flow header was not admitted");
+		const VALTAN_PATTERN_FLOW_DEFINITION& Flow = Canonical.Flows.front();
+		Require(29u == Flow.Nodes.size() && 28u == Flow.Edges.size() &&
+			41u == Flow.iNextNodeOrdinal && 29u == Flow.iNextEdgeOrdinal &&
+			255u == Flow.iMaxTransitionsPerRun &&
+			Flow.strEntryNodeId == Flow.Nodes.front().strNodeId,
+			"v1 stable slots were not preserved as the 29 v2 nodes");
+		Require(CValtanPatternFlowDocument::Has_LegacyLinearProjection(Flow) &&
+			Flow.Slots.size() == Flow.Nodes.size(),
+			"acyclic v2 Flow did not expose the bounded legacy projection");
+		for (const VALTAN_PATTERN_FLOW_NODE& Node : Flow.Nodes)
+			Require(0u == Node.iWatchdogMs,
+				"migrated v2 node unexpectedly enabled a watchdog");
+
+		const std::string Serialized =
+			CValtanPatternFlowDocument::Serialize_Text(Canonical);
+		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT RoundTrip;
+		Require(CValtanPatternFlowDocument::Parse_Text(
+			Serialized, RoundTrip, Status) &&
+			CValtanPatternFlowDocument::Validate(
+				RoundTrip, AdmittedPatternIds, Status) &&
+			RoundTrip == Canonical,
+			"v2 Flow serialize/reparse roundtrip drifted");
+
+		const auto Reject = [&](
+			const VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT& Candidate,
+			const char* const pMessage)
+		{
+			Require(!CValtanPatternFlowDocument::Validate(
+				Candidate, AdmittedPatternIds, Status), pMessage);
+		};
+
+		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT Dangling = Canonical;
+		Dangling.Flows.front().Edges.front().strToNodeId =
+			"flow.valtan.boss-tool.default.node.999999";
+		Reject(Dangling, "v2 Flow admitted a dangling edge");
+
+		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT NonDeterministic = Canonical;
+		VALTAN_PATTERN_FLOW_DEFINITION& NonDeterministicFlow =
+			NonDeterministic.Flows.front();
+		NonDeterministicFlow.Edges.push_back({
+			"flow.valtan.boss-tool.default.edge.000029",
+			NonDeterministicFlow.Edges.front().strFromNodeId,
+			VALTAN_PATTERN_FLOW_EDGE_OUTCOME::COMPLETED,
+			NonDeterministicFlow.Nodes.back().strNodeId, 1000u, std::nullopt });
+		NonDeterministicFlow.iNextEdgeOrdinal = 30u;
+		Reject(NonDeterministic,
+			"v2 Flow admitted two COMPLETED edges from one node");
+
+		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT Unreachable = Canonical;
+		Unreachable.Flows.front().Edges.erase(
+			Unreachable.Flows.front().Edges.begin() + 5u);
+		Reject(Unreachable, "v2 Flow admitted an unreachable suffix");
+
+		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT UnboundedCycle = Canonical;
+		VALTAN_PATTERN_FLOW_DEFINITION& UnboundedFlow =
+			UnboundedCycle.Flows.front();
+		UnboundedFlow.Edges.push_back({
+			"flow.valtan.boss-tool.default.edge.000029",
+			UnboundedFlow.Nodes.back().strNodeId,
+			VALTAN_PATTERN_FLOW_EDGE_OUTCOME::COMPLETED,
+			UnboundedFlow.strEntryNodeId, 1000u, std::nullopt });
+		UnboundedFlow.iNextEdgeOrdinal = 30u;
+		Reject(UnboundedCycle, "v2 Flow admitted an unbounded cycle");
+
+		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT BoundedCycle = UnboundedCycle;
+		BoundedCycle.Flows.front().Edges.back().iMaxTraversals = 2u;
+		Require(CValtanPatternFlowDocument::Validate(
+			BoundedCycle, AdmittedPatternIds, Status),
+			"v2 Flow rejected a finite cycle-closing back-edge");
+		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT PrematureWatchdog = BoundedCycle;
+		PrematureWatchdog.Flows.front().iMaxTransitionsPerRun = 80u;
+		Reject(PrematureWatchdog,
+			"v2 Flow admitted a transition watchdog before its authored terminal");
+
+		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT ForwardCap = Canonical;
+		ForwardCap.Flows.front().Edges.front().iMaxTraversals = 2u;
+		Reject(ForwardCap,
+			"v2 Flow admitted maxTraversals on a non-back-edge");
+
+		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT BadEntrance = Canonical;
+		BadEntrance.Flows.front().Nodes[1u].strPatternId =
+			"VALTAN_ENTRANCE_CINEMATIC";
+		Reject(BadEntrance,
+			"v2 Flow admitted an entrance cinematic outside entryNodeId");
+
+		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT BadOrdinal = Canonical;
+		BadOrdinal.Flows.front().iNextNodeOrdinal = 40u;
+		Reject(BadOrdinal, "v2 Flow admitted a reused node ordinal");
+		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT DuplicateOrdinal = Canonical;
+		DuplicateOrdinal.Flows.front().Nodes[1u].strNodeId =
+			"flow.valtan.boss-tool.default.node.000001";
+		DuplicateOrdinal.Flows.front().Edges.front().strToNodeId =
+			DuplicateOrdinal.Flows.front().Nodes[1u].strNodeId;
+		DuplicateOrdinal.Flows.front().Edges[1u].strFromNodeId =
+			DuplicateOrdinal.Flows.front().Nodes[1u].strNodeId;
+		Reject(DuplicateOrdinal,
+			"v2 Flow admitted the same ordinal in legacy and new node namespaces");
+
+		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT BadWatchdog = Canonical;
+		BadWatchdog.Flows.front().Nodes.front().iWatchdogMs = 999u;
+		Reject(BadWatchdog, "v2 Flow admitted a sub-minimum node watchdog");
+		BadWatchdog.Flows.front().Nodes.front().iWatchdogMs = 1000u;
+		Require(CValtanPatternFlowDocument::Validate(
+			BadWatchdog, AdmittedPatternIds, Status),
+			"v2 Flow rejected the minimum enabled node watchdog");
+		Require(Document.Set_NodeWatchdogMs(
+			Flow.Nodes.front().strNodeId, 1000u, AdmittedPatternIds, Status),
+			"v2 Flow document rejected a valid node watchdog mutation");
+		Require(nullptr != Document.Get_DefaultFlow() &&
+			!CValtanPatternFlowDocument::Has_LegacyLinearProjection(
+				*Document.Get_DefaultFlow()),
+			"watchdog graph remained exposed as a legacy-playable slot projection");
+
+		std::string WrongVersion = Serialized;
+		const std::string VersionToken = "\"formatVersion\": 2";
+		WrongVersion.replace(
+			WrongVersion.find(VersionToken), VersionToken.size(),
+			"\"formatVersion\": 1");
+		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT Preserved = RoundTrip;
+		Require(!CValtanPatternFlowDocument::Parse_Text(
+			WrongVersion, RoundTrip, Status) && RoundTrip == Preserved,
+			"v2 parse failure replaced the caller's admitted document");
+	}
+
 	std::string ReadExactBytes(const std::filesystem::path& Path)
 	{
 		std::ifstream Input(Path, std::ios::binary);
@@ -220,6 +376,92 @@ namespace
 		return std::string(
 			std::istreambuf_iterator<char>(Input),
 			std::istreambuf_iterator<char>());
+	}
+
+	void VerifyFlowSaveAdmissionExcludesWriter()
+	{
+		const std::filesystem::path FlowPath =
+			CValtanPatternFlowDocument::Resolve_Path();
+		const std::string OriginalBytes = ReadExactBytes(FlowPath);
+		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT Parsed;
+		std::string Status;
+		Require(CValtanPatternFlowDocument::Parse_Text(
+			OriginalBytes, Parsed, Status),
+			"Flow writer admission oracle could not parse its source");
+		std::vector<std::string> AdmittedPatternIds;
+		std::set<std::string, std::less<>> AdmittedSet;
+		for (const VALTAN_PATTERN_FLOW_NODE& Node : Parsed.Flows.front().Nodes)
+		{
+			if (AdmittedSet.insert(Node.strPatternId).second)
+				AdmittedPatternIds.push_back(Node.strPatternId);
+		}
+		if (AdmittedSet.insert("VALTAN_ENTRANCE_CINEMATIC").second)
+			AdmittedPatternIds.push_back("VALTAN_ENTRANCE_CINEMATIC");
+
+		CValtanPatternFlowDocument Document;
+		Require(Document.Load(AdmittedPatternIds, Status),
+			"Flow writer admission oracle could not load its source");
+		const std::uint32_t ChangedPursuit =
+			Parsed.Flows.front().iDefaultPursuitMs == 1000u ? 1100u : 1000u;
+		Require(Document.Set_InterStepPursuitMs(ChangedPursuit, Status) &&
+			Document.Is_Dirty(),
+			"Flow writer admission oracle could not stage a draft mutation");
+
+		const std::filesystem::path LockPath =
+			CProjectDataRoot::Get().parent_path() /
+			L"out\\ValtanPatternTransactions\\create-pattern.lock";
+		HANDLE hWriter = CreateFileW(
+			LockPath.c_str(), GENERIC_READ | GENERIC_WRITE,
+			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+			nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+		Require(INVALID_HANDLE_VALUE != hWriter,
+			"Flow writer admission oracle could not open canonical lock");
+		OVERLAPPED WriterOverlap{};
+		bool_t bLocked = false;
+		try
+		{
+			LARGE_INTEGER Size{};
+			Require(FALSE != GetFileSizeEx(hWriter, &Size),
+				"Flow writer admission oracle could not query lock size");
+			if (Size.QuadPart < 1)
+			{
+				const char Byte = '\0';
+				DWORD Written = 0u;
+				LARGE_INTEGER Begin{};
+				Require(FALSE != SetFilePointerEx(
+					hWriter, Begin, nullptr, FILE_BEGIN) &&
+					FALSE != WriteFile(
+						hWriter, &Byte, 1u, &Written, nullptr) &&
+					1u == Written && FALSE != FlushFileBuffers(hWriter),
+					"Flow writer admission oracle could not initialize lock");
+			}
+			Require(FALSE != LockFileEx(
+				hWriter,
+				LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY,
+				0u, 1u, 0u, &WriterOverlap),
+				"Flow writer admission oracle could not acquire canonical lock");
+			bLocked = true;
+
+			Require(!Document.Save(AdmittedPatternIds, Status) &&
+				std::string::npos != Status.find("Save rejected before mutation") &&
+				Document.Is_Dirty(),
+				"Flow Save did not fail closed while another writer owned admission");
+			Require(OriginalBytes == ReadExactBytes(FlowPath),
+				"Flow Save changed source bytes while writer admission was denied");
+
+			Require(FALSE != UnlockFileEx(
+				hWriter, 0u, 1u, 0u, &WriterOverlap),
+				"Flow writer admission oracle could not release canonical lock");
+			bLocked = false;
+			CloseHandle(hWriter);
+		}
+		catch (...)
+		{
+			if (bLocked)
+				UnlockFileEx(hWriter, 0u, 1u, 0u, &WriterOverlap);
+			CloseHandle(hWriter);
+			throw;
+		}
 	}
 
 	void VerifyCanonicalProductReadAdmissionExcludesWriter()
@@ -289,9 +531,12 @@ int Run_ValtanCanonicalGraphContractTests()
 {
 	try
 	{
+		VerifyFlowDocumentV2AuthoringContract();
+		std::cout << "ValtanPatternFlowDocumentContractTests: PASS\n";
+		VerifyFlowSaveAdmissionExcludesWriter();
 		VerifyCanonicalProductReadAdmissionExcludesWriter();
 		VerifyCanonicalGraphInventoryAndFlow();
-		std::cout << "ValtanCanonicalGraphContractTests: 3/3 passed\n";
+		std::cout << "ValtanCanonicalGraphContractTests: 5/5 passed\n";
 		return 0;
 	}
 	catch (const std::exception& Error)

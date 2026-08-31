@@ -47,6 +47,8 @@ MASTER_REL = "Data/Valtan/Valtan.pattern.json"
 GAMEPLAY_AUTHORING_REL = "Data/Valtan/Valtan.gameplay.json"
 SAVED_FLOW_REL = "Data/Encounters/Valtan/ValtanBossAuditionFlows.json"
 SAVED_FLOW_MAX_SLOTS = 255
+SAVED_FLOW_MAX_EDGES = 255
+SAVED_FLOW_MAX_TRANSITIONS = 4096
 DEFAULT_SAVED_FLOW_ID = "flow.valtan.boss-tool.default"
 SAVED_FLOW_MAX_BYTES = 256 * 1024
 OPTIONAL_ENTRY_PATTERN_ID = "VALTAN_ENTRANCE_CINEMATIC"
@@ -2689,6 +2691,33 @@ def _validate_manual_auditions(
     return pattern_ids
 
 
+def _require_saved_flow_json_depth(text: str, maximum_depth: int = 8) -> None:
+    """Bound parser stack cost before CPython's recursive JSON decoder runs."""
+
+    depth = 0
+    in_string = False
+    escaped = False
+    for character in text:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == '"':
+                in_string = False
+            continue
+        if character == '"':
+            in_string = True
+        elif character in "[{":
+            depth += 1
+            if depth > maximum_depth:
+                raise PipelineError(
+                    f"saved Flow document exceeds JSON depth {maximum_depth}"
+                )
+        elif character in "]}" and depth > 0:
+            depth -= 1
+
+
 def read_saved_flow_document(root: Path) -> dict[str, Any]:
     """Read the one repository-relative Flow input, never a caller-supplied path."""
 
@@ -2697,14 +2726,16 @@ def read_saved_flow_document(root: Path) -> dict[str, Any]:
         raw = path.read_bytes()
         if not raw or len(raw) > SAVED_FLOW_MAX_BYTES:
             raise PipelineError("saved Flow document is empty or exceeds 256 KiB")
+        text = raw.decode("utf-8")
+        _require_saved_flow_json_depth(text)
         return json.loads(
-            raw.decode("utf-8"),
+            text,
             object_pairs_hook=_reject_duplicate_pairs,
             parse_constant=_reject_nonfinite_constant,
         )
     except PipelineError:
         raise
-    except (OSError, UnicodeError, ValueError) as exc:
+    except (OSError, UnicodeError, ValueError, RecursionError) as exc:
         raise PipelineError(f"cannot read saved Flow document: {exc}") from exc
 
 
@@ -2714,35 +2745,59 @@ def validate_saved_flow_document(
     *,
     require_nonempty: bool = True,
 ) -> dict[str, Any]:
-    """Match the Boss Tool's stable slot contract without sorting or deduplicating."""
+    """Validate the saved v2 graph without sorting or changing stable identities."""
 
     exact(document, ("schema", "formatVersion", "flows"), "saved Flow document")
     if document["schema"] != "lostark.valtan-boss-audition-flows":
         raise PipelineError("saved Flow schema is invalid")
-    integer(document["formatVersion"], "saved Flow formatVersion", 1, 1)
+    integer(document["formatVersion"], "saved Flow formatVersion", 2, 2)
     flows = document["flows"]
     if not isinstance(flows, list) or len(flows) != 1:
         raise PipelineError("saved Flow must contain exactly one default flow")
     flow = flows[0]
     exact(
         flow,
-        ("flowId", "nextSlotOrdinal", "interStepPursuitMs", "slots"),
+        (
+            "flowId",
+            "entryNodeId",
+            "nextNodeOrdinal",
+            "nextEdgeOrdinal",
+            "defaultPursuitMs",
+            "maxTransitionsPerRun",
+            "nodes",
+            "edges",
+        ),
         "saved Flow definition",
     )
     if flow["flowId"] != DEFAULT_SAVED_FLOW_ID:
         raise PipelineError("saved Flow flowId is not the supported default flow")
-    next_ordinal = integer(
-        flow["nextSlotOrdinal"], "saved Flow nextSlotOrdinal", 1, 1000000
+    entry_node_id = stable_id(flow["entryNodeId"], "saved Flow entryNodeId")
+    next_node_ordinal = integer(
+        flow["nextNodeOrdinal"], "saved Flow nextNodeOrdinal", 1, 1000000
     )
-    integer(flow["interStepPursuitMs"], "saved Flow interStepPursuitMs", 100, 10000)
-    slots = flow["slots"]
+    next_edge_ordinal = integer(
+        flow["nextEdgeOrdinal"], "saved Flow nextEdgeOrdinal", 1, 1000000
+    )
+    integer(flow["defaultPursuitMs"], "saved Flow defaultPursuitMs", 100, 10000)
+    max_transitions = integer(
+        flow["maxTransitionsPerRun"],
+        "saved Flow maxTransitionsPerRun",
+        1,
+        SAVED_FLOW_MAX_TRANSITIONS,
+    )
+    nodes = flow["nodes"]
     if (
-        not isinstance(slots, list)
-        or len(slots) > SAVED_FLOW_MAX_SLOTS
-        or (require_nonempty and not slots)
+        not isinstance(nodes, list)
+        or len(nodes) > SAVED_FLOW_MAX_SLOTS
+        or (require_nonempty and not nodes)
     ):
         raise PipelineError(
-            f"saved Flow requires 1..{SAVED_FLOW_MAX_SLOTS} slots for Product playback"
+            f"saved Flow requires 1..{SAVED_FLOW_MAX_SLOTS} nodes for Product playback"
+        )
+    edges = flow["edges"]
+    if not isinstance(edges, list) or len(edges) > SAVED_FLOW_MAX_EDGES:
+        raise PipelineError(
+            f"saved Flow allows at most {SAVED_FLOW_MAX_EDGES} edges"
         )
     admitted_rows = list(admitted_pattern_ids)
     admitted = set(admitted_rows)
@@ -2756,33 +2811,184 @@ def validate_saved_flow_document(
         )
     ):
         raise PipelineError("saved Flow admitted inventory is invalid or duplicated")
-    slot_ids: set[str] = set()
-    maximum_ordinal = 0
-    for ordinal, slot in enumerate(slots):
-        context = f"saved Flow slots[{ordinal}]"
-        exact(slot, ("slotId", "patternId"), context)
-        slot_id = slot["slotId"]
+    node_by_id: dict[str, dict[str, Any]] = {}
+    node_ordinals: set[int] = set()
+    maximum_node_ordinal = 0
+    entry_pattern_count = 0
+    for index, node in enumerate(nodes):
+        context = f"saved Flow nodes[{index}]"
+        exact(node, ("nodeId", "patternId", "watchdogMs"), context)
+        node_id = node["nodeId"]
         match = re.fullmatch(
-            re.escape(DEFAULT_SAVED_FLOW_ID) + r"\.slot\.([0-9]{6})",
-            slot_id if isinstance(slot_id, str) else "",
+            re.escape(DEFAULT_SAVED_FLOW_ID)
+            + r"\.(?:slot|node)\.([0-9]{6})",
+            node_id if isinstance(node_id, str) else "",
         )
+        node_ordinal = int(match.group(1)) if match is not None else 0
         if (
             match is None
-            or len(slot_id) > 128
-            or int(match.group(1)) == 0
-            or slot_id in slot_ids
+            or len(node_id) > 128
+            or node_ordinal == 0
+            or node_ordinal in node_ordinals
+            or node_id in node_by_id
         ):
-            raise PipelineError(f"{context}.slotId is malformed or duplicated")
-        pattern_id = slot["patternId"]
+            raise PipelineError(f"{context}.nodeId is malformed or duplicated")
+        pattern_id = node["patternId"]
         if not isinstance(pattern_id, str) or pattern_id not in admitted:
             raise PipelineError(f"{context}.patternId is not in the Boss Tool inventory")
-        if pattern_id == OPTIONAL_ENTRY_PATTERN_ID and ordinal != 0:
-            raise PipelineError("the optional entry cinematic must occur exactly once at the first step")
-        slot_ids.add(slot_id)
-        maximum_ordinal = max(maximum_ordinal, int(match.group(1)))
-    if next_ordinal <= maximum_ordinal:
-        raise PipelineError("saved Flow nextSlotOrdinal would reuse a stable slot ID")
+        watchdog_ms = integer(
+            node["watchdogMs"], f"{context}.watchdogMs", 0, 300000
+        )
+        if 0 < watchdog_ms < 1000:
+            raise PipelineError(f"{context}.watchdogMs must be zero or at least 1000")
+        if pattern_id == OPTIONAL_ENTRY_PATTERN_ID:
+            entry_pattern_count += 1
+            if node_id != entry_node_id:
+                raise PipelineError(
+                    "the optional entry cinematic must be the Flow entry node"
+                )
+        node_by_id[node_id] = node
+        node_ordinals.add(node_ordinal)
+        maximum_node_ordinal = max(maximum_node_ordinal, node_ordinal)
+    if entry_node_id not in node_by_id:
+        raise PipelineError("saved Flow entryNodeId is dangling")
+    if entry_pattern_count > 1:
+        raise PipelineError("the optional entry cinematic may occur only once")
+    if next_node_ordinal <= maximum_node_ordinal:
+        raise PipelineError("saved Flow nextNodeOrdinal would reuse a stable node ID")
+
+    edge_ids: set[str] = set()
+    outgoing: dict[str, dict[str, Any]] = {}
+    maximum_edge_ordinal = 0
+    for index, edge in enumerate(edges):
+        context = f"saved Flow edges[{index}]"
+        if not isinstance(edge, dict):
+            raise PipelineError(f"{context} must be an object")
+        has_cap = "maxTraversals" in edge
+        exact(
+            edge,
+            (
+                "edgeId",
+                "fromNodeId",
+                "outcome",
+                "toNodeId",
+                "pursuitMs",
+                *(("maxTraversals",) if has_cap else ()),
+            ),
+            context,
+        )
+        edge_id = edge["edgeId"]
+        edge_match = re.fullmatch(
+            re.escape(DEFAULT_SAVED_FLOW_ID) + r"\.edge\.([0-9]{6})",
+            edge_id if isinstance(edge_id, str) else "",
+        )
+        if (
+            edge_match is None
+            or len(edge_id) > 128
+            or int(edge_match.group(1)) == 0
+            or edge_id in edge_ids
+        ):
+            raise PipelineError(f"{context}.edgeId is malformed or duplicated")
+        from_node_id = stable_id(edge["fromNodeId"], f"{context}.fromNodeId")
+        to_node_id = stable_id(edge["toNodeId"], f"{context}.toNodeId")
+        if from_node_id not in node_by_id or to_node_id not in node_by_id:
+            raise PipelineError(f"{context} has a dangling node reference")
+        if edge["outcome"] != "COMPLETED":
+            raise PipelineError(f"{context}.outcome is unsupported")
+        if from_node_id in outgoing:
+            raise PipelineError(
+                f"{context} duplicates the deterministic COMPLETED outcome"
+            )
+        integer(edge["pursuitMs"], f"{context}.pursuitMs", 100, 10000)
+        if has_cap:
+            integer(
+                edge["maxTraversals"],
+                f"{context}.maxTraversals",
+                1,
+                SAVED_FLOW_MAX_SLOTS,
+            )
+        if entry_pattern_count and to_node_id == entry_node_id:
+            raise PipelineError("the entry cinematic node cannot be targeted")
+        edge_ids.add(edge_id)
+        outgoing[from_node_id] = edge
+        maximum_edge_ordinal = max(
+            maximum_edge_ordinal, int(edge_match.group(1))
+        )
+    if next_edge_ordinal <= maximum_edge_ordinal:
+        raise PipelineError("saved Flow nextEdgeOrdinal would reuse a stable edge ID")
+
+    reachable = {entry_node_id}
+    current_node_id = entry_node_id
+    cycle_edge: dict[str, Any] | None = None
+    while current_node_id in outgoing:
+        edge = outgoing[current_node_id]
+        to_node_id = edge["toNodeId"]
+        if to_node_id in reachable:
+            cycle_edge = edge
+            break
+        reachable.add(to_node_id)
+        current_node_id = to_node_id
+    if reachable != set(node_by_id):
+        raise PipelineError("saved Flow contains an unreachable node or edge")
+    for edge in edges:
+        if (edge is cycle_edge) != ("maxTraversals" in edge):
+            raise PipelineError(
+                "only the cycle-closing back-edge may own maxTraversals, and every cycle must be capped"
+            )
+
+    traversal_counts: dict[str, int] = {}
+    current_node_id = entry_node_id
+    transition_count = 0
+    while current_node_id in outgoing:
+        edge = outgoing[current_node_id]
+        traversals = traversal_counts.get(edge["edgeId"], 0)
+        cap = edge.get("maxTraversals")
+        if cap is not None and traversals >= cap:
+            break
+        if transition_count >= max_transitions:
+            raise PipelineError(
+                "saved Flow cannot terminate within maxTransitionsPerRun"
+            )
+        traversal_counts[edge["edgeId"]] = traversals + 1
+        transition_count += 1
+        current_node_id = edge["toNodeId"]
     return flow
+
+
+def linearize_saved_flow_for_legacy_product(flow: dict[str, Any]) -> list[dict[str, Any]]:
+    """Bridge v2 authoring to the current ordered Product IR until G02 lands."""
+
+    node_by_id = {node["nodeId"]: node for node in flow["nodes"]}
+    outgoing = {edge["fromNodeId"]: edge for edge in flow["edges"]}
+    ordered: list[dict[str, Any]] = []
+    visited: set[str] = set()
+    current_node_id = flow["entryNodeId"]
+    while True:
+        if current_node_id in visited:
+            raise RuntimeProjectionError(
+                "finite Flow repeats require the G02 Server graph runtime before publish"
+            )
+        visited.add(current_node_id)
+        node = node_by_id[current_node_id]
+        if node["watchdogMs"] != 0:
+            raise RuntimeProjectionError(
+                "Flow node watchdogs require the G02 Server graph runtime before publish"
+            )
+        ordered.append(node)
+        edge = outgoing.get(current_node_id)
+        if edge is None:
+            break
+        if (
+            "maxTraversals" in edge
+            or edge["pursuitMs"] != flow["defaultPursuitMs"]
+        ):
+            raise RuntimeProjectionError(
+                "per-edge pursuit or finite repeats require the G02 Server graph runtime before publish"
+            )
+        current_node_id = edge["toNodeId"]
+    if visited != set(node_by_id):
+        raise PipelineError("saved Flow legacy projection omitted a node")
+    return ordered
 
 
 def resolve_gameplay_flow_reference(
@@ -2818,8 +3024,11 @@ def resolve_gameplay_flow_reference(
     resolved["decisionModel"]["scriptedSequence"] = {
         "sequenceId": sequence["sequenceId"],
         "mode": sequence["mode"],
-        "interStepPursuitMs": flow["interStepPursuitMs"],
-        "patternIds": [slot["patternId"] for slot in flow["slots"]],
+        "interStepPursuitMs": flow["defaultPursuitMs"],
+        "patternIds": [
+            node["patternId"]
+            for node in linearize_saved_flow_for_legacy_product(flow)
+        ],
     }
     return resolved
 

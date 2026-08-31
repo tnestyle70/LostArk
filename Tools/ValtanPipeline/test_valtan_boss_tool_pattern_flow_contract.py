@@ -49,24 +49,44 @@ SERVER_TESTS_CPP = ROOT / "Server/Private/ServerGameplayContractTests.cpp"
 
 SCHEMA = "lostark.valtan-boss-audition-flows"
 FLOW_ID = "flow.valtan.boss-tool.default"
-MAX_SLOTS = 255
+MAX_NODES = 255
+MAX_EDGES = 255
 STABLE_ID = re.compile(r"[A-Za-z0-9_.-]{1,128}")
 
 
 
 def make_document(pattern_ids: list[str]) -> dict:
-    """Build test fixtures without depending on the user's saved slot order."""
+    """Build a deterministic v2 chain without depending on the saved order."""
+    nodes = [
+        {
+            "nodeId": f"{FLOW_ID}.slot.{ordinal:06d}",
+            "patternId": pattern_id,
+            "watchdogMs": 0,
+        }
+        for ordinal, pattern_id in enumerate(pattern_ids, start=1)
+    ]
+    edges = [
+        {
+            "edgeId": f"{FLOW_ID}.edge.{ordinal:06d}",
+            "fromNodeId": nodes[ordinal - 1]["nodeId"],
+            "outcome": "COMPLETED",
+            "toNodeId": nodes[ordinal]["nodeId"],
+            "pursuitMs": 1000,
+        }
+        for ordinal in range(1, len(nodes))
+    ]
     return {
         "schema": SCHEMA,
-        "formatVersion": 1,
+        "formatVersion": 2,
         "flows": [{
             "flowId": FLOW_ID,
-            "nextSlotOrdinal": len(pattern_ids) + 1,
-            "interStepPursuitMs": 1000,
-            "slots": [
-                {"slotId": f"{FLOW_ID}.slot.{ordinal:06d}", "patternId": pattern_id}
-                for ordinal, pattern_id in enumerate(pattern_ids, start=1)
-            ],
+            "entryNodeId": nodes[0]["nodeId"] if nodes else f"{FLOW_ID}.slot.000001",
+            "nextNodeOrdinal": len(nodes) + 1,
+            "nextEdgeOrdinal": len(edges) + 1,
+            "defaultPursuitMs": 1000,
+            "maxTransitionsPerRun": 255,
+            "nodes": nodes,
+            "edges": edges,
         }],
     }
 
@@ -78,62 +98,158 @@ def validate_document(document: object, admitted_pattern_ids: list[str]) -> None
         raise ValueError("root properties")
     if document["schema"] != SCHEMA or type(document["formatVersion"]) is not int:
         raise ValueError("header types")
-    if document["formatVersion"] != 1:
+    if document["formatVersion"] != 2:
         raise ValueError("version")
     flows = document["flows"]
     if not isinstance(flows, list) or len(flows) != 1:
         raise ValueError("flow count")
     flow = flows[0]
     if not isinstance(flow, dict) or set(flow) != {
-        "flowId", "nextSlotOrdinal", "interStepPursuitMs", "slots"
+        "flowId", "entryNodeId", "nextNodeOrdinal", "nextEdgeOrdinal",
+        "defaultPursuitMs", "maxTransitionsPerRun", "nodes", "edges",
     }:
         raise ValueError("flow properties")
     if flow["flowId"] != FLOW_ID or STABLE_ID.fullmatch(flow["flowId"]) is None:
         raise ValueError("flow id")
-    if type(flow["nextSlotOrdinal"]) is not int or not (
-        1 <= flow["nextSlotOrdinal"] <= 1_000_000
+    if type(flow["nextNodeOrdinal"]) is not int or not (
+        1 <= flow["nextNodeOrdinal"] <= 1_000_000
     ):
-        raise ValueError("next ordinal")
-    if type(flow["interStepPursuitMs"]) is not int or not (
-        100 <= flow["interStepPursuitMs"] <= 10_000
+        raise ValueError("next node ordinal")
+    if type(flow["nextEdgeOrdinal"]) is not int or not (
+        1 <= flow["nextEdgeOrdinal"] <= 1_000_000
+    ):
+        raise ValueError("next edge ordinal")
+    if type(flow["defaultPursuitMs"]) is not int or not (
+        100 <= flow["defaultPursuitMs"] <= 10_000
     ):
         raise ValueError("pursuit")
-    slots = flow["slots"]
-    if not isinstance(slots, list) or not slots or len(slots) > MAX_SLOTS:
-        raise ValueError("slots")
+    if type(flow["maxTransitionsPerRun"]) is not int or not (
+        1 <= flow["maxTransitionsPerRun"] <= 4096
+    ):
+        raise ValueError("transitions")
+    nodes = flow["nodes"]
+    edges = flow["edges"]
+    if not isinstance(nodes, list) or not nodes or len(nodes) > MAX_NODES:
+        raise ValueError("nodes")
+    if not isinstance(edges, list) or len(edges) > MAX_EDGES:
+        raise ValueError("edges")
     admitted = set(admitted_pattern_ids)
     if len(admitted) != len(admitted_pattern_ids) or not admitted:
         raise ValueError("inventory")
-    slot_ids: set[str] = set()
-    maximum_ordinal = 0
-    prefix = FLOW_ID + ".slot."
-    for slot_index, slot in enumerate(slots):
-        if not isinstance(slot, dict) or set(slot) != {"slotId", "patternId"}:
-            raise ValueError("slot properties")
-        slot_id = slot["slotId"]
-        pattern_id = slot["patternId"]
+    node_ids: set[str] = set()
+    node_ordinals: set[int] = set()
+    nodes_by_id: dict[str, dict] = {}
+    maximum_node_ordinal = 0
+    entrance_count = 0
+    for node in nodes:
+        if not isinstance(node, dict) or set(node) != {
+            "nodeId", "patternId", "watchdogMs"
+        }:
+            raise ValueError("node properties")
+        node_id = node["nodeId"]
+        pattern_id = node["patternId"]
+        match = re.fullmatch(
+            re.escape(FLOW_ID) + r"\.(?:slot|node)\.(\d{6})", node_id
+        ) if isinstance(node_id, str) else None
         if (
-            not isinstance(slot_id, str)
-            or STABLE_ID.fullmatch(slot_id) is None
-            or not slot_id.startswith(prefix)
-            or len(slot_id) != len(prefix) + 6
-            or not slot_id[-6:].isdigit()
-            or int(slot_id[-6:]) == 0
-            or slot_id in slot_ids
+            match is None
+            or int(match.group(1)) == 0
+            or int(match.group(1)) in node_ordinals
+            or node_id in node_ids
         ):
-            raise ValueError("slot id")
+            raise ValueError("node id")
         if (
             not isinstance(pattern_id, str)
             or STABLE_ID.fullmatch(pattern_id) is None
             or pattern_id not in admitted
         ):
             raise ValueError("pattern id")
-        if pattern_id == "VALTAN_ENTRANCE_CINEMATIC" and slot_index != 0:
-            raise ValueError("entry position")
-        slot_ids.add(slot_id)
-        maximum_ordinal = max(maximum_ordinal, int(slot_id[-6:]))
-    if flow["nextSlotOrdinal"] <= maximum_ordinal:
-        raise ValueError("slot reuse")
+        watchdog = node["watchdogMs"]
+        if type(watchdog) is not int or (
+            watchdog != 0 and not 1000 <= watchdog <= 300_000
+        ):
+            raise ValueError("watchdog")
+        if pattern_id == "VALTAN_ENTRANCE_CINEMATIC":
+            entrance_count += 1
+            if node_id != flow["entryNodeId"]:
+                raise ValueError("entry position")
+        node_ids.add(node_id)
+        node_ordinals.add(int(match.group(1)))
+        nodes_by_id[node_id] = node
+        maximum_node_ordinal = max(maximum_node_ordinal, int(match.group(1)))
+    if flow["entryNodeId"] not in node_ids:
+        raise ValueError("entry")
+    if entrance_count > 1:
+        raise ValueError("entry count")
+    if flow["nextNodeOrdinal"] <= maximum_node_ordinal:
+        raise ValueError("node reuse")
+
+    edge_ids: set[str] = set()
+    outgoing: dict[str, dict] = {}
+    maximum_edge_ordinal = 0
+    for edge in edges:
+        if not isinstance(edge, dict) or set(edge) not in (
+            {"edgeId", "fromNodeId", "outcome", "toNodeId", "pursuitMs"},
+            {"edgeId", "fromNodeId", "outcome", "toNodeId", "pursuitMs", "maxTraversals"},
+        ):
+            raise ValueError("edge properties")
+        edge_id = edge["edgeId"]
+        match = re.fullmatch(
+            re.escape(FLOW_ID) + r"\.edge\.(\d{6})", edge_id
+        ) if isinstance(edge_id, str) else None
+        if match is None or int(match.group(1)) == 0 or edge_id in edge_ids:
+            raise ValueError("edge id")
+        if edge["outcome"] != "COMPLETED":
+            raise ValueError("outcome")
+        if edge["fromNodeId"] not in node_ids or edge["toNodeId"] not in node_ids:
+            raise ValueError("dangling")
+        if edge["fromNodeId"] in outgoing:
+            raise ValueError("deterministic")
+        if type(edge["pursuitMs"]) is not int or not 100 <= edge["pursuitMs"] <= 10_000:
+            raise ValueError("edge pursuit")
+        if "maxTraversals" in edge and (
+            type(edge["maxTraversals"]) is not int
+            or not 1 <= edge["maxTraversals"] <= 255
+        ):
+            raise ValueError("traversals")
+        if entrance_count and edge["toNodeId"] == flow["entryNodeId"]:
+            raise ValueError("entry target")
+        edge_ids.add(edge_id)
+        outgoing[edge["fromNodeId"]] = edge
+        maximum_edge_ordinal = max(maximum_edge_ordinal, int(match.group(1)))
+    if flow["nextEdgeOrdinal"] <= maximum_edge_ordinal:
+        raise ValueError("edge reuse")
+
+    reachable = {flow["entryNodeId"]}
+    current = flow["entryNodeId"]
+    back_edge: dict | None = None
+    while current in outgoing:
+        edge = outgoing[current]
+        if edge["toNodeId"] in reachable:
+            back_edge = edge
+            break
+        reachable.add(edge["toNodeId"])
+        current = edge["toNodeId"]
+    if reachable != node_ids:
+        raise ValueError("reachable")
+    for edge in edges:
+        is_back_edge = edge is back_edge
+        if is_back_edge != ("maxTraversals" in edge):
+            raise ValueError("bounded cycle")
+
+    traversals: dict[str, int] = {}
+    current = flow["entryNodeId"]
+    transition_count = 0
+    while current in outgoing:
+        edge = outgoing[current]
+        used = traversals.get(edge["edgeId"], 0)
+        if "maxTraversals" in edge and used >= edge["maxTraversals"]:
+            break
+        if transition_count >= flow["maxTransitionsPerRun"]:
+            raise ValueError("terminal")
+        traversals[edge["edgeId"]] = used + 1
+        transition_count += 1
+        current = edge["toNodeId"]
 
 
 class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
@@ -180,20 +296,67 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         ]
 
     def test_saved_document_is_strict_without_requiring_the_initial_seed(self) -> None:
-        # This is editable authoring data: reorder, removal, and repeated
-        # patterns are valid. A persisted Flow must retain one playable slot.
         validate_document(self.flow, self.inventory)
+        flow = self.flow["flows"][0]
+        self.assertEqual(2, self.flow["formatVersion"])
+        self.assertEqual(29, len(flow["nodes"]))
+        self.assertEqual(28, len(flow["edges"]))
+        self.assertEqual(flow["nodes"][0]["nodeId"], flow["entryNodeId"])
+        self.assertEqual(41, flow["nextNodeOrdinal"])
+        self.assertEqual(29, flow["nextEdgeOrdinal"])
+        self.assertEqual({0}, {node["watchdogMs"] for node in flow["nodes"]})
+        # Seal every v1 occurrence identity, not only its count and pattern order.
+        expected_pairs = [
+            ("flow.valtan.boss-tool.default.slot.000001", "VALTAN_WHIRLWIND"),
+            ("flow.valtan.boss-tool.default.slot.000002", "VALTAN_FOUR_SLASH"),
+            ("flow.valtan.boss-tool.default.slot.000038", "VALTAN_WHIRLWIND"),
+            ("flow.valtan.boss-tool.default.slot.000040", "VALTAN_FIST_IN_OUT"),
+            ("flow.valtan.boss-tool.default.slot.000003", "VALTAN_HIGH_JUMP"),
+            ("flow.valtan.boss-tool.default.slot.000039", "VALTAN_WHIRLWIND"),
+            ("flow.valtan.boss-tool.default.slot.000004", "VALTAN_DASH_CHARGE"),
+            ("flow.valtan.boss-tool.default.slot.000005", "VALTAN_FLOOR_WIPE_130"),
+            ("flow.valtan.boss-tool.default.slot.000031", "VALTAN_FIST_IN_OUT"),
+            ("flow.valtan.boss-tool.default.slot.000032", "VALTAN_WHIRLWIND"),
+            ("flow.valtan.boss-tool.default.slot.000006", "VALTAN_ARENA_BREAK_109"),
+            ("flow.valtan.boss-tool.default.slot.000030", "VALTAN_WHIRLWIND"),
+            ("flow.valtan.boss-tool.default.slot.000033", "VALTAN_FOUR_SLASH"),
+            ("flow.valtan.boss-tool.default.slot.000009", "VALTAN_SIX_PIZZA_106"),
+            ("flow.valtan.boss-tool.default.slot.000011", "VALTAN_CHARGE"),
+            ("flow.valtan.boss-tool.default.slot.000012", "VALTAN_SEQUENCE_FOUR"),
+            ("flow.valtan.boss-tool.default.slot.000036", "VALTAN_HIGH_JUMP"),
+            ("flow.valtan.boss-tool.default.slot.000026", "VALTAN_COUNTER"),
+            ("flow.valtan.boss-tool.default.slot.000007", "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK"),
+            ("flow.valtan.boss-tool.default.slot.000015", "VALTAN_THREE"),
+            ("flow.valtan.boss-tool.default.slot.000037", "VALTAN_SEQUENCE_FOUR"),
+            ("flow.valtan.boss-tool.default.slot.000008", "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK"),
+            ("flow.valtan.boss-tool.default.slot.000018", "VALTAN_WARP"),
+            ("flow.valtan.boss-tool.default.slot.000021", "VALTAN_TRASH"),
+            ("flow.valtan.boss-tool.default.slot.000025", "VALTAN_CATCH_BREATH"),
+            ("flow.valtan.boss-tool.default.slot.000027", "VALTAN_CHARGE_2"),
+            ("flow.valtan.boss-tool.default.slot.000028", "VALTAN_STRUGGLING"),
+            ("flow.valtan.boss-tool.default.slot.000034", "VALTAN_GHOST_RESPAWN_AUDITION"),
+            ("flow.valtan.boss-tool.default.slot.000035", "VALTAN_GHOST_FINALE"),
+        ]
+        self.assertEqual(
+            expected_pairs,
+            [(node["nodeId"], node["patternId"]) for node in flow["nodes"]],
+        )
 
     def test_flow_selects_a_subset_without_requiring_every_authored_pattern(self) -> None:
         seed = make_document(self.sample_pattern_ids)
         validate_document(seed, self.inventory)
-        slots = seed["flows"][0]["slots"]
-        self.assertEqual(self.sample_pattern_ids, [slot["patternId"] for slot in slots])
-        self.assertEqual(len(slots) + 1, seed["flows"][0]["nextSlotOrdinal"])
-        self.assertEqual(len(slots), len({slot["slotId"] for slot in slots}))
-        self.assertLess(len(slots), len(self.inventory))
+        flow = seed["flows"][0]
+        self.assertEqual(
+            self.sample_pattern_ids,
+            [node["patternId"] for node in flow["nodes"]],
+        )
+        self.assertEqual(len(flow["nodes"]) + 1, flow["nextNodeOrdinal"])
+        self.assertEqual(len(flow["edges"]) + 1, flow["nextEdgeOrdinal"])
+        round_trip = json.loads(json.dumps(seed, ensure_ascii=False))
+        validate_document(round_trip, self.inventory)
+        self.assertEqual(seed, round_trip)
 
-    def test_entry_cinematic_is_optional_and_only_valid_at_the_first_slot(self) -> None:
+    def test_entry_cinematic_is_optional_and_only_valid_at_entry_node(self) -> None:
         entry = "VALTAN_ENTRANCE_CINEMATIC"
         for pattern_ids in ([entry, "VALTAN_WHIRLWIND"], ["VALTAN_WHIRLWIND"]):
             with self.subTest(valid=pattern_ids):
@@ -202,111 +365,133 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             with self.subTest(invalid=pattern_ids), self.assertRaisesRegex(ValueError, "entry position"):
                 validate_document(make_document(pattern_ids), self.inventory)
 
-    def test_duplicate_pattern_ids_are_valid_but_duplicate_slot_ids_are_not(self) -> None:
+    def test_duplicate_patterns_are_valid_but_duplicate_nodes_are_not(self) -> None:
         duplicate_pattern = make_document(["VALTAN_WHIRLWIND", "VALTAN_WHIRLWIND"])
-        slots = duplicate_pattern["flows"][0]["slots"]
-        self.assertNotEqual(slots[0]["slotId"], slots[1]["slotId"])
+        nodes = duplicate_pattern["flows"][0]["nodes"]
+        self.assertNotEqual(nodes[0]["nodeId"], nodes[1]["nodeId"])
         validate_document(duplicate_pattern, self.inventory)
 
-        duplicate_slot = copy.deepcopy(duplicate_pattern)
-        duplicate_slot["flows"][0]["slots"][-1]["slotId"] = (
-            duplicate_slot["flows"][0]["slots"][0]["slotId"]
+        duplicate_node = copy.deepcopy(duplicate_pattern)
+        duplicate_node["flows"][0]["nodes"][-1]["nodeId"] = (
+            duplicate_node["flows"][0]["nodes"][0]["nodeId"]
         )
-        with self.assertRaisesRegex(ValueError, "slot id"):
-            validate_document(duplicate_slot, self.inventory)
+        with self.assertRaisesRegex(ValueError, "node id"):
+            validate_document(duplicate_node, self.inventory)
 
-    def test_reordered_slots_and_new_duplicate_pattern_keep_stable_ids(self) -> None:
-        document = make_document(self.sample_pattern_ids)
-        flow = document["flows"][0]
-        slots = flow["slots"]
-        original_slots = {slot["slotId"]: slot["patternId"] for slot in slots}
-
-        # Reproduce the reported edit in memory, not by fixing the live JSON
-        # to this fixture. Later user saves may legitimately differ again.
-        new_slot_id = f"{FLOW_ID}.slot.{flow['nextSlotOrdinal']:06d}"
-        slots.insert(0, {
-            "slotId": new_slot_id,
-            "patternId": "VALTAN_FLOOR_WIPE_130",
+    def test_dangling_nondeterministic_and_unreachable_edges_fail(self) -> None:
+        seed = make_document(self.sample_pattern_ids)
+        cases: list[tuple[str, dict]] = []
+        dangling = copy.deepcopy(seed)
+        dangling["flows"][0]["edges"][0]["toNodeId"] = f"{FLOW_ID}.node.999999"
+        cases.append(("dangling", dangling))
+        nondeterministic = copy.deepcopy(seed)
+        flow = nondeterministic["flows"][0]
+        flow["edges"].append({
+            "edgeId": f"{FLOW_ID}.edge.{flow['nextEdgeOrdinal']:06d}",
+            "fromNodeId": flow["nodes"][0]["nodeId"],
+            "outcome": "COMPLETED",
+            "toNodeId": flow["nodes"][-1]["nodeId"],
+            "pursuitMs": 1000,
         })
-        flow["nextSlotOrdinal"] += 1
-        counter_slot = next(slot for slot in slots if slot["patternId"] == "VALTAN_COUNTER")
-        slots.remove(counter_slot)
-        after_four = next(
-            index for index, slot in enumerate(slots)
-            if slot["patternId"] == "VALTAN_SEQUENCE_FOUR"
-        ) + 1
-        slots.insert(after_four, counter_slot)
+        flow["nextEdgeOrdinal"] += 1
+        cases.append(("deterministic", nondeterministic))
+        unreachable = copy.deepcopy(seed)
+        unreachable["flows"][0]["edges"].pop(1)
+        cases.append(("reachable", unreachable))
+        for reason, candidate in cases:
+            with self.subTest(reason=reason), self.assertRaisesRegex(ValueError, reason):
+                validate_document(candidate, self.inventory)
 
-        round_trip = json.loads(json.dumps(document, ensure_ascii=False))
-        validate_document(round_trip, self.inventory)
-        self.assertEqual(document, round_trip)
-        self.assertEqual(new_slot_id, slots[0]["slotId"])
-        self.assertEqual(counter_slot, slots[after_four])
-        self.assertEqual(2, sum(
-            slot["patternId"] == "VALTAN_FLOOR_WIPE_130" for slot in slots
-        ))
-        self.assertEqual(original_slots, {
-            slot["slotId"]: slot["patternId"] for slot in slots
-            if slot["slotId"] != new_slot_id
-        })
-        self.assertEqual(len(self.sample_pattern_ids) + 2, flow["nextSlotOrdinal"])
+    def test_terminal_and_finite_back_edge_are_unambiguous(self) -> None:
+        terminal = make_document(self.sample_pattern_ids)
+        validate_document(terminal, self.inventory)
+        flow = terminal["flows"][0]
+        back_edge = {
+            "edgeId": f"{FLOW_ID}.edge.{flow['nextEdgeOrdinal']:06d}",
+            "fromNodeId": flow["nodes"][-1]["nodeId"],
+            "outcome": "COMPLETED",
+            "toNodeId": flow["entryNodeId"],
+            "pursuitMs": 1000,
+        }
+        unbounded = copy.deepcopy(terminal)
+        unbounded["flows"][0]["edges"].append(copy.deepcopy(back_edge))
+        unbounded["flows"][0]["nextEdgeOrdinal"] += 1
+        with self.assertRaisesRegex(ValueError, "bounded cycle"):
+            validate_document(unbounded, self.inventory)
 
-    def test_single_and_maximum_slot_documents_are_valid_but_empty_is_not(self) -> None:
-        for count in (1, 33, MAX_SLOTS):
-            with self.subTest(slot_count=count):
+        bounded = copy.deepcopy(unbounded)
+        bounded["flows"][0]["edges"][-1]["maxTraversals"] = 2
+        validate_document(bounded, self.inventory)
+        bounded["flows"][0]["maxTransitionsPerRun"] = 10
+        with self.assertRaisesRegex(ValueError, "terminal"):
+            validate_document(bounded, self.inventory)
+
+        forward_cap = copy.deepcopy(terminal)
+        forward_cap["flows"][0]["edges"][0]["maxTraversals"] = 2
+        with self.assertRaisesRegex(ValueError, "bounded cycle"):
+            validate_document(forward_cap, self.inventory)
+
+    def test_single_and_maximum_node_documents_are_valid_but_empty_is_not(self) -> None:
+        for count in (1, 33, MAX_NODES):
+            with self.subTest(node_count=count):
                 document = make_document(["VALTAN_WHIRLWIND"] * count)
+                document["flows"][0]["maxTransitionsPerRun"] = max(255, count - 1)
                 validate_document(document, self.inventory)
-                self.assertEqual(count, len(document["flows"][0]["slots"]))
-        with self.assertRaisesRegex(ValueError, "slots"):
+                self.assertEqual(count, len(document["flows"][0]["nodes"]))
+        with self.assertRaisesRegex(ValueError, "nodes"):
             validate_document(make_document([]), self.inventory)
 
-    def test_removed_slots_preserve_sparse_ids_and_next_ordinal(self) -> None:
-        document = make_document(self.sample_pattern_ids)
-        flow = document["flows"][0]
-        original_ordinal = flow["nextSlotOrdinal"]
-        flow["slots"] = list(reversed(flow["slots"][::2]))
-        flow["interStepPursuitMs"] = 2500
-        round_trip = json.loads(json.dumps(document))
-        validate_document(round_trip, self.inventory)
-        self.assertEqual(document, round_trip)
-        self.assertEqual(original_ordinal, round_trip["flows"][0]["nextSlotOrdinal"])
+    def test_watchdog_zero_or_bounded_positive_only(self) -> None:
+        for watchdog in (0, 1000, 300_000):
+            with self.subTest(watchdog=watchdog):
+                document = make_document(["VALTAN_WHIRLWIND"])
+                document["flows"][0]["nodes"][0]["watchdogMs"] = watchdog
+                validate_document(document, self.inventory)
+        for watchdog in (-1, 1, 999, 300_001, 1000.0):
+            with self.subTest(watchdog=watchdog), self.assertRaisesRegex(ValueError, "watchdog"):
+                document = make_document(["VALTAN_WHIRLWIND"])
+                document["flows"][0]["nodes"][0]["watchdogMs"] = watchdog
+                validate_document(document, self.inventory)
 
-        flow["slots"].clear()
-        with self.assertRaisesRegex(ValueError, "slots"):
-            validate_document(document, self.inventory)
-        self.assertEqual(original_ordinal, flow["nextSlotOrdinal"])
-
-    def test_slot_ordinal_exhaustion_preserves_the_last_issued_id(self) -> None:
+    def test_node_and_edge_ordinal_exhaustion_is_monotonic(self) -> None:
         document = make_document(["VALTAN_WHIRLWIND"])
         flow = document["flows"][0]
-        flow["slots"][0]["slotId"] = f"{FLOW_ID}.slot.999999"
-        flow["nextSlotOrdinal"] = 1_000_000
+        flow["nodes"][0]["nodeId"] = f"{FLOW_ID}.slot.999999"
+        flow["entryNodeId"] = flow["nodes"][0]["nodeId"]
+        flow["nextNodeOrdinal"] = 1_000_000
         validate_document(document, self.inventory)
 
-        for ordinal, reason in ((999_999, "slot reuse"), (1_000_001, "next ordinal")):
-            with self.subTest(next_slot_ordinal=ordinal):
-                flow["nextSlotOrdinal"] = ordinal
+        for ordinal, reason in ((999_999, "node reuse"), (1_000_001, "next node ordinal")):
+            with self.subTest(next_node_ordinal=ordinal):
+                flow["nextNodeOrdinal"] = ordinal
                 with self.assertRaisesRegex(ValueError, reason):
                     validate_document(document, self.inventory)
+
+        duplicate_ordinal = make_document(
+            ["VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH"]
+        )
+        duplicate_flow = duplicate_ordinal["flows"][0]
+        duplicate_flow["nodes"][1]["nodeId"] = f"{FLOW_ID}.node.000001"
+        duplicate_flow["edges"][0]["toNodeId"] = duplicate_flow["nodes"][1]["nodeId"]
+        with self.assertRaisesRegex(ValueError, "node id"):
+            validate_document(duplicate_ordinal, self.inventory)
 
     def test_wrong_version_unknown_property_unknown_pattern_and_overflow_fail(self) -> None:
         mutations = []
         seed = make_document(self.sample_pattern_ids)
         wrong_version = copy.deepcopy(seed)
-        wrong_version["formatVersion"] = 2
+        wrong_version["formatVersion"] = 1
         mutations.append(("version", wrong_version))
         unknown_property = copy.deepcopy(seed)
-        unknown_property["flows"][0]["slots"][0]["index"] = 0
-        mutations.append(("slot properties", unknown_property))
+        unknown_property["flows"][0]["nodes"][0]["index"] = 0
+        mutations.append(("node properties", unknown_property))
         unknown_pattern = copy.deepcopy(seed)
-        unknown_pattern["flows"][0]["slots"][0]["patternId"] = "UNKNOWN"
+        unknown_pattern["flows"][0]["nodes"][0]["patternId"] = "UNKNOWN"
         mutations.append(("pattern id", unknown_pattern))
-        # All IDs remain unique so this tests the wire-slot boundary itself,
-        # not an unrelated duplicate-slot rejection.
-        overflow = make_document(["VALTAN_WHIRLWIND"] * (MAX_SLOTS + 1))
-        mutations.append(("slots", overflow))
+        overflow = make_document(["VALTAN_WHIRLWIND"] * (MAX_NODES + 1))
+        mutations.append(("nodes", overflow))
         float_integer = copy.deepcopy(seed)
-        float_integer["formatVersion"] = 1.0
+        float_integer["formatVersion"] = 2.0
         mutations.append(("header types", float_integer))
 
         for reason, candidate in mutations:
@@ -318,9 +503,11 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         for marker in (
             "Has_ExactProperties(root, { \"schema\", \"formatVersion\", \"flows\" })",
             "Try_ParseUnsignedInteger",
-            "Try_ParseSlotOrdinal",
-            "16u + MAX_SLOTS * 3u",
-            "admitted.contains(slot.strPatternId)",
+            "Try_ParseOrdinal",
+            "MAX_NODES * 4u + MAX_EDGES * 7u",
+            "admitted.contains(node.strPatternId)",
+            "Only a cycle-closing back-edge may own maxTraversals",
+            "cannot reach its terminal within maxTransitionsPerRun",
             "outDocument = std::move(staged)",
             "m_Baseline = staged",
             "m_Draft = std::move(staged)",
@@ -328,12 +515,15 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.assertIn(marker, self.source)
         self.assertNotIn("ValtanPatternTree", self.header + self.source)
         self.assertNotIn("scriptedSequence", self.header + self.source)
-        self.assertIn("std::unordered_set<std::string> slotIds", self.source)
+        self.assertIn("std::unordered_map<std::string, const VALTAN_PATTERN_FLOW_NODE*>", self.source)
         self.assertNotIn("patternIds.insert", self.source)
 
     def test_save_uses_raw_sha256_cas_durable_temp_and_recovery_backup(self) -> None:
         for marker in (
             "BCRYPT_SHA256_ALGORITHM",
+            "SCOPED_VALTAN_PATTERN_FLOW_WRITE_LOCK writerLock",
+            "LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY",
+            "Valtan Boss Flow Save rejected before mutation",
             "diskRevision != m_strSourceRevision",
             "preCommitRevision != m_strSourceRevision",
             "_commit(_fileno(file))",
@@ -345,6 +535,10 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             "m_strSourceRevision = std::move(committedRevision)",
         ):
             self.assertIn(marker, self.source)
+        self.assertLess(
+            self.source.index("SCOPED_VALTAN_PATTERN_FLOW_WRITE_LOCK writerLock"),
+            self.source.index("diskRevision != m_strSourceRevision"),
+        )
         self.assertLess(
             self.source.index("preCommitRevision != m_strSourceRevision"),
             self.source.index("temporary.c_str(), m_Path.c_str()"),
@@ -360,6 +554,9 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             "Move_Slot(",
             "Remove_Slot(",
             "Set_InterStepPursuitMs(",
+            "Set_NodeWatchdogMs(",
+            "Set_MaxTransitionsPerRun(",
+            "Has_LegacyLinearProjection(",
             "Is_Ready()",
             "Is_Dirty()",
             "Has_ExternalConflict()",
@@ -381,8 +578,9 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.source.index("bool_t Client::CValtanPatternFlowDocument::Move_Slot(")
         ]
         self.assertIn("OPTIONAL_ENTRY_PATTERN_ID == patternId", add_body)
-        self.assertIn("flow.Slots.insert(flow.Slots.begin(), StagedSlot)", add_body)
-        self.assertIn("flow.Slots.push_back(StagedSlot)", add_body)
+        self.assertIn('Build_OrdinalId(\n\t\tflow.strFlowId, "node"', add_body)
+        self.assertIn("orderedNodeIds.insert(orderedNodeIds.begin(), nodeId)", add_body)
+        self.assertIn("Rebuild_LinearFlow(flow, orderedNodeIds, outStatus)", add_body)
         self.assertLess(add_body.index("Validate(staged"), add_body.index("m_Draft = std::move(staged)"))
         self.assertNotIn("27-pattern", self.boss_tool)
         self.assertIn("m_AuditionInventory.Get_PatternCount()", self.boss_tool)
@@ -477,7 +675,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.source.index("bool_t Client::CValtanPatternFlowDocument::Load(") :
             self.source.index("bool_t Client::CValtanPatternFlowDocument::Reload(")
         ]
-        self.assertIn("flow.Slots.empty()", self.source)
+        self.assertIn("flow.Nodes.empty()", self.source)
         self.assertLess(load_body.index("!Validate(staged"), load_body.index("m_Baseline = staged"))
 
         self.assertIn(
@@ -518,7 +716,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         self.assertNotIn("Start_Flow(", save_body)
         self.assertIn("Saved, but the Server order has not changed", save_body)
         self.assertIn("CValtanTuningCommandService::Get().Update();", self.main_app)
-        self.assertIn("flow.Slots.empty()", self.source)
+        self.assertIn("flow.Nodes.empty()", self.source)
 
     def test_failed_canonical_reload_keeps_display_rows_but_revokes_mutation(self) -> None:
         header = (ROOT / "Client/Public/BossTool.h").read_text(encoding="utf-8")
@@ -530,7 +728,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         self.assertIn("m_bGraphReady", header)
         self.assertLess(
             reload_body.index("m_bGraphMutationAdmitted = false"),
-            reload_body.index("CValtanPatternTree::Load("),
+            reload_body.index("CValtanPatternTree::Load_WhileAdmitted("),
         )
         self.assertIn("STALE_PRESERVED", reload_body)
         self.assertIn("previous rows are display-only", reload_body)
@@ -670,8 +868,11 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.assertIn(marker, self.packet_messages + self.protocol_harness)
         for marker in (
             "SAVED_FLOW_MAX_SLOTS = 255",
-            "len(slots) > SAVED_FLOW_MAX_SLOTS",
-            "1..{SAVED_FLOW_MAX_SLOTS} slots",
+            "SAVED_FLOW_MAX_EDGES = 255",
+            "SAVED_FLOW_MAX_TRANSITIONS = 4096",
+            "len(nodes) > SAVED_FLOW_MAX_SLOTS",
+            "1..{SAVED_FLOW_MAX_SLOTS} nodes",
+            'flow["maxTransitionsPerRun"]',
         ):
             self.assertIn(marker, self.tuning_pipeline)
         self.assertIn(

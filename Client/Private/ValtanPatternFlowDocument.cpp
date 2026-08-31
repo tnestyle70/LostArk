@@ -15,6 +15,7 @@
 #include <iomanip>
 #include <limits>
 #include <sstream>
+#include <unordered_map>
 #include <unordered_set>
 
 #pragma comment(lib, "bcrypt.lib")
@@ -25,13 +26,110 @@ namespace
 
 	constexpr std::string_view DOCUMENT_SCHEMA =
 		"lostark.valtan-boss-audition-flows";
-	constexpr std::uint32_t DOCUMENT_VERSION = 1u;
+	constexpr std::uint32_t DOCUMENT_VERSION = 2u;
 	constexpr std::size_t MAX_DOCUMENT_BYTES = 256u * 1024u;
 	constexpr std::size_t MAX_STABLE_ID_LENGTH = 128u;
-	constexpr std::uint64_t MAX_SLOT_ORDINAL = 999999u;
+	constexpr std::uint64_t MAX_NODE_ORDINAL = 999999u;
+	constexpr std::uint64_t MAX_EDGE_ORDINAL = 999999u;
 	constexpr std::size_t SHA256_BYTE_COUNT = 32u;
+	constexpr const wchar_t* VALTAN_PATTERN_TRANSACTION_LOCK_RELATIVE =
+		L"out\\ValtanPatternTransactions\\create-pattern.lock";
 	constexpr std::string_view OPTIONAL_ENTRY_PATTERN_ID =
 		"VALTAN_ENTRANCE_CINEMATIC";
+
+	/* Flow authoring participates in the same one-byte writer admission as
+	   Create Pattern and every Product projector.  The lock is held from the
+	   first source-revision read through post-replace verification/rollback so
+	   no second writer can be overwritten by this document's recovery path. */
+	class SCOPED_VALTAN_PATTERN_FLOW_WRITE_LOCK final
+	{
+	public:
+		~SCOPED_VALTAN_PATTERN_FLOW_WRITE_LOCK()
+		{
+			if (INVALID_HANDLE_VALUE == m_hFile)
+				return;
+			UnlockFileEx(m_hFile, 0u, 1u, 0u, &m_Overlap);
+			CloseHandle(m_hFile);
+		}
+
+		bool_t Try_Acquire(
+			const std::filesystem::path& projectRoot,
+			std::string& outStatus)
+		{
+			if (projectRoot.empty())
+			{
+				outStatus = "project root is unavailable";
+				return false;
+			}
+			const std::filesystem::path lockPath =
+				projectRoot / VALTAN_PATTERN_TRANSACTION_LOCK_RELATIVE;
+			std::error_code directoryError;
+			std::filesystem::create_directories(
+				lockPath.parent_path(), directoryError);
+			if (directoryError)
+			{
+				outStatus = "lock directory creation failed: " +
+					directoryError.message();
+				return false;
+			}
+
+			m_hFile = CreateFileW(
+				lockPath.c_str(), GENERIC_READ | GENERIC_WRITE,
+				FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+				nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+			if (INVALID_HANDLE_VALUE == m_hFile)
+			{
+				outStatus = "lock open failed with Win32 error " +
+					std::to_string(GetLastError());
+				return false;
+			}
+
+			LARGE_INTEGER size{};
+			if (FALSE == GetFileSizeEx(m_hFile, &size))
+			{
+				outStatus = "lock size query failed with Win32 error " +
+					std::to_string(GetLastError());
+				CloseHandle(m_hFile);
+				m_hFile = INVALID_HANDLE_VALUE;
+				return false;
+			}
+			if (size.QuadPart < 1)
+			{
+				const char byte = '\0';
+				DWORD written = 0u;
+				LARGE_INTEGER begin{};
+				if (FALSE == SetFilePointerEx(
+						m_hFile, begin, nullptr, FILE_BEGIN) ||
+					FALSE == WriteFile(
+						m_hFile, &byte, 1u, &written, nullptr) ||
+					1u != written || FALSE == FlushFileBuffers(m_hFile))
+				{
+					outStatus = "lock initialization failed with Win32 error " +
+						std::to_string(GetLastError());
+					CloseHandle(m_hFile);
+					m_hFile = INVALID_HANDLE_VALUE;
+					return false;
+				}
+			}
+
+			if (FALSE == LockFileEx(
+				m_hFile,
+				LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY,
+				0u, 1u, 0u, &m_Overlap))
+			{
+				outStatus = "another canonical writer owns the lock (Win32 " +
+					std::to_string(GetLastError()) + ")";
+				CloseHandle(m_hFile);
+				m_hFile = INVALID_HANDLE_VALUE;
+				return false;
+			}
+			return true;
+		}
+
+	private:
+		HANDLE m_hFile = INVALID_HANDLE_VALUE;
+		OVERLAPPED m_Overlap{};
+	};
 
 	const DATA_JSON_VALUE* Required(
 		const DATA_JSON_VALUE& object,
@@ -92,40 +190,218 @@ namespace
 		return true;
 	}
 
-	bool_t Try_ParseSlotOrdinal(
+	bool_t Try_ParseOrdinal(
 		const std::string_view flowId,
-		const std::string_view slotId,
+		const std::string_view stableId,
+		const std::initializer_list<std::string_view> kinds,
+		const std::uint64_t maximum,
 		std::uint64_t& outOrdinal)
 	{
-		const std::string prefix = std::string(flowId) + ".slot.";
-		if (!slotId.starts_with(prefix) ||
-			slotId.size() != prefix.size() + 6u)
+		std::size_t ordinalOffset = std::string_view::npos;
+		for (const std::string_view kind : kinds)
+		{
+			const std::string prefix =
+				std::string(flowId) + "." + std::string(kind) + ".";
+			if (stableId.starts_with(prefix) &&
+				stableId.size() == prefix.size() + 6u)
+			{
+				ordinalOffset = prefix.size();
+				break;
+			}
+		}
+		if (std::string_view::npos == ordinalOffset)
 		{
 			return false;
 		}
 		std::uint64_t ordinal = 0u;
-		for (std::size_t index = prefix.size(); index < slotId.size(); ++index)
+		for (std::size_t index = ordinalOffset; index < stableId.size(); ++index)
 		{
-			const char character = slotId[index];
+			const char character = stableId[index];
 			if (character < '0' || character > '9')
 				return false;
 			ordinal = ordinal * 10u +
 				static_cast<std::uint64_t>(character - '0');
 		}
-		if (0u == ordinal || ordinal > MAX_SLOT_ORDINAL)
+		if (0u == ordinal || ordinal > maximum)
 			return false;
 		outOrdinal = ordinal;
 		return true;
 	}
 
-	std::string Build_SlotId(
+	std::string Build_OrdinalId(
 		const std::string_view flowId,
+		const std::string_view kind,
 		const std::uint64_t ordinal)
 	{
 		std::ostringstream output;
-		output << flowId << ".slot." << std::setw(6) << std::setfill('0')
+		output << flowId << "." << kind << "." << std::setw(6) << std::setfill('0')
 			<< ordinal;
 		return output.str();
+	}
+
+	const VALTAN_PATTERN_FLOW_NODE* Find_Node(
+		const VALTAN_PATTERN_FLOW_DEFINITION& flow,
+		const std::string_view nodeId)
+	{
+		const auto found = std::find_if(
+			flow.Nodes.begin(), flow.Nodes.end(),
+			[nodeId](const VALTAN_PATTERN_FLOW_NODE& node)
+			{
+				return node.strNodeId == nodeId;
+			});
+		return flow.Nodes.end() == found ? nullptr : &*found;
+	}
+
+	const VALTAN_PATTERN_FLOW_EDGE* Find_CompletedEdge(
+		const VALTAN_PATTERN_FLOW_DEFINITION& flow,
+		const std::string_view fromNodeId)
+	{
+		const auto found = std::find_if(
+			flow.Edges.begin(), flow.Edges.end(),
+			[fromNodeId](const VALTAN_PATTERN_FLOW_EDGE& edge)
+			{
+				return edge.strFromNodeId == fromNodeId &&
+					edge.eOutcome ==
+						VALTAN_PATTERN_FLOW_EDGE_OUTCOME::COMPLETED;
+			});
+		return flow.Edges.end() == found ? nullptr : &*found;
+	}
+
+	bool_t Build_LegacyProjection(VALTAN_PATTERN_FLOW_DEFINITION& flow)
+	{
+		flow.iNextSlotOrdinal = flow.iNextNodeOrdinal;
+		flow.iInterStepPursuitMs = flow.iDefaultPursuitMs;
+		flow.Slots.clear();
+		if (flow.strEntryNodeId.empty() || flow.Nodes.empty())
+			return false;
+
+		std::unordered_set<std::string> visited;
+		std::string currentNodeId = flow.strEntryNodeId;
+		while (true)
+		{
+			const VALTAN_PATTERN_FLOW_NODE* node =
+				Find_Node(flow, currentNodeId);
+			if (nullptr == node || !visited.insert(currentNodeId).second)
+			{
+				flow.Slots.clear();
+				return false;
+			}
+			if (0u != node->iWatchdogMs)
+			{
+				flow.Slots.clear();
+				return false;
+			}
+			flow.Slots.push_back({ node->strNodeId, node->strPatternId });
+			const VALTAN_PATTERN_FLOW_EDGE* edge =
+				Find_CompletedEdge(flow, currentNodeId);
+			if (nullptr == edge)
+				break;
+			if (edge->iMaxTraversals.has_value() ||
+				edge->iPursuitMs != flow.iDefaultPursuitMs)
+			{
+				flow.Slots.clear();
+				return false;
+			}
+			currentNodeId = edge->strToNodeId;
+		}
+		if (visited.size() != flow.Nodes.size())
+		{
+			flow.Slots.clear();
+			return false;
+		}
+		return true;
+	}
+
+	std::vector<std::string> Build_CurrentPatternInventory(
+		const VALTAN_PATTERN_FLOW_DEFINITION& flow)
+	{
+		std::vector<std::string> patternIds;
+		std::unordered_set<std::string> seen;
+		for (const VALTAN_PATTERN_FLOW_NODE& node : flow.Nodes)
+		{
+			if (seen.insert(node.strPatternId).second)
+				patternIds.push_back(node.strPatternId);
+		}
+		return patternIds;
+	}
+
+	bool_t Rebuild_LinearFlow(
+		VALTAN_PATTERN_FLOW_DEFINITION& flow,
+		const std::vector<std::string>& orderedNodeIds,
+		std::string& outStatus)
+	{
+		if (orderedNodeIds.empty() ||
+			orderedNodeIds.size() != flow.Nodes.size())
+		{
+			outStatus = "The compatibility Flow must retain every node.";
+			return false;
+		}
+
+		std::unordered_map<std::string, VALTAN_PATTERN_FLOW_NODE> nodes;
+		for (const VALTAN_PATTERN_FLOW_NODE& node : flow.Nodes)
+		{
+			if (!nodes.emplace(node.strNodeId, node).second)
+			{
+				outStatus = "The compatibility Flow contains duplicate nodes.";
+				return false;
+			}
+		}
+		std::unordered_map<std::string, VALTAN_PATTERN_FLOW_EDGE> oldOutgoing;
+		for (const VALTAN_PATTERN_FLOW_EDGE& edge : flow.Edges)
+			oldOutgoing.emplace(edge.strFromNodeId, edge);
+
+		std::vector<VALTAN_PATTERN_FLOW_NODE> orderedNodes;
+		orderedNodes.reserve(orderedNodeIds.size());
+		for (const std::string& nodeId : orderedNodeIds)
+		{
+			const auto found = nodes.find(nodeId);
+			if (nodes.end() == found)
+			{
+				outStatus = "The compatibility Flow references a missing node.";
+				return false;
+			}
+			orderedNodes.push_back(found->second);
+		}
+
+		std::vector<VALTAN_PATTERN_FLOW_EDGE> edges;
+		edges.reserve(orderedNodes.size() - 1u);
+		for (std::size_t index = 0u; index + 1u < orderedNodes.size(); ++index)
+		{
+			const std::string& fromNodeId = orderedNodes[index].strNodeId;
+			VALTAN_PATTERN_FLOW_EDGE edge;
+			const auto oldEdge = oldOutgoing.find(fromNodeId);
+			if (oldOutgoing.end() != oldEdge)
+			{
+				edge = oldEdge->second;
+			}
+			else
+			{
+				if (flow.iNextEdgeOrdinal > MAX_EDGE_ORDINAL)
+				{
+					outStatus =
+						"Valtan Boss Flow exhausted its stable edge ID range.";
+					return false;
+				}
+				edge.strEdgeId = Build_OrdinalId(
+					flow.strFlowId, "edge", flow.iNextEdgeOrdinal++);
+			}
+			edge.strFromNodeId = fromNodeId;
+			edge.eOutcome = VALTAN_PATTERN_FLOW_EDGE_OUTCOME::COMPLETED;
+			edge.strToNodeId = orderedNodes[index + 1u].strNodeId;
+			edge.iPursuitMs = flow.iDefaultPursuitMs;
+			edge.iMaxTraversals.reset();
+			edges.push_back(std::move(edge));
+		}
+
+		flow.strEntryNodeId = orderedNodes.front().strNodeId;
+		flow.Nodes = std::move(orderedNodes);
+		flow.Edges = std::move(edges);
+		if (!Build_LegacyProjection(flow))
+		{
+			outStatus = "Could not rebuild the ordered compatibility Flow.";
+			return false;
+		}
+		return true;
 	}
 
 	bool_t Read_Bytes(
@@ -275,9 +551,9 @@ bool_t Client::CValtanPatternFlowDocument::Parse_Text(
 	DATA_JSON_PARSE_LIMITS limits;
 	limits.iMaximumBytes = MAX_DOCUMENT_BYTES;
 	limits.iMaximumDepth = 8u;
-	// Root/flow metadata consumes fewer than sixteen values and every slot
-	// contributes one object plus two strings.
-	limits.iMaximumValues = 16u + MAX_SLOTS * 3u;
+	// Root/flow metadata is bounded and every edge contributes at most one
+	// object plus six scalar values.
+	limits.iMaximumValues = 32u + MAX_NODES * 4u + MAX_EDGES * 7u;
 	DATA_JSON_VALUE root;
 	std::string parseError;
 	if (!CDataJson::Parse(text, root, parseError, limits) ||
@@ -309,57 +585,154 @@ bool_t Client::CValtanPatternFlowDocument::Parse_Text(
 	for (const DATA_JSON_VALUE& flowValue : flows->Get_Array())
 	{
 		if (!Has_ExactProperties(flowValue,
-			{ "flowId", "nextSlotOrdinal", "interStepPursuitMs", "slots" }))
+			{ "flowId", "entryNodeId", "nextNodeOrdinal",
+			  "nextEdgeOrdinal", "defaultPursuitMs",
+			  "maxTransitionsPerRun", "nodes", "edges" }))
 		{
 			outStatus = "Valtan Boss Flow row has unknown or missing properties.";
 			return false;
 		}
 		const DATA_JSON_VALUE* flowId = Required(
 			flowValue, "flowId", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* nextSlotOrdinal = Required(
-			flowValue, "nextSlotOrdinal", DATA_JSON_TYPE::NUMBER);
-		const DATA_JSON_VALUE* pursuit = Required(
-			flowValue, "interStepPursuitMs", DATA_JSON_TYPE::NUMBER);
-		const DATA_JSON_VALUE* slots = Required(
-			flowValue, "slots", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* entryNodeId = Required(
+			flowValue, "entryNodeId", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* nextNodeOrdinal = Required(
+			flowValue, "nextNodeOrdinal", DATA_JSON_TYPE::NUMBER);
+		const DATA_JSON_VALUE* nextEdgeOrdinal = Required(
+			flowValue, "nextEdgeOrdinal", DATA_JSON_TYPE::NUMBER);
+		const DATA_JSON_VALUE* defaultPursuit = Required(
+			flowValue, "defaultPursuitMs", DATA_JSON_TYPE::NUMBER);
+		const DATA_JSON_VALUE* maxTransitions = Required(
+			flowValue, "maxTransitionsPerRun", DATA_JSON_TYPE::NUMBER);
+		const DATA_JSON_VALUE* nodes = Required(
+			flowValue, "nodes", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* edges = Required(
+			flowValue, "edges", DATA_JSON_TYPE::ARRAY);
 		VALTAN_PATTERN_FLOW_DEFINITION stagedFlow;
 		if (nullptr == flowId || !Is_StableId(flowId->Get_String()) ||
-			nullptr == nextSlotOrdinal ||
+			nullptr == entryNodeId || !Is_StableId(entryNodeId->Get_String()) ||
+			nullptr == nextNodeOrdinal ||
 			!Try_ParseUnsignedInteger(
-				*nextSlotOrdinal, MAX_SLOT_ORDINAL + 1u,
-				stagedFlow.iNextSlotOrdinal) ||
-			nullptr == pursuit ||
+				*nextNodeOrdinal, MAX_NODE_ORDINAL + 1u,
+				stagedFlow.iNextNodeOrdinal) ||
+			nullptr == nextEdgeOrdinal ||
 			!Try_ParseUnsignedInteger(
-				*pursuit,
+				*nextEdgeOrdinal, MAX_EDGE_ORDINAL + 1u,
+				stagedFlow.iNextEdgeOrdinal) ||
+			nullptr == defaultPursuit ||
+			!Try_ParseUnsignedInteger(
+				*defaultPursuit,
 				(std::numeric_limits<std::uint32_t>::max)(),
-				stagedFlow.iInterStepPursuitMs) ||
-			nullptr == slots || slots->Get_Array().size() > MAX_SLOTS)
+				stagedFlow.iDefaultPursuitMs) ||
+			nullptr == maxTransitions ||
+			!Try_ParseUnsignedInteger(
+				*maxTransitions,
+				(std::numeric_limits<std::uint32_t>::max)(),
+				stagedFlow.iMaxTransitionsPerRun) ||
+			nullptr == nodes || nodes->Get_Array().size() > MAX_NODES ||
+			nullptr == edges || edges->Get_Array().size() > MAX_EDGES)
 		{
 			outStatus = "Valtan Boss Flow row is invalid or oversized.";
 			return false;
 		}
 		stagedFlow.strFlowId = flowId->Get_String();
-		stagedFlow.Slots.reserve(slots->Get_Array().size());
-		for (const DATA_JSON_VALUE& slotValue : slots->Get_Array())
+		stagedFlow.strEntryNodeId = entryNodeId->Get_String();
+		stagedFlow.Nodes.reserve(nodes->Get_Array().size());
+		for (const DATA_JSON_VALUE& nodeValue : nodes->Get_Array())
 		{
-			if (!Has_ExactProperties(slotValue, { "slotId", "patternId" }))
+			if (!Has_ExactProperties(
+				nodeValue, { "nodeId", "patternId", "watchdogMs" }))
 			{
-				outStatus = "Valtan Boss Flow slot has unknown or missing properties.";
+				outStatus = "Valtan Boss Flow node has unknown or missing properties.";
 				return false;
 			}
-			const DATA_JSON_VALUE* slotId = Required(
-				slotValue, "slotId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* nodeId = Required(
+				nodeValue, "nodeId", DATA_JSON_TYPE::STRING);
 			const DATA_JSON_VALUE* patternId = Required(
-				slotValue, "patternId", DATA_JSON_TYPE::STRING);
-			if (nullptr == slotId || !Is_StableId(slotId->Get_String()) ||
-				nullptr == patternId || !Is_StableId(patternId->Get_String()))
+				nodeValue, "patternId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* watchdog = Required(
+				nodeValue, "watchdogMs", DATA_JSON_TYPE::NUMBER);
+			VALTAN_PATTERN_FLOW_NODE stagedNode;
+			if (nullptr == nodeId || !Is_StableId(nodeId->Get_String()) ||
+				nullptr == patternId || !Is_StableId(patternId->Get_String()) ||
+				nullptr == watchdog ||
+				!Try_ParseUnsignedInteger(
+					*watchdog,
+					(std::numeric_limits<std::uint32_t>::max)(),
+					stagedNode.iWatchdogMs))
 			{
-				outStatus = "Valtan Boss Flow slot identity is invalid.";
+				outStatus = "Valtan Boss Flow node identity or watchdog is invalid.";
 				return false;
 			}
-			stagedFlow.Slots.push_back(
-				{ slotId->Get_String(), patternId->Get_String() });
+			stagedNode.strNodeId = nodeId->Get_String();
+			stagedNode.strPatternId = patternId->Get_String();
+			stagedFlow.Nodes.push_back(std::move(stagedNode));
 		}
+
+		stagedFlow.Edges.reserve(edges->Get_Array().size());
+		for (const DATA_JSON_VALUE& edgeValue : edges->Get_Array())
+		{
+			const bool_t hasMaxTraversals =
+				nullptr != edgeValue.Find("maxTraversals");
+			if ((!hasMaxTraversals && !Has_ExactProperties(
+					edgeValue,
+					{ "edgeId", "fromNodeId", "outcome", "toNodeId",
+					  "pursuitMs" })) ||
+				(hasMaxTraversals && !Has_ExactProperties(
+					edgeValue,
+					{ "edgeId", "fromNodeId", "outcome", "toNodeId",
+					  "pursuitMs", "maxTraversals" })))
+			{
+				outStatus = "Valtan Boss Flow edge has unknown or missing properties.";
+				return false;
+			}
+			const DATA_JSON_VALUE* edgeId = Required(
+				edgeValue, "edgeId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* fromNodeId = Required(
+				edgeValue, "fromNodeId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* outcome = Required(
+				edgeValue, "outcome", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* toNodeId = Required(
+				edgeValue, "toNodeId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pursuit = Required(
+				edgeValue, "pursuitMs", DATA_JSON_TYPE::NUMBER);
+			VALTAN_PATTERN_FLOW_EDGE stagedEdge;
+			if (nullptr == edgeId || !Is_StableId(edgeId->Get_String()) ||
+				nullptr == fromNodeId ||
+				!Is_StableId(fromNodeId->Get_String()) ||
+				nullptr == outcome || outcome->Get_String() != "COMPLETED" ||
+				nullptr == toNodeId || !Is_StableId(toNodeId->Get_String()) ||
+				nullptr == pursuit ||
+				!Try_ParseUnsignedInteger(
+					*pursuit,
+					(std::numeric_limits<std::uint32_t>::max)(),
+					stagedEdge.iPursuitMs))
+			{
+				outStatus = "Valtan Boss Flow edge identity or timing is invalid.";
+				return false;
+			}
+			stagedEdge.strEdgeId = edgeId->Get_String();
+			stagedEdge.strFromNodeId = fromNodeId->Get_String();
+			stagedEdge.strToNodeId = toNodeId->Get_String();
+			if (hasMaxTraversals)
+			{
+				const DATA_JSON_VALUE* maximum = Required(
+					edgeValue, "maxTraversals", DATA_JSON_TYPE::NUMBER);
+				std::uint32_t stagedMaximum = 0u;
+				if (nullptr == maximum ||
+					!Try_ParseUnsignedInteger(
+						*maximum,
+						(std::numeric_limits<std::uint32_t>::max)(),
+						stagedMaximum))
+				{
+					outStatus = "Valtan Boss Flow edge traversal cap is invalid.";
+					return false;
+				}
+				stagedEdge.iMaxTraversals = stagedMaximum;
+			}
+			stagedFlow.Edges.push_back(std::move(stagedEdge));
+		}
+		(void)Build_LegacyProjection(stagedFlow);
 		staged.Flows.push_back(std::move(stagedFlow));
 	}
 
@@ -397,53 +770,196 @@ bool_t Client::CValtanPatternFlowDocument::Validate(
 	}
 
 	const VALTAN_PATTERN_FLOW_DEFINITION& flow = document.Flows.front();
-	if (flow.Slots.empty())
+	if (flow.Nodes.empty())
 	{
-		outStatus = "The default Valtan Flow must contain at least one slot.";
+		outStatus = "The default Valtan Flow must contain at least one node.";
 		return false;
 	}
 	if (flow.strFlowId != DEFAULT_FLOW_ID ||
-		flow.iInterStepPursuitMs < MIN_INTER_STEP_PURSUIT_MS ||
-		flow.iInterStepPursuitMs > MAX_INTER_STEP_PURSUIT_MS ||
-		0u == flow.iNextSlotOrdinal ||
-		flow.iNextSlotOrdinal > MAX_SLOT_ORDINAL + 1u ||
-		flow.Slots.size() > MAX_SLOTS)
+		!Is_StableId(flow.strEntryNodeId) ||
+		flow.iDefaultPursuitMs < MIN_INTER_STEP_PURSUIT_MS ||
+		flow.iDefaultPursuitMs > MAX_INTER_STEP_PURSUIT_MS ||
+		flow.iMaxTransitionsPerRun < MIN_TRANSITIONS_PER_RUN ||
+		flow.iMaxTransitionsPerRun > MAX_TRANSITIONS_PER_RUN ||
+		0u == flow.iNextNodeOrdinal ||
+		flow.iNextNodeOrdinal > MAX_NODE_ORDINAL + 1u ||
+		0u == flow.iNextEdgeOrdinal ||
+		flow.iNextEdgeOrdinal > MAX_EDGE_ORDINAL + 1u ||
+		flow.Nodes.size() > MAX_NODES || flow.Edges.size() > MAX_EDGES)
 	{
-		outStatus = "Valtan Boss Flow identity, pursuit interval, or size is invalid.";
+		outStatus =
+			"Valtan Boss Flow identity, limits, default pursuit, or size is invalid.";
 		return false;
 	}
 
-	std::unordered_set<std::string> slotIds;
-	std::uint64_t maximumUsedOrdinal = 0u;
-	for (std::size_t slotIndex = 0u; slotIndex < flow.Slots.size(); ++slotIndex)
+	std::unordered_map<std::string, const VALTAN_PATTERN_FLOW_NODE*> nodesById;
+	std::unordered_set<std::uint64_t> nodeOrdinals;
+	nodesById.reserve(flow.Nodes.size());
+	nodeOrdinals.reserve(flow.Nodes.size());
+	std::uint64_t maximumNodeOrdinal = 0u;
+	std::size_t entryCinematicCount = 0u;
+	for (const VALTAN_PATTERN_FLOW_NODE& node : flow.Nodes)
 	{
-		const VALTAN_PATTERN_FLOW_SLOT& slot = flow.Slots[slotIndex];
-		if (OPTIONAL_ENTRY_PATTERN_ID == slot.strPatternId && 0u != slotIndex)
-		{
-			outStatus = "The optional entry cinematic must occur exactly once at the first step.";
-			return false;
-		}
 		std::uint64_t ordinal = 0u;
-		if (!Is_StableId(slot.strSlotId) ||
-			!Try_ParseSlotOrdinal(flow.strFlowId, slot.strSlotId, ordinal) ||
-			!slotIds.insert(slot.strSlotId).second ||
-			!Is_StableId(slot.strPatternId) ||
-			!admitted.contains(slot.strPatternId))
+		if (!Is_StableId(node.strNodeId) ||
+			!Try_ParseOrdinal(
+				flow.strFlowId, node.strNodeId, { "slot", "node" },
+				MAX_NODE_ORDINAL, ordinal) ||
+			!nodeOrdinals.insert(ordinal).second ||
+			!nodesById.emplace(node.strNodeId, &node).second ||
+			!Is_StableId(node.strPatternId) ||
+			!admitted.contains(node.strPatternId) ||
+			(0u != node.iWatchdogMs &&
+			 (node.iWatchdogMs < MIN_NODE_WATCHDOG_MS ||
+			  node.iWatchdogMs > MAX_NODE_WATCHDOG_MS)))
 		{
 			outStatus =
-				"Valtan Boss Flow slot is duplicate, malformed, or not in All Effects inventory.";
+				"Valtan Boss Flow node is duplicate, malformed, outside watchdog limits, or not in All Effects inventory.";
 			return false;
 		}
-		maximumUsedOrdinal = (std::max)(maximumUsedOrdinal, ordinal);
+		maximumNodeOrdinal = (std::max)(maximumNodeOrdinal, ordinal);
+		if (OPTIONAL_ENTRY_PATTERN_ID == node.strPatternId)
+		{
+			++entryCinematicCount;
+			if (node.strNodeId != flow.strEntryNodeId)
+			{
+				outStatus =
+					"The optional entry cinematic must be the Flow entry node.";
+				return false;
+			}
+		}
 	}
-	if (flow.iNextSlotOrdinal <= maximumUsedOrdinal)
+	if (!nodesById.contains(flow.strEntryNodeId))
 	{
-		outStatus = "Valtan Boss Flow nextSlotOrdinal would reuse a stable slot ID.";
+		outStatus = "Valtan Boss Flow entryNodeId is dangling.";
+		return false;
+	}
+	if (entryCinematicCount > 1u)
+	{
+		outStatus = "The optional entry cinematic may occur only once.";
+		return false;
+	}
+	if (flow.iNextNodeOrdinal <= maximumNodeOrdinal)
+	{
+		outStatus =
+			"Valtan Boss Flow nextNodeOrdinal would reuse a stable node ID.";
 		return false;
 	}
 
-	outStatus = "Validated " + std::to_string(flow.Slots.size()) +
-		" Valtan Boss Flow slot(s).";
+	std::unordered_set<std::string> edgeIds;
+	std::unordered_map<std::string, const VALTAN_PATTERN_FLOW_EDGE*> outgoing;
+	edgeIds.reserve(flow.Edges.size());
+	outgoing.reserve(flow.Edges.size());
+	std::uint64_t maximumEdgeOrdinal = 0u;
+	for (const VALTAN_PATTERN_FLOW_EDGE& edge : flow.Edges)
+	{
+		std::uint64_t ordinal = 0u;
+		if (!Is_StableId(edge.strEdgeId) ||
+			!Try_ParseOrdinal(
+				flow.strFlowId, edge.strEdgeId, { "edge" },
+				MAX_EDGE_ORDINAL, ordinal) ||
+			!edgeIds.insert(edge.strEdgeId).second ||
+			edge.eOutcome != VALTAN_PATTERN_FLOW_EDGE_OUTCOME::COMPLETED ||
+			!nodesById.contains(edge.strFromNodeId) ||
+			!nodesById.contains(edge.strToNodeId) ||
+			!outgoing.emplace(edge.strFromNodeId, &edge).second ||
+			edge.iPursuitMs < MIN_INTER_STEP_PURSUIT_MS ||
+			edge.iPursuitMs > MAX_INTER_STEP_PURSUIT_MS ||
+			(edge.iMaxTraversals.has_value() &&
+			 (0u == *edge.iMaxTraversals ||
+			  *edge.iMaxTraversals > MAX_EDGE_TRAVERSALS)))
+		{
+			outStatus =
+				"Valtan Boss Flow edge is duplicate, dangling, non-deterministic, or outside timing/traversal limits.";
+			return false;
+		}
+		if (entryCinematicCount > 0u &&
+			edge.strToNodeId == flow.strEntryNodeId)
+		{
+			outStatus =
+				"The entry cinematic node cannot be targeted by another edge.";
+			return false;
+		}
+		maximumEdgeOrdinal = (std::max)(maximumEdgeOrdinal, ordinal);
+	}
+	if (flow.iNextEdgeOrdinal <= maximumEdgeOrdinal)
+	{
+		outStatus =
+			"Valtan Boss Flow nextEdgeOrdinal would reuse a stable edge ID.";
+		return false;
+	}
+
+	/* With one COMPLETED edge per node, the entry walk is the entire
+	   executable topology. A repeated target is the one cycle-closing
+	   back-edge and must own the only finite traversal cap. */
+	std::unordered_set<std::string> reachable;
+	reachable.reserve(flow.Nodes.size());
+	reachable.insert(flow.strEntryNodeId);
+	const VALTAN_PATTERN_FLOW_EDGE* cycleClosingEdge = nullptr;
+	std::string currentNodeId = flow.strEntryNodeId;
+	while (true)
+	{
+		const auto edgeAt = outgoing.find(currentNodeId);
+		if (outgoing.end() == edgeAt)
+			break;
+		const VALTAN_PATTERN_FLOW_EDGE* edge = edgeAt->second;
+		if (reachable.contains(edge->strToNodeId))
+		{
+			cycleClosingEdge = edge;
+			break;
+		}
+		reachable.insert(edge->strToNodeId);
+		currentNodeId = edge->strToNodeId;
+	}
+	if (reachable.size() != flow.Nodes.size())
+	{
+		outStatus = "Valtan Boss Flow contains an unreachable node or edge.";
+		return false;
+	}
+	for (const VALTAN_PATTERN_FLOW_EDGE& edge : flow.Edges)
+	{
+		const bool_t isCycleClosingEdge = &edge == cycleClosingEdge;
+		if ((isCycleClosingEdge && !edge.iMaxTraversals.has_value()) ||
+			(!isCycleClosingEdge && edge.iMaxTraversals.has_value()))
+		{
+			outStatus =
+				"Only a cycle-closing back-edge may own maxTraversals, and every back-edge must be capped.";
+			return false;
+		}
+	}
+
+	/* Simulate the deterministic cursor. A capped back-edge becomes a
+	   terminal hold when exhausted; maxTransitionsPerRun must not pre-empt
+	   the authored terminal. */
+	std::unordered_map<std::string, std::uint32_t> traversalCounts;
+	currentNodeId = flow.strEntryNodeId;
+	std::uint32_t transitionCount = 0u;
+	while (true)
+	{
+		const auto edgeAt = outgoing.find(currentNodeId);
+		if (outgoing.end() == edgeAt)
+			break;
+		const VALTAN_PATTERN_FLOW_EDGE& edge = *edgeAt->second;
+		std::uint32_t& traversals = traversalCounts[edge.strEdgeId];
+		if (edge.iMaxTraversals.has_value() &&
+			traversals >= *edge.iMaxTraversals)
+		{
+			break;
+		}
+		if (transitionCount >= flow.iMaxTransitionsPerRun)
+		{
+			outStatus =
+				"Valtan Boss Flow cannot reach its terminal within maxTransitionsPerRun.";
+			return false;
+		}
+		++traversals;
+		++transitionCount;
+		currentNodeId = edge.strToNodeId;
+	}
+
+	outStatus = "Validated Valtan Boss Flow v2: " +
+		std::to_string(flow.Nodes.size()) + " node(s), " +
+		std::to_string(flow.Edges.size()) + " edge(s).";
 	return true;
 }
 
@@ -463,20 +979,46 @@ std::string Client::CValtanPatternFlowDocument::Serialize_Text(
 		output << "    {\n"
 			<< "      \"flowId\": \""
 			<< CDataJson::Escape(flow.strFlowId) << "\",\n"
-			<< "      \"nextSlotOrdinal\": "
-			<< flow.iNextSlotOrdinal << ",\n"
-			<< "      \"interStepPursuitMs\": "
-			<< flow.iInterStepPursuitMs << ",\n"
-			<< "      \"slots\": [\n";
-		for (std::size_t slotIndex = 0u;
-			slotIndex < flow.Slots.size(); ++slotIndex)
+			<< "      \"entryNodeId\": \""
+			<< CDataJson::Escape(flow.strEntryNodeId) << "\",\n"
+			<< "      \"nextNodeOrdinal\": "
+			<< flow.iNextNodeOrdinal << ",\n"
+			<< "      \"nextEdgeOrdinal\": "
+			<< flow.iNextEdgeOrdinal << ",\n"
+			<< "      \"defaultPursuitMs\": "
+			<< flow.iDefaultPursuitMs << ",\n"
+			<< "      \"maxTransitionsPerRun\": "
+			<< flow.iMaxTransitionsPerRun << ",\n"
+			<< "      \"nodes\": [\n";
+		for (std::size_t nodeIndex = 0u;
+			nodeIndex < flow.Nodes.size(); ++nodeIndex)
 		{
-			const VALTAN_PATTERN_FLOW_SLOT& slot = flow.Slots[slotIndex];
-			output << "        { \"slotId\": \""
-				<< CDataJson::Escape(slot.strSlotId)
+			const VALTAN_PATTERN_FLOW_NODE& node = flow.Nodes[nodeIndex];
+			output << "        { \"nodeId\": \""
+				<< CDataJson::Escape(node.strNodeId)
 				<< "\", \"patternId\": \""
-				<< CDataJson::Escape(slot.strPatternId) << "\" }"
-				<< (slotIndex + 1u < flow.Slots.size() ? "," : "")
+				<< CDataJson::Escape(node.strPatternId)
+				<< "\", \"watchdogMs\": " << node.iWatchdogMs << " }"
+				<< (nodeIndex + 1u < flow.Nodes.size() ? "," : "")
+				<< "\n";
+		}
+		output << "      ],\n"
+			<< "      \"edges\": [\n";
+		for (std::size_t edgeIndex = 0u;
+			edgeIndex < flow.Edges.size(); ++edgeIndex)
+		{
+			const VALTAN_PATTERN_FLOW_EDGE& edge = flow.Edges[edgeIndex];
+			output << "        { \"edgeId\": \""
+				<< CDataJson::Escape(edge.strEdgeId)
+				<< "\", \"fromNodeId\": \""
+				<< CDataJson::Escape(edge.strFromNodeId)
+				<< "\", \"outcome\": \"COMPLETED\", \"toNodeId\": \""
+				<< CDataJson::Escape(edge.strToNodeId)
+				<< "\", \"pursuitMs\": " << edge.iPursuitMs;
+			if (edge.iMaxTraversals.has_value())
+				output << ", \"maxTraversals\": " << *edge.iMaxTraversals;
+			output << " }"
+				<< (edgeIndex + 1u < flow.Edges.size() ? "," : "")
 				<< "\n";
 		}
 		output << "      ]\n"
@@ -543,6 +1085,17 @@ bool_t Client::CValtanPatternFlowDocument::Save(
 	}
 	if (!Validate(m_Draft, admittedPatternIds, outStatus))
 		return false;
+
+	SCOPED_VALTAN_PATTERN_FLOW_WRITE_LOCK writerLock;
+	std::string lockStatus;
+	if (!writerLock.Try_Acquire(
+		CProjectDataRoot::Get().parent_path(), lockStatus))
+	{
+		outStatus =
+			"Valtan Boss Flow Save rejected before mutation: " + lockStatus +
+			". Draft and source bytes were preserved.";
+		return false;
+	}
 
 	std::string diskBytes;
 	std::string diskRevision;
@@ -714,33 +1267,41 @@ bool_t Client::CValtanPatternFlowDocument::Add_Slot(
 {
 	outStatus.clear();
 	const VALTAN_PATTERN_FLOW_DEFINITION* current = Get_DefaultFlow();
-	if (nullptr == current || current->Slots.size() >= MAX_SLOTS ||
-		current->iNextSlotOrdinal > MAX_SLOT_ORDINAL ||
+	if (nullptr == current || !Has_LegacyLinearProjection(*current) ||
+		current->Nodes.size() >= MAX_NODES ||
+		current->iNextNodeOrdinal > MAX_NODE_ORDINAL ||
 		admittedPatternIds.end() == std::find(
 			admittedPatternIds.begin(), admittedPatternIds.end(), patternId))
 	{
-		outStatus = "Valtan Boss Flow cannot add this pattern or has reached 255 slots.";
+		outStatus =
+			"Valtan Boss Flow cannot add this pattern, is not a linear compatibility graph, or has reached 255 nodes.";
 		return false;
 	}
 
 	VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT staged = m_Draft;
 	VALTAN_PATTERN_FLOW_DEFINITION& flow = staged.Flows.front();
-	const std::string slotId = Build_SlotId(
-		flow.strFlowId, flow.iNextSlotOrdinal);
+	const std::string nodeId = Build_OrdinalId(
+		flow.strFlowId, "node", flow.iNextNodeOrdinal);
 	const bool_t bEntryPattern = OPTIONAL_ENTRY_PATTERN_ID == patternId;
-	const VALTAN_PATTERN_FLOW_SLOT StagedSlot{
-		slotId, std::string(patternId) };
+	flow.Nodes.push_back({
+		nodeId, std::string(patternId), DEFAULT_NODE_WATCHDOG_MS });
+	std::vector<std::string> orderedNodeIds;
+	orderedNodeIds.reserve(flow.Slots.size() + 1u);
+	for (const VALTAN_PATTERN_FLOW_SLOT& slot : flow.Slots)
+		orderedNodeIds.push_back(slot.strSlotId);
 	if (bEntryPattern)
-		flow.Slots.insert(flow.Slots.begin(), StagedSlot);
+		orderedNodeIds.insert(orderedNodeIds.begin(), nodeId);
 	else
-		flow.Slots.push_back(StagedSlot);
-	++flow.iNextSlotOrdinal;
+		orderedNodeIds.push_back(nodeId);
+	++flow.iNextNodeOrdinal;
+	if (!Rebuild_LinearFlow(flow, orderedNodeIds, outStatus))
+		return false;
 	if (!Validate(staged, admittedPatternIds, outStatus))
 		return false;
 	m_Draft = std::move(staged);
-	outSlotId = slotId;
-	outStatus = "Added " + std::string(patternId) + " as " + slotId +
-		(bEntryPattern ? " at the first Flow slot." : ".");
+	outSlotId = nodeId;
+	outStatus = "Added " + std::string(patternId) + " as " + nodeId +
+		(bEntryPattern ? " at the Flow entry node." : ".");
 	return true;
 }
 
@@ -754,9 +1315,11 @@ bool_t Client::CValtanPatternFlowDocument::Move_Slot(
 	const VALTAN_PATTERN_FLOW_DEFINITION* current =
 		m_bReady && 1u == m_Draft.Flows.size() ?
 			&m_Draft.Flows.front() : nullptr;
-	if (nullptr == current || (delta != -1 && delta != 1))
+	if (nullptr == current || !Has_LegacyLinearProjection(*current) ||
+		(delta != -1 && delta != 1))
 	{
-		outStatus = "Valtan Boss Flow move requires a loaded flow and delta -1 or +1.";
+		outStatus =
+			"Valtan Boss Flow move requires a loaded linear graph and delta -1 or +1.";
 		return false;
 	}
 	const auto found = std::find_if(
@@ -781,9 +1344,15 @@ bool_t Client::CValtanPatternFlowDocument::Move_Slot(
 
 	VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT staged = m_Draft;
 	VALTAN_PATTERN_FLOW_DEFINITION& flow = staged.Flows.front();
+	std::vector<std::string> orderedNodeIds;
+	orderedNodeIds.reserve(flow.Slots.size());
+	for (const VALTAN_PATTERN_FLOW_SLOT& slot : flow.Slots)
+		orderedNodeIds.push_back(slot.strSlotId);
 	std::iter_swap(
-		flow.Slots.begin() + source,
-		flow.Slots.begin() + destination);
+		orderedNodeIds.begin() + source,
+		orderedNodeIds.begin() + destination);
+	if (!Rebuild_LinearFlow(flow, orderedNodeIds, outStatus))
+		return false;
 	if (!Validate(staged, admittedPatternIds, outStatus))
 		return false;
 	m_Draft = std::move(staged);
@@ -796,27 +1365,55 @@ bool_t Client::CValtanPatternFlowDocument::Remove_Slot(
 	std::string& outStatus)
 {
 	outStatus.clear();
-	VALTAN_PATTERN_FLOW_DEFINITION* flow =
+	const VALTAN_PATTERN_FLOW_DEFINITION* current =
 		m_bReady && 1u == m_Draft.Flows.size() ?
 			&m_Draft.Flows.front() : nullptr;
-	if (nullptr == flow)
+	if (nullptr == current || !Has_LegacyLinearProjection(*current))
 	{
-		outStatus = "Valtan Boss Flow must be loaded before removing a slot.";
+		outStatus =
+			"Valtan Boss Flow must be a loaded linear graph before removing a node.";
 		return false;
 	}
 	const auto found = std::find_if(
-		flow->Slots.begin(), flow->Slots.end(),
+		current->Slots.begin(), current->Slots.end(),
 		[slotId](const VALTAN_PATTERN_FLOW_SLOT& slot)
 		{
 			return slot.strSlotId == slotId;
 		});
-	if (found == flow->Slots.end())
+	if (found == current->Slots.end())
 	{
-		outStatus = "Valtan Boss Flow slot no longer exists.";
+		outStatus = "Valtan Boss Flow node no longer exists.";
 		return false;
 	}
-	flow->Slots.erase(found);
-	outStatus = "Removed Valtan Boss Flow slot " + std::string(slotId) + ".";
+	if (1u == current->Slots.size())
+	{
+		outStatus = "The default Valtan Flow must retain at least one node.";
+		return false;
+	}
+
+	VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT staged = m_Draft;
+	VALTAN_PATTERN_FLOW_DEFINITION& flow = staged.Flows.front();
+	flow.Nodes.erase(std::remove_if(
+		flow.Nodes.begin(), flow.Nodes.end(),
+		[slotId](const VALTAN_PATTERN_FLOW_NODE& node)
+		{
+			return node.strNodeId == slotId;
+		}), flow.Nodes.end());
+	std::vector<std::string> orderedNodeIds;
+	orderedNodeIds.reserve(current->Slots.size() - 1u);
+	for (const VALTAN_PATTERN_FLOW_SLOT& slot : current->Slots)
+	{
+		if (slot.strSlotId != slotId)
+			orderedNodeIds.push_back(slot.strSlotId);
+	}
+	if (!Rebuild_LinearFlow(flow, orderedNodeIds, outStatus))
+		return false;
+	const std::vector<std::string> admitted =
+		Build_CurrentPatternInventory(flow);
+	if (!Validate(staged, admitted, outStatus))
+		return false;
+	m_Draft = std::move(staged);
+	outStatus = "Removed Valtan Boss Flow node " + std::string(slotId) + ".";
 	return true;
 }
 
@@ -825,18 +1422,97 @@ bool_t Client::CValtanPatternFlowDocument::Set_InterStepPursuitMs(
 	std::string& outStatus)
 {
 	outStatus.clear();
-	VALTAN_PATTERN_FLOW_DEFINITION* flow =
+	const VALTAN_PATTERN_FLOW_DEFINITION* current =
 		m_bReady && 1u == m_Draft.Flows.size() ?
 			&m_Draft.Flows.front() : nullptr;
-	if (nullptr == flow || milliseconds < MIN_INTER_STEP_PURSUIT_MS ||
+	if (nullptr == current || milliseconds < MIN_INTER_STEP_PURSUIT_MS ||
 		milliseconds > MAX_INTER_STEP_PURSUIT_MS)
 	{
 		outStatus = "Valtan Boss Flow pursuit interval must be 100..10000 ms.";
 		return false;
 	}
-	flow->iInterStepPursuitMs = milliseconds;
-	outStatus = "Updated Valtan Boss Flow pursuit interval.";
+	VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT staged = m_Draft;
+	VALTAN_PATTERN_FLOW_DEFINITION& flow = staged.Flows.front();
+	flow.iDefaultPursuitMs = milliseconds;
+	if (Has_LegacyLinearProjection(*current))
+	{
+		for (VALTAN_PATTERN_FLOW_EDGE& edge : flow.Edges)
+			edge.iPursuitMs = milliseconds;
+	}
+	(void)Build_LegacyProjection(flow);
+	const std::vector<std::string> admitted =
+		Build_CurrentPatternInventory(flow);
+	if (!Validate(staged, admitted, outStatus))
+		return false;
+	m_Draft = std::move(staged);
+	outStatus = "Updated Valtan Boss Flow default pursuit interval.";
 	return true;
+}
+
+bool_t Client::CValtanPatternFlowDocument::Set_NodeWatchdogMs(
+	const std::string_view nodeId,
+	const std::uint32_t milliseconds,
+	const std::vector<std::string>& admittedPatternIds,
+	std::string& outStatus)
+{
+	outStatus.clear();
+	if (!m_bReady ||
+		(0u != milliseconds &&
+		 (milliseconds < MIN_NODE_WATCHDOG_MS ||
+		  milliseconds > MAX_NODE_WATCHDOG_MS)))
+	{
+		outStatus =
+			"Node watchdog must be disabled (0) or within 1000..300000 ms.";
+		return false;
+	}
+	VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT staged = m_Draft;
+	VALTAN_PATTERN_FLOW_DEFINITION& flow = staged.Flows.front();
+	const auto found = std::find_if(
+		flow.Nodes.begin(), flow.Nodes.end(),
+		[nodeId](const VALTAN_PATTERN_FLOW_NODE& node)
+		{
+			return node.strNodeId == nodeId;
+		});
+	if (flow.Nodes.end() == found)
+	{
+		outStatus = "Valtan Boss Flow node no longer exists.";
+		return false;
+	}
+	found->iWatchdogMs = milliseconds;
+	(void)Build_LegacyProjection(flow);
+	if (!Validate(staged, admittedPatternIds, outStatus))
+		return false;
+	m_Draft = std::move(staged);
+	outStatus = "Updated Valtan Boss Flow node watchdog.";
+	return true;
+}
+
+bool_t Client::CValtanPatternFlowDocument::Set_MaxTransitionsPerRun(
+	const std::uint32_t transitions,
+	const std::vector<std::string>& admittedPatternIds,
+	std::string& outStatus)
+{
+	outStatus.clear();
+	if (!m_bReady || transitions < MIN_TRANSITIONS_PER_RUN ||
+		transitions > MAX_TRANSITIONS_PER_RUN)
+	{
+		outStatus =
+			"Flow transition watchdog must be within 1..4096 transitions.";
+		return false;
+	}
+	VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT staged = m_Draft;
+	staged.Flows.front().iMaxTransitionsPerRun = transitions;
+	if (!Validate(staged, admittedPatternIds, outStatus))
+		return false;
+	m_Draft = std::move(staged);
+	outStatus = "Updated Valtan Boss Flow transition watchdog.";
+	return true;
+}
+
+bool Client::CValtanPatternFlowDocument::Has_LegacyLinearProjection(
+	const VALTAN_PATTERN_FLOW_DEFINITION& flow) noexcept
+{
+	return !flow.Nodes.empty() && flow.Slots.size() == flow.Nodes.size();
 }
 
 bool_t Client::CValtanPatternFlowDocument::Is_Dirty() const noexcept

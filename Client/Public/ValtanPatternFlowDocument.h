@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -16,9 +17,50 @@ namespace Client
 		bool operator==(const VALTAN_PATTERN_FLOW_SLOT&) const = default;
 	};
 
+	enum class VALTAN_PATTERN_FLOW_EDGE_OUTCOME : std::uint8_t
+	{
+		COMPLETED,
+		END
+	};
+
+	struct VALTAN_PATTERN_FLOW_NODE final
+	{
+		std::string strNodeId;
+		std::string strPatternId;
+		// Zero disables the optional per-pattern watchdog.
+		std::uint32_t iWatchdogMs = 0u;
+
+		bool operator==(const VALTAN_PATTERN_FLOW_NODE&) const = default;
+	};
+
+	struct VALTAN_PATTERN_FLOW_EDGE final
+	{
+		std::string strEdgeId;
+		std::string strFromNodeId;
+		VALTAN_PATTERN_FLOW_EDGE_OUTCOME eOutcome =
+			VALTAN_PATTERN_FLOW_EDGE_OUTCOME::COMPLETED;
+		std::string strToNodeId;
+		std::uint32_t iPursuitMs = 1000u;
+		std::optional<std::uint32_t> iMaxTraversals;
+
+		bool operator==(const VALTAN_PATTERN_FLOW_EDGE&) const = default;
+	};
+
 	struct VALTAN_PATTERN_FLOW_DEFINITION final
 	{
 		std::string strFlowId;
+		std::string strEntryNodeId;
+		std::uint64_t iNextNodeOrdinal = 1u;
+		std::uint64_t iNextEdgeOrdinal = 1u;
+		std::uint32_t iDefaultPursuitMs = 1000u;
+		std::uint32_t iMaxTransitionsPerRun = 255u;
+		std::vector<VALTAN_PATTERN_FLOW_NODE> Nodes;
+		std::vector<VALTAN_PATTERN_FLOW_EDGE> Edges;
+
+		/* Transitional read-only projection for the existing Boss Tool and
+		   ordered Server audition command. It is populated only when the v2
+		   graph is one acyclic COMPLETED chain whose edge pursuit values all
+		   equal defaultPursuitMs. It is never serialized. */
 		std::uint64_t iNextSlotOrdinal = 1u;
 		std::uint32_t iInterStepPursuitMs = 1000u;
 		std::vector<VALTAN_PATTERN_FLOW_SLOT> Slots;
@@ -28,7 +70,7 @@ namespace Client
 
 	struct VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT final
 	{
-		std::uint32_t iFormatVersion = 1u;
+		std::uint32_t iFormatVersion = 2u;
 		std::vector<VALTAN_PATTERN_FLOW_DEFINITION> Flows;
 
 		bool operator==(
@@ -42,9 +84,17 @@ namespace Client
 	{
 	public:
 		// Must match the one-byte shared Pattern Flow wire count.
-		static constexpr std::size_t MAX_SLOTS = 255u;
+		static constexpr std::size_t MAX_NODES = 255u;
+		static constexpr std::size_t MAX_EDGES = 255u;
+		static constexpr std::size_t MAX_SLOTS = MAX_NODES;
 		static constexpr std::uint32_t MIN_INTER_STEP_PURSUIT_MS = 100u;
 		static constexpr std::uint32_t MAX_INTER_STEP_PURSUIT_MS = 10000u;
+		static constexpr std::uint32_t MIN_NODE_WATCHDOG_MS = 1000u;
+		static constexpr std::uint32_t MAX_NODE_WATCHDOG_MS = 300000u;
+		static constexpr std::uint32_t DEFAULT_NODE_WATCHDOG_MS = 0u;
+		static constexpr std::uint32_t MIN_TRANSITIONS_PER_RUN = 1u;
+		static constexpr std::uint32_t MAX_TRANSITIONS_PER_RUN = 4096u;
+		static constexpr std::uint32_t MAX_EDGE_TRAVERSALS = 255u;
 		static constexpr std::string_view DEFAULT_FLOW_ID =
 			"flow.valtan.boss-tool.default";
 
@@ -95,6 +145,18 @@ namespace Client
 		bool Set_InterStepPursuitMs(
 			std::uint32_t milliseconds,
 			std::string& outStatus);
+		bool Set_NodeWatchdogMs(
+			std::string_view nodeId,
+			std::uint32_t milliseconds,
+			const std::vector<std::string>& admittedPatternIds,
+			std::string& outStatus);
+		bool Set_MaxTransitionsPerRun(
+			std::uint32_t transitions,
+			const std::vector<std::string>& admittedPatternIds,
+			std::string& outStatus);
+
+		static bool Has_LegacyLinearProjection(
+			const VALTAN_PATTERN_FLOW_DEFINITION& flow) noexcept;
 
 		bool Is_Ready() const noexcept { return m_bReady; }
 		bool Is_Dirty() const noexcept;
