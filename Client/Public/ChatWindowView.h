@@ -10,7 +10,7 @@
 
 NS_BEGIN(Client)
 
-class CUITextureCache;
+class CUILayoutRuntime;
 class IPlayerCommandSink;
 
 /* Release-safe chat overlay: a scrollback log over the extracted semi-transparent panel art
@@ -23,7 +23,11 @@ relay is what CWorldPlayerChatBubbleView reads to show a bubble above senders' h
 class CChatWindowView final
 {
 public:
-	explicit CChatWindowView(ComPtr<ID3D11Device> pDevice);
+	/* Real CUI_Sprite GameObjects on LEVEL::STATIC's own "Layer_UI" (Data/UI/Chat/
+	   ChatWindow_Layout.json); the log lines, channel label, typed text and IME composition
+	   preview draw in the LOA-font text pass. Nothing here uses ImGui. */
+	CChatWindowView(
+		ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 	~CChatWindowView();
 
 public:
@@ -40,14 +44,18 @@ public:
 	/* Drops focus from the input line without submitting whatever was being typed. */
 	void Close_Input();
 
-	/* No-op once HIDE_AFTER_SECONDS have passed since the last activity (a submitted message
-	or the input line being focused) with no active focus -- the whole window (log + input
-	bar) disappears until the next Open_Input()/submit. Otherwise draws the scrollback log and
-	the input bar every call. Submitting a non-empty line (Enter inside the focused InputText)
-	timestamps it, appends it to the log, clears the buffer, refreshes the fade timer, and
-	keeps focus for the next line -- Escape drops focus via Close_Input() without hiding the
-	window early (the fade timer still governs that). */
+	/* Hides everything once HIDE_AFTER_SECONDS have passed since the last activity (a submitted
+	message or the input line being focused) with no active focus -- the whole window (log +
+	input bar) disappears until the next Open_Input()/submit. Otherwise keeps the panel sprites
+	visible and drains this frame's typed characters from CUIInputRouter. Submitting a non-empty
+	line (Enter) timestamps it, appends it to the log, clears the buffer, refreshes the fade
+	timer, and keeps focus for the next line -- Escape drops focus via Close_Input() without
+	hiding the window early (the fade timer still governs that). */
 	void Render(const std::shared_ptr<IPlayerCommandSink>& pCommandSink);
+	/* Log lines, the "일반" channel label, the typed text, the IME composition preview and the
+	caret. Split out because CGameInstance::Draw_Text submits its SpriteBatch immediately, so it
+	belongs in the post-EndFrame text pass rather than alongside the sprite state above. */
+	void RenderText();
 
 private:
 	struct CHAT_LOG_LINE
@@ -62,11 +70,19 @@ private:
 	static constexpr std::chrono::seconds HIDE_AFTER{ 30 };
 
 private:
-	unique_ptr<CUITextureCache> m_pTextureCache;
+	void Hide_AllSlots();
+	/* True while this frame's sprites are shown -- RenderText only draws over a visible panel. */
+	bool_t Is_Visible() const;
+
+private:
+	unique_ptr<CUILayoutRuntime> m_pView;
 
 	bool_t m_bInputOpen = false;
 	bool_t m_bFocusPending = false;
 	char_t m_InputBuffer[INPUT_BUFFER_SIZE] = {};
+	/* UTF-16 edit buffer the WM_CHAR stream (CUIInputRouter) appends to; re-encoded into
+	m_InputBuffer, which stays the UTF-8 contract Request_SendChat and the log lines use. */
+	wstring_t m_InputDraftW;
 	vector<CHAT_LOG_LINE> m_LogLines;
 	std::chrono::steady_clock::time_point m_HideDeadline =
 		std::chrono::steady_clock::now() + HIDE_AFTER;

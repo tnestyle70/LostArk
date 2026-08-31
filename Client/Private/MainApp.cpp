@@ -12,7 +12,6 @@
 #include "Effect_Object.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
-#include "HUDRuntimeView.h"
 #include "ImGuiLayer.h"
 #include "ItemCatalog.h"
 #include "LevelRegistry.h"
@@ -38,6 +37,8 @@
 #include "ClickMoveEffect.h"
 #include "SoundCueCatalog.h"
 #include "UI_Sprite.h"
+#include "UIInputRouter.h"
+#include "UILayoutRuntime.h"
 
 #ifdef _DEBUG
 #include "Animation_Tool.h"
@@ -60,6 +61,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -72,6 +74,16 @@
 
 namespace
 {
+	/* Product-path wall clock (seconds since first call) -- replaces ImGui::GetTime() in every
+	non-Debug timer here, so no product state machine depends on the ImGui frame loop. */
+	f64_t Product_Now_Seconds()
+	{
+		static const std::chrono::steady_clock::time_point s_Epoch =
+			std::chrono::steady_clock::now();
+		return std::chrono::duration<f64_t>(
+			std::chrono::steady_clock::now() - s_Epoch).count();
+	}
+
 	struct LOBBY_PRODUCT_BUTTON
 	{
 		const char_t* pSlotId;
@@ -111,7 +123,7 @@ namespace
 	}
 
 	bool_t Resolve_LobbyProductButtonRects(
-		CHUDRuntimeView* pView,
+		Client::CUILayoutRuntime* pView,
 		std::array<LOBBY_PRODUCT_RECT, LOBBY_PRODUCT_BUTTONS.size()>& outRects)
 	{
 		if (nullptr == pView)
@@ -175,7 +187,7 @@ namespace
 	"selected item" name label), Update_ItemUpgradeSelection (click-to-select + icon swap), and
 	the success/fail detail text so the id/name/icon triple has exactly one source. Built fresh
 	from the real replicated inventory each time it's needed (cheap in-memory filter, same cost
-	class as CInventoryView::Render's own per-frame rebuild) rather than cached, so a fresh
+	class as CInventoryView::Update's own per-frame rebuild) rather than cached, so a fresh
 	S2C_INVENTORY_SNAPSHOT (e.g. right after the Valtan clear rewards land) is reflected the very
 	next frame with no separate invalidation path. */
 	struct ITEM_UPGRADE_SLOT_INFO
@@ -222,6 +234,50 @@ namespace
 		}
 		return slots;
 	}
+
+	/* Every slot ItemUpgradeUI.json authors, for Hide_ItemUpgrade (all false) and
+	Open_ItemUpgradeWindow's own initial "show everything" pass (all true, before the existing
+	explicit hides for the completion-effect/modal/result slots that must start hidden run on top
+	of it) -- CUILayoutRuntime has no generic Render(class, revision) pass to fall back on the way
+	CHUDRuntimeView did, so every one of these 97 authored slots needs an explicit visibility
+	owner now instead of an implicit "wasn't drawn this frame". */
+	constexpr const char_t* ITEM_UPGRADE_ALL_SLOTS[] =
+	{
+		"ItemUpgrade_SuccessModalBg", "ItemUpgrade_PanelBg", "ItemUpgrade_RecipeIconBgExample",
+		"ItemUpgrade_RecipeMaterial0", "ItemUpgrade_RecipeAmount0", "ItemUpgrade_RecipeIconBg1",
+		"ItemUpgrade_RecipeMaterial1", "ItemUpgrade_RecipeAmount1", "ItemUpgrade_RecipeIconBg2",
+		"ItemUpgrade_RecipeMaterial2", "ItemUpgrade_RecipeAmount2", "ItemUpgrade_DecoIcon",
+		"ItemUpgrade_LevelUpMotion2Big", "ItemUpgrade_GaugeFill", "ItemUpgrade_WingedRingGold",
+		"ItemUpgrade_SelectedItemIconBounds", "ItemUpgrade_LevelUpBtn", "ItemUpgrade_EquipExpPageLine",
+		"ItemUpgrade_SmeltGlow", "ItemUpgrade_CoreFlash", "ItemUpgrade_ShockwaveRing",
+		"ItemUpgrade_CompleteEffect", "ItemUpgrade_WingDecoFade", "ItemUpgrade_LeftListBg",
+		"ItemUpgrade_ListGradeBg0", "ItemUpgrade_SelectedItemGradeBg", "ItemUpgrade_SelectedItemIcon",
+		"ItemUpgrade_ItemNameLabel", "ItemUpgrade_CurLevelLabel", "ItemUpgrade_NextLevelLabel",
+		"ItemUpgrade_ListGradeBg1", "ItemUpgrade_ListGradeBg2", "ItemUpgrade_ListGradeBg3",
+		"ItemUpgrade_RightGradeListBg", "ItemUpgrade_GradeRowEmblem0", "ItemUpgrade_GradeRowEmblem1",
+		"ItemUpgrade_GradeRowEmblem2", "ItemUpgrade_GradeRowEmblem3", "ItemUpgrade_GradeRowEmblem4",
+		"ItemUpgrade_GradeRowEmblem5", "ItemUpgrade_GradeRowEmblem6", "ItemUpgrade_GradeStripB0",
+		"ItemUpgrade_GradeStripB1", "ItemUpgrade_ListSelectedExample", "ItemUpgrade_GradeStripB2",
+		"ItemUpgrade_GradeStripB6", "ItemUpgrade_GradeStripB5", "ItemUpgrade_GradeStripB4",
+		"ItemUpgrade_GradeStripB3", "ItemUpgrade_GradeSelectedExample", "ItemUpgrade_ListItemIcon0",
+		"ItemUpgrade_ReforgeButton", "ItemUpgrade_ListLevel0", "ItemUpgrade_ListItemName0",
+		"ItemUpgrade_ListLevel1", "ItemUpgrade_ListItemName1", "ItemUpgrade_ListLevel2",
+		"ItemUpgrade_ListItemName2", "ItemUpgrade_ListLevel3", "ItemUpgrade_ListItemName3",
+		"ItemUpgrade_ListLevel4", "ItemUpgrade_ListItemName4", "ItemUpgrade_ListLevel5",
+		"ItemUpgrade_ListItemName5", "ItemUpgrade_GradeRowText6", "ItemUpgrade_GradeRowText0",
+		"ItemUpgrade_GradeRowText5", "ItemUpgrade_GradeRowText1", "ItemUpgrade_GradeRowText4",
+		"ItemUpgrade_GradeRowText2", "ItemUpgrade_GradeRowText3", "ItemUpgrade_ListItemIcon1",
+		"ItemUpgrade_ListItemIcon2", "ItemUpgrade_ListItemIcon3", "ItemUpgrade_ListItemIcon4",
+		"ItemUpgrade_ListGradeBg4", "ItemUpgrade_ListGradeBg5", "ItemUpgrade_LevelArrowBase",
+		"ItemUpgrade_LevelArrow", "ItemUpgrade_ListItemIcon5", "ItemUpgrade_FailModalBg",
+		"ItemUpgrade_ResultWaitBg", "ItemUpgrade_ResultWaitEmblem", "ItemUpgrade_SuccessEffect",
+		"ItemUpgrade_FailEffect", "ItemUpgrade_SuccessDiamondWinged", "ItemUpgrade_SuccessDiamondFrame",
+		"ItemUpgrade_SuccessItemIconMarker", "ItemUpgrade_SuccessItemNameMarker",
+		"ItemUpgrade_SuccessGradeMarker", "ItemUpgrade_SuccessStatusMarker",
+		"ItemUpgrade_FailDiamondFrame", "ItemUpgrade_FailItemIconMarker",
+		"ItemUpgrade_FailItemNameMarker", "ItemUpgrade_FailStatusMarker",
+		"ItemUpgrade_SuccessOkBtn", "ItemUpgrade_FailOkBtn",
+	};
 
 #ifdef _DEBUG
 
@@ -301,6 +357,13 @@ void CMainApp::Open_ItemUpgradeWindow()
 		return;
 
 	m_bItemUpgradePreviewVisible = true;
+	/* Show every authored slot first (Hide_ItemUpgrade's own inverse) -- unlike the old
+	CHUDRuntimeView generic Render(class, revision) pass, a CUI_Sprite has no implicit
+	"wasn't drawn this frame" default, so every slot needs an explicit owner. The explicit hides
+	right below (100%-only art, modal/result slots) then apply on top of this, same as before. */
+	for (const char_t* pSlotId : ITEM_UPGRADE_ALL_SLOTS)
+		m_pItemUpgradeView->Set_SlotVisible(pSlotId, true);
+
 	/* Reopening always starts the gauge idle at 0 -- reset the state machine and hide
 	the 100%-only art so a completed run from a previous open doesn't carry over. */
 	m_iItemUpgradePreviousPercent = 0;
@@ -330,6 +393,192 @@ void CMainApp::Open_ItemUpgradeWindow()
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailDiamondFrame", false);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailItemIconMarker", false);
 	Set_ItemUpgradeCenterPanelVisible(true);
+}
+
+void CMainApp::Hide_ItemUpgrade()
+{
+	if (nullptr == m_pItemUpgradeView)
+		return;
+	for (const char_t* pSlotId : ITEM_UPGRADE_ALL_SLOTS)
+		m_pItemUpgradeView->Set_SlotVisible(pSlotId, false);
+}
+
+void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
+{
+	if (nullptr == m_pItemUpgradeView)
+		return;
+
+	/* The P key toggle has no level awareness of its own (see m_pItemUpgradeView's declaration
+	comment), so m_bItemUpgradePreviewVisible can go true while sitting in a level
+	Update_CombatHUD never supported (e.g. Lobby) -- same level set as Update_CombatHUD's own gate.
+	Unlike the old ImGui pass (which simply wasn't reached and drew nothing there), these slots
+	live under LEVEL::STATIC and would otherwise show through regardless of level. */
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	const bool_t isSupportedLevel =
+		currentLevel == ETOUI(LEVEL::BERN) ||
+		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
+		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT);
+	if (!m_bItemUpgradePreviewVisible || !isSupportedLevel)
+	{
+		Hide_ItemUpgrade();
+		return;
+	}
+
+	/* Drives every "animation.frames" flipbook this view owns that ISN'T manually pinned below
+	(SmeltGlow's idle loop, CoreFlash/ShockwaveRing/CompleteEffect/WingDecoFade/ResultWaitEmblem/
+	SuccessEffect/FailEffect) off real elapsed time -- GaugeFill is the one slot this function
+	pins to an exact frame every tick instead (see below), same as CHUDRuntimeView's own
+	Set_Animation_Frame override did before this migration. */
+	m_pItemUpgradeView->Update(fTimeDelta);
+
+	Update_ItemUpgradeSelection();
+	Update_ItemUpgradeGrowButton();
+	/* Wait-click checked before Reforge triggers a new WAITING -- both react to the same
+	real left-click-down-edge this frame, so if Reforge ran first the very click that opened the
+	wait overlay would also satisfy the wait-click's "clicked anywhere" check and reveal on the
+	same frame it appeared. */
+	Update_ItemUpgradeResultWaitClick();
+	Update_ItemUpgradeReforgeButton();
+	Update_ItemUpgradeResultOkButton();
+
+	/* No real Server 재련 percent exists yet (see m_pItemUpgradeView's declaration comment), so
+	the gauge is a manual state machine driven by ItemUpgrade_LevelUpBtn's click
+	(Update_ItemUpgradeGrowButton) instead of a free-running clock. Idle at 0 until clicked;
+	0->100 fill plays once per click; holds at 100 until the next click. Once a real gauge value
+	exists this should read it the same way Update_LanceMasterIdentityGauge() reads
+	player.iCurrentIdentity, not this state. */
+	if (m_bItemUpgradeGrowing)
+	{
+		constexpr f32_t GAUGE_FILL_FPS = 45.f;
+		constexpr f32_t GAUGE_FILL_FRAME_COUNT = 100.f;
+		const f32_t fCycleSeconds = GAUGE_FILL_FRAME_COUNT / GAUGE_FILL_FPS;
+		const f64_t fElapsed = Product_Now_Seconds() - m_dItemUpgradeGrowStartSeconds;
+		const int32_t iPercent = std::clamp(
+			static_cast<int32_t>(fElapsed / fCycleSeconds * GAUGE_FILL_FRAME_COUNT),
+			0, 100);
+
+		if (100 <= iPercent)
+		{
+			m_iItemUpgradePreviousPercent = 100;
+			m_bItemUpgradeGrowing = false;
+			/* Alpha starts at 0 here -- Set_SlotVisible only lifts bForceHidden (both slots
+			become drawable this same frame), the actual reveal is the fade-in progress block
+			below, driven by m_dItemUpgradeCompleteRevealStartSeconds. */
+			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_WingedRingGold", true);
+			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_LevelUpMotion2Big", true);
+			m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", 0.f);
+			m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", 0.f);
+			m_dItemUpgradeCompleteRevealStartSeconds = Product_Now_Seconds();
+			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_CompleteEffect", true);
+			m_pItemUpgradeView->Restart_Animation("ItemUpgrade_CompleteEffect");
+		}
+		else
+		{
+			m_iItemUpgradePreviousPercent = iPercent;
+			/* GaugeFill's own AnimationFrames clock starts independently once this slot's first
+			frame plays, so it would otherwise drift out of phase with iPercent (which is
+			anchored to m_dItemUpgradeGrowStartSeconds) -- pin it to the exact frame every tick
+			instead of letting the two clocks disagree about what "63%" looks like. */
+			m_pItemUpgradeView->Set_Animation_Frame("ItemUpgrade_GaugeFill", iPercent);
+		}
+	}
+	else if (100 == m_iItemUpgradePreviousPercent)
+	{
+		/* Held-100 state: nothing re-pins this once growing flips false above, so without this
+		GaugeFill's own looping AnimationFrames clock (JSON loop=true, 100 frames/45fps) would
+		free-run straight past frame 99 and repeat the whole 0->100 sweep visually even though
+		m_iItemUpgradePreviousPercent correctly stays at 100. */
+		m_pItemUpgradeView->Set_Animation_Frame("ItemUpgrade_GaugeFill", 99);
+
+		if (m_dItemUpgradeCompleteRevealStartSeconds >= 0.0)
+		{
+			constexpr f64_t REVEAL_FADE_SECONDS = 0.45;
+			const f32_t fFadeAlpha = static_cast<f32_t>(std::clamp(
+				(Product_Now_Seconds() - m_dItemUpgradeCompleteRevealStartSeconds) / REVEAL_FADE_SECONDS,
+				0.0, 1.0));
+			m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", fFadeAlpha);
+			m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", fFadeAlpha);
+		}
+	}
+
+	/* CoreFlash fires exactly once, the same frame Update_ItemUpgradeGrowButton starts a fill;
+	ShockwaveRing is scheduled for CoreFlash's own real duration (28 frames/20fps) later so the
+	two real Scaleform layers play in their authored order instead of together (real ordering:
+	coreLevelEffect1 before compF_shockwave_red inside levelUpMotion_mc). */
+	if (m_bItemUpgradeCoreFlashPending)
+	{
+		m_pItemUpgradeView->Restart_Animation("ItemUpgrade_CoreFlash");
+		constexpr f64_t CORE_FLASH_DURATION_SECONDS = 28.0 / 20.0;
+		m_dItemUpgradeShockwaveScheduledAt = Product_Now_Seconds() + CORE_FLASH_DURATION_SECONDS;
+		m_bItemUpgradeCoreFlashPending = false;
+	}
+	if (m_dItemUpgradeShockwaveScheduledAt >= 0.0 &&
+		Product_Now_Seconds() >= m_dItemUpgradeShockwaveScheduledAt)
+	{
+		m_pItemUpgradeView->Restart_Animation("ItemUpgrade_ShockwaveRing");
+		m_dItemUpgradeShockwaveScheduledAt = -1.0;
+	}
+	if (m_dItemUpgradeResultSettleAt >= 0.0 && Product_Now_Seconds() >= m_dItemUpgradeResultSettleAt)
+	{
+		// Burst's real one-shot duration is over -- swap the circle+burst out for the settled
+		// icon/name/result content (RenderItemUpgradeSuccessDetailText/FailDetailText gate on
+		// this same "settled" condition -- m_dItemUpgradeResultSettleAt < 0.0 while
+		// SUCCESS/FAIL is showing -- so the text appears in lockstep with this reveal).
+		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", false);
+		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessEffect", false);
+		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailEffect", false);
+
+		const bool_t bSuccess = m_bItemUpgradePendingAttemptSuccess;
+		const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
+		const bool_t bHasSelection = !upgradeSlots.empty();
+		const int32_t iSelectedSlot = bHasSelection ? std::clamp(
+			m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(upgradeSlots.size()) - 1) : 0;
+		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessOkBtn", bSuccess);
+		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailOkBtn", !bSuccess);
+		// Real success_mc/fail_mc detail: a decorative frame + item icon sit behind the settled
+		// result text (real local placements traced from ItemBuildUpLevelWndContent's own
+		// success_mc/fail_mc timelines). Real in-game capture shows just icon/name/result -- no
+		// wide winged ribbon banner -- so SuccessDiamondWinged is never shown. Same frame for
+		// both outcomes now (SuccessDiamondFrame reused for fail too) -- FailDiamondFrame is
+		// never shown.
+		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessDiamondFrame", true);
+		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessItemIconMarker", bSuccess);
+		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailItemIconMarker", !bSuccess);
+		if (bHasSelection)
+		{
+			if (bSuccess)
+			{
+				// Same real icon already shown in the base window's ItemUpgrade_SelectedItemIcon --
+				// the item being reforged doesn't change just because the result modal is up.
+				m_pItemUpgradeView->Set_SlotTexture(
+					"ItemUpgrade_SuccessItemIconMarker", upgradeSlots[iSelectedSlot].strIconPath);
+				// The actual level-up: a real 재련 success raises this item's own tracked level by
+				// 1, so the left list / right ladder / center 현재-다음 all read the new level once
+				// this result is dismissed. A fail leaves the level untouched.
+				++ItemUpgradeLevelRef(upgradeSlots[iSelectedSlot].strItemId);
+			}
+			else
+			{
+				m_pItemUpgradeView->Set_SlotTexture(
+					"ItemUpgrade_FailItemIconMarker", upgradeSlots[iSelectedSlot].strIconPath);
+			}
+		}
+		m_dItemUpgradeResultSettleAt = -1.0;
+	}
+
+	/* Idle (not growing, held at 0) is the only state SmeltGlow's own JSON loop should be
+	visible in -- hidden for the rest of the fill and at 100% so it doesn't glow underneath the
+	completion art. WingedRingGold/LevelUpMotion2Big/CompleteEffect are the inverse: hidden
+	everywhere except the held-100 state set above. A fresh click (Update_ItemUpgradeGrowButton)
+	re-hides all three the same frame it restarts the fill from 0. */
+	const bool_t bIdle = !m_bItemUpgradeGrowing && 0 == m_iItemUpgradePreviousPercent;
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SmeltGlow", bIdle);
+	/* Idle has no per-frame branch above to pin this itself (unlike the growing/held-100
+	cases), so GaugeFill's own clock would otherwise free-run through its looping AnimationFrames
+	while sitting idle at 0%. */
+	if (bIdle)
+		m_pItemUpgradeView->Set_Animation_Frame("ItemUpgrade_GaugeFill", 0);
 }
 
 #ifdef _DEBUG
@@ -466,20 +715,48 @@ HRESULT CMainApp::Initialize()
 		OutputDebugStringA(diagnostic.c_str());
 	}
 
-	m_pHUDRuntimeView = std::make_unique<CHUDRuntimeView>(m_pDevice, m_pContext);
-	m_pBossUIView = std::make_unique<CHUDRuntimeView>(
-		m_pDevice, m_pContext, L"UI/BossUI/BossUI.json");
-	m_pEstherUIView = std::make_unique<CHUDRuntimeView>(
-		m_pDevice, m_pContext, L"UI/Esther/EstherUI.json");
-	m_pItemUpgradeView = std::make_unique<CHUDRuntimeView>(
-		m_pDevice, m_pContext, L"UI/ItemUpgrade/ItemUpgradeUI.json");
-	m_pLobbyBackgroundView = std::make_unique<CHUDRuntimeView>(
-		m_pDevice, m_pContext, L"UI/Lobby/Lobby_Layout.json",
-		CHUDRuntimeView::DRAW_TARGET::BACKGROUND);
-	m_pSkillWindowView = std::make_unique<CSkillWindowView>(m_pDevice, m_pContext);
+	/* Created FIRST among the STATIC-level UI documents -- CUI_Sprite draw order follows
+	creation order, and the always-on combat HUD must sit underneath the boss bar, Esther
+	window, Item Upgrade window, and inventory, matching the old ImGui submission order. */
+	m_pHUDRuntimeView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
+		L"UI/HUD/HUD_Layout.json");
+	Hide_CombatHUD();
+	m_pBossUIView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
+		L"UI/BossUI/BossUI.json");
+	/* Authored layer tints are opaque -- every real slot would otherwise sit fully visible from
+	this Level::STATIC construction until the first Update_BossHealthBar() call finds a valid
+	boss. */
+	Hide_BossHealthBar();
+	m_pEstherUIView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
+		L"UI/Esther/EstherUI.json");
+	/* Same reasoning as Hide_BossHealthBar just above -- hidden until Update_EstherGauge finds a
+	real Esther roster in a Valtan room. */
+	Hide_EstherUI();
+	m_pItemUpgradeView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
+		L"UI/ItemUpgrade/ItemUpgradeUI.json");
+	/* Authored layer tints are opaque -- every slot would otherwise sit fully visible from this
+	Level::STATIC construction until the first real Update_ItemUpgrade() call (P not pressed
+	yet). */
+	Hide_ItemUpgrade();
+	m_pLobbyBackgroundView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
+		L"UI/Lobby/Lobby_Layout.json");
+	/* Hidden until Update_LobbyButtons finds the Lobby active -- and behind every ImGui window
+	by construction (engine sprites render before ImGui), which is all the old BACKGROUND draw
+	target actually guaranteed here. */
+	m_pLobbyBackgroundView->Set_AllSlotsVisible(false);
+	/* m_pSkillWindowView is intentionally never constructed anymore: the K keybind that opened
+	it was removed by product decision (see the migrated keybind block below), so the window can
+	never open, and constructing it would stand up the last ImGui product-path renderer for
+	nothing. Every "skillWindowOpen" gate already null-checks it. The class/files stay for a
+	future real re-introduction. */
 	m_pInventoryView = std::make_unique<CInventoryView>(m_pDevice, m_pContext);
-	m_pChatWindowView = std::make_unique<CChatWindowView>(m_pDevice);
-	m_pPartyWindowView = std::make_unique<CPartyWindowView>(m_pDevice);
+	m_pChatWindowView = std::make_unique<CChatWindowView>(m_pDevice, m_pContext);
+	m_pPartyWindowView = std::make_unique<CPartyWindowView>(m_pDevice, m_pContext);
 
 	if (FAILED(Start_Level(LEVEL::LOBBY)))
 		return E_FAIL;
@@ -489,27 +766,20 @@ HRESULT CMainApp::Initialize()
 
 void CMainApp::Update(const f32_t fTimeDelta)
 {
+	/* Once per frame, before any screen's Update()/Render() checks its own widgets via
+	CUIInputRouter -- resets its click-edge tracking. End_Frame() (this function's very end)
+	applies the gameplay-mouse block for anything that claimed the mouse this frame. */
+	CUIInputRouter::Get().Begin_Frame();
+
 #ifdef _DEBUG
 	UpdateDebugToolShortcut();
 #endif
 
-	/* Not _DEBUG-gated: K is a normal gameplay keybind (the skill window), not one of the
-	F1/F6 tool-switch keys AGENTS.md reserves. Skip it while ImGui already owns text input,
-	so typing in the rune search box (once that becomes real) cannot also toggle the window. */
-	if (nullptr != m_pSkillWindowView && !ImGui::GetIO().WantTextInput)
-	{
-		const bool_t windowFocused =
-			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
-		const bool_t kDown = windowFocused &&
-			0 != (GetAsyncKeyState(0x4B /* VK_K */) & 0x8000);
-		if (kDown && !m_bKDown)
-			m_pSkillWindowView->Toggle();
-		m_bKDown = kDown;
-	}
-
-	/* Same reasoning/gating as K above: I is a normal gameplay keybind (the inventory), not
-	an F1/F6 tool-switch key. */
-	if (nullptr != m_pInventoryView && !ImGui::GetIO().WantTextInput)
+	/* I is a normal gameplay keybind (the inventory), not an F1/F6 tool-switch key.
+	Is_TextInputActive is the runtime UI's own WantTextInput (the ImGui-free nickname field) --
+	both must gate every keybind below the same way. */
+	if (nullptr != m_pInventoryView && !ImGui::GetIO().WantTextInput &&
+		!CUIInputRouter::Get().Is_TextInputActive())
 	{
 		const bool_t windowFocused =
 			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
@@ -530,7 +800,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	/* Same reasoning/gating as K/I above: P is a free normal gameplay keybind, not an F1/F6
 	tool-switch key. Toggles the debug-only Item Upgrade static art preview (see the
 	m_pItemUpgradeView declaration comment in MainApp.h). */
-	if (nullptr != m_pItemUpgradeView && !ImGui::GetIO().WantTextInput)
+	if (nullptr != m_pItemUpgradeView && !ImGui::GetIO().WantTextInput &&
+		!CUIInputRouter::Get().Is_TextInputActive())
 	{
 		const bool_t windowFocused =
 			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
@@ -541,6 +812,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			if (m_bItemUpgradePreviewVisible)
 			{
 				m_bItemUpgradePreviewVisible = false;
+				Hide_ItemUpgrade();
 				// Closing mid-wait must not leave the looping wait sound behind with no
 				// screen visible to end it.
 				CGameInstance::Get().Stop_LoopingSound();
@@ -552,11 +824,16 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		}
 		m_bPDown = pDown;
 	}
+	Update_LobbyButtons(fTimeDelta);
+	Update_CombatHUD(fTimeDelta);
+	Update_ItemUpgrade(fTimeDelta);
+	Update_BossHealthBar();
+	Update_EstherGauge();
 
 	/* 1/2/3/4 use whatever item is registered on Item_1..4 (drag-drop from the inventory --
-	see Render_ItemQuickSlots). Same gating as K/I; the Server is the one that actually
+	see Update_ItemQuickSlots). Same gating as K/I; the Server is the one that actually
 	validates ownership and applies the heal, this only ever sends the request. */
-	if (!ImGui::GetIO().WantTextInput)
+	if (!ImGui::GetIO().WantTextInput && !CUIInputRouter::Get().Is_TextInputActive())
 	{
 		constexpr int VIRTUAL_KEYS[4] = { 0x31, 0x32, 0x33, 0x34 }; // VK_1..VK_4
 		const bool_t windowFocused =
@@ -581,7 +858,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	logic below) blocks gameplay key polling while typing -- no separate plumbing needed for
 	that part. Escape closes it and is checked outside the WantTextInput guard, since that is
 	exactly the state Escape needs to fire in. */
-	if (nullptr != m_pChatWindowView && !ImGui::GetIO().WantTextInput)
+	if (nullptr != m_pChatWindowView && !ImGui::GetIO().WantTextInput &&
+		!CUIInputRouter::Get().Is_TextInputActive())
 	{
 		/* Same level restriction as the chat window's own Render() gate -- Enter should not open
 		an input box that would render invisible outside Bern/Valtan. */
@@ -623,8 +901,11 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	constexpr bool_t worldLeftMouseConsumed = false;
 #endif
 
-	const bool_t keyboardCaptured = nullptr != m_pImGuiLayer &&
-		(m_pImGuiLayer->WantsCaptureKeyboard() || externalToolFocused);
+	/* The runtime nickname field blocks DirectInput keyboard polling exactly the way an
+	ImGui InputText's WantsCaptureKeyboard does -- WASD/skill keys must not fire mid-typing. */
+	const bool_t keyboardCaptured = (nullptr != m_pImGuiLayer &&
+		(m_pImGuiLayer->WantsCaptureKeyboard() || externalToolFocused)) ||
+		CUIInputRouter::Get().Is_TextInputActive();
 	const bool_t mouseCaptured = nullptr != m_pImGuiLayer &&
 		(m_pImGuiLayer->WantsCaptureMouse() || externalToolFocused);
 	CGameInstance::Get().SetInputBlocked(keyboardCaptured, mouseCaptured);
@@ -834,11 +1115,8 @@ HRESULT CMainApp::Render()
 
 	if (nullptr != m_pImGuiLayer)
 	{
-		if (nullptr != m_pLobbyBackgroundView &&
-			ETOUI(LEVEL::LOBBY) == CGameInstance::Get().Get_CurrentLevelID())
-		{
-			Render_LobbyButtons();
-		}
+		/* No Lobby draw call here anymore -- Update_LobbyButtons() (called from Update())
+		drives the Lobby's real CUI_Sprite slots. */
 	#ifdef _DEBUG
 		const HUD_PLAYER_STATE& hudPlayer =
 			CCombatHUDViewModel::Get().Get_Player();
@@ -849,15 +1127,11 @@ HRESULT CMainApp::Render()
 			ETOUI(LEVEL::DEVELOPMENT) == hudLevel ||
 			ETOUI(LEVEL::BERN) == hudLevel ||
 			ETOUI(LEVEL::VALTAN_ARENA) == hudLevel;
-		/* Same reason RenderCombatHUD skips m_pHUDRuntimeView while the Skill Window is open --
-		this is a second, independent path that draws the same class emblem/bars and was not
-		gated on that the first time, so it kept bleeding through underneath. */
 		const bool_t skillWindowOpenForPreview =
 			nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
 		/* The O-key raid-entry preview's left info column/panel frame sit in the
-		   same screen region as this class HUD (portrait, skill icons, identity
-		   gauge) -- skip drawing the class HUD chrome entirely while that debug
-		   preview is open instead of letting the two fight for the same pixels. */
+		   same screen region as the class HUD (portrait, skill icons, identity
+		   gauge) -- Update_CombatHUD applies the same gate to the real sprites. */
 		const bool_t isCharSelectDebugPreviewOpen =
 			ETOUI(LEVEL::CHARACTER_SELECT) == hudLevel &&
 			nullptr != CLevel_CharacterSelect::Get_Active() &&
@@ -869,29 +1143,18 @@ HRESULT CMainApp::Render()
 			m_pHUDLayoutTool->Render_RuntimePreview(
 				GetHUDLayoutClassId(hudPlayer.eCharacterClass));
 		}
-		if (!isCharSelectDebugPreviewOpen)
-		{
 	#endif
-			RenderCombatHUD();
-			RenderBossHealthBar();
-			RenderChargeGauge();
-			RenderEstherGauge();
-			/* RenderQuickSlot only draws the extracted QuickSlot.gfx on-use flash overlay -- it does
-			not draw icon art, cooldown sweep, or keybind text for any class, so it is additive on top
-			of the existing icon/cooldown rendering below, not a replacement for it. Disabling these
-			two calls previously took every class's skill icons off screen, not just LanceMaster's. */
-			RenderSkillIcons();
-			RenderSkillCooldowns();
-			RenderQuickSlot();
-	#ifdef _DEBUG
-		}
-	#endif
+		/* No combat-HUD draw calls here anymore -- Update_CombatHUD() (called from Update())
+		drives the HUD's real CUI_Sprite slots, which render through the normal engine
+		pipeline. */
 		/* Must run after the combat HUD renders above: Render_ValtanEntryModal's
 		   art draws to ImGui::GetForegroundDrawList(), the same shared list
-		   RenderCombatHUD/RenderBossHealthBar/RenderSkillIcons/RenderQuickSlot
-		   just used, and that list composites in real submission order -- calling
-		   it earlier let the always-on combat HUD paint over the full-screen
-		   raid-entry panel. */
+		   combat HUD draws once used, and that
+		   list composites in real submission order -- calling it earlier let the
+		   always-on combat HUD paint over the full-screen raid-entry panel.
+		   (Update_BossHealthBar's own CUI_Sprite slots render through the normal
+		   engine pipeline instead, so they're not part of this particular
+		   ordering concern anymore.) */
 		if (ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID())
 		{
 			if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
@@ -1028,9 +1291,32 @@ HRESULT CMainApp::Render()
 		m_pImGuiLayer->EndFrame();
 	}
 	CEstherCutinPresentationService::Render(m_pDevice, m_pContext);
-	RenderCombatHUDText();
-	RenderBossHealthBarText();
-	RenderChargeGaugeText();
+	/* Same reasoning as the old combat-HUD/boss-bar/charge-gauge
+	   image gate above (isCharSelectDebugPreviewOpen there) -- these are that
+	   HUD's own text counterparts (HP/MP numbers, boss HP text, gauge percent),
+	   drawn from this separate post-EndFrame() text pass, so they need the same
+	   gate here instead of bleeding the resource numbers through the O-key raid-
+	   entry preview. That earlier local is out of scope by this point (declared
+	   inside the now-closed m_pImGuiLayer block), so it is recomputed
+	   Release-safely. */
+#ifdef _DEBUG
+	const bool_t isCharSelectDebugPreviewOpenForText =
+		ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID() &&
+		nullptr != CLevel_CharacterSelect::Get_Active() &&
+		CLevel_CharacterSelect::Get_Active()->Is_DebugRaidEntryPreviewOpen();
+#else
+	const bool_t isCharSelectDebugPreviewOpenForText = false;
+#endif
+	if (!isCharSelectDebugPreviewOpenForText)
+	{
+		RenderCombatHUDText();
+		RenderBossHealthBarText();
+		RenderChargeGaugeText();
+		RenderSkillCooldownText();
+		/* VALTAN_ARENA-only inside; no CharSelect-preview overlap possible, but grouped with the
+		other combat-HUD text anyway since it is that HUD's own caption. */
+		RenderEstherGaugeText();
+	}
 	RenderDeadSceneText();
 	RenderRaidClearText();
 	RenderItemAnnounceText();
@@ -1051,7 +1337,10 @@ HRESULT CMainApp::Render()
 	{
 		if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active())
 		{
-			pCharacterSelect->Render_ArenaSpawnLabels();
+			// Same gate as Update_ArenaSpawnButtons's own image draw -- these are
+			// its text labels, drawn from this separate text pass.
+			if (!isCharSelectDebugPreviewOpenForText)
+				pCharacterSelect->Render_ArenaSpawnLabels();
 #ifdef _DEBUG
 			pCharacterSelect->Render_RaidEntryDebugPreviewText();
 #endif
@@ -1070,39 +1359,74 @@ HRESULT CMainApp::Render()
 		if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
 			pValtanArena->Render_PartyInviteText();
 	}
+	/* Not level-gated -- both views self-gate internally (open/roster state). */
+	if (nullptr != m_pChatWindowView)
+		m_pChatWindowView->RenderText();
+	if (nullptr != m_pPartyWindowView)
+		m_pPartyWindowView->RenderText();
+
+	/* Every CUIInputRouter-based screen's click-edge check has run by this point (both this
+	function's own render pass and the Update() pass earlier this same frame) -- rolls the
+	left-button edge state forward for next frame and applies SetInputBlocked for anything
+	that called Claim_Mouse_This_Frame(). */
+	CUIInputRouter::Get().End_Frame();
 
 	return CGameInstance::Get().Render_End();
 }
 
-void CMainApp::RenderCombatHUD()
+void CMainApp::Hide_CombatHUD()
 {
-	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel != ETOUI(LEVEL::BERN) &&
-		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
-		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
-		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
-	{
+	if (nullptr != m_pHUDRuntimeView)
+		m_pHUDRuntimeView->Set_AllSlotsVisible(false);
+}
+
+void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
+{
+	if (nullptr == m_pHUDRuntimeView)
 		return;
-	}
+
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	const bool_t isSupportedLevel =
+		currentLevel == ETOUI(LEVEL::BERN) ||
+		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
+		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT);
+	/* The Skill Window (when one exists) and the Debug O-key raid-entry preview both replace
+	this whole screen region -- same gates the old ImGui pass applied at its call sites. */
+	const bool_t skillWindowOpen =
+		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
+#ifdef _DEBUG
+	const bool_t isCharSelectDebugPreviewOpen =
+		ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel &&
+		nullptr != CLevel_CharacterSelect::Get_Active() &&
+		CLevel_CharacterSelect::Get_Active()->Is_DebugRaidEntryPreviewOpen();
+#else
+	const bool_t isCharSelectDebugPreviewOpen = false;
+#endif
 
 	const HUD_PLAYER_STATE& player =
 		CCombatHUDViewModel::Get().Get_Player();
-	if (!player.isValid || 0u == player.iMaximumHp ||
-		0u == player.iMaximumResource)
+	if (!isSupportedLevel || skillWindowOpen || isCharSelectDebugPreviewOpen ||
+		!player.isValid || 0u == player.iMaximumHp || 0u == player.iMaximumResource)
 	{
+		Hide_CombatHUD();
+		/* m_pInventoryView's CUI_Sprite slots live under LEVEL::STATIC too (so the panel
+		survives a Bern<->Valtan transition instead of resetting) -- they keep showing their
+		last state across a level change unless told otherwise, same as this HUD's own. */
+		if (nullptr != m_pInventoryView)
+			m_pInventoryView->Hide();
 		return;
 	}
 
-	/* The Combat HUD draws to the always-on-top foreground layer, so it would otherwise show
-	through around/behind the Skill Window (which does not necessarily cover every pixel of the
-	viewport) instead of being hidden by it like a real full-screen menu hides the HUD. */
-	const bool_t skillWindowOpen =
-		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
-
-	if (!skillWindowOpen && nullptr != m_pHUDRuntimeView)
 	{
-		/* Base state only for now -- no gauge/resource-driven stage switching yet. */
+		/* Base pass: every neutral slot on, then the ownerClass filter (the old
+		Render(strOwnerClass, 0) pass) picks the active class's own slots. The Update_* helpers
+		below overwrite the dynamic slots' visibility (fills, icons, cooldown overlays) the same
+		frame, before anything renders. Base state only for now -- no gauge/resource-driven
+		stage switching yet. */
 		const string strOwnerClass = GetHUDOwnerClassName(player.eCharacterClass);
+		m_pHUDRuntimeView->Set_AllSlotsVisible(true);
+		m_pHUDRuntimeView->Set_ActiveOwnerClass(strOwnerClass);
 
 		/* LanceMaster's identity icon is a keyframe-animated Scaleform extraction, not a static
 		layer stack -- it has to be told to play, and only on an actual stance edge (the source
@@ -1428,26 +1752,7 @@ void CMainApp::RenderCombatHUD()
 			PlayZXWipe("Yin_Skill_Z_Wipe", pZSkill, bZReady);
 			PlayZXWipe("Yin_Skill_X_Wipe", pXSkill, bXReady);
 		}
-		m_pHUDRuntimeView->Render(strOwnerClass, 0);
-		RenderPlayerHealthManaBar();
-		/* Static Esther slots (portraits/frame/lock/track) draw generically here. GaugeFill and the
-		3 Ready glows are also authored as ordinary Tool-placeable slots (so they show up on the
-		canvas for placement), but their real gameplay visibility is gauge-state-driven, not
-		always-on -- force them hidden here and let RenderEstherGauge() (called later) draw the real
-		clipped fill / conditional glow instead, so there's no double-draw. Esther is a Valtan raid
-		mechanic -- RenderEstherGauge() already skips outside VALTAN_ARENA, but this static frame is
-		a separate draw call reached by RenderCombatHUD's own broader level gate (which includes
-		CHARACTER_SELECT for HP/mana/skill icons), so it needs the same VALTAN_ARENA-only check or
-		the empty portrait frame keeps showing there. */
-		if (nullptr != m_pEstherUIView &&
-			ETOUI(LEVEL::VALTAN_ARENA) == currentLevel)
-		{
-			m_pEstherUIView->Set_SlotVisible("Esther_GaugeFill", false);
-			m_pEstherUIView->Set_SlotVisible("Esther_Slot1_Ready", false);
-			m_pEstherUIView->Set_SlotVisible("Esther_Slot2_Ready", false);
-			m_pEstherUIView->Set_SlotVisible("Esther_Slot3_Ready", false);
-			m_pEstherUIView->Render("Default", 0);
-		}
+		Update_PlayerHealthManaBar();
 	}
 
 	/* Real gauge0/1/2 fill (target-rotation-masked track) and burn flourish are baked and wired;
@@ -1455,182 +1760,20 @@ void CMainApp::RenderCombatHUD()
 	still a placeholder shared with Lance_Id_Stance's own rect -- needs live in-game tuning to
 	place left/bottom/right segments at their real offsets. */
 	if (LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER == player.eCharacterClass)
-		RenderLanceMasterIdentityGauge();
+		Update_LanceMasterIdentityGauge();
 
-	if (nullptr != m_pSkillWindowView)
-		m_pSkillWindowView->Render(player.eCharacterClass);
+	Update_ChargeGauge();
+	Update_SkillIcons();
+	Update_SkillCooldowns();
+	Update_QuickSlotFlash();
+	Update_ItemQuickSlots();
 	if (nullptr != m_pInventoryView)
-		m_pInventoryView->Render(CCombatHUDViewModel::Get().Get_Inventory().Items);
-	/* P-toggled static preview of the real traced ItemUpgradeUI.json art/positions -- see the
-	m_pItemUpgradeView declaration comment in MainApp.h. No per-slot gameplay logic (no real
-	Server 재련 data exists yet), just the same generic Render("Default", 0) pass Esther/Boss UI
-	use for their own static slots. */
-	if (nullptr != m_pItemUpgradeView && m_bItemUpgradePreviewVisible)
-	{
-		/* All state updates below (click handling, gauge state machine, Set_Animation_Frame pins)
-		run BEFORE Render() -- not after -- so this call always draws the fully up-to-date frame
-		instead of last frame's. Pinning a slot's clock-driven frame after Render() left a full
-		frame's delta time between the pin and the next actual draw; that's invisible while a
-		pinned value keeps changing (the 0->100 fill), but a value held constant every frame (the
-		100%-held GaugeFill, pinned to frame 99) accumulates that same delta every tick, and once
-		it pushes the computed frame position past 100.0 (any frame slower than ~1/45s) the
-		loop-modulo math wraps to a low frame index (0 looks nearly blank) and stays wrapped for as
-		long as the hold lasts -- this is the real cause of GaugeFill "disappearing" only once held. */
-		Update_ItemUpgradeSelection();
-		Update_ItemUpgradeGrowButton();
-		/* Wait-click checked before Reforge triggers a new WAITING -- both react to the same
-		ImGui::IsMouseClicked(Left) frame-level flag, so if Reforge ran first the very click that
-		opened the wait overlay would also satisfy the wait-click's "clicked anywhere" check and
-		reveal on the same frame it appeared. */
-		Update_ItemUpgradeResultWaitClick();
-		Update_ItemUpgradeReforgeButton();
-		Update_ItemUpgradeResultOkButton();
+		m_pInventoryView->Update(CCombatHUDViewModel::Get().Get_Inventory().Items);
 
-		/* No real Server 재련 percent exists yet (see comment above), so the gauge is a manual
-		state machine driven by ItemUpgrade_LevelUpBtn's click (Update_ItemUpgradeGrowButton) instead
-		of a free-running clock. Idle at 0 until clicked; 0->100 fill plays once per click; holds at
-		100 until the next click. Once a real gauge value exists this should read it the same way
-		RenderLanceMasterIdentityGauge() reads player.iCurrentIdentity, not this state. */
-		if (m_bItemUpgradeGrowing)
-		{
-			constexpr f32_t GAUGE_FILL_FPS = 45.f;
-			constexpr f32_t GAUGE_FILL_FRAME_COUNT = 100.f;
-			const f32_t fCycleSeconds = GAUGE_FILL_FRAME_COUNT / GAUGE_FILL_FPS;
-			const f64_t fElapsed = ImGui::GetTime() - m_dItemUpgradeGrowStartSeconds;
-			const int32_t iPercent = std::clamp(
-				static_cast<int32_t>(fElapsed / fCycleSeconds * GAUGE_FILL_FRAME_COUNT),
-				0, 100);
-
-			if (100 <= iPercent)
-			{
-				m_iItemUpgradePreviousPercent = 100;
-				m_bItemUpgradeGrowing = false;
-				/* Alpha starts at 0 here -- Set_SlotVisible only lifts bForceHidden (both slots
-				become drawable this same frame), the actual reveal is the fade-in progress block
-				below, driven by m_dItemUpgradeCompleteRevealStartSeconds. */
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_WingedRingGold", true);
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_LevelUpMotion2Big", true);
-				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", 0.f);
-				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", 0.f);
-				m_dItemUpgradeCompleteRevealStartSeconds = ImGui::GetTime();
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_CompleteEffect", true);
-				m_pItemUpgradeView->Restart_Animation("ItemUpgrade_CompleteEffect");
-			}
-			else
-			{
-				m_iItemUpgradePreviousPercent = iPercent;
-				/* GaugeFill's own AnimationFrames clock starts independently on this slot's first
-				Render() call, so it would otherwise drift out of phase with iPercent (which is
-				anchored to m_dItemUpgradeGrowStartSeconds) -- pin it to the exact frame every tick
-				instead of letting the two clocks disagree about what "63%" looks like. */
-				m_pItemUpgradeView->Set_Animation_Frame("ItemUpgrade_GaugeFill", iPercent);
-			}
-		}
-		else if (100 == m_iItemUpgradePreviousPercent)
-		{
-			/* Held-100 state: nothing re-pins this once growing flips false above, so without this
-			GaugeFill's own looping AnimationFrames clock (JSON loop=true, 100 frames/45fps) would
-			free-run straight past frame 99 and repeat the whole 0->100 sweep visually even though
-			m_iItemUpgradePreviousPercent correctly stays at 100. */
-			m_pItemUpgradeView->Set_Animation_Frame("ItemUpgrade_GaugeFill", 99);
-
-			if (m_dItemUpgradeCompleteRevealStartSeconds >= 0.0)
-			{
-				constexpr f64_t REVEAL_FADE_SECONDS = 0.45;
-				const f32_t fFadeAlpha = static_cast<f32_t>(std::clamp(
-					(ImGui::GetTime() - m_dItemUpgradeCompleteRevealStartSeconds) / REVEAL_FADE_SECONDS,
-					0.0, 1.0));
-				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", fFadeAlpha);
-				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", fFadeAlpha);
-			}
-		}
-
-		/* CoreFlash fires exactly once, the same frame Update_ItemUpgradeGrowButton starts a fill;
-		ShockwaveRing is scheduled for CoreFlash's own real duration (28 frames/20fps) later so the
-		two real Scaleform layers play in their authored order instead of together (real ordering:
-		coreLevelEffect1 before compF_shockwave_red inside levelUpMotion_mc). */
-		if (m_bItemUpgradeCoreFlashPending)
-		{
-			m_pItemUpgradeView->Restart_Animation("ItemUpgrade_CoreFlash");
-			constexpr f64_t CORE_FLASH_DURATION_SECONDS = 28.0 / 20.0;
-			m_dItemUpgradeShockwaveScheduledAt = ImGui::GetTime() + CORE_FLASH_DURATION_SECONDS;
-			m_bItemUpgradeCoreFlashPending = false;
-		}
-		if (m_dItemUpgradeShockwaveScheduledAt >= 0.0 &&
-			ImGui::GetTime() >= m_dItemUpgradeShockwaveScheduledAt)
-		{
-			m_pItemUpgradeView->Restart_Animation("ItemUpgrade_ShockwaveRing");
-			m_dItemUpgradeShockwaveScheduledAt = -1.0;
-		}
-		if (m_dItemUpgradeResultSettleAt >= 0.0 && ImGui::GetTime() >= m_dItemUpgradeResultSettleAt)
-		{
-			// Burst's real one-shot duration is over -- swap the circle+burst out for the settled
-			// icon/name/result content (RenderItemUpgradeSuccessDetailText/FailDetailText gate on
-			// this same "settled" condition -- m_dItemUpgradeResultSettleAt < 0.0 while
-			// SUCCESS/FAIL is showing -- so the text appears in lockstep with this reveal).
-			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", false);
-			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessEffect", false);
-			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailEffect", false);
-
-			const bool_t bSuccess = m_bItemUpgradePendingAttemptSuccess;
-			const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
-			const bool_t bHasSelection = !upgradeSlots.empty();
-			const int32_t iSelectedSlot = bHasSelection ? std::clamp(
-				m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(upgradeSlots.size()) - 1) : 0;
-			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessOkBtn", bSuccess);
-			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailOkBtn", !bSuccess);
-			// Real success_mc/fail_mc detail: a decorative frame + item icon sit behind the settled
-			// result text (real local placements traced from ItemBuildUpLevelWndContent's own
-			// success_mc/fail_mc timelines). Real in-game capture shows just icon/name/result -- no
-			// wide winged ribbon banner -- so SuccessDiamondWinged is never shown. Same frame for
-			// both outcomes now (SuccessDiamondFrame reused for fail too) -- FailDiamondFrame is
-			// never shown.
-			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessDiamondFrame", true);
-			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessItemIconMarker", bSuccess);
-			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailItemIconMarker", !bSuccess);
-			if (bHasSelection)
-			{
-				if (bSuccess)
-				{
-					// Same real icon already shown in the base window's ItemUpgrade_SelectedItemIcon --
-					// the item being reforged doesn't change just because the result modal is up.
-					m_pItemUpgradeView->Set_SlotTexture(
-						"ItemUpgrade_SuccessItemIconMarker", upgradeSlots[iSelectedSlot].strIconPath);
-					// The actual level-up: a real 재련 success raises this item's own tracked level by
-					// 1, so the left list / right ladder / center 현재-다음 all read the new level once
-					// this result is dismissed. A fail leaves the level untouched.
-					++ItemUpgradeLevelRef(upgradeSlots[iSelectedSlot].strItemId);
-				}
-				else
-				{
-					m_pItemUpgradeView->Set_SlotTexture(
-						"ItemUpgrade_FailItemIconMarker", upgradeSlots[iSelectedSlot].strIconPath);
-				}
-			}
-			m_dItemUpgradeResultSettleAt = -1.0;
-		}
-
-		/* Idle (not growing, held at 0) is the only state SmeltGlow's own JSON loop should be
-		visible in -- hidden for the rest of the fill and at 100% so it doesn't glow underneath the
-		completion art. WingedRingGold/LevelUpMotion2Big/CompleteEffect are the inverse: hidden
-		everywhere except the held-100 state set above. A fresh click (Update_ItemUpgradeGrowButton)
-		re-hides all three the same frame it restarts the fill from 0. */
-		const bool_t bIdle = !m_bItemUpgradeGrowing && 0 == m_iItemUpgradePreviousPercent;
-		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SmeltGlow", bIdle);
-		/* Idle has no per-frame branch above to pin this itself (unlike the growing/held-100
-		cases), so GaugeFill's own clock would otherwise free-run through its looping AnimationFrames
-		while sitting idle at 0%. */
-		if (bIdle)
-			m_pItemUpgradeView->Set_Animation_Frame("ItemUpgrade_GaugeFill", 0);
-
-		/* Drawing the percent number itself is deferred to RenderItemUpgradeGaugePercentText()
-		(called after CImGuiLayer::EndFrame(), same reason as RenderBossHealthBar's text split --
-		this Render() call's own AnimationFrames images composite later inside EndFrame() and would
-		otherwise paint over a Draw_Text() submitted here). m_iItemUpgradePreviousPercent is already
-		updated above and doubles as that function's read of "current percent". */
-		m_pItemUpgradeView->Render("Default", 0);
-	}
-	Render_ItemQuickSlots();
+	/* Advances every keyframe-animation slot the per-class blocks above played (and any
+	flipbooks, though this document has none) -- must run after them so a Play call issued this
+	frame evaluates into its sprites before this frame renders. */
+	m_pHUDRuntimeView->Update(fTimeDelta);
 }
 
 void CMainApp::RenderQuickSlotKeyLabels()
@@ -1701,92 +1844,69 @@ void CMainApp::RenderQuickSlotKeyLabels()
 	a dedicated non-keyframe slot). */
 }
 
-void CMainApp::Render_LobbyButtons()
+void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 {
 	if (nullptr == m_pLobbyBackgroundView)
 		return;
-
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
+	if (ETOUI(LEVEL::LOBBY) != CGameInstance::Get().Get_CurrentLevelID())
+	{
+		m_pLobbyBackgroundView->Set_AllSlotsVisible(false);
 		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
+	}
+
+	/* Resolve the required four-slot set first. An old or corrupt external Data checkout may
+	contain only the legacy Create button; forcing every button onto the same four default
+	rects atomically (runtime-creating any missing slot, repositioning any invalid one) avoids
+	overlapping hit targets and preserves every Lobby command -- the entry gate must never lose
+	its buttons to a bad layout file. */
 	std::array<LOBBY_PRODUCT_RECT, LOBBY_PRODUCT_BUTTONS.size()> ButtonRects{};
 	const bool_t hasCompleteAuthoredButtons = Resolve_LobbyProductButtonRects(
 		m_pLobbyBackgroundView.get(), ButtonRects);
-	for (size_t i = 0; i < LOBBY_PRODUCT_BUTTONS.size(); ++i)
+	if (!hasCompleteAuthoredButtons)
 	{
-		const LOBBY_PRODUCT_BUTTON& Button = LOBBY_PRODUCT_BUTTONS[i];
-		m_pLobbyBackgroundView->Set_SlotVisible(
-			Button.pSlotId, hasCompleteAuthoredButtons);
+		for (size_t i = 0; i < LOBBY_PRODUCT_BUTTONS.size(); ++i)
+		{
+			const LOBBY_PRODUCT_BUTTON& Button = LOBBY_PRODUCT_BUTTONS[i];
+			m_pLobbyBackgroundView->Ensure_RuntimeSlot(Button.pSlotId,
+				Button.fDefaultX, Button.fDefaultY,
+				Button.fDefaultWidth, Button.fDefaultHeight,
+				"UI/Lobby/create_character_button.png");
+			m_pLobbyBackgroundView->Set_SlotRect(Button.pSlotId,
+				Button.fDefaultX, Button.fDefaultY,
+				Button.fDefaultWidth, Button.fDefaultHeight);
+		}
 	}
 
-	/* Resolve the required four-slot set before drawing the document. An old or corrupt external
-	Data checkout may contain only the legacy Create button; hiding that partial set and drawing
-	all four defaults atomically avoids overlapping hit targets and preserves every Lobby command. */
-	m_pLobbyBackgroundView->Render("", 0);
+	m_pLobbyBackgroundView->Set_AllSlotsVisible(true);
 
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pLobbyBackgroundView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pLobbyBackgroundView->Get_ResolutionHeight();
 	for (size_t i = 0; i < LOBBY_PRODUCT_BUTTONS.size(); ++i)
 	{
 		const LOBBY_PRODUCT_BUTTON& Button = LOBBY_PRODUCT_BUTTONS[i];
 		const LOBBY_PRODUCT_RECT& Rect = ButtonRects[i];
 
-		const ImVec2 vMin(
-			pViewport->WorkPos.x + Rect.fX * scaleX,
-			pViewport->WorkPos.y + Rect.fY * scaleY);
-		const ImVec2 vMax(
-			vMin.x + Rect.fWidth * scaleX,
-			vMin.y + Rect.fHeight * scaleY);
-		const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-			vMouse.y >= vMin.y && vMouse.y < vMax.y;
-
-		/* The authored document already drew idle art for a complete slot set. The atomic fallback
-		draws idle art itself; hover uses the same real product texture in either path. */
-		if (!hasCompleteAuthoredButtons || bHovered)
+		const bool_t bHovered = Router.Is_Hovered(
+			Rect.fX, Rect.fY, Rect.fWidth, Rect.fHeight, fRefWidth, fRefHeight);
+		/* Empty path reverts to the slot's own idle art (the authored layer, or the product
+		texture the fallback slot was created with). */
+		m_pLobbyBackgroundView->Set_SlotTexture(Button.pSlotId, bHovered ?
+			"UI/Lobby/create_character_button_hover.png" : "");
+		if (bHovered)
 		{
-			const char_t* pTexture = bHovered ?
-				"UI/Lobby/create_character_button_hover.png" :
-				"UI/Lobby/create_character_button.png";
-			if (ID3D11ShaderResourceView* pSRV =
-				m_pLobbyBackgroundView->Load_Texture(pTexture))
+			Router.Claim_Mouse_This_Frame();
+			if (Router.Is_Clicked(Rect.fX, Rect.fY, Rect.fWidth, Rect.fHeight,
+					fRefWidth, fRefHeight) &&
+				CLevel_Lobby::Submit_ProductCommand(Button.eStage))
 			{
-				pDrawList->AddImage(pSRV, vMin, vMax);
+				Play_UIButtonClickSound();
 			}
 		}
-		if (bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
-			CLevel_Lobby::Submit_ProductCommand(Button.eStage))
-		{
-			Play_UIButtonClickSound();
-		}
 	}
 
-#ifndef _DEBUG
-	LOBBY_PRODUCT_RECT StatusRect{ 240.f, 566.f, 800.f, 54.f };
-	LOBBY_PRODUCT_RECT AuthoredStatusRect{};
-	if (m_pLobbyBackgroundView->Get_SlotRect(
-		"Lobby_StatusText", AuthoredStatusRect.fX, AuthoredStatusRect.fY,
-		AuthoredStatusRect.fWidth, AuthoredStatusRect.fHeight) &&
-		Is_ValidProductRect(AuthoredStatusRect))
-	{
-		StatusRect = AuthoredStatusRect;
-	}
-	const string strStatus = CLevel_Lobby::Get_ProductStatus();
-	if (!strStatus.empty())
-	{
-		const ImVec2 vStatusPos(
-			pViewport->WorkPos.x + (StatusRect.fX + 8.f) * scaleX,
-			pViewport->WorkPos.y + (StatusRect.fY + 6.f) * scaleY);
-		const f32_t fFontSize = 16.f * (std::min)(scaleX, scaleY);
-		const f32_t fWrapWidth = (StatusRect.fWidth - 16.f) * scaleX;
-		pDrawList->AddText(ImGui::GetFont(), fFontSize,
-			ImVec2(vStatusPos.x + 1.f, vStatusPos.y + 1.f),
-			IM_COL32(0, 0, 0, 220), strStatus.c_str(), nullptr, fWrapWidth);
-		pDrawList->AddText(ImGui::GetFont(), fFontSize, vStatusPos,
-			IM_COL32(255, 225, 150, 255), strStatus.c_str(), nullptr, fWrapWidth);
-	}
-#endif
+	/* TitleBackground's 151-frame looping flipbook. */
+	m_pLobbyBackgroundView->Update(fTimeDelta);
 }
 
 void CMainApp::RenderLobbyButtonText()
@@ -1821,6 +1941,54 @@ void CMainApp::RenderLobbyButtonText()
 				(Rect.fY + Rect.fHeight * 0.5f) * textScaleY),
 			Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 	}
+
+#ifndef _DEBUG
+	/* Release product status line (Debug shows the same status inside the Lobby debug panel
+	instead). Was an ImGui wrapped-text draw; Draw_Text has no wrapping, so the whole line is
+	scaled to fit the status rect's width instead -- status strings are one sentence. */
+	LOBBY_PRODUCT_RECT StatusRect{ 240.f, 566.f, 800.f, 54.f };
+	LOBBY_PRODUCT_RECT AuthoredStatusRect{};
+	if (m_pLobbyBackgroundView->Get_SlotRect(
+		"Lobby_StatusText", AuthoredStatusRect.fX, AuthoredStatusRect.fY,
+		AuthoredStatusRect.fWidth, AuthoredStatusRect.fHeight) &&
+		Is_ValidProductRect(AuthoredStatusRect))
+	{
+		StatusRect = AuthoredStatusRect;
+	}
+	const string strStatus = CLevel_Lobby::Get_ProductStatus();
+	if (!strStatus.empty())
+	{
+		wstring strWideStatus;
+		const int iRequiredLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+			strStatus.data(), static_cast<int>(strStatus.size()), nullptr, 0);
+		if (iRequiredLength > 0)
+		{
+			strWideStatus.resize(static_cast<size_t>(iRequiredLength));
+			if (iRequiredLength == MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+				strStatus.data(), static_cast<int>(strStatus.size()),
+				strWideStatus.data(), iRequiredLength))
+			{
+				const float2_t vStatusMeasured = CGameInstance::Get().Measure_Text(
+					TEXT("Font_YoonGasiIIM"), strWideStatus.c_str());
+				const f32_t fScaleByHeight = (vStatusMeasured.y > 0.f) ?
+					(16.f / vStatusMeasured.y) : 1.f;
+				const f32_t fScaleByWidth = (vStatusMeasured.x > 0.f) ?
+					((StatusRect.fWidth - 16.f) / vStatusMeasured.x) : 1.f;
+				const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
+				const f32_t fCenterX = StatusRect.fX + StatusRect.fWidth * 0.5f;
+				const f32_t fCenterY = StatusRect.fY + StatusRect.fHeight * 0.5f;
+				CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strWideStatus.c_str(),
+					float2_t(fCenterX * textScaleX + 1.f, fCenterY * textScaleY + 1.f),
+					XMVectorSet(0.f, 0.f, 0.f, 220.f / 255.f), 0.f, float2_t(0.5f, 0.5f),
+					fScale * textUiScale);
+				CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strWideStatus.c_str(),
+					float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
+					XMVectorSet(1.f, 225.f / 255.f, 150.f / 255.f, 1.f), 0.f,
+					float2_t(0.5f, 0.5f), fScale * textUiScale);
+			}
+		}
+	}
+#endif
 }
 
 void CMainApp::RenderItemUpgradeButtonText()
@@ -1990,12 +2158,6 @@ void CMainApp::Update_ItemUpgradeSelection()
 		return;
 	}
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-
 	f32_t fListX = 0.f, fListY = 0.f, fListWidth = 0.f, fListHeight = 0.f;
 	if (!m_pItemUpgradeView->Get_SlotRect(
 		"ItemUpgrade_LeftListBg", fListX, fListY, fListWidth, fListHeight))
@@ -2003,8 +2165,9 @@ void CMainApp::Update_ItemUpgradeSelection()
 		return;
 	}
 
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pItemUpgradeView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pItemUpgradeView->Get_ResolutionHeight();
 	const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
 
 	for (int32_t i = 0; i < 6 && i < static_cast<int32_t>(upgradeSlots.size()); ++i)
@@ -2019,15 +2182,12 @@ void CMainApp::Update_ItemUpgradeSelection()
 
 		/* Full row width (LeftListBg's own x/width), not just the icon/grade-glow's own narrower
 		rect, so clicking anywhere across the name text also selects this row. */
-		const ImVec2 vMin(
-			pViewport->WorkPos.x + fListX * scaleX,
-			pViewport->WorkPos.y + fRowY * scaleY);
-		const ImVec2 vMax(
-			vMin.x + fListWidth * scaleX,
-			vMin.y + fRowHeight * scaleY);
-		const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-			vMouse.y >= vMin.y && vMouse.y < vMax.y;
-		if (!bHovered || !bClicked)
+		const bool_t bHovered = Router.Is_Hovered(
+			fListX, fRowY, fListWidth, fRowHeight, fRefWidth, fRefHeight);
+		if (!bHovered)
+			continue;
+		Router.Claim_Mouse_This_Frame();
+		if (!Router.Is_Clicked(fListX, fRowY, fListWidth, fRowHeight, fRefWidth, fRefHeight))
 			continue;
 
 		Play_UIButtonClickSound();
@@ -2054,22 +2214,17 @@ void CMainApp::Update_ItemUpgradeGrowButton()
 		return;
 	}
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	if (!m_pItemUpgradeView->Get_SlotRect("ItemUpgrade_LevelUpBtn", fX, fY, fWidth, fHeight))
 		return;
 
-	const ImVec2 vMin(pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
-	const ImVec2 vMax(vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-		vMouse.y >= vMin.y && vMouse.y < vMax.y;
-	if (!bHovered || !ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pItemUpgradeView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pItemUpgradeView->Get_ResolutionHeight();
+	if (!Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+		return;
+	Router.Claim_Mouse_This_Frame();
+	if (!Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		return;
 
 	Play_UIButtonClickSound();
@@ -2079,7 +2234,7 @@ void CMainApp::Update_ItemUpgradeGrowButton()
 	the held-100 state doesn't leave it showing through the new fill. */
 	m_iItemUpgradePreviousPercent = 0;
 	m_bItemUpgradeGrowing = true;
-	m_dItemUpgradeGrowStartSeconds = ImGui::GetTime();
+	m_dItemUpgradeGrowStartSeconds = Product_Now_Seconds();
 	m_bItemUpgradeCoreFlashPending = true;
 	m_dItemUpgradeShockwaveScheduledAt = -1.0;
 	m_dItemUpgradeCompleteRevealStartSeconds = -1.0;
@@ -2103,22 +2258,17 @@ void CMainApp::Update_ItemUpgradeReforgeButton()
 		return;
 	}
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	if (!m_pItemUpgradeView->Get_SlotRect("ItemUpgrade_ReforgeButton", fX, fY, fWidth, fHeight))
 		return;
 
-	const ImVec2 vMin(pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
-	const ImVec2 vMax(vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-		vMouse.y >= vMin.y && vMouse.y < vMax.y;
-	if (!bHovered || !ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pItemUpgradeView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pItemUpgradeView->Get_ResolutionHeight();
+	if (!Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+		return;
+	Router.Claim_Mouse_This_Frame();
+	if (!Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		return;
 
 	Play_UIButtonClickSound();
@@ -2156,10 +2306,15 @@ void CMainApp::Update_ItemUpgradeResultWaitClick()
 {
 	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
 		ITEM_UPGRADE_ATTEMPT_RESULT::WAITING != m_eItemUpgradeAttemptResult ||
-		!ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		!CUIInputRouter::Get().Is_LeftClickEdge())
 	{
 		return;
 	}
+	// This screen already owns the whole frame's input while WAITING is showing (no other
+	// ItemUpgrade widget's Is_Hovered/Is_Clicked can be true at the same time -- the base
+	// window's own buttons are hidden by Set_ItemUpgradeCenterPanelVisible(false)), so claiming
+	// the mouse here is a formality for consistency with every other real click this router sees.
+	CUIInputRouter::Get().Claim_Mouse_This_Frame();
 
 	// ItemUpgrade_ResultWaitBg (the same solid-black backdrop already showing behind the wait
 	// circle) stays visible all the way through burst-playing and the settled result -- it's the
@@ -2170,7 +2325,7 @@ void CMainApp::Update_ItemUpgradeResultWaitClick()
 	// otherwise). Once the burst's own real one-shot duration finishes, the per-frame settle check
 	// in Update() hides the circle+burst and reveals the icon/name/result content in their place.
 	constexpr f64_t RESULT_BURST_DURATION_SECONDS = 90.0 / 30.0;
-	m_dItemUpgradeResultSettleAt = ImGui::GetTime() + RESULT_BURST_DURATION_SECONDS;
+	m_dItemUpgradeResultSettleAt = Product_Now_Seconds() + RESULT_BURST_DURATION_SECONDS;
 
 	const bool_t bSuccess = m_bItemUpgradePendingAttemptSuccess;
 	m_eItemUpgradeAttemptResult = bSuccess ?
@@ -2223,12 +2378,6 @@ void CMainApp::Update_ItemUpgradeResultOkButton()
 		return;
 	}
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-
 	const char_t* pOkButtonSlotId =
 		ITEM_UPGRADE_ATTEMPT_RESULT::SUCCESS == m_eItemUpgradeAttemptResult ?
 		"ItemUpgrade_SuccessOkBtn" : "ItemUpgrade_FailOkBtn";
@@ -2237,12 +2386,13 @@ void CMainApp::Update_ItemUpgradeResultOkButton()
 	if (!m_pItemUpgradeView->Get_SlotRect(pOkButtonSlotId, fX, fY, fWidth, fHeight))
 		return;
 
-	const ImVec2 vMin(pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
-	const ImVec2 vMax(vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-		vMouse.y >= vMin.y && vMouse.y < vMax.y;
-	if (!bHovered || !ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pItemUpgradeView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pItemUpgradeView->Get_ResolutionHeight();
+	if (!Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+		return;
+	Router.Claim_Mouse_This_Frame();
+	if (!Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		return;
 
 	Play_UIButtonClickSound();
@@ -2653,31 +2803,32 @@ void CMainApp::RenderItemUpgradeFailDetailText()
 	DrawCentered("ItemUpgrade_FailOkBtn", L"\xD655\xC778", 0.32f, Colors::White);
 }
 
-void CMainApp::Render_ItemQuickSlots()
+void CMainApp::Update_ItemQuickSlots()
 {
-	if (nullptr == m_pHUDRuntimeView || nullptr == m_pInventoryView)
+	if (nullptr == m_pInventoryView)
 		return;
-
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
 
 	constexpr const char* ITEM_SLOT_IDS[4] = { "Item_1", "Item_2", "Item_3", "Item_4" };
+	constexpr const char* ITEM_ICON_SLOT_IDS[4] =
+		{ "Item_1_Icon", "Item_2_Icon", "Item_3_Icon", "Item_4_Icon" };
 
 	string strDroppedItemId;
 	float fDropX = 0.f, fDropY = 0.f;
 	if (m_pInventoryView->Try_Consume_ItemDrop(strDroppedItemId, fDropX, fDropY))
 	{
+		/* The drop position is a real client-area pixel (CUIInputRouter's
+		Get_ClientCursorPosition); slot rects are reference-resolution -- same viewport scale
+		Get_SlotRect callers always apply, just without ImGui in the middle. */
+		const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+		const float scaleX = vViewportSize.x / 1280.f;
+		const float scaleY = vViewportSize.y / 720.f;
 		for (int32_t i = 0; i < 4; ++i)
 		{
 			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 			if (!m_pHUDRuntimeView->Get_SlotRect(ITEM_SLOT_IDS[i], fX, fY, fWidth, fHeight))
 				continue;
-			const float left = pViewport->WorkPos.x + fX * scaleX;
-			const float top = pViewport->WorkPos.y + fY * scaleY;
+			const float left = fX * scaleX;
+			const float top = fY * scaleY;
 			const float right = left + fWidth * scaleX;
 			const float bottom = top + fHeight * scaleY;
 			if (fDropX >= left && fDropX < right && fDropY >= top && fDropY < bottom)
@@ -2690,88 +2841,36 @@ void CMainApp::Render_ItemQuickSlots()
 
 	for (int32_t i = 0; i < 4; ++i)
 	{
-		if (m_strItemQuickSlot[i].empty())
-			continue;
-		const ITEM_DEFINITION* pDefinition = CItemCatalog::Find_ById(m_strItemQuickSlot[i]);
+		const ITEM_DEFINITION* pDefinition = m_strItemQuickSlot[i].empty() ?
+			nullptr : CItemCatalog::Find_ById(m_strItemQuickSlot[i]);
 		if (nullptr == pDefinition || pDefinition->strIconPath.empty())
-			continue;
-		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-		if (!m_pHUDRuntimeView->Get_SlotRect(ITEM_SLOT_IDS[i], fX, fY, fWidth, fHeight))
-			continue;
-		const ImVec2 vMin(
-			pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
-		const ImVec2 vMax(
-			vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
-		if (ID3D11ShaderResourceView* pIconSRV =
-			m_pHUDRuntimeView->Load_Texture(pDefinition->strIconPath))
 		{
-			pDrawList->AddImage(pIconSRV, vMin, vMax);
+			m_pHUDRuntimeView->Set_SlotVisible(ITEM_ICON_SLOT_IDS[i], false);
+			continue;
 		}
+		m_pHUDRuntimeView->Set_SlotTexture(ITEM_ICON_SLOT_IDS[i], pDefinition->strIconPath);
+		m_pHUDRuntimeView->Set_SlotVisible(ITEM_ICON_SLOT_IDS[i], true);
 	}
 }
 
-void CMainApp::RenderPlayerHealthManaBar()
+void CMainApp::Update_PlayerHealthManaBar()
 {
+	/* Only reached from Update_CombatHUD's own show path, which already validated the player
+	snapshot and this view. */
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	if (!player.isValid || 0u == player.iMaximumHp || 0u == player.iMaximumResource)
-		return;
-	if (nullptr == m_pHUDRuntimeView)
-		return;
-
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
 
 	const float healthRatio = (std::clamp)(
 		static_cast<float>(player.iCurrentHp) / static_cast<float>(player.iMaximumHp), 0.f, 1.f);
 	const float manaRatio = (std::clamp)(
 		static_cast<float>(player.iCurrentResource) / static_cast<float>(player.iMaximumResource), 0.f, 1.f);
 
-	f32_t fHpX = 0.f, fHpY = 0.f, fHpWidth = 0.f, fHpHeight = 0.f;
-	if (m_pHUDRuntimeView->Get_SlotRect("HealthBar", fHpX, fHpY, fHpWidth, fHpHeight))
-	{
-		if (ID3D11ShaderResourceView* pHpSRV = m_pHUDRuntimeView->Load_Texture("UI/HUD/Common/HP Bar.png"))
-		{
-			const ImVec2 vMin{
-				pViewport->WorkPos.x + fHpX * scaleX,
-				pViewport->WorkPos.y + fHpY * scaleY };
-			const ImVec2 vMax{
-				vMin.x + fHpWidth * scaleX,
-				vMin.y + fHpHeight * scaleY };
-			const float fBoundaryX = vMin.x + (vMax.x - vMin.x) * healthRatio;
-			if (healthRatio > 0.f)
-			{
-				pDrawList->AddImage(pHpSRV, vMin, ImVec2(fBoundaryX, vMax.y),
-					ImVec2(0.f, 0.f), ImVec2(healthRatio, 1.f));
-			}
-		}
-	}
-
-	f32_t fMpX = 0.f, fMpY = 0.f, fMpWidth = 0.f, fMpHeight = 0.f;
-	if (m_pHUDRuntimeView->Get_SlotRect("ManaBar", fMpX, fMpY, fMpWidth, fMpHeight))
-	{
-		if (ID3D11ShaderResourceView* pMpSRV = m_pHUDRuntimeView->Load_Texture("UI/HUD/Common/MP Bar.png"))
-		{
-			const ImVec2 vMin{
-				pViewport->WorkPos.x + fMpX * scaleX,
-				pViewport->WorkPos.y + fMpY * scaleY };
-			const ImVec2 vMax{
-				vMin.x + fMpWidth * scaleX,
-				vMin.y + fMpHeight * scaleY };
-			const float fBoundaryX = vMin.x + (vMax.x - vMin.x) * manaRatio;
-			if (manaRatio > 0.f)
-			{
-				pDrawList->AddImage(pMpSRV, vMin, ImVec2(fBoundaryX, vMax.y),
-					ImVec2(0.f, 0.f), ImVec2(manaRatio, 1.f));
-			}
-		}
-	}
+	m_pHUDRuntimeView->Set_SlotFillRatio("HealthBar_Fill", healthRatio);
+	m_pHUDRuntimeView->Set_SlotVisible("HealthBar_Fill", healthRatio > 0.f);
+	m_pHUDRuntimeView->Set_SlotFillRatio("ManaBar_Fill", manaRatio);
+	m_pHUDRuntimeView->Set_SlotVisible("ManaBar_Fill", manaRatio > 0.f);
 }
 
-void CMainApp::RenderLanceMasterIdentityGauge()
+void CMainApp::Update_LanceMasterIdentityGauge()
 {
 	/* Same real formula as ark.ui.identityLanceMaster.LanceMasterProgress::updateProgress():
 	each of the 3 segments independently tracks 0..100, and only fills once every segment
@@ -2815,13 +2914,13 @@ void CMainApp::RenderLanceMasterIdentityGauge()
 		{
 			m_pHUDRuntimeView->Play_KeyframeAnimation(
 				string("Lance_Id_GaugeBurn") + std::to_string(i), "burn");
-			m_dLanceGaugeIgniteStartSeconds[i] = ImGui::GetTime();
+			m_dLanceGaugeIgniteStartSeconds[i] = Product_Now_Seconds();
 			m_bLanceGaugeLoopStarted[i] = false;
 		}
 		m_bLanceGaugeSegmentWasFull[i] = bIsFull;
 
 		const bool_t bIgniteDone = bIsFull && m_dLanceGaugeIgniteStartSeconds[i] >= 0.0 &&
-			(ImGui::GetTime() - m_dLanceGaugeIgniteStartSeconds[i]) >= BURN_IGNITE_SECONDS[i];
+			(Product_Now_Seconds() - m_dLanceGaugeIgniteStartSeconds[i]) >= BURN_IGNITE_SECONDS[i];
 		if (bIgniteDone && !m_bLanceGaugeLoopStarted[i])
 		{
 			m_pHUDRuntimeView->Play_KeyframeAnimation(
@@ -2837,37 +2936,25 @@ void CMainApp::RenderLanceMasterIdentityGauge()
 	}
 }
 
-void CMainApp::RenderSkillCooldowns()
+void CMainApp::Update_SkillCooldowns()
 {
-	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel != ETOUI(LEVEL::BERN) &&
-		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
-		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
-		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
-	{
-		return;
-	}
+	/* Only reached from Update_CombatHUD's own show path. Matches the fixed server tick rate
+	other Client files already redeclare locally (CombatHUDViewModel.cpp, Character.cpp) rather
+	than exposing a Shared constant for it. */
+	constexpr f32_t SERVER_TICK_HZ = 30.f;
+	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V" };
 
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	if (!player.isValid || 0u == player.iMaximumHp || 0u == player.iMaximumResource)
-		return;
 
-	const bool_t skillWindowOpen =
-		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
-	if (skillWindowOpen || nullptr == m_pHUDRuntimeView)
-		return;
-
-	/* Matches the fixed server tick rate other Client files already redeclare locally
-	(CombatHUDViewModel.cpp, Character.cpp) rather than exposing a Shared constant for it. */
-	constexpr f32_t SERVER_TICK_HZ = 30.f;
-	constexpr f32_t REF_WIDTH = 1280.f;
-	constexpr f32_t REF_HEIGHT = 720.f;
-	constexpr f32_t PI = 3.14159265f;
-
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
-	const f32_t fScaleY = pViewport->WorkSize.y / REF_HEIGHT;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+	/* Default every overlay off; the loop below turns on just the ones actually cooling down.
+	Sweeps clockwise from 12 o'clock as the *remaining* cooldown, shrinking back to nothing as
+	it expires -- the icon starts fully covered right after use and is revealed clockwise,
+	matching the reference cooldown swipe. The pie itself is the appended Skill_<X>_Cooldown
+	overlay slot (black 150/255 White1x1) with the g_ArcRatio shader clip; angle-testing the
+	square quad reproduces the old "radius past the corners, clipped to the rect" construction
+	exactly. The "Ns" numbers moved to RenderSkillCooldownText (post-EndFrame text pass). */
+	for (const char* pInputSlot : INPUT_SLOTS)
+		m_pHUDRuntimeView->Set_SlotVisible(string("Skill_") + pInputSlot + "_Cooldown", false);
 
 	for (const HUD_SKILL_STATE& Skill : player.Skills)
 	{
@@ -2876,59 +2963,14 @@ void CMainApp::RenderSkillCooldowns()
 
 		/* Warlord's Z/X badges have their own real extracted cooldown visual (WarLordSkinFrame's
 		SkillSlot "disabled" state swaps the whole icon to a real dark variant, see the Skill_Z/X
-		keyframe wiring below) instead of this generic pie sweep, which was built for Q-F only. */
+		keyframe wiring in Update_CombatHUD), and Artist's Z/X use their own real keyframed wipe
+		-- the generic pie was built for Q-F/T/V only. */
 		if ("Z" == Skill.strInputSlot || "X" == Skill.strInputSlot)
-		{
-			/* Artist's Z/X slots are real ARKNewSlot instances too, which have their own real
-			coolDown wipe (already keyframed, see Yin_Skill_Z/X_Wipe below) AND a real cooldownText
-			TextField sub-component (confirmed: yinYangShiSlot symbol 343, depth15, name
-			"cooldownText") -- draw just the countdown number here, same "Ns" style as Q-F, without
-			the generic pie (Artist's real wipe shape already covers that). */
-			if (LostArk::Shared::CHARACTER_CLASS_ID::ARTIST == player.eCharacterClass)
-			{
-				const uint32_t remainingTicks = Skill.iCooldownEndTick > player.iServerTick ?
-					Skill.iCooldownEndTick - player.iServerTick : 0u;
-				if (0u != remainingTicks)
-				{
-					f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-					if (m_pHUDRuntimeView->Get_SlotRect("Yin_Skill_" + Skill.strInputSlot, fX, fY, fWidth, fHeight))
-					{
-						const f32_t fRemainingSeconds = static_cast<f32_t>(remainingTicks) / SERVER_TICK_HZ;
-						const int32_t iDisplaySeconds = static_cast<int32_t>(ceilf(fRemainingSeconds));
-						const string strCooldownLabel = std::to_string(iDisplaySeconds) + "s";
-
-						const ImVec2 vTopLeft(
-							pViewport->WorkPos.x + fX * fScaleX,
-							pViewport->WorkPos.y + fY * fScaleY);
-						const ImVec2 vCenter(
-							vTopLeft.x + 22.5f * 0.5f * fScaleX,
-							vTopLeft.y + 22.5f * 0.5f * fScaleY);
-
-						ImFont* pFont = ImGui::GetFont();
-						const f32_t fFontSize = 22.5f * fScaleY * 0.34f;
-						const ImVec2 vTextSize =
-							pFont->CalcTextSizeA(fFontSize, FLT_MAX, 0.f, strCooldownLabel.c_str());
-						const ImVec2 vTextPos(
-							vCenter.x - vTextSize.x * 0.5f,
-							vCenter.y - vTextSize.y * 0.5f);
-
-						pDrawList->AddText(pFont, fFontSize, ImVec2(vTextPos.x + 1.f, vTextPos.y + 1.f),
-							IM_COL32(0, 0, 0, 220), strCooldownLabel.c_str());
-						pDrawList->AddText(pFont, fFontSize, vTextPos,
-							IM_COL32(255, 255, 255, 255), strCooldownLabel.c_str());
-					}
-				}
-			}
 			continue;
-		}
 
 		const uint32_t remainingTicks = Skill.iCooldownEndTick > player.iServerTick ?
 			Skill.iCooldownEndTick - player.iServerTick : 0u;
 		if (0u == remainingTicks)
-			continue;
-
-		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-		if (!m_pHUDRuntimeView->Get_SlotRect("Skill_" + Skill.strInputSlot, fX, fY, fWidth, fHeight))
 			continue;
 
 		const f32_t fRemainingSeconds = static_cast<f32_t>(remainingTicks) / SERVER_TICK_HZ;
@@ -2937,54 +2979,13 @@ void CMainApp::RenderSkillCooldowns()
 		const f32_t fFraction = fTotalSeconds > 0.f ?
 			(std::min)(1.f, (std::max)(0.f, fRemainingSeconds / fTotalSeconds)) : 0.f;
 
-		const ImVec2 vTopLeft(
-			pViewport->WorkPos.x + fX * fScaleX,
-			pViewport->WorkPos.y + fY * fScaleY);
-		const ImVec2 vBotRight(
-			vTopLeft.x + fWidth * fScaleX,
-			vTopLeft.y + fHeight * fScaleY);
-		const ImVec2 vCenter(
-			(vTopLeft.x + vBotRight.x) * 0.5f,
-			(vTopLeft.y + vBotRight.y) * 0.5f);
-		const f32_t fHalfW = (vBotRight.x - vTopLeft.x) * 0.5f;
-		const f32_t fHalfH = (vBotRight.y - vTopLeft.y) * 0.5f;
-		/* Sized past the slot's corners and clipped to its rect below, so the visible edge of
-		the pie traces the square's own border instead of an inscribed circle -- a plain
-		circular-sector fill would leave the corners uncovered while mostly full. */
-		const f32_t fRadius = sqrtf(fHalfW * fHalfW + fHalfH * fHalfH) + 2.f;
-
-		/* Sweeps clockwise from 12 o'clock as the *remaining* cooldown, shrinking back to
-		nothing as it expires -- the icon starts fully covered right after use and is revealed
-		clockwise, matching the reference cooldown swipe. */
-		const f32_t fStartAngle = -PI * 0.5f;
-		const f32_t fEndAngle = fStartAngle + fFraction * 2.f * PI;
-
-		pDrawList->PushClipRect(vTopLeft, vBotRight, true);
-		pDrawList->PathClear();
-		pDrawList->PathLineTo(vCenter);
-		pDrawList->PathArcTo(vCenter, fRadius, fStartAngle, fEndAngle, 32);
-		pDrawList->PathFillConvex(IM_COL32(0, 0, 0, 150));
-		pDrawList->PopClipRect();
-
-		const int32_t iDisplaySeconds = static_cast<int32_t>(ceilf(fRemainingSeconds));
-		const string strCooldownLabel = std::to_string(iDisplaySeconds) + "s";
-
-		ImFont* pFont = ImGui::GetFont();
-		const f32_t fFontSize = fHeight * fScaleY * 0.34f;
-		const ImVec2 vTextSize =
-			pFont->CalcTextSizeA(fFontSize, FLT_MAX, 0.f, strCooldownLabel.c_str());
-		const ImVec2 vTextPos(
-			vCenter.x - vTextSize.x * 0.5f,
-			vCenter.y - vTextSize.y * 0.5f);
-
-		pDrawList->AddText(pFont, fFontSize, ImVec2(vTextPos.x + 1.f, vTextPos.y + 1.f),
-			IM_COL32(0, 0, 0, 220), strCooldownLabel.c_str());
-		pDrawList->AddText(pFont, fFontSize, vTextPos,
-			IM_COL32(255, 255, 255, 255), strCooldownLabel.c_str());
+		const string strOverlaySlot = "Skill_" + Skill.strInputSlot + "_Cooldown";
+		m_pHUDRuntimeView->Set_SlotArcRatio(strOverlaySlot, fFraction);
+		m_pHUDRuntimeView->Set_SlotVisible(strOverlaySlot, true);
 	}
 }
 
-void CMainApp::RenderBossHealthBar()
+void CMainApp::RenderSkillCooldownText()
 {
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	if (currentLevel != ETOUI(LEVEL::BERN) &&
@@ -2994,19 +2995,126 @@ void CMainApp::RenderBossHealthBar()
 	{
 		return;
 	}
-	if (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open())
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid || 0u == player.iMaximumHp || 0u == player.iMaximumResource)
 		return;
+	if ((nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open()) ||
+		nullptr == m_pHUDRuntimeView)
+	{
+		return;
+	}
+
+	constexpr f32_t SERVER_TICK_HZ = 30.f;
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	const auto DrawCooldownLabel = [&](f32_t fCenterX, f32_t fCenterY, f32_t fTargetHeight,
+		const wstring& strLabel)
+	{
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strLabel.c_str());
+		const f32_t fScale = (vMeasured.y > 0.f) ? (fTargetHeight / vMeasured.y) : 1.f;
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strLabel.c_str(),
+			float2_t(fCenterX * textScaleX + 1.f, fCenterY * textScaleY + 1.f),
+			XMVectorSet(0.f, 0.f, 0.f, 220.f / 255.f), 0.f, float2_t(0.5f, 0.5f),
+			fScale * textUiScale);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strLabel.c_str(),
+			float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
+			Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+	};
+
+	for (const HUD_SKILL_STATE& Skill : player.Skills)
+	{
+		if (Skill.strInputSlot.empty() || Skill.Is_Ready(player.iServerTick))
+			continue;
+		const uint32_t remainingTicks = Skill.iCooldownEndTick > player.iServerTick ?
+			Skill.iCooldownEndTick - player.iServerTick : 0u;
+		if (0u == remainingTicks)
+			continue;
+		const f32_t fRemainingSeconds = static_cast<f32_t>(remainingTicks) / SERVER_TICK_HZ;
+		const int32_t iDisplaySeconds = static_cast<int32_t>(ceilf(fRemainingSeconds));
+		const wstring strLabel = std::to_wstring(iDisplaySeconds) + L"s";
+
+		if ("Z" == Skill.strInputSlot || "X" == Skill.strInputSlot)
+		{
+			/* Artist's Z/X slots are real ARKNewSlot instances with a real cooldownText
+			TextField sub-component (yinYangShiSlot symbol 343, depth15, "cooldownText") -- just
+			the countdown number, no generic pie (Artist's own keyframed wipe already covers
+			that). Warlord's Z/X badge swap has no number in the source, same as before. */
+			if (LostArk::Shared::CHARACTER_CLASS_ID::ARTIST != player.eCharacterClass)
+				continue;
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			if (!m_pHUDRuntimeView->Get_SlotRect(
+				"Yin_Skill_" + Skill.strInputSlot, fX, fY, fWidth, fHeight))
+			{
+				continue;
+			}
+			/* Same 22.5-reference-px anchor box the old draw used (the slot's own rect is a
+			placeholder; the real art size lives in the keyframe document). */
+			DrawCooldownLabel(fX + 22.5f * 0.5f, fY + 22.5f * 0.5f, 22.5f * 0.34f, strLabel);
+			continue;
+		}
+
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pHUDRuntimeView->Get_SlotRect("Skill_" + Skill.strInputSlot, fX, fY, fWidth, fHeight))
+			continue;
+		DrawCooldownLabel(fX + fWidth * 0.5f, fY + fHeight * 0.5f, fHeight * 0.34f, strLabel);
+	}
+}
+
+void CMainApp::Hide_BossHealthBar()
+{
+	if (nullptr == m_pBossUIView)
+		return;
+	constexpr const char_t* BOSS_UI_ALL_SLOTS[] = {
+		"Boss_Frame", "Boss_FillBehind", "Boss_Fill", "Boss_StaggerBg", "Boss_StaggerFill",
+		"Boss_StaggerTrack", "Boss_Separator", "Boss_TickFlash", "Boss_HitGlow",
+		/* Position-only markers for the labels RenderBossHealthBarText draws. They carry real
+		boss_text_placeholder.png art that the old manual draw path never submitted, so unlike a
+		marker with no layer they have a CUI_Sprite of their own and would otherwise sit on
+		screen permanently -- LEVEL::STATIC keeps them across every Level, including Character
+		Select and Lobby. Nothing ever shows these. */
+		"Boss_TitleText", "Boss_HPText", "Boss_BarCountText",
+	};
+	for (const char_t* pSlotId : BOSS_UI_ALL_SLOTS)
+		m_pBossUIView->Set_SlotVisible(pSlotId, false);
+}
+
+void CMainApp::Update_BossHealthBar()
+{
+	if (nullptr == m_pBossUIView)
+	{
+		return;
+	}
+
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	const bool_t isSupportedLevel =
+		currentLevel == ETOUI(LEVEL::BERN) ||
+		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
+		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT);
+	const bool_t skillWindowOpen =
+		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
+	/* Same reasoning as Update_ClassList's own gate -- the O-key raid-entry preview's left info
+	column/panel frame occupy this same screen region in Debug builds. */
+#ifdef _DEBUG
+	const bool_t isCharSelectDebugPreviewOpen =
+		ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel &&
+		nullptr != CLevel_CharacterSelect::Get_Active() &&
+		CLevel_CharacterSelect::Get_Active()->Is_DebugRaidEntryPreviewOpen();
+#else
+	const bool_t isCharSelectDebugPreviewOpen = false;
+#endif
 
 	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
-	if (!boss.isValid || 0u == boss.iMaximumHp)
+	if (!isSupportedLevel || skillWindowOpen || isCharSelectDebugPreviewOpen ||
+		!boss.isValid || 0u == boss.iMaximumHp)
+	{
+		Hide_BossHealthBar();
 		return;
-
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-	const float uiScale = (std::min)(scaleX, scaleY);
+	}
 
 	/* Real Lost Ark raid bosses (Valtan: Data/Balance/BossProfiles.json maximumHealthBars=160)
 	don't show current/max HP as one continuous 0..100% bar -- total HP is split into
@@ -3044,10 +3152,10 @@ void CMainApp::RenderBossHealthBar()
 	else
 	{
 		if (iBarsRemaining < m_iPreviousBossBarsRemaining)
-			m_dBossBarTickFlashStartSeconds = ImGui::GetTime();
+			m_dBossBarTickFlashStartSeconds = Product_Now_Seconds();
 		if (boss.iCurrentHp < m_iPreviousBossCurrentHp)
 		{
-			m_dBossHitGlowStartSeconds = ImGui::GetTime();
+			m_dBossHitGlowStartSeconds = Product_Now_Seconds();
 			m_fBossHitGlowFillRatio = healthRatio;
 		}
 		m_iPreviousBossBarsRemaining = iBarsRemaining;
@@ -3061,15 +3169,19 @@ void CMainApp::RenderBossHealthBar()
 	resizes each one by hand without this function deciding how they relate to each other. Nothing
 	to draw if the fill slot -- the one piece that actually needs to exist for the bar to mean
 	anything -- hasn't loaded. */
-	if (nullptr == m_pBossUIView)
-		return;
 	f32_t fFillRectX = 0.f, fFillRectY = 0.f, fFillRectWidth = 0.f, fFillRectHeight = 0.f;
 	if (!m_pBossUIView->Get_SlotRect(
 		"Boss_Fill", fFillRectX, fFillRectY, fFillRectWidth, fFillRectHeight))
 	{
+		Hide_BossHealthBar();
 		return;
 	}
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+	/* Boss_Fill's own real visibility (healthRatio > 0.f) is set further below, once healthRatio
+	is known to be nonzero -- these three have no such data-driven condition, always on
+	whenever the bar itself is showing at all. */
+	m_pBossUIView->Set_SlotVisible("Boss_Frame", true);
+	m_pBossUIView->Set_SlotVisible("Boss_StaggerBg", true);
+	m_pBossUIView->Set_SlotVisible("Boss_StaggerTrack", true);
 
 	/* Real EFUI_STATUS pieces -- see Resources/UI/BossUI. The boss_bar_fill_* set are solid-color
 	bar rows cropped directly from targetstatus_loc_int_i2.dds's top cluster (square left edge,
@@ -3094,119 +3206,53 @@ void CMainApp::RenderBossHealthBar()
 	const uint32_t iColorIndex = ((iColorCycleValue % FILL_COLOR_COUNT == 0) ?
 		FILL_COLOR_COUNT : (iColorCycleValue % FILL_COLOR_COUNT)) - 1u;
 
-	ID3D11ShaderResourceView* pFillSRV =
-		m_pBossUIView->Load_Texture(FILL_COLOR_CYCLE[iColorIndex]);
+	m_pBossUIView->Set_SlotTexture("Boss_Fill", FILL_COLOR_CYCLE[iColorIndex]);
+	m_pBossUIView->Set_SlotFillRatio("Boss_Fill", healthRatio > 0.f ? healthRatio : 0.f);
+	m_pBossUIView->Set_SlotVisible("Boss_Fill", healthRatio > 0.f);
 
-	const ImVec2 fillTrackMin{
-		pViewport->WorkPos.x + fFillRectX * scaleX,
-		pViewport->WorkPos.y + fFillRectY * scaleY };
-	const ImVec2 fillTrackMax{
-		fillTrackMin.x + fFillRectWidth * scaleX,
-		fillTrackMin.y + fFillRectHeight * scaleY };
-	const float fillInset = 2.f * uiScale;
-	const ImVec2 fillMin{ fillTrackMin.x + fillInset, fillTrackMin.y + fillInset };
-	const ImVec2 fillMax{ fillTrackMax.x - fillInset, fillTrackMax.y - fillInset };
-	const float fFillBoundaryX = fillMin.x + (fillMax.x - fillMin.x) * healthRatio;
+	/* Reference-resolution equivalent of the old fillInset/fillMin/fillMax screen-pixel math --
+	CUILayoutRuntime's Set_SlotPosition/Set_SlotRect already apply m_fScaleX/Y themselves, so
+	these stay in the document's own units instead of re-deriving a viewport scale here. */
+	const f32_t fFillInset = 2.f;
+	const f32_t fFillMinX = fFillRectX + fFillInset;
+	const f32_t fFillMinY = fFillRectY + fFillInset;
+	const f32_t fFillMaxX = fFillRectX + fFillRectWidth - fFillInset;
+	const f32_t fFillMaxY = fFillRectY + fFillRectHeight - fFillInset;
+	const f32_t fFillBoundaryX = fFillMinX + (fFillMaxX - fFillMinX) * healthRatio;
 
 	/* The area the current segment's fill hasn't reached yet isn't empty -- it's the next bar
 	segment's own color already sitting behind it, so draining the current segment reveals the
-	next one's color instead of a gap. Only the current segment (iColorIndex) is UV-clipped by
-	healthRatio; this background is the (iBarsRemaining - 1) segment drawn full-width underneath.
-	No "next" color once the last bar is draining (iBarsRemaining == 1). */
+	next one's color instead of a gap. Only the current segment (iColorIndex) is fill-ratio
+	clipped; this background is the (iBarsRemaining - 1) segment drawn full-width underneath. No
+	"next" color once the last bar is draining (iBarsRemaining == 1). */
 	if (iBarsRemaining > 1u)
 	{
 		const uint32_t iNextColorCycleValue = iBarsRemaining - 1u;
 		const uint32_t iNextColorIndex = ((iNextColorCycleValue % FILL_COLOR_COUNT == 0) ?
 			FILL_COLOR_COUNT : (iNextColorCycleValue % FILL_COLOR_COUNT)) - 1u;
-		if (ID3D11ShaderResourceView* pNextFillSRV =
-			m_pBossUIView->Load_Texture(FILL_COLOR_CYCLE[iNextColorIndex]))
-		{
-			pDrawList->AddImage(pNextFillSRV, fillMin, fillMax);
-		}
+		m_pBossUIView->Set_SlotTexture("Boss_FillBehind", FILL_COLOR_CYCLE[iNextColorIndex]);
+		m_pBossUIView->Set_SlotVisible("Boss_FillBehind", true);
 	}
-
-	if (nullptr != pFillSRV && healthRatio > 0.f)
+	else
 	{
-		pDrawList->AddImage(pFillSRV, fillMin, ImVec2(fFillBoundaryX, fillMax.y),
-			ImVec2(0.f, 0.f), ImVec2(healthRatio, 1.f));
-	}
-
-	/* boss_bar_ornate_frame.png (the user's reference capture 제목없음.png, used whole, badge and
-	border together) is purely decorative and independently placed via its own "Boss_Frame" slot --
-	it does not define the fill's 0-100% width, that's Boss_Fill's own rect above. */
-	f32_t fFrameRectX = 0.f, fFrameRectY = 0.f, fFrameRectWidth = 0.f, fFrameRectHeight = 0.f;
-	if (m_pBossUIView->Get_SlotRect(
-		"Boss_Frame", fFrameRectX, fFrameRectY, fFrameRectWidth, fFrameRectHeight))
-	{
-		if (ID3D11ShaderResourceView* pOrnateFrameSRV =
-			m_pBossUIView->Load_Texture("UI/BossUI/boss_bar_ornate_frame.png"))
-		{
-			const ImVec2 vFrameMin{
-				pViewport->WorkPos.x + fFrameRectX * scaleX,
-				pViewport->WorkPos.y + fFrameRectY * scaleY };
-			const ImVec2 vFrameMax{
-				vFrameMin.x + fFrameRectWidth * scaleX,
-				vFrameMin.y + fFrameRectHeight * scaleY };
-			pDrawList->AddImage(pOrnateFrameSRV, vFrameMin, vFrameMax);
-		}
+		m_pBossUIView->Set_SlotVisible("Boss_FillBehind", false);
 	}
 
 	/* Stagger/paralyzation gauge (real paralyzationGauge -- background + fill + hollow
 	purple-bordered track, char 473 in TargetGrade_Boss). The Server snapshot owns
 	current/maximum; presentation only crops the existing fill art inside the authored track. */
-	f32_t fStaggerBgX = 0.f, fStaggerBgY = 0.f, fStaggerBgWidth = 0.f, fStaggerBgHeight = 0.f;
-	if (m_pBossUIView->Get_SlotRect(
-		"Boss_StaggerBg", fStaggerBgX, fStaggerBgY, fStaggerBgWidth, fStaggerBgHeight))
+	if (0u != boss.iMaximumStagger && 0u != boss.iCurrentStagger)
 	{
-		if (ID3D11ShaderResourceView* pStaggerBgSRV =
-			m_pBossUIView->Load_Texture("UI/BossUI/boss_stagger_bg.png"))
-		{
-			const ImVec2 vStaggerBgMin{
-				pViewport->WorkPos.x + fStaggerBgX * scaleX,
-				pViewport->WorkPos.y + fStaggerBgY * scaleY };
-			const ImVec2 vStaggerBgMax{
-				vStaggerBgMin.x + fStaggerBgWidth * scaleX,
-				vStaggerBgMin.y + fStaggerBgHeight * scaleY };
-			pDrawList->AddImage(pStaggerBgSRV, vStaggerBgMin, vStaggerBgMax);
-		}
+		const f32_t fStaggerRatio = (std::clamp)(
+			static_cast<f32_t>(boss.iCurrentStagger) /
+				static_cast<f32_t>(boss.iMaximumStagger),
+			0.f, 1.f);
+		m_pBossUIView->Set_SlotFillRatio("Boss_StaggerFill", fStaggerRatio);
+		m_pBossUIView->Set_SlotVisible("Boss_StaggerFill", true);
 	}
-	f32_t fStaggerTrackX = 0.f, fStaggerTrackY = 0.f, fStaggerTrackWidth = 0.f, fStaggerTrackHeight = 0.f;
-	if (m_pBossUIView->Get_SlotRect(
-		"Boss_StaggerTrack", fStaggerTrackX, fStaggerTrackY, fStaggerTrackWidth, fStaggerTrackHeight))
+	else
 	{
-		const ImVec2 vStaggerTrackMin{
-			pViewport->WorkPos.x + fStaggerTrackX * scaleX,
-			pViewport->WorkPos.y + fStaggerTrackY * scaleY };
-		const ImVec2 vStaggerTrackMax{
-			vStaggerTrackMin.x + fStaggerTrackWidth * scaleX,
-			vStaggerTrackMin.y + fStaggerTrackHeight * scaleY };
-		if (0u != boss.iMaximumStagger && 0u != boss.iCurrentStagger)
-		{
-			const f32_t fStaggerRatio = (std::clamp)(
-				static_cast<f32_t>(boss.iCurrentStagger) /
-					static_cast<f32_t>(boss.iMaximumStagger),
-				0.f, 1.f);
-			if (ID3D11ShaderResourceView* pStaggerFillSRV =
-				m_pBossUIView->Load_Texture(
-					"UI/BossUI/boss_stagger_fill.png"))
-			{
-				pDrawList->AddImage(
-					pStaggerFillSRV,
-					vStaggerTrackMin,
-					ImVec2(
-						vStaggerTrackMin.x +
-							(vStaggerTrackMax.x - vStaggerTrackMin.x) *
-							fStaggerRatio,
-						vStaggerTrackMax.y),
-					ImVec2(0.f, 0.f),
-					ImVec2(fStaggerRatio, 1.f));
-			}
-		}
-		if (ID3D11ShaderResourceView* pStaggerTrackSRV =
-			m_pBossUIView->Load_Texture("UI/BossUI/boss_stagger_track.png"))
-		{
-			pDrawList->AddImage(pStaggerTrackSRV, vStaggerTrackMin, vStaggerTrackMax);
-		}
+		m_pBossUIView->Set_SlotVisible("Boss_StaggerFill", false);
 	}
 
 	/* User-supplied boundary marker (HP seperate Bar.png -- a tiny 3x15 soft cream vertical glow
@@ -3214,64 +3260,78 @@ void CMainApp::RenderBossHealthBar()
 	Progress::mark concept (an edge indicator repositioned every update) this session couldn't
 	trace real art for earlier. Hidden exactly at 0%/100%, same as the real useAutoHideMark
 	behaviour, since there's no boundary to mark once the bar is fully empty or full. */
-	ID3D11ShaderResourceView* pSeparatorSRV =
-		m_pBossUIView->Load_Texture("UI/BossUI/boss_bar_separator.png");
-	if (nullptr != pSeparatorSRV && healthRatio > 0.f && healthRatio < 1.f)
+	const bool_t bShowSeparator = healthRatio > 0.f && healthRatio < 1.f;
+	m_pBossUIView->Set_SlotVisible("Boss_Separator", bShowSeparator);
+	if (bShowSeparator)
 	{
-		const float fSeparatorHalfWidth = 3.f * uiScale;
-		pDrawList->AddImage(pSeparatorSRV,
-			ImVec2(fFillBoundaryX - fSeparatorHalfWidth, fillMin.y),
-			ImVec2(fFillBoundaryX + fSeparatorHalfWidth, fillMax.y));
+		constexpr f32_t SEPARATOR_HALF_WIDTH = 3.f;
+		m_pBossUIView->Set_SlotRect("Boss_Separator",
+			fFillBoundaryX - SEPARATOR_HALF_WIDTH, fFillMinY,
+			SEPARATOR_HALF_WIDTH * 2.f, fFillMaxY - fFillMinY);
 	}
 
 	/* Real ProgressMultiTrack::updateTarget cross-fades a second "cloneTarget" fill instance --
 	same shape as the fill, colorTransform forced to solid white -- over the real fill whenever a
 	bar segment ticks over, instead of hard-cutting back to full. Approximated with a flat white
-	rect (no separate white-silhouette asset was extracted) over the same now-full fill area,
-	fading out over the tween window real gaugeComplete() uses (0.1-0.23s -- rounded up here since
-	an ImGui flash reads as more of a blip at the real duration). */
+	rect (no separate white-silhouette asset was extracted, same as before this migration) over
+	the same now-full fill area, fading out over the tween window real gaugeComplete() uses
+	(0.1-0.23s -- rounded up here since a flash reads as more of a blip at the real duration). */
+	bool_t bShowTickFlash = false;
 	if (m_dBossBarTickFlashStartSeconds >= 0.0)
 	{
 		constexpr f64_t BAR_TICK_FLASH_SECONDS = 0.3;
-		const f64_t fFlashAge = ImGui::GetTime() - m_dBossBarTickFlashStartSeconds;
+		const f64_t fFlashAge = Product_Now_Seconds() - m_dBossBarTickFlashStartSeconds;
 		if (fFlashAge < BAR_TICK_FLASH_SECONDS)
 		{
+			bShowTickFlash = true;
 			const f32_t fFlashAlpha = 1.f - static_cast<f32_t>(fFlashAge / BAR_TICK_FLASH_SECONDS);
-			const float fillInset = 2.f * uiScale;
-			pDrawList->AddRectFilled(
-				ImVec2(fillTrackMin.x + fillInset, fillTrackMin.y + fillInset),
-				ImVec2(fillTrackMax.x - fillInset, fillTrackMax.y - fillInset),
-				IM_COL32(255, 255, 255, static_cast<int>(220.f * fFlashAlpha)));
+			m_pBossUIView->Set_SlotRect("Boss_TickFlash",
+				fFillMinX, fFillMinY, fFillMaxX - fFillMinX, fFillMaxY - fFillMinY);
+			/* This alpha IS the visibility while flashing -- Set_SlotVisible(true) would
+			clobber it back to fully opaque (it resets the tint to solid white). */
+			m_pBossUIView->Set_SlotAlpha("Boss_TickFlash", (220.f / 255.f) * fFlashAlpha);
 		}
 	}
+	if (!bShowTickFlash)
+		m_pBossUIView->Set_SlotVisible("Boss_TickFlash", false);
 
 	/* Real Progress::updateMark positions a "mark" clip at the fill's own edge every update; its
 	symbol (character 732) is a 39-frame animated additive glow (grows ~1.0->1.5/3.0 scale, fades
-	~256->92 alpha) rather than a static line. No source art was traced for it, so this reproduces
-	the motion procedurally: a soft glow at the edge that grows then fades on every HP drop. */
+	~256->92 alpha) rather than a static line. No source art was traced for it, so this reuses
+	click_move_glow.dds (the ground click-move indicator's own soft radial glow) resized/faded to
+	approximate the same motion -- a real dedicated hit-glow asset would still be a closer match. */
+	bool_t bShowHitGlow = false;
 	if (m_dBossHitGlowStartSeconds >= 0.0)
 	{
 		constexpr f64_t HIT_GLOW_SECONDS = 0.35;
-		const f64_t fGlowAge = ImGui::GetTime() - m_dBossHitGlowStartSeconds;
+		const f64_t fGlowAge = Product_Now_Seconds() - m_dBossHitGlowStartSeconds;
 		if (fGlowAge < HIT_GLOW_SECONDS)
 		{
+			bShowHitGlow = true;
 			const f32_t fGlowT = static_cast<f32_t>(fGlowAge / HIT_GLOW_SECONDS);
 			const f32_t fGlowAlpha = 1.f - fGlowT;
-			const f32_t fGlowRadius = (6.f + 10.f * fGlowT) * uiScale;
-			const ImVec2 vGlowCenter{
-				fillTrackMin.x + (fillTrackMax.x - fillTrackMin.x) * m_fBossHitGlowFillRatio,
-				(fillTrackMin.y + fillTrackMax.y) * 0.5f };
-			pDrawList->AddCircleFilled(vGlowCenter, fGlowRadius,
-				IM_COL32(255, 250, 230, static_cast<int>(200.f * fGlowAlpha)));
+			const f32_t fGlowRadius = 6.f + 10.f * fGlowT;
+			const f32_t fGlowCenterX = fFillMinX + (fFillMaxX - fFillMinX) * m_fBossHitGlowFillRatio;
+			const f32_t fGlowCenterY = (fFillMinY + fFillMaxY) * 0.5f;
+			m_pBossUIView->Set_SlotRect("Boss_HitGlow",
+				fGlowCenterX - fGlowRadius, fGlowCenterY - fGlowRadius,
+				fGlowRadius * 2.f, fGlowRadius * 2.f);
+			/* Same warm near-white (255,250,230) the original IM_COL32 glow used, not
+			Set_SlotAlpha's plain white -- that would wash out the warm tint. This tint IS
+			the visibility while glowing, same as Boss_TickFlash's alpha above. */
+			m_pBossUIView->Set_SlotTint("Boss_HitGlow",
+				float4_t(1.f, 250.f / 255.f, 230.f / 255.f, (200.f / 255.f) * fGlowAlpha));
 		}
 	}
-
+	if (!bShowHitGlow)
+		m_pBossUIView->Set_SlotVisible("Boss_HitGlow", false);
 }
 
-/* Split from RenderBossHealthBar() -- see the declaration comment in MainApp.h for why this has
-to run after CImGuiLayer::EndFrame() instead of alongside the bar/frame image draws. Re-derives
-healthRatio/iBarsRemaining from the same boss snapshot RenderBossHealthBar already used this frame;
-cheap pure arithmetic, safer than threading the values out as member state. */
+/* Split from Update_BossHealthBar() -- see the declaration comment in MainApp.h for why this
+uses ImGui's own font/foreground draw list (CGameInstance::Draw_Text, called after
+CImGuiLayer::EndFrame()) instead of anything driven from that CUI_Sprite state. Re-derives
+healthRatio/iBarsRemaining from the same boss snapshot Update_BossHealthBar already used this
+frame; cheap pure arithmetic, safer than threading the values out as member state. */
 void CMainApp::RenderBossHealthBarText()
 {
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
@@ -3532,7 +3592,7 @@ void CMainApp::RenderItemAnnounceText()
 	}
 }
 
-void CMainApp::RenderChargeGauge()
+void CMainApp::Update_ChargeGauge()
 {
 	if (nullptr == m_pHUDRuntimeView)
 		return;
@@ -3672,38 +3732,15 @@ void CMainApp::RenderChargeGauge()
 		}
 	}
 
-	// Bg/Track are static full images shown via the normal JSON layer composite; Fill is always
-	// kept hidden there and hand-drawn below with a partial-width UV crop instead (same technique
-	// RenderBossHealthBar already uses for its own segment fill).
+	/* Bg/Track are static full images (their own authored slots); Fill is the same authored
+	slot, clipped by the real charge progress via the g_FillRatio shader clip -- same technique
+	the boss/player bars use. */
 	m_pHUDRuntimeView->Set_SlotVisible("ChargeGauge_Bg", bCharging);
 	m_pHUDRuntimeView->Set_SlotVisible("ChargeGauge_Track", bCharging);
-	m_pHUDRuntimeView->Set_SlotVisible("ChargeGauge_Fill", false);
-
-	if (!bCharging)
-		return;
-
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-
-	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-	if (!m_pHUDRuntimeView->Get_SlotRect("ChargeGauge_Fill", fX, fY, fWidth, fHeight))
-		return;
-
-	ID3D11ShaderResourceView* pFillSRV =
-		m_pHUDRuntimeView->Load_Texture("UI/HUD/ChargeGauge/charge_gauge_fill.png");
-	if (nullptr == pFillSRV || fChargeProgress <= 0.f)
-		return;
-
-	const ImVec2 fillMin{
-		pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY };
-	const ImVec2 fillMax{ fillMin.x + fWidth * scaleX, fillMin.y + fHeight * scaleY };
-	const float fFillBoundaryX = fillMin.x + (fillMax.x - fillMin.x) * fChargeProgress;
-
-	ImGui::GetForegroundDrawList(pViewport)->AddImage(pFillSRV, fillMin,
-		ImVec2(fFillBoundaryX, fillMax.y), ImVec2(0.f, 0.f), ImVec2(fChargeProgress, 1.f));
+	const bool_t bShowFill = bCharging && fChargeProgress > 0.f;
+	m_pHUDRuntimeView->Set_SlotVisible("ChargeGauge_Fill", bShowFill);
+	if (bShowFill)
+		m_pHUDRuntimeView->Set_SlotFillRatio("ChargeGauge_Fill", fChargeProgress);
 }
 
 void CMainApp::RenderChargeGaugeText()
@@ -3727,10 +3764,10 @@ void CMainApp::RenderChargeGaugeText()
 	{
 		return;
 	}
-	// Must mirror RenderChargeGauge's own bCharging gate exactly -- 17240 풀배럴 캐넌 only shows a
+	// Must mirror Update_ChargeGauge's own bCharging gate exactly -- 17240 풀배럴 캐넌 only shows a
 	// gauge (so only shows this label) during its stage-2 pump; every other HOLD skill hides both
 	// once an early release cancels the charge (m_bChargeGaugeCancelled, set earlier this same
-	// frame by RenderChargeGauge).
+	// frame by Update_ChargeGauge).
 	constexpr LostArk::Shared::SKILL_ID FULL_BARREL_CANNON_SKILL_ID = 17240;
 	if (FULL_BARREL_CANNON_SKILL_ID == pSkill->iSkillId)
 	{
@@ -3778,141 +3815,130 @@ void CMainApp::RenderChargeGaugeText()
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 }
 
-void CMainApp::RenderEstherGauge()
+void CMainApp::Hide_EstherUI()
 {
-	/* Esther's skill-select window is a Valtan raid mechanic -- Character Select's live Server
-	room can still populate a nonzero gauge maximum for the selected class, which drew this
-	window there too even though there is no raid encounter to use it against. */
-	if (ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+	if (nullptr == m_pEstherUIView)
 		return;
+	constexpr const char_t* ESTHER_ALL_SLOTS[] = {
+		"Esther_HeaderFrame",
+		"Esther_Slot1_Frame", "Esther_Slot1_Icon", "Esther_Slot1_Ready",
+		"Esther_Slot2_Frame", "Esther_Slot2_Icon", "Esther_Slot2_Ready",
+		"Esther_Slot3_Frame", "Esther_Slot3_Icon", "Esther_Slot3_Ready",
+		"Esther_GaugeTrack", "Esther_GaugeFill",
+	};
+	for (const char_t* pSlotId : ESTHER_ALL_SLOTS)
+		m_pEstherUIView->Set_SlotVisible(pSlotId, false);
+}
 
-	const uint32_t maximum =
-		CCombatHUDViewModel::Get().Get_EstherGaugeMaximum();
-	if (0u == maximum)
-		return;
-	if (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open())
-		return;
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	if (!player.isValid)
-		return;
+void CMainApp::Update_EstherGauge()
+{
 	if (nullptr == m_pEstherUIView)
 		return;
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
+	/* Esther's skill-select window is a Valtan raid mechanic -- Character Select's live Server
+	room can still populate a nonzero gauge maximum for the selected class, which drew this
+	window there too even though there is no raid encounter to use it against. */
+	const uint32_t maximum =
+		CCombatHUDViewModel::Get().Get_EstherGaugeMaximum();
+	const bool_t skillWindowOpen =
+		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
+	if (ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID() ||
+		0u == maximum || skillWindowOpen ||
+		!CCombatHUDViewModel::Get().Get_Player().isValid)
+	{
+		Hide_EstherUI();
 		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-	const float uiScale = (std::min)(scaleX, scaleY);
+	}
+
+	/* Static pieces (frame/portraits/track) show whenever the window itself shows; real pieces
+	(frame/lock/gauge) traced from the actual estherweaponskill.gfx + EFUI_ICONATLAS_E packages,
+	not placeholder rects. Esther_GaugeFill is a separate Tool-placeable slot (own rect,
+	independently adjustable) fill-ratio-clipped by the real gauge value -- same technique as the
+	boss/player HP bars. The 3 Ready glows only show at full gauge. */
+	constexpr const char_t* ESTHER_STATIC_SLOTS[] = {
+		"Esther_HeaderFrame",
+		"Esther_Slot1_Frame", "Esther_Slot1_Icon",
+		"Esther_Slot2_Frame", "Esther_Slot2_Icon",
+		"Esther_Slot3_Frame", "Esther_Slot3_Icon",
+		"Esther_GaugeTrack",
+	};
+	for (const char_t* pSlotId : ESTHER_STATIC_SLOTS)
+		m_pEstherUIView->Set_SlotVisible(pSlotId, true);
+
 	const uint32_t gauge = CCombatHUDViewModel::Get().Get_EstherGauge();
 	const float fillRatio = (std::clamp)(
 		static_cast<float>(gauge) / static_cast<float>(maximum), 0.f, 1.f);
+	m_pEstherUIView->Set_SlotFillRatio("Esther_GaugeFill", fillRatio);
+	m_pEstherUIView->Set_SlotVisible("Esther_GaugeFill", fillRatio > 0.f);
 
-	/* Esther_GaugeTrack's own rect (EstherUI.json, Tool-editable) positions the static background
-	image (drawn generically by m_pEstherUIView->Render()) and the label below. Esther_GaugeFill is
-	a separate Tool-placeable slot (own rect, independently adjustable) whose static art is forced
-	hidden every frame (see the Set_SlotVisible calls above); this draws the real UV-clipped fill in
-	its place -- same technique as the boss/player HP bars. Real pieces (frame/lock/gauge) traced
-	from the actual estherweaponskill.gfx + EFUI_ICONATLAS_E packages, not placeholder rects. */
+	const bool_t bReady = gauge >= maximum;
+	m_pEstherUIView->Set_SlotVisible("Esther_Slot1_Ready", bReady);
+	m_pEstherUIView->Set_SlotVisible("Esther_Slot2_Ready", bReady);
+	m_pEstherUIView->Set_SlotVisible("Esther_Slot3_Ready", bReady);
+}
+
+void CMainApp::RenderEstherGaugeText()
+{
+	/* Same gates as Update_EstherGauge -- this label is that window's own caption, so it must
+	disappear and reappear together with the art instead of floating without it. */
+	if (nullptr == m_pEstherUIView ||
+		ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+	{
+		return;
+	}
+	const uint32_t maximum =
+		CCombatHUDViewModel::Get().Get_EstherGaugeMaximum();
+	if (0u == maximum ||
+		(nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open()) ||
+		!CCombatHUDViewModel::Get().Get_Player().isValid)
+	{
+		return;
+	}
+
 	f32_t fTrackX = 0.f, fTrackY = 0.f, fTrackWidth = 0.f, fTrackHeight = 0.f;
 	if (!m_pEstherUIView->Get_SlotRect(
 		"Esther_GaugeTrack", fTrackX, fTrackY, fTrackWidth, fTrackHeight))
 	{
 		return;
 	}
-	const ImVec2 barMin{
-		pViewport->WorkPos.x + fTrackX * scaleX,
-		pViewport->WorkPos.y + fTrackY * scaleY };
-	const ImVec2 barMax{
-		barMin.x + fTrackWidth * scaleX,
-		barMin.y + fTrackHeight * scaleY };
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
 
-	f32_t fFillX = 0.f, fFillY = 0.f, fFillWidth = 0.f, fFillHeight = 0.f;
-	if (m_pEstherUIView->Get_SlotRect("Esther_GaugeFill", fFillX, fFillY, fFillWidth, fFillHeight))
-	{
-		const ImVec2 fillMin{
-			pViewport->WorkPos.x + fFillX * scaleX,
-			pViewport->WorkPos.y + fFillY * scaleY };
-		const ImVec2 fillMax{
-			fillMin.x + fFillWidth * scaleX,
-			fillMin.y + fFillHeight * scaleY };
-		const float fillRight = fillMin.x + (fillMax.x - fillMin.x) * fillRatio;
-		if (fillRight > fillMin.x)
-		{
-			if (ID3D11ShaderResourceView* pFillSRV =
-				m_pEstherUIView->Load_Texture("UI/Esther/esther_gauge_fill_gold.png"))
-			{
-				pDrawList->AddImage(pFillSRV, fillMin, ImVec2(fillRight, fillMax.y),
-					ImVec2(0.f, 0.f), ImVec2(fillRatio, 1.f));
-			}
-		}
-	}
-	if (gauge >= maximum)
-	{
-		ID3D11ShaderResourceView* pReadySRV =
-			m_pEstherUIView->Load_Texture("UI/Esther/esther_slot_ready.png");
-		if (nullptr != pReadySRV)
-		{
-			for (const char* pReadySlotId :
-				{ "Esther_Slot1_Ready", "Esther_Slot2_Ready", "Esther_Slot3_Ready" })
-			{
-				f32_t fReadyX = 0.f, fReadyY = 0.f, fReadyWidth = 0.f, fReadyHeight = 0.f;
-				if (!m_pEstherUIView->Get_SlotRect(
-					pReadySlotId, fReadyX, fReadyY, fReadyWidth, fReadyHeight))
-				{
-					continue;
-				}
-				const ImVec2 readyMin{
-					pViewport->WorkPos.x + fReadyX * scaleX,
-					pViewport->WorkPos.y + fReadyY * scaleY };
-				const ImVec2 readyMax{
-					readyMin.x + fReadyWidth * scaleX,
-					readyMin.y + fReadyHeight * scaleY };
-				pDrawList->AddImage(pReadySRV, readyMin, readyMax);
-			}
-		}
-	}
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	const char* pLabel = gauge >= maximum ?
-		"ESTHER READY  Ctrl+Z/X/C" : "ESTHER";
-	const ImVec2 labelSize = ImGui::CalcTextSize(pLabel);
-	const ImVec2 labelPos(
-		(barMin.x + barMax.x - labelSize.x) * 0.5f,
-		barMin.y - labelSize.y - 2.f * uiScale);
-	pDrawList->AddText(
-		ImVec2(labelPos.x + 1.f, labelPos.y + 1.f),
-		IM_COL32(0, 0, 0, 220), pLabel);
-	pDrawList->AddText(labelPos, IM_COL32(214, 238, 255, 255), pLabel);
+	const uint32_t gauge = CCombatHUDViewModel::Get().Get_EstherGauge();
+	const wchar_t* pLabel = gauge >= maximum ?
+		L"ESTHER READY  Ctrl+Z/X/C" : L"ESTHER";
+	const float2_t vMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+	/* ~12 reference px tall, centered above the track's own top edge -- matching the old
+	ImGui-font label's placement (its default font was ~13 screen px). */
+	constexpr f32_t LABEL_HEIGHT = 12.f;
+	const f32_t fScale = (vMeasured.y > 0.f) ? (LABEL_HEIGHT / vMeasured.y) : 1.f;
+	const f32_t fCenterX = fTrackX + fTrackWidth * 0.5f;
+	const f32_t fCenterY = fTrackY - 2.f - LABEL_HEIGHT * 0.5f;
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
+		float2_t(fCenterX * textScaleX + 1.f, fCenterY * textScaleY + 1.f),
+		XMVectorSet(0.f, 0.f, 0.f, 220.f / 255.f), 0.f, float2_t(0.5f, 0.5f),
+		fScale * textUiScale);
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
+		float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
+		XMVectorSet(214.f / 255.f, 238.f / 255.f, 1.f, 1.f), 0.f, float2_t(0.5f, 0.5f),
+		fScale * textUiScale);
 }
 
-void CMainApp::RenderSkillIcons()
+void CMainApp::Update_SkillIcons()
 {
 	/* Which skill icon belongs in Skill_Q.."Skill_F" is content, not layout: it depends on the
 	live (class, stance) pair via CPlayerSkillCatalog::Find_BySlot, the same source of truth the
 	input controller already resolves quick slots from. HUD_Layout.json only owns the shared
 	frame's position/size (ownerClass null "Skill_Q".."Skill_F"); it must not carry a second,
-	class-hardcoded copy of "which icon" that can drift out of sync with PlayerSkills.json. This
-	replaces the LanceMaster-only stance special-case with one path for every class -- Find_BySlot
-	already resolves stance-gated skills correctly and ignores the stance argument for classes
-	whose skills have no requiredStance. */
-	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel != ETOUI(LEVEL::BERN) &&
-		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
-		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
-		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
-	{
-		return;
-	}
-
+	class-hardcoded copy of "which icon" that can drift out of sync with PlayerSkills.json.
+	Find_BySlot already resolves stance-gated skills correctly and ignores the stance argument
+	for classes whose skills have no requiredStance. Only reached from Update_CombatHUD's own
+	show path. */
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	if (!player.isValid)
-		return;
-
-	const bool_t skillWindowOpen =
-		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
-	if (skillWindowOpen || nullptr == m_pHUDRuntimeView)
-		return;
 
 	struct SKILL_ICON_ENTRY { LostArk::Shared::SKILL_ID iSkillId; const char* pIconPath; };
 	constexpr SKILL_ICON_ENTRY SKILL_ICON_TABLE[] =
@@ -3980,33 +4006,13 @@ void CMainApp::RenderSkillIcons()
 
 	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V" };
 
-	constexpr f32_t REF_WIDTH = 1280.f;
-	constexpr f32_t REF_HEIGHT = 720.f;
-
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
-	const f32_t fScaleY = pViewport->WorkSize.y / REF_HEIGHT;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
-
-	ID3D11ShaderResourceView* pEmptySlotSRV =
-		m_pHUDRuntimeView->Load_Texture("UI/HUD/Common/Empty Slot.png");
-
 	for (const char* pInputSlot : INPUT_SLOTS)
 	{
-		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-		if (!m_pHUDRuntimeView->Get_SlotRect(
-			string("Skill_") + pInputSlot, fX, fY, fWidth, fHeight))
-		{
-			continue;
-		}
-
-		const ImVec2 vTopLeft(
-			pViewport->WorkPos.x + fX * fScaleX,
-			pViewport->WorkPos.y + fY * fScaleY);
-		const ImVec2 vBotRight(
-			vTopLeft.x + fWidth * fScaleX,
-			vTopLeft.y + fHeight * fScaleY);
-
+		/* Icon sits between the slot background and the frame in real sprite order: Skill_<X>
+		keeps only "Slot Bg.png" as its authored layer now, the dynamic Skill_<X>_Icon slot
+		carries whatever this resolves, and the appended Skill_<X>_Frame slot (the frame art
+		stripped from the base slot) draws over both -- the same border-above-icon stacking the
+		old redraw achieved. */
 		const char* pIconPath = nullptr;
 		if (const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
 			player.eCharacterClass, pInputSlot, player.eStance))
@@ -4021,42 +4027,26 @@ void CMainApp::RenderSkillIcons()
 			}
 		}
 
-		/* Icon first, then the shared frame's border/tab back on top -- the shared "Skill_Q"
-		slot already drew that same border underneath before this runs, so redrawing it here
-		is what keeps it above the icon instead of the icon covering it. */
+		const string strIconSlot = string("Skill_") + pInputSlot + "_Icon";
 		if (nullptr != pIconPath)
 		{
-			if (ID3D11ShaderResourceView* pIconSRV = m_pHUDRuntimeView->Load_Texture(pIconPath))
-				pDrawList->AddImage(pIconSRV, vTopLeft, vBotRight);
+			m_pHUDRuntimeView->Set_SlotTexture(strIconSlot, pIconPath);
+			m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, true);
 		}
-		if (nullptr != pEmptySlotSRV)
-			pDrawList->AddImage(pEmptySlotSRV, vTopLeft, vBotRight);
+		else
+		{
+			m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, false);
+		}
 	}
 }
 
-void CMainApp::RenderQuickSlot()
+void CMainApp::Update_QuickSlotFlash()
 {
 	/* Icon art, slot frame, keybind label, and cooldown sweep aren't extracted from QuickSlot.gfx
-	yet, so this only draws the real on-use flash -- RenderSkillIcons/RenderSkillCooldowns (called
-	alongside this, not instead of it) still own everything else. */
-
-	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel != ETOUI(LEVEL::BERN) &&
-		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
-		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
-		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
-	{
-		return;
-	}
-
+	yet, so this only plays the real on-use flash -- Update_SkillIcons/Update_SkillCooldowns
+	(called alongside this, not instead of it) still own everything else. Only reached from
+	Update_CombatHUD's own show path. */
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	if (!player.isValid || nullptr == m_pHUDRuntimeView)
-		return;
-
-	const bool_t skillWindowOpen =
-		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
-	if (skillWindowOpen)
-		return;
 
 	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V" };
 
@@ -4121,7 +4111,7 @@ void CMainApp::RenderCombatHUDText()
 		CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), mana.c_str(),
 			position(835.169f, 635.273f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.315f * textScale);
 	}
-	/* Boss HP number/name/grade text moved into RenderBossHealthBar() -- the decompiled
+	/* Boss HP number/name/grade text moved into RenderBossHealthBarText() -- the decompiled
 	targetstatus_loc_int.gfx places them relative to the bar's own real position (see that
 	function), not this hardcoded (640, 58). */
 }
@@ -4153,7 +4143,7 @@ void CMainApp::RenderDamageNumbers()
 		if (damageEvent.iServerTick <= m_iLastRenderedDamageServerTick)
 			continue;
 		FLOATING_DAMAGE_NUMBER number{};
-		number.dSpawnSeconds = ImGui::GetTime();
+		number.dSpawnSeconds = Product_Now_Seconds();
 		number.vWorldPosition = float3_t(
 			damageEvent.Event.fPositionX,
 			damageEvent.Event.fPositionY,
@@ -4171,7 +4161,7 @@ void CMainApp::RenderDamageNumbers()
 				(m_FloatingDamageNumbers.size() - MAX_FLOATING_DAMAGE_NUMBERS));
 	}
 
-	const f64_t dNow = ImGui::GetTime();
+	const f64_t dNow = Product_Now_Seconds();
 	m_FloatingDamageNumbers.erase(
 		std::remove_if(m_FloatingDamageNumbers.begin(), m_FloatingDamageNumbers.end(),
 			[dNow](const FLOATING_DAMAGE_NUMBER& number)
@@ -4418,10 +4408,13 @@ HRESULT CMainApp::Start_Level(
 	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
 {
 	/* The P-toggled Item Upgrade debug preview (see m_pItemUpgradeView's declaration comment)
-	has no level awareness of its own -- it just draws whenever the flag is on. Without this,
-	leaving Character Select with the preview open (e.g. entering Valtan) left its text drawing
-	over the Loading screen and the destination level too. Any real level transition ends it. */
+	has no level awareness of its own -- it just shows whenever the flag is on. Without this,
+	leaving Character Select with the preview open (e.g. entering Valtan) left its CUI_Sprite
+	slots (LEVEL::STATIC, so they survive a level change) showing over the Loading screen and the
+	destination level too, and its text drawing along with them. Any real level transition ends
+	it. */
 	m_bItemUpgradePreviewVisible = false;
+	Hide_ItemUpgrade();
 	CGameInstance::Get().Stop_LoopingSound();
 
 	const CLIENT_LEVEL_DESCRIPTOR* pTarget =

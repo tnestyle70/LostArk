@@ -20,13 +20,14 @@ public:
 		const float2_t& vViewportSize,
 		float2_t& vOutScreenPosition);
 
-	void Render(
-		const std::vector<REPLICATED_PLAYER_VIEW>& Players) const;
-
-private:
+	/* Shared with CWorldPlayerChatBubbleView, which draws its own text in the same LOA font
+	just above these nameplates and needs the identical UTF-8 -> wide conversion. */
 	static bool_t Try_ConvertUtf8(
 		std::string_view Utf8,
 		std::wstring& OutWide);
+
+	void Render(
+		const std::vector<REPLICATED_PLAYER_VIEW>& Players) const;
 };
 
 NS_END

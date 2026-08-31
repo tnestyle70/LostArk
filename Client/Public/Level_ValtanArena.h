@@ -30,7 +30,7 @@ class CCamera_Free;
 class CCharacter;
 class IPlayerCommandSink;
 class CMapAssetObject;
-class CHUDRuntimeView;
+class CUILayoutRuntime;
 
 class CLevel_ValtanArena final : public CLevel
 {
@@ -50,7 +50,11 @@ public:
 	/* CGameInstance::Draw_Text submits immediately (SpriteBatch) but the invite
 	   popup's art composites later inside CImGuiLayer::EndFrame() -- see
 	   CPartyInteractionView::Render_InvitePopupText's own comment. */
-	void Render_PartyInviteText() { m_PartyInteraction.Render_InvitePopupText(); }
+	void Render_PartyInviteText()
+	{
+		m_PartyInteraction.Render_InvitePopupText();
+		m_PartyInteraction.Render_ContextMenuText();
+	}
 	const LostArk::Shared::S2C_PARTY_ROSTER& Get_PartyRoster() const
 	{
 		return m_Replication.Get_PartyRoster();
@@ -142,24 +146,31 @@ private:
 	/* Death-screen overlay: real deadscene.gfx panel art + revive button. Local
 	player only, unlimited revives (Handle_RevivePlayer already gates this to
 	VALTAN_ARENA and is free/no-cooldown by design). */
-	void Update_DeadScene(bool_t isBlockedByRaidClear);
-	void Render_DeadScene();
+	/* No matching Render_DeadScene() -- migrated to real CUI_Sprite GameObjects on this Level's
+	own "Layer_UI" (same reasoning as m_pItemAnnounceView), so CObject_Manager's normal
+	Update/Late_Update/Render cycle draws them without an explicit call here. */
+	void Update_DeadScene(bool_t isBlockedByRaidClear, f32_t fTimeDelta);
 	/* Valtan clear celebration overlay: real EFUI_EPICGATECOMMONCLEAR trace (BgFlash/Emblem
 	art + "던전 클리어" headline). Edge-triggers off CCombatHUDViewModel's already-replicated
 	primary-boss death latch. The reliable DEAD despawn is the normal terminal edge because the
 	Server removes the boss before it builds the following world snapshot, then
 	runs a fixed real-derived reveal/hold timeline (EpicGateCommonClearFrame's own
 	startFrame=90/holdFrame=296 at the source's 40fps) instead of looping forever. */
+	/* No matching Render_RaidClear() -- migrated to real CUI_Sprite GameObjects on this Level's
+	own "Layer_UI" (same reasoning as m_pDeadSceneView), so CObject_Manager's normal
+	Update/Late_Update/Render cycle draws them without an explicit call here. */
 	void Update_RaidClear(f32_t fTimeDelta);
-	void Render_RaidClear();
 	/* Item acquisition toast: real EFUI_ANNOUNCE frame art (announce_i3e3.dds), one item at a
 	time. Diffs CCombatHUDViewModel's own already-replicated inventory snapshot frame-to-frame
 	(itemIds present now that weren't in the previous frame) into a FIFO queue, then shows each
 	queued item's icon/name for ITEM_ANNOUNCE_HOLD_SECONDS before starting the next. The first
 	frame only captures a baseline (m_bItemAnnounceBaselineCaptured) instead of diffing, so
 	whatever the player already owns on Level entry never gets announced as newly acquired. */
+	/* No matching Render_ItemAnnounce() -- same reasoning as m_pDeadSceneView/m_pRaidClearView
+	above: m_pItemAnnounceView's slots are real CUI_Sprite GameObjects added to this Level's own
+	layer, so CObject_Manager's normal per-frame Update/Late_Update/Render cycle draws them
+	without an explicit call here. */
 	void Update_ItemAnnounce(f32_t fTimeDelta);
-	void Render_ItemAnnounce();
 	/* Starts the overlay's reveal/hold timeline from 0 and fires its one-shot sound cue. Shared by
 	Update_RaidClear's real edge-trigger and Update_DebugRaidClearKey's forced trigger so both
 	paths play the same cue instead of the debug key silently skipping it. */
@@ -239,8 +250,8 @@ private:
 	CPartyInteractionView m_PartyInteraction;
 	CWorldPlayerChatBubbleView m_ChatBubbleView;
 	CPlayerController m_PlayerController;
-	unique_ptr<CHUDRuntimeView> m_pDeadSceneView;
-	unique_ptr<CHUDRuntimeView> m_pRaidClearView;
+	unique_ptr<CUILayoutRuntime> m_pDeadSceneView;
+	unique_ptr<CUILayoutRuntime> m_pRaidClearView;
 	/* Edge-detect for the boss's replicated eAction (see Update_RaidClear) and the elapsed time
 	since that edge -- negative means the overlay is not currently showing. */
 	bool_t m_bRaidClearWasBossDead = false;
@@ -248,7 +259,7 @@ private:
 	// RaidClear_ReturnButton's own request sequence, same one-writer pattern as
 	// CLevel_Bern::m_iNextNpcEntryConfirmSequence.
 	uint32_t m_iNextReturnToBernSequence = 1u;
-	unique_ptr<CHUDRuntimeView> m_pItemAnnounceView;
+	unique_ptr<CUILayoutRuntime> m_pItemAnnounceView;
 	/* See Update_ItemAnnounce's own comment. False until the first frame's inventory snapshot is
 	captured as the "already owned" baseline. */
 	bool_t m_bItemAnnounceBaselineCaptured = false;
