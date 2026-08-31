@@ -125,6 +125,8 @@ class BuildDomainManifestContractTests(unittest.TestCase):
         expected_outputs = [
             "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapassets",
             "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapplacements",
+            "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployassets",
+            "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployplacements",
         ]
         self.assertEqual(domain["outputs"], expected_outputs)
         self.assertEqual(domain["requiredOutputPatterns"], expected_outputs)
