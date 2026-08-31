@@ -322,6 +322,10 @@ void Client::CInventoryView::Update_CategoryTabs()
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!m_pBackgroundView->Get_SlotRect(Category.pSlotId, fX, fY, fWidth, fHeight))
 			continue;
+		/* Hide() takes these down with the rest of the panel (including from the constructor,
+		before the window is ever opened) and this is the only pass that owns them, so it has to
+		put them back up -- Update()'s own chrome block covers every other slot but these. */
+		m_pBackgroundView->Set_SlotVisible(Category.pSlotId, true);
 		const bool_t bHovered = Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
 		const bool_t bSelected = m_strSelectedCategoryId == Category.pSlotId;
 
