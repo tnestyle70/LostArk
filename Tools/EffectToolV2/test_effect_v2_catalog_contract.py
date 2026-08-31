@@ -220,6 +220,7 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             "std::string strResourceId;",
             "bool_t bGroup = false;",
             "std::string strStageActionId;",
+            "std::string strClipName;",
             "uint32_t iStartMs = 0u;",
             "std::string strBone;",
             "bool_t bFollowBone = false;",
@@ -300,6 +301,29 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             "Stage_UpdateBossValtanStageBindingStart(",
         ):
             self.assertIn(token, wrapper_region)
+
+        append_bodies = (
+            function_tail(
+                source,
+                "bool_t Client::CEffectV2Catalog::Append_BossValtanStageBinding(",
+                "bool_t Client::CEffectV2Catalog::Remove_BossValtanStageBinding(",
+            ),
+            function_tail(
+                source,
+                "bool_t Client::CEffectV2Catalog::Stage_AppendBossValtanStageBinding(",
+                "bool_t Client::CEffectV2Catalog::Stage_RemoveBossValtanStageBinding(",
+            ),
+        )
+        for append_body in append_bodies:
+            for token in (
+                "EFFECT_V2_STAGE_BINDING_KEY Key{};",
+                "Key.strResourceId = strResourceId;",
+                "Key.bGroup = bGroup;",
+                "Key.strStageActionId = strStageActionId;",
+                "Key.iStartMs = iStartMs;",
+            ):
+                self.assertIn(token, append_body)
+            self.assertNotIn("Key.strClipName =", append_body)
 
     def test_new_boss_mutations_reject_foreign_subjects_and_overlaps(self) -> None:
         source = read(SOURCE)

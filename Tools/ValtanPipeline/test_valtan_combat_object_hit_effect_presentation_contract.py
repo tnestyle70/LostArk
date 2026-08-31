@@ -19,6 +19,35 @@ def _function(source: str, signature: str, next_signature: str) -> str:
 
 
 class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
+    def test_ground_roar_rock_is_a_timed_presentation_carrier(self) -> None:
+        document = json.loads(
+            _read("Data/Encounters/Valtan/ValtanCombatObjects.json")
+        )
+        rock = next(
+            row for row in document["objects"]
+            if row["combatObjectArchetypeId"]
+            == "combatobject.valtan.ground-roar.rock"
+        )
+        self.assertEqual([], rock["hits"])
+        self.assertEqual(
+            [{
+                "presentationEventId":
+                    "pulse.valtan.ground-roar.rock.explode",
+                "atMs": 5000,
+            }],
+            rock["presentationEvents"],
+        )
+        self.assertEqual(5000, rock["lifeMs"])
+
+    def test_native_consumers_admit_presentation_only_carriers(self) -> None:
+        tree = _read("Client/Private/ValtanPatternTree.cpp")
+        sound = _read("Client/Private/ValtanCombatObjectSoundCueDocument.cpp")
+        self.assertIn('Object.Find("presentationEvents")', tree)
+        self.assertIn("const size_t iEventRowCount", tree)
+        self.assertIn("0u == iEventRowCount || iEventRowCount > 16u", tree)
+        self.assertIn("iEventOffsetMs > Reference->second.iLifetimeMs", tree)
+        self.assertNotIn("hits->Get_Array().empty()", sound)
+
     def test_ground_roar_visual_owns_active_and_hit_effect_assets(self) -> None:
         catalog = json.loads(_read("Data/Actors/BossCatalog.json"))
         valtan = next(

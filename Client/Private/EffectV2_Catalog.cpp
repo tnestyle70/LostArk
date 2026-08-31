@@ -1218,8 +1218,11 @@ bool_t Client::CEffectV2Catalog::Append_BossValtanStageBinding(
 	const uint32_t iStartMs,
 	std::string& strOutError)
 {
-	const EFFECT_V2_STAGE_BINDING_KEY Key{
-		strResourceId, bGroup, strStageActionId, iStartMs };
+	EFFECT_V2_STAGE_BINDING_KEY Key{};
+	Key.strResourceId = strResourceId;
+	Key.bGroup = bGroup;
+	Key.strStageActionId = strStageActionId;
+	Key.iStartMs = iStartMs;
 	return Mutate_BossValtanStageBinding(
 		Key, iStartMs,
 		BOSS_VALTAN_BINDING_MUTATION::APPEND_BINDING, true, strOutError);
@@ -1261,8 +1264,11 @@ bool_t Client::CEffectV2Catalog::Stage_AppendBossValtanStageBinding(
 	const uint32_t iStartMs,
 	std::string& strOutError)
 {
-	const EFFECT_V2_STAGE_BINDING_KEY Key{
-		strResourceId, bGroup, strStageActionId, iStartMs };
+	EFFECT_V2_STAGE_BINDING_KEY Key{};
+	Key.strResourceId = strResourceId;
+	Key.bGroup = bGroup;
+	Key.strStageActionId = strStageActionId;
+	Key.iStartMs = iStartMs;
 	return Mutate_BossValtanStageBinding(
 		Key, iStartMs,
 		BOSS_VALTAN_BINDING_MUTATION::APPEND_BINDING, false, strOutError);

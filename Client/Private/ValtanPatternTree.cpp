@@ -7217,10 +7217,26 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			return false;
 		}
 		const DATA_JSON_VALUE* pHits = Object.Find("hits");
-		if (nullptr == pHits || !pHits->Is_Array() || pHits->Get_Array().empty())
+		const DATA_JSON_VALUE* pPresentationEvents =
+			Object.Find("presentationEvents");
+		if (nullptr == pHits || !pHits->Is_Array() ||
+			(nullptr != pPresentationEvents && !pPresentationEvents->Is_Array()))
 		{
 			strOutStatus =
-				"Valtan combat-object has no Server hit rows: " + strArchetypeId;
+				"Valtan combat-object has no Server hit or presentation rows: " +
+				strArchetypeId;
+			return false;
+		}
+		const size_t iPresentationEventCount =
+			nullptr == pPresentationEvents ? 0u :
+			pPresentationEvents->Get_Array().size();
+		const size_t iEventRowCount =
+			pHits->Get_Array().size() + iPresentationEventCount;
+		if (0u == iEventRowCount || iEventRowCount > 16u)
+		{
+			strOutStatus =
+				"Valtan combat-object Server hit/presentation row count is invalid: " +
+				strArchetypeId;
 			return false;
 		}
 		for (const DATA_JSON_VALUE& Hit : pHits->Get_Array())
@@ -7241,6 +7257,31 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			}
 			Reference->second.HitIds.push_back(strHitId);
 			Reference->second.HitOffsetsMs.push_back(iHitOffsetMs);
+		}
+		if (nullptr != pPresentationEvents)
+		{
+			std::set<std::string, std::less<>> PresentationEventIds;
+			for (const DATA_JSON_VALUE& Event :
+				pPresentationEvents->Get_Array())
+			{
+				uint32_t iEventOffsetMs = 0u;
+				const std::string strEventId = Read_String(
+					Event, "presentationEventId");
+				if (!Event.Is_Object() ||
+					!Is_StableToken(strEventId) ||
+					!Read_RequiredUInt32(Event, "atMs", iEventOffsetMs) ||
+					iEventOffsetMs > Reference->second.iLifetimeMs ||
+					!PresentationEventIds.insert(strEventId).second ||
+					std::find(Reference->second.HitIds.begin(),
+						Reference->second.HitIds.end(), strEventId) !=
+						Reference->second.HitIds.end())
+				{
+					strOutStatus =
+						"Valtan combat-object presentation identity or clock is invalid: " +
+						strArchetypeId;
+					return false;
+				}
+			}
 		}
 		if (strClientVisualId != Reference->second.strClientVisualId ||
 			Reference->second.strOwnerPatternId.empty() ||
