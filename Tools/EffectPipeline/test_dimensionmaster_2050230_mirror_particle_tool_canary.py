@@ -20,6 +20,8 @@ CANDIDATE_ID = (
     "effect.dimensionmaster.skill.2050230.mirror-particle-canary.unified"
 )
 CANDIDATE_PATH = AUTHORED_ROOT / f"{CANDIDATE_ID}.effect.json"
+PRODUCT_ID = "effect.dimensionmaster.skill.2050230.single-glass-canary"
+PRODUCT_PATH = AUTHORED_ROOT / f"{PRODUCT_ID}.effect.json"
 SOURCE_ID = "effect.dimensionmaster.skill.2050230.unified"
 SOURCE_PATH = AUTHORED_ROOT / f"{SOURCE_ID}.effect.json"
 SOURCE_RAW_SHA256 = (
@@ -284,7 +286,10 @@ class DimensionMasterMirrorParticleToolCanaryTests(unittest.TestCase):
             for path in AUTHORED_ROOT.glob("*.effect.json")
             if opcode_pattern.search(path.read_text(encoding="utf-8"))
         ]
-        self.assertEqual([CANDIDATE_PATH.name], occurrences)
+        self.assertEqual(
+            sorted([CANDIDATE_PATH.name, PRODUCT_PATH.name]),
+            sorted(occurrences),
+        )
 
         codec = (
             REPOSITORY_ROOT / "Client" / "Private" / "Effect_DocumentCodec.cpp"
@@ -321,6 +326,7 @@ class DimensionMasterMirrorParticleToolCanaryTests(unittest.TestCase):
             "Validate_DimensionMasterProjectTunedDocumentExecution", renderer
         )
         self.assertIn(CANDIDATE_ID, renderer)
+        self.assertIn(PRODUCT_ID, renderer)
         self.assertIn(
             "RUNTIME_MATERIAL_V2_PROJECT_TUNED_GLASS_MESH_V1 = 1004u", families
         )

@@ -1098,3 +1098,75 @@ network dependency, image-to-shader 자동 생성은 이 계획의 Product 경�
 
 이 순서에서 첫 코드 변경은 graph UI가 아니라 R0 benchmark foundation이다. 그래야 이후 G2/G8/G10과
 surface 후보가 "더 좋아 보였다"만 남기지 않고 같은 장면·시간·비용에서 재현 가능한 실험이 된다.
+
+## 13. 2026-09-01 사용자 결정: Product F 단일 유리 기준편 우선
+
+사용자는 전체 graph/benchmark 기반보다 먼저 "실제 유리 하나가 Product F에서 보이는가"를 닫도록
+범위를 좁혔다. 따라서 12.7의 구현 순서에 다음 선행 canary를 추가한다. 이 결정은 G1 audition을
+Product로 오인하거나 24-island rigid cluster를 최종 shard 구조로 승인한다는 뜻이 아니다.
+
+### 13.1 단일 기준편 계약
+
+- Product effect ID:
+  `effect.dimensionmaster.skill.2050230.single-glass-canary`
+- F `2050230`의 Server-authoritative hit timing `700ms`에 animevent asset cue를 정확히 한 번 추가한다.
+- effect document는 element 1개, `maxParticles=1`, `burstCount=1`, `spawnRate=0`만 허용한다.
+- carrier는 기존 Drive pack의
+  `Effect/DimensionMaster/Meshes/fm_a_broken_012.wmodel`을 재사용한다. 물리 실측은 1 submesh,
+  40 vertices, 84 indices/28 triangles이며 위치를 weld하면 하나의 연결된 얇은 broken piece다.
+- G1 `fx_m_glass_01.wmodel` audition은 그대로 남겨 24-island geometry oracle의 기존 provenance와
+  Tool source-freshness contract를 보존한다.
+- 새 Product occurrence와 G1 audition occurrence만 opcode `1004` exact document/element/carrier
+  allowlist에 포함한다. 다른 document, element ID, model asset이 opcode를 사용하면 fail-closed한다.
+
+### 13.2 유리 수식과 renderer 결합 기준
+
+이 기준편은 단순 opaque mesh가 아니다. Effect Tool에서 이름으로 조절하는 다음 여덟 scalar와 두
+색 벡터를 기존 RuntimeMaterialV2 packet으로 전달한다.
+
+```text
+CoverageGain / BodyOpacity / FresnelPower / EdgeGain
+CrackGain / RefractionStrength / DistortionClamp / EmissionGain
+BodyTintLinear / EdgeTintLinear
+```
+
+opcode `1004` pixel evaluator는 mesh normal, view direction, broken-glass texture로 coverage, Fresnel edge,
+crack accent와 bounded distortion을 계산한다. RT0에는 straight-alpha radiance/coverage, RT1에는 coverage가
+적용된 signed distortion을 출력한다. 기존 renderer가 SceneHDR를 `UV + distortion`으로 resolve한 뒤
+ScreenPost → Bloom → Final을 수행하므로, 이 한 occurrence가 향후 surface와 scene rendering을 함께
+튜닝하는 최소 종단 기준편이다.
+
+첫 수동 판정에서는 전역 exposure/bloom/fog를 바꾸지 않는다. 고정 scene profile에서 다음만 분리해
+판정한다.
+
+1. Shape: 연결된 얇은 carrier 하나가 검은 mesh나 원형 billboard가 아니라 각진 조각으로 보이는가.
+2. Surface: body transparency, Fresnel edge와 crack texture가 유리로 읽히는가.
+3. Refraction: 배경이 RT1 방향으로 제한적으로 휘고 clamp 밖으로 폭주하지 않는가.
+4. Timing: F 입력 뒤 700ms에 한 번 나타나고 1.4초 뒤 자연 종료하는가.
+
+### 13.3 이번 변경의 파일과 검증
+
+- `Data/Effects/Authored/effect.dimensionmaster.skill.2050230.single-glass-canary.effect.json`
+- `Data/Effects/EffectCatalog.json`
+- `Data/Animation/Authored/DimensionMaster/DimensionMaster.animevents`
+- `Client/Private/Effect_DocumentRenderer.cpp`
+- 기존 mirror/water focused test와 새 Product single-glass contract test
+- `Tools/Build/Invoke-BuildAndRegression.ps1` focused gate 등록
+
+검증은 JSON parse, Effect source validator, focused mutation tests, compiled shader/WARP, Product build와
+`git diff --check`까지 수행한다. 자동화는 cue/resource/packet/RT 출력 안전성만 증명한다. Client와 UI는
+에이전트가 실행하지 않으며 `보인다`, `유리 같다`, Shape/Surface/Timing PASS는 사용자가 직접 F를 눌러
+판정하기 전까지 `PENDING`이다.
+
+### 13.4 확장 순서
+
+단일 기준편이 사용자에게 보이는 것이 확인된 뒤에만 같은 typed formula를 다음 순서로 확장한다.
+
+1. 같은 carrier의 bounded semantic parameter A/B와 fixed camera benchmark
+2. SceneHDR/Distortion/ScreenPost/Bloom/Final pass별 GPU timestamp와 중간 target 진단
+3. carrier를 여러 shard instance로 복제하되 surface packet을 공유하고 transform만 particle별 분리
+4. SceneDepth soft fade, thickness proxy와 rough refraction 후보
+5. 검증된 layer를 F composition과 ALT_V phase/layer Workbench로 일반화
+
+즉 첫 유리 하나는 임시 우회가 아니라 `carrier → material formula → RT0/RT1 → renderer composition →
+benchmark` 전체를 고정하는 calibration sample이다.

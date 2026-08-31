@@ -2799,12 +2799,18 @@ namespace
 		const Client::EFFECT_ELEMENT_DESC& Element,
 		std::string& strOutError)
 	{
-		constexpr std::string_view ELEMENT_ID =
+		constexpr std::string_view AUDITION_ELEMENT_ID =
 			"project-tuned.glass-mirror-shards.2050230.01";
-		constexpr std::string_view SOURCE_NODE =
+		constexpr std::string_view PRODUCT_ELEMENT_ID =
+			"project-tuned.single-glass.2050230.01";
+		constexpr std::string_view AUDITION_SOURCE_NODE =
 			"authored-copy:geometry-oracle.fx_m_glass_01";
-		constexpr std::string_view MODEL_ASSET =
+		constexpr std::string_view PRODUCT_SOURCE_NODE =
+			"authored-copy:single-carrier.fm_a_broken_012";
+		constexpr std::string_view AUDITION_MODEL_ASSET =
 			"Effect/DimensionMaster/Meshes/fx_m_glass_01.wmodel";
+		constexpr std::string_view PRODUCT_MODEL_ASSET =
+			"Effect/DimensionMaster/Meshes/fm_a_broken_012.wmodel";
 		constexpr std::string_view PATTERN_ASSET =
 			"Effect/DimensionMaster/Textures/FX_TEX_HIGH_03/"
 			"fx_h_brokenglass_02_1.dds";
@@ -2826,7 +2832,11 @@ namespace
 		};
 		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Execution =
 			Element.Material.Execution;
-		if (Element.strElementId != ELEMENT_ID)
+		const bool_t bAuditionOccurrence =
+			Element.strElementId == AUDITION_ELEMENT_ID;
+		const bool_t bProductOccurrence =
+			Element.strElementId == PRODUCT_ELEMENT_ID;
+		if (!bAuditionOccurrence && !bProductOccurrence)
 		{
 			if (Execution.bEnabled && Execution.eBackend ==
 					Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
@@ -2861,14 +2871,16 @@ namespace
 		};
 		const bool_t bCarrier =
 			Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
-			Element.strSourceNode == SOURCE_NODE &&
+			Element.strSourceNode == (bAuditionOccurrence ?
+				AUDITION_SOURCE_NODE : PRODUCT_SOURCE_NODE) &&
 			!Element.SourceRecipe.bEnabled &&
 			!Element.SourcePresentation.bEnabled &&
 			Element.Renderer.eType == Client::EFFECT_RENDERER_TYPE::END &&
 			Element.Renderer.eSourceSpace == Client::EFFECT_SOURCE_SPACE::END &&
 			Element.ResourceBindings.size() == 2u &&
 			Element.ResourceBindings[0u].strSlotId == "meshModel" &&
-			Element.ResourceBindings[0u].strAssetId == MODEL_ASSET &&
+			Element.ResourceBindings[0u].strAssetId == (bAuditionOccurrence ?
+				AUDITION_MODEL_ASSET : PRODUCT_MODEL_ASSET) &&
 			Element.ResourceBindings[1u].strSlotId == "base" &&
 			Element.ResourceBindings[1u].strAssetId == PATTERN_ASSET;
 		const bool_t bMaterial =
@@ -3053,10 +3065,14 @@ namespace
 		const Client::EFFECT_DOCUMENT_DESC& Document,
 		std::string& strOutError)
 	{
-		constexpr std::string_view DOCUMENT_ID =
+		constexpr std::string_view AUDITION_DOCUMENT_ID =
 			"effect.dimensionmaster.skill.2050230.mirror-particle-canary.unified";
-		constexpr std::string_view ELEMENT_ID =
+		constexpr std::string_view PRODUCT_DOCUMENT_ID =
+			"effect.dimensionmaster.skill.2050230.single-glass-canary";
+		constexpr std::string_view AUDITION_ELEMENT_ID =
 			"project-tuned.glass-mirror-shards.2050230.01";
+		constexpr std::string_view PRODUCT_ELEMENT_ID =
+			"project-tuned.single-glass.2050230.01";
 		size_t iOccurrenceCount = 0u;
 		for (const Client::EFFECT_ELEMENT_DESC& Element : Document.Elements)
 		{
@@ -3069,8 +3085,13 @@ namespace
 				continue;
 			}
 			++iOccurrenceCount;
-			if (Document.strEffectAssetId != DOCUMENT_ID ||
-				Element.strElementId != ELEMENT_ID)
+			const bool_t bAuditionOccurrence =
+				Document.strEffectAssetId == AUDITION_DOCUMENT_ID &&
+				Element.strElementId == AUDITION_ELEMENT_ID;
+			const bool_t bProductOccurrence =
+				Document.strEffectAssetId == PRODUCT_DOCUMENT_ID &&
+				Element.strElementId == PRODUCT_ELEMENT_ID;
+			if (!bAuditionOccurrence && !bProductOccurrence)
 			{
 				strOutError =
 					"DimensionMaster glass-mirror opcode escaped its exact document/element occurrence allowlist.";
