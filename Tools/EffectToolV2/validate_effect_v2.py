@@ -179,9 +179,11 @@ def _validate_authored(
     return by_id, texture_usage
 
 
-def _validate_groups(group_root: Path, authored: dict[str, Path]) -> dict[str, list[str]]:
+def _validate_groups(
+    group_root: Path, authored: dict[str, Path]
+) -> dict[str, list[tuple[str, int]]]:
     """Group documents are optional; each child must be an authored leaf (no nesting)."""
-    groups: dict[str, list[str]] = {}
+    groups: dict[str, list[tuple[str, int]]] = {}
     if not group_root.is_dir():
         return groups
     for path in sorted(group_root.glob("*.effectv2group.json")):
@@ -201,7 +203,7 @@ def _validate_groups(group_root: Path, authored: dict[str, Path]) -> dict[str, l
         children = document.get("children")
         if not isinstance(children, list) or not children:
             raise ContractError(f"Effect V2 group children must be a non-empty array: {group_id}")
-        child_ids: list[str] = []
+        child_clocks: list[tuple[str, int]] = []
         for child in children:
             child = _require_object(child, f"{group_id}.child")
             effect_id = child.get("effectId")
@@ -209,7 +211,9 @@ def _validate_groups(group_root: Path, authored: dict[str, Path]) -> dict[str, l
                 raise ContractError(
                     f"Effect V2 group child has no authored effect (nesting is not allowed): {group_id}: {effect_id}"
                 )
-            _require_ms(child.get("startMs", 0), group_id, "child startMs")
+            child_start_ms = _require_ms(
+                child.get("startMs", 0), group_id, "child startMs"
+            )
             _require_ms(child.get("durationMs", 0), group_id, "child durationMs")
             if child.get("stop", "Deactivate") not in CHILD_STOPS:
                 raise ContractError(f"Effect V2 group child stop is invalid: {group_id}: {effect_id}")
@@ -224,14 +228,16 @@ def _validate_groups(group_root: Path, authored: dict[str, Path]) -> dict[str, l
                 raise ContractError(f"Effect V2 group child scale must be 3 numbers: {group_id}: {effect_id}")
             for component in scale:
                 _require_finite_number(component, group_id, "child scale")
-            child_ids.append(effect_id)
+            child_clocks.append((effect_id, child_start_ms))
         _validate_numbers(document, group_id)
-        groups[group_id] = child_ids
+        groups[group_id] = child_clocks
     return groups
 
 
 def _validate_bindings(
-    binding_root: Path, authored: dict[str, Path], groups: dict[str, list[str]]
+    binding_root: Path,
+    authored: dict[str, Path],
+    groups: dict[str, list[tuple[str, int]]],
 ) -> int:
     seen_archetypes: set[str] = set()
     seen_effects: set[str] = set()
@@ -254,6 +260,7 @@ def _validate_bindings(
         if not isinstance(rows, list):
             raise ContractError(f"Effect V2 bindings must be an array: {path}")
         row_identities: set[tuple[Any, ...]] = set()
+        validated_rows: list[tuple[str | None, str | None, Any, Any, int]] = []
         for row in rows:
             row = _require_object(row, f"{archetype_id}.binding")
             effect_id = row.get("effectId")
@@ -296,12 +303,29 @@ def _validate_bindings(
             if identity in row_identities:
                 raise ContractError(f"duplicate Effect V2 binding row: {archetype_id}: {identity}")
             row_identities.add(identity)
+            validated_rows.append((effect_id, group_id, stage, clip, start_ms))
             if has_effect:
                 seen_effects.add(effect_id)
             else:
                 seen_groups.add(group_id)
-                seen_effects.update(groups[group_id])
+                seen_effects.update(effect for effect, _ in groups[group_id])
             binding_count += 1
+        for effect_id, _, stage, clip, start_ms in validated_rows:
+            if not effect_id:
+                continue
+            for _, group_id, group_stage, group_clip, group_start_ms in validated_rows:
+                if not group_id or stage != group_stage or clip != group_clip:
+                    continue
+                for child_effect_id, child_start_ms in groups[group_id]:
+                    if (
+                        child_effect_id == effect_id
+                        and group_start_ms + child_start_ms == start_ms
+                    ):
+                        raise ContractError(
+                            "Effect V2 leaf overlaps the same leaf inside group "
+                            f"at the same clock: {archetype_id}: {effect_id}/{group_id} "
+                            f"@{start_ms}ms"
+                        )
     missing = sorted(set(authored) - seen_effects)
     if missing:
         raise ContractError(f"unbound Effect V2 authored effects: {missing[:5]}")

@@ -493,6 +493,98 @@ Pattern
   duration, local yaw를 typed gameplay source에 저장한다. 새 capture/grab topology 생성과
   기존 release 수치 튜닝은 서로 다른 기능으로 구분한다.
 
+### Effect Tool V2와 Composition Workbench의 공용 Group 파이프라인
+
+이 절은 목표 계약이다. 현재 source에 V2 leaf/group catalog, Group editor, Stage binding append와
+Arena Clone 재생의 일부가 이미 있어도 아래 exact occurrence 편집과 중복 admission, cache refresh,
+Server generation 경계가 모두 검증되기 전에는 공용 파이프라인 완료로 기록하지 않는다.
+
+| owner | 소유하는 정본 | 소유하지 않는 것 |
+|---|---|---|
+| Effect Tool V2 | `Data/Effects/V2/Authored/*.effectv2.json` leaf body와 `Data/Effects/V2/Groups/*.effectv2group.json`의 `groupId`, group duration, ordered `children`, child-local start/duration/stop/offset/yaw/scale | Pattern/Stage, animation occurrence, Server stage clock |
+| Composition Workbench | `Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json`의 exact binding occurrence와 선택 Stage/animation box 기준 start, anchor/follow/rotation/placement | leaf body, group child 배열, Effect material/particle 수치 |
+| Product runtime | admitted binding → group → authored leaf를 펼쳐 현재 Server stage/clip clock에서 재생 | authoring draft 해석, Pattern JSON의 복제된 group body |
+
+저장 그래프는 다음 한 방향만 사용한다.
+
+```text
+Effect Tool V2
+  Authored leaf body
+  + Group body / ordered children
+             |
+             v groupId reference
+Composition Workbench
+  BOSS_VALTAN.effectv2bindings.json exact occurrence
+             |
+             +-> local Arena Clone authoring preview
+             `-> publish/build + world-entry presentation generation
+                    -> saved Server-active Pattern playback
+```
+
+- Composition은 group을 선택해도 child를 `Valtan.gameplay.json`, `Valtan.presentation.json` 또는
+  다른 Pattern JSON에 복사하지 않는다. group body/children의 변경은 Effect Tool V2 Save가
+  계속 소유하고 Composition에는 같은 `groupId` reference만 남는다.
+- 기본 Resource UX는 **groups-first**다. `boss.valtan.*` V2 Group을 기본 목록으로 제공하고,
+  direct authored leaf는 `Advanced / Direct Leaves`를 명시적으로 연 경우에만 같은
+  `boss.valtan.*` scope에서 선택할 수 있다. Esther/NPC/다른 owner leaf를 BOSS_VALTAN binding에
+  편의상 노출하지 않는다.
+- group binding이 펼치는 child leaf와 direct leaf가 같은 clock에 중복되면 저장을 거부한다.
+  비교 clock은 같은 stage/clip owner에서
+  `group binding startMs + child startMs == direct binding startMs`이고 effectId도 같은 경우다.
+  UI append만이 아니라 C++ catalog cross-validation, Python V2 validator와 Product admission이
+  같은 불변식을 검사해야 한다.
+- `Add to selected animation box`는 선택 box의 stable clip occurrence와 Stage-local start를
+  캡처해 group binding을 붙인다. 사용자가 다른 Stage/box를 선택한 뒤 command가 처리되거나
+  baseline catalog generation이 바뀌면 stale command를 거부한다. vector ordinal은 binding
+  identity가 아니다.
+- Add/Move/Delete/Duplicate는 선택한 exact binding row 하나만 full-row baseline/CAS로 변경한다.
+  Delete는 group body나 child leaf 파일을 지우지 않고 binding만 제거한다. Duplicate는 같은
+  `groupId`와 placement를 새 exact occurrence로 복제하되 위 expanded-child 중복 validator를
+  통과해야 한다.
+- Composition timeline의 V2 Group block은 point처럼 0-width로 그리지 않고 group child의
+  최대 end까지 display span을 넓힌다. 이 값은 표시/selection span일 뿐
+  `Stage.durationMs`, group document의 semantic duration, Server action duration을 자동으로
+  늘리거나 줄이지 않는다.
+- successful Add/Move/Delete/Duplicate 뒤에는 Effect V2 catalog snapshot revision과 Product
+  runtime binding/group/document cache를 함께 invalidation하고, 현재 Arena Clone의 같은 Pattern
+  path/playhead를 새 snapshot으로 즉시 restage한다. 사용자가 Client를 재시작해야만 local preview가
+  바뀌는 흐름은 authoring preview 계약이 아니다.
+
+Arena Clone과 Product Server playback은 같은 Effect V2 runtime renderer를 재사용해도 admission
+source가 다르다.
+
+```text
+local Arena Clone
+  current authoring catalog snapshot + local Pattern draft
+  -> immediate cache refresh/restage
+  -> Server state, Server-active revision, world-entry manifest를 바꾸지 않음
+
+saved Product / Server Valtan
+  build/publish가 봉인한 immutable presentation generation
+  + Server-active gameplay revision
+  -> world re-entry 뒤 Complete Play / Restart
+```
+
+따라서 `Reload Complete Play Inventory`나 Effect V2 catalog reload는 local inventory/view만
+갱신한다. 이미 입장한 world가 고정한 presentation manifest를 새 generation으로 승격하지 않으며,
+binding/group/leaf bytes가 manifest와 달라졌다면 Complete Play는 계속 fail-closed해야 한다.
+Product 확인은 필요한 publish/build, Server restart와 arena re-entry 뒤 exact generation이 다시
+일치한 경우에만 가능하다.
+
+### Pattern Save와 기존 Sound debt의 no-new-debt 검증
+
+Pattern Sound가 없는 animation/Stage를 저장할 때, 전혀 바뀌지 않은 다른 Pattern의 기존 Sound
+timing debt를 전체 graph strict re-admission해서 Save를 막지 않는다. 다만 Sound row의
+`patternId/stageId/actionId/clipOccurrenceId` exact identity는 항상 검증한다.
+
+- candidate가 해당 Sound Stage의 action ID, Stage duration 또는 animation occurrence timing/shape를
+  바꾸지 않았으면 기존 timing window debt는 이번 transaction의 변경분이 아니므로 strict timing
+  재검증을 생략한다.
+- candidate가 Sound가 붙은 Stage의 위 필드 중 하나를 바꾸거나 Stage/occurrence를 삭제·중복시키면
+  strict Sound timing admission을 반드시 다시 실행하고 실패 시 Pattern Save 전체를 거부한다.
+- 이 정책은 legacy debt를 정상으로 승인하는 fallback이 아니다. 이번 변경이 debt를 만들거나
+  확장하지 않는 `no-new-debt` 경계이며, Sound owner Save/CAS와 runtime apply는 계속 별도다.
+
 ### G4. 첫 typed authoring slice
 
 - 도끼 Pattern의 내부 공백은 선택 Stage `durationMs`를 `CBalanceTool`의 동일 in-memory

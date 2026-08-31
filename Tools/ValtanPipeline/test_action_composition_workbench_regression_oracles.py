@@ -139,6 +139,8 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         cls.boss_cpp = read("Client/Private/BossTool.cpp")
         cls.main_cpp = read("Client/Private/MainApp.cpp")
         cls.valtan_cpp = read("Client/Private/Valtan.cpp")
+        cls.effect_v2_runtime_cpp = read("Client/Private/EffectV2_Runtime.cpp")
+        cls.effect_tool_v2_cpp = read("Client/Private/Effect_Tool_V2.cpp")
         cls.presentation = json.loads(read("Data/Valtan/Valtan.presentation.json"))
         cls.gameplay = json.loads(read("Data/Valtan/Valtan.gameplay.json"))
 
@@ -189,7 +191,9 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             self.workbench_cpp,
             "void Client::CActionCompositionWorkbench::Render()",
         )
-        self.assertIn("UNSAVED PATTERN DRAFT", details)
+        self.assertIn('"SAVED"', details)
+        self.assertIn('"SAVE FAILED"', details)
+        self.assertIn('"UNSAVED"', details)
         self.assertIn('ImGui::Button("Save & Apply##CompositionDetails")', details)
         self.assertIn("m_bSavePatternRequested = true", details)
 
@@ -200,9 +204,13 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertLess(consume, save)
         self.assertNotIn("Render_", render[save:])
 
-        self.assertIn("LAST SAVE: SAVED - APPLY STATUS BELOW", details)
-        self.assertIn("LAST SAVE & APPLY: FAILED", details)
-        self.assertIn("m_strPatternSaveStatus", details)
+        self.assertIn("Advanced Diagnostics for the exact reason", details)
+        toolbar = function_body(
+            self.workbench_cpp,
+            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
+        )
+        self.assertIn("m_strPatternSaveStatus", toolbar)
+        self.assertIn('"Pattern: %s"', toolbar)
         self.assertIn("m_bPatternSaveSucceeded = Save_Publish_Reload()", render)
 
     def test_sound_save_admission_uses_the_complete_canonical_graph(self) -> None:
@@ -1101,7 +1109,8 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             "ImGui::SetNextWindowFocus()",
             "ImGui::SetNextWindowCollapsed(false, ImGuiCond_Always)",
             'ImGui::Button("Append V1 Effect to Pattern Draft")',
-            'ImGui::Button("Append + Save V2 Stage Binding")',
+            '"Add V2 Group to Stage (Save Now)"',
+            '"Add V2 Leaf to Stage (Save Now)"',
             'ImGui::Button("Append Selected Sound to Stage")',
             "Render_SequenceBrowser(",
             'ImGui::SeparatorText("Sound Event Tree")',
@@ -1111,6 +1120,103 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertNotIn(
             "Resolve_ValtanCompositionPatternSoundWindow(", resources
         )
+
+    def test_effect_v2_group_authoring_is_boss_scoped_and_local_preview_owned(self) -> None:
+        reload_effects = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Reload_SemanticValtanEffects(",
+        )
+        resources = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render_ResourcesWindow(",
+        )
+        refresh = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::\nRefresh_EffectV2LocalPreviewAfterMutation(",
+        )
+
+        self.assertGreaterEqual(
+            reload_effects.count("IsBossValtanEffectV2Resource("), 2
+        )
+        group_tree = resources.index('"V2 Effect Groups"')
+        advanced_leaves = resources.index('"Advanced: V2 Individual Leaves"')
+        self.assertLess(group_tree, advanced_leaves)
+        self.assertIn("ImGuiTreeNodeFlags_DefaultOpen", resources[group_tree:advanced_leaves])
+        self.assertIn('"Attach at Animation Box Start##ResourceEffect"', resources)
+        self.assertIn("Resolve_ClipSourceToStageMs(", resources)
+        self.assertIn("IsBossValtanEffectV2Resource(m_strEffectAddAssetId)", resources)
+        self.assertIn("Append_BossValtanStageBinding(", resources)
+        self.assertIn("Refresh_EffectV2LocalPreviewAfterMutation(", resources)
+
+        for token in (
+            "Stop_ValtanCompositionPattern(",
+            "Play_EffectivePreview(",
+            "Seek_EffectivePreview(",
+            "Server Saved Revision / Complete Play is unchanged",
+        ):
+            self.assertIn(token, refresh)
+        self.assertNotIn("CEffectV2Runtime::Invalidate_Caches()", refresh)
+        self.assertNotIn(
+            "CEffectV2Runtime::Invalidate_Caches()", self.effect_tool_v2_cpp
+        )
+        self.assertIn("Sync_StageAuthoring(", self.effect_v2_runtime_cpp)
+        self.assertIn("pSnapshot->Find_Group(", self.effect_v2_runtime_cpp)
+        self.assertIn("pSnapshot->Find_Document(", self.effect_v2_runtime_cpp)
+        local_preview = function_body(
+            self.valtan_cpp,
+            "bool_t CValtan::Apply_LocalPatternPresentationSample(",
+        )
+        self.assertIn("m_bLocalPatternAuthoringPreview", local_preview)
+        self.assertIn("Sync_StageAuthoring(", local_preview)
+        self.assertIn("CEffectV2Catalog::Get().Get_Snapshot()", local_preview)
+
+    def test_effect_v2_timeline_boxes_are_typed_large_and_mutable(self) -> None:
+        build = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Build_Timeline(",
+        )
+        pack = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Pack_TimelineSubrows(",
+        )
+        duplicate = function_body(
+            self.workbench_cpp,
+            "bool_t Client::CActionCompositionWorkbench::Duplicate_SelectedTimelineBox(",
+        )
+        delete = function_body(
+            self.workbench_cpp,
+            "bool_t Client::CActionCompositionWorkbench::Delete_SelectedTimelineBox(",
+        )
+        timeline = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+        )
+
+        for token in (
+            "BuildEffectV2BindingStableId(",
+            "ResolveEffectV2GroupSpanMs(",
+            "EFFECT_V2_GROUP_MINIMUM_WIDTH_PX",
+            "EFFECT_V2_LEAF_MINIMUM_WIDTH_PX",
+            "true, bGroup, Binding.iStartMs",
+        ):
+            self.assertIn(token, build)
+        self.assertNotIn("iV2Ordinal", build)
+        self.assertIn("ResolveTimelineDisplayWidthPx(", pack)
+        self.assertIn("Item.iSubrow = iSubrow", pack)
+        self.assertNotIn("Item.iStartMs =", pack)
+        self.assertNotIn("Item.iEndMs =", pack)
+        self.assertIn("Duplicate_BossValtanStageBinding(", duplicate)
+        self.assertIn("Remove_BossValtanStageBinding(", delete)
+        self.assertIn("ResolveEffectV2Binding(", duplicate)
+        self.assertIn("ResolveEffectV2Binding(", delete)
+        self.assertIn("From_StageBinding(*pSourceBinding)", duplicate)
+        self.assertIn("From_StageBinding(*pSourceBinding)", delete)
+        self.assertIn("Update_BossValtanStageBindingStart(", timeline)
+        self.assertIn("ResolveEffectV2Binding(", timeline)
+        self.assertIn("From_StageBinding(", timeline)
+        self.assertIn("Item.bEffectV2Binding && bMutationAdmitted", timeline)
+        self.assertIn("Pack_TimelineSubrows();", timeline)
+        self.assertIn("Item.fMinimumDisplayWidthPx", timeline)
 
     def test_boss_pattern_graph_is_queue_only_and_generation_cached(self) -> None:
         render = function_body(
@@ -1371,9 +1477,9 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             self.main_cpp,
             "bool_t CMainApp::Debug_OpenBossPatternFlow(",
         )
-        self.assertIn('ImGui::Button("Queue as Next")', toolbar)
+        self.assertIn('ImGui::Button("Queue Next"', toolbar)
         self.assertIn("Queue_NextServerPattern", toolbar)
-        self.assertIn('ImGui::Button("Pattern Flow...")', toolbar)
+        self.assertIn('ImGui::Button("Pattern Flow"', toolbar)
         self.assertIn("Debug_OpenBossPatternFlow", toolbar)
 
         self.assertIn("Acquire_ServerPlaybackAdmission", queue)
@@ -1409,7 +1515,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             "void Client::CActionCompositionWorkbench::Render_Details(",
         )
 
-        self.assertIn('ImGui::Button("Reload Canonical")', toolbar)
+        self.assertIn('ImGui::Button("Reload Canonical"', toolbar)
         self.assertIn("return true", toolbar)
         self.assertIn("bCanonicalViewMayHaveChanged", toolbar)
         self.assertIn("Render_Toolbar", session)
@@ -1420,6 +1526,49 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         sound_end_disabled = details.index("ImGui::EndDisabled();", sound_button)
         sound_return = details.index("if (bSoundSaveRequested)", sound_button)
         self.assertLess(sound_end_disabled, sound_return)
+
+    def test_session_keeps_actions_visible_and_hides_raw_diagnostics_by_default(self) -> None:
+        toolbar = function_body(
+            self.workbench_cpp,
+            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
+        )
+        diagnostics = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render_DataFiles(",
+        )
+        linked = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render_SemanticLinkedRows(",
+        )
+
+        for action_table in (
+            "##CompositionPrimaryActions",
+            "##CompositionServerActions",
+            "##CompositionToolActions",
+        ):
+            self.assertIn(action_table, toolbar)
+        self.assertNotIn("ImGui::SameLine", toolbar)
+        for summary in (
+            '"SAVED"',
+            '"UNSAVED"',
+            '"SAVE FAILED"',
+            '"SAVED / SERVER PENDING"',
+            "Save failed before writing files. Open Advanced Diagnostics.",
+            "Server Complete Play is not ready. Local Arena Clone resource preview remains available",
+        ):
+            self.assertIn(summary, toolbar)
+
+        self.assertIn('ImGui::CollapsingHeader("Advanced Diagnostics")', diagnostics)
+        self.assertNotIn("ImGuiTreeNodeFlags_DefaultOpen", diagnostics)
+        self.assertIn("m_strPatternSaveStatus", diagnostics)
+        self.assertIn("m_strDisplayProvenance", diagnostics)
+        self.assertLess(
+            diagnostics.index('ImGui::CollapsingHeader("Advanced Diagnostics")'),
+            diagnostics.index("Render_SemanticLinkedRows(pPattern, pStage)"),
+        )
+        self.assertIn("!pStage->ProductCues.empty()", linked)
+        self.assertIn("bFoundSound && ImGui::CollapsingHeader", linked)
+        self.assertIn("bFoundCamera && ImGui::CollapsingHeader", linked)
 
     def test_manual_pattern_stage_role_is_a_typed_detail_not_an_id_rewrite(self) -> None:
         details = function_body(
@@ -1534,9 +1683,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             self.workbench_cpp,
             "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
         )
-        command_edge = toolbar.index(
-            'ImGui::Button("Play Saved Active Revision on Server Valtan")'
-        )
+        command_edge = toolbar.index('ImGui::Button("Play on Server"')
         select_edge = toolbar.index("Debug_SelectCompletePlayPattern", command_edge)
         play_edge = toolbar.index("Debug_CompletePlaySelected", select_edge)
         self.assertLess(command_edge, select_edge)

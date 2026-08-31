@@ -68,6 +68,87 @@ def stage_sound_dependencies_accept(
     return True
 
 
+def sound_relevant_stage_changed(baseline_stage: dict, candidate_stage: dict) -> bool:
+    if baseline_stage["actionId"] != candidate_stage["actionId"]:
+        return True
+    if baseline_stage["durationMs"] != candidate_stage["durationMs"]:
+        return True
+    return baseline_stage["animation"]["occurrences"] != candidate_stage[
+        "animation"
+    ]["occurrences"]
+
+
+def graph_sound_dependencies_accept(
+    cues: list[dict],
+    baseline_patterns: list[dict],
+    candidate_patterns: list[dict],
+    *,
+    strict_timing_accepts,
+) -> bool:
+    """Mirror the no-new-debt graph admission used by canonical Save.
+
+    Exact Pattern/Stage/action/occurrence identity is always checked.  The
+    existing timing window is re-admitted only when this transaction changes
+    a field that can move a Sound row on its Stage wall.
+    """
+
+    def unique(items: list[dict], key: str, value: str):
+        matches = [item for item in items if item[key] == value]
+        return matches[0] if len(matches) == 1 else None
+
+    visited: set[tuple[str, str]] = set()
+    for cue in cues:
+        stage_key = (cue["patternId"], cue["stageId"])
+        if stage_key in visited:
+            continue
+        visited.add(stage_key)
+        baseline_pattern = unique(
+            baseline_patterns, "patternId", cue["patternId"]
+        )
+        candidate_pattern = unique(
+            candidate_patterns, "patternId", cue["patternId"]
+        )
+        if baseline_pattern is None or candidate_pattern is None:
+            return False
+        baseline_stage = unique(
+            baseline_pattern["stages"], "stageId", cue["stageId"]
+        )
+        candidate_stage = unique(
+            candidate_pattern["stages"], "stageId", cue["stageId"]
+        )
+        if baseline_stage is None or candidate_stage is None:
+            return False
+
+        stage_rows = [
+            row
+            for row in cues
+            if (row["patternId"], row["stageId"]) == stage_key
+        ]
+        for row in stage_rows:
+            if (
+                row["actionId"] != baseline_stage["actionId"]
+                or row["actionId"] != candidate_stage["actionId"]
+            ):
+                return False
+            baseline_clips = [
+                clip
+                for clip in baseline_stage["animation"]["occurrences"]
+                if clip["clipOccurrenceId"] == row["clipOccurrenceId"]
+            ]
+            candidate_clips = [
+                clip
+                for clip in candidate_stage["animation"]["occurrences"]
+                if clip["clipOccurrenceId"] == row["clipOccurrenceId"]
+            ]
+            if len(baseline_clips) != 1 or len(candidate_clips) != 1:
+                return False
+
+        if sound_relevant_stage_changed(baseline_stage, candidate_stage):
+            if not strict_timing_accepts(stage_key, candidate_stage):
+                return False
+    return True
+
+
 class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -282,7 +363,7 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
         )
         for token in (
             "bPatternMutationAdmitted",
-            "SOUND OWNER DRAFT / PATTERN MUTATION LOCKED",
+            "Sound owner draft is pending.",
             "Create Pattern is blocked until the Pattern Sound source draft",
             "bMutationAdmitted && !m_bAuthoringDraftDirty",
             "Tune / Remove Existing Server Collider / Hit Schedule",
@@ -390,7 +471,15 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             toolbar.index("Is_ValtanCompositionPatternSoundRuntimeReady("),
         )
         self.assertNotIn("Get_ServerActivePatternRevision(", toolbar)
-        self.assertIn("Server playback blocked by Pattern Sound", toolbar)
+        self.assertIn('"Server: %s"', toolbar)
+        self.assertIn(
+            "Server Complete Play is not ready. Local Arena Clone resource preview remains available",
+            toolbar,
+        )
+        self.assertIn(
+            'ImGui::CollapsingHeader("Advanced Diagnostics")',
+            self.workbench_cpp,
+        )
 
         for token in (
             "const LostArk::Shared::GameplayDataRevision& ExpectedRevision",
@@ -859,6 +948,153 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
                 "Validate_ValtanCompositionPatternSoundGraphDependencies("
             ),
             save_body.index("Save_ValtanCanonicalProduct(SaveStatus)"),
+        )
+
+    def test_unrelated_soundless_save_does_not_readmit_unchanged_sound_debt(self) -> None:
+        sound_clip = {
+            "clipOccurrenceId": "valtan.attack.backstep.active.clip.01",
+            "clip": "mesh_att_battle_6_01",
+            "mappingBasis": "PROJECT_AUTHORED",
+            "sourceStartMs": 0,
+            "playMs": 700,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": False,
+        }
+        baseline = [
+            {
+                "patternId": "VALTAN_BACKSTEP_ATTACK",
+                "stages": [
+                    {
+                        "stageId": "SWEEP",
+                        "actionId": "valtan.attack.backstep.active",
+                        "durationMs": 700,
+                        "animation": {"occurrences": [sound_clip]},
+                    }
+                ],
+            },
+            {
+                "patternId": "VALTAN_GROUND_ROAR",
+                "stages": [
+                    {
+                        "stageId": "STEP_01",
+                        "actionId": "valtan.sequence.ground-roar.step-01",
+                        "durationMs": 1800,
+                        "animation": {"occurrences": []},
+                    }
+                ],
+            },
+        ]
+        candidate = copy.deepcopy(baseline)
+        candidate[1]["stages"][0]["durationMs"] = 4433
+        cue = {
+            "patternId": "VALTAN_BACKSTEP_ATTACK",
+            "stageId": "SWEEP",
+            "actionId": "valtan.attack.backstep.active",
+            "clipOccurrenceId": "valtan.attack.backstep.active.clip.01",
+        }
+        strict_calls: list[tuple[str, str]] = []
+
+        self.assertTrue(
+            graph_sound_dependencies_accept(
+                [cue],
+                baseline,
+                candidate,
+                strict_timing_accepts=lambda key, _stage: strict_calls.append(key)
+                or False,
+            )
+        )
+        self.assertEqual([], strict_calls)
+
+    def test_changed_backstep_stage_still_rejects_stale_sound_timing(self) -> None:
+        clip = {
+            "clipOccurrenceId": "valtan.attack.backstep.active.clip.01",
+            "clip": "mesh_att_battle_6_01",
+            "mappingBasis": "PROJECT_AUTHORED",
+            "sourceStartMs": 0,
+            "playMs": 700,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": False,
+        }
+        baseline = [
+            {
+                "patternId": "VALTAN_BACKSTEP_ATTACK",
+                "stages": [
+                    {
+                        "stageId": "SWEEP",
+                        "actionId": "valtan.attack.backstep.active",
+                        "durationMs": 700,
+                        "animation": {"occurrences": [clip]},
+                    }
+                ],
+            }
+        ]
+        candidate = copy.deepcopy(baseline)
+        candidate[0]["stages"][0]["durationMs"] = 800
+        cue = {
+            "patternId": "VALTAN_BACKSTEP_ATTACK",
+            "stageId": "SWEEP",
+            "actionId": "valtan.attack.backstep.active",
+            "clipOccurrenceId": "valtan.attack.backstep.active.clip.01",
+        }
+        strict_calls: list[tuple[str, str]] = []
+
+        self.assertFalse(
+            graph_sound_dependencies_accept(
+                [cue],
+                baseline,
+                candidate,
+                strict_timing_accepts=lambda key, _stage: strict_calls.append(key)
+                or False,
+            )
+        )
+        self.assertEqual([("VALTAN_BACKSTEP_ATTACK", "SWEEP")], strict_calls)
+
+        deleted = copy.deepcopy(candidate)
+        deleted[0]["stages"].clear()
+        self.assertFalse(
+            graph_sound_dependencies_accept(
+                [cue],
+                baseline,
+                deleted,
+                strict_timing_accepts=lambda _key, _stage: True,
+            )
+        )
+        ambiguous = copy.deepcopy(candidate)
+        ambiguous[0]["stages"].append(
+            copy.deepcopy(ambiguous[0]["stages"][0])
+        )
+        self.assertFalse(
+            graph_sound_dependencies_accept(
+                [cue],
+                baseline,
+                ambiguous,
+                strict_timing_accepts=lambda _key, _stage: True,
+            )
+        )
+
+    def test_canonical_sound_graph_keeps_identity_checks_before_timing_scope(self) -> None:
+        start = self.animation_cpp.index(
+            "Validate_ValtanCompositionPatternSoundGraphDependencies("
+        )
+        end = self.animation_cpp.index(
+            "bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSound(",
+            start,
+        )
+        graph = self.animation_cpp[start:end]
+        for token in (
+            "FindUniquePattern(",
+            "FindUniqueStage(",
+            "Validate_ValtanCompositionPatternSoundStageDependencies(",
+        ):
+            self.assertIn(token, graph)
+        stage_start = self.animation_cpp.index(
+            "Validate_ValtanCompositionPatternSoundStageDependencies("
+        )
+        stage = self.animation_cpp[stage_start:start]
+        self.assertIn("const bool_t bValidateTimingWindow", stage)
+        self.assertLess(
+            stage.index("1u != iCandidateClipCount"),
+            stage.index("if (!bValidateTimingWindow)"),
         )
 
     def test_sound_window_native_durations_are_cached_per_model(self) -> None:
