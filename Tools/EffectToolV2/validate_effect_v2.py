@@ -202,7 +202,6 @@ def _validate_groups(group_root: Path, authored: dict[str, Path]) -> dict[str, l
         if not isinstance(children, list) or not children:
             raise ContractError(f"Effect V2 group children must be a non-empty array: {group_id}")
         child_ids: list[str] = []
-        identities: set[tuple[str, int]] = set()
         for child in children:
             child = _require_object(child, f"{group_id}.child")
             effect_id = child.get("effectId")
@@ -210,7 +209,7 @@ def _validate_groups(group_root: Path, authored: dict[str, Path]) -> dict[str, l
                 raise ContractError(
                     f"Effect V2 group child has no authored effect (nesting is not allowed): {group_id}: {effect_id}"
                 )
-            start_ms = _require_ms(child.get("startMs", 0), group_id, "child startMs")
+            _require_ms(child.get("startMs", 0), group_id, "child startMs")
             _require_ms(child.get("durationMs", 0), group_id, "child durationMs")
             if child.get("stop", "Deactivate") not in CHILD_STOPS:
                 raise ContractError(f"Effect V2 group child stop is invalid: {group_id}: {effect_id}")
@@ -220,10 +219,11 @@ def _validate_groups(group_root: Path, authored: dict[str, Path]) -> dict[str, l
             for component in offset:
                 _require_finite_number(component, group_id, "child offset")
             _require_finite_number(child.get("yawDegrees", 0), group_id, "child yawDegrees")
-            identity = (effect_id, start_ms)
-            if identity in identities:
-                raise ContractError(f"duplicate Effect V2 group child: {group_id}: {identity}")
-            identities.add(identity)
+            scale = child.get("scale", [1, 1, 1])
+            if not isinstance(scale, list) or len(scale) != 3:
+                raise ContractError(f"Effect V2 group child scale must be 3 numbers: {group_id}: {effect_id}")
+            for component in scale:
+                _require_finite_number(component, group_id, "child scale")
             child_ids.append(effect_id)
         _validate_numbers(document, group_id)
         groups[group_id] = child_ids

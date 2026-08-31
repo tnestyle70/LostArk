@@ -1824,6 +1824,9 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectParticleV2.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectMeshParticleV2.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectDecalV2.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>

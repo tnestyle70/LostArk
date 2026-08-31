@@ -1580,9 +1580,17 @@ void Client::CEffect_Tool_V2::Update_Attach(const f32_t fTimeDelta)
 {
 	Update_ValtanTimeline(fTimeDelta);
 	CEffectV2Runtime::Advance_FreeGroups(fTimeDelta, m_pDevice, m_pContext);
-	if (0u != m_iGroupPreviewHandle &&
-		CEffectV2Runtime::Group_Seconds(m_iGroupPreviewHandle) < 0.f)
-		m_iGroupPreviewHandle = 0u;
+	if (0u != m_iGroupPreviewHandle)
+	{
+		if (CEffectV2Runtime::Group_Seconds(m_iGroupPreviewHandle) < 0.f)
+		{
+			m_iGroupPreviewHandle = 0u;
+			if (m_bGroupPreviewLoop)
+				Play_GroupPreview();
+		}
+		else
+			CEffectV2Runtime::Update_Group(m_iGroupPreviewHandle, m_Group);
+	}
 	EFFECT_V2_TARGET_VIEW View;
 	const bool_t bHasTarget = Resolve_TargetView(View);
 	const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock();
@@ -2588,11 +2596,18 @@ bool_t Client::CEffect_Tool_V2::Play_GroupPreview()
 {
 	Stop_GroupPreview();
 	const std::string strGroupId = m_szGroupId;
-	std::error_code Error;
-	if (!std::filesystem::is_regular_file(CEffectV2Document::Group_Path(strGroupId), Error))
+	if (m_Group.Children.empty())
 	{
-		m_strGroupStatus = "Save the group first; preview plays the saved file.";
+		m_strGroupStatus = "Add at least one child to preview.";
 		return false;
+	}
+	for (const EFFECT_V2_GROUP_CHILD& Child : m_Group.Children)
+	{
+		if (!CEffectV2Document::Is_ValidEffectId(Child.strEffectId))
+		{
+			m_strGroupStatus = "Every child needs a saved effect document.";
+			return false;
+		}
 	}
 	float4x4_t Pivot;
 	EFFECT_V2_TARGET_VIEW View;
@@ -2604,13 +2619,14 @@ bool_t Client::CEffect_Tool_V2::Play_GroupPreview()
 		m_strGroupStatus = "Create a preview effect or spawn a target to place the group.";
 		return false;
 	}
-	m_iGroupPreviewHandle = CEffectV2Runtime::Play_Group(strGroupId, Pivot, m_pDevice, m_pContext);
+	m_Group.strGroupId = strGroupId;
+	m_iGroupPreviewHandle = CEffectV2Runtime::Play_Group(m_Group, Pivot, m_pDevice, m_pContext);
 	if (0u == m_iGroupPreviewHandle)
 	{
 		m_strGroupStatus = "Group preview failed: " + CEffectV2Runtime::Last_Error();
 		return false;
 	}
-	m_strGroupStatus = "Playing " + strGroupId;
+	m_strGroupStatus = "Playing " + strGroupId + " (live: edits apply while it runs)";
 	return true;
 }
 
@@ -2714,6 +2730,9 @@ void Client::CEffect_Tool_V2::Render_GroupWindow()
 			ImGui::SetTooltip("Kill: remove at once. Deactivate: particles/trails stop spawning and drain; other shapes end.");
 		ImGui::DragFloat3("Offset (m)", &Child.vOffset.x, 0.05f);
 		ImGui::DragFloat("Yaw (deg)", &Child.fYawDegrees, 1.f, -360.f, 360.f);
+		ImGui::DragFloat3("Scale", &Child.vScale.x, 0.01f, 0.001f, 100.f);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Multiplies the document's scale track; particle sprite sizes use X uniformly.");
 		if (ImGui::SmallButton("Remove"))
 		{
 			m_Group.Children.erase(m_Group.Children.begin() + static_cast<std::ptrdiff_t>(iIndex));
@@ -2761,11 +2780,14 @@ void Client::CEffect_Tool_V2::Render_GroupWindow()
 	if (ImGui::Button("Stop Preview"))
 		Stop_GroupPreview();
 	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::Checkbox("Loop##GroupPreview", &m_bGroupPreviewLoop);
 	if (fPreviewSeconds >= 0.f)
 	{
 		ImGui::SameLine();
 		ImGui::Text("%.2f s", fPreviewSeconds);
 	}
+	ImGui::TextDisabled("Preview plays the unsaved group. Offset/Yaw/Scale move live; Start/Duration/Stop apply to children not spawned yet (or on the next loop).");
 	if (!m_strGroupStatus.empty())
 		ImGui::TextWrapped("%s", m_strGroupStatus.c_str());
 	ImGui::End();
@@ -3057,13 +3079,27 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		ImGui::DragFloat("Drag", &E.fDrag, 0.01f, 0.f, 20.f);
 
 		ImGui::SeparatorText("Particle Size / Rotation");
-		ImGui::DragFloat2("Size Start (m)", &E.vSizeStart.x, 0.005f, 0.f, 100.f);
-		ImGui::DragFloat2("Size End (m)", &E.vSizeEnd.x, 0.005f, 0.f, 100.f);
-		ImGui::DragFloat2("Rotation (deg min/max)", &E.vRotationRange.x, 1.f, -360.f, 360.f);
-		ImGui::DragFloat2("Spin (deg/s min/max)", &E.vSpinRange.x, 1.f, -3600.f, 3600.f);
-		int32_t iAlignment = static_cast<int32_t>(E.eAlignment);
-		if (ImGui::Combo("Alignment", &iAlignment, "Camera\0Velocity\0Horizontal\0"))
-			E.eAlignment = static_cast<CEffectV2Object::PARTICLE_ALIGNMENT>(iAlignment);
+		if (pPreview->Is_MeshParticle())
+		{
+			ImGui::TextDisabled("Mesh particles: Size Start/End X is the uniform scale (x Mesh Pre-Scale).");
+			ImGui::DragFloat2("Size Start (m)", &E.vSizeStart.x, 0.005f, 0.f, 100.f);
+			ImGui::DragFloat2("Size End (m)", &E.vSizeEnd.x, 0.005f, 0.f, 100.f);
+			ImGui::DragFloat3("Mesh Rotation Min (deg)", &E.vMeshRotationMin.x, 1.f, -360.f, 360.f);
+			ImGui::DragFloat3("Mesh Rotation Max (deg)", &E.vMeshRotationMax.x, 1.f, -360.f, 360.f);
+			ImGui::DragFloat3("Mesh Spin Min (deg/s)", &E.vMeshSpinMin.x, 1.f, -3600.f, 3600.f);
+			ImGui::DragFloat3("Mesh Spin Max (deg/s)", &E.vMeshSpinMax.x, 1.f, -3600.f, 3600.f);
+			ImGui::DragFloat("Mesh Pre-Scale", &P.fMeshPreScale, 0.0001f, 0.0001f, 10.f, "%.4f");
+		}
+		else
+		{
+			ImGui::DragFloat2("Size Start (m)", &E.vSizeStart.x, 0.005f, 0.f, 100.f);
+			ImGui::DragFloat2("Size End (m)", &E.vSizeEnd.x, 0.005f, 0.f, 100.f);
+			ImGui::DragFloat2("Rotation (deg min/max)", &E.vRotationRange.x, 1.f, -360.f, 360.f);
+			ImGui::DragFloat2("Spin (deg/s min/max)", &E.vSpinRange.x, 1.f, -3600.f, 3600.f);
+			int32_t iAlignment = static_cast<int32_t>(E.eAlignment);
+			if (ImGui::Combo("Alignment", &iAlignment, "Camera\0Velocity\0Horizontal\0"))
+				E.eAlignment = static_cast<CEffectV2Object::PARTICLE_ALIGNMENT>(iAlignment);
+		}
 
 		ImGui::SeparatorText("Particle Color / Sub-UV");
 		ImGui::ColorEdit4("Color Start", &E.vColorStart.x,
@@ -3355,7 +3391,7 @@ bool_t Client::CEffect_Tool_V2::Slot_VisibleForType(const RESOURCE_SLOT eSlot) c
 		return false;
 	if (RESOURCE_SLOT::MESH != eSlot)
 		return true;
-	return EFFECT_TYPE::MESH == m_eType;
+	return EFFECT_TYPE::MESH == m_eType || EFFECT_TYPE::PARTICLE == m_eType;
 }
 
 Client::CEffect_Tool_V2::RESOURCE_KIND Client::CEffect_Tool_V2::Slot_Kind(
@@ -3397,7 +3433,7 @@ const char* Client::CEffect_Tool_V2::Slot_Description(const RESOURCE_SLOT eSlot)
 {
 	switch (eSlot)
 	{
-	case RESOURCE_SLOT::MESH: return "Mesh: one WModel carrier shape.";
+	case RESOURCE_SLOT::MESH: return "Mesh: one WModel carrier shape. On a Particle it turns every particle into an instanced static mesh.";
 	case RESOURCE_SLOT::BASE: return "Base: RGB color, A opacity.";
 	case RESOURCE_SLOT::NOISE: return "Noise: UV distortion source.";
 	case RESOURCE_SLOT::MASK: return "Mask: R channel multiplies opacity.";

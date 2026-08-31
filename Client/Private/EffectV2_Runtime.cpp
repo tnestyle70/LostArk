@@ -44,6 +44,8 @@ namespace
 	/* One leaf document waiting on a lane clock. Group children arrive here
 	   already expanded: Binding.strEffectId is the child document, Local the
 	   child offset/yaw, fStopSeconds the lane time of its stop (< 0 = none). */
+	constexpr size_t NO_CHILD = static_cast<size_t>(-1);
+
 	struct PENDING_SPAWN final
 	{
 		Client::EFFECT_V2_BINDING Binding;
@@ -51,6 +53,8 @@ namespace
 		float4x4_t Local;
 		f32_t fStopSeconds = -1.f;
 		Client::EFFECT_V2_CHILD_STOP eStop = Client::EFFECT_V2_CHILD_STOP::KILL;
+		size_t iChildIndex = NO_CHILD;
+		float3_t vScale = { 1.f, 1.f, 1.f };
 	};
 
 	struct SPAWNED_EFFECT final
@@ -61,6 +65,7 @@ namespace
 		f32_t fStopSeconds = -1.f;
 		Client::EFFECT_V2_CHILD_STOP eStop = Client::EFFECT_V2_CHILD_STOP::KILL;
 		bool_t bStopApplied = false;
+		size_t iChildIndex = NO_CHILD;
 	};
 
 	struct TARGET_STATE final
@@ -214,9 +219,59 @@ namespace
 	{
 		float4x4_t Local;
 		XMStoreFloat4x4(&Local,
+			XMMatrixScaling(Child.vScale.x, Child.vScale.y, Child.vScale.z) *
 			XMMatrixRotationY(XMConvertToRadians(Child.fYawDegrees)) *
 			XMMatrixTranslation(Child.vOffset.x, Child.vOffset.y, Child.vOffset.z));
 		return Local;
+	}
+
+	/* Lane time at which a child stops: its own duration, capped by the
+	   group duration; < 0 when neither is set. */
+	f32_t Child_StopSeconds(
+		const Client::EFFECT_V2_GROUP& Group,
+		const Client::EFFECT_V2_GROUP_CHILD& Child,
+		const uint32_t iBindingStartMs)
+	{
+		const f32_t fGroupStop = Group.iDurationMs > 0u ?
+			Ms_ToSeconds(iBindingStartMs + Group.iDurationMs) : -1.f;
+		f32_t fStop = Child.iDurationMs > 0u ?
+			Ms_ToSeconds(iBindingStartMs + Child.iStartMs + Child.iDurationMs) : -1.f;
+		if (fGroupStop >= 0.f && (fStop < 0.f || fGroupStop < fStop))
+			fStop = fGroupStop;
+		return fStop;
+	}
+
+	void Retarget_Pending(
+		PENDING_SPAWN& Pending,
+		const Client::EFFECT_V2_GROUP& Group,
+		const size_t iChildIndex,
+		const uint32_t iBindingStartMs)
+	{
+		const Client::EFFECT_V2_GROUP_CHILD& Child = Group.Children[iChildIndex];
+		Pending.Binding.strGroupId.clear();
+		Pending.Binding.strEffectId = Child.strEffectId;
+		Pending.Binding.iStartMs = iBindingStartMs + Child.iStartMs;
+		Pending.Local = Child_Local(Child);
+		Pending.eStop = Child.eStop;
+		Pending.fStopSeconds = Child_StopSeconds(Group, Child, iBindingStartMs);
+		Pending.iChildIndex = iChildIndex;
+		Pending.vScale = Child.vScale;
+	}
+
+	/* One pending row per child, in child order, so a row's iChildIndex
+	   stays valid while the tool edits the same group in place. */
+	void Expand_Group(
+		const Client::EFFECT_V2_GROUP& Group,
+		const Client::EFFECT_V2_BINDING& Binding,
+		std::vector<PENDING_SPAWN>& Out)
+	{
+		for (size_t iChild = 0u; iChild < Group.Children.size(); ++iChild)
+		{
+			PENDING_SPAWN Pending;
+			Pending.Binding = Binding;
+			Retarget_Pending(Pending, Group, iChild, Binding.iStartMs);
+			Out.push_back(std::move(Pending));
+		}
 	}
 
 	/* A document binding becomes one pending row; a group binding becomes
@@ -237,24 +292,32 @@ namespace
 		const GROUP_ENTRY& Entry = Ensure_Group(Binding.strGroupId);
 		if (Entry.bFailed)
 			return;
-		const f32_t fGroupStop = Entry.Group.iDurationMs > 0u ?
-			Ms_ToSeconds(Binding.iStartMs + Entry.Group.iDurationMs) : -1.f;
-		for (const Client::EFFECT_V2_GROUP_CHILD& Child : Entry.Group.Children)
-		{
-			PENDING_SPAWN Pending;
-			Pending.Binding = Binding;
-			Pending.Binding.strGroupId.clear();
-			Pending.Binding.strEffectId = Child.strEffectId;
-			Pending.Binding.iStartMs = Binding.iStartMs + Child.iStartMs;
-			Pending.Local = Child_Local(Child);
-			Pending.eStop = Child.eStop;
-			f32_t fStop = Child.iDurationMs > 0u ?
-				Ms_ToSeconds(Pending.Binding.iStartMs + Child.iDurationMs) : -1.f;
-			if (fGroupStop >= 0.f && (fStop < 0.f || fGroupStop < fStop))
-				fStop = fGroupStop;
-			Pending.fStopSeconds = fStop;
-			Out.push_back(std::move(Pending));
-		}
+		Expand_Group(Entry.Group, Binding, Out);
+	}
+
+	/* Child scale rides on top of the document: the scale track is
+	   multiplied per axis, particle sprite sizes by the X component. */
+	void Apply_ChildScale(
+		Client::CEffectV2Object& Object,
+		const Client::EFFECT_V2_DOCUMENT& Document,
+		const float3_t& vScale)
+	{
+		const Client::CEffectV2Object::PARAMS& Source = Document.Desc.Params;
+		Client::CEffectV2Object::PARAMS& Params = Object.Params();
+		Params.Scale.vStart = {
+			Source.Scale.vStart.x * vScale.x,
+			Source.Scale.vStart.y * vScale.y,
+			Source.Scale.vStart.z * vScale.z };
+		Params.Scale.vEnd = {
+			Source.Scale.vEnd.x * vScale.x,
+			Source.Scale.vEnd.y * vScale.y,
+			Source.Scale.vEnd.z * vScale.z };
+		Params.Particle.vSizeStart = {
+			Source.Particle.vSizeStart.x * vScale.x,
+			Source.Particle.vSizeStart.y * vScale.x };
+		Params.Particle.vSizeEnd = {
+			Source.Particle.vSizeEnd.x * vScale.x,
+			Source.Particle.vSizeEnd.y * vScale.x };
 	}
 
 	void Spawn(
@@ -313,12 +376,15 @@ namespace
 				FollowTarget, Pending.Binding.strBone, Pending.Binding.eRotation);
 			pObject->Set_FollowLocal(Pending.Local);
 		}
+		if (NO_CHILD != Pending.iChildIndex)
+			Apply_ChildScale(*pObject, Entry.Document, Pending.vScale);
 		SPAWNED_EFFECT Effect;
 		Effect.pObject = pObject;
 		Effect.bStopWithClip = Pending.Binding.bStopWithClip;
 		Effect.bStageBound = bStageBound;
 		Effect.fStopSeconds = Pending.fStopSeconds;
 		Effect.eStop = Pending.eStop;
+		Effect.iChildIndex = Pending.iChildIndex;
 		Spawned.push_back(std::move(Effect));
 	}
 
@@ -621,7 +687,7 @@ void Client::CEffectV2Runtime::Tick(
 }
 
 uint32_t Client::CEffectV2Runtime::Play_Group(
-	const std::string& strGroupId,
+	const EFFECT_V2_GROUP& Group,
 	const float4x4_t& PivotWorld,
 	const ComPtr<ID3D11Device>& pDevice,
 	const ComPtr<ID3D11DeviceContext>& pContext)
@@ -629,22 +695,67 @@ uint32_t Client::CEffectV2Runtime::Play_Group(
 	if (!Ensure_Prototype(pDevice, pContext))
 		return 0u;
 	EFFECT_V2_BINDING Binding;
-	Binding.strGroupId = strGroupId;
 	Binding.bFollowBone = false;
-	FREE_GROUP Group;
-	Group.Pivot = PivotWorld;
-	Expand_Binding(Binding, Group.Pending);
-	if (Group.Pending.empty())
+	FREE_GROUP Lane;
+	Lane.Pivot = PivotWorld;
+	Expand_Group(Group, Binding, Lane.Pending);
+	if (Lane.Pending.empty())
 	{
-		if (g_strLastError.empty())
-			Report("group has no children: " + strGroupId);
+		Report("group has no children: " + Group.strGroupId);
 		return 0u;
 	}
 	const uint32_t iHandle = g_iNextFreeGroupHandle++;
 	if (0u == g_iNextFreeGroupHandle)
 		g_iNextFreeGroupHandle = 1u;
-	g_FreeGroups.emplace(iHandle, std::move(Group));
+	g_FreeGroups.emplace(iHandle, std::move(Lane));
 	return iHandle;
+}
+
+void Client::CEffectV2Runtime::Update_Group(const uint32_t iHandle, const EFFECT_V2_GROUP& Group)
+{
+	const auto Found = g_FreeGroups.find(iHandle);
+	if (Found == g_FreeGroups.end())
+		return;
+	FREE_GROUP& Lane = Found->second;
+	const matrix_t Pivot = XMLoadFloat4x4(&Lane.Pivot);
+	for (PENDING_SPAWN& Pending : Lane.Pending)
+	{
+		if (Pending.iChildIndex >= Group.Children.size())
+			continue;
+		if (Pending.bSpawned)
+		{
+			Pending.Local = Child_Local(Group.Children[Pending.iChildIndex]);
+			Pending.vScale = Group.Children[Pending.iChildIndex].vScale;
+			continue;
+		}
+		Retarget_Pending(Pending, Group, Pending.iChildIndex, 0u);
+	}
+	for (size_t iChild = Lane.Pending.size(); iChild < Group.Children.size(); ++iChild)
+	{
+		PENDING_SPAWN Pending;
+		Pending.Binding.bFollowBone = false;
+		Retarget_Pending(Pending, Group, iChild, 0u);
+		Lane.Pending.push_back(std::move(Pending));
+	}
+	for (SPAWNED_EFFECT& Effect : Lane.Spawned)
+	{
+		if (Effect.iChildIndex >= Group.Children.size())
+			continue;
+		const std::shared_ptr<CEffectV2Object> pObject = Effect.pObject.lock();
+		if (nullptr == pObject)
+			continue;
+		const EFFECT_V2_GROUP_CHILD& Child = Group.Children[Effect.iChildIndex];
+		const float4x4_t Local = Child_Local(Child);
+		XMStoreFloat4x4(&pObject->PivotWorld(), XMLoadFloat4x4(&Local) * Pivot);
+		const DOCUMENT_ENTRY& Entry = Ensure_Document(Child.strEffectId);
+		if (!Entry.bFailed)
+			Apply_ChildScale(*pObject, Entry.Document, Child.vScale);
+		if (!Effect.bStopApplied)
+		{
+			Effect.fStopSeconds = Child_StopSeconds(Group, Child, 0u);
+			Effect.eStop = Child.eStop;
+		}
+	}
 }
 
 void Client::CEffectV2Runtime::Stop_Group(const uint32_t iHandle)

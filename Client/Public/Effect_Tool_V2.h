@@ -253,6 +253,7 @@ private:
 	char m_szGroupId[96] = {};
 	std::string m_strBindingGroupId;
 	uint32_t m_iGroupPreviewHandle = 0u;
+	bool_t m_bGroupPreviewLoop = false;
 	std::string m_strGroupStatus;
 
 	VALTAN_PATTERN_TREE_VIEW m_ValtanTree;

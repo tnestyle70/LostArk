@@ -1,0 +1,16 @@
+{
+  "schema": "lostark.effect-v2-group",
+  "formatVersion": 1,
+  "groupId": "boss.valtan.decal",
+  "durationMs": 0,
+  "children": [
+    { "effectId": "boss.valtan.decal_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.decal_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.decal_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.decal_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "yawDegrees": -1.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.decal_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "yawDegrees": 5.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.decal_2", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.decal_2", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 1.5], "yawDegrees": 0.0, "scale": [1.1, 1.0, 1.0] },
+    { "effectId": "boss.valtan.decal_2", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 2.65], "yawDegrees": 0.0, "scale": [1.22, 1.0, 1.0] }
+  ]
+}

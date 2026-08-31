@@ -72,6 +72,9 @@ struct EFFECT_V2_GROUP_CHILD final
 	EFFECT_V2_CHILD_STOP eStop = EFFECT_V2_CHILD_STOP::DEACTIVATE;
 	float3_t vOffset = { 0.f, 0.f, 0.f };
 	f32_t fYawDegrees = 0.f;
+	/* Multiplies the child document's scale track; particle sprite sizes
+	   take the X component uniformly. */
+	float3_t vScale = { 1.f, 1.f, 1.f };
 };
 
 /* A group owns clock and placement only; every look comes from the child

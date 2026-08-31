@@ -473,7 +473,11 @@ bool_t Client::CEffectV2Document::Parse_Document(
 			!Read_Uint(*pParticle, "tileColumns", E.iTileColumns, strOutError) ||
 			!Read_Uint(*pParticle, "tileRows", E.iTileRows, strOutError) ||
 			!Read_Bool(*pParticle, "subUVOverLife", E.bSubUVOverLife, strOutError) ||
-			!Read_Uint(*pParticle, "randomSeed", E.iRandomSeed, strOutError))
+			!Read_Uint(*pParticle, "randomSeed", E.iRandomSeed, strOutError) ||
+			!Read_FloatArray(*pParticle, "meshRotationMin", &E.vMeshRotationMin.x, 3u, strOutError) ||
+			!Read_FloatArray(*pParticle, "meshRotationMax", &E.vMeshRotationMax.x, 3u, strOutError) ||
+			!Read_FloatArray(*pParticle, "meshSpinMin", &E.vMeshSpinMin.x, 3u, strOutError) ||
+			!Read_FloatArray(*pParticle, "meshSpinMax", &E.vMeshSpinMax.x, 3u, strOutError))
 		{
 			return false;
 		}
@@ -763,18 +767,10 @@ bool_t Client::CEffectV2Document::Parse_Group(
 			!Read_MsField(Row, "durationMs", Child.iDurationMs, strOutError) ||
 			!Read_Enum(Row, "stop", CHILD_STOP_KEYS, _countof(CHILD_STOP_KEYS), iStop, strOutError) ||
 			!Read_FloatArray(Row, "offset", &Child.vOffset.x, 3u, strOutError) ||
-			!Read_Number(Row, "yawDegrees", Child.fYawDegrees, strOutError))
+			!Read_Number(Row, "yawDegrees", Child.fYawDegrees, strOutError) ||
+			!Read_FloatArray(Row, "scale", &Child.vScale.x, 3u, strOutError))
 			return false;
 		Child.eStop = static_cast<EFFECT_V2_CHILD_STOP>(iStop);
-		for (const EFFECT_V2_GROUP_CHILD& Existing : Group.Children)
-		{
-			if (Existing.strEffectId == Child.strEffectId && Existing.iStartMs == Child.iStartMs)
-			{
-				strOutError = "duplicate child: " + Child.strEffectId + " @ " +
-					std::to_string(Child.iStartMs) + " ms";
-				return false;
-			}
-		}
 		Group.Children.push_back(std::move(Child));
 	}
 	OutGroup = std::move(Group);
@@ -874,7 +870,11 @@ std::string Client::CEffectV2Document::Serialize_Document(const EFFECT_V2_DOCUME
 	Text += "      \"tileColumns\": " + std::to_string(E.iTileColumns) + ",\n";
 	Text += "      \"tileRows\": " + std::to_string(E.iTileRows) + ",\n";
 	Text += std::string("      \"subUVOverLife\": ") + Json_Bool(E.bSubUVOverLife) + ",\n";
-	Text += "      \"randomSeed\": " + std::to_string(E.iRandomSeed) + "\n";
+	Text += "      \"randomSeed\": " + std::to_string(E.iRandomSeed) + ",\n";
+	Text += "      \"meshRotationMin\": " + Json_Float3(E.vMeshRotationMin) + ",\n";
+	Text += "      \"meshRotationMax\": " + Json_Float3(E.vMeshRotationMax) + ",\n";
+	Text += "      \"meshSpinMin\": " + Json_Float3(E.vMeshSpinMin) + ",\n";
+	Text += "      \"meshSpinMax\": " + Json_Float3(E.vMeshSpinMax) + "\n";
 	Text += "    },\n";
 	const CEffectV2Object::DECAL_PARAMS& D = P.Decal;
 	Text += "    \"decal\": {\n";
@@ -973,7 +973,8 @@ std::string Client::CEffectV2Document::Serialize_Group(const EFFECT_V2_GROUP& Gr
 			", \"durationMs\": " + std::to_string(Child.iDurationMs) +
 			", \"stop\": " + Json_String(Child_Stop_Key(Child.eStop)) +
 			", \"offset\": " + Json_Float3(Child.vOffset) +
-			", \"yawDegrees\": " + Json_Number(Child.fYawDegrees) + " }" +
+			", \"yawDegrees\": " + Json_Number(Child.fYawDegrees) +
+			", \"scale\": " + Json_Float3(Child.vScale) + " }" +
 			(iIndex + 1u < Group.Children.size() ? ",\n" : "\n");
 	}
 	Text += "  ]\n";
