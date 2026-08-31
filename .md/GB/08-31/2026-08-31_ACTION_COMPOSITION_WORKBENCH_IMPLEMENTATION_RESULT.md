@@ -543,3 +543,58 @@ Level navigation, Effect unlink/build guard 변경이 함께 존재하고, 현�
 - 수정본 `Animation_Tool.cpp` Client Debug x64 compile과 `Client.exe` link는 PASS했다. 실행 중인
   Server/Data를 유지하기 위해 정본 Product 재투영은 하지 않았고 Client project만 다시 링크했다.
   새 EXE의 실제 Validate/Apply 화면 결과는 사용자 확인 전이다.
+
+## 2026-08-31 Six Pizza 고정 facing Effect root 수직 슬라이스
+
+### 구현
+
+- `VALTAN_SIX_PIZZA_106/STEP_01` composite cue의 source owner anchor를
+  `pattern.target.snapshot`에서 `arena.center.facing`으로 교정했다. Position은 저작된 피자 착지
+  중심을 사용하고, yaw는 Server가 패턴 시작 시 고정한 boss facing을 사용한다.
+- `Valtan.presentation.json`만 저작 정본으로 수정했고
+  `Valtan.patterneffectcues.json`은 `Project-ValtanPatternMaster.ps1 -Mode PublishV2`가 다시 생성했다.
+  generated Product 직접 Save 경로는 추가하지 않았다.
+- Client runtime은 `arena.center`와 `arena.center.facing` root를 한 helper에서 parse/validate/stage한 뒤
+  기존 cue scale root에 합성한다. 알 수 없는 anchor나 non-finite yaw는 caller의 기존 matrix를
+  바꾸지 않고 거부한다.
+- Action Composition Workbench Effect Details는 `arena.center.facing`을 선택했을 때
+  `Authored Landing Center / Server Locked Pattern Facing`을 명시한다. 기존
+  `pattern.target.snapshot`은 `Target Snapshot Position / Player Snapshot Yaw`로 구분한다.
+- authoring helper 재실행도 Six Pizza를 `arena.center.facing`으로 유지하므로 다음 publish에서
+  예전 target snapshot anchor로 회귀하지 않는다.
+
+### canonical graph 회귀 교정
+
+- `VALTAN_GROUND_ROAR` 승격 뒤에도 남아 있던 native oracle의 `57/33` 고정값을 실제 정본
+  `58 canonical = 34 managed + 24 reference`, Complete Play 34로 교정했다.
+- 단순 count만 맞추지 않고 Complete Play stable-ID set이 managed canonical stable-ID set과
+  정확히 같은지 검사한다. Ground Roar가 Phase 1 `MANUAL_SERVER_AUDITION`이며 Animator bucket에만
+  속하는 것도 고정했다.
+
+### 자동 검증
+
+- `Project-ValtanPatternMaster.ps1 -Mode PublishV2`: PASS, 7개 Product 중 cue Product 1개 갱신
+- `Project-ValtanPatternMaster.ps1 -Mode ValidateV2`: PASS, managed 34 / legacy 26
+- Six Pizza/Workbench/master projection Python: 90/90 PASS, 340.757초
+- `ValtanCanonicalGraphContractTests`: 6/6 PASS
+  - 실제 canonical loader 58 patterns / 256 stages
+  - Complete Play 34 patterns와 managed ID exact closure
+  - source Effect의 late landing/sector/finale element가 공통 fixed root를 공유함
+  - 잘못된 anchor와 non-finite facing 실패 시 기존 matrix 보존
+- `ValtanPatternAuditionServiceHarness` 전체: exit 0
+- `Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Core`: PASS
+  - Engine, Shared, Server, Client compile/link PASS, compile error 0
+  - Product Effect WARP V1/V2 각각 1352 pixels
+  - presentation generation admission 및 Character Select isolation Core PASS
+  - evidence: `out/BuildPipeline/runs/20260831T120436528Z-debug-core-a3242e36.json`
+- `git diff --check`: PASS. 기존 LF/CRLF 안내만 출력했다.
+
+### 아직 PASS가 아닌 경계
+
+- 이 슬라이스는 패턴 시작 시 고정된 facing으로 composite Effect 전체를 한 번 회전시키는 계약이다.
+  시간에 따라 계속 회전하는 root animation과 개별 element의 독립 회전 저작은 구현하지 않았다.
+- Client를 자율 실행하지 않았다. 사용자가 `VALTAN_SIX_PIZZA_106` Complete Play로 착지 중심과
+  sector/late element 방향을 확인하기 전까지 visual PASS가 아니다.
+- Release Product 빌드는 이번 `Debug compile error 0` 마감 범위에서 실행하지 않았다.
+- 팀 LAN sync는 이 PC가 server-host임을 확인했지만 TCP 7777 LocalSubnet 방화벽 rule이 없어
+  관리자 PowerShell 보완이 필요하다. 로컬 Debug Core 결과와는 별도 운영 경계다.

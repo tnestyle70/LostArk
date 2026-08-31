@@ -430,6 +430,39 @@ owner draft
 Stage Bundle처럼 cross-owner orchestration이 실제로 필요해질 때만 좁은 transaction class를 추가하고,
 같은 변경에서 native rollback test와 project/filter 등록을 포함한다.
 
+### G08-P0. Six Pizza 고정 회전 기준 수직 슬라이스
+
+Blueprint/Effect Details의 첫 실제 콘텐츠 연결은 `VALTAN_SIX_PIZZA_106` composite Effect
+한 건으로 닫는다. Counter/Grab branch writer와 같은 커밋에 섞지 않는다.
+
+```text
+Server pattern start
+-> random alive target lock
+-> authored landing center에서 target까지의 facing yaw lock
+-> Product cue anchor arena.center.facing
+-> composite cue root = landing center translation + locked facing rotation
+-> sector / landing / impact child Element가 같은 root를 공유
+```
+
+- gameplay source의 `LOCK_RANDOM_ALIVE_ON_START`, `LOCK_FACING_ON_START`,
+  `LEAP_TO_ANCHOR`, `moveToAnchorBeforeTakeoff`는 이미 정본이며 변경하지 않는다.
+- presentation source의 Six Pizza cue만 `pattern.target.snapshot`에서
+  `arena.center.facing`으로 바꾼다. generated `Valtan.patterneffectcues.json`은 publisher만
+  다시 만든다.
+- Workbench Effect Details는 선택 anchor의 위치 기준과 회전 기준을 read-only 문장으로
+  명시한다. `arena.center.facing`은 `Authored Landing Center / Server Locked Pattern Facing`,
+  `pattern.target.snapshot`은 `Target Snapshot Position / Player Snapshot Yaw`다.
+- Effect body의 `groupId`는 목록/Solo 단위이고 transform parent가 아니다.
+  `transformInheritance`와 particle-only yaw를 공통 피자 root로 사용하지 않는다.
+- 이 P0의 "마지막 rotation"은 패턴 시작에 Server가 잠근 고정 facing이다. 시간에 따라
+  회전한 sector의 누적 최종각을 landing이 샘플하는 root rotation track은 별도 typed
+  presentation schema/runtime/harness slice로 남긴다.
+
+종료 증거는 source -> publisher Product -> actual `CValtanPatternTree` admission,
+Server locked facing 계약, Client arena-center matrix helper, 늦게 시작하는 composite Element의
+동일 root 합성과 실패 시 이전 matrix 보존이다. 사용자의 Client 육안 판정 전에는 visual PASS로
+기록하지 않는다.
+
 ## G09. 자동 검증
 
 ### focused contract

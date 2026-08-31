@@ -5433,6 +5433,20 @@ void Client::CActionCompositionWorkbench::Render_Details(
 				}
 				ImGui::EndCombo();
 			}
+			if ("arena.center.facing" == Draft.strAnchorSlotId)
+			{
+				ImGui::TextDisabled(
+					"Position Basis = Authored Landing Center");
+				ImGui::TextDisabled(
+					"Facing Basis = Server Locked Pattern Facing");
+			}
+			else if ("pattern.target.snapshot" == Draft.strAnchorSlotId)
+			{
+				ImGui::TextDisabled(
+					"Position Basis = Target Snapshot Position");
+				ImGui::TextDisabled(
+					"Facing Basis = Player Snapshot Yaw");
+			}
 			if ("root" == Draft.strAnchorSlotId)
 			{
 				if (ImGui::BeginCombo(

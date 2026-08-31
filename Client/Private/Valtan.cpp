@@ -1654,9 +1654,9 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 					/* Fixed center. Product Arena uses the Server-locked occurrence
 					   facing; local composition preview uses the staged boss facing and
 					   never invents a pattern-target snapshot. */
-					XMStoreFloat4x4(&anchor, XMMatrixRotationY(XMConvertToRadians(yaw)) *
-						XMMatrixTranslation(center->second.x, center->second.y, center->second.z));
-					if (CEffectPresentationService::Build_CueScalePolicyRoot(
+					if (CValtanPatternEffectCueDocument::Try_BuildArenaCenterAnchor(
+							Cue.strAnchorSlotId, center->second, yaw, anchor) &&
+						CEffectPresentationService::Build_CueScalePolicyRoot(
 						Cue.LocalTransform, Cue.eScalePolicy, Cue.vWorldScale, anchor, root))
 					{
 						EFFECT_WORLD_ROOT_HANDLE handle;

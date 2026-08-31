@@ -438,6 +438,33 @@ namespace
 	}
 }
 
+bool_t Client::CValtanPatternEffectCueDocument::Try_BuildArenaCenterAnchor(
+	const std::string_view strAnchorSlotId,
+	const float3_t& vArenaCenter,
+	const f32_t fLockedFacingYawDegrees,
+	float4x4_t& OutAnchor)
+{
+	const bool_t bUsesLockedFacing =
+		"arena.center.facing" == strAnchorSlotId;
+	if (("arena.center" != strAnchorSlotId && !bUsesLockedFacing) ||
+		!std::isfinite(vArenaCenter.x) ||
+		!std::isfinite(vArenaCenter.y) ||
+		!std::isfinite(vArenaCenter.z) ||
+		!std::isfinite(fLockedFacingYawDegrees))
+	{
+		return false;
+	}
+
+	float4x4_t Staged{};
+	DirectX::XMStoreFloat4x4(&Staged,
+		DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(
+			bUsesLockedFacing ? fLockedFacingYawDegrees : 0.f)) *
+		DirectX::XMMatrixTranslation(
+			vArenaCenter.x, vArenaCenter.y, vArenaCenter.z));
+	OutAnchor = Staged;
+	return true;
+}
+
 std::filesystem::path
 Client::CValtanPatternEffectCueDocument::Resolve_Path()
 {
