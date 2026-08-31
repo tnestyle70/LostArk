@@ -580,6 +580,7 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectMeshV2.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectRectV2.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectParticleV2.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectMeshParticleV2.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectDecalV2.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectTrailV2.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshPreview_V2.hlsl" />

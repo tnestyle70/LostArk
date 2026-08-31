@@ -13,7 +13,7 @@ namespace
 {
 	const char* EFFECT_TYPE_KEYS[] = { "Mesh", "Texture", "Particle", "Decal", "Trail", "ScreenPost" };
 	const char* SCREEN_POST_PROFILE_KEYS[] = { "ZoomBlur", "RgbNoise", "FilmNoise" };
-	const char* BLEND_KEYS[] = { "Alpha", "Additive", "Opaque" };
+	const char* BLEND_KEYS[] = { "Alpha", "Additive", "Opaque", "Multiply" };
 	const char* CLIP_CHANNEL_KEYS[] = { "RGB", "Alpha" };
 	const char* PIVOT_ROTATION_KEYS[] = { "Bone", "TargetYaw", "World" };
 	const char* SLOT_KEYS[] = { "mesh", "base", "noise", "mask", "emissive", "dissolve" };
@@ -21,6 +21,8 @@ namespace
 	const char* VELOCITY_MODE_KEYS[] = { "Fixed", "Outward", "Cone" };
 	const char* ALIGNMENT_KEYS[] = { "Camera", "Velocity", "Horizontal" };
 	const char* TRAIL_EDGE_KEYS[] = { "CenterlineCamera", "CenterlineUp", "LocalOffset" };
+	const char* CHILD_STOP_KEYS[] = { "Kill", "Deactivate" };
+	constexpr double MAX_BINDING_MS = 600000.0;
 
 	std::string Json_String(const std::string& strValue)
 	{
@@ -191,6 +193,22 @@ namespace
 			std::istreambuf_iterator<char>());
 		return true;
 	}
+
+	bool_t Read_MsField(const Client::DATA_JSON_VALUE& Object,
+		const char* pKey, uint32_t& iOut, std::string& strError)
+	{
+		const Client::DATA_JSON_VALUE* pValue = Object.Find(pKey);
+		if (nullptr == pValue)
+			return true;
+		if (!pValue->Is_Number() || !std::isfinite(pValue->Get_Number()) ||
+			pValue->Get_Number() < 0.0 || pValue->Get_Number() > MAX_BINDING_MS)
+		{
+			strError = std::string(pKey) + " must be an integer in [0, 600000].";
+			return false;
+		}
+		iOut = static_cast<uint32_t>(pValue->Get_Number());
+		return true;
+	}
 }
 
 std::filesystem::path Client::CEffectV2Document::Document_Directory()
@@ -203,6 +221,11 @@ std::filesystem::path Client::CEffectV2Document::Binding_Directory()
 	return CProjectDataRoot::Resolve(L"Effects/V2/Bindings");
 }
 
+std::filesystem::path Client::CEffectV2Document::Group_Directory()
+{
+	return CProjectDataRoot::Resolve(L"Effects/V2/Groups");
+}
+
 std::filesystem::path Client::CEffectV2Document::Document_Path(const std::string& strEffectId)
 {
 	return Document_Directory() / (strEffectId + ".effectv2.json");
@@ -211,6 +234,11 @@ std::filesystem::path Client::CEffectV2Document::Document_Path(const std::string
 std::filesystem::path Client::CEffectV2Document::Binding_Path(const std::string& strArchetypeId)
 {
 	return Binding_Directory() / (strArchetypeId + ".effectv2bindings.json");
+}
+
+std::filesystem::path Client::CEffectV2Document::Group_Path(const std::string& strGroupId)
+{
+	return Group_Directory() / (strGroupId + ".effectv2group.json");
 }
 
 bool_t Client::CEffectV2Document::Is_ValidEffectId(const std::string& strEffectId)
@@ -236,6 +264,12 @@ const char* Client::CEffectV2Document::Rotation_Key(const CEffectV2Object::PIVOT
 {
 	const size_t iIndex = static_cast<size_t>(eRotation);
 	return iIndex < _countof(PIVOT_ROTATION_KEYS) ? PIVOT_ROTATION_KEYS[iIndex] : "TargetYaw";
+}
+
+const char* Client::CEffectV2Document::Child_Stop_Key(const EFFECT_V2_CHILD_STOP eStop)
+{
+	const size_t iIndex = static_cast<size_t>(eStop);
+	return iIndex < _countof(CHILD_STOP_KEYS) ? CHILD_STOP_KEYS[iIndex] : "Deactivate";
 }
 
 Client::CEffectV2Object::SHAPE Client::CEffectV2Document::Shape_ForType(const EFFECT_V2_TYPE eType)
@@ -439,7 +473,11 @@ bool_t Client::CEffectV2Document::Parse_Document(
 			!Read_Uint(*pParticle, "tileColumns", E.iTileColumns, strOutError) ||
 			!Read_Uint(*pParticle, "tileRows", E.iTileRows, strOutError) ||
 			!Read_Bool(*pParticle, "subUVOverLife", E.bSubUVOverLife, strOutError) ||
-			!Read_Uint(*pParticle, "randomSeed", E.iRandomSeed, strOutError))
+			!Read_Uint(*pParticle, "randomSeed", E.iRandomSeed, strOutError) ||
+			!Read_FloatArray(*pParticle, "meshRotationMin", &E.vMeshRotationMin.x, 3u, strOutError) ||
+			!Read_FloatArray(*pParticle, "meshRotationMax", &E.vMeshRotationMax.x, 3u, strOutError) ||
+			!Read_FloatArray(*pParticle, "meshSpinMin", &E.vMeshSpinMin.x, 3u, strOutError) ||
+			!Read_FloatArray(*pParticle, "meshSpinMax", &E.vMeshSpinMax.x, 3u, strOutError))
 		{
 			return false;
 		}
@@ -620,22 +658,30 @@ bool_t Client::CEffectV2Document::Parse_Bindings(
 		}
 		EFFECT_V2_BINDING Binding;
 		const DATA_JSON_VALUE* pEffect = Row.Find("effectId");
+		const DATA_JSON_VALUE* pGroup = Row.Find("group");
 		const DATA_JSON_VALUE* pClip = Row.Find("clip");
 		const DATA_JSON_VALUE* pStage = Row.Find("stage");
 		const DATA_JSON_VALUE* pStart = Row.Find("startMs");
 		const DATA_JSON_VALUE* pBone = Row.Find("bone");
+		const bool_t bHasEffect = nullptr != pEffect && pEffect->Is_String() && !pEffect->Get_String().empty();
+		const bool_t bHasGroup = nullptr != pGroup && pGroup->Is_String() && !pGroup->Get_String().empty();
 		const bool_t bHasClip = nullptr != pClip && pClip->Is_String() && !pClip->Get_String().empty();
 		const bool_t bHasStage = nullptr != pStage && pStage->Is_String() && !pStage->Get_String().empty();
-		if (nullptr == pEffect || !pEffect->Is_String() || !Is_ValidEffectId(pEffect->Get_String()) ||
+		if (bHasEffect == bHasGroup ||
+			(bHasEffect && !Is_ValidEffectId(pEffect->Get_String())) ||
+			(bHasGroup && !Is_ValidEffectId(pGroup->Get_String())) ||
 			bHasClip == bHasStage ||
 			nullptr == pStart || !pStart->Is_Number() || pStart->Get_Number() < 0.0 ||
-			pStart->Get_Number() > 600000.0 ||
+			pStart->Get_Number() > MAX_BINDING_MS ||
 			nullptr == pBone || !pBone->Is_String())
 		{
-			strOutError = "bindings[] requires effectId, exactly one of clip/stage, startMs (0-600000), bone.";
+			strOutError = "bindings[] requires exactly one of effectId/group, exactly one of clip/stage, startMs (0-600000), bone.";
 			return false;
 		}
-		Binding.strEffectId = pEffect->Get_String();
+		if (bHasEffect)
+			Binding.strEffectId = pEffect->Get_String();
+		else
+			Binding.strGroupId = pGroup->Get_String();
 		if (bHasClip)
 			Binding.strClip = pClip->Get_String();
 		else
@@ -646,22 +692,92 @@ bool_t Client::CEffectV2Document::Parse_Bindings(
 		if (!Read_Bool(Row, "followBone", Binding.bFollowBone, strOutError) ||
 			!Read_Enum(Row, "rotation", PIVOT_ROTATION_KEYS,
 				_countof(PIVOT_ROTATION_KEYS), iRotation, strOutError) ||
-			!Read_Bool(Row, "stopWithClip", Binding.bStopWithClip, strOutError))
+			!Read_Bool(Row, "stopWithClip", Binding.bStopWithClip, strOutError) ||
+			!Read_FloatArray(Row, "offset", &Binding.vOffset.x, 3u, strOutError) ||
+			!Read_Number(Row, "yawDegrees", Binding.fYawDegrees, strOutError))
 			return false;
 		Binding.eRotation = static_cast<CEffectV2Object::PIVOT_ROTATION>(iRotation);
 		for (const EFFECT_V2_BINDING& Existing : Staged)
 		{
 			if (Existing.strEffectId == Binding.strEffectId &&
-				Existing.strClip == Binding.strClip && Existing.strStage == Binding.strStage)
+				Existing.strGroupId == Binding.strGroupId &&
+				Existing.strClip == Binding.strClip && Existing.strStage == Binding.strStage &&
+				Existing.iStartMs == Binding.iStartMs && Existing.strBone == Binding.strBone)
 			{
-				strOutError = "duplicate binding: " + Binding.strEffectId + " / " +
-					(Binding.strStage.empty() ? Binding.strClip : Binding.strStage);
+				strOutError = "duplicate binding: " +
+					(Binding.strGroupId.empty() ? Binding.strEffectId : Binding.strGroupId) + " / " +
+					(Binding.strStage.empty() ? Binding.strClip : Binding.strStage) +
+					" @" + std::to_string(Binding.iStartMs) + "ms";
 				return false;
 			}
 		}
 		Staged.push_back(std::move(Binding));
 	}
 	OutBindings = std::move(Staged);
+	return true;
+}
+
+bool_t Client::CEffectV2Document::Parse_Group(
+	const std::string& strText,
+	EFFECT_V2_GROUP& OutGroup,
+	std::string& strOutError)
+{
+	DATA_JSON_VALUE Root;
+	if (!CDataJson::Parse(strText, Root, strOutError) || !Root.Is_Object())
+	{
+		if (strOutError.empty())
+			strOutError = "Group root is not an object.";
+		return false;
+	}
+	const DATA_JSON_VALUE* pSchema = Root.Find("schema");
+	const DATA_JSON_VALUE* pVersion = Root.Find("formatVersion");
+	const DATA_JSON_VALUE* pGroupId = Root.Find("groupId");
+	if (nullptr == pSchema || !pSchema->Is_String() ||
+		pSchema->Get_String() != "lostark.effect-v2-group" ||
+		nullptr == pVersion || !pVersion->Is_Number() || pVersion->Get_Number() != 1.0 ||
+		nullptr == pGroupId || !pGroupId->Is_String() || !Is_ValidEffectId(pGroupId->Get_String()))
+	{
+		strOutError = "schema/formatVersion/groupId mismatch.";
+		return false;
+	}
+	EFFECT_V2_GROUP Group;
+	Group.strGroupId = pGroupId->Get_String();
+	if (!Read_MsField(Root, "durationMs", Group.iDurationMs, strOutError))
+		return false;
+	const DATA_JSON_VALUE* pChildren = Root.Find("children");
+	if (nullptr == pChildren || !pChildren->Is_Array() || pChildren->Get_Array().empty())
+	{
+		strOutError = "children must be a non-empty array.";
+		return false;
+	}
+	for (const DATA_JSON_VALUE& Row : pChildren->Get_Array())
+	{
+		if (!Row.Is_Object())
+		{
+			strOutError = "children[] entries must be objects.";
+			return false;
+		}
+		EFFECT_V2_GROUP_CHILD Child;
+		const DATA_JSON_VALUE* pEffect = Row.Find("effectId");
+		if (nullptr == pEffect || !pEffect->Is_String() || !Is_ValidEffectId(pEffect->Get_String()) ||
+			pEffect->Get_String() == Group.strGroupId)
+		{
+			strOutError = "children[].effectId must be a valid effect ID different from the group.";
+			return false;
+		}
+		Child.strEffectId = pEffect->Get_String();
+		int32_t iStop = static_cast<int32_t>(Child.eStop);
+		if (!Read_MsField(Row, "startMs", Child.iStartMs, strOutError) ||
+			!Read_MsField(Row, "durationMs", Child.iDurationMs, strOutError) ||
+			!Read_Enum(Row, "stop", CHILD_STOP_KEYS, _countof(CHILD_STOP_KEYS), iStop, strOutError) ||
+			!Read_FloatArray(Row, "offset", &Child.vOffset.x, 3u, strOutError) ||
+			!Read_Number(Row, "yawDegrees", Child.fYawDegrees, strOutError) ||
+			!Read_FloatArray(Row, "scale", &Child.vScale.x, 3u, strOutError))
+			return false;
+		Child.eStop = static_cast<EFFECT_V2_CHILD_STOP>(iStop);
+		Group.Children.push_back(std::move(Child));
+	}
+	OutGroup = std::move(Group);
 	return true;
 }
 
@@ -758,7 +874,11 @@ std::string Client::CEffectV2Document::Serialize_Document(const EFFECT_V2_DOCUME
 	Text += "      \"tileColumns\": " + std::to_string(E.iTileColumns) + ",\n";
 	Text += "      \"tileRows\": " + std::to_string(E.iTileRows) + ",\n";
 	Text += std::string("      \"subUVOverLife\": ") + Json_Bool(E.bSubUVOverLife) + ",\n";
-	Text += "      \"randomSeed\": " + std::to_string(E.iRandomSeed) + "\n";
+	Text += "      \"randomSeed\": " + std::to_string(E.iRandomSeed) + ",\n";
+	Text += "      \"meshRotationMin\": " + Json_Float3(E.vMeshRotationMin) + ",\n";
+	Text += "      \"meshRotationMax\": " + Json_Float3(E.vMeshRotationMax) + ",\n";
+	Text += "      \"meshSpinMin\": " + Json_Float3(E.vMeshSpinMin) + ",\n";
+	Text += "      \"meshSpinMax\": " + Json_Float3(E.vMeshSpinMax) + "\n";
 	Text += "    },\n";
 	const CEffectV2Object::DECAL_PARAMS& D = P.Decal;
 	Text += "    \"decal\": {\n";
@@ -821,7 +941,10 @@ std::string Client::CEffectV2Document::Serialize_Bindings(
 	for (size_t iIndex = 0u; iIndex < Bindings.size(); ++iIndex)
 	{
 		const EFFECT_V2_BINDING& Binding = Bindings[iIndex];
-		Text += "    { \"effectId\": " + Json_String(Binding.strEffectId) +
+		Text += std::string("    { ") +
+			(Binding.strGroupId.empty() ?
+				"\"effectId\": " + Json_String(Binding.strEffectId) :
+				"\"group\": " + Json_String(Binding.strGroupId)) +
 			(Binding.strStage.empty() ?
 				", \"clip\": " + Json_String(Binding.strClip) :
 				", \"stage\": " + Json_String(Binding.strStage)) +
@@ -829,8 +952,36 @@ std::string Client::CEffectV2Document::Serialize_Bindings(
 			", \"bone\": " + Json_String(Binding.strBone) +
 			", \"followBone\": " + Json_Bool(Binding.bFollowBone) +
 			", \"rotation\": " + Json_String(Rotation_Key(Binding.eRotation)) +
-			", \"stopWithClip\": " + Json_Bool(Binding.bStopWithClip) + " }" +
+			", \"stopWithClip\": " + Json_Bool(Binding.bStopWithClip) +
+			", \"offset\": " + Json_Float3(Binding.vOffset) +
+			", \"yawDegrees\": " + Json_Number(Binding.fYawDegrees) + " }" +
 			(iIndex + 1u < Bindings.size() ? ",\n" : "\n");
+	}
+	Text += "  ]\n";
+	Text += "}\n";
+	return Text;
+}
+
+std::string Client::CEffectV2Document::Serialize_Group(const EFFECT_V2_GROUP& Group)
+{
+	std::string Text;
+	Text += "{\n";
+	Text += "  \"schema\": \"lostark.effect-v2-group\",\n";
+	Text += "  \"formatVersion\": 1,\n";
+	Text += "  \"groupId\": " + Json_String(Group.strGroupId) + ",\n";
+	Text += "  \"durationMs\": " + std::to_string(Group.iDurationMs) + ",\n";
+	Text += "  \"children\": [\n";
+	for (size_t iIndex = 0u; iIndex < Group.Children.size(); ++iIndex)
+	{
+		const EFFECT_V2_GROUP_CHILD& Child = Group.Children[iIndex];
+		Text += "    { \"effectId\": " + Json_String(Child.strEffectId) +
+			", \"startMs\": " + std::to_string(Child.iStartMs) +
+			", \"durationMs\": " + std::to_string(Child.iDurationMs) +
+			", \"stop\": " + Json_String(Child_Stop_Key(Child.eStop)) +
+			", \"offset\": " + Json_Float3(Child.vOffset) +
+			", \"yawDegrees\": " + Json_Number(Child.fYawDegrees) +
+			", \"scale\": " + Json_Float3(Child.vScale) + " }" +
+			(iIndex + 1u < Group.Children.size() ? ",\n" : "\n");
 	}
 	Text += "  ]\n";
 	Text += "}\n";
@@ -882,6 +1033,35 @@ bool_t Client::CEffectV2Document::Load_BindingsFile(
 	if (!Parse_Bindings(Text, strArchetypeId, Staged, strOutError))
 		return false;
 	OutBindings = std::move(Staged);
+	return true;
+}
+
+bool_t Client::CEffectV2Document::Load_GroupFile(
+	const std::string& strGroupId,
+	EFFECT_V2_GROUP& OutGroup,
+	std::string& strOutError)
+{
+	if (!Is_ValidEffectId(strGroupId))
+	{
+		strOutError = "Invalid group ID.";
+		return false;
+	}
+	std::string Text;
+	const std::filesystem::path Path = Group_Path(strGroupId);
+	if (!Read_TextFile(Path, Text))
+	{
+		strOutError = "Cannot open: " + Path.string();
+		return false;
+	}
+	EFFECT_V2_GROUP Staged;
+	if (!Parse_Group(Text, Staged, strOutError))
+		return false;
+	if (Staged.strGroupId != strGroupId)
+	{
+		strOutError = "groupId does not match the file name.";
+		return false;
+	}
+	OutGroup = std::move(Staged);
 	return true;
 }
 

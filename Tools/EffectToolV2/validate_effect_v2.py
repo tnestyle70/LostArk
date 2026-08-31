@@ -13,10 +13,13 @@ from typing import Any, Mapping
 
 AUTHORED_SCHEMA = "lostark.effect-v2"
 BINDING_SCHEMA = "lostark.effect-v2-bindings"
+GROUP_SCHEMA = "lostark.effect-v2-group"
 EFFECT_TYPES = {"Decal", "Mesh", "Particle", "ScreenPost", "Texture", "Trail"}
 SLOT_NAMES = ("mesh", "base", "noise", "mask", "emissive", "dissolve")
 TEXTURE_SLOT_NAMES = ("base", "noise", "mask", "emissive", "dissolve")
-ROTATIONS = {"Bone", "TargetYaw"}
+ROTATIONS = {"Bone", "TargetYaw", "World"}
+CHILD_STOPS = {"Kill", "Deactivate"}
+MAX_MS = 600000
 RESOURCE_ROOT_ENVIRONMENTS = (
     "LOSTARK_RESOURCE_ROOT",
     "LOSTARK_SHARED_ASSET_ROOT",
@@ -43,6 +46,17 @@ def _require_object(value: Any, owner: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ContractError(f"{owner} must be an object")
     return value
+
+
+def _require_ms(value: Any, owner: str, key: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0 or value > MAX_MS:
+        raise ContractError(f"{owner} {key} must be an integer in [0, {MAX_MS}]")
+    return value
+
+
+def _require_finite_number(value: Any, owner: str, key: str) -> None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(float(value)):
+        raise ContractError(f"{owner} {key} must be a finite number")
 
 
 def _require_relative_asset(asset_id: str, slot: str, owner: str) -> None:
@@ -165,9 +179,63 @@ def _validate_authored(
     return by_id, texture_usage
 
 
-def _validate_bindings(binding_root: Path, authored: dict[str, Path]) -> int:
+def _validate_groups(group_root: Path, authored: dict[str, Path]) -> dict[str, list[str]]:
+    """Group documents are optional; each child must be an authored leaf (no nesting)."""
+    groups: dict[str, list[str]] = {}
+    if not group_root.is_dir():
+        return groups
+    for path in sorted(group_root.glob("*.effectv2group.json")):
+        document = _require_object(_read_json(path), path.as_posix())
+        if document.get("schema") != GROUP_SCHEMA or document.get("formatVersion") != 1:
+            raise ContractError(f"unsupported Effect V2 group document: {path}")
+        group_id = document.get("groupId")
+        if not isinstance(group_id, str) or not group_id:
+            raise ContractError(f"Effect V2 groupId is missing: {path}")
+        if path.name != f"{group_id}.effectv2group.json":
+            raise ContractError(f"Effect V2 group filename/ID mismatch: {path}: {group_id}")
+        if group_id in groups:
+            raise ContractError(f"duplicate Effect V2 groupId: {group_id}")
+        if group_id in authored:
+            raise ContractError(f"Effect V2 groupId collides with an authored effect: {group_id}")
+        _require_ms(document.get("durationMs", 0), group_id, "durationMs")
+        children = document.get("children")
+        if not isinstance(children, list) or not children:
+            raise ContractError(f"Effect V2 group children must be a non-empty array: {group_id}")
+        child_ids: list[str] = []
+        for child in children:
+            child = _require_object(child, f"{group_id}.child")
+            effect_id = child.get("effectId")
+            if effect_id not in authored:
+                raise ContractError(
+                    f"Effect V2 group child has no authored effect (nesting is not allowed): {group_id}: {effect_id}"
+                )
+            _require_ms(child.get("startMs", 0), group_id, "child startMs")
+            _require_ms(child.get("durationMs", 0), group_id, "child durationMs")
+            if child.get("stop", "Deactivate") not in CHILD_STOPS:
+                raise ContractError(f"Effect V2 group child stop is invalid: {group_id}: {effect_id}")
+            offset = child.get("offset", [0, 0, 0])
+            if not isinstance(offset, list) or len(offset) != 3:
+                raise ContractError(f"Effect V2 group child offset must be 3 numbers: {group_id}: {effect_id}")
+            for component in offset:
+                _require_finite_number(component, group_id, "child offset")
+            _require_finite_number(child.get("yawDegrees", 0), group_id, "child yawDegrees")
+            scale = child.get("scale", [1, 1, 1])
+            if not isinstance(scale, list) or len(scale) != 3:
+                raise ContractError(f"Effect V2 group child scale must be 3 numbers: {group_id}: {effect_id}")
+            for component in scale:
+                _require_finite_number(component, group_id, "child scale")
+            child_ids.append(effect_id)
+        _validate_numbers(document, group_id)
+        groups[group_id] = child_ids
+    return groups
+
+
+def _validate_bindings(
+    binding_root: Path, authored: dict[str, Path], groups: dict[str, list[str]]
+) -> int:
     seen_archetypes: set[str] = set()
     seen_effects: set[str] = set()
+    seen_groups: set[str] = set()
     binding_count = 0
     paths = sorted(binding_root.glob("*.effectv2bindings.json"))
     if not paths:
@@ -189,36 +257,57 @@ def _validate_bindings(binding_root: Path, authored: dict[str, Path]) -> int:
         for row in rows:
             row = _require_object(row, f"{archetype_id}.binding")
             effect_id = row.get("effectId")
-            if effect_id not in authored:
+            group_id = row.get("group")
+            has_effect = isinstance(effect_id, str) and bool(effect_id)
+            has_group = isinstance(group_id, str) and bool(group_id)
+            if has_effect == has_group:
+                raise ContractError(
+                    f"Effect V2 binding needs exactly one effectId/group: {archetype_id}: {effect_id}/{group_id}"
+                )
+            subject = effect_id if has_effect else group_id
+            if has_effect and effect_id not in authored:
                 raise ContractError(f"Effect V2 binding has no authored effect: {effect_id}")
+            if has_group and group_id not in groups:
+                raise ContractError(f"Effect V2 binding has no group document: {group_id}")
             stage = row.get("stage")
             clip = row.get("clip")
             if (isinstance(stage, str) and bool(stage)) == (
                 isinstance(clip, str) and bool(clip)
             ):
                 raise ContractError(
-                    f"Effect V2 binding needs exactly one stage/clip: {archetype_id}: {effect_id}"
+                    f"Effect V2 binding needs exactly one stage/clip: {archetype_id}: {subject}"
                 )
-            start_ms = row.get("startMs")
-            if isinstance(start_ms, bool) or not isinstance(start_ms, int) or start_ms < 0:
-                raise ContractError(f"Effect V2 startMs is invalid: {archetype_id}: {effect_id}")
+            start_ms = _require_ms(row.get("startMs"), archetype_id, f"{subject} startMs")
             if not isinstance(row.get("bone"), str):
-                raise ContractError(f"Effect V2 bone is invalid: {archetype_id}: {effect_id}")
+                raise ContractError(f"Effect V2 bone is invalid: {archetype_id}: {subject}")
             if not isinstance(row.get("followBone"), bool):
-                raise ContractError(f"Effect V2 followBone is invalid: {archetype_id}: {effect_id}")
+                raise ContractError(f"Effect V2 followBone is invalid: {archetype_id}: {subject}")
             if row.get("rotation") not in ROTATIONS:
-                raise ContractError(f"Effect V2 rotation is invalid: {archetype_id}: {effect_id}")
+                raise ContractError(f"Effect V2 rotation is invalid: {archetype_id}: {subject}")
             if not isinstance(row.get("stopWithClip"), bool):
-                raise ContractError(f"Effect V2 stopWithClip is invalid: {archetype_id}: {effect_id}")
-            identity = (effect_id, stage, clip, start_ms, row.get("bone"))
+                raise ContractError(f"Effect V2 stopWithClip is invalid: {archetype_id}: {subject}")
+            offset = row.get("offset", [0, 0, 0])
+            if not isinstance(offset, list) or len(offset) != 3:
+                raise ContractError(f"Effect V2 binding offset must be 3 numbers: {archetype_id}: {subject}")
+            for component in offset:
+                _require_finite_number(component, archetype_id, "binding offset")
+            _require_finite_number(row.get("yawDegrees", 0), archetype_id, "binding yawDegrees")
+            identity = (effect_id, group_id, stage, clip, start_ms, row.get("bone"))
             if identity in row_identities:
                 raise ContractError(f"duplicate Effect V2 binding row: {archetype_id}: {identity}")
             row_identities.add(identity)
-            seen_effects.add(effect_id)
+            if has_effect:
+                seen_effects.add(effect_id)
+            else:
+                seen_groups.add(group_id)
+                seen_effects.update(groups[group_id])
             binding_count += 1
     missing = sorted(set(authored) - seen_effects)
     if missing:
         raise ContractError(f"unbound Effect V2 authored effects: {missing[:5]}")
+    missing_groups = sorted(set(groups) - seen_groups)
+    if missing_groups:
+        raise ContractError(f"unbound Effect V2 groups: {missing_groups[:5]}")
     return binding_count
 
 
@@ -226,10 +315,12 @@ def validate(repository_root: Path, resource_root: Path) -> dict[str, int]:
     resource_root = resolve_resource_root(repository_root, resource_root)
     v2_root = repository_root / "Data/Effects/V2"
     authored, usage = _validate_authored(v2_root / "Authored", resource_root)
-    binding_count = _validate_bindings(v2_root / "Bindings", authored)
+    groups = _validate_groups(v2_root / "Groups", authored)
+    binding_count = _validate_bindings(v2_root / "Bindings", authored, groups)
     return {
         "authored": len(authored),
         "bindings": binding_count,
+        "groups": len(groups),
         "textures": len(usage),
     }
 
@@ -253,7 +344,7 @@ def main() -> int:
     print(
         "Effect V2 validation succeeded: "
         f"{report['authored']} authored, {report['bindings']} bindings, "
-        f"{report['textures']} textures."
+        f"{report['groups']} groups, {report['textures']} textures."
     )
     return 0
 

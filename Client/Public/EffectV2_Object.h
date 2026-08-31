@@ -58,6 +58,7 @@ public:
 		ALPHA,
 		ADDITIVE,
 		SOLID,
+		MULTIPLY,
 		END
 	};
 
@@ -149,6 +150,13 @@ public:
 		uint32_t iTileRows = 1u;
 		bool_t bSubUVOverLife = true;
 		uint32_t iRandomSeed = 1u;
+		/* Mesh particles only (slots.mesh set on a Particle effect): random
+		   per-axis start rotation and spin in degrees / degrees per second.
+		   vSizeStart.x/vSizeEnd.x become the uniform scale over life. */
+		float3_t vMeshRotationMin = { 0.f, 0.f, 0.f };
+		float3_t vMeshRotationMax = { 0.f, 0.f, 0.f };
+		float3_t vMeshSpinMin = { 0.f, 0.f, 0.f };
+		float3_t vMeshSpinMax = { 0.f, 0.f, 0.f };
 	};
 
 	struct DECAL_PARAMS final
@@ -263,6 +271,8 @@ private:
 		f32_t fLifetime = 1.f;
 		f32_t fRotationDegrees = 0.f;
 		f32_t fSpinDegrees = 0.f;
+		float3_t vMeshRotationDegrees = { 0.f, 0.f, 0.f };
+		float3_t vMeshSpinDegrees = { 0.f, 0.f, 0.f };
 	};
 
 	struct TRAIL_POINT final
@@ -316,6 +326,7 @@ public:
 	HRESULT Set_PartBase(uint32_t iIndex, const std::string& strAssetId);
 	HRESULT Reload_ColorTextures();
 	bool_t Is_Skinned() const { return m_bSkinned; }
+	bool_t Is_MeshParticle() const { return SHAPE::PARTICLE == m_eShape && nullptr != m_pModel; }
 	uint32_t Animation_Count() const;
 	const char_t* Animation_Name(uint32_t iIndex) const;
 	f32_t Animation_DurationSeconds(uint32_t iIndex) const;
@@ -324,6 +335,9 @@ public:
 	uint32_t Trail_PointCount() const { return static_cast<uint32_t>(m_TrailPoints.size()); }
 	bool_t Is_Finished() const { return m_bFinished; }
 	void Finish() { m_bFinished = true; }
+	/* Deactivate: particle/trail stop spawning and finish when their last
+	   element dies; every other shape has nothing to drain and finishes now. */
+	void Stop_Emission();
 	bool_t Is_Hidden() const { return m_bHidden; }
 	void Set_Hidden(const bool_t bHidden) { m_bHidden = bHidden; }
 	void Restart();
@@ -338,6 +352,9 @@ public:
 		std::string strBone,
 		PIVOT_ROTATION eRotation);
 	void Clear_FollowTarget();
+	/* Applied as Local x bone pivot every frame while following, so a group
+	   child keeps its offset/yaw on a moving bone. Identity by default. */
+	void Set_FollowLocal(const float4x4_t& Local) { m_FollowLocal = Local; }
 	bool_t Has_FollowTarget() const { return m_bFollowTarget; }
 	static bool_t Resolve_TargetView(
 		const EFFECT_V2_TARGET& Target,
@@ -377,6 +394,7 @@ private:
 		const ComPtr<ID3D11DeviceContext>& pContext,
 		SHAPE eShape,
 		bool_t bSkinned,
+		bool_t bMeshParticle,
 		shared_ptr<Engine::CShader>& OutShader,
 		std::string& strOutError);
 	static HRESULT Acquire_Texture(
@@ -393,6 +411,7 @@ private:
 	void Spawn_Particle();
 	void Update_Particles(f32_t fStep);
 	HRESULT Build_ParticleInstances();
+	HRESULT Upload_MeshParticleInstances();
 	void Update_Trail(f32_t fStep);
 	HRESULT Build_TrailGeometry();
 	HRESULT Render_Decal(uint32_t iPass);
@@ -409,6 +428,11 @@ private:
 	EFFECT_V2_TARGET m_FollowTarget;
 	std::string m_strFollowBone;
 	PIVOT_ROTATION m_eFollowRotation = PIVOT_ROTATION::TARGET_YAW;
+	float4x4_t m_FollowLocal = {
+		1.f, 0.f, 0.f, 0.f,
+		0.f, 1.f, 0.f, 0.f,
+		0.f, 0.f, 1.f, 0.f,
+		0.f, 0.f, 0.f, 1.f };
 	f32_t m_fTime = 0.f;
 	bool_t m_bFinished = false;
 	bool_t m_bEmissionStopped = false;
@@ -423,6 +447,8 @@ private:
 	f32_t m_fSpawnAccumulator = 0.f;
 	bool_t m_bBurstPending = true;
 	uint32_t m_iRandomState = 1u;
+	ComPtr<ID3D11Buffer> m_pMeshInstanceBuffer;
+	uint32_t m_iMeshInstanceCapacity = 0u;
 
 	std::vector<TRAIL_POINT> m_TrailPoints;
 	std::vector<Engine::VTXEFFECT_TRAIL> m_TrailVertices;
