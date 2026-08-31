@@ -28,6 +28,12 @@ struct DEPLOY_SURFACE_PRESENTATION_PACKET final
 	f32_t fOpacity = 1.f;
 };
 
+struct DEPLOY_PROP_ANIMATION_CLIP final
+{
+	std::string name;
+	f32_t durationSeconds = 0.f;
+};
+
 class CDeployPropObject final : public CGameObject
 {
 public:
@@ -40,6 +46,8 @@ public:
 		std::wstring fracturedPrototypeTag;
 		f32_t emissiveIntensity = 1.f;
 		bool_t deferredEmissiveOverlay = false;
+		DEPLOY_PROP_ANIMATION_ROLES animationRoles;
+		bool_t strictAnimationRoles = false;
 	};
 
 	/* A debris preview instance names a CModel prototype already admitted by
@@ -106,6 +114,20 @@ public:
 		return DEPLOY_PROP_MODEL_KIND::STATIC == m_ModelKind;
 	}
 	bool_t Is_AnimBindPoseOnly() const;
+	std::vector<DEPLOY_PROP_ANIMATION_CLIP> Get_AnimationClips() const;
+	/* WorldSequence authoring is presentation-only. Begin snapshots the live
+	   clip cursor/loop/pause state, Sample seeks one exact stored clip name,
+	   and End restores the snapshot without changing DEPLOY_PROP_STATE. */
+	bool_t Begin_AnimationAuthoringPreview();
+	bool_t Sample_AnimationAuthoringPreview(
+		const std::string& clipName,
+		f32_t normalizedTime,
+		bool_t loop);
+	void End_AnimationAuthoringPreview();
+	bool_t Is_AnimationAuthoringPreviewActive() const
+	{
+		return m_bAnimationAuthoringPreviewActive;
+	}
 	/* World axis-aligned bounds of the model this prop currently renders.
 	   Authoring tools use it to hit-test and outline a prop instead of
 	   re-cloning a prototype by tag. Returns false when the model carries no
@@ -255,11 +277,18 @@ private:
 	DEPLOY_PROP_PLACEMENT m_Placement;
 	DEPLOY_PROP_MODEL_KIND m_ModelKind = DEPLOY_PROP_MODEL_KIND::STATIC;
 	DEPLOY_PROP_STATE m_State = DEPLOY_PROP_STATE::INTACT;
+	DEPLOY_PROP_ANIMATION_ROLES m_AnimationRoles;
+	bool_t m_bStrictAnimationRoles = false;
 	DEPLOY_SURFACE_PRESENTATION_PACKET m_SurfacePresentation{};
 	bool_t m_bDeferredEmissiveOverlay = false;
 	DEPLOY_PROP_STATE m_PrePhysicsPreviewState = DEPLOY_PROP_STATE::INTACT;
 	uint32_t m_iPrePhysicsPreviewAnimationIndex = UINT32_MAX;
 	f32_t m_fPrePhysicsPreviewAnimationTrackPosition = 0.f;
+	uint32_t m_iPreAuthoringAnimationIndex = UINT32_MAX;
+	f32_t m_fPreAuthoringAnimationTrackPosition = 0.f;
+	bool_t m_bPreAuthoringAnimationLoop = false;
+	bool_t m_bPreAuthoringAnimationPaused = false;
+	bool_t m_bAnimationAuthoringPreviewActive = false;
 	bool_t m_bPhysicsPreviewActive = false;
 	float3_t m_PhysicsPreviewPosition = {};
 	float4_t m_PhysicsPreviewRotation = float4_t(0.f, 0.f, 0.f, 1.f);

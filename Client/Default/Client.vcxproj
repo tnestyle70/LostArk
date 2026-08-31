@@ -31,6 +31,7 @@
     <ClInclude Include="..\Public\AnimationAuthoringBridge.h" />
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h" />
 	<ClInclude Include="..\Public\KakulAnimationActionDocument.h" />
+	<ClInclude Include="..\Public\KakulAnimationPatternDocument.h" />
 	<ClInclude Include="..\Public\ValtanPatternFlowDocument.h" />
 	<ClInclude Include="..\Public\ValtanPatternFlowService.h" />
 	<ClInclude Include="..\Public\ValtanTuningCommandService.h" />
@@ -114,6 +115,8 @@
     <ClInclude Include="..\Public\PartyInteractionView.h" />
     <ClInclude Include="..\Public\RaidEntryPreviewView.h" />
     <ClInclude Include="..\Public\UITextureCache.h" />
+    <ClInclude Include="..\Public\UILayoutRuntime.h" />
+    <ClInclude Include="..\Public\UIInputRouter.h" />
     <ClInclude Include="..\Public\UI_Sprite.h" />
     <ClInclude Include="..\Public\Level_Bern.h" />
     <ClInclude Include="..\Public\Level_KakulSaydonArena.h" />
@@ -182,6 +185,8 @@
     <ClInclude Include="..\Public\MapPlacementRuntime.h" />
     <ClInclude Include="..\Public\MapLoadScope.h" />
     <ClInclude Include="..\Public\MapTool.h" />
+	<ClInclude Include="..\Public\WorldSequenceDocument.h" />
+	<ClInclude Include="..\Public\WorldSequenceToolPanel.h" />
     <ClInclude Include="..\Public\WorldGameplayDocument.h" />
     <ClInclude Include="..\Public\EncounterPatternReference.h" />
     <ClInclude Include="..\Public\WorldDestructionDocument.h" />
@@ -214,6 +219,7 @@
     <ClCompile Include="..\Private\AnimationAuthoringBridge.cpp" />
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp" />
 	<ClCompile Include="..\Private\KakulAnimationActionDocument.cpp" />
+	<ClCompile Include="..\Private\KakulAnimationPatternDocument.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternFlowDocument.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternFlowService.cpp" />
 	<ClCompile Include="..\Private\ValtanTuningCommandService.cpp" />
@@ -278,6 +284,8 @@
     <ClCompile Include="..\Private\PartyInteractionView.cpp" />
     <ClCompile Include="..\Private\RaidEntryPreviewView.cpp" />
     <ClCompile Include="..\Private\UITextureCache.cpp" />
+    <ClCompile Include="..\Private\UILayoutRuntime.cpp" />
+    <ClCompile Include="..\Private\UIInputRouter.cpp" />
     <ClCompile Include="..\Private\UI_Sprite.cpp" />
     <ClCompile Include="..\Private\Level_Bern.cpp" />
     <ClCompile Include="..\Private\Level_KakulSaydonArena.cpp" />
@@ -348,6 +356,10 @@
     <ClCompile Include="..\Private\MapPlacementDocument.cpp" />
     <ClCompile Include="..\Private\MapPlacementRuntime.cpp" />
     <ClCompile Include="..\Private\MapTool.cpp" />
+	<ClCompile Include="..\Private\WorldSequenceDocument.cpp" />
+	<ClCompile Include="..\Private\WorldSequenceToolPanel.cpp">
+	  <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
     <ClCompile Include="..\Private\WorldGameplayDocument.cpp" />
     <ClCompile Include="..\Private\EncounterPatternReference.cpp" />
     <ClCompile Include="..\Private\WorldDestructionDocument.cpp" />
@@ -415,6 +427,10 @@
 	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_06.actionbindings.json" />
 	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_07.actionbindings.json" />
 	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCZ_00.actionbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_05.patternbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_06.patternbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_07.patternbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCZ_00.patternbindings.json" />
     <None Include="..\..\Data\Animation\RootMotion\LanceMaster.rootmotion.json" />
     <None Include="..\..\Data\Animation\RootMotion\Warlord.rootmotion.json" />
     <None Include="..\..\Data\Animation\RootMotion\Artist.rootmotion.json" />
@@ -486,6 +502,7 @@
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.maplights.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapeffects.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.mapplacements" />
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.deployplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_SHS_RCARENA_D\LV_SHS_RCARENA_D.mapplacements" />
     <None Include="..\..\Data\Maps\Editor\ACTIVE.maparea" />
     <None Include="..\..\Data\Maps\Imported\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapset" />
@@ -528,6 +545,7 @@
     <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.build.receipt.json" />
     <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.mapassets" />
     <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.mapplacements" />
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.deployassets" />
     <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.nonstatic.inventory.json" />
     <None Include="..\..\Data\Maps\Imported\LV_SHS_RCARENA_D\LV_SHS_RCARENA_D.mapassets" />
     <None Include="..\..\Data\Maps\Imported\LV_SHS_RCARENA_D\LV_SHS_RCARENA_D.mapplacements" />

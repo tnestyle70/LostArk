@@ -1,0 +1,70 @@
+{
+  "schema": "lostark.world-sequences",
+  "formatVersion": 2,
+  "areaId": "LV_LUT_MIDNIGHTC_ED",
+  "revision": 2,
+  "templates": [
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.1",
+      "displayName": "New Sequence 1",
+      "category": "World",
+      "durationMs": 1000,
+      "interpolation": "SMOOTH_STEP",
+      "tracks": [
+        {
+          "slotId": "object",
+          "keys": [
+            {
+              "timeMs": 0,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            },
+            {
+              "timeMs": 1000,
+              "positionOffset": [0, 0, 0],
+              "rotationQuaternion": [0, 0, 0, 1],
+              "scaleMultiplier": [1, 1, 1],
+              "visible": true
+            }
+          ]
+        }
+      ],
+      "animationTracks": []
+    },
+    {
+      "sequenceId": "sequence.LV_LUT_MIDNIGHTC_ED.2",
+      "displayName": "New Animation Sequence 2",
+      "category": "Animation",
+      "durationMs": 3067,
+      "interpolation": "SMOOTH_STEP",
+      "tracks": [],
+      "animationTracks": [
+        { "slotId": "animated.prop", "clipName": "evt2_paperstage_open01", "playbackRate": 1, "loop": true, "holdLastFrame": true }
+      ]
+    }
+  ],
+  "instances": [
+    {
+      "instanceId": "world.sequence.instance.1",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.2",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "bindings": [
+        { "slotId": "animated.prop", "targetKind": "DEPLOY_PLACEMENT", "targetId": "1" }
+      ]
+    },
+    {
+      "instanceId": "world.sequence.instance.2",
+      "templateId": "sequence.LV_LUT_MIDNIGHTC_ED.2",
+      "enabled": true,
+      "startDelayMs": 0,
+      "playbackSpeed": 1,
+      "bindings": [
+        { "slotId": "animated.prop", "targetKind": "DEPLOY_PLACEMENT", "targetId": "1" }
+      ]
+    }
+  ]
+}

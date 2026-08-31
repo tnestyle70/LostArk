@@ -14,6 +14,8 @@ below is a real Release-build feature, so the include is no longer guarded. */
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #include "HUDRuntimeView.h"
+#include "UILayoutRuntime.h"
+#include "UIInputRouter.h"
 #include "ItemCatalog.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
@@ -186,7 +188,7 @@ HRESULT CLevel_ValtanArena::Initialize()
 	if (FAILED(__super::Initialize()))
 		return E_FAIL;
 
-	m_PartyInteraction.Initialize(m_pDevice, m_pContext);
+	m_PartyInteraction.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA));
 
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
 		CLevelRegistry::Find(LEVEL::VALTAN_ARENA);
@@ -371,8 +373,10 @@ HRESULT CLevel_ValtanArena::Initialize()
 	-- would flash at full opacity for that frame before Update_DeadScene/Update_RaidClear ever
 	gets to hide them for real. Explicitly hiding them the instant each view loads closes that gap
 	regardless of which order those two calls happen to land in on any given frame. */
-	m_pDeadSceneView = std::make_unique<CHUDRuntimeView>(
-		m_pDevice, m_pContext, L"UI/DeadScene/DeadSceneUI.json");
+	m_pDeadSceneView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA), TEXT("Layer_UI"),
+		L"UI/DeadScene/DeadSceneUI.json");
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_Dim", false);
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_PanelBg", false);
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_WingedArch", false);
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_Effect", false);
@@ -382,14 +386,23 @@ HRESULT CLevel_ValtanArena::Initialize()
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_TitleTextMarker", false);
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_ReviveMessageMarker", false);
 
-	m_pRaidClearView = std::make_unique<CHUDRuntimeView>(
-		m_pDevice, m_pContext, L"UI/RaidClear/RaidClear_Layout.json");
+	m_pRaidClearView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA), TEXT("Layer_UI"),
+		L"UI/RaidClear/RaidClear_Layout.json");
+	m_pRaidClearView->Set_SlotVisible("RaidClear_Dim", false);
 	for (const char* const szSlotId : RAIDCLEAR_FADING_SLOTS)
 		m_pRaidClearView->Set_SlotVisible(szSlotId, false);
 	m_pRaidClearView->Set_SlotVisible("RaidClear_TitleTextBox", false);
+	m_pRaidClearView->Set_SlotVisible("RaidClear_ReturnButton", false);
 
-	m_pItemAnnounceView = std::make_unique<CHUDRuntimeView>(
-		m_pDevice, m_pContext, L"UI/ItemAnnounce/ItemAnnounce_Layout.json");
+	/* First screen migrated off the ImGui interim UI rendering (see
+	.md/TJ/08-31/2026-08-31_ImGui_런타임UI_전환_PLAN.md) -- real CUI_Sprite GameObjects on this
+	Level's own new "Layer_UI" instead of CHUDRuntimeView's ImGui foreground-drawlist draws.
+	Get_SlotRect/Set_SlotVisible/Set_SlotTexture below are unchanged calls; only the type and
+	construction differ. */
+	m_pItemAnnounceView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA), TEXT("Layer_UI"),
+		L"UI/ItemAnnounce/ItemAnnounce_Layout.json");
 	m_pItemAnnounceView->Set_SlotVisible("ItemAnnounce_Frame", false);
 	m_pItemAnnounceView->Set_SlotVisible("ItemAnnounce_Icon", false);
 
@@ -604,7 +617,7 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
 	}
 	m_PlayerController.Update(cameraAcceptsGameplay && !isRaidClearActive);
-	Update_DeadScene(isRaidClearActive);
+	Update_DeadScene(isRaidClearActive, fTimeDelta);
 	Update_ItemAnnounce(fTimeDelta);
 #ifdef _DEBUG
 	Update_DebugRaidClearKey();
@@ -904,6 +917,7 @@ void CLevel_ValtanArena::Update_ReferenceCamera()
 	camera, the same press dismisses it and applies the toggle the user asked for. */
 	if (GetForegroundWindow() == g_hWnd &&
 		!ImGui::GetIO().WantTextInput &&
+		!CUIInputRouter::Get().Is_TextInputActive() &&
 		CGameInstance::Get().Get_DIKeyPressed(DIK_F6))
 	{
 		End_ReferenceCamera(true);
@@ -1661,9 +1675,6 @@ HRESULT CLevel_ValtanArena::Render()
 	m_PlayerNameplateView.Render(m_NameplatePlayers);
 	m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
 	m_PartyInteraction.Render(m_pPlayerCommandSink);
-	Render_DeadScene();
-	Render_RaidClear();
-	Render_ItemAnnounce();
 
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(TEXT("Valtan Arena Map"));
@@ -1673,16 +1684,21 @@ HRESULT CLevel_ValtanArena::Render()
 }
 
 void CLevel_ValtanArena::Update_DeadScene(
-	const bool_t isBlockedByRaidClear)
+	const bool_t isBlockedByRaidClear, const f32_t fTimeDelta)
 {
 	if (nullptr == m_pDeadSceneView)
 		return;
+
+	m_pDeadSceneView->Update(fTimeDelta);
 
 	using LostArk::Shared::PLAYER_ACTION_STATE;
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
 	const bool_t isDead = !isBlockedByRaidClear && player.isValid &&
 		PLAYER_ACTION_STATE::DEAD == player.eAction;
 
+	/* Real Render_DeadScene's own whole-screen AddRectFilled(IM_COL32(0,0,0,160)), now a real
+	slot (DeadScene_Dim, White1x1 tinted) instead of a raw ImGui draw call. */
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_Dim", isDead);
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_PanelBg", isDead);
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_WingedArch", isDead);
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_Effect", isDead);
@@ -1726,36 +1742,31 @@ void CLevel_ValtanArena::Update_DeadScene(
 		CCombatHUDViewModel::Get().Set_DeadSceneTextRects(textRects);
 	}
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const f32_t fScaleX = pViewport->WorkSize.x / 1280.f;
-	const f32_t fScaleY = pViewport->WorkSize.y / 720.f;
-
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	if (!m_pDeadSceneView->Get_SlotRect(
 		"DeadScene_ReviveButton", fX, fY, fWidth, fHeight))
 	{
 		return;
 	}
-	const ImVec2 vMin(
-		pViewport->WorkPos.x + fX * fScaleX,
-		pViewport->WorkPos.y + fY * fScaleY);
-	const ImVec2 vMax(vMin.x + fWidth * fScaleX, vMin.y + fHeight * fScaleY);
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-		vMouse.y >= vMin.y && vMouse.y < vMax.y;
-	if (bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fResolutionWidth = m_pDeadSceneView->Get_ResolutionWidth();
+	const f32_t fResolutionHeight = m_pDeadSceneView->Get_ResolutionHeight();
+	if (Router.Is_Hovered(fX, fY, fWidth, fHeight, fResolutionWidth, fResolutionHeight))
 	{
-		CMainApp::Play_UIButtonClickSound();
-		m_PlayerController.Request_Revive();
+		Router.Claim_Mouse_This_Frame();
+		if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fResolutionWidth, fResolutionHeight))
+		{
+			CMainApp::Play_UIButtonClickSound();
+			m_PlayerController.Request_Revive();
+		}
 	}
 }
 
 #ifdef _DEBUG
 void CLevel_ValtanArena::Update_DebugRaidClearKey()
 {
-	if (ImGui::GetIO().WantTextInput)
+	if (ImGui::GetIO().WantTextInput ||
+		CUIInputRouter::Get().Is_TextInputActive())
 		return;
 	const HWND hForeground = GetForegroundWindow();
 	DWORD foregroundProcessId = {};
@@ -1771,46 +1782,6 @@ void CLevel_ValtanArena::Update_DebugRaidClearKey()
 	m_bDebugRaidClearKeyDown = oDown;
 }
 #endif
-
-void CLevel_ValtanArena::Render_DeadScene()
-{
-	if (nullptr == m_pDeadSceneView)
-		return;
-
-	using LostArk::Shared::PLAYER_ACTION_STATE;
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	const bool_t isDead = player.isValid &&
-		PLAYER_ACTION_STATE::DEAD == player.eAction;
-	if (isDead)
-	{
-		/* Whole-screen dim, not just the DeadScene panel's own footprint -- drawn straight into
-		the same ImGui foreground draw list the panel/effect/button images use (CHUDRuntimeView's
-		default DRAW_TARGET::FOREGROUND) so it lands in front of the 3D scene and every other HUD
-		element without a new shader/render target, and directly beneath the panel art drawn right
-		after it since both share that one list in submission order. */
-		ImGuiViewport* pViewport = ImGui::GetMainViewport();
-		if (nullptr != pViewport)
-		{
-			/* Must pass pViewport explicitly, same as CHUDRuntimeView::Render() does for the
-			panel/button images -- the zero-arg GetForegroundDrawList() can resolve to a different
-			draw list when called outside a Begin/End block (as this is), so the rect silently
-			never made it into the list that actually gets composited. WorkPos/WorkSize instead of
-			Pos/Size for the same reason: matches CHUDRuntimeView's own scale/origin exactly. */
-			ImGui::GetForegroundDrawList(pViewport)->AddRectFilled(
-				pViewport->WorkPos,
-				ImVec2(pViewport->WorkPos.x + pViewport->WorkSize.x,
-					pViewport->WorkPos.y + pViewport->WorkSize.y),
-				IM_COL32(0, 0, 0, 160));
-		}
-	}
-
-	/* Title/button-label text is drawn by CMainApp::RenderDeadSceneText(),
-	called after CImGuiLayer::EndFrame() -- same reason as
-	RenderItemUpgradeGaugePercentText/RenderBossHealthBarText: this Render()
-	call's own panel/button images only composite later, inside EndFrame(),
-	and would otherwise bury text submitted here. */
-	m_pDeadSceneView->Render("Default", 0);
-}
 
 /* Real EpicGateCommonClearFrame timeline: TweenMax.delayedCall(startFrame/40, ...) holds on a
 blank frame before resultMc.gotoAndPlay(startFrame) actually starts the reveal, then
@@ -1887,11 +1858,13 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 	simplified timeline instead of each other's real per-frame stagger. RAIDCLEAR_FADING_SLOTS
 	itself lives in the file-scope anonymous namespace near Initialize() (also hides these up
 	front, before this Level's first Render()). */
+	m_pRaidClearView->Set_SlotVisible("RaidClear_Dim", isShowing);
 	for (const char* const szSlotId : RAIDCLEAR_FADING_SLOTS)
 		m_pRaidClearView->Set_SlotVisible(szSlotId, isShowing);
 	/* Authoring-only placeholder, same split as DeadScene_TitleTextMarker --
 	RenderRaidClearText() (CMainApp, after EndFrame()) draws the real text. */
 	m_pRaidClearView->Set_SlotVisible("RaidClear_TitleTextBox", false);
+	m_pRaidClearView->Set_SlotVisible("RaidClear_ReturnButton", isAfterRaidClear);
 	if (isShowing)
 	{
 		const f32_t fRevealAlpha = (m_fRaidClearElapsedSeconds < RAIDCLEAR_REVEAL_SECONDS) ?
@@ -1899,13 +1872,14 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 		for (const char* const szSlotId : RAIDCLEAR_FADING_SLOTS)
 			m_pRaidClearView->Set_SlotAlpha(szSlotId, fRevealAlpha);
 	}
+	m_pRaidClearView->Update(fTimeDelta);
 
 	/* "돌아가기" button -- appears once the celebration overlay's own reveal/hold
 	timeline finishes and every fading slot has hidden itself, taking that same
 	screen position rather than sitting on top of the still-playing overlay.
-	Same hover/click hit-test pattern as CLevel_Bern's ValtanEntry modal buttons
-	(Get_SlotRect + screen-space mouse rect), and the same one-shot Request_*
-	submission as its Request_ConfirmNpcEntry. No local hide-on-click --
+	Same hover/click hit-test pattern as CLevel_ValtanArena's own DeadScene
+	Revive button (CUIInputRouter::Get() + Get_SlotRect), and the same
+	one-shot Request_* submission as before. No local hide-on-click --
 	CLevelTransitionService's real BERN switch (once the Server accepts the
 	transfer) tears this whole Level down anyway. */
 	if (isAfterRaidClear && nullptr != m_pPlayerCommandSink)
@@ -1914,20 +1888,20 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 		if (m_pRaidClearView->Get_SlotRect("RaidClear_ReturnButton",
 			fButtonX, fButtonY, fButtonWidth, fButtonHeight))
 		{
-			ImGuiViewport* pViewport = ImGui::GetMainViewport();
-			if (nullptr != pViewport)
+			CUIInputRouter& Router = CUIInputRouter::Get();
+			const f32_t fResolutionWidth = m_pRaidClearView->Get_ResolutionWidth();
+			const f32_t fResolutionHeight = m_pRaidClearView->Get_ResolutionHeight();
+			const bool_t isButtonHovered = Router.Is_Hovered(
+				fButtonX, fButtonY, fButtonWidth, fButtonHeight,
+				fResolutionWidth, fResolutionHeight);
+			m_pRaidClearView->Set_SlotTexture("RaidClear_ReturnButton", isButtonHovered ?
+				"UI/ClassSelect/Common/NormalButtonHover.png" :
+				"UI/ClassSelect/Common/NormalButton.png");
+			if (isButtonHovered)
 			{
-				const float scaleX = pViewport->WorkSize.x / 1280.f;
-				const float scaleY = pViewport->WorkSize.y / 720.f;
-				const ImVec2 vMin(
-					pViewport->WorkPos.x + fButtonX * scaleX,
-					pViewport->WorkPos.y + fButtonY * scaleY);
-				const ImVec2 vMax(
-					vMin.x + fButtonWidth * scaleX, vMin.y + fButtonHeight * scaleY);
-				const ImVec2 vMouse = ImGui::GetMousePos();
-				const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-					vMouse.y >= vMin.y && vMouse.y < vMax.y;
-				if (bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+				Router.Claim_Mouse_This_Frame();
+				if (Router.Is_Clicked(fButtonX, fButtonY, fButtonWidth, fButtonHeight,
+					fResolutionWidth, fResolutionHeight))
 				{
 					CMainApp::Play_UIButtonClickSound();
 					m_pPlayerCommandSink->Request_ReturnToBern(
@@ -1949,78 +1923,9 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 	CCombatHUDViewModel::Get().Set_RaidClearTextRects(textRects);
 }
 
-void CLevel_ValtanArena::Render_RaidClear()
-{
-	if (nullptr == m_pRaidClearView)
-		return;
-
-	/* The real EpicGateCommonClearFrame (ARKFrame::setModalState) draws its own modal rect at
-	MODAL_TRANSPARENT_DUNGEON = 0 alpha -- i.e. the source truly does not dim behind this specific
-	popup, unlike Dead Scene's own modal (MODAL_TRANSPARENT = 0.65 there). Dimming anyway: the
-	source's own zero-alpha modal only exists to eat clicks during a still-interactive dungeon
-	screen, not for legibility, and this overlay covers the whole screen with bright additive
-	glow/flash art with nothing else asking for click-through here -- a dim reads better against
-	gameplay still visible behind it, same reasoning as Dead Scene's real dim. */
-	const bool_t isShowing = m_fRaidClearElapsedSeconds >= 0.f &&
-		m_fRaidClearElapsedSeconds < RAIDCLEAR_TOTAL_SECONDS;
-	// See Update_RaidClear's own comment -- stays true for the rest of this
-	// Level's session once the overlay's timeline finishes.
-	const bool_t isAfterRaidClear =
-		m_fRaidClearElapsedSeconds >= RAIDCLEAR_TOTAL_SECONDS;
-	if (isShowing)
-	{
-		ImGuiViewport* pViewport = ImGui::GetMainViewport();
-		if (nullptr != pViewport)
-		{
-			ImGui::GetForegroundDrawList(pViewport)->AddRectFilled(
-				pViewport->WorkPos,
-				ImVec2(pViewport->WorkPos.x + pViewport->WorkSize.x,
-					pViewport->WorkPos.y + pViewport->WorkSize.y),
-				IM_COL32(0, 0, 0, 160));
-		}
-	}
-
-	/* "돌아가기" button background -- same NormalButton/NormalButtonHover art and
-	hover-swap as CLevel_Bern's ValtanEntry modal buttons; the label itself is
-	drawn as text by CMainApp::RenderRaidClearText() like the headline below.
-	Shows only once the celebration overlay itself has finished and hidden --
-	it replaces the overlay in place, not layered on top of it. */
-	if (isAfterRaidClear)
-	{
-		f32_t fButtonX = 0.f, fButtonY = 0.f, fButtonWidth = 0.f, fButtonHeight = 0.f;
-		if (m_pRaidClearView->Get_SlotRect("RaidClear_ReturnButton",
-			fButtonX, fButtonY, fButtonWidth, fButtonHeight))
-		{
-			ImGuiViewport* pViewport = ImGui::GetMainViewport();
-			if (nullptr != pViewport)
-			{
-				const float scaleX = pViewport->WorkSize.x / 1280.f;
-				const float scaleY = pViewport->WorkSize.y / 720.f;
-				const ImVec2 vMin(
-					pViewport->WorkPos.x + fButtonX * scaleX,
-					pViewport->WorkPos.y + fButtonY * scaleY);
-				const ImVec2 vMax(
-					vMin.x + fButtonWidth * scaleX, vMin.y + fButtonHeight * scaleY);
-				const ImVec2 vMouse = ImGui::GetMousePos();
-				const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-					vMouse.y >= vMin.y && vMouse.y < vMax.y;
-				ID3D11ShaderResourceView* pTexture = m_pRaidClearView->Load_Texture(
-					bHovered ?
-						"UI/ClassSelect/Common/NormalButtonHover.png" :
-						"UI/ClassSelect/Common/NormalButton.png");
-				if (nullptr != pTexture)
-				{
-					ImGui::GetForegroundDrawList(pViewport)->AddImage(
-						reinterpret_cast<ImTextureID>(pTexture), vMin, vMax);
-				}
-			}
-		}
-	}
-
-	/* Headline text is drawn by CMainApp::RenderRaidClearText(), called after
-	CImGuiLayer::EndFrame() -- same reason as Render_DeadScene() above. */
-	m_pRaidClearView->Render("Default", 0);
-}
+/* No matching Render_RaidClear() -- migrated to real CUI_Sprite GameObjects
+that self-render through the normal CRenderer/RENDERGROUP::UI pipeline
+(Update_RaidClear above drives their visibility/alpha/texture instead). */
 
 namespace
 {
@@ -2134,18 +2039,6 @@ void CLevel_ValtanArena::Update_ItemAnnounce(f32_t fTimeDelta)
 		}
 	}
 	CCombatHUDViewModel::Get().Set_ItemAnnounceTextRects(textRects);
-}
-
-void CLevel_ValtanArena::Render_ItemAnnounce()
-{
-	if (nullptr == m_pItemAnnounceView)
-		return;
-
-	/* No screen dim, unlike Render_RaidClear -- this is a small corner-of-screen toast over
-	live gameplay, not a full-screen celebration moment. Name text is drawn by
-	CMainApp::RenderItemAnnounceText(), called after CImGuiLayer::EndFrame(), same reason as
-	Render_RaidClear's own headline. */
-	m_pItemAnnounceView->Render("Default", 0);
 }
 
 HRESULT CLevel_ValtanArena::Ready_Layer_Camera(

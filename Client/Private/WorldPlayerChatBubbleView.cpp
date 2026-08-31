@@ -1,5 +1,3 @@
-#include "imgui.h"
-
 #include "WorldPlayerChatBubbleView.h"
 
 #include "Character.h"
@@ -12,9 +10,12 @@ namespace
 	// Above CWorldPlayerNameplateView's own NAMEPLATE_HEAD_OFFSET (2.2f), so
 	// the bubble never overlaps the nickname it sits above.
 	constexpr f32_t BUBBLE_HEAD_OFFSET = 2.7f;
-	constexpr f32_t BUBBLE_PAD_X = 8.f;
-	constexpr f32_t BUBBLE_PAD_Y = 4.f;
-	constexpr f32_t BUBBLE_ROUNDING = 6.f;
+	constexpr f32_t BUBBLE_TEXT_SCALE = 0.8f;
+	/* Same LOA font pass the nameplate itself uses (Draw_Text, no ImGui). The old ImGui
+	drawlist version painted a rounded dark quad behind the text; without a 2D rect primitive
+	on the engine path, a 4-way near-black outline keeps the text readable over the world
+	instead. */
+	constexpr f32_t BUBBLE_OUTLINE_OFFSET = 1.f;
 }
 
 void Client::CWorldPlayerChatBubbleView::Render(
@@ -30,7 +31,6 @@ void Client::CWorldPlayerChatBubbleView::Render(
 		return;
 
 	const float2_t vViewportSize = gameInstance.Get_ViewportSize();
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(ImGui::GetMainViewport());
 
 	for (const REPLICATED_PLAYER_VIEW& player : Players)
 	{
@@ -64,23 +64,32 @@ void Client::CWorldPlayerChatBubbleView::Render(
 			continue;
 		}
 
-		const ImVec2 vTextSize = ImGui::CalcTextSize(bubbleText.c_str());
-		const ImVec2 vRectMin(
-			vScreenPosition.x - vTextSize.x * 0.5f - BUBBLE_PAD_X,
-			vScreenPosition.y - vTextSize.y * 0.5f - BUBBLE_PAD_Y);
-		const ImVec2 vRectMax(
-			vScreenPosition.x + vTextSize.x * 0.5f + BUBBLE_PAD_X,
-			vScreenPosition.y + vTextSize.y * 0.5f + BUBBLE_PAD_Y);
+		std::wstring bubbleWide;
+		if (!CWorldPlayerNameplateView::Try_ConvertUtf8(bubbleText, bubbleWide))
+			continue;
 
-		pDrawList->AddRectFilled(
-			vRectMin, vRectMax, IM_COL32(20, 20, 20, 200), BUBBLE_ROUNDING);
-		pDrawList->AddRect(
-			vRectMin, vRectMax, IM_COL32(255, 255, 255, 90), BUBBLE_ROUNDING);
-		pDrawList->AddText(
-			ImVec2(
-				vScreenPosition.x - vTextSize.x * 0.5f,
-				vScreenPosition.y - vTextSize.y * 0.5f),
-			IM_COL32(255, 255, 255, 255),
-			bubbleText.c_str());
+		const float2_t OUTLINE_OFFSETS[] = {
+			{ -BUBBLE_OUTLINE_OFFSET, 0.f }, { BUBBLE_OUTLINE_OFFSET, 0.f },
+			{ 0.f, -BUBBLE_OUTLINE_OFFSET }, { 0.f, BUBBLE_OUTLINE_OFFSET },
+		};
+		for (const float2_t& vOffset : OUTLINE_OFFSETS)
+		{
+			gameInstance.Draw_Text(
+				TEXT("Font_YG330"),
+				bubbleWide.c_str(),
+				float2_t(vScreenPosition.x + vOffset.x, vScreenPosition.y + vOffset.y),
+				XMVectorSet(20.f / 255.f, 20.f / 255.f, 20.f / 255.f, 0.9f),
+				0.f,
+				float2_t(0.5f, 0.5f),
+				BUBBLE_TEXT_SCALE);
+		}
+		gameInstance.Draw_Text(
+			TEXT("Font_YG330"),
+			bubbleWide.c_str(),
+			vScreenPosition,
+			Colors::White,
+			0.f,
+			float2_t(0.5f, 0.5f),
+			BUBBLE_TEXT_SCALE);
 	}
 }

@@ -28,16 +28,13 @@ class ValtanPatternTargetEffectAnchorContractTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.docs = pipeline.load_pipeline_documents(ROOT)
         cls.presentation = cls.docs[pipeline.PRESENTATION_AUTHORING_REL]
-        cls.effect_product = json.loads(
-            read("Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json")
-        )
         cls.client_replication = read("Client/Private/ClientReplication.cpp")
         cls.valtan_h = read("Client/Public/Valtan.h")
         cls.valtan_cpp = read("Client/Private/Valtan.cpp")
         cls.cue_cpp = read("Client/Private/ValtanPatternEffectCueDocument.cpp")
         cls.tree_cpp = read("Client/Private/ValtanPatternTree.cpp")
 
-    def test_six_pizza_source_and_product_use_exact_target_snapshot_anchor(self) -> None:
+    def test_six_pizza_source_and_projection_use_exact_arena_center_facing_anchor(self) -> None:
         source_pattern = next(
             row for row in self.presentation["patterns"]
             if row["patternId"] == "VALTAN_SIX_PIZZA_106"
@@ -46,17 +43,24 @@ class ValtanPatternTargetEffectAnchorContractTests(unittest.TestCase):
             cue for stage in source_pattern["stages"]
             for cue in stage["effectCues"]
         ]
+        master = pipeline.join_v2_authoring(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+            self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        projected = pipeline.project_v2_products(ROOT, self.docs, master)
         product_cues = [
-            cue for cue in self.effect_product["cues"]
+            cue for cue in json.loads(projected[pipeline.CUES_REL])["cues"]
             if cue["patternId"] == "VALTAN_SIX_PIZZA_106"
         ]
         self.assertTrue(source_cues)
         self.assertTrue(product_cues)
         for cue in source_cues + product_cues:
-            self.assertEqual("pattern.target.snapshot", cue["anchorSlotId"])
+            self.assertEqual("arena.center.facing", cue["anchorSlotId"])
             self.assertEqual("snapshot", cue["followPolicy"])
 
-    def test_split_pipeline_rejects_moving_unknown_or_unlocked_target_anchor(self) -> None:
+    def test_split_pipeline_rejects_moving_unknown_or_unlocked_facing_anchor(self) -> None:
         joined = pipeline.join_v2_authoring(
             self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
             self.docs[pipeline.PRESENTATION_AUTHORING_REL],
@@ -65,8 +69,9 @@ class ValtanPatternTargetEffectAnchorContractTests(unittest.TestCase):
         )
         mutations = (
             lambda pattern, cue: cue.update(followPolicy="follow"),
-            lambda pattern, cue: cue.update(anchorSlotId="pattern.target.unknown"),
+            lambda pattern, cue: cue.update(anchorSlotId="arena.center.unknown"),
             lambda pattern, cue: pattern.update(targetPolicy="NEAREST_EACH_TICK"),
+            lambda pattern, cue: pattern.update(aimPolicy="TRACK_TARGET_EACH_TICK"),
             lambda pattern, cue: pattern.update(targetPolicy="NONE"),
         )
         for mutate in mutations:

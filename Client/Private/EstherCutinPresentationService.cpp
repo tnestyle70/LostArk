@@ -1,5 +1,3 @@
-#include "imgui.h"
-
 #include "EstherCutinPresentationService.h"
 
 #include "ActorCatalog.h"
@@ -12,7 +10,19 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
+
+namespace
+{
+	/* Wall-clock seconds for the cutin's own animation advance -- product presentation must not
+	depend on ImGui's frame clock (gameplay paths are ImGui-free). */
+	f64_t Cutin_NowSeconds()
+	{
+		return std::chrono::duration_cast<std::chrono::duration<f64_t>>(
+			std::chrono::steady_clock::now().time_since_epoch()).count();
+	}
+}
 
 namespace
 {
@@ -163,7 +173,7 @@ namespace
 		g_Cutin.iWindowEndMs = nullptr != pActor ? pActor->cutinEndMs : 0u;
 		g_Cutin.fModelHeight = modelHeight;
 		g_Cutin.iActiveLevelIndex = iLevelIndex;
-		g_Cutin.dLastAdvanceSeconds = ImGui::GetTime();
+		g_Cutin.dLastAdvanceSeconds = Cutin_NowSeconds();
 		g_Cutin.fElapsedSeconds = 0.f;
 		g_Cutin.isActive = true;
 		return S_OK;
@@ -326,7 +336,7 @@ HRESULT Client::CEstherCutinPresentationService::Render(
 		return S_FALSE;
 	}
 
-	const f64_t dNowSeconds = ImGui::GetTime();
+	const f64_t dNowSeconds = Cutin_NowSeconds();
 	const f32_t fTimeDelta = std::clamp(
 		static_cast<f32_t>(dNowSeconds - g_Cutin.dLastAdvanceSeconds),
 		0.f,

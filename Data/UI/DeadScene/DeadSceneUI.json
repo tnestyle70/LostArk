@@ -1,110 +1,426 @@
 {
   "schema": "lostark.ui-layout",
   "formatVersion": 1,
-  "resolution": { "width": 1280, "height": 720 },
-  "classes": ["Default"],
+  "resolution": {
+    "width": 1280,
+    "height": 720
+  },
+  "classes": [
+    "Default"
+  ],
   "slots": [
+    {
+      "id": "DeadScene_Dim",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.6274509803921569
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
     {
       "id": "DeadScene_Effect",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 871.004822, "y": 14.4267225, "width": 450, "height": 225 },
+      "rect": {
+        "x": 871.004822,
+        "y": 14.4267225,
+        "width": 450,
+        "height": 225
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 0 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 0
+      },
       "layers": [],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 20, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": ["UI/DeadScene/Effect/DeadScene_Effect_0000.png", "UI/DeadScene/Effect/DeadScene_Effect_0001.png", "UI/DeadScene/Effect/DeadScene_Effect_0002.png", "UI/DeadScene/Effect/DeadScene_Effect_0003.png", "UI/DeadScene/Effect/DeadScene_Effect_0004.png", "UI/DeadScene/Effect/DeadScene_Effect_0005.png", "UI/DeadScene/Effect/DeadScene_Effect_0006.png", "UI/DeadScene/Effect/DeadScene_Effect_0007.png", "UI/DeadScene/Effect/DeadScene_Effect_0008.png", "UI/DeadScene/Effect/DeadScene_Effect_0009.png", "UI/DeadScene/Effect/DeadScene_Effect_0010.png", "UI/DeadScene/Effect/DeadScene_Effect_0011.png", "UI/DeadScene/Effect/DeadScene_Effect_0012.png", "UI/DeadScene/Effect/DeadScene_Effect_0013.png", "UI/DeadScene/Effect/DeadScene_Effect_0014.png", "UI/DeadScene/Effect/DeadScene_Effect_0015.png", "UI/DeadScene/Effect/DeadScene_Effect_0016.png", "UI/DeadScene/Effect/DeadScene_Effect_0017.png", "UI/DeadScene/Effect/DeadScene_Effect_0018.png", "UI/DeadScene/Effect/DeadScene_Effect_0019.png"], "loop": true, "additive": true }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 20,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [
+          "UI/DeadScene/Effect/DeadScene_Effect_0000.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0001.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0002.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0003.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0004.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0005.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0006.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0007.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0008.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0009.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0010.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0011.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0012.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0013.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0014.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0015.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0016.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0017.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0018.png",
+          "UI/DeadScene/Effect/DeadScene_Effect_0019.png"
+        ],
+        "loop": true,
+        "additive": true
+      }
     },
     {
       "id": "DeadScene_PanelBg",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 966.453735, "y": 163.786835, "width": 262.5, "height": 127.5 },
+      "rect": {
+        "x": 966.453735,
+        "y": 163.786835,
+        "width": 262.5,
+        "height": 127.5
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 0 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 0
+      },
       "layers": [
-        { "path": "UI/DeadScene/DeadScene_PanelBg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/DeadScene/DeadScene_PanelBg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "DeadScene_WingedArch",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 922.203735, "y": 106.78685, "width": 350.25, "height": 120 },
+      "rect": {
+        "x": 922.203735,
+        "y": 106.78685,
+        "width": 350.25,
+        "height": 120
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 0 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 0
+      },
       "layers": [
-        { "path": "UI/DeadScene/DeadScene_WingedArch.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/DeadScene/DeadScene_WingedArch.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "DeadScene_TitleTextMarker",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 993.381348, "y": 173.130157, "width": 215, "height": 30 },
+      "rect": {
+        "x": 993.381348,
+        "y": 173.130157,
+        "width": 215,
+        "height": 30
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 0 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 0
+      },
       "layers": [
-        { "path": "UI/DeadScene/DeadScene_TitleTextMarker.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/DeadScene/DeadScene_TitleTextMarker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "DeadScene_ReviveButton",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 1061.13489, "y": 238.163666, "width": 77.25, "height": 27 },
+      "rect": {
+        "x": 1061.13489,
+        "y": 238.163666,
+        "width": 77.25,
+        "height": 27
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 0 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 0
+      },
       "layers": [
-        { "path": "UI/DeadScene/DeadScene_ReviveButton_Normal.png", "hoverPath": "UI/DeadScene/DeadScene_ReviveButton_Hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/DeadScene/DeadScene_ReviveButton_Normal.png",
+          "hoverPath": "UI/DeadScene/DeadScene_ReviveButton_Hover.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "DeadScene_SpectateButton",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 598.571289, "y": 500, "width": 150.25, "height": 50 },
+      "rect": {
+        "x": 598.571289,
+        "y": 500,
+        "width": 150.25,
+        "height": 50
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 0 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 0
+      },
       "layers": [
-        { "path": "UI/DeadScene/DeadScene_SpectateButton_Normal.png", "hoverPath": "UI/DeadScene/DeadScene_SpectateButton_Hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/DeadScene/DeadScene_SpectateButton_Normal.png",
+          "hoverPath": "UI/DeadScene/DeadScene_SpectateButton_Hover.png",
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "DeadScene_ReviveMessageMarker",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 988.474304, "y": 209.82663, "width": 225.5, "height": 28 },
+      "rect": {
+        "x": 988.474304,
+        "y": 209.82663,
+        "width": 225.5,
+        "height": 28
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 0 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 0
+      },
       "layers": [
-        { "path": "UI/DeadScene/DeadScene_TitleTextMarker.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/DeadScene/DeadScene_TitleTextMarker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     },
     {
       "id": "DeadScene_SpectateBorder",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 595.871155, "y": 495.403595, "width": 155.5, "height": 58.5 },
+      "rect": {
+        "x": 595.871155,
+        "y": 495.403595,
+        "width": 155.5,
+        "height": 58.5
+      },
       "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 0 },
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 0
+      },
       "layers": [
-        { "path": "UI/DeadScene/DeadScene_SpectateBorder.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        {
+          "path": "UI/DeadScene/DeadScene_SpectateBorder.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
       ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     }
   ]
 }

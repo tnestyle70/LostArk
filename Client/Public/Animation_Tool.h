@@ -4,6 +4,7 @@
 #include "Engine_Defines.h"
 #include "AnimationSkillBindingDocument.h"
 #include "KakulAnimationActionDocument.h"
+#include "KakulAnimationPatternDocument.h"
 #include "AnimationEffectCueDocument.h"
 #include "CharacterPreviewPanel.h"
 #include "EncounterPatternReference.h"
@@ -619,10 +620,16 @@ private:
 		const shared_ptr<Engine::CModel>& pModel);
 	bool_t Save_KakulActionBindings(
 		const shared_ptr<Engine::CModel>& pModel);
+	bool_t Save_KakulAnimationPatterns(
+		const shared_ptr<Engine::CModel>& pModel);
 	KAKUL_ANIMATION_ACTION_BINDING* Find_KakulActionBinding(
 		std::uint32_t iSourceActionId,
 		const std::string& strStageId,
 		const std::string& strSlotId);
+	const KAKUL_ANIMATION_ACTION_BINDING* Find_KakulActionBinding(
+		std::uint32_t iSourceActionId,
+		const std::string& strStageId,
+		const std::string& strSlotId) const;
 	void Upsert_KakulActionBinding(
 		const KAKUL_ANIMATION_ACTION_SLOT_REFERENCE& ReferenceSlot,
 		std::uint32_t iSourceActionId,
@@ -636,6 +643,27 @@ private:
 		std::uint32_t iSourceActionId,
 		const std::string& strStageId,
 		const std::string& strSlotId);
+	void Render_KakulPatternAuthoring(
+		const shared_ptr<Engine::CModel>& pModel);
+	bool_t Build_KakulPatternFromAction(
+		const shared_ptr<Engine::CModel>& pModel,
+		const KAKUL_ANIMATION_ACTION_REFERENCE& Action,
+		const std::string& strPatternId,
+		KAKUL_ANIMATION_PATTERN& outPattern,
+		std::string& strOutStatus) const;
+	bool_t Start_KakulPatternPreview(
+		const shared_ptr<Engine::CModel>& pModel,
+		const KAKUL_ANIMATION_PATTERN& Pattern,
+		const std::string& strLabel);
+	bool_t Activate_KakulPatternPreviewClip(
+		const shared_ptr<Engine::CModel>& pModel);
+	void Advance_KakulPatternPreview(
+		const shared_ptr<Engine::CModel>& pModel);
+	void Stop_KakulPatternPreview(
+		const shared_ptr<Engine::CModel>& pModel,
+		const std::string& strStatus);
+	void Reset_KakulPatternPreviewState(const std::string& strStatus);
+	std::string Resolve_KakulIdleClip() const;
 	void Reset_KakulActionDocumentState(bool_t bClearProfile);
 
 	bool_t Save_Events(const shared_ptr<Engine::CModel>& pModel);
@@ -911,15 +939,32 @@ private:
 	std::string m_strKakulProfileId;
 	KAKUL_ANIMATION_ACTION_REFERENCE_DOCUMENT m_KakulActionReference;
 	KAKUL_ANIMATION_ACTION_AUTHORED_DOCUMENT m_KakulActionAuthored;
+	KAKUL_ANIMATION_PATTERN_DOCUMENT m_KakulAnimationPatterns;
 	bool_t m_bKakulActionLoadAttempted = false;
 	bool_t m_bKakulActionDirty = false;
+	bool_t m_bKakulPatternDirty = false;
 	bool_t m_bKakulActionReloadConfirmationRequested = false;
 	int32_t m_iSelectedKakulAction = -1;
 	int32_t m_iSelectedKakulStage = 0;
 	int32_t m_iSelectedKakulSlot = 0;
+	int32_t m_iSelectedKakulActionClip = 0;
+	int32_t m_iSelectedKakulPattern = -1;
+	int32_t m_iSelectedKakulPatternClip = 0;
 	f32_t m_fKakulActionListWidth = 320.f;
 	char m_KakulActionFilter[128]{};
+	char m_KakulPatternFilter[128]{};
 	std::string m_strKakulActionStatus;
+	std::string m_strKakulPatternStatus;
+	std::vector<KAKUL_ANIMATION_PATTERN_CLIP> m_KakulPatternPreviewClips;
+	std::string m_strKakulPatternPreviewId;
+	std::string m_strKakulPatternPreviewLabel;
+	std::weak_ptr<Engine::CModel> m_KakulPatternPreviewModel;
+	std::uint64_t m_iKakulPatternPreviewTargetGeneration = 0u;
+	std::size_t m_iKakulPatternPreviewClip = 0u;
+	f32_t m_fKakulPatternPreviewElapsedSeconds = 0.f;
+	f32_t m_fKakulPatternPreviewClipDurationSeconds = 0.f;
+	bool_t m_bKakulPatternPreviewPlaying = false;
+	bool_t m_bKakulPatternPreviewPaused = false;
 	/* Which kinds Import_Notifies takes. Effects alone run to a few thousand
 	rows, so being able to pull in just hits and cancels matters. */
 	bool_t m_bImportKind[ETOI(EVENT_KIND::END)]{};

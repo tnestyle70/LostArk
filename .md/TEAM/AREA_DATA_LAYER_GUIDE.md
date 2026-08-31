@@ -70,9 +70,51 @@ Cancel` 중 하나를 요구한다. 전환 stage가 실패하면 기존 Area 객
 MapTool의 저장 대상은 Data 원본뿐이다.
 
 - visual: active descriptor의 `Data/Maps/Authoring/...mapplacements`
+- world sequence: visual source와 같은 폴더의
+  `Data/Maps/Authoring/<Area>/<AreaId>.worldsequences.json`
+- animated prop placement: catalog가 `sourceDeployCatalog`/`sourceDeployPlacements`
+  pair를 선언한 Area의 `Data/Maps/Authoring/<Area>/<AreaId>.deployplacements`
 - point-light presentation: catalog가 선언한 `Data/Maps/Authoring/...maplights.json`
 - gameplay: Character Select/Bern/Valtan의 exact `Data/Worlds/.../Gameplay.world.json`
 - navigation: 정책이 허용한 `Data/Navigation/*.navsource/.navpaint/.navblockers`
+
+`World Sequence`는 정적 map placement의 상대 위치·회전·크기·표시 상태를 시간축으로
+편집하는 재사용 저작 레이어다. `templates`는 여러 배치에서 다시 쓰는 연출 정의,
+`instances`는 template slot과 stable placement ID의 Area별 연결을 소유한다. MapTool의
+`Save`는 visual placement와 world sequence를 백업·사후 재검증·rollback이 있는 연결 저장으로
+처리하며, 중단 marker가 남으면 다음 Area load 전에 원본 pair를 복구한다. Background render
+mode처럼 카메라가 transform을 소유하는 placement는 sequence target으로 거부한다.
+같은 Area의 load/save는 exclusive sidecar lock으로 직렬화하고, Reload 때 읽은 두 원본의 byte
+baseline이 Save 직전과 다르면 stale editor 저장을 거부한다. sequence JSON은 parse 전에 16 MiB
+한도를 적용하며 저장 후에는 단순 유효성뿐 아니라 의도한 map/sequence 내용과 같은지도 비교한다.
+
+`World Sequence` 모드의 `Animated Props`는 그 sequence가 binding할 Deploy ANIM 배치를
+만드는 곳이다. Area catalog가 `sourceDeployCatalog`/`sourceDeployPlacements` pair를 선언한
+경우에만 열리고, catalog에 등록된 조리 완료 `.wmodel` ANIM asset만 목록에 나온다. 원본
+glTF/PSK/PSA bundle은 catalog가 파일 실재를 검사해 거부하므로 조리 전 자산이 런타임 자산으로
+위장 등록되지 않는다. 배치는 뷰포트 depth pick 위치에 생성하고 위치·회전·크기를 편집·삭제할
+수 있으며, 이때 저장되는 행은 `provenance=PROJECT_AUTHORED`다.
+
+placement 문서는 format version 2이며 마지막 열이 provenance token이다. 추출 원본 행은
+`SOURCE_EXACT`로 남고 읽기 전용이다. project 행은 `deployActorId`, `propDefinitionId`,
+`stateOffActionId`, `triggerBinaryOccurrenceCount`를 모두 `0`으로 유지해 추출 증거를 사칭할 수
+없고, `runtimePlacementId`는 map placement와 같은 editor ID domain 규칙을 따라
+`0x7fffffffffffffff` 이하만 사용한다. 저장은 temp 파일 + `MoveFileExW` 원자 교체 뒤 같은 pair를
+다시 읽어 의도한 행과 정확히 같은지 확인한 다음에만 dirty를 해제한다. 편집·삭제는 catalog를
+복사해 검증한 뒤 Deploy runtime 전체를 다시 stage하는 방식이므로, sequence preview와 destruction
+preview seam을 먼저 반납하고 실패 시 이전 배치를 유지한다. 이미 world sequence animation track이
+binding한 배치를 지우려 하면 sequence validator가 거부하고 Deploy runtime을 이전 상태로 되돌린다.
+`Save All`은 sequence가 stable Deploy placement ID를 참조하므로 Deploy 문서를 먼저 저장하고,
+성공한 뒤에만 map placement + world sequence 연결 트랜잭션을 실행한다.
+
+쿠크세이튼(`LV_LUT_MIDNIGHTC_ED`)의 현재 ANIM asset은 `DEPLOY_ITR_02283`(레버, clip
+`go_on`/`go_off`/`on`/`off`)와 `DEPLOY_BG_RAD_KOUKUSATON_PAPERSTAGE`(종이 펼침, clip
+`evt2_paperstage_open01`, 실제 길이 3066.667ms) 둘이다. 종이 펼침은 정적 메시의 rigid transform이
+아니라 skinned clip이므로 sequence의 transform track이 아니라 animation track으로 재생한다.
+
+현재 이 레이어는 Development MapTool의 authoring/preview까지만 지원한다. Server 상호작용 명령,
+Shared 상태 복제, 제품 Client 재생, 완료 시 동적 collision/navigation 개방은 아직 publisher와
+제품 runtime 계약이 없으므로 저장 파일이 존재한다는 이유로 제품 지원으로 취급하지 않는다.
 
 Bern은 `Place Nav Bounds`로 실제 렌더 바닥을 고른 뒤 Bottom Y와 Height from Bottom으로 세로 범위를
 제한해 bake한다. 제품 runtime은 이미 활성화되어 있으므로 source/paint/policy가 누락되거나 손상되면

@@ -219,6 +219,9 @@
 	<ClCompile Include="..\Private\KakulAnimationActionDocument.cpp">
 	  <Filter>03. Tools\04. Animation</Filter>
 	</ClCompile>
+	<ClCompile Include="..\Private\KakulAnimationPatternDocument.cpp">
+	  <Filter>03. Tools\04. Animation</Filter>
+	</ClCompile>
 	<ClCompile Include="..\Private\ValtanPatternFlowDocument.cpp">
 	  <Filter>03. Tools\03. UI</Filter>
 	</ClCompile>
@@ -288,6 +291,12 @@
     <ClCompile Include="..\Private\MapTool.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
+	<ClCompile Include="..\Private\WorldSequenceDocument.cpp">
+	  <Filter>03. Tools\00. Map</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\WorldSequenceToolPanel.cpp">
+	  <Filter>03. Tools\00. Map</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\WorldGameplayDocument.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
@@ -627,6 +636,12 @@
     <ClCompile Include="..\Private\UITextureCache.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\UILayoutRuntime.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\UIInputRouter.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\UI_Sprite.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -730,6 +745,12 @@
     <ClInclude Include="..\Public\MapTool.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
+	<ClInclude Include="..\Public\WorldSequenceDocument.h">
+	  <Filter>03. Tools\00. Map</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\WorldSequenceToolPanel.h">
+	  <Filter>03. Tools\00. Map</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\WorldGameplayDocument.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
@@ -842,6 +863,9 @@
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
 	<ClInclude Include="..\Public\KakulAnimationActionDocument.h">
+	  <Filter>03. Tools\04. Animation</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\KakulAnimationPatternDocument.h">
 	  <Filter>03. Tools\04. Animation</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\ValtanPatternFlowDocument.h">
@@ -1061,6 +1085,12 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\UITextureCache.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\UILayoutRuntime.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\UIInputRouter.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\UI_Sprite.h">
@@ -1372,6 +1402,18 @@
 	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCZ_00.actionbindings.json">
 	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
 	</None>
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_05.patternbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_06.patternbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_07.patternbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCZ_00.patternbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	</None>
     <None Include="..\..\Data\Animation\Reference\Artist\Artist.animnotify">
       <Filter>96.DataFiles\Animation\Reference</Filter>
     </None>
@@ -1558,6 +1600,9 @@
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.mapplacements">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.deployplacements">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapeffects.json">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
@@ -1685,6 +1730,9 @@
       <Filter>96.DataFiles\Maps</Filter>
     </None>
     <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.mapplacements">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.deployassets">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
     <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.nonstatic.inventory.json">

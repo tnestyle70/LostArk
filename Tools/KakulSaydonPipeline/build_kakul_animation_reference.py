@@ -782,9 +782,15 @@ def _json_bytes(document: dict[str, Any]) -> bytes:
     ).encode("utf-8")
 
 
+def _normalize_line_endings(payload: bytes) -> bytes:
+    return payload.replace(b"\r\n", b"\n")
+
+
 def _write_or_check(path: Path, payload: bytes, check: bool) -> None:
     if check:
-        if not path.is_file() or path.read_bytes() != payload:
+        if not path.is_file() or _normalize_line_endings(
+            path.read_bytes()
+        ) != _normalize_line_endings(payload):
             raise BuildError(f"generated document is stale or missing: {path}")
         return
     path.parent.mkdir(parents=True, exist_ok=True)

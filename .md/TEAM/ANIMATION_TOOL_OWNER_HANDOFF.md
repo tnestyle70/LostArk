@@ -197,6 +197,46 @@ Effect Tool은 Animation clip과 marker vector를 직접 편집하지 않는다.
 선택한 `EffectAssetId`를 typed request로 제출할 뿐이며, Animation Tool에서 marker가 만들어지고 Save되기
 전에는 binding이 영구 저장됐다고 표시하지 않는다.
 
+### 7.1 Effect Tool V2 Group과 Action Composition binding 경계
+
+Effect Tool V2는 V2 leaf body와 재사용 가능한 Group body를 함께 소유한다.
+
+```text
+Data/Effects/V2/Authored/<effectId>.effectv2.json
+  leaf의 mesh/texture/particle/decal/trail body와 effect-local 수명
+
+Data/Effects/V2/Groups/<groupId>.effectv2group.json
+  ordered leaf children
+  + child-local start/duration/stop/offset/yaw/scale
+
+Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json
+  Action Composition이 소유하는 exact Pattern occurrence
+  + groupId 또는 direct leaf reference
+  + stage/clip clock, start, anchor/follow/rotation/placement
+```
+
+- Composition에서 Group을 Pattern에 붙일 때 group children을 `Valtan.gameplay.json`이나
+  `Valtan.presentation.json`에 펼쳐 복사하지 않는다. Effect Tool V2가 group body를 Save하고
+  Composition은 `groupId` occurrence만 저장한다.
+- Composition의 기본 palette는 `boss.valtan.*` Group 우선이다. direct leaf는
+  `Advanced / Direct Leaves`에서만 같은 boss scope로 연다. 다른 owner의 leaf를 발탄 Pattern에
+  연결하지 않는다.
+- group binding이 펼치는 동일 leaf와 direct leaf의 expanded clock이 같으면 중복 재생이므로
+  editor와 validator가 저장을 거부한다.
+- 선택 animation box에 Group을 붙이면 그 box의 stable occurrence와 Stage-local start가 binding
+  command의 baseline이다. Delete/Duplicate는 group body가 아니라 선택 exact binding row 하나만
+  바꾸며 vector index를 identity로 쓰지 않는다.
+- Composition에서 보이는 Group block 길이는 child max end의 display span이다. 이 표시는
+  Pattern Stage duration이나 Group semantic duration을 자동으로 바꾸지 않는다.
+- local Arena Clone은 저장 직후 Effect V2 catalog/runtime cache를 invalidation하고 현재 clock을
+  restage해 저작 결과를 확인한다. Product Server Valtan은 publish/build와 Server restart,
+  world re-entry가 봉인한 immutable presentation generation만 사용한다. `Reload Complete Play
+  Inventory`는 이 Server generation을 갱신하지 않는다.
+
+Animation Tool은 이 세 파일 중 Group body나 V2 binding을 편집하지 않는다. Animation/Composition이
+공유하는 것은 선택 clip occurrence와 Stage-local clock뿐이며, Product 판정은 계속 Server Pattern
+action과 fixed tick이 소유한다.
+
 ## 8. Character Preview Panel이 소유하는 것
 
 공용 Character Preview Panel은 다음을 소유한다.
@@ -791,3 +831,62 @@ Lobby Character Select -> Server approval -> 같은 map Server Arena 진입
   첫 요청에서 presentation asset을 준비하며, 중복 요청은 기존 Server entity를 재사용한다.
 - Valtan collider, damage timing, effect cue를 조정할 때도 animation binding JSON에 판정 수치를 넣지 않는다.
   각 정본 데이터와 publisher를 통해 별도 수직 슬라이스로 변경한다.
+
+## 17. 쿠크·세이튼 기획 액션과 로컬 Pattern 저작
+
+### 17.1 이름과 순서 정본
+
+쿠크·세이튼 Animation Tool 목록은 WModel clip index나 파일명 정렬로 만들지 않는다. 다음 네
+`actionreference.json`의 `actions[]` 순서와 `displayName`을 그대로 사용한다.
+
+```text
+Data/Animation/Reference/KakulSaydon/MN_RPCT_05.actionreference.json
+Data/Animation/Reference/KakulSaydon/MN_RPCT_06.actionreference.json
+Data/Animation/Reference/KakulSaydon/MN_RPCT_07.actionreference.json
+Data/Animation/Reference/KakulSaydon/MN_RPCZ_00.actionreference.json
+```
+
+현재 네 프로필은 기획 액션 349개, stage 4,072개, 실제 WModel slot 3,692개를 보유한다.
+`MN_RPCT_07`은 독립된 기획 액션 목록이지만 preview body는 `MN_RPCT_05`를 공유한다. 같은
+`displayName`이 중복될 수 있으므로 목록과 저장 join에서는 `sourceActionId`, `stageId`, `slotId`를
+항상 함께 유지한다. `HOLDOUT` 액션도 원본 순서로 표시하지만 선택 검토만 가능하고 전체 액션
+preview와 Pattern 생성·저장은 거부한다.
+
+### 17.2 Animation Tool 작업 흐름
+
+1. F1 → Animation Tool에서 `MN_RPCT_05`, `MN_RPCT_06`, `MN_RPCT_07`, `MN_RPCZ_00` 중 프로필을 연다.
+2. `Planner Actions`에서 기획 이름 또는 `sourceActionId`로 검색하고 액션을 선택한다.
+3. `Selected Action Clips`에서 모든 stage/slot occurrence를 원본 순서로 확인한다. 행을 선택하면
+   해당 실제 WModel clip을 단일 preview한다.
+4. `Preview Action`은 선택 액션의 유효 occurrence를 source timing 순서로 연속 재생한다.
+5. `Create Pattern`은 같은 occurrence를 별도 `REFERENCE_ONLY` 패턴 draft로 복사한다.
+6. `Created Local Patterns`에서 패턴을 선택해 전체 재생하거나 Pattern을 Duplicate/Delete한다.
+7. 선택 Pattern의 clip은 단일 window preview, Duplicate/Delete, Move Up/Down을 지원한다. 마지막
+   clip 하나는 삭제하지 않고 Pattern 자체를 삭제한다.
+8. `Save Patterns`로 현재 프로필의 `*.patternbindings.json`을 저장한다.
+
+preview는 현재 animation target generation에 고정된다. 다른 target/profile로 바꾸거나 Tool을
+닫으면 원래 body를 idle, 1배속, loop 상태로 복원한다. 각 occurrence는 `sourceStartMs`, `playMs`,
+`playRate`와 `EXACT`, `HOLD_LAST_POSE`, `LOOP_TO_WINDOW` 중 하나의 명시적 end policy를 사용한다.
+
+### 17.3 저장과 권위 경계
+
+로컬 Pattern 정본은 다음 경로다.
+
+```text
+Data/Animation/Authored/KakulSaydon/<Profile>.patternbindings.json
+schema: lostark.kakul-animation-pattern-bindings
+formatVersion: 1
+authority: REFERENCE_ONLY
+```
+
+Pattern과 clip occurrence ID는 monotonic ordinal로 발급하며 삭제 뒤 재사용하지 않는다. Load는
+`parse -> validate -> stage -> commit`, Save는 `validate -> sibling temp durable write -> strict
+reparse/exact compare -> reference revision 재확인 -> atomic replace`를 따른다. 잘못된 profile,
+reference revision, HOLDOUT source, 중복 ID, source tuple 불일치, model에 없는 clip, 잘못된 timing/end
+policy가 있으면 현재 admitted draft와 destination을 유지한다.
+
+이 문서는 쿠크·세이튼 Server 전투 Pattern이나 Product gameplay/presentation 정본이 아니다.
+Animation Tool의 `Create Pattern`은 로컬 동작 조합과 검토만 제공하며 Server 실행, damage, collider,
+Effect cue를 만들거나 publish하지 않는다. 제품 Pattern 승격은 별도 Data → Shared → Server → Client
+수직 슬라이스와 publisher/harness가 생긴 뒤에만 진행한다.

@@ -104,6 +104,13 @@ class EffectV2ValidatorTests(unittest.TestCase):
         row["group"] = "group.test.one"
         return binding
 
+    def _group_and_leaf_binding(self, leaf_start_ms: int) -> dict:
+        binding = self._group_binding()
+        leaf = copy.deepcopy(self.binding["bindings"][0])
+        leaf["startMs"] = leaf_start_ms
+        binding["bindings"].append(leaf)
+        return binding
+
     def test_exact_authored_binding_and_resource_join_passes(self) -> None:
         report = VALIDATOR.validate(self.root, self.resource_root)
         self.assertEqual(
@@ -262,6 +269,20 @@ class EffectV2ValidatorTests(unittest.TestCase):
             report,
             {"authored": 1, "bindings": 1, "groups": 1, "independent": 0, "textures": 1},
         )
+
+    def test_group_and_direct_leaf_at_same_expanded_clock_fail_closed(self) -> None:
+        self._write_group(self.group)
+        self._write_fixture(self.document, self._group_and_leaf_binding(100))
+        with self.assertRaisesRegex(
+            VALIDATOR.ContractError, "leaf overlaps the same leaf inside group"
+        ):
+            VALIDATOR.validate(self.root, self.resource_root)
+
+    def test_group_and_direct_leaf_at_different_expanded_clocks_pass(self) -> None:
+        self._write_group(self.group)
+        self._write_fixture(self.document, self._group_and_leaf_binding(101))
+        report = VALIDATOR.validate(self.root, self.resource_root)
+        self.assertEqual(report["bindings"], 2)
 
     def test_unbound_group_fails_closed(self) -> None:
         self._write_group(self.group)

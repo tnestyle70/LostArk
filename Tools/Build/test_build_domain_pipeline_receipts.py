@@ -105,6 +105,7 @@ class BuildDomainManifestContractTests(unittest.TestCase):
 
         gameplay = self.domains["gameplay.balance"]
         self.assertIn("-SkipValtanSplitProjection", gameplay["action"]["arguments"])
+        self.assertIn("Data/Effects/V2/**", gameplay["inputs"])
 
     def test_kakul_map_publisher_has_exact_clean_checkout_closure(self) -> None:
         domain = self.domains["map.kakul"]

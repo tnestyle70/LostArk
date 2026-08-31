@@ -543,3 +543,141 @@ Level navigation, Effect unlink/build guard 변경이 함께 존재하고, 현�
 - 수정본 `Animation_Tool.cpp` Client Debug x64 compile과 `Client.exe` link는 PASS했다. 실행 중인
   Server/Data를 유지하기 위해 정본 Product 재투영은 하지 않았고 Client project만 다시 링크했다.
   새 EXE의 실제 Validate/Apply 화면 결과는 사용자 확인 전이다.
+
+## 2026-08-31 Effect Tool V2 Group 공용 파이프라인 재실측
+
+이 절은 앞 절의 완료 표현을 현재 source와 dirty worktree 기준으로 좁힌다. 다른 세션이 같은
+worktree에서 구현 중이므로 아래 `구현 확인`은 현재 파일에 존재하는 경계이고, `미완료` 항목과
+이번 dirty diff는 build/harness와 사용자 화면 판정 전까지 완료 증거가 아니다.
+
+### 현재 source에서 확인한 구현
+
+- Effect Tool V2가 `Data/Effects/V2/Authored/*.effectv2.json` leaf와
+  `Data/Effects/V2/Groups/*.effectv2group.json` group body/ordered children을 읽고 저장한다.
+  group child는 authored leaf만 참조하고 group nesting은 parser/validator가 거부한다.
+- `BOSS_VALTAN.effectv2bindings.json` binding은 leaf 또는 group 하나와 stage 또는 clip clock 하나를
+  참조한다. Composition Resources는 V2 leaf/group snapshot을 읽고 선택 Stage actionId와
+  Stage-local `startMs`로 binding을 append한 뒤 binding 파일을 원자 교체한다.
+- group child 배열을 Valtan Pattern JSON에 복사하는 경로는 없다. Product runtime은 binding의
+  `groupId`를 읽어 group child를 펼치고 authored leaf를 재생한다.
+- local Arena Clone의 `CValtan`은 local Pattern action clock과 immutable catalog snapshot을
+  `CEffectV2Runtime::Sync_StageAuthoring`에 전달하고, Server Valtan은 replicated Server action age로
+  Product `Sync_Stage`를 호출한다. renderer 구현은 공유하지만 source generation은 분리되며 local
+  clone은 Server Pattern이나 Server-active revision을 변경하지 않는다.
+- dirty `Animation_Tool.cpp`에는 Sound row의 exact owner/action/occurrence identity를 항상 검사하되,
+  Sound wall clock에 영향을 주는 Stage/action/animation occurrence가 바뀐 경우에만 strict timing
+  window를 다시 검사하는 no-new-debt 분기가 들어와 있다. 관련 Python oracle도 unchanged unrelated
+  Stage와 changed Sound Stage를 구분하는 case를 추가했다.
+
+### 닫힌 V2 Group 편집 계약
+
+- Composition Resources는 `boss.valtan.*` V2 Group을 기본 목록에 먼저 표시하고 direct leaf는
+  `Advanced: V2 Individual Leaves` 아래로 격리한다. 다른 owner의 leaf/group은 BOSS_VALTAN
+  binding에 새로 추가할 수 없다.
+- Effect Tool V2가 leaf body와 ordered group children을 소유하고 Composition은
+  `BOSS_VALTAN.effectv2bindings.json`의 `groupId`, exact Stage action, Stage-local `startMs`와 placement만
+  소유한다. Pattern JSON에 group children을 펼쳐 복사하지 않는다.
+- append/remove/duplicate/update-start는 persisted binding 전체 행을 stable baseline으로 사용하는
+  typed mutation이다. non-default bone/follow/rotation/offset/yaw row도 ordinal 없이 정확히 선택하며
+  stale·ambiguous match는 파일과 snapshot을 바꾸기 전에 거부한다.
+- C++ catalog와 Python validator는 Group이 펼치는 child leaf와 direct leaf가 같은 Stage/clip clock에
+  중복 배치되는 새 binding을 거부한다. documents/groups/bindings 전체 read-set의 normalized CAS가
+  성공한 뒤에만 binding 파일을 atomic replace한다.
+- Sequencer는 V2 Group을 최소 240 px, V2 Leaf를 최소 180 px의 식별 가능한 block으로 그린다.
+  이 폭과 sub-row packing은 눈 검증용 projection이며 Stage duration이나 Effect lifetime을 변경하지
+  않는다.
+- local Arena Clone은 `CEffectV2Catalog`의 immutable authoring snapshot을 명시적으로 받아 Stage를
+  restage한다. Effect Tool V2 Save는 Product 전역 runtime cache를 invalidate하지 않는다. 따라서
+  저장 직후 local preview와 입장 시 고정된 Product presentation generation을 섞지 않는다.
+
+### local preview와 Complete Play의 실제 차단 근거
+
+추가 실행 진단에서는 world-entry manifest가
+`BOSS_VALTAN.effectv2bindings.json`의 기존 2,503 bytes / `ac619...` generation을 고정한 상태에서
+실제 authoring 파일이 3,201 bytes / `6b3635...`로 바뀌어 Complete Play admission이 막혔다.
+이는 정상 fail-close 증거다. `Reload Complete Play Inventory`는 resource catalog/inventory view를
+reload할 뿐 이미 입장한 world의 immutable Server presentation generation을 갱신하지 않는다.
+
+따라서 두 경로를 다음처럼 분리한다.
+
+```text
+Arena Clone authoring preview
+  Effect V2 immutable authoring snapshot + current path/playhead restage
+  -> 저장 직후 local 확인
+
+saved Product Complete Play
+  Effect V2 source validation/publish/build
+  -> Server restart
+  -> arena world re-entry로 새 presentation manifest admission
+  -> exact Server-active gameplay revision과 함께 Complete Play
+```
+
+catalog reload만 반복하거나 local clone에서 보인 결과를 Server Product 적용 완료로 기록하지 않는다.
+
+### 이번 변경의 자동 검증 상태
+
+- Effect V2/Composition focused tests: 89/89 PASS.
+- presentation contract tests: 45/45 PASS.
+- Effect V2 actual validator: 81 authored / 80 bindings / 1 group / 45 textures PASS.
+- 변경 핵심 C++ 4파일 `/Zs` syntax compile: PASS(기존 C4819 warning만 존재).
+- Client Debug x64 `ClCompile`: PASS, error 0 / warning 656. warning은 기존 CP949/C4819 항목이며 이번
+  변경의 compile error는 없다.
+- `git diff --check`: PASS(LF/CRLF 안내만 출력).
+- Product link/Core와 사용자 Arena Clone/Complete Play 화면 검증은 이번 compile-error-free 종료
+  범위에 포함하지 않았다. visual PASS와 Server-active 적용 완료는 사용자의 새 EXE 검증 전까지
+  기록하지 않는다.
+
+## 2026-08-31 Six Pizza 고정 facing Effect root 수직 슬라이스
+
+### 구현
+
+- `VALTAN_SIX_PIZZA_106/STEP_01` composite cue의 source owner anchor를
+  `pattern.target.snapshot`에서 `arena.center.facing`으로 교정했다. Position은 저작된 피자 착지
+  중심을 사용하고, yaw는 Server가 패턴 시작 시 고정한 boss facing을 사용한다.
+- `Valtan.presentation.json`만 저작 정본으로 수정했고
+  `Valtan.patterneffectcues.json`은 `Project-ValtanPatternMaster.ps1 -Mode PublishV2`가 다시 생성했다.
+  generated Product 직접 Save 경로는 추가하지 않았다.
+- Client runtime은 `arena.center`와 `arena.center.facing` root를 한 helper에서 parse/validate/stage한 뒤
+  기존 cue scale root에 합성한다. 알 수 없는 anchor나 non-finite yaw는 caller의 기존 matrix를
+  바꾸지 않고 거부한다.
+- Action Composition Workbench Effect Details는 `arena.center.facing`을 선택했을 때
+  `Authored Landing Center / Server Locked Pattern Facing`을 명시한다. 기존
+  `pattern.target.snapshot`은 `Target Snapshot Position / Player Snapshot Yaw`로 구분한다.
+- authoring helper 재실행도 Six Pizza를 `arena.center.facing`으로 유지하므로 다음 publish에서
+  예전 target snapshot anchor로 회귀하지 않는다.
+
+### canonical graph 회귀 교정
+
+- `VALTAN_GROUND_ROAR` 승격 뒤에도 남아 있던 native oracle의 `57/33` 고정값을 실제 정본
+  `58 canonical = 34 managed + 24 reference`, Complete Play 34로 교정했다.
+- 단순 count만 맞추지 않고 Complete Play stable-ID set이 managed canonical stable-ID set과
+  정확히 같은지 검사한다. Ground Roar가 Phase 1 `MANUAL_SERVER_AUDITION`이며 Animator bucket에만
+  속하는 것도 고정했다.
+
+### 자동 검증
+
+- `Project-ValtanPatternMaster.ps1 -Mode PublishV2`: PASS, 7개 Product 중 cue Product 1개 갱신
+- `Project-ValtanPatternMaster.ps1 -Mode ValidateV2`: PASS, managed 34 / legacy 26
+- Six Pizza/Workbench/master projection Python: 90/90 PASS, 340.757초
+- `ValtanCanonicalGraphContractTests`: 6/6 PASS
+  - 실제 canonical loader 58 patterns / 256 stages
+  - Complete Play 34 patterns와 managed ID exact closure
+  - source Effect의 late landing/sector/finale element가 공통 fixed root를 공유함
+  - 잘못된 anchor와 non-finite facing 실패 시 기존 matrix 보존
+- `ValtanPatternAuditionServiceHarness` 전체: exit 0
+- `Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Core`: PASS
+  - Engine, Shared, Server, Client compile/link PASS, compile error 0
+  - Product Effect WARP V1/V2 각각 1352 pixels
+  - presentation generation admission 및 Character Select isolation Core PASS
+  - evidence: `out/BuildPipeline/runs/20260831T120436528Z-debug-core-a3242e36.json`
+- `git diff --check`: PASS. 기존 LF/CRLF 안내만 출력했다.
+
+### 아직 PASS가 아닌 경계
+
+- 이 슬라이스는 패턴 시작 시 고정된 facing으로 composite Effect 전체를 한 번 회전시키는 계약이다.
+  시간에 따라 계속 회전하는 root animation과 개별 element의 독립 회전 저작은 구현하지 않았다.
+- Client를 자율 실행하지 않았다. 사용자가 `VALTAN_SIX_PIZZA_106` Complete Play로 착지 중심과
+  sector/late element 방향을 확인하기 전까지 visual PASS가 아니다.
+- Release Product 빌드는 이번 `Debug compile error 0` 마감 범위에서 실행하지 않았다.
+- 팀 LAN sync는 이 PC가 server-host임을 확인했지만 TCP 7777 LocalSubnet 방화벽 rule이 없어
+  관리자 PowerShell 보완이 필요하다. 로컬 Debug Core 결과와는 별도 운영 경계다.

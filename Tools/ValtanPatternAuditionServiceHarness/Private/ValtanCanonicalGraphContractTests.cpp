@@ -1,12 +1,15 @@
 #include "Effect_Catalog.h"
+#include "DataJson.h"
 #include "ProjectDataRoot.h"
 #include "ValtanPatternFlowDocument.h"
 #include "ValtanPatternTree.h"
 
 #include <algorithm>
+#include <cmath>
 #include <functional>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <set>
 #include <stdexcept>
@@ -27,8 +30,10 @@ bool_t Client::CEffectCatalog::Contains(const std::string&)
 namespace
 {
 	using namespace Client;
-	constexpr size_t EXPECTED_PRODUCT_PATTERN_COUNT = 33u;
-	constexpr size_t EXPECTED_ENCOUNTER_PATTERN_COUNT = 57u;
+	constexpr size_t EXPECTED_PRODUCT_PATTERN_COUNT = 34u;
+	constexpr size_t EXPECTED_REFERENCE_PATTERN_COUNT = 24u;
+	constexpr size_t EXPECTED_ENCOUNTER_PATTERN_COUNT =
+		EXPECTED_PRODUCT_PATTERN_COUNT + EXPECTED_REFERENCE_PATTERN_COUNT;
 	constexpr const char* REQUESTED_PRODUCT_PATTERN_IDS[] = {
 		"VALTAN_HIGH_JUMP",
 		"VALTAN_SIX_PIZZA_106",
@@ -37,6 +42,7 @@ namespace
 		"VALTAN_CATCH_BREATH",
 		"VALTAN_STRUGGLING",
 		"VALTAN_DASH_CHARGE",
+		"VALTAN_GROUND_ROAR",
 	};
 	constexpr const char* REQUESTED_REFERENCE_ONLY_PATTERN_IDS[] = {
 		"VALTAN_MAGIC_ORB_STAGGER_76",
@@ -85,6 +91,277 @@ namespace
 		std::cout << '\n';
 	}
 
+	struct SIX_PIZZA_ELEMENT_EVIDENCE final
+	{
+		f32_t fStartDelaySeconds = 0.f;
+		EFFECT_TRANSFORM_DESC LocalTransform{};
+	};
+
+	const DATA_JSON_VALUE& RequireJsonField(
+		const DATA_JSON_VALUE& Parent,
+		const char* const pKey,
+		const DATA_JSON_TYPE eType)
+	{
+		const DATA_JSON_VALUE* const pValue = Parent.Find(pKey);
+		Require(nullptr != pValue && pValue->Get_Type() == eType,
+			(std::string("six-pizza Effect source field is invalid: ") +
+				pKey).c_str());
+		return *pValue;
+	}
+
+	float3_t ReadJsonFloat3(
+		const DATA_JSON_VALUE& Parent,
+		const char* const pKey)
+	{
+		const DATA_JSON_VALUE& Value = RequireJsonField(
+			Parent, pKey, DATA_JSON_TYPE::ARRAY);
+		Require(3u == Value.Get_Array().size(),
+			"six-pizza Effect source vector does not contain three values");
+		float3_t Out{};
+		f32_t* const pComponents[3]{ &Out.x, &Out.y, &Out.z };
+		for (size_t i = 0u; i < 3u; ++i)
+		{
+			const DATA_JSON_VALUE& Component = Value.Get_Array()[i];
+			Require(Component.Is_Number() &&
+				std::isfinite(Component.Get_Number()),
+				"six-pizza Effect source vector contains a non-finite value");
+			*pComponents[i] = static_cast<f32_t>(Component.Get_Number());
+		}
+		return Out;
+	}
+
+	SIX_PIZZA_ELEMENT_EVIDENCE ReadSixPizzaElement(
+		const DATA_JSON_VALUE& Root,
+		const std::string_view ElementId)
+	{
+		const DATA_JSON_VALUE& Elements = RequireJsonField(
+			Root, "elements", DATA_JSON_TYPE::ARRAY);
+		const auto Found = std::find_if(
+			Elements.Get_Array().begin(), Elements.Get_Array().end(),
+			[ElementId](const DATA_JSON_VALUE& Element)
+			{
+				const DATA_JSON_VALUE* const pId = Element.Find("id");
+				return nullptr != pId && pId->Is_String() &&
+					pId->Get_String() == ElementId;
+			});
+		Require(Elements.Get_Array().end() != Found,
+			(std::string("six-pizza composite lost element: ") +
+				std::string(ElementId)).c_str());
+
+		const DATA_JSON_VALUE& Attachment = RequireJsonField(
+			*Found, "actionCueAttachment", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE& AttachmentEnabled = RequireJsonField(
+			Attachment, "enabled", DATA_JSON_TYPE::BOOLEAN);
+		const DATA_JSON_VALUE& Inheritance = RequireJsonField(
+			*Found, "transformInheritance", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE& InheritanceEnabled = RequireJsonField(
+			Inheritance, "enabled", DATA_JSON_TYPE::BOOLEAN);
+		Require(!AttachmentEnabled.Get_Boolean() &&
+			!InheritanceEnabled.Get_Boolean(),
+			"six-pizza composite element escaped its shared cue root");
+
+		const DATA_JSON_VALUE& Detail = RequireJsonField(
+			*Found, "detail", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE& Timing = RequireJsonField(
+			Detail, "timing", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE& Delay = RequireJsonField(
+			Timing, "startDelaySeconds", DATA_JSON_TYPE::NUMBER);
+		Require(std::isfinite(Delay.Get_Number()) && Delay.Get_Number() >= 0.0,
+			"six-pizza composite element delay is invalid");
+		const DATA_JSON_VALUE& Transform = RequireJsonField(
+			Detail, "transform", DATA_JSON_TYPE::OBJECT);
+
+		SIX_PIZZA_ELEMENT_EVIDENCE Out;
+		Out.fStartDelaySeconds = static_cast<f32_t>(Delay.Get_Number());
+		Out.LocalTransform.vPosition = ReadJsonFloat3(Transform, "position");
+		Out.LocalTransform.vRotationDegrees = ReadJsonFloat3(
+			Transform, "rotationDegrees");
+		Out.LocalTransform.vScale = ReadJsonFloat3(Transform, "scale");
+		return Out;
+	}
+
+	bool_t MatrixNearlyEquals(
+		const float4x4_t& Left,
+		const float4x4_t& Right,
+		const f32_t fTolerance = 0.0001f)
+	{
+		const f32_t* const pLeft = &Left._11;
+		const f32_t* const pRight = &Right._11;
+		for (size_t i = 0u; i < 16u; ++i)
+		{
+			if (!std::isfinite(pLeft[i]) || !std::isfinite(pRight[i]) ||
+				std::abs(pLeft[i] - pRight[i]) > fTolerance)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	float4x4_t ComposeElementWorld(
+		const EFFECT_TRANSFORM_DESC& Local,
+		const float4x4_t& CueRoot)
+	{
+		float4x4_t Out{};
+		DirectX::XMStoreFloat4x4(&Out,
+			DirectX::XMMatrixScaling(
+				Local.vScale.x, Local.vScale.y, Local.vScale.z) *
+			DirectX::XMMatrixRotationRollPitchYaw(
+				DirectX::XMConvertToRadians(Local.vRotationDegrees.x),
+				DirectX::XMConvertToRadians(Local.vRotationDegrees.y),
+				DirectX::XMConvertToRadians(Local.vRotationDegrees.z)) *
+			DirectX::XMMatrixTranslation(
+				Local.vPosition.x, Local.vPosition.y, Local.vPosition.z) *
+			DirectX::XMLoadFloat4x4(&CueRoot));
+		return Out;
+	}
+
+	void VerifySixPizzaArenaFacingRoot()
+	{
+		VALTAN_PATTERN_TREE_VIEW View;
+		std::string Status;
+		if (!CValtanPatternTree::Load(View, Status))
+			throw std::runtime_error(Status);
+		const auto FindPattern = [&View]() -> const VALTAN_PATTERN_VIEW*
+		{
+			for (const auto* const pRows : { &View.Gimmicks, &View.Rotation })
+			{
+				const auto Found = std::find_if(
+					pRows->begin(), pRows->end(),
+					[](const VALTAN_PATTERN_VIEW& Pattern)
+					{
+						return Pattern.strPatternId == "VALTAN_SIX_PIZZA_106";
+					});
+				if (pRows->end() != Found)
+					return &*Found;
+			}
+			return nullptr;
+		};
+		const VALTAN_PATTERN_VIEW* const pPizza = FindPattern();
+		Require(nullptr != pPizza && pPizza->ServerMotion.has_value() &&
+			pPizza->strTargetPolicy == "LOCK_RANDOM_ALIVE_ON_START" &&
+			pPizza->strAimPolicy == "LOCK_FACING_ON_START" &&
+			pPizza->ServerMotion->strKind == "LEAP_TO_ANCHOR" &&
+			pPizza->ServerMotion->bMoveToAnchorBeforeTakeoff,
+			"six-pizza canonical pattern lost its locked arena-facing authority");
+
+		const VALTAN_PRODUCT_EFFECT_CUE_VIEW* pCompositeCue = nullptr;
+		for (const VALTAN_STAGE_VIEW& Stage : pPizza->Stages)
+		{
+			for (const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue : Stage.ProductCues)
+			{
+				if (Cue.strEffectAssetId !=
+					"effect.valtan.project-tuned.sequence.six-pizza-106")
+				{
+					continue;
+				}
+				Require(nullptr == pCompositeCue,
+					"six-pizza composite Effect is invoked more than once");
+				pCompositeCue = &Cue;
+			}
+		}
+		Require(nullptr != pCompositeCue &&
+			pCompositeCue->strAnchorSlotId == "arena.center.facing" &&
+			pCompositeCue->eFollowPolicy == EFFECT_FOLLOW_POLICY::SNAPSHOT &&
+			pCompositeCue->eScalePolicy ==
+				VALTAN_PATTERN_EFFECT_SCALE_POLICY::GAMEPLAY_FOOTPRINT &&
+			pCompositeCue->vWorldScale.x == 1.5f &&
+			pCompositeCue->vWorldScale.y == 1.5f &&
+			pCompositeCue->vWorldScale.z == 1.5f &&
+			pCompositeCue->LocalTransform.vPosition.x == 0.f &&
+			pCompositeCue->LocalTransform.vPosition.y == 0.f &&
+			pCompositeCue->LocalTransform.vPosition.z == 0.f &&
+			pCompositeCue->LocalTransform.vRotationDegrees.x == 0.f &&
+			pCompositeCue->LocalTransform.vRotationDegrees.y == 0.f &&
+			pCompositeCue->LocalTransform.vRotationDegrees.z == 0.f &&
+			pCompositeCue->LocalTransform.vScale.x == 1.f &&
+			pCompositeCue->LocalTransform.vScale.y == 1.f &&
+			pCompositeCue->LocalTransform.vScale.z == 1.f,
+			"six-pizza composite cue did not retain its fixed center-facing root");
+
+		const float3_t ArenaCenter{
+			pPizza->ServerMotion->LandingPosition[0],
+			pPizza->ServerMotion->LandingPosition[1],
+			pPizza->ServerMotion->LandingPosition[2] };
+		const float3_t LockedTarget{
+			ArenaCenter.x + 12.f, ArenaCenter.y, ArenaCenter.z - 7.f };
+		const f32_t fLockedYawDegrees = std::atan2(
+			LockedTarget.x - ArenaCenter.x,
+			LockedTarget.z - ArenaCenter.z) *
+			(180.f / 3.14159265358979323846f);
+		float4x4_t ArenaAnchor{};
+		Require(CValtanPatternEffectCueDocument::Try_BuildArenaCenterAnchor(
+			pCompositeCue->strAnchorSlotId, ArenaCenter,
+			fLockedYawDegrees, ArenaAnchor),
+			"runtime rejected the admitted six-pizza arena-facing anchor");
+		const f32_t fRootYawDegrees = std::atan2(
+			ArenaAnchor._31, ArenaAnchor._33) *
+			(180.f / 3.14159265358979323846f);
+		Require(std::abs(std::remainder(
+			fRootYawDegrees - fLockedYawDegrees, 360.f)) < 0.001f &&
+			std::abs(ArenaAnchor._41 - ArenaCenter.x) < 0.0001f &&
+			std::abs(ArenaAnchor._42 - ArenaCenter.y) < 0.0001f &&
+			std::abs(ArenaAnchor._43 - ArenaCenter.z) < 0.0001f,
+			"arena.center.facing did not use the Server-locked landing-to-target yaw");
+
+		float4x4_t Preserved = ArenaAnchor;
+		const float4x4_t Baseline = Preserved;
+		Require(!CValtanPatternEffectCueDocument::Try_BuildArenaCenterAnchor(
+			"arena.center.unknown", ArenaCenter, fLockedYawDegrees, Preserved) &&
+			MatrixNearlyEquals(Preserved, Baseline, 0.f) &&
+			!CValtanPatternEffectCueDocument::Try_BuildArenaCenterAnchor(
+				"arena.center.facing", ArenaCenter,
+				(std::numeric_limits<f32_t>::quiet_NaN)(), Preserved) &&
+			MatrixNearlyEquals(Preserved, Baseline, 0.f),
+			"invalid arena-facing input replaced the previously admitted root");
+
+		const std::filesystem::path EffectPath = CProjectDataRoot::Resolve(
+			std::filesystem::path(L"Effects") / L"Authored" /
+			L"effect.valtan.project-tuned.sequence.six-pizza-106.effect.json");
+		std::ifstream EffectInput(EffectPath, std::ios::binary);
+		Require(static_cast<bool_t>(EffectInput),
+			"six-pizza composite authored Effect source is missing");
+		const std::string EffectText{
+			std::istreambuf_iterator<char>(EffectInput),
+			std::istreambuf_iterator<char>() };
+		DATA_JSON_VALUE EffectRoot;
+		Require(CDataJson::Parse(EffectText, EffectRoot, Status),
+			"six-pizza composite authored Effect source is malformed");
+		const SIX_PIZZA_ELEMENT_EVIDENCE Landing = ReadSixPizzaElement(
+			EffectRoot,
+			"authored.copy.requested.20260827.terrain-3.landing.01.1");
+		const SIX_PIZZA_ELEMENT_EVIDENCE Sector = ReadSixPizzaElement(
+			EffectRoot, "requested.20260827.six-pizza.sector.yellow-05");
+		const SIX_PIZZA_ELEMENT_EVIDENCE Finale = ReadSixPizzaElement(
+			EffectRoot,
+			"authored.copy.authored.copy.whirlwind.mesh.10.cyan.phase000.2.1");
+		Require(Landing.fStartDelaySeconds > 5.f &&
+			Sector.fStartDelaySeconds > Landing.fStartDelaySeconds &&
+			Finale.fStartDelaySeconds > Sector.fStartDelaySeconds,
+			"six-pizza composite no longer contains ordered late-root elements");
+
+		float4x4_t CueRoot{};
+		DirectX::XMStoreFloat4x4(&CueRoot,
+			DirectX::XMMatrixScaling(
+				pCompositeCue->vWorldScale.x,
+				pCompositeCue->vWorldScale.y,
+				pCompositeCue->vWorldScale.z) *
+			DirectX::XMLoadFloat4x4(&ArenaAnchor));
+		const float4x4_t LandingWorld = ComposeElementWorld(
+			Landing.LocalTransform, CueRoot);
+		Require(MatrixNearlyEquals(LandingWorld, CueRoot),
+			"late landing element did not preserve the shared fixed cue root");
+		const float4x4_t SectorWorld = ComposeElementWorld(
+			Sector.LocalTransform, CueRoot);
+		const float4x4_t FinaleWorld = ComposeElementWorld(
+			Finale.LocalTransform, CueRoot);
+		Require(std::isfinite(SectorWorld._41) &&
+			std::isfinite(SectorWorld._43) &&
+			std::isfinite(FinaleWorld._41) &&
+			std::isfinite(FinaleWorld._43),
+			"late six-pizza elements did not compose under the shared cue root");
+	}
+
 	void VerifyCanonicalGraphInventoryAndFlow()
 	{
 		VALTAN_PATTERN_TREE_VIEW View;
@@ -98,15 +375,32 @@ namespace
 		AppendPatterns(View.Rotation, Patterns);
 		Require(!Patterns.empty() && Patterns.size() == View.Get_PatternCount(),
 			"canonical graph pattern count does not match its stable-ID closure");
-		Require(EXPECTED_ENCOUNTER_PATTERN_COUNT == Patterns.size(),
-			"Encounter/reference pattern count is no longer the admitted 57-row closure");
+		std::set<std::string, std::less<>> ManagedPatternIds;
+		std::set<std::string, std::less<>> ReferencePatternIds;
+		for (const auto& [PatternId, pPattern] : Patterns)
+			(pPattern->bAuthoringMasterManaged ? ManagedPatternIds :
+				ReferencePatternIds).insert(PatternId);
+		Require(EXPECTED_PRODUCT_PATTERN_COUNT == ManagedPatternIds.size() &&
+			EXPECTED_REFERENCE_PATTERN_COUNT ==
+				ReferencePatternIds.size() &&
+			EXPECTED_ENCOUNTER_PATTERN_COUNT == Patterns.size(),
+			"Encounter closure is no longer 34 managed plus 24 reference patterns");
+		const VALTAN_PATTERN_VIEW& GroundRoar =
+			*Patterns.at("VALTAN_GROUND_ROAR");
+		Require(GroundRoar.bAuthoringMasterManaged &&
+			GroundRoar.bManualServerAudition &&
+			1u == GroundRoar.iAuthoringPhase &&
+			"AUDITION_ONLY" == GroundRoar.strSelectionMode &&
+			"sequence.400440.0" == GroundRoar.strSourceAnimationChainId &&
+			"MANUAL_SERVER_AUDITION" == GroundRoar.strAdmissionState,
+			"VALTAN_GROUND_ROAR lost its promoted manual authoring identity");
 
 		VALTAN_TOOL_AUDITION_INVENTORY Inventory;
 		if (!CValtanPatternTree::Build_PlayablePatternInventory(
 			View, Inventory, Status))
 			throw std::runtime_error(Status);
 		Require(EXPECTED_PRODUCT_PATTERN_COUNT == Inventory.Get_PatternCount(),
-			"Complete Play did not admit exactly the 33 split Product patterns");
+			"Complete Play did not admit exactly the 34 split Product patterns");
 		for (const char* const pPatternId : REQUESTED_PRODUCT_PATTERN_IDS)
 		{
 			const auto Found = Patterns.find(pPatternId);
@@ -171,6 +465,20 @@ namespace
 		AppendInventoryGroup(
 			"derived", Inventory.DerivedPatternIds,
 			Patterns, AdmittedPatternIds);
+		const std::set<std::string, std::less<>> InventoryPatternIds(
+			AdmittedPatternIds.begin(), AdmittedPatternIds.end());
+		Require(InventoryPatternIds == ManagedPatternIds,
+			"Complete Play IDs are not the exact managed canonical pattern closure");
+		Require(Inventory.AnimatorPatternIds.end() != std::find(
+				Inventory.AnimatorPatternIds.begin(),
+				Inventory.AnimatorPatternIds.end(), "VALTAN_GROUND_ROAR") &&
+			Inventory.CorePatternIds.end() == std::find(
+				Inventory.CorePatternIds.begin(),
+				Inventory.CorePatternIds.end(), "VALTAN_GROUND_ROAR") &&
+			Inventory.DerivedPatternIds.end() == std::find(
+				Inventory.DerivedPatternIds.begin(),
+				Inventory.DerivedPatternIds.end(), "VALTAN_GROUND_ROAR"),
+			"VALTAN_GROUND_ROAR is not exclusively in the Animator inventory bucket");
 
 		std::vector<std::string> NextPatternIds;
 		if (!CValtanPatternTree::Build_NextPatternInventory(
@@ -612,8 +920,9 @@ int Run_ValtanCanonicalGraphContractTests()
 		std::cout << "ValtanPatternFlowDocumentContractTests: PASS\n";
 		VerifyFlowSaveAdmissionExcludesWriter();
 		VerifyCanonicalProductReadAdmissionExcludesWriter();
+		VerifySixPizzaArenaFacingRoot();
 		VerifyCanonicalGraphInventoryAndFlow();
-		std::cout << "ValtanCanonicalGraphContractTests: 5/5 passed\n";
+		std::cout << "ValtanCanonicalGraphContractTests: 6/6 passed\n";
 		return 0;
 	}
 	catch (const std::exception& Error)

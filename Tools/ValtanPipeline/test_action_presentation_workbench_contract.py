@@ -2176,14 +2176,13 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
         )
         complete_play = function_body(
-            toolbar,
-            'if (ImGui::Button("Play Saved Active Revision on Server Valtan"))',
+            toolbar, 'if (ImGui::Button("Play on Server"'
         )
         restart = function_body(
-            toolbar, 'if (ImGui::Button("Restart Pattern"))'
+            toolbar, 'if (ImGui::Button("Restart"'
         )
         fresh_arena = function_body(
-            toolbar, 'if (ImGui::Button("Fresh / Restore Arena"))'
+            toolbar, 'if (ImGui::Button("Restore Arena"'
         )
         self.assertIn("Debug_CompletePlaySelected(Status)", complete_play)
         self.assertIn("Restart_ServerPattern", restart)

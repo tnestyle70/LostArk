@@ -266,6 +266,17 @@ HRESULT CMapStaticBatchObject::Set_InstanceVisible(
 	return S_OK;
 }
 
+HRESULT CMapStaticBatchObject::Try_GetInstanceVisible(
+	const uint64_t placementId,
+	bool_t& outVisible) const
+{
+	const auto iter = m_PlacementLookup.find(placementId);
+	if (iter == m_PlacementLookup.end() || iter->second >= m_Instances.size())
+		return HRESULT_FROM_WIN32(ERROR_NOT_FOUND);
+	outVisible = m_Instances[iter->second].Visible;
+	return S_OK;
+}
+
 HRESULT CMapStaticBatchObject::Ready_Components(
 	uint32_t prototypeLevelIndex,
 	const std::wstring& modelPrototypeTag)

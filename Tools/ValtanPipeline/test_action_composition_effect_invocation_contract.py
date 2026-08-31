@@ -161,6 +161,36 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
         self.assertIn("bArenaFacingAnchorAdmitted", details)
         self.assertNotIn("Valtan.patterneffectcues.json is an editable", details)
 
+    def test_workbench_explains_selected_effect_anchor_basis(self) -> None:
+        details = body(
+            self.workbench,
+            "void Client::CActionCompositionWorkbench::Render_Details(",
+        )
+        arena_start = details.index(
+            'if ("arena.center.facing" == Draft.strAnchorSlotId)'
+        )
+        target_start = details.index(
+            'else if ("pattern.target.snapshot" == Draft.strAnchorSlotId)',
+            arena_start,
+        )
+        follow_start = details.index(
+            'if ("root" == Draft.strAnchorSlotId)', target_start
+        )
+
+        arena_basis = details[arena_start:target_start]
+        self.assertIn(
+            '"Position Basis = Authored Landing Center"', arena_basis
+        )
+        self.assertIn(
+            '"Facing Basis = Server Locked Pattern Facing"', arena_basis
+        )
+
+        target_basis = details[target_start:follow_start]
+        self.assertIn(
+            '"Position Basis = Target Snapshot Position"', target_basis
+        )
+        self.assertIn('"Facing Basis = Player Snapshot Yaw"', target_basis)
+
     def test_effect_body_deep_link_requires_one_exact_admitted_saved_occurrence(self) -> None:
         equality = body(self.workbench, "bool_t SameSavedValtanEffectCue(")
         for token in (

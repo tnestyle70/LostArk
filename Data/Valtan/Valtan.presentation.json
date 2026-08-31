@@ -2258,7 +2258,7 @@
               "clipOccurrenceId": "valtan.sequence.center-six-pizza-charge.step-01.clip-01",
               "sourceStartMs": 0,
               "sourceEndMs": null,
-              "anchorSlotId": "pattern.target.snapshot",
+              "anchorSlotId": "arena.center.facing",
               "followPolicy": "snapshot",
               "stopPolicy": "natural",
               "repeatPolicy": "once",

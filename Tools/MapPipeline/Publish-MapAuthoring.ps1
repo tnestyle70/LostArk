@@ -196,6 +196,239 @@ function Assert-ExactJsonProperties {
     }
 }
 
+function Split-DeployAuthoringTokens {
+    param([string]$Line, [string]$Context)
+    if ($null -eq $Line -or $Line.Length -eq 0) {
+        throw "Deploy authoring row is empty: $Context"
+    }
+    $pattern = '"(?:\\.|[^"\\\r\n])*"|[^\s"]+'
+    $matches = [regex]::Matches($Line, $pattern)
+    $residue = [regex]::Replace($Line, $pattern, '')
+    if ($matches.Count -eq 0 -or $residue -match '\S') {
+        throw "Deploy authoring row has malformed quoting: $Context"
+    }
+    $tokens = [Collections.Generic.List[string]]::new()
+    foreach ($match in $matches) {
+        $raw = [string]$match.Value
+        if ($raw.StartsWith('"') -and $raw.EndsWith('"')) {
+            $body = $raw.Substring(1, $raw.Length - 2)
+            $tokens.Add([regex]::Replace($body, '\\(.)', '$1'))
+        }
+        else {
+            $tokens.Add($raw)
+        }
+    }
+    return $tokens.ToArray()
+}
+
+function Convert-DeployUInt64 {
+    param([string]$Value, [string]$Context, [bool]$AllowZero = $false)
+    $parsed = [uint64]0
+    if ($Value -cnotmatch '^[0-9]{1,20}$' -or
+        -not [uint64]::TryParse(
+            $Value,
+            [Globalization.NumberStyles]::None,
+            [Globalization.CultureInfo]::InvariantCulture,
+            [ref]$parsed) -or (-not $AllowZero -and 0 -eq $parsed)) {
+        throw "Deploy unsigned integer is invalid: $Context"
+    }
+    return $parsed
+}
+
+function Convert-DeployUInt32 {
+    param([string]$Value, [string]$Context, [bool]$AllowZero = $true)
+    $parsed = [uint32]0
+    if ($Value -cnotmatch '^[0-9]{1,10}$' -or
+        -not [uint32]::TryParse(
+            $Value,
+            [Globalization.NumberStyles]::None,
+            [Globalization.CultureInfo]::InvariantCulture,
+            [ref]$parsed) -or (-not $AllowZero -and 0 -eq $parsed)) {
+        throw "Deploy unsigned integer is invalid: $Context"
+    }
+    return $parsed
+}
+
+function Convert-DeployFiniteNumber {
+    param([string]$Value, [string]$Context)
+    $parsed = 0.0
+    if (-not [double]::TryParse(
+        $Value,
+        [Globalization.NumberStyles]::Float,
+        [Globalization.CultureInfo]::InvariantCulture,
+        [ref]$parsed) -or [double]::IsNaN($parsed) -or
+        [double]::IsInfinity($parsed) -or
+        [math]::Abs($parsed) -gt [single]::MaxValue) {
+        throw "Deploy floating-point value is invalid: $Context"
+    }
+    return $parsed
+}
+
+function Assert-DeployWModelPath {
+    param([string]$Value, [string]$Context)
+    if ([string]::IsNullOrWhiteSpace($Value) -or
+        [IO.Path]::IsPathRooted($Value) -or $Value.Contains(':') -or
+        '..' -in @($Value -split '[\\/]') -or
+        [IO.Path]::GetExtension($Value) -cne '.wmodel') {
+        throw "Deploy model path must be a Resources-relative WModel: $Context"
+    }
+}
+
+function Read-DeployAuthoringPair {
+    $catalogLines = @([IO.File]::ReadAllLines(
+        $sourceDeployCatalogPath, [Text.Encoding]::UTF8))
+    if ($catalogLines.Count -lt 2) {
+        throw "Deploy catalog is empty: $sourceDeployCatalogPath"
+    }
+    $catalogHeader = @(Split-DeployAuthoringTokens `
+        $catalogLines[0] "$sourceDeployCatalogPath header")
+    if ($catalogHeader.Count -ne 4 -or
+        $catalogHeader[0] -cne 'LOSTARK_DEPLOY_PROP_CATALOG' -or
+        $catalogHeader[1] -notin @('2','3') -or
+        $catalogHeader[2] -cne $AreaId) {
+        throw "Deploy catalog header is invalid: $sourceDeployCatalogPath"
+    }
+    $catalogVersion = [uint32]$catalogHeader[1]
+    $assetCount = Convert-DeployUInt32 $catalogHeader[3] `
+        "$sourceDeployCatalogPath asset count" $false
+    if ($assetCount -gt 64 -or $assetCount -ne ($catalogLines.Count - 1)) {
+        throw "Deploy catalog count is invalid: $sourceDeployCatalogPath"
+    }
+
+    $assets = [Collections.Generic.Dictionary[string,object]]::new(
+        [StringComparer]::Ordinal)
+    $prototypeTags = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal)
+    for ($index = 0; $index -lt $assetCount; ++$index) {
+        $context = "$sourceDeployCatalogPath row $index"
+        $tokens = @(Split-DeployAuthoringTokens $catalogLines[$index + 1] $context)
+        $expectedCount = if ($catalogVersion -eq 3) { 12 } else { 10 }
+        if ($tokens.Count -ne $expectedCount -or
+            $tokens[0] -cnotmatch '^[A-Za-z0-9_.:-]{1,160}$' -or
+            $tokens[1] -notin @('STATIC','ANIM') -or
+            [string]::IsNullOrWhiteSpace($tokens[2]) -or
+            [string]::IsNullOrWhiteSpace($tokens[4]) -or
+            [string]::IsNullOrWhiteSpace($tokens[9]) -or
+            $assets.ContainsKey($tokens[0]) -or
+            -not $prototypeTags.Add($tokens[4])) {
+            throw "Deploy catalog identity is invalid or duplicated: $context"
+        }
+        Assert-DeployWModelPath $tokens[3] "$context intact model"
+        $declaresFractured = $tokens[5].Length -ne 0 -or $tokens[6].Length -ne 0
+        if ($declaresFractured) {
+            if ($tokens[1] -ne 'STATIC' -or $tokens[5].Length -eq 0 -or
+                $tokens[6].Length -eq 0 -or -not $prototypeTags.Add($tokens[6])) {
+                throw "Deploy fractured model pair is invalid: $context"
+            }
+            Assert-DeployWModelPath $tokens[5] "$context fractured model"
+        }
+        $emissive = Convert-DeployFiniteNumber $tokens[7] "$context emissive"
+        if ($emissive -lt 0.0 -or $tokens[8] -notin @('0','1') -or
+            ($tokens[8] -eq '1' -and $tokens[1] -ne 'STATIC')) {
+            throw "Deploy catalog presentation fields are invalid: $context"
+        }
+        $intactClip = if ($catalogVersion -eq 3) { $tokens[10] } `
+            elseif ($tokens[1] -eq 'ANIM') { 'on' } else { '' }
+        $fracturedClip = if ($catalogVersion -eq 3) { $tokens[11] } `
+            elseif ($tokens[1] -eq 'ANIM') { 'off' } else { '' }
+        if (($tokens[1] -eq 'STATIC' -and
+                ($intactClip.Length -ne 0 -or $fracturedClip.Length -ne 0)) -or
+            $intactClip.Length -gt 256 -or $fracturedClip.Length -gt 256 -or
+            $intactClip -match '[\x00-\x1f]' -or
+            $fracturedClip -match '[\x00-\x1f]') {
+            throw "Deploy animation roles are invalid: $context"
+        }
+        $assets.Add($tokens[0], [pscustomobject]@{
+            Kind = $tokens[1]
+            DeferredEmissiveOverlay = $tokens[8] -eq '1'
+            IntactClip = $intactClip
+            FracturedClip = $fracturedClip
+        })
+    }
+
+    $placementLines = @([IO.File]::ReadAllLines(
+        $authoringDeployPath, [Text.Encoding]::UTF8))
+    if ($placementLines.Count -lt 1) {
+        throw "Deploy placement document is empty: $authoringDeployPath"
+    }
+    $placementHeader = @(Split-DeployAuthoringTokens `
+        $placementLines[0] "$authoringDeployPath header")
+    if ($placementHeader.Count -ne 4 -or
+        $placementHeader[0] -cne 'LOSTARK_DEPLOY_PROP_PLACEMENTS' -or
+        $placementHeader[1] -notin @('1','2') -or
+        $placementHeader[2] -cne $AreaId) {
+        throw "Deploy placement header is invalid: $authoringDeployPath"
+    }
+    $placementVersion = [uint32]$placementHeader[1]
+    $placementCount = Convert-DeployUInt32 $placementHeader[3] `
+        "$authoringDeployPath placement count" $true
+    if ($placementCount -gt 4096 -or
+        $placementCount -ne ($placementLines.Count - 1)) {
+        throw "Deploy placement count is invalid: $authoringDeployPath"
+    }
+
+    $placements = [Collections.Generic.Dictionary[string,object]]::new(
+        [StringComparer]::Ordinal)
+    for ($index = 0; $index -lt $placementCount; ++$index) {
+        $context = "$authoringDeployPath row $index"
+        $tokens = @(Split-DeployAuthoringTokens $placementLines[$index + 1] $context)
+        $expectedCount = if ($placementVersion -eq 2) { 17 } else { 16 }
+        if ($tokens.Count -ne $expectedCount) {
+            throw "Deploy placement row width is invalid: $context"
+        }
+        $runtimeId = Convert-DeployUInt64 $tokens[0] "$context runtime ID"
+        $deployActorId = Convert-DeployUInt32 $tokens[1] "$context actor ID" $true
+        $definitionId = Convert-DeployUInt32 $tokens[2] "$context definition ID" $true
+        if ([string]::IsNullOrWhiteSpace($tokens[3]) -or
+            $tokens[3].Length -gt 256 -or -not $assets.ContainsKey($tokens[4]) -or
+            $placements.ContainsKey($tokens[0])) {
+            throw "Deploy placement identity is invalid or duplicated: $context"
+        }
+        $numeric = for ($field = 5; $field -le 12; ++$field) {
+            Convert-DeployFiniteNumber $tokens[$field] "$context field $field"
+        }
+        $quaternionLength = [math]::Sqrt(
+            $numeric[3] * $numeric[3] + $numeric[4] * $numeric[4] +
+            $numeric[5] * $numeric[5] + $numeric[6] * $numeric[6])
+        if ($quaternionLength -le 0.000001 -or $numeric[7] -le 0.000001 -or
+            $tokens[13] -notin @('0','1')) {
+            throw "Deploy placement transform is invalid: $context"
+        }
+        $stateOffAction = Convert-DeployUInt32 $tokens[14] `
+            "$context state-off action" $true
+        $occurrenceCount = Convert-DeployUInt32 $tokens[15] `
+            "$context occurrence count" $true
+        $provenance = if ($placementVersion -eq 2) { $tokens[16] } `
+            else { 'SOURCE_EXACT' }
+        if ($provenance -eq 'SOURCE_EXACT') {
+            if (0 -eq $deployActorId -or 0 -eq $definitionId) {
+                throw "SOURCE_EXACT Deploy placement lacks source IDs: $context"
+            }
+        }
+        elseif ($provenance -eq 'PROJECT_AUTHORED') {
+            if ($placementVersion -ne 2 -or 0 -ne $deployActorId -or
+                0 -ne $definitionId -or 0 -ne $stateOffAction -or
+                0 -ne $occurrenceCount) {
+                throw "PROJECT_AUTHORED Deploy placement impersonates source data: $context"
+            }
+        }
+        else {
+            throw "Deploy placement provenance is invalid: $context"
+        }
+        $placements.Add($tokens[0], [pscustomobject]@{
+            AssetId = $tokens[4]
+            Destructible = $tokens[13] -eq '1'
+            Provenance = $provenance
+        })
+    }
+    return [pscustomobject]@{
+        CatalogLines = $catalogLines
+        PlacementLines = $placementLines
+        Assets = $assets
+        Placements = $placements
+    }
+}
+
 function Read-MapLightDocument {
     param([string]$Path)
     $raw = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8)
@@ -484,91 +717,16 @@ function Read-MapEffectDeployCatalog {
     if (-not [IO.File]::Exists($sourceDeployCatalogPath)) {
         throw "Map Effect surface rows require the Deploy catalog: $sourceDeployCatalogPath"
     }
-    $lines = @([IO.File]::ReadAllLines($sourceDeployCatalogPath, [Text.Encoding]::UTF8))
-    if ($lines.Count -lt 2) {
-        throw "Deploy catalog is empty: $sourceDeployCatalogPath"
-    }
-    $header = [regex]::Match(
-        $lines[0],
-        '^LOSTARK_DEPLOY_PROP_CATALOG\s+2\s+"(?<area>[A-Za-z0-9_.-]+)"\s+(?<count>[0-9]+)$')
-    if (-not $header.Success -or $header.Groups['area'].Value -cne $AreaId -or
-        [uint32]$header.Groups['count'].Value -ne ($lines.Count - 1)) {
-        throw "Deploy catalog header/count is invalid: $sourceDeployCatalogPath"
-    }
-    $number = '-?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?'
-    $assets = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
-    foreach ($line in @($lines | Select-Object -Skip 1)) {
-        $match = [regex]::Match(
-            $line,
-            ('^"(?<id>[A-Za-z0-9_.:-]{1,160})"\s+(?<kind>STATIC|ANIM)\s+' +
-             '"[^"\r\n]+"\s+"[^"\r\n]+"\s+"[^"\r\n]+"\s+' +
-             '"[^"\r\n]*"\s+"[^"\r\n]*"\s+' +
-             '(?<emissive>' + $number + ')\s+(?<deferred>[01])\s+"[^"\r\n]+"$'))
-        if (-not $match.Success) {
-            throw "Deploy catalog row is invalid for Map Effect validation: $sourceDeployCatalogPath"
-        }
-        $emissive = 0.0
-        if (-not [double]::TryParse(
-            $match.Groups['emissive'].Value,
-            [Globalization.NumberStyles]::Float,
-            [Globalization.CultureInfo]::InvariantCulture,
-            [ref]$emissive) -or [double]::IsNaN($emissive) -or
-            [double]::IsInfinity($emissive) -or $emissive -lt 0.0) {
-            throw "Deploy catalog emissive intensity is invalid: $($match.Groups['id'].Value)"
-        }
-        $id = $match.Groups['id'].Value
-        if ($assets.ContainsKey($id)) {
-            throw "Deploy catalog asset is duplicated: $id"
-        }
-        $assets.Add($id, [pscustomobject]@{
-            Kind = $match.Groups['kind'].Value
-            DeferredEmissiveOverlay = $match.Groups['deferred'].Value -eq '1'
-        })
-    }
-    return ,$assets
+    $pair = Read-DeployAuthoringPair
+    return ,$pair.Assets
 }
 
 function Read-MapEffectDeployPlacements {
     if (-not [IO.File]::Exists($authoringDeployPath)) {
         throw "Map Effect surface rows require Deploy placements: $authoringDeployPath"
     }
-    $lines = @([IO.File]::ReadAllLines($authoringDeployPath, [Text.Encoding]::UTF8))
-    if ($lines.Count -lt 2) {
-        throw "Deploy placement document is empty: $authoringDeployPath"
-    }
-    $header = [regex]::Match(
-        $lines[0],
-        '^LOSTARK_DEPLOY_PROP_PLACEMENTS\s+1\s+"(?<area>[A-Za-z0-9_.-]+)"\s+(?<count>[0-9]+)$')
-    if (-not $header.Success -or $header.Groups['area'].Value -cne $AreaId -or
-        [uint32]$header.Groups['count'].Value -ne ($lines.Count - 1)) {
-        throw "Deploy placement header/count is invalid: $authoringDeployPath"
-    }
-    $number = '-?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?'
-    $placements = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
-    foreach ($line in @($lines | Select-Object -Skip 1)) {
-        $match = [regex]::Match(
-            $line,
-            ('^(?<id>[1-9][0-9]{0,19})\s+[1-9][0-9]*\s+[1-9][0-9]*\s+' +
-             '"[^"\r\n]+"\s+"(?<asset>[A-Za-z0-9_.:-]{1,160})"\s+' +
-             '(?:' + $number + '\s+){8}(?<destructible>[01])\s+[0-9]+\s+[0-9]+$'))
-        if (-not $match.Success) {
-            throw "Deploy placement row is invalid for Map Effect validation: $authoringDeployPath"
-        }
-        $parsedId = [uint64]0
-        $id = $match.Groups['id'].Value
-        if (-not [uint64]::TryParse(
-            $id,
-            [Globalization.NumberStyles]::None,
-            [Globalization.CultureInfo]::InvariantCulture,
-            [ref]$parsedId) -or 0 -eq $parsedId -or $placements.ContainsKey($id)) {
-            throw "Deploy placement ID is invalid or duplicated: $id"
-        }
-        $placements.Add($id, [pscustomobject]@{
-            AssetId = $match.Groups['asset'].Value
-            Destructible = $match.Groups['destructible'].Value -eq '1'
-        })
-    }
-    return ,$placements
+    $pair = Read-DeployAuthoringPair
+    return ,$pair.Placements
 }
 
 function Read-MapEffectWorldDestruction {
@@ -1323,13 +1481,14 @@ function Add-DeployPublishFiles {
         throw "Deploy authoring pair is incomplete for $AreaId"
     }
     if ($hasCatalog) {
+        $pair = Read-DeployAuthoringPair
         $Files.Add([pscustomobject]@{
             Name = "$AreaId.deployassets"
-            Lines = [IO.File]::ReadAllLines($sourceDeployCatalogPath, [Text.Encoding]::UTF8)
+            Lines = $pair.CatalogLines
         })
         $Files.Add([pscustomobject]@{
             Name = "$AreaId.deployplacements"
-            Lines = [IO.File]::ReadAllLines($authoringDeployPath, [Text.Encoding]::UTF8)
+            Lines = $pair.PlacementLines
         })
     }
 }

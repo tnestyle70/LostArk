@@ -38,7 +38,8 @@ public:
 		const std::string& areaId,
 		const std::vector<MAP_PLACEMENT_RECORD>& records,
 		const CMapAssetCatalog& catalog,
-		std::string& outStatus);
+		std::string& outStatus,
+		std::vector<MAP_PLACEMENT_RECORD>* outStoredRecords = nullptr);
 	static bool_t Is_Valid(const MAP_PLACEMENT_RECORD& record,
 		const CMapAssetCatalog& catalog);
 };

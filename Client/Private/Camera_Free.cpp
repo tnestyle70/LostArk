@@ -4,6 +4,7 @@
 
 #include "CameraShakeService.h"
 #include "Transform.h"
+#include "UIInputRouter.h"
 
 #include <algorithm>
 #include <cmath>
@@ -11,6 +12,10 @@
 namespace
 {
 	constexpr f32_t SHAKE_TRANSLATION_METERS_PER_UNIT = 0.01f;
+	/* An extracted authoring Area can span thousands of units, so holding
+	   either Shift scales only the free-camera step for crossing it. The
+	   camera keeps the speed its level authored for ordinary work. */
+	constexpr f32_t FREE_CAMERA_SPRINT_SCALE = 30.f;
 	constexpr f32_t MIN_SHAKE_FOVY = 10.f;
 	constexpr f32_t MAX_SHAKE_FOVY = 170.f;
 }
@@ -172,7 +177,8 @@ void CCamera_Free::Update_Shortcuts()
 {
 	if (GetForegroundWindow() != g_hWnd)
 		return;
-	if (ImGui::GetIO().WantTextInput)
+	if (ImGui::GetIO().WantTextInput ||
+		CUIInputRouter::Get().Is_TextInputActive())
 		return;
 	const bool_t useRawKeyboard = m_allowCapturedKeyboardInput;
 	const auto keyPressed = [useRawKeyboard](const uint8_t keyCode)
@@ -251,10 +257,11 @@ void CCamera_Free::Update_FollowCamera(f32_t fTimeDelta)
 
 void CCamera_Free::Update_FreeCamera(f32_t fTimeDelta)
 {
-	// DirectInput ÀåÄ¡°¡ BACKGROUND ¸ðµåÀÌ¹Ç·Î ´Ù¸¥ Ã¢À» Á¶ÀÛÇÒ ¶§´Â Ä«¸Þ¶ó ÀÔ·ÂÀ» ¹«½ÃÇÑ´Ù.
+	// DirectInput ï¿½ï¿½Ä¡ï¿½ï¿½ BACKGROUND ï¿½ï¿½ï¿½ï¿½Ì¹Ç·ï¿½ ï¿½Ù¸ï¿½ Ã¢ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ Ä«ï¿½Þ¶ï¿½ ï¿½Ô·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
 	if (GetForegroundWindow() != g_hWnd)
 		return;
-	const bool_t textInputActive = ImGui::GetIO().WantTextInput;
+	const bool_t textInputActive = ImGui::GetIO().WantTextInput ||
+		CUIInputRouter::Get().Is_TextInputActive();
 	const bool_t useRawKeyboard =
 		m_allowCapturedKeyboardInput && !textInputActive;
 	const auto keyState = [useRawKeyboard](const uint8_t keyCode)
@@ -264,19 +271,25 @@ void CCamera_Free::Update_FreeCamera(f32_t fTimeDelta)
 			CGameInstance::Get().Get_DIKeyState(keyCode);
 	};
 
+	const bool_t sprintHeld = !textInputActive &&
+		(0 != (keyState(DIK_LSHIFT) & 0x80) ||
+		 0 != (keyState(DIK_RSHIFT) & 0x80));
+	const f32_t fMoveDelta = sprintHeld ?
+		fTimeDelta * FREE_CAMERA_SPRINT_SCALE : fTimeDelta;
+
 	if (!textInputActive && keyState(DIK_W) & 0x80)
-		m_pTransformCom->Go_Straight(fTimeDelta);
+		m_pTransformCom->Go_Straight(fMoveDelta);
 	if (!textInputActive && keyState(DIK_S) & 0x80)
-		m_pTransformCom->Go_Backward(fTimeDelta);
+		m_pTransformCom->Go_Backward(fMoveDelta);
 	if (!textInputActive && keyState(DIK_A) & 0x80)
-		m_pTransformCom->Go_Left(fTimeDelta);
+		m_pTransformCom->Go_Left(fMoveDelta);
 	if (!textInputActive && keyState(DIK_D) & 0x80)
-		m_pTransformCom->Go_Right(fTimeDelta);
+		m_pTransformCom->Go_Right(fMoveDelta);
 
 	if (!m_bMouseLookEnabled)
 		return;
 
-	// Free Camera¿¡¼­´Â º°µµ ¸¶¿ì½º ¹öÆ° ¾øÀÌ DI »ó´ë ÀÌµ¿·®À¸·Î ¹Ù·Î È¸ÀüÇÑ´Ù.
+	// Free Cameraï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ì½º ï¿½ï¿½Æ° ï¿½ï¿½ï¿½ï¿½ DI ï¿½ï¿½ï¿½ ï¿½Ìµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ù·ï¿½ È¸ï¿½ï¿½ï¿½Ñ´ï¿½.
 	const int32_t mouseMoveX =
 		CGameInstance::Get().Get_DIMouseMove(DIMM::X);
 	const int32_t mouseMoveY =

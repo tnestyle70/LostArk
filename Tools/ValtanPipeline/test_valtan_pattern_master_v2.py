@@ -1763,7 +1763,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.docs[pipeline.WORLD_SET_REL], self.docs[pipeline.COMBAT_AUTHORING_REL])
         expected = {"VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK": "arena.center",
                     "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK": "arena.center",
-                    "VALTAN_SIX_PIZZA_106": "pattern.target.snapshot"}
+                    "VALTAN_SIX_PIZZA_106": "arena.center.facing"}
         for row in master["patterns"]:
             if row["patternId"] not in expected:
                 continue
@@ -1805,7 +1805,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             ("VALTAN_SIX_PIZZA_106", "moving effect root",
              lambda row, cue: cue.update(followPolicy="follow")),
             ("VALTAN_SIX_PIZZA_106", "unknown reserved anchor",
-             lambda row, cue: cue.update(anchorSlotId="pattern.target.unknown")),
+             lambda row, cue: cue.update(anchorSlotId="arena.center.unknown")),
             ("VALTAN_SIX_PIZZA_106", "unlocked target",
              lambda row, cue: row.update(targetPolicy="NONE", aimPolicy="NONE")),
         ]
@@ -2686,7 +2686,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             cue for cue in sector_stage["effectCues"]
             if cue["occurrenceId"] == sector_occurrence
         )
-        self.assertEqual("pattern.target.snapshot", sector["anchorSlotId"])
+        self.assertEqual("arena.center.facing", sector["anchorSlotId"])
         self.assertEqual(-30.0, sector["localTransform"]["rotationDegrees"][1])
 
         invalid = copy.deepcopy(patch)

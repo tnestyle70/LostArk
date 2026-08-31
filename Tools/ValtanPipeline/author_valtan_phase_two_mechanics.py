@@ -1093,7 +1093,11 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
             pattern(gameplay, pattern_id)["aimPolicy"] = "LOCK_FACING_ON_START"
         for row in pattern(presentation, pattern_id)["stages"]:
             for effect_cue in row["effectCues"]:
-                effect_cue["anchorSlotId"] = "pattern.target.snapshot" if pattern_id == "VALTAN_SIX_PIZZA_106" else "arena.center"
+                effect_cue["anchorSlotId"] = (
+                    "arena.center.facing"
+                    if pattern_id == "VALTAN_SIX_PIZZA_106"
+                    else "arena.center"
+                )
                 effect_cue["followPolicy"] = "snapshot"
 
     donut = stage(pattern(gameplay, "VALTAN_FIST_IN_OUT"), "INNER")

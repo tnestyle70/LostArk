@@ -10,6 +10,7 @@
 #include "SkillGroundTargetPreview.h"
 #include "ClickMoveEffect.h"
 #include "Transform.h"
+#include "UIInputRouter.h"
 
 #include <cmath>
 
@@ -196,8 +197,11 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 	const bool_t useRawKeyboard =
 		m_allowCapturedKeyboardInput &&
 		GetForegroundWindow() == g_hWnd;
+	/* The raw-keyboard passthrough path bypasses SetInputBlocked, so it must consult the
+	runtime nickname field (CUIInputRouter) alongside ImGui's own text-input state itself. */
 	const bool_t suppressKeyboard = useRawKeyboard ?
-		ImGui::GetIO().WantTextInput : isKeyboardBlocked;
+		(ImGui::GetIO().WantTextInput ||
+			CUIInputRouter::Get().Is_TextInputActive()) : isKeyboardBlocked;
 	//weak_ptr로 가지고 있는 character lock
 	const shared_ptr<CCharacter> character =
 		m_pLocalCharacter.lock();

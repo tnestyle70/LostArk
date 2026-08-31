@@ -593,6 +593,23 @@ bool_t CMapPlacementRuntime::Set_RuntimeVisible(
 	return false;
 }
 
+bool_t CMapPlacementRuntime::Try_GetRuntimeVisible(
+	const MAP_RUNTIME_PLACED_ENTRY& entry,
+	bool_t& outVisible)
+{
+	if (nullptr != entry.object)
+	{
+		outVisible = entry.object->Is_Visible();
+		return true;
+	}
+	if (nullptr != entry.batch)
+	{
+		return SUCCEEDED(entry.batch->Try_GetInstanceVisible(
+			entry.record.placementId, outVisible));
+	}
+	return false;
+}
+
 #ifdef _DEBUG
 bool_t CMapPlacementRuntime::Set_DebugSourceLevelVisible(
 	const std::string& sourceLevel,

@@ -38,28 +38,28 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
 
-	/* CGameInstance::Draw_Text submits immediately (SpriteBatch), but
-	Render_ValtanEntryModal's popup art composites later inside
-	CImGuiLayer::EndFrame() -- same reason Level_CharacterSelect splits
-	Render_ArenaSpawnLabels() out. m_pValtanEntryView is private to this level,
-	so CMainApp reaches it through Get_Active() instead of a second
-	CRaidEntryPreviewView of its own. Defined out-of-line in the .cpp (not
-	inline here) so files that merely include this header for Get_Active() etc.
-	don't also need CRaidEntryPreviewView's full definition just to compile it. */
+	/* CGameInstance::Draw_Text submits immediately (SpriteBatch), so every LOA-font label in
+	this codebase is drawn from its own pass after CImGuiLayer::EndFrame() -- same reason
+	Level_CharacterSelect splits Render_ArenaSpawnLabels() out. m_pValtanEntryView is private
+	to this level, so CMainApp reaches it through Get_Active() instead of a second
+	CRaidEntryPreviewView of its own. Defined out-of-line in the .cpp (not inline here) so
+	files that merely include this header for Get_Active() etc. don't also need
+	CRaidEntryPreviewView's full definition just to compile it. */
 	void Render_ValtanEntryModalText();
-	/* Public (not called from this level's own Render()) for the same reason:
-	   CRaidEntryPreviewView's art draws to ImGui::GetForegroundDrawList(), the
-	   same shared list RenderCombatHUD/RenderBossHealthBar/RenderSkillIcons/
-	   RenderQuickSlot (MainApp.cpp) use, and that list composites in real
-	   submission order -- CMainApp::Render() calls this after those HUD renders
-	   so the full-screen raid-entry panel actually paints on top of the
-	   always-on combat HUD instead of being painted over by it. Only this
-	   level reacts to a true return (real NPC entry command); the debug-only
-	   preview in Level_CharacterSelect never does. */
+	/* Drives the raid-entry popup's own CUI_Sprite visibility/hover state and hit-testing for
+	   one frame; the sprites themselves draw through CObject_Manager's normal render cycle, so
+	   the old ImGui foreground-drawlist ordering requirement against the combat HUD is gone.
+	   Public (not called from this level's own Render()) because CMainApp owns the call site.
+	   Only this level reacts to a true return (real NPC entry command); the debug-only preview
+	   in Level_CharacterSelect never does. */
 	void Render_ValtanEntryModal();
 	/* Same reasoning, for CPartyInteractionView's invite-confirm popup text --
 	   see CPartyInteractionView::Render_InvitePopupText's own comment. */
-	void Render_PartyInviteText() { m_PartyInteraction.Render_InvitePopupText(); }
+	void Render_PartyInviteText()
+	{
+		m_PartyInteraction.Render_InvitePopupText();
+		m_PartyInteraction.Render_ContextMenuText();
+	}
 	static CLevel_Bern* Get_Active() { return s_pActiveInstance; }
 	const LostArk::Shared::S2C_PARTY_ROSTER& Get_PartyRoster() const
 	{
