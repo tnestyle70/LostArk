@@ -617,6 +617,25 @@ void Client::CUILayoutRuntime::Set_SlotRotation(const string& strId, f32_t fDegr
 	}
 }
 
+void Client::CUILayoutRuntime::Ensure_RuntimeSlot(const string& strId, f32_t fX, f32_t fY,
+	f32_t fWidth, f32_t fHeight, const string& strTexturePath)
+{
+	for (const RUNTIME_SLOT& Slot : m_Slots)
+	{
+		if (Slot.strId == strId)
+			return;
+	}
+
+	RUNTIME_SLOT Slot{};
+	Slot.strId = strId;
+	Slot.fX = fX;
+	Slot.fY = fY;
+	Slot.fSizeX = fWidth;
+	Slot.fSizeY = fHeight;
+	Slot.pSprite = Create_Sprite(fX, fY, fWidth, fHeight, strTexturePath);
+	m_Slots.push_back(move(Slot));
+}
+
 bool_t Client::CUILayoutRuntime::Play_KeyframeAnimation(const string& strId, const string& strLabel)
 {
 	for (RUNTIME_SLOT& Slot : m_Slots)
@@ -757,10 +776,22 @@ void Client::CUILayoutRuntime::Update(f32_t fTimeDelta)
 		const int32_t iFrameCount = static_cast<int32_t>(Slot.AnimationFramePaths.size());
 		Slot.fAnimationElapsed += fTimeDelta;
 		int32_t iFrame = static_cast<int32_t>(Slot.fAnimationElapsed * Slot.fAnimationFPS);
+		bool_t bPastEnd = false;
 		if (Slot.bAnimationLoop)
+		{
 			iFrame %= iFrameCount;
+		}
 		else if (iFrame >= iFrameCount)
+		{
+			/* A finished one-shot stops drawing entirely (CHUDRuntimeView's own AnimationFrames
+			contract -- ItemUpgrade's CoreFlash/Shockwave/result bursts rely on vanishing at
+			their last frame, not freezing on it) until Restart_Animation rewinds it. Re-applied
+			every tick so a consumer's own Set_SlotVisible(true) on a finished slot doesn't
+			resurrect a stale frame. */
 			iFrame = iFrameCount - 1;
+			bPastEnd = true;
+		}
+		Slot.pSprite->Set_Visible(Slot.bVisible && !bPastEnd);
 
 		if (iFrame == Slot.iAnimationFrame)
 			continue;

@@ -82,6 +82,12 @@ public:
 	(level gate fails), since these sprites keep their last state instead of simply not being
 	drawn the way an ImGui pass did. */
 	void Set_AllSlotsVisible(bool_t bVisible);
+	/* Creates a slot (with one sprite showing strTexturePath at the given reference-resolution
+	rect) at runtime if no slot with this id exists -- the Lobby's atomic fallback path, which
+	must still show all four command buttons when an old/corrupt external Data checkout ships a
+	partial document. No-op if the id already exists (the authored slot wins). */
+	void Ensure_RuntimeSlot(const string& strId, f32_t fX, f32_t fY,
+		f32_t fWidth, f32_t fHeight, const string& strTexturePath);
 	/* Jumps a keyframe slot's document to the frame labelled strLabel and plays forward until
 	the next authored label (or the document's end), then holds on that last frame -- mirrors
 	the original asset's own gotoAndPlay(label) trigger, same contract as CHUDRuntimeView's

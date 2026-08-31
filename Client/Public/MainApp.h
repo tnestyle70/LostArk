@@ -21,7 +21,6 @@ class CEffect_Tool_V2;
 class CAnimation_Tool;
 class CActionCompositionWorkbench;
 class CHUDLayoutTool;
-class CHUDRuntimeView;
 class CUILayoutRuntime;
 class CBalanceTool;
 class CBossTool;
@@ -160,13 +159,15 @@ private:
 	2.png"'s own art. Called after EndFrame() like the other LOA-font text, for the same
 	z-order reason as Render_Text(). */
 	void RenderQuickSlotKeyLabels();
-	/* Lobby's authored Test/Character Select/Valtan/Bern buttons -- screen-space hit test against
-	their stable Lobby_Layout.json slots, submitting the matching typed command only while the
-	active Lobby is idle. A missing/old partial layout atomically falls back to the same four rects
-	and product textures. This also draws the Release status line before EndFrame(). */
-	void Render_LobbyButtons();
-	/* White labels for the four authored Lobby command buttons. Called after EndFrame() like the
-	other LOA-font text, for the same z-order reason as RenderQuickSlotKeyLabels. */
+	/* Lobby's authored title-background flipbook and Test/Character Select/Valtan/Bern buttons --
+	real CUI_Sprite slots (Lobby_Layout.json), hover/click via CUIInputRouter, submitting the
+	matching typed command only while the active Lobby is idle. A missing/old partial layout
+	atomically falls back to the same four default rects and product textures via runtime-created
+	slots, so the entry gate can never lose its buttons. Hidden entirely outside LOBBY. */
+	void Update_LobbyButtons(f32_t fTimeDelta);
+	/* White labels for the four Lobby command buttons, plus the Release product status line.
+	Called after EndFrame() like the other LOA-font text, for the same z-order reason as
+	RenderQuickSlotKeyLabels. */
 	void RenderLobbyButtonText();
 	/* White "장비 재련" label for ItemUpgrade_ReforgeButton, same reasoning/pattern as
 	RenderLobbyButtonText() -- the button image itself is blank (reused from
@@ -422,7 +423,7 @@ private:
 	plain icon/name/result screen. Negative = no settle pending. */
 	f64_t m_dItemUpgradeResultSettleAt = -1.0;
 	/* Edge-detects the local player's stance so Update_CombatHUD only calls
-	CHUDRuntimeView::Play_KeyframeAnimation on an actual change (or the first frame a stance is
+	Play_KeyframeAnimation on an actual change (or the first frame a stance is
 	known at all), instead of re-triggering the icon's animation every frame. NONE never matches a
 	real stance, so the very first Render sees an edge and plays the arrival pose. */
 	LostArk::Shared::PLAYER_STANCE_ID m_ePreviousHudStance =
@@ -496,10 +497,14 @@ private:
 	serverTick and ticks are strictly increasing, so "iServerTick above the last one we spawned
 	from" is correct even across trims (old, already-spawned batches simply age out of the buffer). */
 	uint32_t m_iLastRenderedDamageServerTick = 0u;
-	/* The Lobby's animated title-screen backdrop (Data/UI/Lobby/Lobby_Layout.json), drawn
-	behind everything else instead of a flat clear color. Release-safe, like the HUD view. */
-	unique_ptr<CHUDRuntimeView> m_pLobbyBackgroundView = { nullptr };
-	/* Not _DEBUG-gated: K opens the skill window during real gameplay, in Release too. */
+	/* The Lobby's animated title-screen backdrop + command buttons
+	(Data/UI/Lobby/Lobby_Layout.json) -- real CUI_Sprite GameObjects under LEVEL::STATIC
+	(Update_LobbyButtons drives them), rendered by the engine pipeline and therefore behind
+	every ImGui window (the Debug Lobby panel stays ImGui, on top). Release-safe, like the HUD
+	view. */
+	unique_ptr<CUILayoutRuntime> m_pLobbyBackgroundView = { nullptr };
+	/* Intentionally never constructed anymore -- the K keybind that opened it was removed by
+	product decision, so the window can never open; see the constructor comment. */
 	unique_ptr<CSkillWindowView> m_pSkillWindowView = { nullptr };
 	/* Not _DEBUG-gated: I opens the inventory during real gameplay, in Release too. */
 	unique_ptr<CInventoryView> m_pInventoryView = { nullptr };

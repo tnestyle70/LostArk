@@ -12,7 +12,6 @@
 #include "Effect_Object.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
-#include "HUDRuntimeView.h"
 #include "ImGuiLayer.h"
 #include "ItemCatalog.h"
 #include "LevelRegistry.h"
@@ -124,7 +123,7 @@ namespace
 	}
 
 	bool_t Resolve_LobbyProductButtonRects(
-		CHUDRuntimeView* pView,
+		Client::CUILayoutRuntime* pView,
 		std::array<LOBBY_PRODUCT_RECT, LOBBY_PRODUCT_BUTTONS.size()>& outRects)
 	{
 		if (nullptr == pView)
@@ -743,17 +742,21 @@ HRESULT CMainApp::Initialize()
 	Level::STATIC construction until the first real Update_ItemUpgrade() call (P not pressed
 	yet). */
 	Hide_ItemUpgrade();
-	m_pLobbyBackgroundView = std::make_unique<CHUDRuntimeView>(
-		m_pDevice, m_pContext, L"UI/Lobby/Lobby_Layout.json",
-		CHUDRuntimeView::DRAW_TARGET::BACKGROUND);
+	m_pLobbyBackgroundView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
+		L"UI/Lobby/Lobby_Layout.json");
+	/* Hidden until Update_LobbyButtons finds the Lobby active -- and behind every ImGui window
+	by construction (engine sprites render before ImGui), which is all the old BACKGROUND draw
+	target actually guaranteed here. */
+	m_pLobbyBackgroundView->Set_AllSlotsVisible(false);
 	/* m_pSkillWindowView is intentionally never constructed anymore: the K keybind that opened
 	it was removed by product decision (see the migrated keybind block below), so the window can
 	never open, and constructing it would stand up the last ImGui product-path renderer for
 	nothing. Every "skillWindowOpen" gate already null-checks it. The class/files stay for a
 	future real re-introduction. */
 	m_pInventoryView = std::make_unique<CInventoryView>(m_pDevice, m_pContext);
-	m_pChatWindowView = std::make_unique<CChatWindowView>(m_pDevice);
-	m_pPartyWindowView = std::make_unique<CPartyWindowView>(m_pDevice);
+	m_pChatWindowView = std::make_unique<CChatWindowView>(m_pDevice, m_pContext);
+	m_pPartyWindowView = std::make_unique<CPartyWindowView>(m_pDevice, m_pContext);
 
 	if (FAILED(Start_Level(LEVEL::LOBBY)))
 		return E_FAIL;
@@ -821,6 +824,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		}
 		m_bPDown = pDown;
 	}
+	Update_LobbyButtons(fTimeDelta);
 	Update_CombatHUD(fTimeDelta);
 	Update_ItemUpgrade(fTimeDelta);
 	Update_BossHealthBar();
@@ -1111,11 +1115,8 @@ HRESULT CMainApp::Render()
 
 	if (nullptr != m_pImGuiLayer)
 	{
-		if (nullptr != m_pLobbyBackgroundView &&
-			ETOUI(LEVEL::LOBBY) == CGameInstance::Get().Get_CurrentLevelID())
-		{
-			Render_LobbyButtons();
-		}
+		/* No Lobby draw call here anymore -- Update_LobbyButtons() (called from Update())
+		drives the Lobby's real CUI_Sprite slots. */
 	#ifdef _DEBUG
 		const HUD_PLAYER_STATE& hudPlayer =
 			CCombatHUDViewModel::Get().Get_Player();
@@ -1358,6 +1359,11 @@ HRESULT CMainApp::Render()
 		if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
 			pValtanArena->Render_PartyInviteText();
 	}
+	/* Not level-gated -- both views self-gate internally (open/roster state). */
+	if (nullptr != m_pChatWindowView)
+		m_pChatWindowView->RenderText();
+	if (nullptr != m_pPartyWindowView)
+		m_pPartyWindowView->RenderText();
 
 	/* Every CUIInputRouter-based screen's click-edge check has run by this point (both this
 	function's own render pass and the Update() pass earlier this same frame) -- rolls the
@@ -1838,92 +1844,69 @@ void CMainApp::RenderQuickSlotKeyLabels()
 	a dedicated non-keyframe slot). */
 }
 
-void CMainApp::Render_LobbyButtons()
+void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 {
 	if (nullptr == m_pLobbyBackgroundView)
 		return;
-
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
+	if (ETOUI(LEVEL::LOBBY) != CGameInstance::Get().Get_CurrentLevelID())
+	{
+		m_pLobbyBackgroundView->Set_AllSlotsVisible(false);
 		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
+	}
+
+	/* Resolve the required four-slot set first. An old or corrupt external Data checkout may
+	contain only the legacy Create button; forcing every button onto the same four default
+	rects atomically (runtime-creating any missing slot, repositioning any invalid one) avoids
+	overlapping hit targets and preserves every Lobby command -- the entry gate must never lose
+	its buttons to a bad layout file. */
 	std::array<LOBBY_PRODUCT_RECT, LOBBY_PRODUCT_BUTTONS.size()> ButtonRects{};
 	const bool_t hasCompleteAuthoredButtons = Resolve_LobbyProductButtonRects(
 		m_pLobbyBackgroundView.get(), ButtonRects);
-	for (size_t i = 0; i < LOBBY_PRODUCT_BUTTONS.size(); ++i)
+	if (!hasCompleteAuthoredButtons)
 	{
-		const LOBBY_PRODUCT_BUTTON& Button = LOBBY_PRODUCT_BUTTONS[i];
-		m_pLobbyBackgroundView->Set_SlotVisible(
-			Button.pSlotId, hasCompleteAuthoredButtons);
+		for (size_t i = 0; i < LOBBY_PRODUCT_BUTTONS.size(); ++i)
+		{
+			const LOBBY_PRODUCT_BUTTON& Button = LOBBY_PRODUCT_BUTTONS[i];
+			m_pLobbyBackgroundView->Ensure_RuntimeSlot(Button.pSlotId,
+				Button.fDefaultX, Button.fDefaultY,
+				Button.fDefaultWidth, Button.fDefaultHeight,
+				"UI/Lobby/create_character_button.png");
+			m_pLobbyBackgroundView->Set_SlotRect(Button.pSlotId,
+				Button.fDefaultX, Button.fDefaultY,
+				Button.fDefaultWidth, Button.fDefaultHeight);
+		}
 	}
 
-	/* Resolve the required four-slot set before drawing the document. An old or corrupt external
-	Data checkout may contain only the legacy Create button; hiding that partial set and drawing
-	all four defaults atomically avoids overlapping hit targets and preserves every Lobby command. */
-	m_pLobbyBackgroundView->Render("", 0);
+	m_pLobbyBackgroundView->Set_AllSlotsVisible(true);
 
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pLobbyBackgroundView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pLobbyBackgroundView->Get_ResolutionHeight();
 	for (size_t i = 0; i < LOBBY_PRODUCT_BUTTONS.size(); ++i)
 	{
 		const LOBBY_PRODUCT_BUTTON& Button = LOBBY_PRODUCT_BUTTONS[i];
 		const LOBBY_PRODUCT_RECT& Rect = ButtonRects[i];
 
-		const ImVec2 vMin(
-			pViewport->WorkPos.x + Rect.fX * scaleX,
-			pViewport->WorkPos.y + Rect.fY * scaleY);
-		const ImVec2 vMax(
-			vMin.x + Rect.fWidth * scaleX,
-			vMin.y + Rect.fHeight * scaleY);
-		const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-			vMouse.y >= vMin.y && vMouse.y < vMax.y;
-
-		/* The authored document already drew idle art for a complete slot set. The atomic fallback
-		draws idle art itself; hover uses the same real product texture in either path. */
-		if (!hasCompleteAuthoredButtons || bHovered)
+		const bool_t bHovered = Router.Is_Hovered(
+			Rect.fX, Rect.fY, Rect.fWidth, Rect.fHeight, fRefWidth, fRefHeight);
+		/* Empty path reverts to the slot's own idle art (the authored layer, or the product
+		texture the fallback slot was created with). */
+		m_pLobbyBackgroundView->Set_SlotTexture(Button.pSlotId, bHovered ?
+			"UI/Lobby/create_character_button_hover.png" : "");
+		if (bHovered)
 		{
-			const char_t* pTexture = bHovered ?
-				"UI/Lobby/create_character_button_hover.png" :
-				"UI/Lobby/create_character_button.png";
-			if (ID3D11ShaderResourceView* pSRV =
-				m_pLobbyBackgroundView->Load_Texture(pTexture))
+			Router.Claim_Mouse_This_Frame();
+			if (Router.Is_Clicked(Rect.fX, Rect.fY, Rect.fWidth, Rect.fHeight,
+					fRefWidth, fRefHeight) &&
+				CLevel_Lobby::Submit_ProductCommand(Button.eStage))
 			{
-				pDrawList->AddImage(pSRV, vMin, vMax);
+				Play_UIButtonClickSound();
 			}
 		}
-		if (bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
-			CLevel_Lobby::Submit_ProductCommand(Button.eStage))
-		{
-			Play_UIButtonClickSound();
-		}
 	}
 
-#ifndef _DEBUG
-	LOBBY_PRODUCT_RECT StatusRect{ 240.f, 566.f, 800.f, 54.f };
-	LOBBY_PRODUCT_RECT AuthoredStatusRect{};
-	if (m_pLobbyBackgroundView->Get_SlotRect(
-		"Lobby_StatusText", AuthoredStatusRect.fX, AuthoredStatusRect.fY,
-		AuthoredStatusRect.fWidth, AuthoredStatusRect.fHeight) &&
-		Is_ValidProductRect(AuthoredStatusRect))
-	{
-		StatusRect = AuthoredStatusRect;
-	}
-	const string strStatus = CLevel_Lobby::Get_ProductStatus();
-	if (!strStatus.empty())
-	{
-		const ImVec2 vStatusPos(
-			pViewport->WorkPos.x + (StatusRect.fX + 8.f) * scaleX,
-			pViewport->WorkPos.y + (StatusRect.fY + 6.f) * scaleY);
-		const f32_t fFontSize = 16.f * (std::min)(scaleX, scaleY);
-		const f32_t fWrapWidth = (StatusRect.fWidth - 16.f) * scaleX;
-		pDrawList->AddText(ImGui::GetFont(), fFontSize,
-			ImVec2(vStatusPos.x + 1.f, vStatusPos.y + 1.f),
-			IM_COL32(0, 0, 0, 220), strStatus.c_str(), nullptr, fWrapWidth);
-		pDrawList->AddText(ImGui::GetFont(), fFontSize, vStatusPos,
-			IM_COL32(255, 225, 150, 255), strStatus.c_str(), nullptr, fWrapWidth);
-	}
-#endif
+	/* TitleBackground's 151-frame looping flipbook. */
+	m_pLobbyBackgroundView->Update(fTimeDelta);
 }
 
 void CMainApp::RenderLobbyButtonText()
@@ -1958,6 +1941,54 @@ void CMainApp::RenderLobbyButtonText()
 				(Rect.fY + Rect.fHeight * 0.5f) * textScaleY),
 			Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 	}
+
+#ifndef _DEBUG
+	/* Release product status line (Debug shows the same status inside the Lobby debug panel
+	instead). Was an ImGui wrapped-text draw; Draw_Text has no wrapping, so the whole line is
+	scaled to fit the status rect's width instead -- status strings are one sentence. */
+	LOBBY_PRODUCT_RECT StatusRect{ 240.f, 566.f, 800.f, 54.f };
+	LOBBY_PRODUCT_RECT AuthoredStatusRect{};
+	if (m_pLobbyBackgroundView->Get_SlotRect(
+		"Lobby_StatusText", AuthoredStatusRect.fX, AuthoredStatusRect.fY,
+		AuthoredStatusRect.fWidth, AuthoredStatusRect.fHeight) &&
+		Is_ValidProductRect(AuthoredStatusRect))
+	{
+		StatusRect = AuthoredStatusRect;
+	}
+	const string strStatus = CLevel_Lobby::Get_ProductStatus();
+	if (!strStatus.empty())
+	{
+		wstring strWideStatus;
+		const int iRequiredLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+			strStatus.data(), static_cast<int>(strStatus.size()), nullptr, 0);
+		if (iRequiredLength > 0)
+		{
+			strWideStatus.resize(static_cast<size_t>(iRequiredLength));
+			if (iRequiredLength == MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+				strStatus.data(), static_cast<int>(strStatus.size()),
+				strWideStatus.data(), iRequiredLength))
+			{
+				const float2_t vStatusMeasured = CGameInstance::Get().Measure_Text(
+					TEXT("Font_YoonGasiIIM"), strWideStatus.c_str());
+				const f32_t fScaleByHeight = (vStatusMeasured.y > 0.f) ?
+					(16.f / vStatusMeasured.y) : 1.f;
+				const f32_t fScaleByWidth = (vStatusMeasured.x > 0.f) ?
+					((StatusRect.fWidth - 16.f) / vStatusMeasured.x) : 1.f;
+				const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
+				const f32_t fCenterX = StatusRect.fX + StatusRect.fWidth * 0.5f;
+				const f32_t fCenterY = StatusRect.fY + StatusRect.fHeight * 0.5f;
+				CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strWideStatus.c_str(),
+					float2_t(fCenterX * textScaleX + 1.f, fCenterY * textScaleY + 1.f),
+					XMVectorSet(0.f, 0.f, 0.f, 220.f / 255.f), 0.f, float2_t(0.5f, 0.5f),
+					fScale * textUiScale);
+				CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strWideStatus.c_str(),
+					float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
+					XMVectorSet(1.f, 225.f / 255.f, 150.f / 255.f, 1.f), 0.f,
+					float2_t(0.5f, 0.5f), fScale * textUiScale);
+			}
+		}
+	}
+#endif
 }
 
 void CMainApp::RenderItemUpgradeButtonText()
