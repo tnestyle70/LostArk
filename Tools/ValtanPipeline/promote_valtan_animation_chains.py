@@ -565,17 +565,31 @@ def _manual_presentation_pattern(
     source_action_ids: list[int],
     stages: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    primary_action_id = promotion.get("sourceActionId", source_action_ids[0])
+    if primary_action_id not in source_action_ids:
+        raise PromotionError(
+            "reviewed primary source action is absent from the promoted Animation chain: "
+            f"{primary_action_id}"
+        )
+    primary_sequence_index = promotion.get("sourceSequenceIndex", 1)
+    ordered_source_action_ids = [primary_action_id] + [
+        source_action_id
+        for source_action_id in source_action_ids
+        if source_action_id != primary_action_id
+    ]
     sources = [
         {
             "sourceActionId": source_action_id,
-            "sequenceIndex": 1,
+            "sequenceIndex": (
+                primary_sequence_index if index == 0 else 1
+            ),
             "role": "PRIMARY" if index == 0 else "REFERENCE",
         }
-        for index, source_action_id in enumerate(source_action_ids)
+        for index, source_action_id in enumerate(ordered_source_action_ids)
     ]
     return {
         "patternId": promotion["patternId"],
-        "sourceSequenceIndex": 1,
+        "sourceSequenceIndex": primary_sequence_index,
         "presentationSources": sources,
         "stages": [
             {
@@ -827,7 +841,12 @@ def build_candidates(
                 "authoringPhase",
                 "admissionState",
             ),
-            ("targetPolicy", "aimPolicy", "sourceActionId"),
+            (
+                "targetPolicy",
+                "aimPolicy",
+                "sourceActionId",
+                "sourceSequenceIndex",
+            ),
             f"promotion[{ordinal}]",
         )
         chain_id = _stable(promotion["sourceChainId"], f"promotion[{ordinal}].sourceChainId")
@@ -865,6 +884,20 @@ def build_candidates(
                 f"promotion[{ordinal}].sourceActionId",
                 1,
             )
+        if "sourceSequenceIndex" in promotion:
+            if "sourceActionId" not in promotion:
+                raise PromotionError(
+                    f"promotion sourceSequenceIndex requires sourceActionId: {chain_id}"
+                )
+            source_sequence_index = _integer(
+                promotion["sourceSequenceIndex"],
+                f"promotion[{ordinal}].sourceSequenceIndex",
+                0,
+            )
+            if source_sequence_index > 4096:
+                raise PromotionError(
+                    f"promotion[{ordinal}].sourceSequenceIndex must be <= 4096"
+                )
 
     intake_chain_ids: list[str] = []
     for ordinal, row in enumerate(intake_only):
@@ -1717,11 +1750,33 @@ def _validate_create_request(request: dict[str, Any]) -> dict[str, Any]:
         )
         _stable(selection["sourceChainId"], "saved intake sourceChainId")
     elif selection_kind == "CURRENT_CHAIN":
-        _exact(
+        _required_with_optional(
             selection,
             ("selectionKind", "chain"),
+            ("sourceActionId", "sourceSequenceIndex"),
             "Create New Pattern current intakeChain",
         )
+        has_source_action = "sourceActionId" in selection
+        has_source_sequence = "sourceSequenceIndex" in selection
+        if has_source_action != has_source_sequence:
+            raise PromotionError(
+                "Create New Pattern exact source action and sequence must be authored together"
+            )
+        if has_source_action:
+            _integer(
+                selection["sourceActionId"],
+                "Create New Pattern sourceActionId",
+                1,
+            )
+            source_sequence_index = _integer(
+                selection["sourceSequenceIndex"],
+                "Create New Pattern sourceSequenceIndex",
+                0,
+            )
+            if source_sequence_index > 4096:
+                raise PromotionError(
+                    "Create New Pattern sourceSequenceIndex must be <= 4096"
+                )
         chain = selection["chain"]
         if not isinstance(chain, dict):
             raise PromotionError("Create New Pattern current chain must be an object")
@@ -1835,6 +1890,9 @@ def _stage_create_pattern_documents(
         "targetPolicy": request["targetPolicy"],
         "aimPolicy": request["aimPolicy"],
     }
+    if selection_kind == "CURRENT_CHAIN" and "sourceActionId" in selection:
+        promotion["sourceActionId"] = selection["sourceActionId"]
+        promotion["sourceSequenceIndex"] = selection["sourceSequenceIndex"]
     manifest_patterns.insert(insert_index, promotion)
     debug_payload = _json_text(debug).encode("utf-8")
     manifest["sourceDocument"]["sha256"] = _sha256_bytes(debug_payload)

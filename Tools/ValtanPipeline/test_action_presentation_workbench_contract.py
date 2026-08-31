@@ -48,6 +48,9 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         cls.composition_cpp = read(
             "Client/Private/ActionCompositionWorkbench.cpp"
         )
+        cls.composition_blueprint_cpp = read(
+            "Client/Private/ActionCompositionWorkbench_Blueprint.cpp"
+        )
         cls.animation_binding_h = read(
             "Client/Public/AnimationSkillBindingDocument.h"
         )
@@ -452,12 +455,15 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         for existing_vertical_slice in (
             '"Replace Stage Slots"',
             '"Append to Stage Slots"',
-            '"Insert WAIT / Gap After"',
+            '"WAIT / GAP##BossPatternAdd"',
             '"Add Server Collider"',
             '"Counter Enabled"',
             '"Counter Success Groggy"',
         ):
-            self.assertIn(existing_vertical_slice, self.composition_cpp)
+            self.assertIn(
+                existing_vertical_slice,
+                self.composition_cpp + self.composition_blueprint_cpp,
+            )
 
         for release_mode in (
             '"Release Mode"',
@@ -2086,7 +2092,8 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
         )
         complete_play = function_body(
-            toolbar, 'if (ImGui::Button("Complete Play"))'
+            toolbar,
+            'if (ImGui::Button("Play Saved Active Revision on Server Valtan"))',
         )
         restart = function_body(
             toolbar, 'if (ImGui::Button("Restart Pattern"))'
@@ -2243,6 +2250,32 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, render)
         self.assertIn("EnsureDebugTool(file.eTool)", open_file)
+
+    def test_composition_first_open_admits_boss_server_inventory(self) -> None:
+        ensure = function_body(
+            self.main_cpp,
+            "HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)",
+        )
+        composition = ensure[
+            ensure.index("case DEBUG_TOOL::COMPOSITION:") :
+            ensure.index("case DEBUG_TOOL::ANIMATION:")
+        ]
+        self.assertIn("m_pBossTool->Reload_CanonicalGraph", composition)
+        self.assertLess(
+            composition.index("m_pBossTool->Reload_CanonicalGraph"),
+            composition.index("m_pActionCompositionWorkbench->Open_Valtan"),
+        )
+
+    def test_native_master_parser_accepts_canonical_sequence_zero(self) -> None:
+        parser = function_body(
+            self.valtan_tree_cpp,
+            "bool_t Parse_MasterPattern(",
+        )
+        self.assertNotIn("0.0 == pSourceSequence->Get_Number()", parser)
+        self.assertNotIn(
+            '0.0 == Source.Find("sequenceIndex")->Get_Number()', parser
+        )
+        self.assertGreaterEqual(parser.count("4096.0 <"), 2)
 
 
 if __name__ == "__main__":

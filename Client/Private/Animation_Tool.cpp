@@ -1753,10 +1753,22 @@ bool_t Client::CAnimation_Tool::Stage_ValtanCompositionIntakeSequence(
 	snprintf(m_CustomChainTargetStageId,
 		sizeof(m_CustomChainTargetStageId), "%s", strTargetStageId.c_str());
 	m_iValtanPatternCreateSourceKind = 0;
+	m_bValtanPatternCreateExactSourceSelection = true;
+	m_iValtanPatternCreateSourceActionId = iSkillId;
+	m_iValtanPatternCreateSourceSequenceIndex = iSequenceIndex;
 	m_strValtanPatternCreateValidatedRequestSha256.clear();
 	strOutStatus = "Staged " + std::to_string(m_CustomChainSteps.size()) +
 		" Sequence clips in Create New Pattern Intake. Review the Pattern ID and Apply transaction below.";
 	return true;
+}
+
+void Client::CAnimation_Tool::
+Invalidate_ValtanPatternCreateExactSourceSelection()
+{
+	m_bValtanPatternCreateExactSourceSelection = false;
+	m_iValtanPatternCreateSourceActionId = -1;
+	m_iValtanPatternCreateSourceSequenceIndex = -1;
+	m_strValtanPatternCreateValidatedRequestSha256.clear();
 }
 
 void Client::CAnimation_Tool::Set_ValtanCompositionLoop(const bool_t bLoop)
@@ -2638,7 +2650,13 @@ void Client::CAnimation_Tool::Render_ValtanCompositionPatternCreator()
 		(void)Load_CustomChainLibrary();
 	}
 	if (!m_bValtanPatternMasterLoadAttempted)
+	{
+		/* This tab is rendered every frame.  Latch the command edge before the
+		   file-backed canonical reload so a rejected load is not retried at the
+		   render rate. */
+		m_bValtanPatternMasterLoadAttempted = true;
 		(void)Reload_ValtanPatternMaster();
+	}
 	Render_ValtanPatternCreatePanel();
 }
 
@@ -2835,6 +2853,7 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	across a switch they would be saved into the next body's file. */
 	m_CustomChainSteps.clear();
 	m_CustomChainLibrary.clear();
+	Invalidate_ValtanPatternCreateExactSourceSelection();
 	m_bCustomChainLibraryLoadAttempted = false;
 	m_bShowValtanCustomChainWindow = false;
 	m_CustomChainFilter[0] = '\0';
@@ -9039,7 +9058,24 @@ bool_t Client::CAnimation_Tool::Build_ValtanPatternCreateRequest(
 		}
 		Request << R"json({
     "selectionKind": "CURRENT_CHAIN",
-    "chain": {
+)json";
+		if (m_bValtanPatternCreateExactSourceSelection)
+		{
+			if (m_iValtanPatternCreateSourceActionId <= 0 ||
+				m_iValtanPatternCreateSourceSequenceIndex < 0 ||
+				m_iValtanPatternCreateSourceSequenceIndex > 4096)
+			{
+				strOutError =
+					"The staged exact Animation source identity is outside the canonical action/sequence range.";
+				return false;
+			}
+			Request << R"json(    "sourceActionId": )json" <<
+				m_iValtanPatternCreateSourceActionId << R"json(,
+    "sourceSequenceIndex": )json" <<
+				m_iValtanPatternCreateSourceSequenceIndex << R"json(,
+)json";
+		}
+		Request << R"json(    "chain": {
       "chainId": ")json" << CDataJson::Escape(strChainId) << R"json(",
       "targetPatternId": "",
       "targetStageId": "",
@@ -9571,7 +9607,10 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Clear Steps"))
+	{
 		m_CustomChainSteps.clear();
+		Invalidate_ValtanPatternCreateExactSourceSelection();
+	}
 	ImGui::EndDisabled();
 
 	ImGui::SetNextItemWidth(160.f);
@@ -9595,8 +9634,11 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 	ImGui::TextDisabled("%s", pProfile->pFileLabel);
 	ImGui::BeginDisabled(bBusy);
 	ImGui::SetNextItemWidth(160.f);
-	ImGui::InputTextWithHint("##chainid", "chain name",
-		m_CustomChainId, sizeof(m_CustomChainId));
+	if (ImGui::InputTextWithHint("##chainid", "chain name",
+		m_CustomChainId, sizeof(m_CustomChainId)))
+	{
+		Invalidate_ValtanPatternCreateExactSourceSelection();
+	}
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(160.f);
 	ImGui::InputTextWithHint("##chaintargetpattern", "target patternId",
@@ -9663,6 +9705,7 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 			if (ImGui::SmallButton("Load"))
 			{
 				m_CustomChainSteps = Entry.steps;
+				Invalidate_ValtanPatternCreateExactSourceSelection();
 				snprintf(m_CustomChainId, sizeof(m_CustomChainId), "%s",
 					Entry.chainId.c_str());
 				snprintf(m_CustomChainTargetPatternId,
@@ -9721,7 +9764,11 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 			ImGui::Text("%2zu", iStep + 1u);
 			ImGui::SameLine();
 			ImGui::SetNextItemWidth(80.f);
-			ImGui::InputFloat("##seconds", &Step.fDurationSeconds, 0.f, 0.f, "%.3f");
+			if (ImGui::InputFloat(
+					"##seconds", &Step.fDurationSeconds, 0.f, 0.f, "%.3f"))
+			{
+				Invalidate_ValtanPatternCreateExactSourceSelection();
+			}
 			if (!std::isfinite(Step.fDurationSeconds) ||
 				Step.fDurationSeconds < 0.f)
 			{
@@ -9753,17 +9800,20 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 		{
 			m_CustomChainSteps.erase(
 				m_CustomChainSteps.begin() +
-				static_cast<std::ptrdiff_t>(iRemove));
+					static_cast<std::ptrdiff_t>(iRemove));
+			Invalidate_ValtanPatternCreateExactSourceSelection();
 		}
 		else if (iMoveUp > 0u && iMoveUp < m_CustomChainSteps.size())
 		{
 			std::swap(
 				m_CustomChainSteps[iMoveUp - 1u], m_CustomChainSteps[iMoveUp]);
+			Invalidate_ValtanPatternCreateExactSourceSelection();
 		}
 		else if (iMoveDown + 1u < m_CustomChainSteps.size())
 		{
 			std::swap(
 				m_CustomChainSteps[iMoveDown], m_CustomChainSteps[iMoveDown + 1u]);
+			Invalidate_ValtanPatternCreateExactSourceSelection();
 		}
 	}
 
@@ -9812,6 +9862,7 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 				CUSTOM_CHAIN_STEP Step;
 				Step.clipName = pName;
 				m_CustomChainSteps.push_back(std::move(Step));
+				Invalidate_ValtanPatternCreateExactSourceSelection();
 			}
 			ImGui::SameLine();
 			ImGui::TextUnformatted(pName);

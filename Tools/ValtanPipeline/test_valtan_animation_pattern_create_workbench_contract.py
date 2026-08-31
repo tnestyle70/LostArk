@@ -75,6 +75,8 @@ class ValtanAnimationPatternCreateWorkbenchContractTests(unittest.TestCase):
             '"aimPolicy"',
             '"SAVED_INTAKE_CHAIN"',
             '"CURRENT_CHAIN"',
+            '"sourceActionId"',
+            '"sourceSequenceIndex"',
             '"NATIVE_CLIP_LENGTHS"',
             '"PROJECT_AUTHORED"',
         ):
@@ -87,6 +89,25 @@ class ValtanAnimationPatternCreateWorkbenchContractTests(unittest.TestCase):
             '"reactions"',
         ):
             self.assertNotIn(forbidden, builder)
+
+    def test_selected_sequence_identity_survives_create_request(self) -> None:
+        stage = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Stage_ValtanCompositionIntakeSequence(",
+        )
+        builder = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Build_ValtanPatternCreateRequest(",
+        )
+        self.assertIn(
+            "m_iValtanPatternCreateSourceActionId = iSkillId", stage
+        )
+        self.assertIn(
+            "m_iValtanPatternCreateSourceSequenceIndex = iSequenceIndex", stage
+        )
+        self.assertIn("m_iValtanPatternCreateSourceActionId", builder)
+        self.assertIn("m_iValtanPatternCreateSourceSequenceIndex", builder)
+        self.assertNotIn('"sourceSequenceIndex": 1', self.backend)
 
     def test_process_boundary_uses_request_file_without_a_shell(self) -> None:
         start = function_body(

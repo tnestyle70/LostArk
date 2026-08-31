@@ -45,6 +45,7 @@
     <ClInclude Include="..\Public\BalanceTool.h" />
       <ClInclude Include="..\Public\BossTool.h" />
 	  <ClInclude Include="..\Public\CameraTool.h" />
+	<ClInclude Include="..\Public\ActionCompositionGraphModel.h" />
 	<ClInclude Include="..\Public\ActionCompositionWorkbench.h" />
     <ClInclude Include="..\Public\Animation_Tool.h" />
     <ClInclude Include="..\Public\Character.h" />
@@ -198,6 +199,8 @@
   </ItemGroup>
   <ItemGroup>
 	<ClCompile Include="..\Private\ActionCompositionWorkbench.cpp" />
+	<ClCompile Include="..\Private\ActionCompositionWorkbench_Blueprint.cpp" />
+	<ClCompile Include="..\Private\ActionCompositionGraphModel.cpp" />
 	<ClCompile Include="..\Private\ActionPresentationTimeline.cpp" />
 	<ClCompile Include="..\Private\CameraShakeService.cpp" />
 	<ClCompile Include="..\Private\ValtanCinematicCameraController.cpp" />

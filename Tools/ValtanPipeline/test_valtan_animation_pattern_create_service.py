@@ -90,6 +90,8 @@ class ValtanAnimationPatternCreateServiceTests(unittest.TestCase):
             if saved
             else {
                 "selectionKind": "CURRENT_CHAIN",
+                "sourceActionId": 420612,
+                "sourceSequenceIndex": 3,
                 "chain": {
                     "chainId": "workbench-current-chain",
                     "targetPatternId": "",
@@ -210,6 +212,21 @@ class ValtanAnimationPatternCreateServiceTests(unittest.TestCase):
                 for occurrence in stage["animation"]["occurrences"]
             ],
         )
+        self.assertEqual(3, presented["sourceSequenceIndex"])
+        self.assertEqual(
+            {
+                "sourceActionId": 420612,
+                "sequenceIndex": 3,
+                "role": "PRIMARY",
+            },
+            presented["presentationSources"][0],
+        )
+        promoted = next(
+            row for row in manifest["patterns"]
+            if row["patternId"] == "VALTAN_WORKBENCH_NEW_PATTERN"
+        )
+        self.assertEqual(420612, promoted["sourceActionId"])
+        self.assertEqual(3, promoted["sourceSequenceIndex"])
         self.assertEqual(
             promotion._lround_positive(
                 self.root_curves["mesh_att_battle_12_01"][0]
@@ -291,6 +308,25 @@ class ValtanAnimationPatternCreateServiceTests(unittest.TestCase):
         drifted["expectedSourceSha256"] = "0" * 64
         with self.assertRaisesRegex(promotion.PromotionError, "source drift"):
             self.prepare(drifted)
+
+    def test_exact_source_tuple_is_paired_and_allows_sequence_zero(self) -> None:
+        sequence_zero = self.request()
+        sequence_zero["intakeChain"]["sourceSequenceIndex"] = 0
+        targets, _baselines, _result = self.prepare(sequence_zero)
+        presentation = json.loads(targets[self.root / promotion.PRESENTATION_REL])
+        pattern = next(
+            row for row in presentation["patterns"]
+            if row["patternId"] == "VALTAN_WORKBENCH_NEW_PATTERN"
+        )
+        self.assertEqual(0, pattern["sourceSequenceIndex"])
+        self.assertEqual(0, pattern["presentationSources"][0]["sequenceIndex"])
+
+        missing_pair = self.request(pattern_id="VALTAN_WORKBENCH_MISSING_PAIR")
+        del missing_pair["intakeChain"]["sourceSequenceIndex"]
+        with self.assertRaisesRegex(
+            promotion.PromotionError, "must be authored together"
+        ):
+            self.prepare(missing_pair)
 
     def test_unknown_wmodel_clip_is_rejected_before_projection(self) -> None:
         with self.assertRaisesRegex(

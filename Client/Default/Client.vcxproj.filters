@@ -450,6 +450,12 @@
 	<ClCompile Include="..\Private\ActionCompositionWorkbench.cpp">
 	  <Filter>03. Tools\05. Sequencer</Filter>
 	</ClCompile>
+	<ClCompile Include="..\Private\ActionCompositionWorkbench_Blueprint.cpp">
+	  <Filter>03. Tools\05. Sequencer</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\ActionCompositionGraphModel.cpp">
+	  <Filter>03. Tools\05. Sequencer</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\Effect_PresentationService.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
@@ -824,6 +830,9 @@
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
 	<ClInclude Include="..\Public\ActionCompositionWorkbench.h">
+	  <Filter>03. Tools\05. Sequencer</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\ActionCompositionGraphModel.h">
 	  <Filter>03. Tools\05. Sequencer</Filter>
 	</ClInclude>
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h">

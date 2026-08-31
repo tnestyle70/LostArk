@@ -12,6 +12,9 @@ BALANCE_H = ROOT / "Client/Public/BalanceTool.h"
 BALANCE_CPP = ROOT / "Client/Private/BalanceTool.cpp"
 WORKBENCH_H = ROOT / "Client/Public/ActionCompositionWorkbench.h"
 WORKBENCH_CPP = ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
+WORKBENCH_BLUEPRINT_CPP = (
+    ROOT / "Client/Private/ActionCompositionWorkbench_Blueprint.cpp"
+)
 
 
 def function_body(source: str, signature: str) -> str:
@@ -35,6 +38,9 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
         cls.balance_cpp = BALANCE_CPP.read_text(encoding="utf-8")
         cls.workbench_h = WORKBENCH_H.read_text(encoding="utf-8")
         cls.workbench_cpp = WORKBENCH_CPP.read_text(encoding="utf-8")
+        cls.workbench_blueprint_cpp = WORKBENCH_BLUEPRINT_CPP.read_text(
+            encoding="utf-8"
+        )
 
     def test_typed_balance_api_is_manual_only_and_stages_on_a_copy(self) -> None:
         for name in (
@@ -231,32 +237,39 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
         counter_gate = counter.index("IsValtanCounterTopologyFiniteForward")
         self.assertLess(counter_gate, counter.index("*currentPattern = std::move(*stagedPattern)"))
 
-    def test_workbench_exposes_insert_move_remove_and_sound_preflight(self) -> None:
+    def test_blueprint_owns_insert_move_remove_and_sound_preflight(self) -> None:
+        topology = function_body(
+            self.workbench_blueprint_cpp,
+            "Render_BossPatternStageTopologyControls(",
+        )
+        for label in (
+            '"ACTIVE##BossPatternAdd"',
+            '"WINDUP##BossPatternAdd"',
+            '"GROGGY##BossPatternAdd"',
+            '"WAIT / GAP##BossPatternAdd"',
+            '"Move Earlier##BossPattern"',
+            '"Move Later##BossPattern"',
+            '"Delete Stage##BossPattern"',
+        ):
+            self.assertIn(label, topology)
+        self.assertIn("BuildNextBossPatternStageIdentity", topology)
+        self.assertIn("Can_Edit_ValtanManualStageTopology", topology)
+        self.assertIn("!bTopologyEditable", topology)
+        self.assertIn("Topology is read-only:", topology)
+        self.assertIn("Insert_ValtanManualStageAfter", topology)
+        self.assertIn("Move_ValtanManualStage", topology)
+        self.assertIn("Remove_ValtanManualStage", topology)
+        self.assertLess(
+            topology.index("Validate_ManualStageTopologySoundDependencies("),
+            topology.index("Remove_ValtanManualStage("),
+        )
         details = function_body(
             self.workbench_cpp,
             "void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(",
         )
-        for label in (
-            "Insert ACTIVE After",
-            "Insert WINDUP After",
-            "Insert GROGGY After",
-            "Insert WAIT / Gap After",
-            "Move Stage Up",
-            "Move Stage Down",
-            "Remove Stage",
-        ):
-            self.assertIn(label, details)
-        self.assertIn("BuildNextManualStageIdentity", details)
-        self.assertIn("Can_Edit_ValtanManualStageTopology", details)
-        self.assertIn("!bTopologyEditable", details)
-        self.assertIn("Topology is read-only:", details)
-        self.assertIn("Insert_ValtanManualStageAfter", details)
-        self.assertIn("Move_ValtanManualStage", details)
-        self.assertIn("Remove_ValtanManualStage", details)
-        self.assertLess(
-            details.index("Validate_ManualStageTopologySoundDependencies("),
-            details.index("Remove_ValtanManualStage("),
-        )
+        self.assertIn("Open Boss Pattern Structure", details)
+        self.assertNotIn("Insert_ValtanManualStageAfter", details)
+        self.assertNotIn("Remove_ValtanManualStage", details)
         sound = function_body(
             self.workbench_cpp,
             "Validate_ManualStageTopologySoundDependencies(",
@@ -342,6 +355,59 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
         self.assertIn("pEffectiveSelectedPattern", browser)
         self.assertIn("pDisplayPattern->Stages", browser)
         self.assertIn("Select_Stage(*pDisplayPattern, Stage)", browser)
+
+    def test_boss_graph_generation_belongs_to_the_immutable_pattern_view(self) -> None:
+        render = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render()",
+        )
+        generation = render.index(
+            "const std::uint64_t iPatternViewDraftGeneration"
+        )
+        sequencer = render.index("Render_SequencerWindow(", generation)
+        graph = render.index("Render_BossPatternWindow(", sequencer)
+        self.assertLess(generation, sequencer)
+        self.assertLess(sequencer, graph)
+        self.assertIn(
+            "m_iEffectivePatternCacheDraftGeneration : 0u", render[generation:sequencer]
+        )
+        self.assertIn("pPattern, iPatternViewDraftGeneration", render[graph:])
+
+        window = function_body(
+            self.workbench_blueprint_cpp,
+            "void Client::CActionCompositionWorkbench::Render_BossPatternWindow(",
+        )
+        self.assertNotIn("Get_ValtanDraftGeneration", window)
+        self.assertIn(
+            "m_iBossPatternGraphAttemptDraftGeneration ==\n\t\t\tiPatternViewDraftGeneration",
+            window,
+        )
+        self.assertIn(
+            "*pPattern, iPatternViewDraftGeneration", window
+        )
+
+    def test_topology_mutation_resets_preview_route_and_rejected_graph_is_not_hit(self) -> None:
+        topology = function_body(
+            self.workbench_blueprint_cpp,
+            "Render_BossPatternStageTopologyControls(",
+        )
+        changed = topology.index("if (bChanged)")
+        self.assertIn(
+            "m_BossPatternOutcomeOverrides.clear()", topology[changed:]
+        )
+        self.assertIn("++m_iBossPatternRouteGeneration", topology[changed:])
+
+        window = function_body(
+            self.workbench_blueprint_cpp,
+            "void Client::CActionCompositionWorkbench::Render_BossPatternWindow(",
+        )
+        self.assertIn('ImGui::SmallButton("Reset Route")', window)
+        self.assertIn("bool_t bCanInteractSnapshot", window)
+        self.assertIn(
+            "if (bCanInteractSnapshot && bCanvasHovered", window
+        )
+        self.assertIn("MatchesBossPatternEdgeSource(", window)
+        self.assertIn("Edge.iSourceBranchIndex", self.workbench_blueprint_cpp)
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "ActionCompositionGraphModel.h"
 #include "Animation_Tool.h"
 #include "ValtanCombatObjectSoundCueDocument.h"
 #include "ValtanPatternShakeCueDocument.h"
@@ -84,6 +85,17 @@ private:
 		std::size_t iSubrow = 0u;
 	};
 
+	/* Cached reverse projection from an exact PRIMARY source Sequence to the
+	   immutable, Complete-Play-eligible Product Patterns that own it.  Pointers
+	   are valid only for m_iCanonicalDisplayGeneration and are discarded before
+	   a newly committed canonical view can be rendered. */
+	struct SOURCE_SEQUENCE_OWNER_INDEX_ENTRY final
+	{
+		uint32_t iSourceActionId = 0u;
+		uint32_t iSequenceIndex = 0u;
+		std::vector<const VALTAN_PATTERN_VIEW*> Owners;
+	};
+
 public:
 	CActionCompositionWorkbench(
 		CAnimation_Tool* pAnimationTool,
@@ -130,6 +142,13 @@ private:
 	const VALTAN_STAGE_VIEW* Find_SelectedStage(
 		const VALTAN_PATTERN_VIEW* pPattern) const;
 	std::vector<const VALTAN_PATTERN_VIEW*> Collect_Patterns() const;
+	std::vector<const VALTAN_PATTERN_VIEW*>
+		Collect_CanonicalPatternsForDependencyValidation() const;
+	void Invalidate_SourceSequenceOwnerIndex();
+	void Ensure_SourceSequenceOwnerIndex();
+	const SOURCE_SEQUENCE_OWNER_INDEX_ENTRY* Find_SourceSequenceOwners(
+		uint32_t iSourceActionId,
+		uint32_t iSequenceIndex) const;
 	void Invalidate_TimelineCache();
 	void Invalidate_EffectivePatternCache();
 	void Ensure_TimelineCache(const VALTAN_PATTERN_VIEW* pPattern);
@@ -257,6 +276,15 @@ private:
 		const VALTAN_PATTERN_VIEW* pPattern,
 		const VALTAN_STAGE_VIEW* pStage,
 		bool_t bPatternMutationAdmitted);
+	void Render_BossPatternWindow(
+		const VALTAN_PATTERN_VIEW* pPattern,
+		std::uint64_t iPatternViewDraftGeneration,
+		bool_t bMutationAdmitted,
+		bool_t bPatternMutationAdmitted);
+	bool_t Render_BossPatternStageTopologyControls(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const VALTAN_STAGE_VIEW& Stage,
+		bool_t bPatternMutationAdmitted);
 	void Request_LaneAuthoring(
 		TIMELINE_LANE eLane,
 		const VALTAN_PATTERN_VIEW& Pattern,
@@ -277,6 +305,11 @@ private:
 	   Complete Play.  Reference/legacy compatibility rows remain available to
 	   the canonical loader for validation, but never become authoring choices. */
 	VALTAN_TOOL_AUDITION_INVENTORY m_PlayableInventory;
+	std::vector<SOURCE_SEQUENCE_OWNER_INDEX_ENTRY>
+		m_SourceSequenceOwnerIndex;
+	std::uint64_t m_iCanonicalDisplayGeneration = 0u;
+	std::uint64_t m_iSourceSequenceOwnerIndexGeneration =
+		~std::uint64_t{ 0u };
 	VALTAN_PATTERN_SHAKE_CUE_DOCUMENT m_PatternShakes;
 	VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT m_CombatObjectSounds;
 	ADMISSION_STATE m_eAdmission = ADMISSION_STATE::UNLOADED;
@@ -292,6 +325,9 @@ private:
 	bool_t m_bDetailsWindowVisible = true;
 	bool_t m_bResourcesWindowVisible = true;
 	bool_t m_bSessionWindowVisible = true;
+	bool_t m_bBossPatternWindowVisible = false;
+	bool_t m_bBossPatternFocusRequested = false;
+	bool_t m_bBossPatternFitRequested = false;
 	bool_t m_bLoopPreview = true;
 	VALTAN_PATTERN_PREVIEW_PATH m_ePreviewPath =
 		VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
@@ -327,6 +363,7 @@ private:
 		"No canonical Product display has been admitted.";
 	std::string m_strStatus =
 		"Load the canonical Valtan graph to begin composition.";
+	std::string m_strPatternSaveStatus;
 	std::string m_strSoundStatus;
 	std::vector<std::string> m_PatternSoundEvents;
 	std::string m_strSoundAddClipOccurrenceId;
@@ -347,12 +384,16 @@ private:
 	bool_t m_bAnimationSequenceLoadAttempted = false;
 	int32_t m_iSelectedSequenceSkillId = -1;
 	int32_t m_iSelectedSequenceIndex = -1;
+	std::string m_strSourceSequenceServerPatternId;
 	int32_t m_iDamageProfileSelection = 0;
 	uint32_t m_iManualStageInsertDurationMs = 1000u;
 	std::string m_strAnimationSequenceStatus;
 	bool_t m_bAuthoringDraftDirty = false;
 	bool_t m_bPatternSoundDependencyDirty = false;
 	bool_t m_bConfirmDiscardPatternSoundDraft = false;
+	bool_t m_bSavePatternRequested = false;
+	bool_t m_bPatternSaveResultAvailable = false;
+	bool_t m_bPatternSaveSucceeded = false;
 
 	std::vector<TIMELINE_ITEM> m_TimelineItems;
 	std::array<std::size_t, 7u> m_TimelineLaneSubrowCounts{};
@@ -372,6 +413,24 @@ private:
 	std::uint64_t m_iEffectivePatternCacheDraftGeneration =
 		~std::uint64_t{ 0u };
 	bool_t m_bEffectivePatternCacheReady = false;
+
+	ACTION_COMPOSITION_GRAPH_SNAPSHOT m_BossPatternGraphSnapshot;
+	ACTION_COMPOSITION_GRAPH_ERROR m_BossPatternGraphError;
+	std::vector<ACTION_COMPOSITION_GRAPH_OUTCOME_OVERRIDE>
+		m_BossPatternOutcomeOverrides;
+	std::string m_strBossPatternRoutePatternId;
+	std::string m_strBossPatternGraphAttemptPatternId;
+	std::string m_strBossPatternGraphAttemptCanonicalRevision;
+	std::uint64_t m_iBossPatternGraphAttemptDraftGeneration =
+		~std::uint64_t{ 0u };
+	std::uint64_t m_iBossPatternGraphAttemptRouteGeneration =
+		~std::uint64_t{ 0u };
+	std::uint64_t m_iBossPatternRouteGeneration = 0u;
+	bool_t m_bBossPatternGraphAttempted = false;
+	bool_t m_bBossPatternGraphReady = false;
+	f32_t m_fBossPatternPanX = 0.f;
+	f32_t m_fBossPatternPanY = 0.f;
+	f32_t m_fBossPatternZoom = 1.f;
 
 	std::string m_strEffectPatternId;
 	std::string m_strEffectStageId;

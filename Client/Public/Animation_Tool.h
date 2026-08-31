@@ -493,6 +493,11 @@ private:
 	/* Whole-file atomic replace. A rejected write leaves the previous library
 	   on disk and in memory so a failed save never costs saved chains. */
 	bool_t Save_CustomChainLibrary();
+	/* Exact source identity is attached only while the current hand-built chain
+	   is still the untouched copy staged from one extracted Sequence.  Any
+	   manual edit drops the identity instead of publishing a misleading
+	   (actionId, sequenceIndex) owner for a different chain. */
+	void Invalidate_ValtanPatternCreateExactSourceSelection();
 	void Render_ValtanPatternCreatePanel();
 	bool_t Build_ValtanPatternCreateRequest(
 		std::string& strOutRequest,
@@ -747,6 +752,9 @@ private:
 	std::string m_strValtanPatternCreateActiveRequestSha256;
 	std::string m_strValtanPatternCreateValidatedRequestSha256;
 	std::string m_strValtanPatternCreateActivePatternId;
+	bool_t m_bValtanPatternCreateExactSourceSelection = false;
+	int32_t m_iValtanPatternCreateSourceActionId = -1;
+	int32_t m_iValtanPatternCreateSourceSequenceIndex = -1;
 	bool_t m_bValtanPatternCreateActiveApply = false;
 	bool_t m_bValtanPatternCreateHasExitCode = false;
 	uint32_t m_iValtanPatternCreateExitCode = 0u;
