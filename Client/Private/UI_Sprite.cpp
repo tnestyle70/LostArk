@@ -73,6 +73,11 @@ void Client::CUI_Sprite::Set_Additive(bool_t bAdditive)
 	m_bAdditive = bAdditive;
 }
 
+void Client::CUI_Sprite::Set_FillRatio(f32_t fFillRatio)
+{
+	m_fFillRatio = fFillRatio;
+}
+
 void Client::CUI_Sprite::Set_Texture(ComPtr<ID3D11ShaderResourceView> pOverrideSRV)
 {
 	m_pOverrideTextureSRV = pOverrideSRV;
@@ -139,6 +144,9 @@ HRESULT Client::CUI_Sprite::Bind_ShaderResources()
 
 	const int32_t iFlipX = m_bFlipX ? 1 : 0;
 	if (FAILED(m_pShaderCom->Bind_RawValue("g_FlipX", &iFlipX, sizeof(iFlipX))))
+		return E_FAIL;
+
+	if (FAILED(m_pShaderCom->Bind_RawValue("g_FillRatio", &m_fFillRatio, sizeof(m_fFillRatio))))
 		return E_FAIL;
 
 	return S_OK;

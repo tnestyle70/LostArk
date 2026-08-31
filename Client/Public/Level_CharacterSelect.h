@@ -219,6 +219,10 @@ private:
 	std::vector<std::string> m_ValtanEffectPreparationTargets;
 	std::array<char_t,
 		LostArk::Shared::MAX_NICKNAME_BYTES + 1u> m_NicknameDraft{};
+	/* UTF-16 twin of m_NicknameDraft -- the edit buffer the runtime text field (WM_CHAR units
+	via CUIInputRouter, no ImGui::InputText) actually appends/erases on; re-encoded into
+	m_NicknameDraft (the UTF-8 contract Confirm_CreateCharacter validates/sends) on every edit. */
+	wstring_t m_NicknameDraftW;
 	bool_t m_isCreateCharacterModalOpen = false;
 	bool_t m_hasCreateCharacterButtonClick = false;
 	/* A Server-approved world transfer hands the live socket to the target

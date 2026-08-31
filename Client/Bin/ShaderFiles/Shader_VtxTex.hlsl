@@ -10,6 +10,12 @@ consumer that never binds them (every existing DefaultTechnique/Effect pass draw
 not a contract callers must always set. */
 float4 g_TintColor = float4(1.f, 1.f, 1.f, 1.f);
 bool g_FlipX = false;
+/* CUI_Sprite's own runtime percentage-fill clip (a gauge/health-bar drain) -- 1.0 (default)
+draws the whole sprite unclipped, matching every existing caller that never binds this. A value
+in [0,1) discards texels whose final (post-flip) U coordinate is past this fraction, revealing
+the image's own left portion at native scale instead of a stretched/squished resize -- the same
+UV-clipped ImGui::AddImage(uv1=(fillRatio,1)) technique this replaces. */
+float g_FillRatio = 1.f;
 
 /* LinearSampler's AddressU/V = WRAP is correct for tiled 3D world textures but wrong here:
 this shader only backs CUI_Sprite's screen-space UI quads, whose texcoords span exactly
@@ -100,6 +106,8 @@ PS_OUT PS_MAIN_UI(PS_IN In)
     float2 vTexcoord = In.vTexcoord;
     if (g_FlipX)
         vTexcoord.x = 1.f - vTexcoord.x;
+
+    clip(g_FillRatio - vTexcoord.x);
 
     Out.vColor = g_Texture.Sample(UISampler, vTexcoord) * g_TintColor;
 

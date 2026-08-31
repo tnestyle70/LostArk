@@ -44,6 +44,10 @@ public:
 	void Set_Tint(const float4_t& vTint);
 	void Set_FlipX(bool_t bFlipX);
 	void Set_Additive(bool_t bAdditive);
+	/* 1.f (default) draws the whole sprite; a value in [0,1) clips texels past that fraction of
+	the sprite's own U axis (post-FlipX), for a gauge/health-bar drain that reveals its own art at
+	native scale as it empties instead of a stretched/squished resize. */
+	void Set_FillRatio(f32_t fFillRatio);
 	/* Takes an already-resolved SRV (the caller owns loading/caching -- CUI_Sprite stays a thin
 	render primitive, not a second texture cache) and takes over from the prototype-tag texture
 	bound at construction for as long as it's set. Pass nullptr to fall back to that original
@@ -60,6 +64,7 @@ private:
 	float4_t						m_vTint = float4_t(1.f, 1.f, 1.f, 1.f);
 	bool_t							m_bFlipX = false;
 	bool_t							m_bAdditive = false;
+	f32_t							m_fFillRatio = 1.f;
 	ComPtr<ID3D11ShaderResourceView>	m_pOverrideTextureSRV;
 
 private:

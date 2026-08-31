@@ -140,6 +140,11 @@ CLevel_CharacterSelect::~CLevel_CharacterSelect()
 {
 	if (this == s_pActiveInstance)
 		s_pActiveInstance = nullptr;
+	/* A level teardown with the Create Character modal still open (disconnect -> Lobby, world
+	transfer) must release the WM_CHAR capture, or Is_TextInputActive stays stuck true and every
+	keybind it gates stays dead for the rest of the process. */
+	if (m_isCreateCharacterModalOpen)
+		CUIInputRouter::Get().Stop_TextInput();
 	CAnimationTargetService::Unbind(m_pActiveCharacter);
 	if (!m_preserveServerConnectionForTransfer)
 		CNetworkManager::Get().Close_ServerConnection();
@@ -1216,7 +1221,18 @@ void CLevel_CharacterSelect::Open_CreateCharacterModal()
 
 	m_isCreateCharacterModalOpen = true;
 	m_strStatus = "Enter a 1-32 byte nickname, then confirm.";
-	ImGui::OpenPopup("Create Character");
+	/* Seed the UTF-16 edit buffer from whatever UTF-8 draft survived a previous open -- the
+	same persistence ImGui::InputText's member char buffer used to give for free. */
+	m_NicknameDraftW.clear();
+	if ('\0' != m_NicknameDraft[0])
+	{
+		wchar_t wide[LostArk::Shared::MAX_NICKNAME_BYTES + 1u]{};
+		const int32_t iWideLength = ::MultiByteToWideChar(CP_UTF8, 0,
+			m_NicknameDraft.data(), -1, wide, static_cast<int32_t>(std::size(wide)));
+		if (iWideLength > 1)
+			m_NicknameDraftW.assign(wide, static_cast<size_t>(iWideLength - 1));
+	}
+	CUIInputRouter::Get().Start_TextInput();
 }
 
 bool_t CLevel_CharacterSelect::Confirm_CreateCharacter()
@@ -1256,7 +1272,7 @@ void CLevel_CharacterSelect::Cancel_CreateCharacter()
 	CCharacterSelectionState::Cancel_PendingCreation();
 	m_isCreateCharacterModalOpen = false;
 	m_strStatus = "Character creation canceled.";
-	ImGui::CloseCurrentPopup();
+	CUIInputRouter::Get().Stop_TextInput();
 }
 
 void CLevel_CharacterSelect::Render_CreateCharacterModal()
@@ -1275,27 +1291,18 @@ void CLevel_CharacterSelect::Render_CreateCharacterModal()
 		return;
 	}
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-	const auto Fn_ToScreen = [&](f32_t fX, f32_t fY) -> ImVec2
-	{
-		return ImVec2(
-			pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
-	};
-
-	/* Panel/TextBox/Confirm/Cancel are now real CUI_Sprite GameObjects (same rects, same authored
-	art) instead of ImGui AddImage calls -- they render through the normal engine pipeline, ahead
-	of this popup's own ImGui pass, so this just keeps their visibility/hover-texture state
-	current. The popup window itself stays: it's still the real input-capture host for
-	ImGui::InputText/IME composition below, stretched over the whole viewport with NoBackground so
-	nothing of its own draws. */
+	/* Panel/TextBox/Confirm/Cancel are real CUI_Sprite GameObjects (same rects, same authored
+	art) rendering through the normal engine pipeline; this keeps their visibility/hover-texture
+	state current. No ImGui popup remains: text entry is CUIInputRouter's WM_CHAR capture (below),
+	and the nickname/composition/caret/status text draws in Render_ClassListText's LOA-font pass
+	with everything else. */
 	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_Panel", true);
 	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_TextBox", true);
 
 	CUIInputRouter& Router = CUIInputRouter::Get();
+	/* Modal semantics: the pointer belongs to this popup every frame it's open (its dim/panel
+	swallow clicks), exactly as BeginPopupModal behaved -- not only while a button is hovered. */
+	Router.Claim_Mouse_This_Frame();
 	const f32_t fRefWidth = m_pClassSelectView->Get_ResolutionWidth();
 	const f32_t fRefHeight = m_pClassSelectView->Get_ResolutionHeight();
 	bool_t confirmFromButton = false;
@@ -1327,70 +1334,81 @@ void CLevel_CharacterSelect::Render_CreateCharacterModal()
 		}
 	}
 
-	/* Real "캐릭터 이름 입력" panel art instead of ImGui's own modal chrome -- the popup window
-	is stretched over the whole viewport (NoBackground so it stays invisible) purely as an input
-	surface/dim-behind host; every visible pixel is either the CUI_Sprite art above or the real
-	ImGui::InputText widget positioned exactly over CreateCharacterModal_TextBox's art. */
-	ImGui::SetNextWindowPos(pViewport->WorkPos);
-	ImGui::SetNextWindowSize(pViewport->WorkSize);
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f);
-	const bool_t isOpen = ImGui::BeginPopupModal(
-		"Create Character",
-		nullptr,
-		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground |
-		ImGuiWindowFlags_NoSavedSettings);
-	ImGui::PopStyleVar();
-	if (!isOpen)
-		return;
-
-	ImDrawList* pDrawList = ImGui::GetWindowDrawList();
-
-	f32_t fBoxX = 0.f, fBoxY = 0.f, fBoxW = 0.f, fBoxH = 0.f;
-	const bool_t hasTextBox = m_pClassSelectView->Get_SlotRect(
-		"CreateCharacterModal_TextBox", fBoxX, fBoxY, fBoxW, fBoxH);
-
-	/* Real nickname entry -- ImGui::InputText already handles Korean IME/caret correctly (this
-	is unchanged from before), just repositioned with a transparent frame directly over the real
-	text box art instead of drawing its own default widget chrome. */
-	bool_t confirmFromEnter = false;
-	if (hasTextBox)
+	/* Runtime nickname editing -- CUIInputRouter's WM_CHAR capture replaces ImGui::InputText.
+	Committed Hangul syllables arrive as ordinary WM_CHAR units (the IME's GCS_RESULTSTR ->
+	WM_IME_CHAR -> WM_CHAR default chain), so the committed text needs no IME handling here; the
+	still-composing string is drawn separately from CImGuiLayer::Get_ImeCompositionString().
+	Backspace/Enter/Escape ride the same WM_CHAR stream ('\b'/'\r'/27), the classic Win32 edit
+	loop. */
+	const auto Fn_EraseLastCodePoint = [this]()
 	{
-		ImGui::SetCursorScreenPos(Fn_ToScreen(fBoxX + 8.f, fBoxY + 4.f));
-		ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.f, 0.f, 0.f, 0.f));
-		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.f, 0.f, 0.f, 0.f));
-		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.f, 0.f, 0.f, 0.f));
-		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.f));
-		ImGui::PushItemWidth((fBoxW - 16.f) * scaleX);
-		confirmFromEnter = ImGui::InputText(
-			"##Nickname", m_NicknameDraft.data(), m_NicknameDraft.size(),
-			ImGuiInputTextFlags_EnterReturnsTrue);
-		/* Real games never show Windows' own floating IME composition box -- they draw the
-		still-composing (uncommitted) text inline themselves, right after what's already typed.
-		WM_IME_SETCONTEXT already suppresses the OS box; this is the other half. */
-		if (ImGui::IsItemActive())
+		if (m_NicknameDraftW.empty())
+			return;
+		size_t iErase = 1;
+		/* A supplementary-plane character is two UTF-16 units -- erase the whole pair, or the
+		leftover half re-encodes as garbage. */
+		if (m_NicknameDraftW.size() >= 2 &&
+			m_NicknameDraftW.back() >= 0xDC00 && m_NicknameDraftW.back() <= 0xDFFF &&
+			m_NicknameDraftW[m_NicknameDraftW.size() - 2] >= 0xD800 &&
+			m_NicknameDraftW[m_NicknameDraftW.size() - 2] <= 0xDBFF)
 		{
-			const wchar_t* pComposition = Engine::CImGuiLayer::Get_ImeCompositionString();
-			if (nullptr != pComposition && L'\0' != pComposition[0])
+			iErase = 2;
+		}
+		m_NicknameDraftW.resize(m_NicknameDraftW.size() - iErase);
+	};
+
+	bool_t confirmFromEnter = false;
+	bool_t textChanged = false;
+	const wstring_t typed = Router.Take_TypedChars();
+	for (const wchar_t ch : typed)
+	{
+		if (L'\r' == ch || L'\n' == ch)
+		{
+			confirmFromEnter = true;
+		}
+		else if (L'\x1b' == ch)
+		{
+			/* Escape closed the old BeginPopupModal too. */
+			cancel = true;
+		}
+		else if (L'\b' == ch)
+		{
+			if (!m_NicknameDraftW.empty())
 			{
-				const ImVec2 vCommittedSize = ImGui::CalcTextSize(m_NicknameDraft.data());
-				const ImVec2 vBoxTextOrigin = Fn_ToScreen(fBoxX + 8.f, fBoxY + 4.f);
-				const ImVec2 vCompositionPos(
-					vBoxTextOrigin.x + vCommittedSize.x, vBoxTextOrigin.y);
-				char compositionUtf8[64] = {};
-				::WideCharToMultiByte(CP_UTF8, 0, pComposition, -1,
-					compositionUtf8, sizeof(compositionUtf8), nullptr, nullptr);
-				const ImVec2 vCompositionSize = ImGui::CalcTextSize(compositionUtf8);
-				pDrawList->AddText(vCompositionPos, IM_COL32(255, 255, 255, 255), compositionUtf8);
-				pDrawList->AddLine(
-					ImVec2(vCompositionPos.x, vCompositionPos.y + vCompositionSize.y),
-					ImVec2(vCompositionPos.x + vCompositionSize.x, vCompositionPos.y + vCompositionSize.y),
-					IM_COL32(255, 255, 255, 200));
+				Fn_EraseLastCodePoint();
+				textChanged = true;
 			}
 		}
-		ImGui::PopItemWidth();
-		ImGui::PopStyleColor(4);
+		else if (ch >= L' ' && L'\x7f' != ch)
+		{
+			m_NicknameDraftW.push_back(ch);
+			textChanged = true;
+		}
+	}
+	if (textChanged)
+	{
+		/* Re-encode into the UTF-8 buffer Confirm_CreateCharacter validates/sends. If the draft
+		outgrew the 32-byte wire cap, drop the newest code point(s) until it fits -- the same
+		hard stop InputText's fixed byte buffer imposed at the same limit. */
+		for (;;)
+		{
+			if (m_NicknameDraftW.empty())
+			{
+				m_NicknameDraft.fill('\0');
+				break;
+			}
+			std::array<char_t, LostArk::Shared::MAX_NICKNAME_BYTES + 1u> utf8{};
+			const int32_t iBytes = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+				m_NicknameDraftW.c_str(), -1, utf8.data(),
+				static_cast<int32_t>(utf8.size()), nullptr, nullptr);
+			if (iBytes > 0)
+			{
+				m_NicknameDraft = utf8;
+				break;
+			}
+			/* Doesn't fit (or a stray lone surrogate slipped in) -- trim and retry. */
+			Fn_EraseLastCodePoint();
+		}
 	}
 
 	if (cancel)
@@ -1401,40 +1419,12 @@ void CLevel_CharacterSelect::Render_CreateCharacterModal()
 		Confirm_CreateCharacter())
 	{
 		m_isCreateCharacterModalOpen = false;
-		ImGui::CloseCurrentPopup();
+		CUIInputRouter::Get().Stop_TextInput();
 	}
 
-	if (m_isCreateCharacterModalOpen && !m_strStatus.empty())
-	{
-		f32_t fStatusX = 400.f;
-		f32_t fStatusY = 340.f;
-		f32_t fStatusWidth = 480.f;
-		f32_t fStatusHeight = 20.f;
-		f32_t fAuthoredX = 0.f, fAuthoredY = 0.f;
-		f32_t fAuthoredWidth = 0.f, fAuthoredHeight = 0.f;
-		if (m_pClassSelectView->Get_SlotRect(
-			"CreateCharacterModal_StatusText", fAuthoredX, fAuthoredY,
-			fAuthoredWidth, fAuthoredHeight) &&
-			std::isfinite(fAuthoredX) && std::isfinite(fAuthoredY) &&
-			std::isfinite(fAuthoredWidth) && std::isfinite(fAuthoredHeight) &&
-			fAuthoredWidth > 0.f && fAuthoredHeight > 0.f)
-		{
-			fStatusX = fAuthoredX;
-			fStatusY = fAuthoredY;
-			fStatusWidth = fAuthoredWidth;
-			fStatusHeight = fAuthoredHeight;
-		}
-		const ImVec2 vStatusPos = Fn_ToScreen(fStatusX + 4.f, fStatusY + 2.f);
-		const f32_t fFontSize = 12.f * (std::min)(scaleX, scaleY);
-		const f32_t fWrapWidth = (fStatusWidth - 8.f) * scaleX;
-		pDrawList->AddText(ImGui::GetFont(), fFontSize,
-			ImVec2(vStatusPos.x + 1.f, vStatusPos.y + 1.f),
-			IM_COL32(0, 0, 0, 230), m_strStatus.c_str(), nullptr, fWrapWidth);
-		pDrawList->AddText(ImGui::GetFont(), fFontSize, vStatusPos,
-			IM_COL32(255, 210, 120, 255), m_strStatus.c_str(), nullptr, fWrapWidth);
-	}
-
-	ImGui::EndPopup();
+	/* Status text moved to Render_ClassListText's modal block -- same LOA-font pass that
+	already draws the modal's title/labels, since this function no longer owns an ImGui draw
+	list to put it on. */
 }
 
 bool_t CLevel_CharacterSelect::Enter_Stage(const LOBBY_STAGE stage)
@@ -1521,34 +1511,15 @@ bool_t CLevel_CharacterSelect::Debug_Request_KakulSaydonArena()
 
 void CLevel_CharacterSelect::Render_CreateCharacterProductInputHost()
 {
-	const ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr != pViewport)
+	/* Used to be an invisible ImGui window purely so OpenPopup/BeginPopupModal had a host --
+	the modal is now CUI_Sprite art + CUIInputRouter WM_CHAR capture with no ImGui in it, so
+	only the click-consume and per-frame modal drive remain. */
+	if (m_hasCreateCharacterButtonClick)
 	{
-		ImGui::SetNextWindowViewport(pViewport->ID);
-		ImGui::SetNextWindowPos(pViewport->WorkPos, ImGuiCond_Always);
+		m_hasCreateCharacterButtonClick = false;
+		Open_CreateCharacterModal();
 	}
-	ImGui::SetNextWindowSize(ImVec2(1.f, 1.f), ImGuiCond_Always);
-	constexpr ImGuiWindowFlags flags =
-		ImGuiWindowFlags_NoDecoration |
-		ImGuiWindowFlags_NoBackground |
-		ImGuiWindowFlags_NoMove |
-		ImGuiWindowFlags_NoNav |
-		ImGuiWindowFlags_NoSavedSettings |
-		ImGuiWindowFlags_NoFocusOnAppearing |
-		ImGuiWindowFlags_NoInputs;
-
-	const bool_t isHostOpen = ImGui::Begin(
-		"##CharacterSelectProductInputHost", nullptr, flags);
-	if (isHostOpen)
-	{
-		if (m_hasCreateCharacterButtonClick)
-		{
-			m_hasCreateCharacterButtonClick = false;
-			Open_CreateCharacterModal();
-		}
-		Render_CreateCharacterModal();
-	}
-	ImGui::End();
+	Render_CreateCharacterModal();
 }
 
 void CLevel_CharacterSelect::Render_ProductStatus()
@@ -2423,8 +2394,8 @@ void CLevel_CharacterSelect::Update_ArenaSpawnButtons()
 	}
 
 	/* CreateCharacterButton stages the same one-shot request as the Debug "Create Character"
-	button. Render_CreateCharacterProductInputHost owns the matching OpenPopup/BeginPopupModal ID
-	stack in both configurations. bInteractable already covers
+	button; Render_CreateCharacterProductInputHost consumes it and drives the (now ImGui-free)
+	modal in both configurations. bInteractable already covers
 	isConnecting/isReturning/transitionPending via MODE::SERVER_ARENA and the other two checks;
 	m_iPendingClassIndex is the one condition bInteractable does not already include. */
 	{
@@ -2562,9 +2533,10 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 		}
 	}
 
-	/* Create Character modal text -- real Draw_Text same as everything else above, since the
-	modal's own ImGui popup (Render_CreateCharacterModal) only draws the panel/box/button images
-	and the real InputText widget; this still has to be the LOA-font pass called after EndFrame. */
+	/* Create Character modal text -- real Draw_Text same as everything else above.
+	Render_CreateCharacterModal owns the CUI_Sprite art state and the WM_CHAR editing; every
+	glyph the modal shows (title/labels, the nickname itself, the IME's in-progress syllable,
+	caret, status line) draws here in the LOA-font pass. */
 	if (m_isCreateCharacterModalOpen)
 	{
 		const auto Fn_DrawCentered = [&](f32_t fCenterX, f32_t fCenterY, const wchar_t* pLabel,
@@ -2609,6 +2581,94 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 			Fn_DrawCentered(fX + fWidth * 0.5f, fY + fHeight * 0.5f, Label.pLabel,
 				fHeight * 0.32f, Colors::White);
 		}
+
+		/* The nickname text itself + the IME's still-composing syllable + a blinking caret --
+		the drawing half of the runtime text field (editing lives in Render_CreateCharacterModal,
+		fed by CUIInputRouter's WM_CHAR queue). Left-aligned inside the TextBox art the way the
+		old transparent InputText sat over it. */
+		f32_t fBoxX = 0.f, fBoxY = 0.f, fBoxW = 0.f, fBoxH = 0.f;
+		if (m_pClassSelectView->Get_SlotRect(
+			"CreateCharacterModal_TextBox", fBoxX, fBoxY, fBoxW, fBoxH))
+		{
+			constexpr f32_t TEXT_HEIGHT = 18.f;
+			const f32_t fCenterScreenY = (fBoxY + fBoxH * 0.5f) * textScaleY;
+			/* Returns the drawn advance in screen pixels so the next piece starts where this
+			one ended -- position and advance both live in screen space (textScaleX vs
+			textUiScale differ on a non-16:9 viewport, so mixing spaces would drift). */
+			const auto Fn_DrawLeft = [&](f32_t fScreenX, const wchar_t* pText,
+				const fvector_t& vColor) -> f32_t
+			{
+				const float2_t vMeasured =
+					CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pText);
+				if (vMeasured.y <= 0.f)
+					return 0.f;
+				const f32_t fScale = (TEXT_HEIGHT / vMeasured.y) * textUiScale;
+				CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pText,
+					float2_t(fScreenX, fCenterScreenY),
+					vColor, 0.f, float2_t(0.f, 0.5f), fScale);
+				return vMeasured.x * fScale;
+			};
+
+			f32_t fCursorScreenX = (fBoxX + 12.f) * textScaleX;
+			if (!m_NicknameDraftW.empty())
+				fCursorScreenX += Fn_DrawLeft(fCursorScreenX, m_NicknameDraftW.c_str(),
+					Colors::White);
+			/* In-progress (uncommitted) Hangul straight from the OS IME, gold so it reads as
+			not-yet-committed -- the inline preview the old InputText overlay drew. */
+			const wchar_t* pComposition = Engine::CImGuiLayer::Get_ImeCompositionString();
+			if (nullptr != pComposition && L'\0' != pComposition[0])
+				fCursorScreenX += Fn_DrawLeft(fCursorScreenX, pComposition, Colors::Gold);
+			/* Blinking caret on its own wall clock (steady_clock, not ImGui's). */
+			const int64_t iHalfSeconds =
+				std::chrono::duration_cast<std::chrono::milliseconds>(
+					std::chrono::steady_clock::now().time_since_epoch()).count() / 500;
+			if (0 == (iHalfSeconds % 2))
+				Fn_DrawLeft(fCursorScreenX + 1.f, L"|", Colors::White);
+		}
+
+		/* Status line -- moved out of the removed ImGui popup (same slot/fallback rect and
+		amber tone its AddText version used). The messages are ASCII, so the byte-wise widen is
+		exact. */
+		if (!m_strStatus.empty())
+		{
+			f32_t fStatusX = 400.f, fStatusY = 340.f;
+			f32_t fStatusWidth = 480.f, fStatusHeight = 20.f;
+			f32_t fAuthoredX = 0.f, fAuthoredY = 0.f;
+			f32_t fAuthoredWidth = 0.f, fAuthoredHeight = 0.f;
+			if (m_pClassSelectView->Get_SlotRect(
+				"CreateCharacterModal_StatusText", fAuthoredX, fAuthoredY,
+				fAuthoredWidth, fAuthoredHeight) &&
+				std::isfinite(fAuthoredX) && std::isfinite(fAuthoredY) &&
+				std::isfinite(fAuthoredWidth) && std::isfinite(fAuthoredHeight) &&
+				fAuthoredWidth > 0.f && fAuthoredHeight > 0.f)
+			{
+				fStatusX = fAuthoredX;
+				fStatusY = fAuthoredY;
+				fStatusWidth = fAuthoredWidth;
+				fStatusHeight = fAuthoredHeight;
+			}
+			const wstring_t strStatusWide(m_strStatus.begin(), m_strStatus.end());
+			const float2_t vMeasured =
+				CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strStatusWide.c_str());
+			if (vMeasured.y > 0.f)
+			{
+				f32_t fScale = (14.f / vMeasured.y) * textUiScale;
+				/* Keep the whole line inside the authored width instead of the popup's old
+				wrap -- Draw_Text has no wrapping, shrink-to-fit reads better than clipping. */
+				const f32_t fMaxWidth = (fStatusWidth - 8.f) * textScaleX;
+				if (vMeasured.x * fScale > fMaxWidth && vMeasured.x > 0.f)
+					fScale = fMaxWidth / vMeasured.x;
+				const float2_t vPosition(
+					(fStatusX + 4.f) * textScaleX, (fStatusY + 2.f) * textScaleY);
+				CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strStatusWide.c_str(),
+					float2_t(vPosition.x + 1.f, vPosition.y + 1.f),
+					XMVectorSet(0.f, 0.f, 0.f, 0.9f), 0.f, float2_t(0.f, 0.f), fScale);
+				CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strStatusWide.c_str(),
+					vPosition,
+					XMVectorSet(1.f, 210.f / 255.f, 120.f / 255.f, 1.f), 0.f,
+					float2_t(0.f, 0.f), fScale);
+			}
+		}
 	}
 }
 
@@ -2616,7 +2676,8 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 void CLevel_CharacterSelect::Update_RaidEntryDebugPreviewKey()
 {
 	if (nullptr == m_pDebugRaidEntryPreviewView ||
-		m_pDebugRaidEntryPreviewView->Is_Open() || ImGui::GetIO().WantTextInput)
+		m_pDebugRaidEntryPreviewView->Is_Open() || ImGui::GetIO().WantTextInput ||
+		CUIInputRouter::Get().Is_TextInputActive())
 	{
 		return;
 	}

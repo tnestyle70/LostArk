@@ -706,8 +706,13 @@ HRESULT CMainApp::Initialize()
 	}
 
 	m_pHUDRuntimeView = std::make_unique<CHUDRuntimeView>(m_pDevice, m_pContext);
-	m_pBossUIView = std::make_unique<CHUDRuntimeView>(
-		m_pDevice, m_pContext, L"UI/BossUI/BossUI.json");
+	m_pBossUIView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
+		L"UI/BossUI/BossUI.json");
+	/* Authored layer tints are opaque -- every real slot would otherwise sit fully visible from
+	this Level::STATIC construction until the first Update_BossHealthBar() call finds a valid
+	boss. */
+	Hide_BossHealthBar();
 	m_pEstherUIView = std::make_unique<CHUDRuntimeView>(
 		m_pDevice, m_pContext, L"UI/Esther/EstherUI.json");
 	m_pItemUpgradeView = std::make_unique<CUILayoutRuntime>(
@@ -742,8 +747,11 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	UpdateDebugToolShortcut();
 #endif
 
-	/* I is a normal gameplay keybind (the inventory), not an F1/F6 tool-switch key. */
-	if (nullptr != m_pInventoryView && !ImGui::GetIO().WantTextInput)
+	/* I is a normal gameplay keybind (the inventory), not an F1/F6 tool-switch key.
+	Is_TextInputActive is the runtime UI's own WantTextInput (the ImGui-free nickname field) --
+	both must gate every keybind below the same way. */
+	if (nullptr != m_pInventoryView && !ImGui::GetIO().WantTextInput &&
+		!CUIInputRouter::Get().Is_TextInputActive())
 	{
 		const bool_t windowFocused =
 			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
@@ -764,7 +772,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	/* Same reasoning/gating as K/I above: P is a free normal gameplay keybind, not an F1/F6
 	tool-switch key. Toggles the debug-only Item Upgrade static art preview (see the
 	m_pItemUpgradeView declaration comment in MainApp.h). */
-	if (nullptr != m_pItemUpgradeView && !ImGui::GetIO().WantTextInput)
+	if (nullptr != m_pItemUpgradeView && !ImGui::GetIO().WantTextInput &&
+		!CUIInputRouter::Get().Is_TextInputActive())
 	{
 		const bool_t windowFocused =
 			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
@@ -788,11 +797,12 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		m_bPDown = pDown;
 	}
 	Update_ItemUpgrade(fTimeDelta);
+	Update_BossHealthBar();
 
 	/* 1/2/3/4 use whatever item is registered on Item_1..4 (drag-drop from the inventory --
 	see Render_ItemQuickSlots). Same gating as K/I; the Server is the one that actually
 	validates ownership and applies the heal, this only ever sends the request. */
-	if (!ImGui::GetIO().WantTextInput)
+	if (!ImGui::GetIO().WantTextInput && !CUIInputRouter::Get().Is_TextInputActive())
 	{
 		constexpr int VIRTUAL_KEYS[4] = { 0x31, 0x32, 0x33, 0x34 }; // VK_1..VK_4
 		const bool_t windowFocused =
@@ -817,7 +827,8 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	logic below) blocks gameplay key polling while typing -- no separate plumbing needed for
 	that part. Escape closes it and is checked outside the WantTextInput guard, since that is
 	exactly the state Escape needs to fire in. */
-	if (nullptr != m_pChatWindowView && !ImGui::GetIO().WantTextInput)
+	if (nullptr != m_pChatWindowView && !ImGui::GetIO().WantTextInput &&
+		!CUIInputRouter::Get().Is_TextInputActive())
 	{
 		/* Same level restriction as the chat window's own Render() gate -- Enter should not open
 		an input box that would render invisible outside Bern/Valtan. */
@@ -859,8 +870,11 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	constexpr bool_t worldLeftMouseConsumed = false;
 #endif
 
-	const bool_t keyboardCaptured = nullptr != m_pImGuiLayer &&
-		(m_pImGuiLayer->WantsCaptureKeyboard() || externalToolFocused);
+	/* The runtime nickname field blocks DirectInput keyboard polling exactly the way an
+	ImGui InputText's WantsCaptureKeyboard does -- WASD/skill keys must not fire mid-typing. */
+	const bool_t keyboardCaptured = (nullptr != m_pImGuiLayer &&
+		(m_pImGuiLayer->WantsCaptureKeyboard() || externalToolFocused)) ||
+		CUIInputRouter::Get().Is_TextInputActive();
 	const bool_t mouseCaptured = nullptr != m_pImGuiLayer &&
 		(m_pImGuiLayer->WantsCaptureMouse() || externalToolFocused);
 	CGameInstance::Get().SetInputBlocked(keyboardCaptured, mouseCaptured);
@@ -1109,7 +1123,6 @@ HRESULT CMainApp::Render()
 		{
 	#endif
 			RenderCombatHUD();
-			RenderBossHealthBar();
 			RenderChargeGauge();
 			RenderEstherGauge();
 			/* RenderQuickSlot only draws the extracted QuickSlot.gfx on-use flash overlay -- it does
@@ -1124,10 +1137,12 @@ HRESULT CMainApp::Render()
 	#endif
 		/* Must run after the combat HUD renders above: Render_ValtanEntryModal's
 		   art draws to ImGui::GetForegroundDrawList(), the same shared list
-		   RenderCombatHUD/RenderBossHealthBar/RenderSkillIcons/RenderQuickSlot
-		   just used, and that list composites in real submission order -- calling
-		   it earlier let the always-on combat HUD paint over the full-screen
-		   raid-entry panel. */
+		   RenderCombatHUD/RenderSkillIcons/RenderQuickSlot just used, and that
+		   list composites in real submission order -- calling it earlier let the
+		   always-on combat HUD paint over the full-screen raid-entry panel.
+		   (Update_BossHealthBar's own CUI_Sprite slots render through the normal
+		   engine pipeline instead, so they're not part of this particular
+		   ordering concern anymore.) */
 		if (ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID())
 		{
 			if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
@@ -3074,29 +3089,51 @@ void CMainApp::RenderSkillCooldowns()
 	}
 }
 
-void CMainApp::RenderBossHealthBar()
+void CMainApp::Hide_BossHealthBar()
 {
-	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel != ETOUI(LEVEL::BERN) &&
-		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
-		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
-		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
+	if (nullptr == m_pBossUIView)
+		return;
+	constexpr const char_t* BOSS_UI_ALL_SLOTS[] = {
+		"Boss_Frame", "Boss_FillBehind", "Boss_Fill", "Boss_StaggerBg", "Boss_StaggerFill",
+		"Boss_StaggerTrack", "Boss_Separator", "Boss_TickFlash", "Boss_HitGlow",
+	};
+	for (const char_t* pSlotId : BOSS_UI_ALL_SLOTS)
+		m_pBossUIView->Set_SlotVisible(pSlotId, false);
+}
+
+void CMainApp::Update_BossHealthBar()
+{
+	if (nullptr == m_pBossUIView)
 	{
 		return;
 	}
-	if (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open())
-		return;
+
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	const bool_t isSupportedLevel =
+		currentLevel == ETOUI(LEVEL::BERN) ||
+		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
+		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT);
+	const bool_t skillWindowOpen =
+		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
+	/* Same reasoning as Update_ClassList's own gate -- the O-key raid-entry preview's left info
+	column/panel frame occupy this same screen region in Debug builds. */
+#ifdef _DEBUG
+	const bool_t isCharSelectDebugPreviewOpen =
+		ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel &&
+		nullptr != CLevel_CharacterSelect::Get_Active() &&
+		CLevel_CharacterSelect::Get_Active()->Is_DebugRaidEntryPreviewOpen();
+#else
+	const bool_t isCharSelectDebugPreviewOpen = false;
+#endif
 
 	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
-	if (!boss.isValid || 0u == boss.iMaximumHp)
+	if (!isSupportedLevel || skillWindowOpen || isCharSelectDebugPreviewOpen ||
+		!boss.isValid || 0u == boss.iMaximumHp)
+	{
+		Hide_BossHealthBar();
 		return;
-
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-	const float uiScale = (std::min)(scaleX, scaleY);
+	}
 
 	/* Real Lost Ark raid bosses (Valtan: Data/Balance/BossProfiles.json maximumHealthBars=160)
 	don't show current/max HP as one continuous 0..100% bar -- total HP is split into
@@ -3151,15 +3188,19 @@ void CMainApp::RenderBossHealthBar()
 	resizes each one by hand without this function deciding how they relate to each other. Nothing
 	to draw if the fill slot -- the one piece that actually needs to exist for the bar to mean
 	anything -- hasn't loaded. */
-	if (nullptr == m_pBossUIView)
-		return;
 	f32_t fFillRectX = 0.f, fFillRectY = 0.f, fFillRectWidth = 0.f, fFillRectHeight = 0.f;
 	if (!m_pBossUIView->Get_SlotRect(
 		"Boss_Fill", fFillRectX, fFillRectY, fFillRectWidth, fFillRectHeight))
 	{
+		Hide_BossHealthBar();
 		return;
 	}
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+	/* Boss_Fill's own real visibility (healthRatio > 0.f) is set further below, once healthRatio
+	is known to be nonzero -- these three have no such data-driven condition, always on
+	whenever the bar itself is showing at all. */
+	m_pBossUIView->Set_SlotVisible("Boss_Frame", true);
+	m_pBossUIView->Set_SlotVisible("Boss_StaggerBg", true);
+	m_pBossUIView->Set_SlotVisible("Boss_StaggerTrack", true);
 
 	/* Real EFUI_STATUS pieces -- see Resources/UI/BossUI. The boss_bar_fill_* set are solid-color
 	bar rows cropped directly from targetstatus_loc_int_i2.dds's top cluster (square left edge,
@@ -3184,119 +3225,53 @@ void CMainApp::RenderBossHealthBar()
 	const uint32_t iColorIndex = ((iColorCycleValue % FILL_COLOR_COUNT == 0) ?
 		FILL_COLOR_COUNT : (iColorCycleValue % FILL_COLOR_COUNT)) - 1u;
 
-	ID3D11ShaderResourceView* pFillSRV =
-		m_pBossUIView->Load_Texture(FILL_COLOR_CYCLE[iColorIndex]);
+	m_pBossUIView->Set_SlotTexture("Boss_Fill", FILL_COLOR_CYCLE[iColorIndex]);
+	m_pBossUIView->Set_SlotFillRatio("Boss_Fill", healthRatio > 0.f ? healthRatio : 0.f);
+	m_pBossUIView->Set_SlotVisible("Boss_Fill", healthRatio > 0.f);
 
-	const ImVec2 fillTrackMin{
-		pViewport->WorkPos.x + fFillRectX * scaleX,
-		pViewport->WorkPos.y + fFillRectY * scaleY };
-	const ImVec2 fillTrackMax{
-		fillTrackMin.x + fFillRectWidth * scaleX,
-		fillTrackMin.y + fFillRectHeight * scaleY };
-	const float fillInset = 2.f * uiScale;
-	const ImVec2 fillMin{ fillTrackMin.x + fillInset, fillTrackMin.y + fillInset };
-	const ImVec2 fillMax{ fillTrackMax.x - fillInset, fillTrackMax.y - fillInset };
-	const float fFillBoundaryX = fillMin.x + (fillMax.x - fillMin.x) * healthRatio;
+	/* Reference-resolution equivalent of the old fillInset/fillMin/fillMax screen-pixel math --
+	CUILayoutRuntime's Set_SlotPosition/Set_SlotRect already apply m_fScaleX/Y themselves, so
+	these stay in the document's own units instead of re-deriving a viewport scale here. */
+	const f32_t fFillInset = 2.f;
+	const f32_t fFillMinX = fFillRectX + fFillInset;
+	const f32_t fFillMinY = fFillRectY + fFillInset;
+	const f32_t fFillMaxX = fFillRectX + fFillRectWidth - fFillInset;
+	const f32_t fFillMaxY = fFillRectY + fFillRectHeight - fFillInset;
+	const f32_t fFillBoundaryX = fFillMinX + (fFillMaxX - fFillMinX) * healthRatio;
 
 	/* The area the current segment's fill hasn't reached yet isn't empty -- it's the next bar
 	segment's own color already sitting behind it, so draining the current segment reveals the
-	next one's color instead of a gap. Only the current segment (iColorIndex) is UV-clipped by
-	healthRatio; this background is the (iBarsRemaining - 1) segment drawn full-width underneath.
-	No "next" color once the last bar is draining (iBarsRemaining == 1). */
+	next one's color instead of a gap. Only the current segment (iColorIndex) is fill-ratio
+	clipped; this background is the (iBarsRemaining - 1) segment drawn full-width underneath. No
+	"next" color once the last bar is draining (iBarsRemaining == 1). */
 	if (iBarsRemaining > 1u)
 	{
 		const uint32_t iNextColorCycleValue = iBarsRemaining - 1u;
 		const uint32_t iNextColorIndex = ((iNextColorCycleValue % FILL_COLOR_COUNT == 0) ?
 			FILL_COLOR_COUNT : (iNextColorCycleValue % FILL_COLOR_COUNT)) - 1u;
-		if (ID3D11ShaderResourceView* pNextFillSRV =
-			m_pBossUIView->Load_Texture(FILL_COLOR_CYCLE[iNextColorIndex]))
-		{
-			pDrawList->AddImage(pNextFillSRV, fillMin, fillMax);
-		}
+		m_pBossUIView->Set_SlotTexture("Boss_FillBehind", FILL_COLOR_CYCLE[iNextColorIndex]);
+		m_pBossUIView->Set_SlotVisible("Boss_FillBehind", true);
 	}
-
-	if (nullptr != pFillSRV && healthRatio > 0.f)
+	else
 	{
-		pDrawList->AddImage(pFillSRV, fillMin, ImVec2(fFillBoundaryX, fillMax.y),
-			ImVec2(0.f, 0.f), ImVec2(healthRatio, 1.f));
-	}
-
-	/* boss_bar_ornate_frame.png (the user's reference capture 제목없음.png, used whole, badge and
-	border together) is purely decorative and independently placed via its own "Boss_Frame" slot --
-	it does not define the fill's 0-100% width, that's Boss_Fill's own rect above. */
-	f32_t fFrameRectX = 0.f, fFrameRectY = 0.f, fFrameRectWidth = 0.f, fFrameRectHeight = 0.f;
-	if (m_pBossUIView->Get_SlotRect(
-		"Boss_Frame", fFrameRectX, fFrameRectY, fFrameRectWidth, fFrameRectHeight))
-	{
-		if (ID3D11ShaderResourceView* pOrnateFrameSRV =
-			m_pBossUIView->Load_Texture("UI/BossUI/boss_bar_ornate_frame.png"))
-		{
-			const ImVec2 vFrameMin{
-				pViewport->WorkPos.x + fFrameRectX * scaleX,
-				pViewport->WorkPos.y + fFrameRectY * scaleY };
-			const ImVec2 vFrameMax{
-				vFrameMin.x + fFrameRectWidth * scaleX,
-				vFrameMin.y + fFrameRectHeight * scaleY };
-			pDrawList->AddImage(pOrnateFrameSRV, vFrameMin, vFrameMax);
-		}
+		m_pBossUIView->Set_SlotVisible("Boss_FillBehind", false);
 	}
 
 	/* Stagger/paralyzation gauge (real paralyzationGauge -- background + fill + hollow
 	purple-bordered track, char 473 in TargetGrade_Boss). The Server snapshot owns
 	current/maximum; presentation only crops the existing fill art inside the authored track. */
-	f32_t fStaggerBgX = 0.f, fStaggerBgY = 0.f, fStaggerBgWidth = 0.f, fStaggerBgHeight = 0.f;
-	if (m_pBossUIView->Get_SlotRect(
-		"Boss_StaggerBg", fStaggerBgX, fStaggerBgY, fStaggerBgWidth, fStaggerBgHeight))
+	if (0u != boss.iMaximumStagger && 0u != boss.iCurrentStagger)
 	{
-		if (ID3D11ShaderResourceView* pStaggerBgSRV =
-			m_pBossUIView->Load_Texture("UI/BossUI/boss_stagger_bg.png"))
-		{
-			const ImVec2 vStaggerBgMin{
-				pViewport->WorkPos.x + fStaggerBgX * scaleX,
-				pViewport->WorkPos.y + fStaggerBgY * scaleY };
-			const ImVec2 vStaggerBgMax{
-				vStaggerBgMin.x + fStaggerBgWidth * scaleX,
-				vStaggerBgMin.y + fStaggerBgHeight * scaleY };
-			pDrawList->AddImage(pStaggerBgSRV, vStaggerBgMin, vStaggerBgMax);
-		}
+		const f32_t fStaggerRatio = (std::clamp)(
+			static_cast<f32_t>(boss.iCurrentStagger) /
+				static_cast<f32_t>(boss.iMaximumStagger),
+			0.f, 1.f);
+		m_pBossUIView->Set_SlotFillRatio("Boss_StaggerFill", fStaggerRatio);
+		m_pBossUIView->Set_SlotVisible("Boss_StaggerFill", true);
 	}
-	f32_t fStaggerTrackX = 0.f, fStaggerTrackY = 0.f, fStaggerTrackWidth = 0.f, fStaggerTrackHeight = 0.f;
-	if (m_pBossUIView->Get_SlotRect(
-		"Boss_StaggerTrack", fStaggerTrackX, fStaggerTrackY, fStaggerTrackWidth, fStaggerTrackHeight))
+	else
 	{
-		const ImVec2 vStaggerTrackMin{
-			pViewport->WorkPos.x + fStaggerTrackX * scaleX,
-			pViewport->WorkPos.y + fStaggerTrackY * scaleY };
-		const ImVec2 vStaggerTrackMax{
-			vStaggerTrackMin.x + fStaggerTrackWidth * scaleX,
-			vStaggerTrackMin.y + fStaggerTrackHeight * scaleY };
-		if (0u != boss.iMaximumStagger && 0u != boss.iCurrentStagger)
-		{
-			const f32_t fStaggerRatio = (std::clamp)(
-				static_cast<f32_t>(boss.iCurrentStagger) /
-					static_cast<f32_t>(boss.iMaximumStagger),
-				0.f, 1.f);
-			if (ID3D11ShaderResourceView* pStaggerFillSRV =
-				m_pBossUIView->Load_Texture(
-					"UI/BossUI/boss_stagger_fill.png"))
-			{
-				pDrawList->AddImage(
-					pStaggerFillSRV,
-					vStaggerTrackMin,
-					ImVec2(
-						vStaggerTrackMin.x +
-							(vStaggerTrackMax.x - vStaggerTrackMin.x) *
-							fStaggerRatio,
-						vStaggerTrackMax.y),
-					ImVec2(0.f, 0.f),
-					ImVec2(fStaggerRatio, 1.f));
-			}
-		}
-		if (ID3D11ShaderResourceView* pStaggerTrackSRV =
-			m_pBossUIView->Load_Texture("UI/BossUI/boss_stagger_track.png"))
-		{
-			pDrawList->AddImage(pStaggerTrackSRV, vStaggerTrackMin, vStaggerTrackMax);
-		}
+		m_pBossUIView->Set_SlotVisible("Boss_StaggerFill", false);
 	}
 
 	/* User-supplied boundary marker (HP seperate Bar.png -- a tiny 3x15 soft cream vertical glow
@@ -3304,64 +3279,78 @@ void CMainApp::RenderBossHealthBar()
 	Progress::mark concept (an edge indicator repositioned every update) this session couldn't
 	trace real art for earlier. Hidden exactly at 0%/100%, same as the real useAutoHideMark
 	behaviour, since there's no boundary to mark once the bar is fully empty or full. */
-	ID3D11ShaderResourceView* pSeparatorSRV =
-		m_pBossUIView->Load_Texture("UI/BossUI/boss_bar_separator.png");
-	if (nullptr != pSeparatorSRV && healthRatio > 0.f && healthRatio < 1.f)
+	const bool_t bShowSeparator = healthRatio > 0.f && healthRatio < 1.f;
+	m_pBossUIView->Set_SlotVisible("Boss_Separator", bShowSeparator);
+	if (bShowSeparator)
 	{
-		const float fSeparatorHalfWidth = 3.f * uiScale;
-		pDrawList->AddImage(pSeparatorSRV,
-			ImVec2(fFillBoundaryX - fSeparatorHalfWidth, fillMin.y),
-			ImVec2(fFillBoundaryX + fSeparatorHalfWidth, fillMax.y));
+		constexpr f32_t SEPARATOR_HALF_WIDTH = 3.f;
+		m_pBossUIView->Set_SlotRect("Boss_Separator",
+			fFillBoundaryX - SEPARATOR_HALF_WIDTH, fFillMinY,
+			SEPARATOR_HALF_WIDTH * 2.f, fFillMaxY - fFillMinY);
 	}
 
 	/* Real ProgressMultiTrack::updateTarget cross-fades a second "cloneTarget" fill instance --
 	same shape as the fill, colorTransform forced to solid white -- over the real fill whenever a
 	bar segment ticks over, instead of hard-cutting back to full. Approximated with a flat white
-	rect (no separate white-silhouette asset was extracted) over the same now-full fill area,
-	fading out over the tween window real gaugeComplete() uses (0.1-0.23s -- rounded up here since
-	an ImGui flash reads as more of a blip at the real duration). */
+	rect (no separate white-silhouette asset was extracted, same as before this migration) over
+	the same now-full fill area, fading out over the tween window real gaugeComplete() uses
+	(0.1-0.23s -- rounded up here since a flash reads as more of a blip at the real duration). */
+	bool_t bShowTickFlash = false;
 	if (m_dBossBarTickFlashStartSeconds >= 0.0)
 	{
 		constexpr f64_t BAR_TICK_FLASH_SECONDS = 0.3;
 		const f64_t fFlashAge = ImGui::GetTime() - m_dBossBarTickFlashStartSeconds;
 		if (fFlashAge < BAR_TICK_FLASH_SECONDS)
 		{
+			bShowTickFlash = true;
 			const f32_t fFlashAlpha = 1.f - static_cast<f32_t>(fFlashAge / BAR_TICK_FLASH_SECONDS);
-			const float fillInset = 2.f * uiScale;
-			pDrawList->AddRectFilled(
-				ImVec2(fillTrackMin.x + fillInset, fillTrackMin.y + fillInset),
-				ImVec2(fillTrackMax.x - fillInset, fillTrackMax.y - fillInset),
-				IM_COL32(255, 255, 255, static_cast<int>(220.f * fFlashAlpha)));
+			m_pBossUIView->Set_SlotRect("Boss_TickFlash",
+				fFillMinX, fFillMinY, fFillMaxX - fFillMinX, fFillMaxY - fFillMinY);
+			/* This alpha IS the visibility while flashing -- Set_SlotVisible(true) would
+			clobber it back to fully opaque (it resets the tint to solid white). */
+			m_pBossUIView->Set_SlotAlpha("Boss_TickFlash", (220.f / 255.f) * fFlashAlpha);
 		}
 	}
+	if (!bShowTickFlash)
+		m_pBossUIView->Set_SlotVisible("Boss_TickFlash", false);
 
 	/* Real Progress::updateMark positions a "mark" clip at the fill's own edge every update; its
 	symbol (character 732) is a 39-frame animated additive glow (grows ~1.0->1.5/3.0 scale, fades
-	~256->92 alpha) rather than a static line. No source art was traced for it, so this reproduces
-	the motion procedurally: a soft glow at the edge that grows then fades on every HP drop. */
+	~256->92 alpha) rather than a static line. No source art was traced for it, so this reuses
+	click_move_glow.dds (the ground click-move indicator's own soft radial glow) resized/faded to
+	approximate the same motion -- a real dedicated hit-glow asset would still be a closer match. */
+	bool_t bShowHitGlow = false;
 	if (m_dBossHitGlowStartSeconds >= 0.0)
 	{
 		constexpr f64_t HIT_GLOW_SECONDS = 0.35;
 		const f64_t fGlowAge = ImGui::GetTime() - m_dBossHitGlowStartSeconds;
 		if (fGlowAge < HIT_GLOW_SECONDS)
 		{
+			bShowHitGlow = true;
 			const f32_t fGlowT = static_cast<f32_t>(fGlowAge / HIT_GLOW_SECONDS);
 			const f32_t fGlowAlpha = 1.f - fGlowT;
-			const f32_t fGlowRadius = (6.f + 10.f * fGlowT) * uiScale;
-			const ImVec2 vGlowCenter{
-				fillTrackMin.x + (fillTrackMax.x - fillTrackMin.x) * m_fBossHitGlowFillRatio,
-				(fillTrackMin.y + fillTrackMax.y) * 0.5f };
-			pDrawList->AddCircleFilled(vGlowCenter, fGlowRadius,
-				IM_COL32(255, 250, 230, static_cast<int>(200.f * fGlowAlpha)));
+			const f32_t fGlowRadius = 6.f + 10.f * fGlowT;
+			const f32_t fGlowCenterX = fFillMinX + (fFillMaxX - fFillMinX) * m_fBossHitGlowFillRatio;
+			const f32_t fGlowCenterY = (fFillMinY + fFillMaxY) * 0.5f;
+			m_pBossUIView->Set_SlotRect("Boss_HitGlow",
+				fGlowCenterX - fGlowRadius, fGlowCenterY - fGlowRadius,
+				fGlowRadius * 2.f, fGlowRadius * 2.f);
+			/* Same warm near-white (255,250,230) the original IM_COL32 glow used, not
+			Set_SlotAlpha's plain white -- that would wash out the warm tint. This tint IS
+			the visibility while glowing, same as Boss_TickFlash's alpha above. */
+			m_pBossUIView->Set_SlotTint("Boss_HitGlow",
+				float4_t(1.f, 250.f / 255.f, 230.f / 255.f, (200.f / 255.f) * fGlowAlpha));
 		}
 	}
-
+	if (!bShowHitGlow)
+		m_pBossUIView->Set_SlotVisible("Boss_HitGlow", false);
 }
 
-/* Split from RenderBossHealthBar() -- see the declaration comment in MainApp.h for why this has
-to run after CImGuiLayer::EndFrame() instead of alongside the bar/frame image draws. Re-derives
-healthRatio/iBarsRemaining from the same boss snapshot RenderBossHealthBar already used this frame;
-cheap pure arithmetic, safer than threading the values out as member state. */
+/* Split from Update_BossHealthBar() -- see the declaration comment in MainApp.h for why this
+uses ImGui's own font/foreground draw list (CGameInstance::Draw_Text, called after
+CImGuiLayer::EndFrame()) instead of anything driven from that CUI_Sprite state. Re-derives
+healthRatio/iBarsRemaining from the same boss snapshot Update_BossHealthBar already used this
+frame; cheap pure arithmetic, safer than threading the values out as member state. */
 void CMainApp::RenderBossHealthBarText()
 {
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
@@ -4211,7 +4200,7 @@ void CMainApp::RenderCombatHUDText()
 		CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), mana.c_str(),
 			position(835.169f, 635.273f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.315f * textScale);
 	}
-	/* Boss HP number/name/grade text moved into RenderBossHealthBar() -- the decompiled
+	/* Boss HP number/name/grade text moved into RenderBossHealthBarText() -- the decompiled
 	targetstatus_loc_int.gfx places them relative to the bar's own real position (see that
 	function), not this hardcoded (640, 58). */
 }

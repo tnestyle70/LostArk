@@ -106,6 +106,34 @@ void Client::CUIInputRouter::Claim_Mouse_This_Frame()
 	m_bMouseClaimedThisFrame = true;
 }
 
+void Client::CUIInputRouter::Start_TextInput()
+{
+	m_bTextInputActive = true;
+	m_TypedChars.clear();
+}
+
+void Client::CUIInputRouter::Stop_TextInput()
+{
+	m_bTextInputActive = false;
+	m_TypedChars.clear();
+}
+
+void Client::CUIInputRouter::On_Char(wchar_t ch)
+{
+	if (!m_bTextInputActive)
+		return;
+	/* Bounded so a frame stall can't grow the queue without limit -- a normal frame drains it. */
+	if (m_TypedChars.size() < 256)
+		m_TypedChars.push_back(ch);
+}
+
+wstring_t Client::CUIInputRouter::Take_TypedChars()
+{
+	wstring_t typed = std::move(m_TypedChars);
+	m_TypedChars.clear();
+	return typed;
+}
+
 void Client::CUIInputRouter::End_Frame()
 {
 	if (m_bMouseClaimedThisFrame)

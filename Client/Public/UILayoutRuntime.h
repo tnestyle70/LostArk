@@ -50,6 +50,16 @@ public:
 	context menu's own reason). Get_SlotRect reflects the override afterward. No-op if the slot
 	doesn't exist. */
 	void Set_SlotPosition(const string& strId, f32_t fX, f32_t fY);
+	/* Overrides both a slot's authored top-left position AND size at runtime in one call --
+	for an effect that grows/shrinks around a moving center point (a hit-flash glow's radius)
+	instead of only ever repositioning at a fixed authored size. Get_SlotRect reflects the
+	override afterward. No-op if the slot doesn't exist. */
+	void Set_SlotRect(const string& strId, f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight);
+	/* 1.f (default) draws the whole slot; a value in [0,1) clips it to that fraction of its own
+	authored width (post-FlipX), for a gauge/health-bar drain that reveals the bar art's own left
+	portion at native scale instead of a stretched/squished resize (CUI_Sprite::Set_FillRatio).
+	No-op if the slot doesn't exist. */
+	void Set_SlotFillRatio(const string& strId, f32_t fFillRatio);
 	/* Drives "animation.frames" flipbook slots (a non-empty frame list plays instead of
 	   Layers, same as CHUDRuntimeView's own AnimationFrames) -- swaps each such slot's texture
 	   via Set_SlotTexture as its own clock crosses a frame boundary. No-op for every other

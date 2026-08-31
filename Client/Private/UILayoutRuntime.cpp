@@ -314,6 +314,40 @@ void Client::CUILayoutRuntime::Set_SlotPosition(const string& strId, f32_t fX, f
 	}
 }
 
+void Client::CUILayoutRuntime::Set_SlotFillRatio(const string& strId, f32_t fFillRatio)
+{
+	for (RUNTIME_SLOT& Slot : m_Slots)
+	{
+		if (Slot.strId != strId)
+			continue;
+		if (nullptr != Slot.pSprite)
+			Slot.pSprite->Set_FillRatio(fFillRatio);
+		return;
+	}
+}
+
+void Client::CUILayoutRuntime::Set_SlotRect(
+	const string& strId, f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight)
+{
+	for (RUNTIME_SLOT& Slot : m_Slots)
+	{
+		if (Slot.strId != strId)
+			continue;
+		Slot.fX = fX;
+		Slot.fY = fY;
+		Slot.fSizeX = fWidth;
+		Slot.fSizeY = fHeight;
+		if (nullptr != Slot.pSprite)
+		{
+			Slot.pSprite->Set_Rect(
+				(fX + fWidth * 0.5f) * m_fScaleX,
+				(fY + fHeight * 0.5f) * m_fScaleY,
+				fWidth * m_fScaleX, fHeight * m_fScaleY);
+		}
+		return;
+	}
+}
+
 void Client::CUILayoutRuntime::Update(f32_t fTimeDelta)
 {
 	for (RUNTIME_SLOT& Slot : m_Slots)

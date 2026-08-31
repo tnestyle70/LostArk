@@ -61,6 +61,21 @@ public:
 	specific widget (if any) is hovered -- its own dim backdrop swallowing clicks, matching
 	BeginPopupModal's own behavior. */
 	void Claim_Mouse_This_Frame();
+	/* Text-input capture for a runtime UI text field (the Create Character nickname box) -- the
+	WM_CHAR half of what ImGui::InputText provided. While active, WndProc (Client.cpp) feeds every
+	committed WM_CHAR UTF-16 unit into a queue the owning screen drains once per frame via
+	Take_TypedChars, and every io.WantTextInput-style keybind/gameplay gate must also treat
+	Is_TextInputActive as "someone is typing". The still-composing (uncommitted) Hangul string
+	stays readable via Engine::CImGuiLayer::Get_ImeCompositionString() -- composition happens at
+	the window level, not the widget, so it keeps working without InputText. */
+	void Start_TextInput();
+	void Stop_TextInput();
+	bool_t Is_TextInputActive() const { return m_bTextInputActive; }
+	/* WndProc only. Queues a committed WM_CHAR UTF-16 unit (control chars like '\b'/'\r'/escape
+	included -- the field interprets them) while text input is active; dropped otherwise. */
+	void On_Char(wchar_t ch);
+	/* Returns and clears everything typed since the last call. */
+	wstring_t Take_TypedChars();
 	/* Applies CGameInstance::Get().SetInputBlocked(false, true) if anything claimed the mouse
 	this frame. Call once per frame, after every screen has had a chance to render. */
 	void End_Frame();
@@ -76,6 +91,8 @@ private:
 	bool_t	m_bLeftDownLastFrame = false;
 	bool_t	m_bRightDownThisFrame = false;
 	bool_t	m_bRightDownLastFrame = false;
+	bool_t	m_bTextInputActive = false;
+	wstring_t	m_TypedChars;
 };
 
 NS_END

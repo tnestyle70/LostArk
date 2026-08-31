@@ -231,7 +231,15 @@ private:
 	(WingedRingGold/LevelUpMotion2Big/CompleteEffect etc.), which stay owned by
 	Reset_ItemUpgradeIdleGauge/Update_ItemUpgradeGrowButton's own state machine. */
 	void Set_ItemUpgradeCenterPanelVisible(bool_t bVisible);
-	void RenderBossHealthBar();
+	/* Drives the real CUI_Sprite state (CUILayoutRuntime) for the boss health bar -- fill/
+	next-segment/frame/stagger/separator/tick-flash/hit-glow. Called from Update() instead of
+	from inside RenderCombatHUD's own Render() pass; owns its own copy of every gate
+	RenderCombatHUD/the O-key raid-entry debug preview already apply (level, skill window,
+	CharSelect debug preview, boss validity) and explicitly hides everything
+	(Hide_BossHealthBar) when any of them fails, since a CUI_Sprite -- unlike the old ImGui
+	pass -- keeps showing its last state instead of simply not being drawn that frame. */
+	void Update_BossHealthBar();
+	void Hide_BossHealthBar();
 	/* Real HOLD skill (PLAYER_SKILL_KIND::HOLD) charge bar -- ChargeGauge_Bg/_Track/_Fill in
 	HUD_Layout.json (ownerClass:null, same as HealthBar). Progress is reconstructed client-side
 	from real Data/Balance/PlayerSkills.json comboStages[].actionDurationMs and the Server-owned
@@ -241,12 +249,11 @@ private:
 	CImGuiLayer::EndFrame() -- same reason as RenderBossHealthBarText, RenderChargeGauge's own
 	fill image only composites there. */
 	void RenderChargeGaugeText();
-	/* Boss title/HP/bar-count text. Split out from RenderBossHealthBar and called after
-	CImGuiLayer::EndFrame() (next to RenderCombatHUDText, same reason) -- CGameInstance::Draw_Text
-	submits its SpriteBatch draw immediately, but the bar/frame images RenderBossHealthBar draws
-	via ImGui's foreground draw list only composite later, inside EndFrame(). Calling both from
-	inside the Begin/EndFrame block let the ImGui-composited opaque fill bury this text underneath
-	it every frame. */
+	/* Boss title/HP/bar-count text. Split out from Update_BossHealthBar and called after
+	CImGuiLayer::EndFrame() (next to RenderCombatHUDText, same reason every other LOA-font
+	label in this codebase runs there) -- CGameInstance::Draw_Text's SpriteBatch submits
+	immediately, so it needs the same post-EndFrame pass regardless of what draws the bar/frame
+	art underneath it. */
 	void RenderBossHealthBarText();
 	/* "사망하였습니다" title + "부활"/"관전하기" button labels over Valtan's death-screen panel
 	(CLevel_ValtanArena owns the panel/button images and the revive click hit-test; this only
@@ -319,11 +326,12 @@ private:
 	unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };
 	/* Not _DEBUG-gated: the runtime HUD art must render in Release too. */
 	unique_ptr<CHUDRuntimeView> m_pHUDRuntimeView = { nullptr };
-	/* UI/BossUI/BossUI.json's runtime consumer (RenderBossHealthBar) -- the boss health bar isn't
-	tied to the local player's own class (m_pHUDRuntimeView/Combat HUD) and isn't part of the
-	always-on top/bottom menu chrome (Screen UI) either, so it owns its own document/tab instead of
-	being folded into either. */
-	unique_ptr<CHUDRuntimeView> m_pBossUIView = { nullptr };
+	/* UI/BossUI/BossUI.json's runtime consumer (Update_BossHealthBar) -- real CUI_Sprite
+	GameObjects under LEVEL::STATIC, same as m_pInventoryView/m_pItemUpgradeView. The boss
+	health bar isn't tied to the local player's own class (m_pHUDRuntimeView/Combat HUD) and
+	isn't part of the always-on top/bottom menu chrome (Screen UI) either, so it owns its own
+	document/tab instead of being folded into either. */
+	unique_ptr<CUILayoutRuntime> m_pBossUIView = { nullptr };
 	/* UI/Esther/EstherUI.json's runtime consumer (RenderEstherGauge) -- same reasoning as
 	m_pBossUIView: the Esther skill window is shared across every class, not tied to Combat HUD
 	or Screen UI, so it gets its own document/tab too. */
@@ -331,7 +339,7 @@ private:
 	/* UI/ItemUpgrade/ItemUpgradeUI.json's runtime consumer -- real CUI_Sprite GameObjects under
 	LEVEL::STATIC (Update_ItemUpgrade drives the gauge/effect state machine and hover/click; no
 	real Server-side 재련/enhancement data exists yet, so there is still no per-slot balance
-	logic like RenderBossHealthBar's). Not _DEBUG-gated, same as m_pInventoryView/m_pSkillWindowView.
+	logic like Update_BossHealthBar's). Not _DEBUG-gated, same as m_pInventoryView/m_pSkillWindowView.
 	P is a free normal gameplay keybind (not an F1/F6 tool-switch key) -- toggled the same
 	GetAsyncKeyState edge-detect pattern as K/I below, since it started as an always-on debug
 	preview that ended up blocking everything else on screen. */
@@ -443,7 +451,7 @@ private:
 		bool_t isOutgoing = false;
 	};
 	vector<FLOATING_DAMAGE_NUMBER> m_FloatingDamageNumbers;
-	/* RenderBossHealthBar's own edge-detect state, matching two real effects confirmed from the
+	/* Update_BossHealthBar's own edge-detect state, matching two real effects confirmed from the
 	decompiled targetstatus_loc_int.gfx (ark.controls.ProgressMultiTrack / Progress):
 	1) ProgressMultiTrack keeps a second "cloneTarget" fill instance with a colorTransform that
 	   forces it fully white, cross-fading with the real-color fill whenever a bar segment ticks
