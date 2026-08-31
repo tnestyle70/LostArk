@@ -42,7 +42,10 @@ private:
 	LOBBY_COMMAND_TOKEN m_iLobbyCommandToken =
 		INVALID_LOBBY_COMMAND_TOKEN;
 	unique_ptr<class CLoader> m_pLoader = { nullptr };
-	unique_ptr<class CHUDRuntimeView> m_pRecoveryView = { nullptr };
+	/* LoadingRecovery.json as real CUI_Sprite GameObjects on this Level's own Layer_UI
+	(CUILayoutRuntime), hidden until a Lobby load failure is reported -- the loading screen is
+	product UI, so it draws nothing through ImGui. */
+	unique_ptr<class CUILayoutRuntime> m_pRecoveryView = { nullptr };
 	bool_t m_isActivationRequested = { false };
 	bool_t m_isFailureReported = { false };
 	bool_t m_isRetryRequested = { false };

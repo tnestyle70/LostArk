@@ -219,7 +219,8 @@ HRESULT CLevel_CharacterSelect::Initialize()
 
 #ifdef _DEBUG
 	m_pDebugRaidEntryPreviewView =
-		std::make_unique<CRaidEntryPreviewView>(m_pDevice, m_pContext);
+		std::make_unique<CRaidEntryPreviewView>(
+			m_pDevice, m_pContext, ETOUI(LEVEL::CHARACTER_SELECT));
 #endif
 
 	m_eMode = MODE::CONNECTING;

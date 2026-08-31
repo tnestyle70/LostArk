@@ -917,6 +917,7 @@ void CLevel_ValtanArena::Update_ReferenceCamera()
 	camera, the same press dismisses it and applies the toggle the user asked for. */
 	if (GetForegroundWindow() == g_hWnd &&
 		!ImGui::GetIO().WantTextInput &&
+		!CUIInputRouter::Get().Is_TextInputActive() &&
 		CGameInstance::Get().Get_DIKeyPressed(DIK_F6))
 	{
 		End_ReferenceCamera(true);
@@ -1764,7 +1765,8 @@ void CLevel_ValtanArena::Update_DeadScene(
 #ifdef _DEBUG
 void CLevel_ValtanArena::Update_DebugRaidClearKey()
 {
-	if (ImGui::GetIO().WantTextInput)
+	if (ImGui::GetIO().WantTextInput ||
+		CUIInputRouter::Get().Is_TextInputActive())
 		return;
 	const HWND hForeground = GetForegroundWindow();
 	DWORD foregroundProcessId = {};
