@@ -291,6 +291,12 @@
     <ClCompile Include="..\Private\MapTool.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
+	<ClCompile Include="..\Private\WorldSequenceDocument.cpp">
+	  <Filter>03. Tools\00. Map</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\WorldSequenceToolPanel.cpp">
+	  <Filter>03. Tools\00. Map</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\WorldGameplayDocument.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
@@ -733,6 +739,12 @@
     <ClInclude Include="..\Public\MapTool.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
+	<ClInclude Include="..\Public\WorldSequenceDocument.h">
+	  <Filter>03. Tools\00. Map</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\WorldSequenceToolPanel.h">
+	  <Filter>03. Tools\00. Map</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\WorldGameplayDocument.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
@@ -1576,6 +1588,9 @@
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.mapplacements">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.deployplacements">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapeffects.json">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
@@ -1703,6 +1718,9 @@
       <Filter>96.DataFiles\Maps</Filter>
     </None>
     <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.mapplacements">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.deployassets">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
     <None Include="..\..\Data\Maps\Imported\LV_LUT_MIDNIGHTC_ED\LV_LUT_MIDNIGHTC_ED.nonstatic.inventory.json">

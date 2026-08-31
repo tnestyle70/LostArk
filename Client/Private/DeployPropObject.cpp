@@ -35,14 +35,29 @@ namespace
 			'|' == separator || ' ' == separator;
 	}
 
-	bool_t Apply_LogicalAnimation(
+	uint32_t Resolve_LogicalAnimationIndex(
 		const shared_ptr<CModel>& pModel,
 		std::string_view logicalName)
 	{
 		if (nullptr == pModel)
-			return false;
+			return UINT32_MAX;
 
 		const uint32_t animationCount = pModel->Get_NumAnimations();
+		uint32_t exactIndex = UINT32_MAX;
+		for (uint32_t index = 0u; index < animationCount; ++index)
+		{
+			const char_t* storedName = pModel->Get_AnimationName(index);
+			if (nullptr == storedName || logicalName != storedName)
+				continue;
+			if (UINT32_MAX != exactIndex)
+				return UINT32_MAX;
+			exactIndex = index;
+		}
+		/* A lever legitimately carries both `off` and `go_off`. The exact role
+		   always wins; suffix matching exists only for legacy qualified names. */
+		if (UINT32_MAX != exactIndex)
+			return exactIndex;
+
 		uint32_t resolvedIndex = animationCount;
 		for (uint32_t index = 0; index < animationCount; ++index)
 		{
@@ -51,13 +66,45 @@ namespace
 				continue;
 
 			if (resolvedIndex != animationCount)
-				return false;
+				return UINT32_MAX;
 			resolvedIndex = index;
 		}
+		return resolvedIndex == animationCount ? UINT32_MAX : resolvedIndex;
+	}
 
-		if (resolvedIndex == animationCount)
+	uint32_t Resolve_ExactAnimationIndex(
+		const shared_ptr<CModel>& pModel,
+		const std::string& exactName)
+	{
+		if (nullptr == pModel || exactName.empty())
+			return UINT32_MAX;
+
+		uint32_t resolvedIndex = UINT32_MAX;
+		for (uint32_t index = 0u;
+			index < pModel->Get_NumAnimations(); ++index)
+		{
+			const char_t* storedName = pModel->Get_AnimationName(index);
+			if (nullptr == storedName || exactName != storedName)
+				continue;
+			if (UINT32_MAX != resolvedIndex)
+				return UINT32_MAX;
+			resolvedIndex = index;
+		}
+		return resolvedIndex;
+	}
+
+	bool_t Apply_LogicalAnimation(
+		const shared_ptr<CModel>& pModel,
+		std::string_view logicalName)
+	{
+		if (logicalName.empty())
+			return true;
+		const uint32_t resolvedIndex =
+			Resolve_LogicalAnimationIndex(pModel, logicalName);
+		if (UINT32_MAX == resolvedIndex)
 			return false;
 		pModel->Set_Animation(resolvedIndex, false);
+		pModel->Skip_Blend();
 		if (!pModel->Set_AnimTrackPosition(resolvedIndex, 0.f))
 			return false;
 		pModel->Play_Animation(0.f);
@@ -145,13 +192,40 @@ HRESULT CDeployPropObject::Initialize(void* pArg)
 	}
 	m_Placement = desc.placement;
 	m_ModelKind = desc.modelKind;
+	m_AnimationRoles = desc.animationRoles;
+	m_bStrictAnimationRoles = desc.strictAnimationRoles;
 	m_SurfacePresentation.fEmissiveIntensity = desc.emissiveIntensity;
 	m_bDeferredEmissiveOverlay = desc.deferredEmissiveOverlay;
 	m_iPrototypeLevelIndex = desc.prototypeLevelIndex;
 	Apply_Transform();
+	if (m_ModelKind == DEPLOY_PROP_MODEL_KIND::STATIC &&
+		(!m_AnimationRoles.intactClip.empty() ||
+			!m_AnimationRoles.fracturedClip.empty()))
+	{
+		return E_FAIL;
+	}
+	if (m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
+		m_bStrictAnimationRoles)
+	{
+		const uint32_t animationCount =
+			m_pIntactModelCom->Get_NumAnimations();
+		if ((!m_AnimationRoles.intactClip.empty() &&
+			(UINT32_MAX == Resolve_LogicalAnimationIndex(
+				m_pIntactModelCom, m_AnimationRoles.intactClip))) ||
+			(!m_AnimationRoles.fracturedClip.empty() &&
+			(UINT32_MAX == Resolve_LogicalAnimationIndex(
+				m_pIntactModelCom, m_AnimationRoles.fracturedClip))) ||
+			(0u == animationCount &&
+				(!m_AnimationRoles.intactClip.empty() ||
+					!m_AnimationRoles.fracturedClip.empty())))
+		{
+			return E_FAIL;
+		}
+	}
 	if (m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
 		m_pIntactModelCom->Get_NumAnimations() > 0 &&
-		!Apply_LogicalAnimation(m_pIntactModelCom, "on"))
+		!Apply_LogicalAnimation(
+			m_pIntactModelCom, m_AnimationRoles.intactClip))
 		return E_FAIL;
 	return S_OK;
 }
@@ -159,8 +233,10 @@ HRESULT CDeployPropObject::Initialize(void* pArg)
 void CDeployPropObject::Update(f32_t fTimeDelta)
 {
 	if (!m_bPhysicsPreviewActive &&
+		!m_bAnimationAuthoringPreviewActive &&
 		m_State == DEPLOY_PROP_STATE::FRACTURED &&
 		m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
+		!m_AnimationRoles.fracturedClip.empty() &&
 		m_pIntactModelCom->Get_NumAnimations() > 0)
 		m_pIntactModelCom->Play_Animation(fTimeDelta);
 }
@@ -265,6 +341,8 @@ HRESULT CDeployPropObject::Render_Shadow()
 
 bool_t CDeployPropObject::Set_State(DEPLOY_PROP_STATE state)
 {
+	if (m_bAnimationAuthoringPreviewActive)
+		return false;
 	if (state != DEPLOY_PROP_STATE::INTACT &&
 		state != DEPLOY_PROP_STATE::FRACTURED &&
 		state != DEPLOY_PROP_STATE::DESPAWNED)
@@ -278,10 +356,12 @@ bool_t CDeployPropObject::Set_State(DEPLOY_PROP_STATE state)
 		m_pIntactModelCom->Get_NumAnimations() > 0)
 	{
 		if (state == DEPLOY_PROP_STATE::INTACT &&
-			!Apply_LogicalAnimation(m_pIntactModelCom, "on"))
+			!Apply_LogicalAnimation(
+				m_pIntactModelCom, m_AnimationRoles.intactClip))
 			return false;
 		if (state == DEPLOY_PROP_STATE::FRACTURED &&
-			!Apply_LogicalAnimation(m_pIntactModelCom, "off"))
+			!Apply_LogicalAnimation(
+				m_pIntactModelCom, m_AnimationRoles.fracturedClip))
 			return false;
 	}
 	m_State = state;
@@ -307,6 +387,134 @@ bool_t CDeployPropObject::Is_AnimBindPoseOnly() const
 {
 	return m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
 		m_pIntactModelCom->Get_NumAnimations() == 0;
+}
+
+std::vector<DEPLOY_PROP_ANIMATION_CLIP>
+CDeployPropObject::Get_AnimationClips() const
+{
+	std::vector<DEPLOY_PROP_ANIMATION_CLIP> clips;
+	if (DEPLOY_PROP_MODEL_KIND::ANIM != m_ModelKind ||
+		nullptr == m_pIntactModelCom)
+	{
+		return clips;
+	}
+
+	clips.reserve(m_pIntactModelCom->Get_NumAnimations());
+	for (uint32_t index = 0u;
+		index < m_pIntactModelCom->Get_NumAnimations(); ++index)
+	{
+		const char_t* name = m_pIntactModelCom->Get_AnimationName(index);
+		f32_t positionTicks = 0.f;
+		f32_t durationTicks = 0.f;
+		const f32_t ticksPerSecond =
+			m_pIntactModelCom->Get_AnimationTickPerSecond(index);
+		if (nullptr == name || '\0' == name[0] ||
+			!m_pIntactModelCom->Get_AnimationProgress(
+				index, positionTicks, durationTicks) ||
+			!std::isfinite(durationTicks) || durationTicks < 0.f ||
+			!std::isfinite(ticksPerSecond) || ticksPerSecond <= 0.f)
+		{
+			continue;
+		}
+		clips.push_back({ name, durationTicks / ticksPerSecond });
+	}
+	return clips;
+}
+
+bool_t CDeployPropObject::Begin_AnimationAuthoringPreview()
+{
+	if (m_bAnimationAuthoringPreviewActive || m_bPhysicsPreviewActive ||
+		m_bDebrisPreviewActive || m_bTransientDestructionSuppressed ||
+		DEPLOY_PROP_MODEL_KIND::ANIM != m_ModelKind ||
+		nullptr == m_pIntactModelCom ||
+		0u == m_pIntactModelCom->Get_NumAnimations())
+	{
+		return false;
+	}
+
+	const uint32_t animationIndex =
+		m_pIntactModelCom->Get_CurrentAnimIndex();
+	f32_t trackPosition = 0.f;
+	f32_t duration = 0.f;
+	if (animationIndex >= m_pIntactModelCom->Get_NumAnimations() ||
+		!m_pIntactModelCom->Get_AnimationProgress(
+			animationIndex, trackPosition, duration))
+	{
+		return false;
+	}
+
+	m_iPreAuthoringAnimationIndex = animationIndex;
+	m_fPreAuthoringAnimationTrackPosition = trackPosition;
+	m_bPreAuthoringAnimationLoop = m_pIntactModelCom->Is_AnimLoop();
+	m_bPreAuthoringAnimationPaused = m_pIntactModelCom->Is_AnimPaused();
+	m_bAnimationAuthoringPreviewActive = true;
+	return true;
+}
+
+bool_t CDeployPropObject::Sample_AnimationAuthoringPreview(
+	const std::string& clipName,
+	const f32_t normalizedTime,
+	const bool_t loop)
+{
+	if (!m_bAnimationAuthoringPreviewActive ||
+		!std::isfinite(normalizedTime) || normalizedTime < 0.f ||
+		normalizedTime > 1.f)
+	{
+		return false;
+	}
+
+	const uint32_t animationIndex =
+		Resolve_ExactAnimationIndex(m_pIntactModelCom, clipName);
+	f32_t unusedPosition = 0.f;
+	f32_t durationTicks = 0.f;
+	if (UINT32_MAX == animationIndex ||
+		!m_pIntactModelCom->Get_AnimationProgress(
+			animationIndex, unusedPosition, durationTicks) ||
+		!std::isfinite(durationTicks) || durationTicks < 0.f)
+	{
+		return false;
+	}
+
+	f32_t sample = normalizedTime;
+	if (loop && sample >= 1.f)
+		sample = 0.f;
+	m_pIntactModelCom->Set_Animation(animationIndex, loop);
+	m_pIntactModelCom->Skip_Blend();
+	m_pIntactModelCom->Set_AnimPaused(true);
+	if (!m_pIntactModelCom->Set_AnimTrackPosition(
+		animationIndex, durationTicks * sample))
+	{
+		return false;
+	}
+	m_pIntactModelCom->Play_Animation(0.f);
+	return true;
+}
+
+void CDeployPropObject::End_AnimationAuthoringPreview()
+{
+	if (!m_bAnimationAuthoringPreviewActive)
+		return;
+
+	m_bAnimationAuthoringPreviewActive = false;
+	if (nullptr != m_pIntactModelCom &&
+		m_iPreAuthoringAnimationIndex <
+			m_pIntactModelCom->Get_NumAnimations())
+	{
+		m_pIntactModelCom->Set_Animation(
+			m_iPreAuthoringAnimationIndex,
+			m_bPreAuthoringAnimationLoop);
+		m_pIntactModelCom->Skip_Blend();
+		m_pIntactModelCom->Set_AnimTrackPosition(
+			m_iPreAuthoringAnimationIndex,
+			m_fPreAuthoringAnimationTrackPosition);
+		m_pIntactModelCom->Set_AnimPaused(
+			m_bPreAuthoringAnimationPaused);
+		m_pIntactModelCom->Play_Animation(0.f);
+	}
+	m_iPreAuthoringAnimationIndex = UINT32_MAX;
+	m_fPreAuthoringAnimationTrackPosition = 0.f;
+	m_bPreAuthoringAnimationLoop = false;
+	m_bPreAuthoringAnimationPaused = false;
 }
 
 bool_t CDeployPropObject::Get_WorldBounds(
@@ -416,7 +624,7 @@ bool_t CDeployPropObject::Get_PhysicsPreviewLocalBounds(
 bool_t CDeployPropObject::Begin_PhysicsPreview(
 	const DEPLOY_PROP_STATE previewState)
 {
-	if (m_bPhysicsPreviewActive ||
+	if (m_bPhysicsPreviewActive || m_bAnimationAuthoringPreviewActive ||
 		(previewState != DEPLOY_PROP_STATE::INTACT &&
 			previewState != DEPLOY_PROP_STATE::FRACTURED))
 	{
@@ -446,7 +654,8 @@ bool_t CDeployPropObject::Begin_PhysicsPreview(
 	if (previewState == DEPLOY_PROP_STATE::FRACTURED &&
 		m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
 		m_pIntactModelCom->Get_NumAnimations() > 0u &&
-		!Apply_LogicalAnimation(m_pIntactModelCom, "off"))
+		!Apply_LogicalAnimation(
+			m_pIntactModelCom, m_AnimationRoles.fracturedClip))
 	{
 		Set_State(previousState);
 		if (UINT32_MAX != previousAnimationIndex)
@@ -512,6 +721,8 @@ bool_t CDeployPropObject::Advance_PhysicsPreviewAnimation(
 	}
 	if (m_State != DEPLOY_PROP_STATE::FRACTURED)
 		return false;
+	if (m_AnimationRoles.fracturedClip.empty())
+		return true;
 
 	m_pIntactModelCom->Play_Animation(fixedDeltaSeconds);
 	return true;
@@ -561,7 +772,7 @@ bool_t CDeployPropObject::Begin_DebrisPresentation(
 {
 	outError.clear();
 	if (DEBRIS_PRESENTATION_OWNER::NONE == owner ||
-		m_bDebrisPreviewActive)
+		m_bDebrisPreviewActive || m_bAnimationAuthoringPreviewActive)
 	{
 		outError = "A transient debris presentation is already active";
 		return false;
@@ -776,7 +987,7 @@ bool_t CDeployPropObject::Begin_DestructionDebrisPresentation(
 	const DESTRUCTION_DEBRIS_PRESENTATION_DESC& desc,
 	std::string& outError)
 {
-	if (m_bPhysicsPreviewActive)
+	if (m_bPhysicsPreviewActive || m_bAnimationAuthoringPreviewActive)
 	{
 		outError = "Product debris cannot overlap a MapTool physics preview";
 		return false;
@@ -839,7 +1050,7 @@ bool_t CDeployPropObject::Begin_TransientDestructionSuppression(
 {
 	outError.clear();
 	if (m_bTransientDestructionSuppressed || m_bDebrisPreviewActive ||
-		m_bPhysicsPreviewActive)
+		m_bPhysicsPreviewActive || m_bAnimationAuthoringPreviewActive)
 	{
 		outError = "Transient destruction suppression conflicts with an active presentation";
 		return false;

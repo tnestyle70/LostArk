@@ -53,7 +53,7 @@ bool_t CDeployPropRuntime::Load(
 	CDeployPropCatalog catalog)
 {
 	if (levelIndex >= ETOUI(LEVEL::END) || !catalog.Is_Ready() ||
-		catalog.Get_Placements().empty())
+		catalog.Get_AreaId().empty())
 	{
 		m_Status = "DeployProp runtime input is invalid";
 		return false;
@@ -81,6 +81,8 @@ bool_t CDeployPropRuntime::Load(
 		desc.fracturedPrototypeTag = asset->fracturedPrototypeTag;
 		desc.emissiveIntensity = asset->emissiveIntensity;
 		desc.deferredEmissiveOverlay = asset->deferredEmissiveOverlay;
+		desc.animationRoles = asset->animationRoles;
+		desc.strictAnimationRoles = asset->strictAnimationRoles;
 
 		shared_ptr<CGameObject> gameObject;
 		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(

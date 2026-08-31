@@ -32,6 +32,7 @@ class CTrigger_Box;
 class CNpc;
 class CCamera_Free;
 class CDestructionSimulationController;
+class CWorldSequenceToolPanel;
 class CMapTool final
 {
 private:
@@ -40,6 +41,7 @@ private:
 		MAP_ASSETS,
 		WORLD_GAMEPLAY,
 		WORLD_DESTRUCTION,
+		WORLD_SEQUENCE,
 		NAVIGATION,
 		CAMERA,
 	};
@@ -185,6 +187,7 @@ private:
 	void Render_WorldGameplayPanel(bool_t isAssetTest);
 	void Render_SpawnGroupsPanel();
 	void Render_WorldDestructionPanel(bool_t isAssetTest);
+	void Render_WorldSequencePanel(bool_t isAssetTest);
 	void Render_DestructionSimpleEditor();
 	void Render_DestructionSimpleWallList();
 	void Render_DestructionSimpleInspector();
@@ -210,6 +213,7 @@ private:
 	void Render_NavigationBakeControls();
 	void Render_NavigationBoundsOverlay();
 	void Render_Toolbar();
+	void Render_AnimatedPropsAuthoring();
 	void Render_Palette(f32_t childHeight);
 	void Render_Hierarchy(f32_t childHeight);
 	void Render_Inspector();
@@ -219,6 +223,9 @@ private:
 	/* Camera Runtime */
 	bool_t Find_AssetTestCamera();
 	bool_t Focus_ActiveEditorAreaCamera();
+	void Rebuild_EditorSublevelJumps();
+	bool_t Jump_ToEditorSublevel(size_t jumpIndex);
+	void Update_EditorSublevelJumpShortcuts();
 
 	/* Navigation Document and Runtime */
 	bool_t Load_NavigationDocument();
@@ -256,6 +263,7 @@ private:
 	void Report_EditorAreaPreloadProgress();
 	bool_t Switch_EditorArea(size_t descriptorIndex);
 	bool_t Save_AllAuthoring();
+	bool_t Save_PlacementsAndWorldSequences();
 	bool_t Has_UnsavedAuthoring() const;
 	const EDITOR_AREA_DESCRIPTOR* Get_ActiveEditorArea() const;
 	bool_t Try_PickPlacementPosition(float3_t& outPosition) const;
@@ -273,12 +281,25 @@ private:
 		PLACED_ENTRY& entry, bool_t visible);
 	bool_t Remove_Placement(uint64_t placementId);
 	void Remove_AllPlacements();
-	bool_t Save_Placements();
+	bool_t Save_Placements(
+		bool_t linkedTransactionAlreadyLocked = false,
+		vector<MAP_PLACEMENT_RECORD>* outSavedRecords = nullptr);
 	bool_t Load_Placements();
 	bool_t Load_DeployProps();
 	bool_t Stage_DeployProps(
 		const EDITOR_AREA_DESCRIPTOR& descriptor,
 		CDeployPropRuntime& outRuntime);
+	bool_t Commit_DeployCatalog(
+		CDeployPropCatalog catalog,
+		const std::string& successStatus);
+	bool_t Save_DeployPlacements();
+	bool_t Try_PlaceSelectedDeploy();
+	bool_t Apply_AnimatedPropTransform();
+	bool_t Remove_SelectedAnimatedProp();
+	uint64_t Allocate_AnimatedPropPlacementId() const;
+	const DEPLOY_PROP_ASSET_ENTRY* Get_SelectedDeployAsset() const;
+	const DEPLOY_RUNTIME_ENTRY* Get_SelectedAnimatedProp() const;
+	void Sync_AnimatedPropTransformDraft();
 	void Remove_DeployProps();
 	void Set_DeployPhase(DEPLOY_PROP_STATE state);
 	void Set_EnvironmentPhase(ENVIRONMENT_PHASE phase);
@@ -325,6 +346,9 @@ private:
 	void Update_WorldTriggerBoxPresentation(bool_t isVisible);
 	std::filesystem::path Get_WorldGameplayPath() const;
 	std::filesystem::path Get_SpawnGroupsPath() const;
+
+	/* Reusable World Sequence Authoring */
+	std::filesystem::path Get_WorldSequencePath() const;
 
 	/* World Destruction Authoring */
 	bool_t Load_EncounterReference();
@@ -407,6 +431,15 @@ private:
 
 	CMapAssetCatalog m_Catalog;
 	CDeployPropRuntime m_DeployRuntime;
+	bool_t m_bDeployDirty = false;
+	bool_t m_bAnimatedPropPlacementArmed = false;
+	std::string m_SelectedDeployAssetId;
+	char m_AnimatedPropFilter[128]{};
+	uint64_t m_iSelectedAnimatedPropPlacementId = 0;
+	uint64_t m_iAnimatedPropDraftPlacementId = 0;
+	float3_t m_AnimatedPropDraftPosition = {};
+	float4_t m_AnimatedPropDraftRotation = float4_t(0.f, 0.f, 0.f, 1.f);
+	f32_t m_fAnimatedPropDraftScale = 1.f;
 	shared_ptr<CMapLightPresentationRuntime> m_pMapLightPresentation;
 	bool_t m_bMapLightSubmissionFailureReported = false;
 	std::unique_ptr<CMapAssetPreview> m_pAssetPreview;
@@ -482,6 +515,7 @@ private:
 	std::unordered_set<std::string> m_WorldNpcBatchArchetypePool;
 	std::vector<WORLD_GAMEPLAY_PLACEMENT> m_WorldNpcBatchDraft;
 	uint32_t m_iWorldNpcBatchDraftBaseRevision = 0;
+	std::unique_ptr<CWorldSequenceToolPanel> m_pWorldSequenceToolPanel;
 
 	/* World Destruction State */
 	CEncounterPatternReference m_EncounterReference;
@@ -580,6 +614,18 @@ private:
 	/* Camera State */
 	weak_ptr<CCamera_Free> m_pAssetTestCamera;
 	std::string m_CameraStatus = "Open ASSET_TEST with F2";
+	/* One camera jump target per authored source sublevel of the active
+	Area, rebuilt from the committed placements. An Area whose placements
+	carry no sublevel simply produces none, which is what keeps the number
+	shortcuts inert outside the Areas that need them. */
+	struct EDITOR_SUBLEVEL_JUMP final
+	{
+		std::string label;
+		float3_t center = {};
+		f32_t radius = 0.f;
+		size_t placementCount = 0u;
+	};
+	vector<EDITOR_SUBLEVEL_JUMP> m_EditorSublevelJumps;
 };
 
 NS_END
