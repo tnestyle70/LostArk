@@ -1525,11 +1525,11 @@ void CLevel_CharacterSelect::Render_CreateCharacterProductInputHost()
 
 void CLevel_CharacterSelect::Render_ProductStatus()
 {
+	/* Release-only: in Debug the same text is already visible in the F1 selection panel.
+	Drawn with the LOA font like every other product label -- ImGui is Debug-tool-only, and
+	this is the one product screen element that used to draw through it in Release builds. */
 #ifndef _DEBUG
 	if (nullptr == m_pClassSelectView || m_isCreateCharacterModalOpen || m_strStatus.empty())
-		return;
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
 		return;
 
 	f32_t fX = 300.f;
@@ -1550,19 +1550,30 @@ void CLevel_CharacterSelect::Render_ProductStatus()
 		fWidth = fAuthoredWidth;
 		fHeight = fAuthoredHeight;
 	}
-	const f32_t fScaleX = pViewport->WorkSize.x / 1280.f;
-	const f32_t fScaleY = pViewport->WorkSize.y / 720.f;
-	const ImVec2 vPos(
-		pViewport->WorkPos.x + (fX + 8.f) * fScaleX,
-		pViewport->WorkPos.y + (fY + 6.f) * fScaleY);
-	const f32_t fFontSize = 16.f * (std::min)(fScaleX, fScaleY);
-	const f32_t fWrapWidth = (fWidth - 16.f) * fScaleX;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
-	pDrawList->AddText(ImGui::GetFont(), fFontSize,
-		ImVec2(vPos.x + 1.f, vPos.y + 1.f), IM_COL32(0, 0, 0, 220),
-		m_strStatus.c_str(), nullptr, fWrapWidth);
-	pDrawList->AddText(ImGui::GetFont(), fFontSize, vPos,
-		IM_COL32(255, 225, 150, 255), m_strStatus.c_str(), nullptr, fWrapWidth);
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fScaleX = vViewportSize.x / 1280.f;
+	const f32_t fScaleY = vViewportSize.y / 720.f;
+	const f32_t fUiScale = (std::min)(fScaleX, fScaleY);
+	/* The status strings are ASCII, so the byte-wise widen is exact. */
+	const wstring_t strStatusWide(m_strStatus.begin(), m_strStatus.end());
+	const float2_t vMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strStatusWide.c_str());
+	if (vMeasured.y <= 0.f)
+		return;
+	f32_t fScale = (16.f / vMeasured.y) * fUiScale;
+	/* Draw_Text has no wrapping, so an over-long line shrinks to fit its authored width
+	instead of running past it the way the old AddText wrap would have folded it. */
+	const f32_t fMaxWidth = (fWidth - 16.f) * fScaleX;
+	if (vMeasured.x * fScale > fMaxWidth && vMeasured.x > 0.f)
+		fScale = fMaxWidth / vMeasured.x;
+	const float2_t vPos((fX + 8.f) * fScaleX, (fY + 6.f) * fScaleY);
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strStatusWide.c_str(),
+		float2_t(vPos.x + 1.f, vPos.y + 1.f),
+		XMVectorSet(0.f, 0.f, 0.f, 220.f / 255.f), 0.f, float2_t(0.f, 0.f), fScale);
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strStatusWide.c_str(),
+		vPos,
+		XMVectorSet(1.f, 225.f / 255.f, 150.f / 255.f, 1.f), 0.f,
+		float2_t(0.f, 0.f), fScale);
 #endif
 }
 
@@ -1932,20 +1943,15 @@ bool_t CLevel_CharacterSelect::Is_ProductPointerHovered() const
 {
 	if (MODE::SERVER_ARENA != m_eMode || nullptr == m_pClassSelectView)
 		return false;
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return false;
 
-	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
-	const f32_t fScaleY = pViewport->WorkSize.y / REF_HEIGHT;
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const auto IsHovered = [&](const f32_t fX, const f32_t fY,
+	/* Same router every other product widget on this screen hit-tests through -- this is
+	gameplay-path code (it gates whether an LMB also reaches PlayerController), so it reads the
+	native cursor, not ImGui's. */
+	const auto IsHovered = [](const f32_t fX, const f32_t fY,
 		const f32_t fWidth, const f32_t fHeight)
 	{
-		const f32_t fMinX = pViewport->WorkPos.x + fX * fScaleX;
-		const f32_t fMinY = pViewport->WorkPos.y + fY * fScaleY;
-		return vMouse.x >= fMinX && vMouse.x < fMinX + fWidth * fScaleX &&
-			vMouse.y >= fMinY && vMouse.y < fMinY + fHeight * fScaleY;
+		return CUIInputRouter::Get().Is_Hovered(
+			fX, fY, fWidth, fHeight, REF_WIDTH, REF_HEIGHT);
 	};
 
 	const bool_t hasCompleteAuthoredButtons =
@@ -2147,58 +2153,86 @@ void CLevel_CharacterSelect::Render_ClassListText()
 {
 	/* Same MODE::SERVER_ARENA gate as Update_ClassList -- these are that panel's own text, so
 	they must disappear and reappear together with it instead of floating on screen without the
-	art underneath. Uses ImGui's own font/foreground draw list (not CGameInstance::Draw_Text),
-	so unlike Render_ArenaSpawnLabels this has to stay in the ImGui-active Render() phase, not
-	the post-EndFrame LOA-font pass. */
+	art underneath. Draws with the LOA font (CGameInstance::Draw_Text) like every other product
+	label; ImGui is Debug-tool-only. */
 	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)
 		return;
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
-	const f32_t fScaleY = pViewport->WorkSize.y / REF_HEIGHT;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fScaleX = vViewportSize.x / REF_WIDTH;
+	const f32_t fScaleY = vViewportSize.y / REF_HEIGHT;
+	const f32_t fUiScale = (std::min)(fScaleX, fScaleY);
 
-	const auto Fn_ToScreen = [&](f32_t fX, f32_t fY) -> ImVec2
+	/* The labels are UTF-8 byte literals (this file has no BOM and the project builds without
+	/utf-8), and Draw_Text takes wide text. */
+	const auto Fn_Widen = [](const char* pUtf8) -> wstring_t
 	{
-		return ImVec2(
-			pViewport->WorkPos.x + fX * fScaleX,
-			pViewport->WorkPos.y + fY * fScaleY);
+		if (nullptr == pUtf8 || '\0' == pUtf8[0])
+			return {};
+		const int32_t iLength = ::MultiByteToWideChar(CP_UTF8, 0, pUtf8, -1, nullptr, 0);
+		if (iLength <= 1)
+			return {};
+		wstring_t wide(static_cast<size_t>(iLength - 1), L'\0');
+		::MultiByteToWideChar(CP_UTF8, 0, pUtf8, -1, wide.data(), iLength);
+		return wide;
 	};
 
-	/* ImGui only ships the one HANYoonGothic330 weight (see ImGuiLayer::Initialize), so "bold"
-	here is the standard faux-bold trick: the same glyphs redrawn a few pixels apart so their
-	strokes overlap and thicken, instead of a real heavier-weight font asset. */
-	const auto Fn_DrawBoldText = [&](f32_t fX, f32_t fY, f32_t fSize, ImU32 iColor, const char* pText)
+	/* fSize is the reference-resolution pixel height the old ImGui AddText call asked for, so
+	the glyphs stay the same size as before -- Draw_Text scales relative to the font's own
+	measured height instead of taking a size directly. Anchored top-left (0,0 pivot), matching
+	AddText's own contract. Bold is the same faux-bold trick as before (the LOA font ships one
+	weight too): the same glyphs redrawn a pixel apart so their strokes thicken. */
+	const auto Fn_DrawBoldTextAt = [&](f32_t fX, f32_t fY, f32_t fSize,
+		const fvector_t& vColor, const char* pUtf8, const float2_t& vPivot)
 	{
-		ImFont* pFont = ImGui::GetFont();
-		const ImVec2 vPos = Fn_ToScreen(fX, fY);
-		const f32_t fScreenSize = fSize * (std::min)(fScaleX, fScaleY);
+		const wstring_t wide = Fn_Widen(pUtf8);
+		if (wide.empty())
+			return;
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), wide.c_str());
+		if (vMeasured.y <= 0.f)
+			return;
+		const f32_t fScale = (fSize / vMeasured.y) * fUiScale;
+		const float2_t vPos(fX * fScaleX, fY * fScaleY);
 		constexpr f32_t fOffsets[][2] = { {0.f, 0.f}, {1.f, 0.f}, {0.f, 1.f}, {1.f, 1.f} };
 		for (const f32_t (&Offset)[2] : fOffsets)
 		{
-			pDrawList->AddText(pFont, fScreenSize,
-				ImVec2(vPos.x + Offset[0], vPos.y + Offset[1]), iColor, pText);
+			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), wide.c_str(),
+				float2_t(vPos.x + Offset[0], vPos.y + Offset[1]),
+				vColor, 0.f, vPivot, fScale);
 		}
 	};
 
-	/* Centers pText within [fRectX, fRectX + fRectWidth) at reference scale, using this text's
-	own font-size metrics (CalcTextSizeA) rather than assuming a fixed glyph width -- Korean
-	glyphs at a non-default size don't have a simple char-count-based width. */
+	const auto Fn_DrawBoldText = [&](f32_t fX, f32_t fY, f32_t fSize,
+		const fvector_t& vColor, const char* pUtf8)
+	{
+		Fn_DrawBoldTextAt(fX, fY, fSize, vColor, pUtf8, float2_t(0.f, 0.f));
+	};
+
+	/* Centers pText within [fRectX, fRectX + fRectWidth) at reference scale -- a 0.5 x-pivot
+	does what the old explicit CalcTextSizeA half-width offset did. */
 	const auto Fn_DrawBoldTextCentered = [&](f32_t fRectX, f32_t fRectWidth, f32_t fY, f32_t fSize,
-		ImU32 iColor, const char* pText)
+		const fvector_t& vColor, const char* pUtf8)
 	{
-		ImFont* pFont = ImGui::GetFont();
-		const f32_t fScreenSize = fSize * (std::min)(fScaleX, fScaleY);
-		const ImVec2 vTextSize = pFont->CalcTextSizeA(fScreenSize, FLT_MAX, 0.f, pText);
-		const f32_t fRectCenterX = fRectX + fRectWidth * 0.5f;
-		const ImVec2 vScreenCenter = Fn_ToScreen(fRectCenterX, fY);
-		constexpr f32_t fOffsets[][2] = { {0.f, 0.f}, {1.f, 0.f}, {0.f, 1.f}, {1.f, 1.f} };
-		for (const f32_t (&Offset)[2] : fOffsets)
-		{
-			pDrawList->AddText(pFont, fScreenSize,
-				ImVec2(vScreenCenter.x - vTextSize.x * 0.5f + Offset[0], vScreenCenter.y + Offset[1]),
-				iColor, pText);
-		}
+		Fn_DrawBoldTextAt(fRectX + fRectWidth * 0.5f, fY, fSize, vColor, pUtf8,
+			float2_t(0.5f, 0.f));
+	};
+
+	/* Plain (non-bold) single draw, for the two list labels that were never faux-bolded. */
+	const auto Fn_DrawText = [&](f32_t fX, f32_t fY, const fvector_t& vColor, const char* pUtf8)
+	{
+		const wstring_t wide = Fn_Widen(pUtf8);
+		if (wide.empty())
+			return;
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), wide.c_str());
+		if (vMeasured.y <= 0.f)
+			return;
+		/* ImGui's own AddText used the atlas's default 16px size for these. */
+		const f32_t fScale = (16.f / vMeasured.y) * fUiScale;
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), wide.c_str(),
+			float2_t(fX * fScaleX, fY * fScaleY),
+			vColor, 0.f, float2_t(0.f, 0.f), fScale);
 	};
 
 	/* Left panel text: JSON slots only carry images, so the class name, the three yellow section
@@ -2213,12 +2247,15 @@ void CLevel_CharacterSelect::Render_ClassListText()
 
 		/* Aligned against Warlord_NameSymbol's current rect (50x50 at y=191.29): text sits to
 		the symbol's right, vertically centered on its 50px height. */
-		Fn_DrawBoldText(72.f, 203.f, 32.f, IM_COL32(255, 255, 255, 255), Entry.pClassLabel);
-		Fn_DrawBoldText(15.f, 262.f, 20.f, IM_COL32(255, 220, 140, 255),
+		/* Same IM_COL32 values the ImGui draws used, as normalized RGBA. */
+		const fvector_t vSectionLabelColor =
+			XMVectorSet(1.f, 220.f / 255.f, 140.f / 255.f, 1.f);
+		Fn_DrawBoldText(72.f, 203.f, 32.f, Colors::White, Entry.pClassLabel);
+		Fn_DrawBoldText(15.f, 262.f, 20.f, vSectionLabelColor,
 			"\xec\xa1\xb0\xec\x9e\x91 \xeb\x82\x9c\xec\x9d\xb4\xeb\x8f\x84");
-		Fn_DrawBoldText(15.f, 335.f, 20.f, IM_COL32(255, 220, 140, 255),
+		Fn_DrawBoldText(15.f, 335.f, 20.f, vSectionLabelColor,
 			"\xea\xb8\xb0\xeb\xb3\xb8 \xec\xa0\x95\xeb\xb3\xb4");
-		Fn_DrawBoldText(15.f, 453.f, 20.f, IM_COL32(255, 220, 140, 255),
+		Fn_DrawBoldText(15.f, 453.f, 20.f, vSectionLabelColor,
 			"\xec\x95\x84\xec\x9d\xb4\xeb\x8d\xb4\xed\x8b\xb0\xed\x8b\xb0");
 
 		for (const IDENTITY_DESCRIPTION& Desc : IDENTITY_DESCRIPTIONS)
@@ -2230,14 +2267,16 @@ void CLevel_CharacterSelect::Render_ClassListText()
 			{
 				Fn_DrawBoldTextCentered(IDENTITY_DESC_X, IDENTITY_DESC_WIDTH,
 					IDENTITY_DESC_Y + static_cast<f32_t>(iLine) * IDENTITY_DESC_LINE_HEIGHT,
-					16.f, IM_COL32(220, 220, 220, 255), Desc.ppLines[iLine]);
+					16.f,
+					XMVectorSet(220.f / 255.f, 220.f / 255.f, 220.f / 255.f, 1.f),
+					Desc.ppLines[iLine]);
 			}
 			break;
 		}
 		break;
 	}
 
-	pDrawList->AddText(Fn_ToScreen(1000.f, 20.f), IM_COL32(255, 220, 140, 255),
+	Fn_DrawText(1000.f, 20.f, XMVectorSet(1.f, 220.f / 255.f, 140.f / 255.f, 1.f),
 		"\xed\x81\xb4\xeb\x9e\x98\xec\x8a\xa4 \xec\x84\xa0\xed\x83\x9d");
 
 	/* Same fRowY recompute as Update_ClassList's own accordion loop, purely for these two text
@@ -2249,16 +2288,17 @@ void CLevel_CharacterSelect::Render_ClassListText()
 		const CLASS_LIST_ENTRY& Entry = CLASS_LIST_ENTRIES[i];
 		const bool_t bExpanded = i == iExpandedBefore;
 
-		pDrawList->AddText(Fn_ToScreen(Entry.fX + 52.f, fRowY + 16.f),
-			IM_COL32(230, 230, 230, 255), Entry.pCategoryLabel);
+		Fn_DrawText(Entry.fX + 52.f, fRowY + 16.f,
+			XMVectorSet(230.f / 255.f, 230.f / 255.f, 230.f / 255.f, 1.f),
+			Entry.pCategoryLabel);
 
 		fRowY += Entry.fHeight + ROW_GAP;
 
 		if (bExpanded)
 		{
 			const f32_t fThumbY = fRowY + THUMB_MARGIN_TOP;
-			pDrawList->AddText(Fn_ToScreen(Entry.fX + 4.f, fThumbY + THUMB_H - 18.f),
-				IM_COL32(255, 255, 255, 255), Entry.pClassLabel);
+			Fn_DrawText(Entry.fX + 4.f, fThumbY + THUMB_H - 18.f,
+				Colors::White, Entry.pClassLabel);
 			fRowY = fThumbY + THUMB_H + THUMB_MARGIN_BOTTOM;
 		}
 	}
