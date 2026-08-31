@@ -2699,15 +2699,26 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 				const f32_t fMaxWidth = (fStatusWidth - 8.f) * textScaleX;
 				if (vMeasured.x * fScale > fMaxWidth && vMeasured.x > 0.f)
 					fScale = fMaxWidth / vMeasured.x;
+				/* Centered on the panel's own middle, the same x every Korean line in this
+				modal (title, subtitle, button labels) is centered on -- left-anchored inside
+				the status slot put it visibly off-axis from the text right above it. */
+				f32_t fCenterX = fStatusX + fStatusWidth * 0.5f;
+				f32_t fPanelX = 0.f, fPanelY = 0.f, fPanelW = 0.f, fPanelH = 0.f;
+				if (m_pClassSelectView->Get_SlotRect(
+					"CreateCharacterModal_Panel", fPanelX, fPanelY, fPanelW, fPanelH))
+				{
+					fCenterX = fPanelX + fPanelW * 0.5f;
+				}
 				const float2_t vPosition(
-					(fStatusX + 4.f) * textScaleX, (fStatusY + 2.f) * textScaleY);
+					fCenterX * textScaleX,
+					(fStatusY + fStatusHeight * 0.5f) * textScaleY);
 				CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strStatusWide.c_str(),
 					float2_t(vPosition.x + 1.f, vPosition.y + 1.f),
-					XMVectorSet(0.f, 0.f, 0.f, 0.9f), 0.f, float2_t(0.f, 0.f), fScale);
+					XMVectorSet(0.f, 0.f, 0.f, 0.9f), 0.f, float2_t(0.5f, 0.5f), fScale);
 				CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strStatusWide.c_str(),
 					vPosition,
 					XMVectorSet(1.f, 210.f / 255.f, 120.f / 255.f, 1.f), 0.f,
-					float2_t(0.f, 0.f), fScale);
+					float2_t(0.5f, 0.5f), fScale);
 			}
 		}
 	}
