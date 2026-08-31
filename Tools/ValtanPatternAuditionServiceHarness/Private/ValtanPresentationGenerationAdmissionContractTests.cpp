@@ -1,4 +1,5 @@
 #include "ProjectDataRoot.h"
+#include "DataJson.h"
 #include "ValtanPresentationGenerationAdmission.h"
 
 #include <chrono>
@@ -165,6 +166,116 @@ namespace
 		output.flush();
 		return output.good();
 	}
+
+	bool Load_JsonFixture(
+		const std::filesystem::path& path,
+		Client::DATA_JSON_VALUE& outRoot,
+		std::string& status)
+	{
+		std::ifstream input(path, std::ios::binary);
+		if (!input)
+		{
+			status = "Could not open the Effect V2 closure fixture: " +
+				path.string();
+			return false;
+		}
+		const std::string bytes{
+			std::istreambuf_iterator<char>(input),
+			std::istreambuf_iterator<char>() };
+		if (!Client::CDataJson::Parse(bytes, outRoot, status))
+		{
+			status = "Could not parse the Effect V2 closure fixture " +
+				path.string() + ": " + status;
+			return false;
+		}
+		return true;
+	}
+
+	bool Collect_ReachableV2Closure(
+		const std::filesystem::path& repositoryRoot,
+		std::set<std::string>& outClosure,
+		std::string& status)
+	{
+		constexpr const char* bindingRelative =
+			"Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json";
+		Client::DATA_JSON_VALUE bindingRoot;
+		if (!Load_JsonFixture(
+				repositoryRoot / bindingRelative, bindingRoot, status))
+		{
+			return false;
+		}
+		const Client::DATA_JSON_VALUE* const bindings =
+			bindingRoot.Find("bindings");
+		if (nullptr == bindings || !bindings->Is_Array())
+		{
+			status = "Effect V2 binding closure fixture has no bindings array.";
+			return false;
+		}
+
+		outClosure.clear();
+		outClosure.insert(bindingRelative);
+		std::set<std::string> groupIds;
+		std::set<std::string> leafIds;
+		for (const Client::DATA_JSON_VALUE& binding : bindings->Get_Array())
+		{
+			if (!binding.Is_Object())
+			{
+				status = "Effect V2 binding closure fixture contains a non-object row.";
+				return false;
+			}
+			const Client::DATA_JSON_VALUE* const group = binding.Find("group");
+			const Client::DATA_JSON_VALUE* const effect = binding.Find("effectId");
+			if (nullptr != group && group->Is_String())
+				groupIds.insert(group->Get_String());
+			else if (nullptr != effect && effect->Is_String())
+				leafIds.insert(effect->Get_String());
+			else
+			{
+				status = "Effect V2 binding closure fixture has no group or effectId.";
+				return false;
+			}
+		}
+
+		for (const std::string& groupId : groupIds)
+		{
+			const std::string groupRelative =
+				"Data/Effects/V2/Groups/" + groupId + ".effectv2group.json";
+			outClosure.insert(groupRelative);
+			Client::DATA_JSON_VALUE groupRoot;
+			if (!Load_JsonFixture(
+					repositoryRoot / groupRelative, groupRoot, status))
+			{
+				return false;
+			}
+			const Client::DATA_JSON_VALUE* const children =
+				groupRoot.Find("children");
+			if (nullptr == children || !children->Is_Array())
+			{
+				status = "Effect V2 group closure fixture has no children array: " +
+					groupId;
+				return false;
+			}
+			for (const Client::DATA_JSON_VALUE& child : children->Get_Array())
+			{
+				const Client::DATA_JSON_VALUE* const effect =
+					child.Is_Object() ? child.Find("effectId") : nullptr;
+				if (nullptr == effect || !effect->Is_String())
+				{
+					status = "Effect V2 group closure fixture has an invalid child: " +
+						groupId;
+					return false;
+				}
+				leafIds.insert(effect->Get_String());
+			}
+		}
+
+		for (const std::string& leafId : leafIds)
+		{
+			outClosure.insert(
+				"Data/Effects/V2/Authored/" + leafId + ".effectv2.json");
+		}
+		return true;
+	}
 }
 
 int Run_ValtanPresentationGenerationAdmissionContractTests()
@@ -185,7 +296,11 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 	std::string status;
 	{
 		CValtanPresentationGenerationReadAdmission admission;
-		require(admission.Acquire_PackagedBaseline(receipt, status),
+		const bool acquired =
+			admission.Acquire_PackagedBaseline(receipt, status);
+		if (!acquired)
+			std::cerr << "  admission detail: " << status << '\n';
+		require(acquired,
 			"current typed presentation sources were not admitted");
 		require(receipt.Is_Valid(), "successful admission returned no source receipt");
 		require(admission.Validate_StillCurrent(status),
@@ -382,11 +497,16 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 				v2Closure.insert(artifact.strRelativePath);
 			}
 		}
-		require(14u == v2Closure.size() &&
+		std::set<std::string> expectedV2Closure;
+		const bool collectedV2Closure = Collect_ReachableV2Closure(
+			repositoryRoot, expectedV2Closure, status);
+		require(collectedV2Closure,
+			"could not derive the source-reachable BOSS_VALTAN Effect V2 closure");
+		require(collectedV2Closure && v2Closure == expectedV2Closure &&
 			v2Closure.contains(v2BindingRelative) &&
 			v2Closure.contains(v2GroupRelative) &&
 			v2Closure.contains(v2LeafRelative),
-			"typed admission did not resolve the 14-artifact BOSS_VALTAN Effect V2 closure");
+			"typed admission did not resolve the exact source-reachable BOSS_VALTAN Effect V2 closure");
 
 		struct V2_REPLACE_CASE final
 		{

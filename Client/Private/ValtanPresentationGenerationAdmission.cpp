@@ -26,7 +26,7 @@ namespace
 	using Client::VALTAN_PRESENTATION_GENERATION_RECEIPT;
 	using LostArk::Shared::GameplayDataRevision;
 
-	constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 27u;
+	constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 28u;
 	constexpr std::uint64_t MAX_ARTIFACT_BYTES = 64ull * 1024ull * 1024ull;
 	constexpr std::string_view EFFECT_V2_BINDINGS_RELATIVE =
 		"Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json";
