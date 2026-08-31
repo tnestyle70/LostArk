@@ -275,6 +275,14 @@ try {
     Invoke-PythonGate `
         'Build-domain fingerprint, receipt, and freshness gate' `
         @('Tools/Build/test_build_domain_pipeline_receipts.py')
+    Invoke-PythonGate `
+        'DimensionMaster glass/water Tool audition canary gates' `
+        @(
+            '-m',
+            'unittest',
+            'Tools.EffectPipeline.test_dimensionmaster_2050230_mirror_particle_tool_canary',
+            'Tools.EffectPipeline.test_dimensionmaster_2050230_glass_water_visual_canary'
+        )
 
     if ($includeCore) {
         Invoke-PythonGate `

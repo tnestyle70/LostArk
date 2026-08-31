@@ -411,6 +411,7 @@ namespace
 		std::map<std::string,
 			std::shared_ptr<const EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING>,
 			std::less<>> StagedScreenOverlayBindings;
+		std::set<std::string, std::less<>> DirectAssetIds;
 		for (const DATA_JSON_VALUE& Entry : pEffects->Get_Array())
 		{
 			if (!Entry.Is_Object())
@@ -428,23 +429,21 @@ namespace
 			}
 			if (pPayloadKind->Get_String() != "DIRECT_AUTHORED_DOCUMENT")
 				continue;
+			const DATA_JSON_VALUE* pRuntimeAdmission =
+				Entry.Find("runtimeAdmission");
+			if (nullptr != pRuntimeAdmission)
+			{
+				strOutError =
+					"EffectCatalog.json cannot contain audition admission; use EffectAuditionCatalog.json";
+				return false;
+			}
 
 			const bool_t bOrdinary = Has_ExactOrderedKeys(Entry, {
 				"effectAssetId", "payloadKind", "authoringPath" });
 			const bool_t bOrdinaryWithOverlay = Has_ExactOrderedKeys(Entry, {
 				"effectAssetId", "payloadKind", "authoringPath",
 				"screenOverlayPresentationPath" });
-			const bool_t bAudition = Has_ExactOrderedKeys(Entry, {
-				"effectAssetId", "payloadKind", "authoringPath",
-				"runtimeAdmission", "fidelityClass", "sourceEffectAssetId",
-				"sourceDocumentRawSha256" });
-			const bool_t bAuditionWithOverlay = Has_ExactOrderedKeys(Entry, {
-				"effectAssetId", "payloadKind", "authoringPath",
-				"runtimeAdmission", "fidelityClass", "sourceEffectAssetId",
-				"sourceDocumentRawSha256",
-				"screenOverlayPresentationPath" });
-			if (!bOrdinary && !bOrdinaryWithOverlay &&
-				!bAudition && !bAuditionWithOverlay)
+			if (!bOrdinary && !bOrdinaryWithOverlay)
 			{
 				strOutError =
 					"Effect source catalog direct-authored row shape is invalid";
@@ -464,33 +463,12 @@ namespace
 					"Effect source catalog direct-authored identity/path is invalid";
 				return false;
 			}
-			if (bAudition || bAuditionWithOverlay)
+			if (!DirectAssetIds.emplace(pAssetId->Get_String()).second)
 			{
-				const DATA_JSON_VALUE* pRuntimeAdmission = Required(
-					Entry, "runtimeAdmission", DATA_JSON_TYPE::STRING);
-				const DATA_JSON_VALUE* pFidelityClass = Required(
-					Entry, "fidelityClass", DATA_JSON_TYPE::STRING);
-				const DATA_JSON_VALUE* pSourceAssetId = Required(
-					Entry, "sourceEffectAssetId", DATA_JSON_TYPE::STRING);
-				const DATA_JSON_VALUE* pSourceSha = Required(
-					Entry, "sourceDocumentRawSha256", DATA_JSON_TYPE::STRING);
-				if (nullptr == pRuntimeAdmission ||
-					pRuntimeAdmission->Get_String() !=
-						"REGISTRY_BOUND_AUDITION_ONLY" ||
-					nullptr == pFidelityClass ||
-					pFidelityClass->Get_String() != "PROJECT_TUNED_APPROX" ||
-					nullptr == pSourceAssetId ||
-					!Is_StableId(pSourceAssetId->Get_String()) ||
-					pSourceAssetId->Get_String() == pAssetId->Get_String() ||
-					nullptr == pSourceSha ||
-					!Is_LowerHexSha256(pSourceSha->Get_String()))
-				{
-					strOutError =
-						"Effect source catalog audition identity is invalid";
-					return false;
-				}
+				strOutError = "Duplicate direct-authored source Effect ID: " +
+					pAssetId->Get_String();
+				return false;
 			}
-
 			const std::filesystem::path SourcePath = CProjectDataRoot::Resolve(
 				std::filesystem::path(pAuthoringPath->Get_String()));
 			std::error_code FileError;
@@ -508,36 +486,37 @@ namespace
 					pAssetId->Get_String();
 				return false;
 			}
-			auto Source =
-				std::make_shared<DIRECT_AUTHORED_RUNTIME_SOURCE>();
-			Source->DocumentPath = SourcePath;
-			if (!StagedSources.emplace(
-					pAssetId->Get_String(), std::move(Source)).second)
-			{
-				strOutError = "Duplicate direct-authored source Effect ID: " +
-					pAssetId->Get_String();
-				return false;
-			}
-
-			if (bOrdinaryWithOverlay || bAuditionWithOverlay)
+			if (bOrdinaryWithOverlay)
 			{
 				const DATA_JSON_VALUE* pOverlayPath = Required(Entry,
 					"screenOverlayPresentationPath", DATA_JSON_TYPE::STRING);
 				EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING Binding;
 				if (nullptr == pOverlayPath || !Stage_SourceScreenOverlayBinding(
 						pAssetId->Get_String(), pOverlayPath->Get_String(),
-						Binding, strOutError) ||
-					!StagedScreenOverlayBindings.emplace(
+						Binding, strOutError))
+				{
+					return false;
+				}
+				if (!StagedScreenOverlayBindings.emplace(
 						pAssetId->Get_String(),
 						std::make_shared<const
 							EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING>(
 								std::move(Binding))).second)
 				{
-					if (strOutError.empty())
-						strOutError =
-							"Duplicate source screen-overlay Effect ID";
+					strOutError = "Duplicate source screen-overlay Effect ID";
 					return false;
 				}
+			}
+
+			auto Source =
+				std::make_shared<DIRECT_AUTHORED_RUNTIME_SOURCE>();
+			Source->DocumentPath = SourcePath;
+			if (!StagedSources.emplace(
+					pAssetId->Get_String(), std::move(Source)).second)
+			{
+				strOutError = "Duplicate Product direct-authored source Effect ID: " +
+					pAssetId->Get_String();
+				return false;
 			}
 		}
 		if (StagedSources.empty())

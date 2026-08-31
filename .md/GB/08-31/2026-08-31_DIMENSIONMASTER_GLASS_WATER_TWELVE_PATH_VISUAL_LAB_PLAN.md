@@ -2,9 +2,9 @@
 
 기준일: 2026-08-31
 
-작업 브랜치: `codex/dimensionmaster-vfx-ten-paths`
+작업 브랜치: `DimensionMaster-Mirror-Particle`
 
-격리 작업 트리: `C:\Users\user\Desktop\CodexWorkTree\LostArk-dimensionmaster-vfx-lab`
+격리 작업 트리: `C:\Users\user\Desktop\CodexWorkTree\LostArk-DimensionMaster-Mirror-Particle`
 
 계획 성격: 원본 데이터 복원이 아닌 `PROJECT_TUNED_APPROX` 프로젝트 저작 시각 실험
 
@@ -36,6 +36,36 @@ Effect Tool에는 raw register나 100개 상수를 노출하지 않는다. 사�
 `Shape`, `Motion`, `Surface`, `Timing` 네 그룹의 의미 파라미터이며 **한 candidate 화면에는 최대
 12개**만 보인다. 한 번에 모든 조합을 시험하지 않고, 고정 seed의 제한된 preset sweep으로 약
 24~30회 육안 비교 후 탈락시킨다.
+
+### 0.1 현재 브랜치의 첫 구현 단위
+
+이 브랜치는 12경로 전체를 한 번에 구현하지 않고 G1 형상 가설부터 닫는다. 별도 Visual Lab runtime은
+만들지 않고 기존 direct-authored Tool 경로를 재사용한다. Product 정본과 튜닝 후보의 raw hash 결합을
+막기 위해 registry만 `EffectCatalog.json`과 Tool 전용 `EffectAuditionCatalog.json`으로 물리 분리한다.
+
+```text
+candidate  effect.dimensionmaster.skill.2050230.mirror-particle-canary.unified
+carrier    Effect/DimensionMaster/Meshes/fx_m_glass_01.wmodel
+surface    RuntimeMaterialV2 opcode 1004
+topology   one local-space MeshParticle, one rigid 24-island cluster
+Product    F/W authored document, animevent, PlayerSkills와 Valtan cue 미참조
+```
+
+`EffectAuditionCatalog.json`에는 Tool이 열 수 있는 audition row 하나를 추가하지만 ordinary Product
+Effect ID 집합과 모든 Product reference는 바꾸지 않는다. validator는 audition의 source ID와 원본 raw
+SHA-256을 고정하고, Product가 audition ID를 참조하면 거부한다. 사용자 Shape Oracle 판정 전에는 F cue에
+연결하지 않는다.
+
+Product loader와 Valtan artifact hash는 `EffectAuditionCatalog.json`을 읽지 않는다. Product
+`EffectCatalog.json`에 audition admission이 섞이면 loader가 거부하므로 후보 파일·overlay·source pin이
+stale 또는 손상돼도 ordinary Product Effect availability를 낮추지 않는다. 반대로 Effect Tool source
+index와 offline validator는 두 registry를 함께 읽고 후보 행 전체와 source raw SHA를 검증한다. 후보를
+연 뒤 source/hash 또는 registry 분류가 바뀌면 active provenance가 Play/Save를 거부하며, `Refresh Index`
+뒤 정확한 audition 행을 다시 열어야 한다.
+
+이번 G1에서 유리 Surface는 8 scalar와 2 linear-HDR color만 의미 범위로 노출한다. 기존 물 opcode
+1003도 같은 원칙으로 bounded semantic editor를 사용하게 하되 Product 물 문서의 현재 기본값과 F
+합성 cue는 그대로 둔다. packed index, mask, lane, resource와 opcode occurrence는 계속 고정한다.
 
 ## 1. 현재 코드·데이터에서 확인한 사실
 
@@ -72,9 +102,10 @@ Effect/Valtan/Textures/FX_TEX_03/fx_e_fluid_006.dds
 
 Valtan trail mesh는 칼날처럼 읽힐 위험이 있으므로 빠른 탈락 후보일 뿐 기본 채택안이 아니다.
 
-격리 worktree의 `Client/Bin/Resources`에는 이 Drive-owned payload가 없다. P0 구현/validator/build와
-사용자 실행은 원본 작업 폴더의 실제 pack을 명시적으로 가리킨다. 파일을 worktree나 Git으로 복제하지
-않는다.
+격리 worktree의 `Client/Bin/Resources`는 원본 작업 폴더의 Drive-owned pack을 가리키는 ignored
+directory junction이다. 따라서 두 경로에서 같은 물리 payload를 읽지만 junction과 binary payload는
+Git 변경에 포함되지 않는다. validator/build에는 아래 실제 pack root를 명시하며 파일을 worktree나
+Git으로 복제하지 않는다.
 
 ```powershell
 $env:LOSTARK_RESOURCE_ROOT = 'C:\Users\user\Desktop\LostArk\Client\Bin\Resources'
@@ -547,34 +578,33 @@ Apply 전에는 authored document를 바꾸지 않는다.
 
 ### G0. Visual Lab foundation
 
-실험 data는 다음 Debug/Tool-only 경계에 둔다.
+후속 다중 후보 sweep을 위한 원래 제안 경계는 다음 manifest였다.
 
 ```text
 Data/Effects/Experiments/DimensionMasterGlassWater/VisualLab.v1.json
 ```
 
-이 manifest는 Product `EffectCatalog.json`, F/W authored effect, animevent, skillbinding에 등록하지
-않는다. `CEffectDocumentCodec`은 parse/serialize, structural/semantic validation과 staged clone mutation만
-소유한다. Effect Tool은 `Stage_DetailDraftPreview/Try_CommitDocument`를 호출하고,
-`CEffectDocumentRenderer/CEffectCatalog`가 resource·shader prepare와 immutable prepared target commit을
-소유한다. 모든 row를 process-local debug overlay로 stage/prewarm한 뒤 한 번에 commit한다. 어느
-단계든 실패하면 staged clone을 폐기하고 이전 document/prepared pointer 또는 Product baseline을
-유지한다. Save 뒤 commit 실패는 기존 CAS rollback 경계로 이전 bytes를 복원한다. 별도 catalog나
-renderer가 아니다. exploration 시작과 종료에서 Product 네 종류 파일의 hash 불변을 focused harness로
-확인한다.
+현재 G1 pilot은 이 미래 manifest와 runner를 만들지 않는다. Tool 전용
+`EffectAuditionCatalog.json`의 `REGISTRY_BOUND_AUDITION_ONLY` row 하나로 발견·load·save·preview 경계를
+재사용한다. 이 row는 ordinary Product reachability에서 제외하며 source ordinary ID와 raw SHA-256을
+고정한다. Product animevent/PlayerSkills/Valtan cue가 audition ID를 참조하면 source validator가 거부한다.
 
-manifest에는 12 candidate 외에 read-only Product F/W reference row를 둘 수 있지만 새 방식 수에는
-세지 않는다. W reference는 lab row에서 기존 asset을 읽기만 하며 W Product cue를 F에 합성하지 않는다.
+`CEffectDocumentCodec`은 parse/serialize, structural/semantic validation과 staged mutation만 소유한다.
+Effect Tool은 기존 draft preview와 Apply/Save rollback을 소비하고,
+`CEffectDocumentRenderer/CEffectCatalog`가 resource·shader prepare와 immutable prepared target commit을
+소유한다. 어느 단계든 실패하면 기존 preview/document 또는 Product baseline을 유지한다. Tool 전용
+registry 외에 별도 renderer나 class별 Effect manager는 추가하지 않는다. 2개 이상 후보를 동시에
+비교해야 할 때만 위 manifest의 필요성을 다시 판단한다.
 
 수정 후보:
 
 - `Client/Public/Effect_AuthoringDocument.h`
   - project-tuned shape/motion typed field를 필요한 survivor만큼 추가한다.
 - `Client/Private/Effect_DocumentCodec.cpp`
-  - parse/serialize, structural/semantic validation, staged mutation에서 range/NaN/duplicate/unknown 거부를
-    추가한다. resource prepare/commit을 codec에 넣지 않는다.
+  - opcode 1004를 append-only typed allowlist에 추가하고 기존 staged override 경계를 재사용한다.
+    resource prepare/commit을 codec에 넣지 않는다.
 - `Client/Private/Effect_Tool.cpp`
-  - `Render_Detail` 안에 Shape/Motion/Surface/Timing 그룹과 bounded sweep을 추가한다.
+  - opcode 1003/1004에 bounded Surface control을 추가한다.
   - 기존 `Stage_DetailDraftPreview`와 rollback을 그대로 소비한다.
   - project-tuned lab candidate에서는 generic raw parameter UI 대신 visual control schema를 그린다.
 - `Client/Public/Effect_Playback.h`, `Client/Private/Effect_Playback.cpp`
@@ -597,6 +627,14 @@ manifest에는 12 candidate 외에 read-only Product F/W reference row를 둘 �
   - HLSL, `CEffectMaterialProgramRegistry` layout/descriptor/adapter, codec admission, renderer pass와
     compiled CSO closure를 같은 변경에서 닫는다. preset은 ABI가 아니다.
   - 기존 packet의 13 float4 scalar block, 3 float4 vector, texture hard 6 lane을 먼저 확장하지 않는다.
+- `Data/Effects/Authored/effect.dimensionmaster.skill.2050230.mirror-particle-canary.unified.effect.json`
+  - G1 24-island rigid cluster와 1004 semantic 기본값을 소유한다.
+- `Data/Effects/EffectCatalog.json`
+  - audition row를 두지 않으며 ordinary Product row 집합을 그대로 유지한다.
+- `Data/Effects/EffectAuditionCatalog.json`
+  - source-pinned Tool audition row만 소유한다. Product loader와 artifact hash는 읽지 않는다.
+- `Tools/EffectPipeline/validate_effect_sources.py`
+  - audition source/hash와 Product-reference 격리를 검증한다.
 
 새 C++ 파일이 정말 필요한 경우에만 다음 역할 단위로 추가한다.
 
@@ -617,10 +655,11 @@ compile로 검증한다. 후보 수만 나열하는 미래용 placeholder라면 
 
 ### G1. 첫 silhouette quartet
 
-- glass: G1 rigid cluster, G7 polygon SDF card
-- water: G8 pear SDF/teardrop mesh head, G9 compound head-tail
-- surface를 끈 flat coverage 비교만 구현한다.
-- 이 단계에서 떨어진 방식에는 refraction/MRT/scene input을 구현하지 않는다.
+- 현재 pilot: glass G1 rigid cluster 한 개
+- 후속 비교: G7 polygon SDF card, water G8 pear SDF/teardrop mesh head, G9 compound head-tail
+- G1은 `RefractionStrength=0`, `EmissionGain=0`을 포함한 bounded control로 flat silhouette를 먼저
+  판정할 수 있고, 같은 carrier에서 edge/refraction을 다시 켜 Surface 가설을 본다.
+- G1이 실제 외곽을 만들지 못하면 G2 개별 shard 투자로 승격하지 않는다.
 
 ### G2. motion survivor
 
@@ -652,8 +691,9 @@ compile로 검증한다. 후보 수만 나열하는 미래용 placeholder라면 
 
 ### G6. Product 불변 F A/B와 survivor 승격
 
-- broad exploration 중 `EffectCatalog.json`, F/W authored document, `DimensionMaster.animevents`,
-  skillbinding은 hash 불변이다.
+- broad exploration 중 ordinary Product catalog row 집합, F/W authored document,
+  `DimensionMaster.animevents`, skillbinding은 불변이다. audition-only row는 source/hash 격리 gate를
+  통과한 Tool 후보만 허용한다.
 - authoring은 F1 Effect Tool의 synchronized preview와 semantic controls를 쓴다. 새 전역 단축키나
   F2~F12 selector를 만들지 않는다.
 - 실제 action context A/B는 authoritative `(skillId=2050230, iActionStartTick)` edge를 1회 dedupe한다.
@@ -668,7 +708,9 @@ compile로 검증한다. 후보 수만 나열하는 미래용 placeholder라면 
 ### 8.1 codec/data
 
 - stable Effect/Element/Preset ID
-- Product EffectCatalog/F/W authored/animevent/skillbinding hash 불변
+- ordinary Product Effect ID 집합과 F/W authored/animevent/skillbinding 불변
+- audition source는 ordinary Product ID이고 raw SHA-256이 일치함
+- Product reference에서 audition ID 사용 거부
 - duplicate ID/parameter 거부
 - unknown version/kind/profile 거부
 - Resources-relative path, drive-qualified/`..` 거부
@@ -715,7 +757,9 @@ draw target 4/hard 6으로 둔다. 이 값은 미감 PASS가 아니라 lab 안�
 $resourceRoot = 'C:\Users\user\Desktop\LostArk\Client\Bin\Resources'
 $env:LOSTARK_RESOURCE_ROOT = $resourceRoot
 
-powershell -NoProfile -ExecutionPolicy Bypass -File Tools/EffectPipeline/Validate-EffectSources.ps1 -RepositoryRoot C:\Users\user\Desktop\CodexWorkTree\LostArk-dimensionmaster-vfx-lab -ResourceRoot $resourceRoot
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/EffectPipeline/Validate-EffectSources.ps1 -RepositoryRoot C:\Users\user\Desktop\CodexWorkTree\LostArk-DimensionMaster-Mirror-Particle -ResourceRoot $resourceRoot
+
+python -B -m unittest Tools.EffectPipeline.test_dimensionmaster_2050230_mirror_particle_tool_canary Tools.EffectPipeline.test_dimensionmaster_2050230_glass_water_visual_canary Tools.EffectPipeline.test_validate_effect_sources Tools.RenderingPipeline.test_product_effect_shader_warp_contract
 
 powershell -ExecutionPolicy Bypass -File Tools/Build/Test-CompiledShaderClosure.ps1 -Configuration Debug -Modules Product
 powershell -ExecutionPolicy Bypass -File Tools/Build/Test-CompiledShaderClosure.ps1 -Configuration Release -Modules Product
@@ -748,12 +792,22 @@ powershell -ExecutionPolicy Bypass -File Tools/Network/Sync-TeamLanEndpoint.ps1
 ### 9.2 Tool 판정 순서
 
 1. 사용자가 elevated PowerShell의 LAN sync를 완료한 뒤 Server + Client profile을 직접 시작한다.
-2. F1 Developer Tools의 Effect Tool에서 Visual Lab candidate를 선택한다.
-3. `Flat Silhouette → Motion → Depth/Cull → Refraction Only → Edge Only → Full Surface` 순으로 본다.
-4. 절대/normalized time과 front/yaw/pitch view를 같은 seed로 본다.
-5. Shape Oracle, Motion Survivor, Final Composition 단계마다 서면 승격 또는 탈락 이유를 남긴다.
-6. action-context 검증은 고정 F A/B pair 순서로 직접 누른다.
-7. 선택된 두 후보만 차원술사 F/W animation synchronized integration preview로 본다.
+2. F1 `Developer Tools`에서 기존 `Effect Tool`을 연다. `Effect Tool V2`가 아니다.
+3. `Data Files` → Authoring Category `DimensionMaster` → `Refresh Index`를 누른다.
+4. `effect.dimensionmaster.skill.2050230.mirror-particle-canary.unified`를 검색한다.
+5. `Unassigned / Test Effects`에서 후보를 선택하고 `Load Saved Effect for Editing`을 누른다.
+6. `Current Effect` → 대상 Element → `Project Tuned Surface`에서 Glass Tint, Coverage/Edge,
+   Refraction, Emission을 조절한다. 공통 Carrier Color와 raw packet 필드는 잠겨 있다.
+7. `Apply to Current Effect (Unsaved)`로 stage한 뒤 `Play All` 또는 `Audition Selected`로 비교하고,
+   유지할 값만 `Save Changes`로 후보 문서에 저장한다.
+8. `Flat Silhouette → Motion → Depth/Cull → Refraction Only → Edge Only → Full Surface` 순으로 본다.
+9. 절대/normalized time과 front/yaw/pitch view를 같은 seed로 본다.
+10. Shape Oracle, Motion Survivor, Final Composition 단계마다 서면 승격 또는 탈락 이유를 남긴다.
+
+대체 진입은 `All Effects` → `Dimension Master` → exact candidate ID → `Saved Unified Effects` →
+`Open Editor`다. 현재 Product F cue는 후보를 참조하지 않으므로 F 키를 누르는 것만으로 이 G1이
+나오지 않는다. action-context F A/B와 F/W synchronized integration은 사용자 Shape Oracle 승인 뒤
+별도 변경 단위에서만 연결한다.
 
 ### 9.3 최소 육안 합격 조건
 

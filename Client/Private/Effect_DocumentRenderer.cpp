@@ -2534,6 +2534,7 @@ namespace
 	}
 
 	constexpr uint32_t DIMENSIONMASTER_WATER_DROPLET_BURST_OPCODE = 1003u;
+	constexpr uint32_t DIMENSIONMASTER_GLASS_MIRROR_MESH_OPCODE = 1004u;
 
 	bool_t Validate_DimensionMasterWaterDropletBurstExecution(
 		const Client::EFFECT_ELEMENT_DESC& Element,
@@ -2556,14 +2557,19 @@ namespace
 			"water.alpha-gain", "water.fade-start-seconds",
 			"water.fade-end-seconds", "water.card-feather"
 		}};
-		static constexpr std::array<f32_t, 16u> SCALAR_VALUES = {{
-			1.75f, 0.18f, -0.12f, 3.f, 0.035f, 0.015f, 1.5f, 0.12f,
-			0.65f, 0.18f, 1.1f, 0.012f, 0.9f, 0.3f, 0.62f, 0.12f
+		static constexpr std::array<std::array<f32_t, 2u>, 16u>
+			SCALAR_BOUNDS = {{
+			{{ 0.01f, 16.f }}, {{ -8.f, 8.f }}, {{ -8.f, 8.f }},
+			{{ 0.5f, 8.f }}, {{ 0.f, 0.25f }}, {{ 0.f, 1.f }},
+			{{ 0.1f, 8.f }}, {{ 0.001f, 0.5f }}, {{ 0.1f, 4.f }},
+			{{ 0.f, 8.f }}, {{ 0.f, 8.f }}, {{ -0.025f, 0.025f }},
+			{{ 0.f, 4.f }}, {{ 0.f, 5.f }}, {{ 0.001f, 5.f }},
+			{{ 0.001f, 0.49f }}
 		}};
-		const auto NearlyEqual = [](const f32_t Left, const f32_t Right)
+		const auto InRange = [](const f32_t Value, const f32_t Minimum,
+			const f32_t Maximum)
 		{
-			return std::abs(Left - Right) <= 1.0e-6f *
-				(std::max)({ 1.f, std::abs(Left), std::abs(Right) });
+			return std::isfinite(Value) && Value >= Minimum && Value <= Maximum;
 		};
 		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Execution =
 			Element.Material.Execution;
@@ -2613,7 +2619,7 @@ namespace
 				MatchesSampler(Lane.Sampler, eAddress);
 		};
 
-		const bool_t bCarrier = Element.bVisible &&
+		const bool_t bCarrier =
 			Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
 			Element.strSourceNode == SOURCE_NODE &&
 			!Element.SourceRecipe.bEnabled &&
@@ -2681,7 +2687,14 @@ namespace
 		{
 			bScalars = Execution.Scalars[i].strName == SCALAR_NAMES[i] &&
 				Execution.Scalars[i].iPackedIndex == i &&
-				NearlyEqual(Execution.Scalars[i].fValue, SCALAR_VALUES[i]);
+				InRange(Execution.Scalars[i].fValue,
+					SCALAR_BOUNDS[i][0u], SCALAR_BOUNDS[i][1u]);
+		}
+		if (bScalars)
+		{
+			const f32_t fFadeStart = Execution.Scalars[13u].fValue;
+			const f32_t fFadeEnd = Execution.Scalars[14u].fValue;
+			bScalars = fFadeEnd > fFadeStart;
 		}
 		bool_t bVectors = Execution.Vectors.size() == 2u;
 		if (bVectors)
@@ -2689,61 +2702,408 @@ namespace
 			static constexpr std::array<std::string_view, 2u> NAMES = {{
 				"water.body-color", "water.rim-color"
 			}};
-			static constexpr std::array<std::array<f32_t, 4u>, 2u> VALUES = {{
-				{{ 0.05f, 0.28f, 0.75f, 1.f }},
-				{{ 0.55f, 0.9f, 1.f, 1.f }}
-			}};
-			for (size_t i = 0u; bVectors && i < VALUES.size(); ++i)
+			for (size_t i = 0u; bVectors && i < NAMES.size(); ++i)
 			{
 				const auto& Vector = Execution.Vectors[i];
+				const f32_t fMaximumRgb = 0u == i ? 4.f : 8.f;
 				bVectors = Vector.strName == NAMES[i] &&
 					Vector.iPackedIndex == i &&
-					NearlyEqual(Vector.vValue.x, VALUES[i][0u]) &&
-					NearlyEqual(Vector.vValue.y, VALUES[i][1u]) &&
-					NearlyEqual(Vector.vValue.z, VALUES[i][2u]) &&
-					NearlyEqual(Vector.vValue.w, VALUES[i][3u]);
+					InRange(Vector.vValue.x, 0.f, fMaximumRgb) &&
+					InRange(Vector.vValue.y, 0.f, fMaximumRgb) &&
+					InRange(Vector.vValue.z, 0.f, fMaximumRgb) &&
+					InRange(Vector.vValue.w, 0.f, 1.f);
 			}
 		}
 
 		const Client::EFFECT_DETAIL_DESC& Detail = Element.Detail;
 		const Client::EFFECT_PARTICLE_DESC& Particle = Detail.Particle;
+		const Client::EFFECT_LINEAR_LERP_DESC& LinearLerp = Detail.LinearLerp;
+		const auto InRange2 = [&InRange](const float2_t& Value,
+			const f32_t Minimum, const f32_t Maximum)
+		{
+			return InRange(Value.x, Minimum, Maximum) &&
+				InRange(Value.y, Minimum, Maximum);
+		};
+		const auto InRange3 = [&InRange](const float3_t& Value,
+			const f32_t Minimum, const f32_t Maximum)
+		{
+			return InRange(Value.x, Minimum, Maximum) &&
+				InRange(Value.y, Minimum, Maximum) &&
+				InRange(Value.z, Minimum, Maximum);
+		};
 		const bool_t bMotion =
-			NearlyEqual(Detail.Transform.vPosition.x, 0.f) &&
-			NearlyEqual(Detail.Transform.vPosition.y, 0.2f) &&
-			NearlyEqual(Detail.Transform.vPosition.z, 0.6f) &&
-			NearlyEqual(Detail.Timing.fStartDelaySeconds, 0.f) &&
-			NearlyEqual(Detail.Timing.fLifeTimeSeconds, 0.75f) &&
-			NearlyEqual(Detail.Color.vColorMultiply.w, 0.85f) &&
-			NearlyEqual(Detail.Color.fColorClip, 0.001f) &&
-			NearlyEqual(Detail.Color.fEmissiveIntensity, 1.15f) &&
+			InRange3(Detail.Transform.vPosition, -5.f, 8.f) &&
+			InRange3(Detail.Transform.vRotationDegrees, -360.f, 360.f) &&
+			InRange3(Detail.Transform.vRevolutionDegreesPerSecond,
+				-720.f, 720.f) &&
+			InRange3(Detail.Transform.vScale, 0.01f, 10.f) &&
+			InRange3(Detail.Transform.vVelocityPerSecond, -20.f, 20.f) &&
+			InRange(Detail.Timing.fStartDelaySeconds, 0.f, 5.f) &&
+			InRange(Detail.Timing.fLifeTimeSeconds, 0.05f, 5.f) &&
+			InRange(Detail.Color.vColorMultiply.x, 0.f, 4.f) &&
+			InRange(Detail.Color.vColorMultiply.y, 0.f, 4.f) &&
+			InRange(Detail.Color.vColorMultiply.z, 0.f, 4.f) &&
+			InRange(Detail.Color.vColorMultiply.w, 0.f, 1.f) &&
+			Detail.Color.vColorOffset.x == 0.f &&
+			Detail.Color.vColorOffset.y == 0.f &&
+			Detail.Color.vColorOffset.z == 0.f &&
+			Detail.Color.vColorOffset.w == 0.f &&
+			InRange(Detail.Color.fColorClip, 0.f, 1.f) &&
+			InRange(Detail.Color.fEmissiveIntensity, 0.f, 8.f) &&
 			Detail.Color.fDistortionIntensity == 0.f &&
 			!Detail.Color.bDistortionOnBaseMaterial &&
-			Particle.iMaxParticles == 6u && Particle.iBurstCount == 6u &&
+			Particle.iMaxParticles >= 1u && Particle.iMaxParticles <= 64u &&
+			Particle.iBurstCount >= 1u &&
+			Particle.iBurstCount <= Particle.iMaxParticles &&
+			Particle.fSpawnRatePerSecond == 0.f &&
 			Particle.iRandomSeed == 2050230u &&
-			NearlyEqual(Particle.vLifeTimeSeconds.x, 0.38f) &&
-			NearlyEqual(Particle.vLifeTimeSeconds.y, 0.62f) &&
-			NearlyEqual(Particle.vInitialVelocityMin.x, -3.f) &&
-			NearlyEqual(Particle.vInitialVelocityMin.y, 3.f) &&
-			NearlyEqual(Particle.vInitialVelocityMin.z, -3.f) &&
-			NearlyEqual(Particle.vInitialVelocityMax.x, 3.f) &&
-			NearlyEqual(Particle.vInitialVelocityMax.y, 6.f) &&
-			NearlyEqual(Particle.vInitialVelocityMax.z, 3.f) &&
-			NearlyEqual(Particle.vAcceleration.x, 0.f) &&
-			NearlyEqual(Particle.vAcceleration.y, -8.f) &&
-			NearlyEqual(Particle.vAcceleration.z, 0.f) &&
-			NearlyEqual(Particle.vStartSize.x, 0.28f) &&
-			NearlyEqual(Particle.vStartSize.y, 0.36f) &&
-			NearlyEqual(Particle.vEndSize.x, 0.08f) &&
-			NearlyEqual(Particle.vEndSize.y, 0.12f) &&
-			!Particle.bLocalSpace && Particle.bBillboard;
+			InRange2(Particle.vLifeTimeSeconds, 0.05f, 3.f) &&
+			Particle.vLifeTimeSeconds.x <= Particle.vLifeTimeSeconds.y &&
+			InRange3(Particle.vInitialPositionMin, -5.f, 5.f) &&
+			InRange3(Particle.vInitialPositionMax, -5.f, 5.f) &&
+			Particle.vInitialPositionMin.x <= Particle.vInitialPositionMax.x &&
+			Particle.vInitialPositionMin.y <= Particle.vInitialPositionMax.y &&
+			Particle.vInitialPositionMin.z <= Particle.vInitialPositionMax.z &&
+			InRange3(Particle.vInitialVelocityMin, -20.f, 20.f) &&
+			InRange3(Particle.vInitialVelocityMax, -20.f, 20.f) &&
+			Particle.vInitialVelocityMin.x <= Particle.vInitialVelocityMax.x &&
+			Particle.vInitialVelocityMin.y <= Particle.vInitialVelocityMax.y &&
+			Particle.vInitialVelocityMin.z <= Particle.vInitialVelocityMax.z &&
+			InRange3(Particle.vAcceleration, -40.f, 40.f) &&
+			InRange2(Particle.vStartSize, 0.01f, 4.f) &&
+			InRange2(Particle.vEndSize, 0.01f, 4.f) &&
+			!Particle.bLocalSpace && Particle.bBillboard &&
+			!LinearLerp.bColorOffset &&
+			LinearLerp.vEndColorOffset.x == 0.f &&
+			LinearLerp.vEndColorOffset.y == 0.f &&
+			LinearLerp.vEndColorOffset.z == 0.f &&
+			LinearLerp.vEndColorOffset.w == 0.f &&
+			!LinearLerp.bColorMultiply &&
+			LinearLerp.vEndColorMultiply.x == 1.f &&
+			LinearLerp.vEndColorMultiply.y == 1.f &&
+			LinearLerp.vEndColorMultiply.z == 1.f &&
+			LinearLerp.vEndColorMultiply.w == 1.f;
 
 		if (!bCarrier || !bMaterial || !bPacket || !bMasks || !bScalars ||
 			!bVectors || !bMotion)
 		{
 			strOutError =
-				"DimensionMaster water-droplet exact project-tuned contract changed: " +
+				"DimensionMaster water-droplet bounded project-tuned contract changed: " +
 				Element.strElementId;
 			return false;
+		}
+		return true;
+	}
+
+	bool_t Validate_DimensionMasterGlassMirrorMeshExecution(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		std::string& strOutError)
+	{
+		constexpr std::string_view ELEMENT_ID =
+			"project-tuned.glass-mirror-shards.2050230.01";
+		constexpr std::string_view SOURCE_NODE =
+			"authored-copy:geometry-oracle.fx_m_glass_01";
+		constexpr std::string_view MODEL_ASSET =
+			"Effect/DimensionMaster/Meshes/fx_m_glass_01.wmodel";
+		constexpr std::string_view PATTERN_ASSET =
+			"Effect/DimensionMaster/Textures/FX_TEX_HIGH_03/"
+			"fx_h_brokenglass_02_1.dds";
+		static constexpr std::array<std::string_view, 8u> SCALAR_NAMES = {{
+			"CoverageGain", "BodyOpacity", "FresnelPower", "EdgeGain",
+			"CrackGain", "RefractionStrength", "DistortionClamp",
+			"EmissionGain"
+		}};
+		static constexpr std::array<std::array<f32_t, 2u>, 8u>
+			SCALAR_BOUNDS = {{
+			{{ 0.f, 4.f }}, {{ 0.f, 1.f }}, {{ 0.25f, 16.f }},
+			{{ 0.f, 8.f }}, {{ 0.f, 4.f }}, {{ -0.025f, 0.025f }},
+			{{ 0.f, 0.025f }}, {{ 0.f, 8.f }}
+		}};
+		const auto InRange = [](const f32_t Value, const f32_t Minimum,
+			const f32_t Maximum)
+		{
+			return std::isfinite(Value) && Value >= Minimum && Value <= Maximum;
+		};
+		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Execution =
+			Element.Material.Execution;
+		if (Element.strElementId != ELEMENT_ID)
+		{
+			if (Execution.bEnabled && Execution.eBackend ==
+					Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+				Execution.iOpcode == DIMENSIONMASTER_GLASS_MIRROR_MESH_OPCODE)
+			{
+				strOutError =
+					"DimensionMaster glass-mirror opcode escaped its exact occurrence allowlist: " +
+					Element.strElementId;
+				return false;
+			}
+			return true;
+		}
+
+		const auto MatchesSampler = [](
+			const Client::EFFECT_MATERIAL_SAMPLER_DESC& Sampler)
+		{
+			return Sampler.eFilter ==
+					Client::EFFECT_MATERIAL_TEXTURE_FILTER::LINEAR &&
+				Sampler.eAddressU ==
+					Client::EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Sampler.eAddressV ==
+					Client::EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Sampler.eAddressW ==
+					Client::EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Sampler.fMipLodBias == 0.f && Sampler.iMaxAnisotropy == 1u &&
+				Sampler.eComparison ==
+					Client::EFFECT_MATERIAL_COMPARISON_FUNCTION::NEVER &&
+				Sampler.vBorderColor.x == 0.f && Sampler.vBorderColor.y == 0.f &&
+				Sampler.vBorderColor.z == 0.f && Sampler.vBorderColor.w == 0.f &&
+				Sampler.fMinLod == 0.f && Sampler.fMaxLod ==
+					(std::numeric_limits<f32_t>::max)();
+		};
+		const bool_t bCarrier =
+			Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
+			Element.strSourceNode == SOURCE_NODE &&
+			!Element.SourceRecipe.bEnabled &&
+			!Element.SourcePresentation.bEnabled &&
+			Element.Renderer.eType == Client::EFFECT_RENDERER_TYPE::END &&
+			Element.Renderer.eSourceSpace == Client::EFFECT_SOURCE_SPACE::END &&
+			Element.ResourceBindings.size() == 2u &&
+			Element.ResourceBindings[0u].strSlotId == "meshModel" &&
+			Element.ResourceBindings[0u].strAssetId == MODEL_ASSET &&
+			Element.ResourceBindings[1u].strSlotId == "base" &&
+			Element.ResourceBindings[1u].strAssetId == PATTERN_ASSET;
+		const bool_t bMaterial =
+			Element.Material.strTemplateId == "effect.standard" &&
+			Element.Material.strSourceMaterialPath.empty() &&
+			Element.Material.eRenderProfile ==
+				Client::EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ &&
+			!Element.Material.SourceMaterial.bEnabled;
+		const bool_t bPacket = Execution.bEnabled && !Execution.bFailClosed &&
+			!Execution.bAuthoringApproximate && Execution.eFidelity ==
+				Client::EFFECT_MATERIAL_EXECUTION_FIDELITY::PROJECT_TUNED_APPROX &&
+			Execution.iVersion == 1u && Execution.eBackend ==
+				Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+			Execution.iOpcode == DIMENSIONMASTER_GLASS_MIRROR_MESH_OPCODE &&
+			Execution.iPassIndex == 1u &&
+			Execution.strRasterizerState == "RS_Cull_None" &&
+			Execution.strDepthStencilState == "DSS_ReadOnly" &&
+			Execution.strBlendState == "BS_EffectAlpha" &&
+			Execution.iStencilReference == 0u &&
+			Execution.iTextureLaneCount == 1u &&
+			Execution.iTextureMask == 0x01u &&
+			Execution.TextureLanes.size() == 1u &&
+			Execution.TextureLanes[0u].strLaneId == "lane.0" &&
+			Execution.TextureLanes[0u].strRole == "broken_glass_pattern" &&
+			Execution.TextureLanes[0u].strAssetId == PATTERN_ASSET &&
+			Execution.TextureLanes[0u].iTextureRegister == 0u &&
+			Execution.TextureLanes[0u].iSamplerRegister == 5u &&
+			Execution.TextureLanes[0u].strSourceChannel == "RGBA" &&
+			Execution.TextureLanes[0u].eColorSpace ==
+				Client::EFFECT_TEXTURE_COLOR_SPACE::LINEAR &&
+			MatchesSampler(Execution.TextureLanes[0u].Sampler);
+		const bool_t bMasks = Execution.iDynamicConsumedMask == 0u &&
+			Execution.iDynamicSuppressedMask == 0x0fu &&
+			Execution.iParticleColorPolicy == 2u &&
+			Execution.iParticleColorConsumedMask == 0x08u &&
+			Execution.iParticleColorSuppressedMask == 0x07u &&
+			Execution.iScalarCount == SCALAR_NAMES.size() &&
+			Execution.iVectorCount == 2u && Execution.iInputCount == 8u &&
+			Execution.InputConsumedMask ==
+				std::array<uint32_t, 2u>{ 0xffu, 0u } &&
+			Execution.InputSuppressedMask ==
+				std::array<uint32_t, 2u>{ 0u, 0u } &&
+			Execution.VectorComponentConsumedMask ==
+				std::array<uint32_t, 3u>{ 0x0fu, 0x0fu, 0u } &&
+			Execution.VectorComponentSuppressedMask ==
+				std::array<uint32_t, 3u>{ 0u, 0u, 0u } &&
+			Execution.iStaticInputCount == 0u &&
+			Execution.iStaticSelectedMask == 0u &&
+			Execution.iStaticConsumedMask == 0u &&
+			Execution.iStaticSuppressedMask == 0u &&
+			Execution.iRenderInputCount == 6u &&
+			Execution.iRenderConsumedMask == 0x2fu &&
+			Execution.iRenderSuppressedMask == 0x10u &&
+			Execution.ArtistParameters.empty() && Execution.Colors.empty();
+
+		bool_t bScalars = Execution.Scalars.size() == SCALAR_NAMES.size();
+		for (size_t i = 0u; bScalars && i < SCALAR_NAMES.size(); ++i)
+		{
+			bScalars = Execution.Scalars[i].strName == SCALAR_NAMES[i] &&
+				Execution.Scalars[i].iPackedIndex == i &&
+				InRange(Execution.Scalars[i].fValue,
+					SCALAR_BOUNDS[i][0u], SCALAR_BOUNDS[i][1u]);
+		}
+		bool_t bVectors = Execution.Vectors.size() == 2u;
+		if (bVectors)
+		{
+			static constexpr std::array<std::string_view, 2u> NAMES = {{
+				"BodyTintLinear", "EdgeTintLinear"
+			}};
+			for (size_t i = 0u; bVectors && i < NAMES.size(); ++i)
+			{
+				const auto& Vector = Execution.Vectors[i];
+				const f32_t fMaximumRgb = 0u == i ? 4.f : 8.f;
+				bVectors = Vector.strName == NAMES[i] &&
+					Vector.iPackedIndex == i &&
+					InRange(Vector.vValue.x, 0.f, fMaximumRgb) &&
+					InRange(Vector.vValue.y, 0.f, fMaximumRgb) &&
+					InRange(Vector.vValue.z, 0.f, fMaximumRgb) &&
+					InRange(Vector.vValue.w, 0.f, 1.f);
+			}
+		}
+
+		const auto InRange2 = [&InRange](const float2_t& Value,
+			const f32_t Minimum, const f32_t Maximum)
+		{
+			return InRange(Value.x, Minimum, Maximum) &&
+				InRange(Value.y, Minimum, Maximum);
+		};
+		const auto InRange3 = [&InRange](const float3_t& Value,
+			const f32_t Minimum, const f32_t Maximum)
+		{
+			return InRange(Value.x, Minimum, Maximum) &&
+				InRange(Value.y, Minimum, Maximum) &&
+				InRange(Value.z, Minimum, Maximum);
+		};
+		const Client::EFFECT_DETAIL_DESC& Detail = Element.Detail;
+		const Client::EFFECT_PARTICLE_DESC& Particle = Detail.Particle;
+		const Client::EFFECT_LINEAR_LERP_DESC& LinearLerp = Detail.LinearLerp;
+		const bool_t bShapeMotion =
+			InRange3(Detail.Transform.vPosition, -5.f, 5.f) &&
+			InRange3(Detail.Transform.vRotationDegrees, -360.f, 360.f) &&
+			InRange3(Detail.Transform.vRevolutionDegreesPerSecond,
+				-720.f, 720.f) &&
+			InRange3(Detail.Transform.vScale, 0.01f, 10.f) &&
+			InRange3(Detail.Transform.vVelocityPerSecond, -10.f, 10.f) &&
+			InRange(Detail.Timing.fStartDelaySeconds, 0.f, 5.f) &&
+			InRange(Detail.Timing.fLifeTimeSeconds, 0.05f, 5.f) &&
+			!Detail.Mesh.bUseModelMaterial &&
+			InRange(Detail.Mesh.fModelPreScale, 0.001f, 0.1f) &&
+			InRange3(Detail.Mesh.vSourceTypeDataRotationDegrees,
+				-360.f, 360.f) &&
+			InRange(Detail.Color.vColorMultiply.x, 0.f, 4.f) &&
+			InRange(Detail.Color.vColorMultiply.y, 0.f, 4.f) &&
+			InRange(Detail.Color.vColorMultiply.z, 0.f, 4.f) &&
+			InRange(Detail.Color.vColorMultiply.w, 0.f, 1.f) &&
+			Detail.Color.vColorOffset.x == 0.f &&
+			Detail.Color.vColorOffset.y == 0.f &&
+			Detail.Color.vColorOffset.z == 0.f &&
+			Detail.Color.vColorOffset.w == 0.f &&
+			InRange(Detail.Color.fColorClip, 0.f, 1.f) &&
+			InRange(Detail.Color.fEmissiveIntensity, 0.f, 8.f) &&
+			Detail.Color.fDistortionIntensity == 0.f &&
+			!Detail.Color.bDistortionOnBaseMaterial &&
+			Particle.iMaxParticles == 1u && Particle.iBurstCount == 1u &&
+			Particle.fSpawnRatePerSecond == 0.f &&
+			Particle.iRandomSeed == 2050231u &&
+			InRange2(Particle.vLifeTimeSeconds, 0.05f, 5.f) &&
+			Particle.vLifeTimeSeconds.x <= Particle.vLifeTimeSeconds.y &&
+			InRange3(Particle.vInitialPositionMin, -2.f, 2.f) &&
+			InRange3(Particle.vInitialPositionMax, -2.f, 2.f) &&
+			Particle.vInitialPositionMin.x <= Particle.vInitialPositionMax.x &&
+			Particle.vInitialPositionMin.y <= Particle.vInitialPositionMax.y &&
+			Particle.vInitialPositionMin.z <= Particle.vInitialPositionMax.z &&
+			InRange3(Particle.vInitialVelocityMin, -10.f, 10.f) &&
+			InRange3(Particle.vInitialVelocityMax, -10.f, 10.f) &&
+			Particle.vInitialVelocityMin.x <= Particle.vInitialVelocityMax.x &&
+			Particle.vInitialVelocityMin.y <= Particle.vInitialVelocityMax.y &&
+			Particle.vInitialVelocityMin.z <= Particle.vInitialVelocityMax.z &&
+			InRange3(Particle.vAcceleration, -20.f, 20.f) &&
+			InRange2(Particle.vStartSize, 0.01f, 4.f) &&
+			InRange2(Particle.vEndSize, 0.01f, 4.f) &&
+			Particle.bLocalSpace && !Particle.bBillboard &&
+			Particle.fDrag == 0.f &&
+			Particle.vRotationRangeDegrees.x == 0.f &&
+			Particle.vRotationRangeDegrees.y == 0.f &&
+			Particle.vSpinRangeDegreesPerSecond.x == 0.f &&
+			Particle.vSpinRangeDegreesPerSecond.y == 0.f &&
+			!Particle.bSubUVOverLife &&
+			Particle.iDynamicParameterComponentMask == 0u &&
+			Particle.SpawnShape.eKind ==
+				Client::EFFECT_PARTICLE_SPAWN_SHAPE::POINT &&
+			Particle.SpawnShape.eDistribution ==
+				Client::EFFECT_PARTICLE_SPAWN_DISTRIBUTION::RANDOM &&
+			Particle.InitialOrientation.Is_Default() &&
+			Particle.InitialVelocity.eMode ==
+				Client::EFFECT_PARTICLE_VELOCITY_MODE::FIXED &&
+			Particle.TargetAttractor.Is_Default() &&
+			Particle.SourceScale.Is_Default() &&
+			!LinearLerp.bColorOffset &&
+			LinearLerp.vEndColorOffset.x == 0.f &&
+			LinearLerp.vEndColorOffset.y == 0.f &&
+			LinearLerp.vEndColorOffset.z == 0.f &&
+			LinearLerp.vEndColorOffset.w == 0.f &&
+			!LinearLerp.bColorMultiply &&
+			LinearLerp.vEndColorMultiply.x == 1.f &&
+			LinearLerp.vEndColorMultiply.y == 1.f &&
+			LinearLerp.vEndColorMultiply.z == 1.f &&
+			LinearLerp.vEndColorMultiply.w == 1.f;
+
+		if (!bCarrier || !bMaterial || !bPacket || !bMasks || !bScalars ||
+			!bVectors || !bShapeMotion)
+		{
+			strOutError =
+				"DimensionMaster glass-mirror bounded project-tuned contract changed: " +
+				Element.strElementId;
+			return false;
+		}
+		return true;
+	}
+
+	bool_t Validate_DimensionMasterGlassMirrorDocumentOccurrence(
+		const Client::EFFECT_DOCUMENT_DESC& Document,
+		std::string& strOutError)
+	{
+		constexpr std::string_view DOCUMENT_ID =
+			"effect.dimensionmaster.skill.2050230.mirror-particle-canary.unified";
+		constexpr std::string_view ELEMENT_ID =
+			"project-tuned.glass-mirror-shards.2050230.01";
+		size_t iOccurrenceCount = 0u;
+		for (const Client::EFFECT_ELEMENT_DESC& Element : Document.Elements)
+		{
+			const Client::EFFECT_MATERIAL_EXECUTION_DESC& Execution =
+				Element.Material.Execution;
+			if (!Execution.bEnabled || Execution.eBackend !=
+					Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 ||
+				Execution.iOpcode != DIMENSIONMASTER_GLASS_MIRROR_MESH_OPCODE)
+			{
+				continue;
+			}
+			++iOccurrenceCount;
+			if (Document.strEffectAssetId != DOCUMENT_ID ||
+				Element.strElementId != ELEMENT_ID)
+			{
+				strOutError =
+					"DimensionMaster glass-mirror opcode escaped its exact document/element occurrence allowlist.";
+				return false;
+			}
+		}
+		if (iOccurrenceCount > 1u)
+		{
+			strOutError =
+				"DimensionMaster glass-mirror document contains more than one admitted opcode occurrence.";
+			return false;
+		}
+		return true;
+	}
+
+	bool_t Validate_DimensionMasterProjectTunedDocumentExecution(
+		const Client::EFFECT_DOCUMENT_DESC& Document,
+		std::string& strOutError)
+	{
+		if (!Validate_DimensionMasterGlassMirrorDocumentOccurrence(
+				Document, strOutError))
+		{
+			return false;
+		}
+		for (const Client::EFFECT_ELEMENT_DESC& Element : Document.Elements)
+		{
+			if (!Validate_DimensionMasterWaterDropletBurstExecution(
+					Element, strOutError) ||
+				!Validate_DimensionMasterGlassMirrorMeshExecution(
+					Element, strOutError))
+			{
+				return false;
+			}
 		}
 		return true;
 	}
@@ -6293,6 +6653,9 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 	if (!Validate_DimensionMasterWaterDropletBurstExecution(
 			Element, strOutError))
 		return false;
+	if (!Validate_DimensionMasterGlassMirrorMeshExecution(
+			Element, strOutError))
+		return false;
 	if (!Validate_WarlordWpoSinWaveElectricExecution(Element, strOutError))
 		return false;
 	if (!Validate_LanceDragonMaskedExecution(Element, strOutError))
@@ -7744,6 +8107,11 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 	if (nullptr != pPreparation && !Validate_Artist31470ShaderRegistry())
 	{
 		strOutError = "Artist F shader registry invariant validation failed.";
+		return false;
+	}
+	if (!Validate_DimensionMasterProjectTunedDocumentExecution(
+			Document, strOutError))
+	{
 		return false;
 	}
 	const bool_t bDocumentValid = nullptr == pPreparation ?
@@ -16355,7 +16723,9 @@ bool_t Client::CEffectDocumentRenderer::Stage_Document(
 		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
 		++g_EffectRenderPrewarmProbe.iSynchronousDocumentStageCount;
 	}
-	if (!CEffectDocumentCodec::Validate_Drawable(Document, strOutError))
+	if (!Validate_DimensionMasterProjectTunedDocumentExecution(
+			Document, strOutError) ||
+		!CEffectDocumentCodec::Validate_Drawable(Document, strOutError))
 		return false;
 	if (nullptr != m_pPreparedDocument &&
 		0u == m_pPreparedDocument->iCatalogRevision &&
