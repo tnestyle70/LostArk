@@ -1151,10 +1151,19 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             self.assertIn(token, composition_gameplay)
         for token in (
             "Patch_ValtanCompositionPatternSound(",
-            "Save_ValtanCompositionPatternSounds(SoundStatus)",
+            "Prepare_ValtanCompositionPatternSoundSave(",
+            "Save_ValtanCompositionProduct(",
+            "Accept_ValtanCompositionPatternSoundSave(",
             "Resolve_ValtanCompositionPatternSoundWindow(",
         ):
             self.assertIn(token, self.composition_cpp)
+        composition_save = function_body(
+            self.composition_cpp,
+            "bool_t Client::CActionCompositionWorkbench::Save_Reload()",
+        )
+        self.assertNotIn(
+            "Save_ValtanCompositionPatternSounds(", composition_save
+        )
 
         reload_sound = function_body(
             self.animation_cpp,
@@ -1440,29 +1449,36 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "Apply_ValtanCompositionPatternSoundsToActiveConsumers(",
             sound_retry,
         )
-        for token in (
-            "Save_ValtanProduct(SaveStatus)",
-            "Save_ValtanCompositionPatternSounds(SoundStatus)",
+        transaction_edges = (
+            "Prepare_ValtanCompositionPatternSoundSave(",
+            "Prepare_BossValtanBindingDraftSave(",
+            "Save_ValtanCompositionProduct(",
+            "Accept_ValtanCompositionPatternSoundSave(",
+            "Accept_BossValtanBindingDraftSave(",
             "Reload_CanonicalGraph(ToolReloadStatus)",
             "Reload_Canonical()",
+        )
+        for token in transaction_edges:
+            self.assertIn(token, canonical_save)
+        transaction_positions = [
+            canonical_save.index(token) for token in transaction_edges
+        ]
+        self.assertEqual(transaction_positions, sorted(transaction_positions))
+        self.assertEqual(
+            1, canonical_save.count("Save_ValtanCompositionProduct(")
+        )
+        self.assertNotIn("Save_ValtanProduct(", canonical_save)
+        self.assertNotIn(
+            "Save_ValtanCompositionPatternSounds(", canonical_save
+        )
+        for token in (
+            "patternSoundBaselineBytes",
+            "patternSoundCandidateBytes",
+            "effectV2BaselineBytes",
+            "effectV2CandidateBytes",
+            'm_strStatus = "Nothing was saved. "',
         ):
             self.assertIn(token, canonical_save)
-        self.assertLess(
-            canonical_save.index("Save_ValtanProduct(SaveStatus)"),
-            canonical_save.index(
-                "Save_ValtanCompositionPatternSounds(SoundStatus)"
-            ),
-        )
-        self.assertLess(
-            canonical_save.index(
-                "Save_ValtanCompositionPatternSounds(SoundStatus)"
-            ),
-            canonical_save.index("Reload_CanonicalGraph(ToolReloadStatus)"),
-        )
-        self.assertLess(
-            canonical_save.index("Reload_CanonicalGraph(ToolReloadStatus)"),
-            canonical_save.rindex("Reload_Canonical()"),
-        )
         self.assertIn("Observe_ServerActivePatternRevision(", toolbar)
         self.assertNotIn("Get_ServerActivePatternRevision(", toolbar)
         self.assertIn("ExpectedServerRevision", toolbar)
