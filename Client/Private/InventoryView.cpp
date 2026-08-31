@@ -1,5 +1,3 @@
-#include "imgui.h"
-
 #include "InventoryView.h"
 
 #include "CombatHUDViewModel.h"
@@ -134,6 +132,106 @@ void Client::CInventoryView::Render_Text()
 			(fTitleX + fTitleWidth * 0.5f) * textScaleX,
 			(fTitleY + fTitleHeight * 0.5f) * textScaleY),
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+
+	/* Per-slot stack counts and the hovered item's name, resolved from the same
+	(items, category filter) pair Update_Items drew the icons from so a filtered view never
+	labels a slot with an item it isn't showing. */
+	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& Items =
+		CCombatHUDViewModel::Get().Get_Inventory().Items;
+	const vector<size_t> filteredIndices = Build_FilteredIndices(Items);
+
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pBackgroundView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pBackgroundView->Get_ResolutionHeight();
+	const ITEM_DEFINITION* pHoveredDefinition = nullptr;
+	uint32_t iHoveredQuantity = 0u;
+	f32_t fHoveredX = 0.f, fHoveredY = 0.f;
+
+	for (int32_t iSlotIndex = 0;; ++iSlotIndex)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pBackgroundView->Get_SlotRect(
+			"Inventory_Slot_" + std::to_string(iSlotIndex), fX, fY, fWidth, fHeight))
+		{
+			break;
+		}
+
+		const bool_t bHasDisplayEntry =
+			static_cast<size_t>(iSlotIndex) < m_DisplayOrder.size();
+		const size_t iFilteredIndex =
+			bHasDisplayEntry ? m_DisplayOrder[iSlotIndex] : filteredIndices.size();
+		if (!bHasDisplayEntry || iFilteredIndex >= filteredIndices.size() ||
+			filteredIndices[iFilteredIndex] >= Items.size())
+		{
+			continue;
+		}
+
+		const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& Item =
+			Items[filteredIndices[iFilteredIndex]];
+		const ITEM_DEFINITION* pDefinition = CItemCatalog::Find_ById(Item.strItemId);
+
+		if (Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight) &&
+			nullptr != pDefinition)
+		{
+			pHoveredDefinition = pDefinition;
+			iHoveredQuantity = Item.iQuantity;
+			fHoveredX = fX;
+			fHoveredY = fY;
+		}
+
+		/* A single unit needs no "1" over its own icon, same as before. */
+		if (Item.iQuantity <= 1u)
+			continue;
+
+		const wstring strQuantity = std::to_wstring(Item.iQuantity);
+		const float2_t vQuantityMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), strQuantity.c_str());
+		if (vQuantityMeasured.y <= 0.f)
+			continue;
+		const f32_t fQuantityScale =
+			(11.f / vQuantityMeasured.y) * textUiScale;
+		/* Bottom-right of the slot, with the same 1px dark drop shadow the drawlist used. */
+		const float2_t vQuantityPos(
+			(fX + fWidth - 3.f) * textScaleX, (fY + fHeight - 3.f) * textScaleY);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strQuantity.c_str(),
+			float2_t(vQuantityPos.x + 1.f, vQuantityPos.y + 1.f),
+			XMVectorSet(0.f, 0.f, 0.f, 220.f / 255.f), 0.f,
+			float2_t(1.f, 1.f), fQuantityScale);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strQuantity.c_str(),
+			vQuantityPos, Colors::White, 0.f, float2_t(1.f, 1.f), fQuantityScale);
+	}
+
+	/* Hover tooltip -- ImGui::SetTooltip's own floating box has no engine-path equivalent, so
+	the same "<name> xN" text is drawn just above the hovered slot instead. */
+	if (nullptr != pHoveredDefinition)
+	{
+		wstring strTooltip;
+		const string strLabel = pHoveredDefinition->strDisplayName +
+			" x" + std::to_string(iHoveredQuantity);
+		const int32_t iLength = ::MultiByteToWideChar(
+			CP_UTF8, 0, strLabel.c_str(), -1, nullptr, 0);
+		if (iLength > 1)
+		{
+			strTooltip.assign(static_cast<size_t>(iLength - 1), L'\0');
+			::MultiByteToWideChar(
+				CP_UTF8, 0, strLabel.c_str(), -1, strTooltip.data(), iLength);
+
+			const float2_t vTooltipMeasured =
+				CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), strTooltip.c_str());
+			if (vTooltipMeasured.y > 0.f)
+			{
+				const f32_t fTooltipScale = (12.f / vTooltipMeasured.y) * textUiScale;
+				const float2_t vTooltipPos(
+					fHoveredX * textScaleX, (fHoveredY - 4.f) * textScaleY);
+				CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strTooltip.c_str(),
+					float2_t(vTooltipPos.x + 1.f, vTooltipPos.y + 1.f),
+					XMVectorSet(0.f, 0.f, 0.f, 230.f / 255.f), 0.f,
+					float2_t(0.f, 1.f), fTooltipScale);
+				CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strTooltip.c_str(),
+					vTooltipPos, Colors::White, 0.f, float2_t(0.f, 1.f), fTooltipScale);
+			}
+		}
+	}
 }
 
 void Client::CInventoryView::Update_Drag()
@@ -242,12 +340,14 @@ void Client::CInventoryView::Update_CategoryTabs()
 	}
 }
 
-void Client::CInventoryView::Update_Items(
-	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items)
+vector<size_t> Client::CInventoryView::Build_FilteredIndices(
+	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items) const
 {
 	/* "" (both tabs just deselected) and Inventory_Category_All show everything. Every other
 	tab keeps only items whose catalog category maps to it; a tab with no matching items yet
-	(Cloth/Gem/Card/Etc) simply renders an empty grid rather than falling back to unfiltered. */
+	(Cloth/Gem/Card/Etc) simply renders an empty grid rather than falling back to unfiltered.
+	Pure function of (items, m_strSelectedCategoryId) so Update_Items and Render_Text resolve
+	the same slot->item mapping without threading it through member state. */
 	const bool_t bShowAll = m_strSelectedCategoryId.empty() ||
 		m_strSelectedCategoryId == "Inventory_Category_All";
 	string strCategoryFilter;
@@ -281,19 +381,19 @@ void Client::CInventoryView::Update_Items(
 		if (nullptr != pFilterDefinition && pFilterDefinition->strCategory == strCategoryFilter)
 			filteredIndices.push_back(i);
 	}
+	return filteredIndices;
+}
+
+void Client::CInventoryView::Update_Items(
+	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items)
+{
+	const vector<size_t> filteredIndices = Build_FilteredIndices(items);
 
 	Sync_DisplayOrder(filteredIndices.size());
 
 	CUIInputRouter& Router = CUIInputRouter::Get();
 	const f32_t fRefWidth = m_pBackgroundView->Get_ResolutionWidth();
 	const f32_t fRefHeight = m_pBackgroundView->Get_ResolutionHeight();
-
-	/* Quantity numbers and the hover tooltip stay on ImGui's own foreground draw list (see class
-	comment) -- both need real screen-pixel rects, unlike the CUI_Sprite slots driven above. */
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
 
 	const bool_t bMouseDown = Router.Is_LeftDown();
 	const bool_t bMouseReleased = Router.Is_LeftReleaseEdge();
@@ -336,25 +436,8 @@ void Client::CInventoryView::Update_Items(
 			m_pBackgroundView->Set_SlotVisible(strIconId, false);
 		}
 
-		const ImVec2 vMin(
-			pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
-		const ImVec2 vMax(
-			vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
-
-		/* Equipment ("combat") never stacks past 1 -- showing a quantity number on it just reads
-		as clutter, not information, so only non-equipment (stackable) items draw one. */
-		if (nullptr == pDefinition || "combat" != pDefinition->strCategory)
-		{
-			const string strQuantity = std::to_string(Item.iQuantity);
-			const ImVec2 vTextSize = ImGui::CalcTextSize(strQuantity.c_str());
-			const ImVec2 vTextPos(
-				vMax.x - vTextSize.x - 2.f, vMax.y - vTextSize.y - 2.f);
-			pDrawList->AddText(ImVec2(vTextPos.x + 1.f, vTextPos.y + 1.f), IM_COL32(0, 0, 0, 220), strQuantity.c_str());
-			pDrawList->AddText(vTextPos, IM_COL32(255, 255, 255, 255), strQuantity.c_str());
-		}
-
-		if (nullptr != pDefinition && bHovered)
-			ImGui::SetTooltip("%s x%u", pDefinition->strDisplayName.c_str(), Item.iQuantity);
+		/* Quantity numbers and the hover tooltip draw in Render_Text() (the post-EndFrame
+		LOA-font pass) -- CGameInstance::Draw_Text there, no ImGui. */
 	}
 
 	/* Drag-and-drop: press-and-hold over a filled slot starts a drag. Releasing over a
