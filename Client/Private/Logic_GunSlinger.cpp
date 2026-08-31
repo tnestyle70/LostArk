@@ -21,11 +21,21 @@ namespace
 	first, and before the weapon tags. */
 	constexpr EQUIPMENT_PART_SPEC Equipment[] =
 	{
-		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_GunSlinger_Arm") },
-		{ TEXT("Part_10_Equip_Helmet"),   TEXT("Prototype_Component_Model_GunSlinger_Helmet") },
-		{ TEXT("Part_10_Equip_Lower"),    TEXT("Prototype_Component_Model_GunSlinger_Lower") },
-		{ TEXT("Part_10_Equip_Shoulder"), TEXT("Prototype_Component_Model_GunSlinger_Shoulder") },
-		{ TEXT("Part_10_Equip_Upper"),    TEXT("Prototype_Component_Model_GunSlinger_Upper") },
+		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_GunSlinger_Arm"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::HANDS },
+		{ TEXT("Part_10_Equip_Helmet"),   TEXT("Prototype_Component_Model_GunSlinger_Helmet"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::HEAD },
+		{ TEXT("Part_10_Equip_Lower"),    TEXT("Prototype_Component_Model_GunSlinger_Lower"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::LOWER },
+		{ TEXT("Part_10_Equip_Shoulder"), TEXT("Prototype_Component_Model_GunSlinger_Shoulder"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::SHOULDER },
+		{ TEXT("Part_10_Equip_Upper"),    TEXT("Prototype_Component_Model_GunSlinger_Upper"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::UPPER },
 	};
 
 	/* The armour carries its own exposed skin, so the bare torso, arms and legs

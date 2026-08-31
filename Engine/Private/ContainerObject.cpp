@@ -68,13 +68,67 @@ HRESULT CContainerObject::Add_PartObject(uint32_t iPrototypeLevelIndex, const ws
 	if (nullptr != Find_PartObject(strPartObjectTag))
 		return E_FAIL;
 
-	auto	pCloneObject = static_pointer_cast<CPartObject>(
-		CGameInstance::Get().Clone_Prototype(iPrototypeLevelIndex, strPrototypeTag, pArg));
-	if (nullptr == pCloneObject)
+	shared_ptr<CPartObject> pCloneObject;
+	if (FAILED(Clone_PartObject(
+		iPrototypeLevelIndex, strPrototypeTag, pArg, pCloneObject)))
 		return E_FAIL;
 
 	m_PartObjects.emplace(strPartObjectTag, pCloneObject);
 
+	return S_OK;
+}
+
+HRESULT CContainerObject::Clone_PartObject(
+	const uint32_t iPrototypeLevelIndex,
+	const wstring_t& strPrototypeTag,
+	void* pArg,
+	shared_ptr<CPartObject>& pOutPartObject)
+{
+	pOutPartObject.reset();
+	if (strPrototypeTag.empty())
+		return E_INVALIDARG;
+
+	pOutPartObject = dynamic_pointer_cast<CPartObject>(
+		CGameInstance::Get().Clone_Prototype(
+			iPrototypeLevelIndex, strPrototypeTag, pArg));
+	return nullptr != pOutPartObject ? S_OK : E_FAIL;
+}
+
+HRESULT CContainerObject::Replace_PartObjectGroup(
+	const wstring_t& strPartObjectTagPrefix,
+	PART_OBJECT_MAP&& CandidatePartObjects)
+{
+	if (strPartObjectTagPrefix.empty())
+		return E_INVALIDARG;
+	for (const auto& [tag, part] : CandidatePartObjects)
+	{
+		if (!tag.starts_with(strPartObjectTagPrefix) || nullptr == part)
+			return E_INVALIDARG;
+	}
+
+	try
+	{
+		PART_OBJECT_MAP StagedPartObjects = m_PartObjects;
+		for (auto iter = StagedPartObjects.begin();
+			iter != StagedPartObjects.end();)
+		{
+			if (iter->first.starts_with(strPartObjectTagPrefix))
+				iter = StagedPartObjects.erase(iter);
+			else
+				++iter;
+		}
+
+		for (auto& [tag, part] : CandidatePartObjects)
+		{
+			if (!StagedPartObjects.emplace(tag, std::move(part)).second)
+				return E_FAIL;
+		}
+		m_PartObjects.swap(StagedPartObjects);
+	}
+	catch (...)
+	{
+		return E_OUTOFMEMORY;
+	}
 	return S_OK;
 }
 

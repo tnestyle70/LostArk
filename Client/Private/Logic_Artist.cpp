@@ -24,11 +24,21 @@ namespace
 	first, and before the weapon tags. */
 	constexpr EQUIPMENT_PART_SPEC Equipment[] =
 	{
-		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_Artist_Arm") },
-		{ TEXT("Part_10_Equip_Helmet"),   TEXT("Prototype_Component_Model_Artist_Helmet"), HELMET_HAIR },
-		{ TEXT("Part_10_Equip_Lower"),    TEXT("Prototype_Component_Model_Artist_Lower") },
-		{ TEXT("Part_10_Equip_Shoulder"), TEXT("Prototype_Component_Model_Artist_Shoulder") },
-		{ TEXT("Part_10_Equip_Upper"),    TEXT("Prototype_Component_Model_Artist_Upper") },
+		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_Artist_Arm"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::HANDS },
+		{ TEXT("Part_10_Equip_Helmet"),   TEXT("Prototype_Component_Model_Artist_Helmet"),
+		  HELMET_HAIR, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::HEAD },
+		{ TEXT("Part_10_Equip_Lower"),    TEXT("Prototype_Component_Model_Artist_Lower"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::LOWER },
+		{ TEXT("Part_10_Equip_Shoulder"), TEXT("Prototype_Component_Model_Artist_Shoulder"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::SHOULDER },
+		{ TEXT("Part_10_Equip_Upper"),    TEXT("Prototype_Component_Model_Artist_Upper"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::UPPER },
 	};
 
 	/* The cook lays the body out 0 face / 1 eye_ao / 2 eye / 3 hair /

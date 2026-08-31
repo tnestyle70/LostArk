@@ -126,6 +126,9 @@
 	<ClInclude Include="..\Public\RenderingProfileService.h" />
     <ClInclude Include="..\Public\AnimationTargetService.h" />
     <ClInclude Include="..\Public\CharacterPreviewPanel.h" />
+    <ClInclude Include="..\Public\EquipmentAuthoringTool.h" />
+    <ClInclude Include="..\Public\EquipmentPresentationCatalog.h" />
+    <ClInclude Include="..\Public\EquipmentPresentationService.h" />
     <ClInclude Include="..\Public\PlayableCharacterPreviewContract.h" />
     <ClInclude Include="..\Public\LobbyCommandService.h" />
     <ClInclude Include="..\Public\LevelTransitionService.h" />
@@ -295,6 +298,9 @@
 	<ClCompile Include="..\Private\RenderingProfileService.cpp" />
     <ClCompile Include="..\Private\AnimationTargetService.cpp" />
     <ClCompile Include="..\Private\CharacterPreviewPanel.cpp" />
+    <ClCompile Include="..\Private\EquipmentAuthoringTool.cpp" />
+    <ClCompile Include="..\Private\EquipmentPresentationCatalog.cpp" />
+    <ClCompile Include="..\Private\EquipmentPresentationService.cpp" />
     <ClCompile Include="..\Private\PlayableCharacterPreviewContract.cpp" />
     <ClCompile Include="..\Private\LobbyCommandService.cpp" />
     <ClCompile Include="..\Private\LevelTransitionService.cpp" />
@@ -385,6 +391,8 @@
     <None Include="Client.vcxproj" />
     <None Include="..\..\Data\Actors\BossCatalog.json" />
     <None Include="..\..\Data\Actors\CharacterCatalog.json" />
+    <None Include="..\..\Data\Actors\EquipmentLoadoutPresets.json" />
+    <None Include="..\..\Data\Actors\EquipmentPresentationCatalog.json" />
     <None Include="..\..\Data\Actors\NpcCatalog.json" />
     <None Include="..\..\Data\Actors\MonsterCatalog.json" />
 	<None Include="..\..\Data\Sound\CharacterSoundCatalog.json" />
