@@ -616,8 +616,85 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             'asset.pBossArchetypeId } == "BOSS_VALTAN"',
             "CValtanPresentationAssetService::Ensure_Prototypes(",
             "CAnimationTargetService::Bind_Preview(",
+            'TEXT("Layer_AnimationPreview")',
+            "desc.fCollisionRadius = 0.f",
+            "desc.isServerAuthoritative = false",
         ):
             self.assertIn(token, select_asset)
+
+        placement = function_body(
+            self.level_cpp,
+            "bool_t CLevel_ValtanArena::Try_Get_AuthoringPreviewPlacement(",
+        )
+        for token in (
+            "m_Replication.Get_LocalCharacter()",
+            "Try_SampleTargetGround(",
+            "STATE::RIGHT",
+            "Get_ValtanPresentationState()",
+        ):
+            self.assertIn(token, placement)
+        self.assertNotIn("Set_State(", placement)
+        self.assertNotIn("CNetworkManager", placement)
+
+        select_target = function_body(
+            self.character_preview_cpp,
+            "bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(",
+        )
+        self.assertIn("Try_Get_AuthoringPreviewPlacement(", select_target)
+        self.assertIn("Target=ARENA CLONE", select_target)
+        self.assertIn("Server Valtan=UNCHANGED", select_target)
+
+        sequence_preview = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Preview_ValtanCompositionSequence(",
+        )
+        for token in (
+            "Target=ARENA CLONE",
+            "Get_CurrentAnimIndex()",
+            "Server Valtan=UNCHANGED",
+        ):
+            self.assertIn(token, sequence_preview)
+
+        preview_state = function_body(
+            self.animation_cpp,
+            "Client::CAnimation_Tool::Get_ValtanCompositionPreviewState() const",
+        )
+        for token in (
+            "bSourceSequencePlaying",
+            "m_iValtanPatternPreviewItem",
+            "Get_CurrentAnimIndex()",
+            "strSourceSequenceStatus",
+        ):
+            self.assertIn(token, preview_state)
+
+        model_stage = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Stage_ValtanCompositionPreview(",
+        )
+        self.assertNotIn("Reload_ValtanPatternMaster", model_stage)
+        self.assertNotIn("m_eValtanPatternMasterAdmission", model_stage)
+        self.assertIn('Select_TargetAsset("Valtan")', model_stage)
+
+        draft_pattern = function_body(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Play_ValtanCompositionDraftPattern(",
+        )
+        self.assertIn("Reload_ValtanPatternMaster()", draft_pattern)
+
+        sequence_browser = function_body(
+            self.composition_cpp,
+            "void Client::CActionCompositionWorkbench::Render_SequenceBrowser(",
+        )
+        preview_button = sequence_browser.index(
+            'ImGui::Button("Preview Sequence on Arena Clone")'
+        )
+        preview_gate = sequence_browser.rfind(
+            "ImGui::BeginDisabled(", 0, preview_button
+        )
+        self.assertNotIn(
+            "m_eAdmission",
+            sequence_browser[preview_gate:preview_button],
+        )
 
     def test_valtan_arena_auto_preview_is_identity_and_generation_driven(self) -> None:
         render = function_body(

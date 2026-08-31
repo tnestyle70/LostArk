@@ -2710,10 +2710,23 @@ void Client::CActionCompositionWorkbench::Render_SequenceBrowser(
 				Clip.strClipName.c_str(), Clip.iDurationMs,
 				Clip.bUsesNativeDuration ? " native" : " cut");
 		}
+		const CAnimation_Tool::COMPOSITION_PREVIEW_STATE SourcePreview =
+			nullptr == m_pAnimationTool ?
+				CAnimation_Tool::COMPOSITION_PREVIEW_STATE{} :
+				m_pAnimationTool->Get_ValtanCompositionPreviewState();
+		ImGui::TextColored(
+			SourcePreview.bModelReady ?
+				ImVec4(0.35f, 0.86f, 0.45f, 1.f) :
+				ImVec4(1.f, 0.72f, 0.24f, 1.f),
+			"Preview target: ARENA CLONE %s | Source: %s | Server Valtan: UNCHANGED",
+			SourcePreview.bModelReady ? "READY" : "WILL STAGE ON CLICK",
+			SourcePreview.bSourceSequencePlaying ? "PLAYING" : "IDLE");
+		if (!SourcePreview.strSourceSequenceStatus.empty())
+			ImGui::TextWrapped("%s",
+				SourcePreview.strSourceSequenceStatus.c_str());
 		ImGui::TextDisabled(
-			"Raw Sequence = Arena preview clone. Server Valtan = apply to a Stage, Save/Publish, then play the saved Pattern.");
-		ImGui::BeginDisabled(nullptr == m_pAnimationTool ||
-			ADMISSION_STATE::ADMITTED != m_eAdmission);
+			"Raw Sequence preview needs only its admitted source catalog and Valtan CModel; it does not require a canonical Pattern revision.");
+		ImGui::BeginDisabled(nullptr == m_pAnimationTool);
 		if (ImGui::Button("Preview Sequence on Arena Clone"))
 		{
 			std::string Status;

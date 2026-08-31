@@ -42,10 +42,12 @@ public:
 		bool_t bModelReady = false;
 		bool_t bPlaying = false;
 		bool_t bPaused = false;
+		bool_t bSourceSequencePlaying = false;
 		uint32_t iPositionMs = 0u;
 		uint32_t iDurationMs = 0u;
 		std::string strPatternId;
 		std::string strStatus;
+		std::string strSourceSequenceStatus;
 	};
 
 	struct COMPOSITION_SEQUENCE_CLIP_VIEW final

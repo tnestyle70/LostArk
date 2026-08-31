@@ -7,6 +7,7 @@
 #include "ActorCatalog.h"
 #include "Character.h"
 #include "GameInstance.h"
+#include "Level_ValtanArena.h"
 #include "Model.h"
 #include "Part_Body.h"
 #include "Part_Equipment.h"
@@ -95,22 +96,6 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 		m_Status = "Preview target asset name is empty.";
 		return false;
 	}
-	if (nullptr != m_pPreviewAsset &&
-		strAnimationAssetName == m_pPreviewAsset->pAssetName &&
-		!m_pPreviewObject.expired())
-	{
-		return true;
-	}
-	for (size_t i = 0u; i < m_SessionLocks.size(); ++i)
-	{
-		if (!m_SessionLocks[i])
-			continue;
-		m_Status = m_SessionLockReasons[i].empty() ?
-			"Preview target change is locked by an unsaved authoring document." :
-			m_SessionLockReasons[i];
-		return false;
-	}
-
 	const auto asset = std::find_if(
 		ANIMATION_PREVIEW_ASSETS.begin(), ANIMATION_PREVIEW_ASSETS.end(),
 		[&strAnimationAssetName](const ANIMATION_PREVIEW_ASSET& candidate)
@@ -120,6 +105,53 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 	if (asset == ANIMATION_PREVIEW_ASSETS.end())
 	{
 		m_Status = "Preview target is not admitted: " + strAnimationAssetName;
+		return false;
+	}
+	if (nullptr != m_pPreviewAsset &&
+		strAnimationAssetName == m_pPreviewAsset->pAssetName &&
+		!m_pPreviewObject.expired())
+	{
+		/* Auto-staging can happen before the first replicated arena player
+		   arrives. Re-selecting from Composition therefore recenters the already
+		   admitted clone instead of returning success for an off-screen origin
+		   model. */
+		const uint32_t iCurrentLevel =
+			CGameInstance::Get().Get_CurrentLevelID();
+		const bool_t bArenaValtan =
+			iCurrentLevel == ETOUI(LEVEL::VALTAN_ARENA) &&
+			nullptr != asset->pBossArchetypeId &&
+			std::string_view{ asset->pBossArchetypeId } == "BOSS_VALTAN";
+		if (!bArenaValtan)
+			return true;
+
+		CLevel_ValtanArena* const pArena = CLevel_ValtanArena::Get_Active();
+		float3_t Placement{};
+		std::string strPlacementSource;
+		const shared_ptr<CValtan> pPreview =
+			dynamic_pointer_cast<CValtan>(m_pPreviewObject.lock());
+		if (nullptr == pArena ||
+			!pArena->Try_Get_AuthoringPreviewPlacement(
+				Placement, strPlacementSource) ||
+			nullptr == pPreview || nullptr == pPreview->Get_Transform())
+		{
+			m_Status = "Arena Clone placement unavailable: " +
+				strPlacementSource + ".";
+			return false;
+		}
+		pPreview->Get_Transform()->Set_State(
+			STATE::POSITION,
+			XMVectorSetW(XMLoadFloat3(&Placement), 1.f));
+		m_Status = "Target=ARENA CLONE | anchor=" + strPlacementSource +
+			" | collision=OFF | Server Valtan=UNCHANGED.";
+		return true;
+	}
+	for (size_t i = 0u; i < m_SessionLocks.size(); ++i)
+	{
+		if (!m_SessionLocks[i])
+			continue;
+		m_Status = m_SessionLockReasons[i].empty() ?
+			"Preview target change is locked by an unsaved authoring document." :
+			m_SessionLockReasons[i];
 		return false;
 	}
 	return Select_Asset(*asset);
@@ -200,9 +232,24 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 	}
 
 	vector_t previewPosition = XMVectorSet(2.5f, 0.f, 0.f, 1.f);
+	std::string strPlacementSource = "scene character / world-right";
 	const shared_ptr<CCharacter> character =
 		CAnimationTargetService::Resolve_SceneCharacter();
-	if (nullptr != character && nullptr != character->Get_Transform())
+	if (bValtanArenaBossPreview)
+	{
+		CLevel_ValtanArena* const pArena = CLevel_ValtanArena::Get_Active();
+		float3_t Placement{};
+		if (nullptr == pArena ||
+			!pArena->Try_Get_AuthoringPreviewPlacement(
+				Placement, strPlacementSource))
+		{
+			m_Status = "Arena Clone placement unavailable: " +
+				strPlacementSource + ".";
+			return false;
+		}
+		previewPosition = XMVectorSetW(XMLoadFloat3(&Placement), 1.f);
+	}
+	else if (nullptr != character && nullptr != character->Get_Transform())
 	{
 		previewPosition = XMVectorAdd(
 			previewPosition,
@@ -565,9 +612,9 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 		CAnimationTargetService::Bind_Preview(
 			stagedValtan,
 			asset.pAssetName);
-		m_Status = string("Previewing product Valtan body and socketed axe for ") +
-			asset.pLabel +
-			" 2.5 m to the right of the scene character.";
+		m_Status = string("Target=ARENA CLONE | ") + asset.pLabel +
+			" body+axe | anchor=" + strPlacementSource +
+			" | collision=OFF | Server Valtan=UNCHANGED.";
 	}
 	else
 	{

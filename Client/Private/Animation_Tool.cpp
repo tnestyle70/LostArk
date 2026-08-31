@@ -1342,15 +1342,6 @@ bool_t Client::CAnimation_Tool::Stage_ValtanCompositionPreview(
 		strOutStatus = m_Status;
 		return false;
 	}
-	if (!m_bValtanPatternMasterLoadAttempted)
-	{
-		m_bValtanPatternMasterLoadAttempted = true;
-		if (!Reload_ValtanPatternMaster())
-		{
-			strOutStatus = m_strValtanPatternMasterStatus;
-			return false;
-		}
-	}
 	m_iValtanAutoPreviewAttemptGeneration =
 		CAnimationTargetService::Resolve_TargetGeneration();
 	m_iValtanAutoPreviewSuccessGeneration =
@@ -1409,6 +1400,12 @@ bool_t Client::CAnimation_Tool::Play_ValtanCompositionDraftPattern(
 	}
 	if (!Stage_ValtanCompositionPreview(strOutStatus))
 		return false;
+	if (VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED !=
+		m_eValtanPatternMasterAdmission && !Reload_ValtanPatternMaster())
+	{
+		strOutStatus = m_strValtanPatternMasterStatus;
+		return false;
+	}
 	const shared_ptr<Engine::CModel> pModel = Resolve_Model();
 	if (nullptr == pModel)
 	{
@@ -1494,6 +1491,7 @@ Client::CAnimation_Tool::Get_ValtanCompositionPreviewState() const
 		"Valtan" == CAnimationTargetService::Resolve_AssetName();
 	State.bPlaying = m_bValtanPatternMasterPlaying;
 	State.bPaused = m_bValtanPatternMasterPaused;
+	State.bSourceSequencePlaying = m_bValtanPatternPreviewPlaying;
 	State.iDurationMs = m_iValtanPatternMasterDurationMs;
 	if (!m_ValtanPatternMasterPlaylist.empty())
 		State.strPatternId = m_ValtanPatternMasterPlaylist.front().strPatternId;
@@ -1511,6 +1509,23 @@ Client::CAnimation_Tool::Get_ValtanCompositionPreviewState() const
 			iPositionMs, static_cast<uint64_t>(State.iDurationMs)));
 	}
 	State.strStatus = m_strValtanPatternMasterStatus;
+	State.strSourceSequenceStatus = m_strValtanPatternPreviewStatus;
+	if (m_bValtanPatternPreviewPlaying &&
+		m_iValtanPatternPreviewItem < m_ValtanPatternPreviewPlaylist.size())
+	{
+		const VALTAN_PATTERN_PREVIEW_PLAY_ITEM& Item =
+			m_ValtanPatternPreviewPlaylist[m_iValtanPatternPreviewItem];
+		const char_t* const pCurrentClip = nullptr == pModel ? nullptr :
+			pModel->Get_AnimationName(pModel->Get_CurrentAnimIndex());
+		State.strSourceSequenceStatus = "Target=ARENA CLONE | Action=" +
+			std::to_string(Item.iSourceActionId) + " | Sequence=" +
+			std::to_string(Item.iSequenceIndex) + " | Clip=" +
+			(nullptr == pCurrentClip ? Item.strClipName :
+				std::string{ pCurrentClip }) + " | Step=" +
+			std::to_string(Item.iStepNumber) + "/" +
+			std::to_string(Item.iStepCount) +
+			" | Server Valtan=UNCHANGED.";
+	}
 	return State;
 }
 
@@ -1709,8 +1724,15 @@ bool_t Client::CAnimation_Tool::Preview_ValtanCompositionSequence(
 		strOutStatus = "Could not preview the selected extracted Animation Sequence.";
 		return false;
 	}
-	strOutStatus = "Previewing source Animation Sequence " +
-		std::to_string(iSkillId) + "/" + std::to_string(iSequenceIndex) + ".";
+	const char_t* const pCurrentClip = pModel->Get_AnimationName(
+		pModel->Get_CurrentAnimIndex());
+	strOutStatus = "Target=ARENA CLONE | Action=" +
+		std::to_string(iSkillId) + " | Sequence=" +
+		std::to_string(iSequenceIndex) + " | Clip=" +
+		(nullptr == pCurrentClip ? std::string{ "UNKNOWN" } :
+			std::string{ pCurrentClip }) +
+		" | Server Valtan=UNCHANGED.";
+	m_strValtanPatternPreviewStatus = strOutStatus;
 	return true;
 }
 

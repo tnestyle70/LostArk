@@ -63,6 +63,14 @@ public:
 	{
 		return m_pPlayerCommandSink;
 	}
+	/* Local-only authoring placement. The caller receives a point beside the
+	   replicated local player, sampled against that player's Navigation when it
+	   is available. If the player presentation has not arrived yet, the primary
+	   replicated boss is the visible arena fallback. This never exposes or
+	   mutates either authoritative actor. */
+	bool_t Try_Get_AuthoringPreviewPlacement(
+		float3_t& OutPosition,
+		std::string& strOutSource) const;
 	/* Workbench authoring must reload the replicated primary Server consumer,
 	   not only the Development preview target. These wrappers keep the Level's
 	   replication owner as the single route and expose its freshness admission
