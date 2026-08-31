@@ -219,6 +219,9 @@
 	<ClCompile Include="..\Private\KakulAnimationActionDocument.cpp">
 	  <Filter>03. Tools\04. Animation</Filter>
 	</ClCompile>
+	<ClCompile Include="..\Private\KakulAnimationPatternDocument.cpp">
+	  <Filter>03. Tools\04. Animation</Filter>
+	</ClCompile>
 	<ClCompile Include="..\Private\ValtanPatternFlowDocument.cpp">
 	  <Filter>03. Tools\03. UI</Filter>
 	</ClCompile>
@@ -844,6 +847,9 @@
 	<ClInclude Include="..\Public\KakulAnimationActionDocument.h">
 	  <Filter>03. Tools\04. Animation</Filter>
 	</ClInclude>
+	<ClInclude Include="..\Public\KakulAnimationPatternDocument.h">
+	  <Filter>03. Tools\04. Animation</Filter>
+	</ClInclude>
 	<ClInclude Include="..\Public\ValtanPatternFlowDocument.h">
 	  <Filter>03. Tools\03. UI</Filter>
 	</ClInclude>
@@ -1370,6 +1376,18 @@
 	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
 	</None>
 	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCZ_00.actionbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_05.patternbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_06.patternbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_07.patternbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCZ_00.patternbindings.json">
 	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
 	</None>
     <None Include="..\..\Data\Animation\Reference\Artist\Artist.animnotify">
