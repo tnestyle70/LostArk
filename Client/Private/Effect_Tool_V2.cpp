@@ -1589,7 +1589,14 @@ void Client::CEffect_Tool_V2::Update_Attach(const f32_t fTimeDelta)
 				Play_GroupPreview();
 		}
 		else
+		{
+			float4x4_t BasePivot = m_GroupPreviewBasePivot;
+			if (Resolve_GroupPreviewBasePivot(BasePivot))
+				m_GroupPreviewBasePivot = BasePivot;
+			CEffectV2Runtime::Set_GroupPivot(
+				m_iGroupPreviewHandle, Composed_GroupPreviewPivot(BasePivot));
 			CEffectV2Runtime::Update_Group(m_iGroupPreviewHandle, m_Group);
+		}
 	}
 	EFFECT_V2_TARGET_VIEW View;
 	const bool_t bHasTarget = Resolve_TargetView(View);
@@ -2391,6 +2398,21 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		ImGui::EndCombo();
 	}
 	const bool_t bGroupBinding = !m_strBindingGroupId.empty();
+	ImGui::DragFloat3("Binding Offset", &m_vBindingOffset.x, 0.01f);
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Pivot-local placement for this binding row. Group child offsets stack on top, so the same group can aim differently per hit.");
+	ImGui::DragFloat("Binding Yaw", &m_fBindingYawDegrees, 0.5f, -360.f, 360.f);
+	if (!m_strBindingGroupId.empty())
+	{
+		ImGui::SameLine();
+		if (ImGui::SmallButton(0u != m_iGroupPreviewHandle ? "Restart Preview" : "Preview Here"))
+		{
+			if (m_Group.strGroupId == m_strBindingGroupId || Load_Group(m_strBindingGroupId))
+				Play_GroupPreview();
+		}
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Plays the bound group at the current pivot; Binding Offset/Yaw move it live while it runs.");
+	}
 	ImGui::Text("%s: %s | %s: %s | Bone: %s",
 		bGroupBinding ? "Group" : "Effect",
 		bGroupBinding ? m_strBindingGroupId.c_str() :
@@ -2422,12 +2444,15 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		Binding.strBone = PIVOT_MODE::WORLD != m_ePivotMode ? m_strPivotBone : std::string();
 		Binding.bFollowBone = PIVOT_MODE::TARGET_BONE == m_ePivotMode;
 		Binding.eRotation = m_ePivotRotation;
+		Binding.vOffset = m_vBindingOffset;
+		Binding.fYawDegrees = m_fBindingYawDegrees;
 		bool_t bReplaced = false;
 		for (EFFECT_BINDING& Existing : m_Bindings)
 		{
 			if (Existing.strEffectId == Binding.strEffectId &&
 				Existing.strGroupId == Binding.strGroupId &&
-				Existing.strClip == Binding.strClip && Existing.strStage == Binding.strStage)
+				Existing.strClip == Binding.strClip && Existing.strStage == Binding.strStage &&
+				Existing.iStartMs == Binding.iStartMs && Existing.strBone == Binding.strBone)
 			{
 				Binding.bStopWithClip = Existing.bStopWithClip;
 				Existing = Binding;
@@ -2457,13 +2482,16 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		char_t szRow[256]{};
 		const std::string strRowName = Binding.strGroupId.empty() ?
 			Binding.strEffectId : "group:" + Binding.strGroupId;
-		std::snprintf(szRow, sizeof(szRow), "%s @ %s%s +%ums %s%s",
+		const bool_t bRowPlaced = 0.f != Binding.vOffset.x || 0.f != Binding.vOffset.y ||
+			0.f != Binding.vOffset.z || 0.f != Binding.fYawDegrees;
+		std::snprintf(szRow, sizeof(szRow), "%s @ %s%s +%ums %s%s%s",
 			strRowName.c_str(),
 			Binding.strStage.empty() ? "" : "stage:",
 			Binding.strStage.empty() ? Binding.strClip.c_str() : Binding.strStage.c_str(),
 			Binding.iStartMs,
 			Binding.strBone.empty() ? "(world)" : Binding.strBone.c_str(),
-			Binding.bFollowBone ? "" : " [snap once]");
+			Binding.bFollowBone ? "" : " [snap once]",
+			bRowPlaced ? " [placed]" : "");
 		/* The row spans the full line, so the overlapping SameLine checkbox and
 		Remove button need AllowOverlap or the row swallows their clicks. */
 		if (ImGui::Selectable(szRow, false, ImGuiSelectableFlags_AllowOverlap))
@@ -2482,6 +2510,8 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 			m_ePivotMode = Binding.strBone.empty() ? PIVOT_MODE::WORLD :
 				(Binding.bFollowBone ? PIVOT_MODE::TARGET_BONE : PIVOT_MODE::TARGET_BONE_FIXED);
 			m_ePivotRotation = Binding.eRotation;
+			m_vBindingOffset = Binding.vOffset;
+			m_fBindingYawDegrees = Binding.fYawDegrees;
 			if (!Binding.strBone.empty())
 				m_strPivotBone = Binding.strBone;
 			if (PIVOT_MODE::TARGET_BONE_FIXED == m_ePivotMode)
@@ -2594,6 +2624,30 @@ bool_t Client::CEffect_Tool_V2::Save_Group()
 	return true;
 }
 
+bool_t Client::CEffect_Tool_V2::Resolve_GroupPreviewBasePivot(float4x4_t& OutPivot)
+{
+	if (const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock())
+	{
+		OutPivot = pPreview->PivotWorld();
+		return true;
+	}
+	EFFECT_V2_TARGET_VIEW View;
+	return Resolve_TargetView(View) &&
+		CEffectV2Object::Resolve_TargetPivot(View, m_strPivotBone, m_ePivotRotation, OutPivot);
+}
+
+float4x4_t Client::CEffect_Tool_V2::Composed_GroupPreviewPivot(const float4x4_t& BasePivot) const
+{
+	if (m_strBindingGroupId.empty() || m_strBindingGroupId != m_Group.strGroupId)
+		return BasePivot;
+	float4x4_t Composed;
+	XMStoreFloat4x4(&Composed,
+		XMMatrixRotationY(XMConvertToRadians(m_fBindingYawDegrees)) *
+		XMMatrixTranslation(m_vBindingOffset.x, m_vBindingOffset.y, m_vBindingOffset.z) *
+		XMLoadFloat4x4(&BasePivot));
+	return Composed;
+}
+
 bool_t Client::CEffect_Tool_V2::Play_GroupPreview()
 {
 	Stop_GroupPreview();
@@ -2612,17 +2666,15 @@ bool_t Client::CEffect_Tool_V2::Play_GroupPreview()
 		}
 	}
 	float4x4_t Pivot;
-	EFFECT_V2_TARGET_VIEW View;
-	if (const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock())
-		Pivot = pPreview->PivotWorld();
-	else if (!Resolve_TargetView(View) ||
-		!CEffectV2Object::Resolve_TargetPivot(View, m_strPivotBone, m_ePivotRotation, Pivot))
+	if (!Resolve_GroupPreviewBasePivot(Pivot))
 	{
 		m_strGroupStatus = "Create a preview effect or spawn a target to place the group.";
 		return false;
 	}
+	m_GroupPreviewBasePivot = Pivot;
 	m_Group.strGroupId = strGroupId;
-	m_iGroupPreviewHandle = CEffectV2Runtime::Play_Group(m_Group, Pivot, m_pDevice, m_pContext);
+	m_iGroupPreviewHandle = CEffectV2Runtime::Play_Group(
+		m_Group, Composed_GroupPreviewPivot(Pivot), m_pDevice, m_pContext);
 	if (0u == m_iGroupPreviewHandle)
 	{
 		m_strGroupStatus = "Group preview failed: " + CEffectV2Runtime::Last_Error();

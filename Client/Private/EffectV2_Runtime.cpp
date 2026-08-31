@@ -107,13 +107,6 @@ namespace
 		OutputDebugStringA(("[EffectV2Runtime] " + strMessage + "\n").c_str());
 	}
 
-	float4x4_t Identity_Matrix()
-	{
-		float4x4_t Matrix;
-		XMStoreFloat4x4(&Matrix, XMMatrixIdentity());
-		return Matrix;
-	}
-
 	f32_t Ms_ToSeconds(const uint32_t iMs)
 	{
 		return static_cast<f32_t>(iMs) / 1000.f;
@@ -225,6 +218,12 @@ namespace
 		return Local;
 	}
 
+	matrix_t Binding_Local(const Client::EFFECT_V2_BINDING& Binding)
+	{
+		return XMMatrixRotationY(XMConvertToRadians(Binding.fYawDegrees)) *
+			XMMatrixTranslation(Binding.vOffset.x, Binding.vOffset.y, Binding.vOffset.z);
+	}
+
 	/* Lane time at which a child stops: its own duration, capped by the
 	   group duration; < 0 when neither is set. */
 	f32_t Child_StopSeconds(
@@ -251,7 +250,9 @@ namespace
 		Pending.Binding.strGroupId.clear();
 		Pending.Binding.strEffectId = Child.strEffectId;
 		Pending.Binding.iStartMs = iBindingStartMs + Child.iStartMs;
-		Pending.Local = Child_Local(Child);
+		const float4x4_t ChildLocal = Child_Local(Child);
+		XMStoreFloat4x4(&Pending.Local,
+			XMLoadFloat4x4(&ChildLocal) * Binding_Local(Pending.Binding));
 		Pending.eStop = Child.eStop;
 		Pending.fStopSeconds = Child_StopSeconds(Group, Child, iBindingStartMs);
 		Pending.iChildIndex = iChildIndex;
@@ -285,7 +286,7 @@ namespace
 		{
 			PENDING_SPAWN Pending;
 			Pending.Binding = Binding;
-			Pending.Local = Identity_Matrix();
+			XMStoreFloat4x4(&Pending.Local, Binding_Local(Binding));
 			Out.push_back(std::move(Pending));
 			return;
 		}
@@ -783,6 +784,15 @@ void Client::CEffectV2Runtime::Update_Group(const uint32_t iHandle, const EFFECT
 			Effect.eStop = Child.eStop;
 		}
 	}
+}
+
+void Client::CEffectV2Runtime::Set_GroupPivot(
+	const uint32_t iHandle, const float4x4_t& PivotWorld)
+{
+	const auto Found = g_FreeGroups.find(iHandle);
+	if (Found == g_FreeGroups.end())
+		return;
+	Found->second.Pivot = PivotWorld;
 }
 
 void Client::CEffectV2Runtime::Stop_Group(const uint32_t iHandle)

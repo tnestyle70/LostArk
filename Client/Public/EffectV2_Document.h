@@ -51,6 +51,10 @@ struct EFFECT_V2_BINDING final
 	bool_t bFollowBone = true;
 	CEffectV2Object::PIVOT_ROTATION eRotation = CEffectV2Object::PIVOT_ROTATION::TARGET_YAW;
 	bool_t bStopWithClip = false;
+	/* Pivot-local placement of this binding; group child offsets stack on
+	   top, so one group re-aims per binding row. */
+	float3_t vOffset = { 0.f, 0.f, 0.f };
+	f32_t fYawDegrees = 0.f;
 };
 
 enum class EFFECT_V2_CHILD_STOP : int32_t

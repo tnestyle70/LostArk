@@ -55,6 +55,8 @@ public:
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext);
 	static void Update_Group(uint32_t iHandle, const EFFECT_V2_GROUP& Group);
+	/* Moves the lane pivot; the next Update_Group re-places spawned objects. */
+	static void Set_GroupPivot(uint32_t iHandle, const float4x4_t& PivotWorld);
 	static void Stop_Group(uint32_t iHandle);
 	static f32_t Group_Seconds(uint32_t iHandle);
 	static void Advance_FreeGroups(

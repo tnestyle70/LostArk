@@ -118,6 +118,31 @@ class EffectV2ValidatorTests(unittest.TestCase):
         with self.assertRaisesRegex(VALIDATOR.ContractError, "no authored effect"):
             VALIDATOR.validate(self.root, self.resource_root)
 
+    def test_binding_offset_and_yaw_pass(self) -> None:
+        binding = copy.deepcopy(self.binding)
+        binding["bindings"][0]["offset"] = [1.5, 0.0, -2.0]
+        binding["bindings"][0]["yawDegrees"] = 90.0
+        self._write_fixture(self.document, binding)
+        report = VALIDATOR.validate(self.root, self.resource_root)
+        self.assertEqual(report["bindings"], 1)
+
+    def test_same_binding_at_two_start_times_passes(self) -> None:
+        binding = copy.deepcopy(self.binding)
+        second = copy.deepcopy(binding["bindings"][0])
+        second["startMs"] = 400
+        second["offset"] = [0.0, 0.0, 3.0]
+        binding["bindings"].append(second)
+        self._write_fixture(self.document, binding)
+        report = VALIDATOR.validate(self.root, self.resource_root)
+        self.assertEqual(report["bindings"], 2)
+
+    def test_invalid_binding_offset_fails_closed(self) -> None:
+        binding = copy.deepcopy(self.binding)
+        binding["bindings"][0]["offset"] = [1.0, 2.0]
+        self._write_fixture(self.document, binding)
+        with self.assertRaisesRegex(VALIDATOR.ContractError, "binding offset"):
+            VALIDATOR.validate(self.root, self.resource_root)
+
     def test_non_finite_number_fails_closed(self) -> None:
         document = copy.deepcopy(self.document)
         document["params"]["lifetime"] = float("nan")

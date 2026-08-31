@@ -692,18 +692,22 @@ bool_t Client::CEffectV2Document::Parse_Bindings(
 		if (!Read_Bool(Row, "followBone", Binding.bFollowBone, strOutError) ||
 			!Read_Enum(Row, "rotation", PIVOT_ROTATION_KEYS,
 				_countof(PIVOT_ROTATION_KEYS), iRotation, strOutError) ||
-			!Read_Bool(Row, "stopWithClip", Binding.bStopWithClip, strOutError))
+			!Read_Bool(Row, "stopWithClip", Binding.bStopWithClip, strOutError) ||
+			!Read_FloatArray(Row, "offset", &Binding.vOffset.x, 3u, strOutError) ||
+			!Read_Number(Row, "yawDegrees", Binding.fYawDegrees, strOutError))
 			return false;
 		Binding.eRotation = static_cast<CEffectV2Object::PIVOT_ROTATION>(iRotation);
 		for (const EFFECT_V2_BINDING& Existing : Staged)
 		{
 			if (Existing.strEffectId == Binding.strEffectId &&
 				Existing.strGroupId == Binding.strGroupId &&
-				Existing.strClip == Binding.strClip && Existing.strStage == Binding.strStage)
+				Existing.strClip == Binding.strClip && Existing.strStage == Binding.strStage &&
+				Existing.iStartMs == Binding.iStartMs && Existing.strBone == Binding.strBone)
 			{
 				strOutError = "duplicate binding: " +
 					(Binding.strGroupId.empty() ? Binding.strEffectId : Binding.strGroupId) + " / " +
-					(Binding.strStage.empty() ? Binding.strClip : Binding.strStage);
+					(Binding.strStage.empty() ? Binding.strClip : Binding.strStage) +
+					" @" + std::to_string(Binding.iStartMs) + "ms";
 				return false;
 			}
 		}
@@ -948,7 +952,9 @@ std::string Client::CEffectV2Document::Serialize_Bindings(
 			", \"bone\": " + Json_String(Binding.strBone) +
 			", \"followBone\": " + Json_Bool(Binding.bFollowBone) +
 			", \"rotation\": " + Json_String(Rotation_Key(Binding.eRotation)) +
-			", \"stopWithClip\": " + Json_Bool(Binding.bStopWithClip) + " }" +
+			", \"stopWithClip\": " + Json_Bool(Binding.bStopWithClip) +
+			", \"offset\": " + Json_Float3(Binding.vOffset) +
+			", \"yawDegrees\": " + Json_Number(Binding.fYawDegrees) + " }" +
 			(iIndex + 1u < Bindings.size() ? ",\n" : "\n");
 	}
 	Text += "  ]\n";

@@ -286,6 +286,12 @@ def _validate_bindings(
                 raise ContractError(f"Effect V2 rotation is invalid: {archetype_id}: {subject}")
             if not isinstance(row.get("stopWithClip"), bool):
                 raise ContractError(f"Effect V2 stopWithClip is invalid: {archetype_id}: {subject}")
+            offset = row.get("offset", [0, 0, 0])
+            if not isinstance(offset, list) or len(offset) != 3:
+                raise ContractError(f"Effect V2 binding offset must be 3 numbers: {archetype_id}: {subject}")
+            for component in offset:
+                _require_finite_number(component, archetype_id, "binding offset")
+            _require_finite_number(row.get("yawDegrees", 0), archetype_id, "binding yawDegrees")
             identity = (effect_id, group_id, stage, clip, start_ms, row.get("bone"))
             if identity in row_identities:
                 raise ContractError(f"duplicate Effect V2 binding row: {archetype_id}: {identity}")
