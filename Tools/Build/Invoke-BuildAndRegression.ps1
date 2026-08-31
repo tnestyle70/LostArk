@@ -38,9 +38,11 @@ else {
 }
 $domainManifestPath = Join-Path $PSScriptRoot 'BuildDomains.json'
 $domainPipelinePath = Join-Path $PSScriptRoot 'BuildDomainPipeline.psm1'
+$productOutputGuardPath = Join-Path $PSScriptRoot 'ProductOutputGuard.psm1'
 $buildReceiptRoot = Join-Path $repoRoot 'out\BuildPipeline\receipts'
 $buildEvidenceRoot = Join-Path $repoRoot 'out\BuildPipeline\runs'
 Import-Module $domainPipelinePath -Force
+Import-Module $productOutputGuardPath -Force
 $buildDomainManifest = Read-BuildDomainManifest $domainManifestPath
 $script:buildStepRecords = [Collections.Generic.List[object]]::new()
 $script:buildDomainResults = [Collections.Generic.List[object]]::new()
@@ -162,6 +164,20 @@ function Invoke-PythonGate {
     }
 }
 
+function Assert-ProductOutputsUnlocked {
+    $timer = [Diagnostics.Stopwatch]::StartNew()
+    $result = 'FAIL'
+    try {
+        Assert-StandardProductOutputsNotRunning -RepositoryRoot $repoRoot
+        $result = 'PASS'
+    }
+    finally {
+        $timer.Stop()
+        Add-BuildStepRecord 'product:output-lock-preflight' $result `
+            $timer.ElapsedMilliseconds
+    }
+}
+
 function Assert-SkipBuildProductFreshness {
     $timer = [Diagnostics.Stopwatch]::StartNew()
     $result = 'FAIL'
@@ -246,6 +262,10 @@ try {
     [Environment]::SetEnvironmentVariable(
         'LOSTARK_RESOURCE_ROOT', $runtimeResourceRoot, 'Process')
 
+    # This is deliberately unconditional.  Build-domain publishers mutate shared
+    # Data even for -SkipBuild, and either Debug or Release may still be running.
+    Assert-ProductOutputsUnlocked
+
     Invoke-PythonGate `
         'Release client surface visibility and product input gate' `
         @('Tools/Build/test_release_client_surface_contract.py')
@@ -255,6 +275,15 @@ try {
     Invoke-PythonGate `
         'Build-domain fingerprint, receipt, and freshness gate' `
         @('Tools/Build/test_build_domain_pipeline_receipts.py')
+    Invoke-PythonGate `
+        'DimensionMaster glass/water Tool audition canary gates' `
+        @(
+            '-m',
+            'unittest',
+            'Tools.EffectPipeline.test_dimensionmaster_2050230_mirror_particle_tool_canary',
+            'Tools.EffectPipeline.test_dimensionmaster_2050230_single_glass_product_canary',
+            'Tools.EffectPipeline.test_dimensionmaster_2050230_glass_water_visual_canary'
+        )
 
     if ($includeCore) {
         Invoke-PythonGate `
@@ -308,12 +337,12 @@ try {
                 'Tools\NetworkProtocolHarness\Default\NetworkProtocolHarness.vcxproj'
             Invoke-MSBuildProject $msbuild `
                 'Tools\CharacterSelectIsolationHarness\Default\CharacterSelectIsolationHarness.vcxproj'
+            Invoke-MSBuildProject $msbuild `
+                'Tools\ValtanPatternAuditionServiceHarness\Default\ValtanPatternAuditionServiceHarness.vcxproj'
         }
         Invoke-MSBuildProject $msbuild 'Server\Default\Server.vcxproj'
         Invoke-MSBuildProject $msbuild 'Client\Default\Client.vcxproj'
         if ($includeFullDiagnostic) {
-            Invoke-MSBuildProject $msbuild `
-                'Tools\ValtanPatternAuditionServiceHarness\Default\ValtanPatternAuditionServiceHarness.vcxproj'
             Invoke-MSBuildProject $msbuild `
                 'Tools\PointLightFalloffContractHarness\Default\PointLightFalloffContractHarness.vcxproj'
             Invoke-MSBuildProject $msbuild `
@@ -417,11 +446,9 @@ try {
         throw 'NetworkProtocolHarness failed.'
     }
 
-    if ($includeFullDiagnostic) {
-        & $valtanAuditionServiceHarnessExe
-        if ($global:LASTEXITCODE -ne 0) {
-            throw 'ValtanPatternAuditionServiceHarness failed.'
-        }
+    & $valtanAuditionServiceHarnessExe
+    if ($global:LASTEXITCODE -ne 0) {
+        throw 'ValtanPatternAuditionServiceHarness failed.'
     }
 
     if ($includeFullDiagnostic) {

@@ -401,6 +401,16 @@ function Get-BuildDomainFingerprint {
 function Get-BuildGitIdentity {
     param([Parameter(Mandatory = $true)][string]$RepositoryRoot)
 
+    # A bare `powershell.exe` child process (how MSBuild invokes this pre-build
+    # step) defaults its console output decoding to the OEM codepage (949 on
+    # Korean Windows), not UTF-8. git's own output is UTF-8, so any non-ASCII
+    # path captured below (e.g. a Korean-named PLAN/RESULT doc under .md/)
+    # comes back mangled and fails [IO.Path]::GetFullPath with "path has
+    # invalid characters". Force UTF-8 decoding for this function's git calls.
+    $previousOutputEncoding = [Console]::OutputEncoding
+    [Console]::OutputEncoding = [Text.Encoding]::UTF8
+    try {
+
     $root = [IO.Path]::GetFullPath($RepositoryRoot)
     # git prints paths as raw UTF-8 bytes under core.quotepath=false. A parent
     # console on the ANSI code page (msbuild, CP949) decodes Korean file names
@@ -460,8 +470,8 @@ function Get-BuildGitIdentity {
         dirtyPathCount = $dirtyLines.Count
         dirtyIdentitySha256 = Get-BuildCanonicalSha256 $dirtyIdentity
     }
-    }
-    finally {
+
+    } finally {
         [Console]::OutputEncoding = $previousOutputEncoding
     }
 }

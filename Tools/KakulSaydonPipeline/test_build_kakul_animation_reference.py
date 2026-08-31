@@ -7,6 +7,7 @@ import copy
 import json
 from pathlib import Path
 import sys
+from tempfile import TemporaryDirectory
 import unittest
 
 
@@ -22,6 +23,7 @@ from build_kakul_animation_reference import (  # noqa: E402
     PROFILE_SPECS,
     REFERENCE_BASIS,
     REVIEW_CANDIDATE,
+    _write_or_check,
     aggregate_evidence_sha256,
     build_empty_authored_document,
     build_prefix_mapping,
@@ -234,6 +236,22 @@ class KakulAnimationReferenceTests(unittest.TestCase):
                 "[Model] sections=3 animations=3 skeleton=yes\n"
                 " section type=4 index=0 size=10 name=rpcz00_idle\n"
             )
+
+    def test_check_accepts_crlf_but_rejects_content_drift(self) -> None:
+        generated = b'{\n  "value": "expected"\n}\n'
+        with TemporaryDirectory() as temporary_directory:
+            committed = Path(temporary_directory) / "reference.json"
+            committed.write_bytes(generated.replace(b"\n", b"\r\n"))
+
+            _write_or_check(committed, generated, check=True)
+
+            committed.write_bytes(
+                generated.replace(b'"expected"', b'"drifted"').replace(
+                    b"\n", b"\r\n"
+                )
+            )
+            with self.assertRaisesRegex(BuildError, "stale or missing"):
+                _write_or_check(committed, generated, check=True)
 
 
 class CommittedKakulAnimationReferenceTests(unittest.TestCase):

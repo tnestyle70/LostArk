@@ -344,9 +344,10 @@ def author_existing_patterns(
     for leg in range(2, 10):
         stage_id = f"STEP_{leg:02d}"
         gameplay_stage = stage(warp, stage_id)
+        gameplay_stage["durationMs"] = 2300
         gameplay_stage["hit"] = damage_hit(
             {"kind": "BOX", "lengthM": 8.0, "halfWidthM": 2.5},
-            [0],
+            list(range(500, 1300, 50)),
             "damage.valtan.portal-rush",
             push_range_m=3.0,
             push_ms=180,
@@ -368,12 +369,25 @@ def author_existing_patterns(
                     "effect.valtan.project-tuned.sequence.warp.portal",
                     leg_p,
                     scale_kind="OWNER_RELATIVE",
-                    position=(0.0, 0.0, 3.0),
+                    position=(0.0, 0.0, 0.0),
+                    follow_policy="snapshot",
                 ),
             ],
         )
     recovery_p = stage(warp_p, "STEP_10")
-    replace_phase_two_cues(recovery_p, [])
+    replace_phase_two_cues(
+        recovery_p,
+        [
+            cue(
+                f"{CUE_PREFIX}warp.step-10.composite",
+                "effect.valtan.project-tuned.sequence.warp.portal",
+                recovery_p,
+                scale_kind="OWNER_RELATIVE",
+                position=(0.0, 0.0, 0.0),
+                follow_policy="snapshot",
+            ),
+        ],
+    )
 
     counter = gameplay_by_id["VALTAN_COUNTER"]
     counter_p = presentation_by_id["VALTAN_COUNTER"]
@@ -578,7 +592,10 @@ def author_trash_capture_flow(
         key: f"{action_root}.{key.lower().replace('_', '-')}"
         for key in (
             "CATCH_COUNTER", "CATCH_PRE_IMPACT", "CATCH_SLAM",
-            "EXECUTE_TAIL", "RUSH_MISS", "GROGGY",
+            "EXECUTE_TAIL", "RUSH_MISS",
+            "RECHARGE_WAIT_02", "RETRY_WINDUP_02", "RETRY_RUSH_02",
+            "RETRY_MISS_02", "RECHARGE_WAIT_03", "RETRY_WINDUP_03",
+            "RETRY_RUSH_03", "RETRY_EXHAUSTED", "GROGGY",
         )
     }
     reaim = base_g[6]["actionId"]
@@ -628,10 +645,72 @@ def author_trash_capture_flow(
         "space": "BOSS_LOCAL", "forwardOffsetM": 1.0,
         "rightOffsetM": 0.0, "radiusM": 2.25,
     }
+
+    def cloned_gameplay_stage(
+        source: dict[str, Any], key: str, next_action: str | None
+    ) -> dict[str, Any]:
+        result = copy.deepcopy(source)
+        result["stageId"] = key
+        result["actionId"] = actions[key]
+        result["defaultNextActionId"] = next_action
+        return result
+
+    def recharge_stage(key: str, next_action: str) -> dict[str, Any]:
+        result = cloned_gameplay_stage(base_g[5], key, next_action)
+        result["events"] = []
+        result["branches"] = [
+            {"outcome": "TIMEOUT", "nextActionId": next_action}
+        ]
+        result.pop("counterProxy", None)
+        return result
+
+    def retry_windup_stage(
+        key: str, rush_action: str, attempt: int
+    ) -> dict[str, Any]:
+        result = cloned_gameplay_stage(base_g[6], key, rush_action)
+        event_root = f"retry-{attempt:02d}"
+        result["events"] = [{
+            "eventId": f"event.valtan.trash.{event_root}.reaim",
+            "trigger": "ENTER", "kind": "RETARGET_RANDOM_ALIVE",
+        }] + flag("boss.flag.counterable", f"{event_root}.counter-window")
+        result["branches"] = [
+            {"outcome": "COUNTER_HIT", "nextActionId": actions["GROGGY"]},
+            {"outcome": "TIMEOUT", "nextActionId": rush_action},
+        ]
+        result["counterProxy"] = copy.deepcopy(base_g[6]["counterProxy"])
+        return result
+
+    def retry_rush_stage(key: str, miss_action: str) -> dict[str, Any]:
+        result = cloned_gameplay_stage(base_g[7], key, miss_action)
+        result["events"] = []
+        result["branches"] = [
+            {"outcome": "ANY_PLAYER_GRABBED", "nextActionId": actions["CATCH_COUNTER"]},
+            {"outcome": "NAVIGATION_BLOCKED", "nextActionId": miss_action},
+            {"outcome": "TIMEOUT", "nextActionId": miss_action},
+        ]
+        result.pop("counterProxy", None)
+        return result
+
     # Keep the stable catch clip slice, but the counter window now belongs to
     # the rush cast. Capturing a player never re-opens the cast counter.
     counter = gameplay_stage("CATCH_COUNTER", 200, actions["CATCH_PRE_IMPACT"])
+    retry_g = [
+        gameplay_stage(
+            "RUSH_MISS", 1000, actions["RECHARGE_WAIT_02"], kind="RECOVERY"
+        ),
+        recharge_stage("RECHARGE_WAIT_02", actions["RETRY_WINDUP_02"]),
+        retry_windup_stage("RETRY_WINDUP_02", actions["RETRY_RUSH_02"], 2),
+        retry_rush_stage("RETRY_RUSH_02", actions["RETRY_MISS_02"]),
+        gameplay_stage(
+            "RETRY_MISS_02", 1000, actions["RECHARGE_WAIT_03"], kind="RECOVERY"
+        ),
+        recharge_stage("RECHARGE_WAIT_03", actions["RETRY_WINDUP_03"]),
+        retry_windup_stage("RETRY_WINDUP_03", actions["RETRY_RUSH_03"], 3),
+        retry_rush_stage("RETRY_RUSH_03", actions["RETRY_EXHAUSTED"]),
+        gameplay_stage("RETRY_EXHAUSTED", 1000, None, kind="RECOVERY"),
+    ]
     new_g = [
+        *retry_g,
         counter,
         gameplay_stage("CATCH_PRE_IMPACT", 1300, actions["CATCH_SLAM"], branches=[
             {"outcome": "ALL_PLAYERS_GRABBED", "nextActionId": actions["EXECUTE_TAIL"]},
@@ -646,7 +725,6 @@ def author_trash_capture_flow(
             "eventId": "event.valtan.trash.execute-grabbed", "trigger": "ENTER",
             "kind": "EXECUTE_GRABBED_PLAYERS",
         }]),
-        gameplay_stage("RUSH_MISS", 1000, None, kind="RECOVERY"),
         gameplay_stage("GROGGY", 4433, None, kind="GROGGY", events=[{
             "eventId": "event.valtan.trash.counter-release", "trigger": "ENTER",
             "kind": "RELEASE_GRABBED_PLAYERS", "releaseMode": "HOLD",
@@ -668,11 +746,19 @@ def author_trash_capture_flow(
 
     catch_clip = "mesh_att_battle_13_05-1"
     new_p = [
+        presentation_stage("RUSH_MISS", [("mesh_att_battle_13_05-2", 0, 1000)]),
+        presentation_stage("RECHARGE_WAIT_02", [("mesh_att_battle_13_02-1", 0, 4100)]),
+        presentation_stage("RETRY_WINDUP_02", [("mesh_att_battle_13_03", 0, 1000)]),
+        presentation_stage("RETRY_RUSH_02", [("mesh_att_battle_13_04", 0, 667)]),
+        presentation_stage("RETRY_MISS_02", [("mesh_att_battle_13_05-2", 0, 1000)]),
+        presentation_stage("RECHARGE_WAIT_03", [("mesh_att_battle_13_02-1", 0, 4100)]),
+        presentation_stage("RETRY_WINDUP_03", [("mesh_att_battle_13_03", 0, 1000)]),
+        presentation_stage("RETRY_RUSH_03", [("mesh_att_battle_13_04", 0, 667)]),
+        presentation_stage("RETRY_EXHAUSTED", [("mesh_att_battle_13_05-2", 0, 1000)]),
         presentation_stage("CATCH_COUNTER", [(catch_clip, 0, 200)]),
         presentation_stage("CATCH_PRE_IMPACT", [(catch_clip, 200, 1300)]),
         presentation_stage("CATCH_SLAM", [(catch_clip, 1500, 1500)]),
         presentation_stage("EXECUTE_TAIL", [(catch_clip, 1500, 1500)]),
-        presentation_stage("RUSH_MISS", [("mesh_att_battle_13_05-2", 0, 1000)]),
         presentation_stage("GROGGY", [
             ("mesh_abn_groggy_1_start", 0, 1833),
             ("mesh_abn_groggy_1_loop", 0, 600),
@@ -721,6 +807,11 @@ def author_trash_capture_flow(
 
         destination["stages"] = [remap(copy.deepcopy(stage(trash, key))) for key in stage_ids]
         destination_p["stages"] = [remap(copy.deepcopy(stage(trash_p, key))) for key in stage_ids]
+        if pattern_id.endswith("_FAIL"):
+            destination["stages"][0]["defaultNextActionId"] = None
+            destination["stages"][0]["branches"] = [
+                {"outcome": "TIMEOUT", "nextActionId": None}
+            ]
         destination["entryActionId"] = destination["stages"][0]["actionId"]
         destination["targetPolicy"] = "LOCK_RANDOM_ALIVE_ON_START" if pattern_id.endswith("_IF") else "NONE"
         destination["aimPolicy"] = "LOCK_FACING_ON_START" if pattern_id.endswith("_IF") else "NONE"
@@ -1045,7 +1136,7 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
         releaseMode="ARENA_EJECTION",
         speedMps=24.0,
         durationMs=500,
-        yawOffsetDegrees=0.0,
+        yawOffsetDegrees=180.0,
     )
     four = stage(pattern(gameplay, "VALTAN_SEQUENCE_FOUR"), "STEP_01")
     four["hit"]["shape"] = {"kind": "CROSS", "lengthM": 18.0, "halfWidthM": 2.5}
@@ -1054,11 +1145,20 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
     warp_p = pattern(presentation, "VALTAN_WARP")
     for leg in range(8):
         row = stage(warp, f"STEP_{leg + 2:02d}")
-        row["motion"] = {"kind": "PORTAL_TARGET_RUSH"}
-        row["hit"]["schedule"] = {"kind": "EXPLICIT_OFFSETS", "offsetsMs": list(range(0, 900, 50))}
+        row["durationMs"] = 2300
+        row["motion"] = {
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": 500,
+            "speedMps": 20.0,
+            "distanceM": 16.0,
+        }
+        row["hit"]["schedule"] = {
+            "kind": "EXPLICIT_OFFSETS",
+            "offsetsMs": list(range(500, 1300, 50)),
+        }
         for effect_cue in stage(warp_p, row["stageId"])["effectCues"]:
-            effect_cue["followPolicy"] = "follow"
-            effect_cue["localTransform"]["position"] = [0.0, 0.0, 3.0]
+            effect_cue["followPolicy"] = "snapshot"
+            effect_cue["localTransform"]["position"] = [0.0, 0.0, 0.0]
     stage(warp, "STEP_10")["events"] = [{
         "eventId": "event.valtan.warp.return-center", "trigger": "ENTER",
         "kind": "RETURN_TO_ARENA_CENTER",
@@ -1072,7 +1172,11 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
             pattern(gameplay, pattern_id)["aimPolicy"] = "LOCK_FACING_ON_START"
         for row in pattern(presentation, pattern_id)["stages"]:
             for effect_cue in row["effectCues"]:
-                effect_cue["anchorSlotId"] = "arena.center.facing" if pattern_id == "VALTAN_SIX_PIZZA_106" else "arena.center"
+                effect_cue["anchorSlotId"] = (
+                    "arena.center.facing"
+                    if pattern_id == "VALTAN_SIX_PIZZA_106"
+                    else "arena.center"
+                )
                 effect_cue["followPolicy"] = "snapshot"
 
     donut = stage(pattern(gameplay, "VALTAN_FIST_IN_OUT"), "INNER")

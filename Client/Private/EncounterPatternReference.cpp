@@ -318,7 +318,8 @@ namespace
 	}
 
 	bool_t Validate_PatternFinale(
-		const DATA_JSON_VALUE& pattern, const DATA_JSON_VALUE::ARRAY& patterns)
+		const DATA_JSON_VALUE& pattern, const DATA_JSON_VALUE::ARRAY& patterns,
+		const std::string& bossArchetypeId)
 	{
 		const DATA_JSON_VALUE* finale = pattern.Find("finale");
 		if (nullptr == finale)
@@ -329,25 +330,31 @@ namespace
 		std::string kind, archetype;
 		uint32_t maximumActive = 0u;
 		if (!Read_String(*finale, "kind", false, kind) || kind != "GHOST_PORTAL_LOOP" ||
-			!Read_String(*finale, "ghostArchetypeId", false, archetype) || archetype != "BOSS_VALTAN_GHOST" ||
-			!Read_Unsigned(*finale, "maximumActiveGhosts", 1u, maximumActive) || maximumActive != 1u ||
+			!Read_String(*finale, "ghostArchetypeId", false, archetype) ||
+			!Is_StableId(archetype) || archetype == bossArchetypeId ||
+			!Read_Unsigned(*finale, "maximumActiveGhosts", 64u, maximumActive) ||
+			0u == maximumActive ||
 			!Is_Boolean(pattern, "invulnerableWhileRunning") ||
 			pattern.Find("invulnerableWhileRunning")->Get_Boolean())
 			return false;
 		const DATA_JSON_VALUE* extents = finale->Find("spawnHalfExtentsM");
 		const DATA_JSON_VALUE* children = finale->Find("ghostPatternIds");
 		if (nullptr == extents || !extents->Is_Array() || extents->Get_Array().size() != 2u ||
-			nullptr == children || !children->Is_Array() || children->Get_Array().size() != 3u ||
+			nullptr == children || !children->Is_Array() || children->Get_Array().empty() ||
+			children->Get_Array().size() > 64u ||
 			!std::all_of(extents->Get_Array().begin(), extents->Get_Array().end(),
 				[](const DATA_JSON_VALUE& value)
 				{ return value.Is_Number() && std::isfinite(value.Get_Number()) &&
 					value.Get_Number() >= 1.0 && value.Get_Number() <= 100.0; }))
 			return false;
-		const char* expectedChildren[] = { "VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH", "VALTAN_SEQUENCE_FOUR" };
-		for (size_t index = 0u; index < children->Get_Array().size(); ++index)
+		const DATA_JSON_VALUE* ownerId = pattern.Find("patternId");
+		std::unordered_set<std::string> childIds;
+		for (const DATA_JSON_VALUE& childId : children->Get_Array())
 		{
-			const DATA_JSON_VALUE& childId = children->Get_Array()[index];
-			if (!childId.Is_String() || childId.Get_String() != expectedChildren[index])
+			if (!childId.Is_String() || !Is_StableId(childId.Get_String()) ||
+				!childIds.insert(childId.Get_String()).second ||
+				(nullptr != ownerId && ownerId->Is_String() &&
+				 ownerId->Get_String() == childId.Get_String()))
 				return false;
 			const auto child = std::find_if(patterns.begin(), patterns.end(),
 				[&childId](const DATA_JSON_VALUE& candidate)
@@ -374,7 +381,34 @@ namespace
 		if (!Read_String(*motion, "kind", false, kind))
 			return false;
 		if (kind == "PORTAL_TARGET_RUSH")
-			return Is_ExactObject(*motion, { "kind" });
+		{
+			uint32_t stageDurationMs = 0u;
+			uint32_t retargetDelayMs = 0u;
+			if (!Is_ExactObject(*motion,
+					{ "kind", "retargetDelayMs", "speedMps", "distanceM" }) ||
+				!Read_Unsigned(stage, "durationMs",
+					MAX_REFERENCE_STAGE_DURATION_MS, stageDurationMs) ||
+				0u == stageDurationMs ||
+				!Read_Unsigned(*motion, "retargetDelayMs", stageDurationMs,
+					retargetDelayMs) ||
+				!Is_FiniteNumber(*motion, "speedMps") ||
+				!Is_FiniteNumber(*motion, "distanceM"))
+			{
+				return false;
+			}
+			const double speedMps = motion->Find("speedMps")->Get_Number();
+			const double distanceM = motion->Find("distanceM")->Get_Number();
+			if (speedMps <= 0.0 || speedMps > 1000.0 ||
+				distanceM <= 0.0 || distanceM > 1000.0)
+			{
+				return false;
+			}
+			const double travelEndMs = static_cast<double>(retargetDelayMs) +
+				distanceM / speedMps * 1000.0;
+			outHasForwardMotion =
+				travelEndMs <= static_cast<double>(stageDurationMs) + 0.000001;
+			return outHasForwardMotion;
+		}
 		if (kind == "PORTAL_CROSS_ARENA")
 		{
 			uint32_t cornerIndex = 0u;
@@ -456,7 +490,8 @@ namespace
 					!Is_StableId(targetId) ||
 					!Read_String(action, "targetingPolicy", false,
 						targetingPolicy) ||
-					targetingPolicy != "PER_ALIVE_PLAYER" ||
+					(targetingPolicy != "PER_ALIVE_PLAYER" &&
+					 targetingPolicy != "BOSS_RELATIVE") ||
 					!Read_String(action, "layout", false, layout) ||
 					!Read_Unsigned(action, "countPerResolvedTarget", 8u,
 						countPerResolvedTarget) ||
@@ -473,26 +508,20 @@ namespace
 						static_cast<uint64_t>(stageDurationMs) ||
 					!Read_Unsigned(action, "arenaRandomCount", 32u,
 						arenaRandomCount) ||
-					0u == arenaRandomCount ||
-					maximumTotalObjects <
-						countPerResolvedTarget + arenaRandomCount ||
 					!Is_FiniteNumber(action, "radiusM") ||
 					!Is_FiniteNumber(action, "startAngleDegrees") ||
 					!Is_FiniteNumber(action, "angleStepDegrees") ||
 					!Is_Boolean(action, "allowOverlap") ||
 					!Is_FiniteNumber(action, "arenaRandomRadiusM") ||
-					action.Find("arenaRandomRadiusM")->Get_Number() <= 0.0 ||
+					action.Find("arenaRandomRadiusM")->Get_Number() < 0.0 ||
 					action.Find("arenaRandomRadiusM")->Get_Number() > 1000.0 ||
 					!Is_FiniteNumber(action, "arenaHeightToleranceM") ||
 					action.Find("arenaHeightToleranceM")->Get_Number() < 0.0 ||
 					action.Find("arenaHeightToleranceM")->Get_Number() > 1000.0 ||
 					!Read_String(action, "arenaAnchorPolicy", false,
 						arenaAnchorPolicy) ||
-					arenaAnchorPolicy != "BOSS_SPAWN_POSITION" ||
-					3u != spawnCount || 1333u != spawnIntervalMs ||
-					4u != arenaRandomCount ||
-					14.0 != action.Find("arenaRandomRadiusM")->Get_Number() ||
-					1.0 != action.Find("arenaHeightToleranceM")->Get_Number())
+					maximumTotalObjects <
+						countPerResolvedTarget + arenaRandomCount)
 				{
 					return false;
 				}
@@ -505,11 +534,32 @@ namespace
 				const bool_t allowOverlap =
 					action.Find("allowOverlap")->Get_Boolean();
 				const bool_t isSingle = 1u == countPerResolvedTarget;
+				const bool_t isPerAliveArenaContract =
+					targetingPolicy == "PER_ALIVE_PLAYER" &&
+					arenaRandomCount > 0u &&
+					action.Find("arenaRandomRadiusM")->Get_Number() > 0.0 &&
+					action.Find("arenaHeightToleranceM")->Get_Number() > 0.0 &&
+					arenaAnchorPolicy == "BOSS_SPAWN_POSITION";
+				const bool_t isBossRelativeContract =
+					targetingPolicy == "BOSS_RELATIVE" &&
+					countPerResolvedTarget >= 2u &&
+					maximumTotalObjects >= countPerResolvedTarget &&
+					1u == spawnCount && 0u == spawnIntervalMs &&
+					0u == arenaRandomCount &&
+					0.0 == action.Find("arenaRandomRadiusM")->Get_Number() &&
+					0.0 == action.Find("arenaHeightToleranceM")->Get_Number() &&
+					arenaAnchorPolicy == "NONE" && layout == "RADIAL" &&
+					radius > 0.0 && angleStep > 0.0 &&
+					angleStep * static_cast<double>(countPerResolvedTarget) <=
+						360.000001 && !allowOverlap;
 				if (radius < 0.0 ||
 					(isSingle && (layout != "SINGLE" || 0.0 != radius ||
 						0.0 != startAngle || 0.0 != angleStep || allowOverlap)) ||
 					(!isSingle && (layout != "RADIAL" || radius <= 0.0 ||
-						0.0 == angleStep || allowOverlap)))
+						angleStep <= 0.0 ||
+						angleStep * static_cast<double>(countPerResolvedTarget) >
+							360.000001 || allowOverlap)) ||
+					(!isPerAliveArenaContract && !isBossRelativeContract))
 				{
 					return false;
 				}
@@ -578,7 +628,6 @@ namespace
 				!Is_StableId(targetId) ||
 				!Read_Unsigned(action, "value", UINT32_MAX, value) ||
 				!Read_Unsigned(action, "durationMs", UINT32_MAX, durationMs) ||
-				0u != durationMs ||
 				(trigger != "ENTER" && trigger != "EXIT"))
 			{
 				return false;
@@ -591,7 +640,8 @@ namespace
 					targetId == "boss.attachment.left-hand" :
 					0u == targetId.find("damage.");
 				const DATA_JSON_VALUE* hitShape = stage.Find("hitShape");
-				if (trigger != "ENTER" || 0u != value || !validTarget ||
+				if (trigger != "ENTER" || 0u != value || 0u != durationMs ||
+					!validTarget ||
 					actions->Get_Array().size() != 1u || nullptr == hitShape ||
 					!hitShape->Is_String() || hitShape->Get_String() != "NONE")
 				{
@@ -608,23 +658,41 @@ namespace
 			{
 				validKind = (targetId == "boss.flag.groggy" ||
 					targetId == "boss.flag.invulnerable" ||
-					targetId == "boss.flag.counterable") && value <= 1u;
+					targetId == "boss.flag.counterable") && value <= 1u &&
+					0u == durationMs;
 			}
 			else if (kind == "SET_STAGGER_GAUGE")
-				validKind = targetId == "boss.gauge.stagger";
+				validKind = targetId == "boss.gauge.stagger" && 0u == durationMs;
 			else if (kind == "SET_SHIELD")
-				validKind = targetId == "boss.gauge.shield";
+				validKind = targetId == "boss.gauge.shield" && 0u == durationMs;
+			else if (kind == "SET_PLAYER_BIND")
+			{
+				validKind = targetId == "player.status.bind" &&
+					((trigger == "ENTER" && 10000u == value &&
+					  durationMs >= 100u && durationMs <= 120000u) ||
+					 (trigger == "EXIT" && 0u == value && 0u == durationMs));
+			}
+			else if (kind == "SET_PLAYER_SILENCE")
+			{
+				validKind = targetId == "player.status.silence" &&
+					((trigger == "ENTER" && 1u == value &&
+					  durationMs >= 100u && durationMs <= 120000u) ||
+					 (trigger == "EXIT" && 0u == value && 0u == durationMs));
+			}
 			else if (kind == "SPAWN_COMBAT_OBJECT")
-				validKind = trigger == "ENTER" && 1u == value;
+				validKind = trigger == "ENTER" && 1u == value && 0u == durationMs;
 			else if (kind == "SET_GAMEPLAY_PHASE")
 				validKind = trigger == "ENTER" &&
-					targetId == "boss.phase.gameplay" && 2u == value;
+					targetId == "boss.phase.gameplay" && 2u == value &&
+					0u == durationMs;
 			else if (kind == "RETARGET_RANDOM_ALIVE")
 				validKind = trigger == "ENTER" &&
-					targetId == "boss.target.pattern" && 1u == value;
+					targetId == "boss.target.pattern" && 1u == value &&
+					0u == durationMs;
 			else if (kind == "RETURN_TO_ARENA_CENTER")
 				validKind = trigger == "ENTER" &&
-					targetId == "boss.arena.center" && 1u == value;
+					targetId == "boss.arena.center" && 1u == value &&
+					0u == durationMs;
 			if (!validKind || (trigger == "ENTER" ? 0u == value : 0u != value))
 				return false;
 
@@ -813,8 +881,6 @@ bool_t Client::CEncounterPatternReference::Load(
 
 		ENCOUNTER_PATTERN_REFERENCE pattern;
 		std::string category;
-		std::string targetPolicy;
-		std::string aimPolicy;
 		uint32_t minimumPhase = 0u;
 		uint32_t maximumPhase = 0u;
 		uint32_t ignored = 0u;
@@ -831,15 +897,17 @@ bool_t Client::CEncounterPatternReference::Load(
 			!Read_Unsigned(entry, "minimumPhase", 3u, minimumPhase) ||
 			!Read_Unsigned(entry, "maximumPhase", 3u, maximumPhase) ||
 			0u == minimumPhase || minimumPhase > maximumPhase ||
-			!Read_String(entry, "targetPolicy", false, targetPolicy) ||
-			(targetPolicy != "NONE" && targetPolicy != "NEAREST_EACH_TICK" &&
-				targetPolicy != "LOCK_NEAREST_ON_START" &&
-				targetPolicy != "LOCK_RANDOM_ALIVE_ON_START" &&
-				targetPolicy != "LOCK_RANDOM_ALIVE_BEHIND_ON_START") ||
-			!Read_String(entry, "aimPolicy", false, aimPolicy) ||
-			(aimPolicy != "NONE" && aimPolicy != "TRACK_TARGET_EACH_TICK" &&
-				aimPolicy != "LOCK_FACING_ON_START" &&
-				aimPolicy != "FACE_MOTION_ANCHOR") ||
+			!Read_String(entry, "targetPolicy", false, pattern.targetPolicy) ||
+			(pattern.targetPolicy != "NONE" &&
+				pattern.targetPolicy != "NEAREST_EACH_TICK" &&
+				pattern.targetPolicy != "LOCK_NEAREST_ON_START" &&
+				pattern.targetPolicy != "LOCK_RANDOM_ALIVE_ON_START" &&
+				pattern.targetPolicy != "LOCK_RANDOM_ALIVE_BEHIND_ON_START") ||
+			!Read_String(entry, "aimPolicy", false, pattern.aimPolicy) ||
+			(pattern.aimPolicy != "NONE" &&
+				pattern.aimPolicy != "TRACK_TARGET_EACH_TICK" &&
+				pattern.aimPolicy != "LOCK_FACING_ON_START" &&
+				pattern.aimPolicy != "FACE_MOTION_ANCHOR") ||
 			!Read_Unsigned(entry, "minimumHealthBar", 1000u, ignored) ||
 			!Read_Unsigned(entry, "maximumHealthBar", 1000u, ignored) ||
 			!Read_Unsigned(entry, "triggerHealthBar", 1000u,
@@ -913,7 +981,7 @@ bool_t Client::CEncounterPatternReference::Load(
 					"pushRangeM", "pushMs", "knockdown", "downMs" },
 					{ "hitOffsetsMs", "motion", "actions", "branches",
 					  "playerResponse", "attachmentSlot", "partDamagePolicy",
-					  "counterProxy" }))
+					  "counterProxy", "hitAnchor", "hitActivation" }))
 			{
 				outStatus = "Encounter stage has unexpected properties: " +
 					pattern.patternId;
@@ -990,6 +1058,59 @@ bool_t Client::CEncounterPatternReference::Load(
 				}
 				stage.bHasCounterProxy = true;
 			}
+			const DATA_JSON_VALUE* hitAnchor = stageEntry.Find("hitAnchor");
+			if (nullptr != hitAnchor)
+			{
+				if (!Is_ExactObject(*hitAnchor,
+						{ "kind", "forwardOffsetM", "rightOffsetM",
+						  "yawOffsetDegrees" }) ||
+					!Read_String(*hitAnchor, "kind", false,
+						stage.hitAnchorKind) ||
+					("BOSS_CURRENT" != stage.hitAnchorKind &&
+					 "STAGE_ORIGIN" != stage.hitAnchorKind) ||
+					!Read_Float(*hitAnchor, "forwardOffsetM",
+						stage.fHitAnchorForwardOffsetM) ||
+					!Read_Float(*hitAnchor, "rightOffsetM",
+						stage.fHitAnchorRightOffsetM) ||
+					!Read_Float(*hitAnchor, "yawOffsetDegrees",
+						stage.fHitAnchorYawOffsetDegrees) ||
+					std::fabs(stage.fHitAnchorForwardOffsetM) > 1000.f ||
+					std::fabs(stage.fHitAnchorRightOffsetM) > 1000.f ||
+					std::fabs(stage.fHitAnchorYawOffsetDegrees) > 360.f)
+				{
+					outStatus = "Encounter stage hit anchor is invalid: " +
+						pattern.patternId + "/" + stage.stageId;
+					return false;
+				}
+				stage.bHasHitAnchor = true;
+			}
+			const DATA_JSON_VALUE* hitActivation =
+				stageEntry.Find("hitActivation");
+			if (nullptr != hitActivation)
+			{
+				std::string kind;
+				std::string perTargetPolicy;
+				if (!Is_ExactObject(*hitActivation,
+						{ "kind", "startMs", "lifetimeMs",
+						  "perTargetPolicy" }) ||
+					!Read_String(*hitActivation, "kind", false, kind) ||
+					"ACTIVE_WINDOW" != kind ||
+					!Read_String(*hitActivation, "perTargetPolicy", false,
+						perTargetPolicy) || "ONCE" != perTargetPolicy ||
+					!Read_Unsigned(*hitActivation, "startMs",
+						MAX_STAGE_DURATION_MS, stage.iHitActivationStartMs) ||
+					!Read_Unsigned(*hitActivation, "lifetimeMs",
+						MAX_STAGE_DURATION_MS, stage.iHitActivationLifetimeMs) ||
+					0u == stage.iHitActivationLifetimeMs ||
+					static_cast<uint64_t>(stage.iHitActivationStartMs) +
+						stage.iHitActivationLifetimeMs > stage.iDurationMs)
+				{
+					outStatus = "Encounter stage hit activation is invalid: " +
+						pattern.patternId + "/" + stage.stageId;
+					return false;
+				}
+				stage.bHasHitActivation = true;
+			}
 			const DATA_JSON_VALUE* playerResponse =
 				stageEntry.Find("playerResponse");
 			const DATA_JSON_VALUE* attachmentSlot =
@@ -1040,8 +1161,13 @@ bool_t Client::CEncounterPatternReference::Load(
 			const bool_t validEmptyHitSchedule = 0u == stage.iHitCount &&
 				!hasExplicitHitOffsets && 0u == stage.iHitIntervalMs &&
 				0u == stage.iHitDelayMs;
-			if (!validExplicitHitSchedule && !validLegacyHitSchedule &&
-				!validEmptyHitSchedule)
+			const bool_t validActiveWindow = stage.bHasHitActivation &&
+				validEmptyHitSchedule && "NONE" != stage.hitShape;
+			if ((!stage.bHasHitActivation && !validExplicitHitSchedule &&
+				 !validLegacyHitSchedule && !validEmptyHitSchedule) ||
+				(stage.bHasHitActivation && !validActiveWindow) ||
+				("NONE" == stage.hitShape &&
+				 (stage.bHasHitAnchor || stage.bHasHitActivation)))
 			{
 				outStatus = "Encounter stage hit schedule is invalid: " +
 					pattern.patternId + "/" + stage.stageId;
@@ -1088,11 +1214,29 @@ bool_t Client::CEncounterPatternReference::Load(
 			pattern.patternId == "VALTAN_TRASH_CATCH_SUCCESS" ||
 			pattern.patternId == "VALTAN_TRASH_CATCH_FAIL";
 		if (!Validate_PatternServerMotion(entry) ||
-			!Validate_PatternFinale(entry, patterns->Get_Array()) ||
+			!Validate_PatternFinale(entry, patterns->Get_Array(), bossArchetypeId) ||
 			(isTrash && !Validate_FiniteStageGraph(entry)))
 		{
 			outStatus = "Encounter pattern extensions are invalid: " + pattern.patternId;
 			return false;
+		}
+		const DATA_JSON_VALUE* serverMotion = entry.Find("serverMotion");
+		if (nullptr != serverMotion && serverMotion->Is_Object())
+		{
+			ENCOUNTER_PATTERN_SERVER_MOTION_REFERENCE projectedMotion;
+			projectedMotion.kind =
+				serverMotion->Find("kind")->Get_String();
+			projectedMotion.anchorId =
+				serverMotion->Find("anchorId")->Get_String();
+			const DATA_JSON_VALUE::ARRAY& landing =
+				serverMotion->Find("landingPosition")->Get_Array();
+			for (size_t coordinate = 0u;
+				coordinate < projectedMotion.landingPosition.size(); ++coordinate)
+			{
+				projectedMotion.landingPosition[coordinate] =
+					static_cast<f32_t>(landing[coordinate].Get_Number());
+			}
+			pattern.serverMotion = std::move(projectedMotion);
 		}
 		staged.push_back(std::move(pattern));
 	}

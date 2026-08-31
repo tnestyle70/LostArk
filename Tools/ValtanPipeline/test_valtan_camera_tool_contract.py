@@ -269,7 +269,6 @@ cues = {row["cueId"]: row for row in data["cues"]}
 entrance_establish = cues.get("camera.valtan.entrance.establish")
 entrance_reveal = cues.get("camera.valtan.entrance.arena-reveal")
 entrance_handoff = cues.get("camera.valtan.entrance.hero-handoff")
-entrance_idle_orbit = cues.get("camera.valtan.entrance-idle.orbit")
 require(
     entrance_establish is not None and
     entrance_establish.get("patternId") == "VALTAN_ENTRANCE_CINEMATIC" and
@@ -301,39 +300,6 @@ require(
     entrance_handoff.get("easing") == "LINEAR",
     "Valtan entrance hero handoff camera tuple/timing is invalid",
 )
-require(
-    entrance_idle_orbit is not None and
-    entrance_idle_orbit.get("patternId") == "VALTAN_ENTRANCE_CINEMATIC_IDLE" and
-    entrance_idle_orbit.get("stageId") == "HOLD" and
-    entrance_idle_orbit.get("trackingMode") == "BOSS_FACING" and
-    len(entrance_idle_orbit.get("trackingOrigin") or []) == 3 and
-    # The tool serializer round-trips through float32, so the origin is
-    # pinned with a tolerance instead of exact decimal text equality.
-    all(abs(component - expected) <= 0.001 for component, expected in zip(
-        entrance_idle_orbit["trackingOrigin"],
-        [156.03, 22.99751, -122.06])) and
-    entrance_idle_orbit.get("durationMs") == 12000 and
-    entrance_idle_orbit.get("transitionInMs") == 300 and
-    entrance_idle_orbit.get("transitionOutMs") == 500 and
-    entrance_idle_orbit.get("interpolation") == "CATMULL_ROM" and
-    entrance_idle_orbit.get("easing") == "LINEAR" and
-    entrance_idle_orbit.get("shakeAmplitude") == 0 and
-    entrance_idle_orbit.get("shakeDurationMs") == 0,
-    "Valtan idle entrance orbit camera tuple/timing is invalid",
-)
-idle_orbit_frames = entrance_idle_orbit["keyframes"]
-idle_orbit_origin = entrance_idle_orbit["trackingOrigin"]
-require(
-    len(idle_orbit_frames) == 9 and
-    [row["timeMs"] for row in idle_orbit_frames] ==
-    [0, 1500, 3000, 4500, 6000, 7500, 9000, 10500, 12000] and
-    all(
-        (row["eye"][0] - idle_orbit_origin[0]) ** 2 +
-        (row["eye"][2] - idle_orbit_origin[2]) ** 2 <= 12.0 ** 2
-        for row in idle_orbit_frames
-    ),
-    "Valtan idle entrance must keep all nine authored frames inside the 12 m arena radius",
-)
 wide_reveal = cues["camera.valtan.arena-break-109.wide-reveal"]
 require(wide_reveal.get("trackingMode") == "BOSS_FACING" and
         wide_reveal.get("transitionInMs") == 250,
@@ -355,7 +321,6 @@ scripted_sequence = gameplay["decisionModel"]["scriptedSequence"]
 saved_flows = json.loads(read("Data/Encounters/Valtan/ValtanBossAuditionFlows.json"))
 saved_flow = next(row for row in saved_flows["flows"]
                   if row["flowId"] == scripted_sequence["flowId"])
-saved_pattern_ids = [row["patternId"] for row in saved_flow["slots"]]
 product_sequence = json.loads(read(
     "Data/Encounters/Valtan/ValtanPatternRotations.json"))["scriptedSequence"]
 require(
@@ -363,14 +328,8 @@ require(
     product_sequence["sequenceId"] == scripted_sequence["sequenceId"] and
     product_sequence["mode"] == scripted_sequence["mode"] and
     product_sequence["interStepPursuitMs"] == saved_flow["interStepPursuitMs"] and
-    product_sequence["patternIds"] == saved_pattern_ids,
+    product_sequence["patternIds"] == [row["patternId"] for row in saved_flow["slots"]],
     "Server sequence must preserve the selected saved Flow order, including an optional entrance",
-)
-require(
-    saved_pattern_ids[0] == "VALTAN_ENTRANCE_CINEMATIC_IDLE" and
-    saved_pattern_ids.count("VALTAN_ENTRANCE_CINEMATIC_IDLE") == 1 and
-    "VALTAN_ENTRANCE_CINEMATIC" not in saved_pattern_ids,
-    "The saved Product Flow must select only entrance cinematic 2 at its first slot",
 )
 entrance_gameplay = next(
     row for row in gameplay["patterns"]
@@ -407,64 +366,6 @@ require(
     "Valtan entrance camera invocation and final handoff wall do not close exactly",
 )
 
-idle_entrance_gameplay = next(
-    row for row in gameplay["patterns"]
-    if row["patternId"] == "VALTAN_ENTRANCE_CINEMATIC_IDLE"
-)
-require(
-    idle_entrance_gameplay["actionId"] == "valtan.cinematic.entrance-idle" and
-    idle_entrance_gameplay["entryActionId"] ==
-    "valtan.cinematic.entrance-idle.hold" and
-    idle_entrance_gameplay["targetPolicy"] == "NONE" and
-    idle_entrance_gameplay["aimPolicy"] == "NONE" and
-    idle_entrance_gameplay["invulnerableWhileRunning"] is True and
-    idle_entrance_gameplay["serverMotion"] is None and
-    len(idle_entrance_gameplay["stages"]) == 1 and
-    idle_entrance_gameplay["stages"][0]["stageId"] == "HOLD" and
-    idle_entrance_gameplay["stages"][0]["actionId"] ==
-    "valtan.cinematic.entrance-idle.hold" and
-    idle_entrance_gameplay["stages"][0]["stageKind"] == "ACTIVE" and
-    idle_entrance_gameplay["stages"][0]["durationMs"] == 12500 and
-    idle_entrance_gameplay["stages"][0]["hit"]["shape"]["kind"] == "NONE" and
-    idle_entrance_gameplay["stages"][0]["motion"] is None and
-    idle_entrance_gameplay["stages"][0]["events"] == [] and
-    idle_entrance_gameplay["stages"][0]["branches"] == [],
-    "Valtan entrance cinematic 2 is not an exact invulnerable, non-damaging 12.5s HOLD",
-)
-idle_entrance_presentation = next(
-    row for row in presentation["patterns"]
-    if row["patternId"] == "VALTAN_ENTRANCE_CINEMATIC_IDLE"
-)
-idle_hold_presentation = idle_entrance_presentation["stages"][0]
-idle_hold_occurrences = idle_hold_presentation["animation"]["occurrences"]
-idle_hold_invocations = idle_hold_presentation["cameraInvocations"]
-require(
-    len(idle_entrance_presentation["stages"]) == 1 and
-    idle_hold_presentation["stageId"] == "HOLD" and
-    idle_hold_presentation["actionId"] ==
-    "valtan.cinematic.entrance-idle.hold" and
-    idle_hold_presentation["sequenceRole"] == "HOLD" and
-    idle_hold_presentation["animation"]["endPolicy"] == "LOOP_TO_STAGE_END" and
-    len(idle_hold_occurrences) == 1 and
-    idle_hold_occurrences[0]["clip"] == "mesh_idle_battle_1" and
-    idle_hold_occurrences[0]["playRate"] == 1.0 and
-    idle_hold_occurrences[0]["repeatUntilStageEnd"] is True and
-    idle_hold_presentation["effectCues"] == [] and
-    len(idle_hold_invocations) == 1 and
-    idle_hold_invocations[0]["cameraInvocationId"] ==
-    "camera.valtan.entrance-idle.orbit.invocation" and
-    idle_hold_invocations[0]["cameraCueId"] ==
-    "camera.valtan.entrance-idle.orbit" and
-    idle_hold_invocations[0]["trigger"] == "ENTER" and
-    idle_hold_invocations[0]["startOffsetMs"] == 0 and
-    idle_hold_invocations[0]["durationPolicy"] == "EXPLICIT" and
-    idle_hold_invocations[0]["durationMs"] == 12000 and
-    idle_hold_invocations[0]["durationMs"] +
-    entrance_idle_orbit["transitionOutMs"] ==
-    idle_entrance_gameplay["stages"][0]["durationMs"],
-    "Valtan entrance cinematic 2 must loop the battle idle under one exact 12s camera invocation",
-)
-
 raid_bgm_begin = valtan_runtime.index("void CValtan::Update_RaidBgm")
 raid_bgm_end = valtan_runtime.index(
     "bool_t CValtan::Apply_NetworkState", raid_bgm_begin
@@ -474,9 +375,6 @@ require(
     'constexpr const char_t* VALTAN_CINEMATIC_ENTRANCE_PATTERN_ID' in
     valtan_runtime and
     '"VALTAN_ENTRANCE_CINEMATIC";' in valtan_runtime and
-    'constexpr const char_t* VALTAN_IDLE_CINEMATIC_ENTRANCE_PATTERN_ID' in
-    valtan_runtime and
-    '"VALTAN_ENTRANCE_CINEMATIC_IDLE";' in valtan_runtime and
     'constexpr const char_t* VALTAN_ENTRANCE_PATTERN_ID' in valtan_runtime and
     '"VALTAN_ENTRANCE_WHIRLWIND";' in valtan_runtime,
     "Valtan BGM must distinguish the camera-only entrance from the whirlwind entrance",
@@ -503,8 +401,6 @@ require(
 cinematic_branch = raid_bgm_body[cinematic_begin:entrance_begin]
 require(
     "return;" in cinematic_branch and
-    "VALTAN_IDLE_CINEMATIC_ENTRANCE_PATTERN_ID == patternId" in
-    raid_bgm_body[:cinematic_begin] and
     "Transition_RaidBgm" not in cinematic_branch and
     "m_hasObservedEntrancePattern" not in cinematic_branch,
     "VALTAN_ENTRANCE_CINEMATIC must preserve Level-owned M04 without entrance state",

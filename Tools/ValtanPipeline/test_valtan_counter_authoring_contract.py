@@ -75,7 +75,19 @@ class ValtanCounterAuthoringContractTests(unittest.TestCase):
         enabled: bool = True,
         success_stage_id: str = "GROGGY",
         success_action_id: str = "valtan.sequence.center-trash-rush-if.groggy",
+        timeout_stage_id: str | None = None,
+        timeout_action_id: str | None = None,
     ) -> dict:
+        if timeout_stage_id is None or timeout_action_id is None:
+            if pattern_id == "VALTAN_TRASH_CATCH_IF":
+                timeout_stage_id = "STEP_08"
+                timeout_action_id = "valtan.sequence.rush-if.step-08"
+            elif pattern_id == "VALTAN_DASH_CHARGE":
+                timeout_stage_id = "CHARGE"
+                timeout_action_id = "valtan.attack.dash-charge.active"
+            else:
+                timeout_stage_id = "STEP_08"
+                timeout_action_id = "valtan.sequence.center-trash-rush-if.step-08"
         return {
             "op": "SET_STAGE_COUNTER_WINDOW",
             "patternId": pattern_id,
@@ -83,6 +95,26 @@ class ValtanCounterAuthoringContractTests(unittest.TestCase):
             "enabled": enabled,
             "successStageId": success_stage_id,
             "successActionId": success_action_id,
+            "timeoutStageId": timeout_stage_id,
+            "timeoutActionId": timeout_action_id,
+        }
+
+    @staticmethod
+    def proxy_operation(
+        *,
+        pattern_id: str = "VALTAN_TRASH",
+        stage_id: str = "STEP_07",
+        forward_offset_m: float = 1.5,
+        right_offset_m: float = -0.25,
+        radius_m: float = 2.75,
+    ) -> dict:
+        return {
+            "op": "SET_STAGE_COUNTER_PROXY",
+            "patternId": pattern_id,
+            "stageId": stage_id,
+            "forwardOffsetM": forward_offset_m,
+            "rightOffsetM": right_offset_m,
+            "radiusM": radius_m,
         }
 
     def test_repository_counter_targets_are_closed_groggy_stages(self) -> None:
@@ -224,6 +256,61 @@ class ValtanCounterAuthoringContractTests(unittest.TestCase):
             [{"outcome": "COUNTER_HIT", "nextActionId": target["actionId"]}],
         )
 
+    def test_typed_counter_proxy_operation_updates_only_exact_enabled_window(self) -> None:
+        before = copy.deepcopy(self.master)
+        candidate = self.apply(self.proxy_operation())
+        proxy = _stage(_pattern(candidate, "VALTAN_TRASH"), "STEP_07")[
+            "counterProxy"
+        ]
+        self.assertEqual(
+            {
+                "space": "BOSS_LOCAL",
+                "forwardOffsetM": 1.5,
+                "rightOffsetM": -0.25,
+                "radiusM": 2.75,
+            },
+            proxy,
+        )
+        _stage(_pattern(candidate, "VALTAN_TRASH"), "STEP_07")[
+            "counterProxy"
+        ] = copy.deepcopy(
+            _stage(_pattern(before, "VALTAN_TRASH"), "STEP_07")[
+                "counterProxy"
+            ]
+        )
+        self.assertEqual(before, candidate)
+
+    def test_counter_proxy_rejects_wrong_stage_disabled_window_range_and_duplicate(self) -> None:
+        disabled = self.apply(self.operation(enabled=False))
+        invalid_cases = (
+            (self.master, self.proxy_operation(stage_id="STEP_08")),
+            (disabled, self.proxy_operation()),
+            (self.master, self.proxy_operation(radius_m=0.0)),
+            (self.master, self.proxy_operation(forward_offset_m=20.1)),
+            (self.master, self.proxy_operation(right_offset_m=-20.1)),
+        )
+        for master, operation in invalid_cases:
+            with self.subTest(operation=operation):
+                with self.assertRaises(pipeline.DraftPatchError):
+                    self.apply(operation, master)
+
+        duplicate_patch = {
+            "schema": pipeline.DRAFT_PATCH_SCHEMA,
+            "formatVersion": 1,
+            "sourceRevision": self.source_revision,
+            "operations": [self.proxy_operation(), self.proxy_operation()],
+        }
+        with self.assertRaises(pipeline.DraftPatchError):
+            pipeline.apply_draft_patch(
+                copy.deepcopy(self.master),
+                copy.deepcopy(self.docs[pipeline.BOSS_PROFILES_REL]),
+                copy.deepcopy(self.docs[pipeline.DAMAGE_REL]),
+                duplicate_patch,
+                self.source_revision,
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+
     def test_invalid_kind_cross_pattern_stale_duplicate_and_unpaired_reject(self) -> None:
         invalid_cases: list[tuple[dict, dict]] = []
 
@@ -309,21 +396,24 @@ class ValtanCounterAuthoringContractTests(unittest.TestCase):
         combined = BALANCE_H.read_text(encoding="utf-8") + BALANCE_CPP.read_text(encoding="utf-8")
         for marker in (
             "VALTAN_COUNTER_WINDOW_EDIT",
+            "VALTAN_COUNTER_PROXY_EDIT",
             "Get_ValtanCounterWindowDraft",
             "Set_ValtanCounterWindowDraft",
+            "Get_ValtanCounterProxyDraft",
+            "Set_ValtanCounterProxyDraft",
             "SET_STAGE_COUNTER_WINDOW",
+            "SET_STAGE_COUNTER_PROXY",
             "Counter window (Server authority)",
             "successStageId",
             "successActionId",
+            "timeoutStageId",
+            "timeoutActionId",
         ):
             self.assertIn(marker, combined)
         self.assertNotIn("stagedStage->CounterProxy.reset()", combined)
-        self.assertIn(
-            "Counter proxy geometry preset changed outside its typed owner",
-            combined,
-        )
+        self.assertIn("Counter Box area staged for", combined)
         pattern_tree = PATTERN_TREE_CPP.read_text(encoding="utf-8")
-        self.assertIn("Validate_SplitCounterGroggyContract", pattern_tree)
+        self.assertIn("Validate_SplitCounterBranchContract", pattern_tree)
         self.assertIn("ProductCounterProxy", pattern_tree)
         server = SERVER_TESTS.read_text(encoding="utf-8")
         self.assertIn("Trash counter window fixed-tick admission", server)

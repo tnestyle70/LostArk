@@ -27,7 +27,6 @@ EXPECTED_SCRIPTED_SEQUENCE = {
     "mode": "ORDERED_ONCE_THEN_IDLE",
     "interStepPursuitMs": 1000,
     "patternIds": [
-        "VALTAN_ENTRANCE_CINEMATIC_IDLE",
         "VALTAN_WHIRLWIND",
         "VALTAN_FOUR_SLASH",
         "VALTAN_WHIRLWIND",
@@ -83,6 +82,28 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         return pipeline.migrate_v1_to_v2(
             self.root, copy.deepcopy(self.migration_docs)
         )
+
+    def copy_native_valtan_animation_fixture(self, repository_root: Path) -> None:
+        """Hydrate the two BossCatalog-owned WModels for a publisher fixture.
+
+        Product Resources are intentionally not part of source_manifest.  A
+        temporary repository that exercises final source/publish admission must
+        therefore opt into the real native timing inputs instead of relying on
+        an asset-less silent pass.
+        """
+
+        catalog = pipeline.read_json(self.root / pipeline.BOSS_CATALOG_REL)
+        valtan = next(
+            row
+            for row in catalog["bosses"]
+            if row["archetypeId"] == "BOSS_VALTAN"
+        )
+        for field in ("bodyModel", "animationSetId"):
+            relative = Path(*valtan[field].split("/"))
+            source = self.root / "Client/Bin/Resources" / relative
+            destination = repository_root / "Client/Bin/Resources" / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
 
     def with_manual_audition(
         self,
@@ -813,7 +834,10 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             if stage["stageId"] == "AIRBORNE"
         )
         airborne["events"] = []
-        with self.assertRaisesRegex(pipeline.PipelineError, "HIGH_JUMP/AIRBORNE"):
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "independent spawn is unresolved/duplicate",
+        ):
             pipeline.join_v2_authoring(
                 missing_volley,
                 copy.deepcopy(presentation),
@@ -957,13 +981,22 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             for event in impact["events"]
             if event["kind"] != "SET_GAMEPLAY_PHASE"
         ]
-        with self.assertRaisesRegex(pipeline.PipelineError, "ARENA_BREAK_109/IMPACT"):
-            pipeline.join_v2_authoring(
-                missing_phase,
-                copy.deepcopy(presentation),
-                self.docs[pipeline.WORLD_SET_REL],
-                self.docs[pipeline.COMBAT_AUTHORING_REL],
-            )
+        without_fixed_phase_transition = pipeline.join_v2_authoring(
+            missing_phase,
+            copy.deepcopy(presentation),
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        joined_impact = next(
+            stage
+            for pattern in without_fixed_phase_transition["patterns"]
+            if pattern["patternId"] == "VALTAN_ARENA_BREAK_109"
+            for stage in pattern["stages"]
+            if stage["stageId"] == "IMPACT"
+        )
+        self.assertFalse(
+            any(event["kind"] == "SET_GAMEPLAY_PHASE" for event in joined_impact["events"])
+        )
 
     def assert_v1_migration_fixture_is_excluded_from_normal_revision_and_load(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -976,6 +1009,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             fixture = repository_root / pipeline.MASTER_REL
             fixture.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(self.root / pipeline.MASTER_REL, fixture)
+            self.copy_native_valtan_animation_fixture(repository_root)
 
             before = pipeline.source_manifest(repository_root)
             fixture.write_bytes(b"not migration JSON\n")
@@ -1090,7 +1124,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         pipeline.validate_combat_authoring(companion)
         self.assertEqual({"combatobject.valtan.high-jump.target-axe",
                           "combatobject.valtan.red-blade-wave.projectile",
-                          "combatobject.valtan.fist-in-out.donut"},
+                          "combatobject.valtan.fist-in-out.donut",
+                          "combatobject.valtan.ground-roar.rock"},
                          {row["combatObjectArchetypeId"] for row in companion["objects"]})
         axe = next(
             row for row in companion["objects"]
@@ -1103,8 +1138,26 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
 
     def test_legacy_manifest_seals_unmanaged_closure(self) -> None:
         legacy = self.docs[pipeline.LEGACY_REL]
-        pipeline.validate_legacy_manifest(legacy, set(pipeline.MANAGED_PATTERN_IDS))
-        self.assertEqual(26, len(legacy["patternEntries"]))
+        current = pipeline.join_v2_authoring(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+            self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        managed_ids = {row["patternId"] for row in current["patterns"]}
+        pipeline.validate_legacy_manifest(legacy, managed_ids)
+        expected_legacy_ids = (
+            {
+                row["patternId"]
+                for row in self.docs[pipeline.ENCOUNTER_REL]["patterns"]
+                if row["patternId"] not in managed_ids
+            }
+            | set(pipeline.ARCHIVED_LEGACY_PATTERN_IDS)
+        )
+        self.assertEqual(
+            expected_legacy_ids,
+            {row["patternId"] for row in legacy["patternEntries"]},
+        )
         red_blade = next(
             row for row in legacy["legacyCombatObjectOwners"]
             if row["combatObjectArchetypeId"] == "combatobject.valtan.red-blade-wave.projectile"
@@ -1333,7 +1386,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         master = pipeline.join_v2_authoring(
             self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
             self.docs[pipeline.PRESENTATION_AUTHORING_REL],
-            pipeline.build_world_event_sets(self.docs[pipeline.WORLD_PRODUCT_REL]),
+            self.docs[pipeline.WORLD_SET_REL],
             self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
         trash = next(row for row in master["patterns"] if row["patternId"] == "VALTAN_TRASH")
@@ -1359,7 +1412,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                          [row["outcome"] for row in stages["CATCH_PRE_IMPACT"]["branches"]])
         self.assertEqual("DAMAGE_GRABBED_PLAYERS", stages["CATCH_SLAM"]["events"][0]["kind"])
         self.assertEqual("EXECUTE_GRABBED_PLAYERS", stages["EXECUTE_TAIL"]["events"][0]["kind"])
-        for terminal in ("CATCH_SLAM", "EXECUTE_TAIL", "RUSH_MISS", "GROGGY"):
+        for terminal in ("CATCH_SLAM", "EXECUTE_TAIL", "RETRY_EXHAUSTED", "GROGGY"):
             self.assertIsNone(stages[terminal]["defaultNextActionId"])
             self.assertEqual([{"outcome": "TIMEOUT", "nextActionId": None}],
                              stages[terminal]["branches"])
@@ -1386,7 +1439,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             if mutate == "bad_profile": bad_stage["events"][0]["damageProfileId"] = "boss.invalid"
             with self.subTest(mutation=mutate), self.assertRaises(pipeline.PipelineError):
                 pipeline.validate_v2_master(invalid,
-                    pipeline.build_world_event_sets(self.docs[pipeline.WORLD_PRODUCT_REL]),
+                    self.docs[pipeline.WORLD_SET_REL],
                     self.docs[pipeline.COMBAT_AUTHORING_REL])
 
     def test_grab_hit_and_release_actions_project_losslessly(self) -> None:
@@ -1461,7 +1514,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            ("ARENA_EJECTION", 24.0, 500, 0.0),
+            ("ARENA_EJECTION", 24.0, 500, 180.0),
             tuple(
                 next(
                     event for event in catch_release["events"]
@@ -1524,7 +1577,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 "releaseMode": "ARENA_EJECTION",
                 "speedMps": 24.0,
                 "durationMs": 500,
-                "yawOffsetDegrees": 0.0,
+                "yawOffsetDegrees": 180.0,
             },
             projected_catch["STEP_04"]["actions"],
         )
@@ -1568,8 +1621,15 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                      if stage["motion"] is not None]
         finale_legs = [stage for stage in owners["VALTAN_GHOST_FINALE"]["stages"]
                        if stage["motion"] is not None]
-        self.assertEqual([{"kind": "PORTAL_TARGET_RUSH"}] * 8,
+        self.assertEqual([{
+            "kind": "PORTAL_TARGET_RUSH", "retargetDelayMs": 500,
+            "speedMps": 20.0, "distanceM": 16.0,
+        }] * 8,
                          [stage["motion"] for stage in warp_legs])
+        self.assertEqual(
+            [list(range(500, 1300, 50))] * 8,
+            [stage["hit"]["schedule"]["offsetsMs"] for stage in warp_legs],
+        )
         self.assertEqual([
             {"kind": "PORTAL_CROSS_ARENA", "cornerIndex": index % 4,
              "halfExtentsM": [22.0, 22.0]}
@@ -1579,11 +1639,11 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             row["patternId"]: row
             for row in self.docs[pipeline.PRESENTATION_AUTHORING_REL]["patterns"]
         }
-        for stage in presentation["VALTAN_WARP"]["stages"][1:9]:
+        for stage in presentation["VALTAN_WARP"]["stages"][1:10]:
             cue = stage["effectCues"][0]
-            self.assertEqual("follow", cue["followPolicy"])
+            self.assertEqual("snapshot", cue["followPolicy"])
             self.assertEqual("root", cue["anchorSlotId"])
-            self.assertEqual([0.0, 0.0, 3.0], cue["localTransform"]["position"])
+            self.assertEqual([0.0, 0.0, 0.0], cue["localTransform"]["position"])
         for stage in presentation["VALTAN_GHOST_FINALE"]["stages"][1:9]:
             cue = stage["effectCues"][0]
             self.assertEqual("snapshot", cue["followPolicy"])
@@ -1593,7 +1653,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             with self.subTest(pattern=pattern_id):
                 owner = owners[pattern_id]
                 legs = [stage for stage in owner["stages"] if stage["motion"] is not None]
-                self.assertEqual([2000, *([900] * 8), 1667],
+                expected_leg_duration_ms = 2300 if pattern_id == "VALTAN_WARP" else 900
+                self.assertEqual([2000, *([expected_leg_duration_ms] * 8), 1667],
                                  [stage["durationMs"] for stage in owner["stages"]])
                 self.assertIsNone(owner["stages"][-1]["defaultNextActionId"])
                 self.assertEqual("RETURN_TO_ARENA_CENTER", owner["stages"][-1]["events"][0]["kind"])
@@ -1627,6 +1688,9 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 pipeline.validate_gameplay_authoring(invalid)
         for name, mutate in (
             ("target rush extra field", lambda motion: motion.update(distance=7.2654)),
+            ("target rush missing delay", lambda motion: motion.pop("retargetDelayMs")),
+            ("target rush zero speed", lambda motion: motion.update(speedMps=0.0)),
+            ("target rush overrun", lambda motion: motion.update(distanceM=37.0)),
             ("target rush unknown kind", lambda motion: motion.update(kind="PORTAL_NAV_FALLBACK")),
             ("warp changed to corner", lambda motion: motion.update(
                 kind="PORTAL_CROSS_ARENA", cornerIndex=0, halfExtentsM=[22.0, 22.0])),
@@ -1663,10 +1727,11 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         self.assertIn("VALTAN_GHOST_FINALE", {
             row["patternId"] for row in master["decisionModel"]["manualAuditions"]})
         self.assertEqual(
-            [row["patternId"]
-             for row in self.docs[pipeline.SAVED_FLOW_REL]["flows"][0]["slots"]],
+            self.saved_flow_pattern_ids(
+                self.docs[pipeline.SAVED_FLOW_REL]
+            ),
             master["decisionModel"]["scriptedSequence"]["patternIds"],
-            "joining derived patterns must preserve the user's saved Flow slots exactly",
+            "joining derived patterns must preserve the user's saved Flow graph projection exactly",
         )
 
     def test_ghost_finale_rejects_invalid_owner_shape_and_recursive_graphs(self) -> None:
@@ -1677,12 +1742,12 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             ("unknown kind", lambda row: row["finale"].update(kind="INFINITE_STAGE")),
             ("invulnerable owner cannot finish by death", lambda row: row.update(invulnerableWhileRunning=True)),
             ("wrong entity role", lambda row: row["finale"].update(ghostArchetypeId="BOSS_VALTAN")),
-            ("two children", lambda row: row["finale"].update(ghostPatternIds=["VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH"])),
+            ("empty children", lambda row: row["finale"].update(ghostPatternIds=[])),
             ("duplicate child", lambda row: row["finale"].update(ghostPatternIds=["VALTAN_WHIRLWIND"] * 3)),
             ("missing child", lambda row: row["finale"]["ghostPatternIds"].__setitem__(0, "VALTAN_UNKNOWN")),
             ("self child", lambda row: row["finale"]["ghostPatternIds"].__setitem__(0, row["patternId"])),
             ("terrain child", lambda row: row["finale"]["ghostPatternIds"].__setitem__(0, "VALTAN_ARENA_BREAK_109")),
-            ("unbounded child count", lambda row: row["finale"].update(maximumActiveGhosts=2)),
+            ("unbounded child capacity", lambda row: row["finale"].update(maximumActiveGhosts=65)),
             ("wrong extent dimensions", lambda row: row["finale"].update(spawnHalfExtentsM=[10.0, 10.0, 10.0])),
             ("zero extent", lambda row: row["finale"].update(spawnHalfExtentsM=[0.0, 10.0])),
             ("nonfinite extent", lambda row: row["finale"].update(spawnHalfExtentsM=[float("inf"), 10.0])),
@@ -1765,17 +1830,22 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.docs[pipeline.PRESENTATION_AUTHORING_REL],
             self.docs[pipeline.WORLD_SET_REL], self.docs[pipeline.COMBAT_AUTHORING_REL])
         mutations = [
-            ("missing landing authority", lambda row, cue: row.update(serverMotion=None)),
-            ("no preposition", lambda row, cue: row["serverMotion"].update(moveToAnchorBeforeTakeoff=False)),
-            ("moving effect root", lambda row, cue: cue.update(followPolicy="follow")),
-            ("unknown reserved anchor", lambda row, cue: cue.update(anchorSlotId="arena.center.unknown")),
-            ("unlocked facing", lambda row, cue: row.update(targetPolicy="NONE", aimPolicy="NONE")),
+            ("VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK", "missing landing authority",
+             lambda row, cue: row.update(serverMotion=None)),
+            ("VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK", "no preposition",
+             lambda row, cue: row["serverMotion"].update(moveToAnchorBeforeTakeoff=False)),
+            ("VALTAN_SIX_PIZZA_106", "moving effect root",
+             lambda row, cue: cue.update(followPolicy="follow")),
+            ("VALTAN_SIX_PIZZA_106", "unknown reserved anchor",
+             lambda row, cue: cue.update(anchorSlotId="arena.center.unknown")),
+            ("VALTAN_SIX_PIZZA_106", "unlocked target",
+             lambda row, cue: row.update(targetPolicy="NONE", aimPolicy="NONE")),
         ]
-        for name, mutate in mutations:
+        for pattern_id, name, mutate in mutations:
             invalid = copy.deepcopy(base)
-            pizza = next(row for row in invalid["patterns"] if row["patternId"] == "VALTAN_SIX_PIZZA_106")
-            cue = next(cue for stage in pizza["stages"] for cue in stage["effectCues"])
-            mutate(pizza, cue)
+            pattern = next(row for row in invalid["patterns"] if row["patternId"] == pattern_id)
+            cue = next(cue for stage in pattern["stages"] for cue in stage["effectCues"])
+            mutate(pattern, cue)
             with self.subTest(case=name), self.assertRaises(pipeline.PipelineError):
                 pipeline.validate_v2_master(invalid, self.docs[pipeline.WORLD_SET_REL],
                                             self.docs[pipeline.COMBAT_AUTHORING_REL])
@@ -1799,7 +1869,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             for stage in gameplay_pattern["stages"]
             if stage["stageId"] == "AIRBORNE"
         )
-        self.assertEqual(6500, gameplay_airborne["durationMs"])
+        self.assertEqual(8000, gameplay_airborne["durationMs"])
         self.assertEqual(
             {
                 "eventId": "event.valtan.high-jump.airborne.spawn-target-axe",
@@ -1864,7 +1934,15 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             for stage in product_pattern["stages"]
             if stage["stageId"] == "AIRBORNE"
         )
-        self.assertEqual(6500, product_airborne["durationMs"])
+        self.assertEqual(8000, product_airborne["durationMs"])
+        combat_product = json.loads(outputs[pipeline.COMBAT_PRODUCT_REL])
+        target_axe = next(
+            row
+            for row in combat_product["objects"]
+            if row["combatObjectArchetypeId"]
+            == "combatobject.valtan.high-jump.target-axe"
+        )
+        self.assertEqual(8000, target_axe["lifeMs"])
         self.assertEqual(
             {
                 "spawnCount": 3,
@@ -1993,15 +2071,6 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     {"worldScale": [1.5, 0.0, 1.5]}
                 ),
             ),
-            mutate(
-                "cue.valtan.project-tuned.attack.dash-charge.active-shield",
-                lambda cue: cue["scalePolicy"].update(
-                    {
-                        "kind": "GAMEPLAY_FOOTPRINT",
-                        "worldScale": [1.5, 1.5, 1.5],
-                    }
-                ),
-            ),
         ]
         for presentation in cases:
             with self.subTest(), self.assertRaises(pipeline.PipelineError):
@@ -2011,6 +2080,21 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     self.docs[pipeline.WORLD_SET_REL],
                     self.docs[pipeline.COMBAT_AUTHORING_REL],
                 )
+        authorable_policy_change = mutate(
+            "cue.valtan.project-tuned.attack.dash-charge.active-shield",
+            lambda cue: cue["scalePolicy"].update(
+                {
+                    "kind": "GAMEPLAY_FOOTPRINT",
+                    "worldScale": [1.5, 1.5, 1.5],
+                }
+            ),
+        )
+        pipeline.join_v2_authoring(
+            copy.deepcopy(gameplay),
+            authorable_policy_change,
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
 
     def test_dash_charge_uses_one_visible_server_and_presentation_clock(self) -> None:
         gameplay = self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
@@ -2502,7 +2586,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.docs[pipeline.DAMAGE_REL],
             draft,
             self.source_manifest["sourceManifestId"],
-            self.docs[pipeline.WORLD_SET_REL],
+            pipeline.build_world_event_sets(self.docs[pipeline.WORLD_PRODUCT_REL]),
             self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
         self.assertEqual(9, count)
@@ -2568,17 +2652,6 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ("pattern:VALTAN_WHIRLWIND", "patterns[16].selectionWeight")
             ]
             self.assertEqual(20, weight_entry["resultValue"])
-            idle_entries = [
-                row
-                for row in receipt["entries"]
-                if row["targetId"] == "pattern:VALTAN_ENTRANCE_CINEMATIC_IDLE"
-            ]
-            self.assertEqual(22, len(idle_entries))
-            self.assertTrue(all(row["basis"] == "PROJECT_TUNED" for row in idle_entries))
-            self.assertEqual(35, receipt["coverage"]["encounterPatternCount"])
-            self.assertEqual(
-                len(receipt["entries"]), receipt["coverage"]["fieldEntryCount"]
-            )
 
     def test_workbench_release_yaw_and_sector_cue_yaw_are_typed_and_atomic(self) -> None:
         joined = pipeline.join_v2_authoring(
@@ -2746,12 +2819,11 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         ]
         self.assertEqual(19, len(phase_two_ids))
         self.assertEqual(
-            [
-                row["patternId"]
-                for row in self.docs[pipeline.SAVED_FLOW_REL]["flows"][0]["slots"]
-            ],
+            self.saved_flow_pattern_ids(
+                self.docs[pipeline.SAVED_FLOW_REL]
+            ),
             staged["decisionModel"]["scriptedSequence"]["patternIds"],
-            "Product order must preserve the saved Flow including repetitions and explicit Phase-3 rows",
+            "Product order must preserve the saved Flow graph projection including repetitions and explicit Phase-3 rows",
         )
 
         projected = pipeline.project_v2_products(self.root, self.docs, staged)
@@ -2861,7 +2933,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.assertIn(
                 "PATTERNROTATIONWINDOW\tENCOUNTER_VALTAN\t"
                 "rotation.valtan.160.130\twindow.valtan.phase1.160.130\t1\t"
-                "selectionset.valtan.160.130\t160\t130\t5",
+                "selectionset.valtan.160.130\t160\t130\t"
+                f"{len(first['candidates'])}",
                 bootstrap_lines,
             )
             self.assertFalse(any(
@@ -2901,7 +2974,10 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             )
             candidate_pointer_before = (candidate_root / "current-candidate.json").read_bytes()
             changed_flow = pipeline.read_saved_flow_document(revision_root)
-            changed_flow["flows"][0]["slots"][1:3] = reversed(changed_flow["flows"][0]["slots"][1:3])
+            changed_nodes = self.saved_flow_ordered_nodes(changed_flow)
+            changed_nodes[0]["patternId"], changed_nodes[1]["patternId"] = (
+                changed_nodes[1]["patternId"], changed_nodes[0]["patternId"]
+            )
             candidate_flow_path.write_bytes(pipeline.json_text(changed_flow).encode("utf-8"))
             changed_manifest = copy.deepcopy(manifest)
             flow_artifact = next(
@@ -2920,20 +2996,32 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 (candidate_root / "current-candidate.json").read_bytes(),
             )
 
-    def test_saved_flow_reference_resolves_exact_repeated_slot_order(self) -> None:
+    def test_saved_flow_reference_resolves_exact_repeated_graph_order(self) -> None:
         physical = pipeline.read_json(self.root / pipeline.GAMEPLAY_AUTHORING_REL)
         before = copy.deepcopy(physical)
-        flow_document = copy.deepcopy(self.docs[pipeline.SAVED_FLOW_REL])
+        source_pattern_ids = self.saved_flow_pattern_ids(
+            self.docs[pipeline.SAVED_FLOW_REL]
+        )
+        expected = [
+            source_pattern_ids[2],
+            source_pattern_ids[0],
+            source_pattern_ids[1],
+            source_pattern_ids[6],
+        ]
+        flow_document = self.make_saved_flow(expected)
         flow = flow_document["flows"][0]
-        original = copy.deepcopy(flow["slots"])
-        flow["slots"] = [original[3], original[1], original[2], original[7]]
-        flow["interStepPursuitMs"] = 4321
+        flow["nodes"] = [
+            flow["nodes"][2], flow["nodes"][0],
+            flow["nodes"][3], flow["nodes"][1],
+        ]
+        flow["defaultPursuitMs"] = 4321
+        for edge in flow["edges"]:
+            edge["pursuitMs"] = 4321
         joined = pipeline.join_v2_authoring(
             physical, self.docs[pipeline.PRESENTATION_AUTHORING_REL],
             self.docs[pipeline.WORLD_SET_REL], self.docs[pipeline.COMBAT_AUTHORING_REL],
             flow_document,
         )
-        expected = [row["patternId"] for row in flow["slots"]]
         sequence = joined["decisionModel"]["scriptedSequence"]
         self.assertEqual(expected, sequence["patternIds"])
         self.assertEqual(4321, sequence["interStepPursuitMs"])
@@ -2941,14 +3029,70 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         self.assertEqual(sequence, json.loads(projected[pipeline.ROTATIONS_REL])["scriptedSequence"])
         self.assertEqual(before, physical, "resolving must not rewrite the physical Flow reference")
 
+    def test_valid_graph_feature_reports_typed_runtime_projection_boundary(self) -> None:
+        physical = pipeline.read_json(self.root / pipeline.GAMEPLAY_AUTHORING_REL)
+        document = self.make_saved_flow(
+            ["VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH"]
+        )
+        flow = document["flows"][0]
+        edge_ordinal = flow["nextEdgeOrdinal"]
+        flow["edges"].append({
+            "edgeId": f"{flow['flowId']}.edge.{edge_ordinal:06d}",
+            "fromNodeId": flow["nodes"][-1]["nodeId"],
+            "outcome": "COMPLETED",
+            "toNodeId": flow["entryNodeId"],
+            "pursuitMs": flow["defaultPursuitMs"],
+            "maxTraversals": 2,
+        })
+        flow["nextEdgeOrdinal"] = edge_ordinal + 1
+        with self.assertRaises(pipeline.RuntimeProjectionError) as captured:
+            pipeline.resolve_gameplay_flow_reference(physical, document)
+        self.assertEqual(
+            "RUNTIME_PROJECTION_UNSUPPORTED", captured.exception.error_code
+        )
+
+    @staticmethod
+    def saved_flow_ordered_nodes(document: dict) -> list[dict]:
+        return pipeline.linearize_saved_flow_for_legacy_product(
+            document["flows"][0]
+        )
+
+    @classmethod
+    def saved_flow_pattern_ids(cls, document: dict) -> list[str]:
+        return [
+            node["patternId"]
+            for node in cls.saved_flow_ordered_nodes(document)
+        ]
+
     def make_saved_flow(self, pattern_ids: list[str]) -> dict:
         document = copy.deepcopy(self.docs[pipeline.SAVED_FLOW_REL])
         flow = document["flows"][0]
-        flow["slots"] = [
-            {"slotId": f"{flow['flowId']}.slot.{ordinal:06d}", "patternId": pattern_id}
-            for ordinal, pattern_id in enumerate(pattern_ids, start=1)
+        node_ids = [
+            f"{flow['flowId']}.node.{ordinal:06d}"
+            for ordinal in range(1, len(pattern_ids) + 1)
         ]
-        flow["nextSlotOrdinal"] = len(pattern_ids) + 1
+        flow["entryNodeId"] = node_ids[0]
+        flow["nextNodeOrdinal"] = len(node_ids) + 1
+        flow["nextEdgeOrdinal"] = len(node_ids)
+        flow["nodes"] = [
+            {
+                "nodeId": node_id,
+                "patternId": pattern_id,
+                "watchdogMs": 0,
+            }
+            for node_id, pattern_id in zip(node_ids, pattern_ids)
+        ]
+        flow["edges"] = [
+            {
+                "edgeId": f"{flow['flowId']}.edge.{ordinal:06d}",
+                "fromNodeId": node_ids[ordinal - 1],
+                "outcome": "COMPLETED",
+                "toNodeId": node_ids[ordinal],
+                "pursuitMs": flow["defaultPursuitMs"],
+            }
+            for ordinal, pattern_id in enumerate(pattern_ids, start=1)
+            if ordinal < len(node_ids)
+        ]
         return document
 
     def test_saved_flow_admits_every_authored_pattern_through_product_projection(self) -> None:
@@ -2958,7 +3102,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             pattern_id = pattern["patternId"]
             with self.subTest(pattern=pattern_id):
                 expected = [pattern_id, "VALTAN_WHIRLWIND"]
-                if pattern_id not in pipeline.OPTIONAL_ENTRY_PATTERN_IDS:
+                if pattern_id != pipeline.OPTIONAL_ENTRY_PATTERN_ID:
                     expected.append(pattern_id)
                 document = self.make_saved_flow(expected)
                 joined = pipeline.join_v2_authoring(
@@ -3041,44 +3185,33 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             change(document)
             cases.append((label, document))
         invalid("schema", lambda doc: doc.update(schema="wrong"))
-        invalid("float version", lambda doc: doc.update(formatVersion=1.0))
+        invalid("float version", lambda doc: doc.update(formatVersion=2.0))
         invalid("boolean version", lambda doc: doc.update(formatVersion=True))
         invalid("two flows", lambda doc: doc["flows"].append(copy.deepcopy(doc["flows"][0])))
         invalid("unknown flow", lambda doc: doc["flows"][0].update(flowId="flow.other"))
-        invalid("float pursuit", lambda doc: doc["flows"][0].update(interStepPursuitMs=1000.0))
-        invalid("pursuit zero", lambda doc: doc["flows"][0].update(interStepPursuitMs=0))
-        invalid("empty", lambda doc: doc["flows"][0].update(slots=[]))
-        invalid("unknown pattern", lambda doc: doc["flows"][0]["slots"][0].update(patternId="VALTAN_UNKNOWN"))
-        invalid("original entry after first slot", lambda doc: doc["flows"][0]["slots"][1].update(patternId="VALTAN_ENTRANCE_CINEMATIC"))
-        invalid("idle entry after first slot", lambda doc: doc["flows"][0]["slots"][1].update(patternId="VALTAN_ENTRANCE_CINEMATIC_IDLE"))
-        mixed_entries = self.make_saved_flow([
-            "VALTAN_ENTRANCE_CINEMATIC",
-            "VALTAN_ENTRANCE_CINEMATIC_IDLE",
-            "VALTAN_WHIRLWIND",
-        ])
-        cases.append(("mutually exclusive entries", mixed_entries))
-        invalid("legacy-only pattern", lambda doc: doc["flows"][0]["slots"][0].update(patternId="VALTAN_SWING"))
-        invalid("duplicate slot", lambda doc: doc["flows"][0]["slots"][1].update(slotId=doc["flows"][0]["slots"][0]["slotId"]))
-        invalid("foreign slot", lambda doc: doc["flows"][0]["slots"][0].update(slotId="flow.other.slot.000001"))
-        invalid("non-numeric slot", lambda doc: doc["flows"][0]["slots"][0].update(slotId=pipeline.DEFAULT_SAVED_FLOW_ID + ".slot.00000x"))
-        invalid("counter reuse", lambda doc: doc["flows"][0].update(nextSlotOrdinal=30))
-        invalid("float counter", lambda doc: doc["flows"][0].update(nextSlotOrdinal=31.0))
+        invalid("float pursuit", lambda doc: doc["flows"][0].update(defaultPursuitMs=1000.0))
+        invalid("pursuit zero", lambda doc: doc["flows"][0].update(defaultPursuitMs=0))
+        invalid("empty", lambda doc: doc["flows"][0].update(nodes=[]))
+        invalid("unknown pattern", lambda doc: doc["flows"][0]["nodes"][0].update(patternId="VALTAN_UNKNOWN"))
+        invalid("entry after first node", lambda doc: doc["flows"][0]["nodes"][1].update(patternId="VALTAN_ENTRANCE_CINEMATIC"))
+        invalid("legacy-only pattern", lambda doc: doc["flows"][0]["nodes"][0].update(patternId="VALTAN_SWING"))
+        invalid("duplicate node", lambda doc: doc["flows"][0]["nodes"][1].update(nodeId=doc["flows"][0]["nodes"][0]["nodeId"]))
+        invalid("foreign node", lambda doc: doc["flows"][0]["nodes"][0].update(nodeId="flow.other.node.000001"))
+        invalid("non-numeric node", lambda doc: doc["flows"][0]["nodes"][0].update(nodeId=pipeline.DEFAULT_SAVED_FLOW_ID + ".node.00000x"))
+        invalid("dangling entry", lambda doc: doc["flows"][0].update(entryNodeId=pipeline.DEFAULT_SAVED_FLOW_ID + ".node.999999"))
+        invalid("duplicate edge", lambda doc: doc["flows"][0]["edges"][1].update(edgeId=doc["flows"][0]["edges"][0]["edgeId"]))
+        invalid("dangling edge", lambda doc: doc["flows"][0]["edges"][0].update(toNodeId=pipeline.DEFAULT_SAVED_FLOW_ID + ".node.999999"))
+        invalid("node counter reuse", lambda doc: doc["flows"][0].update(nextNodeOrdinal=1))
+        invalid("float node counter", lambda doc: doc["flows"][0].update(nextNodeOrdinal=41.0))
+        invalid("edge counter reuse", lambda doc: doc["flows"][0].update(nextEdgeOrdinal=1))
+        invalid("float edge counter", lambda doc: doc["flows"][0].update(nextEdgeOrdinal=29.0))
         for label, document in cases:
             with self.subTest(case=label), self.assertRaises(pipeline.PipelineError):
                 pipeline.resolve_gameplay_flow_reference(physical, document)
-        overflow = copy.deepcopy(baseline)
-        overflow_flow = overflow["flows"][0]
-        overflow_flow["slots"] = [
-            {
-                "slotId": (
-                    f"{pipeline.DEFAULT_SAVED_FLOW_ID}.slot.{ordinal:06d}"
-                ),
-                "patternId": "VALTAN_WHIRLWIND",
-            }
-            for ordinal in range(1, pipeline.SAVED_FLOW_MAX_SLOTS + 2)
-        ]
-        overflow_flow["nextSlotOrdinal"] = pipeline.SAVED_FLOW_MAX_SLOTS + 2
-        with self.assertRaisesRegex(pipeline.PipelineError, "1..255 slots"):
+        overflow = self.make_saved_flow(
+            ["VALTAN_WHIRLWIND"] * (pipeline.SAVED_FLOW_MAX_SLOTS + 1)
+        )
+        with self.assertRaisesRegex(pipeline.PipelineError, "1..255 nodes"):
             pipeline.resolve_gameplay_flow_reference(physical, overflow)
         for field, value in (("patternIds", ["VALTAN_WHIRLWIND"]), ("path", "../outside.json"), ("flowId", "flow.other")):
             mixed = copy.deepcopy(physical)
@@ -3093,7 +3226,12 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / pipeline.SAVED_FLOW_REL
             path.parent.mkdir(parents=True)
-            for raw in (b'{"schema":"a","schema":"b"}', b'{"formatVersion":NaN}', b'x' * (pipeline.SAVED_FLOW_MAX_BYTES + 1)):
+            for raw in (
+                b'{"schema":"a","schema":"b"}',
+                b'{"formatVersion":NaN}',
+                b'[' * 9 + b']' * 9,
+                b'x' * (pipeline.SAVED_FLOW_MAX_BYTES + 1),
+            ):
                 path.write_bytes(raw)
                 with self.assertRaises(pipeline.PipelineError):
                     pipeline.read_saved_flow_document(Path(temporary))
@@ -3101,7 +3239,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
     def test_saved_flow_projects_33_and_255_ordered_occurrences(self) -> None:
         physical = pipeline.read_json(self.root / pipeline.GAMEPLAY_AUTHORING_REL)
         for count in (33, pipeline.SAVED_FLOW_MAX_SLOTS):
-            with self.subTest(slot_count=count):
+            with self.subTest(occurrence_count=count):
                 expected = ["VALTAN_WHIRLWIND"] * count
                 joined = pipeline.join_v2_authoring(
                     physical,
@@ -3131,6 +3269,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 destination = root / entry["path"]
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(self.root / entry["path"], destination)
+            self.copy_native_valtan_animation_fixture(root)
             sources = pipeline.source_manifest(root)
             authoring_root = Path(temporary) / "authoring"
             patch = {"schema": pipeline.DRAFT_PATCH_SCHEMA, "formatVersion": 1,
@@ -3147,7 +3286,10 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             loaded, _, _ = pipeline.load_authoring_revision(root, authoring_root, pointer["revisionId"], sources, docs)
             self.assertEqual(EXPECTED_SCRIPTED_SEQUENCE, loaded["decisionModel"]["scriptedSequence"])
             changed = pipeline.read_saved_flow_document(root)
-            changed["flows"][0]["slots"][1:3] = reversed(changed["flows"][0]["slots"][1:3])
+            changed_nodes = self.saved_flow_ordered_nodes(changed)
+            changed_nodes[0]["patternId"], changed_nodes[1]["patternId"] = (
+                changed_nodes[1]["patternId"], changed_nodes[0]["patternId"]
+            )
             (root / pipeline.SAVED_FLOW_REL).write_text(pipeline.json_text(changed), encoding="utf-8")
             updated = pipeline.source_manifest(root)
             self.assertNotEqual(sources["sourceManifestId"], updated["sourceManifestId"])
@@ -3189,6 +3331,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 destination = root / entry["path"]
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(self.root / entry["path"], destination)
+            self.copy_native_valtan_animation_fixture(root)
             (root / pipeline.GAMEPLAY_AUTHORING_REL).write_bytes(
                 pipeline.json_text(self.docs[pipeline.GAMEPLAY_AUTHORING_REL]).encode("utf-8")
             )
@@ -3368,12 +3511,6 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 "patternId": "VALTAN_ARENA_BREAK_109", "healthBar": 100,
                 "triggerOrder": 1,
             },
-            {
-                "op": "SET_MECHANIC_TRIGGER",
-                "mechanicId": "mechanic.valtan-arena-break-109",
-                "patternId": "VALTAN_ARENA_BREAK_109", "healthBar": 100,
-                "triggerOrder": 2,
-            },
         )
         for operation in invalid_operations:
             with self.subTest(operation=operation), self.assertRaises(pipeline.PipelineError):
@@ -3398,9 +3535,6 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         unknown_set = copy.deepcopy(base)
         unknown_set["decisionModel"]["selectionWindows"][0]["selectionSetId"] = "missing.set"
         invalid_masters.append(unknown_set)
-        phase_boundary_drift = copy.deepcopy(base)
-        phase_boundary_drift["decisionModel"]["mechanics"][1]["trigger"]["healthBar"] = 100
-        invalid_masters.append(phase_boundary_drift)
         for invalid in invalid_masters:
             with self.assertRaises(pipeline.PipelineError):
                 pipeline.validate_v2_master(
@@ -3408,6 +3542,16 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     self.docs[pipeline.WORLD_SET_REL],
                     self.docs[pipeline.COMBAT_AUTHORING_REL],
                 )
+
+        apply(
+            {
+                "op": "SET_MECHANIC_TRIGGER",
+                "mechanicId": "mechanic.valtan-arena-break-109",
+                "patternId": "VALTAN_ARENA_BREAK_109",
+                "healthBar": 100,
+                "triggerOrder": 2,
+            }
+        )
 
         coordinated_but_unpromoted = copy.deepcopy(base)
         coordinated_but_unpromoted["decisionModel"]["selectionWindows"][1][
@@ -3417,7 +3561,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             "healthBar"
         ] = 100
         with self.assertRaisesRegex(
-            pipeline.PipelineError, "first legacy rotation boundary"
+            pipeline.PipelineError, "Product health mechanic trigger tuple is duplicated"
         ):
             pipeline.project_v2_products(
                 self.root, self.docs, coordinated_but_unpromoted
@@ -3507,7 +3651,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     self.docs[pipeline.COMBAT_AUTHORING_REL],
                 )
 
-    def test_only_known_cinematics_may_remain_dormant_without_a_decision_owner(self) -> None:
+    def test_only_known_cinematic_may_remain_dormant_without_a_decision_owner(self) -> None:
         joined = pipeline.join_v2_authoring(
             self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
             self.docs[pipeline.PRESENTATION_AUTHORING_REL],
@@ -3515,9 +3659,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
         sequence = joined["decisionModel"]["scriptedSequence"]["patternIds"]
-        entry_ids = pipeline.OPTIONAL_ENTRY_PATTERN_IDS
-        self.assertEqual("VALTAN_ENTRANCE_CINEMATIC_IDLE", sequence[0])
-        self.assertEqual(1, sum(pattern_id in entry_ids for pattern_id in sequence))
+        self.assertEqual("VALTAN_WHIRLWIND", sequence[0])
         self.assertNotIn("VALTAN_ENTRANCE_CINEMATIC", sequence)
         owned = {
             candidate["patternId"]
@@ -3530,49 +3672,27 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             audition["patternId"]
             for audition in joined["decisionModel"]["manualAuditions"]
         }
-        for entry_id in entry_ids:
-            self.assertNotIn(entry_id, owned)
+        self.assertNotIn("VALTAN_ENTRANCE_CINEMATIC", owned)
         pipeline.validate_v2_master(
             joined,
             self.docs[pipeline.WORLD_SET_REL],
             self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
-        without_entry = copy.deepcopy(joined)
-        without_entry["decisionModel"]["scriptedSequence"]["patternIds"] = [
-            pattern_id for pattern_id in sequence if pattern_id not in entry_ids
-        ]
-        for entry_id in entry_ids:
-            with self.subTest(entry_id=entry_id):
-                explicit_entry = copy.deepcopy(without_entry)
-                explicit_entry["decisionModel"]["scriptedSequence"][
-                    "patternIds"
-                ].insert(0, entry_id)
-                pipeline.validate_v2_master(
-                    explicit_entry, self.docs[pipeline.WORLD_SET_REL],
-                    self.docs[pipeline.COMBAT_AUTHORING_REL],
-                )
-                repeated_entry = copy.deepcopy(explicit_entry)
-                repeated_entry["decisionModel"]["scriptedSequence"][
-                    "patternIds"
-                ].insert(1, entry_id)
-                with self.assertRaisesRegex(
-                    pipeline.PipelineError, "optional entry cinematic"
-                ):
-                    pipeline.validate_v2_master(
-                        repeated_entry, self.docs[pipeline.WORLD_SET_REL],
-                        self.docs[pipeline.COMBAT_AUTHORING_REL],
-                    )
-
-        mixed_entries = copy.deepcopy(without_entry)
-        mixed_entries["decisionModel"]["scriptedSequence"]["patternIds"][:0] = [
-            "VALTAN_ENTRANCE_CINEMATIC",
-            "VALTAN_ENTRANCE_CINEMATIC_IDLE",
-        ]
-        with self.assertRaisesRegex(
-            pipeline.PipelineError, "optional entry cinematic"
-        ):
+        explicit_entry = copy.deepcopy(joined)
+        explicit_entry["decisionModel"]["scriptedSequence"]["patternIds"].insert(
+            0, pipeline.OPTIONAL_ENTRY_PATTERN_ID
+        )
+        pipeline.validate_v2_master(
+            explicit_entry, self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        repeated_entry = copy.deepcopy(explicit_entry)
+        repeated_entry["decisionModel"]["scriptedSequence"]["patternIds"][1] = (
+            pipeline.OPTIONAL_ENTRY_PATTERN_ID
+        )
+        with self.assertRaisesRegex(pipeline.PipelineError, "optional entry cinematic"):
             pipeline.validate_v2_master(
-                mixed_entries, self.docs[pipeline.WORLD_SET_REL],
+                repeated_entry, self.docs[pipeline.WORLD_SET_REL],
                 self.docs[pipeline.COMBAT_AUTHORING_REL],
             )
 
@@ -3585,7 +3705,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             ]
         with self.assertRaisesRegex(
             pipeline.PipelineError,
-            "only the optional entrance cinematics may be dormant entry-only definitions",
+            "only VALTAN_ENTRANCE_CINEMATIC may be a dormant entry-only definition",
         ):
             pipeline.validate_v2_master(
                 invalid,
@@ -3932,16 +4052,35 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             diagnostic,
         )
 
-    def test_gameplay_publisher_rejects_raw_finale_order_invulnerability_and_late_cycle(self) -> None:
-        for defect in ("reordered attacks", "invulnerable owner", "late child cycle"):
+    def test_gameplay_publisher_accepts_dynamic_finale_and_rejects_invalid_policy_or_cycle(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            encounter = copy.deepcopy(self.docs[pipeline.ENCOUNTER_REL])
+            finale = next(row for row in encounter["patterns"]
+                          if row["patternId"] == "VALTAN_GHOST_FINALE")
+            finale["finale"]["ghostPatternIds"] = ["VALTAN_FOUR_SLASH", "VALTAN_WHIRLWIND"]
+            finale["finale"]["maximumActiveGhosts"] = 2
+            overlay_root = Path(temporary)
+            encounter_path = overlay_root / pipeline.ENCOUNTER_REL
+            encounter_path.parent.mkdir(parents=True)
+            encounter_path.write_text(
+                json.dumps(encounter, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            completed = subprocess.run(
+                ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                 str(self.root / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1"),
+                 "-Mode", "Validate", "-InputOverlayRoot", str(overlay_root)],
+                cwd=self.root, capture_output=True, text=True, encoding="utf-8", check=False,
+            )
+            self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
+
+        for defect in ("invulnerable owner", "late child cycle"):
             with self.subTest(defect=defect), tempfile.TemporaryDirectory() as temporary:
                 encounter = copy.deepcopy(self.docs[pipeline.ENCOUNTER_REL])
                 finale = next(row for row in encounter["patterns"]
                               if row["patternId"] == "VALTAN_GHOST_FINALE")
-                expected = "Ghost finale must remain damageable and use its three ordered attacks"
-                if defect == "reordered attacks":
-                    finale["finale"]["ghostPatternIds"].reverse()
-                elif defect == "invulnerable owner":
+                expected = "Ghost finale dependent boss reference or damage policy is invalid"
+                if defect == "invulnerable owner":
                     finale["invulnerableWhileRunning"] = True
                 else:
                     child = next(row for row in encounter["patterns"]
@@ -4004,10 +4143,11 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             for area_id in (
                 "LV_BER_BERNCASTLE", "LV_LUT_HEARTRB_ED",
                 "LV_DEV_TRAINING_GROUND", "LV_LOBBY_CLASSSELECT_SL00",
+                "LV_LUT_MIDNIGHTC_ED",
             ):
                 for name in (
                     "Gameplay.world.json", "SpawnGroups.world.json",
-                    "EncounterProps.world.json",
+                    "EncounterProps.world.json", "StageMarkers.json",
                 ):
                     relative = Path("Data/Worlds") / area_id / name
                     if (self.root / relative).is_file():
@@ -4098,7 +4238,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.docs[pipeline.DAMAGE_REL],
             radial,
             self.source_manifest["sourceManifestId"],
-            self.docs[pipeline.WORLD_SET_REL],
+            pipeline.build_world_event_sets(self.docs[pipeline.WORLD_PRODUCT_REL]),
             self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
         staged_volley = next(
@@ -5027,6 +5167,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 destination = repository_root / row["path"]
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, destination)
+            self.copy_native_valtan_animation_fixture(repository_root)
             local_source = pipeline.source_manifest(repository_root)
             patch = self.draft_patch()
             patch["sourceRevision"] = local_source["sourceManifestId"]

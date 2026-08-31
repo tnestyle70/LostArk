@@ -1,11 +1,21 @@
 # F1 Complete Play 아레나 보존과 Anim Workbench·Sequencer 저작 구현 결과
 
+> **2026-08-31 감사 정정:** 이 결과의 `Animation sequence slot →
+> Valtan.patternbindings.json atomic Save` 완료 주장은 철회한다.
+> `Valtan.patternbindings.json`과 `Valtan.patterneffectcues.json`은
+> `Data/Valtan/Valtan.presentation.json`에서 projector가 생성하는 read-only Product다.
+> generated Product 직접 Save는 publish 때 덮이거나 source/Product를 갈라놓으므로 완료가 아니라
+> 정본 위반이다. Workbench UI/문자열 기반 테스트 통과도 표준 Client, actual canonical loader,
+> 실패 rollback과 사용자 수동 화면 확인 전에는 완료 증거가 아니다. 교정 구현과 재검증은
+> `2026-08-30_VALTAN_RESTART_FLOW_EFFECT_ANCHOR_SEQUENCER_IMPLEMENTATION_PLAN.md`의 Gate 0~7을 따른다.
+
 ## 결론
 
-`codex/anim-bench-sequencer-authoring` 브랜치에서 발탄 중심의 F1 Complete Play와 Anim Workbench 저작
-수직 슬라이스를 구현했다. 작은 세로 탭이던 Animation Tool은 최소 `1180x760`의 Master/Preview/Persistent
-Detail, full-width Sequencer, Data Files 구조로 바뀌었다. Workbench는 별도 범용 sequence JSON을 만들지
-않고 실제 gameplay, animation binding, Pattern Sound owner를 stable ID로 join한다.
+이 문서는 2026-08-30 당시 구현 결과의 역사 기록이며 현재 완료 판정 문서가 아니다. 독립
+`Action Composition Workbench`와 정본 교정의 현재 상태는
+`../08-31/2026-08-31_ACTION_COMPOSITION_WORKBENCH_IMPLEMENTATION_PLAN.md` 및 같은 작업의 RESULT가
+소유한다. 기존 Animation Tool에 Pattern 저작을 누적하고 generated animation Product를 owner로 취급한
+경로는 회수 대상이다.
 
 사용자가 먼저 요구한 다음 세 사례는 Source JSON, Product projection, Server 소비, Workbench Detail과 Save까지
 연결됐다.
@@ -14,9 +24,9 @@ Detail, full-width Sequencer, Data Files 구조로 바뀌었다. Workbench는 �
 - `VALTAN_TRASH`, `VALTAN_TRASH_CATCH_IF` `STEP_07`: Pattern Sound와 Counter enable/disable → exact Groggy 전환
 - `VALTAN_CATCH_BREATH/STEP_04`: 실제 `ARENA_EJECTION`, 24m/s, 500ms, yaw 0도를 표시하고 180도 draft 저장
 
-Debug/Release Product와 Core, focused native harness, 변경 domain validator가 모두 통과했다. Client/UI는
-에이전트가 실행·조작하지 않았으므로 최종 layout, 음향, 0도/180도 release 방향과 패턴 체감은 사용자의
-수동 판정으로 남아 있다.
+당시 기록한 Debug/Release Product와 Core 결과는 그 당시 revision의 증거일 뿐 현재 dirty physical tree의
+PASS가 아니다. 현재 branch는 최신 source/Product generation, Debug/Release 표준 빌드와 사용자 수동
+첫 화면을 다시 통과해야 한다.
 
 ## 브랜치와 기준선
 
@@ -42,9 +52,11 @@ Debug/Release Product와 Core, focused native harness, 변경 domain validator�
   - `Final / Break 3 + 9 O'Clock Floors`
 - 요청 sequence와 pattern ID가 일치하는 Server 결과를 상태로 표시한다.
 
-## Anim Workbench 화면
+## 당시 Anim Workbench 화면과 현재 교정
 
-Workbench 기본 창은 viewport-aware size와 최소 `1180x760`을 사용하고 `Reset Workbench Layout`을 제공한다.
+아래 3-pane은 당시 Animation Tool 내부 화면이다. 현재 Pattern 저작은 별도 resizable
+`Action Composition Workbench`로 이동했으며 hard `1180x760` minimum은 제거했다. 기존 Animation Clip
+Tool은 모델 pose와 Sequence intake만 담당한다.
 
 ```text
 Master / Outliner | Preview + Transport | Persistent Detail
@@ -69,15 +81,16 @@ Data Files: 실제 owner 경로, load 상태, stable selection
 | Detail 범주 | 실제 owner | 이번 상태 |
 |---|---|---|
 | Gameplay stage/release/Counter/Groggy | `Data/Valtan/Valtan.gameplay.json` | typed draft, publish/apply, Server revision gate |
-| Animation sequence slot | `Data/Animation/Authored/Valtan/Valtan.patternbindings.json` | Add/Remove/Edit, model timing, atomic CAS Save |
+| Animation sequence slot | `Data/Valtan/Valtan.presentation.json` | joined typed draft → immutable source/Product transaction |
 | Pattern Sound | `Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json` | deterministic Add/Exact Remove/Edit, atomic CAS Save |
 | Combat-object Sound | typed combat-object Sound owner | gameplay Product transaction과 원자 교체 |
-| Effect/Camera/Shake/World | 각 Product owner | joined row와 owner deep-link; 무소유 inline Save 없음 |
+| Effect invocation | `Data/Valtan/Valtan.presentation.json` | generated `patterneffectcues`는 read-only; asset body는 Effect Tool owner |
+| Camera/Shake/World | 각 typed source owner | joined row와 owner deep-link; adapter 없는 lane은 inspection-only |
 
-Animation Save는 현재 CModel clip duration과 모든 Encounter-required action을 검사한다. 변경 animation occurrence와
-결합된 Effect/Sound/Shake가 같은 action, clip occurrence, stage wall, loop policy 안에 남는지도 검사한다.
-Encounter/Effect/Sound/Shake exact bytes를 commit 직전까지 잠그고 재검사하므로 동시 owner 변경은 stale Save로
-거부된다.
+Animation slot Save는 generated `Valtan.patternbindings.json`을 직접 교체하지 않는다. split gameplay /
+presentation source를 검증한 뒤 projector가 binding/effect cue Product를 만들고 actual canonical loader가
+동일 generation을 다시 admission한다. writer lock, generation journal과 rollback oracle을 통과하지 못하면
+완료로 기록하지 않는다.
 
 Pattern Sound Save도 역방향 dependency를 닫았다. Encounter와 patternbindings exact bytes를 snapshot한 뒤
 commit 직전에 shared-read lock과 CAS를 수행한다. Animation clip 길이가 동시에 짧아지거나 Encounter stage가
@@ -221,8 +234,8 @@ Product/Core 진입에서 검증한다.
 
 1. `Framework.sln` Debug의 `Server + Client` profile을 실행한다.
 2. Lobby → Valtan으로 진입한다.
-3. F1 → `Action Presentation Workbench` → Valtan을 연다.
-4. 넓은 3-pane, 오른쪽 Persistent Detail, 아래 full-width Sequencer와 Data Files가 동시에 보이는지 확인한다.
+3. F1 → `Action Composition Workbench`를 연다.
+4. 창 edge/corner resize, Pattern/Sequence browser, 오른쪽 Details, Sequencer와 Data Files가 유지되는지 확인한다.
 5. `VALTAN_HIGH_JUMP/AIRBORNE`를 선택한다.
    - `Server wall / blank timeline ms`를 변경하고 Save한다.
    - Server-active revision 상태를 확인한 뒤 Complete Play로 공백 체감을 비교한다.

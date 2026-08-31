@@ -167,6 +167,16 @@
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050230.unified.effect.json"
     },
     {
+      "effectAssetId": "effect.dimensionmaster.skill.2050230.water-burst",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050230.water-burst.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050230.single-glass-canary",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050230.single-glass-canary.effect.json"
+    },
+    {
       "effectAssetId": "effect.dimensionmaster.skill.2050240.clip1.unified",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050240.clip1.unified.effect.json"
@@ -815,6 +825,16 @@
       "effectAssetId": "effect.valtan.project-tuned.sequence.trash",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.valtan.project-tuned.sequence.trash.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.ground-roar.rock.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.ground-roar.rock.active.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.ground-roar.rock.explode",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.ground-roar.rock.explode.effect.json"
     },
     {
       "effectAssetId": "effect.valtan.sequence.charge",

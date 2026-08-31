@@ -31,19 +31,23 @@
     <ClInclude Include="..\Public\AnimationAuthoringBridge.h" />
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h" />
 	<ClInclude Include="..\Public\KakulAnimationActionDocument.h" />
+	<ClInclude Include="..\Public\KakulAnimationPatternDocument.h" />
 	<ClInclude Include="..\Public\ValtanPatternFlowDocument.h" />
 	<ClInclude Include="..\Public\ValtanPatternFlowService.h" />
 	<ClInclude Include="..\Public\ValtanTuningCommandService.h" />
 	<ClInclude Include="..\Public\ValtanPatternPreviewDocument.h" />
 	<ClInclude Include="..\Public\ValtanPatternAuthoringEffectDocument.h" />
 	<ClInclude Include="..\Public\ValtanCombatObjectSoundCueDocument.h" />
-    <ClInclude Include="..\Public\ValtanPatternEffectCueDocument.h" />
+	<ClInclude Include="..\Public\ValtanPatternEffectCueDocument.h" />
+	<ClInclude Include="..\Public\ValtanPatternEffectCueAuthoring.h" />
     <ClInclude Include="..\Public\ValtanPatternShakeCueDocument.h" />
     <ClInclude Include="..\Public\ValtanPatternSoundCueDocument.h" />
     <ClInclude Include="..\Public\BoneChainSimulation.h" />
     <ClInclude Include="..\Public\BalanceTool.h" />
       <ClInclude Include="..\Public\BossTool.h" />
-      <ClInclude Include="..\Public\CameraTool.h" />
+	  <ClInclude Include="..\Public\CameraTool.h" />
+	<ClInclude Include="..\Public\ActionCompositionGraphModel.h" />
+	<ClInclude Include="..\Public\ActionCompositionWorkbench.h" />
     <ClInclude Include="..\Public\Animation_Tool.h" />
     <ClInclude Include="..\Public\Character.h" />
     <ClInclude Include="..\Public\HitAreaWire.h" />
@@ -109,7 +113,10 @@
     <ClInclude Include="..\Public\WorldPlayerNameplateView.h" />
     <ClInclude Include="..\Public\WorldPlayerChatBubbleView.h" />
     <ClInclude Include="..\Public\PartyInteractionView.h" />
+    <ClInclude Include="..\Public\RaidEntryPreviewView.h" />
     <ClInclude Include="..\Public\UITextureCache.h" />
+    <ClInclude Include="..\Public\UILayoutRuntime.h" />
+    <ClInclude Include="..\Public\UIInputRouter.h" />
     <ClInclude Include="..\Public\UI_Sprite.h" />
     <ClInclude Include="..\Public\Level_Bern.h" />
     <ClInclude Include="..\Public\Level_KakulSaydonArena.h" />
@@ -119,6 +126,9 @@
 	<ClInclude Include="..\Public\RenderingProfileService.h" />
     <ClInclude Include="..\Public\AnimationTargetService.h" />
     <ClInclude Include="..\Public\CharacterPreviewPanel.h" />
+    <ClInclude Include="..\Public\EquipmentAuthoringTool.h" />
+    <ClInclude Include="..\Public\EquipmentPresentationCatalog.h" />
+    <ClInclude Include="..\Public\EquipmentPresentationService.h" />
     <ClInclude Include="..\Public\PlayableCharacterPreviewContract.h" />
     <ClInclude Include="..\Public\LobbyCommandService.h" />
     <ClInclude Include="..\Public\LevelTransitionService.h" />
@@ -140,12 +150,14 @@
     <ClInclude Include="..\Public\MapStaticBatchObject.h" />
     <ClInclude Include="..\Public\Body_Valtan.h" />
     <ClInclude Include="..\Public\ValtanPatternTree.h" />
+    <ClInclude Include="..\Public\ValtanPresentationGenerationAdmission.h" />
     <ClInclude Include="..\Public\ValtanPatternAuditionService.h" />
     <ClInclude Include="..\public\Camera_Free.h" />
     <ClInclude Include="..\Public\Client_Defines.h" />
     <ClInclude Include="..\public\Effect_Tool.h" />
     <ClInclude Include="..\Public\Effect_Tool_V2.h" />
     <ClInclude Include="..\Public\EffectV2_Object.h" />
+    <ClInclude Include="..\Public\EffectV2_Catalog.h" />
     <ClInclude Include="..\Public\EffectV2_Document.h" />
     <ClInclude Include="..\Public\EffectV2_Runtime.h" />
     <ClInclude Include="..\Public\EffectV2_Target.h" />
@@ -195,6 +207,9 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+	<ClCompile Include="..\Private\ActionCompositionWorkbench.cpp" />
+	<ClCompile Include="..\Private\ActionCompositionWorkbench_Blueprint.cpp" />
+	<ClCompile Include="..\Private\ActionCompositionGraphModel.cpp" />
 	<ClCompile Include="..\Private\ActionPresentationTimeline.cpp" />
 	<ClCompile Include="..\Private\CameraShakeService.cpp" />
 	<ClCompile Include="..\Private\ValtanCinematicCameraController.cpp" />
@@ -207,13 +222,15 @@
     <ClCompile Include="..\Private\AnimationAuthoringBridge.cpp" />
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp" />
 	<ClCompile Include="..\Private\KakulAnimationActionDocument.cpp" />
+	<ClCompile Include="..\Private\KakulAnimationPatternDocument.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternFlowDocument.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternFlowService.cpp" />
 	<ClCompile Include="..\Private\ValtanTuningCommandService.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternPreviewDocument.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternAuthoringEffectDocument.cpp" />
 	<ClCompile Include="..\Private\ValtanCombatObjectSoundCueDocument.cpp" />
-    <ClCompile Include="..\Private\ValtanPatternEffectCueDocument.cpp" />
+	<ClCompile Include="..\Private\ValtanPatternEffectCueDocument.cpp" />
+	<ClCompile Include="..\Private\ValtanPatternEffectCueAuthoring.cpp" />
     <ClCompile Include="..\Private\ValtanPatternShakeCueDocument.cpp" />
     <ClCompile Include="..\Private\ValtanPatternSoundCueDocument.cpp" />
     <ClCompile Include="..\Private\BoneChainSimulation.cpp" />
@@ -268,7 +285,10 @@
     <ClCompile Include="..\Private\WorldPlayerNameplateView.cpp" />
     <ClCompile Include="..\Private\WorldPlayerChatBubbleView.cpp" />
     <ClCompile Include="..\Private\PartyInteractionView.cpp" />
+    <ClCompile Include="..\Private\RaidEntryPreviewView.cpp" />
     <ClCompile Include="..\Private\UITextureCache.cpp" />
+    <ClCompile Include="..\Private\UILayoutRuntime.cpp" />
+    <ClCompile Include="..\Private\UIInputRouter.cpp" />
     <ClCompile Include="..\Private\UI_Sprite.cpp" />
     <ClCompile Include="..\Private\Level_Bern.cpp" />
     <ClCompile Include="..\Private\Level_KakulSaydonArena.cpp" />
@@ -278,6 +298,9 @@
 	<ClCompile Include="..\Private\RenderingProfileService.cpp" />
     <ClCompile Include="..\Private\AnimationTargetService.cpp" />
     <ClCompile Include="..\Private\CharacterPreviewPanel.cpp" />
+    <ClCompile Include="..\Private\EquipmentAuthoringTool.cpp" />
+    <ClCompile Include="..\Private\EquipmentPresentationCatalog.cpp" />
+    <ClCompile Include="..\Private\EquipmentPresentationService.cpp" />
     <ClCompile Include="..\Private\PlayableCharacterPreviewContract.cpp" />
     <ClCompile Include="..\Private\LobbyCommandService.cpp" />
     <ClCompile Include="..\Private\LevelTransitionService.cpp" />
@@ -299,6 +322,7 @@
     <ClCompile Include="..\Private\MapStaticBatchObject.cpp" />
     <ClCompile Include="..\Private\Body_Valtan.cpp" />
     <ClCompile Include="..\Private\ValtanPatternTree.cpp" />
+    <ClCompile Include="..\Private\ValtanPresentationGenerationAdmission.cpp" />
     <ClCompile Include="..\Private\ValtanPatternAuditionService.cpp" />
     <ClCompile Include="..\private\Camera_Free.cpp" />
     <ClCompile Include="..\private\Effect_Tool.cpp">
@@ -306,6 +330,7 @@
     </ClCompile>
     <ClCompile Include="..\Private\Effect_Tool_V2.cpp" />
     <ClCompile Include="..\Private\EffectV2_Object.cpp" />
+    <ClCompile Include="..\Private\EffectV2_Catalog.cpp" />
     <ClCompile Include="..\Private\EffectV2_Document.cpp" />
     <ClCompile Include="..\Private\EffectV2_Runtime.cpp" />
     <ClCompile Include="..\Private\HUDLayoutTool.cpp" />
@@ -366,6 +391,8 @@
     <None Include="Client.vcxproj" />
     <None Include="..\..\Data\Actors\BossCatalog.json" />
     <None Include="..\..\Data\Actors\CharacterCatalog.json" />
+    <None Include="..\..\Data\Actors\EquipmentLoadoutPresets.json" />
+    <None Include="..\..\Data\Actors\EquipmentPresentationCatalog.json" />
     <None Include="..\..\Data\Actors\NpcCatalog.json" />
     <None Include="..\..\Data\Actors\MonsterCatalog.json" />
 	<None Include="..\..\Data\Sound\CharacterSoundCatalog.json" />
@@ -408,6 +435,10 @@
 	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_06.actionbindings.json" />
 	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_07.actionbindings.json" />
 	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCZ_00.actionbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_05.patternbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_06.patternbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_07.patternbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCZ_00.patternbindings.json" />
     <None Include="..\..\Data\Animation\RootMotion\LanceMaster.rootmotion.json" />
     <None Include="..\..\Data\Animation\RootMotion\Warlord.rootmotion.json" />
     <None Include="..\..\Data\Animation\RootMotion\Artist.rootmotion.json" />
@@ -544,6 +575,7 @@
     <None Include="..\..\Data\UI\ItemUpgrade\ItemUpgradeUI.json" />
     <None Include="..\..\Data\UI\ClassSelect\ClassSelect_Layout.json" />
     <None Include="..\..\Data\UI\Bern\BernValtanEntry_Layout.json" />
+    <None Include="..\..\Data\UI\Bern\ValtanRaidEntry_Layout.json" />
     <None Include="..\..\Data\UI\Party\PartyInviteConfirm_Layout.json" />
     <None Include="..\..\Data\UI\Party\PartyContextMenu_Layout.json" />
     <None Include="..\..\Data\UI\HUD\HUD_Layout.json" />
@@ -579,6 +611,7 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectMeshV2.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectRectV2.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectParticleV2.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectMeshParticleV2.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectDecalV2.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectTrailV2.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshPreview_V2.hlsl" />

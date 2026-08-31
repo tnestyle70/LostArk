@@ -6,6 +6,7 @@
 #include "Client_Defines.h"
 #include "Effect_AuthoringDocument.h"
 #include "Effect_ComponentDocument.h"
+#include "Effect_DirectAuthoredSourceIndex.h"
 #include "Effect_OccurrenceTuning.h"
 #include "EffectAuthoringTransfer.h"
 #include "Engine_Defines.h"
@@ -392,11 +393,25 @@ private:
 	struct DIRECT_AUTHORED_EDITABLE_ENTRY final
 	{
 		std::filesystem::path Path;
+		bool_t bRegistryBoundAuditionOnly = false;
+		bool_t bAuditionSourceFreshnessValid = true;
+		std::string strSourceEffectAssetId;
+		std::filesystem::path SourceDocumentPath;
+		std::string strSourceDocumentRawSha256;
 		std::filesystem::file_time_type LastWriteTime{};
 		uint64_t iFileSize = 0u;
 		bool_t bIdentityObserved = false;
 		bool_t bIdentityValid = false;
 		std::string strStatus;
+	};
+
+	struct REGISTRY_BOUND_AUDITION_PROVENANCE final
+	{
+		std::string strEffectAssetId;
+		std::filesystem::path DocumentPath;
+		std::string strSourceEffectAssetId;
+		std::filesystem::path SourceDocumentPath;
+		std::string strSourceDocumentRawSha256;
 	};
 
     struct PENDING_DOCUMENT_LOAD final
@@ -514,6 +529,7 @@ public:
 
     void Update(f32_t fTimeDelta);
     void Render();
+	bool_t Open_ValtanAllEffectsWorkspace();
 	bool_t Open_ValtanProductEffect(
 		const EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& Request);
 
@@ -547,6 +563,8 @@ private:
 	   keeps repeat/revive/diagnostics. Canonical Product Effects remain editable
 	   and locally replayable with their joined Model View animation. */
 	void Render_ValtanPatternTreeSection(const std::string& strSearch);
+	void Render_ValtanExactAuthoredSourceSection(
+		const std::string& strSearch);
 	void Render_ValtanAreaStaticEffectSection(const std::string& strSearch);
 	bool_t Refresh_ValtanAreaStaticEffects();
 	bool_t Discard_ValtanAreaStaticEffectDraft();
@@ -691,7 +709,8 @@ private:
         EFFECT_DETAIL_DESC& Detail,
         bool_t& bChanged,
         bool_t bHasEmissiveRadianceInput,
-        bool_t bParticleMasterNamedEmission);
+        bool_t bParticleMasterNamedEmission,
+		bool_t bLockProjectTunedCarrierColor);
 	void Render_LinearRevealDetail(
 		EFFECT_ELEMENT_DESC& Element,
 		bool_t& bChanged);
@@ -699,6 +718,9 @@ private:
     void Render_UVKeyframes(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
 	void Render_TimingDetail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
 	void Render_SizeDetail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
+	bool_t Render_ProjectTunedSurfaceParameters(
+		EFFECT_ELEMENT_DESC& Element,
+		bool_t& bChanged);
 	void Render_AuthoringMaterialParameters(
 		EFFECT_ELEMENT_DESC& Element,
 		bool_t& bChanged);
@@ -732,7 +754,10 @@ private:
 	void Render_ComponentSelectionDetail();
 	void Render_EmitterSelectionDetail();
 	void Render_SourceModuleSelectionDetail();
-    void Render_LerpDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
+    void Render_LerpDetail(
+		EFFECT_DETAIL_DESC& Detail,
+		bool_t& bChanged,
+		bool_t bLockProjectTunedCarrierColor);
     void Render_AnimationControls(
         const std::shared_ptr<Engine::CModel>& pModel);
     void Refresh_AnimationClipLabels(
@@ -752,8 +777,6 @@ private:
     bool_t Try_SaveDocument();
     size_t Count_ProductCueMappings(
         const std::string& strEffectAssetId) const;
-    bool_t Can_HotReloadSavedProduct() const;
-    bool_t Try_HotReloadSavedProduct();
     bool_t Try_SaveDocumentAs(const std::string& strAssetId);
 	bool_t Try_SaveSelectedAdapterElementAsGenericAuthoredCopy(
 		const std::string& strAssetId);
@@ -782,6 +805,11 @@ private:
 		const std::string& strExpectedEffectAssetId,
 		const std::string& strElementId);
     bool_t Refresh_ResourceCatalog();
+    bool_t Refresh_ResourceCatalogDomain(
+        const std::string& strDomainId,
+        bool_t bForceRefresh);
+    bool_t Activate_ResourceCatalogDomain(
+        const std::string& strDomainId);
     void Select_AuthoringDomain(const std::string& strDomainId);
     bool_t Select_AuthoringDomainForClass(
         LostArk::Shared::CHARACTER_CLASS_ID eClass);
@@ -806,11 +834,17 @@ private:
 		UNIFIED_EFFECT_CACHE& Cache,
 		const std::filesystem::path& Path,
 		const std::string& strExpectedEffectAssetId);
+	void Initialize_CatalogMetadataView();
 	bool_t Refresh_DirectAuthoredEditableIndex(
 		const std::vector<EFFECT_DATA_FILE_ENTRY>& DataFiles);
+	const std::filesystem::path* Observe_DirectAuthoredEditablePath(
+		const std::string& strEffectAssetId,
+		std::string& strOutStatus) const;
 	const std::filesystem::path* Resolve_DirectAuthoredEditablePath(
 		const std::string& strEffectAssetId,
 		std::string& strOutStatus);
+	bool_t Validate_ActiveRegistryBoundAuditionFreshness(
+		std::string& strOutStatus) const;
 	bool_t Is_UnifiedEffectActive(
 		const UNIFIED_EFFECT_CACHE& Cache) const;
 	bool_t Validate_UnifiedEffectPreviewReadiness(
@@ -1041,7 +1075,6 @@ private:
     void Refresh_RuntimeEquivalence();
     std::string Describe_ProductPlaybackAuthoredDivergence(
         const std::string& strProductEffectAssetId);
-    const char_t* Runtime_SyncLabel() const;
     EFFECT_ELEMENT_DESC* Find_SelectedElement();
     const EFFECT_ELEMENT_DESC* Find_SelectedElement() const;
 	EFFECT_MODEL_CUE_DESC* Find_SelectedModelCue();
@@ -1056,6 +1089,8 @@ private:
     uint32_t m_iWorldPreviewLevel = UINT32_MAX;
 
     optional<EFFECT_DOCUMENT_DESC> m_ActiveDocument;
+	optional<REGISTRY_BOUND_AUDITION_PROVENANCE>
+		m_ActiveRegistryBoundAuditionProvenance;
 	optional<EFFECT_DOCUMENT_DESC> m_SourcePreviewDocument;
     optional<EFFECT_PRODUCT_PREVIEW> m_ProductPreview;
 	optional<VALTAN_PRODUCT_PREVIEW> m_ValtanProductPreview;
@@ -1076,6 +1111,11 @@ private:
 		m_ValtanUnifiedEffectCaches;
 	std::unordered_map<std::string, DIRECT_AUTHORED_EDITABLE_ENTRY>
 		m_DirectAuthoredEditableEntries;
+	/* Exact authored Valtan documents remain discoverable/editable even when
+	   the gameplay/presentation Pattern join is rejected. Product Play stays
+	   gated by the canonical tree; this list owns no replacement runtime. */
+	std::vector<EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY>
+		m_ValtanExactAuthoredSources;
 	std::unordered_map<std::string, size_t>
 		m_BossProductCueMappingCounts;
 	shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
@@ -1095,6 +1135,11 @@ private:
 	optional<PENDING_DOCUMENT_LOAD> m_PendingDocumentLoad;
     vector<EFFECT_RESOURCE_CATALOG_ENTRY> m_ResourceCatalog;
     vector<EFFECT_RESOURCE_DOMAIN_CATALOG> m_ResourceDomains;
+    std::unordered_map<std::string,
+        std::vector<EFFECT_RESOURCE_CATALOG_ENTRY>>
+        m_ResourceCatalogByDomain;
+    std::unordered_map<std::string, EFFECT_RESOURCE_DOMAIN_CATALOG>
+        m_ResourceDomainCatalogById;
     vector<size_t> m_VisibleResourceIndices;
     vector<EFFECT_SKILL_TREE_ENTRY> m_AllEffects;
 	/* Session state, rebuilt by Refresh. A failed reload keeps the previous
@@ -1258,6 +1303,7 @@ private:
     bool_t m_bResourceCatalogRefreshAttempted = false;
     bool_t m_bAllEffectsRefreshAttempted = false;
     bool_t m_bDataFilesRefreshAttempted = false;
+	bool_t m_bCatalogMetadataViewInitialized = false;
     bool_t m_bPendingWorldPivotPick = false;
     bool_t m_bParticleSystemDraftDirty = false;
     bool_t m_bMeshAuthoringDraftInitialized = false;
@@ -1305,7 +1351,6 @@ private:
 	f32_t m_fReconstructedSourceRuntimeClockSeconds = 0.f;
 	f32_t m_fReconstructedSourceRuntimeTailSeconds = 0.f;
 	string m_strDocumentStatus;
-	string m_strSaveHotReloadStatus;
 	string m_strDirectAuthoredEditableStatus;
 	string m_strActiveDocumentDrawableError;
     shared_ptr<const EFFECT_DOCUMENT_DESC> m_pRuntimeEquivalenceDocument;

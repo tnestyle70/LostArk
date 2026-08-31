@@ -690,9 +690,14 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         self.assertIn("WorldScale.x / fScaleX", self.effect_service_cpp)
 
     def test_level_audition_reads_rotation_v4_candidates(self) -> None:
-        self.assertIn('rotation.Find("candidates")', self.valtan_level_cpp)
-        self.assertIn('candidate.Find("patternId")', self.valtan_level_cpp)
-        self.assertIn('candidate.Find("enabled")', self.valtan_level_cpp)
+        for token in (
+            'Set, "candidates", DATA_JSON_TYPE::ARRAY',
+            'Candidate, "enabled", DATA_JSON_TYPE::BOOLEAN',
+            'Candidate, "patternId"',
+        ):
+            self.assertIn(token, self.cpp)
+        for token in ('Find("candidates")', 'Find("patternId")', 'Find("enabled")'):
+            self.assertNotIn(token, self.valtan_level_cpp)
 
     def test_split_identity_action_and_wall_drift_fail_closed(self) -> None:
         mutations: list[tuple[str, dict, dict]] = []

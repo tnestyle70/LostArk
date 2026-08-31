@@ -74,6 +74,173 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             EFFECT_CATALOG_JSON.read_text(encoding="utf-8")
         )
 
+    def test_first_visible_frame_auto_joins_product_and_authored_indexes_once(self) -> None:
+        render = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Render()",
+            "void Client::CEffect_Tool::Render_EffectToolWindow()",
+        )
+        self.assertIn("Initialize_CatalogMetadataView();", render)
+        for forbidden in (
+            "Refresh_ResourceCatalog()",
+            "Refresh_AllEffects()",
+            "Refresh_DataFiles()",
+            "recursive_directory_iterator",
+            "CEffectDocumentCodec::Load",
+        ):
+            self.assertNotIn(forbidden, render)
+
+        metadata = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Initialize_CatalogMetadataView()",
+            "bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(",
+        )
+        for token in (
+            "CEffectCatalog::Get_EffectAssetIds()",
+            "CEffectCatalog::Is_DirectAuthoredDocument",
+            "Catalog metadata only; Open Editor loads Details on demand.",
+            "m_bResourceCatalogRefreshAttempted ||",
+            "m_bAllEffectsRefreshAttempted ||",
+            "m_bDataFilesRefreshAttempted",
+        ):
+            self.assertIn(token, metadata)
+        self.assertIn("m_ValtanExactAuthoredSources = std::move(StagedValtanSources);", metadata)
+        self.assertNotIn("Refresh_AllEffects(true);", metadata)
+        self.assertNotIn("Refresh_DataFiles();", metadata)
+        for forbidden in (
+            "recursive_directory_iterator",
+            "CEffectDocumentCodec::Load",
+            "last_write_time",
+            "file_size",
+            "is_regular_file",
+        ):
+            self.assertNotIn(forbidden, metadata)
+
+    def test_resource_library_lazily_scans_only_the_selected_domain(self) -> None:
+        resource_grid = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Render_ResourceGrid(",
+            "void Client::CEffect_Tool::Rebuild_ResourceBrowserView(",
+        )
+        self.assertIn(
+            "if (!m_bResourceCatalogRefreshAttempted)", resource_grid
+        )
+        self.assertIn("Refresh_ResourceCatalog();", resource_grid)
+        self.assertIn("Reload Selected Category", resource_grid)
+        self.assertIn("Retry Resource Library", resource_grid)
+
+        domain_index = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Refresh_ResourceCatalog()",
+            "bool_t Client::CEffect_Tool::Refresh_ResourceCatalogDomain(",
+        )
+        self.assertIn("std::filesystem::directory_iterator Iterator(", domain_index)
+        self.assertIn("EffectRoot", domain_index)
+        self.assertNotIn("recursive_directory_iterator", domain_index)
+
+        domain_scan = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Refresh_ResourceCatalogDomain(",
+            "bool_t Client::CEffect_Tool::Activate_ResourceCatalogDomain(",
+        )
+        for token in (
+            'Root / L"Effect" / std::filesystem::path(strDomainId)',
+            "std::filesystem::recursive_directory_iterator Iterator(",
+            "DomainRoot",
+            "m_ResourceCatalogByDomain[strDomainId]",
+            "m_ResourceDomainCatalogById[strDomainId]",
+        ):
+            self.assertIn(token, domain_scan)
+        self.assertNotIn("recursive_directory_iterator Iterator(\n        EffectRoot", domain_scan)
+
+        select_domain = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Select_AuthoringDomain(",
+            "bool_t Client::CEffect_Tool::Select_AuthoringDomainForClass(",
+        )
+        self.assertIn(
+            "Refresh_ResourceCatalogDomain(strDomainId, false)", select_domain
+        )
+        self.assertIn("Files load when Resource Library opens.", select_domain)
+
+    def test_save_and_apply_updates_only_the_local_effect_preview(self) -> None:
+        session_bar = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Render_AuthoringSessionBar()",
+            "void Client::CEffect_Tool::Render_EffectDetailWindow()",
+        )
+        self.assertIn('ImGui::Button("Save")', session_bar)
+        self.assertIn('ImGui::Button(Has_UnsavedWork() ?', session_bar)
+        for removed in (
+            "Retry Saved Source Activation",
+            "Saved Source Activation",
+            "Runtime_SyncLabel()",
+        ):
+            self.assertNotIn(removed, session_bar)
+
+        save = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_SaveDocument()",
+            "bool_t Client::CEffect_Tool::Try_SaveDocumentAs(",
+        )
+        for token in (
+            "CEffectDocumentCodec::Save_AtomicIfUnchanged(",
+            "RefreshObservedValtanProductCache();",
+            "m_SourcePreviewDocument = *m_ActiveDocument;",
+            "Stage_WorldPreview(*m_ActiveDocument)",
+            "Start_WorldPreviewFromBeginning();",
+            "Refresh Server data",
+            "re-enter Valtan",
+        ):
+            self.assertIn(token, save)
+        for forbidden in (
+            "Try_HotReloadSavedProduct",
+            "Reload_SelectedProductEffect",
+            "Save was not committed because",
+        ):
+            self.assertNotIn(forbidden, save)
+        for removed in (
+            "Try_HotReloadSavedProduct",
+            "Can_HotReloadSavedProduct",
+            "m_strSaveHotReloadStatus",
+        ):
+            self.assertNotIn(removed, self.header)
+
+        detail = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Render_Detail(",
+            "void Client::CEffect_Tool::Render_CompositionDetail(",
+        )
+        self.assertNotIn(
+            'ImGui::CollapsingHeader("Advanced Diagnostics")', detail
+        )
+        self.assertIn(
+            'ImGui::CollapsingHeader("Material / Render")', detail
+        )
+
+    def test_expanded_rows_never_poll_or_reparse_authored_effects(self) -> None:
+        tree = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Render_UnifiedEffectTree(",
+            "bool_t Client::CEffect_Tool::Render_ManualElementGroups(",
+        )
+        lookup = tree[: tree.index("const std::string RootLabel")]
+        self.assertIn("Observe_DirectAuthoredEditablePath(", lookup)
+        self.assertNotIn("Resolve_DirectAuthoredEditablePath(", lookup)
+        self.assertNotIn("Refresh_UnifiedEffectCache(", tree)
+
+        product_row = source_section(
+            self.cpp,
+            "if (AuthoredBinding != SavedBindings.end())",
+            "else if (nullptr == pEditablePath)",
+        )
+        self.assertIn("Cache->second.bObserved", product_row)
+        self.assertNotIn("Refresh_UnifiedEffectCache(", product_row)
+        self.assertIn(
+            "Open Editor or Play Saved Effect to load Details on demand.",
+            product_row,
+        )
+
     def test_boss_product_open_obeys_the_existing_unlink_lock(self) -> None:
         opening = source_section(
             self.cpp,
@@ -87,7 +254,7 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         )
         self.assertIn("return Reject(", guard)
         self.assertIn("unlink transaction", guard)
-        self.assertLess(opening.index(guard), opening.index("Refresh_DataFiles()"))
+        self.assertLess(opening.index(guard), opening.index("Initialize_CatalogMetadataView()"))
         self.assertLess(opening.index(guard), opening.index("Refresh_ValtanPatternTree()"))
 
     def test_boss_product_open_revalidates_identity_before_loading(self) -> None:
@@ -99,7 +266,7 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         for field in ("PatternId", "StageId", "CueOccurrenceId", "EffectAssetId"):
             self.assertIn(f"Request.str{field}.empty()", opening)
         for failure in (
-            "if (!Refresh_DataFiles())",
+            "m_DirectAuthoredEditableEntries.empty()",
             "if (!Refresh_ValtanPatternTree())",
             "!Is_ValtanAllEffectsPattern(*pPattern)",
             "1u != iStageMatchCount",
@@ -446,14 +613,14 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             "Pattern.Stages",
             "Stage.ProductCues",
             "RUNTIME_VALTAN_EFFECT_ROW",
-            "Runtime Product Effects",
+            "Saved Pattern Effects",
             'ImGui::SmallButton("Open Editor")',
             "Build_ValtanProductPreview",
             "Try_OpenValtanAuthoredEffect",
             "Try_PlayValtanSavedUnifiedEffect",
             "Try_OpenValtanSavedReferenceEffect",
             "iReferenceEffectStartMs",
-            "Unpublished Pattern Draft",
+            "Unsaved Pattern Draft",
             "Local Effect + Pattern Preview",
             "Try_OpenValtanPatternDraftEffect",
         ):
@@ -966,15 +1133,26 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             "void Client::CEffect_Tool::Render_AllEffectsWindow()",
         )
         for token in (
-            "std::filesystem::exists(AggregateEffectPath, AggregatePathError)",
             "CEffectCatalog::Contains(Aggregate.strEffectAssetId)",
             "m_DirectAuthoredEditableEntries.contains(Aggregate.strEffectAssetId)",
             "!Has_UnsavedWork() && !bExistingAggregate",
-            "!AggregateEffectPath.empty() && !AggregatePathError",
+            "!AggregateEffectPath.empty()",
             'ImGui::Button("Open Existing Effect")',
             "Try_OpenExistingValtanPatternEffect(*pSelectedPattern)",
         ):
             self.assertIn(token, tree)
+        self.assertNotIn("std::filesystem::exists(", tree)
+
+        create = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_CreateValtanPatternEffect(",
+            "bool_t Client::CEffect_Tool::Try_DeleteSelectedValtanPatternEffect(",
+        )
+        self.assertIn(
+            "std::filesystem::exists(\n\t\tEffectPath, FileError)",
+            create,
+            "the exact destination collision check belongs on the Create command edge",
+        )
         after_open = tree[tree.index("Try_OpenExistingValtanPatternEffect("):]
         self.assertLess(
             after_open.index("if (bOpenExistingRequested)\n\t\t\treturn;"),
@@ -1175,6 +1353,67 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
             tree.index('ImGui::Button("Delete Effect")'),
         )
 
+    def test_existing_valtan_authored_sources_survive_pattern_join_failure(self) -> None:
+        refresh = source_section(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(",
+            "const std::filesystem::path*\nClient::CEffect_Tool::Resolve_DirectAuthoredEditablePath(",
+        )
+        for token in (
+            "StagedValtanExactAuthoredSources",
+            'Source.strEffectAssetId.starts_with("effect.valtan.")',
+            "m_ValtanExactAuthoredSources =",
+        ):
+            self.assertIn(token, refresh)
+
+        renderer = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Render_ValtanExactAuthoredSourceSection(",
+            "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+        )
+        for token in (
+            "EXISTING AUTHORED EFFECTS (",
+            "Resolve_DirectAuthoredEditablePath(",
+            "EFFECT_DOCUMENT_SOURCE::AUTHORED",
+            "EFFECT_DOCUMENT_PREVIEW_INTENT::STANDALONE_EFFECT",
+            "ValtanExactAuthoredSourceList",
+        ):
+            self.assertIn(token, renderer)
+        self.assertNotIn("Try_PlayValtanServerPattern", renderer)
+        self.assertNotIn("Refresh_ValtanPatternTree", renderer)
+
+        tree = source_section(
+            self.cpp,
+            "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+            "void Client::CEffect_Tool::Render_AllEffectsWindow()",
+        )
+        self.assertLess(
+            tree.index("Render_ValtanExactAuthoredSourceSection(strSearch);"),
+            tree.index("if (!m_bValtanPatternTreeLoaded)"),
+        )
+        failed_join_branch = source_section(
+            tree,
+            "if (!m_bValtanPatternTreeLoaded)",
+            "std::vector<const VALTAN_INDEPENDENT_EFFECT_VIEW*>",
+        )
+        self.assertIn("return;", failed_join_branch)
+
+    def test_existing_valtan_catalog_rows_resolve_to_exact_authored_files(self) -> None:
+        rows = [
+            row
+            for row in self.effect_catalog["effects"]
+            if row["effectAssetId"].startswith("effect.valtan.")
+        ]
+        self.assertGreaterEqual(len(rows), 40)
+        self.assertEqual(len(rows), len({row["effectAssetId"] for row in rows}))
+        for row in rows:
+            self.assertEqual("DIRECT_AUTHORED_DOCUMENT", row["payloadKind"])
+            self.assertEqual(
+                f"Effects/Authored/{row['effectAssetId']}.effect.json",
+                row["authoringPath"],
+            )
+            self.assertTrue((REPOSITORY_ROOT / "Data" / row["authoringPath"]).is_file())
+
     def test_draft_delete_uses_sidecar_cas_and_exact_file_delete(self) -> None:
         draft_delete = source_section(
             self.cpp,
@@ -1291,7 +1530,13 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         self.assertEqual(1, document["formatVersion"])
         self.assertEqual("BOSS_VALTAN", document["bossArchetypeId"])
         self.assertIsInstance(document["bindings"], list)
-        self.assertEqual([], document["bindings"])
+        self.assertEqual(
+            {("VALTAN_CROSS", "effect.valtan.sequence.cross")},
+            {
+                (binding["patternId"], binding["effectAssetId"])
+                for binding in document["bindings"]
+            },
+        )
         seen_patterns: set[str] = set()
         seen_effects: set[str] = set()
         for binding in document["bindings"]:

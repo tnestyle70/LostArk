@@ -8,6 +8,7 @@
 #include "MainApp.h"
 #include "GameInstance.h"
 #include "Profiler.h"
+#include "UIInputRouter.h"
 
 #include "ImGuiLayer.h"
 
@@ -247,6 +248,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     switch (message)
     {
+    case WM_CHAR:
+        /* Committed text (ASCII and IME-composed Hangul alike arrive here; ImGui's handler
+        above queues but never consumes WM_CHAR) for the runtime UI's own text fields -- the
+        router drops it unless one of them is active. */
+        Client::CUIInputRouter::Get().On_Char(static_cast<wchar_t>(wParam));
+        break;
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);

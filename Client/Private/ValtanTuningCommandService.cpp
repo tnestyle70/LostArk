@@ -321,6 +321,18 @@ bool Client::CValtanTuningCommandService::Submit_Candidate(
 	if (!Try_Parse_GameplayDataRevision(m_Snapshot.strCandidateRevision, Request.CandidateRevision))
 		return Reject("The published candidate revision is invalid.");
 	Request.iRequiredPresentationLaneMask = GAMEPLAY_PRESENTATION_KNOWN_LANE_MASK;
+#if !defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
+	const CNetworkManager::PRESENTATION_CANDIDATE_PREFLIGHT_RESULT preflight =
+		CNetworkManager::Get().Preflight_PresentationCandidate(
+			Request.CandidateRevision,
+			Request.iRequiredPresentationLaneMask,
+			strOutStatus);
+	if (CNetworkManager::PRESENTATION_CANDIDATE_PREFLIGHT_RESULT::
+			CURRENT_GENERATION_READY != preflight)
+	{
+		return Reject(std::move(strOutStatus));
+	}
+#endif
 	if (!Send_PrepareRequest(Request))
 		return Reject("Candidate published, but the typed prepare request could not be sent. Runtime application is not confirmed.");
 	m_iNextRequestSequence = (std::numeric_limits<uint32_t>::max)() == m_iNextRequestSequence ?

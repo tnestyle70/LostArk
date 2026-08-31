@@ -37,6 +37,11 @@
           "patternId": "VALTAN_HIGH_JUMP",
           "weight": 14,
           "enabled": true
+        },
+        {
+          "patternId": "VALTAN_TRIPLE_COUNTER",
+          "weight": 4,
+          "enabled": true
         }
       ]
     },
@@ -72,6 +77,11 @@
         {
           "patternId": "VALTAN_HIGH_JUMP",
           "weight": 14,
+          "enabled": true
+        },
+        {
+          "patternId": "VALTAN_TRIPLE_COUNTER",
+          "weight": 4,
           "enabled": true
         }
       ]

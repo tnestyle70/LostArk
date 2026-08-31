@@ -2,5 +2,12 @@
   "schema": "lostark.valtan-pattern-authoring-effects",
   "formatVersion": 1,
   "bossArchetypeId": "BOSS_VALTAN",
-  "bindings": []
+  "bindings": [
+    {
+      "patternId": "VALTAN_CROSS",
+      "effectAssetId": "effect.valtan.sequence.cross",
+      "authoringPath": "Effects/Authored/effect.valtan.sequence.cross.effect.json",
+      "state": "DRAFT_ATTACHED"
+    }
+  ]
 }

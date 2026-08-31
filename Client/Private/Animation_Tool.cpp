@@ -13,6 +13,7 @@
 #include "Effect_Catalog.h"
 #include "Effect_Tool.h"
 #include "EffectAuthoringTransfer.h"
+#include "Effect_RuntimeAuthority.h"
 #include "GameInstance.h"
 #include "HitAreaWire.h"
 #include "Level_ValtanArena.h"
@@ -35,8 +36,13 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <io.h>
+#include <iomanip>
+#include <iterator>
 #include <limits>
+#include <map>
+#include <sstream>
 #include <span>
 #include <system_error>
 #include <tuple>
@@ -53,14 +59,124 @@ namespace
 	/* Used when a clip carries no usable rate, which would otherwise make the
 	frame <-> millisecond conversion divide by zero. */
 	constexpr f32_t DEFAULT_TICK_RATE = 30.f;
-	constexpr f32_t WORKBENCH_DEFAULT_WIDTH = 1180.f;
-	constexpr f32_t WORKBENCH_DEFAULT_HEIGHT = 760.f;
+	constexpr f32_t WORKBENCH_DEFAULT_WIDTH = 900.f;
+	constexpr f32_t WORKBENCH_DEFAULT_HEIGHT = 700.f;
 	constexpr f32_t WORKBENCH_FALLBACK_MIN_WIDTH = 320.f;
 	constexpr f32_t WORKBENCH_FALLBACK_MIN_HEIGHT = 200.f;
+	/* The outer Workbench may contract to a small viewport, but the three-pane
+	   authoring surface keeps a commercial-editor-sized logical canvas and
+	   scrolls horizontally instead of crushing Outliner and Detail to labels. */
+	constexpr f32_t WORKBENCH_THREE_PANE_INNER_WIDTH = 1120.f;
 	constexpr f32_t KAKUL_ACTION_LIST_DEFAULT_WIDTH = 320.f;
 	constexpr f32_t KAKUL_ACTION_LIST_MIN_WIDTH = 280.f;
 	constexpr f32_t KAKUL_ACTION_DETAIL_MIN_WIDTH = 620.f;
 	constexpr f32_t KAKUL_ACTION_SPLITTER_WIDTH = 8.f;
+	constexpr uint64_t VALTAN_PATTERN_CREATE_TIMEOUT_MILLISECONDS = 120000u;
+	constexpr std::uintmax_t VALTAN_PATTERN_CREATE_MAX_DIAGNOSTIC_BYTES =
+		2u * 1024u * 1024u;
+	constexpr std::array<const char_t*, 3u>
+		VALTAN_PATTERN_CREATE_TARGET_POLICIES = {
+			"NONE", "LOCK_NEAREST_ON_START", "LOCK_RANDOM_ALIVE_ON_START" };
+	constexpr std::array<const char_t*, 2u>
+		VALTAN_PATTERN_CREATE_AIM_POLICIES = {
+			"NONE", "LOCK_FACING_ON_START" };
+
+	bool_t Is_LowerSha256(const std::string_view strValue)
+	{
+		return 64u == strValue.size() &&
+			std::all_of(strValue.begin(), strValue.end(),
+				[](const char_t Character)
+				{
+					return (Character >= '0' && Character <= '9') ||
+						(Character >= 'a' && Character <= 'f');
+				});
+	}
+
+	bool_t Is_StablePatternAuthoringId(const std::string_view strValue)
+	{
+		return !strValue.empty() && strValue.size() <= 160u &&
+			std::all_of(strValue.begin(), strValue.end(),
+				[](const char_t Character)
+				{
+					return (Character >= 'a' && Character <= 'z') ||
+						(Character >= 'A' && Character <= 'Z') ||
+						(Character >= '0' && Character <= '9') ||
+						Character == '_' || Character == '-' || Character == '.';
+				});
+	}
+
+	bool_t Read_BoundedFile(
+		const std::filesystem::path& Path,
+		const std::uintmax_t iMaximumBytes,
+		std::string& strOutBytes,
+		std::string& strOutError)
+	{
+		std::error_code Error;
+		const std::uintmax_t iSize = std::filesystem::file_size(Path, Error);
+		if (Error || iSize > iMaximumBytes)
+		{
+			strOutError = Error ?
+				"could not inspect " + Path.string() + ": " + Error.message() :
+				"file exceeds the bounded diagnostic/input limit: " + Path.string();
+			return false;
+		}
+		std::ifstream Stream(Path, std::ios::binary);
+		if (!Stream)
+		{
+			strOutError = "could not open " + Path.string();
+			return false;
+		}
+		strOutBytes.resize(static_cast<std::size_t>(iSize));
+		if (0u != iSize && !Stream.read(
+			strOutBytes.data(), static_cast<std::streamsize>(iSize)))
+		{
+			strOutError = "could not read " + Path.string();
+			return false;
+		}
+		return true;
+	}
+
+	bool_t Resolve_PythonExecutable(
+		std::filesystem::path& Out,
+		std::string& strOutError)
+	{
+		std::vector<wchar_t> Buffer(32768u, L'\0');
+		const DWORD iLength = SearchPathW(
+			nullptr, L"python.exe", nullptr,
+			static_cast<DWORD>(Buffer.size()), Buffer.data(), nullptr);
+		if (0u == iLength || iLength >= Buffer.size())
+		{
+			strOutError =
+				"python.exe was not found through the developer process PATH.";
+			return false;
+		}
+		/* SearchPathW already returns an absolute executable path.  Do not ask
+		   std::filesystem to resolve the target: WindowsApps App Execution Alias
+		   reparse points can fail weakly_canonical() even though CreateProcessW
+		   launches them correctly. */
+		Out = std::filesystem::path(Buffer.data()).lexically_normal();
+		if (Out.empty())
+		{
+			strOutError =
+				"the resolved Python executable path is empty.";
+			Out.clear();
+			return false;
+		}
+		/* Microsoft Store Python is exposed through WindowsApps as a zero-byte
+		   App Execution Alias reparse point.  It is a valid CreateProcessW
+		   target, but std::filesystem::is_regular_file() reports false and used
+		   to reject every Create Pattern request before the backend started. */
+		const DWORD iAttributes = GetFileAttributesW(Out.c_str());
+		if (INVALID_FILE_ATTRIBUTES == iAttributes ||
+			0u != (iAttributes & FILE_ATTRIBUTE_DIRECTORY))
+		{
+			strOutError =
+				"the resolved Python executable is missing or is a directory.";
+			Out.clear();
+			return false;
+		}
+		return true;
+	}
 
 	std::string_view ValtanSoundBankForEvent(
 		const std::string_view strSoundEvent)
@@ -130,6 +246,154 @@ namespace
 		}
 		return durations;
 	}
+
+	struct VALTAN_NATIVE_CLIP_TIMING final
+	{
+		f32_t fDurationTicks = 0.f;
+		f32_t fTicksPerSecond = 0.f;
+	};
+
+	using VALTAN_NATIVE_CLIP_INVENTORY =
+		std::unordered_map<std::string, VALTAN_NATIVE_CLIP_TIMING>;
+
+	bool_t BuildStrictValtanNativeClipInventory(
+		const shared_ptr<Engine::CModel>& pModel,
+		VALTAN_NATIVE_CLIP_INVENTORY& Out,
+		std::string& Status)
+	{
+		Out.clear();
+		if (nullptr == pModel || 0u == pModel->Get_NumAnimations())
+		{
+			Status = "The admitted Valtan CModel has no native Animation inventory.";
+			return false;
+		}
+		Out.reserve(pModel->Get_NumAnimations());
+		for (uint32_t iAnimation = 0u;
+			iAnimation < pModel->Get_NumAnimations(); ++iAnimation)
+		{
+			const char_t* const pClipName =
+				pModel->Get_AnimationName(iAnimation);
+			const f32_t fTicksPerSecond =
+				pModel->Get_AnimationTickPerSecond(iAnimation);
+			f32_t fPositionTicks = 0.f;
+			f32_t fDurationTicks = 0.f;
+			uint32_t iRoundedDurationMs = 0u;
+			if (nullptr == pClipName ||
+				!Is_StablePatternAuthoringId(pClipName) ||
+				!pModel->Get_AnimationProgress(
+					iAnimation, fPositionTicks, fDurationTicks) ||
+				!Client::CActionPresentationTimeline::
+					Validate_AuthoredSourceWindow(
+						fDurationTicks, fTicksPerSecond,
+						0u, 0u, 1.f, iRoundedDurationMs) ||
+				0u == iRoundedDurationMs)
+			{
+				Status = "The admitted Valtan CModel contains malformed native Animation metadata at index " +
+					std::to_string(iAnimation) + ".";
+				Out.clear();
+				return false;
+			}
+			if (!Out.emplace(
+					pClipName,
+					VALTAN_NATIVE_CLIP_TIMING{
+						fDurationTicks, fTicksPerSecond }).second)
+			{
+				Status = "The admitted Valtan CModel contains a duplicate Animation clip: " +
+					std::string(pClipName) + ".";
+				Out.clear();
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool_t SameValtanAnimationAuthoringSignature(
+		const Client::VALTAN_STAGE_VIEW& Left,
+		const Client::VALTAN_STAGE_VIEW& Right)
+	{
+		if (Left.strSequenceRole != Right.strSequenceRole ||
+			Left.bSuppressAnimation != Right.bSuppressAnimation ||
+			Left.ClipOccurrences.size() != Right.ClipOccurrences.size())
+		{
+			return false;
+		}
+		return std::equal(
+			Left.ClipOccurrences.begin(), Left.ClipOccurrences.end(),
+			Right.ClipOccurrences.begin(),
+			[](const Client::VALTAN_CLIP_OCCURRENCE_VIEW& A,
+				const Client::VALTAN_CLIP_OCCURRENCE_VIEW& B)
+			{
+				return A.strClipOccurrenceId == B.strClipOccurrenceId &&
+					A.strClipName == B.strClipName &&
+					A.strMappingBasis == B.strMappingBasis &&
+					A.iSourceStartMs == B.iSourceStartMs &&
+					A.iPlayMs == B.iPlayMs &&
+					A.fPlayRate == B.fPlayRate &&
+					A.bLoop == B.bLoop;
+			});
+	}
+
+	bool_t ValidateValtanStageNativeAnimationWindows(
+		const Client::VALTAN_STAGE_VIEW& Stage,
+		const VALTAN_NATIVE_CLIP_INVENTORY& Inventory,
+		std::string& Status)
+	{
+		if ("WAIT" == Stage.strSequenceRole)
+		{
+			if (!Stage.bSuppressAnimation || !Stage.ClipOccurrences.empty())
+			{
+				Status = "WAIT Stage " + Stage.strStageId +
+					" must remain Animation NONE. Create or select an ACTIVE Stage before assigning a Sequence.";
+				return false;
+			}
+			return true;
+		}
+		if (Stage.bSuppressAnimation)
+		{
+			if (!Stage.ClipOccurrences.empty())
+			{
+				Status = "Animation NONE Stage " + Stage.strStageId +
+					" cannot retain clip occurrences.";
+				return false;
+			}
+			return true;
+		}
+		if (Stage.ClipOccurrences.empty())
+		{
+			Status = "Animation Stage " + Stage.strStageId +
+				" has no native clip occurrence.";
+			return false;
+		}
+		for (const Client::VALTAN_CLIP_OCCURRENCE_VIEW& Occurrence :
+			Stage.ClipOccurrences)
+		{
+			const auto Native = Inventory.find(Occurrence.strClipName);
+			if (Native == Inventory.end())
+			{
+				Status = "Animation Stage " + Stage.strStageId +
+					" references a clip absent from the admitted Valtan CModel: " +
+					Occurrence.strClipName + ".";
+				return false;
+			}
+			uint32_t iRoundedRemainingMs = 0u;
+			if (!Client::CActionPresentationTimeline::
+					Validate_AuthoredSourceWindow(
+						Native->second.fDurationTicks,
+						Native->second.fTicksPerSecond,
+						Occurrence.iSourceStartMs,
+						Occurrence.iPlayMs,
+						Occurrence.fPlayRate,
+						iRoundedRemainingMs))
+			{
+				Status = "Animation Stage " + Stage.strStageId + " occurrence " +
+					Occurrence.strClipOccurrenceId +
+					" escapes the admitted native source window for " +
+					Occurrence.strClipName + ".";
+				return false;
+			}
+		}
+		return true;
+	}
 	/* Both Valtan bodies author into one document. That is only true because
 	Tools/ModelAssetConverter/bake_ghost_valtan_animset.py puts the product clip
 	vocabulary on the ghost rig, so a chain written on either body names clips
@@ -141,6 +405,96 @@ namespace
 	that promotion reject a clip the product model cannot play, so the clip list
 	only offers the vocabulary both bodies share. */
 	constexpr const char_t* CUSTOM_CHAIN_CLIP_PREFIX = "mesh_";
+	constexpr const wchar_t* VALTAN_PATTERN_TRANSACTION_LOCK_RELATIVE =
+		L"out\\ValtanPatternTransactions\\create-pattern.lock";
+
+	class SCOPED_VALTAN_PATTERN_TRANSACTION_LOCK final
+	{
+	public:
+		~SCOPED_VALTAN_PATTERN_TRANSACTION_LOCK()
+		{
+			if (INVALID_HANDLE_VALUE == m_hFile)
+				return;
+			UnlockFileEx(m_hFile, 0u, 1u, 0u, &m_Overlap);
+			CloseHandle(m_hFile);
+		}
+
+		bool_t Try_Acquire(
+			const std::filesystem::path& ProjectRoot,
+			std::string& strOutError)
+		{
+			if (ProjectRoot.empty())
+			{
+				strOutError = "project root is unavailable";
+				return false;
+			}
+			const std::filesystem::path LockPath =
+				ProjectRoot / VALTAN_PATTERN_TRANSACTION_LOCK_RELATIVE;
+			std::error_code DirectoryError;
+			std::filesystem::create_directories(
+				LockPath.parent_path(), DirectoryError);
+			if (DirectoryError)
+			{
+				strOutError = "lock directory creation failed: " +
+					DirectoryError.message();
+				return false;
+			}
+			m_hFile = CreateFileW(
+				LockPath.c_str(), GENERIC_READ | GENERIC_WRITE,
+				FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+				nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+			if (INVALID_HANDLE_VALUE == m_hFile)
+			{
+				strOutError = "lock open failed with Win32 error " +
+					std::to_string(GetLastError());
+				return false;
+			}
+
+			LARGE_INTEGER Size{};
+			if (FALSE == GetFileSizeEx(m_hFile, &Size))
+			{
+				strOutError = "lock size query failed with Win32 error " +
+					std::to_string(GetLastError());
+				CloseHandle(m_hFile);
+				m_hFile = INVALID_HANDLE_VALUE;
+				return false;
+			}
+			if (Size.QuadPart < 1)
+			{
+				const char_t Byte = '\0';
+				DWORD iWritten = 0u;
+				LARGE_INTEGER Begin{};
+				if (FALSE == SetFilePointerEx(
+						m_hFile, Begin, nullptr, FILE_BEGIN) ||
+					FALSE == WriteFile(
+						m_hFile, &Byte, 1u, &iWritten, nullptr) ||
+					1u != iWritten || FALSE == FlushFileBuffers(m_hFile))
+				{
+					strOutError = "lock initialization failed with Win32 error " +
+						std::to_string(GetLastError());
+					CloseHandle(m_hFile);
+					m_hFile = INVALID_HANDLE_VALUE;
+					return false;
+				}
+			}
+
+			if (FALSE == LockFileEx(m_hFile,
+				LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY,
+				0u, 1u, 0u, &m_Overlap))
+			{
+				strOutError = "another Create/Project writer owns the lock (Win32 " +
+					std::to_string(GetLastError()) + ")";
+				CloseHandle(m_hFile);
+				m_hFile = INVALID_HANDLE_VALUE;
+				return false;
+			}
+			return true;
+		}
+
+	private:
+		HANDLE m_hFile = INVALID_HANDLE_VALUE;
+		OVERLAPPED m_Overlap{};
+	};
 
 	struct CUSTOM_CHAIN_PROFILE
 	{
@@ -232,17 +586,6 @@ namespace
 		}
 		return nullptr;
 	}
-
-	constexpr std::array<std::string_view, 7u>
-		VALTAN_PATTERN_MASTER_ORDER = {
-			"VALTAN_WHIRLWIND",
-			"VALTAN_DASH_CHARGE",
-			"VALTAN_FOUR_SLASH",
-			"VALTAN_FIST_IN_OUT",
-			"VALTAN_HIGH_JUMP",
-			"VALTAN_FLOOR_WIPE_130",
-			"VALTAN_ARENA_BREAK_109",
-		};
 
 	const Client::VALTAN_PATTERN_VIEW* Find_ValtanPatternMaster(
 		const Client::VALTAN_PATTERN_TREE_VIEW& View,
@@ -373,6 +716,465 @@ namespace
 		return std::string::npos == text.find_first_of("\"\r\n");
 	}
 
+	bool_t Parse_CommaSeparatedStableTokens(
+		const std::string& Text,
+		std::vector<std::string>& Out)
+	{
+		Out.clear();
+		std::size_t iStart = 0u;
+		while (iStart <= Text.size())
+		{
+			const std::size_t iComma = Text.find(',', iStart);
+			const std::string Token = Text.substr(
+				iStart, std::string::npos == iComma ? std::string::npos :
+					iComma - iStart);
+			if (!Is_StablePatternAuthoringId(Token))
+				return false;
+			Out.push_back(Token);
+			if (Out.size() > 64u || std::string::npos == iComma)
+				break;
+			iStart = iComma + 1u;
+		}
+		return !Out.empty() && Out.size() <= 64u;
+	}
+
+	bool_t Parse_CommaSeparatedNonnegativeSeconds(
+		const std::string& Text,
+		std::vector<f32_t>& Out)
+	{
+		Out.clear();
+		std::size_t iStart = 0u;
+		while (iStart <= Text.size())
+		{
+			const std::size_t iComma = Text.find(',', iStart);
+			const std::string Token = Text.substr(
+				iStart, std::string::npos == iComma ? std::string::npos :
+					iComma - iStart);
+			f32_t fSeconds = 0.f;
+			if (!Parse_Float(Token, fSeconds) || fSeconds < 0.f ||
+				fSeconds > 600.f)
+			{
+				return false;
+			}
+			Out.push_back(fSeconds);
+			if (Out.size() > 64u || std::string::npos == iComma)
+				break;
+			iStart = iComma + 1u;
+		}
+		return !Out.empty() && Out.size() <= 64u;
+	}
+
+	bool_t Load_ValtanCompositionSequenceLibrary(
+		std::vector<Client::CAnimation_Tool::COMPOSITION_SEQUENCE_VIEW>& Out,
+		std::string& Status)
+	{
+		using SEQUENCE_VIEW =
+			Client::CAnimation_Tool::COMPOSITION_SEQUENCE_VIEW;
+		using CLIP_VIEW =
+			Client::CAnimation_Tool::COMPOSITION_SEQUENCE_CLIP_VIEW;
+		const std::filesystem::path Root =
+			Client::CProjectDataRoot::Resolve(L"Animation/Reference/Valtan");
+		const std::filesystem::path SequencePath = Root / L"Valtan.clipseq";
+		const std::filesystem::path CutPath = Root / L"Valtan.clipcuts";
+		std::ifstream SequenceFile(SequencePath, std::ios::binary);
+		std::ifstream CutFile(CutPath, std::ios::binary);
+		if (Root.empty() || !SequenceFile || !CutFile)
+		{
+			Status =
+				"Valtan Sequence library is missing its .clipseq or .clipcuts source.";
+			return false;
+		}
+
+		auto ParseHeader = [&Status](
+			std::ifstream& Stream,
+			const char_t* const pExpectedMagic,
+			const int32_t iExpectedVersion,
+			int32_t& iOutCount)
+		{
+			std::string Line;
+			if (!std::getline(Stream, Line))
+				return false;
+			const char_t* p = Line.c_str();
+			std::string Magic;
+			std::string Version;
+			std::string Owner;
+			std::string Count;
+			int32_t iVersion = 0;
+			if (!Read_Token(p, Magic) || !Read_Token(p, Version) ||
+				!Read_Quoted(p, Owner) || !Read_Token(p, Count) ||
+				Has_RemainingToken(p) ||
+				!Parse_Integer(Version, iVersion) ||
+				!Parse_Integer(Count, iOutCount) ||
+				Magic != pExpectedMagic || iVersion != iExpectedVersion ||
+				"Valtan" != Owner || iOutCount < 1 || iOutCount > 4096)
+			{
+				Status = std::string(pExpectedMagic) +
+					" header is malformed or does not name Valtan.";
+				return false;
+			}
+			return true;
+		};
+
+		int32_t iSequenceCount = 0;
+		if (!ParseHeader(
+				SequenceFile, "LOSTARK_CLIP_SEQ", 2, iSequenceCount))
+		{
+			return false;
+		}
+		std::vector<SEQUENCE_VIEW> Staged;
+		Staged.reserve(static_cast<std::size_t>(iSequenceCount));
+		std::map<std::pair<int32_t, int32_t>, std::size_t> SequenceByKey;
+		std::string Line;
+		for (int32_t iRow = 0; iRow < iSequenceCount; ++iRow)
+		{
+			if (!std::getline(SequenceFile, Line))
+			{
+				Status = "Valtan.clipseq ended before its declared row count.";
+				return false;
+			}
+			const char_t* p = Line.c_str();
+			std::string Action;
+			std::string DisplayName;
+			int32_t iAction = 0;
+			if (!Read_Token(p, Action) || !Read_Quoted(p, DisplayName) ||
+				!Parse_Integer(Action, iAction) || iAction <= 0 ||
+				!Is_SafeQuotedText(DisplayName) || DisplayName.empty())
+			{
+				Status = "Valtan.clipseq contains a malformed action identity/name row.";
+				return false;
+			}
+			SEQUENCE_VIEW Sequence;
+			Sequence.iSkillId = iAction;
+			bool_t bSawSequence = false;
+			bool_t bSawMode = false;
+			bool_t bSawClips = false;
+			std::vector<std::string> Clips;
+			std::string Key;
+			std::string Value;
+			while (Read_Pair(p, Key, Value))
+			{
+				if ("seq" == Key && !bSawSequence)
+				{
+					bSawSequence = Parse_Integer(
+						Value, Sequence.iSequenceIndex) &&
+						Sequence.iSequenceIndex >= 0;
+				}
+				else if ("mode" == Key && !bSawMode)
+				{
+					bSawMode = "COMBO" == Value || "HOLD" == Value ||
+						"SEQUENCE" == Value;
+					Sequence.strMode = Value;
+				}
+				else if ("clips" == Key && !bSawClips)
+				{
+					bSawClips = Parse_CommaSeparatedStableTokens(Value, Clips);
+				}
+				else
+				{
+					Status = "Valtan.clipseq contains a duplicate or unknown field.";
+					return false;
+				}
+			}
+			if (Has_RemainingToken(p) || !bSawSequence || !bSawMode ||
+				!bSawClips || !SequenceByKey.emplace(
+					std::pair{ Sequence.iSkillId, Sequence.iSequenceIndex },
+					Staged.size()).second)
+			{
+				Status = "Valtan.clipseq sequence row is incomplete or duplicated.";
+				return false;
+			}
+			Sequence.strDisplayName = std::move(DisplayName);
+			Sequence.strStableId = "Valtan:" +
+				std::to_string(Sequence.iSkillId) + ":" +
+				std::to_string(Sequence.iSequenceIndex);
+			Sequence.strCategory = "Valtan";
+			Sequence.strProfileId = "Valtan";
+			Sequence.bValtanPatternCompatible = true;
+			Sequence.Clips.reserve(Clips.size());
+			for (std::string& Clip : Clips)
+			{
+				CLIP_VIEW View;
+				View.strClipName = std::move(Clip);
+				Sequence.Clips.push_back(std::move(View));
+			}
+			Staged.push_back(std::move(Sequence));
+		}
+		while (std::getline(SequenceFile, Line))
+		{
+			if (Line.find_first_not_of(" \t\r\n") != std::string::npos)
+			{
+				Status = "Valtan.clipseq contains rows beyond its declared count.";
+				return false;
+			}
+		}
+
+		int32_t iCutCount = 0;
+		if (!ParseHeader(CutFile, "LOSTARK_CLIP_CUTS", 1, iCutCount) ||
+			iCutCount != iSequenceCount)
+		{
+			Status = "Valtan.clipcuts does not match the Sequence catalog count.";
+			return false;
+		}
+		std::map<std::pair<int32_t, int32_t>, std::vector<f32_t>> CutsByKey;
+		for (int32_t iRow = 0; iRow < iCutCount; ++iRow)
+		{
+			if (!std::getline(CutFile, Line))
+			{
+				Status = "Valtan.clipcuts ended before its declared row count.";
+				return false;
+			}
+			const char_t* p = Line.c_str();
+			std::string Action;
+			int32_t iAction = 0;
+			int32_t iSequence = -1;
+			bool_t bSawSequence = false;
+			bool_t bSawCuts = false;
+			std::vector<f32_t> Cuts;
+			if (!Read_Token(p, Action) || !Parse_Integer(Action, iAction) ||
+				iAction <= 0)
+			{
+				Status = "Valtan.clipcuts contains a malformed action identity.";
+				return false;
+			}
+			std::string Key;
+			std::string Value;
+			while (Read_Pair(p, Key, Value))
+			{
+				if ("seq" == Key && !bSawSequence)
+					bSawSequence = Parse_Integer(Value, iSequence) && iSequence >= 0;
+				else if ("cuts" == Key && !bSawCuts)
+					bSawCuts = Parse_CommaSeparatedNonnegativeSeconds(Value, Cuts);
+				else
+				{
+					Status = "Valtan.clipcuts contains a duplicate or unknown field.";
+					return false;
+				}
+			}
+			if (Has_RemainingToken(p) || !bSawSequence || !bSawCuts ||
+				!CutsByKey.emplace(std::pair{ iAction, iSequence },
+					std::move(Cuts)).second)
+			{
+				Status = "Valtan.clipcuts row is incomplete or duplicated.";
+				return false;
+			}
+		}
+
+		for (SEQUENCE_VIEW& Sequence : Staged)
+		{
+			const auto Cuts = CutsByKey.find(
+				{ Sequence.iSkillId, Sequence.iSequenceIndex });
+			if (Cuts == CutsByKey.end() ||
+				Cuts->second.size() != Sequence.Clips.size())
+			{
+				Status = "Valtan Sequence has no exact per-clip source timing: " +
+					std::to_string(Sequence.iSkillId) + "/" +
+					std::to_string(Sequence.iSequenceIndex) + ".";
+				return false;
+			}
+			std::vector<CLIP_VIEW> TimedClips;
+			TimedClips.reserve(Sequence.Clips.size());
+			for (std::size_t iClip = 0u; iClip < Sequence.Clips.size(); ++iClip)
+			{
+				/* Extracted 0.000 cuts are explicit skipped source steps, not a
+				   malformed Sequence and not a zero-duration authoring slot. Keep
+				   the exact positional join above, then omit only those markers from
+				   the model-independent composition view. */
+				if (Cuts->second[iClip] <= 0.f)
+					continue;
+				CLIP_VIEW Clip = std::move(Sequence.Clips[iClip]);
+				Clip.iDurationMs = static_cast<uint32_t>(
+					std::llround(static_cast<double>(Cuts->second[iClip]) * 1000.0));
+				if (0u == Clip.iDurationMs)
+				{
+					Status = "Valtan Sequence contains a positive cut below one millisecond: " +
+						std::to_string(Sequence.iSkillId) + "/" +
+						std::to_string(Sequence.iSequenceIndex) + ".";
+					return false;
+				}
+				Clip.bUsesNativeDuration = false;
+				TimedClips.push_back(std::move(Clip));
+			}
+			if (TimedClips.empty())
+			{
+				Status = "Valtan Sequence contains only skipped source steps: " +
+					std::to_string(Sequence.iSkillId) + "/" +
+					std::to_string(Sequence.iSequenceIndex) + ".";
+				return false;
+			}
+			Sequence.Clips = std::move(TimedClips);
+		}
+		Out = std::move(Staged);
+		Status = "Loaded " + std::to_string(Out.size()) +
+			" exact Valtan source Sequences from .clipseq + .clipcuts (model-independent).";
+		return true;
+	}
+
+	const char_t* Resolve_ActionCompositionCategory(
+		const std::string_view strProfileId,
+		const std::string_view strDisplayName)
+	{
+		/* RPCZ contains both ordinary and explicitly designer-labelled large
+		   Kakul actions. RPCT_07 is the Kakul/Saydon combined planner body and
+		   remains under Kakul; the 05/06 bodies carry Saydon and large-Saydon
+		   authored names. Never infer a category from a model file scan. */
+		if ("MN_RPCZ_00" == strProfileId &&
+			0u == strDisplayName.find("대형 쿠크_"))
+		{
+			return "Large Kakul";
+		}
+		if ("MN_RPCZ_00" == strProfileId || "MN_RPCT_07" == strProfileId)
+			return "Kakul";
+		return "Saydon";
+	}
+
+	bool_t Load_KakulSaydonCompositionSequenceLibrary(
+		std::vector<Client::CAnimation_Tool::COMPOSITION_SEQUENCE_VIEW>& Out,
+		std::string& Status)
+	{
+		using SEQUENCE_VIEW =
+			Client::CAnimation_Tool::COMPOSITION_SEQUENCE_VIEW;
+		using CLIP_VIEW =
+			Client::CAnimation_Tool::COMPOSITION_SEQUENCE_CLIP_VIEW;
+		using BINDING_KEY =
+			std::tuple<std::uint32_t, std::string, std::string>;
+
+		std::vector<SEQUENCE_VIEW> Staged;
+		for (const KAKUL_ACTION_PROFILE_CONTRACT& Profile : KAKUL_ACTION_PROFILES)
+		{
+			const std::filesystem::path ReferencePath =
+				Client::CKakulAnimationActionDocument::Resolve_ReferencePath(
+					Profile.pProfileId);
+			const std::filesystem::path AuthoredPath =
+				Client::CKakulAnimationActionDocument::Resolve_AuthoredPath(
+					Profile.pProfileId);
+			std::string ReferenceBytes;
+			std::string AuthoredBytes;
+			if (ReferencePath.empty() || AuthoredPath.empty() ||
+				!Read_BoundedFile(
+					ReferencePath, 16u * 1024u * 1024u,
+					ReferenceBytes, Status) ||
+				!Read_BoundedFile(
+					AuthoredPath, 8u * 1024u * 1024u,
+					AuthoredBytes, Status))
+			{
+				Status = "Action Composition catalog could not read " +
+					std::string(Profile.pProfileId) + ": " + Status;
+				return false;
+			}
+
+			Client::KAKUL_ANIMATION_ACTION_REFERENCE_DOCUMENT Reference;
+			Client::KAKUL_ANIMATION_ACTION_AUTHORED_DOCUMENT Authored;
+			if (!Client::CKakulAnimationActionDocument::Parse_ReferenceText(
+					ReferenceBytes, Reference, Status) ||
+				!Client::CKakulAnimationActionDocument::Parse_AuthoredText(
+					AuthoredBytes, Authored, Status))
+			{
+				Status = "Action Composition catalog rejected " +
+					std::string(Profile.pProfileId) + ": " + Status;
+				return false;
+			}
+
+			/* This browser is model-independent, so its exact typed source documents
+			   provide the bounded candidate clip set. Physical CModel admission still
+			   happens after the profile is opened in Animation Tool. */
+			std::vector<std::string> SourceClips;
+			for (const Client::KAKUL_ANIMATION_ACTION_REFERENCE& Action :
+				Reference.Actions)
+			{
+				for (const Client::KAKUL_ANIMATION_ACTION_STAGE_REFERENCE& Stage :
+					Action.Stages)
+				{
+					for (const Client::KAKUL_ANIMATION_ACTION_SLOT_REFERENCE& Slot :
+						Stage.Slots)
+					{
+						SourceClips.push_back(Slot.strRuntimeClip);
+					}
+				}
+			}
+			for (const Client::KAKUL_ANIMATION_ACTION_BINDING& Binding :
+				Authored.Bindings)
+			{
+				SourceClips.push_back(Binding.strRuntimeClip);
+			}
+			std::sort(SourceClips.begin(), SourceClips.end());
+			SourceClips.erase(
+				std::unique(SourceClips.begin(), SourceClips.end()),
+				SourceClips.end());
+			if (!Client::CKakulAnimationActionDocument::Validate_Authored(
+					Authored, Reference, Profile.pProfileId,
+					Profile.pModelAssetId, SourceClips, Status))
+			{
+				Status = "Action Composition catalog rejected " +
+					std::string(Profile.pProfileId) + ": " + Status;
+				return false;
+			}
+
+			std::map<BINDING_KEY,
+				const Client::KAKUL_ANIMATION_ACTION_BINDING*> BindingBySlot;
+			for (const Client::KAKUL_ANIMATION_ACTION_BINDING& Binding :
+				Authored.Bindings)
+			{
+				BindingBySlot.emplace(
+					BINDING_KEY{ Binding.iSourceActionId,
+						Binding.strStageId, Binding.strSlotId }, &Binding);
+			}
+
+			for (const Client::KAKUL_ANIMATION_ACTION_REFERENCE& Action :
+				Reference.Actions)
+			{
+				if ("REVIEW_CANDIDATE" != Action.strReviewStatus ||
+					Action.iSourceActionId > static_cast<std::uint32_t>(
+						(std::numeric_limits<int32_t>::max)()))
+				{
+					continue;
+				}
+				SEQUENCE_VIEW Sequence;
+				Sequence.iSkillId = static_cast<int32_t>(Action.iSourceActionId);
+				Sequence.iSequenceIndex = 0;
+				Sequence.strStableId = std::string(Profile.pProfileId) + ":" +
+					std::to_string(Action.iSourceActionId);
+				Sequence.strCategory = Resolve_ActionCompositionCategory(
+					Profile.pProfileId, Action.strDisplayName);
+				Sequence.strProfileId = Profile.pProfileId;
+				Sequence.strDisplayName = Action.strDisplayName;
+				Sequence.strMode = "ACTION";
+				Sequence.bValtanPatternCompatible = false;
+				for (const Client::KAKUL_ANIMATION_ACTION_STAGE_REFERENCE& Stage :
+					Action.Stages)
+				{
+					for (const Client::KAKUL_ANIMATION_ACTION_SLOT_REFERENCE& Slot :
+						Stage.Slots)
+					{
+						const auto Binding = BindingBySlot.find(BINDING_KEY{
+							Action.iSourceActionId, Stage.strStageId, Slot.strSlotId });
+						CLIP_VIEW Clip;
+						if (Binding == BindingBySlot.end())
+						{
+							Clip.strClipName = Slot.strRuntimeClip;
+							Clip.iDurationMs = Slot.iPlayMs;
+						}
+						else
+						{
+							Clip.strClipName = Binding->second->strRuntimeClip;
+							Clip.iDurationMs = Binding->second->iPlayMs;
+						}
+						Clip.bUsesNativeDuration = false;
+						Sequence.Clips.push_back(std::move(Clip));
+					}
+				}
+				/* HOLDOUT and slot-less planner rows stay in their owning Animation
+				   Tool for inspection; they are not meaningful selectable Sequences. */
+				if (!Sequence.Clips.empty())
+					Staged.push_back(std::move(Sequence));
+			}
+		}
+
+		Out.insert(Out.end(),
+			std::make_move_iterator(Staged.begin()),
+			std::make_move_iterator(Staged.end()));
+		return true;
+	}
+
 	bool_t Contains_NoCase(const char_t* pText, const char_t* pNeedle)
 	{
 		if (nullptr == pText)
@@ -429,6 +1231,14 @@ Client::CAnimation_Tool::CAnimation_Tool(
 
 Client::CAnimation_Tool::~CAnimation_Tool()
 {
+	if (nullptr != m_hValtanPatternCreateProcess)
+	{
+		/* The child owns an all-or-nothing source/Product transaction.  Closing
+		   our observation handle on tool teardown must not terminate it midway;
+		   the preserved request and diagnostic paths remain the recovery trail. */
+		CloseHandle(static_cast<HANDLE>(m_hValtanPatternCreateProcess));
+		m_hValtanPatternCreateProcess = nullptr;
+	}
 	if (nullptr != m_pPreviewPanel)
 		m_pPreviewPanel->Set_SessionLock(
 			CHARACTER_PREVIEW_LOCK_OWNER::ANIMATION_TOOL, false, {});
@@ -467,6 +1277,8 @@ void Client::CAnimation_Tool::Update(
 	const f32_t fTimeDelta,
 	const bool_t bIsActiveTool)
 {
+	Poll_ValtanPatternCreateCommand();
+
 	if (m_bValtanPatternMasterPlaying)
 	{
 		const shared_ptr<Engine::CModel> PreviewModel =
@@ -547,6 +1359,68 @@ void Client::CAnimation_Tool::Update(
 		return;
 	}
 
+	if (m_bKakulPatternPreviewPlaying)
+	{
+		const shared_ptr<Engine::CModel> PreviewModel =
+			m_KakulPatternPreviewModel.lock();
+		if (nullptr == PreviewModel ||
+			0u == m_iKakulPatternPreviewTargetGeneration ||
+			m_iKakulPatternPreviewTargetGeneration !=
+				CAnimationTargetService::Resolve_TargetGeneration() ||
+			CAnimationTargetService::Resolve_Model() != PreviewModel)
+		{
+			if (nullptr != PreviewModel)
+			{
+				Stop_KakulPatternPreview(
+					PreviewModel,
+					"KoukuSaton Pattern preview cancelled because the animation target changed; the original model was restored to idle.");
+			}
+			else
+			{
+				Reset_KakulPatternPreviewState(
+					"KoukuSaton Pattern preview cancelled because the animation target changed.");
+			}
+			return;
+		}
+		if (!bIsActiveTool)
+		{
+			Stop_KakulPatternPreview(
+				PreviewModel,
+				"KoukuSaton Pattern preview stopped because Animation Tool was deactivated; idle restored.");
+			return;
+		}
+		if (m_iKakulPatternPreviewClip >= m_KakulPatternPreviewClips.size())
+		{
+			Stop_KakulPatternPreview(
+				PreviewModel,
+				"KoukuSaton Pattern preview stopped because its staged clip list became invalid; idle restored.");
+			return;
+		}
+
+		const KAKUL_ANIMATION_PATTERN_CLIP& Clip =
+			m_KakulPatternPreviewClips[m_iKakulPatternPreviewClip];
+		const char_t* const pCurrentClip = PreviewModel->Get_AnimationName(
+			PreviewModel->Get_CurrentAnimIndex());
+		if (nullptr == pCurrentClip || Clip.strRuntimeClip != pCurrentClip)
+		{
+			Stop_KakulPatternPreview(
+				PreviewModel,
+				"KoukuSaton Pattern preview stopped because another control replaced its clip; idle restored.");
+			return;
+		}
+		if (!m_bKakulPatternPreviewPaused &&
+			std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
+		{
+			m_fKakulPatternPreviewElapsedSeconds += fTimeDelta;
+			if (m_fKakulPatternPreviewElapsedSeconds + 0.000001f >=
+				m_fKakulPatternPreviewClipDurationSeconds)
+			{
+				Advance_KakulPatternPreview(PreviewModel);
+			}
+		}
+		return;
+	}
+
 	if (!m_bValtanPatternPreviewPlaying)
 		return;
 
@@ -620,7 +1494,27 @@ bool_t Client::CAnimation_Tool::Is_AnyDocumentDirty() const
 	return m_bDirty || m_bSkillBindingDirty ||
 		m_bValtanPatternSoundCuesDirty ||
 		m_bValtanCombatObjectSoundCuesDirty ||
-		m_bValtanPatternAnimationBindingDirty || m_bKakulActionDirty;
+		m_bValtanPatternAnimationBindingDirty || m_bKakulActionDirty ||
+		m_bKakulPatternDirty;
+}
+
+bool_t Client::CAnimation_Tool::Is_ValtanDocumentDirty() const
+{
+	return m_bValtanPatternSoundCuesDirty ||
+		m_bValtanCombatObjectSoundCuesDirty ||
+		m_bValtanPatternAnimationBindingDirty;
+}
+
+void Client::CAnimation_Tool::On_LevelChanged()
+{
+	/* LEVEL is an enum, not a level-instance generation.  MainApp calls this
+	   after every committed Change_Level so re-entering VALTAN_ARENA with the
+	   same enum cannot inherit an earlier failed/successful staging latch. */
+	m_iValtanAutoPreviewAttemptGeneration = 0u;
+	m_iValtanAutoPreviewSuccessGeneration = 0u;
+	m_bValtanWorkspaceTabInitialized = false;
+	m_ValtanPatternSoundDurationModel.reset();
+	m_ValtanPatternSoundClipDurations.clear();
 }
 
 void Client::CAnimation_Tool::Reset_KakulActionDocumentState(
@@ -628,16 +1522,1565 @@ void Client::CAnimation_Tool::Reset_KakulActionDocumentState(
 {
 	m_KakulActionReference = {};
 	m_KakulActionAuthored = {};
+	m_KakulAnimationPatterns = {};
 	m_bKakulActionLoadAttempted = false;
 	m_bKakulActionDirty = false;
+	m_bKakulPatternDirty = false;
 	m_bKakulActionReloadConfirmationRequested = false;
 	m_iSelectedKakulAction = -1;
+	m_iRequestedKakulSourceActionId = 0u;
 	m_iSelectedKakulStage = 0;
 	m_iSelectedKakulSlot = 0;
+	m_iSelectedKakulActionClip = 0;
+	m_iSelectedKakulPattern = -1;
+	m_iSelectedKakulPatternClip = 0;
 	m_KakulActionFilter[0] = '\0';
+	m_KakulPatternFilter[0] = '\0';
 	m_strKakulActionStatus.clear();
+	m_strKakulPatternStatus.clear();
+	Reset_KakulPatternPreviewState({});
 	if (bClearProfile)
 		m_strKakulProfileId.clear();
+}
+
+bool_t Client::CAnimation_Tool::Open_ValtanWorkspace()
+{
+	if (Is_AnyDocumentDirty() && !m_AssetName.empty() &&
+		"Valtan" != m_AssetName)
+	{
+		m_Status =
+			"Save or discard the current Animation document before opening the Valtan data workspace.";
+		return false;
+	}
+
+	m_bValtanDataWorkspaceRequested = true;
+	m_bValtanWorkspaceTabInitialized = false;
+	m_Status =
+		"Opened the canonical Valtan Pattern workspace. Product data remains visible even when the local Model View is unavailable.";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Stage_ValtanCompositionPreview(
+	std::string& strOutStatus)
+{
+	if (!Open_ValtanWorkspace())
+	{
+		strOutStatus = m_Status;
+		return false;
+	}
+	if (nullptr == m_pPreviewPanel ||
+		!m_pPreviewPanel->Select_TargetAsset("Valtan"))
+	{
+		strOutStatus = nullptr == m_pPreviewPanel ?
+			"Valtan preview panel is unavailable; canonical data-only authoring remains available." :
+			"Valtan Model View could not be staged; canonical data-only authoring remains available: " +
+				m_pPreviewPanel->Get_Status();
+		return false;
+	}
+	const std::string strAssetName =
+		CAnimationTargetService::Resolve_AssetName();
+	const shared_ptr<CValtan> pBoss = CAnimationTargetService::Resolve_Boss();
+	const shared_ptr<Engine::CModel> pModel = Resolve_Model();
+	if ("Valtan" != strAssetName || nullptr == pBoss || nullptr == pModel ||
+		pBoss->Get_BodyModel() != pModel)
+	{
+		strOutStatus =
+			"The selected target is not the dedicated Valtan Model View; no unrelated scene model was substituted.";
+		return false;
+	}
+	if (!Sync_AssetName())
+	{
+		strOutStatus = m_Status;
+		return false;
+	}
+	m_iValtanAutoPreviewAttemptGeneration =
+		CAnimationTargetService::Resolve_TargetGeneration();
+	m_iValtanAutoPreviewSuccessGeneration =
+		m_iValtanAutoPreviewAttemptGeneration;
+	strOutStatus = "Dedicated Valtan Model View is ready for Action Composition preview.";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Play_ValtanCompositionPattern(
+	const std::string& strPatternId,
+	const VALTAN_PATTERN_PREVIEW_PATH ePath,
+	std::string& strOutStatus)
+{
+	if (strPatternId.empty())
+	{
+		strOutStatus = "Select one stable Valtan Pattern before preview.";
+		return false;
+	}
+	if (!Stage_ValtanCompositionPreview(strOutStatus))
+		return false;
+	if (VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED !=
+		m_eValtanPatternMasterAdmission && !Reload_ValtanPatternMaster())
+	{
+		strOutStatus = m_strValtanPatternMasterStatus;
+		return false;
+	}
+	const VALTAN_PATTERN_VIEW* const pPattern =
+		Find_ValtanPatternMaster(m_ValtanPatternMasterView, strPatternId);
+	const shared_ptr<Engine::CModel> pModel = Resolve_Model();
+	if (nullptr == pPattern || nullptr == pModel)
+	{
+		strOutStatus = nullptr == pPattern ?
+			"The selected Pattern is absent from the admitted animation preview graph." :
+			"The dedicated Valtan preview model disappeared before playback.";
+		return false;
+	}
+	m_bValtanCompositionDraftPreviewReady = false;
+	m_ValtanCompositionDraftPreview = {};
+	m_eValtanPatternMasterPath = ePath;
+	const bool_t bStarted = Start_ValtanPatternMasterPreview(
+		pModel, *pPattern, ePath);
+	strOutStatus = m_strValtanPatternMasterStatus;
+	return bStarted;
+}
+
+bool_t Client::CAnimation_Tool::Play_ValtanCompositionDraftPattern(
+	const VALTAN_PATTERN_VIEW& Pattern,
+	const VALTAN_PATTERN_PREVIEW_PATH ePath,
+	std::string& strOutStatus)
+{
+	if (Pattern.strPatternId.empty() || Pattern.Stages.empty())
+	{
+		strOutStatus =
+			"The effective authoring draft has no stable Pattern/stage timeline.";
+		return false;
+	}
+	if (!Stage_ValtanCompositionPreview(strOutStatus))
+		return false;
+	if (VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED !=
+		m_eValtanPatternMasterAdmission && !Reload_ValtanPatternMaster())
+	{
+		strOutStatus = m_strValtanPatternMasterStatus;
+		return false;
+	}
+	const shared_ptr<Engine::CModel> pModel = Resolve_Model();
+	if (nullptr == pModel)
+	{
+		strOutStatus =
+			"The dedicated Valtan preview model disappeared before draft playback.";
+		return false;
+	}
+	m_ValtanCompositionDraftPreview = Pattern;
+	m_bValtanCompositionDraftPreviewReady = true;
+	m_eValtanPatternMasterPath = ePath;
+	const bool_t bStarted = Start_ValtanPatternMasterPreview(
+		pModel, m_ValtanCompositionDraftPreview, ePath);
+	if (!bStarted)
+	{
+		m_bValtanCompositionDraftPreviewReady = false;
+		m_ValtanCompositionDraftPreview = {};
+	}
+	strOutStatus = m_strValtanPatternMasterStatus;
+	return bStarted;
+}
+
+bool_t Client::CAnimation_Tool::Seek_ValtanCompositionPattern(
+	const std::string& strPatternId,
+	const uint32_t iPositionMs,
+	const bool_t bPause,
+	std::string& strOutStatus)
+{
+	const bool_t bSamePattern = m_bValtanPatternMasterPlaying &&
+		!m_ValtanPatternMasterPlaylist.empty() &&
+		m_ValtanPatternMasterPlaylist.front().strPatternId == strPatternId;
+	if (!bSamePattern)
+	{
+		const bool_t bDraftMatches = m_bValtanCompositionDraftPreviewReady &&
+			m_ValtanCompositionDraftPreview.strPatternId == strPatternId;
+		const VALTAN_PATTERN_VIEW DraftCopy = bDraftMatches ?
+			m_ValtanCompositionDraftPreview : VALTAN_PATTERN_VIEW{};
+		const bool_t bStarted = bDraftMatches ?
+			Play_ValtanCompositionDraftPattern(
+				DraftCopy,
+				VALTAN_PATTERN_PREVIEW_PATH::NORMAL, strOutStatus) :
+			Play_ValtanCompositionPattern(
+				strPatternId, VALTAN_PATTERN_PREVIEW_PATH::NORMAL, strOutStatus);
+		if (!bStarted)
+			return false;
+	}
+	const shared_ptr<Engine::CModel> pModel = Resolve_Model();
+	if (nullptr == pModel || !Seek_ValtanPatternMasterPreview(
+			pModel, static_cast<f32_t>(iPositionMs) * 0.001f, bPause, true))
+	{
+		strOutStatus = m_strValtanPatternMasterStatus.empty() ?
+			"Valtan composition preview seek was rejected." :
+			m_strValtanPatternMasterStatus;
+		return false;
+	}
+	strOutStatus = m_strValtanPatternMasterStatus;
+	return true;
+}
+
+void Client::CAnimation_Tool::Stop_ValtanCompositionPattern(
+	std::string& strOutStatus)
+{
+	if (const shared_ptr<Engine::CModel> pModel = Resolve_Model())
+	{
+		Stop_ValtanPatternMasterPreview(
+			pModel, "Action Composition preview stopped.");
+	}
+	else
+	{
+		Reset_ValtanPatternMasterPreviewState(
+			"Action Composition preview stopped after its Model View disappeared.");
+	}
+	strOutStatus = m_strValtanPatternMasterStatus;
+}
+
+Client::CAnimation_Tool::COMPOSITION_PREVIEW_STATE
+Client::CAnimation_Tool::Get_ValtanCompositionPreviewState() const
+{
+	COMPOSITION_PREVIEW_STATE State;
+	const shared_ptr<Engine::CModel> pModel = Resolve_Model();
+	const shared_ptr<CValtan> pBoss = CAnimationTargetService::Resolve_Boss();
+	State.bModelReady = nullptr != pModel && nullptr != pBoss &&
+		pBoss->Get_BodyModel() == pModel &&
+		"Valtan" == CAnimationTargetService::Resolve_AssetName();
+	State.bPlaying = m_bValtanPatternMasterPlaying;
+	State.bPaused = m_bValtanPatternMasterPaused;
+	State.bSourceSequencePlaying = m_bValtanPatternPreviewPlaying;
+	State.iDurationMs = m_iValtanPatternMasterDurationMs;
+	if (!m_ValtanPatternMasterPlaylist.empty())
+		State.strPatternId = m_ValtanPatternMasterPlaylist.front().strPatternId;
+	if (m_bValtanPatternMasterPlaying &&
+		m_iValtanPatternMasterItem < m_ValtanPatternMasterPlaylist.size())
+	{
+		const VALTAN_PATTERN_MASTER_PLAY_ITEM& Item =
+			m_ValtanPatternMasterPlaylist[m_iValtanPatternMasterItem];
+		const uint64_t iPositionMs =
+			static_cast<uint64_t>(Item.iTimelineStartMs) +
+			static_cast<uint64_t>(std::llround(
+				static_cast<double>(m_fValtanPatternMasterItemElapsedSeconds) *
+				1000.0));
+		State.iPositionMs = static_cast<uint32_t>((std::min)(
+			iPositionMs, static_cast<uint64_t>(State.iDurationMs)));
+	}
+	State.strStatus = m_strValtanPatternMasterStatus;
+	State.strSourceSequenceStatus = m_strValtanPatternPreviewStatus;
+	if (m_bValtanPatternPreviewPlaying &&
+		m_iValtanPatternPreviewItem < m_ValtanPatternPreviewPlaylist.size())
+	{
+		const VALTAN_PATTERN_PREVIEW_PLAY_ITEM& Item =
+			m_ValtanPatternPreviewPlaylist[m_iValtanPatternPreviewItem];
+		const char_t* const pCurrentClip = nullptr == pModel ? nullptr :
+			pModel->Get_AnimationName(pModel->Get_CurrentAnimIndex());
+		State.strSourceSequenceStatus = "Target=ARENA CLONE | Action=" +
+			std::to_string(Item.iSourceActionId) + " | Sequence=" +
+			std::to_string(Item.iSequenceIndex) + " | Clip=" +
+			(nullptr == pCurrentClip ? Item.strClipName :
+				std::string{ pCurrentClip }) + " | Step=" +
+			std::to_string(Item.iStepNumber) + "/" +
+			std::to_string(Item.iStepCount) +
+			" | Server Valtan=UNCHANGED.";
+	}
+	return State;
+}
+
+bool_t Client::CAnimation_Tool::Get_ValtanCompositionSequences(
+	std::vector<COMPOSITION_SEQUENCE_VIEW>& OutSequences,
+	std::string& strOutStatus)
+{
+	OutSequences.clear();
+	return Load_ValtanCompositionSequenceLibrary(
+		OutSequences, strOutStatus);
+}
+
+bool_t Client::CAnimation_Tool::Get_ActionCompositionSequenceCatalog(
+	std::vector<COMPOSITION_SEQUENCE_VIEW>& OutSequences,
+	std::string& strOutStatus)
+{
+	std::vector<COMPOSITION_SEQUENCE_VIEW> Staged;
+	if (!Load_ValtanCompositionSequenceLibrary(Staged, strOutStatus) ||
+		!Load_KakulSaydonCompositionSequenceLibrary(Staged, strOutStatus))
+	{
+		OutSequences.clear();
+		return false;
+	}
+	std::array<std::size_t, 4u> CategoryCounts{};
+	for (const COMPOSITION_SEQUENCE_VIEW& Sequence : Staged)
+	{
+		if ("Valtan" == Sequence.strCategory)
+			++CategoryCounts[0u];
+		else if ("Kakul" == Sequence.strCategory)
+			++CategoryCounts[1u];
+		else if ("Large Kakul" == Sequence.strCategory)
+			++CategoryCounts[2u];
+		else if ("Saydon" == Sequence.strCategory)
+			++CategoryCounts[3u];
+	}
+	OutSequences = std::move(Staged);
+	strOutStatus = "Loaded meaningful typed Sequences once: Valtan " +
+		std::to_string(CategoryCounts[0u]) + ", Kakul " +
+		std::to_string(CategoryCounts[1u]) + ", Large Kakul " +
+		std::to_string(CategoryCounts[2u]) + ", Saydon " +
+		std::to_string(CategoryCounts[3u]) + ".";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Resolve_ValtanCompositionNativeModel(
+	shared_ptr<Engine::CModel>& pOutModel,
+	std::string& strOutStatus) const
+{
+	pOutModel.reset();
+	const std::string strAssetName =
+		CAnimationTargetService::Resolve_AssetName();
+	const shared_ptr<CValtan> pBoss = CAnimationTargetService::Resolve_Boss();
+	const shared_ptr<Engine::CModel> pModel = Resolve_Model();
+	if ("Valtan" != strAssetName || nullptr == pBoss || nullptr == pModel ||
+		pBoss->Get_BodyModel() != pModel)
+	{
+		strOutStatus =
+			"Native Animation authoring is blocked until the dedicated admitted Valtan Model View is staged; no unrelated scene model is substituted.";
+		return false;
+	}
+	pOutModel = pModel;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Resolve_ValtanCompositionNativeClipDurationMs(
+	const std::string& strClipName,
+	uint32_t& iOutRoundedDurationMs,
+	std::string& strOutStatus) const
+{
+	iOutRoundedDurationMs = 0u;
+	shared_ptr<Engine::CModel> pModel;
+	if (!Resolve_ValtanCompositionNativeModel(pModel, strOutStatus))
+		return false;
+	VALTAN_NATIVE_CLIP_INVENTORY Inventory;
+	if (!BuildStrictValtanNativeClipInventory(
+			pModel, Inventory, strOutStatus))
+	{
+		return false;
+	}
+	const auto Found = Inventory.find(strClipName);
+	if (Found == Inventory.end())
+	{
+		strOutStatus =
+			"The selected Sequence clip is absent from the admitted Valtan CModel: " +
+			strClipName + ".";
+		return false;
+	}
+	if (!CActionPresentationTimeline::Validate_AuthoredSourceWindow(
+			Found->second.fDurationTicks,
+			Found->second.fTicksPerSecond,
+			0u, 0u, 1.f, iOutRoundedDurationMs) ||
+		0u == iOutRoundedDurationMs)
+	{
+		strOutStatus =
+			"The selected Sequence clip has no usable native duration: " +
+			strClipName + ".";
+		iOutRoundedDurationMs = 0u;
+		return false;
+	}
+	strOutStatus = "Resolved native Valtan clip duration.";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::
+Validate_ValtanCompositionAnimationStageMutation(
+	const VALTAN_STAGE_VIEW& BaselineStage,
+	const VALTAN_STAGE_VIEW& CandidateStage,
+	std::string& strOutStatus) const
+{
+	if (SameValtanAnimationAuthoringSignature(
+			BaselineStage, CandidateStage))
+	{
+		strOutStatus = "Native Animation source windows are unchanged.";
+		return true;
+	}
+	VALTAN_NATIVE_CLIP_INVENTORY Inventory;
+	if (!CandidateStage.bSuppressAnimation &&
+		"WAIT" != CandidateStage.strSequenceRole)
+	{
+		shared_ptr<Engine::CModel> pModel;
+		if (!Resolve_ValtanCompositionNativeModel(pModel, strOutStatus) ||
+			!BuildStrictValtanNativeClipInventory(
+				pModel, Inventory, strOutStatus))
+		{
+			return false;
+		}
+	}
+	if (!ValidateValtanStageNativeAnimationWindows(
+			CandidateStage, Inventory, strOutStatus))
+	{
+		return false;
+	}
+	strOutStatus = "Native Animation Stage mutation admitted.";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::
+Validate_ValtanCompositionAnimationGraphMutations(
+	const std::vector<VALTAN_PATTERN_VIEW>& BaselinePatterns,
+	const std::vector<VALTAN_PATTERN_VIEW>& CandidatePatterns,
+	std::string& strOutStatus) const
+{
+	VALTAN_NATIVE_CLIP_INVENTORY Inventory;
+	bool_t bInventoryReady = false;
+	for (const VALTAN_PATTERN_VIEW& CandidatePattern : CandidatePatterns)
+	{
+		const auto BaselinePattern = std::find_if(
+			BaselinePatterns.begin(), BaselinePatterns.end(),
+			[&CandidatePattern](const VALTAN_PATTERN_VIEW& Pattern)
+			{
+				return Pattern.strPatternId == CandidatePattern.strPatternId;
+			});
+		for (const VALTAN_STAGE_VIEW& CandidateStage : CandidatePattern.Stages)
+		{
+			const VALTAN_STAGE_VIEW* pBaselineStage = nullptr;
+			if (BaselinePattern != BaselinePatterns.end())
+			{
+				const auto FoundStage = std::find_if(
+					BaselinePattern->Stages.begin(), BaselinePattern->Stages.end(),
+					[&CandidateStage](const VALTAN_STAGE_VIEW& Stage)
+					{
+						return Stage.strStageId == CandidateStage.strStageId;
+					});
+				if (FoundStage != BaselinePattern->Stages.end())
+					pBaselineStage = &*FoundStage;
+			}
+			if (nullptr != pBaselineStage &&
+				SameValtanAnimationAuthoringSignature(
+					*pBaselineStage, CandidateStage))
+			{
+				continue;
+			}
+			if (!CandidateStage.bSuppressAnimation &&
+				"WAIT" != CandidateStage.strSequenceRole &&
+				!bInventoryReady)
+			{
+				shared_ptr<Engine::CModel> pModel;
+				if (!Resolve_ValtanCompositionNativeModel(
+						pModel, strOutStatus) ||
+					!BuildStrictValtanNativeClipInventory(
+						pModel, Inventory, strOutStatus))
+				{
+					return false;
+				}
+				bInventoryReady = true;
+			}
+			if (!ValidateValtanStageNativeAnimationWindows(
+					CandidateStage, Inventory, strOutStatus))
+			{
+				strOutStatus = CandidatePattern.strPatternId + "/" +
+					CandidateStage.strStageId + ": " + strOutStatus;
+				return false;
+			}
+		}
+	}
+	strOutStatus = "All changed native Animation source windows are admitted.";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Preview_ValtanCompositionSequence(
+	const int32_t iSkillId,
+	const int32_t iSequenceIndex,
+	std::string& strOutStatus)
+{
+	if (!Stage_ValtanCompositionPreview(strOutStatus))
+		return false;
+	if (!m_bClipSeqLoadAttempted)
+	{
+		m_bClipSeqLoadAttempted = true;
+		(void)Load_ClipSeq();
+	}
+	const auto Found = std::find_if(
+		m_ClipSeqs.begin(), m_ClipSeqs.end(),
+		[iSkillId, iSequenceIndex](const CLIP_SEQ& Sequence)
+		{
+			return Sequence.iSkillId == iSkillId &&
+				Sequence.iSeqIndex == iSequenceIndex;
+		});
+	if (Found == m_ClipSeqs.end())
+	{
+		strOutStatus = "The selected extracted Animation Sequence no longer exists.";
+		return false;
+	}
+	const shared_ptr<Engine::CModel> pModel = Resolve_Model();
+	if (nullptr == pModel || !Start_ValtanSequencePreview(
+			pModel, static_cast<std::size_t>(Found - m_ClipSeqs.begin())))
+	{
+		strOutStatus = "Could not preview the selected extracted Animation Sequence.";
+		return false;
+	}
+	const char_t* const pCurrentClip = pModel->Get_AnimationName(
+		pModel->Get_CurrentAnimIndex());
+	strOutStatus = "Target=ARENA CLONE | Action=" +
+		std::to_string(iSkillId) + " | Sequence=" +
+		std::to_string(iSequenceIndex) + " | Clip=" +
+		(nullptr == pCurrentClip ? std::string{ "UNKNOWN" } :
+			std::string{ pCurrentClip }) +
+		" | Server Valtan=UNCHANGED.";
+	m_strValtanPatternPreviewStatus = strOutStatus;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Stage_ValtanCompositionIntakeSequence(
+	const int32_t iSkillId,
+	const int32_t iSequenceIndex,
+	const std::string& strTargetPatternId,
+	const std::string& strTargetStageId,
+	std::string& strOutStatus)
+{
+	std::vector<COMPOSITION_SEQUENCE_VIEW> Sequences;
+	if (!Get_ValtanCompositionSequences(Sequences, strOutStatus))
+		return false;
+	const auto Found = std::find_if(
+		Sequences.begin(), Sequences.end(),
+		[iSkillId, iSequenceIndex](const COMPOSITION_SEQUENCE_VIEW& Sequence)
+		{
+			return Sequence.iSkillId == iSkillId &&
+				Sequence.iSequenceIndex == iSequenceIndex;
+		});
+	if (Found == Sequences.end() || Found->Clips.empty())
+	{
+		strOutStatus = "The selected Animation Sequence cannot stage an empty Intake.";
+		return false;
+	}
+	m_CustomChainSteps.clear();
+	m_CustomChainSteps.reserve(Found->Clips.size());
+	for (const COMPOSITION_SEQUENCE_CLIP_VIEW& Clip : Found->Clips)
+	{
+		CUSTOM_CHAIN_STEP Step;
+		Step.clipName = Clip.strClipName;
+		Step.fDurationSeconds = static_cast<f32_t>(Clip.iDurationMs) * 0.001f;
+		m_CustomChainSteps.push_back(std::move(Step));
+	}
+	const std::string strChainId = "sequence." + std::to_string(iSkillId) +
+		"." + std::to_string(iSequenceIndex);
+	snprintf(m_CustomChainId, sizeof(m_CustomChainId), "%s", strChainId.c_str());
+	snprintf(m_CustomChainTargetPatternId,
+		sizeof(m_CustomChainTargetPatternId), "%s", strTargetPatternId.c_str());
+	snprintf(m_CustomChainTargetStageId,
+		sizeof(m_CustomChainTargetStageId), "%s", strTargetStageId.c_str());
+	m_iValtanPatternCreateSourceKind = 0;
+	m_bValtanPatternCreateExactSourceSelection = true;
+	m_iValtanPatternCreateSourceActionId = iSkillId;
+	m_iValtanPatternCreateSourceSequenceIndex = iSequenceIndex;
+	m_strValtanPatternCreateValidatedRequestSha256.clear();
+	strOutStatus = "Staged " + std::to_string(m_CustomChainSteps.size()) +
+		" Sequence clips in Create New Pattern Intake. Review the Pattern ID and Apply transaction below.";
+	return true;
+}
+
+void Client::CAnimation_Tool::
+Invalidate_ValtanPatternCreateExactSourceSelection()
+{
+	m_bValtanPatternCreateExactSourceSelection = false;
+	m_iValtanPatternCreateSourceActionId = -1;
+	m_iValtanPatternCreateSourceSequenceIndex = -1;
+	m_strValtanPatternCreateValidatedRequestSha256.clear();
+}
+
+void Client::CAnimation_Tool::Set_ValtanCompositionLoop(const bool_t bLoop)
+{
+	m_bValtanCompositionLoop = bLoop;
+}
+
+bool_t Client::CAnimation_Tool::Consume_ValtanCompositionPatternCreated(
+	std::string& strOutPatternId)
+{
+	if (!m_bValtanCompositionPatternCreatedPending)
+		return false;
+	strOutPatternId = std::move(m_strValtanCompositionPatternCreatedId);
+	m_strValtanCompositionPatternCreatedId.clear();
+	m_bValtanCompositionPatternCreatedPending = false;
+	return !strOutPatternId.empty();
+}
+
+bool_t Client::CAnimation_Tool::Is_ValtanCompositionPatternTransactionActive() const
+{
+	return nullptr != m_hValtanPatternCreateProcess;
+}
+
+bool_t Client::CAnimation_Tool::Ensure_ValtanCompositionPatternSounds(
+	std::string& strOutStatus)
+{
+	if (!m_bValtanPatternSoundCuesReady)
+		(void)Reload_ValtanPatternSoundCues();
+	strOutStatus = m_strValtanPatternSoundCueStatus;
+	return m_bValtanPatternSoundCuesReady;
+}
+
+bool_t Client::CAnimation_Tool::Reload_ValtanCompositionPatternSounds(
+	std::string& strOutStatus)
+{
+	const bool_t bReloaded = Reload_ValtanPatternSoundCues();
+	strOutStatus = m_strValtanPatternSoundCueStatus;
+	return bReloaded;
+}
+
+bool_t Client::CAnimation_Tool::
+Can_CommitValtanCompositionPatternSoundGeneration(
+	std::string& strOutStatus)
+{
+	if (nullptr == m_pBossTool)
+	{
+		strOutStatus =
+			"Pattern Sound Save/Load requires Boss Tool to be available.";
+		return false;
+	}
+	return m_pBossTool->Can_CommitPatternSoundGeneration(strOutStatus);
+}
+
+bool_t Client::CAnimation_Tool::Is_ValtanCompositionPatternSoundRuntimeReady(
+	const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+	std::string& strOutStatus) const
+{
+	if (!ExpectedRevision.Is_Valid())
+	{
+		strOutStatus =
+			"Pattern Sound runtime apply requires one valid Server-active Pattern revision.";
+		return false;
+	}
+	if (m_bValtanPatternSoundCuesDirty)
+	{
+		strOutStatus =
+			"Pattern Sound playback is blocked by an unsaved Sound owner draft.";
+		return false;
+	}
+	if (!m_bValtanPatternSoundRuntimeApplyReady ||
+		m_ValtanPatternSoundRuntimeAppliedRevision != ExpectedRevision)
+	{
+		strOutStatus = m_strValtanPatternSoundCueStatus.empty() ?
+			"Pattern Sound active-consumer apply is pending for the exact Server-active Pattern revision." :
+			m_strValtanPatternSoundCueStatus;
+		return false;
+	}
+	strOutStatus =
+		"Pattern Sound consumers are pinned to Server revision " +
+		LostArk::Shared::Format_GameplayDataRevision(ExpectedRevision) + ".";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Apply_ValtanCompositionPatternSoundsToActiveConsumers(
+	const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+	std::string& strOutStatus)
+{
+	if (!Can_CommitValtanCompositionPatternSoundGeneration(strOutStatus))
+		return false;
+	if (!ExpectedRevision.Is_Valid())
+	{
+		m_bValtanPatternSoundRuntimeApplyReady = false;
+		m_ValtanPatternSoundRuntimeAppliedRevision = {};
+		strOutStatus =
+			"Pattern Sound consumer reload requires one valid revision receipt from Boss Tool.";
+		return false;
+	}
+	std::string ArenaStatus =
+		"No active Valtan Arena; Server Pattern playback admission cannot be established until the primary replicated Valtan consumer exists.";
+	bool_t bArenaReloaded = false;
+	if (CLevel_ValtanArena* const pArena = CLevel_ValtanArena::Get_Active())
+	{
+		bArenaReloaded =
+			pArena->Reload_PrimaryValtanPresentationAuthoring(
+				ExpectedRevision, ArenaStatus);
+	}
+	std::string PreviewStatus =
+		"No Development preview Valtan is active.";
+	bool_t bPreviewReloaded = true;
+	if (const shared_ptr<CValtan> Boss =
+			CAnimationTargetService::Resolve_Boss())
+	{
+		bPreviewReloaded =
+			Boss->Reload_PatternPresentationAuthoring(PreviewStatus);
+		if (!bPreviewReloaded)
+		{
+			PreviewStatus =
+				"Development preview reload rejected: " + PreviewStatus;
+		}
+	}
+	m_bValtanPatternSoundRuntimeApplyReady =
+		bArenaReloaded && bPreviewReloaded;
+	m_ValtanPatternSoundRuntimeAppliedRevision =
+		m_bValtanPatternSoundRuntimeApplyReady ? ExpectedRevision :
+			LostArk::Shared::GameplayDataRevision{};
+	strOutStatus =
+		(bArenaReloaded ? ArenaStatus :
+			"ACTIVE ARENA RELOAD REJECTED: " + ArenaStatus) + " " +
+		PreviewStatus +
+		" Consumer reload receipt is provisional until Boss Tool revalidates the exact Server revision.";
+	return m_bValtanPatternSoundRuntimeApplyReady;
+}
+
+bool_t Client::CAnimation_Tool::Retry_ValtanCompositionPatternSoundRuntimeApply(
+	const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+	std::string& strOutStatus)
+{
+	if (!Can_CommitValtanCompositionPatternSoundGeneration(strOutStatus))
+		return false;
+	if (!ExpectedRevision.Is_Valid())
+	{
+		m_bValtanPatternSoundRuntimeApplyReady = false;
+		m_ValtanPatternSoundRuntimeAppliedRevision = {};
+		strOutStatus =
+			"Pattern Sound runtime apply rejected because Boss Tool supplied no valid expected Pattern revision.";
+		return false;
+	}
+	if (m_bValtanPatternSoundCuesDirty)
+	{
+		strOutStatus =
+			"Pattern Sound runtime apply is blocked by an unsaved Sound owner draft.";
+		return false;
+	}
+	if (!Reload_ValtanPatternSoundCues())
+	{
+		m_bValtanPatternSoundRuntimeApplyReady = false;
+		m_ValtanPatternSoundRuntimeAppliedRevision = {};
+		strOutStatus = m_strValtanPatternSoundCueStatus;
+		return false;
+	}
+	std::string ApplyStatus;
+	const bool_t bApplied =
+		Apply_ValtanCompositionPatternSoundsToActiveConsumers(
+			ExpectedRevision, ApplyStatus);
+	m_strValtanPatternSoundCueStatus = bApplied ?
+		"Pattern Sound source rejoined and applied to every active consumer at exact Server revision " +
+			LostArk::Shared::Format_GameplayDataRevision(ExpectedRevision) + ". " +
+			ApplyStatus :
+		"Pattern Sound source rejoined, but one or more active consumers preserved their previous cache. Complete Play/Restart remain blocked until Retry Apply succeeds or the Arena is re-entered. " +
+			ApplyStatus;
+	strOutStatus = m_strValtanPatternSoundCueStatus;
+	return bApplied;
+}
+
+void Client::CAnimation_Tool::Invalidate_ValtanCompositionPatternSoundRuntimeApply(
+	const std::string& strStatus)
+{
+	m_bValtanPatternSoundRuntimeApplyReady = false;
+	m_ValtanPatternSoundRuntimeAppliedRevision = {};
+	m_strValtanPatternSoundCueStatus = strStatus.empty() ?
+		"Pattern Sound runtime receipt was invalidated before exact revision commit." :
+		strStatus;
+}
+
+const Client::VALTAN_PATTERN_SOUND_CUE_DOCUMENT*
+Client::CAnimation_Tool::Get_ValtanCompositionPatternSoundDraft(
+	bool_t& bOutDirty,
+	std::string& strOutStatus) const
+{
+	bOutDirty = m_bValtanPatternSoundCuesDirty;
+	strOutStatus = m_strValtanPatternSoundCueStatus;
+	return m_bValtanPatternSoundCuesReady ?
+		&m_ValtanPatternSoundCues : nullptr;
+}
+
+std::vector<std::string>
+Client::CAnimation_Tool::Collect_ValtanCompositionPatternSoundEvents() const
+{
+	const std::vector<std::string> AllEvents =
+		CSoundCueCatalog::Collect_EventNames("Valtan");
+	std::vector<std::string> Admitted;
+	Admitted.reserve(AllEvents.size());
+	for (const std::string& Event : AllEvents)
+	{
+		if (IsValtanSoundAuthoringCandidate(Event))
+			Admitted.push_back(Event);
+	}
+	return Admitted;
+}
+
+bool_t Client::CAnimation_Tool::Resolve_ValtanCompositionPatternSoundWindow(
+	const VALTAN_STAGE_VIEW& Stage,
+	const std::string& strClipOccurrenceId,
+	uint32_t& iOutMinimumStartMs,
+	uint32_t& iOutMaximumStartMs,
+	bool_t& bOutLoop,
+	std::string& strOutStatus) const
+{
+	const auto Clip = std::find_if(
+		Stage.ClipOccurrences.begin(), Stage.ClipOccurrences.end(),
+		[&strClipOccurrenceId](const VALTAN_CLIP_OCCURRENCE_VIEW& Candidate)
+		{
+			return Candidate.strClipOccurrenceId == strClipOccurrenceId;
+		});
+	if (Stage.ClipOccurrences.end() == Clip || 0u == Stage.iDurationMs)
+	{
+		strOutStatus =
+			"Pattern Sound occurrence does not resolve one admitted clip/stage wall.";
+		return false;
+	}
+
+	const shared_ptr<Engine::CModel> pModel = Resolve_Model();
+	if (nullptr == pModel)
+	{
+		m_ValtanPatternSoundDurationModel.reset();
+		m_ValtanPatternSoundClipDurations.clear();
+	}
+	else if (m_ValtanPatternSoundDurationModel.lock() != pModel)
+	{
+		m_ValtanPatternSoundClipDurations =
+			CollectModelClipSourceDurationSeconds(pModel);
+		m_ValtanPatternSoundDurationModel = pModel;
+	}
+	const std::unordered_map<std::string, f32_t>& Durations =
+		m_ValtanPatternSoundClipDurations;
+	if (Durations.empty())
+	{
+		strOutStatus =
+			"Pattern Sound timing edit requires the admitted Valtan model source durations.";
+		return false;
+	}
+
+	std::vector<ACTION_PRESENTATION_CLIP_TIMING> Timings;
+	Timings.reserve(Stage.ClipOccurrences.size());
+	for (const VALTAN_CLIP_OCCURRENCE_VIEW& Occurrence :
+		Stage.ClipOccurrences)
+	{
+		const auto Duration = Durations.find(Occurrence.strClipName);
+		if (Durations.end() == Duration)
+		{
+			strOutStatus = "Pattern Sound timing edit is missing model clip: " +
+				Occurrence.strClipName + ".";
+			return false;
+		}
+		ACTION_PRESENTATION_CLIP_TIMING Timing{
+			Duration->second,
+			Occurrence.iPlayMs,
+			Occurrence.fPlayRate,
+			Occurrence.bLoop,
+			static_cast<f32_t>(Occurrence.iSourceStartMs) * 0.001f };
+		f32_t fSourceDurationSeconds = 0.f;
+		f32_t fWallDurationSeconds = 0.f;
+		if (!CActionPresentationTimeline::Resolve_ClipDuration(
+				Timing, fSourceDurationSeconds, fWallDurationSeconds))
+		{
+			strOutStatus = "Pattern Sound timing edit rejected invalid clip timing: " +
+				Occurrence.strClipOccurrenceId + ".";
+			return false;
+		}
+		Timings.push_back(Timing);
+	}
+
+	const std::size_t iClipIndex = static_cast<std::size_t>(
+		Clip - Stage.ClipOccurrences.begin());
+	f32_t fResolvedSourceDurationSeconds = 0.f;
+	f32_t fResolvedWallDurationSeconds = 0.f;
+	f32_t fClipStageWallStartSeconds = 0.f;
+	if (!CActionPresentationTimeline::Resolve_ClipDuration(
+			Timings[iClipIndex], fResolvedSourceDurationSeconds,
+			fResolvedWallDurationSeconds) ||
+		!CActionPresentationTimeline::Resolve_CueWallOffset(
+			Timings, iClipIndex,
+			Timings[iClipIndex].fSourceStartSeconds,
+			0u, fClipStageWallStartSeconds))
+	{
+		strOutStatus =
+			"Pattern Sound timing edit could not resolve the clip on the Stage wall.";
+		return false;
+	}
+
+	const f64_t fRemainingStageWallSeconds = (std::max)(0.0,
+		static_cast<f64_t>(Stage.iDurationMs) * 0.001 -
+		static_cast<f64_t>(fClipStageWallStartSeconds));
+	const f64_t fResolvedSourceEndSeconds =
+		static_cast<f64_t>(Clip->iSourceStartMs) * 0.001 +
+		static_cast<f64_t>(fResolvedSourceDurationSeconds);
+	const f64_t fStageSourceEndSeconds =
+		static_cast<f64_t>(Clip->iSourceStartMs) * 0.001 +
+		fRemainingStageWallSeconds * static_cast<f64_t>(Clip->fPlayRate);
+	const f64_t fEffectiveSourceEndMilliseconds = 1000.0 *
+		(std::min)(fResolvedSourceEndSeconds, fStageSourceEndSeconds);
+	if (!std::isfinite(fEffectiveSourceEndMilliseconds) ||
+		fEffectiveSourceEndMilliseconds <=
+			static_cast<f64_t>(Clip->iSourceStartMs))
+	{
+		strOutStatus =
+			"Pattern Sound timing edit has no source sample inside the Stage wall.";
+		return false;
+	}
+	const std::uint64_t iSourceEndExclusiveMs =
+		static_cast<std::uint64_t>(std::ceil(fEffectiveSourceEndMilliseconds));
+	if (iSourceEndExclusiveMs <= Clip->iSourceStartMs)
+	{
+		strOutStatus =
+			"Pattern Sound timing edit resolved an empty source window.";
+		return false;
+	}
+
+	iOutMinimumStartMs = Clip->iSourceStartMs;
+	iOutMaximumStartMs = static_cast<uint32_t>((std::min)(
+		iSourceEndExclusiveMs - 1u,
+		static_cast<std::uint64_t>(
+			(std::numeric_limits<uint32_t>::max)())));
+	bOutLoop = Clip->bLoop;
+	strOutStatus = "Resolved Pattern Sound source window " +
+		std::to_string(iOutMinimumStartMs) + ".." +
+		std::to_string(iOutMaximumStartMs) + " ms.";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::
+Validate_ValtanCompositionPatternSoundStageDependencies(
+	const VALTAN_PATTERN_VIEW& BaselinePattern,
+	const VALTAN_STAGE_VIEW& BaselineStage,
+	const VALTAN_STAGE_VIEW& CandidateStage,
+	std::string& strOutStatus) const
+{
+	if (!m_bValtanPatternSoundCuesReady)
+	{
+		strOutStatus =
+			"Pattern/Animation mutation requires the admitted Pattern Sound source before dependency validation.";
+		return false;
+	}
+	if (m_bValtanPatternSoundCuesDirty)
+	{
+		strOutStatus =
+			"Pattern/Animation mutation is blocked while the separate Pattern Sound source has an unsaved draft.";
+		return false;
+	}
+	if (BaselinePattern.strPatternId.empty() ||
+		BaselineStage.strStageId.empty() ||
+		BaselineStage.strStageId != CandidateStage.strStageId)
+	{
+		strOutStatus =
+			"Pattern Sound dependency admission requires one exact baseline/candidate Pattern and Stage identity.";
+		return false;
+	}
+
+	std::vector<const VALTAN_PATTERN_SOUND_CUE*> Rows;
+	for (const VALTAN_PATTERN_SOUND_CUE& Cue : m_ValtanPatternSoundCues.Cues)
+	{
+		if (Cue.strPatternId == BaselinePattern.strPatternId &&
+			Cue.strStageId == BaselineStage.strStageId)
+		{
+			Rows.push_back(&Cue);
+		}
+	}
+	/* Do not manufacture a model requirement for a Stage that owns no Sound
+	   dependency.  The loaded source inventory above is still mandatory so an
+	   unavailable owner cannot be mistaken for an empty Stage. */
+	if (Rows.empty())
+	{
+		strOutStatus = "No Pattern Sound dependency is attached to this Stage.";
+		return true;
+	}
+	const bool_t bValidateTimingWindow =
+		BaselineStage.strActionId != CandidateStage.strActionId ||
+		BaselineStage.iDurationMs != CandidateStage.iDurationMs ||
+		BaselineStage.ClipOccurrences.size() !=
+			CandidateStage.ClipOccurrences.size() ||
+		!std::equal(
+			BaselineStage.ClipOccurrences.begin(),
+			BaselineStage.ClipOccurrences.end(),
+			CandidateStage.ClipOccurrences.begin(),
+			[](const VALTAN_CLIP_OCCURRENCE_VIEW& Baseline,
+				const VALTAN_CLIP_OCCURRENCE_VIEW& Candidate)
+			{
+				return Baseline.strClipOccurrenceId ==
+						Candidate.strClipOccurrenceId &&
+					Baseline.strClipName == Candidate.strClipName &&
+					Baseline.strMappingBasis == Candidate.strMappingBasis &&
+					Baseline.iSourceStartMs == Candidate.iSourceStartMs &&
+					Baseline.iPlayMs == Candidate.iPlayMs &&
+					Baseline.fPlayRate == Candidate.fPlayRate &&
+					Baseline.bLoop == Candidate.bLoop;
+			});
+
+	for (const VALTAN_PATTERN_SOUND_CUE* const pCue : Rows)
+	{
+		const VALTAN_PATTERN_SOUND_CUE& Cue = *pCue;
+		if (Cue.strActionId != BaselineStage.strActionId ||
+			Cue.strActionId != CandidateStage.strActionId)
+		{
+			strOutStatus =
+				"Pattern Sound row no longer resolves the exact Pattern/Stage/action tuple: " +
+				Cue.strOccurrenceId + ".";
+			return false;
+		}
+		const std::size_t iBaselineClipCount = static_cast<std::size_t>(
+			std::count_if(
+				BaselineStage.ClipOccurrences.begin(),
+				BaselineStage.ClipOccurrences.end(),
+				[&Cue](const VALTAN_CLIP_OCCURRENCE_VIEW& Clip)
+				{
+					return Clip.strClipOccurrenceId == Cue.strClipOccurrenceId;
+				}));
+		const std::size_t iCandidateClipCount = static_cast<std::size_t>(
+			std::count_if(
+				CandidateStage.ClipOccurrences.begin(),
+				CandidateStage.ClipOccurrences.end(),
+				[&Cue](const VALTAN_CLIP_OCCURRENCE_VIEW& Clip)
+				{
+					return Clip.strClipOccurrenceId == Cue.strClipOccurrenceId;
+				}));
+		const auto BaselineClip = std::find_if(
+			BaselineStage.ClipOccurrences.begin(),
+			BaselineStage.ClipOccurrences.end(),
+			[&Cue](const VALTAN_CLIP_OCCURRENCE_VIEW& Clip)
+			{
+				return Clip.strClipOccurrenceId == Cue.strClipOccurrenceId;
+			});
+		const auto CandidateClip = std::find_if(
+			CandidateStage.ClipOccurrences.begin(),
+			CandidateStage.ClipOccurrences.end(),
+			[&Cue](const VALTAN_CLIP_OCCURRENCE_VIEW& Clip)
+			{
+				return Clip.strClipOccurrenceId == Cue.strClipOccurrenceId;
+			});
+		if (1u != iBaselineClipCount || 1u != iCandidateClipCount ||
+			BaselineStage.ClipOccurrences.end() == BaselineClip ||
+			CandidateStage.ClipOccurrences.end() == CandidateClip)
+		{
+			strOutStatus =
+				"Pattern Sound row would dangle or become ambiguous because its clipOccurrenceId does not resolve exactly once: " +
+				Cue.strClipOccurrenceId + ".";
+			return false;
+		}
+		if (BaselineClip->strClipName != CandidateClip->strClipName &&
+			"PROJECT_AUTHORED" != CandidateClip->strMappingBasis)
+		{
+			strOutStatus =
+				"Pattern Sound-qualified clipOccurrenceId can change its resource only through an explicit PROJECT_AUTHORED slot replacement: " +
+					Cue.strClipOccurrenceId + ".";
+			return false;
+		}
+
+		/* Canonical Save must preserve exact owner/action/occurrence identity for
+		   every Sound row, including legacy rows.  A pre-existing timing debt in
+		   an otherwise unchanged Stage is not re-admitted here: strict source
+		   window admission is required only when this save changes a field that
+		   can affect the Sound wall clock.  Direct Stage mutations that alter
+		   those fields therefore cannot create or extend that debt. */
+		if (!bValidateTimingWindow)
+			continue;
+
+		uint32_t iMinimumStartMs = 0u;
+		uint32_t iMaximumStartMs = 0u;
+		bool_t bLoop = false;
+		if (!Resolve_ValtanCompositionPatternSoundWindow(
+				CandidateStage, Cue.strClipOccurrenceId,
+				iMinimumStartMs, iMaximumStartMs, bLoop, strOutStatus))
+		{
+			strOutStatus =
+				"Pattern Sound dependency timing rejected " +
+				Cue.strOccurrenceId + ": " + strOutStatus;
+			return false;
+		}
+		if (Cue.iStartMs < iMinimumStartMs ||
+			Cue.iStartMs > iMaximumStartMs ||
+			(VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP ==
+				Cue.eRepeatPolicy && !bLoop))
+		{
+			strOutStatus =
+				"Pattern Sound row is outside the candidate clip/Stage window or keeps each_loop on a non-loop clip: " +
+				Cue.strOccurrenceId + ".";
+			return false;
+		}
+	}
+	strOutStatus = "Validated " + std::to_string(Rows.size()) +
+		" Pattern Sound dependency row(s) against the candidate Stage" +
+		(bValidateTimingWindow ? " with strict timing admission." :
+			"; unchanged timing debt was not expanded.");
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::
+Validate_ValtanCompositionPatternSoundGraphDependencies(
+	const std::vector<VALTAN_PATTERN_VIEW>& BaselinePatterns,
+	const std::vector<VALTAN_PATTERN_VIEW>& CandidatePatterns,
+	std::string& strOutStatus) const
+{
+	if (!m_bValtanPatternSoundCuesReady)
+	{
+		strOutStatus =
+			"Canonical Save requires the admitted Pattern Sound source before dependency validation.";
+		return false;
+	}
+	if (m_ValtanPatternSoundCues.Cues.empty())
+	{
+		strOutStatus = "The admitted Pattern Sound source has no dependency rows.";
+		return true;
+	}
+
+	const auto FindUniquePattern = [](
+		const std::vector<VALTAN_PATTERN_VIEW>& Patterns,
+		const std::string& strPatternId,
+		const VALTAN_PATTERN_VIEW*& pOutPattern)
+	{
+		pOutPattern = nullptr;
+		for (const VALTAN_PATTERN_VIEW& Pattern : Patterns)
+		{
+			if (Pattern.strPatternId != strPatternId)
+				continue;
+			if (nullptr != pOutPattern)
+				return false;
+			pOutPattern = &Pattern;
+		}
+		return nullptr != pOutPattern;
+	};
+	const auto FindUniqueStage = [](
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const std::string& strStageId,
+		const VALTAN_STAGE_VIEW*& pOutStage)
+	{
+		pOutStage = nullptr;
+		for (const VALTAN_STAGE_VIEW& Stage : Pattern.Stages)
+		{
+			if (Stage.strStageId != strStageId)
+				continue;
+			if (nullptr != pOutStage)
+				return false;
+			pOutStage = &Stage;
+		}
+		return nullptr != pOutStage;
+	};
+
+	std::unordered_set<std::string> ValidatedStages;
+	for (const VALTAN_PATTERN_SOUND_CUE& Cue : m_ValtanPatternSoundCues.Cues)
+	{
+		const std::string StageKey = Cue.strPatternId + "/" + Cue.strStageId;
+		if (!ValidatedStages.insert(StageKey).second)
+			continue;
+
+		const VALTAN_PATTERN_VIEW* pBaselinePattern = nullptr;
+		const VALTAN_PATTERN_VIEW* pCandidatePattern = nullptr;
+		const VALTAN_STAGE_VIEW* pBaselineStage = nullptr;
+		const VALTAN_STAGE_VIEW* pCandidateStage = nullptr;
+		if (!FindUniquePattern(
+				BaselinePatterns, Cue.strPatternId, pBaselinePattern) ||
+			!FindUniquePattern(
+				CandidatePatterns, Cue.strPatternId, pCandidatePattern) ||
+			!FindUniqueStage(*pBaselinePattern, Cue.strStageId, pBaselineStage) ||
+			!FindUniqueStage(*pCandidatePattern, Cue.strStageId, pCandidateStage))
+		{
+			strOutStatus =
+				"Pattern Sound dependency does not resolve exactly one candidate Pattern/Stage: " +
+				StageKey + ".";
+			return false;
+		}
+		if (!Validate_ValtanCompositionPatternSoundStageDependencies(
+				*pBaselinePattern, *pBaselineStage, *pCandidateStage,
+				strOutStatus))
+		{
+			return false;
+		}
+	}
+	strOutStatus = "Validated all " +
+		std::to_string(m_ValtanPatternSoundCues.Cues.size()) +
+		" Pattern Sound row(s) against the complete candidate Pattern graph.";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Patch_ValtanCompositionPatternSound(
+	const VALTAN_PATTERN_VIEW& Pattern,
+	const VALTAN_STAGE_VIEW& Stage,
+	const std::string& strOccurrenceId,
+	const std::string& strSoundEvent,
+	const uint32_t iStartMs,
+	const VALTAN_PATTERN_SOUND_REPEAT_POLICY eRepeatPolicy,
+	std::string& strOutStatus)
+{
+	std::string AuthoringRevision;
+	std::string AuthoringStatus;
+	bool_t bCanonicalDraftDirty = false;
+	if (Is_ValtanCompositionPatternTransactionActive() ||
+		nullptr == m_pBalanceTool ||
+		!m_pBalanceTool->Get_ValtanAuthoringState(
+			AuthoringRevision, bCanonicalDraftDirty, AuthoringStatus))
+	{
+		strOutStatus = Is_ValtanCompositionPatternTransactionActive() ?
+			"Pattern Sound patch is blocked while Create New Pattern owns the Pattern dependency transaction." :
+			"Pattern Sound patch requires an admitted Pattern/Animation source generation: " +
+				AuthoringStatus;
+		return false;
+	}
+	if (!m_bValtanPatternSoundCuesReady || strOccurrenceId.empty() ||
+		(eRepeatPolicy != VALTAN_PATTERN_SOUND_REPEAT_POLICY::ONCE &&
+		 eRepeatPolicy != VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP))
+	{
+		strOutStatus =
+			"Pattern Sound patch requires one admitted stable occurrence.";
+		return false;
+	}
+	const std::vector<std::string> Events =
+		Collect_ValtanCompositionPatternSoundEvents();
+	if (Events.end() == std::find(
+			Events.begin(), Events.end(), strSoundEvent))
+	{
+		strOutStatus =
+			"Pattern Sound patch rejected an event without admitted Valtan assets.";
+		return false;
+	}
+
+	uint32_t iMinimumStartMs = 0u;
+	uint32_t iMaximumStartMs = 0u;
+	bool_t bLoop = false;
+	const auto Current = std::find_if(
+		m_ValtanPatternSoundCues.Cues.begin(),
+		m_ValtanPatternSoundCues.Cues.end(),
+		[&](const VALTAN_PATTERN_SOUND_CUE& Cue)
+		{
+			return Cue.strOccurrenceId == strOccurrenceId &&
+				Cue.strPatternId == Pattern.strPatternId &&
+				Cue.strStageId == Stage.strStageId &&
+				Cue.strActionId == Stage.strActionId;
+		});
+	if (m_ValtanPatternSoundCues.Cues.end() == Current ||
+		!Resolve_ValtanCompositionPatternSoundWindow(
+			Stage, Current->strClipOccurrenceId,
+			iMinimumStartMs, iMaximumStartMs, bLoop, strOutStatus))
+	{
+		if (m_ValtanPatternSoundCues.Cues.end() == Current)
+			strOutStatus =
+				"Pattern Sound patch did not resolve the exact selected tuple.";
+		return false;
+	}
+	if (iStartMs < iMinimumStartMs || iStartMs > iMaximumStartMs ||
+		(VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP == eRepeatPolicy &&
+		 !bLoop))
+	{
+		strOutStatus =
+			"Pattern Sound patch is outside the model/Stage source window or requests each_loop on a non-loop clip.";
+		return false;
+	}
+
+	VALTAN_PATTERN_SOUND_CUE_DOCUMENT Staged = m_ValtanPatternSoundCues;
+	VALTAN_PATTERN_SOUND_CUE& Candidate = Staged.Cues[
+		static_cast<std::size_t>(Current - m_ValtanPatternSoundCues.Cues.begin())];
+	Candidate.strSoundEvent = strSoundEvent;
+	Candidate.strSoundBank = std::string(
+		ValtanSoundBankForEvent(strSoundEvent));
+	Candidate.iStartMs = iStartMs;
+	Candidate.eRepeatPolicy = eRepeatPolicy;
+	if (Candidate == *Current)
+	{
+		strOutStatus = "Pattern Sound draft is unchanged.";
+		return true;
+	}
+	m_ValtanPatternSoundCues = std::move(Staged);
+	m_bValtanPatternSoundCuesDirty = true;
+	++m_iValtanPatternSoundDraftGeneration;
+	m_strValtanPatternSoundCueStatus =
+		"UNSAVED Pattern Sound occurrence: " + strOccurrenceId + ".";
+	strOutStatus = m_strValtanPatternSoundCueStatus;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Add_ValtanCompositionPatternSound(
+	const VALTAN_PATTERN_VIEW& Pattern,
+	const VALTAN_STAGE_VIEW& Stage,
+	const std::string& strClipOccurrenceId,
+	const std::string& strSoundEvent,
+	const uint32_t iStartMs,
+	const VALTAN_PATTERN_SOUND_REPEAT_POLICY eRepeatPolicy,
+	VALTAN_PATTERN_SOUND_CUE_ROW_ID& OutCreatedRowId,
+	std::string& strOutStatus)
+{
+	std::string AuthoringRevision;
+	std::string AuthoringStatus;
+	bool_t bCanonicalDraftDirty = false;
+	if (Is_ValtanCompositionPatternTransactionActive() ||
+		nullptr == m_pBalanceTool ||
+		!m_pBalanceTool->Get_ValtanAuthoringState(
+			AuthoringRevision, bCanonicalDraftDirty, AuthoringStatus))
+	{
+		strOutStatus = Is_ValtanCompositionPatternTransactionActive() ?
+			"Pattern Sound Add is blocked while Create New Pattern owns the Pattern dependency transaction." :
+			"Pattern Sound Add requires an admitted Pattern/Animation source generation: " +
+				AuthoringStatus;
+		return false;
+	}
+	if (!m_bValtanPatternSoundCuesReady ||
+		Pattern.strPatternId.empty() || Stage.strStageId.empty() ||
+		Stage.strActionId.empty() || strClipOccurrenceId.empty() ||
+		(eRepeatPolicy != VALTAN_PATTERN_SOUND_REPEAT_POLICY::ONCE &&
+		 eRepeatPolicy != VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP))
+	{
+		strOutStatus =
+			"Pattern Sound Add requires one admitted Pattern/Stage/clip occurrence.";
+		return false;
+	}
+	const std::vector<std::string> Events =
+		Collect_ValtanCompositionPatternSoundEvents();
+	if (Events.end() == std::find(
+			Events.begin(), Events.end(), strSoundEvent))
+	{
+		strOutStatus =
+			"Pattern Sound Add rejected an event without admitted Valtan assets.";
+		return false;
+	}
+
+	uint32_t iMinimumStartMs = 0u;
+	uint32_t iMaximumStartMs = 0u;
+	bool_t bLoop = false;
+	if (!Resolve_ValtanCompositionPatternSoundWindow(
+			Stage, strClipOccurrenceId, iMinimumStartMs, iMaximumStartMs,
+			bLoop, strOutStatus))
+	{
+		return false;
+	}
+	if (iStartMs < iMinimumStartMs || iStartMs > iMaximumStartMs ||
+		(VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP == eRepeatPolicy &&
+		 !bLoop))
+	{
+		strOutStatus =
+			"Pattern Sound Add is outside the selected clip source window or requests each_loop on a non-loop clip.";
+		return false;
+	}
+
+	VALTAN_PATTERN_SOUND_CUE_ADD_ROW Row;
+	Row.strPatternId = Pattern.strPatternId;
+	Row.strStageId = Stage.strStageId;
+	Row.strActionId = Stage.strActionId;
+	Row.strClipOccurrenceId = strClipOccurrenceId;
+	Row.strSoundEvent = strSoundEvent;
+	Row.strSoundBank = std::string(ValtanSoundBankForEvent(strSoundEvent));
+	Row.eRepeatPolicy = eRepeatPolicy;
+	Row.iStartMs = iStartMs;
+	const std::unordered_map<std::string, f32_t> Durations =
+		CollectModelClipSourceDurationSeconds(Resolve_Model());
+	VALTAN_PATTERN_SOUND_CUE_DOCUMENT Staged = m_ValtanPatternSoundCues;
+	VALTAN_PATTERN_SOUND_CUE_ROW_ID CreatedRowId;
+	std::string AddStatus;
+	if (!CValtanPatternSoundCueDocument::Add_AuthoringRow(
+			Staged, Row, Durations, CreatedRowId, AddStatus))
+	{
+		strOutStatus =
+			"Pattern Sound Add rejected; admitted draft preserved: " + AddStatus;
+		return false;
+	}
+	m_ValtanPatternSoundCues = std::move(Staged);
+	m_bValtanPatternSoundCuesDirty = true;
+	++m_iValtanPatternSoundDraftGeneration;
+	OutCreatedRowId = CreatedRowId;
+	m_strValtanPatternSoundCueStatus =
+		"UNSAVED Pattern Sound row added: " + CreatedRowId.strBindingId +
+		" / " + CreatedRowId.strOccurrenceId + ". " + AddStatus;
+	strOutStatus = m_strValtanPatternSoundCueStatus;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Remove_ValtanCompositionPatternSound(
+	const VALTAN_PATTERN_VIEW& Pattern,
+	const VALTAN_STAGE_VIEW& Stage,
+	const VALTAN_PATTERN_SOUND_CUE_ROW_ID& RowId,
+	std::string& strOutStatus)
+{
+	std::string AuthoringRevision;
+	std::string AuthoringStatus;
+	bool_t bCanonicalDraftDirty = false;
+	if (Is_ValtanCompositionPatternTransactionActive() ||
+		nullptr == m_pBalanceTool ||
+		!m_pBalanceTool->Get_ValtanAuthoringState(
+			AuthoringRevision, bCanonicalDraftDirty, AuthoringStatus))
+	{
+		strOutStatus = Is_ValtanCompositionPatternTransactionActive() ?
+			"Pattern Sound Remove is blocked while Create New Pattern owns the Pattern dependency transaction." :
+			"Pattern Sound Remove requires an admitted Pattern/Animation source generation: " +
+				AuthoringStatus;
+		return false;
+	}
+	if (!m_bValtanPatternSoundCuesReady)
+	{
+		strOutStatus =
+			"Pattern Sound Remove requires the admitted typed source draft.";
+		return false;
+	}
+	const auto Exact = std::find_if(
+		m_ValtanPatternSoundCues.Cues.begin(),
+		m_ValtanPatternSoundCues.Cues.end(),
+		[&](const VALTAN_PATTERN_SOUND_CUE& Cue)
+		{
+			return Cue.strBindingId == RowId.strBindingId &&
+				Cue.strOccurrenceId == RowId.strOccurrenceId &&
+				Cue.strPatternId == Pattern.strPatternId &&
+				Cue.strStageId == Stage.strStageId &&
+				Cue.strActionId == Stage.strActionId;
+		});
+	if (m_ValtanPatternSoundCues.Cues.end() == Exact)
+	{
+		strOutStatus =
+			"Pattern Sound Remove did not resolve the exact selected Pattern/Stage row.";
+		return false;
+	}
+
+	VALTAN_PATTERN_SOUND_CUE_DOCUMENT Staged = m_ValtanPatternSoundCues;
+	std::string RemoveStatus;
+	if (!CValtanPatternSoundCueDocument::Remove_AuthoringRow(
+			Staged, RowId, RemoveStatus))
+	{
+		strOutStatus =
+			"Pattern Sound Remove rejected; admitted draft preserved: " +
+			RemoveStatus;
+		return false;
+	}
+	m_ValtanPatternSoundCues = std::move(Staged);
+	m_bValtanPatternSoundCuesDirty = true;
+	++m_iValtanPatternSoundDraftGeneration;
+	m_strValtanPatternSoundCueStatus =
+		"UNSAVED Pattern Sound row removed: " + RowId.strBindingId +
+		" / " + RowId.strOccurrenceId + ". " + RemoveStatus;
+	strOutStatus = m_strValtanPatternSoundCueStatus;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Prepare_ValtanCompositionPatternSoundSave(
+	std::string& strOutBaselineBytes,
+	std::string& strOutCandidateBytes,
+	uint64_t& iOutDraftGeneration,
+	bool_t& bOutDirty,
+	std::string& strOutStatus) const
+{
+	strOutBaselineBytes.clear();
+	strOutCandidateBytes.clear();
+	iOutDraftGeneration = m_iValtanPatternSoundDraftGeneration;
+	bOutDirty = m_bValtanPatternSoundCuesDirty;
+	if (!m_bValtanPatternSoundCuesReady)
+	{
+		strOutStatus = "Pattern Sound data is not loaded.";
+		return false;
+	}
+	if (!m_bValtanPatternSoundCuesDirty)
+	{
+		strOutStatus = "Pattern Sound owner has no staged Composition changes.";
+		return true;
+	}
+	if (m_strValtanPatternSoundCueBaselineSourceBytes.empty())
+	{
+		strOutStatus = "Pattern Sound draft has no exact source baseline.";
+		return false;
+	}
+	std::string DiskBytes;
+	std::string ReadStatus;
+	if (!Read_BoundedFile(
+			CValtanPatternSoundCueDocument::Resolve_Path(), 512u * 1024u,
+			DiskBytes, ReadStatus) ||
+		DiskBytes != m_strValtanPatternSoundCueBaselineSourceBytes)
+	{
+		strOutStatus =
+			"Pattern Sound source changed after this Composition draft began; Load before saving. " +
+			ReadStatus;
+		return false;
+	}
+	if (!CValtanPatternSoundCueDocument::Serialize_TransactionCandidate(
+			m_ValtanPatternSoundCues, strOutCandidateBytes, strOutStatus))
+	{
+		return false;
+	}
+	strOutBaselineBytes = m_strValtanPatternSoundCueBaselineSourceBytes;
+	strOutStatus =
+		"Prepared Pattern Sound for the rollback-safe Composition Save transaction.";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Accept_ValtanCompositionPatternSoundSave(
+	const uint64_t iExpectedDraftGeneration,
+	const std::string& strExpectedCandidateBytes,
+	std::string& strOutStatus)
+{
+	if (!m_bValtanPatternSoundCuesDirty ||
+		m_iValtanPatternSoundDraftGeneration != iExpectedDraftGeneration)
+	{
+		strOutStatus =
+			"Pattern Sound draft changed while the Composition Save transaction was running.";
+		return false;
+	}
+	VALTAN_PATTERN_SOUND_CUE_DOCUMENT Reopened;
+	std::string ReopenedBytes;
+	if (!CValtanPatternSoundCueDocument::Load_ForAuthoring(
+			Reopened, ReopenedBytes, strOutStatus) ||
+		ReopenedBytes != strExpectedCandidateBytes ||
+		Reopened != m_ValtanPatternSoundCues)
+	{
+		strOutStatus =
+			"The Composition transaction completed, but Pattern Sound did not reopen as the exact committed draft: " +
+			strOutStatus;
+		return false;
+	}
+	m_ValtanPatternSoundCues = std::move(Reopened);
+	m_strValtanPatternSoundCueBaselineSourceBytes = std::move(ReopenedBytes);
+	m_bValtanPatternSoundCuesDirty = false;
+	++m_iValtanPatternSoundDraftGeneration;
+	m_bValtanPatternSoundRuntimeApplyReady = false;
+	m_ValtanPatternSoundRuntimeAppliedRevision = {};
+	m_strValtanPatternSoundCueStatus =
+		"Pattern Sound committed and reopened by the Composition Save transaction.";
+	strOutStatus = m_strValtanPatternSoundCueStatus;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Save_ValtanCompositionPatternSounds(
+	std::string& strOutStatus)
+{
+	if (!Can_CommitValtanCompositionPatternSoundGeneration(strOutStatus))
+		return false;
+	std::string AuthoringRevision;
+	std::string AuthoringStatus;
+	bool_t bCanonicalDraftDirty = false;
+	if (Is_ValtanCompositionPatternTransactionActive() ||
+		nullptr == m_pBalanceTool ||
+		!m_pBalanceTool->Get_ValtanAuthoringState(
+			AuthoringRevision, bCanonicalDraftDirty, AuthoringStatus) ||
+		bCanonicalDraftDirty)
+	{
+		strOutStatus = Is_ValtanCompositionPatternTransactionActive() ?
+			"Finish Create New Pattern before saving Sound changes." :
+			"Save could not prepare the Pattern/Animation data: " +
+				AuthoringStatus;
+		return false;
+	}
+	if (!m_bValtanPatternSoundCuesReady)
+	{
+		strOutStatus =
+			"Pattern Sound data is not loaded. Use Load and try again.";
+		return false;
+	}
+	if (!m_bValtanPatternSoundCuesDirty)
+	{
+		strOutStatus = "Pattern Sound source has no staged changes.";
+		return true;
+	}
+	const std::unordered_map<std::string, f32_t> Durations =
+		CollectModelClipSourceDurationSeconds(Resolve_Model());
+	std::string SaveStatus;
+	if (!CValtanPatternSoundCueDocument::Save_Atomic(
+			m_ValtanPatternSoundCues, Durations,
+			m_strValtanPatternSoundCueBaselineSourceBytes, SaveStatus))
+	{
+		m_strValtanPatternSoundCueStatus =
+			"Pattern Sound Save rejected; source and admitted draft were preserved: " +
+			SaveStatus;
+		strOutStatus = m_strValtanPatternSoundCueStatus;
+		return false;
+	}
+
+	m_bValtanPatternSoundCuesDirty = false;
+	const bool_t bDraftReloaded = Reload_ValtanPatternSoundCues();
+	const std::string DraftStatus = m_strValtanPatternSoundCueStatus;
+	if (!bDraftReloaded)
+	{
+		m_bValtanPatternSoundRuntimeApplyReady = false;
+		m_ValtanPatternSoundRuntimeAppliedRevision = {};
+	}
+	m_strValtanPatternSoundCueStatus =
+		"Pattern Sound saved and loaded. " + SaveStatus + " " +
+		(bDraftReloaded ? DraftStatus :
+			"The file was saved, but Workbench Load failed: " + DraftStatus);
+	strOutStatus = m_strValtanPatternSoundCueStatus;
+	return bDraftReloaded;
+}
+
+void Client::CAnimation_Tool::Render_ValtanCompositionPatternCreator()
+{
+	if (!m_bCustomChainLibraryLoadAttempted)
+	{
+		m_bCustomChainLibraryLoadAttempted = true;
+		(void)Load_CustomChainLibrary();
+	}
+	if (!m_bValtanPatternMasterLoadAttempted)
+	{
+		/* This tab is rendered every frame.  Latch the command edge before the
+		   file-backed canonical reload so a rejected load is not retried at the
+		   render rate. */
+		m_bValtanPatternMasterLoadAttempted = true;
+		(void)Reload_ValtanPatternMaster();
+	}
+	Render_ValtanPatternCreatePanel();
 }
 
 bool_t Client::CAnimation_Tool::Open_KakulProfile(
@@ -661,6 +3104,22 @@ bool_t Client::CAnimation_Tool::Open_KakulProfile(
 			"Save or discard the current Animation document before opening another KoukuSaton profile.";
 		return false;
 	}
+	if (m_bKakulPatternPreviewPlaying)
+	{
+		const shared_ptr<Engine::CModel> PreviewModel =
+			m_KakulPatternPreviewModel.lock();
+		if (nullptr != PreviewModel)
+		{
+			Stop_KakulPatternPreview(
+				PreviewModel,
+				"KoukuSaton Pattern preview stopped before the profile changed; idle restored.");
+		}
+		else
+		{
+			Reset_KakulPatternPreviewState(
+				"KoukuSaton Pattern preview stopped before the profile changed.");
+		}
+	}
 	if (!m_pPreviewPanel->Select_TargetAsset(pPreviewAsset))
 	{
 		m_Status = "KoukuSaton profile selected, but its physical preview body could not open: " +
@@ -671,11 +3130,38 @@ bool_t Client::CAnimation_Tool::Open_KakulProfile(
 	const bool_t bProfileChanged = m_strKakulProfileId != profileId;
 	if (bProfileChanged)
 		Reset_KakulActionDocumentState(true);
+	m_bValtanDataWorkspaceRequested = false;
 	m_strKakulProfileId = profileId;
 	m_Status = bClipOnlyDonor ?
 		"Opened MN_RPCT_00 as a local clip donor preview; action profiles 05/07 consume this clip vocabulary." :
 		("Opened KoukuSaton extracted action profile " + profileId +
 		 " as a local REFERENCE_ONLY preview.");
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Open_KakulAction(
+	const std::string& profileId,
+	const std::uint32_t iSourceActionId)
+{
+	if (0u == iSourceActionId || !Open_KakulProfile(profileId))
+		return false;
+	m_iRequestedKakulSourceActionId = iSourceActionId;
+	const auto Requested = std::find_if(
+		m_KakulActionReference.Actions.begin(),
+		m_KakulActionReference.Actions.end(),
+		[iSourceActionId](const KAKUL_ANIMATION_ACTION_REFERENCE& Action)
+		{
+			return Action.iSourceActionId == iSourceActionId;
+		});
+	if (Requested != m_KakulActionReference.Actions.end())
+	{
+		m_iSelectedKakulAction = static_cast<int32_t>(
+			std::distance(m_KakulActionReference.Actions.begin(), Requested));
+		m_iSelectedKakulStage = 0;
+		m_iSelectedKakulSlot = 0;
+		m_iSelectedKakulActionClip = 0;
+		m_iRequestedKakulSourceActionId = 0u;
+	}
 	return true;
 }
 
@@ -717,8 +3203,25 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	const std::string& assetName)
 {
 	/* A different class means every loaded file belongs to the wrong asset. Drop
-	them rather than mixing two classes' clips in one list. */
+		them rather than mixing two classes' clips in one list. */
+	if (m_bKakulPatternPreviewPlaying)
+	{
+		const shared_ptr<Engine::CModel> PreviewModel =
+			m_KakulPatternPreviewModel.lock();
+		if (nullptr != PreviewModel)
+		{
+			Stop_KakulPatternPreview(
+				PreviewModel,
+				"KoukuSaton Pattern preview stopped before the animation target changed; idle restored.");
+		}
+		else
+		{
+			Reset_KakulPatternPreviewState(
+				"KoukuSaton Pattern preview stopped before the animation target changed.");
+		}
+	}
 	m_AssetName = assetName;
+	m_bValtanDataWorkspaceRequested = "Valtan" == assetName;
 	std::string strNextKakulProfile;
 	if (const KAKUL_ACTION_PROFILE_CONTRACT* pCurrent =
 			Find_KakulActionProfile(m_strKakulProfileId);
@@ -735,8 +3238,12 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	{
 		strNextKakulProfile = "MN_RPCT_00";
 	}
+	const std::uint32_t iRequestedKakulSourceActionId =
+		m_iRequestedKakulSourceActionId;
 	Reset_KakulActionDocumentState(true);
 	m_strKakulProfileId = std::move(strNextKakulProfile);
+	if (!m_strKakulProfileId.empty())
+		m_iRequestedKakulSourceActionId = iRequestedKakulSourceActionId;
 	m_PendingAssetName.clear();
 	m_Events.clear();
 	m_SkillRef.clear();
@@ -765,6 +3272,8 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	m_ValtanPatternMasterView = {};
 	m_ValtanPatternMasterPlaylist.clear();
 	m_bValtanPatternMasterLoadAttempted = false;
+	m_eValtanPatternMasterAdmission =
+		VALTAN_PATTERN_MASTER_ADMISSION_STATE::UNLOADED;
 	m_bValtanPatternMasterPlaying = false;
 	m_bValtanPatternMasterPaused = false;
 	m_bShowValtanSourceReferenceWindow = false;
@@ -772,6 +3281,8 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 		VALTAN_WORKBENCH_SELECTION_KIND::STAGE;
 	m_eValtanWorkbenchDetailOwner =
 		VALTAN_WORKBENCH_DETAIL_OWNER::GAMEPLAY;
+	m_bValtanWorkbenchFocusDetailRequested = false;
+	m_bValtanWorkspaceTabInitialized = false;
 	m_strValtanWorkbenchPatternId.clear();
 	m_strValtanWorkbenchStageId.clear();
 	m_ValtanPatternAnimationBindingDraft = {};
@@ -785,6 +3296,9 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	m_ValtanPatternSoundCues = {};
 	m_bValtanPatternSoundCuesReady = false;
 	m_bValtanPatternSoundCuesDirty = false;
+	m_iValtanPatternSoundDraftGeneration = 0u;
+	m_bValtanPatternSoundRuntimeApplyReady = false;
+	m_ValtanPatternSoundRuntimeAppliedRevision = {};
 	m_strValtanPatternSoundCueBaselineSourceBytes.clear();
 	m_strValtanPatternSoundCueStatus.clear();
 	m_strValtanPatternSoundAddClipOccurrenceId.clear();
@@ -824,6 +3338,7 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	across a switch they would be saved into the next body's file. */
 	m_CustomChainSteps.clear();
 	m_CustomChainLibrary.clear();
+	Invalidate_ValtanPatternCreateExactSourceSelection();
 	m_bCustomChainLibraryLoadAttempted = false;
 	m_bShowValtanCustomChainWindow = false;
 	m_CustomChainFilter[0] = '\0';
@@ -1035,7 +3550,8 @@ void Client::CAnimation_Tool::Render()
 {
 	ImVec2 workbenchDefaultSize{
 		WORKBENCH_DEFAULT_WIDTH, WORKBENCH_DEFAULT_HEIGHT };
-	ImVec2 workbenchMinimumSize = workbenchDefaultSize;
+	ImVec2 workbenchMinimumSize{
+		WORKBENCH_FALLBACK_MIN_WIDTH, WORKBENCH_FALLBACK_MIN_HEIGHT };
 	ImVec2 workbenchMaximumSize{ FLT_MAX, FLT_MAX };
 	const ImGuiViewport* pViewport = ImGui::GetMainViewport();
 	if (nullptr != pViewport)
@@ -1049,7 +3565,9 @@ void Client::CAnimation_Tool::Render()
 		workbenchDefaultSize = ImVec2(
 			(std::min)(WORKBENCH_DEFAULT_WIDTH, workbenchMaximumSize.x),
 			(std::min)(WORKBENCH_DEFAULT_HEIGHT, workbenchMaximumSize.y));
-		workbenchMinimumSize = workbenchDefaultSize;
+		workbenchMinimumSize = ImVec2(
+			(std::min)(WORKBENCH_FALLBACK_MIN_WIDTH, workbenchMaximumSize.x),
+			(std::min)(WORKBENCH_FALLBACK_MIN_HEIGHT, workbenchMaximumSize.y));
 		if (m_bResetWorkbenchLayoutRequested)
 		{
 			ImGui::SetNextWindowPos(
@@ -1063,15 +3581,95 @@ void Client::CAnimation_Tool::Render()
 	ImGui::SetNextWindowSizeConstraints(
 		workbenchMinimumSize, workbenchMaximumSize);
 	m_bResetWorkbenchLayoutRequested = false;
+	const char_t* const pTargetLockReason =
+		"Save or discard Animation Events, Skill Bindings, Valtan Pattern Animation Bindings, Valtan Pattern Sound, KoukuSaton Action Bindings/Patterns, and Workbench Sound bindings before changing target.";
 	const bool_t isTargetLocked = Is_AnyDocumentDirty();
 	m_pPreviewPanel->Set_SessionLock(
 		CHARACTER_PREVIEW_LOCK_OWNER::ANIMATION_TOOL,
 		isTargetLocked,
-		"Save or discard Animation Events, Skill Bindings, Valtan Pattern Animation Bindings, Valtan Pattern Sound, KoukuSaton Action Bindings, and Workbench Sound bindings before changing target.");
+		pTargetLockReason);
 	m_pPreviewPanel->Refresh_Level();
+	const uint32_t iCurrentLevel =
+		CGameInstance::Get().Get_CurrentLevelID();
+	const bool_t bValtanArena =
+		ETOUI(LEVEL::VALTAN_ARENA) == iCurrentLevel;
+	std::string strResolvedAssetName;
+	shared_ptr<CValtan> pResolvedValtanBoss;
+	shared_ptr<Engine::CModel> pResolvedModel;
+	bool_t bExactValtanPreview = false;
+	uint64_t iResolvedTargetGeneration = 0u;
+	const auto RefreshResolvedTarget = [&]()
+	{
+		strResolvedAssetName = CAnimationTargetService::Resolve_AssetName();
+		pResolvedValtanBoss = CAnimationTargetService::Resolve_Boss();
+		pResolvedModel = Resolve_Model();
+		iResolvedTargetGeneration =
+			CAnimationTargetService::Resolve_TargetGeneration();
+		bExactValtanPreview = "Valtan" == strResolvedAssetName &&
+			nullptr != pResolvedValtanBoss && nullptr != pResolvedModel &&
+			pResolvedValtanBoss->Get_BodyModel() == pResolvedModel;
+	};
+	RefreshResolvedTarget();
+	const auto TryStageValtanPreview = [&]()
+	{
+		/* A dirty Valtan owner may reconstitute its same typed preview body.  The
+		   selector remains locked for every user-driven target change, and locks
+		   owned by other tools still reject this programmatic same-owner retry. */
+		const bool_t bTemporarilyReleaseOwnLock =
+			isTargetLocked && Is_ValtanDocumentDirty();
+		if (bTemporarilyReleaseOwnLock)
+		{
+			m_pPreviewPanel->Set_SessionLock(
+				CHARACTER_PREVIEW_LOCK_OWNER::ANIMATION_TOOL, false, {});
+		}
+		const bool_t bSelected =
+			m_pPreviewPanel->Select_TargetAsset("Valtan");
+		if (bTemporarilyReleaseOwnLock)
+		{
+			m_pPreviewPanel->Set_SessionLock(
+				CHARACTER_PREVIEW_LOCK_OWNER::ANIMATION_TOOL,
+				true, pTargetLockReason);
+		}
+		RefreshResolvedTarget();
+		if (!bSelected || !bExactValtanPreview)
+		{
+			m_Status =
+				"Valtan Model View could not be staged; canonical Pattern data-only mode remains available: " +
+				m_pPreviewPanel->Get_Status();
+			return false;
+		}
+		m_iValtanAutoPreviewSuccessGeneration = iResolvedTargetGeneration;
+		m_iValtanAutoPreviewAttemptGeneration = iResolvedTargetGeneration;
+		if (m_AssetName.empty() && Is_ValtanDocumentDirty())
+			m_AssetName = "Valtan";
+		m_Status =
+			"Valtan Model View staged from the exact dedicated boss preview; canonical Product workspace preserved.";
+		return true;
+	};
+	if (!bValtanArena)
+	{
+		m_iValtanAutoPreviewAttemptGeneration = 0u;
+		m_iValtanAutoPreviewSuccessGeneration = 0u;
+	}
+	else
+	{
+		m_bValtanDataWorkspaceRequested = true;
+		if (bExactValtanPreview)
+		{
+			m_iValtanAutoPreviewAttemptGeneration = iResolvedTargetGeneration;
+			m_iValtanAutoPreviewSuccessGeneration = iResolvedTargetGeneration;
+		}
+		else if (m_iValtanAutoPreviewAttemptGeneration !=
+			iResolvedTargetGeneration)
+		{
+			m_iValtanAutoPreviewAttemptGeneration = iResolvedTargetGeneration;
+			if (!isTargetLocked || Is_ValtanDocumentDirty())
+				(void)TryStageValtanPreview();
+		}
+	}
 
 	if (!ImGui::Begin(
-		"Action Presentation Workbench",
+		"Animation Clip Tool###AnimationClipToolResizableV1",
 		nullptr,
 		ImGuiWindowFlags_AlwaysVerticalScrollbar))
 	{
@@ -1079,25 +3677,89 @@ void Client::CAnimation_Tool::Render()
 		return;
 	}
 
-	if (ImGui::SmallButton("Reset Workbench Layout"))
+	if (ImGui::SmallButton("Reset Animation Tool Layout"))
 	{
 		m_bResetWorkbenchLayoutRequested = true;
 		m_fKakulActionListWidth = KAKUL_ACTION_LIST_DEFAULT_WIDTH;
 		m_Status =
-			"Workbench layout reset requested; the viewport-aware size applies next frame.";
+			"Animation Tool layout reset requested; the viewport-aware size applies next frame.";
 	}
 	ImGui::SameLine();
 	ImGui::TextDisabled(
-		"Default 1180 x 760; saved layouts cannot shrink below the active viewport-aware floor.");
+		"Clip preview and Animation Sequence Intake only; Pattern composition lives in the independent Action Composition Workbench.");
 
-	m_pPreviewPanel->Render_Selector(false, {});
-	if (!Sync_AssetName())
+	const bool_t bDirtyNonValtanOwner = isTargetLocked &&
+		!Is_ValtanDocumentDirty() && !m_AssetName.empty() &&
+		"Valtan" != m_AssetName;
+	bool_t bValtanWorkspaceMode = !bDirtyNonValtanOwner &&
+		(bValtanArena || m_bValtanDataWorkspaceRequested ||
+			"Valtan" == m_AssetName || bExactValtanPreview);
+	if (bValtanWorkspaceMode)
+	{
+		/* Target picking is secondary to Product pattern authoring.  Keeping this
+		   collapsed prevents the generic model inventory from pushing the joined
+		   Pattern shell below the first screen. */
+		if (ImGui::CollapsingHeader("Target / Model View"))
+			m_pPreviewPanel->Render_Selector(false, {});
+	}
+	else
+	{
+		m_pPreviewPanel->Render_Selector(false, {});
+	}
+	RefreshResolvedTarget();
+	bValtanWorkspaceMode = !bDirtyNonValtanOwner &&
+		(bValtanArena || m_bValtanDataWorkspaceRequested ||
+			"Valtan" == m_AssetName || bExactValtanPreview);
+	if (bValtanWorkspaceMode)
+	{
+		bool_t bTargetSynchronized = true;
+		if (bExactValtanPreview)
+		{
+			if (m_AssetName.empty() && Is_ValtanDocumentDirty())
+				m_AssetName = "Valtan";
+			else
+				bTargetSynchronized = Sync_AssetName();
+		}
+		else if (Is_ValtanDocumentDirty())
+		{
+			m_PendingAssetName = strResolvedAssetName;
+			m_Status = strResolvedAssetName.empty() ?
+				"The exact Valtan preview disappeared while a Valtan typed draft is dirty. The draft and canonical workspace are preserved." :
+				"A scene target replaced the exact Valtan preview while a Valtan typed draft is dirty. The scene model is ignored and the draft is preserved.";
+			bTargetSynchronized = false;
+		}
+		if (!bTargetSynchronized)
+			Render_TargetConflict();
+
+		const shared_ptr<Engine::CModel> pValtanPreviewModel =
+			bExactValtanPreview ? pResolvedModel : nullptr;
+		const bool_t bValtanDataOnlyMode = nullptr == pValtanPreviewModel;
+		ImGui::SeparatorText("Valtan Workspace Capability");
+		ImGui::TextColored(
+			bValtanDataOnlyMode ? ImVec4(1.f, 0.75f, 0.2f, 1.f) :
+				ImVec4(0.35f, 0.85f, 0.45f, 1.f),
+			"Preview Model: %s", bValtanDataOnlyMode ? "MISSING" : "READY");
+		if (bValtanDataOnlyMode)
+		{
+			ImGui::TextWrapped(
+				"The dedicated Valtan Model View is required for clip playback and Sequence Intake. Pattern/Stage data remains available in Action Composition Workbench; no scene player model is substituted here.");
+			if (ImGui::SmallButton("Retry Valtan Model View"))
+				(void)TryStageValtanPreview();
+		}
+		if (!m_Status.empty())
+			ImGui::TextWrapped("%s", m_Status.c_str());
+		Render_ValtanAnimationSourceWorkspace(pValtanPreviewModel);
+		ImGui::End();
+		return;
+	}
+
+	const bool_t bTargetSynchronized = Sync_AssetName();
+	if (!bTargetSynchronized)
 	{
 		Render_TargetConflict();
 		ImGui::End();
 		return;
 	}
-
 	const shared_ptr<Engine::CModel> pModel = Resolve_Model();
 	if (nullptr == pModel)
 	{
@@ -1154,7 +3816,8 @@ void Client::CAnimation_Tool::Render()
 		ImGui::TextDisabled(
 			"Playback-only preview: Product events and gameplay skill bindings are disabled.");
 		ImGui::BeginDisabled(
-			m_bValtanPatternPreviewPlaying || m_bValtanPatternMasterPlaying);
+			m_bValtanPatternPreviewPlaying || m_bValtanPatternMasterPlaying ||
+			m_bKakulPatternPreviewPlaying);
 		Render_Playback(pModel);
 		ImGui::EndDisabled();
 		if ("Valtan" == m_AssetName)
@@ -1192,7 +3855,8 @@ void Client::CAnimation_Tool::Render()
 				Render_ValtanPatternReferenceWindow(pModel);
 		}
 		ImGui::BeginDisabled(
-			m_bValtanPatternPreviewPlaying || m_bValtanPatternMasterPlaying);
+			m_bValtanPatternPreviewPlaying || m_bValtanPatternMasterPlaying ||
+			m_bKakulPatternPreviewPlaying);
 		/* The source chain rows are not drawn for Valtan: the Custom Chain
 		   window owns chain playback now, and the per-clip buttons crowded the
 		   panel the animator actually works in. Other assets keep them. */
@@ -1428,6 +4092,8 @@ const char_t* Client::CAnimation_Tool::ValtanPatternMasterPathName(
 	{
 	case VALTAN_PATTERN_PREVIEW_PATH::NORMAL:
 		return "Normal";
+	case VALTAN_PATTERN_PREVIEW_PATH::COUNTER_GROGGY:
+		return "Counter Hit -> Groggy";
 	case VALTAN_PATTERN_PREVIEW_PATH::WALL_GROGGY:
 		return "Wall -> Groggy -> Recovery";
 	case VALTAN_PATTERN_PREVIEW_PATH::PART_BREAK:
@@ -1437,83 +4103,92 @@ const char_t* Client::CAnimation_Tool::ValtanPatternMasterPathName(
 	}
 }
 
+const char_t* Client::CAnimation_Tool::ValtanPatternMasterAdmissionLabel() const
+{
+	switch (m_eValtanPatternMasterAdmission)
+	{
+	case VALTAN_PATTERN_MASTER_ADMISSION_STATE::UNLOADED:
+		return "NOT LOADED";
+	case VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED:
+		return "READY";
+	case VALTAN_PATTERN_MASTER_ADMISSION_STATE::STALE_PRESERVED:
+		return "PREVIOUS DATA / LOAD FAILED";
+	case VALTAN_PATTERN_MASTER_ADMISSION_STATE::REJECTED:
+		return "LOAD FAILED";
+	default:
+		return "INVALID";
+	}
+}
+
 std::vector<const Client::VALTAN_PATTERN_VIEW*>
 Client::CAnimation_Tool::Collect_ValtanPatternMasterPatterns() const
 {
 	std::vector<const VALTAN_PATTERN_VIEW*> Patterns;
 	Patterns.reserve(m_ValtanPatternMasterView.Get_PatternCount());
 	std::unordered_set<std::string> Collected;
-	for (const std::string_view strPatternId : VALTAN_PATTERN_MASTER_ORDER)
-	{
-		if (const VALTAN_PATTERN_VIEW* pPattern = Find_ValtanPatternMaster(
-			m_ValtanPatternMasterView, strPatternId))
-		{
-			Patterns.push_back(pPattern);
-			Collected.insert(pPattern->strPatternId);
-		}
-	}
-	const auto AppendProductPresentation = [&Patterns, &Collected](
+	const auto AppendEditablePatterns = [&Patterns, &Collected](
 		const std::vector<VALTAN_PATTERN_VIEW>& Source)
 	{
 		for (const VALTAN_PATTERN_VIEW& Pattern : Source)
 		{
-			if (!Pattern.Stages.empty() &&
+			if (Pattern.bAuthoringMasterManaged &&
+				!Pattern.strPatternId.empty() && !Pattern.Stages.empty() &&
 				Collected.insert(Pattern.strPatternId).second)
 			{
 				Patterns.push_back(&Pattern);
 			}
 		}
 	};
-	AppendProductPresentation(m_ValtanPatternMasterView.Rotation);
-	AppendProductPresentation(m_ValtanPatternMasterView.Gimmicks);
+	AppendEditablePatterns(m_ValtanPatternMasterView.Rotation);
+	AppendEditablePatterns(m_ValtanPatternMasterView.Gimmicks);
 	return Patterns;
 }
 
 bool_t Client::CAnimation_Tool::Reload_ValtanPatternMaster()
 {
+	const auto RejectReload = [this](std::string Diagnostic)
+	{
+		const bool_t bHasPreservedAdmission =
+			!Collect_ValtanPatternMasterPatterns().empty();
+		m_eValtanPatternMasterAdmission = bHasPreservedAdmission ?
+			VALTAN_PATTERN_MASTER_ADMISSION_STATE::STALE_PRESERVED :
+			VALTAN_PATTERN_MASTER_ADMISSION_STATE::REJECTED;
+		m_strValtanPatternMasterStatus = bHasPreservedAdmission ?
+			"Pattern data could not be loaded; the previous read-only view and pose were preserved: " + Diagnostic :
+			"Pattern data could not be loaded: " + Diagnostic;
+		return false;
+	};
 	VALTAN_PATTERN_TREE_VIEW Staged;
 	std::string Status;
 	if (!CValtanPatternTree::Load(Staged, Status))
-	{
-		m_strValtanPatternMasterStatus =
-			"Valtan Pattern Master reload rejected; current admitted view and pose preserved: " +
-			Status;
-		return false;
-	}
+		return RejectReload(Status);
 
-	size_t iManagedPatternCount = 0u;
-	const auto CountManaged = [&iManagedPatternCount](
+	size_t iEditablePatternCount = 0u;
+	const auto CountEditable = [&iEditablePatternCount](
 		const std::vector<VALTAN_PATTERN_VIEW>& Patterns)
 	{
 		for (const VALTAN_PATTERN_VIEW& Pattern : Patterns)
 		{
-			if (Pattern.bAuthoringMasterManaged)
-				++iManagedPatternCount;
+			if (Pattern.bAuthoringMasterManaged &&
+				!Pattern.strPatternId.empty() && !Pattern.Stages.empty())
+			{
+				++iEditablePatternCount;
+			}
 		}
 	};
-	CountManaged(Staged.Rotation);
-	CountManaged(Staged.Gimmicks);
-	if (iManagedPatternCount < VALTAN_PATTERN_MASTER_ORDER.size())
+	CountEditable(Staged.Rotation);
+	CountEditable(Staged.Gimmicks);
+	if (0u == iEditablePatternCount)
 	{
-		m_strValtanPatternMasterStatus =
-			"Valtan Pattern Master reload rejected; expected the 7 baseline managed patterns, found " +
-			std::to_string(iManagedPatternCount) +
-			". Current admitted view and pose preserved.";
-		return false;
-	}
-	for (const std::string_view strPatternId : VALTAN_PATTERN_MASTER_ORDER)
-	{
-		if (nullptr == Find_ValtanPatternMaster(Staged, strPatternId))
-		{
-			m_strValtanPatternMasterStatus =
-				"Valtan Pattern Master reload rejected; required pattern is missing: " +
-				std::string(strPatternId) +
-				". Current admitted view and pose preserved.";
-			return false;
-		}
+		return RejectReload(
+			"the loaded files contain no editable Pattern with a stable ID and Stage.");
 	}
 
 	m_ValtanPatternMasterView = std::move(Staged);
+	m_bValtanCompositionDraftPreviewReady = false;
+	m_ValtanCompositionDraftPreview = {};
+	m_eValtanPatternMasterAdmission =
+		VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED;
 	/* Sound is a fail-open presentation lane.  Its loader still stages the
 	   complete document and only commits on a valid gameplay/animation join;
 	   a rejected refresh preserves the last admitted lane while animation and
@@ -1528,9 +4203,8 @@ bool_t Client::CAnimation_Tool::Reload_ValtanPatternMaster()
 		m_iValtanPatternMasterSelected, 0,
 		static_cast<int32_t>(Patterns.size() - 1u));
 	m_strValtanPatternMasterStatus =
-		"Valtan Product presentation admitted: " +
-		std::to_string(Patterns.size()) + " patterns (" +
-		std::to_string(iManagedPatternCount) + " authoring-master managed) from "
+		"Loaded " + std::to_string(Patterns.size()) +
+		" editable Valtan Patterns from "
 		"Data/Valtan/Valtan.gameplay.json + Valtan.presentation.json. " +
 		Status;
 	return true;
@@ -1538,6 +4212,12 @@ bool_t Client::CAnimation_Tool::Reload_ValtanPatternMaster()
 
 bool_t Client::CAnimation_Tool::Reload_ValtanPatternSoundCues()
 {
+	std::string LifecycleStatus;
+	if (!Can_CommitValtanCompositionPatternSoundGeneration(LifecycleStatus))
+	{
+		m_strValtanPatternSoundCueStatus = std::move(LifecycleStatus);
+		return false;
+	}
 	VALTAN_PATTERN_SOUND_CUE_DOCUMENT Staged;
 	std::string StagedBaselineSourceBytes;
 	std::string Status;
@@ -1550,12 +4230,18 @@ bool_t Client::CAnimation_Tool::Reload_ValtanPatternSoundCues()
 		return false;
 	}
 	m_ValtanPatternSoundCues = std::move(Staged);
+	++m_iValtanPatternSoundDraftGeneration;
 	m_strValtanPatternSoundCueBaselineSourceBytes =
 		std::move(StagedBaselineSourceBytes);
 	m_bValtanPatternSoundCuesReady = true;
 	m_bValtanPatternSoundCuesDirty = false;
+	/* Source admission is data-only.  The Workbench may apply it to active
+	   Arena/preview consumers only after the exact immutable Pattern revision is
+	   confirmed Server-active. */
+	m_bValtanPatternSoundRuntimeApplyReady = false;
+	m_ValtanPatternSoundRuntimeAppliedRevision = {};
 	m_strValtanPatternSoundCueStatus =
-		"Strict authoring admission: " + Status;
+		"Strict authoring admission (active consumer apply pending): " + Status;
 	return true;
 }
 
@@ -1842,6 +4528,13 @@ bool_t Client::CAnimation_Tool::Start_ValtanPatternMasterPreview(
 	const VALTAN_PATTERN_VIEW& Pattern,
 	const VALTAN_PATTERN_PREVIEW_PATH ePath)
 {
+	if (VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED !=
+		m_eValtanPatternMasterAdmission)
+	{
+		m_strValtanPatternMasterStatus =
+			"Valtan Pattern Offline play rejected: the preserved graph is display-only until a fresh canonical reload is ADMITTED.";
+		return false;
+	}
 	std::vector<VALTAN_PATTERN_MASTER_PLAY_ITEM> StagedPlaylist;
 	uint32_t iStagedDurationMs = 0u;
 	std::string Status;
@@ -1860,6 +4553,13 @@ bool_t Client::CAnimation_Tool::Start_ValtanPatternMasterPreview(
 	{
 		m_strValtanPatternMasterStatus =
 			"Valtan Pattern Master play rejected; the staged model is not the current local Valtan boss.";
+		return false;
+	}
+	if (!PreviewBoss->Stage_LocalPatternAuthoringPreview(Pattern, Status))
+	{
+		m_strValtanPatternMasterStatus =
+			"Valtan Pattern Master play rejected; effective draft preview staging failed: " +
+			Status;
 		return false;
 	}
 
@@ -1993,7 +4693,8 @@ bool_t Client::CAnimation_Tool::Activate_ValtanPatternMasterItem(
 bool_t Client::CAnimation_Tool::Seek_ValtanPatternMasterPreview(
 	const shared_ptr<Engine::CModel>& pModel,
 	const f32_t fTimelineSeconds,
-	const bool_t bPause)
+	const bool_t bPause,
+	const bool_t bResetPresentationTransport)
 {
 	if (!m_bValtanPatternMasterPlaying || nullptr == pModel ||
 		m_ValtanPatternMasterPlaylist.empty() ||
@@ -2025,6 +4726,14 @@ bool_t Client::CAnimation_Tool::Seek_ValtanPatternMasterPreview(
 			   endpoint is moved to the previous representable wall time. */
 			if (bLast && fTimelineMs >= fEndMs && fLocalSeconds > 0.f)
 				fLocalSeconds = std::nextafter(fLocalSeconds, 0.f);
+			if (bResetPresentationTransport)
+			{
+				const shared_ptr<CValtan> PreviewBoss =
+					m_ValtanPatternMasterBoss.lock();
+				if (nullptr == PreviewBoss || PreviewBoss->Get_BodyModel() != pModel)
+					return false;
+				PreviewBoss->Reset_LocalPatternPreviewTransport();
+			}
 			if (!Activate_ValtanPatternMasterItem(
 				pModel, iItem, fLocalSeconds))
 			{
@@ -2054,12 +4763,20 @@ void Client::CAnimation_Tool::Advance_ValtanPatternMasterPreview(
 	if (fAbsoluteSeconds * 1000.f + 0.001f >=
 		static_cast<f32_t>(m_iValtanPatternMasterDurationMs))
 	{
+		if (m_bValtanCompositionLoop &&
+			Seek_ValtanPatternMasterPreview(pModel, 0.f, false, true))
+		{
+			m_strValtanPatternMasterStatus =
+				"Valtan Pattern preview loop restarted from the admitted first occurrence.";
+			return;
+		}
 		Stop_ValtanPatternMasterPreview(
 			pModel,
 			"Valtan Pattern Master timeline completed; idle restored.");
 		return;
 	}
-	if (!Seek_ValtanPatternMasterPreview(pModel, fAbsoluteSeconds, false))
+	if (!Seek_ValtanPatternMasterPreview(
+			pModel, fAbsoluteSeconds, false, false))
 	{
 		Stop_ValtanPatternMasterPreview(
 			pModel,
@@ -2141,21 +4858,18 @@ bool_t Client::CAnimation_Tool::Load_ValtanAnimationBindingDraft(
 	const shared_ptr<Engine::CModel>& pModel)
 {
 	BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT Staged;
-	std::string BaselineSourceBytes;
 	std::string Status;
 	const std::vector<std::string> AvailableClips = Collect_ClipNames(pModel);
-	if (!CValtanPatternAnimationBindingDocument::Load_ForAuthoring(
-		"Valtan", "BOSS_VALTAN", AvailableClips, Staged,
-		BaselineSourceBytes, Status))
+	if (!CValtanPatternAnimationBindingDocument::Load(
+		"Valtan", "BOSS_VALTAN", AvailableClips, Staged, Status))
 	{
 		m_strValtanPatternAnimationBindingStatus =
-			"Animation binding reload rejected; the current draft was preserved: " +
+			"Animation Product reload rejected; the current read-only projection was preserved: " +
 			Status;
 		return false;
 	}
 	m_ValtanPatternAnimationBindingDraft = std::move(Staged);
-	m_strValtanPatternAnimationBindingBaselineSourceBytes =
-		std::move(BaselineSourceBytes);
+	m_strValtanPatternAnimationBindingBaselineSourceBytes.clear();
 	m_bValtanPatternAnimationBindingReady = true;
 	m_bValtanPatternAnimationBindingDirty = false;
 	m_strValtanPatternAnimationBindingStatus = std::move(Status);
@@ -2174,16 +4888,17 @@ bool_t Client::CAnimation_Tool::Render_ValtanAnimationBindingInspector(
 	const VALTAN_PATTERN_VIEW& Pattern,
 	const VALTAN_STAGE_VIEW& Stage)
 {
-	bool_t bReloadJoinedWorkbenchAfterSave = false;
 	if (!m_bValtanPatternAnimationBindingLoadAttempted)
 	{
 		m_bValtanPatternAnimationBindingLoadAttempted = true;
 		(void)Load_ValtanAnimationBindingDraft(pModel);
 	}
 
-	ImGui::SeparatorText("Animation Binding Typed Owner");
+	ImGui::SeparatorText("Animation / Presentation Projection");
 	ImGui::TextWrapped(
-		"Data/Animation/Authored/Valtan/Valtan.patternbindings.json");
+		"AUTHORING OWNER: Data/Valtan/Valtan.presentation.json");
+	ImGui::TextDisabled(
+		"READ-ONLY GENERATED PRODUCT: Data/Animation/Authored/Valtan/Valtan.patternbindings.json");
 	ImGui::TextDisabled(
 		"Pattern %s | semantic stage %s | gameplay action %s",
 		Pattern.strPatternId.c_str(), Stage.strStageId.c_str(),
@@ -2193,399 +4908,55 @@ bool_t Client::CAnimation_Tool::Render_ValtanAnimationBindingInspector(
 		ImGui::TextWrapped(
 			"%s", m_strValtanPatternAnimationBindingStatus.c_str());
 	}
-
-	if (ImGui::SmallButton(
-		m_bValtanPatternAnimationBindingDirty ?
-			"Discard / Reload Animation Draft" :
-			"Reload Animation Binding Draft"))
-	{
+	if (ImGui::SmallButton("Reload Read-only Animation Product"))
 		(void)Load_ValtanAnimationBindingDraft(pModel);
-	}
-	ImGui::SameLine();
-	ImGui::BeginDisabled(
-		!m_bValtanPatternAnimationBindingReady ||
-		!m_bValtanPatternAnimationBindingDirty);
-	if (ImGui::SmallButton("Save Animation Bindings"))
-	{
-		std::string Status;
-		std::string CommittedSourceBytes;
-		const std::vector<std::string> AvailableClips =
-			Collect_ClipNames(pModel);
-		const std::unordered_map<std::string, f32_t>
-			ClipSourceDurationSecondsByName =
-				CollectModelClipSourceDurationSeconds(pModel);
-		if (CValtanPatternAnimationBindingDocument::Save_Atomic(
-			m_ValtanPatternAnimationBindingDraft,
-			"Valtan", "BOSS_VALTAN", AvailableClips,
-			ClipSourceDurationSecondsByName,
-			m_strValtanPatternAnimationBindingBaselineSourceBytes,
-			CommittedSourceBytes, Status))
-		{
-			m_bValtanPatternAnimationBindingDirty = false;
-			m_strValtanPatternAnimationBindingBaselineSourceBytes =
-				std::move(CommittedSourceBytes);
-			std::string AuthoritativeStatus =
-				"No active Valtan Arena; the next primary replicated Valtan spawn will load the saved joined presentation.";
-			bool_t bAuthoritativeReloaded = true;
-			if (CLevel_ValtanArena* const pArena =
-					CLevel_ValtanArena::Get_Active())
-			{
-				bAuthoritativeReloaded =
-					pArena->Reload_PrimaryValtanPresentationAuthoring(
-						AuthoritativeStatus);
-			}
-			std::string PreviewStatus =
-				"No Development preview Valtan is active.";
-			if (const shared_ptr<CValtan> Boss =
-					CAnimationTargetService::Resolve_Boss())
-			{
-				if (!Boss->Reload_PatternPresentationAuthoring(PreviewStatus))
-					PreviewStatus =
-						"Secondary preview joined reload rejected: " + PreviewStatus;
-			}
-			Status += bAuthoritativeReloaded ?
-				" " + AuthoritativeStatus :
-				" COMPLETE PLAY BLOCKED: " + AuthoritativeStatus;
-			Status += " " + PreviewStatus;
-			bReloadJoinedWorkbenchAfterSave = true;
-		}
-		m_strValtanPatternAnimationBindingStatus = std::move(Status);
-	}
-	ImGui::EndDisabled();
-	ImGui::TextDisabled(
-		"This typed Save commits patternbindings, reloads the active Valtan presentation cache, then refreshes the joined Workbench after pane rendering.");
 
-	if (!m_bValtanPatternAnimationBindingReady)
+	ImGui::SeparatorText("Authoring Occurrences / Projected Binding");
+	if (Stage.ClipOccurrences.empty())
 	{
 		ImGui::TextDisabled(
-			"No validated Valtan animation-binding draft is available.");
-		return bReloadJoinedWorkbenchAfterSave;
+			"No animation occurrence is owned by this presentation stage.");
 	}
-	if (3u != m_ValtanPatternAnimationBindingDraft.iFormatVersion)
+	else
+	{
+		for (const VALTAN_CLIP_OCCURRENCE_VIEW& Occurrence :
+			Stage.ClipOccurrences)
+		{
+			ImGui::PushID(Occurrence.strClipOccurrenceId.c_str());
+			ImGui::TextWrapped(
+				"%s | %s | source %u ms | play %u ms @ %.3fx | loop %s",
+				Occurrence.strClipOccurrenceId.c_str(),
+				Occurrence.strClipName.c_str(), Occurrence.iSourceStartMs,
+				Occurrence.iPlayMs, Occurrence.fPlayRate,
+				Occurrence.bLoop ? "true" : "false");
+			ImGui::PopID();
+		}
+	}
+	const auto ProductBinding = std::find_if(
+		m_ValtanPatternAnimationBindingDraft.Bindings.begin(),
+		m_ValtanPatternAnimationBindingDraft.Bindings.end(),
+		[&Stage](const BOSS_PATTERN_ANIMATION_BINDING& Binding)
+		{
+			return Binding.strActionId == Stage.strActionId;
+		});
+	if (!m_bValtanPatternAnimationBindingReady ||
+		m_ValtanPatternAnimationBindingDraft.Bindings.end() == ProductBinding)
 	{
 		ImGui::TextColored(
 			ImVec4(1.f, 0.35f, 0.25f, 1.f),
-			"MISSING CONTRACT: authored Add/Edit requires patternbindings formatVersion 3; this admitted source remains read-only.");
-		return bReloadJoinedWorkbenchAfterSave;
+			"Projected Product binding is missing or rejected for this action.");
 	}
+	else
+	{
+		ImGui::TextDisabled(
+			"Projected Product parity: %zu clip(s), playback %s",
+			ProductBinding->Clips.size(),
+			ProductBinding->bSuppressAnimation ? "NONE" : "CLIP_SEQUENCE");
+	}
+	ImGui::TextWrapped(
+		"Sequence rows are read-only until a typed presentation-source adapter stages them. Save & Apply validates the data and reloads the admitted animation result.");
+	return false;
 
-	struct ANIMATION_SLOT_CHOICE final
-	{
-		std::string strActionId;
-		std::string strLabel;
-	};
-	std::vector<ANIMATION_SLOT_CHOICE> SlotChoices;
-	SlotChoices.push_back(
-		{ Stage.strActionId, "Stage action / " + Stage.strActionId });
-	const bool_t bHasCounterTrueBranch = std::any_of(
-		Stage.Branches.begin(), Stage.Branches.end(),
-		[](const VALTAN_STAGE_BRANCH_VIEW& Branch)
-		{
-			return "COUNTER_HIT" == Branch.strOutcome &&
-				Branch.strNextActionId.has_value();
-		});
-	bool_t bHasCounterGroggySlot = false;
-	for (const VALTAN_STAGE_BRANCH_VIEW& Branch : Stage.Branches)
-	{
-		if (!Branch.strNextActionId.has_value())
-			continue;
-		const std::string& strNextActionId = *Branch.strNextActionId;
-		const auto NextStage = std::find_if(
-			Pattern.Stages.begin(), Pattern.Stages.end(),
-			[&strNextActionId](const VALTAN_STAGE_VIEW& Candidate)
-			{
-				return Candidate.strActionId == strNextActionId;
-			});
-		const bool_t bGroggy = Pattern.Stages.end() != NextStage &&
-			("GROGGY" == NextStage->strStageId ||
-			 "GROGGY" == NextStage->strStageKind);
-		std::string Label;
-		if ("COUNTER_HIT" == Branch.strOutcome)
-		{
-			Label = bGroggy ?
-				"Counter true -> Groggy transition sequence slot / " :
-				"Counter true / ";
-			bHasCounterGroggySlot = bHasCounterGroggySlot || bGroggy;
-		}
-		else if (bHasCounterTrueBranch)
-		{
-			Label = "Counter false / ";
-		}
-		else
-		{
-			Label = "Outcome " + Branch.strOutcome + " / ";
-		}
-		Label += strNextActionId;
-		const auto Existing = std::find_if(
-			SlotChoices.begin(), SlotChoices.end(),
-			[&strNextActionId](const ANIMATION_SLOT_CHOICE& Choice)
-			{
-				return Choice.strActionId == strNextActionId;
-			});
-		if (SlotChoices.end() == Existing)
-			SlotChoices.push_back({ strNextActionId, std::move(Label) });
-	}
-	if (SlotChoices.end() == std::find_if(
-		SlotChoices.begin(), SlotChoices.end(),
-		[this](const ANIMATION_SLOT_CHOICE& Choice)
-		{
-			return Choice.strActionId ==
-				m_strValtanAnimationBindingDetailActionId;
-		}))
-	{
-		m_strValtanAnimationBindingDetailActionId =
-			SlotChoices.front().strActionId;
-	}
-	const auto SelectedChoice = std::find_if(
-		SlotChoices.begin(), SlotChoices.end(),
-		[this](const ANIMATION_SLOT_CHOICE& Choice)
-		{
-			return Choice.strActionId ==
-				m_strValtanAnimationBindingDetailActionId;
-		});
-	if (ImGui::BeginCombo(
-		"Semantic animation sequence slot",
-		SelectedChoice->strLabel.c_str()))
-	{
-		for (const ANIMATION_SLOT_CHOICE& Choice : SlotChoices)
-		{
-			const bool_t bSelected = Choice.strActionId ==
-				m_strValtanAnimationBindingDetailActionId;
-			if (ImGui::Selectable(Choice.strLabel.c_str(), bSelected))
-				m_strValtanAnimationBindingDetailActionId = Choice.strActionId;
-			if (bSelected)
-				ImGui::SetItemDefaultFocus();
-		}
-		ImGui::EndCombo();
-	}
-	for (const VALTAN_STAGE_BRANCH_VIEW& Branch : Stage.Branches)
-	{
-		ImGui::BulletText(
-			"outcome %s -> %s",
-			Branch.strOutcome.c_str(),
-			Branch.strNextActionId.has_value() ?
-				Branch.strNextActionId->c_str() : "TERMINAL");
-	}
-	if (bHasCounterTrueBranch && !bHasCounterGroggySlot)
-	{
-		ImGui::TextColored(
-			ImVec4(1.f, 0.7f, 0.2f, 1.f),
-			"MISSING CONTRACT: this Counter true branch has no typed Groggy destination stage in the selected pattern.");
-	}
-	ImGui::TextDisabled(
-		"Blank / NONE uses the existing playbackMode=NONE binding. A separately named INTERNAL_WAIT sequence-slot kind is not in formatVersion 3; gameplay durationMs remains the typed wait clock.");
-
-	const std::vector<std::string> AvailableClips = Collect_ClipNames(pModel);
-	if (AvailableClips.end() == std::find(
-		AvailableClips.begin(), AvailableClips.end(),
-		m_strValtanAnimationBindingNewClip))
-	{
-		m_strValtanAnimationBindingNewClip = AvailableClips.empty() ?
-			std::string{} : AvailableClips.front();
-	}
-	const auto FindBinding = [this]()
-		-> BOSS_PATTERN_ANIMATION_BINDING*
-	{
-		const auto Found = std::find_if(
-			m_ValtanPatternAnimationBindingDraft.Bindings.begin(),
-			m_ValtanPatternAnimationBindingDraft.Bindings.end(),
-			[this](const BOSS_PATTERN_ANIMATION_BINDING& Binding)
-			{
-				return Binding.strActionId ==
-					m_strValtanAnimationBindingDetailActionId;
-			});
-		return Found == m_ValtanPatternAnimationBindingDraft.Bindings.end() ?
-			nullptr : &*Found;
-	};
-	const auto MarkBindingDirty = [this](const std::string_view strReason)
-	{
-		m_bValtanPatternAnimationBindingDirty = true;
-		m_strValtanPatternAnimationBindingStatus =
-			"UNSAVED Animation binding draft: " + std::string(strReason);
-	};
-	const auto EnsureBinding = [this, &FindBinding]()
-		-> BOSS_PATTERN_ANIMATION_BINDING&
-	{
-		if (BOSS_PATTERN_ANIMATION_BINDING* const pExisting = FindBinding())
-			return *pExisting;
-		BOSS_PATTERN_ANIMATION_BINDING Binding;
-		Binding.strActionId = m_strValtanAnimationBindingDetailActionId;
-		m_ValtanPatternAnimationBindingDraft.Bindings.push_back(
-			std::move(Binding));
-		return m_ValtanPatternAnimationBindingDraft.Bindings.back();
-	};
-
-	BOSS_PATTERN_ANIMATION_BINDING* pBinding = FindBinding();
-	ImGui::TextDisabled(
-		"Typed owner action: %s | %s",
-		m_strValtanAnimationBindingDetailActionId.c_str(),
-		nullptr == pBinding ? "MISSING BINDING" :
-			(pBinding->bSuppressAnimation ? "Blank / NONE" :
-			 "CLIP_SEQUENCE"));
-	if (ImGui::SmallButton("Set Blank / NONE Draft"))
-	{
-		BOSS_PATTERN_ANIMATION_BINDING& Binding = EnsureBinding();
-		Binding.Clips.clear();
-		Binding.bSuppressAnimation = true;
-		MarkBindingDirty("explicit NONE playback");
-	}
-	pBinding = FindBinding();
-
-	if (nullptr != pBinding && !pBinding->bSuppressAnimation)
-	{
-		for (std::size_t iClip = 0u; iClip < pBinding->Clips.size(); ++iClip)
-		{
-			BOSS_PATTERN_ANIMATION_CLIP& Clip = pBinding->Clips[iClip];
-			ImGui::PushID(Clip.strClipOccurrenceId.c_str());
-			ImGui::SeparatorText(
-				("Sequence slot " + std::to_string(iClip + 1u)).c_str());
-			ImGui::TextWrapped(
-				"occurrence %s | basis %s",
-				Clip.strClipOccurrenceId.c_str(),
-				Clip.strMappingBasis.c_str());
-			if (ImGui::BeginCombo("Model clip", Clip.strClipName.c_str()))
-			{
-				for (const std::string& ClipName : AvailableClips)
-				{
-					const bool_t bSelected = ClipName == Clip.strClipName;
-					if (ImGui::Selectable(ClipName.c_str(), bSelected) &&
-						!bSelected)
-					{
-						Clip.strClipName = ClipName;
-						Clip.strMappingBasis = "PROJECT_AUTHORED";
-						MarkBindingDirty("model clip changed");
-					}
-					if (bSelected)
-						ImGui::SetItemDefaultFocus();
-				}
-				ImGui::EndCombo();
-			}
-			if (ImGui::SmallButton("Preview Clip"))
-				Select_Clip(pModel, Clip.strClipName);
-			const uint32_t iOneMs = 1u;
-			const uint32_t iHundredMs = 100u;
-			ImGui::SetNextItemWidth(180.f);
-			if (ImGui::InputScalar(
-				"Source start ms", ImGuiDataType_U32,
-				&Clip.iSourceStartMs, &iOneMs, &iHundredMs, "%u"))
-			{
-				Clip.iSourceStartMs = (std::min)(Clip.iSourceStartMs, 60000u);
-				Clip.strMappingBasis = "PROJECT_AUTHORED";
-				MarkBindingDirty("source window changed");
-			}
-			ImGui::SetNextItemWidth(180.f);
-			if (ImGui::InputScalar(
-				"Play ms (0 = source remainder)", ImGuiDataType_U32,
-				&Clip.iPlayMs, &iOneMs, &iHundredMs, "%u"))
-			{
-				Clip.iPlayMs = (std::min)(Clip.iPlayMs, 60000u);
-				Clip.strMappingBasis = "PROJECT_AUTHORED";
-				MarkBindingDirty("play window changed");
-			}
-			ImGui::SetNextItemWidth(180.f);
-			if (ImGui::InputFloat(
-				"Play rate", &Clip.fPlayRate, 0.05f, 0.25f, "%.3f"))
-			{
-				Clip.fPlayRate = std::clamp(Clip.fPlayRate, 0.05f, 16.f);
-				Clip.strMappingBasis = "PROJECT_AUTHORED";
-				MarkBindingDirty("play rate changed");
-			}
-			const bool_t bLast = iClip + 1u == pBinding->Clips.size();
-			ImGui::BeginDisabled(!bLast);
-			if (ImGui::Checkbox("Loop last slot", &Clip.bLoop))
-			{
-				Clip.strMappingBasis = "PROJECT_AUTHORED";
-				MarkBindingDirty("last-slot loop policy changed");
-			}
-			ImGui::EndDisabled();
-			const bool_t bRemove = ImGui::SmallButton("Remove Sequence Slot");
-			ImGui::PopID();
-			if (bRemove)
-			{
-				pBinding->Clips.erase(pBinding->Clips.begin() + iClip);
-				if (pBinding->Clips.empty())
-					pBinding->bSuppressAnimation = true;
-				MarkBindingDirty("sequence slot removed");
-				break;
-			}
-		}
-	}
-
-	ImGui::BeginDisabled(AvailableClips.empty());
-	if (ImGui::BeginCombo(
-		"New slot model clip",
-		m_strValtanAnimationBindingNewClip.empty() ? "NONE" :
-			m_strValtanAnimationBindingNewClip.c_str()))
-	{
-		for (const std::string& ClipName : AvailableClips)
-		{
-			const bool_t bSelected =
-				ClipName == m_strValtanAnimationBindingNewClip;
-			if (ImGui::Selectable(ClipName.c_str(), bSelected))
-				m_strValtanAnimationBindingNewClip = ClipName;
-			if (bSelected)
-				ImGui::SetItemDefaultFocus();
-		}
-		ImGui::EndCombo();
-	}
-	if (ImGui::SmallButton("Add Sequence Slot"))
-	{
-		BOSS_PATTERN_ANIMATION_BINDING& Binding = EnsureBinding();
-		if (Binding.Clips.size() >= 16u)
-		{
-			m_strValtanPatternAnimationBindingStatus =
-				"Animation binding Add rejected: one action supports at most 16 sequence slots.";
-		}
-		else
-		{
-			std::string OccurrenceId;
-			for (std::size_t iCandidate = 1u;
-				iCandidate <= 10000u && OccurrenceId.empty(); ++iCandidate)
-			{
-				const std::string Candidate =
-					m_strValtanAnimationBindingDetailActionId +
-					".workbench.clip." + std::to_string(iCandidate);
-				const bool_t bUsed = std::any_of(
-					m_ValtanPatternAnimationBindingDraft.Bindings.begin(),
-					m_ValtanPatternAnimationBindingDraft.Bindings.end(),
-					[&Candidate](
-						const BOSS_PATTERN_ANIMATION_BINDING& Other)
-					{
-						return std::any_of(
-							Other.Clips.begin(), Other.Clips.end(),
-							[&Candidate](
-								const BOSS_PATTERN_ANIMATION_CLIP& OtherClip)
-							{
-								return OtherClip.strClipOccurrenceId == Candidate;
-							});
-					});
-				if (!bUsed)
-					OccurrenceId = Candidate;
-			}
-			if (OccurrenceId.empty())
-			{
-				m_strValtanPatternAnimationBindingStatus =
-					"Animation binding Add rejected: no stable occurrence ID was available.";
-			}
-			else
-			{
-				if (!Binding.Clips.empty() && Binding.Clips.back().bLoop)
-				{
-					Binding.Clips.back().bLoop = false;
-					Binding.Clips.back().strMappingBasis = "PROJECT_AUTHORED";
-				}
-				BOSS_PATTERN_ANIMATION_CLIP Clip;
-				Clip.strClipOccurrenceId = std::move(OccurrenceId);
-				Clip.strClipName = m_strValtanAnimationBindingNewClip;
-				Clip.strMappingBasis = "PROJECT_AUTHORED";
-				Binding.bSuppressAnimation = false;
-				Binding.Clips.push_back(std::move(Clip));
-				MarkBindingDirty("sequence slot added");
-			}
-		}
-	}
-	ImGui::EndDisabled();
-	return bReloadJoinedWorkbenchAfterSave;
 }
 
 void Client::CAnimation_Tool::Render_ValtanCounterWindowInspector(
@@ -2788,6 +5159,42 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 	}
 	const auto SubmitDraft = [&]()
 	{
+		VALTAN_STAGE_VIEW CandidateStage = SavedStage;
+		CandidateStage.strActionId = Draft.actionId;
+		CandidateStage.iDurationMs = Draft.durationMs;
+		CandidateStage.iAuthoringRepeatCount = Draft.animationRepeatCount;
+		CandidateStage.strAnimationEndPolicy = Draft.animationEndPolicy;
+		CandidateStage.bSuppressAnimation = Draft.animationSlots.empty();
+		CandidateStage.ClipOccurrences.clear();
+		CandidateStage.ClipOccurrences.reserve(Draft.animationSlots.size());
+		for (const CBalanceTool::ANIMATION_SLOT_EDIT& Slot :
+			Draft.animationSlots)
+		{
+			VALTAN_CLIP_OCCURRENCE_VIEW Occurrence;
+			Occurrence.strClipOccurrenceId = Slot.clipOccurrenceId;
+			Occurrence.strClipName = Slot.clip;
+			Occurrence.strMappingBasis = Slot.mappingBasis;
+			Occurrence.iSourceStartMs = Slot.sourceStartMs;
+			Occurrence.iPlayMs = Slot.playMs;
+			Occurrence.fPlayRate = static_cast<f32_t>(Slot.playRate);
+			Occurrence.bLoop = Slot.repeatUntilStageEnd;
+			CandidateStage.ClipOccurrences.push_back(std::move(Occurrence));
+		}
+		if (!Validate_ValtanCompositionAnimationStageMutation(
+				SavedStage, CandidateStage, DraftStatus))
+		{
+			m_strValtanPatternMasterStatus =
+				"Stage draft rejected before mutation by native Animation admission: " +
+				DraftStatus;
+			return;
+		}
+		if (!Validate_ValtanCompositionPatternSoundStageDependencies(
+				Pattern, SavedStage, CandidateStage, DraftStatus))
+		{
+			m_strValtanPatternMasterStatus =
+				"Stage draft rejected before mutation: " + DraftStatus;
+			return;
+		}
 		(void)m_pBalanceTool->Set_ValtanStageDraft(
 			strPatternId, SavedStage.strStageId, Draft, DraftStatus);
 		m_strValtanPatternMasterStatus = DraftStatus;
@@ -2797,7 +5204,8 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 	const uint32_t iOne = 1u;
 	const uint32_t iStepMs = 100u;
 	const uint32_t iFastStepMs = 1000u;
-	ImGui::BeginDisabled(!Draft.durationEditable);
+	ImGui::BeginDisabled(
+		!Draft.durationEditable || Draft.portalRushMotionEditable);
 	ImGui::SetNextItemWidth(210.f);
 	if (ImGui::InputScalar(
 		"Server wall / blank timeline ms",
@@ -2811,7 +5219,12 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 	if (!Draft.durationEditable)
 	{
 		ImGui::TextDisabled(
-			"Duration is read-only: manual Server audition is locked to the promoted animation wall-clock.");
+			"Duration is read-only under this Stage's typed gameplay policy.");
+	}
+	else if (Draft.portalRushMotionEditable)
+	{
+		ImGui::TextDisabled(
+			"This Stage clock is derived for all eight WARP legs by the motion controls below.");
 	}
 	if (Draft.durationMs != SavedStage.iDurationMs)
 	{
@@ -2824,7 +5237,7 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 		"AIRBORNE" == SavedStage.strStageId)
 	{
 		ImGui::TextWrapped(
-			"AIRBORNE duration is the boss stage/blank wall-clock. It extends the looping axe-flight animation, but it does not change a spawned axe's lifetime or its local hit atMs.");
+			"AIRBORNE duration is the boss stage/blank wall-clock. It extends the looping axe-flight animation and derives each spawned axe lifetime; the axe hit remains object-local at +1200 ms.");
 		std::uint32_t iDraftAxes = 0u;
 		std::uint32_t iSavedAxes = 0u;
 		std::uint32_t iArenaRandomAxes = 0u;
@@ -2865,13 +5278,104 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 	{
 		const VALTAN_STAGE_MOTION_VIEW& Motion = *SavedStage.Motion;
 		ImGui::TextDisabled(
-			"Motion %s | distance %.3f m | corner %u | half extents [%.3f, %.3f] m",
-			Motion.strKind.c_str(), Motion.fDistance, Motion.iCornerIndex,
+			"Motion %s | delay %u ms | speed %.3f m/s | distance %.3f m | corner %u | half extents [%.3f, %.3f] m",
+			Motion.strKind.c_str(), Motion.iRetargetDelayMs, Motion.fSpeedMps,
+			Motion.fDistance, Motion.iCornerIndex,
 			Motion.HalfExtentsM[0], Motion.HalfExtentsM[1]);
 	}
 	else
 	{
 		ImGui::TextDisabled("Motion: NONE");
+	}
+	if (Draft.portalRushMotionEditable)
+	{
+		CBalanceTool::VALTAN_WARP_RUSH_EDIT RushDraft{};
+		std::string RushStatus;
+		if (!m_pBalanceTool->Get_ValtanWarpRushDraft(RushDraft, RushStatus))
+		{
+			ImGui::TextDisabled("All-leg WARP draft unavailable: %s",
+				RushStatus.c_str());
+		}
+		const auto SubmitPortalRush = [&]()
+		{
+			Draft.portalRetargetDelayMs = RushDraft.retargetDelayMs;
+			Draft.portalSpeedMps = RushDraft.speedMps;
+			Draft.portalDistanceM = RushDraft.distanceM;
+			if (!CBalanceTool::Normalize_ValtanPortalRushDraft(
+					Draft, RushDraft.trailingGapMs, RushStatus))
+			{
+				m_strValtanPatternMasterStatus = RushStatus;
+				return;
+			}
+			RushDraft.retargetDelayMs = Draft.portalRetargetDelayMs;
+			RushDraft.speedMps = Draft.portalSpeedMps;
+			RushDraft.distanceM = Draft.portalDistanceM;
+			if (m_pBalanceTool->Set_ValtanWarpRushDraft(
+					RushDraft, RushStatus))
+			{
+				const std::string AppliedStatus = RushStatus;
+				CBalanceTool::VALTAN_WARP_RUSH_EDIT Refreshed{};
+				std::string RefreshStatus;
+				if (m_pBalanceTool->Get_ValtanWarpRushDraft(
+						Refreshed, RefreshStatus))
+				{
+					RushDraft = Refreshed;
+					Draft.durationMs = Refreshed.legDurationMs;
+					Draft.portalRetargetDelayMs = Refreshed.retargetDelayMs;
+					Draft.portalSpeedMps = Refreshed.speedMps;
+					Draft.portalDistanceM = Refreshed.distanceM;
+					Draft.hitCount = Refreshed.hitCount;
+				}
+				RushStatus = AppliedStatus;
+			}
+			m_strValtanPatternMasterStatus = RushStatus;
+		};
+		ImGui::TextWrapped(
+			"Typed WARP rush - All 8 Legs: one edit atomically updates STEP_02..STEP_09. The Server waits, travels, and regenerates 50 ms swept-hit samples; portal boundaries remain boss-root snapshots, not predicted endpoints.");
+		ImGui::BeginDisabled(!RushStatus.empty());
+		const std::uint32_t iDelayStepMs = 50u;
+		const std::uint32_t iDelayFastStepMs = 100u;
+		ImGui::SetNextItemWidth(210.f);
+		if (ImGui::InputScalar("Retarget / wait delay ms", ImGuiDataType_U32,
+			&RushDraft.retargetDelayMs, &iDelayStepMs,
+			&iDelayFastStepMs, "%u"))
+		{
+			SubmitPortalRush();
+		}
+		const double fSpeedStep = 0.5;
+		const double fSpeedFastStep = 5.0;
+		ImGui::SetNextItemWidth(210.f);
+		if (ImGui::InputDouble("Rush speed m/s", &RushDraft.speedMps,
+			fSpeedStep, fSpeedFastStep, "%.3f"))
+		{
+			SubmitPortalRush();
+		}
+		const double fDistanceStep = 0.25;
+		const double fDistanceFastStep = 1.0;
+		ImGui::SetNextItemWidth(210.f);
+		if (ImGui::InputDouble("Rush distance m", &RushDraft.distanceM,
+			fDistanceStep, fDistanceFastStep, "%.3f"))
+		{
+			SubmitPortalRush();
+		}
+		ImGui::SetNextItemWidth(210.f);
+		if (ImGui::InputScalar(
+			"Portal Gap After Rush (ms)", ImGuiDataType_U32,
+			&RushDraft.trailingGapMs, &iDelayStepMs,
+			&iDelayFastStepMs, "%u"))
+		{
+			RushDraft.trailingGapMs = (std::min)(
+				RushDraft.trailingGapMs, 120000u);
+			SubmitPortalRush();
+		}
+		ImGui::TextDisabled(
+			"Computed leg total %u ms | travel %.3f ms | portal gap %u ms | swept hits %u",
+			RushDraft.legDurationMs, RushDraft.travelMs,
+			RushDraft.trailingGapMs, RushDraft.hitCount);
+		ImGui::TextColored(
+			ImVec4(1.f, 0.70f, 0.20f, 1.f),
+			"Distance endpoint currently bypasses navigation clamp; keep it inside the arena.");
+		ImGui::EndDisabled();
 	}
 
 	ImGui::SeparatorText("Server Stage Actions");
@@ -3015,13 +5519,26 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 
 	ImGui::SeparatorText("Effect Cue Details");
 	if (Draft.productCues.empty())
-		ImGui::TextDisabled("No Product Effect cues on this stage.");
+	{
+		if ("VALTAN_WARP" == strPatternId &&
+			("STEP_01" == SavedStage.strStageId ||
+			 "STEP_10" == SavedStage.strStageId))
+		{
+			ImGui::TextDisabled(
+				"No authored portal cue owner exists on this selected start/return stage; no synthetic Effect row is created.");
+		}
+		else
+		{
+			ImGui::TextDisabled("No Product Effect cues on this stage.");
+		}
+	}
 	for (std::size_t iCue = 0u; iCue < Draft.productCues.size(); ++iCue)
 	{
 		VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue = Draft.productCues[iCue];
 		ImGui::PushID(Cue.strOccurrenceId.c_str());
 		ImGui::TextWrapped("%s", Cue.strEffectAssetId.c_str());
-		ImGui::TextDisabled("Occurrence %s", Cue.strOccurrenceId.c_str());
+		ImGui::TextDisabled("Binding %s | occurrence %s",
+			Cue.strBindingId.c_str(), Cue.strOccurrenceId.c_str());
 		ImGui::TextDisabled("V1 alias %s | anchor %s",
 			Cue.strV1EffectAssetId.empty() ? "NONE" :
 				Cue.strV1EffectAssetId.c_str(), Cue.strAnchorSlotId.c_str());
@@ -3290,64 +5807,33 @@ bool_t Client::CAnimation_Tool::Render_ValtanPatternSoundInspector(
 		ClipSourceDurationSecondsByName =
 			CollectModelClipSourceDurationSeconds(pModel);
 
+	std::string SoundLifecycleStatus;
+	const bool_t bSoundSourceCommitAdmitted =
+		Can_CommitValtanCompositionPatternSoundGeneration(
+			SoundLifecycleStatus);
+	ImGui::BeginDisabled(!bSoundSourceCommitAdmitted);
 	if (ImGui::SmallButton(
 		m_bValtanPatternSoundCuesDirty ?
 			"Discard / Reload Pattern Sound" : "Reload Pattern Sound"))
 	{
 		(void)Reload_ValtanPatternSoundCues();
 	}
+	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::BeginDisabled(
+		!bSoundSourceCommitAdmitted ||
 		!m_bValtanPatternSoundCuesReady ||
 		!m_bValtanPatternSoundCuesDirty);
 	if (ImGui::SmallButton("Save Pattern Sound"))
 	{
 		std::string SaveStatus;
-		if (!CValtanPatternSoundCueDocument::Save_Atomic(
-			m_ValtanPatternSoundCues,
-			ClipSourceDurationSecondsByName,
-			m_strValtanPatternSoundCueBaselineSourceBytes, SaveStatus))
-		{
-			m_strValtanPatternSoundCueStatus =
-				"Pattern Sound Save rejected; source and admitted draft were preserved: " +
-				SaveStatus;
-		}
-		else
-		{
-			const std::string AtomicStatus = SaveStatus;
-			m_bValtanPatternSoundCuesDirty = false;
-			std::string AuthoritativeStatus =
-				"No active Valtan Arena; the next primary replicated Valtan spawn will load the saved Pattern Sound source.";
-			bool_t bAuthoritativeReloaded = true;
-			if (CLevel_ValtanArena* const pArena =
-					CLevel_ValtanArena::Get_Active())
-			{
-				bAuthoritativeReloaded =
-					pArena->Reload_PrimaryValtanPresentationAuthoring(
-						AuthoritativeStatus);
-			}
-			std::string PreviewStatus =
-				"No Development preview Valtan is active.";
-			if (const shared_ptr<CValtan> Boss =
-					CAnimationTargetService::Resolve_Boss())
-			{
-				if (!Boss->Reload_PatternPresentationAuthoring(PreviewStatus))
-					PreviewStatus =
-						"Secondary preview joined reload rejected: " + PreviewStatus;
-			}
-			const bool_t bWorkbenchReloaded =
-				Reload_ValtanPatternSoundCues();
-			const std::string WorkbenchStatus =
-				m_strValtanPatternSoundCueStatus;
-			m_strValtanPatternSoundCueStatus = AtomicStatus + " " +
-				(bAuthoritativeReloaded ? AuthoritativeStatus :
-					"COMPLETE PLAY BLOCKED: " + AuthoritativeStatus) + " " +
-				PreviewStatus + " " + WorkbenchStatus;
-			bReloadJoinedWorkbenchAfterSave = true;
-			(void)bWorkbenchReloaded;
-		}
+		bReloadJoinedWorkbenchAfterSave =
+			Save_ValtanCompositionPatternSounds(SaveStatus);
+		m_strValtanPatternSoundCueStatus = std::move(SaveStatus);
 	}
 	ImGui::EndDisabled();
+	if (!bSoundSourceCommitAdmitted && !SoundLifecycleStatus.empty())
+		ImGui::TextWrapped("%s", SoundLifecycleStatus.c_str());
 	if (!m_strValtanPatternSoundCueStatus.empty())
 		ImGui::TextWrapped("%s", m_strValtanPatternSoundCueStatus.c_str());
 
@@ -3627,6 +6113,7 @@ bool_t Client::CAnimation_Tool::Render_ValtanPatternSoundInspector(
 			ClipSourceDurationSecondsByName, CreatedRowId, AddStatus))
 		{
 			m_bValtanPatternSoundCuesDirty = true;
+			++m_iValtanPatternSoundDraftGeneration;
 			m_strValtanPatternSoundCueStatus =
 				"UNSAVED Pattern Sound row added: " +
 				CreatedRowId.strBindingId + " / " +
@@ -3691,6 +6178,7 @@ bool_t Client::CAnimation_Tool::Render_ValtanPatternSoundInspector(
 					Cue.strSoundBank = std::string(
 						ValtanSoundBankForEvent(*pEventName));
 					m_bValtanPatternSoundCuesDirty = true;
+					++m_iValtanPatternSoundDraftGeneration;
 					m_strValtanPatternSoundCueStatus =
 						"UNSAVED Pattern Sound event: " + Cue.strBindingId +
 						" -> " + Cue.strSoundEvent;
@@ -3762,6 +6250,7 @@ bool_t Client::CAnimation_Tool::Render_ValtanPatternSoundInspector(
 				Cue.iStartMs = std::clamp(
 					Cue.iStartMs, iMinimumStartMs, iMaximumStartMs);
 				m_bValtanPatternSoundCuesDirty = true;
+				++m_iValtanPatternSoundDraftGeneration;
 				m_strValtanPatternSoundCueStatus =
 					"UNSAVED Pattern Sound startMs: " + Cue.strBindingId;
 			}
@@ -3806,6 +6295,7 @@ bool_t Client::CAnimation_Tool::Render_ValtanPatternSoundInspector(
 			{
 				Cue.eRepeatPolicy = VALTAN_PATTERN_SOUND_REPEAT_POLICY::ONCE;
 				m_bValtanPatternSoundCuesDirty = true;
+				++m_iValtanPatternSoundDraftGeneration;
 				m_strValtanPatternSoundCueStatus =
 					"UNSAVED Pattern Sound repeatPolicy: " + Cue.strBindingId;
 			}
@@ -3818,6 +6308,7 @@ bool_t Client::CAnimation_Tool::Render_ValtanPatternSoundInspector(
 				Cue.eRepeatPolicy =
 					VALTAN_PATTERN_SOUND_REPEAT_POLICY::EACH_LOOP;
 				m_bValtanPatternSoundCuesDirty = true;
+				++m_iValtanPatternSoundDraftGeneration;
 				m_strValtanPatternSoundCueStatus =
 					"UNSAVED Pattern Sound repeatPolicy: " + Cue.strBindingId;
 			}
@@ -3851,6 +6342,7 @@ bool_t Client::CAnimation_Tool::Render_ValtanPatternSoundInspector(
 			m_ValtanPatternSoundCues, PendingRemoveRowId, RemoveStatus))
 		{
 			m_bValtanPatternSoundCuesDirty = true;
+			++m_iValtanPatternSoundDraftGeneration;
 			m_strValtanPatternSoundCueStatus =
 				"UNSAVED Pattern Sound row removed: " +
 				PendingRemoveRowId.strBindingId + " / " +
@@ -4432,9 +6924,394 @@ void Client::CAnimation_Tool::Render_ValtanPresentationLanes(
 	}
 }
 
+void Client::CAnimation_Tool::Render_ValtanSelectedResourceUsage(
+	const VALTAN_PATTERN_VIEW& Pattern,
+	const VALTAN_STAGE_VIEW* pStage)
+{
+	ImGui::SeparatorText("Used by Selected Pattern");
+	ImGui::TextDisabled(
+		"Semantic runtime relationships only. Choose a slot to focus its typed Persistent Detail owner.");
+	const auto SemanticSlot = [this](
+		const char_t* pSlot,
+		const VALTAN_WORKBENCH_DETAIL_OWNER eOwner,
+		const std::string& Meaning,
+		const std::string_view ExactOwner)
+	{
+		ImGui::TableNextRow();
+		ImGui::TableSetColumnIndex(0);
+		ImGui::PushID(pSlot);
+		if (ImGui::SmallButton(pSlot))
+		{
+			m_eValtanWorkbenchDetailOwner = eOwner;
+			m_bValtanWorkbenchFocusDetailRequested = true;
+		}
+		ImGui::PopID();
+		ImGui::TableSetColumnIndex(1);
+		ImGui::TextWrapped("%s", Meaning.c_str());
+		ImGui::TableSetColumnIndex(2);
+		ImGui::TextWrapped(
+			"%.*s", static_cast<int32_t>(ExactOwner.size()), ExactOwner.data());
+	};
+	if (ImGui::BeginTable(
+		"##ValtanSelectedSemanticResources", 3,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+			ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp))
+	{
+		ImGui::TableSetupColumn(
+			"Meaning slot", ImGuiTableColumnFlags_WidthFixed, 190.f);
+		ImGui::TableSetupColumn(
+			"Selected relationship", ImGuiTableColumnFlags_WidthStretch, 0.55f);
+		ImGui::TableSetupColumn(
+			"Exact typed owner", ImGuiTableColumnFlags_WidthStretch, 0.45f);
+		ImGui::TableHeadersRow();
+
+		const std::string StageIdentity = nullptr == pStage ?
+			"Pattern " + Pattern.strPatternId +
+				" selected; choose a semantic stage for exact action ownership." :
+			"Pattern " + Pattern.strPatternId + " / stage " +
+				pStage->strStageId + " / action " + pStage->strActionId +
+				" / wall " + std::to_string(pStage->iDurationMs) + " ms";
+		SemanticSlot(
+			"Gameplay Source / Product",
+			VALTAN_WORKBENCH_DETAIL_OWNER::GAMEPLAY,
+			StageIdentity,
+			"Data/Valtan/Valtan.gameplay.json -> Data/Encounters/Valtan/ValtanEncounter.json");
+
+		std::string HitMeaning =
+			"No semantic stage selected; collider/hit ownership is not guessed.";
+		if (nullptr != pStage)
+		{
+			HitMeaning = pStage->Has_HitShape() ?
+				("shape " + pStage->strHitShape + " | damage " +
+				 pStage->strServerDamageProfileId + " | hits " +
+				 std::to_string(pStage->iHitCount)) :
+				"No Server hit shape on the selected stage; this is an explicit empty gameplay slot.";
+		}
+		SemanticSlot(
+			"Collider / Hit", VALTAN_WORKBENCH_DETAIL_OWNER::GAMEPLAY,
+			HitMeaning,
+			"Data/Valtan/Valtan.gameplay.json + Data/Balance/DamageProfiles.json");
+
+		std::string MotionMeaning =
+			"No semantic stage selected; motion/action/branch flow is not guessed.";
+		if (nullptr != pStage)
+		{
+			MotionMeaning = pStage->Motion.has_value() ?
+				("stage motion " + pStage->Motion->strKind + " | actions " +
+				 std::to_string(pStage->Actions.size()) + " | branches " +
+				 std::to_string(pStage->Branches.size())) :
+				("No stage motion; actions " +
+				 std::to_string(pStage->Actions.size()) + " | branches " +
+				 std::to_string(pStage->Branches.size()));
+		}
+		else if (Pattern.ServerMotion.has_value())
+		{
+			MotionMeaning = "pattern motion " + Pattern.ServerMotion->strKind;
+		}
+		SemanticSlot(
+			"Motion / Flow", VALTAN_WORKBENCH_DETAIL_OWNER::GAMEPLAY,
+			MotionMeaning,
+			"Data/Valtan/Valtan.gameplay.json");
+
+		const std::string ChainMeaning =
+			Pattern.strSourceAnimationChainId.empty() ?
+				"No promoted Animation Intake chain is recorded for this Product pattern." :
+				("source chain " + Pattern.strSourceAnimationChainId);
+		SemanticSlot(
+			"Animation Chain", VALTAN_WORKBENCH_DETAIL_OWNER::ANIMATION,
+			ChainMeaning,
+			"Data/Valtan/Valtan.presentation.json (joined read-only chain identity)");
+
+		std::string ClipMeaning =
+			"No semantic stage selected; clip occurrences are not guessed.";
+		if (nullptr != pStage)
+		{
+			if (pStage->bSuppressAnimation)
+			{
+				ClipMeaning = "Explicit NONE / hold current boss pose.";
+			}
+			else if (pStage->ClipOccurrences.empty())
+			{
+				ClipMeaning = "No admitted clip occurrence on the selected stage.";
+			}
+			else
+			{
+				ClipMeaning.clear();
+				for (const VALTAN_CLIP_OCCURRENCE_VIEW& Clip :
+					pStage->ClipOccurrences)
+				{
+					if (!ClipMeaning.empty())
+						ClipMeaning += " | ";
+					ClipMeaning += Clip.strClipOccurrenceId + " -> " +
+						Clip.strClipName;
+				}
+			}
+		}
+		SemanticSlot(
+			"Animation Clips", VALTAN_WORKBENCH_DETAIL_OWNER::ANIMATION,
+			ClipMeaning,
+			"OWNER Data/Valtan/Valtan.presentation.json -> READ-ONLY PRODUCT Data/Animation/Authored/Valtan/Valtan.patternbindings.json");
+
+		std::string EffectMeaning =
+			"No semantic stage selected; Effect ownership is not guessed.";
+		if (nullptr != pStage)
+		{
+			if (pStage->ProductCues.empty())
+			{
+				EffectMeaning =
+					"No Product Effect cue on the selected stage; no synthetic Effect JSON is offered.";
+			}
+			else
+			{
+				EffectMeaning.clear();
+				for (const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue :
+					pStage->ProductCues)
+				{
+					if (!EffectMeaning.empty())
+						EffectMeaning += " | ";
+					EffectMeaning += Cue.strOccurrenceId + " -> " +
+						Cue.strEffectAssetId + " (Data/Effects/Authored/" +
+						Cue.strEffectAssetId + ".effect.json)";
+				}
+			}
+		}
+		SemanticSlot(
+			"Effect Cues / Assets", VALTAN_WORKBENCH_DETAIL_OWNER::EFFECT,
+			EffectMeaning,
+			"OWNER Data/Valtan/Valtan.presentation.json -> READ-ONLY PRODUCT Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json + exact authored Effect assets");
+
+		std::string SoundMeaning =
+			"No Pattern Sound cue on the selected stage; no WAV asset is inferred.";
+		if (nullptr != pStage)
+		{
+			for (const VALTAN_PATTERN_SOUND_CUE& Cue :
+				m_ValtanPatternSoundCues.Cues)
+			{
+				if (Cue.strPatternId != Pattern.strPatternId ||
+					Cue.strStageId != pStage->strStageId)
+				{
+					continue;
+				}
+				if (0u == SoundMeaning.find("No Pattern Sound cue"))
+					SoundMeaning.clear();
+				if (!SoundMeaning.empty())
+					SoundMeaning += " | ";
+				SoundMeaning += Cue.strOccurrenceId + " -> " + Cue.strSoundEvent;
+				const std::vector<std::string>& Variants =
+					CSoundCueCatalog::Find_Variants("Valtan", Cue.strSoundEvent);
+				if (Variants.empty())
+					SoundMeaning += " (MISSING asset variant)";
+				for (const std::string& Variant : Variants)
+					SoundMeaning += " -> " + Variant;
+			}
+		}
+		SemanticSlot(
+			"Sound Cues / Assets", VALTAN_WORKBENCH_DETAIL_OWNER::SOUND,
+			SoundMeaning,
+			"Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json + Data/Sound catalog assets");
+
+		std::string CameraWorldMeaning =
+			"No semantic stage selected; Camera/World relationships are not guessed.";
+		if (nullptr != pStage)
+		{
+			CameraWorldMeaning = "camera invocations " +
+				std::to_string(pStage->CameraInvocations.size());
+			std::size_t iWorldCount = 0u;
+			for (const VALTAN_WORLD_EVENT_TRIGGER_REF_VIEW& Event :
+				Pattern.WorldEventTriggerRefs)
+			{
+				if (Event.strStageId == pStage->strStageId)
+					++iWorldCount;
+			}
+			CameraWorldMeaning += " | world triggers " +
+				std::to_string(iWorldCount);
+		}
+		SemanticSlot(
+			"Camera / World", VALTAN_WORKBENCH_DETAIL_OWNER::CAMERA,
+			CameraWorldMeaning,
+			"Data/Animation/Authored/Valtan/Valtan.patternshakecues.json + Data/Encounters/Valtan typed owners");
+		ImGui::EndTable();
+	}
+
+	if (ImGui::CollapsingHeader("Raw owner index / diagnostics"))
+	{
+		ImGui::TextDisabled(
+			"Complete owner inventory for diagnosis only. It is not a second JSON editor and does not replace the semantic slots above.");
+		ImGui::TextDisabled(
+			"Animation/Effect invocation Products are projector-owned and never dirty in this Workbench.");
+		if (m_bValtanPatternSoundCuesDirty)
+			ImGui::TextColored(
+				ImVec4(1.f, 0.75f, 0.2f, 1.f),
+				"Pattern Sound owner: UNSAVED typed draft");
+		if (ImGui::BeginTable(
+			"##ValtanWorkbenchOwnerFiles", 3,
+			ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+				ImGuiTableFlags_Resizable |
+				ImGuiTableFlags_SizingStretchProp))
+		{
+			ImGui::TableSetupColumn(
+				"Domain", ImGuiTableColumnFlags_WidthFixed, 110.f);
+			ImGui::TableSetupColumn(
+				"Owner / state", ImGuiTableColumnFlags_WidthFixed, 235.f);
+			ImGui::TableSetupColumn(
+				"Exact source", ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableHeadersRow();
+			const auto DataFileRow = [](
+				const char_t* pDomain,
+				const char_t* pOwnerState,
+				const std::string_view strPath)
+			{
+				ImGui::TableNextRow();
+				ImGui::TableSetColumnIndex(0);
+				ImGui::TextUnformatted(pDomain);
+				ImGui::TableSetColumnIndex(1);
+				ImGui::TextWrapped("%s", pOwnerState);
+				ImGui::TableSetColumnIndex(2);
+				ImGui::TextWrapped(
+					"%.*s", static_cast<int32_t>(strPath.size()),
+					strPath.data());
+			};
+			DataFileRow(
+				"Gameplay", "EDITABLE HERE / typed atomic Save",
+				"Data/Valtan/Valtan.gameplay.json");
+			DataFileRow(
+				"Presentation", "AUTHORING OWNER / immutable revision Save",
+				"Data/Valtan/Valtan.presentation.json");
+			DataFileRow(
+				"Animation Product", "READ-ONLY / generated by projector",
+				"Data/Animation/Authored/Valtan/Valtan.patternbindings.json");
+			DataFileRow(
+				"Effect Invocation Product", "READ-ONLY / generated by projector",
+				"Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json");
+			DataFileRow(
+				"Sound", "EDITABLE IN PERSISTENT DETAIL / typed owner Save",
+				"Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json");
+			DataFileRow(
+				"Camera / World", "READ-ONLY HERE / typed owner tools",
+				"Data/Animation/Authored/Valtan/Valtan.patternshakecues.json + Data/Encounters/Valtan");
+			ImGui::EndTable();
+		}
+	}
+}
+
+void Client::CAnimation_Tool::Render_ValtanPatternMasterUnavailableShell(
+	const std::size_t iAdmittedPatternCount,
+	const bool_t bHasPreviewModel)
+{
+	if (ImGui::BeginTable(
+		"##ValtanWorkbenchMain", 3,
+		ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV |
+			ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_ScrollX,
+		ImVec2(0.f, 420.f), WORKBENCH_THREE_PANE_INNER_WIDTH))
+	{
+		ImGui::TableSetupColumn(
+			"Master / Outliner", ImGuiTableColumnFlags_WidthStretch, 0.22f);
+		ImGui::TableSetupColumn(
+			"Preview / Transport", ImGuiTableColumnFlags_WidthStretch, 0.46f);
+		ImGui::TableSetupColumn(
+			"Persistent Detail", ImGuiTableColumnFlags_WidthStretch, 0.32f);
+		ImGui::TableNextRow();
+		ImGui::TableSetColumnIndex(0);
+		if (ImGui::BeginChild(
+			"##ValtanWorkbenchOutliner", ImVec2(0.f, 0.f),
+			ImGuiChildFlags_Borders))
+		{
+			ImGui::SeparatorText("Master / Outliner");
+			ImGui::TextUnformatted("Valtan | boss.valtan");
+			ImGui::TextColored(
+				ImVec4(1.f, 0.45f, 0.35f, 1.f),
+				"Pattern data unavailable");
+			ImGui::TextWrapped(
+				"%zu editable Pattern rows remain in the previous read-only view.",
+				iAdmittedPatternCount);
+		}
+		ImGui::EndChild();
+
+		ImGui::TableSetColumnIndex(1);
+		if (ImGui::BeginChild(
+			"##ValtanWorkbenchPreview", ImVec2(0.f, 0.f),
+			ImGuiChildFlags_Borders))
+		{
+			ImGui::SeparatorText("Preview / Transport");
+			ImGui::TextDisabled(
+				"Preview Model: %s", bHasPreviewModel ? "READY" : "MISSING");
+			ImGui::TextColored(
+				ImVec4(1.f, 0.45f, 0.35f, 1.f),
+				"Complete Play is unavailable until Pattern data loads.");
+			ImGui::TextWrapped(
+				"Fix the Load error below, then Reload Valtan Pattern Master. Failed loads preserve the previous view without partially replacing it.");
+		}
+		ImGui::EndChild();
+
+		ImGui::TableSetColumnIndex(2);
+		if (ImGui::BeginChild(
+			"##ValtanWorkbenchDetail", ImVec2(0.f, 0.f),
+			ImGuiChildFlags_Borders))
+		{
+			ImGui::SeparatorText("Persistent Detail");
+			ImGui::TextColored(
+				ImVec4(1.f, 0.45f, 0.35f, 1.f),
+				"Pattern Data: %s",
+				ValtanPatternMasterAdmissionLabel());
+			if (!m_strValtanPatternMasterStatus.empty())
+				ImGui::TextWrapped("%s", m_strValtanPatternMasterStatus.c_str());
+		}
+		ImGui::EndChild();
+		ImGui::EndTable();
+	}
+
+	if (ImGui::BeginChild(
+		"##ValtanWorkbenchSequencer", ImVec2(0.f, 180.f),
+		ImGuiChildFlags_Borders))
+	{
+		ImGui::SeparatorText("Sequencer / Joined Tracks");
+		ImGui::TextDisabled(
+			"Animation, Effect, Sound, Camera, Light/World and Combat Object tracks require one loaded stable Pattern/Stage selection.");
+	}
+	ImGui::EndChild();
+
+	if (ImGui::BeginChild(
+		"##ValtanWorkbenchDataFiles", ImVec2(0.f, 390.f),
+		ImGuiChildFlags_Borders))
+	{
+		ImGui::SeparatorText("Data Files / Load Status");
+		ImGui::TextWrapped(
+			"%s", m_strValtanPatternMasterStatus.empty() ?
+				"Load returned no additional detail." :
+				m_strValtanPatternMasterStatus.c_str());
+		ImGui::Separator();
+		ImGui::BulletText("Gameplay | Data/Valtan/Valtan.gameplay.json");
+		ImGui::BulletText("Presentation | Data/Valtan/Valtan.presentation.json");
+		ImGui::BulletText("Encounter | Data/Encounters/Valtan/ValtanEncounter.json");
+		ImGui::BulletText(
+			"Animation Product (read-only) | Data/Animation/Authored/Valtan/Valtan.patternbindings.json");
+		ImGui::BulletText(
+			"Effect Invocation Product (read-only) | Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json");
+		ImGui::BulletText(
+			"Sound | Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json");
+		ImGui::BulletText(
+			"Camera/World | Data/Encounters/Valtan typed owner documents");
+		ImGui::BeginDisabled(nullptr == m_pBalanceTool);
+		if (ImGui::SmallButton("Open Valtan Balance / Gameplay##RejectedDataFiles"))
+			m_pBalanceTool->Open_Valtan();
+		ImGui::EndDisabled();
+	}
+	ImGui::EndChild();
+}
+
 void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 	const shared_ptr<Engine::CModel>& pModel)
 {
+	const bool_t bHasPreviewModel = nullptr != pModel;
+	bool_t bReloadPatternMasterAfterSave = false;
+	if (!m_bValtanPatternMasterLoadAttempted)
+	{
+		m_bValtanPatternMasterLoadAttempted = true;
+		(void)Reload_ValtanPatternMaster();
+	}
+	const bool_t bMutationAdmitted =
+		VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED ==
+			m_eValtanPatternMasterAdmission;
 	ImGui::SeparatorText("Valtan Action Presentation Workbench");
 	ImGui::TextWrapped(
 		"One joined view over Server Stage, Animation, Effect, Sound Asset, and Combat Object. Pattern Offline samples the Product animation locally; Server Replay/Live submits the same stable pattern ID to the real Arena authority, where movement, hit, grab, damage, Effect, and Sound run.");
@@ -4446,15 +7323,22 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 	ImGui::BulletText(
 		"EDIT + SAVE: Data/Balance/BossProfiles.json and DamageProfiles.json | Valtan gameplay values through the typed Balance transaction");
 	ImGui::BulletText(
-		"EDIT + OWNER SAVE: Data/Animation/Authored/Valtan/Valtan.patternbindings.json | action-owned ordered clip sequence or explicit NONE playback");
+		"AUTHORING OWNER: Data/Valtan/Valtan.presentation.json | animation occurrences and managed Effect invocations save only through the immutable joined revision pipeline");
 	ImGui::BulletText(
 		"EDIT + OWNER SAVE: Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json | stable-row Sound event, derived bank, source start and repeat policy");
 	ImGui::BulletText(
-		"JOINED READ-ONLY: Data/Valtan/Valtan.presentation.json | admitted animation occurrences and sequence roles");
+		"Generated files (read-only): Valtan.patternbindings.json + Valtan.patterneffectcues.json | use Save and Load through their owning editors");
 	ImGui::BulletText(
 		"JOINED LANES: V1 Effect, Sound, Camera/Shake, World Event and Server Combat Object bindings are listed below with their owner-tool boundary");
 	ImGui::TextDisabled(
 		"Animation Sequence Intake is an offline reviewed source. It is not presented as Product Save until Client presentation generation staging and rollback are admitted.");
+	if (!bMutationAdmitted)
+	{
+		ImGui::TextColored(
+			ImVec4(1.f, 0.55f, 0.25f, 1.f),
+			"READ-ONLY: Pattern data is %s. Save, Create, Complete Play and Server actions stay disabled until Load succeeds.",
+			ValtanPatternMasterAdmissionLabel());
+	}
 	ImGui::BeginDisabled(nullptr == m_pBalanceTool);
 	if (ImGui::SmallButton("Open Valtan Balance / Gameplay"))
 		m_pBalanceTool->Open_Valtan();
@@ -4465,7 +7349,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 	ImGui::TextDisabled(
 		"These presets use the active Valtan room's destruction transaction; no wall, collision or navigation state is changed locally.");
 	ImGui::PushID("WorkbenchArenaPreset");
-	ImGui::BeginDisabled(nullptr == m_pBossTool);
+	ImGui::BeginDisabled(nullptr == m_pBossTool || !bMutationAdmitted);
 	const auto arenaPresetButton = [this](
 		const char_t* label,
 		const LostArk::Shared::VALTAN_ARENA_PRESET preset)
@@ -4570,26 +7454,29 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 			"Save or discard the typed Animation binding draft before reload.");
 	}
 
-	/* Opened ahead of the baseline admission below: assembling a chain by
-	   hand must stay possible even when the master itself refuses to load. */
-	if (ImGui::SmallButton("Open Animation Sequence Intake"))
-		m_bShowValtanCustomChainWindow = true;
-	if (m_bShowValtanCustomChainWindow)
-		Render_ValtanCustomChainWindow(pModel);
-
 	const std::vector<const VALTAN_PATTERN_VIEW*> Patterns =
 		Collect_ValtanPatternMasterPatterns();
-	const bool_t bReady =
-		Patterns.size() >= VALTAN_PATTERN_MASTER_ORDER.size();
+	const bool_t bHasLoadedPatterns = !Patterns.empty();
+	const bool_t bReady = bHasLoadedPatterns &&
+		(VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED ==
+			m_eValtanPatternMasterAdmission ||
+		 VALTAN_PATTERN_MASTER_ADMISSION_STATE::STALE_PRESERVED ==
+			m_eValtanPatternMasterAdmission);
+	ImGui::SeparatorText("Workbench Data");
+	ImGui::Text(
+		"Preview Model: %s | Pattern Data: %s | Inventory: %zu editable patterns",
+		bHasPreviewModel ? "READY" : "MISSING",
+		ValtanPatternMasterAdmissionLabel(),
+		Patterns.size());
 	if (!bReady)
 	{
-		ImGui::TextDisabled(
-			"No admitted Valtan pattern master is available; current model is untouched.");
 		if (!m_strValtanPatternMasterStatus.empty())
 			ImGui::TextWrapped("%s", m_strValtanPatternMasterStatus.c_str());
-		return;
+		Render_ValtanPatternMasterUnavailableShell(
+			Patterns.size(), bHasPreviewModel);
 	}
-
+	else
+	{
 	m_iValtanPatternMasterSelected = std::clamp(
 		m_iValtanPatternMasterSelected, 0,
 		static_cast<int32_t>(Patterns.size() - 1u));
@@ -4705,17 +7592,20 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 #endif
 	};
 
-	if (!ImGui::BeginTable(
+	const bool_t bWorkbenchMainVisible = ImGui::BeginTable(
 		"##ValtanWorkbenchMain", 3,
 		ImGuiTableFlags_Resizable |
 		ImGuiTableFlags_BordersInnerV |
-		ImGuiTableFlags_SizingStretchProp,
-		ImVec2(0.f, 680.f)))
+		ImGuiTableFlags_SizingStretchProp |
+		ImGuiTableFlags_ScrollX,
+		ImVec2(0.f, 680.f), WORKBENCH_THREE_PANE_INNER_WIDTH);
+	if (!bWorkbenchMainVisible)
 	{
 		ImGui::TextDisabled(
-			"Valtan Workbench panes are unavailable at the current window width.");
-		return;
+			"Main panes are outside the current scroll clip; Sequencer and Data Files remain available below.");
 	}
+	else
+	{
 	ImGui::TableSetupColumn(
 		"Master / Outliner", ImGuiTableColumnFlags_WidthStretch, 0.22f);
 	ImGui::TableSetupColumn(
@@ -4850,6 +7740,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 	{
 		for (const VALTAN_PATTERN_PREVIEW_PATH eCandidate : {
 			VALTAN_PATTERN_PREVIEW_PATH::NORMAL,
+			VALTAN_PATTERN_PREVIEW_PATH::COUNTER_GROGGY,
 			VALTAN_PATTERN_PREVIEW_PATH::WALL_GROGGY,
 			VALTAN_PATTERN_PREVIEW_PATH::PART_BREAK })
 		{
@@ -4865,12 +7756,15 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 	ImGui::EndDisabled();
 
 	ImGui::SeparatorText("Playback Modes");
+	ImGui::BeginDisabled(!bHasPreviewModel || !bMutationAdmitted);
 	if (ImGui::Button("Pattern Offline"))
 	{
 		Start_ValtanPatternMasterPreview(
 			pModel, *pSelected, m_eValtanPatternMasterPath);
 	}
+	ImGui::EndDisabled();
 	ImGui::SameLine();
+	ImGui::BeginDisabled(!bMutationAdmitted);
 	if (ImGui::Button("Complete Play (Server/Arena)"))
 	{
 		std::string Status;
@@ -4895,8 +7789,10 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 #endif
 		m_strValtanPatternMasterStatus = std::move(Status);
 	}
+	ImGui::EndDisabled();
 	ImGui::SameLine();
-	ImGui::BeginDisabled(!m_bValtanPatternMasterPlaying);
+	ImGui::BeginDisabled(
+		!bHasPreviewModel || !m_bValtanPatternMasterPlaying);
 	if (ImGui::Button(
 		m_bValtanPatternMasterPaused ? "Resume Master" : "Pause Master"))
 	{
@@ -4910,10 +7806,14 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 			pModel, "Valtan Pattern Master preview stopped; idle restored.");
 	}
 	ImGui::EndDisabled();
+	if (!bHasPreviewModel)
+	{
+		ImGui::TextDisabled(
+			"Local Pattern Offline transport requires the Valtan Model View. Complete Play remains Server-authoritative and requires ADMITTED canonical data.");
+	}
 
-	bool_t bReloadPatternMasterAfterSave = false;
 	const auto RenderPersistentSave =
-		[this, &bReloadPatternMasterAfterSave]()
+		[this, &bReloadPatternMasterAfterSave, bMutationAdmitted]()
 	{
 	ImGui::SeparatorText("Authoring Revision");
 	const bool_t bDraftDirty = nullptr != m_pBalanceTool &&
@@ -4923,104 +7823,19 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 		bDraftDirty ? "UNSAVED GAMEPLAY DRAFT" : "saved source");
 	if (m_bValtanCombatObjectSoundCuesDirty)
 		ImGui::TextColored(ImVec4(1.f, 0.75f, 0.2f, 1.f),
-			"UNSAVED SERVER-HIT SOUND BINDING");
-	ImGui::BeginDisabled(nullptr == m_pBalanceTool);
-	if (ImGui::Button("Save"))
+			"UNSAVED SERVER-HIT SOUND DRAFT (read-only until its canonical typed transaction is available)");
+	ImGui::BeginDisabled(nullptr == m_pBalanceTool || !bMutationAdmitted);
+	if (ImGui::Button("Save & Apply##ValtanPatternMaster"))
 	{
 		std::string Status;
-		std::string SoundStatus;
-		const bool_t bSoundDirty = m_bValtanCombatObjectSoundCuesDirty;
-		const bool_t bSoundReady = !bSoundDirty ||
-			CValtanCombatObjectSoundCueDocument::Validate_SourceDraft(
-				m_ValtanCombatObjectSoundCues, SoundStatus);
-		if (!bSoundReady)
+		if (m_bValtanCombatObjectSoundCuesDirty)
 		{
-			Status = "Save validation failed; Product and Sound source were preserved: " +
-				SoundStatus;
+			Status =
+				"Save blocked: combat-object Sound is part of immutable presentation M; the legacy direct source replacement was retired and this draft was not written.";
 		}
-		else
+		else if (m_pBalanceTool->Save_ValtanProduct(Status))
 		{
-			/* Product save may publish/apply a gameplay revision, so every fallible
-			   Sound write must finish first while its previous bytes remain
-			   recoverable. A Product failure restores those exact bytes; after a
-			   Product success only non-semantic backup cleanup remains. */
-			VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT SoundReplacement;
-			const bool_t bSoundPrepared = !bSoundDirty ||
-				CValtanCombatObjectSoundCueDocument::Begin_SourceReplacement(
-					m_ValtanCombatObjectSoundCues, SoundReplacement, SoundStatus);
-			if (!bSoundPrepared)
-			{
-				Status =
-					"Save staging failed; gameplay Product/runtime and Sound source were preserved: " +
-					SoundStatus;
-			}
-			else
-			{
-				std::string ProductStatus;
-				if (!m_pBalanceTool->Save_ValtanProduct(ProductStatus))
-				{
-					if (bSoundDirty)
-					{
-						std::string RollbackStatus;
-						const bool_t bRolledBack =
-							CValtanCombatObjectSoundCueDocument::
-								Rollback_SourceReplacement(
-									SoundReplacement, RollbackStatus);
-						Status = bRolledBack ?
-							"Save failed; gameplay Product/runtime and Sound source were preserved: " :
-							"SAVE ROLLBACK FAILED; inspect the retained Sound recovery copy: ";
-						Status += ProductStatus + " " + RollbackStatus;
-					}
-					else
-					{
-						Status = ProductStatus;
-					}
-				}
-				else if (bSoundDirty)
-				{
-					std::string CommitStatus;
-					if (!CValtanCombatObjectSoundCueDocument::
-							Commit_SourceReplacement(SoundReplacement, CommitStatus))
-					{
-						Status = ProductStatus +
-							" Sound replacement commit invariant failed: " + CommitStatus;
-					}
-					else
-					{
-						m_bValtanCombatObjectSoundCuesDirty = false;
-						std::string AuthoritativeStatus =
-							"No active Valtan Arena; the next primary replicated Valtan spawn will load the saved combat-object Sound source.";
-						bool_t bAuthoritativeReloaded = true;
-						if (CLevel_ValtanArena* const pArena =
-								CLevel_ValtanArena::Get_Active())
-						{
-							bAuthoritativeReloaded = pArena->
-								Reload_PrimaryValtanCombatObjectSoundCues(
-									AuthoritativeStatus);
-						}
-						std::string PreviewStatus =
-							"No Development preview Valtan is active.";
-						if (const shared_ptr<CValtan> Boss =
-								CAnimationTargetService::Resolve_Boss())
-						{
-							if (!Boss->Reload_CombatObjectSoundCues(PreviewStatus))
-								PreviewStatus =
-									"Secondary preview combat-object Sound reload rejected: " +
-									PreviewStatus;
-						}
-						Status = ProductStatus + " " + CommitStatus + " " +
-							(bAuthoritativeReloaded ? AuthoritativeStatus :
-								"COMPLETE PLAY BLOCKED: " + AuthoritativeStatus) +
-							" " + PreviewStatus;
-						bReloadPatternMasterAfterSave = true;
-					}
-				}
-				else
-				{
-					Status = ProductStatus;
-					bReloadPatternMasterAfterSave = true;
-				}
-			}
+			bReloadPatternMasterAfterSave = true;
 		}
 		m_strValtanPatternMasterStatus = std::move(Status);
 	}
@@ -5041,7 +7856,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 		m_fValtanPatternPreviewSpeed = std::clamp(
 			m_fValtanPatternPreviewSpeed, 0.25f, 3.f);
 	}
-	if (m_bValtanPatternMasterPlaying &&
+	if (bHasPreviewModel && m_bValtanPatternMasterPlaying &&
 		m_iValtanPatternMasterItem < m_ValtanPatternMasterPlaylist.size())
 	{
 		const VALTAN_PATTERN_MASTER_PLAY_ITEM& Item =
@@ -5061,7 +7876,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 			&fTimelineSeconds, 0.f, fDurationSeconds, TimelineFormat))
 		{
 			if (!Seek_ValtanPatternMasterPreview(
-				pModel, fTimelineSeconds, true))
+				pModel, fTimelineSeconds, true, true))
 			{
 				m_strValtanPatternMasterStatus =
 					"Master seek rejected; current admitted pose preserved.";
@@ -5095,10 +7910,11 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 
 	if (ImGui::CollapsingHeader("Selection / Presentation Reference"))
 	{
-	ImGui::SeparatorText("Phase-1 weighted normal selection");
+	ImGui::SeparatorText("Weighted normal selection");
 	ImGui::TextDisabled(
-		"%s | five admitted normal patterns; health-bar mechanics keep queue precedence",
-		m_ValtanPatternMasterView.NormalSelection.strSelectionMode.c_str());
+		"%s | %zu loaded normal patterns; health-bar mechanics keep queue precedence",
+		m_ValtanPatternMasterView.NormalSelection.strSelectionMode.c_str(),
+		m_ValtanPatternMasterView.NormalSelection.PatternIds.size());
 	for (const VALTAN_NORMAL_SELECTION_RANGE_VIEW& Range :
 		m_ValtanPatternMasterView.NormalSelection.Ranges)
 	{
@@ -5131,7 +7947,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 
 	ImGui::SeparatorText("Counter reaction animation layers (reference only)");
 	ImGui::TextDisabled(
-		"These exact legacy Encounter actions are not admitted into the seven-pattern Phase-1 pool.");
+		"Reference-only counter reactions are separate from the editable Pattern list above.");
 	for (const VALTAN_COUNTER_REACTION_LAYER_VIEW& Layer :
 		m_ValtanPatternMasterView.CounterReactionLayers)
 	{
@@ -5241,6 +8057,11 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 		"##ValtanWorkbenchDetail", ImVec2(0.f, 0.f),
 		ImGuiChildFlags_Borders);
 	ImGui::SeparatorText("Persistent Detail");
+	if (m_bValtanWorkbenchFocusDetailRequested)
+	{
+		ImGui::SetScrollHereY(0.f);
+		m_bValtanWorkbenchFocusDetailRequested = false;
+	}
 	const char_t* pSelectionKind = "Stage";
 	switch (m_eValtanWorkbenchSelection)
 	{
@@ -5303,16 +8124,24 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 				pSelectedStage->strStageId.c_str(),
 				pSelectedStage->strActionId.c_str(),
 				pSelectedStage->iDurationMs);
+			ImGui::BeginDisabled(!bMutationAdmitted);
 			Render_ValtanCounterWindowInspector(
 				*pSelected, *pSelectedStage);
 			Render_ValtanStageDraftInspector(
 				*pSelected, *pSelectedStage);
+			ImGui::EndDisabled();
 		}
 	}
 	else if (VALTAN_WORKBENCH_DETAIL_OWNER::ANIMATION ==
 		m_eValtanWorkbenchDetailOwner)
 	{
-		if (nullptr == pSelectedStage ||
+		if (!bHasPreviewModel)
+		{
+			ImGui::SeparatorText("Animation Sequence Owner (read-only data mode)");
+			ImGui::TextWrapped(
+				"Saved Animation occurrence/sequence rows remain visible in the joined Sequencer below. Add, reorder and Save require the exact Valtan Model View clip vocabulary and native durations.");
+		}
+		else if (nullptr == pSelectedStage ||
 			VALTAN_WORKBENCH_SELECTION_KIND::TARGET ==
 				m_eValtanWorkbenchSelection)
 		{
@@ -5361,13 +8190,20 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 			"Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json");
 		ImGui::TextWrapped(
 			"Server combat-object impact event rows remain typed-editable in the selected Sequencer rows and commit with the Product Save above.");
-		if (nullptr != pSelectedStage)
+		if (!bHasPreviewModel)
 		{
+			ImGui::TextWrapped(
+				"Saved Sound rows remain visible in the joined Sequencer. Add/Edit/Save of clip-bound Pattern Sound requires the Model View so clip duration admission cannot be guessed.");
+		}
+		else if (nullptr != pSelectedStage)
+		{
+			ImGui::BeginDisabled(!bMutationAdmitted);
 			if (Render_ValtanPatternSoundInspector(
 				pModel, *pSelected, *pSelectedStage))
 			{
 				bReloadPatternMasterAfterSave = true;
 			}
+			ImGui::EndDisabled();
 		}
 		else
 		{
@@ -5420,6 +8256,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 	}
 	ImGui::EndChild();
 	ImGui::EndTable();
+	}
 
 	if (ImGui::BeginChild(
 		"##ValtanWorkbenchSequencer", ImVec2(0.f, 520.f),
@@ -5434,8 +8271,10 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 				pSelectedStage->strStageId.c_str(),
 				pSelectedStage->strActionId.c_str(),
 				pSelectedStage->iDurationMs);
+			ImGui::BeginDisabled(!bMutationAdmitted);
 			Render_ValtanPresentationLanes(
 				*pSelected, pSelectedStage->strStageId);
+			ImGui::EndDisabled();
 		}
 		else
 		{
@@ -5452,148 +8291,23 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 		ImGui::SeparatorText("Data Files");
 		ImGui::TextDisabled(
 			"Exact owners for the current stable selection. JSON is never edited generically from this pane.");
-		const auto SelectDetailOwner = [this](
-			const char_t* pLabel,
-			const VALTAN_WORKBENCH_DETAIL_OWNER eOwner)
+		if (!m_strValtanPatternMasterStatus.empty())
 		{
-			if (ImGui::SmallButton(pLabel))
-				m_eValtanWorkbenchDetailOwner = eOwner;
-		};
-		SelectDetailOwner(
-			"Gameplay Detail", VALTAN_WORKBENCH_DETAIL_OWNER::GAMEPLAY);
-		ImGui::SameLine();
-		SelectDetailOwner(
-			"Animation Detail", VALTAN_WORKBENCH_DETAIL_OWNER::ANIMATION);
-		ImGui::SameLine();
-		SelectDetailOwner(
-			"Effect Detail", VALTAN_WORKBENCH_DETAIL_OWNER::EFFECT);
-		SelectDetailOwner(
-			"Sound Detail", VALTAN_WORKBENCH_DETAIL_OWNER::SOUND);
-		ImGui::SameLine();
-		SelectDetailOwner(
-			"Camera Detail", VALTAN_WORKBENCH_DETAIL_OWNER::CAMERA);
-		ImGui::SameLine();
-		SelectDetailOwner(
-			"World Detail", VALTAN_WORKBENCH_DETAIL_OWNER::WORLD);
-		if (m_bValtanPatternAnimationBindingDirty)
-		{
-			ImGui::TextColored(
-				ImVec4(1.f, 0.75f, 0.2f, 1.f),
-				"Animation owner: UNSAVED typed draft");
+			ImGui::TextWrapped(
+				"Canonical join: %s",
+				m_strValtanPatternMasterStatus.c_str());
 		}
-		else if (!m_strValtanPatternAnimationBindingStatus.empty())
-		{
-			ImGui::TextDisabled(
-				"Animation owner: %s",
-				m_strValtanPatternAnimationBindingStatus.c_str());
-		}
-		if (m_bValtanPatternSoundCuesDirty)
-		{
-			ImGui::TextColored(
-				ImVec4(1.f, 0.75f, 0.2f, 1.f),
-				"Pattern Sound owner: UNSAVED typed draft");
-		}
-		else if (!m_strValtanPatternSoundCueStatus.empty())
-		{
-			ImGui::TextDisabled(
-				"Pattern Sound owner: %s",
-				m_strValtanPatternSoundCueStatus.c_str());
-		}
-		if (ImGui::BeginTable(
-			"##ValtanWorkbenchOwnerFiles", 3,
-			ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-			ImGuiTableFlags_Resizable |
-			ImGuiTableFlags_SizingStretchProp))
-		{
-			ImGui::TableSetupColumn(
-				"Domain", ImGuiTableColumnFlags_WidthFixed, 110.f);
-			ImGui::TableSetupColumn(
-				"Owner / state", ImGuiTableColumnFlags_WidthFixed, 235.f);
-			ImGui::TableSetupColumn(
-				"Exact source", ImGuiTableColumnFlags_WidthStretch);
-			ImGui::TableHeadersRow();
-			const auto DataFileRow = [](
-				const char_t* pDomain,
-				const char_t* pOwnerState,
-				const std::string_view strPath)
-			{
-				ImGui::TableNextRow();
-				ImGui::TableSetColumnIndex(0);
-				ImGui::TextUnformatted(pDomain);
-				ImGui::TableSetColumnIndex(1);
-				ImGui::TextWrapped("%s", pOwnerState);
-				ImGui::TableSetColumnIndex(2);
-				ImGui::TextWrapped(
-					"%.*s", static_cast<int32_t>(strPath.size()),
-					strPath.data());
-			};
-			DataFileRow(
-				"Gameplay", "EDITABLE HERE / typed atomic Save",
-				"Data/Valtan/Valtan.gameplay.json");
-			DataFileRow(
-				"Gameplay", "Balance Tool / same Product transaction",
-				"Data/Balance/BossProfiles.json + Data/Balance/DamageProfiles.json");
-			DataFileRow(
-				"Animation", "EDITABLE IN PERSISTENT DETAIL / typed owner Save",
-				"Data/Animation/Authored/Valtan/Valtan.patternbindings.json");
-			DataFileRow(
-				"Animation", "JOINED READ-ONLY presentation",
-				"Data/Valtan/Valtan.presentation.json");
-			DataFileRow(
-				"Joined Tracks", "READ-ONLY COMPOSITE / selected-stage filter",
-				"Animation + Effect + Sound + Camera + World typed owner rows above");
-			DataFileRow(
-				"Effect V2", "READ-ONLY HERE / Effect Tool owns documents",
-				"Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json");
-			DataFileRow(
-				"Effect V1", "READ-ONLY HERE / exact alias join",
-				"Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json");
-			DataFileRow(
-				"Sound", "EDITABLE IN PERSISTENT DETAIL / typed owner Save",
-				"Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json");
-			DataFileRow(
-				"Sound", "EDITABLE HERE / typed impact event + same Save",
-				"Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json");
-			DataFileRow(
-				"Camera", "READ-ONLY HERE / Camera Tool owns cues",
-				"Data/Animation/Authored/Valtan/Valtan.patternshakecues.json");
-			DataFileRow(
-				"Camera", "READ-ONLY HERE / Camera Tool",
-				"Data/Encounters/Valtan/ValtanCinematicCamera.json");
-			DataFileRow(
-				"World", "READ-ONLY Product owner",
-				"Data/Encounters/Valtan/ValtanWorldEvents.json");
-			DataFileRow(
-				"Combat Object", "READ-ONLY Product owner",
-				"Data/Encounters/Valtan/ValtanCombatObjects.json");
-			if (nullptr != pSelectedStage)
-			{
-				for (const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue :
-					pSelectedStage->ProductCues)
-				{
-					DataFileRow(
-						"Effect V2", "SELECTED exact authored owner",
-						"Data/Effects/Authored/" + Cue.strEffectAssetId +
-							".effect.json");
-					if (!Cue.strV1EffectAssetId.empty())
-					{
-						DataFileRow(
-							"Effect V1", "SELECTED exact authored alias owner",
-							"Data/Effects/Authored/" + Cue.strV1EffectAssetId +
-								".effect.json");
-					}
-				}
-			}
-			ImGui::EndTable();
-		}
+		Render_ValtanSelectedResourceUsage(*pSelected, pSelectedStage);
 
 		ImGui::BeginDisabled(nullptr == m_pBalanceTool);
 		if (ImGui::SmallButton("Open Valtan Balance / Gameplay##DataFiles"))
 			m_pBalanceTool->Open_Valtan();
 		ImGui::EndDisabled();
 		ImGui::SameLine();
+		ImGui::BeginDisabled(!bHasPreviewModel);
 		if (ImGui::SmallButton("Open Animation Sequence Intake##DataFiles"))
 			m_bShowValtanCustomChainWindow = true;
+		ImGui::EndDisabled();
 
 		if (nullptr != pSelectedStage)
 		{
@@ -5654,12 +8368,101 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 				ReloadDiagnostic;
 		}
 	}
+	}
+}
+
+void Client::CAnimation_Tool::Render_ValtanWorkspaceTabs(
+	const shared_ptr<Engine::CModel>& pModel)
+{
+	if (!ImGui::BeginTabBar("##ValtanWorkspaceTabs"))
+		return;
+
+	const ImGuiTabItemFlags PatternFlags =
+		m_bValtanWorkspaceTabInitialized ? ImGuiTabItemFlags_None :
+			ImGuiTabItemFlags_SetSelected;
+	m_bValtanWorkspaceTabInitialized = true;
+	if (ImGui::BeginTabItem("Pattern Workbench", nullptr, PatternFlags))
+	{
+		Render_ValtanPatternMaster(pModel);
+		ImGui::EndTabItem();
+	}
+	if (ImGui::BeginTabItem("Animation Clips / Sequence Intake"))
+	{
+		Render_ValtanAnimationSourceWorkspace(pModel);
+		ImGui::EndTabItem();
+	}
+	ImGui::EndTabBar();
+}
+
+void Client::CAnimation_Tool::Render_ValtanAnimationSourceWorkspace(
+	const shared_ptr<Engine::CModel>& pModel)
+{
+	ImGui::SeparatorText("Animation Clips / Sequence Intake");
+	if (nullptr == pModel)
+	{
+		ImGui::TextWrapped(
+			"The exact Valtan Model View is required for local playback, source reference 1-67, Skill Timing, clip inventory and Animation Sequence Intake. The Pattern Workbench remains fully available in the first tab.");
+		return;
+	}
+
+	/* Reference and clip documents are deliberately admitted only while this
+	   source tab is visible.  The default Product tab never opens Skill Timing
+	   or parses the large source/reference inventories as incidental UI. */
+	if (!m_bClipMapLoadAttempted)
+	{
+		m_bClipMapLoadAttempted = true;
+		Load_ClipMap();
+	}
+	if (!m_bClipSeqLoadAttempted)
+	{
+		m_bClipSeqLoadAttempted = true;
+		Load_ClipSeq();
+	}
+	if (!m_bClipNotifyLoadAttempted)
+	{
+		m_bClipNotifyLoadAttempted = true;
+		Load_ClipNotify();
+	}
+	if (!m_bRefLoadAttempted)
+	{
+		m_bRefLoadAttempted = true;
+		Load_SkillReference();
+	}
+
+	ImGui::Text(
+		"Asset: Valtan   Animations: %u", pModel->Get_NumAnimations());
+	ImGui::TextDisabled(
+		"REFERENCE / INTAKE: local playback never changes Server gameplay or Product owners until an explicit typed promotion succeeds.");
+	ImGui::BeginDisabled(
+		m_bValtanPatternPreviewPlaying || m_bValtanPatternMasterPlaying);
+	Render_Playback(pModel);
+	ImGui::EndDisabled();
+	Render_ValtanPatternPreview(pModel);
+
+	ImGui::SeparatorText("Animation Sequence Intake");
+	if (ImGui::SmallButton("Open Animation Sequence Intake"))
+		m_bShowValtanCustomChainWindow = true;
+	if (m_bShowValtanCustomChainWindow)
+		Render_ValtanCustomChainWindow(pModel);
+
+	ImGui::BeginDisabled(
+		m_bValtanPatternPreviewPlaying || m_bValtanPatternMasterPlaying);
+	Render_NotifyReference(pModel);
+	Render_HitAreaWires(pModel);
+	Render_SkillReference(pModel, true);
+	if (!m_Status.empty())
+		ImGui::TextWrapped("%s", m_Status.c_str());
+	ImGui::SeparatorText("Clips");
+	ImGui::SetNextItemWidth(-1.f);
+	ImGui::InputTextWithHint(
+		"##filter", "filter by name", m_Filter, sizeof(m_Filter));
+	Render_AnimationList(pModel);
+	ImGui::EndDisabled();
 }
 
 void Client::CAnimation_Tool::Render_ValtanPatternPreview(
 	const shared_ptr<Engine::CModel>& pModel)
 {
-	Render_ValtanPatternMaster(pModel);
 	ImGui::SeparatorText("Secondary / Read-only Source Reference (1-67)");
 	ImGui::TextWrapped(
 		"Historical reference only: Valtan.patternpreview.json and Valtan.clipseq are source evidence, not the Product pattern master. Every source clip plays once for review; environment, movement, effects, and damage are not simulated here.");
@@ -6142,52 +8945,130 @@ bool_t Client::CAnimation_Tool::Parse_CustomChainDocument(
 		strOutError = "document is unreadable: " + error;
 		return false;
 	}
+	const DATA_JSON_VALUE* pSchema = root.Find("schema");
+	const DATA_JSON_VALUE* pVersion = root.Find("formatVersion");
+	const DATA_JSON_VALUE* pBoss = root.Find("bossArchetypeId");
+	const DATA_JSON_VALUE* pEncounter = root.Find("encounterId");
 	const DATA_JSON_VALUE* pChains = root.Find("chains");
-	if (nullptr == pChains || !pChains->Is_Array())
+	if (5u != root.Get_Object().size() ||
+		nullptr == pSchema || !pSchema->Is_String() ||
+		pSchema->Get_String() != "lostark.valtan-pattern-presentation-debug" ||
+		nullptr == pVersion || !pVersion->Is_Number() ||
+		1.0 != pVersion->Get_Number() ||
+		nullptr == pBoss || !pBoss->Is_String() ||
+		pBoss->Get_String() != "BOSS_VALTAN" ||
+		nullptr == pEncounter || !pEncounter->Is_String() ||
+		pEncounter->Get_String() != "ENCOUNTER_VALTAN" ||
+		nullptr == pChains || !pChains->Is_Array())
 	{
-		strOutError = "document has no chain array";
+		strOutError = "document header/version/owner or chain array is invalid";
 		return false;
 	}
 
-	/* Staged first so a malformed row leaves the caller's library intact. */
+	/* Every row is strict and the result is staged first.  Skipping one broken
+	   chain/occurrence would turn a malformed owner into a valid-looking partial
+	   library and a later Save would permanently erase the skipped data. */
 	std::vector<CUSTOM_CHAIN_ENTRY> staged;
-	for (const DATA_JSON_VALUE& Chain : pChains->Get_Array())
+	std::unordered_set<std::string> chainIds;
+	std::unordered_set<std::string> occurrenceIds;
+	for (size_t iChain = 0u; iChain < pChains->Get_Array().size(); ++iChain)
 	{
-		if (!Chain.Is_Object())
-			continue;
+		const DATA_JSON_VALUE& Chain = pChains->Get_Array()[iChain];
+		if (!Chain.Is_Object() || 4u != Chain.Get_Object().size())
+		{
+			strOutError = "chain[" + std::to_string(iChain) +
+				"] is not an exact object";
+			return false;
+		}
 		const DATA_JSON_VALUE* pId = Chain.Find("chainId");
+		const DATA_JSON_VALUE* pPattern = Chain.Find("targetPatternId");
+		const DATA_JSON_VALUE* pStage = Chain.Find("targetStageId");
 		const DATA_JSON_VALUE* pAnimation = Chain.Find("animation");
 		if (nullptr == pId || !pId->Is_String() || pId->Get_String().empty() ||
-			nullptr == pAnimation || !pAnimation->Is_Object())
+			!chainIds.insert(pId->Get_String()).second ||
+			nullptr == pPattern || !pPattern->Is_String() ||
+			nullptr == pStage || !pStage->Is_String() ||
+			nullptr == pAnimation || !pAnimation->Is_Object() ||
+			3u != pAnimation->Get_Object().size())
 		{
-			continue;
+			strOutError = "chain[" + std::to_string(iChain) +
+				"] has an invalid/duplicate identity, target, or animation";
+			return false;
 		}
+		const DATA_JSON_VALUE* pEndPolicy = pAnimation->Find("endPolicy");
+		const DATA_JSON_VALUE* pRepeatCount = pAnimation->Find("repeatCount");
 		const DATA_JSON_VALUE* pOccurrences = pAnimation->Find("occurrences");
-		if (nullptr == pOccurrences || !pOccurrences->Is_Array())
-			continue;
+		if (nullptr == pEndPolicy || !pEndPolicy->Is_String() ||
+			(pEndPolicy->Get_String() != "EXACT" &&
+			 pEndPolicy->Get_String() != "NATIVE_CLIP_LENGTHS") ||
+			nullptr == pRepeatCount || !pRepeatCount->Is_Number() ||
+			!std::isfinite(pRepeatCount->Get_Number()) ||
+			std::floor(pRepeatCount->Get_Number()) != pRepeatCount->Get_Number() ||
+			nullptr == pOccurrences || !pOccurrences->Is_Array() ||
+			pOccurrences->Get_Array().empty() ||
+			pOccurrences->Get_Array().size() > 64u ||
+			pRepeatCount->Get_Number() !=
+				static_cast<double>(pOccurrences->Get_Array().size()))
+		{
+			strOutError = "chain[" + std::to_string(iChain) +
+				"] has an invalid end policy, repeat count, or occurrence array";
+			return false;
+		}
 
 		CUSTOM_CHAIN_ENTRY Entry;
 		Entry.chainId = pId->Get_String();
-		if (const DATA_JSON_VALUE* pPattern = Chain.Find("targetPatternId"))
+		Entry.targetPatternId = pPattern->Get_String();
+		Entry.targetStageId = pStage->Get_String();
+		for (size_t iOccurrence = 0u;
+			iOccurrence < pOccurrences->Get_Array().size(); ++iOccurrence)
 		{
-			if (pPattern->Is_String())
-				Entry.targetPatternId = pPattern->Get_String();
-		}
-		if (const DATA_JSON_VALUE* pStage = Chain.Find("targetStageId"))
-		{
-			if (pStage->Is_String())
-				Entry.targetStageId = pStage->Get_String();
-		}
-		for (const DATA_JSON_VALUE& Occurrence : pOccurrences->Get_Array())
-		{
-			if (!Occurrence.Is_Object())
-				continue;
-			const DATA_JSON_VALUE* pClip = Occurrence.Find("clip");
-			const DATA_JSON_VALUE* pPlayMs = Occurrence.Find("playMs");
-			if (nullptr == pClip || !pClip->Is_String() ||
-				nullptr == pPlayMs || !pPlayMs->Is_Number())
+			const DATA_JSON_VALUE& Occurrence =
+				pOccurrences->Get_Array()[iOccurrence];
+			if (!Occurrence.Is_Object() || 7u != Occurrence.Get_Object().size())
 			{
-				continue;
+				strOutError = "chain[" + std::to_string(iChain) +
+					"].occurrence[" + std::to_string(iOccurrence) +
+					"] is not an exact object";
+				return false;
+			}
+			const DATA_JSON_VALUE* pOccurrenceId =
+				Occurrence.Find("clipOccurrenceId");
+			const DATA_JSON_VALUE* pClip = Occurrence.Find("clip");
+			const DATA_JSON_VALUE* pMappingBasis =
+				Occurrence.Find("mappingBasis");
+			const DATA_JSON_VALUE* pSourceStart =
+				Occurrence.Find("sourceStartMs");
+			const DATA_JSON_VALUE* pPlayMs = Occurrence.Find("playMs");
+			const DATA_JSON_VALUE* pPlayRate = Occurrence.Find("playRate");
+			const DATA_JSON_VALUE* pRepeatUntilStageEnd =
+				Occurrence.Find("repeatUntilStageEnd");
+			if (nullptr == pOccurrenceId || !pOccurrenceId->Is_String() ||
+				pOccurrenceId->Get_String().empty() ||
+				!occurrenceIds.insert(pOccurrenceId->Get_String()).second ||
+				nullptr == pClip || !pClip->Is_String() ||
+				pClip->Get_String().empty() ||
+				nullptr == pMappingBasis || !pMappingBasis->Is_String() ||
+				pMappingBasis->Get_String() != "PROJECT_AUTHORED" ||
+				nullptr == pSourceStart || !pSourceStart->Is_Number() ||
+				!std::isfinite(pSourceStart->Get_Number()) ||
+				std::floor(pSourceStart->Get_Number()) != pSourceStart->Get_Number() ||
+				pSourceStart->Get_Number() < 0.0 ||
+				nullptr == pPlayMs || !pPlayMs->Is_Number() ||
+				!std::isfinite(pPlayMs->Get_Number()) ||
+				std::floor(pPlayMs->Get_Number()) != pPlayMs->Get_Number() ||
+				pPlayMs->Get_Number() < 0.0 ||
+				pPlayMs->Get_Number() > static_cast<double>(
+					(std::numeric_limits<int32_t>::max)()) ||
+				nullptr == pPlayRate || !pPlayRate->Is_Number() ||
+				!std::isfinite(pPlayRate->Get_Number()) ||
+				pPlayRate->Get_Number() <= 0.0 ||
+				nullptr == pRepeatUntilStageEnd ||
+				!pRepeatUntilStageEnd->Is_Boolean())
+			{
+				strOutError = "chain[" + std::to_string(iChain) +
+					"].occurrence[" + std::to_string(iOccurrence) +
+					"] has invalid identity, clip, timing, rate, or loop fields";
+				return false;
 			}
 			CUSTOM_CHAIN_STEP Step;
 			Step.clipName = pClip->Get_String();
@@ -6195,11 +9076,11 @@ bool_t Client::CAnimation_Tool::Parse_CustomChainDocument(
 				static_cast<f32_t>(pPlayMs->Get_Number()) * 0.001f;
 			Entry.steps.push_back(std::move(Step));
 		}
-		if (!Entry.steps.empty())
-			staged.push_back(std::move(Entry));
+		staged.push_back(std::move(Entry));
 	}
 
 	Out = std::move(staged);
+	strOutError.clear();
 	return true;
 }
 
@@ -6246,6 +9127,16 @@ bool_t Client::CAnimation_Tool::Save_CustomChainLibrary()
 	{
 		m_strCustomChainStatus =
 			"Save rejected: custom chains are not admitted for this target.";
+		return false;
+	}
+	SCOPED_VALTAN_PATTERN_TRANSACTION_LOCK TransactionLock;
+	std::string strLockError;
+	if (!TransactionLock.Try_Acquire(
+			CProjectDataRoot::Get().parent_path(), strLockError))
+	{
+		m_strCustomChainStatus =
+			"Save rejected before mutation: " + strLockError +
+			". The in-memory chain and previous source bytes were preserved.";
 		return false;
 	}
 	std::error_code directoryError;
@@ -6345,19 +9236,15 @@ bool_t Client::CAnimation_Tool::Save_CustomChainLibrary()
 		return false;
 	}
 
-	std::error_code replaceError;
-	std::filesystem::rename(temporary, destination, replaceError);
-	if (replaceError)
+	if (FALSE == MoveFileExW(temporary.c_str(), destination.c_str(),
+		MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
 	{
-		std::filesystem::remove(destination, replaceError);
-		std::filesystem::rename(temporary, destination, replaceError);
-	}
-	if (replaceError)
-	{
+		const DWORD iReplaceError = GetLastError();
 		std::error_code cleanupError;
 		std::filesystem::remove(temporary, cleanupError);
-		m_strCustomChainStatus = "Save failed to replace the file: " +
-			replaceError.message();
+		m_strCustomChainStatus =
+			"Save failed to atomically replace the file; previous chains "
+			"preserved. Win32 error " + std::to_string(iReplaceError) + ".";
 		return false;
 	}
 
@@ -6365,6 +9252,834 @@ bool_t Client::CAnimation_Tool::Save_CustomChainLibrary()
 		std::to_string(m_CustomChainLibrary.size()) + " chains to " +
 		destination.filename().string() + ".";
 	return true;
+}
+
+void Client::CAnimation_Tool::Render_ValtanPatternCreatePanel()
+{
+	ImGui::SeparatorText("Create New Pattern");
+	ImGui::TextWrapped(
+		"Promote one reviewed Animation Intake chain into a new audition-only "
+		"Valtan pattern. Validate performs the full staged transaction without "
+		"writing. Apply is enabled only for those exact validated request bytes.");
+	ImGui::TextDisabled(
+		"Defaults: MANUAL_SERVER_AUDITION / AUDITION_ONLY; hit, motion and "
+		"special gameplay logic remain NONE until authored by their typed owners.");
+
+	const bool_t bBusy = nullptr != m_hValtanPatternCreateProcess;
+	const auto InvalidateValidation = [this]()
+	{
+		m_strValtanPatternCreateValidatedRequestSha256.clear();
+	};
+	ImGui::BeginDisabled(bBusy);
+	const char_t* const SourceKinds[] = {
+		"Current assembled chain", "Saved intake chain" };
+	ImGui::SetNextItemWidth(240.f);
+	if (ImGui::Combo(
+		"Intake source", &m_iValtanPatternCreateSourceKind,
+		SourceKinds, static_cast<int32_t>(std::size(SourceKinds))))
+	{
+		InvalidateValidation();
+	}
+	m_iValtanPatternCreateSourceKind = std::clamp(
+		m_iValtanPatternCreateSourceKind, 0, 1);
+
+	if (1 == m_iValtanPatternCreateSourceKind)
+	{
+		if (m_CustomChainLibrary.empty())
+		{
+			ImGui::TextColored(
+				ImVec4(1.f, 0.6f, 0.25f, 1.f),
+				"No saved intake chain is available. Save or Reload Animation Intake first.");
+		}
+		else
+		{
+			m_iValtanPatternCreateSavedIndex = std::clamp(
+				m_iValtanPatternCreateSavedIndex, 0,
+				static_cast<int32_t>(m_CustomChainLibrary.size() - 1u));
+			const CUSTOM_CHAIN_ENTRY& Selected = m_CustomChainLibrary[
+				static_cast<size_t>(m_iValtanPatternCreateSavedIndex)];
+			ImGui::SetNextItemWidth(360.f);
+			if (ImGui::BeginCombo(
+				"Saved intake chain", Selected.chainId.c_str()))
+			{
+				for (size_t iChain = 0u;
+					iChain < m_CustomChainLibrary.size(); ++iChain)
+				{
+					const bool_t bSelected = iChain == static_cast<size_t>(
+						m_iValtanPatternCreateSavedIndex);
+					if (ImGui::Selectable(
+						m_CustomChainLibrary[iChain].chainId.c_str(), bSelected))
+					{
+						m_iValtanPatternCreateSavedIndex =
+							static_cast<int32_t>(iChain);
+						InvalidateValidation();
+					}
+					if (bSelected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+			ImGui::TextDisabled(
+				"Selected: %s | %zu clips",
+				Selected.chainId.c_str(), Selected.steps.size());
+		}
+	}
+	else
+	{
+		ImGui::TextDisabled(
+			"Current assembled chain: %s | %zu clips",
+			'\0' == m_CustomChainId[0] ? "<name required>" :
+				m_CustomChainId,
+			m_CustomChainSteps.size());
+	}
+
+	ImGui::SetNextItemWidth(360.f);
+	if (ImGui::InputTextWithHint(
+		"Stable patternId", "VALTAN_MY_NEW_PATTERN",
+		m_ValtanPatternCreatePatternId,
+		sizeof(m_ValtanPatternCreatePatternId)))
+	{
+		InvalidateValidation();
+	}
+	ImGui::SetNextItemWidth(360.f);
+	if (ImGui::InputTextWithHint(
+		"Display name", "Korean or English authoring label",
+		m_ValtanPatternCreateDisplayName,
+		sizeof(m_ValtanPatternCreateDisplayName)))
+	{
+		InvalidateValidation();
+	}
+	ImGui::SetNextItemWidth(200.f);
+	if (ImGui::SliderInt(
+		"Authoring phase", &m_iValtanPatternCreateAuthoringPhase, 1, 3))
+	{
+		InvalidateValidation();
+	}
+	ImGui::SetNextItemWidth(300.f);
+	if (ImGui::Combo(
+		"Target policy", &m_iValtanPatternCreateTargetPolicy,
+		VALTAN_PATTERN_CREATE_TARGET_POLICIES.data(),
+		static_cast<int32_t>(VALTAN_PATTERN_CREATE_TARGET_POLICIES.size())))
+	{
+		InvalidateValidation();
+	}
+	ImGui::SetNextItemWidth(300.f);
+	if (ImGui::Combo(
+		"Aim policy", &m_iValtanPatternCreateAimPolicy,
+		VALTAN_PATTERN_CREATE_AIM_POLICIES.data(),
+		static_cast<int32_t>(VALTAN_PATTERN_CREATE_AIM_POLICIES.size())))
+	{
+		InvalidateValidation();
+	}
+	ImGui::EndDisabled();
+
+	if ((0 == m_iValtanPatternCreateTargetPolicy) !=
+		(0 == m_iValtanPatternCreateAimPolicy))
+	{
+		ImGui::TextColored(
+			ImVec4(1.f, 0.6f, 0.25f, 1.f),
+			"Target and Aim must both be NONE or both select a lock policy.");
+	}
+	const bool_t bBalanceDirty = nullptr == m_pBalanceTool ||
+		m_pBalanceTool->Is_ValtanDraftDirty();
+	const bool_t bOtherValtanOwnerDirty = Is_ValtanDocumentDirty();
+	const bool_t bMutationAdmitted =
+		VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED ==
+			m_eValtanPatternMasterAdmission;
+	if (bBalanceDirty || bOtherValtanOwnerDirty)
+	{
+		ImGui::TextColored(
+			ImVec4(1.f, 0.6f, 0.25f, 1.f),
+			"Apply blocked: save or discard every Balance / Valtan Animation-Sound owner draft first. Validate remains read-only.");
+	}
+	if (!bMutationAdmitted)
+	{
+		ImGui::TextColored(
+			ImVec4(1.f, 0.6f, 0.25f, 1.f),
+			"Create blocked: Pattern data is %s. Load the current data before saving.",
+			ValtanPatternMasterAdmissionLabel());
+	}
+
+	ImGui::BeginDisabled(bBusy);
+	if (ImGui::Button("Validate Create Request"))
+		(void)Start_ValtanPatternCreateCommand(false);
+	ImGui::SameLine();
+	ImGui::BeginDisabled(
+		m_strValtanPatternCreateValidatedRequestSha256.empty() ||
+		bBalanceDirty || bOtherValtanOwnerDirty || !bMutationAdmitted);
+	if (ImGui::Button("Apply Create Pattern"))
+		(void)Start_ValtanPatternCreateCommand(true);
+	ImGui::EndDisabled();
+	ImGui::EndDisabled();
+
+	if (!m_strValtanPatternCreateValidatedRequestSha256.empty())
+	{
+		ImGui::TextColored(
+			ImVec4(0.35f, 0.9f, 0.45f, 1.f),
+			"VALIDATED request SHA-256: %s",
+			m_strValtanPatternCreateValidatedRequestSha256.c_str());
+	}
+	if (!m_strValtanPatternCreateStatus.empty())
+		ImGui::TextWrapped("%s", m_strValtanPatternCreateStatus.c_str());
+	if (!m_ValtanPatternCreateRequestPath.empty())
+	{
+		ImGui::TextDisabled(
+			"Request file (preserved): %s",
+			m_ValtanPatternCreateRequestPath.string().c_str());
+	}
+	if (!m_ValtanPatternCreateDiagnosticPath.empty())
+	{
+		ImGui::TextDisabled(
+			"Diagnostic file (preserved): %s",
+			m_ValtanPatternCreateDiagnosticPath.string().c_str());
+	}
+	if (m_bValtanPatternCreateHasExitCode)
+		ImGui::TextDisabled(
+			"Last exit code: %u", m_iValtanPatternCreateExitCode);
+	if (!m_strValtanPatternCreateDiagnostic.empty() &&
+		ImGui::CollapsingHeader("Create process diagnostic"))
+	{
+		ImGui::TextWrapped("%s", m_strValtanPatternCreateDiagnostic.c_str());
+	}
+}
+
+bool_t Client::CAnimation_Tool::Build_ValtanPatternCreateRequest(
+	std::string& strOutRequest,
+	std::string& strOutError) const
+{
+	strOutRequest.clear();
+	strOutError.clear();
+	const std::string strPatternId = m_ValtanPatternCreatePatternId;
+	const std::string strDisplayName = m_ValtanPatternCreateDisplayName;
+	if (!Is_StablePatternAuthoringId(strPatternId))
+	{
+		strOutError =
+			"patternId must be a 1..160 character stable ID [A-Za-z0-9_.-].";
+		return false;
+	}
+	const size_t iDisplayFirst = strDisplayName.find_first_not_of(" \t\r\n");
+	const size_t iDisplayLast = strDisplayName.find_last_not_of(" \t\r\n");
+	if (strDisplayName.empty() || 0u != iDisplayFirst ||
+		iDisplayLast != strDisplayName.size() - 1u)
+	{
+		strOutError = "Display name must be non-empty and trimmed.";
+		return false;
+	}
+	if (m_iValtanPatternCreateAuthoringPhase < 1 ||
+		m_iValtanPatternCreateAuthoringPhase > 3 ||
+		m_iValtanPatternCreateTargetPolicy < 0 ||
+		static_cast<size_t>(m_iValtanPatternCreateTargetPolicy) >=
+			VALTAN_PATTERN_CREATE_TARGET_POLICIES.size() ||
+		m_iValtanPatternCreateAimPolicy < 0 ||
+		static_cast<size_t>(m_iValtanPatternCreateAimPolicy) >=
+			VALTAN_PATTERN_CREATE_AIM_POLICIES.size())
+	{
+		strOutError = "Create New Pattern policy or phase selection is invalid.";
+		return false;
+	}
+	if ((0 == m_iValtanPatternCreateTargetPolicy) !=
+		(0 == m_iValtanPatternCreateAimPolicy))
+	{
+		strOutError =
+			"Target and Aim must both be NONE or both select a lock policy.";
+		return false;
+	}
+
+	/* Create Pattern is a Valtan data transaction and must remain usable from
+	   the data-only Composition Workbench before an Arena Clone/model has
+	   populated m_AssetName.  Its backend owns this one fixed intake source. */
+	const std::filesystem::path SourcePath = CProjectDataRoot::Resolve(
+		std::filesystem::path(L"Valtan") /
+		L"Valtan.presentation.debug.json");
+	std::string strSourceBytes;
+	if (SourcePath.empty())
+	{
+		strOutError =
+			"Could not resolve Data/Valtan/Valtan.presentation.debug.json for Create Pattern.";
+		return false;
+	}
+	if (!Read_BoundedFile(
+		SourcePath, VALTAN_PATTERN_CREATE_MAX_DIAGNOSTIC_BYTES,
+		strSourceBytes, strOutError))
+	{
+		strOutError = "Could not read the exact Animation Intake source: " +
+			strOutError;
+		return false;
+	}
+	const std::string strSourceSha256 =
+		CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(strSourceBytes);
+	if (!Is_LowerSha256(strSourceSha256))
+	{
+		strOutError = "Could not compute the Animation Intake source SHA-256.";
+		return false;
+	}
+
+	std::ostringstream Request;
+	Request << R"json({
+  "schema": "lostark.valtan-animation-pattern-create-request",
+  "formatVersion": 1,
+  "expectedSourceSha256": ")json" << strSourceSha256 << R"json(",
+  "patternId": ")json" << CDataJson::Escape(strPatternId) << R"json(",
+  "displayName": ")json" << CDataJson::Escape(strDisplayName) << R"json(",
+  "authoringPhase": )json" << m_iValtanPatternCreateAuthoringPhase << R"json(,
+  "targetPolicy": ")json" << VALTAN_PATTERN_CREATE_TARGET_POLICIES[
+		static_cast<size_t>(m_iValtanPatternCreateTargetPolicy)] << R"json(",
+  "aimPolicy": ")json" << VALTAN_PATTERN_CREATE_AIM_POLICIES[
+		static_cast<size_t>(m_iValtanPatternCreateAimPolicy)] << R"json(",
+  "intakeChain": )json";
+
+	if (1 == m_iValtanPatternCreateSourceKind)
+	{
+		if (m_CustomChainLibrary.empty() ||
+			m_iValtanPatternCreateSavedIndex < 0 ||
+			static_cast<size_t>(m_iValtanPatternCreateSavedIndex) >=
+				m_CustomChainLibrary.size())
+		{
+			strOutError = "Select one saved intake chain.";
+			return false;
+		}
+		const CUSTOM_CHAIN_ENTRY& Entry = m_CustomChainLibrary[
+			static_cast<size_t>(m_iValtanPatternCreateSavedIndex)];
+		if (!Is_StablePatternAuthoringId(Entry.chainId))
+		{
+			strOutError = "The selected saved chain has an invalid stable ID.";
+			return false;
+		}
+		Request << R"json({
+    "selectionKind": "SAVED_INTAKE_CHAIN",
+    "sourceChainId": ")json" << CDataJson::Escape(Entry.chainId) << R"json("
+  }
+})json";
+	}
+	else
+	{
+		const std::string strChainId = m_CustomChainId;
+		if (!Is_StablePatternAuthoringId(strChainId))
+		{
+			strOutError =
+				"Current assembled chain needs a stable chain name before validation.";
+			return false;
+		}
+		if (m_CustomChainSteps.empty() || m_CustomChainSteps.size() > 64u)
+		{
+			strOutError = "Current assembled chain must contain 1..64 clips.";
+			return false;
+		}
+		Request << R"json({
+    "selectionKind": "CURRENT_CHAIN",
+)json";
+		if (m_bValtanPatternCreateExactSourceSelection)
+		{
+			if (m_iValtanPatternCreateSourceActionId <= 0 ||
+				m_iValtanPatternCreateSourceSequenceIndex < 0 ||
+				m_iValtanPatternCreateSourceSequenceIndex > 4096)
+			{
+				strOutError =
+					"The staged exact Animation source identity is outside the canonical action/sequence range.";
+				return false;
+			}
+			Request << R"json(    "sourceActionId": )json" <<
+				m_iValtanPatternCreateSourceActionId << R"json(,
+    "sourceSequenceIndex": )json" <<
+				m_iValtanPatternCreateSourceSequenceIndex << R"json(,
+)json";
+		}
+		Request << R"json(    "chain": {
+      "chainId": ")json" << CDataJson::Escape(strChainId) << R"json(",
+      "targetPatternId": "",
+      "targetStageId": "",
+      "animation": {
+        "endPolicy": "NATIVE_CLIP_LENGTHS",
+        "repeatCount": )json" << m_CustomChainSteps.size() << R"json(,
+        "occurrences": [
+)json";
+		for (size_t iStep = 0u; iStep < m_CustomChainSteps.size(); ++iStep)
+		{
+			const CUSTOM_CHAIN_STEP& Step = m_CustomChainSteps[iStep];
+			if (!Is_StablePatternAuthoringId(Step.clipName) ||
+				!std::isfinite(Step.fDurationSeconds) ||
+				Step.fDurationSeconds < 0.f ||
+				Step.fDurationSeconds * 1000.0 >
+					static_cast<double>((std::numeric_limits<int32_t>::max)()))
+			{
+				strOutError =
+					"Current assembled chain contains an invalid clip or duration.";
+				return false;
+			}
+			const int32_t iPlayMs = static_cast<int32_t>(
+				std::lround(Step.fDurationSeconds * 1000.f));
+			std::ostringstream OccurrenceId;
+			OccurrenceId << "valtan.debug." << strChainId << ".clip." <<
+				std::setw(2) << std::setfill('0') << iStep + 1u;
+			if (!Is_StablePatternAuthoringId(OccurrenceId.str()))
+			{
+				strOutError =
+					"The current chain name is too long for stable clip occurrence IDs.";
+				return false;
+			}
+			Request << R"json(          {
+            "clipOccurrenceId": ")json" <<
+				CDataJson::Escape(OccurrenceId.str()) << R"json(",
+            "clip": ")json" << CDataJson::Escape(Step.clipName) << R"json(",
+            "mappingBasis": "PROJECT_AUTHORED",
+            "sourceStartMs": 0,
+            "playMs": )json" << iPlayMs << R"json(,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": false
+          })json" << (iStep + 1u == m_CustomChainSteps.size() ? "\n" : ",\n");
+		}
+		Request << R"json(        ]
+      }
+    }
+  }
+})json";
+	}
+
+	strOutRequest = Request.str();
+	DATA_JSON_VALUE Verification;
+	std::string strParseError;
+	if (!CDataJson::Parse(strOutRequest, Verification, strParseError) ||
+		!Verification.Is_Object())
+	{
+		strOutRequest.clear();
+		strOutError =
+			"The strict Create request could not self-parse: " + strParseError;
+		return false;
+	}
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Start_ValtanPatternCreateCommand(
+	const bool_t bApply)
+{
+	if (nullptr != m_hValtanPatternCreateProcess)
+	{
+		m_strValtanPatternCreateStatus =
+			"A Create New Pattern Validate/Apply process is already running.";
+		return false;
+	}
+	if (bApply && (nullptr == m_pBalanceTool ||
+		m_pBalanceTool->Is_ValtanDraftDirty() || Is_ValtanDocumentDirty()))
+	{
+		m_strValtanPatternCreateStatus =
+			"Apply rejected before mutation: save or discard every Balance / Valtan Animation-Sound owner draft first.";
+		return false;
+	}
+	if (bApply && VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED !=
+		m_eValtanPatternMasterAdmission)
+	{
+		m_strValtanPatternCreateStatus =
+			"Create stopped before writing: Pattern data is " +
+			std::string(ValtanPatternMasterAdmissionLabel()) +
+			". Load the current data before saving.";
+		return false;
+	}
+
+	std::string strRequest;
+	std::string strError;
+	if (!Build_ValtanPatternCreateRequest(strRequest, strError))
+	{
+		m_strValtanPatternCreateStatus =
+			"Create New Pattern request rejected: " + strError;
+		return false;
+	}
+	const std::string strRequestSha256 =
+		CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(strRequest);
+	if (!Is_LowerSha256(strRequestSha256))
+	{
+		m_strValtanPatternCreateStatus =
+			"Create New Pattern request SHA-256 could not be computed.";
+		return false;
+	}
+	if (bApply && strRequestSha256 !=
+		m_strValtanPatternCreateValidatedRequestSha256)
+	{
+		m_strValtanPatternCreateValidatedRequestSha256.clear();
+		m_strValtanPatternCreateStatus =
+			"Apply rejected: the source or authoring fields changed after Validate. Validate the exact request again.";
+		return false;
+	}
+
+	std::error_code Error;
+	const std::filesystem::path ProjectRoot =
+		std::filesystem::weakly_canonical(
+			CProjectDataRoot::Get().parent_path(), Error);
+	const std::filesystem::path Script = ProjectRoot / L"Tools" /
+		L"ValtanPipeline" / L"promote_valtan_animation_chains.py";
+	if (Error || ProjectRoot.empty() ||
+		!std::filesystem::is_directory(ProjectRoot, Error) || Error ||
+		!std::filesystem::is_regular_file(Script, Error) || Error)
+	{
+		m_strValtanPatternCreateStatus =
+			"The fixed Create New Pattern backend could not be resolved; no process was started.";
+		return false;
+	}
+	std::filesystem::path Python;
+	if (!Resolve_PythonExecutable(Python, strError))
+	{
+		m_strValtanPatternCreateStatus = strError;
+		return false;
+	}
+	const std::filesystem::path TemporaryRoot =
+		std::filesystem::temp_directory_path(Error);
+	if (Error || TemporaryRoot.empty())
+	{
+		m_strValtanPatternCreateStatus =
+			"The Create New Pattern diagnostic directory could not be resolved.";
+		return false;
+	}
+	if (0u == ++m_iValtanPatternCreateCommandSequence)
+		++m_iValtanPatternCreateCommandSequence;
+	const std::wstring strStem = L"LostArk.ValtanCreatePattern." +
+		std::to_wstring(GetCurrentProcessId()) + L"." +
+		std::to_wstring(GetTickCount64()) + L"." +
+		std::to_wstring(m_iValtanPatternCreateCommandSequence) +
+		(bApply ? L".Apply" : L".Validate");
+	m_ValtanPatternCreateRequestPath =
+		TemporaryRoot / (strStem + L".request.json");
+	m_ValtanPatternCreateDiagnosticPath =
+		TemporaryRoot / (strStem + L".diagnostic.log");
+
+	{
+		std::ofstream RequestFile(
+			m_ValtanPatternCreateRequestPath,
+			std::ios::binary | std::ios::out | std::ios::trunc);
+		RequestFile.write(
+			strRequest.data(), static_cast<std::streamsize>(strRequest.size()));
+		RequestFile.flush();
+		if (!RequestFile)
+		{
+			m_strValtanPatternCreateStatus =
+				"Could not write the preserved Create New Pattern request file.";
+			return false;
+		}
+	}
+
+	SECURITY_ATTRIBUTES Security{};
+	Security.nLength = sizeof(Security);
+	Security.bInheritHandle = TRUE;
+	const HANDLE Output = CreateFileW(
+		m_ValtanPatternCreateDiagnosticPath.c_str(), GENERIC_WRITE,
+		FILE_SHARE_READ | FILE_SHARE_DELETE, &Security, CREATE_NEW,
+		FILE_ATTRIBUTE_NORMAL, nullptr);
+	if (INVALID_HANDLE_VALUE == Output)
+	{
+		m_strValtanPatternCreateStatus =
+			"Could not create the preserved Create diagnostic file (Win32 " +
+			std::to_string(GetLastError()) + ").";
+		return false;
+	}
+	const HANDLE Input = CreateFileW(
+		L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+		&Security, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+	if (INVALID_HANDLE_VALUE == Input)
+	{
+		const DWORD iError = GetLastError();
+		CloseHandle(Output);
+		m_strValtanPatternCreateStatus =
+			"Could not create the Create process input handle (Win32 " +
+			std::to_string(iError) + ").";
+		return false;
+	}
+
+	/* User-authored fields live only in the JSON request.  The executable,
+	   script, mode, repository and request paths below are fixed/canonical;
+	   lpApplicationName pins python.exe and no shell interprets the command. */
+	std::wstring Command = L"\"" + Python.wstring() + L"\" \"" +
+		Script.wstring() + L"\" --repo-root \"" + ProjectRoot.wstring() +
+		L"\" --mode " + (bApply ? L"Apply" : L"Validate") +
+		L" --request-file \"" +
+		m_ValtanPatternCreateRequestPath.wstring() + L"\"";
+	std::vector<wchar_t> MutableCommand(Command.begin(), Command.end());
+	MutableCommand.push_back(L'\0');
+	STARTUPINFOW Startup{};
+	Startup.cb = sizeof(Startup);
+	Startup.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+	Startup.wShowWindow = SW_HIDE;
+	Startup.hStdInput = Input;
+	Startup.hStdOutput = Output;
+	Startup.hStdError = Output;
+	PROCESS_INFORMATION Process{};
+	const BOOL bCreated = CreateProcessW(
+		Python.c_str(), MutableCommand.data(), nullptr, nullptr, TRUE,
+		CREATE_NO_WINDOW, nullptr, ProjectRoot.c_str(), &Startup, &Process);
+	const DWORD iCreateError = bCreated ? ERROR_SUCCESS : GetLastError();
+	CloseHandle(Input);
+	CloseHandle(Output);
+	if (!bCreated)
+	{
+		m_strValtanPatternCreateStatus =
+			"Could not start the Create New Pattern backend (Win32 " +
+			std::to_string(iCreateError) + "). Request and diagnostic files were preserved.";
+		return false;
+	}
+	CloseHandle(Process.hThread);
+	m_hValtanPatternCreateProcess = Process.hProcess;
+	m_strValtanPatternCreateActiveRequestSha256 = strRequestSha256;
+	m_strValtanPatternCreateActivePatternId = m_ValtanPatternCreatePatternId;
+	m_bValtanPatternCreateActiveApply = bApply;
+	m_bValtanPatternCreateHasExitCode = false;
+	m_iValtanPatternCreateExitCode = 0u;
+	m_iValtanPatternCreateStartedAtMilliseconds = GetTickCount64();
+	m_strValtanPatternCreateDiagnostic.clear();
+	if (!bApply)
+		m_strValtanPatternCreateValidatedRequestSha256.clear();
+	m_strValtanPatternCreateStatus = std::string(
+		bApply ? "Apply Create Pattern" : "Validate Create Request") +
+		" is running. Its request and diagnostic files are preserved.";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Parse_ValtanPatternCreateResult(
+	const std::string& strDiagnostic,
+	std::string& strOutError) const
+{
+	DATA_JSON_VALUE Root;
+	if (!CDataJson::Parse(strDiagnostic, Root, strOutError) ||
+		!Root.Is_Object())
+	{
+		strOutError = "Create backend result is not strict JSON: " + strOutError;
+		return false;
+	}
+	constexpr std::array<std::string_view, 11u> RequiredKeys = {
+		"schema", "formatVersion", "mode", "patternId", "sourceChainId",
+		"admissionState", "selectionMode", "sourceSha256", "patternCount",
+		"stageCount", "projectedArtifactCount" };
+	if (Root.Get_Object().size() != RequiredKeys.size() ||
+		!std::all_of(RequiredKeys.begin(), RequiredKeys.end(),
+			[&Root](const std::string_view strKey)
+			{
+				return Root.Get_Object().contains(std::string(strKey));
+			}))
+	{
+		strOutError = "Create backend result properties do not match v1.";
+		return false;
+	}
+	const auto String = [&Root](const std::string_view strKey) ->
+		const DATA_JSON_VALUE*
+	{
+		const DATA_JSON_VALUE* const pValue = Root.Find(strKey);
+		return nullptr != pValue && pValue->Is_String() ? pValue : nullptr;
+	};
+	const auto UnsignedInteger = [&Root](
+		const std::string_view strKey, uint64_t& iOut) -> bool_t
+	{
+		const DATA_JSON_VALUE* const pValue = Root.Find(strKey);
+		if (nullptr == pValue || !pValue->Is_Number() ||
+			pValue->Was_FloatingPointToken() ||
+			!std::isfinite(pValue->Get_Number()) ||
+			pValue->Get_Number() < 0.0 ||
+			pValue->Get_Number() >
+				static_cast<double>((std::numeric_limits<uint32_t>::max)()))
+		{
+			return false;
+		}
+		iOut = static_cast<uint64_t>(pValue->Get_Number());
+		return static_cast<double>(iOut) == pValue->Get_Number();
+	};
+	const DATA_JSON_VALUE* const pSchema = String("schema");
+	const DATA_JSON_VALUE* const pMode = String("mode");
+	const DATA_JSON_VALUE* const pPatternId = String("patternId");
+	const DATA_JSON_VALUE* const pSourceChainId = String("sourceChainId");
+	const DATA_JSON_VALUE* const pAdmission = String("admissionState");
+	const DATA_JSON_VALUE* const pSelection = String("selectionMode");
+	const DATA_JSON_VALUE* const pSourceSha = String("sourceSha256");
+	uint64_t iVersion = 0u;
+	uint64_t iPatternCount = 0u;
+	uint64_t iStageCount = 0u;
+	uint64_t iProjectedCount = 0u;
+	if (nullptr == pSchema || nullptr == pMode || nullptr == pPatternId ||
+		nullptr == pSourceChainId || nullptr == pAdmission ||
+		nullptr == pSelection || nullptr == pSourceSha ||
+		!UnsignedInteger("formatVersion", iVersion) || 1u != iVersion ||
+		!UnsignedInteger("patternCount", iPatternCount) ||
+		!UnsignedInteger("stageCount", iStageCount) ||
+		!UnsignedInteger("projectedArtifactCount", iProjectedCount) ||
+		0u == iPatternCount || 0u == iStageCount || 0u == iProjectedCount ||
+		pSchema->Get_String() !=
+			"lostark.valtan-animation-pattern-create-result" ||
+		pMode->Get_String() !=
+			(m_bValtanPatternCreateActiveApply ? "Apply" : "Validate") ||
+		pPatternId->Get_String() != m_strValtanPatternCreateActivePatternId ||
+		!Is_StablePatternAuthoringId(pSourceChainId->Get_String()) ||
+		pAdmission->Get_String() != "MANUAL_SERVER_AUDITION" ||
+		pSelection->Get_String() != "AUDITION_ONLY" ||
+		!Is_LowerSha256(pSourceSha->Get_String()))
+	{
+		strOutError =
+			"Create backend result identity, mode or safe-default contract is invalid.";
+		return false;
+	}
+	return true;
+}
+
+void Client::CAnimation_Tool::Poll_ValtanPatternCreateCommand()
+{
+	if (nullptr == m_hValtanPatternCreateProcess)
+		return;
+	const HANDLE Process = static_cast<HANDLE>(m_hValtanPatternCreateProcess);
+	const DWORD iWait = WaitForSingleObject(Process, 0u);
+	if (WAIT_TIMEOUT == iWait)
+	{
+		if (GetTickCount64() - m_iValtanPatternCreateStartedAtMilliseconds >=
+			VALTAN_PATTERN_CREATE_TIMEOUT_MILLISECONDS &&
+			std::string::npos == m_strValtanPatternCreateStatus.find(
+				"still running after"))
+		{
+			m_strValtanPatternCreateStatus =
+				"Create New Pattern is still running after 120 seconds. It was not terminated because the all-or-nothing transaction must finish or roll back; request and diagnostic files remain available.";
+		}
+		return;
+	}
+	if (WAIT_OBJECT_0 != iWait)
+	{
+		m_strValtanPatternCreateStatus =
+			"Create New Pattern process observation failed (Win32 " +
+			std::to_string(GetLastError()) +
+			"). The child was not terminated and its files remain preserved.";
+		return;
+	}
+
+	DWORD iExitCode = 1u;
+	const bool_t bExitKnown = FALSE != GetExitCodeProcess(Process, &iExitCode);
+	CloseHandle(Process);
+	m_hValtanPatternCreateProcess = nullptr;
+	m_bValtanPatternCreateHasExitCode = bExitKnown;
+	m_iValtanPatternCreateExitCode = iExitCode;
+	std::string strReadError;
+	if (!Read_BoundedFile(
+			m_ValtanPatternCreateDiagnosticPath,
+			VALTAN_PATTERN_CREATE_MAX_DIAGNOSTIC_BYTES,
+			m_strValtanPatternCreateDiagnostic, strReadError))
+	{
+		m_strValtanPatternCreateStatus =
+			"Create New Pattern exited, but its bounded diagnostic could not be read: " +
+			strReadError + ". Files remain preserved.";
+		return;
+	}
+	if (!bExitKnown)
+	{
+		m_strValtanPatternCreateStatus =
+			"Create New Pattern exited without a readable exit code. No success is assumed; inspect the preserved diagnostic.";
+		return;
+	}
+	if (0u != iExitCode)
+	{
+		if (!m_bValtanPatternCreateActiveApply)
+			m_strValtanPatternCreateValidatedRequestSha256.clear();
+		m_strValtanPatternCreateStatus = std::string(
+			m_bValtanPatternCreateActiveApply ?
+				"Apply Create Pattern" : "Validate Create Request") +
+			" failed with exit code " + std::to_string(iExitCode) +
+			". No success is assumed; inspect the preserved diagnostic.";
+		return;
+	}
+
+	std::string strParseError;
+	if (!Parse_ValtanPatternCreateResult(
+			m_strValtanPatternCreateDiagnostic, strParseError))
+	{
+		if (!m_bValtanPatternCreateActiveApply)
+			m_strValtanPatternCreateValidatedRequestSha256.clear();
+		m_strValtanPatternCreateStatus =
+			"Create New Pattern returned exit code 0 but its typed result was rejected: " +
+			strParseError + ". No success is assumed.";
+		return;
+	}
+	if (!m_bValtanPatternCreateActiveApply)
+	{
+		m_strValtanPatternCreateValidatedRequestSha256 =
+			m_strValtanPatternCreateActiveRequestSha256;
+		m_strValtanPatternCreateStatus =
+			"Create New Pattern Validate passed. Apply is unlocked only for this exact request SHA-256.";
+		return;
+	}
+
+	m_strValtanPatternCreateValidatedRequestSha256.clear();
+	std::string strBalanceReloadStatus =
+		"Balance source reload is unavailable.";
+	const bool_t bBalanceReloaded = nullptr != m_pBalanceTool &&
+		m_pBalanceTool->Reload_ValtanSource(strBalanceReloadStatus);
+	m_bCustomChainLibraryLoadAttempted = true;
+	const bool_t bIntakeReloaded = bBalanceReloaded && Load_CustomChainLibrary();
+	const std::string strIntakeStatus = bBalanceReloaded ?
+		m_strCustomChainStatus :
+		"Intake reload was not attempted because joined source/Product admission failed.";
+	const bool_t bAnimationReloaded = bBalanceReloaded &&
+		Reload_ValtanPatternMaster();
+	const std::string strAnimationStatus = bBalanceReloaded ?
+		m_strValtanPatternMasterStatus :
+		"Anim joined-master reload was not attempted because joined source/Product admission failed.";
+	std::string strBossStatus =
+		bAnimationReloaded ? "Boss canonical graph reload is unavailable." :
+			"Boss canonical graph reload was not attempted because Anim reload failed.";
+	const bool_t bBossReloaded = bAnimationReloaded &&
+		nullptr != m_pBossTool &&
+		m_pBossTool->Reload_CanonicalGraph(strBossStatus);
+	const bool_t bAnimationAdmitted = bAnimationReloaded &&
+		VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED ==
+			m_eValtanPatternMasterAdmission;
+	bool_t bSelected = false;
+	if (bAnimationAdmitted)
+	{
+		const std::vector<const VALTAN_PATTERN_VIEW*> Patterns =
+			Collect_ValtanPatternMasterPatterns();
+		for (size_t iPattern = 0u; iPattern < Patterns.size(); ++iPattern)
+		{
+			const VALTAN_PATTERN_VIEW* const pPattern = Patterns[iPattern];
+			if (nullptr == pPattern || pPattern->strPatternId !=
+				m_strValtanPatternCreateActivePatternId)
+			{
+				continue;
+			}
+			m_iValtanPatternMasterSelected = static_cast<int32_t>(iPattern);
+			m_strValtanWorkbenchPatternId = pPattern->strPatternId;
+			m_strValtanWorkbenchStageId = pPattern->Stages.empty() ?
+				std::string{} : pPattern->Stages.front().strStageId;
+			m_eValtanWorkbenchSelection =
+				VALTAN_WORKBENCH_SELECTION_KIND::PATTERN;
+			m_eValtanWorkbenchDetailOwner =
+				VALTAN_WORKBENCH_DETAIL_OWNER::ANIMATION;
+			m_bValtanWorkbenchFocusDetailRequested = true;
+			bSelected = true;
+			break;
+		}
+	}
+#ifdef _DEBUG
+	if (bSelected)
+	{
+		if (CMainApp* const pApp = CMainApp::Get_Active())
+			(void)pApp->Debug_SelectCompletePlayPattern(
+				m_strValtanPatternCreateActivePatternId);
+	}
+#endif
+	const bool_t bReloadClosureAdmitted =
+		bBalanceReloaded && bIntakeReloaded &&
+		bAnimationAdmitted && bBossReloaded && bSelected;
+	if (bReloadClosureAdmitted)
+	{
+		m_strValtanCompositionPatternCreatedId =
+			m_strValtanPatternCreateActivePatternId;
+		m_bValtanCompositionPatternCreatedPending = true;
+	}
+	m_strValtanPatternCreateStatus =
+		std::string(bReloadClosureAdmitted ?
+			"Apply completed the Data source/Product transaction and local canonical reload for " :
+			"Apply committed the Data source transaction, but the local Product/canonical reload is INCOMPLETE for ") +
+		m_strValtanPatternCreateActivePatternId + ". Balance source reload: " +
+		(bBalanceReloaded ? "PASS" : "REJECTED") + " (" +
+		strBalanceReloadStatus +
+		"). Apply transaction source/Product closure: PASS (validated before exit 0). Intake reload: " +
+		(bIntakeReloaded ? "PASS" : "REJECTED") + " (" + strIntakeStatus +
+		"). Anim joined-master admission/selection: " +
+		(bAnimationAdmitted && bSelected ? "PASS" : "REJECTED") + " (" +
+		strAnimationStatus + "). Boss canonical graph/inventory reload: " +
+		(bBossReloaded ? "PASS" : "REJECTED") + " (" + strBossStatus + ").";
+	if (bReloadClosureAdmitted)
+	{
+		m_strValtanPatternCreateStatus +=
+			" Data Pattern creation is complete. The Create transaction does not republish Gameplay.bootstrap or restart the active Server; run the Server + Client Product build and restart Server before product entry/playback.";
+	}
 }
 
 void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
@@ -6393,7 +10108,8 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 		"not silently replace Server gameplay or Product presentation.");
 
 	const bool_t bBusy =
-		m_bValtanPatternPreviewPlaying || m_bValtanPatternMasterPlaying;
+		m_bValtanPatternPreviewPlaying || m_bValtanPatternMasterPlaying ||
+		nullptr != m_hValtanPatternCreateProcess;
 
 	ImGui::BeginDisabled(bBusy || m_CustomChainSteps.empty());
 	if (ImGui::Button("Play Chain"))
@@ -6405,7 +10121,10 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Clear Steps"))
+	{
 		m_CustomChainSteps.clear();
+		Invalidate_ValtanPatternCreateExactSourceSelection();
+	}
 	ImGui::EndDisabled();
 
 	ImGui::SetNextItemWidth(160.f);
@@ -6429,8 +10148,11 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 	ImGui::TextDisabled("%s", pProfile->pFileLabel);
 	ImGui::BeginDisabled(bBusy);
 	ImGui::SetNextItemWidth(160.f);
-	ImGui::InputTextWithHint("##chainid", "chain name",
-		m_CustomChainId, sizeof(m_CustomChainId));
+	if (ImGui::InputTextWithHint("##chainid", "chain name",
+		m_CustomChainId, sizeof(m_CustomChainId)))
+	{
+		Invalidate_ValtanPatternCreateExactSourceSelection();
+	}
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(160.f);
 	ImGui::InputTextWithHint("##chaintargetpattern", "target patternId",
@@ -6497,6 +10219,7 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 			if (ImGui::SmallButton("Load"))
 			{
 				m_CustomChainSteps = Entry.steps;
+				Invalidate_ValtanPatternCreateExactSourceSelection();
 				snprintf(m_CustomChainId, sizeof(m_CustomChainId), "%s",
 					Entry.chainId.c_str());
 				snprintf(m_CustomChainTargetPatternId,
@@ -6534,6 +10257,8 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 		}
 	}
 
+	Render_ValtanPatternCreatePanel();
+
 	ImGui::SeparatorText("Steps");
 	if (m_CustomChainSteps.empty())
 	{
@@ -6553,7 +10278,11 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 			ImGui::Text("%2zu", iStep + 1u);
 			ImGui::SameLine();
 			ImGui::SetNextItemWidth(80.f);
-			ImGui::InputFloat("##seconds", &Step.fDurationSeconds, 0.f, 0.f, "%.3f");
+			if (ImGui::InputFloat(
+					"##seconds", &Step.fDurationSeconds, 0.f, 0.f, "%.3f"))
+			{
+				Invalidate_ValtanPatternCreateExactSourceSelection();
+			}
 			if (!std::isfinite(Step.fDurationSeconds) ||
 				Step.fDurationSeconds < 0.f)
 			{
@@ -6585,17 +10314,20 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 		{
 			m_CustomChainSteps.erase(
 				m_CustomChainSteps.begin() +
-				static_cast<std::ptrdiff_t>(iRemove));
+					static_cast<std::ptrdiff_t>(iRemove));
+			Invalidate_ValtanPatternCreateExactSourceSelection();
 		}
 		else if (iMoveUp > 0u && iMoveUp < m_CustomChainSteps.size())
 		{
 			std::swap(
 				m_CustomChainSteps[iMoveUp - 1u], m_CustomChainSteps[iMoveUp]);
+			Invalidate_ValtanPatternCreateExactSourceSelection();
 		}
 		else if (iMoveDown + 1u < m_CustomChainSteps.size())
 		{
 			std::swap(
 				m_CustomChainSteps[iMoveDown], m_CustomChainSteps[iMoveDown + 1u]);
+			Invalidate_ValtanPatternCreateExactSourceSelection();
 		}
 	}
 
@@ -6644,6 +10376,7 @@ void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(
 				CUSTOM_CHAIN_STEP Step;
 				Step.clipName = pName;
 				m_CustomChainSteps.push_back(std::move(Step));
+				Invalidate_ValtanPatternCreateExactSourceSelection();
 			}
 			ImGui::SameLine();
 			ImGui::TextUnformatted(pName);
@@ -7285,6 +11018,25 @@ Client::CAnimation_Tool::Find_KakulActionBinding(
 		nullptr : &*Found;
 }
 
+const Client::KAKUL_ANIMATION_ACTION_BINDING*
+Client::CAnimation_Tool::Find_KakulActionBinding(
+	const std::uint32_t iSourceActionId,
+	const std::string& strStageId,
+	const std::string& strSlotId) const
+{
+	const auto Found = std::find_if(
+		m_KakulActionAuthored.Bindings.begin(),
+		m_KakulActionAuthored.Bindings.end(),
+		[&](const KAKUL_ANIMATION_ACTION_BINDING& Binding)
+		{
+			return Binding.iSourceActionId == iSourceActionId &&
+				Binding.strStageId == strStageId &&
+				Binding.strSlotId == strSlotId;
+		});
+	return Found == m_KakulActionAuthored.Bindings.end() ?
+		nullptr : &*Found;
+}
+
 void Client::CAnimation_Tool::Upsert_KakulActionBinding(
 	const KAKUL_ANIMATION_ACTION_SLOT_REFERENCE& ReferenceSlot,
 	const std::uint32_t iSourceActionId,
@@ -7366,11 +11118,13 @@ bool_t Client::CAnimation_Tool::Load_KakulActionBindings(
 
 	KAKUL_ANIMATION_ACTION_REFERENCE_DOCUMENT StagedReference;
 	KAKUL_ANIMATION_ACTION_AUTHORED_DOCUMENT StagedAuthored;
+	KAKUL_ANIMATION_PATTERN_DOCUMENT StagedPatterns;
 	std::string Status;
+	const std::vector<std::string> AvailableClips = Collect_ClipNames(pModel);
 	if (!CKakulAnimationActionDocument::Load(
 		pProfile->pProfileId,
 		pProfile->pModelAssetId,
-		Collect_ClipNames(pModel),
+		AvailableClips,
 		StagedReference,
 		StagedAuthored,
 		Status))
@@ -7379,9 +11133,23 @@ bool_t Client::CAnimation_Tool::Load_KakulActionBindings(
 			"Load rejected; current KoukuSaton action draft preserved: " + Status;
 		return false;
 	}
+	if (!CKakulAnimationPatternDocument::Load(
+		pProfile->pProfileId,
+		StagedReference,
+		pProfile->pModelAssetId,
+		AvailableClips,
+		StagedPatterns,
+		Status))
+	{
+		m_strKakulActionStatus =
+			"Load rejected; current KoukuSaton action/pattern drafts preserved: " +
+			Status;
+		return false;
+	}
 
 	m_KakulActionReference = std::move(StagedReference);
 	m_KakulActionAuthored = std::move(StagedAuthored);
+	m_KakulAnimationPatterns = std::move(StagedPatterns);
 	m_iSelectedKakulAction = -1;
 	for (int32_t iAction = 0;
 		iAction < static_cast<int32_t>(m_KakulActionReference.Actions.size());
@@ -7406,8 +11174,28 @@ bool_t Client::CAnimation_Tool::Load_KakulActionBindings(
 	{
 		m_iSelectedKakulAction = 0;
 	}
+	if (0u != m_iRequestedKakulSourceActionId)
+	{
+		const auto Requested = std::find_if(
+			m_KakulActionReference.Actions.begin(),
+			m_KakulActionReference.Actions.end(),
+			[this](const KAKUL_ANIMATION_ACTION_REFERENCE& Action)
+			{
+				return Action.iSourceActionId ==
+					m_iRequestedKakulSourceActionId;
+			});
+		if (Requested != m_KakulActionReference.Actions.end())
+		{
+			m_iSelectedKakulAction = static_cast<int32_t>(std::distance(
+				m_KakulActionReference.Actions.begin(), Requested));
+		}
+		m_iRequestedKakulSourceActionId = 0u;
+	}
 	m_iSelectedKakulStage = 0;
 	m_iSelectedKakulSlot = 0;
+	m_iSelectedKakulActionClip = 0;
+	m_iSelectedKakulPattern = m_KakulAnimationPatterns.Patterns.empty() ? -1 : 0;
+	m_iSelectedKakulPatternClip = 0;
 	if (m_iSelectedKakulAction >= 0)
 	{
 		const auto& Stages = m_KakulActionReference.Actions[
@@ -7423,7 +11211,12 @@ bool_t Client::CAnimation_Tool::Load_KakulActionBindings(
 		}
 	}
 	m_bKakulActionDirty = false;
-	m_strKakulActionStatus = Status;
+	m_bKakulPatternDirty = false;
+	m_strKakulActionStatus =
+		"Loaded immutable KoukuSaton action references, sparse overrides, and " +
+		std::to_string(m_KakulAnimationPatterns.Patterns.size()) +
+		" local REFERENCE_ONLY pattern(s).";
+	m_strKakulPatternStatus = Status;
 	return true;
 }
 
@@ -7458,6 +11251,384 @@ bool_t Client::CAnimation_Tool::Save_KakulActionBindings(
 	return true;
 }
 
+bool_t Client::CAnimation_Tool::Save_KakulAnimationPatterns(
+	const shared_ptr<Engine::CModel>& pModel)
+{
+	const KAKUL_ACTION_PROFILE_CONTRACT* pProfile =
+		Find_KakulActionProfile(m_strKakulProfileId);
+	if (nullptr == pProfile || nullptr == pModel ||
+		m_KakulActionReference.Actions.empty())
+	{
+		m_strKakulPatternStatus =
+			"KoukuSaton Pattern Save requires a validated profile reference and physical WModel.";
+		return false;
+	}
+
+	std::string Status;
+	if (!CKakulAnimationPatternDocument::Save_Atomic(
+		m_KakulAnimationPatterns,
+		m_KakulActionReference,
+		pProfile->pProfileId,
+		pProfile->pModelAssetId,
+		Collect_ClipNames(pModel),
+		Status))
+	{
+		m_strKakulPatternStatus =
+			"Pattern Save rejected; destination and current draft preserved: " +
+			Status;
+		return false;
+	}
+	m_bKakulPatternDirty = false;
+	m_strKakulPatternStatus = Status;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Build_KakulPatternFromAction(
+	const shared_ptr<Engine::CModel>& pModel,
+	const KAKUL_ANIMATION_ACTION_REFERENCE& Action,
+	const std::string& strPatternId,
+	KAKUL_ANIMATION_PATTERN& outPattern,
+	std::string& strOutStatus) const
+{
+	if (nullptr == pModel || strPatternId.empty())
+	{
+		strOutStatus =
+			"KoukuSaton Pattern materialization requires the exact physical WModel and a stable pattern ID.";
+		return false;
+	}
+
+	KAKUL_ANIMATION_PATTERN Staged;
+	Staged.strPatternId = strPatternId;
+	Staged.strDisplayName = Action.strDisplayName;
+	Staged.iSourceActionId = Action.iSourceActionId;
+	std::uint32_t iOccurrenceOrdinal = 1u;
+
+	for (const KAKUL_ANIMATION_ACTION_STAGE_REFERENCE& Stage : Action.Stages)
+	{
+		for (const KAKUL_ANIMATION_ACTION_SLOT_REFERENCE& Slot : Stage.Slots)
+		{
+			const KAKUL_ANIMATION_ACTION_BINDING* const pOverride =
+				Find_KakulActionBinding(
+					Action.iSourceActionId, Stage.strStageId, Slot.strSlotId);
+			const std::string& strRuntimeClip = nullptr != pOverride ?
+				pOverride->strRuntimeClip : Slot.strRuntimeClip;
+			const std::uint32_t iSourceStartMs = nullptr != pOverride ?
+				pOverride->iSourceStartMs : Slot.iSourceStartMs;
+			const std::uint32_t iPlayMs = nullptr != pOverride ?
+				pOverride->iPlayMs : Slot.iPlayMs;
+			const f32_t fPlayRate = nullptr != pOverride ?
+				pOverride->fPlayRate : Slot.fPlayRate;
+			const bool_t bLoop = nullptr != pOverride ?
+				pOverride->bLoop : Slot.bLoop;
+
+			std::uint32_t iAnimation = 0u;
+			bool_t bFoundClip = false;
+			for (; iAnimation < pModel->Get_NumAnimations(); ++iAnimation)
+			{
+				const char_t* const pClipName =
+					pModel->Get_AnimationName(iAnimation);
+				if (nullptr != pClipName && strRuntimeClip == pClipName)
+				{
+					bFoundClip = true;
+					break;
+				}
+			}
+			f32_t fPositionTicks = 0.f;
+			f32_t fDurationTicks = 0.f;
+			const f32_t fTicksPerSecond = bFoundClip ?
+				pModel->Get_AnimationTickPerSecond(iAnimation) : 0.f;
+			if (!bFoundClip || !std::isfinite(fTicksPerSecond) ||
+				fTicksPerSecond <= 0.f ||
+				!pModel->Get_AnimationProgress(
+					iAnimation, fPositionTicks, fDurationTicks) ||
+				!std::isfinite(fDurationTicks) || fDurationTicks <= 0.f)
+			{
+				strOutStatus =
+					"KoukuSaton action materialization found an unavailable or malformed physical clip: " +
+					strRuntimeClip + ".";
+				return false;
+			}
+
+			const f64_t fNativeDurationMs =
+				static_cast<f64_t>(fDurationTicks) /
+				static_cast<f64_t>(fTicksPerSecond) * 1000.0;
+			if (static_cast<f64_t>(iSourceStartMs) + 0.0001 >=
+				fNativeDurationMs)
+			{
+				strOutStatus =
+					"KoukuSaton action materialization found a sourceStartMs outside the physical clip: " +
+					strRuntimeClip + ".";
+				return false;
+			}
+			const f64_t fSourceWindowEndMs =
+				static_cast<f64_t>(iSourceStartMs) +
+				static_cast<f64_t>(iPlayMs) * static_cast<f64_t>(fPlayRate);
+
+			KAKUL_ANIMATION_PATTERN_CLIP Clip;
+			Clip.strOccurrenceId = strPatternId + ".clip." +
+				std::to_string(iOccurrenceOrdinal++);
+			Clip.strStageId = Stage.strStageId;
+			Clip.strSlotId = Slot.strSlotId;
+			Clip.strRuntimeClip = strRuntimeClip;
+			Clip.iSourceStartMs = iSourceStartMs;
+			Clip.iPlayMs = iPlayMs;
+			Clip.fPlayRate = fPlayRate;
+			Clip.strEndPolicy = bLoop ? "LOOP_TO_WINDOW" :
+				(fSourceWindowEndMs > fNativeDurationMs + 0.5 ?
+					"HOLD_LAST_POSE" : "EXACT");
+			Staged.Clips.push_back(std::move(Clip));
+		}
+	}
+
+	if (Staged.Clips.empty())
+	{
+		strOutStatus = "The selected planner action has no exact physical clip occurrence; its HOLDOUT evidence remains read-only.";
+		return false;
+	}
+	Staged.iNextOccurrenceOrdinal = iOccurrenceOrdinal;
+	outPattern = std::move(Staged);
+	strOutStatus = "Materialized " + std::to_string(outPattern.Clips.size()) +
+		" ordered clip occurrence(s) from planner action " +
+		std::to_string(Action.iSourceActionId) + ".";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Start_KakulPatternPreview(
+	const shared_ptr<Engine::CModel>& pModel,
+	const KAKUL_ANIMATION_PATTERN& Pattern,
+	const std::string& strLabel)
+{
+	if (nullptr == pModel || CAnimationTargetService::Resolve_Model() != pModel)
+	{
+		m_strKakulPatternStatus =
+			"KoukuSaton Pattern preview rejected because the animation target changed.";
+		return false;
+	}
+	const KAKUL_ACTION_PROFILE_CONTRACT* const pProfile =
+		Find_KakulActionProfile(m_strKakulProfileId);
+	if (nullptr == pProfile)
+	{
+		m_strKakulPatternStatus =
+			"KoukuSaton Pattern preview requires an exact admitted action profile.";
+		return false;
+	}
+
+	KAKUL_ANIMATION_PATTERN_DOCUMENT Candidate = m_KakulAnimationPatterns;
+	const auto Found = std::find_if(
+		Candidate.Patterns.begin(), Candidate.Patterns.end(),
+		[&Pattern](const KAKUL_ANIMATION_PATTERN& Existing)
+		{
+			return Existing.strPatternId == Pattern.strPatternId;
+		});
+	if (Found == Candidate.Patterns.end())
+	{
+		Candidate.Patterns.push_back(Pattern);
+		++Candidate.iNextPatternOrdinal;
+	}
+	else
+	{
+		*Found = Pattern;
+	}
+	std::string Status;
+	if (!CKakulAnimationPatternDocument::Validate(
+		Candidate,
+		m_KakulActionReference,
+		pProfile->pProfileId,
+		pProfile->pModelAssetId,
+		Collect_ClipNames(pModel),
+		Status))
+	{
+		m_strKakulPatternStatus =
+			"KoukuSaton Pattern preview rejected before pose commit: " + Status;
+		return false;
+	}
+
+	if (m_bValtanPatternPreviewPlaying)
+		Reset_ValtanPatternPreviewState(
+			"Valtan source preview yielded to KoukuSaton Pattern preview.");
+	if (m_bValtanPatternMasterPlaying)
+		Reset_ValtanPatternMasterPreviewState(
+			"Valtan Pattern Master yielded to KoukuSaton Pattern preview.");
+
+	m_KakulPatternPreviewClips = Pattern.Clips;
+	m_strKakulPatternPreviewId = Pattern.strPatternId;
+	m_strKakulPatternPreviewLabel = strLabel;
+	m_KakulPatternPreviewModel = pModel;
+	m_iKakulPatternPreviewTargetGeneration =
+		CAnimationTargetService::Resolve_TargetGeneration();
+	m_iKakulPatternPreviewClip = 0u;
+	m_fKakulPatternPreviewElapsedSeconds = 0.f;
+	m_fKakulPatternPreviewClipDurationSeconds = 0.f;
+	m_bKakulPatternPreviewPlaying = true;
+	m_bKakulPatternPreviewPaused = false;
+	m_strKakulPatternStatus = "Staged " +
+		std::to_string(Pattern.Clips.size()) +
+		" validated occurrence(s) for local pattern preview.";
+	return Activate_KakulPatternPreviewClip(pModel);
+}
+
+bool_t Client::CAnimation_Tool::Activate_KakulPatternPreviewClip(
+	const shared_ptr<Engine::CModel>& pModel)
+{
+	if (nullptr == pModel || !m_bKakulPatternPreviewPlaying ||
+		m_iKakulPatternPreviewClip >= m_KakulPatternPreviewClips.size())
+	{
+		return false;
+	}
+	const KAKUL_ANIMATION_PATTERN_CLIP& Clip =
+		m_KakulPatternPreviewClips[m_iKakulPatternPreviewClip];
+	std::uint32_t iAnimation = 0u;
+	for (; iAnimation < pModel->Get_NumAnimations(); ++iAnimation)
+	{
+		const char_t* const pName = pModel->Get_AnimationName(iAnimation);
+		if (nullptr != pName && Clip.strRuntimeClip == pName)
+			break;
+	}
+	if (iAnimation >= pModel->Get_NumAnimations())
+	{
+		Stop_KakulPatternPreview(
+			pModel, "KoukuSaton Pattern preview stopped: a staged clip disappeared from the physical WModel.");
+		return false;
+	}
+
+	f32_t fPositionTicks = 0.f;
+	f32_t fDurationTicks = 0.f;
+	const f32_t fTicksPerSecond =
+		pModel->Get_AnimationTickPerSecond(iAnimation);
+	if (!std::isfinite(fTicksPerSecond) || fTicksPerSecond <= 0.f ||
+		!pModel->Get_AnimationProgress(
+			iAnimation, fPositionTicks, fDurationTicks) ||
+		!std::isfinite(fDurationTicks) || fDurationTicks <= 0.f)
+	{
+		Stop_KakulPatternPreview(
+			pModel, "KoukuSaton Pattern preview stopped: native clip timing is malformed.");
+		return false;
+	}
+	const f32_t fSourceStartTicks =
+		static_cast<f32_t>(Clip.iSourceStartMs) * fTicksPerSecond * 0.001f;
+	if (!std::isfinite(fSourceStartTicks) ||
+		fSourceStartTicks + 0.0001f >= fDurationTicks)
+	{
+		Stop_KakulPatternPreview(
+			pModel, "KoukuSaton Pattern preview stopped: sourceStartMs is outside the native clip.");
+		return false;
+	}
+	const f64_t fNativeDurationMs =
+		static_cast<f64_t>(fDurationTicks) /
+		static_cast<f64_t>(fTicksPerSecond) * 1000.0;
+	const f64_t fSourceWindowEndMs =
+		static_cast<f64_t>(Clip.iSourceStartMs) +
+		static_cast<f64_t>(Clip.iPlayMs) *
+		static_cast<f64_t>(Clip.fPlayRate);
+	if (("EXACT" == Clip.strEndPolicy &&
+		 fSourceWindowEndMs > fNativeDurationMs + 0.5) ||
+		("HOLD_LAST_POSE" == Clip.strEndPolicy &&
+		 fSourceWindowEndMs <= fNativeDurationMs + 0.5))
+	{
+		Stop_KakulPatternPreview(
+			pModel, "KoukuSaton Pattern preview stopped: endPolicy disagrees with the native source window.");
+		return false;
+	}
+
+	const bool_t bLoop = "LOOP_TO_WINDOW" == Clip.strEndPolicy;
+	if (!Start_PreviewClip(
+			pModel, Clip.strRuntimeClip.c_str(), bLoop,
+			m_fPreviewBlendSeconds) ||
+		!pModel->Set_AnimTrackPosition(iAnimation, fSourceStartTicks))
+	{
+		Stop_KakulPatternPreview(
+			pModel, "KoukuSaton Pattern preview stopped because the next clip could not start.");
+		return false;
+	}
+	pModel->Set_AnimationSpeed(Clip.fPlayRate);
+	pModel->Set_AnimPaused(false);
+	m_bLoop = bLoop;
+	m_bKakulPatternPreviewPaused = false;
+	m_fKakulPatternPreviewElapsedSeconds = 0.f;
+	m_fKakulPatternPreviewClipDurationSeconds =
+		static_cast<f32_t>(Clip.iPlayMs) * 0.001f;
+	m_strKakulPatternStatus = "Playing " + m_strKakulPatternPreviewLabel +
+		" clip " + std::to_string(m_iKakulPatternPreviewClip + 1u) + "/" +
+		std::to_string(m_KakulPatternPreviewClips.size()) + ": " +
+		Clip.strRuntimeClip + " [" + Clip.strEndPolicy + "].";
+	return true;
+}
+
+void Client::CAnimation_Tool::Advance_KakulPatternPreview(
+	const shared_ptr<Engine::CModel>& pModel)
+{
+	if (!m_bKakulPatternPreviewPlaying)
+		return;
+	++m_iKakulPatternPreviewClip;
+	if (m_iKakulPatternPreviewClip >= m_KakulPatternPreviewClips.size())
+	{
+		Stop_KakulPatternPreview(
+			pModel, "KoukuSaton Pattern preview completed; idle restored.");
+		return;
+	}
+	(void)Activate_KakulPatternPreviewClip(pModel);
+}
+
+std::string Client::CAnimation_Tool::Resolve_KakulIdleClip() const
+{
+	const auto Action = std::find_if(
+		m_KakulActionReference.Actions.begin(),
+		m_KakulActionReference.Actions.end(),
+		[](const KAKUL_ANIMATION_ACTION_REFERENCE& Candidate)
+		{
+			return 0u == Candidate.iSourceActionId;
+		});
+	if (Action == m_KakulActionReference.Actions.end())
+		return {};
+	for (const KAKUL_ANIMATION_ACTION_STAGE_REFERENCE& Stage : Action->Stages)
+	{
+		for (const KAKUL_ANIMATION_ACTION_SLOT_REFERENCE& Slot : Stage.Slots)
+		{
+			const KAKUL_ANIMATION_ACTION_BINDING* const pOverride =
+				Find_KakulActionBinding(
+					Action->iSourceActionId, Stage.strStageId, Slot.strSlotId);
+			return nullptr != pOverride ?
+				pOverride->strRuntimeClip : Slot.strRuntimeClip;
+		}
+	}
+	return {};
+}
+
+void Client::CAnimation_Tool::Stop_KakulPatternPreview(
+	const shared_ptr<Engine::CModel>& pModel,
+	const std::string& strStatus)
+{
+	if (nullptr != pModel)
+	{
+		pModel->Set_AnimationSpeed(1.f);
+		const std::string strIdleClip = Resolve_KakulIdleClip();
+		if (strIdleClip.empty() ||
+			!pModel->Start_Animation(strIdleClip.c_str(), true))
+		{
+			pModel->Set_AnimPaused(true);
+		}
+	}
+	m_bLoop = true;
+	Reset_KakulPatternPreviewState(strStatus);
+}
+
+void Client::CAnimation_Tool::Reset_KakulPatternPreviewState(
+	const std::string& strStatus)
+{
+	m_KakulPatternPreviewClips.clear();
+	m_strKakulPatternPreviewId.clear();
+	m_strKakulPatternPreviewLabel.clear();
+	m_KakulPatternPreviewModel.reset();
+	m_iKakulPatternPreviewTargetGeneration = 0u;
+	m_iKakulPatternPreviewClip = 0u;
+	m_fKakulPatternPreviewElapsedSeconds = 0.f;
+	m_fKakulPatternPreviewClipDurationSeconds = 0.f;
+	m_bKakulPatternPreviewPlaying = false;
+	m_bKakulPatternPreviewPaused = false;
+	if (!strStatus.empty())
+		m_strKakulPatternStatus = strStatus;
+}
+
 void Client::CAnimation_Tool::Render_KakulActionBindings(
 	const shared_ptr<Engine::CModel>& pModel)
 {
@@ -7466,21 +11637,25 @@ void Client::CAnimation_Tool::Render_KakulActionBindings(
 		ImVec4(0.95f, 0.75f, 0.2f, 1.f),
 		"Local Extracted Action Preview / REFERENCE_ONLY");
 	ImGui::TextWrapped(
-		"The extracted action sequence is the immutable default. Save writes only "
-		"PROJECT_AUTHORED slot overrides; it does not create a Server Product boss pattern.");
+		"Planner names and source order come from the immutable extracted action reference. "
+		"Create Pattern copies effective clips into a separate local REFERENCE_ONLY draft; "
+		"it never creates a Server Product boss pattern.");
 
-	if ("MN_RPCT_05" == m_AssetName)
+	ImGui::TextDisabled(
+		"Planner profiles (MN_RPCT_07 previews on the shared MN_RPCT_05 body):");
+	for (std::size_t iProfile = 0u;
+		iProfile < KAKUL_ACTION_PROFILES.size(); ++iProfile)
 	{
-		ImGui::TextDisabled("Physical body MN_RPCT_05 serves two extracted profiles:");
-		ImGui::BeginDisabled("MN_RPCT_05" == m_strKakulProfileId);
-		if (ImGui::SmallButton("Open MN_RPCT_05 Profile"))
-			(void)Open_KakulProfile("MN_RPCT_05");
+		const KAKUL_ACTION_PROFILE_CONTRACT& Profile =
+			KAKUL_ACTION_PROFILES[iProfile];
+		if (iProfile > 0u)
+			ImGui::SameLine();
+		ImGui::PushID(static_cast<int32_t>(iProfile));
+		ImGui::BeginDisabled(Profile.pProfileId == m_strKakulProfileId);
+		if (ImGui::SmallButton(Profile.pProfileId))
+			(void)Open_KakulProfile(Profile.pProfileId);
 		ImGui::EndDisabled();
-		ImGui::SameLine();
-		ImGui::BeginDisabled("MN_RPCT_07" == m_strKakulProfileId);
-		if (ImGui::SmallButton("Open MN_RPCT_07 Alias Profile"))
-			(void)Open_KakulProfile("MN_RPCT_07");
-		ImGui::EndDisabled();
+		ImGui::PopID();
 	}
 
 	if (!m_bKakulActionLoadAttempted)
@@ -7496,37 +11671,45 @@ void Client::CAnimation_Tool::Render_KakulActionBindings(
 	}
 
 	ImGui::Text(
-		"Profile: %s | Actions: %zu | Local overrides: %zu",
+		"Profile: %s | Actions: %zu | Local overrides: %zu | Local patterns: %zu",
 		m_strKakulProfileId.c_str(),
 		m_KakulActionReference.Actions.size(),
-		m_KakulActionAuthored.Bindings.size());
+		m_KakulActionAuthored.Bindings.size(),
+		m_KakulAnimationPatterns.Patterns.size());
+	ImGui::BeginDisabled(m_bKakulPatternPreviewPlaying);
 	if (ImGui::Button("Save KoukuSaton Action Bindings"))
 		(void)Save_KakulActionBindings(pModel);
 	ImGui::SameLine();
-	if (ImGui::Button("Reload KoukuSaton Action Bindings"))
+	if (ImGui::Button("Save KoukuSaton Patterns"))
+		(void)Save_KakulAnimationPatterns(pModel);
+	ImGui::SameLine();
+	if (ImGui::Button("Reload KoukuSaton Animation Workspace"))
 	{
-		if (m_bKakulActionDirty)
+		if (m_bKakulActionDirty || m_bKakulPatternDirty)
 			m_bKakulActionReloadConfirmationRequested = true;
 		else
 			(void)Load_KakulActionBindings(pModel);
 	}
-	if (m_bKakulActionDirty)
+	ImGui::EndDisabled();
+	if (m_bKakulActionDirty || m_bKakulPatternDirty)
 	{
 		ImGui::SameLine();
-		ImGui::TextUnformatted("*");
+		ImGui::Text("*%s%s",
+			m_bKakulActionDirty ? " action" : "",
+			m_bKakulPatternDirty ? " pattern" : "");
 	}
 	if (m_bKakulActionReloadConfirmationRequested)
 	{
-		ImGui::OpenPopup("Discard unsaved KoukuSaton Action Bindings?");
+		ImGui::OpenPopup("Discard unsaved KoukuSaton Animation drafts?");
 		m_bKakulActionReloadConfirmationRequested = false;
 	}
 	if (ImGui::BeginPopupModal(
-		"Discard unsaved KoukuSaton Action Bindings?", nullptr,
+		"Discard unsaved KoukuSaton Animation drafts?", nullptr,
 		ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::TextUnformatted(
-			"Reload replaces only the unsaved sparse KoukuSaton slot overrides.");
-		if (ImGui::Button("Discard Overrides and Reload"))
+			"Reload replaces the unsaved sparse slot overrides and local REFERENCE_ONLY patterns.");
+		if (ImGui::Button("Discard Drafts and Reload"))
 		{
 			if (Load_KakulActionBindings(pModel))
 				ImGui::CloseCurrentPopup();
@@ -7539,6 +11722,7 @@ void Client::CAnimation_Tool::Render_KakulActionBindings(
 	if (!m_strKakulActionStatus.empty())
 		ImGui::TextWrapped("%s", m_strKakulActionStatus.c_str());
 
+	ImGui::BeginDisabled(m_bKakulPatternPreviewPlaying);
 	ImGui::SetNextItemWidth(-1.f);
 	ImGui::InputTextWithHint(
 		"##KakulActionFilter", "Filter Korean name or sourceActionId...",
@@ -7609,6 +11793,7 @@ void Client::CAnimation_Tool::Render_KakulActionBindings(
 					m_iSelectedKakulAction = iAction;
 					m_iSelectedKakulStage = 0;
 					m_iSelectedKakulSlot = 0;
+					m_iSelectedKakulActionClip = 0;
 					for (int32_t iStage = 0;
 						iStage < static_cast<int32_t>(Action.Stages.size());
 						++iStage)
@@ -7869,6 +12054,477 @@ void Client::CAnimation_Tool::Render_KakulActionBindings(
 		}
 	}
 	ImGui::EndChild();
+	ImGui::EndDisabled();
+	Render_KakulPatternAuthoring(pModel);
+}
+
+void Client::CAnimation_Tool::Render_KakulPatternAuthoring(
+	const shared_ptr<Engine::CModel>& pModel)
+{
+	struct EFFECTIVE_ACTION_CLIP final
+	{
+		const KAKUL_ANIMATION_ACTION_STAGE_REFERENCE* pStage = nullptr;
+		const KAKUL_ANIMATION_ACTION_SLOT_REFERENCE* pSlot = nullptr;
+		const KAKUL_ANIMATION_ACTION_BINDING* pOverride = nullptr;
+	};
+
+	ImGui::SeparatorText("KoukuSaton Local Pattern Authoring");
+	ImGui::TextDisabled(
+		"Flat planner order -> effective physical clips -> local REFERENCE_ONLY Pattern occurrences");
+
+	const KAKUL_ANIMATION_ACTION_REFERENCE* pSelectedAction = nullptr;
+	if (m_iSelectedKakulAction >= 0 &&
+		m_iSelectedKakulAction < static_cast<int32_t>(
+			m_KakulActionReference.Actions.size()))
+	{
+		pSelectedAction =
+			&m_KakulActionReference.Actions[m_iSelectedKakulAction];
+	}
+	std::vector<EFFECTIVE_ACTION_CLIP> EffectiveActionClips;
+	if (nullptr != pSelectedAction)
+	{
+		for (const KAKUL_ANIMATION_ACTION_STAGE_REFERENCE& Stage :
+			pSelectedAction->Stages)
+		{
+			for (const KAKUL_ANIMATION_ACTION_SLOT_REFERENCE& Slot : Stage.Slots)
+			{
+				EffectiveActionClips.push_back(EFFECTIVE_ACTION_CLIP{
+					&Stage,
+					&Slot,
+					Find_KakulActionBinding(
+						pSelectedAction->iSourceActionId,
+						Stage.strStageId,
+						Slot.strSlotId) });
+			}
+		}
+	}
+
+	if (nullptr == pSelectedAction)
+	{
+		ImGui::TextDisabled("Select one planner action above to list its complete clip sequence.");
+	}
+	else
+	{
+		ImGui::Text(
+			"Selected planner action: %u | %s | %zu effective clip occurrence(s)",
+			pSelectedAction->iSourceActionId,
+			pSelectedAction->strDisplayName.c_str(),
+			EffectiveActionClips.size());
+		const bool_t bActionPatternAdmitted =
+			"REVIEW_CANDIDATE" == pSelectedAction->strReviewStatus &&
+			!EffectiveActionClips.empty();
+		ImGui::BeginDisabled(
+			m_bKakulPatternPreviewPlaying || !bActionPatternAdmitted);
+		if (ImGui::Button("Preview Action"))
+		{
+			const std::string strPreviewPatternId = "kakul." +
+				m_strKakulProfileId + ".pattern." +
+				std::to_string(m_KakulAnimationPatterns.iNextPatternOrdinal);
+			KAKUL_ANIMATION_PATTERN PreviewPattern;
+			std::string Status;
+			if (Build_KakulPatternFromAction(
+					pModel, *pSelectedAction, strPreviewPatternId,
+					PreviewPattern, Status))
+			{
+				(void)Start_KakulPatternPreview(
+					pModel, PreviewPattern,
+					"planner action " +
+					std::to_string(pSelectedAction->iSourceActionId));
+			}
+			else
+			{
+				m_strKakulPatternStatus = Status;
+			}
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Create Pattern"))
+		{
+			const std::string strPatternId = "kakul." +
+				m_strKakulProfileId + ".pattern." +
+				std::to_string(m_KakulAnimationPatterns.iNextPatternOrdinal);
+			KAKUL_ANIMATION_PATTERN Created;
+			std::string Status;
+			if (Build_KakulPatternFromAction(
+					pModel, *pSelectedAction, strPatternId,
+					Created, Status))
+			{
+				KAKUL_ANIMATION_PATTERN_DOCUMENT Candidate =
+					m_KakulAnimationPatterns;
+				Candidate.Patterns.push_back(std::move(Created));
+				++Candidate.iNextPatternOrdinal;
+				const KAKUL_ACTION_PROFILE_CONTRACT* const pProfile =
+					Find_KakulActionProfile(m_strKakulProfileId);
+				if (nullptr != pProfile &&
+					CKakulAnimationPatternDocument::Validate(
+						Candidate,
+						m_KakulActionReference,
+						pProfile->pProfileId,
+						pProfile->pModelAssetId,
+						Collect_ClipNames(pModel),
+						Status))
+				{
+					m_KakulAnimationPatterns = std::move(Candidate);
+					m_iSelectedKakulPattern = static_cast<int32_t>(
+						m_KakulAnimationPatterns.Patterns.size() - 1u);
+					m_iSelectedKakulPatternClip = 0;
+					m_bKakulPatternDirty = true;
+					m_strKakulPatternStatus =
+						"Created local Pattern " + strPatternId + " from planner action " +
+						std::to_string(pSelectedAction->iSourceActionId) + ".";
+				}
+				else
+				{
+					m_strKakulPatternStatus =
+						"Create Pattern rejected; current draft preserved: " + Status;
+				}
+			}
+			else
+			{
+				m_strKakulPatternStatus = Status;
+			}
+		}
+		ImGui::EndDisabled();
+		if (!bActionPatternAdmitted)
+		{
+			ImGui::TextDisabled(
+				"Preview Action / Create Pattern stays disabled until this action is REVIEW_CANDIDATE with at least one exact physical clip. HOLDOUT evidence remains listed below.");
+		}
+
+		m_iSelectedKakulActionClip = EffectiveActionClips.empty() ? 0 :
+			std::clamp(
+				m_iSelectedKakulActionClip, 0,
+				static_cast<int32_t>(EffectiveActionClips.size()) - 1);
+		if (ImGui::BeginChild(
+			"##KakulCompleteActionClips", ImVec2(0.f, 190.f),
+			ImGuiChildFlags_Borders))
+		{
+			ImGuiListClipper Clipper;
+			Clipper.Begin(static_cast<int32_t>(EffectiveActionClips.size()));
+			while (Clipper.Step())
+			{
+				for (int32_t iClip = Clipper.DisplayStart;
+					iClip < Clipper.DisplayEnd; ++iClip)
+				{
+					const EFFECTIVE_ACTION_CLIP& Row = EffectiveActionClips[iClip];
+					const std::string& strClip = nullptr != Row.pOverride ?
+						Row.pOverride->strRuntimeClip : Row.pSlot->strRuntimeClip;
+					const std::uint32_t iPlayMs = nullptr != Row.pOverride ?
+						Row.pOverride->iPlayMs : Row.pSlot->iPlayMs;
+					char_t Label[768]{};
+					snprintf(
+						Label, sizeof(Label), "%04d  %s / %s  %s  %u ms%s",
+						iClip + 1,
+						Row.pStage->strStageId.c_str(),
+						Row.pSlot->strSlotId.c_str(),
+						strClip.c_str(), iPlayMs,
+						nullptr != Row.pOverride ? "  *override" : "");
+					ImGui::PushID(iClip);
+					ImGui::BeginDisabled(m_bKakulPatternPreviewPlaying);
+					if (ImGui::Selectable(
+						Label, m_iSelectedKakulActionClip == iClip))
+					{
+						m_iSelectedKakulActionClip = iClip;
+						Select_Clip(pModel, strClip);
+					}
+					ImGui::EndDisabled();
+					ImGui::PopID();
+				}
+			}
+		}
+		ImGui::EndChild();
+	}
+
+	ImGui::SeparatorText("Created Local Patterns");
+	ImGui::SetNextItemWidth(-1.f);
+	ImGui::InputTextWithHint(
+		"##KakulPatternFilter", "Filter pattern name, ID, or sourceActionId...",
+		m_KakulPatternFilter, sizeof(m_KakulPatternFilter));
+	std::vector<int32_t> VisiblePatterns;
+	for (int32_t iPattern = 0;
+		iPattern < static_cast<int32_t>(
+			m_KakulAnimationPatterns.Patterns.size()); ++iPattern)
+	{
+		const KAKUL_ANIMATION_PATTERN& Pattern =
+			m_KakulAnimationPatterns.Patterns[iPattern];
+		if ('\0' != m_KakulPatternFilter[0] &&
+			!Contains_NoCase(Pattern.strPatternId.c_str(), m_KakulPatternFilter) &&
+			!Contains_NoCase(Pattern.strDisplayName.c_str(), m_KakulPatternFilter) &&
+			!Contains_NoCase(
+				std::to_string(Pattern.iSourceActionId).c_str(),
+				m_KakulPatternFilter))
+		{
+			continue;
+		}
+		VisiblePatterns.push_back(iPattern);
+	}
+	if (ImGui::BeginChild(
+		"##KakulPatternList", ImVec2(0.f, 150.f), ImGuiChildFlags_Borders))
+	{
+		for (const int32_t iPattern : VisiblePatterns)
+		{
+			const KAKUL_ANIMATION_PATTERN& Pattern =
+				m_KakulAnimationPatterns.Patterns[iPattern];
+			char_t Label[768]{};
+			snprintf(
+				Label, sizeof(Label), "%s | action %u | %s | %zu clips",
+				Pattern.strPatternId.c_str(), Pattern.iSourceActionId,
+				Pattern.strDisplayName.c_str(), Pattern.Clips.size());
+			ImGui::PushID(iPattern);
+			ImGui::BeginDisabled(m_bKakulPatternPreviewPlaying);
+			if (ImGui::Selectable(
+				Label, m_iSelectedKakulPattern == iPattern))
+			{
+				m_iSelectedKakulPattern = iPattern;
+				m_iSelectedKakulPatternClip = 0;
+			}
+			ImGui::EndDisabled();
+			ImGui::PopID();
+		}
+	}
+	ImGui::EndChild();
+
+	if (m_KakulAnimationPatterns.Patterns.empty())
+	{
+		m_iSelectedKakulPattern = -1;
+		ImGui::TextDisabled(
+			"No local Pattern yet. Select an action with exact clips and press Create Pattern.");
+		if (!m_strKakulPatternStatus.empty())
+			ImGui::TextWrapped("%s", m_strKakulPatternStatus.c_str());
+		return;
+	}
+	m_iSelectedKakulPattern = std::clamp(
+		m_iSelectedKakulPattern, 0,
+		static_cast<int32_t>(m_KakulAnimationPatterns.Patterns.size()) - 1);
+	const int32_t iSelectedPattern = m_iSelectedKakulPattern;
+	const KAKUL_ANIMATION_PATTERN& SelectedPattern =
+		m_KakulAnimationPatterns.Patterns[iSelectedPattern];
+	m_iSelectedKakulPatternClip = std::clamp(
+		m_iSelectedKakulPatternClip, 0,
+		static_cast<int32_t>(SelectedPattern.Clips.size()) - 1);
+	const int32_t iSelectedClip = m_iSelectedKakulPatternClip;
+
+	ImGui::Text(
+		"Selected Pattern: %s | %s | source action %u",
+		SelectedPattern.strPatternId.c_str(),
+		SelectedPattern.strDisplayName.c_str(),
+		SelectedPattern.iSourceActionId);
+	ImGui::BeginDisabled(m_bKakulPatternPreviewPlaying);
+	if (ImGui::Button("Play Pattern"))
+		(void)Start_KakulPatternPreview(
+			pModel, SelectedPattern, SelectedPattern.strDisplayName);
+	ImGui::SameLine();
+	if (ImGui::Button("Preview Selected Clip Window"))
+	{
+		KAKUL_ANIMATION_PATTERN SingleClip = SelectedPattern;
+		SingleClip.Clips = { SelectedPattern.Clips[iSelectedClip] };
+		(void)Start_KakulPatternPreview(
+			pModel, SingleClip, "selected Pattern clip");
+	}
+	ImGui::EndDisabled();
+	if (m_bKakulPatternPreviewPlaying)
+	{
+		ImGui::SameLine();
+		if (ImGui::Button(
+			m_bKakulPatternPreviewPaused ? "Resume Pattern" : "Pause Pattern"))
+		{
+			m_bKakulPatternPreviewPaused = !m_bKakulPatternPreviewPaused;
+			pModel->Set_AnimPaused(m_bKakulPatternPreviewPaused);
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Skip Clip"))
+			Advance_KakulPatternPreview(pModel);
+		ImGui::SameLine();
+		if (ImGui::Button("Stop Pattern"))
+			Stop_KakulPatternPreview(
+				pModel, "KoukuSaton Pattern preview stopped; idle restored.");
+	}
+
+	bool_t bDuplicatePattern = false;
+	bool_t bDeletePattern = false;
+	bool_t bDuplicateClip = false;
+	bool_t bDeleteClip = false;
+	bool_t bMoveClipUp = false;
+	bool_t bMoveClipDown = false;
+	ImGui::BeginDisabled(m_bKakulPatternPreviewPlaying);
+	if (ImGui::Button("Duplicate Pattern"))
+		bDuplicatePattern = true;
+	ImGui::SameLine();
+	if (ImGui::Button("Delete Pattern"))
+		bDeletePattern = true;
+	ImGui::SameLine();
+	if (ImGui::Button("Duplicate Clip"))
+		bDuplicateClip = true;
+	ImGui::SameLine();
+	ImGui::BeginDisabled(SelectedPattern.Clips.size() <= 1u);
+	if (ImGui::Button("Delete Clip"))
+		bDeleteClip = true;
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(0 == iSelectedClip);
+	if (ImGui::Button("Move Clip Up"))
+		bMoveClipUp = true;
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(
+		iSelectedClip + 1 >= static_cast<int32_t>(SelectedPattern.Clips.size()));
+	if (ImGui::Button("Move Clip Down"))
+		bMoveClipDown = true;
+	ImGui::EndDisabled();
+	ImGui::EndDisabled();
+	if (SelectedPattern.Clips.size() <= 1u)
+		ImGui::TextDisabled("The last clip is preserved; delete the Pattern instead.");
+
+	if (ImGui::BeginChild(
+		"##KakulPatternClips", ImVec2(0.f, 240.f), ImGuiChildFlags_Borders))
+	{
+		for (int32_t iClip = 0;
+			iClip < static_cast<int32_t>(SelectedPattern.Clips.size()); ++iClip)
+		{
+			const KAKUL_ANIMATION_PATTERN_CLIP& Clip =
+				SelectedPattern.Clips[iClip];
+			char_t Label[1024]{};
+			snprintf(
+				Label, sizeof(Label),
+				"%03d  %s | %s / %s | %s | start %u ms, play %u ms, %.3fx | %s",
+				iClip + 1, Clip.strOccurrenceId.c_str(),
+				Clip.strStageId.c_str(), Clip.strSlotId.c_str(),
+				Clip.strRuntimeClip.c_str(), Clip.iSourceStartMs,
+				Clip.iPlayMs, Clip.fPlayRate, Clip.strEndPolicy.c_str());
+			ImGui::PushID(iClip);
+			ImGui::BeginDisabled(m_bKakulPatternPreviewPlaying);
+			if (ImGui::Selectable(Label, iSelectedClip == iClip))
+			{
+				m_iSelectedKakulPatternClip = iClip;
+				Select_Clip(pModel, Clip.strRuntimeClip);
+			}
+			ImGui::EndDisabled();
+			ImGui::PopID();
+		}
+	}
+	ImGui::EndChild();
+
+	const KAKUL_ACTION_PROFILE_CONTRACT* const pProfile =
+		Find_KakulActionProfile(m_strKakulProfileId);
+	const auto CommitCandidate = [this, &pModel, pProfile](
+		KAKUL_ANIMATION_PATTERN_DOCUMENT&& Candidate,
+		const std::string& strSuccess)
+	{
+		std::string Status;
+		if (nullptr == pProfile ||
+			!CKakulAnimationPatternDocument::Validate(
+				Candidate,
+				m_KakulActionReference,
+				pProfile->pProfileId,
+				pProfile->pModelAssetId,
+				Collect_ClipNames(pModel),
+				Status))
+		{
+			m_strKakulPatternStatus =
+				"Pattern edit rejected; current draft preserved: " + Status;
+			return false;
+		}
+		m_KakulAnimationPatterns = std::move(Candidate);
+		m_bKakulPatternDirty = true;
+		m_strKakulPatternStatus = strSuccess;
+		return true;
+	};
+
+	if (bDuplicatePattern)
+	{
+		KAKUL_ANIMATION_PATTERN_DOCUMENT Candidate = m_KakulAnimationPatterns;
+		KAKUL_ANIMATION_PATTERN Copy = Candidate.Patterns[iSelectedPattern];
+		Copy.strPatternId = "kakul." + m_strKakulProfileId + ".pattern." +
+			std::to_string(Candidate.iNextPatternOrdinal++);
+		Copy.strDisplayName += " Copy";
+		std::uint32_t iOrdinal = 1u;
+		for (KAKUL_ANIMATION_PATTERN_CLIP& Clip : Copy.Clips)
+			Clip.strOccurrenceId = Copy.strPatternId + ".clip." +
+				std::to_string(iOrdinal++);
+		Copy.iNextOccurrenceOrdinal = iOrdinal;
+		const std::string strCreatedId = Copy.strPatternId;
+		Candidate.Patterns.push_back(std::move(Copy));
+		if (CommitCandidate(
+				std::move(Candidate),
+				"Duplicated Pattern as " + strCreatedId + "."))
+		{
+			m_iSelectedKakulPattern = static_cast<int32_t>(
+				m_KakulAnimationPatterns.Patterns.size() - 1u);
+			m_iSelectedKakulPatternClip = 0;
+		}
+	}
+	else if (bDeletePattern)
+	{
+		KAKUL_ANIMATION_PATTERN_DOCUMENT Candidate = m_KakulAnimationPatterns;
+		const std::string strDeletedId =
+			Candidate.Patterns[iSelectedPattern].strPatternId;
+		Candidate.Patterns.erase(
+			Candidate.Patterns.begin() + iSelectedPattern);
+		if (CommitCandidate(
+				std::move(Candidate),
+				"Deleted local Pattern " + strDeletedId + "."))
+		{
+			m_iSelectedKakulPattern = m_KakulAnimationPatterns.Patterns.empty() ?
+				-1 : (std::min)(
+					iSelectedPattern,
+					static_cast<int32_t>(
+						m_KakulAnimationPatterns.Patterns.size()) - 1);
+			m_iSelectedKakulPatternClip = 0;
+		}
+	}
+	else if (bDuplicateClip)
+	{
+		KAKUL_ANIMATION_PATTERN_DOCUMENT Candidate = m_KakulAnimationPatterns;
+		KAKUL_ANIMATION_PATTERN& Pattern =
+			Candidate.Patterns[iSelectedPattern];
+		KAKUL_ANIMATION_PATTERN_CLIP Copy = Pattern.Clips[iSelectedClip];
+		Copy.strOccurrenceId = Pattern.strPatternId + ".clip." +
+			std::to_string(Pattern.iNextOccurrenceOrdinal++);
+		const std::string strCreatedId = Copy.strOccurrenceId;
+		Pattern.Clips.insert(
+			Pattern.Clips.begin() + iSelectedClip + 1, std::move(Copy));
+		if (CommitCandidate(
+				std::move(Candidate),
+				"Duplicated clip occurrence as " + strCreatedId + "."))
+		{
+			m_iSelectedKakulPatternClip = iSelectedClip + 1;
+		}
+	}
+	else if (bDeleteClip)
+	{
+		KAKUL_ANIMATION_PATTERN_DOCUMENT Candidate = m_KakulAnimationPatterns;
+		KAKUL_ANIMATION_PATTERN& Pattern =
+			Candidate.Patterns[iSelectedPattern];
+		const std::string strDeletedId =
+			Pattern.Clips[iSelectedClip].strOccurrenceId;
+		Pattern.Clips.erase(Pattern.Clips.begin() + iSelectedClip);
+		if (CommitCandidate(
+				std::move(Candidate),
+				"Deleted clip occurrence " + strDeletedId + "."))
+		{
+			m_iSelectedKakulPatternClip = (std::min)(
+				iSelectedClip,
+				static_cast<int32_t>(m_KakulAnimationPatterns.Patterns[
+					iSelectedPattern].Clips.size()) - 1);
+		}
+	}
+	else if (bMoveClipUp || bMoveClipDown)
+	{
+		KAKUL_ANIMATION_PATTERN_DOCUMENT Candidate = m_KakulAnimationPatterns;
+		KAKUL_ANIMATION_PATTERN& Pattern =
+			Candidate.Patterns[iSelectedPattern];
+		const int32_t iOther = bMoveClipUp ?
+			iSelectedClip - 1 : iSelectedClip + 1;
+		std::swap(Pattern.Clips[iSelectedClip], Pattern.Clips[iOther]);
+		if (CommitCandidate(
+				std::move(Candidate),
+				"Moved the selected clip occurrence without changing its stable ID."))
+		{
+			m_iSelectedKakulPatternClip = iOther;
+		}
+	}
+
+	if (!m_strKakulPatternStatus.empty())
+		ImGui::TextWrapped("%s", m_strKakulPatternStatus.c_str());
 }
 
 Client::ANIMATION_SKILL_BINDING*

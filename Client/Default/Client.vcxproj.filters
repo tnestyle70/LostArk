@@ -207,6 +207,15 @@
     <ClCompile Include="..\Private\CharacterPreviewPanel.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\EquipmentAuthoringTool.cpp">
+      <Filter>03. Tools\03. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\EquipmentPresentationCatalog.cpp">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\EquipmentPresentationService.cpp">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\PlayableCharacterPreviewContract.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
@@ -217,6 +226,9 @@
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
 	<ClCompile Include="..\Private\KakulAnimationActionDocument.cpp">
+	  <Filter>03. Tools\04. Animation</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\KakulAnimationPatternDocument.cpp">
 	  <Filter>03. Tools\04. Animation</Filter>
 	</ClCompile>
 	<ClCompile Include="..\Private\ValtanPatternFlowDocument.cpp">
@@ -237,6 +249,9 @@
     <ClCompile Include="..\Private\ValtanPatternEffectCueDocument.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
+	<ClCompile Include="..\Private\ValtanPatternEffectCueAuthoring.cpp">
+	  <Filter>03. Tools\04. Animation</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\ValtanPatternSoundCueDocument.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
@@ -369,6 +384,9 @@
     <ClCompile Include="..\Private\ValtanPatternTree.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\ValtanPresentationGenerationAdmission.cpp">
+      <Filter>96.DataFiles</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\ValtanPatternAuditionService.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
@@ -447,6 +465,15 @@
 	<ClCompile Include="..\Private\EstherActionSoundCueDocument.cpp">
 	  <Filter>03. Tools\02. Effect</Filter>
 	</ClCompile>
+	<ClCompile Include="..\Private\ActionCompositionWorkbench.cpp">
+	  <Filter>03. Tools\05. Sequencer</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\ActionCompositionWorkbench_Blueprint.cpp">
+	  <Filter>03. Tools\05. Sequencer</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\ActionCompositionGraphModel.cpp">
+	  <Filter>03. Tools\05. Sequencer</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\Effect_PresentationService.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
@@ -463,6 +490,9 @@
       <Filter>03. Tools\06. Effect V2</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\EffectV2_Object.cpp">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\EffectV2_Catalog.cpp">
       <Filter>03. Tools\06. Effect V2</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\EffectV2_Document.cpp">
@@ -609,7 +639,16 @@
     <ClCompile Include="..\Private\PartyInteractionView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\RaidEntryPreviewView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\UITextureCache.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\UILayoutRuntime.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\UIInputRouter.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\UI_Sprite.cpp">
@@ -684,6 +723,15 @@
     </ClInclude>
     <ClInclude Include="..\Public\CharacterPreviewPanel.h">
       <Filter>03. Tools\04. Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EquipmentAuthoringTool.h">
+      <Filter>03. Tools\03. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EquipmentPresentationCatalog.h">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EquipmentPresentationService.h">
+      <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\PlayableCharacterPreviewContract.h">
       <Filter>03. Tools\04. Animation</Filter>
@@ -802,6 +850,9 @@
     <ClInclude Include="..\Public\ValtanPatternTree.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\ValtanPresentationGenerationAdmission.h">
+      <Filter>96.DataFiles</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\ValtanPatternAuditionService.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
@@ -820,10 +871,19 @@
     <ClInclude Include="..\Public\Animation_Tool.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
+	<ClInclude Include="..\Public\ActionCompositionWorkbench.h">
+	  <Filter>03. Tools\05. Sequencer</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\ActionCompositionGraphModel.h">
+	  <Filter>03. Tools\05. Sequencer</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
 	<ClInclude Include="..\Public\KakulAnimationActionDocument.h">
+	  <Filter>03. Tools\04. Animation</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\KakulAnimationPatternDocument.h">
 	  <Filter>03. Tools\04. Animation</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\ValtanPatternFlowDocument.h">
@@ -844,6 +904,9 @@
     <ClInclude Include="..\Public\ValtanPatternEffectCueDocument.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
+	<ClInclude Include="..\Public\ValtanPatternEffectCueAuthoring.h">
+	  <Filter>03. Tools\04. Animation</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\ValtanPatternSoundCueDocument.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
@@ -872,6 +935,9 @@
       <Filter>03. Tools\06. Effect V2</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\EffectV2_Object.h">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EffectV2_Catalog.h">
       <Filter>03. Tools\06. Effect V2</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\EffectV2_Document.h">
@@ -1033,7 +1099,16 @@
     <ClInclude Include="..\Public\PartyInteractionView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\RaidEntryPreviewView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\UITextureCache.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\UILayoutRuntime.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\UIInputRouter.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\UI_Sprite.h">
@@ -1195,6 +1270,12 @@
     <None Include="..\..\Data\Actors\CharacterCatalog.json">
       <Filter>96.DataFiles\Actors</Filter>
     </None>
+    <None Include="..\..\Data\Actors\EquipmentLoadoutPresets.json">
+      <Filter>96.DataFiles\Actors</Filter>
+    </None>
+    <None Include="..\..\Data\Actors\EquipmentPresentationCatalog.json">
+      <Filter>96.DataFiles\Actors</Filter>
+    </None>
 	<None Include="..\..\Data\Actors\NpcCatalog.json">
 	  <Filter>96.DataFiles\Actors</Filter>
 	</None>
@@ -1343,6 +1424,18 @@
 	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
 	</None>
 	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCZ_00.actionbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_05.patternbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_06.patternbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_07.patternbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	</None>
+	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCZ_00.patternbindings.json">
 	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
 	</None>
     <None Include="..\..\Data\Animation\Reference\Artist\Artist.animnotify">
@@ -1735,6 +1828,9 @@
     <None Include="..\..\Data\UI\Bern\BernValtanEntry_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
+    <None Include="..\..\Data\UI\Bern\ValtanRaidEntry_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
     <None Include="..\..\Data\UI\Party\PartyInviteConfirm_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
@@ -1840,6 +1936,9 @@
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectParticleV2.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectMeshParticleV2.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectDecalV2.hlsl">

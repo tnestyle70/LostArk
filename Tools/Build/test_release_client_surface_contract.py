@@ -55,6 +55,41 @@ class ReleaseClientSurfaceContractTests(unittest.TestCase):
         self.assertIn("Is_ValidProductRect", main)
         self.assertIn("LOBBY_COMMAND_PURPOSE::MAP_EDITOR_WORKSPACE", source)
 
+        panel = re.search(
+            r"void CLevel_Lobby::Render_StagePanel\(\)\s*"
+            r"\{(?P<body>.*?)\n\}\n#endif",
+            source,
+            re.S,
+        )
+        self.assertIsNotNone(panel)
+        for raw_detail in (
+            "Describe_ServerEndpoint",
+            "Remote endpoint",
+            "Local endpoint",
+            "WSA",
+            "C2S_",
+            "S2C_",
+            "Capture path",
+            "Recovery detail",
+            "Protocol:",
+        ):
+            self.assertNotIn(raw_detail, panel.group("body"))
+        self.assertNotIn('m_strStatus = "Server connection failed for "', source)
+        self.assertNotIn('m_strStatus = "C2S_ENTER_WORLD', source)
+        self.assertIn(
+            '"Could not connect to Server. Check that Server is running, then try again."',
+            source,
+        )
+        self.assertIn(
+            '"Could not send the entry request. Check the Server connection, then try again."',
+            source,
+        )
+        self.assertIn(
+            'm_strStatus = "Entry request sent. Waiting for Server approval."',
+            source,
+        )
+        self.assertGreaterEqual(source.count("diagnosticDetail"), 4)
+
     def test_character_select_visible_panel_is_debug_only_but_modal_host_is_common(self) -> None:
         header = read("Client/Public/Level_CharacterSelect.h")
         source = read("Client/Private/Level_CharacterSelect.cpp")
@@ -79,7 +114,18 @@ class ReleaseClientSurfaceContractTests(unittest.TestCase):
         )
         self.assertIn("Render_CreateCharacterProductInputHost();", body)
         self.assertIn("Render_ProductStatus();", body)
-        self.assertIn('"##CharacterSelectProductInputHost"', source)
+        # The modal used to need an invisible ImGui host window
+        # ("##CharacterSelectProductInputHost") purely so OpenPopup/BeginPopupModal had
+        # somewhere to live. It is now real CUI_Sprite art plus CUIInputRouter's WM_CHAR
+        # capture, so the contract is that no ImGui popup remains and the nickname field
+        # drains the router instead.
+        # Matched with the call parenthesis so the comments explaining what these used to do
+        # do not count as a violation.
+        self.assertNotIn("ImGui::BeginPopupModal(", source)
+        self.assertNotIn("ImGui::OpenPopup(", source)
+        self.assertNotIn("ImGui::InputText(", source)
+        self.assertIn("Router.Take_TypedChars()", source)
+        self.assertIn("CUIInputRouter::Get().Start_TextInput();", source)
 
         host = re.search(
             r"void CLevel_CharacterSelect::Render_CreateCharacterProductInputHost\(\)"
@@ -125,7 +171,11 @@ class ReleaseClientSurfaceContractTests(unittest.TestCase):
 
         self.assertIn("LOSTARK_RAID_CLEAR_TEST_MODE", source)
         self.assertIn("Is_RaidClearTestModeEnabled()", source)
-        self.assertIn("Update_DeadScene(bool_t isBlockedByRaidClear);", header)
+        # fTimeDelta joined the signature when the death screen moved to CUI_Sprite: its
+        # flipbook slots need a clock of their own (CUILayoutRuntime::Update).
+        self.assertIn(
+            "Update_DeadScene(bool_t isBlockedByRaidClear, f32_t fTimeDelta);", header
+        )
 
         update_start = source.index("void CLevel_ValtanArena::Update(f32_t fTimeDelta)")
         raid_clear_update = source.index("Update_RaidClear(fTimeDelta);", update_start)
@@ -175,7 +225,13 @@ class ReleaseClientSurfaceContractTests(unittest.TestCase):
         self.assertIn("Render_LoadingRecoveryProduct();", source)
         self.assertIn('"Loading progress"', source)
         self.assertIn("DEFAULT_RETRY_RECT", source)
-        self.assertIn("AddRectFilled", source)
+        # The recovery panel is real CUI_Sprite art now, so the ImGui fallback rectangles
+        # (AddRectFilled) it used to draw when a slot was missing are gone; the authored
+        # rect still has to be validated before it replaces the default one.
+        self.assertNotIn("AddRectFilled", source)
+        self.assertIn("make_unique<CUILayoutRuntime>", source)
+        self.assertIn('Set_SlotVisible("LoadingRecovery_Panel", true)', source)
+        self.assertIn("Router.Is_Clicked(", source)
         self.assertIn("std::isfinite(AuthoredRect.fWidth)", source)
 
         slots = [slot["id"] for slot in recovery["slots"]]

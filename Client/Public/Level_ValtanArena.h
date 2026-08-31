@@ -30,7 +30,7 @@ class CCamera_Free;
 class CCharacter;
 class IPlayerCommandSink;
 class CMapAssetObject;
-class CHUDRuntimeView;
+class CUILayoutRuntime;
 
 class CLevel_ValtanArena final : public CLevel
 {
@@ -50,7 +50,11 @@ public:
 	/* CGameInstance::Draw_Text submits immediately (SpriteBatch) but the invite
 	   popup's art composites later inside CImGuiLayer::EndFrame() -- see
 	   CPartyInteractionView::Render_InvitePopupText's own comment. */
-	void Render_PartyInviteText() { m_PartyInteraction.Render_InvitePopupText(); }
+	void Render_PartyInviteText()
+	{
+		m_PartyInteraction.Render_InvitePopupText();
+		m_PartyInteraction.Render_ContextMenuText();
+	}
 	const LostArk::Shared::S2C_PARTY_ROSTER& Get_PartyRoster() const
 	{
 		return m_Replication.Get_PartyRoster();
@@ -63,15 +67,29 @@ public:
 	{
 		return m_pPlayerCommandSink;
 	}
+	/* Local-only authoring placement. The caller receives a point beside the
+	   replicated local player, sampled against that player's Navigation when it
+	   is available. If the player presentation has not arrived yet, the primary
+	   replicated boss is the visible arena fallback. This never exposes or
+	   mutates either authoritative actor. */
+	bool_t Try_Get_AuthoringPreviewPlacement(
+		float3_t& OutPosition,
+		std::string& strOutSource) const;
 	/* Workbench authoring must reload the replicated primary Server consumer,
 	   not only the Development preview target. These wrappers keep the Level's
 	   replication owner as the single route and expose its freshness admission
 	   to Complete Play. */
 	bool_t Reload_PrimaryValtanPresentationAuthoring(
+		const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
 		std::string& strOutStatus);
 	bool_t Reload_PrimaryValtanCombatObjectSoundCues(
+		const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
 		std::string& strOutStatus);
 	bool_t Can_Play_PrimaryValtanPresentation(
+		const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+		std::string& strOutStatus) const;
+	bool_t Get_PrimaryValtanPatternSoundSourceReceipt(
+		VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& OutReceipt,
 		std::string& strOutStatus) const;
 #ifdef _DEBUG
 	struct ARENA_ACTIVE_STATE final
@@ -92,8 +110,8 @@ public:
 	};
 
 	/* Workbench route. The active Level retains the one request-sequence and
-	   retry owner used by its audition panel; callers never send packets or
-	   mutate wall visibility locally. */
+	   bounded retry owner used by the explicit arena-preset controls; callers
+	   never send packets or mutate wall visibility locally. */
 	bool_t Set_ArenaPreset(
 		LostArk::Shared::VALTAN_ARENA_PRESET preset,
 		std::string& outStatus);
@@ -128,24 +146,31 @@ private:
 	/* Death-screen overlay: real deadscene.gfx panel art + revive button. Local
 	player only, unlimited revives (Handle_RevivePlayer already gates this to
 	VALTAN_ARENA and is free/no-cooldown by design). */
-	void Update_DeadScene(bool_t isBlockedByRaidClear);
-	void Render_DeadScene();
+	/* No matching Render_DeadScene() -- migrated to real CUI_Sprite GameObjects on this Level's
+	own "Layer_UI" (same reasoning as m_pItemAnnounceView), so CObject_Manager's normal
+	Update/Late_Update/Render cycle draws them without an explicit call here. */
+	void Update_DeadScene(bool_t isBlockedByRaidClear, f32_t fTimeDelta);
 	/* Valtan clear celebration overlay: real EFUI_EPICGATECOMMONCLEAR trace (BgFlash/Emblem
 	art + "던전 클리어" headline). Edge-triggers off CCombatHUDViewModel's already-replicated
 	primary-boss death latch. The reliable DEAD despawn is the normal terminal edge because the
 	Server removes the boss before it builds the following world snapshot, then
 	runs a fixed real-derived reveal/hold timeline (EpicGateCommonClearFrame's own
 	startFrame=90/holdFrame=296 at the source's 40fps) instead of looping forever. */
+	/* No matching Render_RaidClear() -- migrated to real CUI_Sprite GameObjects on this Level's
+	own "Layer_UI" (same reasoning as m_pDeadSceneView), so CObject_Manager's normal
+	Update/Late_Update/Render cycle draws them without an explicit call here. */
 	void Update_RaidClear(f32_t fTimeDelta);
-	void Render_RaidClear();
 	/* Item acquisition toast: real EFUI_ANNOUNCE frame art (announce_i3e3.dds), one item at a
 	time. Diffs CCombatHUDViewModel's own already-replicated inventory snapshot frame-to-frame
 	(itemIds present now that weren't in the previous frame) into a FIFO queue, then shows each
 	queued item's icon/name for ITEM_ANNOUNCE_HOLD_SECONDS before starting the next. The first
 	frame only captures a baseline (m_bItemAnnounceBaselineCaptured) instead of diffing, so
 	whatever the player already owns on Level entry never gets announced as newly acquired. */
+	/* No matching Render_ItemAnnounce() -- same reasoning as m_pDeadSceneView/m_pRaidClearView
+	above: m_pItemAnnounceView's slots are real CUI_Sprite GameObjects added to this Level's own
+	layer, so CObject_Manager's normal per-frame Update/Late_Update/Render cycle draws them
+	without an explicit call here. */
 	void Update_ItemAnnounce(f32_t fTimeDelta);
-	void Render_ItemAnnounce();
 	/* Starts the overlay's reveal/hold timeline from 0 and fires its one-shot sound cue. Shared by
 	Update_RaidClear's real edge-trigger and Update_DebugRaidClearKey's forced trigger so both
 	paths play the same cue instead of the debug key silently skipping it. */
@@ -167,21 +192,15 @@ private:
 	void Update_ReferenceCamera();
 	void End_ReferenceCamera(bool_t toggleFollowRequested);
 	const char_t* Get_ReferenceCameraViewName() const;
-	/* Debug audition of an authored health-bar pattern. The panel only submits
-	typed requests and reports what the Server answered; it never starts a
-	pattern or breaks a wall on its own. Reference-view buttons below are a
-	separate presentation-only camera aid and never submit gameplay state. */
-	void Render_AuditionPanel();
 	void Update_AuditionTransaction();
 	bool_t Submit_Audition(
 		LostArk::Shared::VALTAN_AUDITION_OPERATION operation,
 		uint32_t explicitCommandPayload = 0u);
-	bool_t Load_AuditionTimeline();
 	struct AUDITION_PENDING_REQUEST final
 	{
 		uint32_t iSequence = 0u;
 		LostArk::Shared::VALTAN_AUDITION_OPERATION eOperation =
-			LostArk::Shared::VALTAN_AUDITION_OPERATION::ARM_HEALTH_BAR;
+			LostArk::Shared::VALTAN_AUDITION_OPERATION::SET_ARENA_PRESET;
 		uint32_t iTargetHealthBar = 0u;
 		uint64_t iLastSentAtMilliseconds = 0u;
 		uint32_t iRetryCount = 0u;
@@ -191,40 +210,6 @@ private:
 			return 0u != iSequence;
 		}
 	};
-	struct AUDITION_TIMELINE_ACTION final
-	{
-		std::string strPatternId;
-		uint32_t iRepeat = 0u;
-	};
-	struct AUDITION_TIMELINE_ROW final
-	{
-		std::string strRowId;
-		uint32_t iCommandId = 0u;
-		uint32_t iOrdinal = 0u;
-		uint32_t iSectionHealthBar = 0u;
-		std::string strEntryType;
-		std::vector<AUDITION_TIMELINE_ACTION> PatternActions;
-		std::string strArenaState;
-		std::string strPropState;
-		std::string strDisplayLabel;
-	};
-	/* A separate developer helper can still cross several authored health bars
-	without resetting between them. The selectable fight timeline above it is a
-	Server-owned one-row audition and never uses this Client-side queue. */
-	struct ENVIRONMENT_TIMELINE_STEP final
-	{
-		LostArk::Shared::VALTAN_AUDITION_OPERATION eOperation =
-			LostArk::Shared::VALTAN_AUDITION_OPERATION::ARM_HEALTH_BAR;
-		uint32_t iTargetHealthBar = 0u;
-		bool_t waitForPattern = false;
-	};
-	void Start_EnvironmentTimeline();
-	/* Queues one PLAY_PATTERN step per authored rotation entry, in the order
-	the script lists them, so the whole authored order can be watched without
-	waiting for the weighted roll to pick each pattern. */
-	void Start_AuthoredRotationPlayback(
-		const std::vector<std::string>& rotationOrder);
-	void Advance_EnvironmentTimeline(bool_t isBossPatternRunning);
 #endif
 
 private:
@@ -265,8 +250,8 @@ private:
 	CPartyInteractionView m_PartyInteraction;
 	CWorldPlayerChatBubbleView m_ChatBubbleView;
 	CPlayerController m_PlayerController;
-	unique_ptr<CHUDRuntimeView> m_pDeadSceneView;
-	unique_ptr<CHUDRuntimeView> m_pRaidClearView;
+	unique_ptr<CUILayoutRuntime> m_pDeadSceneView;
+	unique_ptr<CUILayoutRuntime> m_pRaidClearView;
 	/* Edge-detect for the boss's replicated eAction (see Update_RaidClear) and the elapsed time
 	since that edge -- negative means the overlay is not currently showing. */
 	bool_t m_bRaidClearWasBossDead = false;
@@ -274,7 +259,7 @@ private:
 	// RaidClear_ReturnButton's own request sequence, same one-writer pattern as
 	// CLevel_Bern::m_iNextNpcEntryConfirmSequence.
 	uint32_t m_iNextReturnToBernSequence = 1u;
-	unique_ptr<CHUDRuntimeView> m_pItemAnnounceView;
+	unique_ptr<CUILayoutRuntime> m_pItemAnnounceView;
 	/* See Update_ItemAnnounce's own comment. False until the first frame's inventory snapshot is
 	captured as the "already owned" baseline. */
 	bool_t m_bItemAnnounceBaselineCaptured = false;
@@ -293,22 +278,9 @@ private:
 	bool_t m_bReferenceSpaceHoleVisible = false;
 	REFERENCE_CAMERA_VIEW m_eReferenceCameraView =
 		REFERENCE_CAMERA_VIEW::NONE;
-	size_t m_iSelectedAuditionBarIndex = 0u;
-	/* Index into the authored pattern order the Server publishes in the same
-	document order, so the Debug browser can play a NORMAL pattern no health
-	bar owns. */
-	size_t m_iSelectedAuditionPatternIndex = 0u;
-	std::vector<AUDITION_TIMELINE_ROW> m_AuditionTimelineRows;
-	size_t m_iSelectedAuditionTimelineRowIndex = 0u;
-	bool_t m_bAuditionTimelineLoadAttempted = false;
-	std::string m_strAuditionTimelineStatus;
 	uint32_t m_iNextAuditionRequestSequence = 1u;
 	AUDITION_PENDING_REQUEST m_PendingAuditionRequest;
 	std::string m_strAuditionStatus;
-	std::vector<ENVIRONMENT_TIMELINE_STEP> m_EnvironmentTimeline;
-	size_t m_iEnvironmentTimelineStep = 0u;
-	bool_t m_bEnvironmentTimelineWaiting = false;
-	bool_t m_bEnvironmentTimelinePatternStarted = false;
 #endif
 
 	static CLevel_ValtanArena* s_pActiveInstance;

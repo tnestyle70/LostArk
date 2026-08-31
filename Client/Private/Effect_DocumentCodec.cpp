@@ -1713,7 +1713,8 @@ namespace
 			Client::EFFECT_MATERIAL_EXECUTION_FIDELITY::PROJECT_TUNED_APPROX;
 		const bool_t bProjectTunedOpcode = Out.eBackend ==
 			Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
-			(Out.iOpcode == 1001u || Out.iOpcode == 1002u);
+			(Out.iOpcode == 1001u || Out.iOpcode == 1002u ||
+			 Out.iOpcode == 1003u || Out.iOpcode == 1004u);
 		if (bProjectTunedApprox != bProjectTunedOpcode)
 		{
 			strOutError =
@@ -2261,7 +2262,8 @@ namespace
 			Client::EFFECT_MATERIAL_EXECUTION_FIDELITY::PROJECT_TUNED_APPROX;
 		const bool_t bProjectTunedOpcode = Execution.eBackend ==
 			Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
-			(Execution.iOpcode == 1001u || Execution.iOpcode == 1002u);
+			(Execution.iOpcode == 1001u || Execution.iOpcode == 1002u ||
+			 Execution.iOpcode == 1003u || Execution.iOpcode == 1004u);
 		if (bProjectTunedApprox != bProjectTunedOpcode)
 		{
 			strOutError =

@@ -5,7 +5,11 @@
 
 namespace LostArk::Shared
 {
-	/* 47 admits the KakulSaydon Arena as a Server-owned shared world.
+	/* 49 requires stable-ID Valtan Complete Play to carry the exact active
+	definition revision that the Client observed before requesting mutation.
+	48 adds exact-occurrence Valtan Restart CAS identity and its pinned
+	definition revision to the stable-ID audition wire.
+	47 admits the KakulSaydon Arena as a Server-owned shared world.
 	46 adds a reliable semantic combat-object presentation event. The Server
 	transmits hit identity and world occurrence only; Client data resolves the
 	actual Sound/Effect asset.
@@ -17,8 +21,9 @@ namespace LostArk::Shared
 	41 combines same-room party invite/accept and roster sync with the
 	expanded world destruction live-event bound. Each feature independently
 	used 40 before integration, so neither v40 peer is wire-compatible.
-	39 adds bounded Debug Valtan pattern-flow authoring playback. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 47;
+	39 adds bounded Debug Valtan pattern-flow authoring playback.
+	51 adds Server-owned Pattern bind and silence deadlines to player snapshots. */
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 51;
 
 	enum class WORLD_ID : std::uint16_t
 	{

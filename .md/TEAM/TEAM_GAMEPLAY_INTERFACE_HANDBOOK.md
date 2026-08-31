@@ -82,7 +82,7 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 
 #### pull 후 공유 Server에 들어가는 순서
 
-Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v47 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
+Server PC와 Client PC는 먼저 같은 commit과 생성 데이터를 맞춘다. 기능 브랜치를 검증할 때도 양쪽이 같은 변경을 사용해야 한다. `pull`만 하고 예전 실행 파일을 쓰면 현재 protocol v51 또는 Debug gameplay revision이 달라 Server가 연결을 종료할 수 있다. Server/Client/Shared는 항상 같은 protocol version으로 다시 빌드한다.
 
 ```powershell
 git switch main
@@ -323,13 +323,37 @@ Character/Animation 담당자는 clip mapping, part, notify, blend와 재생 결
 
 Animation Tool은 Scene Character의 현재 model에 실제 존재하는 clip만 저장할 수 있다. 작업자는 key/skill row에서 ACTIVE의 순차 clip 또는 COMBO의 BA1/BA2/BA3/BA4 clip을 지정하고 atomic Save한다. `inputSlot`, `skillId`, `skillKind`, timing, damage와 combo 단계 수는 Tool에서 바꾸지 않는다. `.skilltiming/.clipmap/.animnotify/.clipseq` 및 `Data/Animation/Reference`는 read-only 참고 자료다.
 
-F1 진입 이름은 `Action Presentation Workbench`다. 기존 Character Animation 기능에 더해 Valtan의 Server stage, animation occurrence, Product Effect, Pattern Sound, Shake/Camera, world/combat-object를 stable action·occurrence ID로 join한 full-width Sequencer와 항상 보이는 Detail을 제공한다. Workbench 자체는 새 Product JSON을 소유하지 않는다. stage·release·Counter/Groggy는 `CBalanceTool`의 `Valtan.gameplay.json` draft, animation slot은 `Valtan.patternbindings.json`, Pattern Sound row는 `Valtan.patternsoundcues.json`의 typed atomic owner를 사용한다. Counter enable은 paired counterable flag, `COUNTER_HIT` branch, same-pattern GROGGY stage와 paired groggy flag를 한 Server-authority 단위로 만들고 Animation notify가 결과를 확정하지 않는다. Animation/Pattern Sound 저장은 actual model duration, Encounter action/stage wall, 결합 cue closure, exact source/dependency CAS를 검사하며 active Valtan cache는 전체 stage가 성공한 뒤에만 교체한다. Gameplay 저장 뒤 Complete Play는 exact candidate가 Server-active revision으로 확인되기 전에는 실행되지 않는다. Effect/Camera/World는 검증된 inline Save adapter가 없으면 owner file과 stable row를 표시하고 owner Tool로 이동한다. `Pattern Offline`은 표현만 로컬 sample이며 Complete Play는 `CBossTool`의 typed API로 실제 Server audition을 제출한다. `Animation Sequence Intake`는 review 원본이고 promotion 전에는 Product/Server pattern이 아니다.
+F1 진입 이름은 `Action Composition Workbench`다. 기존 Animation Clip Tool과 독립된 resizable 창에서
+Valtan의 Server stage, animation occurrence, Effect, Pattern Sound, Shake/Camera와 world/combat-object를
+stable action·occurrence ID로 join한다. Workbench는 새 Product JSON이나 두 번째 runtime을 소유하지 않는다.
+stage·release·Counter/Groggy·Collider는 `CBalanceTool`의 joined gameplay draft를, animation slot과 Effect
+invocation은 `Data/Valtan/Valtan.presentation.json` source owner를 사용한다.
+`Valtan.patternbindings.json`과 `Valtan.patterneffectcues.json`은 projector가 만드는 read-only Product다.
+Counter enable은 paired counterable flag, `COUNTER_HIT` branch, same-pattern GROGGY stage와 paired groggy
+flag를 한 Server-authority 단위로 만들고 Animation notify가 결과를 확정하지 않는다. Save는 split source와
+generated Product를 공통 writer generation으로 commit한 뒤 exact canonical reload까지 검사한다. 로컬 저장
+뒤에도 같은 immutable revision이 Server-active로 확인되기 전에는 Complete Play와 Restart를 실행하지 않는다.
+실제 seek/stop adapter가 연결된 lane만 local `PLAY`다. Effect invocation은 typed Details의
+`EDIT/SAVE`를 지원하지만 일반 timeline block drag와 local seek/stop은 지원하지 않는다.
+Camera/World lane은 owner file과 stable row를 표시하는 `INSPECT` 상태로 남긴다. Sound는 별도
+typed owner에서 `EDIT/SAVE`하되 local seek/stop transport는 `INSPECT`다.
+`Animation Sequence Intake`는 review 원본이고 promotion transaction 전에는 Product/Server pattern이 아니다.
+
+Effect invocation Details는 exact clip occurrence와 source start/end, stop/repeat, anchor/follow,
+local transform, scale policy를 canonical `Valtan.presentation.json`에 add/update/remove한다. projector가
+만드는 `Valtan.patterneffectcues.json`을 직접 저장하지 않는다. 이 편집은 Pattern과 Effect asset의
+연결·시간·배치만 소유한다. asset 내부 element/재질/lifetime 편집 deep-link는
+Save/Publish/Reload된 exact admitted occurrence와 전체 cue field가 일치할 때만 선택
+`effectAssetId`의 `Data/Effects/Authored/*.effect.json`을 Effect Tool에서 연다. draft-only row에
+asset-only fallback을 제공하지 않는다.
 
 Pattern Sound Add는 exact clip occurrence와 검증된 Sound event로 deterministic stable row ID를 만들고,
-Remove는 exact `bindingId + occurrenceId`만 지운다. Animation/Pattern Sound 저장은 Development preview가
-아닌 active Server-replicated primary Valtan의 cache를 transactionally reload한다. reload 실패 freshness는
-ordinary boss despawn이나 consumer 부재로 지우지 않고, 성공한 authoritative reload/spawn 또는 world reset까지
-Complete Play를 차단한다.
+Remove는 exact `bindingId + occurrenceId`만 지운다. Sound owner Save와 local source reload 성공 여부는
+canonical gameplay/presentation generation과 별도로 표시한다. Sound Save는 shared read-generation
+admission을 통과한 별도 CAS commit이며 Pattern writer와 하나의 atomic Save가 아니다. runtime 적용은
+exact Pattern revision이 Server-active가 된 뒤 `Retry Apply`로 수행하고, 적용 전·후 revision CAS와
+revision-pinned ready receipt를 검사한다. Sound transport에 seek/stop handle이 없으면 공통 playhead
+재생 완료로 표시하지 않는다.
 
 제품 Effect 선택 정본은 `PlayerSkills.inputSlot -> skillId -> skillbindings clip`에서
 `clip-local animevent effectref=asset -> Effect catalog/prewarm`으로 이어지는 경로다. `PlayerSkills.effectId`를 복원 결과로 바꾸거나

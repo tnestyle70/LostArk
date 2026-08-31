@@ -15,6 +15,7 @@
 #include <limits>
 #include <locale>
 #include <map>
+#include <memory>
 #include <set>
 #include <sstream>
 #include <string_view>
@@ -23,6 +24,143 @@ namespace
 {
 	using Client::DATA_JSON_TYPE;
 	using Client::DATA_JSON_VALUE;
+	constexpr const wchar_t* VALTAN_PATTERN_TRANSACTION_LOCK_RELATIVE =
+		L"out\\ValtanPatternTransactions\\create-pattern.lock";
+	constexpr const wchar_t* VALTAN_PATTERN_ACTIVE_GENERATION_RELATIVE =
+		L"out\\ValtanPatternTransactions\\active-generation.json";
+
+	/* Canonical readers share the same byte range that every Python/C++
+	   Create/Project writer locks exclusively.  Holding the handle through the
+	   entire strict join prevents one reader from observing a mixture of owner
+	   and generated Product generations.  This reader never repairs a crashed
+	   writer: a durable active-generation journal is an explicit admission
+	   failure that the next writer transaction must recover. */
+	class SCOPED_VALTAN_PATTERN_TRANSACTION_READ_LOCK final
+	{
+	public:
+		~SCOPED_VALTAN_PATTERN_TRANSACTION_READ_LOCK()
+		{
+			if (INVALID_HANDLE_VALUE == m_hFile)
+				return;
+			UnlockFileEx(m_hFile, 0u, 1u, 0u, &m_Overlap);
+			CloseHandle(m_hFile);
+		}
+
+		bool_t Try_Acquire(
+			const std::filesystem::path& ProjectRoot,
+			std::string& strOutError)
+		{
+			if (ProjectRoot.empty())
+			{
+				strOutError = "project root is unavailable";
+				return false;
+			}
+			const std::filesystem::path LockPath =
+				ProjectRoot / VALTAN_PATTERN_TRANSACTION_LOCK_RELATIVE;
+			std::error_code DirectoryError;
+			std::filesystem::create_directories(
+				LockPath.parent_path(), DirectoryError);
+			if (DirectoryError)
+			{
+				strOutError = "lock directory creation failed: " +
+					DirectoryError.message();
+				return false;
+			}
+
+			m_hFile = CreateFileW(
+				LockPath.c_str(), GENERIC_READ | GENERIC_WRITE,
+				FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+				nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+			if (INVALID_HANDLE_VALUE == m_hFile)
+			{
+				strOutError = "lock open failed with Win32 error " +
+					std::to_string(GetLastError());
+				return false;
+			}
+
+			/* Python's msvcrt writer initializes the same one-byte range.
+			   Initialize it before taking the shared lock so a first writer never
+			   needs to write through an already locked, zero-length file. */
+			LARGE_INTEGER Size{};
+			if (FALSE == GetFileSizeEx(m_hFile, &Size))
+			{
+				strOutError = "lock size query failed with Win32 error " +
+					std::to_string(GetLastError());
+				CloseHandle(m_hFile);
+				m_hFile = INVALID_HANDLE_VALUE;
+				return false;
+			}
+			if (Size.QuadPart < 1)
+			{
+				const char_t Byte = '\0';
+				DWORD iWritten = 0u;
+				LARGE_INTEGER Begin{};
+				if (FALSE == SetFilePointerEx(
+						m_hFile, Begin, nullptr, FILE_BEGIN) ||
+					FALSE == WriteFile(
+						m_hFile, &Byte, 1u, &iWritten, nullptr) ||
+					1u != iWritten || FALSE == FlushFileBuffers(m_hFile))
+				{
+					strOutError =
+						"lock initialization failed with Win32 error " +
+						std::to_string(GetLastError());
+					CloseHandle(m_hFile);
+					m_hFile = INVALID_HANDLE_VALUE;
+					return false;
+				}
+			}
+
+			/* Omitting LOCKFILE_EXCLUSIVE_LOCK is the Windows shared/read mode.
+			   FAIL_IMMEDIATELY keeps a UI reload bounded while a publisher owns
+			   the corresponding exclusive Python msvcrt byte-range lock. */
+			if (FALSE == LockFileEx(m_hFile, LOCKFILE_FAIL_IMMEDIATELY,
+				0u, 1u, 0u, &m_Overlap))
+			{
+				strOutError =
+					"Create/Project transaction is active (Win32 " +
+					std::to_string(GetLastError()) + ")";
+				CloseHandle(m_hFile);
+				m_hFile = INVALID_HANDLE_VALUE;
+				return false;
+			}
+			return true;
+		}
+
+	private:
+		HANDLE m_hFile = INVALID_HANDLE_VALUE;
+		OVERLAPPED m_Overlap{};
+	};
+
+	struct VALTAN_CANONICAL_PRODUCT_READ_STATE final
+	{
+		SCOPED_VALTAN_PATTERN_TRANSACTION_READ_LOCK Lock;
+		std::filesystem::path ProjectRoot;
+	};
+
+	bool_t Require_NoActiveValtanPatternGeneration(
+		const std::filesystem::path& ProjectRoot,
+		std::string& strOutError)
+	{
+		const std::filesystem::path ActiveGeneration =
+			ProjectRoot / VALTAN_PATTERN_ACTIVE_GENERATION_RELATIVE;
+		std::error_code ExistsError;
+		const bool_t bExists =
+			std::filesystem::exists(ActiveGeneration, ExistsError);
+		if (ExistsError)
+		{
+			strOutError = "active-generation journal query failed: " +
+				ExistsError.message();
+			return false;
+		}
+		if (bExists)
+		{
+			strOutError =
+				"active-generation journal requires writer recovery: " +
+				ActiveGeneration.generic_string();
+			return false;
+		}
+		return true;
+	}
 
 	constexpr std::string_view CINEMATIC_ENTRY_PATTERN_ID =
 		"VALTAN_ENTRANCE_CINEMATIC";
@@ -244,6 +382,7 @@ namespace
 
 	bool_t Read_StageMotion(
 		const DATA_JSON_VALUE* pValue,
+		const uint32_t iStageDurationMs,
 		std::optional<Client::VALTAN_STAGE_MOTION_VIEW>& Out)
 	{
 		Out.reset();
@@ -257,7 +396,20 @@ namespace
 		Motion.strKind = pKind->Get_String();
 		if ("PORTAL_TARGET_RUSH" == Motion.strKind)
 		{
-			if (!Has_ExactProperties(*pValue, { "kind" }))
+			if (!Has_ExactProperties(*pValue,
+					{ "kind", "retargetDelayMs", "speedMps", "distanceM" }) ||
+				!Read_RequiredUInt32(
+					*pValue, "retargetDelayMs", Motion.iRetargetDelayMs) ||
+				!Read_RequiredFiniteFloat(
+					*pValue, "speedMps", Motion.fSpeedMps) ||
+				!Read_RequiredFiniteFloat(
+					*pValue, "distanceM", Motion.fDistance) ||
+				Motion.fSpeedMps <= 0.f || Motion.fSpeedMps > 1000.f ||
+				Motion.fDistance <= 0.f || Motion.fDistance > 1000.f ||
+				static_cast<double>(Motion.iRetargetDelayMs) +
+					static_cast<double>(Motion.fDistance) /
+					static_cast<double>(Motion.fSpeedMps) * 1000.0 >
+					static_cast<double>(iStageDurationMs) + 0.000001)
 				return false;
 		}
 		else if ("PORTAL_CROSS_ARENA" == Motion.strKind)
@@ -310,6 +462,11 @@ namespace
 					Value, "allowOverlap", DATA_JSON_TYPE::BOOLEAN);
 				const DATA_JSON_VALUE* pArenaAnchor = Required(
 					Value, "arenaAnchorPolicy", DATA_JSON_TYPE::STRING);
+				const std::string strTargeting = nullptr == pTargeting ?
+					std::string{} : pTargeting->Get_String();
+				const bool_t bPerAlivePlayer =
+					"PER_ALIVE_PLAYER" == strTargeting;
+				const bool_t bBossRelative = "BOSS_RELATIVE" == strTargeting;
 				if (!Has_ExactProperties(Value,
 						{ "trigger", "kind", "targetId", "targetingPolicy",
 						  "countPerResolvedTarget", "layout", "radiusM",
@@ -318,9 +475,10 @@ namespace
 						  "arenaRandomCount", "arenaRandomRadiusM",
 						  "arenaHeightToleranceM", "arenaAnchorPolicy" }) ||
 					nullptr == Required(Value, "trigger", DATA_JSON_TYPE::STRING) ||
+					"ENTER" != Read_String(Value, "trigger") ||
 					nullptr == Required(Value, "targetId", DATA_JSON_TYPE::STRING) ||
 					nullptr == pTargeting ||
-					"PER_ALIVE_PLAYER" != pTargeting->Get_String() ||
+					(!bPerAlivePlayer && !bBossRelative) ||
 					nullptr == pLayout ||
 					("SINGLE" != pLayout->Get_String() &&
 					 "RADIAL" != pLayout->Get_String()) ||
@@ -348,24 +506,17 @@ namespace
 						Value.Find("spawnIntervalMs")->Get_Number() >=
 						static_cast<double>(iStageDurationMs) ||
 					!Is_NonNegativeInteger(Value.Find("arenaRandomCount")) ||
-					0.0 == Value.Find("arenaRandomCount")->Get_Number() ||
 					Value.Find("arenaRandomCount")->Get_Number() > 32.0 ||
 					!Is_FiniteNumber(Value.Find("arenaRandomRadiusM")) ||
-					Value.Find("arenaRandomRadiusM")->Get_Number() <= 0.0 ||
+					Value.Find("arenaRandomRadiusM")->Get_Number() < 0.0 ||
 					Value.Find("arenaRandomRadiusM")->Get_Number() > 1000.0 ||
 					!Is_FiniteNumber(Value.Find("arenaHeightToleranceM")) ||
 					Value.Find("arenaHeightToleranceM")->Get_Number() < 0.0 ||
 					Value.Find("arenaHeightToleranceM")->Get_Number() > 1000.0 ||
 					nullptr == pArenaAnchor ||
-					"BOSS_SPAWN_POSITION" != pArenaAnchor->Get_String() ||
 					Value.Find("maximumTotalObjects")->Get_Number() <
 						Value.Find("countPerResolvedTarget")->Get_Number() +
-						Value.Find("arenaRandomCount")->Get_Number() ||
-					3.0 != Value.Find("spawnCount")->Get_Number() ||
-					1333.0 != Value.Find("spawnIntervalMs")->Get_Number() ||
-					4.0 != Value.Find("arenaRandomCount")->Get_Number() ||
-					14.0 != Value.Find("arenaRandomRadiusM")->Get_Number() ||
-					1.0 != Value.Find("arenaHeightToleranceM")->Get_Number())
+						Value.Find("arenaRandomCount")->Get_Number())
 				{
 					return false;
 				}
@@ -387,6 +538,24 @@ namespace
 				{
 					return false;
 				}
+				const bool_t bPerAlivePlayerContract = bPerAlivePlayer &&
+					"BOSS_SPAWN_POSITION" == pArenaAnchor->Get_String() &&
+					Value.Find("arenaRandomCount")->Get_Number() > 0.0 &&
+					Value.Find("arenaRandomRadiusM")->Get_Number() > 0.0 &&
+					Value.Find("arenaHeightToleranceM")->Get_Number() > 0.0;
+				const bool_t bBossRelativeContract = bBossRelative &&
+					"RADIAL" == pLayout->Get_String() && fCount >= 2.0 &&
+					fRadius > 0.0 && fAngleStep > 0.0 &&
+					fAngleStep * fCount <= 360.000001 &&
+					Value.Find("maximumTotalObjects")->Get_Number() >= fCount &&
+					1.0 == Value.Find("spawnCount")->Get_Number() &&
+					0.0 == Value.Find("spawnIntervalMs")->Get_Number() &&
+					0.0 == Value.Find("arenaRandomCount")->Get_Number() &&
+					0.0 == Value.Find("arenaRandomRadiusM")->Get_Number() &&
+					0.0 == Value.Find("arenaHeightToleranceM")->Get_Number() &&
+					"NONE" == pArenaAnchor->Get_String();
+				if (!bPerAlivePlayerContract && !bBossRelativeContract)
+					return false;
 				/* The expanded volley is validated and joined separately as a
 				   combat-object owner. It is not lossy-packed into the legacy
 				   five-field stage-action display view. */
@@ -609,6 +778,73 @@ namespace
 		return true;
 	}
 
+	bool_t Read_StageHitAuthority(
+		const DATA_JSON_VALUE& Stage,
+		const uint32_t iStageDurationMs,
+		bool_t& bOutHasAnchor,
+		std::string& strOutAnchorKind,
+		f32_t& fOutForwardOffsetM,
+		f32_t& fOutRightOffsetM,
+		f32_t& fOutYawOffsetDegrees,
+		bool_t& bOutHasActivation,
+		uint32_t& iOutStartMs,
+		uint32_t& iOutLifetimeMs)
+	{
+		bOutHasAnchor = false;
+		strOutAnchorKind = "BOSS_CURRENT";
+		fOutForwardOffsetM = 0.f;
+		fOutRightOffsetM = 0.f;
+		fOutYawOffsetDegrees = 0.f;
+		bOutHasActivation = false;
+		iOutStartMs = 0u;
+		iOutLifetimeMs = 0u;
+
+		const DATA_JSON_VALUE* pAnchor = Stage.Find("hitAnchor");
+		if (nullptr != pAnchor)
+		{
+			if (!Has_ExactProperties(*pAnchor,
+					{ "kind", "forwardOffsetM", "rightOffsetM",
+					  "yawOffsetDegrees" }) ||
+				!Read_RequiredFiniteFloat(*pAnchor, "forwardOffsetM",
+					fOutForwardOffsetM) ||
+				!Read_RequiredFiniteFloat(*pAnchor, "rightOffsetM",
+					fOutRightOffsetM) ||
+				!Read_RequiredFiniteFloat(*pAnchor, "yawOffsetDegrees",
+					fOutYawOffsetDegrees) ||
+				std::fabs(fOutForwardOffsetM) > 1000.f ||
+				std::fabs(fOutRightOffsetM) > 1000.f ||
+				std::fabs(fOutYawOffsetDegrees) > 360.f)
+			{
+				return false;
+			}
+			strOutAnchorKind = Read_String(*pAnchor, "kind");
+			if ("BOSS_CURRENT" != strOutAnchorKind &&
+				"STAGE_ORIGIN" != strOutAnchorKind)
+			{
+				return false;
+			}
+			bOutHasAnchor = true;
+		}
+
+		const DATA_JSON_VALUE* pActivation = Stage.Find("hitActivation");
+		if (nullptr == pActivation)
+			return true;
+		if (!Has_ExactProperties(*pActivation,
+				{ "kind", "startMs", "lifetimeMs", "perTargetPolicy" }) ||
+			"ACTIVE_WINDOW" != Read_String(*pActivation, "kind") ||
+			"ONCE" != Read_String(*pActivation, "perTargetPolicy") ||
+			!Read_RequiredUInt32(*pActivation, "startMs", iOutStartMs) ||
+			!Read_RequiredUInt32(*pActivation, "lifetimeMs", iOutLifetimeMs) ||
+			0u == iOutLifetimeMs ||
+			static_cast<uint64_t>(iOutStartMs) + iOutLifetimeMs >
+				iStageDurationMs)
+		{
+			return false;
+		}
+		bOutHasActivation = true;
+		return true;
+	}
+
 	bool_t Validate_SplitGameplayStageExtensions(
 		const DATA_JSON_VALUE& Stage,
 		const std::vector<Client::VALTAN_STAGE_BRANCH_VIEW>& Branches,
@@ -660,7 +896,7 @@ namespace
 		return true;
 	}
 
-	bool_t Validate_SplitCounterGroggyContract(
+	bool_t Validate_SplitCounterBranchContract(
 		const DATA_JSON_VALUE& GameplayPattern,
 		const std::string_view strPatternId,
 		std::string& strOutError)
@@ -703,18 +939,35 @@ namespace
 			return 2u == iTotal && 1u == iEnter && 1u == iExit ? 1 : -1;
 		};
 
-		for (const DATA_JSON_VALUE& Stage : pStages->Get_Array())
+		const auto& Stages = pStages->Get_Array();
+		for (std::size_t iStageIndex = 0u;
+			iStageIndex < Stages.size(); ++iStageIndex)
 		{
+			const DATA_JSON_VALUE& Stage = Stages[iStageIndex];
 			const std::string strStageId = Read_String(Stage, "stageId");
 			std::vector<Client::VALTAN_STAGE_BRANCH_VIEW> Branches;
 			if (!Read_StageBranches(Stage.Find("branches"), Branches))
 				return false;
+			const std::size_t iCounterCount = static_cast<std::size_t>(
+				std::count_if(
+					Branches.begin(), Branches.end(),
+					[](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
+					{ return "COUNTER_HIT" == Branch.strOutcome; }));
 			const auto Counter = std::find_if(
 				Branches.begin(), Branches.end(),
 				[](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
 				{ return "COUNTER_HIT" == Branch.strOutcome; });
+			const std::size_t iTimeoutCount = static_cast<std::size_t>(
+				std::count_if(
+					Branches.begin(), Branches.end(),
+					[](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
+					{ return "TIMEOUT" == Branch.strOutcome; }));
+			const auto Timeout = std::find_if(
+				Branches.begin(), Branches.end(),
+				[](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
+				{ return "TIMEOUT" == Branch.strOutcome; });
 			const int iCounterState = FlagState(Stage, "boss.flag.counterable");
-			if (Branches.end() == Counter)
+			if (0u == iCounterCount)
 			{
 				if (0 != iCounterState)
 				{
@@ -725,26 +978,53 @@ namespace
 			}
 			else
 			{
-				const DATA_JSON_VALUE* pTarget = nullptr;
-				if (Counter->strNextActionId.has_value())
-				{
-					for (const DATA_JSON_VALUE& Candidate : pStages->Get_Array())
-					{
-						if (*Counter->strNextActionId ==
-							Read_String(Candidate, "actionId"))
-						{
-							pTarget = &Candidate;
-							break;
-						}
-					}
-				}
-				if ("WINDUP" != Read_String(Stage, "stageKind") ||
-					1 != iCounterState || nullptr == pTarget ||
-					"GROGGY" != Read_String(*pTarget, "stageKind") ||
-					1 != FlagState(*pTarget, "boss.flag.groggy"))
+				if (1u != iCounterCount || 1u != iTimeoutCount ||
+					Branches.end() == Counter || Branches.end() == Timeout ||
+					!Counter->strNextActionId.has_value() ||
+					!Timeout->strNextActionId.has_value())
 				{
 					strOutError =
-						"split COUNTER_HIT requires a closed WINDUP window and same-pattern GROGGY target: " +
+						"split Counter source requires exactly one COUNTER_HIT and TIMEOUT edge: " +
+						std::string(strPatternId) + "/" + strStageId;
+					return false;
+				}
+				const DATA_JSON_VALUE* pTarget = nullptr;
+				const DATA_JSON_VALUE* pTimeoutTarget = nullptr;
+				std::size_t iTargetIndex = Stages.size();
+				std::size_t iTimeoutTargetIndex = Stages.size();
+				for (std::size_t iCandidate = 0u;
+					iCandidate < Stages.size(); ++iCandidate)
+				{
+					const DATA_JSON_VALUE& Candidate = Stages[iCandidate];
+					const std::string strActionId =
+						Read_String(Candidate, "actionId");
+					if (*Counter->strNextActionId == strActionId)
+					{
+						pTarget = &Candidate;
+						iTargetIndex = iCandidate;
+					}
+					if (*Timeout->strNextActionId == strActionId)
+					{
+						pTimeoutTarget = &Candidate;
+						iTimeoutTargetIndex = iCandidate;
+					}
+				}
+				const std::string strTargetKind = nullptr == pTarget ?
+					std::string{} : Read_String(*pTarget, "stageKind");
+				const bool bTypedSuccessTarget = "WINDUP" == strTargetKind ||
+					"GROGGY" == strTargetKind || "RECOVERY" == strTargetKind;
+				const int iTargetGroggyState = nullptr == pTarget ? -1 :
+					FlagState(*pTarget, "boss.flag.groggy");
+				if ("WINDUP" != Read_String(Stage, "stageKind") ||
+					1 != iCounterState || nullptr == pTarget ||
+					nullptr == pTimeoutTarget || !bTypedSuccessTarget ||
+					iTargetIndex <= iStageIndex ||
+					iTimeoutTargetIndex <= iStageIndex ||
+					("GROGGY" == strTargetKind && 1 != iTargetGroggyState) ||
+					("GROGGY" != strTargetKind && 0 != iTargetGroggyState))
+				{
+					strOutError =
+						"split Counter branch requires a closed WINDUP window plus forward typed success/TIMEOUT targets: " +
 						std::string(strPatternId) + "/" + strStageId;
 					return false;
 				}
@@ -884,24 +1164,22 @@ namespace
 		const DATA_JSON_VALUE* pExtents = Required(
 			*pValue, "spawnHalfExtentsM", DATA_JSON_TYPE::ARRAY);
 		if ("GHOST_PORTAL_LOOP" != Finale.strKind ||
-			"BOSS_VALTAN_GHOST" != Finale.strGhostArchetypeId ||
+			!Is_StableToken(Finale.strGhostArchetypeId) ||
 			!Read_RequiredUInt32(*pValue, "maximumActiveGhosts", Finale.iMaximumActiveGhosts) ||
-			1u != Finale.iMaximumActiveGhosts ||
-			nullptr == pPatterns || 3u != pPatterns->Get_Array().size() ||
+			Finale.iMaximumActiveGhosts < 1u || Finale.iMaximumActiveGhosts > 64u ||
+			nullptr == pPatterns || pPatterns->Get_Array().empty() ||
+			pPatterns->Get_Array().size() > 64u ||
 			nullptr == pExtents || 2u != pExtents->Get_Array().size())
 			return false;
 		std::set<std::string, std::less<>> PatternIds;
-		for (size_t iPattern = 0u; iPattern < 3u; ++iPattern)
+		Finale.GhostPatternIds.reserve(pPatterns->Get_Array().size());
+		for (const DATA_JSON_VALUE& Pattern : pPatterns->Get_Array())
 		{
-			const DATA_JSON_VALUE& Pattern = pPatterns->Get_Array()[iPattern];
 			if (!Pattern.Is_String() || !Is_StableToken(Pattern.Get_String()) ||
 				!PatternIds.insert(Pattern.Get_String()).second)
 				return false;
-			Finale.GhostPatternIds[iPattern] = Pattern.Get_String();
+			Finale.GhostPatternIds.push_back(Pattern.Get_String());
 		}
-		if (Finale.GhostPatternIds != std::array<std::string, 3u>{
-			"VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH", "VALTAN_SEQUENCE_FOUR" })
-			return false;
 		for (size_t iAxis = 0u; iAxis < 2u; ++iAxis)
 		{
 			const DATA_JSON_VALUE& Extent = pExtents->Get_Array()[iAxis];
@@ -945,6 +1223,14 @@ namespace
 		uint32_t iHitIntervalMs = 0u;
 		uint32_t iHitDelayMs = 0u;
 		std::vector<uint32_t> HitOffsetsMs;
+		bool_t bHasHitAnchor = false;
+		std::string strHitAnchorKind = "BOSS_CURRENT";
+		f32_t fHitAnchorForwardOffsetM = 0.f;
+		f32_t fHitAnchorRightOffsetM = 0.f;
+		f32_t fHitAnchorYawOffsetDegrees = 0.f;
+		bool_t bHasHitActivation = false;
+		uint32_t iHitActivationStartMs = 0u;
+		uint32_t iHitActivationLifetimeMs = 0u;
 		std::string strServerDamageProfileId;
 		std::string strPlayerResponse = "DAMAGE";
 		std::string strAttachmentSlot = "NONE";
@@ -1209,7 +1495,8 @@ namespace
 		if (!pMotion->Is_Null())
 		{
 			std::optional<Client::VALTAN_STAGE_MOTION_VIEW> Motion;
-			if (!Read_StageMotion(pMotion, Motion))
+			if (!Read_StageMotion(pMotion,
+					static_cast<uint32_t>(Read_Number(Value, "durationMs")), Motion))
 			{
 				strOutError = "master stage motion is invalid";
 				return false;
@@ -1349,7 +1636,8 @@ namespace
 				  "serverDamageProfileId", "pushRangeM", "pushMs", "knockdown",
 				  "downMs", "motion", "actions", "branches", "animation",
 				  "effectRefs", "cameraInvocations" },
-				{ "partDamagePolicy", "counterProxy" });
+				{ "partDamagePolicy", "counterProxy", "hitAnchor",
+				  "hitActivation" });
 		const bool_t bCaptureShape = Has_ExactPropertiesWithOptional(Value,
 				{ "stageId", "sequenceRole", "actionId", "stageKind",
 				  "durationMs", "hitShape", "hitOuterRadius", "hitInnerRadius",
@@ -1359,7 +1647,8 @@ namespace
 				  "pushRangeM", "pushMs", "knockdown", "downMs", "motion",
 				  "actions", "branches", "animation", "effectRefs",
 				  "cameraInvocations" },
-				{ "partDamagePolicy", "counterProxy" });
+				{ "partDamagePolicy", "counterProxy", "hitAnchor",
+				  "hitActivation" });
 		if (!bBaseShape && !bCaptureShape)
 		{
 			strOutError = "master stage has unexpected properties";
@@ -1473,13 +1762,20 @@ namespace
 			!Read_RequiredFiniteFloat(Value, "pushRangeM", Out.fPushRangeM) ||
 			!Read_RequiredUInt32(Value, "pushMs", Out.iPushMs) ||
 			!Read_RequiredUInt32(Value, "downMs", Out.iDownMs) ||
-			!Read_StageMotion(Value.Find("motion"), Out.Motion) ||
+			!Read_StageMotion(
+				Value.Find("motion"), Out.iDurationMs, Out.Motion) ||
 			!Read_StageActions(
 				Value.Find("actions"), Out.iDurationMs, Out.Actions) ||
 			!Read_StageBranches(pBranches, Out.Branches) ||
 			!Has_ValidNavigationBlockedCapture(Out.Branches, Out.strPlayerResponse) ||
 			!Read_StageGameplayExtensions(Value, Out.strPartDamagePolicy,
 				Out.CounterProxy) ||
+			!Read_StageHitAuthority(
+				Value, Out.iDurationMs, Out.bHasHitAnchor,
+				Out.strHitAnchorKind, Out.fHitAnchorForwardOffsetM,
+				Out.fHitAnchorRightOffsetM, Out.fHitAnchorYawOffsetDegrees,
+				Out.bHasHitActivation, Out.iHitActivationStartMs,
+				Out.iHitActivationLifetimeMs) ||
 			!Read_MasterCameraInvocations(
 				Value.Find("cameraInvocations"), Out.iDurationMs,
 				Out.CameraInvocations))
@@ -1487,8 +1783,65 @@ namespace
 			strOutError = "master stage gameplay values are invalid";
 			return false;
 		}
+		const bool_t bHasExplicitOffsets = !Out.HitOffsetsMs.empty();
+		const bool_t bValidPulse = !Out.bHasHitActivation &&
+			((bHasExplicitOffsets && Out.HitOffsetsMs.size() == Out.iHitCount &&
+			  0u == Out.iHitIntervalMs && 0u == Out.iHitDelayMs &&
+			  Out.HitOffsetsMs.back() < Out.iDurationMs) ||
+			 (!bHasExplicitOffsets && Out.iHitCount > 0u &&
+			  (1u == Out.iHitCount ? 0u == Out.iHitIntervalMs :
+				Out.iHitIntervalMs > 0u) &&
+			  static_cast<uint64_t>(Out.iHitDelayMs) +
+				static_cast<uint64_t>(Out.iHitCount - 1u) *
+					Out.iHitIntervalMs < Out.iDurationMs));
+		const bool_t bValidActive = Out.bHasHitActivation &&
+			!bHasExplicitOffsets && 0u == Out.iHitCount &&
+			0u == Out.iHitIntervalMs && 0u == Out.iHitDelayMs;
+		const bool_t bEmptyHit = "NONE" == Out.strHitShape &&
+			!Out.bHasHitAnchor && !Out.bHasHitActivation &&
+			!bHasExplicitOffsets && 0u == Out.iHitCount &&
+			0u == Out.iHitIntervalMs && 0u == Out.iHitDelayMs;
+		if (!bEmptyHit && !bValidPulse && !bValidActive)
+		{
+			strOutError = "master stage hit authority/schedule is invalid";
+			return false;
+		}
 		Out.bKnockdown = Required(
 			Value, "knockdown", DATA_JSON_TYPE::BOOLEAN)->Get_Boolean();
+		if (Out.Motion.has_value() &&
+			"PORTAL_TARGET_RUSH" == Out.Motion->strKind)
+		{
+			const VALTAN_STAGE_MOTION_VIEW& Motion = *Out.Motion;
+			const double fTravelEndMs =
+				static_cast<double>(Motion.iRetargetDelayMs) +
+				static_cast<double>(Motion.fDistance) /
+				static_cast<double>(Motion.fSpeedMps) * 1000.0;
+			uint32_t iExpectedOffsetMs = Motion.iRetargetDelayMs;
+			if (Out.HitOffsetsMs.empty())
+			{
+				strOutError =
+					"portal target-rush requires explicit swept-hit offsets";
+				return false;
+			}
+			for (const uint32_t iOffsetMs : Out.HitOffsetsMs)
+			{
+				if (iOffsetMs != iExpectedOffsetMs ||
+					static_cast<double>(iOffsetMs) >= fTravelEndMs)
+				{
+					strOutError =
+						"portal target-rush hit offsets must cover only its 50 ms travel samples";
+					return false;
+				}
+				iExpectedOffsetMs += 50u;
+			}
+			if (static_cast<double>(iExpectedOffsetMs) + 0.000001 <
+				fTravelEndMs)
+			{
+				strOutError =
+					"portal target-rush hit offsets do not cover its full travel";
+				return false;
+			}
+		}
 		std::set<std::string, std::less<>> OccurrenceIds;
 		if (nullptr != pOccurrences)
 		{
@@ -1662,7 +2015,7 @@ namespace
 			!Is_StableToken(pPatternId->Get_String()) ||
 			pDisplay->Get_String().empty() || !Is_StableToken(pAction->Get_String()) ||
 			!Is_NonNegativeInteger(pSourceSequence) ||
-			0.0 == pSourceSequence->Get_Number() || nullptr == pStages ||
+			4096.0 < pSourceSequence->Get_Number() || nullptr == pStages ||
 			pStages->Get_Array().empty())
 		{
 			strOutError = "master pattern identity is invalid";
@@ -1736,7 +2089,7 @@ namespace
 				!Is_NonNegativeInteger(Source.Find("sourceActionId")) ||
 				0.0 == Source.Find("sourceActionId")->Get_Number() ||
 				!Is_NonNegativeInteger(Source.Find("sequenceIndex")) ||
-				0.0 == Source.Find("sequenceIndex")->Get_Number() ||
+				4096.0 < Source.Find("sequenceIndex")->Get_Number() ||
 				nullptr == Required(Source, "role", DATA_JSON_TYPE::STRING))
 			{
 				strOutError = "master presentation source row is invalid";
@@ -2591,6 +2944,8 @@ namespace
 			return false;
 		return !Left.has_value() ||
 			(Left->strKind == Right->strKind &&
+			 Left->iRetargetDelayMs == Right->iRetargetDelayMs &&
+			 Left->fSpeedMps == Right->fSpeedMps &&
 			 Left->fDistance == Right->fDistance &&
 			 Left->iCornerIndex == Right->iCornerIndex &&
 			 Left->HalfExtentsM == Right->HalfExtentsM);
@@ -2673,6 +3028,17 @@ namespace
 			Product.iHitIntervalMs == Master.iHitIntervalMs &&
 			Product.iHitDelayMs == Master.iHitDelayMs &&
 			Product.HitOffsetsMs == Master.HitOffsetsMs &&
+			Product.bHasHitAnchor == Master.bHasHitAnchor &&
+			Product.strHitAnchorKind == Master.strHitAnchorKind &&
+			Product.fHitAnchorForwardOffsetM ==
+				Master.fHitAnchorForwardOffsetM &&
+			Product.fHitAnchorRightOffsetM == Master.fHitAnchorRightOffsetM &&
+			Product.fHitAnchorYawOffsetDegrees ==
+				Master.fHitAnchorYawOffsetDegrees &&
+			Product.bHasHitActivation == Master.bHasHitActivation &&
+			Product.iHitActivationStartMs == Master.iHitActivationStartMs &&
+			Product.iHitActivationLifetimeMs ==
+				Master.iHitActivationLifetimeMs &&
 			Product.strServerDamageProfileId ==
 				Master.strServerDamageProfileId &&
 			Product.strPlayerResponse == Master.strPlayerResponse &&
@@ -3256,14 +3622,19 @@ namespace
 			return true;
 		}
 
-		const bool_t bBaseHit = Has_ExactProperties(Hit,
-				{ "shape", "schedule", "serverDamageProfileId", "pushRangeM",
-				  "pushMs", "knockdown", "downMs" });
-		const bool_t bCaptureHit = Has_ExactProperties(Hit,
-				{ "shape", "schedule", "serverDamageProfileId", "pushRangeM",
-				  "pushMs", "knockdown", "downMs", "playerResponse",
-				  "attachmentSlot" });
-		if (!bBaseHit && !bCaptureHit)
+		const bool_t bCaptureHit = nullptr != Hit.Find("playerResponse") ||
+			nullptr != Hit.Find("attachmentSlot");
+		const DATA_JSON_VALUE* pSchedule = Hit.Find("schedule");
+		const DATA_JSON_VALUE* pActivation = Hit.Find("activation");
+		const DATA_JSON_VALUE* pAnchor = Hit.Find("anchor");
+		if (!Has_ExactPropertiesWithOptional(Hit,
+				{ "shape", "serverDamageProfileId", "pushRangeM", "pushMs",
+				  "knockdown", "downMs" },
+				{ "schedule", "activation", "anchor", "playerResponse",
+				  "attachmentSlot" }) ||
+			((nullptr == pSchedule) == (nullptr == pActivation)) ||
+			((nullptr == Hit.Find("playerResponse")) !=
+			 (nullptr == Hit.Find("attachmentSlot"))))
 		{
 			strOutError = "split gameplay hit has unexpected properties";
 			return false;
@@ -3302,11 +3673,50 @@ namespace
 			return false;
 		}
 
-		const DATA_JSON_VALUE* pSchedule = Required(
-			Hit, "schedule", DATA_JSON_TYPE::OBJECT);
+		if (nullptr != pAnchor)
+		{
+			f32_t fForward = 0.f;
+			f32_t fRight = 0.f;
+			f32_t fYaw = 0.f;
+			const std::string strAnchorKind = Read_String(*pAnchor, "kind");
+			if (!Has_ExactProperties(*pAnchor,
+					{ "kind", "forwardOffsetM", "rightOffsetM",
+					  "yawOffsetDegrees" }) ||
+				("BOSS_CURRENT" != strAnchorKind &&
+				 "STAGE_ORIGIN" != strAnchorKind) ||
+				!Read_RequiredFiniteFloat(*pAnchor, "forwardOffsetM", fForward) ||
+				!Read_RequiredFiniteFloat(*pAnchor, "rightOffsetM", fRight) ||
+				!Read_RequiredFiniteFloat(*pAnchor, "yawOffsetDegrees", fYaw) ||
+				std::fabs(fForward) > 1000.f || std::fabs(fRight) > 1000.f ||
+				std::fabs(fYaw) > 360.f)
+			{
+				strOutError = "split gameplay hit anchor is invalid";
+				return false;
+			}
+			OutStage.emplace("hitAnchor", *pAnchor);
+		}
+		if (nullptr != pActivation)
+		{
+			if (!Has_ExactProperties(*pActivation,
+					{ "kind", "startMs", "lifetimeMs", "perTargetPolicy" }) ||
+				"ACTIVE_WINDOW" != Read_String(*pActivation, "kind") ||
+				"ONCE" != Read_String(*pActivation, "perTargetPolicy") ||
+				!Is_NonNegativeInteger(pActivation->Find("startMs")) ||
+				!Is_NonNegativeInteger(pActivation->Find("lifetimeMs")) ||
+				0.0 == pActivation->Find("lifetimeMs")->Get_Number())
+			{
+				strOutError = "split gameplay hit activation is invalid";
+				return false;
+			}
+			OutStage.emplace("hitCount", DATA_JSON_VALUE::Number(0));
+			OutStage.emplace("hitIntervalMs", DATA_JSON_VALUE::Number(0));
+			OutStage.emplace("hitDelayMs", DATA_JSON_VALUE::Number(0));
+			OutStage.emplace("hitOffsetsMs", DATA_JSON_VALUE::Array({}));
+			OutStage.emplace("hitActivation", *pActivation);
+		}
 		const std::string strSchedule = nullptr == pSchedule ? std::string{} :
 			Read_String(*pSchedule, "kind");
-		if ("INTERVAL" == strSchedule && Has_ExactProperties(*pSchedule,
+		if (nullptr != pSchedule && "INTERVAL" == strSchedule && Has_ExactProperties(*pSchedule,
 				{ "kind", "count", "firstOffsetMs", "intervalMs" }) &&
 			Is_NonNegativeInteger(pSchedule->Find("count")) &&
 			Is_NonNegativeInteger(pSchedule->Find("firstOffsetMs")) &&
@@ -3317,7 +3727,7 @@ namespace
 			OutStage.emplace("hitDelayMs", *pSchedule->Find("firstOffsetMs"));
 			OutStage.emplace("hitOffsetsMs", DATA_JSON_VALUE::Array({}));
 		}
-		else if ("EXPLICIT_OFFSETS" == strSchedule &&
+		else if (nullptr != pSchedule && "EXPLICIT_OFFSETS" == strSchedule &&
 			Has_ExactProperties(*pSchedule, { "kind", "offsetsMs" }))
 		{
 			const DATA_JSON_VALUE* pOffsets = Required(
@@ -3345,7 +3755,7 @@ namespace
 			OutStage.emplace("hitDelayMs", DATA_JSON_VALUE::Number(0));
 			OutStage.emplace("hitOffsetsMs", *pOffsets);
 		}
-		else
+		else if (nullptr != pSchedule)
 		{
 			strOutError = "split gameplay hit schedule is invalid";
 			return false;
@@ -3870,6 +4280,7 @@ namespace
 
 	bool_t Build_SplitEventProjection(
 		const DATA_JSON_VALUE& Event,
+		const uint32_t iStageDurationMs,
 		DATA_JSON_VALUE* pOutAction,
 		std::string& strOutSpawnArchetypeId,
 		bool_t& bOutWorldEvent,
@@ -3904,6 +4315,73 @@ namespace
 				Read_String(Event, "flagId")));
 			Action.emplace("value", DATA_JSON_VALUE::Number(
 				pEnabled->Get_Boolean() ? 1.0 : 0.0));
+		}
+		else if ("SET_STAGGER_GAUGE" == strKind)
+		{
+			const DATA_JSON_VALUE* pValue = Event.Find("value");
+			if (!Has_ExactProperties(Event,
+					{ "eventId", "trigger", "kind", "value" }) ||
+				("ENTER" != strTrigger && "EXIT" != strTrigger) ||
+				!Is_NonNegativeInteger(pValue) ||
+				pValue->Get_Number() > 100000.0 ||
+				(("ENTER" == strTrigger) !=
+				 (pValue->Get_Number() > 0.0)))
+			{
+				strOutError = "split gameplay SET_STAGGER_GAUGE event is invalid";
+				return false;
+			}
+			Action.emplace("targetId",
+				DATA_JSON_VALUE::String("boss.gauge.stagger"));
+			Action.emplace("value", *pValue);
+		}
+		else if ("SET_PLAYER_BIND" == strKind)
+		{
+			const DATA_JSON_VALUE* pHeightM = Event.Find("heightM");
+			const DATA_JSON_VALUE* pDurationMs = Event.Find("durationMs");
+			if (!Has_ExactProperties(Event,
+					{ "eventId", "trigger", "kind", "heightM", "durationMs" }) ||
+				("ENTER" != strTrigger && "EXIT" != strTrigger) ||
+				!Is_FiniteNumber(pHeightM) ||
+				!Is_NonNegativeInteger(pDurationMs) ||
+				(("ENTER" == strTrigger &&
+				  (10.0 != pHeightM->Get_Number() ||
+				   pDurationMs->Get_Number() != iStageDurationMs ||
+				   pDurationMs->Get_Number() < 100.0 ||
+				   pDurationMs->Get_Number() > 120000.0)) ||
+				 ("EXIT" == strTrigger &&
+				  (0.0 != pHeightM->Get_Number() ||
+				   0.0 != pDurationMs->Get_Number()))))
+			{
+				strOutError = "split gameplay SET_PLAYER_BIND event is invalid";
+				return false;
+			}
+			Action.emplace("targetId",
+				DATA_JSON_VALUE::String("player.status.bind"));
+			Action.emplace("value", DATA_JSON_VALUE::Number(
+				pHeightM->Get_Number() * 1000.0));
+			Action.emplace("durationMs", *pDurationMs);
+		}
+		else if ("SET_PLAYER_SILENCE" == strKind)
+		{
+			const DATA_JSON_VALUE* pDurationMs = Event.Find("durationMs");
+			if (!Has_ExactProperties(Event,
+					{ "eventId", "trigger", "kind", "durationMs" }) ||
+				("ENTER" != strTrigger && "EXIT" != strTrigger) ||
+				!Is_NonNegativeInteger(pDurationMs) ||
+				(("ENTER" == strTrigger &&
+				  (pDurationMs->Get_Number() != iStageDurationMs ||
+				   pDurationMs->Get_Number() < 100.0 ||
+				   pDurationMs->Get_Number() > 120000.0)) ||
+				 ("EXIT" == strTrigger && 0.0 != pDurationMs->Get_Number())))
+			{
+				strOutError = "split gameplay SET_PLAYER_SILENCE event is invalid";
+				return false;
+			}
+			Action.emplace("targetId",
+				DATA_JSON_VALUE::String("player.status.silence"));
+			Action.emplace("value", DATA_JSON_VALUE::Number(
+				"ENTER" == strTrigger ? 1.0 : 0.0));
+			Action.emplace("durationMs", *pDurationMs);
 		}
 		else if ("SET_GAMEPLAY_PHASE" == strKind)
 		{
@@ -4022,6 +4500,11 @@ namespace
 				Event, "arenaRandom", DATA_JSON_TYPE::OBJECT);
 			const DATA_JSON_VALUE* pAllowOverlap = Required(
 				Event, "allowOverlap", DATA_JSON_TYPE::BOOLEAN);
+			const std::string strVolleyPolicy =
+				Read_String(Event, "volleyPolicy");
+			const bool_t bPerAlivePlayer =
+				"PER_ALIVE_PLAYER" == strVolleyPolicy;
+			const bool_t bBossRelative = "BOSS_RELATIVE" == strVolleyPolicy;
 			if (!Has_ExactProperties(Event,
 					{ "eventId", "trigger", "kind", "combatObjectArchetypeId",
 					  "volleyPolicy", "countPerResolvedTarget", "layout",
@@ -4030,7 +4513,7 @@ namespace
 				"ENTER" != strTrigger ||
 				!Is_StableToken(Read_String(
 					Event, "combatObjectArchetypeId")) ||
-				"PER_ALIVE_PLAYER" != Read_String(Event, "volleyPolicy") ||
+				(!bPerAlivePlayer && !bBossRelative) ||
 				!Is_NonNegativeInteger(Event.Find("countPerResolvedTarget")) ||
 				0.0 == Event.Find("countPerResolvedTarget")->Get_Number() ||
 				Event.Find("countPerResolvedTarget")->Get_Number() > 8.0 ||
@@ -4054,15 +4537,24 @@ namespace
 				Is_FiniteNumber(pLayout->Find("radiusM")) &&
 				Is_FiniteNumber(pLayout->Find("startAngleDegrees")) &&
 				Is_FiniteNumber(pLayout->Find("angleStepDegrees"));
+			const bool_t bBossRadial = "RADIAL_AROUND_BOSS" == strLayoutKind &&
+				Has_ExactProperties(*pLayout,
+					{ "kind", "radiusM", "startAngleDegrees",
+					  "angleStepDegrees", "mappingBasis" }) &&
+				"PROJECT_TUNED" == Read_String(*pLayout, "mappingBasis") &&
+				Is_FiniteNumber(pLayout->Find("radiusM")) &&
+				Is_FiniteNumber(pLayout->Find("startAngleDegrees")) &&
+				Is_FiniteNumber(pLayout->Find("angleStepDegrees"));
 			const double fCount =
 				Event.Find("countPerResolvedTarget")->Get_Number();
-			if (!bTargetCenter && !bRadial)
+			if ((bPerAlivePlayer && !bTargetCenter && !bRadial) ||
+				(bBossRelative && !bBossRadial))
 			{
 				strOutError = "split gameplay combat-object volley layout is invalid";
 				return false;
 			}
-			if ((bTargetCenter && 1.0 != fCount) ||
-				(bRadial && (fCount < 2.0 ||
+			if ((bPerAlivePlayer && bTargetCenter && 1.0 != fCount) ||
+				((bRadial || bBossRadial) && (fCount < 2.0 ||
 					pLayout->Find("radiusM")->Get_Number() <= 0.0 ||
 					pLayout->Find("angleStepDegrees")->Get_Number() <= 0.0 ||
 					pLayout->Find("angleStepDegrees")->Get_Number() * fCount >
@@ -4090,29 +4582,33 @@ namespace
 					"split gameplay combat-object volley spawn schedule is invalid";
 				return false;
 			}
-			if (!Has_ExactProperties(*pArenaRandom,
+			const double fArenaRandomCount =
+				pArenaRandom->Is_Object() && nullptr != pArenaRandom->Find("count") &&
+				Is_NonNegativeInteger(pArenaRandom->Find("count")) ?
+				pArenaRandom->Find("count")->Get_Number() : 0.0;
+			const bool_t bPerAliveArenaContract = bPerAlivePlayer &&
+				Has_ExactProperties(*pArenaRandom,
 					{ "kind", "anchor", "count", "radiusM",
-					  "heightToleranceM" }) ||
-				"RANDOM_NAVIGABLE_CIRCLE" !=
-					Read_String(*pArenaRandom, "kind") ||
-				"BOSS_SPAWN_POSITION" != Read_String(*pArenaRandom, "anchor") ||
-				!Is_NonNegativeInteger(pArenaRandom->Find("count")) ||
-				0.0 == pArenaRandom->Find("count")->Get_Number() ||
-				pArenaRandom->Find("count")->Get_Number() > 32.0 ||
-				!Is_FiniteNumber(pArenaRandom->Find("radiusM")) ||
-				pArenaRandom->Find("radiusM")->Get_Number() <= 0.0 ||
-				pArenaRandom->Find("radiusM")->Get_Number() > 1000.0 ||
-				!Is_FiniteNumber(pArenaRandom->Find("heightToleranceM")) ||
-				pArenaRandom->Find("heightToleranceM")->Get_Number() < 0.0 ||
-				pArenaRandom->Find("heightToleranceM")->Get_Number() > 1000.0 ||
-				Event.Find("maximumTotalObjects")->Get_Number() <
+					  "heightToleranceM" }) &&
+				"RANDOM_NAVIGABLE_CIRCLE" ==
+					Read_String(*pArenaRandom, "kind") &&
+				"BOSS_SPAWN_POSITION" == Read_String(*pArenaRandom, "anchor") &&
+				Is_NonNegativeInteger(pArenaRandom->Find("count")) &&
+				Is_FiniteNumber(pArenaRandom->Find("radiusM")) &&
+				Is_FiniteNumber(pArenaRandom->Find("heightToleranceM")) &&
+				fArenaRandomCount > 0.0 &&
+				pArenaRandom->Find("radiusM")->Get_Number() > 0.0 &&
+				pArenaRandom->Find("heightToleranceM")->Get_Number() > 0.0 &&
+				Event.Find("maximumTotalObjects")->Get_Number() >=
 					Event.Find("countPerResolvedTarget")->Get_Number() +
-					pArenaRandom->Find("count")->Get_Number() ||
-				3.0 != pSpawnSchedule->Find("count")->Get_Number() ||
-				1333.0 != pSpawnSchedule->Find("intervalMs")->Get_Number() ||
-				4.0 != pArenaRandom->Find("count")->Get_Number() ||
-				14.0 != pArenaRandom->Find("radiusM")->Get_Number() ||
-				1.0 != pArenaRandom->Find("heightToleranceM")->Get_Number())
+						fArenaRandomCount;
+			const bool_t bBossRelativeContract = bBossRelative &&
+				Has_ExactProperties(*pArenaRandom, { "kind" }) &&
+				"NONE" == Read_String(*pArenaRandom, "kind") &&
+				1.0 == pSpawnSchedule->Find("count")->Get_Number() &&
+				0.0 == pSpawnSchedule->Find("intervalMs")->Get_Number() &&
+				Event.Find("maximumTotalObjects")->Get_Number() >= fCount;
+			if (!bPerAliveArenaContract && !bBossRelativeContract)
 			{
 				strOutError =
 					"split gameplay combat-object volley arena random contract is invalid";
@@ -4505,7 +5001,8 @@ namespace
 					DATA_JSON_VALUE Action;
 					std::string strSpawnArchetypeId;
 					bool_t bWorldEvent = false;
-					if (!Build_SplitEventProjection(Event, &Action,
+					if (!Build_SplitEventProjection(Event,
+							static_cast<uint32_t>(pDuration->Get_Number()), &Action,
 							strSpawnArchetypeId, bWorldEvent, strOutError))
 						return false;
 					if (!Action.Is_Null())
@@ -4692,7 +5189,7 @@ namespace
 				LegacyStages.push_back(
 					DATA_JSON_VALUE::Object(std::move(LegacyStage)));
 			}
-			if (!Validate_SplitCounterGroggyContract(
+			if (!Validate_SplitCounterBranchContract(
 					GameplayPattern, strPatternId, strOutError))
 			{
 				return false;
@@ -5006,7 +5503,24 @@ namespace
 				for (const DATA_JSON_VALUE& Cue : Cues.Get_Array())
 				{
 					const std::string Anchor = Read_String(Cue, "anchorSlotId");
-					if (Anchor.starts_with("arena.center"))
+					if (Anchor.starts_with("pattern.target."))
+					{
+						const bool_t bLockedTarget =
+							Pattern.strTargetPolicy == "LOCK_NEAREST_ON_START" ||
+							Pattern.strTargetPolicy == "LOCK_RANDOM_ALIVE_ON_START" ||
+							Pattern.strTargetPolicy ==
+								"LOCK_RANDOM_ALIVE_BEHIND_ON_START";
+						if (Anchor != "pattern.target.snapshot" ||
+							Read_String(Cue, "followPolicy") != "snapshot" ||
+							!bLockedTarget)
+						{
+							strOutError =
+								"split target cue requires its exact snapshot/locked-target contract: " +
+								Pattern.strPatternId + "/" + Stage.strStageId;
+							return false;
+						}
+					}
+					else if (Anchor.starts_with("arena.center"))
 					{
 						const bool_t bFacing = "arena.center.facing" == Anchor;
 						if ((!bFacing && "arena.center" != Anchor) ||
@@ -5112,6 +5626,16 @@ namespace
 			Stage.iHitIntervalMs = Source.iHitIntervalMs;
 			Stage.iHitDelayMs = Source.iHitDelayMs;
 			Stage.HitOffsetsMs = Source.HitOffsetsMs;
+			Stage.bHasHitAnchor = Source.bHasHitAnchor;
+			Stage.strHitAnchorKind = Source.strHitAnchorKind;
+			Stage.fHitAnchorForwardOffsetM = Source.fHitAnchorForwardOffsetM;
+			Stage.fHitAnchorRightOffsetM = Source.fHitAnchorRightOffsetM;
+			Stage.fHitAnchorYawOffsetDegrees =
+				Source.fHitAnchorYawOffsetDegrees;
+			Stage.bHasHitActivation = Source.bHasHitActivation;
+			Stage.iHitActivationStartMs = Source.iHitActivationStartMs;
+			Stage.iHitActivationLifetimeMs =
+				Source.iHitActivationLifetimeMs;
 			Stage.strServerDamageProfileId = Source.strServerDamageProfileId;
 			Stage.strPlayerResponse = Source.strPlayerResponse;
 			Stage.strAttachmentSlot = Source.strAttachmentSlot;
@@ -5860,6 +6384,64 @@ namespace
 	}
 }
 
+Client::CValtanCanonicalProductReadAdmission::
+	~CValtanCanonicalProductReadAdmission()
+{
+	delete static_cast<VALTAN_CANONICAL_PRODUCT_READ_STATE*>(m_pState);
+	m_pState = nullptr;
+}
+
+bool_t Client::CValtanCanonicalProductReadAdmission::Acquire(
+	std::string& strOutStatus)
+{
+	if (nullptr != m_pState)
+	{
+		strOutStatus = "Valtan canonical Product read admission is already held.";
+		return false;
+	}
+	std::unique_ptr<VALTAN_CANONICAL_PRODUCT_READ_STATE> State =
+		std::make_unique<VALTAN_CANONICAL_PRODUCT_READ_STATE>();
+	State->ProjectRoot = CProjectDataRoot::Get().parent_path();
+	std::string AdmissionError;
+	if (!State->Lock.Try_Acquire(State->ProjectRoot, AdmissionError) ||
+		!Require_NoActiveValtanPatternGeneration(
+			State->ProjectRoot, AdmissionError))
+	{
+		strOutStatus =
+			"Valtan canonical Product read admission failed: " +
+			AdmissionError;
+		return false;
+	}
+	m_pState = State.release();
+	strOutStatus =
+		"Valtan canonical Product generation admitted for a shared read.";
+	return true;
+}
+
+bool_t Client::CValtanCanonicalProductReadAdmission::Validate_StillCurrent(
+	std::string& strOutStatus) const
+{
+	const auto* const pState =
+		static_cast<const VALTAN_CANONICAL_PRODUCT_READ_STATE*>(m_pState);
+	if (nullptr == pState)
+	{
+		strOutStatus = "Valtan canonical Product read admission is not held.";
+		return false;
+	}
+	std::string AdmissionError;
+	if (!Require_NoActiveValtanPatternGeneration(
+			pState->ProjectRoot, AdmissionError))
+	{
+		strOutStatus =
+			"Valtan canonical Product read admission became stale: " +
+			AdmissionError;
+		return false;
+	}
+	strOutStatus =
+		"Valtan canonical Product generation remained stable through the read.";
+	return true;
+}
+
 size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_StageCount() const
 {
 	size_t iCount = 0u;
@@ -6287,6 +6869,7 @@ bool_t Client::CValtanPatternTree::Build_PreviewStagePath(
 	std::set<std::string, std::less<>> VisitedActions;
 	size_t iStage = 0u;
 	bool_t bWallContactTaken = false;
+	bool_t bCounterHitTaken = false;
 	for (;;)
 	{
 		const VALTAN_STAGE_VIEW& Stage = Pattern.Stages[iStage];
@@ -6320,6 +6903,16 @@ bool_t Client::CValtanPatternTree::Build_PreviewStagePath(
 			}
 			return true;
 		};
+		if (VALTAN_PATTERN_PREVIEW_PATH::COUNTER_GROGGY == ePath)
+		{
+			if (!SelectOutcome("COUNTER_HIT"))
+			{
+				strOutStatus =
+					"Valtan preview path has ambiguous COUNTER_HIT edges.";
+				return false;
+			}
+			bCounterHitTaken = bCounterHitTaken || nullptr != pSelected;
+		}
 
 		if (VALTAN_PATTERN_PREVIEW_PATH::PART_BREAK == ePath &&
 			bWallContactTaken)
@@ -6332,7 +6925,8 @@ bool_t Client::CValtanPatternTree::Build_PreviewStagePath(
 			}
 		}
 		if (nullptr == pSelected &&
-			VALTAN_PATTERN_PREVIEW_PATH::NORMAL != ePath &&
+			(VALTAN_PATTERN_PREVIEW_PATH::WALL_GROGGY == ePath ||
+			 VALTAN_PATTERN_PREVIEW_PATH::PART_BREAK == ePath) &&
 			!bWallContactTaken)
 		{
 			if (!SelectOutcome("WALL_CONTACT"))
@@ -6367,6 +6961,13 @@ bool_t Client::CValtanPatternTree::Build_PreviewStagePath(
 		iStage = Next->second;
 	}
 
+	if (VALTAN_PATTERN_PREVIEW_PATH::COUNTER_GROGGY == ePath &&
+		!bCounterHitTaken)
+	{
+		strOutStatus =
+			"Valtan Counter/Groggy preview path has no COUNTER_HIT branch.";
+		return false;
+	}
 	OutStages = std::move(StagedPath);
 	strOutStatus = "Valtan preview path resolved " +
 		std::to_string(OutStages.size()) + " stages.";
@@ -6377,14 +6978,52 @@ bool_t Client::CValtanPatternTree::Load(
 	VALTAN_PATTERN_TREE_VIEW& OutView,
 	std::string& strOutStatus)
 {
-	return Load_FromAuthoringPaths(
+	CValtanCanonicalProductReadAdmission Admission;
+	if (!Admission.Acquire(strOutStatus))
+		return false;
+	return Load_WhileAdmitted(Admission, OutView, strOutStatus);
+}
+
+bool_t Client::CValtanPatternTree::Load_WhileAdmitted(
+	const CValtanCanonicalProductReadAdmission& Admission,
+	VALTAN_PATTERN_TREE_VIEW& OutView,
+	std::string& strOutStatus)
+{
+	std::string AdmissionStatus;
+	if (!Admission.Is_Acquired() ||
+		!Admission.Validate_StillCurrent(AdmissionStatus))
+	{
+		strOutStatus =
+			"Valtan canonical graph read admission failed: " +
+			AdmissionStatus;
+		return false;
+	}
+
+	VALTAN_PATTERN_TREE_VIEW StagedView;
+	if (!Load_FromAuthoringPaths(
 		CProjectDataRoot::Resolve(
 			std::filesystem::path(L"Valtan") / L"Valtan.gameplay.json"),
 		CProjectDataRoot::Resolve(
 			std::filesystem::path(L"Valtan") / L"Valtan.presentation.json"),
-		OutView,
+		StagedView,
 		strOutStatus,
-		VALTAN_PATTERN_TREE_LOAD_POLICY::REQUIRE_ACTIVE_PRODUCT_PARITY);
+		VALTAN_PATTERN_TREE_LOAD_POLICY::REQUIRE_ACTIVE_PRODUCT_PARITY))
+	{
+		return false;
+	}
+	/* The post-join check makes a non-cooperating journal writer visible while
+	   preserving the caller's previously admitted view. Cooperating writers
+	   cannot reach this point because the shared byte-range lock is still held. */
+	if (!Admission.Validate_StillCurrent(AdmissionStatus))
+	{
+		strOutStatus =
+			"Valtan canonical graph read admission failed: " +
+			AdmissionStatus;
+		return false;
+	}
+
+	OutView = std::move(StagedView);
+	return true;
 }
 
 bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
@@ -6476,7 +7115,7 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 	}
 
 	VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
-	if (!CValtanPatternEffectCueDocument::Load_Source(CueDocument, Error))
+	if (!CValtanPatternEffectCueDocument::Load_ReadOnlyProduct(CueDocument, Error))
 	{
 		strOutStatus = "Valtan Product Effect cue load failed: " + Error;
 		return false;
@@ -6508,16 +7147,19 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		return false;
 	}
 	const DATA_JSON_VALUE* pValtanBoss = nullptr;
+	std::set<std::string, std::less<>> BossArchetypeIds;
 	for (const DATA_JSON_VALUE& Boss : pBosses->Get_Array())
 	{
-		if (Boss.Is_Object() &&
-			Read_String(Boss, "archetypeId") == "BOSS_VALTAN")
+		const std::string strBossArchetypeId = Boss.Is_Object() ?
+			Read_String(Boss, "archetypeId") : std::string{};
+		if (!Is_StableToken(strBossArchetypeId) ||
+			!BossArchetypeIds.insert(strBossArchetypeId).second)
 		{
-			if (nullptr != pValtanBoss)
-			{
-				strOutStatus = "BossCatalog contains duplicate BOSS_VALTAN rows.";
-				return false;
-			}
+			strOutStatus = "BossCatalog archetype identity is invalid or duplicated.";
+			return false;
+		}
+		if (strBossArchetypeId == "BOSS_VALTAN")
+		{
 			pValtanBoss = &Boss;
 		}
 	}
@@ -6591,10 +7233,26 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			return false;
 		}
 		const DATA_JSON_VALUE* pHits = Object.Find("hits");
-		if (nullptr == pHits || !pHits->Is_Array() || pHits->Get_Array().empty())
+		const DATA_JSON_VALUE* pPresentationEvents =
+			Object.Find("presentationEvents");
+		if (nullptr == pHits || !pHits->Is_Array() ||
+			(nullptr != pPresentationEvents && !pPresentationEvents->Is_Array()))
 		{
 			strOutStatus =
-				"Valtan combat-object has no Server hit rows: " + strArchetypeId;
+				"Valtan combat-object has no Server hit or presentation rows: " +
+				strArchetypeId;
+			return false;
+		}
+		const size_t iPresentationEventCount =
+			nullptr == pPresentationEvents ? 0u :
+			pPresentationEvents->Get_Array().size();
+		const size_t iEventRowCount =
+			pHits->Get_Array().size() + iPresentationEventCount;
+		if (0u == iEventRowCount || iEventRowCount > 16u)
+		{
+			strOutStatus =
+				"Valtan combat-object Server hit/presentation row count is invalid: " +
+				strArchetypeId;
 			return false;
 		}
 		for (const DATA_JSON_VALUE& Hit : pHits->Get_Array())
@@ -6615,6 +7273,31 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			}
 			Reference->second.HitIds.push_back(strHitId);
 			Reference->second.HitOffsetsMs.push_back(iHitOffsetMs);
+		}
+		if (nullptr != pPresentationEvents)
+		{
+			std::set<std::string, std::less<>> PresentationEventIds;
+			for (const DATA_JSON_VALUE& Event :
+				pPresentationEvents->Get_Array())
+			{
+				uint32_t iEventOffsetMs = 0u;
+				const std::string strEventId = Read_String(
+					Event, "presentationEventId");
+				if (!Event.Is_Object() ||
+					!Is_StableToken(strEventId) ||
+					!Read_RequiredUInt32(Event, "atMs", iEventOffsetMs) ||
+					iEventOffsetMs > Reference->second.iLifetimeMs ||
+					!PresentationEventIds.insert(strEventId).second ||
+					std::find(Reference->second.HitIds.begin(),
+						Reference->second.HitIds.end(), strEventId) !=
+						Reference->second.HitIds.end())
+				{
+					strOutStatus =
+						"Valtan combat-object presentation identity or clock is invalid: " +
+						strArchetypeId;
+					return false;
+				}
+			}
 		}
 		if (strClientVisualId != Reference->second.strClientVisualId ||
 			Reference->second.strOwnerPatternId.empty() ||
@@ -6741,6 +7424,14 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 	Staged.strSavedFlowSourceRevision = std::move(SavedFlowSourceRevision);
 	size_t iResolvedCueCount = 0u;
 	std::set<std::string, std::less<>> ResolvedCombatObjectEffects;
+	const std::string strEncounterBossArchetypeId = Read_String(
+		Encounter, "bossArchetypeId");
+	if (!Is_StableToken(strEncounterBossArchetypeId) ||
+		!BossArchetypeIds.contains(strEncounterBossArchetypeId))
+	{
+		strOutStatus = "Valtan encounter boss archetype reference is invalid.";
+		return false;
+	}
 	for (const DATA_JSON_VALUE& PatternValue : pPatterns->Get_Array())
 	{
 		if (!PatternValue.Is_Object())
@@ -6794,7 +7485,10 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			!Read_PatternServerMotion(
 				PatternValue.Find("serverMotion"), Pattern.ServerMotion) ||
 			!Read_PatternFinale(PatternValue.Find("finale"), Pattern.Finale) ||
-			(Pattern.Finale.has_value() && pInvulnerable->Get_Boolean()))
+			(Pattern.Finale.has_value() &&
+				(pInvulnerable->Get_Boolean() ||
+				 Pattern.Finale->strGhostArchetypeId == strEncounterBossArchetypeId ||
+				 !BossArchetypeIds.contains(Pattern.Finale->strGhostArchetypeId))))
 		{
 			strOutStatus =
 				"Valtan encounter pattern gameplay projection is invalid: " +
@@ -6916,13 +7610,23 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 						StageValue, "pushMs", Stage.iPushMs) ||
 					!Read_RequiredUInt32(
 						StageValue, "downMs", Stage.iDownMs) ||
-					!Read_StageMotion(StageValue.Find("motion"), Stage.Motion) ||
+					!Read_StageMotion(StageValue.Find("motion"),
+						Stage.iDurationMs, Stage.Motion) ||
 					!Read_StageActions(StageValue.Find("actions"),
 						Stage.iDurationMs, Stage.Actions) ||
 					!Read_StageBranches(StageValue.Find("branches"), Stage.Branches) ||
 					!Has_ValidNavigationBlockedCapture(Stage.Branches, Stage.strPlayerResponse) ||
 					!Read_StageGameplayExtensions(StageValue,
-						Stage.strPartDamagePolicy, Stage.CounterProxy))
+						Stage.strPartDamagePolicy, Stage.CounterProxy) ||
+					!Read_StageHitAuthority(
+						StageValue, Stage.iDurationMs, Stage.bHasHitAnchor,
+						Stage.strHitAnchorKind,
+						Stage.fHitAnchorForwardOffsetM,
+						Stage.fHitAnchorRightOffsetM,
+						Stage.fHitAnchorYawOffsetDegrees,
+						Stage.bHasHitActivation,
+						Stage.iHitActivationStartMs,
+						Stage.iHitActivationLifetimeMs))
 				{
 					strOutStatus =
 						"Valtan encounter stage gameplay projection is invalid: " +
@@ -6961,8 +7665,13 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 				const bool_t bValidEmptySchedule = 0u == Stage.iHitCount &&
 					!bHasExplicitOffsets && 0u == Stage.iHitIntervalMs &&
 					0u == Stage.iHitDelayMs;
-				if (!bValidExplicitSchedule && !bValidLegacySchedule &&
-					!bValidEmptySchedule)
+				const bool_t bValidActiveWindow = Stage.bHasHitActivation &&
+					bValidEmptySchedule && "NONE" != Stage.strHitShape;
+				if ((!Stage.bHasHitActivation && !bValidExplicitSchedule &&
+					 !bValidLegacySchedule && !bValidEmptySchedule) ||
+					(Stage.bHasHitActivation && !bValidActiveWindow) ||
+					("NONE" == Stage.strHitShape &&
+					 (Stage.bHasHitAnchor || Stage.bHasHitActivation)))
 				{
 					strOutStatus =
 						"Valtan encounter stage hit schedule is invalid: " +

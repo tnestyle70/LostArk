@@ -5,8 +5,10 @@
 #include "BalanceTool.h"
 
 #include "DataJson.h"
+#include "Effect_Catalog.h"
 #include "NetworkManager.h"
 #include "ProjectDataRoot.h"
+#include "ValtanPatternEffectCueAuthoring.h"
 #include "ValtanTuningCommandService.h"
 #if !defined(LOSTARK_BALANCE_TOOL_CONTRACT_TEST)
 #include "ActorCatalog.h"
@@ -16,6 +18,7 @@
 
 #include <Windows.h>
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <cctype>
 #include <cmath>
@@ -25,6 +28,7 @@
 #include <filesystem>
 #include <fstream>
 #include <io.h>
+#include <iterator>
 #include <limits>
 #include <sstream>
 #include <string_view>
@@ -38,6 +42,9 @@ namespace
 		"Data/Valtan/Valtan.gameplay.json";
 	constexpr char VALTAN_PRESENTATION_SOURCE_PATH[] =
 		"Data/Valtan/Valtan.presentation.json";
+	constexpr std::array<const char*, 8u> VALTAN_WARP_RUSH_STAGE_IDS = {
+		"STEP_02", "STEP_03", "STEP_04", "STEP_05",
+		"STEP_06", "STEP_07", "STEP_08", "STEP_09" };
 
 	bool ReadJson(const std::filesystem::path& relativePath,
 		DATA_JSON_VALUE& output, std::string& status)
@@ -472,6 +479,7 @@ namespace
 		bool ok = false;
 		std::string command;
 		std::string sourceRevision;
+		std::string repositorySourceRevision;
 		std::string authoringRevision;
 		std::string candidateRevision;
 		std::string applyClass;
@@ -482,6 +490,14 @@ namespace
 		std::string presentationSourceRevision;
 		bool hasSplitJoinValidatedField = false;
 		bool splitJoinValidated = false;
+		bool hasOperationCountField = false;
+		std::uint32_t operationCount = 0u;
+		bool hasArtifactCountField = false;
+		std::uint32_t artifactCount = 0u;
+		bool hasChangedCountField = false;
+		std::uint32_t changedCount = 0u;
+		bool hasRuntimeActivationField = false;
+		std::string runtimeActivation;
 	};
 
 	bool ParseValtanPipelineResult(const std::string& captured,
@@ -514,6 +530,20 @@ namespace
 			output.sourceRevision = sourceRevision->Get_String();
 		if (candidateRevision->Is_String())
 			output.candidateRevision = candidateRevision->Get_String();
+		if (const DATA_JSON_VALUE* repositorySourceRevision =
+				payload->Find("sourceManifestId");
+			nullptr != repositorySourceRevision)
+		{
+			if (!repositorySourceRevision->Is_String() ||
+				!IsLowerSha256(repositorySourceRevision->Get_String()))
+			{
+				status =
+					"Valtan pipeline repository source revision is invalid.";
+				return false;
+			}
+			output.repositorySourceRevision =
+				repositorySourceRevision->Get_String();
+		}
 		const DATA_JSON_VALUE* authoringRevision = payload->Find("authoringRevision");
 		if (nullptr != authoringRevision)
 		{
@@ -600,6 +630,43 @@ namespace
 				return false;
 			}
 			output.splitJoinValidated = splitJoinValidated->Get_Boolean();
+		}
+		const auto ReadOptionalCount = [&payload, &status](
+			const char* const name,
+			bool& hasField,
+			std::uint32_t& value) -> bool
+		{
+			if (nullptr == payload->Find(name))
+				return true;
+			hasField = true;
+			if (!ReadU32(*payload, name, value))
+			{
+				status = std::string("Valtan pipeline ") + name +
+					" is not an unsigned 32-bit integer.";
+				return false;
+			}
+			return true;
+		};
+		if (!ReadOptionalCount("operationCount",
+				output.hasOperationCountField, output.operationCount) ||
+			!ReadOptionalCount("artifactCount",
+				output.hasArtifactCountField, output.artifactCount) ||
+			!ReadOptionalCount("changedCount",
+				output.hasChangedCountField, output.changedCount))
+		{
+			return false;
+		}
+		if (const DATA_JSON_VALUE* runtimeActivation =
+				payload->Find("runtimeActivation");
+			nullptr != runtimeActivation)
+		{
+			output.hasRuntimeActivationField = true;
+			if (!runtimeActivation->Is_String())
+			{
+				status = "Valtan pipeline runtimeActivation is not a string.";
+				return false;
+			}
+			output.runtimeActivation = runtimeActivation->Get_String();
 		}
 		if (!errors->Get_Array().empty())
 		{
@@ -691,6 +758,467 @@ namespace
 		return pattern.Stages.end() == found ? nullptr : &*found;
 	}
 
+	bool IsValtanStableAuthoringId(const std::string& value)
+	{
+		return !value.empty() && value.size() <= 160u &&
+			std::all_of(
+				value.begin(), value.end(),
+				[](const unsigned char ch)
+				{
+					return 0 != std::isalnum(ch) || '_' == ch ||
+						'.' == ch || '-' == ch;
+				});
+	}
+
+	bool IsValtanManualStageRole(const std::string& role)
+	{
+		return "ACTIVE" == role || "WINDUP" == role ||
+			"GROGGY" == role || "WAIT" == role;
+	}
+
+	bool IsValtanSharedCaptureFragmentPatternId(const std::string& patternId)
+	{
+		return "VALTAN_TRASH_CATCH_IF" == patternId ||
+			"VALTAN_TRASH_CATCH_SUCCESS" == patternId ||
+			"VALTAN_TRASH_CATCH_FAIL" == patternId;
+	}
+
+	void AddValtanClosedFlagActions(
+		VALTAN_STAGE_VIEW& stage, const std::string& flagId);
+
+	VALTAN_STAGE_VIEW BuildValtanManualStage(
+		const std::string& stageId,
+		const std::string& actionId,
+		const std::string& stageRole,
+		const std::uint32_t durationMs)
+	{
+		VALTAN_STAGE_VIEW stage;
+		stage.strStageId = stageId;
+		stage.strSequenceRole = stageRole;
+		stage.strActionId = actionId;
+		/* WAIT is an authoring semantic over the existing Server vocabulary: an
+		   ACTIVE Stage with an explicit clock and no animation occurrence. */
+		stage.strStageKind = "WAIT" == stageRole ? "ACTIVE" : stageRole;
+		stage.iDurationMs = durationMs;
+		stage.iAuthoringRepeatCount = 0u;
+		stage.strAnimationEndPolicy = "NONE";
+		stage.bSuppressAnimation = true;
+		stage.strHitShape = "NONE";
+		if ("GROGGY" == stageRole)
+			AddValtanClosedFlagActions(stage, "boss.flag.groggy");
+		return stage;
+	}
+
+	bool IsValtanManualStageTopologyLinear(
+		const VALTAN_PATTERN_VIEW& pattern,
+		std::string& status)
+	{
+		if (!pattern.bManualServerAudition || pattern.Stages.empty() ||
+			pattern.strEntryActionId != pattern.Stages.front().strActionId)
+		{
+			status = "Manual Stage topology is not an admitted ordered default path: " +
+				pattern.strPatternId + ".";
+			return false;
+		}
+		if (IsValtanSharedCaptureFragmentPatternId(pattern.strPatternId))
+		{
+			status = "Manual Stage topology is owned by the VALTAN_TRASH parent graph, not its shared capture fragment: " +
+				pattern.strPatternId + ".";
+			return false;
+		}
+		for (std::size_t index = 0u; index < pattern.Stages.size(); ++index)
+		{
+			const VALTAN_STAGE_VIEW& stage = pattern.Stages[index];
+			const std::optional<std::string> expectedNext =
+				index + 1u < pattern.Stages.size() ?
+					std::optional<std::string>{ pattern.Stages[index + 1u].strActionId } :
+					std::nullopt;
+			const auto Timeout = std::find_if(
+				stage.Branches.begin(), stage.Branches.end(),
+				[](const VALTAN_STAGE_BRANCH_VIEW& branch)
+				{ return "TIMEOUT" == branch.strOutcome; });
+			if (Timeout == stage.Branches.end())
+				continue;
+			const bool counterOwnsTimeout = stage.CounterProxy.has_value() ||
+				stage.Branches.end() != std::find_if(
+					stage.Branches.begin(), stage.Branches.end(),
+					[](const VALTAN_STAGE_BRANCH_VIEW& branch)
+					{ return "COUNTER_HIT" == branch.strOutcome; });
+			const auto timeoutTarget = !Timeout->strNextActionId.has_value() ?
+				pattern.Stages.end() : std::find_if(
+					pattern.Stages.begin(), pattern.Stages.end(),
+					[&Timeout](const VALTAN_STAGE_VIEW& candidate)
+					{ return candidate.strActionId == *Timeout->strNextActionId; });
+			if (std::find_if(
+					std::next(Timeout), stage.Branches.end(),
+					[](const VALTAN_STAGE_BRANCH_VIEW& branch)
+					{ return "TIMEOUT" == branch.strOutcome; }) != stage.Branches.end() ||
+				(!counterOwnsTimeout && Timeout->strNextActionId != expectedNext) ||
+				(counterOwnsTimeout &&
+				 (pattern.Stages.end() == timeoutTarget ||
+				  static_cast<std::size_t>(timeoutTarget - pattern.Stages.begin()) <=
+					  index)))
+			{
+				status = "Manual Stage topology has an invalid linear/default or forward Counter TIMEOUT edge: " +
+					pattern.strPatternId + "/" + stage.strStageId + ".";
+				return false;
+			}
+		}
+		status.clear();
+		return true;
+	}
+
+	void RefreshValtanManualLinearTopology(VALTAN_PATTERN_VIEW& pattern)
+	{
+		pattern.strEntryActionId = pattern.Stages.empty() ? std::string{} :
+			pattern.Stages.front().strActionId;
+		for (std::size_t index = 0u; index < pattern.Stages.size(); ++index)
+		{
+			const std::optional<std::string> nextAction =
+				index + 1u < pattern.Stages.size() ?
+					std::optional<std::string>{ pattern.Stages[index + 1u].strActionId } :
+					std::nullopt;
+			const bool counterOwnsTimeout =
+				pattern.Stages[index].CounterProxy.has_value() ||
+				pattern.Stages[index].Branches.end() != std::find_if(
+					pattern.Stages[index].Branches.begin(),
+					pattern.Stages[index].Branches.end(),
+					[](const VALTAN_STAGE_BRANCH_VIEW& branch)
+					{ return "COUNTER_HIT" == branch.strOutcome; });
+			for (VALTAN_STAGE_BRANCH_VIEW& branch : pattern.Stages[index].Branches)
+			{
+				if ("TIMEOUT" == branch.strOutcome && !counterOwnsTimeout)
+					branch.strNextActionId = nextAction;
+			}
+		}
+	}
+
+	int ValtanFlagContractState(
+		const VALTAN_STAGE_VIEW& stage, std::string_view flagId);
+
+	bool CanRemoveValtanManualStage(
+		const VALTAN_PATTERN_TREE_VIEW& tree,
+		const VALTAN_PATTERN_VIEW& pattern,
+		const VALTAN_STAGE_VIEW& stage,
+		std::string& status)
+	{
+		const bool stageIsStillPresent =
+			nullptr != FindValtanStage(pattern, stage.strStageId);
+		const std::size_t remainingStageCount = pattern.Stages.size() -
+			(stageIsStillPresent ? 1u : 0u);
+		if (!pattern.bManualServerAudition || 0u == remainingStageCount)
+		{
+			status = "Manual Stage removal requires a MANUAL_SERVER_AUDITION with at least two Stages.";
+			return false;
+		}
+		const bool referencedByBranch = std::any_of(
+			pattern.Stages.begin(), pattern.Stages.end(),
+			[&stage](const VALTAN_STAGE_VIEW& owner)
+			{
+				return std::any_of(
+					owner.Branches.begin(), owner.Branches.end(),
+					[&stage](const VALTAN_STAGE_BRANCH_VIEW& branch)
+					{
+						return branch.strNextActionId.has_value() &&
+							*branch.strNextActionId == stage.strActionId;
+					});
+			});
+		const bool referencedByPattern =
+			(pattern.ServerMotion.has_value() &&
+			 pattern.ServerMotion->strTravelStageId == stage.strStageId) ||
+			std::any_of(
+				pattern.Reactions.begin(), pattern.Reactions.end(),
+				[&stage](const VALTAN_PATTERN_REACTION_VIEW& row)
+				{ return row.strStageId == stage.strStageId; }) ||
+			std::any_of(
+				pattern.WorldEventTriggerRefs.begin(),
+				pattern.WorldEventTriggerRefs.end(),
+				[&stage](const VALTAN_WORLD_EVENT_TRIGGER_REF_VIEW& row)
+				{ return row.strStageId == stage.strStageId; });
+		const bool referencedByTree = std::any_of(
+			tree.CounterReactionLayers.begin(),
+			tree.CounterReactionLayers.end(),
+			[&pattern, &stage](const VALTAN_COUNTER_REACTION_LAYER_VIEW& row)
+			{
+				return row.strOwnerPatternId == pattern.strPatternId &&
+					row.strOwnerStageId == stage.strStageId;
+			}) || std::any_of(
+			tree.IndependentEffects.begin(), tree.IndependentEffects.end(),
+			[&pattern, &stage](const VALTAN_INDEPENDENT_EFFECT_VIEW& row)
+			{
+				return row.strOwnerPatternId == pattern.strPatternId &&
+					row.strOwnerStageId == stage.strStageId;
+			});
+		const bool authoredTopologyStage =
+			IsValtanManualStageRole(stage.strSequenceRole) &&
+			((stage.bSuppressAnimation && stage.ClipOccurrences.empty()) ||
+			(!stage.ClipOccurrences.empty() && std::all_of(
+				stage.ClipOccurrences.begin(), stage.ClipOccurrences.end(),
+				[](const VALTAN_CLIP_OCCURRENCE_VIEW& occurrence)
+				{
+					return "SOURCE_REVIEWED_DELTA" == occurrence.strMappingBasis ||
+						"PROJECT_AUTHORED" == occurrence.strMappingBasis;
+				})));
+		const bool ownsOnlyClosedGroggyFlag =
+			"GROGGY" == stage.strStageKind &&
+			1 == ValtanFlagContractState(stage, "boss.flag.groggy") &&
+			2u == stage.Actions.size() &&
+			std::all_of(
+				stage.Actions.begin(), stage.Actions.end(),
+				[](const VALTAN_STAGE_ACTION_VIEW& action)
+				{
+					return "SET_BOSS_FLAG" == action.strKind &&
+						"boss.flag.groggy" == action.strTargetId;
+				});
+		const bool ownsTypedGameplay =
+			(!stage.Actions.empty() && !ownsOnlyClosedGroggyFlag) ||
+			!stage.Branches.empty() || stage.CounterProxy.has_value() ||
+			stage.Motion.has_value() || stage.Has_HitShape() ||
+			"NORMAL" != stage.strPartDamagePolicy ||
+			!stage.strServerDamageProfileId.empty() ||
+			!stage.CameraInvocations.empty() || !stage.ProductCues.empty() ||
+			!stage.CombatObjectEffects.empty() || !stage.Effects.empty() ||
+			!stage.IndependentEffectIds.empty();
+		if (!authoredTopologyStage || referencedByBranch || referencedByPattern || referencedByTree ||
+			ownsTypedGameplay)
+		{
+			status = "Manual Stage removal rejected: retain source-intake provenance, disable Counter edges, and remove every gameplay/effect/camera/world dependency before removing " +
+				pattern.strPatternId + "/" + stage.strStageId + ".";
+			return false;
+		}
+		return true;
+	}
+
+	bool InsertValtanManualStageAfter(
+		VALTAN_PATTERN_VIEW& pattern,
+		const std::string& afterStageId,
+		VALTAN_STAGE_VIEW stage,
+		std::string& status)
+	{
+		const auto anchor = std::find_if(
+			pattern.Stages.begin(), pattern.Stages.end(),
+			[&afterStageId](const VALTAN_STAGE_VIEW& candidate)
+			{ return candidate.strStageId == afterStageId; });
+		if (pattern.Stages.end() == anchor)
+		{
+			status = "Manual Stage insertion anchor is stale or missing: " +
+				afterStageId + ".";
+			return false;
+		}
+		pattern.Stages.insert(std::next(anchor), std::move(stage));
+		RefreshValtanManualLinearTopology(pattern);
+		return true;
+	}
+
+	bool MoveValtanManualStage(
+		VALTAN_PATTERN_VIEW& pattern,
+		const std::string& stageId,
+		const std::string& anchorStageId,
+		const bool beforeAnchor,
+		std::string& status)
+	{
+		if (stageId == anchorStageId)
+		{
+			status = "Manual Stage move requires two different stable Stage IDs.";
+			return false;
+		}
+		const auto stage = std::find_if(
+			pattern.Stages.begin(), pattern.Stages.end(),
+			[&stageId](const VALTAN_STAGE_VIEW& candidate)
+			{ return candidate.strStageId == stageId; });
+		const auto anchor = std::find_if(
+			pattern.Stages.begin(), pattern.Stages.end(),
+			[&anchorStageId](const VALTAN_STAGE_VIEW& candidate)
+			{ return candidate.strStageId == anchorStageId; });
+		if (pattern.Stages.end() == stage || pattern.Stages.end() == anchor)
+		{
+			status = "Manual Stage move contains a stale Stage or anchor ID.";
+			return false;
+		}
+		VALTAN_STAGE_VIEW moved = *stage;
+		pattern.Stages.erase(stage);
+		const auto relocatedAnchor = std::find_if(
+			pattern.Stages.begin(), pattern.Stages.end(),
+			[&anchorStageId](const VALTAN_STAGE_VIEW& candidate)
+			{ return candidate.strStageId == anchorStageId; });
+		auto destination = beforeAnchor ? relocatedAnchor :
+			std::next(relocatedAnchor);
+		pattern.Stages.insert(destination, std::move(moved));
+		RefreshValtanManualLinearTopology(pattern);
+		return true;
+	}
+
+	bool BuildValtanManualStageTopologyPatch(
+		const VALTAN_PATTERN_TREE_VIEW& dependencyTree,
+		const VALTAN_PATTERN_VIEW& current,
+		const VALTAN_PATTERN_VIEW& loaded,
+		std::vector<std::string>& preCounterOperations,
+		std::vector<std::string>& postCounterOperations,
+		VALTAN_PATTERN_VIEW& baseline,
+		std::string& status)
+	{
+		baseline = loaded;
+		if (!current.bManualServerAudition ||
+			!loaded.bManualServerAudition || current.Stages.empty() ||
+			current.Stages.size() > 64u)
+		{
+			status = "Manual Stage topology patch requires one admitted MANUAL_SERVER_AUDITION with 1..64 Stages.";
+			return false;
+		}
+		std::string topologyStatus;
+		if (!IsValtanManualStageTopologyLinear(current, topologyStatus) ||
+			!IsValtanManualStageTopologyLinear(loaded, topologyStatus))
+		{
+			status = "Manual Stage topology patch rejected before serialization: " +
+				topologyStatus;
+			return false;
+		}
+		std::unordered_set<std::string> currentStageIds;
+		std::unordered_set<std::string> currentActionIds;
+		for (const VALTAN_STAGE_VIEW& stage : current.Stages)
+		{
+			if (!IsValtanStableAuthoringId(stage.strStageId) ||
+				!IsValtanStableAuthoringId(stage.strActionId) ||
+				!currentStageIds.insert(stage.strStageId).second ||
+				!currentActionIds.insert(stage.strActionId).second)
+			{
+				status = "Manual Stage topology contains an invalid or duplicate stable Stage/Action ID: " +
+					current.strPatternId + ".";
+				return false;
+			}
+		}
+
+		/* Add new identities while an admitted anchor is still present.  A later
+		   MOVE operation restores the exact requested order, including a new
+		   first Stage, without inventing an INSERT_BEFORE runtime vocabulary. */
+		for (std::size_t index = 0u; index < current.Stages.size(); ++index)
+		{
+			const VALTAN_STAGE_VIEW& stage = current.Stages[index];
+			if (nullptr != FindValtanStage(baseline, stage.strStageId))
+				continue;
+			std::string anchorStageId;
+			for (std::size_t previous = index; previous > 0u; --previous)
+			{
+				const std::string& candidate =
+					current.Stages[previous - 1u].strStageId;
+				if (nullptr != FindValtanStage(baseline, candidate))
+				{
+					anchorStageId = candidate;
+					break;
+				}
+			}
+			if (anchorStageId.empty())
+			{
+				for (std::size_t next = index + 1u;
+					next < current.Stages.size(); ++next)
+				{
+					const std::string& candidate = current.Stages[next].strStageId;
+					if (nullptr != FindValtanStage(baseline, candidate))
+					{
+						anchorStageId = candidate;
+						break;
+					}
+				}
+			}
+			if (anchorStageId.empty() && !baseline.Stages.empty())
+				anchorStageId = baseline.Stages.front().strStageId;
+			const std::string role = stage.strSequenceRole;
+			if (anchorStageId.empty() || !IsValtanManualStageRole(role) ||
+				("WAIT" == role && "ACTIVE" != stage.strStageKind) ||
+				stage.iDurationMs < 1u || stage.iDurationMs > 600000u)
+			{
+				status = "New manual Stage has no admitted insertion anchor or has an invalid role/clock: " +
+					current.strPatternId + "/" + stage.strStageId + ".";
+				return false;
+			}
+			std::ostringstream operation;
+			operation << "    { \"op\": \"INSERT_MANUAL_STAGE_AFTER\", "
+				"\"patternId\": " << Quote(current.strPatternId)
+				<< ", \"afterStageId\": " << Quote(anchorStageId)
+				<< ", \"stageId\": " << Quote(stage.strStageId)
+				<< ", \"actionId\": " << Quote(stage.strActionId)
+				<< ", \"stageRole\": " << Quote(role)
+				<< ", \"durationMs\": " << stage.iDurationMs << " }";
+			preCounterOperations.push_back(operation.str());
+			if (!InsertValtanManualStageAfter(
+					baseline, anchorStageId,
+					BuildValtanManualStage(
+						stage.strStageId, stage.strActionId, role,
+						stage.iDurationMs), status))
+			{
+				return false;
+			}
+		}
+
+		for (const VALTAN_STAGE_VIEW& loadedStage : loaded.Stages)
+		{
+			if (nullptr != FindValtanStage(current, loadedStage.strStageId))
+				continue;
+			const VALTAN_STAGE_VIEW* const stagedStage =
+				FindValtanStage(baseline, loadedStage.strStageId);
+			if (nullptr == stagedStage || !CanRemoveValtanManualStage(
+					dependencyTree, current, *stagedStage, status))
+			{
+				return false;
+			}
+			std::ostringstream operation;
+			operation << "    { \"op\": \"REMOVE_MANUAL_STAGE\", "
+				"\"patternId\": " << Quote(current.strPatternId)
+				<< ", \"stageId\": " << Quote(loadedStage.strStageId)
+				<< " }";
+			postCounterOperations.push_back(operation.str());
+			std::erase_if(
+				baseline.Stages,
+				[&loadedStage](const VALTAN_STAGE_VIEW& candidate)
+				{ return candidate.strStageId == loadedStage.strStageId; });
+			RefreshValtanManualLinearTopology(baseline);
+		}
+
+		for (std::size_t index = 0u; index < current.Stages.size(); ++index)
+		{
+			if (index < baseline.Stages.size() &&
+				baseline.Stages[index].strStageId ==
+					current.Stages[index].strStageId)
+			{
+				continue;
+			}
+			if (index >= baseline.Stages.size())
+			{
+				status = "Manual Stage topology replay lost a stable Stage identity.";
+				return false;
+			}
+			const std::string stageId = current.Stages[index].strStageId;
+			const std::string anchorStageId = baseline.Stages[index].strStageId;
+			std::ostringstream operation;
+			operation << "    { \"op\": \"MOVE_MANUAL_STAGE\", "
+				"\"patternId\": " << Quote(current.strPatternId)
+				<< ", \"stageId\": " << Quote(stageId)
+				<< ", \"anchorStageId\": " << Quote(anchorStageId)
+				<< ", \"placement\": \"BEFORE\" }";
+			postCounterOperations.push_back(operation.str());
+			if (!MoveValtanManualStage(
+					baseline, stageId, anchorStageId, true, status))
+			{
+				return false;
+			}
+		}
+		if (baseline.Stages.size() != current.Stages.size() ||
+			!std::equal(
+				baseline.Stages.begin(), baseline.Stages.end(),
+				current.Stages.begin(),
+				[](const VALTAN_STAGE_VIEW& left,
+					const VALTAN_STAGE_VIEW& right)
+				{
+					return left.strStageId == right.strStageId &&
+						left.strActionId == right.strActionId;
+				}))
+		{
+			status = "Manual Stage topology replay did not converge to the current stable order.";
+			return false;
+		}
+		return true;
+	}
+
 	const VALTAN_STAGE_VIEW* FindValtanStageByAction(
 		const VALTAN_PATTERN_VIEW& pattern, const std::string& actionId)
 	{
@@ -698,6 +1226,12 @@ namespace
 			[&](const VALTAN_STAGE_VIEW& stage)
 			{ return stage.strActionId == actionId; });
 		return pattern.Stages.end() == found ? nullptr : &*found;
+	}
+
+	bool IsValtanCounterSuccessStageKind(const std::string_view stageKind)
+	{
+		return "WINDUP" == stageKind || "GROGGY" == stageKind ||
+			"RECOVERY" == stageKind;
 	}
 
 	int ValtanFlagContractState(
@@ -728,19 +1262,18 @@ namespace
 		std::string& status)
 	{
 		output = {};
-		const std::vector<const VALTAN_STAGE_BRANCH_VIEW*> branches = [&]()
+		std::vector<const VALTAN_STAGE_BRANCH_VIEW*> counterBranches;
+		std::vector<const VALTAN_STAGE_BRANCH_VIEW*> timeoutBranches;
+		for (const VALTAN_STAGE_BRANCH_VIEW& branch : stage.Branches)
 		{
-			std::vector<const VALTAN_STAGE_BRANCH_VIEW*> rows;
-			for (const VALTAN_STAGE_BRANCH_VIEW& branch : stage.Branches)
-			{
-				if ("COUNTER_HIT" == branch.strOutcome)
-					rows.push_back(&branch);
-			}
-			return rows;
-		}();
+			if ("COUNTER_HIT" == branch.strOutcome)
+				counterBranches.push_back(&branch);
+			if ("TIMEOUT" == branch.strOutcome)
+				timeoutBranches.push_back(&branch);
+		}
 		const int counterState = ValtanFlagContractState(
 			stage, "boss.flag.counterable");
-		if (branches.empty())
+		if (counterBranches.empty())
 		{
 			if (0 != counterState)
 			{
@@ -748,28 +1281,111 @@ namespace
 					pattern.strPatternId + "/" + stage.strStageId + ".";
 				return false;
 			}
+			if (stage.CounterProxy.has_value() &&
+				(1u != timeoutBranches.size() ||
+				 !timeoutBranches.front()->strNextActionId.has_value()))
+			{
+				status = "Dormant Counter draft must preserve exactly one typed TIMEOUT branch: " +
+					pattern.strPatternId + "/" + stage.strStageId + ".";
+				return false;
+			}
+			if (1u == timeoutBranches.size() &&
+				timeoutBranches.front()->strNextActionId.has_value())
+			{
+				const VALTAN_STAGE_VIEW* const timeoutTarget =
+					FindValtanStageByAction(
+						pattern, *timeoutBranches.front()->strNextActionId);
+				if (nullptr != timeoutTarget)
+				{
+					output.timeoutStageId = timeoutTarget->strStageId;
+					output.timeoutActionId = timeoutTarget->strActionId;
+				}
+				else if (stage.CounterProxy.has_value())
+				{
+					status = "Dormant Counter TIMEOUT target is missing from the same Pattern: " +
+						pattern.strPatternId + "/" + stage.strStageId + ".";
+					return false;
+				}
+			}
 			return true;
 		}
-		if (1u != branches.size() || 1 != counterState ||
+		if (1u != counterBranches.size() || 1u != timeoutBranches.size() ||
+			1 != counterState ||
 			"WINDUP" != stage.strStageKind ||
-			!branches.front()->strNextActionId.has_value())
+			!counterBranches.front()->strNextActionId.has_value() ||
+			!timeoutBranches.front()->strNextActionId.has_value())
 		{
-			status = "Counter draft requires one paired WINDUP window and one COUNTER_HIT branch: " +
+			status = "Counter draft requires one paired WINDUP window plus exactly one COUNTER_HIT and TIMEOUT branch: " +
 				pattern.strPatternId + "/" + stage.strStageId + ".";
 			return false;
 		}
 		const VALTAN_STAGE_VIEW* target = FindValtanStageByAction(
-			pattern, *branches.front()->strNextActionId);
-		if (nullptr == target || "GROGGY" != target->strStageKind ||
-			1 != ValtanFlagContractState(*target, "boss.flag.groggy"))
+			pattern, *counterBranches.front()->strNextActionId);
+		const VALTAN_STAGE_VIEW* timeoutTarget = FindValtanStageByAction(
+			pattern, *timeoutBranches.front()->strNextActionId);
+		if (nullptr == target || nullptr == timeoutTarget ||
+			!IsValtanCounterSuccessStageKind(target->strStageKind))
 		{
-			status = "Counter success must resolve to one paired same-pattern GROGGY stage/action: " +
+			status = "Counter success/timeout must resolve to same-pattern typed Stage actions: " +
+				pattern.strPatternId + "/" + stage.strStageId + ".";
+			return false;
+		}
+		const int groggyState = ValtanFlagContractState(
+			*target, "boss.flag.groggy");
+		if (("GROGGY" == target->strStageKind && 1 != groggyState) ||
+			("GROGGY" != target->strStageKind && 0 != groggyState))
+		{
+			status = "Counter success target has an invalid conditional Groggy flag transition: " +
 				pattern.strPatternId + "/" + stage.strStageId + ".";
 			return false;
 		}
 		output.enabled = true;
 		output.successStageId = target->strStageId;
 		output.successActionId = target->strActionId;
+		output.timeoutStageId = timeoutTarget->strStageId;
+		output.timeoutActionId = timeoutTarget->strActionId;
+		return true;
+	}
+
+	bool IsValtanCounterTopologyFiniteForward(
+		const VALTAN_PATTERN_VIEW& pattern,
+		std::string& status)
+	{
+		for (std::size_t sourceIndex = 0u;
+			sourceIndex < pattern.Stages.size(); ++sourceIndex)
+		{
+			const VALTAN_STAGE_VIEW& source = pattern.Stages[sourceIndex];
+			CBalanceTool::VALTAN_COUNTER_WINDOW_EDIT counter;
+			if (!ReadValtanCounterWindow(pattern, source, counter, status))
+				return false;
+
+			const auto IsLaterStage = [&](const std::string& targetStageId)
+			{
+				const auto target = std::find_if(
+					pattern.Stages.begin(), pattern.Stages.end(),
+					[&targetStageId](const VALTAN_STAGE_VIEW& candidate)
+					{ return candidate.strStageId == targetStageId; });
+				return pattern.Stages.end() != target &&
+					static_cast<std::size_t>(target - pattern.Stages.begin()) >
+						sourceIndex;
+			};
+			const bool dormantCounterTimeout = !counter.enabled &&
+				source.CounterProxy.has_value();
+			if (!counter.enabled && !dormantCounterTimeout)
+				continue;
+			if ((counter.enabled &&
+				 (!IsLaterStage(counter.successStageId) ||
+				  !IsLaterStage(counter.timeoutStageId))) ||
+				(dormantCounterTimeout &&
+				 !IsLaterStage(counter.timeoutStageId)))
+			{
+				status = "Counter topology rejected: typed success/TIMEOUT targets must remain later same-Pattern Stages so the finite Server graph cannot cycle: " +
+					pattern.strPatternId + "/" + source.strStageId + " -> " +
+					counter.successStageId + " / " + counter.timeoutStageId + ".";
+				return false;
+			}
+		}
+		status.clear();
 		return true;
 	}
 
@@ -821,12 +1437,13 @@ namespace
 	}
 
 	std::vector<const VALTAN_STAGE_BRANCH_VIEW*> CollectValtanNonCounterBranches(
-		const VALTAN_STAGE_VIEW& stage)
+		const VALTAN_STAGE_VIEW& stage, const bool counterOwnsTimeout)
 	{
 		std::vector<const VALTAN_STAGE_BRANCH_VIEW*> rows;
 		for (const VALTAN_STAGE_BRANCH_VIEW& branch : stage.Branches)
 		{
-			if ("COUNTER_HIT" != branch.strOutcome)
+			if ("COUNTER_HIT" != branch.strOutcome &&
+				(!counterOwnsTimeout || "TIMEOUT" != branch.strOutcome))
 				rows.push_back(&branch);
 		}
 		return rows;
@@ -843,6 +1460,21 @@ namespace
 			 left->fForwardOffsetM == right->fForwardOffsetM &&
 			 left->fRightOffsetM == right->fRightOffsetM &&
 			 left->fRadiusM == right->fRadiusM);
+	}
+
+	bool EqualValtanStageMotion(
+		const std::optional<VALTAN_STAGE_MOTION_VIEW>& left,
+		const std::optional<VALTAN_STAGE_MOTION_VIEW>& right)
+	{
+		if (left.has_value() != right.has_value())
+			return false;
+		return !left.has_value() ||
+			(left->strKind == right->strKind &&
+			 left->iRetargetDelayMs == right->iRetargetDelayMs &&
+			 left->fSpeedMps == right->fSpeedMps &&
+			 left->fDistance == right->fDistance &&
+			 left->iCornerIndex == right->iCornerIndex &&
+			 left->HalfExtentsM == right->HalfExtentsM);
 	}
 
 	CBalanceTool::PATTERN_STAGE_EDIT BuildValtanStageDraft(
@@ -871,21 +1503,93 @@ namespace
 		draft.downMs = stage.iDownMs;
 		draft.playerResponse = stage.strPlayerResponse;
 		draft.attachmentSlot = stage.strAttachmentSlot;
+		if (stage.Motion.has_value())
+		{
+			draft.motionKind = stage.Motion->strKind;
+			draft.portalRetargetDelayMs = stage.Motion->iRetargetDelayMs;
+			draft.portalSpeedMps = stage.Motion->fSpeedMps;
+			draft.portalDistanceM = stage.Motion->fDistance;
+		}
 		draft.actions = stage.Actions;
 		draft.productCues = stage.ProductCues;
+		draft.animationEndPolicy = stage.strAnimationEndPolicy;
+		draft.animationRepeatCount = stage.iAuthoringRepeatCount;
 		for (const VALTAN_CLIP_OCCURRENCE_VIEW& occurrence :
 			stage.ClipOccurrences)
 		{
-			draft.productCues.insert(
-				draft.productCues.end(), occurrence.ProductCues.begin(),
-				occurrence.ProductCues.end());
+			CBalanceTool::ANIMATION_SLOT_EDIT slot{};
+			slot.clipOccurrenceId = occurrence.strClipOccurrenceId;
+			slot.clip = occurrence.strClipName;
+			slot.mappingBasis = occurrence.strMappingBasis;
+			slot.sourceStartMs = occurrence.iSourceStartMs;
+			slot.playMs = occurrence.iPlayMs;
+			slot.playRate = occurrence.fPlayRate;
+			slot.repeatUntilStageEnd = occurrence.bLoop;
+			draft.animationSlots.push_back(std::move(slot));
 		}
-		draft.durationEditable = !pattern.bManualServerAudition;
+		const bool isWaitStage = "WAIT" == stage.strSequenceRole;
+		draft.stageKindEditable = pattern.bManualServerAudition && !isWaitStage;
+		/* A promoted manual audition owns a real Server Stage clock.  The
+		   selection/range contract remains locked, but its existing clock and
+		   presentation slots are the core Action Composition authoring unit. */
+		draft.durationEditable = true;
 		/* Adding/removing a hit also owns DamageProfile selection.  Workbench
 		   deliberately keeps that ownership in Balance Tool and edits only an
 		   already admitted hit contract. */
-		draft.hitEditable = "NONE" != stage.strHitShape;
+		draft.hitEditable = !isWaitStage &&
+			(pattern.bManualServerAudition || "NONE" != stage.strHitShape);
+		draft.portalRushMotionEditable =
+			!isWaitStage && "VALTAN_WARP" == pattern.strPatternId &&
+			stage.Motion.has_value() &&
+			"PORTAL_TARGET_RUSH" == stage.Motion->strKind;
+		/* A new manual Stage intentionally starts as animation NONE.  It must
+		   still admit the first exact Sequence assignment; canonical NONE stages
+		   remain topology-owned and read-only. */
+		draft.animationEditable = !isWaitStage &&
+			(pattern.bManualServerAudition ||
+			 (!stage.bSuppressAnimation && !stage.ClipOccurrences.empty()));
 		return draft;
+	}
+
+	bool EqualValtanAnimationSlot(
+		const CBalanceTool::ANIMATION_SLOT_EDIT& left,
+		const CBalanceTool::ANIMATION_SLOT_EDIT& right)
+	{
+		return left.clipOccurrenceId == right.clipOccurrenceId &&
+			left.clip == right.clip &&
+			left.mappingBasis == right.mappingBasis &&
+			left.sourceStartMs == right.sourceStartMs &&
+			left.playMs == right.playMs &&
+			left.playRate == right.playRate &&
+			left.repeatUntilStageEnd == right.repeatUntilStageEnd;
+	}
+
+	bool EqualValtanAnimation(
+		const VALTAN_STAGE_VIEW& left,
+		const VALTAN_STAGE_VIEW& right)
+	{
+		if (left.strAnimationEndPolicy != right.strAnimationEndPolicy ||
+			left.iAuthoringRepeatCount != right.iAuthoringRepeatCount ||
+			left.bSuppressAnimation != right.bSuppressAnimation ||
+			left.ClipOccurrences.size() != right.ClipOccurrences.size())
+		{
+			return false;
+		}
+		for (std::size_t index = 0u; index < left.ClipOccurrences.size(); ++index)
+		{
+			const VALTAN_CLIP_OCCURRENCE_VIEW& a = left.ClipOccurrences[index];
+			const VALTAN_CLIP_OCCURRENCE_VIEW& b = right.ClipOccurrences[index];
+			if (a.strClipOccurrenceId != b.strClipOccurrenceId ||
+				a.strClipName != b.strClipName ||
+				a.strMappingBasis != b.strMappingBasis ||
+				a.iSourceStartMs != b.iSourceStartMs ||
+				a.iPlayMs != b.iPlayMs ||
+				a.fPlayRate != b.fPlayRate || a.bLoop != b.bLoop)
+			{
+				return false;
+			}
+		}
+		return true;
 	}
 
 	bool EqualValtanActionStableFields(
@@ -940,21 +1644,25 @@ namespace
 			left.LocalTransform.vScale.z == right.LocalTransform.vScale.z;
 	}
 
+	bool EqualValtanCue(
+		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& left,
+		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& right)
+	{
+		return EqualValtanCueExceptLocalYaw(left, right) &&
+			left.LocalTransform.vRotationDegrees.y ==
+				right.LocalTransform.vRotationDegrees.y;
+	}
+
 	std::vector<const VALTAN_PRODUCT_EFFECT_CUE_VIEW*> CollectValtanProductCues(
 		const VALTAN_STAGE_VIEW& stage)
 	{
 		std::vector<const VALTAN_PRODUCT_EFFECT_CUE_VIEW*> cues;
-		cues.reserve(stage.ProductCues.size() + stage.ClipOccurrences.size());
+		cues.reserve(stage.ProductCues.size());
+		std::unordered_set<std::string> occurrenceIds;
 		for (const VALTAN_PRODUCT_EFFECT_CUE_VIEW& cue : stage.ProductCues)
-			cues.push_back(&cue);
-		for (const VALTAN_CLIP_OCCURRENCE_VIEW& occurrence :
-			stage.ClipOccurrences)
 		{
-			for (const VALTAN_PRODUCT_EFFECT_CUE_VIEW& cue :
-				occurrence.ProductCues)
-			{
+			if (occurrenceIds.insert(cue.strOccurrenceId).second)
 				cues.push_back(&cue);
-			}
 		}
 		return cues;
 	}
@@ -1014,6 +1722,103 @@ namespace
 			0.0 == stage.hitInnerRadius &&
 			0.0 == stage.hitAngleDegrees;
 	}
+
+	bool DerivePortalRushTrailingGapMs(
+		const CBalanceTool::PATTERN_STAGE_EDIT& stage,
+		std::uint32_t& trailingGapMs,
+		std::string& status)
+	{
+		if (!std::isfinite(stage.portalSpeedMps) ||
+			!std::isfinite(stage.portalDistanceM) ||
+			stage.portalSpeedMps <= 0.0)
+		{
+			status = "Portal-rush trailing gap cannot be recovered from an invalid motion.";
+			return false;
+		}
+		const double travelMs =
+			stage.portalDistanceM / stage.portalSpeedMps * 1000.0;
+		const double remainderMs = static_cast<double>(stage.durationMs) -
+			static_cast<double>(stage.portalRetargetDelayMs) - travelMs;
+		if (!std::isfinite(remainderMs) || remainderMs < -1.0 ||
+			remainderMs > 120001.0)
+		{
+			status = "Portal-rush Stage clock cannot represent delay + travel + trailing gap.";
+			return false;
+		}
+
+		/* durationMs stores ceil(delay + travel + integer gap).  Try the
+		   mathematical floor and its two floating-point neighbours, then accept
+		   only the candidate that reconstructs the exact saved Stage clock. */
+		const std::int64_t floorGap = static_cast<std::int64_t>(
+			std::floor(remainderMs));
+		for (const std::int64_t candidateGap :
+			{ floorGap, floorGap - 1, floorGap + 1 })
+		{
+			if (candidateGap < 0 || candidateGap > 120000)
+				continue;
+			CBalanceTool::PATTERN_STAGE_EDIT normalized = stage;
+			std::string normalizeStatus;
+			if (CBalanceTool::Normalize_ValtanPortalRushDraft(
+					normalized, static_cast<std::uint32_t>(candidateGap),
+					normalizeStatus) &&
+				normalized.durationMs == stage.durationMs)
+			{
+				trailingGapMs = static_cast<std::uint32_t>(candidateGap);
+				status.clear();
+				return true;
+			}
+		}
+		status = "Portal-rush Stage clock is not the derived ceil(delay + travel + trailing gap) value.";
+		return false;
+	}
+
+	bool RetargetPortalRushLoopToStageEnd(
+		VALTAN_STAGE_VIEW& stage,
+		const std::uint32_t stageDurationMs,
+		bool& changed,
+		std::string& status)
+	{
+		if ("LOOP_TO_STAGE_END" != stage.strAnimationEndPolicy ||
+			stage.ClipOccurrences.empty())
+		{
+			status = "Portal-rush presentation must use LOOP_TO_STAGE_END.";
+			return false;
+		}
+		VALTAN_CLIP_OCCURRENCE_VIEW* loop = nullptr;
+		std::uint64_t knownWallMs = 0u;
+		for (VALTAN_CLIP_OCCURRENCE_VIEW& occurrence : stage.ClipOccurrences)
+		{
+			if (occurrence.bLoop)
+			{
+				if (nullptr != loop || 0u != occurrence.iPlayMs)
+				{
+					status = "Portal-rush presentation must contain exactly one open LOOP_TO_STAGE_END occurrence.";
+					return false;
+				}
+				loop = &occurrence;
+				continue;
+			}
+			if (0u == occurrence.iAuthoringWallMs ||
+				occurrence.iAuthoringWallMs > 120000u ||
+				knownWallMs + occurrence.iAuthoringWallMs > 120000u)
+			{
+				status = "Portal-rush presentation has an invalid finite animation wall.";
+				return false;
+			}
+			knownWallMs += occurrence.iAuthoringWallMs;
+		}
+		if (nullptr == loop || knownWallMs >= stageDurationMs)
+		{
+			status = "Portal-rush LOOP_TO_STAGE_END presentation does not fit the derived Stage clock.";
+			return false;
+		}
+		const std::uint32_t loopWallMs = static_cast<std::uint32_t>(
+			static_cast<std::uint64_t>(stageDurationMs) - knownWallMs);
+		changed = changed || loop->iAuthoringWallMs != loopWallMs;
+		loop->iAuthoringWallMs = loopWallMs;
+		status.clear();
+		return true;
+	}
 }
 
 
@@ -1054,6 +1859,96 @@ void Client::CBalanceTool::Open_Valtan()
 	}
 }
 
+bool Client::CBalanceTool::Require_ValtanAuthoringAdmission(
+	const char* const operation,
+	std::string& status) const
+{
+	if (VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED ==
+			m_valtanSourceJoin.state &&
+		!m_valtanSourceRevision.empty())
+	{
+		return true;
+	}
+	status = std::string(nullptr == operation ?
+		"Valtan authoring" : operation) +
+		" blocked: the split gameplay/presentation source is not ADMITTED. "
+		"A stale-preserved graph is display-only; reload an exact validated "
+		"source revision before editing.";
+	return false;
+}
+
+bool Client::CBalanceTool::Reload_ValtanSource(std::string& status)
+{
+	if (m_dirty)
+	{
+		status =
+			"Valtan source reload blocked: save or discard the current Balance Tool draft first.";
+		return false;
+	}
+	if (!Reload())
+	{
+		status = m_status.empty() ?
+			"Valtan split source reload failed; the previous admitted draft was preserved." :
+			m_status;
+		return false;
+	}
+	if (VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED != m_valtanSourceJoin.state)
+	{
+		status = "Valtan source reload did not admit the joined gameplay/presentation closure: " +
+			m_valtanSourceJoin.diagnostic;
+		return false;
+	}
+	status = "Reloaded the exact joined Valtan source into the shared Balance/Workbench draft.";
+	return true;
+}
+
+bool Client::CBalanceTool::
+	Verify_ValtanCanonicalSourceRevision_WhileAdmitted(
+		const CValtanCanonicalProductReadAdmission& admission,
+		const std::string& expectedRepositoryRevision,
+		std::string& status) const
+{
+	std::string AdmissionStatus;
+	if (!admission.Is_Acquired() ||
+		!admission.Validate_StillCurrent(AdmissionStatus) ||
+		!IsLowerSha256(expectedRepositoryRevision))
+	{
+		status =
+			"Canonical source identity verification requires one current shared read admission and a valid expected repository revision: " +
+			AdmissionStatus;
+		return false;
+	}
+
+	std::string EffectiveRevision;
+	std::string AuthoringRevision;
+	VALTAN_SOURCE_JOIN_STATUS SourceJoin;
+	if (!QueryValtanSourceRevision(
+			EffectiveRevision, AuthoringRevision, SourceJoin, status))
+	{
+		return false;
+	}
+	if (VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED != SourceJoin.state ||
+		SourceJoin.repositoryRevision != expectedRepositoryRevision)
+	{
+		status =
+			"Canonical source identity changed between the Balance draft and canonical tree reload: expected " +
+			expectedRepositoryRevision.substr(0u, 12u) + ", current " +
+			(SourceJoin.repositoryRevision.empty() ? std::string("NONE") :
+				SourceJoin.repositoryRevision.substr(0u, 12u)) + ".";
+		return false;
+	}
+	if (!admission.Validate_StillCurrent(AdmissionStatus))
+	{
+		status =
+			"Canonical source identity changed before the joined Workbench view could commit: " +
+			AdmissionStatus;
+		return false;
+	}
+	status = "Canonical tree and Balance draft share repository generation " +
+		expectedRepositoryRevision.substr(0u, 12u) + ".";
+	return true;
+}
+
 bool Client::CBalanceTool::Get_ValtanStageDurationDraft(
 	const std::string& patternId,
 	const std::string& stageId,
@@ -1087,6 +1982,11 @@ bool Client::CBalanceTool::Get_ValtanHighJumpAxeCountDraft(
 	std::uint32_t& maximumTotalObjects,
 	std::string& status) const
 {
+	if (!Require_ValtanAuthoringAdmission(
+			"Valtan axe-volley draft", status))
+	{
+		return false;
+	}
 	if ("VALTAN_HIGH_JUMP" != m_valtanAxeVolley.patternId ||
 		"AIRBORNE" != m_valtanAxeVolley.stageId ||
 		"event.valtan.high-jump.airborne.spawn-target-axe" !=
@@ -1110,6 +2010,11 @@ bool Client::CBalanceTool::Set_ValtanHighJumpAxeCountDraft(
 	const std::uint32_t countPerAlivePlayer,
 	std::string& status)
 {
+	if (!Require_ValtanAuthoringAdmission(
+			"Valtan axe-volley edit", status))
+	{
+		return false;
+	}
 	if (countPerAlivePlayer < 1u || countPerAlivePlayer > 8u)
 	{
 		status = "Axes per alive player must be in the inclusive range 1..8.";
@@ -1159,6 +2064,11 @@ bool Client::CBalanceTool::Get_ValtanStageDraft(
 	PATTERN_STAGE_EDIT& stage,
 	std::string& status) const
 {
+	if (!Require_ValtanAuthoringAdmission(
+			"Valtan Stage draft", status))
+	{
+		return false;
+	}
 	const VALTAN_PATTERN_VIEW* pattern =
 		FindValtanPattern(m_valtanPatternTree, patternId);
 	if (nullptr == pattern || !pattern->bAuthoringMasterManaged)
@@ -1179,12 +2089,702 @@ bool Client::CBalanceTool::Get_ValtanStageDraft(
 	return true;
 }
 
+bool Client::CBalanceTool::Normalize_ValtanPortalRushDraft(
+	PATTERN_STAGE_EDIT& stage,
+	const std::uint32_t trailingGapMs,
+	std::string& status)
+{
+	if (!stage.portalRushMotionEditable ||
+		"PORTAL_TARGET_RUSH" != stage.motionKind)
+	{
+		status = "Portal-rush normalization requires an admitted PORTAL_TARGET_RUSH Stage.";
+		return false;
+	}
+	if (!std::isfinite(stage.portalSpeedMps) ||
+		!std::isfinite(stage.portalDistanceM))
+	{
+		status = "Portal-rush speed and distance must be finite.";
+		return false;
+	}
+	if (stage.portalRetargetDelayMs > 120000u ||
+		trailingGapMs > 120000u || stage.portalSpeedMps < 0.1 ||
+		stage.portalSpeedMps > 1000.0 || stage.portalDistanceM <= 0.0 ||
+		stage.portalDistanceM > 1000.0)
+	{
+		status = "Portal-rush inputs require delay/gap 0..120000 ms, speed 0.1..1000 m/s, and distance greater than 0 up to 1000 m.";
+		return false;
+	}
+
+	/* Motion persists as float in the canonical tree. Normalize calculations
+	   from those exact stored values so save/reload cannot change a ceil edge. */
+	stage.portalSpeedMps = static_cast<double>(
+		static_cast<float>(stage.portalSpeedMps));
+	stage.portalDistanceM = static_cast<double>(
+		static_cast<float>(stage.portalDistanceM));
+	const double travelMs =
+		stage.portalDistanceM / stage.portalSpeedMps * 1000.0;
+	const double totalMs = static_cast<double>(stage.portalRetargetDelayMs) +
+		travelMs + static_cast<double>(trailingGapMs);
+	if (!std::isfinite(travelMs) || !std::isfinite(totalMs) ||
+		travelMs <= 0.0 || totalMs <= 0.0 || totalMs > 120000.0)
+	{
+		status = "Portal-rush delay + distance/speed travel + gap must fit a finite 1..120000 ms Stage clock.";
+		return false;
+	}
+	const double ceiledDurationMs = std::ceil(totalMs);
+	if (!std::isfinite(ceiledDurationMs) || ceiledDurationMs < 1.0 ||
+		ceiledDurationMs > 120000.0)
+	{
+		status = "Portal-rush derived Stage clock overflowed the 120000 ms limit.";
+		return false;
+	}
+	stage.durationMs = static_cast<std::uint32_t>(ceiledDurationMs);
+	const double travelEndMs =
+		static_cast<double>(stage.portalRetargetDelayMs) + travelMs;
+
+	stage.hitOffsetsMs.clear();
+	std::uint64_t offsetMs = stage.portalRetargetDelayMs;
+	for (; static_cast<double>(offsetMs) < travelEndMs &&
+		stage.hitOffsetsMs.size() < 64u; offsetMs += 50u)
+	{
+		stage.hitOffsetsMs.push_back(static_cast<std::uint32_t>(offsetMs));
+	}
+	if (static_cast<double>(offsetMs) < travelEndMs)
+	{
+		status = "Portal-rush travel exceeds the 64-sample 50 ms swept-hit contract (maximum 3200 ms).";
+		return false;
+	}
+	if (stage.hitOffsetsMs.empty())
+	{
+		status = "Portal-rush normalization did not produce a swept-hit sample.";
+		return false;
+	}
+	stage.hitCount = static_cast<std::uint32_t>(stage.hitOffsetsMs.size());
+	stage.hitIntervalMs = 0u;
+	stage.hitDelayMs = 0u;
+	status.clear();
+	return true;
+}
+
+bool Client::CBalanceTool::Get_ValtanWarpRushDraft(
+	VALTAN_WARP_RUSH_EDIT& rush,
+	std::string& status) const
+{
+	if (!Require_ValtanAuthoringAdmission("Valtan WARP rush draft", status))
+		return false;
+	const VALTAN_PATTERN_VIEW* const pattern =
+		FindValtanPattern(m_valtanPatternTree, "VALTAN_WARP");
+	if (nullptr == pattern || !pattern->bAuthoringMasterManaged)
+	{
+		status = "VALTAN_WARP is not admitted by the authoring master.";
+		return false;
+	}
+
+	VALTAN_WARP_RUSH_EDIT aggregate{};
+	bool first = true;
+	for (const char* const stageId : VALTAN_WARP_RUSH_STAGE_IDS)
+	{
+		const VALTAN_STAGE_VIEW* const stage = FindValtanStage(*pattern, stageId);
+		if (nullptr == stage)
+		{
+			status = std::string("VALTAN_WARP is missing required rush leg ") +
+				stageId + ".";
+			return false;
+		}
+		PATTERN_STAGE_EDIT draft = BuildValtanStageDraft(*pattern, *stage);
+		std::uint32_t trailingGapMs = 0u;
+		std::string normalizeStatus;
+		if (!DerivePortalRushTrailingGapMs(
+				draft, trailingGapMs, normalizeStatus))
+		{
+			status = std::string("VALTAN_WARP rush leg has no valid authored trailing gap: ") +
+				stageId + ". " + normalizeStatus;
+			return false;
+		}
+		PATTERN_STAGE_EDIT normalized = draft;
+		if (!Normalize_ValtanPortalRushDraft(
+				normalized, trailingGapMs, normalizeStatus) ||
+			normalized.durationMs != draft.durationMs ||
+			normalized.hitOffsetsMs != draft.hitOffsetsMs ||
+			normalized.hitCount != draft.hitCount ||
+			0u != draft.hitIntervalMs || 0u != draft.hitDelayMs)
+		{
+			status = std::string("VALTAN_WARP rush leg is not a normalized 50 ms Server sweep: ") +
+				stageId + ". " + normalizeStatus;
+			return false;
+		}
+		VALTAN_STAGE_VIEW presentation = *stage;
+		bool loopWallChanged = false;
+		if (!RetargetPortalRushLoopToStageEnd(
+				presentation, draft.durationMs, loopWallChanged,
+				normalizeStatus) || loopWallChanged)
+		{
+			status = std::string("VALTAN_WARP rush leg presentation does not follow its Stage clock: ") +
+				stageId + ". " + normalizeStatus;
+			return false;
+		}
+		if (first)
+		{
+			aggregate.legDurationMs = draft.durationMs;
+			aggregate.retargetDelayMs = draft.portalRetargetDelayMs;
+			aggregate.speedMps = draft.portalSpeedMps;
+			aggregate.distanceM = draft.portalDistanceM;
+			aggregate.trailingGapMs = trailingGapMs;
+			aggregate.hitCount = draft.hitCount;
+			first = false;
+		}
+		else if (aggregate.legDurationMs != draft.durationMs ||
+			aggregate.retargetDelayMs != draft.portalRetargetDelayMs ||
+			std::abs(aggregate.speedMps - draft.portalSpeedMps) > 0.000001 ||
+			std::abs(aggregate.distanceM - draft.portalDistanceM) > 0.000001 ||
+			aggregate.trailingGapMs != trailingGapMs ||
+			aggregate.hitCount != draft.hitCount)
+		{
+			status = "VALTAN_WARP STEP_02..STEP_09 do not share one rush contract; reload or repair the canonical source before all-leg tuning.";
+			return false;
+		}
+	}
+	aggregate.travelMs = aggregate.distanceM / aggregate.speedMps * 1000.0;
+	rush = aggregate;
+	status.clear();
+	return true;
+}
+
+bool Client::CBalanceTool::Set_ValtanWarpRushDraft(
+	const VALTAN_WARP_RUSH_EDIT& rush,
+	std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission("Valtan WARP all-leg edit", status))
+		return false;
+	VALTAN_WARP_RUSH_EDIT current{};
+	if (!Get_ValtanWarpRushDraft(current, status))
+	{
+		status = "VALTAN_WARP all-leg edit rejected before mutation: " + status;
+		return false;
+	}
+	if (rush.legDurationMs != current.legDurationMs)
+	{
+		status = "VALTAN_WARP all-leg edit rejected before mutation: the aggregate Stage clock changed; refresh Details and retry.";
+		return false;
+	}
+	VALTAN_PATTERN_TREE_VIEW staged = m_valtanPatternTree;
+	VALTAN_PATTERN_VIEW* const pattern =
+		FindValtanPattern(staged, "VALTAN_WARP");
+	if (nullptr == pattern || !pattern->bAuthoringMasterManaged)
+	{
+		status = "VALTAN_WARP all-leg edit rejected: Pattern is not authoring-master managed.";
+		return false;
+	}
+
+	bool changed = false;
+	PATTERN_STAGE_EDIT admittedNormalized{};
+	for (const char* const stageId : VALTAN_WARP_RUSH_STAGE_IDS)
+	{
+		VALTAN_STAGE_VIEW* const stage = FindValtanStage(*pattern, stageId);
+		if (nullptr == stage)
+		{
+			status = std::string("VALTAN_WARP all-leg edit rejected before mutation: missing ") +
+				stageId + ".";
+			return false;
+		}
+		PATTERN_STAGE_EDIT draft = BuildValtanStageDraft(*pattern, *stage);
+		if (!draft.portalRushMotionEditable ||
+			"PORTAL_TARGET_RUSH" != draft.motionKind ||
+			current.legDurationMs != draft.durationMs ||
+			!stage->Motion.has_value())
+		{
+			status = std::string("VALTAN_WARP all-leg edit rejected before mutation: stale or malformed rush leg ") +
+				stageId + ".";
+			return false;
+		}
+		draft.portalRetargetDelayMs = rush.retargetDelayMs;
+		draft.portalSpeedMps = rush.speedMps;
+		draft.portalDistanceM = rush.distanceM;
+		std::string normalizeStatus;
+		if (!Normalize_ValtanPortalRushDraft(
+				draft, rush.trailingGapMs, normalizeStatus))
+		{
+			status = std::string("VALTAN_WARP all-leg edit rejected before mutation: ") +
+				normalizeStatus;
+			return false;
+		}
+		if (admittedNormalized.stageId.empty())
+			admittedNormalized = draft;
+		else if (admittedNormalized.portalRetargetDelayMs !=
+				draft.portalRetargetDelayMs ||
+			admittedNormalized.durationMs != draft.durationMs ||
+			std::abs(admittedNormalized.portalSpeedMps -
+				draft.portalSpeedMps) > 0.000001 ||
+			std::abs(admittedNormalized.portalDistanceM -
+				draft.portalDistanceM) > 0.000001 ||
+			admittedNormalized.hitOffsetsMs != draft.hitOffsetsMs)
+		{
+			status = "VALTAN_WARP all-leg edit rejected before mutation: the eight Stage clocks normalize to different rush contracts.";
+			return false;
+		}
+		bool loopWallChanged = false;
+		if (!RetargetPortalRushLoopToStageEnd(
+				*stage, draft.durationMs, loopWallChanged, normalizeStatus))
+		{
+			status = std::string("VALTAN_WARP all-leg edit rejected before mutation: ") +
+				stageId + " " + normalizeStatus;
+			return false;
+		}
+
+		changed = changed ||
+			stage->iDurationMs != draft.durationMs || loopWallChanged ||
+			stage->Motion->iRetargetDelayMs != draft.portalRetargetDelayMs ||
+			std::abs(stage->Motion->fSpeedMps -
+				static_cast<float>(draft.portalSpeedMps)) > 0.000001f ||
+			std::abs(stage->Motion->fDistance -
+				static_cast<float>(draft.portalDistanceM)) > 0.000001f ||
+			stage->HitOffsetsMs != draft.hitOffsetsMs ||
+			stage->iHitCount != draft.hitCount ||
+			0u != stage->iHitIntervalMs || 0u != stage->iHitDelayMs;
+		stage->iDurationMs = draft.durationMs;
+		stage->Motion->iRetargetDelayMs = draft.portalRetargetDelayMs;
+		stage->Motion->fSpeedMps = static_cast<float>(draft.portalSpeedMps);
+		stage->Motion->fDistance = static_cast<float>(draft.portalDistanceM);
+		stage->HitOffsetsMs = draft.hitOffsetsMs;
+		stage->iHitCount = draft.hitCount;
+		stage->iHitIntervalMs = 0u;
+		stage->iHitDelayMs = 0u;
+	}
+
+	if (!changed)
+	{
+		status = "VALTAN_WARP all eight rush legs are unchanged.";
+		return true;
+	}
+	/* This is the only live-tree mutation: every required Stage was found and
+	   normalized in the value copy above before the aggregate is committed. */
+	m_valtanPatternTree = std::move(staged);
+	MarkDirty(true);
+	status = "Staged VALTAN_WARP delay/speed/distance/portal gap, derived Stage clocks, loop presentation, and 50 ms travel sweeps atomically for STEP_02..STEP_09. Use Save & Apply to validate and activate the data.";
+	return true;
+}
+
+bool Client::CBalanceTool::Get_ValtanPatternDraft(
+	const std::string& patternId,
+	VALTAN_PATTERN_VIEW& pattern,
+	std::string& status) const
+{
+	if (!Require_ValtanAuthoringAdmission(
+			"Valtan Pattern draft", status))
+	{
+		return false;
+	}
+	const VALTAN_PATTERN_VIEW* const admitted =
+		FindValtanPattern(m_valtanPatternTree, patternId);
+	if (nullptr == admitted || !admitted->bAuthoringMasterManaged)
+	{
+		status = "Valtan Pattern draft is not authoring-master managed: " +
+			patternId + ".";
+		return false;
+	}
+	pattern = *admitted;
+	status.clear();
+	return true;
+}
+
+bool Client::CBalanceTool::Get_ValtanAuthoringState(
+	std::string& sourceRevision,
+	bool_t& dirty,
+	std::string& status) const
+{
+	sourceRevision = m_valtanSourceRevision;
+	dirty = m_dirty;
+	if (VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED !=
+		m_valtanSourceJoin.state || sourceRevision.empty())
+	{
+		status = "Valtan split gameplay/presentation source is not joined: " +
+			m_valtanSourceJoin.diagnostic;
+		return false;
+	}
+	status = dirty ?
+		"Effective joined authoring draft has unsaved changes." :
+		"Effective joined authoring source is clean.";
+	return true;
+}
+
+bool Client::CBalanceTool::Get_ValtanCanonicalSourceRevision(
+	std::string& repositoryRevision,
+	std::string& status) const
+{
+	repositoryRevision = m_valtanSourceJoin.repositoryRevision;
+	if (VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED !=
+			m_valtanSourceJoin.state || !IsLowerSha256(repositoryRevision))
+	{
+		status =
+			"Valtan canonical repository source identity is not admitted: " +
+			m_valtanSourceJoin.diagnostic;
+		return false;
+	}
+	status = "Valtan canonical repository source identity is pinned.";
+	return true;
+}
+
+bool Client::CBalanceTool::Add_ValtanStageEffectCue(
+	const std::string& patternId,
+	const std::string& stageId,
+	const std::string& actionId,
+	const VALTAN_PRODUCT_EFFECT_CUE_VIEW& cue,
+	std::string& status)
+{
+	std::string admissionStatus;
+	const bool_t admitted = Require_ValtanAuthoringAdmission(
+		"Valtan Effect invocation add", admissionStatus);
+	VALTAN_EFFECT_CUE_AUTHORING_CONTEXT context;
+	context.eAdmission = admitted ?
+		VALTAN_EFFECT_CUE_AUTHORING_ADMISSION::ADMITTED :
+		VALTAN_EFFECT_CUE_AUTHORING_ADMISSION::DISPLAY_ONLY;
+	context.QuerySourceMembership =
+		[](const std::string& effectAssetId, bool_t& contains,
+			std::string& queryStatus)
+		{
+			return CEffectCatalog::Try_ContainsSourceRegistrationFresh(
+				effectAssetId, contains, queryStatus);
+		};
+	bool_t changed = false;
+	if (!CValtanPatternEffectCueAuthoring::Add(
+			m_valtanPatternTree, patternId, stageId, actionId, cue,
+			context, changed, status))
+	{
+		if (!admitted && !admissionStatus.empty())
+			status = admissionStatus;
+		return false;
+	}
+	MarkDirty(changed);
+	return true;
+}
+
+bool Client::CBalanceTool::Update_ValtanStageEffectCue(
+	const std::string& patternId,
+	const std::string& stageId,
+	const std::string& actionId,
+	const std::string& cueId,
+	const std::string& occurrenceId,
+	const VALTAN_PRODUCT_EFFECT_CUE_VIEW& cue,
+	std::string& status)
+{
+	std::string admissionStatus;
+	const bool_t admitted = Require_ValtanAuthoringAdmission(
+		"Valtan Effect invocation update", admissionStatus);
+	VALTAN_EFFECT_CUE_AUTHORING_CONTEXT context;
+	context.eAdmission = admitted ?
+		VALTAN_EFFECT_CUE_AUTHORING_ADMISSION::ADMITTED :
+		VALTAN_EFFECT_CUE_AUTHORING_ADMISSION::DISPLAY_ONLY;
+	context.QuerySourceMembership =
+		[](const std::string& effectAssetId, bool_t& contains,
+			std::string& queryStatus)
+		{
+			return CEffectCatalog::Try_ContainsSourceRegistrationFresh(
+				effectAssetId, contains, queryStatus);
+		};
+	bool_t changed = false;
+	if (!CValtanPatternEffectCueAuthoring::Update(
+			m_valtanPatternTree, patternId, stageId, actionId, cueId,
+			occurrenceId, cue, context, changed, status))
+	{
+		if (!admitted && !admissionStatus.empty())
+			status = admissionStatus;
+		return false;
+	}
+	MarkDirty(changed);
+	return true;
+}
+
+bool Client::CBalanceTool::Remove_ValtanStageEffectCue(
+	const std::string& patternId,
+	const std::string& stageId,
+	const std::string& actionId,
+	const std::string& cueId,
+	const std::string& occurrenceId,
+	const std::string& effectAssetId,
+	const std::string& clipOccurrenceId,
+	std::string& status)
+{
+	std::string admissionStatus;
+	const bool_t admitted = Require_ValtanAuthoringAdmission(
+		"Valtan Effect invocation remove", admissionStatus);
+	VALTAN_EFFECT_CUE_AUTHORING_CONTEXT context;
+	context.eAdmission = admitted ?
+		VALTAN_EFFECT_CUE_AUTHORING_ADMISSION::ADMITTED :
+		VALTAN_EFFECT_CUE_AUTHORING_ADMISSION::DISPLAY_ONLY;
+	context.QuerySourceMembership =
+		[](const std::string& requestedEffectAssetId, bool_t& contains,
+			std::string& queryStatus)
+		{
+			return CEffectCatalog::Try_ContainsSourceRegistrationFresh(
+				requestedEffectAssetId, contains, queryStatus);
+		};
+	bool_t changed = false;
+	if (!CValtanPatternEffectCueAuthoring::Remove(
+			m_valtanPatternTree, patternId, stageId, actionId, cueId,
+			occurrenceId, effectAssetId, clipOccurrenceId, context,
+			changed, status))
+	{
+		if (!admitted && !admissionStatus.empty())
+			status = admissionStatus;
+		return false;
+	}
+	MarkDirty(changed);
+	return true;
+}
+
+bool Client::CBalanceTool::Can_Edit_ValtanManualStageTopology(
+	const std::string& patternId,
+	std::string& status) const
+{
+	if (!Require_ValtanAuthoringAdmission(
+			"Manual Valtan Stage topology", status))
+	{
+		return false;
+	}
+	const VALTAN_PATTERN_VIEW* const pattern =
+		FindValtanPattern(m_valtanPatternTree, patternId);
+	if (nullptr == pattern || !pattern->bAuthoringMasterManaged ||
+		!pattern->bManualServerAudition)
+	{
+		status = "Manual Stage topology is limited to one admitted MANUAL_SERVER_AUDITION Pattern: " +
+			patternId + ".";
+		return false;
+	}
+	return IsValtanManualStageTopologyLinear(*pattern, status);
+}
+
+bool Client::CBalanceTool::Insert_ValtanManualStageAfter(
+	const std::string& patternId,
+	const std::string& afterStageId,
+	const std::string& stageId,
+	const std::string& actionId,
+	const std::string& stageRole,
+	const std::uint32_t durationMs,
+	std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission(
+			"Manual Valtan Stage insertion", status))
+	{
+		return false;
+	}
+	const VALTAN_PATTERN_VIEW* const current =
+		FindValtanPattern(m_valtanPatternTree, patternId);
+	if (nullptr == current || !current->bAuthoringMasterManaged ||
+		!current->bManualServerAudition)
+	{
+		status = "Manual Stage insertion rejected: only a MANUAL_SERVER_AUDITION Pattern admits topology edits: " +
+			patternId + ".";
+		return false;
+	}
+	if (!IsValtanManualStageTopologyLinear(*current, status))
+	{
+		status = "Manual Stage insertion rejected before the draft changed: " + status;
+		return false;
+	}
+	if (!IsValtanStableAuthoringId(stageId) ||
+		!IsValtanStableAuthoringId(actionId) ||
+		!IsValtanManualStageRole(stageRole) ||
+		durationMs < 1u || durationMs > 600000u ||
+		current->Stages.size() >= 64u)
+	{
+		status = "Manual Stage insertion rejected: stable IDs, ACTIVE/WINDUP/GROGGY/WAIT role, duration 1..600000 ms, or the 64-Stage bound is invalid.";
+		return false;
+	}
+	if (nullptr != FindValtanStage(*current, stageId) ||
+		nullptr == FindValtanStage(*current, afterStageId))
+	{
+		status = "Manual Stage insertion rejected: Stage ID already exists or the insertion anchor is stale.";
+		return false;
+	}
+	for (const auto* const group : {
+			&m_valtanPatternTree.Gimmicks, &m_valtanPatternTree.Rotation })
+	{
+		for (const VALTAN_PATTERN_VIEW& pattern : *group)
+		{
+			if (nullptr != FindValtanStageByAction(pattern, actionId))
+			{
+				status = "Manual Stage insertion rejected: actionId already exists in the joined Pattern graph: " +
+					actionId + ".";
+				return false;
+			}
+		}
+	}
+
+	VALTAN_PATTERN_TREE_VIEW staged = m_valtanPatternTree;
+	VALTAN_PATTERN_VIEW* const pattern = FindValtanPattern(staged, patternId);
+	if (nullptr == pattern || !InsertValtanManualStageAfter(
+			*pattern, afterStageId,
+			BuildValtanManualStage(
+				stageId, actionId, stageRole, durationMs), status))
+	{
+		return false;
+	}
+	m_valtanPatternTree = std::move(staged);
+	MarkDirty(true);
+	status = "Inserted manual " + stageRole + " Stage " + stageId +
+		" after " + afterStageId +
+		". WAIT uses the existing ACTIVE Server clock with animation NONE.";
+	return true;
+}
+
+bool Client::CBalanceTool::Remove_ValtanManualStage(
+	const std::string& patternId,
+	const std::string& stageId,
+	std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission(
+			"Manual Valtan Stage removal", status))
+	{
+		return false;
+	}
+	const VALTAN_PATTERN_VIEW* const current =
+		FindValtanPattern(m_valtanPatternTree, patternId);
+	const VALTAN_STAGE_VIEW* const stage = nullptr == current ? nullptr :
+		FindValtanStage(*current, stageId);
+	if (nullptr == current || nullptr == stage ||
+		!current->bAuthoringMasterManaged ||
+		!current->bManualServerAudition)
+	{
+		status = "Manual Stage removal rejected: Pattern/Stage is stale or is not a MANUAL_SERVER_AUDITION.";
+		return false;
+	}
+	if (!IsValtanManualStageTopologyLinear(*current, status))
+	{
+		status = "Manual Stage removal rejected before the draft changed: " + status;
+		return false;
+	}
+	const VALTAN_PATTERN_VIEW* const loadedPattern =
+		FindValtanPattern(m_loadedValtanPatternTree, patternId);
+	const VALTAN_STAGE_VIEW* const loadedStage = nullptr == loadedPattern ?
+		nullptr : FindValtanStage(*loadedPattern, stageId);
+	if (nullptr != loadedStage)
+	{
+		const bool savedRemovalProvenance =
+			(loadedStage->bSuppressAnimation &&
+			 loadedStage->ClipOccurrences.empty()) ||
+			(!loadedStage->ClipOccurrences.empty() && std::all_of(
+				loadedStage->ClipOccurrences.begin(),
+				loadedStage->ClipOccurrences.end(),
+				[](const VALTAN_CLIP_OCCURRENCE_VIEW& occurrence)
+				{
+					return "SOURCE_REVIEWED_DELTA" ==
+						occurrence.strMappingBasis;
+				}));
+		if (!savedRemovalProvenance)
+		{
+			status = "Manual Stage removal rejected: the saved Stage is immutable source-intake provenance. Replace/save reviewed slots or insert a new authored Stage instead: " +
+				patternId + "/" + stageId + ".";
+			return false;
+		}
+		if (loadedStage->Has_HitShape() && !stage->Has_HitShape())
+		{
+			status = "Manual Stage removal rejected: Save + Validate + Publish the Collider removal first, then remove the dependency-free Stage in the next admitted generation: " +
+				patternId + "/" + stageId + ".";
+			return false;
+		}
+	}
+	if (!CanRemoveValtanManualStage(
+			m_valtanPatternTree, *current, *stage, status))
+	{
+		return false;
+	}
+
+	VALTAN_PATTERN_TREE_VIEW staged = m_valtanPatternTree;
+	VALTAN_PATTERN_VIEW* const pattern = FindValtanPattern(staged, patternId);
+	if (nullptr == pattern)
+	{
+		status = "Manual Stage removal failed while staging the stable Pattern ID.";
+		return false;
+	}
+	const auto found = std::find_if(
+		pattern->Stages.begin(), pattern->Stages.end(),
+		[&stageId](const VALTAN_STAGE_VIEW& candidate)
+		{ return candidate.strStageId == stageId; });
+	if (pattern->Stages.end() == found)
+	{
+		status = "Manual Stage removal failed while staging the stable Stage ID.";
+		return false;
+	}
+	pattern->Stages.erase(found);
+	RefreshValtanManualLinearTopology(*pattern);
+	m_valtanPatternTree = std::move(staged);
+	MarkDirty(true);
+	status = "Removed dependency-free manual Stage " + patternId + "/" +
+		stageId + ".";
+	return true;
+}
+
+bool Client::CBalanceTool::Move_ValtanManualStage(
+	const std::string& patternId,
+	const std::string& stageId,
+	const std::string& anchorStageId,
+	const bool beforeAnchor,
+	std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission(
+			"Manual Valtan Stage reorder", status))
+	{
+		return false;
+	}
+	const VALTAN_PATTERN_VIEW* const current =
+		FindValtanPattern(m_valtanPatternTree, patternId);
+	if (nullptr == current || !current->bAuthoringMasterManaged ||
+		!current->bManualServerAudition ||
+		nullptr == FindValtanStage(*current, stageId) ||
+		nullptr == FindValtanStage(*current, anchorStageId))
+	{
+		status = "Manual Stage reorder rejected: Pattern, Stage, or anchor is stale, or the Pattern is not a MANUAL_SERVER_AUDITION.";
+		return false;
+	}
+	if (!IsValtanManualStageTopologyLinear(*current, status))
+	{
+		status = "Manual Stage reorder rejected before the draft changed: " + status;
+		return false;
+	}
+	VALTAN_PATTERN_TREE_VIEW staged = m_valtanPatternTree;
+	VALTAN_PATTERN_VIEW* const pattern = FindValtanPattern(staged, patternId);
+	if (nullptr == pattern || !MoveValtanManualStage(
+			*pattern, stageId, anchorStageId, beforeAnchor, status))
+	{
+		return false;
+	}
+	if (!IsValtanCounterTopologyFiniteForward(*pattern, status))
+	{
+		status = "Manual Stage reorder rejected before the draft changed: " +
+			status;
+		return false;
+	}
+	m_valtanPatternTree = std::move(staged);
+	MarkDirty(true);
+	status = "Moved manual Stage " + stageId +
+		(beforeAnchor ? " before " : " after ") + anchorStageId + ".";
+	return true;
+}
+
+std::vector<std::string> Client::CBalanceTool::Get_ValtanDamageProfileIds() const
+{
+	std::vector<std::string> Result;
+	for (const DAMAGE_EDIT& Profile : m_damageProfiles)
+	{
+		if (0u == Profile.damageProfileId.rfind("damage.valtan.", 0u))
+			Result.push_back(Profile.damageProfileId);
+	}
+	std::sort(Result.begin(), Result.end());
+	Result.erase(std::unique(Result.begin(), Result.end()), Result.end());
+	return Result;
+}
+
 bool Client::CBalanceTool::Set_ValtanStageDraft(
 	const std::string& patternId,
 	const std::string& stageId,
 	const PATTERN_STAGE_EDIT& candidate,
 	std::string& status)
 {
+	if (!Require_ValtanAuthoringAdmission(
+			"Valtan Stage edit", status))
+	{
+		return false;
+	}
 	VALTAN_PATTERN_VIEW* pattern =
 		FindValtanPattern(m_valtanPatternTree, patternId);
 	if (nullptr == pattern || !pattern->bAuthoringMasterManaged)
@@ -1201,16 +2801,212 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 		return false;
 	}
 	const PATTERN_STAGE_EDIT current = BuildValtanStageDraft(*pattern, *stage);
+	const bool isWaitStage = "WAIT" == stage->strSequenceRole;
+	if (isWaitStage &&
+		("ACTIVE" != current.stageKind ||
+		 "NONE" != current.animationEndPolicy ||
+		 !current.animationSlots.empty() || "NONE" != current.hitShape ||
+		 !current.motionKind.empty() || !current.actions.empty() ||
+		 !current.productCues.empty()))
+	{
+		status = "Valtan WAIT Stage edit rejected: the admitted WAIT contract is malformed; reload a validated source before editing.";
+		return false;
+	}
+	const bool stageKindChanged =
+		candidate.stageKind != current.stageKind;
+	const bool durationChanged = candidate.durationMs != current.durationMs;
+	const bool animationChanged =
+		candidate.animationEndPolicy != current.animationEndPolicy ||
+		candidate.animationRepeatCount != current.animationRepeatCount ||
+		candidate.animationSlots.size() != current.animationSlots.size() ||
+		!std::equal(
+			candidate.animationSlots.begin(), candidate.animationSlots.end(),
+			current.animationSlots.begin(), current.animationSlots.end(),
+			[](const ANIMATION_SLOT_EDIT& left,
+				const ANIMATION_SLOT_EDIT& right)
+			{
+				return EqualValtanAnimationSlot(left, right);
+			});
+	const bool portalRushMotion = current.portalRushMotionEditable &&
+		"PORTAL_TARGET_RUSH" == current.motionKind;
+	const bool hitOffsetsChanged =
+		candidate.hitOffsetsMs != current.hitOffsetsMs;
+	const bool responseChanged =
+		candidate.playerResponse != current.playerResponse ||
+		candidate.attachmentSlot != current.attachmentSlot;
 	if (candidate.stageId != current.stageId ||
 		candidate.actionId != current.actionId ||
-		candidate.stageKind != current.stageKind ||
-		candidate.damageProfileId != current.damageProfileId ||
-		candidate.playerResponse != current.playerResponse ||
-		candidate.attachmentSlot != current.attachmentSlot ||
-		candidate.hitOffsetsMs != current.hitOffsetsMs)
+		candidate.motionKind != current.motionKind ||
+		candidate.stageKindEditable != current.stageKindEditable ||
+		candidate.animationEditable != current.animationEditable ||
+		candidate.portalRushMotionEditable !=
+			current.portalRushMotionEditable)
 	{
-		status = "Valtan stage edit rejected: stable identity, DamageProfile, response, and explicit-offset ownership are read-only in Workbench.";
+		status = "Valtan stage edit rejected: stable identity, DamageProfile, response, and motion kind are read-only in this Stage editor.";
 		return false;
+	}
+	if (stageKindChanged)
+	{
+		const bool validManualKind =
+			"ACTIVE" == candidate.stageKind ||
+			"WINDUP" == candidate.stageKind ||
+			"GROGGY" == candidate.stageKind;
+		if (!pattern->bManualServerAudition ||
+			!current.stageKindEditable || !validManualKind)
+		{
+			status =
+				"Valtan Stage kind edit rejected: only a MANUAL_SERVER_AUDITION Stage admits ACTIVE, WINDUP, or GROGGY.";
+			return false;
+		}
+		const bool ownsCounterBranch = std::any_of(
+			stage->Branches.begin(), stage->Branches.end(),
+			[](const VALTAN_STAGE_BRANCH_VIEW& branch)
+			{ return "COUNTER_HIT" == branch.strOutcome; });
+		const int counterFlagState = ValtanFlagContractState(
+			*stage, "boss.flag.counterable");
+		if ((ownsCounterBranch || 0 != counterFlagState) &&
+			"WINDUP" != candidate.stageKind)
+		{
+			status =
+				"Valtan Stage kind edit rejected: disable this Stage's Counter window before changing its WINDUP kind.";
+			return false;
+		}
+		const bool isCounterTarget = std::any_of(
+			pattern->Stages.begin(), pattern->Stages.end(),
+			[stage](const VALTAN_STAGE_VIEW& owner)
+			{
+				return std::any_of(
+					owner.Branches.begin(), owner.Branches.end(),
+					[stage](const VALTAN_STAGE_BRANCH_VIEW& branch)
+					{
+						return "COUNTER_HIT" == branch.strOutcome &&
+							branch.strNextActionId.has_value() &&
+							*branch.strNextActionId == stage->strActionId;
+					});
+			});
+		const int groggyFlagState = ValtanFlagContractState(
+			*stage, "boss.flag.groggy");
+		if (("GROGGY" == current.stageKind && 1 != groggyFlagState) ||
+			("GROGGY" != current.stageKind && 0 != groggyFlagState))
+		{
+			status =
+				"Valtan Stage kind edit rejected: the admitted Stage kind and Groggy flag transition disagree.";
+			return false;
+		}
+		if (isCounterTarget && "GROGGY" != candidate.stageKind)
+		{
+			status =
+				"Valtan Stage kind edit rejected: disable every Counter window targeting this GROGGY Stage before changing its kind.";
+			return false;
+		}
+	}
+	const bool animationClockChanged = animationChanged ||
+		(durationChanged && current.animationEditable &&
+		 (!current.animationSlots.empty() || !candidate.animationSlots.empty()));
+	if (animationClockChanged)
+	{
+		const bool bAnimationNone = candidate.animationSlots.empty();
+		const bool bAnimationPolicyInvalid = bAnimationNone ?
+			(!pattern->bManualServerAudition || isWaitStage ||
+			 "NONE" != candidate.animationEndPolicy ||
+			 0u != candidate.animationRepeatCount) :
+			(candidate.animationSlots.size() > 32u ||
+			 candidate.animationRepeatCount < 1u ||
+			 candidate.animationRepeatCount > 32u ||
+			 ("EXACT" != candidate.animationEndPolicy &&
+			  "HOLD_LAST_POSE" != candidate.animationEndPolicy &&
+			  "LOOP_TO_STAGE_END" != candidate.animationEndPolicy));
+		if (!current.animationEditable || bAnimationPolicyInvalid)
+		{
+			status = "Valtan Animation slot edit rejected: Animation NONE is manual non-WAIT only, and Sequence mode requires a valid non-empty policy.";
+			return false;
+		}
+		std::unordered_set<std::string> OccurrenceIds;
+		if (!bAnimationNone)
+		{
+		const auto IsStableId = [](const std::string& value)
+		{
+			return !value.empty() && value.size() <= 160u &&
+				std::all_of(value.begin(), value.end(), [](const unsigned char ch)
+				{
+					return 0 != std::isalnum(ch) || '_' == ch || '.' == ch || '-' == ch;
+				});
+		};
+		const std::unordered_set<std::string> AllowedMappingBases = {
+			"CURRENT_PRODUCT_BASELINE", "PATTERN_PR_REFERENCE",
+			"ANIMATION_PR_127", "SOURCE_REVIEWED_DELTA",
+			"PROJECT_AUTHORED", "LEGACY_V1_MIGRATION" };
+		uint64_t iKnownWallMs = 0u;
+		std::size_t iZeroPlay = 0u;
+		std::size_t iLoops = 0u;
+		for (const ANIMATION_SLOT_EDIT& slot : candidate.animationSlots)
+		{
+			if (!IsStableId(slot.clipOccurrenceId) || !IsStableId(slot.clip) ||
+				!OccurrenceIds.insert(slot.clipOccurrenceId).second ||
+				AllowedMappingBases.end() ==
+					AllowedMappingBases.find(slot.mappingBasis) ||
+				slot.sourceStartMs > 600000u || slot.playMs > 600000u ||
+				!std::isfinite(slot.playRate) || slot.playRate <= 0.0 ||
+				slot.playRate > 16.0)
+			{
+				status = "Valtan Animation slot edit rejected: a slot identity, clip, mapping or source clock is invalid.";
+				return false;
+			}
+			if (0u == slot.playMs)
+				++iZeroPlay;
+			else
+				iKnownWallMs += static_cast<uint64_t>(std::llround(
+					static_cast<double>(slot.playMs) / slot.playRate));
+			if (slot.repeatUntilStageEnd)
+				++iLoops;
+		}
+		const uint64_t iDurationMs = candidate.durationMs;
+		const bool bRepeatedClipContract =
+			1u == candidate.animationRepeatCount ||
+			(candidate.animationRepeatCount == candidate.animationSlots.size() &&
+			 std::all_of(
+				 candidate.animationSlots.begin() + 1u,
+				 candidate.animationSlots.end(),
+				 [&candidate](const ANIMATION_SLOT_EDIT& slot)
+				 {
+					 return slot.clip == candidate.animationSlots.front().clip;
+				 }));
+		const bool bBudgetValid =
+			("EXACT" == candidate.animationEndPolicy && 0u == iZeroPlay &&
+			 0u == iLoops &&
+			 (iKnownWallMs > iDurationMs ?
+				iKnownWallMs - iDurationMs : iDurationMs - iKnownWallMs) <= 2u &&
+			 static_cast<int64_t>(
+				static_cast<uint64_t>(std::llround(
+					static_cast<double>(candidate.animationSlots.back().playMs) /
+					candidate.animationSlots.back().playRate))) +
+				static_cast<int64_t>(iDurationMs) -
+				static_cast<int64_t>(iKnownWallMs) > 0) ||
+			("HOLD_LAST_POSE" == candidate.animationEndPolicy &&
+			 iZeroPlay <= 1u && 0u == iLoops &&
+			 iKnownWallMs < iDurationMs + 2u &&
+			 (0u == iZeroPlay || iKnownWallMs < iDurationMs)) ||
+			("LOOP_TO_STAGE_END" == candidate.animationEndPolicy &&
+			 1u == iZeroPlay && 1u == iLoops && iKnownWallMs < iDurationMs);
+		if (!bRepeatedClipContract || !bBudgetValid)
+		{
+			status = !bRepeatedClipContract ?
+				"Valtan Animation slot edit rejected: repeatCount must describe explicit repetitions of one clip." :
+				"Valtan Animation slot edit rejected: the slot wall clock does not match the Stage duration/end policy.";
+			return false;
+		}
+		}
+		for (const VALTAN_PRODUCT_EFFECT_CUE_VIEW& cue : current.productCues)
+		{
+			if (!cue.strClipOccurrenceId.empty() &&
+				OccurrenceIds.end() == OccurrenceIds.find(cue.strClipOccurrenceId))
+			{
+				status = "Valtan Animation slot edit rejected: Effect cue " +
+					cue.strOccurrenceId + " still references removed slot " +
+					cue.strClipOccurrenceId + ".";
+				return false;
+			}
+		}
 	}
 	if (candidate.actions.size() != current.actions.size() ||
 		candidate.productCues.size() != current.productCues.size())
@@ -1246,13 +3042,15 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 		const bool hold = "HOLD" == draftAction.strReleaseMode &&
 			0.f == draftAction.fSpeedMps && 0u == draftAction.iDurationMs &&
 			0.f == draftAction.fYawOffsetDegrees;
-		const bool launch =
-			("OPPOSITE_KNOCKBACK" == draftAction.strReleaseMode ||
-			 "ARENA_EJECTION" == draftAction.strReleaseMode) &&
+		const bool launchDirectionValid =
+			("OPPOSITE_KNOCKBACK" == draftAction.strReleaseMode &&
+			 0.f == draftAction.fYawOffsetDegrees) ||
+			("ARENA_EJECTION" == draftAction.strReleaseMode &&
+			 std::isfinite(draftAction.fYawOffsetDegrees) &&
+			 std::abs(draftAction.fYawOffsetDegrees) <= 180.f);
+		const bool launch = launchDirectionValid &&
 			draftAction.fSpeedMps > 0.f && draftAction.fSpeedMps <= 50.f &&
-			draftAction.iDurationMs > 0u && draftAction.iDurationMs <= 5000u &&
-			std::isfinite(draftAction.fYawOffsetDegrees) &&
-			std::abs(draftAction.fYawOffsetDegrees) <= 180.f;
+			draftAction.iDurationMs > 0u && draftAction.iDurationMs <= 5000u;
 		if (!std::isfinite(draftAction.fSpeedMps) || (!hold && !launch))
 		{
 			status = "Grabbed-player release mode, speed, duration or yaw is invalid.";
@@ -1293,11 +3091,62 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 		status = "Valtan stage duration must be between 1 and 600000 ms.";
 		return false;
 	}
-	if (!current.durationEditable &&
-		candidate.durationMs != current.durationMs)
+	if (!current.durationEditable && durationChanged)
 	{
-		status = "Manual Server audition duration is locked to its promoted animation wall-clock: " +
+		status = "Valtan Stage duration is locked by its typed gameplay policy: " +
 			patternId + "/" + stageId + ".";
+		return false;
+	}
+	const bool portalRushMotionChanged =
+		candidate.portalRetargetDelayMs != current.portalRetargetDelayMs ||
+		candidate.portalSpeedMps != current.portalSpeedMps ||
+		candidate.portalDistanceM != current.portalDistanceM;
+	const bool portalRushSweepChanged =
+		candidate.hitCount != current.hitCount ||
+		candidate.hitIntervalMs != current.hitIntervalMs ||
+		candidate.hitDelayMs != current.hitDelayMs || hitOffsetsChanged;
+	if (portalRushMotion &&
+		(durationChanged || portalRushMotionChanged || portalRushSweepChanged))
+	{
+		status = "VALTAN_WARP Stage clock, rush motion, and swept-hit timing are owned by Warp Rush — All 8 Legs.";
+		return false;
+	}
+	if (portalRushMotion)
+	{
+		const bool finiteMotion = std::isfinite(candidate.portalSpeedMps) &&
+			std::isfinite(candidate.portalDistanceM);
+		const double travelEndMs = finiteMotion && candidate.portalSpeedMps > 0.0 ?
+			static_cast<double>(candidate.portalRetargetDelayMs) +
+			candidate.portalDistanceM / candidate.portalSpeedMps * 1000.0 :
+			std::numeric_limits<double>::infinity();
+		bool sweptOffsetsValid = !candidate.hitOffsetsMs.empty();
+		std::uint32_t expectedOffsetMs = candidate.portalRetargetDelayMs;
+		for (const std::uint32_t offsetMs : candidate.hitOffsetsMs)
+		{
+			sweptOffsetsValid = sweptOffsetsValid &&
+				offsetMs == expectedOffsetMs &&
+				static_cast<double>(offsetMs) < travelEndMs;
+			expectedOffsetMs += 50u;
+		}
+		sweptOffsetsValid = sweptOffsetsValid &&
+			static_cast<double>(expectedOffsetMs) + 0.000001 >= travelEndMs;
+		if (!finiteMotion || candidate.portalSpeedMps <= 0.0 ||
+			candidate.portalSpeedMps > 1000.0 ||
+			candidate.portalDistanceM <= 0.0 ||
+			candidate.portalDistanceM > 1000.0 ||
+			travelEndMs > static_cast<double>(candidate.durationMs) + 0.000001 ||
+			!sweptOffsetsValid)
+		{
+			status = "Valtan portal rush requires finite delay/speed/distance inside the stage clock and 50 ms swept-hit offsets beginning at the retarget delay.";
+			return false;
+		}
+	}
+	else if (candidate.portalRetargetDelayMs !=
+			current.portalRetargetDelayMs ||
+		candidate.portalSpeedMps != current.portalSpeedMps ||
+		candidate.portalDistanceM != current.portalDistanceM)
+	{
+		status = "Valtan non-portal motion fields are read-only in Workbench.";
 		return false;
 	}
 	const bool hitChanged =
@@ -1310,18 +3159,22 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 		candidate.hitCount != current.hitCount ||
 		candidate.hitIntervalMs != current.hitIntervalMs ||
 		candidate.hitDelayMs != current.hitDelayMs ||
+		hitOffsetsChanged ||
+		candidate.damageProfileId != current.damageProfileId ||
 		candidate.pushRangeM != current.pushRangeM ||
 		candidate.pushMs != current.pushMs ||
 		candidate.knockdown != current.knockdown ||
-		candidate.downMs != current.downMs;
-	if (hitChanged && !current.hitEditable)
+		candidate.downMs != current.downMs || responseChanged;
+	if (isWaitStage &&
+		(stageKindChanged || animationChanged || hitChanged ||
+		 portalRushMotionChanged || releaseChanged || effectYawChanged))
 	{
-		status = "Valtan stage hit edit rejected: adding a new hit also requires a typed DamageProfile choice in Balance Tool.";
+		status = "Valtan WAIT Stage owns only its Server clock. Stage kind, Animation, Collider, motion, action, and Effect edits are rejected.";
 		return false;
 	}
-	if (("NONE" == current.hitShape) != ("NONE" == candidate.hitShape))
+	if (hitChanged && !current.hitEditable)
 	{
-		status = "Valtan stage hit edit rejected: Workbench cannot add or remove the DamageProfile-owned hit contract.";
+		status = "Valtan stage hit edit rejected: this canonical Stage does not own an editable Collider contract. Add/remove is available only to a manual audition Stage; an existing canonical hit may be tuned in place.";
 		return false;
 	}
 	if (!IsValtanStageGeometryValid(candidate))
@@ -1332,6 +3185,11 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 	}
 	if ("NONE" == candidate.hitShape)
 	{
+		if ("CAPTURE" == current.playerResponse && "NONE" != current.hitShape)
+		{
+			status = "Valtan capture collider removal is a multi-owner transaction: its grab branches, held-player attachment, and release actions must be removed together. Geometry-only removal is blocked.";
+			return false;
+		}
 		if (0u != candidate.hitCount || 0u != candidate.hitIntervalMs ||
 			0u != candidate.hitDelayMs || !candidate.damageProfileId.empty() ||
 			0.0 != candidate.pushRangeM || 0u != candidate.pushMs ||
@@ -1343,11 +3201,22 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 	}
 	else
 	{
+		const bool damageProfileKnown = std::any_of(
+			m_damageProfiles.begin(), m_damageProfiles.end(),
+			[&candidate](const DAMAGE_EDIT& profile)
+			{
+				return profile.damageProfileId == candidate.damageProfileId &&
+					0u == profile.damageProfileId.rfind("damage.valtan.", 0u);
+			});
 		const bool explicitOffsets = !candidate.hitOffsetsMs.empty();
 		const bool explicitScheduleValid = explicitOffsets &&
 			candidate.hitCount == candidate.hitOffsetsMs.size() &&
 			0u == candidate.hitIntervalMs && 0u == candidate.hitDelayMs &&
-			candidate.hitOffsetsMs.back() < candidate.durationMs;
+			candidate.hitOffsetsMs.back() < candidate.durationMs &&
+			candidate.hitOffsetsMs.end() == std::adjacent_find(
+				candidate.hitOffsetsMs.begin(), candidate.hitOffsetsMs.end(),
+				[](const std::uint32_t left, const std::uint32_t right)
+				{ return left >= right; });
 		const std::uint64_t finalIntervalHit =
 			static_cast<std::uint64_t>(candidate.hitDelayMs) +
 			static_cast<std::uint64_t>(candidate.hitCount -
@@ -1363,27 +3232,57 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 			candidate.pushMs <= 600000u && candidate.downMs <= 600000u &&
 			((0.0 == candidate.pushRangeM) == (0u == candidate.pushMs)) &&
 			(candidate.knockdown == (0u != candidate.downMs));
+		const bool typedResponseValid =
+			("DAMAGE" == candidate.playerResponse &&
+			 "NONE" == candidate.attachmentSlot) ||
+			("CAPTURE" == candidate.playerResponse &&
+			 "BOSS_LEFT_HAND" == candidate.attachmentSlot);
 		const bool captureReactionValid =
 			"CAPTURE" != candidate.playerResponse ||
 			(0.0 == candidate.pushRangeM && 0u == candidate.pushMs &&
 				!candidate.knockdown && 0u == candidate.downMs);
 		if ((!explicitScheduleValid && !intervalScheduleValid) ||
-			candidate.damageProfileId.empty() || !validPush ||
-			!captureReactionValid)
+			candidate.damageProfileId.empty() || !damageProfileKnown || !validPush ||
+			!typedResponseValid || !captureReactionValid)
 		{
 			status = "Valtan stage hit schedule or player reaction is invalid: " +
 				patternId + "/" + stageId + ".";
 			return false;
 		}
 	}
+	if (responseChanged)
+	{
+		const bool ownsRelease = std::any_of(
+			pattern->Stages.begin(), pattern->Stages.end(),
+			[](const VALTAN_STAGE_VIEW& owner)
+			{
+				return owner.Actions.end() != std::find_if(
+					owner.Actions.begin(), owner.Actions.end(),
+					[](const VALTAN_STAGE_ACTION_VIEW& action)
+					{
+						return "RELEASE_GRABBED_PLAYERS" == action.strKind;
+					});
+			});
+		const bool addCapture =
+			"DAMAGE" == current.playerResponse &&
+			"CAPTURE" == candidate.playerResponse &&
+			"BOSS_LEFT_HAND" == candidate.attachmentSlot && ownsRelease;
+		if (!addCapture)
+		{
+			status = "Valtan Collider response edit rejected: only Damage -> Grab inside an existing typed left-hand capture/release Pattern is admitted. Removing Capture requires the whole grab topology transaction.";
+			return false;
+		}
+	}
 
-	const bool durationChanged = candidate.durationMs != current.durationMs;
-	if (!durationChanged && !hitChanged && !releaseChanged &&
-		!effectYawChanged)
+	if (!stageKindChanged && !durationChanged && !hitChanged &&
+		!portalRushMotionChanged &&
+		!releaseChanged &&
+		!effectYawChanged && !animationChanged)
 	{
 		status = "Valtan stage draft is unchanged.";
 		return true;
 	}
+	stage->strStageKind = candidate.stageKind;
 	stage->iDurationMs = candidate.durationMs;
 	stage->strHitShape = candidate.hitShape;
 	stage->fHitOuterRadius = static_cast<float>(candidate.hitOuterRadius);
@@ -1394,11 +3293,37 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 	stage->iHitCount = candidate.hitCount;
 	stage->iHitIntervalMs = candidate.hitIntervalMs;
 	stage->iHitDelayMs = candidate.hitDelayMs;
+	stage->HitOffsetsMs = candidate.hitOffsetsMs;
+	stage->strServerDamageProfileId = candidate.damageProfileId;
 	stage->fPushRangeM = static_cast<float>(candidate.pushRangeM);
 	stage->iPushMs = candidate.pushMs;
 	stage->bKnockdown = candidate.knockdown;
 	stage->iDownMs = candidate.downMs;
+	stage->strPlayerResponse = candidate.playerResponse;
+	stage->strAttachmentSlot = candidate.attachmentSlot;
+	if (portalRushMotion && stage->Motion.has_value())
+	{
+		stage->Motion->iRetargetDelayMs = candidate.portalRetargetDelayMs;
+		stage->Motion->fSpeedMps = static_cast<float>(candidate.portalSpeedMps);
+		stage->Motion->fDistance = static_cast<float>(candidate.portalDistanceM);
+	}
 	stage->Actions = candidate.actions;
+	if (stageKindChanged && "GROGGY" != current.stageKind &&
+		"GROGGY" == candidate.stageKind)
+	{
+		/* Entering GROGGY is independently saveable before a Counter edge is
+		   authored, so the Stage kind owns its closed flag transition. */
+		AddValtanClosedFlagActions(*stage, "boss.flag.groggy");
+	}
+	else if (stageKindChanged && "GROGGY" == current.stageKind &&
+		"GROGGY" != candidate.stageKind)
+	{
+		/* Apply the draft Actions first, then remove the paired Groggy flag.
+		   Otherwise the unmodified candidate would restore the flag that this
+		   typed Stage-kind transition owns.  The Python transaction applies the
+		   same rule to its staged document. */
+		RemoveValtanFlagActions(*stage, "boss.flag.groggy");
+	}
 	const auto ApplyCueYaw = [&candidate](VALTAN_PRODUCT_EFFECT_CUE_VIEW& cue)
 	{
 		const auto found = std::find_if(
@@ -1416,6 +3341,95 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 	for (VALTAN_CLIP_OCCURRENCE_VIEW& occurrence : stage->ClipOccurrences)
 		for (VALTAN_PRODUCT_EFFECT_CUE_VIEW& cue : occurrence.ProductCues)
 			ApplyCueYaw(cue);
+	if (animationClockChanged)
+	{
+		if (candidate.animationSlots.empty())
+		{
+			stage->ClipOccurrences.clear();
+			stage->strAnimationEndPolicy = "NONE";
+			stage->iAuthoringRepeatCount = 0u;
+			stage->bSuppressAnimation = true;
+		}
+		else
+		{
+		std::vector<VALTAN_CLIP_OCCURRENCE_VIEW> Slots;
+		Slots.reserve(candidate.animationSlots.size());
+		uint64_t iKnownWallMs = 0u;
+		for (const ANIMATION_SLOT_EDIT& source : candidate.animationSlots)
+		{
+			VALTAN_CLIP_OCCURRENCE_VIEW slot{};
+			slot.strClipOccurrenceId = source.clipOccurrenceId;
+			slot.strClipName = source.clip;
+			slot.strMappingBasis = source.mappingBasis;
+			slot.iSourceStartMs = source.sourceStartMs;
+			slot.iPlayMs = source.playMs;
+			slot.fPlayRate = static_cast<float>(source.playRate);
+			slot.bLoop = source.repeatUntilStageEnd;
+			if (0u != source.playMs)
+			{
+				slot.iAuthoringWallMs = static_cast<uint32_t>((std::min)(
+					static_cast<uint64_t>(std::llround(
+						static_cast<double>(source.playMs) / source.playRate)),
+					static_cast<uint64_t>((std::numeric_limits<uint32_t>::max)())));
+				iKnownWallMs += slot.iAuthoringWallMs;
+			}
+			else
+			{
+				slot.iAuthoringWallMs = 0u;
+			}
+			const auto Existing = std::find_if(
+				stage->ClipOccurrences.begin(), stage->ClipOccurrences.end(),
+				[&source](const VALTAN_CLIP_OCCURRENCE_VIEW& candidateSlot)
+				{
+					return candidateSlot.strClipOccurrenceId ==
+						source.clipOccurrenceId;
+				});
+			if (Existing != stage->ClipOccurrences.end())
+				slot.ProductCues = Existing->ProductCues;
+			Slots.push_back(std::move(slot));
+		}
+		const auto Unknown = std::find_if(
+			Slots.begin(), Slots.end(),
+			[](const VALTAN_CLIP_OCCURRENCE_VIEW& Slot)
+			{
+				return 0u == Slot.iPlayMs;
+			});
+		if ("LOOP_TO_STAGE_END" == candidate.animationEndPolicy)
+		{
+			Unknown->iAuthoringWallMs = static_cast<uint32_t>(
+				static_cast<uint64_t>(candidate.durationMs) - iKnownWallMs);
+			iKnownWallMs = candidate.durationMs;
+		}
+		else if ("HOLD_LAST_POSE" == candidate.animationEndPolicy)
+		{
+			if (Unknown != Slots.end())
+			{
+				Unknown->iAuthoringWallMs = static_cast<uint32_t>(
+					static_cast<uint64_t>(candidate.durationMs) - iKnownWallMs);
+			}
+			else if (iKnownWallMs < candidate.durationMs)
+			{
+				Slots.back().iAuthoringWallMs += static_cast<uint32_t>(
+					static_cast<uint64_t>(candidate.durationMs) - iKnownWallMs);
+			}
+			iKnownWallMs = candidate.durationMs;
+		}
+		else
+		{
+			const int64_t iDifference =
+				static_cast<int64_t>(candidate.durationMs) -
+				static_cast<int64_t>(iKnownWallMs);
+			Slots.back().iAuthoringWallMs = static_cast<uint32_t>(
+				static_cast<int64_t>(Slots.back().iAuthoringWallMs) +
+				iDifference);
+			iKnownWallMs = candidate.durationMs;
+		}
+		stage->ClipOccurrences = std::move(Slots);
+		stage->strAnimationEndPolicy = candidate.animationEndPolicy;
+		stage->iAuthoringRepeatCount = candidate.animationRepeatCount;
+		stage->bSuppressAnimation = false;
+		}
+	}
 	MarkDirty(true);
 	status = "Staged typed Server gameplay edit for " + patternId + "/" +
 		stageId +
@@ -1429,6 +3443,11 @@ bool Client::CBalanceTool::Get_ValtanCounterWindowDraft(
 	VALTAN_COUNTER_WINDOW_EDIT& counter,
 	std::string& status) const
 {
+	if (!Require_ValtanAuthoringAdmission(
+			"Valtan Counter draft", status))
+	{
+		return false;
+	}
 	const VALTAN_PATTERN_VIEW* pattern =
 		FindValtanPattern(m_valtanPatternTree, patternId);
 	if (nullptr == pattern || !pattern->bAuthoringMasterManaged)
@@ -1456,6 +3475,11 @@ bool Client::CBalanceTool::Set_ValtanCounterWindowDraft(
 	const VALTAN_COUNTER_WINDOW_EDIT& counter,
 	std::string& status)
 {
+	if (!Require_ValtanAuthoringAdmission(
+			"Valtan Counter edit", status))
+	{
+		return false;
+	}
 	VALTAN_PATTERN_VIEW* currentPattern =
 		FindValtanPattern(m_valtanPatternTree, patternId);
 	if (nullptr == currentPattern || !currentPattern->bAuthoringMasterManaged)
@@ -1480,7 +3504,9 @@ bool Client::CBalanceTool::Set_ValtanCounterWindowDraft(
 	if (counter.enabled == current.enabled &&
 		(!counter.enabled ||
 		 (counter.successStageId == current.successStageId &&
-		  counter.successActionId == current.successActionId)))
+		  counter.successActionId == current.successActionId &&
+		  counter.timeoutStageId == current.timeoutStageId &&
+		  counter.timeoutActionId == current.timeoutActionId)))
 	{
 		status = "Valtan counter window draft is unchanged.";
 		return true;
@@ -1495,7 +3521,11 @@ bool Client::CBalanceTool::Set_ValtanCounterWindowDraft(
 		((!counter.successStageId.empty() &&
 		  counter.successStageId != current.successStageId) ||
 		 (!counter.successActionId.empty() &&
-		  counter.successActionId != current.successActionId)))
+		  counter.successActionId != current.successActionId) ||
+		 (!counter.timeoutStageId.empty() &&
+		  counter.timeoutStageId != current.timeoutStageId) ||
+		 (!counter.timeoutActionId.empty() &&
+		  counter.timeoutActionId != current.timeoutActionId)))
 	{
 		status = "Valtan counter edit rejected: disabled target IDs are stale.";
 		return false;
@@ -1519,18 +3549,36 @@ bool Client::CBalanceTool::Set_ValtanCounterWindowDraft(
 	{
 		VALTAN_STAGE_VIEW* target = FindValtanStage(
 			*stagedPattern, counter.successStageId);
+		VALTAN_STAGE_VIEW* timeoutTarget = FindValtanStage(
+			*stagedPattern, counter.timeoutStageId);
 		if (nullptr == target || target == stagedStage ||
 			target->strActionId != counter.successActionId ||
-			"GROGGY" != target->strStageKind)
+			!IsValtanCounterSuccessStageKind(target->strStageKind) ||
+			nullptr == timeoutTarget || timeoutTarget == stagedStage ||
+			timeoutTarget->strActionId != counter.timeoutActionId)
 		{
-			status = "Valtan counter edit rejected: successStageId/successActionId must resolve to one same-pattern GROGGY stage.";
+			status = "Valtan counter edit rejected: success and timeout stable IDs must resolve to same-pattern typed Stages.";
 			return false;
 		}
 		const int groggyState = ValtanFlagContractState(
 			*target, "boss.flag.groggy");
-		if (groggyState < 0)
+		if (("GROGGY" == target->strStageKind && groggyState < 0) ||
+			("GROGGY" != target->strStageKind && 0 != groggyState))
 		{
-			status = "Valtan counter edit rejected: selected GROGGY target has an unpaired or duplicate flag transition.";
+			status = "Valtan counter edit rejected: selected success target has an invalid conditional Groggy flag transition.";
+			return false;
+		}
+		auto timeout = std::find_if(
+			stagedStage->Branches.begin(), stagedStage->Branches.end(),
+			[](const VALTAN_STAGE_BRANCH_VIEW& row)
+			{ return "TIMEOUT" == row.strOutcome; });
+		if (stagedStage->Branches.end() != timeout &&
+			stagedStage->Branches.end() != std::find_if(
+				std::next(timeout), stagedStage->Branches.end(),
+				[](const VALTAN_STAGE_BRANCH_VIEW& row)
+				{ return "TIMEOUT" == row.strOutcome; }))
+		{
+			status = "Valtan counter edit rejected: source Stage owns duplicate TIMEOUT branches.";
 			return false;
 		}
 		AddValtanClosedFlagActions(
@@ -1538,13 +3586,30 @@ bool Client::CBalanceTool::Set_ValtanCounterWindowDraft(
 		VALTAN_STAGE_BRANCH_VIEW branch;
 		branch.strOutcome = "COUNTER_HIT";
 		branch.strNextActionId = target->strActionId;
-		const auto timeout = std::find_if(
-			stagedStage->Branches.begin(), stagedStage->Branches.end(),
-			[](const VALTAN_STAGE_BRANCH_VIEW& row)
-			{ return "TIMEOUT" == row.strOutcome; });
-		stagedStage->Branches.insert(timeout, std::move(branch));
-		if (0 == groggyState)
+		if (stagedStage->Branches.end() == timeout)
+		{
+			stagedStage->Branches.push_back(std::move(branch));
+			VALTAN_STAGE_BRANCH_VIEW timeoutBranch;
+			timeoutBranch.strOutcome = "TIMEOUT";
+			timeoutBranch.strNextActionId = timeoutTarget->strActionId;
+			stagedStage->Branches.push_back(std::move(timeoutBranch));
+		}
+		else
+		{
+			timeout->strNextActionId = timeoutTarget->strActionId;
+			stagedStage->Branches.insert(timeout, std::move(branch));
+		}
+		if ("GROGGY" == target->strStageKind && 0 == groggyState)
 			AddValtanClosedFlagActions(*target, "boss.flag.groggy");
+		if (!stagedStage->CounterProxy.has_value())
+		{
+			VALTAN_COUNTER_PROXY_VIEW proxy;
+			proxy.strSpace = "BOSS_LOCAL";
+			proxy.fForwardOffsetM = 1.f;
+			proxy.fRightOffsetM = 0.f;
+			proxy.fRadiusM = 2.25f;
+			stagedStage->CounterProxy = std::move(proxy);
+		}
 	}
 	/* CounterProxy is an authoring geometry preset. Disabling removes only the
 	   authoritative flag/branch; Product projection omits the dormant preset. */
@@ -1567,30 +3632,131 @@ bool Client::CBalanceTool::Set_ValtanCounterWindowDraft(
 			return false;
 		}
 	}
+	if (!IsValtanCounterTopologyFiniteForward(*stagedPattern, status))
+	{
+		status = "Valtan counter edit rejected before the draft changed: " +
+			status;
+		return false;
+	}
 
 	*currentPattern = std::move(*stagedPattern);
 	MarkDirty(true);
 	status = "Staged typed Counter window for " + patternId + "/" + stageId +
 		(counter.enabled ? " -> " + counter.successStageId + "/" +
-			counter.successActionId : " -> DISABLED") +
+			counter.successActionId + " | timeout -> " +
+			counter.timeoutStageId + "/" + counter.timeoutActionId :
+			" -> DISABLED") +
 		". Press Save to validate and publish the Server-authoritative branch.";
+	return true;
+}
+
+bool Client::CBalanceTool::Get_ValtanCounterProxyDraft(
+	const std::string& patternId,
+	const std::string& stageId,
+	VALTAN_COUNTER_PROXY_EDIT& proxy,
+	std::string& status) const
+{
+	proxy = {};
+	if (!Require_ValtanAuthoringAdmission(
+			"Valtan Counter area draft", status))
+	{
+		return false;
+	}
+	const VALTAN_PATTERN_VIEW* const pattern =
+		FindValtanPattern(m_valtanPatternTree, patternId);
+	const VALTAN_STAGE_VIEW* const stage = nullptr == pattern ? nullptr :
+		FindValtanStage(*pattern, stageId);
+	if (nullptr == pattern || !pattern->bAuthoringMasterManaged ||
+		nullptr == stage)
+	{
+		status = "Counter area is unavailable for the selected Pattern/Stage.";
+		return false;
+	}
+	if (stage->CounterProxy.has_value())
+	{
+		proxy.exists = true;
+		proxy.forwardOffsetM = stage->CounterProxy->fForwardOffsetM;
+		proxy.rightOffsetM = stage->CounterProxy->fRightOffsetM;
+		proxy.radiusM = stage->CounterProxy->fRadiusM;
+	}
+	status.clear();
+	return true;
+}
+
+bool Client::CBalanceTool::Set_ValtanCounterProxyDraft(
+	const std::string& patternId,
+	const std::string& stageId,
+	const VALTAN_COUNTER_PROXY_EDIT& proxy,
+	std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission(
+			"Valtan Counter area edit", status))
+	{
+		return false;
+	}
+	VALTAN_PATTERN_VIEW* const pattern =
+		FindValtanPattern(m_valtanPatternTree, patternId);
+	VALTAN_STAGE_VIEW* const stage = nullptr == pattern ? nullptr :
+		FindValtanStage(*pattern, stageId);
+	if (nullptr == pattern || !pattern->bAuthoringMasterManaged ||
+		nullptr == stage)
+	{
+		status = "Counter area edit lost the selected Pattern/Stage.";
+		return false;
+	}
+	VALTAN_COUNTER_WINDOW_EDIT counter;
+	if (!ReadValtanCounterWindow(*pattern, *stage, counter, status) ||
+		!counter.enabled || "WINDUP" != stage->strStageKind)
+	{
+		if (status.empty())
+			status = "Counter area requires an enabled Counter box on a WINDUP Stage.";
+		return false;
+	}
+	if (!proxy.exists || !std::isfinite(proxy.forwardOffsetM) ||
+		!std::isfinite(proxy.rightOffsetM) || !std::isfinite(proxy.radiusM) ||
+		proxy.forwardOffsetM < -20.f || proxy.forwardOffsetM > 20.f ||
+		proxy.rightOffsetM < -20.f || proxy.rightOffsetM > 20.f ||
+		proxy.radiusM < 0.1f || proxy.radiusM > 20.f)
+	{
+		status = "Counter area requires finite offsets -20..20 m and radius 0.1..20 m.";
+		return false;
+	}
+	if (stage->CounterProxy.has_value() &&
+		stage->CounterProxy->fForwardOffsetM == proxy.forwardOffsetM &&
+		stage->CounterProxy->fRightOffsetM == proxy.rightOffsetM &&
+		stage->CounterProxy->fRadiusM == proxy.radiusM)
+	{
+		status = "Counter area is unchanged.";
+		return true;
+	}
+	VALTAN_COUNTER_PROXY_VIEW changed;
+	changed.strSpace = "BOSS_LOCAL";
+	changed.fForwardOffsetM = proxy.forwardOffsetM;
+	changed.fRightOffsetM = proxy.rightOffsetM;
+	changed.fRadiusM = proxy.radiusM;
+	stage->CounterProxy = std::move(changed);
+	MarkDirty(true);
+	status = "Counter Box area staged for " + patternId + "/" + stageId + ".";
 	return true;
 }
 
 bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)
 {
 	std::string stepStatus;
-	if (!Validate_ValtanDraft(stepStatus))
-	{
-		status = "Save validation failed; source and active runtime were preserved: " +
-			stepStatus;
-		return false;
-	}
-
 	const bool hadDirtyDraft = m_dirty;
-	if (hadDirtyDraft && !Save_ValtanAuthoring(stepStatus))
+	if (hadDirtyDraft)
 	{
-		status = "Save authoring failed; active runtime was preserved: " +
+		if (!Save_ValtanCanonicalProduct(stepStatus))
+		{
+			status =
+				"Save & Apply could not commit the canonical Pattern JSON/Product closure; the previous admitted generation remains active: " +
+				stepStatus;
+			return false;
+		}
+	}
+	else if (!Validate_ValtanDraft(stepStatus))
+	{
+		status = "Save & Apply validation failed; source and active runtime were preserved: " +
 			stepStatus;
 		return false;
 	}
@@ -1603,9 +3769,9 @@ bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)
 				Record_GameplaySourceActivationExpectation({}, {}, stepStatus);
 		}
 		status = hadDirtyDraft ?
-			"Authoring was saved, but Product bundle generation failed. The active runtime is unchanged; press Save again after fixing the diagnostic: " +
+			"Canonical Pattern JSON/Product data was saved, but Server apply preparation failed. The active runtime is unchanged; press Save & Apply again after fixing the diagnostic: " +
 				stepStatus :
-			"Product bundle generation failed; source and active runtime are unchanged: " +
+			"Server apply preparation failed; source and active runtime are unchanged: " +
 				stepStatus;
 		return false;
 	}
@@ -1642,6 +3808,10 @@ bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)
 	}
 	if (!Apply_ValtanRevision(stepStatus))
 	{
+		CValtanTuningCommandService::Get().
+			Record_GameplaySourceActivationExpectation(
+				m_valtanCandidateRevision, m_valtanCandidateApplyClass,
+				stepStatus);
 		status = "Saved Product revision " + revisionLabel +
 			". Live apply was not submitted and the active runtime was preserved: " +
 			stepStatus;
@@ -1649,6 +3819,44 @@ bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)
 	}
 	status = "Saved Product revision " + revisionLabel +
 		" and submitted the Server/Client tick-boundary live update. Runtime becomes active only after the coordinator reports COMMITTED.";
+	return true;
+}
+
+bool Client::CBalanceTool::Save_ValtanCanonicalProduct(std::string& status)
+{
+	std::string stepStatus;
+	if (!Validate_ValtanDraft(stepStatus))
+	{
+		status =
+			"Canonical Save validation failed; every source/Product owner was preserved: " +
+			stepStatus;
+		return false;
+	}
+	if (!RunValtanDraftCommand(L"CommitCanonicalDraft", stepStatus))
+	{
+		status =
+			"Canonical source/Product commit failed; the previous admitted generation was preserved: " +
+			stepStatus;
+		return false;
+	}
+	status = std::move(stepStatus);
+	return true;
+}
+
+bool Client::CBalanceTool::Save_ValtanCompositionProduct(
+	const VALTAN_COMPOSITION_OWNER_DRAFTS& ownerDrafts,
+	std::string& status)
+{
+	std::string stepStatus;
+	if (!RunValtanDraftCommand(
+			L"CommitCanonicalDraft", stepStatus, &ownerDrafts))
+	{
+		status =
+			"Composition Save failed; Pattern, Sound, and Effect V2 files were preserved: " +
+			stepStatus;
+		return false;
+	}
+	status = std::move(stepStatus);
 	return true;
 }
 
@@ -1693,6 +3901,7 @@ void Client::CBalanceTool::MarkDirty(const bool changed)
 {
 	if (changed)
 	{
+		++m_valtanDraftGeneration;
 		m_dirty = true;
 		m_valtanDraftValidated = false;
 		m_valtanCandidateRevision.clear();
@@ -1702,6 +3911,15 @@ void Client::CBalanceTool::MarkDirty(const bool changed)
 
 bool Client::CBalanceTool::Reload()
 {
+	CValtanCanonicalProductReadAdmission CanonicalAdmission;
+	std::string CanonicalAdmissionStatus;
+	if (!CanonicalAdmission.Acquire(CanonicalAdmissionStatus))
+	{
+		m_status =
+			"Reload failed before staging; the previous Balance/Workbench draft was preserved: " +
+			CanonicalAdmissionStatus;
+		return false;
+	}
 	DATA_JSON_VALUE playerRoot;
 	DATA_JSON_VALUE skillRoot;
 	DATA_JSON_VALUE damageRoot;
@@ -2101,7 +4319,8 @@ bool Client::CBalanceTool::Reload()
 			return false;
 		bases.emplace(document + "#" + targetId + "." + field, basis);
 	}
-	if (!ReloadValtanPatternAuthoring(encounterRoot, valtanPatternTree,
+	if (!ReloadValtanPatternAuthoring(CanonicalAdmission,
+		encounterRoot, valtanPatternTree,
 		legacyPatterns, valtanPatternStatus, status))
 	{
 		m_status = "Reload failed: " + status;
@@ -2145,6 +4364,13 @@ bool Client::CBalanceTool::Reload()
 			status;
 		return false;
 	}
+	if (!CanonicalAdmission.Validate_StillCurrent(CanonicalAdmissionStatus))
+	{
+		m_status =
+			"Reload failed before commit; the previous Balance/Workbench draft was preserved: " +
+			CanonicalAdmissionStatus;
+		return false;
+	}
 
 	m_players = std::move(players);
 	m_skills = std::move(skills);
@@ -2171,6 +4397,7 @@ bool Client::CBalanceTool::Reload()
 	m_selectedBoss = (std::min)(m_selectedBoss,
 		m_bosses.empty() ? 0u : m_bosses.size() - 1u);
 	m_dirty = false;
+	++m_valtanDraftGeneration;
 	m_valtanDraftValidated = !valtanAuthoringRevision.empty() &&
 		VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED == valtanSourceJoin.state;
 	m_valtanSourceRevision = std::move(valtanSourceRevision);
@@ -2211,6 +4438,7 @@ bool Client::CBalanceTool::Reload()
 }
 
 bool Client::CBalanceTool::ReloadValtanPatternAuthoring(
+	const CValtanCanonicalProductReadAdmission& canonicalAdmission,
 	const DATA_JSON_VALUE& encounterRoot,
 	VALTAN_PATTERN_TREE_VIEW& patternTree,
 	std::vector<LEGACY_PATTERN_SUMMARY>& legacyPatterns,
@@ -2219,7 +4447,8 @@ bool Client::CBalanceTool::ReloadValtanPatternAuthoring(
 {
 	VALTAN_PATTERN_TREE_VIEW stagedTree;
 	std::string treeStatus;
-	if (!CValtanPatternTree::Load(stagedTree, treeStatus))
+	if (!CValtanPatternTree::Load_WhileAdmitted(
+			canonicalAdmission, stagedTree, treeStatus))
 	{
 		status = "Valtan split-source pattern-tree admission failed: " + treeStatus;
 		return false;
@@ -3629,7 +5858,7 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 		}
 
 		ImGui::SeparatorText(bManualAudition ?
-			"Server Gameplay stage timeline (wall-clock locked; hit authoring)" :
+			"Server Gameplay stage timeline (Action Composition editable)" :
 			"Server Gameplay canonical stage timeline (editable)");
 		for (std::size_t stageIndex = 0u;
 			stageIndex < pattern.Stages.size(); ++stageIndex)
@@ -3643,7 +5872,7 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 				if (bManualAudition)
 				{
 					ImGui::TextDisabled(
-						"Duration %u ms | locked to the promoted animation occurrence wall-clock",
+						"Duration %u ms | edit Stage kind, Sequence slots, and gap in Action Composition Workbench",
 						stage.iDurationMs);
 				}
 				else
@@ -3663,22 +5892,34 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 							pattern.strPatternId, stage.strStageId,
 							counter, counterStatus))
 					{
-						const auto FirstGroggy = std::find_if(
-							pattern.Stages.begin(), pattern.Stages.end(),
+						const auto firstSuccess = std::find_if(
+							pattern.Stages.begin() + static_cast<std::ptrdiff_t>(stageIndex + 1u),
+							pattern.Stages.end(),
 							[](const VALTAN_STAGE_VIEW& candidate)
-							{ return "GROGGY" == candidate.strStageKind; });
+							{ return IsValtanCounterSuccessStageKind(candidate.strStageKind); });
+						const auto firstTimeout =
+							stageIndex + 1u < pattern.Stages.size() ?
+							pattern.Stages.begin() + static_cast<std::ptrdiff_t>(
+								stageIndex + 1u) : pattern.Stages.end();
 						bool enabled = counter.enabled;
 						ImGui::BeginDisabled(!enabled &&
-							pattern.Stages.end() == FirstGroggy);
+							(pattern.Stages.end() == firstSuccess ||
+							 pattern.Stages.end() == firstTimeout));
 						if (ImGui::Checkbox(
 								"Counter window (Server authority)", &enabled))
 						{
 							counter.enabled = enabled;
 							if (enabled && counter.successStageId.empty() &&
-								pattern.Stages.end() != FirstGroggy)
+								pattern.Stages.end() != firstSuccess)
 							{
-								counter.successStageId = FirstGroggy->strStageId;
-								counter.successActionId = FirstGroggy->strActionId;
+								counter.successStageId = firstSuccess->strStageId;
+								counter.successActionId = firstSuccess->strActionId;
+							}
+							if (enabled && counter.timeoutStageId.empty() &&
+								pattern.Stages.end() != firstTimeout)
+							{
+								counter.timeoutStageId = firstTimeout->strStageId;
+								counter.timeoutActionId = firstTimeout->strActionId;
 							}
 							const bool staged = Set_ValtanCounterWindowDraft(
 								pattern.strPatternId, stage.strStageId,
@@ -3700,19 +5941,23 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 							const std::string preview = counter.successStageId +
 								" / " + counter.successActionId;
 							if (ImGui::BeginCombo(
-									"Counter success Groggy stage/action",
+									"Counter success stage/action",
 									preview.c_str()))
 							{
-								for (const VALTAN_STAGE_VIEW& candidate :
-									pattern.Stages)
+								for (std::size_t candidateIndex = stageIndex + 1u;
+									candidateIndex < pattern.Stages.size(); ++candidateIndex)
 								{
-									if ("GROGGY" != candidate.strStageKind)
+									const VALTAN_STAGE_VIEW& candidate =
+										pattern.Stages[candidateIndex];
+									if (!IsValtanCounterSuccessStageKind(
+											candidate.strStageKind))
 										continue;
 									const bool selected =
 										candidate.strStageId == counter.successStageId &&
 										candidate.strActionId == counter.successActionId;
-									const std::string label = candidate.strStageId +
-										" / " + candidate.strActionId;
+									const std::string label = candidate.strStageKind +
+										" | " + candidate.strStageId + " / " +
+										candidate.strActionId;
 									if (ImGui::Selectable(label.c_str(), selected))
 									{
 										VALTAN_COUNTER_WINDOW_EDIT changed = counter;
@@ -3737,11 +5982,52 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 								}
 								ImGui::EndCombo();
 							}
+							const std::string timeoutPreview = counter.timeoutStageId +
+								" / " + counter.timeoutActionId;
+							if (ImGui::BeginCombo(
+									"Counter timeout stage/action",
+									timeoutPreview.c_str()))
+							{
+								for (std::size_t candidateIndex = stageIndex + 1u;
+									candidateIndex < pattern.Stages.size(); ++candidateIndex)
+								{
+									const VALTAN_STAGE_VIEW& candidate =
+										pattern.Stages[candidateIndex];
+									const bool selected =
+										candidate.strStageId == counter.timeoutStageId &&
+										candidate.strActionId == counter.timeoutActionId;
+									const std::string label = candidate.strStageKind +
+										" | " + candidate.strStageId + " / " +
+										candidate.strActionId;
+									if (ImGui::Selectable(label.c_str(), selected))
+									{
+										VALTAN_COUNTER_WINDOW_EDIT changed = counter;
+										changed.timeoutStageId = candidate.strStageId;
+										changed.timeoutActionId = candidate.strActionId;
+										const bool staged = Set_ValtanCounterWindowDraft(
+											pattern.strPatternId, stage.strStageId,
+											changed, counterStatus);
+										m_status = std::move(counterStatus);
+										if (staged)
+										{
+											ImGui::EndCombo();
+											ImGui::TreePop();
+											ImGui::PopID();
+											ImGui::PopID();
+											ImGui::PopID();
+											return;
+										}
+									}
+									if (selected)
+										ImGui::SetItemDefaultFocus();
+								}
+								ImGui::EndCombo();
+							}
 						}
 						else
 						{
 							ImGui::TextDisabled(
-								"Enable to select a same-pattern GROGGY stage/action.");
+								"Enable to select forward success and timeout Stage actions.");
 						}
 					}
 					else
@@ -4007,6 +6293,16 @@ void Client::CBalanceTool::RenderValtanPatternAuthoring()
 	ImGui::TextWrapped("%s", m_valtanPatternStatus.c_str());
 	ImGui::TextDisabled(
 		"Balance Tool edits only the Server Gameplay lane. Animation occurrences, Effect cues, and camera references remain presentation-owned and read-only in this panel.");
+	const bool_t bAuthoringAdmitted =
+		VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED ==
+			m_valtanSourceJoin.state &&
+		!m_valtanSourceRevision.empty();
+	if (!bAuthoringAdmitted)
+	{
+		ImGui::TextColored(ImVec4(1.f, 0.75f, 0.25f, 1.f),
+			"STALE PRESERVED / READ ONLY: reload an exact joined source revision before mutation.");
+	}
+	ImGui::BeginDisabled(!bAuthoringAdmitted);
 	if (ImGui::TreeNode("Phase and selection structure"))
 	{
 		for (const VALTAN_PHASE_VIEW& phase : m_valtanPatternTree.Phases)
@@ -4208,6 +6504,7 @@ void Client::CBalanceTool::RenderValtanPatternAuthoring()
 		}
 		ImGui::PopID();
 	}
+	ImGui::EndDisabled();
 }
 
 void Client::CBalanceTool::RenderValtanDecisionTrace(
@@ -4479,11 +6776,11 @@ void Client::CBalanceTool::RenderLiveVerification()
 
 bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 {
-	if (m_players.size() != 6u || m_skills.size() != 94u ||
-		m_damageProfiles.size() != 108u || m_bosses.size() != 1u ||
-		m_patterns.empty())
+	if (m_players.empty() || m_skills.empty() ||
+		m_damageProfiles.empty() || m_bosses.empty() || m_patterns.empty())
 	{
-		status = "Draft required collections are incomplete.";
+		status =
+			"Draft requires non-empty Player, Skill, Damage, Boss, and Pattern collections.";
 		return false;
 	}
 	const auto isKnownStance = [](const std::string& value)
@@ -4494,9 +6791,12 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 	};
 	std::uint32_t maximumPlayerResource = 0u;
 	std::uint32_t maximumPlayerIdentity = 0u;
+	std::unordered_set<std::string> playerClasses;
 	for (const PLAYER_EDIT& player : m_players)
 	{
-		if (0u == player.maximumHp || 0u == player.maximumResource ||
+		if (player.characterClass.empty() ||
+			!playerClasses.insert(player.characterClass).second ||
+			0u == player.maximumHp || 0u == player.maximumResource ||
 			0u == player.resourceRegenPerSecond || 0u == player.attackPower ||
 			0u == player.defense || player.resourceRegenPerSecond > player.maximumResource ||
 			!std::isfinite(player.moveSpeed) || player.moveSpeed <= 0.f ||
@@ -4536,7 +6836,9 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 		const bool isStandup = "STANDUP" == skill.skillKind;
 		if (0u == skill.skillId || 0u == skill.actionDurationMs ||
 			!skillIds.insert(skill.skillId).second ||
-			skill.characterClass.empty() || skill.inputSlot.empty() ||
+			skill.characterClass.empty() ||
+			!playerClasses.contains(skill.characterClass) ||
+			skill.inputSlot.empty() ||
 			skill.displayName.empty() || skill.actionId.empty() ||
 			skill.hitTimeMs > skill.actionDurationMs ||
 			skill.resourceCost > maximumPlayerResource ||
@@ -4625,17 +6927,23 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 			return false;
 		}
 	}
+	std::unordered_set<std::string> damageProfileIds;
 	for (const DAMAGE_EDIT& damage : m_damageProfiles)
 	{
-		if (damage.damageProfileId.empty() || 0u == damage.damageRatePercent)
+		if (damage.damageProfileId.empty() ||
+			!damageProfileIds.insert(damage.damageProfileId).second ||
+			0u == damage.damageRatePercent)
 		{
 			status = "Damage profile draft is invalid: " + damage.damageProfileId;
 			return false;
 		}
 	}
+	std::unordered_set<std::string> bossArchetypeIds;
 	for (const BOSS_EDIT& boss : m_bosses)
 	{
-		if (boss.archetypeId.empty() || boss.encounterId.empty() ||
+		if (boss.archetypeId.empty() ||
+			!bossArchetypeIds.insert(boss.archetypeId).second ||
+			boss.encounterId.empty() ||
 			0u == boss.maximumHp || 0u == boss.maximumHealthBars ||
 			boss.maximumHealthBars > 1000u || 0u == boss.attackPower ||
 			!std::isfinite(boss.collisionRadius) || boss.collisionRadius <= 0.f ||
@@ -4653,11 +6961,17 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 			return false;
 		}
 	}
+	const auto encounterBoss = std::find_if(
+		m_bosses.begin(), m_bosses.end(),
+		[this](const BOSS_EDIT& boss)
+		{
+			return boss.archetypeId == m_encounterBossArchetypeId;
+		});
 	if (m_encounterId.empty() || m_encounterBossArchetypeId.empty() ||
 		"server" != m_encounterAuthority || 30u != m_fixedTickHz ||
 		m_encounterIntroPatternId.empty() ||
-		m_encounterBossArchetypeId != m_bosses.front().archetypeId ||
-		m_encounterId != m_bosses.front().encounterId)
+		m_bosses.end() == encounterBoss ||
+		m_encounterId != encounterBoss->encounterId)
 	{
 		status = "Encounter draft header is invalid.";
 		return false;
@@ -4676,12 +6990,12 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 		const bool validSelection = normal ?
 			(pattern.minimumHealthBar >= 1u &&
 				pattern.maximumHealthBar >= pattern.minimumHealthBar &&
-				pattern.maximumHealthBar <= m_bosses[m_selectedBoss].maximumHealthBars &&
+				pattern.maximumHealthBar <= encounterBoss->maximumHealthBars &&
 				0u == pattern.triggerHealthBar && 0u == pattern.triggerOrder &&
 				pattern.selectionWeight > 0u && pattern.maximumConsecutiveUses > 0u) :
 			(healthBar ? (0u == pattern.minimumHealthBar &&
 				0u == pattern.maximumHealthBar && pattern.triggerHealthBar >= 1u &&
-				pattern.triggerHealthBar <= m_bosses[m_selectedBoss].maximumHealthBars &&
+				pattern.triggerHealthBar <= encounterBoss->maximumHealthBars &&
 				pattern.triggerOrder > 0u && 0u == pattern.selectionWeight &&
 				0u == pattern.maximumConsecutiveUses) :
 			(manualAudition && 0u == pattern.minimumHealthBar &&
@@ -4950,6 +7264,7 @@ bool Client::CBalanceTool::QueryValtanSourceRevision(
 	if (!processSucceeded || !result.ok || result.command != "SOURCE_MANIFEST" ||
 		!result.hasAuthoringRevisionField ||
 		!IsLowerSha256(result.sourceRevision) ||
+		!IsLowerSha256(result.repositorySourceRevision) ||
 		(!result.authoringRevision.empty() &&
 			(!IsLowerSha256(result.authoringRevision) ||
 				result.authoringRevision != result.sourceRevision)))
@@ -4972,12 +7287,12 @@ bool Client::CBalanceTool::QueryValtanSourceRevision(
 			status = "Could not inspect the fixed Valtan authoring pointer path.";
 		return false;
 	}
-	if (result.authoringRevision.empty() &&
-		std::filesystem::exists(pointerPath, pathError))
-	{
-		status = "Valtan source-manifest result omitted an existing authoring pointer.";
-		return false;
-	}
+	/* source-manifest deliberately reports authoringRevision=null when a
+	   durable pointer names an older repository source generation.  That
+	   pointer is historical state, not an admitted overlay.  Reject malformed
+	   pointer documents in the pipeline, but do not reinterpret a validated
+	   stale pointer as the active owner here. */
+	(void)std::filesystem::exists(pointerPath, pathError);
 	if (pathError)
 	{
 		status = "Could not inspect the fixed Valtan authoring pointer: " +
@@ -4991,6 +7306,7 @@ bool Client::CBalanceTool::QueryValtanSourceRevision(
 	sourceJoin.presentationSourcePath = VALTAN_PRESENTATION_SOURCE_PATH;
 	sourceJoin.gameplayRevision = result.gameplaySourceRevision;
 	sourceJoin.presentationRevision = result.presentationSourceRevision;
+	sourceJoin.repositoryRevision = result.repositorySourceRevision;
 	const bool hasGameplaySource = !sourceJoin.gameplayRevision.empty();
 	const bool hasPresentationSource =
 		!sourceJoin.presentationRevision.empty();
@@ -5036,9 +7352,22 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 		return false;
 	}
 	std::vector<std::string> operations;
+	std::vector<std::string> counterDisableOperations;
+	std::vector<std::string> manualStagePreCounterTopologyOperations;
+	std::vector<std::string> manualStagePostCounterTopologyOperations;
+	std::vector<std::string> stageRoleOperations;
+	std::vector<std::string> counterEnableOperations;
+	std::vector<std::string> effectCueRemoveOperations;
+	std::vector<std::string> effectCueUpsertOperations;
 	const auto append = [&operations](std::ostringstream& operation)
 	{
 		operations.push_back(operation.str());
+	};
+	const auto appendTopology = [](
+		std::vector<std::string>& phase,
+		std::ostringstream& operation)
+	{
+		phase.push_back(operation.str());
 	};
 	const auto appendBossField = [&](const char* field, const std::string& value)
 	{
@@ -5258,21 +7587,233 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 				append(operation);
 			}
 
+			VALTAN_PATTERN_VIEW topologyBaseline;
+			const VALTAN_PATTERN_VIEW* loadedTopology = loaded;
+			if (bManualAudition)
+			{
+				/* Normalize every Counter edit owned by an existing source Stage
+				   before topology is derived.  Disable removes the old dependency;
+				   enabled->enabled retarget updates the private branch so deleting
+				   the old target is validated against the same final stable edge.
+				   Emission still keeps disable first and retarget after INSERT/role. */
+				VALTAN_PATTERN_VIEW counterNormalizedLoaded = *loaded;
+				for (const VALTAN_STAGE_VIEW& currentStage : pattern.Stages)
+				{
+					const VALTAN_STAGE_VIEW* const originalLoadedStage =
+						FindValtanStage(*loaded, currentStage.strStageId);
+					if (nullptr == originalLoadedStage)
+						continue;
+					VALTAN_COUNTER_WINDOW_EDIT currentCounter;
+					VALTAN_COUNTER_WINDOW_EDIT loadedCounter;
+					if (!ReadValtanCounterWindow(
+							pattern, currentStage, currentCounter, status) ||
+						!ReadValtanCounterWindow(
+							*loaded, *originalLoadedStage,
+							loadedCounter, status))
+					{
+						return false;
+					}
+					const bool targetChanged = currentCounter.enabled &&
+						loadedCounter.enabled &&
+						(currentCounter.successStageId != loadedCounter.successStageId ||
+						 currentCounter.successActionId != loadedCounter.successActionId ||
+						 currentCounter.timeoutStageId != loadedCounter.timeoutStageId ||
+						 currentCounter.timeoutActionId != loadedCounter.timeoutActionId);
+					if (loadedCounter.enabled && !currentCounter.enabled)
+					{
+						std::ostringstream operation;
+						operation << "    { \"op\": \"SET_STAGE_COUNTER_WINDOW\", "
+							"\"patternId\": " << Quote(pattern.strPatternId)
+							<< ", \"stageId\": " << Quote(currentStage.strStageId)
+							<< ", \"enabled\": false"
+							<< ", \"successStageId\": "
+							<< Quote(loadedCounter.successStageId)
+							<< ", \"successActionId\": "
+							<< Quote(loadedCounter.successActionId)
+							<< ", \"timeoutStageId\": "
+							<< Quote(loadedCounter.timeoutStageId)
+							<< ", \"timeoutActionId\": "
+							<< Quote(loadedCounter.timeoutActionId) << " }";
+						appendTopology(counterDisableOperations, operation);
+						VALTAN_STAGE_VIEW* const normalizedStage = FindValtanStage(
+							counterNormalizedLoaded, currentStage.strStageId);
+						if (nullptr == normalizedStage)
+						{
+							status = "Counter disable baseline lost its stable source Stage: " +
+								pattern.strPatternId + "/" + currentStage.strStageId + ".";
+							return false;
+						}
+						RemoveValtanFlagActions(
+							*normalizedStage, "boss.flag.counterable");
+						std::erase_if(
+							normalizedStage->Branches,
+								[](const VALTAN_STAGE_BRANCH_VIEW& branch)
+								{ return "COUNTER_HIT" == branch.strOutcome; });
+						continue;
+					}
+					if (!currentCounter.enabled ||
+						(loadedCounter.enabled && !targetChanged))
+					{
+						continue;
+					}
+
+					std::ostringstream operation;
+					operation << "    { \"op\": \"SET_STAGE_COUNTER_WINDOW\", "
+						"\"patternId\": " << Quote(pattern.strPatternId)
+						<< ", \"stageId\": " << Quote(currentStage.strStageId)
+						<< ", \"enabled\": true"
+						<< ", \"successStageId\": "
+						<< Quote(currentCounter.successStageId)
+						<< ", \"successActionId\": "
+						<< Quote(currentCounter.successActionId)
+						<< ", \"timeoutStageId\": "
+						<< Quote(currentCounter.timeoutStageId)
+						<< ", \"timeoutActionId\": "
+						<< Quote(currentCounter.timeoutActionId) << " }";
+					appendTopology(counterEnableOperations, operation);
+					if (targetChanged)
+					{
+						VALTAN_STAGE_VIEW* const normalizedStage = FindValtanStage(
+							counterNormalizedLoaded, currentStage.strStageId);
+						if (nullptr == normalizedStage)
+						{
+							status = "Counter retarget baseline lost its stable source edge: " +
+								pattern.strPatternId + "/" + currentStage.strStageId + ".";
+							return false;
+						}
+						const auto branch = std::find_if(
+							normalizedStage->Branches.begin(),
+							normalizedStage->Branches.end(),
+							[](const VALTAN_STAGE_BRANCH_VIEW& candidate)
+							{ return "COUNTER_HIT" == candidate.strOutcome; });
+						if (normalizedStage->Branches.end() == branch)
+						{
+							status = "Counter retarget baseline lost its stable source edge: " +
+								pattern.strPatternId + "/" + currentStage.strStageId + ".";
+							return false;
+						}
+						branch->strNextActionId = currentCounter.successActionId;
+						const auto timeout = std::find_if(
+							normalizedStage->Branches.begin(),
+							normalizedStage->Branches.end(),
+							[](const VALTAN_STAGE_BRANCH_VIEW& candidate)
+							{ return "TIMEOUT" == candidate.strOutcome; });
+						if (normalizedStage->Branches.end() == timeout)
+						{
+							status = "Counter retarget baseline lost its stable timeout edge: " +
+								pattern.strPatternId + "/" + currentStage.strStageId + ".";
+							return false;
+						}
+						timeout->strNextActionId = currentCounter.timeoutActionId;
+					}
+				}
+				/* A dependency-free Counter source may itself be removed after the
+				   user disables it.  It no longer exists in the current Stage loop,
+				   so replay the loaded enabled edge explicitly before topology
+				   removal.  Remove_ValtanManualStage admitted the deletion only after
+				   the current source had no flag/branch dependency. */
+				for (const VALTAN_STAGE_VIEW& loadedStage : loaded->Stages)
+				{
+					if (nullptr != FindValtanStage(pattern, loadedStage.strStageId))
+						continue;
+					VALTAN_COUNTER_WINDOW_EDIT loadedCounter;
+					if (!ReadValtanCounterWindow(
+							*loaded, loadedStage, loadedCounter, status))
+					{
+						return false;
+					}
+					if (!loadedCounter.enabled)
+						continue;
+					std::ostringstream operation;
+					operation << "    { \"op\": \"SET_STAGE_COUNTER_WINDOW\", "
+						"\"patternId\": " << Quote(pattern.strPatternId)
+						<< ", \"stageId\": " << Quote(loadedStage.strStageId)
+						<< ", \"enabled\": false"
+						<< ", \"successStageId\": "
+						<< Quote(loadedCounter.successStageId)
+						<< ", \"successActionId\": "
+						<< Quote(loadedCounter.successActionId)
+						<< ", \"timeoutStageId\": "
+						<< Quote(loadedCounter.timeoutStageId)
+						<< ", \"timeoutActionId\": "
+						<< Quote(loadedCounter.timeoutActionId) << " }";
+					appendTopology(counterDisableOperations, operation);
+					VALTAN_STAGE_VIEW* const normalizedStage = FindValtanStage(
+						counterNormalizedLoaded, loadedStage.strStageId);
+					if (nullptr == normalizedStage)
+					{
+						status = "Counter disable baseline lost its removed source Stage: " +
+							pattern.strPatternId + "/" + loadedStage.strStageId + ".";
+						return false;
+					}
+					RemoveValtanFlagActions(
+						*normalizedStage, "boss.flag.counterable");
+					std::erase_if(
+						normalizedStage->Branches,
+						[](const VALTAN_STAGE_BRANCH_VIEW& branch)
+						{ return "COUNTER_HIT" == branch.strOutcome; });
+				}
+				if (!BuildValtanManualStageTopologyPatch(
+						m_valtanPatternTree, pattern,
+						counterNormalizedLoaded,
+						manualStagePreCounterTopologyOperations,
+						manualStagePostCounterTopologyOperations,
+						topologyBaseline,
+						status))
+				{
+					return false;
+				}
+				loadedTopology = &topologyBaseline;
+			}
+			else
+			{
+				const bool stableTopology =
+					pattern.Stages.size() == loaded->Stages.size() &&
+					std::equal(
+						pattern.Stages.begin(), pattern.Stages.end(),
+						loaded->Stages.begin(),
+						[](const VALTAN_STAGE_VIEW& currentStage,
+							const VALTAN_STAGE_VIEW& loadedStage)
+						{
+							return currentStage.strStageId == loadedStage.strStageId &&
+								currentStage.strActionId == loadedStage.strActionId;
+						});
+				if (!stableTopology)
+				{
+					status = "Canonical Pattern Stage topology is read-only: " +
+						pattern.strPatternId + ".";
+					return false;
+				}
+			}
+
 			for (const VALTAN_STAGE_VIEW& stage : pattern.Stages)
 			{
-				const VALTAN_STAGE_VIEW* loadedStage = FindValtanStage(*loaded, stage.strStageId);
+				const VALTAN_STAGE_VIEW* loadedStage =
+					FindValtanStage(*loadedTopology, stage.strStageId);
 				if (nullptr == loadedStage)
 				{
 					status = "Loaded stage snapshot is missing " + pattern.strPatternId +
 						"/" + stage.strStageId + ".";
 					return false;
 				}
-				if (bManualAudition &&
-					stage.iDurationMs != loadedStage->iDurationMs)
+				if (stage.strStageKind != loadedStage->strStageKind)
 				{
-					status = "Manual Server audition stage duration is locked to the animation wall-clock: " +
-						pattern.strPatternId + "/" + stage.strStageId + ".";
-					return false;
+					if (!bManualAudition ||
+						("ACTIVE" != stage.strStageKind &&
+						 "WINDUP" != stage.strStageKind &&
+						 "GROGGY" != stage.strStageKind))
+					{
+						status = "Only a MANUAL_SERVER_AUDITION Stage admits ACTIVE, WINDUP, or GROGGY kind authoring: " +
+							pattern.strPatternId + "/" + stage.strStageId + ".";
+						return false;
+					}
+					std::ostringstream operation;
+					operation << "    { \"op\": \"SET_STAGE_KIND\", "
+						"\"patternId\": " << Quote(pattern.strPatternId)
+						<< ", \"stageId\": " << Quote(stage.strStageId)
+						<< ", \"stageKind\": " << Quote(stage.strStageKind)
+						<< " }";
+					appendTopology(stageRoleOperations, operation);
 				}
 				if (stage.iDurationMs != loadedStage->iDurationMs)
 				{
@@ -5283,51 +7824,130 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 						<< ", \"durationMs\": " << stage.iDurationMs << " }";
 					append(operation);
 				}
-				VALTAN_COUNTER_WINDOW_EDIT counter;
-				VALTAN_COUNTER_WINDOW_EDIT loadedCounter;
-				if (!ReadValtanCounterWindow(
-						pattern, stage, counter, status) ||
-					!ReadValtanCounterWindow(
-						*loaded, *loadedStage, loadedCounter, status))
+				if (!EqualValtanAnimation(stage, *loadedStage))
 				{
-					return false;
-				}
-				const bool counterChanged =
-					counter.enabled != loadedCounter.enabled ||
-					(counter.enabled && loadedCounter.enabled &&
-					 (counter.successStageId != loadedCounter.successStageId ||
-					  counter.successActionId != loadedCounter.successActionId));
-				if (counterChanged)
-				{
-					const VALTAN_COUNTER_WINDOW_EDIT& target = counter.enabled ?
-						counter : loadedCounter;
-					if (target.successStageId.empty() || target.successActionId.empty())
+					if (stage.bSuppressAnimation || stage.ClipOccurrences.empty())
 					{
-						status = "Counter draft lost its stable success target: " +
-							pattern.strPatternId + "/" + stage.strStageId + ".";
-						return false;
+						if (!bManualAudition ||
+							"WAIT" == stage.strSequenceRole ||
+							!stage.bSuppressAnimation ||
+							!stage.ClipOccurrences.empty() ||
+							"NONE" != stage.strAnimationEndPolicy ||
+							0u != stage.iAuthoringRepeatCount)
+						{
+							status = "Animation NONE authoring is restricted to a manual non-WAIT Stage with no occurrence slots: " +
+								pattern.strPatternId + "/" + stage.strStageId + ".";
+							return false;
+						}
+						std::ostringstream operation;
+						operation << "    { \"op\": \"SET_STAGE_ANIMATION\", "
+							"\"patternId\": " << Quote(pattern.strPatternId)
+							<< ", \"stageId\": " << Quote(stage.strStageId)
+							<< ", \"animation\": { \"mode\": \"NONE\" } }";
+						append(operation);
 					}
-					std::ostringstream operation;
-					operation << "    { \"op\": \"SET_STAGE_COUNTER_WINDOW\", "
-						"\"patternId\": " << Quote(pattern.strPatternId)
-						<< ", \"stageId\": " << Quote(stage.strStageId)
-						<< ", \"enabled\": " << (counter.enabled ? "true" : "false")
-						<< ", \"successStageId\": " << Quote(target.successStageId)
-						<< ", \"successActionId\": " << Quote(target.successActionId)
-						<< " }";
-					append(operation);
+					else
+					{
+						std::ostringstream animation;
+						animation << "{ \"endPolicy\": " <<
+							Quote(stage.strAnimationEndPolicy) <<
+							", \"repeatCount\": " << stage.iAuthoringRepeatCount <<
+							", \"occurrences\": [";
+						for (std::size_t slotIndex = 0u;
+							slotIndex < stage.ClipOccurrences.size(); ++slotIndex)
+						{
+							const VALTAN_CLIP_OCCURRENCE_VIEW& slot =
+								stage.ClipOccurrences[slotIndex];
+							if (0u != slotIndex)
+								animation << ", ";
+							animation << "{ \"clipOccurrenceId\": " <<
+								Quote(slot.strClipOccurrenceId) <<
+								", \"clip\": " << Quote(slot.strClipName) <<
+								", \"mappingBasis\": " << Quote(slot.strMappingBasis) <<
+								", \"sourceStartMs\": " << slot.iSourceStartMs <<
+								", \"playMs\": " << slot.iPlayMs <<
+								", \"playRate\": " << FormatJsonNumber(slot.fPlayRate) <<
+								", \"repeatUntilStageEnd\": " <<
+								(slot.bLoop ? "true" : "false") << " }";
+						}
+						animation << "] }";
+						std::ostringstream operation;
+						operation << "    { \"op\": \"SET_STAGE_ANIMATION\", "
+							"\"patternId\": " << Quote(pattern.strPatternId)
+							<< ", \"stageId\": " << Quote(stage.strStageId)
+							<< ", \"animation\": " << animation.str() << " }";
+						append(operation);
+					}
+				}
+				/* Existing source Stages were compared against the original loaded
+				   Counter edge before topology replay.  Only an inserted source can
+				   first acquire a Counter edge from this synthetic baseline. */
+				if (nullptr == FindValtanStage(*loaded, stage.strStageId))
+				{
+					VALTAN_COUNTER_WINDOW_EDIT counter;
+					if (!ReadValtanCounterWindow(pattern, stage, counter, status))
+						return false;
+					if (counter.enabled)
+					{
+						std::ostringstream operation;
+						operation << "    { \"op\": \"SET_STAGE_COUNTER_WINDOW\", "
+							"\"patternId\": " << Quote(pattern.strPatternId)
+							<< ", \"stageId\": " << Quote(stage.strStageId)
+							<< ", \"enabled\": true"
+							<< ", \"successStageId\": "
+							<< Quote(counter.successStageId)
+							<< ", \"successActionId\": "
+							<< Quote(counter.successActionId)
+							<< ", \"timeoutStageId\": "
+							<< Quote(counter.timeoutStageId)
+							<< ", \"timeoutActionId\": "
+							<< Quote(counter.timeoutActionId) << " }";
+						appendTopology(counterEnableOperations, operation);
+					}
 				}
 				if (!EqualValtanCounterProxy(stage.CounterProxy,
 						loadedStage->CounterProxy))
 				{
-					status = "Counter proxy geometry preset changed outside its typed owner: " +
-						pattern.strPatternId + "/" + stage.strStageId + ".";
-					return false;
+					if (!stage.CounterProxy.has_value())
+					{
+						status = "Counter Box area removal is not supported; delete the Counter box to disable it.";
+						return false;
+					}
+					VALTAN_COUNTER_WINDOW_EDIT counter;
+					if (!ReadValtanCounterWindow(pattern, stage, counter, status) ||
+						!counter.enabled)
+					{
+						status = "Counter Box area can change only while its Counter window is enabled: " +
+							pattern.strPatternId + "/" + stage.strStageId + ".";
+						return false;
+					}
+					const VALTAN_COUNTER_PROXY_VIEW& proxy = *stage.CounterProxy;
+					std::ostringstream operation;
+					operation << "    { \"op\": \"SET_STAGE_COUNTER_PROXY\", "
+						"\"patternId\": " << Quote(pattern.strPatternId)
+						<< ", \"stageId\": " << Quote(stage.strStageId)
+						<< ", \"forwardOffsetM\": " << FormatJsonNumber(proxy.fForwardOffsetM)
+						<< ", \"rightOffsetM\": " << FormatJsonNumber(proxy.fRightOffsetM)
+						<< ", \"radiusM\": " << FormatJsonNumber(proxy.fRadiusM)
+						<< " }";
+					append(operation);
 				}
+				const bool counterOwnsTimeout =
+					stage.CounterProxy.has_value() ||
+					loadedStage->CounterProxy.has_value() ||
+					stage.Branches.end() != std::find_if(
+						stage.Branches.begin(), stage.Branches.end(),
+						[](const VALTAN_STAGE_BRANCH_VIEW& branch)
+						{ return "COUNTER_HIT" == branch.strOutcome; }) ||
+					loadedStage->Branches.end() != std::find_if(
+						loadedStage->Branches.begin(), loadedStage->Branches.end(),
+						[](const VALTAN_STAGE_BRANCH_VIEW& branch)
+						{ return "COUNTER_HIT" == branch.strOutcome; });
 				const std::vector<const VALTAN_STAGE_BRANCH_VIEW*> branches =
-					CollectValtanNonCounterBranches(stage);
+					CollectValtanNonCounterBranches(stage, counterOwnsTimeout);
 				const std::vector<const VALTAN_STAGE_BRANCH_VIEW*> loadedBranches =
-					CollectValtanNonCounterBranches(*loadedStage);
+					CollectValtanNonCounterBranches(
+						*loadedStage, counterOwnsTimeout);
 				if (branches.size() != loadedBranches.size())
 				{
 					status = "Loaded non-Counter branch inventory changed: " +
@@ -5394,16 +8014,116 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 						<< FormatJsonNumber(action.fYawOffsetDegrees) << " }";
 					append(operation);
 				}
+				if (!EqualValtanStageMotion(stage.Motion, loadedStage->Motion))
+				{
+					const bool typedPortalRush =
+						"VALTAN_WARP" == pattern.strPatternId &&
+						stage.Motion.has_value() && loadedStage->Motion.has_value() &&
+						"PORTAL_TARGET_RUSH" == stage.Motion->strKind &&
+						"PORTAL_TARGET_RUSH" == loadedStage->Motion->strKind;
+					if (!typedPortalRush)
+					{
+						status = "Stage motion changed outside the typed VALTAN_WARP portal-rush owner: " +
+							pattern.strPatternId + "/" + stage.strStageId + ".";
+						return false;
+					}
+					std::ostringstream operation;
+					operation << "    { \"op\": \"SET_STAGE_PORTAL_RUSH_MOTION\", "
+						"\"patternId\": " << Quote(pattern.strPatternId)
+						<< ", \"stageId\": " << Quote(stage.strStageId)
+						<< ", \"retargetDelayMs\": "
+						<< stage.Motion->iRetargetDelayMs
+						<< ", \"speedMps\": "
+						<< FormatJsonNumber(stage.Motion->fSpeedMps)
+						<< ", \"distanceM\": "
+						<< FormatJsonNumber(stage.Motion->fDistance) << " }";
+					append(operation);
+				}
 
 				const std::vector<const VALTAN_PRODUCT_EFFECT_CUE_VIEW*> cues =
 					CollectValtanProductCues(stage);
 				const std::vector<const VALTAN_PRODUCT_EFFECT_CUE_VIEW*> loadedCues =
 					CollectValtanProductCues(*loadedStage);
-				if (cues.size() != loadedCues.size())
+				const auto buildCueJson = [&](
+					const VALTAN_PRODUCT_EFFECT_CUE_VIEW& cue,
+					std::string& json) -> bool
 				{
-					status = "Loaded stage Effect cue inventory changed: " +
-						pattern.strPatternId + "/" + stage.strStageId + ".";
-					return false;
+					const auto clip = std::find_if(
+						stage.ClipOccurrences.begin(), stage.ClipOccurrences.end(),
+						[&cue](const VALTAN_CLIP_OCCURRENCE_VIEW& candidate)
+						{
+							return candidate.strClipOccurrenceId ==
+								cue.strClipOccurrenceId;
+						});
+					if (stage.ClipOccurrences.end() == clip ||
+						cue.bUsesStageClock || !cue.bHasExplicitScalePolicy)
+					{
+						status = "Effect cue serialization lost its exact clip occurrence or explicit scale policy: " +
+							cue.strOccurrenceId + ".";
+						return false;
+					}
+					std::ostringstream cueJson;
+					cueJson << "{ \"cueId\": " << Quote(cue.strBindingId)
+						<< ", \"occurrenceId\": " << Quote(cue.strOccurrenceId)
+						<< ", \"effectAssetId\": " << Quote(cue.strEffectAssetId)
+						<< ", \"clipOccurrenceId\": " <<
+							Quote(cue.strClipOccurrenceId)
+						<< ", \"sourceStartMs\": " << cue.iSourceStartMs
+						<< ", \"sourceEndMs\": " <<
+							(cue.bHasSourceEnd ? std::to_string(cue.iSourceEndMs) :
+								std::string("null"))
+						<< ", \"anchorSlotId\": " << Quote(cue.strAnchorSlotId)
+						<< ", \"followPolicy\": " << Quote(cue.strFollowPolicy)
+						<< ", \"stopPolicy\": " << Quote(cue.strStopPolicy)
+						<< ", \"repeatPolicy\": " << Quote(cue.strRepeatPolicy)
+						<< ", \"localTransform\": { \"position\": ["
+						<< FormatJsonNumber(cue.LocalTransform.vPosition.x) << ", "
+						<< FormatJsonNumber(cue.LocalTransform.vPosition.y) << ", "
+						<< FormatJsonNumber(cue.LocalTransform.vPosition.z)
+						<< "], \"rotationDegrees\": ["
+						<< FormatJsonNumber(cue.LocalTransform.vRotationDegrees.x) << ", "
+						<< FormatJsonNumber(cue.LocalTransform.vRotationDegrees.y) << ", "
+						<< FormatJsonNumber(cue.LocalTransform.vRotationDegrees.z)
+						<< "], \"scale\": ["
+						<< FormatJsonNumber(cue.LocalTransform.vScale.x) << ", "
+						<< FormatJsonNumber(cue.LocalTransform.vScale.y) << ", "
+						<< FormatJsonNumber(cue.LocalTransform.vScale.z) << "] }, "
+						"\"scalePolicy\": { \"kind\": " << Quote(cue.strScalePolicy);
+					if ("OWNER_RELATIVE" != cue.strScalePolicy)
+					{
+						cueJson << ", \"worldScale\": ["
+							<< FormatJsonNumber(cue.vWorldScale.x) << ", "
+							<< FormatJsonNumber(cue.vWorldScale.y) << ", "
+							<< FormatJsonNumber(cue.vWorldScale.z) << "]";
+					}
+					cueJson << " }, \"mappingBasis\": " <<
+						Quote(clip->strMappingBasis) << " }";
+					json = cueJson.str();
+					return true;
+				};
+
+				for (const VALTAN_PRODUCT_EFFECT_CUE_VIEW* const loadedCue : loadedCues)
+				{
+					const auto currentCue = std::find_if(
+						cues.begin(), cues.end(),
+						[loadedCue](const VALTAN_PRODUCT_EFFECT_CUE_VIEW* const row)
+						{
+							return row->strBindingId == loadedCue->strBindingId &&
+								row->strOccurrenceId == loadedCue->strOccurrenceId;
+						});
+					if (cues.end() != currentCue)
+						continue;
+					std::ostringstream operation;
+					operation << "    { \"op\": \"REMOVE_EFFECT_CUE\", "
+						"\"patternId\": " << Quote(pattern.strPatternId)
+						<< ", \"stageId\": " << Quote(stage.strStageId)
+						<< ", \"actionId\": " << Quote(stage.strActionId)
+						<< ", \"cueId\": " << Quote(loadedCue->strBindingId)
+						<< ", \"occurrenceId\": " << Quote(loadedCue->strOccurrenceId)
+						<< ", \"effectAssetId\": " << Quote(loadedCue->strEffectAssetId)
+						<< ", \"clipOccurrenceId\": " <<
+							Quote(loadedCue->strClipOccurrenceId) << " }";
+					effectCueRemoveOperations.push_back(operation.str());
 				}
 				for (const VALTAN_PRODUCT_EFFECT_CUE_VIEW* const cue : cues)
 				{
@@ -5411,26 +8131,50 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 						loadedCues.begin(), loadedCues.end(),
 						[cue](const VALTAN_PRODUCT_EFFECT_CUE_VIEW* const row)
 						{
-							return row->strOccurrenceId == cue->strOccurrenceId;
+							return row->strBindingId == cue->strBindingId &&
+								row->strOccurrenceId == cue->strOccurrenceId;
 						});
-					if (loadedCues.end() == loadedCue ||
-						!EqualValtanCueExceptLocalYaw(**loadedCue, *cue))
+					if (loadedCues.end() != loadedCue &&
+						EqualValtanCue(**loadedCue, *cue))
 					{
-						status = "Loaded Effect cue stable contract changed: " +
-							cue->strOccurrenceId + ".";
-						return false;
-					}
-					const float yaw = cue->LocalTransform.vRotationDegrees.y;
-					if (yaw == (*loadedCue)->LocalTransform.vRotationDegrees.y)
 						continue;
+					}
+					if (loadedCues.end() != loadedCue &&
+						EqualValtanCueExceptLocalYaw(**loadedCue, *cue))
+					{
+						std::ostringstream operation;
+						operation << "    { \"op\": \"SET_EFFECT_CUE_LOCAL_YAW\", "
+							"\"patternId\": " << Quote(pattern.strPatternId)
+							<< ", \"stageId\": " << Quote(stage.strStageId)
+							<< ", \"occurrenceId\": " << Quote(cue->strOccurrenceId)
+							<< ", \"localYawDegrees\": " << FormatJsonNumber(
+								cue->LocalTransform.vRotationDegrees.y) << " }";
+						effectCueUpsertOperations.push_back(operation.str());
+						continue;
+					}
+					std::string cueJson;
+					if (!buildCueJson(*cue, cueJson))
+						return false;
 					std::ostringstream operation;
-					operation << "    { \"op\": \"SET_EFFECT_CUE_LOCAL_YAW\", "
-						"\"patternId\": " << Quote(pattern.strPatternId)
-						<< ", \"stageId\": " << Quote(stage.strStageId)
-						<< ", \"occurrenceId\": " << Quote(cue->strOccurrenceId)
-						<< ", \"localYawDegrees\": "
-						<< FormatJsonNumber(yaw) << " }";
-					append(operation);
+					if (loadedCues.end() == loadedCue)
+					{
+						operation << "    { \"op\": \"ADD_EFFECT_CUE\", "
+							"\"patternId\": " << Quote(pattern.strPatternId)
+							<< ", \"stageId\": " << Quote(stage.strStageId)
+							<< ", \"actionId\": " << Quote(stage.strActionId)
+							<< ", \"cue\": " << cueJson << " }";
+					}
+					else
+					{
+						operation << "    { \"op\": \"UPDATE_EFFECT_CUE\", "
+							"\"patternId\": " << Quote(pattern.strPatternId)
+							<< ", \"stageId\": " << Quote(stage.strStageId)
+							<< ", \"actionId\": " << Quote(stage.strActionId)
+							<< ", \"cueId\": " << Quote(cue->strBindingId)
+							<< ", \"occurrenceId\": " << Quote(cue->strOccurrenceId)
+							<< ", \"cue\": " << cueJson << " }";
+					}
+					effectCueUpsertOperations.push_back(operation.str());
 				}
 				const bool hitChanged =
 					stage.strHitShape != loadedStage->strHitShape ||
@@ -5447,7 +8191,9 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 					stage.fPushRangeM != loadedStage->fPushRangeM ||
 					stage.iPushMs != loadedStage->iPushMs ||
 					stage.bKnockdown != loadedStage->bKnockdown ||
-					stage.iDownMs != loadedStage->iDownMs;
+					stage.iDownMs != loadedStage->iDownMs ||
+					stage.strPlayerResponse != loadedStage->strPlayerResponse ||
+					stage.strAttachmentSlot != loadedStage->strAttachmentSlot;
 				if (!hitChanged)
 					continue;
 				std::ostringstream hit;
@@ -5484,12 +8230,18 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 							<< ", \"firstOffsetMs\": " << stage.iHitDelayMs
 							<< ", \"intervalMs\": " << stage.iHitIntervalMs << " }";
 					}
-					hit << ", \"serverDamageProfileId\": "
+					 hit << ", \"serverDamageProfileId\": "
 						<< Quote(stage.strServerDamageProfileId)
 						<< ", \"pushRangeM\": " << FormatJsonNumber(stage.fPushRangeM)
 						<< ", \"pushMs\": " << stage.iPushMs
 						<< ", \"knockdown\": " << (stage.bKnockdown ? "true" : "false")
 						<< ", \"downMs\": " << stage.iDownMs;
+					if ("CAPTURE" == stage.strPlayerResponse)
+					{
+						hit << ", \"playerResponse\": \"CAPTURE\""
+							<< ", \"attachmentSlot\": "
+							<< Quote(stage.strAttachmentSlot);
+					}
 				}
 				hit << " }";
 				std::ostringstream operation;
@@ -5571,6 +8323,45 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 		append(operation);
 	}
 
+	/* Counter and manual Stage topology are not per-field serialization.
+	   Disable old edges, add stable identities, retag their roles, then
+	   enable/retarget before removing or moving old identities.  This keeps an
+	   old success target alive until its Counter branch has moved away. */
+	std::vector<std::string> orderedOperations;
+	orderedOperations.reserve(
+		counterDisableOperations.size() +
+		manualStagePreCounterTopologyOperations.size() +
+		stageRoleOperations.size() + counterEnableOperations.size() +
+		effectCueRemoveOperations.size() +
+		manualStagePostCounterTopologyOperations.size() + operations.size() +
+		effectCueUpsertOperations.size());
+	orderedOperations.insert(
+		orderedOperations.end(),
+		counterDisableOperations.begin(), counterDisableOperations.end());
+	orderedOperations.insert(
+		orderedOperations.end(),
+		manualStagePreCounterTopologyOperations.begin(),
+		manualStagePreCounterTopologyOperations.end());
+	orderedOperations.insert(
+		orderedOperations.end(),
+		stageRoleOperations.begin(), stageRoleOperations.end());
+	orderedOperations.insert(
+		orderedOperations.end(),
+		counterEnableOperations.begin(), counterEnableOperations.end());
+	orderedOperations.insert(
+		orderedOperations.end(),
+		effectCueRemoveOperations.begin(), effectCueRemoveOperations.end());
+	orderedOperations.insert(
+		orderedOperations.end(),
+		manualStagePostCounterTopologyOperations.begin(),
+		manualStagePostCounterTopologyOperations.end());
+	orderedOperations.insert(
+		orderedOperations.end(), operations.begin(), operations.end());
+	orderedOperations.insert(
+		orderedOperations.end(),
+		effectCueUpsertOperations.begin(), effectCueUpsertOperations.end());
+	operations = std::move(orderedOperations);
+
 	std::ostringstream document;
 	document << "{\n  \"schema\": \"lostark.valtan-tuning-draft-patch\",\n"
 		"  \"formatVersion\": 1,\n  \"sourceRevision\": "
@@ -5586,10 +8377,13 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 }
 
 bool Client::CBalanceTool::RunValtanDraftCommand(
-	const wchar_t* const mode, std::string& status)
+	const wchar_t* const mode,
+	std::string& status,
+	const VALTAN_COMPOSITION_OWNER_DRAFTS* const pOwnerDrafts)
 {
 	if (nullptr == mode || (0 != std::wcscmp(mode, L"ValidateDraft") &&
 		0 != std::wcscmp(mode, L"SaveAuthoring") &&
+		0 != std::wcscmp(mode, L"CommitCanonicalDraft") &&
 		0 != std::wcscmp(mode, L"PublishCandidate")))
 	{
 		status = "Unsupported Valtan draft command.";
@@ -5597,6 +8391,7 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 	}
 	const bool requiresValidatedSplitJoin =
 		0 == std::wcscmp(mode, L"SaveAuthoring") ||
+		0 == std::wcscmp(mode, L"CommitCanonicalDraft") ||
 		0 == std::wcscmp(mode, L"PublishCandidate");
 	if (requiresValidatedSplitJoin &&
 		VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED !=
@@ -5619,19 +8414,96 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 			pathError.message() + ".";
 		return false;
 	}
+	const std::wstring temporaryStem =
+		L"LostArk.ValtanDraft." + std::to_wstring(GetCurrentProcessId()) + L"." +
+		std::to_wstring(GetTickCount64());
 	const std::filesystem::path patchPath = temporaryDirectory /
-		(L"LostArk.ValtanDraft." + std::to_wstring(GetCurrentProcessId()) + L"." +
-			std::to_wstring(GetTickCount64()) + L".json");
+		(temporaryStem + L".json");
+	std::vector<std::filesystem::path> temporaryPaths{ patchPath };
+	const auto CleanupTemporaryPaths = [&temporaryPaths]()
+	{
+		for (const std::filesystem::path& path : temporaryPaths)
+		{
+			std::error_code cleanupError;
+			std::filesystem::remove(path, cleanupError);
+		}
+	};
 	if (!DurableWrite(patchPath, patchText, status))
 		return false;
 	std::wstring arguments = L"-Mode " + std::wstring(mode) +
 		L" -DraftPatchPath \"" + patchPath.wstring() + L"\"";
+	if (nullptr != pOwnerDrafts)
+	{
+		if (0 != std::wcscmp(mode, L"CommitCanonicalDraft"))
+		{
+			CleanupTemporaryPaths();
+			status = "Composition owner drafts are valid only for one canonical Save.";
+			return false;
+		}
+		const bool hasPatternSoundBaseline =
+			!pOwnerDrafts->patternSoundBaselineBytes.empty();
+		const bool hasPatternSoundCandidate =
+			!pOwnerDrafts->patternSoundCandidateBytes.empty();
+		const bool hasEffectV2Baseline =
+			!pOwnerDrafts->effectV2BaselineBytes.empty();
+		const bool hasEffectV2Candidate =
+			!pOwnerDrafts->effectV2CandidateBytes.empty();
+		if (hasPatternSoundBaseline != hasPatternSoundCandidate ||
+			hasEffectV2Baseline != hasEffectV2Candidate)
+		{
+			CleanupTemporaryPaths();
+			status = "Composition owner baseline/candidate pairs are incomplete.";
+			return false;
+		}
+		const auto StageOwnerPair = [&](const wchar_t* const label,
+			const std::string& baselineBytes,
+			const std::string& candidateBytes,
+			const wchar_t* const baselineArgument,
+			const wchar_t* const candidateArgument) -> bool_t
+		{
+			if (baselineBytes.empty())
+				return true;
+			const std::filesystem::path baselinePath = temporaryDirectory /
+				(temporaryStem + L"." + label + L".baseline.json");
+			const std::filesystem::path candidatePath = temporaryDirectory /
+				(temporaryStem + L"." + label + L".candidate.json");
+			temporaryPaths.push_back(baselinePath);
+			temporaryPaths.push_back(candidatePath);
+			if (!DurableWrite(baselinePath, baselineBytes, status) ||
+				!DurableWrite(candidatePath, candidateBytes, status))
+			{
+				return false;
+			}
+			arguments += L" ";
+			arguments += baselineArgument;
+			arguments += L" \"" + baselinePath.wstring() + L"\" ";
+			arguments += candidateArgument;
+			arguments += L" \"" + candidatePath.wstring() + L"\"";
+			return true;
+		};
+		if (!StageOwnerPair(
+				L"PatternSound",
+				pOwnerDrafts->patternSoundBaselineBytes,
+				pOwnerDrafts->patternSoundCandidateBytes,
+				L"-PatternSoundBaselinePath",
+				L"-PatternSoundCandidatePath") ||
+			!StageOwnerPair(
+				L"EffectV2",
+				pOwnerDrafts->effectV2BaselineBytes,
+				pOwnerDrafts->effectV2CandidateBytes,
+				L"-EffectV2BaselinePath",
+				L"-EffectV2CandidatePath"))
+		{
+			CleanupTemporaryPaths();
+			return false;
+		}
+	}
 	std::string captured;
 	std::string processStatus;
 	const bool processSucceeded = RunPipeline(
 		L"ValtanPipeline\\Publish-ValtanTuningRuntimeSet.ps1",
 		arguments.c_str(), processStatus, &captured);
-	std::filesystem::remove(patchPath, pathError);
+	CleanupTemporaryPaths();
 	VALTAN_PIPELINE_RESULT result;
 	std::string parseStatus;
 	if (!ParseValtanPipelineResult(captured, result, parseStatus))
@@ -5647,6 +8519,8 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 	const std::string expectedCommand =
 		0 == std::wcscmp(mode, L"ValidateDraft") ? "VALIDATE_DRAFT" :
 		0 == std::wcscmp(mode, L"SaveAuthoring") ? "SAVE_AUTHORING" :
+		0 == std::wcscmp(mode, L"CommitCanonicalDraft") ?
+			"COMMIT_CANONICAL_DRAFT" :
 		"PUBLISH_CANDIDATE";
 	if (result.command != expectedCommand)
 	{
@@ -5699,6 +8573,51 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 		}
 		status = "Saved immutable Valtan authoring revision " +
 			m_valtanAuthoringRevision.substr(0u, 12u) + ".";
+		return true;
+	}
+	if (0 == std::wcscmp(mode, L"CommitCanonicalDraft"))
+	{
+		if (!IsLowerSha256(result.sourceRevision) ||
+			!result.candidateRevision.empty() ||
+			!result.hasOperationCountField ||
+			!result.hasChangedCountField ||
+			!result.hasRuntimeActivationField ||
+			result.runtimeActivation != "NOT_ACTIVATED")
+		{
+			status =
+				"Pattern Save returned an invalid transaction result.";
+			return false;
+		}
+		const std::string committedRevision = result.sourceRevision;
+		if (!Reload())
+		{
+			status =
+				"Pattern files were saved, but the editor could not load them: " +
+				m_status;
+			return false;
+		}
+		if (m_valtanSourceRevision != committedRevision ||
+			VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED !=
+				m_valtanSourceJoin.state)
+		{
+			status =
+				"Pattern files were saved, but the editor loaded a different saved revision than " +
+				committedRevision.substr(0u, 12u) +
+				". Reload the current files before editing again.";
+			return false;
+		}
+		if (0u != result.changedCount)
+		{
+			CValtanTuningCommandService::Get().
+				Record_GameplaySourceActivationExpectation(
+					{}, "NOT_ACTIVATED",
+					"Pattern data was saved locally. Restart or re-enter the Server arena to load the saved revision.");
+		}
+		status = "Saved Valtan Pattern data " +
+			committedRevision.substr(0u, 12u) +
+			(0u == result.changedCount ?
+				" with no file changes." :
+				" and loaded it back into the editor. Restart or re-enter the Server arena to use it there.");
 		return true;
 	}
 	if (!IsLowerSha256(result.candidateRevision) ||
@@ -6242,14 +9161,23 @@ bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
 		Field(playerRoot, "players", DATA_JSON_TYPE::ARRAY);
 	const DATA_JSON_VALUE* skills =
 		Field(skillRoot, "skills", DATA_JSON_TYPE::ARRAY);
+	const DATA_JSON_VALUE* damageProfiles =
+		Field(damageRoot, "profiles", DATA_JSON_TYPE::ARRAY);
+	const DATA_JSON_VALUE* bosses =
+		Field(bossRoot, "bosses", DATA_JSON_TYPE::ARRAY);
 	const DATA_JSON_VALUE* patterns =
 		Field(encounterRoot, "patterns", DATA_JSON_TYPE::ARRAY);
-	if (nullptr == players || players->Get_Array().size() != 6u ||
-		nullptr == skills || skills->Get_Array().size() != 94u ||
+	if (nullptr == players ||
+		players->Get_Array().size() != tool.m_players.size() ||
+		nullptr == skills || skills->Get_Array().size() != tool.m_skills.size() ||
+		nullptr == damageProfiles ||
+		damageProfiles->Get_Array().size() != tool.m_damageProfiles.size() ||
+		nullptr == bosses || bosses->Get_Array().size() != tool.m_bosses.size() ||
 		nullptr == patterns ||
 		patterns->Get_Array().size() != tool.m_patterns.size())
 	{
-		status = "Balance Tool round-trip changed required collections or Pattern identities.";
+		status =
+			"Balance Tool round-trip changed collection membership or Pattern identities.";
 		return false;
 	}
 
@@ -6679,7 +9607,7 @@ void Client::CBalanceTool::Render()
 				m_valtanSourceJoin.state;
 		ImGui::BeginDisabled(
 			m_valtanSourceRevision.empty() || !splitJoinValidated);
-		if (ImGui::Button("Save"))
+		if (ImGui::Button("Save & Apply##ValtanBalance"))
 		{
 			std::string status;
 			(void)Save_ValtanProduct(status);

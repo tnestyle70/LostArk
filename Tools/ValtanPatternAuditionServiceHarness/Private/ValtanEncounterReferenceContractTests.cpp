@@ -2,7 +2,9 @@
 
 #include "EncounterPatternReference.h"
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -43,6 +45,24 @@ namespace
 		const auto* committedTrash = reference.Find_Pattern("VALTAN_TRASH");
 		if (!Require(nullptr != committedTrash, "latest encounter did not load Trash"))
 			return false;
+		const auto* committedPizza =
+			reference.Find_Pattern("VALTAN_SIX_PIZZA_106");
+		if (!Require(nullptr != committedPizza &&
+				committedPizza->targetPolicy ==
+					"LOCK_RANDOM_ALIVE_ON_START" &&
+				committedPizza->aimPolicy == "LOCK_FACING_ON_START" &&
+				committedPizza->serverMotion.has_value() &&
+				committedPizza->serverMotion->kind == "LEAP_TO_ANCHOR" &&
+				committedPizza->serverMotion->anchorId ==
+					"anchor.valtan.six-pizza-106.landing" &&
+				std::all_of(
+					committedPizza->serverMotion->landingPosition.begin(),
+					committedPizza->serverMotion->landingPosition.end(),
+					[](const f32_t value) { return std::isfinite(value); }),
+			"encounter Product did not retain six-pizza target/motion authority"))
+		{
+			return false;
+		}
 		const auto committedDuration = committedTrash->iTotalDurationMs;
 		struct ScopedEncounterFixture
 		{
@@ -204,20 +224,31 @@ namespace
 			text.replace(begin, end - begin, mutation.replacement);
 			return text;
 		};
+		auto dynamicFinale = replaceField(original,
+			{ "VALTAN_GHOST_FINALE", "finale", "maximumActiveGhosts", "2" });
+		dynamicFinale = replaceField(std::move(dynamicFinale),
+			{ "VALTAN_GHOST_FINALE", "finale", "ghostPatternIds",
+			  "[\"VALTAN_FOUR_SLASH\",\"VALTAN_WHIRLWIND\"]" });
+		CEncounterPatternReference dynamicFinaleReference;
+		if (!Require(!dynamicFinale.empty() && writeFixture(dynamicFinale) &&
+			dynamicFinaleReference.Load(fixture.File, status) &&
+			nullptr != dynamicFinaleReference.Find_Pattern("VALTAN_GHOST_FINALE"),
+			"data-driven two-child reordered finale was rejected"))
+			return false;
 		const char* extensionError = "Encounter pattern extensions are invalid:";
 		const FieldMutation malformedFields[] =
 		{
 			{ "VALTAN_GHOST_FINALE", "finale", "kind", "\"UNKNOWN_FINALE\"", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "ghostArchetypeId", "\"BOSS_VALTAN\"", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "maximumActiveGhosts", "0", extensionError },
-			{ "VALTAN_GHOST_FINALE", "finale", "maximumActiveGhosts", "2", extensionError },
+			{ "VALTAN_GHOST_FINALE", "finale", "maximumActiveGhosts", "65", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "maximumActiveGhosts", "true", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "maximumActiveGhosts", "1,\"unsupported\":1", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "spawnHalfExtentsM", "[0,10]", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "spawnHalfExtentsM", "[10,101]", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "spawnHalfExtentsM", "[10]", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "ghostPatternIds",
-				"[\"VALTAN_FOUR_SLASH\",\"VALTAN_WHIRLWIND\",\"VALTAN_SEQUENCE_FOUR\"]", extensionError },
+				"[]", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "ghostPatternIds",
 				"[\"VALTAN_WHIRLWIND\",\"VALTAN_WHIRLWIND\",\"VALTAN_SEQUENCE_FOUR\"]", extensionError },
 			{ "VALTAN_GHOST_FINALE", "finale", "ghostPatternIds",
@@ -241,6 +272,12 @@ namespace
 				"\"PORTAL_TARGET_RUSH\",\"cornerIndex\":0" },
 			{ "VALTAN_WARP", "STEP_02", "kind",
 				"\"PORTAL_TARGET_RUSH\",\"halfExtentsM\":[22,22]" },
+			{ "VALTAN_WARP", "STEP_02", "retargetDelayMs", "2301" },
+			{ "VALTAN_WARP", "STEP_02", "retargetDelayMs", "true" },
+			{ "VALTAN_WARP", "STEP_02", "speedMps", "0" },
+			{ "VALTAN_WARP", "STEP_02", "speedMps", "1001" },
+			{ "VALTAN_WARP", "STEP_02", "distanceM", "0" },
+			{ "VALTAN_WARP", "STEP_02", "distanceM", "1001" },
 			{ "VALTAN_CATCH_BREATH", "RELEASE_GRABBED_PLAYERS", "releaseMode", "\"UNKNOWN_EJECTION\"" },
 			{ "VALTAN_CATCH_BREATH", "RELEASE_GRABBED_PLAYERS", "speedMps", "0" },
 			{ "VALTAN_CATCH_BREATH", "RELEASE_GRABBED_PLAYERS", "durationMs", "0" },

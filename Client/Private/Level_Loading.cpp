@@ -12,7 +12,8 @@
 #include "Effect_LoadPreparationJob.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
-#include "HUDRuntimeView.h"
+#include "UIInputRouter.h"
+#include "UILayoutRuntime.h"
 #include "LevelTransitionService.h"
 #include "LevelRegistry.h"
 #include "Loader.h"
@@ -22,6 +23,7 @@
 #include "ProjectDataRoot.h"
 #include "UI_Sprite.h"
 #include "ValtanPatternEffectCueDocument.h"
+#include "ValtanPatternTree.h"
 
 #include <algorithm>
 #include <atomic>
@@ -83,10 +85,13 @@ HRESULT CLevel_Loading::Initialize(
 
 	if (FAILED(Ready_Layer_Chrome()))
 		return E_FAIL;
-	m_pRecoveryView = std::make_unique<CHUDRuntimeView>(
-		m_pDevice, m_pContext,
-		L"UI/Loading/LoadingRecovery.json",
-		CHUDRuntimeView::DRAW_TARGET::FOREGROUND);
+	m_pRecoveryView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::LOADING), TEXT("Layer_UI"),
+		L"UI/Loading/LoadingRecovery.json");
+	/* Authored tints are opaque -- the failure panel must stay invisible until a Lobby load
+	failure is actually reported (Render_LoadingRecoveryProduct owns it from there). */
+	m_pRecoveryView->Set_SlotVisible("LoadingRecovery_Panel", false);
+	m_pRecoveryView->Set_SlotVisible("LoadingRecovery_RetryButton", false);
 
 	const bool_t bUsesEffectLoadJob =
 		LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
@@ -289,16 +294,22 @@ HRESULT CLevel_Loading::Render()
 
 void CLevel_Loading::Render_LoadingRecoveryProduct()
 {
+	if (nullptr == m_pRecoveryView)
+		return;
 	if (!m_isFailureReported || LEVEL::LOBBY != m_eNextLevelID)
 	{
+		m_pRecoveryView->Set_SlotVisible("LoadingRecovery_Panel", false);
+		m_pRecoveryView->Set_SlotVisible("LoadingRecovery_RetryButton", false);
 		return;
 	}
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	if (nullptr != m_pRecoveryView)
-		m_pRecoveryView->Render("", 0);
+	/* The panel/retry art are real CUI_Sprite slots now (LoadingRecovery.json); this keeps
+	their visibility/hover state current and draws the two text lines via the same Draw_Text
+	pass the title/tip above already use. If an authored slot is somehow missing, the matching
+	default rect still places the text and the retry hit-test so recovery stays usable -- the
+	old ImGui fallback rectangles had no engine-path equivalent and are gone. */
+	m_pRecoveryView->Set_SlotVisible("LoadingRecovery_Panel", true);
+	m_pRecoveryView->Set_SlotVisible("LoadingRecovery_RetryButton", true);
 
 	struct PRODUCT_RECT
 	{
@@ -307,21 +318,8 @@ void CLevel_Loading::Render_LoadingRecoveryProduct()
 		f32_t fWidth;
 		f32_t fHeight;
 	};
-	constexpr PRODUCT_RECT DEFAULT_PANEL_RECT{ 270.f, 252.f, 740.f, 216.f };
 	constexpr PRODUCT_RECT DEFAULT_MESSAGE_RECT{ 310.f, 292.f, 660.f, 72.f };
 	constexpr PRODUCT_RECT DEFAULT_RETRY_RECT{ 569.f, 388.f, 142.f, 48.f };
-
-	const f32_t fScaleX = pViewport->WorkSize.x / 1280.f;
-	const f32_t fScaleY = pViewport->WorkSize.y / 720.f;
-	const auto ResolveRect = [pViewport, fScaleX, fScaleY](
-		const f32_t fX, const f32_t fY, const f32_t fWidth, const f32_t fHeight,
-		ImVec2& vMin, ImVec2& vMax)
-	{
-		vMin = ImVec2(
-			pViewport->WorkPos.x + fX * fScaleX,
-			pViewport->WorkPos.y + fY * fScaleY);
-		vMax = ImVec2(vMin.x + fWidth * fScaleX, vMin.y + fHeight * fScaleY);
-	};
 
 	const auto ResolveProductRect = [this](
 		const char_t* pSlotId,
@@ -330,7 +328,7 @@ void CLevel_Loading::Render_LoadingRecoveryProduct()
 	{
 		outRect = DefaultRect;
 		PRODUCT_RECT AuthoredRect{};
-		if (nullptr == m_pRecoveryView || !m_pRecoveryView->Get_SlotRect(
+		if (!m_pRecoveryView->Get_SlotRect(
 			pSlotId, AuthoredRect.fX, AuthoredRect.fY,
 			AuthoredRect.fWidth, AuthoredRect.fHeight) ||
 			!std::isfinite(AuthoredRect.fX) || !std::isfinite(AuthoredRect.fY) ||
@@ -343,75 +341,54 @@ void CLevel_Loading::Render_LoadingRecoveryProduct()
 		return true;
 	};
 
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
-	PRODUCT_RECT PanelRect{};
-	const bool_t bHasAuthoredPanel = ResolveProductRect(
-		"LoadingRecovery_Panel", DEFAULT_PANEL_RECT, PanelRect);
-	if (!bHasAuthoredPanel)
+	const f32_t fRefWidth = m_pRecoveryView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pRecoveryView->Get_ResolutionHeight();
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fScaleX = fRefWidth > 0.f ? vViewportSize.x / fRefWidth : 1.f;
+	const f32_t fScaleY = fRefHeight > 0.f ? vViewportSize.y / fRefHeight : 1.f;
+	const f32_t fTextScale = (std::min)(fScaleX, fScaleY);
+	const auto Fn_DrawCenteredAscii = [&](
+		const PRODUCT_RECT& Rect, const char_t* pText, f32_t fTargetHeight)
 	{
-		ImVec2 vMin, vMax;
-		ResolveRect(
-			PanelRect.fX, PanelRect.fY, PanelRect.fWidth, PanelRect.fHeight,
-			vMin, vMax);
-		pDrawList->AddRectFilled(vMin, vMax, IM_COL32(20, 20, 24, 235), 8.f);
-	}
+		const std::wstring wide(pText, pText + std::char_traits<char_t>::length(pText));
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), wide.c_str());
+		if (vMeasured.y <= 0.f)
+			return;
+		const f32_t fScale = (fTargetHeight / vMeasured.y) * fTextScale;
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), wide.c_str(),
+			float2_t(
+				(Rect.fX + Rect.fWidth * 0.5f) * fScaleX,
+				(Rect.fY + Rect.fHeight * 0.5f) * fScaleY),
+			Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale);
+	};
 
 	PRODUCT_RECT MessageRect{};
 	ResolveProductRect(
 		"LoadingRecovery_Message", DEFAULT_MESSAGE_RECT, MessageRect);
-	{
-		ImVec2 vMin, vMax;
-		ResolveRect(
-			MessageRect.fX, MessageRect.fY,
-			MessageRect.fWidth, MessageRect.fHeight,
-			vMin, vMax);
-		constexpr const char_t* MESSAGE =
-			"Lobby resources could not be loaded. Partial resources were rolled back.";
-		const ImVec2 vTextSize = ImGui::CalcTextSize(MESSAGE);
-		pDrawList->AddText(
-			ImVec2(
-				vMin.x + ((vMax.x - vMin.x) - vTextSize.x) * 0.5f,
-				vMin.y + ((vMax.y - vMin.y) - vTextSize.y) * 0.5f),
-			IM_COL32_WHITE, MESSAGE);
-	}
+	Fn_DrawCenteredAscii(MessageRect,
+		"Lobby resources could not be loaded. Partial resources were rolled back.", 16.f);
 
 	PRODUCT_RECT RetryRect{};
-	const bool_t bHasAuthoredRetry = ResolveProductRect(
+	ResolveProductRect(
 		"LoadingRecovery_RetryButton", DEFAULT_RETRY_RECT, RetryRect);
-	ImVec2 vMin, vMax;
-	ResolveRect(
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const bool_t bHovered = Router.Is_Hovered(
 		RetryRect.fX, RetryRect.fY, RetryRect.fWidth, RetryRect.fHeight,
-		vMin, vMax);
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-		vMouse.y >= vMin.y && vMouse.y < vMax.y;
-	if (!bHasAuthoredRetry)
-	{
-		pDrawList->AddRectFilled(
-			vMin, vMax,
-			bHovered ? IM_COL32(164, 118, 46, 255) : IM_COL32(92, 76, 54, 255),
-			4.f);
-	}
+		fRefWidth, fRefHeight);
+	m_pRecoveryView->Set_SlotTexture("LoadingRecovery_RetryButton",
+		bHovered ? "UI/Lobby/create_character_button_hover.png" : "");
 	if (bHovered)
 	{
-		if (bHasAuthoredRetry && nullptr != m_pRecoveryView)
+		Router.Claim_Mouse_This_Frame();
+		if (Router.Is_Clicked(
+			RetryRect.fX, RetryRect.fY, RetryRect.fWidth, RetryRect.fHeight,
+			fRefWidth, fRefHeight))
 		{
-			if (ID3D11ShaderResourceView* pHoverSRV = m_pRecoveryView->Load_Texture(
-				"UI/Lobby/create_character_button_hover.png"))
-			{
-				pDrawList->AddImage(pHoverSRV, vMin, vMax);
-			}
-		}
-		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 			m_isRetryRequested = true;
+		}
 	}
-	constexpr const char_t* RETRY_LABEL = "Retry Lobby";
-	const ImVec2 vLabelSize = ImGui::CalcTextSize(RETRY_LABEL);
-	pDrawList->AddText(
-		ImVec2(
-			vMin.x + ((vMax.x - vMin.x) - vLabelSize.x) * 0.5f,
-			vMin.y + ((vMax.y - vMin.y) - vLabelSize.y) * 0.5f),
-		IM_COL32_WHITE, RETRY_LABEL);
+	Fn_DrawCenteredAscii(RetryRect, "Retry Lobby", 18.f);
 }
 
 #ifdef _DEBUG
@@ -557,6 +534,9 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 
 		if (bValtanArena)
 		{
+			CValtanCanonicalProductReadAdmission ProductAdmission;
+			if (!ProductAdmission.Acquire(Status))
+				return IsolateFailure(Status);
 			VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
 			if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
 					CueDocument, Status) || CueDocument.Cues.empty())
@@ -591,6 +571,8 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 				pBossActor->combatObjectVisuals)
 			{
 				EffectAssetIds.push_back(Visual.effectAssetId);
+				if (!Visual.hitEffectAssetId.empty())
+					EffectAssetIds.push_back(Visual.hitEffectAssetId);
 			}
 			/* Area-owned world Effects are Product targets too.  Read only the
 			   published runtime document here; source authoring data never becomes
@@ -613,6 +595,8 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 			{
 				EffectAssetIds.push_back(World.effectAssetId);
 			}
+			if (!ProductAdmission.Validate_StillCurrent(Status))
+				return IsolateFailure(Status);
 #ifdef _DEBUG
 			/* V1 is an optional audition lane. Queue it before the required V0
 			   targets so the following priority enqueue restores V0 to the FIFO

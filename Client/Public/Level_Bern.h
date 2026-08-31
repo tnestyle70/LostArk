@@ -8,6 +8,7 @@
 
 #include "PartyInteractionView.h"
 #include "PlayerController.h"
+#include "RaidEntryPreviewView.h"
 #include "WorldPlayerChatBubbleView.h"
 #include "WorldPlayerNameplateView.h"
 
@@ -19,7 +20,6 @@ NS_BEGIN(Client)
 
 class CCamera_Free;
 class CCharacter;
-class CHUDRuntimeView;
 class CTrigger_Box;
 class IPlayerCommandSink;
 
@@ -38,16 +38,28 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
 
-	/* CGameInstance::Draw_Text submits immediately (SpriteBatch), but
-	Render_ValtanEntryModal's popup art composites later inside
-	CImGuiLayer::EndFrame() -- same reason Level_CharacterSelect splits
-	Render_ArenaSpawnLabels() out. m_pValtanEntryView is private to this level,
-	so CMainApp reaches it through Get_Active() instead of a second
-	CHUDRuntimeView of its own. */
+	/* CGameInstance::Draw_Text submits immediately (SpriteBatch), so every LOA-font label in
+	this codebase is drawn from its own pass after CImGuiLayer::EndFrame() -- same reason
+	Level_CharacterSelect splits Render_ArenaSpawnLabels() out. m_pValtanEntryView is private
+	to this level, so CMainApp reaches it through Get_Active() instead of a second
+	CRaidEntryPreviewView of its own. Defined out-of-line in the .cpp (not inline here) so
+	files that merely include this header for Get_Active() etc. don't also need
+	CRaidEntryPreviewView's full definition just to compile it. */
 	void Render_ValtanEntryModalText();
+	/* Drives the raid-entry popup's own CUI_Sprite visibility/hover state and hit-testing for
+	   one frame; the sprites themselves draw through CObject_Manager's normal render cycle, so
+	   the old ImGui foreground-drawlist ordering requirement against the combat HUD is gone.
+	   Public (not called from this level's own Render()) because CMainApp owns the call site.
+	   Only this level reacts to a true return (real NPC entry command); the debug-only preview
+	   in Level_CharacterSelect never does. */
+	void Render_ValtanEntryModal();
 	/* Same reasoning, for CPartyInteractionView's invite-confirm popup text --
 	   see CPartyInteractionView::Render_InvitePopupText's own comment. */
-	void Render_PartyInviteText() { m_PartyInteraction.Render_InvitePopupText(); }
+	void Render_PartyInviteText()
+	{
+		m_PartyInteraction.Render_InvitePopupText();
+		m_PartyInteraction.Render_ContextMenuText();
+	}
 	static CLevel_Bern* Get_Active() { return s_pActiveInstance; }
 	const LostArk::Shared::S2C_PARTY_ROSTER& Get_PartyRoster() const
 	{
@@ -69,6 +81,11 @@ private:
 
 	bool_t Bind_CameraToLocalCharacter();
 
+	/* Out-of-line for the same reason as Render_ValtanEntryModalText() above --
+	   keeps CRaidEntryPreviewView's definition out of this header's own
+	   compile requirement for unrelated includers. */
+	bool_t Is_ValtanEntryModalOpen() const;
+
 	/* Loads the Bern authoring document once and keeps only the two known
 	Valtan-entry guide NPCs' authored positions (npc.bern.beda.guide,
 	npc.bern.aylara) -- the same static, server-uninvolved position lookup
@@ -89,12 +106,6 @@ private:
 	the local character's live position is back within interaction range of
 	the target NPC. */
 	void Advance_ValtanEntryWalk();
-	/* BeginPopupModal + OpenPopup both live in here, in the same call site every
-	frame, so the popup's ID always resolves against the same (no-window)
-	context -- Level_CharacterSelect's Create Character button broke once by
-	splitting OpenPopup() into a different window's Begin/End than the modal
-	check ran inside. */
-	void Render_ValtanEntryModal();
 
 	/* npc.bern.schmidt's authored position (real placement in Data/Worlds/
 	LV_BER_BERNCASTLE/Gameplay.world.json, archetype NPC_SCHMIDT), loaded the same
@@ -127,6 +138,15 @@ private:
 
 #ifdef _DEBUG
 	bool_t Ready_DebugLevelChangeTriggers(const std::string& areaId);
+	/* O opens m_ValtanEntryView without walking to the guide NPC first --
+	   debug-only shortcut for iterating on ValtanRaidEntry_Layout.json's visual
+	   layout against a real screen instead of re-walking every time. Uses the
+	   first authored Valtan-entry NPC's placement id if one is loaded so the
+	   real Entrance button still submits a valid Request_ConfirmNpcEntry; falls
+	   back to an empty id (Server rejects, panel still previews) if not.
+	   Level_CharacterSelect has its own equivalent O-key debug preview, for the
+	   same reason but permanently visual-only there (see its own comment). */
+	void Update_ValtanEntryDebugPreviewKey();
 #endif
 
 private:
@@ -153,9 +173,7 @@ private:
 		float3_t vPosition{};
 	};
 	std::vector<VALTAN_ENTRY_NPC> m_ValtanEntryNpcs;
-	unique_ptr<CHUDRuntimeView> m_pValtanEntryView;
-	bool_t m_isValtanEntryModalOpen = false;
-	bool_t m_hasValtanEntryModalJustOpened = false;
+	unique_ptr<CRaidEntryPreviewView> m_pValtanEntryView;
 	bool_t m_isWalkingToValtanEntryNpc = false;
 	std::string m_strValtanEntryNpcPlacementId;
 	bool_t m_wasRightMouseDownForNpcInteract = false;
@@ -178,6 +196,7 @@ private:
 
 #ifdef _DEBUG
 	std::vector<shared_ptr<CTrigger_Box>> m_DebugLevelChangeTriggers;
+	bool_t m_wasODownForValtanEntryDebugPreview = false;
 #endif
 
 	static CLevel_Bern* s_pActiveInstance;

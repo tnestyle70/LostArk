@@ -132,7 +132,17 @@ namespace LostArk::Server
 		stepped along it and ignores fPatternForcedMotionSpeed. */
 		std::vector<ROOT_MOTION_SAMPLE> PatternStageRootMotion;
 		bool bPortalMotionActive = false;
+		/* PORTAL_TARGET_RUSH captures its target exactly once when the authored
+		   retarget delay expires. Until then no yaw, endpoint, movement, or hit
+		   sweep is committed for the leg. */
+		bool bPortalRushTargetLocked = false;
+		std::uint32_t iPortalRushRetargetDelayMs = 0u;
+		float fPortalRushSpeedMps = 0.f;
+		float fPortalRushDistanceM = 0.f;
 		std::vector<LostArk::Shared::NET_ENTITY_ID> PortalStageHitTargets;
+		/* ACTIVE_WINDOW is a distinct Stage-hit authority. A target is recorded
+		only after a landed Server hit, and the set is reset on every Stage edge. */
+		std::vector<LostArk::Shared::NET_ENTITY_ID> PatternActiveWindowHitTargets;
 		float fPortalStartX = 0.f;
 		float fPortalStartZ = 0.f;
 		float fPortalEndX = 0.f;
@@ -250,6 +260,19 @@ namespace LostArk::Server
 		std::uint32_t iPatternHitIntervalMs = 0;
 		std::uint32_t iPatternHitDelayMs = 0;
 		std::uint32_t iAppliedPatternHitCount = 0;
+		BOSS_PATTERN_HIT_ANCHOR_KIND ePatternHitAnchorKind =
+			BOSS_PATTERN_HIT_ANCHOR_KIND::BOSS_CURRENT;
+		float fPatternHitAnchorForwardOffsetM = 0.f;
+		float fPatternHitAnchorRightOffsetM = 0.f;
+		float fPatternHitAnchorYawOffsetDegrees = 0.f;
+		BOSS_PATTERN_HIT_ACTIVATION_KIND ePatternHitActivationKind =
+			BOSS_PATTERN_HIT_ACTIVATION_KIND::PULSE_SCHEDULE;
+		std::uint32_t iPatternHitActivationStartMs = 0u;
+		std::uint32_t iPatternHitActivationLifetimeMs = 0u;
+		/* Immutable pose captured at EnterPatternStage before stage motion. */
+		float fPatternStageOriginX = 0.f;
+		float fPatternStageOriginZ = 0.f;
+		float fPatternStageOriginYawDegrees = 0.f;
 		bool bPatternWallContact = false;
 		/* The running stage reaches through a raised encounter prop, so cover
 		does not answer this blow. */

@@ -18,19 +18,30 @@ namespace
 	first, and before "Part_90_Weapon_R". */	
 	constexpr EQUIPMENT_PART_SPEC Equipment[] =
 	{
-		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_LanceMaster_Arm") },
+		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_LanceMaster_Arm"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::HANDS },
 		{ TEXT("Part_10_Equip_Helmet"),   TEXT("Prototype_Component_Model_LanceMaster_Helmet"),
-		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT_HELMET },
-		{ TEXT("Part_10_Equip_Lower"),    TEXT("Prototype_Component_Model_LanceMaster_Lower") },
-		{ TEXT("Part_10_Equip_Shoulder"), TEXT("Prototype_Component_Model_LanceMaster_Shoulder") },
-		{ TEXT("Part_10_Equip_Upper"),    TEXT("Prototype_Component_Model_LanceMaster_Upper") },
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT_HELMET,
+		  EQUIPMENT_PRESENTATION_SLOT::HEAD },
+		{ TEXT("Part_10_Equip_Lower"),    TEXT("Prototype_Component_Model_LanceMaster_Lower"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::LOWER },
+		{ TEXT("Part_10_Equip_Shoulder"), TEXT("Prototype_Component_Model_LanceMaster_Shoulder"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::SHOULDER },
+		{ TEXT("Part_10_Equip_Upper"),    TEXT("Prototype_Component_Model_LanceMaster_Upper"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::UPPER },
 
 		/* Mokoko avatar test slots: presence hides the base parts they cover,
 		see CCharacter::Ready_PartObjects. */
 		{ TEXT("Part_15_Avatar_Head"),    TEXT("Prototype_Component_Model_LanceMaster_Helmet_Mokoko"),
-		  0u, false, EQUIPMENT_SLOT_KIND::AVATAR_HEAD },
+		  0u, false, EQUIPMENT_SLOT_KIND::AVATAR_HEAD,
+		  EQUIPMENT_PRESENTATION_SLOT::HEAD },
 		{ TEXT("Part_15_Avatar_Armor"),   TEXT("Prototype_Component_Model_LanceMaster_Upper_Mokoko"),
-		  0u, false, EQUIPMENT_SLOT_KIND::AVATAR_ARMOR },
+		  0u, false, EQUIPMENT_SLOT_KIND::AVATAR_ARMOR,
+		  EQUIPMENT_PRESENTATION_SLOT::UPPER },
 	};
 
 	/* The armour carries its own exposed skin, so the bare arm, torso and legs

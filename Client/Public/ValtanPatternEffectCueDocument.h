@@ -79,6 +79,14 @@ struct VALTAN_PATTERN_EFFECT_CUE_DOCUMENT final
 class CValtanPatternEffectCueDocument final
 {
 public:
+	/* Arena-centered cues never sample a player transform.  The fixed landing
+	   position and the occurrence-facing yaw already locked by the Server form
+	   their world anchor; arena.center deliberately ignores that yaw. */
+	static bool_t Try_BuildArenaCenterAnchor(
+		std::string_view strAnchorSlotId,
+		const float3_t& vArenaCenter,
+		f32_t fLockedFacingYawDegrees,
+		float4x4_t& OutAnchor);
 	static std::filesystem::path Resolve_Path();
 	static std::filesystem::path Resolve_V1AliasPath();
 	static bool_t Parse_Text(
@@ -92,13 +100,14 @@ public:
 		const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& AnimationBindings,
 		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT& InOutDocument,
 		std::string& strOutStatus);
-	/* Source/Tool path.  Validates the JSON and encounter join without
-	   requiring the generated runtime Effect catalog to be published yet. */
-	static bool_t Load_Source(
+	/* Read-only generated Product view for authoring tools. The writable owner
+	   is Data/Valtan/Valtan.presentation.json; this loader never exposes a Save
+	   path for Valtan.patterneffectcues.json. */
+	static bool_t Load_ReadOnlyProduct(
 		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT& InOutDocument,
 		std::string& strOutStatus);
 	/* Product/loading path.  Adds runtime catalog and spawn-admission checks to
-	   Load_Source and preserves InOutDocument on any failure. */
+	   Load_ReadOnlyProduct and preserves InOutDocument on any failure. */
 	static bool_t Load_ForProductPrewarm(
 		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT& InOutDocument,
 		std::string& strOutStatus);

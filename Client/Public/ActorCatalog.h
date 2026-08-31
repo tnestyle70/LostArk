@@ -46,6 +46,10 @@ struct BOSS_COMBAT_OBJECT_VISUAL_ENTRY final
 	std::string combatObjectArchetypeId;
 	std::string clientVisualId;
 	std::string effectAssetId;
+	/* Optional natural-lifetime Effect spawned for each reliable HIT_PULSE.
+	   The Server sends only the stable combat-object/hit identity and pose;
+	   presentation assets remain a typed Client catalog concern. */
+	std::string hitEffectAssetId;
 	// Presentation scale relative to the authoritative combat-object root.
 	float3_t worldScale = { 1.f, 1.f, 1.f };
 

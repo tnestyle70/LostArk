@@ -15,7 +15,6 @@
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "ImGuiLayer.h"
-#include "HUDRuntimeView.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "LobbyCommandService.h"
@@ -25,8 +24,12 @@
 #include "NetworkPlayerCommandSink.h"
 #include "NetworkWorldEntityCommandSink.h"
 #include "PlayableCharacterAssetService.h"
+#include "RaidEntryPreviewView.h"
 #include "Transform.h"
+#include "UIInputRouter.h"
+#include "UILayoutRuntime.h"
 #include "ValtanPatternEffectCueDocument.h"
+#include "ValtanPatternTree.h"
 #include "ValtanPresentationAssetService.h"
 
 #include <algorithm>
@@ -137,6 +140,11 @@ CLevel_CharacterSelect::~CLevel_CharacterSelect()
 {
 	if (this == s_pActiveInstance)
 		s_pActiveInstance = nullptr;
+	/* A level teardown with the Create Character modal still open (disconnect -> Lobby, world
+	transfer) must release the WM_CHAR capture, or Is_TextInputActive stays stuck true and every
+	keybind it gates stays dead for the rest of the process. */
+	if (m_isCreateCharacterModalOpen)
+		CUIInputRouter::Get().Stop_TextInput();
 	CAnimationTargetService::Unbind(m_pActiveCharacter);
 	if (!m_preserveServerConnectionForTransfer)
 		CNetworkManager::Get().Close_ServerConnection();
@@ -198,10 +206,22 @@ HRESULT CLevel_CharacterSelect::Initialize()
 	if (FAILED(Ready_Camera()))
 		return E_FAIL;
 
-	m_pClassSelectView = std::make_unique<CHUDRuntimeView>(
-		m_pDevice, m_pContext,
-		L"UI/ClassSelect/ClassSelect_Layout.json",
-		CHUDRuntimeView::DRAW_TARGET::FOREGROUND);
+	m_pClassSelectView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::CHARACTER_SELECT), TEXT("Layer_UI"),
+		L"UI/ClassSelect/ClassSelect_Layout.json");
+	/* Authored layer tints are opaque -- every accordion/right-panel/product-button slot would
+	otherwise sit fully visible from this Level's own load until Update_ServerArena's first tick
+	flips m_eMode to SERVER_ARENA. Update_ClassList/Update_ArenaSpawnButtons's own early-return
+	(still MODE::CONNECTING here) already hides everything they own, so this just runs that path
+	once up front instead of duplicating the same slot list a second time. */
+	Update_ClassList();
+	Update_ArenaSpawnButtons();
+
+#ifdef _DEBUG
+	m_pDebugRaidEntryPreviewView =
+		std::make_unique<CRaidEntryPreviewView>(
+			m_pDevice, m_pContext, ETOUI(LEVEL::CHARACTER_SELECT));
+#endif
 
 	m_eMode = MODE::CONNECTING;
 	Reset_ArenaSpawnRequest();
@@ -216,6 +236,9 @@ HRESULT CLevel_CharacterSelect::Initialize()
 void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
+#ifdef _DEBUG
+	Update_RaidEntryDebugPreviewKey();
+#endif
 	switch (m_eMode)
 	{
 	case MODE::CONNECTING:
@@ -229,6 +252,30 @@ void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 	default:
 		break;
 	}
+
+	/* Update_ClassList/Update_ArenaSpawnButtons drive real CUI_Sprite GameObjects now -- same
+	Is_DebugRaidEntryPreviewOpen() reasoning Render() used to gate their old ImGui image draws
+	with (the O-key preview's own left info column and panel frame occupy this same screen
+	region). Unlike the old ImGui pass (which simply stopped drawing that frame), these sprites
+	keep showing their last state unless told otherwise, so the preview being open explicitly
+	hides them (also stopping their hover/click handling) instead of just skipping the call.
+	Is_DebugRaidEntryPreviewOpen() only exists in Debug, so the gate itself has to stay
+	Debug-only too. */
+#ifdef _DEBUG
+	const bool_t isRaidEntryDebugPreviewOpenForClassList = Is_DebugRaidEntryPreviewOpen();
+#else
+	const bool_t isRaidEntryDebugPreviewOpenForClassList = false;
+#endif
+	if (isRaidEntryDebugPreviewOpenForClassList)
+	{
+		Hide_ClassList();
+		Hide_ArenaSpawnButtons();
+	}
+	else
+	{
+		Update_ClassList();
+		Update_ArenaSpawnButtons();
+	}
 }
 
 HRESULT CLevel_CharacterSelect::Render()
@@ -239,10 +286,24 @@ HRESULT CLevel_CharacterSelect::Render()
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(
 		TEXT("LostArk Character Select - Server Arena"));
-	Render_SelectionPanel();
+	/* The debug status window would otherwise sit right where the O-key raid-
+	   entry preview's left info column and panel frame want to draw -- hidden
+	   while that preview is open instead of fighting it for the same space. */
+	if (!Is_DebugRaidEntryPreviewOpen())
+		Render_SelectionPanel();
 #endif
-	Render_ClassList();
-	Render_ArenaSpawnButtons();
+	/* No matching Render_ClassList()/Render_ArenaSpawnButtons() -- migrated to real CUI_Sprite
+	GameObjects on this Level's own "Layer_UI" (see Update_ClassList/Update_ArenaSpawnButtons,
+	called from Update() instead), so CObject_Manager's normal Update/Late_Update/Render cycle
+	draws them without an explicit call here. Render_ClassListText (ImGui-font text only) still
+	needs the same O-key preview gate its old combined function used, since it draws over that
+	same screen region. */
+#ifdef _DEBUG
+	if (!Is_DebugRaidEntryPreviewOpen())
+		Render_ClassListText();
+#else
+	Render_ClassListText();
+#endif
 	Render_CreateCharacterProductInputHost();
 	Render_ProductStatus();
 	return S_OK;
@@ -944,8 +1005,14 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 
 	if (option.requiresValtanPrewarm)
 	{
-		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
+		CValtanCanonicalProductReadAdmission ProductAdmission;
 		std::string Status;
+		if (!ProductAdmission.Acquire(Status))
+		{
+			Isolate_ValtanSpawnPreparationFailure(Status, false);
+			return false;
+		}
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
 		if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
 				CueDocument, Status) || CueDocument.Cues.empty())
 		{
@@ -984,6 +1051,13 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 			pBossActor->combatObjectVisuals)
 		{
 			EffectAssetIds.push_back(Visual.effectAssetId);
+			if (!Visual.hitEffectAssetId.empty())
+				EffectAssetIds.push_back(Visual.hitEffectAssetId);
+		}
+		if (!ProductAdmission.Validate_StillCurrent(Status))
+		{
+			Isolate_ValtanSpawnPreparationFailure(Status, false);
+			return false;
 		}
 #ifdef _DEBUG
 		/* The Debug V1 audition is background preparation only. The required
@@ -1150,7 +1224,18 @@ void CLevel_CharacterSelect::Open_CreateCharacterModal()
 
 	m_isCreateCharacterModalOpen = true;
 	m_strStatus = "Enter a 1-32 byte nickname, then confirm.";
-	ImGui::OpenPopup("Create Character");
+	/* Seed the UTF-16 edit buffer from whatever UTF-8 draft survived a previous open -- the
+	same persistence ImGui::InputText's member char buffer used to give for free. */
+	m_NicknameDraftW.clear();
+	if ('\0' != m_NicknameDraft[0])
+	{
+		wchar_t wide[LostArk::Shared::MAX_NICKNAME_BYTES + 1u]{};
+		const int32_t iWideLength = ::MultiByteToWideChar(CP_UTF8, 0,
+			m_NicknameDraft.data(), -1, wide, static_cast<int32_t>(std::size(wide)));
+		if (iWideLength > 1)
+			m_NicknameDraftW.assign(wide, static_cast<size_t>(iWideLength - 1));
+	}
+	CUIInputRouter::Get().Start_TextInput();
 }
 
 bool_t CLevel_CharacterSelect::Confirm_CreateCharacter()
@@ -1190,84 +1275,39 @@ void CLevel_CharacterSelect::Cancel_CreateCharacter()
 	CCharacterSelectionState::Cancel_PendingCreation();
 	m_isCreateCharacterModalOpen = false;
 	m_strStatus = "Character creation canceled.";
-	ImGui::CloseCurrentPopup();
+	CUIInputRouter::Get().Stop_TextInput();
 }
 
 void CLevel_CharacterSelect::Render_CreateCharacterModal()
 {
-	if (!m_isCreateCharacterModalOpen)
-		return;
 	if (nullptr == m_pClassSelectView)
 		return;
-
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-	const auto Fn_ToScreen = [&](f32_t fX, f32_t fY) -> ImVec2
+	if (!m_isCreateCharacterModalOpen)
 	{
-		return ImVec2(
-			pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
-	};
-
-	/* Real "캐릭터 이름 입력" panel art instead of ImGui's own modal chrome -- the popup window
-	is stretched over the whole viewport (NoBackground so it stays invisible) purely as an input
-	surface/dim-behind host; every visible pixel is either our own image or the real
-	ImGui::InputText widget positioned exactly over CreateCharacterModal_TextBox's art. */
-	ImGui::SetNextWindowPos(pViewport->WorkPos);
-	ImGui::SetNextWindowSize(pViewport->WorkSize);
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f);
-	const bool_t isOpen = ImGui::BeginPopupModal(
-		"Create Character",
-		nullptr,
-		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground |
-		ImGuiWindowFlags_NoSavedSettings);
-	ImGui::PopStyleVar();
-	if (!isOpen)
+		/* Sole owner of these 4 slots' visibility (see the class comment on
+		m_isCreateCharacterModalOpen) -- Update_ClassList's own generic pass must never touch
+		them, the same double-draw boundary Esther_GaugeFill/Ready glows use. */
+		m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_Panel", false);
+		m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_TextBox", false);
+		m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_ConfirmButton", false);
+		m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_CancelButton", false);
 		return;
-
-	ImDrawList* pDrawList = ImGui::GetWindowDrawList();
-
-	f32_t fPanelX = 0.f, fPanelY = 0.f, fPanelW = 0.f, fPanelH = 0.f;
-	if (m_pClassSelectView->Get_SlotRect(
-		"CreateCharacterModal_Panel", fPanelX, fPanelY, fPanelW, fPanelH))
-	{
-		if (ID3D11ShaderResourceView* pSRV = m_pClassSelectView->Load_Texture(
-			"UI/ClassSelect/Common/CreateCharacterModalPanel.png"))
-		{
-			pDrawList->AddImage(pSRV,
-				Fn_ToScreen(fPanelX, fPanelY),
-				Fn_ToScreen(fPanelX + fPanelW, fPanelY + fPanelH));
-		}
 	}
 
-	f32_t fBoxX = 0.f, fBoxY = 0.f, fBoxW = 0.f, fBoxH = 0.f;
-	const bool_t hasTextBox = m_pClassSelectView->Get_SlotRect(
-		"CreateCharacterModal_TextBox", fBoxX, fBoxY, fBoxW, fBoxH);
-	if (hasTextBox)
-	{
-		if (ID3D11ShaderResourceView* pSRV = m_pClassSelectView->Load_Texture(
-			"UI/ClassSelect/Common/CreateCharacterModalTextBox.png"))
-		{
-			pDrawList->AddImage(pSRV,
-				Fn_ToScreen(fBoxX, fBoxY), Fn_ToScreen(fBoxX + fBoxW, fBoxY + fBoxH));
-		}
-	}
+	/* Panel/TextBox/Confirm/Cancel are real CUI_Sprite GameObjects (same rects, same authored
+	art) rendering through the normal engine pipeline; this keeps their visibility/hover-texture
+	state current. No ImGui popup remains: text entry is CUIInputRouter's WM_CHAR capture (below),
+	and the nickname/composition/caret/status text draws in Render_ClassListText's LOA-font pass
+	with everything else. */
+	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_Panel", true);
+	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_TextBox", true);
 
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
-	const auto Fn_HitTest = [&](f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight,
-		ImVec2& outTopLeft, ImVec2& outBotRight) -> bool_t
-	{
-		outTopLeft = Fn_ToScreen(fX, fY);
-		outBotRight = Fn_ToScreen(fX + fWidth, fY + fHeight);
-		return vMouse.x >= outTopLeft.x && vMouse.x < outBotRight.x &&
-			vMouse.y >= outTopLeft.y && vMouse.y < outBotRight.y;
-	};
-
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	/* Modal semantics: the pointer belongs to this popup every frame it's open (its dim/panel
+	swallow clicks), exactly as BeginPopupModal behaved -- not only while a button is hovered. */
+	Router.Claim_Mouse_This_Frame();
+	const f32_t fRefWidth = m_pClassSelectView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pClassSelectView->Get_ResolutionHeight();
 	bool_t confirmFromButton = false;
 	bool_t cancel = false;
 	struct MODAL_BUTTON { const char_t* pSlotId; bool_t* pOutClicked; };
@@ -1281,60 +1321,97 @@ void CLevel_CharacterSelect::Render_CreateCharacterModal()
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!m_pClassSelectView->Get_SlotRect(Button.pSlotId, fX, fY, fWidth, fHeight))
 			continue;
-		ImVec2 vTopLeft, vBotRight;
-		const bool_t bHovered = Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
-		const char_t* pPath = bHovered ?
+		m_pClassSelectView->Set_SlotVisible(Button.pSlotId, true);
+		const bool_t bHovered = Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
+		m_pClassSelectView->Set_SlotTexture(Button.pSlotId, bHovered ?
 			"UI/ClassSelect/Common/NormalButtonHover.png" :
-			"UI/ClassSelect/Common/NormalButton.png";
-		if (ID3D11ShaderResourceView* pSRV = m_pClassSelectView->Load_Texture(pPath))
-			pDrawList->AddImage(pSRV, vTopLeft, vBotRight);
-		if (bHovered && bClicked)
+			"UI/ClassSelect/Common/NormalButton.png");
+		if (bHovered)
 		{
-			CMainApp::Play_UIButtonClickSound();
-			*Button.pOutClicked = true;
+			Router.Claim_Mouse_This_Frame();
+			if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+			{
+				CMainApp::Play_UIButtonClickSound();
+				*Button.pOutClicked = true;
+			}
 		}
 	}
 
-	/* Real nickname entry -- ImGui::InputText already handles Korean IME/caret correctly (this
-	is unchanged from before), just repositioned with a transparent frame directly over the real
-	text box art instead of drawing its own default widget chrome. */
-	bool_t confirmFromEnter = false;
-	if (hasTextBox)
+	/* Runtime nickname editing -- CUIInputRouter's WM_CHAR capture replaces ImGui::InputText.
+	Committed Hangul syllables arrive as ordinary WM_CHAR units (the IME's GCS_RESULTSTR ->
+	WM_IME_CHAR -> WM_CHAR default chain), so the committed text needs no IME handling here; the
+	still-composing string is drawn separately from CImGuiLayer::Get_ImeCompositionString().
+	Backspace/Enter/Escape ride the same WM_CHAR stream ('\b'/'\r'/27), the classic Win32 edit
+	loop. */
+	const auto Fn_EraseLastCodePoint = [this]()
 	{
-		ImGui::SetCursorScreenPos(Fn_ToScreen(fBoxX + 8.f, fBoxY + 4.f));
-		ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.f, 0.f, 0.f, 0.f));
-		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.f, 0.f, 0.f, 0.f));
-		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.f, 0.f, 0.f, 0.f));
-		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.f));
-		ImGui::PushItemWidth((fBoxW - 16.f) * scaleX);
-		confirmFromEnter = ImGui::InputText(
-			"##Nickname", m_NicknameDraft.data(), m_NicknameDraft.size(),
-			ImGuiInputTextFlags_EnterReturnsTrue);
-		/* Real games never show Windows' own floating IME composition box -- they draw the
-		still-composing (uncommitted) text inline themselves, right after what's already typed.
-		WM_IME_SETCONTEXT already suppresses the OS box; this is the other half. */
-		if (ImGui::IsItemActive())
+		if (m_NicknameDraftW.empty())
+			return;
+		size_t iErase = 1;
+		/* A supplementary-plane character is two UTF-16 units -- erase the whole pair, or the
+		leftover half re-encodes as garbage. */
+		if (m_NicknameDraftW.size() >= 2 &&
+			m_NicknameDraftW.back() >= 0xDC00 && m_NicknameDraftW.back() <= 0xDFFF &&
+			m_NicknameDraftW[m_NicknameDraftW.size() - 2] >= 0xD800 &&
+			m_NicknameDraftW[m_NicknameDraftW.size() - 2] <= 0xDBFF)
 		{
-			const wchar_t* pComposition = Engine::CImGuiLayer::Get_ImeCompositionString();
-			if (nullptr != pComposition && L'\0' != pComposition[0])
+			iErase = 2;
+		}
+		m_NicknameDraftW.resize(m_NicknameDraftW.size() - iErase);
+	};
+
+	bool_t confirmFromEnter = false;
+	bool_t textChanged = false;
+	const wstring_t typed = Router.Take_TypedChars();
+	for (const wchar_t ch : typed)
+	{
+		if (L'\r' == ch || L'\n' == ch)
+		{
+			confirmFromEnter = true;
+		}
+		else if (L'\x1b' == ch)
+		{
+			/* Escape closed the old BeginPopupModal too. */
+			cancel = true;
+		}
+		else if (L'\b' == ch)
+		{
+			if (!m_NicknameDraftW.empty())
 			{
-				const ImVec2 vCommittedSize = ImGui::CalcTextSize(m_NicknameDraft.data());
-				const ImVec2 vBoxTextOrigin = Fn_ToScreen(fBoxX + 8.f, fBoxY + 4.f);
-				const ImVec2 vCompositionPos(
-					vBoxTextOrigin.x + vCommittedSize.x, vBoxTextOrigin.y);
-				char compositionUtf8[64] = {};
-				::WideCharToMultiByte(CP_UTF8, 0, pComposition, -1,
-					compositionUtf8, sizeof(compositionUtf8), nullptr, nullptr);
-				const ImVec2 vCompositionSize = ImGui::CalcTextSize(compositionUtf8);
-				pDrawList->AddText(vCompositionPos, IM_COL32(255, 255, 255, 255), compositionUtf8);
-				pDrawList->AddLine(
-					ImVec2(vCompositionPos.x, vCompositionPos.y + vCompositionSize.y),
-					ImVec2(vCompositionPos.x + vCompositionSize.x, vCompositionPos.y + vCompositionSize.y),
-					IM_COL32(255, 255, 255, 200));
+				Fn_EraseLastCodePoint();
+				textChanged = true;
 			}
 		}
-		ImGui::PopItemWidth();
-		ImGui::PopStyleColor(4);
+		else if (ch >= L' ' && L'\x7f' != ch)
+		{
+			m_NicknameDraftW.push_back(ch);
+			textChanged = true;
+		}
+	}
+	if (textChanged)
+	{
+		/* Re-encode into the UTF-8 buffer Confirm_CreateCharacter validates/sends. If the draft
+		outgrew the 32-byte wire cap, drop the newest code point(s) until it fits -- the same
+		hard stop InputText's fixed byte buffer imposed at the same limit. */
+		for (;;)
+		{
+			if (m_NicknameDraftW.empty())
+			{
+				m_NicknameDraft.fill('\0');
+				break;
+			}
+			std::array<char_t, LostArk::Shared::MAX_NICKNAME_BYTES + 1u> utf8{};
+			const int32_t iBytes = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+				m_NicknameDraftW.c_str(), -1, utf8.data(),
+				static_cast<int32_t>(utf8.size()), nullptr, nullptr);
+			if (iBytes > 0)
+			{
+				m_NicknameDraft = utf8;
+				break;
+			}
+			/* Doesn't fit (or a stray lone surrogate slipped in) -- trim and retry. */
+			Fn_EraseLastCodePoint();
+		}
 	}
 
 	if (cancel)
@@ -1345,40 +1422,12 @@ void CLevel_CharacterSelect::Render_CreateCharacterModal()
 		Confirm_CreateCharacter())
 	{
 		m_isCreateCharacterModalOpen = false;
-		ImGui::CloseCurrentPopup();
+		CUIInputRouter::Get().Stop_TextInput();
 	}
 
-	if (m_isCreateCharacterModalOpen && !m_strStatus.empty())
-	{
-		f32_t fStatusX = 400.f;
-		f32_t fStatusY = 340.f;
-		f32_t fStatusWidth = 480.f;
-		f32_t fStatusHeight = 20.f;
-		f32_t fAuthoredX = 0.f, fAuthoredY = 0.f;
-		f32_t fAuthoredWidth = 0.f, fAuthoredHeight = 0.f;
-		if (m_pClassSelectView->Get_SlotRect(
-			"CreateCharacterModal_StatusText", fAuthoredX, fAuthoredY,
-			fAuthoredWidth, fAuthoredHeight) &&
-			std::isfinite(fAuthoredX) && std::isfinite(fAuthoredY) &&
-			std::isfinite(fAuthoredWidth) && std::isfinite(fAuthoredHeight) &&
-			fAuthoredWidth > 0.f && fAuthoredHeight > 0.f)
-		{
-			fStatusX = fAuthoredX;
-			fStatusY = fAuthoredY;
-			fStatusWidth = fAuthoredWidth;
-			fStatusHeight = fAuthoredHeight;
-		}
-		const ImVec2 vStatusPos = Fn_ToScreen(fStatusX + 4.f, fStatusY + 2.f);
-		const f32_t fFontSize = 12.f * (std::min)(scaleX, scaleY);
-		const f32_t fWrapWidth = (fStatusWidth - 8.f) * scaleX;
-		pDrawList->AddText(ImGui::GetFont(), fFontSize,
-			ImVec2(vStatusPos.x + 1.f, vStatusPos.y + 1.f),
-			IM_COL32(0, 0, 0, 230), m_strStatus.c_str(), nullptr, fWrapWidth);
-		pDrawList->AddText(ImGui::GetFont(), fFontSize, vStatusPos,
-			IM_COL32(255, 210, 120, 255), m_strStatus.c_str(), nullptr, fWrapWidth);
-	}
-
-	ImGui::EndPopup();
+	/* Status text moved to Render_ClassListText's modal block -- same LOA-font pass that
+	already draws the modal's title/labels, since this function no longer owns an ImGui draw
+	list to put it on. */
 }
 
 bool_t CLevel_CharacterSelect::Enter_Stage(const LOBBY_STAGE stage)
@@ -1425,45 +1474,64 @@ bool_t CLevel_CharacterSelect::Enter_Stage(const LOBBY_STAGE stage)
 	return true;
 }
 
+#ifdef _DEBUG
+bool_t CLevel_CharacterSelect::Debug_Request_KakulSaydonArena()
+{
+	if (MODE::SERVER_ARENA != m_eMode ||
+		m_iSelectedClassIndex >= SUPPORTED_CLASSES.size() ||
+		m_iPendingClassIndex.has_value() ||
+		Is_ClassPresentationPreparationPending() ||
+		m_isCreateCharacterModalOpen ||
+		CLevelTransitionService::Is_Pending())
+	{
+		m_strStatus =
+			"KoukuSaton transfer requires an idle, Server-approved Character Select arena.";
+		return false;
+	}
+	if (nullptr == m_pWorldEntityCommandSink)
+	{
+		m_strStatus =
+			"KoukuSaton world-transfer command owner is unavailable.";
+		return false;
+	}
+
+	const std::uint32_t requestSequence =
+		m_iNextKakulArenaRequestSequence++;
+	if (0u == m_iNextKakulArenaRequestSequence)
+		m_iNextKakulArenaRequestSequence = 1u;
+	if (!m_pWorldEntityCommandSink->Request_EnterKakulSaydonArena(
+		requestSequence))
+	{
+		m_strStatus =
+			"KoukuSaton Server arena request could not be sent.";
+		return false;
+	}
+
+	m_strStatus = "KoukuSaton Server arena transfer requested.";
+	return true;
+}
+#endif
+
 void CLevel_CharacterSelect::Render_CreateCharacterProductInputHost()
 {
-	const ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr != pViewport)
+	/* Used to be an invisible ImGui window purely so OpenPopup/BeginPopupModal had a host --
+	the modal is now CUI_Sprite art + CUIInputRouter WM_CHAR capture with no ImGui in it, so
+	only the click-consume and per-frame modal drive remain. */
+	if (m_hasCreateCharacterButtonClick)
 	{
-		ImGui::SetNextWindowViewport(pViewport->ID);
-		ImGui::SetNextWindowPos(pViewport->WorkPos, ImGuiCond_Always);
+		m_hasCreateCharacterButtonClick = false;
+		Open_CreateCharacterModal();
 	}
-	ImGui::SetNextWindowSize(ImVec2(1.f, 1.f), ImGuiCond_Always);
-	constexpr ImGuiWindowFlags flags =
-		ImGuiWindowFlags_NoDecoration |
-		ImGuiWindowFlags_NoBackground |
-		ImGuiWindowFlags_NoMove |
-		ImGuiWindowFlags_NoNav |
-		ImGuiWindowFlags_NoSavedSettings |
-		ImGuiWindowFlags_NoFocusOnAppearing |
-		ImGuiWindowFlags_NoInputs;
-
-	const bool_t isHostOpen = ImGui::Begin(
-		"##CharacterSelectProductInputHost", nullptr, flags);
-	if (isHostOpen)
-	{
-		if (m_hasCreateCharacterButtonClick)
-		{
-			m_hasCreateCharacterButtonClick = false;
-			Open_CreateCharacterModal();
-		}
-		Render_CreateCharacterModal();
-	}
-	ImGui::End();
+	Render_CreateCharacterModal();
 }
 
 void CLevel_CharacterSelect::Render_ProductStatus()
 {
+	/* Release-only: in Debug the same text is already visible in the F1 selection panel.
+	Drawn with the LOA font like every other product label -- ImGui is Debug-tool-only, and
+	this is the one product screen element that used to draw through it in Release builds. */
 #ifndef _DEBUG
 	if (nullptr == m_pClassSelectView || m_isCreateCharacterModalOpen || m_strStatus.empty())
-		return;
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
 		return;
 
 	f32_t fX = 300.f;
@@ -1484,19 +1552,30 @@ void CLevel_CharacterSelect::Render_ProductStatus()
 		fWidth = fAuthoredWidth;
 		fHeight = fAuthoredHeight;
 	}
-	const f32_t fScaleX = pViewport->WorkSize.x / 1280.f;
-	const f32_t fScaleY = pViewport->WorkSize.y / 720.f;
-	const ImVec2 vPos(
-		pViewport->WorkPos.x + (fX + 8.f) * fScaleX,
-		pViewport->WorkPos.y + (fY + 6.f) * fScaleY);
-	const f32_t fFontSize = 16.f * (std::min)(fScaleX, fScaleY);
-	const f32_t fWrapWidth = (fWidth - 16.f) * fScaleX;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
-	pDrawList->AddText(ImGui::GetFont(), fFontSize,
-		ImVec2(vPos.x + 1.f, vPos.y + 1.f), IM_COL32(0, 0, 0, 220),
-		m_strStatus.c_str(), nullptr, fWrapWidth);
-	pDrawList->AddText(ImGui::GetFont(), fFontSize, vPos,
-		IM_COL32(255, 225, 150, 255), m_strStatus.c_str(), nullptr, fWrapWidth);
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fScaleX = vViewportSize.x / 1280.f;
+	const f32_t fScaleY = vViewportSize.y / 720.f;
+	const f32_t fUiScale = (std::min)(fScaleX, fScaleY);
+	/* The status strings are ASCII, so the byte-wise widen is exact. */
+	const wstring_t strStatusWide(m_strStatus.begin(), m_strStatus.end());
+	const float2_t vMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), strStatusWide.c_str());
+	if (vMeasured.y <= 0.f)
+		return;
+	f32_t fScale = (16.f / vMeasured.y) * fUiScale;
+	/* Draw_Text has no wrapping, so an over-long line shrinks to fit its authored width
+	instead of running past it the way the old AddText wrap would have folded it. */
+	const f32_t fMaxWidth = (fWidth - 16.f) * fScaleX;
+	if (vMeasured.x * fScale > fMaxWidth && vMeasured.x > 0.f)
+		fScale = fMaxWidth / vMeasured.x;
+	const float2_t vPos((fX + 8.f) * fScaleX, (fY + 6.f) * fScaleY);
+	CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strStatusWide.c_str(),
+		float2_t(vPos.x + 1.f, vPos.y + 1.f),
+		XMVectorSet(0.f, 0.f, 0.f, 220.f / 255.f), 0.f, float2_t(0.f, 0.f), fScale);
+	CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strStatusWide.c_str(),
+		vPos,
+		XMVectorSet(1.f, 225.f / 255.f, 150.f / 255.f, 1.f), 0.f,
+		float2_t(0.f, 0.f), fScale);
 #endif
 }
 
@@ -1620,24 +1699,7 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 		Enter_Stage(LOBBY_STAGE::VALTAN);
 	ImGui::SameLine();
 	if (ImGui::Button("Enter KoukuSaton Arena"))
-	{
-		const std::uint32_t requestSequence =
-			m_iNextKakulArenaRequestSequence++;
-		if (0u == m_iNextKakulArenaRequestSequence)
-			m_iNextKakulArenaRequestSequence = 1u;
-		if (nullptr != m_pWorldEntityCommandSink &&
-			m_pWorldEntityCommandSink->Request_EnterKakulSaydonArena(
-				requestSequence))
-		{
-			m_strStatus =
-				"KoukuSaton Server arena transfer requested.";
-		}
-		else
-		{
-			m_strStatus =
-				"KoukuSaton Server arena request could not be sent.";
-		}
-	}
+		(void)Debug_Request_KakulSaydonArena();
 	ImGui::SameLine();
 	if (ImGui::Button("Back"))
 		Leave_ServerArena();
@@ -1652,17 +1714,18 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 
 namespace
 {
-	/* Mirrors the rects CHUDLayoutTool wrote for the same slot ids in
-	Data/UI/ClassSelect/ClassSelect_Layout.json -- CHUDRuntimeView has no public slot query, so
-	the click targets (and the hand-drawn category list / thumbnail / confirm button, which
-	aren't slot-driven at all) are kept in sync with that JSON by hand here. */
+	/* Same fX/fWidth/fHeight ClassList_RowN's own JSON rect was authored with (see
+	Update_ClassList) -- Update_ClassList already owns writing that rect back via
+	Set_SlotPosition every frame (fY moves with the accordion), so this array stays the single
+	source of the constant values instead of a round trip that would just read back what this
+	same array already wrote. */
 	struct CLASS_LIST_ENTRY
 	{
 		f32_t fX, fWidth, fHeight;
 		size_t iSupportedClassIndex;
 		/* "Warlord" etc -- matches ClassSelect_Layout.json's "classes" array and each per-class
 		slot's ownerClass, not Get_CharacterClassName()'s display text ("Dimension Master" has a
-		space CHUDRuntimeView's ownerClass match would never see). */
+		space an ownerClass match would never see). */
 		const char* pJsonClassName;
 		const char* pCategoryLabel;
 		const char* pClassLabel;
@@ -1676,7 +1739,11 @@ namespace
 
 	/* No fY here: rows accordion (a click pushes every row below it down by the expanded
 	thumbnail's height instead of the thumbnail always drawing in one fixed spot), so each row's
-	actual y is only known at render time -- see Render_ClassList's running fRowY. */
+	actual y is only known at update time -- see Update_ClassList's running fRowY. fX/fWidth/
+	fHeight still aren't read from the JSON's own ClassList_RowN slots even though those exist
+	now (added alongside this migration) -- Update_ClassList already owns writing that rect via
+	Set_SlotPosition every frame, so reading it back from the same slot would be a pointless
+	round trip through the exact values this array already holds. */
 	constexpr CLASS_LIST_ENTRY CLASS_LIST_ENTRIES[] =
 	{
 		{ 950.f, 280.f, 48.f, 5, "Warlord",         "\xec\xa0\x84\xec\x82\xac(\xeb\x82\xa8)", "\xec\x9b\x8c\xeb\xa1\x9c\xeb\x93\x9c", "CategorySymbol_Warrior.png" },
@@ -1736,6 +1803,49 @@ namespace
 		{ "DimensionMaster", DIMENSIONMASTER_IDENTITY_DESC, static_cast<int32_t>(std::size(DIMENSIONMASTER_IDENTITY_DESC)) },
 	};
 
+	struct CLASS_OWNED_SLOT final { const char* pSlotId; const char* pOwnerClass; };
+
+	/* ClassSelect_Layout.json's own ownerClass-tagged right panel slots -- CHUDRuntimeView's
+	Render(strSelectedClass, revision) used to filter these automatically (show if ownerClass ==
+	strSelectedClass); CUILayoutRuntime has no such pass, so Update_ClassList applies the same
+	filter by hand against this mirror of the JSON's own ownerClass field. Slayer/Gunslinger
+	have no slots here at all (never authored) -- selecting either one simply shows none of this,
+	same gap as before this migration. Tag_5 only exists for Warlord/Artist (5 tags); LanceMaster/
+	DimensionMaster stop at Tag_4. */
+	constexpr CLASS_OWNED_SLOT CLASS_OWNED_SLOTS[] = {
+		{ "Warlord_DifficultyFill", "Warlord" },
+		{ "LanceMaster_DifficultyFill", "LanceMaster" },
+		{ "Artist_DifficultyFill", "Artist" },
+		{ "DimensionMaster_DifficultyFill", "DimensionMaster" },
+		{ "Warlord_Tag_1", "Warlord" }, { "Warlord_Tag_2", "Warlord" },
+		{ "Warlord_Tag_3", "Warlord" }, { "Warlord_Tag_4", "Warlord" }, { "Warlord_Tag_5", "Warlord" },
+		{ "LanceMaster_Tag_1", "LanceMaster" }, { "LanceMaster_Tag_2", "LanceMaster" },
+		{ "LanceMaster_Tag_3", "LanceMaster" }, { "LanceMaster_Tag_4", "LanceMaster" },
+		{ "Artist_Tag_1", "Artist" }, { "Artist_Tag_2", "Artist" }, { "Artist_Tag_3", "Artist" },
+		{ "Artist_Tag_4", "Artist" }, { "Artist_Tag_5", "Artist" },
+		{ "DimensionMaster_Tag_1", "DimensionMaster" }, { "DimensionMaster_Tag_2", "DimensionMaster" },
+		{ "DimensionMaster_Tag_3", "DimensionMaster" }, { "DimensionMaster_Tag_4", "DimensionMaster" },
+		{ "Warlord_Illustration", "Warlord" }, { "Warlord_NameSymbol", "Warlord" },
+		{ "Warlord_Description", "Warlord" }, { "Warlord_IdentityID", "Warlord" },
+		{ "Warlord_IdentityDescription", "Warlord" },
+		{ "LanceMaster_Illustration", "LanceMaster" }, { "LanceMaster_NameSymbol", "LanceMaster" },
+		{ "LanceMaster_Description", "LanceMaster" }, { "LanceMaster_IdentityID", "LanceMaster" },
+		{ "LanceMaster_IdentityDescription", "LanceMaster" },
+		{ "Artist_Illustration", "Artist" }, { "Artist_NameSymbol", "Artist" },
+		{ "Artist_Description", "Artist" }, { "Artist_IdentityID", "Artist" },
+		{ "Artist_IdentityDescription", "Artist" },
+		{ "DimensionMaster_Illustration", "DimensionMaster" }, { "DimensionMaster_NameSymbol", "DimensionMaster" },
+		{ "DimensionMaster_Description", "DimensionMaster" }, { "DimensionMaster_IdentityID", "DimensionMaster" },
+		{ "DimensionMaster_IdentityDescription", "DimensionMaster" },
+	};
+
+	/* ownerClass == null chrome that used to show via the same generic Render(strSelectedClass,
+	revision) pass -- always visible while SERVER_ARENA regardless of selected class. */
+	constexpr const char* ALWAYS_VISIBLE_CLASS_LIST_CHROME[] = {
+		"PanelBgLeft", "PanelBgRight", "PanelBgRightBottom", "Frame",
+		"DifficultyBg", "TagsBg", "New_Slot", "InfoSeparateBar", "IdentitySeparateBar",
+	};
+
 	constexpr f32_t ROW_Y_START = 60.f;
 	constexpr f32_t ROW_GAP = 7.f;
 	constexpr f32_t THUMB_W = 134.f;
@@ -1791,7 +1901,7 @@ namespace
 		return nullptr;
 	}
 
-	bool_t Has_CompleteProductButtonSlots(CHUDRuntimeView* pView)
+	bool_t Has_CompleteProductButtonSlots(CUILayoutRuntime* pView)
 	{
 		if (nullptr == pView)
 			return false;
@@ -1808,7 +1918,7 @@ namespace
 	}
 
 	void Resolve_ProductButtonRect(
-		CHUDRuntimeView* pView,
+		CUILayoutRuntime* pView,
 		const CHARACTER_SELECT_PRODUCT_SLOT& Slot,
 		const bool_t hasCompleteAuthoredSlots,
 		f32_t& outX, f32_t& outY, f32_t& outWidth, f32_t& outHeight)
@@ -1835,20 +1945,15 @@ bool_t CLevel_CharacterSelect::Is_ProductPointerHovered() const
 {
 	if (MODE::SERVER_ARENA != m_eMode || nullptr == m_pClassSelectView)
 		return false;
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return false;
 
-	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
-	const f32_t fScaleY = pViewport->WorkSize.y / REF_HEIGHT;
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const auto IsHovered = [&](const f32_t fX, const f32_t fY,
+	/* Same router every other product widget on this screen hit-tests through -- this is
+	gameplay-path code (it gates whether an LMB also reaches PlayerController), so it reads the
+	native cursor, not ImGui's. */
+	const auto IsHovered = [](const f32_t fX, const f32_t fY,
 		const f32_t fWidth, const f32_t fHeight)
 	{
-		const f32_t fMinX = pViewport->WorkPos.x + fX * fScaleX;
-		const f32_t fMinY = pViewport->WorkPos.y + fY * fScaleY;
-		return vMouse.x >= fMinX && vMouse.x < fMinX + fWidth * fScaleX &&
-			vMouse.y >= fMinY && vMouse.y < fMinY + fHeight * fScaleY;
+		return CUIInputRouter::Get().Is_Hovered(
+			fX, fY, fWidth, fHeight, REF_WIDTH, REF_HEIGHT);
 	};
 
 	const bool_t hasCompleteAuthoredButtons =
@@ -1868,100 +1973,268 @@ bool_t CLevel_CharacterSelect::Is_ProductPointerHovered() const
 	return IsHovered(940.f, 48.f, 320.f, 540.f);
 }
 
-void CLevel_CharacterSelect::Render_ClassList()
+namespace
+{
+	string Get_SelectedJsonClassName(const size_t iSelectedClassIndex)
+	{
+		for (const CLASS_LIST_ENTRY& Entry : CLASS_LIST_ENTRIES)
+			if (Entry.iSupportedClassIndex == iSelectedClassIndex)
+				return Entry.pJsonClassName;
+		return {};
+	}
+}
+
+void CLevel_CharacterSelect::Hide_ClassList()
+{
+	if (nullptr == m_pClassSelectView)
+		return;
+
+	for (const char* pId : ALWAYS_VISIBLE_CLASS_LIST_CHROME)
+		m_pClassSelectView->Set_SlotVisible(pId, false);
+	for (const CLASS_OWNED_SLOT& Slot : CLASS_OWNED_SLOTS)
+		m_pClassSelectView->Set_SlotVisible(Slot.pSlotId, false);
+	for (int32_t i = 0; i < static_cast<int32_t>(std::size(CLASS_LIST_ENTRIES)); ++i)
+	{
+		m_pClassSelectView->Set_SlotVisible("ClassList_Row" + std::to_string(i), false);
+		m_pClassSelectView->Set_SlotVisible("ClassList_Symbol" + std::to_string(i), false);
+	}
+	m_pClassSelectView->Set_SlotVisible("ClassList_Thumb", false);
+	m_pClassSelectView->Set_SlotVisible("ClassList_ThumbSymbol", false);
+	m_pClassSelectView->Set_SlotVisible("ClassList_ThumbFrame", false);
+}
+
+void CLevel_CharacterSelect::Update_ClassList()
 {
 	/* MODE::SERVER_ARENA is the real "scene has finished transitioning" signal --
 	Commit_ServerArena only sets it once the Server-replicated local character has
-	actually spawned and bound to the camera. Drawing this panel any earlier (still
+	actually spawned and bound to the camera. Showing this panel any earlier (still
 	MODE::CONNECTING, still waiting on that network round trip) put the fully-formed
 	side panels on screen while the arena itself had not finished settling, which read
 	as the UI arriving before the scene transition had actually completed. */
 	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)
+	{
+		Hide_ClassList();
 		return;
+	}
 
 	const string strSelectedClass = m_iSelectedClassIndex < SUPPORTED_CLASSES.size()
-		? [this]() -> string
-		{
-			for (const CLASS_LIST_ENTRY& Entry : CLASS_LIST_ENTRIES)
-				if (Entry.iSupportedClassIndex == m_iSelectedClassIndex)
-					return Entry.pJsonClassName;
-			return {};
-		}()
+		? Get_SelectedJsonClassName(m_iSelectedClassIndex)
 		: string{};
 
-	/* Create Character modal's 4 slots (Panel/TextBox/Confirm/Cancel) are drawn entirely by
-	Render_CreateCharacterModal() -- hover-aware, gated on m_isCreateCharacterModalOpen, and with
-	the real InputText overlay positioned relative to them. Left un-hidden, this generic per-slot
-	pass would draw all 4 every frame regardless of whether the modal was open. The common product
-	input host submits those slots conditionally after this pass, so the generic view must never
-	own them -- the same double-draw boundary Esther_GaugeFill/Ready glows use. */
-	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_Panel", false);
-	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_TextBox", false);
-	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_ConfirmButton", false);
-	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_CancelButton", false);
+	for (const char* pId : ALWAYS_VISIBLE_CLASS_LIST_CHROME)
+		m_pClassSelectView->Set_SlotVisible(pId, true);
+	/* ownerClass filter CHUDRuntimeView's own Render(strSelectedClass, revision) used to apply
+	automatically -- CUILayoutRuntime has no such pass, so this shows only the selected class's
+	own right-panel slots and hides every other class's. */
+	for (const CLASS_OWNED_SLOT& Slot : CLASS_OWNED_SLOTS)
+		m_pClassSelectView->Set_SlotVisible(Slot.pSlotId, strSelectedClass == Slot.pOwnerClass);
+
 	const bool_t hasCompleteProductButtons =
 		Has_CompleteProductButtonSlots(m_pClassSelectView.get());
 	for (const CHARACTER_SELECT_PRODUCT_SLOT& Slot : PRODUCT_BUTTON_SLOTS)
-	{
-		m_pClassSelectView->Set_SlotVisible(
-			Slot.pSlotId, hasCompleteProductButtons);
-	}
-	m_pClassSelectView->Render(strSelectedClass, 0);
+		m_pClassSelectView->Set_SlotVisible(Slot.pSlotId, hasCompleteProductButtons);
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
-	const f32_t fScaleY = pViewport->WorkSize.y / REF_HEIGHT;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
-
-	const auto Fn_ToScreen = [&](f32_t fX, f32_t fY) -> ImVec2
-	{
-		return ImVec2(
-			pViewport->WorkPos.x + fX * fScaleX,
-			pViewport->WorkPos.y + fY * fScaleY);
-	};
-
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pClassSelectView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pClassSelectView->Get_ResolutionHeight();
 	const bool_t bInteractable = MODE::SERVER_ARENA == m_eMode &&
 		!m_isCreateCharacterModalOpen &&
 		!m_iPendingClassIndex.has_value() &&
 		!Is_ClassPresentationPreparationPending() &&
 		!CLevelTransitionService::Is_Pending();
 
-	/* ImGui only ships the one HANYoonGothic330 weight (see ImGuiLayer::Initialize), so "bold"
-	here is the standard faux-bold trick: the same glyphs redrawn a few pixels apart so their
-	strokes overlap and thicken, instead of a real heavier-weight font asset. */
-	const auto Fn_DrawBoldText = [&](f32_t fX, f32_t fY, f32_t fSize, ImU32 iColor, const char* pText)
+	/* Accordion: fRowY advances past each row, and past the expanded row's thumbnail block too,
+	so a category expanding pushes every row beneath it down instead of the thumbnail always
+	drawing in one fixed spot regardless of which category opened it. Render_ClassListText below
+	recomputes this exact same fRowY sequence for its own text-only pass -- both are pure
+	functions of m_iExpandedCategory/CLASS_LIST_ENTRIES, so recomputing instead of caching stays
+	safe as long as nothing else touches m_iExpandedCategory between here and Render(). */
+	/* Default hidden -- only the loop's own bExpanded branch below shows these, and unlike the
+	old ImGui pass (which simply drew nothing when no category was expanded), a CUI_Sprite would
+	otherwise keep showing whichever class was expanded last even after every row collapses. */
+	m_pClassSelectView->Set_SlotVisible("ClassList_Thumb", false);
+	m_pClassSelectView->Set_SlotVisible("ClassList_ThumbSymbol", false);
+	m_pClassSelectView->Set_SlotVisible("ClassList_ThumbFrame", false);
+
+	const int32_t iExpandedBefore = m_iExpandedCategory;
+	f32_t fRowY = ROW_Y_START;
+	for (int32_t i = 0; i < static_cast<int32_t>(std::size(CLASS_LIST_ENTRIES)); ++i)
 	{
-		ImFont* pFont = ImGui::GetFont();
-		const ImVec2 vPos = Fn_ToScreen(fX, fY);
-		const f32_t fScreenSize = fSize * (std::min)(fScaleX, fScaleY);
+		const CLASS_LIST_ENTRY& Entry = CLASS_LIST_ENTRIES[i];
+		const string strRowId = "ClassList_Row" + std::to_string(i);
+		const string strSymbolId = "ClassList_Symbol" + std::to_string(i);
+		const bool_t bExpanded = i == iExpandedBefore;
+
+		m_pClassSelectView->Set_SlotVisible(strRowId, true);
+		m_pClassSelectView->Set_SlotPosition(strRowId, Entry.fX, fRowY);
+		m_pClassSelectView->Set_SlotTexture(strRowId, bExpanded ?
+			"UI/ClassSelect/Common/CategorySelected.png" : "UI/ClassSelect/Common/Category.png");
+
+		const bool_t bHovered = bInteractable &&
+			Router.Is_Hovered(Entry.fX, fRowY, Entry.fWidth, Entry.fHeight, fRefWidth, fRefHeight);
+		/* Same hover callout as the old AddRect(...,160,...) outline -- a brighten tint instead
+		of a border image CUILayoutRuntime has no primitive for. Only while collapsed: the
+		expanded row already reads as selected via CategorySelected.png. */
+		m_pClassSelectView->Set_SlotTint(strRowId,
+			(!bExpanded && bHovered) ? float4_t(1.15f, 1.15f, 1.05f, 1.f) : float4_t(1.f, 1.f, 1.f, 1.f));
+
+		if (nullptr != Entry.pCategorySymbolFile)
+		{
+			m_pClassSelectView->Set_SlotVisible(strSymbolId, true);
+			m_pClassSelectView->Set_SlotPosition(strSymbolId, Entry.fX + 8.f, fRowY + 6.f);
+			m_pClassSelectView->Set_SlotTexture(strSymbolId,
+				string("UI/ClassSelect/Common/") + Entry.pCategorySymbolFile);
+		}
+		else
+		{
+			m_pClassSelectView->Set_SlotVisible(strSymbolId, false);
+		}
+
+		if (bHovered)
+		{
+			Router.Claim_Mouse_This_Frame();
+			if (Router.Is_Clicked(Entry.fX, fRowY, Entry.fWidth, Entry.fHeight, fRefWidth, fRefHeight))
+			{
+				CMainApp::Play_UIButtonClickSound();
+				m_iExpandedCategory = bExpanded ? -1 : i;
+			}
+		}
+
+		fRowY += Entry.fHeight + ROW_GAP;
+
+		if (bExpanded)
+		{
+			const bool_t bConfirmed = Entry.iSupportedClassIndex == m_iSelectedClassIndex;
+			const f32_t fThumbY = fRowY + THUMB_MARGIN_TOP;
+
+			m_pClassSelectView->Set_SlotVisible("ClassList_Thumb", true);
+			m_pClassSelectView->Set_SlotPosition("ClassList_Thumb", Entry.fX, fThumbY);
+			/* Set_SlotTexture(missingPath) resolves to a null SRV and reverts the sprite to its
+			own authored default (CategorySelected.png, same fallback as the old
+			Load_Texture-returned-null branch) -- Slayer/Gunslinger have no IllustrationSmall.png
+			today, same gap as before this migration. */
+			m_pClassSelectView->Set_SlotTexture("ClassList_Thumb",
+				Build_ClassSelectAssetPath(Entry.pJsonClassName, "IllustrationSmall.png"));
+
+			/* No missing-asset fallback for the identity symbol overlay (unlike Thumb just
+			above) -- a failed load here reverts to ClassList_ThumbSymbol's own authored
+			placeholder texture instead of hiding, a minor cosmetic gap versus the old
+			Load_Texture-returns-null-so-skip-drawing behavior, only reachable for a class
+			missing this one asset. */
+			m_pClassSelectView->Set_SlotVisible("ClassList_ThumbSymbol", true);
+			m_pClassSelectView->Set_SlotPosition(
+				"ClassList_ThumbSymbol", Entry.fX + THUMB_W - 22.f, fThumbY - 4.f);
+			m_pClassSelectView->Set_SlotTexture("ClassList_ThumbSymbol",
+				Build_ClassSelectAssetPath(Entry.pJsonClassName, "IdentitySymbol.png"));
+
+			const bool_t bThumbHovered = bInteractable &&
+				Router.Is_Hovered(Entry.fX, fThumbY, THUMB_W, THUMB_H, fRefWidth, fRefHeight);
+
+			/* Small illust selected.png is the one hover/confirm frame -- both states use the
+			same authored art instead of a placeholder AddRect() outline. */
+			m_pClassSelectView->Set_SlotVisible("ClassList_ThumbFrame", bConfirmed || bThumbHovered);
+			m_pClassSelectView->Set_SlotPosition(
+				"ClassList_ThumbFrame", Entry.fX - 2.f, fThumbY - 2.f);
+
+			if (bThumbHovered)
+			{
+				Router.Claim_Mouse_This_Frame();
+				if (Router.Is_Clicked(Entry.fX, fThumbY, THUMB_W, THUMB_H, fRefWidth, fRefHeight))
+				{
+					CMainApp::Play_UIButtonClickSound();
+					Request_ClassChange(Entry.iSupportedClassIndex);
+				}
+			}
+
+			fRowY = fThumbY + THUMB_H + THUMB_MARGIN_BOTTOM;
+		}
+	}
+}
+
+void CLevel_CharacterSelect::Render_ClassListText()
+{
+	/* Same MODE::SERVER_ARENA gate as Update_ClassList -- these are that panel's own text, so
+	they must disappear and reappear together with it instead of floating on screen without the
+	art underneath. Draws with the LOA font (CGameInstance::Draw_Text) like every other product
+	label; ImGui is Debug-tool-only. */
+	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)
+		return;
+
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fScaleX = vViewportSize.x / REF_WIDTH;
+	const f32_t fScaleY = vViewportSize.y / REF_HEIGHT;
+	const f32_t fUiScale = (std::min)(fScaleX, fScaleY);
+
+	/* The labels are UTF-8 byte literals (this file has no BOM and the project builds without
+	/utf-8), and Draw_Text takes wide text. */
+	const auto Fn_Widen = [](const char* pUtf8) -> wstring_t
+	{
+		if (nullptr == pUtf8 || '\0' == pUtf8[0])
+			return {};
+		const int32_t iLength = ::MultiByteToWideChar(CP_UTF8, 0, pUtf8, -1, nullptr, 0);
+		if (iLength <= 1)
+			return {};
+		wstring_t wide(static_cast<size_t>(iLength - 1), L'\0');
+		::MultiByteToWideChar(CP_UTF8, 0, pUtf8, -1, wide.data(), iLength);
+		return wide;
+	};
+
+	/* fSize is the reference-resolution pixel height the old ImGui AddText call asked for, so
+	the glyphs stay the same size as before -- Draw_Text scales relative to the font's own
+	measured height instead of taking a size directly. Anchored top-left (0,0 pivot), matching
+	AddText's own contract. Bold is the same faux-bold trick as before (the LOA font ships one
+	weight too): the same glyphs redrawn a pixel apart so their strokes thicken. */
+	const auto Fn_DrawBoldTextAt = [&](f32_t fX, f32_t fY, f32_t fSize,
+		const fvector_t& vColor, const char* pUtf8, const float2_t& vPivot)
+	{
+		const wstring_t wide = Fn_Widen(pUtf8);
+		if (wide.empty())
+			return;
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), wide.c_str());
+		if (vMeasured.y <= 0.f)
+			return;
+		const f32_t fScale = (fSize / vMeasured.y) * fUiScale;
+		const float2_t vPos(fX * fScaleX, fY * fScaleY);
 		constexpr f32_t fOffsets[][2] = { {0.f, 0.f}, {1.f, 0.f}, {0.f, 1.f}, {1.f, 1.f} };
 		for (const f32_t (&Offset)[2] : fOffsets)
 		{
-			pDrawList->AddText(pFont, fScreenSize,
-				ImVec2(vPos.x + Offset[0], vPos.y + Offset[1]), iColor, pText);
+			CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), wide.c_str(),
+				float2_t(vPos.x + Offset[0], vPos.y + Offset[1]),
+				vColor, 0.f, vPivot, fScale);
 		}
 	};
 
-	/* Centers pText within [fRectX, fRectX + fRectWidth) at reference scale, using this text's
-	own font-size metrics (CalcTextSizeA) rather than assuming a fixed glyph width -- Korean
-	glyphs at a non-default size don't have a simple char-count-based width. */
-	const auto Fn_DrawBoldTextCentered = [&](f32_t fRectX, f32_t fRectWidth, f32_t fY, f32_t fSize,
-		ImU32 iColor, const char* pText)
+	const auto Fn_DrawBoldText = [&](f32_t fX, f32_t fY, f32_t fSize,
+		const fvector_t& vColor, const char* pUtf8)
 	{
-		ImFont* pFont = ImGui::GetFont();
-		const f32_t fScreenSize = fSize * (std::min)(fScaleX, fScaleY);
-		const ImVec2 vTextSize = pFont->CalcTextSizeA(fScreenSize, FLT_MAX, 0.f, pText);
-		const f32_t fRectCenterX = fRectX + fRectWidth * 0.5f;
-		const ImVec2 vScreenCenter = Fn_ToScreen(fRectCenterX, fY);
-		constexpr f32_t fOffsets[][2] = { {0.f, 0.f}, {1.f, 0.f}, {0.f, 1.f}, {1.f, 1.f} };
-		for (const f32_t (&Offset)[2] : fOffsets)
-		{
-			pDrawList->AddText(pFont, fScreenSize,
-				ImVec2(vScreenCenter.x - vTextSize.x * 0.5f + Offset[0], vScreenCenter.y + Offset[1]),
-				iColor, pText);
-		}
+		Fn_DrawBoldTextAt(fX, fY, fSize, vColor, pUtf8, float2_t(0.f, 0.f));
+	};
+
+	/* Centers pText within [fRectX, fRectX + fRectWidth) at reference scale -- a 0.5 x-pivot
+	does what the old explicit CalcTextSizeA half-width offset did. */
+	const auto Fn_DrawBoldTextCentered = [&](f32_t fRectX, f32_t fRectWidth, f32_t fY, f32_t fSize,
+		const fvector_t& vColor, const char* pUtf8)
+	{
+		Fn_DrawBoldTextAt(fRectX + fRectWidth * 0.5f, fY, fSize, vColor, pUtf8,
+			float2_t(0.5f, 0.f));
+	};
+
+	/* Plain (non-bold) single draw, for the two list labels that were never faux-bolded. */
+	const auto Fn_DrawText = [&](f32_t fX, f32_t fY, const fvector_t& vColor, const char* pUtf8)
+	{
+		const wstring_t wide = Fn_Widen(pUtf8);
+		if (wide.empty())
+			return;
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), wide.c_str());
+		if (vMeasured.y <= 0.f)
+			return;
+		/* ImGui's own AddText used the atlas's default 16px size for these. */
+		const f32_t fScale = (16.f / vMeasured.y) * fUiScale;
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), wide.c_str(),
+			float2_t(fX * fScaleX, fY * fScaleY),
+			vColor, 0.f, float2_t(0.f, 0.f), fScale);
 	};
 
 	/* Left panel text: JSON slots only carry images, so the class name, the three yellow section
@@ -1976,12 +2249,15 @@ void CLevel_CharacterSelect::Render_ClassList()
 
 		/* Aligned against Warlord_NameSymbol's current rect (50x50 at y=191.29): text sits to
 		the symbol's right, vertically centered on its 50px height. */
-		Fn_DrawBoldText(72.f, 203.f, 32.f, IM_COL32(255, 255, 255, 255), Entry.pClassLabel);
-		Fn_DrawBoldText(15.f, 262.f, 20.f, IM_COL32(255, 220, 140, 255),
+		/* Same IM_COL32 values the ImGui draws used, as normalized RGBA. */
+		const fvector_t vSectionLabelColor =
+			XMVectorSet(1.f, 220.f / 255.f, 140.f / 255.f, 1.f);
+		Fn_DrawBoldText(72.f, 203.f, 32.f, Colors::White, Entry.pClassLabel);
+		Fn_DrawBoldText(15.f, 262.f, 20.f, vSectionLabelColor,
 			"\xec\xa1\xb0\xec\x9e\x91 \xeb\x82\x9c\xec\x9d\xb4\xeb\x8f\x84");
-		Fn_DrawBoldText(15.f, 335.f, 20.f, IM_COL32(255, 220, 140, 255),
+		Fn_DrawBoldText(15.f, 335.f, 20.f, vSectionLabelColor,
 			"\xea\xb8\xb0\xeb\xb3\xb8 \xec\xa0\x95\xeb\xb3\xb4");
-		Fn_DrawBoldText(15.f, 453.f, 20.f, IM_COL32(255, 220, 140, 255),
+		Fn_DrawBoldText(15.f, 453.f, 20.f, vSectionLabelColor,
 			"\xec\x95\x84\xec\x9d\xb4\xeb\x8d\xb4\xed\x8b\xb0\xed\x8b\xb0");
 
 		for (const IDENTITY_DESCRIPTION& Desc : IDENTITY_DESCRIPTIONS)
@@ -1993,160 +2269,72 @@ void CLevel_CharacterSelect::Render_ClassList()
 			{
 				Fn_DrawBoldTextCentered(IDENTITY_DESC_X, IDENTITY_DESC_WIDTH,
 					IDENTITY_DESC_Y + static_cast<f32_t>(iLine) * IDENTITY_DESC_LINE_HEIGHT,
-					16.f, IM_COL32(220, 220, 220, 255), Desc.ppLines[iLine]);
+					16.f,
+					XMVectorSet(220.f / 255.f, 220.f / 255.f, 220.f / 255.f, 1.f),
+					Desc.ppLines[iLine]);
 			}
 			break;
 		}
 		break;
 	}
 
-	pDrawList->AddText(Fn_ToScreen(1000.f, 20.f), IM_COL32(255, 220, 140, 255),
+	Fn_DrawText(1000.f, 20.f, XMVectorSet(1.f, 220.f / 255.f, 140.f / 255.f, 1.f),
 		"\xed\x81\xb4\xeb\x9e\x98\xec\x8a\xa4 \xec\x84\xa0\xed\x83\x9d");
 
-	/* Accordion: fRowY advances past each row, and past the expanded row's thumbnail block too,
-	so a category expanding pushes every row beneath it down instead of the thumbnail always
-	drawing in one fixed spot regardless of which category opened it. */
+	/* Same fRowY recompute as Update_ClassList's own accordion loop, purely for these two text
+	draws -- see that function's comment for why recomputing instead of caching stays safe. */
 	const int32_t iExpandedBefore = m_iExpandedCategory;
 	f32_t fRowY = ROW_Y_START;
 	for (int32_t i = 0; i < static_cast<int32_t>(std::size(CLASS_LIST_ENTRIES)); ++i)
 	{
 		const CLASS_LIST_ENTRY& Entry = CLASS_LIST_ENTRIES[i];
-		const ImVec2 vTopLeft = Fn_ToScreen(Entry.fX, fRowY);
-		const ImVec2 vBotRight = Fn_ToScreen(Entry.fX + Entry.fWidth, fRowY + Entry.fHeight);
-
-		const bool_t bHovered = bInteractable &&
-			vMouse.x >= vTopLeft.x && vMouse.x < vBotRight.x &&
-			vMouse.y >= vTopLeft.y && vMouse.y < vBotRight.y;
 		const bool_t bExpanded = i == iExpandedBefore;
 
-		if (ID3D11ShaderResourceView* pRowBgSRV = m_pClassSelectView->Load_Texture(
-			bExpanded ? "UI/ClassSelect/Common/CategorySelected.png" : "UI/ClassSelect/Common/Category.png"))
-		{
-			pDrawList->AddImage(pRowBgSRV, vTopLeft, vBotRight);
-		}
-
-		if (!bExpanded && bHovered)
-		{
-			pDrawList->AddRect(vTopLeft, vBotRight, IM_COL32(255, 220, 90, 160), 4.f, 0, 1.5f);
-		}
-
-		if (nullptr != Entry.pCategorySymbolFile)
-		{
-			if (ID3D11ShaderResourceView* pSymbolSRV = m_pClassSelectView->Load_Texture(
-				string("UI/ClassSelect/Common/") + Entry.pCategorySymbolFile))
-			{
-				pDrawList->AddImage(pSymbolSRV,
-					Fn_ToScreen(Entry.fX + 8.f, fRowY + 6.f),
-					Fn_ToScreen(Entry.fX + 44.f, fRowY + 42.f));
-			}
-		}
-
-		pDrawList->AddText(Fn_ToScreen(Entry.fX + 52.f, fRowY + 16.f),
-			IM_COL32(230, 230, 230, 255), Entry.pCategoryLabel);
-
-		if (bHovered && bClicked)
-		{
-			CMainApp::Play_UIButtonClickSound();
-			m_iExpandedCategory = bExpanded ? -1 : i;
-		}
+		Fn_DrawText(Entry.fX + 52.f, fRowY + 16.f,
+			XMVectorSet(230.f / 255.f, 230.f / 255.f, 230.f / 255.f, 1.f),
+			Entry.pCategoryLabel);
 
 		fRowY += Entry.fHeight + ROW_GAP;
 
 		if (bExpanded)
 		{
-			const bool_t bConfirmed = Entry.iSupportedClassIndex == m_iSelectedClassIndex;
 			const f32_t fThumbY = fRowY + THUMB_MARGIN_TOP;
-
-			const ImVec2 vThumbTopLeft = Fn_ToScreen(Entry.fX, fThumbY);
-			const ImVec2 vThumbBotRight = Fn_ToScreen(Entry.fX + THUMB_W, fThumbY + THUMB_H);
-
-			ID3D11ShaderResourceView* pThumbSRV = m_pClassSelectView->Load_Texture(
-				Build_ClassSelectAssetPath(Entry.pJsonClassName, "IllustrationSmall.png"));
-			if (nullptr == pThumbSRV)
-				pThumbSRV = m_pClassSelectView->Load_Texture(
-					"UI/ClassSelect/Common/CategorySelected.png");
-			if (nullptr != pThumbSRV)
-			{
-				pDrawList->AddImage(pThumbSRV, vThumbTopLeft, vThumbBotRight);
-			}
-
-			if (ID3D11ShaderResourceView* pSymbolSRV = m_pClassSelectView->Load_Texture(
-				Build_ClassSelectAssetPath(Entry.pJsonClassName, "IdentitySymbol.png")))
-			{
-				const ImVec2 vSymbolTopLeft = Fn_ToScreen(Entry.fX + THUMB_W - 22.f, fThumbY - 4.f);
-				const ImVec2 vSymbolBotRight = Fn_ToScreen(Entry.fX + THUMB_W + 4.f, fThumbY + 22.f);
-				pDrawList->AddImage(pSymbolSRV, vSymbolTopLeft, vSymbolBotRight);
-			}
-
-			pDrawList->AddText(Fn_ToScreen(Entry.fX + 4.f, fThumbY + THUMB_H - 18.f),
-				IM_COL32(255, 255, 255, 255), Entry.pClassLabel);
-
-			const bool_t bThumbHovered = bInteractable &&
-				vMouse.x >= vThumbTopLeft.x && vMouse.x < vThumbBotRight.x &&
-				vMouse.y >= vThumbTopLeft.y && vMouse.y < vThumbBotRight.y;
-
-			/* Small illust selected.png is the one hover/confirm frame -- both states use the
-			same authored art instead of a placeholder AddRect() outline. */
-			if (bConfirmed || bThumbHovered)
-			{
-				if (ID3D11ShaderResourceView* pSelectedFrameSRV = m_pClassSelectView->Load_Texture(
-					"UI/ClassSelect/Common/SmallIllustSelected.png"))
-				{
-					const ImVec2 vFrameTopLeft = Fn_ToScreen(Entry.fX - 2.f, fThumbY - 2.f);
-					const ImVec2 vFrameBotRight = Fn_ToScreen(Entry.fX + THUMB_W + 2.f, fThumbY + THUMB_H + 2.f);
-					pDrawList->AddImage(pSelectedFrameSRV, vFrameTopLeft, vFrameBotRight);
-				}
-			}
-
-			if (bThumbHovered && bClicked)
-			{
-				CMainApp::Play_UIButtonClickSound();
-				Request_ClassChange(Entry.iSupportedClassIndex);
-			}
-
+			Fn_DrawText(Entry.fX + 4.f, fThumbY + THUMB_H - 18.f,
+				Colors::White, Entry.pClassLabel);
 			fRowY = fThumbY + THUMB_H + THUMB_MARGIN_BOTTOM;
 		}
 	}
 }
 
-void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
+void CLevel_CharacterSelect::Hide_ArenaSpawnButtons()
 {
-	/* Same MODE::SERVER_ARENA gate as Render_ClassList -- these debug spawn buttons and the
+	if (nullptr == m_pClassSelectView)
+		return;
+	for (const CHARACTER_SELECT_PRODUCT_SLOT& Slot : PRODUCT_BUTTON_SLOTS)
+		m_pClassSelectView->Set_SlotVisible(Slot.pSlotId, false);
+}
+
+void CLevel_CharacterSelect::Update_ArenaSpawnButtons()
+{
+	/* Same MODE::SERVER_ARENA gate as Update_ClassList -- these debug spawn buttons and the
 	Create Character button are gameplay-tied and meaningless (their click handlers all touch
 	m_pWorldEntityCommandSink/m_pPlayerCommandSink, which are only useful once the arena has
 	actually admitted the local character) before the scene has really finished transitioning. */
 	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)
+	{
+		Hide_ArenaSpawnButtons();
 		return;
+	}
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
-	const f32_t fScaleY = pViewport->WorkSize.y / REF_HEIGHT;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
 	const bool_t hasCompleteAuthoredButtons =
 		Has_CompleteProductButtonSlots(m_pClassSelectView.get());
-
-	const auto Fn_ToScreen = [&](f32_t fX, f32_t fY) -> ImVec2
-	{
-		return ImVec2(
-			pViewport->WorkPos.x + fX * fScaleX,
-			pViewport->WorkPos.y + fY * fScaleY);
-	};
-
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pClassSelectView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pClassSelectView->Get_ResolutionHeight();
 	const bool_t bInteractable = MODE::SERVER_ARENA == m_eMode &&
 		!m_isCreateCharacterModalOpen &&
 		!Is_ClassPresentationPreparationPending() &&
 		!CLevelTransitionService::Is_Pending();
-
-	const auto Fn_HitTest = [&](f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight,
-		ImVec2& outTopLeft, ImVec2& outBotRight) -> bool_t
-	{
-		outTopLeft = Fn_ToScreen(fX, fY);
-		outBotRight = Fn_ToScreen(fX + fWidth, fY + fHeight);
-		return vMouse.x >= outTopLeft.x && vMouse.x < outBotRight.x &&
-			vMouse.y >= outTopLeft.y && vMouse.y < outBotRight.y;
-	};
 
 	/* The authored spawn icon rects overlap by a few pixels. Resolve the visually topmost slot
 	first (later draw order wins) so one physical click can submit exactly one typed command. */
@@ -2165,8 +2353,7 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
 				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
-			ImVec2 vTopLeft, vBotRight;
-			if (Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight))
+			if (Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 			{
 				pHoveredSpawnSlotId = pSlotId;
 				break;
@@ -2194,26 +2381,24 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 		Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
 			hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
 
-		ImVec2 vTopLeft, vBotRight;
-		Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
 		const bool_t bHovered = nullptr != pHoveredSpawnSlotId &&
 			0 == std::strcmp(pHoveredSpawnSlotId, Button.pSlotId);
 
-		if (!hasCompleteAuthoredButtons || bHovered)
-		{
-			const char_t* pTexturePath = bHovered ? pSlot->pHoverPath : pSlot->pIdlePath;
-			if (ID3D11ShaderResourceView* pSRV =
-				m_pClassSelectView->Load_Texture(pTexturePath))
-			{
-				pDrawList->AddImage(pSRV, vTopLeft, vBotRight);
-			}
-		}
+		/* Visibility is Update_ClassList's own concern (hasCompleteProductButtons, called just
+		before this from Update()) -- this only owns which texture shows. Empty path reverts the
+		sprite to its own authored default, which is this same pIdlePath art, so only the hover
+		swap needs an explicit override. */
+		m_pClassSelectView->Set_SlotTexture(Button.pSlotId, bHovered ? pSlot->pHoverPath : "");
 
-		if (bHovered && bClicked)
+		if (bHovered)
 		{
-			CMainApp::Play_UIButtonClickSound();
-			m_iSelectedArenaSpawnIndex = Button.iOptionIndex;
-			Request_SelectedArenaSpawn();
+			Router.Claim_Mouse_This_Frame();
+			if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+			{
+				CMainApp::Play_UIButtonClickSound();
+				m_iSelectedArenaSpawnIndex = Button.iOptionIndex;
+				Request_SelectedArenaSpawn();
+			}
 		}
 	}
 
@@ -2228,37 +2413,32 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 		{
 			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
 				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
-			ImVec2 vTopLeft, vBotRight;
-			Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
 			const bool_t bHovered = nullptr != pHoveredSpawnSlotId &&
 				0 == std::strcmp(pHoveredSpawnSlotId, pSlot->pSlotId);
-			if (!hasCompleteAuthoredButtons || bHovered)
+			m_pClassSelectView->Set_SlotTexture(pSlot->pSlotId, bHovered ? pSlot->pHoverPath : "");
+			if (bHovered)
 			{
-				const char_t* pTexturePath = bHovered ? pSlot->pHoverPath : pSlot->pIdlePath;
-				if (ID3D11ShaderResourceView* pSRV =
-					m_pClassSelectView->Load_Texture(pTexturePath))
+				Router.Claim_Mouse_This_Frame();
+				if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight) &&
+					nullptr != m_pWorldEntityCommandSink)
 				{
-					pDrawList->AddImage(pSRV, vTopLeft, vBotRight);
+					CMainApp::Play_UIButtonClickSound();
+					m_pWorldEntityCommandSink->Request_DespawnAllWorldEntities(
+						m_iNextDespawnRequestSequence++);
+					/* Request_SelectedArenaSpawn refuses to resend once
+					m_ArenaSpawnAccepted[index] is true (see its own gate check) -- that flag only
+					meant "don't ask the Server to spawn something it already told us exists", but
+					never got cleared on despawn, so re-spawning either option silently no-op'd
+					after a revert even though the Server-side entity was really gone. */
+					m_ArenaSpawnAccepted.fill(false);
 				}
-			}
-			if (bHovered && bClicked && nullptr != m_pWorldEntityCommandSink)
-			{
-				CMainApp::Play_UIButtonClickSound();
-				m_pWorldEntityCommandSink->Request_DespawnAllWorldEntities(
-					m_iNextDespawnRequestSequence++);
-				/* Request_SelectedArenaSpawn refuses to resend once
-				m_ArenaSpawnAccepted[index] is true (see its own gate check) -- that flag only
-				meant "don't ask the Server to spawn something it already told us exists", but
-				never got cleared on despawn, so re-spawning either option silently no-op'd
-				after a revert even though the Server-side entity was really gone. */
-				m_ArenaSpawnAccepted.fill(false);
 			}
 		}
 	}
 
 	/* CreateCharacterButton stages the same one-shot request as the Debug "Create Character"
-	button. Render_CreateCharacterProductInputHost owns the matching OpenPopup/BeginPopupModal ID
-	stack in both configurations. bInteractable already covers
+	button; Render_CreateCharacterProductInputHost consumes it and drives the (now ImGui-free)
+	modal in both configurations. bInteractable already covers
 	isConnecting/isReturning/transitionPending via MODE::SERVER_ARENA and the other two checks;
 	m_iPendingClassIndex is the one condition bInteractable does not already include. */
 	{
@@ -2269,22 +2449,17 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 		{
 			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
 				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
-			ImVec2 vTopLeft, vBotRight;
 			const bool_t bHovered = bInteractable && !m_iPendingClassIndex.has_value() &&
-				Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
-			if (!hasCompleteAuthoredButtons || bHovered)
+				Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
+			m_pClassSelectView->Set_SlotTexture(pSlot->pSlotId, bHovered ? pSlot->pHoverPath : "");
+			if (bHovered)
 			{
-				const char_t* pTexturePath = bHovered ? pSlot->pHoverPath : pSlot->pIdlePath;
-				if (ID3D11ShaderResourceView* pSRV =
-					m_pClassSelectView->Load_Texture(pTexturePath))
+				Router.Claim_Mouse_This_Frame();
+				if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 				{
-					pDrawList->AddImage(pSRV, vTopLeft, vBotRight);
+					CMainApp::Play_UIButtonClickSound();
+					Request_CreateCharacterButtonClick();
 				}
-			}
-			if (bHovered && bClicked)
-			{
-				CMainApp::Play_UIButtonClickSound();
-				Request_CreateCharacterButtonClick();
 			}
 		}
 	}
@@ -2300,23 +2475,18 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 		{
 			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
 				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
-			ImVec2 vTopLeft, vBotRight;
 			const bool_t bHovered = !m_isCreateCharacterModalOpen &&
 				!CLevelTransitionService::Is_Pending() &&
-				Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
-			if (!hasCompleteAuthoredButtons || bHovered)
+				Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
+			m_pClassSelectView->Set_SlotTexture(pSlot->pSlotId, bHovered ? pSlot->pHoverPath : "");
+			if (bHovered)
 			{
-				const char_t* pTexturePath = bHovered ? pSlot->pHoverPath : pSlot->pIdlePath;
-				if (ID3D11ShaderResourceView* pSRV =
-					m_pClassSelectView->Load_Texture(pTexturePath))
+				Router.Claim_Mouse_This_Frame();
+				if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 				{
-					pDrawList->AddImage(pSRV, vTopLeft, vBotRight);
+					CMainApp::Play_UIButtonClickSound();
+					Leave_ServerArena();
 				}
-			}
-			if (bHovered && bClicked)
-			{
-				CMainApp::Play_UIButtonClickSound();
-				Leave_ServerArena();
 			}
 		}
 	}
@@ -2324,7 +2494,7 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 
 void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 {
-	/* Same MODE::SERVER_ARENA gate as Render_ClassList/Render_ArenaSpawnButtons -- these are
+	/* Same MODE::SERVER_ARENA gate as Update_ClassList/Update_ArenaSpawnButtons -- these are
 	just the text captions for that same button art, so they must disappear and reappear
 	together with it instead of floating on screen without their buttons underneath. */
 	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)
@@ -2406,9 +2576,10 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 		}
 	}
 
-	/* Create Character modal text -- real Draw_Text same as everything else above, since the
-	modal's own ImGui popup (Render_CreateCharacterModal) only draws the panel/box/button images
-	and the real InputText widget; this still has to be the LOA-font pass called after EndFrame. */
+	/* Create Character modal text -- real Draw_Text same as everything else above.
+	Render_CreateCharacterModal owns the CUI_Sprite art state and the WM_CHAR editing; every
+	glyph the modal shows (title/labels, the nickname itself, the IME's in-progress syllable,
+	caret, status line) draws here in the LOA-font pass. */
 	if (m_isCreateCharacterModalOpen)
 	{
 		const auto Fn_DrawCentered = [&](f32_t fCenterX, f32_t fCenterY, const wchar_t* pLabel,
@@ -2453,8 +2624,145 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 			Fn_DrawCentered(fX + fWidth * 0.5f, fY + fHeight * 0.5f, Label.pLabel,
 				fHeight * 0.32f, Colors::White);
 		}
+
+		/* The nickname text itself + the IME's still-composing syllable + a blinking caret --
+		the drawing half of the runtime text field (editing lives in Render_CreateCharacterModal,
+		fed by CUIInputRouter's WM_CHAR queue). Left-aligned inside the TextBox art the way the
+		old transparent InputText sat over it. */
+		f32_t fBoxX = 0.f, fBoxY = 0.f, fBoxW = 0.f, fBoxH = 0.f;
+		if (m_pClassSelectView->Get_SlotRect(
+			"CreateCharacterModal_TextBox", fBoxX, fBoxY, fBoxW, fBoxH))
+		{
+			constexpr f32_t TEXT_HEIGHT = 18.f;
+			const f32_t fCenterScreenY = (fBoxY + fBoxH * 0.5f) * textScaleY;
+			/* Returns the drawn advance in screen pixels so the next piece starts where this
+			one ended -- position and advance both live in screen space (textScaleX vs
+			textUiScale differ on a non-16:9 viewport, so mixing spaces would drift). */
+			const auto Fn_DrawLeft = [&](f32_t fScreenX, const wchar_t* pText,
+				const fvector_t& vColor) -> f32_t
+			{
+				const float2_t vMeasured =
+					CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), pText);
+				if (vMeasured.y <= 0.f)
+					return 0.f;
+				const f32_t fScale = (TEXT_HEIGHT / vMeasured.y) * textUiScale;
+				CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), pText,
+					float2_t(fScreenX, fCenterScreenY),
+					vColor, 0.f, float2_t(0.f, 0.5f), fScale);
+				return vMeasured.x * fScale;
+			};
+
+			f32_t fCursorScreenX = (fBoxX + 12.f) * textScaleX;
+			if (!m_NicknameDraftW.empty())
+				fCursorScreenX += Fn_DrawLeft(fCursorScreenX, m_NicknameDraftW.c_str(),
+					Colors::White);
+			/* In-progress (uncommitted) Hangul straight from the OS IME, gold so it reads as
+			not-yet-committed -- the inline preview the old InputText overlay drew. */
+			const wchar_t* pComposition = Engine::CImGuiLayer::Get_ImeCompositionString();
+			if (nullptr != pComposition && L'\0' != pComposition[0])
+				fCursorScreenX += Fn_DrawLeft(fCursorScreenX, pComposition, Colors::Gold);
+			/* Blinking caret on its own wall clock (steady_clock, not ImGui's). */
+			const int64_t iHalfSeconds =
+				std::chrono::duration_cast<std::chrono::milliseconds>(
+					std::chrono::steady_clock::now().time_since_epoch()).count() / 500;
+			if (0 == (iHalfSeconds % 2))
+				Fn_DrawLeft(fCursorScreenX + 1.f, L"|", Colors::White);
+		}
+
+		/* Status line -- moved out of the removed ImGui popup (same slot/fallback rect and
+		amber tone its AddText version used). The messages are ASCII, so the byte-wise widen is
+		exact. */
+		if (!m_strStatus.empty())
+		{
+			f32_t fStatusX = 400.f, fStatusY = 340.f;
+			f32_t fStatusWidth = 480.f, fStatusHeight = 20.f;
+			f32_t fAuthoredX = 0.f, fAuthoredY = 0.f;
+			f32_t fAuthoredWidth = 0.f, fAuthoredHeight = 0.f;
+			if (m_pClassSelectView->Get_SlotRect(
+				"CreateCharacterModal_StatusText", fAuthoredX, fAuthoredY,
+				fAuthoredWidth, fAuthoredHeight) &&
+				std::isfinite(fAuthoredX) && std::isfinite(fAuthoredY) &&
+				std::isfinite(fAuthoredWidth) && std::isfinite(fAuthoredHeight) &&
+				fAuthoredWidth > 0.f && fAuthoredHeight > 0.f)
+			{
+				fStatusX = fAuthoredX;
+				fStatusY = fAuthoredY;
+				fStatusWidth = fAuthoredWidth;
+				fStatusHeight = fAuthoredHeight;
+			}
+			const wstring_t strStatusWide(m_strStatus.begin(), m_strStatus.end());
+			const float2_t vMeasured =
+				CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), strStatusWide.c_str());
+			if (vMeasured.y > 0.f)
+			{
+				f32_t fScale = (14.f / vMeasured.y) * textUiScale;
+				/* Keep the whole line inside the authored width instead of the popup's old
+				wrap -- Draw_Text has no wrapping, shrink-to-fit reads better than clipping. */
+				const f32_t fMaxWidth = (fStatusWidth - 8.f) * textScaleX;
+				if (vMeasured.x * fScale > fMaxWidth && vMeasured.x > 0.f)
+					fScale = fMaxWidth / vMeasured.x;
+				/* Centered on the panel's own middle, the same x every Korean line in this
+				modal (title, subtitle, button labels) is centered on -- left-anchored inside
+				the status slot put it visibly off-axis from the text right above it. */
+				f32_t fCenterX = fStatusX + fStatusWidth * 0.5f;
+				f32_t fPanelX = 0.f, fPanelY = 0.f, fPanelW = 0.f, fPanelH = 0.f;
+				if (m_pClassSelectView->Get_SlotRect(
+					"CreateCharacterModal_Panel", fPanelX, fPanelY, fPanelW, fPanelH))
+				{
+					fCenterX = fPanelX + fPanelW * 0.5f;
+				}
+				const float2_t vPosition(
+					fCenterX * textScaleX,
+					(fStatusY + fStatusHeight * 0.5f) * textScaleY);
+				CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strStatusWide.c_str(),
+					float2_t(vPosition.x + 1.f, vPosition.y + 1.f),
+					XMVectorSet(0.f, 0.f, 0.f, 0.9f), 0.f, float2_t(0.5f, 0.5f), fScale);
+				CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strStatusWide.c_str(),
+					vPosition,
+					XMVectorSet(1.f, 210.f / 255.f, 120.f / 255.f, 1.f), 0.f,
+					float2_t(0.5f, 0.5f), fScale);
+			}
+		}
 	}
 }
+
+#ifdef _DEBUG
+void CLevel_CharacterSelect::Update_RaidEntryDebugPreviewKey()
+{
+	if (nullptr == m_pDebugRaidEntryPreviewView ||
+		m_pDebugRaidEntryPreviewView->Is_Open() || ImGui::GetIO().WantTextInput ||
+		CUIInputRouter::Get().Is_TextInputActive())
+	{
+		return;
+	}
+	const bool_t isODown =
+		0 != (CGameInstance::Get().Get_DIKeyState(DIK_O) & 0x80);
+	const bool_t wasOPressed = isODown && !m_wasODownForRaidEntryDebugPreview;
+	m_wasODownForRaidEntryDebugPreview = isODown;
+	if (wasOPressed)
+		m_pDebugRaidEntryPreviewView->Open();
+}
+
+void CLevel_CharacterSelect::Render_RaidEntryDebugPreview()
+{
+	if (nullptr == m_pDebugRaidEntryPreviewView)
+		return;
+	// Visual-only: no real NPC, no command sink -- Entrance just closes it too.
+	(void)m_pDebugRaidEntryPreviewView->Render();
+}
+
+void CLevel_CharacterSelect::Render_RaidEntryDebugPreviewText()
+{
+	if (nullptr != m_pDebugRaidEntryPreviewView)
+		m_pDebugRaidEntryPreviewView->RenderText();
+}
+
+bool_t CLevel_CharacterSelect::Is_DebugRaidEntryPreviewOpen() const
+{
+	return nullptr != m_pDebugRaidEntryPreviewView &&
+		m_pDebugRaidEntryPreviewView->Is_Open();
+}
+#endif
 
 unique_ptr<CLevel_CharacterSelect> CLevel_CharacterSelect::Create(
 	ComPtr<ID3D11Device> pDevice,

@@ -3,11 +3,20 @@
   "formatVersion": 1,
   "archetypeId": "BOSS_VALTAN",
   "bindings": [
-    { "effectId": "boss.valtan.hand_1", "stage": "valtan.sequence.center-trash-rush-if.step-06", "startMs": 0, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false },
-    { "effectId": "boss.valtan.hand_2", "stage": "valtan.sequence.center-trash-rush-if.step-06", "startMs": 0, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false },
-    { "effectId": "boss.valtan.hand_3", "stage": "valtan.sequence.rush-success.step-01", "startMs": 0, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false },
-    { "effectId": "boss.valtan.hand_4", "stage": "valtan.sequence.rush-success.step-01", "startMs": 0, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false },
-    { "effectId": "boss.valtan.hand_5", "stage": "valtan.sequence.rush-if.step-01", "startMs": 0, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false },
-    { "effectId": "boss.valtan.hand_6", "stage": "valtan.sequence.rush-if.step-01", "startMs": 0, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false }
+    { "effectId": "boss.valtan.hand_1", "stage": "valtan.sequence.center-trash-rush-if.step-06", "startMs": 0, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "effectId": "boss.valtan.hand_2", "stage": "valtan.sequence.center-trash-rush-if.step-06", "startMs": 0, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "effectId": "boss.valtan.hand_3", "stage": "valtan.sequence.rush-success.step-01", "startMs": 0, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "effectId": "boss.valtan.hand_4", "stage": "valtan.sequence.rush-success.step-01", "startMs": 0, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "effectId": "boss.valtan.hand_5", "stage": "valtan.sequence.rush-if.step-01", "startMs": 0, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "effectId": "boss.valtan.hand_6", "stage": "valtan.sequence.rush-if.step-01", "startMs": 0, "bone": "bip001-l-hand", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "group": "boss.valtan.impact", "clip": "mesh_att_battle_19_01", "startMs": 1233, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "group": "boss.valtan.impact", "clip": "mesh_att_battle_19_01", "startMs": 2233, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 175.0 },
+    { "group": "boss.valtan.impact", "clip": "mesh_att_battle_19_01", "startMs": 3233, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 270.0 },
+    { "group": "boss.valtan.impact", "clip": "mesh_att_battle_19_01", "startMs": 4200, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 90.0 },
+    { "group": "boss.valtan.pounding.chase", "clip": "mesh_att_battle_19_02", "startMs": 0, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "group": "boss.valtan.pounding", "clip": "mesh_att_battle_19_03", "startMs": 200, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "group": "boss.valtan.pounding", "clip": "mesh_att_battle_19_03", "startMs": 400, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [-1.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "group": "boss.valtan.twohand", "clip": "mesh_att_battle_19_04", "startMs": 1033, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "group": "boss.valtan.impact", "stage": "valtan.sequence.sequence.400440.0.step-01", "startMs": 0, "bone": "", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 }
   ]
 }

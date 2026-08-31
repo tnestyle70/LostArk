@@ -353,8 +353,11 @@ namespace
 				pCombatObjectVisuals->Get_Array())
 			{
 				BOSS_COMBAT_OBJECT_VISUAL_ENTRY entryVisual;
-				const size_t expectedVisualFields =
-					visual.Is_Object() && nullptr != visual.Find("worldScale") ? 4u : 3u;
+				const DATA_JSON_VALUE* pHitEffectAssetId =
+					visual.Is_Object() ? visual.Find("hitEffectAssetId") : nullptr;
+				const size_t expectedVisualFields = 3u +
+					(visual.Is_Object() && nullptr != visual.Find("worldScale") ? 1u : 0u) +
+					(nullptr != pHitEffectAssetId ? 1u : 0u);
 				if (!visual.Is_Object() || expectedVisualFields != visual.Get_Object().size() ||
 					!ReadRequiredString(
 						visual, "combatObjectArchetypeId",
@@ -363,9 +366,14 @@ namespace
 						visual, "clientVisualId", entryVisual.clientVisualId) ||
 					!ReadRequiredString(
 						visual, "effectAssetId", entryVisual.effectAssetId) ||
+					(nullptr != pHitEffectAssetId &&
+						(!pHitEffectAssetId->Is_String() ||
+						 pHitEffectAssetId->Get_String().empty())) ||
 					!IsStableId(entryVisual.combatObjectArchetypeId) ||
 					!IsStableId(entryVisual.clientVisualId) ||
 					!IsStableId(entryVisual.effectAssetId) ||
+					(nullptr != pHitEffectAssetId &&
+						!IsStableId(pHitEffectAssetId->Get_String())) ||
 					!ReadCombatVisualWorldScale(visual, entryVisual.worldScale) ||
 					!combatObjectArchetypeIds.insert(
 						entryVisual.combatObjectArchetypeId).second ||
@@ -373,6 +381,9 @@ namespace
 				{
 					return false;
 				}
+				if (nullptr != pHitEffectAssetId)
+					entryVisual.hitEffectAssetId =
+						pHitEffectAssetId->Get_String();
 				entry.combatObjectVisuals.push_back(std::move(entryVisual));
 			}
 			staged.push_back(std::move(entry));

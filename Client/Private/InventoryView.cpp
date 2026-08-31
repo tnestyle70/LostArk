@@ -1,20 +1,24 @@
-#include "imgui.h"
-
 #include "InventoryView.h"
 
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
-#include "HUDRuntimeView.h"
 #include "ItemCatalog.h"
 #include "MainApp.h"
+#include "UIInputRouter.h"
+#include "UILayoutRuntime.h"
 
 #include <utility>
 
 Client::CInventoryView::CInventoryView(
 	ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
-	: m_pBackgroundView{ std::make_unique<CHUDRuntimeView>(
-		pDevice, pContext, L"UI/Inventory/InventoryUI.json") }
+	: m_pBackgroundView{ std::make_unique<CUILayoutRuntime>(
+		pDevice, pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
+		L"UI/Inventory/InventoryUI.json") }
 {
+	/* Authored layer tint is opaque ([1,1,1,1]) -- every slot would otherwise sit fully visible
+	on screen (LEVEL::STATIC's GameObjects persist across every Level, including Lobby/Loading)
+	from construction until whatever first calls Update() while m_bOpen is still false. */
+	Hide();
 }
 
 Client::CInventoryView::~CInventoryView()
@@ -30,17 +34,14 @@ void Client::CInventoryView::Sync_DisplayOrder(const size_t itemCount)
 		m_DisplayOrder[i] = i;
 }
 
-void Client::CInventoryView::Render(
-	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items)
+void Client::CInventoryView::Hide()
 {
-	if (!m_bOpen || nullptr == m_pBackgroundView)
-		return;
-
-	Update_Drag();
-
-	/* Category slots are ordinary type-0 layout slots (so they show up in the Tool for
-	placement), but their real on/off-hover choice is decided here, not by the generic
-	pass's built-in mouse-hover swap -- force them hidden there first. */
+	m_pBackgroundView->Set_SlotVisible("Inventory_PanelBg", false);
+	m_pBackgroundView->Set_SlotVisible("Inventory_Title", false);
+	m_pBackgroundView->Set_SlotVisible("Inventory_Button1", false);
+	m_pBackgroundView->Set_SlotVisible("Inventory_CraftingButton", false);
+	m_pBackgroundView->Set_SlotVisible("Inventory_GemButton", false);
+	m_pBackgroundView->Set_SlotVisible("Inventory_BottomBars", false);
 	constexpr const char* CATEGORY_SLOT_IDS[] = {
 		"Inventory_Category_All", "Inventory_Category_Combat", "Inventory_Category_Cloth",
 		"Inventory_Category_Use", "Inventory_Category_Gem", "Inventory_Category_Card",
@@ -48,11 +49,50 @@ void Client::CInventoryView::Render(
 	};
 	for (const char* pId : CATEGORY_SLOT_IDS)
 		m_pBackgroundView->Set_SlotVisible(pId, false);
+	for (int32_t iSlotIndex = 0;; ++iSlotIndex)
+	{
+		const string strBgId = "Inventory_Slot_" + std::to_string(iSlotIndex);
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pBackgroundView->Get_SlotRect(strBgId, fX, fY, fWidth, fHeight))
+			break;
+		m_pBackgroundView->Set_SlotVisible(strBgId, false);
+		m_pBackgroundView->Set_SlotVisible(
+			"Inventory_ItemIcon_" + std::to_string(iSlotIndex), false);
+	}
+}
 
-	m_pBackgroundView->Render("Default", 0);
+void Client::CInventoryView::Update(
+	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items)
+{
+	if (nullptr == m_pBackgroundView)
+		return;
+	if (!m_bOpen)
+	{
+		/* Every slot self-renders now (no generic Render(class, revision) gate to fall back on
+		like the old ImGui pass had) -- closing the panel has to hide it explicitly instead of
+		simply not being drawn this frame. */
+		Hide();
+		return;
+	}
 
-	Render_CategoryTabs();
-	Render_Items(items);
+	m_pBackgroundView->Set_SlotVisible("Inventory_PanelBg", true);
+	m_pBackgroundView->Set_SlotVisible("Inventory_Title", true);
+	m_pBackgroundView->Set_SlotVisible("Inventory_Button1", true);
+	m_pBackgroundView->Set_SlotVisible("Inventory_CraftingButton", true);
+	m_pBackgroundView->Set_SlotVisible("Inventory_GemButton", true);
+	m_pBackgroundView->Set_SlotVisible("Inventory_BottomBars", true);
+	for (int32_t iSlotIndex = 0;; ++iSlotIndex)
+	{
+		const string strBgId = "Inventory_Slot_" + std::to_string(iSlotIndex);
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pBackgroundView->Get_SlotRect(strBgId, fX, fY, fWidth, fHeight))
+			break;
+		m_pBackgroundView->Set_SlotVisible(strBgId, true);
+	}
+
+	Update_Drag();
+	Update_CategoryTabs();
+	Update_Items(items);
 }
 
 void Client::CInventoryView::Render_Text()
@@ -61,8 +101,8 @@ void Client::CInventoryView::Render_Text()
 		return;
 	/* m_bOpen has no level-change reset, so without this a window left open into a loading
 	transition (or Character Select) would keep drawing its title text over the loading
-	screen -- same bug Render()'s caller (RenderCombatHUD) already avoids by only calling
-	Render() while the player is valid. */
+	screen -- same bug Update()'s caller (RenderCombatHUD) already avoids by only calling
+	Update() while the player is valid. */
 	if (!CCombatHUDViewModel::Get().Get_Player().isValid)
 		return;
 
@@ -92,47 +132,143 @@ void Client::CInventoryView::Render_Text()
 			(fTitleX + fTitleWidth * 0.5f) * textScaleX,
 			(fTitleY + fTitleHeight * 0.5f) * textScaleY),
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+
+	/* Per-slot stack counts and the hovered item's name, resolved from the same
+	(items, category filter) pair Update_Items drew the icons from so a filtered view never
+	labels a slot with an item it isn't showing. */
+	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& Items =
+		CCombatHUDViewModel::Get().Get_Inventory().Items;
+	const vector<size_t> filteredIndices = Build_FilteredIndices(Items);
+
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pBackgroundView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pBackgroundView->Get_ResolutionHeight();
+	const ITEM_DEFINITION* pHoveredDefinition = nullptr;
+	uint32_t iHoveredQuantity = 0u;
+	f32_t fHoveredX = 0.f, fHoveredY = 0.f;
+
+	for (int32_t iSlotIndex = 0;; ++iSlotIndex)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pBackgroundView->Get_SlotRect(
+			"Inventory_Slot_" + std::to_string(iSlotIndex), fX, fY, fWidth, fHeight))
+		{
+			break;
+		}
+
+		const bool_t bHasDisplayEntry =
+			static_cast<size_t>(iSlotIndex) < m_DisplayOrder.size();
+		const size_t iFilteredIndex =
+			bHasDisplayEntry ? m_DisplayOrder[iSlotIndex] : filteredIndices.size();
+		if (!bHasDisplayEntry || iFilteredIndex >= filteredIndices.size() ||
+			filteredIndices[iFilteredIndex] >= Items.size())
+		{
+			continue;
+		}
+
+		const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& Item =
+			Items[filteredIndices[iFilteredIndex]];
+		const ITEM_DEFINITION* pDefinition = CItemCatalog::Find_ById(Item.strItemId);
+
+		if (Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight) &&
+			nullptr != pDefinition)
+		{
+			pHoveredDefinition = pDefinition;
+			iHoveredQuantity = Item.iQuantity;
+			fHoveredX = fX;
+			fHoveredY = fY;
+		}
+
+		/* A single unit needs no "1" over its own icon, same as before. */
+		if (Item.iQuantity <= 1u)
+			continue;
+
+		const wstring strQuantity = std::to_wstring(Item.iQuantity);
+		const float2_t vQuantityMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), strQuantity.c_str());
+		if (vQuantityMeasured.y <= 0.f)
+			continue;
+		const f32_t fQuantityScale =
+			(11.f / vQuantityMeasured.y) * textUiScale;
+		/* Bottom-right of the slot, with the same 1px dark drop shadow the drawlist used. */
+		const float2_t vQuantityPos(
+			(fX + fWidth - 3.f) * textScaleX, (fY + fHeight - 3.f) * textScaleY);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strQuantity.c_str(),
+			float2_t(vQuantityPos.x + 1.f, vQuantityPos.y + 1.f),
+			XMVectorSet(0.f, 0.f, 0.f, 220.f / 255.f), 0.f,
+			float2_t(1.f, 1.f), fQuantityScale);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strQuantity.c_str(),
+			vQuantityPos, Colors::White, 0.f, float2_t(1.f, 1.f), fQuantityScale);
+	}
+
+	/* Hover tooltip -- ImGui::SetTooltip's own floating box has no engine-path equivalent, so
+	the same "<name> xN" text is drawn just above the hovered slot instead. */
+	if (nullptr != pHoveredDefinition)
+	{
+		wstring strTooltip;
+		const string strLabel = pHoveredDefinition->strDisplayName +
+			" x" + std::to_string(iHoveredQuantity);
+		const int32_t iLength = ::MultiByteToWideChar(
+			CP_UTF8, 0, strLabel.c_str(), -1, nullptr, 0);
+		if (iLength > 1)
+		{
+			strTooltip.assign(static_cast<size_t>(iLength - 1), L'\0');
+			::MultiByteToWideChar(
+				CP_UTF8, 0, strLabel.c_str(), -1, strTooltip.data(), iLength);
+
+			const float2_t vTooltipMeasured =
+				CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), strTooltip.c_str());
+			if (vTooltipMeasured.y > 0.f)
+			{
+				const f32_t fTooltipScale = (12.f / vTooltipMeasured.y) * textUiScale;
+				const float2_t vTooltipPos(
+					fHoveredX * textScaleX, (fHoveredY - 4.f) * textScaleY);
+				CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strTooltip.c_str(),
+					float2_t(vTooltipPos.x + 1.f, vTooltipPos.y + 1.f),
+					XMVectorSet(0.f, 0.f, 0.f, 230.f / 255.f), 0.f,
+					float2_t(0.f, 1.f), fTooltipScale);
+				CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), strTooltip.c_str(),
+					vTooltipPos, Colors::White, 0.f, float2_t(0.f, 1.f), fTooltipScale);
+			}
+		}
+	}
 }
 
 void Client::CInventoryView::Update_Drag()
 {
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
+	const f32_t fRefWidth = m_pBackgroundView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pBackgroundView->Get_ResolutionHeight();
+	CUIInputRouter& Router = CUIInputRouter::Get();
+
+	f32_t fMouseX = 0.f, fMouseY = 0.f;
+	if (!Router.Get_MousePosition(fRefWidth, fRefHeight, fMouseX, fMouseY))
 		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-	const ImVec2 vMouse = ImGui::GetMousePos();
 
 	if (!m_bDraggingPanel)
 	{
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!m_pBackgroundView->Get_SlotRect("Inventory_Title", fX, fY, fWidth, fHeight))
 			return;
-		const ImVec2 vMin(
-			pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
-		const ImVec2 vMax(
-			vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
-		const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-			vMouse.y >= vMin.y && vMouse.y < vMax.y;
-		if (bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		{
 			m_bDraggingPanel = true;
-			m_fLastDragMouseX = vMouse.x;
-			m_fLastDragMouseY = vMouse.y;
+			m_fLastDragMouseX = fMouseX;
+			m_fLastDragMouseY = fMouseY;
 		}
 		return;
 	}
 
-	if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+	Router.Claim_Mouse_This_Frame();
+	if (!Router.Is_LeftDown())
 	{
 		m_bDraggingPanel = false;
 		return;
 	}
 
-	const float fDeltaX = (vMouse.x - m_fLastDragMouseX) / scaleX;
-	const float fDeltaY = (vMouse.y - m_fLastDragMouseY) / scaleY;
-	m_fLastDragMouseX = vMouse.x;
-	m_fLastDragMouseY = vMouse.y;
+	const f32_t fDeltaX = fMouseX - m_fLastDragMouseX;
+	const f32_t fDeltaY = fMouseY - m_fLastDragMouseY;
+	m_fLastDragMouseX = fMouseX;
+	m_fLastDragMouseY = fMouseY;
 	if (0.f == fDeltaX && 0.f == fDeltaY)
 		return;
 
@@ -151,15 +287,20 @@ void Client::CInventoryView::Update_Drag()
 	}
 	for (int32_t iSlotIndex = 0;; ++iSlotIndex)
 	{
-		const string strSlotId = "Inventory_Slot_" + std::to_string(iSlotIndex);
+		const string strBgId = "Inventory_Slot_" + std::to_string(iSlotIndex);
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-		if (!m_pBackgroundView->Get_SlotRect(strSlotId, fX, fY, fWidth, fHeight))
+		if (!m_pBackgroundView->Get_SlotRect(strBgId, fX, fY, fWidth, fHeight))
 			break;
-		m_pBackgroundView->Set_SlotPosition(strSlotId, fX + fDeltaX, fY + fDeltaY);
+		m_pBackgroundView->Set_SlotPosition(strBgId, fX + fDeltaX, fY + fDeltaY);
+
+		const string strIconId = "Inventory_ItemIcon_" + std::to_string(iSlotIndex);
+		f32_t fIconX = 0.f, fIconY = 0.f, fIconWidth = 0.f, fIconHeight = 0.f;
+		if (m_pBackgroundView->Get_SlotRect(strIconId, fIconX, fIconY, fIconWidth, fIconHeight))
+			m_pBackgroundView->Set_SlotPosition(strIconId, fIconX + fDeltaX, fIconY + fDeltaY);
 	}
 }
 
-void Client::CInventoryView::Render_CategoryTabs()
+void Client::CInventoryView::Update_CategoryTabs()
 {
 	struct CATEGORY_ART { const char* pSlotId; const char* pNormalPath; const char* pHoverPath; };
 	constexpr CATEGORY_ART CATEGORIES[] = {
@@ -172,44 +313,45 @@ void Client::CInventoryView::Render_CategoryTabs()
 		{ "Inventory_Category_Etc", "UI/Inventory/Category etc.png", "UI/Inventory/Category etc_hover.png" },
 	};
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pBackgroundView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pBackgroundView->Get_ResolutionHeight();
 
 	for (const CATEGORY_ART& Category : CATEGORIES)
 	{
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!m_pBackgroundView->Get_SlotRect(Category.pSlotId, fX, fY, fWidth, fHeight))
 			continue;
-		const ImVec2 vMin(
-			pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
-		const ImVec2 vMax(
-			vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
-		const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-			vMouse.y >= vMin.y && vMouse.y < vMax.y;
+		/* Hide() takes these down with the rest of the panel (including from the constructor,
+		before the window is ever opened) and this is the only pass that owns them, so it has to
+		put them back up -- Update()'s own chrome block covers every other slot but these. */
+		m_pBackgroundView->Set_SlotVisible(Category.pSlotId, true);
+		const bool_t bHovered = Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
 		const bool_t bSelected = m_strSelectedCategoryId == Category.pSlotId;
 
-		if (bHovered && bClicked)
+		if (bHovered)
 		{
-			CMainApp::Play_UIButtonClickSound();
-			m_strSelectedCategoryId = bSelected ? string{} : Category.pSlotId;
+			Router.Claim_Mouse_This_Frame();
+			if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+			{
+				CMainApp::Play_UIButtonClickSound();
+				m_strSelectedCategoryId = bSelected ? string{} : Category.pSlotId;
+			}
 		}
 
 		const char* pPath = (bHovered || bSelected) ? Category.pHoverPath : Category.pNormalPath;
-		if (ID3D11ShaderResourceView* pSRV = m_pBackgroundView->Load_Texture(pPath))
-			pDrawList->AddImage(pSRV, vMin, vMax);
+		m_pBackgroundView->Set_SlotTexture(Category.pSlotId, pPath);
 	}
 }
 
-void Client::CInventoryView::Render_Items(
-	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items)
+vector<size_t> Client::CInventoryView::Build_FilteredIndices(
+	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items) const
 {
 	/* "" (both tabs just deselected) and Inventory_Category_All show everything. Every other
 	tab keeps only items whose catalog category maps to it; a tab with no matching items yet
-	(Cloth/Gem/Card/Etc) simply renders an empty grid rather than falling back to unfiltered. */
+	(Cloth/Gem/Card/Etc) simply renders an empty grid rather than falling back to unfiltered.
+	Pure function of (items, m_strSelectedCategoryId) so Update_Items and Render_Text resolve
+	the same slot->item mapping without threading it through member state. */
 	const bool_t bShowAll = m_strSelectedCategoryId.empty() ||
 		m_strSelectedCategoryId == "Inventory_Category_All";
 	string strCategoryFilter;
@@ -243,69 +385,63 @@ void Client::CInventoryView::Render_Items(
 		if (nullptr != pFilterDefinition && pFilterDefinition->strCategory == strCategoryFilter)
 			filteredIndices.push_back(i);
 	}
+	return filteredIndices;
+}
+
+void Client::CInventoryView::Update_Items(
+	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items)
+{
+	const vector<size_t> filteredIndices = Build_FilteredIndices(items);
 
 	Sync_DisplayOrder(filteredIndices.size());
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bMouseDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
-	const bool_t bMouseReleased = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pBackgroundView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pBackgroundView->Get_ResolutionHeight();
+
+	const bool_t bMouseDown = Router.Is_LeftDown();
+	const bool_t bMouseReleased = Router.Is_LeftReleaseEdge();
 
 	int32_t iSlotIndex = 0;
 	int32_t iHoveredSlot = -1;
 	for (;; ++iSlotIndex)
 	{
-		const string strSlotId = "Inventory_Slot_" + std::to_string(iSlotIndex);
+		const string strBgId = "Inventory_Slot_" + std::to_string(iSlotIndex);
+		const string strIconId = "Inventory_ItemIcon_" + std::to_string(iSlotIndex);
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-		if (!m_pBackgroundView->Get_SlotRect(strSlotId, fX, fY, fWidth, fHeight))
+		if (!m_pBackgroundView->Get_SlotRect(strBgId, fX, fY, fWidth, fHeight))
 			break;
 
-		const ImVec2 vMin(
-			pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
-		const ImVec2 vMax(
-			vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
-		const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-			vMouse.y >= vMin.y && vMouse.y < vMax.y;
+		const bool_t bHovered = Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
 		if (bHovered)
 			iHoveredSlot = iSlotIndex;
 
-		if (static_cast<size_t>(iSlotIndex) >= m_DisplayOrder.size())
+		const bool_t bHasDisplayEntry = static_cast<size_t>(iSlotIndex) < m_DisplayOrder.size();
+		const size_t iFilteredIndex = bHasDisplayEntry ? m_DisplayOrder[iSlotIndex] : filteredIndices.size();
+		const bool_t bHasItem = bHasDisplayEntry && iFilteredIndex < filteredIndices.size() &&
+			filteredIndices[iFilteredIndex] < items.size();
+		if (!bHasItem)
+		{
+			m_pBackgroundView->Set_SlotVisible(strIconId, false);
 			continue;
-		const size_t iFilteredIndex = m_DisplayOrder[iSlotIndex];
-		if (iFilteredIndex >= filteredIndices.size())
-			continue;
+		}
+
 		const size_t iItemIndex = filteredIndices[iFilteredIndex];
-		if (iItemIndex >= items.size())
-			continue;
 		const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& Item = items[iItemIndex];
 		const ITEM_DEFINITION* pDefinition = CItemCatalog::Find_ById(Item.strItemId);
 
 		if (nullptr != pDefinition && !pDefinition->strIconPath.empty())
 		{
-			if (ID3D11ShaderResourceView* pIconSRV =
-				m_pBackgroundView->Load_Texture(pDefinition->strIconPath))
-			{
-				pDrawList->AddImage(pIconSRV, vMin, vMax);
-			}
+			m_pBackgroundView->Set_SlotTexture(strIconId, pDefinition->strIconPath);
+			m_pBackgroundView->Set_SlotVisible(strIconId, true);
 		}
-
-		/* Equipment ("combat") never stacks past 1 -- showing a quantity number on it just reads
-		as clutter, not information, so only non-equipment (stackable) items draw one. */
-		if (nullptr == pDefinition || "combat" != pDefinition->strCategory)
+		else
 		{
-			const string strQuantity = std::to_string(Item.iQuantity);
-			const ImVec2 vTextSize = ImGui::CalcTextSize(strQuantity.c_str());
-			const ImVec2 vTextPos(
-				vMax.x - vTextSize.x - 2.f, vMax.y - vTextSize.y - 2.f);
-			pDrawList->AddText(ImVec2(vTextPos.x + 1.f, vTextPos.y + 1.f), IM_COL32(0, 0, 0, 220), strQuantity.c_str());
-			pDrawList->AddText(vTextPos, IM_COL32(255, 255, 255, 255), strQuantity.c_str());
+			m_pBackgroundView->Set_SlotVisible(strIconId, false);
 		}
 
-		if (nullptr != pDefinition && bHovered)
-			ImGui::SetTooltip("%s x%u", pDefinition->strDisplayName.c_str(), Item.iQuantity);
+		/* Quantity numbers and the hover tooltip draw in Render_Text() (the post-EndFrame
+		LOA-font pass) -- CGameInstance::Draw_Text there, no ImGui. */
 	}
 
 	/* Drag-and-drop: press-and-hold over a filled slot starts a drag. Releasing over a
@@ -331,11 +467,15 @@ void Client::CInventoryView::Render_Items(
 			m_DisplayOrder[m_iDragFromSlot] < filteredIndices.size() &&
 			filteredIndices[m_DisplayOrder[m_iDragFromSlot]] < items.size())
 		{
-			m_bHasPendingItemDrop = true;
-			m_strPendingDropItemId =
-				items[filteredIndices[m_DisplayOrder[m_iDragFromSlot]]].strItemId;
-			m_fPendingDropMouseX = vMouse.x;
-			m_fPendingDropMouseY = vMouse.y;
+			f32_t fDropScreenX = 0.f, fDropScreenY = 0.f;
+			if (Router.Get_ClientCursorPosition(fDropScreenX, fDropScreenY))
+			{
+				m_bHasPendingItemDrop = true;
+				m_strPendingDropItemId =
+					items[filteredIndices[m_DisplayOrder[m_iDragFromSlot]]].strItemId;
+				m_fPendingDropMouseX = fDropScreenX;
+				m_fPendingDropMouseY = fDropScreenY;
+			}
 		}
 		m_iDragFromSlot = -1;
 	}

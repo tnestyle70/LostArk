@@ -26,7 +26,8 @@ HRESULT CPart_Equipment::Initialize(void* pArg)
 	const auto pDesc = static_cast<PART_EQUIPMENT_DESC*>(pArg);
 	m_iHiddenMeshMask = pDesc->iHiddenMeshMask;
 	m_pSkeletonModelCom = pDesc->pSkeletonModel;
-	m_pSocketBoneName = pDesc->pSocketBoneName;
+	m_strSocketBoneName = nullptr != pDesc->pSocketBoneName ?
+		pDesc->pSocketBoneName : "";
 	m_fSocketYawDegrees = pDesc->fSocketYawDegrees;
 	m_pSocketRootMatrix = pDesc->pSocketRootMatrix;
 	m_strMaterialProfileId = pDesc->strMaterialProfileId;
@@ -36,8 +37,8 @@ HRESULT CPart_Equipment::Initialize(void* pArg)
 	a skinned piece borrows its whole palette. */
 	if (nullptr == m_pSkeletonModelCom)
 		return E_FAIL;
-	if (nullptr != m_pSocketBoneName &&
-		!m_pSkeletonModelCom->Has_Bone(m_pSocketBoneName))
+	if (!m_strSocketBoneName.empty() &&
+		!m_pSkeletonModelCom->Has_Bone(m_strSocketBoneName.c_str()))
 	{
 		return E_INVALIDARG;
 	}
@@ -60,12 +61,13 @@ void CPart_Equipment::Update(f32_t fTimeDelta)
 	body's pre-transform. A skinned piece adds no bone of its own: its deformation
 	lives entirely in the bone palette bound at render time. Either way the piece
 	still has to land in the frame the body model is drawn in. */
-	if (nullptr != m_pSocketBoneName)
+	if (!m_strSocketBoneName.empty())
 	{
 		ChildMatrix =
 			XMMatrixRotationY(XMConvertToRadians(m_fSocketYawDegrees)) *
 			ChildMatrix;
-		ChildMatrix = ChildMatrix * m_pSkeletonModelCom->Get_BoneMatrix(m_pSocketBoneName);
+		ChildMatrix = ChildMatrix *
+			m_pSkeletonModelCom->Get_BoneMatrix(m_strSocketBoneName.c_str());
 	}
 
 	if (nullptr != m_pSocketRootMatrix)
@@ -98,7 +100,7 @@ HRESULT CPart_Equipment::Render()
 
 	/* The cooked path gives every skinned mesh the same skeleton-wide palette, so
 	one bind covers all of this piece's meshes and any body mesh index produces it. */
-	if (nullptr == m_pSocketBoneName &&
+	if (m_strSocketBoneName.empty() &&
 		FAILED(m_pSkeletonModelCom->Bind_BoneMatrices(
 			m_pShaderCom, "g_BoneMatrices", 0)))
 		return E_FAIL;
@@ -129,16 +131,16 @@ HRESULT CPart_Equipment::Render_Shadow()
 	if (FAILED(Bind_ShadowShaderResources()))
 		return E_FAIL;
 
-	if (nullptr == m_pSocketBoneName &&
+	if (m_strSocketBoneName.empty() &&
 		FAILED(m_pSkeletonModelCom->Bind_BoneMatrices(
 			m_pShaderCom, "g_BoneMatrices", 0)))
 	{
 		return E_FAIL;
 	}
 
-	const uint32_t iShadowPass = nullptr == m_pSocketBoneName ?
+	const uint32_t iShadowPass = m_strSocketBoneName.empty() ?
 		ANIMATED_SHADOW_PASS : STATIC_SHADOW_PASS;
-	if (nullptr != m_pSocketBoneName)
+	if (!m_strSocketBoneName.empty())
 	{
 		const float2_t vUVScale(1.f, 1.f);
 		const float2_t vUVOffset(0.f, 0.f);
@@ -201,7 +203,7 @@ HRESULT CPart_Equipment::Bind_ShaderResources()
 		FAILED(CGameInstance::Get().Bind_Transform(
 			m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)))
 		return E_FAIL;
-	if (nullptr != m_pSocketBoneName)
+	if (!m_strSocketBoneName.empty())
 	{
 		matrix_t World = XMLoadFloat4x4(&m_CombinedWorldMatrix);
 		World.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);

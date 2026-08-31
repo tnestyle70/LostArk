@@ -71,6 +71,7 @@ RECOVERED_VALTAN_EFFECT_ELEMENT_IDS = {
         "sky-axe-flight-line",
         "authored.copy.mesh_particle_6.1",
         "sprite_particle_7",
+        "authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.sprite_particle_8.1.1.2.1.1",
     }),
     "effect.valtan.floor-wipe-130": frozenset({
         "authored.copy.authored.copy.sprite_particle_8.1.1",
@@ -338,7 +339,7 @@ def validate_editor_admission_isolation_contract(
 
     catalog_rows = index_cpp[
         index_cpp.index(
-            "for (const DATA_JSON_VALUE& CatalogEntry : pEffects->Get_Array())",
+            "for (const CATALOG_ROW_REF& RowRef : CatalogRows)",
             index_cpp.index("RecordOwnerJoinUnavailable"),
         ) : index_cpp.index("std::sort(Staged.Entries.begin()")
     ]
@@ -347,7 +348,7 @@ def validate_editor_admission_isolation_contract(
             "one malformed direct-authored catalog row must not reject every editor-ready document"
         )
     for token in (
-        'RecordUnavailable("EffectCatalog.json contains a non-object row.")',
+        '"EffectCatalog.json contains a non-object row."',
         "EffectCatalog.json contains a malformed direct-authored row.",
         "DuplicateAssetIds.emplace(strAssetId)",
         "std::erase_if(Staged.Entries",
@@ -624,20 +625,33 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
     product_identity = all_effects.find(
         "const std::string strUnifiedCandidateId ="
     )
-    product_resolve = all_effects.find(
-        "Resolve_DirectAuthoredEditablePath(", product_identity
+    product_observe = all_effects.find(
+        "Observe_DirectAuthoredEditablePath(", product_identity
     )
     product_open = all_effects.find(
-        'ImGui::SmallButton("Open Editor")', product_resolve
+        'ImGui::SmallButton("Open Editor")', product_observe
     )
-    product_preview = all_effects.find(
-        "Refresh_UnifiedEffectCache(", product_open
+    product_resolve = all_effects.find(
+        "Resolve_DirectAuthoredEditablePath(", product_open
     )
-    if min(product_identity, product_resolve, product_open, product_preview) < 0 or not (
-        product_identity < product_resolve < product_open < product_preview
+    product_load = all_effects.find(
+        "Try_LoadDocumentPath(", product_resolve
+    )
+    if min(
+        product_identity,
+        product_observe,
+        product_open,
+        product_resolve,
+        product_load,
+    ) < 0 or not (
+        product_identity < product_observe < product_open < product_resolve < product_load
     ):
         raise AssertionError(
-            "Product cue Open Editor must resolve the exact source before any Product cache/preview gate"
+            "Product cue rows must stay metadata-only until Open Editor resolves and loads the exact source"
+        )
+    if "Refresh_UnifiedEffectCache(" in all_effects:
+        raise AssertionError(
+            "expanded Product rows must not decode or stat authored Effects every frame"
         )
     for token in (
         "EDITOR-ONLY EXACT SOURCES",
@@ -657,13 +671,35 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
     cache_lookup = save_helper.find("m_ValtanUnifiedEffectCaches.find(")
     cache_reset = save_helper.find("ValtanCache->second = {};", cache_lookup)
     cache_refresh = save_helper.find("Refresh_UnifiedEffectCache(", cache_lookup)
-    hot_reload = save_helper.find("Try_HotReloadSavedProduct()", cache_refresh)
-    if min(cache_lookup, cache_reset, cache_refresh, hot_reload) < 0 or not (
-        cache_lookup < cache_reset < cache_refresh < hot_reload
+    local_source = save_helper.find(
+        "m_SourcePreviewDocument = *m_ActiveDocument;", cache_refresh
+    )
+    local_stage = save_helper.find(
+        "Stage_WorldPreview(*m_ActiveDocument)", local_source
+    )
+    if min(cache_lookup, cache_reset, cache_refresh, local_source, local_stage) < 0 or not (
+        cache_lookup < cache_reset < cache_refresh < local_source < local_stage
     ):
         raise AssertionError(
-            "Authored save must refresh an observed Valtan Product cache before hot reload"
+            "Authored save must refresh only the Effect Tool cache and local preview"
         )
+    for forbidden in (
+        "Try_HotReloadSavedProduct",
+        "Reload_SelectedProductEffect",
+        "Save was not committed because",
+    ):
+        if forbidden in save_helper:
+            raise AssertionError(
+                f"Authored save must not mutate the admitted Product generation: {forbidden}"
+            )
+    for token in (
+        "Refresh Server data",
+        "re-enter Valtan",
+    ):
+        if token not in save_helper:
+            raise AssertionError(
+                f"Authored save must state the Server Replay boundary: {token}"
+            )
 
 
 def validate_animation_stage_metadata_contract(cpp_text: str) -> None:
@@ -1699,7 +1735,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         )
         stages = {stage["stageId"]: stage for stage in high_jump["stages"]}
         self.assertEqual(1933, stages["TAKEOFF"]["durationMs"])
-        self.assertEqual(6500, stages["AIRBORNE"]["durationMs"])
+        self.assertEqual(8000, stages["AIRBORNE"]["durationMs"])
         self.assertEqual(3200, stages["LAND"]["durationMs"])
         self.assertEqual(400, stages["RECOVERY"]["durationMs"])
         self.assertEqual("LAND", high_jump["serverMotion"]["travelStageId"])

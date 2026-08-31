@@ -116,6 +116,18 @@ namespace
 			0 != snapshot.iMaximumResource &&
 			snapshot.iCurrentResource <= snapshot.iMaximumResource &&
 			snapshot.iCurrentIdentity <= snapshot.iMaximumIdentity &&
+			((0u == snapshot.iSilenceEndTick) ==
+			 (0u == snapshot.iSilenceDurationTicks)) &&
+			snapshot.iSilenceDurationTicks <= 3600u &&
+			(snapshot.isPatternBound ?
+				(snapshot.iPatternBindEndTick != 0u &&
+				 snapshot.iCurrentHp != 0u && !snapshot.isCombatReady &&
+				 LostArk::Shared::PLAYER_LOCOMOTION_STATE::IDLE ==
+					snapshot.eLocomotionState &&
+				 LostArk::Shared::PLAYER_ACTION_STATE::NONE == snapshot.eAction &&
+				 LostArk::Shared::INVALID_SKILL_ID == snapshot.iSkillId &&
+				 0u == snapshot.iComboStage) :
+				(0u == snapshot.iPatternBindEndTick)) &&
 			Is_Valid_Cooldowns(snapshot.Cooldowns) &&
 			snapshot.iComboStage <= LostArk::Shared::MAX_COMBO_STAGES &&
 			(0 == snapshot.iComboStage ||
@@ -1222,6 +1234,7 @@ bool LostArk::Shared::Write_Message(
 		!std::isfinite(spawned.fPositionZ) ||
 		!std::isfinite(spawned.fYawDegrees) ||
 		!std::isfinite(spawned.fCollisionRadius) ||
+		!spawned.PinnedDefinitionRevision.Is_Valid() ||
 		(WORLD_ENTITY_KIND::NPC == spawned.eKind &&
 			0.f != spawned.fCollisionRadius) ||
 		(WORLD_ENTITY_KIND::NPC != spawned.eKind &&
@@ -1248,7 +1261,8 @@ bool LostArk::Shared::Write_Message(
 	writer.Write_F32(spawned.fPositionZ);
 	writer.Write_F32(spawned.fYawDegrees);
 	writer.Write_F32(spawned.fCollisionRadius);
-	return true;
+	return Write_GameplayDataRevision(
+		writer, spawned.PinnedDefinitionRevision);
 }
 
 bool LostArk::Shared::Read_Message(
@@ -1272,7 +1286,9 @@ bool LostArk::Shared::Read_Message(
 		!reader.Read_F32(decoded.fPositionY) ||
 		!reader.Read_F32(decoded.fPositionZ) ||
 		!reader.Read_F32(decoded.fYawDegrees) ||
-		!reader.Read_F32(decoded.fCollisionRadius))
+		!reader.Read_F32(decoded.fCollisionRadius) ||
+		!Read_GameplayDataRevision(
+			reader, decoded.PinnedDefinitionRevision))
 	{
 		return false;
 	}
@@ -1291,6 +1307,7 @@ bool LostArk::Shared::Read_Message(
 		!std::isfinite(decoded.fPositionZ) ||
 		!std::isfinite(decoded.fYawDegrees) ||
 		!std::isfinite(decoded.fCollisionRadius) ||
+		!decoded.PinnedDefinitionRevision.Is_Valid() ||
 		(WORLD_ENTITY_KIND::NPC == decoded.eKind &&
 			0.f != decoded.fCollisionRadius) ||
 		(WORLD_ENTITY_KIND::NPC != decoded.eKind &&
@@ -1307,7 +1324,8 @@ bool LostArk::Shared::Is_Valid_WorldEntitySpawnOwner(
 	const S2C_WORLD_ENTITY_SPAWNED* pOwner)
 {
 	if (INVALID_NET_ENTITY_ID == spawned.iNetEntityId ||
-		!Is_Valid_WorldEntityKind(spawned.eKind))
+		!Is_Valid_WorldEntityKind(spawned.eKind) ||
+		!spawned.PinnedDefinitionRevision.Is_Valid())
 	{
 		return false;
 	}
@@ -1319,6 +1337,9 @@ bool LostArk::Shared::Is_Valid_WorldEntitySpawnOwner(
 		spawned.iOwnerBossNetEntityId == pOwner->iNetEntityId &&
 		WORLD_ENTITY_KIND::BOSS == pOwner->eKind &&
 		INVALID_NET_ENTITY_ID == pOwner->iOwnerBossNetEntityId &&
+		pOwner->PinnedDefinitionRevision.Is_Valid() &&
+		spawned.PinnedDefinitionRevision ==
+			pOwner->PinnedDefinitionRevision &&
 		!spawned.strEncounterId.empty() &&
 		spawned.strEncounterId == pOwner->strEncounterId;
 }
@@ -2190,6 +2211,10 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(player.iCurrentIdentity);
 		writer.Write_U32(player.iMaximumIdentity);
 		writer.Write_U8(player.isCombatReady ? 1u : 0u);
+		writer.Write_U8(player.isPatternBound ? 1u : 0u);
+		writer.Write_U32(player.iPatternBindEndTick);
+		writer.Write_U32(player.iSilenceEndTick);
+		writer.Write_U32(player.iSilenceDurationTicks);
 		writer.Write_U8(player.iComboStage);
 		writer.Write_U8(static_cast<std::uint8_t>(player.Cooldowns.size()));
 		for (const SKILL_COOLDOWN_SNAPSHOT& cooldown : player.Cooldowns)
@@ -2340,6 +2365,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		std::uint8_t rawAttachmentSlot = 0;
 		std::uint8_t rawHasSkillTarget = 0;
 		std::uint8_t rawCombatReady = 0;
+		std::uint8_t rawPatternBound = 0;
 		std::uint8_t cooldownCount = 0;
 
         if (!reader.Read_U32(player.iNetEntityId) ||
@@ -2372,6 +2398,11 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(player.iMaximumIdentity) ||
 			!reader.Read_U8(rawCombatReady) ||
 			rawCombatReady > 1u ||
+			!reader.Read_U8(rawPatternBound) ||
+			rawPatternBound > 1u ||
+			!reader.Read_U32(player.iPatternBindEndTick) ||
+			!reader.Read_U32(player.iSilenceEndTick) ||
+			!reader.Read_U32(player.iSilenceDurationTicks) ||
 			!reader.Read_U8(player.iComboStage) ||
 			player.iComboStage > MAX_COMBO_STAGES ||
 			!reader.Read_U8(cooldownCount) ||
@@ -2390,6 +2421,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			static_cast<PLAYER_ATTACHMENT_SLOT>(rawAttachmentSlot);
 		player.hasSkillTarget = 0u != rawHasSkillTarget;
 		player.isCombatReady = 0u != rawCombatReady;
+		player.isPatternBound = 0u != rawPatternBound;
 		player.Cooldowns.reserve(cooldownCount);
 		for (std::uint8_t cooldownIndex = 0;
 			cooldownIndex < cooldownCount;
@@ -2789,11 +2821,23 @@ namespace
 				VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID) == rawOperation;
 	}
 
+	bool Is_RestartAuditionOperation(const std::uint8_t rawOperation)
+	{
+		return static_cast<std::uint8_t>(
+			VALTAN_AUDITION_OPERATION::RESTART_PATTERN_ID) == rawOperation;
+	}
+
+	bool Is_PlayPatternIdAuditionOperation(const std::uint8_t rawOperation)
+	{
+		return static_cast<std::uint8_t>(
+			VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID) == rawOperation;
+	}
+
 	bool Is_StableAuditionOperation(const std::uint8_t rawOperation)
 	{
 		return Is_NextAuditionOperation(rawOperation) ||
-			static_cast<std::uint8_t>(
-				VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID) == rawOperation;
+			Is_RestartAuditionOperation(rawOperation) ||
+			Is_PlayPatternIdAuditionOperation(rawOperation);
 	}
 
 	// A request sequence of zero can never be told apart from a default-built
@@ -2807,7 +2851,8 @@ namespace
 		const std::string& patternId,
 		const std::uint32_t predecessorEpoch,
 		const std::uint32_t predecessorPatternSequence,
-		const std::uint32_t expectedNextRequestSequence)
+		const std::uint32_t expectedNextRequestSequence,
+		const GameplayDataRevision& expectedDefinitionRevision)
 	{
 		if (0u == requestSequence ||
 			rawOperation >= static_cast<std::uint8_t>(
@@ -2815,11 +2860,30 @@ namespace
 		{
 			return false;
 		}
+		if (Is_RestartAuditionOperation(rawOperation))
+		{
+			return 0u == targetHealthBar && 0u != predecessorEpoch &&
+				0u != predecessorPatternSequence &&
+				0u == expectedNextRequestSequence &&
+				expectedDefinitionRevision.Is_Valid() &&
+				Is_Valid_StableId(bossPlacementId, false) &&
+				Is_Valid_StableId(patternId, false);
+		}
+		if (Is_PlayPatternIdAuditionOperation(rawOperation))
+		{
+			return 0u == targetHealthBar && 0u == predecessorEpoch &&
+				0u == predecessorPatternSequence &&
+				0u == expectedNextRequestSequence &&
+				expectedDefinitionRevision.Is_Valid() &&
+				Is_Valid_StableId(bossPlacementId, false) &&
+				Is_Valid_StableId(patternId, false);
+		}
 		if (static_cast<std::uint8_t>(
 				VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID) == rawOperation)
 		{
 			return 0u == targetHealthBar && 0u == predecessorEpoch &&
 				0u == expectedNextRequestSequence &&
+				expectedDefinitionRevision.Is_Valid() &&
 				Is_Valid_StableId(bossPlacementId, false) &&
 				Is_Valid_StableId(patternId, false);
 		}
@@ -2827,6 +2891,7 @@ namespace
 		{
 			return 0u == targetHealthBar && 0u != predecessorEpoch &&
 				0u != predecessorPatternSequence &&
+				expectedDefinitionRevision.Is_Valid() &&
 				(static_cast<std::uint8_t>(
 					VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID) != rawOperation ||
 				 0u != expectedNextRequestSequence) &&
@@ -2834,16 +2899,10 @@ namespace
 				Is_Valid_StableId(patternId, false);
 		}
 		if (0u != predecessorEpoch || 0u != predecessorPatternSequence ||
-			0u != expectedNextRequestSequence)
+			0u != expectedNextRequestSequence ||
+			expectedDefinitionRevision.Is_Valid())
 		{
 			return false;
-		}
-		if (static_cast<std::uint8_t>(
-				VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID) == rawOperation)
-		{
-			return 0u == targetHealthBar &&
-				Is_Valid_StableId(bossPlacementId, false) &&
-				Is_Valid_StableId(patternId, false);
 		}
 		/* Legacy operations retain their exact wire shape. Rejecting hidden
 		   stable-ID data here prevents a caller from believing those IDs were
@@ -2899,6 +2958,28 @@ namespace
 	{
 		if (rawResult >= static_cast<std::uint8_t>(VALTAN_AUDITION_RESULT::END))
 			return false;
+		if (Is_RestartAuditionOperation(rawOperation))
+		{
+			const auto result = static_cast<VALTAN_AUDITION_RESULT>(rawResult);
+			return VALTAN_AUDITION_RESULT::QUEUED == result ||
+				VALTAN_AUDITION_RESULT::REJECTED_OCCURRENCE_PRESERVED == result ||
+				VALTAN_AUDITION_RESULT::REJECTED_RELEASE_BUILD == result ||
+				VALTAN_AUDITION_RESULT::REJECTED_WRONG_WORLD == result ||
+				VALTAN_AUDITION_RESULT::REJECTED_NO_BOSS == result ||
+				VALTAN_AUDITION_RESULT::REJECTED_BOSS_DEAD == result ||
+				VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE == result ||
+				VALTAN_AUDITION_RESULT::REJECTED_PLAYER_NOT_ENGAGED == result ||
+				VALTAN_AUDITION_RESULT::REJECTED_STALE_REQUEST == result ||
+				VALTAN_AUDITION_RESULT::REJECTED_STALE_AUDITION == result ||
+				VALTAN_AUDITION_RESULT::REJECTED_NOT_OWNER == result;
+		}
+		if (static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID) == rawOperation &&
+			VALTAN_AUDITION_RESULT::REJECTED_STALE_REQUEST ==
+				static_cast<VALTAN_AUDITION_RESULT>(rawResult))
+		{
+			return true;
+		}
 		if (!Is_NextAuditionOperation(rawOperation))
 			return rawResult < static_cast<std::uint8_t>(VALTAN_AUDITION_RESULT::CLEARED);
 		const auto result = static_cast<VALTAN_AUDITION_RESULT>(rawResult);
@@ -2932,6 +3013,24 @@ namespace
 			writer.Write_U32(message.iPredecessorRoomAuditionEpoch);
 			writer.Write_U32(message.iPredecessorPatternSequence);
 			writer.Write_U32(message.iExpectedNextRequestSequence);
+			return Write_GameplayDataRevision(
+				writer, message.ExpectedDefinitionRevision);
+		}
+		else if (Is_RestartAuditionOperation(operation))
+		{
+			writer.Write_U32(message.iPredecessorRoomAuditionEpoch);
+			writer.Write_U32(message.iPredecessorPatternSequence);
+			if (!Write_GameplayDataRevision(
+					writer, message.ExpectedDefinitionRevision))
+			{
+				return false;
+			}
+		}
+		else if (Is_PlayPatternIdAuditionOperation(operation) &&
+			!Write_GameplayDataRevision(
+				writer, message.ExpectedDefinitionRevision))
+		{
+			return false;
 		}
 		return true;
 	}
@@ -2947,10 +3046,27 @@ namespace
 		{
 			return false;
 		}
-		return !Is_NextAuditionOperation(operation) ||
-			(reader.Read_U32(message.iPredecessorRoomAuditionEpoch) &&
-			 reader.Read_U32(message.iPredecessorPatternSequence) &&
-			 reader.Read_U32(message.iExpectedNextRequestSequence));
+		if (Is_NextAuditionOperation(operation))
+		{
+			return reader.Read_U32(message.iPredecessorRoomAuditionEpoch) &&
+				reader.Read_U32(message.iPredecessorPatternSequence) &&
+				reader.Read_U32(message.iExpectedNextRequestSequence) &&
+				Read_GameplayDataRevision(
+					reader, message.ExpectedDefinitionRevision);
+		}
+		if (Is_RestartAuditionOperation(operation))
+		{
+			return reader.Read_U32(message.iPredecessorRoomAuditionEpoch) &&
+				reader.Read_U32(message.iPredecessorPatternSequence) &&
+				Read_GameplayDataRevision(
+					reader, message.ExpectedDefinitionRevision);
+		}
+		if (Is_PlayPatternIdAuditionOperation(operation))
+		{
+			return Read_GameplayDataRevision(
+				reader, message.ExpectedDefinitionRevision);
+		}
+		return true;
 	}
 }
 
@@ -2964,7 +3080,8 @@ bool LostArk::Shared::Write_Message(
 		message.iRequestSequence, rawOperation, message.iTargetHealthBar,
 		message.strBossPlacementId, message.strPatternId,
 		message.iPredecessorRoomAuditionEpoch, message.iPredecessorPatternSequence,
-		message.iExpectedNextRequestSequence))
+		message.iExpectedNextRequestSequence,
+		message.ExpectedDefinitionRevision))
 	{
 		return false;
 	}
@@ -2994,7 +3111,8 @@ bool LostArk::Shared::Read_Message(
 		decoded.iRequestSequence, rawOperation, decoded.iTargetHealthBar,
 		decoded.strBossPlacementId, decoded.strPatternId,
 		decoded.iPredecessorRoomAuditionEpoch, decoded.iPredecessorPatternSequence,
-		decoded.iExpectedNextRequestSequence))
+		decoded.iExpectedNextRequestSequence,
+		decoded.ExpectedDefinitionRevision))
 	{
 		return false;
 	}
@@ -3016,7 +3134,8 @@ bool LostArk::Shared::Write_Message(
 		message.iRequestSequence, rawOperation, message.iTargetHealthBar,
 		message.strBossPlacementId, message.strPatternId,
 		message.iPredecessorRoomAuditionEpoch, message.iPredecessorPatternSequence,
-		message.iExpectedNextRequestSequence) ||
+		message.iExpectedNextRequestSequence,
+		message.ExpectedDefinitionRevision) ||
 		!Is_Valid_AuditionResult(rawOperation, rawResult))
 	{
 		return false;
@@ -3052,7 +3171,8 @@ bool LostArk::Shared::Read_Message(
 		decoded.iRequestSequence, rawOperation, decoded.iTargetHealthBar,
 		decoded.strBossPlacementId, decoded.strPatternId,
 		decoded.iPredecessorRoomAuditionEpoch, decoded.iPredecessorPatternSequence,
-		decoded.iExpectedNextRequestSequence) ||
+		decoded.iExpectedNextRequestSequence,
+		decoded.ExpectedDefinitionRevision) ||
 		!Is_Valid_AuditionResult(rawOperation, rawResult))
 	{
 		return false;
@@ -3126,6 +3246,7 @@ namespace
 		const C2S_DEBUG_VALTAN_PATTERN_FLOW_START& message)
 	{
 		if (0u == message.iRequestSequence ||
+			!message.ExpectedDefinitionRevision.Is_Valid() ||
 			!Is_Valid_StableId(message.strBossPlacementId, false) ||
 			!Is_Valid_StableId(message.strFlowId, false) ||
 			!Is_Valid_ValtanPatternFlowRevision(
@@ -3155,6 +3276,7 @@ namespace
 		   callers that construct wire rows without the Boss Tool document's
 		   shorter canonical slot IDs. */
 		std::size_t encodedBytes = sizeof(std::uint32_t) * 2u +
+			GAMEPLAY_DATA_REVISION_BYTES +
 			sizeof(std::uint8_t);
 		for (const std::string_view value : {
 			std::string_view(message.strBossPlacementId),
@@ -3703,7 +3825,9 @@ bool LostArk::Shared::Write_Message(
 		return false;
 
 	writer.Write_U32(message.iRequestSequence);
-	if (!writer.Write_String(
+	if (!Write_GameplayDataRevision(
+			writer, message.ExpectedDefinitionRevision) ||
+		!writer.Write_String(
 			message.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
 		!writer.Write_String(message.strFlowId, MAX_STABLE_NETWORK_ID_BYTES) ||
 		!writer.Write_String(
@@ -3734,6 +3858,8 @@ bool LostArk::Shared::Read_Message(
 	C2S_DEBUG_VALTAN_PATTERN_FLOW_START decoded{};
 	std::uint8_t slotCount = 0u;
 	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!Read_GameplayDataRevision(
+			reader, decoded.ExpectedDefinitionRevision) ||
 		!reader.Read_String(
 			decoded.strBossPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
 		!reader.Read_String(decoded.strFlowId, MAX_STABLE_NETWORK_ID_BYTES) ||

@@ -180,6 +180,25 @@ BlendState BS_EffectV2Opaque
 	RenderTargetWriteMask[1] = 0x03;
 };
 
+BlendState BS_EffectV2Multiply
+{
+	BlendEnable[0] = true;
+	BlendEnable[1] = true;
+	SrcBlend[0] = Dest_Color;
+	DestBlend[0] = Inv_Src_Alpha;
+	BlendOp[0] = Add;
+	SrcBlendAlpha[0] = Zero;
+	DestBlendAlpha[0] = One;
+	BlendOpAlpha[0] = Add;
+	SrcBlend[1] = One;
+	DestBlend[1] = One;
+	BlendOp[1] = Add;
+	SrcBlendAlpha[1] = One;
+	DestBlendAlpha[1] = One;
+	BlendOpAlpha[1] = Add;
+	RenderTargetWriteMask[1] = 0x03;
+};
+
 struct PS_EFFECT_IN
 {
 	float4 vPosition : SV_POSITION;
@@ -271,6 +290,13 @@ PS_EFFECT_OUT PS_EFFECT_V2(PS_EFFECT_IN input)
 }
 
 
+PS_EFFECT_OUT PS_EFFECT_V2_MULTIPLY(PS_EFFECT_IN input)
+{
+	PS_EFFECT_OUT output = PS_EFFECT_V2(input);
+	output.vSceneColor.rgb *= output.vSceneColor.a;
+	return output;
+}
+
 /* Inverted-hull outline. Follows the body's dissolve so an eroding mesh
    sheds its outline in the same places. */
 PS_EFFECT_OUT PS_OUTLINE_V2(PS_EFFECT_IN input)
@@ -341,4 +367,22 @@ PS_EFFECT_OUT PS_OUTLINE_V2(PS_EFFECT_IN input)
 		VertexShader = compile vs_5_0 VS_FUNC(); \
 		GeometryShader = NULL; \
 		PixelShader = compile ps_5_0 PS_EFFECT_V2(); \
+	} \
+	pass MultiplyDepth \
+	{ \
+		SetRasterizerState(RS_EffectV2); \
+		SetDepthStencilState(DSS_EffectV2_ReadOnlyStamp, 1); \
+		SetBlendState(BS_EffectV2Multiply, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
+		VertexShader = compile vs_5_0 VS_FUNC(); \
+		GeometryShader = NULL; \
+		PixelShader = compile ps_5_0 PS_EFFECT_V2_MULTIPLY(); \
+	} \
+	pass MultiplyNoDepth \
+	{ \
+		SetRasterizerState(RS_EffectV2); \
+		SetDepthStencilState(DSS_EffectV2_NoDepthStamp, 1); \
+		SetBlendState(BS_EffectV2Multiply, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
+		VertexShader = compile vs_5_0 VS_FUNC(); \
+		GeometryShader = NULL; \
+		PixelShader = compile ps_5_0 PS_EFFECT_V2_MULTIPLY(); \
 	}

@@ -73,7 +73,9 @@
 	<ClCompile Include="..\Private\ServerNavigation.cpp" />
 	<ClCompile Include="..\Private\ValtanBrain.cpp" />
 	<ClCompile Include="..\Private\EstherSkillSystem.cpp" />
-	<ClCompile Include="..\Private\ServerGameplayContractTests.cpp" />
+	<ClCompile Include="..\Private\ServerGameplayContractTests.cpp">
+	  <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+	</ClCompile>
 	<ClCompile Include="..\Private\ServerTriggerSystem.cpp" />
 	<ClCompile Include="..\Private\ServerCollisionSystem.cpp" />
 	<ClCompile Include="..\Private\EncounterPropRuntime.cpp" />

@@ -14,6 +14,8 @@ below is a real Release-build feature, so the include is no longer guarded. */
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #include "HUDRuntimeView.h"
+#include "UILayoutRuntime.h"
+#include "UIInputRouter.h"
 #include "ItemCatalog.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
@@ -186,7 +188,7 @@ HRESULT CLevel_ValtanArena::Initialize()
 	if (FAILED(__super::Initialize()))
 		return E_FAIL;
 
-	m_PartyInteraction.Initialize(m_pDevice, m_pContext);
+	m_PartyInteraction.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA));
 
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
 		CLevelRegistry::Find(LEVEL::VALTAN_ARENA);
@@ -371,8 +373,10 @@ HRESULT CLevel_ValtanArena::Initialize()
 	-- would flash at full opacity for that frame before Update_DeadScene/Update_RaidClear ever
 	gets to hide them for real. Explicitly hiding them the instant each view loads closes that gap
 	regardless of which order those two calls happen to land in on any given frame. */
-	m_pDeadSceneView = std::make_unique<CHUDRuntimeView>(
-		m_pDevice, m_pContext, L"UI/DeadScene/DeadSceneUI.json");
+	m_pDeadSceneView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA), TEXT("Layer_UI"),
+		L"UI/DeadScene/DeadSceneUI.json");
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_Dim", false);
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_PanelBg", false);
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_WingedArch", false);
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_Effect", false);
@@ -382,14 +386,23 @@ HRESULT CLevel_ValtanArena::Initialize()
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_TitleTextMarker", false);
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_ReviveMessageMarker", false);
 
-	m_pRaidClearView = std::make_unique<CHUDRuntimeView>(
-		m_pDevice, m_pContext, L"UI/RaidClear/RaidClear_Layout.json");
+	m_pRaidClearView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA), TEXT("Layer_UI"),
+		L"UI/RaidClear/RaidClear_Layout.json");
+	m_pRaidClearView->Set_SlotVisible("RaidClear_Dim", false);
 	for (const char* const szSlotId : RAIDCLEAR_FADING_SLOTS)
 		m_pRaidClearView->Set_SlotVisible(szSlotId, false);
 	m_pRaidClearView->Set_SlotVisible("RaidClear_TitleTextBox", false);
+	m_pRaidClearView->Set_SlotVisible("RaidClear_ReturnButton", false);
 
-	m_pItemAnnounceView = std::make_unique<CHUDRuntimeView>(
-		m_pDevice, m_pContext, L"UI/ItemAnnounce/ItemAnnounce_Layout.json");
+	/* First screen migrated off the ImGui interim UI rendering (see
+	.md/TJ/08-31/2026-08-31_ImGui_런타임UI_전환_PLAN.md) -- real CUI_Sprite GameObjects on this
+	Level's own new "Layer_UI" instead of CHUDRuntimeView's ImGui foreground-drawlist draws.
+	Get_SlotRect/Set_SlotVisible/Set_SlotTexture below are unchanged calls; only the type and
+	construction differ. */
+	m_pItemAnnounceView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::VALTAN_ARENA), TEXT("Layer_UI"),
+		L"UI/ItemAnnounce/ItemAnnounce_Layout.json");
 	m_pItemAnnounceView->Set_SlotVisible("ItemAnnounce_Frame", false);
 	m_pItemAnnounceView->Set_SlotVisible("ItemAnnounce_Icon", false);
 
@@ -557,18 +570,6 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 
 #ifdef _DEBUG
 	Update_AuditionTransaction();
-	/* Boss Tool owns the full replay/inspection workflow; Effect Tool may submit
-	   the same typed one-shot audition as a nearby authoring shortcut. Keep the
-	   bounded transaction/timeline state alive for an already-started legacy run,
-	   but do not draw the duplicate Arena mutation panel. */
-	/* Driven outside the panel body so a collapsed window cannot stall a
-	chapter run that is already in flight. */
-	{
-		const VALTAN_PRESENTATION_STATE& timelineBoss =
-			m_Replication.Get_ValtanPresentationState();
-		Advance_EnvironmentTimeline(
-			timelineBoss.isValid && !timelineBoss.strPatternId.empty());
-	}
 #endif
 	Update_WorldDestructionPresentation(fTimeDelta);
 	Bind_CameraToLocalCharacter();
@@ -616,31 +617,130 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, true);
 	}
 	m_PlayerController.Update(cameraAcceptsGameplay && !isRaidClearActive);
-	Update_DeadScene(isRaidClearActive);
+	Update_DeadScene(isRaidClearActive, fTimeDelta);
 	Update_ItemAnnounce(fTimeDelta);
 #ifdef _DEBUG
 	Update_DebugRaidClearKey();
 #endif
 }
 
+bool_t CLevel_ValtanArena::Try_Get_AuthoringPreviewPlacement(
+	float3_t& OutPosition,
+	std::string& strOutSource) const
+{
+	OutPosition = {};
+	strOutSource.clear();
+
+	/* Screen-right keeps the clone next to the actor from the current camera's
+	   point of view instead of using world +X. Flattening it prevents a pitched
+	   raid camera from moving the model above/below the floor. */
+	vector_t vScreenRight = XMVectorSet(1.f, 0.f, 0.f, 0.f);
+	if (nullptr != m_pCamera)
+	{
+		const shared_ptr<CTransform> pCameraTransform =
+			dynamic_pointer_cast<CTransform>(
+				m_pCamera->Get_Component(g_strTransformComTag));
+		if (nullptr != pCameraTransform)
+		{
+			vector_t vCandidate = pCameraTransform->Get_State(STATE::RIGHT);
+			vCandidate = XMVectorSetY(vCandidate, 0.f);
+			vCandidate = XMVectorSetW(vCandidate, 0.f);
+			if (XMVectorGetX(XMVector3LengthSq(vCandidate)) > 0.000001f)
+				vScreenRight = XMVector3Normalize(vCandidate);
+		}
+	}
+
+	const shared_ptr<CCharacter> pLocalCharacter =
+		m_Replication.Get_LocalCharacter();
+	if (nullptr != pLocalCharacter &&
+		nullptr != pLocalCharacter->Get_Transform())
+	{
+		const vector_t vPlayerPosition =
+			pLocalCharacter->Get_Transform()->Get_State(STATE::POSITION);
+		constexpr f32_t PREVIEW_OFFSET_METERS = 3.25f;
+		const array<f32_t, 2u> Directions = { 1.f, -1.f };
+		for (const f32_t fDirection : Directions)
+		{
+			const vector_t vCandidate = XMVectorSetW(
+				vPlayerPosition +
+				vScreenRight * (PREVIEW_OFFSET_METERS * fDirection),
+				1.f);
+			float3_t Candidate{};
+			XMStoreFloat3(&Candidate, vCandidate);
+			float3_t Sampled{};
+			if (pLocalCharacter->Try_SampleTargetGround(
+					Candidate.x, Candidate.z, Sampled))
+			{
+				OutPosition = Sampled;
+				strOutSource = fDirection > 0.f ?
+					"replicated local player / camera-right / Navigation" :
+					"replicated local player / camera-left / Navigation";
+				return true;
+			}
+		}
+
+		/* A missing Client Navigation component must not make the explicitly
+		   requested Model View disappear. The replicated player point is still a
+		   valid arena anchor; only the optional floor clamp was unavailable. */
+		const vector_t vFallback = XMVectorSetW(
+			vPlayerPosition + vScreenRight * PREVIEW_OFFSET_METERS, 1.f);
+		XMStoreFloat3(&OutPosition, vFallback);
+		strOutSource =
+			"replicated local player / camera-right / unclamped fallback";
+		return true;
+	}
+
+	const VALTAN_PRESENTATION_STATE& Boss =
+		m_Replication.Get_ValtanPresentationState();
+	if (Boss.isValid &&
+		std::isfinite(Boss.vPosition.x) &&
+		std::isfinite(Boss.vPosition.y) &&
+		std::isfinite(Boss.vPosition.z))
+	{
+		const vector_t vBossPosition = XMLoadFloat3(&Boss.vPosition);
+		const vector_t vFallback = XMVectorSetW(
+			vBossPosition + vScreenRight * 4.5f, 1.f);
+		XMStoreFloat3(&OutPosition, vFallback);
+		strOutSource =
+			"primary replicated Valtan / camera-right fallback";
+		return true;
+	}
+
+	strOutSource =
+		"waiting for the replicated local player or primary Valtan";
+	return false;
+}
+
 bool_t CLevel_ValtanArena::Reload_PrimaryValtanPresentationAuthoring(
+	const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
 	std::string& strOutStatus)
 {
 	return m_Replication.Reload_PrimaryValtanPresentationAuthoring(
-		strOutStatus);
+		ExpectedRevision, strOutStatus);
 }
 
 bool_t CLevel_ValtanArena::Reload_PrimaryValtanCombatObjectSoundCues(
+	const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
 	std::string& strOutStatus)
 {
 	return m_Replication.Reload_PrimaryValtanCombatObjectSoundCues(
-		strOutStatus);
+		ExpectedRevision, strOutStatus);
 }
 
 bool_t CLevel_ValtanArena::Can_Play_PrimaryValtanPresentation(
+	const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
 	std::string& strOutStatus) const
 {
-	return m_Replication.Can_Play_PrimaryValtanPresentation(strOutStatus);
+	return m_Replication.Can_Play_PrimaryValtanPresentation(
+		ExpectedRevision, strOutStatus);
+}
+
+bool_t CLevel_ValtanArena::Get_PrimaryValtanPatternSoundSourceReceipt(
+	VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& OutReceipt,
+	std::string& strOutStatus) const
+{
+	return m_Replication.Get_PrimaryValtanPatternSoundSourceReceipt(
+		OutReceipt, strOutStatus);
 }
 
 #ifdef _DEBUG
@@ -679,168 +779,6 @@ namespace
 		return static_cast<uint64_t>(GetTickCount64());
 	}
 
-	bool_t Is_AuditionAccepted(
-		const LostArk::Shared::VALTAN_AUDITION_RESULT result)
-	{
-		using LostArk::Shared::VALTAN_AUDITION_RESULT;
-		return VALTAN_AUDITION_RESULT::ARMED == result ||
-			VALTAN_AUDITION_RESULT::QUEUED == result ||
-			VALTAN_AUDITION_RESULT::DUPLICATE_IGNORED == result;
-	}
-
-	bool_t Is_ExactTimelineObject(
-		const Client::DATA_JSON_VALUE& value,
-		const std::initializer_list<const char_t*> keys)
-	{
-		if (!value.Is_Object() || value.Get_Object().size() != keys.size())
-			return false;
-		return std::all_of(keys.begin(), keys.end(),
-			[&value](const char_t* key)
-			{
-				return nullptr != value.Find(key);
-			});
-	}
-
-	bool_t Try_ReadTimelineU32(
-		const Client::DATA_JSON_VALUE& object,
-		const char_t* field,
-		uint32_t& outValue)
-	{
-		const Client::DATA_JSON_VALUE* value = object.Find(field);
-		if (nullptr == value || !value->Is_Number() ||
-			!std::isfinite(value->Get_Number()) ||
-			std::floor(value->Get_Number()) != value->Get_Number() ||
-			value->Get_Number() < 0.0 ||
-			value->Get_Number() > static_cast<double>(
-				(std::numeric_limits<uint32_t>::max)()))
-		{
-			return false;
-		}
-		outValue = static_cast<uint32_t>(value->Get_Number());
-		return true;
-	}
-
-	bool_t Try_ReadTimelineString(
-		const Client::DATA_JSON_VALUE& object,
-		const char_t* field,
-		std::string& outValue)
-	{
-		const Client::DATA_JSON_VALUE* value = object.Find(field);
-		if (nullptr == value || !value->Is_String())
-			return false;
-		outValue = value->Get_String();
-		return true;
-	}
-
-	bool_t Is_StableTimelineToken(const std::string_view value)
-	{
-		if (value.empty() || value.size() > 128u)
-			return false;
-		return std::all_of(value.begin(), value.end(), [](const char_t ch)
-			{
-				return (ch >= 'a' && ch <= 'z') ||
-					(ch >= 'A' && ch <= 'Z') ||
-					(ch >= '0' && ch <= '9') ||
-					'.' == ch || '_' == ch || '-' == ch;
-			});
-	}
-
-	uint32_t Calculate_TimelineCommandId(const std::string_view rowId)
-	{
-		uint32_t hash = 2166136261u;
-		for (const char_t character : rowId)
-		{
-			hash ^= static_cast<uint8_t>(character);
-			hash *= 16777619u;
-		}
-		return hash;
-	}
-
-	/* The bars this build can audition are exactly the encounter's authored
-	HEALTH_BAR thresholds, read from the same document the Server publishes
-	from. Nothing here is a second list to keep in step. */
-	std::vector<uint32_t> Collect_AuditionHealthBars(
-		const Client::CEncounterPatternReference& reference)
-	{
-		std::vector<uint32_t> bars;
-		for (const Client::ENCOUNTER_PATTERN_REFERENCE& pattern :
-			reference.Get_Patterns())
-		{
-			if ("HEALTH_BAR" != pattern.selectionMode ||
-				0u == pattern.iTriggerHealthBar)
-			{
-				continue;
-			}
-			bars.push_back(pattern.iTriggerHealthBar);
-		}
-		std::sort(bars.begin(), bars.end(), std::greater<uint32_t>{});
-		bars.erase(std::unique(bars.begin(), bars.end()), bars.end());
-		return bars;
-	}
-
-	/* The authored rotation script is the order the boss is meant to run its
-	normal patterns in, so the Debug browser replays exactly that list rather
-	than a second hand-kept order. Only this panel consumes the document, so it
-	is read here instead of widening the shared encounter reference. */
-	std::vector<std::string> Collect_AuthoredRotationPatternIds()
-	{
-		std::vector<std::string> ordered;
-		const std::filesystem::path path = CProjectDataRoot::Resolve(
-			L"Encounters/Valtan/ValtanPatternRotations.json");
-		std::ifstream input(path, std::ios::binary);
-		if (!input)
-			return ordered;
-		const std::string text(
-			(std::istreambuf_iterator<char_t>(input)),
-			std::istreambuf_iterator<char_t>());
-		Client::DATA_JSON_VALUE root;
-		std::string parseError;
-		if (!Client::CDataJson::Parse(text, root, parseError) ||
-			!root.Is_Object())
-		{
-			return ordered;
-		}
-		const Client::DATA_JSON_VALUE* rotations = root.Find("rotations");
-		if (nullptr == rotations || !rotations->Is_Array())
-			return ordered;
-		for (const Client::DATA_JSON_VALUE& rotation : rotations->Get_Array())
-		{
-			if (!rotation.Is_Object())
-				continue;
-			const Client::DATA_JSON_VALUE* ids = rotation.Find("patternIds");
-			if (nullptr != ids && ids->Is_Array())
-			{
-				for (const Client::DATA_JSON_VALUE& id : ids->Get_Array())
-				{
-					if (id.Is_String())
-						ordered.push_back(id.Get_String());
-				}
-				continue;
-			}
-			const Client::DATA_JSON_VALUE* candidates =
-				rotation.Find("candidates");
-			if (nullptr == candidates || !candidates->Is_Array())
-				continue;
-			for (const Client::DATA_JSON_VALUE& candidate :
-				candidates->Get_Array())
-			{
-				if (!candidate.Is_Object())
-					continue;
-				const Client::DATA_JSON_VALUE* id =
-					candidate.Find("patternId");
-				const Client::DATA_JSON_VALUE* enabled =
-					candidate.Find("enabled");
-				if (nullptr != id && id->Is_String() &&
-					nullptr != enabled && enabled->Is_Boolean() &&
-					enabled->Get_Boolean())
-				{
-					ordered.push_back(id->Get_String());
-				}
-			}
-		}
-		return ordered;
-	}
-
 	const char_t* Describe_AuditionResult(
 		const LostArk::Shared::VALTAN_AUDITION_RESULT result)
 	{
@@ -850,7 +788,7 @@ namespace
 		case VALTAN_AUDITION_RESULT::ARMED:
 			return "Armed one bar above the target. Press Cross to play it.";
 		case VALTAN_AUDITION_RESULT::QUEUED:
-			return "Reset complete. The Server queued the requested pattern or final-arena state.";
+			return "The Server queued the requested arena preset.";
 		case VALTAN_AUDITION_RESULT::DUPLICATE_IGNORED:
 			return "Already handled that request; treating it as confirmed.";
 		case VALTAN_AUDITION_RESULT::REJECTED_RELEASE_BUILD:
@@ -864,7 +802,7 @@ namespace
 		case VALTAN_AUDITION_RESULT::REJECTED_UNKNOWN_HEALTH_BAR:
 			return "That bar carries no authored pattern.";
 		case VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE:
-			return "That pattern already fired, or one is still running.";
+			return "The Server rejected this arena preset.";
 		case VALTAN_AUDITION_RESULT::REJECTED_NOT_ARMED:
 			return "Arm the same bar before crossing it.";
 		case VALTAN_AUDITION_RESULT::REJECTED_PLAYER_NOT_ENGAGED:
@@ -979,6 +917,7 @@ void CLevel_ValtanArena::Update_ReferenceCamera()
 	camera, the same press dismisses it and applies the toggle the user asked for. */
 	if (GetForegroundWindow() == g_hWnd &&
 		!ImGui::GetIO().WantTextInput &&
+		!CUIInputRouter::Get().Is_TextInputActive() &&
 		CGameInstance::Get().Get_DIKeyPressed(DIK_F6))
 	{
 		End_ReferenceCamera(true);
@@ -1047,19 +986,7 @@ void CLevel_ValtanArena::Update_AuditionTransaction()
 		}
 
 		m_PendingAuditionRequest = {};
-		const bool_t accepted = Is_AuditionAccepted(result.eResult);
 		m_strAuditionStatus = Describe_AuditionResult(result.eResult);
-
-		if (!accepted && !m_EnvironmentTimeline.empty())
-		{
-			/* One refused chapter stops the run. Continuing would audition the
-			later bars against an environment the Server never produced. */
-			m_EnvironmentTimeline.clear();
-			m_iEnvironmentTimelineStep = 0u;
-			m_bEnvironmentTimelineWaiting = false;
-			m_bEnvironmentTimelinePatternStarted = false;
-			m_strAuditionStatus += " Full environment timeline stopped.";
-		}
 	}
 
 	if (!m_PendingAuditionRequest.Is_Active())
@@ -1076,14 +1003,6 @@ void CLevel_ValtanArena::Update_AuditionTransaction()
 		m_PendingAuditionRequest = {};
 		m_strAuditionStatus =
 			"Server verdict timed out after three bounded retries.";
-		if (!m_EnvironmentTimeline.empty())
-		{
-			m_EnvironmentTimeline.clear();
-			m_iEnvironmentTimelineStep = 0u;
-			m_bEnvironmentTimelineWaiting = false;
-			m_bEnvironmentTimelinePatternStarted = false;
-			m_strAuditionStatus += " Full environment timeline stopped.";
-		}
 		return;
 	}
 
@@ -1096,174 +1015,6 @@ void CLevel_ValtanArena::Update_AuditionTransaction()
 	m_strAuditionStatus = sent ?
 		"Waiting for the Server verdict after a bounded retry..." :
 		"The bounded retry could not be sent; it will not retry immediately.";
-}
-
-bool_t CLevel_ValtanArena::Load_AuditionTimeline()
-{
-	m_bAuditionTimelineLoadAttempted = true;
-	const std::filesystem::path path = CProjectDataRoot::Resolve(
-		L"Encounters/Valtan/ValtanDebugAudition.json");
-	std::ifstream input(path, std::ios::binary);
-	if (path.empty() || !input)
-	{
-		m_strAuditionTimelineStatus =
-			"Chronological audition data is missing: " + path.string();
-		return false;
-	}
-	const std::string text(
-		(std::istreambuf_iterator<char_t>(input)),
-		std::istreambuf_iterator<char_t>());
-	Client::DATA_JSON_VALUE root;
-	std::string parseError;
-	if (!Client::CDataJson::Parse(text, root, parseError) ||
-		!Is_ExactTimelineObject(root, {
-			"schema", "formatVersion", "authority", "encounterId",
-			"timelineId", "rows" }))
-	{
-		m_strAuditionTimelineStatus =
-			"Chronological audition data is invalid: " + parseError;
-		return false;
-	}
-
-	std::string schema;
-	std::string authority;
-	std::string encounterId;
-	std::string timelineId;
-	uint32_t formatVersion = 0u;
-	const Client::DATA_JSON_VALUE* rows = root.Find("rows");
-	if (!Try_ReadTimelineString(root, "schema", schema) ||
-		"lostark.valtan-pattern-timeline" != schema ||
-		!Try_ReadTimelineU32(root, "formatVersion", formatVersion) ||
-		1u != formatVersion ||
-		!Try_ReadTimelineString(root, "authority", authority) ||
-		"server" != authority ||
-		!Try_ReadTimelineString(root, "encounterId", encounterId) ||
-		"ENCOUNTER_VALTAN" != encounterId ||
-		!Try_ReadTimelineString(root, "timelineId", timelineId) ||
-		"VALTAN_AUDITION_TIMELINE" != timelineId ||
-		nullptr == rows || !rows->Is_Array() ||
-		52u != rows->Get_Array().size())
-	{
-		m_strAuditionTimelineStatus =
-			"Chronological audition header or row count is invalid.";
-		return false;
-	}
-
-	auto arenaRank = [](const std::string_view state) -> uint32_t
-		{
-			if ("FRESH" == state)
-				return 0u;
-			if ("ORDINARY_WALLS_GONE" == state)
-				return 1u;
-			if ("ALL_WALLS_GONE" == state)
-				return 2u;
-			if ("FLOOR84_GONE" == state)
-				return 3u;
-			if ("FLOOR84_AND_30_GONE" == state)
-				return 4u;
-			return (std::numeric_limits<uint32_t>::max)();
-		};
-	std::vector<AUDITION_TIMELINE_ROW> staged;
-	staged.reserve(rows->Get_Array().size());
-	std::unordered_set<std::string> rowIds;
-	std::unordered_set<uint32_t> commandIds;
-	uint32_t previousHealthBar = (std::numeric_limits<uint32_t>::max)();
-	uint32_t previousArenaRank = 0u;
-	for (size_t index = 0u; index < rows->Get_Array().size(); ++index)
-	{
-		const Client::DATA_JSON_VALUE& value = rows->Get_Array()[index];
-		if (!Is_ExactTimelineObject(value, {
-			"rowId", "commandId", "ordinal", "sectionHealthBar", "entryType",
-			"patterns", "arenaState", "propState", "displayLabel" }))
-		{
-			m_strAuditionTimelineStatus =
-				"Timeline row " + std::to_string(index + 1u) +
-				" has missing or unknown fields.";
-			return false;
-		}
-
-		AUDITION_TIMELINE_ROW row{};
-		const Client::DATA_JSON_VALUE* patterns = value.Find("patterns");
-		if (!Try_ReadTimelineString(value, "rowId", row.strRowId) ||
-			!Try_ReadTimelineU32(value, "commandId", row.iCommandId) ||
-			0u == row.iCommandId ||
-			row.iCommandId != Calculate_TimelineCommandId(row.strRowId) ||
-			!Try_ReadTimelineU32(value, "ordinal", row.iOrdinal) ||
-			!Is_StableTimelineToken(row.strRowId) ||
-			!rowIds.insert(row.strRowId).second ||
-			!commandIds.insert(row.iCommandId).second ||
-			row.iOrdinal != index + 1u ||
-			!Try_ReadTimelineU32(
-				value, "sectionHealthBar", row.iSectionHealthBar) ||
-			0u == row.iSectionHealthBar ||
-			row.iSectionHealthBar > previousHealthBar ||
-			!Try_ReadTimelineString(value, "entryType", row.strEntryType) ||
-			("MECHANIC" != row.strEntryType &&
-				"NORMAL" != row.strEntryType) ||
-			!Try_ReadTimelineString(value, "arenaState", row.strArenaState) ||
-			arenaRank(row.strArenaState) ==
-				(std::numeric_limits<uint32_t>::max)() ||
-			arenaRank(row.strArenaState) < previousArenaRank ||
-			arenaRank(row.strArenaState) > previousArenaRank + 1u ||
-			!Try_ReadTimelineString(value, "propState", row.strPropState) ||
-			("HIDDEN" != row.strPropState &&
-				"FOUR_PILLARS_INTACT" != row.strPropState) ||
-			!Try_ReadTimelineString(
-				value, "displayLabel", row.strDisplayLabel) ||
-			row.strDisplayLabel.empty() || row.strDisplayLabel.size() > 256u ||
-			nullptr == patterns || !patterns->Is_Array() ||
-			patterns->Get_Array().empty() || patterns->Get_Array().size() > 8u)
-		{
-			m_strAuditionTimelineStatus =
-				"Timeline row " + std::to_string(index + 1u) +
-				" violates the chronological row contract.";
-			return false;
-		}
-
-		row.PatternActions.reserve(patterns->Get_Array().size());
-		for (const Client::DATA_JSON_VALUE& actionValue :
-			patterns->Get_Array())
-		{
-			AUDITION_TIMELINE_ACTION action{};
-			if (!Is_ExactTimelineObject(
-				actionValue, { "patternId", "repeat" }) ||
-				!Try_ReadTimelineString(
-					actionValue, "patternId", action.strPatternId) ||
-				!Is_StableTimelineToken(action.strPatternId) ||
-				nullptr == m_ValtanEncounterReference.Find_Pattern(
-					action.strPatternId) ||
-				!Try_ReadTimelineU32(
-					actionValue, "repeat", action.iRepeat) ||
-				0u == action.iRepeat || action.iRepeat > 4u)
-			{
-				m_strAuditionTimelineStatus =
-					"Timeline row " + std::to_string(index + 1u) +
-					" references an invalid pattern action.";
-				return false;
-			}
-			row.PatternActions.push_back(std::move(action));
-		}
-		previousHealthBar = row.iSectionHealthBar;
-		previousArenaRank = arenaRank(row.strArenaState);
-		staged.push_back(std::move(row));
-	}
-	if (160u != staged.front().iSectionHealthBar ||
-		"FRESH" != staged.front().strArenaState ||
-		14u != staged.back().iSectionHealthBar ||
-		"FLOOR84_AND_30_GONE" != staged.back().strArenaState)
-	{
-		m_strAuditionTimelineStatus =
-			"Chronological audition endpoints are invalid.";
-		return false;
-	}
-
-	m_AuditionTimelineRows = std::move(staged);
-	if (m_iSelectedAuditionTimelineRowIndex >= m_AuditionTimelineRows.size())
-		m_iSelectedAuditionTimelineRowIndex = 0u;
-	m_strAuditionTimelineStatus =
-		"Loaded " + std::to_string(m_AuditionTimelineRows.size()) +
-		" chronological fight rows.";
-	return true;
 }
 
 bool_t CLevel_ValtanArena::Submit_Audition(
@@ -1283,82 +1034,29 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 		return false;
 	}
 
-	/* These operations name an authored mechanic or a Debug state directly,
-	rather than a health-bar crossing, so they carry no target bar. */
-	const bool_t isBarless =
-		LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE == operation ||
-		LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_PILLAR_CYCLE ==
-			operation ||
-		LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_WALL_ATTACK ==
-			operation ||
-		LostArk::Shared::VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA ==
-			operation ||
-		LostArk::Shared::VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL ==
-			operation ||
-		LostArk::Shared::VALTAN_AUDITION_OPERATION::STOP_TIMELINE_ROW ==
-			operation;
-	const bool_t isTimelinePlay =
-		LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_TIMELINE_ROW ==
-			operation;
-	const bool_t isFightPageStart =
-		LostArk::Shared::VALTAN_AUDITION_OPERATION::START_FIGHT_PAGE ==
-			operation;
-	const bool_t isArenaPreset =
-		LostArk::Shared::VALTAN_AUDITION_OPERATION::SET_ARENA_PRESET ==
-			operation;
-	/* The pattern browser addresses the authored pattern order instead, and
-	sends a one-based index so the wire never carries the zero that means
-	"no bar". */
-	const bool_t isPatternPlay =
-		LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_PATTERN == operation;
-	const std::vector<Client::ENCOUNTER_PATTERN_REFERENCE>& patterns =
-		m_ValtanEncounterReference.Get_Patterns();
-	if (isPatternPlay && m_iSelectedAuditionPatternIndex >= patterns.size())
+	/* The old Level-owned Pattern/health-bar/timeline browser was removed. This
+	   bounded receipt owner remains solely for the visible Server arena presets;
+	   Product Pattern playback must go through BossTool's stable-ID revision CAS. */
+	if (LostArk::Shared::VALTAN_AUDITION_OPERATION::SET_ARENA_PRESET !=
+		operation)
 	{
-		m_strAuditionStatus = "No authored pattern is selected.";
+		m_strAuditionStatus =
+			"Legacy Valtan Pattern audition controls are retired; use Complete Play.";
 		return false;
 	}
-	if (isTimelinePlay &&
-		m_iSelectedAuditionTimelineRowIndex >= m_AuditionTimelineRows.size())
-	{
-		m_strAuditionStatus = "No chronological fight row is selected.";
-		return false;
-	}
-	if (isFightPageStart && 0u == explicitCommandPayload)
-	{
-		m_strAuditionStatus = "No authored fight page is selected.";
-		return false;
-	}
-	if (isArenaPreset &&
-		(explicitCommandPayload < static_cast<uint32_t>(
+	if (explicitCommandPayload < static_cast<uint32_t>(
 			LostArk::Shared::VALTAN_ARENA_PRESET::FRESH) ||
-		 explicitCommandPayload >= static_cast<uint32_t>(
-			LostArk::Shared::VALTAN_ARENA_PRESET::END)))
+		explicitCommandPayload >= static_cast<uint32_t>(
+			LostArk::Shared::VALTAN_ARENA_PRESET::END))
 	{
 		m_strAuditionStatus = "Arena preset identity is invalid.";
-		return false;
-	}
-	const std::vector<uint32_t> bars =
-		Collect_AuditionHealthBars(m_ValtanEncounterReference);
-	if (!isBarless && !isPatternPlay && !isTimelinePlay &&
-		!isFightPageStart && !isArenaPreset &&
-		m_iSelectedAuditionBarIndex >= bars.size())
-	{
-		m_strAuditionStatus = "No authored health-bar pattern is selected.";
 		return false;
 	}
 
 	const uint32_t sequence = 0u == m_iNextAuditionRequestSequence ?
 		1u : m_iNextAuditionRequestSequence;
-	const uint32_t commandPayload = (isFightPageStart || isArenaPreset) ?
-		explicitCommandPayload : (isPatternPlay ?
-		static_cast<uint32_t>(m_iSelectedAuditionPatternIndex + 1u) :
-		(isTimelinePlay ?
-			m_AuditionTimelineRows[
-				m_iSelectedAuditionTimelineRowIndex].iCommandId :
-			(isBarless ? 0u : bars[m_iSelectedAuditionBarIndex])));
 	if (!CNetworkManager::Get().Send_ValtanAudition(
-		sequence, operation, commandPayload))
+		sequence, operation, explicitCommandPayload))
 	{
 		m_strAuditionStatus = "Could not send the audition request.";
 		return false;
@@ -1368,7 +1066,7 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 		1u : sequence + 1u;
 	m_PendingAuditionRequest.iSequence = sequence;
 	m_PendingAuditionRequest.eOperation = operation;
-	m_PendingAuditionRequest.iTargetHealthBar = commandPayload;
+	m_PendingAuditionRequest.iTargetHealthBar = explicitCommandPayload;
 	m_PendingAuditionRequest.iLastSentAtMilliseconds =
 		Get_AuditionMonotonicMilliseconds();
 	m_PendingAuditionRequest.iRetryCount = 0u;
@@ -1460,920 +1158,6 @@ CLevel_ValtanArena::Get_ArenaActiveState() const
 	return snapshot;
 }
 
-void CLevel_ValtanArena::Start_AuthoredRotationPlayback(
-	const std::vector<std::string>& rotationOrder)
-{
-	using OPERATION = LostArk::Shared::VALTAN_AUDITION_OPERATION;
-	const std::vector<Client::ENCOUNTER_PATTERN_REFERENCE>& patterns =
-		m_ValtanEncounterReference.Get_Patterns();
-	std::vector<ENVIRONMENT_TIMELINE_STEP> staged;
-	staged.reserve(rotationOrder.size());
-	for (const std::string& patternId : rotationOrder)
-	{
-		/* The Server resolves the same one-based position in the same authored
-		order, so the index is built from the encounter reference rather than
-		from a second list this panel would have to keep in step. */
-		const auto found = std::find_if(
-			patterns.begin(), patterns.end(),
-			[&patternId](const Client::ENCOUNTER_PATTERN_REFERENCE& candidate)
-			{
-				return candidate.patternId == patternId;
-			});
-		if (patterns.end() == found)
-		{
-			m_strAuditionStatus =
-				"The rotation script names a pattern the encounter does not own: " +
-				patternId;
-			return;
-		}
-		ENVIRONMENT_TIMELINE_STEP step{};
-		step.eOperation = OPERATION::PLAY_PATTERN;
-		step.iTargetHealthBar = static_cast<uint32_t>(
-			std::distance(patterns.begin(), found)) + 1u;
-		step.waitForPattern = true;
-		staged.push_back(step);
-	}
-	if (staged.empty())
-	{
-		m_strAuditionStatus = "The rotation script carries no playable step.";
-		return;
-	}
-	m_EnvironmentTimeline = std::move(staged);
-	m_iEnvironmentTimelineStep = 0u;
-	m_bEnvironmentTimelineWaiting = false;
-	m_bEnvironmentTimelinePatternStarted = false;
-	m_strAuditionStatus.clear();
-}
-
-void CLevel_ValtanArena::Start_EnvironmentTimeline()
-{
-	using OPERATION = LostArk::Shared::VALTAN_AUDITION_OPERATION;
-	/* Only the first step resets. Every later chapter is an ARM/CROSS pair, so
-	the walls the previous chapter broke stay broken exactly as the recording
-	shows them accumulating. */
-	m_EnvironmentTimeline = {
-		{ OPERATION::PLAY_ENTRANCE, 0u, true },
-		{ OPERATION::ARM_HEALTH_BAR, 159u, false },
-		{ OPERATION::CROSS_HEALTH_BAR, 159u, true },
-		{ OPERATION::ARM_HEALTH_BAR, 109u, false },
-		{ OPERATION::CROSS_HEALTH_BAR, 109u, true },
-		{ OPERATION::ARM_HEALTH_BAR, 100u, false },
-		{ OPERATION::CROSS_HEALTH_BAR, 100u, true },
-		{ OPERATION::ARM_HEALTH_BAR, 14u, false },
-		{ OPERATION::CROSS_HEALTH_BAR, 14u, true } };
-	m_iEnvironmentTimelineStep = 0u;
-	m_bEnvironmentTimelineWaiting = false;
-	m_bEnvironmentTimelinePatternStarted = false;
-}
-
-void CLevel_ValtanArena::Advance_EnvironmentTimeline(
-	const bool_t isBossPatternRunning)
-{
-	if (m_EnvironmentTimeline.empty() ||
-		m_PendingAuditionRequest.Is_Active())
-	{
-		return;
-	}
-	if (m_bEnvironmentTimelineWaiting)
-	{
-		/* A queued pattern needs a tick to start, so the step is only finished
-		once the Server actually showed it running and then went idle. */
-		if (isBossPatternRunning)
-		{
-			m_bEnvironmentTimelinePatternStarted = true;
-			return;
-		}
-		if (!m_bEnvironmentTimelinePatternStarted)
-			return;
-		m_bEnvironmentTimelineWaiting = false;
-		m_bEnvironmentTimelinePatternStarted = false;
-		++m_iEnvironmentTimelineStep;
-	}
-	if (m_iEnvironmentTimelineStep >= m_EnvironmentTimeline.size())
-	{
-		/* The two runs finish on different notes, so the verdict is read from
-		the run that just ended rather than assuming the chapter timeline. */
-		const bool_t wasRotationPlayback =
-			!m_EnvironmentTimeline.empty() &&
-			LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_PATTERN ==
-				m_EnvironmentTimeline.front().eOperation;
-		m_EnvironmentTimeline.clear();
-		m_iEnvironmentTimelineStep = 0u;
-		m_strAuditionStatus = wasRotationPlayback ?
-			"Authored rotation playback finished." :
-			"Full environment timeline finished. Pillars stay raised: the shatter has no product trigger yet.";
-		return;
-	}
-
-	const ENVIRONMENT_TIMELINE_STEP& step =
-		m_EnvironmentTimeline[m_iEnvironmentTimelineStep];
-	if (LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_PATTERN ==
-		step.eOperation)
-	{
-		/* A rotation step carries a one-based authored pattern index, not a
-		bar, so it selects out of the pattern list instead of the bar list. */
-		const std::vector<Client::ENCOUNTER_PATTERN_REFERENCE>& patterns =
-			m_ValtanEncounterReference.Get_Patterns();
-		if (0u == step.iTargetHealthBar ||
-			step.iTargetHealthBar > patterns.size())
-		{
-			m_EnvironmentTimeline.clear();
-			m_iEnvironmentTimelineStep = 0u;
-			m_strAuditionStatus =
-				"Rotation playback stopped: an authored pattern is missing.";
-			return;
-		}
-		m_iSelectedAuditionPatternIndex =
-			static_cast<size_t>(step.iTargetHealthBar - 1u);
-	}
-	else if (0u != step.iTargetHealthBar)
-	{
-		const std::vector<uint32_t> bars =
-			Collect_AuditionHealthBars(m_ValtanEncounterReference);
-		const auto selected =
-			std::find(bars.begin(), bars.end(), step.iTargetHealthBar);
-		if (bars.end() == selected)
-		{
-			m_EnvironmentTimeline.clear();
-			m_iEnvironmentTimelineStep = 0u;
-			m_strAuditionStatus =
-				"Full environment timeline stopped: an authored bar is missing.";
-			return;
-		}
-		m_iSelectedAuditionBarIndex =
-			static_cast<size_t>(std::distance(bars.begin(), selected));
-	}
-	if (!Submit_Audition(step.eOperation))
-	{
-		/* The request never left, so the chapter run stops instead of silently
-		skipping the rest of the timeline. */
-		m_EnvironmentTimeline.clear();
-		m_iEnvironmentTimelineStep = 0u;
-		return;
-	}
-	if (step.waitForPattern)
-		m_bEnvironmentTimelineWaiting = true;
-	else
-		++m_iEnvironmentTimelineStep;
-}
-
-void CLevel_ValtanArena::Render_AuditionPanel()
-{
-	if (!m_bAuditionTimelineLoadAttempted)
-		(void)Load_AuditionTimeline();
-	const ImGuiViewport* viewport = ImGui::GetMainViewport();
-	if (nullptr != viewport)
-	{
-		ImGui::SetNextWindowViewport(viewport->ID);
-		ImGui::SetNextWindowPos(
-			ImVec2(viewport->WorkPos.x + 24.f, viewport->WorkPos.y + 24.f),
-			ImGuiCond_FirstUseEver);
-	}
-	if (!ImGui::Begin(
-		"Valtan Pattern Audition",
-		nullptr,
-		ImGuiWindowFlags_AlwaysAutoResize |
-		ImGuiWindowFlags_NoSavedSettings))
-	{
-		ImGui::End();
-		return;
-	}
-
-	const std::vector<uint32_t> bars =
-		Collect_AuditionHealthBars(m_ValtanEncounterReference);
-	if (bars.empty())
-	{
-		ImGui::TextDisabled(
-			"No authored health-bar patterns were loaded for this encounter.");
-	}
-	else if (m_iSelectedAuditionBarIndex >= bars.size())
-		m_iSelectedAuditionBarIndex = 0u;
-	const bool_t hasLocalCharacter =
-		nullptr != m_Replication.Get_LocalCharacter();
-	const bool_t isTransactionBusy =
-		m_PendingAuditionRequest.Is_Active();
-	const bool_t focusedControlsDisabled = !hasLocalCharacter ||
-		isTransactionBusy || !m_EnvironmentTimeline.empty();
-
-	ImGui::TextUnformatted(
-		"Server-authoritative repeatable audition.");
-	ImGui::TextUnformatted(
-		"Each Play resets boss + walls + collision/nav, then runs the real pattern.");
-	ImGui::TextColored(
-		ImVec4(1.f, 0.55f, 0.25f, 1.f),
-		"One click: every Reset + Play activates the boss, places you at the authored bait point and resets walls/collision/nav.");
-	ImGui::TextDisabled(
-		"No Stage_Boss walk-through and no monster kill is required first.");
-	ImGui::TextColored(
-		ImVec4(1.f, 0.82f, 0.2f, 1.f),
-		"109: the whole arena, 30 outer ring + 67 interior walls x 12 fragments.");
-	ImGui::TextDisabled(
-		"TAKEOFF -> DROP -> IMPACT breaks the outer sectors and every wall still standing;");
-	ImGui::TextDisabled(
-		"collision and nav blockers open on the persistent commit, not on the cue.");
-	ImGui::TextColored(
-		ImVec4(0.4f, 0.85f, 1.f, 1.f),
-		"Attack/159 charge: ordinary walls only; collision/nav opens after the wall disappears.");
-	ImGui::TextColored(
-		ImVec4(1.f, 0.82f, 0.2f, 1.f),
-		"109 outer ring is pattern-only: attack and charge must leave all 30 intact.");
-	ImGui::TextDisabled(
-		"No jump clip exists in this model, so the Server owns the 109 leap as an authored arc.");
-
-	ImGui::SeparatorText("Arena Presets (Server authority)");
-	ImGui::TextDisabled(
-		"Each preset resets then commits wall, collision and navigation state together. The boss remains on hold until another pattern command.");
-	const auto setArenaPreset = [this](
-		const LostArk::Shared::VALTAN_ARENA_PRESET preset)
-	{
-		std::string status;
-		(void)Set_ArenaPreset(preset, status);
-	};
-	ImGui::BeginDisabled(focusedControlsDisabled);
-	if (ImGui::Button("Fresh / All Walls", ImVec2(170.f, 0.f)))
-		setArenaPreset(LostArk::Shared::VALTAN_ARENA_PRESET::FRESH);
-	ImGui::SameLine();
-	if (ImGui::Button("Circle / Walls Gone", ImVec2(180.f, 0.f)))
-		setArenaPreset(
-			LostArk::Shared::VALTAN_ARENA_PRESET::CIRCLE_WALLS_GONE);
-	if (ImGui::Button("Break 3 O'Clock", ImVec2(170.f, 0.f)))
-		setArenaPreset(
-			LostArk::Shared::VALTAN_ARENA_PRESET::THREE_OCLOCK_BROKEN);
-	ImGui::SameLine();
-	if (ImGui::Button("Break 9 O'Clock", ImVec2(180.f, 0.f)))
-		setArenaPreset(
-			LostArk::Shared::VALTAN_ARENA_PRESET::NINE_OCLOCK_BROKEN);
-	if (ImGui::Button("Break 3 + 9 O'Clock", ImVec2(358.f, 0.f)))
-		setArenaPreset(
-			LostArk::Shared::VALTAN_ARENA_PRESET::BOTH_SIDES_BROKEN);
-	ImGui::EndDisabled();
-
-	ImGui::SeparatorText("Fight page start");
-	ImGui::TextDisabled(
-		"Starts the real encounter flow at that page; patterns continue normally after the boundary mechanic.");
-	const auto submitFightPage = [this](const char_t* rowId)
-	{
-		const auto found = std::find_if(
-			m_AuditionTimelineRows.begin(), m_AuditionTimelineRows.end(),
-			[rowId](const AUDITION_TIMELINE_ROW& row)
-			{
-				return row.strRowId == rowId;
-			});
-		if (m_AuditionTimelineRows.end() == found)
-		{
-			m_strAuditionStatus =
-				"The authored fight-page boundary is missing from the timeline.";
-			return;
-		}
-		(void)Submit_Audition(
-			LostArk::Shared::VALTAN_AUDITION_OPERATION::START_FIGHT_PAGE,
-			found->iCommandId);
-	};
-	ImGui::BeginDisabled(focusedControlsDisabled);
-	if (ImGui::Button(
-		"1\xED\x8E\x98\xEC\x9D\xB4\xEC\xA7\x80 "
-		"\xEC\x8B\x9C\xEC\x9E\x91 (160\xEC\xA4\x84)",
-		ImVec2(220.f, 0.f)))
-		submitFightPage("valtan.timeline.160-entrance-whirlwind");
-	ImGui::SameLine();
-	if (ImGui::Button(
-		"2\xED\x8E\x98\xEC\x9D\xB4\xEC\xA7\x80 "
-		"\xEC\x8B\x9C\xEC\x9E\x91 (109\xEC\xA4\x84)",
-		ImVec2(220.f, 0.f)))
-		submitFightPage("valtan.timeline.109-arena-break");
-	if (ImGui::Button(
-		"3\xED\x8E\x98\xEC\x9D\xB4\xEC\xA7\x80 "
-		"\xEC\x8B\x9C\xEC\x9E\x91 (62\xEC\xA4\x84)",
-		ImVec2(220.f, 0.f)))
-		submitFightPage("valtan.timeline.62-center-grab-counter");
-	ImGui::SameLine();
-	if (ImGui::Button(
-		"\xEB\xA7\x9D\xEB\xA0\xB9\xED\x99\x94 "
-		"\xEC\x8B\x9C\xEC\x9E\x91 (14\xEC\xA4\x84)",
-		ImVec2(220.f, 0.f)))
-		submitFightPage("valtan.timeline.14-ghost-transition");
-	ImGui::EndDisabled();
-
-	ImGui::SeparatorText("Chronological fight pattern selection");
-	if (m_AuditionTimelineRows.empty())
-	{
-		ImGui::TextColored(
-			ImVec4(1.f, 0.35f, 0.35f, 1.f),
-			"%s", m_strAuditionTimelineStatus.c_str());
-	}
-	else
-	{
-		m_iSelectedAuditionTimelineRowIndex = (std::min)(
-			m_iSelectedAuditionTimelineRowIndex,
-			m_AuditionTimelineRows.size() - 1u);
-		ImGui::TextDisabled(
-			"Click a row to reset the arena and immediately run that row's complete authored pattern sequence.");
-		ImGui::BeginChild(
-			"##ValtanChronologicalFightRows", ImVec2(0.f, 360.f),
-			ImGuiChildFlags_Borders);
-		uint32_t displayedSection = 0u;
-		for (size_t index = 0u; index < m_AuditionTimelineRows.size(); ++index)
-		{
-			const AUDITION_TIMELINE_ROW& row =
-				m_AuditionTimelineRows[index];
-			if (displayedSection != row.iSectionHealthBar)
-			{
-				displayedSection = row.iSectionHealthBar;
-				ImGui::SeparatorText((
-					std::to_string(displayedSection) + " bars").c_str());
-			}
-			char_t label[768]{};
-			(void)std::snprintf(
-				label, sizeof(label), "%02u  [%s]  %s",
-				row.iOrdinal,
-				"MECHANIC" == row.strEntryType ? "MECHANIC" : "NORMAL",
-				row.strDisplayLabel.c_str());
-			ImGui::PushID(row.strRowId.c_str());
-			const bool_t isMechanic = "MECHANIC" == row.strEntryType;
-			if (isMechanic)
-				ImGui::PushStyleColor(
-					ImGuiCol_Text, ImVec4(1.f, 0.78f, 0.25f, 1.f));
-			const ImGuiStyle& style = ImGui::GetStyle();
-			const f32_t rowWidth = (std::max)(
-				1.f, ImGui::GetContentRegionAvail().x);
-			const f32_t wrapWidth = (std::max)(
-				1.f, rowWidth - style.FramePadding.x * 2.f);
-			const f32_t rowHeight = (std::max)(
-				ImGui::GetFrameHeight(),
-				ImGui::CalcTextSize(label, nullptr, false, wrapWidth).y +
-					style.FramePadding.y * 2.f);
-			const ImVec2 rowStart = ImGui::GetCursorScreenPos();
-			if (ImGui::Selectable(
-				"##select", m_iSelectedAuditionTimelineRowIndex == index,
-				ImGuiSelectableFlags_None, ImVec2(rowWidth, rowHeight)))
-			{
-				m_iSelectedAuditionTimelineRowIndex = index;
-				if (!focusedControlsDisabled)
-				{
-					(void)Submit_Audition(
-						LostArk::Shared::VALTAN_AUDITION_OPERATION::
-							PLAY_TIMELINE_ROW);
-				}
-			}
-			const ImVec2 nextRow = ImGui::GetCursorScreenPos();
-			ImGui::SetCursorScreenPos(ImVec2(
-				rowStart.x + style.FramePadding.x,
-				rowStart.y + style.FramePadding.y));
-			ImGui::PushTextWrapPos(rowStart.x + rowWidth - style.FramePadding.x);
-			ImGui::TextUnformatted(label);
-			ImGui::PopTextWrapPos();
-			ImGui::SetCursorScreenPos(nextRow);
-			/* Moving the cursor back down past the label does not by itself grow
-			the child's content extent, and ImGui asserts at EndChild when the
-			last thing a window did was push its cursor beyond that extent. A
-			zero-size item claims the row end so the scroll region matches the
-			rows actually drawn. */
-			ImGui::Dummy(ImVec2(0.f, 0.f));
-			if (isMechanic)
-				ImGui::PopStyleColor();
-			ImGui::PopID();
-		}
-		ImGui::EndChild();
-
-		const AUDITION_TIMELINE_ROW& selectedRow =
-			m_AuditionTimelineRows[m_iSelectedAuditionTimelineRowIndex];
-		ImGui::TextWrapped("Selected %02u: %s",
-			selectedRow.iOrdinal, selectedRow.strDisplayLabel.c_str());
-		ImGui::BeginDisabled(focusedControlsDisabled);
-		if (ImGui::Button(
-			"Replay Selected Fight Row", ImVec2(300.f, 0.f)))
-		{
-			Submit_Audition(
-				LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_TIMELINE_ROW);
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("Stop Fight Row", ImVec2(180.f, 0.f)))
-		{
-			Submit_Audition(
-				LostArk::Shared::VALTAN_AUDITION_OPERATION::STOP_TIMELINE_ROW);
-		}
-		ImGui::EndDisabled();
-		ImGui::TextDisabled(
-			"A row click or Replay resets and prepares its walls, floor and pillars, then runs only its complete authored pattern sequence.");
-	}
-
-	ImGui::SeparatorText("Reference Views (Debug presentation only)");
-	const bool_t serverCameraOwnsPresentation =
-		m_bCinematicCameraApplied ||
-		m_ValtanCinematicCameraController.Is_Active();
-	ImGui::BeginDisabled(nullptr == m_pCamera ||
-		serverCameraOwnsPresentation);
-	/* The audition panel can be docked to a narrow right rail.  Keep every
-	reference action on its own full-width row so Exterior never lands outside
-	the visible panel (the user's 1280-wide capture exposed this regression). */
-	const f32_t referenceButtonWidth =
-		(std::max)(1.f, ImGui::GetContentRegionAvail().x);
-	if (ImGui::Button(
-		"Reference Top Down", ImVec2(referenceButtonWidth, 0.f)))
-		(void)Begin_ReferenceCamera(REFERENCE_CAMERA_VIEW::TOP_DOWN);
-	if (ImGui::Button(
-		"Reference Exterior (Arena Towers)",
-		ImVec2(referenceButtonWidth, 0.f)))
-		(void)Begin_ReferenceCamera(REFERENCE_CAMERA_VIEW::EXTERIOR);
-	ImGui::EndDisabled();
-	ImGui::BeginDisabled(!m_bReferenceCameraApplied);
-	if (ImGui::Button(
-		"Restore Camera", ImVec2(referenceButtonWidth, 0.f)))
-		End_ReferenceCamera(false);
-	ImGui::EndDisabled();
-	ImGui::Text("Reference view: %s", Get_ReferenceCameraViewName());
-	ImGui::SameLine();
-	ImGui::TextDisabled("Debug-only SpaceHole reference proxy: %s",
-		m_bReferenceSpaceHoleVisible ? "visible" : "authored baseline");
-	ImGui::TextDisabled(
-		"F6 exits this view and toggles follow/free; a Server cinematic always takes priority.");
-	if (serverCameraOwnsPresentation)
-		ImGui::TextDisabled("Reference views wait until the Server cinematic ends.");
-
-	ImGui::SeparatorText("Live authoritative state");
-	const VALTAN_PRESENTATION_STATE& boss =
-		m_Replication.Get_ValtanPresentationState();
-	if (boss.isValid)
-	{
-		ImGui::Text("Server tick: %u  Sequence: %u  Stage index: %u",
-			boss.iServerTick,
-			boss.iPatternSequence,
-			boss.iPatternStageIndex);
-		ImGui::TextWrapped("Pattern: %s",
-			boss.strPatternId.empty() ? "(idle)" : boss.strPatternId.c_str());
-		/* The snapshot carries the stage index, not the stage name, so the
-		authored encounter resolves the readable stage ID for the panel. */
-		const char_t* stageId = "(idle)";
-		if (!boss.strPatternId.empty())
-		{
-			const ENCOUNTER_PATTERN_REFERENCE* pattern =
-				m_ValtanEncounterReference.Find_Pattern(boss.strPatternId);
-			if (nullptr != pattern &&
-				boss.iPatternStageIndex < pattern->stages.size())
-			{
-				stageId =
-					pattern->stages[boss.iPatternStageIndex].stageId.c_str();
-			}
-		}
-		ImGui::TextWrapped("Stage: %s", stageId);
-		ImGui::TextWrapped("Action: %s",
-			boss.strActionId.empty() ? "(idle)" : boss.strActionId.c_str());
-	}
-	else
-	{
-		ImGui::TextDisabled("Waiting for the authoritative Valtan snapshot...");
-	}
-
-	/* The 109 collapse takes the interior walls with the ring, so the panel
-	counts the ring separately only to show that the ring itself is complete.
-	The prefix is the authored group naming contract in ValtanWorldEvents.json. */
-	static constexpr std::string_view OUTER_RING_GROUP_PREFIX =
-		"destroyable.group.valtan.outerwall109.";
-	size_t outerGroupCount = 0u;
-	size_t outerPlacementCount = 0u;
-	for (const WORLD_DESTRUCTION_PROJECTION_GROUP& group :
-		m_WorldDestructionProjectionDocument.Get_Groups())
-	{
-		if (!std::string_view(group.strGroupId).starts_with(
-			OUTER_RING_GROUP_PREFIX))
-		{
-			continue;
-		}
-		++outerGroupCount;
-		outerPlacementCount += group.MemberPlacementIds.size();
-	}
-
-	/* The arena floor collapses on its own health-bar patterns at 84 and 30,
-	so its sectors are counted separately and must still be INTACT when the 109
-	collapse finishes. Three groups answer each stage: one
-	outer rail and two brick sectors per arena half. The SL00 inner wedge and
-	centre cap are Map placements, so they never appear in either count. */
-	static constexpr std::string_view FLOOR_STAGE_A_GROUP_PREFIX =
-		"destroyable.group.valtan.floor84.";
-	static constexpr std::string_view FLOOR_STAGE_B_GROUP_PREFIX =
-		"destroyable.group.valtan.floor30.";
-	size_t intactCount = 0u;
-	size_t breakingCount = 0u;
-	size_t fracturedCount = 0u;
-	size_t despawnedCount = 0u;
-	size_t interiorReactedCount = 0u;
-	size_t floorStageAIntact = 0u;
-	size_t floorStageABreaking = 0u;
-	size_t floorStageAGone = 0u;
-	size_t floorStageBIntact = 0u;
-	size_t floorStageBBreaking = 0u;
-	size_t floorStageBGone = 0u;
-	for (const LostArk::Shared::WORLD_DESTRUCTION_STATE_WIRE& group :
-		m_Replication.Get_WorldDestructionGroupStates())
-	{
-		const std::string_view groupId(group.strGroupId);
-		const bool isStageA = groupId.starts_with(FLOOR_STAGE_A_GROUP_PREFIX);
-		const bool isStageB = groupId.starts_with(FLOOR_STAGE_B_GROUP_PREFIX);
-		if (isStageA || isStageB)
-		{
-			size_t& intactSlot = isStageA ? floorStageAIntact : floorStageBIntact;
-			size_t& breakingSlot =
-				isStageA ? floorStageABreaking : floorStageBBreaking;
-			size_t& goneSlot = isStageA ? floorStageAGone : floorStageBGone;
-			switch (group.eState)
-			{
-			case LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::INTACT:
-				++intactSlot;
-				break;
-			case LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::BREAKING:
-				++breakingSlot;
-				break;
-			default:
-				++goneSlot;
-				break;
-			}
-			continue;
-		}
-		if (!groupId.starts_with(OUTER_RING_GROUP_PREFIX))
-		{
-			if (LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::INTACT !=
-				group.eState)
-			{
-				++interiorReactedCount;
-			}
-			continue;
-		}
-		switch (group.eState)
-		{
-		case LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::INTACT:
-			++intactCount;
-			break;
-		case LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::BREAKING:
-			++breakingCount;
-			break;
-		case LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::FRACTURED:
-			++fracturedCount;
-			break;
-		case LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::DESPAWNED:
-			++despawnedCount;
-			break;
-		default:
-			break;
-		}
-	}
-	ImGui::Text(
-		"Outer walls: INTACT %zu | BREAKING %zu | FRACTURED %zu | GONE %zu",
-		intactCount,
-		breakingCount,
-		fracturedCount,
-		despawnedCount);
-	ImGui::Text("109 outer enabled group count: %zu   Outer placement count: %zu",
-		outerGroupCount,
-		outerPlacementCount);
-	ImGui::Text(
-		"Floor Stage A (84): INTACT %zu | BREAKING %zu | GONE %zu   (expected 3)",
-		floorStageAIntact,
-		floorStageABreaking,
-		floorStageAGone);
-	ImGui::Text(
-		"Floor Stage B (30): INTACT %zu | BREAKING %zu | GONE %zu   (expected 3)",
-		floorStageBIntact,
-		floorStageBBreaking,
-		floorStageBGone);
-	ImGui::TextDisabled(
-		"Stage A drops the screen-right half (outer rail plus two brick sectors),"
-		" stage B the screen-left half. A half is the smallest authored unit: the"
-		" rail submeshes are material layers, not angular slices. The SL00 inner"
-		" wedge and centre cap are Map placements and stay standing either way.");
-	/* The 109 batch now takes the interior walls down with the ring, so this
-	is progress rather than a fault. Entrance walls are counted here too:
-	they break at the first-appearance sweep, long before the collapse. */
-	ImGui::Text(
-		"Interior/entrance walls no longer INTACT: %zu",
-		interiorReactedCount);
-	ImGui::Text("Destruction sync: %s  Epoch: %u  Debris actors: %u/%u",
-		m_Replication.Is_WorldDestructionSynchronized() ? "READY" : "WAITING",
-		m_Replication.Get_WorldDestructionEncounterEpoch(),
-		m_WorldDestructionDebrisPresentationRuntime.Get_ActiveActorCount(),
-		CWorldDestructionDebrisPresentationRuntime::MAX_ACTIVE_ACTORS);
-	/* Server-owned counters. The Client never derives passage from wall states;
-	a wall that is gone while its blocker is still active must stay visible. */
-	const LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_DIAGNOSTICS& diagnostics =
-		m_Replication.Get_WorldDestructionDiagnostics();
-	ImGui::Text("Active player-blocking collision boxes: %u   Active nav regions: %u",
-		diagnostics.iActiveWallCollisionCount,
-		diagnostics.iActiveNavBlockerRegionCount);
-	ImGui::Text("Nav revision: %llu   Last destruction event: %llu",
-		static_cast<unsigned long long>(diagnostics.iNavigationRevision),
-		static_cast<unsigned long long>(diagnostics.iLastEventSequence));
-	ImGui::Text("Camera cue: %s",
-		m_ValtanCinematicCameraController.Is_Active() ? "ACTIVE" : "none");
-	/* The pillars are the one repeatable encounter prop, so the panel reports
-	the live slot states and the occurrence they belong to. */
-	const LostArk::Shared::S2C_ENCOUNTER_PROP_SYNC& props =
-		m_Replication.Get_EncounterPropState();
-	if (props.Slots.empty())
-	{
-		ImGui::TextDisabled("Pillars: no encounter prop state received yet.");
-	}
-	else
-	{
-		size_t hiddenSlots = 0u;
-		size_t intactSlots = 0u;
-		size_t breakingSlots = 0u;
-		uint32_t occurrence = 0u;
-		for (const LostArk::Shared::ENCOUNTER_PROP_SLOT_WIRE& slot : props.Slots)
-		{
-			occurrence = (std::max)(occurrence, slot.iOccurrenceSequence);
-			switch (slot.eState)
-			{
-			case LostArk::Shared::ENCOUNTER_PROP_STATE::INTACT:
-				++intactSlots;
-				break;
-			case LostArk::Shared::ENCOUNTER_PROP_STATE::BREAKING:
-				++breakingSlots;
-				break;
-			case LostArk::Shared::ENCOUNTER_PROP_STATE::HIDDEN:
-				++hiddenSlots;
-				break;
-			default:
-				break;
-			}
-		}
-		ImGui::Text(
-			"Pillars: %zu slots | HIDDEN %zu | INTACT %zu | BREAKING %zu",
-			props.Slots.size(), hiddenSlots, intactSlots, breakingSlots);
-		ImGui::Text("  occurrence %u   epoch %u   set %s",
-			occurrence, props.iEncounterEpoch, props.strPropSetId.c_str());
-	}
-	ImGui::SeparatorText("Focused audition controls");
-	ImGui::BeginDisabled(focusedControlsDisabled);
-	if (ImGui::Button(
-		"Reset + Play Entrance Whirlwind (Front Walls A/B)", ImVec2(300.f, 0.f)))
-	{
-		Submit_Audition(
-			LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE);
-	}
-	if (ImGui::Button(
-		"Reset + Play 109 Only (Outer Wall 30 x 12)", ImVec2(330.f, 0.f)))
-	{
-		const auto selected = std::find(bars.begin(), bars.end(), 109u);
-		if (selected != bars.end())
-		{
-			m_iSelectedAuditionBarIndex = static_cast<size_t>(
-				std::distance(bars.begin(), selected));
-			Submit_Audition(
-				LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR);
-		}
-	}
-	if (ImGui::Button(
-		"Reset + Play 84 (Floor Stage A / Outer Rail)", ImVec2(330.f, 0.f)))
-	{
-		const auto selected = std::find(bars.begin(), bars.end(), 84u);
-		if (selected != bars.end())
-		{
-			m_iSelectedAuditionBarIndex = static_cast<size_t>(
-				std::distance(bars.begin(), selected));
-			Submit_Audition(
-				LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR);
-		}
-	}
-	if (ImGui::Button(
-		"Reset + Play 30 (Floor Stage B / Brick Ring)", ImVec2(330.f, 0.f)))
-	{
-		const auto selected = std::find(bars.begin(), bars.end(), 30u);
-		if (selected != bars.end())
-		{
-			m_iSelectedAuditionBarIndex = static_cast<size_t>(
-				std::distance(bars.begin(), selected));
-			Submit_Audition(
-				LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR);
-		}
-	}
-	ImGui::TextDisabled(
-		"Floor sectors stay walkable through BREAKING and turn NON-WALKABLE at the DESPAWNED commit tick.");
-	if (ImGui::Button(
-		"Reset + Play Attack (Down Smash / Ordinary Wall)",
-		ImVec2(330.f, 0.f)))
-	{
-		Submit_Audition(
-			LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_WALL_ATTACK);
-	}
-	if (ImGui::Button(
-		"Reset + Play Charge (159 Impact / Nav)", ImVec2(330.f, 0.f)))
-	{
-		const auto selected = std::find(bars.begin(), bars.end(), 159u);
-		if (selected != bars.end())
-		{
-			m_iSelectedAuditionBarIndex = static_cast<size_t>(
-				std::distance(bars.begin(), selected));
-			Submit_Audition(
-				LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR);
-		}
-	}
-	if (ImGui::Button(
-		"Reset + Remove All Walls (Final Arena View)", ImVec2(330.f, 0.f)))
-	{
-		Submit_Audition(
-			LostArk::Shared::VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA);
-	}
-	ImGui::TextDisabled(
-		"Final Arena View uses the Server destruction transaction; wait about 0.3 seconds for BREAKING -> GONE.");
-	if (ImGui::Button(
-		"Reset + Break Every Wall (Keep Floor)", ImVec2(330.f, 0.f)))
-	{
-		Submit_Audition(
-			LostArk::Shared::VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL);
-	}
-	ImGui::TextDisabled(
-		"Same transaction without the floor, so 84 and 30 can then collapse with nothing standing above them.");
-	if (ImGui::Button(
-		"Reset + Play Sky + Pillar Cycle", ImVec2(300.f, 0.f)))
-	{
-		Submit_Audition(
-			LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_PILLAR_CYCLE);
-	}
-	if (ImGui::Button(
-		"Reset + Play Full Environment Timeline", ImVec2(300.f, 0.f)))
-	{
-		Start_EnvironmentTimeline();
-	}
-	ImGui::EndDisabled();
-	ImGui::TextDisabled(
-		"Pillar Cycle runs the authored 100-bar pattern: sky cues, the product raise,");
-	ImGui::TextDisabled(
-		"then the Debug shatter and removal. Press it again for the next cycle.");
-	ImGui::TextColored(
-		ImVec4(1.f, 0.72f, 0.3f, 1.f),
-		"Cycles 2-4 have no product trigger yet: no pattern, stage or binding is authored for them.");
-	if (!m_EnvironmentTimeline.empty())
-	{
-		ImGui::Text("Timeline chapter %zu / %zu",
-			m_iEnvironmentTimelineStep + 1u, m_EnvironmentTimeline.size());
-	}
-	ImGui::SeparatorText("Advanced authored health bar");
-	ImGui::SeparatorText("Authored health bar");
-	ImGui::TextColored(
-		ImVec4(0.55f, 0.85f, 1.f, 1.f),
-		"Floor collapse: 84 drops the screen-right half of the disc, 30 the"
-		" screen-left half, and the Server clears every wall inside the same"
-		" request. Press \"Reference Top Down\" above first: the audition stands"
-		" you off-centre and the far half is easy to miss from ground level.");
-	for (size_t index = 0; index < bars.size(); ++index)
-	{
-		char_t label[32]{};
-		(void)snprintf(label, sizeof(label), "%u", bars[index]);
-		if (ImGui::RadioButton(label, m_iSelectedAuditionBarIndex == index))
-			m_iSelectedAuditionBarIndex = index;
-		if (index + 1u < bars.size())
-			ImGui::SameLine();
-	}
-
-	ImGui::Separator();
-	ImGui::BeginDisabled(focusedControlsDisabled);
-	if (ImGui::Button("Reset + Play Selected"))
-	{
-		Submit_Audition(
-			LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR);
-	}
-	/* ARM then CROSS is the only pair that leaves the current destruction
-	alone, so whatever an earlier chapter already broke stays broken. */
-	if (ImGui::Button("Play Selected (Keep Broken)"))
-	{
-		if (m_iSelectedAuditionBarIndex >= bars.size())
-		{
-			m_strAuditionStatus =
-				"No authored health-bar pattern is selected.";
-		}
-		else
-		{
-			using OPERATION = LostArk::Shared::VALTAN_AUDITION_OPERATION;
-			const uint32_t selectedBar = bars[m_iSelectedAuditionBarIndex];
-			m_EnvironmentTimeline = {
-				{ OPERATION::ARM_HEALTH_BAR, selectedBar, false },
-				{ OPERATION::CROSS_HEALTH_BAR, selectedBar, true } };
-			m_iEnvironmentTimelineStep = 0u;
-			m_bEnvironmentTimelineWaiting = false;
-			m_bEnvironmentTimelinePatternStarted = false;
-		}
-	}
-	ImGui::EndDisabled();
-	ImGui::TextDisabled(
-		"Keep Broken replays the selected bar without resetting walls, floor or props.");
-	ImGui::TextDisabled(
-		"A floor-collapse bar takes every wall down with it in the same request.");
-
-	const std::vector<Client::ENCOUNTER_PATTERN_REFERENCE>& authoredPatterns =
-		m_ValtanEncounterReference.Get_Patterns();
-	ImGui::SeparatorText("Focused authored pattern");
-	bool_t useMaterialV1Aliases =
-		CValtan::Is_PatternEffectV1AuditionEnabled();
-	if (ImGui::Checkbox("Use V1 .effect.unified aliases",
-			&useMaterialV1Aliases))
-	{
-		CValtan::Set_PatternEffectV1AuditionEnabled(useMaterialV1Aliases);
-	}
-	ImGui::TextDisabled(useMaterialV1Aliases ?
-		"V1 A/B: source cue timing + parallel .v1.unified material assets." :
-		"V0 A/B: original Product effect assets.");
-	if (authoredPatterns.empty())
-	{
-		ImGui::TextDisabled("The encounter carries no authored pattern.");
-	}
-	else
-	{
-		m_iSelectedAuditionPatternIndex = (std::min)(
-			m_iSelectedAuditionPatternIndex, authoredPatterns.size() - 1u);
-		const char_t* selectedPatternId = authoredPatterns[
-			m_iSelectedAuditionPatternIndex].patternId.c_str();
-		if (ImGui::BeginCombo(
-			"Pattern##ValtanFocusedAudition", selectedPatternId))
-		{
-			for (size_t index = 0u; index < authoredPatterns.size(); ++index)
-			{
-				const bool_t selected =
-					index == m_iSelectedAuditionPatternIndex;
-				if (ImGui::Selectable(
-					authoredPatterns[index].patternId.c_str(), selected))
-				{
-					m_iSelectedAuditionPatternIndex = index;
-				}
-				if (selected)
-					ImGui::SetItemDefaultFocus();
-			}
-			ImGui::EndCombo();
-		}
-		ImGui::BeginDisabled(focusedControlsDisabled);
-		if (ImGui::Button(
-			"Reset + Play Selected Pattern", ImVec2(330.f, 0.f)))
-		{
-			Submit_Audition(
-				LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_PATTERN);
-		}
-		ImGui::EndDisabled();
-		ImGui::TextDisabled(
-			"Runs one selected pattern through the same Server-authoritative Brain path; no rotation wait is required.");
-	}
-
-	/* The authored rotation script is what the boss is meant to run between
-	the scripted mechanics. Replaying it in order remains the full sequence
-	check; the focused selector above is the single-pattern diagnosis path. */
-	ImGui::SeparatorText("Authored rotation");
-	const std::vector<std::string> rotationOrder =
-		Collect_AuthoredRotationPatternIds();
-	if (rotationOrder.empty() || authoredPatterns.empty())
-	{
-		ImGui::TextDisabled(
-			"ValtanPatternRotations.json carries no authored rotation step.");
-	}
-	else
-	{
-		const bool_t rotationRunning = !m_EnvironmentTimeline.empty() &&
-			LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_PATTERN ==
-				m_EnvironmentTimeline.front().eOperation;
-		ImGui::Text("Authored rotation script: %zu patterns in order",
-			rotationOrder.size());
-		ImGui::BeginChild(
-			"##ValtanRotationScript", ImVec2(330.f, 150.f),
-			ImGuiChildFlags_Borders);
-		for (size_t index = 0; index < rotationOrder.size(); ++index)
-		{
-			const bool_t isCurrent = rotationRunning &&
-				m_iEnvironmentTimelineStep == index;
-			if (isCurrent)
-			{
-				ImGui::TextColored(ImVec4(0.55f, 0.85f, 1.f, 1.f), "%2zu. %s",
-					index + 1u, rotationOrder[index].c_str());
-			}
-			else
-			{
-				ImGui::Text("%2zu. %s",
-					index + 1u, rotationOrder[index].c_str());
-			}
-		}
-		ImGui::EndChild();
-		ImGui::BeginDisabled(focusedControlsDisabled || rotationRunning);
-		if (ImGui::Button("Play New Pattern", ImVec2(330.f, 0.f)))
-			Start_AuthoredRotationPlayback(rotationOrder);
-		ImGui::EndDisabled();
-		if (rotationRunning)
-		{
-			ImGui::Text("Playing %zu / %zu",
-				m_iEnvironmentTimelineStep + 1u, m_EnvironmentTimeline.size());
-			if (ImGui::Button("Stop New Pattern", ImVec2(330.f, 0.f)))
-			{
-				m_EnvironmentTimeline.clear();
-				m_iEnvironmentTimelineStep = 0u;
-				m_bEnvironmentTimelineWaiting = false;
-				m_bEnvironmentTimelinePatternStarted = false;
-				m_strAuditionStatus = "Rotation playback stopped.";
-			}
-		}
-		ImGui::TextDisabled(
-			"Plays every authored rotation step in order. Each step resets the"
-			" arena and queues its pattern through the same Brain path a"
-			" health-bar crossing uses.");
-	}
-
-	if (!m_strAuditionStatus.empty())
-		ImGui::TextWrapped("%s", m_strAuditionStatus.c_str());
-	ImGui::End();
-}
 #endif
 
 void CLevel_ValtanArena::Update_WorldDestructionPresentation(
@@ -2891,9 +1675,6 @@ HRESULT CLevel_ValtanArena::Render()
 	m_PlayerNameplateView.Render(m_NameplatePlayers);
 	m_ChatBubbleView.Render(m_Replication, m_NameplatePlayers);
 	m_PartyInteraction.Render(m_pPlayerCommandSink);
-	Render_DeadScene();
-	Render_RaidClear();
-	Render_ItemAnnounce();
 
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(TEXT("Valtan Arena Map"));
@@ -2903,16 +1684,21 @@ HRESULT CLevel_ValtanArena::Render()
 }
 
 void CLevel_ValtanArena::Update_DeadScene(
-	const bool_t isBlockedByRaidClear)
+	const bool_t isBlockedByRaidClear, const f32_t fTimeDelta)
 {
 	if (nullptr == m_pDeadSceneView)
 		return;
+
+	m_pDeadSceneView->Update(fTimeDelta);
 
 	using LostArk::Shared::PLAYER_ACTION_STATE;
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
 	const bool_t isDead = !isBlockedByRaidClear && player.isValid &&
 		PLAYER_ACTION_STATE::DEAD == player.eAction;
 
+	/* Real Render_DeadScene's own whole-screen AddRectFilled(IM_COL32(0,0,0,160)), now a real
+	slot (DeadScene_Dim, White1x1 tinted) instead of a raw ImGui draw call. */
+	m_pDeadSceneView->Set_SlotVisible("DeadScene_Dim", isDead);
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_PanelBg", isDead);
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_WingedArch", isDead);
 	m_pDeadSceneView->Set_SlotVisible("DeadScene_Effect", isDead);
@@ -2956,36 +1742,31 @@ void CLevel_ValtanArena::Update_DeadScene(
 		CCombatHUDViewModel::Get().Set_DeadSceneTextRects(textRects);
 	}
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const f32_t fScaleX = pViewport->WorkSize.x / 1280.f;
-	const f32_t fScaleY = pViewport->WorkSize.y / 720.f;
-
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	if (!m_pDeadSceneView->Get_SlotRect(
 		"DeadScene_ReviveButton", fX, fY, fWidth, fHeight))
 	{
 		return;
 	}
-	const ImVec2 vMin(
-		pViewport->WorkPos.x + fX * fScaleX,
-		pViewport->WorkPos.y + fY * fScaleY);
-	const ImVec2 vMax(vMin.x + fWidth * fScaleX, vMin.y + fHeight * fScaleY);
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-		vMouse.y >= vMin.y && vMouse.y < vMax.y;
-	if (bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fResolutionWidth = m_pDeadSceneView->Get_ResolutionWidth();
+	const f32_t fResolutionHeight = m_pDeadSceneView->Get_ResolutionHeight();
+	if (Router.Is_Hovered(fX, fY, fWidth, fHeight, fResolutionWidth, fResolutionHeight))
 	{
-		CMainApp::Play_UIButtonClickSound();
-		m_PlayerController.Request_Revive();
+		Router.Claim_Mouse_This_Frame();
+		if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fResolutionWidth, fResolutionHeight))
+		{
+			CMainApp::Play_UIButtonClickSound();
+			m_PlayerController.Request_Revive();
+		}
 	}
 }
 
 #ifdef _DEBUG
 void CLevel_ValtanArena::Update_DebugRaidClearKey()
 {
-	if (ImGui::GetIO().WantTextInput)
+	if (ImGui::GetIO().WantTextInput ||
+		CUIInputRouter::Get().Is_TextInputActive())
 		return;
 	const HWND hForeground = GetForegroundWindow();
 	DWORD foregroundProcessId = {};
@@ -3001,46 +1782,6 @@ void CLevel_ValtanArena::Update_DebugRaidClearKey()
 	m_bDebugRaidClearKeyDown = oDown;
 }
 #endif
-
-void CLevel_ValtanArena::Render_DeadScene()
-{
-	if (nullptr == m_pDeadSceneView)
-		return;
-
-	using LostArk::Shared::PLAYER_ACTION_STATE;
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	const bool_t isDead = player.isValid &&
-		PLAYER_ACTION_STATE::DEAD == player.eAction;
-	if (isDead)
-	{
-		/* Whole-screen dim, not just the DeadScene panel's own footprint -- drawn straight into
-		the same ImGui foreground draw list the panel/effect/button images use (CHUDRuntimeView's
-		default DRAW_TARGET::FOREGROUND) so it lands in front of the 3D scene and every other HUD
-		element without a new shader/render target, and directly beneath the panel art drawn right
-		after it since both share that one list in submission order. */
-		ImGuiViewport* pViewport = ImGui::GetMainViewport();
-		if (nullptr != pViewport)
-		{
-			/* Must pass pViewport explicitly, same as CHUDRuntimeView::Render() does for the
-			panel/button images -- the zero-arg GetForegroundDrawList() can resolve to a different
-			draw list when called outside a Begin/End block (as this is), so the rect silently
-			never made it into the list that actually gets composited. WorkPos/WorkSize instead of
-			Pos/Size for the same reason: matches CHUDRuntimeView's own scale/origin exactly. */
-			ImGui::GetForegroundDrawList(pViewport)->AddRectFilled(
-				pViewport->WorkPos,
-				ImVec2(pViewport->WorkPos.x + pViewport->WorkSize.x,
-					pViewport->WorkPos.y + pViewport->WorkSize.y),
-				IM_COL32(0, 0, 0, 160));
-		}
-	}
-
-	/* Title/button-label text is drawn by CMainApp::RenderDeadSceneText(),
-	called after CImGuiLayer::EndFrame() -- same reason as
-	RenderItemUpgradeGaugePercentText/RenderBossHealthBarText: this Render()
-	call's own panel/button images only composite later, inside EndFrame(),
-	and would otherwise bury text submitted here. */
-	m_pDeadSceneView->Render("Default", 0);
-}
 
 /* Real EpicGateCommonClearFrame timeline: TweenMax.delayedCall(startFrame/40, ...) holds on a
 blank frame before resultMc.gotoAndPlay(startFrame) actually starts the reveal, then
@@ -3117,11 +1858,13 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 	simplified timeline instead of each other's real per-frame stagger. RAIDCLEAR_FADING_SLOTS
 	itself lives in the file-scope anonymous namespace near Initialize() (also hides these up
 	front, before this Level's first Render()). */
+	m_pRaidClearView->Set_SlotVisible("RaidClear_Dim", isShowing);
 	for (const char* const szSlotId : RAIDCLEAR_FADING_SLOTS)
 		m_pRaidClearView->Set_SlotVisible(szSlotId, isShowing);
 	/* Authoring-only placeholder, same split as DeadScene_TitleTextMarker --
 	RenderRaidClearText() (CMainApp, after EndFrame()) draws the real text. */
 	m_pRaidClearView->Set_SlotVisible("RaidClear_TitleTextBox", false);
+	m_pRaidClearView->Set_SlotVisible("RaidClear_ReturnButton", isAfterRaidClear);
 	if (isShowing)
 	{
 		const f32_t fRevealAlpha = (m_fRaidClearElapsedSeconds < RAIDCLEAR_REVEAL_SECONDS) ?
@@ -3129,13 +1872,14 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 		for (const char* const szSlotId : RAIDCLEAR_FADING_SLOTS)
 			m_pRaidClearView->Set_SlotAlpha(szSlotId, fRevealAlpha);
 	}
+	m_pRaidClearView->Update(fTimeDelta);
 
 	/* "돌아가기" button -- appears once the celebration overlay's own reveal/hold
 	timeline finishes and every fading slot has hidden itself, taking that same
 	screen position rather than sitting on top of the still-playing overlay.
-	Same hover/click hit-test pattern as CLevel_Bern's ValtanEntry modal buttons
-	(Get_SlotRect + screen-space mouse rect), and the same one-shot Request_*
-	submission as its Request_ConfirmNpcEntry. No local hide-on-click --
+	Same hover/click hit-test pattern as CLevel_ValtanArena's own DeadScene
+	Revive button (CUIInputRouter::Get() + Get_SlotRect), and the same
+	one-shot Request_* submission as before. No local hide-on-click --
 	CLevelTransitionService's real BERN switch (once the Server accepts the
 	transfer) tears this whole Level down anyway. */
 	if (isAfterRaidClear && nullptr != m_pPlayerCommandSink)
@@ -3144,20 +1888,20 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 		if (m_pRaidClearView->Get_SlotRect("RaidClear_ReturnButton",
 			fButtonX, fButtonY, fButtonWidth, fButtonHeight))
 		{
-			ImGuiViewport* pViewport = ImGui::GetMainViewport();
-			if (nullptr != pViewport)
+			CUIInputRouter& Router = CUIInputRouter::Get();
+			const f32_t fResolutionWidth = m_pRaidClearView->Get_ResolutionWidth();
+			const f32_t fResolutionHeight = m_pRaidClearView->Get_ResolutionHeight();
+			const bool_t isButtonHovered = Router.Is_Hovered(
+				fButtonX, fButtonY, fButtonWidth, fButtonHeight,
+				fResolutionWidth, fResolutionHeight);
+			m_pRaidClearView->Set_SlotTexture("RaidClear_ReturnButton", isButtonHovered ?
+				"UI/ClassSelect/Common/NormalButtonHover.png" :
+				"UI/ClassSelect/Common/NormalButton.png");
+			if (isButtonHovered)
 			{
-				const float scaleX = pViewport->WorkSize.x / 1280.f;
-				const float scaleY = pViewport->WorkSize.y / 720.f;
-				const ImVec2 vMin(
-					pViewport->WorkPos.x + fButtonX * scaleX,
-					pViewport->WorkPos.y + fButtonY * scaleY);
-				const ImVec2 vMax(
-					vMin.x + fButtonWidth * scaleX, vMin.y + fButtonHeight * scaleY);
-				const ImVec2 vMouse = ImGui::GetMousePos();
-				const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-					vMouse.y >= vMin.y && vMouse.y < vMax.y;
-				if (bHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+				Router.Claim_Mouse_This_Frame();
+				if (Router.Is_Clicked(fButtonX, fButtonY, fButtonWidth, fButtonHeight,
+					fResolutionWidth, fResolutionHeight))
 				{
 					CMainApp::Play_UIButtonClickSound();
 					m_pPlayerCommandSink->Request_ReturnToBern(
@@ -3179,78 +1923,9 @@ void CLevel_ValtanArena::Update_RaidClear(f32_t fTimeDelta)
 	CCombatHUDViewModel::Get().Set_RaidClearTextRects(textRects);
 }
 
-void CLevel_ValtanArena::Render_RaidClear()
-{
-	if (nullptr == m_pRaidClearView)
-		return;
-
-	/* The real EpicGateCommonClearFrame (ARKFrame::setModalState) draws its own modal rect at
-	MODAL_TRANSPARENT_DUNGEON = 0 alpha -- i.e. the source truly does not dim behind this specific
-	popup, unlike Dead Scene's own modal (MODAL_TRANSPARENT = 0.65 there). Dimming anyway: the
-	source's own zero-alpha modal only exists to eat clicks during a still-interactive dungeon
-	screen, not for legibility, and this overlay covers the whole screen with bright additive
-	glow/flash art with nothing else asking for click-through here -- a dim reads better against
-	gameplay still visible behind it, same reasoning as Dead Scene's real dim. */
-	const bool_t isShowing = m_fRaidClearElapsedSeconds >= 0.f &&
-		m_fRaidClearElapsedSeconds < RAIDCLEAR_TOTAL_SECONDS;
-	// See Update_RaidClear's own comment -- stays true for the rest of this
-	// Level's session once the overlay's timeline finishes.
-	const bool_t isAfterRaidClear =
-		m_fRaidClearElapsedSeconds >= RAIDCLEAR_TOTAL_SECONDS;
-	if (isShowing)
-	{
-		ImGuiViewport* pViewport = ImGui::GetMainViewport();
-		if (nullptr != pViewport)
-		{
-			ImGui::GetForegroundDrawList(pViewport)->AddRectFilled(
-				pViewport->WorkPos,
-				ImVec2(pViewport->WorkPos.x + pViewport->WorkSize.x,
-					pViewport->WorkPos.y + pViewport->WorkSize.y),
-				IM_COL32(0, 0, 0, 160));
-		}
-	}
-
-	/* "돌아가기" button background -- same NormalButton/NormalButtonHover art and
-	hover-swap as CLevel_Bern's ValtanEntry modal buttons; the label itself is
-	drawn as text by CMainApp::RenderRaidClearText() like the headline below.
-	Shows only once the celebration overlay itself has finished and hidden --
-	it replaces the overlay in place, not layered on top of it. */
-	if (isAfterRaidClear)
-	{
-		f32_t fButtonX = 0.f, fButtonY = 0.f, fButtonWidth = 0.f, fButtonHeight = 0.f;
-		if (m_pRaidClearView->Get_SlotRect("RaidClear_ReturnButton",
-			fButtonX, fButtonY, fButtonWidth, fButtonHeight))
-		{
-			ImGuiViewport* pViewport = ImGui::GetMainViewport();
-			if (nullptr != pViewport)
-			{
-				const float scaleX = pViewport->WorkSize.x / 1280.f;
-				const float scaleY = pViewport->WorkSize.y / 720.f;
-				const ImVec2 vMin(
-					pViewport->WorkPos.x + fButtonX * scaleX,
-					pViewport->WorkPos.y + fButtonY * scaleY);
-				const ImVec2 vMax(
-					vMin.x + fButtonWidth * scaleX, vMin.y + fButtonHeight * scaleY);
-				const ImVec2 vMouse = ImGui::GetMousePos();
-				const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-					vMouse.y >= vMin.y && vMouse.y < vMax.y;
-				ID3D11ShaderResourceView* pTexture = m_pRaidClearView->Load_Texture(
-					bHovered ?
-						"UI/ClassSelect/Common/NormalButtonHover.png" :
-						"UI/ClassSelect/Common/NormalButton.png");
-				if (nullptr != pTexture)
-				{
-					ImGui::GetForegroundDrawList(pViewport)->AddImage(
-						reinterpret_cast<ImTextureID>(pTexture), vMin, vMax);
-				}
-			}
-		}
-	}
-
-	/* Headline text is drawn by CMainApp::RenderRaidClearText(), called after
-	CImGuiLayer::EndFrame() -- same reason as Render_DeadScene() above. */
-	m_pRaidClearView->Render("Default", 0);
-}
+/* No matching Render_RaidClear() -- migrated to real CUI_Sprite GameObjects
+that self-render through the normal CRenderer/RENDERGROUP::UI pipeline
+(Update_RaidClear above drives their visibility/alpha/texture instead). */
 
 namespace
 {
@@ -3364,18 +2039,6 @@ void CLevel_ValtanArena::Update_ItemAnnounce(f32_t fTimeDelta)
 		}
 	}
 	CCombatHUDViewModel::Get().Set_ItemAnnounceTextRects(textRects);
-}
-
-void CLevel_ValtanArena::Render_ItemAnnounce()
-{
-	if (nullptr == m_pItemAnnounceView)
-		return;
-
-	/* No screen dim, unlike Render_RaidClear -- this is a small corner-of-screen toast over
-	live gameplay, not a full-screen celebration moment. Name text is drawn by
-	CMainApp::RenderItemAnnounceText(), called after CImGuiLayer::EndFrame(), same reason as
-	Render_RaidClear's own headline. */
-	m_pItemAnnounceView->Render("Default", 0);
 }
 
 HRESULT CLevel_ValtanArena::Ready_Layer_Camera(

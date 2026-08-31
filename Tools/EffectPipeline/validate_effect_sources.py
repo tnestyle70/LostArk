@@ -1042,6 +1042,14 @@ def _validate_product_effect_reachability(
                 f"BOSS_VALTAN combatObjectVisual {index}.effectAssetId",
             )
         )
+        hit_effect_asset_id = visual.get("hitEffectAssetId")
+        if hit_effect_asset_id is not None:
+            reachable_ids.add(
+                _require_stable_id(
+                    hit_effect_asset_id,
+                    f"BOSS_VALTAN combatObjectVisual {index}.hitEffectAssetId",
+                )
+            )
 
     alias_document, _ = _read_json(root / VALTAN_V1_ALIAS_PATH)
     aliases = alias_document.get("aliases")
@@ -1078,21 +1086,43 @@ def validate_repository(
     root = root.resolve()
     data_root = root / "Data/Effects"
     catalog_path = data_root / "EffectCatalog.json"
+    audition_catalog_path = data_root / "EffectAuditionCatalog.json"
     authored_root = data_root / "Authored"
     catalog, _ = _read_json(catalog_path)
-    if tuple(catalog.keys()) != ("formatVersion", "effects"):
-        raise ContractError("EffectCatalog root fields/order must be formatVersion, effects")
-    if catalog["formatVersion"] != 1 or isinstance(catalog["formatVersion"], bool):
-        raise ContractError("EffectCatalog formatVersion must be integer 1")
-    effects = catalog["effects"]
-    if not isinstance(effects, list):
-        raise ContractError("EffectCatalog.effects must be an array")
+    audition_catalog, _ = _read_json(audition_catalog_path)
+
+    def catalog_rows(document: dict[str, Any], label: str) -> list[Any]:
+        if tuple(document.keys()) != ("formatVersion", "effects"):
+            raise ContractError(
+                f"{label} root fields/order must be formatVersion, effects"
+            )
+        if document["formatVersion"] != 1 or isinstance(
+            document["formatVersion"], bool
+        ):
+            raise ContractError(f"{label} formatVersion must be integer 1")
+        rows = document["effects"]
+        if not isinstance(rows, list):
+            raise ContractError(f"{label}.effects must be an array")
+        return rows
+
+    product_effects = catalog_rows(catalog, "EffectCatalog")
+    audition_effects = catalog_rows(audition_catalog, "EffectAuditionCatalog")
+    effects = [
+        (row, False, index)
+        for index, row in enumerate(product_effects)
+    ] + [
+        (row, True, index)
+        for index, row in enumerate(audition_effects)
+    ]
 
     effect_ids: set[str] = set()
+    product_effect_ids: set[str] = set()
+    source_document_hashes: dict[str, str] = {}
+    audition_sources: dict[str, tuple[str, str]] = {}
     authoring_paths: set[str] = set()
     resource_ids: set[str] = set()
     source_bytes = 0
-    for index, row in enumerate(effects):
+    for row, is_audition, index in effects:
         if not isinstance(row, dict):
             continue
         payload_kind = row.get("payloadKind")
@@ -1103,9 +1133,22 @@ def validate_repository(
         if payload_kind != DIRECT_KIND:
             continue
         keys = tuple(row.keys())
-        if keys not in ALLOWED_DIRECT_KEY_ORDERS:
-            raise ContractError(f"direct row {index} has unsupported fields/order: {keys}")
-        effect_id = _require_stable_id(row.get("effectAssetId"), f"direct row {index}.effectAssetId")
+        allowed_keys = (
+            (AUDITION_KEYS, AUDITION_OVERLAY_KEYS)
+            if is_audition
+            else (BASE_KEYS, OVERLAY_KEYS)
+        )
+        registry_label = (
+            "EffectAuditionCatalog" if is_audition else "EffectCatalog"
+        )
+        if keys not in allowed_keys:
+            raise ContractError(
+                f"{registry_label} direct row {index} has unsupported fields/order: {keys}"
+            )
+        effect_id = _require_stable_id(
+            row.get("effectAssetId"),
+            f"{registry_label} direct row {index}.effectAssetId",
+        )
         if effect_id in effect_ids:
             raise ContractError(f"duplicate direct Effect ID: {effect_id}")
         effect_ids.add(effect_id)
@@ -1123,6 +1166,7 @@ def validate_repository(
         source_path = root / "Data" / relative
         source, raw = _read_json(source_path)
         source_bytes += len(raw)
+        source_document_hashes[effect_id] = hashlib.sha256(raw).hexdigest()
         if source.get("schema") != "lostark.effect-authoring":
             raise ContractError(f"direct source schema is invalid: {relative}")
         version = source.get("version")
@@ -1148,14 +1192,14 @@ def validate_repository(
                 f"v13 source cannot carry v15 runtime extensions: {relative}"
             )
 
-        if keys in (AUDITION_KEYS, AUDITION_OVERLAY_KEYS):
+        if is_audition:
             if row.get("runtimeAdmission") != "REGISTRY_BOUND_AUDITION_ONLY":
                 raise ContractError(f"audition row admission is invalid: {effect_id}")
             if row.get("fidelityClass") != "PROJECT_TUNED_APPROX":
                 raise ContractError(f"audition row fidelity is invalid: {effect_id}")
             source_effect_id = _require_stable_id(
                 row.get("sourceEffectAssetId"),
-                f"direct row {index}.sourceEffectAssetId",
+                f"EffectAuditionCatalog row {index}.sourceEffectAssetId",
             )
             if source_effect_id == effect_id:
                 raise ContractError(f"audition row cannot source itself: {effect_id}")
@@ -1163,6 +1207,12 @@ def validate_repository(
                 row["sourceDocumentRawSha256"]
             ) is None:
                 raise ContractError(f"audition row source hash is invalid: {effect_id}")
+            audition_sources[effect_id] = (
+                source_effect_id,
+                row["sourceDocumentRawSha256"],
+            )
+        else:
+            product_effect_ids.add(effect_id)
 
         if keys in (OVERLAY_KEYS, AUDITION_OVERLAY_KEYS):
             expected_overlay = f"Effects/ScreenOverlays/{effect_id}.screen-overlay.json"
@@ -1180,11 +1230,23 @@ def validate_repository(
                 _collect_runtime_resource_ids(overlay, expected_overlay)
             )
 
-    if not effect_ids:
+    if not product_effect_ids:
         raise ContractError("EffectCatalog has no direct-authored Product rows")
 
+    for effect_id, (source_effect_id, expected_hash) in audition_sources.items():
+        if source_effect_id not in product_effect_ids:
+            raise ContractError(
+                f"audition row source is not an ordinary Product row: {effect_id}: "
+                f"{source_effect_id}"
+            )
+        if source_document_hashes[source_effect_id] != expected_hash:
+            raise ContractError(
+                f"audition row source hash mismatches current source document: "
+                f"{effect_id}: {source_effect_id}"
+            )
+
     player_skill_effect_ids = _validate_player_skill_effect_references(
-        root, effect_ids
+        root, product_effect_ids
     )
 
     authored_ids = {
@@ -1211,7 +1273,7 @@ def validate_repository(
             )
 
     _validate_product_effect_reachability(
-        root, effect_ids, player_skill_effect_ids
+        root, product_effect_ids, player_skill_effect_ids
     )
 
     retired_paths = (

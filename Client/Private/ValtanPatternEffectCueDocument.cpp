@@ -34,6 +34,15 @@ namespace
 	constexpr f32_t MAX_POSITION_MAGNITUDE = 100000.f;
 	constexpr f32_t MAX_ROTATION_MAGNITUDE = 360000.f;
 	constexpr f32_t MAX_SCALE = 1000.f;
+	constexpr std::string_view PATTERN_TARGET_SNAPSHOT_ANCHOR =
+		"pattern.target.snapshot";
+
+	bool_t Is_LockedPatternTargetPolicy(const std::string_view Policy)
+	{
+		return Policy == "LOCK_NEAREST_ON_START" ||
+			Policy == "LOCK_RANDOM_ALIVE_ON_START" ||
+			Policy == "LOCK_RANDOM_ALIVE_BEHIND_ON_START";
+	}
 
 	bool_t Is_ExactObject(
 		const DATA_JSON_VALUE& Value,
@@ -429,6 +438,33 @@ namespace
 	}
 }
 
+bool_t Client::CValtanPatternEffectCueDocument::Try_BuildArenaCenterAnchor(
+	const std::string_view strAnchorSlotId,
+	const float3_t& vArenaCenter,
+	const f32_t fLockedFacingYawDegrees,
+	float4x4_t& OutAnchor)
+{
+	const bool_t bUsesLockedFacing =
+		"arena.center.facing" == strAnchorSlotId;
+	if (("arena.center" != strAnchorSlotId && !bUsesLockedFacing) ||
+		!std::isfinite(vArenaCenter.x) ||
+		!std::isfinite(vArenaCenter.y) ||
+		!std::isfinite(vArenaCenter.z) ||
+		!std::isfinite(fLockedFacingYawDegrees))
+	{
+		return false;
+	}
+
+	float4x4_t Staged{};
+	DirectX::XMStoreFloat4x4(&Staged,
+		DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(
+			bUsesLockedFacing ? fLockedFacingYawDegrees : 0.f)) *
+		DirectX::XMMatrixTranslation(
+			vArenaCenter.x, vArenaCenter.y, vArenaCenter.z));
+	OutAnchor = Staged;
+	return true;
+}
+
 std::filesystem::path
 Client::CValtanPatternEffectCueDocument::Resolve_Path()
 {
@@ -700,6 +736,23 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 				Cue.strPatternId;
 			return false;
 		}
+		if (Cue.strAnchorSlotId.starts_with("pattern.target.") &&
+			Cue.strAnchorSlotId != PATTERN_TARGET_SNAPSHOT_ANCHOR)
+		{
+			strOutStatus =
+				"Valtan pattern Effect cue uses an unknown reserved target anchor: " +
+				Cue.strBindingId;
+			return false;
+		}
+		if (Cue.strAnchorSlotId == PATTERN_TARGET_SNAPSHOT_ANCHOR &&
+			(Cue.eFollowPolicy != EFFECT_FOLLOW_POLICY::SNAPSHOT ||
+			 !Is_LockedPatternTargetPolicy(pPattern->targetPolicy)))
+		{
+			strOutStatus =
+				"Valtan pattern target Effect cue requires snapshot follow and a locked Server target: " +
+				Cue.strBindingId;
+			return false;
+		}
 		const auto Stage = std::find_if(pPattern->stages.begin(),
 			pPattern->stages.end(), [&Cue](const ENCOUNTER_STAGE_REFERENCE& Value)
 			{
@@ -820,7 +873,7 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 	return true;
 }
 
-bool_t Client::CValtanPatternEffectCueDocument::Load_Source(
+bool_t Client::CValtanPatternEffectCueDocument::Load_ReadOnlyProduct(
 	VALTAN_PATTERN_EFFECT_CUE_DOCUMENT& InOutDocument,
 	std::string& strOutStatus)
 {
@@ -866,7 +919,7 @@ bool_t Client::CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
 	std::string& strOutStatus)
 {
 	VALTAN_PATTERN_EFFECT_CUE_DOCUMENT Staged;
-	if (!Load_Source(Staged, strOutStatus))
+	if (!Load_ReadOnlyProduct(Staged, strOutStatus))
 		return false;
 	size_t iOmittedV1AliasCount = 0u;
 	for (VALTAN_PATTERN_EFFECT_CUE& Cue : Staged.Cues)

@@ -18,6 +18,19 @@
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
+      "id": "Boss_FillBehind",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 455.625397, "y": 38.5624771, "width": 488, "height": 22 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/BossUI/boss_bar_fill_orange.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
       "id": "Boss_Fill",
       "ownerClass": null,
       "type": 0,
@@ -83,6 +96,19 @@
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
+      "id": "Boss_StaggerFill",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 448.818604, "y": 72.3025131, "width": 493, "height": 7 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/BossUI/boss_stagger_fill.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
       "id": "Boss_StaggerTrack",
       "ownerClass": null,
       "type": 0,
@@ -91,6 +117,45 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
         { "path": "UI/BossUI/boss_stagger_track.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Boss_Separator",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 457.625397, "y": 40.5624771, "width": 6, "height": 18 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/BossUI/boss_bar_separator.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Boss_TickFlash",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 457.625397, "y": 40.5624771, "width": 484, "height": 18 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "Boss_HitGlow",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 445.625397, "y": 28.5624771, "width": 20, "height": 20 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Effect/ClickMoveEffect/click_move_glow.dds", "hoverPath": null, "tint": [1, 1, 0.9, 0], "additive": true, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }

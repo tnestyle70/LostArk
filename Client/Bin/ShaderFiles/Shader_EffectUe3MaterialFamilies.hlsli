@@ -24,6 +24,10 @@ static const uint
     RUNTIME_MATERIAL_V2_PROJECT_TUNED_BASE_COVERAGE_SRGB = 1001u;
 static const uint
     RUNTIME_MATERIAL_V2_PROJECT_TUNED_BASE_COVERAGE_LINEAR = 1002u;
+static const uint
+    RUNTIME_MATERIAL_V2_PROJECT_TUNED_WATER_DROPLET_BURST = 1003u;
+static const uint
+    RUNTIME_MATERIAL_V2_PROJECT_TUNED_GLASS_MESH_V1 = 1004u;
 
 bool EffectUe3RibbonLiquid01ParentDefaultPacketIsValid()
 {
@@ -883,6 +887,325 @@ EFFECT_PS_OUT Shade_EffectProjectTunedBaseCoverage(
 
     output.SceneColor = float4(radiance, alpha);
     output.Distortion = float4(0.f, 0.f, 0.f, 0.f);
+    return output;
+}
+
+bool EffectProjectTunedWaterDropletBurstPacketIsValid()
+{
+    return g_RuntimeMaterialV2Enabled == 1u &&
+        g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_PROJECT_TUNED_WATER_DROPLET_BURST &&
+        g_RuntimeMaterialV2TextureLaneCount == 2u &&
+        g_RuntimeMaterialV2TextureMask == 0x03u &&
+        g_SourceTextureMask == 0x03u &&
+        g_RuntimeMaterialV2DynamicConsumedMask == 0u &&
+        g_RuntimeMaterialV2DynamicSuppressedMask == 0x0fu &&
+        g_RuntimeMaterialV2ParticleColorPolicy == 2u &&
+        g_RuntimeMaterialV2ParticleColorConsumedMask == 0x08u &&
+        g_RuntimeMaterialV2ParticleColorSuppressedMask == 0x07u &&
+        g_RuntimeMaterialV2ScalarCount == 16u &&
+        g_RuntimeMaterialV2VectorCount == 2u &&
+        g_RuntimeMaterialV2InputCount == 16u &&
+        all(g_RuntimeMaterialV2InputConsumedMask == uint2(0xffffu, 0u)) &&
+        all(g_RuntimeMaterialV2InputSuppressedMask == uint2(0u, 0u)) &&
+        all(g_RuntimeMaterialV2VectorComponentConsumedMask ==
+            uint3(0x0fu, 0x0fu, 0u)) &&
+        all(g_RuntimeMaterialV2VectorComponentSuppressedMask ==
+            uint3(0u, 0u, 0u)) &&
+        g_RuntimeMaterialV2StaticInputCount == 0u &&
+        g_RuntimeMaterialV2StaticSelectedMask == 0u &&
+        g_RuntimeMaterialV2StaticConsumedMask == 0u &&
+        g_RuntimeMaterialV2StaticSuppressedMask == 0u &&
+        g_RuntimeMaterialV2RenderInputCount == 6u &&
+        g_RuntimeMaterialV2RenderConsumedMask == 0x2fu &&
+        g_RuntimeMaterialV2RenderSuppressedMask == 0x10u;
+}
+
+EFFECT_PS_OUT Shade_EffectProjectTunedWaterDropletBurst(
+    float2 carrierUV,
+    float4 carrierColor)
+{
+    EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
+    const float4 p0 = g_RuntimeMaterialV2ScalarBlocks[0];
+    const float4 p1 = g_RuntimeMaterialV2ScalarBlocks[1];
+    const float4 p2 = g_RuntimeMaterialV2ScalarBlocks[2];
+    const float4 p3 = g_RuntimeMaterialV2ScalarBlocks[3];
+    const float4 bodyColor = g_RuntimeMaterialV2Vectors[0];
+    const float4 rimColor = g_RuntimeMaterialV2Vectors[1];
+    if (!EffectProjectTunedWaterDropletBurstPacketIsValid() ||
+        !all(isfinite(carrierUV)) || !all(isfinite(carrierColor)) ||
+        !all(isfinite(p0)) || !all(isfinite(p1)) || !all(isfinite(p2)) ||
+        !all(isfinite(p3)) || !all(isfinite(bodyColor)) ||
+        !all(isfinite(rimColor)) || !isfinite(g_EffectLocalTime))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    const float noiseTiling = p0.x;
+    const float2 noisePan = p0.yz;
+    const float secondOctaveScale = p0.w;
+    const float flowWarp = p1.x;
+    const float maskThreshold = p1.y;
+    const float edgeSoftness = p1.z;
+    const float rimWidth = p1.w;
+    const float coveragePower = p2.x;
+    const float bodyStrength = p2.y;
+    const float rimStrength = p2.z;
+    const float distortionStrength = p2.w;
+    const float alphaGain = p3.x;
+    const float fadeStart = p3.y;
+    const float fadeEnd = p3.z;
+    const float cardFeather = p3.w;
+    if (noiseTiling < 0.01f || noiseTiling > 16.f ||
+        any(noisePan < -8.f) || any(noisePan > 8.f) ||
+        secondOctaveScale < 0.5f || secondOctaveScale > 8.f ||
+        flowWarp < 0.f || flowWarp > 0.25f ||
+        maskThreshold < 0.f || maskThreshold > 1.f ||
+        edgeSoftness < 0.1f || edgeSoftness > 8.f ||
+        rimWidth < 0.001f || rimWidth > 0.5f ||
+        coveragePower < 0.1f || coveragePower > 4.f ||
+        bodyStrength < 0.f || bodyStrength > 8.f ||
+        rimStrength < 0.f || rimStrength > 8.f ||
+        abs(distortionStrength) > 0.025f ||
+        alphaGain < 0.f || alphaGain > 4.f ||
+        fadeStart < 0.f || fadeEnd <= fadeStart || fadeEnd > 5.f ||
+        cardFeather < 0.001f || cardFeather > 0.49f ||
+        any(bodyColor.rgb < 0.f) || any(bodyColor.rgb > 4.f) ||
+        bodyColor.a < 0.f || bodyColor.a > 1.f ||
+        any(rimColor.rgb < 0.f) || any(rimColor.rgb > 8.f) ||
+        rimColor.a < 0.f || rimColor.a > 1.f)
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    /* The Valtan noise is dark-biased, so octave subtraction forms a signed
+       flow field without the large negative bias produced by 2*n-1. */
+    const float2 noiseUV = carrierUV * noiseTiling +
+        noisePan * g_EffectLocalTime;
+    const float2 noiseA = g_SourceTexture0.Sample(
+        g_RuntimeMaterialV2Sampler0, noiseUV).rg;
+    const float2 noiseB = g_SourceTexture0.Sample(
+        g_RuntimeMaterialV2Sampler0,
+        noiseUV * secondOctaveScale + float2(0.37f, 0.61f)).gr;
+    const float2 signedFlow = noiseA - noiseB;
+    const float2 warpedUV = carrierUV + signedFlow * flowWarp;
+    const float4 fluid = g_SourceTexture1.Sample(
+        g_RuntimeMaterialV2Sampler1, warpedUV);
+    const float maskAA = max(fwidth(fluid.a) * edgeSoftness, 1.0e-4f);
+    const float outer = smoothstep(
+        maskThreshold - maskAA, maskThreshold + maskAA, fluid.a);
+    const float inner = smoothstep(
+        maskThreshold + rimWidth - maskAA,
+        maskThreshold + rimWidth + maskAA, fluid.a);
+    const float textureRim = saturate(outer - inner);
+
+    const float2 centered = carrierUV * 2.f - 1.f;
+    const float hemisphereZ = sqrt(saturate(1.f - dot(centered, centered)));
+    const float fresnel = pow(saturate(1.f - hemisphereZ), 2.5f) * outer;
+    const float rim = max(textureRim, fresnel);
+    const float body = pow(saturate(outer), coveragePower);
+    const float cardDistance = min(
+        min(carrierUV.x, 1.f - carrierUV.x),
+        min(carrierUV.y, 1.f - carrierUV.y));
+    const float cardGate = smoothstep(0.f, cardFeather, cardDistance);
+    const float spawnGate = smoothstep(0.f, 0.035f, g_EffectLocalTime);
+    const float lifeGate = 1.f - smoothstep(
+        fadeStart, fadeEnd, g_EffectLocalTime);
+    const float authoredAlpha = saturate(
+        (g_ColorMultiply + g_ColorOffset).a * carrierColor.a * alphaGain);
+    const float coverage = saturate(
+        body * cardGate * spawnGate * lifeGate * authoredAlpha);
+
+    const float fluidLuminance = dot(
+        fluid.rgb, float3(0.299f, 0.587f, 0.114f));
+    float3 radiance = max(bodyColor.rgb, 0.f) * bodyColor.a *
+        bodyStrength * body *
+        (0.65f + 0.35f * saturate(fluidLuminance)) +
+        max(rimColor.rgb, 0.f) * rimColor.a * rimStrength * rim;
+    radiance *= max(g_EmissiveIntensity, 0.f) * cardGate * lifeGate;
+    const float peak = max(radiance.r, max(radiance.g, radiance.b));
+    radiance /= 1.f + peak * 0.35f;
+    const float2 distortion = signedFlow * distortionStrength * coverage;
+    if (!all(isfinite(float4(radiance, coverage))) ||
+        !all(isfinite(distortion)))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    output.SceneColor = float4(radiance, coverage);
+    output.Distortion = float4(distortion, 0.f, 0.f);
+    clip(output.SceneColor.a - g_ColorClip);
+    return output;
+}
+
+bool EffectProjectTunedGlassMeshV1PacketIsValid()
+{
+    return g_RuntimeMaterialV2Enabled == 1u &&
+        g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_PROJECT_TUNED_GLASS_MESH_V1 &&
+        g_RuntimeMaterialV2TextureLaneCount == 1u &&
+        g_RuntimeMaterialV2TextureMask == 0x01u &&
+        g_SourceTextureMask == 0x01u &&
+        g_RuntimeMaterialV2DynamicConsumedMask == 0u &&
+        g_RuntimeMaterialV2DynamicSuppressedMask == 0x0fu &&
+        g_RuntimeMaterialV2ParticleColorPolicy == 2u &&
+        g_RuntimeMaterialV2ParticleColorConsumedMask == 0x08u &&
+        g_RuntimeMaterialV2ParticleColorSuppressedMask == 0x07u &&
+        g_RuntimeMaterialV2ScalarCount == 8u &&
+        g_RuntimeMaterialV2VectorCount == 2u &&
+        g_RuntimeMaterialV2InputCount == 8u &&
+        all(g_RuntimeMaterialV2InputConsumedMask == uint2(0xffu, 0u)) &&
+        all(g_RuntimeMaterialV2InputSuppressedMask == uint2(0u, 0u)) &&
+        all(g_RuntimeMaterialV2VectorComponentConsumedMask ==
+            uint3(0x0fu, 0x0fu, 0u)) &&
+        all(g_RuntimeMaterialV2VectorComponentSuppressedMask ==
+            uint3(0u, 0u, 0u)) &&
+        g_RuntimeMaterialV2StaticInputCount == 0u &&
+        g_RuntimeMaterialV2StaticSelectedMask == 0u &&
+        g_RuntimeMaterialV2StaticConsumedMask == 0u &&
+        g_RuntimeMaterialV2StaticSuppressedMask == 0u &&
+        g_RuntimeMaterialV2RenderInputCount == 6u &&
+        g_RuntimeMaterialV2RenderConsumedMask == 0x2fu &&
+        g_RuntimeMaterialV2RenderSuppressedMask == 0x10u;
+}
+
+bool EffectProjectTunedGlassFinite1(float value)
+{
+    return (asuint(value) & 0x7f800000u) != 0x7f800000u;
+}
+
+bool EffectProjectTunedGlassFinite2(float2 value)
+{
+    return all((asuint(value) & 0x7f800000u) != 0x7f800000u);
+}
+
+bool EffectProjectTunedGlassFinite3(float3 value)
+{
+    return all((asuint(value) & 0x7f800000u) != 0x7f800000u);
+}
+
+bool EffectProjectTunedGlassFinite4(float4 value)
+{
+    return all((asuint(value) & 0x7f800000u) != 0x7f800000u);
+}
+
+EFFECT_PS_OUT Shade_EffectProjectTunedGlassMeshV1(
+    float2 carrierUV,
+    float3 worldPosition,
+    float3 worldNormal,
+    float2 viewNormal,
+    float3 cameraPosition,
+    float4 carrierColor)
+{
+    EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
+    const float4 p0 = g_RuntimeMaterialV2ScalarBlocks[0];
+    const float4 p1 = g_RuntimeMaterialV2ScalarBlocks[1];
+    const float4 bodyTintLinear = g_RuntimeMaterialV2Vectors[0];
+    const float4 edgeTintLinear = g_RuntimeMaterialV2Vectors[1];
+    if (!EffectProjectTunedGlassMeshV1PacketIsValid() ||
+        !EffectProjectTunedGlassFinite2(carrierUV) ||
+        !EffectProjectTunedGlassFinite3(worldPosition) ||
+        !EffectProjectTunedGlassFinite3(worldNormal) ||
+        !EffectProjectTunedGlassFinite2(viewNormal) ||
+        !EffectProjectTunedGlassFinite3(cameraPosition) ||
+        !EffectProjectTunedGlassFinite1(carrierColor.a) ||
+        !EffectProjectTunedGlassFinite4(p0) ||
+        !EffectProjectTunedGlassFinite4(p1) ||
+        !EffectProjectTunedGlassFinite4(bodyTintLinear) ||
+        !EffectProjectTunedGlassFinite4(edgeTintLinear))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    const float coverageGain = p0.x;
+    const float bodyOpacity = p0.y;
+    const float fresnelPower = p0.z;
+    const float edgeGain = p0.w;
+    const float crackGain = p1.x;
+    const float refractionStrength = p1.y;
+    const float distortionClamp = p1.z;
+    const float emissionGain = p1.w;
+    const bool scalarBoundsValid =
+        coverageGain >= 0.f && coverageGain <= 4.f &&
+        bodyOpacity >= 0.f && bodyOpacity <= 1.f &&
+        fresnelPower >= 0.25f && fresnelPower <= 16.f &&
+        edgeGain >= 0.f && edgeGain <= 8.f &&
+        crackGain >= 0.f && crackGain <= 4.f &&
+        abs(refractionStrength) <= 0.025f &&
+        distortionClamp >= 0.f && distortionClamp <= 0.025f &&
+        emissionGain >= 0.f && emissionGain <= 8.f;
+    const bool colorBoundsValid =
+        all(bodyTintLinear.rgb >= 0.f) &&
+        all(bodyTintLinear.rgb <= 4.f) &&
+        bodyTintLinear.a >= 0.f && bodyTintLinear.a <= 1.f &&
+        all(edgeTintLinear.rgb >= 0.f) &&
+        all(edgeTintLinear.rgb <= 8.f) &&
+        edgeTintLinear.a >= 0.f && edgeTintLinear.a <= 1.f;
+    const float normalLengthSquared = dot(worldNormal, worldNormal);
+    const float3 toCamera = cameraPosition - worldPosition;
+    const float viewLengthSquared = dot(toCamera, toCamera);
+    if (!scalarBoundsValid || !colorBoundsValid ||
+        !EffectProjectTunedGlassFinite1(normalLengthSquared) ||
+        !EffectProjectTunedGlassFinite1(viewLengthSquared) ||
+        normalLengthSquared <= 1.0e-8f || viewLengthSquared <= 1.0e-8f)
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    const float4 crackSample = g_SourceTexture0.Sample(
+        g_RuntimeMaterialV2Sampler0, carrierUV);
+    if (!EffectProjectTunedGlassFinite4(crackSample))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    const float3 normal = worldNormal * rsqrt(normalLengthSquared);
+    const float3 viewDirection = toCamera * rsqrt(viewLengthSquared);
+    const float fresnel = pow(
+        saturate(1.f - abs(dot(normal, viewDirection))), fresnelPower);
+    const float crackLuminance = saturate(dot(
+        crackSample.rgb, float3(0.299f, 0.587f, 0.114f)));
+    const float crackAccent = saturate(crackLuminance * crackGain);
+    const float edge = saturate(fresnel * edgeGain + crackAccent);
+    const float authoredAlpha = saturate(carrierColor.a);
+    const float bodyCoverage = bodyOpacity * bodyTintLinear.a;
+    const float edgeCoverage = edge * edgeTintLinear.a;
+    const float coverage = saturate(
+        max(bodyCoverage, edgeCoverage) * coverageGain * authoredAlpha);
+
+    const float bodyShape = 0.35f + 0.65f * (1.f - crackAccent);
+    const float colorWeight = bodyCoverage + edgeCoverage;
+    const float3 unassociatedTint = colorWeight > 1.0e-6f ?
+        (bodyTintLinear.rgb * bodyCoverage * bodyShape +
+            edgeTintLinear.rgb * edgeCoverage) / colorWeight :
+        float3(0.f, 0.f, 0.f);
+    const float3 radiance = max(
+        unassociatedTint * emissionGain *
+            max(g_EmissiveIntensity, 0.f),
+        float3(0.f, 0.f, 0.f));
+
+    const float2 signedCrack = crackSample.rg * 2.f - 1.f;
+    const float2 normalSignal = clamp(
+        viewNormal + signedCrack * (0.25f * crackAccent), -1.f, 1.f);
+    const float2 distortion = clamp(
+        normalSignal * refractionStrength,
+        -distortionClamp.xx, distortionClamp.xx) * coverage;
+    if (!all(isfinite(float4(radiance, coverage))) ||
+        !all(isfinite(distortion)))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    output.SceneColor = float4(radiance, coverage);
+    output.Distortion = float4(distortion, 0.f, 0.f);
+    clip(output.SceneColor.a - g_ColorClip);
     return output;
 }
 

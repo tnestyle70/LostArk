@@ -173,6 +173,14 @@ private:
 	void Snap_PivotToTarget();
 	bool_t Save_Bindings();
 	bool_t Load_Bindings(const std::string& strArchetypeId);
+	void Render_GroupWindow();
+	void Scan_Groups();
+	bool_t Load_Group(const std::string& strGroupId);
+	bool_t Save_Group();
+	bool_t Play_GroupPreview();
+	void Stop_GroupPreview();
+	bool_t Resolve_GroupPreviewBasePivot(float4x4_t& OutPivot);
+	float4x4_t Composed_GroupPreviewPivot(const float4x4_t& BasePivot) const;
 	static bool_t Collect_BoneNames(
 		const std::string& strModelAssetId,
 		std::vector<std::string>& OutNames);
@@ -237,8 +245,22 @@ private:
 	PIVOT_ROTATION m_ePivotRotation = PIVOT_ROTATION::TARGET_YAW;
 	std::string m_strPivotBone;
 	int32_t m_iSpawnFrame = 0;
+	float3_t m_vBindingOffset = { 0.f, 0.f, 0.f };
+	f32_t m_fBindingYawDegrees = 0.f;
 	std::vector<EFFECT_BINDING> m_Bindings;
 	std::string m_strAttachStatus;
+
+	bool_t m_bGroupWindowOpen = false;
+	bool_t m_bGroupsScanned = false;
+	std::vector<std::string> m_Groups;
+	EFFECT_V2_GROUP m_Group;
+	char m_szGroupId[96] = {};
+	std::string m_strBindingGroupId;
+	uint32_t m_iGroupPreviewHandle = 0u;
+	float4x4_t m_GroupPreviewBasePivot = {
+		1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f };
+	bool_t m_bGroupPreviewLoop = false;
+	std::string m_strGroupStatus;
 
 	VALTAN_PATTERN_TREE_VIEW m_ValtanTree;
 	bool_t m_bValtanTreeLoaded = false;
