@@ -1,9 +1,10 @@
-#include "imgui.h"
-
 #include "PartyWindowView.h"
 
-#include "UITextureCache.h"
+#include "GameInstance.h"
 #include "ReplicatedPlayerHealth.h"
+#include "UILayoutRuntime.h"
+
+#include <algorithm>
 
 namespace
 {
@@ -25,17 +26,57 @@ namespace
 		default: return nullptr;
 		}
 	}
+
+	string Row_SlotId(const char_t* pPrefix, const size_t iRow)
+	{
+		return string(pPrefix) + std::to_string(iRow);
+	}
+
+	bool_t Convert_NicknameToWide(const string& strUtf8, wstring_t& outWide)
+	{
+		if (strUtf8.empty())
+			return false;
+		const int32_t iLength = ::MultiByteToWideChar(
+			CP_UTF8, 0, strUtf8.c_str(), -1, nullptr, 0);
+		if (iLength <= 1)
+			return false;
+		outWide.assign(static_cast<size_t>(iLength - 1), L'\0');
+		::MultiByteToWideChar(
+			CP_UTF8, 0, strUtf8.c_str(), -1, outWide.data(), iLength);
+		return true;
+	}
 }
 
-Client::CPartyWindowView::CPartyWindowView(ComPtr<ID3D11Device> pDevice)
-	: m_pTextureCache{ make_unique<CUITextureCache>(pDevice) }
+Client::CPartyWindowView::CPartyWindowView(
+	ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
+	: m_pView{ make_unique<CUILayoutRuntime>(
+		pDevice, pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
+		L"UI/Party/PartyWindow_Layout.json") }
 	// "161기 최후의 4인"
 	, m_strPartyTitle{ "161\xea\xb8\xb0 \xec\xb5\x9c\xed\x9b\x84\xec\x9d\x98 4\xec\x9d\xb8" }
 {
+	/* A CUI_Sprite is visible from construction, unlike the old drawlist path that simply drew
+	nothing while the roster was empty. */
+	Hide_AllRows();
 }
 
 Client::CPartyWindowView::~CPartyWindowView()
 {
+}
+
+void Client::CPartyWindowView::Hide_AllRows()
+{
+	if (nullptr == m_pView)
+		return;
+	m_pView->Set_SlotVisible("PartyWindow_TitleBg", false);
+	for (size_t iRow = 0; iRow < MAX_ROWS; ++iRow)
+	{
+		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_Symbol_", iRow), false);
+		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_HpBg_", iRow), false);
+		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_HpFill_", iRow), false);
+		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_Number_", iRow), false);
+		m_pView->Set_SlotVisible(Row_SlotId("PartyWindow_LeaderMark_", iRow), false);
+	}
 }
 
 void Client::CPartyWindowView::Sync_From_Roster(
@@ -61,163 +102,130 @@ void Client::CPartyWindowView::Sync_From_Roster(
 
 void Client::CPartyWindowView::Render()
 {
+	if (nullptr == m_pView)
+		return;
 	if (m_Members.empty())
+	{
+		Hide_AllRows();
+		return;
+	}
+
+	m_pView->Set_SlotVisible("PartyWindow_TitleBg", true);
+
+	for (size_t iRow = 0; iRow < MAX_ROWS; ++iRow)
+	{
+		const string strSymbol = Row_SlotId("PartyWindow_Symbol_", iRow);
+		const string strHpBg = Row_SlotId("PartyWindow_HpBg_", iRow);
+		const string strHpFill = Row_SlotId("PartyWindow_HpFill_", iRow);
+		const string strNumber = Row_SlotId("PartyWindow_Number_", iRow);
+		const string strLeader = Row_SlotId("PartyWindow_LeaderMark_", iRow);
+
+		if (iRow >= m_Members.size())
+		{
+			m_pView->Set_SlotVisible(strSymbol, false);
+			m_pView->Set_SlotVisible(strHpBg, false);
+			m_pView->Set_SlotVisible(strHpFill, false);
+			m_pView->Set_SlotVisible(strNumber, false);
+			m_pView->Set_SlotVisible(strLeader, false);
+			continue;
+		}
+
+		const PARTY_MEMBER& Member = m_Members[iRow];
+
+		/* A class with no symbol art keeps its row (bar/number/nickname) but shows no symbol,
+		matching the old path's own empty-path check. */
+		if (Member.strClassSymbolPath.empty())
+		{
+			m_pView->Set_SlotVisible(strSymbol, false);
+		}
+		else
+		{
+			m_pView->Set_SlotVisible(strSymbol, true);
+			m_pView->Set_SlotTexture(strSymbol, Member.strClassSymbolPath);
+		}
+
+		m_pView->Set_SlotVisible(strHpBg, true);
+		m_pView->Set_SlotVisible(strNumber, true);
+
+		/* Before the accepted world snapshot (or outside the replicated world) there is no HP
+		to show, so the fill stays hidden over its own background art. */
+		if (Member.hasHealthSnapshot)
+		{
+			const f32_t fHpRatio = std::clamp(Member.fHpRatio, 0.f, 1.f);
+			m_pView->Set_SlotVisible(strHpFill, true);
+			m_pView->Set_SlotFillRatio(strHpFill, fHpRatio);
+		}
+		else
+		{
+			m_pView->Set_SlotVisible(strHpFill, false);
+		}
+
+		m_pView->Set_SlotVisible(strLeader, Member.isLeader);
+	}
+}
+
+void Client::CPartyWindowView::RenderText()
+{
+	if (nullptr == m_pView || m_Members.empty())
 		return;
 
-	constexpr f32_t REF_WIDTH = 1280.f;
-	constexpr f32_t REF_HEIGHT = 720.f;
-	constexpr f32_t PANEL_X = 20.f;
-	/* Reference has the title bar sitting about a third of the way down the screen, not
-	flush against the top-left corner. */
-	constexpr f32_t PANEL_Y = REF_HEIGHT / 3.f;
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fRefWidth = m_pView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pView->Get_ResolutionHeight();
+	if (fRefWidth <= 0.f || fRefHeight <= 0.f)
+		return;
+	const f32_t fScaleX = vViewportSize.x / fRefWidth;
+	const f32_t fScaleY = vViewportSize.y / fRefHeight;
+	const f32_t fUiScale = (std::min)(fScaleX, fScaleY);
 
-	/* Native sizes of the extracted party art (Client/Bin/Resources/UI/Party) -- the title
-	bar is drawn shorter than its native 28px height (reference shows it noticeably thinner
-	than a member row). */
-	constexpr f32_t TITLE_WIDTH = 248.f;
-	constexpr f32_t TITLE_HEIGHT = 19.2f;
-	constexpr f32_t TITLE_TO_LIST_GAP = 15.f;
-	constexpr f32_t SYMBOL_SIZE = 34.f;
-	constexpr f32_t SYMBOL_GAP = 2.f;
-	constexpr f32_t HP_BAR_WIDTH = 207.f;
-	constexpr f32_t HP_BAR_HEIGHT = 26.f;
-	constexpr f32_t HP_FILL_INSET = 0.5f;
-	constexpr f32_t ROW_GAP = 13.5f;
-	constexpr f32_t NUMBER_INSET_X = 6.f;
-	constexpr f32_t LEADER_MARK_WIDTH = 20.f;
-	constexpr f32_t LEADER_MARK_HEIGHT = 16.f;
-
-	/* No ImGui window here on purpose: Begin()/End() carries window-background/border painting
-	that kept showing up as an unwanted black panel behind the whole group no matter which
-	NoBackground/BgAlpha/style-color combination was pushed. RenderStanceSkillIcons() and
-	RenderSkillCooldowns() in MainApp.cpp already draw the rest of the combat HUD straight onto
-	the foreground draw list with no window at all and have never had this problem, so the party
-	roster now follows the same proven pattern instead of fighting window style flags. */
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
-	const f32_t fScaleY = pViewport->WorkSize.y / REF_HEIGHT;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
-
-	const f32_t fPanelScreenX = pViewport->WorkPos.x + PANEL_X * fScaleX;
-	const f32_t fPanelScreenY = pViewport->WorkPos.y + PANEL_Y * fScaleY;
-
-	const ImVec2 vOrigin(fPanelScreenX, fPanelScreenY);
-
-	const ImVec2 vTitleMin = vOrigin;
-	const ImVec2 vTitleMax(
-		vTitleMin.x + TITLE_WIDTH * fScaleX, vTitleMin.y + TITLE_HEIGHT * fScaleY);
-	if (ID3D11ShaderResourceView* pTitleBg =
-		m_pTextureCache->Get_Or_Load("UI/Party/Party Name.png"))
+	/* Left-anchored, vertically centered on the given reference-resolution point -- the same
+	placement the old drawlist computed by hand from CalcTextSize. */
+	const auto Fn_DrawLeft = [&](f32_t fX, f32_t fCenterY, const wchar_t* pText,
+		f32_t fTargetHeight, const fvector_t& vColor)
 	{
-		pDrawList->AddImage(pTitleBg, vTitleMin, vTitleMax);
-	}
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pText);
+		if (vMeasured.y <= 0.f)
+			return;
+		const f32_t fScale = (fTargetHeight / vMeasured.y) * fUiScale;
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pText,
+			float2_t(fX * fScaleX, fCenterY * fScaleY),
+			vColor, 0.f, float2_t(0.f, 0.5f), fScale);
+	};
+
+	f32_t fTitleX = 0.f, fTitleY = 0.f, fTitleW = 0.f, fTitleH = 0.f;
+	if (m_pView->Get_SlotRect(
+		"PartyWindow_TitleBg", fTitleX, fTitleY, fTitleW, fTitleH))
 	{
-		const ImVec2 vTitleSize = ImGui::CalcTextSize(m_strPartyTitle.c_str());
-		pDrawList->AddText(
-			ImVec2(
-				vTitleMin.x + 10.f * fScaleX,
-				vTitleMin.y + (vTitleMax.y - vTitleMin.y - vTitleSize.y) * 0.5f),
-			IM_COL32(255, 255, 255, 255), m_strPartyTitle.c_str());
+		wstring_t strTitle;
+		if (Convert_NicknameToWide(m_strPartyTitle, strTitle))
+		{
+			Fn_DrawLeft(fTitleX + 10.f, fTitleY + fTitleH * 0.5f, strTitle.c_str(),
+				13.f, Colors::White);
+		}
 	}
 
-	ID3D11ShaderResourceView* pHpBgSRV =
-		m_pTextureCache->Get_Or_Load("UI/Party/Party Hp Bg.png");
-	ID3D11ShaderResourceView* pHpFillSRV =
-		m_pTextureCache->Get_Or_Load("UI/Party/Party HP.png");
-	ID3D11ShaderResourceView* pLeaderMarkSRV =
-		m_pTextureCache->Get_Or_Load("UI/Party/Party Leader Mark.png");
-
-	f32_t fRowY = vTitleMax.y + TITLE_TO_LIST_GAP * fScaleY;
-	for (size_t index = 0; index < m_Members.size(); ++index)
+	for (size_t iRow = 0; iRow < MAX_ROWS && iRow < m_Members.size(); ++iRow)
 	{
-		const PARTY_MEMBER& Member = m_Members[index];
-
-		const ImVec2 vSymbolMin(vOrigin.x, fRowY);
-		const ImVec2 vSymbolMax(
-			vSymbolMin.x + SYMBOL_SIZE * fScaleX,
-			vSymbolMin.y + SYMBOL_SIZE * fScaleY);
-		if (!Member.strClassSymbolPath.empty())
+		f32_t fBarX = 0.f, fBarY = 0.f, fBarW = 0.f, fBarH = 0.f;
+		if (!m_pView->Get_SlotRect(
+			Row_SlotId("PartyWindow_HpBg_", iRow), fBarX, fBarY, fBarW, fBarH))
 		{
-			if (ID3D11ShaderResourceView* pSymbolSRV =
-				m_pTextureCache->Get_Or_Load(Member.strClassSymbolPath))
-			{
-				pDrawList->AddImage(pSymbolSRV, vSymbolMin, vSymbolMax);
-			}
+			continue;
 		}
 
-		const ImVec2 vBarMin(
-			vSymbolMax.x + SYMBOL_GAP * fScaleX, fRowY);
-		const ImVec2 vBarMax(
-			vBarMin.x + HP_BAR_WIDTH * fScaleX,
-			vBarMin.y + HP_BAR_HEIGHT * fScaleY);
-		if (nullptr != pHpBgSRV)
-			pDrawList->AddImage(pHpBgSRV, vBarMin, vBarMax);
-		if (Member.hasHealthSnapshot && nullptr != pHpFillSRV)
-		{
-			const f32_t fHpRatio = (std::min)(1.f, (std::max)(0.f, Member.fHpRatio));
-			const ImVec2 vFillMin(
-				vBarMin.x + HP_FILL_INSET * fScaleX, vBarMin.y + HP_FILL_INSET * fScaleY);
-			const ImVec2 vFillMax(
-				vFillMin.x + (HP_BAR_WIDTH - HP_FILL_INSET * 2.f) * fScaleX * fHpRatio,
-				vBarMax.y - HP_FILL_INSET * fScaleY);
-			const ImVec2 vFillUvMax(fHpRatio, 1.f);
-			pDrawList->AddImage(
-				pHpFillSRV, vFillMin, vFillMax, ImVec2(0.f, 0.f), vFillUvMax);
-		}
+		/* Nickname starts just past the join-order digit art, exactly as before -- the digit's
+		own slot rect supplies the width instead of a hardcoded per-digit table. */
+		f32_t fNumberX = 0.f, fNumberY = 0.f, fNumberW = 0.f, fNumberH = 0.f;
+		const f32_t fNameX = m_pView->Get_SlotRect(
+			Row_SlotId("PartyWindow_Number_", iRow),
+			fNumberX, fNumberY, fNumberW, fNumberH) ?
+			fNumberX + fNumberW + 4.f : fBarX + 6.f;
 
-		/* Each digit's own native size (Party No.1.png is 7x15, No.4 is 10x15, ...) --
-		forcing them all into one fixed box stretched No.1 nearly 1.5x wider than drawn,
-		which read as oversized/distorted next to the reference. NUMBER_SHRINK draws them
-		smaller still, matching how small the reference's digits are against the bar. */
-		constexpr f32_t NUMBER_SHRINK = 0.7f;
-		struct NUMBER_ART { const char_t* pPath; f32_t fWidth; f32_t fHeight; };
-		constexpr NUMBER_ART NUMBER_ARTS[] = {
-			{ "UI/Party/Party No.1.png", 7.f, 15.f },
-			{ "UI/Party/Party No.2.png", 9.f, 15.f },
-			{ "UI/Party/Party No.3.png", 9.f, 15.f },
-			{ "UI/Party/Party No.4.png", 10.f, 15.f },
-		};
-		const NUMBER_ART* pNumberArt =
-			index < std::size(NUMBER_ARTS) ? &NUMBER_ARTS[index] : nullptr;
-		f32_t fTextX = vBarMin.x + NUMBER_INSET_X * fScaleX;
-		if (nullptr != pNumberArt)
-		{
-			if (ID3D11ShaderResourceView* pNumberSRV =
-				m_pTextureCache->Get_Or_Load(pNumberArt->pPath))
-			{
-				const f32_t fNumberWidth = pNumberArt->fWidth * NUMBER_SHRINK;
-				const f32_t fNumberHeight = pNumberArt->fHeight * NUMBER_SHRINK;
-				const ImVec2 vNumberMin(
-					fTextX,
-					vBarMin.y + (vBarMax.y - vBarMin.y) * 0.5f - fNumberHeight * 0.5f * fScaleY);
-				const ImVec2 vNumberMax(
-					vNumberMin.x + fNumberWidth * fScaleX,
-					vNumberMin.y + fNumberHeight * fScaleY);
-				pDrawList->AddImage(pNumberSRV, vNumberMin, vNumberMax);
-				fTextX = vNumberMax.x + 4.f * fScaleX;
-			}
-		}
-		{
-			const ImVec2 vNameSize = ImGui::CalcTextSize(Member.strNickname.c_str());
-			pDrawList->AddText(
-				ImVec2(
-					fTextX,
-					vBarMin.y + (vBarMax.y - vBarMin.y - vNameSize.y) * 0.5f),
-				IM_COL32(255, 255, 255, 255), Member.strNickname.c_str());
-		}
-
-		if (Member.isLeader && nullptr != pLeaderMarkSRV)
-		{
-			/* Flush with the bar's left edge (not centered on the corner) so the crown
-			never overhangs past the bar's left side, only above it. */
-			const ImVec2 vLeaderMin(
-				vBarMin.x, vBarMin.y - LEADER_MARK_HEIGHT * fScaleY * 0.5f);
-			const ImVec2 vLeaderMax(
-				vLeaderMin.x + LEADER_MARK_WIDTH * fScaleX,
-				vLeaderMin.y + LEADER_MARK_HEIGHT * fScaleY);
-			pDrawList->AddImage(pLeaderMarkSRV, vLeaderMin, vLeaderMax);
-		}
-
-		fRowY = vBarMax.y + ROW_GAP * fScaleY;
+		wstring_t strNickname;
+		if (!Convert_NicknameToWide(m_Members[iRow].strNickname, strNickname))
+			continue;
+		Fn_DrawLeft(fNameX, fBarY + fBarH * 0.5f, strNickname.c_str(),
+			13.f, Colors::White);
 	}
 }
