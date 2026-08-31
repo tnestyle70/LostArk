@@ -1,22 +1,85 @@
-#include "imgui.h"
-
 #include "RaidEntryPreviewView.h"
 
 #include "GameInstance.h"
-#include "HUDRuntimeView.h"
 #include "MainApp.h"
+#include "UIInputRouter.h"
+#include "UILayoutRuntime.h"
+
+#include <algorithm>
+
+namespace
+{
+	/* Every slot in ValtanRaidEntry_Layout.json that carries real art. The rest are
+	   position-only markers (authored tint alpha 0 -- boss portrait, text boxes, tier badges,
+	   warning box, nav arrows, top border strip) whose text, where any, RenderText() draws at
+	   their rect. Those must never be passed to Set_SlotVisible: showing a slot resets its tint
+	   to opaque white, which would turn each marker into a white box. */
+	constexpr const char* MAIN_ART_SLOTS[] =
+	{
+		"RaidEntry_Vignette",
+		"RaidEntry_EstherFrame_0", "RaidEntry_EstherPortrait_0",
+		"RaidEntry_EstherFrame_1", "RaidEntry_EstherPortrait_1",
+		"RaidEntry_EstherFrame_2", "RaidEntry_EstherPortrait_2",
+		/* TopRight carries flipX in the document itself now -- the old manual draw path never
+		   consulted the JSON layer's own flipX and mirrored via swapped UVs in code instead. */
+		"RaidEntry_PanelFrame_TopLeft", "RaidEntry_PanelFrame_TopRight",
+		"RaidEntry_TopThumb_0", "RaidEntry_TopThumb_1", "RaidEntry_TopThumb_2",
+		"RaidEntry_TopThumb_3", "RaidEntry_TopThumb_4", "RaidEntry_TopThumb_5",
+		"RaidEntry_TopThumb_6",
+		"RaidEntry_RewardIcon_0", "RaidEntry_RewardIcon_1", "RaidEntry_RewardIcon_2",
+		"RaidEntry_RewardIcon_3", "RaidEntry_RewardIcon_4", "RaidEntry_RewardIcon_5",
+		"RaidEntry_RewardIcon_6", "RaidEntry_RewardIcon_7",
+		"RaidEntry_MatchingButton", "RaidEntry_FindPartyButton",
+		"RaidEntry_EntranceButton", "RaidEntry_AcceptIcon", "RaidEntry_CloseButtonSlot",
+	};
+
+	/* Authored tint of RaidEntry_DimBackdrop -- a black wash, not a white sprite, so it is shown
+	   with Set_SlotTint rather than Set_SlotVisible(true)'s opaque white. */
+	const float4_t DIM_BACKDROP_TINT{ 0.f, 0.f, 0.f, 0.72f };
+
+	constexpr const char* CONFIRM_ART_SLOTS[] =
+	{
+		"ValtanEntry_Panel", "ValtanEntry_TitleTextBox", "ValtanEntry_DescTextBox",
+		"ValtanEntry_ConfirmButton", "ValtanEntry_CancelButton",
+		"ValtanEntry_AcceptIcon", "ValtanEntry_DeclineIcon",
+	};
+}
 
 CRaidEntryPreviewView::CRaidEntryPreviewView(
 	ComPtr<ID3D11Device> pDevice,
-	ComPtr<ID3D11DeviceContext> pContext)
-	: m_pView(std::make_unique<CHUDRuntimeView>(
-		pDevice, pContext, L"UI/Bern/ValtanRaidEntry_Layout.json"))
-	, m_pConfirmView(std::make_unique<CHUDRuntimeView>(
-		pDevice, pContext, L"UI/Bern/BernValtanEntry_Layout.json"))
+	ComPtr<ID3D11DeviceContext> pContext,
+	uint32_t iOwnerLevelIndex)
+	: m_pView(std::make_unique<CUILayoutRuntime>(
+		pDevice, pContext, iOwnerLevelIndex, TEXT("Layer_UI"),
+		L"UI/Bern/ValtanRaidEntry_Layout.json"))
+	, m_pConfirmView(std::make_unique<CUILayoutRuntime>(
+		pDevice, pContext, iOwnerLevelIndex, TEXT("Layer_UI"),
+		L"UI/Bern/BernValtanEntry_Layout.json"))
 {
+	/* A CUI_Sprite is visible from construction, unlike the old ImGui path that simply did not
+	   draw while closed -- this popup starts closed. */
+	Hide_AllSlots();
+	Hide_ConfirmSlots();
 }
 
 CRaidEntryPreviewView::~CRaidEntryPreviewView() = default;
+
+void CRaidEntryPreviewView::Hide_AllSlots()
+{
+	if (nullptr == m_pView)
+		return;
+	m_pView->Set_SlotTint("RaidEntry_DimBackdrop", float4_t(0.f, 0.f, 0.f, 0.f));
+	for (const char* pSlotId : MAIN_ART_SLOTS)
+		m_pView->Set_SlotVisible(pSlotId, false);
+}
+
+void CRaidEntryPreviewView::Hide_ConfirmSlots()
+{
+	if (nullptr == m_pConfirmView)
+		return;
+	for (const char* pSlotId : CONFIRM_ART_SLOTS)
+		m_pConfirmView->Set_SlotVisible(pSlotId, false);
+}
 
 void CRaidEntryPreviewView::Open()
 {
@@ -29,213 +92,74 @@ bool_t CRaidEntryPreviewView::Render()
 	if (nullptr == m_pView)
 		return false;
 
-	if (m_hasJustOpened)
-	{
-		ImGui::OpenPopup("RaidEntryPreview");
-		m_hasJustOpened = false;
-	}
-
 	if (!m_isOpen)
-		return false;
-
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(pViewport->WorkPos);
-	ImGui::SetNextWindowSize(pViewport->WorkSize);
-
-	const ImGuiWindowFlags flags =
-		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground |
-		ImGuiWindowFlags_NoSavedSettings;
-
-	/* BeginPopupModal draws its own full-viewport dim rect before returning,
-	   independent of ImGuiWindowFlags_NoBackground (which only covers the
-	   popup window itself) -- StyleColorsDark's default ModalWindowDimBg is a
-	   light translucent grey, which reads as a wash of white over the game
-	   behind it. Suppressed since this popup only wants its own panel art
-	   visible, not a dimmed backdrop -- same fix as CPartyInteractionView's
-	   two modals. */
-	ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, ImVec4(0.f, 0.f, 0.f, 0.f));
-	const bool_t isModalOpen =
-		ImGui::BeginPopupModal("RaidEntryPreview", nullptr, flags);
-	ImGui::PopStyleColor();
-	if (!isModalOpen)
 	{
-		m_isOpen = false;
+		Hide_AllSlots();
+		Hide_ConfirmSlots();
+		m_hasJustOpened = false;
 		return false;
 	}
 
-	/* Entrance already clicked once -- draw the small second-step 수락/거절
-	   dialog instead of the full screen underneath it (same single popup, so
-	   there is no nested BeginPopupModal). */
+	/* Modal semantics: the pointer belongs to this popup for the whole frame it is open (its
+	   own dim backdrop swallows clicks), the same thing BeginPopupModal did for free. */
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	Router.Claim_Mouse_This_Frame();
+
+	/* The opening click itself must not also count as a click on whatever sits under the
+	   cursor inside the popup on that same frame. */
+	const bool_t wasJustOpened = m_hasJustOpened;
+	m_hasJustOpened = false;
+
+	/* ImGui closed its modal on Escape; "닫기 (Esc)" is drawn on this screen, so that gesture
+	   is reproduced explicitly now that no ImGui popup owns the key. */
+	const bool_t isEscapeDown =
+		GetForegroundWindow() == g_hWnd &&
+		0 != (GetAsyncKeyState(VK_ESCAPE) & 0x8000);
+	const bool_t escapePressed = isEscapeDown && !m_wasEscapeDown;
+	m_wasEscapeDown = isEscapeDown;
+	if (escapePressed)
+	{
+		m_isConfirmStepOpen = false;
+		m_isOpen = false;
+		Hide_AllSlots();
+		Hide_ConfirmSlots();
+		return false;
+	}
+
+	/* Entrance already clicked once -- the small second-step 수락/거절 dialog owns the screen
+	   instead of the full one underneath it. */
 	if (m_isConfirmStepOpen)
 	{
-		const bool_t entranceConfirmed = Render_ConfirmStep();
-		ImGui::EndPopup();
-		return entranceConfirmed;
+		Hide_AllSlots();
+		return Render_ConfirmStep();
 	}
+	Hide_ConfirmSlots();
 
-	/* Real 1920x1080 canvas traced from the shipped "epicRaidEntrance" gfx
-	   (.md/TJ/08-30/2026-08-30_레이드입장창_PLAN.md) -- ValtanRaidEntry_Layout.json
-	   declares the same reference resolution. */
-	const auto Fn_ToScreen = [pViewport](f32_t fX, f32_t fY)
-	{
-		const f32_t fScaleX = pViewport->WorkSize.x / 1920.f;
-		const f32_t fScaleY = pViewport->WorkSize.y / 1080.f;
-		return ImVec2(
-			pViewport->WorkPos.x + fX * fScaleX,
-			pViewport->WorkPos.y + fY * fScaleY);
-	};
-	const auto Fn_HitTest = [](const ImVec2& corner0, const ImVec2& corner1)
-	{
-		const ImVec2 mouse = ImGui::GetMousePos();
-		return mouse.x >= corner0.x && mouse.x < corner1.x &&
-			mouse.y >= corner0.y && mouse.y < corner1.y;
-	};
-	const auto Fn_DrawSlot = [&](const char* pSlotId, const char* pTexturePath,
-		ImU32 tint = IM_COL32_WHITE)
-	{
-		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
-		if (!m_pView->Get_SlotRect(pSlotId, fX, fY, fW, fH))
-			return;
-		ID3D11ShaderResourceView* pTexture = m_pView->Load_Texture(pTexturePath);
-		if (nullptr == pTexture)
-			return;
-		/* GetForegroundDrawList (not GetWindowDrawList) -- every always-on combat
-		   HUD element (RenderCombatHUD/RenderBossHealthBar/RenderSkillIcons/
-		   RenderQuickSlot, MainApp.cpp) draws to the shared foreground list,
-		   which ImGui composites above every regular window's own drawlist
-		   regardless of submission order. Submission order among foreground-list
-		   users still matters, which is why the caller's Render() call site must
-		   run after those HUD renders (see CMainApp::Render()). */
-		ImGui::GetForegroundDrawList(pViewport)->AddImage(
-			reinterpret_cast<ImTextureID>(pTexture),
-			Fn_ToScreen(fX, fY), Fn_ToScreen(fX + fW, fY + fH),
-			ImVec2(0.f, 0.f), ImVec2(1.f, 1.f), tint);
-	};
-	/* RaidEntry_PanelFrame_TopRight reuses the same corner-ornament texture as
-	   TopLeft, mirrored via swapped U coordinates -- this manual per-slot draw
-	   path never consulted the JSON layer's own "flipX" field, so the mirror
-	   happens here instead of being inherited from the layout document. */
-	const auto Fn_DrawSlotFlippedX = [&](const char* pSlotId, const char* pTexturePath)
-	{
-		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
-		if (!m_pView->Get_SlotRect(pSlotId, fX, fY, fW, fH))
-			return;
-		ID3D11ShaderResourceView* pTexture = m_pView->Load_Texture(pTexturePath);
-		if (nullptr == pTexture)
-			return;
-		ImGui::GetForegroundDrawList(pViewport)->AddImage(
-			reinterpret_cast<ImTextureID>(pTexture),
-			Fn_ToScreen(fX, fY), Fn_ToScreen(fX + fW, fY + fH),
-			ImVec2(1.f, 0.f), ImVec2(0.f, 1.f));
-	};
+	m_pView->Set_SlotTint("RaidEntry_DimBackdrop", DIM_BACKDROP_TINT);
+	for (const char* pSlotId : MAIN_ART_SLOTS)
+		m_pView->Set_SlotVisible(pSlotId, true);
 
-	/* Every slot drawn below is backed by a real extracted or already-shipped
-	   asset (epicRaidEntrance i1/i6/i245.tga crops, EFUI_ShareImage button
-	   skins, this project's own Esther/ItemUpgrade icons). Slots with NO real
-	   asset found (boss portrait, portrait frame, name plate, raid icon, tier
-	   badges, warning box, nav arrows, top border strip) are intentionally
-	   left undrawn here -- they stay in ValtanRaidEntry_Layout.json as
-	   position-only markers (see .md/TJ/08-30 PLAN's asset gap list) until a
-	   real asset is sourced for each, instead of being filled with invented
-	   placeholder art. */
-	Fn_DrawSlot("RaidEntry_DimBackdrop", "UI/Common/White1x1.png",
-		IM_COL32(0, 0, 0, 184));
+	const f32_t fRefWidth = m_pView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pView->Get_ResolutionHeight();
 
-	/* Top raid-select carousel -- real boss-portrait thumbnails cropped from
-	   the same epicRaidEntrance i1.tga atlas page (already pre-masked into
-	   parallelograms with transparent corners in the source alpha). Purely
-	   decorative here: this project only has one raid to preview, so there is
-	   no click-to-switch behind it, unlike the real multi-raid carousel. */
-	static constexpr const char* TOP_THUMB_SLOTS[7] =
-	{
-		"RaidEntry_TopThumb_0", "RaidEntry_TopThumb_1", "RaidEntry_TopThumb_2",
-		"RaidEntry_TopThumb_3", "RaidEntry_TopThumb_4", "RaidEntry_TopThumb_5",
-		"RaidEntry_TopThumb_6",
-	};
-	static constexpr const char* TOP_THUMB_PATHS[7] =
-	{
-		"UI/Bern/thumb_a.png", "UI/Bern/thumb_b.png", "UI/Bern/thumb_c.png",
-		"UI/Bern/RaidEntry_KakulThumb.png", "UI/Bern/thumb_e.png",
-		"UI/Bern/thumb_f.png", "UI/Bern/thumb_g.png",
-	};
-	for (std::size_t i = 0; i < 7; ++i)
-		Fn_DrawSlot(TOP_THUMB_SLOTS[i], TOP_THUMB_PATHS[i]);
-
-	// RaidEntry_BossPortrait, RaidEntry_PortraitFrame, RaidEntry_RaidIconSlot:
-	// no real asset found -- position markers only.
-	Fn_DrawSlot("RaidEntry_Vignette", "UI/Bern/RaidEntry_Vignette.png");
-
-	/* Real esther-skill portrait assets this project already ships and uses
-	   elsewhere (Character Select's own identity/HUD row) -- reused here
-	   instead of another procedural placeholder, matching the reference
-	   screen's "사용 가능한 에스더 스킬" row under the raid icon. */
-	static constexpr const char* ESTHER_FRAME_SLOTS[3] =
-	{
-		"RaidEntry_EstherFrame_0", "RaidEntry_EstherFrame_1", "RaidEntry_EstherFrame_2",
-	};
-	static constexpr const char* ESTHER_PORTRAIT_SLOTS[3] =
-	{
-		"RaidEntry_EstherPortrait_0", "RaidEntry_EstherPortrait_1", "RaidEntry_EstherPortrait_2",
-	};
-	static constexpr const char* ESTHER_PORTRAIT_PATHS[3] =
-	{
-		"UI/Esther/esther_portrait_bahuntur.png",
-		"UI/Esther/esther_portrait_sillian.png",
-		"UI/Esther/esther_portrait_wei.png",
-	};
-	for (std::size_t i = 0; i < 3; ++i)
-	{
-		Fn_DrawSlot(ESTHER_FRAME_SLOTS[i], "UI/Esther/esther_slot_frame.png");
-		Fn_DrawSlot(ESTHER_PORTRAIT_SLOTS[i], ESTHER_PORTRAIT_PATHS[i]);
-	}
-	Fn_DrawSlot("RaidEntry_PanelFrame_TopLeft", "UI/Bern/RaidEntry_CornerFrame.png");
-	Fn_DrawSlotFlippedX("RaidEntry_PanelFrame_TopRight", "UI/Bern/RaidEntry_CornerFrame.png");
-	// RaidEntry_TopBorderStrip: no real asset found -- position marker only.
-
-	// RaidEntry_TierBadge_0/1/2, RaidEntry_WarningBoxSlot,
-	// RaidEntry_RewardArrowLeft/Right: no real asset found -- position
-	// markers only (their text, where any, is still drawn in RenderText()).
-
-	static constexpr const char* REWARD_ICON_SLOTS[6] =
-	{
-		"RaidEntry_RewardIcon_0", "RaidEntry_RewardIcon_1",
-		"RaidEntry_RewardIcon_2", "RaidEntry_RewardIcon_3",
-		"RaidEntry_RewardIcon_4", "RaidEntry_RewardIcon_5",
-	};
-	static constexpr const char* REWARD_ICON_PATHS[6] =
-	{
-		"UI/ItemUpgrade/lm_head_icon.png", "UI/ItemUpgrade/lm_shoulder_icon.png",
-		"UI/ItemUpgrade/lm_top_icon.png", "UI/ItemUpgrade/lm_bottom_icon.png",
-		"UI/ItemUpgrade/lm_glove_icon.png", "UI/ItemUpgrade/lm_weapon_icon.png",
-	};
-	for (std::size_t i = 0; i < 6; ++i)
-		Fn_DrawSlot(REWARD_ICON_SLOTS[i], REWARD_ICON_PATHS[i]);
-
-	/* Matching / Find Party are visual-only per PLAN scope (no matching system
-	   exists yet) -- static art, no hover swap, no click handling. Decline
-	   always closes internally; Entrance is reported back to the caller via
-	   this function's return value instead of sending any command itself. */
-	Fn_DrawSlot("RaidEntry_MatchingButton", "UI/Bern/RaidEntry_ButtonSteel.png");
-	Fn_DrawSlot("RaidEntry_FindPartyButton", "UI/Bern/RaidEntry_ButtonSteel.png");
-
+	/* Matching / Find Party are visual-only per PLAN scope (no matching system exists yet) --
+	   static art, no hover swap, no click handling. Decline always closes internally; Entrance
+	   is reported back to the caller via this function's return value instead of sending any
+	   command itself. */
 	struct MODAL_BUTTON
 	{
 		const char* pSlotId;
-		const char* pNormalTexturePath;
+		/* Empty reverts to the slot's own authored texture (the real Close button has no
+		   distinct hover art -- the reference only ever swaps Entrance). */
 		const char* pHoverTexturePath;
 		bool_t isConfirm;
 	};
 	static constexpr MODAL_BUTTON BUTTONS[2] =
 	{
-		{ "RaidEntry_EntranceButton", "UI/Bern/RaidEntry_ButtonGold.png",
-			"UI/Bern/RaidEntry_ButtonGoldHover.png", true },
-		/* The reference has no separate "거절" text button on this screen --
-		   only the top-right "닫기 (Esc)" X closes it. An earlier pass wrongly
-		   duplicated that with its own steel Decline button; removed. */
-		{ "RaidEntry_CloseButtonSlot", "UI/Bern/Decline.png",
-			"UI/Bern/Decline.png", false },
+		{ "RaidEntry_EntranceButton", "UI/Bern/RaidEntry_ButtonGoldHover.png", true },
+		/* The reference has no separate "거절" text button on this screen -- only the
+		   top-right "닫기 (Esc)" X closes it. */
+		{ "RaidEntry_CloseButtonSlot", "", false },
 	};
 
 	bool_t confirmClicked = false;
@@ -245,17 +169,12 @@ bool_t CRaidEntryPreviewView::Render()
 		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
 		if (!m_pView->Get_SlotRect(button.pSlotId, fX, fY, fW, fH))
 			continue;
-		const ImVec2 corner0 = Fn_ToScreen(fX, fY);
-		const ImVec2 corner1 = Fn_ToScreen(fX + fW, fY + fH);
-		const bool_t isHovered = Fn_HitTest(corner0, corner1);
-		ID3D11ShaderResourceView* pTexture = m_pView->Load_Texture(
-			isHovered ? button.pHoverTexturePath : button.pNormalTexturePath);
-		if (nullptr != pTexture)
-		{
-			ImGui::GetForegroundDrawList(pViewport)->AddImage(
-				reinterpret_cast<ImTextureID>(pTexture), corner0, corner1);
-		}
-		if (isHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		const bool_t isHovered =
+			Router.Is_Hovered(fX, fY, fW, fH, fRefWidth, fRefHeight);
+		m_pView->Set_SlotTexture(
+			button.pSlotId, isHovered ? button.pHoverTexturePath : "");
+		if (isHovered && !wasJustOpened &&
+			Router.Is_Clicked(fX, fY, fW, fH, fRefWidth, fRefHeight))
 		{
 			CMainApp::Play_UIButtonClickSound();
 			if (button.isConfirm)
@@ -265,24 +184,10 @@ bool_t CRaidEntryPreviewView::Render()
 		}
 	}
 
-	/* Drawn after the buttons (not before) so the button art doesn't paint
-	   over these and hide them. */
-	struct MODAL_ICON_SLOT
-	{
-		const char* pSlotId;
-		const char* pTexturePath;
-	};
-	static constexpr MODAL_ICON_SLOT ICON_SLOTS[1] =
-	{
-		{ "RaidEntry_AcceptIcon", "UI/Bern/Accept.png" },
-	};
-	for (const MODAL_ICON_SLOT& icon : ICON_SLOTS)
-		Fn_DrawSlot(icon.pSlotId, icon.pTexturePath);
-
 	if (cancelClicked)
 	{
 		m_isOpen = false;
-		ImGui::CloseCurrentPopup();
+		Hide_AllSlots();
 	}
 	else if (confirmClicked)
 	{
@@ -291,7 +196,6 @@ bool_t CRaidEntryPreviewView::Render()
 		m_isConfirmStepOpen = true;
 	}
 
-	ImGui::EndPopup();
 	return false;
 }
 
@@ -558,44 +462,18 @@ void CRaidEntryPreviewView::RenderText()
    button. Reuses Data/UI/Bern/BernValtanEntry_Layout.json (still on disk,
    pre-dates the rich screen) and the exact same panel/button/icon art as the
    original single-step Bern flow -- this is not a second runtime, just the
-   pre-existing simple dialog surfaced one step later. Drawn inside the same
-   outer BeginPopupModal Render() already opened, so no second popup wrapper
-   is needed here. */
+   pre-existing simple dialog surfaced one step later. */
 bool_t CRaidEntryPreviewView::Render_ConfirmStep()
 {
 	if (nullptr == m_pConfirmView)
 		return false;
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	const auto Fn_ToScreen = [pViewport](f32_t fX, f32_t fY)
-	{
-		const f32_t fScaleX = pViewport->WorkSize.x / 1280.f;
-		const f32_t fScaleY = pViewport->WorkSize.y / 720.f;
-		return ImVec2(
-			pViewport->WorkPos.x + fX * fScaleX,
-			pViewport->WorkPos.y + fY * fScaleY);
-	};
-	const auto Fn_HitTest = [](const ImVec2& corner0, const ImVec2& corner1)
-	{
-		const ImVec2 mouse = ImGui::GetMousePos();
-		return mouse.x >= corner0.x && mouse.x < corner1.x &&
-			mouse.y >= corner0.y && mouse.y < corner1.y;
-	};
+	for (const char* pSlotId : CONFIRM_ART_SLOTS)
+		m_pConfirmView->Set_SlotVisible(pSlotId, true);
 
-	f32_t fPanelX = 0.f, fPanelY = 0.f, fPanelW = 0.f, fPanelH = 0.f;
-	if (m_pConfirmView->Get_SlotRect(
-		"ValtanEntry_Panel", fPanelX, fPanelY, fPanelW, fPanelH))
-	{
-		ID3D11ShaderResourceView* pPanel = m_pConfirmView->Load_Texture(
-			"UI/ClassSelect/Common/CreateCharacterModalPanel.png");
-		if (nullptr != pPanel)
-		{
-			ImGui::GetForegroundDrawList(pViewport)->AddImage(
-				reinterpret_cast<ImTextureID>(pPanel),
-				Fn_ToScreen(fPanelX, fPanelY),
-				Fn_ToScreen(fPanelX + fPanelW, fPanelY + fPanelH));
-		}
-	}
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pConfirmView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pConfirmView->Get_ResolutionHeight();
 
 	struct CONFIRM_BUTTON
 	{
@@ -614,19 +492,11 @@ bool_t CRaidEntryPreviewView::Render_ConfirmStep()
 		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
 		if (!m_pConfirmView->Get_SlotRect(button.pSlotId, fX, fY, fW, fH))
 			continue;
-		const ImVec2 corner0 = Fn_ToScreen(fX, fY);
-		const ImVec2 corner1 = Fn_ToScreen(fX + fW, fY + fH);
-		const bool_t isHovered = Fn_HitTest(corner0, corner1);
-		ID3D11ShaderResourceView* pTexture = m_pConfirmView->Load_Texture(
-			isHovered ?
-				"UI/ClassSelect/Common/NormalButtonHover.png" :
-				"UI/ClassSelect/Common/NormalButton.png");
-		if (nullptr != pTexture)
-		{
-			ImGui::GetForegroundDrawList(pViewport)->AddImage(
-				reinterpret_cast<ImTextureID>(pTexture), corner0, corner1);
-		}
-		if (isHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		const bool_t isHovered =
+			Router.Is_Hovered(fX, fY, fW, fH, fRefWidth, fRefHeight);
+		m_pConfirmView->Set_SlotTexture(button.pSlotId, isHovered ?
+			"UI/ClassSelect/Common/NormalButtonHover.png" : "");
+		if (isHovered && Router.Is_Clicked(fX, fY, fW, fH, fRefWidth, fRefHeight))
 		{
 			CMainApp::Play_UIButtonClickSound();
 			if (button.isConfirm)
@@ -636,43 +506,18 @@ bool_t CRaidEntryPreviewView::Render_ConfirmStep()
 		}
 	}
 
-	struct CONFIRM_ICON
-	{
-		const char* pSlotId;
-		const char* pTexturePath;
-	};
-	static constexpr CONFIRM_ICON ICONS[2] =
-	{
-		{ "ValtanEntry_AcceptIcon", "UI/Bern/Accept.png" },
-		{ "ValtanEntry_DeclineIcon", "UI/Bern/Decline.png" },
-	};
-	for (const CONFIRM_ICON& icon : ICONS)
-	{
-		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
-		if (!m_pConfirmView->Get_SlotRect(icon.pSlotId, fX, fY, fW, fH))
-			continue;
-		ID3D11ShaderResourceView* pTexture =
-			m_pConfirmView->Load_Texture(icon.pTexturePath);
-		if (nullptr != pTexture)
-		{
-			ImGui::GetForegroundDrawList(pViewport)->AddImage(
-				reinterpret_cast<ImTextureID>(pTexture),
-				Fn_ToScreen(fX, fY), Fn_ToScreen(fX + fW, fY + fH));
-		}
-	}
-
 	if (cancelClicked)
 	{
 		m_isConfirmStepOpen = false;
 		m_isOpen = false;
-		ImGui::CloseCurrentPopup();
+		Hide_ConfirmSlots();
 		return false;
 	}
 	if (confirmClicked)
 	{
 		m_isConfirmStepOpen = false;
 		m_isOpen = false;
-		ImGui::CloseCurrentPopup();
+		Hide_ConfirmSlots();
 		return true;
 	}
 	return false;

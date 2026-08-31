@@ -19,7 +19,7 @@
     "colorOffset": [0.0, 0.0, 0.0, 0.0],
     "colorOffsetEnd": [0.0, 0.0, 0.0, 0.0],
     "colorOffsetLerp": false,
-    "colorMul": [0.0, 0.0, 0.0, 1.0],
+    "colorMul": [0.0, 0.0, 0.0, 2.0],
     "colorMulEnd": [0.0, 0.0, 0.0, 0.0],
     "colorMulLerp": true,
     "colorClipChannel": "Alpha",

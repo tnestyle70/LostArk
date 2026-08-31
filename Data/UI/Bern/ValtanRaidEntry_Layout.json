@@ -730,284 +730,14 @@
       }
     },
     {
-      "id": "RaidEntry_RewardIcon_0",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 500,
-        "y": 890,
-        "width": 100,
-        "height": 100
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_head_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_RewardIcon_1",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 660,
-        "y": 890,
-        "width": 100,
-        "height": 100
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_shoulder_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_RewardIcon_2",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 820,
-        "y": 890,
-        "width": 100,
-        "height": 100
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_top_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_RewardIcon_3",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 980,
-        "y": 890,
-        "width": 100,
-        "height": 100
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_bottom_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_RewardIcon_4",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 1140,
-        "y": 890,
-        "width": 100,
-        "height": 100
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_glove_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_RewardIcon_5",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 1300,
-        "y": 890,
-        "width": 100,
-        "height": 100
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_weapon_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
       "id": "RaidEntry_MatchingButton",
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 660,
-        "y": 970,
-        "width": 150,
-        "height": 50
+        "x": 1627.0,
+        "y": 803.0,
+        "width": 130.0,
+        "height": 44.0
       },
       "rotation": 0,
       "stages": {
@@ -1049,10 +779,10 @@
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 830,
-        "y": 970,
-        "width": 150,
-        "height": 50
+        "x": 1768.0,
+        "y": 803.0,
+        "width": 130.0,
+        "height": 44.0
       },
       "rotation": 0,
       "stages": {
@@ -1094,10 +824,10 @@
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 1170,
-        "y": 970,
-        "width": 150,
-        "height": 50
+        "x": 1627.0,
+        "y": 849.0,
+        "width": 271.0,
+        "height": 50.0
       },
       "rotation": 0,
       "stages": {
@@ -1139,10 +869,10 @@
       "ownerClass": null,
       "type": 0,
       "rect": {
-        "x": 1218,
-        "y": 979,
-        "width": 32,
-        "height": 32
+        "x": 1675.0,
+        "y": 858.0,
+        "width": 32.0,
+        "height": 32.0
       },
       "rotation": 0,
       "stages": {
@@ -2283,6 +2013,366 @@
             1,
             1,
             0
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "RaidEntry_RewardIcon_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 527.0,
+        "y": 960.0,
+        "width": 78.0,
+        "height": 78.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/lm_head_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "RaidEntry_RewardIcon_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 639.7,
+        "y": 960.0,
+        "width": 78.0,
+        "height": 78.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/lm_shoulder_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "RaidEntry_RewardIcon_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 752.4,
+        "y": 960.0,
+        "width": 78.0,
+        "height": 78.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/lm_top_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "RaidEntry_RewardIcon_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 865.1,
+        "y": 960.0,
+        "width": 78.0,
+        "height": 78.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/lm_bottom_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "RaidEntry_RewardIcon_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 977.9,
+        "y": 960.0,
+        "width": 78.0,
+        "height": 78.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/lm_glove_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "RaidEntry_RewardIcon_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1090.6,
+        "y": 960.0,
+        "width": 78.0,
+        "height": 78.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/lm_weapon_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "RaidEntry_RewardIcon_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1203.3,
+        "y": 960.0,
+        "width": 78.0,
+        "height": 78.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/lm_head_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "RaidEntry_RewardIcon_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 1316.0,
+        "y": 960.0,
+        "width": 78.0,
+        "height": 78.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/lm_weapon_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
           ],
           "additive": false,
           "flipX": false

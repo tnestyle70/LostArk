@@ -9,7 +9,7 @@
 
 NS_BEGIN(Client)
 
-class CUITextureCache;
+class CUILayoutRuntime;
 class CReplicatedPlayerHealth;
 
 /* Release-safe party roster overlay matching the in-game reference: a title bar, then one row
@@ -34,18 +34,34 @@ public:
 	};
 
 public:
-	explicit CPartyWindowView(ComPtr<ID3D11Device> pDevice);
+	/* Real CUI_Sprite GameObjects on LEVEL::STATIC's own "Layer_UI" (Data/UI/Party/
+	   PartyWindow_Layout.json), same as the combat HUD/inventory -- this roster is drawn in
+	   Bern and Valtan alike, so it does not belong to either Level's own layer. */
+	CPartyWindowView(
+		ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 	~CPartyWindowView();
 
 public:
 	void Sync_From_Roster(const LostArk::Shared::S2C_PARTY_ROSTER& Roster,
 		const CReplicatedPlayerHealth& Health);
+	/* Drives the roster sprites' visibility/texture/fill for one frame; the sprites themselves
+	   draw through CObject_Manager's normal render cycle. An empty roster hides every row. */
 	void Render();
+	/* Title and per-member nicknames. Split out for the same reason every other LOA-font label
+	   in this codebase is: CGameInstance::Draw_Text submits its SpriteBatch immediately, so it
+	   runs in the post-EndFrame text pass, not alongside the sprite state above. */
+	void RenderText();
 
 private:
-	unique_ptr<CUITextureCache> m_pTextureCache;
+	void Hide_AllRows();
+
+private:
+	unique_ptr<CUILayoutRuntime> m_pView;
 	string m_strPartyTitle;
 	vector<PARTY_MEMBER> m_Members;
+	/* Max rows the layout document authors (PartyWindow_*_0..3) -- the same 4-player party cap
+	   the Server room enforces. */
+	static constexpr size_t MAX_ROWS = 4u;
 };
 
 NS_END

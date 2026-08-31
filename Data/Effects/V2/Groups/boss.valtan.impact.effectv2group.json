@@ -13,6 +13,13 @@
     { "effectId": "boss.valtan.spread_1", "startMs": 50, "durationMs": 0, "stop": "Deactivate", "offset": [-0.5, 0.0, 0.5], "yawDegrees": 0.0, "scale": [1.2, 1.2, 1.0] },
     { "effectId": "boss.valtan.spread_1", "startMs": 100, "durationMs": 0, "stop": "Deactivate", "offset": [0.5, 0.0, 1.0], "yawDegrees": 0.0, "scale": [1.3, 1.2, 1.0] },
     { "effectId": "boss.valtan.spread_1", "startMs": 150, "durationMs": 0, "stop": "Deactivate", "offset": [-0.7, 0.0, 1.5], "yawDegrees": 0.0, "scale": [1.4, 1.3, 1.0] },
-    { "effectId": "boss.valtan.spread_1", "startMs": 200, "durationMs": 0, "stop": "Deactivate", "offset": [0.7, 0.0, 2.0], "yawDegrees": 0.0, "scale": [1.5, 1.3, 1.0] }
+    { "effectId": "boss.valtan.spread_1", "startMs": 200, "durationMs": 0, "stop": "Deactivate", "offset": [0.7, 0.0, 2.0], "yawDegrees": 0.0, "scale": [1.5, 1.3, 1.0] },
+    { "effectId": "boss.valtan.spread_2", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.spread_2", "startMs": 40, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, -0.5], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.spread_2", "startMs": 80, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, -1.0], "yawDegrees": 0.0, "scale": [1.1, 1.0, 1.0] },
+    { "effectId": "boss.valtan.spread_2", "startMs": 120, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, -1.5], "yawDegrees": 0.0, "scale": [1.15, 1.0, 1.0] },
+    { "effectId": "boss.valtan.spread_2", "startMs": 160, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, -2.0], "yawDegrees": 0.0, "scale": [1.2, 1.0, 1.0] },
+    { "effectId": "boss.valtan.hit_3", "startMs": 30, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 1.5], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.hit_3", "startMs": 60, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 3.0], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] }
   ]
 }

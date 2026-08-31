@@ -5,6 +5,25 @@ float4x4    g_WorldMatrix, g_ViewMatrix, g_ProjMatrix;
 texture2D   g_Texture;
 texture2D g_DepthTexture;
 
+/* CUI_Sprite's own runtime tint/flip -- default values are this shader's own fallback for a
+consumer that never binds them (every existing DefaultTechnique/Effect pass draws unaffected),
+not a contract callers must always set. */
+float4 g_TintColor = float4(1.f, 1.f, 1.f, 1.f);
+bool g_FlipX = false;
+/* CUI_Sprite's own runtime percentage-fill clip (a gauge/health-bar drain) -- 1.0 (default)
+draws the whole sprite unclipped, matching every existing caller that never binds this. A value
+in [0,1) discards texels whose final (post-flip) U coordinate is past this fraction, revealing
+the image's own left portion at native scale instead of a stretched/squished resize -- the same
+UV-clipped ImGui::AddImage(uv1=(fillRatio,1)) technique this replaces. */
+float g_FillRatio = 1.f;
+/* CUI_Sprite's own runtime pie-sector clip (a skill-cooldown sweep) -- 1.0 (default) draws the
+whole sprite unclipped. A value in [0,1) keeps only texels whose angle from the sprite's own
+center, measured from 12 o'clock going clockwise, is within that fraction of a full turn --
+the same shrinking clockwise cooldown pie ImGui's PathArcTo+PathFillConvex(clipped to the slot
+rect) drew, since angle-testing the square quad directly IS the "radius past the corners then
+clip to rect" construction. */
+float g_ArcRatio = 1.f;
+
 /* LinearSampler's AddressU/V = WRAP is correct for tiled 3D world textures but wrong here:
 this shader only backs CUI_Sprite's screen-space UI quads, whose texcoords span exactly
 0..1. With WRAP, bilinear filtering near v=0/v=1 blends in a few texels from the texture's
@@ -84,6 +103,35 @@ PS_OUT PS_MAIN(PS_IN In)
     return Out;
 }
 
+/* CUI_Sprite's own pass -- g_TintColor/g_FlipX default to white/false, so an existing caller
+that never binds them (the loading background, progress bar fills) samples identically to
+PS_MAIN above. */
+PS_OUT PS_MAIN_UI(PS_IN In)
+{
+    PS_OUT Out;
+
+    float2 vTexcoord = In.vTexcoord;
+    if (g_FlipX)
+        vTexcoord.x = 1.f - vTexcoord.x;
+
+    clip(g_FillRatio - vTexcoord.x);
+
+    if (g_ArcRatio < 1.f)
+    {
+        /* Texcoord v grows downward, so "up" (12 o'clock) is -y; atan2(x, -y) is then 0 at the
+        top and increases clockwise, matching the reference cooldown sweep's direction. */
+        float2 vFromCenter = vTexcoord - float2(0.5f, 0.5f);
+        float fAngle = atan2(vFromCenter.x, -vFromCenter.y);
+        if (fAngle < 0.f)
+            fAngle += 6.28318530f;
+        clip(g_ArcRatio * 6.28318530f - fAngle);
+    }
+
+    Out.vColor = g_Texture.Sample(UISampler, vTexcoord) * g_TintColor;
+
+    return Out;
+}
+
 
 
 PS_OUT PS_MAIN_SOFTEFFECT(PS_IN In)
@@ -139,7 +187,20 @@ technique11 DefaultTechnique
         SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
-        PixelShader = compile ps_5_0 PS_MAIN();
+        PixelShader = compile ps_5_0 PS_MAIN_UI();
+    }
+
+    /* Same as UIBlend but additive -- for a UI sprite authored with a Scaleform additive
+    blendMode (a glow/burst layer whose backing would otherwise show as an opaque box under
+    normal alpha blend). */
+    pass UIBlendAdditive
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_UI();
     }
 }
 

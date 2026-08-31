@@ -1,0 +1,12 @@
+{
+  "schema": "lostark.effect-v2-group",
+  "formatVersion": 1,
+  "groupId": "boss.valtan.pounding.chase",
+  "durationMs": 0,
+  "children": [
+    { "effectId": "boss.valtan.chase.decal_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.chase.spread_1", "startMs": 1000, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, -1.0, 0.0], "yawDegrees": 0.0, "scale": [1.0, 1.1, 1.0] },
+    { "effectId": "boss.valtan.sw_1", "startMs": 1000, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 1.25], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.chase.decal_2", "startMs": 1100, "durationMs": 0, "stop": "Deactivate", "offset": [-0.1, 0.0, -0.2], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] }
+  ]
+}

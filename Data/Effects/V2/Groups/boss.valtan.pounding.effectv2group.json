@@ -1,0 +1,10 @@
+{
+  "schema": "lostark.effect-v2-group",
+  "formatVersion": 1,
+  "groupId": "boss.valtan.pounding",
+  "durationMs": 0,
+  "children": [
+    { "effectId": "boss.valtan.fluid_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.5, 0.0, -0.5], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.sw_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.5, 0.0, 0.0], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] }
+  ]
+}

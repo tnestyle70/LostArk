@@ -21,7 +21,7 @@ class CEffect_Tool_V2;
 class CAnimation_Tool;
 class CActionCompositionWorkbench;
 class CHUDLayoutTool;
-class CHUDRuntimeView;
+class CUILayoutRuntime;
 class CBalanceTool;
 class CBossTool;
 class CCameraTool;
@@ -134,31 +134,40 @@ private:
 			INVALID_LOBBY_COMMAND_TOKEN);
 	void Apply_LevelRequest();
 	HRESULT ReadyImGuiRuntime();
-	void RenderCombatHUD();
-	/* HealthBar/ManaBar's own JSON layer (HUD_Layout.json) is now just the dark empty-state
-	background ("Empty bar.png"/"Empty bar reverse.png"), always drawn full by the generic
-	CHUDRuntimeView::Render() pass. This draws the real colored fill ("HP Bar.png"/"MP Bar.png")
-	UV-clipped by current/maximum HP and resource on top of it, same technique as the boss bar's
-	fill -- CHUDRuntimeView::Render() never dynamically resized anything, so the bar previously
-	always showed full regardless of actual HP/MP. */
-	void RenderPlayerHealthManaBar();
-	/* Draws whatever item icon is registered onto Item_1..4, and consumes any pending
-	CInventoryView drag-drop to register a new one. Called after m_pHUDRuntimeView->Render()
-	so the icon overlay lands on top of the already-drawn slot background. */
-	void Render_ItemQuickSlots();
+	/* Drives every real CUI_Sprite (CUILayoutRuntime) state for the always-on combat HUD
+	(HUD_Layout.json) from Update(): the per-class ownerClass slot filter (the old
+	Render(strOwnerClass, 0) pass), every per-class identity block (LanceMaster stance/gauge,
+	Warlord defense/gauge/Z-X badges, Artist brush/gauge/Z-X wipes, DimensionMaster clock hands
+	and gears), and the Update_* helpers below. Hide_CombatHUD() (every slot off) runs whenever
+	any gate fails -- level outside the combat set, invalid player, skill window, or the Debug
+	O-key raid-entry preview -- since these LEVEL::STATIC sprites keep their last state instead
+	of simply not being drawn the way the old ImGui pass did. */
+	void Update_CombatHUD(f32_t fTimeDelta);
+	void Hide_CombatHUD();
+	/* HealthBar/ManaBar's own JSON layer (HUD_Layout.json) is the dark empty-state background
+	("Empty bar.png"), always full; the appended HealthBar_Fill/ManaBar_Fill slots carry the
+	real colored fill ("HP Bar.png"/"MP Bar.png"), clipped by current/maximum HP and resource
+	via the g_FillRatio shader clip -- same technique as the boss bar's fill. */
+	void Update_PlayerHealthManaBar();
+	/* Sets whatever item icon is registered onto the appended Item_1..4_Icon slots, and consumes
+	any pending CInventoryView drag-drop to register a new one (screen-space drop position
+	hit-tested against Item_1..4's own rects with the real viewport size, no ImGui). */
+	void Update_ItemQuickSlots();
 	/* Q/W/E/R/A/S/D/F, the right-side special-skill row (6/7/8/9/0 for now -- SpecialSkill_1..5;
 	SpecialSkill_6 has no assigned key label yet), and the item quick slots (1/2/3/4) each get
 	their bound key drawn into the pointed tab at the bottom of "Empty Slot.png"/"Empty Slot
 	2.png"'s own art. Called after EndFrame() like the other LOA-font text, for the same
 	z-order reason as Render_Text(). */
 	void RenderQuickSlotKeyLabels();
-	/* Lobby's authored Test/Character Select/Valtan/Bern buttons -- screen-space hit test against
-	their stable Lobby_Layout.json slots, submitting the matching typed command only while the
-	active Lobby is idle. A missing/old partial layout atomically falls back to the same four rects
-	and product textures. This also draws the Release status line before EndFrame(). */
-	void Render_LobbyButtons();
-	/* White labels for the four authored Lobby command buttons. Called after EndFrame() like the
-	other LOA-font text, for the same z-order reason as RenderQuickSlotKeyLabels. */
+	/* Lobby's authored title-background flipbook and Test/Character Select/Valtan/Bern buttons --
+	real CUI_Sprite slots (Lobby_Layout.json), hover/click via CUIInputRouter, submitting the
+	matching typed command only while the active Lobby is idle. A missing/old partial layout
+	atomically falls back to the same four default rects and product textures via runtime-created
+	slots, so the entry gate can never lose its buttons. Hidden entirely outside LOBBY. */
+	void Update_LobbyButtons(f32_t fTimeDelta);
+	/* White labels for the four Lobby command buttons, plus the Release product status line.
+	Called after EndFrame() like the other LOA-font text, for the same z-order reason as
+	RenderQuickSlotKeyLabels. */
 	void RenderLobbyButtonText();
 	/* White "장비 재련" label for ItemUpgrade_ReforgeButton, same reasoning/pattern as
 	RenderLobbyButtonText() -- the button image itself is blank (reused from
@@ -179,10 +188,21 @@ private:
 	marker -- a failed reforge does not change level. */
 	void RenderItemUpgradeFailDetailText();
 	void RenderItemUpgradeListText();
-	/* Hover/click hit-test for the 6 left-list rows, mirrored from Render_LobbyButtons's
-	Lobby_CreateCharacterButton pattern (screen-space rect from Get_SlotRect, ImGui mouse). On
-	click, moves ItemUpgrade_ListSelectedExample and swaps ItemUpgrade_SelectedItemIcon's texture
-	to the clicked row. */
+	/* Hover/click hit-test for the 6 left-list rows via CUIInputRouter, same pattern as every
+	other migrated CUI_Sprite screen's buttons. On click, moves ItemUpgrade_ListSelectedExample
+	and swaps ItemUpgrade_SelectedItemIcon's texture to the clicked row. */
+	/* Drives every real CUI_Sprite (CUILayoutRuntime) state for the Item Upgrade preview --
+	the gauge fill/CoreFlash/ShockwaveRing/completion-reveal/result-settle state machine that
+	used to sit inline in the old combat-HUD render pass (before m_pItemUpgradeView's own Render("Default", 0)
+	call), plus the five Update_ItemUpgrade* hover/click functions below. Moved to Update()
+	instead of Render() since these slots self-render through the normal engine pipeline and no
+	longer need to run immediately before an explicit draw call. Hides everything (Hide_ItemUpgrade)
+	whenever !m_bItemUpgradePreviewVisible or the current Level is outside Update_CombatHUD's own
+	supported set (BERN/VALTAN_ARENA/DEVELOPMENT/CHARACTER_SELECT) -- unlike the old ImGui pass
+	(which simply wasn't called and drew nothing), these slots live under LEVEL::STATIC and would
+	otherwise keep showing across a level change or while closed. */
+	void Update_ItemUpgrade(f32_t fTimeDelta);
+	void Hide_ItemUpgrade();
 	void Update_ItemUpgradeSelection();
 	/* Hover/click hit-test for ItemUpgrade_LevelUpBtn ("성장"), same pattern as
 	Update_ItemUpgradeSelection. On click (re)starts the 0->100 gauge fill from 0, restarts
@@ -219,22 +239,29 @@ private:
 	(WingedRingGold/LevelUpMotion2Big/CompleteEffect etc.), which stay owned by
 	Reset_ItemUpgradeIdleGauge/Update_ItemUpgradeGrowButton's own state machine. */
 	void Set_ItemUpgradeCenterPanelVisible(bool_t bVisible);
-	void RenderBossHealthBar();
+	/* Drives the real CUI_Sprite state (CUILayoutRuntime) for the boss health bar -- fill/
+	next-segment/frame/stagger/separator/tick-flash/hit-glow. Called from Update() instead of
+	from inside the old combat-HUD render pass; owns its own copy of every gate
+	Update_CombatHUD/the O-key raid-entry debug preview already apply (level, skill window,
+	CharSelect debug preview, boss validity) and explicitly hides everything
+	(Hide_BossHealthBar) when any of them fails, since a CUI_Sprite -- unlike the old ImGui
+	pass -- keeps showing its last state instead of simply not being drawn that frame. */
+	void Update_BossHealthBar();
+	void Hide_BossHealthBar();
 	/* Real HOLD skill (PLAYER_SKILL_KIND::HOLD) charge bar -- ChargeGauge_Bg/_Track/_Fill in
 	HUD_Layout.json (ownerClass:null, same as HealthBar). Progress is reconstructed client-side
 	from real Data/Balance/PlayerSkills.json comboStages[].actionDurationMs and the Server-owned
 	iComboStage/iActionStartTick fields (no continuous charge-percent field exists on the wire). */
-	void RenderChargeGauge();
-	/* Skill display name, centered (X) over ChargeGauge_Track, drawn after
-	CImGuiLayer::EndFrame() -- same reason as RenderBossHealthBarText, RenderChargeGauge's own
-	fill image only composites there. */
+	void Update_ChargeGauge();
+	/* Skill display name, centered (X) over ChargeGauge_Track, drawn in the post-EndFrame
+	LOA-font text pass -- same split as RenderBossHealthBarText. Must mirror
+	Update_ChargeGauge's own bCharging gate exactly. */
 	void RenderChargeGaugeText();
-	/* Boss title/HP/bar-count text. Split out from RenderBossHealthBar and called after
-	CImGuiLayer::EndFrame() (next to RenderCombatHUDText, same reason) -- CGameInstance::Draw_Text
-	submits its SpriteBatch draw immediately, but the bar/frame images RenderBossHealthBar draws
-	via ImGui's foreground draw list only composite later, inside EndFrame(). Calling both from
-	inside the Begin/EndFrame block let the ImGui-composited opaque fill bury this text underneath
-	it every frame. */
+	/* Boss title/HP/bar-count text. Split out from Update_BossHealthBar and called after
+	CImGuiLayer::EndFrame() (next to RenderCombatHUDText, same reason every other LOA-font
+	label in this codebase runs there) -- CGameInstance::Draw_Text's SpriteBatch submits
+	immediately, so it needs the same post-EndFrame pass regardless of what draws the bar/frame
+	art underneath it. */
 	void RenderBossHealthBarText();
 	/* "사망하였습니다" title + "부활"/"관전하기" button labels over Valtan's death-screen panel
 	(CLevel_ValtanArena owns the panel/button images and the revive click hit-test; this only
@@ -257,24 +284,38 @@ private:
 	fills (rect AND the already-localized "OO을(를) 획득하였습니다" text) every frame a toast is
 	showing. */
 	void RenderItemAnnounceText();
-	/* Room-shared raid Esther gauge bar. Draws nothing when the snapshot says
-	the world has no Esther roster (maximum 0). */
-	void RenderEstherGauge();
-	/* LanceMaster's 3-segment identity meter -- drawn procedurally (matching the real
-	LanceMasterProgress.as formula: target.rotation = maxDegree * value/100, cascading through
-	3 segments) rather than from extracted art, since the real asset's moving "target" piece is
-	a vector shape this pipeline can't crop as an image (see .../HudGfx_Extracted notes). */
-	void RenderLanceMasterIdentityGauge();
+	/* Room-shared raid Esther gauge bar -- drives m_pEstherUIView's real CUI_Sprite slots
+	(static frame/portraits/track, fill-ratio-clipped gauge fill, gauge-full ready glows) from
+	Update(). Hides everything (Hide_EstherUI) when the snapshot says the world has no Esther
+	roster (maximum 0) or outside VALTAN_ARENA -- unlike the old ImGui pass, these slots live
+	under LEVEL::STATIC and keep their last state unless told otherwise. */
+	void Update_EstherGauge();
+	void Hide_EstherUI();
+	/* The "ESTHER"/"ESTHER READY  Ctrl+Z/X/C" label above the gauge track -- LOA-font
+	Draw_Text in the post-EndFrame text pass, same split as every other HUD label. */
+	void RenderEstherGaugeText();
+	/* LanceMaster's 3-segment identity meter -- the real per-percentage baked keyframe fills
+	(Gauge0/1/2Fill.json) plus the one-shot ignite -> sustain-loop burn flourish, driven off
+	iCurrentIdentity exactly as the decompiled LanceMasterProgress.as formula prescribes. */
+	void Update_LanceMasterIdentityGauge();
 	/* Floating combat-log numbers at each DAMAGE_EVENT's real hit position (Get_DamageEvents(),
 	server-authoritative). Positions are world-space and captured at hit time, so a number stays
-	where the hit landed instead of following the target. */
+	where the hit landed instead of following the target. Already pure CGameInstance::Draw_Text
+	in the post-EndFrame text pass. */
 	void RenderDamageNumbers();
-	void RenderSkillIcons();
-	void RenderSkillCooldowns();
-	/* Experimental replacement for RenderSkillIcons/RenderSkillCooldowns, built from the real
-	extracted QuickSlot.gfx Scaleform asset (icon frame, cooldown sweep, on-use flash) instead
-	of hand-placed layers -- see .../HudGfx_Extracted. */
-	void RenderQuickSlot();
+	/* Resolves each Skill_Q..V slot's live (class, stance) skill icon into the appended
+	Skill_<X>_Icon slots (the authored Skill_<X>_Frame stays on top of it in sprite order). */
+	void Update_SkillIcons();
+	/* Cooldown pie sweep on the appended Skill_<X>_Cooldown overlays (g_ArcRatio shader clip,
+	shrinking clockwise from 12 o'clock as the cooldown expires) -- the "Ns" countdown numbers
+	moved to RenderSkillCooldownText in the text pass. */
+	void Update_SkillCooldowns();
+	/* "Ns" countdown numbers over cooling-down skill slots (Q-F center; Artist's Z/X real
+	cooldownText equivalent) -- LOA-font Draw_Text in the post-EndFrame text pass. */
+	void RenderSkillCooldownText();
+	/* The real QuickSlot.gfx on-use flash -- ready->not-ready edge detection into the
+	Skill_<X>_Flash keyframe slots. */
+	void Update_QuickSlotFlash();
 	void RenderCombatHUDText();
 
 #ifdef _DEBUG
@@ -305,24 +346,29 @@ private:
 	ComPtr<ID3D11DeviceContext> m_pContext = { nullptr };
 	CRenderingProfileService m_RenderingProfiles;
 	unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };
-	/* Not _DEBUG-gated: the runtime HUD art must render in Release too. */
-	unique_ptr<CHUDRuntimeView> m_pHUDRuntimeView = { nullptr };
-	/* UI/BossUI/BossUI.json's runtime consumer (RenderBossHealthBar) -- the boss health bar isn't
-	tied to the local player's own class (m_pHUDRuntimeView/Combat HUD) and isn't part of the
-	always-on top/bottom menu chrome (Screen UI) either, so it owns its own document/tab instead of
-	being folded into either. */
-	unique_ptr<CHUDRuntimeView> m_pBossUIView = { nullptr };
-	/* UI/Esther/EstherUI.json's runtime consumer (RenderEstherGauge) -- same reasoning as
-	m_pBossUIView: the Esther skill window is shared across every class, not tied to Combat HUD
-	or Screen UI, so it gets its own document/tab too. */
-	unique_ptr<CHUDRuntimeView> m_pEstherUIView = { nullptr };
-	/* UI/ItemUpgrade/ItemUpgradeUI.json's runtime consumer -- a plain generic Render("Default", 0)
-	pass (no per-slot hand-coded logic like RenderBossHealthBar's, since no real Server-side
-	재련/enhancement data exists yet). Not _DEBUG-gated, same as m_pInventoryView/m_pSkillWindowView.
+	/* Not _DEBUG-gated: the runtime HUD art must render in Release too. Real CUI_Sprite
+	GameObjects under LEVEL::STATIC (Update_CombatHUD drives them), created before every other
+	STATIC UI document so the always-on HUD draws underneath all of them. */
+	unique_ptr<CUILayoutRuntime> m_pHUDRuntimeView = { nullptr };
+	/* UI/BossUI/BossUI.json's runtime consumer (Update_BossHealthBar) -- real CUI_Sprite
+	GameObjects under LEVEL::STATIC, same as m_pInventoryView/m_pItemUpgradeView. The boss
+	health bar isn't tied to the local player's own class (m_pHUDRuntimeView/Combat HUD) and
+	isn't part of the always-on top/bottom menu chrome (Screen UI) either, so it owns its own
+	document/tab instead of being folded into either. */
+	unique_ptr<CUILayoutRuntime> m_pBossUIView = { nullptr };
+	/* UI/Esther/EstherUI.json's runtime consumer (Update_EstherGauge) -- real CUI_Sprite
+	GameObjects under LEVEL::STATIC, same reasoning as m_pBossUIView: the Esther skill window is
+	shared across every class, not tied to Combat HUD or Screen UI, so it gets its own
+	document/tab too. */
+	unique_ptr<CUILayoutRuntime> m_pEstherUIView = { nullptr };
+	/* UI/ItemUpgrade/ItemUpgradeUI.json's runtime consumer -- real CUI_Sprite GameObjects under
+	LEVEL::STATIC (Update_ItemUpgrade drives the gauge/effect state machine and hover/click; no
+	real Server-side 재련/enhancement data exists yet, so there is still no per-slot balance
+	logic like Update_BossHealthBar's). Not _DEBUG-gated, same as m_pInventoryView/m_pSkillWindowView.
 	P is a free normal gameplay keybind (not an F1/F6 tool-switch key) -- toggled the same
 	GetAsyncKeyState edge-detect pattern as K/I below, since it started as an always-on debug
 	preview that ended up blocking everything else on screen. */
-	unique_ptr<CHUDRuntimeView> m_pItemUpgradeView = { nullptr };
+	unique_ptr<CUILayoutRuntime> m_pItemUpgradeView = { nullptr };
 	bool_t m_bItemUpgradePreviewVisible = false;
 	/* Index into BuildItemUpgradeSlots()'s current-frame result (real "combat"-category inventory
 	items) that is the current "재련 대상" -- Update_ItemUpgradeSelection() is the only writer, on
@@ -376,13 +422,13 @@ private:
 	frame check in Update() hides both the circle and the burst layer once past it, settling to the
 	plain icon/name/result screen. Negative = no settle pending. */
 	f64_t m_dItemUpgradeResultSettleAt = -1.0;
-	/* Edge-detects the local player's stance so RenderCombatHUD only calls
-	CHUDRuntimeView::Play_KeyframeAnimation on an actual change (or the first frame a stance is
+	/* Edge-detects the local player's stance so Update_CombatHUD only calls
+	Play_KeyframeAnimation on an actual change (or the first frame a stance is
 	known at all), instead of re-triggering the icon's animation every frame. NONE never matches a
 	real stance, so the very first Render sees an edge and plays the arrival pose. */
 	LostArk::Shared::PLAYER_STANCE_ID m_ePreviousHudStance =
 		LostArk::Shared::PLAYER_STANCE_ID::NONE;
-	/* RenderChargeGauge's own default (single continuous fill) model needs the REAL elapsed time
+	/* Update_ChargeGauge's own default (single continuous fill) model needs the REAL elapsed time
 	of each completed comboStage, not its authored iActionDurationMs -- a HOLD skill's loop stage
 	can be cut short (PlayerSkillSystem.cpp's holdLeavesLoop/holdSkipsLoop) when the player
 	releases early, and hasReleasedHold never reaches the wire, so the only way to know a stage's
@@ -402,14 +448,14 @@ private:
 	std::uint32_t m_iChargeGaugeStageStartTick = 0;
 	f32_t m_fChargeGaugeElapsedBeforeCurrentStageMs = 0.f;
 	bool_t m_bChargeGaugeCancelled = false;
-	/* RenderQuickSlot edge-detects "skill just used" per Q..V slot as a ready-to-not-ready
+	/* Update_QuickSlotFlash edge-detects "skill just used" per Q..V slot as a ready-to-not-ready
 	transition. iCooldownEndTick itself can't be compared directly across frames: for a ready
 	skill CombatHUDViewModel defaults it to the current (ever-increasing) serverTick rather than
 	a fixed sentinel, so a raw "did it grow" check fires every single frame. Index order matches
-	RenderQuickSlot's own INPUT_SLOTS (Q W E R A S D F T V). */
+	Update_QuickSlotFlash's own INPUT_SLOTS (Q W E R A S D F T V). */
 	bool_t m_bPreviousQuickSlotReady[10] =
 		{ true, true, true, true, true, true, true, true, true, true };
-	/* RenderLanceMasterIdentityGauge edge-detects each of the 3 identity segments reaching 100 to
+	/* Update_LanceMasterIdentityGauge edge-detects each of the 3 identity segments reaching 100 to
 	trigger the real extracted gauge0/1/2 highLightMc "burn" flourish (Lance_Id_GaugeBurn0/1/2)
 	exactly once per fill, not every frame it stays full. */
 	bool_t m_bLanceGaugeSegmentWasFull[3] = { false, false, false };
@@ -430,7 +476,7 @@ private:
 		bool_t isOutgoing = false;
 	};
 	vector<FLOATING_DAMAGE_NUMBER> m_FloatingDamageNumbers;
-	/* RenderBossHealthBar's own edge-detect state, matching two real effects confirmed from the
+	/* Update_BossHealthBar's own edge-detect state, matching two real effects confirmed from the
 	decompiled targetstatus_loc_int.gfx (ark.controls.ProgressMultiTrack / Progress):
 	1) ProgressMultiTrack keeps a second "cloneTarget" fill instance with a colorTransform that
 	   forces it fully white, cross-fading with the real-color fill whenever a bar segment ticks
@@ -451,12 +497,15 @@ private:
 	serverTick and ticks are strictly increasing, so "iServerTick above the last one we spawned
 	from" is correct even across trims (old, already-spawned batches simply age out of the buffer). */
 	uint32_t m_iLastRenderedDamageServerTick = 0u;
-	/* The Lobby's animated title-screen backdrop (Data/UI/Lobby/Lobby_Layout.json), drawn
-	behind everything else instead of a flat clear color. Release-safe, like the HUD view. */
-	unique_ptr<CHUDRuntimeView> m_pLobbyBackgroundView = { nullptr };
-	/* Not _DEBUG-gated: K opens the skill window during real gameplay, in Release too. */
+	/* The Lobby's animated title-screen backdrop + command buttons
+	(Data/UI/Lobby/Lobby_Layout.json) -- real CUI_Sprite GameObjects under LEVEL::STATIC
+	(Update_LobbyButtons drives them), rendered by the engine pipeline and therefore behind
+	every ImGui window (the Debug Lobby panel stays ImGui, on top). Release-safe, like the HUD
+	view. */
+	unique_ptr<CUILayoutRuntime> m_pLobbyBackgroundView = { nullptr };
+	/* Intentionally never constructed anymore -- the K keybind that opened it was removed by
+	product decision, so the window can never open; see the constructor comment. */
 	unique_ptr<CSkillWindowView> m_pSkillWindowView = { nullptr };
-	bool_t m_bKDown = false;
 	/* Not _DEBUG-gated: I opens the inventory during real gameplay, in Release too. */
 	unique_ptr<CInventoryView> m_pInventoryView = { nullptr };
 	bool_t m_bIDown = false;

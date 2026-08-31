@@ -771,7 +771,9 @@ bool_t Client::CEffectV2Document::Parse_Group(
 			!Read_MsField(Row, "durationMs", Child.iDurationMs, strOutError) ||
 			!Read_Enum(Row, "stop", CHILD_STOP_KEYS, _countof(CHILD_STOP_KEYS), iStop, strOutError) ||
 			!Read_FloatArray(Row, "offset", &Child.vOffset.x, 3u, strOutError) ||
+			!Read_Number(Row, "pitchDegrees", Child.fPitchDegrees, strOutError) ||
 			!Read_Number(Row, "yawDegrees", Child.fYawDegrees, strOutError) ||
+			!Read_Number(Row, "rollDegrees", Child.fRollDegrees, strOutError) ||
 			!Read_FloatArray(Row, "scale", &Child.vScale.x, 3u, strOutError))
 			return false;
 		Child.eStop = static_cast<EFFECT_V2_CHILD_STOP>(iStop);
@@ -979,7 +981,9 @@ std::string Client::CEffectV2Document::Serialize_Group(const EFFECT_V2_GROUP& Gr
 			", \"durationMs\": " + std::to_string(Child.iDurationMs) +
 			", \"stop\": " + Json_String(Child_Stop_Key(Child.eStop)) +
 			", \"offset\": " + Json_Float3(Child.vOffset) +
+			", \"pitchDegrees\": " + Json_Number(Child.fPitchDegrees) +
 			", \"yawDegrees\": " + Json_Number(Child.fYawDegrees) +
+			", \"rollDegrees\": " + Json_Number(Child.fRollDegrees) +
 			", \"scale\": " + Json_Float3(Child.vScale) + " }" +
 			(iIndex + 1u < Group.Children.size() ? ",\n" : "\n");
 	}

@@ -114,7 +114,18 @@ class ReleaseClientSurfaceContractTests(unittest.TestCase):
         )
         self.assertIn("Render_CreateCharacterProductInputHost();", body)
         self.assertIn("Render_ProductStatus();", body)
-        self.assertIn('"##CharacterSelectProductInputHost"', source)
+        # The modal used to need an invisible ImGui host window
+        # ("##CharacterSelectProductInputHost") purely so OpenPopup/BeginPopupModal had
+        # somewhere to live. It is now real CUI_Sprite art plus CUIInputRouter's WM_CHAR
+        # capture, so the contract is that no ImGui popup remains and the nickname field
+        # drains the router instead.
+        # Matched with the call parenthesis so the comments explaining what these used to do
+        # do not count as a violation.
+        self.assertNotIn("ImGui::BeginPopupModal(", source)
+        self.assertNotIn("ImGui::OpenPopup(", source)
+        self.assertNotIn("ImGui::InputText(", source)
+        self.assertIn("Router.Take_TypedChars()", source)
+        self.assertIn("CUIInputRouter::Get().Start_TextInput();", source)
 
         host = re.search(
             r"void CLevel_CharacterSelect::Render_CreateCharacterProductInputHost\(\)"
@@ -160,7 +171,11 @@ class ReleaseClientSurfaceContractTests(unittest.TestCase):
 
         self.assertIn("LOSTARK_RAID_CLEAR_TEST_MODE", source)
         self.assertIn("Is_RaidClearTestModeEnabled()", source)
-        self.assertIn("Update_DeadScene(bool_t isBlockedByRaidClear);", header)
+        # fTimeDelta joined the signature when the death screen moved to CUI_Sprite: its
+        # flipbook slots need a clock of their own (CUILayoutRuntime::Update).
+        self.assertIn(
+            "Update_DeadScene(bool_t isBlockedByRaidClear, f32_t fTimeDelta);", header
+        )
 
         update_start = source.index("void CLevel_ValtanArena::Update(f32_t fTimeDelta)")
         raid_clear_update = source.index("Update_RaidClear(fTimeDelta);", update_start)
@@ -210,7 +225,13 @@ class ReleaseClientSurfaceContractTests(unittest.TestCase):
         self.assertIn("Render_LoadingRecoveryProduct();", source)
         self.assertIn('"Loading progress"', source)
         self.assertIn("DEFAULT_RETRY_RECT", source)
-        self.assertIn("AddRectFilled", source)
+        # The recovery panel is real CUI_Sprite art now, so the ImGui fallback rectangles
+        # (AddRectFilled) it used to draw when a slot was missing are gone; the authored
+        # rect still has to be validated before it replaces the default one.
+        self.assertNotIn("AddRectFilled", source)
+        self.assertIn("make_unique<CUILayoutRuntime>", source)
+        self.assertIn('Set_SlotVisible("LoadingRecovery_Panel", true)', source)
+        self.assertIn("Router.Is_Clicked(", source)
         self.assertIn("std::isfinite(AuthoredRect.fWidth)", source)
 
         slots = [slot["id"] for slot in recovery["slots"]]

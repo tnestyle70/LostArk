@@ -7,6 +7,8 @@
 #include "DataJson.h"
 #include "GameInstance.h"
 #include "HUDRuntimeView.h"
+#include "UIInputRouter.h"
+#include "UILayoutRuntime.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MainApp.h"
@@ -406,7 +408,7 @@ HRESULT CLevel_Bern::Initialize()
 			"unavailable; right-click interaction is disabled.\n");
 	}
 	m_pValtanEntryView = std::make_unique<CRaidEntryPreviewView>(
-		m_pDevice, m_pContext);
+		m_pDevice, m_pContext, ETOUI(LEVEL::BERN));
 
 	/* First-ever CGameInstance::Draw_Text call for Font_YoonGasiIIM in this
 	level appeared to render nothing the first time the Valtan-entry popup
@@ -427,7 +429,7 @@ HRESULT CLevel_Bern::Initialize()
 		float2_t(-1000.f, -1000.f), Colors::White, 0.f,
 		float2_t(0.5f, 0.5f), 1.f);
 
-	m_PartyInteraction.Initialize(m_pDevice, m_pContext);
+	m_PartyInteraction.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::BERN));
 
 #ifdef _DEBUG
 	if (!Ready_DebugLevelChangeTriggers(pEntry->pMapAreaId))
@@ -1191,7 +1193,8 @@ void CLevel_Bern::Render_ValtanEntryModal()
 #ifdef _DEBUG
 void CLevel_Bern::Update_ValtanEntryDebugPreviewKey()
 {
-	if (Is_ValtanEntryModalOpen() || ImGui::GetIO().WantTextInput)
+	if (Is_ValtanEntryModalOpen() || ImGui::GetIO().WantTextInput ||
+		CUIInputRouter::Get().Is_TextInputActive())
 		return;
 	const bool_t isODown =
 		0 != (CGameInstance::Get().Get_DIKeyState(DIK_O) & 0x80);

@@ -115,6 +115,8 @@
     <ClInclude Include="..\Public\PartyInteractionView.h" />
     <ClInclude Include="..\Public\RaidEntryPreviewView.h" />
     <ClInclude Include="..\Public\UITextureCache.h" />
+    <ClInclude Include="..\Public\UILayoutRuntime.h" />
+    <ClInclude Include="..\Public\UIInputRouter.h" />
     <ClInclude Include="..\Public\UI_Sprite.h" />
     <ClInclude Include="..\Public\Level_Bern.h" />
     <ClInclude Include="..\Public\Level_KakulSaydonArena.h" />
@@ -282,6 +284,8 @@
     <ClCompile Include="..\Private\PartyInteractionView.cpp" />
     <ClCompile Include="..\Private\RaidEntryPreviewView.cpp" />
     <ClCompile Include="..\Private\UITextureCache.cpp" />
+    <ClCompile Include="..\Private\UILayoutRuntime.cpp" />
+    <ClCompile Include="..\Private\UIInputRouter.cpp" />
     <ClCompile Include="..\Private\UI_Sprite.cpp" />
     <ClCompile Include="..\Private\Level_Bern.cpp" />
     <ClCompile Include="..\Private\Level_KakulSaydonArena.cpp" />

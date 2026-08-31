@@ -7,7 +7,7 @@
 
 NS_BEGIN(Client)
 
-class CHUDRuntimeView;
+class CUILayoutRuntime;
 
 /* Shared "군단장 레이드 입장" full-screen popup. CLevel_Bern owns one for the
    real NPC-driven flow (Entrance submits Request_ConfirmNpcEntry through the
@@ -18,24 +18,30 @@ class CHUDRuntimeView;
    Data/UI/Bern/ValtanRaidEntry_Layout.json and share this one runtime path --
    this is not a second runtime of the same role, only what happens on Entrance
    differs, and that decision stays with the caller (Render() only reports
-   whether Entrance was clicked, never sends a command itself). */
+   whether Entrance was clicked, never sends a command itself).
+
+   Both documents are real CUI_Sprite GameObjects on the owning Level's own
+   "Layer_UI" (CUILayoutRuntime), so the popup renders through the normal engine
+   pipeline instead of an ImGui popup/foreground drawlist. */
 class CRaidEntryPreviewView
 {
 public:
+	/* iOwnerLevelIndex is the Level whose Layer_UI holds this popup's sprites --
+	   Bern for the real flow, Character Select for the Debug O-key preview. */
 	CRaidEntryPreviewView(
 		ComPtr<ID3D11Device> pDevice,
-		ComPtr<ID3D11DeviceContext> pContext);
+		ComPtr<ID3D11DeviceContext> pContext,
+		uint32_t iOwnerLevelIndex);
 	~CRaidEntryPreviewView();
 
 public:
 	void Open();
 	bool_t Is_Open() const { return m_isOpen; }
 
-	/* Draws the panel/button art to ImGui::GetForegroundDrawList() -- must run
-	   after the combat HUD renders (RenderCombatHUD/RenderBossHealthBar/
-	   RenderSkillIcons/RenderQuickSlot in MainApp.cpp all draw to that same
-	   shared list, which composites in real submission order regardless of
-	   window Z-order) or the always-on HUD paints over this full-screen popup.
+	/* Drives the popup's own CUI_Sprite visibility/hover state and hit-testing
+	   for one frame (the sprites themselves draw in CObject_Manager's normal
+	   render cycle, so there is no ordering requirement against the combat HUD
+	   anymore -- that is what the ImGui foreground drawlist version needed).
 	   Clicking Entrance does not report back immediately -- it opens a second,
 	   small confirm step (the original simple 수락/거절 dialog, reusing
 	   Data/UI/Bern/BernValtanEntry_Layout.json) on top; this function only
@@ -52,15 +58,25 @@ public:
 private:
 	bool_t Render_ConfirmStep();
 	void RenderText_ConfirmStep();
+	/* Hides every slot that carries real art in either document. The
+	   position-only marker slots (authored tint alpha 0 -- boss portrait, text
+	   boxes, tier badges, ...) are deliberately never touched by either this or
+	   the show path: Set_SlotVisible(true) resets a slot's tint to opaque white,
+	   which would turn each invisible marker into a white box. */
+	void Hide_AllSlots();
+	void Hide_ConfirmSlots();
 
 private:
-	unique_ptr<CHUDRuntimeView> m_pView;
+	unique_ptr<CUILayoutRuntime> m_pView;
 	bool_t m_isOpen = false;
 	bool_t m_hasJustOpened = false;
+	/* ImGui's own modal consumed Escape; with no popup left, this reproduces that close
+	   gesture (the screen itself is labelled "닫기 (Esc)") with its own down-edge state. */
+	bool_t m_wasEscapeDown = false;
 
 	/* Second-step simple 수락/거절 dialog, opened by the main screen's own
 	   Entrance button -- see the PLAN follow-up on this two-step flow. */
-	unique_ptr<CHUDRuntimeView> m_pConfirmView;
+	unique_ptr<CUILayoutRuntime> m_pConfirmView;
 	bool_t m_isConfirmStepOpen = false;
 };
 
