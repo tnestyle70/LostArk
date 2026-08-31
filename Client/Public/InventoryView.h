@@ -69,6 +69,12 @@ private:
 	void Update_CategoryTabs();
 	void Update_Items(const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items);
 	void Sync_DisplayOrder(size_t itemCount);
+	/* Indices into `items` that the selected category tab keeps, in the catalog's own order.
+	Pure function of (items, m_strSelectedCategoryId) so Update_Items and Render_Text resolve
+	the same slot to the same item -- a filtered view must never label a slot with an item it
+	is not showing. */
+	vector<size_t> Build_FilteredIndices(
+		const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items) const;
 	/* Every slot this view owns, moved together while dragging the title bar. */
 	void Update_Drag();
 
