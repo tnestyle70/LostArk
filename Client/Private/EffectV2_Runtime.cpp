@@ -247,6 +247,21 @@ namespace
 			++Iterator;
 		}
 	}
+
+	void Remove_AllSpawned(TARGET_STATE& State)
+	{
+		CGameInstance& GameInstance = CGameInstance::Get();
+		for (SPAWNED_EFFECT& Spawned : State.Spawned)
+		{
+			if (const std::shared_ptr<Client::CEffectV2Object> pObject =
+					Spawned.pObject.lock())
+			{
+				GameInstance.Remove_GameObject_from_Layer(
+					GameInstance.Get_CurrentLevelID(), EFFECT_LAYER_TAG, pObject);
+			}
+		}
+		State.Spawned.clear();
+	}
 }
 
 void Client::CEffectV2Runtime::Prewarm_Archetype(
@@ -384,6 +399,18 @@ void Client::CEffectV2Runtime::Sync_Stage(
 			Spawn(State, Pending, View, pDevice, pContext, true);
 	}
 	Prune_Spawned(State, false, false);
+}
+
+void Client::CEffectV2Runtime::Reset_LocalPreviewTarget(
+	const EFFECT_V2_TARGET& Target)
+{
+	if (nullptr == Target.pKey)
+		return;
+	const auto Found = g_TargetStates.find(Target.pKey);
+	if (Found == g_TargetStates.end())
+		return;
+	Remove_AllSpawned(Found->second);
+	g_TargetStates.erase(Found);
 }
 
 void Client::CEffectV2Runtime::Tick(

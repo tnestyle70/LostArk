@@ -405,67 +405,49 @@ namespace
 		return 0u;
 	}
 
-	constexpr std::array<std::pair<std::string_view, std::string_view>, 7u>
-		PRESENTATION_ARTIFACT_ALLOWLIST{{
-			{ "Data/Animation/Authored/Valtan/Valtan.patternbindings.json", "ANIMATION" },
-			{ "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json", "EFFECT" },
-			{ "Data/Effects/EffectCatalog.json", "EFFECT" },
-			{ "Data/Encounters/Valtan/ValtanCombatObjects.json", "COMBAT_VISUAL" },
-			{ "Data/Actors/BossCatalog.json", "COMBAT_VISUAL" },
-			{ "Data/Encounters/Valtan/ValtanCinematicCamera.json", "CAMERA" },
-			{ "Data/Encounters/Valtan/ValtanWorldEvents.json", "WORLD_EVENT_SET" },
-		}};
-
 	bool CapturePresentationArtifactBaseline(
 		std::vector<CNetworkManager::PRESENTATION_ARTIFACT_BASELINE>& output,
+		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& receipt,
 		std::string& status)
 	{
-		output.clear();
-		const std::filesystem::path repositoryRoot =
-			Client::CProjectDataRoot::Get().parent_path();
-		if (repositoryRoot.empty())
+		Client::CValtanPresentationGenerationReadAdmission admission;
+		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT stagedReceipt;
+		if (!admission.Acquire_PackagedBaseline(stagedReceipt, status) ||
+			!admission.Validate_StillCurrent(status))
 		{
-			status = "Presentation baseline repository root is unavailable.";
 			return false;
 		}
-		output.reserve(PRESENTATION_ARTIFACT_ALLOWLIST.size());
-		for (const auto& [relative, lane] : PRESENTATION_ARTIFACT_ALLOWLIST)
+		std::vector<CNetworkManager::PRESENTATION_ARTIFACT_BASELINE> staged;
+		staged.reserve(stagedReceipt.Artifacts.size());
+		for (const auto& artifact : stagedReceipt.Artifacts)
 		{
-			const std::filesystem::path sourcePath =
-				repositoryRoot / std::filesystem::path(relative);
-			if (!IsDescendantPath(repositoryRoot, sourcePath))
-			{
-				status = "Presentation baseline artifact escaped the repository root.";
-				output.clear();
-				return false;
-			}
 			CNetworkManager::PRESENTATION_ARTIFACT_BASELINE row;
-			row.strRelativePath = relative;
-			row.strLane = lane;
-			if (!HashFileSha256(
-					sourcePath, row.strSha256, row.iBytes, status) ||
-				row.iBytes > MAX_PRESENTATION_ALIAS_ARTIFACT_BYTES)
-			{
-				if (status.empty())
-					status = "Presentation baseline artifact exceeds its byte bound.";
-				output.clear();
-				return false;
-			}
-			output.push_back(std::move(row));
+			row.strRelativePath = artifact.strRelativePath;
+			row.strLane = artifact.strLane;
+			row.strSha256 = LostArk::Shared::Format_GameplayDataRevision(
+				artifact.Revision);
+			row.iBytes = artifact.iBytes;
+			staged.push_back(std::move(row));
 		}
-		status = "Captured the world-entry presentation artifact baseline.";
+		output = std::move(staged);
+		receipt = std::move(stagedReceipt);
+		status = "Captured exact world-entry gameplay R -> presentation M receipt.";
 		return true;
 	}
 
 	bool ValidateByteIdenticalCandidatePresentation(
 		const LostArk::Shared::GameplayDataRevision& revision,
 		const std::uint32_t requestedLaneMask,
+		const LostArk::Shared::GameplayDataRevision& presentationGenerationId,
 		const std::vector<CNetworkManager::PRESENTATION_ARTIFACT_BASELINE>&
 			baselineArtifacts,
-		std::string& status)
+		std::string& status,
+		bool* const requiresReentry = nullptr)
 	{
 		using Client::DATA_JSON_VALUE;
 		using namespace LostArk::Shared;
+		if (nullptr != requiresReentry)
+			*requiresReentry = false;
 		if (!revision.Is_Valid() || 0u == requestedLaneMask ||
 			0u != (requestedLaneMask & ~GAMEPLAY_PRESENTATION_KNOWN_LANE_MASK))
 		{
@@ -542,14 +524,35 @@ namespace
 			return false;
 		}
 		const DATA_JSON_VALUE* mode = compatibility->Find("mode");
+		const DATA_JSON_VALUE* generation =
+			compatibility->Find("presentationGenerationId");
 		const DATA_JSON_VALUE* lanes = compatibility->Find("requiredLanes");
 		const DATA_JSON_VALUE* artifacts = compatibility->Find("artifacts");
+		const bool manifestRequiresReentry = nullptr != mode && mode->Is_String() &&
+			"REENTRY_REQUIRED" == mode->Get_String();
 		if (nullptr == mode || !mode->Is_String() ||
-			"BYTE_IDENTICAL_TO_ACTIVE" != mode->Get_String() ||
+			("BYTE_IDENTICAL_TO_ACTIVE" != mode->Get_String() &&
+			 "REENTRY_REQUIRED" != mode->Get_String()) ||
+			nullptr == generation || !generation->Is_String() ||
+			!IsLowerSha256(generation->Get_String()) ||
 			nullptr == lanes || !lanes->Is_Array() ||
 			nullptr == artifacts || !artifacts->Is_Array())
 		{
 			status = "Candidate presentation compatibility contract is invalid.";
+			return false;
+		}
+		const std::filesystem::path generationManifestPath = revisionRoot /
+			"Runtime" / "Gameplay" / "ValtanPresentationGenerations" /
+			(generation->Get_String() + ".json");
+		std::string generationManifestSha;
+		std::uint64_t generationManifestBytes = 0u;
+		if (!IsDescendantPath(revisionRoot, generationManifestPath) ||
+			!HashFileSha256(generationManifestPath, generationManifestSha,
+				generationManifestBytes, status) ||
+			generationManifestSha != generation->Get_String())
+		{
+			status =
+				"Candidate presentation generation manifest is missing or has the wrong content identity.";
 			return false;
 		}
 
@@ -577,8 +580,16 @@ namespace
 		}
 
 		std::unordered_map<std::string, std::string> allowedArtifacts;
-		for (const auto& [relative, lane] : PRESENTATION_ARTIFACT_ALLOWLIST)
-			allowedArtifacts.emplace(relative, lane);
+		for (const CNetworkManager::PRESENTATION_ARTIFACT_BASELINE& baseline :
+			baselineArtifacts)
+		{
+			if (!allowedArtifacts.emplace(
+					baseline.strRelativePath, baseline.strLane).second)
+			{
+				status = "World-entry presentation artifact baseline is duplicated.";
+				return false;
+			}
+		}
 		std::unordered_map<std::string,
 			const CNetworkManager::PRESENTATION_ARTIFACT_BASELINE*>
 			baselineByPath;
@@ -604,6 +615,10 @@ namespace
 		}
 		std::unordered_set<std::string> admittedPaths;
 		std::uint32_t artifactLaneMask = 0u;
+		std::string firstBaselineMismatch =
+			generation->Get_String() ==
+				Format_GameplayDataRevision(presentationGenerationId) ?
+			std::string{} : std::string{ "presentation generation M" };
 		for (const DATA_JSON_VALUE& artifact : artifacts->Get_Array())
 		{
 			if (!artifact.Is_Object())
@@ -633,7 +648,9 @@ namespace
 				allowed->second != laneValue->Get_String() ||
 				!admittedPaths.insert(relative).second ||
 				!IsLowerSha256(shaValue->Get_String()) ||
-				shaValue->Get_String() != sourceShaValue->Get_String())
+				!IsLowerSha256(sourceShaValue->Get_String()) ||
+				(!manifestRequiresReentry &&
+				 shaValue->Get_String() != sourceShaValue->Get_String()))
 			{
 				status = "Candidate presentation artifact identity is not allowlisted.";
 				return false;
@@ -651,18 +668,24 @@ namespace
 			std::uint64_t candidateBytes = 0u;
 			const auto baseline = baselineByPath.find(relative);
 			if (!HashFileSha256(
-					candidatePath, candidateSha, candidateBytes, status) ||
-				baselineByPath.end() == baseline ||
+					candidatePath, candidateSha, candidateBytes, status))
+			{
+				return false;
+			}
+			if (baselineByPath.end() == baseline ||
 				candidateBytes != declaredBytes ||
-				candidateSha != shaValue->Get_String() ||
-				baseline->second->iBytes != declaredBytes ||
+				candidateSha != shaValue->Get_String())
+			{
+				status =
+					"Candidate presentation artifact bytes do not match its "
+					"immutable manifest: " + relative + ".";
+				return false;
+			}
+			if (baseline->second->iBytes != declaredBytes ||
 				baseline->second->strSha256 != sourceShaValue->Get_String())
 			{
-				if (status.empty())
-					status =
-						"Candidate presentation artifact is not byte-identical to "
-						"the world-entry baseline.";
-				return false;
+				if (firstBaselineMismatch.empty())
+					firstBaselineMismatch = relative;
 			}
 			artifactLaneMask |= PresentationLaneBit(laneValue->Get_String());
 		}
@@ -670,6 +693,22 @@ namespace
 			artifactLaneMask != GAMEPLAY_PRESENTATION_KNOWN_LANE_MASK)
 		{
 			status = "Candidate presentation compatibility artifact set is incomplete.";
+			return false;
+		}
+		if (manifestRequiresReentry || !firstBaselineMismatch.empty())
+		{
+			if (nullptr != requiresReentry)
+				*requiresReentry = true;
+			if (firstBaselineMismatch.empty())
+				firstBaselineMismatch = "candidate presentation closure";
+			status =
+				"REENTRY_REQUIRED: immutable candidate presentation differs "
+				"from the admitted world-entry generation at " +
+				firstBaselineMismatch +
+				". Live Apply was not started and the Server remains on its old "
+				"revision. Restart the Debug Server with this published Product, "
+				"then re-enter Valtan (or use a future controlled presentation "
+				"activation path).";
 			return false;
 		}
 		status =
@@ -680,6 +719,7 @@ namespace
 
 	bool AdmitDebugPresentationRevisionAtWorldEntry(
 		const LostArk::Shared::GameplayDataRevision& revision,
+		const Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& baselineReceipt,
 		const std::vector<CNetworkManager::PRESENTATION_ARTIFACT_BASELINE>&
 			baselineArtifacts,
 		bool& isBaselineBootstrap,
@@ -711,6 +751,7 @@ namespace
 
 		if (ValidateByteIdenticalCandidatePresentation(
 				revision, GAMEPLAY_PRESENTATION_KNOWN_LANE_MASK,
+				baselineReceipt.PresentationGenerationId,
 				baselineArtifacts, status))
 		{
 			return true;
@@ -718,6 +759,36 @@ namespace
 		if (!bootstrapStatus.empty())
 			status += " Baseline admission also failed: " + bootstrapStatus;
 		return false;
+	}
+#else
+	bool CapturePresentationArtifactBaseline(
+		std::vector<CNetworkManager::PRESENTATION_ARTIFACT_BASELINE>& output,
+		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& receipt,
+		std::string& status)
+	{
+		Client::CValtanPresentationGenerationReadAdmission admission;
+		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT stagedReceipt;
+		if (!admission.Acquire_PackagedBaseline(stagedReceipt, status) ||
+			!admission.Validate_StillCurrent(status))
+		{
+			return false;
+		}
+		std::vector<CNetworkManager::PRESENTATION_ARTIFACT_BASELINE> staged;
+		staged.reserve(stagedReceipt.Artifacts.size());
+		for (const auto& artifact : stagedReceipt.Artifacts)
+		{
+			CNetworkManager::PRESENTATION_ARTIFACT_BASELINE row;
+			row.strRelativePath = artifact.strRelativePath;
+			row.strLane = artifact.strLane;
+			row.strSha256 = LostArk::Shared::Format_GameplayDataRevision(
+				artifact.Revision);
+			row.iBytes = artifact.iBytes;
+			staged.push_back(std::move(row));
+		}
+		output = std::move(staged);
+		receipt = std::move(stagedReceipt);
+		status = "Captured exact world-entry gameplay R -> presentation M receipt.";
+		return true;
 	}
 #endif
 }
@@ -1577,7 +1648,9 @@ bool CNetworkManager::Send_ValtanAudition(
 bool CNetworkManager::Send_ValtanPatternAuditionById(
 	const std::uint32_t requestSequence,
 	const std::string_view bossPlacementId,
-	const std::string_view patternId)
+	const std::string_view patternId,
+	const LostArk::Shared::GameplayDataRevision&
+		expectedActiveDefinitionRevision)
 {
 	using namespace LostArk::Shared;
 	if (!Is_Connected())
@@ -1589,6 +1662,7 @@ bool CNetworkManager::Send_ValtanPatternAuditionById(
 	message.iTargetHealthBar = 0u;
 	message.strBossPlacementId = std::string{ bossPlacementId };
 	message.strPatternId = std::string{ patternId };
+	message.ExpectedDefinitionRevision = expectedActiveDefinitionRevision;
 	CPacketWriter payloadWriter;
 	if (!Write_Message(payloadWriter, message))
 		return false;
@@ -1598,6 +1672,23 @@ bool CNetworkManager::Send_ValtanPatternAuditionById(
 		PACKET_TYPE::C2S_VALTAN_AUDITION_REQUEST,
 		payloadWriter.Get_Buffer(),
 		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_ValtanPatternRestart(
+	const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& message)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected() ||
+		VALTAN_AUDITION_OPERATION::RESTART_PATTERN_ID != message.eOperation)
+	{
+		return false;
+	}
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(PACKET_TYPE::C2S_VALTAN_AUDITION_REQUEST,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
 }
 
 bool CNetworkManager::Send_ValtanNextPatternCommand(
@@ -2006,50 +2097,75 @@ bool CNetworkManager::Is_PresentationRevisionAvailable(
 		m_GameplayRevisionState.AvailablePresentationAliases.end();
 }
 
+bool CNetworkManager::Try_Get_ValtanPresentationGenerationReceipt(
+	const LostArk::Shared::GameplayDataRevision& revision,
+	Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& outReceipt,
+	std::string& status) const
+{
+	if (!Is_PresentationRevisionAvailable(revision) ||
+		!m_GameplayRevisionState.BootstrapPresentationReceipt.Is_Valid())
+	{
+		status =
+			"No admitted Valtan presentation generation receipt exists for the requested Server revision.";
+		return false;
+	}
+	auto staged = m_GameplayRevisionState.BootstrapPresentationReceipt;
+	staged.ServerGameplayRevision = revision;
+	outReceipt = std::move(staged);
+	status = "Resolved exact Valtan presentation generation receipt for Server R.";
+	return true;
+}
+
 bool CNetworkManager::Is_CurrentPresentationBaselineIntact(
 	std::string& status) const
 {
-#if !defined(_DEBUG)
-	status = "Presentation source baseline comparison is Debug-only.";
-	return false;
-#else
-	if (!m_GameplayRevisionState.hasPresentationArtifactBaseline)
+	if (!m_GameplayRevisionState.hasPresentationArtifactBaseline ||
+		!m_GameplayRevisionState.BootstrapPresentationReceipt.Is_Valid())
 	{
 		status = "No immutable world-entry presentation baseline is available.";
 		return false;
 	}
+	Client::CValtanPresentationGenerationReadAdmission admission;
+	return admission.Acquire_Receipt(
+		m_GameplayRevisionState.BootstrapPresentationReceipt.
+			ServerGameplayRevision,
+		m_GameplayRevisionState.BootstrapPresentationReceipt,
+		status) && admission.Validate_StillCurrent(status);
+}
 
-	std::vector<PRESENTATION_ARTIFACT_BASELINE> current;
-	if (!CapturePresentationArtifactBaseline(current, status))
-		return false;
-	const std::vector<PRESENTATION_ARTIFACT_BASELINE>& admitted =
-		m_GameplayRevisionState.PresentationArtifactBaseline;
-	if (current.size() != admitted.size())
+CNetworkManager::PRESENTATION_CANDIDATE_PREFLIGHT_RESULT
+CNetworkManager::Preflight_PresentationCandidate(
+	const LostArk::Shared::GameplayDataRevision& candidateRevision,
+	const std::uint32_t requiredPresentationLaneMask,
+	std::string& status) const
+{
+#if !defined(_DEBUG)
+	(void)candidateRevision;
+	(void)requiredPresentationLaneMask;
+	status = "Release Client does not initiate presentation revision transactions.";
+	return PRESENTATION_CANDIDATE_PREFLIGHT_RESULT::REJECTED;
+#else
+	if (!m_GameplayRevisionState.hasPresentationArtifactBaseline)
 	{
-		status = "The current presentation source closure is incomplete.";
-		return false;
+		status =
+			"No immutable world-entry presentation baseline is available for "
+			"candidate preflight.";
+		return PRESENTATION_CANDIDATE_PREFLIGHT_RESULT::REJECTED;
 	}
-	for (const PRESENTATION_ARTIFACT_BASELINE& row : current)
+	bool requiresReentry = false;
+	if (ValidateByteIdenticalCandidatePresentation(
+			candidateRevision, requiredPresentationLaneMask,
+			m_GameplayRevisionState.BootstrapPresentationReceipt.
+				PresentationGenerationId,
+			m_GameplayRevisionState.PresentationArtifactBaseline,
+			status, &requiresReentry))
 	{
-		const auto baseline = std::find_if(
-			admitted.begin(), admitted.end(),
-			[&row](const PRESENTATION_ARTIFACT_BASELINE& candidate)
-			{
-				return candidate.strRelativePath == row.strRelativePath &&
-					candidate.strLane == row.strLane;
-			});
-		if (baseline == admitted.end() ||
-			baseline->iBytes != row.iBytes ||
-			baseline->strSha256 != row.strSha256)
-		{
-			status = "Workspace presentation changed after world entry: " +
-				row.strRelativePath + ". Restart/publish before visual verification.";
-			return false;
-		}
+		return PRESENTATION_CANDIDATE_PREFLIGHT_RESULT::
+			BYTE_IDENTICAL_ALIAS_READY;
 	}
-	status =
-		"Current presentation sources match the immutable world-entry baseline.";
-	return true;
+	return requiresReentry ?
+		PRESENTATION_CANDIDATE_PREFLIGHT_RESULT::REENTRY_REQUIRED :
+		PRESENTATION_CANDIDATE_PREFLIGHT_RESULT::REJECTED;
 #endif
 }
 
@@ -2117,6 +2233,8 @@ bool CNetworkManager::Stage_ByteIdenticalPresentationAlias(
 	if (!ValidateByteIdenticalCandidatePresentation(
 			prepare.CandidateRevision,
 			prepare.iRequiredPresentationLaneMask,
+			m_GameplayRevisionState.BootstrapPresentationReceipt.
+				PresentationGenerationId,
 			m_GameplayRevisionState.PresentationArtifactBaseline,
 			status))
 	{
@@ -2526,12 +2644,14 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		bool stagedHasBootstrapPresentationRevision = false;
 		GameplayDataRevision stagedBootstrapPresentationRevision{};
 		std::vector<GameplayDataRevision> stagedPresentationAliases;
-#if defined(_DEBUG)
 		std::vector<CNetworkManager::PRESENTATION_ARTIFACT_BASELINE>
 			stagedPresentationArtifactBaseline;
+		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT
+			stagedPresentationReceipt;
 		std::string baselineStatus;
 		if (!CapturePresentationArtifactBaseline(
-				stagedPresentationArtifactBaseline, baselineStatus))
+				stagedPresentationArtifactBaseline,
+				stagedPresentationReceipt, baselineStatus))
 		{
 			Fail_Protocol(
 				WSAEINVAL,
@@ -2543,10 +2663,11 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 					baselineStatus);
 			return;
 		}
+#if defined(_DEBUG)
 		const auto admitEntryRevision = [
 			&stagedHasBootstrapPresentationRevision,
 			&stagedBootstrapPresentationRevision,
-			&stagedPresentationAliases,
+			&stagedPresentationAliases, &stagedPresentationReceipt,
 			&stagedPresentationArtifactBaseline](
 			const GameplayDataRevision& revision,
 			const char* context,
@@ -2563,7 +2684,8 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			bool isBaselineBootstrap = false;
 			std::string admissionStatus;
 			if (!AdmitDebugPresentationRevisionAtWorldEntry(
-					revision, stagedPresentationArtifactBaseline,
+					revision, stagedPresentationReceipt,
+					stagedPresentationArtifactBaseline,
 					isBaselineBootstrap, admissionStatus))
 			{
 				failure = std::string{ context } + ": " + admissionStatus;
@@ -2634,9 +2756,20 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 				"Release Client received pinned presentation revisions that it cannot load.");
 			return;
 		}
+		if (accepted.ActiveGameplayRevision !=
+			stagedPresentationReceipt.ServerGameplayRevision)
+		{
+			Fail_Protocol(
+				WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::
+					CLIENT_ENTRY_PRESENTATION_REVISION_FAILED,
+				PACKET_TYPE::S2C_ENTER_ACCEPTED,
+				"Release world-entry revision does not match packaged Gameplay.bootstrap bytes.");
+			return;
+		}
 		stagedHasBootstrapPresentationRevision = true;
 		stagedBootstrapPresentationRevision =
-			accepted.ActiveGameplayRevision;
+			stagedPresentationReceipt.ServerGameplayRevision;
 #endif
 		// Acceptance is the generation boundary. It intentionally drops every
 		// queued event that may have arrived for the previous room while the
@@ -2653,11 +2786,11 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			accepted.ActiveGameplayRevision;
 		m_GameplayRevisionState.RequiredPinnedRevisions =
 			accepted.RequiredPinnedGameplayRevisions;
-#if defined(_DEBUG)
 		m_GameplayRevisionState.hasPresentationArtifactBaseline = true;
 		m_GameplayRevisionState.PresentationArtifactBaseline =
 			std::move(stagedPresentationArtifactBaseline);
-#endif
+		m_GameplayRevisionState.BootstrapPresentationReceipt =
+			std::move(stagedPresentationReceipt);
 		m_GameplayRevisionState.hasBootstrapPresentationRevision =
 			stagedHasBootstrapPresentationRevision;
 		m_GameplayRevisionState.BootstrapPresentationRevision =
@@ -2727,14 +2860,26 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			m_iLastErrorCode.store(WSAEINVAL);
 			return;
 		}
-		/* Spawn has no occurrence revision of its own, so it belongs to the
-		   room-active definition.  Never bind a newly committed archetype to
-		   the bootstrap catalog when that active generation is unavailable. */
+		if (!Is_AnnouncedWorldRevision(spawned.PinnedDefinitionRevision))
+		{
+			const std::string revision = Format_GameplayDataRevision(
+				spawned.PinnedDefinitionRevision);
+			Fail_Protocol(
+				WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_INVALID_SERVER_RESPONSE,
+				PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED,
+				"World-entity spawn referenced unannounced pinned revision " +
+					(revision.empty() ? std::string{ "INVALID" } : revision) + ".");
+			return;
+		}
+		/* Bind the presentation to the entity's exact occurrence generation,
+		   never to whichever room-active revision happens to be current when
+		   the network thread dequeues this reliable frame. */
 		if (!Is_PresentationRevisionAvailable(
-				m_GameplayRevisionState.ServerActiveRevision))
+				spawned.PinnedDefinitionRevision))
 		{
 			Record_PresentationIsolation(
-				m_GameplayRevisionState.ServerActiveRevision,
+				spawned.PinnedDefinitionRevision,
 				"World-entity spawn");
 			break;
 		}
@@ -2847,6 +2992,7 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			return;
 		}
 		if (VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID == result.eOperation ||
+			VALTAN_AUDITION_OPERATION::RESTART_PATTERN_ID == result.eOperation ||
 			VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == result.eOperation ||
 			VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID == result.eOperation ||
 			VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID == result.eOperation)

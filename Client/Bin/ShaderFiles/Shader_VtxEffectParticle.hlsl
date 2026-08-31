@@ -70,6 +70,12 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
     if (0u != g_RuntimeMaterialV2Enabled)
     {
         if (g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_PROJECT_TUNED_WATER_DROPLET_BURST)
+        {
+            return Shade_EffectProjectTunedWaterDropletBurst(
+                input.runtimeLocalUV, input.color);
+        }
+        if (g_RuntimeMaterialV2Opcode ==
                 RUNTIME_MATERIAL_V2_PROJECT_TUNED_BASE_COVERAGE_SRGB ||
             g_RuntimeMaterialV2Opcode ==
                 RUNTIME_MATERIAL_V2_PROJECT_TUNED_BASE_COVERAGE_LINEAR)

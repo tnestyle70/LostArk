@@ -83,6 +83,28 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.root, copy.deepcopy(self.migration_docs)
         )
 
+    def copy_native_valtan_animation_fixture(self, repository_root: Path) -> None:
+        """Hydrate the two BossCatalog-owned WModels for a publisher fixture.
+
+        Product Resources are intentionally not part of source_manifest.  A
+        temporary repository that exercises final source/publish admission must
+        therefore opt into the real native timing inputs instead of relying on
+        an asset-less silent pass.
+        """
+
+        catalog = pipeline.read_json(self.root / pipeline.BOSS_CATALOG_REL)
+        valtan = next(
+            row
+            for row in catalog["bosses"]
+            if row["archetypeId"] == "BOSS_VALTAN"
+        )
+        for field in ("bodyModel", "animationSetId"):
+            relative = Path(*valtan[field].split("/"))
+            source = self.root / "Client/Bin/Resources" / relative
+            destination = repository_root / "Client/Bin/Resources" / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
+
     def with_manual_audition(
         self,
         master: dict | None = None,
@@ -975,6 +997,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             fixture = repository_root / pipeline.MASTER_REL
             fixture.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(self.root / pipeline.MASTER_REL, fixture)
+            self.copy_native_valtan_animation_fixture(repository_root)
 
             before = pipeline.source_manifest(repository_root)
             fixture.write_bytes(b"not migration JSON\n")
@@ -1567,8 +1590,15 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                      if stage["motion"] is not None]
         finale_legs = [stage for stage in owners["VALTAN_GHOST_FINALE"]["stages"]
                        if stage["motion"] is not None]
-        self.assertEqual([{"kind": "PORTAL_TARGET_RUSH"}] * 8,
+        self.assertEqual([{
+            "kind": "PORTAL_TARGET_RUSH", "retargetDelayMs": 500,
+            "speedMps": 20.0, "distanceM": 8.0,
+        }] * 8,
                          [stage["motion"] for stage in warp_legs])
+        self.assertEqual(
+            [list(range(500, 900, 50))] * 8,
+            [stage["hit"]["schedule"]["offsetsMs"] for stage in warp_legs],
+        )
         self.assertEqual([
             {"kind": "PORTAL_CROSS_ARENA", "cornerIndex": index % 4,
              "halfExtentsM": [22.0, 22.0]}
@@ -1626,6 +1656,9 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 pipeline.validate_gameplay_authoring(invalid)
         for name, mutate in (
             ("target rush extra field", lambda motion: motion.update(distance=7.2654)),
+            ("target rush missing delay", lambda motion: motion.pop("retargetDelayMs")),
+            ("target rush zero speed", lambda motion: motion.update(speedMps=0.0)),
+            ("target rush overrun", lambda motion: motion.update(distanceM=9.0)),
             ("target rush unknown kind", lambda motion: motion.update(kind="PORTAL_NAV_FALLBACK")),
             ("warp changed to corner", lambda motion: motion.update(
                 kind="PORTAL_CROSS_ARENA", cornerIndex=0, halfExtentsM=[22.0, 22.0])),
@@ -1729,7 +1762,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.docs[pipeline.WORLD_SET_REL], self.docs[pipeline.COMBAT_AUTHORING_REL])
         expected = {"VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK": "arena.center",
                     "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK": "arena.center",
-                    "VALTAN_SIX_PIZZA_106": "arena.center.facing"}
+                    "VALTAN_SIX_PIZZA_106": "pattern.target.snapshot"}
         for row in master["patterns"]:
             if row["patternId"] not in expected:
                 continue
@@ -1764,17 +1797,22 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.docs[pipeline.PRESENTATION_AUTHORING_REL],
             self.docs[pipeline.WORLD_SET_REL], self.docs[pipeline.COMBAT_AUTHORING_REL])
         mutations = [
-            ("missing landing authority", lambda row, cue: row.update(serverMotion=None)),
-            ("no preposition", lambda row, cue: row["serverMotion"].update(moveToAnchorBeforeTakeoff=False)),
-            ("moving effect root", lambda row, cue: cue.update(followPolicy="follow")),
-            ("unknown reserved anchor", lambda row, cue: cue.update(anchorSlotId="arena.center.unknown")),
-            ("unlocked facing", lambda row, cue: row.update(targetPolicy="NONE", aimPolicy="NONE")),
+            ("VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK", "missing landing authority",
+             lambda row, cue: row.update(serverMotion=None)),
+            ("VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK", "no preposition",
+             lambda row, cue: row["serverMotion"].update(moveToAnchorBeforeTakeoff=False)),
+            ("VALTAN_SIX_PIZZA_106", "moving effect root",
+             lambda row, cue: cue.update(followPolicy="follow")),
+            ("VALTAN_SIX_PIZZA_106", "unknown reserved anchor",
+             lambda row, cue: cue.update(anchorSlotId="pattern.target.unknown")),
+            ("VALTAN_SIX_PIZZA_106", "unlocked target",
+             lambda row, cue: row.update(targetPolicy="NONE", aimPolicy="NONE")),
         ]
-        for name, mutate in mutations:
+        for pattern_id, name, mutate in mutations:
             invalid = copy.deepcopy(base)
-            pizza = next(row for row in invalid["patterns"] if row["patternId"] == "VALTAN_SIX_PIZZA_106")
-            cue = next(cue for stage in pizza["stages"] for cue in stage["effectCues"])
-            mutate(pizza, cue)
+            pattern = next(row for row in invalid["patterns"] if row["patternId"] == pattern_id)
+            cue = next(cue for stage in pattern["stages"] for cue in stage["effectCues"])
+            mutate(pattern, cue)
             with self.subTest(case=name), self.assertRaises(pipeline.PipelineError):
                 pipeline.validate_v2_master(invalid, self.docs[pipeline.WORLD_SET_REL],
                                             self.docs[pipeline.COMBAT_AUTHORING_REL])
@@ -2639,7 +2677,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             cue for cue in sector_stage["effectCues"]
             if cue["occurrenceId"] == sector_occurrence
         )
-        self.assertEqual("arena.center.facing", sector["anchorSlotId"])
+        self.assertEqual("pattern.target.snapshot", sector["anchorSlotId"])
         self.assertEqual(-30.0, sector["localTransform"]["rotationDegrees"][1])
 
         invalid = copy.deepcopy(patch)
@@ -3112,6 +3150,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 destination = root / entry["path"]
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(self.root / entry["path"], destination)
+            self.copy_native_valtan_animation_fixture(root)
             sources = pipeline.source_manifest(root)
             authoring_root = Path(temporary) / "authoring"
             patch = {"schema": pipeline.DRAFT_PATCH_SCHEMA, "formatVersion": 1,
@@ -3170,6 +3209,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 destination = root / entry["path"]
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(self.root / entry["path"], destination)
+            self.copy_native_valtan_animation_fixture(root)
             (root / pipeline.GAMEPLAY_AUTHORING_REL).write_bytes(
                 pipeline.json_text(self.docs[pipeline.GAMEPLAY_AUTHORING_REL]).encode("utf-8")
             )
@@ -3961,10 +4001,11 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             for area_id in (
                 "LV_BER_BERNCASTLE", "LV_LUT_HEARTRB_ED",
                 "LV_DEV_TRAINING_GROUND", "LV_LOBBY_CLASSSELECT_SL00",
+                "LV_LUT_MIDNIGHTC_ED",
             ):
                 for name in (
                     "Gameplay.world.json", "SpawnGroups.world.json",
-                    "EncounterProps.world.json",
+                    "EncounterProps.world.json", "StageMarkers.json",
                 ):
                     relative = Path("Data/Worlds") / area_id / name
                     if (self.root / relative).is_file():
@@ -4984,6 +5025,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 destination = repository_root / row["path"]
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, destination)
+            self.copy_native_valtan_animation_fixture(repository_root)
             local_source = pipeline.source_manifest(repository_root)
             patch = self.draft_patch()
             patch["sourceRevision"] = local_source["sourceManifestId"]

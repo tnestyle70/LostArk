@@ -53,7 +53,8 @@ bool_t Client::CCombatObjectProjectionRuntime::Stage_Spawn(
 		!std::isfinite(message.fPositionX) ||
 		!std::isfinite(message.fPositionY) ||
 		!std::isfinite(message.fPositionZ) ||
-		!std::isfinite(message.fYawDegrees))
+		!std::isfinite(message.fYawDegrees) ||
+		!message.PinnedDefinitionRevision.Is_Valid())
 	{
 		outStatus = "Combat-object spawn is malformed";
 		return false;
@@ -73,7 +74,9 @@ bool_t Client::CCombatObjectProjectionRuntime::Stage_Spawn(
 			record.Snapshot.fPositionX == message.fPositionX &&
 			record.Snapshot.fPositionY == message.fPositionY &&
 			record.Snapshot.fPositionZ == message.fPositionZ &&
-			record.Snapshot.fYawDegrees == message.fYawDegrees;
+			record.Snapshot.fYawDegrees == message.fYawDegrees &&
+			record.Snapshot.PinnedDefinitionRevision ==
+				message.PinnedDefinitionRevision;
 		if (!outIsDuplicate)
 			outStatus = "Conflicting duplicate combat-object spawn";
 		return outIsDuplicate;
@@ -98,6 +101,8 @@ bool_t Client::CCombatObjectProjectionRuntime::Stage_Spawn(
 	outRecord.Snapshot.fPositionY = message.fPositionY;
 	outRecord.Snapshot.fPositionZ = message.fPositionZ;
 	outRecord.Snapshot.fYawDegrees = message.fYawDegrees;
+	outRecord.Snapshot.PinnedDefinitionRevision =
+		message.PinnedDefinitionRevision;
 	outStatus.clear();
 	return true;
 }
@@ -125,8 +130,11 @@ bool_t Client::CCombatObjectProjectionRuntime::Stage_Snapshot(
 			object.iSourceNetEntityId == LostArk::Shared::INVALID_NET_ENTITY_ID ||
 			(previous != LostArk::Shared::INVALID_COMBAT_OBJECT_ID &&
 			 !(previous < object.iCombatObjectId)) ||
+			!object.PinnedDefinitionRevision.Is_Valid() ||
 			!Is_FinitePose(object) || record == m_Records.end() ||
-			record->second.iSourceNetEntityId != object.iSourceNetEntityId)
+			record->second.iSourceNetEntityId != object.iSourceNetEntityId ||
+			record->second.Snapshot.PinnedDefinitionRevision !=
+				object.PinnedDefinitionRevision)
 		{
 			outOrderedIds.clear();
 			outStatus = "Combat-object full snapshot is conflicting or non-canonical";

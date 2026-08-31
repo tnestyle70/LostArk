@@ -138,6 +138,16 @@ public:
 	product input host consumes it once and calls OpenPopup/BeginPopupModal under one stable ImGui
 	ID stack, so Release does not need the visible Character Select diagnostic window. */
 	void Request_CreateCharacterButtonClick() { m_hasCreateCharacterButtonClick = true; }
+#ifdef _DEBUG
+	/* F1 Level Navigation reuses the same typed product routes as this Level's
+	   own buttons.  It never reaches the socket or changes Level directly. */
+	bool_t Debug_Request_ProductStage(LOBBY_STAGE eStage)
+	{
+		return Enter_Stage(eStage);
+	}
+	bool_t Debug_Request_KakulSaydonArena();
+	const string& Debug_GetNavigationStatus() const { return m_strStatus; }
+#endif
 
 private:
 	static constexpr std::array<

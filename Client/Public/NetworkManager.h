@@ -5,6 +5,7 @@
 
 #include "ClientReplicationEvent.h"
 #include "ClientSessionDiagnostic.h"
+#include "ValtanPresentationGenerationAdmission.h"
 
 #include "Network/PacketFrame.h"
 #include "Network/PacketMessages.h"
@@ -39,6 +40,13 @@ public:
 		std::uint64_t iBytes = 0u;
 	};
 
+	enum class PRESENTATION_CANDIDATE_PREFLIGHT_RESULT : std::uint8_t
+	{
+		BYTE_IDENTICAL_ALIAS_READY = 0u,
+		REENTRY_REQUIRED,
+		REJECTED,
+	};
+
 	/* The current Valtan tuning slice admits a candidate presentation revision
 	   only as a byte-identical alias of the bootstrap generation.  A candidate
 	   that changes any required Client lane remains fail-closed until that lane
@@ -52,6 +60,8 @@ public:
 		bool hasPresentationArtifactBaseline = false;
 		std::vector<PRESENTATION_ARTIFACT_BASELINE>
 			PresentationArtifactBaseline;
+		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT
+			BootstrapPresentationReceipt;
 		bool hasBootstrapPresentationRevision = false;
 		LostArk::Shared::GameplayDataRevision BootstrapPresentationRevision{};
 		LostArk::Shared::GameplayDataRevision ServerActiveRevision{};
@@ -228,13 +238,19 @@ public:
 		std::uint32_t requestSequence,
 		LostArk::Shared::VALTAN_AUDITION_OPERATION operation,
 		std::uint32_t targetHealthBar);
-	/* Stable-ID Server pattern audition. Results use a dedicated queue so the
-	Valtan Arena's legacy transaction consumer cannot drain an Effect Tool
-	request (or vice versa). */
+	/* Stable-ID Server pattern audition with an exact active-definition CAS.
+	Results use a dedicated queue so the Valtan Arena's legacy transaction
+	consumer cannot drain an Effect Tool request (or vice versa). */
 	bool Send_ValtanPatternAuditionById(
 		std::uint32_t requestSequence,
 		std::string_view bossPlacementId,
-		std::string_view patternId);
+		std::string_view patternId,
+		const LostArk::Shared::GameplayDataRevision&
+			expectedActiveDefinitionRevision);
+	/* Exact active-occurrence restart. The caller supplies the full predecessor
+	   CAS identity; this boundary never reconstructs or drops wire fields. */
+	bool Send_ValtanPatternRestart(
+		const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& message);
 	/* Queue/replace/clear carry the complete predecessor and reservation CAS
 	   identity. The shared audition service owns all three stable-ID results. */
 	bool Send_ValtanNextPatternCommand(
@@ -331,12 +347,25 @@ public:
 		LostArk::Shared::VALTAN_DECISION_TRACE_WIRE& outTrace) const;
 	[[nodiscard]] bool Is_PresentationRevisionAvailable(
 		const LostArk::Shared::GameplayDataRevision& revision) const;
+	[[nodiscard]] bool Try_Get_ValtanPresentationGenerationReceipt(
+		const LostArk::Shared::GameplayDataRevision& revision,
+		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& outReceipt,
+		std::string& status) const;
 	/* Read-only Debug truth for tools that reload repository presentation JSON.
 	   Availability alone means the world-entry generation exists; this also
 	   proves the current allowlisted source files still match that immutable
 	   world-entry baseline. */
 	[[nodiscard]] bool Is_CurrentPresentationBaselineIntact(
 		std::string& status) const;
+	/* The current revision coordinator can stage only byte-identical aliases.
+	   Validate the immutable candidate before sending PREPARE so a real Product
+	   presentation change is reported as REENTRY_REQUIRED instead of becoming a
+	   late participant NACK. */
+	[[nodiscard]] PRESENTATION_CANDIDATE_PREFLIGHT_RESULT
+		Preflight_PresentationCandidate(
+			const LostArk::Shared::GameplayDataRevision& candidateRevision,
+			std::uint32_t requiredPresentationLaneMask,
+			std::string& status) const;
 
 
 private:

@@ -2734,20 +2734,10 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 8.0,
           "hitHalfWidth": 2.5,
-          "hitCount": 18,
+          "hitCount": 8,
           "hitIntervalMs": 0,
           "hitDelayMs": 0,
           "hitOffsetsMs": [
-            0,
-            50,
-            100,
-            150,
-            200,
-            250,
-            300,
-            350,
-            400,
-            450,
             500,
             550,
             600,
@@ -2763,7 +2753,10 @@
           "knockdown": true,
           "downMs": 1500,
           "motion": {
-            "kind": "PORTAL_TARGET_RUSH"
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": 500,
+            "speedMps": 20.0,
+            "distanceM": 8.0
           },
           "actions": [
             {
@@ -2786,20 +2779,10 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 8.0,
           "hitHalfWidth": 2.5,
-          "hitCount": 18,
+          "hitCount": 8,
           "hitIntervalMs": 0,
           "hitDelayMs": 0,
           "hitOffsetsMs": [
-            0,
-            50,
-            100,
-            150,
-            200,
-            250,
-            300,
-            350,
-            400,
-            450,
             500,
             550,
             600,
@@ -2815,7 +2798,10 @@
           "knockdown": true,
           "downMs": 1500,
           "motion": {
-            "kind": "PORTAL_TARGET_RUSH"
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": 500,
+            "speedMps": 20.0,
+            "distanceM": 8.0
           },
           "actions": [
             {
@@ -2838,20 +2824,10 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 8.0,
           "hitHalfWidth": 2.5,
-          "hitCount": 18,
+          "hitCount": 8,
           "hitIntervalMs": 0,
           "hitDelayMs": 0,
           "hitOffsetsMs": [
-            0,
-            50,
-            100,
-            150,
-            200,
-            250,
-            300,
-            350,
-            400,
-            450,
             500,
             550,
             600,
@@ -2867,7 +2843,10 @@
           "knockdown": true,
           "downMs": 1500,
           "motion": {
-            "kind": "PORTAL_TARGET_RUSH"
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": 500,
+            "speedMps": 20.0,
+            "distanceM": 8.0
           },
           "actions": [
             {
@@ -2890,20 +2869,10 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 8.0,
           "hitHalfWidth": 2.5,
-          "hitCount": 18,
+          "hitCount": 8,
           "hitIntervalMs": 0,
           "hitDelayMs": 0,
           "hitOffsetsMs": [
-            0,
-            50,
-            100,
-            150,
-            200,
-            250,
-            300,
-            350,
-            400,
-            450,
             500,
             550,
             600,
@@ -2919,7 +2888,10 @@
           "knockdown": true,
           "downMs": 1500,
           "motion": {
-            "kind": "PORTAL_TARGET_RUSH"
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": 500,
+            "speedMps": 20.0,
+            "distanceM": 8.0
           },
           "actions": [
             {
@@ -2942,20 +2914,10 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 8.0,
           "hitHalfWidth": 2.5,
-          "hitCount": 18,
+          "hitCount": 8,
           "hitIntervalMs": 0,
           "hitDelayMs": 0,
           "hitOffsetsMs": [
-            0,
-            50,
-            100,
-            150,
-            200,
-            250,
-            300,
-            350,
-            400,
-            450,
             500,
             550,
             600,
@@ -2971,7 +2933,10 @@
           "knockdown": true,
           "downMs": 1500,
           "motion": {
-            "kind": "PORTAL_TARGET_RUSH"
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": 500,
+            "speedMps": 20.0,
+            "distanceM": 8.0
           },
           "actions": [
             {
@@ -2994,20 +2959,10 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 8.0,
           "hitHalfWidth": 2.5,
-          "hitCount": 18,
+          "hitCount": 8,
           "hitIntervalMs": 0,
           "hitDelayMs": 0,
           "hitOffsetsMs": [
-            0,
-            50,
-            100,
-            150,
-            200,
-            250,
-            300,
-            350,
-            400,
-            450,
             500,
             550,
             600,
@@ -3023,7 +2978,10 @@
           "knockdown": true,
           "downMs": 1500,
           "motion": {
-            "kind": "PORTAL_TARGET_RUSH"
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": 500,
+            "speedMps": 20.0,
+            "distanceM": 8.0
           },
           "actions": [
             {
@@ -3046,20 +3004,10 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 8.0,
           "hitHalfWidth": 2.5,
-          "hitCount": 18,
+          "hitCount": 8,
           "hitIntervalMs": 0,
           "hitDelayMs": 0,
           "hitOffsetsMs": [
-            0,
-            50,
-            100,
-            150,
-            200,
-            250,
-            300,
-            350,
-            400,
-            450,
             500,
             550,
             600,
@@ -3075,7 +3023,10 @@
           "knockdown": true,
           "downMs": 1500,
           "motion": {
-            "kind": "PORTAL_TARGET_RUSH"
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": 500,
+            "speedMps": 20.0,
+            "distanceM": 8.0
           },
           "actions": [
             {
@@ -3098,20 +3049,10 @@
           "hitAngleDegrees": 0.0,
           "hitLength": 8.0,
           "hitHalfWidth": 2.5,
-          "hitCount": 18,
+          "hitCount": 8,
           "hitIntervalMs": 0,
           "hitDelayMs": 0,
           "hitOffsetsMs": [
-            0,
-            50,
-            100,
-            150,
-            200,
-            250,
-            300,
-            350,
-            400,
-            450,
             500,
             550,
             600,
@@ -3127,7 +3068,10 @@
           "knockdown": true,
           "downMs": 1500,
           "motion": {
-            "kind": "PORTAL_TARGET_RUSH"
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": 500,
+            "speedMps": 20.0,
+            "distanceM": 8.0
           },
           "actions": [
             {

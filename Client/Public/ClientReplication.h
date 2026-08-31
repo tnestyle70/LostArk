@@ -33,6 +33,7 @@ namespace Client
 	class CNpc;
 	class CValtan;
 	class CDeployPropRuntime;
+	struct VALTAN_PATTERN_SOUND_SOURCE_RECEIPT;
 
 	/* Pure fail-closed admission state used by the native authoring harness and
 	   the replicated primary Valtan consumer. Source saves may succeed while a
@@ -42,35 +43,52 @@ namespace Client
 	class CPrimaryValtanPresentationFreshnessGate final
 	{
 	public:
-		void Admit(const std::string_view strStatus = {})
+		void Admit(
+			const LostArk::Shared::GameplayDataRevision& Revision,
+			const std::string_view strStatus = {})
 		{
+			if (!Revision.Is_Valid())
+			{
+				Reject(
+					"Authoritative primary Valtan presentation admission supplied no immutable revision.");
+				return;
+			}
 			m_isFresh = true;
+			m_Revision = Revision;
 			m_strStatus.assign(strStatus);
 		}
 
 		void Reject(const std::string_view strDiagnostic)
 		{
 			m_isFresh = false;
+			m_Revision = {};
 			m_strStatus = strDiagnostic.empty() ?
 				"Authoritative primary Valtan presentation reload failed." :
 				std::string(strDiagnostic);
 		}
 
-		bool_t Can_Play(std::string& strOutStatus) const
+		bool_t Can_Play(
+			const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+			std::string& strOutStatus) const
 		{
-			if (m_isFresh)
+			if (ExpectedRevision.Is_Valid() && m_isFresh &&
+				m_Revision == ExpectedRevision)
 			{
 				strOutStatus.clear();
 				return true;
 			}
-			strOutStatus =
-				"Complete Play is blocked because the authoritative primary "
-				"Valtan presentation cache is stale. " + m_strStatus;
+			strOutStatus = !ExpectedRevision.Is_Valid() ?
+				"Complete Play is blocked because no valid Server-active presentation revision was supplied." :
+				(m_isFresh ?
+					"Complete Play is blocked because the authoritative primary Valtan presentation cache belongs to a different immutable revision." :
+					"Complete Play is blocked because the authoritative primary Valtan presentation cache is stale. " +
+						m_strStatus);
 			return false;
 		}
 
 	private:
-		bool_t m_isFresh = true;
+		bool_t m_isFresh = false;
+		LostArk::Shared::GameplayDataRevision m_Revision{};
 		std::string m_strStatus;
 	};
 
@@ -381,10 +399,16 @@ namespace Client
 		   CAnimationTargetService. A rejected active reload latches the freshness
 		   gate consumed by Boss Tool Complete Play. */
 		bool_t Reload_PrimaryValtanPresentationAuthoring(
+			const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
 			std::string& strOutStatus);
 		bool_t Reload_PrimaryValtanCombatObjectSoundCues(
+			const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
 			std::string& strOutStatus);
 		bool_t Can_Play_PrimaryValtanPresentation(
+			const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+			std::string& strOutStatus) const;
+		bool_t Get_PrimaryValtanPatternSoundSourceReceipt(
+			VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& OutReceipt,
 			std::string& strOutStatus) const;
 		bool Try_Consume_WorldDestructionLiveEvent(
 			LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE& outEvent);
@@ -653,9 +677,25 @@ namespace Client
 			std::size_t iActionClipIndex = 0u;
 			ESTHER_ACTION_SOUND_PLAYBACK_STATE EstherActionSoundState;
 			f32_t fCollisionRadius = 0.f;
+			/* The Server occurrence pin and the R -> M generation admitted by the
+			   concrete CValtan are tracked independently.  A failed exact reload
+			   isolates only this presentation and the rejected revision suppresses
+			   an unbounded retry on every subsequent snapshot. */
+			LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
+			LostArk::Shared::GameplayDataRevision AdmittedPresentationRevision{};
+			LostArk::Shared::GameplayDataRevision RejectedPresentationRevision{};
+			bool_t bPresentationIsolated = false;
 			std::weak_ptr<CNpc> pNpc;
 			std::weak_ptr<CValtan> pValtan;
 		};
+		WORLD_ENTITY_PRESENTATION* Find_ValtanPresentation(
+			const std::shared_ptr<CValtan>& pValtan);
+		bool_t Ensure_ValtanPresentationRevision(
+			WORLD_ENTITY_PRESENTATION& Presentation,
+			const std::shared_ptr<CValtan>& pValtan,
+			const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+			bool_t bIsPrimary,
+			std::string& strOutStatus);
 		std::unordered_map<
 			LostArk::Shared::NET_ENTITY_ID,
 			WORLD_ENTITY_PRESENTATION> m_WorldEntities;

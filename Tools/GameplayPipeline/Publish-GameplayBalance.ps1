@@ -4,12 +4,35 @@ param(
     [string]$Mode = 'Validate',
     [string]$OutputRoot = 'Server/Bin/DataFiles/Gameplay',
     [string]$InputOverlayRoot = '',
-    [switch]$SkipValtanSplitProjection
+    [switch]$SkipValtanSplitProjection,
+    [int]$ExternalCanonicalWriterPid = 0,
+    [string]$ExternalCanonicalWriterNonce = '',
+    [ValidateRange(0.0, 300.0)]
+    [double]$CanonicalWriterTimeoutSeconds = 30.0
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 . (Join-Path $PSScriptRoot 'Publish-FileTransaction.ps1')
+$writerAdmissionModule = Join-Path $repoRoot `
+    'Tools\ValtanPipeline\ValtanCanonicalWriterAdmission.psm1'
+if (-not [IO.File]::Exists($writerAdmissionModule)) {
+    throw "Missing Valtan canonical writer admission module: $writerAdmissionModule"
+}
+Import-Module $writerAdmissionModule -Force
+if ($Mode -ne 'Publish' -and ($ExternalCanonicalWriterPid -gt 0 -or
+    -not [string]::IsNullOrWhiteSpace($ExternalCanonicalWriterNonce))) {
+    throw 'External canonical writer admission is valid only for Publish.'
+}
+$canonicalWriterAdmission = $null
+if ($Mode -eq 'Publish') {
+    $canonicalWriterAdmission = Enter-ValtanCanonicalWriterAdmission `
+        -RepositoryRoot $repoRoot `
+        -TimeoutSeconds $CanonicalWriterTimeoutSeconds `
+        -ExternalOwnerPid $ExternalCanonicalWriterPid `
+        -ExternalOwnerNonce $ExternalCanonicalWriterNonce
+}
+try {
 $resolvedInputOverlayRoot = if ([string]::IsNullOrWhiteSpace($InputOverlayRoot)) {
     ''
 }
@@ -1386,6 +1409,7 @@ $stageOwnerByKey = @{}
 # Baked b_root travel is addressed by pattern and stage index, so the loop
 # below records the gameplay duration each curve has to stay inside.
 $patternStageDurationByKey = @{}
+$patternStageMotionKindByKey = @{}
 $spawnCombatObjectOwnerById = @{}
 $gameplayPhaseActionCount = 0
 $hasExactValtanArenaBreakPhaseAction = $false
@@ -1959,9 +1983,44 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 					(Format-InvariantFloat $stage.motion.halfExtentsM[1] 'portal half Z')) -join "`t"))
 			}
 			elseif ($stageMotionKind -ceq 'PORTAL_TARGET_RUSH') {
-				Assert-ExactProperties $stage.motion @('kind') 'portal target-rush stage motion'
+				Assert-ExactProperties $stage.motion @(
+					'kind','retargetDelayMs','speedMps','distanceM') `
+					'portal target-rush stage motion'
+				Assert-JsonInteger $stage.motion.retargetDelayMs `
+					'portal target-rush retarget delay' 0 600000
+				Assert-JsonNumber $stage.motion.speedMps `
+					'portal target-rush speed'
+				Assert-JsonNumber $stage.motion.distanceM `
+					'portal target-rush distance'
+				$retargetDelayMs = [uint32]$stage.motion.retargetDelayMs
+				$rushSpeedMps = [double]$stage.motion.speedMps
+				$rushDistanceM = [double]$stage.motion.distanceM
+				if ($rushSpeedMps -le 0.0 -or $rushSpeedMps -gt 1000.0 -or
+					$rushDistanceM -le 0.0 -or $rushDistanceM -gt 1000.0) {
+					throw "Portal target-rush speed or distance is invalid: $($pattern.patternId) stage $stageIndex"
+				}
+				$travelEndMs = [double]$retargetDelayMs +
+					$rushDistanceM / $rushSpeedMps * 1000.0
+				if ($travelEndMs -gt [double][uint32]$stage.durationMs + 0.000001 -or
+					-not $hasHitOffsets -or $hitOffsetsMs.Count -eq 0) {
+					throw "Portal target-rush delay/speed/distance or swept-hit schedule is invalid: $($pattern.patternId) stage $stageIndex"
+				}
+				$expectedHitOffsetMs = $retargetDelayMs
+				foreach ($hitOffsetMs in $hitOffsetsMs) {
+					if ([uint32]$hitOffsetMs -ne $expectedHitOffsetMs -or
+						[double][uint32]$hitOffsetMs -ge $travelEndMs) {
+						throw "Portal target-rush hit offsets must begin after retarget and cover only travel: $($pattern.patternId) stage $stageIndex"
+					}
+					$expectedHitOffsetMs += 50
+				}
+				if ([double]$expectedHitOffsetMs + 0.000001 -lt $travelEndMs) {
+					throw "Portal target-rush hit offsets do not cover the full travel: $($pattern.patternId) stage $stageIndex"
+				}
 				$patternRows.Add((@('PATTERNSTAGEMOTION', $encounterDocument.encounterId,
-					$pattern.patternId, $stage.actionId, $stageMotionKind) -join "`t"))
+					$pattern.patternId, $stage.actionId, $stageMotionKind,
+					$retargetDelayMs,
+					(Format-InvariantFloat $rushSpeedMps 'portal target-rush speed'),
+					(Format-InvariantFloat $rushDistanceM 'portal target-rush distance')) -join "`t"))
 			}
 			else {
 			Assert-ExactProperties $stage.motion @(
@@ -1983,6 +2042,8 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 					"pattern $($pattern.patternId) stage motion distance")) -join "`t"))
 			}
 		}
+		$patternStageMotionKindByKey[
+			("{0}/{1}" -f $pattern.patternId, $stageIndex)] = $stageMotionKind
 
 		$hasCounterableEnter = $false
 		$hasCounterableExit = $false
@@ -3961,9 +4022,11 @@ if (Test-Path -LiteralPath $patternRootMotionPath) {
 			}
 			$samples = @($stage.samples)
 			$packed = Format-RootMotionSamples -Samples $samples -SkillId $key -LimitMs $authoredDurationMs
-			$patternRows.Add((@(
-				'PATTERNSTAGEROOTMOTION', $encounterDocument.encounterId,
-				$patternId, $stageIndex, $samples.Count, $packed) -join "`t"))
+			if ($patternStageMotionKindByKey[$key] -cne 'PORTAL_TARGET_RUSH') {
+				$patternRows.Add((@(
+					'PATTERNSTAGEROOTMOTION', $encounterDocument.encounterId,
+					$patternId, $stageIndex, $samples.Count, $packed) -join "`t"))
+			}
 		}
 	}
 }
@@ -4307,21 +4370,55 @@ function Get-BootstrapRowSortKey {
 # The merged row set carries both this branch's pattern rotations and the
 # combat-runtime boss part / combat object rows, so the version moves past
 # either side rather than reusing a number that meant a narrower shape.
+$resolvedOutputRoot = if ([IO.Path]::IsPathRooted($OutputRoot)) {
+    [IO.Path]::GetFullPath($OutputRoot)
+}
+else {
+    [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))
+}
+$presentationGenerationTool = Join-Path $PSScriptRoot `
+    'valtan_presentation_generation.py'
+$presentationGenerationArguments = @(
+    '-B', $presentationGenerationTool,
+    '--repository-root', $repoRoot,
+    '--mode', $Mode
+)
+if ($hasExplicitOverlay) {
+    $presentationGenerationArguments += @(
+        '--input-overlay-root', $resolvedInputOverlayRoot)
+}
+if ($Mode -eq 'Publish') {
+    $presentationGenerationArguments += @(
+        '--output-root', $resolvedOutputRoot)
+}
+$presentationGenerationText = (& python @presentationGenerationArguments |
+    Out-String).Trim()
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(
+        $presentationGenerationText)) {
+    throw 'Valtan presentation generation validation/publish failed.'
+}
+$presentationGeneration = $presentationGenerationText | ConvertFrom-Json
+if ($null -eq $presentationGeneration -or
+    [string]$presentationGeneration.generationId -notmatch '^[0-9a-f]{64}$' -or
+    [int]$presentationGeneration.artifactCount -lt 10) {
+    throw 'Valtan presentation generation metadata is invalid.'
+}
+$presentationGenerationRow = @(
+    'PATTERNPRESENTATIONGENERATION',
+    'ENCOUNTER_VALTAN',
+    [string]$presentationGeneration.generationId
+) -join "`t"
+
 $rows = @($damageRows + $skillRows + $playerRows + $bossRows +
 	$bossPartRows + $combatObjectRows + $rootMotionRows + $hitShapeRows +
-	$patternRows | Sort-Object -Property @{
+	$patternRows + @($presentationGenerationRow) | Sort-Object -Property @{
 		Expression = { Get-BootstrapRowSortKey -Row $_ } })
-$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 26 } elseif (
+$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 27 } elseif (
 	$rotationFormatVersion -eq 3) { 21 } else { 18 }
 $lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t$gameplayBootstrapVersion`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
-    $root = if ([IO.Path]::IsPathRooted($OutputRoot)) {
-        [IO.Path]::GetFullPath($OutputRoot)
-    }
-    else {
-        [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))
-    }
+    $root = $resolvedOutputRoot
     [IO.Directory]::CreateDirectory($root) | Out-Null
     $destination = Join-Path $root 'Gameplay.bootstrap'
     $staged = Join-Path $root ('.Gameplay.staging.' + [Guid]::NewGuid().ToString('N'))
@@ -4396,3 +4493,7 @@ $stageCount = @($encounterDocument.patterns | ForEach-Object { @($_.stages).Coun
 	Measure-Object -Sum).Sum
 Write-Host "Gameplay balance $Mode succeeded: $($playerRows.Count) player profiles, $($skillRows.Count) skills, $($damageRows.Count) damage profiles, $($bossIds.Count) bosses, $($bossRows.Count - $bossIds.Count) boss armour plates, $patternCount boss patterns, $stageCount pattern stages, $($timelineDocument.rows.Count) Valtan audition timeline rows."
 Write-Host "Gameplay balance $Mode succeeded: $($playerRows.Count) player profiles, $($skillRows.Count) skill rows, $($damageRows.Count) damage profiles, $($bossRows.Count) bosses, $($bossPartRows.Count) boss parts, $($combatObjectIds.Count) boss combat objects, $patternCount boss patterns, $stageCount pattern stages, $($timelineDocument.rows.Count) Valtan audition timeline rows."
+}
+finally {
+    Exit-ValtanCanonicalWriterAdmission $canonicalWriterAdmission
+}

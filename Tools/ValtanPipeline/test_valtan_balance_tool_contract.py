@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import pathlib
+import json
 import unittest
 
 
@@ -24,6 +25,7 @@ SERVER_GAME_ROOM_CPP = ROOT / "Server/Private/GameRoom.cpp"
 SERVER_PROJECT = ROOT / "Server/Default/Server.vcxproj"
 GAMEPLAY_PUBLISHER = ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1"
 VALTAN_PROJECTOR = ROOT / "Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1"
+BUILD_DOMAINS = ROOT / "Tools/Build/BuildDomains.json"
 
 
 def function_body(source: str, signature: str) -> str:
@@ -60,6 +62,7 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         cls.server_project = SERVER_PROJECT.read_text(encoding="utf-8")
         cls.gameplay_publisher = GAMEPLAY_PUBLISHER.read_text(encoding="utf-8")
         cls.valtan_projector = VALTAN_PROJECTOR.read_text(encoding="utf-8")
+        cls.build_domains = json.loads(BUILD_DOMAINS.read_text(encoding="utf-8"))
 
     def test_balance_tool_selection_reopens_and_focuses_existing_window(self) -> None:
         open_body = function_body(
@@ -107,7 +110,9 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         self.assertIn("if (nullptr == readOnlyCapture)", self.balance_cpp[save:block])
 
     def test_authoritative_master_and_legacy_product_are_separated(self) -> None:
-        self.assertIn("CValtanPatternTree::Load(stagedTree", self.balance_cpp)
+        self.assertIn(
+            "CValtanPatternTree::Load_WhileAdmitted(", self.balance_cpp
+        )
         self.assertIn("managedPatternIds.contains(row.patternId)", self.balance_cpp)
         self.assertIn("Legacy Product patterns (read-only until Promote)", self.balance_cpp)
         self.assertIn("VALTAN_PATTERN_TREE_VIEW m_valtanPatternTree", self.balance_h)
@@ -117,6 +122,7 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
             self.balance_cpp,
             "bool Client::CBalanceTool::ReloadValtanPatternAuthoring(",
         )
+        self.assertIn("canonicalAdmission, stagedTree", reload_authoring)
         self.assertIn("if (pattern.bAuthoringMasterManaged)", reload_authoring)
         self.assertIn("CountManagedValtanPatterns(patternTree)", reload_authoring)
 
@@ -151,7 +157,7 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         )
         self.assertIn("if (!pattern.bAuthoringMasterManaged)", draft)
 
-    def test_manual_audition_actual_valtan_path_locks_selection_and_wall_clock(self) -> None:
+    def test_manual_audition_locks_selection_but_exposes_typed_composition_clock(self) -> None:
         managed_render = function_body(
             self.balance_cpp,
             "void Client::CBalanceTool::RenderValtanManagedPattern(",
@@ -161,7 +167,7 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
             "Manual Server audition | phase %u | source chain %s",
             "automatic selection disabled",
             "AUDITION_ONLY keeps selection, repeat, and target range read-only",
-            "locked to the promoted animation occurrence wall-clock",
+            "edit Stage kind, Sequence slots, and gap in Action Composition Workbench",
             "Server replay is available in Boss Tool and Effect Tool; Repeat and Revive remain in Boss Tool",
             'EditFloat("Hit outer radius m"',
             "Pattern Presentation references (read-only)",
@@ -174,7 +180,9 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         )
         for marker in (
             "Manual Server audition selection/repeat/range is locked",
-            "Manual Server audition stage duration is locked to the animation wall-clock",
+            "SET_STAGE_KIND",
+            "SET_STAGE_DURATION",
+            "SET_STAGE_ANIMATION",
             "SET_STAGE_HIT",
         ):
             self.assertIn(marker, draft)
@@ -397,7 +405,7 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         )
         replay_gate = function_body(
             self.boss_cpp,
-            "bool_t Client::CBossTool::Can_Play_ServerPattern(",
+            "bool_t Client::CBossTool::Get_ServerActivePatternRevision(",
         )
         activation_gate = function_body(
             self.tuning_command_cpp,
@@ -413,7 +421,9 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         )
 
         self.assertEqual(
-            2, save_product.count("Record_GameplaySourceActivationExpectation")
+            3,
+            save_product.count("Record_GameplaySourceActivationExpectation"),
+            "publish failure, candidate publication, and apply preflight failure must each refresh the exact activation expectation",
         )
         self.assertIn("hadDirtyDraft", save_product)
         self.assertIn("m_valtanCandidateRevision", save_product)
@@ -487,6 +497,45 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         )
         self.assertIn("response.strReason = staged ? std::string{}", self.network_cpp)
         self.assertIn("MAX_PRESENTATION_ALIAS_GENERATIONS", self.network_h)
+
+    def test_live_apply_preflights_changed_presentation_before_prepare(self) -> None:
+        for token in (
+            "PRESENTATION_CANDIDATE_PREFLIGHT_RESULT",
+            "BYTE_IDENTICAL_ALIAS_READY",
+            "REENTRY_REQUIRED",
+            "Preflight_PresentationCandidate",
+        ):
+            self.assertIn(token, self.network_h)
+        validator = function_body(
+            self.network_cpp,
+            "bool ValidateByteIdenticalCandidatePresentation(",
+        )
+        self.assertIn("bool* const requiresReentry", self.network_cpp)
+        self.assertIn("firstBaselineMismatch", validator)
+        self.assertIn('"REENTRY_REQUIRED:', validator)
+        self.assertIn('"revision. Restart the Debug Server', validator)
+        self.assertIn('"then re-enter Valtan', validator)
+        self.assertLess(
+            validator.index("candidateSha != shaValue->Get_String()"),
+            validator.index("firstBaselineMismatch = relative"),
+        )
+        preflight = function_body(
+            self.network_cpp,
+            "CNetworkManager::Preflight_PresentationCandidate(",
+        )
+        self.assertIn("ValidateByteIdenticalCandidatePresentation(", preflight)
+        self.assertIn("&requiresReentry", preflight)
+
+        submit = function_body(
+            self.tuning_command_cpp,
+            "bool Client::CValtanTuningCommandService::Submit_Candidate(",
+        )
+        self.assertIn("Preflight_PresentationCandidate(", submit)
+        self.assertIn("return Reject(std::move(strOutStatus));", submit)
+        self.assertLess(
+            submit.index("Preflight_PresentationCandidate("),
+            submit.index("Send_PrepareRequest(Request)"),
+        )
 
     def test_server_decision_trace_is_typed_bounded_and_visible(self) -> None:
         for marker in (
@@ -730,9 +779,30 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
             self.assertIn(relative, self.filters)
 
     def test_split_products_drive_client_and_server_builds(self) -> None:
-        self.assertIn('Name="ValidateValtanSplitProducts"', self.project)
-        self.assertIn('-Mode ValidateV2', self.project)
-        self.assertIn('Publish-GameplayBalance.ps1', self.server_project)
+        valtan_domain = next(
+            row for row in self.build_domains["domains"]
+            if row["id"] == "valtan.product"
+        )
+        self.assertEqual("validation", valtan_domain["kind"])
+        self.assertEqual(
+            ["Product", "Core", "FullDiagnostic"],
+            valtan_domain["profiles"],
+        )
+        self.assertIn(
+            "Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1",
+            valtan_domain["action"]["arguments"],
+        )
+        self.assertIn("ValidateV2", valtan_domain["action"]["arguments"])
+        gameplay_domain = next(
+            row for row in self.build_domains["domains"]
+            if row["id"] == "gameplay.balance"
+        )
+        self.assertEqual("publisher", gameplay_domain["kind"])
+        self.assertIn(
+            "Tools/GameplayPipeline/Publish-GameplayBalance.ps1",
+            gameplay_domain["action"]["arguments"],
+        )
+        self.assertIn("-SkipValtanSplitProjection", gameplay_domain["action"]["arguments"])
         self.assertIn("-Mode ValidateV2", self.gameplay_publisher)
         self.assertNotIn("if ($Mode -eq 'Publish') { 'PublishV2' }", self.gameplay_publisher)
         self.assertIn('project-products', self.valtan_projector)

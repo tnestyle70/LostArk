@@ -1848,6 +1848,7 @@ bool_t Client::CEffect_Tool_V2::Try_LocateValtanStage(
 		return false;
 	constexpr VALTAN_PATTERN_PREVIEW_PATH Paths[] = {
 		VALTAN_PATTERN_PREVIEW_PATH::NORMAL,
+		VALTAN_PATTERN_PREVIEW_PATH::COUNTER_GROGGY,
 		VALTAN_PATTERN_PREVIEW_PATH::WALL_GROGGY,
 		VALTAN_PATTERN_PREVIEW_PATH::PART_BREAK
 	};
@@ -1952,7 +1953,8 @@ void Client::CEffect_Tool_V2::Render_ValtanPatternSection()
 		ImGui::EndCombo();
 	}
 	int32_t iPath = static_cast<int32_t>(m_eValtanPath);
-	if (ImGui::Combo("Branch Path", &iPath, "NORMAL\0WALL_GROGGY\0PART_BREAK\0"))
+	if (ImGui::Combo("Branch Path", &iPath,
+		"NORMAL\0COUNTER_GROGGY\0WALL_GROGGY\0PART_BREAK\0"))
 	{
 		m_eValtanPath = static_cast<VALTAN_PATTERN_PREVIEW_PATH>(iPath);
 		if (m_bValtanTimelineActive)

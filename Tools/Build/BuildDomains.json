@@ -222,19 +222,33 @@
         "Data/Balance/**",
         "Data/Actors/BossCatalog.json",
         "Data/Animation/HitShapes/**",
+        "Data/Animation/Authored/Valtan/Valtan.patternbindings.json",
+        "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json",
+        "Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json",
+        "Data/Animation/Authored/Valtan/Valtan.patternshakecues.json",
+        "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
+        "Data/Sound/CharacterSoundCatalog.json",
         "Data/Animation/Reference/Valtan/**",
         "Data/Animation/RootMotion/**",
         "Data/Encounters/Valtan/**",
-        "Data/Valtan/**"
+        "Data/Valtan/**",
+        "Data/Effects/EffectCatalog.json",
+        "Data/Effects/Authored/effect.valtan.*.effect.json"
       ],
       "tools": [
         "Tools/GameplayPipeline/Publish-GameplayBalance.ps1",
+        "Tools/GameplayPipeline/valtan_presentation_generation.py",
+        "Tools/ValtanPipeline/ValtanCanonicalWriterAdmission.psm1",
         "Tools/GameplayPipeline/Export-OfficialBalanceReceipt.py",
         "Tools/GameplayPipeline/Publish-FileTransaction.ps1"
       ],
-      "outputs": ["Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap"],
+      "outputs": [
+        "Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap",
+        "Server/Bin/DataFiles/Gameplay/ValtanPresentationGenerations/*.json"
+      ],
       "requiredOutputPatterns": [
-        "Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap"
+        "Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap",
+        "Server/Bin/DataFiles/Gameplay/ValtanPresentationGenerations/*.json"
       ],
       "action": {
         "executable": "powershell.exe",

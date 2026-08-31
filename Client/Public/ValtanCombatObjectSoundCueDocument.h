@@ -18,6 +18,8 @@ struct VALTAN_COMBAT_OBJECT_SOUND_CUE final
 	std::string strHitId;
 	std::string strSoundBank;
 	std::string strSoundEvent;
+	/* Runtime-only assets pinned from the exact admitted catalog snapshot. */
+	std::vector<std::string> ResolvedAssetIds;
 };
 
 struct VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT final

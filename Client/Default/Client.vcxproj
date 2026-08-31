@@ -37,13 +37,15 @@
 	<ClInclude Include="..\Public\ValtanPatternPreviewDocument.h" />
 	<ClInclude Include="..\Public\ValtanPatternAuthoringEffectDocument.h" />
 	<ClInclude Include="..\Public\ValtanCombatObjectSoundCueDocument.h" />
-    <ClInclude Include="..\Public\ValtanPatternEffectCueDocument.h" />
+	<ClInclude Include="..\Public\ValtanPatternEffectCueDocument.h" />
+	<ClInclude Include="..\Public\ValtanPatternEffectCueAuthoring.h" />
     <ClInclude Include="..\Public\ValtanPatternShakeCueDocument.h" />
     <ClInclude Include="..\Public\ValtanPatternSoundCueDocument.h" />
     <ClInclude Include="..\Public\BoneChainSimulation.h" />
     <ClInclude Include="..\Public\BalanceTool.h" />
       <ClInclude Include="..\Public\BossTool.h" />
-      <ClInclude Include="..\Public\CameraTool.h" />
+	  <ClInclude Include="..\Public\CameraTool.h" />
+	<ClInclude Include="..\Public\ActionCompositionWorkbench.h" />
     <ClInclude Include="..\Public\Animation_Tool.h" />
     <ClInclude Include="..\Public\Character.h" />
     <ClInclude Include="..\Public\HitAreaWire.h" />
@@ -141,6 +143,7 @@
     <ClInclude Include="..\Public\MapStaticBatchObject.h" />
     <ClInclude Include="..\Public\Body_Valtan.h" />
     <ClInclude Include="..\Public\ValtanPatternTree.h" />
+    <ClInclude Include="..\Public\ValtanPresentationGenerationAdmission.h" />
     <ClInclude Include="..\Public\ValtanPatternAuditionService.h" />
     <ClInclude Include="..\public\Camera_Free.h" />
     <ClInclude Include="..\Public\Client_Defines.h" />
@@ -194,6 +197,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+	<ClCompile Include="..\Private\ActionCompositionWorkbench.cpp" />
 	<ClCompile Include="..\Private\ActionPresentationTimeline.cpp" />
 	<ClCompile Include="..\Private\CameraShakeService.cpp" />
 	<ClCompile Include="..\Private\ValtanCinematicCameraController.cpp" />
@@ -212,7 +216,8 @@
 	<ClCompile Include="..\Private\ValtanPatternPreviewDocument.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternAuthoringEffectDocument.cpp" />
 	<ClCompile Include="..\Private\ValtanCombatObjectSoundCueDocument.cpp" />
-    <ClCompile Include="..\Private\ValtanPatternEffectCueDocument.cpp" />
+	<ClCompile Include="..\Private\ValtanPatternEffectCueDocument.cpp" />
+	<ClCompile Include="..\Private\ValtanPatternEffectCueAuthoring.cpp" />
     <ClCompile Include="..\Private\ValtanPatternShakeCueDocument.cpp" />
     <ClCompile Include="..\Private\ValtanPatternSoundCueDocument.cpp" />
     <ClCompile Include="..\Private\BoneChainSimulation.cpp" />
@@ -299,6 +304,7 @@
     <ClCompile Include="..\Private\MapStaticBatchObject.cpp" />
     <ClCompile Include="..\Private\Body_Valtan.cpp" />
     <ClCompile Include="..\Private\ValtanPatternTree.cpp" />
+    <ClCompile Include="..\Private\ValtanPresentationGenerationAdmission.cpp" />
     <ClCompile Include="..\Private\ValtanPatternAuditionService.cpp" />
     <ClCompile Include="..\private\Camera_Free.cpp" />
     <ClCompile Include="..\private\Effect_Tool.cpp">

@@ -1,0 +1,647 @@
+#include "ValtanPresentationGenerationAdmission.h"
+
+#include "DataJson.h"
+#include "ProjectDataRoot.h"
+#include "ValtanPatternTree.h"
+
+#include <algorithm>
+#include <array>
+#include <bcrypt.h>
+#include <cwctype>
+#include <fstream>
+#include <limits>
+#include <map>
+#include <set>
+#include <sstream>
+#include <stdexcept>
+#include <string_view>
+#include <tuple>
+
+#pragma comment(lib, "bcrypt.lib")
+
+namespace
+{
+	using Client::DATA_JSON_VALUE;
+	using Client::VALTAN_PRESENTATION_GENERATION_ARTIFACT_RECEIPT;
+	using Client::VALTAN_PRESENTATION_GENERATION_RECEIPT;
+	using LostArk::Shared::GameplayDataRevision;
+
+	constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 27u;
+	constexpr std::uint64_t MAX_ARTIFACT_BYTES = 64ull * 1024ull * 1024ull;
+	constexpr std::string_view GENERATION_SCHEMA =
+		"lostark.valtan-presentation-generation";
+
+	const std::map<std::string, std::string> FIXED_ARTIFACTS{
+		{ "Data/Animation/Authored/Valtan/Valtan.patternbindings.json", "ANIMATION" },
+		{ "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json", "EFFECT" },
+		{ "Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json", "EFFECT" },
+		{ "Data/Animation/Authored/Valtan/Valtan.patternshakecues.json", "CAMERA" },
+		{ "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json", "COMBAT_VISUAL" },
+		{ "Data/Sound/CharacterSoundCatalog.json", "COMBAT_VISUAL" },
+		{ "Data/Effects/EffectCatalog.json", "EFFECT" },
+		{ "Data/Encounters/Valtan/ValtanEncounter.json", "COMBAT_VISUAL" },
+		{ "Data/Encounters/Valtan/ValtanCombatObjects.json", "COMBAT_VISUAL" },
+		{ "Data/Actors/BossCatalog.json", "COMBAT_VISUAL" },
+		{ "Data/Encounters/Valtan/ValtanCinematicCamera.json", "CAMERA" },
+		{ "Data/Encounters/Valtan/ValtanWorldEvents.json", "WORLD_EVENT_SET" },
+	};
+
+	bool Is_LowerSha256(const std::string& text)
+	{
+		return text.size() == LostArk::Shared::GAMEPLAY_DATA_REVISION_HEX_BYTES &&
+			std::all_of(text.begin(), text.end(), [](const char value)
+				{
+					return ('0' <= value && value <= '9') ||
+						('a' <= value && value <= 'f');
+				});
+	}
+
+	bool Is_SafeRelativePath(const std::string& text)
+	{
+		if (text.empty() || '/' == text.front() || '\\' == text.front() ||
+			std::string::npos != text.find('\\') ||
+			(text.size() >= 2u && ':' == text[1]))
+		{
+			return false;
+		}
+		std::stringstream input(text);
+		std::string part;
+		while (std::getline(input, part, '/'))
+		{
+			if (part.empty() || "." == part || ".." == part)
+				return false;
+		}
+		return true;
+	}
+
+	bool Is_Descendant(
+		const std::filesystem::path& root,
+		const std::filesystem::path& candidate)
+	{
+		std::error_code error;
+		const auto canonicalRoot = std::filesystem::weakly_canonical(root, error);
+		if (error || canonicalRoot.empty())
+			return false;
+		error.clear();
+		const auto canonicalCandidate =
+			std::filesystem::weakly_canonical(candidate, error);
+		if (error || canonicalCandidate.empty())
+			return false;
+		auto rootPart = canonicalRoot.begin();
+		auto candidatePart = canonicalCandidate.begin();
+		for (; rootPart != canonicalRoot.end(); ++rootPart, ++candidatePart)
+		{
+			if (candidatePart == canonicalCandidate.end())
+				return false;
+			std::wstring left = rootPart->native();
+			std::wstring right = candidatePart->native();
+			std::transform(left.begin(), left.end(), left.begin(), ::towlower);
+			std::transform(right.begin(), right.end(), right.begin(), ::towlower);
+			if (left != right)
+				return false;
+		}
+		return candidatePart != canonicalCandidate.end();
+	}
+
+	bool Read_File(
+		const std::filesystem::path& path,
+		std::string& bytes,
+		std::string& status)
+	{
+		std::error_code error;
+		const std::uint64_t size = std::filesystem::file_size(path, error);
+		if (error || 0u == size || size > MAX_ARTIFACT_BYTES ||
+			size > static_cast<std::uint64_t>(
+				(std::numeric_limits<std::streamsize>::max)()))
+		{
+			status = "Valtan presentation artifact size is invalid: " + path.string();
+			return false;
+		}
+		std::ifstream input(path, std::ios::binary);
+		if (!input)
+		{
+			status = "Valtan presentation artifact is missing: " + path.string();
+			return false;
+		}
+		std::string staged(static_cast<std::size_t>(size), '\0');
+		input.read(staged.data(), static_cast<std::streamsize>(staged.size()));
+		if (!input || input.gcount() != static_cast<std::streamsize>(staged.size()))
+		{
+			status = "Valtan presentation artifact read was incomplete: " +
+				path.string();
+			return false;
+		}
+		bytes = std::move(staged);
+		return true;
+	}
+
+	bool Hash_Bytes(
+		const std::string_view bytes,
+		GameplayDataRevision& revision)
+	{
+		if (bytes.empty() || bytes.size() >
+			static_cast<std::size_t>((std::numeric_limits<ULONG>::max)()))
+		{
+			return false;
+		}
+		BCRYPT_ALG_HANDLE algorithm = nullptr;
+		BCRYPT_HASH_HANDLE hash = nullptr;
+		DWORD objectBytes = 0u;
+		DWORD hashBytes = 0u;
+		DWORD written = 0u;
+		std::vector<unsigned char> hashObject;
+		bool succeeded = false;
+		if (0 <= BCryptOpenAlgorithmProvider(
+				&algorithm, BCRYPT_SHA256_ALGORITHM, nullptr, 0u) &&
+			0 <= BCryptGetProperty(algorithm, BCRYPT_OBJECT_LENGTH,
+				reinterpret_cast<PUCHAR>(&objectBytes), sizeof(objectBytes),
+				&written, 0u) &&
+			0 <= BCryptGetProperty(algorithm, BCRYPT_HASH_LENGTH,
+				reinterpret_cast<PUCHAR>(&hashBytes), sizeof(hashBytes),
+				&written, 0u) && hashBytes == revision.Bytes.size())
+		{
+			hashObject.resize(objectBytes);
+			if (0 <= BCryptCreateHash(algorithm, &hash, hashObject.data(),
+					objectBytes, nullptr, 0u, 0u) &&
+				0 <= BCryptHashData(hash, reinterpret_cast<PUCHAR>(
+						const_cast<char*>(bytes.data())),
+					static_cast<ULONG>(bytes.size()), 0u) &&
+				0 <= BCryptFinishHash(hash, revision.Bytes.data(), hashBytes, 0u))
+			{
+				succeeded = revision.Is_Valid();
+			}
+		}
+		if (nullptr != hash)
+			BCryptDestroyHash(hash);
+		if (nullptr != algorithm)
+			BCryptCloseAlgorithmProvider(algorithm, 0u);
+		return succeeded;
+	}
+
+	std::vector<std::string_view> Split_Tabs(const std::string& line)
+	{
+		std::vector<std::string_view> fields;
+		std::string_view remaining(line);
+		for (;;)
+		{
+			const std::size_t split = remaining.find('\t');
+			fields.push_back(remaining.substr(0u, split));
+			if (std::string_view::npos == split)
+				break;
+			remaining.remove_prefix(split + 1u);
+		}
+		return fields;
+	}
+
+	bool Parse_Bootstrap(
+		const std::string& bytes,
+		GameplayDataRevision& gameplayRevision,
+		GameplayDataRevision& generationId,
+		std::string& status)
+	{
+		if (!Hash_Bytes(bytes, gameplayRevision))
+		{
+			status = "Gameplay.bootstrap SHA-256 could not be calculated.";
+			return false;
+		}
+		std::istringstream input(bytes);
+		std::string line;
+		if (!std::getline(input, line))
+		{
+			status = "Gameplay.bootstrap is empty.";
+			return false;
+		}
+		if (!line.empty() && '\r' == line.back())
+			line.pop_back();
+		const auto header = Split_Tabs(line);
+		std::uint32_t version = 0u;
+		std::uint32_t rowCount = 0u;
+		try
+		{
+			if (3u != header.size() ||
+				"LOSTARK_GAMEPLAY_BOOTSTRAP" != header[0])
+				throw std::invalid_argument("header");
+			version = static_cast<std::uint32_t>(std::stoul(std::string(header[1])));
+			rowCount = static_cast<std::uint32_t>(std::stoul(std::string(header[2])));
+		}
+		catch (const std::exception&)
+		{
+			status = "Gameplay.bootstrap header is invalid.";
+			return false;
+		}
+		if (GAMEPLAY_BOOTSTRAP_VERSION != version || 0u == rowCount ||
+			rowCount > 4096u)
+		{
+			status = "Gameplay.bootstrap version or row count is invalid.";
+			return false;
+		}
+		for (std::uint32_t index = 0u; index < rowCount; ++index)
+		{
+			if (!std::getline(input, line))
+			{
+				status = "Gameplay.bootstrap row set is truncated.";
+				return false;
+			}
+			if (!line.empty() && '\r' == line.back())
+				line.pop_back();
+			const auto fields = Split_Tabs(line);
+			if (!fields.empty() && "PATTERNPRESENTATIONGENERATION" == fields[0])
+			{
+				if (3u != fields.size() || "ENCOUNTER_VALTAN" != fields[1] ||
+					generationId.Is_Valid() ||
+					!LostArk::Shared::Try_Parse_GameplayDataRevision(
+						fields[2], generationId))
+				{
+					status = "Gameplay.bootstrap presentation generation row is invalid.";
+					return false;
+				}
+			}
+		}
+		if (!generationId.Is_Valid())
+		{
+			status = "Gameplay.bootstrap has no Valtan presentation generation.";
+			return false;
+		}
+		return true;
+	}
+
+	bool Read_String(
+		const DATA_JSON_VALUE& object,
+		const char* field,
+		std::string& value)
+	{
+		const DATA_JSON_VALUE* found = object.Find(field);
+		if (nullptr == found || !found->Is_String())
+			return false;
+		value = found->Get_String();
+		return true;
+	}
+
+	bool Read_Unsigned(
+		const DATA_JSON_VALUE& object,
+		const char* field,
+		std::uint64_t& value)
+	{
+		const DATA_JSON_VALUE* found = object.Find(field);
+		if (nullptr == found || !found->Is_Number() ||
+			found->Was_FloatingPointToken() || found->Get_Number() < 0.0 ||
+			found->Get_Number() > static_cast<double>(
+				(std::numeric_limits<std::uint64_t>::max)()))
+		{
+			return false;
+		}
+		value = static_cast<std::uint64_t>(found->Get_Number());
+		return static_cast<double>(value) == found->Get_Number();
+	}
+
+	bool Build_EffectClosure(
+		const std::filesystem::path& root,
+		std::set<std::string>& expected,
+		std::string& status)
+	{
+		std::string cueText;
+		std::string catalogText;
+		if (!Read_File(root / "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json",
+				cueText, status) ||
+			!Read_File(root / "Data/Effects/EffectCatalog.json", catalogText, status))
+		{
+			return false;
+		}
+		DATA_JSON_VALUE cues;
+		DATA_JSON_VALUE catalog;
+		std::string parseError;
+		if (!Client::CDataJson::Parse(cueText, cues, parseError) ||
+			!cues.Is_Object() ||
+			!Client::CDataJson::Parse(catalogText, catalog, parseError) ||
+			!catalog.Is_Object())
+		{
+			status = "Valtan Effect closure JSON parse failed: " + parseError;
+			return false;
+		}
+		const DATA_JSON_VALUE* cueRows = cues.Find("cues");
+		const DATA_JSON_VALUE* catalogRows = catalog.Find("effects");
+		if (nullptr == cueRows || !cueRows->Is_Array() ||
+			nullptr == catalogRows || !catalogRows->Is_Array())
+		{
+			status = "Valtan Effect closure arrays are unavailable.";
+			return false;
+		}
+		std::map<std::string, const DATA_JSON_VALUE*> byId;
+		for (const DATA_JSON_VALUE& row : catalogRows->Get_Array())
+		{
+			std::string id;
+			if (!row.Is_Object() || !Read_String(row, "effectAssetId", id) ||
+				id.empty() || !byId.emplace(id, &row).second)
+			{
+				status = "Effect catalog has an invalid or duplicate stable ID.";
+				return false;
+			}
+		}
+		for (const DATA_JSON_VALUE& cue : cueRows->Get_Array())
+		{
+			std::string id;
+			if (!cue.Is_Object() || !Read_String(cue, "effectAssetId", id))
+			{
+				status = "Pattern Effect cue has no stable Effect ID.";
+				return false;
+			}
+			const auto found = byId.find(id);
+			std::string payloadKind;
+			std::string authoringPath;
+			if (byId.end() == found ||
+				!Read_String(*found->second, "payloadKind", payloadKind) ||
+				"DIRECT_AUTHORED_DOCUMENT" != payloadKind ||
+				!Read_String(*found->second, "authoringPath", authoringPath) ||
+				authoringPath.rfind("Effects/Authored/", 0u) != 0u ||
+				!authoringPath.ends_with(".effect.json"))
+			{
+				status = "Pattern Effect cue does not resolve to one authored document: " + id;
+				return false;
+			}
+			const std::string relative = "Data/" + authoringPath;
+			if (!Is_SafeRelativePath(relative))
+			{
+				status = "Pattern Effect authored document path is unsafe.";
+				return false;
+			}
+			expected.insert(relative);
+		}
+		return expected.size() > FIXED_ARTIFACTS.size();
+	}
+
+	bool Load_Receipt(
+		const std::filesystem::path& root,
+		VALTAN_PRESENTATION_GENERATION_RECEIPT& receipt,
+		std::string& status)
+	{
+		std::string bootstrapBytes;
+		if (!Read_File(root / "Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap",
+				bootstrapBytes, status))
+		{
+			return false;
+		}
+		GameplayDataRevision gameplayRevision{};
+		GameplayDataRevision generationId{};
+		if (!Parse_Bootstrap(
+				bootstrapBytes, gameplayRevision, generationId, status))
+		{
+			return false;
+		}
+		const std::string generationHex =
+			LostArk::Shared::Format_GameplayDataRevision(generationId);
+		const std::filesystem::path manifestPath = root /
+			"Server/Bin/DataFiles/Gameplay/ValtanPresentationGenerations" /
+			(generationHex + ".json");
+		std::string manifestBytes;
+		if (!Read_File(manifestPath, manifestBytes, status))
+			return false;
+		GameplayDataRevision manifestRevision{};
+		if (!Hash_Bytes(manifestBytes, manifestRevision) ||
+			manifestRevision != generationId)
+		{
+			status = "Valtan presentation generation manifest SHA-256 is invalid.";
+			return false;
+		}
+		DATA_JSON_VALUE manifest;
+		std::string parseError;
+		if (!Client::CDataJson::Parse(
+				manifestBytes, manifest, parseError) || !manifest.Is_Object() ||
+			3u != manifest.Get_Object().size())
+		{
+			status = "Valtan presentation generation manifest parse failed: " +
+				parseError;
+			return false;
+		}
+		std::string schema;
+		std::uint64_t version = 0u;
+		const DATA_JSON_VALUE* artifacts = manifest.Find("artifacts");
+		if (!Read_String(manifest, "schema", schema) ||
+			GENERATION_SCHEMA != schema ||
+			!Read_Unsigned(manifest, "formatVersion", version) || 1u != version ||
+			nullptr == artifacts || !artifacts->Is_Array() ||
+			artifacts->Get_Array().empty())
+		{
+			status = "Valtan presentation generation manifest contract is invalid.";
+			return false;
+		}
+
+		std::map<std::string, std::string> expected = FIXED_ARTIFACTS;
+		std::set<std::string> expectedPaths;
+		for (const auto& [path, lane] : expected)
+			expectedPaths.insert(path);
+		if (!Build_EffectClosure(root, expectedPaths, status))
+			return false;
+		for (const std::string& path : expectedPaths)
+		{
+			if (!expected.contains(path))
+				expected.emplace(path, "EFFECT");
+		}
+
+		std::vector<VALTAN_PRESENTATION_GENERATION_ARTIFACT_RECEIPT> rows;
+		rows.reserve(artifacts->Get_Array().size());
+		std::set<std::string> seen;
+		for (const DATA_JSON_VALUE& row : artifacts->Get_Array())
+		{
+			std::string path;
+			std::string lane;
+			std::string sha;
+			std::uint64_t bytes = 0u;
+			if (!row.Is_Object() || 4u != row.Get_Object().size() ||
+				!Read_String(row, "path", path) || !Read_String(row, "lane", lane) ||
+				!Read_String(row, "sha256", sha) ||
+				!Read_Unsigned(row, "bytes", bytes) || 0u == bytes ||
+				bytes > MAX_ARTIFACT_BYTES || !Is_SafeRelativePath(path) ||
+				!Is_LowerSha256(sha) || !seen.insert(path).second)
+			{
+				status = "Valtan presentation generation artifact row is invalid.";
+				return false;
+			}
+			const auto required = expected.find(path);
+			if (expected.end() == required || required->second != lane)
+			{
+				status = "Valtan presentation generation contains an unexpected artifact: " + path;
+				return false;
+			}
+			const auto physical = root / std::filesystem::path(path);
+			if (!Is_Descendant(root, physical))
+			{
+				status = "Valtan presentation generation artifact escaped the repository root.";
+				return false;
+			}
+			std::string physicalBytes;
+			GameplayDataRevision physicalRevision{};
+			GameplayDataRevision declaredRevision{};
+			if (!Read_File(physical, physicalBytes, status) ||
+				physicalBytes.size() != bytes ||
+				!Hash_Bytes(physicalBytes, physicalRevision) ||
+				!LostArk::Shared::Try_Parse_GameplayDataRevision(
+					sha, declaredRevision) || physicalRevision != declaredRevision)
+			{
+				if (status.empty())
+					status = "Valtan presentation artifact bytes differ from M: " + path;
+				return false;
+			}
+			rows.push_back({ path, lane, physicalRevision, bytes });
+		}
+		if (seen.size() != expected.size())
+		{
+			status = "Valtan presentation generation artifact closure is incomplete.";
+			return false;
+		}
+		std::sort(rows.begin(), rows.end(), [](const auto& left, const auto& right)
+			{
+				return std::tie(left.strRelativePath, left.strLane) <
+					std::tie(right.strRelativePath, right.strLane);
+			});
+		receipt.ServerGameplayRevision = gameplayRevision;
+		receipt.PresentationGenerationId = generationId;
+		receipt.Artifacts = std::move(rows);
+		return true;
+	}
+}
+
+struct Client::CValtanPresentationGenerationReadAdmission::STATE final
+{
+	std::filesystem::path RepositoryRoot;
+	std::unique_ptr<CValtanCanonicalProductReadAdmission> CanonicalAdmission;
+	VALTAN_PRESENTATION_GENERATION_RECEIPT Receipt;
+};
+
+bool Client::VALTAN_PRESENTATION_GENERATION_RECEIPT::Is_Valid() const
+{
+	if (!ServerGameplayRevision.Is_Valid() ||
+		!PresentationGenerationId.Is_Valid() || Artifacts.empty())
+	{
+		return false;
+	}
+	std::set<std::string> paths;
+	for (const auto& artifact : Artifacts)
+	{
+		if (!artifact.Revision.Is_Valid() || artifact.strLane.empty() ||
+			0u == artifact.iBytes ||
+			!paths.insert(artifact.strRelativePath).second)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+Client::CValtanPresentationGenerationReadAdmission::
+	CValtanPresentationGenerationReadAdmission() = default;
+Client::CValtanPresentationGenerationReadAdmission::
+	~CValtanPresentationGenerationReadAdmission() = default;
+
+bool Client::CValtanPresentationGenerationReadAdmission::
+	Acquire_PackagedBaseline(
+		VALTAN_PRESENTATION_GENERATION_RECEIPT& OutReceipt,
+		std::string& strOutStatus)
+{
+	return Acquire_PackagedBaselineFromRoot(
+		CProjectDataRoot::Get().parent_path(), OutReceipt, strOutStatus);
+}
+
+bool Client::CValtanPresentationGenerationReadAdmission::
+	Acquire_PackagedBaselineFromRoot(
+		const std::filesystem::path& RepositoryRoot,
+		VALTAN_PRESENTATION_GENERATION_RECEIPT& OutReceipt,
+		std::string& strOutStatus)
+{
+	if (nullptr != m_pState)
+	{
+		strOutStatus = "Valtan presentation generation admission is already held.";
+		return false;
+	}
+	auto staged = std::make_unique<STATE>();
+	staged->RepositoryRoot = RepositoryRoot;
+	staged->CanonicalAdmission =
+		std::make_unique<CValtanCanonicalProductReadAdmission>();
+	if (nullptr == staged->CanonicalAdmission ||
+		!staged->CanonicalAdmission->Acquire(strOutStatus) ||
+		!Load_Receipt(RepositoryRoot, staged->Receipt, strOutStatus))
+	{
+		return false;
+	}
+	if (!staged->Receipt.Is_Valid())
+	{
+		strOutStatus = "Valtan presentation generation receipt is incomplete.";
+		return false;
+	}
+	const auto receipt = staged->Receipt;
+	m_pState = std::move(staged);
+	OutReceipt = receipt;
+	strOutStatus = "Admitted packaged gameplay R and exact Valtan presentation M.";
+	return true;
+}
+
+bool Client::CValtanPresentationGenerationReadAdmission::Acquire_Receipt(
+	const GameplayDataRevision& ExpectedServerRevision,
+	const VALTAN_PRESENTATION_GENERATION_RECEIPT& ExpectedReceipt,
+	std::string& strOutStatus)
+{
+	return Acquire_ReceiptFromRoot(CProjectDataRoot::Get().parent_path(),
+		ExpectedServerRevision, ExpectedReceipt, strOutStatus);
+}
+
+bool Client::CValtanPresentationGenerationReadAdmission::Acquire_ReceiptFromRoot(
+	const std::filesystem::path& RepositoryRoot,
+	const GameplayDataRevision& ExpectedServerRevision,
+	const VALTAN_PRESENTATION_GENERATION_RECEIPT& ExpectedReceipt,
+	std::string& strOutStatus)
+{
+	if (!ExpectedServerRevision.Is_Valid() || !ExpectedReceipt.Is_Valid() ||
+		ExpectedReceipt.ServerGameplayRevision != ExpectedServerRevision)
+	{
+		strOutStatus = "Expected Valtan presentation receipt identity is invalid.";
+		return false;
+	}
+	VALTAN_PRESENTATION_GENERATION_RECEIPT physical;
+	if (!Acquire_PackagedBaselineFromRoot(
+			RepositoryRoot, physical, strOutStatus))
+	{
+		return false;
+	}
+	/* Candidate revisions are admitted only as byte-identical aliases of the
+	   packaged M. Compare M and every artifact while retaining the caller's R. */
+	physical.ServerGameplayRevision = ExpectedServerRevision;
+	if (physical != ExpectedReceipt)
+	{
+		m_pState.reset();
+		strOutStatus =
+			"Physical Valtan presentation closure differs from its admitted receipt.";
+		return false;
+	}
+	m_pState->Receipt = ExpectedReceipt;
+	strOutStatus = "Admitted exact Valtan presentation receipt for Server R.";
+	return true;
+}
+
+bool Client::CValtanPresentationGenerationReadAdmission::
+	Validate_StillCurrent(std::string& strOutStatus) const
+{
+	if (nullptr == m_pState || nullptr == m_pState->CanonicalAdmission)
+	{
+		strOutStatus = "Valtan presentation generation admission is not held.";
+		return false;
+	}
+	if (!m_pState->CanonicalAdmission->Validate_StillCurrent(strOutStatus))
+		return false;
+	VALTAN_PRESENTATION_GENERATION_RECEIPT physical;
+	if (!Load_Receipt(m_pState->RepositoryRoot, physical, strOutStatus))
+		return false;
+	physical.ServerGameplayRevision =
+		m_pState->Receipt.ServerGameplayRevision;
+	if (physical != m_pState->Receipt)
+	{
+		strOutStatus =
+			"Valtan presentation generation changed during typed cache staging.";
+		return false;
+	}
+	strOutStatus = "Valtan presentation generation remained exact through commit.";
+	return true;
+}
+
+bool Client::CValtanPresentationGenerationReadAdmission::Is_Acquired() const
+{
+	return nullptr != m_pState;
+}

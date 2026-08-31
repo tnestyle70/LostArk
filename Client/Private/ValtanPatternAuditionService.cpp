@@ -47,6 +47,8 @@ namespace
 			return "This Client session does not own the Server audition.";
 		case VALTAN_AUDITION_RESULT::REJECTED_NEXT_CHANGED:
 			return "The Server Next reservation changed before this command arrived.";
+		case VALTAN_AUDITION_RESULT::REJECTED_OCCURRENCE_PRESERVED:
+			return "Restart preflight failed before the exact predecessor occurrence changed.";
 		case VALTAN_AUDITION_RESULT::ARMED:
 			return "The Server armed the request but did not queue the stable-ID pattern.";
 		case VALTAN_AUDITION_RESULT::END:
@@ -74,7 +76,8 @@ namespace
 			Request.strPatternId == Result.strPatternId &&
 			Request.iPredecessorRoomAuditionEpoch == Result.iPredecessorRoomAuditionEpoch &&
 			Request.iPredecessorPatternSequence == Result.iPredecessorPatternSequence &&
-			Request.iExpectedNextRequestSequence == Result.iExpectedNextRequestSequence;
+			Request.iExpectedNextRequestSequence == Result.iExpectedNextRequestSequence &&
+			Request.ExpectedDefinitionRevision == Result.ExpectedDefinitionRevision;
 	}
 
 	bool Can_IntroduceOccurrence(
@@ -99,6 +102,8 @@ const char* Client::Describe_ValtanPatternAuditionState(
 	{
 	case VALTAN_PATTERN_AUDITION_STATE::IDLE: return "IDLE";
 	case VALTAN_PATTERN_AUDITION_STATE::REQUEST_PENDING: return "REQUEST_PENDING";
+	case VALTAN_PATTERN_AUDITION_STATE::RESTART_UNCONFIRMED:
+		return "RESTART_UNCONFIRMED";
 	case VALTAN_PATTERN_AUDITION_STATE::QUEUED: return "QUEUED";
 	case VALTAN_PATTERN_AUDITION_STATE::ACTIVE: return "ACTIVE";
 	case VALTAN_PATTERN_AUDITION_STATE::COMPLETED: return "COMPLETED";
@@ -148,6 +153,10 @@ bool Client::CValtanPatternAuditionService::Submit(
 	const std::string_view strConsumerId,
 	const std::string_view strBossPlacementId,
 	const std::string_view strPatternId,
+	const LostArk::Shared::GameplayDataRevision&
+		expectedActiveDefinitionRevision,
+	const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
+		PinnedPatternSoundSourceReceipt,
 	std::string& strOutStatus)
 {
 	using namespace LostArk::Shared;
@@ -155,6 +164,18 @@ bool Client::CValtanPatternAuditionService::Submit(
 	if (strConsumerId.empty() || strBossPlacementId.empty() || strPatternId.empty())
 	{
 		strOutStatus = "Pattern Play requires stable consumer, boss placement, and pattern IDs.";
+		return false;
+	}
+	if (!expectedActiveDefinitionRevision.Is_Valid())
+	{
+		strOutStatus =
+			"Pattern Play requires the exact Server-active definition revision.";
+		return false;
+	}
+	if (!PinnedPatternSoundSourceReceipt.Is_Valid())
+	{
+		strOutStatus =
+			"Pattern Play requires the exact admitted Pattern Sound source receipt.";
 		return false;
 	}
 	if (Has_PlaybackOwnership() || Is_FlowInFlight())
@@ -177,6 +198,7 @@ bool Client::CValtanPatternAuditionService::Submit(
 	Request.eOperation = VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID;
 	Request.strBossPlacementId = strBossPlacementId;
 	Request.strPatternId = strPatternId;
+	Request.ExpectedDefinitionRevision = expectedActiveDefinitionRevision;
 	if (!Send_Request(Request))
 	{
 		strOutStatus = "Could not send Server Pattern Play.";
@@ -184,11 +206,17 @@ bool Client::CValtanPatternAuditionService::Submit(
 	}
 	Advance_RequestSequence();
 	m_Snapshot = {};
+	m_RestartFallback = {};
+	m_hasRestartFallback = false;
 	m_NextSnapshot = {};
 	m_NextCommand = {};
 	m_Snapshot.eState = VALTAN_PATTERN_AUDITION_STATE::REQUEST_PENDING;
 	m_Snapshot.iRequestSequence = Request.iRequestSequence;
 	m_Snapshot.iWorldInboundGeneration = World_InboundGeneration();
+	m_Snapshot.PinnedDefinitionRevision =
+		expectedActiveDefinitionRevision;
+	m_Snapshot.PinnedPatternSoundSourceReceipt =
+		PinnedPatternSoundSourceReceipt;
 	m_Snapshot.strConsumerId = strConsumerId;
 	m_Snapshot.strBossPlacementId = strBossPlacementId;
 	m_Snapshot.strPatternId = strPatternId;
@@ -200,16 +228,187 @@ bool Client::CValtanPatternAuditionService::Submit(
 	return true;
 }
 
+bool Client::CValtanPatternAuditionService::Restart_ActivePattern(
+	const std::string_view strConsumerId,
+	const std::string_view strBossPlacementId,
+	const std::string_view strPatternId,
+	const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
+		ExpectedPatternSoundSourceReceipt,
+	std::string& strOutStatus)
+{
+	using namespace LostArk::Shared;
+	Update();
+	if (strConsumerId.empty() || strBossPlacementId.empty() || strPatternId.empty())
+	{
+		strOutStatus =
+			"Pattern Restart requires stable consumer, boss placement, and pattern IDs.";
+		return false;
+	}
+	if (Is_FlowInFlight() || Is_FlowStartPending())
+	{
+		strOutStatus =
+			"Pattern Restart cannot replace an ordered Flow or a pending Flow start.";
+		return false;
+	}
+	if (m_NextSnapshot.Is_Live() || Has_PendingNextCommand())
+	{
+		strOutStatus =
+			"Pattern Restart cannot discard a reserved or unresolved Next Pattern.";
+		return false;
+	}
+	const bool bRestartableOccurrence =
+		VALTAN_PATTERN_AUDITION_STATE::ACTIVE == m_Snapshot.eState ||
+		VALTAN_PATTERN_AUDITION_STATE::COMPLETED == m_Snapshot.eState;
+	if (!bRestartableOccurrence ||
+		!m_hasAuthoritativeLifecycle || 0u == m_Snapshot.iRoomAuditionEpoch ||
+		0u == m_Snapshot.iObservedPatternSequence ||
+		!m_Snapshot.PinnedDefinitionRevision.Is_Valid())
+	{
+		strOutStatus =
+			"Pattern Restart requires one authoritative ACTIVE or COMPLETED stable-ID occurrence.";
+		return false;
+	}
+	if (!ExpectedPatternSoundSourceReceipt.Is_Valid() ||
+		!m_Snapshot.PinnedPatternSoundSourceReceipt.Is_Valid() ||
+		ExpectedPatternSoundSourceReceipt !=
+			m_Snapshot.PinnedPatternSoundSourceReceipt)
+	{
+		strOutStatus =
+			"Pattern Restart rejected because the exact predecessor occurrence is pinned to another Pattern Sound source receipt.";
+		return false;
+	}
+	if (strConsumerId != m_Snapshot.strConsumerId ||
+		strBossPlacementId != m_Snapshot.strBossPlacementId ||
+		strPatternId != m_Snapshot.strPatternId)
+	{
+		strOutStatus =
+			"Pattern Restart may replace only the same consumer's exact active pattern.";
+		return false;
+	}
+	if (!Is_Connected() ||
+		m_Snapshot.iWorldInboundGeneration != World_InboundGeneration())
+	{
+		strOutStatus =
+			"Pattern Restart requires the same connected Server world session.";
+		return false;
+	}
+	if (0u == m_iNextRequestSequence)
+	{
+		strOutStatus =
+			"Audition request identities are exhausted; restart the Client session.";
+		return false;
+	}
+
+	C2S_VALTAN_AUDITION_REQUEST Request{};
+	Request.iRequestSequence = m_iNextRequestSequence;
+	Request.eOperation = VALTAN_AUDITION_OPERATION::RESTART_PATTERN_ID;
+	Request.strBossPlacementId = strBossPlacementId;
+	Request.strPatternId = strPatternId;
+	Request.iPredecessorRoomAuditionEpoch = m_Snapshot.iRoomAuditionEpoch;
+	Request.iPredecessorPatternSequence = m_Snapshot.iObservedPatternSequence;
+	Request.ExpectedDefinitionRevision = m_Snapshot.PinnedDefinitionRevision;
+	if (!Send_Request(Request))
+	{
+		strOutStatus =
+			"Could not send Pattern Restart; the active occurrence is unchanged.";
+		return false;
+	}
+
+	Advance_RequestSequence();
+	m_RestartFallback = m_Snapshot;
+	m_hasRestartFallback = true;
+	m_Snapshot = {};
+	m_Snapshot.eState = VALTAN_PATTERN_AUDITION_STATE::REQUEST_PENDING;
+	m_Snapshot.iRequestSequence = Request.iRequestSequence;
+	m_Snapshot.iWorldInboundGeneration = World_InboundGeneration();
+	m_Snapshot.PinnedDefinitionRevision =
+		Request.ExpectedDefinitionRevision;
+	m_Snapshot.PinnedPatternSoundSourceReceipt =
+		m_RestartFallback.PinnedPatternSoundSourceReceipt;
+	m_Snapshot.strConsumerId = strConsumerId;
+	m_Snapshot.strBossPlacementId = strBossPlacementId;
+	m_Snapshot.strPatternId = strPatternId;
+	m_Snapshot.strStatus =
+		"Waiting for the Server to restart this pattern while preserving the arena.";
+	m_iStateStartedAtMilliseconds = Now_Milliseconds();
+	m_hasAuthoritativeLifecycle = false;
+	strOutStatus = m_Snapshot.strStatus;
+	return true;
+}
+
+bool Client::CValtanPatternAuditionService::Retry_UnconfirmedRestart(
+	const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
+		ExpectedPatternSoundSourceReceipt,
+	std::string& strOutStatus)
+{
+	using namespace LostArk::Shared;
+	Update();
+	if (VALTAN_PATTERN_AUDITION_STATE::RESTART_UNCONFIRMED !=
+			m_Snapshot.eState ||
+		!m_hasRestartFallback ||
+		0u == m_Snapshot.iRequestSequence ||
+		0u == m_RestartFallback.iRoomAuditionEpoch ||
+		0u == m_RestartFallback.iObservedPatternSequence ||
+		!m_RestartFallback.PinnedDefinitionRevision.Is_Valid())
+	{
+		strOutStatus = "There is no unconfirmed exact Restart request to retry.";
+		return false;
+	}
+	if (!ExpectedPatternSoundSourceReceipt.Is_Valid() ||
+		ExpectedPatternSoundSourceReceipt !=
+			m_Snapshot.PinnedPatternSoundSourceReceipt ||
+		ExpectedPatternSoundSourceReceipt !=
+			m_RestartFallback.PinnedPatternSoundSourceReceipt)
+	{
+		strOutStatus =
+			"Restart retry rejected because its unresolved occurrence is pinned to another Pattern Sound source receipt.";
+		return false;
+	}
+	if (!Is_Connected() ||
+		m_Snapshot.iWorldInboundGeneration != World_InboundGeneration())
+	{
+		strOutStatus =
+			"The original Restart world session is no longer connected.";
+		return false;
+	}
+	C2S_VALTAN_AUDITION_REQUEST Request{};
+	Request.iRequestSequence = m_Snapshot.iRequestSequence;
+	Request.eOperation = VALTAN_AUDITION_OPERATION::RESTART_PATTERN_ID;
+	Request.strBossPlacementId = m_Snapshot.strBossPlacementId;
+	Request.strPatternId = m_Snapshot.strPatternId;
+	Request.iPredecessorRoomAuditionEpoch =
+		m_RestartFallback.iRoomAuditionEpoch;
+	Request.iPredecessorPatternSequence =
+		m_RestartFallback.iObservedPatternSequence;
+	Request.ExpectedDefinitionRevision =
+		m_RestartFallback.PinnedDefinitionRevision;
+	if (!Send_Request(Request))
+	{
+		strOutStatus =
+			"Could not retry the exact Restart receipt; no new request was created.";
+		return false;
+	}
+	m_Snapshot.eState = VALTAN_PATTERN_AUDITION_STATE::RESTART_UNCONFIRMED;
+	m_Snapshot.strStatus =
+		"Retried the same exact Restart identity; waiting for its stored Server verdict.";
+	m_iStateStartedAtMilliseconds = Now_Milliseconds();
+	strOutStatus = m_Snapshot.strStatus;
+	return true;
+}
+
 bool Client::CValtanPatternAuditionService::Can_QueueNextPattern(
 	const std::string_view strBossPlacementId,
+	const LostArk::Shared::GameplayDataRevision& expectedDefinitionRevision,
 	std::string& strOutStatus) const
 {
 	LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST Request{};
-	return Prepare_NextCommand(strBossPlacementId, Request, strOutStatus);
+	return Prepare_NextCommand(
+		strBossPlacementId, expectedDefinitionRevision, Request, strOutStatus);
 }
 
 bool Client::CValtanPatternAuditionService::Prepare_NextCommand(
 	const std::string_view strBossPlacementId,
+	const LostArk::Shared::GameplayDataRevision& expectedDefinitionRevision,
 	LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& Request,
 	std::string& strOutStatus) const
 {
@@ -217,6 +416,12 @@ bool Client::CValtanPatternAuditionService::Prepare_NextCommand(
 	if (strBossPlacementId.empty())
 	{
 		strOutStatus = "Next Pattern requires a stable boss placement ID.";
+		return false;
+	}
+	if (!expectedDefinitionRevision.Is_Valid())
+	{
+		strOutStatus =
+			"Next Pattern requires the exact admitted predecessor definition revision.";
 		return false;
 	}
 	if (!Is_Connected() || 0u == m_iNextRequestSequence)
@@ -259,6 +464,13 @@ bool Client::CValtanPatternAuditionService::Prepare_NextCommand(
 		iEpoch = m_NextSnapshot.iRoomAuditionEpoch;
 		iPredecessorSequence = m_NextSnapshot.iPredecessorPatternSequence;
 		iNextToken = m_NextSnapshot.iRequestSequence;
+		if (m_NextSnapshot.PinnedDefinitionRevision !=
+			expectedDefinitionRevision)
+		{
+			strOutStatus =
+				"The approved Next reservation belongs to another gameplay definition revision.";
+			return false;
+		}
 	}
 	else
 	{
@@ -272,6 +484,13 @@ bool Client::CValtanPatternAuditionService::Prepare_NextCommand(
 			strBossPlacementId == m_Snapshot.strBossPlacementId;
 		if (bPredecessorReady && !Is_FlowInFlight())
 		{
+			if (m_Snapshot.PinnedDefinitionRevision !=
+				expectedDefinitionRevision)
+			{
+				strOutStatus =
+					"The isolated predecessor belongs to another gameplay definition revision.";
+				return false;
+			}
 			iEpoch = m_Snapshot.iRoomAuditionEpoch;
 			iPredecessorSequence = m_Snapshot.iObservedPatternSequence;
 		}
@@ -302,6 +521,7 @@ bool Client::CValtanPatternAuditionService::Prepare_NextCommand(
 	Request.iPredecessorRoomAuditionEpoch = iEpoch;
 	Request.iPredecessorPatternSequence = iPredecessorSequence;
 	Request.iExpectedNextRequestSequence = iNextToken;
+	Request.ExpectedDefinitionRevision = expectedDefinitionRevision;
 	strOutStatus.clear();
 	return true;
 }
@@ -310,6 +530,9 @@ bool Client::CValtanPatternAuditionService::Queue_NextPattern(
 	const std::string_view strConsumerId,
 	const std::string_view strBossPlacementId,
 	const std::string_view strPatternId,
+	const LostArk::Shared::GameplayDataRevision& expectedDefinitionRevision,
+	const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
+		PinnedPatternSoundSourceReceipt,
 	std::string& strOutStatus)
 {
 	Update();
@@ -318,11 +541,28 @@ bool Client::CValtanPatternAuditionService::Queue_NextPattern(
 		strOutStatus = "Next Pattern requires stable consumer, boss placement, and pattern IDs.";
 		return false;
 	}
+	if (!PinnedPatternSoundSourceReceipt.Is_Valid())
+	{
+		strOutStatus =
+			"Next Pattern requires the exact admitted Pattern Sound source receipt.";
+		return false;
+	}
+	if (!Verify_PatternSoundSourceReceipt(
+			PinnedPatternSoundSourceReceipt, strOutStatus))
+	{
+		strOutStatus =
+			"Next Pattern rejected by its predecessor Pattern Sound receipt: " +
+			strOutStatus;
+		return false;
+	}
 	LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST Request{};
-	if (!Prepare_NextCommand(strBossPlacementId, Request, strOutStatus))
+	if (!Prepare_NextCommand(
+			strBossPlacementId, expectedDefinitionRevision, Request,
+			strOutStatus))
 		return false;
 	Request.strPatternId = strPatternId;
-	return Send_NextCommand(std::move(Request), strConsumerId, strOutStatus);
+	return Send_NextCommand(std::move(Request), strConsumerId,
+		PinnedPatternSoundSourceReceipt, strOutStatus);
 }
 
 bool Client::CValtanPatternAuditionService::Clear_NextPattern(std::string& strOutStatus)
@@ -345,18 +585,35 @@ bool Client::CValtanPatternAuditionService::Clear_NextPattern(std::string& strOu
 	Request.iPredecessorRoomAuditionEpoch = m_NextSnapshot.iRoomAuditionEpoch;
 	Request.iPredecessorPatternSequence = m_NextSnapshot.iPredecessorPatternSequence;
 	Request.iExpectedNextRequestSequence = m_NextSnapshot.iRequestSequence;
-	return Send_NextCommand(std::move(Request), m_NextSnapshot.strConsumerId, strOutStatus);
+	Request.ExpectedDefinitionRevision =
+		m_NextSnapshot.PinnedDefinitionRevision;
+	if (!Request.ExpectedDefinitionRevision.Is_Valid())
+	{
+		strOutStatus =
+			"Cancel requires the exact admitted Next definition revision.";
+		return false;
+	}
+	return Send_NextCommand(std::move(Request), m_NextSnapshot.strConsumerId,
+		m_NextSnapshot.PinnedPatternSoundSourceReceipt, strOutStatus);
 }
 
 bool Client::CValtanPatternAuditionService::Send_NextCommand(
 	LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST Request,
 	const std::string_view strConsumerId,
+	const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
+		PinnedPatternSoundSourceReceipt,
 	std::string& strOutStatus)
 {
 	if (!Is_Connected() || 0u == m_iNextRequestSequence)
 	{
 		strOutStatus = !Is_Connected() ? "Start and connect the Debug Server first." :
 			"Audition request identities are exhausted; restart the Client session.";
+		return false;
+	}
+	if (!PinnedPatternSoundSourceReceipt.Is_Valid())
+	{
+		strOutStatus =
+			"Next command requires one valid Pattern Sound source receipt.";
 		return false;
 	}
 	Request.iRequestSequence = m_iNextRequestSequence;
@@ -369,6 +626,8 @@ bool Client::CValtanPatternAuditionService::Send_NextCommand(
 	m_NextCommand = {};
 	m_NextCommand.eState = VALTAN_NEXT_COMMAND_STATE::WAITING_VERDICT;
 	m_NextCommand.Request = std::move(Request);
+	m_NextCommand.PinnedPatternSoundSourceReceipt =
+		PinnedPatternSoundSourceReceipt;
 	m_NextCommand.iWorldInboundGeneration = World_InboundGeneration();
 	m_NextCommand.iSentAtMilliseconds = Now_Milliseconds();
 	m_NextCommand.strConsumerId = strConsumerId;
@@ -377,12 +636,23 @@ bool Client::CValtanPatternAuditionService::Send_NextCommand(
 	return true;
 }
 
-bool Client::CValtanPatternAuditionService::Retry_NextPatternCommand(std::string& strOutStatus)
+bool Client::CValtanPatternAuditionService::Retry_NextPatternCommand(
+	const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
+		ExpectedPatternSoundSourceReceipt,
+	std::string& strOutStatus)
 {
 	Update();
 	if (VALTAN_NEXT_COMMAND_STATE::UNCONFIRMED != m_NextCommand.eState)
 	{
 		strOutStatus = "Only an unconfirmed Next command can retry its original identity.";
+		return false;
+	}
+	if (!ExpectedPatternSoundSourceReceipt.Is_Valid() ||
+		ExpectedPatternSoundSourceReceipt !=
+			m_NextCommand.PinnedPatternSoundSourceReceipt)
+	{
+		strOutStatus =
+			"Next retry rejected because its unresolved command is pinned to another Pattern Sound source receipt.";
 		return false;
 	}
 	if (!Is_Connected() || !Send_Request(m_NextCommand.Request))
@@ -403,10 +673,7 @@ void Client::CValtanPatternAuditionService::Accept_NextCommand(const uint32_t iR
 	const bool bAdoptsLivePredecessor =
 		LostArk::Shared::VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID ==
 		Request.eOperation;
-	const auto PinnedRevision = m_NextSnapshot.Is_Live() ?
-		m_NextSnapshot.PinnedDefinitionRevision :
-		(bAdoptsLivePredecessor ? LostArk::Shared::GameplayDataRevision{} :
-		 m_Snapshot.PinnedDefinitionRevision);
+	const auto PinnedRevision = Request.ExpectedDefinitionRevision;
 	const bool bPresentationAvailable = m_NextSnapshot.Is_Live() ?
 		m_NextSnapshot.isPresentationRevisionAvailable :
 		(!bAdoptsLivePredecessor && m_Snapshot.isPresentationRevisionAvailable);
@@ -418,6 +685,8 @@ void Client::CValtanPatternAuditionService::Accept_NextCommand(const uint32_t iR
 	m_NextSnapshot.iPredecessorPatternSequence = Request.iPredecessorPatternSequence;
 	m_NextSnapshot.iExpectedPatternSequence = Request.iPredecessorPatternSequence + 1u;
 	m_NextSnapshot.PinnedDefinitionRevision = PinnedRevision;
+	m_NextSnapshot.PinnedPatternSoundSourceReceipt =
+		m_NextCommand.PinnedPatternSoundSourceReceipt;
 	m_NextSnapshot.isPresentationRevisionAvailable = bPresentationAvailable;
 	m_NextSnapshot.strConsumerId = m_NextCommand.strConsumerId;
 	m_NextSnapshot.strBossPlacementId = Request.strBossPlacementId;
@@ -431,19 +700,74 @@ void Client::CValtanPatternAuditionService::Apply_ServerResult(
 	const LostArk::Shared::S2C_VALTAN_AUDITION_RESULT& Result)
 {
 	using namespace LostArk::Shared;
-	if (VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID == Result.eOperation)
+	const bool bInitialPlay =
+		VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID == Result.eOperation;
+	const bool bRestart =
+		VALTAN_AUDITION_OPERATION::RESTART_PATTERN_ID == Result.eOperation;
+	if (bInitialPlay || bRestart)
 	{
-		if (VALTAN_PATTERN_AUDITION_STATE::REQUEST_PENDING != m_Snapshot.eState ||
+		if ((VALTAN_PATTERN_AUDITION_STATE::REQUEST_PENDING != m_Snapshot.eState &&
+			 VALTAN_PATTERN_AUDITION_STATE::RESTART_UNCONFIRMED !=
+				m_Snapshot.eState) ||
 			Result.iRequestSequence != m_Snapshot.iRequestSequence ||
 			Result.strBossPlacementId != m_Snapshot.strBossPlacementId ||
 			Result.strPatternId != m_Snapshot.strPatternId)
 			return;
-		if (VALTAN_AUDITION_RESULT::QUEUED == Result.eResult ||
-			VALTAN_AUDITION_RESULT::DUPLICATE_IGNORED == Result.eResult)
+		if (bRestart &&
+			(!m_hasRestartFallback ||
+			 Result.iPredecessorRoomAuditionEpoch !=
+				m_RestartFallback.iRoomAuditionEpoch ||
+			 Result.iPredecessorPatternSequence !=
+				m_RestartFallback.iObservedPatternSequence ||
+			 0u != Result.iExpectedNextRequestSequence ||
+			 Result.ExpectedDefinitionRevision !=
+				m_RestartFallback.PinnedDefinitionRevision))
+		{
+			return;
+		}
+		if (bInitialPlay &&
+			(0u != Result.iPredecessorRoomAuditionEpoch ||
+			 0u != Result.iPredecessorPatternSequence ||
+			 0u != Result.iExpectedNextRequestSequence ||
+			 !m_Snapshot.PinnedDefinitionRevision.Is_Valid() ||
+			 Result.ExpectedDefinitionRevision !=
+				m_Snapshot.PinnedDefinitionRevision))
+		{
+			return;
+		}
+		if (VALTAN_AUDITION_RESULT::QUEUED == Result.eResult)
 		{
 			m_Snapshot.eState = VALTAN_PATTERN_AUDITION_STATE::QUEUED;
 			m_Snapshot.strStatus = "Server queued the full fixed-tick pattern.";
 			m_iStateStartedAtMilliseconds = Now_Milliseconds();
+		}
+		else if (bRestart && m_hasRestartFallback &&
+			VALTAN_AUDITION_RESULT::REJECTED_OCCURRENCE_PRESERVED ==
+				Result.eResult)
+		{
+			const std::string Rejection =
+				Describe_Rejection(Result.eResult, m_Snapshot.strBossPlacementId);
+			m_Snapshot = std::move(m_RestartFallback);
+			m_RestartFallback = {};
+			m_hasRestartFallback = false;
+			m_hasAuthoritativeLifecycle =
+				VALTAN_PATTERN_AUDITION_STATE::ACTIVE == m_Snapshot.eState ||
+				VALTAN_PATTERN_AUDITION_STATE::COMPLETED == m_Snapshot.eState;
+			m_Snapshot.strStatus =
+				"Restart preflight rejected; the exact previous Server occurrence remains authoritative. " +
+				Rejection;
+			m_iStateStartedAtMilliseconds = Now_Milliseconds();
+		}
+		else if (bRestart)
+		{
+			const std::string Rejection =
+				Describe_Rejection(Result.eResult, m_Snapshot.strBossPlacementId);
+			m_RestartFallback = {};
+			m_hasRestartFallback = false;
+			m_hasAuthoritativeLifecycle = false;
+			Set_Terminal(VALTAN_PATTERN_AUDITION_STATE::REJECTED,
+				"Restart rejected; the predecessor is no longer assumed current. " +
+				Rejection);
 		}
 		else
 			Set_Terminal(VALTAN_PATTERN_AUDITION_STATE::REJECTED,
@@ -511,9 +835,8 @@ bool Client::CValtanPatternAuditionService::Apply_NextLifecycle(
 	const auto& Request = m_NextCommand.Request;
 	const bool bLiveCandidate =
 		VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID == Request.eOperation;
-	const GameplayDataRevision CandidatePinnedRevision = m_NextSnapshot.Is_Live() ?
-		m_NextSnapshot.PinnedDefinitionRevision :
-		(bLiveCandidate ? GameplayDataRevision{} : m_Snapshot.PinnedDefinitionRevision);
+	const GameplayDataRevision CandidatePinnedRevision =
+		Request.ExpectedDefinitionRevision;
 	const bool bCandidate = Has_PendingNextCommand() &&
 		(VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == Request.eOperation || bLiveCandidate) &&
 		Lifecycle.iRequestSequence == Request.iRequestSequence &&
@@ -521,9 +844,7 @@ bool Client::CValtanPatternAuditionService::Apply_NextLifecycle(
 		(bLiveCandidate || Lifecycle.iRoomAuditionEpoch == Request.iPredecessorRoomAuditionEpoch) &&
 		Lifecycle.iPatternSequence == Request.iPredecessorPatternSequence + 1u &&
 		Lifecycle.strPatternId == Request.strPatternId &&
-		Lifecycle.PinnedDefinitionRevision.Is_Valid() &&
-		(!CandidatePinnedRevision.Is_Valid() ||
-		 CandidatePinnedRevision == Lifecycle.PinnedDefinitionRevision);
+		CandidatePinnedRevision == Lifecycle.PinnedDefinitionRevision;
 	/* NEXT_RESERVED can overtake its verdict. It confirms only the exact
 	   reservation request, epoch and expected sequence of this candidate. */
 	if (bCandidate)
@@ -601,6 +922,8 @@ void Client::CValtanPatternAuditionService::Promote_NextPattern()
 	m_Snapshot.iRoomAuditionEpoch = m_NextSnapshot.iRoomAuditionEpoch;
 	m_Snapshot.iObservedPatternSequence = m_NextSnapshot.iExpectedPatternSequence;
 	m_Snapshot.PinnedDefinitionRevision = m_NextSnapshot.PinnedDefinitionRevision;
+	m_Snapshot.PinnedPatternSoundSourceReceipt =
+		m_NextSnapshot.PinnedPatternSoundSourceReceipt;
 	m_Snapshot.isPresentationRevisionAvailable = m_NextSnapshot.isPresentationRevisionAvailable;
 	m_Snapshot.strConsumerId = m_NextSnapshot.strConsumerId;
 	m_Snapshot.strBossPlacementId = m_NextSnapshot.strBossPlacementId;
@@ -617,6 +940,42 @@ void Client::CValtanPatternAuditionService::Apply_ServerLifecycle(
 	const LostArk::Shared::S2C_VALTAN_AUDITION_LIFECYCLE& Lifecycle)
 {
 	using namespace LostArk::Shared;
+	/* A Restart temporarily changes the visible request identity, but the exact
+	   predecessor can still finish while its replacement verdict is in flight.
+	   Retain that authoritative edge in the fallback instead of dropping it and
+	   later reviving a stale ACTIVE snapshot from a preserved-preflight result. */
+	if (m_hasRestartFallback &&
+		Lifecycle.iRequestSequence == m_RestartFallback.iRequestSequence &&
+		Lifecycle.iRoomAuditionEpoch == m_RestartFallback.iRoomAuditionEpoch &&
+		Lifecycle.iPatternSequence ==
+			m_RestartFallback.iObservedPatternSequence &&
+		Lifecycle.strPatternId == m_RestartFallback.strPatternId &&
+		Lifecycle.PinnedDefinitionRevision ==
+			m_RestartFallback.PinnedDefinitionRevision)
+	{
+		switch (Lifecycle.eState)
+		{
+		case VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE:
+			m_RestartFallback.eState = VALTAN_PATTERN_AUDITION_STATE::ACTIVE;
+			m_RestartFallback.strStatus =
+				"Server reconciliation confirms the Restart predecessor is ACTIVE.";
+			break;
+		case VALTAN_AUDITION_LIFECYCLE_STATE::COMPLETED:
+			m_RestartFallback.eState = VALTAN_PATTERN_AUDITION_STATE::COMPLETED;
+			m_RestartFallback.strStatus =
+				"Server reconciliation confirms the Restart predecessor COMPLETED.";
+			break;
+		case VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED:
+			m_RestartFallback.eState = VALTAN_PATTERN_AUDITION_STATE::ABORTED;
+			m_RestartFallback.strStatus =
+				"Server reconciliation ABORTED the Restart predecessor: " +
+				Lifecycle.strReason;
+			break;
+		default:
+			break;
+		}
+		return;
+	}
 	if (Apply_NextLifecycle(Lifecycle))
 		return;
 	const bool bCompletedAbort =
@@ -637,6 +996,9 @@ void Client::CValtanPatternAuditionService::Apply_ServerLifecycle(
 		!Lifecycle.PinnedDefinitionRevision.Is_Valid() ||
 		(0u != m_Snapshot.iRoomAuditionEpoch &&
 			m_Snapshot.iRoomAuditionEpoch != Lifecycle.iRoomAuditionEpoch) ||
+		(!bHasOccurrence && m_Snapshot.PinnedDefinitionRevision.Is_Valid() &&
+		 m_Snapshot.PinnedDefinitionRevision !=
+			Lifecycle.PinnedDefinitionRevision) ||
 		(bHasOccurrence && m_Snapshot.PinnedDefinitionRevision !=
 			Lifecycle.PinnedDefinitionRevision) ||
 		(bHasOccurrence && !bSameOccurrence && !bNewOccurrence))
@@ -645,6 +1007,10 @@ void Client::CValtanPatternAuditionService::Apply_ServerLifecycle(
 		VALTAN_AUDITION_LIFECYCLE_STATE::WAITING_FOR_PLAYER == Lifecycle.eState)
 		return;
 
+	/* The exact replacement lifecycle proves that the old occurrence has been
+	   retired. Its late ABORTED event has the old request identity and is ignored. */
+	m_RestartFallback = {};
+	m_hasRestartFallback = false;
 	m_hasAuthoritativeLifecycle = true;
 	m_Snapshot.iRoomAuditionEpoch = Lifecycle.iRoomAuditionEpoch;
 	m_Snapshot.iObservedPatternSequence = Lifecycle.iPatternSequence;
@@ -692,6 +1058,55 @@ void Client::CValtanPatternAuditionService::Set_Terminal(
 	m_iStateStartedAtMilliseconds = Now_Milliseconds();
 }
 
+bool Client::CValtanPatternAuditionService::Has_PatternSoundMutationBarrier() const
+{
+	return m_Snapshot.Is_InFlight() || m_hasRestartFallback ||
+		m_NextSnapshot.Is_Live() || Has_PendingNextCommand();
+}
+
+bool Client::CValtanPatternAuditionService::Verify_PatternSoundSourceReceipt(
+	const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& CurrentReceipt,
+	std::string& strOutStatus) const
+{
+	if (!CurrentReceipt.Is_Valid())
+	{
+		strOutStatus =
+			"Pattern Sound receipt verification requires a valid S receipt.";
+		return false;
+	}
+	const auto Verify = [&CurrentReceipt, &strOutStatus](
+		const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& Pinned,
+		const char_t* const pOwner) -> bool
+	{
+		if (!Pinned.Is_Valid() || Pinned != CurrentReceipt)
+		{
+			strOutStatus = std::string(pOwner) +
+				" is pinned to a different Pattern Sound source receipt.";
+			return false;
+		}
+		return true;
+	};
+	if ((m_Snapshot.Is_InFlight() ||
+		 VALTAN_PATTERN_AUDITION_STATE::COMPLETED == m_Snapshot.eState) &&
+		!Verify(m_Snapshot.PinnedPatternSoundSourceReceipt,
+			"The isolated occurrence"))
+		return false;
+	if (m_hasRestartFallback &&
+		!Verify(m_RestartFallback.PinnedPatternSoundSourceReceipt,
+			"The Restart predecessor"))
+		return false;
+	if (m_NextSnapshot.Is_Live() &&
+		!Verify(m_NextSnapshot.PinnedPatternSoundSourceReceipt,
+			"The approved Next reservation"))
+		return false;
+	if (Has_PendingNextCommand() &&
+		!Verify(m_NextCommand.PinnedPatternSoundSourceReceipt,
+			"The unresolved Next command"))
+		return false;
+	strOutStatus.clear();
+	return true;
+}
+
 void Client::CValtanPatternAuditionService::Observe_Boss(
 	const bool bBossValid, const std::string_view strPatternId,
 	const uint32_t iPatternSequence)
@@ -718,6 +1133,8 @@ void Client::CValtanPatternAuditionService::Observe_Boss(
 
 void Client::CValtanPatternAuditionService::Abort_WorldSession(const std::string& strReason)
 {
+	m_RestartFallback = {};
+	m_hasRestartFallback = false;
 	if (0u != m_Snapshot.iRequestSequence)
 		Set_Terminal(VALTAN_PATTERN_AUDITION_STATE::ABORTED, strReason);
 	if (m_NextSnapshot.Is_Live())
@@ -764,7 +1181,7 @@ void Client::CValtanPatternAuditionService::Update()
 	/* The versioned server lifecycle is the authority. HUD inference is only
 	   the original Play fallback; it never promotes a Next reservation. */
 #if !defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
-	if (!m_hasAuthoritativeLifecycle)
+	if (!m_hasAuthoritativeLifecycle && !m_hasRestartFallback)
 	{
 		const HUD_BOSS_STATE& Boss = CCombatHUDViewModel::Get().Get_Boss();
 		Observe_Boss(Boss.isValid,
@@ -776,14 +1193,36 @@ void Client::CValtanPatternAuditionService::Update()
 	if (VALTAN_PATTERN_AUDITION_STATE::REQUEST_PENDING == m_Snapshot.eState &&
 		iElapsed > VERDICT_TIMEOUT_MILLISECONDS)
 	{
-		Set_Terminal(VALTAN_PATTERN_AUDITION_STATE::ABORTED,
-			"Timed out waiting for the Server Pattern Play verdict.");
+		if (m_hasRestartFallback)
+		{
+			m_Snapshot.eState =
+				VALTAN_PATTERN_AUDITION_STATE::RESTART_UNCONFIRMED;
+			m_Snapshot.strStatus =
+				"Restart verdict is unconfirmed. The Server may still own the old or replacement occurrence; retry only this exact request or reconnect.";
+			m_iStateStartedAtMilliseconds = Now_Milliseconds();
+		}
+		else
+		{
+			Set_Terminal(VALTAN_PATTERN_AUDITION_STATE::ABORTED,
+				"Timed out waiting for the Server Pattern Play verdict.");
+		}
 	}
 	else if (VALTAN_PATTERN_AUDITION_STATE::QUEUED == m_Snapshot.eState &&
 		iElapsed > QUEUED_START_TIMEOUT_MILLISECONDS)
 	{
-		Set_Terminal(VALTAN_PATTERN_AUDITION_STATE::ABORTED,
-			"The queued pattern did not appear in a replicated boss snapshot in time.");
+		if (m_hasRestartFallback)
+		{
+			m_Snapshot.eState =
+				VALTAN_PATTERN_AUDITION_STATE::RESTART_UNCONFIRMED;
+			m_Snapshot.strStatus =
+				"Restart was queued but its replacement lifecycle is unconfirmed. Retry the exact receipt; do not submit another pattern.";
+			m_iStateStartedAtMilliseconds = Now_Milliseconds();
+		}
+		else
+		{
+			Set_Terminal(VALTAN_PATTERN_AUDITION_STATE::ABORTED,
+				"The queued pattern did not appear in a replicated boss snapshot in time.");
+		}
 	}
 	/* Reservation, player-wait and start-pending do not use Play's 15s timer.
 	   A 5s control timeout retains ownership and the exact retry payload. */
@@ -878,7 +1317,13 @@ bool Client::CValtanPatternAuditionService::Send_Request(
 #else
 	if (LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID == Request.eOperation)
 		return CNetworkManager::Get().Send_ValtanPatternAuditionById(
-			Request.iRequestSequence, Request.strBossPlacementId, Request.strPatternId);
+			Request.iRequestSequence, Request.strBossPlacementId,
+			Request.strPatternId, Request.ExpectedDefinitionRevision);
+	if (LostArk::Shared::VALTAN_AUDITION_OPERATION::RESTART_PATTERN_ID ==
+		Request.eOperation)
+	{
+		return CNetworkManager::Get().Send_ValtanPatternRestart(Request);
+	}
 	return CNetworkManager::Get().Send_ValtanNextPatternCommand(Request);
 #endif
 }
@@ -915,12 +1360,14 @@ bool Client::CValtanPatternAuditionService::Consume_Lifecycle(
 void Client::CValtanPatternAuditionService::Harness_Reset()
 {
 	m_Snapshot = {};
+	m_RestartFallback = {};
 	m_NextSnapshot = {};
 	m_NextCommand = {};
 	m_iNextRequestSequence = 1u;
 	m_HarnessInput = {};
 	m_iStateStartedAtMilliseconds = Now_Milliseconds();
 	m_hasAuthoritativeLifecycle = false;
+	m_hasRestartFallback = false;
 }
 
 void Client::CValtanPatternAuditionService::Harness_ObserveBoss(

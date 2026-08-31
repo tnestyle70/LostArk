@@ -6,6 +6,11 @@
 #include "EncounterPatternReference.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
+#include "SoundCueCatalog.h"
+#include "ValtanPatternTree.h"
+
+#include <bcrypt.h>
+#include <windows.h>
 
 #include <algorithm>
 #include <array>
@@ -17,11 +22,15 @@
 #include <iomanip>
 #include <initializer_list>
 #include <iterator>
+#include <limits>
 #include <map>
+#include <memory>
 #include <sstream>
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
+
+#pragma comment(lib, "bcrypt.lib")
 
 namespace
 {
@@ -37,6 +46,87 @@ namespace
 	constexpr size_t MAX_CUE_COUNT = 1024u;
 	constexpr wchar_t SOUND_AUTHORING_SAVE_MUTEX[] =
 		L"Local\\LostArk.ValtanPatternSoundCueDocument.Save";
+	constexpr std::uint64_t MAX_SOUND_SOURCE_BYTES = 512ull * 1024ull;
+
+	struct VALTAN_PATTERN_SOUND_SOURCE_READ_STATE final
+	{
+		~VALTAN_PATTERN_SOUND_SOURCE_READ_STATE()
+		{
+			if (INVALID_HANDLE_VALUE != File)
+				CloseHandle(File);
+			if (OwnsMutex && nullptr != Mutex)
+				ReleaseMutex(Mutex);
+			if (nullptr != Mutex)
+				CloseHandle(Mutex);
+		}
+
+		HANDLE Mutex = nullptr;
+		bool_t OwnsMutex = false;
+		HANDLE File = INVALID_HANDLE_VALUE;
+	};
+
+	bool_t BuildSoundSourceReceipt(
+		const std::string_view Bytes,
+		VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& OutReceipt)
+	{
+		if (Bytes.empty() || Bytes.size() > MAX_SOUND_SOURCE_BYTES ||
+			Bytes.size() > static_cast<std::size_t>(
+				(std::numeric_limits<ULONG>::max)()))
+		{
+			return false;
+		}
+
+		BCRYPT_ALG_HANDLE Algorithm = nullptr;
+		BCRYPT_HASH_HANDLE Hash = nullptr;
+		DWORD ObjectBytes = 0u;
+		DWORD HashBytes = 0u;
+		DWORD Written = 0u;
+		std::vector<unsigned char> HashObject;
+		std::array<unsigned char, 32u> Digest{};
+		bool_t Succeeded = false;
+		if (0 <= BCryptOpenAlgorithmProvider(
+				&Algorithm, BCRYPT_SHA256_ALGORITHM, nullptr, 0u) &&
+			0 <= BCryptGetProperty(
+				Algorithm, BCRYPT_OBJECT_LENGTH,
+				reinterpret_cast<PUCHAR>(&ObjectBytes), sizeof(ObjectBytes),
+				&Written, 0u) &&
+			0 <= BCryptGetProperty(
+				Algorithm, BCRYPT_HASH_LENGTH,
+				reinterpret_cast<PUCHAR>(&HashBytes), sizeof(HashBytes),
+				&Written, 0u) &&
+			HashBytes == Digest.size())
+		{
+			HashObject.resize(ObjectBytes);
+			if (0 <= BCryptCreateHash(
+					Algorithm, &Hash, HashObject.data(), ObjectBytes,
+					nullptr, 0u, 0u) &&
+				0 <= BCryptHashData(
+					Hash,
+					reinterpret_cast<PUCHAR>(
+						const_cast<char_t*>(Bytes.data())),
+					static_cast<ULONG>(Bytes.size()), 0u) &&
+				0 <= BCryptFinishHash(
+					Hash, Digest.data(), HashBytes, 0u))
+			{
+				static constexpr char_t HEX[] = "0123456789abcdef";
+				VALTAN_PATTERN_SOUND_SOURCE_RECEIPT Staged;
+				Staged.strSha256.resize(Digest.size() * 2u);
+				for (std::size_t i = 0u; i < Digest.size(); ++i)
+				{
+					Staged.strSha256[i * 2u] = HEX[Digest[i] >> 4u];
+					Staged.strSha256[i * 2u + 1u] = HEX[Digest[i] & 0x0fu];
+				}
+				Staged.iBytes = static_cast<std::uint64_t>(Bytes.size());
+				OutReceipt = std::move(Staged);
+				Succeeded = true;
+			}
+		}
+		if (nullptr != Hash)
+			BCryptDestroyHash(Hash);
+		if (nullptr != Algorithm)
+			BCryptCloseAlgorithmProvider(Algorithm, 0u);
+		return Succeeded;
+	}
 
 	bool_t Is_ExactObject(
 		const DATA_JSON_VALUE& Value,
@@ -302,79 +392,15 @@ namespace
 		return {};
 	}
 
-	bool_t Load_ValtanSoundCatalog(
-		std::unordered_map<std::string, std::vector<std::string>>& OutEvents,
-		std::string& strOutStatus)
-	{
-		std::string CatalogText;
-		const std::filesystem::path CatalogPath = CProjectDataRoot::Resolve(
-			"Sound/CharacterSoundCatalog.json");
-		if (!Read_File(CatalogPath, CatalogText))
-		{
-			strOutStatus =
-				"Missing CharacterSoundCatalog.json for Valtan Sound authoring join.";
-			return false;
-		}
-
-		DATA_JSON_VALUE Root;
-		std::string ParseError;
-		if (!CDataJson::Parse(CatalogText, Root, ParseError) ||
-			!Root.Is_Object())
-		{
-			strOutStatus = ParseError.empty() ?
-				"CharacterSoundCatalog.json is not a JSON object." : ParseError;
-			return false;
-		}
-		const DATA_JSON_VALUE* pClasses = Root.Find("classes");
-		const DATA_JSON_VALUE* pValtan = nullptr == pClasses ? nullptr :
-			pClasses->Find("Valtan");
-		if (nullptr == pClasses || !pClasses->Is_Object() ||
-			nullptr == pValtan || !pValtan->Is_Object())
-		{
-			strOutStatus =
-				"CharacterSoundCatalog.json is missing its Valtan event object.";
-			return false;
-		}
-
-		std::unordered_map<std::string, std::vector<std::string>> Staged;
-		Staged.reserve(pValtan->Get_Object().size());
-		for (const auto& [EventName, EventValue] : pValtan->Get_Object())
-		{
-			if (!Is_StableId(EventName) || !EventValue.Is_Array())
-			{
-				strOutStatus =
-					"CharacterSoundCatalog.json contains an invalid Valtan event: " +
-					EventName;
-				return false;
-			}
-			std::vector<std::string> Variants;
-			Variants.reserve(EventValue.Get_Array().size());
-			for (const DATA_JSON_VALUE& Entry : EventValue.Get_Array())
-			{
-				if (!Entry.Is_String())
-				{
-					strOutStatus =
-						"CharacterSoundCatalog.json contains a non-string Valtan asset: " +
-						EventName;
-					return false;
-				}
-				Variants.push_back(Entry.Get_String());
-			}
-			Staged.emplace(EventName, std::move(Variants));
-		}
-		OutEvents = std::move(Staged);
-		return true;
-	}
-
 	bool_t Validate_CatalogAssets(
-		const VALTAN_PATTERN_SOUND_CUE_DOCUMENT& Document,
+		VALTAN_PATTERN_SOUND_CUE_DOCUMENT& Document,
 		std::string& strOutStatus)
 	{
-		std::unordered_map<std::string, std::vector<std::string>> CatalogEvents;
-		if (!Load_ValtanSoundCatalog(CatalogEvents, strOutStatus))
+		CSoundCueCatalog::EVENT_VARIANTS CatalogEvents;
+		if (!CSoundCueCatalog::Load_ClassSnapshot(
+				"Valtan", CatalogEvents, strOutStatus))
 			return false;
-		std::unordered_set<std::string> ValidatedEvents;
-		for (const VALTAN_PATTERN_SOUND_CUE& Cue : Document.Cues)
+		for (VALTAN_PATTERN_SOUND_CUE& Cue : Document.Cues)
 		{
 			const std::string_view RequiredBank =
 				Required_SoundBank(Cue.strSoundEvent);
@@ -385,8 +411,6 @@ namespace
 					Cue.strBindingId;
 				return false;
 			}
-			if (!ValidatedEvents.insert(Cue.strSoundEvent).second)
-				continue;
 			const auto Event = CatalogEvents.find(Cue.strSoundEvent);
 			if (CatalogEvents.end() == Event)
 			{
@@ -395,6 +419,9 @@ namespace
 					Cue.strSoundEvent;
 				return false;
 			}
+			/* A declared event may remain unresolved when the extracted Resource
+			   pack has no WAV for it yet. Preserve that cue for authoring/Detail;
+			   playback treats an empty resolved list as an isolated no-op. */
 			for (const std::string& AssetId : Event->second)
 			{
 				const std::filesystem::path AssetPath =
@@ -410,6 +437,7 @@ namespace
 					return false;
 				}
 			}
+			Cue.ResolvedAssetIds = Event->second;
 		}
 		return true;
 	}
@@ -1047,6 +1075,110 @@ namespace
 #endif
 }
 
+bool_t Client::VALTAN_PATTERN_SOUND_SOURCE_RECEIPT::Is_Valid() const
+{
+	return 64u == strSha256.size() && 0u != iBytes &&
+		std::all_of(strSha256.begin(), strSha256.end(),
+			[](const char_t Character)
+			{
+				return (Character >= '0' && Character <= '9') ||
+					(Character >= 'a' && Character <= 'f');
+			});
+}
+
+Client::CValtanPatternSoundSourceReadAdmission::
+	~CValtanPatternSoundSourceReadAdmission()
+{
+	delete static_cast<VALTAN_PATTERN_SOUND_SOURCE_READ_STATE*>(m_pState);
+	m_pState = nullptr;
+}
+
+bool_t Client::CValtanPatternSoundSourceReadAdmission::Acquire(
+	VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& OutReceipt,
+	std::string& strOutStatus)
+{
+	if (nullptr != m_pState)
+	{
+		strOutStatus =
+			"Valtan Pattern Sound source read admission is already held.";
+		return false;
+	}
+
+	std::unique_ptr<VALTAN_PATTERN_SOUND_SOURCE_READ_STATE> State =
+		std::make_unique<VALTAN_PATTERN_SOUND_SOURCE_READ_STATE>();
+	State->Mutex = CreateMutexW(
+		nullptr, FALSE, SOUND_AUTHORING_SAVE_MUTEX);
+	if (nullptr == State->Mutex)
+	{
+		strOutStatus =
+			"Valtan Pattern Sound playback could not create its source admission mutex.";
+		return false;
+	}
+	const DWORD WaitResult = WaitForSingleObject(State->Mutex, 5000u);
+	if (WAIT_OBJECT_0 != WaitResult && WAIT_ABANDONED != WaitResult)
+	{
+		strOutStatus =
+			"Valtan Pattern Sound playback timed out waiting for the source owner.";
+		return false;
+	}
+	State->OwnsMutex = true;
+
+	const std::filesystem::path Path =
+		CValtanPatternSoundCueDocument::Resolve_Path();
+	State->File = CreateFileW(
+		Path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
+	if (Path.empty() || INVALID_HANDLE_VALUE == State->File)
+	{
+		strOutStatus =
+			"Valtan Pattern Sound playback could not lock the exact source against replacement: " +
+			Path.string() + ".";
+		return false;
+	}
+
+	LARGE_INTEGER FileBytes{};
+	if (FALSE == GetFileSizeEx(State->File, &FileBytes) ||
+		FileBytes.QuadPart <= 0 ||
+		static_cast<std::uint64_t>(FileBytes.QuadPart) > MAX_SOUND_SOURCE_BYTES)
+	{
+		strOutStatus =
+			"Valtan Pattern Sound source size is invalid for exact playback admission.";
+		return false;
+	}
+	std::string Bytes(static_cast<std::size_t>(FileBytes.QuadPart), '\0');
+	std::size_t Offset = 0u;
+	while (Offset < Bytes.size())
+	{
+		const DWORD Requested = static_cast<DWORD>((std::min)(
+			Bytes.size() - Offset,
+			static_cast<std::size_t>((std::numeric_limits<DWORD>::max)())));
+		DWORD Read = 0u;
+		if (FALSE == ReadFile(
+				State->File, Bytes.data() + Offset, Requested, &Read, nullptr) ||
+			0u == Read)
+		{
+			strOutStatus =
+				"Valtan Pattern Sound playback could not read the locked source bytes.";
+			return false;
+		}
+		Offset += Read;
+	}
+
+	VALTAN_PATTERN_SOUND_SOURCE_RECEIPT StagedReceipt;
+	if (!BuildSoundSourceReceipt(Bytes, StagedReceipt) ||
+		!StagedReceipt.Is_Valid())
+	{
+		strOutStatus =
+			"Valtan Pattern Sound playback could not hash the locked source bytes.";
+		return false;
+	}
+	m_pState = State.release();
+	OutReceipt = std::move(StagedReceipt);
+	strOutStatus =
+		"Locked the exact Valtan Pattern Sound source generation for playback submission.";
+	return true;
+}
+
 std::filesystem::path
 Client::CValtanPatternSoundCueDocument::Resolve_Path()
 {
@@ -1263,6 +1395,19 @@ bool_t Client::CValtanPatternSoundCueDocument::Load_Source(
 	VALTAN_PATTERN_SOUND_CUE_DOCUMENT& InOutDocument,
 	std::string& strOutStatus)
 {
+	VALTAN_PATTERN_SOUND_SOURCE_RECEIPT IgnoredReceipt;
+	return Load_Source(InOutDocument, IgnoredReceipt, strOutStatus);
+}
+
+bool_t Client::CValtanPatternSoundCueDocument::Load_Source(
+	VALTAN_PATTERN_SOUND_CUE_DOCUMENT& InOutDocument,
+	VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& InOutReceipt,
+	std::string& strOutStatus)
+{
+	CValtanPatternSoundSourceReadAdmission SourceAdmission;
+	VALTAN_PATTERN_SOUND_SOURCE_RECEIPT StagedReceipt;
+	if (!SourceAdmission.Acquire(StagedReceipt, strOutStatus))
+		return false;
 	CEncounterPatternReference Encounter;
 	if (!Load_EncounterReference(Encounter, strOutStatus))
 		return false;
@@ -1281,9 +1426,11 @@ bool_t Client::CValtanPatternSoundCueDocument::Load_Source(
 	if (!Load_AnimationBindings(AnimationBindings, strOutStatus))
 		return false;
 	VALTAN_PATTERN_SOUND_CUE_DOCUMENT Staged;
-	if (!Parse_Text(Text, Encounter, AnimationBindings, Staged, strOutStatus))
+	if (!Parse_Text(Text, Encounter, AnimationBindings, Staged, strOutStatus) ||
+		!Validate_CatalogAssets(Staged, strOutStatus))
 		return false;
 	InOutDocument = std::move(Staged);
+	InOutReceipt = std::move(StagedReceipt);
 	return true;
 }
 
@@ -1517,6 +1664,23 @@ bool_t Client::CValtanPatternSoundCueDocument::Save_Atomic(
 	std::string& InOutBaselineSourceBytes,
 	std::string& strOutStatus)
 {
+	/* Pattern Sound remains a separate typed source owner, but every saved row
+	   is joined against the canonical Encounter/Animation Product generation.
+	   Hold the established shared generation admission from the first baseline
+	   read through destination commit.  Canonical exclusive writers therefore
+	   cannot replace either dependency while this independent source stages,
+	   validates and commits; the destination mutex/CAS below still serializes
+	   concurrent Sound writers. */
+	CValtanCanonicalProductReadAdmission CanonicalAdmission;
+	std::string CanonicalAdmissionStatus;
+	if (!CanonicalAdmission.Acquire(CanonicalAdmissionStatus))
+	{
+		strOutStatus =
+			"Valtan pattern Sound Save could not join canonical dependency-generation admission; source and draft were preserved: " +
+			CanonicalAdmissionStatus;
+		return false;
+	}
+
 	const std::filesystem::path Destination = Resolve_Path();
 	std::string PreviousBytes;
 	if (Destination.empty() || InOutBaselineSourceBytes.empty() ||
@@ -1631,6 +1795,14 @@ bool_t Client::CValtanPatternSoundCueDocument::Save_Atomic(
 		InOutBaselineSourceBytes, strOutStatus))
 	{
 		Remove_Temporary(Temporary);
+		return false;
+	}
+	if (!CanonicalAdmission.Validate_StillCurrent(CanonicalAdmissionStatus))
+	{
+		Remove_Temporary(Temporary);
+		strOutStatus =
+			"Valtan pattern Sound Save lost canonical dependency-generation admission before destination commit; previous source preserved: " +
+			CanonicalAdmissionStatus;
 		return false;
 	}
 	if (!Commit_Temporary(Destination, Temporary))

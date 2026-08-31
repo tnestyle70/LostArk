@@ -68,10 +68,16 @@ public:
 	   replication owner as the single route and expose its freshness admission
 	   to Complete Play. */
 	bool_t Reload_PrimaryValtanPresentationAuthoring(
+		const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
 		std::string& strOutStatus);
 	bool_t Reload_PrimaryValtanCombatObjectSoundCues(
+		const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
 		std::string& strOutStatus);
 	bool_t Can_Play_PrimaryValtanPresentation(
+		const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+		std::string& strOutStatus) const;
+	bool_t Get_PrimaryValtanPatternSoundSourceReceipt(
+		VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& OutReceipt,
 		std::string& strOutStatus) const;
 #ifdef _DEBUG
 	struct ARENA_ACTIVE_STATE final
@@ -92,8 +98,8 @@ public:
 	};
 
 	/* Workbench route. The active Level retains the one request-sequence and
-	   retry owner used by its audition panel; callers never send packets or
-	   mutate wall visibility locally. */
+	   bounded retry owner used by the explicit arena-preset controls; callers
+	   never send packets or mutate wall visibility locally. */
 	bool_t Set_ArenaPreset(
 		LostArk::Shared::VALTAN_ARENA_PRESET preset,
 		std::string& outStatus);
@@ -167,21 +173,15 @@ private:
 	void Update_ReferenceCamera();
 	void End_ReferenceCamera(bool_t toggleFollowRequested);
 	const char_t* Get_ReferenceCameraViewName() const;
-	/* Debug audition of an authored health-bar pattern. The panel only submits
-	typed requests and reports what the Server answered; it never starts a
-	pattern or breaks a wall on its own. Reference-view buttons below are a
-	separate presentation-only camera aid and never submit gameplay state. */
-	void Render_AuditionPanel();
 	void Update_AuditionTransaction();
 	bool_t Submit_Audition(
 		LostArk::Shared::VALTAN_AUDITION_OPERATION operation,
 		uint32_t explicitCommandPayload = 0u);
-	bool_t Load_AuditionTimeline();
 	struct AUDITION_PENDING_REQUEST final
 	{
 		uint32_t iSequence = 0u;
 		LostArk::Shared::VALTAN_AUDITION_OPERATION eOperation =
-			LostArk::Shared::VALTAN_AUDITION_OPERATION::ARM_HEALTH_BAR;
+			LostArk::Shared::VALTAN_AUDITION_OPERATION::SET_ARENA_PRESET;
 		uint32_t iTargetHealthBar = 0u;
 		uint64_t iLastSentAtMilliseconds = 0u;
 		uint32_t iRetryCount = 0u;
@@ -191,40 +191,6 @@ private:
 			return 0u != iSequence;
 		}
 	};
-	struct AUDITION_TIMELINE_ACTION final
-	{
-		std::string strPatternId;
-		uint32_t iRepeat = 0u;
-	};
-	struct AUDITION_TIMELINE_ROW final
-	{
-		std::string strRowId;
-		uint32_t iCommandId = 0u;
-		uint32_t iOrdinal = 0u;
-		uint32_t iSectionHealthBar = 0u;
-		std::string strEntryType;
-		std::vector<AUDITION_TIMELINE_ACTION> PatternActions;
-		std::string strArenaState;
-		std::string strPropState;
-		std::string strDisplayLabel;
-	};
-	/* A separate developer helper can still cross several authored health bars
-	without resetting between them. The selectable fight timeline above it is a
-	Server-owned one-row audition and never uses this Client-side queue. */
-	struct ENVIRONMENT_TIMELINE_STEP final
-	{
-		LostArk::Shared::VALTAN_AUDITION_OPERATION eOperation =
-			LostArk::Shared::VALTAN_AUDITION_OPERATION::ARM_HEALTH_BAR;
-		uint32_t iTargetHealthBar = 0u;
-		bool_t waitForPattern = false;
-	};
-	void Start_EnvironmentTimeline();
-	/* Queues one PLAY_PATTERN step per authored rotation entry, in the order
-	the script lists them, so the whole authored order can be watched without
-	waiting for the weighted roll to pick each pattern. */
-	void Start_AuthoredRotationPlayback(
-		const std::vector<std::string>& rotationOrder);
-	void Advance_EnvironmentTimeline(bool_t isBossPatternRunning);
 #endif
 
 private:
@@ -293,22 +259,9 @@ private:
 	bool_t m_bReferenceSpaceHoleVisible = false;
 	REFERENCE_CAMERA_VIEW m_eReferenceCameraView =
 		REFERENCE_CAMERA_VIEW::NONE;
-	size_t m_iSelectedAuditionBarIndex = 0u;
-	/* Index into the authored pattern order the Server publishes in the same
-	document order, so the Debug browser can play a NORMAL pattern no health
-	bar owns. */
-	size_t m_iSelectedAuditionPatternIndex = 0u;
-	std::vector<AUDITION_TIMELINE_ROW> m_AuditionTimelineRows;
-	size_t m_iSelectedAuditionTimelineRowIndex = 0u;
-	bool_t m_bAuditionTimelineLoadAttempted = false;
-	std::string m_strAuditionTimelineStatus;
 	uint32_t m_iNextAuditionRequestSequence = 1u;
 	AUDITION_PENDING_REQUEST m_PendingAuditionRequest;
 	std::string m_strAuditionStatus;
-	std::vector<ENVIRONMENT_TIMELINE_STEP> m_EnvironmentTimeline;
-	size_t m_iEnvironmentTimelineStep = 0u;
-	bool_t m_bEnvironmentTimelineWaiting = false;
-	bool_t m_bEnvironmentTimelinePatternStarted = false;
 #endif
 
 	static CLevel_ValtanArena* s_pActiveInstance;

@@ -4,6 +4,42 @@
 #include <cmath>
 #include <limits>
 
+bool Client::CActionPresentationTimeline::Validate_AuthoredSourceWindow(
+	const float fNativeDurationTicks,
+	const float fNativeTicksPerSecond,
+	const uint32_t iSourceStartMs,
+	const uint32_t iPlayMs,
+	const float fPlayRate,
+	uint32_t& iOutRoundedRemainingMs)
+{
+	iOutRoundedRemainingMs = 0u;
+	if (!std::isfinite(fNativeDurationTicks) || fNativeDurationTicks <= 0.f ||
+		!std::isfinite(fNativeTicksPerSecond) || fNativeTicksPerSecond <= 0.f ||
+		!std::isfinite(fPlayRate) || fPlayRate <= 0.f)
+	{
+		return false;
+	}
+	const double fNativeDurationMs =
+		static_cast<double>(fNativeDurationTicks) /
+		static_cast<double>(fNativeTicksPerSecond) * 1000.0;
+	if (!std::isfinite(fNativeDurationMs) || fNativeDurationMs <= 0.0 ||
+		static_cast<double>(iSourceStartMs) >= fNativeDurationMs)
+	{
+		return false;
+	}
+	const double fRemainingMs =
+		fNativeDurationMs - static_cast<double>(iSourceStartMs);
+	const double fRoundedRemainingMs = std::floor(fRemainingMs + 0.5);
+	if (!std::isfinite(fRoundedRemainingMs) || fRoundedRemainingMs < 0.0 ||
+		fRoundedRemainingMs >
+			static_cast<double>((std::numeric_limits<uint32_t>::max)()))
+	{
+		return false;
+	}
+	iOutRoundedRemainingMs = static_cast<uint32_t>(fRoundedRemainingMs);
+	return 0u == iPlayMs || iPlayMs <= iOutRoundedRemainingMs;
+}
+
 bool Client::CActionPresentationTimeline::Resolve_ClipDuration(
 	const ACTION_PRESENTATION_CLIP_TIMING& Clip,
 	float& fOutSourceDurationSeconds,

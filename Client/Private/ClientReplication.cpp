@@ -18,14 +18,39 @@
 #include "PlayableCharacterAssetService.h"
 #include "Transform.h"
 #include "Valtan.h"
+#include "ValtanPatternAuditionService.h"
+#include "ValtanPatternFlowService.h"
 #include "ValtanPresentationAssetService.h"
 #include "DeployPropRuntime.h"
 
 #include <algorithm>
 #include <cmath>
+#include <span>
 
 namespace
 {
+	using Client::CValtan;
+
+	bool_t Can_ReloadValtanPresentationWithoutResettingLiveSound(
+		std::string& strOutStatus)
+	{
+		Client::CValtanPatternAuditionService& Audition =
+			Client::CValtanPatternAuditionService::Get();
+		Client::CValtanPatternFlowService& Flow =
+			Client::CValtanPatternFlowService::Get();
+		Audition.Update();
+		Flow.Update();
+		if (Audition.Has_PatternSoundMutationBarrier() ||
+			Flow.Has_PatternSoundMutationBarrier())
+		{
+			strOutStatus =
+				"Authoritative Valtan presentation reload is blocked while a Pattern/Restart/Next/Flow occurrence owns the pinned Pattern Sound receipt; cue attempt state was preserved.";
+			return false;
+		}
+		strOutStatus.clear();
+		return true;
+	}
+
 	Client::NET_PLAYER_RECORD Make_Record(
 		const LostArk::Shared::S2C_PLAYER_SPAWNED& spawned)
 	{
@@ -77,6 +102,43 @@ namespace
 			}
 		}
 		return true;
+	}
+
+	CValtan::PATTERN_TARGET_SNAPSHOT_POSE Resolve_ValtanPatternTargetSnapshotPose(
+		const std::span<const LostArk::Shared::PLAYER_SNAPSHOT> players,
+		const LostArk::Shared::NET_ENTITY_ID iTargetNetEntityId)
+	{
+		CValtan::PATTERN_TARGET_SNAPSHOT_POSE pose;
+		pose.iNetEntityId = iTargetNetEntityId;
+		if (LostArk::Shared::INVALID_NET_ENTITY_ID == iTargetNetEntityId)
+			return pose;
+
+		bool_t bFound = false;
+		for (const LostArk::Shared::PLAYER_SNAPSHOT& player : players)
+		{
+			if (player.iNetEntityId != iTargetNetEntityId)
+				continue;
+			/* Duplicate identity is not a pose authority.  Keep the target ID for
+			   diagnostics but force the cue occurrence down its isolated path. */
+			if (bFound)
+			{
+				pose.bHasFinitePose = false;
+				return pose;
+			}
+			bFound = true;
+			if (!std::isfinite(player.fPositionX) ||
+				!std::isfinite(player.fPositionY) ||
+				!std::isfinite(player.fPositionZ) ||
+				!std::isfinite(player.fYawDegrees))
+			{
+				continue;
+			}
+			pose.vPosition = float3_t(
+				player.fPositionX, player.fPositionY, player.fPositionZ);
+			pose.fYawDegrees = player.fYawDegrees;
+			pose.bHasFinitePose = true;
+		}
+		return pose;
 	}
 }
 
@@ -170,9 +232,8 @@ bool Client::CClientReplication::Update()
 			break;
 
 		case CLIENT_REPLICATION_EVENT_TYPE::WORLD_ENTITY_SPAWNED:
-			allSucceeded =
-				Apply_WorldEntitySpawn(event.WorldEntitySpawned) &&
-				allSucceeded;
+			allSucceeded = Apply_WorldEntitySpawn(
+				event.WorldEntitySpawned) && allSucceeded;
 			break;
 
 		case CLIENT_REPLICATION_EVENT_TYPE::COMBAT_OBJECT_SPAWNED:
@@ -485,12 +546,125 @@ bool_t Client::CClientReplication::Resolve_PrimaryValtan(
 	return true;
 }
 
+Client::CClientReplication::WORLD_ENTITY_PRESENTATION*
+Client::CClientReplication::Find_ValtanPresentation(
+	const std::shared_ptr<CValtan>& pValtan)
+{
+	if (nullptr == pValtan)
+		return nullptr;
+	for (auto& [entityId, presentation] : m_WorldEntities)
+	{
+		(void)entityId;
+		if (presentation.pValtan.lock().get() == pValtan.get())
+			return &presentation;
+	}
+	return nullptr;
+}
+
+bool_t Client::CClientReplication::Ensure_ValtanPresentationRevision(
+	WORLD_ENTITY_PRESENTATION& Presentation,
+	const std::shared_ptr<CValtan>& pValtan,
+	const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+	const bool_t bIsPrimary,
+	std::string& strOutStatus)
+{
+	using LostArk::Shared::Format_GameplayDataRevision;
+	if (nullptr == pValtan || !ExpectedRevision.Is_Valid())
+	{
+		strOutStatus =
+			"Valtan snapshot has no live presentation or exact occurrence revision.";
+		return false;
+	}
+
+	Presentation.PinnedDefinitionRevision = ExpectedRevision;
+	if (!Presentation.bPresentationIsolated &&
+		Presentation.AdmittedPresentationRevision == ExpectedRevision)
+	{
+		strOutStatus.clear();
+		return true;
+	}
+	if (Presentation.bPresentationIsolated &&
+		Presentation.RejectedPresentationRevision == ExpectedRevision)
+	{
+		strOutStatus =
+			"Valtan presentation remains isolated for previously rejected occurrence revision " +
+			Format_GameplayDataRevision(ExpectedRevision) + ".";
+		return false;
+	}
+
+	VALTAN_PRESENTATION_GENERATION_RECEIPT Receipt;
+	std::string ReceiptStatus;
+	std::string ReloadStatus;
+	const bool_t bHasReceipt =
+		CNetworkManager::Get().Try_Get_ValtanPresentationGenerationReceipt(
+			ExpectedRevision, Receipt, ReceiptStatus);
+	const bool_t bReloaded = bHasReceipt &&
+		pValtan->Reload_PatternPresentationAuthoring(
+			ExpectedRevision, Receipt, ReloadStatus);
+	if (!bReloaded)
+	{
+		Presentation.AdmittedPresentationRevision = {};
+		Presentation.RejectedPresentationRevision = ExpectedRevision;
+		Presentation.bPresentationIsolated = true;
+		CEffectPresentationService::Stop_BossOwner(pValtan);
+		strOutStatus =
+			"Valtan occurrence presentation revision " +
+			Format_GameplayDataRevision(ExpectedRevision) +
+			" was isolated after one exact reload attempt: " +
+			(bHasReceipt ? ReloadStatus : ReceiptStatus);
+		m_strPendingPresentationFailure = strOutStatus;
+		if (bIsPrimary)
+		{
+			m_PrimaryValtanJoinedPresentationFreshness.Reject(strOutStatus);
+			m_PrimaryValtanCombatObjectSoundFreshness.Reject(strOutStatus);
+		}
+		return false;
+	}
+
+	Presentation.AdmittedPresentationRevision = ExpectedRevision;
+	Presentation.RejectedPresentationRevision = {};
+	Presentation.bPresentationIsolated = false;
+	strOutStatus = ReloadStatus;
+	if (bIsPrimary)
+	{
+		m_PrimaryValtanJoinedPresentationFreshness.Admit(
+			ExpectedRevision, ReloadStatus);
+		m_PrimaryValtanCombatObjectSoundFreshness.Admit(
+			ExpectedRevision, ReloadStatus);
+	}
+	return true;
+}
+
 bool_t Client::CClientReplication::Reload_PrimaryValtanPresentationAuthoring(
+	const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
 	std::string& strOutStatus)
 {
 	static constexpr std::string_view PRIMARY_ARCHETYPE_ID = "BOSS_VALTAN";
 	static constexpr LostArk::Shared::NET_ENTITY_ID PRIMARY_OWNER_ID =
 		LostArk::Shared::INVALID_NET_ENTITY_ID;
+	if (!Can_ReloadValtanPresentationWithoutResettingLiveSound(strOutStatus))
+		return false;
+	if (!ExpectedRevision.Is_Valid())
+	{
+		strOutStatus =
+			"Authoritative primary Valtan presentation reload requires one exact Server-active revision.";
+		m_PrimaryValtanJoinedPresentationFreshness.Reject(strOutStatus);
+		m_PrimaryValtanCombatObjectSoundFreshness.Reject(strOutStatus);
+		return false;
+	}
+	Client::VALTAN_PRESENTATION_GENERATION_RECEIPT PresentationReceipt;
+	std::string ReceiptStatus;
+	if (!CNetworkManager::Get().Try_Get_ValtanPresentationGenerationReceipt(
+			ExpectedRevision, PresentationReceipt, ReceiptStatus))
+	{
+		strOutStatus =
+			"Authoritative primary Valtan has no exact presentation generation receipt: " +
+			ReceiptStatus;
+		m_PrimaryValtanJoinedPresentationFreshness.Reject(strOutStatus);
+		m_PrimaryValtanCombatObjectSoundFreshness.Reject(strOutStatus);
+		m_strPendingPresentationFailure = strOutStatus;
+		return false;
+	}
 	std::shared_ptr<CValtan> PrimaryValtan;
 	std::string ResolveStatus;
 	if (!Resolve_PrimaryValtan(
@@ -505,7 +679,7 @@ bool_t Client::CClientReplication::Reload_PrimaryValtanPresentationAuthoring(
 	{
 		std::string FreshnessStatus;
 		if (!m_PrimaryValtanJoinedPresentationFreshness.Can_Play(
-				FreshnessStatus))
+				ExpectedRevision, FreshnessStatus))
 		{
 			strOutStatus = ResolveStatus + " " + FreshnessStatus +
 				" The next primary spawn must admit a successful joined reload.";
@@ -514,18 +688,44 @@ bool_t Client::CClientReplication::Reload_PrimaryValtanPresentationAuthoring(
 		strOutStatus = ResolveStatus;
 		return true;
 	}
+	WORLD_ENTITY_PRESENTATION* const Presentation =
+		Find_ValtanPresentation(PrimaryValtan);
+	if (nullptr == Presentation ||
+		Presentation->PinnedDefinitionRevision != ExpectedRevision)
+	{
+		strOutStatus =
+			"Authoritative primary Valtan reload revision does not match its Server-pinned occurrence.";
+		m_PrimaryValtanJoinedPresentationFreshness.Reject(strOutStatus);
+		m_PrimaryValtanCombatObjectSoundFreshness.Reject(strOutStatus);
+		m_strPendingPresentationFailure = strOutStatus;
+		return false;
+	}
 
 	std::string ReloadStatus;
-	if (!PrimaryValtan->Reload_PatternPresentationAuthoring(ReloadStatus))
+	if (!PrimaryValtan->Reload_PatternPresentationAuthoring(
+			ExpectedRevision, PresentationReceipt, ReloadStatus))
 	{
 		strOutStatus =
 			"Authoritative primary Valtan joined presentation reload rejected: " +
 			ReloadStatus;
+		Presentation->AdmittedPresentationRevision = {};
+		Presentation->RejectedPresentationRevision = ExpectedRevision;
+		Presentation->bPresentationIsolated = true;
+		CEffectPresentationService::Stop_BossOwner(PrimaryValtan);
 		m_PrimaryValtanJoinedPresentationFreshness.Reject(strOutStatus);
+		m_PrimaryValtanCombatObjectSoundFreshness.Reject(strOutStatus);
 		m_strPendingPresentationFailure = strOutStatus;
 		return false;
 	}
-	m_PrimaryValtanJoinedPresentationFreshness.Admit(ReloadStatus);
+	Presentation->AdmittedPresentationRevision = ExpectedRevision;
+	Presentation->RejectedPresentationRevision = {};
+	Presentation->bPresentationIsolated = false;
+	m_PrimaryValtanJoinedPresentationFreshness.Admit(
+		ExpectedRevision, ReloadStatus);
+	/* Reload_PatternPresentationAuthoring stages animation, Effect, Pattern
+	   Sound, combat-object Sound and shake as one joined generation. */
+	m_PrimaryValtanCombatObjectSoundFreshness.Admit(
+		ExpectedRevision, ReloadStatus);
 	strOutStatus =
 		"Authoritative primary Valtan joined presentation reloaded. " +
 		ReloadStatus;
@@ -533,11 +733,35 @@ bool_t Client::CClientReplication::Reload_PrimaryValtanPresentationAuthoring(
 }
 
 bool_t Client::CClientReplication::Reload_PrimaryValtanCombatObjectSoundCues(
+	const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
 	std::string& strOutStatus)
 {
 	static constexpr std::string_view PRIMARY_ARCHETYPE_ID = "BOSS_VALTAN";
 	static constexpr LostArk::Shared::NET_ENTITY_ID PRIMARY_OWNER_ID =
 		LostArk::Shared::INVALID_NET_ENTITY_ID;
+	if (!Can_ReloadValtanPresentationWithoutResettingLiveSound(strOutStatus))
+		return false;
+	if (!ExpectedRevision.Is_Valid())
+	{
+		strOutStatus =
+			"Authoritative primary Valtan combat-object Sound reload requires one exact Server-active revision.";
+		m_PrimaryValtanJoinedPresentationFreshness.Reject(strOutStatus);
+		m_PrimaryValtanCombatObjectSoundFreshness.Reject(strOutStatus);
+		return false;
+	}
+	Client::VALTAN_PRESENTATION_GENERATION_RECEIPT PresentationReceipt;
+	std::string ReceiptStatus;
+	if (!CNetworkManager::Get().Try_Get_ValtanPresentationGenerationReceipt(
+			ExpectedRevision, PresentationReceipt, ReceiptStatus))
+	{
+		strOutStatus =
+			"Authoritative primary Valtan has no exact presentation generation receipt: " +
+			ReceiptStatus;
+		m_PrimaryValtanJoinedPresentationFreshness.Reject(strOutStatus);
+		m_PrimaryValtanCombatObjectSoundFreshness.Reject(strOutStatus);
+		m_strPendingPresentationFailure = strOutStatus;
+		return false;
+	}
 	std::shared_ptr<CValtan> PrimaryValtan;
 	std::string ResolveStatus;
 	if (!Resolve_PrimaryValtan(
@@ -552,7 +776,7 @@ bool_t Client::CClientReplication::Reload_PrimaryValtanCombatObjectSoundCues(
 	{
 		std::string FreshnessStatus;
 		if (!m_PrimaryValtanCombatObjectSoundFreshness.Can_Play(
-				FreshnessStatus))
+				ExpectedRevision, FreshnessStatus))
 		{
 			strOutStatus = ResolveStatus + " " + FreshnessStatus +
 				" The next primary spawn must admit a successful combat-object Sound reload.";
@@ -561,18 +785,43 @@ bool_t Client::CClientReplication::Reload_PrimaryValtanCombatObjectSoundCues(
 		strOutStatus = ResolveStatus;
 		return true;
 	}
-
-	std::string ReloadStatus;
-	if (!PrimaryValtan->Reload_CombatObjectSoundCues(ReloadStatus))
+	WORLD_ENTITY_PRESENTATION* const Presentation =
+		Find_ValtanPresentation(PrimaryValtan);
+	if (nullptr == Presentation ||
+		Presentation->PinnedDefinitionRevision != ExpectedRevision)
 	{
 		strOutStatus =
-			"Authoritative primary Valtan combat-object Sound reload rejected: " +
-			ReloadStatus;
+			"Authoritative primary Valtan combat-object Sound reload revision does not match its Server-pinned occurrence.";
+		m_PrimaryValtanJoinedPresentationFreshness.Reject(strOutStatus);
 		m_PrimaryValtanCombatObjectSoundFreshness.Reject(strOutStatus);
 		m_strPendingPresentationFailure = strOutStatus;
 		return false;
 	}
-	m_PrimaryValtanCombatObjectSoundFreshness.Admit(ReloadStatus);
+
+	std::string ReloadStatus;
+	if (!PrimaryValtan->Reload_PatternPresentationAuthoring(
+			ExpectedRevision, PresentationReceipt, ReloadStatus))
+	{
+		strOutStatus =
+			"Authoritative primary Valtan combat-object Sound reload rejected: " +
+			ReloadStatus;
+		Presentation->AdmittedPresentationRevision = {};
+		Presentation->RejectedPresentationRevision = ExpectedRevision;
+		Presentation->bPresentationIsolated = true;
+		CEffectPresentationService::Stop_BossOwner(PrimaryValtan);
+		m_PrimaryValtanCombatObjectSoundFreshness.Reject(strOutStatus);
+		m_PrimaryValtanJoinedPresentationFreshness.Reject(strOutStatus);
+		m_strPendingPresentationFailure = strOutStatus;
+		return false;
+	}
+	Presentation->AdmittedPresentationRevision = ExpectedRevision;
+	Presentation->RejectedPresentationRevision = {};
+	Presentation->bPresentationIsolated = false;
+	/* CValtan's compatibility entry delegates to the same joined transaction. */
+	m_PrimaryValtanJoinedPresentationFreshness.Admit(
+		ExpectedRevision, ReloadStatus);
+	m_PrimaryValtanCombatObjectSoundFreshness.Admit(
+		ExpectedRevision, ReloadStatus);
 	strOutStatus =
 		"Authoritative primary Valtan combat-object Sound reloaded. " +
 		ReloadStatus;
@@ -580,13 +829,50 @@ bool_t Client::CClientReplication::Reload_PrimaryValtanCombatObjectSoundCues(
 }
 
 bool_t Client::CClientReplication::Can_Play_PrimaryValtanPresentation(
+	const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
 	std::string& strOutStatus) const
 {
-	if (!m_PrimaryValtanJoinedPresentationFreshness.Can_Play(strOutStatus))
+	if (!m_PrimaryValtanJoinedPresentationFreshness.Can_Play(
+			ExpectedRevision, strOutStatus))
 		return false;
-	if (!m_PrimaryValtanCombatObjectSoundFreshness.Can_Play(strOutStatus))
+	if (!m_PrimaryValtanCombatObjectSoundFreshness.Can_Play(
+			ExpectedRevision, strOutStatus))
 		return false;
 	strOutStatus.clear();
+	return true;
+}
+
+bool_t Client::CClientReplication::
+	Get_PrimaryValtanPatternSoundSourceReceipt(
+		VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& OutReceipt,
+		std::string& strOutStatus) const
+{
+	static constexpr std::string_view PRIMARY_ARCHETYPE_ID = "BOSS_VALTAN";
+	static constexpr LostArk::Shared::NET_ENTITY_ID PRIMARY_OWNER_ID =
+		LostArk::Shared::INVALID_NET_ENTITY_ID;
+	std::shared_ptr<CValtan> PrimaryValtan;
+	if (!Resolve_PrimaryValtan(
+			PRIMARY_ARCHETYPE_ID, PRIMARY_OWNER_ID,
+			PrimaryValtan, strOutStatus) || nullptr == PrimaryValtan)
+	{
+		if (strOutStatus.empty())
+		{
+			strOutStatus =
+				"Pattern playback requires one active primary replicated Valtan presentation consumer.";
+		}
+		return false;
+	}
+	const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& Receipt =
+		PrimaryValtan->Get_PatternSoundSourceReceipt();
+	if (!Receipt.Is_Valid())
+	{
+		strOutStatus =
+			"The primary replicated Valtan has no exact admitted Pattern Sound source receipt.";
+		return false;
+	}
+	OutReceipt = Receipt;
+	strOutStatus =
+		"Resolved the primary replicated Valtan's exact Pattern Sound source receipt.";
 	return true;
 }
 
@@ -973,15 +1259,19 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 			return false;
 		}
 		const std::shared_ptr<CValtan> owningBoss = foundOwner->second.pValtan.lock();
-		if (nullptr == owningBoss || CValtan::DEAD == owningBoss->Get_State())
+		if (nullptr == owningBoss || CValtan::DEAD == owningBoss->Get_State() ||
+			foundOwner->second.bPresentationIsolated)
 		{
-			m_strPendingPresentationFailure = "Dependent boss has no live owner presentation.";
+			m_strPendingPresentationFailure =
+				"Dependent boss has no admitted live owner presentation.";
 			return false;
 		}
 		ownerIdentity.iNetEntityId = foundOwner->first;
 		ownerIdentity.iOwnerBossNetEntityId = foundOwner->second.iOwnerBossNetEntityId;
 		ownerIdentity.eKind = foundOwner->second.eKind;
 		ownerIdentity.strEncounterId = foundOwner->second.strEncounterId;
+		ownerIdentity.PinnedDefinitionRevision =
+			foundOwner->second.PinnedDefinitionRevision;
 		owner = &ownerIdentity;
 	}
 	if (!Is_Valid_WorldEntitySpawnOwner(spawned, owner) ||
@@ -1007,7 +1297,9 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 			existing->second.strEncounterId == spawned.strEncounterId &&
 			existing->second.strPlacementId == spawned.strPlacementId &&
 			existing->second.iOwnerBossNetEntityId == spawned.iOwnerBossNetEntityId &&
-			existing->second.fCollisionRadius == spawned.fCollisionRadius;
+			existing->second.fCollisionRadius == spawned.fCollisionRadius &&
+			existing->second.PinnedDefinitionRevision ==
+				spawned.PinnedDefinitionRevision;
 	}
 
 	if (WORLD_ENTITY_KIND::NPC == spawned.eKind)
@@ -1089,6 +1381,8 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		presentation.strResolvedIdleClip = resolvedIdle;
 		presentation.NpcPresentation = std::move(placementPresentation);
 		presentation.fCollisionRadius = spawned.fCollisionRadius;
+		presentation.PinnedDefinitionRevision =
+			spawned.PinnedDefinitionRevision;
 		presentation.pNpc = npc;
 		/* An entity that spawns mid-action (a raid Esther summon) must show
 		its action clip from the very first rendered frame; waiting for the
@@ -1215,6 +1509,8 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		presentation.strEncounterId = spawned.strEncounterId;
 		presentation.strCurrentClip = actor->presentationClips.idle;
 		presentation.fCollisionRadius = spawned.fCollisionRadius;
+		presentation.PinnedDefinitionRevision =
+			spawned.PinnedDefinitionRevision;
 		presentation.pNpc = monster;
 #ifdef _DEBUG
 		monster->Set_CombatColliderDebugVisible(
@@ -1279,7 +1575,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		desc.vPosition,
 		spawned.fYawDegrees,
 		WORLD_ENTITY_ACTION::IDLE,
-		{}, {}, 0u, 0u, 0u, 0u))
+		{}, {}, 0u, 0u, 0u, 0u, {}))
 	{
 		CGameInstance::Get().Remove_GameObject_from_Layer(
 			m_Desc.iLayerLevelIndex,
@@ -1294,6 +1590,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	presentation.strArchetypeId = spawned.strArchetypeId;
 	presentation.strEncounterId = spawned.strEncounterId;
 	presentation.fCollisionRadius = spawned.fCollisionRadius;
+	presentation.PinnedDefinitionRevision = spawned.PinnedDefinitionRevision;
 	presentation.pValtan = valtan;
 	presentation.iOwnerBossNetEntityId = spawned.iOwnerBossNetEntityId;
 	const bool_t isPrimaryValtan = "BOSS_VALTAN" == spawned.strArchetypeId &&
@@ -1301,16 +1598,47 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 			spawned.iOwnerBossNetEntityId;
 	std::string JoinedReloadStatus;
 	std::string CombatObjectSoundReloadStatus;
-	const bool_t joinedReloaded = !isPrimaryValtan ||
-		valtan->Reload_PatternPresentationAuthoring(JoinedReloadStatus);
-	const bool_t combatObjectSoundReloaded = !isPrimaryValtan ||
-		valtan->Reload_CombatObjectSoundCues(CombatObjectSoundReloadStatus);
+	Client::VALTAN_PRESENTATION_GENERATION_RECEIPT PresentationReceipt;
+	std::string ReceiptStatus;
+	const bool_t hasExactReceipt =
+		CNetworkManager::Get().Try_Get_ValtanPresentationGenerationReceipt(
+			spawned.PinnedDefinitionRevision,
+			PresentationReceipt, ReceiptStatus);
+	const bool_t joinedReloaded = hasExactReceipt &&
+		valtan->Reload_PatternPresentationAuthoring(
+			spawned.PinnedDefinitionRevision,
+			PresentationReceipt, JoinedReloadStatus);
+	const bool_t combatObjectSoundReloaded = joinedReloaded;
+	CombatObjectSoundReloadStatus = joinedReloaded ? JoinedReloadStatus :
+		(hasExactReceipt ? JoinedReloadStatus : ReceiptStatus);
+	if (joinedReloaded)
+	{
+		presentation.AdmittedPresentationRevision =
+			spawned.PinnedDefinitionRevision;
+	}
+	else
+	{
+		presentation.RejectedPresentationRevision =
+			spawned.PinnedDefinitionRevision;
+		presentation.bPresentationIsolated = true;
+	}
 #ifdef _DEBUG
 	valtan->Set_CombatColliderDebugVisible(
 		m_isCombatColliderDebugVisible);
 	valtan->Set_PatternHitAreaDebugVisible(
 		m_isSkillHitAreaDebugVisible);
 #endif
+	if (!isPrimaryValtan && !joinedReloaded)
+	{
+		m_strPendingPresentationFailure =
+			"Replicated Valtan presentation rejected its exact generation receipt: " +
+			(hasExactReceipt ? JoinedReloadStatus : ReceiptStatus);
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			m_Desc.iLayerLevelIndex,
+			m_Desc.strWorldEntityLayerTag,
+			valtan);
+		return false;
+	}
 	const auto [iter, inserted] = m_WorldEntities.emplace(
 		spawned.iNetEntityId,
 		std::move(presentation));
@@ -1327,19 +1655,20 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		if (joinedReloaded)
 		{
 			m_PrimaryValtanJoinedPresentationFreshness.Admit(
-				JoinedReloadStatus);
+				spawned.PinnedDefinitionRevision, JoinedReloadStatus);
 		}
 		else
 		{
 			const std::string Diagnostic =
 				"Primary replicated Valtan spawn could not admit the joined presentation cache: " +
-				JoinedReloadStatus;
+				(hasExactReceipt ? JoinedReloadStatus : ReceiptStatus);
 			m_PrimaryValtanJoinedPresentationFreshness.Reject(Diagnostic);
 			m_strPendingPresentationFailure = Diagnostic;
 		}
 		if (combatObjectSoundReloaded)
 		{
 			m_PrimaryValtanCombatObjectSoundFreshness.Admit(
+				spawned.PinnedDefinitionRevision,
 				CombatObjectSoundReloadStatus);
 		}
 		else
@@ -1420,7 +1749,8 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 	if (const std::shared_ptr<CValtan> valtan = iter->second.pValtan.lock())
 	{
 		CEffectPresentationService::Stop_BossOwner(valtan);
-		if (WORLD_ENTITY_DESPAWN_REASON::DEAD == despawned.eReason &&
+		if (!iter->second.bPresentationIsolated &&
+			WORLD_ENTITY_DESPAWN_REASON::DEAD == despawned.eReason &&
 			valtan->Begin_NetworkDeathPresentation())
 		{
 			// A reliable death starts even if its last DEAD snapshot never arrived.
@@ -1462,12 +1792,23 @@ bool Client::CClientReplication::Apply_CombatObjectSpawn(
 	const auto source = m_WorldEntities.find(spawned.iSourceNetEntityId);
 	if (source == m_WorldEntities.end() ||
 		WORLD_ENTITY_KIND::BOSS != source->second.eKind ||
-		source->second.pValtan.expired() ||
+		source->second.pValtan.expired())
+	{
+		return false;
+	}
+	if (!source->second.bPresentationIsolated &&
 		nullptr == CActorCatalog::Find_BossCombatObjectVisual(
 			source->second.strArchetypeId,
 			spawned.strCombatObjectArchetypeId,
 			spawned.strClientVisualId))
 	{
+		return false;
+	}
+	if (source->second.PinnedDefinitionRevision !=
+		spawned.PinnedDefinitionRevision)
+	{
+		m_strPendingPresentationFailure =
+			"Combat-object spawn revision does not match its boss occurrence.";
 		return false;
 	}
 
@@ -1495,6 +1836,15 @@ bool Client::CClientReplication::Apply_CombatObjectPresentationEvent(
 	{
 		m_strPendingPresentationFailure =
 			"Combat-object presentation event has no live boss owner.";
+		return false;
+	}
+	if (source->second.bPresentationIsolated)
+		return true;
+	if (source->second.PinnedDefinitionRevision !=
+		event.PinnedDefinitionRevision)
+	{
+		m_strPendingPresentationFailure =
+			"Combat-object presentation event revision does not match its boss occurrence.";
 		return false;
 	}
 	const std::shared_ptr<CValtan> boss = source->second.pValtan.lock();
@@ -1535,6 +1885,19 @@ bool Client::CClientReplication::Spawn_CombatObjectPresentation(
 		source->second.eKind != LostArk::Shared::WORLD_ENTITY_KIND::BOSS)
 	{
 		outStatus = "Combat-object visual has no live boss owner.";
+		return false;
+	}
+	if (source->second.bPresentationIsolated)
+	{
+		outStatus =
+			"Combat-object visual is isolated with its rejected boss presentation revision.";
+		return true;
+	}
+	if (source->second.PinnedDefinitionRevision !=
+		spawned.PinnedDefinitionRevision)
+	{
+		outStatus =
+			"Combat-object visual revision does not match its boss occurrence.";
 		return false;
 	}
 	const std::shared_ptr<CValtan> boss = source->second.pValtan.lock();
@@ -1590,6 +1953,13 @@ bool Client::CClientReplication::Update_CombatObjectPresentation(
 	if (nullptr == record || source == m_WorldEntities.end() ||
 		record->iSourceNetEntityId != snapshot.iSourceNetEntityId ||
 		record->iPresentationHandle != handle)
+	{
+		return false;
+	}
+	if (source->second.bPresentationIsolated)
+		return true;
+	if (source->second.PinnedDefinitionRevision !=
+		snapshot.PinnedDefinitionRevision)
 	{
 		return false;
 	}
@@ -1660,6 +2030,7 @@ void Client::CClientReplication::Update_PlayerAttachmentPresentations()
 		if (nullptr == character || nullptr == character->Get_Transform() ||
 			m_WorldEntities.end() == owner ||
 			WORLD_ENTITY_KIND::BOSS != owner->second.eKind ||
+			owner->second.bPresentationIsolated ||
 			PLAYER_ATTACHMENT_SLOT::BOSS_LEFT_HAND !=
 				attachment->second.eSlot)
 		{
@@ -1874,6 +2245,11 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			entity.fPositionX,
 			entity.fPositionY,
 			entity.fPositionZ);
+		if (WORLD_ENTITY_KIND::BOSS != iter->second.eKind)
+		{
+			iter->second.PinnedDefinitionRevision =
+				entity.PinnedDefinitionRevision;
+		}
 		if (WORLD_ENTITY_KIND::NPC == iter->second.eKind)
 		{
 			const std::shared_ptr<CNpc> npc = iter->second.pNpc.lock();
@@ -2087,7 +2463,39 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 
 			const std::shared_ptr<CValtan> valtan =
 				iter->second.pValtan.lock();
-			if (nullptr == valtan || !valtan->Apply_NetworkState(
+			const bool_t bIsPrimary =
+				INVALID_NET_ENTITY_ID == iter->second.iOwnerBossNetEntityId;
+			if (nullptr == valtan)
+			{
+				allSucceeded = false;
+				continue;
+			}
+			std::string RevisionStatus;
+			if (!Ensure_ValtanPresentationRevision(
+					iter->second, valtan,
+					entity.PinnedDefinitionRevision,
+					bIsPrimary, RevisionStatus))
+			{
+				/* Gameplay/HUD truth continues to advance while animation, Effect,
+				   Sound and combat-object presentation stay isolated. */
+				if (bIsPrimary)
+				{
+					if (WORLD_ENTITY_ACTION::DEAD == entity.eAction)
+						deadBossOwners.push_back(entity.iNetEntityId);
+					m_ValtanPresentationState = std::move(latest);
+					CCombatHUDViewModel::Get().Apply_Boss(
+						snapshot.iServerTick,
+						iter->second.strArchetypeId,
+						entity);
+				}
+				continue;
+			}
+			const CValtan::PATTERN_TARGET_SNAPSHOT_POSE PatternTargetPose =
+				Resolve_ValtanPatternTargetSnapshotPose(
+					std::span<const PLAYER_SNAPSHOT>(snapshot.Players.data(),
+						snapshot.Players.size()),
+					entity.iPatternTargetNetEntityId);
+			if (!valtan->Apply_NetworkState(
 				position,
 				entity.fYawDegrees,
 				entity.eAction,
@@ -2096,13 +2504,14 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				snapshot.iServerTick,
 				entity.iActionStartTick,
 				entity.iPatternSequence,
-				entity.iPatternStageIndex) ||
+				entity.iPatternStageIndex,
+				PatternTargetPose) ||
 				!valtan->Apply_BossCombatState(entity.BossCombat) ||
 				!valtan->Apply_BrokenArmorMask(entity.iBrokenArmorMask))
 			{
 				allSucceeded = false;
 			}
-			else if (INVALID_NET_ENTITY_ID == iter->second.iOwnerBossNetEntityId)
+			else if (bIsPrimary)
 			{
 				if (WORLD_ENTITY_ACTION::DEAD == entity.eAction)
 					deadBossOwners.push_back(entity.iNetEntityId);
@@ -2127,6 +2536,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			allSucceeded = false;
 			continue;
 		}
+		if (boss->second.bPresentationIsolated)
+			continue;
 		const std::shared_ptr<CValtan> valtan = boss->second.pValtan.lock();
 		if (nullptr == valtan || !valtan->Apply_BossCombatEvent(event))
 			allSucceeded = false;
@@ -2184,6 +2595,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		}
 		else if (WORLD_ENTITY_KIND::BOSS == hitEntity->second.eKind)
 		{
+			if (hitEntity->second.bPresentationIsolated)
+				continue;
 			if (const std::shared_ptr<CValtan> boss =
 				hitEntity->second.pValtan.lock())
 			{
@@ -2363,10 +2776,10 @@ void Client::CClientReplication::Reset_World()
 		}
 	}
 	m_WorldEntities.clear();
-	m_PrimaryValtanJoinedPresentationFreshness.Admit(
-		"Replicated world reset; the next primary Valtan spawn will reload authoring sources.");
-	m_PrimaryValtanCombatObjectSoundFreshness.Admit(
-		"Replicated world reset; the next primary Valtan spawn will reload authoring sources.");
+	m_PrimaryValtanJoinedPresentationFreshness.Reject(
+		"Replicated world reset; the next primary Valtan spawn must reload authoring sources for its exact revision.");
+	m_PrimaryValtanCombatObjectSoundFreshness.Reject(
+		"Replicated world reset; the next primary Valtan spawn must reload authoring sources for its exact revision.");
 	for (const std::weak_ptr<CValtan>& deathPresentation : m_DeathPresentations)
 	{
 		if (const std::shared_ptr<CValtan> valtan = deathPresentation.lock())
