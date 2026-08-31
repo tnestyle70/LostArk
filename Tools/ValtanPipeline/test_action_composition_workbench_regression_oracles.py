@@ -139,6 +139,8 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         cls.boss_cpp = read("Client/Private/BossTool.cpp")
         cls.main_cpp = read("Client/Private/MainApp.cpp")
         cls.valtan_cpp = read("Client/Private/Valtan.cpp")
+        cls.effect_v2_runtime_cpp = read("Client/Private/EffectV2_Runtime.cpp")
+        cls.effect_tool_v2_cpp = read("Client/Private/Effect_Tool_V2.cpp")
         cls.presentation = json.loads(read("Data/Valtan/Valtan.presentation.json"))
         cls.gameplay = json.loads(read("Data/Valtan/Valtan.gameplay.json"))
 
@@ -1107,7 +1109,8 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             "ImGui::SetNextWindowFocus()",
             "ImGui::SetNextWindowCollapsed(false, ImGuiCond_Always)",
             'ImGui::Button("Append V1 Effect to Pattern Draft")',
-            'ImGui::Button("Append + Save V2 Stage Binding")',
+            '"Add V2 Group to Stage (Save Now)"',
+            '"Add V2 Leaf to Stage (Save Now)"',
             'ImGui::Button("Append Selected Sound to Stage")',
             "Render_SequenceBrowser(",
             'ImGui::SeparatorText("Sound Event Tree")',
@@ -1117,6 +1120,107 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertNotIn(
             "Resolve_ValtanCompositionPatternSoundWindow(", resources
         )
+
+    def test_effect_v2_group_authoring_is_boss_scoped_and_local_preview_owned(self) -> None:
+        reload_effects = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Reload_SemanticValtanEffects(",
+        )
+        resources = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render_ResourcesWindow(",
+        )
+        refresh = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::\nRefresh_EffectV2LocalPreviewAfterMutation(",
+        )
+
+        self.assertGreaterEqual(
+            reload_effects.count("IsBossValtanEffectV2Resource("), 2
+        )
+        group_tree = resources.index('"V2 Effect Groups"')
+        advanced_leaves = resources.index('"Advanced: V2 Individual Leaves"')
+        self.assertLess(group_tree, advanced_leaves)
+        self.assertIn(
+            "ImGuiTreeNodeFlags_DefaultOpen", resources[group_tree:advanced_leaves]
+        )
+        self.assertIn('"Attach at Animation Box Start##ResourceEffect"', resources)
+        self.assertIn("Resolve_ClipSourceToStageMs(", resources)
+        self.assertIn(
+            "IsBossValtanEffectV2Resource(m_strEffectAddAssetId)", resources
+        )
+        self.assertIn("Append_BossValtanStageBinding(", resources)
+        self.assertIn("Refresh_EffectV2LocalPreviewAfterMutation(", resources)
+
+        for token in (
+            "Stop_ValtanCompositionPattern(",
+            "Play_EffectivePreview(",
+            "Seek_EffectivePreview(",
+            "Server Saved Revision / Complete Play is unchanged",
+        ):
+            self.assertIn(token, refresh)
+        self.assertNotIn("CEffectV2Runtime::Invalidate_Caches()", refresh)
+        self.assertNotIn(
+            "CEffectV2Runtime::Invalidate_Caches()", self.effect_tool_v2_cpp
+        )
+        self.assertIn("Sync_StageAuthoring(", self.effect_v2_runtime_cpp)
+        self.assertIn("pSnapshot->Find_Group(", self.effect_v2_runtime_cpp)
+        self.assertIn("pSnapshot->Find_Document(", self.effect_v2_runtime_cpp)
+        local_preview = function_body(
+            self.valtan_cpp,
+            "bool_t CValtan::Apply_LocalPatternPresentationSample(",
+        )
+        self.assertIn("m_bLocalPatternAuthoringPreview", local_preview)
+        self.assertIn("Sync_StageAuthoring(", local_preview)
+        self.assertIn("CEffectV2Catalog::Get().Get_Snapshot()", local_preview)
+
+    def test_effect_v2_timeline_boxes_are_typed_large_and_mutable(self) -> None:
+        build = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Build_Timeline(",
+        )
+        pack = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Pack_TimelineSubrows(",
+        )
+        duplicate = function_body(
+            self.workbench_cpp,
+            "bool_t Client::CActionCompositionWorkbench::Duplicate_SelectedTimelineBox(",
+        )
+        delete = function_body(
+            self.workbench_cpp,
+            "bool_t Client::CActionCompositionWorkbench::Delete_SelectedTimelineBox(",
+        )
+        timeline = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+        )
+
+        for token in (
+            "BuildEffectV2BindingStableId(",
+            "ResolveEffectV2GroupSpanMs(",
+            "EFFECT_V2_GROUP_MINIMUM_WIDTH_PX",
+            "EFFECT_V2_LEAF_MINIMUM_WIDTH_PX",
+            "true, bGroup, Binding.iStartMs",
+        ):
+            self.assertIn(token, build)
+        self.assertNotIn("iV2Ordinal", build)
+        self.assertIn("ResolveTimelineDisplayWidthPx(", pack)
+        self.assertIn("Item.iSubrow = iSubrow", pack)
+        self.assertNotIn("Item.iStartMs =", pack)
+        self.assertNotIn("Item.iEndMs =", pack)
+        self.assertIn("Duplicate_BossValtanStageBinding(", duplicate)
+        self.assertIn("Remove_BossValtanStageBinding(", delete)
+        self.assertIn("ResolveEffectV2Binding(", duplicate)
+        self.assertIn("ResolveEffectV2Binding(", delete)
+        self.assertIn("From_StageBinding(*pSourceBinding)", duplicate)
+        self.assertIn("From_StageBinding(*pSourceBinding)", delete)
+        self.assertIn("Update_BossValtanStageBindingStart(", timeline)
+        self.assertIn("ResolveEffectV2Binding(", timeline)
+        self.assertIn("From_StageBinding(", timeline)
+        self.assertIn("Item.bEffectV2Binding && bMutationAdmitted", timeline)
+        self.assertIn("Pack_TimelineSubrows();", timeline)
+        self.assertIn("Item.fMinimumDisplayWidthPx", timeline)
 
     def test_boss_pattern_graph_is_queue_only_and_generation_cached(self) -> None:
         render = function_body(

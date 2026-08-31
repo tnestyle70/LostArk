@@ -25,6 +25,10 @@ namespace
 {
 	constexpr float TIMELINE_LANE_LABEL_WIDTH = 112.f;
 	constexpr float TIMELINE_ROW_HEIGHT = 24.f;
+	constexpr float TIMELINE_POINT_MINIMUM_WIDTH_PX = 4.f;
+	constexpr float EFFECT_V2_LEAF_MINIMUM_WIDTH_PX = 180.f;
+	constexpr float EFFECT_V2_GROUP_MINIMUM_WIDTH_PX = 240.f;
+	constexpr float TIMELINE_LABEL_MAXIMUM_WIDTH_PX = 360.f;
 	/* A malformed/reference-only row must never turn one ImGui ruler into an
 	   unbounded main-thread loop. Product authoring already caps each edited
 	   clock at ten minutes; the renderer applies the same defensive ceiling. */
@@ -263,6 +267,87 @@ namespace
 		case Client::EFFECT_V2_TYPE::SCREEN_POST: return "Screen Post";
 		default: return "Unknown";
 		}
+	}
+
+	bool_t IsBossValtanEffectV2Resource(const std::string_view strResourceId)
+	{
+		return 0u == strResourceId.rfind("boss.valtan.", 0u);
+	}
+
+	std::string BuildEffectV2BindingStableId(
+		const Client::EFFECT_V2_BINDING& Binding)
+	{
+		std::ostringstream StableId;
+		StableId << std::setprecision(std::numeric_limits<float>::max_digits10)
+			<< "effect-v2/" << Binding.strStage << '/'
+			<< (Binding.strGroupId.empty() ? "leaf/" : "group/")
+			<< (Binding.strGroupId.empty() ?
+				Binding.strEffectId : Binding.strGroupId)
+			<< '/' << Binding.iStartMs << '/' << Binding.strBone << '/'
+			<< (Binding.bFollowBone ? 1 : 0) << '/'
+			<< static_cast<int32_t>(Binding.eRotation) << '/'
+			<< (Binding.bStopWithClip ? 1 : 0) << '/'
+			<< Binding.vOffset.x << '/' << Binding.vOffset.y << '/'
+			<< Binding.vOffset.z << '/' << Binding.fYawDegrees;
+		return StableId.str();
+	}
+
+	const Client::EFFECT_V2_BINDING* ResolveEffectV2Binding(
+		const Client::EFFECT_V2_CATALOG_SNAPSHOT& Snapshot,
+		const std::string_view strStageActionId,
+		const std::string_view strStableId)
+	{
+		const Client::EFFECT_V2_BINDING* pResolved = nullptr;
+		for (const Client::EFFECT_V2_BINDING& Binding :
+			Snapshot.Get_BossValtanBindings())
+		{
+			if (Binding.strStage != strStageActionId ||
+				BuildEffectV2BindingStableId(Binding) != strStableId)
+			{
+				continue;
+			}
+			if (nullptr != pResolved)
+				return nullptr;
+			pResolved = &Binding;
+		}
+		return pResolved;
+	}
+
+	float ResolveTimelineDisplayWidthPx(
+		const std::string_view strLabel,
+		const float fMinimumWidthPx)
+	{
+		if (fMinimumWidthPx <= TIMELINE_POINT_MINIMUM_WIDTH_PX)
+			return TIMELINE_POINT_MINIMUM_WIDTH_PX;
+		const float fEstimatedLabelWidthPx = 20.f +
+			static_cast<float>((std::min)(strLabel.size(), std::size_t{ 45u })) *
+			8.f;
+		return (std::clamp)(
+			(std::max)(fMinimumWidthPx, fEstimatedLabelWidthPx),
+			TIMELINE_POINT_MINIMUM_WIDTH_PX,
+			TIMELINE_LABEL_MAXIMUM_WIDTH_PX);
+	}
+
+	uint32_t ResolveEffectV2GroupSpanMs(
+		const Client::EFFECT_V2_CATALOG_SNAPSHOT& Snapshot,
+		const Client::EFFECT_V2_BINDING& Binding)
+	{
+		if (Binding.strGroupId.empty())
+			return 0u;
+		const Client::EFFECT_V2_GROUP* const pGroup =
+			Snapshot.Find_Group(Binding.strGroupId);
+		if (nullptr == pGroup)
+			return 0u;
+		uint64_t iSpanMs = 0u;
+		for (const Client::EFFECT_V2_GROUP_CHILD& Child : pGroup->Children)
+		{
+			iSpanMs = (std::max)(
+				iSpanMs,
+				static_cast<uint64_t>(Child.iStartMs) + Child.iDurationMs);
+		}
+		const uint32_t iChildSpanMs = static_cast<uint32_t>(
+			SaturatingU32(iSpanMs));
+		return 0u == iChildSpanMs ? pGroup->iDurationMs : iChildSpanMs;
 	}
 
 	std::string ClipReplacementRole(const std::string& clip)
@@ -875,13 +960,18 @@ void Client::CActionCompositionWorkbench::Reload_SemanticValtanEffects()
 		for (const EFFECT_V2_DOCUMENT& Document :
 			pV2Snapshot->Get_Documents())
 		{
+			if (!IsBossValtanEffectV2Resource(Document.strEffectId))
+				continue;
 			m_EffectV2DocumentIds.push_back(Document.strEffectId);
 			m_EffectV2DocumentTypes.push_back(
 				static_cast<int32_t>(Document.eType));
 		}
 		m_EffectV2GroupIds.reserve(pV2Snapshot->Get_Groups().size());
 		for (const EFFECT_V2_GROUP& Group : pV2Snapshot->Get_Groups())
-			m_EffectV2GroupIds.push_back(Group.strGroupId);
+		{
+			if (IsBossValtanEffectV2Resource(Group.strGroupId))
+				m_EffectV2GroupIds.push_back(Group.strGroupId);
+		}
 		m_iEffectV2CatalogRevision = pV2Snapshot->Get_Revision();
 	}
 	else
@@ -893,8 +983,9 @@ void Client::CActionCompositionWorkbench::Reload_SemanticValtanEffects()
 	}
 	m_strEffectCatalogStatus =
 		"V1 authored " + std::to_string(m_SemanticValtanEffectAssetIds.size()) +
-		" | V2 leaf " + std::to_string(m_EffectV2DocumentIds.size()) +
-		" | V2 group " + std::to_string(m_EffectV2GroupIds.size());
+		" | BOSS_VALTAN V2 group " +
+			std::to_string(m_EffectV2GroupIds.size()) +
+		" | advanced leaf " + std::to_string(m_EffectV2DocumentIds.size());
 	if (!bV2Reloaded && !V2Status.empty())
 		m_strEffectCatalogStatus += " | V2 reload preserved previous snapshot: " +
 			V2Status;

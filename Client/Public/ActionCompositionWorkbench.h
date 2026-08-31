@@ -102,6 +102,10 @@ private:
 		uint32_t iEndMs = 0u;
 		bool_t bEditable = false;
 		std::size_t iSubrow = 0u;
+		float fMinimumDisplayWidthPx = 4.f;
+		bool_t bEffectV2Binding = false;
+		bool_t bEffectV2Group = false;
+		uint32_t iEffectV2BindingStartMs = 0u;
 	};
 
 	/* Cached reverse projection from an exact PRIMARY source Sequence to the
@@ -218,6 +222,9 @@ private:
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
 		std::string& strOutStatus);
+	void Refresh_EffectV2LocalPreviewAfterMutation(
+		const VALTAN_PATTERN_VIEW* pPattern,
+		std::string& strInOutStatus);
 	bool_t Apply_AnimationOccurrenceTiming(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
