@@ -119,6 +119,7 @@ bool_t Client::CPlayableCharacterPreviewContract::Stage(
 	{
 		const EQUIPMENT_PART_SPEC& Part = Spec.pEquipment[Index];
 		if (nullptr == Part.pPartTag || nullptr == Part.pModelTag ||
+			Part.ePresentationSlot >= EQUIPMENT_PRESENTATION_SLOT::WEAPON ||
 			!PartTags.insert(Part.pPartTag).second)
 		{
 			return false;

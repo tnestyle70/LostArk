@@ -207,6 +207,15 @@
     <ClCompile Include="..\Private\CharacterPreviewPanel.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\EquipmentAuthoringTool.cpp">
+      <Filter>03. Tools\03. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\EquipmentPresentationCatalog.cpp">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\EquipmentPresentationService.cpp">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\PlayableCharacterPreviewContract.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
@@ -714,6 +723,15 @@
     </ClInclude>
     <ClInclude Include="..\Public\CharacterPreviewPanel.h">
       <Filter>03. Tools\04. Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EquipmentAuthoringTool.h">
+      <Filter>03. Tools\03. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EquipmentPresentationCatalog.h">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EquipmentPresentationService.h">
+      <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\PlayableCharacterPreviewContract.h">
       <Filter>03. Tools\04. Animation</Filter>
@@ -1250,6 +1268,12 @@
       <Filter>96.DataFiles\Actors</Filter>
     </None>
     <None Include="..\..\Data\Actors\CharacterCatalog.json">
+      <Filter>96.DataFiles\Actors</Filter>
+    </None>
+    <None Include="..\..\Data\Actors\EquipmentLoadoutPresets.json">
+      <Filter>96.DataFiles\Actors</Filter>
+    </None>
+    <None Include="..\..\Data\Actors\EquipmentPresentationCatalog.json">
       <Filter>96.DataFiles\Actors</Filter>
     </None>
 	<None Include="..\..\Data\Actors\NpcCatalog.json">

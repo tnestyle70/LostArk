@@ -48,6 +48,32 @@ enum class EQUIPMENT_SLOT_KIND
 	AVATAR_ARMOR,
 };
 
+/* Authored replacement slot for one default presentation part. This is
+independent from EQUIPMENT_SLOT_KIND: that enum preserves the base/avatar
+visibility relationship, while this one identifies which authoring-tool slot
+may replace the part. Weapons are declared separately in CHARACTER_SPEC, but
+WEAPON lives in the same mask so one preview transaction can cover all slots. */
+enum class EQUIPMENT_PRESENTATION_SLOT
+{
+	HEAD,
+	SHOULDER,
+	UPPER,
+	LOWER,
+	HANDS,
+	WEAPON,
+	END,
+};
+
+constexpr uint32_t EquipmentPresentationSlotMask(
+	const EQUIPMENT_PRESENTATION_SLOT eSlot)
+{
+	return eSlot < EQUIPMENT_PRESENTATION_SLOT::END ?
+		1u << ETOUI(eSlot) : 0u;
+}
+
+constexpr uint32_t EQUIPMENT_PRESENTATION_SLOT_MASK_ALL =
+	(1u << ETOUI(EQUIPMENT_PRESENTATION_SLOT::END)) - 1u;
+
 struct EQUIPMENT_PART_SPEC
 {
 	const tchar_t* pPartTag;      /* sorts after "Part_Body", see CCharacter */
@@ -60,6 +86,8 @@ struct EQUIPMENT_PART_SPEC
 	bool_t isHidden;
 
 	EQUIPMENT_SLOT_KIND eSlotKind = EQUIPMENT_SLOT_KIND::DEFAULT;
+	EQUIPMENT_PRESENTATION_SLOT ePresentationSlot =
+		EQUIPMENT_PRESENTATION_SLOT::END;
 };
 
 /* A piece that rides one bone instead of the whole palette. Classes differ in how

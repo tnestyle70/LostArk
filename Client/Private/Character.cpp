@@ -17,6 +17,7 @@
 #include "Gameplay/WorldCollisionContract.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdlib>
 #include <limits>
@@ -47,6 +48,32 @@ namespace
 	constexpr uint64_t MAX_EFFECT_CUE_OCCURRENCES_PER_UPDATE = 256u;
 	constexpr const char_t* ROOT_MOTION_BONE = "b_root";
 	constexpr int32_t ROOT_MOTION_VERTICAL_AXIS = 2;
+	constexpr const wchar_t* EQUIPMENT_PREVIEW_PART_PREFIX =
+		L"Part_80_EquipmentPreview_";
+
+	bool_t Is_RuntimePartId(const std::string& value)
+	{
+		if (value.empty() || value.size() > 256u)
+			return false;
+		for (const unsigned char character : value)
+		{
+			if (0 == std::isalnum(character) && character != '_' &&
+				character != '-' && character != '.')
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	wstring_t Widen_RuntimePartId(const std::string& value)
+	{
+		wstring_t result;
+		result.reserve(value.size());
+		for (const unsigned char character : value)
+			result.push_back(static_cast<wchar_t>(character));
+		return result;
+	}
 }
 
 CCharacter::CCharacter(ComPtr<ID3D11Device> pDevice,
@@ -1579,6 +1606,25 @@ void CCharacter::Apply_NetworkStance(const LostArk::Shared::PLAYER_STANCE_ID sta
 			m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
 			true);
 	}
+	if (m_isEquipmentPreviewActive)
+	{
+		Sync_EquipmentPreviewStanceVisibility();
+		const bool_t isDefaultWeaponReplaced = 0u !=
+			(m_iEquipmentPreviewOccupiedSlotsMask &
+				EquipmentPresentationSlotMask(
+					EQUIPMENT_PRESENTATION_SLOT::WEAPON));
+		for (uint32_t i = 0; i < m_pSpec->iNumWeapons; ++i)
+		{
+			const WEAPON_PART_SPEC& weapon = m_pSpec->pWeapons[i];
+			Set_PartVisible(
+				weapon.pPartTag,
+				!isDefaultWeaponReplaced &&
+					(LostArk::Shared::PLAYER_STANCE_ID::NONE ==
+						weapon.eRequiredStance ||
+						weapon.eRequiredStance == stance));
+		}
+		return;
+	}
 	for (uint32_t i = 0; i < m_pSpec->iNumWeapons; ++i)
 	{
 		const WEAPON_PART_SPEC& weapon = m_pSpec->pWeapons[i];
@@ -1595,6 +1641,208 @@ void CCharacter::Set_PartVisible(const tchar_t* pPartTag, const bool_t isVisible
 		__super::Find_PartObject(pPartTag));
 	if (nullptr != pPart)
 		pPart->Set_Visible(isVisible);
+}
+
+bool_t CCharacter::Apply_EquipmentPreview(
+	const std::vector<EQUIPMENT_PREVIEW_PART_DESC>& parts,
+	const uint32_t occupiedSlotsMask,
+	std::string& outError)
+{
+	if (nullptr == m_pSpec || nullptr == m_pBodyModel)
+	{
+		outError = "Equipment preview target is not initialized.";
+		return false;
+	}
+	if (0u != (occupiedSlotsMask &
+		~EQUIPMENT_PRESENTATION_SLOT_MASK_ALL))
+	{
+		outError = "Equipment preview occupied-slot mask is invalid.";
+		return false;
+	}
+	for (uint32_t index = 0u; index < m_pSpec->iNumEquipment; ++index)
+	{
+		const EQUIPMENT_PRESENTATION_SLOT slot =
+			m_pSpec->pEquipment[index].ePresentationSlot;
+		if (slot >= EQUIPMENT_PRESENTATION_SLOT::WEAPON)
+		{
+			outError = "Default equipment has no authored presentation slot.";
+			return false;
+		}
+	}
+
+	PART_OBJECT_MAP StagedParts;
+	std::vector<std::pair<wstring_t,
+		LostArk::Shared::PLAYER_STANCE_ID>> StagedStances;
+	StagedStances.reserve(parts.size());
+	for (const EQUIPMENT_PREVIEW_PART_DESC& part : parts)
+	{
+		if (!Is_RuntimePartId(part.runtimePartId) ||
+			part.modelPrototypeTag.empty() ||
+			!std::isfinite(part.socketYawDegrees) ||
+			std::abs(part.socketYawDegrees) > 360.f ||
+			part.requiredStance >= LostArk::Shared::PLAYER_STANCE_ID::END ||
+			(part.isSocketed != !part.socketBoneId.empty()))
+		{
+			outError = "Equipment preview part descriptor is invalid: " +
+				part.runtimePartId;
+			return false;
+		}
+
+		const wstring_t partTag = wstring_t(EQUIPMENT_PREVIEW_PART_PREFIX) +
+			Widen_RuntimePartId(part.runtimePartId);
+		if (StagedParts.contains(partTag))
+		{
+			outError = "Equipment preview part ID is duplicated: " +
+				part.runtimePartId;
+			return false;
+		}
+
+		CPart_Equipment::PART_EQUIPMENT_DESC equipmentDesc{};
+		equipmentDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
+		equipmentDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
+		equipmentDesc.strModelTag = part.modelPrototypeTag;
+		equipmentDesc.strShaderTag = part.isSocketed ?
+			m_pSpec->pWeaponShaderTag : m_pSpec->pShaderTag;
+		equipmentDesc.iHiddenMeshMask = part.hiddenMeshMask;
+		equipmentDesc.pSkeletonModel = m_pBodyModel;
+		equipmentDesc.pSocketBoneName = part.isSocketed ?
+			part.socketBoneId.c_str() : nullptr;
+		equipmentDesc.fSocketYawDegrees = part.socketYawDegrees;
+		equipmentDesc.pEmissiveOverride = &m_ActionEmissiveOverride;
+
+		shared_ptr<CPartObject> stagedPart;
+		if (FAILED(__super::Clone_PartObject(
+			m_iPrototypeLevelIndex,
+			TEXT("Prototype_GameObject_Part_Equipment"),
+			&equipmentDesc,
+			stagedPart)))
+		{
+			outError = "Equipment preview part clone failed: " +
+				part.runtimePartId;
+			return false;
+		}
+		auto equipmentPart = dynamic_pointer_cast<CPart_Equipment>(stagedPart);
+		if (nullptr == equipmentPart)
+		{
+			outError = "Equipment preview prototype has the wrong type.";
+			return false;
+		}
+		equipmentPart->Set_Visible(
+			LostArk::Shared::PLAYER_STANCE_ID::NONE == part.requiredStance ||
+			part.requiredStance == m_eStance);
+		StagedParts.emplace(partTag, std::move(stagedPart));
+		StagedStances.emplace_back(partTag, part.requiredStance);
+	}
+
+	if (FAILED(__super::Replace_PartObjectGroup(
+		EQUIPMENT_PREVIEW_PART_PREFIX, std::move(StagedParts))))
+	{
+		outError = "Equipment preview group commit failed.";
+		return false;
+	}
+
+	m_EquipmentPreviewPartStances = std::move(StagedStances);
+	m_isEquipmentPreviewActive = true;
+	m_iEquipmentPreviewOccupiedSlotsMask = occupiedSlotsMask;
+	Apply_DefaultEquipmentVisibility(occupiedSlotsMask);
+	outError.clear();
+	return true;
+}
+
+bool_t CCharacter::Reset_EquipmentPreview(std::string& outError)
+{
+	PART_OBJECT_MAP EmptyParts;
+	if (FAILED(__super::Replace_PartObjectGroup(
+		EQUIPMENT_PREVIEW_PART_PREFIX, std::move(EmptyParts))))
+	{
+		outError = "Equipment preview reset commit failed.";
+		return false;
+	}
+	m_EquipmentPreviewPartStances.clear();
+	m_isEquipmentPreviewActive = false;
+	m_iEquipmentPreviewOccupiedSlotsMask = 0u;
+	Restore_DefaultEquipmentVisibility();
+	outError.clear();
+	return true;
+}
+
+void CCharacter::Apply_DefaultEquipmentVisibility(
+	const uint32_t occupiedSlotsMask)
+{
+	if (nullptr == m_pSpec)
+		return;
+	if (auto pBody = dynamic_cast<CPart_Body*>(
+		__super::Find_PartObject(TEXT("Part_00_Body"))))
+	{
+		pBody->Set_HiddenMeshes(m_pSpec->iBodyHiddenMeshMask);
+	}
+
+	bool_t hasAvatarHead = false;
+	bool_t hasAvatarArmor = false;
+	for (uint32_t index = 0u; index < m_pSpec->iNumEquipment; ++index)
+	{
+		if (EQUIPMENT_SLOT_KIND::AVATAR_HEAD ==
+			m_pSpec->pEquipment[index].eSlotKind)
+		{
+			hasAvatarHead = true;
+		}
+		else if (EQUIPMENT_SLOT_KIND::AVATAR_ARMOR ==
+			m_pSpec->pEquipment[index].eSlotKind)
+		{
+			hasAvatarArmor = true;
+		}
+	}
+	for (uint32_t index = 0u; index < m_pSpec->iNumEquipment; ++index)
+	{
+		const EQUIPMENT_PART_SPEC& equipment = m_pSpec->pEquipment[index];
+		bool_t isVisible = !equipment.isHidden;
+		if (EQUIPMENT_SLOT_KIND::DEFAULT_HELMET == equipment.eSlotKind &&
+			hasAvatarHead)
+		{
+			isVisible = false;
+		}
+		else if (EQUIPMENT_SLOT_KIND::DEFAULT == equipment.eSlotKind &&
+			hasAvatarArmor)
+		{
+			isVisible = false;
+		}
+		if (0u != (occupiedSlotsMask &
+			EquipmentPresentationSlotMask(equipment.ePresentationSlot)))
+		{
+			isVisible = false;
+		}
+		Set_PartVisible(equipment.pPartTag, isVisible);
+	}
+	const bool_t isDefaultWeaponReplaced = 0u !=
+		(occupiedSlotsMask & EquipmentPresentationSlotMask(
+			EQUIPMENT_PRESENTATION_SLOT::WEAPON));
+	for (uint32_t index = 0u; index < m_pSpec->iNumWeapons; ++index)
+	{
+		const WEAPON_PART_SPEC& weapon = m_pSpec->pWeapons[index];
+		Set_PartVisible(
+			weapon.pPartTag,
+			!isDefaultWeaponReplaced &&
+				(LostArk::Shared::PLAYER_STANCE_ID::NONE ==
+					weapon.eRequiredStance ||
+					weapon.eRequiredStance == m_eStance));
+	}
+}
+
+void CCharacter::Restore_DefaultEquipmentVisibility()
+{
+	Apply_DefaultEquipmentVisibility(0u);
+}
+
+void CCharacter::Sync_EquipmentPreviewStanceVisibility()
+{
+	for (const auto& [partTag, requiredStance] :
+		m_EquipmentPreviewPartStances)
+	{
+		Set_PartVisible(
+			partTag.c_str(),
+			LostArk::Shared::PLAYER_STANCE_ID::NONE == requiredStance ||
+			requiredStance == m_eStance);
+	}
 }
 
 const char_t* CCharacter::Resolve_LocomotionClip(const CHARACTER_ANIM eAnim) const

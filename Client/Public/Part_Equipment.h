@@ -73,7 +73,7 @@ private:
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
 	shared_ptr<CModel> m_pSkeletonModelCom = { nullptr };
-	const char_t* m_pSocketBoneName = { nullptr };
+	string m_strSocketBoneName;
 	f32_t m_fSocketYawDegrees = 0.f;
 	const float4x4_t* m_pSocketRootMatrix = { nullptr };
 	string m_strMaterialProfileId;

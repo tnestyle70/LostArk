@@ -1,0 +1,331 @@
+{
+  "schema": "lostark.equipment-presentation-catalog",
+  "formatVersion": 1,
+  "slotIds": [
+    "HEAD",
+    "SHOULDER",
+    "UPPER",
+    "LOWER",
+    "HANDS",
+    "WEAPON"
+  ],
+  "visualSets": [
+    {
+      "visualSetId": "character.lance_master.mokoko_pleasant.head",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_pleasant_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.mokoko_pleasant.outfit",
+      "classId": "LANCE_MASTER",
+      "categoryId": "APPAREL_OUTFIT",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "dress",
+          "partRole": "COMBINED_APPAREL",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/LanceMaster/Equipment/mokoko_pleasant_outfit/dress.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.gunslinger.default_variant_01.head",
+      "classId": "GUNSLINGER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GunSlinger/Equipment/default_variant_01_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.gunslinger.default_variant_01.upper",
+      "classId": "GUNSLINGER",
+      "categoryId": "APPAREL_UPPER",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "occupiedSlots": [
+        "UPPER"
+      ],
+      "parts": [
+        {
+          "partId": "upper",
+          "partRole": "UPPER",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/GunSlinger/Equipment/default_variant_01_upper/upper.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.slayer.default_variant_01.head",
+      "classId": "SLAYER",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Slayer/Equipment/default_variant_01_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.default_variant_01.head",
+      "classId": "ARTIST",
+      "categoryId": "APPAREL_HEAD",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "occupiedSlots": [
+        "HEAD"
+      ],
+      "parts": [
+        {
+          "partId": "head",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Artist/Equipment/default_variant_01_head/head.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 2
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.wp_wflm_00",
+      "classId": "LANCE_MASTER",
+      "categoryId": "WEAPON_SET",
+      "catalogStatus": "BASELINE_WEAPON",
+      "primarySlot": "WEAPON",
+      "occupiedSlots": [
+        "WEAPON"
+      ],
+      "parts": [
+        {
+          "partId": "long_spear",
+          "partRole": "WEAPON_L",
+          "attachmentMode": "SOCKETED",
+          "modelAssetId": "Character/LanceMaster/Equipment/wp_wflm_00/long_spear.wmodel",
+          "socketBoneId": "b_weapon_rhand",
+          "socketYawDegrees": 0.0,
+          "requiredStance": "LANCE_MASTER_LONG_SPEAR",
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "short_spear",
+          "partRole": "WEAPON_S",
+          "attachmentMode": "SOCKETED",
+          "modelAssetId": "Character/LanceMaster/Equipment/wp_wflm_00/short_spear.wmodel",
+          "socketBoneId": "b_weapon_rhand",
+          "socketYawDegrees": 0.0,
+          "requiredStance": "LANCE_MASTER_SHORT_SPEAR",
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.slayer.wp_wwbk_03",
+      "classId": "SLAYER",
+      "categoryId": "WEAPON_SET",
+      "catalogStatus": "BASELINE_WEAPON",
+      "primarySlot": "WEAPON",
+      "occupiedSlots": [
+        "WEAPON"
+      ],
+      "parts": [
+        {
+          "partId": "main",
+          "partRole": "WEAPON_MAIN",
+          "attachmentMode": "SOCKETED",
+          "modelAssetId": "Character/Slayer/Equipment/wp_wwbk_03/main.wmodel",
+          "socketBoneId": "b_weapon_rhand",
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.wp_wsdm_09",
+      "classId": "ARTIST",
+      "categoryId": "WEAPON_SET",
+      "catalogStatus": "BASELINE_WEAPON",
+      "primarySlot": "WEAPON",
+      "occupiedSlots": [
+        "WEAPON"
+      ],
+      "parts": [
+        {
+          "partId": "main",
+          "partRole": "WEAPON_MAIN",
+          "attachmentMode": "SOCKETED",
+          "modelAssetId": "Character/Artist/Equipment/wp_wsdm_09/main.wmodel",
+          "socketBoneId": "b_wp_1",
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.default_00.shoulder",
+      "classId": "WARLORD",
+      "categoryId": "APPAREL_SHOULDER",
+      "catalogStatus": "BASELINE_PART",
+      "primarySlot": "SHOULDER",
+      "occupiedSlots": [
+        "SHOULDER"
+      ],
+      "parts": [
+        {
+          "partId": "shoulder",
+          "partRole": "SHOULDER",
+          "attachmentMode": "SKINNED",
+          "modelAssetId": "Character/Warlord/Equipment/default_00_shoulder/shoulder.wmodel",
+          "socketBoneId": null,
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.wp_wwgl_04",
+      "classId": "WARLORD",
+      "categoryId": "WEAPON_SET",
+      "catalogStatus": "BASELINE_WEAPON",
+      "primarySlot": "WEAPON",
+      "occupiedSlots": [
+        "WEAPON"
+      ],
+      "parts": [
+        {
+          "partId": "main",
+          "partRole": "WEAPON_MAIN",
+          "attachmentMode": "SOCKETED",
+          "modelAssetId": "Character/Warlord/Equipment/wp_wwgl_04/main.wmodel",
+          "socketBoneId": "b_weapon_rhand",
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "shield",
+          "partRole": "WEAPON_SHIELD",
+          "attachmentMode": "SOCKETED",
+          "modelAssetId": "Character/Warlord/Equipment/wp_wwgl_04/shield.wmodel",
+          "socketBoneId": "b_weapon_lhand",
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.wp_wswp_m_06",
+      "classId": "DIMENSIONMASTER",
+      "categoryId": "WEAPON_SET",
+      "catalogStatus": "BASELINE_WEAPON",
+      "primarySlot": "WEAPON",
+      "occupiedSlots": [
+        "WEAPON"
+      ],
+      "parts": [
+        {
+          "partId": "l",
+          "partRole": "WEAPON_L",
+          "attachmentMode": "SOCKETED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/wp_wswp_m_06/l.wmodel",
+          "socketBoneId": "b_wp_swm_m_1",
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "s",
+          "partRole": "WEAPON_S",
+          "attachmentMode": "SOCKETED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/wp_wswp_m_06/s.wmodel",
+          "socketBoneId": "b_wp_swm_m_2",
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "p",
+          "partRole": "WEAPON_P",
+          "attachmentMode": "SOCKETED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/wp_wswp_m_06/p.wmodel",
+          "socketBoneId": "b_wp_swm_m_3",
+          "socketYawDegrees": 0.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        },
+        {
+          "partId": "e",
+          "partRole": "WEAPON_E",
+          "attachmentMode": "SOCKETED",
+          "modelAssetId": "Character/DimensionMaster/Equipment/wp_wswp_m_06/e.wmodel",
+          "socketBoneId": "b_wp_swm_m_4_02",
+          "socketYawDegrees": 180.0,
+          "requiredStance": null,
+          "hiddenMeshMask": 0
+        }
+      ]
+    }
+  ]
+}

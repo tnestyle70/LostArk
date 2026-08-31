@@ -28,10 +28,22 @@ public:
 	virtual HRESULT Render();
 
 protected:
-	map<const wstring_t, shared_ptr<class CPartObject>>			m_PartObjects;
+	using PART_OBJECT_MAP =
+		map<const wstring_t, shared_ptr<class CPartObject>>;
+	PART_OBJECT_MAP			m_PartObjects;
 
 protected:
 	HRESULT Add_PartObject(uint32_t iPrototypeLevelIndex, const wstring_t& strPrototypeTag, const wstring_t& strPartObjectTag, void* pArg = nullptr);
+	HRESULT Clone_PartObject(
+		uint32_t iPrototypeLevelIndex,
+		const wstring_t& strPrototypeTag,
+		void* pArg,
+		shared_ptr<class CPartObject>& pOutPartObject);
+	/* Builds the complete next map before swapping it in. Candidate tags must all
+	share the prefix; an empty candidate map removes the group. */
+	HRESULT Replace_PartObjectGroup(
+		const wstring_t& strPartObjectTagPrefix,
+		PART_OBJECT_MAP&& CandidatePartObjects);
 	class CPartObject* Find_PartObject(const wstring_t& strPartObjectTag);
 
 public:
