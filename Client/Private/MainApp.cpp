@@ -39,6 +39,7 @@
 #include "SoundCueCatalog.h"
 #include "UI_Sprite.h"
 #include "UIInputRouter.h"
+#include "UILayoutRuntime.h"
 
 #ifdef _DEBUG
 #include "Animation_Tool.h"
@@ -224,6 +225,50 @@ namespace
 		return slots;
 	}
 
+	/* Every slot ItemUpgradeUI.json authors, for Hide_ItemUpgrade (all false) and
+	Open_ItemUpgradeWindow's own initial "show everything" pass (all true, before the existing
+	explicit hides for the completion-effect/modal/result slots that must start hidden run on top
+	of it) -- CUILayoutRuntime has no generic Render(class, revision) pass to fall back on the way
+	CHUDRuntimeView did, so every one of these 97 authored slots needs an explicit visibility
+	owner now instead of an implicit "wasn't drawn this frame". */
+	constexpr const char_t* ITEM_UPGRADE_ALL_SLOTS[] =
+	{
+		"ItemUpgrade_SuccessModalBg", "ItemUpgrade_PanelBg", "ItemUpgrade_RecipeIconBgExample",
+		"ItemUpgrade_RecipeMaterial0", "ItemUpgrade_RecipeAmount0", "ItemUpgrade_RecipeIconBg1",
+		"ItemUpgrade_RecipeMaterial1", "ItemUpgrade_RecipeAmount1", "ItemUpgrade_RecipeIconBg2",
+		"ItemUpgrade_RecipeMaterial2", "ItemUpgrade_RecipeAmount2", "ItemUpgrade_DecoIcon",
+		"ItemUpgrade_LevelUpMotion2Big", "ItemUpgrade_GaugeFill", "ItemUpgrade_WingedRingGold",
+		"ItemUpgrade_SelectedItemIconBounds", "ItemUpgrade_LevelUpBtn", "ItemUpgrade_EquipExpPageLine",
+		"ItemUpgrade_SmeltGlow", "ItemUpgrade_CoreFlash", "ItemUpgrade_ShockwaveRing",
+		"ItemUpgrade_CompleteEffect", "ItemUpgrade_WingDecoFade", "ItemUpgrade_LeftListBg",
+		"ItemUpgrade_ListGradeBg0", "ItemUpgrade_SelectedItemGradeBg", "ItemUpgrade_SelectedItemIcon",
+		"ItemUpgrade_ItemNameLabel", "ItemUpgrade_CurLevelLabel", "ItemUpgrade_NextLevelLabel",
+		"ItemUpgrade_ListGradeBg1", "ItemUpgrade_ListGradeBg2", "ItemUpgrade_ListGradeBg3",
+		"ItemUpgrade_RightGradeListBg", "ItemUpgrade_GradeRowEmblem0", "ItemUpgrade_GradeRowEmblem1",
+		"ItemUpgrade_GradeRowEmblem2", "ItemUpgrade_GradeRowEmblem3", "ItemUpgrade_GradeRowEmblem4",
+		"ItemUpgrade_GradeRowEmblem5", "ItemUpgrade_GradeRowEmblem6", "ItemUpgrade_GradeStripB0",
+		"ItemUpgrade_GradeStripB1", "ItemUpgrade_ListSelectedExample", "ItemUpgrade_GradeStripB2",
+		"ItemUpgrade_GradeStripB6", "ItemUpgrade_GradeStripB5", "ItemUpgrade_GradeStripB4",
+		"ItemUpgrade_GradeStripB3", "ItemUpgrade_GradeSelectedExample", "ItemUpgrade_ListItemIcon0",
+		"ItemUpgrade_ReforgeButton", "ItemUpgrade_ListLevel0", "ItemUpgrade_ListItemName0",
+		"ItemUpgrade_ListLevel1", "ItemUpgrade_ListItemName1", "ItemUpgrade_ListLevel2",
+		"ItemUpgrade_ListItemName2", "ItemUpgrade_ListLevel3", "ItemUpgrade_ListItemName3",
+		"ItemUpgrade_ListLevel4", "ItemUpgrade_ListItemName4", "ItemUpgrade_ListLevel5",
+		"ItemUpgrade_ListItemName5", "ItemUpgrade_GradeRowText6", "ItemUpgrade_GradeRowText0",
+		"ItemUpgrade_GradeRowText5", "ItemUpgrade_GradeRowText1", "ItemUpgrade_GradeRowText4",
+		"ItemUpgrade_GradeRowText2", "ItemUpgrade_GradeRowText3", "ItemUpgrade_ListItemIcon1",
+		"ItemUpgrade_ListItemIcon2", "ItemUpgrade_ListItemIcon3", "ItemUpgrade_ListItemIcon4",
+		"ItemUpgrade_ListGradeBg4", "ItemUpgrade_ListGradeBg5", "ItemUpgrade_LevelArrowBase",
+		"ItemUpgrade_LevelArrow", "ItemUpgrade_ListItemIcon5", "ItemUpgrade_FailModalBg",
+		"ItemUpgrade_ResultWaitBg", "ItemUpgrade_ResultWaitEmblem", "ItemUpgrade_SuccessEffect",
+		"ItemUpgrade_FailEffect", "ItemUpgrade_SuccessDiamondWinged", "ItemUpgrade_SuccessDiamondFrame",
+		"ItemUpgrade_SuccessItemIconMarker", "ItemUpgrade_SuccessItemNameMarker",
+		"ItemUpgrade_SuccessGradeMarker", "ItemUpgrade_SuccessStatusMarker",
+		"ItemUpgrade_FailDiamondFrame", "ItemUpgrade_FailItemIconMarker",
+		"ItemUpgrade_FailItemNameMarker", "ItemUpgrade_FailStatusMarker",
+		"ItemUpgrade_SuccessOkBtn", "ItemUpgrade_FailOkBtn",
+	};
+
 #ifdef _DEBUG
 
 	const char_t* GetHUDLayoutClassId(
@@ -302,6 +347,13 @@ void CMainApp::Open_ItemUpgradeWindow()
 		return;
 
 	m_bItemUpgradePreviewVisible = true;
+	/* Show every authored slot first (Hide_ItemUpgrade's own inverse) -- unlike the old
+	CHUDRuntimeView generic Render(class, revision) pass, a CUI_Sprite has no implicit
+	"wasn't drawn this frame" default, so every slot needs an explicit owner. The explicit hides
+	right below (100%-only art, modal/result slots) then apply on top of this, same as before. */
+	for (const char_t* pSlotId : ITEM_UPGRADE_ALL_SLOTS)
+		m_pItemUpgradeView->Set_SlotVisible(pSlotId, true);
+
 	/* Reopening always starts the gauge idle at 0 -- reset the state machine and hide
 	the 100%-only art so a completed run from a previous open doesn't carry over. */
 	m_iItemUpgradePreviousPercent = 0;
@@ -331,6 +383,192 @@ void CMainApp::Open_ItemUpgradeWindow()
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailDiamondFrame", false);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailItemIconMarker", false);
 	Set_ItemUpgradeCenterPanelVisible(true);
+}
+
+void CMainApp::Hide_ItemUpgrade()
+{
+	if (nullptr == m_pItemUpgradeView)
+		return;
+	for (const char_t* pSlotId : ITEM_UPGRADE_ALL_SLOTS)
+		m_pItemUpgradeView->Set_SlotVisible(pSlotId, false);
+}
+
+void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
+{
+	if (nullptr == m_pItemUpgradeView)
+		return;
+
+	/* The P key toggle has no level awareness of its own (see m_pItemUpgradeView's declaration
+	comment), so m_bItemUpgradePreviewVisible can go true while sitting in a level
+	RenderCombatHUD never supported (e.g. Lobby) -- same level set as RenderCombatHUD's own gate.
+	Unlike the old ImGui pass (which simply wasn't reached and drew nothing there), these slots
+	live under LEVEL::STATIC and would otherwise show through regardless of level. */
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	const bool_t isSupportedLevel =
+		currentLevel == ETOUI(LEVEL::BERN) ||
+		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
+		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT);
+	if (!m_bItemUpgradePreviewVisible || !isSupportedLevel)
+	{
+		Hide_ItemUpgrade();
+		return;
+	}
+
+	/* Drives every "animation.frames" flipbook this view owns that ISN'T manually pinned below
+	(SmeltGlow's idle loop, CoreFlash/ShockwaveRing/CompleteEffect/WingDecoFade/ResultWaitEmblem/
+	SuccessEffect/FailEffect) off real elapsed time -- GaugeFill is the one slot this function
+	pins to an exact frame every tick instead (see below), same as CHUDRuntimeView's own
+	Set_Animation_Frame override did before this migration. */
+	m_pItemUpgradeView->Update(fTimeDelta);
+
+	Update_ItemUpgradeSelection();
+	Update_ItemUpgradeGrowButton();
+	/* Wait-click checked before Reforge triggers a new WAITING -- both react to the same
+	real left-click-down-edge this frame, so if Reforge ran first the very click that opened the
+	wait overlay would also satisfy the wait-click's "clicked anywhere" check and reveal on the
+	same frame it appeared. */
+	Update_ItemUpgradeResultWaitClick();
+	Update_ItemUpgradeReforgeButton();
+	Update_ItemUpgradeResultOkButton();
+
+	/* No real Server 재련 percent exists yet (see m_pItemUpgradeView's declaration comment), so
+	the gauge is a manual state machine driven by ItemUpgrade_LevelUpBtn's click
+	(Update_ItemUpgradeGrowButton) instead of a free-running clock. Idle at 0 until clicked;
+	0->100 fill plays once per click; holds at 100 until the next click. Once a real gauge value
+	exists this should read it the same way RenderLanceMasterIdentityGauge() reads
+	player.iCurrentIdentity, not this state. */
+	if (m_bItemUpgradeGrowing)
+	{
+		constexpr f32_t GAUGE_FILL_FPS = 45.f;
+		constexpr f32_t GAUGE_FILL_FRAME_COUNT = 100.f;
+		const f32_t fCycleSeconds = GAUGE_FILL_FRAME_COUNT / GAUGE_FILL_FPS;
+		const f64_t fElapsed = ImGui::GetTime() - m_dItemUpgradeGrowStartSeconds;
+		const int32_t iPercent = std::clamp(
+			static_cast<int32_t>(fElapsed / fCycleSeconds * GAUGE_FILL_FRAME_COUNT),
+			0, 100);
+
+		if (100 <= iPercent)
+		{
+			m_iItemUpgradePreviousPercent = 100;
+			m_bItemUpgradeGrowing = false;
+			/* Alpha starts at 0 here -- Set_SlotVisible only lifts bForceHidden (both slots
+			become drawable this same frame), the actual reveal is the fade-in progress block
+			below, driven by m_dItemUpgradeCompleteRevealStartSeconds. */
+			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_WingedRingGold", true);
+			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_LevelUpMotion2Big", true);
+			m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", 0.f);
+			m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", 0.f);
+			m_dItemUpgradeCompleteRevealStartSeconds = ImGui::GetTime();
+			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_CompleteEffect", true);
+			m_pItemUpgradeView->Restart_Animation("ItemUpgrade_CompleteEffect");
+		}
+		else
+		{
+			m_iItemUpgradePreviousPercent = iPercent;
+			/* GaugeFill's own AnimationFrames clock starts independently once this slot's first
+			frame plays, so it would otherwise drift out of phase with iPercent (which is
+			anchored to m_dItemUpgradeGrowStartSeconds) -- pin it to the exact frame every tick
+			instead of letting the two clocks disagree about what "63%" looks like. */
+			m_pItemUpgradeView->Set_Animation_Frame("ItemUpgrade_GaugeFill", iPercent);
+		}
+	}
+	else if (100 == m_iItemUpgradePreviousPercent)
+	{
+		/* Held-100 state: nothing re-pins this once growing flips false above, so without this
+		GaugeFill's own looping AnimationFrames clock (JSON loop=true, 100 frames/45fps) would
+		free-run straight past frame 99 and repeat the whole 0->100 sweep visually even though
+		m_iItemUpgradePreviousPercent correctly stays at 100. */
+		m_pItemUpgradeView->Set_Animation_Frame("ItemUpgrade_GaugeFill", 99);
+
+		if (m_dItemUpgradeCompleteRevealStartSeconds >= 0.0)
+		{
+			constexpr f64_t REVEAL_FADE_SECONDS = 0.45;
+			const f32_t fFadeAlpha = static_cast<f32_t>(std::clamp(
+				(ImGui::GetTime() - m_dItemUpgradeCompleteRevealStartSeconds) / REVEAL_FADE_SECONDS,
+				0.0, 1.0));
+			m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", fFadeAlpha);
+			m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", fFadeAlpha);
+		}
+	}
+
+	/* CoreFlash fires exactly once, the same frame Update_ItemUpgradeGrowButton starts a fill;
+	ShockwaveRing is scheduled for CoreFlash's own real duration (28 frames/20fps) later so the
+	two real Scaleform layers play in their authored order instead of together (real ordering:
+	coreLevelEffect1 before compF_shockwave_red inside levelUpMotion_mc). */
+	if (m_bItemUpgradeCoreFlashPending)
+	{
+		m_pItemUpgradeView->Restart_Animation("ItemUpgrade_CoreFlash");
+		constexpr f64_t CORE_FLASH_DURATION_SECONDS = 28.0 / 20.0;
+		m_dItemUpgradeShockwaveScheduledAt = ImGui::GetTime() + CORE_FLASH_DURATION_SECONDS;
+		m_bItemUpgradeCoreFlashPending = false;
+	}
+	if (m_dItemUpgradeShockwaveScheduledAt >= 0.0 &&
+		ImGui::GetTime() >= m_dItemUpgradeShockwaveScheduledAt)
+	{
+		m_pItemUpgradeView->Restart_Animation("ItemUpgrade_ShockwaveRing");
+		m_dItemUpgradeShockwaveScheduledAt = -1.0;
+	}
+	if (m_dItemUpgradeResultSettleAt >= 0.0 && ImGui::GetTime() >= m_dItemUpgradeResultSettleAt)
+	{
+		// Burst's real one-shot duration is over -- swap the circle+burst out for the settled
+		// icon/name/result content (RenderItemUpgradeSuccessDetailText/FailDetailText gate on
+		// this same "settled" condition -- m_dItemUpgradeResultSettleAt < 0.0 while
+		// SUCCESS/FAIL is showing -- so the text appears in lockstep with this reveal).
+		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", false);
+		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessEffect", false);
+		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailEffect", false);
+
+		const bool_t bSuccess = m_bItemUpgradePendingAttemptSuccess;
+		const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
+		const bool_t bHasSelection = !upgradeSlots.empty();
+		const int32_t iSelectedSlot = bHasSelection ? std::clamp(
+			m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(upgradeSlots.size()) - 1) : 0;
+		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessOkBtn", bSuccess);
+		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailOkBtn", !bSuccess);
+		// Real success_mc/fail_mc detail: a decorative frame + item icon sit behind the settled
+		// result text (real local placements traced from ItemBuildUpLevelWndContent's own
+		// success_mc/fail_mc timelines). Real in-game capture shows just icon/name/result -- no
+		// wide winged ribbon banner -- so SuccessDiamondWinged is never shown. Same frame for
+		// both outcomes now (SuccessDiamondFrame reused for fail too) -- FailDiamondFrame is
+		// never shown.
+		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessDiamondFrame", true);
+		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessItemIconMarker", bSuccess);
+		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailItemIconMarker", !bSuccess);
+		if (bHasSelection)
+		{
+			if (bSuccess)
+			{
+				// Same real icon already shown in the base window's ItemUpgrade_SelectedItemIcon --
+				// the item being reforged doesn't change just because the result modal is up.
+				m_pItemUpgradeView->Set_SlotTexture(
+					"ItemUpgrade_SuccessItemIconMarker", upgradeSlots[iSelectedSlot].strIconPath);
+				// The actual level-up: a real 재련 success raises this item's own tracked level by
+				// 1, so the left list / right ladder / center 현재-다음 all read the new level once
+				// this result is dismissed. A fail leaves the level untouched.
+				++ItemUpgradeLevelRef(upgradeSlots[iSelectedSlot].strItemId);
+			}
+			else
+			{
+				m_pItemUpgradeView->Set_SlotTexture(
+					"ItemUpgrade_FailItemIconMarker", upgradeSlots[iSelectedSlot].strIconPath);
+			}
+		}
+		m_dItemUpgradeResultSettleAt = -1.0;
+	}
+
+	/* Idle (not growing, held at 0) is the only state SmeltGlow's own JSON loop should be
+	visible in -- hidden for the rest of the fill and at 100% so it doesn't glow underneath the
+	completion art. WingedRingGold/LevelUpMotion2Big/CompleteEffect are the inverse: hidden
+	everywhere except the held-100 state set above. A fresh click (Update_ItemUpgradeGrowButton)
+	re-hides all three the same frame it restarts the fill from 0. */
+	const bool_t bIdle = !m_bItemUpgradeGrowing && 0 == m_iItemUpgradePreviousPercent;
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SmeltGlow", bIdle);
+	/* Idle has no per-frame branch above to pin this itself (unlike the growing/held-100
+	cases), so GaugeFill's own clock would otherwise free-run through its looping AnimationFrames
+	while sitting idle at 0%. */
+	if (bIdle)
+		m_pItemUpgradeView->Set_Animation_Frame("ItemUpgrade_GaugeFill", 0);
 }
 
 #ifdef _DEBUG
@@ -472,8 +710,13 @@ HRESULT CMainApp::Initialize()
 		m_pDevice, m_pContext, L"UI/BossUI/BossUI.json");
 	m_pEstherUIView = std::make_unique<CHUDRuntimeView>(
 		m_pDevice, m_pContext, L"UI/Esther/EstherUI.json");
-	m_pItemUpgradeView = std::make_unique<CHUDRuntimeView>(
-		m_pDevice, m_pContext, L"UI/ItemUpgrade/ItemUpgradeUI.json");
+	m_pItemUpgradeView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
+		L"UI/ItemUpgrade/ItemUpgradeUI.json");
+	/* Authored layer tints are opaque -- every slot would otherwise sit fully visible from this
+	Level::STATIC construction until the first real Update_ItemUpgrade() call (P not pressed
+	yet). */
+	Hide_ItemUpgrade();
 	m_pLobbyBackgroundView = std::make_unique<CHUDRuntimeView>(
 		m_pDevice, m_pContext, L"UI/Lobby/Lobby_Layout.json",
 		CHUDRuntimeView::DRAW_TARGET::BACKGROUND);
@@ -532,6 +775,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			if (m_bItemUpgradePreviewVisible)
 			{
 				m_bItemUpgradePreviewVisible = false;
+				Hide_ItemUpgrade();
 				// Closing mid-wait must not leave the looping wait sound behind with no
 				// screen visible to end it.
 				CGameInstance::Get().Stop_LoopingSound();
@@ -543,6 +787,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		}
 		m_bPDown = pDown;
 	}
+	Update_ItemUpgrade(fTimeDelta);
 
 	/* 1/2/3/4 use whatever item is registered on Item_1..4 (drag-drop from the inventory --
 	see Render_ItemQuickSlots). Same gating as K/I; the Server is the one that actually
@@ -1488,175 +1733,11 @@ void CMainApp::RenderCombatHUD()
 		m_pSkillWindowView->Render(player.eCharacterClass);
 	if (nullptr != m_pInventoryView)
 		m_pInventoryView->Update(CCombatHUDViewModel::Get().Get_Inventory().Items);
-	/* P-toggled static preview of the real traced ItemUpgradeUI.json art/positions -- see the
-	m_pItemUpgradeView declaration comment in MainApp.h. No per-slot gameplay logic (no real
-	Server 재련 data exists yet), just the same generic Render("Default", 0) pass Esther/Boss UI
-	use for their own static slots. */
-	if (nullptr != m_pItemUpgradeView && m_bItemUpgradePreviewVisible)
-	{
-		/* All state updates below (click handling, gauge state machine, Set_Animation_Frame pins)
-		run BEFORE Render() -- not after -- so this call always draws the fully up-to-date frame
-		instead of last frame's. Pinning a slot's clock-driven frame after Render() left a full
-		frame's delta time between the pin and the next actual draw; that's invisible while a
-		pinned value keeps changing (the 0->100 fill), but a value held constant every frame (the
-		100%-held GaugeFill, pinned to frame 99) accumulates that same delta every tick, and once
-		it pushes the computed frame position past 100.0 (any frame slower than ~1/45s) the
-		loop-modulo math wraps to a low frame index (0 looks nearly blank) and stays wrapped for as
-		long as the hold lasts -- this is the real cause of GaugeFill "disappearing" only once held. */
-		Update_ItemUpgradeSelection();
-		Update_ItemUpgradeGrowButton();
-		/* Wait-click checked before Reforge triggers a new WAITING -- both react to the same
-		ImGui::IsMouseClicked(Left) frame-level flag, so if Reforge ran first the very click that
-		opened the wait overlay would also satisfy the wait-click's "clicked anywhere" check and
-		reveal on the same frame it appeared. */
-		Update_ItemUpgradeResultWaitClick();
-		Update_ItemUpgradeReforgeButton();
-		Update_ItemUpgradeResultOkButton();
-
-		/* No real Server 재련 percent exists yet (see comment above), so the gauge is a manual
-		state machine driven by ItemUpgrade_LevelUpBtn's click (Update_ItemUpgradeGrowButton) instead
-		of a free-running clock. Idle at 0 until clicked; 0->100 fill plays once per click; holds at
-		100 until the next click. Once a real gauge value exists this should read it the same way
-		RenderLanceMasterIdentityGauge() reads player.iCurrentIdentity, not this state. */
-		if (m_bItemUpgradeGrowing)
-		{
-			constexpr f32_t GAUGE_FILL_FPS = 45.f;
-			constexpr f32_t GAUGE_FILL_FRAME_COUNT = 100.f;
-			const f32_t fCycleSeconds = GAUGE_FILL_FRAME_COUNT / GAUGE_FILL_FPS;
-			const f64_t fElapsed = ImGui::GetTime() - m_dItemUpgradeGrowStartSeconds;
-			const int32_t iPercent = std::clamp(
-				static_cast<int32_t>(fElapsed / fCycleSeconds * GAUGE_FILL_FRAME_COUNT),
-				0, 100);
-
-			if (100 <= iPercent)
-			{
-				m_iItemUpgradePreviousPercent = 100;
-				m_bItemUpgradeGrowing = false;
-				/* Alpha starts at 0 here -- Set_SlotVisible only lifts bForceHidden (both slots
-				become drawable this same frame), the actual reveal is the fade-in progress block
-				below, driven by m_dItemUpgradeCompleteRevealStartSeconds. */
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_WingedRingGold", true);
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_LevelUpMotion2Big", true);
-				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", 0.f);
-				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", 0.f);
-				m_dItemUpgradeCompleteRevealStartSeconds = ImGui::GetTime();
-				m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_CompleteEffect", true);
-				m_pItemUpgradeView->Restart_Animation("ItemUpgrade_CompleteEffect");
-			}
-			else
-			{
-				m_iItemUpgradePreviousPercent = iPercent;
-				/* GaugeFill's own AnimationFrames clock starts independently on this slot's first
-				Render() call, so it would otherwise drift out of phase with iPercent (which is
-				anchored to m_dItemUpgradeGrowStartSeconds) -- pin it to the exact frame every tick
-				instead of letting the two clocks disagree about what "63%" looks like. */
-				m_pItemUpgradeView->Set_Animation_Frame("ItemUpgrade_GaugeFill", iPercent);
-			}
-		}
-		else if (100 == m_iItemUpgradePreviousPercent)
-		{
-			/* Held-100 state: nothing re-pins this once growing flips false above, so without this
-			GaugeFill's own looping AnimationFrames clock (JSON loop=true, 100 frames/45fps) would
-			free-run straight past frame 99 and repeat the whole 0->100 sweep visually even though
-			m_iItemUpgradePreviousPercent correctly stays at 100. */
-			m_pItemUpgradeView->Set_Animation_Frame("ItemUpgrade_GaugeFill", 99);
-
-			if (m_dItemUpgradeCompleteRevealStartSeconds >= 0.0)
-			{
-				constexpr f64_t REVEAL_FADE_SECONDS = 0.45;
-				const f32_t fFadeAlpha = static_cast<f32_t>(std::clamp(
-					(ImGui::GetTime() - m_dItemUpgradeCompleteRevealStartSeconds) / REVEAL_FADE_SECONDS,
-					0.0, 1.0));
-				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", fFadeAlpha);
-				m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", fFadeAlpha);
-			}
-		}
-
-		/* CoreFlash fires exactly once, the same frame Update_ItemUpgradeGrowButton starts a fill;
-		ShockwaveRing is scheduled for CoreFlash's own real duration (28 frames/20fps) later so the
-		two real Scaleform layers play in their authored order instead of together (real ordering:
-		coreLevelEffect1 before compF_shockwave_red inside levelUpMotion_mc). */
-		if (m_bItemUpgradeCoreFlashPending)
-		{
-			m_pItemUpgradeView->Restart_Animation("ItemUpgrade_CoreFlash");
-			constexpr f64_t CORE_FLASH_DURATION_SECONDS = 28.0 / 20.0;
-			m_dItemUpgradeShockwaveScheduledAt = ImGui::GetTime() + CORE_FLASH_DURATION_SECONDS;
-			m_bItemUpgradeCoreFlashPending = false;
-		}
-		if (m_dItemUpgradeShockwaveScheduledAt >= 0.0 &&
-			ImGui::GetTime() >= m_dItemUpgradeShockwaveScheduledAt)
-		{
-			m_pItemUpgradeView->Restart_Animation("ItemUpgrade_ShockwaveRing");
-			m_dItemUpgradeShockwaveScheduledAt = -1.0;
-		}
-		if (m_dItemUpgradeResultSettleAt >= 0.0 && ImGui::GetTime() >= m_dItemUpgradeResultSettleAt)
-		{
-			// Burst's real one-shot duration is over -- swap the circle+burst out for the settled
-			// icon/name/result content (RenderItemUpgradeSuccessDetailText/FailDetailText gate on
-			// this same "settled" condition -- m_dItemUpgradeResultSettleAt < 0.0 while
-			// SUCCESS/FAIL is showing -- so the text appears in lockstep with this reveal).
-			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", false);
-			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessEffect", false);
-			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailEffect", false);
-
-			const bool_t bSuccess = m_bItemUpgradePendingAttemptSuccess;
-			const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
-			const bool_t bHasSelection = !upgradeSlots.empty();
-			const int32_t iSelectedSlot = bHasSelection ? std::clamp(
-				m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(upgradeSlots.size()) - 1) : 0;
-			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessOkBtn", bSuccess);
-			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailOkBtn", !bSuccess);
-			// Real success_mc/fail_mc detail: a decorative frame + item icon sit behind the settled
-			// result text (real local placements traced from ItemBuildUpLevelWndContent's own
-			// success_mc/fail_mc timelines). Real in-game capture shows just icon/name/result -- no
-			// wide winged ribbon banner -- so SuccessDiamondWinged is never shown. Same frame for
-			// both outcomes now (SuccessDiamondFrame reused for fail too) -- FailDiamondFrame is
-			// never shown.
-			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessDiamondFrame", true);
-			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessItemIconMarker", bSuccess);
-			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailItemIconMarker", !bSuccess);
-			if (bHasSelection)
-			{
-				if (bSuccess)
-				{
-					// Same real icon already shown in the base window's ItemUpgrade_SelectedItemIcon --
-					// the item being reforged doesn't change just because the result modal is up.
-					m_pItemUpgradeView->Set_SlotTexture(
-						"ItemUpgrade_SuccessItemIconMarker", upgradeSlots[iSelectedSlot].strIconPath);
-					// The actual level-up: a real 재련 success raises this item's own tracked level by
-					// 1, so the left list / right ladder / center 현재-다음 all read the new level once
-					// this result is dismissed. A fail leaves the level untouched.
-					++ItemUpgradeLevelRef(upgradeSlots[iSelectedSlot].strItemId);
-				}
-				else
-				{
-					m_pItemUpgradeView->Set_SlotTexture(
-						"ItemUpgrade_FailItemIconMarker", upgradeSlots[iSelectedSlot].strIconPath);
-				}
-			}
-			m_dItemUpgradeResultSettleAt = -1.0;
-		}
-
-		/* Idle (not growing, held at 0) is the only state SmeltGlow's own JSON loop should be
-		visible in -- hidden for the rest of the fill and at 100% so it doesn't glow underneath the
-		completion art. WingedRingGold/LevelUpMotion2Big/CompleteEffect are the inverse: hidden
-		everywhere except the held-100 state set above. A fresh click (Update_ItemUpgradeGrowButton)
-		re-hides all three the same frame it restarts the fill from 0. */
-		const bool_t bIdle = !m_bItemUpgradeGrowing && 0 == m_iItemUpgradePreviousPercent;
-		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SmeltGlow", bIdle);
-		/* Idle has no per-frame branch above to pin this itself (unlike the growing/held-100
-		cases), so GaugeFill's own clock would otherwise free-run through its looping AnimationFrames
-		while sitting idle at 0%. */
-		if (bIdle)
-			m_pItemUpgradeView->Set_Animation_Frame("ItemUpgrade_GaugeFill", 0);
-
-		/* Drawing the percent number itself is deferred to RenderItemUpgradeGaugePercentText()
-		(called after CImGuiLayer::EndFrame(), same reason as RenderBossHealthBar's text split --
-		this Render() call's own AnimationFrames images composite later inside EndFrame() and would
-		otherwise paint over a Draw_Text() submitted here). m_iItemUpgradePreviousPercent is already
-		updated above and doubles as that function's read of "current percent". */
-		m_pItemUpgradeView->Render("Default", 0);
-	}
+	/* No matching inline Item Upgrade block here anymore -- migrated to Update_ItemUpgrade(),
+	called from CMainApp::Update() instead of from inside this Render() pass. Its CUI_Sprite
+	slots self-render through the normal engine pipeline, so nothing here needs to draw them or
+	drive their state immediately before a draw call the way the old Render("Default", 0) pass
+	did. */
 	Render_ItemQuickSlots();
 }
 
@@ -2017,12 +2098,6 @@ void CMainApp::Update_ItemUpgradeSelection()
 		return;
 	}
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-
 	f32_t fListX = 0.f, fListY = 0.f, fListWidth = 0.f, fListHeight = 0.f;
 	if (!m_pItemUpgradeView->Get_SlotRect(
 		"ItemUpgrade_LeftListBg", fListX, fListY, fListWidth, fListHeight))
@@ -2030,8 +2105,9 @@ void CMainApp::Update_ItemUpgradeSelection()
 		return;
 	}
 
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pItemUpgradeView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pItemUpgradeView->Get_ResolutionHeight();
 	const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
 
 	for (int32_t i = 0; i < 6 && i < static_cast<int32_t>(upgradeSlots.size()); ++i)
@@ -2046,15 +2122,12 @@ void CMainApp::Update_ItemUpgradeSelection()
 
 		/* Full row width (LeftListBg's own x/width), not just the icon/grade-glow's own narrower
 		rect, so clicking anywhere across the name text also selects this row. */
-		const ImVec2 vMin(
-			pViewport->WorkPos.x + fListX * scaleX,
-			pViewport->WorkPos.y + fRowY * scaleY);
-		const ImVec2 vMax(
-			vMin.x + fListWidth * scaleX,
-			vMin.y + fRowHeight * scaleY);
-		const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-			vMouse.y >= vMin.y && vMouse.y < vMax.y;
-		if (!bHovered || !bClicked)
+		const bool_t bHovered = Router.Is_Hovered(
+			fListX, fRowY, fListWidth, fRowHeight, fRefWidth, fRefHeight);
+		if (!bHovered)
+			continue;
+		Router.Claim_Mouse_This_Frame();
+		if (!Router.Is_Clicked(fListX, fRowY, fListWidth, fRowHeight, fRefWidth, fRefHeight))
 			continue;
 
 		Play_UIButtonClickSound();
@@ -2081,22 +2154,17 @@ void CMainApp::Update_ItemUpgradeGrowButton()
 		return;
 	}
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	if (!m_pItemUpgradeView->Get_SlotRect("ItemUpgrade_LevelUpBtn", fX, fY, fWidth, fHeight))
 		return;
 
-	const ImVec2 vMin(pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
-	const ImVec2 vMax(vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-		vMouse.y >= vMin.y && vMouse.y < vMax.y;
-	if (!bHovered || !ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pItemUpgradeView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pItemUpgradeView->Get_ResolutionHeight();
+	if (!Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+		return;
+	Router.Claim_Mouse_This_Frame();
+	if (!Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		return;
 
 	Play_UIButtonClickSound();
@@ -2130,22 +2198,17 @@ void CMainApp::Update_ItemUpgradeReforgeButton()
 		return;
 	}
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	if (!m_pItemUpgradeView->Get_SlotRect("ItemUpgrade_ReforgeButton", fX, fY, fWidth, fHeight))
 		return;
 
-	const ImVec2 vMin(pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
-	const ImVec2 vMax(vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-		vMouse.y >= vMin.y && vMouse.y < vMax.y;
-	if (!bHovered || !ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pItemUpgradeView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pItemUpgradeView->Get_ResolutionHeight();
+	if (!Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+		return;
+	Router.Claim_Mouse_This_Frame();
+	if (!Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		return;
 
 	Play_UIButtonClickSound();
@@ -2183,10 +2246,15 @@ void CMainApp::Update_ItemUpgradeResultWaitClick()
 {
 	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
 		ITEM_UPGRADE_ATTEMPT_RESULT::WAITING != m_eItemUpgradeAttemptResult ||
-		!ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		!CUIInputRouter::Get().Is_LeftClickEdge())
 	{
 		return;
 	}
+	// This screen already owns the whole frame's input while WAITING is showing (no other
+	// ItemUpgrade widget's Is_Hovered/Is_Clicked can be true at the same time -- the base
+	// window's own buttons are hidden by Set_ItemUpgradeCenterPanelVisible(false)), so claiming
+	// the mouse here is a formality for consistency with every other real click this router sees.
+	CUIInputRouter::Get().Claim_Mouse_This_Frame();
 
 	// ItemUpgrade_ResultWaitBg (the same solid-black backdrop already showing behind the wait
 	// circle) stays visible all the way through burst-playing and the settled result -- it's the
@@ -2250,12 +2318,6 @@ void CMainApp::Update_ItemUpgradeResultOkButton()
 		return;
 	}
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-
 	const char_t* pOkButtonSlotId =
 		ITEM_UPGRADE_ATTEMPT_RESULT::SUCCESS == m_eItemUpgradeAttemptResult ?
 		"ItemUpgrade_SuccessOkBtn" : "ItemUpgrade_FailOkBtn";
@@ -2264,12 +2326,13 @@ void CMainApp::Update_ItemUpgradeResultOkButton()
 	if (!m_pItemUpgradeView->Get_SlotRect(pOkButtonSlotId, fX, fY, fWidth, fHeight))
 		return;
 
-	const ImVec2 vMin(pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
-	const ImVec2 vMax(vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
-		vMouse.y >= vMin.y && vMouse.y < vMax.y;
-	if (!bHovered || !ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pItemUpgradeView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pItemUpgradeView->Get_ResolutionHeight();
+	if (!Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+		return;
+	Router.Claim_Mouse_This_Frame();
+	if (!Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		return;
 
 	Play_UIButtonClickSound();
@@ -4445,10 +4508,13 @@ HRESULT CMainApp::Start_Level(
 	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
 {
 	/* The P-toggled Item Upgrade debug preview (see m_pItemUpgradeView's declaration comment)
-	has no level awareness of its own -- it just draws whenever the flag is on. Without this,
-	leaving Character Select with the preview open (e.g. entering Valtan) left its text drawing
-	over the Loading screen and the destination level too. Any real level transition ends it. */
+	has no level awareness of its own -- it just shows whenever the flag is on. Without this,
+	leaving Character Select with the preview open (e.g. entering Valtan) left its CUI_Sprite
+	slots (LEVEL::STATIC, so they survive a level change) showing over the Loading screen and the
+	destination level too, and its text drawing along with them. Any real level transition ends
+	it. */
 	m_bItemUpgradePreviewVisible = false;
+	Hide_ItemUpgrade();
 	CGameInstance::Get().Stop_LoopingSound();
 
 	const CLIENT_LEVEL_DESCRIPTOR* pTarget =

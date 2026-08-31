@@ -22,6 +22,7 @@ class CAnimation_Tool;
 class CActionCompositionWorkbench;
 class CHUDLayoutTool;
 class CHUDRuntimeView;
+class CUILayoutRuntime;
 class CBalanceTool;
 class CBossTool;
 class CCameraTool;
@@ -179,10 +180,21 @@ private:
 	marker -- a failed reforge does not change level. */
 	void RenderItemUpgradeFailDetailText();
 	void RenderItemUpgradeListText();
-	/* Hover/click hit-test for the 6 left-list rows, mirrored from Render_LobbyButtons's
-	Lobby_CreateCharacterButton pattern (screen-space rect from Get_SlotRect, ImGui mouse). On
-	click, moves ItemUpgrade_ListSelectedExample and swaps ItemUpgrade_SelectedItemIcon's texture
-	to the clicked row. */
+	/* Hover/click hit-test for the 6 left-list rows via CUIInputRouter, same pattern as every
+	other migrated CUI_Sprite screen's buttons. On click, moves ItemUpgrade_ListSelectedExample
+	and swaps ItemUpgrade_SelectedItemIcon's texture to the clicked row. */
+	/* Drives every real CUI_Sprite (CUILayoutRuntime) state for the Item Upgrade preview --
+	the gauge fill/CoreFlash/ShockwaveRing/completion-reveal/result-settle state machine that
+	used to sit inline in RenderCombatHUD (before m_pItemUpgradeView's own Render("Default", 0)
+	call), plus the five Update_ItemUpgrade* hover/click functions below. Moved to Update()
+	instead of Render() since these slots self-render through the normal engine pipeline and no
+	longer need to run immediately before an explicit draw call. Hides everything (Hide_ItemUpgrade)
+	whenever !m_bItemUpgradePreviewVisible or the current Level is outside RenderCombatHUD's own
+	supported set (BERN/VALTAN_ARENA/DEVELOPMENT/CHARACTER_SELECT) -- unlike the old ImGui pass
+	(which simply wasn't called and drew nothing), these slots live under LEVEL::STATIC and would
+	otherwise keep showing across a level change or while closed. */
+	void Update_ItemUpgrade(f32_t fTimeDelta);
+	void Hide_ItemUpgrade();
 	void Update_ItemUpgradeSelection();
 	/* Hover/click hit-test for ItemUpgrade_LevelUpBtn ("성장"), same pattern as
 	Update_ItemUpgradeSelection. On click (re)starts the 0->100 gauge fill from 0, restarts
@@ -316,13 +328,14 @@ private:
 	m_pBossUIView: the Esther skill window is shared across every class, not tied to Combat HUD
 	or Screen UI, so it gets its own document/tab too. */
 	unique_ptr<CHUDRuntimeView> m_pEstherUIView = { nullptr };
-	/* UI/ItemUpgrade/ItemUpgradeUI.json's runtime consumer -- a plain generic Render("Default", 0)
-	pass (no per-slot hand-coded logic like RenderBossHealthBar's, since no real Server-side
-	재련/enhancement data exists yet). Not _DEBUG-gated, same as m_pInventoryView/m_pSkillWindowView.
+	/* UI/ItemUpgrade/ItemUpgradeUI.json's runtime consumer -- real CUI_Sprite GameObjects under
+	LEVEL::STATIC (Update_ItemUpgrade drives the gauge/effect state machine and hover/click; no
+	real Server-side 재련/enhancement data exists yet, so there is still no per-slot balance
+	logic like RenderBossHealthBar's). Not _DEBUG-gated, same as m_pInventoryView/m_pSkillWindowView.
 	P is a free normal gameplay keybind (not an F1/F6 tool-switch key) -- toggled the same
 	GetAsyncKeyState edge-detect pattern as K/I below, since it started as an always-on debug
 	preview that ended up blocking everything else on screen. */
-	unique_ptr<CHUDRuntimeView> m_pItemUpgradeView = { nullptr };
+	unique_ptr<CUILayoutRuntime> m_pItemUpgradeView = { nullptr };
 	bool_t m_bItemUpgradePreviewVisible = false;
 	/* Index into BuildItemUpgradeSlots()'s current-frame result (real "combat"-category inventory
 	items) that is the current "재련 대상" -- Update_ItemUpgradeSelection() is the only writer, on

@@ -55,6 +55,17 @@ public:
 	   via Set_SlotTexture as its own clock crosses a frame boundary. No-op for every other
 	   slot. Callers add this to their owning Level's Update(fTimeDelta). */
 	void Update(f32_t fTimeDelta);
+	/* Restarts a slot's "animation.frames" flipbook from frame 0 right now -- for a one-shot
+	effect (loop=false) a caller wants to fire on a real event (a gauge reaching 100%), since
+	Update() otherwise only ever advances the clock it already has. No-op if the slot doesn't
+	exist or has no animation frames. */
+	void Restart_Animation(const string& strId);
+	/* Pins a slot's "animation.frames" flipbook to an exact frame index right now, for a caller
+	driving it from a real data value (a gauge percent) instead of letting it free-run off its
+	own elapsed-time clock -- two flipbooks meant to read as "the same percent" would otherwise
+	drift out of phase. iFrame is clamped to the slot's real frame count. No-op if the slot
+	doesn't exist or has no animation frames. */
+	void Set_Animation_Frame(const string& strId, int32_t iFrame);
 
 	f32_t Get_ResolutionWidth() const { return m_fResolutionWidth; }
 	f32_t Get_ResolutionHeight() const { return m_fResolutionHeight; }

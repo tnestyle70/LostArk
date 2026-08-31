@@ -335,3 +335,40 @@ void Client::CUILayoutRuntime::Update(f32_t fTimeDelta)
 		Slot.pSprite->Set_Texture(m_pTextureCache->Get_Or_Load(Slot.AnimationFramePaths[iFrame]));
 	}
 }
+
+void Client::CUILayoutRuntime::Restart_Animation(const string& strId)
+{
+	for (RUNTIME_SLOT& Slot : m_Slots)
+	{
+		if (Slot.strId != strId || Slot.AnimationFramePaths.empty())
+			continue;
+		Slot.fAnimationElapsed = 0.f;
+		Slot.iAnimationFrame = 0;
+		if (nullptr != Slot.pSprite)
+		{
+			Slot.pSprite->Set_Texture(
+				m_pTextureCache->Get_Or_Load(Slot.AnimationFramePaths[0]));
+		}
+		return;
+	}
+}
+
+void Client::CUILayoutRuntime::Set_Animation_Frame(const string& strId, int32_t iFrame)
+{
+	for (RUNTIME_SLOT& Slot : m_Slots)
+	{
+		if (Slot.strId != strId || Slot.AnimationFramePaths.empty())
+			continue;
+		const int32_t iFrameCount = static_cast<int32_t>(Slot.AnimationFramePaths.size());
+		const int32_t iClamped = (std::max)(0, (std::min)(iFrame, iFrameCount - 1));
+		Slot.fAnimationElapsed = (Slot.fAnimationFPS > 0.f) ?
+			static_cast<f32_t>(iClamped) / Slot.fAnimationFPS : 0.f;
+		if (iClamped != Slot.iAnimationFrame && nullptr != Slot.pSprite)
+		{
+			Slot.iAnimationFrame = iClamped;
+			Slot.pSprite->Set_Texture(
+				m_pTextureCache->Get_Or_Load(Slot.AnimationFramePaths[iClamped]));
+		}
+		return;
+	}
+}
