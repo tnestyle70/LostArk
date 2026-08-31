@@ -281,6 +281,7 @@ try {
             '-m',
             'unittest',
             'Tools.EffectPipeline.test_dimensionmaster_2050230_mirror_particle_tool_canary',
+            'Tools.EffectPipeline.test_dimensionmaster_2050230_single_glass_product_canary',
             'Tools.EffectPipeline.test_dimensionmaster_2050230_glass_water_visual_canary'
         )
 

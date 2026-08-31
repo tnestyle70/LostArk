@@ -24,12 +24,14 @@ EVENT_PATH = (
 CATALOG_PATH = REPOSITORY_ROOT / "Data" / "Effects" / "EffectCatalog.json"
 WATER_ID = "effect.dimensionmaster.skill.2050230.water-burst"
 WATER_PATH = AUTHORED_ROOT / f"{WATER_ID}.effect.json"
+SINGLE_GLASS_ID = "effect.dimensionmaster.skill.2050230.single-glass-canary"
 CHRONORECOIL = "pc_sp_m_00_sk_sk_chronorecoil"
 EXPECTED_CUES = [
     (0, "effect.dimensionmaster.skill.2050230.unified"),
     (450, "effect.dimensionmaster.skill.2050120.clip3.unified"),
     (590, "effect.dimensionmaster.skill.2050120.clip2.unified"),
     (700, WATER_ID),
+    (700, SINGLE_GLASS_ID),
 ]
 ORIGINAL_RAW_SHA256 = {
     "effect.dimensionmaster.skill.2050230.unified.effect.json": (

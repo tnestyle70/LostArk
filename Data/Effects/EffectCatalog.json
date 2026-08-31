@@ -173,6 +173,11 @@
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050230.water-burst.effect.json"
     },
     {
+      "effectAssetId": "effect.dimensionmaster.skill.2050230.single-glass-canary",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050230.single-glass-canary.effect.json"
+    },
+    {
       "effectAssetId": "effect.dimensionmaster.skill.2050240.clip1.unified",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050240.clip1.unified.effect.json"

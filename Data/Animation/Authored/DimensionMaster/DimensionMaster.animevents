@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 6 "DimensionMaster" 1551
+LOSTARK_ANIM_EVENTS 6 "DimensionMaster" 1552
 "pc_sp_m_00_sk_att_battle_1_01" EFFECT startms=0 payload="FX_O_W_01.Par_O_Test_01_01" src=orig
 "pc_sp_m_00_sk_att_battle_1_01" EFFECT startms=0 payload="FX_O_W_01.Par_O_Test_02_01" src=orig
 "pc_sp_m_00_sk_att_battle_1_01" SOUND startms=29 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Att_Battle1_1" src=orig
@@ -1527,6 +1527,7 @@ LOSTARK_ANIM_EVENTS 6 "DimensionMaster" 1551
 "pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=450 payload="effect.dimensionmaster.skill.2050120.clip3.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=590 payload="effect.dimensionmaster.skill.2050120.clip2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=700 payload="effect.dimensionmaster.skill.2050230.water-burst" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=700 payload="effect.dimensionmaster.skill.2050230.single-glass-canary" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "pc_sp_m_00_sk_sk_dimensionalleap_02" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050120.clip2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050120.clip3.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050500.unified" effectref=asset anchor="skill_target" follow=snapshot stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
