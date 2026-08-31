@@ -2,9 +2,13 @@
 
 기준일: 2026-08-31
 
-작업 브랜치: `DimensionMaster-Mirror-Particle`
+최근 정본 동기화: 2026-09-01
 
-격리 작업 트리: `C:\Users\user\Desktop\CodexWorkTree\LostArk-DimensionMaster-Mirror-Particle`
+초기 G1 구현 브랜치: `DimensionMaster-Mirror-Particle`
+
+현재 이어가기 브랜치: `codex/dimensionmaster-f-glass-render-benchmark`
+
+현재 격리 작업 트리: `C:\Users\user\Desktop\CodexWorkTree\LostArk-DimensionMaster-RenderBench`
 
 계획 성격: 원본 데이터 복원이 아닌 `PROJECT_TUNED_APPROX` 프로젝트 저작 시각 실험
 
@@ -877,3 +881,220 @@ Final Water Composition PASS:
 - 사용자가 직접 육안 판정한 glass/water 후보만 F/W synchronized preview에 연결된다.
 
 실제 Product F/W 교체와 `USER_APPROVED`는 이 Visual Lab 결과를 입력으로 하는 후속 변경 단위다.
+
+## 12. 2026-09-01 렌더링 benchmark·typed graph 방향 동기화
+
+### 12.1 현재 정본 상태와 이전 결과의 정확한 의미
+
+현재 continuation은 `origin/main@8180fd2d6de6e45e6ab1a62a1d26a64fe0c301cc`에서 새로
+분기했다. dirty인 메인 checkout은 전환하지 않았고, 오래된 Fluid/Overlay/Glasshole/Mirror branch도
+merge하거나 cherry-pick하지 않았다. 그 기능은 후속 통합 commit으로 이미 main에 들어왔거나 퇴역한
+receipt를 포함하므로 현재 main이 유일한 구현 기준선이다.
+
+| 항목 | main의 현재 상태 | 여기서 증명하지 않은 것 |
+|---|---|---|
+| F glass/water canary | F/W occurrence와 700ms water burst, opcode 1003이 Product 경로에 존재 | 실제 원본과 같은 유리·물 미감 |
+| Fluid01 first pixel | 과거 typed RT0 경로와 nonzero pixel 검증 완료 | native shader/VF/MRT 전체 parity, 사용자 육안 승인 |
+| Glasshole 복원 | 일부 식·resource ABI와 Tool canary 검증 | 원본의 모든 sampler, VS/VF, pass, scene input 복원 |
+| G1 mirror | main의 `b32403ef`에 동등 반영, focused 60 tests와 Release Product 통과 | 24개 개별 shard 운동, Product F 연결, visual PASS |
+| Rendering Workbench | scene/global profile live A/B, save, publish 지원 | effect 형상 결함을 scene exposure/bloom으로 고쳐도 된다는 뜻 |
+
+G1의 `fx_m_glass_01.wmodel`은 24 disconnected island를 가진 실제 각진 mesh지만 renderer에는
+island별 transform이 없다. 즉 하나의 rigid cluster다. water opcode 1003도 6개 billboard에
+hemisphere/Fresnel을 적용한 구조라 진행 방향 head와 입자별 history tail이 없다. 이전 결과는
+"shader가 한 픽셀도 못 그린다"는 문제를 닫았고, 이제 남은 문제는 carrier·motion·scene-input·합성
+계약임을 좁혔다. 따라서 더 많은 surface scalar만 추가하는 작업은 다음 구현 단위가 아니다.
+
+### 12.2 현재 엔진에 이미 있는 기반과 benchmark gap
+
+현재 `CRenderer::Draw()`는 Shadow → NonBlend → SSAO → Light → FP16 SceneHDR/Distortion →
+ScreenPosts → Bloom → Final → UI의 고정 순서를 가진다. Effect opcode 1003/1004는 RT0 색과 RT1
+signed UV distortion을 쓰고 Scene resolve가 `SceneHDR(UV + distortion)`을 샘플한다. 이는 유용한
+화면 공간 굴절 근사지만 두께 적분, 실제 IOR 입·출사면, 내부 반사 또는 rough transmission은 아니다.
+
+`Rendering Workbench`와 `CRenderingProfileService`에는 SSAO, bloom, exposure/white/gamma, FXAA,
+directional light, shadow, fog를 typed JSON으로 parse → validate → stage → commit하는 기반이 있다.
+Effect Tool에도 opcode 1003/1004의 tint, coverage, edge, refraction, emission을 의미 이름으로 조절하는
+bounded editor가 있다. 새 도구는 이 두 경로를 버리지 않고 실험 신원과 측정을 결합해야 한다.
+
+현재 `CProfiler`의 GPU 측정은 frame begin/end timestamp 한 쌍과 whole-frame pipeline statistics다.
+CPU에는 effect spawn/playback/simulation/render scope가 있지만 GPU에는 SceneHDR, Distortion, Bloom,
+Final 또는 특정 candidate별 시간이 없다. capture JSON도 고정 camera/seed/profile/revision, warm-up,
+sample window, percentile, baseline/candidate pair를 소유하지 않는다. 이 상태에서 숫자를 저장해도 다음
+실행과 같은 실험인지 증명할 수 없으므로 먼저 benchmark contract를 닫는다.
+
+### 12.3 설치된 UE5 소스에서 가져올 원리
+
+로컬 비교 정본은 `C:\Users\user\Desktop\UnrealEngine\UnrealEngine`의
+`5.7.4-release@260bb2e1c5610b31c63a36206eedd289409c5f11`이다. `Engine/Source`, `Engine/Shaders`,
+`Engine/Plugins`가 있는 전체 source checkout이지만 현재 `UnrealEditor.exe`, `UnrealInsights.exe`,
+`ShaderCompileWorker.exe`는 없다. 아래 근거는 실제 5.7.4 source 구조 감사이며 UE 실행 capture나
+성능 실측이라고 기록하지 않는다.
+
+아래는 UE 기능을 그대로 이식하자는 뜻이 아니라 구조적 원리를 현재 D3D11 엔진에 축소 적용한다는
+뜻이다.
+
+1. Material Graph는 runtime node interpreter가 아니다.
+   `UMaterialGraph`가 graph node와 `UMaterialExpression` 연결을 동기화하고, 각 expression은
+   `FMaterialCompiler`를 통해 material property를 HLSL로 번역한다. `FHLSLMaterialTranslator`가
+   BaseColor, Normal, Opacity, Refraction, WorldPositionOffset 등 고정 output을 만들고 shader map을
+   compile/cache한다. 편집 그래프와 제품 실행 shader가 분리돼 있다.
+2. Niagara Graph도 매 frame 임의 노드를 해석하지 않는다.
+   `UNiagaraGraph`는 reachable traversal, compilation copy, compile hash와 cached compile ID를 만들고
+   CPU VectorVM 또는 GPU HLSL 프로그램으로 변환한다. emitter/system/renderer와 parameter store가
+   typed 경계를 이룬다.
+3. UE Render Graph는 사용자가 effect마다 pass 순서를 임의로 바꾸는 Blueprint가 아니다.
+   `FRDGBuilder::AddPass`가 resource dependency를 가진 고정 pass DAG를 구성하고 `RDG_EVENT_SCOPE`와
+   `RDG_GPU_STAT_SCOPE`가 pass 단위 GPU 관측을 붙인다. realtime GPU profiler는 event별 paired
+   absolute timestamp query를 지연 수집한다.
+4. Niagara performance baseline은 한 프레임 FPS가 아니라 동일 system의 GT/RT per-instance
+   average/max를 누적하고 baseline ratio로 비교한다. 기본 source도 240-frame test window를 가지며,
+   LostArk 쪽은 이를 fixed scenario와 p50/p95/p99까지 확장해야 한다.
+5. UE의 distortion 경로도 material expression 하나로 끝나지 않는다.
+   translucent distortion mesh pass가 offset을 accumulate하고, SceneColor/Depth copy와 별도
+   apply/merge pass가 결과를 합성한다. rough refraction은 variance/coverage와 closest depth까지 별도
+   target으로 운반한다. 즉 유리 quality는 node 수가 아니라 material output과 renderer pass 사이 ABI가
+   함께 닫혀야 한다.
+
+Blueprint의 직접 대응물은 이 작업의 핵심이 아니다. gameplay orchestration에는 쓸 수 있지만 shader
+surface와 particle simulation의 정본은 Material/Niagara처럼 compile되는 typed graph여야 한다.
+
+### 12.4 채택할 4층 구조
+
+```text
+Benchmark case JSON
+  fixed scene/profile/camera/resolution/seed/time/warm-up/sample window
+                    |
+                    v
+Authoring-only typed graph + semantic curve editor
+  Cue/Carrier/Spawn/Motion/Lifetime/Surface/DepthFade/Distortion/Output
+                    |
+             validate + compile
+                    v
+Existing runtime ABI
+  Effect document + CEffectPlayback + registered opcode/layout/CSO + CRenderer passes
+                    |
+                    v
+Capture + comparison
+  per-pass GPU/CPU/counters/numeric invariants + user Shape/Motion/Surface/Timing vote
+```
+
+첫째, render pipeline graph는 우선 **read-only 시각화**다. Shadow나 SceneHDR의 순서를 ImGui에서
+drag해 바꾸게 하지 않는다. pass/resource/output contract가 바뀌면 C++/HLSL와 WARP/CSO closure를
+같은 변경 단위에서 수정한다.
+
+둘째, material graph는 범용 HLSL graph가 아니라 승인된 micrograph다. 첫 node 집합은
+`TextureSample`, `UVTransform`, `MaskChannel`, `Remap/Power`, `NormalCombine`, `Fresnel`,
+`AbsorptionThicknessProxy`, `EdgeCrack`, `HDRColor`, `DistortionOutput`, `OpacityOutput`으로 제한한다.
+graph JSON은 stable node ID와 pin connection만 저장하며 custom HLSL, register index, texture slot,
+Prototype tag를 저장하지 않는다. save/publish 시 normalized DAG를 기존 opcode/layout packet으로
+compile한다. 현재 registered family가 표현하지 못하는 식은 자동 생성하지 않고 개발자가 새
+opcode/evaluator/receipt/CSO를 명시적으로 추가한다.
+
+셋째, motion graph는 surface graph와 분리한다. `Spawn`, `InitialVelocity`, `Acceleration`, `Drag`,
+`QuaternionTumble`, `Size/Opacity/EmissionOverLife`, `VelocityAlignedHead`, `ImpactEvent`,
+`PerParticleHistory`처럼 `CEffectPlayback`이 실제 소유할 수 있는 module만 허용한다. 동일 step에 태어난
+입자를 구분할 monotonic `spawnSerial` 없이 G10 history ribbon을 graph node만으로 꾸미지 않는다.
+
+넷째, ImGui는 compiler와 experiment controller의 front-end다. 권장 배치는 다음과 같다.
+
+- 좌측: benchmark case, baseline/candidate, graph/module stack, compile/validation status
+- 중앙: 한 candidate만 재생하는 preview와 fixed front/yaw/pitch camera preset
+- 우측: 선택 node의 bounded semantic parameter와 curve editor
+- 하단: absolute/normalized timeline, warm-up/sample state, CPU/GPU pass chart, counters
+- 비교: 같은 seed/time/profile의 A/B 또는 ABBA 순서; 두 후보를 겹쳐 그리지 않음
+
+### 12.5 benchmark case와 측정 계약
+
+각 case는 최소 다음 신원을 소유한다.
+
+| 범주 | 저장 필드 |
+|---|---|
+| 대상 | stable case ID, Product/candidate effect ID, element/occurrence ID, opcode/program/layout revision |
+| 화면 | scene profile ID/revision/hash, camera preset, viewport size, HDR/post settings hash |
+| 시간 | fixed step, seed, prewarm policy, warm-up frame, sample frame, absolute checkpoints |
+| 기기 | adapter/vendor/device/driver, feature level, Debug/Release, shader closure revision |
+| 비교 | baseline case/hash, candidate graph hash, 반복 순서, capture timestamp |
+
+자동 성능 결과는 평균 하나로 끝내지 않는다.
+
+- CPU p50/p95/p99: playback fixed step, particle simulate, trail/history, document render, spawn/prewarm
+- GPU p50/p95/p99: Shadow, GBuffer/NonBlend, SSAO, Light, SceneHDR opaque, effect blend,
+  distortion resolve, ScreenPost, Bloom, Final
+- workload: draw/instance/vertex/index, live/spawned particle, trail vertex, upload byte,
+  pixel-shader invocation 또는 가능한 overdraw proxy
+- 안정성: dropped/disjoint query, shader/resource miss, allocation growth, NaN/Inf, rollback count
+
+자동 화질 진단은 visual PASS가 아니라 결함을 빨리 찾는 invariant다.
+
+- alpha/coverage occupancy와 full-card rejection
+- projected silhouette diameter/aspect/travel distance
+- RT1 distortion RMS/max/clamp hit ratio
+- SceneHDR luminance p50/p95/p99와 clipping ratio
+- 정해진 checkpoint 사이 temporal pop/energy discontinuity
+- scene depth 교차부의 fade/contact 폭
+
+사용자는 같은 case에서 `Shape`, `Motion`, `Surface`, `Timing`을 각각 서면 판정한다. 자동 screenshot,
+draw success, image similarity는 이 판정을 대신하지 않는다. Rendering Workbench의 global exposure나
+bloom을 바꾼 capture는 effect A/B와 같은 cohort로 비교하지 않는다.
+
+### 12.6 머신러닝의 정확한 위치
+
+지금 ML을 넣어도 빠진 carrier, per-shard transform, per-particle history, depth/scene-color input,
+transparent sort/pass topology를 생성하지 못한다. 한두 장의 reference image로 neural shader를
+맞추면 camera, tone map, background 차이를 학습해 외형을 우연히 흉내 낼 수는 있지만 deterministic
+runtime ABI와 원인 설명, 성능 예산, 재현 가능한 실패를 잃는다.
+
+ML 또는 최적화는 다음 조건이 모두 닫힌 뒤 offline 보조로만 허용한다.
+
+1. bounded semantic parameter space와 graph hash가 있다.
+2. 같은 seed/time/camera/profile의 재현 가능한 capture가 있다.
+3. 최소 수십 회의 사용자 pairwise A/B 선택이 축적된다.
+4. 성능 budget과 hard safety invariant가 후보를 먼저 거른다.
+
+이때도 첫 선택은 대규모 신경망이 아니라 Latin-hypercube/제한 sweep, Bayesian optimization 또는
+preference surrogate다. 도구는 다음 후보를 추천할 수 있지만 Product 승격이나 visual PASS를 자동으로
+결정하지 않는다.
+
+### 12.7 구현 순서와 파일 경계
+
+#### R0. benchmark foundation
+
+- `Engine/Public/Profiler.h`, `Engine/Private/Profiler.cpp`: 기존 query ring을 확장해 bounded named GPU
+  pass timestamp를 지연 resolve한다. 별도 profiler runtime을 만들지 않는다.
+- `Engine/Private/Renderer.cpp`: 고정 pass 경계에 GPU scope를 붙인다. draw 순서나 output contract는
+  바꾸지 않는다.
+- `Client/Private/ProfilerCaptureIO.cpp`: case identity, pass sample, percentile을 가진 새 versioned JSON을
+  쓰되 v1 reader/기존 capture를 정상값처럼 오독하지 않는다.
+- `Client/Private/MainApp.cpp`, 기존 Effect Tool 경계: benchmark case 선택, warm-up/sample, A/B status를
+  노출한다. 자동 Client 조작이나 자동 visual admission은 만들지 않는다.
+- 정상 case, 잘못된 version/ID/hash, query disjoint/drop, 중간 capture 실패 rollback harness를 추가한다.
+
+Engine public header가 바뀌므로 `Engine -> UpdateLib -> Shared -> Server -> Client` Product와 관련
+profiler harness, Release shader closure까지 검증한다.
+
+#### R1. 첫 시각 후보
+
+benchmark 기반선이 닫힌 뒤 surface slider를 늘리지 않고 다음 순서로 구현한다.
+
+1. glass: 사용자 G1 flat silhouette 판정 → 생존할 때만 G2 split/instanced shard bank와 조각별
+   quaternion/velocity/aspect 추가
+2. water: G8 velocity-aligned pear head → 부족하면 G9 analytic head/tail → 궤적 전환이 필요할 때만
+   `spawnSerial` 기반 G10 history ribbon
+3. 실제 교차 halo/pop가 관찰될 때만 EffectV2의 depth fade 식을 V1 registered adapter에 이식
+4. carrier/motion 생존 뒤 thickness proxy, environment response, bounded refraction과 edge/crack surface 조정
+
+#### R2. authoring-only typed graph
+
+R1에서 실제로 살아남은 module만 node로 승격한다. graph codec은 parse → validate → stage → compile을
+따르고 실패하면 현재 document/preview를 유지한다. 새 C++ 파일이 필요하면 Client 물리 폴더와
+`.vcxproj`/`.vcxproj.filters`에 함께 등록하고 codec round-trip, cycle, dangling pin, duplicate ID,
+unsupported node, compile rollback harness를 같은 변경 단위에 포함한다.
+
+#### R3. 선택적 탐색 보조
+
+R0~R2와 사용자 평가 데이터가 축적된 뒤에만 offline candidate ranking을 추가한다. 런타임 inference,
+network dependency, image-to-shader 자동 생성은 이 계획의 Product 경로에 넣지 않는다.
+
+이 순서에서 첫 코드 변경은 graph UI가 아니라 R0 benchmark foundation이다. 그래야 이후 G2/G8/G10과
+surface 후보가 "더 좋아 보였다"만 남기지 않고 같은 장면·시간·비용에서 재현 가능한 실험이 된다.
