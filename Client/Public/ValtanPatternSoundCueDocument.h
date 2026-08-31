@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 NS_BEGIN(Client)
@@ -42,6 +43,26 @@ struct VALTAN_PATTERN_SOUND_CUE final
 	server stage by a cheap numeric compare against m_iServerPatternStageIndex,
 	the same real invariant VALTAN_PATTERN_EFFECT_CUE::iStageIndex relies on. */
 	uint32_t iStageIndex = 0u;
+	/* Runtime-only immutable resolution of soundEvent through the exact
+	   CharacterSoundCatalog generation read with this cue. It is never
+	   serialized back to the typed source owner. */
+	std::vector<std::string> ResolvedAssetIds;
+
+	bool operator==(const VALTAN_PATTERN_SOUND_CUE& Other) const
+	{
+		return strBindingId == Other.strBindingId &&
+			strOccurrenceId == Other.strOccurrenceId &&
+			strPatternId == Other.strPatternId &&
+			strStageId == Other.strStageId &&
+			strActionId == Other.strActionId &&
+			strClipOccurrenceId == Other.strClipOccurrenceId &&
+			strSoundBank == Other.strSoundBank &&
+			strSoundEvent == Other.strSoundEvent &&
+			eRepeatPolicy == Other.eRepeatPolicy &&
+			iStartMs == Other.iStartMs &&
+			iStageDurationMs == Other.iStageDurationMs &&
+			iStageIndex == Other.iStageIndex;
+	}
 };
 
 struct VALTAN_PATTERN_SOUND_CUE_DOCUMENT final
@@ -49,6 +70,66 @@ struct VALTAN_PATTERN_SOUND_CUE_DOCUMENT final
 	uint32_t iFormatVersion = 1u;
 	std::string strOwnerArchetypeId;
 	std::vector<VALTAN_PATTERN_SOUND_CUE> Cues;
+
+	bool operator==(
+		const VALTAN_PATTERN_SOUND_CUE_DOCUMENT&) const = default;
+};
+
+struct VALTAN_PATTERN_SOUND_CUE_ADD_ROW final
+{
+	std::string strPatternId;
+	std::string strStageId;
+	std::string strActionId;
+	std::string strClipOccurrenceId;
+	std::string strSoundBank;
+	std::string strSoundEvent;
+	VALTAN_PATTERN_SOUND_REPEAT_POLICY eRepeatPolicy =
+		VALTAN_PATTERN_SOUND_REPEAT_POLICY::ONCE;
+	uint32_t iStartMs = 0u;
+};
+
+struct VALTAN_PATTERN_SOUND_CUE_ROW_ID final
+{
+	std::string strBindingId;
+	std::string strOccurrenceId;
+
+	bool operator==(const VALTAN_PATTERN_SOUND_CUE_ROW_ID&) const = default;
+};
+
+/* Exact identity of the independent Pattern Sound source bytes consumed by a
+   CValtan presentation cache.  GameplayDataRevision does not cover this
+   source owner, so command admission must compare this receipt separately. */
+struct VALTAN_PATTERN_SOUND_SOURCE_RECEIPT final
+{
+	std::string strSha256;
+	std::uint64_t iBytes = 0u;
+
+	[[nodiscard]] bool_t Is_Valid() const;
+	bool operator==(
+		const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&) const = default;
+};
+
+/* Holds the Pattern Sound destination against write/delete replacement while
+   Complete Play, Restart, Next or Flow submits its command.  Acquire also
+   returns the exact bytes receipt of the locked file.  The Win32 state stays
+   opaque so public gameplay headers do not expose HANDLE. */
+class CValtanPatternSoundSourceReadAdmission final
+{
+public:
+	CValtanPatternSoundSourceReadAdmission() = default;
+	~CValtanPatternSoundSourceReadAdmission();
+	CValtanPatternSoundSourceReadAdmission(
+		const CValtanPatternSoundSourceReadAdmission&) = delete;
+	CValtanPatternSoundSourceReadAdmission& operator=(
+		const CValtanPatternSoundSourceReadAdmission&) = delete;
+
+	bool_t Acquire(
+		VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& OutReceipt,
+		std::string& strOutStatus);
+	[[nodiscard]] bool_t Is_Acquired() const { return nullptr != m_pState; }
+
+private:
+	void* m_pState = nullptr;
 };
 
 /* Action- and clip-occurrence-qualified boss voice/impact sound cues for
@@ -77,6 +158,68 @@ public:
 		std::string& strOutStatus);
 	static bool_t Load_Source(
 		VALTAN_PATTERN_SOUND_CUE_DOCUMENT& InOutDocument,
+		std::string& strOutStatus);
+	/* Runtime joined-load variant. The document and the exact source receipt
+	   commit together; both caller outputs are preserved on any failure. */
+	static bool_t Load_Source(
+		VALTAN_PATTERN_SOUND_CUE_DOCUMENT& InOutDocument,
+		VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& InOutReceipt,
+		std::string& strOutStatus);
+	/* Workbench owner load. Unlike the presentation-tolerant runtime Parse_Text
+	   path, every source row must still join the current encounter, animation
+	   occurrence, and Data/Sound Valtan event/asset catalog. */
+	static bool_t Load_AuthoringSource(
+		VALTAN_PATTERN_SOUND_CUE_DOCUMENT& InOutDocument,
+		std::string& strOutStatus);
+	/* Workbench CAS load. The document and exact source bytes are staged as one
+	   snapshot; neither output changes when load/validation fails. */
+	static bool_t Load_ForAuthoring(
+		VALTAN_PATTERN_SOUND_CUE_DOCUMENT& InOutDocument,
+		std::string& InOutBaselineSourceBytes,
+		std::string& strOutStatus);
+	/* Strong save admission. The caller must provide the current CModel source
+	   duration in seconds for every clip used by the current pattern binding.
+	   The complete ordered action chain is resolved through
+	   CActionPresentationTimeline before any cue may reach disk. */
+	static bool_t Validate_Joined(
+		const VALTAN_PATTERN_SOUND_CUE_DOCUMENT& Document,
+		const CEncounterPatternReference& Encounter,
+		const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& AnimationBindings,
+		const std::unordered_map<std::string, f32_t>&
+			ClipSourceDurationSecondsByName,
+		std::string& strOutStatus);
+	/* Adds one strongly joined row to a staged Workbench document. IDs are
+	   generated from the action-qualified clip occurrence plus the lowest free
+	   deterministic authoring ordinal; callers cannot supply vector indices,
+	   pointers, or arbitrary persisted IDs. Both outputs are unchanged on
+	   failure. */
+	static bool_t Add_AuthoringRow(
+		VALTAN_PATTERN_SOUND_CUE_DOCUMENT& InOutDocument,
+		const VALTAN_PATTERN_SOUND_CUE_ADD_ROW& Row,
+		const std::unordered_map<std::string, f32_t>&
+			ClipSourceDurationSecondsByName,
+		VALTAN_PATTERN_SOUND_CUE_ROW_ID& InOutCreatedRowId,
+		std::string& strOutStatus);
+	/* Removes exactly one selected stable row. A partial/mismatched
+	   bindingId+occurrenceId pair never falls back to index or first match. */
+	static bool_t Remove_AuthoringRow(
+		VALTAN_PATTERN_SOUND_CUE_DOCUMENT& InOutDocument,
+		const VALTAN_PATTERN_SOUND_CUE_ROW_ID& RowId,
+		std::string& strOutStatus);
+	/* Existing rows only expose soundBank, soundEvent, repeatPolicy, and startMs.
+	   Inventory changes must come from Add_AuthoringRow/Remove_AuthoringRow;
+	   common stable rows cannot change identity. The exact baseline returned by
+	   Load_ForAuthoring must still match before staging and immediately before
+	   atomic replacement; success advances it to the committed bytes and every
+	   failure preserves it. There is deliberately no duration-free or CAS-free
+	   save overload. An unchanged legacy row that runtime already isolates is
+	   preserved field-for-field, but editing that row subjects it to the same
+	   strong model timeline admission as every new edit. */
+	static bool_t Save_Atomic(
+		const VALTAN_PATTERN_SOUND_CUE_DOCUMENT& Document,
+		const std::unordered_map<std::string, f32_t>&
+			ClipSourceDurationSecondsByName,
+		std::string& InOutBaselineSourceBytes,
 		std::string& strOutStatus);
 };
 

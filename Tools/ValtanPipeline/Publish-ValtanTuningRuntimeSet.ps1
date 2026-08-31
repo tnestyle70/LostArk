@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('Validate', 'ValidateDraft', 'SaveAuthoring', 'SourceManifest', 'PublishCandidate', 'PublishSavedFlow')]
+    [ValidateSet('Validate', 'ValidateDraft', 'SaveAuthoring', 'CommitCanonicalDraft', 'SourceManifest', 'PublishCandidate', 'PublishSavedFlow')]
     [string]$Mode = 'Validate',
     [string]$RepositoryRoot = '',
     [string]$CandidateRoot = 'Intermediate/ValtanTuningCandidates',
@@ -73,6 +73,16 @@ switch ($Mode) {
         if (-not [string]::IsNullOrWhiteSpace($FailAt)) {
             $command += @('--fail-at', $FailAt)
         }
+    }
+    'CommitCanonicalDraft' {
+        if ([string]::IsNullOrWhiteSpace($resolvedDraftPatch)) {
+            throw 'CommitCanonicalDraft requires DraftPatchPath.'
+        }
+        $command += @(
+            'commit-canonical-draft',
+            '--authoring-root', $resolvedAuthoringRoot,
+            '--draft-patch', $resolvedDraftPatch
+        )
     }
     'SourceManifest' {
         $command += @('source-manifest', '--authoring-root', $resolvedAuthoringRoot)

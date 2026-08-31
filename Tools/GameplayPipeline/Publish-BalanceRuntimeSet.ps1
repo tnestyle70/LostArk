@@ -3,13 +3,16 @@ param(
     [ValidateSet('Validate', 'Publish')]
     [string]$Mode = 'Validate',
     [string]$OutputRoot = 'Server/Bin/DataFiles',
-    [ValidateRange(0, 6)]
+    [ValidateRange(0, 7)]
     [int]$FailureAfterPromote = 0
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 . (Join-Path $PSScriptRoot 'Publish-FileTransaction.ps1')
+$writerAdmissionModule = Join-Path $repoRoot `
+    'Tools\ValtanPipeline\ValtanCanonicalWriterAdmission.psm1'
+Import-Module $writerAdmissionModule -Force
 $gameplayPublisher = Join-Path $PSScriptRoot 'Publish-GameplayBalance.ps1'
 $worldPublisher = Join-Path $repoRoot 'Tools\WorldPipeline\Publish-WorldGameplay.ps1'
 $itemPublisher = Join-Path $PSScriptRoot 'Publish-ItemCatalog.ps1'
@@ -38,16 +41,31 @@ $stagedWorldRoot = Join-Path $stagingRoot 'World'
 $stagedItemsRoot = Join-Path $stagingRoot 'Items'
 $promotions = [Collections.Generic.List[object]]::new()
 $gameplayPublishMutex = $null
+$canonicalWriterAdmission = Enter-ValtanCanonicalWriterAdmission `
+    -RepositoryRoot $repoRoot -TimeoutSeconds 30.0
 
 try {
     [IO.Directory]::CreateDirectory($stagedGameplayRoot) | Out-Null
     [IO.Directory]::CreateDirectory($stagedWorldRoot) | Out-Null
     [IO.Directory]::CreateDirectory($stagedItemsRoot) | Out-Null
-    & $gameplayPublisher -Mode Publish -OutputRoot (Join-Path $stagingRelative 'Gameplay')
+    & $gameplayPublisher -Mode Publish `
+        -OutputRoot (Join-Path $stagingRelative 'Gameplay') `
+        -ExternalCanonicalWriterPid ([int]$canonicalWriterAdmission.OwnerPid) `
+        -ExternalCanonicalWriterNonce ([string]$canonicalWriterAdmission.OwnerNonce)
     & $worldPublisher -Mode Publish -OutputRoot (Join-Path $stagingRelative 'World')
     & $itemPublisher -Mode Publish -OutputRoot (Join-Path $stagingRelative 'Items')
 
+    $generationRoot = Join-Path $stagedGameplayRoot `
+        'ValtanPresentationGenerations'
+    $generationFiles = @(Get-ChildItem -LiteralPath $generationRoot `
+        -Filter '*.json' -File -ErrorAction SilentlyContinue)
+    if ($generationFiles.Count -ne 1) {
+        throw 'Balance runtime staged gameplay must contain exactly one Valtan presentation generation.'
+    }
+    $generationDestination = Join-Path $runtimeRoot `
+        ('Gameplay\ValtanPresentationGenerations\' + $generationFiles[0].Name)
     $targets = @(
+        @{ Staged = $generationFiles[0].FullName; Destination = $generationDestination },
         @{ Staged = Join-Path $stagedGameplayRoot 'Gameplay.bootstrap'; Destination = Join-Path $runtimeRoot 'Gameplay\Gameplay.bootstrap' },
         @{ Staged = Join-Path $stagedWorldRoot 'BERN.worldbootstrap'; Destination = Join-Path $runtimeRoot 'World\BERN.worldbootstrap' },
         @{ Staged = Join-Path $stagedWorldRoot 'VALTAN_ARENA.worldbootstrap'; Destination = Join-Path $runtimeRoot 'World\VALTAN_ARENA.worldbootstrap' },
@@ -70,7 +88,9 @@ try {
     }
 
     $promotedCount = 0
-	$gameplayDestination = [string]$promotions[0].Destination
+	$gameplayDestination = [string](@($promotions | Where-Object {
+		[IO.Path]::GetFileName([string]$_.Destination) -ceq 'Gameplay.bootstrap'
+	})[0].Destination)
 	$gameplayMutexName = Get-PublishDestinationMutexName $gameplayDestination
 	$gameplayPublishMutex = Enter-PublishDestinationMutex $gameplayMutexName
     foreach ($promotion in $promotions) {
@@ -136,4 +156,5 @@ finally {
     if ([IO.Directory]::Exists($stagingRoot)) {
         Remove-Item -LiteralPath $stagingRoot -Recurse -Force
     }
+	Exit-ValtanCanonicalWriterAdmission $canonicalWriterAdmission
 }

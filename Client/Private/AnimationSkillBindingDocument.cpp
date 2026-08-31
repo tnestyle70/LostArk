@@ -1,7 +1,9 @@
 #include "AnimationSkillBindingDocument.h"
 
+#include "ActionPresentationTimeline.h"
 #include "DataJson.h"
 #include "Effect_DocumentCodec.h"
+#include "EncounterPatternReference.h"
 #include "ProjectDataRoot.h"
 
 #include <Windows.h>
@@ -11,6 +13,7 @@
 #include <cmath>
 #include <cstdio>
 #include <fstream>
+#include <iomanip>
 #include <limits>
 #include <sstream>
 #include <unordered_set>
@@ -277,6 +280,533 @@ namespace
 		}
 		return true;
 	}
+
+	std::string Serialize_BossPatternBindings(
+		const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& document)
+	{
+		std::ostringstream output;
+		output << std::setprecision(
+			std::numeric_limits<f32_t>::max_digits10);
+		output << "{\n"
+			<< "  \"schema\": \"lostark.valtan-pattern-bindings\",\n"
+			<< "  \"formatVersion\": 3,\n"
+			<< "  \"bossArchetypeId\": \""
+			<< CDataJson::Escape(document.strBossArchetypeId) << "\",\n"
+			<< "  \"bindings\": [\n";
+		for (std::size_t bindingIndex = 0u;
+			bindingIndex < document.Bindings.size(); ++bindingIndex)
+		{
+			const BOSS_PATTERN_ANIMATION_BINDING& binding =
+				document.Bindings[bindingIndex];
+			output << "    {\n"
+				<< "      \"actionId\": \""
+				<< CDataJson::Escape(binding.strActionId) << "\",\n";
+			if (binding.bSuppressAnimation)
+				output << "      \"playbackMode\": \"NONE\",\n";
+			output << "      \"clips\": [\n";
+			for (std::size_t clipIndex = 0u;
+				clipIndex < binding.Clips.size(); ++clipIndex)
+			{
+				const BOSS_PATTERN_ANIMATION_CLIP& clip =
+					binding.Clips[clipIndex];
+				output << "        {\n"
+					<< "          \"clipOccurrenceId\": \""
+					<< CDataJson::Escape(clip.strClipOccurrenceId) << "\",\n"
+					<< "          \"clip\": \""
+					<< CDataJson::Escape(clip.strClipName) << "\",\n"
+					<< "          \"mappingBasis\": \""
+					<< CDataJson::Escape(clip.strMappingBasis) << "\",\n"
+					<< "          \"sourceStartMs\": "
+					<< clip.iSourceStartMs << ",\n"
+					<< "          \"playMs\": " << clip.iPlayMs << ",\n"
+					<< "          \"playRate\": " << clip.fPlayRate << ",\n"
+					<< "          \"loop\": "
+					<< (clip.bLoop ? "true" : "false") << "\n"
+					<< "        }"
+					<< (clipIndex + 1u < binding.Clips.size() ? "," : "")
+					<< "\n";
+			}
+			output << "      ]\n"
+				<< "    }"
+				<< (bindingIndex + 1u < document.Bindings.size() ? "," : "")
+				<< "\n";
+		}
+		output << "  ]\n}\n";
+		return output.str();
+	}
+
+	bool_t Load_BossPatternBindingsFromPath(
+		const std::filesystem::path& path,
+		const std::string_view expectedBossArchetypeId,
+		const std::vector<std::string>& availableClips,
+		BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& outDocument,
+		std::string& outStatus,
+		std::string* const pOutSourceBytes = nullptr)
+	{
+		std::ifstream input(path, std::ios::binary);
+		if (path.empty() || !input)
+		{
+			outStatus =
+				"Boss pattern binding document is missing: " + path.string();
+			return false;
+		}
+		const std::string text{
+			std::istreambuf_iterator<char>(input),
+			std::istreambuf_iterator<char>() };
+		if (input.bad())
+		{
+			outStatus =
+				"Boss pattern binding document could not be read completely: " +
+				path.string();
+			return false;
+		}
+		BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT staged;
+		if (!CValtanPatternAnimationBindingDocument::Parse_Text(
+				text, staged, outStatus) ||
+			!CValtanPatternAnimationBindingDocument::Validate(
+				staged, expectedBossArchetypeId, availableClips, outStatus))
+		{
+			return false;
+		}
+		outDocument = std::move(staged);
+		if (nullptr != pOutSourceBytes)
+			*pOutSourceBytes = text;
+		return true;
+	}
+
+	bool_t Read_BinaryText(
+		const std::filesystem::path& path,
+		std::string& outText)
+	{
+		std::ifstream input(path, std::ios::binary);
+		if (path.empty() || !input)
+			return false;
+		std::string staged{
+			std::istreambuf_iterator<char>(input),
+			std::istreambuf_iterator<char>() };
+		if (input.bad())
+			return false;
+		outText = std::move(staged);
+		return true;
+	}
+
+
+	enum class DEPENDENT_CUE_KIND : uint8_t
+	{
+		EFFECT,
+		SOUND,
+		SHAKE,
+	};
+
+	bool_t Build_BossPatternTimings(
+		const BOSS_PATTERN_ANIMATION_BINDING& binding,
+		const std::unordered_map<std::string, f32_t>&
+			clipSourceDurationSecondsByName,
+		std::vector<ACTION_PRESENTATION_CLIP_TIMING>& outTimings,
+		std::string& outStatus)
+	{
+		if (binding.bSuppressAnimation || binding.Clips.empty())
+		{
+			outStatus =
+				"Boss pattern model timing requires an active clip sequence: " +
+				binding.strActionId;
+			return false;
+		}
+		std::vector<ACTION_PRESENTATION_CLIP_TIMING> staged;
+		staged.reserve(binding.Clips.size());
+		for (const BOSS_PATTERN_ANIMATION_CLIP& clip : binding.Clips)
+		{
+			const auto duration =
+				clipSourceDurationSecondsByName.find(clip.strClipName);
+			if (clipSourceDurationSecondsByName.end() == duration ||
+				!std::isfinite(duration->second) || duration->second <= 0.f)
+			{
+				outStatus =
+					"Boss pattern animation Save is missing a current model duration: " +
+					clip.strClipName;
+				return false;
+			}
+			ACTION_PRESENTATION_CLIP_TIMING timing{
+				duration->second,
+				clip.iPlayMs,
+				clip.fPlayRate,
+				clip.bLoop,
+				static_cast<f32_t>(clip.iSourceStartMs) * 0.001f };
+			f32_t sourceDurationSeconds = 0.f;
+			f32_t wallDurationSeconds = 0.f;
+			if (!CActionPresentationTimeline::Resolve_ClipDuration(
+					timing, sourceDurationSeconds, wallDurationSeconds))
+			{
+				outStatus =
+					"Boss pattern animation Save rejected a current model source window: " +
+					clip.strClipOccurrenceId;
+				return false;
+			}
+			staged.push_back(timing);
+		}
+		outTimings = std::move(staged);
+		return true;
+	}
+
+	bool_t Is_FiniteVec3(const DATA_JSON_VALUE* const pValue)
+	{
+		return nullptr != pValue && pValue->Is_Array() &&
+			3u == pValue->Get_Array().size() &&
+			std::all_of(
+				pValue->Get_Array().begin(), pValue->Get_Array().end(),
+				[](const DATA_JSON_VALUE& Element)
+				{
+					return Element.Is_Number() &&
+						std::isfinite(Element.Get_Number());
+				});
+	}
+
+	bool_t Has_DependentCueRowShape(
+		const DATA_JSON_VALUE& row,
+		const DEPENDENT_CUE_KIND kind)
+	{
+		if (DEPENDENT_CUE_KIND::EFFECT == kind)
+		{
+			const bool_t exact = Has_ExactProperties(row,
+				{ "bindingId", "occurrenceId", "patternId", "stageId",
+				  "actionId", "clipOccurrenceId", "effectAssetId",
+				  "anchorSlotId", "followPolicy", "stopPolicy",
+				  "repeatPolicy", "sourceStartMs", "sourceEndMs",
+				  "localTransform" }) || Has_ExactProperties(row,
+				{ "bindingId", "occurrenceId", "patternId", "stageId",
+				  "actionId", "clipOccurrenceId", "effectAssetId",
+				  "anchorSlotId", "followPolicy", "stopPolicy",
+				  "repeatPolicy", "sourceStartMs", "sourceEndMs",
+				  "localTransform", "scalePolicy" });
+			const DATA_JSON_VALUE* const transform = row.Find("localTransform");
+			if (!exact || nullptr == transform ||
+				!Has_ExactProperties(
+					*transform, { "position", "rotationDegrees", "scale" }) ||
+				!Is_FiniteVec3(transform->Find("position")) ||
+				!Is_FiniteVec3(transform->Find("rotationDegrees")) ||
+				!Is_FiniteVec3(transform->Find("scale")))
+			{
+				return false;
+			}
+			const DATA_JSON_VALUE* const start = row.Find("sourceStartMs");
+			const DATA_JSON_VALUE* const end = row.Find("sourceEndMs");
+			if (nullptr == start || !start->Is_Number() ||
+				!std::isfinite(start->Get_Number()) ||
+				(nullptr == end ||
+				 (!end->Is_Null() && (!end->Is_Number() ||
+				  !std::isfinite(end->Get_Number())))))
+			{
+				return false;
+			}
+			const DATA_JSON_VALUE* const scalePolicy = row.Find("scalePolicy");
+			if (nullptr != scalePolicy)
+			{
+				if (!scalePolicy->Is_Object() ||
+					(!Has_ExactProperties(*scalePolicy, { "kind" }) &&
+					 !Has_ExactProperties(
+						 *scalePolicy, { "kind", "worldScale" })) ||
+					nullptr == Required(
+						*scalePolicy, "kind", DATA_JSON_TYPE::STRING) ||
+					(nullptr != scalePolicy->Find("worldScale") &&
+					 !Is_FiniteVec3(scalePolicy->Find("worldScale"))))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+		if (DEPENDENT_CUE_KIND::SOUND == kind)
+		{
+			return Has_ExactProperties(row,
+				{ "bindingId", "occurrenceId", "patternId", "stageId",
+				  "actionId", "clipOccurrenceId", "soundBank",
+				  "soundEvent", "repeatPolicy", "startMs" }) &&
+				nullptr != Required(row, "soundBank", DATA_JSON_TYPE::STRING) &&
+				nullptr != Required(row, "soundEvent", DATA_JSON_TYPE::STRING) &&
+				nullptr != Required(row, "repeatPolicy", DATA_JSON_TYPE::STRING) &&
+				nullptr != Required(row, "startMs", DATA_JSON_TYPE::NUMBER);
+		}
+		return Has_ExactProperties(row,
+			{ "bindingId", "occurrenceId", "patternId", "stageId",
+			  "actionId", "clipOccurrenceId", "repeatPolicy",
+			  "startMs", "shake" }) &&
+			nullptr != Required(row, "repeatPolicy", DATA_JSON_TYPE::STRING) &&
+			nullptr != Required(row, "startMs", DATA_JSON_TYPE::NUMBER) &&
+			nullptr != Required(row, "shake", DATA_JSON_TYPE::STRING);
+	}
+
+	bool_t Validate_DependentCueOwner(
+		const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& document,
+		const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& baselineDocument,
+		const std::unordered_map<std::string, f32_t>&
+			clipSourceDurationSecondsByName,
+		const std::unordered_map<std::string, uint32_t>&
+			stageDurationMsByAction,
+		const std::filesystem::path& path,
+		const std::string_view expectedSchema,
+		const uint32_t expectedVersion,
+		const std::string_view expectedBossArchetypeId,
+		const DEPENDENT_CUE_KIND kind,
+		std::string& outAdmittedSourceBytes,
+		std::string& outStatus)
+	{
+		std::string text;
+		if (!Read_BinaryText(path, text))
+		{
+			outStatus =
+				"Boss pattern animation dependency source is missing: " +
+				path.string();
+			return false;
+		}
+		DATA_JSON_VALUE root;
+		std::string parseError;
+		if (!CDataJson::Parse(text, root, parseError) ||
+			!Has_ExactProperties(
+				root, { "schema", "formatVersion", "ownerArchetypeId", "cues" }))
+		{
+			outStatus =
+				"Boss pattern animation dependency JSON is malformed: " +
+				path.string() + ": " + parseError;
+			return false;
+		}
+		const DATA_JSON_VALUE* const schema = Required(
+			root, "schema", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* const version = Required(
+			root, "formatVersion", DATA_JSON_TYPE::NUMBER);
+		const DATA_JSON_VALUE* const owner = Required(
+			root, "ownerArchetypeId", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* const cues = Required(
+			root, "cues", DATA_JSON_TYPE::ARRAY);
+		if (nullptr == schema || schema->Get_String() != expectedSchema ||
+			nullptr == version || !std::isfinite(version->Get_Number()) ||
+			version->Get_Number() != static_cast<double>(expectedVersion) ||
+			nullptr == owner || owner->Get_String() != expectedBossArchetypeId ||
+			nullptr == cues || cues->Get_Array().empty() ||
+			cues->Get_Array().size() > 100000u)
+		{
+			outStatus =
+				"Boss pattern animation dependency header is invalid: " +
+				path.string();
+			return false;
+		}
+
+		std::unordered_set<std::string> bindingIds;
+		std::unordered_set<std::string> occurrenceIds;
+		for (const DATA_JSON_VALUE& row : cues->Get_Array())
+		{
+			const DATA_JSON_VALUE* const bindingId = Required(
+				row, "bindingId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* const occurrenceId = Required(
+				row, "occurrenceId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* const actionId = Required(
+				row, "actionId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* const clipOccurrenceId = Required(
+				row, "clipOccurrenceId", DATA_JSON_TYPE::STRING);
+			if (!Has_DependentCueRowShape(row, kind) ||
+				nullptr == bindingId || !Is_StableToken(bindingId->Get_String()) ||
+				nullptr == occurrenceId ||
+				!Is_StableToken(occurrenceId->Get_String()) ||
+				nullptr == actionId || !Is_StableToken(actionId->Get_String()) ||
+				nullptr == clipOccurrenceId ||
+				(!clipOccurrenceId->Get_String().empty() &&
+				 !Is_StableToken(clipOccurrenceId->Get_String())) ||
+				!bindingIds.insert(bindingId->Get_String()).second ||
+				!occurrenceIds.insert(occurrenceId->Get_String()).second)
+			{
+				outStatus =
+					"Boss pattern animation dependency row identity/shape is invalid or duplicated: " +
+					path.string();
+				return false;
+			}
+
+			const auto binding = std::find_if(
+				document.Bindings.begin(), document.Bindings.end(),
+				[&actionId](const BOSS_PATTERN_ANIMATION_BINDING& candidate)
+				{
+					return candidate.strActionId == actionId->Get_String();
+				});
+			if (document.Bindings.end() == binding)
+			{
+				outStatus =
+					"Boss pattern animation dependency action is missing: " +
+					actionId->Get_String();
+				return false;
+			}
+			const auto baselineBinding = std::find_if(
+				baselineDocument.Bindings.begin(), baselineDocument.Bindings.end(),
+				[&actionId](const BOSS_PATTERN_ANIMATION_BINDING& candidate)
+				{
+					return candidate.strActionId == actionId->Get_String();
+				});
+			if (clipOccurrenceId->Get_String().empty())
+			{
+				if (DEPENDENT_CUE_KIND::EFFECT != kind ||
+					!binding->bSuppressAnimation)
+				{
+					outStatus =
+						"Only an Effect stage-clock row may omit clipOccurrenceId on an explicit NONE action: " +
+						binding->strActionId;
+					return false;
+				}
+				if (baselineDocument.Bindings.end() == baselineBinding ||
+					*baselineBinding != *binding)
+				{
+					const auto stageDuration =
+						stageDurationMsByAction.find(binding->strActionId);
+					const DATA_JSON_VALUE* const start =
+						row.Find("sourceStartMs");
+					if (stageDurationMsByAction.end() == stageDuration ||
+						nullptr == start || !start->Is_Number() ||
+						!std::isfinite(start->Get_Number()) ||
+						start->Get_Number() < 0.0 ||
+						start->Get_Number() >=
+							static_cast<double>(stageDuration->second))
+					{
+						outStatus =
+							"Boss pattern stage-clock Effect is outside its Encounter stage wall: " +
+							occurrenceId->Get_String();
+						return false;
+					}
+				}
+				continue;
+			}
+			const bool_t candidateJoinsOccurrence =
+				!binding->bSuppressAnimation &&
+				binding->Clips.end() != std::find_if(
+					binding->Clips.begin(), binding->Clips.end(),
+					[&clipOccurrenceId](
+						const BOSS_PATTERN_ANIMATION_CLIP& clip)
+					{
+						return clip.strClipOccurrenceId ==
+							clipOccurrenceId->Get_String();
+					});
+			const bool_t baselineJoinedOccurrence =
+				baselineDocument.Bindings.end() != baselineBinding &&
+				!baselineBinding->bSuppressAnimation &&
+				baselineBinding->Clips.end() != std::find_if(
+					baselineBinding->Clips.begin(), baselineBinding->Clips.end(),
+					[&clipOccurrenceId](
+						const BOSS_PATTERN_ANIMATION_CLIP& clip)
+					{
+						return clip.strClipOccurrenceId ==
+							clipOccurrenceId->Get_String();
+					});
+			/* A source owner can contain a pre-existing stale identity which this
+			   animation transaction does not own. Preserve that exact defect for
+			   an unrelated valid edit, but never allow an admitted join to become
+			   stale. The owner-specific publisher remains the authority that must
+			   repair the original stale row. */
+			if (!candidateJoinsOccurrence && baselineJoinedOccurrence)
+			{
+				outStatus =
+					"Boss pattern animation edit would orphan a dependent cue occurrence: " +
+					binding->strActionId + "/" +
+					clipOccurrenceId->Get_String();
+				return false;
+			}
+			if (!candidateJoinsOccurrence ||
+				(baselineDocument.Bindings.end() != baselineBinding &&
+				 *baselineBinding == *binding))
+			{
+				continue;
+			}
+
+			const auto stageDuration =
+				stageDurationMsByAction.find(binding->strActionId);
+			if (stageDurationMsByAction.end() == stageDuration)
+			{
+				outStatus =
+					"Boss pattern animation dependency has no Encounter stage duration: " +
+					binding->strActionId;
+				return false;
+			}
+			std::vector<ACTION_PRESENTATION_CLIP_TIMING> timings;
+			if (!Build_BossPatternTimings(*binding,
+					clipSourceDurationSecondsByName, timings, outStatus))
+			{
+				return false;
+			}
+			const auto clip = std::find_if(
+				binding->Clips.begin(), binding->Clips.end(),
+				[&clipOccurrenceId](
+					const BOSS_PATTERN_ANIMATION_CLIP& candidate)
+				{
+					return candidate.strClipOccurrenceId ==
+						clipOccurrenceId->Get_String();
+				});
+			const std::size_t clipIndex = static_cast<std::size_t>(
+				clip - binding->Clips.begin());
+			const DATA_JSON_VALUE* const start = row.Find(
+				DEPENDENT_CUE_KIND::EFFECT == kind ?
+					"sourceStartMs" : "startMs");
+			const DATA_JSON_VALUE* const repeatPolicy = row.Find("repeatPolicy");
+			if (nullptr == start || !start->Is_Number() ||
+				!std::isfinite(start->Get_Number()) ||
+				start->Get_Number() < 0.0 ||
+				start->Get_Number() >
+					static_cast<double>((std::numeric_limits<uint32_t>::max)()) ||
+				nullptr == repeatPolicy || !repeatPolicy->Is_String() ||
+				clipIndex >= timings.size())
+			{
+				outStatus =
+					"Boss pattern animation dependency timing fields are invalid: " +
+					occurrenceId->Get_String();
+				return false;
+			}
+			const f32_t cueSourceSeconds =
+				static_cast<f32_t>(start->Get_Number()) * 0.001f;
+			f32_t sourceDurationSeconds = 0.f;
+			f32_t wallDurationSeconds = 0.f;
+			f32_t cueStartWallSeconds = 0.f;
+			if (!CActionPresentationTimeline::Resolve_ClipDuration(
+					timings[clipIndex], sourceDurationSeconds,
+					wallDurationSeconds) ||
+				cueSourceSeconds >=
+					timings[clipIndex].fSourceStartSeconds +
+						sourceDurationSeconds ||
+				!CActionPresentationTimeline::Resolve_CueWallOffset(
+					timings, clipIndex, cueSourceSeconds, 0u,
+					cueStartWallSeconds) ||
+				cueStartWallSeconds * 1000.f >=
+					static_cast<f32_t>(stageDuration->second) ||
+				("each_loop" == repeatPolicy->Get_String() &&
+				 !timings[clipIndex].bLoop))
+			{
+				outStatus =
+					"Boss pattern animation edit would move a dependent cue outside its runtime source/stage wall: " +
+					occurrenceId->Get_String();
+				return false;
+			}
+			if (DEPENDENT_CUE_KIND::EFFECT == kind)
+			{
+				const DATA_JSON_VALUE* const end = row.Find("sourceEndMs");
+				if (nullptr != end && end->Is_Number())
+				{
+					const f32_t cueEndSourceSeconds =
+						static_cast<f32_t>(end->Get_Number()) * 0.001f;
+					f32_t cueEndWallSeconds = 0.f;
+					if (!std::isfinite(end->Get_Number()) ||
+						end->Get_Number() <= start->Get_Number() ||
+						!CActionPresentationTimeline::Resolve_CueEndWallOffset(
+							timings, clipIndex, cueEndSourceSeconds, 0u,
+							cueEndWallSeconds) ||
+						cueEndWallSeconds <= cueStartWallSeconds ||
+						(!timings[clipIndex].bLoop &&
+						 cueEndWallSeconds * 1000.f >
+							static_cast<f32_t>(stageDuration->second) + 0.01f))
+					{
+						outStatus =
+							"Boss pattern animation edit would move a dependent Effect end outside its runtime source/stage wall: " +
+							occurrenceId->Get_String();
+						return false;
+					}
+				}
+			}
+		}
+		outAdmittedSourceBytes = std::move(text);
+		return true;
+	}
+
 }
 
 std::filesystem::path Client::CAnimationSkillBindingDocument::Resolve_Path(
@@ -1017,23 +1547,50 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Load(
 	std::string& outStatus)
 {
 	const std::filesystem::path path = Resolve_Path(animationAssetId);
-	std::ifstream input(path, std::ios::binary);
-	if (path.empty() || !input)
-	{
-		outStatus = "Boss pattern binding document is missing: " + path.string();
-		return false;
-	}
-	const std::string text{
-		std::istreambuf_iterator<char>(input),
-		std::istreambuf_iterator<char>() };
-	BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT staged;
-	if (!Parse_Text(text, staged, outStatus) ||
-		!Validate(staged, expectedBossArchetypeId, availableClips, outStatus))
-	{
-		return false;
-	}
-	outDocument = std::move(staged);
-	return true;
+	return Load_BossPatternBindingsFromPath(path,
+		expectedBossArchetypeId, availableClips, outDocument, outStatus);
+}
+
+bool_t Client::CValtanPatternAnimationBindingDocument::Load_ForAuthoring(
+	const std::string_view animationAssetId,
+	const std::string_view expectedBossArchetypeId,
+	const std::vector<std::string>& availableClips,
+	BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& outDocument,
+	std::string& outBaselineSourceBytes,
+	std::string& outStatus)
+{
+	const std::filesystem::path path = Resolve_Path(animationAssetId);
+	return Load_BossPatternBindingsFromPath(
+		path, expectedBossArchetypeId, availableClips,
+		outDocument, outStatus, &outBaselineSourceBytes);
+}
+
+bool_t Client::CValtanPatternAnimationBindingDocument::Save_Atomic(
+	const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& document,
+	const std::string_view animationAssetId,
+	const std::string_view expectedBossArchetypeId,
+	const std::vector<std::string>& availableClips,
+	const std::unordered_map<std::string, f32_t>&
+		clipSourceDurationSecondsByName,
+	const std::string_view expectedBaselineSourceBytes,
+	std::string& outCommittedSourceBytes,
+	std::string& outStatus)
+{
+	/* This file is a generated Product. Keeping the legacy function as a hard
+	   rejection lets old binary/test callers fail safely while all writable
+	   rows move through Valtan.presentation.json -> immutable authoring revision
+	   -> projector. No validation or temporary write may precede this guard. */
+	(void)document;
+	(void)animationAssetId;
+	(void)expectedBossArchetypeId;
+	(void)availableClips;
+	(void)clipSourceDurationSecondsByName;
+	(void)expectedBaselineSourceBytes;
+	outCommittedSourceBytes.clear();
+	outStatus =
+		"Valtan.patternbindings.json is a read-only generated Product; edit Data/Valtan/Valtan.presentation.json through the joined authoring revision pipeline.";
+	return false;
+
 }
 
 std::filesystem::path

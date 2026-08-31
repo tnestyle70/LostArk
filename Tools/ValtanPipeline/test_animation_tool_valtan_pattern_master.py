@@ -383,7 +383,9 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             "bool_t CValtan::Apply_LocalPatternPresentationSample(",
         )
         for token in (
-            "m_PatternClipByActionId.find",
+            "m_bLocalPatternAuthoringPreview ?",
+            "m_LocalPreviewClipByActionId : m_PatternClipByActionId",
+            "Bindings.find",
             "Build_PatternTimeline(",
             "CActionPresentationTimeline::Resolve_Sample",
             "Requires_ClipOccurrenceTransition",

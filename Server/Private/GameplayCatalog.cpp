@@ -1133,6 +1133,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		TIMELINE_MAP& timelines;
 		PLAYER_MAP& players;
 		DAMAGE_MAP& damages;
+		LostArk::Shared::GameplayDataRevision& presentationGenerationId;
 		SKILL_MAP previousSkills;
 		BOSS_MAP previousBosses;
 		BOSS_PART_MAP previousBossParts;
@@ -1144,6 +1145,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		TIMELINE_MAP previousTimelines;
 		PLAYER_MAP previousPlayers;
 		DAMAGE_MAP previousDamages;
+		LostArk::Shared::GameplayDataRevision previousPresentationGenerationId{};
 		bool committed = false;
 
 		LOAD_ROLLBACK(
@@ -1157,7 +1159,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			SEQUENCE_MAP& sequenceTarget,
 			TIMELINE_MAP& timelineTarget,
 			PLAYER_MAP& playerTarget,
-			DAMAGE_MAP& damageTarget)
+			DAMAGE_MAP& damageTarget,
+			LostArk::Shared::GameplayDataRevision& presentationGenerationTarget)
 			: skills(skillTarget)
 			, bosses(bossTarget)
 			, bossParts(bossPartTarget)
@@ -1169,6 +1172,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			, timelines(timelineTarget)
 			, players(playerTarget)
 			, damages(damageTarget)
+			, presentationGenerationId(presentationGenerationTarget)
 			, previousSkills(std::move(skillTarget))
 			, previousBosses(std::move(bossTarget))
 			, previousBossParts(std::move(bossPartTarget))
@@ -1180,6 +1184,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			, previousTimelines(std::move(timelineTarget))
 			, previousPlayers(std::move(playerTarget))
 			, previousDamages(std::move(damageTarget))
+			, previousPresentationGenerationId(presentationGenerationTarget)
 		{
 		}
 
@@ -1198,6 +1203,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			timelines = std::move(previousTimelines);
 			players = std::move(previousPlayers);
 			damages = std::move(previousDamages);
+			presentationGenerationId = previousPresentationGenerationId;
 		}
 	};
 	LOAD_ROLLBACK rollback{
@@ -1205,7 +1211,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		m_IntroPatternIdByEncounter, m_BossPatternRotations,
 		m_BossPatternSequences,
 		m_ValtanTimelines, m_Players,
-		m_DamageRatePercentByProfileId };
+		m_DamageRatePercentByProfileId,
+		m_ValtanPresentationGenerationId };
 	m_Skills.clear();
 	m_Bosses.clear();
 	m_BossParts.clear();
@@ -1217,6 +1224,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	m_ValtanTimelines.clear();
 	m_Players.clear();
 	m_DamageRatePercentByProfileId.clear();
+	m_ValtanPresentationGenerationId = {};
 
 	std::ifstream bootstrapFile(path, std::ios::binary);
 	if (!bootstrapFile)
@@ -1279,7 +1287,19 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		}
 		StripCarriageReturn(line);
 		const std::vector<std::string_view> fields = SplitTabs(line);
-		if (!fields.empty() && "DAMAGE" == fields[0])
+		if (!fields.empty() && "PATTERNPRESENTATIONGENERATION" == fields[0])
+		{
+			if (3u != fields.size() || "ENCOUNTER_VALTAN" != fields[1] ||
+				m_ValtanPresentationGenerationId.Is_Valid() ||
+				!LostArk::Shared::Try_Parse_GameplayDataRevision(
+					fields[2], m_ValtanPresentationGenerationId))
+			{
+				m_strStatus =
+					"Valtan presentation generation row is invalid or duplicated";
+				return false;
+			}
+		}
+		else if (!fields.empty() && "DAMAGE" == fields[0])
 		{
 			std::uint32_t ratePercent = 0;
 			if (3u != fields.size() || !IsStableId(fields[1]) ||
@@ -1500,6 +1520,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				{ return candidate.strPatternId == fields[2]; });
 			if (encounter->second.end() == pattern ||
 				stageIndex >= pattern->Stages.size() ||
+				BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH ==
+					pattern->Stages[stageIndex].Motion.eKind ||
 				!pattern->Stages[stageIndex].Motion.RootMotion.empty())
 			{
 				m_strStatus = "Pattern stage root motion does not follow its stage";
@@ -3026,7 +3048,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		else if (!fields.empty() && "PATTERNSTAGEMOTION" == fields[0])
 		{
 			BOSS_PATTERN_STAGE_MOTION motion{};
-			if ((5u != fields.size() && 6u != fields.size() && 8u != fields.size()) ||
+			if ((6u != fields.size() && 8u != fields.size()) ||
 				!IsStableId(fields[1]) || !IsStableId(fields[2]) ||
 				!IsStableId(fields[3]))
 			{
@@ -3040,7 +3062,15 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			{
 				motion.eKind = BOSS_PATTERN_STAGE_MOTION_KIND::FORWARD;
 			}
-			else if (5u == fields.size() && "PORTAL_TARGET_RUSH" == fields[4])
+			else if (8u == fields.size() &&
+				"PORTAL_TARGET_RUSH" == fields[4] &&
+				ParseNumber(fields[5], motion.iRetargetDelayMs) &&
+				ParseNumber(fields[6], motion.fSpeedMps) &&
+				ParseNumber(fields[7], motion.fDistance) &&
+				std::isfinite(motion.fSpeedMps) &&
+				std::isfinite(motion.fDistance) &&
+				motion.fSpeedMps > 0.f && motion.fSpeedMps <= 1000.f &&
+				motion.fDistance > 0.f && motion.fDistance <= 1000.f)
 			{
 				motion.eKind = BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH;
 			}
@@ -3085,6 +3115,33 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				m_strStatus =
 					"Boss pattern stage motion has no stage owner or is duplicated";
 				return false;
+			}
+			if (BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH ==
+				motion.eKind)
+			{
+				const double travelEndMs =
+					static_cast<double>(motion.iRetargetDelayMs) +
+					static_cast<double>(motion.fDistance) /
+					static_cast<double>(motion.fSpeedMps) * 1000.0;
+				std::uint32_t expectedOffsetMs = motion.iRetargetDelayMs;
+				bool validOffsets = !stage->HitOffsetsMs.empty();
+				for (const std::uint32_t offsetMs : stage->HitOffsetsMs)
+				{
+					validOffsets = validOffsets &&
+						offsetMs == expectedOffsetMs &&
+						static_cast<double>(offsetMs) < travelEndMs;
+					expectedOffsetMs += 50u;
+				}
+				validOffsets = validOffsets &&
+					static_cast<double>(expectedOffsetMs) + 0.000001 >=
+						travelEndMs;
+				if (travelEndMs > static_cast<double>(stage->iDurationMs) +
+						0.000001 || !validOffsets)
+				{
+					m_strStatus =
+						"Boss portal target-rush motion exceeds its stage or has unsafe swept-hit offsets";
+					return false;
+				}
 			}
 			stage->Motion = motion;
 		}
@@ -3447,7 +3504,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		m_Bosses.empty() || m_BossParts.empty() || m_BossPatterns.empty() ||
 		m_BossCombatObjects.empty() ||
 		m_ValtanTimelines.empty() ||
-		m_DamageRatePercentByProfileId.empty())
+		m_DamageRatePercentByProfileId.empty() ||
+		!m_ValtanPresentationGenerationId.Is_Valid())
 	{
 		m_strStatus = "Gameplay bootstrap has trailing rows or missing definitions";
 		return false;
@@ -4065,15 +4123,105 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 								targetId == action.strTargetId;
 						});
 				};
-				if (hasCounterHit)
+				const auto hasBossFlagValue = [&stage](
+					const BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
+					const std::string_view targetId,
+					const std::uint32_t value)
 				{
+					return std::any_of(stage.Actions.begin(), stage.Actions.end(),
+						[trigger, targetId, value](
+							const BOSS_PATTERN_STAGE_ACTION& action)
+						{
+							return trigger == action.eTrigger &&
+								BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG ==
+									action.eKind &&
+								targetId == action.strTargetId &&
+								value == action.iValue;
+						});
+				};
+				const auto hasBossFlag = [&stage](const std::string_view targetId)
+				{
+					return std::any_of(stage.Actions.begin(), stage.Actions.end(),
+						[targetId](const BOSS_PATTERN_STAGE_ACTION& action)
+						{
+							return BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG ==
+									action.eKind && targetId == action.strTargetId;
+						});
+				};
+				const bool hasCounterableFlag = hasBossFlag("boss.flag.counterable");
+				const bool hasGroggyFlag = hasBossFlag("boss.flag.groggy");
+				if (pattern.bAuthoringMasterManaged && hasCounterHit)
+				{
+					const auto counterBranch = std::find_if(
+						stage.Branches.begin(), stage.Branches.end(),
+						[](const BOSS_PATTERN_STAGE_BRANCH& branch)
+						{
+							return BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT ==
+								branch.eOutcome;
+						});
+					const auto counterTarget = counterBranch == stage.Branches.end() ?
+						pattern.Stages.end() : std::find_if(
+							pattern.Stages.begin(), pattern.Stages.end(),
+							[&counterBranch](
+								const BOSS_PATTERN_STAGE_DEFINITION& candidate)
+							{
+								return candidate.strActionId ==
+									counterBranch->strNextActionId;
+							});
+					const auto targetHasGroggyAction =
+						[&counterTarget, &pattern](
+							const BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
+							const std::uint32_t value)
+					{
+							return counterTarget != pattern.Stages.end() &&
+								std::any_of(
+									counterTarget->Actions.begin(),
+									counterTarget->Actions.end(),
+									[trigger, value](
+										const BOSS_PATTERN_STAGE_ACTION& action)
+									{
+										return trigger == action.eTrigger &&
+											BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG ==
+												action.eKind &&
+											"boss.flag.groggy" == action.strTargetId &&
+											value == action.iValue;
+									});
+						};
+					validBranches = validBranches &&
+						BOSS_PATTERN_STAGE_KIND::WINDUP == stage.eStageKind &&
+						counterTarget != pattern.Stages.end() &&
+						BOSS_PATTERN_STAGE_KIND::GROGGY ==
+							counterTarget->eStageKind;
 					validActions = validActions &&
-						hasStageAction(BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER,
-							BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG,
-							"boss.flag.counterable") &&
-						hasStageAction(BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT,
-							BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG,
-							"boss.flag.counterable");
+						hasBossFlagValue(
+							BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER,
+							"boss.flag.counterable", 1u) &&
+						hasBossFlagValue(
+							BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT,
+							"boss.flag.counterable", 0u) &&
+						targetHasGroggyAction(
+							BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 1u) &&
+							targetHasGroggyAction(
+								BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT, 0u);
+				}
+				if (pattern.bAuthoringMasterManaged)
+				{
+					if (!hasCounterHit && hasCounterableFlag)
+						validActions = false;
+					if (BOSS_PATTERN_STAGE_KIND::GROGGY == stage.eStageKind)
+					{
+						validActions = validActions &&
+							hasBossFlagValue(
+								BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER,
+								"boss.flag.groggy", 1u) &&
+							hasBossFlagValue(
+								BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT,
+								"boss.flag.groggy", 0u);
+					}
+					else if (hasGroggyFlag)
+					{
+						validActions = false;
+					}
 				}
 				if ((stage.bHasCounterProxy && !hasCounterHit) ||
 					(BOSS_PATTERN_PART_DAMAGE_POLICY::DESTROY_FIRST_ELIGIBLE ==

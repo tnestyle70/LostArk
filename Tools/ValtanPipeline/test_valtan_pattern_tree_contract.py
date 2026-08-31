@@ -660,9 +660,14 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         self.assertIn("WorldScale.x / fScaleX", self.effect_service_cpp)
 
     def test_level_audition_reads_rotation_v4_candidates(self) -> None:
-        self.assertIn('rotation.Find("candidates")', self.valtan_level_cpp)
-        self.assertIn('candidate.Find("patternId")', self.valtan_level_cpp)
-        self.assertIn('candidate.Find("enabled")', self.valtan_level_cpp)
+        for token in (
+            'Set, "candidates", DATA_JSON_TYPE::ARRAY',
+            'Candidate, "enabled", DATA_JSON_TYPE::BOOLEAN',
+            'Candidate, "patternId"',
+        ):
+            self.assertIn(token, self.cpp)
+        for token in ('Find("candidates")', 'Find("patternId")', 'Find("enabled")'):
+            self.assertNotIn(token, self.valtan_level_cpp)
 
     def test_split_identity_action_and_wall_drift_fail_closed(self) -> None:
         mutations: list[tuple[str, dict, dict]] = []
@@ -837,11 +842,11 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             "Read_StageGameplayExtensions",
             "Validate_SplitGameplayStageExtensions",
             "split gameplay instant part destruction contract is invalid",
-            "split gameplay counterProxy contract is invalid",
+            "split gameplay counterProxy preset requires WINDUP",
             'LegacyStage.emplace("partDamagePolicy"',
             'LegacyStage.emplace("counterProxy"',
             "Product.strPartDamagePolicy == Master.strPartDamagePolicy",
-            "Equal_CounterProxy(Product.CounterProxy, Master.CounterProxy)",
+            "Equal_CounterProxy(Product.CounterProxy, ProductCounterProxy)",
             "Stage.strPartDamagePolicy = Source.strPartDamagePolicy",
             "Stage.CounterProxy = Source.CounterProxy",
             "struct VALTAN_COUNTER_PROXY_VIEW final",

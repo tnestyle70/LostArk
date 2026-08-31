@@ -33,6 +33,64 @@ namespace Client
 	class CNpc;
 	class CValtan;
 	class CDeployPropRuntime;
+	struct VALTAN_PATTERN_SOUND_SOURCE_RECEIPT;
+
+	/* Pure fail-closed admission state used by the native authoring harness and
+	   the replicated primary Valtan consumer. Source saves may succeed while a
+	   live presentation reload fails; that failure must remain visible and keep
+	   Complete Play closed until the same authoritative consumer admits a later
+	   reload (or the world is reset). */
+	class CPrimaryValtanPresentationFreshnessGate final
+	{
+	public:
+		void Admit(
+			const LostArk::Shared::GameplayDataRevision& Revision,
+			const std::string_view strStatus = {})
+		{
+			if (!Revision.Is_Valid())
+			{
+				Reject(
+					"Authoritative primary Valtan presentation admission supplied no immutable revision.");
+				return;
+			}
+			m_isFresh = true;
+			m_Revision = Revision;
+			m_strStatus.assign(strStatus);
+		}
+
+		void Reject(const std::string_view strDiagnostic)
+		{
+			m_isFresh = false;
+			m_Revision = {};
+			m_strStatus = strDiagnostic.empty() ?
+				"Authoritative primary Valtan presentation reload failed." :
+				std::string(strDiagnostic);
+		}
+
+		bool_t Can_Play(
+			const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+			std::string& strOutStatus) const
+		{
+			if (ExpectedRevision.Is_Valid() && m_isFresh &&
+				m_Revision == ExpectedRevision)
+			{
+				strOutStatus.clear();
+				return true;
+			}
+			strOutStatus = !ExpectedRevision.Is_Valid() ?
+				"Complete Play is blocked because no valid Server-active presentation revision was supplied." :
+				(m_isFresh ?
+					"Complete Play is blocked because the authoritative primary Valtan presentation cache belongs to a different immutable revision." :
+					"Complete Play is blocked because the authoritative primary Valtan presentation cache is stale. " +
+						m_strStatus);
+			return false;
+		}
+
+	private:
+		bool_t m_isFresh = false;
+		LostArk::Shared::GameplayDataRevision m_Revision{};
+		std::string m_strStatus;
+	};
 
 	// Level presentation이 읽는 복제 player snapshot이다. NetEntityId가 identity이며
 	// nickname과 class는 Server spawn record에서만 오고 Character 수명은 소유하지 않는다.
@@ -336,6 +394,22 @@ namespace Client
 		void Reset();
 		bool Has_WorldEntity(std::string_view archetypeId) const;
 		bool Try_Consume_PresentationFailure(std::string& outStatus);
+		/* Authoring reloads target the primary replicated Server-authoritative
+		   Valtan, never only the Development preview returned by
+		   CAnimationTargetService. A rejected active reload latches the freshness
+		   gate consumed by Boss Tool Complete Play. */
+		bool_t Reload_PrimaryValtanPresentationAuthoring(
+			const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+			std::string& strOutStatus);
+		bool_t Reload_PrimaryValtanCombatObjectSoundCues(
+			const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+			std::string& strOutStatus);
+		bool_t Can_Play_PrimaryValtanPresentation(
+			const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+			std::string& strOutStatus) const;
+		bool_t Get_PrimaryValtanPatternSoundSourceReceipt(
+			VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& OutReceipt,
+			std::string& strOutStatus) const;
 		bool Try_Consume_WorldDestructionLiveEvent(
 			LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE& outEvent);
 #ifdef _DEBUG
@@ -437,6 +511,11 @@ namespace Client
 			const LostArk::Shared::S2C_WORLD_ENTITY_SPAWNED& spawned);
 		bool Apply_WorldEntityDespawn(
 			const LostArk::Shared::S2C_WORLD_ENTITY_DESPAWNED& despawned);
+		bool_t Resolve_PrimaryValtan(
+			std::string_view strArchetypeId,
+			LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId,
+			std::shared_ptr<CValtan>& pOutValtan,
+			std::string& strOutStatus) const;
 		void Remove_DependentBossPresentations(
 			LostArk::Shared::NET_ENTITY_ID ownerBossNetEntityId);
 		bool Apply_CombatObjectSpawn(
@@ -598,12 +677,32 @@ namespace Client
 			std::size_t iActionClipIndex = 0u;
 			ESTHER_ACTION_SOUND_PLAYBACK_STATE EstherActionSoundState;
 			f32_t fCollisionRadius = 0.f;
+			/* The Server occurrence pin and the R -> M generation admitted by the
+			   concrete CValtan are tracked independently.  A failed exact reload
+			   isolates only this presentation and the rejected revision suppresses
+			   an unbounded retry on every subsequent snapshot. */
+			LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
+			LostArk::Shared::GameplayDataRevision AdmittedPresentationRevision{};
+			LostArk::Shared::GameplayDataRevision RejectedPresentationRevision{};
+			bool_t bPresentationIsolated = false;
 			std::weak_ptr<CNpc> pNpc;
 			std::weak_ptr<CValtan> pValtan;
 		};
+		WORLD_ENTITY_PRESENTATION* Find_ValtanPresentation(
+			const std::shared_ptr<CValtan>& pValtan);
+		bool_t Ensure_ValtanPresentationRevision(
+			WORLD_ENTITY_PRESENTATION& Presentation,
+			const std::shared_ptr<CValtan>& pValtan,
+			const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+			bool_t bIsPrimary,
+			std::string& strOutStatus);
 		std::unordered_map<
 			LostArk::Shared::NET_ENTITY_ID,
 			WORLD_ENTITY_PRESENTATION> m_WorldEntities;
+		CPrimaryValtanPresentationFreshnessGate
+			m_PrimaryValtanJoinedPresentationFreshness;
+		CPrimaryValtanPresentationFreshnessGate
+			m_PrimaryValtanCombatObjectSoundFreshness;
 		/* The existing Layer owns death tails; they are no longer network entities. */
 		std::vector<std::weak_ptr<CValtan>> m_DeathPresentations;
 	};

@@ -6,6 +6,7 @@
 #include "Network/PacketWriter.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 //이 manip -> 콘솔 출력 형식을 제어한다.
 //std::hex        // 이후 숫자를 16진수로 출력
@@ -953,6 +954,7 @@ namespace
 		source.fPositionZ = -121.75f;
 		source.fYawDegrees = 225.f;
 		source.fCollisionRadius = 3.f;
+		source.PinnedDefinitionRevision = Make_GameplayDataRevision(2u);
 
 		std::vector<std::uint8_t> payload;
 		testRunner.Require(
@@ -973,7 +975,9 @@ namespace
 			decoded.strActionId == source.strActionId &&
 			decoded.fPositionX == source.fPositionX &&
 			decoded.fYawDegrees == source.fYawDegrees &&
-			decoded.fCollisionRadius == source.fCollisionRadius,
+			decoded.fCollisionRadius == source.fCollisionRadius &&
+			decoded.PinnedDefinitionRevision ==
+				source.PinnedDefinitionRevision,
 			"World Entity Spawned Round Trip");
 		testRunner.Require(
 			0 == reader.Get_RemainingSize(),
@@ -1021,6 +1025,13 @@ namespace
 		testRunner.Require(
 			!Write_Message(npcRadiusWriter, invalid),
 			"Reject NPC With Combat Collision Radius");
+		invalid = source;
+		invalid.PinnedDefinitionRevision = {};
+		CPacketWriter zeroRevisionWriter;
+		testRunner.Require(
+			!Write_Message(zeroRevisionWriter, invalid) &&
+			zeroRevisionWriter.Get_Buffer().empty(),
+			"Reject World Spawn Without Exact Definition Revision");
 
 		S2C_WORLD_ENTITY_SPAWNED ghost = source;
 		ghost.iNetEntityId = 901u;
@@ -1037,6 +1048,8 @@ namespace
 			decodedGhost.iNetEntityId == ghost.iNetEntityId &&
 			decodedGhost.iOwnerBossNetEntityId == source.iNetEntityId &&
 			decodedGhost.strActionId == ghost.strActionId &&
+			decodedGhost.PinnedDefinitionRevision ==
+				source.PinnedDefinitionRevision &&
 			0u == ghostReader.Get_RemainingSize(),
 			"Dependent Boss Spawn Preserves Owner And Late Join Action");
 		testRunner.Require(Is_Valid_WorldEntitySpawnOwner(source, nullptr) &&
@@ -1059,6 +1072,10 @@ namespace
 		wrongOwner.iNetEntityId = 800u;
 		testRunner.Require(!Is_Valid_WorldEntitySpawnOwner(ghost, &wrongOwner),
 			"Dependent Boss Cannot Rebind An Unknown Owner");
+		wrongOwner = source;
+		wrongOwner.PinnedDefinitionRevision = Make_GameplayDataRevision(9u);
+		testRunner.Require(!Is_Valid_WorldEntitySpawnOwner(ghost, &wrongOwner),
+			"Dependent Boss Cannot Cross Its Owner Definition Revision");
 		S2C_WORLD_ENTITY_SPAWNED noEncounterGhost = ghost;
 		noEncounterGhost.strEncounterId.clear();
 		testRunner.Require(!Is_Valid_WorldEntitySpawnOwner(noEncounterGhost, &source),
@@ -1078,7 +1095,13 @@ namespace
 			std::vector<std::uint8_t> invalidWire = ghostPayload;
 			invalidWire[8u] = static_cast<std::uint8_t>(kind);
 			if (WORLD_ENTITY_KIND::NPC == kind)
-				std::fill(invalidWire.end() - sizeof(float), invalidWire.end(), 0u);
+			{
+				const auto radiusEnd = invalidWire.end() -
+					static_cast<std::ptrdiff_t>(GAMEPLAY_DATA_REVISION_BYTES);
+				std::fill(
+					radiusEnd - static_cast<std::ptrdiff_t>(sizeof(float)),
+					radiusEnd, 0u);
+			}
 			CPacketReader dependentReader{ invalidWire };
 			S2C_WORLD_ENTITY_SPAWNED preserved = source;
 			testRunner.Require(!Read_Message(dependentReader, preserved) &&
@@ -1108,14 +1131,26 @@ namespace
 		S2C_WORLD_ENTITY_SPAWNED oldSpawnOutput = source;
 		testRunner.Require(!Read_Message(oldSpawnReader, oldSpawnOutput) &&
 			oldSpawnOutput.iNetEntityId == source.iNetEntityId,
-			"Protocol 43 Spawn Without Owner Cannot Be Read As Protocol 44");
+			"Legacy Spawn Without Owner Cannot Be Read By Current Protocol");
 		C2S_ENTER_WORLD oldOwnerPeer{};
-		oldOwnerPeer.iProtocolVersion = 43u;
+		oldOwnerPeer.iProtocolVersion = NETWORK_PROTOCOL_VERSION - 1u;
 		oldOwnerPeer.eWorldId = WORLD_ID::VALTAN_ARENA;
 		oldOwnerPeer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 		CPacketWriter oldOwnerPeerWriter;
 		testRunner.Require(!Write_Message(oldOwnerPeerWriter, oldOwnerPeer),
-			"Protocol 44 Rejects Peer Without Dependent Boss Owner Contract");
+			"Current Protocol Rejects Previous World Spawn Contract Peer");
+
+		std::vector<std::uint8_t> missingRevision = ghostPayload;
+		missingRevision.resize(
+			missingRevision.size() - GAMEPLAY_DATA_REVISION_BYTES);
+		CPacketReader missingRevisionReader{ missingRevision };
+		S2C_WORLD_ENTITY_SPAWNED missingRevisionOutput = source;
+		testRunner.Require(
+			!Read_Message(missingRevisionReader, missingRevisionOutput) &&
+			missingRevisionOutput.iNetEntityId == source.iNetEntityId &&
+			missingRevisionOutput.PinnedDefinitionRevision ==
+				source.PinnedDefinitionRevision,
+			"Reject Legacy World Spawn Without Revision And Preserve Destination");
 
 		payload.pop_back();
 		CPacketReader truncatedReader{ payload };
@@ -1124,7 +1159,7 @@ namespace
 		testRunner.Require(
 			!Read_Message(truncatedReader, unchanged) &&
 			unchanged.iNetEntityId == 77u,
-			"Reject Truncated World Entity Collision Radius Without Mutation");
+			"Reject Truncated World Entity Revision Without Mutation");
 	}
 
 	void Test_WorldEntityDespawnedRoundTrip(TEST_RUNNER& testRunner)
@@ -2251,8 +2286,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(47u == NETWORK_PROTOCOL_VERSION,
-				"Kakul Authoring Commands And Existing Contracts Use Protocol 47");
+			testRunner.Require(50u == NETWORK_PROTOCOL_VERSION,
+				"World Spawn Revision Pin And Existing Contracts Use Protocol 50");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -4067,6 +4102,8 @@ namespace
 			stablePlay.strBossPlacementId =
 				"boss.valtan.character-select.lazy";
 			stablePlay.strPatternId = "VALTAN_DASH_CHARGE";
+			stablePlay.ExpectedDefinitionRevision =
+				Make_GameplayDataRevision(31u);
 			CPacketWriter stableWriter;
 			C2S_VALTAN_AUDITION_REQUEST decodedStable{};
 			const bool wroteStable = Write_Message(stableWriter, stablePlay);
@@ -4079,7 +4116,9 @@ namespace
 				0u == decodedStable.iTargetHealthBar &&
 				decodedStable.strBossPlacementId ==
 					stablePlay.strBossPlacementId &&
-				decodedStable.strPatternId == stablePlay.strPatternId,
+				decodedStable.strPatternId == stablePlay.strPatternId &&
+				decodedStable.ExpectedDefinitionRevision ==
+					stablePlay.ExpectedDefinitionRevision,
 				"Valtan Stable-ID Pattern Audition Request Round Trip");
 
 			const auto requestDestinationUnchanged = [](
@@ -4119,7 +4158,10 @@ namespace
 
 			std::vector<std::uint8_t> truncatedSecond =
 				stableWriter.Get_Buffer();
-			truncatedSecond.pop_back();
+			truncatedSecond.resize(
+				requestFixedBytes + sizeof(std::uint16_t) +
+					stablePlay.strBossPlacementId.size() +
+					sizeof(std::uint16_t) + stablePlay.strPatternId.size() - 1u);
 			CPacketReader truncatedSecondReader{ truncatedSecond };
 			C2S_VALTAN_AUDITION_REQUEST unchangedSecond =
 				makeUnchangedRequest();
@@ -4127,6 +4169,17 @@ namespace
 				!Read_Message(truncatedSecondReader, unchangedSecond) &&
 				requestDestinationUnchanged(unchangedSecond),
 				"Reject Truncated Second Stable ID Without Mutating Valtan Request");
+
+			std::vector<std::uint8_t> truncatedRevision =
+				stableWriter.Get_Buffer();
+			truncatedRevision.pop_back();
+			CPacketReader truncatedRevisionReader{ truncatedRevision };
+			C2S_VALTAN_AUDITION_REQUEST unchangedRevision =
+				makeUnchangedRequest();
+			testRunner.Require(
+				!Read_Message(truncatedRevisionReader, unchangedRevision) &&
+				requestDestinationUnchanged(unchangedRevision),
+				"Reject Truncated Expected Revision Without Mutating Valtan Request");
 
 			C2S_VALTAN_AUDITION_REQUEST barredStable = stablePlay;
 			barredStable.iTargetHealthBar = 1u;
@@ -4141,6 +4194,13 @@ namespace
 			testRunner.Require(
 				!Write_Message(missingPatternWriter, missingPattern),
 				"Reject Stable-ID Pattern Audition Without A Pattern ID");
+
+			C2S_VALTAN_AUDITION_REQUEST missingRevision = stablePlay;
+			missingRevision.ExpectedDefinitionRevision = {};
+			CPacketWriter missingRevisionWriter;
+			testRunner.Require(
+				!Write_Message(missingRevisionWriter, missingRevision),
+				"Reject Stable-ID Pattern Audition Without An Expected Active Revision");
 
 			C2S_VALTAN_AUDITION_REQUEST oversizeBoss = stablePlay;
 			oversizeBoss.strBossPlacementId.assign(
@@ -4249,6 +4309,8 @@ namespace
 			stableResult.strBossPlacementId =
 				"boss.valtan.character-select.lazy";
 			stableResult.strPatternId = "VALTAN_DASH_CHARGE";
+			stableResult.ExpectedDefinitionRevision =
+				Make_GameplayDataRevision(31u);
 			CPacketWriter stableResultWriter;
 			S2C_VALTAN_AUDITION_RESULT decodedStableResult{};
 			const bool wroteStableResult =
@@ -4267,7 +4329,9 @@ namespace
 					stableResult.iCurrentHealthBar &&
 				decodedStableResult.strBossPlacementId ==
 					stableResult.strBossPlacementId &&
-				decodedStableResult.strPatternId == stableResult.strPatternId,
+				decodedStableResult.strPatternId == stableResult.strPatternId &&
+				decodedStableResult.ExpectedDefinitionRevision ==
+					stableResult.ExpectedDefinitionRevision,
 				"Valtan Stable-ID Pattern Audition Result Round Trip");
 
 			const auto resultDestinationUnchanged = [](
@@ -4313,7 +4377,10 @@ namespace
 
 			std::vector<std::uint8_t> truncatedSecond =
 				stableResultWriter.Get_Buffer();
-			truncatedSecond.pop_back();
+			truncatedSecond.resize(
+				resultFixedBytes + sizeof(std::uint16_t) +
+					stableResult.strBossPlacementId.size() +
+					sizeof(std::uint16_t) + stableResult.strPatternId.size() - 1u);
 			CPacketReader truncatedSecondReader{ truncatedSecond };
 			S2C_VALTAN_AUDITION_RESULT unchangedSecond =
 				makeUnchangedResult();
@@ -4321,6 +4388,17 @@ namespace
 				!Read_Message(truncatedSecondReader, unchangedSecond) &&
 				resultDestinationUnchanged(unchangedSecond),
 				"Reject Truncated Second Stable ID Without Mutating Valtan Result");
+
+			std::vector<std::uint8_t> truncatedRevision =
+				stableResultWriter.Get_Buffer();
+			truncatedRevision.pop_back();
+			CPacketReader truncatedRevisionReader{ truncatedRevision };
+			S2C_VALTAN_AUDITION_RESULT unchangedRevision =
+				makeUnchangedResult();
+			testRunner.Require(
+				!Read_Message(truncatedRevisionReader, unchangedRevision) &&
+				resultDestinationUnchanged(unchangedRevision),
+				"Reject Truncated Expected Revision Without Mutating Valtan Result");
 		}
 
 		{
@@ -4367,27 +4445,54 @@ namespace
 		play.eOperation = VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID;
 		play.strBossPlacementId = "b";
 		play.strPatternId = "P";
-		const std::vector<std::uint8_t> playGolden{
+		play.ExpectedDefinitionRevision = Make_GameplayDataRevision(11u);
+		std::vector<std::uint8_t> playGolden{
 			0x78u, 0x56u, 0x34u, 0x12u, 11u, 0u, 0u, 0u, 0u,
 			1u, 0u, 'b', 1u, 0u, 'P' };
+		playGolden.insert(playGolden.end(),
+			play.ExpectedDefinitionRevision.Bytes.begin(),
+			play.ExpectedDefinitionRevision.Bytes.end());
 		CPacketWriter playWriter;
 		testRunner.Require(Write_Message(playWriter, play) &&
 			playGolden == playWriter.Get_Buffer(),
-			"Next Extension Preserves PLAY_PATTERN_ID Golden Bytes");
+			"Complete Play Appends Exact Active Revision To PLAY_PATTERN_ID Bytes");
 		S2C_VALTAN_AUDITION_RESULT playResult{};
 		playResult.iRequestSequence = play.iRequestSequence;
 		playResult.eOperation = play.eOperation;
 		playResult.strBossPlacementId = play.strBossPlacementId;
 		playResult.strPatternId = play.strPatternId;
+		playResult.ExpectedDefinitionRevision =
+			play.ExpectedDefinitionRevision;
 		playResult.eResult = VALTAN_AUDITION_RESULT::QUEUED;
 		playResult.iCurrentHealthBar = 160u;
-		const std::vector<std::uint8_t> playResultGolden{
+		std::vector<std::uint8_t> playResultGolden{
 			0x78u, 0x56u, 0x34u, 0x12u, 11u, 0u, 0u, 0u, 0u,
 			1u, 160u, 0u, 0u, 0u, 1u, 0u, 'b', 1u, 0u, 'P' };
+		playResultGolden.insert(playResultGolden.end(),
+			playResult.ExpectedDefinitionRevision.Bytes.begin(),
+			playResult.ExpectedDefinitionRevision.Bytes.end());
 		CPacketWriter playResultWriter;
 		testRunner.Require(Write_Message(playResultWriter, playResult) &&
 			playResultGolden == playResultWriter.Get_Buffer(),
-			"Next Extension Preserves PLAY_PATTERN_ID Result Golden Bytes");
+			"Complete Play Result Echoes Exact Active Revision Bytes");
+		S2C_VALTAN_AUDITION_RESULT stalePlayResult = playResult;
+		stalePlayResult.eResult =
+			VALTAN_AUDITION_RESULT::REJECTED_STALE_REQUEST;
+		CPacketWriter stalePlayResultWriter;
+		const bool wroteStalePlayResult =
+			Write_Message(stalePlayResultWriter, stalePlayResult);
+		CPacketReader stalePlayResultReader{
+			stalePlayResultWriter.Get_Buffer() };
+		S2C_VALTAN_AUDITION_RESULT decodedStalePlayResult{};
+		testRunner.Require(
+			wroteStalePlayResult &&
+			Read_Message(stalePlayResultReader, decodedStalePlayResult) &&
+			0u == stalePlayResultReader.Get_RemainingSize() &&
+			VALTAN_AUDITION_RESULT::REJECTED_STALE_REQUEST ==
+				decodedStalePlayResult.eResult &&
+			decodedStalePlayResult.ExpectedDefinitionRevision ==
+				play.ExpectedDefinitionRevision,
+			"Complete Play Stale Revision Verdict Echoes Exact CAS Identity");
 
 		for (const auto operation : { VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID,
 			VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID,
@@ -4395,6 +4500,8 @@ namespace
 		{
 			C2S_VALTAN_AUDITION_REQUEST request = play;
 			request.eOperation = operation;
+			request.ExpectedDefinitionRevision =
+				Make_GameplayDataRevision(21u);
 			request.strBossPlacementId = "boss.valtan.center";
 			request.strPatternId = "VALTAN_FIST_IN_OUT";
 			const bool live = VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID == operation;
@@ -4409,7 +4516,9 @@ namespace
 			CPacketWriter roundTrip;
 			testRunner.Require(wrote && Read_Message(reader, decoded) &&
 				0u == reader.Get_RemainingSize() && Write_Message(roundTrip, decoded) &&
-				roundTrip.Get_Buffer() == writer.Get_Buffer(),
+				roundTrip.Get_Buffer() == writer.Get_Buffer() &&
+				decoded.ExpectedDefinitionRevision ==
+					request.ExpectedDefinitionRevision,
 				"Next Queue/Clear Round Trip Full Predecessor And CAS Identity");
 
 			bool rejectedEveryTruncation = true;
@@ -4431,6 +4540,8 @@ namespace
 
 			S2C_VALTAN_AUDITION_RESULT result = playResult;
 			result.eOperation = operation;
+			result.ExpectedDefinitionRevision =
+				request.ExpectedDefinitionRevision;
 			result.strBossPlacementId = request.strBossPlacementId;
 			result.strPatternId = request.strPatternId;
 			result.iPredecessorRoomAuditionEpoch = request.iPredecessorRoomAuditionEpoch;
@@ -4506,6 +4617,9 @@ namespace
 			invalid = request;
 			invalid.eOperation = VALTAN_AUDITION_OPERATION::END;
 			malformed.push_back(invalid);
+			invalid = request;
+			invalid.ExpectedDefinitionRevision = {};
+			malformed.push_back(invalid);
 			if (VALTAN_AUDITION_OPERATION::CLEAR_NEXT_PATTERN_ID == operation)
 			{
 				invalid = request;
@@ -4546,6 +4660,7 @@ namespace
 				{
 					hidden.strBossPlacementId.clear();
 					hidden.strPatternId.clear();
+					hidden.ExpectedDefinitionRevision = {};
 				}
 				hidden.iPredecessorRoomAuditionEpoch = 0u == field ? 1u : 0u;
 				hidden.iPredecessorPatternSequence = 1u == field ? 1u : 0u;
@@ -4577,6 +4692,250 @@ namespace
 			CPacketWriter invalid;
 			testRunner.Require(!Write_Message(invalid, lifecycle),
 				"Reject Next Lifecycle Without Expected Pattern Sequence");
+		}
+	}
+
+	void Test_ValtanRestartPatternProtocol(TEST_RUNNER& testRunner)
+	{
+		C2S_VALTAN_AUDITION_REQUEST request{};
+		request.iRequestSequence = 0x10203040u;
+		request.eOperation =
+			VALTAN_AUDITION_OPERATION::RESTART_PATTERN_ID;
+		request.strBossPlacementId = "boss.valtan.center";
+		request.strPatternId = "VALTAN_DASH_CHARGE";
+		request.iPredecessorRoomAuditionEpoch = 17u;
+		request.iPredecessorPatternSequence = 29u;
+		request.ExpectedDefinitionRevision =
+			Make_GameplayDataRevision(101u);
+
+		CPacketWriter requestWriter;
+		const bool wroteRequest = Write_Message(requestWriter, request);
+		CPacketReader requestReader{ requestWriter.Get_Buffer() };
+		C2S_VALTAN_AUDITION_REQUEST decodedRequest{};
+		testRunner.Require(
+			wroteRequest && Read_Message(requestReader, decodedRequest) &&
+			0u == requestReader.Get_RemainingSize() &&
+			request.iRequestSequence == decodedRequest.iRequestSequence &&
+			request.eOperation == decodedRequest.eOperation &&
+			request.strBossPlacementId == decodedRequest.strBossPlacementId &&
+			request.strPatternId == decodedRequest.strPatternId &&
+			request.iPredecessorRoomAuditionEpoch ==
+				decodedRequest.iPredecessorRoomAuditionEpoch &&
+			request.iPredecessorPatternSequence ==
+				decodedRequest.iPredecessorPatternSequence &&
+			0u == decodedRequest.iExpectedNextRequestSequence &&
+			request.ExpectedDefinitionRevision ==
+				decodedRequest.ExpectedDefinitionRevision,
+			"Restart Pattern Request Round Trips Exact Predecessor And Revision");
+
+		bool requestTruncationIsAtomic = wroteRequest;
+		for (std::size_t length = 0u;
+			length < requestWriter.Get_Buffer().size(); ++length)
+		{
+			CPacketReader truncated{ std::span<const std::uint8_t>(
+				requestWriter.Get_Buffer().data(), length) };
+			C2S_VALTAN_AUDITION_REQUEST unchanged = request;
+			unchanged.iRequestSequence = 0x50607080u;
+			unchanged.strBossPlacementId = "boss.valtan.atomic";
+			unchanged.strPatternId = "VALTAN_ATOMIC_SENTINEL";
+			unchanged.iPredecessorRoomAuditionEpoch = 31u;
+			unchanged.iPredecessorPatternSequence = 47u;
+			unchanged.ExpectedDefinitionRevision =
+				Make_GameplayDataRevision(141u);
+			CPacketWriter before;
+			CPacketWriter after;
+			const bool wroteBefore = Write_Message(before, unchanged);
+			const bool rejected = !Read_Message(truncated, unchanged);
+			const bool wroteAfter = Write_Message(after, unchanged);
+			requestTruncationIsAtomic = requestTruncationIsAtomic &&
+				wroteBefore && rejected && wroteAfter &&
+				before.Get_Buffer() == after.Get_Buffer();
+		}
+		testRunner.Require(
+			requestTruncationIsAtomic,
+			"Every Truncated Restart Request Preserves Its Destination");
+
+		for (std::size_t malformedField = 0u;
+			malformedField < 4u; ++malformedField)
+		{
+			C2S_VALTAN_AUDITION_REQUEST malformed = request;
+			switch (malformedField)
+			{
+			case 0u:
+				malformed.iPredecessorRoomAuditionEpoch = 0u;
+				break;
+			case 1u:
+				malformed.iPredecessorPatternSequence = 0u;
+				break;
+			case 2u:
+				malformed.ExpectedDefinitionRevision = {};
+				break;
+			default:
+				malformed.iExpectedNextRequestSequence = 1u;
+				break;
+			}
+			CPacketWriter malformedWriter;
+			testRunner.Require(
+				!Write_Message(malformedWriter, malformed) &&
+				malformedWriter.Get_Buffer().empty(),
+				"Reject Restart Without Exact Epoch Sequence Revision Or With Next Token");
+		}
+
+		for (std::size_t hiddenField = 0u; hiddenField < 3u; ++hiddenField)
+		{
+			C2S_VALTAN_AUDITION_REQUEST hidden = request;
+			hidden.eOperation =
+				VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID;
+			hidden.iPredecessorRoomAuditionEpoch = 0u;
+			hidden.iPredecessorPatternSequence = 0u;
+			hidden.iExpectedNextRequestSequence = 0u;
+			hidden.ExpectedDefinitionRevision =
+				request.ExpectedDefinitionRevision;
+			switch (hiddenField)
+			{
+			case 0u:
+				hidden.iPredecessorRoomAuditionEpoch = 17u;
+				break;
+			case 1u:
+				hidden.iPredecessorPatternSequence = 29u;
+				break;
+			case 2u:
+				hidden.iExpectedNextRequestSequence = 41u;
+				break;
+			}
+			CPacketWriter hiddenWriter;
+			testRunner.Require(
+				!Write_Message(hiddenWriter, hidden) &&
+				hiddenWriter.Get_Buffer().empty(),
+				"Reject Hidden Restart Predecessor Identity On PLAY_PATTERN_ID");
+		}
+
+		C2S_VALTAN_AUDITION_REQUEST missingPlayRevision = request;
+		missingPlayRevision.eOperation =
+			VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID;
+		missingPlayRevision.iPredecessorRoomAuditionEpoch = 0u;
+		missingPlayRevision.iPredecessorPatternSequence = 0u;
+		missingPlayRevision.iExpectedNextRequestSequence = 0u;
+		missingPlayRevision.ExpectedDefinitionRevision = {};
+		CPacketWriter missingPlayRevisionWriter;
+		testRunner.Require(
+			!Write_Message(missingPlayRevisionWriter, missingPlayRevision) &&
+			missingPlayRevisionWriter.Get_Buffer().empty(),
+			"Reject PLAY_PATTERN_ID Without Exact Active Revision");
+
+		for (const auto verdict : {
+			VALTAN_AUDITION_RESULT::QUEUED,
+			VALTAN_AUDITION_RESULT::REJECTED_OCCURRENCE_PRESERVED,
+			VALTAN_AUDITION_RESULT::REJECTED_STALE_AUDITION })
+		{
+			S2C_VALTAN_AUDITION_RESULT result{};
+			result.iRequestSequence = request.iRequestSequence;
+			result.eOperation = request.eOperation;
+			result.eResult = verdict;
+			result.iCurrentHealthBar = 123u;
+			result.strBossPlacementId = request.strBossPlacementId;
+			result.strPatternId = request.strPatternId;
+			result.iPredecessorRoomAuditionEpoch =
+				request.iPredecessorRoomAuditionEpoch;
+			result.iPredecessorPatternSequence =
+				request.iPredecessorPatternSequence;
+			result.ExpectedDefinitionRevision =
+				request.ExpectedDefinitionRevision;
+			CPacketWriter resultWriter;
+			const bool wroteResult = Write_Message(resultWriter, result);
+			CPacketReader resultReader{ resultWriter.Get_Buffer() };
+			S2C_VALTAN_AUDITION_RESULT decodedResult{};
+			testRunner.Require(
+				wroteResult && Read_Message(resultReader, decodedResult) &&
+				0u == resultReader.Get_RemainingSize() &&
+				result.iRequestSequence == decodedResult.iRequestSequence &&
+				result.eOperation == decodedResult.eOperation &&
+				verdict == decodedResult.eResult &&
+				result.iCurrentHealthBar == decodedResult.iCurrentHealthBar &&
+				result.strBossPlacementId == decodedResult.strBossPlacementId &&
+				result.strPatternId == decodedResult.strPatternId &&
+				result.iPredecessorRoomAuditionEpoch ==
+					decodedResult.iPredecessorRoomAuditionEpoch &&
+				result.iPredecessorPatternSequence ==
+					decodedResult.iPredecessorPatternSequence &&
+				0u == decodedResult.iExpectedNextRequestSequence &&
+				result.ExpectedDefinitionRevision ==
+					decodedResult.ExpectedDefinitionRevision,
+				VALTAN_AUDITION_RESULT::QUEUED == verdict ?
+					"Restart QUEUED Result Round Trip" :
+					(VALTAN_AUDITION_RESULT::REJECTED_OCCURRENCE_PRESERVED ==
+						verdict ?
+						"Restart REJECTED_OCCURRENCE_PRESERVED Result Round Trip" :
+						"Restart REJECTED_STALE_AUDITION Result Round Trip"));
+		}
+
+		S2C_VALTAN_AUDITION_RESULT validResult{};
+		validResult.iRequestSequence = request.iRequestSequence;
+		validResult.eOperation = request.eOperation;
+		validResult.eResult = VALTAN_AUDITION_RESULT::QUEUED;
+		validResult.iCurrentHealthBar = 123u;
+		validResult.strBossPlacementId = request.strBossPlacementId;
+		validResult.strPatternId = request.strPatternId;
+		validResult.iPredecessorRoomAuditionEpoch =
+			request.iPredecessorRoomAuditionEpoch;
+		validResult.iPredecessorPatternSequence =
+			request.iPredecessorPatternSequence;
+		validResult.ExpectedDefinitionRevision =
+			request.ExpectedDefinitionRevision;
+		CPacketWriter validResultWriter;
+		const bool wroteValidResult =
+			Write_Message(validResultWriter, validResult);
+
+		bool resultTruncationIsAtomic = wroteValidResult;
+		for (std::size_t length = 0u;
+			length < validResultWriter.Get_Buffer().size(); ++length)
+		{
+			CPacketReader truncated{ std::span<const std::uint8_t>(
+				validResultWriter.Get_Buffer().data(), length) };
+			S2C_VALTAN_AUDITION_RESULT unchanged = validResult;
+			unchanged.iRequestSequence = 0x90a0b0c0u;
+			unchanged.eResult =
+				VALTAN_AUDITION_RESULT::REJECTED_STALE_AUDITION;
+			unchanged.ExpectedDefinitionRevision =
+				Make_GameplayDataRevision(171u);
+			CPacketWriter before;
+			CPacketWriter after;
+			const bool wroteBefore = Write_Message(before, unchanged);
+			const bool rejected = !Read_Message(truncated, unchanged);
+			const bool wroteAfter = Write_Message(after, unchanged);
+			resultTruncationIsAtomic = resultTruncationIsAtomic &&
+				wroteBefore && rejected && wroteAfter &&
+				before.Get_Buffer() == after.Get_Buffer();
+		}
+		testRunner.Require(
+			resultTruncationIsAtomic,
+			"Every Truncated Restart Result Preserves Its Destination");
+
+		for (const auto verdict : {
+			VALTAN_AUDITION_RESULT::ARMED,
+			VALTAN_AUDITION_RESULT::DUPLICATE_IGNORED,
+			VALTAN_AUDITION_RESULT::CLEARED,
+			VALTAN_AUDITION_RESULT::REJECTED_NEXT_CHANGED,
+			VALTAN_AUDITION_RESULT::END })
+		{
+			S2C_VALTAN_AUDITION_RESULT invalidResult = validResult;
+			invalidResult.eResult = verdict;
+			CPacketWriter invalidWriter;
+			auto malformedWire = validResultWriter.Get_Buffer();
+			malformedWire[9] = static_cast<std::uint8_t>(verdict);
+			CPacketReader invalidReader{ malformedWire };
+			S2C_VALTAN_AUDITION_RESULT unchanged = validResult;
+			unchanged.iRequestSequence = 0xa0b0c0d0u;
+			CPacketWriter before;
+			CPacketWriter after;
+			const bool wroteBefore = Write_Message(before, unchanged);
+			const bool rejected = !Read_Message(invalidReader, unchanged);
+			const bool wroteAfter = Write_Message(after, unchanged);
+			testRunner.Require(
+				!Write_Message(invalidWriter, invalidResult) &&
+				invalidWriter.Get_Buffer().empty() && wroteBefore && rejected &&
+				wroteAfter && before.Get_Buffer() == after.Get_Buffer(),
+				"Reject Disallowed Restart Verdict On Write And Read");
 		}
 	}
 
@@ -4842,8 +5201,8 @@ namespace
 		}
 
 		testRunner.Require(
-			47u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Protocol Version 47");
+			50u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Protocol Version 50");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -4870,8 +5229,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			47u == NETWORK_PROTOCOL_VERSION,
-			"Kakul Authoring And Existing Hot Reload Contracts Use Protocol 47");
+			50u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Restart CAS Use Protocol 50");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -5215,6 +5574,7 @@ namespace
 			VALTAN_PATTERN_FLOW_REVISION_HEX_BYTES, 'a');
 		C2S_DEBUG_VALTAN_PATTERN_FLOW_START start{};
 		start.iRequestSequence = 701u;
+		start.ExpectedDefinitionRevision = Make_GameplayDataRevision(81u);
 		start.strBossPlacementId = "boss.valtan.center";
 		start.strFlowId = "flow.valtan.boss-tool.default";
 		start.strFlowRevision = flowRevision;
@@ -5236,6 +5596,8 @@ namespace
 			wroteStart && Read_Message(startReader, decodedStart) &&
 			0u == startReader.Get_RemainingSize() &&
 			start.iRequestSequence == decodedStart.iRequestSequence &&
+			start.ExpectedDefinitionRevision ==
+				decodedStart.ExpectedDefinitionRevision &&
 			start.strFlowRevision == decodedStart.strFlowRevision &&
 			start.strStartSlotId == decodedStart.strStartSlotId &&
 			2u == decodedStart.Slots.size() &&
@@ -5243,6 +5605,7 @@ namespace
 				decodedStart.Slots[1].strPatternId,
 			"Valtan Pattern Flow Repeated Pattern Round Trip");
 		const std::size_t slotCountOffset = sizeof(std::uint32_t) +
+			GAMEPLAY_DATA_REVISION_BYTES +
 			(sizeof(std::uint16_t) + start.strBossPlacementId.size()) +
 			(sizeof(std::uint16_t) + start.strFlowId.size()) +
 			(sizeof(std::uint16_t) + start.strFlowRevision.size()) +
@@ -5275,6 +5638,7 @@ namespace
 		}
 		maximum.strStartSlotId = maximum.Slots.back().strSlotId;
 		const std::size_t maximumSlotCountOffset = sizeof(std::uint32_t) +
+			GAMEPLAY_DATA_REVISION_BYTES +
 			(sizeof(std::uint16_t) + maximum.strBossPlacementId.size()) +
 			(sizeof(std::uint16_t) + maximum.strFlowId.size()) +
 			(sizeof(std::uint16_t) + maximum.strFlowRevision.size()) +
@@ -5346,6 +5710,13 @@ namespace
 		testRunner.Require(
 			!Write_Message(invalidStartWriter, invalidStart),
 			"Reject Non-Lowercase Valtan Pattern Flow Revision");
+		invalidStart = start;
+		invalidStart.ExpectedDefinitionRevision = {};
+		CPacketWriter missingDefinitionWriter;
+		testRunner.Require(
+			!Write_Message(missingDefinitionWriter, invalidStart) &&
+			missingDefinitionWriter.Get_Buffer().empty(),
+			"Reject Valtan Pattern Flow Start Without Expected Definition Revision");
 
 		std::vector<std::uint8_t> zeroCount =
 			startWriter.Get_Buffer();
@@ -5412,6 +5783,28 @@ namespace
 			result.PinnedDefinitionRevision ==
 				decodedResult.PinnedDefinitionRevision,
 			"Valtan Pattern Flow Start Result Round Trip");
+
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT staleDefinition{};
+		staleDefinition.iCommandSequence = start.iRequestSequence;
+		staleDefinition.eCommand = VALTAN_PATTERN_FLOW_COMMAND::START;
+		staleDefinition.eResult =
+			VALTAN_PATTERN_FLOW_RESULT::REJECTED_STALE_DEFINITION;
+		staleDefinition.strFlowId = start.strFlowId;
+		staleDefinition.strFlowRevision = start.strFlowRevision;
+		staleDefinition.strReason = "stale gameplay definition";
+		CPacketWriter staleDefinitionWriter;
+		CPacketReader staleDefinitionReader{
+			(Write_Message(staleDefinitionWriter, staleDefinition),
+				staleDefinitionWriter.Get_Buffer()) };
+		S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT decodedStaleDefinition{};
+		testRunner.Require(
+			Read_Message(staleDefinitionReader, decodedStaleDefinition) &&
+			VALTAN_PATTERN_FLOW_RESULT::REJECTED_STALE_DEFINITION ==
+				decodedStaleDefinition.eResult &&
+			!decodedStaleDefinition.PinnedDefinitionRevision.Is_Valid() &&
+			"stale gameplay definition" ==
+				decodedStaleDefinition.strReason,
+			"Valtan Pattern Flow Stale Definition Rejection Round Trip");
 
 		S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT staleStop{};
 		staleStop.iCommandSequence = 703u;
@@ -5742,6 +6135,7 @@ int main()
 	Test_EncounterPropSyncProtocol(testRunner);
 	Test_ValtanAuditionProtocol(testRunner);
 	Test_ValtanNextPatternProtocol(testRunner);
+	Test_ValtanRestartPatternProtocol(testRunner);
 	Test_SessionDiagnosticReasonContract(testRunner);
 	Test_GameplayDataRevisionContract(testRunner);
 	Test_DataRevisionHotReloadProtocol(testRunner);

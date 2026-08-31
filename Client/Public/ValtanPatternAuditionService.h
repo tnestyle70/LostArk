@@ -2,6 +2,7 @@
 
 #include "GameplayDataRevision.h"
 #include "Network/PacketMessages.h"
+#include "ValtanPatternSoundCueDocument.h"
 
 #include <cstdint>
 #include <string>
@@ -19,6 +20,10 @@ enum class VALTAN_PATTERN_AUDITION_STATE : uint8_t
 {
 	IDLE,
 	REQUEST_PENDING,
+	/* The exact Restart request may already have committed on the Server, but
+	   neither its verdict nor replacement lifecycle arrived before the bound.
+	   Keep the request/fallback identity and permit only an exact retry. */
+	RESTART_UNCONFIRMED,
 	QUEUED,
 	ACTIVE,
 	COMPLETED,
@@ -36,6 +41,7 @@ struct VALTAN_PATTERN_AUDITION_SNAPSHOT final
 	uint32_t iRoomAuditionEpoch = 0u;
 	uint32_t iObservedPatternSequence = 0u;
 	LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
+	VALTAN_PATTERN_SOUND_SOURCE_RECEIPT PinnedPatternSoundSourceReceipt{};
 	bool isPresentationRevisionAvailable = false;
 	std::string strConsumerId;
 	std::string strBossPlacementId;
@@ -45,6 +51,7 @@ struct VALTAN_PATTERN_AUDITION_SNAPSHOT final
 	[[nodiscard]] bool Is_InFlight() const
 	{
 		return VALTAN_PATTERN_AUDITION_STATE::REQUEST_PENDING == eState ||
+			VALTAN_PATTERN_AUDITION_STATE::RESTART_UNCONFIRMED == eState ||
 			VALTAN_PATTERN_AUDITION_STATE::QUEUED == eState ||
 			VALTAN_PATTERN_AUDITION_STATE::ACTIVE == eState;
 	}
@@ -74,6 +81,7 @@ struct VALTAN_NEXT_PATTERN_SNAPSHOT final
 	   send reservation controls against its retired predecessor token. */
 	bool bReservationConsumed = false;
 	LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
+	VALTAN_PATTERN_SOUND_SOURCE_RECEIPT PinnedPatternSoundSourceReceipt{};
 	bool isPresentationRevisionAvailable = false;
 	std::string strConsumerId;
 	std::string strBossPlacementId;
@@ -103,6 +111,7 @@ struct VALTAN_NEXT_PATTERN_COMMAND final
 {
 	VALTAN_NEXT_COMMAND_STATE eState = VALTAN_NEXT_COMMAND_STATE::NONE;
 	LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST Request{};
+	VALTAN_PATTERN_SOUND_SOURCE_RECEIPT PinnedPatternSoundSourceReceipt{};
 	uint64_t iWorldInboundGeneration = 0u;
 	uint64_t iSentAtMilliseconds = 0u;
 	std::string strConsumerId;
@@ -150,18 +159,55 @@ public:
 		std::string_view strConsumerId,
 		std::string_view strBossPlacementId,
 		std::string_view strPatternId,
+		const LostArk::Shared::GameplayDataRevision&
+			expectedActiveDefinitionRevision,
+		const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
+			PinnedPatternSoundSourceReceipt,
+		std::string& strOutStatus);
+	/* Restart replaces only the exact authoritative ACTIVE or COMPLETED
+	   occurrence currently owned by this consumer. It allocates a new wire
+	   request identity and never clears an ordered Flow or reserved Next. */
+	bool Restart_ActivePattern(
+		std::string_view strConsumerId,
+		std::string_view strBossPlacementId,
+		std::string_view strPatternId,
+		const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
+			ExpectedPatternSoundSourceReceipt,
+		std::string& strOutStatus);
+	/* Reuses the same wire identity and predecessor tuple after a bounded
+	   ambiguous wait. The Server receipt replays the original verdict. */
+	bool Retry_UnconfirmedRestart(
+		const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
+			ExpectedPatternSoundSourceReceipt,
 		std::string& strOutStatus);
 	[[nodiscard]] bool Can_QueueNextPattern(
 		std::string_view strBossPlacementId,
+		const LostArk::Shared::GameplayDataRevision&
+			expectedDefinitionRevision,
 		std::string& strOutStatus) const;
 	bool Queue_NextPattern(
 		std::string_view strConsumerId,
 		std::string_view strBossPlacementId,
 		std::string_view strPatternId,
+		const LostArk::Shared::GameplayDataRevision&
+			expectedDefinitionRevision,
+		const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
+			PinnedPatternSoundSourceReceipt,
 		std::string& strOutStatus);
 	bool Clear_NextPattern(std::string& strOutStatus);
-	bool Retry_NextPatternCommand(std::string& strOutStatus);
+	bool Retry_NextPatternCommand(
+		const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
+			ExpectedPatternSoundSourceReceipt,
+		std::string& strOutStatus);
 	void Update();
+
+	/* Pattern Sound is an independent live source owner.  These queries keep
+	   its exact receipt tied to the Client-side occurrence controller even
+	   though the Server wire remains gameplay-revision-only. */
+	[[nodiscard]] bool Has_PatternSoundMutationBarrier() const;
+	[[nodiscard]] bool Verify_PatternSoundSourceReceipt(
+		const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& CurrentReceipt,
+		std::string& strOutStatus) const;
 
 	[[nodiscard]] const VALTAN_PATTERN_AUDITION_SNAPSHOT& Get_Snapshot() const
 	{
@@ -186,6 +232,49 @@ public:
 	}
 
 #if defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
+	/* Existing service tests exercise gameplay identities.  Their compatibility
+	   overloads inject one deterministic valid S receipt; receipt-specific
+	   tests call the production signatures above. */
+	bool Submit(
+		std::string_view strConsumerId,
+		std::string_view strBossPlacementId,
+		std::string_view strPatternId,
+		const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+		std::string& strOutStatus)
+	{
+		return Submit(strConsumerId, strBossPlacementId, strPatternId,
+			ExpectedRevision, Harness_PatternSoundReceipt(), strOutStatus);
+	}
+	bool Restart_ActivePattern(
+		std::string_view strConsumerId,
+		std::string_view strBossPlacementId,
+		std::string_view strPatternId,
+		std::string& strOutStatus)
+	{
+		return Restart_ActivePattern(strConsumerId, strBossPlacementId,
+			strPatternId, Harness_PatternSoundReceipt(), strOutStatus);
+	}
+	bool Retry_UnconfirmedRestart(std::string& strOutStatus)
+	{
+		return Retry_UnconfirmedRestart(
+			Harness_PatternSoundReceipt(), strOutStatus);
+	}
+	bool Queue_NextPattern(
+		std::string_view strConsumerId,
+		std::string_view strBossPlacementId,
+		std::string_view strPatternId,
+		const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+		std::string& strOutStatus)
+	{
+		return Queue_NextPattern(strConsumerId, strBossPlacementId,
+			strPatternId, ExpectedRevision, Harness_PatternSoundReceipt(),
+			strOutStatus);
+	}
+	bool Retry_NextPatternCommand(std::string& strOutStatus)
+	{
+		return Retry_NextPatternCommand(
+			Harness_PatternSoundReceipt(), strOutStatus);
+	}
 	void Harness_Reset();
 	void Harness_ObserveBoss(
 		bool bBossValid,
@@ -200,6 +289,12 @@ public:
 
 private:
 	CValtanPatternAuditionService() = default;
+#if defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
+	static VALTAN_PATTERN_SOUND_SOURCE_RECEIPT Harness_PatternSoundReceipt()
+	{
+		return { std::string(64u, 'a'), 1u };
+	}
+#endif
 	void Observe_Boss(
 		bool bBossValid,
 		std::string_view strPatternId,
@@ -210,9 +305,13 @@ private:
 	bool Send_NextCommand(
 		LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST Request,
 		std::string_view strConsumerId,
+		const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
+			PinnedPatternSoundSourceReceipt,
 		std::string& strOutStatus);
 	bool Prepare_NextCommand(
 		std::string_view strBossPlacementId,
+		const LostArk::Shared::GameplayDataRevision&
+			expectedDefinitionRevision,
 		LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& Request,
 		std::string& strOutStatus) const;
 	void Accept_NextCommand(uint32_t iRoomAuditionEpoch);
@@ -234,11 +333,15 @@ private:
 	bool Consume_Lifecycle(LostArk::Shared::S2C_VALTAN_AUDITION_LIFECYCLE& Lifecycle);
 
 	VALTAN_PATTERN_AUDITION_SNAPSHOT m_Snapshot;
+	/* Keep the exact predecessor until the Server either admits a replacement
+	   or explicitly proves that preflight preserved the old occurrence. */
+	VALTAN_PATTERN_AUDITION_SNAPSHOT m_RestartFallback;
 	VALTAN_NEXT_PATTERN_SNAPSHOT m_NextSnapshot;
 	VALTAN_NEXT_PATTERN_COMMAND m_NextCommand;
 	uint32_t m_iNextRequestSequence = 1u;
 	uint64_t m_iStateStartedAtMilliseconds = 0u;
 	bool m_hasAuthoritativeLifecycle = false;
+	bool m_hasRestartFallback = false;
 #if defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
 	VALTAN_AUDITION_HARNESS_INPUT m_HarnessInput;
 #endif

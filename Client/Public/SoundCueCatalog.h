@@ -19,7 +19,18 @@ NS_BEGIN(Client)
 class CSoundCueCatalog final
 {
 public:
+	using EVENT_VARIANTS = std::unordered_map<std::string,
+		std::vector<std::string>>;
+
 	static bool_t Load(std::string& strOutStatus);
+	/* Reads one class from the current physical catalog without mutating the
+	   process-global startup cache. Exact boss presentation loaders use this
+	   while holding their generation admission, then pin the returned asset
+	   IDs into the admitted cue rows. */
+	static bool_t Load_ClassSnapshot(
+		const std::string& strClassName,
+		EVENT_VARIANTS& InOutEvents,
+		std::string& strOutStatus);
 
 	/* Empty return means "no match" -- not a failure. strClassName is the
 	   same Data/Animation/Authored/<Class> folder name Character already
@@ -33,8 +44,7 @@ public:
 		const std::string& strClassName);
 
 private:
-	static std::unordered_map<std::string,
-		std::unordered_map<std::string, std::vector<std::string>>> s_ClassEvents;
+	static std::unordered_map<std::string, EVENT_VARIANTS> s_ClassEvents;
 	static bool_t s_bLoaded;
 };
 

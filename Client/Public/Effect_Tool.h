@@ -6,6 +6,7 @@
 #include "Client_Defines.h"
 #include "Effect_AuthoringDocument.h"
 #include "Effect_ComponentDocument.h"
+#include "Effect_DirectAuthoredSourceIndex.h"
 #include "Effect_OccurrenceTuning.h"
 #include "EffectAuthoringTransfer.h"
 #include "Engine_Defines.h"
@@ -514,6 +515,7 @@ public:
 
     void Update(f32_t fTimeDelta);
     void Render();
+	bool_t Open_ValtanAllEffectsWorkspace();
 	bool_t Open_ValtanProductEffect(
 		const EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& Request);
 
@@ -547,6 +549,8 @@ private:
 	   keeps repeat/revive/diagnostics. Canonical Product Effects remain editable
 	   and locally replayable with their joined Model View animation. */
 	void Render_ValtanPatternTreeSection(const std::string& strSearch);
+	void Render_ValtanExactAuthoredSourceSection(
+		const std::string& strSearch);
 	void Render_ValtanAreaStaticEffectSection(const std::string& strSearch);
 	bool_t Refresh_ValtanAreaStaticEffects();
 	bool_t Discard_ValtanAreaStaticEffectDraft();
@@ -806,8 +810,12 @@ private:
 		UNIFIED_EFFECT_CACHE& Cache,
 		const std::filesystem::path& Path,
 		const std::string& strExpectedEffectAssetId);
+	void Initialize_CatalogMetadataView();
 	bool_t Refresh_DirectAuthoredEditableIndex(
 		const std::vector<EFFECT_DATA_FILE_ENTRY>& DataFiles);
+	const std::filesystem::path* Observe_DirectAuthoredEditablePath(
+		const std::string& strEffectAssetId,
+		std::string& strOutStatus) const;
 	const std::filesystem::path* Resolve_DirectAuthoredEditablePath(
 		const std::string& strEffectAssetId,
 		std::string& strOutStatus);
@@ -1076,6 +1084,11 @@ private:
 		m_ValtanUnifiedEffectCaches;
 	std::unordered_map<std::string, DIRECT_AUTHORED_EDITABLE_ENTRY>
 		m_DirectAuthoredEditableEntries;
+	/* Exact authored Valtan documents remain discoverable/editable even when
+	   the gameplay/presentation Pattern join is rejected. Product Play stays
+	   gated by the canonical tree; this list owns no replacement runtime. */
+	std::vector<EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY>
+		m_ValtanExactAuthoredSources;
 	std::unordered_map<std::string, size_t>
 		m_BossProductCueMappingCounts;
 	shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
@@ -1258,6 +1271,7 @@ private:
     bool_t m_bResourceCatalogRefreshAttempted = false;
     bool_t m_bAllEffectsRefreshAttempted = false;
     bool_t m_bDataFilesRefreshAttempted = false;
+	bool_t m_bCatalogMetadataViewInitialized = false;
     bool_t m_bPendingWorldPivotPick = false;
     bool_t m_bParticleSystemDraftDirty = false;
     bool_t m_bMeshAuthoringDraftInitialized = false;

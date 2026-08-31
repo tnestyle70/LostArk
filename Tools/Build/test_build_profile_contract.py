@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
+import subprocess
 import unittest
 import xml.etree.ElementTree as ET
 
@@ -66,6 +67,71 @@ class BuildProfileContractTests(unittest.TestCase):
         positions = [runner.index(project) for project in product_projects]
         self.assertEqual(sorted(positions), positions)
         self.assertIn("/p:BuildProjectReferences=false", runner)
+
+    def test_core_runs_the_actual_valtan_canonical_loader_harness(self) -> None:
+        runner = read("Tools/Build/Invoke-BuildAndRegression.ps1")
+        core_build = runner.index("if ($includeCore) {")
+        server_build = runner.index(
+            "Invoke-MSBuildProject $msbuild 'Server\\Default\\Server.vcxproj'",
+            core_build,
+        )
+        core_block = runner[core_build:server_build]
+        self.assertIn(
+            "Tools\\ValtanPatternAuditionServiceHarness\\Default\\ValtanPatternAuditionServiceHarness.vcxproj",
+            core_block,
+        )
+        run = runner.index("& $valtanAuditionServiceHarnessExe")
+        full_diagnostic_server = runner.index(
+            "if ($includeFullDiagnostic) {", run
+        )
+        self.assertLess(run, full_diagnostic_server)
+        self.assertIn("ValtanPatternAuditionServiceHarness failed.", runner[run:])
+
+    def test_product_runner_rejects_locked_standard_exes_before_publish_or_build(self) -> None:
+        runner = read("Tools/Build/Invoke-BuildAndRegression.ps1")
+        guard = read("Tools/Build/ProductOutputGuard.psm1")
+        self.assertIn("function Assert-ProductOutputsUnlocked", runner)
+        self.assertIn("Assert-StandardProductOutputsNotRunning", runner)
+        self.assertIn("product:output-lock-preflight", runner)
+        self.assertIn("old EXE cannot", guard)
+        preflight = runner.index("Assert-ProductOutputsUnlocked\n", runner.index("try {"))
+        domain_publish = runner.index("Invoke-SelectedBuildDomains", preflight)
+        first_msbuild = runner.index("Invoke-MSBuildProject $msbuild", domain_publish)
+        self.assertLess(preflight, domain_publish)
+        self.assertLess(domain_publish, first_msbuild)
+        for token in (
+            "'Debug', 'Release'",
+            "Client",
+            "Server",
+            "[StringComparer]::OrdinalIgnoreCase",
+        ):
+            self.assertIn(token, guard)
+
+    def test_product_output_guard_uses_real_process_fixture(self) -> None:
+        result = subprocess.run(
+            [
+                "powershell.exe",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(ROOT / "Tools/Build/Test-ProductOutputGuard.ps1"),
+            ],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            timeout=45,
+            check=False,
+        )
+        self.assertEqual(
+            0,
+            result.returncode,
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}",
+        )
+        self.assertRegex(
+            result.stdout,
+            r"ProductOutputGuard fixture: \d+/\d+ passed",
+        )
 
     def test_effect_json_is_not_materialized_as_msbuild_items(self) -> None:
         project_path = ROOT / "Client/Default/Client.vcxproj"
@@ -211,19 +277,41 @@ class BuildProfileContractTests(unittest.TestCase):
         )
         self.assertGreaterEqual(valtan_project.count("/MP /utf-8"), 1)
         self.assertGreaterEqual(character_project.count("/MP /utf-8"), 4)
-        # The focused native Sound document suite consumes the product animation
-        # binding parser, project-root resolver, and Sound cue parser in addition
-        # to the nine pre-existing Valtan presentation/service sources.
-        for sound_contract_source in (
+        # The focused native suites consume the product Animation/Pattern Sound
+        # parsers and the exact Encounter/cinematic loaders used by the canonical
+        # Valtan graph.  Keeping these physical sources explicit prevents a mock
+        # JSON projection from replacing the EXE admission path.
+        native_contract_sources = (
+            "ValtanPatternAuditionService.cpp",
+            "ValtanPatternTree.cpp",
+            "ValtanPresentationGenerationAdmission.cpp",
+            "ValtanPatternFlowDocument.cpp",
+            "ValtanPatternEffectCueDocument.cpp",
+            "ValtanPatternEffectCueAuthoring.cpp",
+            "Effect_DirectAuthoredSourceIndex.cpp",
+            "ValtanPatternFlowService.cpp",
+            "ValtanTuningCommandService.cpp",
             "AnimationSkillBindingDocument.cpp",
+            "DataJson.cpp",
             "ProjectDataRoot.cpp",
+            "RuntimeAssetRoot.cpp",
+            "SoundCueCatalog.cpp",
             "ValtanPatternSoundCueDocument.cpp",
-        ):
+            "ActionPresentationTimeline.cpp",
+            "CameraShakeService.cpp",
+            "EncounterPatternReference.cpp",
+            "ValtanCinematicCameraController.cpp",
+            "ValtanCinematicCameraDocument.cpp",
+        )
+        for native_contract_source in native_contract_sources:
             self.assertIn(
-                f"..\\..\\..\\Client\\Private\\{sound_contract_source}",
+                f"..\\..\\..\\Client\\Private\\{native_contract_source}",
                 valtan_project,
             )
-        self.assertEqual(12, valtan_project.count("..\\..\\..\\Client\\Private\\"))
+        self.assertEqual(
+            len(native_contract_sources),
+            valtan_project.count("..\\..\\..\\Client\\Private\\"),
+        )
         self.assertEqual(1, character_project.count("..\\..\\..\\Client\\Private\\"))
 
         valtan_tests = read(

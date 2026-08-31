@@ -29,6 +29,10 @@ public:
 		f32_t fAgeSeconds,
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext);
+	/* Destructive seek/reset for a tool-owned local preview target.  Product
+	   gameplay must continue to use Sync_Stage; CValtan admits this call only
+	   for its non-authoritative Action Composition preview instance. */
+	static void Reset_LocalPreviewTarget(const EFFECT_V2_TARGET& Target);
 	static void Prewarm_Archetype(
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext,

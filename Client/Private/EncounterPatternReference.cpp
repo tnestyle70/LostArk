@@ -374,7 +374,34 @@ namespace
 		if (!Read_String(*motion, "kind", false, kind))
 			return false;
 		if (kind == "PORTAL_TARGET_RUSH")
-			return Is_ExactObject(*motion, { "kind" });
+		{
+			uint32_t stageDurationMs = 0u;
+			uint32_t retargetDelayMs = 0u;
+			if (!Is_ExactObject(*motion,
+					{ "kind", "retargetDelayMs", "speedMps", "distanceM" }) ||
+				!Read_Unsigned(stage, "durationMs",
+					MAX_REFERENCE_STAGE_DURATION_MS, stageDurationMs) ||
+				0u == stageDurationMs ||
+				!Read_Unsigned(*motion, "retargetDelayMs", stageDurationMs,
+					retargetDelayMs) ||
+				!Is_FiniteNumber(*motion, "speedMps") ||
+				!Is_FiniteNumber(*motion, "distanceM"))
+			{
+				return false;
+			}
+			const double speedMps = motion->Find("speedMps")->Get_Number();
+			const double distanceM = motion->Find("distanceM")->Get_Number();
+			if (speedMps <= 0.0 || speedMps > 1000.0 ||
+				distanceM <= 0.0 || distanceM > 1000.0)
+			{
+				return false;
+			}
+			const double travelEndMs = static_cast<double>(retargetDelayMs) +
+				distanceM / speedMps * 1000.0;
+			outHasForwardMotion =
+				travelEndMs <= static_cast<double>(stageDurationMs) + 0.000001;
+			return outHasForwardMotion;
+		}
 		if (kind == "PORTAL_CROSS_ARENA")
 		{
 			uint32_t cornerIndex = 0u;
@@ -813,8 +840,6 @@ bool_t Client::CEncounterPatternReference::Load(
 
 		ENCOUNTER_PATTERN_REFERENCE pattern;
 		std::string category;
-		std::string targetPolicy;
-		std::string aimPolicy;
 		uint32_t minimumPhase = 0u;
 		uint32_t maximumPhase = 0u;
 		uint32_t ignored = 0u;
@@ -831,15 +856,17 @@ bool_t Client::CEncounterPatternReference::Load(
 			!Read_Unsigned(entry, "minimumPhase", 3u, minimumPhase) ||
 			!Read_Unsigned(entry, "maximumPhase", 3u, maximumPhase) ||
 			0u == minimumPhase || minimumPhase > maximumPhase ||
-			!Read_String(entry, "targetPolicy", false, targetPolicy) ||
-			(targetPolicy != "NONE" && targetPolicy != "NEAREST_EACH_TICK" &&
-				targetPolicy != "LOCK_NEAREST_ON_START" &&
-				targetPolicy != "LOCK_RANDOM_ALIVE_ON_START" &&
-				targetPolicy != "LOCK_RANDOM_ALIVE_BEHIND_ON_START") ||
-			!Read_String(entry, "aimPolicy", false, aimPolicy) ||
-			(aimPolicy != "NONE" && aimPolicy != "TRACK_TARGET_EACH_TICK" &&
-				aimPolicy != "LOCK_FACING_ON_START" &&
-				aimPolicy != "FACE_MOTION_ANCHOR") ||
+			!Read_String(entry, "targetPolicy", false, pattern.targetPolicy) ||
+			(pattern.targetPolicy != "NONE" &&
+				pattern.targetPolicy != "NEAREST_EACH_TICK" &&
+				pattern.targetPolicy != "LOCK_NEAREST_ON_START" &&
+				pattern.targetPolicy != "LOCK_RANDOM_ALIVE_ON_START" &&
+				pattern.targetPolicy != "LOCK_RANDOM_ALIVE_BEHIND_ON_START") ||
+			!Read_String(entry, "aimPolicy", false, pattern.aimPolicy) ||
+			(pattern.aimPolicy != "NONE" &&
+				pattern.aimPolicy != "TRACK_TARGET_EACH_TICK" &&
+				pattern.aimPolicy != "LOCK_FACING_ON_START" &&
+				pattern.aimPolicy != "FACE_MOTION_ANCHOR") ||
 			!Read_Unsigned(entry, "minimumHealthBar", 1000u, ignored) ||
 			!Read_Unsigned(entry, "maximumHealthBar", 1000u, ignored) ||
 			!Read_Unsigned(entry, "triggerHealthBar", 1000u,
@@ -1093,6 +1120,24 @@ bool_t Client::CEncounterPatternReference::Load(
 		{
 			outStatus = "Encounter pattern extensions are invalid: " + pattern.patternId;
 			return false;
+		}
+		const DATA_JSON_VALUE* serverMotion = entry.Find("serverMotion");
+		if (nullptr != serverMotion && serverMotion->Is_Object())
+		{
+			ENCOUNTER_PATTERN_SERVER_MOTION_REFERENCE projectedMotion;
+			projectedMotion.kind =
+				serverMotion->Find("kind")->Get_String();
+			projectedMotion.anchorId =
+				serverMotion->Find("anchorId")->Get_String();
+			const DATA_JSON_VALUE::ARRAY& landing =
+				serverMotion->Find("landingPosition")->Get_Array();
+			for (size_t coordinate = 0u;
+				coordinate < projectedMotion.landingPosition.size(); ++coordinate)
+			{
+				projectedMotion.landingPosition[coordinate] =
+					static_cast<f32_t>(landing[coordinate].Get_Number());
+			}
+			pattern.serverMotion = std::move(projectedMotion);
 		}
 		staged.push_back(std::move(pattern));
 	}

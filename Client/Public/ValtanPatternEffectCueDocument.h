@@ -92,13 +92,14 @@ public:
 		const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& AnimationBindings,
 		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT& InOutDocument,
 		std::string& strOutStatus);
-	/* Source/Tool path.  Validates the JSON and encounter join without
-	   requiring the generated runtime Effect catalog to be published yet. */
-	static bool_t Load_Source(
+	/* Read-only generated Product view for authoring tools. The writable owner
+	   is Data/Valtan/Valtan.presentation.json; this loader never exposes a Save
+	   path for Valtan.patterneffectcues.json. */
+	static bool_t Load_ReadOnlyProduct(
 		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT& InOutDocument,
 		std::string& strOutStatus);
 	/* Product/loading path.  Adds runtime catalog and spawn-admission checks to
-	   Load_Source and preserves InOutDocument on any failure. */
+	   Load_ReadOnlyProduct and preserves InOutDocument on any failure. */
 	static bool_t Load_ForProductPrewarm(
 		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT& InOutDocument,
 		std::string& strOutStatus);

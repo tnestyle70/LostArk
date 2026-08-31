@@ -11,6 +11,7 @@
 #include "ValtanPatternShakeCueDocument.h"
 #include "ValtanPatternSoundCueDocument.h"
 #include "ValtanCombatObjectSoundCueDocument.h"
+#include "ValtanPresentationGenerationAdmission.h"
 
 #include <algorithm>
 #include <cmath>
@@ -28,6 +29,8 @@ class CCollider;
 NS_END
 
 NS_BEGIN(Client)
+
+struct VALTAN_PATTERN_VIEW;
 
 inline constexpr size_t VALTAN_MAX_PATTERN_EFFECT_OCCURRENCES_PER_SCAN = 256u;
 
@@ -220,6 +223,19 @@ public:
 		DEAD = 0x00000020,
 	};
 
+	/* Presentation-only copy of the Server-selected target pose from the same
+	   S2C_WORLD_SNAPSHOT that carries the boss pattern clock.  A valid target
+	   identity with bHasFinitePose=false is intentional: the target was missing
+	   from that snapshot, so target-anchored cue occurrences must be isolated. */
+	struct PATTERN_TARGET_SNAPSHOT_POSE final
+	{
+		LostArk::Shared::NET_ENTITY_ID iNetEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		float3_t vPosition = {};
+		f32_t fYawDegrees = 0.f;
+		bool_t bHasFinitePose = false;
+	};
+
 private:
 	CValtan(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 public:
@@ -264,7 +280,8 @@ public:
 		uint32_t iServerTick,
 		uint32_t iActionStartTick,
 		uint32_t iPatternSequence,
-		uint32_t iPatternStageIndex);
+		uint32_t iPatternStageIndex,
+		const PATTERN_TARGET_SNAPSHOT_POSE& PatternTargetPose);
 	/* Animation Tool-only local audition.  It deliberately bypasses network,
 	   Effect, Sound, hit and movement, but samples the same admitted Product
 	   binding through the exact helper Apply_NetworkState uses. */
@@ -273,6 +290,14 @@ public:
 		std::string_view actionId,
 		f32_t fActionAgeSeconds,
 		bool_t bForceAnimationEdge);
+	/* Action Composition-only draft mirror. It never replaces Product caches
+	   and is accepted only by a non-authoritative preview boss. */
+	bool_t Stage_LocalPatternAuthoringPreview(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		std::string& strOutStatus);
+	/* Rewinds only tool-owned presentation instances while preserving the
+	   staged authoring draft.  Used before an explicit Sequencer seek/loop. */
+	void Reset_LocalPatternPreviewTransport();
 	void Reset_LocalPatternPresentationSample();
 	bool_t Apply_BossCombatState(
 		const LostArk::Shared::BOSS_COMBAT_SNAPSHOT& state);
@@ -281,10 +306,27 @@ public:
 	bool_t Apply_CombatObjectPresentationEvent(
 		const LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT& event,
 		std::string& strOutStatus);
-	/* Debug Workbench Save reloads only the Client presentation binding. Server
-	   hit identity and gameplay timing remain untouched. Failed reload keeps the
-	   previously admitted map. */
+	/* Debug Workbench Save reloads only Client presentation documents. Server
+	   hit identity and gameplay timing remain untouched. Each reload stages the
+	   complete replacement and keeps the previously admitted map on failure. */
+	bool_t Reload_PatternBindings(std::string& strOutStatus);
+	bool_t Reload_PatternPresentationAuthoring(std::string& strOutStatus);
+	bool_t Reload_PatternPresentationAuthoring(
+		const LostArk::Shared::GameplayDataRevision& ExpectedServerRevision,
+		const Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& ExpectedReceipt,
+		std::string& strOutStatus);
+	bool_t Reload_PatternSoundCues(std::string& strOutStatus);
 	bool_t Reload_CombatObjectSoundCues(std::string& strOutStatus);
+	const Client::VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
+		Get_PatternSoundSourceReceipt() const
+	{
+		return m_PatternSoundSourceReceipt;
+	}
+	const Client::VALTAN_PRESENTATION_GENERATION_RECEIPT&
+		Get_PresentationGenerationReceipt() const
+	{
+		return m_PresentationGenerationReceipt;
+	}
 	const std::string& Get_ServerActionId() const { return m_strServerActionId; }
 #ifdef _DEBUG
 	/* Process-local visual A/B only.  Server pattern timing and the Product V0
@@ -373,6 +415,16 @@ private:
 	f32_t m_fServerActionAgeSeconds = 0.f;
 	// Authoritative facing captured once per occurrence, never the interpolated visual yaw.
 	f32_t m_fServerPatternFacingYawDegrees = 0.f;
+	/* Target virtual anchors never read the interpolated Character transform.
+	   These fields are replaced from each accepted snapshot and remain usable
+	   only while both the locked identity and pattern sequence still match. */
+	LostArk::Shared::NET_ENTITY_ID m_iServerPatternTargetNetEntityId =
+		LostArk::Shared::INVALID_NET_ENTITY_ID;
+	uint32_t m_iServerPatternTargetPoseSequence = 0u;
+	float3_t m_vServerPatternTargetSnapshotPosition = {};
+	f32_t m_fServerPatternTargetSnapshotYawDegrees = 0.f;
+	bool_t m_bHasServerPatternTargetSnapshotPose = false;
+	bool_t m_bServerPatternTargetIdentityStable = false;
 	std::size_t m_iPatternPresentationClipOccurrenceIndex =
 		(std::numeric_limits<std::size_t>::max)();
 	/* Presentation only: pattern stage actionId -> ordered original clip
@@ -383,6 +435,21 @@ private:
 	std::unordered_map<std::string,
 		std::vector<BOSS_PATTERN_ANIMATION_CLIP>>
 		m_PatternClipByActionId;
+	bool_t m_bLocalPatternAuthoringPreview = false;
+	std::unordered_map<std::string,
+		std::vector<BOSS_PATTERN_ANIMATION_CLIP>>
+		m_LocalPreviewClipByActionId;
+	std::unordered_map<std::string,
+		std::vector<VALTAN_PATTERN_EFFECT_CUE>>
+		m_LocalPreviewEffectCuesByActionId;
+	std::unordered_map<std::string, uint32_t>
+		m_LocalPreviewStageIndexByActionId;
+	std::unordered_map<std::string, float3_t>
+		m_LocalPreviewArenaCenterAnchors;
+	std::string m_strLocalPreviewPatternId;
+	std::string m_strLocalPreviewActionId;
+	uint32_t m_iLocalPreviewStageIndex = 0u;
+	uint32_t m_iLocalPreviewEffectGeneration = 0u;
 	/* Product presentation only: exact authoritative stage actionId -> Effect
 	   cues.  This map is replaced only after the cue document, encounter join,
 	   runtime catalog and root/bone anchors all validate.  Animation bindings
@@ -400,6 +467,15 @@ private:
 	   separate, smaller validated map rather than reusing the Effect one. */
 	std::unordered_map<std::string,
 		std::vector<VALTAN_PATTERN_SOUND_CUE>> m_PatternSoundCuesByActionId;
+	/* Commits with m_PatternSoundCuesByActionId inside the joined presentation
+	   transaction. Boss Tool compares it with a locked current-source receipt
+	   before any Server playback command is emitted. */
+	Client::VALTAN_PATTERN_SOUND_SOURCE_RECEIPT
+		m_PatternSoundSourceReceipt;
+	/* This receipt binds the generated/read-only core closure to Server R.
+	   Pattern Sound keeps the independent typed source receipt above. */
+	Client::VALTAN_PRESENTATION_GENERATION_RECEIPT
+		m_PresentationGenerationReceipt;
 	std::unordered_set<std::string> m_AttemptedPatternSoundOccurrenceKeys;
 	bool_t m_bPatternSoundCueScanAgeValid = false;
 	f32_t m_fPatternSoundCueScanAgeSeconds = 0.f;
@@ -437,11 +513,17 @@ private:
 	bool_t m_isPatternHitAreaDebugLoadAttempted = { false };
 	std::unordered_map<std::string, PATTERN_HIT_AREA_DEBUG>
 		m_PatternHitAreaByActionId;
+	std::unordered_map<std::string, PATTERN_HIT_AREA_DEBUG>
+		m_LocalPreviewHitAreaByActionId;
 	std::string m_strPreviewHitActionId;
 	f32_t m_fPreviewHitAgeSeconds = { 0.f };
 #endif
 
 private:
+	bool_t Reload_PatternPresentationAuthoring_Impl(
+		const LostArk::Shared::GameplayDataRevision* pExpectedServerRevision,
+		const Client::VALTAN_PRESENTATION_GENERATION_RECEIPT* pExpectedReceipt,
+		std::string& strOutStatus);
 	HRESULT Ready_PartObjects();
 	void Ready_ArmorParts();
 	/* Hides exactly the plates the Server reports broken. Presentation never
@@ -450,6 +532,7 @@ private:
 	void Refresh_ArmorPartVisibility();
 	HRESULT Ready_Components(f32_t collisionRadius);
 	void Load_PatternBindings();
+	bool_t Reload_PatternBindings_WhileAdmitted(std::string& strOutStatus);
 	bool_t Apply_PatternPresentationSample(
 		std::string_view actionId,
 		std::string_view fallbackClipName,
@@ -458,11 +541,16 @@ private:
 		std::size_t iCurrentClipOccurrenceIndex,
 		std::size_t& iOutClipOccurrenceIndex);
 	void Load_PatternEffectCues();
+	bool_t Reload_PatternEffectCues_WhileAdmitted(std::string& strOutStatus);
 	void Spawn_DuePatternEffectCues(f32_t fActionAgeSeconds);
 	void Load_PatternSoundCues();
+	bool_t Reload_PatternSoundCues_WhileAdmitted(std::string& strOutStatus);
 	void Spawn_DuePatternSoundCues(f32_t fActionAgeSeconds);
 	void Load_CombatObjectSoundCues();
+	bool_t Reload_CombatObjectSoundCues_WhileAdmitted(
+		std::string& strOutStatus);
 	void Load_PatternShakeCues();
+	bool_t Reload_PatternShakeCues_WhileAdmitted(std::string& strOutStatus);
 	void Spawn_DuePatternShakeCues(f32_t fActionAgeSeconds);
 #ifdef _DEBUG
 	void Load_PatternHitAreaDebug();

@@ -13,7 +13,7 @@ namespace LostArk::Server
 	/* The only gameplay bootstrap version this build reads. The publisher
 	stamps it and the loader refuses anything else, so a bump has to travel
 	through both sides at once instead of leaving one of them behind. */
-	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 26u;
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 27u;
 
 	/* One point on the displacement an animator baked into a clip. The player
 	reads it per skill and the boss per pattern stage, so it carries no owner in
@@ -501,6 +501,8 @@ namespace LostArk::Server
 	{
 		BOSS_PATTERN_STAGE_MOTION_KIND eKind =
 			BOSS_PATTERN_STAGE_MOTION_KIND::NONE;
+		std::uint32_t iRetargetDelayMs = 0u;
+		float fSpeedMps = 0.f;
 		float fDistance = 0.f;
 		std::uint32_t iCornerIndex = 0u;
 		float fHalfExtentsX = 0.f;
@@ -913,6 +915,13 @@ namespace LostArk::Server
 		{
 			return m_ActiveRevision;
 		}
+		/* Content-addressed Client Product receipt committed by the bootstrap.
+		   It is an admission identity only; the Server never reads Client assets. */
+		[[nodiscard]] const LostArk::Shared::GameplayDataRevision&
+			Get_ValtanPresentationGenerationId() const noexcept
+		{
+			return m_ValtanPresentationGenerationId;
+		}
 		const std::string& Get_Status() const { return m_strStatus; }
 
 	private:
@@ -968,6 +977,8 @@ namespace LostArk::Server
 		std::unordered_map<std::string, std::uint32_t>
 			m_DamageRatePercentByProfileId;
 		LostArk::Shared::GameplayDataRevision m_ActiveRevision{};
+		LostArk::Shared::GameplayDataRevision
+			m_ValtanPresentationGenerationId{};
 		std::string m_strStatus;
 	};
 }

@@ -414,7 +414,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
     def test_flow_tab_keeps_verification_and_reuses_single_pattern_submit(self) -> None:
         for marker in (
             'ImGui::BeginTabItem("Boss Verification")',
-            'ImGui::BeginTabItem("Pattern Flow")',
+            'ImGui::BeginTabItem("Pattern Flow", nullptr, FlowFlags)',
             "Render_BossVerificationTab();",
             "Render_PatternFlowTab();",
             "RenderIds(m_AuditionInventory.CorePatternIds);",
@@ -431,6 +431,8 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         self.assertIn("CValtanPatternFlowService::Get().Start(", start_body)
         self.assertNotIn("CValtanPatternAuditionService::Get().Submit(", start_body)
         self.assertNotIn("PendingPatternIds", self.boss_tool)
+        self.assertIn("void Client::CBossTool::Open_PatternFlow()", self.boss_tool)
+        self.assertIn("m_bSelectPatternFlowTab = true", self.boss_tool)
 
     def test_flow_selection_and_hover_reuse_the_shared_pattern_identity(self) -> None:
         for start, end in (
@@ -498,15 +500,16 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         ):
             self.assertIn(token, active_query)
 
-    def test_reload_starts_first_saved_slot_and_save_publishes_default(self) -> None:
+    def test_reload_is_disk_only_and_save_publishes_default(self) -> None:
         reload_body = self.boss_tool[
             self.boss_tool.index("bool_t Client::CBossTool::Reload_FlowDocument()"):
             self.boss_tool.index("bool_t Client::CBossTool::Save_FlowDocument()")
         ]
         self.assertLess(reload_body.index("m_FlowDocument.Reload("), reload_body.index("pFlow->Slots.front().strSlotId"))
-        self.assertLess(reload_body.index("pFlow->Slots.front().strSlotId"), reload_body.index("Start_Flow(false)"))
         self.assertIn("playback unchanged", reload_body)
         self.assertIn("Has_PendingCommand()", reload_body)
+        self.assertNotIn("Start_Flow(", reload_body)
+        self.assertNotIn("Set_ServerArenaPreset(", reload_body)
         save_body = self.boss_tool[
             self.boss_tool.index("bool_t Client::CBossTool::Save_FlowDocument()"):
             self.boss_tool.index("bool_t Client::CBossTool::Apply_SavedFlow()")
@@ -516,6 +519,82 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         self.assertIn("Saved, but the Server order has not changed", save_body)
         self.assertIn("CValtanTuningCommandService::Get().Update();", self.main_app)
         self.assertIn("flow.Slots.empty()", self.source)
+
+    def test_failed_canonical_reload_keeps_display_rows_but_revokes_mutation(self) -> None:
+        header = (ROOT / "Client/Public/BossTool.h").read_text(encoding="utf-8")
+        reload_body = self.boss_tool[
+            self.boss_tool.index("bool_t Client::CBossTool::Reload_Graph()") :
+            self.boss_tool.index("void Client::CBossTool::Refresh_PresentationFreshness(")
+        ]
+        self.assertIn("m_bGraphMutationAdmitted", header)
+        self.assertIn("m_bGraphReady", header)
+        self.assertLess(
+            reload_body.index("m_bGraphMutationAdmitted = false"),
+            reload_body.index("CValtanPatternTree::Load("),
+        )
+        self.assertIn("STALE_PRESERVED", reload_body)
+        self.assertIn("previous rows are display-only", reload_body)
+        self.assertLess(
+            reload_body.index("m_bGraphReady = true"),
+            reload_body.index("m_bGraphMutationAdmitted = true"),
+        )
+
+        gate = self.boss_tool[
+            self.boss_tool.index("bool_t Client::CBossTool::Can_MutateCanonicalGraph(") :
+            self.boss_tool.index("void Client::CBossTool::Refresh_PresentationFreshness(")
+        ]
+        self.assertIn("m_bGraphMutationAdmitted", gate)
+        self.assertIn("display-only", gate)
+        for start, end, marker in (
+            ("bool_t Client::CBossTool::Can_Play_ServerPattern(",
+             "bool_t Client::CBossTool::Get_ServerPatternOptions(",
+             "Can_MutateCanonicalGraph"),
+            ("bool_t Client::CBossTool::Set_ServerArenaPreset(",
+             "bool_t Client::CBossTool::Get_ServerArenaActiveState(",
+             "Can_MutateCanonicalGraph"),
+            ("bool_t Client::CBossTool::Start_Flow(",
+             "bool_t Client::CBossTool::Refresh_Arena(",
+             "Acquire_ServerPlaybackAdmission"),
+            ("bool_t Client::CBossTool::Save_FlowDocument()",
+             "bool_t Client::CBossTool::Apply_SavedFlow()",
+             "Can_MutateCanonicalGraph"),
+            ("bool_t Client::CBossTool::Apply_SavedFlow()",
+             "void Client::CBossTool::Render_FlowPublicationStatus()",
+             "Can_MutateCanonicalGraph"),
+            ("void Client::CBossTool::Render_NextPatternPicker()",
+             "void Client::CBossTool::Render_FlowSlotList()",
+             "Queue_NextServerPattern"),
+            ("void Client::CBossTool::Render_FlowSelectedSlot()",
+             "void Client::CBossTool::Render_ActionBar()",
+             "Can_MutateCanonicalGraph"),
+        ):
+            body = self.boss_tool[
+                self.boss_tool.index(start) : self.boss_tool.index(end)
+            ]
+            self.assertIn(marker, body)
+
+    def test_flow_commands_have_explicit_non_composed_ui_contracts(self) -> None:
+        for label in (
+            'ImGui::Button("Reload Saved Flow")',
+            'ImGui::Button("Save + Publish Flow")',
+            'ImGui::Button("Restart Saved Flow (Fresh Arena)")',
+            'ImGui::Button("Refresh Arena")',
+            'ImGui::Button("Restart Pattern (Preserve Arena)")',
+        ):
+            self.assertIn(label, self.boss_tool)
+
+        refresh_body = self.boss_tool[
+            self.boss_tool.index("bool_t Client::CBossTool::Refresh_Arena()"):
+            self.boss_tool.index("bool_t Client::CBossTool::Request_RevivePlayer(")
+        ]
+        self.assertIn("Set_ServerArenaPreset(", refresh_body)
+        self.assertIn("VALTAN_ARENA_PRESET::FRESH", refresh_body)
+        self.assertNotIn("Start_Flow(", refresh_body)
+        restart_body = self.boss_tool[
+            self.boss_tool.index("bool_t Client::CBossTool::Restart_SelectedPattern()"):
+            self.boss_tool.index("bool_t Client::CBossTool::Can_Play_ServerPattern(")
+        ]
+        self.assertIn("Restart_ActivePattern(", restart_body)
 
     def test_authoring_playback_and_preview_status_are_rendered_separately(self) -> None:
         for marker in (

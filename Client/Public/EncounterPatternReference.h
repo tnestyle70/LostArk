@@ -4,7 +4,9 @@
 #include "Engine_Defines.h"
 
 #include <cstdint>
+#include <array>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -41,16 +43,32 @@ struct ENCOUNTER_STAGE_REFERENCE final
 	f32_t fCounterProxyRadiusM = 0.f;
 };
 
+/* Projected Product motion retained for presentation consumers that need the
+   admitted landing anchor. Runtime presentation must not re-open the split
+   Valtan.gameplay/presentation authoring graph to recover this value. */
+struct ENCOUNTER_PATTERN_SERVER_MOTION_REFERENCE final
+{
+	std::string kind;
+	std::string anchorId;
+	std::array<f32_t, 3u> landingPosition{};
+};
+
 struct ENCOUNTER_PATTERN_REFERENCE final
 {
 	std::string patternId;
 	std::string displayName;
 	std::string actionId;
 	std::string selectionMode;
+	/* Retained so presentation documents can validate virtual target anchors
+	   against the exact Server targeting contract instead of accepting a
+	   target-looking stable ID as an arbitrary model bone. */
+	std::string targetPolicy;
+	std::string aimPolicy;
 	uint32_t iTriggerHealthBar = 0;
 	uint32_t iTotalDurationMs = 0;
 	std::vector<uint32_t> sourceActionIds;
 	std::vector<ENCOUNTER_STAGE_REFERENCE> stages;
+	std::optional<ENCOUNTER_PATTERN_SERVER_MOTION_REFERENCE> serverMotion;
 };
 
 /* Read-only view of Data/Encounters/<Boss>/<Boss>Encounter.json.

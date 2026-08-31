@@ -41,6 +41,7 @@
 
 #ifdef _DEBUG
 #include "Animation_Tool.h"
+#include "ActionCompositionWorkbench.h"
 #include "BalanceTool.h"
 #include "BossTool.h"
 #include "CameraTool.h"
@@ -661,13 +662,36 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			IsDebugToolVisible(DEBUG_TOOL::MAP) &&
 			DEBUG_TOOL::MAP == m_eDebugInputOwner);
 	}
+	/* Composition emits a one-shot claim; MainApp remains the sole input-owner
+	   authority. Consume it before Animation_Tool::Update so reclaiming after a
+	   domain deep-link does not stop the active preview for one extra frame. */
+	if (nullptr != m_pActionCompositionWorkbench &&
+		m_pActionCompositionWorkbench->Consume_PreviewOwnerClaimRequest())
+	{
+		if (m_bDeveloperToolsVisible &&
+			IsDebugToolVisible(DEBUG_TOOL::COMPOSITION))
+		{
+			m_eDebugInputOwner = DEBUG_TOOL::COMPOSITION;
+			m_eDebugWindowFocusPending = DEBUG_TOOL::COMPOSITION;
+			m_strToolStatus =
+				"Action Composition Workbench reclaimed viewport/preview input.";
+		}
+		else
+		{
+			m_strToolStatus =
+				"Preview-owner claim rejected because Action Composition Workbench is not visible.";
+		}
+	}
 	if (nullptr != m_pAnimationTool)
 	{
+		const bool_t bAnimationPreviewOwned =
+			(IsDebugToolVisible(DEBUG_TOOL::ANIMATION) &&
+			 DEBUG_TOOL::ANIMATION == m_eDebugInputOwner) ||
+			(IsDebugToolVisible(DEBUG_TOOL::COMPOSITION) &&
+			 DEBUG_TOOL::COMPOSITION == m_eDebugInputOwner);
 		m_pAnimationTool->Update(
 			fTimeDelta,
-			m_bDeveloperToolsVisible &&
-			IsDebugToolVisible(DEBUG_TOOL::ANIMATION) &&
-			DEBUG_TOOL::ANIMATION == m_eDebugInputOwner);
+			m_bDeveloperToolsVisible && bAnimationPreviewOwned);
 	}
 	if (nullptr != m_pEffectTool)
 		m_pEffectTool->Update(fTimeDelta);
@@ -730,6 +754,50 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			}
 		}
 	}
+	if (nullptr != m_pActionCompositionWorkbench)
+	{
+		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST effectRequest;
+		if (m_pActionCompositionWorkbench->Consume_EffectToolOpenRequest(
+				effectRequest))
+		{
+			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) &&
+				nullptr != m_pEffectTool)
+			{
+				const bool_t bOpened =
+					m_pEffectTool->Open_ValtanProductEffect(effectRequest);
+				m_strToolStatus = bOpened ?
+					"Opened the exact Composition Sequencer Effect in its owner Tool." :
+					"Effect Tool opened, but the selected Composition occurrence needs attention.";
+			}
+		}
+		CAMERA_TOOL_OPEN_REQUEST cameraRequest;
+		if (m_pActionCompositionWorkbench->Consume_CameraToolOpenRequest(
+				cameraRequest))
+		{
+			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::CAMERA)) &&
+				nullptr != m_pCameraTool)
+			{
+				const bool_t bOpened = m_pCameraTool->Open_Cue(cameraRequest);
+				m_strToolStatus = bOpened ?
+					"Opened the exact Composition Sequencer camera cue." :
+					"Camera Tool opened, but the selected Composition cue needs attention.";
+			}
+		}
+		if (m_pActionCompositionWorkbench->Consume_AnimationToolOpenRequest())
+		{
+			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::ANIMATION)) &&
+				nullptr != m_pAnimationTool)
+			{
+				(void)m_pAnimationTool->Open_ValtanWorkspace();
+				m_strToolStatus =
+					"Opened Animation Clip/Sequence Intake beside Action Composition Workbench.";
+			}
+		}
+		m_pActionCompositionWorkbench->Set_PreviewOwnerActive(
+			m_bDeveloperToolsVisible &&
+			IsDebugToolVisible(DEBUG_TOOL::COMPOSITION) &&
+			DEBUG_TOOL::COMPOSITION == m_eDebugInputOwner);
+	}
 	if (nullptr != m_pCameraTool)
 	{
 		m_pCameraTool->Update(
@@ -786,24 +854,59 @@ HRESULT CMainApp::Render()
 		gated on that the first time, so it kept bleeding through underneath. */
 		const bool_t skillWindowOpenForPreview =
 			nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
+		/* The O-key raid-entry preview's left info column/panel frame sit in the
+		   same screen region as this class HUD (portrait, skill icons, identity
+		   gauge) -- skip drawing the class HUD chrome entirely while that debug
+		   preview is open instead of letting the two fight for the same pixels. */
+		const bool_t isCharSelectDebugPreviewOpen =
+			ETOUI(LEVEL::CHARACTER_SELECT) == hudLevel &&
+			nullptr != CLevel_CharacterSelect::Get_Active() &&
+			CLevel_CharacterSelect::Get_Active()->Is_DebugRaidEntryPreviewOpen();
 		if (nullptr != m_pHUDLayoutTool && hudPlayer.isValid &&
-			supportsAuthoredHUD && !skillWindowOpenForPreview)
+			supportsAuthoredHUD && !skillWindowOpenForPreview &&
+			!isCharSelectDebugPreviewOpen)
 		{
 			m_pHUDLayoutTool->Render_RuntimePreview(
 				GetHUDLayoutClassId(hudPlayer.eCharacterClass));
 		}
+		if (!isCharSelectDebugPreviewOpen)
+		{
 	#endif
-		RenderCombatHUD();
-		RenderBossHealthBar();
-		RenderChargeGauge();
-		RenderEstherGauge();
-		/* RenderQuickSlot only draws the extracted QuickSlot.gfx on-use flash overlay -- it does
-		not draw icon art, cooldown sweep, or keybind text for any class, so it is additive on top
-		of the existing icon/cooldown rendering below, not a replacement for it. Disabling these
-		two calls previously took every class's skill icons off screen, not just LanceMaster's. */
-		RenderSkillIcons();
-		RenderSkillCooldowns();
-		RenderQuickSlot();
+			RenderCombatHUD();
+			RenderBossHealthBar();
+			RenderChargeGauge();
+			RenderEstherGauge();
+			/* RenderQuickSlot only draws the extracted QuickSlot.gfx on-use flash overlay -- it does
+			not draw icon art, cooldown sweep, or keybind text for any class, so it is additive on top
+			of the existing icon/cooldown rendering below, not a replacement for it. Disabling these
+			two calls previously took every class's skill icons off screen, not just LanceMaster's. */
+			RenderSkillIcons();
+			RenderSkillCooldowns();
+			RenderQuickSlot();
+	#ifdef _DEBUG
+		}
+	#endif
+		/* Must run after the combat HUD renders above: Render_ValtanEntryModal's
+		   art draws to ImGui::GetForegroundDrawList(), the same shared list
+		   RenderCombatHUD/RenderBossHealthBar/RenderSkillIcons/RenderQuickSlot
+		   just used, and that list composites in real submission order -- calling
+		   it earlier let the always-on combat HUD paint over the full-screen
+		   raid-entry panel. */
+		if (ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID())
+		{
+			if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
+				pBern->Render_ValtanEntryModal();
+		}
+#ifdef _DEBUG
+		/* O-key visual-only preview of the same raid-entry panel from Character
+		   Select -- same foreground-drawlist ordering requirement as Bern's real
+		   one above. See CLevel_CharacterSelect::Update_RaidEntryDebugPreviewKey. */
+		if (ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID())
+		{
+			if (CLevel_CharacterSelect* pCharacterSelectDebug = CLevel_CharacterSelect::Get_Active())
+				pCharacterSelectDebug->Render_RaidEntryDebugPreview();
+		}
+#endif
 		if (nullptr != m_pChatWindowView)
 		{
 			/* Only in actual in-game play (Bern/Valtan), not Character Select -- more levels join
@@ -863,6 +966,12 @@ HRESULT CMainApp::Render()
 			{
 				focusNextWindow(DEBUG_TOOL::MAP);
 				m_pMapTool->Render();
+			}
+			if (IsDebugToolVisible(DEBUG_TOOL::COMPOSITION) &&
+				nullptr != m_pActionCompositionWorkbench)
+			{
+				focusNextWindow(DEBUG_TOOL::COMPOSITION);
+				m_pActionCompositionWorkbench->Render();
 			}
 			if (IsDebugToolVisible(DEBUG_TOOL::ANIMATION) &&
 				nullptr != m_pAnimationTool)
@@ -941,7 +1050,12 @@ HRESULT CMainApp::Render()
 	if (ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID())
 	{
 		if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active())
+		{
 			pCharacterSelect->Render_ArenaSpawnLabels();
+#ifdef _DEBUG
+			pCharacterSelect->Render_RaidEntryDebugPreviewText();
+#endif
+		}
 	}
 	if (ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID())
 	{
@@ -4468,10 +4582,14 @@ void CMainApp::Apply_LevelRequest()
 			ETOUI(request.eTargetLevel), move(nextLevel)));
 	if (levelChanged)
 	{
-#ifdef _DEBUG
+	#ifdef _DEBUG
 		if (nullptr != m_pCharacterPreviewPanel)
 			m_pCharacterPreviewPanel->On_LevelChanged();
-#endif
+		if (nullptr != m_pAnimationTool)
+			m_pAnimationTool->On_LevelChanged();
+		if (nullptr != m_pActionCompositionWorkbench)
+			m_pActionCompositionWorkbench->On_LevelChanged();
+	#endif
 		CEffectPresentationService::Clear_Level(iPreviousLevel);
 		if (LEVEL::BERN == request.eTargetLevel &&
 			CCharacterSelectionState::Has_PendingCreation() &&
@@ -4648,6 +4766,28 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		}
 		m_pMapTool->SetOpen(true);
 		break;
+	case DEBUG_TOOL::COMPOSITION:
+		if (nullptr == m_pCharacterPreviewPanel)
+			m_pCharacterPreviewPanel =
+				make_shared<CCharacterPreviewPanel>(m_pDevice, m_pContext);
+		if (nullptr == m_pBalanceTool)
+			m_pBalanceTool = make_unique<CBalanceTool>();
+		if (nullptr == m_pBossTool)
+			m_pBossTool = make_unique<CBossTool>(
+				make_shared<CNetworkPlayerCommandSink>());
+		if (nullptr == m_pAnimationTool)
+			m_pAnimationTool = make_unique<CAnimation_Tool>(
+				m_pCharacterPreviewPanel,
+				m_pBalanceTool.get(), m_pBossTool.get());
+		if (nullptr == m_pActionCompositionWorkbench)
+		{
+			m_pActionCompositionWorkbench =
+				make_unique<CActionCompositionWorkbench>(
+					m_pAnimationTool.get(),
+					m_pBalanceTool.get(), m_pBossTool.get());
+		}
+		(void)m_pActionCompositionWorkbench->Open_Valtan();
+		break;
 	case DEBUG_TOOL::ANIMATION:
 		if (nullptr == m_pCharacterPreviewPanel)
 			m_pCharacterPreviewPanel =
@@ -4723,6 +4863,390 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 	return S_OK;
 }
 
+bool_t CMainApp::RequestDebugLevelNavigation(const LEVEL eTargetLevel)
+{
+	const LEVEL currentLevel = static_cast<LEVEL>(
+		CGameInstance::Get().Get_CurrentLevelID());
+	if (LEVEL::END == eTargetLevel || LEVEL::LOADING == currentLevel)
+	{
+		m_strDebugLevelNavigationStatus =
+			"Level navigation is unavailable while the current Level is loading or the target is invalid.";
+		return false;
+	}
+	if (eTargetLevel == currentLevel)
+	{
+		m_strDebugLevelNavigationStatus =
+			"The selected Level is already current.";
+		return false;
+	}
+	if (LEVEL::END != m_eDebugLevelNavigationTarget ||
+		CLevelTransitionService::Is_Pending())
+	{
+		m_strDebugLevelNavigationStatus =
+			"Another Server entry or Level transition is already pending.";
+		return false;
+	}
+
+	auto routeThroughLobby = [this, currentLevel](
+		const LOBBY_STAGE stage,
+		const LEVEL finalTarget,
+		const char_t* targetName) -> bool_t
+	{
+		bool_t accepted = false;
+		if (LEVEL::LOBBY == currentLevel)
+		{
+			accepted = CLevel_Lobby::Submit_ProductCommand(stage);
+			if (!accepted)
+			{
+				m_strDebugLevelNavigationStatus =
+					CLevel_Lobby::Get_ProductStatus();
+				return false;
+			}
+		}
+		else if (LEVEL::CHARACTER_SELECT == currentLevel)
+		{
+			CLevel_CharacterSelect* pCharacterSelect =
+				CLevel_CharacterSelect::Get_Active();
+			accepted = nullptr != pCharacterSelect &&
+				pCharacterSelect->Debug_Request_ProductStage(stage);
+			if (!accepted)
+			{
+				m_strDebugLevelNavigationStatus = nullptr != pCharacterSelect ?
+					pCharacterSelect->Debug_GetNavigationStatus() :
+					"The active Character Select owner is unavailable.";
+				return false;
+			}
+		}
+		else
+		{
+			LOBBY_COMMAND_TOKEN token = INVALID_LOBBY_COMMAND_TOKEN;
+			if (!CLobbyCommandService::Request(stage, token))
+			{
+				m_strDebugLevelNavigationStatus =
+					CLobbyCommandService::Get_Status();
+				return false;
+			}
+			if (!CLevelTransitionService::Request_Load(
+				LEVEL::LOBBY,
+				"f1.level-navigation.route-via-lobby",
+				token))
+			{
+				CLobbyCommandService::Cancel(
+					token, "F1 Level Navigation load was rejected");
+				m_strDebugLevelNavigationStatus =
+					CLevelTransitionService::Get_Status();
+				return false;
+			}
+			accepted = true;
+		}
+
+		m_eDebugLevelNavigationTarget = finalTarget;
+		m_DebugLevelNavigationDeadline =
+			std::chrono::steady_clock::now() + std::chrono::seconds(15);
+		m_bDebugLevelNavigationDeadlineActive = true;
+		m_strDebugLevelNavigationStatus =
+			string("Server-approved route staged for ") + targetName +
+			". Lobby owns connection and admission; F1 does not send a packet directly.";
+		return accepted;
+	};
+
+	if (LEVEL::LOBBY == eTargetLevel)
+	{
+		if (!CLevelTransitionService::Request_Load(
+			LEVEL::LOBBY, "f1.level-navigation.return-lobby"))
+		{
+			m_strDebugLevelNavigationStatus =
+				CLevelTransitionService::Get_Status();
+			return false;
+		}
+		m_eDebugLevelNavigationTarget = LEVEL::LOBBY;
+		m_DebugLevelNavigationDeadline =
+			std::chrono::steady_clock::now() + std::chrono::seconds(15);
+		m_bDebugLevelNavigationDeadlineActive = true;
+		m_strDebugLevelNavigationStatus =
+			"Typed Lobby return staged. Gameplay Areas remain Server-authoritative and no destination admission was fabricated.";
+		return true;
+	}
+	if (LEVEL::KAKULSAYDON_ARENA == eTargetLevel)
+	{
+		if (LEVEL::CHARACTER_SELECT == currentLevel)
+		{
+			CLevel_CharacterSelect* pCharacterSelect =
+				CLevel_CharacterSelect::Get_Active();
+			if (nullptr == pCharacterSelect ||
+				!pCharacterSelect->Debug_Request_KakulSaydonArena())
+			{
+				m_strDebugLevelNavigationStatus = nullptr != pCharacterSelect ?
+					pCharacterSelect->Debug_GetNavigationStatus() :
+					"The active Character Select owner is unavailable.";
+				return false;
+			}
+			m_eDebugLevelNavigationTarget = LEVEL::KAKULSAYDON_ARENA;
+			m_DebugLevelNavigationDeadline =
+				std::chrono::steady_clock::now() + std::chrono::seconds(15);
+			m_bDebugLevelNavigationDeadlineActive = true;
+			m_strDebugLevelNavigationStatus =
+				pCharacterSelect->Debug_GetNavigationStatus();
+			return true;
+		}
+
+		if (!routeThroughLobby(
+			LOBBY_STAGE::CHARACTER_SELECT,
+			LEVEL::CHARACTER_SELECT,
+			"Character Select (required before KoukuSaydon)"))
+		{
+			return false;
+		}
+		m_strDebugLevelNavigationStatus =
+			"KoukuSaydon requires its existing Character Select command sink. Routing to Server-approved Character Select first; press KoukuSaydon again after admission.";
+		return true;
+	}
+	if (LEVEL::CHARACTER_SELECT == eTargetLevel)
+		return routeThroughLobby(
+			LOBBY_STAGE::CHARACTER_SELECT, eTargetLevel, "Character Select");
+	if (LEVEL::BERN == eTargetLevel)
+		return routeThroughLobby(LOBBY_STAGE::BERN, eTargetLevel, "Bern");
+	if (LEVEL::VALTAN_ARENA == eTargetLevel)
+		return routeThroughLobby(LOBBY_STAGE::VALTAN, eTargetLevel, "Valtan");
+
+	m_strDebugLevelNavigationStatus =
+		"F1 Level Navigation exposes only Lobby, Character Select, Bern, Valtan and KoukuSaydon.";
+	return false;
+}
+
+void CMainApp::RenderDebugLevelNavigation()
+{
+	auto levelName = [](const LEVEL level) -> const char_t*
+	{
+		switch (level)
+		{
+		case LEVEL::LOBBY: return "Lobby";
+		case LEVEL::CHARACTER_SELECT: return "Character Select";
+		case LEVEL::BERN: return "Bern";
+		case LEVEL::VALTAN_ARENA: return "Valtan";
+		case LEVEL::KAKULSAYDON_ARENA: return "KoukuSaydon";
+		case LEVEL::LOADING: return "Loading";
+		case LEVEL::DEVELOPMENT: return "Development";
+		default: return "Other";
+		}
+	};
+	const LEVEL currentLevel = static_cast<LEVEL>(
+		CGameInstance::Get().Get_CurrentLevelID());
+	const bool_t transitionPending =
+		CLevelTransitionService::Is_Pending();
+	if (LEVEL::END != m_eDebugLevelNavigationTarget &&
+		!transitionPending && currentLevel == m_eDebugLevelNavigationTarget)
+	{
+		m_strDebugLevelNavigationStatus =
+			string("Arrived at ") + levelName(currentLevel) +
+			" through the typed Level route.";
+		m_eDebugLevelNavigationTarget = LEVEL::END;
+		m_bDebugLevelNavigationDeadlineActive = false;
+	}
+	else if (LEVEL::END != m_eDebugLevelNavigationTarget &&
+		m_bDebugLevelNavigationDeadlineActive &&
+		std::chrono::steady_clock::now() >=
+			m_DebugLevelNavigationDeadline)
+	{
+		const string ownerStatus = LEVEL::LOBBY == currentLevel ?
+			CLevel_Lobby::Get_ProductStatus() :
+			CLevelTransitionService::Get_Status();
+		m_strDebugLevelNavigationStatus =
+			"F1 route tracking timed out after 15 seconds and was unlocked. The typed owner remains authoritative; retry only after checking: " +
+			ownerStatus;
+		m_eDebugLevelNavigationTarget = LEVEL::END;
+		m_bDebugLevelNavigationDeadlineActive = false;
+	}
+
+	ImGui::SeparatorText("Level Navigation");
+	ImGui::Text("Current: %s", levelName(currentLevel));
+	ImGui::SameLine();
+	ImGui::TextDisabled(
+		"| Pending: %s",
+		LEVEL::END != m_eDebugLevelNavigationTarget ?
+			levelName(m_eDebugLevelNavigationTarget) :
+			(transitionPending ? "typed transition" : "None"));
+	ImGui::TextWrapped("%s", m_strDebugLevelNavigationStatus.c_str());
+	ImGui::TextDisabled(
+		"Bern/Valtan/Character Select use Lobby admission. KoukuSaydon uses Character Select's world-transfer command sink.");
+
+	constexpr std::array<std::pair<LEVEL, const char_t*>, 5> destinations = {{
+		{ LEVEL::LOBBY, "Lobby" },
+		{ LEVEL::CHARACTER_SELECT, "Character Select" },
+		{ LEVEL::BERN, "Bern" },
+		{ LEVEL::VALTAN_ARENA, "Valtan" },
+		{ LEVEL::KAKULSAYDON_ARENA, "KoukuSaydon" },
+	}};
+	for (size_t iDestination = 0u;
+		iDestination < destinations.size(); ++iDestination)
+	{
+		if (0u != iDestination)
+			ImGui::SameLine();
+		const LEVEL target = destinations[iDestination].first;
+		const bool_t disable = currentLevel == target ||
+			LEVEL::END != m_eDebugLevelNavigationTarget ||
+			transitionPending || LEVEL::LOADING == currentLevel;
+		ImGui::BeginDisabled(disable);
+		if (ImGui::SmallButton(destinations[iDestination].second))
+			(void)RequestDebugLevelNavigation(target);
+		ImGui::EndDisabled();
+	}
+	if (transitionPending)
+	{
+		ImGui::TextDisabled(
+			"Transition owner: %s",
+			CLevelTransitionService::Get_Status().c_str());
+	}
+}
+
+void CMainApp::RefreshDebugAuthoringSources()
+{
+	const filesystem::path dataRoot = CProjectDataRoot::Get();
+	auto addSource = [this](
+		const char_t* domain,
+		const char_t* displayName,
+		const char_t* canonicalPath,
+		const char_t* description,
+		const char_t* actionLabel,
+		const DEBUG_TOOL tool,
+		const size_t documentCount,
+		const bool_t sourceReady,
+		const bool_t openValtanWorkspace,
+		const bool_t openValtanEffectWorkspace)
+	{
+		DEBUG_AUTHORING_SOURCE source;
+		source.strDomain = domain;
+		source.strDisplayName = displayName;
+		source.strCanonicalPath = canonicalPath;
+		source.strDescription = description;
+		source.strActionLabel = actionLabel;
+		source.eTool = tool;
+		source.iDocumentCount = documentCount;
+		source.bCanonicalSourceReady = sourceReady;
+		source.bOpenValtanWorkspace = openValtanWorkspace;
+		source.bOpenValtanEffectWorkspace = openValtanEffectWorkspace;
+		m_DebugAuthoringSources.push_back(std::move(source));
+	};
+	auto sourceExists = [&dataRoot](const filesystem::path& relative)
+	{
+		std::error_code error;
+		return filesystem::exists(dataRoot / relative, error) && !error;
+	};
+
+	m_bDebugAuthoringSourceRefreshAttempted = true;
+	m_DebugAuthoringSources.clear();
+
+	addSource(
+		"Boss / Pattern", "Valtan Action Composition",
+		"Data/Valtan/Valtan.gameplay.json",
+		"Canonical gameplay source joined with Valtan.presentation.json into the Server and presentation Products.",
+		"Open Composition Workbench", DEBUG_TOOL::COMPOSITION,
+		2u,
+		sourceExists(L"Valtan/Valtan.gameplay.json") &&
+			sourceExists(L"Valtan/Valtan.presentation.json"), true, false);
+	addSource(
+		"Character / Animation", "Valtan Animation & Sequence Source",
+		"Data/Valtan/Valtan.presentation.json",
+		"Writable Pattern animation occurrences, Effect invocations and camera edges. Generated bindings remain read-only Product.",
+		"Open Composition Detail", DEBUG_TOOL::COMPOSITION,
+		1u,
+		sourceExists(L"Valtan/Valtan.presentation.json"), true, false);
+	addSource(
+		"Effect V1", "Valtan Authored Effects",
+		"Data/Effects/EffectCatalog.json",
+		"EffectCatalog is the semantic entry point. Exact effect.valtan.* resources are enumerated only after Effect Tool is opened.",
+		"Open Effect Detail", DEBUG_TOOL::EFFECT,
+		1u,
+		sourceExists(L"Effects/EffectCatalog.json"), false, true);
+	addSource(
+		"Effect V2", "Valtan Effect V2 Bindings",
+		"Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json",
+		"BOSS_VALTAN bindings and boss.valtan.* Effect V2 documents owned by Effect Tool v2.",
+		"Open Effect V2 Detail", DEBUG_TOOL::EFFECT_V2,
+		1u,
+		sourceExists(L"Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"), false, false);
+	addSource(
+		"Sound", "Valtan Pattern Sound Cues",
+		"Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json",
+		"Sound cues joined to stable Pattern and Sequence slots; edited from the integrated Valtan Detail.",
+		"Open Sound Cue Detail", DEBUG_TOOL::COMPOSITION,
+		1u,
+		sourceExists(L"Animation/Authored/Valtan/Valtan.patternsoundcues.json"), true, false);
+	addSource(
+		"Gameplay", "Valtan Gameplay & Balance",
+		"Data/Balance/BossProfiles.json",
+		"Server-owned boss HP, stagger and damage tuning. Pattern presentation never overrides these values.",
+		"Open Balance Tool", DEBUG_TOOL::BALANCE,
+		1u,
+		sourceExists(L"Balance/BossProfiles.json"), false, false);
+	addSource(
+		"Encounter", "Valtan Encounter Runtime",
+		"Data/Encounters/Valtan/ValtanEncounter.json",
+		"Server arena, walls, world events, flow and Complete Play admission documents.",
+		"Open Boss Verification", DEBUG_TOOL::BOSS,
+		1u,
+		sourceExists(L"Encounters/Valtan/ValtanEncounter.json"), false, false);
+	addSource(
+		"Character / Animation", "All Authored Character Bindings",
+		"Data/Animation/Authored",
+		"Character skill/action bindings only. Extracted clips and reference timing stay read-only intake data.",
+		"Open Animation Intake", DEBUG_TOOL::ANIMATION,
+		1u,
+		sourceExists(L"Animation/Authored"), false, false);
+}
+
+void CMainApp::OpenDebugAuthoringSource(const size_t iSource)
+{
+	if (iSource >= m_DebugAuthoringSources.size())
+		return;
+	const DEBUG_AUTHORING_SOURCE& source = m_DebugAuthoringSources[iSource];
+	if (!source.bCanonicalSourceReady)
+	{
+		m_strToolStatus = "Canonical source is unavailable; no owner was opened: " +
+			source.strCanonicalPath;
+		return;
+	}
+	if (FAILED(EnsureDebugTool(source.eTool)))
+	{
+		m_strToolStatus = "Canonical source is ready, but its owner Tool failed to initialize: " +
+			source.strCanonicalPath;
+		return;
+	}
+	if (source.bOpenValtanWorkspace)
+	{
+		(void)EnsureDebugTool(DEBUG_TOOL::COMPOSITION);
+		if (nullptr == m_pActionCompositionWorkbench)
+		{
+			m_strToolStatus =
+				"Valtan sources are present, but Action Composition Workbench is unavailable.";
+			return;
+		}
+		const bool_t bFullyAdmitted =
+			m_pActionCompositionWorkbench->Open_Valtan();
+		if (!bFullyAdmitted)
+		{
+			if (!m_pActionCompositionWorkbench->Has_DisplaySnapshot())
+			{
+				m_strToolStatus =
+					"Action Composition Workbench opened, but canonical Product admission was rejected; inspect its diagnostic banner.";
+				return;
+			}
+			m_strToolStatus =
+				"Action Composition Workbench opened with a canonical Product snapshot in read-only mode; typed source join needs attention before Save or Server playback.";
+			return;
+		}
+	}
+	if (source.bOpenValtanEffectWorkspace &&
+		(nullptr == m_pEffectTool ||
+		!m_pEffectTool->Open_ValtanAllEffectsWorkspace()))
+	{
+		m_strToolStatus = "Valtan EffectCatalog is ready, but the exact effect.valtan.* authored workspace could not be opened.";
+		return;
+	}
+	m_strToolStatus = "Opened " + source.strDisplayName + " from " +
+		source.strCanonicalPath + ". Select its semantic row to edit in Detail; this F1 summary never edits or republishes files directly.";
+}
+
 void CMainApp::RefreshDebugResourceFiles()
 {
 	struct RESOURCE_ROOT
@@ -4745,7 +5269,7 @@ void CMainApp::RefreshDebugResourceFiles()
 		{ "Character / Animation", "Data", dataRoot / L"Animation",
 			"Data/Animation", DEBUG_TOOL::ANIMATION },
 		{ "Boss / Pattern", "Data", dataRoot / L"Valtan",
-			"Data/Valtan", DEBUG_TOOL::ANIMATION },
+			"Data/Valtan", DEBUG_TOOL::COMPOSITION },
 		{ "Boss / Pattern", "Data", dataRoot / L"Encounters",
 			"Data/Encounters", DEBUG_TOOL::BOSS },
 		{ "Boss / Pattern", "Data", dataRoot / L"Actors",
@@ -4951,10 +5475,16 @@ void CMainApp::OpenDebugResourceFile(const size_t iFile)
 	/* Boss and pattern rows are a joined domain: Workbench owns the lanes and
 	   Boss Tool owns the Server command. Opening both is intentional and does
 	   not duplicate either runtime. */
+	bool_t bValtanWorkspaceOpened = false;
 	if ("Boss / Pattern" == file.strDomain)
 	{
-		(void)EnsureDebugTool(DEBUG_TOOL::ANIMATION);
-		(void)EnsureDebugTool(DEBUG_TOOL::BOSS);
+		(void)EnsureDebugTool(DEBUG_TOOL::COMPOSITION);
+		if (nullptr != m_pActionCompositionWorkbench &&
+			std::string::npos != file.strRelativePath.find("Valtan"))
+		{
+			bValtanWorkspaceOpened =
+				m_pActionCompositionWorkbench->Open_Valtan();
+		}
 	}
 
 	/* A KoukuSaton action/reference file names a concrete authoring profile, not just
@@ -5006,111 +5536,72 @@ void CMainApp::OpenDebugResourceFile(const size_t iFile)
 				 ", but the KoukuSaton profile preview could not open. Enter Development and preserve any unsaved draft.");
 		return;
 	}
-	m_strToolStatus = "Selected " + file.strRelativePath +
-		". Opened its existing domain owner; use Complete Play for Server truth.";
+	m_strToolStatus = bValtanWorkspaceOpened ?
+		("Read-only raw path selected: " + file.strRelativePath +
+			". Opened the canonical Valtan Pattern Workbench; select a semantic row there to edit Detail.") :
+		("Read-only raw path selected: " + file.strRelativePath +
+			". Opened its domain owner only; this arbitrary file was not loaded or presented as an editable canonical document.");
 }
 
 void CMainApp::RenderDebugResourceFiles()
 {
-	ImGui::SeparatorText("Resource Files");
+	ImGui::SeparatorText("Authoring Sources");
 	ImGui::TextDisabled(
-		"One index, existing domain owners. Selecting a file never copies or republishes it.");
-	if (ImGui::SmallButton("Refresh Resource Files") ||
-		!m_bDebugResourceScanAttempted)
-	{
-		RefreshDebugResourceFiles();
-	}
+		"Canonical owner entry points only. Detailed Pattern, Sequence, Effect, Sound and Resource rows load inside the selected Tool, never in F1.");
+	if (!m_bDebugAuthoringSourceRefreshAttempted)
+		RefreshDebugAuthoringSources();
+	if (ImGui::SmallButton("Refresh Canonical Sources"))
+		RefreshDebugAuthoringSources();
 	ImGui::SameLine();
-	ImGui::SetNextItemWidth(360.f);
-	ImGui::InputTextWithHint(
-		"##ResourceFilesSearch",
-		"Search path/domain...",
-		m_DebugResourceSearch.data(),
-		m_DebugResourceSearch.size());
-	ImGui::TextWrapped("%s", m_strDebugResourceStatus.c_str());
+	ImGui::TextDisabled("%zu meaningful entry points", m_DebugAuthoringSources.size());
 
-	string search = m_DebugResourceSearch.data();
-	std::transform(search.begin(), search.end(), search.begin(),
-		[](const unsigned char character)
-		{
-			return static_cast<char_t>(std::tolower(character));
-		});
-	constexpr std::array<const char_t*, 9> domains = {{
-		"KoukuSaton",
-		"Character / Animation",
-		"Boss / Pattern",
-		"Effect V1",
-		"Effect V2",
-		"Sound",
-		"Map / World / Navigation",
-		"UI / Fonts",
-		"Gameplay / Rendering",
-	}};
-
-	for (size_t iDomain = 0u; iDomain < domains.size(); ++iDomain)
+	if (ImGui::BeginChild(
+		"CanonicalAuthoringSources", ImVec2(0.f, 300.f), true))
 	{
-		std::vector<size_t> matches;
-		for (size_t iFile = 0u; iFile < m_DebugResourceFiles.size(); ++iFile)
+		if (ImGui::BeginTable(
+			"CanonicalAuthoringSourceTable", 3,
+			ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH |
+			ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp))
 		{
-			const DEBUG_RESOURCE_FILE& file = m_DebugResourceFiles[iFile];
-			if (file.strDomain == domains[iDomain] &&
-				(search.empty() || string::npos != file.strSearchText.find(search)))
+			ImGui::TableSetupColumn("Workbench", ImGuiTableColumnFlags_WidthFixed, 185.f);
+			ImGui::TableSetupColumn("Canonical source / role", ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableSetupColumn("State / action", ImGuiTableColumnFlags_WidthFixed, 155.f);
+			ImGui::TableHeadersRow();
+			for (size_t iSource = 0u;
+				iSource < m_DebugAuthoringSources.size(); ++iSource)
 			{
-				matches.push_back(iFile);
-			}
-		}
-
-		ImGui::PushID(static_cast<int32_t>(iDomain));
-		const ImGuiTreeNodeFlags flags = matches.empty() ?
-			ImGuiTreeNodeFlags_Leaf : ImGuiTreeNodeFlags_None;
-		if (ImGui::TreeNodeEx(
-			"Domain", flags, "%s (%zu)", domains[iDomain], matches.size()))
-		{
-			if (0 == std::strcmp(domains[iDomain], "KoukuSaton"))
-			{
+				const DEBUG_AUTHORING_SOURCE& source =
+					m_DebugAuthoringSources[iSource];
+				ImGui::PushID(static_cast<int32_t>(iSource));
+				ImGui::TableNextRow();
+				ImGui::TableSetColumnIndex(0);
+				ImGui::TextUnformatted(source.strDisplayName.c_str());
+				ImGui::TextDisabled("%s", source.strDomain.c_str());
+				ImGui::TableSetColumnIndex(1);
+				ImGui::TextWrapped("%s", source.strCanonicalPath.c_str());
 				ImGui::TextDisabled(
-					"Virtual collection only: stable Area/package asset IDs are preserved. Playable KoukuSaton sound mapping is still unresolved and is not fabricated here.");
+					"%zu canonical owner document%s",
+					source.iDocumentCount,
+					1u == source.iDocumentCount ? "" : "s");
+				if (ImGui::IsItemHovered())
+					ImGui::SetTooltip("%s", source.strDescription.c_str());
+				ImGui::TableSetColumnIndex(2);
+				if (source.bCanonicalSourceReady)
+					ImGui::TextColored(ImVec4(0.3f, 0.85f, 0.45f, 1.f), "READY");
+				else
+					ImGui::TextColored(ImVec4(0.95f, 0.35f, 0.3f, 1.f), "MISSING");
+				ImGui::BeginDisabled(!source.bCanonicalSourceReady);
+				if (ImGui::SmallButton(source.strActionLabel.c_str()))
+					OpenDebugAuthoringSource(iSource);
+				ImGui::EndDisabled();
+				ImGui::PopID();
 			}
-			if (matches.empty())
-			{
-				ImGui::TextDisabled("No matching file in the active physical roots.");
-			}
-			else
-			{
-				const float_t childHeight = (std::min)(
-					260.f, 24.f * static_cast<float_t>(matches.size()) + 8.f);
-				if (ImGui::BeginChild(
-					"ResourceRows", ImVec2(0.f, childHeight), true))
-				{
-					ImGuiListClipper clipper;
-					clipper.Begin(static_cast<int32_t>(matches.size()));
-					while (clipper.Step())
-					{
-						for (int32_t iRow = clipper.DisplayStart;
-							iRow < clipper.DisplayEnd; ++iRow)
-						{
-							const size_t iFile = matches[static_cast<size_t>(iRow)];
-							const DEBUG_RESOURCE_FILE& file =
-								m_DebugResourceFiles[iFile];
-							ImGui::PushID(static_cast<int32_t>(iFile));
-							const std::string label = "[" + file.strSource + "] " +
-								file.strRelativePath;
-							if (ImGui::Selectable(
-								label.c_str(),
-								iFile == m_iSelectedDebugResourceFile))
-							{
-								OpenDebugResourceFile(iFile);
-							}
-							ImGui::PopID();
-						}
-					}
-				}
-				ImGui::EndChild();
-			}
-			ImGui::TreePop();
+			ImGui::EndTable();
 		}
-		ImGui::PopID();
 	}
+	ImGui::EndChild();
+	ImGui::TextDisabled(
+		"F1 does not build a raw physical-file index. Open the owning Tool to enumerate and edit its admitted resources.");
 }
 
 void CMainApp::RefreshCompletePlayPatternOptions()
@@ -5210,14 +5701,31 @@ bool_t CMainApp::Debug_CompletePlaySelected(std::string& strOutStatus)
 		m_strCompletePlayPatternId,
 		strOutStatus);
 	m_strCompletePlayStatus = strOutStatus;
+	if (submitted)
+	{
+		m_bCompletePlayStatusTracking = true;
+		m_strCompletePlayTrackedPatternId = m_strCompletePlayPatternId;
+	}
 	return submitted;
+}
+
+bool_t CMainApp::Debug_OpenBossPatternFlow(std::string& strOutStatus)
+{
+	if (FAILED(EnsureDebugTool(DEBUG_TOOL::BOSS)) || nullptr == m_pBossTool)
+	{
+		strOutStatus = "Pattern Flow owner could not be opened.";
+		return false;
+	}
+	m_pBossTool->Open_PatternFlow();
+	strOutStatus =
+		"Opened the canonical Boss Pattern Flow owner. Save/Apply and playback remain in that typed owner.";
+	return true;
 }
 
 void CMainApp::RenderCompletePlayControls()
 {
 	if (!ImGui::CollapsingHeader(
-		"Complete Play (Server / Arena)",
-		ImGuiTreeNodeFlags_DefaultOpen))
+		"Valtan Complete Play (Server Boss Replay)"))
 	{
 		return;
 	}
@@ -5225,10 +5733,31 @@ void CMainApp::RenderCompletePlayControls()
 		"Shared by every open tool: semantic pattern ID -> Server stages/hits -> replicated animation, Effect, Sound, camera and world events.");
 	ImGui::TextDisabled(
 		"A raw clip or unsaved/unbound asset remains Local Asset Preview and cannot become Complete Play.");
-	if (!m_bCompletePlayPatternLoadAttempted ||
-		ImGui::SmallButton("Reload Complete Play Inventory"))
+	ImGui::TextDisabled(
+		"Complete Play resets boss-owned replay state only; the current replicated arena walls, floors, debris, collision, and Nav state are preserved.");
+	if (m_bCompletePlayStatusTracking && nullptr != m_pBossTool)
+	{
+		std::string serverStatus;
+		bool_t inFlight = false;
+		if (m_pBossTool->Get_ServerPatternStatus(
+				m_strCompletePlayTrackedPatternId, serverStatus, inFlight))
+		{
+			m_strCompletePlayStatus = std::move(serverStatus);
+			m_bCompletePlayStatusTracking = inFlight;
+		}
+	}
+	if (ImGui::SmallButton(
+		m_bCompletePlayPatternLoadAttempted ?
+			"Reload Complete Play Inventory" :
+			"Load Complete Play Inventory"))
 	{
 		RefreshCompletePlayPatternOptions();
+	}
+	if (!m_bCompletePlayPatternLoadAttempted)
+	{
+		ImGui::TextDisabled(
+			"Inventory is loaded only on request so opening F1 never parses the canonical Pattern graph.");
+		return;
 	}
 
 	if (!m_CompletePlayPatternIds.empty())
@@ -5261,10 +5790,10 @@ void CMainApp::RenderCompletePlayControls()
 		}
 		ImGui::EndChild();
 	}
+	const bool_t isValtanArena = ETOUI(LEVEL::VALTAN_ARENA) ==
+		CGameInstance::Get().Get_CurrentLevelID();
 	const bool_t canCompletePlay = nullptr != m_pBossTool &&
-		!m_strCompletePlayPatternId.empty() &&
-		ETOUI(LEVEL::VALTAN_ARENA) ==
-			CGameInstance::Get().Get_CurrentLevelID();
+		!m_strCompletePlayPatternId.empty() && isValtanArena;
 	ImGui::BeginDisabled(!canCompletePlay);
 	if (ImGui::Button("Complete Play##GlobalServerPattern"))
 	{
@@ -5274,16 +5803,19 @@ void CMainApp::RenderCompletePlayControls()
 	if (!canCompletePlay)
 	{
 		ImGui::TextDisabled(
-			"Complete Play unlocks after Lobby -> Valtan Server admission. Local model view remains available in its owner tool.");
+			"Complete Play requires a loaded Pattern selection and Lobby -> Valtan Server admission.");
+	}
+	else
+	{
+		ImGui::TextDisabled(
+			"The exact Product revision and Sound source generation are validated once when Complete Play is pressed, not once per rendered frame.");
 	}
 	ImGui::TextWrapped("%s", m_strCompletePlayStatus.c_str());
 }
 
 void CMainApp::RenderServerArenaActiveControls()
 {
-	if (!ImGui::CollapsingHeader(
-		"Server Arena Active",
-		ImGuiTreeNodeFlags_DefaultOpen))
+	if (!ImGui::CollapsingHeader("Server Arena Active"))
 	{
 		return;
 	}
@@ -5312,6 +5844,13 @@ void CMainApp::RenderServerArenaActiveControls()
 			std::string readStatus;
 			const bool_t ready = m_pBossTool->Get_ServerArenaActiveState(
 				state, readStatus);
+			if (m_bServerArenaPresetStatusTracking)
+			{
+				m_strServerArenaActiveStatus =
+					m_pBossTool->Get_ServerArenaPresetStatus();
+				m_bServerArenaPresetStatusTracking =
+					m_pBossTool->Is_ServerArenaPresetPending();
+			}
 			const auto actualCheckbox = [](
 				const char_t* label, const bool_t actual)
 			{
@@ -5341,23 +5880,28 @@ void CMainApp::RenderServerArenaActiveControls()
 				ImGui::BeginDisabled(!ready);
 				if (ImGui::SmallButton(label))
 				{
-					(void)m_pBossTool->Set_ServerArenaPreset(
-						preset, m_strServerArenaActiveStatus);
+					std::string submitStatus;
+					const bool_t submitted =
+						m_pBossTool->Set_ServerArenaPreset(
+							preset, submitStatus);
+					m_strServerArenaActiveStatus = std::move(submitStatus);
+					if (submitted)
+						m_bServerArenaPresetStatusTracking = true;
 				}
 				ImGui::EndDisabled();
 			};
-			presetButton("Fresh / All Walls##GlobalArenaPreset",
+			presetButton("Fresh / Restore Entire Arena##GlobalArenaPreset",
 				LostArk::Shared::VALTAN_ARENA_PRESET::FRESH);
 			ImGui::SameLine();
-			presetButton("Phase 2 / Walls Gone##GlobalArenaPreset",
+			presetButton("Circle / Remove All Walls##GlobalArenaPreset",
 				LostArk::Shared::VALTAN_ARENA_PRESET::CIRCLE_WALLS_GONE);
-			presetButton("Break 3 O'Clock##GlobalArenaPreset",
+			presetButton("Break 3 O'Clock Floor##GlobalArenaPreset",
 				LostArk::Shared::VALTAN_ARENA_PRESET::THREE_OCLOCK_BROKEN);
 			ImGui::SameLine();
-			presetButton("Break 9 O'Clock##GlobalArenaPreset",
+			presetButton("Break 9 O'Clock Floor##GlobalArenaPreset",
 				LostArk::Shared::VALTAN_ARENA_PRESET::NINE_OCLOCK_BROKEN);
 			ImGui::SameLine();
-			presetButton("Break 3 + 9##GlobalArenaPreset",
+			presetButton("Final / Break 3 + 9 O'Clock Floors##GlobalArenaPreset",
 				LostArk::Shared::VALTAN_ARENA_PRESET::BOTH_SIDES_BROKEN);
 			ImGui::Text(
 				"Debris actors %u | active collision %u | active nav regions %u | nav revision %llu",
@@ -5452,10 +5996,28 @@ void CMainApp::RenderServerArenaActiveControls()
 
 void CMainApp::RenderDeveloperTools()
 {
+	const ImGuiViewport* const pViewport = ImGui::GetMainViewport();
+	ImVec2 vDefaultSize(720.f, 760.f);
+	if (nullptr != pViewport)
+	{
+		const ImVec2 vFirstUseAvailableSize(
+			(std::max)(320.f, pViewport->WorkSize.x - 48.f),
+			(std::max)(240.f, pViewport->WorkSize.y - 48.f));
+		vDefaultSize = ImVec2(
+			(std::min)(vDefaultSize.x, vFirstUseAvailableSize.x),
+			(std::min)(vDefaultSize.y, vFirstUseAvailableSize.y));
+		ImGui::SetNextWindowPos(
+			ImVec2(pViewport->WorkPos.x + 24.f, pViewport->WorkPos.y + 24.f),
+			ImGuiCond_FirstUseEver);
+	}
+	ImGui::SetNextWindowSize(vDefaultSize, ImGuiCond_FirstUseEver);
+
+	/* Only the first-use size is suggested. No minimum or maximum constraint is
+	   installed: ImGui's normal edge/corner resizing and saved layout own every
+	   subsequent size, including windows larger than the current viewport. */
 	if (!ImGui::Begin(
-		"LostArk Developer Tools",
-		&m_bDeveloperToolsVisible,
-		ImGuiWindowFlags_AlwaysAutoResize))
+		"LostArk Developer Tools###LostArkDeveloperToolsResizableV1",
+		&m_bDeveloperToolsVisible))
 	{
 		ImGui::End();
 		return;
@@ -5467,6 +6029,8 @@ void CMainApp::RenderDeveloperTools()
 		ETOUI(LEVEL::DEVELOPMENT) == currentLevelId &&
 		CMapEditorWorkspaceService::Is_Active();
 	ImGui::Text("Current level id: %u", currentLevelId);
+	ImGui::TextDisabled(
+		"Resizable window: drag any edge or corner; overflowing panels scroll inside this window.");
 	ImGui::TextDisabled(isMapEditorWorkspace ?
 		"Map Editor is active. Open Map Tool to author the selected Area." :
 		"F1 only toggles tools. Enter Map Editor through Lobby Test.");
@@ -5481,7 +6045,8 @@ void CMainApp::RenderDeveloperTools()
 		const bool_t bVisible = IsDebugToolVisible(eTool);
 		const std::string label =
 			std::string(bVisible ? "Hide " : "Open ") + pLabel;
-		if (ImGui::Button(label.c_str()))
+		if (ImGui::Button(
+				label.c_str(), ImVec2(ImGui::GetContentRegionAvail().x, 0.f)))
 		{
 			if (bVisible)
 			{
@@ -5499,33 +6064,38 @@ void CMainApp::RenderDeveloperTools()
 		ImGui::EndDisabled();
 	};
 
-	toolButton("Boss Tool", DEBUG_TOOL::BOSS, true);
-	ImGui::SameLine();
-	toolButton("Camera Tool", DEBUG_TOOL::CAMERA, true);
-	ImGui::SameLine();
-	toolButton(
-		"Action Presentation Workbench",
-		DEBUG_TOOL::ANIMATION,
-		true);
-	ImGui::SameLine();
-	toolButton("Effect Tool", DEBUG_TOOL::EFFECT, true);
-	ImGui::SameLine();
-	toolButton("Effect Tool v2", DEBUG_TOOL::EFFECT_V2, true);
-
-	toolButton("Map Tool", DEBUG_TOOL::MAP, true);
-	ImGui::SameLine();
-	toolButton("Rendering Workbench", DEBUG_TOOL::RENDERING, true);
-	ImGui::SameLine();
-	toolButton("HUD Layout Tool", DEBUG_TOOL::UI, true);
-	ImGui::SameLine();
-	toolButton("Balance Tool", DEBUG_TOOL::BALANCE, true);
-	ImGui::SameLine();
+	const float fToolButtonWidth = ImGui::GetContentRegionAvail().x;
+	const int32_t iToolButtonColumns = fToolButtonWidth >= 1080.f ? 3 :
+		(fToolButtonWidth >= 660.f ? 2 : 1);
+	if (ImGui::BeginTable(
+			"##DeveloperToolLaunchGrid", iToolButtonColumns,
+			ImGuiTableFlags_SizingStretchSame))
+	{
+		const auto toolCell = [&toolButton](
+			const char_t* const pLabel, const DEBUG_TOOL eTool)
+		{
+			ImGui::TableNextColumn();
+			toolButton(pLabel, eTool, true);
+		};
+		toolCell("Boss Tool", DEBUG_TOOL::BOSS);
+		toolCell("Camera Tool", DEBUG_TOOL::CAMERA);
+		toolCell("Action Composition Workbench", DEBUG_TOOL::COMPOSITION);
+		toolCell("Animation Clip Tool", DEBUG_TOOL::ANIMATION);
+		toolCell("Effect Tool", DEBUG_TOOL::EFFECT);
+		toolCell("Effect Tool v2", DEBUG_TOOL::EFFECT_V2);
+		toolCell("Map Tool", DEBUG_TOOL::MAP);
+		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
+		toolCell("HUD Layout Tool", DEBUG_TOOL::UI);
+		toolCell("Balance Tool", DEBUG_TOOL::BALANCE);
+		ImGui::EndTable();
+	}
 	if (ImGui::Button("Close All Tools"))
 		CloseAllDebugTools();
-	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 9>
+	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 10>
 		TOOL_FOCUS_OPTIONS = {{
 			{ DEBUG_TOOL::MAP, "Map Tool" },
-			{ DEBUG_TOOL::ANIMATION, "Action Presentation Workbench" },
+			{ DEBUG_TOOL::COMPOSITION, "Action Composition Workbench" },
+			{ DEBUG_TOOL::ANIMATION, "Animation Clip Tool" },
 			{ DEBUG_TOOL::EFFECT, "Effect Tool" },
 			{ DEBUG_TOOL::EFFECT_V2, "Effect Tool v2" },
 			{ DEBUG_TOOL::RENDERING, "Rendering Workbench" },
@@ -5570,6 +6140,7 @@ void CMainApp::RenderDeveloperTools()
 			"Map Tool is open in inspect-only mode. Enter Lobby > Test > Map Editor to save map placement/navigation.");
 	}
 
+	RenderDebugLevelNavigation();
 	RenderDebugResourceFiles();
 	RenderCompletePlayControls();
 	RenderServerArenaActiveControls();
@@ -6192,6 +6763,7 @@ void CMainApp::Free()
 #ifdef _DEBUG
 	if (Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
 		pProfiler->Set_Enabled(false);
+	m_pActionCompositionWorkbench.reset();
 	m_pAnimationTool.reset();
 	m_pEffectTool.reset();
 	m_pEffectToolV2.reset();

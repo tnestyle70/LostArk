@@ -3086,6 +3086,33 @@ Client::CEffect_Tool::~CEffect_Tool()
     Release_WorldPreview(true);
 }
 
+bool_t Client::CEffect_Tool::Open_ValtanAllEffectsWorkspace()
+{
+	m_bAllEffectsValtanBossSelected = true;
+	const bool_t bAllEffectsReady = Refresh_AllEffects(true);
+	const bool_t bExactSourcesReady = Refresh_DataFiles();
+	const bool_t bCanonicalGraphReady = Refresh_ValtanPatternTree();
+	(void)Refresh_ValtanAreaStaticEffects();
+
+	/* The exact authored source index is the usable fallback inventory.  A
+	   canonical graph failure must gate Product/Server play, but it must not
+	   hide effect.valtan.* documents that can still be opened and edited. */
+	if (bExactSourcesReady && !m_ValtanExactAuthoredSources.empty())
+	{
+		m_strElementStatus = bCanonicalGraphReady ?
+			"Opened Valtan All Effects from the canonical graph and exact authored source index." :
+			"Opened Valtan exact authored Effects. Canonical Product play remains unavailable: " +
+				m_strValtanPatternTreeStatus;
+		return true;
+	}
+
+	m_strElementStatus =
+		"Valtan All Effects could not build its exact authored source index.";
+	if (!bAllEffectsReady && !m_strUnifiedCandidateStatus.empty())
+		m_strElementStatus += " " + m_strUnifiedCandidateStatus;
+	return false;
+}
+
 bool_t Client::CEffect_Tool::Open_ValtanProductEffect(
 	const EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& Request)
 {
@@ -3217,9 +3244,10 @@ bool_t Client::CEffect_Tool::Open_ValtanProductEffect(
 		bool_t bPreviewReady = false;
 		if (pPattern->bAuthoringMasterManaged)
 		{
-			constexpr std::array<VALTAN_PATTERN_PREVIEW_PATH, 3u>
+			constexpr std::array<VALTAN_PATTERN_PREVIEW_PATH, 4u>
 				PreviewPaths = {
 					VALTAN_PATTERN_PREVIEW_PATH::NORMAL,
+					VALTAN_PATTERN_PREVIEW_PATH::COUNTER_GROGGY,
 					VALTAN_PATTERN_PREVIEW_PATH::WALL_GROGGY,
 					VALTAN_PATTERN_PREVIEW_PATH::PART_BREAK };
 			for (const VALTAN_PATTERN_PREVIEW_PATH ePath : PreviewPaths)
@@ -3623,12 +3651,7 @@ void Client::CEffect_Tool::Render()
         Engine::CProfilerScope InitialIndexProfile(
             CGameInstance::Get().Get_Profiler(),
             "EffectTool.InitialIndexStep");
-        if (!m_bResourceCatalogRefreshAttempted)
-            Refresh_ResourceCatalog();
-        else if (!m_bAllEffectsRefreshAttempted)
-            Refresh_AllEffects();
-        else if (!m_bDataFilesRefreshAttempted)
-            Refresh_DataFiles();
+		Initialize_CatalogMetadataView();
     }
     {
         Engine::CProfilerScope WindowProfile(
@@ -10119,6 +10142,141 @@ bool_t Client::CEffect_Tool::Refresh_UnifiedEffectCache(
 	return true;
 }
 
+void Client::CEffect_Tool::Initialize_CatalogMetadataView()
+{
+	if (m_bCatalogMetadataViewInitialized)
+		return;
+	m_bCatalogMetadataViewInitialized = true;
+	/* A typed deep-link can explicitly refresh the exact authored/Product
+	   indexes before the first visible Render.  Keep that admitted result;
+	   the lightweight bootstrap must never replace a user-requested refresh. */
+	if (m_bResourceCatalogRefreshAttempted ||
+		m_bAllEffectsRefreshAttempted ||
+		m_bDataFilesRefreshAttempted)
+	{
+		return;
+	}
+
+	/* The Effect catalog is already admitted by the runtime loader.  The first
+	   visible frame consumes only that in-memory identity set: recursive
+	   Resources/Data discovery and authored document decode remain explicit
+	   Refresh/Open/Play operations. */
+	std::vector<EFFECT_DATA_FILE_ENTRY> StagedDataFiles;
+	std::set<std::string> StagedDomains;
+	std::unordered_map<std::string, DIRECT_AUTHORED_EDITABLE_ENTRY>
+		StagedEditableEntries;
+	std::vector<EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY>
+		StagedValtanSources;
+	const std::vector<std::string> EffectAssetIds =
+		CEffectCatalog::Get_EffectAssetIds();
+	StagedDataFiles.reserve(EffectAssetIds.size());
+	StagedEditableEntries.reserve(EffectAssetIds.size());
+	StagedValtanSources.reserve(EffectAssetIds.size());
+	for (const std::string& strEffectAssetId : EffectAssetIds)
+	{
+		const std::string strDomainId =
+			EffectAsset_DomainId(strEffectAssetId);
+		if (CEffectCatalog::Is_DirectAuthoredDocument(strEffectAssetId))
+		{
+			const std::filesystem::path Path = CProjectDataRoot::Resolve(
+				std::filesystem::path(L"Effects") / L"Authored" /
+				(std::filesystem::path(strEffectAssetId).wstring() +
+					L".effect.json"));
+			if (Path.empty())
+				continue;
+			EFFECT_DATA_FILE_ENTRY Entry{
+				strEffectAssetId, strDomainId, Path,
+				EFFECT_DOCUMENT_SOURCE::AUTHORED };
+			Entry.strDocumentParseStatus =
+				"Catalog metadata only; Open Editor loads Details on demand.";
+			StagedDataFiles.push_back(std::move(Entry));
+			DIRECT_AUTHORED_EDITABLE_ENTRY Editable;
+			Editable.Path = Path;
+			Editable.strStatus =
+				"Catalog metadata ready; exact identity is checked when Open or Play is pressed.";
+			StagedEditableEntries.emplace(
+				strEffectAssetId, std::move(Editable));
+			if (strEffectAssetId.starts_with("effect.valtan."))
+			{
+				EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY Source;
+				Source.strEffectAssetId = strEffectAssetId;
+				Source.Path = Path;
+				StagedValtanSources.push_back(std::move(Source));
+			}
+			StagedDomains.insert(strDomainId);
+			continue;
+		}
+
+		if (nullptr != CEffectCatalog::Find_Assembly(strEffectAssetId))
+		{
+			StagedDataFiles.push_back({
+				strEffectAssetId + "::assembly", strDomainId, {},
+				EFFECT_DOCUMENT_SOURCE::RUNTIME_ASSEMBLY });
+			StagedDomains.insert(strDomainId);
+		}
+	}
+	for (const std::string& strComponentId :
+		CEffectCatalog::Get_ComponentAssetIds())
+	{
+		const std::shared_ptr<const EFFECT_COMPONENT_DESC> Component =
+			CEffectCatalog::Find_Component(strComponentId);
+		if (nullptr == Component)
+			continue;
+		const std::string strDomainId =
+			EffectAsset_DomainId(Component->strSourceEffectAssetId);
+		StagedDataFiles.push_back({
+			strComponentId, strDomainId, {},
+			EFFECT_DOCUMENT_SOURCE::RUNTIME_COMPONENT });
+		StagedDomains.insert(strDomainId);
+	}
+
+	std::ranges::sort(StagedDataFiles,
+		[](const EFFECT_DATA_FILE_ENTRY& Left,
+			const EFFECT_DATA_FILE_ENTRY& Right)
+		{
+			return std::tie(Left.strDomainId, Left.eSource,
+				Left.strAssetId) <
+				std::tie(Right.strDomainId, Right.eSource,
+					Right.strAssetId);
+		});
+	std::ranges::sort(StagedValtanSources,
+		[](const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Left,
+			const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Right)
+		{
+			return Left.strEffectAssetId < Right.strEffectAssetId;
+		});
+
+	std::vector<EFFECT_SKILL_TREE_ENTRY> StagedSkills;
+	const std::vector<PLAYER_SKILL_DEFINITION>& Skills =
+		CPlayerSkillCatalog::Get_Skills();
+	StagedSkills.reserve(Skills.size());
+	for (const PLAYER_SKILL_DEFINITION& Skill : Skills)
+	{
+		EFFECT_SKILL_TREE_ENTRY Entry;
+		Entry.Skill = Skill;
+		StagedSkills.push_back(std::move(Entry));
+	}
+
+	m_DataFiles = std::move(StagedDataFiles);
+	m_DataFileDomains.assign(StagedDomains.begin(), StagedDomains.end());
+	m_DirectAuthoredEditableEntries = std::move(StagedEditableEntries);
+	m_ValtanExactAuthoredSources = std::move(StagedValtanSources);
+	m_AllEffects = std::move(StagedSkills);
+	if (m_DataFileDomains.end() == std::find(
+			m_DataFileDomains.begin(), m_DataFileDomains.end(),
+			m_strSelectedAuthoringDomainId) && !m_DataFileDomains.empty())
+	{
+		Select_AuthoringDomain(m_DataFileDomains.front());
+	}
+	m_strDocumentStatus =
+		"Catalog metadata ready: " + std::to_string(m_DataFiles.size()) +
+		" meaningful entries. Refresh Index performs explicit disk re-admission.";
+	m_strDirectAuthoredEditableStatus =
+		"Catalog metadata view is ready; exact source identity is deferred to Open or Play.";
+	m_strUnifiedCandidateStatus =
+		"Initial Effect lists use admitted catalog metadata only. Refresh Index joins Product ownership and diagnostics.";
+}
+
 bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 	const std::vector<EFFECT_DATA_FILE_ENTRY>& DataFiles)
 {
@@ -10158,7 +10316,7 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 	EFFECT_DIRECT_AUTHORED_BOSS_COMBAT_OBJECT_OWNER_MAP
 		BossCombatObjectOwners;
 	std::string BossOwnerIsolationStatus;
-	if (CValtanPatternEffectCueDocument::Load_Source(
+	if (CValtanPatternEffectCueDocument::Load_ReadOnlyProduct(
 			BossCueDocument, BossCueStatus))
 	{
 		for (const VALTAN_PATTERN_EFFECT_CUE& Cue : BossCueDocument.Cues)
@@ -10228,6 +10386,9 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 	StagedEntries.reserve(SourceIndex.Entries.size());
 	std::vector<UNIFIED_EFFECT_CANDIDATE_BINDING> StagedBindings;
 	StagedBindings.reserve(SourceIndex.Entries.size());
+	std::vector<EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY>
+		StagedValtanExactAuthoredSources;
+	StagedValtanExactAuthoredSources.reserve(SourceIndex.Entries.size());
 	for (const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Source :
 		SourceIndex.Entries)
 	{
@@ -10246,6 +10407,16 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 			Staged = Existing->second;
 		}
 		StagedEntries.emplace(Source.strEffectAssetId, std::move(Staged));
+		const bool_t bValtanOwner =
+			((EFFECT_DIRECT_AUTHORED_OWNER_KIND::BOSS_PATTERN ==
+					Source.eOwnerKind ||
+				EFFECT_DIRECT_AUTHORED_OWNER_KIND::BOSS_COMBAT_OBJECT ==
+					Source.eOwnerKind) &&
+				"BOSS_VALTAN" == Source.strOwnerArchetypeId);
+		if (bValtanOwner || Source.strEffectAssetId.starts_with("effect.valtan."))
+		{
+			StagedValtanExactAuthoredSources.push_back(Source);
+		}
 		/* A syntactically stable player source identity is sufficient to keep the
 		   document discoverable in the editor. PlayerSkills admission is a
 		   separate Product Play join and must not turn an exact source into
@@ -10265,6 +10436,13 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 			StagedBindings.push_back(std::move(Binding));
 		}
 	}
+	std::ranges::sort(
+		StagedValtanExactAuthoredSources,
+		[](const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Left,
+			const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Right)
+		{
+			return Left.strEffectAssetId < Right.strEffectAssetId;
+		});
 	std::unordered_map<std::string, UNIFIED_EFFECT_CACHE> StagedCaches;
 	StagedCaches.reserve(StagedBindings.size());
 	for (const UNIFIED_EFFECT_CANDIDATE_BINDING& Binding : StagedBindings)
@@ -10289,6 +10467,8 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 	m_DirectAuthoredEditableEntries = std::move(StagedEntries);
 	m_UnifiedCandidateBindings = std::move(StagedBindings);
 	m_UnifiedCandidateCaches = std::move(StagedCaches);
+	m_ValtanExactAuthoredSources =
+		std::move(StagedValtanExactAuthoredSources);
 	m_BossProductCueMappingCounts =
 		std::move(StagedBossProductCueMappingCounts);
 	m_strDirectAuthoredEditableStatus = SourceIndexStatus;
@@ -10327,6 +10507,26 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 		m_strUnifiedCandidateStatus += IsolationStatus;
 	}
 	return true;
+}
+
+const std::filesystem::path*
+Client::CEffect_Tool::Observe_DirectAuthoredEditablePath(
+	const std::string& strEffectAssetId,
+	std::string& strOutStatus) const
+{
+	const auto Iterator =
+		m_DirectAuthoredEditableEntries.find(strEffectAssetId);
+	if (Iterator == m_DirectAuthoredEditableEntries.end() ||
+		Iterator->second.Path.empty())
+	{
+		strOutStatus =
+			"Direct-authored source is unavailable in the admitted catalog metadata.";
+		return nullptr;
+	}
+	strOutStatus = Iterator->second.strStatus.empty() ?
+		"Catalog metadata ready; exact identity is checked when Open or Play is pressed." :
+		Iterator->second.strStatus;
+	return &Iterator->second.Path;
 }
 
 const std::filesystem::path*
@@ -10692,7 +10892,7 @@ void Client::CEffect_Tool::Render_UnifiedEffectTree(
 		m_strActiveDocumentDrawableError : Cache.strDrawableError;
 	std::string strEditableStatus;
 	const std::filesystem::path* pEditablePath =
-		Resolve_DirectAuthoredEditablePath(
+		Observe_DirectAuthoredEditablePath(
 			Cache.Document.strEffectAssetId, strEditableStatus);
 	const std::string RootLabel = strFallbackDisplayName + "##mapped-effect";
 	ImGui::PushID(Cache.Document.strEffectAssetId.c_str());
@@ -10709,17 +10909,28 @@ void Client::CEffect_Tool::Render_UnifiedEffectTree(
 		!bPreviewReady);
 	if (ImGui::SmallButton("Play All") && nullptr != pEditablePath)
 	{
-		bool_t bTargetReady = true;
-		if (bValtanProductRow)
+		std::string strExactStatus;
+		const std::filesystem::path* pExactPath =
+			Resolve_DirectAuthoredEditablePath(
+				Cache.Document.strEffectAssetId, strExactStatus);
+		if (nullptr == pExactPath)
 		{
-			bTargetReady = bActive ?
-				Play_ValtanProductCue(*pValtanClip, *pValtanCue) :
-				Try_OpenValtanAuthoredEffect(*pEditablePath,
-					Cache.Document.strEffectAssetId,
-					*pValtanClip, *pValtanCue, true);
+			m_strPreviewStatus = std::move(strExactStatus);
 		}
-		if (bTargetReady)
-			Try_PlayUnifiedEffect(Cache);
+		else
+		{
+			bool_t bTargetReady = true;
+			if (bValtanProductRow)
+			{
+				bTargetReady = bActive ?
+					Play_ValtanProductCue(*pValtanClip, *pValtanCue) :
+					Try_OpenValtanAuthoredEffect(*pExactPath,
+						Cache.Document.strEffectAssetId,
+						*pValtanClip, *pValtanCue, true);
+			}
+			if (bTargetReady)
+				Try_PlayUnifiedEffect(Cache);
+		}
 	}
 	ImGui::EndDisabled();
 	if (nullptr == pEditablePath && ImGui::IsItemHovered(
@@ -14265,12 +14476,8 @@ void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(
 		if (!AuthoringPath.empty())
 			Path = CProjectDataRoot::Resolve(AuthoringPath);
 	}
-	std::error_code PathError;
-	if (Path.empty() || !std::filesystem::is_regular_file(Path, PathError) ||
-		PathError)
-	{
+	if (Path.empty())
 		Path.clear();
-	}
 
 	const bool_t bActive = m_ActiveDocument.has_value() &&
 		m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
@@ -15457,10 +15664,11 @@ void Client::CEffect_Tool::Render_ValtanAreaStaticEffectSection(
 			const std::filesystem::path authoredPath = CProjectDataRoot::Resolve(
 				std::filesystem::path("Effects") / "Authored" /
 				(row->effectAssetId + ".effect.json"));
-			std::error_code pathError;
 			const bool_t hasAuthored = !authoredPath.empty() &&
-				std::filesystem::is_regular_file(authoredPath, pathError) &&
-				!pathError;
+				(CEffectCatalog::Is_DirectAuthoredDocument(
+					row->effectAssetId) ||
+				 m_DirectAuthoredEditableEntries.contains(
+					row->effectAssetId));
 			const bool_t active = m_ActiveDocument.has_value() &&
 				m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
 				m_ActiveDocument->strEffectAssetId == row->effectAssetId;
@@ -15510,6 +15718,122 @@ void Client::CEffect_Tool::Render_ValtanAreaStaticEffectSection(
 	ImGui::TreePop();
 }
 
+void Client::CEffect_Tool::Render_ValtanExactAuthoredSourceSection(
+	const std::string& strSearch)
+{
+	std::vector<const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY*> VisibleSources;
+	VisibleSources.reserve(m_ValtanExactAuthoredSources.size());
+	for (const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Source :
+		m_ValtanExactAuthoredSources)
+	{
+		const std::string strPath = Source.Path.generic_string();
+		const bool_t bMatches = strSearch.empty() ||
+			Contains_NoCase(Source.strEffectAssetId, strSearch) ||
+			Contains_NoCase(Source.strOwnerArchetypeId, strSearch) ||
+			Contains_NoCase(Source.strPatternId, strSearch) ||
+			Contains_NoCase(Source.strStageId, strSearch) ||
+			Contains_NoCase(Source.strActionId, strSearch) ||
+			Contains_NoCase(Source.strCombatObjectArchetypeId, strSearch) ||
+			Contains_NoCase(Source.strClientVisualId, strSearch) ||
+			Contains_NoCase(strPath, strSearch);
+		if (bMatches)
+			VisibleSources.push_back(&Source);
+	}
+
+	if (!strSearch.empty())
+		ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+	else
+		ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
+	const std::string strLabel =
+		"EXISTING AUTHORED EFFECTS (" +
+		std::to_string(VisibleSources.size()) + "/" +
+		std::to_string(m_ValtanExactAuthoredSources.size()) + ")";
+	if (!ImGui::TreeNodeEx(strLabel.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
+		return;
+
+	ImGui::TextDisabled(
+		"Exact EffectCatalog/Authored JSON sources. Open Editor remains available when the Pattern Product join is rejected; Server/Product Play does not.");
+	if (m_ValtanExactAuthoredSources.empty())
+	{
+		ImGui::TextDisabled(
+			"No exact effect.valtan.* authored source was indexed. Refresh reports source-catalog errors without substituting a runtime row.");
+		ImGui::TreePop();
+		return;
+	}
+	if (VisibleSources.empty())
+	{
+		ImGui::TextDisabled("No existing Valtan authored Effect matches the search.");
+		ImGui::TreePop();
+		return;
+	}
+
+	const f32_t fRowListHeight = std::clamp(
+		ImGui::GetTextLineHeightWithSpacing() * 14.f, 220.f, 360.f);
+	ImGui::BeginChild(
+		"ValtanExactAuthoredSourceList", ImVec2(0.f, fRowListHeight), true);
+	for (const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY* pSource : VisibleSources)
+	{
+		if (nullptr == pSource)
+			continue;
+		ImGui::PushID(pSource->strEffectAssetId.c_str());
+		ImGui::SeparatorText(pSource->strEffectAssetId.c_str());
+
+		std::string strOwner = "SOURCE ONLY | Product owner unavailable";
+		switch (pSource->eOwnerKind)
+		{
+		case EFFECT_DIRECT_AUTHORED_OWNER_KIND::BOSS_PATTERN:
+			strOwner = "BOSS PATTERN | " + pSource->strPatternId + " / " +
+				pSource->strStageId + " / " + pSource->strActionId;
+			break;
+		case EFFECT_DIRECT_AUTHORED_OWNER_KIND::BOSS_COMBAT_OBJECT:
+			strOwner = "BOSS COMBAT OBJECT | " +
+				pSource->strCombatObjectArchetypeId + " / " +
+				pSource->strClientVisualId;
+			break;
+		case EFFECT_DIRECT_AUTHORED_OWNER_KIND::PLAYER_SKILL:
+			strOwner = "PLAYER SKILL OWNER";
+			break;
+		default:
+			break;
+		}
+		ImGui::TextWrapped("%s", strOwner.c_str());
+		ImGui::TextDisabled("%s", pSource->Path.generic_string().c_str());
+
+		const bool_t bActive = m_ActiveDocument.has_value() &&
+			m_eActiveDocumentSource == EFFECT_DOCUMENT_SOURCE::AUTHORED &&
+			m_ActiveDocument->strEffectAssetId == pSource->strEffectAssetId;
+		std::string strEditableStatus;
+		const std::filesystem::path* pEditablePath =
+			Observe_DirectAuthoredEditablePath(
+				pSource->strEffectAssetId, strEditableStatus);
+		ImGui::BeginDisabled(bActive || nullptr == pEditablePath);
+		if (ImGui::SmallButton("Open Editor") && nullptr != pEditablePath)
+		{
+			std::string strExactStatus;
+			const std::filesystem::path* pExactPath =
+				Resolve_DirectAuthoredEditablePath(
+					pSource->strEffectAssetId, strExactStatus);
+			if (nullptr == pExactPath)
+				m_strElementStatus = std::move(strExactStatus);
+			else
+				Try_LoadDocumentPath(*pExactPath,
+					EFFECT_DOCUMENT_SOURCE::AUTHORED,
+					pSource->strEffectAssetId,
+					EFFECT_DOCUMENT_PREVIEW_INTENT::STANDALONE_EFFECT);
+		}
+		ImGui::EndDisabled();
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		{
+			ImGui::SetTooltip("%s", bActive ?
+				"This exact authored document is already the Current Effect." :
+				strEditableStatus.c_str());
+		}
+		ImGui::PopID();
+	}
+	ImGui::EndChild();
+	ImGui::TreePop();
+}
+
 void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 	const std::string& strSearch)
 {
@@ -15518,6 +15842,7 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 	   "Animation-first manual audition | phase %u | source chain %s | automatic rotation disabled"
 	   Animator order now comes from ManualAuditions. All Effects and Boss Tool
 	   both submit the one shared typed Server audition service. */
+	Render_ValtanExactAuthoredSourceSection(strSearch);
 	if (m_ValtanPatternProductUnlinkOperation.has_value())
 	{
 		ImGui::TextWrapped("%s", m_strValtanPatternEffectStatus.c_str());
@@ -15688,7 +16013,6 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 			CValtanPatternTree::Build_PatternIdentitySummary(*pSelectedPattern).c_str());
 	}
 	std::filesystem::path AggregateEffectPath;
-	std::error_code AggregatePathError;
 	bool_t bExistingAggregate = false;
 	if (nullptr != pSelectedPattern)
 	{
@@ -15701,9 +16025,7 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 				Aggregate.strEffectAssetId);
 		AggregateEffectPath =
 			CValtanPatternAuthoringEffectDocument::Resolve_AuthoringPath(Aggregate);
-		const bool_t bPathExists = !AggregateEffectPath.empty() &&
-			std::filesystem::exists(AggregateEffectPath, AggregatePathError);
-		bExistingAggregate = bPathExists ||
+		bExistingAggregate =
 			CEffectCatalog::Contains(Aggregate.strEffectAssetId) ||
 			m_DirectAuthoredEditableEntries.contains(Aggregate.strEffectAssetId);
 	}
@@ -15711,7 +16033,7 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 		nullptr == pSelectedBinding &&
 		m_bValtanPatternAuthoringEffectsLoaded &&
 		!Has_UnsavedWork() && !bExistingAggregate &&
-		!AggregateEffectPath.empty() && !AggregatePathError;
+		!AggregateEffectPath.empty();
 	ImGui::BeginDisabled(!bCanCreate);
 	if (ImGui::Button("Create Effect") && nullptr != pSelectedPattern)
 		Try_CreateValtanPatternEffect(*pSelectedPattern);
@@ -15730,8 +16052,8 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 			pReason = "Refresh the Pattern Effect ownership document first.";
 		else if (Has_UnsavedWork())
 			pReason = "Save or discard the active Effect edits first.";
-		else if (AggregateEffectPath.empty() || AggregatePathError)
-			pReason = "The canonical Effect destination could not be inspected; Refresh before creating.";
+		else if (AggregateEffectPath.empty())
+			pReason = "The canonical Effect destination could not be resolved; Refresh before creating.";
 		ImGui::SetTooltip("%s", pReason);
 	}
 	if (bExistingAggregate && nullptr == pSelectedBinding)
@@ -16060,7 +16382,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 	}
 	ImGui::InputTextWithHint("##effect-search",
 		m_bAllEffectsValtanBossSelected ?
-			"Search independent Effects or playable Patterns..." :
+			"Search existing Effects, independent Effects or playable Patterns..." :
 			"Search skill, Product cue, or saved Effect ID...",
 		m_AllEffectsSearch.data(), m_AllEffectsSearch.size());
 	ImGui::SameLine();
@@ -16141,15 +16463,26 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 							pBinding->strEffectAssetId;
 					std::string strEditableStatus;
 					const std::filesystem::path* pEditablePath =
-						Resolve_DirectAuthoredEditablePath(
-							pBinding->strEffectAssetId, strEditableStatus);
-					ImGui::BeginDisabled(bActive || nullptr == pEditablePath);
+						Observe_DirectAuthoredEditablePath(
+							pBinding->strEffectAssetId,
+							strEditableStatus);
+					ImGui::BeginDisabled(
+						bActive || nullptr == pEditablePath);
 					if (ImGui::SmallButton("Open Editor") &&
 						nullptr != pEditablePath)
 					{
-						Try_LoadDocumentPath(*pEditablePath,
-							EFFECT_DOCUMENT_SOURCE::AUTHORED,
-							pBinding->strEffectAssetId);
+						std::string strExactStatus;
+						const std::filesystem::path* pExactPath =
+							Resolve_DirectAuthoredEditablePath(
+								pBinding->strEffectAssetId,
+								strExactStatus);
+						if (nullptr == pExactPath)
+							m_strElementStatus =
+								std::move(strExactStatus);
+						else
+							Try_LoadDocumentPath(*pExactPath,
+								EFFECT_DOCUMENT_SOURCE::AUTHORED,
+								pBinding->strEffectAssetId);
 					}
 					ImGui::EndDisabled();
 					if (ImGui::IsItemHovered(
@@ -16497,13 +16830,13 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 									(*AuthoredBinding)->strEffectAssetId;
 							std::string strEditableStatus;
 							const std::filesystem::path* pEditablePath =
-								Resolve_DirectAuthoredEditablePath(
+								Observe_DirectAuthoredEditablePath(
 									strEditorAssetId, strEditableStatus);
 							if (nullptr == pEditablePath &&
 								strUnifiedCandidateId != strEditorAssetId)
 							{
 								strEditorAssetId = strUnifiedCandidateId;
-								pEditablePath = Resolve_DirectAuthoredEditablePath(
+								pEditablePath = Observe_DirectAuthoredEditablePath(
 									strEditorAssetId, strEditableStatus);
 							}
 							const bool_t bEditorDocumentActive =
@@ -16519,9 +16852,17 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 							if (ImGui::SmallButton("Open Editor") &&
 								nullptr != pEditablePath)
 							{
-								Try_LoadDocumentPath(*pEditablePath,
-									EFFECT_DOCUMENT_SOURCE::AUTHORED,
-									strEditorAssetId);
+								std::string strExactStatus;
+								const std::filesystem::path* pExactPath =
+									Resolve_DirectAuthoredEditablePath(
+										strEditorAssetId, strExactStatus);
+								if (nullptr == pExactPath)
+									m_strElementStatus =
+										std::move(strExactStatus);
+								else
+									Try_LoadDocumentPath(*pExactPath,
+										EFFECT_DOCUMENT_SOURCE::AUTHORED,
+										strEditorAssetId);
 							}
 							ImGui::EndDisabled();
 							if (ImGui::IsItemHovered(
@@ -16538,8 +16879,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 								auto Cache = m_UnifiedCandidateCaches.find(
 									Binding.strEffectAssetId);
 								if (Cache != m_UnifiedCandidateCaches.end() &&
-									Refresh_UnifiedEffectCache(Cache->second,
-										Binding.Path, Binding.strEffectAssetId) &&
+									Cache->second.bObserved &&
 									Cache->second.bValid)
 								{
 									Render_UnifiedEffectTree(Cache->second,
@@ -16552,7 +16892,9 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 										"Product preview tree unavailable: %s",
 										Cache == m_UnifiedCandidateCaches.end() ?
 											"the authored cache lost this Product ID." :
-											Cache->second.strStatus.c_str());
+											(!Cache->second.bObserved ?
+												"Open Editor or Play Saved Effect to load Details on demand." :
+												Cache->second.strStatus.c_str()));
 								}
 							}
 							else if (nullptr == pEditablePath)
@@ -17021,7 +17363,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			{
 				std::string strEditableStatus;
 				const std::filesystem::path* pEditablePath =
-					Resolve_DirectAuthoredEditablePath(
+					Observe_DirectAuthoredEditablePath(
 						strProductEffectAssetId, strEditableStatus);
 				const bool_t bEditableAuthoredActive =
 					m_ActiveDocument.has_value() &&
@@ -17034,9 +17376,16 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 				if (ImGui::Button("Open Saved Authored for Editing") &&
 					nullptr != pEditablePath)
 				{
-					Try_LoadDocumentPath(*pEditablePath,
-						EFFECT_DOCUMENT_SOURCE::AUTHORED,
-						strProductEffectAssetId);
+					std::string strExactStatus;
+					const std::filesystem::path* pExactPath =
+						Resolve_DirectAuthoredEditablePath(
+							strProductEffectAssetId, strExactStatus);
+					if (nullptr == pExactPath)
+						m_strElementStatus = std::move(strExactStatus);
+					else
+						Try_LoadDocumentPath(*pExactPath,
+							EFFECT_DOCUMENT_SOURCE::AUTHORED,
+							strProductEffectAssetId);
 				}
 				ImGui::EndDisabled();
 				if (ImGui::IsItemHovered(

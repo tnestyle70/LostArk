@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace Client
@@ -180,6 +181,29 @@ namespace Client
 			std::string_view expectedBossArchetypeId,
 			const std::vector<std::string>& availableClips,
 			BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& outDocument,
+			std::string& outStatus);
+		/* Compatibility diagnostic load for the read-only generated Product. New
+		   code must treat the returned bytes as projection evidence; the writable
+		   animation occurrence owner is Data/Valtan/Valtan.presentation.json. */
+		static bool_t Load_ForAuthoring(
+			std::string_view animationAssetId,
+			std::string_view expectedBossArchetypeId,
+			const std::vector<std::string>& availableClips,
+			BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& outDocument,
+			std::string& outBaselineSourceBytes,
+			std::string& outStatus);
+		/* Retained only as a fail-closed compatibility boundary for older harness
+		   callers. Generated Valtan.patternbindings.json is projector-owned, so
+		   every call rejects without touching the destination. */
+		static bool_t Save_Atomic(
+			const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& document,
+			std::string_view animationAssetId,
+			std::string_view expectedBossArchetypeId,
+			const std::vector<std::string>& availableClips,
+			const std::unordered_map<std::string, f32_t>&
+				clipSourceDurationSecondsByName,
+			std::string_view expectedBaselineSourceBytes,
+			std::string& outCommittedSourceBytes,
 			std::string& outStatus);
 	};
 

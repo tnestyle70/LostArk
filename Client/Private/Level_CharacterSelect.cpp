@@ -25,8 +25,10 @@
 #include "NetworkPlayerCommandSink.h"
 #include "NetworkWorldEntityCommandSink.h"
 #include "PlayableCharacterAssetService.h"
+#include "RaidEntryPreviewView.h"
 #include "Transform.h"
 #include "ValtanPatternEffectCueDocument.h"
+#include "ValtanPatternTree.h"
 #include "ValtanPresentationAssetService.h"
 
 #include <algorithm>
@@ -203,6 +205,11 @@ HRESULT CLevel_CharacterSelect::Initialize()
 		L"UI/ClassSelect/ClassSelect_Layout.json",
 		CHUDRuntimeView::DRAW_TARGET::FOREGROUND);
 
+#ifdef _DEBUG
+	m_pDebugRaidEntryPreviewView =
+		std::make_unique<CRaidEntryPreviewView>(m_pDevice, m_pContext);
+#endif
+
 	m_eMode = MODE::CONNECTING;
 	Reset_ArenaSpawnRequest();
 	m_ArenaSpawnAccepted.fill(false);
@@ -216,6 +223,9 @@ HRESULT CLevel_CharacterSelect::Initialize()
 void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
+#ifdef _DEBUG
+	Update_RaidEntryDebugPreviewKey();
+#endif
 	switch (m_eMode)
 	{
 	case MODE::CONNECTING:
@@ -239,7 +249,11 @@ HRESULT CLevel_CharacterSelect::Render()
 #ifdef _DEBUG
 	CMainApp::Update_DebugWindowTitleWithFps(
 		TEXT("LostArk Character Select - Server Arena"));
-	Render_SelectionPanel();
+	/* The debug status window would otherwise sit right where the O-key raid-
+	   entry preview's left info column and panel frame want to draw -- hidden
+	   while that preview is open instead of fighting it for the same space. */
+	if (!Is_DebugRaidEntryPreviewOpen())
+		Render_SelectionPanel();
 #endif
 	Render_ClassList();
 	Render_ArenaSpawnButtons();
@@ -944,8 +958,14 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 
 	if (option.requiresValtanPrewarm)
 	{
-		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
+		CValtanCanonicalProductReadAdmission ProductAdmission;
 		std::string Status;
+		if (!ProductAdmission.Acquire(Status))
+		{
+			Isolate_ValtanSpawnPreparationFailure(Status, false);
+			return false;
+		}
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
 		if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
 				CueDocument, Status) || CueDocument.Cues.empty())
 		{
@@ -984,6 +1004,11 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 			pBossActor->combatObjectVisuals)
 		{
 			EffectAssetIds.push_back(Visual.effectAssetId);
+		}
+		if (!ProductAdmission.Validate_StillCurrent(Status))
+		{
+			Isolate_ValtanSpawnPreparationFailure(Status, false);
+			return false;
 		}
 #ifdef _DEBUG
 		/* The Debug V1 audition is background preparation only. The required
@@ -1425,6 +1450,44 @@ bool_t CLevel_CharacterSelect::Enter_Stage(const LOBBY_STAGE stage)
 	return true;
 }
 
+#ifdef _DEBUG
+bool_t CLevel_CharacterSelect::Debug_Request_KakulSaydonArena()
+{
+	if (MODE::SERVER_ARENA != m_eMode ||
+		m_iSelectedClassIndex >= SUPPORTED_CLASSES.size() ||
+		m_iPendingClassIndex.has_value() ||
+		Is_ClassPresentationPreparationPending() ||
+		m_isCreateCharacterModalOpen ||
+		CLevelTransitionService::Is_Pending())
+	{
+		m_strStatus =
+			"KoukuSaton transfer requires an idle, Server-approved Character Select arena.";
+		return false;
+	}
+	if (nullptr == m_pWorldEntityCommandSink)
+	{
+		m_strStatus =
+			"KoukuSaton world-transfer command owner is unavailable.";
+		return false;
+	}
+
+	const std::uint32_t requestSequence =
+		m_iNextKakulArenaRequestSequence++;
+	if (0u == m_iNextKakulArenaRequestSequence)
+		m_iNextKakulArenaRequestSequence = 1u;
+	if (!m_pWorldEntityCommandSink->Request_EnterKakulSaydonArena(
+		requestSequence))
+	{
+		m_strStatus =
+			"KoukuSaton Server arena request could not be sent.";
+		return false;
+	}
+
+	m_strStatus = "KoukuSaton Server arena transfer requested.";
+	return true;
+}
+#endif
+
 void CLevel_CharacterSelect::Render_CreateCharacterProductInputHost()
 {
 	const ImGuiViewport* pViewport = ImGui::GetMainViewport();
@@ -1620,24 +1683,7 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 		Enter_Stage(LOBBY_STAGE::VALTAN);
 	ImGui::SameLine();
 	if (ImGui::Button("Enter KoukuSaton Arena"))
-	{
-		const std::uint32_t requestSequence =
-			m_iNextKakulArenaRequestSequence++;
-		if (0u == m_iNextKakulArenaRequestSequence)
-			m_iNextKakulArenaRequestSequence = 1u;
-		if (nullptr != m_pWorldEntityCommandSink &&
-			m_pWorldEntityCommandSink->Request_EnterKakulSaydonArena(
-				requestSequence))
-		{
-			m_strStatus =
-				"KoukuSaton Server arena transfer requested.";
-		}
-		else
-		{
-			m_strStatus =
-				"KoukuSaton Server arena request could not be sent.";
-		}
-	}
+		(void)Debug_Request_KakulSaydonArena();
 	ImGui::SameLine();
 	if (ImGui::Button("Back"))
 		Leave_ServerArena();
@@ -2455,6 +2501,43 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 		}
 	}
 }
+
+#ifdef _DEBUG
+void CLevel_CharacterSelect::Update_RaidEntryDebugPreviewKey()
+{
+	if (nullptr == m_pDebugRaidEntryPreviewView ||
+		m_pDebugRaidEntryPreviewView->Is_Open() || ImGui::GetIO().WantTextInput)
+	{
+		return;
+	}
+	const bool_t isODown =
+		0 != (CGameInstance::Get().Get_DIKeyState(DIK_O) & 0x80);
+	const bool_t wasOPressed = isODown && !m_wasODownForRaidEntryDebugPreview;
+	m_wasODownForRaidEntryDebugPreview = isODown;
+	if (wasOPressed)
+		m_pDebugRaidEntryPreviewView->Open();
+}
+
+void CLevel_CharacterSelect::Render_RaidEntryDebugPreview()
+{
+	if (nullptr == m_pDebugRaidEntryPreviewView)
+		return;
+	// Visual-only: no real NPC, no command sink -- Entrance just closes it too.
+	(void)m_pDebugRaidEntryPreviewView->Render();
+}
+
+void CLevel_CharacterSelect::Render_RaidEntryDebugPreviewText()
+{
+	if (nullptr != m_pDebugRaidEntryPreviewView)
+		m_pDebugRaidEntryPreviewView->RenderText();
+}
+
+bool_t CLevel_CharacterSelect::Is_DebugRaidEntryPreviewOpen() const
+{
+	return nullptr != m_pDebugRaidEntryPreviewView &&
+		m_pDebugRaidEntryPreviewView->Is_Open();
+}
+#endif
 
 unique_ptr<CLevel_CharacterSelect> CLevel_CharacterSelect::Create(
 	ComPtr<ID3D11Device> pDevice,

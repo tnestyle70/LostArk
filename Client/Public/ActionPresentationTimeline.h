@@ -95,6 +95,17 @@ an approved stage age onto its authored sequential clip timeline. */
 class CActionPresentationTimeline final
 {
 public:
+	/* Authoring admission is deliberately stricter than Resolve_ClipDuration:
+	   runtime may clamp a defensive sample, but a source revision must never
+	   persist an explicit window beyond the real WModel track.  Native timing
+	   stays in ticks/rate so this pure check uses the same metadata CModel owns. */
+	static bool Validate_AuthoredSourceWindow(
+		float fNativeDurationTicks,
+		float fNativeTicksPerSecond,
+		uint32_t iSourceStartMs,
+		uint32_t iPlayMs,
+		float fPlayRate,
+		uint32_t& iOutRoundedRemainingMs);
 	static bool Resolve_ClipDuration(
 		const ACTION_PRESENTATION_CLIP_TIMING& Clip,
 		float& fOutSourceDurationSeconds,

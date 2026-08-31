@@ -29,6 +29,11 @@ NETWORK_CPP = ROOT / "Client/Private/NetworkManager.cpp"
 NETWORK_H = ROOT / "Client/Public/NetworkManager.h"
 SERVER_ROOM = ROOT / "Server/Private/GameRoom.cpp"
 SERVER_TESTS = ROOT / "Server/Private/ServerGameplayContractTests.cpp"
+PRESENTATION_ADMISSION_NATIVE_TESTS = (
+    ROOT
+    / "Tools/ValtanPatternAuditionServiceHarness/Private/"
+    "ValtanPresentationGenerationAdmissionContractTests.cpp"
+)
 PROJECT = ROOT / "Client/Default/Client.vcxproj"
 FILTERS = ROOT / "Client/Default/Client.vcxproj.filters"
 GAMEPLAY = ROOT / "Data/Valtan/Valtan.gameplay.json"
@@ -83,6 +88,9 @@ class ValtanBossToolContractTests(unittest.TestCase):
         cls.network_h = NETWORK_H.read_text(encoding="utf-8")
         cls.server_room = SERVER_ROOM.read_text(encoding="utf-8")
         cls.server_tests = SERVER_TESTS.read_text(encoding="utf-8")
+        cls.presentation_admission_native_tests = (
+            PRESENTATION_ADMISSION_NATIVE_TESTS.read_text(encoding="utf-8")
+        )
         cls.project = PROJECT.read_text(encoding="utf-8")
         cls.filters = FILTERS.read_text(encoding="utf-8")
         cls.gameplay = tuning_pipeline.resolve_gameplay_flow_reference(
@@ -102,7 +110,10 @@ class ValtanBossToolContractTests(unittest.TestCase):
         )
         self.assertIn("case DEBUG_TOOL::BOSS", ensure)
         self.assertIn("m_pBossTool->Open()", ensure)
-        self.assertEqual(1, self.main_cpp.count('toolButton("Boss Tool"'))
+        self.assertEqual(
+            1,
+            self.main_cpp.count('toolCell("Boss Tool", DEBUG_TOOL::BOSS)'),
+        )
 
     def test_tool_reuses_product_views_and_typed_server_commands(self) -> None:
         for marker in (
@@ -195,14 +206,14 @@ class ValtanBossToolContractTests(unittest.TestCase):
             '"Valtan Boss Tool"',
             'BeginTabBar("##bossToolTabs")',
             'BeginTabItem("Boss Verification")',
-            'BeginTabItem("Pattern Flow")',
+            'BeginTabItem("Pattern Flow"',
             "Render_BossVerificationTab()",
             "Render_PatternFlowTab()",
         ):
             self.assertIn(marker, render)
         self.assertLess(
             render.index('BeginTabItem("Boss Verification")'),
-            render.index('BeginTabItem("Pattern Flow")'),
+            render.index('BeginTabItem("Pattern Flow"'),
         )
         verification = function_body(
             self.boss_cpp,
@@ -570,7 +581,8 @@ class ValtanBossToolContractTests(unittest.TestCase):
         self.assertIn("Connections are unverified", self.boss_cpp)
         for marker in (
             "Is_CurrentPresentationBaselineIntact",
-            "Workspace presentation changed after world entry",
+            "Acquire_Receipt",
+            "Validate_StillCurrent",
         ):
             self.assertIn(marker, self.network_h + self.network_cpp)
         self.assertIn("workspace changed; restart/publish", self.boss_cpp)
@@ -586,18 +598,75 @@ class ValtanBossToolContractTests(unittest.TestCase):
             self.assertIn(marker, self.boss_cpp)
         self.assertNotIn('"runtime matched"', self.boss_cpp)
 
+    def test_graph_reload_holds_one_generation_through_final_commit(self) -> None:
+        reload_graph = function_body(
+            self.boss_cpp,
+            "bool_t Client::CBossTool::Reload_Graph()",
+        )
+        acquire = reload_graph.index("CanonicalAdmission.Acquire")
+        load = reload_graph.index("CValtanPatternTree::Load_WhileAdmitted")
+        camera_stage = reload_graph.index("StagedCamera.Load")
+        final_flow_check = reload_graph.rindex(
+            "StagedFlowDocument.Verify_SourceRevision"
+        )
+        final_generation_check = reload_graph.rindex(
+            "CanonicalAdmission.Validate_StillCurrent"
+        )
+        graph_commit = reload_graph.index("m_Graph =")
+        mutation_admitted = reload_graph.index("m_bGraphMutationAdmitted = true")
+        self.assertLess(acquire, load)
+        self.assertLess(load, camera_stage)
+        self.assertLess(camera_stage, final_flow_check)
+        self.assertLess(final_flow_check, final_generation_check)
+        self.assertLess(final_generation_check, graph_commit)
+        self.assertLess(graph_commit, mutation_admitted)
+
+    def test_server_playback_recomputes_physical_world_entry_generation(self) -> None:
+        admission = function_body(
+            self.boss_cpp,
+            "bool_t Client::CBossTool::Get_ServerActivePatternRevision(",
+        )
+        tuning_gate = admission.index(
+            "Is_LatestGameplaySourceServerActive"
+        )
+        physical_gate = admission.index(
+            "Is_CurrentPresentationBaselineIntact"
+        )
+        publish_revision = admission.index("OutRevision = activeRevision")
+        self.assertLess(tuning_gate, physical_gate)
+        self.assertLess(physical_gate, publish_revision)
+        self.assertIn(
+            "physical canonical Product closure no longer matches",
+            admission,
+        )
+
+        native = self.presentation_admission_native_tests
+        for marker in (
+            "Acquire_PackagedBaselineFromRoot",
+            "Acquire_ReceiptFromRoot",
+            "changed physical Product bytes re-opened the old world-entry M",
+        ):
+            self.assertIn(marker, native)
+        self.assertIn("std::ios::binary | std::ios::app", native)
+
     def test_next_picker_is_independent_of_saved_flow_and_turns_repeat_off(self) -> None:
         picker = function_body(self.boss_cpp, "void Client::CBossTool::Render_NextPatternPicker()")
         for marker in (
             "m_NextPatternIds", "m_NextPatternSearch", "Contains_CaseInsensitive",
             "strDisplayName", "PatternId", "bAuthoringMasterManaged",
-            "Queue_NextPattern", "compatibility manual",
+            "Queue_NextServerPattern", "compatibility manual",
         ):
             self.assertIn(marker, picker)
         for forbidden in ("Add_Slot", "m_FlowDocument", ".Submit(", "Send_", "CNetworkManager"):
             self.assertNotIn(forbidden, picker)
-        self.assertLess(picker.index("m_bRepeat = false"), picker.index("Queue_NextPattern"))
-        self.assertLess(picker.index("m_strRepeatPatternId.clear()"), picker.index("Queue_NextPattern"))
+        self.assertLess(
+            picker.index("m_bRepeat = false"),
+            picker.index("Queue_NextServerPattern"),
+        )
+        self.assertLess(
+            picker.index("m_strRepeatPatternId.clear()"),
+            picker.index("Queue_NextServerPattern"),
+        )
         admitted = function_body(self.boss_cpp, "std::vector<std::string> Client::CBossTool::Build_AdmittedPatternIds() const")
         self.assertNotIn("m_NextPatternIds", admitted)
         self.assertIn("m_AuditionInventory", admitted)
@@ -620,9 +689,19 @@ class ValtanBossToolContractTests(unittest.TestCase):
             self.assertNotIn(forbidden, card)
         reload_graph = function_body(self.boss_cpp, "bool_t Client::CBossTool::Reload_Graph()")
         self.assertNotIn("m_bNextPatternInventoryReady = false", reload_graph)
-        self.assertIn("previous playable inventory preserved", reload_graph)
-        self.assertLess(reload_graph.index("Build_NextPatternInventory("), reload_graph.index("m_Graph ="))
-        self.assertLess(reload_graph.index("m_NextPatternIds ="), reload_graph.index("m_bNextPatternInventoryReady = true"))
+        self.assertNotIn("m_NextPatternIds.clear()", reload_graph)
+        staged = reload_graph.index(
+            "std::vector<std::string> StagedNextPatternIds"
+        )
+        build = reload_graph.index("Build_NextPatternInventory(")
+        graph_commit = reload_graph.index("m_Graph =")
+        next_commit = reload_graph.index("m_NextPatternIds =")
+        ready_commit = reload_graph.index("m_bNextPatternInventoryReady = true")
+        self.assertLess(staged, build)
+        self.assertLess(build, graph_commit)
+        self.assertLess(graph_commit, next_commit)
+        self.assertLess(next_commit, ready_commit)
+        self.assertEqual(1, reload_graph.count("m_NextPatternIds ="))
         for function in ("Reload_FlowDocument", "Save_FlowDocument"):
             body = function_body(self.boss_cpp, "bool_t Client::CBossTool::" + function + "()")
             for forbidden in ("Queue_NextPattern", "Clear_NextPattern", ".Submit(", "Send_"):

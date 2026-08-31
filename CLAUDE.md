@@ -230,7 +230,7 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조와 `MonsterProfiles.json` formatVersion 2의 추적 유지 거리·회전·가속·감속·도착 감속 반경을 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 spawn-group bootstrap v4를 한 transaction으로 생성하며 Server pre-build가 이 publish를 강제한다. 제품 일반 몬스터는 Server에서 타깃 hysteresis, 공격 중 대상/방향 고정, navigation 경로 단축, 제한 회전과 가감속, 기존 원형 body sweep/slide를 사용하고 Client에서 2-tick transform 보간, occurrence 기반 결정적 공격 clip pool, 비공격 중 transient hit clip을 사용한다. presentation clip과 playback rate는 `MonsterCatalog.json` formatVersion 2가 소유하며 Server timing을 바꾸지 않는다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
 
-Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v47 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v50 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
 ### 최소 수련장 Area
 
@@ -292,19 +292,39 @@ snapshot/damage-event 진단을 제공한다. Save는 `Data/Balance`/`Data/Encou
 field의 provenance를 `PROJECT_TUNED`로 동기화한 뒤 Validate한다. `Publish Server Data` 뒤 Server를
 재시작해야 적용된다. Tool이 실행 중 Server 구조체나 Client HUD 값만 덮어쓰는 hot reload는 없다.
 
-`Data/Valtan/Valtan.pattern.json`은 admission된 발탄 1페이즈 pattern의 Server stage, ordered body-animation
-occurrence, Product/independent Effect 사용 위치를 함께 저작하는 정본이다. 전용 publisher가 이를 기존
-Encounter, patternbindings, patterneffectcues와 combat-object typed 제품 문서로 투영하며 Server/Arena는
-master를 두 번째 런타임으로 직접 읽지 않는다. Animation Tool의 `Valtan Pattern Master`는 이 정본의 7개
-pattern 전체 body timeline을 재생·seek한다. 각 stage는 `EXACT`, `HOLD_LAST_POSE`,
-`LOOP_TO_STAGE_END` 중 하나의 명시적 animation 종료 정책을 가지며, Tool은 master branch graph와
-presentation source를 그대로 소비한다. 160~109 normal 선택은 master가 소유하는 정확한 5-pattern
-`WEIGHTED_POOL`을 gameplay rotation product로 투영하며 health-bar mechanic queue가 우선한다.
-`counterReactionLayers`는 기존 Product의 counterable stage와 animation action을 reference-only로 join해
-Animation/Effect Tool에 노출하되 7-pattern admission에는 추가하지 않는다. 기존 1~67
-patternpreview/clipseq 화면은 source reference다.
+발탄 Pattern 저작 정본은 `Data/Valtan/Valtan.gameplay.json`과
+`Data/Valtan/Valtan.presentation.json`의 strict stable-ID join이다. gameplay source는 Server stage,
+branch, motion, collider와 player reaction을, presentation source는 ordered Animation occurrence와
+Effect/Camera invocation을 소유한다. 전용 projector가 두 source를
+`Data/Encounters/Valtan/ValtanEncounter.json`, `Valtan.patternbindings.json`,
+`Valtan.patterneffectcues.json` 등 제품 문서로 투영한다. generated binding/cue 문서는 read-only이며
+Tool에서 직접 저장하지 않는다. 제품 Arena와 `CValtan`은 admitted Product만 소비하고 authoring source를
+두 번째 runtime으로 해석하지 않는다. 각 stage animation은 `EXACT`, `HOLD_LAST_POSE`,
+`LOOP_TO_STAGE_END` 중 하나의 종료 정책을 사용한다.
 
-F1의 기존 Animation Tool 진입은 `Action Presentation Workbench`로 확장됐다. Character animation/event/skill binding 기능은 그대로 유지하며, Valtan 화면은 같은 `CBalanceTool` draft와 `CBossTool` Server audition controller를 조합한다. `VALTAN_HIGH_JUMP/AIRBORNE`를 포함한 stage의 `Server wall / blank timeline ms`는 stable `patternId/stageId`로 편집하고 `Validate Joined -> Save Gameplay Authoring -> Publish Candidate -> Apply Revision` 순서를 사용한다. `Pattern Offline`은 animation만 로컬 sample하고 `Server Replay / Live`는 실제 Arena authority에 pattern ID를 제출한다. joined lane은 animation occurrence, Product Effect, combat-object hit clock, sound event와 `CharacterSoundCatalog`이 해석한 Resources-relative WAV variant를 함께 표시한다. `Animation Sequence Intake` 저장은 `Valtan.presentation.debug.json` 원본만 갱신하며 reviewed promotion 전에는 Product pattern이 아니다.
+F1의 `Action Composition Workbench`는 기존 Animation Clip Tool과 독립적으로 열리는 resizable ImGui
+저작 셸이다. Pattern/Stage와 model-independent Valtan Sequence intake를 의미 단위로 나열하고, 하나의
+playhead 위에 Animation·Collider·Effect·Sound·Camera·World 관계를 표시한다. `CBalanceTool`의 동일
+joined draft를 통해 Sequence slot, Stage clock/gap, Server collider/hit schedule, Counter→Groggy edge,
+`RELEASE_GRABBED_PLAYERS` speed/duration/yaw를 편집한다. Effect invocation Details는 exact animation
+occurrence에 대해 source start/end, stop/repeat, anchor/follow, local transform과 scale policy를
+`Data/Valtan/Valtan.presentation.json`에 add/update/remove한다. invocation 편집은 연결과 배치를
+소유한다. Effect asset 내부 element deep-link는 Save/Publish/Reload된 exact admitted occurrence와
+전체 cue field가 일치할 때만 해당 `Data/Effects/Authored/*.effect.json`을 Effect Tool에서 연다.
+draft-only row를 asset-only fallback으로 열지 않는다. Animation Clip Tool은
+실제 모델 pose preview와 Create Pattern intake adapter로만 재사용한다. 로컬 draft preview는 Product
+cache를 덮지 않으며 실제로 seek/stop이 연결된 lane과 inspection-only lane을 구분한다.
+`Save + Validate + Publish`는 split source와 generated Product를 공통 writer generation으로 commit하고
+exact canonical reload까지 성공해야 로컬 저장 완료다. Server runtime 활성화는 별도이며 같은 immutable
+revision이 Server-active로 확인되기 전에는 Complete Play와 exact Restart를 막는다. admission 실패 뒤
+보존한 view는 진단용 read-only이고 모든 Save/재생/Server mutation을 막는다. 사용자 수동 화면 확인
+전에는 창 resize나 visual fidelity를 PASS로 기록하지 않는다.
+
+Pattern Sound cue는 exact occurrence dependency와 canonical read generation을 확인한 뒤 Sound owner에
+별도 CAS 저장한다. Pattern source와 하나의 atomic writer라고 표시하지 않는다. committed Sound source의
+runtime 적용은 exact Pattern revision이 Server-active가 된 뒤 명시적 `Retry Apply`로 수행하며 그 전에는
+Complete Play, Restart, Next를 runtime-ready로 표시하지 않는다. consumer reload 전·후 revision을
+비교하고 성공 receipt도 exact Server revision에 고정한다.
 
 Debug F1의 `Effect Tool`과 `All Effects`는 direct-authored Player Product cue와 Valtan pattern cue를
 같은 unified Effect 저작 tree로 연다. Player의 skill과 Valtan의 pattern은 같은 최상위 저작 단위다.
@@ -318,7 +338,7 @@ transform과 stop window를 보존한다. `SERVER_PATTERN_STAGE` 독립 Effect�
 Open/Play 전까지 지연한다.
 도넛도 `SERVER_COMBAT_OBJECT`이며 100ms foreground 뒤 2600ms 동안 독립적으로 유지된다.
 `BossCatalog` v5는 본체/유령의 model admission scale을 구분한다. 유령 finale와 사망 제거를
-사용하려면 gameplay bootstrap v26과 현재 protocol v47의 Server/Client를 함께 빌드·배포해야 한다.
+사용하려면 gameplay bootstrap v26과 현재 protocol v50의 Server/Client를 함께 빌드·배포해야 한다.
 중앙 cue anchor, 유령 Resources 상대 경로, 포탈·잡기·사망 lifecycle은
 `.md/TEAM/발탄인수인계서.md` 11.9~11.10에 정리한다.
 phase band는 Server encounter 메타데이터이며 All Effects의 반복 tree나 stage 숨김 filter로 사용하지

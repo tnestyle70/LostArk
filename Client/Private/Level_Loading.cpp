@@ -22,6 +22,7 @@
 #include "ProjectDataRoot.h"
 #include "UI_Sprite.h"
 #include "ValtanPatternEffectCueDocument.h"
+#include "ValtanPatternTree.h"
 
 #include <algorithm>
 #include <atomic>
@@ -557,6 +558,9 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 
 		if (bValtanArena)
 		{
+			CValtanCanonicalProductReadAdmission ProductAdmission;
+			if (!ProductAdmission.Acquire(Status))
+				return IsolateFailure(Status);
 			VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
 			if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
 					CueDocument, Status) || CueDocument.Cues.empty())
@@ -613,6 +617,8 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 			{
 				EffectAssetIds.push_back(World.effectAssetId);
 			}
+			if (!ProductAdmission.Validate_StillCurrent(Status))
+				return IsolateFailure(Status);
 #ifdef _DEBUG
 			/* V1 is an optional audition lane. Queue it before the required V0
 			   targets so the following priority enqueue restores V0 to the FIFO

@@ -7,6 +7,8 @@ param(
     [string]$V2OutputPath = '',
     [string]$ExpectedFlowRevision = '',
     [switch]$SkipProductDriftCheck,
+    [switch]$WriterLockAlreadyHeld,
+    [string]$WriterLockOwnerNonce = '',
     [string]$RepositoryRoot = ''
 )
 
@@ -29,6 +31,16 @@ if ($Mode -eq 'Publish') {
     throw ('Legacy Valtan.pattern.json projection Publish is retired because it cannot ' +
         'represent the canonical split decision model or rotation v3 Product. Use ' +
         'Publish-ValtanTuningRuntimeSet.ps1 SaveAuthoring/PublishCandidate instead.')
+}
+if ($WriterLockAlreadyHeld -and $Mode -ne 'PublishV2') {
+    throw 'WriterLockAlreadyHeld is valid only for PublishV2.'
+}
+if ($WriterLockAlreadyHeld -and $WriterLockOwnerNonce -cnotmatch '^[0-9a-f]{32}$') {
+    throw 'WriterLockAlreadyHeld requires its exact 32-digit owner nonce.'
+}
+if (-not $WriterLockAlreadyHeld -and
+    -not [string]::IsNullOrWhiteSpace($WriterLockOwnerNonce)) {
+    throw 'WriterLockOwnerNonce requires WriterLockAlreadyHeld.'
 }
 if ($Mode -in @('Validate', 'ValidateV2', 'MigrateV2Preview')) {
     $pipeline = Join-Path $PSScriptRoot 'valtan_tuning_pipeline.py'
@@ -564,27 +576,30 @@ if ($Mode -eq 'PublishV2') {
     $projectionRoot = [IO.Path]::GetFullPath((Join-Path $projectionParent `
         ([Guid]::NewGuid().ToString('N'))))
     [IO.Directory]::CreateDirectory($projectionRoot) | Out-Null
-    $sha256 = [Security.Cryptography.SHA256]::Create()
-    try {
-        $mutexHash = $sha256.ComputeHash(
-            [Text.Encoding]::UTF8.GetBytes($repoRoot.ToUpperInvariant()))
-    }
-    finally {
-        $sha256.Dispose()
-    }
-    $mutexName = 'LostArk_ValtanV2ProductPublish_' +
-        (([BitConverter]::ToString($mutexHash) -replace '-', '').Substring(0, 24))
-    $mutex = [Threading.Mutex]::new($false, $mutexName)
+    $mutex = $null
     $mutexHeld = $false
     try {
-        try {
-            $mutexHeld = $mutex.WaitOne([TimeSpan]::FromSeconds(30))
-        }
-        catch [Threading.AbandonedMutexException] {
-            $mutexHeld = $true
-        }
-        if (-not $mutexHeld) {
-            throw 'Timed out waiting for the Valtan split Product publisher.'
+        if (-not $WriterLockAlreadyHeld) {
+            $sha256 = [Security.Cryptography.SHA256]::Create()
+            try {
+                $mutexHash = $sha256.ComputeHash(
+                    [Text.Encoding]::UTF8.GetBytes($repoRoot.ToUpperInvariant()))
+            }
+            finally {
+                $sha256.Dispose()
+            }
+            $mutexName = 'LostArk_ValtanV2ProductPublish_' +
+                (([BitConverter]::ToString($mutexHash) -replace '-', '').Substring(0, 24))
+            $mutex = [Threading.Mutex]::new($false, $mutexName)
+            try {
+                $mutexHeld = $mutex.WaitOne([TimeSpan]::FromSeconds(30))
+            }
+            catch [Threading.AbandonedMutexException] {
+                $mutexHeld = $true
+            }
+            if (-not $mutexHeld) {
+                throw 'Timed out waiting for the Valtan split Product publisher.'
+            }
         }
         Assert-ExpectedSavedFlowRevision
 
@@ -632,33 +647,52 @@ if ($Mode -eq 'PublishV2') {
         }
         Assert-ExpectedSavedFlowRevision
 
-        $stagedEntries = [Collections.Generic.List[object]]::new()
-        foreach ($relativePath in $expectedRelativePaths) {
-            $projectedPath = [IO.Path]::GetFullPath(
-                (Join-Path $projectionRoot $relativePath))
-            $targetPath = [IO.Path]::GetFullPath((Join-Path $repoRoot $relativePath))
-            if (-not [IO.File]::Exists($projectedPath) -or
-                -not [IO.File]::Exists($targetPath)) {
-                throw "Valtan v2 Product target is missing: $relativePath"
-            }
-            $projectedHash = Get-Sha256Hex $projectedPath
-            $targetHash = Get-Sha256Hex $targetPath
-            if ($projectedHash -ceq $targetHash) { continue }
-            $projectedText = [IO.File]::ReadAllText($projectedPath, $utf8Strict)
-            $stagedEntries.Add((Stage-JsonTextDocument $projectedText $targetPath `
-                "Valtan v2 Product $relativePath"))
+        $transactionBackend = Join-Path $PSScriptRoot `
+            'promote_valtan_animation_chains.py'
+        if (-not [IO.File]::Exists($transactionBackend)) {
+            throw "Missing shared Valtan Product transaction backend: $transactionBackend"
         }
-        if ($stagedEntries.Count -gt 0) {
-            Assert-ExpectedSavedFlowRevision
-            Commit-StagedDocuments @($stagedEntries)
+        Assert-ExpectedSavedFlowRevision
+        $commitCommand = @(
+            $transactionBackend,
+            '--repo-root', $repoRoot,
+            '--mode', 'CommitProjectedProducts',
+            '--projected-product-root', $projectionRoot,
+            '--expected-source-manifest-id',
+                [string]$projectResult.payload.sourceManifestId
+        )
+        if ($WriterLockAlreadyHeld) {
+            $commitCommand += @(
+                '--external-lock-owner-pid', [string]$PID,
+                '--external-lock-owner-nonce', $WriterLockOwnerNonce)
+        }
+        else {
+            $commitCommand += @('--lock-timeout-seconds', '30')
+        }
+        $commitText = (& python @commitCommand | Out-String).Trim()
+        if ($global:LASTEXITCODE -ne 0 -or
+            [string]::IsNullOrWhiteSpace($commitText)) {
+            throw "Valtan shared Product commit failed with exit code $global:LASTEXITCODE."
+        }
+        $commitResult = $commitText | ConvertFrom-Json
+        if ([string]$commitResult.schema -cne
+                'lostark.valtan-product-transaction-commit-result' -or
+            [int]$commitResult.formatVersion -ne 1 -or
+            [string]$commitResult.mode -cne 'CommitProjectedProducts' -or
+            [string]$commitResult.sourceManifestId -cne
+                [string]$projectResult.payload.sourceManifestId -or
+            [int]$commitResult.artifactCount -ne $expectedRelativePaths.Count -or
+            [int]$commitResult.changedCount -lt 0 -or
+            [int]$commitResult.changedCount -gt $expectedRelativePaths.Count) {
+            throw 'Valtan shared Product commit returned an invalid result.'
         }
         Assert-ExpectedSavedFlowRevision
         Write-Host ("Valtan split Products committed: changed={0} artifacts={1}" -f `
-            $stagedEntries.Count, $expectedRelativePaths.Count)
+            [int]$commitResult.changedCount, $expectedRelativePaths.Count)
     }
     finally {
         if ($mutexHeld) { $mutex.ReleaseMutex() }
-        $mutex.Dispose()
+        if ($null -ne $mutex) { $mutex.Dispose() }
         $projectionPrefix = $projectionParent.TrimEnd('\', '/') +
             [IO.Path]::DirectorySeparatorChar
         if ([IO.Directory]::Exists($projectionRoot) -and

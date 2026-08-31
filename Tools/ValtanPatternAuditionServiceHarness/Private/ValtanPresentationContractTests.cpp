@@ -297,6 +297,54 @@ namespace
 		return true;
 	}
 
+	bool VerifyStrictNativeAuthoringWindows()
+	{
+		uint32_t iRemainingMs = 999u;
+		if (!Require(CActionPresentationTimeline::Validate_AuthoredSourceWindow(
+				110.f, 30.f, 0u, 3667u, 1.f, iRemainingMs) &&
+				3667u == iRemainingMs,
+			"positive-half-away native boundary was rejected") ||
+			!Require(!CActionPresentationTimeline::Validate_AuthoredSourceWindow(
+				110.f, 30.f, 0u, 3668u, 1.f, iRemainingMs),
+			"explicit play escaped the rounded native boundary") ||
+			!Require(CActionPresentationTimeline::Validate_AuthoredSourceWindow(
+				110.f, 30.f, 1000u, 2667u, 1.f, iRemainingMs) &&
+				2667u == iRemainingMs,
+			"source-start remainder was not rounded deterministically") ||
+			!Require(!CActionPresentationTimeline::Validate_AuthoredSourceWindow(
+				110.f, 30.f, 3667u, 0u, 1.f, iRemainingMs),
+			"source start at the rounded native end was accepted") ||
+			!Require(CActionPresentationTimeline::Validate_AuthoredSourceWindow(
+				110.f, 30.f, 1000u, 0u, 2.f, iRemainingMs),
+			"native-remainder loop source window was rejected"))
+		{
+			return false;
+		}
+
+		for (const std::array<float, 3u>& Invalid : {
+			std::array<float, 3u>{ 0.f, 30.f, 1.f },
+			std::array<float, 3u>{ 110.f, 0.f, 1.f },
+			std::array<float, 3u>{ 110.f, 30.f, 0.f },
+			std::array<float, 3u>{
+				(std::numeric_limits<float>::quiet_NaN)(), 30.f, 1.f },
+			std::array<float, 3u>{
+				110.f, (std::numeric_limits<float>::infinity)(), 1.f },
+			std::array<float, 3u>{
+				110.f, 30.f, (std::numeric_limits<float>::quiet_NaN)() },
+		})
+		{
+			iRemainingMs = 999u;
+			if (!Require(!CActionPresentationTimeline::Validate_AuthoredSourceWindow(
+					Invalid[0], Invalid[1], 0u, 1u, Invalid[2], iRemainingMs) &&
+					0u == iRemainingMs,
+				"invalid native timing/rate did not fail closed"))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
 	bool VerifyLegacyNaturalEndCompatibility()
 	{
 		const std::array<ACTION_PRESENTATION_CLIP_TIMING, 1u> Clips{
@@ -1760,6 +1808,7 @@ int Run_ValtanPresentationContractTests()
 {
 	if (!VerifyFiniteDeathPresentationClock() ||
 		!VerifyAdjacentExplicitSourceWindows() ||
+		!VerifyStrictNativeAuthoringWindows() ||
 		!VerifyCameraShakeSpec() ||
 		!VerifyLegacyNaturalEndCompatibility() ||
 		!VerifyClipOccurrenceTransitions() ||

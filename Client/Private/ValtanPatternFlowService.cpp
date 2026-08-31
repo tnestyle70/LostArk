@@ -46,6 +46,8 @@ namespace
 			return "The Server rejected the saved Flow or one of its stable IDs.";
 		case VALTAN_PATTERN_FLOW_RESULT::REJECTED_STALE_FLOW:
 			return "The Flow command targeted a stale Server flow epoch.";
+		case VALTAN_PATTERN_FLOW_RESULT::REJECTED_STALE_DEFINITION:
+			return "The saved Flow targeted a gameplay definition that is no longer active; reload the canonical graph before retrying.";
 		case VALTAN_PATTERN_FLOW_RESULT::QUEUED:
 		case VALTAN_PATTERN_FLOW_RESULT::DUPLICATE_IGNORED:
 			return "Pattern Flow was accepted by the Server.";
@@ -193,6 +195,9 @@ bool Client::CValtanPatternFlowService::Start(
 	const VALTAN_PATTERN_FLOW_DEFINITION& Flow,
 	const std::string_view strFlowRevision,
 	const std::string_view strStartSlotId,
+	const LostArk::Shared::GameplayDataRevision& ExpectedDefinitionRevision,
+	const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
+		PinnedPatternSoundSourceReceipt,
 	std::string& strOutStatus)
 {
 	using namespace LostArk::Shared;
@@ -220,6 +225,25 @@ bool Client::CValtanPatternFlowService::Start(
 		strOutStatus = "Flow request identities are exhausted; restart the Client session.";
 		return false;
 	}
+	if (!ExpectedDefinitionRevision.Is_Valid())
+	{
+		strOutStatus = "Pattern Flow requires the exact admitted gameplay definition revision.";
+		return false;
+	}
+	if (!PinnedPatternSoundSourceReceipt.Is_Valid())
+	{
+		strOutStatus =
+			"Pattern Flow requires the exact admitted Pattern Sound source receipt.";
+		return false;
+	}
+	if (!Verify_PatternSoundSourceReceipt(
+			PinnedPatternSoundSourceReceipt, strOutStatus))
+	{
+		strOutStatus =
+			"Pattern Flow restart rejected by its existing occurrence Sound receipt: " +
+			strOutStatus;
+		return false;
+	}
 	if (Flow.Slots.empty() || Flow.Slots.size() > MAX_VALTAN_PATTERN_FLOW_SLOTS)
 	{
 		strOutStatus = "Pattern Flow requires a saved non-empty bounded Flow and start slot.";
@@ -241,9 +265,12 @@ bool Client::CValtanPatternFlowService::Start(
 	Staged.eState = VALTAN_PATTERN_FLOW_START_STATE::WAITING_VERDICT;
 	Staged.iWorldInboundGeneration = World_InboundGeneration();
 	Staged.iSentAtMilliseconds = Now_Milliseconds();
+	Staged.PinnedPatternSoundSourceReceipt =
+		PinnedPatternSoundSourceReceipt;
 	Staged.strStatus = "Waiting for Server acceptance. The current run remains authoritative until the saved Flow replaces it.";
 	C2S_DEBUG_VALTAN_PATTERN_FLOW_START& Message = Staged.Request;
 	Message.iRequestSequence = m_iNextRequestSequence;
+	Message.ExpectedDefinitionRevision = ExpectedDefinitionRevision;
 	Message.strBossPlacementId = strBossPlacementId;
 	Message.strFlowId = Flow.strFlowId;
 	Message.strFlowRevision = strFlowRevision;
@@ -278,13 +305,24 @@ bool Client::CValtanPatternFlowService::Start(
 	return true;
 }
 
-bool Client::CValtanPatternFlowService::Retry_Start(std::string& strOutStatus)
+bool Client::CValtanPatternFlowService::Retry_Start(
+	const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
+		ExpectedPatternSoundSourceReceipt,
+	std::string& strOutStatus)
 {
 	Update();
 	if (!Has_PendingStart() ||
 		VALTAN_PATTERN_FLOW_START_STATE::UNCONFIRMED != m_PendingStart.eState)
 	{
 		strOutStatus = "No unconfirmed Flow start is waiting for an exact retry.";
+		return false;
+	}
+	if (!ExpectedPatternSoundSourceReceipt.Is_Valid() ||
+		ExpectedPatternSoundSourceReceipt !=
+			m_PendingStart.PinnedPatternSoundSourceReceipt)
+	{
+		strOutStatus =
+			"Flow retry rejected because its unresolved Start is pinned to another Pattern Sound source receipt.";
 		return false;
 	}
 	if (!Send_StartRequest(m_PendingStart.Request))
@@ -352,6 +390,36 @@ void Client::CValtanPatternFlowService::Set_Terminal(
 	m_iPendingStopStartedAtMilliseconds = 0u;
 }
 
+bool Client::CValtanPatternFlowService::Verify_PatternSoundSourceReceipt(
+	const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& CurrentReceipt,
+	std::string& strOutStatus) const
+{
+	if (!CurrentReceipt.Is_Valid())
+	{
+		strOutStatus =
+			"Pattern Flow Sound verification requires a valid S receipt.";
+		return false;
+	}
+	if (m_Snapshot.Is_InFlight() &&
+		(!m_Snapshot.PinnedPatternSoundSourceReceipt.Is_Valid() ||
+		 m_Snapshot.PinnedPatternSoundSourceReceipt != CurrentReceipt))
+	{
+		strOutStatus =
+			"The active ordered Flow is pinned to a different Pattern Sound source receipt.";
+		return false;
+	}
+	if (Has_PendingStart() &&
+		(!m_PendingStart.PinnedPatternSoundSourceReceipt.Is_Valid() ||
+		 m_PendingStart.PinnedPatternSoundSourceReceipt != CurrentReceipt))
+	{
+		strOutStatus =
+			"The unresolved Flow Start is pinned to a different Pattern Sound source receipt.";
+		return false;
+	}
+	strOutStatus.clear();
+	return true;
+}
+
 void Client::CValtanPatternFlowService::Accept_PendingStart(
 	const uint32_t iRoomFlowEpoch,
 	const LostArk::Shared::GameplayDataRevision& PinnedRevision)
@@ -368,6 +436,8 @@ void Client::CValtanPatternFlowService::Accept_PendingStart(
 	Staged.strFlowRevision = Request.strFlowRevision;
 	Staged.strStartSlotId = Request.strStartSlotId;
 	Staged.PinnedDefinitionRevision = PinnedRevision;
+	Staged.PinnedPatternSoundSourceReceipt =
+		m_PendingStart.PinnedPatternSoundSourceReceipt;
 	Staged.strStatus = "Server accepted the saved Flow; waiting for its first slot lifecycle.";
 	m_CurrentRequest = std::move(m_PendingStart.Request);
 	m_Snapshot = std::move(Staged);
@@ -406,7 +476,9 @@ void Client::CValtanPatternFlowService::Apply_ServerResult(
 		}
 		if (Accepted)
 		{
-			if (0u != Result.iRoomFlowEpoch && Result.PinnedDefinitionRevision.Is_Valid())
+			if (0u != Result.iRoomFlowEpoch &&
+				Result.PinnedDefinitionRevision ==
+					m_PendingStart.Request.ExpectedDefinitionRevision)
 				Accept_PendingStart(Result.iRoomFlowEpoch, Result.PinnedDefinitionRevision);
 		}
 		else
@@ -455,7 +527,9 @@ void Client::CValtanPatternFlowService::Apply_ServerLifecycle(
 			Reject_PendingStart(Lifecycle.strReason);
 			return;
 		}
-		if (0u == Lifecycle.iRoomFlowEpoch || !Lifecycle.PinnedDefinitionRevision.Is_Valid() ||
+		if (0u == Lifecycle.iRoomFlowEpoch ||
+			Lifecycle.PinnedDefinitionRevision !=
+				m_PendingStart.Request.ExpectedDefinitionRevision ||
 			!Matches_OrderedSlot(m_PendingStart.Request, Lifecycle))
 		{
 			return;

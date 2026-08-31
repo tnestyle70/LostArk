@@ -1,7 +1,6 @@
 #include "Valtan.h"
 
 #include "ValtanPresentationAssetService.h"
-#include "ValtanPatternTree.h"
 
 #include "ActionPresentationTimeline.h"
 #include "ActorCatalog.h"
@@ -11,16 +10,16 @@
 #include "CameraShakeService.h"
 #include "EffectV2_Runtime.h"
 #include "Effect_PresentationService.h"
+#include "EncounterPatternReference.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "Navigation.h"
+#include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
-#include "SoundCueCatalog.h"
+#include "ValtanPatternTree.h"
 #include <filesystem>
 #ifdef _DEBUG
-#include "EncounterPatternReference.h"
 #include "HitAreaWire.h"
-#include "ProjectDataRoot.h"
 #endif
 
 #include "Part_Equipment.h"
@@ -41,6 +40,11 @@ namespace
 	bool Is_ArenaCenterCueAnchor(const std::string_view slot)
 	{
 		return slot == "arena.center" || slot == "arena.center.facing";
+	}
+
+	bool Is_PatternTargetSnapshotCueAnchor(const std::string_view slot)
+	{
+		return slot == "pattern.target.snapshot";
 	}
 
 	std::string Make_CombatObjectSoundSourceKey(
@@ -316,11 +320,14 @@ HRESULT CValtan::Initialize(void* pArg)
 
 	if (FAILED(Ready_PartObjects()))
 		return E_FAIL;
-	Load_PatternBindings();
-	Load_PatternEffectCues();
-	Load_PatternSoundCues();
-	Load_CombatObjectSoundCues();
-	Load_PatternShakeCues();
+	std::string PatternPresentationStatus;
+	if (!m_isServerAuthoritative &&
+		!Reload_PatternPresentationAuthoring(PatternPresentationStatus))
+	{
+		OutputDebugStringA((
+			"[Client][Valtan] joined Product presentation isolated; catalog clips remain: " +
+			PatternPresentationStatus + "\n").c_str());
+	}
 #ifdef _DEBUG
 	if (m_isServerAuthoritative)
 		Load_PatternHitAreaDebug();
@@ -379,8 +386,10 @@ void CValtan::Draw_PatternHitAreaDebug() const
 		isPreviewDriven ? m_strPreviewHitActionId : m_strServerActionId;
 	if (nullptr == m_pTransformCom || strActionId.empty())
 		return;
-	const auto iter = m_PatternHitAreaByActionId.find(strActionId);
-	if (m_PatternHitAreaByActionId.end() == iter)
+	const auto& HitAreas = isPreviewDriven && m_bLocalPatternAuthoringPreview ?
+		m_LocalPreviewHitAreaByActionId : m_PatternHitAreaByActionId;
+	const auto iter = HitAreas.find(strActionId);
+	if (HitAreas.end() == iter)
 		return;
 	const PATTERN_HIT_AREA_DEBUG& area = iter->second;
 
@@ -486,7 +495,8 @@ void CValtan::Set_PatternHitAreaPreview(
 {
 	/* A Development preview boss never took the server-authoritative load in
 	   Initialize, so the display copy is admitted on first use here. */
-	if (!m_isPatternHitAreaDebugLoadAttempted)
+	if (!m_bLocalPatternAuthoringPreview &&
+		!m_isPatternHitAreaDebugLoadAttempted)
 		Load_PatternHitAreaDebug();
 	m_strPreviewHitActionId = stageActionId;
 	m_fPreviewHitAgeSeconds = fStageAgeSeconds;
@@ -501,8 +511,24 @@ void CValtan::Clear_PatternHitAreaPreview()
 
 void CValtan::Load_PatternBindings()
 {
+	std::string Status;
+	if (!Reload_PatternPresentationAuthoring(Status))
+	{
+		OutputDebugStringA((
+			"[Client][Valtan] pattern bindings rejected; catalog clips remain: " +
+			Status + "\n").c_str());
+	}
+}
+
+bool_t CValtan::Reload_PatternBindings_WhileAdmitted(
+	std::string& strOutStatus)
+{
 	if (nullptr == m_pBodyModelCom)
-		return;
+	{
+		strOutStatus =
+			"Valtan pattern binding reload requires an admitted body model.";
+		return false;
+	}
 	std::vector<std::string> availableClips;
 	availableClips.reserve(m_pBodyModelCom->Get_NumAnimations());
 	for (uint32_t index = 0u;
@@ -513,15 +539,10 @@ void CValtan::Load_PatternBindings()
 			availableClips.emplace_back(clip);
 	}
 	Client::BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT document;
-	std::string status;
 	if (!Client::CValtanPatternAnimationBindingDocument::Load(
-			"Valtan", "BOSS_VALTAN", availableClips, document, status))
+			"Valtan", "BOSS_VALTAN", availableClips, document, strOutStatus))
 	{
-		const std::string message =
-			"[Client][Valtan] pattern bindings rejected; catalog clips remain: " +
-			status + "\n";
-		OutputDebugStringA(message.c_str());
-		return;
+		return false;
 	}
 	std::unordered_map<std::string,
 		std::vector<Client::BOSS_PATTERN_ANIMATION_CLIP>> staged;
@@ -539,14 +560,218 @@ void CValtan::Load_PatternBindings()
 				std::span<const Client::BOSS_PATTERN_ANIMATION_CLIP>(
 					binding.Clips.data(), binding.Clips.size()), Timings))
 		{
-			OutputDebugStringA((
-				"[Client][Valtan] pattern binding source segment rejected: " +
-				binding.strActionId + "\n").c_str());
-			return;
+			strOutStatus =
+				"Valtan pattern binding reload rejected a model source segment: " +
+				binding.strActionId;
+			return false;
 		}
 		staged.emplace(binding.strActionId, binding.Clips);
 	}
 	m_PatternClipByActionId = std::move(staged);
+	m_iPatternPresentationClipOccurrenceIndex =
+		(std::numeric_limits<std::size_t>::max)();
+	strOutStatus = "Reloaded " +
+		std::to_string(m_PatternClipByActionId.size()) +
+		" Valtan Product animation action binding(s).";
+	return true;
+}
+
+bool_t CValtan::Reload_PatternPresentationAuthoring(
+	std::string& strOutStatus)
+{
+	if (m_isServerAuthoritative)
+	{
+		strOutStatus =
+			"Server-authoritative Valtan reload requires an exact Server R -> presentation M receipt.";
+		return false;
+	}
+	return Reload_PatternPresentationAuthoring_Impl(
+		nullptr, nullptr, strOutStatus);
+}
+
+bool_t CValtan::Reload_PatternPresentationAuthoring(
+	const LostArk::Shared::GameplayDataRevision& ExpectedServerRevision,
+	const Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& ExpectedReceipt,
+	std::string& strOutStatus)
+{
+	return Reload_PatternPresentationAuthoring_Impl(
+		&ExpectedServerRevision, &ExpectedReceipt, strOutStatus);
+}
+
+bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
+	const LostArk::Shared::GameplayDataRevision* pExpectedServerRevision,
+	const Client::VALTAN_PRESENTATION_GENERATION_RECEIPT* pExpectedReceipt,
+	std::string& strOutStatus)
+{
+	const bool_t bExact = nullptr != pExpectedServerRevision &&
+		nullptr != pExpectedReceipt;
+	if ((nullptr == pExpectedServerRevision) != (nullptr == pExpectedReceipt))
+	{
+		strOutStatus = "Valtan presentation receipt arguments are incomplete.";
+		return false;
+	}
+	CValtanCanonicalProductReadAdmission CanonicalAdmission;
+	Client::CValtanPresentationGenerationReadAdmission GenerationAdmission;
+	if (bExact ?
+		!GenerationAdmission.Acquire_Receipt(
+			*pExpectedServerRevision, *pExpectedReceipt, strOutStatus) :
+		!CanonicalAdmission.Acquire(strOutStatus))
+	{
+		return false;
+	}
+
+	const auto PreviousBindings = m_PatternClipByActionId;
+	const auto PreviousEffectCues = m_PatternEffectCuesByActionId;
+	const auto PreviousArenaCenters = m_PatternArenaCenterAnchors;
+	const auto PreviousEffectAttempts = m_AttemptedPatternEffectOccurrenceKeys;
+	const bool_t PreviousEffectScanValid = m_bPatternEffectCueScanAgeValid;
+	const f32_t PreviousEffectScanAge = m_fPatternEffectCueScanAgeSeconds;
+	const auto PreviousSoundCues = m_PatternSoundCuesByActionId;
+	const auto PreviousSoundSourceReceipt = m_PatternSoundSourceReceipt;
+	const auto PreviousSoundAttempts = m_AttemptedPatternSoundOccurrenceKeys;
+	const bool_t PreviousSoundScanValid = m_bPatternSoundCueScanAgeValid;
+	const f32_t PreviousSoundScanAge = m_fPatternSoundCueScanAgeSeconds;
+	const auto PreviousCombatObjectSoundCues =
+		m_CombatObjectSoundCuesBySource;
+	const auto PreviousShakeCues = m_PatternShakeCuesByActionId;
+	const auto PreviousShakeAttempts = m_AttemptedPatternShakeOccurrenceKeys;
+	const bool_t PreviousShakeScanValid = m_bPatternShakeCueScanAgeValid;
+	const f32_t PreviousShakeScanAge = m_fPatternShakeCueScanAgeSeconds;
+	const std::size_t PreviousClipOccurrenceIndex =
+		m_iPatternPresentationClipOccurrenceIndex;
+	const auto PreviousPresentationReceipt =
+		m_PresentationGenerationReceipt;
+
+	const auto RestorePrevious = [this,
+		&PreviousBindings, &PreviousEffectCues, &PreviousArenaCenters,
+		&PreviousEffectAttempts, PreviousEffectScanValid,
+		PreviousEffectScanAge, &PreviousSoundCues,
+		&PreviousSoundSourceReceipt, &PreviousSoundAttempts,
+		PreviousSoundScanValid, PreviousSoundScanAge,
+		&PreviousCombatObjectSoundCues,
+		&PreviousShakeCues, &PreviousShakeAttempts, PreviousShakeScanValid,
+		PreviousShakeScanAge, PreviousClipOccurrenceIndex,
+		&PreviousPresentationReceipt]()
+	{
+		m_PatternClipByActionId = PreviousBindings;
+		m_PatternEffectCuesByActionId = PreviousEffectCues;
+		m_PatternArenaCenterAnchors = PreviousArenaCenters;
+		m_AttemptedPatternEffectOccurrenceKeys = PreviousEffectAttempts;
+		m_bPatternEffectCueScanAgeValid = PreviousEffectScanValid;
+		m_fPatternEffectCueScanAgeSeconds = PreviousEffectScanAge;
+		m_PatternSoundCuesByActionId = PreviousSoundCues;
+		m_PatternSoundSourceReceipt = PreviousSoundSourceReceipt;
+		m_AttemptedPatternSoundOccurrenceKeys = PreviousSoundAttempts;
+		m_bPatternSoundCueScanAgeValid = PreviousSoundScanValid;
+		m_fPatternSoundCueScanAgeSeconds = PreviousSoundScanAge;
+		m_CombatObjectSoundCuesBySource = PreviousCombatObjectSoundCues;
+		m_PatternShakeCuesByActionId = PreviousShakeCues;
+		m_AttemptedPatternShakeOccurrenceKeys = PreviousShakeAttempts;
+		m_bPatternShakeCueScanAgeValid = PreviousShakeScanValid;
+		m_fPatternShakeCueScanAgeSeconds = PreviousShakeScanAge;
+		m_iPatternPresentationClipOccurrenceIndex =
+			PreviousClipOccurrenceIndex;
+		m_PresentationGenerationReceipt = PreviousPresentationReceipt;
+	};
+
+	std::string StepStatus;
+	if (!Reload_PatternBindings_WhileAdmitted(StepStatus) ||
+		!Reload_PatternEffectCues_WhileAdmitted(StepStatus) ||
+		!Reload_PatternSoundCues_WhileAdmitted(StepStatus) ||
+		!Reload_CombatObjectSoundCues_WhileAdmitted(StepStatus) ||
+		!Reload_PatternShakeCues_WhileAdmitted(StepStatus))
+	{
+		RestorePrevious();
+		strOutStatus =
+			"Valtan joined presentation reload rejected; every previous animation/effect/sound/combat-sound/shake cache was preserved: " +
+			StepStatus;
+		return false;
+	}
+
+	/* The component readers above write only this private scratch state while
+	   the method is synchronous. Move it aside, restore the prior admitted
+	   caches, then perform the post-read journal check before one aggregate
+	   commit. Thus a late admission failure is byte/logically invisible to
+	   gameplay even though validation reuses the established typed loaders. */
+	auto StagedBindings = std::move(m_PatternClipByActionId);
+	auto StagedEffectCues = std::move(m_PatternEffectCuesByActionId);
+	auto StagedArenaCenters = std::move(m_PatternArenaCenterAnchors);
+	auto StagedSoundCues = std::move(m_PatternSoundCuesByActionId);
+	auto StagedSoundSourceReceipt =
+		std::move(m_PatternSoundSourceReceipt);
+	auto StagedCombatObjectSoundCues =
+		std::move(m_CombatObjectSoundCuesBySource);
+	auto StagedShakeCues = std::move(m_PatternShakeCuesByActionId);
+	const bool_t bJoinedPresentationGenerationUnchanged =
+		bExact && PreviousPresentationReceipt.Is_Valid() &&
+		PreviousPresentationReceipt == *pExpectedReceipt;
+	const bool_t bPatternSoundGenerationUnchanged =
+		bJoinedPresentationGenerationUnchanged &&
+		PreviousSoundSourceReceipt.Is_Valid() &&
+		PreviousSoundSourceReceipt == StagedSoundSourceReceipt;
+	RestorePrevious();
+	if (bExact ?
+		!GenerationAdmission.Validate_StillCurrent(StepStatus) :
+		!CanonicalAdmission.Validate_StillCurrent(StepStatus))
+	{
+		strOutStatus =
+			"Valtan joined presentation reload became stale; every previous cache was preserved: " +
+			StepStatus;
+		return false;
+	}
+
+	m_PatternClipByActionId = std::move(StagedBindings);
+	m_PatternEffectCuesByActionId = std::move(StagedEffectCues);
+	m_PatternArenaCenterAnchors = std::move(StagedArenaCenters);
+	m_PatternSoundCuesByActionId = std::move(StagedSoundCues);
+	m_PatternSoundSourceReceipt = std::move(StagedSoundSourceReceipt);
+	m_CombatObjectSoundCuesBySource =
+		std::move(StagedCombatObjectSoundCues);
+	m_PatternShakeCuesByActionId = std::move(StagedShakeCues);
+	/* Pattern Sound S is independent of the joined presentation M. An idle S
+	   apply must not make already-attempted Effect/Shake occurrences eligible
+	   again. Reset other lane cursors only when M itself changed; reset Sound
+	   only when either its own S or its animation dependency generation changed. */
+	if (!bJoinedPresentationGenerationUnchanged)
+	{
+		m_AttemptedPatternEffectOccurrenceKeys.clear();
+		m_bPatternEffectCueScanAgeValid = false;
+		m_fPatternEffectCueScanAgeSeconds = 0.f;
+		m_AttemptedPatternShakeOccurrenceKeys.clear();
+		m_bPatternShakeCueScanAgeValid = false;
+		m_fPatternShakeCueScanAgeSeconds = 0.f;
+		m_iPatternPresentationClipOccurrenceIndex =
+			(std::numeric_limits<std::size_t>::max)();
+	}
+	if (!bPatternSoundGenerationUnchanged)
+	{
+		m_AttemptedPatternSoundOccurrenceKeys.clear();
+		m_bPatternSoundCueScanAgeValid = false;
+		m_fPatternSoundCueScanAgeSeconds = 0.f;
+	}
+	if (bExact)
+		m_PresentationGenerationReceipt = *pExpectedReceipt;
+
+	strOutStatus =
+		bExact ?
+		"Reloaded one exact Server R -> Valtan presentation M generation; Pattern Sound retained its typed receipt." :
+		"Reloaded one non-authoritative Valtan Product preview generation.";
+	return true;
+}
+
+bool_t CValtan::Reload_PatternBindings(std::string& strOutStatus)
+{
+	return Reload_PatternPresentationAuthoring(strOutStatus);
+}
+
+bool_t CValtan::Reload_PatternSoundCues(std::string& strOutStatus)
+{
+	return Reload_PatternPresentationAuthoring(strOutStatus);
+}
+
+bool_t CValtan::Reload_CombatObjectSoundCues(std::string& strOutStatus)
+{
+	return Reload_PatternPresentationAuthoring(strOutStatus);
 }
 
 bool_t CValtan::Apply_PatternPresentationSample(
@@ -577,8 +802,10 @@ bool_t CValtan::Apply_PatternPresentationSample(
 		&FallbackClip, 1u);
 	if (!actionId.empty())
 	{
-		const auto Bound = m_PatternClipByActionId.find(std::string(actionId));
-		if (m_PatternClipByActionId.end() != Bound)
+		const auto& Bindings = m_bLocalPatternAuthoringPreview ?
+			m_LocalPreviewClipByActionId : m_PatternClipByActionId;
+		const auto Bound = Bindings.find(std::string(actionId));
+		if (Bindings.end() != Bound)
 		{
 			if (Bound->second.empty())
 			{
@@ -683,6 +910,38 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 	}
 	m_iPatternPresentationClipOccurrenceIndex =
 		iAcceptedClipOccurrenceIndex;
+	const auto LocalStage =
+		m_LocalPreviewStageIndexByActionId.find(std::string(actionId));
+	if (m_bLocalPatternAuthoringPreview &&
+		m_LocalPreviewStageIndexByActionId.end() != LocalStage)
+	{
+		const bool_t bStageEdge = m_strLocalPreviewActionId != actionId;
+		const bool_t bClockRewind = m_bPatternEffectCueScanAgeValid &&
+			fActionAgeSeconds + 0.00001f < m_fPatternEffectCueScanAgeSeconds;
+		if (bStageEdge || bClockRewind)
+		{
+			const std::shared_ptr<CValtan> Owner =
+				static_pointer_cast<CValtan>(shared_from_this());
+			if (bClockRewind)
+			{
+				CEffectPresentationService::Stop_BossOwner(Owner);
+			}
+			else
+			{
+				/* Match the Product stage boundary: cue-end work stops, while an
+				   already-active NATURAL document may finish.  Explicit seek/restart
+				   uses Reset_LocalPatternPreviewTransport and removes everything. */
+				(void)CEffectPresentationService::Stop_BossAction(
+					Owner, m_iLocalPreviewEffectGeneration);
+			}
+			m_AttemptedPatternEffectOccurrenceKeys.clear();
+			m_bPatternEffectCueScanAgeValid = false;
+			m_fPatternEffectCueScanAgeSeconds = 0.f;
+		}
+		m_strLocalPreviewActionId.assign(actionId);
+		m_iLocalPreviewStageIndex = LocalStage->second;
+		Spawn_DuePatternEffectCues(fActionAgeSeconds);
+	}
 	Client::CEffectV2Runtime::Sync_Stage(
 		Client::EFFECT_V2_TARGET::From_Valtan(
 			static_pointer_cast<CValtan>(shared_from_this())),
@@ -691,31 +950,285 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 	return true;
 }
 
+bool_t CValtan::Stage_LocalPatternAuthoringPreview(
+	const Client::VALTAN_PATTERN_VIEW& Pattern,
+	std::string& strOutStatus)
+{
+	if (m_isServerAuthoritative || nullptr == m_pBodyModelCom ||
+		Pattern.strPatternId.empty() || Pattern.Stages.empty())
+	{
+		strOutStatus =
+			"Local Pattern draft preview requires one non-authoritative Valtan model and a non-empty Pattern.";
+		return false;
+	}
+	std::unordered_map<std::string,
+		std::vector<Client::BOSS_PATTERN_ANIMATION_CLIP>> StagedBindings;
+	std::unordered_map<std::string,
+		std::vector<Client::VALTAN_PATTERN_EFFECT_CUE>> StagedEffectCues;
+	std::unordered_map<std::string, uint32_t> StagedStageIndices;
+	std::unordered_map<std::string, float3_t> StagedArenaCenters;
+#ifdef _DEBUG
+	std::unordered_map<std::string, PATTERN_HIT_AREA_DEBUG> StagedHitAreas;
+#endif
+	for (std::size_t iStage = 0u; iStage < Pattern.Stages.size(); ++iStage)
+	{
+		const Client::VALTAN_STAGE_VIEW& Stage = Pattern.Stages[iStage];
+		if (Stage.strActionId.empty() ||
+			StagedBindings.contains(Stage.strActionId))
+		{
+			strOutStatus =
+				"Local Pattern draft preview rejected a missing or duplicated action: " +
+				Stage.strActionId + ".";
+			return false;
+		}
+		std::vector<Client::BOSS_PATTERN_ANIMATION_CLIP> Clips;
+		if (!Stage.bSuppressAnimation)
+		{
+			if (Stage.ClipOccurrences.empty())
+			{
+				strOutStatus =
+					"Local Pattern draft preview has an unbound animation action: " +
+					Stage.strActionId + ".";
+				return false;
+			}
+			Clips.reserve(Stage.ClipOccurrences.size());
+			for (const Client::VALTAN_CLIP_OCCURRENCE_VIEW& Source :
+				Stage.ClipOccurrences)
+			{
+				Client::BOSS_PATTERN_ANIMATION_CLIP Clip;
+				Clip.strClipOccurrenceId = Source.strClipOccurrenceId;
+				Clip.strClipName = Source.strClipName;
+				Clip.strMappingBasis = Source.strMappingBasis;
+				Clip.iSourceStartMs = Source.iSourceStartMs;
+				Clip.iPlayMs = Source.iPlayMs;
+				Clip.fPlayRate = Source.fPlayRate;
+				Clip.bLoop = Source.bLoop;
+				Clips.push_back(std::move(Clip));
+			}
+			std::vector<Client::ACTION_PRESENTATION_CLIP_TIMING> Timings;
+			if (!Build_PatternTimeline(
+					m_pBodyModelCom,
+					std::span<const Client::BOSS_PATTERN_ANIMATION_CLIP>(
+						Clips.data(), Clips.size()), Timings))
+			{
+				strOutStatus =
+					"Local Pattern draft preview rejected a clip/source clock for " +
+					Stage.strActionId + ".";
+				return false;
+			}
+		}
+		for (const Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW& Source :
+			Stage.ProductCues)
+		{
+			if (Source.strPatternId != Pattern.strPatternId ||
+				Source.strStageId != Stage.strStageId ||
+				Source.strActionId != Stage.strActionId ||
+				Source.strOccurrenceId.empty() ||
+				Source.strEffectAssetId.empty())
+			{
+				strOutStatus =
+					"Local Pattern draft preview rejected an Effect cue identity for " +
+					Stage.strActionId + ".";
+				return false;
+			}
+			if (Source.bUsesStageClock &&
+				(!Stage.ClipOccurrences.empty() ||
+				 !Source.strClipOccurrenceId.empty() ||
+				 Source.iStageOffsetMs >= Stage.iDurationMs))
+			{
+				strOutStatus =
+					"Local Pattern draft preview rejected a stage-clock Effect cue binding: " +
+					Source.strOccurrenceId + ".";
+				return false;
+			}
+			if (!Source.bUsesStageClock && std::none_of(
+					Stage.ClipOccurrences.begin(), Stage.ClipOccurrences.end(),
+					[&Source](const Client::VALTAN_CLIP_OCCURRENCE_VIEW& Clip)
+					{
+						return Clip.strClipOccurrenceId == Source.strClipOccurrenceId;
+					}))
+			{
+				strOutStatus =
+					"Local Pattern draft preview rejected an Effect cue clip occurrence: " +
+					Source.strOccurrenceId + ".";
+				return false;
+			}
+			if (!Is_ArenaCenterCueAnchor(Source.strAnchorSlotId) &&
+				!Is_PatternTargetSnapshotCueAnchor(Source.strAnchorSlotId) &&
+				"root" != Source.strAnchorSlotId &&
+				!m_pBodyModelCom->Has_Bone(Source.strAnchorSlotId.c_str()))
+			{
+				strOutStatus =
+					"Local Pattern draft preview rejected an Effect cue anchor: " +
+					Source.strOccurrenceId + ".";
+				return false;
+			}
+
+			Client::VALTAN_PATTERN_EFFECT_CUE Cue;
+			Cue.strBindingId = Source.strBindingId;
+			Cue.strOccurrenceId = Source.strOccurrenceId;
+			Cue.strPatternId = Source.strPatternId;
+			Cue.strStageId = Source.strStageId;
+			Cue.strActionId = Source.strActionId;
+			Cue.strClipOccurrenceId = Source.strClipOccurrenceId;
+			Cue.strEffectAssetId = Source.strEffectAssetId;
+			Cue.strV1EffectAssetId = Source.strV1EffectAssetId;
+			Cue.strAnchorSlotId = Source.strAnchorSlotId;
+			Cue.LocalTransform = Source.LocalTransform;
+			Cue.eFollowPolicy = Source.eFollowPolicy;
+			Cue.eStopPolicy = Source.eStopPolicy;
+			Cue.eRepeatPolicy = "each_loop" == Source.strRepeatPolicy ?
+				Client::VALTAN_PATTERN_EFFECT_REPEAT_POLICY::EACH_LOOP :
+				Client::VALTAN_PATTERN_EFFECT_REPEAT_POLICY::ONCE;
+			Cue.eScalePolicy = Source.eScalePolicy;
+			Cue.vWorldScale = Source.vWorldScale;
+			Cue.bHasExplicitScalePolicy = Source.bHasExplicitScalePolicy;
+			Cue.iStartMs = Source.bUsesStageClock ?
+				Source.iStageOffsetMs : Source.iSourceStartMs;
+			Cue.iEndMs = Source.iSourceEndMs;
+			Cue.bHasSourceEnd = Source.bHasSourceEnd;
+			Cue.bUsesStageClock = Source.bUsesStageClock;
+			Cue.iStageIndex = static_cast<uint32_t>(iStage);
+			Cue.iStageDurationMs = Stage.iDurationMs;
+			StagedEffectCues[Stage.strActionId].push_back(std::move(Cue));
+		}
+		StagedStageIndices.emplace(
+			Stage.strActionId, static_cast<uint32_t>(iStage));
+		StagedBindings.emplace(Stage.strActionId, std::move(Clips));
+#ifdef _DEBUG
+		if (!Stage.strHitShape.empty() && "NONE" != Stage.strHitShape &&
+			0u != Stage.iHitCount)
+		{
+			PATTERN_HIT_AREA_DEBUG Area{};
+			Area.strHitShape = Stage.strHitShape;
+			Area.fOuterRadius = Stage.fHitOuterRadius;
+			Area.fInnerRadius = Stage.fHitInnerRadius;
+			Area.fAngleDegrees = Stage.fHitAngleDegrees;
+			Area.fLength = Stage.fHitLength;
+			Area.fHalfWidth = Stage.fHitHalfWidth;
+			Area.iHitCount = Stage.iHitCount;
+			Area.iHitIntervalMs = Stage.iHitIntervalMs;
+			Area.iHitDelayMs = Stage.iHitDelayMs;
+			Area.HitOffsetsMs = Stage.HitOffsetsMs;
+			StagedHitAreas.emplace(Stage.strActionId, std::move(Area));
+		}
+#endif
+	}
+	if (Pattern.ServerMotion.has_value() &&
+		"LEAP_TO_ANCHOR" == Pattern.ServerMotion->strKind)
+	{
+		const auto& Landing = Pattern.ServerMotion->LandingPosition;
+		if (!std::isfinite(Landing[0]) || !std::isfinite(Landing[1]) ||
+			!std::isfinite(Landing[2]))
+		{
+			strOutStatus =
+				"Local Pattern draft preview rejected a non-finite arena landing anchor.";
+			return false;
+		}
+		StagedArenaCenters.emplace(Pattern.strPatternId,
+			float3_t(Landing[0], Landing[1], Landing[2]));
+	}
+	for (const auto& [ActionId, Cues] : StagedEffectCues)
+	{
+		for (const Client::VALTAN_PATTERN_EFFECT_CUE& Cue : Cues)
+		{
+			if (Is_ArenaCenterCueAnchor(Cue.strAnchorSlotId) &&
+				!StagedArenaCenters.contains(Pattern.strPatternId))
+			{
+				strOutStatus =
+					"Local Pattern draft preview has no admitted arena anchor for Effect cue: " +
+					Cue.strOccurrenceId + ".";
+				return false;
+			}
+		}
+	}
+
+	if (m_bLocalPatternAuthoringPreview)
+		Reset_LocalPatternPreviewTransport();
+	m_LocalPreviewClipByActionId = std::move(StagedBindings);
+	m_LocalPreviewEffectCuesByActionId = std::move(StagedEffectCues);
+	m_LocalPreviewStageIndexByActionId = std::move(StagedStageIndices);
+	m_LocalPreviewArenaCenterAnchors = std::move(StagedArenaCenters);
+	m_strLocalPreviewPatternId = Pattern.strPatternId;
+	m_strLocalPreviewActionId.clear();
+	m_iLocalPreviewStageIndex = 0u;
+	m_iLocalPreviewEffectGeneration =
+		m_iLocalPreviewEffectGeneration == (std::numeric_limits<uint32_t>::max)() ?
+			1u : m_iLocalPreviewEffectGeneration + 1u;
+#ifdef _DEBUG
+	m_LocalPreviewHitAreaByActionId = std::move(StagedHitAreas);
+#endif
+	m_bLocalPatternAuthoringPreview = true;
+	m_iPatternPresentationClipOccurrenceIndex =
+		(std::numeric_limits<std::size_t>::max)();
+	strOutStatus = "Staged effective Pattern draft animation/collider/Effect mirror for local preview: " +
+		Pattern.strPatternId + ".";
+	return true;
+}
+
+void CValtan::Reset_LocalPatternPreviewTransport()
+{
+	if (m_isServerAuthoritative || !m_bLocalPatternAuthoringPreview)
+		return;
+	const std::shared_ptr<CValtan> Owner =
+		static_pointer_cast<CValtan>(shared_from_this());
+	CEffectPresentationService::Stop_BossOwner(Owner);
+	Client::CEffectV2Runtime::Reset_LocalPreviewTarget(
+		Client::EFFECT_V2_TARGET::From_Valtan(
+			Owner));
+	m_AttemptedPatternEffectOccurrenceKeys.clear();
+	m_bPatternEffectCueScanAgeValid = false;
+	m_fPatternEffectCueScanAgeSeconds = 0.f;
+	m_strLocalPreviewActionId.clear();
+	m_iLocalPreviewStageIndex = 0u;
+	if (nullptr != m_pBodyModelCom)
+	{
+		m_iPatternPresentationClipOccurrenceIndex =
+			(std::numeric_limits<std::size_t>::max)();
+	}
+}
+
 void CValtan::Reset_LocalPatternPresentationSample()
 {
 	if (m_isServerAuthoritative || nullptr == m_pBodyModelCom)
 		return;
-	Client::CEffectV2Runtime::Sync_Stage(
-		Client::EFFECT_V2_TARGET::From_Valtan(
-			static_pointer_cast<CValtan>(shared_from_this())),
-		"", 0.f, m_pDevice, m_pContext);
+	Reset_LocalPatternPreviewTransport();
 	m_iPatternPresentationClipOccurrenceIndex =
 		(std::numeric_limits<std::size_t>::max)();
+	m_bLocalPatternAuthoringPreview = false;
+	m_LocalPreviewClipByActionId.clear();
+	m_LocalPreviewEffectCuesByActionId.clear();
+	m_LocalPreviewStageIndexByActionId.clear();
+	m_LocalPreviewArenaCenterAnchors.clear();
+	m_strLocalPreviewPatternId.clear();
+	m_strLocalPreviewActionId.clear();
+	m_iLocalPreviewStageIndex = 0u;
+#ifdef _DEBUG
+	m_LocalPreviewHitAreaByActionId.clear();
+#endif
 	m_pBodyModelCom->Set_AnimationSpeed(1.f);
 	m_pBodyModelCom->Set_AnimPaused(false);
 }
 
 void CValtan::Load_PatternEffectCues()
 {
-	VALTAN_PATTERN_EFFECT_CUE_DOCUMENT Document;
 	std::string Status;
-	if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
-			Document, Status))
+	if (!Reload_PatternPresentationAuthoring(Status))
 	{
 		OutputDebugStringA((
 			"[Client][Valtan] pattern Effect cues isolated: " + Status +
 			"\n").c_str());
-		return;
+	}
+}
+
+bool_t CValtan::Reload_PatternEffectCues_WhileAdmitted(
+	std::string& Status)
+{
+	VALTAN_PATTERN_EFFECT_CUE_DOCUMENT Document;
+	if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
+			Document, Status))
+	{
+		return false;
 	}
 
 	std::unordered_map<std::string,
@@ -726,30 +1239,31 @@ void CValtan::Load_PatternEffectCues()
 		{ return Is_ArenaCenterCueAnchor(cue.strAnchorSlotId); });
 	if (needsArenaCenters)
 	{
-		VALTAN_PATTERN_TREE_VIEW view;
-		if (!CValtanPatternTree::Load(view, Status))
+		CEncounterPatternReference encounter;
+		if (!encounter.Load(CProjectDataRoot::Resolve(
+				std::filesystem::path(L"Encounters") / L"Valtan" /
+				L"ValtanEncounter.json"), Status))
 		{
-			OutputDebugStringA(("[Client][Valtan] arena-center cue projection rejected: " +
-				Status + "\n").c_str());
-			return;
+			Status = "Valtan arena-center Product admission rejected: " + Status;
+			return false;
 		}
-		for (const std::vector<VALTAN_PATTERN_VIEW>* group : { &view.Gimmicks, &view.Rotation })
+		for (const ENCOUNTER_PATTERN_REFERENCE& pattern :
+			encounter.Get_Patterns())
 		{
-			for (const VALTAN_PATTERN_VIEW& pattern : *group)
+			if (!pattern.serverMotion.has_value() ||
+				pattern.serverMotion->kind != "LEAP_TO_ANCHOR")
+				continue;
+			const std::array<f32_t, 3u>& landing =
+				pattern.serverMotion->landingPosition;
+			if (!std::isfinite(landing[0]) || !std::isfinite(landing[1]) ||
+				!std::isfinite(landing[2]))
 			{
-				if (!pattern.ServerMotion || pattern.ServerMotion->strKind != "LEAP_TO_ANCHOR")
-					continue;
-				const auto& landing = pattern.ServerMotion->LandingPosition;
-				if (!std::isfinite(landing[0]) || !std::isfinite(landing[1]) ||
-					!std::isfinite(landing[2]))
-				{
-					OutputDebugStringA(("[Client][Valtan] arena-center landing is not finite: " +
-						pattern.strPatternId + "\n").c_str());
-					return;
-				}
-				StagedArenaCenters.emplace(pattern.strPatternId,
-					float3_t(landing[0], landing[1], landing[2]));
+				Status = "Valtan Product arena-center landing is not finite: " +
+					pattern.patternId;
+				return false;
 			}
+			StagedArenaCenters.emplace(pattern.patternId,
+				float3_t(landing[0], landing[1], landing[2]));
 		}
 	}
 	std::unordered_map<std::string,
@@ -758,32 +1272,33 @@ void CValtan::Load_PatternEffectCues()
 	{
 		if ((Is_ArenaCenterCueAnchor(Cue.strAnchorSlotId) &&
 			!StagedArenaCenters.contains(Cue.strPatternId)) ||
-			(!Is_ArenaCenterCueAnchor(Cue.strAnchorSlotId) && "root" != Cue.strAnchorSlotId &&
+			(Is_PatternTargetSnapshotCueAnchor(Cue.strAnchorSlotId) &&
+			 Cue.eFollowPolicy != EFFECT_FOLLOW_POLICY::SNAPSHOT) ||
+			(!Is_ArenaCenterCueAnchor(Cue.strAnchorSlotId) &&
+			 !Is_PatternTargetSnapshotCueAnchor(Cue.strAnchorSlotId) &&
+			 "root" != Cue.strAnchorSlotId &&
 			(nullptr == m_pBodyModelCom ||
 			 !m_pBodyModelCom->Has_Bone(Cue.strAnchorSlotId.c_str()))))
 		{
-			OutputDebugStringA((
-				"[Client][Valtan] pattern Effect cue anchor rejected: " +
-				Cue.strBindingId + "\n").c_str());
-			return;
+			Status = "Valtan pattern Effect cue anchor rejected: " +
+				Cue.strBindingId;
+			return false;
 		}
 		const auto Binding = m_PatternClipByActionId.find(Cue.strActionId);
 		if (m_PatternClipByActionId.end() == Binding)
 		{
-			OutputDebugStringA((
-				"[Client][Valtan] pattern Effect cue action binding rejected: " +
-				Cue.strOccurrenceId + "\n").c_str());
-			return;
+			Status = "Valtan pattern Effect cue action binding rejected: " +
+				Cue.strOccurrenceId;
+			return false;
 		}
 		if (Cue.bUsesStageClock)
 		{
 			if (!Binding->second.empty() || !Cue.strClipOccurrenceId.empty() ||
 				Cue.iStartMs >= Cue.iStageDurationMs)
 			{
-				OutputDebugStringA((
-					"[Client][Valtan] stage-clock Effect cue NONE binding rejected: " +
-					Cue.strOccurrenceId + "\n").c_str());
-				return;
+				Status = "Valtan stage-clock Effect cue NONE binding rejected: " +
+					Cue.strOccurrenceId;
+				return false;
 			}
 			Staged[Cue.strActionId].push_back(Cue);
 			continue;
@@ -797,10 +1312,9 @@ void CValtan::Load_PatternEffectCues()
 			});
 		if (Binding->second.end() == Clip)
 		{
-			OutputDebugStringA((
-				"[Client][Valtan] pattern Effect cue clip occurrence rejected: " +
-				Cue.strOccurrenceId + "\n").c_str());
-			return;
+			Status = "Valtan pattern Effect cue clip occurrence rejected: " +
+				Cue.strOccurrenceId;
+			return false;
 		}
 		if (!Cue.bUsesLegacyStageWallTime)
 		{
@@ -813,10 +1327,9 @@ void CValtan::Load_PatternEffectCues()
 							Binding->second.data(), Binding->second.size()),
 						Built))
 				{
-					OutputDebugStringA((
-						"[Client][Valtan] pattern Effect cue timeline rejected: " +
-						Cue.strOccurrenceId + "\n").c_str());
-					return;
+					Status = "Valtan pattern Effect cue timeline rejected: " +
+						Cue.strOccurrenceId;
+					return false;
 				}
 				Timings = TimingsByAction.emplace(
 					Cue.strActionId, std::move(Built)).first;
@@ -840,10 +1353,9 @@ void CValtan::Load_PatternEffectCues()
 				fCueStartWallSeconds * 1000.f >=
 					static_cast<f32_t>(Cue.iStageDurationMs))
 			{
-				OutputDebugStringA((
-					"[Client][Valtan] pattern Effect cue source start rejected: " +
-					Cue.strOccurrenceId + "\n").c_str());
-				return;
+				Status = "Valtan pattern Effect cue source start rejected: " +
+					Cue.strOccurrenceId;
+				return false;
 			}
 			if (Cue.bHasSourceEnd)
 			{
@@ -857,10 +1369,9 @@ void CValtan::Load_PatternEffectCues()
 					 fCueEndWallSeconds * 1000.f >
 						static_cast<f32_t>(Cue.iStageDurationMs) + 0.01f))
 				{
-					OutputDebugStringA((
-						"[Client][Valtan] pattern Effect cue source end rejected: " +
-						Cue.strOccurrenceId + "\n").c_str());
-					return;
+					Status = "Valtan pattern Effect cue source end rejected: " +
+						Cue.strOccurrenceId;
+					return false;
 				}
 			}
 		}
@@ -883,14 +1394,27 @@ void CValtan::Load_PatternEffectCues()
 	m_AttemptedPatternEffectOccurrenceKeys.clear();
 	m_bPatternEffectCueScanAgeValid = false;
 	m_fPatternEffectCueScanAgeSeconds = 0.f;
+	Status = "Reloaded " +
+		std::to_string(m_PatternEffectCuesByActionId.size()) +
+		" Valtan Pattern Effect action binding(s).";
+	return true;
 }
 
 void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 {
-	if (!m_isServerAuthoritative ||
+	const bool_t bLocalPreview =
+		!m_isServerAuthoritative && m_bLocalPatternAuthoringPreview;
+	const std::string& PatternId = bLocalPreview ?
+		m_strLocalPreviewPatternId : m_strServerPatternId;
+	const std::string& ActionId = bLocalPreview ?
+		m_strLocalPreviewActionId : m_strServerActionId;
+	const uint32_t iStageIndex = bLocalPreview ?
+		m_iLocalPreviewStageIndex : m_iServerPatternStageIndex;
+	if ((!m_isServerAuthoritative && !bLocalPreview) ||
 		!std::isfinite(fActionAgeSeconds) || fActionAgeSeconds < 0.f ||
-		m_strServerPatternId.empty() || m_strServerActionId.empty() ||
-		0u == m_iServerActionStartTick || 0u == m_iServerPatternSequence)
+		PatternId.empty() || ActionId.empty() ||
+		(!bLocalPreview &&
+			(0u == m_iServerActionStartTick || 0u == m_iServerPatternSequence)))
 	{
 		return;
 	}
@@ -901,13 +1425,15 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 		m_fPatternEffectCueScanAgeSeconds;
 	m_bPatternEffectCueScanAgeValid = true;
 	m_fPatternEffectCueScanAgeSeconds = fActionAgeSeconds;
-	const auto Found =
-		m_PatternEffectCuesByActionId.find(m_strServerActionId);
-	if (m_PatternEffectCuesByActionId.end() == Found)
+	const auto& EffectCues = bLocalPreview ?
+		m_LocalPreviewEffectCuesByActionId : m_PatternEffectCuesByActionId;
+	const auto Found = EffectCues.find(ActionId);
+	if (EffectCues.end() == Found)
 		return;
-	const auto Binding =
-		m_PatternClipByActionId.find(m_strServerActionId);
-	if (m_PatternClipByActionId.end() == Binding)
+	const auto& ClipBindings = bLocalPreview ?
+		m_LocalPreviewClipByActionId : m_PatternClipByActionId;
+	const auto Binding = ClipBindings.find(ActionId);
+	if (ClipBindings.end() == Binding)
 		return;
 	std::vector<Client::ACTION_PRESENTATION_CLIP_TIMING> Timings;
 	if (!Binding->second.empty() && !Build_PatternTimeline(m_pBodyModelCom,
@@ -920,8 +1446,8 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 		std::static_pointer_cast<CValtan>(shared_from_this());
 	for (const VALTAN_PATTERN_EFFECT_CUE& Cue : Found->second)
 	{
-		if (Cue.strPatternId != m_strServerPatternId ||
-			Cue.iStageIndex != m_iServerPatternStageIndex)
+		if (Cue.strPatternId != PatternId ||
+			Cue.iStageIndex != iStageIndex)
 		{
 			continue;
 		}
@@ -949,7 +1475,8 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 		}
 		const std::string* pEffectAssetId = &Cue.strEffectAssetId;
 #ifdef _DEBUG
-		if (Is_PatternEffectV1AuditionEnabled() &&
+		if (!m_isServerAuthoritative &&
+			Is_PatternEffectV1AuditionEnabled() &&
 			!Cue.strV1EffectAssetId.empty())
 		{
 			pEffectAssetId = &Cue.strV1EffectAssetId;
@@ -1039,27 +1566,81 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 			Desc.vWorldScale = Cue.vWorldScale;
 			Desc.eStopPolicy = Cue.eStopPolicy;
 			Desc.iCueDurationMs = iCueDurationMs;
-			Desc.iActionStartTick = m_iServerActionStartTick;
+			Desc.iActionStartTick = bLocalPreview ?
+				m_iLocalPreviewEffectGeneration : m_iServerActionStartTick;
 			Desc.iCueStartMs = Cue.iStartMs;
-			Desc.strOccurrenceId = "valtan:action-start:" +
-				std::to_string(m_iServerActionStartTick) + "/sequence:" +
-				std::to_string(m_iServerPatternSequence) + "/stage:" +
-				std::to_string(m_iServerPatternStageIndex) + "/cue:" +
-				Cue.strOccurrenceId + "/loop:" +
-				std::to_string(Sample.iLoopEpoch);
+			Desc.strOccurrenceId = bLocalPreview ?
+				("valtan:local-preview:generation:" +
+					std::to_string(m_iLocalPreviewEffectGeneration) + "/stage:" +
+					std::to_string(iStageIndex) + "/cue:" + Cue.strOccurrenceId +
+					"/loop:" + std::to_string(Sample.iLoopEpoch)) :
+				("valtan:action-start:" +
+					std::to_string(m_iServerActionStartTick) + "/sequence:" +
+					std::to_string(m_iServerPatternSequence) + "/stage:" +
+					std::to_string(m_iServerPatternStageIndex) + "/cue:" +
+					Cue.strOccurrenceId + "/loop:" +
+					std::to_string(Sample.iLoopEpoch));
 			Desc.fPlaybackRate = fPlaybackRate;
 			Desc.fInitialSampleTimeSeconds = Sample.fInitialSampleSeconds;
 			std::string Status;
 			bool_t spawned = false;
-			if (Is_ArenaCenterCueAnchor(Cue.strAnchorSlotId))
+			if (Is_PatternTargetSnapshotCueAnchor(Cue.strAnchorSlotId))
 			{
-				const auto center = m_PatternArenaCenterAnchors.find(Cue.strPatternId);
 				float4x4_t anchor{}, root{};
-				if (center != m_PatternArenaCenterAnchors.end())
+				if (!bLocalPreview && m_bServerPatternTargetIdentityStable &&
+					m_bHasServerPatternTargetSnapshotPose &&
+					m_iServerPatternTargetPoseSequence == m_iServerPatternSequence &&
+					m_iServerPatternTargetNetEntityId !=
+						LostArk::Shared::INVALID_NET_ENTITY_ID &&
+					std::isfinite(m_vServerPatternTargetSnapshotPosition.x) &&
+					std::isfinite(m_vServerPatternTargetSnapshotPosition.y) &&
+					std::isfinite(m_vServerPatternTargetSnapshotPosition.z) &&
+					std::isfinite(m_fServerPatternTargetSnapshotYawDegrees))
+				{
+					/* The target basis comes from this exact network snapshot.  Its
+					   facing is the parent rotation, so authored local yaw composes on
+					   top through the existing typed scale-policy root builder. */
+					XMStoreFloat4x4(&anchor,
+						XMMatrixRotationY(XMConvertToRadians(
+							m_fServerPatternTargetSnapshotYawDegrees)) *
+						XMMatrixTranslation(
+							m_vServerPatternTargetSnapshotPosition.x,
+							m_vServerPatternTargetSnapshotPosition.y,
+							m_vServerPatternTargetSnapshotPosition.z));
+					if (CEffectPresentationService::Build_CueScalePolicyRoot(
+							Cue.LocalTransform, Cue.eScalePolicy,
+							Cue.vWorldScale, anchor, root))
+					{
+						EFFECT_WORLD_ROOT_HANDLE handle;
+						spawned = CEffectPresentationService::Spawn_WorldRoot(
+							Desc, root, handle, Status);
+					}
+					else
+					{
+						Status =
+							"Pattern-target snapshot cue local transform is invalid.";
+					}
+				}
+				else
+				{
+					Status =
+						"Pattern-target snapshot cue has no admitted finite target pose.";
+				}
+			}
+			else if (Is_ArenaCenterCueAnchor(Cue.strAnchorSlotId))
+			{
+				const auto& ArenaCenters = bLocalPreview ?
+					m_LocalPreviewArenaCenterAnchors : m_PatternArenaCenterAnchors;
+				const auto center = ArenaCenters.find(Cue.strPatternId);
+				float4x4_t anchor{}, root{};
+				if (center != ArenaCenters.end())
 				{
 					const f32_t yaw = Cue.strAnchorSlotId == "arena.center.facing" ?
-						m_fServerPatternFacingYawDegrees : 0.f;
-					// Fixed center; only the facing slot uses the Server-selected target yaw.
+						(bLocalPreview ? m_fPresentationYawDegrees :
+							m_fServerPatternFacingYawDegrees) : 0.f;
+					/* Fixed center. Product Arena uses the Server-locked occurrence
+					   facing; local composition preview uses the staged boss facing and
+					   never invents a pattern-target snapshot. */
 					XMStoreFloat4x4(&anchor, XMMatrixRotationY(XMConvertToRadians(yaw)) *
 						XMMatrixTranslation(center->second.x, center->second.y, center->second.z));
 					if (CEffectPresentationService::Build_CueScalePolicyRoot(
@@ -1089,15 +1670,23 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 
 void CValtan::Load_PatternSoundCues()
 {
-	VALTAN_PATTERN_SOUND_CUE_DOCUMENT Document;
 	std::string Status;
-	if (!CValtanPatternSoundCueDocument::Load_Source(Document, Status))
+	if (!Reload_PatternPresentationAuthoring(Status))
 	{
 		OutputDebugStringA((
 			"[Client][Valtan] pattern Sound cues isolated: " + Status +
 			"\n").c_str());
-		return;
 	}
+}
+
+bool_t CValtan::Reload_PatternSoundCues_WhileAdmitted(
+	std::string& Status)
+{
+	VALTAN_PATTERN_SOUND_CUE_DOCUMENT Document;
+	VALTAN_PATTERN_SOUND_SOURCE_RECEIPT SourceReceipt;
+	if (!CValtanPatternSoundCueDocument::Load_Source(
+			Document, SourceReceipt, Status))
+		return false;
 
 	std::unordered_map<std::string,
 		std::vector<VALTAN_PATTERN_SOUND_CUE>> Staged;
@@ -1210,9 +1799,15 @@ void CValtan::Load_PatternSoundCues()
 			});
 	}
 	m_PatternSoundCuesByActionId = std::move(Staged);
+	m_PatternSoundSourceReceipt = std::move(SourceReceipt);
 	m_AttemptedPatternSoundOccurrenceKeys.clear();
 	m_bPatternSoundCueScanAgeValid = false;
 	m_fPatternSoundCueScanAgeSeconds = 0.f;
+	Status = "Reloaded " +
+		std::to_string(m_PatternSoundCuesByActionId.size()) +
+		" Valtan Pattern Sound action binding(s); isolated " +
+		std::to_string(iRejectedCueCount) + " invalid cue(s).";
+	return true;
 }
 
 void CValtan::Spawn_DuePatternSoundCues(const f32_t fActionAgeSeconds)
@@ -1312,8 +1907,7 @@ void CValtan::Spawn_DuePatternSoundCues(const f32_t fActionAgeSeconds)
 		if (Samples.empty())
 			continue;
 
-		const std::vector<std::string>& Variants =
-			CSoundCueCatalog::Find_Variants("Valtan", Cue.strSoundEvent);
+		const std::vector<std::string>& Variants = Cue.ResolvedAssetIds;
 		if (Variants.empty())
 			continue;
 
@@ -1343,7 +1937,7 @@ void CValtan::Spawn_DuePatternSoundCues(const f32_t fActionAgeSeconds)
 void CValtan::Load_CombatObjectSoundCues()
 {
 	std::string status;
-	if (!Reload_CombatObjectSoundCues(status))
+	if (!Reload_PatternPresentationAuthoring(status))
 	{
 		OutputDebugStringA((
 			"[Client][Valtan] combat-object Sound cues isolated: " + status +
@@ -1351,7 +1945,8 @@ void CValtan::Load_CombatObjectSoundCues()
 	}
 }
 
-bool_t CValtan::Reload_CombatObjectSoundCues(std::string& status)
+bool_t CValtan::Reload_CombatObjectSoundCues_WhileAdmitted(
+	std::string& status)
 {
 	VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT document;
 	if (!CValtanCombatObjectSoundCueDocument::Load_Source(document, status))
@@ -1402,8 +1997,7 @@ bool_t CValtan::Apply_CombatObjectPresentationEvent(
 		return true;
 	}
 	const VALTAN_COMBAT_OBJECT_SOUND_CUE& cue = found->second;
-	const std::vector<std::string>& variants =
-		CSoundCueCatalog::Find_Variants("Valtan", cue.strSoundEvent);
+	const std::vector<std::string>& variants = cue.ResolvedAssetIds;
 	if (variants.empty())
 	{
 		outStatus = "Combat-object Sound event has no catalog asset: " +
@@ -1428,15 +2022,21 @@ bool_t CValtan::Apply_CombatObjectPresentationEvent(
 
 void CValtan::Load_PatternShakeCues()
 {
-	VALTAN_PATTERN_SHAKE_CUE_DOCUMENT Document;
 	std::string Status;
-	if (!CValtanPatternShakeCueDocument::Load_Source(Document, Status))
+	if (!Reload_PatternPresentationAuthoring(Status))
 	{
 		OutputDebugStringA((
 			"[Client][Valtan] pattern Shake cues isolated: " + Status +
 			"\n").c_str());
-		return;
 	}
+}
+
+bool_t CValtan::Reload_PatternShakeCues_WhileAdmitted(
+	std::string& Status)
+{
+	VALTAN_PATTERN_SHAKE_CUE_DOCUMENT Document;
+	if (!CValtanPatternShakeCueDocument::Load_Source(Document, Status))
+		return false;
 
 	std::unordered_map<std::string,
 		std::vector<VALTAN_PATTERN_SHAKE_CUE>> Staged;
@@ -1546,6 +2146,11 @@ void CValtan::Load_PatternShakeCues()
 	m_AttemptedPatternShakeOccurrenceKeys.clear();
 	m_bPatternShakeCueScanAgeValid = false;
 	m_fPatternShakeCueScanAgeSeconds = 0.f;
+	Status = "Reloaded " +
+		std::to_string(m_PatternShakeCuesByActionId.size()) +
+		" Valtan Pattern Shake action binding(s); isolated " +
+		std::to_string(iRejectedCueCount) + " invalid cue(s).";
+	return true;
 }
 
 void CValtan::Spawn_DuePatternShakeCues(const f32_t fActionAgeSeconds)
@@ -2445,7 +3050,8 @@ bool_t CValtan::Apply_NetworkState(
 	const uint32_t iServerTick,
 	const uint32_t iActionStartTick,
 	const uint32_t iPatternSequence,
-	const uint32_t iPatternStageIndex)
+	const uint32_t iPatternStageIndex,
+	const PATTERN_TARGET_SNAPSHOT_POSE& PatternTargetPose)
 {
 	if (!m_isServerAuthoritative || nullptr == m_pTransformCom ||
 		!std::isfinite(position.x) || !std::isfinite(position.y) ||
@@ -2493,6 +3099,11 @@ bool_t CValtan::Apply_NetworkState(
 	}
 	if (VALTAN_STATE::DEAD == nextState)
 	{
+		m_iServerPatternTargetNetEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		m_iServerPatternTargetPoseSequence = 0u;
+		m_bHasServerPatternTargetSnapshotPose = false;
+		m_bServerPatternTargetIdentityStable = false;
 		if (!m_DeathPresentationClock.Has_Started())
 		{
 			m_pTransformCom->Set_State(STATE::POSITION,
@@ -2628,6 +3239,45 @@ bool_t CValtan::Apply_NetworkState(
 		m_iServerPatternSequence = iPatternSequence;
 		m_iServerPatternStageIndex = iPatternStageIndex;
 		m_fServerActionAgeSeconds = fActionAgeSeconds;
+		const bool_t bIncomingTargetPoseFinite =
+			PatternTargetPose.bHasFinitePose &&
+			PatternTargetPose.iNetEntityId !=
+				LostArk::Shared::INVALID_NET_ENTITY_ID &&
+			std::isfinite(PatternTargetPose.vPosition.x) &&
+			std::isfinite(PatternTargetPose.vPosition.y) &&
+			std::isfinite(PatternTargetPose.vPosition.z) &&
+			std::isfinite(PatternTargetPose.fYawDegrees);
+		if (m_iServerPatternTargetPoseSequence != iPatternSequence)
+		{
+			m_iServerPatternTargetPoseSequence = iPatternSequence;
+			m_iServerPatternTargetNetEntityId =
+				PatternTargetPose.iNetEntityId;
+			m_bServerPatternTargetIdentityStable = true;
+			m_bHasServerPatternTargetSnapshotPose =
+				bIncomingTargetPoseFinite;
+		}
+		else if (m_bServerPatternTargetIdentityStable &&
+			PatternTargetPose.iNetEntityId !=
+				m_iServerPatternTargetNetEntityId)
+		{
+			/* A virtual snapshot anchor is permitted only for a target locked
+			   to the pattern occurrence.  Never recover a changed identity in
+			   the same sequence by silently selecting a different player. */
+			m_bServerPatternTargetIdentityStable = false;
+			m_bHasServerPatternTargetSnapshotPose = false;
+		}
+		else if (m_bServerPatternTargetIdentityStable)
+		{
+			m_bHasServerPatternTargetSnapshotPose =
+				bIncomingTargetPoseFinite;
+		}
+		if (m_bHasServerPatternTargetSnapshotPose)
+		{
+			m_vServerPatternTargetSnapshotPosition =
+				PatternTargetPose.vPosition;
+			m_fServerPatternTargetSnapshotYawDegrees =
+				PatternTargetPose.fYawDegrees;
+		}
 		if (bCommitPatternClipOccurrenceIndex)
 		{
 			m_iPatternPresentationClipOccurrenceIndex =
@@ -2639,6 +3289,11 @@ bool_t CValtan::Apply_NetworkState(
 		m_iServerActionStartTick = 0u;
 		m_iServerPatternStageIndex = 0u;
 		m_fServerActionAgeSeconds = 0.f;
+		m_iServerPatternTargetNetEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		m_iServerPatternTargetPoseSequence = 0u;
+		m_bHasServerPatternTargetSnapshotPose = false;
+		m_bServerPatternTargetIdentityStable = false;
 		m_iPatternPresentationClipOccurrenceIndex =
 			(std::numeric_limits<std::size_t>::max)();
 		m_bPatternEffectCueScanAgeValid = false;

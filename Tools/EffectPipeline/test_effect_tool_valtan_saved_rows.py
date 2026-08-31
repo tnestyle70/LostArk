@@ -624,20 +624,33 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
     product_identity = all_effects.find(
         "const std::string strUnifiedCandidateId ="
     )
-    product_resolve = all_effects.find(
-        "Resolve_DirectAuthoredEditablePath(", product_identity
+    product_observe = all_effects.find(
+        "Observe_DirectAuthoredEditablePath(", product_identity
     )
     product_open = all_effects.find(
-        'ImGui::SmallButton("Open Editor")', product_resolve
+        'ImGui::SmallButton("Open Editor")', product_observe
     )
-    product_preview = all_effects.find(
-        "Refresh_UnifiedEffectCache(", product_open
+    product_resolve = all_effects.find(
+        "Resolve_DirectAuthoredEditablePath(", product_open
     )
-    if min(product_identity, product_resolve, product_open, product_preview) < 0 or not (
-        product_identity < product_resolve < product_open < product_preview
+    product_load = all_effects.find(
+        "Try_LoadDocumentPath(", product_resolve
+    )
+    if min(
+        product_identity,
+        product_observe,
+        product_open,
+        product_resolve,
+        product_load,
+    ) < 0 or not (
+        product_identity < product_observe < product_open < product_resolve < product_load
     ):
         raise AssertionError(
-            "Product cue Open Editor must resolve the exact source before any Product cache/preview gate"
+            "Product cue rows must stay metadata-only until Open Editor resolves and loads the exact source"
+        )
+    if "Refresh_UnifiedEffectCache(" in all_effects:
+        raise AssertionError(
+            "expanded Product rows must not decode or stat authored Effects every frame"
         )
     for token in (
         "EDITOR-ONLY EXACT SOURCES",
