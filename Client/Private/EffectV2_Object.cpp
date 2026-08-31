@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <filesystem>
 #include <map>
 #include <span>
@@ -29,6 +30,27 @@ namespace
 	constexpr uint32_t MAX_PARTICLE_CAPACITY = 2048u;
 	constexpr uint32_t MAX_TRAIL_POINTS = 4096u;
 	constexpr f32_t PI_F = 3.14159265358979f;
+
+	/* VTXMESH per-vertex stream (slot 0) plus the VTXEFFECT_PARTICLE
+	   per-instance stream (slot 1) for instanced mesh particles. */
+	constexpr D3D11_INPUT_ELEMENT_DESC MESH_PARTICLE_ELEMENTS[] =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "BINORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 36, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "WORLD", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+		{ "WORLD", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 16, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+		{ "WORLD", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 32, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+		{ "WORLD", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 64, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+		{ "DYNAMIC", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 80, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+		{ "UVTRANSFORM", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 96, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+		{ "UVTRANSFORM", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 112, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+		{ "PARTICLEDATA", 0, DXGI_FORMAT_R32G32_FLOAT, 1, 128, D3D11_INPUT_PER_INSTANCE_DATA, 1 }
+	};
+	constexpr uint32_t MESH_PARTICLE_NUM_ELEMENTS = 14u;
 
 	f32_t Saturate(const f32_t fValue)
 	{
@@ -123,11 +145,22 @@ HRESULT Client::CEffectV2Object::Initialize(void* pArg)
 	{
 		const uint32_t iCapacity = (std::min)(MAX_PARTICLE_CAPACITY,
 			(std::max)(1u, m_Params.Particle.iMaxParticles));
-		unique_ptr<Engine::CVIBuffer_ParticleRect> Buffer =
-			Engine::CVIBuffer_ParticleRect::Create(m_pDevice, m_pContext, iCapacity);
-		if (nullptr == Buffer)
-			return Fail("Particle buffer creation failed.");
-		m_pParticleBuffer = std::move(Buffer);
+		if (!Desc.strMeshAssetId.empty())
+		{
+			if (FAILED(Acquire_Model(m_pDevice, m_pContext, Desc.strMeshAssetId,
+				m_pModel, m_bSkinned, strError)))
+				return Fail(strError);
+			if (m_bSkinned)
+				return Fail("Mesh particles need a static (non-skinned) WModel.");
+		}
+		else
+		{
+			unique_ptr<Engine::CVIBuffer_ParticleRect> Buffer =
+				Engine::CVIBuffer_ParticleRect::Create(m_pDevice, m_pContext, iCapacity);
+			if (nullptr == Buffer)
+				return Fail("Particle buffer creation failed.");
+			m_pParticleBuffer = std::move(Buffer);
+		}
 		m_Particles.reserve(iCapacity);
 		m_ParticleInstances.reserve(iCapacity);
 		m_iRandomState = (std::max)(1u, m_Params.Particle.iRandomSeed);
@@ -150,7 +183,8 @@ HRESULT Client::CEffectV2Object::Initialize(void* pArg)
 	default:
 		return Fail("Unknown effect shape.");
 	}
-	if (FAILED(Acquire_ShapeShader(m_pDevice, m_pContext, m_eShape, m_bSkinned, m_pShader, strError)))
+	if (FAILED(Acquire_ShapeShader(m_pDevice, m_pContext, m_eShape, m_bSkinned,
+		Is_MeshParticle(), m_pShader, strError)))
 		return Fail(strError);
 
 	for (size_t iInput = 0u; iInput < m_Textures.size(); ++iInput)
@@ -298,12 +332,25 @@ HRESULT Client::CEffectV2Object::Acquire_ShapeShader(
 	const ComPtr<ID3D11DeviceContext>& pContext,
 	const SHAPE eShape,
 	const bool_t bSkinned,
+	const bool_t bMeshParticle,
 	shared_ptr<Engine::CShader>& OutShader,
 	std::string& strOutError)
 {
 	const wchar_t* pFile = nullptr;
 	const D3D11_INPUT_ELEMENT_DESC* pElements = nullptr;
 	uint32_t iNumElements = 0u;
+	if (SHAPE::PARTICLE == eShape && bMeshParticle)
+	{
+		pFile = TEXT("../Bin/ShaderFiles/Shader_EffectMeshParticleV2.hlsl");
+		pElements = MESH_PARTICLE_ELEMENTS;
+		iNumElements = MESH_PARTICLE_NUM_ELEMENTS;
+		if (FAILED(Acquire_Shader(pDevice, pContext, pFile, pElements, iNumElements, OutShader)))
+		{
+			strOutError = "Effect v2 shader compile failed: Shader_EffectMeshParticleV2.hlsl";
+			return E_FAIL;
+		}
+		return S_OK;
+	}
 	switch (eShape)
 	{
 	case SHAPE::MESH:
@@ -383,14 +430,21 @@ HRESULT Client::CEffectV2Object::Prewarm(
 	std::string& strOutError)
 {
 	bool_t bSkinned = false;
-	if (SHAPE::MESH == Desc.eShape)
+	const bool_t bMeshParticle =
+		SHAPE::PARTICLE == Desc.eShape && !Desc.strMeshAssetId.empty();
+	if (SHAPE::MESH == Desc.eShape || bMeshParticle)
 	{
 		shared_ptr<Engine::CModel> pModel;
 		if (FAILED(Acquire_Model(pDevice, pContext, Desc.strMeshAssetId, pModel, bSkinned, strOutError)))
 			return E_FAIL;
+		if (bMeshParticle && bSkinned)
+		{
+			strOutError = "Mesh particles need a static (non-skinned) WModel.";
+			return E_FAIL;
+		}
 	}
 	shared_ptr<Engine::CShader> pShader;
-	if (FAILED(Acquire_ShapeShader(pDevice, pContext, Desc.eShape, bSkinned, pShader, strOutError)))
+	if (FAILED(Acquire_ShapeShader(pDevice, pContext, Desc.eShape, bSkinned, bMeshParticle, pShader, strOutError)))
 		return E_FAIL;
 	for (size_t iInput = 0u; iInput < Desc.TextureAssetIds.size(); ++iInput)
 	{
@@ -582,6 +636,7 @@ void Client::CEffectV2Object::Clear_FollowTarget()
 	m_bFollowTarget = false;
 	m_FollowTarget.Reset();
 	m_strFollowBone.clear();
+	XMStoreFloat4x4(&m_FollowLocal, XMMatrixIdentity());
 }
 
 bool_t Client::CEffectV2Object::Resolve_TargetView(
@@ -670,15 +725,29 @@ bool_t Client::CEffectV2Object::Resolve_TargetPivot(
 	return true;
 }
 
+void Client::CEffectV2Object::Stop_Emission()
+{
+	if (SHAPE::PARTICLE == m_eShape || SHAPE::TRAIL == m_eShape)
+		m_bEmissionStopped = true;
+	else
+		m_bFinished = true;
+}
+
 void Client::CEffectV2Object::Update(const f32_t fTimeDelta)
 {
 	if (m_bFollowTarget)
 	{
 		EFFECT_V2_TARGET_VIEW View;
+		float4x4_t Pivot;
 		if (!Resolve_TargetView(m_FollowTarget, View) ||
-			!Resolve_TargetPivot(View, m_strFollowBone, m_eFollowRotation, m_PivotWorld))
+			!Resolve_TargetPivot(View, m_strFollowBone, m_eFollowRotation, Pivot))
 		{
 			m_bFinished = true;
+		}
+		else
+		{
+			XMStoreFloat4x4(&m_PivotWorld,
+				XMLoadFloat4x4(&m_FollowLocal) * XMLoadFloat4x4(&Pivot));
 		}
 	}
 	if (!m_bFinished)
@@ -873,6 +942,14 @@ void Client::CEffectV2Object::Spawn_Particle()
 	Particle.fLifetime = (std::max)(0.001f, Random_Range(P.vLifetime.x, P.vLifetime.y));
 	Particle.fRotationDegrees = Random_Range(P.vRotationRange.x, P.vRotationRange.y);
 	Particle.fSpinDegrees = Random_Range(P.vSpinRange.x, P.vSpinRange.y);
+	Particle.vMeshRotationDegrees = {
+		Random_Range(P.vMeshRotationMin.x, P.vMeshRotationMax.x),
+		Random_Range(P.vMeshRotationMin.y, P.vMeshRotationMax.y),
+		Random_Range(P.vMeshRotationMin.z, P.vMeshRotationMax.z) };
+	Particle.vMeshSpinDegrees = {
+		Random_Range(P.vMeshSpinMin.x, P.vMeshSpinMax.x),
+		Random_Range(P.vMeshSpinMin.y, P.vMeshSpinMax.y),
+		Random_Range(P.vMeshSpinMin.z, P.vMeshSpinMax.z) };
 	m_Particles.push_back(Particle);
 }
 
@@ -896,6 +973,9 @@ void Client::CEffectV2Object::Update_Particles(const f32_t fStep)
 			Particle.vPosition.y += Particle.vVelocity.y * fStep;
 			Particle.vPosition.z += Particle.vVelocity.z * fStep;
 			Particle.fRotationDegrees += Particle.fSpinDegrees * fStep;
+			Particle.vMeshRotationDegrees.x += Particle.vMeshSpinDegrees.x * fStep;
+			Particle.vMeshRotationDegrees.y += Particle.vMeshSpinDegrees.y * fStep;
+			Particle.vMeshRotationDegrees.z += Particle.vMeshSpinDegrees.z * fStep;
 		}
 	}
 	if (m_bEmissionStopped)
@@ -920,7 +1000,9 @@ HRESULT Client::CEffectV2Object::Build_ParticleInstances()
 {
 	const PARTICLE_PARAMS& P = m_Params.Particle;
 	const uint32_t iMax = (std::min)(MAX_PARTICLE_CAPACITY, (std::max)(1u, P.iMaxParticles));
-	if (nullptr == m_pParticleBuffer || m_pParticleBuffer->Get_Capacity() < iMax)
+	const bool_t bMeshParticle = Is_MeshParticle();
+	if (!bMeshParticle &&
+		(nullptr == m_pParticleBuffer || m_pParticleBuffer->Get_Capacity() < iMax))
 	{
 		unique_ptr<Engine::CVIBuffer_ParticleRect> Buffer =
 			Engine::CVIBuffer_ParticleRect::Create(m_pDevice, m_pContext, iMax);
@@ -980,10 +1062,23 @@ HRESULT Client::CEffectV2Object::Build_ParticleInstances()
 
 		Engine::VTXEFFECT_PARTICLE Instance;
 		matrix_t InstanceWorld;
-		InstanceWorld.r[0] = XMVectorSetW(RolledRight * fSizeX, 0.f);
-		InstanceWorld.r[1] = XMVectorSetW(RolledUp * fSizeY, 0.f);
-		InstanceWorld.r[2] = XMVectorSetW(Look, 0.f);
-		InstanceWorld.r[3] = XMVectorSetW(Position, 1.f);
+		if (bMeshParticle)
+		{
+			const f32_t fScale = (std::max)(0.f, fSizeX) * m_Params.fMeshPreScale;
+			InstanceWorld = XMMatrixScaling(fScale, fScale, fScale) *
+				XMMatrixRotationRollPitchYaw(
+					XMConvertToRadians(Particle.vMeshRotationDegrees.x),
+					XMConvertToRadians(Particle.vMeshRotationDegrees.y),
+					XMConvertToRadians(Particle.vMeshRotationDegrees.z)) *
+				XMMatrixTranslationFromVector(Position);
+		}
+		else
+		{
+			InstanceWorld.r[0] = XMVectorSetW(RolledRight * fSizeX, 0.f);
+			InstanceWorld.r[1] = XMVectorSetW(RolledUp * fSizeY, 0.f);
+			InstanceWorld.r[2] = XMVectorSetW(Look, 0.f);
+			InstanceWorld.r[3] = XMVectorSetW(Position, 1.f);
+		}
 		XMStoreFloat4x4(&Instance.World, InstanceWorld);
 		XMStoreFloat4(&Instance.Color, XMVectorLerp(
 			XMLoadFloat4(&P.vColorStart), XMLoadFloat4(&P.vColorEnd), fLife));
@@ -997,8 +1092,43 @@ HRESULT Client::CEffectV2Object::Build_ParticleInstances()
 		Instance.ParticleData = float2_t(fLife, 0.f);
 		m_ParticleInstances.push_back(Instance);
 	}
+	if (bMeshParticle)
+		return Upload_MeshParticleInstances();
 	return m_pParticleBuffer->Update_Instances(
 		std::span<const Engine::VTXEFFECT_PARTICLE>(m_ParticleInstances));
+}
+
+/* Owns the per-instance stream for mesh particles: CModel::Render_Instanced
+   binds it on slot 1 next to each mesh's vertex buffer. Grows to the
+   authored maximum and is rewritten every frame with WRITE_DISCARD. */
+HRESULT Client::CEffectV2Object::Upload_MeshParticleInstances()
+{
+	const uint32_t iMax = (std::min)(MAX_PARTICLE_CAPACITY,
+		(std::max)(1u, m_Params.Particle.iMaxParticles));
+	if (nullptr == m_pMeshInstanceBuffer || m_iMeshInstanceCapacity < iMax)
+	{
+		D3D11_BUFFER_DESC BufferDesc{};
+		BufferDesc.ByteWidth = iMax * sizeof(Engine::VTXEFFECT_PARTICLE);
+		BufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+		BufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+		BufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		ComPtr<ID3D11Buffer> pBuffer;
+		if (FAILED(m_pDevice->CreateBuffer(&BufferDesc, nullptr, &pBuffer)))
+			return E_FAIL;
+		m_pMeshInstanceBuffer = std::move(pBuffer);
+		m_iMeshInstanceCapacity = iMax;
+	}
+	if (m_ParticleInstances.empty())
+		return S_OK;
+	D3D11_MAPPED_SUBRESOURCE Mapped{};
+	if (FAILED(m_pContext->Map(m_pMeshInstanceBuffer.Get(), 0u,
+		D3D11_MAP_WRITE_DISCARD, 0u, &Mapped)))
+		return E_FAIL;
+	const size_t iCount = (std::min)(m_ParticleInstances.size(), static_cast<size_t>(iMax));
+	std::memcpy(Mapped.pData, m_ParticleInstances.data(),
+		iCount * sizeof(Engine::VTXEFFECT_PARTICLE));
+	m_pContext->Unmap(m_pMeshInstanceBuffer.Get(), 0u);
+	return S_OK;
 }
 
 void Client::CEffectV2Object::Update_Trail(const f32_t fStep)
@@ -1278,7 +1408,8 @@ HRESULT Client::CEffectV2Object::Render_Decal(const uint32_t iPass)
 		FAILED(GameInstance.Bind_RT_SRV(TEXT("Target_Depth"), m_pShader, "g_DepthTexture")) ||
 		FAILED(GameInstance.Bind_RT_SRV(TEXT("Target_Normal"), m_pShader, "g_NormalTexture")))
 		return E_FAIL;
-	const uint32_t iDecalPass = BLEND_MODE::ADDITIVE == m_Params.eBlend ? 1u : 0u;
+	const uint32_t iDecalPass = BLEND_MODE::ADDITIVE == m_Params.eBlend ? 1u :
+		BLEND_MODE::MULTIPLY == m_Params.eBlend ? 2u : 0u;
 	UNREFERENCED_PARAMETER(iPass);
 	if (FAILED(m_pShader->Begin(iDecalPass)) ||
 		FAILED(m_pRect->Bind_Resources()) ||
@@ -1297,6 +1428,7 @@ HRESULT Client::CEffectV2Object::Render()
 		return E_FAIL;
 	}
 	const uint32_t iPass = BLEND_MODE::SOLID == m_Params.eBlend ? 4u :
+		BLEND_MODE::MULTIPLY == m_Params.eBlend ? (m_Params.bDepthTest ? 5u : 6u) :
 		static_cast<uint32_t>(m_Params.eBlend) + (m_Params.bDepthTest ? 0u : 2u);
 	switch (m_eShape)
 	{
@@ -1348,7 +1480,7 @@ HRESULT Client::CEffectV2Object::Render()
 					m_strStatus = "Bone matrix bind failed.";
 					return E_FAIL;
 				}
-				if (FAILED(m_pShader->Begin(5u)) || FAILED(m_pModel->Render(iMesh)))
+				if (FAILED(m_pShader->Begin(7u)) || FAILED(m_pModel->Render(iMesh)))
 				{
 					m_strStatus = "Outline draw failed.";
 					return E_FAIL;
@@ -1371,6 +1503,24 @@ HRESULT Client::CEffectV2Object::Render()
 		{
 			m_strStatus = "Particle instance upload failed.";
 			return E_FAIL;
+		}
+		if (Is_MeshParticle())
+		{
+			const uint32_t iCount = (std::min)(m_iMeshInstanceCapacity,
+				static_cast<uint32_t>(m_ParticleInstances.size()));
+			if (0u == iCount)
+				return S_OK;
+			for (uint32_t iMesh = 0u; iMesh < m_pModel->Get_NumMeshes(); ++iMesh)
+			{
+				if (FAILED(m_pShader->Begin(iPass)) ||
+					FAILED(m_pModel->Render_Instanced(iMesh, m_pMeshInstanceBuffer.Get(),
+						sizeof(Engine::VTXEFFECT_PARTICLE), iCount)))
+				{
+					m_strStatus = "Mesh particle draw failed.";
+					return E_FAIL;
+				}
+			}
+			return S_OK;
 		}
 		if (0u == m_pParticleBuffer->Get_InstanceCount())
 			return S_OK;

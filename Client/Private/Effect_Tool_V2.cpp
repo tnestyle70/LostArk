@@ -160,6 +160,7 @@ void Client::CEffect_Tool_V2::Render()
 	Update_Attach(ImGui::GetIO().DeltaTime);
 	Render_TuningPanel();
 	Render_AttachWindow();
+	Render_GroupWindow();
 }
 
 void Client::CEffect_Tool_V2::Scan_Resources()
@@ -1046,6 +1047,9 @@ void Client::CEffect_Tool_V2::Render_CreatePanel()
 	ImGui::SameLine();
 	if (ImGui::Button("Attach..."))
 		m_bAttachWindowOpen = true;
+	ImGui::SameLine();
+	if (ImGui::Button("Group..."))
+		m_bGroupWindowOpen = true;
 	if (!bHasBase)
 		ImGui::TextDisabled("Bind a Base texture first.");
 	else if (bMeshType && !bHasMesh)
@@ -1575,6 +1579,25 @@ void Client::CEffect_Tool_V2::Move_Target(const float3_t& vPosition, const f32_t
 void Client::CEffect_Tool_V2::Update_Attach(const f32_t fTimeDelta)
 {
 	Update_ValtanTimeline(fTimeDelta);
+	CEffectV2Runtime::Advance_FreeGroups(fTimeDelta, m_pDevice, m_pContext);
+	if (0u != m_iGroupPreviewHandle)
+	{
+		if (CEffectV2Runtime::Group_Seconds(m_iGroupPreviewHandle) < 0.f)
+		{
+			m_iGroupPreviewHandle = 0u;
+			if (m_bGroupPreviewLoop)
+				Play_GroupPreview();
+		}
+		else
+		{
+			float4x4_t BasePivot = m_GroupPreviewBasePivot;
+			if (Resolve_GroupPreviewBasePivot(BasePivot))
+				m_GroupPreviewBasePivot = BasePivot;
+			CEffectV2Runtime::Set_GroupPivot(
+				m_iGroupPreviewHandle, Composed_GroupPreviewPivot(BasePivot));
+			CEffectV2Runtime::Update_Group(m_iGroupPreviewHandle, m_Group);
+		}
+	}
 	EFFECT_V2_TARGET_VIEW View;
 	const bool_t bHasTarget = Resolve_TargetView(View);
 	const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock();
@@ -2359,18 +2382,54 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		}
 	}
 	const bool_t bStageBinding = !strStageForBinding.empty();
-	ImGui::Text("Effect: %s | %s: %s | Bone: %s",
-		'\0' == m_szEffectId[0] ? "(none)" : m_szEffectId,
+	if (!m_bGroupsScanned)
+		Scan_Groups();
+	const std::string strBindAsLabel =
+		m_strBindingGroupId.empty() ? "(effect document)" : "group: " + m_strBindingGroupId;
+	if (ImGui::BeginCombo("Bind As", strBindAsLabel.c_str()))
+	{
+		if (ImGui::Selectable("(effect document)", m_strBindingGroupId.empty()))
+			m_strBindingGroupId.clear();
+		for (const std::string& strGroup : m_Groups)
+		{
+			if (ImGui::Selectable(strGroup.c_str(), strGroup == m_strBindingGroupId))
+				m_strBindingGroupId = strGroup;
+		}
+		ImGui::EndCombo();
+	}
+	const bool_t bGroupBinding = !m_strBindingGroupId.empty();
+	ImGui::DragFloat3("Binding Offset", &m_vBindingOffset.x, 0.01f);
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Pivot-local placement for this binding row. Group child offsets stack on top, so the same group can aim differently per hit.");
+	ImGui::DragFloat("Binding Yaw", &m_fBindingYawDegrees, 0.5f, -360.f, 360.f);
+	if (!m_strBindingGroupId.empty())
+	{
+		ImGui::SameLine();
+		if (ImGui::SmallButton(0u != m_iGroupPreviewHandle ? "Restart Preview" : "Preview Here"))
+		{
+			if (m_Group.strGroupId == m_strBindingGroupId || Load_Group(m_strBindingGroupId))
+				Play_GroupPreview();
+		}
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Plays the bound group at the current pivot; Binding Offset/Yaw move it live while it runs.");
+	}
+	ImGui::Text("%s: %s | %s: %s | Bone: %s",
+		bGroupBinding ? "Group" : "Effect",
+		bGroupBinding ? m_strBindingGroupId.c_str() :
+			('\0' == m_szEffectId[0] ? "(none)" : m_szEffectId),
 		bStageBinding ? "Stage" : "Clip",
 		bStageBinding ? strStageForBinding.c_str() :
 			(nullptr != pClipForBinding ? pClipForBinding : "(none)"),
 		m_strPivotBone.empty() ? "(none)" : m_strPivotBone.c_str());
-	ImGui::BeginDisabled('\0' == m_szEffectId[0] || !bHasTarget ||
+	ImGui::BeginDisabled((!bGroupBinding && '\0' == m_szEffectId[0]) || !bHasTarget ||
 		(!bStageBinding && nullptr == pClipForBinding));
 	if (ImGui::Button("Add / Update Binding"))
 	{
 		EFFECT_BINDING Binding;
-		Binding.strEffectId = m_szEffectId;
+		if (bGroupBinding)
+			Binding.strGroupId = m_strBindingGroupId;
+		else
+			Binding.strEffectId = m_szEffectId;
 		if (bStageBinding)
 		{
 			Binding.strStage = strStageForBinding;
@@ -2385,11 +2444,15 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		Binding.strBone = PIVOT_MODE::WORLD != m_ePivotMode ? m_strPivotBone : std::string();
 		Binding.bFollowBone = PIVOT_MODE::TARGET_BONE == m_ePivotMode;
 		Binding.eRotation = m_ePivotRotation;
+		Binding.vOffset = m_vBindingOffset;
+		Binding.fYawDegrees = m_fBindingYawDegrees;
 		bool_t bReplaced = false;
 		for (EFFECT_BINDING& Existing : m_Bindings)
 		{
 			if (Existing.strEffectId == Binding.strEffectId &&
-				Existing.strClip == Binding.strClip && Existing.strStage == Binding.strStage)
+				Existing.strGroupId == Binding.strGroupId &&
+				Existing.strClip == Binding.strClip && Existing.strStage == Binding.strStage &&
+				Existing.iStartMs == Binding.iStartMs && Existing.strBone == Binding.strBone)
 			{
 				Binding.bStopWithClip = Existing.bStopWithClip;
 				Existing = Binding;
@@ -2417,21 +2480,38 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		EFFECT_BINDING& Binding = m_Bindings[iIndex];
 		ImGui::PushID(static_cast<int32_t>(iIndex));
 		char_t szRow[256]{};
-		std::snprintf(szRow, sizeof(szRow), "%s @ %s%s +%ums %s%s",
-			Binding.strEffectId.c_str(),
+		const std::string strRowName = Binding.strGroupId.empty() ?
+			Binding.strEffectId : "group:" + Binding.strGroupId;
+		const bool_t bRowPlaced = 0.f != Binding.vOffset.x || 0.f != Binding.vOffset.y ||
+			0.f != Binding.vOffset.z || 0.f != Binding.fYawDegrees;
+		std::snprintf(szRow, sizeof(szRow), "%s @ %s%s +%ums %s%s%s",
+			strRowName.c_str(),
 			Binding.strStage.empty() ? "" : "stage:",
 			Binding.strStage.empty() ? Binding.strClip.c_str() : Binding.strStage.c_str(),
 			Binding.iStartMs,
 			Binding.strBone.empty() ? "(world)" : Binding.strBone.c_str(),
-			Binding.bFollowBone ? "" : " [snap once]");
+			Binding.bFollowBone ? "" : " [snap once]",
+			bRowPlaced ? " [placed]" : "");
 		/* The row spans the full line, so the overlapping SameLine checkbox and
 		Remove button need AllowOverlap or the row swallows their clicks. */
 		if (ImGui::Selectable(szRow, false, ImGuiSelectableFlags_AllowOverlap))
 		{
-			std::snprintf(m_szEffectId, sizeof(m_szEffectId), "%s", Binding.strEffectId.c_str());
+			if (Binding.strGroupId.empty())
+			{
+				m_strBindingGroupId.clear();
+				std::snprintf(m_szEffectId, sizeof(m_szEffectId), "%s", Binding.strEffectId.c_str());
+			}
+			else
+			{
+				m_strBindingGroupId = Binding.strGroupId;
+				m_bGroupWindowOpen = true;
+				Load_Group(Binding.strGroupId);
+			}
 			m_ePivotMode = Binding.strBone.empty() ? PIVOT_MODE::WORLD :
 				(Binding.bFollowBone ? PIVOT_MODE::TARGET_BONE : PIVOT_MODE::TARGET_BONE_FIXED);
 			m_ePivotRotation = Binding.eRotation;
+			m_vBindingOffset = Binding.vOffset;
+			m_fBindingYawDegrees = Binding.fYawDegrees;
 			if (!Binding.strBone.empty())
 				m_strPivotBone = Binding.strBone;
 			if (PIVOT_MODE::TARGET_BONE_FIXED == m_ePivotMode)
@@ -2462,6 +2542,308 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 	}
 	if (!m_strAttachStatus.empty())
 		ImGui::TextWrapped("%s", m_strAttachStatus.c_str());
+	ImGui::End();
+}
+
+void Client::CEffect_Tool_V2::Scan_Groups()
+{
+	m_bGroupsScanned = true;
+	m_Groups.clear();
+	std::error_code Error;
+	const std::filesystem::path Directory = CEffectV2Document::Group_Directory();
+	if (Directory.empty() || !std::filesystem::is_directory(Directory, Error))
+		return;
+	for (const std::filesystem::directory_entry& Entry :
+		std::filesystem::directory_iterator(Directory, Error))
+	{
+		if (!Entry.is_regular_file(Error))
+			continue;
+		const std::string strName = Entry.path().filename().string();
+		constexpr const char* SUFFIX = ".effectv2group.json";
+		const size_t iSuffix = std::strlen(SUFFIX);
+		if (strName.size() <= iSuffix ||
+			strName.compare(strName.size() - iSuffix, iSuffix, SUFFIX) != 0)
+			continue;
+		m_Groups.push_back(strName.substr(0u, strName.size() - iSuffix));
+	}
+	std::sort(m_Groups.begin(), m_Groups.end());
+}
+
+bool_t Client::CEffect_Tool_V2::Load_Group(const std::string& strGroupId)
+{
+	EFFECT_V2_GROUP Group;
+	std::string strError;
+	if (!CEffectV2Document::Load_GroupFile(strGroupId, Group, strError))
+	{
+		m_strGroupStatus = "Load rejected (" + strGroupId + "): " + strError;
+		return false;
+	}
+	Stop_GroupPreview();
+	m_Group = std::move(Group);
+	std::snprintf(m_szGroupId, sizeof(m_szGroupId), "%s", strGroupId.c_str());
+	m_strGroupStatus = "Loaded " + strGroupId;
+	return true;
+}
+
+bool_t Client::CEffect_Tool_V2::Save_Group()
+{
+	const std::string strGroupId = m_szGroupId;
+	if (!CEffectV2Document::Is_ValidEffectId(strGroupId))
+	{
+		m_strGroupStatus = "Group ID must be 1-80 chars of [A-Za-z0-9._-].";
+		return false;
+	}
+	if (m_Group.Children.empty())
+	{
+		m_strGroupStatus = "Add at least one child before saving.";
+		return false;
+	}
+	for (const EFFECT_V2_GROUP_CHILD& Child : m_Group.Children)
+	{
+		if (!CEffectV2Document::Is_ValidEffectId(Child.strEffectId) ||
+			Child.strEffectId == strGroupId)
+		{
+			m_strGroupStatus = "Every child needs an effect ID different from the group.";
+			return false;
+		}
+	}
+	m_Group.strGroupId = strGroupId;
+	std::error_code Error;
+	std::filesystem::create_directories(CEffectV2Document::Group_Directory(), Error);
+	std::string strError;
+	if (!CEffectV2Document::Write_AtomicFile(
+		CEffectV2Document::Group_Path(strGroupId),
+		CEffectV2Document::Serialize_Group(m_Group), strError))
+	{
+		m_strGroupStatus = strError;
+		return false;
+	}
+	CEffectV2Runtime::Invalidate_Caches();
+	m_bGroupsScanned = false;
+	m_strGroupStatus = "Saved " + strGroupId + ".effectv2group.json";
+	return true;
+}
+
+bool_t Client::CEffect_Tool_V2::Resolve_GroupPreviewBasePivot(float4x4_t& OutPivot)
+{
+	if (const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock())
+	{
+		OutPivot = pPreview->PivotWorld();
+		return true;
+	}
+	EFFECT_V2_TARGET_VIEW View;
+	return Resolve_TargetView(View) &&
+		CEffectV2Object::Resolve_TargetPivot(View, m_strPivotBone, m_ePivotRotation, OutPivot);
+}
+
+float4x4_t Client::CEffect_Tool_V2::Composed_GroupPreviewPivot(const float4x4_t& BasePivot) const
+{
+	if (m_strBindingGroupId.empty() || m_strBindingGroupId != m_Group.strGroupId)
+		return BasePivot;
+	float4x4_t Composed;
+	XMStoreFloat4x4(&Composed,
+		XMMatrixRotationY(XMConvertToRadians(m_fBindingYawDegrees)) *
+		XMMatrixTranslation(m_vBindingOffset.x, m_vBindingOffset.y, m_vBindingOffset.z) *
+		XMLoadFloat4x4(&BasePivot));
+	return Composed;
+}
+
+bool_t Client::CEffect_Tool_V2::Play_GroupPreview()
+{
+	Stop_GroupPreview();
+	const std::string strGroupId = m_szGroupId;
+	if (m_Group.Children.empty())
+	{
+		m_strGroupStatus = "Add at least one child to preview.";
+		return false;
+	}
+	for (const EFFECT_V2_GROUP_CHILD& Child : m_Group.Children)
+	{
+		if (!CEffectV2Document::Is_ValidEffectId(Child.strEffectId))
+		{
+			m_strGroupStatus = "Every child needs a saved effect document.";
+			return false;
+		}
+	}
+	float4x4_t Pivot;
+	if (!Resolve_GroupPreviewBasePivot(Pivot))
+	{
+		m_strGroupStatus = "Create a preview effect or spawn a target to place the group.";
+		return false;
+	}
+	m_GroupPreviewBasePivot = Pivot;
+	m_Group.strGroupId = strGroupId;
+	m_iGroupPreviewHandle = CEffectV2Runtime::Play_Group(
+		m_Group, Composed_GroupPreviewPivot(Pivot), m_pDevice, m_pContext);
+	if (0u == m_iGroupPreviewHandle)
+	{
+		m_strGroupStatus = "Group preview failed: " + CEffectV2Runtime::Last_Error();
+		return false;
+	}
+	m_strGroupStatus = "Playing " + strGroupId + " (live: edits apply while it runs)";
+	return true;
+}
+
+void Client::CEffect_Tool_V2::Stop_GroupPreview()
+{
+	if (0u == m_iGroupPreviewHandle)
+		return;
+	CEffectV2Runtime::Stop_Group(m_iGroupPreviewHandle);
+	m_iGroupPreviewHandle = 0u;
+}
+
+void Client::CEffect_Tool_V2::Render_GroupWindow()
+{
+	if (!m_bGroupWindowOpen)
+		return;
+	if (!m_bGroupsScanned)
+		Scan_Groups();
+	if (!m_bDocumentsScanned)
+		Scan_Documents();
+	ImGui::SetNextWindowSize(ImVec2(560.f, 560.f), ImGuiCond_FirstUseEver);
+	if (!ImGui::Begin("Effect Group v2", &m_bGroupWindowOpen))
+	{
+		ImGui::End();
+		return;
+	}
+
+	ImGui::SeparatorText("Group (Data/Effects/V2/Groups)");
+	ImGui::SetNextItemWidth(-1.f);
+	ImGui::InputTextWithHint("##GroupId", "Group ID (e.g. boss.valtan.portal)",
+		m_szGroupId, sizeof(m_szGroupId));
+	if (ImGui::Button("New"))
+	{
+		Stop_GroupPreview();
+		m_Group = {};
+		m_Group.strGroupId = m_szGroupId;
+		m_strGroupStatus = "New group (unsaved).";
+	}
+	ImGui::SameLine();
+	ImGui::BeginDisabled('\0' == m_szGroupId[0]);
+	if (ImGui::Button("Load"))
+		Load_Group(m_szGroupId);
+	ImGui::SameLine();
+	if (ImGui::Button("Save"))
+		Save_Group();
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	if (ImGui::Button("Rescan"))
+		Scan_Groups();
+	if (m_Groups.empty())
+		ImGui::TextDisabled("No saved groups.");
+	else if (ImGui::BeginListBox("##Groups", ImVec2(-1.f, 72.f)))
+	{
+		for (const std::string& strGroup : m_Groups)
+		{
+			if (ImGui::Selectable(strGroup.c_str(), strGroup == m_szGroupId))
+				std::snprintf(m_szGroupId, sizeof(m_szGroupId), "%s", strGroup.c_str());
+			if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+				Load_Group(strGroup);
+		}
+		ImGui::EndListBox();
+	}
+	int32_t iGroupDuration = static_cast<int32_t>(m_Group.iDurationMs);
+	if (ImGui::InputInt("Group Duration (ms, 0 = last child)", &iGroupDuration))
+		m_Group.iDurationMs = static_cast<uint32_t>(std::clamp(iGroupDuration, 0, 600000));
+
+	ImGui::SeparatorText("Children");
+	ImGui::BeginDisabled('\0' == m_szEffectId[0]);
+	if (ImGui::Button("Add Child (current Effect ID)"))
+	{
+		EFFECT_V2_GROUP_CHILD Child;
+		Child.strEffectId = m_szEffectId;
+		m_Group.Children.push_back(std::move(Child));
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::TextDisabled("Effect ID comes from the Document panel.");
+	uint32_t iEndMs = m_Group.iDurationMs;
+	for (size_t iIndex = 0u; iIndex < m_Group.Children.size(); ++iIndex)
+	{
+		EFFECT_V2_GROUP_CHILD& Child = m_Group.Children[iIndex];
+		ImGui::PushID(static_cast<int32_t>(iIndex));
+		if (ImGui::BeginCombo("Effect", Child.strEffectId.empty() ? "(select)" : Child.strEffectId.c_str()))
+		{
+			for (const std::string& strDocument : m_Documents)
+			{
+				if (ImGui::Selectable(strDocument.c_str(), strDocument == Child.strEffectId))
+					Child.strEffectId = strDocument;
+			}
+			ImGui::EndCombo();
+		}
+		int32_t iStart = static_cast<int32_t>(Child.iStartMs);
+		int32_t iDuration = static_cast<int32_t>(Child.iDurationMs);
+		if (ImGui::InputInt("Start (ms)", &iStart))
+			Child.iStartMs = static_cast<uint32_t>(std::clamp(iStart, 0, 600000));
+		if (ImGui::InputInt("Duration (ms, 0 = own lifetime)", &iDuration))
+			Child.iDurationMs = static_cast<uint32_t>(std::clamp(iDuration, 0, 600000));
+		int32_t iStop = static_cast<int32_t>(Child.eStop);
+		if (ImGui::Combo("Stop", &iStop, "Kill\0Deactivate\0"))
+			Child.eStop = static_cast<EFFECT_V2_CHILD_STOP>(iStop);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Kill: remove at once. Deactivate: particles/trails stop spawning and drain; other shapes end.");
+		ImGui::DragFloat3("Offset (m)", &Child.vOffset.x, 0.05f);
+		ImGui::DragFloat("Yaw (deg)", &Child.fYawDegrees, 1.f, -360.f, 360.f);
+		ImGui::DragFloat3("Scale", &Child.vScale.x, 0.01f, 0.001f, 100.f);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Multiplies the document's scale track; particle sprite sizes use X uniformly.");
+		if (ImGui::SmallButton("Remove"))
+		{
+			m_Group.Children.erase(m_Group.Children.begin() + static_cast<std::ptrdiff_t>(iIndex));
+			ImGui::PopID();
+			break;
+		}
+		ImGui::Separator();
+		ImGui::PopID();
+		iEndMs = (std::max)(iEndMs,
+			Child.iDurationMs > 0u ? Child.iStartMs + Child.iDurationMs : Child.iStartMs);
+	}
+
+	ImGui::SeparatorText("Timeline");
+	const f32_t fTotalMs = static_cast<f32_t>((std::max)(1000u, iEndMs));
+	ImDrawList* pDraw = ImGui::GetWindowDrawList();
+	const ImVec2 Origin = ImGui::GetCursorScreenPos();
+	const f32_t fWidth = (std::max)(64.f, ImGui::GetContentRegionAvail().x);
+	constexpr f32_t ROW_HEIGHT = 16.f;
+	for (size_t iIndex = 0u; iIndex < m_Group.Children.size(); ++iIndex)
+	{
+		const EFFECT_V2_GROUP_CHILD& Child = m_Group.Children[iIndex];
+		const f32_t fY = Origin.y + static_cast<f32_t>(iIndex) * ROW_HEIGHT;
+		const f32_t fX0 = Origin.x + static_cast<f32_t>(Child.iStartMs) / fTotalMs * fWidth;
+		const f32_t fX1 = Child.iDurationMs > 0u ?
+			Origin.x + static_cast<f32_t>(Child.iStartMs + Child.iDurationMs) / fTotalMs * fWidth :
+			Origin.x + fWidth;
+		pDraw->AddRectFilled(ImVec2(fX0, fY + 2.f), ImVec2((std::max)(fX1, fX0 + 3.f), fY + ROW_HEIGHT - 2.f),
+			Child.iDurationMs > 0u ? IM_COL32(90, 170, 255, 200) : IM_COL32(120, 120, 140, 160));
+		pDraw->AddText(ImVec2(fX0 + 3.f, fY), IM_COL32(255, 255, 255, 255), Child.strEffectId.c_str());
+	}
+	const f32_t fPreviewSeconds = 0u != m_iGroupPreviewHandle ?
+		CEffectV2Runtime::Group_Seconds(m_iGroupPreviewHandle) : -1.f;
+	if (fPreviewSeconds >= 0.f)
+	{
+		const f32_t fX = Origin.x + (std::min)(1.f, fPreviewSeconds * 1000.f / fTotalMs) * fWidth;
+		pDraw->AddLine(ImVec2(fX, Origin.y), ImVec2(fX, Origin.y + ROW_HEIGHT * static_cast<f32_t>(m_Group.Children.size())),
+			IM_COL32(255, 200, 60, 255), 2.f);
+	}
+	ImGui::Dummy(ImVec2(fWidth, ROW_HEIGHT * static_cast<f32_t>(m_Group.Children.size()) + 4.f));
+	ImGui::TextDisabled("0 ms .. %.0f ms", fTotalMs);
+	if (ImGui::Button(0u != m_iGroupPreviewHandle ? "Restart Preview" : "Play Preview"))
+		Play_GroupPreview();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(0u == m_iGroupPreviewHandle);
+	if (ImGui::Button("Stop Preview"))
+		Stop_GroupPreview();
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::Checkbox("Loop##GroupPreview", &m_bGroupPreviewLoop);
+	if (fPreviewSeconds >= 0.f)
+	{
+		ImGui::SameLine();
+		ImGui::Text("%.2f s", fPreviewSeconds);
+	}
+	ImGui::TextDisabled("Preview plays the unsaved group. Offset/Yaw/Scale move live; Start/Duration/Stop apply to children not spawned yet (or on the next loop).");
+	if (!m_strGroupStatus.empty())
+		ImGui::TextWrapped("%s", m_strGroupStatus.c_str());
 	ImGui::End();
 }
 
@@ -2751,13 +3133,27 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		ImGui::DragFloat("Drag", &E.fDrag, 0.01f, 0.f, 20.f);
 
 		ImGui::SeparatorText("Particle Size / Rotation");
-		ImGui::DragFloat2("Size Start (m)", &E.vSizeStart.x, 0.005f, 0.f, 100.f);
-		ImGui::DragFloat2("Size End (m)", &E.vSizeEnd.x, 0.005f, 0.f, 100.f);
-		ImGui::DragFloat2("Rotation (deg min/max)", &E.vRotationRange.x, 1.f, -360.f, 360.f);
-		ImGui::DragFloat2("Spin (deg/s min/max)", &E.vSpinRange.x, 1.f, -3600.f, 3600.f);
-		int32_t iAlignment = static_cast<int32_t>(E.eAlignment);
-		if (ImGui::Combo("Alignment", &iAlignment, "Camera\0Velocity\0Horizontal\0"))
-			E.eAlignment = static_cast<CEffectV2Object::PARTICLE_ALIGNMENT>(iAlignment);
+		if (pPreview->Is_MeshParticle())
+		{
+			ImGui::TextDisabled("Mesh particles: Size Start/End X is the uniform scale (x Mesh Pre-Scale).");
+			ImGui::DragFloat2("Size Start (m)", &E.vSizeStart.x, 0.005f, 0.f, 100.f);
+			ImGui::DragFloat2("Size End (m)", &E.vSizeEnd.x, 0.005f, 0.f, 100.f);
+			ImGui::DragFloat3("Mesh Rotation Min (deg)", &E.vMeshRotationMin.x, 1.f, -360.f, 360.f);
+			ImGui::DragFloat3("Mesh Rotation Max (deg)", &E.vMeshRotationMax.x, 1.f, -360.f, 360.f);
+			ImGui::DragFloat3("Mesh Spin Min (deg/s)", &E.vMeshSpinMin.x, 1.f, -3600.f, 3600.f);
+			ImGui::DragFloat3("Mesh Spin Max (deg/s)", &E.vMeshSpinMax.x, 1.f, -3600.f, 3600.f);
+			ImGui::DragFloat("Mesh Pre-Scale", &P.fMeshPreScale, 0.0001f, 0.0001f, 10.f, "%.4f");
+		}
+		else
+		{
+			ImGui::DragFloat2("Size Start (m)", &E.vSizeStart.x, 0.005f, 0.f, 100.f);
+			ImGui::DragFloat2("Size End (m)", &E.vSizeEnd.x, 0.005f, 0.f, 100.f);
+			ImGui::DragFloat2("Rotation (deg min/max)", &E.vRotationRange.x, 1.f, -360.f, 360.f);
+			ImGui::DragFloat2("Spin (deg/s min/max)", &E.vSpinRange.x, 1.f, -3600.f, 3600.f);
+			int32_t iAlignment = static_cast<int32_t>(E.eAlignment);
+			if (ImGui::Combo("Alignment", &iAlignment, "Camera\0Velocity\0Horizontal\0"))
+				E.eAlignment = static_cast<CEffectV2Object::PARTICLE_ALIGNMENT>(iAlignment);
+		}
 
 		ImGui::SeparatorText("Particle Color / Sub-UV");
 		ImGui::ColorEdit4("Color Start", &E.vColorStart.x,
@@ -2995,7 +3391,7 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 
 	ImGui::SeparatorText("Blend");
 	int32_t iBlend = static_cast<int32_t>(P.eBlend);
-	if (ImGui::Combo("Blend", &iBlend, "Alpha\0Additive\0Opaque\0"))
+	if (ImGui::Combo("Blend", &iBlend, "Alpha\0Additive\0Opaque\0Multiply\0"))
 		P.eBlend = static_cast<CEffectV2Object::BLEND_MODE>(iBlend);
 	ImGui::BeginDisabled(CEffectV2Object::BLEND_MODE::SOLID == P.eBlend ||
 		CEffectV2Object::SHAPE::DECAL == eShape);
@@ -3004,7 +3400,7 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 	if (CEffectV2Object::SHAPE::DECAL == eShape)
 	{
 		ImGui::SameLine();
-		ImGui::TextDisabled("(decal: Alpha/Additive only, no depth test)");
+		ImGui::TextDisabled("(decal: Alpha/Additive/Multiply, no depth test)");
 	}
 	if (CEffectV2Object::SHAPE::SPRITE == pPreview->Shape())
 	{
@@ -3049,7 +3445,7 @@ bool_t Client::CEffect_Tool_V2::Slot_VisibleForType(const RESOURCE_SLOT eSlot) c
 		return false;
 	if (RESOURCE_SLOT::MESH != eSlot)
 		return true;
-	return EFFECT_TYPE::MESH == m_eType;
+	return EFFECT_TYPE::MESH == m_eType || EFFECT_TYPE::PARTICLE == m_eType;
 }
 
 Client::CEffect_Tool_V2::RESOURCE_KIND Client::CEffect_Tool_V2::Slot_Kind(
@@ -3091,7 +3487,7 @@ const char* Client::CEffect_Tool_V2::Slot_Description(const RESOURCE_SLOT eSlot)
 {
 	switch (eSlot)
 	{
-	case RESOURCE_SLOT::MESH: return "Mesh: one WModel carrier shape.";
+	case RESOURCE_SLOT::MESH: return "Mesh: one WModel carrier shape. On a Particle it turns every particle into an instanced static mesh.";
 	case RESOURCE_SLOT::BASE: return "Base: RGB color, A opacity.";
 	case RESOURCE_SLOT::NOISE: return "Noise: UV distortion source.";
 	case RESOURCE_SLOT::MASK: return "Mask: R channel multiplies opacity.";

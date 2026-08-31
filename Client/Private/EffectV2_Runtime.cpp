@@ -7,6 +7,8 @@
 #include "Npc.h"
 #include "NpcPresentationAssetService.h"
 
+#include <algorithm>
+#include <cmath>
 #include <map>
 #include <set>
 #include <unordered_map>
@@ -32,10 +34,27 @@ namespace
 		Client::EFFECT_V2_DOCUMENT Document;
 	};
 
+	struct GROUP_ENTRY final
+	{
+		bool_t bLoaded = false;
+		bool_t bFailed = false;
+		Client::EFFECT_V2_GROUP Group;
+	};
+
+	/* One leaf document waiting on a lane clock. Group children arrive here
+	   already expanded: Binding.strEffectId is the child document, Local the
+	   child offset/yaw, fStopSeconds the lane time of its stop (< 0 = none). */
+	constexpr size_t NO_CHILD = static_cast<size_t>(-1);
+
 	struct PENDING_SPAWN final
 	{
 		Client::EFFECT_V2_BINDING Binding;
 		bool_t bSpawned = false;
+		float4x4_t Local;
+		f32_t fStopSeconds = -1.f;
+		Client::EFFECT_V2_CHILD_STOP eStop = Client::EFFECT_V2_CHILD_STOP::KILL;
+		size_t iChildIndex = NO_CHILD;
+		float3_t vScale = { 1.f, 1.f, 1.f };
 	};
 
 	struct SPAWNED_EFFECT final
@@ -43,6 +62,10 @@ namespace
 		std::weak_ptr<Client::CEffectV2Object> pObject;
 		bool_t bStopWithClip = false;
 		bool_t bStageBound = false;
+		f32_t fStopSeconds = -1.f;
+		Client::EFFECT_V2_CHILD_STOP eStop = Client::EFFECT_V2_CHILD_STOP::KILL;
+		bool_t bStopApplied = false;
+		size_t iChildIndex = NO_CHILD;
 	};
 
 	struct TARGET_STATE final
@@ -58,12 +81,23 @@ namespace
 		std::vector<SPAWNED_EFFECT> Spawned;
 	};
 
+	struct FREE_GROUP final
+	{
+		float4x4_t Pivot;
+		f32_t fSeconds = 0.f;
+		std::vector<PENDING_SPAWN> Pending;
+		std::vector<SPAWNED_EFFECT> Spawned;
+	};
+
 	std::unordered_map<std::string, BINDING_SET> g_BindingSets;
 	std::unordered_map<std::string, DOCUMENT_ENTRY> g_Documents;
+	std::unordered_map<std::string, GROUP_ENTRY> g_Groups;
 	std::map<std::wstring, std::string> g_ModelTagToArchetype;
 	bool_t g_bModelTagMapBuilt = false;
 	std::map<const Engine::CGameObject*, TARGET_STATE> g_TargetStates;
 	std::set<const Engine::CGameObject*> g_IgnoredTargets;
+	std::map<uint32_t, FREE_GROUP> g_FreeGroups;
+	uint32_t g_iNextFreeGroupHandle = 1u;
 	bool_t g_bPrototypeRegistered = false;
 	std::string g_strLastError;
 
@@ -71,6 +105,11 @@ namespace
 	{
 		g_strLastError = strMessage;
 		OutputDebugStringA(("[EffectV2Runtime] " + strMessage + "\n").c_str());
+	}
+
+	f32_t Ms_ToSeconds(const uint32_t iMs)
+	{
+		return static_cast<f32_t>(iMs) / 1000.f;
 	}
 
 	const std::string* Resolve_Archetype(const Client::EFFECT_V2_TARGET& Target)
@@ -135,6 +174,21 @@ namespace
 		return Entry;
 	}
 
+	const GROUP_ENTRY& Ensure_Group(const std::string& strGroupId)
+	{
+		GROUP_ENTRY& Entry = g_Groups[strGroupId];
+		if (Entry.bLoaded)
+			return Entry;
+		Entry.bLoaded = true;
+		std::string strError;
+		if (!Client::CEffectV2Document::Load_GroupFile(strGroupId, Entry.Group, strError))
+		{
+			Entry.bFailed = true;
+			Report("group rejected " + strGroupId + ": " + strError);
+		}
+		return Entry;
+	}
+
 	bool_t Ensure_Prototype(
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext)
@@ -154,13 +208,127 @@ namespace
 		return true;
 	}
 
-	void Spawn(
-		TARGET_STATE& State,
+	float4x4_t Child_Local(const Client::EFFECT_V2_GROUP_CHILD& Child)
+	{
+		float4x4_t Local;
+		XMStoreFloat4x4(&Local,
+			XMMatrixScaling(Child.vScale.x, Child.vScale.y, Child.vScale.z) *
+			XMMatrixRotationY(XMConvertToRadians(Child.fYawDegrees)) *
+			XMMatrixTranslation(Child.vOffset.x, Child.vOffset.y, Child.vOffset.z));
+		return Local;
+	}
+
+	matrix_t Binding_Local(const Client::EFFECT_V2_BINDING& Binding)
+	{
+		return XMMatrixRotationY(XMConvertToRadians(Binding.fYawDegrees)) *
+			XMMatrixTranslation(Binding.vOffset.x, Binding.vOffset.y, Binding.vOffset.z);
+	}
+
+	/* Lane time at which a child stops: its own duration, capped by the
+	   group duration; < 0 when neither is set. */
+	f32_t Child_StopSeconds(
+		const Client::EFFECT_V2_GROUP& Group,
+		const Client::EFFECT_V2_GROUP_CHILD& Child,
+		const uint32_t iBindingStartMs)
+	{
+		const f32_t fGroupStop = Group.iDurationMs > 0u ?
+			Ms_ToSeconds(iBindingStartMs + Group.iDurationMs) : -1.f;
+		f32_t fStop = Child.iDurationMs > 0u ?
+			Ms_ToSeconds(iBindingStartMs + Child.iStartMs + Child.iDurationMs) : -1.f;
+		if (fGroupStop >= 0.f && (fStop < 0.f || fGroupStop < fStop))
+			fStop = fGroupStop;
+		return fStop;
+	}
+
+	void Retarget_Pending(
 		PENDING_SPAWN& Pending,
-		const Client::EFFECT_V2_TARGET_VIEW& View,
+		const Client::EFFECT_V2_GROUP& Group,
+		const size_t iChildIndex,
+		const uint32_t iBindingStartMs)
+	{
+		const Client::EFFECT_V2_GROUP_CHILD& Child = Group.Children[iChildIndex];
+		Pending.Binding.strGroupId.clear();
+		Pending.Binding.strEffectId = Child.strEffectId;
+		Pending.Binding.iStartMs = iBindingStartMs + Child.iStartMs;
+		const float4x4_t ChildLocal = Child_Local(Child);
+		XMStoreFloat4x4(&Pending.Local,
+			XMLoadFloat4x4(&ChildLocal) * Binding_Local(Pending.Binding));
+		Pending.eStop = Child.eStop;
+		Pending.fStopSeconds = Child_StopSeconds(Group, Child, iBindingStartMs);
+		Pending.iChildIndex = iChildIndex;
+		Pending.vScale = Child.vScale;
+	}
+
+	/* One pending row per child, in child order, so a row's iChildIndex
+	   stays valid while the tool edits the same group in place. */
+	void Expand_Group(
+		const Client::EFFECT_V2_GROUP& Group,
+		const Client::EFFECT_V2_BINDING& Binding,
+		std::vector<PENDING_SPAWN>& Out)
+	{
+		for (size_t iChild = 0u; iChild < Group.Children.size(); ++iChild)
+		{
+			PENDING_SPAWN Pending;
+			Pending.Binding = Binding;
+			Retarget_Pending(Pending, Group, iChild, Binding.iStartMs);
+			Out.push_back(std::move(Pending));
+		}
+	}
+
+	/* A document binding becomes one pending row; a group binding becomes
+	   one row per child with the binding's own start added and the group
+	   duration capping every child stop. A rejected group adds nothing. */
+	void Expand_Binding(
+		const Client::EFFECT_V2_BINDING& Binding,
+		std::vector<PENDING_SPAWN>& Out)
+	{
+		if (Binding.strGroupId.empty())
+		{
+			PENDING_SPAWN Pending;
+			Pending.Binding = Binding;
+			XMStoreFloat4x4(&Pending.Local, Binding_Local(Binding));
+			Out.push_back(std::move(Pending));
+			return;
+		}
+		const GROUP_ENTRY& Entry = Ensure_Group(Binding.strGroupId);
+		if (Entry.bFailed)
+			return;
+		Expand_Group(Entry.Group, Binding, Out);
+	}
+
+	/* Child scale rides on top of the document: the scale track is
+	   multiplied per axis, particle sprite sizes by the X component. */
+	void Apply_ChildScale(
+		Client::CEffectV2Object& Object,
+		const Client::EFFECT_V2_DOCUMENT& Document,
+		const float3_t& vScale)
+	{
+		const Client::CEffectV2Object::PARAMS& Source = Document.Desc.Params;
+		Client::CEffectV2Object::PARAMS& Params = Object.Params();
+		Params.Scale.vStart = {
+			Source.Scale.vStart.x * vScale.x,
+			Source.Scale.vStart.y * vScale.y,
+			Source.Scale.vStart.z * vScale.z };
+		Params.Scale.vEnd = {
+			Source.Scale.vEnd.x * vScale.x,
+			Source.Scale.vEnd.y * vScale.y,
+			Source.Scale.vEnd.z * vScale.z };
+		Params.Particle.vSizeStart = {
+			Source.Particle.vSizeStart.x * vScale.x,
+			Source.Particle.vSizeStart.y * vScale.x };
+		Params.Particle.vSizeEnd = {
+			Source.Particle.vSizeEnd.x * vScale.x,
+			Source.Particle.vSizeEnd.y * vScale.x };
+	}
+
+	void Spawn(
+		PENDING_SPAWN& Pending,
+		const float4x4_t& Pivot,
+		const Client::EFFECT_V2_TARGET& FollowTarget,
+		const bool_t bStageBound,
+		std::vector<SPAWNED_EFFECT>& Spawned,
 		const ComPtr<ID3D11Device>& pDevice,
-		const ComPtr<ID3D11DeviceContext>& pContext,
-		const bool_t bStageBound)
+		const ComPtr<ID3D11DeviceContext>& pContext)
 	{
 		Pending.bSpawned = true;
 		const DOCUMENT_ENTRY& Entry = Ensure_Document(Pending.Binding.strEffectId);
@@ -168,16 +336,8 @@ namespace
 			return;
 		CGameInstance& GameInstance = CGameInstance::Get();
 		Client::CEffectV2Object::DESC Desc = Entry.Document.Desc;
-		if (!Client::CEffectV2Object::Resolve_TargetPivot(
-			View,
-			Pending.Binding.strBone,
-			Pending.Binding.eRotation,
-			Desc.PivotWorld))
-		{
-			Report("pivot bone not found: " + Pending.Binding.strBone +
-				" for " + Pending.Binding.strEffectId);
-			return;
-		}
+		XMStoreFloat4x4(&Desc.PivotWorld,
+			XMLoadFloat4x4(&Pending.Local) * XMLoadFloat4x4(&Pivot));
 		std::shared_ptr<CGameObject> pGameObject;
 		if (FAILED(GameInstance.Add_GameObject_to_Layer(
 			ETOUI(LEVEL::STATIC), EFFECT_PROTOTYPE_TAG,
@@ -211,24 +371,81 @@ namespace
 				}
 			}
 		}
-		if (Pending.Binding.bFollowBone)
+		if (Pending.Binding.bFollowBone && FollowTarget.Is_Valid())
 		{
 			pObject->Set_FollowTarget(
-				State.Target, Pending.Binding.strBone, Pending.Binding.eRotation);
+				FollowTarget, Pending.Binding.strBone, Pending.Binding.eRotation);
+			pObject->Set_FollowLocal(Pending.Local);
 		}
-		State.Spawned.push_back({ pObject, Pending.Binding.bStopWithClip, bStageBound });
+		if (NO_CHILD != Pending.iChildIndex)
+			Apply_ChildScale(*pObject, Entry.Document, Pending.vScale);
+		SPAWNED_EFFECT Effect;
+		Effect.pObject = pObject;
+		Effect.bStopWithClip = Pending.Binding.bStopWithClip;
+		Effect.bStageBound = bStageBound;
+		Effect.fStopSeconds = Pending.fStopSeconds;
+		Effect.eStop = Pending.eStop;
+		Effect.iChildIndex = Pending.iChildIndex;
+		Spawned.push_back(std::move(Effect));
+	}
+
+	void Spawn_OnTarget(
+		TARGET_STATE& State,
+		PENDING_SPAWN& Pending,
+		const Client::EFFECT_V2_TARGET_VIEW& View,
+		const bool_t bStageBound,
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext)
+	{
+		float4x4_t Pivot;
+		if (!Client::CEffectV2Object::Resolve_TargetPivot(
+			View, Pending.Binding.strBone, Pending.Binding.eRotation, Pivot))
+		{
+			Pending.bSpawned = true;
+			Report("pivot bone not found: " + Pending.Binding.strBone +
+				" for " + Pending.Binding.strEffectId);
+			return;
+		}
+		Spawn(Pending, Pivot, State.Target, bStageBound, State.Spawned, pDevice, pContext);
+	}
+
+	/* Applies each child's stop once when the lane clock passes it. With
+	   bFilterLane the clip lane only stops clip-bound effects and the stage
+	   lane only stage-bound ones; free groups pass false. */
+	void Apply_ChildStops(
+		std::vector<SPAWNED_EFFECT>& Spawned,
+		const f32_t fLaneSeconds,
+		const bool_t bStageLane,
+		const bool_t bFilterLane)
+	{
+		for (SPAWNED_EFFECT& Effect : Spawned)
+		{
+			if (Effect.bStopApplied || Effect.fStopSeconds < 0.f ||
+				fLaneSeconds < Effect.fStopSeconds)
+				continue;
+			if (bFilterLane && Effect.bStageBound != bStageLane)
+				continue;
+			Effect.bStopApplied = true;
+			const std::shared_ptr<Client::CEffectV2Object> pObject = Effect.pObject.lock();
+			if (nullptr == pObject)
+				continue;
+			if (Client::EFFECT_V2_CHILD_STOP::DEACTIVATE == Effect.eStop)
+				pObject->Stop_Emission();
+			else
+				pObject->Finish();
+		}
 	}
 
 	/* bStopClipBound finishes stopWithClip effects of the clip lane,
 	   bStopStageBound those of the stage lane; both lanes always drop what has
 	   finished on its own. */
-	void Prune_Spawned(
-		TARGET_STATE& State,
+	void Prune_List(
+		std::vector<SPAWNED_EFFECT>& Spawned,
 		const bool_t bStopClipBound,
-		const bool_t bStopStageBound = false)
+		const bool_t bStopStageBound)
 	{
 		CGameInstance& GameInstance = CGameInstance::Get();
-		for (auto Iterator = State.Spawned.begin(); Iterator != State.Spawned.end();)
+		for (auto Iterator = Spawned.begin(); Iterator != Spawned.end();)
 		{
 			const std::shared_ptr<Client::CEffectV2Object> pObject = Iterator->pObject.lock();
 			const bool_t bStopLane = Iterator->bStageBound ? bStopStageBound : bStopClipBound;
@@ -241,11 +458,29 @@ namespace
 					GameInstance.Remove_GameObject_from_Layer(
 						GameInstance.Get_CurrentLevelID(), EFFECT_LAYER_TAG, pObject);
 				}
-				Iterator = State.Spawned.erase(Iterator);
+				Iterator = Spawned.erase(Iterator);
 				continue;
 			}
 			++Iterator;
 		}
+	}
+
+	void Prune_Spawned(
+		TARGET_STATE& State,
+		const bool_t bStopClipBound,
+		const bool_t bStopStageBound = false)
+	{
+		Prune_List(State.Spawned, bStopClipBound, bStopStageBound);
+	}
+
+	void Kill_List(std::vector<SPAWNED_EFFECT>& Spawned)
+	{
+		for (SPAWNED_EFFECT& Effect : Spawned)
+		{
+			if (const std::shared_ptr<Client::CEffectV2Object> pObject = Effect.pObject.lock())
+				pObject->Finish();
+		}
+		Prune_List(Spawned, false, false);
 	}
 
 	void Remove_AllSpawned(TARGET_STATE& State)
@@ -272,14 +507,17 @@ void Client::CEffectV2Runtime::Prewarm_Archetype(
 	const BINDING_SET& Set = Ensure_Bindings(strArchetypeId);
 	if (Set.bFailed)
 		return;
+	std::vector<PENDING_SPAWN> Expanded;
 	for (const EFFECT_V2_BINDING& Binding : Set.Bindings)
+		Expand_Binding(Binding, Expanded);
+	for (const PENDING_SPAWN& Pending : Expanded)
 	{
-		const DOCUMENT_ENTRY& Entry = Ensure_Document(Binding.strEffectId);
+		const DOCUMENT_ENTRY& Entry = Ensure_Document(Pending.Binding.strEffectId);
 		if (Entry.bFailed)
 			continue;
 		std::string strError;
 		if (FAILED(CEffectV2Object::Prewarm(pDevice, pContext, Entry.Document.Desc, strError)))
-			Report("prewarm failed " + Binding.strEffectId + ": " + strError);
+			Report("prewarm failed " + Pending.Binding.strEffectId + ": " + strError);
 	}
 	Ensure_Prototype(pDevice, pContext);
 }
@@ -306,6 +544,7 @@ void Client::CEffectV2Runtime::Invalidate_Caches()
 {
 	g_BindingSets.clear();
 	g_Documents.clear();
+	g_Groups.clear();
 	g_ModelTagToArchetype.clear();
 	g_bModelTagMapBuilt = false;
 }
@@ -337,7 +576,7 @@ void Client::CEffectV2Runtime::Notify_Clip(
 	for (const EFFECT_V2_BINDING& Binding : Set.Bindings)
 	{
 		if (Binding.strStage.empty() && Binding.strClip == State.strClip)
-			State.Pending.push_back({ Binding, false });
+			Expand_Binding(Binding, State.Pending);
 	}
 }
 
@@ -373,7 +612,7 @@ void Client::CEffectV2Runtime::Sync_Stage(
 			for (const EFFECT_V2_BINDING& Binding : Set.Bindings)
 			{
 				if (!Binding.strStage.empty() && Binding.strStage == strActionId)
-					State.StagePending.push_back({ Binding, false });
+					Expand_Binding(Binding, State.StagePending);
 			}
 		}
 	}
@@ -395,9 +634,10 @@ void Client::CEffectV2Runtime::Sync_Stage(
 	{
 		if (Pending.bSpawned)
 			continue;
-		if (fAgeSeconds >= static_cast<f32_t>(Pending.Binding.iStartMs) / 1000.f)
-			Spawn(State, Pending, View, pDevice, pContext, true);
+		if (fAgeSeconds >= Ms_ToSeconds(Pending.Binding.iStartMs))
+			Spawn_OnTarget(State, Pending, View, true, pDevice, pContext);
 	}
+	Apply_ChildStops(State.Spawned, fAgeSeconds, true, true);
 	Prune_Spawned(State, false, false);
 }
 
@@ -467,8 +707,139 @@ void Client::CEffectV2Runtime::Tick(
 	{
 		if (Pending.bSpawned)
 			continue;
-		if (fSeconds >= static_cast<f32_t>(Pending.Binding.iStartMs) / 1000.f)
-			Spawn(State, Pending, View, pDevice, pContext, false);
+		if (fSeconds >= Ms_ToSeconds(Pending.Binding.iStartMs))
+			Spawn_OnTarget(State, Pending, View, false, pDevice, pContext);
 	}
+	Apply_ChildStops(State.Spawned, fSeconds, false, true);
 	Prune_Spawned(State, false);
+}
+
+uint32_t Client::CEffectV2Runtime::Play_Group(
+	const EFFECT_V2_GROUP& Group,
+	const float4x4_t& PivotWorld,
+	const ComPtr<ID3D11Device>& pDevice,
+	const ComPtr<ID3D11DeviceContext>& pContext)
+{
+	if (!Ensure_Prototype(pDevice, pContext))
+		return 0u;
+	EFFECT_V2_BINDING Binding;
+	Binding.bFollowBone = false;
+	FREE_GROUP Lane;
+	Lane.Pivot = PivotWorld;
+	Expand_Group(Group, Binding, Lane.Pending);
+	if (Lane.Pending.empty())
+	{
+		Report("group has no children: " + Group.strGroupId);
+		return 0u;
+	}
+	const uint32_t iHandle = g_iNextFreeGroupHandle++;
+	if (0u == g_iNextFreeGroupHandle)
+		g_iNextFreeGroupHandle = 1u;
+	g_FreeGroups.emplace(iHandle, std::move(Lane));
+	return iHandle;
+}
+
+void Client::CEffectV2Runtime::Update_Group(const uint32_t iHandle, const EFFECT_V2_GROUP& Group)
+{
+	const auto Found = g_FreeGroups.find(iHandle);
+	if (Found == g_FreeGroups.end())
+		return;
+	FREE_GROUP& Lane = Found->second;
+	const matrix_t Pivot = XMLoadFloat4x4(&Lane.Pivot);
+	for (PENDING_SPAWN& Pending : Lane.Pending)
+	{
+		if (Pending.iChildIndex >= Group.Children.size())
+			continue;
+		if (Pending.bSpawned)
+		{
+			Pending.Local = Child_Local(Group.Children[Pending.iChildIndex]);
+			Pending.vScale = Group.Children[Pending.iChildIndex].vScale;
+			continue;
+		}
+		Retarget_Pending(Pending, Group, Pending.iChildIndex, 0u);
+	}
+	for (size_t iChild = Lane.Pending.size(); iChild < Group.Children.size(); ++iChild)
+	{
+		PENDING_SPAWN Pending;
+		Pending.Binding.bFollowBone = false;
+		Retarget_Pending(Pending, Group, iChild, 0u);
+		Lane.Pending.push_back(std::move(Pending));
+	}
+	for (SPAWNED_EFFECT& Effect : Lane.Spawned)
+	{
+		if (Effect.iChildIndex >= Group.Children.size())
+			continue;
+		const std::shared_ptr<CEffectV2Object> pObject = Effect.pObject.lock();
+		if (nullptr == pObject)
+			continue;
+		const EFFECT_V2_GROUP_CHILD& Child = Group.Children[Effect.iChildIndex];
+		const float4x4_t Local = Child_Local(Child);
+		XMStoreFloat4x4(&pObject->PivotWorld(), XMLoadFloat4x4(&Local) * Pivot);
+		const DOCUMENT_ENTRY& Entry = Ensure_Document(Child.strEffectId);
+		if (!Entry.bFailed)
+			Apply_ChildScale(*pObject, Entry.Document, Child.vScale);
+		if (!Effect.bStopApplied)
+		{
+			Effect.fStopSeconds = Child_StopSeconds(Group, Child, 0u);
+			Effect.eStop = Child.eStop;
+		}
+	}
+}
+
+void Client::CEffectV2Runtime::Set_GroupPivot(
+	const uint32_t iHandle, const float4x4_t& PivotWorld)
+{
+	const auto Found = g_FreeGroups.find(iHandle);
+	if (Found == g_FreeGroups.end())
+		return;
+	Found->second.Pivot = PivotWorld;
+}
+
+void Client::CEffectV2Runtime::Stop_Group(const uint32_t iHandle)
+{
+	const auto Found = g_FreeGroups.find(iHandle);
+	if (Found == g_FreeGroups.end())
+		return;
+	Kill_List(Found->second.Spawned);
+	g_FreeGroups.erase(Found);
+}
+
+f32_t Client::CEffectV2Runtime::Group_Seconds(const uint32_t iHandle)
+{
+	const auto Found = g_FreeGroups.find(iHandle);
+	return Found != g_FreeGroups.end() ? Found->second.fSeconds : -1.f;
+}
+
+void Client::CEffectV2Runtime::Advance_FreeGroups(
+	const f32_t fTimeDelta,
+	const ComPtr<ID3D11Device>& pDevice,
+	const ComPtr<ID3D11DeviceContext>& pContext)
+{
+	if (!std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
+		return;
+	for (auto Iterator = g_FreeGroups.begin(); Iterator != g_FreeGroups.end();)
+	{
+		FREE_GROUP& Group = Iterator->second;
+		Group.fSeconds += fTimeDelta;
+		for (PENDING_SPAWN& Pending : Group.Pending)
+		{
+			if (Pending.bSpawned)
+				continue;
+			if (Group.fSeconds >= Ms_ToSeconds(Pending.Binding.iStartMs))
+			{
+				Spawn(Pending, Group.Pivot, EFFECT_V2_TARGET{}, false, Group.Spawned,
+					pDevice, pContext);
+			}
+		}
+		Apply_ChildStops(Group.Spawned, Group.fSeconds, false, false);
+		Prune_List(Group.Spawned, false, false);
+		const bool_t bAllSpawned = std::all_of(Group.Pending.begin(), Group.Pending.end(),
+			[](const PENDING_SPAWN& Pending) { return Pending.bSpawned; });
+		if (bAllSpawned && Group.Spawned.empty())
+		{
+			Iterator = g_FreeGroups.erase(Iterator);
+			continue;
+		}
+		++Iterator;
+	}
 }

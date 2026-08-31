@@ -30,7 +30,7 @@ VS_OUT VS_MAIN(VS_IN input)
 	return output;
 }
 
-PS_EFFECT_OUT PS_MAIN(VS_OUT input)
+PS_EFFECT_OUT Decal_Shade(VS_OUT input, uniform bool bPremultiply)
 {
 	const float4 depth = g_DepthTexture.Sample(PointSampler, input.vTexcoord);
 	const float viewZ = depth.y * 1000.f;
@@ -76,7 +76,19 @@ PS_EFFECT_OUT PS_MAIN(VS_OUT input)
 		output.vSceneColor.a *= fade;
 		output.vDistortion *= fade;
 	}
+	if (bPremultiply)
+		output.vSceneColor.rgb *= output.vSceneColor.a;
 	return output;
+}
+
+PS_EFFECT_OUT PS_MAIN(VS_OUT input)
+{
+	return Decal_Shade(input, false);
+}
+
+PS_EFFECT_OUT PS_MAIN_MULTIPLY(VS_OUT input)
+{
+	return Decal_Shade(input, true);
 }
 
 technique11 DefaultTechnique
@@ -98,5 +110,14 @@ technique11 DefaultTechnique
 		VertexShader = compile vs_5_0 VS_MAIN();
 		GeometryShader = NULL;
 		PixelShader = compile ps_5_0 PS_MAIN();
+	}
+	pass Multiply
+	{
+		SetRasterizerState(RS_EffectV2);
+		SetDepthStencilState(DSS_ZNone, 0);
+		SetBlendState(BS_EffectV2Multiply, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+		VertexShader = compile vs_5_0 VS_MAIN();
+		GeometryShader = NULL;
+		PixelShader = compile ps_5_0 PS_MAIN_MULTIPLY();
 	}
 }
