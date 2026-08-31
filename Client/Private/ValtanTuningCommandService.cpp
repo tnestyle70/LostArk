@@ -328,7 +328,7 @@ bool Client::CValtanTuningCommandService::Submit_Candidate(
 			Request.iRequiredPresentationLaneMask,
 			strOutStatus);
 	if (CNetworkManager::PRESENTATION_CANDIDATE_PREFLIGHT_RESULT::
-			BYTE_IDENTICAL_ALIAS_READY != preflight)
+			CURRENT_GENERATION_READY != preflight)
 	{
 		return Reject(std::move(strOutStatus));
 	}

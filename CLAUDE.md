@@ -230,7 +230,7 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조와 `MonsterProfiles.json` formatVersion 2의 추적 유지 거리·회전·가속·감속·도착 감속 반경을 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 spawn-group bootstrap v4를 한 transaction으로 생성하며 Server pre-build가 이 publish를 강제한다. 제품 일반 몬스터는 Server에서 타깃 hysteresis, 공격 중 대상/방향 고정, navigation 경로 단축, 제한 회전과 가감속, 기존 원형 body sweep/slide를 사용하고 Client에서 2-tick transform 보간, occurrence 기반 결정적 공격 clip pool, 비공격 중 transient hit clip을 사용한다. presentation clip과 playback rate는 `MonsterCatalog.json` formatVersion 2가 소유하며 Server timing을 바꾸지 않는다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
 
-Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v50 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 현재 Shared protocol v51 snapshot으로 보낸다. Debug Next Pattern을 live Product/같은 owner Flow/idle에서 채택하는 typed command와 기존 예약·취소 CAS identity/lifecycle을 유지한다. Complete Play와 Restart는 현재 Server-active gameplay definition revision을 wire에 포함해 exact CAS하며, 다른 protocol version의 Server/Client를 섞어 실행하지 않는다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
 ### 최소 수련장 Area
 
@@ -338,7 +338,7 @@ transform과 stop window를 보존한다. `SERVER_PATTERN_STAGE` 독립 Effect�
 Open/Play 전까지 지연한다.
 도넛도 `SERVER_COMBAT_OBJECT`이며 100ms foreground 뒤 2600ms 동안 독립적으로 유지된다.
 `BossCatalog` v5는 본체/유령의 model admission scale을 구분한다. 유령 finale와 사망 제거를
-사용하려면 gameplay bootstrap v26과 현재 protocol v50의 Server/Client를 함께 빌드·배포해야 한다.
+사용하려면 gameplay bootstrap v26과 현재 protocol v51의 Server/Client를 함께 빌드·배포해야 한다.
 중앙 cue anchor, 유령 Resources 상대 경로, 포탈·잡기·사망 lifecycle은
 `.md/TEAM/발탄인수인계서.md` 11.9~11.10에 정리한다.
 phase band는 Server encounter 메타데이터이며 All Effects의 반복 tree나 stage 숨김 filter로 사용하지

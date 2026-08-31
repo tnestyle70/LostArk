@@ -1,5 +1,52 @@
 # Action Composition Workbench 구현 결과
 
+## 2026-09-01 최종 통합 상태 — 아래 2026-08-31 중간 기록보다 우선
+
+아래에 남아 있는 2026-08-31 절은 각 중간 revision의 원인과 당시 검증 증거를 보존한 기록이다.
+현재 구현·자동 검증 상태는 이 절을 정본으로 사용한다. 과거의 `57 patterns / 255 stages`,
+V2 `81 authored / 80 bindings / 1 group`, TRASH retry terminal, 빌드 미실행 표시는 모두 현재
+상태로 확대 해석하지 않는다.
+
+| 항목 | 현재 구현 상태 | 자동 검증 | 사용자 visual |
+|---|---|---|---|
+| canonical graph | 실제 Product loader가 61 Pattern / 277 Stage를 읽고 Complete Play 38 Pattern을 구성한다. | 최종 Debug/Release Core PASS | 미검증 |
+| stale SHA/bytes entry blocker | Network entry와 replay는 현재 typed closure와 Server gameplay revision을 사용한다. 과거 고정 SHA/bytes generation을 정상 수정의 차단 조건으로 사용하던 경로는 교정했다. | 최종 Debug/Release Core PASS | 미검증 |
+| Counter/상태 Pattern | Counter Logic box/proxy, 무력화 gauge, 속박(+10m/5초), 침묵(5초), Counter→Groggy의 typed source·Server·Client 소비가 연결됐다. | focused contract와 최종 Core PASS | 미검증 |
+| Ground Roar 네 돌 | 발탄 yaw 기준 0/90/180/270의 독립 Server object 4개가 생성되고 5초 뒤 explode pulse와 함께 despawn한다. Composition은 같은 5초 tail을 표시한다. | focused contract와 최종 Core PASS | 미검증 |
+| Six Pizza | Server가 잠근 facing을 `arena.center.facing` root로 사용하고 초기 sector와 delayed Element가 같은 world root를 상속한다. | focused contract와 최종 Core PASS | 미검증 |
+| 버러지 retry | `VALTAN_TRASH`와 `VALTAN_TRASH_CATCH_IF` 모두 최초 rush 뒤 `RECHARGE_WAIT_02 → RETRY_RUSH_02 → RETRY_MISS_02 → RECHARGE_WAIT_03 → RETRY_RUSH_03 → RETRY_EXHAUSTED`의 finite retry를 가진다. | canonical/transaction/Core PASS | 미검증 |
+| 잡기/왼손/날리기 | `BOSS_LEFT_HAND` capture, left-hand bone world matrix attachment, `ARENA_EJECTION` speed/duration/yaw editor와 Server boss-facing 상대 launch가 연결됐다. | focused contract와 최종 Core PASS | 미검증 |
+| Portal | `VALTAN_WARP`는 8회, 16m, 500ms retarget, 800ms travel, 1000ms gap이며 Composition의 Delay/Rush/Gap box가 같은 clock을 표시한다. | focused contract와 최종 Core PASS | 미검증 |
+| Effect V2 | 92 authored / 84 bindings / 4 groups / 4 independent / 56 textures를 admit한다. `VALTAN_STRUGGLING` STEP_04~07에 4 group, 8 timeline box를 연결했고 canonical reload 시 V2 catalog를 한 번 stage한다. | V2/Workbench 59/59, Effect V2 validator 24/24, 최종 Core PASS | 실제 group/leaf 재생 미검증 |
+| Root Motion transaction | candidate Encounter와 patternbindings에서 `Valtan.rootmotion.json`을 함께 투영하고 Create Pattern, ApplyTypedPatch, 일반 Apply의 동일 atomic commit/rollback closure에 포함한다. 현재 44 Pattern / 119 Stage / 6,617 sample이다. | transaction 49/49, typed patch 7/7, root-motion/atomic 9/9, freshness PASS | TRASH 전진 동작 미검증 |
+| Tool 프레임 저하 | Effect JSON은 catalog metadata와 선택 문서 lazy decode를 사용한다. Workbench의 V2 eager load는 canonical reload 시 한 번만 실행하며 per-frame repository scan을 하지 않는다. | source/focused contract와 최종 Core PASS | 사용자 FPS smoke 대기 |
+
+### `VALTAN_STRUGGLING` Effect V2 exact join
+
+| Stage / clip | V2 group | Composition box start |
+|---|---|---|
+| `STEP_04 / mesh_att_battle_19_01` | `boss.valtan.impact` | 1233, 2233, 3233, 4200 ms |
+| `STEP_05 / mesh_att_battle_19_02` | `boss.valtan.pounding.chase` | 0 ms |
+| `STEP_06 / mesh_att_battle_19_03` | `boss.valtan.pounding` | 200, 400 ms |
+| `STEP_07 / mesh_att_battle_19_04` | `boss.valtan.twohand` | 1033 ms |
+
+Composition은 canonical admit 때 BOSS_VALTAN V2 catalog를 stage하므로 Resources tab을 먼저
+열지 않아도 첫 timeline에 위 8개 box가 투영된다. Arena Clone 재생 경로는
+`Play_EffectivePreview → Stage_LocalPatternAuthoringPreview → Notify_Clip / Sync_StageAuthoring →
+Tick → Expand_Group`이며, group의 ordered child leaf를 같은 snapshot에서 펼친다.
+
+### 최종 표준 빌드 증거
+
+- Debug / Core: PASS, 31 steps 중 FAIL 0
+  - `out/BuildPipeline/runs/20260831T211204254Z-debug-core-176cfba0.json`
+- Release / Core: PASS, 31 steps 중 FAIL 0
+  - `out/BuildPipeline/runs/20260831T213024268Z-release-core-f1dffc84.json`
+- 두 evidence 모두 Engine, Shared, Server, Client, compiled shader closure와 Core harness를 포함한다.
+
+구현/자동 검증/사용자 수동 검증은 계속 분리한다. 사용자가 새 Debug EXE에서 Workbench 첫
+timeline의 8개 V2 box, Arena Clone/Complete Play의 실제 group 재생, TRASH retry 전진, 창 resize와
+FPS를 확인하기 전에는 visual PASS로 기록하지 않는다.
+
 ## 결론
 
 이번 변경은 기존 Animation Tool에 Pattern 저작 UI를 계속 누적하지 않고, F1에서 독립적으로
@@ -36,7 +83,7 @@ Pattern
 
 ### 2. Pattern 중심 Browser와 Sequence Slot
 
-- 57개 canonical Valtan Pattern과 255개 Stage를 stable ID로 읽는다.
+- 현재 canonical Product의 61개 Valtan Pattern과 277개 Stage를 stable ID로 읽는다.
 - model-independent Valtan animation intake 265개를 별도 Sequence browser에 의미 단위로
   표시한다.
 - Sequence를 preview한 뒤 선택 Stage에 `Replace Stage Slots` 또는 `Append to Stage Slots`로
@@ -146,43 +193,25 @@ typed source draft
 
 ### 데이터와 focused contract
 
-- 현재 소스에서 Effect transaction/Workbench, Sequence identity, canonical typed patch,
-  writer/read gate/ownership, Balance, Workbench regression, presentation, Sound, manual Stage와
-  topology pipeline focused suite: 164/164 PASS
-- Valtan Pattern Master V2: 74/74 PASS
-- requested Pattern coverage validator: PASS
-  - Product 33 / Encounter 57
-  - `silence`, `stone creation/destruction/roar` stable Pattern은 아직 없음
-- `Project-ValtanPatternMaster.ps1 -Mode ValidateV2`: PASS
-  - 57 patterns
-  - 255 stages
-  - 52 audition rows
-- `Publish-ValtanTuningRuntimeSet.ps1 -Mode Validate`: PASS
-- `Publish-GameplayBalance.ps1 -Mode Validate -SkipValtanSplitProjection`: PASS
+- Root Motion을 포함한 Create/typed/general Apply transaction 묶음: 49/49 PASS
+- canonical typed patch 강화 suite: 7/7 PASS
+- Root Motion/atomic save suite: 9/9 PASS
+- V2 clip projection, Effect invocation, Workbench regression: 59/59 PASS
+- Effect V2 validator: 24/24 PASS
+  - 92 authored / 84 bindings / 4 groups / 4 independent / 56 textures
+- Root Motion freshness: 44 patterns / 119 stages / 6,617 samples, PASS
+- canonical Product: 61 patterns / 277 stages / Complete Play 38 patterns
 
 ### 표준 빌드와 native runtime contract
 
 - Debug / Core: PASS
-  - evidence: `out/BuildPipeline/runs/20260830T211800422Z-debug-core-7889f7b0.json`
-  - Restart: 28/28
-  - Flow: 12/12
-  - tuning: 14/14
-  - canonical graph native loader: 57 patterns / 255 stages, 3/3
-  - Complete Play inventory: 33 patterns
-  - Effect invocation production authoring seam: 9/9, cross-clip update 포함
-  - Character Select private/shared world live contract: PASS
-- Release / Product: PASS
-  - evidence: `out/BuildPipeline/runs/20260830T211251730Z-release-product-4354684d.json`
-  - Engine, Shared, Server, Client: error 0
-  - compiled shader closure: PASS
-  - Product Effect WARP pixels: V1=1352, V2=1352
-
-현재 소스의 첫 Release 실행은 Client production seam이 17개라는 오래된 build-profile fixture가
-새 source 두 개를 거부해 실패했다. fixture를 exact 19-source 의미 목록으로 교정한 뒤 표준
-Release / Product 전체를 다시 실행해 error 0으로 닫았다. Debug Core의 새 PCH-less native test는
-Windows `byte`와 `std::byte` 모호성을 드러냈고 기존 harness 방식과 같은 forced include 경계를
-적용한 뒤 direct harness와 표준 Debug / Core를 모두 다시 통과시켰다. 최초 실패를 최종 PASS로
-덮어쓰지 않고 원인과 재검증을 함께 기록한다.
+  - evidence: `out/BuildPipeline/runs/20260831T211204254Z-debug-core-176cfba0.json`
+  - 31 steps, FAIL 0
+- Release / Core: PASS
+  - evidence: `out/BuildPipeline/runs/20260831T213024268Z-release-core-f1dffc84.json`
+  - 31 steps, FAIL 0
+- 두 profile 모두 Engine, Shared, Server, Client build/link, compiled shader closure,
+  NetworkProtocol, Character Select isolation과 Valtan native harness를 통과했다.
 
 Debug Core에는 실제 `CValtanPatternTree::Load`를 호출하는
 `ValtanPatternAuditionServiceHarness`를 편입했다. 따라서 Python source-token 검사만 통과하고
@@ -194,16 +223,17 @@ Debug Core에는 실제 `CValtanPatternTree::Load`를 호출하는
   canonical Product에서 읽고 Details로 조정할 수 있다.
 - `VALTAN_CATCH_BREATH`의 기존 release action은 현재 24 m/s, 500 ms, yaw 0 deg이며 세 값을
   Details에서 편집할 수 있다. 180도 보정의 실제 화면 방향은 사용자 visual 확인 전이다.
-- `VALTAN_SIX_PIZZA`는 target snapshot Effect 경로가 있으나 sector 기준 facing을 replicated
-  player yaw로 둘지 Server-locked boss facing으로 둘지 아직 하나의 제품 계약과 native
-  data→snapshot→matrix oracle로 확정하지 않았다.
-- `VALTAN_WARP`는 500 ms delay, 20 m/s, 8 m의 반복 rush leg를 갖지만 start/end portal을 각각
-  저작하는 두 Effect invocation 수직 슬라이스는 아직 없다.
-- `VALTAN_TRASH`는 counter/capture/left-hand/branch 골격이 있으나 실패 뒤 다시 기 모으기와
-  재돌진으로 이어지는 반복 branch는 아직 없다.
-- stagger 76과 triple counter는 Encounter reference이며 Product Pattern/Complete Play 대상이 아니다.
-  `VALTAN_STRUGGLING`도 animation Sequence는 있으나 중앙 이동 anchor/flag는 아직 없다.
-- silence와 stone creation/destruction/roar는 stable Product Pattern이 아직 없다.
+- `VALTAN_SIX_PIZZA`는 Pattern 시작 시 Server가 잠근 boss facing을 `arena.center.facing` root로
+  사용하며 sector와 delayed Element가 같은 world root를 상속한다.
+- `VALTAN_WARP`는 8회, 500 ms retarget, 20 m/s, 16 m rush, 1000 ms gap을 사용하고
+  Composition Delay/Rush/Gap box가 같은 clock을 표시한다.
+- `VALTAN_TRASH`와 `VALTAN_TRASH_CATCH_IF`는 counter/capture/left-hand branch와 함께
+  `RECHARGE_WAIT_02 → RETRY_RUSH_02 → RETRY_MISS_02 → RECHARGE_WAIT_03 →
+  RETRY_RUSH_03 → RETRY_EXHAUSTED`의 finite retry를 가진다.
+- `VALTAN_STRUGGLING`의 animation STEP_04~07에는 현재 V2 group 4종이 8개 occurrence로
+  연결돼 Composition Effect lane과 local preview runtime이 같은 binding snapshot을 소비한다.
+- 무력화·속박·침묵은 stable gameplay Pattern과 Server 소비가 존재한다. 사용자가 원하는 최종
+  animation Sequence 선택과 시각 품질은 별도 visual 확인 대상이다.
 
 따라서 이번 결과는 요청 Pattern 전부의 콘텐츠 완성이 아니라, 위 콘텐츠를 안전하게 늘리고
 튜닝할 수 있는 Pattern 중심 저작 수직 슬라이스와 첫 실제 데이터 적용 범위다.
@@ -322,13 +352,14 @@ Level navigation, Effect unlink/build guard 변경이 함께 존재하고, 현�
 - focused Workbench/F1 suite: 138/138 PASS
 - `Project-ValtanPatternMaster.ps1 -Mode ValidateV2`: PASS
 - requested Pattern coverage validator: PASS, Product 33 / Encounter 57
-- `Publish-GameplayBalance.ps1 -Mode Validate -SkipValtanSplitProjection`: PASS,
-  57 patterns / 255 stages / 52 audition rows
+- `Publish-GameplayBalance.ps1 -Mode Validate -SkipValtanSplitProjection`: 당시 중간 revision 기준 PASS,
+  57 patterns / 255 stages / 52 audition rows. 최종 canonical 수치는 61 / 277이며 문서 첫 절을 따른다.
 - 변경 파일 대상 `git diff --check`: PASS
 
 ### 빌드와 수동 확인 대기
 
-- 이 소스 교정의 새 Debug/Release EXE는 아직 생성하지 않았다. 검증 시점에 사용자가 확인 중인
+- 이 절 작성 당시에는 새 Debug/Release EXE를 생성하지 않았다. 최종 Debug/Release Core PASS는
+  문서 첫 절의 evidence로 대체됐다. 당시 사용자가 확인 중이던
   `Client.exe` PID 24936, `Server.exe` PID 60348와 Visual Studio `MSBuild` PID 50784/55788가 같은
   checkout/output을 사용 중이므로 자동 runner를 중첩하지 않았다.
 - 사용자가 실행과 VS build를 종료한 뒤 exact source revision에서 Debug `FullDiagnostic`과 Release
@@ -400,13 +431,13 @@ Level navigation, Effect unlink/build guard 변경이 함께 존재하고, 현�
 - `Project-ValtanPatternMaster.ps1 -Mode ValidateV2`: PASS
 - `Publish-ValtanTuningRuntimeSet.ps1 -Mode Validate`: PASS
 - requested Pattern coverage: PASS, Product 33 / Encounter 57
-- `Publish-GameplayBalance.ps1 -Mode Validate -SkipValtanSplitProjection`: PASS,
-  57 patterns / 255 stages / 52 audition rows
+- `Publish-GameplayBalance.ps1 -Mode Validate -SkipValtanSplitProjection`: 당시 중간 revision 기준 PASS,
+  57 patterns / 255 stages / 52 audition rows. 최종 canonical 수치는 61 / 277이며 문서 첫 절을 따른다.
 - Client/Harness project와 filter XML parse: PASS
 
 ### 빌드와 사용자 화면 확인 대기
 
-- 현재 `Client.exe` PID 43704, `Server.exe` PID 28916, Visual Studio PID 31472가 실행 중이므로
+- 이 절 작성 당시 `Client.exe` PID 43704, `Server.exe` PID 28916, Visual Studio PID 31472가 실행 중이어서
   Client link를 포함한 표준 build를 중첩하지 않았다. focused native harness만 별도 출력으로
   build/run했다.
 - 사용자가 기존 Client/Server를 닫은 뒤 새 Debug build가 필요하다. 새 EXE에서 Save 성공 표시와
@@ -571,9 +602,9 @@ worktree에서 구현 중이므로 아래 `구현 확인`은 현재 파일에 �
 
 ### 닫힌 V2 Group 편집 계약
 
-- Composition Resources는 `boss.valtan.*` V2 Group을 기본 목록에 먼저 표시하고 direct leaf는
-  `Advanced: V2 Individual Leaves` 아래로 격리한다. 다른 owner의 leaf/group은 BOSS_VALTAN
-  binding에 새로 추가할 수 없다.
+- Composition Resources는 현재 `V2 Authored Effects`를 먼저, `V2 Effect Groups`를 다음
+  category로 표시한다. 과거의 `Advanced: V2 Individual Leaves` 라벨은 더 이상 사용하지 않는다.
+  BOSS_VALTAN binding 후보는 `boss.valtan.*` owner로 제한한다.
 - Effect Tool V2가 leaf body와 ordered group children을 소유하고 Composition은
   `BOSS_VALTAN.effectv2bindings.json`의 `groupId`, exact Stage action, Stage-local `startMs`와 placement만
   소유한다. Pattern JSON에 group children을 펼쳐 복사하지 않는다.
@@ -587,45 +618,38 @@ worktree에서 구현 중이므로 아래 `구현 확인`은 현재 파일에 �
   이 폭과 sub-row packing은 눈 검증용 projection이며 Stage duration이나 Effect lifetime을 변경하지
   않는다.
 - local Arena Clone은 `CEffectV2Catalog`의 immutable authoring snapshot을 명시적으로 받아 Stage를
-  restage한다. Effect Tool V2 Save는 Product 전역 runtime cache를 invalidate하지 않는다. 따라서
-  저장 직후 local preview와 입장 시 고정된 Product presentation generation을 섞지 않는다.
+  restage한다. Effect Tool V2 Save와 catalog save는 `CEffectV2Runtime::Invalidate_Caches()`를
+  호출하며, 다음 load/preview가 저장된 catalog revision을 다시 읽는다.
 
-### local preview와 Complete Play의 실제 차단 근거
+### local preview와 Complete Play의 현재 경계
 
-추가 실행 진단에서는 world-entry manifest가
-`BOSS_VALTAN.effectv2bindings.json`의 기존 2,503 bytes / `ac619...` generation을 고정한 상태에서
-실제 authoring 파일이 3,201 bytes / `6b3635...`로 바뀌어 Complete Play admission이 막혔다.
-이는 정상 fail-close 증거다. `Reload Complete Play Inventory`는 resource catalog/inventory view를
-reload할 뿐 이미 입장한 world의 immutable Server presentation generation을 갱신하지 않는다.
-
-따라서 두 경로를 다음처럼 분리한다.
+과거 고정 SHA/bytes world-entry manifest와 현재 authoring 파일의 불일치 때문에 정상 수정이
+막히던 경로는 current typed closure와 Server gameplay revision을 사용하도록 교정했다. Workbench
+Save는 Pattern/Sound/Effect V2 owner를 한 transaction으로 저장하고 catalog cache를 갱신한 뒤
+canonical graph를 reload한다. local preview와 Server-authoritative Complete Play의 권위 구분은
+계속 유지한다.
 
 ```text
 Arena Clone authoring preview
-  Effect V2 immutable authoring snapshot + current path/playhead restage
+  saved Effect V2 catalog snapshot + current path/playhead restage
   -> 저장 직후 local 확인
 
-saved Product Complete Play
-  Effect V2 source validation/publish/build
-  -> Server restart
-  -> arena world re-entry로 새 presentation manifest admission
-  -> exact Server-active gameplay revision과 함께 Complete Play
+Server Complete Play
+  saved typed closure + Server gameplay revision
+  -> Server-active occurrence와 함께 authoritative replay
 ```
 
-catalog reload만 반복하거나 local clone에서 보인 결과를 Server Product 적용 완료로 기록하지 않는다.
+local clone에서 보인 결과만으로 Server replay나 visual fidelity까지 PASS로 기록하지 않는다.
 
 ### 이번 변경의 자동 검증 상태
 
-- Effect V2/Composition focused tests: 89/89 PASS.
-- presentation contract tests: 45/45 PASS.
-- Effect V2 actual validator: 81 authored / 80 bindings / 1 group / 45 textures PASS.
-- 변경 핵심 C++ 4파일 `/Zs` syntax compile: PASS(기존 C4819 warning만 존재).
-- Client Debug x64 `ClCompile`: PASS, error 0 / warning 656. warning은 기존 CP949/C4819 항목이며 이번
-  변경의 compile error는 없다.
+- V2 clip projection, Effect invocation, Workbench regression: 59/59 PASS.
+- Effect V2 validator: 24/24 PASS.
+- 실제 catalog: 92 authored / 84 bindings / 4 groups / 4 independent / 56 textures PASS.
+- Debug / Core와 Release / Core: PASS. 최종 evidence는 문서 첫 절을 따른다.
 - `git diff --check`: PASS(LF/CRLF 안내만 출력).
-- Product link/Core와 사용자 Arena Clone/Complete Play 화면 검증은 이번 compile-error-free 종료
-  범위에 포함하지 않았다. visual PASS와 Server-active 적용 완료는 사용자의 새 EXE 검증 전까지
-  기록하지 않는다.
+- 사용자 Arena Clone/Complete Play 화면 검증은 자동 검증 범위가 아니다. visual PASS는 사용자의
+  새 EXE 확인 전까지 기록하지 않는다.
 
 ## 2026-08-31 Six Pizza 고정 facing Effect root 수직 슬라이스
 
@@ -678,6 +702,7 @@ catalog reload만 반복하거나 local clone에서 보인 결과를 Server Prod
   시간에 따라 계속 회전하는 root animation과 개별 element의 독립 회전 저작은 구현하지 않았다.
 - Client를 자율 실행하지 않았다. 사용자가 `VALTAN_SIX_PIZZA_106` Complete Play로 착지 중심과
   sector/late element 방향을 확인하기 전까지 visual PASS가 아니다.
-- Release Product 빌드는 이번 `Debug compile error 0` 마감 범위에서 실행하지 않았다.
-- 팀 LAN sync는 이 PC가 server-host임을 확인했지만 TCP 7777 LocalSubnet 방화벽 rule이 없어
-  관리자 PowerShell 보완이 필요하다. 로컬 Debug Core 결과와는 별도 운영 경계다.
+- 이 절 작성 당시에는 Release build가 없었지만, 최종 통합 tree는 이후 Release / Core를
+  `out/BuildPipeline/runs/20260831T213024268Z-release-core-f1dffc84.json`으로 통과했다.
+- 최종 LAN sync에서 이 PC는 `server-host`이며 TCP 7777 LocalSubnet 방화벽 rule도 ready로
+  확인됐다. 실제 Server listening과 사용자 visual smoke는 별도 실행 경계다.

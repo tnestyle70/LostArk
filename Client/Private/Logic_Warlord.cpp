@@ -23,15 +23,26 @@ namespace
 	body does not draw it -- see the mask note below. */
 	constexpr EQUIPMENT_PART_SPEC Equipment[] =
 	{
-		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_Warlord_Arm") },
+		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_Warlord_Arm"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::HANDS },
 		/* Hidden while the helmet is worn: the loose hairstyle pokes through the
 		shell. The part stays created for a later helmet toggle. */
 		{ TEXT("Part_10_Equip_Hair"),     TEXT("Prototype_Component_Model_Warlord_Hair"),
-		  0u, true },
-		{ TEXT("Part_10_Equip_Helmet"),   TEXT("Prototype_Component_Model_Warlord_Helmet") },
-		{ TEXT("Part_10_Equip_Lower"),    TEXT("Prototype_Component_Model_Warlord_Lower") },
-		{ TEXT("Part_10_Equip_Shoulder"), TEXT("Prototype_Component_Model_Warlord_Shoulder") },
-		{ TEXT("Part_10_Equip_Upper"),    TEXT("Prototype_Component_Model_Warlord_Upper") },
+		  0u, true, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::HEAD },
+		{ TEXT("Part_10_Equip_Helmet"),   TEXT("Prototype_Component_Model_Warlord_Helmet"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::HEAD },
+		{ TEXT("Part_10_Equip_Lower"),    TEXT("Prototype_Component_Model_Warlord_Lower"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::LOWER },
+		{ TEXT("Part_10_Equip_Shoulder"), TEXT("Prototype_Component_Model_Warlord_Shoulder"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::SHOULDER },
+		{ TEXT("Part_10_Equip_Upper"),    TEXT("Prototype_Component_Model_Warlord_Upper"),
+		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
+		  EQUIPMENT_PRESENTATION_SLOT::UPPER },
 	};
 
 	/* The cook lays this body out 0 lower / 1 upper / 2 base_upper / 3 arm /

@@ -63,8 +63,12 @@ public:
 	{
 		int32_t iSkillId = 0;
 		int32_t iSequenceIndex = 0;
+		std::string strStableId;
+		std::string strCategory;
+		std::string strProfileId;
 		std::string strDisplayName;
 		std::string strMode;
+		bool_t bValtanPatternCompatible = false;
 		std::vector<COMPOSITION_SEQUENCE_CLIP_VIEW> Clips;
 	};
 
@@ -316,6 +320,9 @@ public:
 	/* Typed Resource Files handoff for one extracted Kakul profile. 07 is an
 	   authoring profile alias whose physical preview body is MN_RPCT_05. */
 	bool_t Open_KakulProfile(const std::string& profileId);
+	bool_t Open_KakulAction(
+		const std::string& profileId,
+		std::uint32_t iSourceActionId);
 	bool_t Stage_ValtanCompositionPreview(std::string& strOutStatus);
 	bool_t Play_ValtanCompositionPattern(
 		const std::string& strPatternId,
@@ -336,6 +343,13 @@ public:
 	void Stop_ValtanCompositionPattern(std::string& strOutStatus);
 	COMPOSITION_PREVIEW_STATE Get_ValtanCompositionPreviewState() const;
 	bool_t Get_ValtanCompositionSequences(
+		std::vector<COMPOSITION_SEQUENCE_VIEW>& OutSequences,
+		std::string& strOutStatus);
+	/* One model-independent authoring catalog assembled only from the fixed
+	   Valtan and Kakul/Saydon typed source documents. It never scans Resources
+	   or the repository, and is re-read only when its owning UI explicitly
+	   reloads the catalog. */
+	bool_t Get_ActionCompositionSequenceCatalog(
 		std::vector<COMPOSITION_SEQUENCE_VIEW>& OutSequences,
 		std::string& strOutStatus);
 	/* Native source-window admission uses the exact body + attached AnimSet
@@ -441,6 +455,16 @@ public:
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
 		const VALTAN_PATTERN_SOUND_CUE_ROW_ID& RowId,
+		std::string& strOutStatus);
+	bool_t Prepare_ValtanCompositionPatternSoundSave(
+		std::string& strOutBaselineBytes,
+		std::string& strOutCandidateBytes,
+		uint64_t& iOutDraftGeneration,
+		bool_t& bOutDirty,
+		std::string& strOutStatus) const;
+	bool_t Accept_ValtanCompositionPatternSoundSave(
+		uint64_t iExpectedDraftGeneration,
+		const std::string& strExpectedCandidateBytes,
 		std::string& strOutStatus);
 	bool_t Save_ValtanCompositionPatternSounds(std::string& strOutStatus);
 
@@ -945,6 +969,7 @@ private:
 	bool_t m_bKakulPatternDirty = false;
 	bool_t m_bKakulActionReloadConfirmationRequested = false;
 	int32_t m_iSelectedKakulAction = -1;
+	std::uint32_t m_iRequestedKakulSourceActionId = 0u;
 	int32_t m_iSelectedKakulStage = 0;
 	int32_t m_iSelectedKakulSlot = 0;
 	int32_t m_iSelectedKakulActionClip = 0;

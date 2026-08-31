@@ -237,6 +237,41 @@ def _validate_groups(
     return groups
 
 
+def _load_canonical_clip_inventories(
+    repository_root: Path, binding_root: Path
+) -> dict[str, set[str]]:
+    """Load clip IDs only for archetypes whose binding contract defines one."""
+    boss_bindings = binding_root / "BOSS_VALTAN.effectv2bindings.json"
+    if not boss_bindings.is_file():
+        return {}
+    presentation_path = repository_root / "Data/Valtan/Valtan.presentation.json"
+    if not presentation_path.is_file():
+        raise ContractError(
+            "BOSS_VALTAN Effect V2 clip bindings require the canonical "
+            f"Valtan presentation inventory: {presentation_path}"
+        )
+    presentation = _read_json(presentation_path)
+    clips: set[str] = set()
+
+    def collect(value: Any) -> None:
+        if isinstance(value, dict):
+            clip = value.get("clip")
+            if isinstance(clip, str) and clip:
+                clips.add(clip)
+            for child in value.values():
+                collect(child)
+        elif isinstance(value, list):
+            for child in value:
+                collect(child)
+
+    collect(presentation)
+    if not clips:
+        raise ContractError(
+            "BOSS_VALTAN canonical presentation contains no admitted clip inventory"
+        )
+    return {"BOSS_VALTAN": clips}
+
+
 def _load_independent(
     v2_root: Path, authored: dict[str, Path], groups: dict[str, list[tuple[str, int]]]
 ) -> tuple[set[str], set[str]]:
@@ -270,6 +305,7 @@ def _validate_bindings(
     binding_root: Path,
     authored: dict[str, Path],
     groups: dict[str, list[tuple[str, int]]],
+    canonical_clips: Mapping[str, set[str]],
     independent_effects: set[str],
     independent_groups: set[str],
 ) -> int:
@@ -319,6 +355,17 @@ def _validate_bindings(
             ):
                 raise ContractError(
                     f"Effect V2 binding needs exactly one stage/clip: {archetype_id}: {subject}"
+                )
+            archetype_clips = canonical_clips.get(archetype_id)
+            if (
+                isinstance(clip, str)
+                and clip
+                and archetype_clips is not None
+                and clip not in archetype_clips
+            ):
+                raise ContractError(
+                    "Effect V2 clip binding is absent from the canonical "
+                    f"{archetype_id} presentation inventory: {subject}: {clip}"
                 )
             start_ms = _require_ms(row.get("startMs"), archetype_id, f"{subject} startMs")
             if not isinstance(row.get("bone"), str):
@@ -376,9 +423,18 @@ def validate(repository_root: Path, resource_root: Path) -> dict[str, int]:
     v2_root = repository_root / "Data/Effects/V2"
     authored, usage = _validate_authored(v2_root / "Authored", resource_root)
     groups = _validate_groups(v2_root / "Groups", authored)
+    binding_root = v2_root / "Bindings"
+    canonical_clips = _load_canonical_clip_inventories(
+        repository_root, binding_root
+    )
     independent_effects, independent_groups = _load_independent(v2_root, authored, groups)
     binding_count = _validate_bindings(
-        v2_root / "Bindings", authored, groups, independent_effects, independent_groups
+        binding_root,
+        authored,
+        groups,
+        canonical_clips,
+        independent_effects,
+        independent_groups,
     )
     return {
         "authored": len(authored),

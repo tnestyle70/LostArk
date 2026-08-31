@@ -26,6 +26,7 @@ class CBalanceTool;
 class CBossTool;
 class CCameraTool;
 class CCharacterPreviewPanel;
+class CEquipmentAuthoringTool;
 class CSkillWindowView;
 class CInventoryView;
 class CChatWindowView;
@@ -49,6 +50,7 @@ private:
 		BALANCE,
 		BOSS,
 		CAMERA,
+		EQUIPMENT,
 		COUNT
 	};
 
@@ -532,6 +534,7 @@ private:
 	unique_ptr<CActionCompositionWorkbench> m_pActionCompositionWorkbench =
 		{ nullptr };
 	shared_ptr<CCharacterPreviewPanel> m_pCharacterPreviewPanel = { nullptr };
+	unique_ptr<CEquipmentAuthoringTool> m_pEquipmentAuthoringTool = { nullptr };
 	unique_ptr<CHUDLayoutTool> m_pHUDLayoutTool = { nullptr };
 	unique_ptr<CBalanceTool> m_pBalanceTool = { nullptr };
 	unique_ptr<CBossTool> m_pBossTool = { nullptr };

@@ -1290,9 +1290,19 @@ bool_t Client::CValtanPatternFlowDocument::Add_Slot(
 	for (const VALTAN_PATTERN_FLOW_SLOT& slot : flow.Slots)
 		orderedNodeIds.push_back(slot.strSlotId);
 	if (bEntryPattern)
+	{
 		orderedNodeIds.insert(orderedNodeIds.begin(), nodeId);
+	}
 	else
-		orderedNodeIds.push_back(nodeId);
+	{
+		/* Authoring convenience: a newly chosen Pattern becomes Pattern 01 so
+		   Restart Flow can audition it immediately.  The optional entrance
+		   cinematic remains the immutable entry when it is present. */
+		const auto insertAt = !flow.Slots.empty() &&
+			OPTIONAL_ENTRY_PATTERN_ID == flow.Slots.front().strPatternId ?
+			std::next(orderedNodeIds.begin()) : orderedNodeIds.begin();
+		orderedNodeIds.insert(insertAt, nodeId);
+	}
 	++flow.iNextNodeOrdinal;
 	if (!Rebuild_LinearFlow(flow, orderedNodeIds, outStatus))
 		return false;
@@ -1301,7 +1311,8 @@ bool_t Client::CValtanPatternFlowDocument::Add_Slot(
 	m_Draft = std::move(staged);
 	outSlotId = nodeId;
 	outStatus = "Added " + std::string(patternId) + " as " + nodeId +
-		(bEntryPattern ? " at the Flow entry node." : ".");
+		(bEntryPattern ? " at the Flow entry node." :
+			" at Pattern 01 (after the entrance cinematic when present).");
 	return true;
 }
 

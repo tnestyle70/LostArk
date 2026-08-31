@@ -120,8 +120,8 @@ class ValtanBossToolContractTests(unittest.TestCase):
             "CValtanPatternTree::Load",
             "CValtanPatternAuditionService::Get().Submit",
             "CCombatHUDViewModel::Get().Get_Boss",
-            "CEffectDocumentCodec::Load",
             "CValtanCinematicCameraDocument",
+            "CValtanPatternFlowDocument",
             "Request_RevivePlayer",
         ):
             self.assertIn(marker, self.boss_cpp + self.boss_h)
@@ -230,7 +230,6 @@ class ValtanBossToolContractTests(unittest.TestCase):
             'ImGui::Button("Complete Play Selected")',
             'ImGui::Checkbox("Repeat"',
             'ImGui::Button("Stop After Current")',
-            'ImGui::CollapsingHeader("Why / Advanced diagnostics")',
             '"Animation"',
             '"Effect"',
             '"Camera"',
@@ -239,6 +238,10 @@ class ValtanBossToolContractTests(unittest.TestCase):
             '"Next"',
         ):
             self.assertIn(marker, self.boss_cpp)
+        self.assertNotIn(
+            'ImGui::CollapsingHeader("Why / Advanced diagnostics")',
+            self.boss_cpp,
+        )
         self.assertNotIn("InputFloat", self.boss_cpp)
         self.assertNotIn("SliderFloat", self.boss_cpp)
 
@@ -545,7 +548,6 @@ class ValtanBossToolContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, self.effect_cpp)
         self.assertIn("Repeat and Revive remain in Boss Tool", self.balance_cpp)
-        self.assertIn("Boss Tool owns Repeat, Revive, and diagnostics", self.effect_cpp)
         action_bar = function_body(
             self.boss_cpp,
             "void Client::CBossTool::Render_ActionBar()",
@@ -565,7 +567,6 @@ class ValtanBossToolContractTests(unittest.TestCase):
         for marker in (
             "Is_ExactCameraInvocation",
             '"Tuple mismatch: "',
-            '"join %s | frame %s | origin %s"',
             "BOSS_FACING",
             "PLAYER_BOSS_FRAME",
         ):
@@ -585,7 +586,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
             "Validate_StillCurrent",
         ):
             self.assertIn(marker, self.network_h + self.network_cpp)
-        self.assertIn("workspace changed; restart/apply", self.boss_cpp)
+        self.assertNotIn("workspace changed; restart/apply", self.boss_cpp)
         for marker in (
             "CEffectCatalog::Find_Loaded",
             "CEffectDocumentCodec::Serialize",
@@ -593,9 +594,12 @@ class ValtanBossToolContractTests(unittest.TestCase):
             "NEXT-SPAWN MATCHED - replay required",
             "STALE: Effect source or next-spawn catalog changed.",
             "m_ResourceSearchDocumentGenerations",
-            "Gameplay rows: LOCAL AUTHORING - Server parity unverified.",
         ):
-            self.assertIn(marker, self.boss_cpp)
+            self.assertNotIn(marker, self.boss_cpp)
+        self.assertIn(
+            "Gameplay rows: LOCAL AUTHORING - Server parity unverified.",
+            self.boss_cpp,
+        )
         self.assertNotIn('"runtime matched"', self.boss_cpp)
 
     def test_graph_reload_holds_one_generation_through_final_commit(self) -> None:
@@ -626,25 +630,19 @@ class ValtanBossToolContractTests(unittest.TestCase):
             self.boss_cpp,
             "bool_t Client::CBossTool::Get_ServerActivePatternRevision(",
         )
-        tuning_gate = admission.index(
-            "Is_LatestGameplaySourceServerActive"
-        )
-        physical_gate = admission.index(
-            "Is_CurrentPresentationBaselineIntact"
-        )
-        publish_revision = admission.index("OutRevision = activeRevision")
-        self.assertLess(tuning_gate, physical_gate)
-        self.assertLess(physical_gate, publish_revision)
-        self.assertIn(
-            "physical canonical Product closure no longer matches",
-            admission,
-        )
+        self.assertIn("ServerActiveRevision", admission)
+        self.assertIn("Is_Connected()", admission)
+        self.assertIn("activeRevision.Is_Valid()", admission)
+        self.assertIn("OutRevision = activeRevision", admission)
+        self.assertNotIn("Is_LatestGameplaySourceServerActive", admission)
+        self.assertNotIn("Is_CurrentPresentationBaselineIntact", admission)
 
         native = self.presentation_admission_native_tests
         for marker in (
             "Acquire_PackagedBaselineFromRoot",
             "Acquire_ReceiptFromRoot",
-            "changed physical Product bytes re-opened the old world-entry M",
+            "changed local presentation bytes were compared with the world-entry receipt",
+            "Acquire_ExactReceiptFromRoot",
         ):
             self.assertIn(marker, native)
         self.assertIn("std::ios::binary | std::ios::app", native)
@@ -659,13 +657,14 @@ class ValtanBossToolContractTests(unittest.TestCase):
             self.assertIn(marker, picker)
         for forbidden in ("Add_Slot", "m_FlowDocument", ".Submit(", "Send_", "CNetworkManager"):
             self.assertNotIn(forbidden, picker)
+        queue_call = picker.index("(void)Queue_NextServerPattern")
         self.assertLess(
             picker.index("m_bRepeat = false"),
-            picker.index("Queue_NextServerPattern"),
+            queue_call,
         )
         self.assertLess(
             picker.index("m_strRepeatPatternId.clear()"),
-            picker.index("Queue_NextServerPattern"),
+            queue_call,
         )
         admitted = function_body(self.boss_cpp, "std::vector<std::string> Client::CBossTool::Build_AdmittedPatternIds() const")
         self.assertNotIn("m_NextPatternIds", admitted)

@@ -1042,6 +1042,14 @@ def _validate_product_effect_reachability(
                 f"BOSS_VALTAN combatObjectVisual {index}.effectAssetId",
             )
         )
+        hit_effect_asset_id = visual.get("hitEffectAssetId")
+        if hit_effect_asset_id is not None:
+            reachable_ids.add(
+                _require_stable_id(
+                    hit_effect_asset_id,
+                    f"BOSS_VALTAN combatObjectVisual {index}.hitEffectAssetId",
+                )
+            )
 
     alias_document, _ = _read_json(root / VALTAN_V1_ALIAS_PATH)
     aliases = alias_document.get("aliases")

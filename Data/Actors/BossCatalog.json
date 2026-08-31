@@ -44,6 +44,12 @@
             1.5,
             1.5
           ]
+        },
+        {
+          "combatObjectArchetypeId": "combatobject.valtan.ground-roar.rock",
+          "clientVisualId": "combatobject.visual.valtan.ground-roar.rock.v1",
+          "effectAssetId": "effect.valtan.ground-roar.rock.active",
+          "hitEffectAssetId": "effect.valtan.ground-roar.rock.explode"
         }
       ],
       "animationSetId": "Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel",

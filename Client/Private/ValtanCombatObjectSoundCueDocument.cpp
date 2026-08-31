@@ -282,7 +282,7 @@ bool_t Client::CValtanCombatObjectSoundCueDocument::Parse_Text(
 		std::string archetypeId;
 		const DATA_JSON_VALUE* hits = object.Find("hits");
 		if (!Read_StableString(object, "combatObjectArchetypeId", archetypeId) ||
-			nullptr == hits || !hits->Is_Array() || hits->Get_Array().empty())
+			nullptr == hits || !hits->Is_Array())
 		{
 			outStatus = "Valtan combat-object Product source is invalid.";
 			return false;

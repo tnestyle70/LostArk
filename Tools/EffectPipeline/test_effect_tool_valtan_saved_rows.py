@@ -71,6 +71,7 @@ RECOVERED_VALTAN_EFFECT_ELEMENT_IDS = {
         "sky-axe-flight-line",
         "authored.copy.mesh_particle_6.1",
         "sprite_particle_7",
+        "authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.sprite_particle_8.1.1.2.1.1",
     }),
     "effect.valtan.floor-wipe-130": frozenset({
         "authored.copy.authored.copy.sprite_particle_8.1.1",
@@ -670,13 +671,35 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
     cache_lookup = save_helper.find("m_ValtanUnifiedEffectCaches.find(")
     cache_reset = save_helper.find("ValtanCache->second = {};", cache_lookup)
     cache_refresh = save_helper.find("Refresh_UnifiedEffectCache(", cache_lookup)
-    hot_reload = save_helper.find("Try_HotReloadSavedProduct()", cache_refresh)
-    if min(cache_lookup, cache_reset, cache_refresh, hot_reload) < 0 or not (
-        cache_lookup < cache_reset < cache_refresh < hot_reload
+    local_source = save_helper.find(
+        "m_SourcePreviewDocument = *m_ActiveDocument;", cache_refresh
+    )
+    local_stage = save_helper.find(
+        "Stage_WorldPreview(*m_ActiveDocument)", local_source
+    )
+    if min(cache_lookup, cache_reset, cache_refresh, local_source, local_stage) < 0 or not (
+        cache_lookup < cache_reset < cache_refresh < local_source < local_stage
     ):
         raise AssertionError(
-            "Authored save must refresh an observed Valtan Product cache before hot reload"
+            "Authored save must refresh only the Effect Tool cache and local preview"
         )
+    for forbidden in (
+        "Try_HotReloadSavedProduct",
+        "Reload_SelectedProductEffect",
+        "Save was not committed because",
+    ):
+        if forbidden in save_helper:
+            raise AssertionError(
+                f"Authored save must not mutate the admitted Product generation: {forbidden}"
+            )
+    for token in (
+        "Refresh Server data",
+        "re-enter Valtan",
+    ):
+        if token not in save_helper:
+            raise AssertionError(
+                f"Authored save must state the Server Replay boundary: {token}"
+            )
 
 
 def validate_animation_stage_metadata_contract(cpp_text: str) -> None:

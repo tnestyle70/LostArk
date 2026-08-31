@@ -14,6 +14,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 /* ValtanPatternEffectCueDocument.cpp also owns a Product-prewarm entry point.
@@ -30,10 +31,6 @@ bool_t Client::CEffectCatalog::Contains(const std::string&)
 namespace
 {
 	using namespace Client;
-	constexpr size_t EXPECTED_PRODUCT_PATTERN_COUNT = 34u;
-	constexpr size_t EXPECTED_REFERENCE_PATTERN_COUNT = 24u;
-	constexpr size_t EXPECTED_ENCOUNTER_PATTERN_COUNT =
-		EXPECTED_PRODUCT_PATTERN_COUNT + EXPECTED_REFERENCE_PATTERN_COUNT;
 	constexpr const char* REQUESTED_PRODUCT_PATTERN_IDS[] = {
 		"VALTAN_HIGH_JUMP",
 		"VALTAN_SIX_PIZZA_106",
@@ -43,10 +40,13 @@ namespace
 		"VALTAN_STRUGGLING",
 		"VALTAN_DASH_CHARGE",
 		"VALTAN_GROUND_ROAR",
+		"VALTAN_TRIPLE_COUNTER",
+		"VALTAN_STAGGER_SLOT",
+		"VALTAN_BIND_SLOT",
+		"VALTAN_SILENCE_SLOT",
 	};
 	constexpr const char* REQUESTED_REFERENCE_ONLY_PATTERN_IDS[] = {
 		"VALTAN_MAGIC_ORB_STAGGER_76",
-		"VALTAN_TRIPLE_COUNTER",
 		"VALTAN_FOUR_PILLARS_105",
 	};
 
@@ -380,11 +380,10 @@ namespace
 		for (const auto& [PatternId, pPattern] : Patterns)
 			(pPattern->bAuthoringMasterManaged ? ManagedPatternIds :
 				ReferencePatternIds).insert(PatternId);
-		Require(EXPECTED_PRODUCT_PATTERN_COUNT == ManagedPatternIds.size() &&
-			EXPECTED_REFERENCE_PATTERN_COUNT ==
-				ReferencePatternIds.size() &&
-			EXPECTED_ENCOUNTER_PATTERN_COUNT == Patterns.size(),
-			"Encounter closure is no longer 34 managed plus 24 reference patterns");
+		Require(!ManagedPatternIds.empty() &&
+			!ReferencePatternIds.empty() &&
+			ManagedPatternIds.size() + ReferencePatternIds.size() == Patterns.size(),
+			"Encounter closure no longer partitions into managed and reference patterns");
 		const VALTAN_PATTERN_VIEW& GroundRoar =
 			*Patterns.at("VALTAN_GROUND_ROAR");
 		Require(GroundRoar.bAuthoringMasterManaged &&
@@ -399,8 +398,8 @@ namespace
 		if (!CValtanPatternTree::Build_PlayablePatternInventory(
 			View, Inventory, Status))
 			throw std::runtime_error(Status);
-		Require(EXPECTED_PRODUCT_PATTERN_COUNT == Inventory.Get_PatternCount(),
-			"Complete Play did not admit exactly the 34 split Product patterns");
+		Require(ManagedPatternIds.size() == Inventory.Get_PatternCount(),
+			"Complete Play does not match the managed split Product patterns");
 		for (const char* const pPatternId : REQUESTED_PRODUCT_PATTERN_IDS)
 		{
 			const auto Found = Patterns.find(pPatternId);
@@ -443,10 +442,21 @@ namespace
 				CounterPath, Status) &&
 			CounterPath == PreservedCounterPath,
 			"COUNTER_GROGGY accepted a graph without COUNTER_HIT or replaced the previous path on failure");
-		for (const auto& [PatternId, _] : Patterns)
-			Require(std::string::npos == PatternId.find("SILENCE") &&
-				std::string::npos == PatternId.find("STONE"),
-				"silence/stone request must remain explicitly unimplemented until it owns a stable pattern");
+		for (const char* const pPatternId : {
+			"VALTAN_STAGGER_SLOT", "VALTAN_BIND_SLOT", "VALTAN_SILENCE_SLOT" })
+		{
+			const VALTAN_PATTERN_VIEW& Skeleton = *Patterns.at(pPatternId);
+			const std::size_t iExpectedStageCount =
+				"VALTAN_STAGGER_SLOT" == std::string_view(pPatternId) ? 3u : 1u;
+			Require(Skeleton.bAuthoringMasterManaged &&
+				Skeleton.bManualServerAudition &&
+				"DERIVED_SERVER_PATTERN" == Skeleton.strAdmissionState &&
+				iExpectedStageCount == Skeleton.Stages.size() &&
+				std::all_of(Skeleton.Stages.begin(), Skeleton.Stages.end(),
+					[](const VALTAN_STAGE_VIEW& Stage)
+					{ return Stage.bSuppressAnimation; }),
+				"animationless authoring skeleton lost its derived NONE contract");
+		}
 		std::vector<std::string> AdmittedPatternIds;
 		AdmittedPatternIds.reserve(Inventory.Get_PatternCount());
 

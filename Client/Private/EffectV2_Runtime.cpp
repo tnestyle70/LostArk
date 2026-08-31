@@ -25,6 +25,7 @@ namespace
 	{
 		bool_t bLoaded = false;
 		bool_t bFailed = false;
+		uint64_t iCatalogRevision = 0u;
 		std::vector<Client::EFFECT_V2_BINDING> Bindings;
 	};
 
@@ -90,6 +91,8 @@ namespace
 		f32_t fSeconds = 0.f;
 		std::vector<PENDING_SPAWN> Pending;
 		std::vector<SPAWNED_EFFECT> Spawned;
+		std::shared_ptr<const Client::EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot;
+		std::string strFailure;
 	};
 
 	std::unordered_map<std::string, BINDING_SET> g_BindingSets;
@@ -100,6 +103,7 @@ namespace
 	std::map<const Engine::CGameObject*, TARGET_STATE> g_TargetStates;
 	std::set<const Engine::CGameObject*> g_IgnoredTargets;
 	std::map<uint32_t, FREE_GROUP> g_FreeGroups;
+	std::map<uint32_t, std::string> g_FreeGroupTerminalFailures;
 	uint32_t g_iNextFreeGroupHandle = 1u;
 	bool_t g_bPrototypeRegistered = false;
 	std::string g_strLastError;
@@ -143,6 +147,45 @@ namespace
 
 	const BINDING_SET& Ensure_Bindings(const std::string& strArchetypeId)
 	{
+		if (strArchetypeId == VALTAN_ARCHETYPE_ID)
+		{
+			BINDING_SET& Set = g_BindingSets[strArchetypeId];
+			Client::CEffectV2Catalog& Catalog = Client::CEffectV2Catalog::Get();
+			std::shared_ptr<const Client::EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot =
+				Catalog.Get_Snapshot();
+			if (nullptr == pSnapshot || !pSnapshot->Is_Ready())
+			{
+				/* A failed first read is cached until an explicit Load/Save invalidates
+				   caches. Never rescan the authoring tree from every render tick. */
+				if (Set.bLoaded)
+					return Set;
+				std::string strCatalogStatus;
+				if (!Catalog.Reload_BossValtan(strCatalogStatus))
+				{
+					Set.bLoaded = true;
+					Set.bFailed = true;
+					Set.Bindings.clear();
+					Report("bindings rejected for " + strArchetypeId +
+						": " + strCatalogStatus);
+					return Set;
+				}
+				pSnapshot = Catalog.Get_Snapshot();
+			}
+
+			if (nullptr != pSnapshot && pSnapshot->Is_Ready())
+			{
+				if (!Set.bLoaded ||
+					Set.iCatalogRevision != pSnapshot->Get_Revision())
+				{
+					Set.bLoaded = true;
+					Set.bFailed = false;
+					Set.iCatalogRevision = pSnapshot->Get_Revision();
+					Set.Bindings = pSnapshot->Get_BossValtanBindings();
+				}
+				return Set;
+			}
+		}
+
 		BINDING_SET& Set = g_BindingSets[strArchetypeId];
 		if (Set.bLoaded)
 			return Set;
@@ -347,15 +390,25 @@ namespace
 		std::vector<SPAWNED_EFFECT>& Spawned,
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext,
-		const Client::EFFECT_V2_CATALOG_SNAPSHOT* const pSnapshot = nullptr)
+		const Client::EFFECT_V2_CATALOG_SNAPSHOT* const pSnapshot = nullptr,
+		std::string* const pOutFailure = nullptr)
 	{
 		Pending.bSpawned = true;
+		const auto Reject = [pOutFailure](const std::string& strFailure)
+		{
+			Report(strFailure);
+			if (nullptr != pOutFailure && pOutFailure->empty())
+				*pOutFailure = strFailure;
+		};
 		const Client::EFFECT_V2_DOCUMENT* pDocument = nullptr;
 		if (nullptr != pSnapshot)
 		{
 			pDocument = pSnapshot->Find_Document(Pending.Binding.strEffectId);
 			if (nullptr == pDocument)
-				Report("authoring document missing: " + Pending.Binding.strEffectId);
+			{
+				Reject("authoring document missing: " + Pending.Binding.strEffectId);
+				return;
+			}
 		}
 		else
 		{
@@ -363,9 +416,21 @@ namespace
 				Ensure_Document(Pending.Binding.strEffectId);
 			if (!Entry.bFailed)
 				pDocument = &Entry.Document;
+			else if (nullptr != pOutFailure)
+				*pOutFailure = "Product document unavailable: " +
+					Pending.Binding.strEffectId;
 		}
-		if (nullptr == pDocument || !Ensure_Prototype(pDevice, pContext))
+		if (nullptr == pDocument)
 			return;
+		if (!Ensure_Prototype(pDevice, pContext))
+		{
+			if (nullptr != pOutFailure)
+			{
+				*pOutFailure = g_strLastError.empty() ?
+					"Effect V2 prototype creation failed." : g_strLastError;
+			}
+			return;
+		}
 		CGameInstance& GameInstance = CGameInstance::Get();
 		Client::CEffectV2Object::DESC Desc = pDocument->Desc;
 		XMStoreFloat4x4(&Desc.PivotWorld,
@@ -376,14 +441,23 @@ namespace
 			GameInstance.Get_CurrentLevelID(), EFFECT_LAYER_TAG,
 			&Desc, &pGameObject)))
 		{
-			Report("spawn failed for " + Pending.Binding.strEffectId + ": " +
+			Reject("spawn failed for " + Pending.Binding.strEffectId + ": " +
 				Client::CEffectV2Object::Last_Error());
 			return;
 		}
 		const std::shared_ptr<Client::CEffectV2Object> pObject =
 			std::dynamic_pointer_cast<Client::CEffectV2Object>(pGameObject);
 		if (nullptr == pObject)
+		{
+			if (nullptr != pGameObject)
+			{
+				GameInstance.Remove_GameObject_from_Layer(
+					GameInstance.Get_CurrentLevelID(), EFFECT_LAYER_TAG, pGameObject);
+			}
+			Reject("spawned object has the wrong Effect V2 type: " +
+				Pending.Binding.strEffectId);
 			return;
+		}
 		for (uint32_t iPart = 0u;
 			iPart < pDocument->Parts.size() && iPart < pObject->Part_Count(); ++iPart)
 		{
@@ -668,6 +742,17 @@ void Client::CEffectV2Runtime::Invalidate_Caches()
 	g_Groups.clear();
 	g_ModelTagToArchetype.clear();
 	g_bModelTagMapBuilt = false;
+	for (auto& [pTarget, State] : g_TargetStates)
+	{
+		(void)pTarget;
+		State.strClip.clear();
+		State.fLastSeconds = -1.f;
+		State.Pending.clear();
+		State.strStage.clear();
+		State.fStageLastSeconds = -1.f;
+		State.StagePending.clear();
+		State.pAuthoringSnapshot.reset();
+	}
 }
 
 const std::string& Client::CEffectV2Runtime::Last_Error()
@@ -800,16 +885,33 @@ void Client::CEffectV2Runtime::Tick(
 
 uint32_t Client::CEffectV2Runtime::Play_Group(
 	const EFFECT_V2_GROUP& Group,
+	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
 	const float4x4_t& PivotWorld,
 	const ComPtr<ID3D11Device>& pDevice,
 	const ComPtr<ID3D11DeviceContext>& pContext)
 {
+	if (nullptr == pSnapshot || !pSnapshot->Is_Ready())
+	{
+		Report("group preview requires one ready typed authoring snapshot: " +
+			Group.strGroupId);
+		return 0u;
+	}
+	for (const EFFECT_V2_GROUP_CHILD& Child : Group.Children)
+	{
+		if (nullptr == pSnapshot->Find_Document(Child.strEffectId))
+		{
+			Report("group preview child is absent from the staged authoring snapshot: " +
+				Group.strGroupId + " -> " + Child.strEffectId);
+			return 0u;
+		}
+	}
 	if (!Ensure_Prototype(pDevice, pContext))
 		return 0u;
 	EFFECT_V2_BINDING Binding;
 	Binding.bFollowBone = false;
 	FREE_GROUP Lane;
 	Lane.Pivot = PivotWorld;
+	Lane.pSnapshot = std::move(pSnapshot);
 	Expand_Group(Group, Binding, Lane.Pending);
 	if (Lane.Pending.empty())
 	{
@@ -819,6 +921,7 @@ uint32_t Client::CEffectV2Runtime::Play_Group(
 	const uint32_t iHandle = g_iNextFreeGroupHandle++;
 	if (0u == g_iNextFreeGroupHandle)
 		g_iNextFreeGroupHandle = 1u;
+	g_FreeGroupTerminalFailures.erase(iHandle);
 	g_FreeGroups.emplace(iHandle, std::move(Lane));
 	return iHandle;
 }
@@ -859,9 +962,19 @@ void Client::CEffectV2Runtime::Update_Group(const uint32_t iHandle, const EFFECT
 		const EFFECT_V2_GROUP_CHILD& Child = Group.Children[Effect.iChildIndex];
 		const float4x4_t Local = Child_Local(Child);
 		XMStoreFloat4x4(&pObject->PivotWorld(), XMLoadFloat4x4(&Local) * Pivot);
-		const DOCUMENT_ENTRY& Entry = Ensure_Document(Child.strEffectId);
-		if (!Entry.bFailed)
-			Apply_ChildScale(*pObject, Entry.Document, Child.vScale);
+		const EFFECT_V2_DOCUMENT* const pDocument = nullptr == Lane.pSnapshot ?
+			nullptr : Lane.pSnapshot->Find_Document(Child.strEffectId);
+		if (nullptr != pDocument)
+		{
+			Apply_ChildScale(*pObject, *pDocument, Child.vScale);
+		}
+		else if (Lane.strFailure.empty())
+		{
+			Lane.strFailure =
+				"live Group edit references a child outside its staged authoring snapshot: " +
+				Child.strEffectId;
+			Report(Lane.strFailure);
+		}
 		if (!Effect.bStopApplied)
 		{
 			Effect.fStopSeconds = Child_StopSeconds(Group, Child, 0u);
@@ -881,6 +994,7 @@ void Client::CEffectV2Runtime::Set_GroupPivot(
 
 void Client::CEffectV2Runtime::Stop_Group(const uint32_t iHandle)
 {
+	g_FreeGroupTerminalFailures.erase(iHandle);
 	const auto Found = g_FreeGroups.find(iHandle);
 	if (Found == g_FreeGroups.end())
 		return;
@@ -892,6 +1006,25 @@ f32_t Client::CEffectV2Runtime::Group_Seconds(const uint32_t iHandle)
 {
 	const auto Found = g_FreeGroups.find(iHandle);
 	return Found != g_FreeGroups.end() ? Found->second.fSeconds : -1.f;
+}
+
+bool_t Client::CEffectV2Runtime::Consume_GroupFailure(
+	const uint32_t iHandle, std::string& strOutFailure)
+{
+	strOutFailure.clear();
+	const auto Active = g_FreeGroups.find(iHandle);
+	if (Active != g_FreeGroups.end() && !Active->second.strFailure.empty())
+	{
+		strOutFailure = std::move(Active->second.strFailure);
+		Active->second.strFailure.clear();
+		return true;
+	}
+	const auto Terminal = g_FreeGroupTerminalFailures.find(iHandle);
+	if (Terminal == g_FreeGroupTerminalFailures.end())
+		return false;
+	strOutFailure = std::move(Terminal->second);
+	g_FreeGroupTerminalFailures.erase(Terminal);
+	return true;
 }
 
 void Client::CEffectV2Runtime::Advance_FreeGroups(
@@ -911,8 +1044,11 @@ void Client::CEffectV2Runtime::Advance_FreeGroups(
 				continue;
 			if (Group.fSeconds >= Ms_ToSeconds(Pending.Binding.iStartMs))
 			{
+				std::string SpawnFailure;
 				Spawn(Pending, Group.Pivot, EFFECT_V2_TARGET{}, false, Group.Spawned,
-					pDevice, pContext);
+					pDevice, pContext, Group.pSnapshot.get(), &SpawnFailure);
+				if (Group.strFailure.empty() && !SpawnFailure.empty())
+					Group.strFailure = std::move(SpawnFailure);
 			}
 		}
 		Apply_ChildStops(Group.Spawned, Group.fSeconds, false, false);
@@ -921,6 +1057,11 @@ void Client::CEffectV2Runtime::Advance_FreeGroups(
 			[](const PENDING_SPAWN& Pending) { return Pending.bSpawned; });
 		if (bAllSpawned && Group.Spawned.empty())
 		{
+			if (!Group.strFailure.empty())
+			{
+				g_FreeGroupTerminalFailures[Iterator->first] =
+					std::move(Group.strFailure);
+			}
 			Iterator = g_FreeGroups.erase(Iterator);
 			continue;
 		}

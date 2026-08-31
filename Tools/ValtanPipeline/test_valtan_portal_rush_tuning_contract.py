@@ -18,9 +18,10 @@ BASELINE_MOTION = {
     "kind": "PORTAL_TARGET_RUSH",
     "retargetDelayMs": 500,
     "speedMps": 20.0,
-    "distanceM": 8.0,
+    "distanceM": 16.0,
 }
-BASELINE_OFFSETS = list(range(500, 900, 50))
+BASELINE_DURATION_MS = 2300
+BASELINE_OFFSETS = list(range(500, 1300, 50))
 
 
 class ValtanPortalRushTuningContractTests(unittest.TestCase):
@@ -73,6 +74,7 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
                 legs = self.warp_legs(owner)
                 self.assertEqual(8, len(legs))
                 for stage in legs:
+                    self.assertEqual(BASELINE_DURATION_MS, stage["durationMs"])
                     self.assertEqual(BASELINE_MOTION, stage["motion"])
                     if "hit" in stage:
                         schedule = stage["hit"]["schedule"]
@@ -85,6 +87,34 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
                     self.assertGreaterEqual(
                         min(offsets), stage["motion"]["retargetDelayMs"]
                     )
+                    self.assertEqual(16, len(offsets))
+                    self.assertEqual(
+                        1000.0,
+                        stage["durationMs"]
+                        - stage["motion"]["retargetDelayMs"]
+                        - stage["motion"]["distanceM"]
+                        / stage["motion"]["speedMps"]
+                        * 1000.0,
+                    )
+
+        presentation = next(
+            row
+            for row in self.docs[pipeline.PRESENTATION_AUTHORING_REL]["patterns"]
+            if row["patternId"] == "VALTAN_WARP"
+        )
+        rush_presentation = presentation["stages"][1:9]
+        self.assertEqual(8, len(rush_presentation))
+        for index, stage in enumerate(rush_presentation, start=2):
+            animation = stage["animation"]
+            self.assertEqual("LOOP_TO_STAGE_END", animation["endPolicy"])
+            self.assertEqual(1, len(animation["occurrences"]))
+            occurrence = animation["occurrences"][0]
+            self.assertEqual(
+                f"valtan.sequence.warp.step-{index:02d}.clip-01",
+                occurrence["clipOccurrenceId"],
+            )
+            self.assertEqual(0, occurrence["playMs"])
+            self.assertTrue(occurrence["repeatUntilStageEnd"])
 
     def test_each_rush_boundary_is_a_root_snapshot_not_a_predicted_endpoint(self) -> None:
         authored = pipeline.read_json(
@@ -170,13 +200,10 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
                     )
                     self.assertEqual(expected_offsets, offsets)
 
-    def test_mixed_warp_leg_clock_is_rejected(self) -> None:
+    def test_each_warp_leg_clock_is_independently_authored(self) -> None:
         gameplay = copy.deepcopy(self.docs[pipeline.GAMEPLAY_AUTHORING_REL])
-        self.warp_legs(gameplay)[0]["durationMs"] = 901
-        with self.assertRaisesRegex(
-            pipeline.PipelineError, "must share one derived"
-        ):
-            pipeline.validate_gameplay_authoring(gameplay)
+        self.warp_legs(gameplay)[0]["durationMs"] = 2301
+        pipeline.validate_gameplay_authoring(gameplay)
 
     def test_float_storage_is_canonical_before_50ms_boundary_sampling(self) -> None:
         def float32(value: float) -> float:
@@ -205,7 +232,7 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
             "stageId": "STEP_02",
             "retargetDelayMs": 500,
             "speedMps": 20.0,
-            "distanceM": 9.0,
+            "distanceM": 37.0,
         }
         with self.assertRaisesRegex(
             pipeline.DraftPatchError, "delay plus travel exceeds"
@@ -217,7 +244,7 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
             patternId="VALTAN_GHOST_FINALE", stageId="STEP_02", distanceM=8.0
         )
         with self.assertRaisesRegex(
-            pipeline.DraftPatchError, "only admits an existing VALTAN_WARP"
+            pipeline.DraftPatchError, "requires an existing PORTAL_TARGET_RUSH Stage"
         ):
             self.apply([wrong_owner])
 
@@ -245,7 +272,7 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
             self.root / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1"
         ).read_text(encoding="utf-8-sig")
         self.assertIn("$patternStageMotionKindByKey", publisher)
-        self.assertIn("-cne 'PORTAL_TARGET_RUSH'", publisher)
+        self.assertIn("-ceq 'PORTAL_TARGET_RUSH'", publisher)
 
         animation_tool = (self.root / "Client/Private/Animation_Tool.cpp").read_text(
             encoding="utf-8-sig"
@@ -270,13 +297,22 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
         self.assertIn("Binding %s | occurrence %s", animation_tool)
         self.assertIn("Normalize_ValtanPortalRushDraft", animation_tool)
         self.assertNotIn("const auto NormalizePortalRush", animation_tool)
-        self.assertIn("Warp Rush — All 8 Legs", composition)
+        self.assertIn("Warp Rush - All 8 Legs", composition)
         self.assertIn("Delay Before Rush (ms)##WarpAllLegs", composition)
         self.assertIn("Rush Speed (m/s)##WarpAllLegs", composition)
         self.assertIn("Rush Distance (m)##WarpAllLegs", composition)
         self.assertIn(
             "Portal Gap After Rush (ms)##WarpAllLegs", composition
         )
+        self.assertIn('"PORTAL_TARGET_RUSH" == strMotionKind', composition)
+        self.assertIn('Stage.strStageId + "/motion/delay"', composition)
+        self.assertIn('Stage.strStageId + "/motion/travel"', composition)
+        self.assertIn('Stage.strStageId + "/motion/gap"', composition)
+        self.assertIn('"Target Delay | "', composition)
+        self.assertIn('"Rush | "', composition)
+        self.assertIn('"Gap | "', composition)
+        self.assertIn("fDistanceM / fSpeedMps * 1000.0", composition)
+        self.assertIn("iStageDurationMs - iTravelEndMs", composition)
         self.assertIn("else if (!bWarpLegClockOwned)", composition)
         self.assertIn(
             "Distance endpoint currently bypasses navigation clamp",

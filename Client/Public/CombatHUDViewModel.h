@@ -42,6 +42,13 @@ namespace Client
 		std::uint32_t iCurrentIdentity = 0;
 		std::uint32_t iMaximumIdentity = 0;
 		bool isCombatReady = true;
+		/* Pattern status is replicated by the Server. Bind affects locomotion/action
+		state while silence is projected through the existing quick-slot cooldown
+		mask; neither state is authored or inferred by the HUD. */
+		bool isPatternBound = false;
+		std::uint32_t iPatternBindEndTick = 0;
+		std::uint32_t iSilenceEndTick = 0;
+		std::uint32_t iSilenceDurationTicks = 0;
 		LostArk::Shared::PLAYER_ACTION_STATE eAction =
 			LostArk::Shared::PLAYER_ACTION_STATE::NONE;
 		LostArk::Shared::SKILL_ID iCurrentSkillId =

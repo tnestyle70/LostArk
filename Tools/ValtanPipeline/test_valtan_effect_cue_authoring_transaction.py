@@ -44,6 +44,11 @@ class ValtanEffectCueAuthoringTransactionTests(unittest.TestCase):
             REPOSITORY_ROOT / "Tools/ValtanPipeline",
             self.root / "Tools/ValtanPipeline",
         )
+        shutil.copytree(
+            REPOSITORY_ROOT / "Tools/ValtanActionExtractor",
+            self.root / "Tools/ValtanActionExtractor",
+            ignore=shutil.ignore_patterns("__pycache__"),
+        )
         parser_source = (
             REPOSITORY_ROOT
             / "Tools/ModelAssetConverter/retime_wmodel_from_psa.py"
@@ -371,9 +376,15 @@ class ValtanEffectCueAuthoringTransactionTests(unittest.TestCase):
         cases.append(("malformed", self.add_operation(malformed), "not a stable ID"))
 
         namespace = self.cue()
-        namespace["cueId"] = "cue.valtan.unregistered.test"
+        namespace["cueId"] = "cue.other.unregistered.test"
         namespace["occurrenceId"] = namespace["cueId"] + ".occurrence.01"
-        cases.append(("namespace", self.add_operation(namespace), "must use cue.valtan.composition."))
+        cases.append(
+            (
+                "namespace",
+                self.add_operation(namespace),
+                "must use the cue.valtan. namespace",
+            )
+        )
 
         action_mismatch = self.add_operation()
         action_mismatch["actionId"] = "valtan.attack.high-jump.land"

@@ -1011,8 +1011,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			hasAction(
 				catchRelease,
 				BOSS_GRABBED_RELEASE_MODE::ARENA_EJECTION,
-				24.f, 500u, 0.f),
-			"Load the rear-cone grab and doubled 24m/s minimum-12m arena ejection");
+				24.f, 500u, 180.f),
+			"Load the rear-cone grab and forward-facing 180-degree, 24m/s minimum-12m arena ejection");
 	}
 	{
 		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
@@ -1674,7 +1674,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			if (prepared)
 				room->Advance_PlayerKnockback(staged, 0.1f);
 			const bool speedExact = prepared &&
-				std::fabs(startZ - staged.fPositionZ - 2.4f) < 0.001f &&
+				std::fabs(staged.fPositionZ - startZ - 2.4f) < 0.001f &&
 				std::fabs(staged.fKnockbackSpeed - 24.f) < 0.0001f;
 			for (std::uint32_t step = 0u; staged.bArenaEjectionActive && step < 200u; ++step)
 			{
@@ -1684,7 +1684,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			tests.Require(speedExact && totalDistance >= 12.f && totalDistance <= 128.f &&
 				!staged.bArenaEjectionActive && PLAYER_ACTION_STATE::FALLING == staged.eAction &&
 				!room->m_ServerNavigation.Is_PointWalkableExact(staged.fPositionX, staged.fPositionZ),
-				"Arena ejection doubles velocity and minimum distance, crosses navigation and enters finite FALLING");
+				"The authored 180-degree arena ejection moves forward from boss facing, crosses navigation and enters finite FALLING");
 			BOSS_PATTERN_STAGE_ACTION invalid = release;
 			invalid.fReleaseSpeedMps = std::numeric_limits<float>::quiet_NaN();
 			SERVER_PLAYER rejected = player;
@@ -2452,6 +2452,341 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Trash failed terminal EXIT release preserves every player and rolls back the completed receipt");
 		fs::remove(exitBootstrap, variantError);
 		fs::remove(exitDirectory, variantError);
+	}
+	{
+		/* These three manual slots are Product catalog rows, not source-only
+		   authoring claims. Drive each through the same Brain -> room transition
+		   seam as a real fixed tick, then probe its authoritative consumer. */
+		const auto prepareStatusRoom = [](const std::string& patternId,
+			const NET_ENTITY_ID bossEntityId)
+		{
+			auto room = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
+			room->m_Players.clear();
+			room->m_PlayerIdByEntityId.clear();
+			room->m_PlayerIdBySessionId.clear();
+			room->m_WorldEntities.clear();
+
+			SERVER_WORLD_ENTITY boss{};
+			boss.iNetEntityId = bossEntityId;
+			boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+			boss.eAction = SERVER_ENTITY_ACTION::IDLE;
+			boss.strArchetypeId = "BOSS_VALTAN";
+			boss.strEncounterId = "ENCOUNTER_VALTAN";
+			boss.strPlacementId = "boss.valtan.status-slot-contract";
+			boss.iCurrentHp = boss.iMaximumHp = 80000u;
+			boss.iAttackPower = 100u;
+			boss.iMaximumHealthBars = boss.iLastEvaluatedHealthBar = 160u;
+			boss.iPhase = 2u;
+			boss.fPositionX = boss.fSpawnPositionX = 156.03f;
+			boss.fPositionY = boss.fSpawnPositionY = 22.99751f;
+			boss.fPositionZ = boss.fSpawnPositionZ = -122.06f;
+			boss.fEngageDistance = 100.f;
+			boss.bIntroPatternConsumed = true;
+			boss.bScriptedPatternPlayback = true;
+			boss.bAutomaticPatternSequenceAuditionOverride = true;
+			boss.PendingPatternIds.push_back(patternId);
+			boss.PinnedDefinitionRevision =
+				room->m_GameplayCatalog.Get_ActiveRevision();
+			room->m_WorldEntities.push_back(boss);
+
+			for (std::uint32_t ordinal = 0u; ordinal < 3u; ++ordinal)
+			{
+				SERVER_PLAYER player{};
+				player.iPlayerId = 19600u + ordinal;
+				player.iNetEntityId = bossEntityId + 100u + ordinal;
+				player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+				if (const PLAYER_RUNTIME_PROFILE* profile =
+					room->m_GameplayCatalog.Find_Player(player.eCharacterClass))
+				{
+					player.eStance = profile->eDefaultStance;
+				}
+				player.iCurrentHp = player.iMaximumHp = 100000u;
+				player.iCurrentResource = player.iMaximumResource = 10000u;
+				player.isCombatReady = true;
+				player.fPositionX = boss.fPositionX +
+					(0u == ordinal ? -0.25f : 0.25f);
+				player.fPositionZ = boss.fPositionZ + 0.5f;
+				SERVER_NAV_POINT ground{};
+				if (room->m_ServerNavigation.Sample_Position(
+						player.fPositionX, player.fPositionZ, ground))
+				{
+					player.fPositionX = ground.x;
+					player.fPositionY = ground.y;
+					player.fPositionZ = ground.z;
+				}
+				else
+				{
+					player.fPositionY = boss.fPositionY;
+				}
+				if (2u == ordinal)
+				{
+					player.iCurrentHp = 0u;
+					player.eAction = PLAYER_ACTION_STATE::DEAD;
+					player.isCombatReady = false;
+				}
+				room->m_PlayerIdByEntityId.emplace(
+					player.iNetEntityId, player.iPlayerId);
+				room->m_PlayerIdBySessionId.emplace(
+					20600u + ordinal, player.iPlayerId);
+				room->m_Players.emplace(player.iPlayerId, player);
+			}
+			return room;
+		};
+		const auto advanceStatusOccurrence = [](CGameRoom& room,
+			const std::uint32_t tick)
+		{
+			if (!room.Is_Ready() || room.m_WorldEntities.empty())
+				return false;
+			SERVER_WORLD_ENTITY& boss = room.m_WorldEntities.front();
+			const std::string previousPatternId = boss.strPatternId;
+			const std::string previousActionId = boss.strActionId;
+			const GameplayDataRevision previousRevision =
+				boss.PinnedDefinitionRevision;
+			const std::uint32_t previousSequence = boss.iPatternSequence;
+			room.m_TickDamageEvents.clear();
+			std::vector<SERVER_PLAYER_CAPTURE_REQUEST> captures;
+			room.m_ValtanBrain.Update(
+				boss, room.m_Players, room.m_GameplayCatalog,
+				room.m_ServerNavigation, 1.f / 30.f, tick, {},
+				room.m_TickDamageEvents, nullptr, 1u, &captures);
+			if (!captures.empty())
+				return false;
+			if (previousPatternId != boss.strPatternId ||
+				previousActionId != boss.strActionId ||
+				previousSequence != boss.iPatternSequence)
+			{
+				if (!room.Apply_BossPatternStageTransition(
+						boss, previousPatternId, previousActionId,
+						boss.strPatternId, boss.strActionId,
+						previousRevision, boss.PinnedDefinitionRevision, tick))
+				{
+					return false;
+				}
+			}
+			room.m_iServerTick = 0u == tick ? 0u : tick - 1u;
+			room.Update_Players(1.f / 30.f);
+			room.m_iServerTick = tick;
+			return room.Is_Ready();
+		};
+
+		const PLAYER_SKILL_DEFINITION* staggerSkill = catalog.Find_Skill(34040u);
+		auto staggerRoom = prepareStatusRoom("VALTAN_STAGGER_SLOT", 19700u);
+		bool staggerOccurrenceValid = nullptr != staggerSkill &&
+			10u == staggerSkill->iStaggerDamage &&
+			advanceStatusOccurrence(*staggerRoom, 1000u);
+		SERVER_WORLD_ENTITY& staggerBoss = staggerRoom->m_WorldEntities.front();
+		staggerOccurrenceValid = staggerOccurrenceValid &&
+			"VALTAN_STAGGER_SLOT" == staggerBoss.strPatternId &&
+			"STEP_01" == staggerBoss.strPatternStageId &&
+			0u == staggerBoss.BossCombat.iStaggerCurrent &&
+			100u == staggerBoss.BossCombat.iStaggerMaximum;
+		for (std::uint32_t hitOrdinal = 0u;
+			staggerOccurrenceValid && hitOrdinal < 10u; ++hitOrdinal)
+		{
+			SERVER_PLAYER_TO_WORLD_HIT hit{};
+			hit.iSourcePlayerId = 19600u;
+			hit.iSkillId = staggerSkill->iSkillId;
+			hit.iStaggerDamage = staggerSkill->iStaggerDamage;
+			hit.fSourceX = staggerRoom->m_Players.at(19600u).fPositionX;
+			hit.fSourceZ = staggerRoom->m_Players.at(19600u).fPositionZ;
+			hit.iServerTick = 1001u + hitOrdinal;
+			std::vector<DAMAGE_EVENT> hitEvents;
+			staggerOccurrenceValid =
+				SERVER_COMBAT_HIT_RESULT::NOT_ADMITTED !=
+					CServerCombatHitRuntime::Apply_PlayerToWorld(
+						staggerBoss, hit, hitEvents) &&
+				staggerBoss.BossCombat.iStaggerCurrent ==
+					(hitOrdinal + 1u) * staggerSkill->iStaggerDamage;
+		}
+		const bool staggerPublished = staggerOccurrenceValid &&
+			1u == staggerBoss.BossCombat.PendingOutcomes.size() &&
+			BOSS_PATTERN_STAGE_OUTCOME::STAGGER_BROKEN ==
+				staggerBoss.BossCombat.PendingOutcomes.front().eOutcome;
+		staggerOccurrenceValid = staggerOccurrenceValid &&
+			advanceStatusOccurrence(*staggerRoom, 1011u);
+		tests.Require(
+			staggerOccurrenceValid && staggerPublished &&
+			"GROGGY" == staggerBoss.strPatternStageId &&
+			"valtan.authoring.stagger-slot.groggy" == staggerBoss.strActionId &&
+			0u == staggerBoss.BossCombat.iStaggerCurrent &&
+			0u == staggerBoss.BossCombat.iStaggerMaximum &&
+			CBossCombatRuntime::Has_Flag(
+				staggerBoss.BossCombat, SERVER_BOSS_COMBAT_FLAG::GROGGY),
+			"Catalog-loaded Stagger slot accumulates ten real skill contributions, publishes STAGGER_BROKEN and enters its typed GROGGY stage");
+
+		auto bindRoom = prepareStatusRoom("VALTAN_BIND_SLOT", 19800u);
+		const bool bindStarted = advanceStatusOccurrence(*bindRoom, 2000u);
+		SERVER_WORLD_ENTITY& bindBoss = bindRoom->m_WorldEntities.front();
+		const auto boundEntry = std::find_if(
+			bindRoom->m_Players.begin(), bindRoom->m_Players.end(),
+			[](const auto& entry) { return entry.second.bPatternBound; });
+		const std::size_t boundCount = static_cast<std::size_t>(std::count_if(
+			bindRoom->m_Players.begin(), bindRoom->m_Players.end(),
+			[](const auto& entry) { return entry.second.bPatternBound; }));
+		bool bindOccurrenceValid = bindStarted &&
+			bindRoom->m_Players.end() != boundEntry && 1u == boundCount;
+		PLAYER_ID boundPlayerId = INVALID_PLAYER_ID;
+		float bindRestoreX = 0.f;
+		float bindRestoreY = 0.f;
+		float bindRestoreZ = 0.f;
+		if (bindOccurrenceValid)
+		{
+			boundPlayerId = boundEntry->first;
+			const SERVER_PLAYER& bound = boundEntry->second;
+			bindRestoreX = bound.fPatternBindRestoreX;
+			bindRestoreY = bound.fPatternBindRestoreY;
+			bindRestoreZ = bound.fPatternBindRestoreZ;
+			bindOccurrenceValid =
+				bindBoss.iPatternTargetEntityId == bound.iNetEntityId &&
+				0u != bound.iCurrentHp &&
+				150u == bound.iPatternBindEndTick - 2000u &&
+				std::abs(bound.fPositionX - bindRestoreX) < 0.001f &&
+				std::abs(bound.fPositionY - bindRestoreY - 10.f) < 0.001f &&
+				std::abs(bound.fPositionZ - bindRestoreZ) < 0.001f &&
+				!bound.isCombatReady && !bound.hasMoveGoal &&
+				!bindRoom->m_Players.at(19602u).bPatternBound;
+		}
+		if (bindOccurrenceValid)
+		{
+			const SESSION_ID sessionId = 20600u + (boundPlayerId - 19600u);
+			C2S_MOVE move{};
+			move.iClientSequence = 1u;
+			move.fGoalX = bindRestoreX + 1.f;
+			move.fGoalZ = bindRestoreZ;
+			bindRoom->Handle_Move(sessionId, move);
+			C2S_USE_SKILL skill{};
+			skill.iClientSequence = 1u;
+			skill.iSkillId = 34040u;
+			skill.fAimX = bindRestoreX + 1.f;
+			skill.fAimZ = bindRestoreZ;
+			const std::uint32_t resourceBefore =
+				bindRoom->m_Players.at(boundPlayerId).iCurrentResource;
+			bindRoom->Handle_UseSkill(sessionId, skill);
+			const SERVER_PLAYER& blocked = bindRoom->m_Players.at(boundPlayerId);
+			bindOccurrenceValid = !blocked.hasMoveGoal &&
+				INVALID_SKILL_ID == blocked.iCurrentSkillId &&
+				0u == blocked.iLastSkillSequence &&
+				resourceBefore == blocked.iCurrentResource;
+		}
+		for (std::uint32_t tick = 2001u;
+			bindOccurrenceValid && tick < 2150u; ++tick)
+		{
+			bindOccurrenceValid = advanceStatusOccurrence(*bindRoom, tick);
+		}
+		const auto lastBoundTickEntry = bindRoom->m_Players.find(boundPlayerId);
+		const bool boundThroughLastTick = bindOccurrenceValid &&
+			bindRoom->m_Players.end() != lastBoundTickEntry &&
+			lastBoundTickEntry->second.bPatternBound &&
+			2150u == lastBoundTickEntry->second.iPatternBindEndTick;
+		for (std::uint32_t tick = 2150u;
+			bindOccurrenceValid && tick <= 2160u &&
+			0u == bindBoss.PatternTerminalReceipt.iPatternSequence; ++tick)
+		{
+			bindOccurrenceValid = advanceStatusOccurrence(*bindRoom, tick);
+		}
+		const auto releasedBindEntry = bindRoom->m_Players.find(boundPlayerId);
+		const bool bindExited = bindOccurrenceValid && boundThroughLastTick &&
+			bindRoom->m_Players.end() != releasedBindEntry &&
+			SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED ==
+				bindBoss.PatternTerminalReceipt.eResult &&
+			!releasedBindEntry->second.bPatternBound &&
+			INVALID_NET_ENTITY_ID ==
+				releasedBindEntry->second.iPatternBindOwnerNetEntityId &&
+			0u == releasedBindEntry->second.iPatternBindEndTick &&
+			releasedBindEntry->second.isCombatReady &&
+			std::abs(releasedBindEntry->second.fPositionX - bindRestoreX) < 0.001f &&
+			std::abs(releasedBindEntry->second.fPositionY - bindRestoreY) < 0.001f &&
+			std::abs(releasedBindEntry->second.fPositionZ - bindRestoreZ) < 0.001f;
+
+		auto cancelledBindRoom = prepareStatusRoom("VALTAN_BIND_SLOT", 19900u);
+		bool bindCancelValid = advanceStatusOccurrence(*cancelledBindRoom, 2300u);
+		const auto cancelledEntry = std::find_if(
+			cancelledBindRoom->m_Players.begin(), cancelledBindRoom->m_Players.end(),
+			[](const auto& entry) { return entry.second.bPatternBound; });
+		PLAYER_ID cancelledPlayerId = INVALID_PLAYER_ID;
+		float cancelRestoreX = 0.f;
+		float cancelRestoreY = 0.f;
+		float cancelRestoreZ = 0.f;
+		if (bindCancelValid && cancelledBindRoom->m_Players.end() != cancelledEntry)
+		{
+			cancelledPlayerId = cancelledEntry->first;
+			cancelRestoreX = cancelledEntry->second.fPatternBindRestoreX;
+			cancelRestoreY = cancelledEntry->second.fPatternBindRestoreY;
+			cancelRestoreZ = cancelledEntry->second.fPatternBindRestoreZ;
+			bindCancelValid = std::abs(
+				cancelledEntry->second.fPositionY - cancelRestoreY - 10.f) <
+				0.001f;
+			++cancelledBindRoom->m_WorldEntities.front().iPatternSequence;
+			cancelledBindRoom->m_iServerTick = 2300u;
+			cancelledBindRoom->Update_Players(1.f / 30.f);
+			cancelledBindRoom->m_iServerTick = 2301u;
+		}
+		else
+		{
+			bindCancelValid = false;
+		}
+		const auto cancelledBindEntry =
+			cancelledBindRoom->m_Players.find(cancelledPlayerId);
+		bindCancelValid = bindCancelValid &&
+			cancelledBindRoom->m_Players.end() != cancelledBindEntry &&
+			!cancelledBindEntry->second.bPatternBound &&
+			INVALID_NET_ENTITY_ID ==
+				cancelledBindEntry->second.iPatternBindOwnerNetEntityId &&
+			std::abs(cancelledBindEntry->second.fPositionX - cancelRestoreX) <
+				0.001f &&
+			std::abs(cancelledBindEntry->second.fPositionY - cancelRestoreY) <
+				0.001f &&
+			std::abs(cancelledBindEntry->second.fPositionZ - cancelRestoreZ) <
+				0.001f &&
+			cancelledBindEntry->second.isCombatReady;
+		tests.Require(
+			bindOccurrenceValid && bindExited && bindCancelValid,
+			"Catalog-loaded Bind slot locks one random alive target at Y+10m for 150 ticks, blocks movement/skills, and restores its admitted pose on EXIT or occurrence cancel");
+
+		auto silenceRoom = prepareStatusRoom("VALTAN_SILENCE_SLOT", 20000u);
+		bool silenceOccurrenceValid = advanceStatusOccurrence(*silenceRoom, 3000u);
+		SERVER_WORLD_ENTITY& silenceBoss = silenceRoom->m_WorldEntities.front();
+		SERVER_PLAYER& silenced = silenceRoom->m_Players.at(19600u);
+		const std::uint32_t silenceResourceBefore = silenced.iCurrentResource;
+		silenceOccurrenceValid = silenceOccurrenceValid &&
+			150u == silenced.iSilenceEndTick - 3000u &&
+			150u == silenced.iSilenceDurationTicks &&
+			0u != silenceRoom->m_Players.at(19601u).iSilenceEndTick &&
+			0u == silenceRoom->m_Players.at(19602u).iSilenceEndTick;
+		C2S_USE_SKILL silencedSkill{};
+		silencedSkill.iClientSequence = 1u;
+		silencedSkill.iSkillId = 34040u;
+		silencedSkill.fAimX = silenced.fPositionX + 1.f;
+		silencedSkill.fAimZ = silenced.fPositionZ;
+		silenceRoom->Handle_UseSkill(20600u, silencedSkill);
+		silenceOccurrenceValid = silenceOccurrenceValid &&
+			INVALID_SKILL_ID == silenced.iCurrentSkillId &&
+			0u == silenced.iLastSkillSequence &&
+			silenceResourceBefore == silenced.iCurrentResource;
+		for (std::uint32_t tick = 3001u;
+			silenceOccurrenceValid && tick < 3150u; ++tick)
+		{
+			silenceOccurrenceValid = advanceStatusOccurrence(*silenceRoom, tick);
+		}
+		silenceRoom->Handle_UseSkill(20600u, silencedSkill);
+		const bool rejectedThroughLastTick =
+			INVALID_SKILL_ID == silenced.iCurrentSkillId &&
+			0u == silenced.iLastSkillSequence;
+		silenceOccurrenceValid = silenceOccurrenceValid &&
+			advanceStatusOccurrence(*silenceRoom, 3150u);
+		silenceRoom->Handle_UseSkill(20600u, silencedSkill);
+		tests.Require(
+			silenceOccurrenceValid && rejectedThroughLastTick &&
+			0u == silenced.iSilenceEndTick &&
+			0u == silenced.iSilenceDurationTicks &&
+			PLAYER_ACTION_STATE::SKILL == silenced.eAction &&
+			34040u == silenced.iCurrentSkillId &&
+			1u == silenced.iLastSkillSequence &&
+			silenced.iCurrentResource < silenceResourceBefore &&
+			("VALTAN_SILENCE_SLOT" == silenceBoss.strPatternId ||
+			 SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED ==
+				silenceBoss.PatternTerminalReceipt.eResult),
+			"Catalog-loaded Silence slot rejects skills through its 150-tick window and admits the same unconsumed command at the exact five-second boundary");
 	}
 	{
 		namespace fs = std::filesystem;
@@ -3555,15 +3890,47 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		};
 		const std::string finalePrefix =
 			"PATTERNFINALE\tENCOUNTER_VALTAN\tVALTAN_GHOST_FINALE\tGHOST_PORTAL_LOOP\tBOSS_VALTAN_GHOST\t";
-		tests.Require(rejectsRuntimeRefinement(L"finale-half-extent", finalePrefix + "10\t10\t1",
-			finalePrefix + "0.5\t10\t1", "finale row is invalid") &&
-			rejectsRuntimeRefinement(L"finale-pattern-order",
-				finalePrefix + "10\t10\t1\tVALTAN_WHIRLWIND\tVALTAN_FOUR_SLASH\tVALTAN_SEQUENCE_FOUR",
-				finalePrefix + "10\t10\t1\tVALTAN_FOUR_SLASH\tVALTAN_WHIRLWIND\tVALTAN_SEQUENCE_FOUR",
+		const std::string finaleRow = finalePrefix +
+			"10\t10\t1\tVALTAN_WHIRLWIND\tVALTAN_FOUR_SLASH\tVALTAN_SEQUENCE_FOUR";
+		const std::string dynamicFinaleRow = finalePrefix +
+			"10\t10\t2\tVALTAN_FOUR_SLASH\tVALTAN_WHIRLWIND";
+		std::string dynamicFinaleBootstrap = bootstrapText;
+		const bool madeDynamicFinale = replaceBootstrapRow(
+			dynamicFinaleBootstrap, finaleRow, dynamicFinaleRow);
+		const auto dynamicFinaleCatalog = madeDynamicFinale ?
+			loadBootstrapVariant(L"finale-data-driven", dynamicFinaleBootstrap) : nullptr;
+		const auto* dynamicFinalePatterns = nullptr == dynamicFinaleCatalog ? nullptr :
+			dynamicFinaleCatalog->Find_BossPatterns("ENCOUNTER_VALTAN");
+		const auto dynamicFinale = nullptr == dynamicFinalePatterns ?
+			std::vector<BOSS_PATTERN_DEFINITION>::const_iterator{} :
+			std::find_if(dynamicFinalePatterns->begin(), dynamicFinalePatterns->end(),
+				[](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == "VALTAN_GHOST_FINALE"; });
+		tests.Require(nullptr != dynamicFinalePatterns &&
+			dynamicFinale != dynamicFinalePatterns->end() &&
+			2u == dynamicFinale->Finale.iMaximumActiveGhosts &&
+			dynamicFinale->Finale.GhostPatternIds == std::vector<std::string>{
+				"VALTAN_FOUR_SLASH", "VALTAN_WHIRLWIND" },
+			"Load a data-driven two-child reordered finale and retain its authored capacity");
+		tests.Require(
+			rejectsRuntimeRefinement(L"finale-half-extent", finaleRow,
+				finalePrefix + "0.5\t10\t1\tVALTAN_WHIRLWIND\tVALTAN_FOUR_SLASH\tVALTAN_SEQUENCE_FOUR",
 				"finale row is invalid") &&
-			rejectsRuntimeRefinement(L"finale-maximum-active", finalePrefix + "10\t10\t1",
-				finalePrefix + "10\t10\t2", "finale row is invalid"),
-			"Finale rejects undersized spawn extents, reordered attacks and unbounded concurrent children transactionally");
+			rejectsRuntimeRefinement(L"finale-maximum-active-zero", finaleRow,
+				finalePrefix + "10\t10\t0\tVALTAN_WHIRLWIND\tVALTAN_FOUR_SLASH\tVALTAN_SEQUENCE_FOUR",
+				"finale row is invalid") &&
+			rejectsRuntimeRefinement(L"finale-maximum-active-overflow", finaleRow,
+				finalePrefix + "10\t10\t65\tVALTAN_WHIRLWIND\tVALTAN_FOUR_SLASH\tVALTAN_SEQUENCE_FOUR",
+				"finale row is invalid") &&
+			rejectsRuntimeRefinement(L"finale-empty-children", finaleRow,
+				finalePrefix + "10\t10\t1", "finale row is invalid") &&
+			rejectsRuntimeRefinement(L"finale-duplicate-child", finaleRow,
+				finalePrefix + "10\t10\t1\tVALTAN_WHIRLWIND\tVALTAN_WHIRLWIND",
+				"child pattern identity") &&
+			rejectsRuntimeRefinement(L"finale-missing-child", finaleRow,
+				finalePrefix + "10\t10\t1\tVALTAN_UNKNOWN_GHOST_ATTACK",
+				"dependent attack is missing"),
+			"Finale rejects invalid ranges, empty/duplicate children and unresolved references transactionally");
 		const std::string targetPortalRow =
 			"PATTERNSTAGEMOTION\tENCOUNTER_VALTAN\tVALTAN_WARP\tvaltan.sequence.warp.step-02\tPORTAL_TARGET_RUSH\t500\t20\t8";
 		const std::string cornerPortalPrefix =
@@ -4864,6 +5231,11 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const BOSS_COMBAT_OBJECT_DEFINITION* highJumpTargetAxe =
 			catalog.Find_BossCombatObject(
 				"combatobject.valtan.high-jump.target-axe");
+		const BOSS_PATTERN_STAGE_DEFINITION* groundRoarStep =
+			findStage("VALTAN_GROUND_ROAR", "STEP_01");
+		const BOSS_COMBAT_OBJECT_DEFINITION* groundRoarRock =
+			catalog.Find_BossCombatObject(
+				"combatobject.valtan.ground-roar.rock");
 		const auto findPattern = [patterns](
 			const std::string& patternId) -> const BOSS_PATTERN_DEFINITION*
 		{
@@ -5179,6 +5551,56 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			1200u == highJumpTargetAxe->Hits.front().iAtMs &&
 			1u == highJumpTargetAxe->Hits.front().iRepeatCount,
 			"Derive each target-axe Product lifetime from the 8-second AIRBORNE clock, keep its timed contact object-local at +1.2 seconds, and leave LAND at 3.2 seconds");
+		const bool hasExactGroundRoarCardinalRocks =
+			nullptr != groundRoarStep &&
+			1u == groundRoarStep->Actions.size() &&
+			BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER ==
+				groundRoarStep->Actions.front().eTrigger &&
+			BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT_VOLLEY ==
+				groundRoarStep->Actions.front().eKind &&
+			"combatobject.valtan.ground-roar.rock" ==
+				groundRoarStep->Actions.front().strTargetId &&
+			4u == groundRoarStep->Actions.front().iValue &&
+			0u == groundRoarStep->Actions.front().iDurationMs &&
+			BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
+				groundRoarStep->Actions.front().Volley.ePolicy &&
+			4u == groundRoarStep->Actions.front().Volley.
+				iCountPerResolvedTarget &&
+			BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL ==
+				groundRoarStep->Actions.front().Volley.eLayout &&
+			std::abs(groundRoarStep->Actions.front().Volley.fRadiusM - 2.25f) <
+				1.0e-6f &&
+			0.f == groundRoarStep->Actions.front().Volley.fStartAngleDegrees &&
+			90.f == groundRoarStep->Actions.front().Volley.fAngleStepDegrees &&
+			!groundRoarStep->Actions.front().Volley.bAllowOverlap &&
+			4u == groundRoarStep->Actions.front().Volley.iMaximumTotalObjects &&
+			1u == groundRoarStep->Actions.front().Volley.iSpawnCount &&
+			0u == groundRoarStep->Actions.front().Volley.iSpawnIntervalMs &&
+			0u == groundRoarStep->Actions.front().Volley.iArenaRandomCount &&
+			0.f == groundRoarStep->Actions.front().Volley.fArenaRandomRadiusM &&
+			0.f == groundRoarStep->Actions.front().Volley.fArenaHeightToleranceM &&
+			BOSS_COMBAT_OBJECT_ARENA_ANCHOR_POLICY::NONE ==
+				groundRoarStep->Actions.front().Volley.eArenaAnchorPolicy &&
+			nullptr != groundRoarRock &&
+			"VALTAN_GROUND_ROAR" == groundRoarRock->strOwnerPatternId &&
+			"valtan.sequence.sequence.400440.0.step-01" ==
+				groundRoarRock->strOwnerStageActionId &&
+			"combatobject.visual.valtan.ground-roar.rock.v1" ==
+				groundRoarRock->strClientVisualId &&
+			BOSS_COMBAT_OBJECT_KIND::FIXED_AREA == groundRoarRock->eKind &&
+			BOSS_COMBAT_OBJECT_ORIGIN_POLICY::BOSS_POSITION ==
+				groundRoarRock->eOriginPolicy &&
+			BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NONE ==
+				groundRoarRock->eDirectionPolicy &&
+			5000u == groundRoarRock->iLifeMs && groundRoarRock->Hits.empty() &&
+			1u == groundRoarRock->PresentationPulses.size() &&
+			"pulse.valtan.ground-roar.rock.explode" ==
+				groundRoarRock->PresentationPulses.front().strPresentationEventId &&
+			5000u == groundRoarRock->PresentationPulses.front().iAtMs;
+		tests.Require(
+			hasExactGroundRoarCardinalRocks && nullptr != entranceEstablish &&
+				entranceEstablish->Actions.empty(),
+			"Own exactly one four-cardinal visual-only rock volley in GROUND_ROAR STEP_01 and never in the entrance cinematic");
 		tests.Require(
 			nullptr != fourSlashPattern && nullptr != swingPattern &&
 			420609u == fourSlashPattern->iSourcePrimaryActionId &&
@@ -12804,6 +13226,192 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				"Reject object 129 before allocation and emit no partial lifecycle edge");
 			*typedVolleyAction = originalVolleyAction;
 		}
+	}
+	{
+		/* Ground Roar owns one visual-only rock at each boss-relative cardinal
+		direction. The typed objects remain live for five seconds, then publish
+		their reliable terminal presentation pulse before the same-tick despawn. */
+		CGameRoom groundRoarRoom{ LostArk::Shared::WORLD_ID::VALTAN_ARENA };
+		const bool initializedGroundRoarRoom =
+			groundRoarRoom.Initialize_WorldEntities();
+		SERVER_WORLD_ENTITY groundRoarBoss{};
+		groundRoarBoss.iNetEntityId = 8350u;
+		groundRoarBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		groundRoarBoss.eAction = SERVER_ENTITY_ACTION::IDLE;
+		groundRoarBoss.strArchetypeId = "BOSS_VALTAN";
+		groundRoarBoss.strEncounterId = "ENCOUNTER_VALTAN";
+		groundRoarBoss.iCurrentHp = 60000u;
+		groundRoarBoss.iMaximumHp = 60000u;
+		groundRoarBoss.iMaximumHealthBars = 160u;
+		groundRoarBoss.iAttackPower = 100u;
+		groundRoarBoss.iLastEvaluatedHealthBar = 160u;
+		groundRoarBoss.fPositionX = 156.03f;
+		groundRoarBoss.fPositionY = 22.99751f;
+		groundRoarBoss.fPositionZ = -122.06f;
+		groundRoarBoss.fSpawnPositionX = groundRoarBoss.fPositionX;
+		groundRoarBoss.fSpawnPositionY = groundRoarBoss.fPositionY;
+		groundRoarBoss.fSpawnPositionZ = groundRoarBoss.fPositionZ;
+		groundRoarBoss.fYawDegrees = 37.f;
+		groundRoarBoss.iPatternSequence = 1u;
+		groundRoarBoss.strPatternId = "VALTAN_GROUND_ROAR";
+		groundRoarBoss.strPatternStageId = "STEP_01";
+		groundRoarBoss.strActionId =
+			"valtan.sequence.sequence.400440.0.step-01";
+		groundRoarBoss.PinnedDefinitionRevision =
+			groundRoarRoom.m_GameplayCatalog.Get_ActiveRevision();
+		groundRoarRoom.m_WorldEntities.push_back(groundRoarBoss);
+		SERVER_WORLD_ENTITY* liveGroundRoarBoss =
+			&groundRoarRoom.m_WorldEntities.back();
+		const bool stagedGroundRoar = initializedGroundRoarRoom &&
+			groundRoarRoom.Apply_BossPatternStageActions(
+				*liveGroundRoarBoss, "VALTAN_GROUND_ROAR",
+				"valtan.sequence.sequence.400440.0.step-01",
+				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 2000u);
+		const auto& groundRoarObjects =
+			groundRoarRoom.m_CombatObjectRuntime.Get_LiveObjects();
+		std::array<COMBAT_OBJECT_ID, 4u> groundRoarObjectIds{};
+		std::array<SERVER_COMBAT_OBJECT_POSE, 4u> groundRoarObjectPoses{};
+		std::set<std::pair<int, int>> groundRoarPositions;
+		bool cardinalSpawnExact = stagedGroundRoar &&
+			4u == groundRoarObjects.size();
+		for (std::size_t ordinal = 0u;
+			cardinalSpawnExact && ordinal < groundRoarObjects.size(); ++ordinal)
+		{
+			const SERVER_COMBAT_OBJECT& object = groundRoarObjects[ordinal];
+			const float yawDegrees = groundRoarBoss.fYawDegrees +
+				90.f * static_cast<float>(ordinal);
+			const float yawRadians = yawDegrees * 0.01745329251994329577f;
+			const float expectedX = groundRoarBoss.fPositionX +
+				std::sin(yawRadians) * 2.25f;
+			const float expectedZ = groundRoarBoss.fPositionZ +
+				std::cos(yawRadians) * 2.25f;
+			groundRoarObjectIds[ordinal] = object.iCombatObjectId;
+			groundRoarObjectPoses[ordinal] = object.LiveState.CurrentPose;
+			groundRoarPositions.emplace(
+				static_cast<int>(std::lround(
+					object.LiveState.CurrentPose.fPositionX * 1000.f)),
+				static_cast<int>(std::lround(
+					object.LiveState.CurrentPose.fPositionZ * 1000.f)));
+			cardinalSpawnExact =
+				"combatobject.valtan.ground-roar.rock" ==
+					object.strCombatObjectArchetypeId &&
+				"combatobject.visual.valtan.ground-roar.rock.v1" ==
+					object.strClientVisualId &&
+				INVALID_NET_ENTITY_ID == object.iLockedTargetNetEntityId &&
+				object.Hits.empty() && 1u == object.PresentationPulses.size() &&
+				std::abs(object.LiveState.CurrentPose.fPositionX - expectedX) <
+					0.001f &&
+				std::abs(object.LiveState.CurrentPose.fPositionY -
+					groundRoarBoss.fPositionY) < 0.001f &&
+				std::abs(object.LiveState.CurrentPose.fPositionZ - expectedZ) <
+					0.001f &&
+				std::abs(object.LiveState.CurrentPose.fYawDegrees - yawDegrees) <
+					0.001f &&
+				std::abs(object.LiveState.CurrentPose.fDirectionX -
+					std::sin(yawRadians)) < 0.001f &&
+				std::abs(object.LiveState.CurrentPose.fDirectionZ -
+					std::cos(yawRadians)) < 0.001f;
+		}
+		std::vector<S2C_COMBAT_OBJECT_SPAWNED> groundRoarSpawned;
+		std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT>
+			groundRoarInitialPresentation;
+		std::vector<S2C_COMBAT_OBJECT_DESPAWNED> groundRoarInitialDespawned;
+		groundRoarRoom.m_CombatObjectRuntime.Drain_Lifecycle(
+			groundRoarSpawned, groundRoarInitialPresentation,
+			groundRoarInitialDespawned);
+		const GameplayDataRevision groundRoarRevision =
+			groundRoarRoom.m_GameplayCatalog.Get_ActiveRevision();
+		const bool reliableCardinalSpawns = 4u == groundRoarSpawned.size() &&
+			groundRoarInitialPresentation.empty() &&
+			groundRoarInitialDespawned.empty() &&
+			std::all_of(
+				groundRoarSpawned.begin(), groundRoarSpawned.end(),
+				[&groundRoarRevision](const S2C_COMBAT_OBJECT_SPAWNED& message)
+				{
+					CPacketWriter writer;
+					return message.PinnedDefinitionRevision == groundRoarRevision &&
+						Write_Message(writer, message);
+				});
+		tests.Require(
+			cardinalSpawnExact && 4u == groundRoarPositions.size() &&
+				reliableCardinalSpawns,
+			"Spawn exactly four reliable visual-only Ground Roar rocks at boss-relative yaw 0/90/180/270");
+
+		std::vector<DAMAGE_EVENT> groundRoarDamageEvents;
+		std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT>
+			groundRoarTerminalPresentation;
+		std::vector<S2C_COMBAT_OBJECT_DESPAWNED> groundRoarTerminalDespawned;
+		std::uint32_t terminalUpdateOrdinal = 0u;
+		bool retainedForFiveSeconds = cardinalSpawnExact;
+		for (std::uint32_t updateOrdinal = 1u;
+			retainedForFiveSeconds && updateOrdinal <= 151u; ++updateOrdinal)
+		{
+			groundRoarRoom.m_CombatObjectRuntime.Update(
+				groundRoarRoom.m_Players, groundRoarRoom.m_WorldEntities,
+				groundRoarRoom.m_GameplayCatalog, 1.f / 30.f,
+				2000u + updateOrdinal, groundRoarDamageEvents);
+			std::vector<S2C_COMBAT_OBJECT_SPAWNED> spawnedThisTick;
+			std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT>
+				presentationThisTick;
+			std::vector<S2C_COMBAT_OBJECT_DESPAWNED> despawnedThisTick;
+			groundRoarRoom.m_CombatObjectRuntime.Drain_Lifecycle(
+				spawnedThisTick, presentationThisTick, despawnedThisTick);
+			retainedForFiveSeconds = spawnedThisTick.empty();
+			if (!presentationThisTick.empty() || !despawnedThisTick.empty())
+			{
+				terminalUpdateOrdinal = updateOrdinal;
+				groundRoarTerminalPresentation =
+					std::move(presentationThisTick);
+				groundRoarTerminalDespawned = std::move(despawnedThisTick);
+				break;
+			}
+			retainedForFiveSeconds = retainedForFiveSeconds &&
+				4u == groundRoarRoom.m_CombatObjectRuntime.
+					Get_LiveObjects().size();
+		}
+		bool terminalLifecycleExact = retainedForFiveSeconds &&
+			terminalUpdateOrdinal >= 150u && terminalUpdateOrdinal <= 151u &&
+			groundRoarDamageEvents.empty() &&
+			groundRoarRoom.m_CombatObjectRuntime.Get_LiveObjects().empty() &&
+			4u == groundRoarTerminalPresentation.size() &&
+			4u == groundRoarTerminalDespawned.size();
+		for (std::size_t ordinal = 0u;
+			terminalLifecycleExact && ordinal < 4u; ++ordinal)
+		{
+			const S2C_COMBAT_OBJECT_PRESENTATION_EVENT& event =
+				groundRoarTerminalPresentation[ordinal];
+			const S2C_COMBAT_OBJECT_DESPAWNED& despawned =
+				groundRoarTerminalDespawned[ordinal];
+			CPacketWriter writer;
+			terminalLifecycleExact =
+				event.iEventSequence == ordinal + 1u &&
+				event.iCombatObjectId == groundRoarObjectIds[ordinal] &&
+				event.iSourceNetEntityId == groundRoarBoss.iNetEntityId &&
+				event.eKind ==
+					COMBAT_OBJECT_PRESENTATION_EVENT_KIND::HIT_PULSE &&
+				event.strCombatObjectArchetypeId ==
+					"combatobject.valtan.ground-roar.rock" &&
+				event.strOwnerPatternId == "VALTAN_GROUND_ROAR" &&
+				event.strOwnerStageActionId ==
+					"valtan.sequence.sequence.400440.0.step-01" &&
+				event.strHitId ==
+					"pulse.valtan.ground-roar.rock.explode" &&
+				0u == event.iRepeatIndex &&
+				std::abs(event.fPositionX -
+					groundRoarObjectPoses[ordinal].fPositionX) < 0.001f &&
+				std::abs(event.fPositionY -
+					groundRoarObjectPoses[ordinal].fPositionY) < 0.001f &&
+				std::abs(event.fPositionZ -
+					groundRoarObjectPoses[ordinal].fPositionZ) < 0.001f &&
+				std::abs(event.fYawDegrees -
+					groundRoarObjectPoses[ordinal].fYawDegrees) < 0.001f &&
+				event.PinnedDefinitionRevision == groundRoarRevision &&
+				despawned.iCombatObjectId == groundRoarObjectIds[ordinal] &&
+				Write_Message(writer, event);
+		}
+		tests.Require(
+			terminalLifecycleExact,
+			"Retain Ground Roar rocks for 5000ms, then reliably present all four explosions before same-tick despawn without damage");
 	}
 	{
 		auto phaseRoomStorage = std::make_unique<CGameRoom>(

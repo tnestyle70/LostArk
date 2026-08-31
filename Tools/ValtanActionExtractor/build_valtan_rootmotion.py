@@ -241,17 +241,25 @@ def sample_explicit_clip_segments(
 def build(
         repo_root: Path,
         resource_root: Path | None = None,
+        *,
+        encounter_document: dict | None = None,
+        bindings_document: dict | None = None,
+        curves: dict[str, tuple[float, float, list]] | None = None,
 ) -> tuple[dict, list[str]]:
-    encounter = json.loads(
-        (repo_root / "Data/Encounters/Valtan/ValtanEncounter.json").read_text("utf-8"))
-    bindings_document = json.loads(
-        (repo_root / "Data/Animation/Authored/Valtan"
-                     "/Valtan.patternbindings.json").read_text("utf-8"))
+    encounter = encounter_document
+    if encounter is None:
+        encounter = json.loads(
+            (repo_root / "Data/Encounters/Valtan/ValtanEncounter.json").read_text("utf-8"))
+    if bindings_document is None:
+        bindings_document = json.loads(
+            (repo_root / "Data/Animation/Authored/Valtan"
+                         "/Valtan.patternbindings.json").read_text("utf-8"))
     bindings = {entry["actionId"]: entry["clips"]
                 for entry in bindings_document["bindings"]}
-    resources = resource_root or repo_root / "Client/Bin/Resources"
-    curves = read_root_curves(
-        resources / "Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel")
+    if curves is None:
+        resources = resource_root or repo_root / "Client/Bin/Resources"
+        curves = read_root_curves(
+            resources / "Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel")
 
     notes: list[str] = []
     patterns = []

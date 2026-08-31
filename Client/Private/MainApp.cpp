@@ -49,6 +49,7 @@
 #include "CharacterPreviewPanel.h"
 #include "Effect_Tool.h"
 #include "Effect_Tool_V2.h"
+#include "EquipmentAuthoringTool.h"
 #include "HUDLayoutTool.h"
 #include "MapEditorWorkspaceService.h"
 #include "MapTool.h"
@@ -1279,6 +1280,13 @@ HRESULT CMainApp::Render()
 			{
 				focusNextWindow(DEBUG_TOOL::CAMERA);
 				m_pCameraTool->Render();
+			}
+			if (IsDebugToolVisible(DEBUG_TOOL::EQUIPMENT) &&
+				nullptr != m_pEquipmentAuthoringTool)
+			{
+				focusNextWindow(DEBUG_TOOL::EQUIPMENT);
+				m_pEquipmentAuthoringTool->Render(
+					DEBUG_TOOL::EQUIPMENT == m_eDebugInputOwner);
 			}
 
 			if (m_bProfilerVisible)
@@ -3240,11 +3248,14 @@ void CMainApp::Update_BossHealthBar()
 
 	/* Stagger/paralyzation gauge (real paralyzationGauge -- background + fill + hollow
 	purple-bordered track, char 473 in TargetGrade_Boss). The Server snapshot owns
-	current/maximum; presentation only crops the existing fill art inside the authored track. */
-	if (0u != boss.iMaximumStagger && 0u != boss.iCurrentStagger)
+	current/maximum accumulated stagger damage. Presentation crops the authored CUI fill
+	to the remaining amount so admitted stagger damage visibly depletes toward the break. */
+	if (0u != boss.iMaximumStagger)
 	{
 		const f32_t fStaggerRatio = (std::clamp)(
-			static_cast<f32_t>(boss.iCurrentStagger) /
+			static_cast<f32_t>(
+				boss.iMaximumStagger - (std::min)(
+					boss.iCurrentStagger, boss.iMaximumStagger)) /
 				static_cast<f32_t>(boss.iMaximumStagger),
 			0.f, 1.f);
 		m_pBossUIView->Set_SlotFillRatio("Boss_StaggerFill", fStaggerRatio);
@@ -4582,6 +4593,8 @@ void CMainApp::Apply_LevelRequest()
 			m_pAnimationTool->On_LevelChanged();
 		if (nullptr != m_pActionCompositionWorkbench)
 			m_pActionCompositionWorkbench->On_LevelChanged();
+		if (nullptr != m_pEquipmentAuthoringTool)
+			m_pEquipmentAuthoringTool->On_LevelChanged();
 	#endif
 		CEffectPresentationService::Clear_Level(iPreviousLevel);
 		if (LEVEL::BERN == request.eTargetLevel &&
@@ -4856,6 +4869,15 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		if (nullptr == m_pCameraTool)
 			m_pCameraTool = make_unique<CCameraTool>();
 		m_pCameraTool->Open();
+		break;
+	case DEBUG_TOOL::EQUIPMENT:
+		if (nullptr == m_pCharacterPreviewPanel)
+			m_pCharacterPreviewPanel =
+				make_shared<CCharacterPreviewPanel>(m_pDevice, m_pContext);
+		if (nullptr == m_pEquipmentAuthoringTool)
+			m_pEquipmentAuthoringTool =
+				make_unique<CEquipmentAuthoringTool>(
+					m_pDevice, m_pContext, m_pCharacterPreviewPanel);
 		break;
 	default:
 		return E_INVALIDARG;
@@ -6091,11 +6113,12 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
 		toolCell("HUD Layout Tool", DEBUG_TOOL::UI);
 		toolCell("Balance Tool", DEBUG_TOOL::BALANCE);
+		toolCell("Equipment Authoring Tool", DEBUG_TOOL::EQUIPMENT);
 		ImGui::EndTable();
 	}
 	if (ImGui::Button("Close All Tools"))
 		CloseAllDebugTools();
-	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 10>
+	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 11>
 		TOOL_FOCUS_OPTIONS = {{
 			{ DEBUG_TOOL::MAP, "Map Tool" },
 			{ DEBUG_TOOL::COMPOSITION, "Action Composition Workbench" },
@@ -6107,6 +6130,7 @@ void CMainApp::RenderDeveloperTools()
 			{ DEBUG_TOOL::BALANCE, "Balance Tool" },
 			{ DEBUG_TOOL::BOSS, "Boss Tool" },
 			{ DEBUG_TOOL::CAMERA, "Camera Tool" },
+			{ DEBUG_TOOL::EQUIPMENT, "Equipment Authoring Tool" },
 		}};
 	const char_t* pInputOwnerLabel = "None";
 	for (const auto& [eTool, pLabel] : TOOL_FOCUS_OPTIONS)
@@ -6771,6 +6795,7 @@ void CMainApp::Free()
 	m_pAnimationTool.reset();
 	m_pEffectTool.reset();
 	m_pEffectToolV2.reset();
+	m_pEquipmentAuthoringTool.reset();
 	if (nullptr != m_pCharacterPreviewPanel)
 		m_pCharacterPreviewPanel->Release(true);
 	m_pCharacterPreviewPanel.reset();

@@ -58,6 +58,13 @@ namespace LostArk::Server
 		std::uint32_t iAppliedTimedCount = 0u;
 	};
 
+	struct SERVER_COMBAT_OBJECT_PRESENTATION_PULSE_RUNTIME final
+	{
+		std::string strPresentationEventId;
+		std::uint32_t iAtMs = 0u;
+		bool bApplied = false;
+	};
+
 	struct SERVER_COMBAT_OBJECT_CONTACT_MARK final
 	{
 		LostArk::Shared::NET_ENTITY_ID iTargetNetEntityId =
@@ -132,6 +139,8 @@ namespace LostArk::Server
 		float fRemainingMilliseconds = 0.f;
 		float fElapsedMilliseconds = 0.f;
 		std::vector<SERVER_COMBAT_OBJECT_HIT_RUNTIME> Hits;
+		std::vector<SERVER_COMBAT_OBJECT_PRESENTATION_PULSE_RUNTIME>
+			PresentationPulses;
 		std::vector<SERVER_COMBAT_OBJECT_CONTACT_MARK> ContactMarks;
 	};
 

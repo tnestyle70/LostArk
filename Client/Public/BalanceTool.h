@@ -94,14 +94,28 @@ public:
 		std::uint32_t hitCount = 0u;
 	};
 
-	/* One typed Server-gameplay edge: a WINDUP stage owns the paired
-	   counterable flag and COUNTER_HIT branch, while its selected same-pattern
-	   GROGGY stage/action owns the paired groggy flag transition. */
+	/* One typed Server-gameplay fork: a WINDUP stage owns the paired
+	   counterable flag plus COUNTER_HIT/TIMEOUT branches.  Success resolves to
+	   a later same-pattern WINDUP, GROGGY, or RECOVERY Stage; only a GROGGY
+	   success target owns the paired groggy flag transition. */
 	struct VALTAN_COUNTER_WINDOW_EDIT final
 	{
 		bool enabled = false;
 		std::string successStageId;
 		std::string successActionId;
+		std::string timeoutStageId;
+		std::string timeoutActionId;
+	};
+
+	/* Optional Server counter-hit area owned by the same WINDUP Stage.  The
+	   counter clock remains the Stage duration; this preset only controls the
+	   BOSS_LOCAL source area accepted while that clock is open. */
+	struct VALTAN_COUNTER_PROXY_EDIT final
+	{
+		bool exists = false;
+		float forwardOffsetM = 1.f;
+		float rightOffsetM = 0.f;
+		float radiusM = 2.25f;
 	};
 
 	CBalanceTool();
@@ -236,6 +250,16 @@ public:
 		const std::string& stageId,
 		const VALTAN_COUNTER_WINDOW_EDIT& counter,
 		std::string& status);
+	bool Get_ValtanCounterProxyDraft(
+		const std::string& patternId,
+		const std::string& stageId,
+		VALTAN_COUNTER_PROXY_EDIT& proxy,
+		std::string& status) const;
+	bool Set_ValtanCounterProxyDraft(
+		const std::string& patternId,
+		const std::string& stageId,
+		const VALTAN_COUNTER_PROXY_EDIT& proxy,
+		std::string& status);
 	bool Get_ValtanHighJumpAxeCountDraft(
 		std::uint32_t& draftCount,
 		std::uint32_t& savedCount,
@@ -251,6 +275,19 @@ public:
 	   request the existing two-phase live apply when it is currently safe.
 	   Internal stages remain explicit for rollback and diagnostics. */
 	bool Save_ValtanProduct(std::string& status);
+	struct VALTAN_COMPOSITION_OWNER_DRAFTS final
+	{
+		std::string patternSoundBaselineBytes;
+		std::string patternSoundCandidateBytes;
+		std::string effectV2BaselineBytes;
+		std::string effectV2CandidateBytes;
+	};
+	/* Commits the Pattern split source/Product closure and optional independent
+	   Sound/V2 owners through the existing shared Valtan writer generation.
+	   Every candidate is staged and validated before one rollback-safe commit. */
+	bool Save_ValtanCompositionProduct(
+		const VALTAN_COMPOSITION_OWNER_DRAFTS& ownerDrafts,
+		std::string& status);
 	/* Action Composition owns repository authoring, not a live gameplay-only
 	   candidate.  This commits the typed joined draft to the split gameplay and
 	   presentation sources plus every generated Product in one shared-writer
@@ -484,7 +521,10 @@ private:
 		VALTAN_SOURCE_JOIN_STATUS& sourceJoin,
 		std::string& status) const;
 	bool BuildValtanDraftPatch(std::string& output, std::string& status) const;
-	bool RunValtanDraftCommand(const wchar_t* mode, std::string& status);
+	bool RunValtanDraftCommand(
+		const wchar_t* mode,
+		std::string& status,
+		const VALTAN_COMPOSITION_OWNER_DRAFTS* pOwnerDrafts = nullptr);
 	bool RequestValtanHotReload(std::string& status);
 	bool RequestValtanDecisionTrace(
 		std::uint32_t serverTick,

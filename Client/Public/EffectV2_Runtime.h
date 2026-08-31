@@ -31,9 +31,9 @@ public:
 		f32_t fAgeSeconds,
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext);
-	/* Local Action Composition preview only. The caller supplies an immutable
-	   authoring snapshot, so refreshing a group/binding never invalidates or
-	   reloads the Product runtime caches used by Server-authoritative actors. */
+	/* Local Action Composition preview only. The caller supplies the current
+	   parsed authoring snapshot, so saved groups/bindings can be reviewed on the
+	   next seek without a separate build or publish step. */
 	static void Sync_StageAuthoring(
 		const EFFECT_V2_TARGET& Target,
 		const char_t* pActionId,
@@ -50,19 +50,24 @@ public:
 		const ComPtr<ID3D11DeviceContext>& pContext,
 		const std::string& strArchetypeId);
 	static void Set_Ignored(const EFFECT_V2_TARGET& Target, bool_t bIgnored);
+	/* Drop lazy source caches and re-arm active clip/stage lanes. Existing
+	   spawned effects keep their authored stop policy; the next occurrence reads
+	   the newly saved Data/Effects/V2 documents. */
 	static void Invalidate_Caches();
 	static const std::string& Last_Error();
 
-	/* Free-running group lane for the tool: plays an in-memory group (no
-	   file round trip) whose clock starts at 0 on Play_Group and advances
+	/* Free-running group lane for the tool: plays an in-memory group against
+	   one immutable, typed authoring snapshot.  Leaf resolution never falls
+	   through to Product playback caches.  The clock starts at 0 and advances
 	   only through Advance_FreeGroups. No target, no bone following. Returns
-	   0 when no child could be expanded; a finished group drops its handle
-	   (Group_Seconds < 0). Update_Group re-applies the edited children to a
-	   running preview: offset/yaw/scale move spawned objects at once, timing
-	   and stop policy retarget children that have not spawned yet, appended
-	   children join the lane. */
+	   0 when the snapshot/group closure cannot be staged; a finished group
+	   drops its handle (Group_Seconds < 0). Update_Group re-applies the edited
+	   children to a running preview: offset/yaw/scale move spawned objects at
+	   once, timing and stop policy retarget children that have not spawned yet,
+	   appended children join the lane. */
 	static uint32_t Play_Group(
 		const EFFECT_V2_GROUP& Group,
+		std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
 		const float4x4_t& PivotWorld,
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext);
@@ -71,6 +76,10 @@ public:
 	static void Set_GroupPivot(uint32_t iHandle, const float4x4_t& PivotWorld);
 	static void Stop_Group(uint32_t iHandle);
 	static f32_t Group_Seconds(uint32_t iHandle);
+	/* Returns one deferred document/prototype/object spawn failure exactly once.
+	   The tool consumes it and stops the affected preview lane. */
+	static bool_t Consume_GroupFailure(
+		uint32_t iHandle, std::string& strOutFailure);
 	static void Advance_FreeGroups(
 		f32_t fTimeDelta,
 		const ComPtr<ID3D11Device>& pDevice,

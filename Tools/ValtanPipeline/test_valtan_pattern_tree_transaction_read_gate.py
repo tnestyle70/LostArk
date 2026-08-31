@@ -105,7 +105,7 @@ class ValtanPatternTreeTransactionReadGateTests(unittest.TestCase):
             "CValtanPresentationGenerationReadAdmission GenerationAdmission;",
             body,
         )
-        self.assertIn("GenerationAdmission.Acquire_Receipt(", body)
+        self.assertIn("GenerationAdmission.Acquire_ExactReceipt(", body)
         self.assertIn("CanonicalAdmission.Acquire(strOutStatus)", body)
         for component in (
             "Reload_PatternBindings_WhileAdmitted",
@@ -134,7 +134,9 @@ class ValtanPatternTreeTransactionReadGateTests(unittest.TestCase):
         self.assertLess(exact_validate, aggregate_commit)
         self.assertLess(preview_validate, aggregate_commit)
         self.assertIn(
-            "m_PresentationGenerationReceipt = *pExpectedReceipt;", body
+            "m_PresentationGenerationReceipt =\n"
+            "\t\t\tstd::move(CurrentPresentationReceipt);",
+            body,
         )
 
     def test_valtan_effect_prewarm_is_admission_aware(self) -> None:

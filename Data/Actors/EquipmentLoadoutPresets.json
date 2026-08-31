@@ -1,0 +1,81 @@
+{
+  "schema": "lostark.equipment-loadout-presets",
+  "formatVersion": 1,
+  "authoringOnly": true,
+  "slots": [
+    "HEAD",
+    "SHOULDER",
+    "UPPER",
+    "LOWER",
+    "HANDS",
+    "WEAPON"
+  ],
+  "classPresets": [
+    {
+      "classId": "LANCE_MASTER",
+      "slotSelections": {
+        "HEAD": "character.lance_master.mokoko_pleasant.head",
+        "SHOULDER": null,
+        "UPPER": "character.lance_master.mokoko_pleasant.outfit",
+        "LOWER": null,
+        "HANDS": null,
+        "WEAPON": "character.lance_master.wp_wflm_00"
+      }
+    },
+    {
+      "classId": "GUNSLINGER",
+      "slotSelections": {
+        "HEAD": "character.gunslinger.default_variant_01.head",
+        "SHOULDER": null,
+        "UPPER": "character.gunslinger.default_variant_01.upper",
+        "LOWER": null,
+        "HANDS": null,
+        "WEAPON": null
+      }
+    },
+    {
+      "classId": "SLAYER",
+      "slotSelections": {
+        "HEAD": "character.slayer.default_variant_01.head",
+        "SHOULDER": null,
+        "UPPER": null,
+        "LOWER": null,
+        "HANDS": null,
+        "WEAPON": "character.slayer.wp_wwbk_03"
+      }
+    },
+    {
+      "classId": "ARTIST",
+      "slotSelections": {
+        "HEAD": "character.artist.default_variant_01.head",
+        "SHOULDER": null,
+        "UPPER": null,
+        "LOWER": null,
+        "HANDS": null,
+        "WEAPON": "character.artist.wp_wsdm_09"
+      }
+    },
+    {
+      "classId": "DIMENSIONMASTER",
+      "slotSelections": {
+        "HEAD": null,
+        "SHOULDER": null,
+        "UPPER": null,
+        "LOWER": null,
+        "HANDS": null,
+        "WEAPON": "character.dimensionmaster.wp_wswp_m_06"
+      }
+    },
+    {
+      "classId": "WARLORD",
+      "slotSelections": {
+        "HEAD": null,
+        "SHOULDER": "character.warlord.default_00.shoulder",
+        "UPPER": null,
+        "LOWER": null,
+        "HANDS": null,
+        "WEAPON": "character.warlord.wp_wwgl_04"
+      }
+    }
+  ]
+}

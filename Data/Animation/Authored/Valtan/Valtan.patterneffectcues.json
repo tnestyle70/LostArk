@@ -1364,6 +1364,9 @@
           1,
           1
         ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
       }
     },
     {

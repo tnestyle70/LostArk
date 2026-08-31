@@ -834,7 +834,10 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             if stage["stageId"] == "AIRBORNE"
         )
         airborne["events"] = []
-        with self.assertRaisesRegex(pipeline.PipelineError, "HIGH_JUMP/AIRBORNE"):
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "independent spawn is unresolved/duplicate",
+        ):
             pipeline.join_v2_authoring(
                 missing_volley,
                 copy.deepcopy(presentation),
@@ -978,13 +981,22 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             for event in impact["events"]
             if event["kind"] != "SET_GAMEPLAY_PHASE"
         ]
-        with self.assertRaisesRegex(pipeline.PipelineError, "ARENA_BREAK_109/IMPACT"):
-            pipeline.join_v2_authoring(
-                missing_phase,
-                copy.deepcopy(presentation),
-                self.docs[pipeline.WORLD_SET_REL],
-                self.docs[pipeline.COMBAT_AUTHORING_REL],
-            )
+        without_fixed_phase_transition = pipeline.join_v2_authoring(
+            missing_phase,
+            copy.deepcopy(presentation),
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        joined_impact = next(
+            stage
+            for pattern in without_fixed_phase_transition["patterns"]
+            if pattern["patternId"] == "VALTAN_ARENA_BREAK_109"
+            for stage in pattern["stages"]
+            if stage["stageId"] == "IMPACT"
+        )
+        self.assertFalse(
+            any(event["kind"] == "SET_GAMEPLAY_PHASE" for event in joined_impact["events"])
+        )
 
     def assert_v1_migration_fixture_is_excluded_from_normal_revision_and_load(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1112,7 +1124,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         pipeline.validate_combat_authoring(companion)
         self.assertEqual({"combatobject.valtan.high-jump.target-axe",
                           "combatobject.valtan.red-blade-wave.projectile",
-                          "combatobject.valtan.fist-in-out.donut"},
+                          "combatobject.valtan.fist-in-out.donut",
+                          "combatobject.valtan.ground-roar.rock"},
                          {row["combatObjectArchetypeId"] for row in companion["objects"]})
         axe = next(
             row for row in companion["objects"]
@@ -1125,8 +1138,26 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
 
     def test_legacy_manifest_seals_unmanaged_closure(self) -> None:
         legacy = self.docs[pipeline.LEGACY_REL]
-        pipeline.validate_legacy_manifest(legacy, set(pipeline.MANAGED_PATTERN_IDS))
-        self.assertEqual(26, len(legacy["patternEntries"]))
+        current = pipeline.join_v2_authoring(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+            self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        managed_ids = {row["patternId"] for row in current["patterns"]}
+        pipeline.validate_legacy_manifest(legacy, managed_ids)
+        expected_legacy_ids = (
+            {
+                row["patternId"]
+                for row in self.docs[pipeline.ENCOUNTER_REL]["patterns"]
+                if row["patternId"] not in managed_ids
+            }
+            | set(pipeline.ARCHIVED_LEGACY_PATTERN_IDS)
+        )
+        self.assertEqual(
+            expected_legacy_ids,
+            {row["patternId"] for row in legacy["patternEntries"]},
+        )
         red_blade = next(
             row for row in legacy["legacyCombatObjectOwners"]
             if row["combatObjectArchetypeId"] == "combatobject.valtan.red-blade-wave.projectile"
@@ -1355,7 +1386,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         master = pipeline.join_v2_authoring(
             self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
             self.docs[pipeline.PRESENTATION_AUTHORING_REL],
-            pipeline.build_world_event_sets(self.docs[pipeline.WORLD_PRODUCT_REL]),
+            self.docs[pipeline.WORLD_SET_REL],
             self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
         trash = next(row for row in master["patterns"] if row["patternId"] == "VALTAN_TRASH")
@@ -1381,7 +1412,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                          [row["outcome"] for row in stages["CATCH_PRE_IMPACT"]["branches"]])
         self.assertEqual("DAMAGE_GRABBED_PLAYERS", stages["CATCH_SLAM"]["events"][0]["kind"])
         self.assertEqual("EXECUTE_GRABBED_PLAYERS", stages["EXECUTE_TAIL"]["events"][0]["kind"])
-        for terminal in ("CATCH_SLAM", "EXECUTE_TAIL", "RUSH_MISS", "GROGGY"):
+        for terminal in ("CATCH_SLAM", "EXECUTE_TAIL", "RETRY_EXHAUSTED", "GROGGY"):
             self.assertIsNone(stages[terminal]["defaultNextActionId"])
             self.assertEqual([{"outcome": "TIMEOUT", "nextActionId": None}],
                              stages[terminal]["branches"])
@@ -1408,7 +1439,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             if mutate == "bad_profile": bad_stage["events"][0]["damageProfileId"] = "boss.invalid"
             with self.subTest(mutation=mutate), self.assertRaises(pipeline.PipelineError):
                 pipeline.validate_v2_master(invalid,
-                    pipeline.build_world_event_sets(self.docs[pipeline.WORLD_PRODUCT_REL]),
+                    self.docs[pipeline.WORLD_SET_REL],
                     self.docs[pipeline.COMBAT_AUTHORING_REL])
 
     def test_grab_hit_and_release_actions_project_losslessly(self) -> None:
@@ -1483,7 +1514,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            ("ARENA_EJECTION", 24.0, 500, 0.0),
+            ("ARENA_EJECTION", 24.0, 500, 180.0),
             tuple(
                 next(
                     event for event in catch_release["events"]
@@ -1546,7 +1577,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 "releaseMode": "ARENA_EJECTION",
                 "speedMps": 24.0,
                 "durationMs": 500,
-                "yawOffsetDegrees": 0.0,
+                "yawOffsetDegrees": 180.0,
             },
             projected_catch["STEP_04"]["actions"],
         )
@@ -1592,11 +1623,11 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                        if stage["motion"] is not None]
         self.assertEqual([{
             "kind": "PORTAL_TARGET_RUSH", "retargetDelayMs": 500,
-            "speedMps": 20.0, "distanceM": 8.0,
+            "speedMps": 20.0, "distanceM": 16.0,
         }] * 8,
                          [stage["motion"] for stage in warp_legs])
         self.assertEqual(
-            [list(range(500, 900, 50))] * 8,
+            [list(range(500, 1300, 50))] * 8,
             [stage["hit"]["schedule"]["offsetsMs"] for stage in warp_legs],
         )
         self.assertEqual([
@@ -1622,7 +1653,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             with self.subTest(pattern=pattern_id):
                 owner = owners[pattern_id]
                 legs = [stage for stage in owner["stages"] if stage["motion"] is not None]
-                self.assertEqual([2000, *([900] * 8), 1667],
+                expected_leg_duration_ms = 2300 if pattern_id == "VALTAN_WARP" else 900
+                self.assertEqual([2000, *([expected_leg_duration_ms] * 8), 1667],
                                  [stage["durationMs"] for stage in owner["stages"]])
                 self.assertIsNone(owner["stages"][-1]["defaultNextActionId"])
                 self.assertEqual("RETURN_TO_ARENA_CENTER", owner["stages"][-1]["events"][0]["kind"])
@@ -1658,7 +1690,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             ("target rush extra field", lambda motion: motion.update(distance=7.2654)),
             ("target rush missing delay", lambda motion: motion.pop("retargetDelayMs")),
             ("target rush zero speed", lambda motion: motion.update(speedMps=0.0)),
-            ("target rush overrun", lambda motion: motion.update(distanceM=9.0)),
+            ("target rush overrun", lambda motion: motion.update(distanceM=37.0)),
             ("target rush unknown kind", lambda motion: motion.update(kind="PORTAL_NAV_FALLBACK")),
             ("warp changed to corner", lambda motion: motion.update(
                 kind="PORTAL_CROSS_ARENA", cornerIndex=0, halfExtentsM=[22.0, 22.0])),
@@ -1710,12 +1742,12 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             ("unknown kind", lambda row: row["finale"].update(kind="INFINITE_STAGE")),
             ("invulnerable owner cannot finish by death", lambda row: row.update(invulnerableWhileRunning=True)),
             ("wrong entity role", lambda row: row["finale"].update(ghostArchetypeId="BOSS_VALTAN")),
-            ("two children", lambda row: row["finale"].update(ghostPatternIds=["VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH"])),
+            ("empty children", lambda row: row["finale"].update(ghostPatternIds=[])),
             ("duplicate child", lambda row: row["finale"].update(ghostPatternIds=["VALTAN_WHIRLWIND"] * 3)),
             ("missing child", lambda row: row["finale"]["ghostPatternIds"].__setitem__(0, "VALTAN_UNKNOWN")),
             ("self child", lambda row: row["finale"]["ghostPatternIds"].__setitem__(0, row["patternId"])),
             ("terrain child", lambda row: row["finale"]["ghostPatternIds"].__setitem__(0, "VALTAN_ARENA_BREAK_109")),
-            ("unbounded child count", lambda row: row["finale"].update(maximumActiveGhosts=2)),
+            ("unbounded child capacity", lambda row: row["finale"].update(maximumActiveGhosts=65)),
             ("wrong extent dimensions", lambda row: row["finale"].update(spawnHalfExtentsM=[10.0, 10.0, 10.0])),
             ("zero extent", lambda row: row["finale"].update(spawnHalfExtentsM=[0.0, 10.0])),
             ("nonfinite extent", lambda row: row["finale"].update(spawnHalfExtentsM=[float("inf"), 10.0])),
@@ -2039,15 +2071,6 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     {"worldScale": [1.5, 0.0, 1.5]}
                 ),
             ),
-            mutate(
-                "cue.valtan.project-tuned.attack.dash-charge.active-shield",
-                lambda cue: cue["scalePolicy"].update(
-                    {
-                        "kind": "GAMEPLAY_FOOTPRINT",
-                        "worldScale": [1.5, 1.5, 1.5],
-                    }
-                ),
-            ),
         ]
         for presentation in cases:
             with self.subTest(), self.assertRaises(pipeline.PipelineError):
@@ -2057,6 +2080,21 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     self.docs[pipeline.WORLD_SET_REL],
                     self.docs[pipeline.COMBAT_AUTHORING_REL],
                 )
+        authorable_policy_change = mutate(
+            "cue.valtan.project-tuned.attack.dash-charge.active-shield",
+            lambda cue: cue["scalePolicy"].update(
+                {
+                    "kind": "GAMEPLAY_FOOTPRINT",
+                    "worldScale": [1.5, 1.5, 1.5],
+                }
+            ),
+        )
+        pipeline.join_v2_authoring(
+            copy.deepcopy(gameplay),
+            authorable_policy_change,
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
 
     def test_dash_charge_uses_one_visible_server_and_presentation_clock(self) -> None:
         gameplay = self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
@@ -2548,7 +2586,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.docs[pipeline.DAMAGE_REL],
             draft,
             self.source_manifest["sourceManifestId"],
-            self.docs[pipeline.WORLD_SET_REL],
+            pipeline.build_world_event_sets(self.docs[pipeline.WORLD_PRODUCT_REL]),
             self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
         self.assertEqual(9, count)
@@ -2895,7 +2933,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.assertIn(
                 "PATTERNROTATIONWINDOW\tENCOUNTER_VALTAN\t"
                 "rotation.valtan.160.130\twindow.valtan.phase1.160.130\t1\t"
-                "selectionset.valtan.160.130\t160\t130\t5",
+                "selectionset.valtan.160.130\t160\t130\t"
+                f"{len(first['candidates'])}",
                 bootstrap_lines,
             )
             self.assertFalse(any(
@@ -3472,12 +3511,6 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 "patternId": "VALTAN_ARENA_BREAK_109", "healthBar": 100,
                 "triggerOrder": 1,
             },
-            {
-                "op": "SET_MECHANIC_TRIGGER",
-                "mechanicId": "mechanic.valtan-arena-break-109",
-                "patternId": "VALTAN_ARENA_BREAK_109", "healthBar": 100,
-                "triggerOrder": 2,
-            },
         )
         for operation in invalid_operations:
             with self.subTest(operation=operation), self.assertRaises(pipeline.PipelineError):
@@ -3502,9 +3535,6 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         unknown_set = copy.deepcopy(base)
         unknown_set["decisionModel"]["selectionWindows"][0]["selectionSetId"] = "missing.set"
         invalid_masters.append(unknown_set)
-        phase_boundary_drift = copy.deepcopy(base)
-        phase_boundary_drift["decisionModel"]["mechanics"][1]["trigger"]["healthBar"] = 100
-        invalid_masters.append(phase_boundary_drift)
         for invalid in invalid_masters:
             with self.assertRaises(pipeline.PipelineError):
                 pipeline.validate_v2_master(
@@ -3512,6 +3542,16 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     self.docs[pipeline.WORLD_SET_REL],
                     self.docs[pipeline.COMBAT_AUTHORING_REL],
                 )
+
+        apply(
+            {
+                "op": "SET_MECHANIC_TRIGGER",
+                "mechanicId": "mechanic.valtan-arena-break-109",
+                "patternId": "VALTAN_ARENA_BREAK_109",
+                "healthBar": 100,
+                "triggerOrder": 2,
+            }
+        )
 
         coordinated_but_unpromoted = copy.deepcopy(base)
         coordinated_but_unpromoted["decisionModel"]["selectionWindows"][1][
@@ -3521,7 +3561,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             "healthBar"
         ] = 100
         with self.assertRaisesRegex(
-            pipeline.PipelineError, "first legacy rotation boundary"
+            pipeline.PipelineError, "Product health mechanic trigger tuple is duplicated"
         ):
             pipeline.project_v2_products(
                 self.root, self.docs, coordinated_but_unpromoted
@@ -4012,16 +4052,35 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             diagnostic,
         )
 
-    def test_gameplay_publisher_rejects_raw_finale_order_invulnerability_and_late_cycle(self) -> None:
-        for defect in ("reordered attacks", "invulnerable owner", "late child cycle"):
+    def test_gameplay_publisher_accepts_dynamic_finale_and_rejects_invalid_policy_or_cycle(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            encounter = copy.deepcopy(self.docs[pipeline.ENCOUNTER_REL])
+            finale = next(row for row in encounter["patterns"]
+                          if row["patternId"] == "VALTAN_GHOST_FINALE")
+            finale["finale"]["ghostPatternIds"] = ["VALTAN_FOUR_SLASH", "VALTAN_WHIRLWIND"]
+            finale["finale"]["maximumActiveGhosts"] = 2
+            overlay_root = Path(temporary)
+            encounter_path = overlay_root / pipeline.ENCOUNTER_REL
+            encounter_path.parent.mkdir(parents=True)
+            encounter_path.write_text(
+                json.dumps(encounter, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            completed = subprocess.run(
+                ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                 str(self.root / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1"),
+                 "-Mode", "Validate", "-InputOverlayRoot", str(overlay_root)],
+                cwd=self.root, capture_output=True, text=True, encoding="utf-8", check=False,
+            )
+            self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
+
+        for defect in ("invulnerable owner", "late child cycle"):
             with self.subTest(defect=defect), tempfile.TemporaryDirectory() as temporary:
                 encounter = copy.deepcopy(self.docs[pipeline.ENCOUNTER_REL])
                 finale = next(row for row in encounter["patterns"]
                               if row["patternId"] == "VALTAN_GHOST_FINALE")
-                expected = "Ghost finale must remain damageable and use its three ordered attacks"
-                if defect == "reordered attacks":
-                    finale["finale"]["ghostPatternIds"].reverse()
-                elif defect == "invulnerable owner":
+                expected = "Ghost finale dependent boss reference or damage policy is invalid"
+                if defect == "invulnerable owner":
                     finale["invulnerableWhileRunning"] = True
                 else:
                     child = next(row for row in encounter["patterns"]
@@ -4179,7 +4238,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.docs[pipeline.DAMAGE_REL],
             radial,
             self.source_manifest["sourceManifestId"],
-            self.docs[pipeline.WORLD_SET_REL],
+            pipeline.build_world_event_sets(self.docs[pipeline.WORLD_PRODUCT_REL]),
             self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
         staged_volley = next(

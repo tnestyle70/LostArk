@@ -182,36 +182,41 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         reload_canonical = render.index("Reload_Canonical()", created)
         self.assertLess(route_to_browser, reload_canonical)
 
-    def test_details_owns_a_deferred_pattern_save_without_stale_frame_views(self) -> None:
+    def test_sequencer_owns_a_deferred_pattern_save_without_stale_frame_views(self) -> None:
         details = function_body(
             self.workbench_cpp,
             "void Client::CActionCompositionWorkbench::Render_Details(",
+        )
+        timeline = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render_Timeline(",
         )
         render = function_body(
             self.workbench_cpp,
             "void Client::CActionCompositionWorkbench::Render()",
         )
-        self.assertIn('"SAVED"', details)
-        self.assertIn('"SAVE FAILED"', details)
-        self.assertIn('"UNSAVED"', details)
-        self.assertIn('ImGui::Button("Save & Apply##CompositionDetails")', details)
-        self.assertIn("m_bSavePatternRequested = true", details)
+        self.assertIn('ImGui::Button("Save##CompositionSequencer")', timeline)
+        self.assertIn("m_bSavePatternRequested = true", timeline)
+        self.assertIn("bHasUnsavedChanges", timeline)
+        self.assertIn(
+            'ImGui::TextWrapped("%s", m_strPatternSaveStatus.c_str())',
+            timeline,
+        )
+        self.assertNotIn("Save##CompositionSequencer", details)
+        self.assertNotIn("m_bSavePatternRequested = true", details)
 
         resources = render.index("Render_ResourcesWindow(")
         consume = render.index("if (m_bSavePatternRequested)")
-        save = render.index("Save_Publish_Reload()", consume)
+        save = render.index("Save_Reload()", consume)
         self.assertLess(resources, consume)
         self.assertLess(consume, save)
         self.assertNotIn("Render_", render[save:])
 
-        self.assertIn("Advanced Diagnostics for the exact reason", details)
-        toolbar = function_body(
-            self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
+        self.assertIn("m_bPatternSaveSucceeded = Save_Reload()", render)
+        self.assertLess(
+            save,
+            render.index("m_strPatternSaveStatus = m_strStatus", save),
         )
-        self.assertIn("m_strPatternSaveStatus", toolbar)
-        self.assertIn('"Pattern: %s"', toolbar)
-        self.assertIn("m_bPatternSaveSucceeded = Save_Publish_Reload()", render)
 
     def test_sound_save_admission_uses_the_complete_canonical_graph(self) -> None:
         """Non-playable legacy rows still own admitted Pattern Sound cues."""
@@ -255,7 +260,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         for signature in (
             "Validate_ManualStageTopologySoundDependencies(",
-            "bool_t Client::CActionCompositionWorkbench::Save_Publish_Reload()",
+            "bool_t Client::CActionCompositionWorkbench::Save_Reload()",
         ):
             body = function_body(self.workbench_cpp, signature)
             self.assertIn(
@@ -306,7 +311,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
 
         save = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Save_Publish_Reload()",
+            "bool_t Client::CActionCompositionWorkbench::Save_Reload()",
         )
         self.assertLess(
             save.index("Validate_ValtanCompositionAnimationGraphMutations"),
@@ -314,7 +319,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         self.assertLess(
             save.index("Validate_ValtanCompositionPatternSoundGraphDependencies"),
-            save.index("Save_ValtanCanonicalProduct"),
+            save.index("Save_ValtanCompositionProduct"),
         )
 
     def test_extracted_hold_chain_fits_the_existing_stage_with_exact_slots(self) -> None:
@@ -740,7 +745,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         ):
             self.assertIn(pin, render)
 
-    def test_sound_owner_reload_discard_and_retry_require_fresh_admission(self) -> None:
+    def test_sound_owner_reload_discard_and_main_save_require_fresh_admission(self) -> None:
         details = function_body(
             self.workbench_cpp,
             "void Client::CActionCompositionWorkbench::Render_Details(",
@@ -753,9 +758,6 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             "ADMISSION_STATE::ADMITTED == m_eAdmission && bMutationAdmitted",
             sound,
         )
-        runtime_apply = function_body(sound, "[this](std::string& strOutStatus)")
-        self.assertIn("ADMISSION_STATE::ADMITTED != m_eAdmission", runtime_apply)
-        self.assertIn("STALE_PRESERVED is display-only", runtime_apply)
         self.assertIn(
             "const bool_t bSoundSourceCommitAdmitted =\n"
             "\t\t\tbFreshSoundOwnerAdmitted &&",
@@ -771,12 +773,40 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         for label in (
             "Reload Sound Owner",
             "Confirm Discard + Reload Sound Owner",
-            "Retry Apply Saved Sound",
         ):
             label_at = sound.index(label)
             guarded = sound.rfind("bSoundSourceCommitAdmitted", 0, label_at)
             self.assertNotEqual(-1, guarded, label)
             self.assertLess(label_at - guarded, 260, label)
+        self.assertNotIn("Save Sound Owner", sound)
+        self.assertNotIn("Retry Apply Saved Sound", sound)
+        self.assertIn(
+            "The Sequencer Save button stores Pattern, Animation, Effect and Sound changes together.",
+            sound,
+        )
+
+        timeline = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+        )
+        self.assertIn('ImGui::Button("Save##CompositionSequencer")', timeline)
+        toolbar = function_body(
+            self.workbench_cpp,
+            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
+        )
+        auto_retry_guard = toolbar.index(
+            "m_LastPatternSoundAutoApplyRevision != ExpectedServerRevision"
+        )
+        remember_revision = toolbar.index(
+            "m_LastPatternSoundAutoApplyRevision = ExpectedServerRevision",
+            auto_retry_guard,
+        )
+        auto_retry = toolbar.index(
+            "Retry_ValtanCompositionPatternSoundRuntimeApply(",
+            remember_revision,
+        )
+        self.assertLess(auto_retry_guard, remember_revision)
+        self.assertLess(remember_revision, auto_retry)
 
     def test_dirty_reload_preserves_current_admission_and_draft(self) -> None:
         reload_body = function_body(
@@ -963,22 +993,32 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         self.assertIn("m_eAdmission = ADMISSION_STATE::STALE_PRESERVED", render)
 
-    def test_save_publishes_candidate_before_any_local_consumer_reload(self) -> None:
+    def test_one_save_commits_pattern_and_sound_before_local_consumer_reload(self) -> None:
         save = function_body(
             self.workbench_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Save_Publish_Reload()",
+            "bool_t Client::CActionCompositionWorkbench::Save_Reload()",
         )
-        canonical = save.index("Save_ValtanCanonicalProduct")
+        animation_validation = save.index(
+            "Validate_ValtanCompositionAnimationGraphMutations"
+        )
+        sound_validation = save.index(
+            "Validate_ValtanCompositionPatternSoundGraphDependencies"
+        )
+        sound_prepare = save.index("Prepare_ValtanCompositionPatternSoundSave")
+        product_save = save.index("Save_ValtanCompositionProduct")
+        sound_accept = save.index("Accept_ValtanCompositionPatternSoundSave")
         boss_reload = save.index("Reload_CanonicalGraph")
         workbench_reload = save.index("if (!Reload_Canonical())")
-        candidate_publish = save.index("Save_ValtanProduct")
-        self.assertLess(canonical, candidate_publish)
-        self.assertLess(candidate_publish, boss_reload)
+        self.assertLess(animation_validation, sound_validation)
+        self.assertLess(sound_validation, sound_prepare)
+        self.assertLess(sound_prepare, product_save)
+        self.assertLess(product_save, sound_accept)
+        self.assertLess(sound_accept, boss_reload)
         self.assertLess(boss_reload, workbench_reload)
-        self.assertIn("SAVE & APPLY: data files saved", save)
-        self.assertIn("Server apply status follows", save)
-        self.assertIn("exact saved revision is active", save)
-        self.assertIn("presentation changes can require re-entry", save)
+        self.assertIn(
+            "Saved Pattern, Sound, and Effect V2 changes together",
+            save,
+        )
 
         balance_save = function_body(
             self.balance_cpp,
@@ -1011,7 +1051,10 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertNotIn("Get_ServerActivePatternRevision(", toolbar)
         self.assertNotIn("Is_CurrentPresentationBaselineIntact", observe)
         self.assertNotIn("Acquire_Receipt", observe)
-        self.assertIn("Is_CurrentPresentationBaselineIntact", exact)
+        self.assertNotIn("Is_CurrentPresentationBaselineIntact", exact)
+        self.assertNotIn("Acquire_Receipt", exact)
+        self.assertIn("Can_MutateCanonicalGraph", exact)
+        self.assertIn("ServerActiveRevision", exact)
 
         gap = function_body(
             self.workbench_cpp,
@@ -1109,8 +1152,9 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             "ImGui::SetNextWindowFocus()",
             "ImGui::SetNextWindowCollapsed(false, ImGuiCond_Always)",
             'ImGui::Button("Append V1 Effect to Pattern Draft")',
-            '"Add V2 Group to Stage (Save Now)"',
-            '"Add V2 Leaf to Stage (Save Now)"',
+            'ImGui::Button("Append V2 Stage Binding")',
+            '"V2 Authored Effects"',
+            '"V2 Effect Groups"',
             'ImGui::Button("Append Selected Sound to Stage")',
             "Render_SequenceBrowser(",
             'ImGui::SeparatorText("Sound Event Tree")',
@@ -1134,34 +1178,36 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             self.workbench_cpp,
             "void Client::CActionCompositionWorkbench::\nRefresh_EffectV2LocalPreviewAfterMutation(",
         )
-
         self.assertGreaterEqual(
             reload_effects.count("IsBossValtanEffectV2Resource("), 2
         )
+        authored_effects = resources.index('"V2 Authored Effects"')
         group_tree = resources.index('"V2 Effect Groups"')
-        advanced_leaves = resources.index('"Advanced: V2 Individual Leaves"')
-        self.assertLess(group_tree, advanced_leaves)
-        self.assertIn(
-            "ImGuiTreeNodeFlags_DefaultOpen", resources[group_tree:advanced_leaves]
-        )
-        self.assertIn('"Attach at Animation Box Start##ResourceEffect"', resources)
-        self.assertIn("Resolve_ClipSourceToStageMs(", resources)
-        self.assertIn(
-            "IsBossValtanEffectV2Resource(m_strEffectAddAssetId)", resources
-        )
-        self.assertIn("Append_BossValtanStageBinding(", resources)
+        self.assertLess(authored_effects, group_tree)
+        self.assertNotIn('"Advanced: V2 Individual Leaves"', resources)
+        self.assertIn("ImGuiTreeNodeFlags_SpanAvailWidth", resources[group_tree:])
+        self.assertIn('"Attach to Animation Box##ResourceEffect"', resources)
+        self.assertIn('"Stage-local start (ms)##ResourceEffectV2"', resources)
+        self.assertIn("&m_iEffectV2AddStartMs", resources)
+        self.assertIn("m_EffectV2DocumentIds[i]", resources)
+        self.assertIn("m_EffectV2GroupIds[i]", resources)
+        self.assertIn("m_iEffectV2AddStartMs, Status", resources)
+        self.assertIn("Stage_AppendBossValtanStageBinding(", resources)
         self.assertIn("Refresh_EffectV2LocalPreviewAfterMutation(", resources)
 
         for token in (
             "Stop_ValtanCompositionPattern(",
             "Play_EffectivePreview(",
             "Seek_EffectivePreview(",
-            "Server Saved Revision / Complete Play is unchanged",
+            "Use Save to commit",
         ):
             self.assertIn(token, refresh)
         self.assertNotIn("CEffectV2Runtime::Invalidate_Caches()", refresh)
-        self.assertNotIn(
+        self.assertIn(
             "CEffectV2Runtime::Invalidate_Caches()", self.effect_tool_v2_cpp
+        )
+        self.assertIn(
+            "CEffectV2Catalog::Get().Reload_BossValtan(", self.effect_tool_v2_cpp
         )
         self.assertIn("Sync_StageAuthoring(", self.effect_v2_runtime_cpp)
         self.assertIn("pSnapshot->Find_Group(", self.effect_v2_runtime_cpp)
@@ -1173,6 +1219,72 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertIn("m_bLocalPatternAuthoringPreview", local_preview)
         self.assertIn("Sync_StageAuthoring(", local_preview)
         self.assertIn("CEffectV2Catalog::Get().Get_Snapshot()", local_preview)
+
+    def test_effect_v2_group_play_stages_ready_snapshot_and_reports_failures(self) -> None:
+        resources = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render_ResourcesWindow(",
+        )
+        play = function_body(
+            self.workbench_cpp,
+            "bool_t Client::CActionCompositionWorkbench::Play_EffectivePreview(",
+        )
+        direct_group_play = function_body(
+            self.effect_tool_v2_cpp,
+            "bool_t Client::CEffect_Tool_V2::Play_GroupPreview()",
+        )
+        direct_group_update = function_body(
+            self.effect_tool_v2_cpp,
+            "void Client::CEffect_Tool_V2::Update_Attach(",
+        )
+        deactivate = function_body(
+            self.effect_tool_v2_cpp,
+            "void Client::CEffect_Tool_V2::Deactivate()",
+        )
+        runtime_group_play = function_body(
+            self.effect_v2_runtime_cpp,
+            "uint32_t Client::CEffectV2Runtime::Play_Group(",
+        )
+        runtime_group_update = function_body(
+            self.effect_v2_runtime_cpp,
+            "void Client::CEffectV2Runtime::Update_Group(",
+        )
+        runtime_group_advance = function_body(
+            self.effect_v2_runtime_cpp,
+            "void Client::CEffectV2Runtime::Advance_FreeGroups(",
+        )
+
+        append = resources.index("Stage_AppendBossValtanStageBinding(")
+        refresh = resources.index(
+            "Refresh_EffectV2LocalPreviewAfterMutation(", append
+        )
+        self.assertLess(append, refresh)
+        for token in (
+            "CEffectV2Catalog::Get().Reload_BossValtan(",
+            "CEffectV2Catalog::Get().Get_Snapshot()",
+            "pEffectV2Snapshot->Is_Ready()",
+            "The previous snapshot was preserved",
+        ):
+            self.assertIn(token, play)
+        self.assertLess(
+            play.index("Reload_BossValtan("),
+            play.index("Play_ValtanCompositionDraftPattern("),
+        )
+        for token in (
+            "Reload_BossValtan(",
+            "pSnapshot->Is_Ready()",
+            "pSnapshot->Find_Document(",
+            "CEffectV2Runtime::Play_Group(\n\t\tm_Group, pSnapshot",
+        ):
+            self.assertIn(token, direct_group_play)
+        self.assertIn("Consume_GroupFailure(", direct_group_update)
+        self.assertIn("deferred spawn failure", direct_group_update)
+        self.assertIn("Stop_GroupPreview();", deactivate)
+        self.assertIn("Lane.pSnapshot = std::move(pSnapshot);", runtime_group_play)
+        self.assertNotIn("Ensure_Document(", runtime_group_play)
+        self.assertNotIn("Ensure_Document(", runtime_group_update)
+        self.assertIn("Group.pSnapshot.get()", runtime_group_advance)
+        self.assertIn("g_FreeGroupTerminalFailures", runtime_group_advance)
 
     def test_effect_v2_timeline_boxes_are_typed_large_and_mutable(self) -> None:
         build = function_body(
@@ -1209,13 +1321,13 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertIn("Item.iSubrow = iSubrow", pack)
         self.assertNotIn("Item.iStartMs =", pack)
         self.assertNotIn("Item.iEndMs =", pack)
-        self.assertIn("Duplicate_BossValtanStageBinding(", duplicate)
-        self.assertIn("Remove_BossValtanStageBinding(", delete)
+        self.assertIn("Stage_DuplicateBossValtanStageBinding(", duplicate)
+        self.assertIn("Stage_RemoveBossValtanStageBinding(", delete)
         self.assertIn("ResolveEffectV2Binding(", duplicate)
         self.assertIn("ResolveEffectV2Binding(", delete)
         self.assertIn("From_StageBinding(*pSourceBinding)", duplicate)
         self.assertIn("From_StageBinding(*pSourceBinding)", delete)
-        self.assertIn("Update_BossValtanStageBindingStart(", timeline)
+        self.assertIn("Stage_UpdateBossValtanStageBindingStart(", timeline)
         self.assertIn("ResolveEffectV2Binding(", timeline)
         self.assertIn("From_StageBinding(", timeline)
         self.assertIn("Item.bEffectV2Binding && bMutationAdmitted", timeline)
@@ -1394,7 +1506,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertIn("m_iTimelineCacheDraftGeneration", cache_gate)
         self.assertIn("return;", cache_gate)
 
-    def test_resource_catalogs_load_only_in_the_open_resource_domain(self) -> None:
+    def test_large_animation_catalog_is_lazy_and_v2_timeline_catalog_is_eager(self) -> None:
         open_valtan = function_body(
             self.workbench_cpp,
             "bool_t Client::CActionCompositionWorkbench::Open_Valtan()",
@@ -1409,7 +1521,13 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         for body in (open_valtan, reload_canonical, render):
             self.assertNotIn("Reload_AnimationSequences(", body)
+        for body in (open_valtan, render):
             self.assertNotIn("Reload_SemanticValtanEffects(", body)
+        self.assertIn("Reload_SemanticValtanEffects();", reload_canonical)
+        self.assertLess(
+            reload_canonical.index("m_eAdmission = ADMISSION_STATE::ADMITTED;"),
+            reload_canonical.rindex("Reload_SemanticValtanEffects();"),
+        )
 
         sequence_browser = function_body(
             self.workbench_cpp,
@@ -1500,7 +1618,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertIn("Open_PatternFlow", open_flow)
         self.assertNotIn("CValtanPatternFlowDocument", toolbar)
 
-    def test_reload_save_end_the_frame_and_sound_save_balances_disabled_stack(self) -> None:
+    def test_session_has_no_reload_command_and_sequencer_owns_deferred_save(self) -> None:
         toolbar = function_body(
             self.workbench_cpp,
             "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
@@ -1518,27 +1636,36 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             self.workbench_cpp,
             "void Client::CActionCompositionWorkbench::Render_Details(",
         )
+        timeline = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+        )
 
-        self.assertIn('ImGui::Button("Reload Canonical"', toolbar)
-        self.assertIn("return true", toolbar)
-        self.assertIn("bCanonicalViewMayHaveChanged", toolbar)
+        self.assertNotIn('ImGui::Button("Reload Canonical"', toolbar)
+        self.assertNotIn("bCanonicalViewMayHaveChanged", toolbar)
+        self.assertIn("return false", toolbar)
         self.assertIn("Render_Toolbar", session)
         self.assertIn("ImGui::End();", session)
         self.assertIn("ADMISSION_STATE::ADMITTED != m_eAdmission", open_valtan)
 
-        sound_button = details.index('ImGui::Button("Save Sound Owner")')
-        sound_end_disabled = details.index("ImGui::EndDisabled();", sound_button)
-        sound_return = details.index("if (bSoundSaveRequested)", sound_button)
-        self.assertLess(sound_end_disabled, sound_return)
+        self.assertNotIn('ImGui::Button("Save Sound Owner")', details)
+        self.assertNotIn('ImGui::Button("Retry Apply Saved Sound")', details)
+        self.assertIn('ImGui::Button("Save##CompositionSequencer")', timeline)
+        self.assertIn("m_bSavePatternRequested = true", timeline)
+        render = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render()",
+        )
+        self.assertLess(
+            render.index("Render_ResourcesWindow("),
+            render.index("if (m_bSavePatternRequested)"),
+        )
+        self.assertIn("m_bPatternSaveSucceeded = Save_Reload()", render)
 
     def test_session_keeps_actions_visible_and_hides_raw_diagnostics_by_default(self) -> None:
         toolbar = function_body(
             self.workbench_cpp,
             "bool_t Client::CActionCompositionWorkbench::Render_Toolbar(",
-        )
-        diagnostics = function_body(
-            self.workbench_cpp,
-            "void Client::CActionCompositionWorkbench::Render_DataFiles(",
         )
         linked = function_body(
             self.workbench_cpp,
@@ -1546,30 +1673,26 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
 
         for action_table in (
-            "##CompositionPrimaryActions",
             "##CompositionServerActions",
             "##CompositionToolActions",
         ):
             self.assertIn(action_table, toolbar)
+        self.assertNotIn("##CompositionPrimaryActions", toolbar)
         self.assertNotIn("ImGui::SameLine", toolbar)
-        for summary in (
-            '"SAVED"',
-            '"UNSAVED"',
-            '"SAVE FAILED"',
-            '"SAVED / SERVER PENDING"',
-            "Save failed before writing files. Open Advanced Diagnostics.",
-            "Server not ready. Save and restart Server, then re-enter the arena.",
-        ):
-            self.assertIn(summary, toolbar)
-
-        self.assertIn('ImGui::CollapsingHeader("Advanced Diagnostics")', diagnostics)
-        self.assertNotIn("ImGuiTreeNodeFlags_DefaultOpen", diagnostics)
-        self.assertIn("m_strPatternSaveStatus", diagnostics)
-        self.assertIn("m_strDisplayProvenance", diagnostics)
-        self.assertLess(
-            diagnostics.index('ImGui::CollapsingHeader("Advanced Diagnostics")'),
-            diagnostics.index("Render_SemanticLinkedRows(pPattern, pStage)"),
+        self.assertIn("Saved data is newer than this Valtan arena.", toolbar)
+        timeline = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render_Timeline(",
         )
+        self.assertIn('ImGui::Button("Save##CompositionSequencer")', timeline)
+        self.assertIn("bHasUnsavedChanges", timeline)
+        self.assertIn(
+            'ImGui::TextWrapped("%s", m_strPatternSaveStatus.c_str())',
+            timeline,
+        )
+
+        self.assertNotIn('ImGui::CollapsingHeader("Advanced Diagnostics")', self.workbench_cpp)
+        self.assertNotIn("Render_DataFiles(", self.workbench_cpp)
         self.assertIn("!pStage->ProductCues.empty()", linked)
         self.assertIn("bFoundSound && ImGui::CollapsingHeader", linked)
         self.assertIn("bFoundCamera && ImGui::CollapsingHeader", linked)
@@ -1643,9 +1766,11 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             self.assertIn(f"TIMELINE_LANE::{lane}", request)
         self.assertIn("m_bResourceDomainSelectionRequested = true", request)
         self.assertIn("ImGuiTabItemFlags_SetSelected", resources)
-        self.assertIn('"Open Counter -> Groggy Detail"', resources)
-        self.assertIn('"Open Motion Detail"', resources)
-        self.assertIn('"Open Grab Release Detail"', resources)
+        self.assertIn('Stage.strStageId + "/branch/COUNTER_HIT/authoring"', request)
+        self.assertIn('"Counter Box Detail opened for this Stage."', request)
+        self.assertIn('Stage.strStageId + "/collider"', request)
+        self.assertIn('"Server Collider / Hit Schedule Details opened', request)
+        self.assertNotIn('"Open Counter -> Groggy Detail"', resources)
 
     def test_pattern_browser_is_the_complete_play_inventory_projection(self) -> None:
         collect = function_body(
@@ -1777,7 +1902,8 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             "m_AnimationSequences[iSequence]", animation[animation_tree:]
         )
         self.assertIn("RenderResourceTree(", animation[animation_tree:])
-        self.assertIn("std::to_string(Sequence.iSequenceIndex)", animation)
+        self.assertIn("Sequence.strStableId", animation)
+        self.assertIn("Sequence.iSequenceIndex", animation)
         self.assertNotIn("std::vector<std::size_t> Filtered", animation)
 
         effect_reload = function_body(

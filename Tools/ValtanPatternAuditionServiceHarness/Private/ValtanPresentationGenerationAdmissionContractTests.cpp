@@ -1,4 +1,5 @@
 #include "ProjectDataRoot.h"
+#include "DataJson.h"
 #include "ValtanPresentationGenerationAdmission.h"
 
 #include <chrono>
@@ -165,6 +166,116 @@ namespace
 		output.flush();
 		return output.good();
 	}
+
+	bool Load_JsonFixture(
+		const std::filesystem::path& path,
+		Client::DATA_JSON_VALUE& outRoot,
+		std::string& status)
+	{
+		std::ifstream input(path, std::ios::binary);
+		if (!input)
+		{
+			status = "Could not open the Effect V2 closure fixture: " +
+				path.string();
+			return false;
+		}
+		const std::string bytes{
+			std::istreambuf_iterator<char>(input),
+			std::istreambuf_iterator<char>() };
+		if (!Client::CDataJson::Parse(bytes, outRoot, status))
+		{
+			status = "Could not parse the Effect V2 closure fixture " +
+				path.string() + ": " + status;
+			return false;
+		}
+		return true;
+	}
+
+	bool Collect_ReachableV2Closure(
+		const std::filesystem::path& repositoryRoot,
+		std::set<std::string>& outClosure,
+		std::string& status)
+	{
+		constexpr const char* bindingRelative =
+			"Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json";
+		Client::DATA_JSON_VALUE bindingRoot;
+		if (!Load_JsonFixture(
+				repositoryRoot / bindingRelative, bindingRoot, status))
+		{
+			return false;
+		}
+		const Client::DATA_JSON_VALUE* const bindings =
+			bindingRoot.Find("bindings");
+		if (nullptr == bindings || !bindings->Is_Array())
+		{
+			status = "Effect V2 binding closure fixture has no bindings array.";
+			return false;
+		}
+
+		outClosure.clear();
+		outClosure.insert(bindingRelative);
+		std::set<std::string> groupIds;
+		std::set<std::string> leafIds;
+		for (const Client::DATA_JSON_VALUE& binding : bindings->Get_Array())
+		{
+			if (!binding.Is_Object())
+			{
+				status = "Effect V2 binding closure fixture contains a non-object row.";
+				return false;
+			}
+			const Client::DATA_JSON_VALUE* const group = binding.Find("group");
+			const Client::DATA_JSON_VALUE* const effect = binding.Find("effectId");
+			if (nullptr != group && group->Is_String())
+				groupIds.insert(group->Get_String());
+			else if (nullptr != effect && effect->Is_String())
+				leafIds.insert(effect->Get_String());
+			else
+			{
+				status = "Effect V2 binding closure fixture has no group or effectId.";
+				return false;
+			}
+		}
+
+		for (const std::string& groupId : groupIds)
+		{
+			const std::string groupRelative =
+				"Data/Effects/V2/Groups/" + groupId + ".effectv2group.json";
+			outClosure.insert(groupRelative);
+			Client::DATA_JSON_VALUE groupRoot;
+			if (!Load_JsonFixture(
+					repositoryRoot / groupRelative, groupRoot, status))
+			{
+				return false;
+			}
+			const Client::DATA_JSON_VALUE* const children =
+				groupRoot.Find("children");
+			if (nullptr == children || !children->Is_Array())
+			{
+				status = "Effect V2 group closure fixture has no children array: " +
+					groupId;
+				return false;
+			}
+			for (const Client::DATA_JSON_VALUE& child : children->Get_Array())
+			{
+				const Client::DATA_JSON_VALUE* const effect =
+					child.Is_Object() ? child.Find("effectId") : nullptr;
+				if (nullptr == effect || !effect->Is_String())
+				{
+					status = "Effect V2 group closure fixture has an invalid child: " +
+						groupId;
+					return false;
+				}
+				leafIds.insert(effect->Get_String());
+			}
+		}
+
+		for (const std::string& leafId : leafIds)
+		{
+			outClosure.insert(
+				"Data/Effects/V2/Authored/" + leafId + ".effectv2.json");
+		}
+		return true;
+	}
 }
 
 int Run_ValtanPresentationGenerationAdmissionContractTests()
@@ -185,40 +296,79 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 	std::string status;
 	{
 		CValtanPresentationGenerationReadAdmission admission;
-		require(admission.Acquire_PackagedBaseline(receipt, status),
-			"packaged Gameplay.bootstrap R did not admit its exact M closure");
-		require(receipt.Is_Valid(), "successful admission returned no exact receipt");
+		const bool acquired =
+			admission.Acquire_PackagedBaseline(receipt, status);
+		if (!acquired)
+			std::cerr << "  admission detail: " << status << '\n';
+		require(acquired,
+			"current typed presentation sources were not admitted");
+		require(receipt.Is_Valid(), "successful admission returned no source receipt");
 		require(admission.Validate_StillCurrent(status),
-			"exact M closure changed before commit");
+			"typed presentation sources changed before commit");
 	}
 
 	if (receipt.Is_Valid())
 	{
-		CValtanPresentationGenerationReadAdmission admission;
-		require(admission.Acquire_Receipt(
-			receipt.ServerGameplayRevision, receipt, status),
-			"exact previously admitted receipt did not re-open");
-		require(admission.Validate_StillCurrent(status),
-			"re-opened exact receipt changed before commit");
+		{
+			CValtanPresentationGenerationReadAdmission admission;
+			require(admission.Acquire_Receipt(
+				receipt.ServerGameplayRevision, receipt, status),
+				"current typed sources did not re-open for the Server revision");
+			require(admission.Validate_StillCurrent(status),
+				"re-opened typed sources changed before commit");
+		}
+		{
+			CValtanPresentationGenerationReadAdmission exactAdmission;
+			require(exactAdmission.Acquire_ExactReceipt(
+				receipt.ServerGameplayRevision, receipt, status),
+				"the exact prepared presentation receipt was rejected");
+			require(exactAdmission.Validate_StillCurrent(status),
+				"the exact prepared presentation receipt changed before commit");
+		}
 
-		auto wrongRevision = receipt.ServerGameplayRevision;
-		wrongRevision.Bytes[0] ^= 0xffu;
-		CValtanPresentationGenerationReadAdmission wrongAdmission;
-		require(!wrongAdmission.Acquire_Receipt(
-			wrongRevision, receipt, status),
-			"a different Server R re-labelled the existing receipt");
+		LostArk::Shared::GameplayDataRevision invalidRevision{};
+		CValtanPresentationGenerationReadAdmission invalidRevisionAdmission;
+		require(!invalidRevisionAdmission.Acquire_Receipt(
+			invalidRevision, receipt, status),
+			"an invalid Server gameplay revision was admitted");
 
-		auto wrongManifest = receipt;
-		wrongManifest.PresentationGenerationId.Bytes[0] ^= 0xffu;
-		CValtanPresentationGenerationReadAdmission wrongManifestAdmission;
-		require(!wrongManifestAdmission.Acquire_Receipt(
-			receipt.ServerGameplayRevision, wrongManifest, status),
-			"a different presentation M admitted the current physical closure");
+		auto currentServerRevision = receipt.ServerGameplayRevision;
+		currentServerRevision.Bytes[0] ^= 0xffu;
+		{
+			CValtanPresentationGenerationReadAdmission currentServerAdmission;
+			require(currentServerAdmission.Acquire_Receipt(
+				currentServerRevision, receipt, status),
+				"a valid Server gameplay revision did not pin the current typed closure");
+			VALTAN_PRESENTATION_GENERATION_RECEIPT currentServerReceipt;
+			require(currentServerAdmission.Try_Get_CurrentReceipt(currentServerReceipt) &&
+				currentServerReceipt.ServerGameplayRevision == currentServerRevision,
+				"the current typed closure did not retain the caller's Server revision");
+		}
 
-		/* Simulate a canonical commit which reached disk after world-entry M was
-		   pinned, while its command receipt/reload was lost. The same recomputed
-		   admission used by Complete Play must reject the changed physical bytes
-		   without relying on process-local publication state. */
+		auto staleWorldEntryReceipt = receipt;
+		staleWorldEntryReceipt.PresentationGenerationId.Bytes[0] ^= 0xffu;
+		staleWorldEntryReceipt.Artifacts.pop_back();
+		{
+			CValtanPresentationGenerationReadAdmission staleReceiptAdmission;
+			require(staleReceiptAdmission.Acquire_Receipt(
+				receipt.ServerGameplayRevision, staleWorldEntryReceipt, status),
+				"stale world-entry generation/inventory blocked the current typed closure");
+			VALTAN_PRESENTATION_GENERATION_RECEIPT refreshedReceipt;
+			require(staleReceiptAdmission.Try_Get_CurrentReceipt(refreshedReceipt) &&
+				refreshedReceipt == receipt,
+				"admission retained stale world-entry presentation identity");
+		}
+		{
+			CValtanPresentationGenerationReadAdmission staleExactAdmission;
+			require(!staleExactAdmission.Acquire_ExactReceipt(
+				receipt.ServerGameplayRevision, staleWorldEntryReceipt, status),
+				"a stale receipt was admitted as an exact prepared generation");
+		}
+
+		/* Simulate ordinary local authoring after world entry. Re-opening must stage
+		   the current typed sources rather than comparing them with the historical
+		   receipt, while a write during the held transaction must still fail its
+		   final currentness check. */
 		SCOPED_TEMPORARY_ROOT fixture;
 		fixture.Path = Create_TemporaryRoot(status);
 		require(!fixture.Path.empty(),
@@ -228,17 +378,9 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 			Client::CProjectDataRoot::Get().parent_path();
 		const std::filesystem::path bootstrap =
 			"Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap";
-		const std::filesystem::path manifest =
-			std::filesystem::path(
-				"Server/Bin/DataFiles/Gameplay/ValtanPresentationGenerations") /
-			(LostArk::Shared::Format_GameplayDataRevision(
-				receipt.PresentationGenerationId) + ".json");
 		if (fixtureCopied)
 			fixtureCopied = Copy_FixtureFile(
 				repositoryRoot, fixture.Path, bootstrap, status);
-		if (fixtureCopied)
-			fixtureCopied = Copy_FixtureFile(
-				repositoryRoot, fixture.Path, manifest, status);
 		for (const auto& artifact : receipt.Artifacts)
 		{
 			if (!fixtureCopied)
@@ -248,7 +390,7 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 				std::filesystem::path(artifact.strRelativePath), status);
 		}
 		require(fixtureCopied,
-			"could not copy the exact physical presentation closure");
+			"could not copy the current typed presentation closure");
 
 		VALTAN_PRESENTATION_GENERATION_RECEIPT fixtureReceipt;
 		bool fixtureAdmitted = false;
@@ -258,22 +400,17 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 			fixtureAdmitted = fixtureAdmission.Acquire_PackagedBaselineFromRoot(
 				fixture.Path, fixtureReceipt, status);
 			require(fixtureAdmitted,
-				"the exact copied physical presentation closure was rejected");
+				"the copied typed presentation closure was rejected");
 			require(!fixtureAdmitted || fixtureReceipt == receipt,
-				"the copied physical closure changed its immutable receipt");
+				"the copied typed closure changed its current receipt");
 		}
 
 		bool artifactChanged = false;
 		std::string changedArtifactPath;
-		std::uint64_t declaredArtifactBytes = 0u;
-		std::string declaredArtifactSha;
 		if (fixtureAdmitted && !fixtureReceipt.Artifacts.empty())
 		{
 			changedArtifactPath =
 				fixtureReceipt.Artifacts.front().strRelativePath;
-			declaredArtifactBytes = fixtureReceipt.Artifacts.front().iBytes;
-			declaredArtifactSha = LostArk::Shared::Format_GameplayDataRevision(
-				fixtureReceipt.Artifacts.front().Revision);
 			const std::filesystem::path changedArtifact = fixture.Path /
 				std::filesystem::path(changedArtifactPath);
 			std::ofstream stream(
@@ -294,29 +431,46 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 			const bool reopened = changedAdmission.Acquire_ReceiptFromRoot(
 					fixture.Path, fixtureReceipt.ServerGameplayRevision,
 					fixtureReceipt, status);
-			require(!reopened,
-				"changed physical Product bytes re-opened the old world-entry M");
-			const std::string expectedPrefix =
-				"Valtan presentation artifact mismatch: " + changedArtifactPath +
-				"; declared bytes=" + std::to_string(declaredArtifactBytes) +
-				", actual bytes=" + std::to_string(declaredArtifactBytes + 1u) +
-				"; declared SHA-256=" + declaredArtifactSha +
-				", actual SHA-256=";
-			const bool hasExactMismatch = status.starts_with(expectedPrefix) &&
-				status.size() == expectedPrefix.size() + 65u && status.back() == '.' &&
-				status.substr(expectedPrefix.size(), 64u) != declaredArtifactSha;
-			require(hasExactMismatch,
-				"physical Product mismatch status did not replace stale success with exact path/bytes/SHA-256 evidence");
+			require(reopened,
+				"changed local presentation bytes were compared with the world-entry receipt");
+			VALTAN_PRESENTATION_GENERATION_RECEIPT changedReceipt;
+			require(reopened && changedAdmission.Try_Get_CurrentReceipt(changedReceipt) &&
+				changedReceipt != fixtureReceipt,
+				"re-open did not pin the newly validated physical closure");
+			require(reopened && changedAdmission.Validate_StillCurrent(status),
+				"unchanged staged presentation sources failed currentness validation");
+
+			CValtanPresentationGenerationReadAdmission changedExactAdmission;
+			require(!changedExactAdmission.Acquire_ExactReceiptFromRoot(
+					fixture.Path, fixtureReceipt.ServerGameplayRevision,
+					fixtureReceipt, status),
+				"changed physical bytes were admitted as an exact prepared generation");
+
+			const std::filesystem::path changedArtifact = fixture.Path /
+				std::filesystem::path(changedArtifactPath);
+			std::ofstream stream(
+				changedArtifact, std::ios::binary | std::ios::app);
+			bool changedDuringAdmission = false;
+			if (stream)
+			{
+				stream.put('\n');
+				stream.flush();
+				changedDuringAdmission = stream.good();
+			}
+			require(changedDuringAdmission,
+				"could not mutate a presentation source during held admission");
+			require(!changedDuringAdmission ||
+				!changedAdmission.Validate_StillCurrent(status),
+				"concurrent presentation write passed the transactional currentness check");
 		}
 
-		/* M now pins the BOSS_VALTAN Effect V2 entry artifact plus only its
-		   reachable groups/leaves. Exercise semantic drift before the generic
-		   artifact hash comparison so every failure names the broken owner. */
+		/* The typed closure includes the BOSS_VALTAN Effect V2 entry artifact plus
+		   only its reachable groups/leaves. Semantic drift must still fail at the
+		   owning parser even though stale world-entry receipts are not gates. */
 		const auto copyExactClosure = [&](const std::filesystem::path& target)
 		{
 			bool copied = Copy_FixtureFile(
-				repositoryRoot, target, bootstrap, status) &&
-				Copy_FixtureFile(repositoryRoot, target, manifest, status);
+				repositoryRoot, target, bootstrap, status);
 			for (const auto& artifact : receipt.Artifacts)
 			{
 				if (!copied)
@@ -343,11 +497,16 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 				v2Closure.insert(artifact.strRelativePath);
 			}
 		}
-		require(14u == v2Closure.size() &&
+		std::set<std::string> expectedV2Closure;
+		const bool collectedV2Closure = Collect_ReachableV2Closure(
+			repositoryRoot, expectedV2Closure, status);
+		require(collectedV2Closure,
+			"could not derive the source-reachable BOSS_VALTAN Effect V2 closure");
+		require(collectedV2Closure && v2Closure == expectedV2Closure &&
 			v2Closure.contains(v2BindingRelative) &&
 			v2Closure.contains(v2GroupRelative) &&
 			v2Closure.contains(v2LeafRelative),
-			"immutable M did not pin the exact 14-artifact BOSS_VALTAN Effect V2 closure");
+			"typed admission did not resolve the exact source-reachable BOSS_VALTAN Effect V2 closure");
 
 		struct V2_REPLACE_CASE final
 		{

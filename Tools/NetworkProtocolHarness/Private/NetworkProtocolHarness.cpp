@@ -2286,7 +2286,7 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(50u == NETWORK_PROTOCOL_VERSION,
+			testRunner.Require(51u == NETWORK_PROTOCOL_VERSION,
 				"World Spawn Revision Pin And Existing Contracts Use Protocol 50");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
@@ -2552,6 +2552,8 @@ namespace
 		first.iMaximumHp = 1000;
 		first.iCurrentResource = 80;
 		first.iMaximumResource = 100;
+		first.iSilenceEndTick = 180u;
+		first.iSilenceDurationTicks = 150u;
 		first.iComboStage = 3;
 		first.Cooldowns.push_back({ 34060, 330 });
 
@@ -2633,9 +2635,12 @@ namespace
 		/* Protocol 38 adds one owner id, one typed slot, and four local-frame
 		attachment floats to every player row. */
 		constexpr std::size_t playerAttachmentBytes = 4 + 1 + (4 * 4);
+		/* Protocol 51 adds the typed Pattern bind bit/deadline and the Silence
+		deadline plus original duration to every player row. */
+		constexpr std::size_t playerPatternStatusBytes = 1 + (4 * 3);
 		constexpr std::size_t playerFixedBytes =
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + (4 * 3) +
-			1 + 1 + 1 + playerAttachmentBytes;
+			1 + 1 + 1 + playerAttachmentBytes + playerPatternStatusBytes;
 		constexpr std::size_t cooldownBytes = 4 + 4;
 		/* Trailing 1 + 1 + 1 is iPhase, iBrokenArmorMask and the
 		hasBossCombatState flag. The block after it is the boss combat
@@ -2727,6 +2732,8 @@ namespace
 			decoded.Players[0].fSkillTargetY == 0.25f &&
 			decoded.Players[0].fSkillTargetZ == -3.f &&
 			decoded.Players[0].iCurrentHp == 875 &&
+			decoded.Players[0].iSilenceEndTick == 180u &&
+			decoded.Players[0].iSilenceDurationTicks == 150u &&
 			decoded.Players[0].Cooldowns.size() == 1 &&
 			decoded.Players[0].Cooldowns[0].iCooldownEndTick == 330 &&
 			decoded.Players[0].iComboStage == 3 &&
@@ -2742,6 +2749,36 @@ namespace
 			!decoded.Players[1].hasSkillTarget &&
 			!decoded.Players[1].isCombatReady,
 			"World Snapshot Players Round Trip");
+
+		S2C_WORLD_SNAPSHOT bound = source;
+		bound.Players[1].eLocomotionState = PLAYER_LOCOMOTION_STATE::IDLE;
+		bound.Players[1].eAction = PLAYER_ACTION_STATE::NONE;
+		bound.Players[1].iActionStartTick = 0u;
+		bound.Players[1].isPatternBound = true;
+		bound.Players[1].iPatternBindEndTick = 180u;
+		std::vector<std::uint8_t> boundPayload;
+		S2C_WORLD_SNAPSHOT decodedBound{};
+		bool boundRoundTrip = Build_WorldSnapshotPayload(bound, boundPayload);
+		if (boundRoundTrip)
+		{
+			CPacketReader boundReader{ boundPayload };
+			boundRoundTrip = Read_Message(boundReader, decodedBound) &&
+				0u == boundReader.Get_RemainingSize();
+		}
+		testRunner.Require(
+			boundRoundTrip && 2u == decodedBound.Players.size() &&
+			decodedBound.Players[1].isPatternBound &&
+			180u == decodedBound.Players[1].iPatternBindEndTick &&
+			!decodedBound.Players[1].isCombatReady &&
+			PLAYER_LOCOMOTION_STATE::IDLE ==
+				decodedBound.Players[1].eLocomotionState,
+			"Pattern-Bound Player Snapshot Round Trip");
+		S2C_WORLD_SNAPSHOT boundWithoutDeadline = bound;
+		boundWithoutDeadline.Players[1].iPatternBindEndTick = 0u;
+		CPacketWriter boundWithoutDeadlineWriter;
+		testRunner.Require(
+			!Write_Message(boundWithoutDeadlineWriter, boundWithoutDeadline),
+			"Reject Pattern-Bound Snapshot Without Deadline");
 
 		/* A four-human/four-server-bot raid still reaches each real Client as
 		   eight replicated combat actors. This is deliberately a wire-capacity
@@ -5201,7 +5238,7 @@ namespace
 		}
 
 		testRunner.Require(
-			50u == NETWORK_PROTOCOL_VERSION,
+			51u == NETWORK_PROTOCOL_VERSION,
 			"Session Diagnostics Use Protocol Version 50");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
@@ -5229,7 +5266,7 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			50u == NETWORK_PROTOCOL_VERSION,
+			51u == NETWORK_PROTOCOL_VERSION,
 			"World Spawn Pin Complete Play And Restart CAS Use Protocol 50");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);

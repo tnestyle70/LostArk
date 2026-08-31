@@ -8,6 +8,10 @@ param(
     [string]$AuthoringRevision = '',
     [string]$SourceManifestPath = '',
     [string]$DraftPatchPath = '',
+    [string]$PatternSoundBaselinePath = '',
+    [string]$PatternSoundCandidatePath = '',
+    [string]$EffectV2BaselinePath = '',
+    [string]$EffectV2CandidatePath = '',
     [string]$ExpectedFlowRevision = '',
     [ValidateSet('', 'after_stage', 'after_validate', 'after_revision_manifest',
         'before_promote', 'after_promote', 'before_pointer', 'after_pointer')]
@@ -42,6 +46,19 @@ if (-not [string]::IsNullOrWhiteSpace($DraftPatchPath)) {
         [IO.Path]::GetFullPath((Join-Path $repoRoot $DraftPatchPath))
     }
 }
+function Resolve-OptionalPath([string]$Value) {
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return ''
+    }
+    if ([IO.Path]::IsPathRooted($Value)) {
+        return [IO.Path]::GetFullPath($Value)
+    }
+    return [IO.Path]::GetFullPath((Join-Path $repoRoot $Value))
+}
+$resolvedPatternSoundBaseline = Resolve-OptionalPath $PatternSoundBaselinePath
+$resolvedPatternSoundCandidate = Resolve-OptionalPath $PatternSoundCandidatePath
+$resolvedEffectV2Baseline = Resolve-OptionalPath $EffectV2BaselinePath
+$resolvedEffectV2Candidate = Resolve-OptionalPath $EffectV2CandidatePath
 switch ($Mode) {
     'PublishSavedFlow' {
         $candidatePath = if ([IO.Path]::IsPathRooted($CandidateRoot)) {
@@ -78,11 +95,31 @@ switch ($Mode) {
         if ([string]::IsNullOrWhiteSpace($resolvedDraftPatch)) {
             throw 'CommitCanonicalDraft requires DraftPatchPath.'
         }
+        if (([string]::IsNullOrWhiteSpace($resolvedPatternSoundBaseline)) -ne
+            ([string]::IsNullOrWhiteSpace($resolvedPatternSoundCandidate))) {
+            throw 'Pattern Sound baseline/candidate paths must be paired.'
+        }
+        if (([string]::IsNullOrWhiteSpace($resolvedEffectV2Baseline)) -ne
+            ([string]::IsNullOrWhiteSpace($resolvedEffectV2Candidate))) {
+            throw 'Effect V2 baseline/candidate paths must be paired.'
+        }
         $command += @(
             'commit-canonical-draft',
             '--authoring-root', $resolvedAuthoringRoot,
             '--draft-patch', $resolvedDraftPatch
         )
+        if (-not [string]::IsNullOrWhiteSpace($resolvedPatternSoundBaseline)) {
+            $command += @(
+                '--pattern-sound-baseline', $resolvedPatternSoundBaseline,
+                '--pattern-sound-candidate', $resolvedPatternSoundCandidate
+            )
+        }
+        if (-not [string]::IsNullOrWhiteSpace($resolvedEffectV2Baseline)) {
+            $command += @(
+                '--effect-v2-baseline', $resolvedEffectV2Baseline,
+                '--effect-v2-candidate', $resolvedEffectV2Candidate
+            )
+        }
     }
     'SourceManifest' {
         $command += @('source-manifest', '--authoring-root', $resolvedAuthoringRoot)

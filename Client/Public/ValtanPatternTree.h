@@ -94,6 +94,14 @@ struct VALTAN_COMBAT_OBJECT_EFFECT_VIEW final
 	   no Sound cue instead of merely showing that an object spawned. */
 	std::vector<std::string> HitIds;
 	std::vector<uint32_t> HitOffsetsMs;
+	bool_t bHasHitAnchor = false;
+	std::string strHitAnchorKind = "BOSS_CURRENT";
+	f32_t fHitAnchorForwardOffsetM = 0.f;
+	f32_t fHitAnchorRightOffsetM = 0.f;
+	f32_t fHitAnchorYawOffsetDegrees = 0.f;
+	bool_t bHasHitActivation = false;
+	uint32_t iHitActivationStartMs = 0u;
+	uint32_t iHitActivationLifetimeMs = 0u;
 };
 
 /* Stable ordered animation occurrence authored by the animation owner.  The
@@ -205,6 +213,17 @@ struct VALTAN_STAGE_VIEW final
 	/* Ordered stage-relative contacts. Empty means the authored stage uses
 	   iHitDelayMs + k * iHitIntervalMs. */
 	std::vector<uint32_t> HitOffsetsMs;
+	/* Optional typed Server hit authority.  BOSS_CURRENT preserves the
+	   existing pulse behavior; STAGE_ORIGIN pins the authored transform for
+	   the activation window.  These fields are a read-only Product mirror. */
+	bool_t bHasHitAnchor = false;
+	std::string strHitAnchorKind = "BOSS_CURRENT";
+	f32_t fHitAnchorForwardOffsetM = 0.f;
+	f32_t fHitAnchorRightOffsetM = 0.f;
+	f32_t fHitAnchorYawOffsetDegrees = 0.f;
+	bool_t bHasHitActivation = false;
+	uint32_t iHitActivationStartMs = 0u;
+	uint32_t iHitActivationLifetimeMs = 0u;
 	std::string strServerDamageProfileId;
 	/* Absent Product fields mean the normal damage response. Capture stages
 	   opt into the typed left-hand attachment as one inseparable pair. */
@@ -266,7 +285,7 @@ struct VALTAN_PATTERN_FINALE_VIEW final
 {
 	std::string strKind;
 	std::string strGhostArchetypeId;
-	std::array<std::string, 3u> GhostPatternIds{};
+	std::vector<std::string> GhostPatternIds;
 	std::array<f32_t, 2u> SpawnHalfExtentsM{};
 	uint32_t iMaximumActiveGhosts = 0u;
 	bool operator==(const VALTAN_PATTERN_FINALE_VIEW&) const = default;

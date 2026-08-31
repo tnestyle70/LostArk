@@ -32,6 +32,11 @@ class ValtanCanonicalTypedPatchTransactionTests(unittest.TestCase):
             REPOSITORY_ROOT / "Tools/ValtanPipeline",
             self.root / "Tools/ValtanPipeline",
         )
+        shutil.copytree(
+            REPOSITORY_ROOT / "Tools/ValtanActionExtractor",
+            self.root / "Tools/ValtanActionExtractor",
+            ignore=shutil.ignore_patterns("__pycache__"),
+        )
         parser_source = (
             REPOSITORY_ROOT
             / "Tools/ModelAssetConverter/retime_wmodel_from_psa.py"
@@ -174,7 +179,7 @@ class ValtanCanonicalTypedPatchTransactionTests(unittest.TestCase):
                     "clipOccurrenceId": (
                         "valtan.attack.high-jump.recovery.composition.clip.01"
                     ),
-                    "clip": "mesh_idle_battle_1",
+                    "clip": "mesh_att_battle_13_04",
                     "mappingBasis": "PROJECT_AUTHORED",
                     "sourceStartMs": 0,
                     "playMs": 200,
@@ -185,7 +190,7 @@ class ValtanCanonicalTypedPatchTransactionTests(unittest.TestCase):
                     "clipOccurrenceId": (
                         "valtan.attack.high-jump.recovery.composition.clip.02"
                     ),
-                    "clip": "mesh_idle_battle_1",
+                    "clip": "mesh_att_battle_13_04",
                     "mappingBasis": "PROJECT_AUTHORED",
                     "sourceStartMs": 200,
                     "playMs": 200,
@@ -258,7 +263,7 @@ class ValtanCanonicalTypedPatchTransactionTests(unittest.TestCase):
         self.assertEqual("COMMIT_CANONICAL_DRAFT", result["command"])
         self.assertNotEqual(self.repository_revision, result["sourceRevision"])
         self.assertEqual(2, result["payload"]["operationCount"])
-        self.assertEqual(5, result["payload"]["changedCount"])
+        self.assertEqual(6, result["payload"]["changedCount"])
         self.assertEqual("NOT_ACTIVATED", result["payload"]["runtimeActivation"])
 
         gameplay_stage = self.stage(
@@ -306,6 +311,32 @@ class ValtanCanonicalTypedPatchTransactionTests(unittest.TestCase):
         self.assertEqual(150, product_stage["pushMs"])
         self.assertTrue(product_stage["knockdown"])
         self.assertEqual(600, product_stage["downMs"])
+
+        root_motion_check = subprocess.run(
+            [
+                sys.executable,
+                "-B",
+                str(
+                    self.root
+                    / "Tools/ValtanActionExtractor/build_valtan_rootmotion.py"
+                ),
+                "--repo-root",
+                str(self.root),
+                "--check",
+            ],
+            cwd=self.root,
+            env=self.environment,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        self.assertEqual(
+            0,
+            root_motion_check.returncode,
+            root_motion_check.stdout + root_motion_check.stderr,
+        )
 
         _, validation = self.run_pipeline("validate", expected_returncode=0)
         self.assertTrue(validation["ok"])

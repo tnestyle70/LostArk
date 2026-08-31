@@ -371,7 +371,9 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 	const std::uint32_t serverTick,
 	std::string& status) const
 {
-	if (0u == count || definition.Hits.empty() || 0u == definition.iLifeMs ||
+	if (0u == count ||
+		(definition.Hits.empty() && definition.PresentationPulses.empty()) ||
+		0u == definition.iLifeMs ||
 		definition.strCombatObjectArchetypeId.empty() ||
 		definition.strClientVisualId.empty() ||
 		definition.strOwnerPatternId.empty() ||
@@ -388,8 +390,13 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 			volley->eLayout;
 		const bool single = BOSS_COMBAT_OBJECT_LAYOUT_KIND::SINGLE ==
 			volley->eLayout;
-		if (BOSS_COMBAT_OBJECT_VOLLEY_POLICY::PER_ALIVE_PLAYER !=
-				volley->ePolicy ||
+		const bool perAlivePlayer =
+			BOSS_COMBAT_OBJECT_VOLLEY_POLICY::PER_ALIVE_PLAYER ==
+				volley->ePolicy;
+		const bool bossRelative =
+			BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
+				volley->ePolicy;
+		if ((!perAlivePlayer && !bossRelative) ||
 			count != volley->iCountPerResolvedTarget || count < 1u || count > 8u ||
 			static_cast<std::uint64_t>(volley->iMaximumTotalObjects) <
 				static_cast<std::uint64_t>(count) +
@@ -418,7 +425,14 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 				0.f == volley->fAngleStepDegrees || volley->bAllowOverlap)) ||
 			(1u == count && (!single || 0.f != volley->fRadiusM ||
 				0.f != volley->fStartAngleDegrees ||
-				0.f != volley->fAngleStepDegrees || volley->bAllowOverlap)))
+				0.f != volley->fAngleStepDegrees || volley->bAllowOverlap)) ||
+			(perAlivePlayer &&
+				BOSS_COMBAT_OBJECT_ORIGIN_POLICY::
+					LOCKED_TARGET_PER_ALIVE_PLAYER != definition.eOriginPolicy) ||
+			(bossRelative &&
+				(BOSS_COMBAT_OBJECT_ORIGIN_POLICY::BOSS_POSITION !=
+						definition.eOriginPolicy || nullptr != lockedTarget ||
+				 1u != volley->iSpawnCount || 0u != volley->iArenaRandomCount)))
 		{
 			status = "Boss combat object volley layout is invalid";
 			return false;
@@ -524,6 +538,24 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 			object.LiveState.CurrentPose.fPositionZ = boss.fPositionZ +
 				directionZ * definition.fOffsetForwardM +
 				rightZ * definition.fOffsetRightM;
+			if (nullptr != volley &&
+				BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
+					volley->ePolicy)
+			{
+				const float relativeDegrees = volley->fStartAngleDegrees +
+					volley->fAngleStepDegrees * static_cast<float>(ordinal);
+				const float worldDegrees = boss.fYawDegrees + relativeDegrees;
+				const float worldRadians = worldDegrees * DEGREES_TO_RADIANS;
+				const float radialDirectionX = std::sin(worldRadians);
+				const float radialDirectionZ = std::cos(worldRadians);
+				object.LiveState.CurrentPose.fPositionX +=
+					radialDirectionX * volley->fRadiusM;
+				object.LiveState.CurrentPose.fPositionZ +=
+					radialDirectionZ * volley->fRadiusM;
+				object.LiveState.CurrentPose.fDirectionX = radialDirectionX;
+				object.LiveState.CurrentPose.fDirectionZ = radialDirectionZ;
+				object.LiveState.CurrentPose.fYawDegrees = worldDegrees;
+			}
 		}
 		for (const BOSS_COMBAT_OBJECT_HIT& authored : definition.Hits)
 		{
@@ -559,6 +591,20 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 				return false;
 			}
 			object.Hits.push_back(std::move(hit));
+		}
+		for (const BOSS_COMBAT_OBJECT_PRESENTATION_PULSE& authored :
+			definition.PresentationPulses)
+		{
+			if (authored.strPresentationEventId.empty() ||
+				authored.iAtMs > definition.iLifeMs)
+			{
+				status = "Boss combat object presentation pulse is invalid";
+				return false;
+			}
+			SERVER_COMBAT_OBJECT_PRESENTATION_PULSE_RUNTIME pulse{};
+			pulse.strPresentationEventId = authored.strPresentationEventId;
+			pulse.iAtMs = authored.iAtMs;
+			object.PresentationPulses.push_back(std::move(pulse));
 		}
 		object.LiveState.PreviousPose = object.LiveState.CurrentPose;
 		try
@@ -691,9 +737,57 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 			object.LiveState.CurrentPose.fPositionZ +=
 				object.LiveState.CurrentPose.fDirectionZ * step;
 		}
-		const bool expired = object.fRemainingMilliseconds <= 0.f ||
+		const bool lifetimeExpired = object.fRemainingMilliseconds <= 0.f;
+		const bool expired = lifetimeExpired ||
 			(object.fSpeedMps > 0.f && object.fRemainingDistanceM <= 0.f);
 		bool firedFirstTimedPulse = false;
+		const auto QueuePresentationPulse =
+			[this, &object, serverTick](
+				const std::string& pulseId, const std::uint32_t repeatIndex)
+			{
+				if (!object.bReplicated ||
+					SERVER_COMBAT_OBJECT_SOURCE_KIND::WORLD_ENTITY !=
+						object.eSourceKind)
+				{
+					return;
+				}
+				LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT event{};
+				event.iEventSequence = m_iNextPresentationEventSequence;
+				event.iServerTick = serverTick;
+				event.iCombatObjectId = object.iCombatObjectId;
+				event.iSourceNetEntityId = object.iSourceNetEntityId;
+				event.eKind = LostArk::Shared::
+					COMBAT_OBJECT_PRESENTATION_EVENT_KIND::HIT_PULSE;
+				event.strCombatObjectArchetypeId =
+					object.strCombatObjectArchetypeId;
+				event.strOwnerPatternId = object.LiveState.strOwnerPatternId;
+				event.strOwnerStageActionId =
+					object.LiveState.strOwnerStageActionId;
+				event.strHitId = pulseId;
+				event.iRepeatIndex = repeatIndex;
+				event.fPositionX = object.LiveState.CurrentPose.fPositionX;
+				event.fPositionY = object.LiveState.CurrentPose.fPositionY;
+				event.fPositionZ = object.LiveState.CurrentPose.fPositionZ;
+				event.fYawDegrees = object.LiveState.CurrentPose.fYawDegrees;
+				event.PinnedDefinitionRevision = object.PinnedDefinitionRevision;
+				m_PendingPresentationEvents.push_back(std::move(event));
+				++m_iNextPresentationEventSequence;
+				if (0u == m_iNextPresentationEventSequence)
+					m_iNextPresentationEventSequence = 1u;
+			};
+
+		for (SERVER_COMBAT_OBJECT_PRESENTATION_PULSE_RUNTIME& pulse :
+			object.PresentationPulses)
+		{
+			if (pulse.bApplied ||
+				(!lifetimeExpired &&
+				 object.fElapsedMilliseconds < static_cast<float>(pulse.iAtMs)))
+			{
+				continue;
+			}
+			QueuePresentationPulse(pulse.strPresentationEventId, 0u);
+			pulse.bApplied = true;
+		}
 
 		for (std::size_t hitIndex = 0u; hitIndex < object.Hits.size(); ++hitIndex)
 		{
@@ -781,35 +875,7 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 				if (object.fElapsedMilliseconds < dueMilliseconds)
 					break;
 				firedFirstTimedPulse = true;
-				if (object.bReplicated &&
-					SERVER_COMBAT_OBJECT_SOURCE_KIND::WORLD_ENTITY ==
-						object.eSourceKind)
-				{
-					LostArk::Shared::S2C_COMBAT_OBJECT_PRESENTATION_EVENT event{};
-					event.iEventSequence = m_iNextPresentationEventSequence;
-					event.iServerTick = serverTick;
-					event.iCombatObjectId = object.iCombatObjectId;
-					event.iSourceNetEntityId = object.iSourceNetEntityId;
-					event.eKind = LostArk::Shared::
-						COMBAT_OBJECT_PRESENTATION_EVENT_KIND::HIT_PULSE;
-					event.strCombatObjectArchetypeId =
-						object.strCombatObjectArchetypeId;
-					event.strOwnerPatternId = object.LiveState.strOwnerPatternId;
-					event.strOwnerStageActionId =
-						object.LiveState.strOwnerStageActionId;
-					event.strHitId = hit.strHitId;
-					event.iRepeatIndex = hit.iAppliedTimedCount;
-					event.fPositionX = object.LiveState.CurrentPose.fPositionX;
-					event.fPositionY = object.LiveState.CurrentPose.fPositionY;
-					event.fPositionZ = object.LiveState.CurrentPose.fPositionZ;
-					event.fYawDegrees = object.LiveState.CurrentPose.fYawDegrees;
-					event.PinnedDefinitionRevision =
-						object.PinnedDefinitionRevision;
-					m_PendingPresentationEvents.push_back(std::move(event));
-					++m_iNextPresentationEventSequence;
-					if (0u == m_iNextPresentationEventSequence)
-						m_iNextPresentationEventSequence = 1u;
-				}
+				QueuePresentationPulse(hit.strHitId, hit.iAppliedTimedCount);
 				const std::uint32_t rawDamage =
 					hit.RepeatRawDamage[hit.iAppliedTimedCount];
 				if (nullptr != sourcePlayer)

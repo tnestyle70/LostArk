@@ -506,6 +506,12 @@ private:
 		uint32_t iHitIntervalMs = 0u;
 		uint32_t iHitDelayMs = 0u;
 		std::vector<uint32_t> HitOffsetsMs;
+		/* Separate player-attack -> boss hurt proxy.  It is active for the
+		   whole WINDUP Stage and must never be presented as a boss damage hit. */
+		bool_t bHasCounterProxy = false;
+		f32_t fCounterProxyForwardOffsetM = 0.f;
+		f32_t fCounterProxyRightOffsetM = 0.f;
+		f32_t fCounterProxyRadiusM = 0.f;
 	};
 	bool_t m_isNavigationDebugVisible = { false };
 	bool_t m_isCombatColliderDebugVisible = { false };

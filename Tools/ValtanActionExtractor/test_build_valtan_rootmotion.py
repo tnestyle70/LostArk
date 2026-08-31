@@ -5,7 +5,6 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -255,26 +254,18 @@ class ExplicitClipSegmentTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temporary_directory:
             repo_root = Path(temporary_directory)
-            encounter_path = (
-                repo_root / "Data/Encounters/Valtan/ValtanEncounter.json")
-            bindings_path = (
-                repo_root / "Data/Animation/Authored/Valtan" /
-                "Valtan.patternbindings.json")
-            encounter_path.parent.mkdir(parents=True)
-            bindings_path.parent.mkdir(parents=True)
-            encounter_path.write_text(json.dumps(encounter), encoding="utf-8")
-            bindings_path.write_text(json.dumps(bindings), encoding="utf-8")
-
             curves = {
                 "first": self.curve,
                 "returning": returning_curve,
                 "static": static_curve,
                 "single-returning": single_returning_curve,
             }
-            with mock.patch.object(
-                    rootmotion, "read_root_curves", return_value=curves):
-                document, notes = rootmotion.build(
-                    repo_root, repo_root / "Resources")
+            document, notes = rootmotion.build(
+                repo_root,
+                encounter_document=encounter,
+                bindings_document=bindings,
+                curves=curves,
+            )
 
         self.assertEqual([
             "TEST_PORTAL/ACTIVE: kept portal transform motion",
@@ -322,6 +313,56 @@ class ExplicitClipSegmentTests(unittest.TestCase):
             "valtan.sequence.center-trash-rush-if.groggy",
             "valtan.sequence.rush-if.groggy",
         ], explicit_multi_actions)
+
+
+class CurrentValtanRootMotionClosureTests(unittest.TestCase):
+    def test_navigation_blocked_capture_stages_have_server_motion(self) -> None:
+        repo_root = Path(__file__).resolve().parents[2]
+        encounter = json.loads((
+            repo_root / "Data/Encounters/Valtan/ValtanEncounter.json"
+        ).read_text(encoding="utf-8"))
+        root_motion = json.loads((
+            repo_root / "Data/Animation/RootMotion/Valtan.rootmotion.json"
+        ).read_text(encoding="utf-8"))
+
+        baked_stages = {
+            (pattern["patternId"], stage["stageId"]): stage
+            for pattern in root_motion["patterns"]
+            for stage in pattern["stages"]
+        }
+        missing = []
+        checked = []
+        for pattern in encounter["patterns"]:
+            for stage_index, stage in enumerate(pattern["stages"]):
+                outcomes = {
+                    branch["outcome"] for branch in stage.get("branches", [])
+                }
+                if "NAVIGATION_BLOCKED" not in outcomes:
+                    continue
+                if stage.get("playerResponse") != "CAPTURE":
+                    continue
+                checked.append((pattern["patternId"], stage["stageId"]))
+                has_forward_motion = (
+                    stage.get("motion", {}).get("kind") == "FORWARD"
+                )
+                baked = baked_stages.get(
+                    (pattern["patternId"], stage["stageId"])
+                )
+                if not has_forward_motion and baked is None:
+                    missing.append((pattern["patternId"], stage["stageId"]))
+                    continue
+                if has_forward_motion:
+                    continue
+                self.assertEqual(stage_index, int(baked["stageIndex"]))
+                self.assertEqual("mesh_att_battle_13_04", baked["clip"])
+                self.assertEqual(667, int(baked["durationMs"]))
+                self.assertEqual(22, len(baked["samples"]))
+                self.assertAlmostEqual(
+                    7.4608, float(baked["samples"][-1]["forward"]), places=4
+                )
+
+        self.assertEqual(6, len(checked))
+        self.assertEqual([], missing)
 
 
 if __name__ == "__main__":

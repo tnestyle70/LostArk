@@ -206,6 +206,13 @@ public:
 		VALTAN_PATTERN_SOUND_CUE_DOCUMENT& InOutDocument,
 		const VALTAN_PATTERN_SOUND_CUE_ROW_ID& RowId,
 		std::string& strOutStatus);
+	/* Serializes the already staged typed owner without touching disk. The
+	   Action Composition transaction performs the exact candidate Product join
+	   and commits this payload together with every other changed owner. */
+	static bool_t Serialize_TransactionCandidate(
+		const VALTAN_PATTERN_SOUND_CUE_DOCUMENT& Document,
+		std::string& strOutSerialized,
+		std::string& strOutStatus);
 	/* Existing rows only expose soundBank, soundEvent, repeatPolicy, and startMs.
 	   Inventory changes must come from Add_AuthoringRow/Remove_AuthoringRow;
 	   common stable rows cannot change identity. The exact baseline returned by

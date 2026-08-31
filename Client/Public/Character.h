@@ -53,6 +53,21 @@ public:
 		std::vector<CLIP_STAGE> stages;
 	};
 
+	/* Runtime-only input prepared by the Equipment presentation service. Stable
+		catalog IDs remain outside CContainerObject; this descriptor contains only
+		the already-admitted prototype and attachment needed for one atomic clone. */
+	struct EQUIPMENT_PREVIEW_PART_DESC
+	{
+		std::string runtimePartId;
+		wstring_t modelPrototypeTag;
+		bool_t isSocketed = false;
+		std::string socketBoneId;
+		f32_t socketYawDegrees = 0.f;
+		LostArk::Shared::PLAYER_STANCE_ID requiredStance =
+			LostArk::Shared::PLAYER_STANCE_ID::NONE;
+		uint32_t hiddenMeshMask = 0u;
+	};
+
 public:
 	typedef struct tagCharacterDesc : public CContainerObject::CONTAINEROBJECT_DESC
 	{
@@ -78,6 +93,10 @@ public:
 		return m_pSpec;
 	}
 	shared_ptr<Engine::CModel> Get_BodyModel() const;
+	uint32_t Get_PrototypeLevelIndex() const
+	{
+		return m_iPrototypeLevelIndex;
+	}
 	shared_ptr<Engine::CTransform> Get_Transform() const {
 		return m_pTransformCom;
 	}
@@ -170,6 +189,11 @@ public:
 	set commits at the next authoritative action edge. Failure preserves the
 	previously loaded chains. */
 	bool_t Reload_SkillAnimationBindings();
+	bool_t Apply_EquipmentPreview(
+		const std::vector<EQUIPMENT_PREVIEW_PART_DESC>& parts,
+		uint32_t occupiedSlotsMask,
+		std::string& outError);
+	bool_t Reset_EquipmentPreview(std::string& outError);
 	bool_t Is_PlayingSkill() const {
 		return nullptr != m_pChain;
 	}
@@ -272,6 +296,10 @@ private:
 	it. Presentation only: the server's value stays the one gameplay reads. */
 	f32_t m_fPresentationYawDegrees = { 0.f };
 	CBoneChainSimulation m_BoneChains;
+	bool_t m_isEquipmentPreviewActive = false;
+	uint32_t m_iEquipmentPreviewOccupiedSlotsMask = 0u;
+	std::vector<std::pair<wstring_t,
+		LostArk::Shared::PLAYER_STANCE_ID>> m_EquipmentPreviewPartStances;
 
 private:
 	HRESULT Ready_Components();
@@ -300,6 +328,9 @@ private:
 		std::vector<ACTION_PRESENTATION_CLIP_TIMING>& OutTimings,
 		std::vector<std::uint32_t>* pOutAnimations = nullptr) const;
 	void Set_PartVisible(const tchar_t* pPartTag, bool_t isVisible);
+	void Apply_DefaultEquipmentVisibility(uint32_t occupiedSlotsMask);
+	void Restore_DefaultEquipmentVisibility();
+	void Sync_EquipmentPreviewStanceVisibility();
 	/* Jumps the running chain to the server's stage. Fails when no chain runs or
 	the stage is past its end, so the caller keeps the pose it had. */
 	bool_t Advance_ComboStage(std::uint8_t comboStage);

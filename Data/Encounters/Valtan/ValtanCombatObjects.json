@@ -104,6 +104,27 @@
           "downMs": 0
         }
       ]
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.ground-roar.rock",
+      "clientVisualId": "combatobject.visual.valtan.ground-roar.rock.v1",
+      "ownerPatternId": "VALTAN_GROUND_ROAR",
+      "ownerStageActionId": "valtan.sequence.sequence.400440.0.step-01",
+      "kind": "FIXED_AREA",
+      "originPolicy": "BOSS_POSITION",
+      "directionPolicy": "NONE",
+      "offsetForwardM": 0.0,
+      "offsetRightM": 0.0,
+      "speedMps": 0.0,
+      "maximumDistanceM": 0.0,
+      "lifeMs": 5000,
+      "hits": [],
+      "presentationEvents": [
+        {
+          "presentationEventId": "pulse.valtan.ground-roar.rock.explode",
+          "atMs": 5000
+        }
+      ]
     }
   ]
 }

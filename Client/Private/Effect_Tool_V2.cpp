@@ -7,6 +7,7 @@
 #include "BinaryAsset/ModelDecoderRegistry.h"
 #include "Character.h"
 #include "DataJson.h"
+#include "EffectV2_Catalog.h"
 #include "EffectV2_Object.h"
 #include "EffectV2_Runtime.h"
 #include "GameInstance.h"
@@ -70,6 +71,18 @@ namespace
 		}
 		return false;
 	}
+
+	std::string Refresh_EffectV2AfterSave()
+	{
+		Client::CEffectV2Runtime::Invalidate_Caches();
+		std::string Status;
+		if (!Client::CEffectV2Catalog::Get().Reload_BossValtan(Status))
+		{
+			return " Saved source is available; another invalid Effect V2 item was isolated from the live catalog: " +
+				Status;
+		}
+		return " Saved source and live catalog are loaded for the next preview or Stage occurrence.";
+	}
 }
 
 Client::CEffect_Tool_V2::CEffect_Tool_V2(
@@ -87,6 +100,7 @@ Client::CEffect_Tool_V2::~CEffect_Tool_V2()
 
 void Client::CEffect_Tool_V2::Deactivate()
 {
+	Stop_GroupPreview();
 	Stop_ValtanTimeline();
 	m_bTestOrbit = false;
 	if (const std::shared_ptr<CEffectV2Object> pPreview = m_pPreview.lock())
@@ -1229,8 +1243,8 @@ bool_t Client::CEffect_Tool_V2::Save_Document()
 		return false;
 	}
 	m_bDocumentsScanned = false;
-	m_strDocumentStatus = "Saved " + strEffectId +
-		".effectv2.json. The current authoring preview is unchanged; Product runtime remains on its admitted revision until restart.";
+	m_strDocumentStatus = "Saved " + strEffectId + ".effectv2.json." +
+		Refresh_EffectV2AfterSave();
 	return true;
 }
 
@@ -1582,7 +1596,16 @@ void Client::CEffect_Tool_V2::Update_Attach(const f32_t fTimeDelta)
 	CEffectV2Runtime::Advance_FreeGroups(fTimeDelta, m_pDevice, m_pContext);
 	if (0u != m_iGroupPreviewHandle)
 	{
-		if (CEffectV2Runtime::Group_Seconds(m_iGroupPreviewHandle) < 0.f)
+		std::string GroupFailure;
+		if (CEffectV2Runtime::Consume_GroupFailure(
+				m_iGroupPreviewHandle, GroupFailure))
+		{
+			Stop_GroupPreview();
+			m_strGroupStatus =
+				"Group preview stopped after a deferred spawn failure: " +
+				GroupFailure;
+		}
+		else if (CEffectV2Runtime::Group_Seconds(m_iGroupPreviewHandle) < 0.f)
 		{
 			m_iGroupPreviewHandle = 0u;
 			if (m_bGroupPreviewLoop)
@@ -2175,7 +2198,7 @@ bool_t Client::CEffect_Tool_V2::Save_Bindings()
 		return false;
 	}
 	m_strAttachStatus = "Saved " + m_strTargetArchetypeId +
-		".effectv2bindings.json. Product runtime remains on its admitted revision until restart.";
+		".effectv2bindings.json." + Refresh_EffectV2AfterSave();
 	return true;
 }
 
@@ -2619,8 +2642,8 @@ bool_t Client::CEffect_Tool_V2::Save_Group()
 		return false;
 	}
 	m_bGroupsScanned = false;
-	m_strGroupStatus = "Saved " + strGroupId +
-		".effectv2group.json. Restart Group Preview to read the saved authoring revision; Product runtime remains unchanged.";
+	m_strGroupStatus = "Saved " + strGroupId + ".effectv2group.json." +
+		Refresh_EffectV2AfterSave();
 	return true;
 }
 
@@ -2665,6 +2688,32 @@ bool_t Client::CEffect_Tool_V2::Play_GroupPreview()
 			return false;
 		}
 	}
+	std::string CatalogStatus;
+	if (!CEffectV2Catalog::Get().Reload_BossValtan(CatalogStatus))
+	{
+		m_strGroupStatus =
+			"Group preview rejected because the current Effect V2 authoring set did not validate. The previous snapshot was preserved: " +
+			CatalogStatus;
+		return false;
+	}
+	const std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot =
+		CEffectV2Catalog::Get().Get_Snapshot();
+	if (nullptr == pSnapshot || !pSnapshot->Is_Ready())
+	{
+		m_strGroupStatus =
+			"Group preview rejected because no ready typed Effect V2 snapshot was staged.";
+		return false;
+	}
+	for (const EFFECT_V2_GROUP_CHILD& Child : m_Group.Children)
+	{
+		if (nullptr == pSnapshot->Find_Document(Child.strEffectId))
+		{
+			m_strGroupStatus =
+				"Group preview rejected because its staged child document is missing: " +
+				Child.strEffectId;
+			return false;
+		}
+	}
 	float4x4_t Pivot;
 	if (!Resolve_GroupPreviewBasePivot(Pivot))
 	{
@@ -2674,7 +2723,8 @@ bool_t Client::CEffect_Tool_V2::Play_GroupPreview()
 	m_GroupPreviewBasePivot = Pivot;
 	m_Group.strGroupId = strGroupId;
 	m_iGroupPreviewHandle = CEffectV2Runtime::Play_Group(
-		m_Group, Composed_GroupPreviewPivot(Pivot), m_pDevice, m_pContext);
+		m_Group, pSnapshot, Composed_GroupPreviewPivot(Pivot),
+		m_pDevice, m_pContext);
 	if (0u == m_iGroupPreviewHandle)
 	{
 		m_strGroupStatus = "Group preview failed: " + CEffectV2Runtime::Last_Error();

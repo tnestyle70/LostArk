@@ -26,10 +26,8 @@ namespace
 	using Client::VALTAN_PRESENTATION_GENERATION_RECEIPT;
 	using LostArk::Shared::GameplayDataRevision;
 
-	constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 27u;
+	constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 28u;
 	constexpr std::uint64_t MAX_ARTIFACT_BYTES = 64ull * 1024ull * 1024ull;
-	constexpr std::string_view GENERATION_SCHEMA =
-		"lostark.valtan-presentation-generation";
 	constexpr std::string_view EFFECT_V2_BINDINGS_RELATIVE =
 		"Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json";
 	constexpr std::string_view EFFECT_V2_AUTHORED_ROOT =
@@ -54,16 +52,6 @@ namespace
 		{ "Data/Encounters/Valtan/ValtanCinematicCamera.json", "CAMERA" },
 		{ "Data/Encounters/Valtan/ValtanWorldEvents.json", "WORLD_EVENT_SET" },
 	};
-
-	bool Is_LowerSha256(const std::string& text)
-	{
-		return text.size() == LostArk::Shared::GAMEPLAY_DATA_REVISION_HEX_BYTES &&
-			std::all_of(text.begin(), text.end(), [](const char value)
-				{
-					return ('0' <= value && value <= '9') ||
-						('a' <= value && value <= 'f');
-				});
-	}
 
 	bool Is_SafeRelativePath(const std::string& text)
 	{
@@ -749,44 +737,6 @@ namespace
 		{
 			return false;
 		}
-		const std::string generationHex =
-			LostArk::Shared::Format_GameplayDataRevision(generationId);
-		const std::filesystem::path manifestPath = root /
-			"Server/Bin/DataFiles/Gameplay/ValtanPresentationGenerations" /
-			(generationHex + ".json");
-		std::string manifestBytes;
-		if (!Read_File(manifestPath, manifestBytes, status))
-			return false;
-		GameplayDataRevision manifestRevision{};
-		if (!Hash_Bytes(manifestBytes, manifestRevision) ||
-			manifestRevision != generationId)
-		{
-			status = "Valtan presentation generation manifest SHA-256 is invalid.";
-			return false;
-		}
-		DATA_JSON_VALUE manifest;
-		std::string parseError;
-		if (!Client::CDataJson::Parse(
-				manifestBytes, manifest, parseError) || !manifest.Is_Object() ||
-			3u != manifest.Get_Object().size())
-		{
-			status = "Valtan presentation generation manifest parse failed: " +
-				parseError;
-			return false;
-		}
-		std::string schema;
-		std::uint64_t version = 0u;
-		const DATA_JSON_VALUE* artifacts = manifest.Find("artifacts");
-		if (!Read_String(manifest, "schema", schema) ||
-			GENERATION_SCHEMA != schema ||
-			!Read_Unsigned(manifest, "formatVersion", version) || 1u != version ||
-			nullptr == artifacts || !artifacts->Is_Array() ||
-			artifacts->Get_Array().empty())
-		{
-			status = "Valtan presentation generation manifest contract is invalid.";
-			return false;
-		}
-
 		std::map<std::string, std::string> expected = FIXED_ARTIFACTS;
 		std::set<std::string> expectedPaths;
 		for (const auto& [path, lane] : expected)
@@ -800,29 +750,17 @@ namespace
 				expected.emplace(path, "EFFECT");
 		}
 
+		/* Local authoring consumes the current typed physical closure directly.
+		   The packaged generation manifest is a build receipt and may legitimately
+		   lag behind source edits; using its bytes, hashes, or inventory as a Lobby
+		   admission gate made normal authoring disconnect the user. */
 		std::vector<VALTAN_PRESENTATION_GENERATION_ARTIFACT_RECEIPT> rows;
-		rows.reserve(artifacts->Get_Array().size());
-		std::set<std::string> seen;
-		for (const DATA_JSON_VALUE& row : artifacts->Get_Array())
+		rows.reserve(expected.size());
+		for (const auto& [path, lane] : expected)
 		{
-			std::string path;
-			std::string lane;
-			std::string sha;
-			std::uint64_t bytes = 0u;
-			if (!row.Is_Object() || 4u != row.Get_Object().size() ||
-				!Read_String(row, "path", path) || !Read_String(row, "lane", lane) ||
-				!Read_String(row, "sha256", sha) ||
-				!Read_Unsigned(row, "bytes", bytes) || 0u == bytes ||
-				bytes > MAX_ARTIFACT_BYTES || !Is_SafeRelativePath(path) ||
-				!Is_LowerSha256(sha) || !seen.insert(path).second)
+			if (!Is_SafeRelativePath(path) || lane.empty())
 			{
-				status = "Valtan presentation generation artifact row is invalid.";
-				return false;
-			}
-			const auto required = expected.find(path);
-			if (expected.end() == required || required->second != lane)
-			{
-				status = "Valtan presentation generation contains an unexpected artifact: " + path;
+				status = "Valtan presentation source inventory is invalid.";
 				return false;
 			}
 			const auto physical = root / std::filesystem::path(path);
@@ -833,37 +771,22 @@ namespace
 			}
 			std::string physicalBytes;
 			GameplayDataRevision physicalRevision{};
-			GameplayDataRevision declaredRevision{};
 			if (!Read_File(physical, physicalBytes, status))
 				return false;
+			if (physicalBytes.empty() || physicalBytes.size() > MAX_ARTIFACT_BYTES)
+			{
+				status = "Valtan presentation source is empty or too large: " + path;
+				return false;
+			}
 			if (!Hash_Bytes(physicalBytes, physicalRevision))
 			{
 				status = "Valtan presentation artifact SHA-256 could not be calculated: " +
 					path;
 				return false;
 			}
-			if (!LostArk::Shared::Try_Parse_GameplayDataRevision(
-					sha, declaredRevision))
-			{
-				status = "Valtan presentation artifact declared SHA-256 is invalid: " +
-					path + "; declared SHA-256=" + sha + ".";
-				return false;
-			}
-			if (physicalBytes.size() != bytes || physicalRevision != declaredRevision)
-			{
-				status = "Valtan presentation artifact mismatch: " + path +
-					"; declared bytes=" + std::to_string(bytes) +
-					", actual bytes=" + std::to_string(physicalBytes.size()) +
-					"; declared SHA-256=" + sha + ", actual SHA-256=" +
-					LostArk::Shared::Format_GameplayDataRevision(physicalRevision) + ".";
-				return false;
-			}
-			rows.push_back({ path, lane, physicalRevision, bytes });
-		}
-		if (seen.size() != expected.size())
-		{
-			status = "Valtan presentation generation artifact closure is incomplete.";
-			return false;
+			rows.push_back({
+				path, lane, physicalRevision,
+				static_cast<std::uint64_t>(physicalBytes.size()) });
 		}
 		std::sort(rows.begin(), rows.end(), [](const auto& left, const auto& right)
 			{
@@ -941,13 +864,13 @@ bool Client::CValtanPresentationGenerationReadAdmission::
 	}
 	if (!staged->Receipt.Is_Valid())
 	{
-		strOutStatus = "Valtan presentation generation receipt is incomplete.";
+		strOutStatus = "Valtan presentation source receipt is incomplete.";
 		return false;
 	}
 	const auto receipt = staged->Receipt;
 	m_pState = std::move(staged);
 	OutReceipt = receipt;
-	strOutStatus = "Admitted packaged gameplay R and exact Valtan presentation M.";
+	strOutStatus = "Admitted the current validated Valtan presentation sources.";
 	return true;
 }
 
@@ -960,16 +883,57 @@ bool Client::CValtanPresentationGenerationReadAdmission::Acquire_Receipt(
 		ExpectedServerRevision, ExpectedReceipt, strOutStatus);
 }
 
+bool Client::CValtanPresentationGenerationReadAdmission::Acquire_ExactReceipt(
+	const GameplayDataRevision& ExpectedServerRevision,
+	const VALTAN_PRESENTATION_GENERATION_RECEIPT& ExpectedReceipt,
+	std::string& strOutStatus)
+{
+	return Acquire_ExactReceiptFromRoot(
+		CProjectDataRoot::Get().parent_path(), ExpectedServerRevision,
+		ExpectedReceipt, strOutStatus);
+}
+
 bool Client::CValtanPresentationGenerationReadAdmission::Acquire_ReceiptFromRoot(
 	const std::filesystem::path& RepositoryRoot,
 	const GameplayDataRevision& ExpectedServerRevision,
 	const VALTAN_PRESENTATION_GENERATION_RECEIPT& ExpectedReceipt,
 	std::string& strOutStatus)
 {
+	if (!ExpectedServerRevision.Is_Valid())
+	{
+		strOutStatus = "Expected Server gameplay revision is invalid.";
+		return false;
+	}
+	(void)ExpectedReceipt;
+	VALTAN_PRESENTATION_GENERATION_RECEIPT physical;
+	if (!Acquire_PackagedBaselineFromRoot(
+			RepositoryRoot, physical, strOutStatus))
+	{
+		return false;
+	}
+	/* The caller pins only the authoritative Server gameplay revision. The
+	   presentation receipt supplied at world entry is historical context, not an
+	   identity gate for ordinary typed local authoring files. Keep the current
+	   validated physical closure held by this admission so Validate_StillCurrent
+	   can still reject a concurrent write before the caller commits its caches. */
+	physical.ServerGameplayRevision = ExpectedServerRevision;
+	m_pState->Receipt = physical;
+	strOutStatus = "Admitted the current validated Valtan presentation files.";
+	return true;
+}
+
+bool Client::CValtanPresentationGenerationReadAdmission::
+	Acquire_ExactReceiptFromRoot(
+		const std::filesystem::path& RepositoryRoot,
+		const GameplayDataRevision& ExpectedServerRevision,
+		const VALTAN_PRESENTATION_GENERATION_RECEIPT& ExpectedReceipt,
+		std::string& strOutStatus)
+{
 	if (!ExpectedServerRevision.Is_Valid() || !ExpectedReceipt.Is_Valid() ||
 		ExpectedReceipt.ServerGameplayRevision != ExpectedServerRevision)
 	{
-		strOutStatus = "Expected Valtan presentation receipt identity is invalid.";
+		strOutStatus =
+			"Prepared Valtan presentation receipt or Server revision is invalid.";
 		return false;
 	}
 	VALTAN_PRESENTATION_GENERATION_RECEIPT physical;
@@ -978,18 +942,17 @@ bool Client::CValtanPresentationGenerationReadAdmission::Acquire_ReceiptFromRoot
 	{
 		return false;
 	}
-	/* Candidate revisions are admitted only as byte-identical aliases of the
-	   packaged M. Compare M and every artifact while retaining the caller's R. */
 	physical.ServerGameplayRevision = ExpectedServerRevision;
 	if (physical != ExpectedReceipt)
 	{
 		m_pState.reset();
 		strOutStatus =
-			"Physical Valtan presentation closure differs from its admitted receipt.";
+			"Saved Valtan presentation files changed after this Server generation was prepared.";
 		return false;
 	}
-	m_pState->Receipt = ExpectedReceipt;
-	strOutStatus = "Admitted exact Valtan presentation receipt for Server R.";
+	m_pState->Receipt = physical;
+	strOutStatus =
+		"Admitted the exact saved Valtan presentation generation prepared for the Server revision.";
 	return true;
 }
 
@@ -1014,7 +977,16 @@ bool Client::CValtanPresentationGenerationReadAdmission::
 			"Valtan presentation generation changed during typed cache staging.";
 		return false;
 	}
-	strOutStatus = "Valtan presentation generation remained exact through commit.";
+	strOutStatus = "Valtan presentation sources remained unchanged through commit.";
+	return true;
+}
+
+bool Client::CValtanPresentationGenerationReadAdmission::Try_Get_CurrentReceipt(
+	VALTAN_PRESENTATION_GENERATION_RECEIPT& OutReceipt) const
+{
+	if (nullptr == m_pState || !m_pState->Receipt.Is_Valid())
+		return false;
+	OutReceipt = m_pState->Receipt;
 	return true;
 }
 

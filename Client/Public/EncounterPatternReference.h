@@ -33,6 +33,14 @@ struct ENCOUNTER_STAGE_REFERENCE final
 	/* Optional stage-relative contacts for source clips whose hit cadence is
 	   not uniform. Empty preserves the legacy delay + interval schedule. */
 	std::vector<uint32_t> hitOffsetsMs;
+	bool_t bHasHitAnchor = false;
+	std::string hitAnchorKind;
+	f32_t fHitAnchorForwardOffsetM = 0.f;
+	f32_t fHitAnchorRightOffsetM = 0.f;
+	f32_t fHitAnchorYawOffsetDegrees = 0.f;
+	bool_t bHasHitActivation = false;
+	uint32_t iHitActivationStartMs = 0u;
+	uint32_t iHitActivationLifetimeMs = 0u;
 	std::string serverDamageProfileId;
 	/* Optional Server-authored stage refinements are retained by this read-only
 	   reference so tools can diagnose the same contract that the Server loaded. */

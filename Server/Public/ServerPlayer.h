@@ -195,6 +195,49 @@ namespace LostArk::Server
 		LostArk::Shared::SKILL_ID iCurrentSkillId =
 			LostArk::Shared::INVALID_SKILL_ID;
 		std::uint32_t iActionStartTick = 0;
+		/* One boss-pattern bind occurrence owns this status. The Server keeps the
+		pre-bind pose so every exit path can restore the exact admitted pose before
+		returning movement/action control. */
+		bool bPatternBound = false;
+		LostArk::Shared::NET_ENTITY_ID iPatternBindOwnerNetEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		std::uint32_t iPatternBindSequence = 0u;
+		std::uint32_t iPatternBindEndTick = 0u;
+		float fPatternBindRestoreX = 0.f;
+		float fPatternBindRestoreY = 0.f;
+		float fPatternBindRestoreZ = 0.f;
+		float fPatternBindRestoreYawDegrees = 0.f;
+		bool bPatternBindRestoreCombatReady = false;
+		/* Silence never blocks movement. Only the Server skill-command gate reads
+		this occurrence-bound deadline; the Client receives it for presentation. */
+		LostArk::Shared::NET_ENTITY_ID iSilenceOwnerNetEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		std::uint32_t iSilencePatternSequence = 0u;
+		std::uint32_t iSilenceEndTick = 0u;
+		std::uint32_t iSilenceDurationTicks = 0u;
+
+		void Clear_PatternBindStatus()
+		{
+			bPatternBound = false;
+			iPatternBindOwnerNetEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
+			iPatternBindSequence = 0u;
+			iPatternBindEndTick = 0u;
+			fPatternBindRestoreX = 0.f;
+			fPatternBindRestoreY = 0.f;
+			fPatternBindRestoreZ = 0.f;
+			fPatternBindRestoreYawDegrees = 0.f;
+			bPatternBindRestoreCombatReady = false;
+		}
+
+		void Clear_SilenceStatus()
+		{
+			iSilenceOwnerNetEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
+			iSilencePatternSequence = 0u;
+			iSilenceEndTick = 0u;
+			iSilenceDurationTicks = 0u;
+		}
 		/* GRABBED is Server authority. The slot is a Shared typed identity, while
 		these offsets are only a gameplay fallback relative to the boss root; the
 		Client may present the same attachment on the admitted left-hand bone. */

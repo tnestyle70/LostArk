@@ -128,9 +128,9 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             '"Composition Patterns###CompositionPatternsWindow"',
             '"Composition Preview###CompositionPreviewWindow"',
             '"Composition Sequencer###CompositionSequencerWindow"',
-            '"Composition Details###CompositionDetailsWindow"',
+            '"Box Detail###CompositionDetailsWindow"',
             '"Composition Resources###CompositionResourcesWindow"',
-            '"Composition Save / Validate / Server###CompositionSessionWindow"',
+            '"Server Replay###CompositionSessionWindow"',
         ):
             self.assertIn(window, self.composition_cpp)
         self.assertIn(
@@ -373,9 +373,9 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             self.composition_cpp,
             "void Client::CActionCompositionWorkbench::Render_SemanticLinkedRows(",
         )
-        data_files = function_body(
+        resources = function_body(
             self.composition_cpp,
-            "void Client::CActionCompositionWorkbench::Render_DataFiles(",
+            "void Client::CActionCompositionWorkbench::Render_ResourcesWindow(",
         )
 
         for category in (
@@ -422,11 +422,16 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             self.assertNotIn(forbidden, linked)
 
         self.assertIn("Render_SemanticLinkedRows", self.composition_h)
-        self.assertIn("Render_SemanticLinkedRows(pPattern, pStage)", data_files)
+        self.assertIn(
+            "Render_SemanticLinkedRows(pResourcePattern, pResourceStage)",
+            resources,
+        )
         self.assertLess(
-            data_files.index("Render_SemanticLinkedRows(pPattern, pStage)"),
-            data_files.index('"##CompositionOwnerFiles"'),
-            "selected semantic links must precede the static owner matrix",
+            resources.index(
+                "Render_SemanticLinkedRows(pResourcePattern, pResourceStage)"
+            ),
+            resources.index('"##CompositionResourceDomainTabs"'),
+            "selected semantic links must precede the typed resource browsers",
         )
 
     def test_pattern_details_exposes_core_tuning_and_truthful_create_boundary(
@@ -449,7 +454,6 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             '"Server collider:',
             '"Counter -> Groggy:',
             '"Grab release action creation: unavailable in this revision.',
-            '"Grab release: NONE',
         ):
             self.assertIn(overview, details)
         for existing_vertical_slice in (
@@ -458,7 +462,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             '"WAIT / GAP##BossPatternAdd"',
             '"Add Server Collider"',
             '"Counter Enabled"',
-            '"Counter Success Groggy"',
+            '"Counter Hit -> Groggy"',
         ):
             self.assertIn(
                 existing_vertical_slice,
@@ -1106,7 +1110,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "CValtanPatternSoundCueDocument::Save_Atomic(",
             "m_strValtanPatternSoundCueBaselineSourceBytes",
             "Reload_ValtanPatternSoundCues()",
-            "ACTIVE CONSUMER APPLY DEFERRED",
+            "Pattern Sound saved and loaded.",
         ):
             self.assertIn(token, save_sound)
         self.assertNotIn(
@@ -1147,10 +1151,19 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             self.assertIn(token, composition_gameplay)
         for token in (
             "Patch_ValtanCompositionPatternSound(",
-            "Save_ValtanCompositionPatternSounds(Status)",
+            "Prepare_ValtanCompositionPatternSoundSave(",
+            "Save_ValtanCompositionProduct(",
+            "Accept_ValtanCompositionPatternSoundSave(",
             "Resolve_ValtanCompositionPatternSoundWindow(",
         ):
             self.assertIn(token, self.composition_cpp)
+        composition_save = function_body(
+            self.composition_cpp,
+            "bool_t Client::CActionCompositionWorkbench::Save_Reload()",
+        )
+        self.assertNotIn(
+            "Save_ValtanCompositionPatternSounds(", composition_save
+        )
 
         reload_sound = function_body(
             self.animation_cpp,
@@ -1293,7 +1306,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "PreviousShakeCues",
             "CValtanCanonicalProductReadAdmission CanonicalAdmission",
             "CValtanPresentationGenerationReadAdmission GenerationAdmission",
-            "GenerationAdmission.Acquire_Receipt(",
+            "GenerationAdmission.Acquire_ExactReceipt(",
             "CanonicalAdmission.Acquire(strOutStatus)",
             "Reload_PatternBindings_WhileAdmitted(StepStatus)",
             "Reload_PatternEffectCues_WhileAdmitted(StepStatus)",
@@ -1310,7 +1323,8 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "m_PatternSoundCuesByActionId = PreviousSoundCues",
             "m_CombatObjectSoundCuesBySource = PreviousCombatObjectSoundCues",
             "m_PatternShakeCuesByActionId = PreviousShakeCues",
-            "m_PresentationGenerationReceipt = *pExpectedReceipt",
+            "CurrentPresentationReceipt",
+            "std::move(CurrentPresentationReceipt)",
         ):
             self.assertIn(token, joined_reload)
 
@@ -1399,7 +1413,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         )
         canonical_save = function_body(
             self.composition_cpp,
-            "bool_t Client::CActionCompositionWorkbench::Save_Publish_Reload()",
+            "bool_t Client::CActionCompositionWorkbench::Save_Reload()",
         )
         toolbar = function_body(
             self.composition_cpp,
@@ -1435,26 +1449,42 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "Apply_ValtanCompositionPatternSoundsToActiveConsumers(",
             sound_retry,
         )
-        for token in (
-            "Save_ValtanCanonicalProduct(SaveStatus)",
+        transaction_edges = (
+            "Prepare_ValtanCompositionPatternSoundSave(",
+            "Prepare_BossValtanBindingDraftSave(",
+            "Save_ValtanCompositionProduct(",
+            "Accept_ValtanCompositionPatternSoundSave(",
+            "Accept_BossValtanBindingDraftSave(",
             "Reload_CanonicalGraph(ToolReloadStatus)",
             "Reload_Canonical()",
+        )
+        for token in transaction_edges:
+            self.assertIn(token, canonical_save)
+        transaction_positions = [
+            canonical_save.index(token) for token in transaction_edges
+        ]
+        self.assertEqual(transaction_positions, sorted(transaction_positions))
+        self.assertEqual(
+            1, canonical_save.count("Save_ValtanCompositionProduct(")
+        )
+        self.assertNotIn("Save_ValtanProduct(", canonical_save)
+        self.assertNotIn(
+            "Save_ValtanCompositionPatternSounds(", canonical_save
+        )
+        for token in (
+            "patternSoundBaselineBytes",
+            "patternSoundCandidateBytes",
+            "effectV2BaselineBytes",
+            "effectV2CandidateBytes",
+            'm_strStatus = "Nothing was saved. "',
         ):
             self.assertIn(token, canonical_save)
-        self.assertLess(
-            canonical_save.index("Save_ValtanCanonicalProduct(SaveStatus)"),
-            canonical_save.index("Reload_CanonicalGraph(ToolReloadStatus)"),
-        )
-        self.assertLess(
-            canonical_save.index("Reload_CanonicalGraph(ToolReloadStatus)"),
-            canonical_save.rindex("Reload_Canonical()"),
-        )
         self.assertIn("Observe_ServerActivePatternRevision(", toolbar)
         self.assertNotIn("Get_ServerActivePatternRevision(", toolbar)
         self.assertIn("ExpectedServerRevision", toolbar)
         self.assertIn("VerifyAuthoritativeFreshnessGate", self.animation_binding_harness)
 
-    def test_every_boss_server_pattern_start_entry_checks_presentation_freshness(
+    def test_boss_pattern_start_entries_use_typed_services_and_saved_flow_reset(
         self,
     ) -> None:
         def require_gate_before(body: str, submission: str) -> None:
@@ -1478,7 +1508,36 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             self.boss_cpp,
             "bool_t Client::CBossTool::Start_Flow(",
         )
-        require_gate_before(flow_start, "CValtanPatternFlowService::Get().Start(")
+        first_slot = flow_start.index("pFlow->Slots.front().strSlotId")
+        delegate = flow_start.index("Start_FlowAtSlot(StartSlotId)")
+        self.assertLess(first_slot, delegate)
+        flow_submit = function_body(
+            self.boss_cpp,
+            "bool_t Client::CBossTool::Start_FlowAtSlot(",
+        )
+        self.assertIn("CValtanPatternFlowService::Get().Start(", flow_submit)
+        restart_saved = function_body(
+            self.boss_cpp,
+            "bool_t Client::CBossTool::Restart_SavedFlow(",
+        )
+        self.assertLess(
+            restart_saved.index("Reload_FlowDocument()"),
+            restart_saved.index("return Start_Flow()"),
+        )
+
+        server_start = function_body(
+            self.room_cpp,
+            "LostArk::Server::CGameRoom::Evaluate_ValtanPatternFlowStart(",
+        )
+        reset = server_start.index(
+            "Reset_ValtanAuditionState(*boss, resetTick, resetStatus)"
+        )
+        commit = server_start.index(
+            "m_ValtanPatternFlowAudition = std::move(stagedFlow)"
+        )
+        lifecycle = server_start.index("Queue_ValtanPatternFlowLifecycle(")
+        self.assertLess(reset, commit)
+        self.assertLess(commit, lifecycle)
 
         next_picker = function_body(
             self.boss_cpp,
@@ -1499,9 +1558,10 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             self.boss_cpp,
             "void Client::CBossTool::Render_FlowSelectedSlot()",
         )
-        flow_gate = flow_detail.index("Acquire_ServerPlaybackAdmission(")
-        self.assertLess(flow_detail.index("Stop_AfterCurrent("), flow_gate)
-        self.assertLess(flow_gate, flow_detail.index("FlowService.Retry_Start("))
+        self.assertIn("Stop_AfterCurrent(", flow_detail)
+        self.assertNotIn("Acquire_ServerPlaybackAdmission(", flow_detail)
+        self.assertNotIn("FlowService.Retry_Start(", flow_detail)
+        self.assertIn("FlowService.Retry_Start(", restart_saved)
 
     def test_primary_valtan_freshness_latches_across_despawn_until_reset_or_reload(
         self,
@@ -1652,7 +1712,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
         for token in (
             "S2C_COMBAT_OBJECT_PRESENTATION_EVENT",
-            "NETWORK_PROTOCOL_VERSION = 50;",
+            "NETWORK_PROTOCOL_VERSION = 51;",
         ):
             self.assertIn(token, self.packet_type_h)
         for token in (
@@ -1857,7 +1917,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         for token in (
             "FindValtanPattern",
             "FindValtanStage",
-            "DamageProfile, response, and explicit-offset ownership are read-only",
+            "stable identity, DamageProfile, response, and motion kind are read-only",
             "MANUAL_SERVER_AUDITION Stage admits ACTIVE, WINDUP, or GROGGY",
             "stageKindChanged",
             "IsValtanStageGeometryValid",

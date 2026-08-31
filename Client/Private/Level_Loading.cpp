@@ -571,6 +571,8 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 				pBossActor->combatObjectVisuals)
 			{
 				EffectAssetIds.push_back(Visual.effectAssetId);
+				if (!Visual.hitEffectAssetId.empty())
+					EffectAssetIds.push_back(Visual.hitEffectAssetId);
 			}
 			/* Area-owned world Effects are Product targets too.  Read only the
 			   published runtime document here; source authoring data never becomes
