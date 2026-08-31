@@ -13,13 +13,16 @@ class CUITextureCache;
 
 /* Real CUIObject-based runtime consumer of a lostark.ui-layout JSON document (the same
 schema CHUDRuntimeView already parses for its own ImGui foreground-drawlist path), for
-screens being migrated off that ImGui interim rendering. Only the fields the first migrated
-screen (the raid entry preview) actually uses are read -- id, rect, layers[0] (path/tint/
-additive/flipX). shine/animation.frames/keyframeAnimationPath stay unread until a screen that
-uses them gets migrated.
+screens migrated off that ImGui interim rendering. Reads id, rect, rotation, ownerClass,
+every layers[] entry (path/tint/additive/flipX), "animation.frames" flipbooks, and
+"keyframeAnimationPath" documents (the extracted Scaleform identity-HUD assets -- multi-layer
+per-frame asset/position/scale/rotation/alpha tracks with labels). shine/stages stay unread --
+no migrated document uses them.
 
-Each slot becomes a real CUI_Sprite GameObject added to the caller's layer, instead of an
-ImGui AddImage call -- it renders through the normal CRenderer/RENDERGROUP::UI pipeline. */
+Each slot layer becomes a real CUI_Sprite GameObject added to the caller's layer, instead of
+an ImGui AddImage call -- it renders through the normal CRenderer/RENDERGROUP::UI pipeline in
+document order (slot by slot, layer by layer). A keyframe slot gets one sprite per document
+layer, driven per frame by Update(). */
 class CUILayoutRuntime final
 {
 public:
@@ -32,17 +35,20 @@ public:
 	/* Reference-resolution rect of the authored slot with this JSON "id", or false if no such
 	slot exists (unknown id, or its texture failed to load and the slot was skipped). */
 	bool_t Get_SlotRect(const string& strId, f32_t& fX, f32_t& fY, f32_t& fWidth, f32_t& fHeight) const;
+	/* Real show/hide (a hidden sprite is skipped entirely, no transparent-quad draw call) --
+	tint/alpha/texture state is untouched, so showing again restores exactly what was set
+	before. For a keyframe slot this gates whether Update() drives its layer sprites at all. */
 	void Set_SlotVisible(const string& strId, bool_t bVisible);
-	/* Runtime tint override (0..1 RGBA) -- e.g. a dim backdrop's alpha, independent of the
-	slot's authored layer tint. */
+	/* Runtime tint override (0..1 RGBA) on every layer sprite -- e.g. a dim backdrop's alpha,
+	independent of the slot's authored layer tint. */
 	void Set_SlotTint(const string& strId, const float4_t& vTint);
 	/* Alpha-only override (0..1, RGB stays white) -- for a fade-in/out reveal timeline
 	   (RaidClear's celebration layers) that isn't a hard on/off like Set_SlotVisible. */
 	void Set_SlotAlpha(const string& strId, f32_t fAlpha);
 	/* Resources-relative path -- loads (or reuses a cached) SRV directly, bypassing the
 	Prototype/Component texture lookup this slot's own authored layer used, for content that
-	changes after this view is built (a button's hover texture). Empty path reverts to the
-	slot's authored texture. */
+	changes after this view is built (a button's hover texture). Applies to the slot's BASE
+	(first) layer only. Empty path reverts to the slot's authored texture. */
 	void Set_SlotTexture(const string& strId, const string& strAssetPath);
 	/* Overrides a slot's authored top-left position at runtime (size unchanged) -- for a menu
 	that has to appear wherever the player clicked, keyed off its own authored relative offset
@@ -57,13 +63,36 @@ public:
 	void Set_SlotRect(const string& strId, f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight);
 	/* 1.f (default) draws the whole slot; a value in [0,1) clips it to that fraction of its own
 	authored width (post-FlipX), for a gauge/health-bar drain that reveals the bar art's own left
-	portion at native scale instead of a stretched/squished resize (CUI_Sprite::Set_FillRatio).
-	No-op if the slot doesn't exist. */
+	portion at native scale instead of a stretched/squished resize (CUI_Sprite::Set_FillRatio). */
 	void Set_SlotFillRatio(const string& strId, f32_t fFillRatio);
-	/* Drives "animation.frames" flipbook slots (a non-empty frame list plays instead of
-	   Layers, same as CHUDRuntimeView's own AnimationFrames) -- swaps each such slot's texture
-	   via Set_SlotTexture as its own clock crosses a frame boundary. No-op for every other
-	   slot. Callers add this to their owning Level's Update(fTimeDelta). */
+	/* 1.f (default) draws the whole slot; a value in [0,1) keeps only the pie sector spanning
+	that fraction of a full turn clockwise from 12 o'clock -- the skill-cooldown sweep overlay
+	(CUI_Sprite::Set_ArcRatio). */
+	void Set_SlotArcRatio(const string& strId, f32_t fArcRatio);
+	/* Overrides a slot's authored "rotation" (screen-space clockwise degrees about its own rect
+	center) at runtime -- for continuous data-driven rotation (DimensionMaster's clock hands and
+	gear ornaments). Applies to every layer sprite of the slot. */
+	void Set_SlotRotation(const string& strId, f32_t fDegrees);
+	/* Show/hide every class-owned slot in one pass: a slot whose authored ownerClass is
+	non-empty becomes visible only when it equals strOwnerClass. ownerClass-less slots are
+	untouched -- the same per-frame filter CHUDRuntimeView::Render(strOwnerClass, ...) applied
+	implicitly. Callers layer their own dynamic Set_SlotVisible overrides after this. */
+	void Set_ActiveOwnerClass(const string& strOwnerClass);
+	/* Every slot at once -- the whole-screen hide for a view whose owning system stops running
+	(level gate fails), since these sprites keep their last state instead of simply not being
+	drawn the way an ImGui pass did. */
+	void Set_AllSlotsVisible(bool_t bVisible);
+	/* Jumps a keyframe slot's document to the frame labelled strLabel and plays forward until
+	the next authored label (or the document's end), then holds on that last frame -- mirrors
+	the original asset's own gotoAndPlay(label) trigger, same contract as CHUDRuntimeView's
+	version. Calling again (any label) restarts the window. False if the slot has no keyframe
+	document or the label is unknown. */
+	bool_t Play_KeyframeAnimation(const string& strId, const string& strLabel);
+	/* Drives "animation.frames" flipbook slots and keyframe-animation slots forward by
+	fTimeDelta -- flipbooks swap their sprite's texture on frame-boundary crossings; keyframe
+	slots re-evaluate every document layer's active key into that layer's own sprite
+	(texture/position/scale/rotation/alpha/additive/flip). Callers add this to their owning
+	system's per-frame update. */
 	void Update(f32_t fTimeDelta);
 	/* Restarts a slot's "animation.frames" flipbook from frame 0 right now -- for a one-shot
 	effect (loop=false) a caller wants to fire on a real event (a gauge reaching 100%), since
@@ -81,17 +110,60 @@ public:
 	f32_t Get_ResolutionHeight() const { return m_fResolutionHeight; }
 
 private:
+	struct KEYFRAME_ANIM_KEY
+	{
+		int32_t	iFrame = 0;
+		/* Empty = hidden from this frame onward (the source SWF depth was removed here). */
+		string	strAsset;
+		f32_t	fX = 0.f, fY = 0.f;
+		f32_t	fScaleX = 1.f, fScaleY = 1.f;
+		f32_t	fRotationDeg = 0.f;
+		f32_t	fAlpha = 1.f;
+		bool_t	bAdditive = false;
+		bool_t	bFlipX = false;
+	};
+
+	struct KEYFRAME_ANIM_LAYER
+	{
+		vector<KEYFRAME_ANIM_KEY> Keys;
+	};
+
+	struct KEYFRAME_ANIM_DOCUMENT
+	{
+		bool_t				isLoaded = false;
+		bool_t				bLoop = false;
+		f32_t				fFrameRate = 40.f;
+		int32_t				iFrameCount = 0;
+		map<string, int32_t>			Labels;
+		vector<KEYFRAME_ANIM_LAYER>		Layers;
+	};
+
 	struct RUNTIME_SLOT
 	{
 		string				strId;
+		string				strOwnerClass;
 		f32_t				fX = 0.f, fY = 0.f, fSizeX = 0.f, fSizeY = 0.f;
+		bool_t				bVisible = true;
 		shared_ptr<CUI_Sprite>	pSprite;
+		/* layers[1..] of a multi-layer slot, same rect as pSprite, drawn on top of it in
+		authored order (a skill slot's background + frame pair). */
+		vector<shared_ptr<CUI_Sprite>>	ExtraLayerSprites;
 
 		vector<string>		AnimationFramePaths;
 		f32_t				fAnimationFPS = 10.f;
 		bool_t				bAnimationLoop = true;
 		f32_t				fAnimationElapsed = 0.f;
 		int32_t				iAnimationFrame = -1;
+
+		/* Keyframe-animation slot state: one sprite per document layer, driven by Update()
+		once Play_KeyframeAnimation starts a window. fKeyframeElapsedSeconds < 0 = never
+		played (draws nothing, matching CHUDRuntimeView). */
+		string				strKeyframeAnimationPath;
+		f32_t				fKeyframeAnimationScale = 1.f;
+		int32_t				iKeyframeWindowStart = 0;
+		int32_t				iKeyframeWindowEnd = 0;
+		f64_t				fKeyframeElapsedSeconds = -1.0;
+		vector<shared_ptr<CUI_Sprite>>	KeyframeSprites;
 	};
 
 private:
@@ -102,6 +174,11 @@ private:
 	error) if already registered -- CGameInstance::Add_Prototype itself fails safely on a
 	duplicate tag. */
 	void Ensure_TexturePrototype(const wstring_t& strPath);
+	shared_ptr<CUI_Sprite> Create_Sprite(
+		f32_t fRectX, f32_t fRectY, f32_t fRectWidth, f32_t fRectHeight,
+		const string& strTexturePath);
+	const KEYFRAME_ANIM_DOCUMENT* Get_Or_Load_KeyframeAnimation(const string& strPath);
+	void Update_KeyframeSlot(RUNTIME_SLOT& Slot, f32_t fTimeDelta);
 
 private:
 	ComPtr<ID3D11Device>			m_pDevice;
@@ -115,15 +192,17 @@ private:
 	later resize, matching CMainApp's own LoadingLayout chrome). Get_SlotRect/RUNTIME_SLOT stay
 	in raw reference-resolution units -- matching CHUDRuntimeView's own Get_SlotRect contract,
 	which every existing caller (RenderItemAnnounceText, etc.) already assumes and scales itself
-	-- these two are applied only when actually positioning a CUI_Sprite (Load/Set_SlotPosition). */
+	-- these two are applied only when actually positioning a CUI_Sprite. */
 	f32_t							m_fScaleX = 1.f;
 	f32_t							m_fScaleY = 1.f;
 
 	vector<RUNTIME_SLOT>			m_Slots;
 	vector<wstring_t>				m_RegisteredTexturePrototypes;
-	/* For Set_SlotTexture's runtime swap path only -- the authored-layer path goes through the
-	Prototype/CUI_Sprite path above instead. Shared utility (CUITextureCache) so this isn't a
-	third copy of CHUDRuntimeView's own duplicate of the same DDS/WIC-load logic. */
+	map<string, KEYFRAME_ANIM_DOCUMENT>	m_KeyframeAnimationCache;
+	/* For Set_SlotTexture's runtime swap path and every keyframe/flipbook frame texture -- the
+	authored-layer path goes through the Prototype/CUI_Sprite path above instead. Shared utility
+	(CUITextureCache) so this isn't a third copy of CHUDRuntimeView's own duplicate of the same
+	DDS/WIC-load logic. */
 	unique_ptr<CUITextureCache>	m_pTextureCache;
 };
 

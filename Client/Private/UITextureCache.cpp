@@ -48,6 +48,38 @@ ID3D11ShaderResourceView* Client::CUITextureCache::Get_Or_Load(const string& str
 			pSRV = nullptr;
 	}
 
+	if (nullptr != pSRV)
+	{
+		/* Native pixel size for Get_Texture_Size -- queried once here off the SRV's own backing
+		Texture2D instead of re-opening the file. */
+		ComPtr<ID3D11Resource> pResource;
+		pSRV->GetResource(&pResource);
+		ComPtr<ID3D11Texture2D> pTexture2D;
+		if (nullptr != pResource &&
+			SUCCEEDED(pResource.As(&pTexture2D)) && nullptr != pTexture2D)
+		{
+			D3D11_TEXTURE2D_DESC Desc{};
+			pTexture2D->GetDesc(&Desc);
+			m_TextureSizeCache[strPath] = TEXTURE_SIZE{
+				static_cast<f32_t>(Desc.Width), static_cast<f32_t>(Desc.Height) };
+		}
+	}
+
 	m_TextureCache[strPath] = pSRV;
 	return pSRV.Get();
+}
+
+bool_t Client::CUITextureCache::Get_Texture_Size(
+	const string& strPath, f32_t& outWidth, f32_t& outHeight)
+{
+	Get_Or_Load(strPath);
+	const auto Iter = m_TextureSizeCache.find(strPath);
+	if (m_TextureSizeCache.end() == Iter ||
+		Iter->second.fWidth <= 0.f || Iter->second.fHeight <= 0.f)
+	{
+		return false;
+	}
+	outWidth = Iter->second.fWidth;
+	outHeight = Iter->second.fHeight;
+	return true;
 }

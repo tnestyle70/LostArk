@@ -48,6 +48,19 @@ public:
 	the sprite's own U axis (post-FlipX), for a gauge/health-bar drain that reveals its own art at
 	native scale as it empties instead of a stretched/squished resize. */
 	void Set_FillRatio(f32_t fFillRatio);
+	/* 1.f (default) draws the whole sprite; a value in [0,1) keeps only the pie sector spanning
+	that fraction of a full turn clockwise from 12 o'clock about the sprite's own center -- the
+	skill-cooldown sweep. */
+	void Set_ArcRatio(f32_t fArcRatio);
+	/* Degrees, clockwise on screen, about the sprite's own rect center -- same convention as
+	HUD_Layout.json's authored "rotation" and the HUD Layout Tool's preview. 0 (default) keeps
+	the axis-aligned quad every existing caller expects. */
+	void Set_Rotation(f32_t fDegrees);
+	/* false skips Add_RenderObject entirely (no transparent-quad draw call), unlike an alpha-0
+	tint which still rendered -- the real hide for a sprite-count-heavy screen (a keyframe
+	animation's per-layer pool). Tint/texture/transform state is kept, so showing again restores
+	exactly what was on screen before. */
+	void Set_Visible(bool_t bVisible);
 	/* Takes an already-resolved SRV (the caller owns loading/caching -- CUI_Sprite stays a thin
 	render primitive, not a second texture cache) and takes over from the prototype-tag texture
 	bound at construction for as long as it's set. Pass nullptr to fall back to that original
@@ -65,11 +78,17 @@ private:
 	bool_t							m_bFlipX = false;
 	bool_t							m_bAdditive = false;
 	f32_t							m_fFillRatio = 1.f;
+	f32_t							m_fArcRatio = 1.f;
+	f32_t							m_fRotationDeg = 0.f;
+	bool_t							m_bVisible = true;
 	ComPtr<ID3D11ShaderResourceView>	m_pOverrideTextureSRV;
 
 private:
 	HRESULT Ready_Components();
 	HRESULT Bind_ShaderResources();
+	/* Rebuilds the world transform from m_fX/m_fY/m_fSizeX/m_fSizeY/m_fRotationDeg -- shared by
+	Set_Rect and Set_Rotation so either can change without re-deriving the other's state. */
+	void Apply_Transform();
 
 public:
 	static unique_ptr<CUI_Sprite> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);

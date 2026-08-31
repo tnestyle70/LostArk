@@ -62,6 +62,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -74,6 +75,16 @@
 
 namespace
 {
+	/* Product-path wall clock (seconds since first call) -- replaces ImGui::GetTime() in every
+	non-Debug timer here, so no product state machine depends on the ImGui frame loop. */
+	f64_t Product_Now_Seconds()
+	{
+		static const std::chrono::steady_clock::time_point s_Epoch =
+			std::chrono::steady_clock::now();
+		return std::chrono::duration<f64_t>(
+			std::chrono::steady_clock::now() - s_Epoch).count();
+	}
+
 	struct LOBBY_PRODUCT_BUTTON
 	{
 		const char_t* pSlotId;
@@ -400,7 +411,7 @@ void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
 
 	/* The P key toggle has no level awareness of its own (see m_pItemUpgradeView's declaration
 	comment), so m_bItemUpgradePreviewVisible can go true while sitting in a level
-	RenderCombatHUD never supported (e.g. Lobby) -- same level set as RenderCombatHUD's own gate.
+	Update_CombatHUD never supported (e.g. Lobby) -- same level set as Update_CombatHUD's own gate.
 	Unlike the old ImGui pass (which simply wasn't reached and drew nothing there), these slots
 	live under LEVEL::STATIC and would otherwise show through regardless of level. */
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
@@ -436,14 +447,14 @@ void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
 	the gauge is a manual state machine driven by ItemUpgrade_LevelUpBtn's click
 	(Update_ItemUpgradeGrowButton) instead of a free-running clock. Idle at 0 until clicked;
 	0->100 fill plays once per click; holds at 100 until the next click. Once a real gauge value
-	exists this should read it the same way RenderLanceMasterIdentityGauge() reads
+	exists this should read it the same way Update_LanceMasterIdentityGauge() reads
 	player.iCurrentIdentity, not this state. */
 	if (m_bItemUpgradeGrowing)
 	{
 		constexpr f32_t GAUGE_FILL_FPS = 45.f;
 		constexpr f32_t GAUGE_FILL_FRAME_COUNT = 100.f;
 		const f32_t fCycleSeconds = GAUGE_FILL_FRAME_COUNT / GAUGE_FILL_FPS;
-		const f64_t fElapsed = ImGui::GetTime() - m_dItemUpgradeGrowStartSeconds;
+		const f64_t fElapsed = Product_Now_Seconds() - m_dItemUpgradeGrowStartSeconds;
 		const int32_t iPercent = std::clamp(
 			static_cast<int32_t>(fElapsed / fCycleSeconds * GAUGE_FILL_FRAME_COUNT),
 			0, 100);
@@ -459,7 +470,7 @@ void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
 			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_LevelUpMotion2Big", true);
 			m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", 0.f);
 			m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", 0.f);
-			m_dItemUpgradeCompleteRevealStartSeconds = ImGui::GetTime();
+			m_dItemUpgradeCompleteRevealStartSeconds = Product_Now_Seconds();
 			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_CompleteEffect", true);
 			m_pItemUpgradeView->Restart_Animation("ItemUpgrade_CompleteEffect");
 		}
@@ -485,7 +496,7 @@ void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
 		{
 			constexpr f64_t REVEAL_FADE_SECONDS = 0.45;
 			const f32_t fFadeAlpha = static_cast<f32_t>(std::clamp(
-				(ImGui::GetTime() - m_dItemUpgradeCompleteRevealStartSeconds) / REVEAL_FADE_SECONDS,
+				(Product_Now_Seconds() - m_dItemUpgradeCompleteRevealStartSeconds) / REVEAL_FADE_SECONDS,
 				0.0, 1.0));
 			m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", fFadeAlpha);
 			m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", fFadeAlpha);
@@ -500,16 +511,16 @@ void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
 	{
 		m_pItemUpgradeView->Restart_Animation("ItemUpgrade_CoreFlash");
 		constexpr f64_t CORE_FLASH_DURATION_SECONDS = 28.0 / 20.0;
-		m_dItemUpgradeShockwaveScheduledAt = ImGui::GetTime() + CORE_FLASH_DURATION_SECONDS;
+		m_dItemUpgradeShockwaveScheduledAt = Product_Now_Seconds() + CORE_FLASH_DURATION_SECONDS;
 		m_bItemUpgradeCoreFlashPending = false;
 	}
 	if (m_dItemUpgradeShockwaveScheduledAt >= 0.0 &&
-		ImGui::GetTime() >= m_dItemUpgradeShockwaveScheduledAt)
+		Product_Now_Seconds() >= m_dItemUpgradeShockwaveScheduledAt)
 	{
 		m_pItemUpgradeView->Restart_Animation("ItemUpgrade_ShockwaveRing");
 		m_dItemUpgradeShockwaveScheduledAt = -1.0;
 	}
-	if (m_dItemUpgradeResultSettleAt >= 0.0 && ImGui::GetTime() >= m_dItemUpgradeResultSettleAt)
+	if (m_dItemUpgradeResultSettleAt >= 0.0 && Product_Now_Seconds() >= m_dItemUpgradeResultSettleAt)
 	{
 		// Burst's real one-shot duration is over -- swap the circle+burst out for the settled
 		// icon/name/result content (RenderItemUpgradeSuccessDetailText/FailDetailText gate on
@@ -705,7 +716,13 @@ HRESULT CMainApp::Initialize()
 		OutputDebugStringA(diagnostic.c_str());
 	}
 
-	m_pHUDRuntimeView = std::make_unique<CHUDRuntimeView>(m_pDevice, m_pContext);
+	/* Created FIRST among the STATIC-level UI documents -- CUI_Sprite draw order follows
+	creation order, and the always-on combat HUD must sit underneath the boss bar, Esther
+	window, Item Upgrade window, and inventory, matching the old ImGui submission order. */
+	m_pHUDRuntimeView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
+		L"UI/HUD/HUD_Layout.json");
+	Hide_CombatHUD();
 	m_pBossUIView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/BossUI/BossUI.json");
@@ -729,7 +746,11 @@ HRESULT CMainApp::Initialize()
 	m_pLobbyBackgroundView = std::make_unique<CHUDRuntimeView>(
 		m_pDevice, m_pContext, L"UI/Lobby/Lobby_Layout.json",
 		CHUDRuntimeView::DRAW_TARGET::BACKGROUND);
-	m_pSkillWindowView = std::make_unique<CSkillWindowView>(m_pDevice, m_pContext);
+	/* m_pSkillWindowView is intentionally never constructed anymore: the K keybind that opened
+	it was removed by product decision (see the migrated keybind block below), so the window can
+	never open, and constructing it would stand up the last ImGui product-path renderer for
+	nothing. Every "skillWindowOpen" gate already null-checks it. The class/files stay for a
+	future real re-introduction. */
 	m_pInventoryView = std::make_unique<CInventoryView>(m_pDevice, m_pContext);
 	m_pChatWindowView = std::make_unique<CChatWindowView>(m_pDevice);
 	m_pPartyWindowView = std::make_unique<CPartyWindowView>(m_pDevice);
@@ -800,12 +821,13 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		}
 		m_bPDown = pDown;
 	}
+	Update_CombatHUD(fTimeDelta);
 	Update_ItemUpgrade(fTimeDelta);
 	Update_BossHealthBar();
 	Update_EstherGauge();
 
 	/* 1/2/3/4 use whatever item is registered on Item_1..4 (drag-drop from the inventory --
-	see Render_ItemQuickSlots). Same gating as K/I; the Server is the one that actually
+	see Update_ItemQuickSlots). Same gating as K/I; the Server is the one that actually
 	validates ownership and applies the heal, this only ever sends the request. */
 	if (!ImGui::GetIO().WantTextInput && !CUIInputRouter::Get().Is_TextInputActive())
 	{
@@ -1104,15 +1126,11 @@ HRESULT CMainApp::Render()
 			ETOUI(LEVEL::DEVELOPMENT) == hudLevel ||
 			ETOUI(LEVEL::BERN) == hudLevel ||
 			ETOUI(LEVEL::VALTAN_ARENA) == hudLevel;
-		/* Same reason RenderCombatHUD skips m_pHUDRuntimeView while the Skill Window is open --
-		this is a second, independent path that draws the same class emblem/bars and was not
-		gated on that the first time, so it kept bleeding through underneath. */
 		const bool_t skillWindowOpenForPreview =
 			nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
 		/* The O-key raid-entry preview's left info column/panel frame sit in the
-		   same screen region as this class HUD (portrait, skill icons, identity
-		   gauge) -- skip drawing the class HUD chrome entirely while that debug
-		   preview is open instead of letting the two fight for the same pixels. */
+		   same screen region as the class HUD (portrait, skill icons, identity
+		   gauge) -- Update_CombatHUD applies the same gate to the real sprites. */
 		const bool_t isCharSelectDebugPreviewOpen =
 			ETOUI(LEVEL::CHARACTER_SELECT) == hudLevel &&
 			nullptr != CLevel_CharacterSelect::Get_Active() &&
@@ -1124,24 +1142,13 @@ HRESULT CMainApp::Render()
 			m_pHUDLayoutTool->Render_RuntimePreview(
 				GetHUDLayoutClassId(hudPlayer.eCharacterClass));
 		}
-		if (!isCharSelectDebugPreviewOpen)
-		{
 	#endif
-			RenderCombatHUD();
-			RenderChargeGauge();
-			/* RenderQuickSlot only draws the extracted QuickSlot.gfx on-use flash overlay -- it does
-			not draw icon art, cooldown sweep, or keybind text for any class, so it is additive on top
-			of the existing icon/cooldown rendering below, not a replacement for it. Disabling these
-			two calls previously took every class's skill icons off screen, not just LanceMaster's. */
-			RenderSkillIcons();
-			RenderSkillCooldowns();
-			RenderQuickSlot();
-	#ifdef _DEBUG
-		}
-	#endif
+		/* No combat-HUD draw calls here anymore -- Update_CombatHUD() (called from Update())
+		drives the HUD's real CUI_Sprite slots, which render through the normal engine
+		pipeline. */
 		/* Must run after the combat HUD renders above: Render_ValtanEntryModal's
 		   art draws to ImGui::GetForegroundDrawList(), the same shared list
-		   RenderCombatHUD/RenderSkillIcons/RenderQuickSlot just used, and that
+		   combat HUD draws once used, and that
 		   list composites in real submission order -- calling it earlier let the
 		   always-on combat HUD paint over the full-screen raid-entry panel.
 		   (Update_BossHealthBar's own CUI_Sprite slots render through the normal
@@ -1283,7 +1290,7 @@ HRESULT CMainApp::Render()
 		m_pImGuiLayer->EndFrame();
 	}
 	CEstherCutinPresentationService::Render(m_pDevice, m_pContext);
-	/* Same reasoning as the RenderCombatHUD/RenderBossHealthBar/RenderChargeGauge
+	/* Same reasoning as the old combat-HUD/boss-bar/charge-gauge
 	   image gate above (isCharSelectDebugPreviewOpen there) -- these are that
 	   HUD's own text counterparts (HP/MP numbers, boss HP text, gauge percent),
 	   drawn from this separate post-EndFrame() text pass, so they need the same
@@ -1304,6 +1311,7 @@ HRESULT CMainApp::Render()
 		RenderCombatHUDText();
 		RenderBossHealthBarText();
 		RenderChargeGaugeText();
+		RenderSkillCooldownText();
 		/* VALTAN_ARENA-only inside; no CharSelect-preview overlap possible, but grouped with the
 		other combat-HUD text anyway since it is that HUD's own caption. */
 		RenderEstherGaugeText();
@@ -1360,43 +1368,59 @@ HRESULT CMainApp::Render()
 	return CGameInstance::Get().Render_End();
 }
 
-void CMainApp::RenderCombatHUD()
+void CMainApp::Hide_CombatHUD()
 {
-	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel != ETOUI(LEVEL::BERN) &&
-		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
-		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
-		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
-	{
-		/* m_pInventoryView's CUI_Sprite slots live under LEVEL::STATIC (so the panel survives a
-		Bern<->Valtan transition instead of resetting) -- unlike the old ImGui pass, which simply
-		stopped being called and drew nothing, they keep showing their last state across a level
-		change unless told otherwise. */
-		if (nullptr != m_pInventoryView)
-			m_pInventoryView->Hide();
+	if (nullptr != m_pHUDRuntimeView)
+		m_pHUDRuntimeView->Set_AllSlotsVisible(false);
+}
+
+void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
+{
+	if (nullptr == m_pHUDRuntimeView)
 		return;
-	}
+
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	const bool_t isSupportedLevel =
+		currentLevel == ETOUI(LEVEL::BERN) ||
+		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
+		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT);
+	/* The Skill Window (when one exists) and the Debug O-key raid-entry preview both replace
+	this whole screen region -- same gates the old ImGui pass applied at its call sites. */
+	const bool_t skillWindowOpen =
+		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
+#ifdef _DEBUG
+	const bool_t isCharSelectDebugPreviewOpen =
+		ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel &&
+		nullptr != CLevel_CharacterSelect::Get_Active() &&
+		CLevel_CharacterSelect::Get_Active()->Is_DebugRaidEntryPreviewOpen();
+#else
+	const bool_t isCharSelectDebugPreviewOpen = false;
+#endif
 
 	const HUD_PLAYER_STATE& player =
 		CCombatHUDViewModel::Get().Get_Player();
-	if (!player.isValid || 0u == player.iMaximumHp ||
-		0u == player.iMaximumResource)
+	if (!isSupportedLevel || skillWindowOpen || isCharSelectDebugPreviewOpen ||
+		!player.isValid || 0u == player.iMaximumHp || 0u == player.iMaximumResource)
 	{
+		Hide_CombatHUD();
+		/* m_pInventoryView's CUI_Sprite slots live under LEVEL::STATIC too (so the panel
+		survives a Bern<->Valtan transition instead of resetting) -- they keep showing their
+		last state across a level change unless told otherwise, same as this HUD's own. */
 		if (nullptr != m_pInventoryView)
 			m_pInventoryView->Hide();
 		return;
 	}
 
-	/* The Combat HUD draws to the always-on-top foreground layer, so it would otherwise show
-	through around/behind the Skill Window (which does not necessarily cover every pixel of the
-	viewport) instead of being hidden by it like a real full-screen menu hides the HUD. */
-	const bool_t skillWindowOpen =
-		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
-
-	if (!skillWindowOpen && nullptr != m_pHUDRuntimeView)
 	{
-		/* Base state only for now -- no gauge/resource-driven stage switching yet. */
+		/* Base pass: every neutral slot on, then the ownerClass filter (the old
+		Render(strOwnerClass, 0) pass) picks the active class's own slots. The Update_* helpers
+		below overwrite the dynamic slots' visibility (fills, icons, cooldown overlays) the same
+		frame, before anything renders. Base state only for now -- no gauge/resource-driven
+		stage switching yet. */
 		const string strOwnerClass = GetHUDOwnerClassName(player.eCharacterClass);
+		m_pHUDRuntimeView->Set_AllSlotsVisible(true);
+		m_pHUDRuntimeView->Set_ActiveOwnerClass(strOwnerClass);
 
 		/* LanceMaster's identity icon is a keyframe-animated Scaleform extraction, not a static
 		layer stack -- it has to be told to play, and only on an actual stance edge (the source
@@ -1722,11 +1746,7 @@ void CMainApp::RenderCombatHUD()
 			PlayZXWipe("Yin_Skill_Z_Wipe", pZSkill, bZReady);
 			PlayZXWipe("Yin_Skill_X_Wipe", pXSkill, bXReady);
 		}
-		m_pHUDRuntimeView->Render(strOwnerClass, 0);
-		RenderPlayerHealthManaBar();
-		/* No Esther block here anymore -- Update_EstherGauge() (called from Update()) owns every
-		Esther slot's visibility now, static frame/portraits included, and its CUI_Sprite slots
-		self-render through the normal engine pipeline. */
+		Update_PlayerHealthManaBar();
 	}
 
 	/* Real gauge0/1/2 fill (target-rotation-masked track) and burn flourish are baked and wired;
@@ -1734,18 +1754,20 @@ void CMainApp::RenderCombatHUD()
 	still a placeholder shared with Lance_Id_Stance's own rect -- needs live in-game tuning to
 	place left/bottom/right segments at their real offsets. */
 	if (LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER == player.eCharacterClass)
-		RenderLanceMasterIdentityGauge();
+		Update_LanceMasterIdentityGauge();
 
-	if (nullptr != m_pSkillWindowView)
-		m_pSkillWindowView->Render(player.eCharacterClass);
+	Update_ChargeGauge();
+	Update_SkillIcons();
+	Update_SkillCooldowns();
+	Update_QuickSlotFlash();
+	Update_ItemQuickSlots();
 	if (nullptr != m_pInventoryView)
 		m_pInventoryView->Update(CCombatHUDViewModel::Get().Get_Inventory().Items);
-	/* No matching inline Item Upgrade block here anymore -- migrated to Update_ItemUpgrade(),
-	called from CMainApp::Update() instead of from inside this Render() pass. Its CUI_Sprite
-	slots self-render through the normal engine pipeline, so nothing here needs to draw them or
-	drive their state immediately before a draw call the way the old Render("Default", 0) pass
-	did. */
-	Render_ItemQuickSlots();
+
+	/* Advances every keyframe-animation slot the per-class blocks above played (and any
+	flipbooks, though this document has none) -- must run after them so a Play call issued this
+	frame evaluates into its sprites before this frame renders. */
+	m_pHUDRuntimeView->Update(fTimeDelta);
 }
 
 void CMainApp::RenderQuickSlotKeyLabels()
@@ -2181,7 +2203,7 @@ void CMainApp::Update_ItemUpgradeGrowButton()
 	the held-100 state doesn't leave it showing through the new fill. */
 	m_iItemUpgradePreviousPercent = 0;
 	m_bItemUpgradeGrowing = true;
-	m_dItemUpgradeGrowStartSeconds = ImGui::GetTime();
+	m_dItemUpgradeGrowStartSeconds = Product_Now_Seconds();
 	m_bItemUpgradeCoreFlashPending = true;
 	m_dItemUpgradeShockwaveScheduledAt = -1.0;
 	m_dItemUpgradeCompleteRevealStartSeconds = -1.0;
@@ -2272,7 +2294,7 @@ void CMainApp::Update_ItemUpgradeResultWaitClick()
 	// otherwise). Once the burst's own real one-shot duration finishes, the per-frame settle check
 	// in Update() hides the circle+burst and reveals the icon/name/result content in their place.
 	constexpr f64_t RESULT_BURST_DURATION_SECONDS = 90.0 / 30.0;
-	m_dItemUpgradeResultSettleAt = ImGui::GetTime() + RESULT_BURST_DURATION_SECONDS;
+	m_dItemUpgradeResultSettleAt = Product_Now_Seconds() + RESULT_BURST_DURATION_SECONDS;
 
 	const bool_t bSuccess = m_bItemUpgradePendingAttemptSuccess;
 	m_eItemUpgradeAttemptResult = bSuccess ?
@@ -2750,31 +2772,32 @@ void CMainApp::RenderItemUpgradeFailDetailText()
 	DrawCentered("ItemUpgrade_FailOkBtn", L"\xD655\xC778", 0.32f, Colors::White);
 }
 
-void CMainApp::Render_ItemQuickSlots()
+void CMainApp::Update_ItemQuickSlots()
 {
-	if (nullptr == m_pHUDRuntimeView || nullptr == m_pInventoryView)
+	if (nullptr == m_pInventoryView)
 		return;
-
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
 
 	constexpr const char* ITEM_SLOT_IDS[4] = { "Item_1", "Item_2", "Item_3", "Item_4" };
+	constexpr const char* ITEM_ICON_SLOT_IDS[4] =
+		{ "Item_1_Icon", "Item_2_Icon", "Item_3_Icon", "Item_4_Icon" };
 
 	string strDroppedItemId;
 	float fDropX = 0.f, fDropY = 0.f;
 	if (m_pInventoryView->Try_Consume_ItemDrop(strDroppedItemId, fDropX, fDropY))
 	{
+		/* The drop position is a real client-area pixel (CUIInputRouter's
+		Get_ClientCursorPosition); slot rects are reference-resolution -- same viewport scale
+		Get_SlotRect callers always apply, just without ImGui in the middle. */
+		const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+		const float scaleX = vViewportSize.x / 1280.f;
+		const float scaleY = vViewportSize.y / 720.f;
 		for (int32_t i = 0; i < 4; ++i)
 		{
 			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 			if (!m_pHUDRuntimeView->Get_SlotRect(ITEM_SLOT_IDS[i], fX, fY, fWidth, fHeight))
 				continue;
-			const float left = pViewport->WorkPos.x + fX * scaleX;
-			const float top = pViewport->WorkPos.y + fY * scaleY;
+			const float left = fX * scaleX;
+			const float top = fY * scaleY;
 			const float right = left + fWidth * scaleX;
 			const float bottom = top + fHeight * scaleY;
 			if (fDropX >= left && fDropX < right && fDropY >= top && fDropY < bottom)
@@ -2787,88 +2810,36 @@ void CMainApp::Render_ItemQuickSlots()
 
 	for (int32_t i = 0; i < 4; ++i)
 	{
-		if (m_strItemQuickSlot[i].empty())
-			continue;
-		const ITEM_DEFINITION* pDefinition = CItemCatalog::Find_ById(m_strItemQuickSlot[i]);
+		const ITEM_DEFINITION* pDefinition = m_strItemQuickSlot[i].empty() ?
+			nullptr : CItemCatalog::Find_ById(m_strItemQuickSlot[i]);
 		if (nullptr == pDefinition || pDefinition->strIconPath.empty())
-			continue;
-		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-		if (!m_pHUDRuntimeView->Get_SlotRect(ITEM_SLOT_IDS[i], fX, fY, fWidth, fHeight))
-			continue;
-		const ImVec2 vMin(
-			pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
-		const ImVec2 vMax(
-			vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
-		if (ID3D11ShaderResourceView* pIconSRV =
-			m_pHUDRuntimeView->Load_Texture(pDefinition->strIconPath))
 		{
-			pDrawList->AddImage(pIconSRV, vMin, vMax);
+			m_pHUDRuntimeView->Set_SlotVisible(ITEM_ICON_SLOT_IDS[i], false);
+			continue;
 		}
+		m_pHUDRuntimeView->Set_SlotTexture(ITEM_ICON_SLOT_IDS[i], pDefinition->strIconPath);
+		m_pHUDRuntimeView->Set_SlotVisible(ITEM_ICON_SLOT_IDS[i], true);
 	}
 }
 
-void CMainApp::RenderPlayerHealthManaBar()
+void CMainApp::Update_PlayerHealthManaBar()
 {
+	/* Only reached from Update_CombatHUD's own show path, which already validated the player
+	snapshot and this view. */
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	if (!player.isValid || 0u == player.iMaximumHp || 0u == player.iMaximumResource)
-		return;
-	if (nullptr == m_pHUDRuntimeView)
-		return;
-
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
 
 	const float healthRatio = (std::clamp)(
 		static_cast<float>(player.iCurrentHp) / static_cast<float>(player.iMaximumHp), 0.f, 1.f);
 	const float manaRatio = (std::clamp)(
 		static_cast<float>(player.iCurrentResource) / static_cast<float>(player.iMaximumResource), 0.f, 1.f);
 
-	f32_t fHpX = 0.f, fHpY = 0.f, fHpWidth = 0.f, fHpHeight = 0.f;
-	if (m_pHUDRuntimeView->Get_SlotRect("HealthBar", fHpX, fHpY, fHpWidth, fHpHeight))
-	{
-		if (ID3D11ShaderResourceView* pHpSRV = m_pHUDRuntimeView->Load_Texture("UI/HUD/Common/HP Bar.png"))
-		{
-			const ImVec2 vMin{
-				pViewport->WorkPos.x + fHpX * scaleX,
-				pViewport->WorkPos.y + fHpY * scaleY };
-			const ImVec2 vMax{
-				vMin.x + fHpWidth * scaleX,
-				vMin.y + fHpHeight * scaleY };
-			const float fBoundaryX = vMin.x + (vMax.x - vMin.x) * healthRatio;
-			if (healthRatio > 0.f)
-			{
-				pDrawList->AddImage(pHpSRV, vMin, ImVec2(fBoundaryX, vMax.y),
-					ImVec2(0.f, 0.f), ImVec2(healthRatio, 1.f));
-			}
-		}
-	}
-
-	f32_t fMpX = 0.f, fMpY = 0.f, fMpWidth = 0.f, fMpHeight = 0.f;
-	if (m_pHUDRuntimeView->Get_SlotRect("ManaBar", fMpX, fMpY, fMpWidth, fMpHeight))
-	{
-		if (ID3D11ShaderResourceView* pMpSRV = m_pHUDRuntimeView->Load_Texture("UI/HUD/Common/MP Bar.png"))
-		{
-			const ImVec2 vMin{
-				pViewport->WorkPos.x + fMpX * scaleX,
-				pViewport->WorkPos.y + fMpY * scaleY };
-			const ImVec2 vMax{
-				vMin.x + fMpWidth * scaleX,
-				vMin.y + fMpHeight * scaleY };
-			const float fBoundaryX = vMin.x + (vMax.x - vMin.x) * manaRatio;
-			if (manaRatio > 0.f)
-			{
-				pDrawList->AddImage(pMpSRV, vMin, ImVec2(fBoundaryX, vMax.y),
-					ImVec2(0.f, 0.f), ImVec2(manaRatio, 1.f));
-			}
-		}
-	}
+	m_pHUDRuntimeView->Set_SlotFillRatio("HealthBar_Fill", healthRatio);
+	m_pHUDRuntimeView->Set_SlotVisible("HealthBar_Fill", healthRatio > 0.f);
+	m_pHUDRuntimeView->Set_SlotFillRatio("ManaBar_Fill", manaRatio);
+	m_pHUDRuntimeView->Set_SlotVisible("ManaBar_Fill", manaRatio > 0.f);
 }
 
-void CMainApp::RenderLanceMasterIdentityGauge()
+void CMainApp::Update_LanceMasterIdentityGauge()
 {
 	/* Same real formula as ark.ui.identityLanceMaster.LanceMasterProgress::updateProgress():
 	each of the 3 segments independently tracks 0..100, and only fills once every segment
@@ -2912,13 +2883,13 @@ void CMainApp::RenderLanceMasterIdentityGauge()
 		{
 			m_pHUDRuntimeView->Play_KeyframeAnimation(
 				string("Lance_Id_GaugeBurn") + std::to_string(i), "burn");
-			m_dLanceGaugeIgniteStartSeconds[i] = ImGui::GetTime();
+			m_dLanceGaugeIgniteStartSeconds[i] = Product_Now_Seconds();
 			m_bLanceGaugeLoopStarted[i] = false;
 		}
 		m_bLanceGaugeSegmentWasFull[i] = bIsFull;
 
 		const bool_t bIgniteDone = bIsFull && m_dLanceGaugeIgniteStartSeconds[i] >= 0.0 &&
-			(ImGui::GetTime() - m_dLanceGaugeIgniteStartSeconds[i]) >= BURN_IGNITE_SECONDS[i];
+			(Product_Now_Seconds() - m_dLanceGaugeIgniteStartSeconds[i]) >= BURN_IGNITE_SECONDS[i];
 		if (bIgniteDone && !m_bLanceGaugeLoopStarted[i])
 		{
 			m_pHUDRuntimeView->Play_KeyframeAnimation(
@@ -2934,7 +2905,56 @@ void CMainApp::RenderLanceMasterIdentityGauge()
 	}
 }
 
-void CMainApp::RenderSkillCooldowns()
+void CMainApp::Update_SkillCooldowns()
+{
+	/* Only reached from Update_CombatHUD's own show path. Matches the fixed server tick rate
+	other Client files already redeclare locally (CombatHUDViewModel.cpp, Character.cpp) rather
+	than exposing a Shared constant for it. */
+	constexpr f32_t SERVER_TICK_HZ = 30.f;
+	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V" };
+
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+
+	/* Default every overlay off; the loop below turns on just the ones actually cooling down.
+	Sweeps clockwise from 12 o'clock as the *remaining* cooldown, shrinking back to nothing as
+	it expires -- the icon starts fully covered right after use and is revealed clockwise,
+	matching the reference cooldown swipe. The pie itself is the appended Skill_<X>_Cooldown
+	overlay slot (black 150/255 White1x1) with the g_ArcRatio shader clip; angle-testing the
+	square quad reproduces the old "radius past the corners, clipped to the rect" construction
+	exactly. The "Ns" numbers moved to RenderSkillCooldownText (post-EndFrame text pass). */
+	for (const char* pInputSlot : INPUT_SLOTS)
+		m_pHUDRuntimeView->Set_SlotVisible(string("Skill_") + pInputSlot + "_Cooldown", false);
+
+	for (const HUD_SKILL_STATE& Skill : player.Skills)
+	{
+		if (Skill.strInputSlot.empty() || Skill.Is_Ready(player.iServerTick))
+			continue;
+
+		/* Warlord's Z/X badges have their own real extracted cooldown visual (WarLordSkinFrame's
+		SkillSlot "disabled" state swaps the whole icon to a real dark variant, see the Skill_Z/X
+		keyframe wiring in Update_CombatHUD), and Artist's Z/X use their own real keyframed wipe
+		-- the generic pie was built for Q-F/T/V only. */
+		if ("Z" == Skill.strInputSlot || "X" == Skill.strInputSlot)
+			continue;
+
+		const uint32_t remainingTicks = Skill.iCooldownEndTick > player.iServerTick ?
+			Skill.iCooldownEndTick - player.iServerTick : 0u;
+		if (0u == remainingTicks)
+			continue;
+
+		const f32_t fRemainingSeconds = static_cast<f32_t>(remainingTicks) / SERVER_TICK_HZ;
+		const f32_t fTotalSeconds = Skill.iCooldownDurationTicks > 0u ?
+			static_cast<f32_t>(Skill.iCooldownDurationTicks) / SERVER_TICK_HZ : fRemainingSeconds;
+		const f32_t fFraction = fTotalSeconds > 0.f ?
+			(std::min)(1.f, (std::max)(0.f, fRemainingSeconds / fTotalSeconds)) : 0.f;
+
+		const string strOverlaySlot = "Skill_" + Skill.strInputSlot + "_Cooldown";
+		m_pHUDRuntimeView->Set_SlotArcRatio(strOverlaySlot, fFraction);
+		m_pHUDRuntimeView->Set_SlotVisible(strOverlaySlot, true);
+	}
+}
+
+void CMainApp::RenderSkillCooldownText()
 {
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	if (currentLevel != ETOUI(LEVEL::BERN) &&
@@ -2944,140 +2964,72 @@ void CMainApp::RenderSkillCooldowns()
 	{
 		return;
 	}
-
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
 	if (!player.isValid || 0u == player.iMaximumHp || 0u == player.iMaximumResource)
 		return;
-
-	const bool_t skillWindowOpen =
-		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
-	if (skillWindowOpen || nullptr == m_pHUDRuntimeView)
+	if ((nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open()) ||
+		nullptr == m_pHUDRuntimeView)
+	{
 		return;
+	}
 
-	/* Matches the fixed server tick rate other Client files already redeclare locally
-	(CombatHUDViewModel.cpp, Character.cpp) rather than exposing a Shared constant for it. */
 	constexpr f32_t SERVER_TICK_HZ = 30.f;
-	constexpr f32_t REF_WIDTH = 1280.f;
-	constexpr f32_t REF_HEIGHT = 720.f;
-	constexpr f32_t PI = 3.14159265f;
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
-	const f32_t fScaleY = pViewport->WorkSize.y / REF_HEIGHT;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+	const auto DrawCooldownLabel = [&](f32_t fCenterX, f32_t fCenterY, f32_t fTargetHeight,
+		const wstring& strLabel)
+	{
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strLabel.c_str());
+		const f32_t fScale = (vMeasured.y > 0.f) ? (fTargetHeight / vMeasured.y) : 1.f;
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strLabel.c_str(),
+			float2_t(fCenterX * textScaleX + 1.f, fCenterY * textScaleY + 1.f),
+			XMVectorSet(0.f, 0.f, 0.f, 220.f / 255.f), 0.f, float2_t(0.5f, 0.5f),
+			fScale * textUiScale);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strLabel.c_str(),
+			float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
+			Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+	};
 
 	for (const HUD_SKILL_STATE& Skill : player.Skills)
 	{
 		if (Skill.strInputSlot.empty() || Skill.Is_Ready(player.iServerTick))
 			continue;
-
-		/* Warlord's Z/X badges have their own real extracted cooldown visual (WarLordSkinFrame's
-		SkillSlot "disabled" state swaps the whole icon to a real dark variant, see the Skill_Z/X
-		keyframe wiring below) instead of this generic pie sweep, which was built for Q-F only. */
-		if ("Z" == Skill.strInputSlot || "X" == Skill.strInputSlot)
-		{
-			/* Artist's Z/X slots are real ARKNewSlot instances too, which have their own real
-			coolDown wipe (already keyframed, see Yin_Skill_Z/X_Wipe below) AND a real cooldownText
-			TextField sub-component (confirmed: yinYangShiSlot symbol 343, depth15, name
-			"cooldownText") -- draw just the countdown number here, same "Ns" style as Q-F, without
-			the generic pie (Artist's real wipe shape already covers that). */
-			if (LostArk::Shared::CHARACTER_CLASS_ID::ARTIST == player.eCharacterClass)
-			{
-				const uint32_t remainingTicks = Skill.iCooldownEndTick > player.iServerTick ?
-					Skill.iCooldownEndTick - player.iServerTick : 0u;
-				if (0u != remainingTicks)
-				{
-					f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-					if (m_pHUDRuntimeView->Get_SlotRect("Yin_Skill_" + Skill.strInputSlot, fX, fY, fWidth, fHeight))
-					{
-						const f32_t fRemainingSeconds = static_cast<f32_t>(remainingTicks) / SERVER_TICK_HZ;
-						const int32_t iDisplaySeconds = static_cast<int32_t>(ceilf(fRemainingSeconds));
-						const string strCooldownLabel = std::to_string(iDisplaySeconds) + "s";
-
-						const ImVec2 vTopLeft(
-							pViewport->WorkPos.x + fX * fScaleX,
-							pViewport->WorkPos.y + fY * fScaleY);
-						const ImVec2 vCenter(
-							vTopLeft.x + 22.5f * 0.5f * fScaleX,
-							vTopLeft.y + 22.5f * 0.5f * fScaleY);
-
-						ImFont* pFont = ImGui::GetFont();
-						const f32_t fFontSize = 22.5f * fScaleY * 0.34f;
-						const ImVec2 vTextSize =
-							pFont->CalcTextSizeA(fFontSize, FLT_MAX, 0.f, strCooldownLabel.c_str());
-						const ImVec2 vTextPos(
-							vCenter.x - vTextSize.x * 0.5f,
-							vCenter.y - vTextSize.y * 0.5f);
-
-						pDrawList->AddText(pFont, fFontSize, ImVec2(vTextPos.x + 1.f, vTextPos.y + 1.f),
-							IM_COL32(0, 0, 0, 220), strCooldownLabel.c_str());
-						pDrawList->AddText(pFont, fFontSize, vTextPos,
-							IM_COL32(255, 255, 255, 255), strCooldownLabel.c_str());
-					}
-				}
-			}
-			continue;
-		}
-
 		const uint32_t remainingTicks = Skill.iCooldownEndTick > player.iServerTick ?
 			Skill.iCooldownEndTick - player.iServerTick : 0u;
 		if (0u == remainingTicks)
 			continue;
+		const f32_t fRemainingSeconds = static_cast<f32_t>(remainingTicks) / SERVER_TICK_HZ;
+		const int32_t iDisplaySeconds = static_cast<int32_t>(ceilf(fRemainingSeconds));
+		const wstring strLabel = std::to_wstring(iDisplaySeconds) + L"s";
+
+		if ("Z" == Skill.strInputSlot || "X" == Skill.strInputSlot)
+		{
+			/* Artist's Z/X slots are real ARKNewSlot instances with a real cooldownText
+			TextField sub-component (yinYangShiSlot symbol 343, depth15, "cooldownText") -- just
+			the countdown number, no generic pie (Artist's own keyframed wipe already covers
+			that). Warlord's Z/X badge swap has no number in the source, same as before. */
+			if (LostArk::Shared::CHARACTER_CLASS_ID::ARTIST != player.eCharacterClass)
+				continue;
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			if (!m_pHUDRuntimeView->Get_SlotRect(
+				"Yin_Skill_" + Skill.strInputSlot, fX, fY, fWidth, fHeight))
+			{
+				continue;
+			}
+			/* Same 22.5-reference-px anchor box the old draw used (the slot's own rect is a
+			placeholder; the real art size lives in the keyframe document). */
+			DrawCooldownLabel(fX + 22.5f * 0.5f, fY + 22.5f * 0.5f, 22.5f * 0.34f, strLabel);
+			continue;
+		}
 
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!m_pHUDRuntimeView->Get_SlotRect("Skill_" + Skill.strInputSlot, fX, fY, fWidth, fHeight))
 			continue;
-
-		const f32_t fRemainingSeconds = static_cast<f32_t>(remainingTicks) / SERVER_TICK_HZ;
-		const f32_t fTotalSeconds = Skill.iCooldownDurationTicks > 0u ?
-			static_cast<f32_t>(Skill.iCooldownDurationTicks) / SERVER_TICK_HZ : fRemainingSeconds;
-		const f32_t fFraction = fTotalSeconds > 0.f ?
-			(std::min)(1.f, (std::max)(0.f, fRemainingSeconds / fTotalSeconds)) : 0.f;
-
-		const ImVec2 vTopLeft(
-			pViewport->WorkPos.x + fX * fScaleX,
-			pViewport->WorkPos.y + fY * fScaleY);
-		const ImVec2 vBotRight(
-			vTopLeft.x + fWidth * fScaleX,
-			vTopLeft.y + fHeight * fScaleY);
-		const ImVec2 vCenter(
-			(vTopLeft.x + vBotRight.x) * 0.5f,
-			(vTopLeft.y + vBotRight.y) * 0.5f);
-		const f32_t fHalfW = (vBotRight.x - vTopLeft.x) * 0.5f;
-		const f32_t fHalfH = (vBotRight.y - vTopLeft.y) * 0.5f;
-		/* Sized past the slot's corners and clipped to its rect below, so the visible edge of
-		the pie traces the square's own border instead of an inscribed circle -- a plain
-		circular-sector fill would leave the corners uncovered while mostly full. */
-		const f32_t fRadius = sqrtf(fHalfW * fHalfW + fHalfH * fHalfH) + 2.f;
-
-		/* Sweeps clockwise from 12 o'clock as the *remaining* cooldown, shrinking back to
-		nothing as it expires -- the icon starts fully covered right after use and is revealed
-		clockwise, matching the reference cooldown swipe. */
-		const f32_t fStartAngle = -PI * 0.5f;
-		const f32_t fEndAngle = fStartAngle + fFraction * 2.f * PI;
-
-		pDrawList->PushClipRect(vTopLeft, vBotRight, true);
-		pDrawList->PathClear();
-		pDrawList->PathLineTo(vCenter);
-		pDrawList->PathArcTo(vCenter, fRadius, fStartAngle, fEndAngle, 32);
-		pDrawList->PathFillConvex(IM_COL32(0, 0, 0, 150));
-		pDrawList->PopClipRect();
-
-		const int32_t iDisplaySeconds = static_cast<int32_t>(ceilf(fRemainingSeconds));
-		const string strCooldownLabel = std::to_string(iDisplaySeconds) + "s";
-
-		ImFont* pFont = ImGui::GetFont();
-		const f32_t fFontSize = fHeight * fScaleY * 0.34f;
-		const ImVec2 vTextSize =
-			pFont->CalcTextSizeA(fFontSize, FLT_MAX, 0.f, strCooldownLabel.c_str());
-		const ImVec2 vTextPos(
-			vCenter.x - vTextSize.x * 0.5f,
-			vCenter.y - vTextSize.y * 0.5f);
-
-		pDrawList->AddText(pFont, fFontSize, ImVec2(vTextPos.x + 1.f, vTextPos.y + 1.f),
-			IM_COL32(0, 0, 0, 220), strCooldownLabel.c_str());
-		pDrawList->AddText(pFont, fFontSize, vTextPos,
-			IM_COL32(255, 255, 255, 255), strCooldownLabel.c_str());
+		DrawCooldownLabel(fX + fWidth * 0.5f, fY + fHeight * 0.5f, fHeight * 0.34f, strLabel);
 	}
 }
 
@@ -3163,10 +3115,10 @@ void CMainApp::Update_BossHealthBar()
 	else
 	{
 		if (iBarsRemaining < m_iPreviousBossBarsRemaining)
-			m_dBossBarTickFlashStartSeconds = ImGui::GetTime();
+			m_dBossBarTickFlashStartSeconds = Product_Now_Seconds();
 		if (boss.iCurrentHp < m_iPreviousBossCurrentHp)
 		{
-			m_dBossHitGlowStartSeconds = ImGui::GetTime();
+			m_dBossHitGlowStartSeconds = Product_Now_Seconds();
 			m_fBossHitGlowFillRatio = healthRatio;
 		}
 		m_iPreviousBossBarsRemaining = iBarsRemaining;
@@ -3291,7 +3243,7 @@ void CMainApp::Update_BossHealthBar()
 	if (m_dBossBarTickFlashStartSeconds >= 0.0)
 	{
 		constexpr f64_t BAR_TICK_FLASH_SECONDS = 0.3;
-		const f64_t fFlashAge = ImGui::GetTime() - m_dBossBarTickFlashStartSeconds;
+		const f64_t fFlashAge = Product_Now_Seconds() - m_dBossBarTickFlashStartSeconds;
 		if (fFlashAge < BAR_TICK_FLASH_SECONDS)
 		{
 			bShowTickFlash = true;
@@ -3315,7 +3267,7 @@ void CMainApp::Update_BossHealthBar()
 	if (m_dBossHitGlowStartSeconds >= 0.0)
 	{
 		constexpr f64_t HIT_GLOW_SECONDS = 0.35;
-		const f64_t fGlowAge = ImGui::GetTime() - m_dBossHitGlowStartSeconds;
+		const f64_t fGlowAge = Product_Now_Seconds() - m_dBossHitGlowStartSeconds;
 		if (fGlowAge < HIT_GLOW_SECONDS)
 		{
 			bShowHitGlow = true;
@@ -3603,7 +3555,7 @@ void CMainApp::RenderItemAnnounceText()
 	}
 }
 
-void CMainApp::RenderChargeGauge()
+void CMainApp::Update_ChargeGauge()
 {
 	if (nullptr == m_pHUDRuntimeView)
 		return;
@@ -3743,38 +3695,15 @@ void CMainApp::RenderChargeGauge()
 		}
 	}
 
-	// Bg/Track are static full images shown via the normal JSON layer composite; Fill is always
-	// kept hidden there and hand-drawn below with a partial-width UV crop instead (same technique
-	// RenderBossHealthBar already uses for its own segment fill).
+	/* Bg/Track are static full images (their own authored slots); Fill is the same authored
+	slot, clipped by the real charge progress via the g_FillRatio shader clip -- same technique
+	the boss/player bars use. */
 	m_pHUDRuntimeView->Set_SlotVisible("ChargeGauge_Bg", bCharging);
 	m_pHUDRuntimeView->Set_SlotVisible("ChargeGauge_Track", bCharging);
-	m_pHUDRuntimeView->Set_SlotVisible("ChargeGauge_Fill", false);
-
-	if (!bCharging)
-		return;
-
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
-		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-
-	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-	if (!m_pHUDRuntimeView->Get_SlotRect("ChargeGauge_Fill", fX, fY, fWidth, fHeight))
-		return;
-
-	ID3D11ShaderResourceView* pFillSRV =
-		m_pHUDRuntimeView->Load_Texture("UI/HUD/ChargeGauge/charge_gauge_fill.png");
-	if (nullptr == pFillSRV || fChargeProgress <= 0.f)
-		return;
-
-	const ImVec2 fillMin{
-		pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY };
-	const ImVec2 fillMax{ fillMin.x + fWidth * scaleX, fillMin.y + fHeight * scaleY };
-	const float fFillBoundaryX = fillMin.x + (fillMax.x - fillMin.x) * fChargeProgress;
-
-	ImGui::GetForegroundDrawList(pViewport)->AddImage(pFillSRV, fillMin,
-		ImVec2(fFillBoundaryX, fillMax.y), ImVec2(0.f, 0.f), ImVec2(fChargeProgress, 1.f));
+	const bool_t bShowFill = bCharging && fChargeProgress > 0.f;
+	m_pHUDRuntimeView->Set_SlotVisible("ChargeGauge_Fill", bShowFill);
+	if (bShowFill)
+		m_pHUDRuntimeView->Set_SlotFillRatio("ChargeGauge_Fill", fChargeProgress);
 }
 
 void CMainApp::RenderChargeGaugeText()
@@ -3798,10 +3727,10 @@ void CMainApp::RenderChargeGaugeText()
 	{
 		return;
 	}
-	// Must mirror RenderChargeGauge's own bCharging gate exactly -- 17240 풀배럴 캐넌 only shows a
+	// Must mirror Update_ChargeGauge's own bCharging gate exactly -- 17240 풀배럴 캐넌 only shows a
 	// gauge (so only shows this label) during its stage-2 pump; every other HOLD skill hides both
 	// once an early release cancels the charge (m_bChargeGaugeCancelled, set earlier this same
-	// frame by RenderChargeGauge).
+	// frame by Update_ChargeGauge).
 	constexpr LostArk::Shared::SKILL_ID FULL_BARREL_CANNON_SKILL_ID = 17240;
 	if (FULL_BARREL_CANNON_SKILL_ID == pSkill->iSkillId)
 	{
@@ -3962,33 +3891,17 @@ void CMainApp::RenderEstherGaugeText()
 		fScale * textUiScale);
 }
 
-void CMainApp::RenderSkillIcons()
+void CMainApp::Update_SkillIcons()
 {
 	/* Which skill icon belongs in Skill_Q.."Skill_F" is content, not layout: it depends on the
 	live (class, stance) pair via CPlayerSkillCatalog::Find_BySlot, the same source of truth the
 	input controller already resolves quick slots from. HUD_Layout.json only owns the shared
 	frame's position/size (ownerClass null "Skill_Q".."Skill_F"); it must not carry a second,
-	class-hardcoded copy of "which icon" that can drift out of sync with PlayerSkills.json. This
-	replaces the LanceMaster-only stance special-case with one path for every class -- Find_BySlot
-	already resolves stance-gated skills correctly and ignores the stance argument for classes
-	whose skills have no requiredStance. */
-	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel != ETOUI(LEVEL::BERN) &&
-		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
-		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
-		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
-	{
-		return;
-	}
-
+	class-hardcoded copy of "which icon" that can drift out of sync with PlayerSkills.json.
+	Find_BySlot already resolves stance-gated skills correctly and ignores the stance argument
+	for classes whose skills have no requiredStance. Only reached from Update_CombatHUD's own
+	show path. */
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	if (!player.isValid)
-		return;
-
-	const bool_t skillWindowOpen =
-		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
-	if (skillWindowOpen || nullptr == m_pHUDRuntimeView)
-		return;
 
 	struct SKILL_ICON_ENTRY { LostArk::Shared::SKILL_ID iSkillId; const char* pIconPath; };
 	constexpr SKILL_ICON_ENTRY SKILL_ICON_TABLE[] =
@@ -4056,33 +3969,13 @@ void CMainApp::RenderSkillIcons()
 
 	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V" };
 
-	constexpr f32_t REF_WIDTH = 1280.f;
-	constexpr f32_t REF_HEIGHT = 720.f;
-
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
-	const f32_t fScaleY = pViewport->WorkSize.y / REF_HEIGHT;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
-
-	ID3D11ShaderResourceView* pEmptySlotSRV =
-		m_pHUDRuntimeView->Load_Texture("UI/HUD/Common/Empty Slot.png");
-
 	for (const char* pInputSlot : INPUT_SLOTS)
 	{
-		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-		if (!m_pHUDRuntimeView->Get_SlotRect(
-			string("Skill_") + pInputSlot, fX, fY, fWidth, fHeight))
-		{
-			continue;
-		}
-
-		const ImVec2 vTopLeft(
-			pViewport->WorkPos.x + fX * fScaleX,
-			pViewport->WorkPos.y + fY * fScaleY);
-		const ImVec2 vBotRight(
-			vTopLeft.x + fWidth * fScaleX,
-			vTopLeft.y + fHeight * fScaleY);
-
+		/* Icon sits between the slot background and the frame in real sprite order: Skill_<X>
+		keeps only "Slot Bg.png" as its authored layer now, the dynamic Skill_<X>_Icon slot
+		carries whatever this resolves, and the appended Skill_<X>_Frame slot (the frame art
+		stripped from the base slot) draws over both -- the same border-above-icon stacking the
+		old redraw achieved. */
 		const char* pIconPath = nullptr;
 		if (const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
 			player.eCharacterClass, pInputSlot, player.eStance))
@@ -4097,42 +3990,26 @@ void CMainApp::RenderSkillIcons()
 			}
 		}
 
-		/* Icon first, then the shared frame's border/tab back on top -- the shared "Skill_Q"
-		slot already drew that same border underneath before this runs, so redrawing it here
-		is what keeps it above the icon instead of the icon covering it. */
+		const string strIconSlot = string("Skill_") + pInputSlot + "_Icon";
 		if (nullptr != pIconPath)
 		{
-			if (ID3D11ShaderResourceView* pIconSRV = m_pHUDRuntimeView->Load_Texture(pIconPath))
-				pDrawList->AddImage(pIconSRV, vTopLeft, vBotRight);
+			m_pHUDRuntimeView->Set_SlotTexture(strIconSlot, pIconPath);
+			m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, true);
 		}
-		if (nullptr != pEmptySlotSRV)
-			pDrawList->AddImage(pEmptySlotSRV, vTopLeft, vBotRight);
+		else
+		{
+			m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, false);
+		}
 	}
 }
 
-void CMainApp::RenderQuickSlot()
+void CMainApp::Update_QuickSlotFlash()
 {
 	/* Icon art, slot frame, keybind label, and cooldown sweep aren't extracted from QuickSlot.gfx
-	yet, so this only draws the real on-use flash -- RenderSkillIcons/RenderSkillCooldowns (called
-	alongside this, not instead of it) still own everything else. */
-
-	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel != ETOUI(LEVEL::BERN) &&
-		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
-		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
-		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
-	{
-		return;
-	}
-
+	yet, so this only plays the real on-use flash -- Update_SkillIcons/Update_SkillCooldowns
+	(called alongside this, not instead of it) still own everything else. Only reached from
+	Update_CombatHUD's own show path. */
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	if (!player.isValid || nullptr == m_pHUDRuntimeView)
-		return;
-
-	const bool_t skillWindowOpen =
-		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
-	if (skillWindowOpen)
-		return;
 
 	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V" };
 
@@ -4229,7 +4106,7 @@ void CMainApp::RenderDamageNumbers()
 		if (damageEvent.iServerTick <= m_iLastRenderedDamageServerTick)
 			continue;
 		FLOATING_DAMAGE_NUMBER number{};
-		number.dSpawnSeconds = ImGui::GetTime();
+		number.dSpawnSeconds = Product_Now_Seconds();
 		number.vWorldPosition = float3_t(
 			damageEvent.Event.fPositionX,
 			damageEvent.Event.fPositionY,
@@ -4247,7 +4124,7 @@ void CMainApp::RenderDamageNumbers()
 				(m_FloatingDamageNumbers.size() - MAX_FLOATING_DAMAGE_NUMBERS));
 	}
 
-	const f64_t dNow = ImGui::GetTime();
+	const f64_t dNow = Product_Now_Seconds();
 	m_FloatingDamageNumbers.erase(
 		std::remove_if(m_FloatingDamageNumbers.begin(), m_FloatingDamageNumbers.end(),
 			[dNow](const FLOATING_DAMAGE_NUMBER& number)

@@ -16,6 +16,13 @@ in [0,1) discards texels whose final (post-flip) U coordinate is past this fract
 the image's own left portion at native scale instead of a stretched/squished resize -- the same
 UV-clipped ImGui::AddImage(uv1=(fillRatio,1)) technique this replaces. */
 float g_FillRatio = 1.f;
+/* CUI_Sprite's own runtime pie-sector clip (a skill-cooldown sweep) -- 1.0 (default) draws the
+whole sprite unclipped. A value in [0,1) keeps only texels whose angle from the sprite's own
+center, measured from 12 o'clock going clockwise, is within that fraction of a full turn --
+the same shrinking clockwise cooldown pie ImGui's PathArcTo+PathFillConvex(clipped to the slot
+rect) drew, since angle-testing the square quad directly IS the "radius past the corners then
+clip to rect" construction. */
+float g_ArcRatio = 1.f;
 
 /* LinearSampler's AddressU/V = WRAP is correct for tiled 3D world textures but wrong here:
 this shader only backs CUI_Sprite's screen-space UI quads, whose texcoords span exactly
@@ -108,6 +115,17 @@ PS_OUT PS_MAIN_UI(PS_IN In)
         vTexcoord.x = 1.f - vTexcoord.x;
 
     clip(g_FillRatio - vTexcoord.x);
+
+    if (g_ArcRatio < 1.f)
+    {
+        /* Texcoord v grows downward, so "up" (12 o'clock) is -y; atan2(x, -y) is then 0 at the
+        top and increases clockwise, matching the reference cooldown sweep's direction. */
+        float2 vFromCenter = vTexcoord - float2(0.5f, 0.5f);
+        float fAngle = atan2(vFromCenter.x, -vFromCenter.y);
+        if (fAngle < 0.f)
+            fAngle += 6.28318530f;
+        clip(g_ArcRatio * 6.28318530f - fAngle);
+    }
 
     Out.vColor = g_Texture.Sample(UISampler, vTexcoord) * g_TintColor;
 

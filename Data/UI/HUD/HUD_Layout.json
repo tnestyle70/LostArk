@@ -87,18 +87,6 @@
           ],
           "additive": false,
           "flipX": false
-        },
-        {
-          "path": "UI/HUD/Common/Empty Slot.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
         }
       ],
       "shine": {
@@ -135,18 +123,6 @@
       "layers": [
         {
           "path": "UI/HUD/Common/Slot Bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        },
-        {
-          "path": "UI/HUD/Common/Empty Slot.png",
           "hoverPath": null,
           "tint": [
             1,
@@ -201,18 +177,6 @@
           ],
           "additive": false,
           "flipX": false
-        },
-        {
-          "path": "UI/HUD/Common/Empty Slot.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
         }
       ],
       "shine": {
@@ -249,18 +213,6 @@
       "layers": [
         {
           "path": "UI/HUD/Common/Slot Bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        },
-        {
-          "path": "UI/HUD/Common/Empty Slot.png",
           "hoverPath": null,
           "tint": [
             1,
@@ -315,18 +267,6 @@
           ],
           "additive": false,
           "flipX": false
-        },
-        {
-          "path": "UI/HUD/Common/Empty Slot.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
         }
       ],
       "shine": {
@@ -363,18 +303,6 @@
       "layers": [
         {
           "path": "UI/HUD/Common/Slot Bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        },
-        {
-          "path": "UI/HUD/Common/Empty Slot.png",
           "hoverPath": null,
           "tint": [
             1,
@@ -1012,18 +940,6 @@
       "layers": [
         {
           "path": "UI/HUD/Common/Slot Bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        },
-        {
-          "path": "UI/HUD/Common/Empty Slot.png",
           "hoverPath": null,
           "tint": [
             1,
@@ -1680,18 +1596,6 @@
       "layers": [
         {
           "path": "UI/HUD/Common/Slot Bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        },
-        {
-          "path": "UI/HUD/Common/Empty Slot.png",
           "hoverPath": null,
           "tint": [
             1,
@@ -4048,18 +3952,6 @@
           ],
           "additive": false,
           "flipX": false
-        },
-        {
-          "path": "UI/HUD/Common/Awaken Slot.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
         }
       ],
       "shine": {
@@ -4130,18 +4022,6 @@
       "layers": [
         {
           "path": "UI/HUD/Common/Slot Bg.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        },
-        {
-          "path": "UI/HUD/Common/Empty Slot.png",
           "hoverPath": null,
           "tint": [
             1,
@@ -4846,6 +4726,1626 @@
           "flipX": false
         }
       ]
+    },
+    {
+      "id": "HealthBar_Fill",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 403.640503,
+        "y": 627.987488,
+        "width": 202.5,
+        "height": 15
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Common/HP Bar.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "ManaBar_Fill",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 738.244141,
+        "y": 628.22113,
+        "width": 193.5,
+        "height": 15
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Common/MP Bar.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_Q_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 470.497742,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_Q_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 470.497742,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Common/Empty Slot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_Q_Cooldown",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 470.497742,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.5882352941176471
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_W_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 504.569489,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_W_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 504.569489,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Common/Empty Slot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_W_Cooldown",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 504.569489,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.5882352941176471
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_E_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 538.640503,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_E_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 538.640503,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Common/Empty Slot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_E_Cooldown",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 538.640503,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.5882352941176471
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_R_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 572.711487,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_R_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 572.711487,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Common/Empty Slot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_R_Cooldown",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 572.711487,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.5882352941176471
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_A_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 487.21225,
+        "y": 679.844727,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_A_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 487.21225,
+        "y": 679.844727,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Common/Empty Slot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_A_Cooldown",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 487.21225,
+        "y": 679.844727,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.5882352941176471
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_S_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 521.497742,
+        "y": 679.844727,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_S_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 521.497742,
+        "y": 679.844727,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Common/Empty Slot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_S_Cooldown",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 521.497742,
+        "y": 679.844727,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.5882352941176471
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_D_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 555.783264,
+        "y": 679.844727,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_D_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 555.783264,
+        "y": 679.844727,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Common/Empty Slot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_D_Cooldown",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 555.783264,
+        "y": 679.844727,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.5882352941176471
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_F_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 590.069519,
+        "y": 679.844727,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_F_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 590.069519,
+        "y": 679.844727,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Common/Empty Slot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_F_Cooldown",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 590.069519,
+        "y": 679.844727,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.5882352941176471
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_T_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 431.751892,
+        "y": 661.477295,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_T_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 431.751892,
+        "y": 661.477295,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Common/Empty Slot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_T_Cooldown",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 431.751892,
+        "y": 661.477295,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.5882352941176471
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_V_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 379.887878,
+        "y": 660.4823,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_V_Frame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 379.887878,
+        "y": 660.4823,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/HUD/Common/Awaken Slot.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Skill_V_Cooldown",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 379.887878,
+        "y": 660.4823,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            0,
+            0,
+            0,
+            0.5882352941176471
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Item_1_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 723.852234,
+        "y": 679.844727,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Item_2_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 758.137756,
+        "y": 679.844727,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Item_3_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 792.424011,
+        "y": 679.844727,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
+      "id": "Item_4_Icon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 826.709534,
+        "y": 679.844727,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/Common/White1x1.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
     }
   ]
 }
