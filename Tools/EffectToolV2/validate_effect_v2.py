@@ -219,7 +219,9 @@ def _validate_groups(group_root: Path, authored: dict[str, Path]) -> dict[str, l
                 raise ContractError(f"Effect V2 group child offset must be 3 numbers: {group_id}: {effect_id}")
             for component in offset:
                 _require_finite_number(component, group_id, "child offset")
+            _require_finite_number(child.get("pitchDegrees", 0), group_id, "child pitchDegrees")
             _require_finite_number(child.get("yawDegrees", 0), group_id, "child yawDegrees")
+            _require_finite_number(child.get("rollDegrees", 0), group_id, "child rollDegrees")
             scale = child.get("scale", [1, 1, 1])
             if not isinstance(scale, list) or len(scale) != 3:
                 raise ContractError(f"Effect V2 group child scale must be 3 numbers: {group_id}: {effect_id}")

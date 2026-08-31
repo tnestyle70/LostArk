@@ -73,7 +73,9 @@ class EffectV2ValidatorTests(unittest.TestCase):
                     "durationMs": 500,
                     "stop": "Deactivate",
                     "offset": [0.0, 0.0, 0.0],
+                    "pitchDegrees": 15.0,
                     "yawDegrees": 0.0,
+                    "rollDegrees": -30.0,
                 }
             ],
         }

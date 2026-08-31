@@ -213,7 +213,10 @@ namespace
 		float4x4_t Local;
 		XMStoreFloat4x4(&Local,
 			XMMatrixScaling(Child.vScale.x, Child.vScale.y, Child.vScale.z) *
-			XMMatrixRotationY(XMConvertToRadians(Child.fYawDegrees)) *
+			XMMatrixRotationRollPitchYaw(
+				XMConvertToRadians(Child.fPitchDegrees),
+				XMConvertToRadians(Child.fYawDegrees),
+				XMConvertToRadians(Child.fRollDegrees)) *
 			XMMatrixTranslation(Child.vOffset.x, Child.vOffset.y, Child.vOffset.z));
 		return Local;
 	}

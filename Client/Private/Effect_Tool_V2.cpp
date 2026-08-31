@@ -2783,7 +2783,13 @@ void Client::CEffect_Tool_V2::Render_GroupWindow()
 		if (ImGui::IsItemHovered())
 			ImGui::SetTooltip("Kill: remove at once. Deactivate: particles/trails stop spawning and drain; other shapes end.");
 		ImGui::DragFloat3("Offset (m)", &Child.vOffset.x, 0.05f);
-		ImGui::DragFloat("Yaw (deg)", &Child.fYawDegrees, 1.f, -360.f, 360.f);
+		f32_t fRotation[3] = { Child.fPitchDegrees, Child.fYawDegrees, Child.fRollDegrees };
+		if (ImGui::DragFloat3("Rotation X/Y/Z (deg)", fRotation, 1.f, -360.f, 360.f))
+		{
+			Child.fPitchDegrees = fRotation[0];
+			Child.fYawDegrees = fRotation[1];
+			Child.fRollDegrees = fRotation[2];
+		}
 		ImGui::DragFloat3("Scale", &Child.vScale.x, 0.01f, 0.001f, 100.f);
 		if (ImGui::IsItemHovered())
 			ImGui::SetTooltip("Multiplies the document's scale track; particle sprite sizes use X uniformly.");
