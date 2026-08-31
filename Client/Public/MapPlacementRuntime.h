@@ -102,6 +102,9 @@ public:
 	static bool_t Set_RuntimeVisible(
 		MAP_RUNTIME_PLACED_ENTRY& entry,
 		bool_t visible);
+	static bool_t Try_GetRuntimeVisible(
+		const MAP_RUNTIME_PLACED_ENTRY& entry,
+		bool_t& outVisible);
 #ifdef _DEBUG
 	/* Debug presentation may address an authored occurrence group by its stable
 	sourceLevel. It never exposes vector order or prototype identity to callers. */

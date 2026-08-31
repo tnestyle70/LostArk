@@ -49,11 +49,15 @@
       "tools": ["Tools/MapPipeline/Publish-MapAuthoring.ps1"],
       "outputs": [
         "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapassets",
-        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapplacements"
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapplacements",
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployassets",
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployplacements"
       ],
       "requiredOutputPatterns": [
         "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapassets",
-        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapplacements"
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapplacements",
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployassets",
+        "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployplacements"
       ],
       "action": {
         "executable": "powershell.exe",

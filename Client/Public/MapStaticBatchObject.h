@@ -73,6 +73,9 @@ public:
 	HRESULT Set_InstanceVisible(
 		uint64_t placementId,
 		bool_t visible);
+	HRESULT Try_GetInstanceVisible(
+		uint64_t placementId,
+		bool_t& outVisible) const;
 
 	uint32_t Get_VisibleInstanceCount() const
 	{
