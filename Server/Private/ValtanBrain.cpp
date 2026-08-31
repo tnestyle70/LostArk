@@ -1441,6 +1441,36 @@ namespace
 		}
 	}
 
+	void CompletePortalTargetRushAtDeadline(SERVER_WORLD_ENTITY& boss)
+	{
+		if (!boss.bPortalMotionActive ||
+			BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH !=
+				boss.ePatternStageMotionKind ||
+			0u == boss.iPatternStageDurationMs ||
+			!std::isfinite(boss.fActionElapsedSeconds) ||
+			!std::isfinite(boss.fPortalStartX) ||
+			!std::isfinite(boss.fPortalStartZ) ||
+			!std::isfinite(boss.fPortalRushDistanceM) ||
+			boss.fPortalRushDistanceM <= 0.f ||
+			!std::isfinite(boss.fYawDegrees))
+		{
+			return;
+		}
+		const float durationSeconds = static_cast<float>(
+			boss.iPatternStageDurationMs) * MILLISECONDS_TO_SECONDS;
+		if (boss.fActionElapsedSeconds + 0.0001f < durationSeconds)
+			return;
+		/* The Brain advances the stage at the exact deadline before GameRoom gets
+		its usual motion pass. Commit that final fixed-tick segment here so the
+		typed distance is reached once, then let the next stage retarget from the
+		completed endpoint. */
+		const float yawRadians = boss.fYawDegrees * DEGREES_TO_RADIANS;
+		boss.fPositionX = boss.fPortalStartX +
+			std::sin(yawRadians) * boss.fPortalRushDistanceM;
+		boss.fPositionZ = boss.fPortalStartZ +
+			std::cos(yawRadians) * boss.fPortalRushDistanceM;
+	}
+
 	void EnterPatternStage(
 		SERVER_WORLD_ENTITY& boss,
 		const BOSS_PATTERN_STAGE_DEFINITION& stage,
@@ -1448,6 +1478,7 @@ namespace
 		const std::uint32_t serverTick,
 		const bool evaluatesOnEntryTick = false)
 	{
+		CompletePortalTargetRushAtDeadline(boss);
 		const std::string previousActionId = boss.strActionId;
 		if (!previousActionId.empty())
 			CBossCombatRuntime::Discard_PatternOutcomes(
@@ -1497,7 +1528,10 @@ namespace
 			BOSS_PATTERN_STAGE_MOTION_KIND::FORWARD == stage.Motion.eKind &&
 			durationSeconds > 0.f ?
 			stage.Motion.fDistance / durationSeconds : 0.f;
-		boss.PatternStageRootMotion = stage.Motion.RootMotion;
+		boss.PatternStageRootMotion =
+			BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH ==
+				stage.Motion.eKind ?
+				std::vector<ROOT_MOTION_SAMPLE>{} : stage.Motion.RootMotion;
 		boss.eAction = ToServerAction(stage.eStageKind);
 		boss.fActionElapsedSeconds = 0.f;
 		boss.iActionStartTick = 0u == serverTick ? 1u : serverTick;
@@ -2742,6 +2776,39 @@ bool LostArk::Server::CValtanBrain::Try_BuildStageMotion(
 			boss.ePatternStageMotionKind)
 		return false;
 
+	/* Target-rush travel is an explicit Server gameplay contract.  It begins
+	after the authored retarget delay and therefore wins over any residual clip
+	root curve; adding both would move the boss farther than distanceM. */
+	if (BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH ==
+		boss.ePatternStageMotionKind)
+	{
+		if (!std::isfinite(boss.fPortalRushSpeedMps) ||
+			boss.fPortalRushSpeedMps <= 0.f ||
+			!std::isfinite(boss.fPortalRushDistanceM) ||
+			boss.fPortalRushDistanceM <= 0.f)
+		{
+			return false;
+		}
+		const float delaySeconds = static_cast<float>(
+			boss.iPortalRushRetargetDelayMs) * MILLISECONDS_TO_SECONDS;
+		const float travelSeconds =
+			boss.fPortalRushDistanceM / boss.fPortalRushSpeedMps;
+		const float previousStageSeconds = (std::max)(
+			0.f, boss.fActionElapsedSeconds - fixedDeltaSeconds);
+		const float previousTravelSeconds = std::clamp(
+			previousStageSeconds - delaySeconds, 0.f, travelSeconds);
+		const float currentTravelSeconds = std::clamp(
+			boss.fActionElapsedSeconds - delaySeconds, 0.f, travelSeconds);
+		const float distance = (currentTravelSeconds - previousTravelSeconds) *
+			boss.fPortalRushSpeedMps;
+		if (!std::isfinite(distance) || distance <= 0.f)
+			return false;
+		const float yawRadians = boss.fYawDegrees * DEGREES_TO_RADIANS;
+		outProposedX = boss.fPositionX + std::sin(yawRadians) * distance;
+		outProposedZ = boss.fPositionZ + std::cos(yawRadians) * distance;
+		return std::isfinite(outProposedX) && std::isfinite(outProposedZ);
+	}
+
 	/* A stage whose clip already carries the travel steps along that curve,
 	the same contract a player skill uses: the difference between the curve at
 	the previous tick and at this one is the step, so the body and the mesh
@@ -2814,14 +2881,27 @@ void LostArk::Server::CValtanBrain::Configure_PortalMotion(
 	const BOSS_PATTERN_STAGE_DEFINITION& stage)
 {
 	boss.bPortalMotionActive = Is_PortalMotion(stage.Motion.eKind);
+	boss.iPortalRushRetargetDelayMs = 0u;
+	boss.fPortalRushSpeedMps = 0.f;
+	boss.fPortalRushDistanceM = 0.f;
 	if (!boss.bPortalMotionActive)
 		return;
 	boss.MovePath.clear();
 	if (BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH == stage.Motion.eKind)
 	{
+		boss.iPortalRushRetargetDelayMs = stage.Motion.iRetargetDelayMs;
+		boss.fPortalRushSpeedMps = stage.Motion.fSpeedMps;
+		boss.fPortalRushDistanceM = stage.Motion.fDistance;
 		if (boss.bHasPatternTargetLastPosition)
 			FacePoint(boss, boss.fPatternTargetLastPositionX,
 				boss.fPatternTargetLastPositionZ);
+		boss.fPortalStartX = boss.fPositionX;
+		boss.fPortalStartZ = boss.fPositionZ;
+		const float yawRadians = boss.fYawDegrees * DEGREES_TO_RADIANS;
+		boss.fPortalEndX = boss.fPortalStartX +
+			std::sin(yawRadians) * boss.fPortalRushDistanceM;
+		boss.fPortalEndZ = boss.fPortalStartZ +
+			std::cos(yawRadians) * boss.fPortalRushDistanceM;
 		boss.fPortalLastHitSampleX = boss.fPositionX;
 		boss.fPortalLastHitSampleZ = boss.fPositionZ;
 		return;

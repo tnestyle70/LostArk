@@ -2,13 +2,22 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\Private\ValtanPatternAuditionServiceHarness.cpp" />
+	<ClCompile Include="..\Private\ValtanCanonicalGraphContractTests.cpp" />
+	<ClCompile Include="..\Private\ValtanPresentationGenerationAdmissionContractTests.cpp" />
 	<ClCompile Include="..\Private\ValtanEncounterReferenceContractTests.cpp" />
     <ClCompile Include="..\Private\ValtanPatternFlowServiceTests.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternAnimationBindingDocumentContractTests.cpp" />
+	<ClCompile Include="..\Private\ValtanPatternEffectCueAuthoringContractTests.cpp" />
 	<ClCompile Include="..\Private\ValtanPatternSoundCueDocumentContractTests.cpp" />
     <ClCompile Include="..\Private\ValtanPresentationContractTests.cpp" />
     <ClCompile Include="..\Private\ValtanTuningCommandServiceTests.cpp" />
     <ClCompile Include="..\..\..\Client\Private\ValtanPatternAuditionService.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\ValtanPatternTree.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\ValtanPresentationGenerationAdmission.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\ValtanPatternFlowDocument.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\ValtanPatternEffectCueDocument.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\ValtanPatternEffectCueAuthoring.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\Effect_DirectAuthoredSourceIndex.cpp" />
     <ClCompile Include="..\..\..\Client\Private\ValtanPatternFlowService.cpp" />
     <ClCompile Include="..\..\..\Client\Private\ValtanTuningCommandService.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp" />
@@ -25,6 +34,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\Client\Public\ValtanPatternAuditionService.h" />
+	<ClInclude Include="..\..\..\Client\Public\ValtanPatternTree.h" />
+	<ClInclude Include="..\..\..\Client\Public\ValtanPresentationGenerationAdmission.h" />
+	<ClInclude Include="..\..\..\Client\Public\ValtanPatternEffectCueDocument.h" />
+	<ClInclude Include="..\..\..\Client\Public\ValtanPatternEffectCueAuthoring.h" />
+	<ClInclude Include="..\..\..\Client\Public\Effect_DirectAuthoredSourceIndex.h" />
     <ClInclude Include="..\..\..\Client\Public\ValtanPatternFlowService.h" />
     <ClInclude Include="..\..\..\Client\Public\ValtanTuningCommandService.h" />
     <ClInclude Include="..\..\..\Client\Public\DataJson.h" />

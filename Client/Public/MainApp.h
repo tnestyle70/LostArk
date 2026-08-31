@@ -6,6 +6,7 @@
 #include "Network/PacketMessages.h"
 #include "RenderingProfileService.h"
 
+#include <chrono>
 #include <filesystem>
 
 NS_BEGIN(Engine)
@@ -18,6 +19,7 @@ class CMapTool;
 class CEffect_Tool;
 class CEffect_Tool_V2;
 class CAnimation_Tool;
+class CActionCompositionWorkbench;
 class CHUDLayoutTool;
 class CHUDRuntimeView;
 class CBalanceTool;
@@ -38,6 +40,7 @@ private:
 	{
 		NONE,
 		MAP,
+		COMPOSITION,
 		ANIMATION,
 		EFFECT,
 		EFFECT_V2,
@@ -56,6 +59,24 @@ private:
 		string strRelativePath;
 		string strSearchText;
 		DEBUG_TOOL eTool = DEBUG_TOOL::NONE;
+	};
+
+	/* Small, semantic entry points into the canonical authoring owners.  These
+	   are deliberately separate from DEBUG_RESOURCE_FILE: a raw filesystem path
+	   is diagnostic evidence, while one of these rows is an actual edit/open
+	   contract with a known owning Tool. */
+	struct DEBUG_AUTHORING_SOURCE
+	{
+		string strDomain;
+		string strDisplayName;
+		string strCanonicalPath;
+		string strDescription;
+		string strActionLabel;
+		DEBUG_TOOL eTool = DEBUG_TOOL::NONE;
+		size_t iDocumentCount = 0u;
+		bool_t bCanonicalSourceReady = false;
+		bool_t bOpenValtanWorkspace = false;
+		bool_t bOpenValtanEffectWorkspace = false;
 	};
 #endif
 
@@ -98,6 +119,9 @@ public:
 	   CBossTool -> CValtanPatternAuditionService and never resets Arena world,
 	   navigation, wall, or debris state. */
 	bool_t Debug_CompletePlaySelected(std::string& strOutStatus);
+	/* Opens the one canonical Boss Tool Flow owner from the integrated
+	   composition shell. */
+	bool_t Debug_OpenBossPatternFlow(std::string& strOutStatus);
 #endif
 
 private:
@@ -259,8 +283,12 @@ private:
 	bool_t IsDebugToolVisible(DEBUG_TOOL eTool) const;
 	void SetDebugToolVisible(DEBUG_TOOL eTool, bool_t bVisible);
 	void CloseAllDebugTools();
+	void RenderDebugLevelNavigation();
+	bool_t RequestDebugLevelNavigation(LEVEL eTargetLevel);
+	void RefreshDebugAuthoringSources();
 	void RefreshDebugResourceFiles();
 	void RenderDebugResourceFiles();
+	void OpenDebugAuthoringSource(size_t iSource);
 	void OpenDebugResourceFile(size_t iFile);
 	void RefreshCompletePlayPatternOptions();
 	void RenderCompletePlayControls();
@@ -452,6 +480,8 @@ private:
 	unique_ptr<CEffect_Tool> m_pEffectTool = { nullptr };
 	unique_ptr<CEffect_Tool_V2> m_pEffectToolV2 = { nullptr };
 	unique_ptr<CAnimation_Tool> m_pAnimationTool = { nullptr };
+	unique_ptr<CActionCompositionWorkbench> m_pActionCompositionWorkbench =
+		{ nullptr };
 	shared_ptr<CCharacterPreviewPanel> m_pCharacterPreviewPanel = { nullptr };
 	unique_ptr<CHUDLayoutTool> m_pHUDLayoutTool = { nullptr };
 	unique_ptr<CBalanceTool> m_pBalanceTool = { nullptr };
@@ -468,6 +498,13 @@ private:
 	   and advancing its non-input document state. */
 	DEBUG_TOOL m_eDebugInputOwner = DEBUG_TOOL::NONE;
 	DEBUG_TOOL m_eDebugWindowFocusPending = DEBUG_TOOL::NONE;
+	LEVEL m_eDebugLevelNavigationTarget = LEVEL::END;
+	std::chrono::steady_clock::time_point m_DebugLevelNavigationDeadline{};
+	bool_t m_bDebugLevelNavigationDeadlineActive = false;
+	string m_strDebugLevelNavigationStatus =
+		"Choose a destination. Gameplay Areas always use the existing Server-approved entry route.";
+	vector<DEBUG_AUTHORING_SOURCE> m_DebugAuthoringSources;
+	bool_t m_bDebugAuthoringSourceRefreshAttempted = false;
 	vector<DEBUG_RESOURCE_FILE> m_DebugResourceFiles;
 	array<char_t, 192> m_DebugResourceSearch = {};
 	bool_t m_bDebugResourceScanAttempted = false;

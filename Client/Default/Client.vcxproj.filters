@@ -237,6 +237,9 @@
     <ClCompile Include="..\Private\ValtanPatternEffectCueDocument.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
+	<ClCompile Include="..\Private\ValtanPatternEffectCueAuthoring.cpp">
+	  <Filter>03. Tools\04. Animation</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\ValtanPatternSoundCueDocument.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
@@ -363,6 +366,9 @@
     <ClCompile Include="..\Private\ValtanPatternTree.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\ValtanPresentationGenerationAdmission.cpp">
+      <Filter>96.DataFiles</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\ValtanPatternAuditionService.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
@@ -440,6 +446,9 @@
     </ClCompile>
 	<ClCompile Include="..\Private\EstherActionSoundCueDocument.cpp">
 	  <Filter>03. Tools\02. Effect</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\ActionCompositionWorkbench.cpp">
+	  <Filter>03. Tools\05. Sequencer</Filter>
 	</ClCompile>
     <ClCompile Include="..\Private\Effect_PresentationService.cpp">
       <Filter>03. Tools\02. Effect</Filter>
@@ -790,6 +799,9 @@
     <ClInclude Include="..\Public\ValtanPatternTree.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\ValtanPresentationGenerationAdmission.h">
+      <Filter>96.DataFiles</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\ValtanPatternAuditionService.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
@@ -808,6 +820,9 @@
     <ClInclude Include="..\Public\Animation_Tool.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
+	<ClInclude Include="..\Public\ActionCompositionWorkbench.h">
+	  <Filter>03. Tools\05. Sequencer</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
@@ -832,6 +847,9 @@
     <ClInclude Include="..\Public\ValtanPatternEffectCueDocument.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
+	<ClInclude Include="..\Public\ValtanPatternEffectCueAuthoring.h">
+	  <Filter>03. Tools\04. Animation</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\ValtanPatternSoundCueDocument.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>

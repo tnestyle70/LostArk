@@ -1310,9 +1310,12 @@ namespace
 		const JSON_VALUE* compatibility =
 			Find_Member(manifest, "clientPresentationCompatibility");
 		if (nullptr == compatibility || !Has_ExactMembers(*compatibility,
-			{ "mode", "requiredLanes", "artifacts" }) ||
+			{ "mode", "presentationGenerationId", "requiredLanes",
+			  "artifacts" }) ||
 			!Is_String(Find_Member(*compatibility, "mode"),
 				"BYTE_IDENTICAL_TO_ACTIVE") ||
+			!Is_LowerSha256(Find_Member(
+				*compatibility, "presentationGenerationId")) ||
 			!Validate_ExactStringArray(Find_Member(*compatibility, "requiredLanes"),
 				{ "ANIMATION", "EFFECT", "COMBAT_VISUAL", "CAMERA",
 				  "WORLD_EVENT_SET" }))
@@ -1322,6 +1325,8 @@ namespace
 		}
 		const JSON_VALUE* aliasArtifacts =
 			Find_Member(*compatibility, "artifacts");
+		const std::string presentationGenerationId =
+			Find_Member(*compatibility, "presentationGenerationId")->String;
 		std::set<std::string> coveredLanes;
 		if (nullptr == aliasArtifacts || JSON_KIND::ARRAY != aliasArtifacts->eKind)
 		{
@@ -1416,6 +1421,10 @@ namespace
 			return false;
 		}
 		std::set<std::string> artifactPaths;
+		const std::string presentationGenerationManifestRelative =
+			"Runtime/Gameplay/ValtanPresentationGenerations/" +
+			presentationGenerationId + ".json";
+		bool hasPresentationGenerationManifest = false;
 		for (const JSON_VALUE& row : artifacts->Elements)
 		{
 			if (!Has_ExactMembers(row, { "path", "sha256", "bytes" }))
@@ -1437,6 +1446,16 @@ namespace
 				status = "Candidate artifact identity is invalid";
 				return false;
 			}
+			if (relative->String == presentationGenerationManifestRelative)
+			{
+				if (hash->String != presentationGenerationId)
+				{
+					status =
+						"Candidate presentation generation manifest identity is invalid";
+					return false;
+				}
+				hasPresentationGenerationManifest = true;
+			}
 			fs::path artifactPath;
 			GameplayDataRevision artifactRevision{};
 			error.clear();
@@ -1450,6 +1469,12 @@ namespace
 					status = "Candidate artifact hash or byte count is invalid";
 				return false;
 			}
+		}
+		if (!hasPresentationGenerationManifest)
+		{
+			status =
+				"Candidate artifact set omits its presentation generation manifest";
+			return false;
 		}
 		std::string canonicalArtifacts;
 		Append_CanonicalJson(*artifacts, canonicalArtifacts);
@@ -1514,6 +1539,16 @@ namespace
 		{
 			status = nullptr == staged ?
 				"Candidate gameplay catalog allocation failed" : staged->Get_Status();
+			return false;
+		}
+		GameplayDataRevision presentationGenerationRevision{};
+		if (!Try_Parse_GameplayDataRevision(
+			presentationGenerationId, presentationGenerationRevision) ||
+			staged->Get_ValtanPresentationGenerationId() !=
+				presentationGenerationRevision)
+		{
+			status =
+				"Candidate gameplay bootstrap and presentation generation disagree";
 			return false;
 		}
 		candidate = std::move(staged);

@@ -197,14 +197,17 @@ namespace
 	}
 
 	bool_t Validate_CatalogAssets(
-		const VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT& document,
+		VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT& document,
 		std::string& outStatus)
 	{
-		for (const VALTAN_COMBAT_OBJECT_SOUND_CUE& cue : document.Cues)
+		CSoundCueCatalog::EVENT_VARIANTS events;
+		if (!CSoundCueCatalog::Load_ClassSnapshot("Valtan", events, outStatus))
+			return false;
+		for (VALTAN_COMBAT_OBJECT_SOUND_CUE& cue : document.Cues)
 		{
-			const std::vector<std::string>& variants =
-				CSoundCueCatalog::Find_Variants("Valtan", cue.strSoundEvent);
-			if (variants.empty() || !std::all_of(variants.begin(), variants.end(),
+			const auto found = events.find(cue.strSoundEvent);
+			if (events.end() == found || found->second.empty() ||
+				!std::all_of(found->second.begin(), found->second.end(),
 					[](const std::string& assetId)
 					{
 						return Is_ValidSoundAssetId(assetId);
@@ -215,6 +218,7 @@ namespace
 					cue.strBindingId;
 				return false;
 			}
+			cue.ResolvedAssetIds = found->second;
 		}
 		return true;
 	}
@@ -433,6 +437,12 @@ bool_t Client::CValtanCombatObjectSoundCueDocument::Begin_SourceReplacement(
 	VALTAN_COMBAT_OBJECT_SOUND_CUE_SOURCE_REPLACEMENT& transaction,
 	std::string& outStatus)
 {
+	(void)document;
+	(void)transaction;
+	outStatus =
+		"Direct combat-object Sound source replacement is retired: this file is part of immutable presentation M and must be committed by the canonical typed owner transaction.";
+	return false;
+#if 0
 	if (transaction.bActive)
 	{
 		outStatus = "Valtan Sound cue source replacement is already active.";
@@ -502,6 +512,7 @@ bool_t Client::CValtanCombatObjectSoundCueDocument::Begin_SourceReplacement(
 	outStatus = "Prepared " + std::to_string(document.Cues.size()) +
 		" recoverable Server-hit-qualified Valtan Sound cue(s).";
 	return true;
+#endif
 }
 
 bool_t Client::CValtanCombatObjectSoundCueDocument::Commit_SourceReplacement(

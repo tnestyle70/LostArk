@@ -2533,6 +2533,221 @@ namespace
 		return true;
 	}
 
+	constexpr uint32_t DIMENSIONMASTER_WATER_DROPLET_BURST_OPCODE = 1003u;
+
+	bool_t Validate_DimensionMasterWaterDropletBurstExecution(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		std::string& strOutError)
+	{
+		constexpr std::string_view ELEMENT_ID =
+			"project-tuned.water-burst.2050230.01";
+		constexpr std::string_view SOURCE_NODE =
+			"authored-copy:source.68619daf746949ce5bee";
+		constexpr std::string_view NOISE_ASSET =
+			"Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_003.dds";
+		constexpr std::string_view FLUID_ASSET =
+			"Effect/Valtan/Textures/FX_TEX_03/fx_e_fluid_006.dds";
+		static constexpr std::array<std::string_view, 16u> SCALAR_NAMES = {{
+			"water.noise-tiling", "water.pan-x", "water.pan-y",
+			"water.second-octave-scale", "water.flow-warp",
+			"water.mask-threshold", "water.edge-softness", "water.rim-width",
+			"water.coverage-power", "water.body-strength",
+			"water.rim-strength", "water.distortion-strength",
+			"water.alpha-gain", "water.fade-start-seconds",
+			"water.fade-end-seconds", "water.card-feather"
+		}};
+		static constexpr std::array<f32_t, 16u> SCALAR_VALUES = {{
+			1.75f, 0.18f, -0.12f, 3.f, 0.035f, 0.015f, 1.5f, 0.12f,
+			0.65f, 0.18f, 1.1f, 0.012f, 0.9f, 0.3f, 0.62f, 0.12f
+		}};
+		const auto NearlyEqual = [](const f32_t Left, const f32_t Right)
+		{
+			return std::abs(Left - Right) <= 1.0e-6f *
+				(std::max)({ 1.f, std::abs(Left), std::abs(Right) });
+		};
+		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Execution =
+			Element.Material.Execution;
+		if (Element.strElementId != ELEMENT_ID)
+		{
+			if (Execution.bEnabled && Execution.eBackend ==
+					Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+				Execution.iOpcode == DIMENSIONMASTER_WATER_DROPLET_BURST_OPCODE)
+			{
+				strOutError =
+					"DimensionMaster water-droplet opcode escaped its exact occurrence allowlist: " +
+					Element.strElementId;
+				return false;
+			}
+			return true;
+		}
+
+		const auto MatchesSampler = [](
+			const Client::EFFECT_MATERIAL_SAMPLER_DESC& Sampler,
+			const Client::EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE eAddress)
+		{
+			return Sampler.eFilter ==
+					Client::EFFECT_MATERIAL_TEXTURE_FILTER::LINEAR &&
+				Sampler.eAddressU == eAddress && Sampler.eAddressV == eAddress &&
+				Sampler.eAddressW == eAddress && Sampler.fMipLodBias == 0.f &&
+				Sampler.iMaxAnisotropy == 1u && Sampler.eComparison ==
+					Client::EFFECT_MATERIAL_COMPARISON_FUNCTION::NEVER &&
+				Sampler.vBorderColor.x == 0.f && Sampler.vBorderColor.y == 0.f &&
+				Sampler.vBorderColor.z == 0.f && Sampler.vBorderColor.w == 0.f &&
+				Sampler.fMinLod == 0.f && Sampler.fMaxLod ==
+					(std::numeric_limits<f32_t>::max)();
+		};
+		const auto MatchesLane = [&](
+			const Client::EFFECT_MATERIAL_TEXTURE_LANE_DESC& Lane,
+			const uint32_t iIndex,
+			const std::string_view strRole,
+			const std::string_view strAsset,
+			const std::string_view strChannel,
+			const Client::EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE eAddress)
+		{
+			return Lane.strLaneId == "lane." + std::to_string(iIndex) &&
+				Lane.strRole == strRole && Lane.strAssetId == strAsset &&
+				Lane.iTextureRegister == iIndex &&
+				Lane.iSamplerRegister == 5u + iIndex &&
+				Lane.strSourceChannel == strChannel && Lane.eColorSpace ==
+					Client::EFFECT_TEXTURE_COLOR_SPACE::LINEAR &&
+				MatchesSampler(Lane.Sampler, eAddress);
+		};
+
+		const bool_t bCarrier = Element.bVisible &&
+			Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
+			Element.strSourceNode == SOURCE_NODE &&
+			!Element.SourceRecipe.bEnabled &&
+			!Element.SourcePresentation.bEnabled &&
+			Element.Renderer.eType == Client::EFFECT_RENDERER_TYPE::END &&
+			Element.Renderer.eSourceSpace == Client::EFFECT_SOURCE_SPACE::END &&
+			Element.ResourceBindings.size() == 2u &&
+			Element.ResourceBindings[0u].strSlotId == "base" &&
+			Element.ResourceBindings[0u].strAssetId == NOISE_ASSET &&
+			Element.ResourceBindings[1u].strSlotId == "mask" &&
+			Element.ResourceBindings[1u].strAssetId == FLUID_ASSET;
+		const bool_t bMaterial =
+			Element.Material.strTemplateId == "effect.standard" &&
+			Element.Material.strSourceMaterialPath ==
+				"fx_m_mi_01.fx_mi.fx_e_pa_fd_07_1_ad" &&
+			Element.Material.eRenderProfile ==
+				Client::EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ &&
+			!Element.Material.SourceMaterial.bEnabled;
+		const bool_t bPacket = Execution.bEnabled && !Execution.bFailClosed &&
+			!Execution.bAuthoringApproximate && Execution.eFidelity ==
+				Client::EFFECT_MATERIAL_EXECUTION_FIDELITY::PROJECT_TUNED_APPROX &&
+			Execution.iVersion == 1u && Execution.eBackend ==
+				Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+			Execution.iOpcode == DIMENSIONMASTER_WATER_DROPLET_BURST_OPCODE &&
+			Execution.iPassIndex == 1u &&
+			Execution.strRasterizerState == "RS_Cull_None" &&
+			Execution.strDepthStencilState == "DSS_ReadOnly" &&
+			Execution.strBlendState == "BS_EffectAlpha" &&
+			Execution.iStencilReference == 0u &&
+			Execution.iTextureLaneCount == 2u &&
+			Execution.iTextureMask == 0x03u &&
+			Execution.TextureLanes.size() == 2u &&
+			MatchesLane(Execution.TextureLanes[0u], 0u, "flow_noise",
+				NOISE_ASSET, "RG",
+				Client::EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP) &&
+			MatchesLane(Execution.TextureLanes[1u], 1u, "droplet_mask",
+				FLUID_ASSET, "RGBA",
+				Client::EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::CLAMP);
+		const bool_t bMasks = Execution.iDynamicConsumedMask == 0u &&
+			Execution.iDynamicSuppressedMask == 0x0fu &&
+			Execution.iParticleColorPolicy == 2u &&
+			Execution.iParticleColorConsumedMask == 0x08u &&
+			Execution.iParticleColorSuppressedMask == 0x07u &&
+			Execution.iScalarCount == SCALAR_NAMES.size() &&
+			Execution.iVectorCount == 2u && Execution.iInputCount == 16u &&
+			Execution.InputConsumedMask ==
+				std::array<uint32_t, 2u>{ 0xffffu, 0u } &&
+			Execution.InputSuppressedMask ==
+				std::array<uint32_t, 2u>{ 0u, 0u } &&
+			Execution.VectorComponentConsumedMask ==
+				std::array<uint32_t, 3u>{ 0x0fu, 0x0fu, 0u } &&
+			Execution.VectorComponentSuppressedMask ==
+				std::array<uint32_t, 3u>{ 0u, 0u, 0u } &&
+			Execution.iStaticInputCount == 0u &&
+			Execution.iStaticSelectedMask == 0u &&
+			Execution.iStaticConsumedMask == 0u &&
+			Execution.iStaticSuppressedMask == 0u &&
+			Execution.iRenderInputCount == 6u &&
+			Execution.iRenderConsumedMask == 0x2fu &&
+			Execution.iRenderSuppressedMask == 0x10u &&
+			Execution.ArtistParameters.empty() && Execution.Colors.empty();
+
+		bool_t bScalars = Execution.Scalars.size() == SCALAR_NAMES.size();
+		for (size_t i = 0u; bScalars && i < SCALAR_NAMES.size(); ++i)
+		{
+			bScalars = Execution.Scalars[i].strName == SCALAR_NAMES[i] &&
+				Execution.Scalars[i].iPackedIndex == i &&
+				NearlyEqual(Execution.Scalars[i].fValue, SCALAR_VALUES[i]);
+		}
+		bool_t bVectors = Execution.Vectors.size() == 2u;
+		if (bVectors)
+		{
+			static constexpr std::array<std::string_view, 2u> NAMES = {{
+				"water.body-color", "water.rim-color"
+			}};
+			static constexpr std::array<std::array<f32_t, 4u>, 2u> VALUES = {{
+				{{ 0.05f, 0.28f, 0.75f, 1.f }},
+				{{ 0.55f, 0.9f, 1.f, 1.f }}
+			}};
+			for (size_t i = 0u; bVectors && i < VALUES.size(); ++i)
+			{
+				const auto& Vector = Execution.Vectors[i];
+				bVectors = Vector.strName == NAMES[i] &&
+					Vector.iPackedIndex == i &&
+					NearlyEqual(Vector.vValue.x, VALUES[i][0u]) &&
+					NearlyEqual(Vector.vValue.y, VALUES[i][1u]) &&
+					NearlyEqual(Vector.vValue.z, VALUES[i][2u]) &&
+					NearlyEqual(Vector.vValue.w, VALUES[i][3u]);
+			}
+		}
+
+		const Client::EFFECT_DETAIL_DESC& Detail = Element.Detail;
+		const Client::EFFECT_PARTICLE_DESC& Particle = Detail.Particle;
+		const bool_t bMotion =
+			NearlyEqual(Detail.Transform.vPosition.x, 0.f) &&
+			NearlyEqual(Detail.Transform.vPosition.y, 0.2f) &&
+			NearlyEqual(Detail.Transform.vPosition.z, 0.6f) &&
+			NearlyEqual(Detail.Timing.fStartDelaySeconds, 0.f) &&
+			NearlyEqual(Detail.Timing.fLifeTimeSeconds, 0.75f) &&
+			NearlyEqual(Detail.Color.vColorMultiply.w, 0.85f) &&
+			NearlyEqual(Detail.Color.fColorClip, 0.001f) &&
+			NearlyEqual(Detail.Color.fEmissiveIntensity, 1.15f) &&
+			Detail.Color.fDistortionIntensity == 0.f &&
+			!Detail.Color.bDistortionOnBaseMaterial &&
+			Particle.iMaxParticles == 6u && Particle.iBurstCount == 6u &&
+			Particle.iRandomSeed == 2050230u &&
+			NearlyEqual(Particle.vLifeTimeSeconds.x, 0.38f) &&
+			NearlyEqual(Particle.vLifeTimeSeconds.y, 0.62f) &&
+			NearlyEqual(Particle.vInitialVelocityMin.x, -3.f) &&
+			NearlyEqual(Particle.vInitialVelocityMin.y, 3.f) &&
+			NearlyEqual(Particle.vInitialVelocityMin.z, -3.f) &&
+			NearlyEqual(Particle.vInitialVelocityMax.x, 3.f) &&
+			NearlyEqual(Particle.vInitialVelocityMax.y, 6.f) &&
+			NearlyEqual(Particle.vInitialVelocityMax.z, 3.f) &&
+			NearlyEqual(Particle.vAcceleration.x, 0.f) &&
+			NearlyEqual(Particle.vAcceleration.y, -8.f) &&
+			NearlyEqual(Particle.vAcceleration.z, 0.f) &&
+			NearlyEqual(Particle.vStartSize.x, 0.28f) &&
+			NearlyEqual(Particle.vStartSize.y, 0.36f) &&
+			NearlyEqual(Particle.vEndSize.x, 0.08f) &&
+			NearlyEqual(Particle.vEndSize.y, 0.12f) &&
+			!Particle.bLocalSpace && Particle.bBillboard;
+
+		if (!bCarrier || !bMaterial || !bPacket || !bMasks || !bScalars ||
+			!bVectors || !bMotion)
+		{
+			strOutError =
+				"DimensionMaster water-droplet exact project-tuned contract changed: " +
+				Element.strElementId;
+			return false;
+		}
+		return true;
+	}
+
 	bool_t Is_SourceMaterialFallbackBlocked(
 		const Client::EFFECT_ELEMENT_DESC& Element,
 		const Client::EFFECT_GROUPED_TRANSLUCENT_CONSTANTS& GroupedConstants)
@@ -6075,6 +6290,9 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 	PREWARM_ASSET_CACHE* pSharedAssets) const
 {
 	const EFFECT_MATERIAL_EXECUTION_DESC& Execution = Element.Material.Execution;
+	if (!Validate_DimensionMasterWaterDropletBurstExecution(
+			Element, strOutError))
+		return false;
 	if (!Validate_WarlordWpoSinWaveElectricExecution(Element, strOutError))
 		return false;
 	if (!Validate_LanceDragonMaskedExecution(Element, strOutError))

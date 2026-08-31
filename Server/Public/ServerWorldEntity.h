@@ -132,6 +132,9 @@ namespace LostArk::Server
 		stepped along it and ignores fPatternForcedMotionSpeed. */
 		std::vector<ROOT_MOTION_SAMPLE> PatternStageRootMotion;
 		bool bPortalMotionActive = false;
+		std::uint32_t iPortalRushRetargetDelayMs = 0u;
+		float fPortalRushSpeedMps = 0.f;
+		float fPortalRushDistanceM = 0.f;
 		std::vector<LostArk::Shared::NET_ENTITY_ID> PortalStageHitTargets;
 		float fPortalStartX = 0.f;
 		float fPortalStartZ = 0.f;

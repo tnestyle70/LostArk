@@ -1,5 +1,11 @@
 # F1 Complete Play 아레나 보존과 Anim Bench·Sequencer 저작 구현 계획서
 
+> **2026-08-31 감사 정정:** 아래 문서에서 `patternbindings`를 Animation slot의 직접 저장 owner로
+> 두거나 1180x760 minimum/full Sequencer를 완료로 적은 부분은 폐기한다. 실제 authoring owner는
+> `Data/Valtan/Valtan.presentation.json`이고 bindings/effect cues는 projected Product다. Sequencer는
+> 현재 joined viewer이며 typed drag/trim/key authoring 완료물이 아니다. 최신 교정 Gate는
+> `2026-08-30_VALTAN_RESTART_FLOW_EFFECT_ANCHOR_SEQUENCER_IMPLEMENTATION_PLAN.md`를 따른다.
+
 ## 목표
 
 F1 Developer Tools에서 등록된 발탄 패턴을 스크롤 목록으로 선택하고 `Complete Play`를 누르면,
@@ -57,17 +63,18 @@ Sequencer를 단계적으로 완성한다.
 추측으로 보정하지 않는다. 실제 레벨의 더 세분화된 경계는 placement/package 좌표를 다시 추출한 뒤
 사용자 또는 MapTool 작업자가 화면에서 확인해 stable ID와 표시명을 승인하는 별도 작업으로 분리한다.
 
-## 2026-08-30 구현 종료 판정
+## 2026-08-30 당시 종료 판정 — 2026-08-31 철회
 
-이번 브랜치에서 계획한 Valtan 수직 슬라이스는 구현과 자동 검증을 완료했다.
+아래 목록은 당시 주장한 상태이며 현재 완료 증거가 아니다. generated owner 위반, hard minimum UI,
+actual canonical loader와 표준 EXE 검증 누락이 확인되어 08-31 독립 Action Composition Gate로 재검증한다.
 
 - F1 pattern scroll, boss-only Complete Play와 explicit arena preset: 완료
-- 최소 `1180x760` 3-pane, Persistent Detail, full-width Sequencer, Data Files: 완료
+- 최소 `1180x760` 3-pane, Persistent Detail, full-width Sequencer, Data Files: 철회; resizable 독립 shell로 교체
 - gameplay blank/release/Counter/Groggy typed Save: 완료
-- animation sequence slot Add/Remove/Edit와 model/dependency CAS Save: 완료
+- animation sequence slot Add/Remove/Edit와 generated Product CAS Save: 철회; presentation source transaction으로 교정
 - Pattern Sound deterministic Add/exact Remove/Edit와 역방향 Encounter/Animation commit CAS: 완료
 - 실제 Server-replicated primary Valtan joined/combat Sound reload와 Complete Play freshness gate: 완료
-- Debug/Release Product/Core, focused native, domain validation: 완료
+- 당시 Debug/Release Product/Core 결과: 현재 physical revision의 증거가 아니므로 재실행 필요
 - Client 화면·사운드·release 방향과 occurrence 최종 판정: 사용자 수동 검증 대기
 
 Kakul `SL01~SL05` runtime 이동, map 경계 재추출·육안 네이밍, Effect grouping 편집, generic Pattern/Stage Add와
@@ -244,7 +251,7 @@ ID를 그대로 사용하고 다음 track을 단계적으로 지원한다.
 - Camera section
 - Map/World presentation section
 
-선택된 row는 오른쪽 Detail에서 exact owner data를 편집한다. Animation row는 pattern binding owner,
+선택된 row는 오른쪽 Detail에서 exact owner data를 편집한다. Animation row는 `Valtan.presentation.json` typed source owner,
 Sound row는 pattern sound owner, gameplay state/branch는 Valtan gameplay transaction을 호출한다. Effect,
 Camera, World처럼 이번 브랜치에 Save adapter가 없는 owner는 exact path와 stable occurrence를 표시하고
 owner Tool로 이동한다. Server Product pattern과 실제로 결합된 row만 `Complete Play` coverage에 포함한다.
@@ -294,8 +301,8 @@ Save 계약이다. 별도 consumer가 없는 generic sequence JSON은 완료 증
 | Detail 범주 | 저장 정본 | 역할 |
 |---|---|---|
 | Pattern/Stage/Counter/Groggy | `Data/Valtan/Valtan.gameplay.json` | Server stage, event, branch, duration과 상태 전환 |
-| Animation sequence slot | `Data/Animation/Authored/Valtan/Valtan.patternbindings.json` | stable action ID에 clip occurrence chain 연결 |
-| Effect/Sound/Camera/World | 각 typed owner document | stage/action/clip occurrence에 presentation cue 연결 |
+| Animation sequence slot | `Data/Valtan/Valtan.presentation.json` | stable action ID에 clip occurrence chain 연결; projected `Valtan.patternbindings.json`은 read-only Product |
+| Effect/Sound/Camera/World | 각 typed source owner document | stage/action/clip occurrence에 presentation cue 연결; generated Product를 직접 저장하지 않음 |
 | Workbench Sequencer | 별도 저장 정본 없음 | 위 실제 owner들을 stable ID와 시간축으로 join하고 각 typed Save를 호출 |
 
 Persistent Detail은 선택한 `(patternId, stageId, actionId)` 하나에 다음을 세로로 모두 표시한다.

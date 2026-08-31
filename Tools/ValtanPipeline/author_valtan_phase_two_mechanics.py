@@ -346,7 +346,7 @@ def author_existing_patterns(
         gameplay_stage = stage(warp, stage_id)
         gameplay_stage["hit"] = damage_hit(
             {"kind": "BOX", "lengthM": 8.0, "halfWidthM": 2.5},
-            [0],
+            list(range(500, 900, 50)),
             "damage.valtan.portal-rush",
             push_range_m=3.0,
             push_ms=180,
@@ -1054,8 +1054,16 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
     warp_p = pattern(presentation, "VALTAN_WARP")
     for leg in range(8):
         row = stage(warp, f"STEP_{leg + 2:02d}")
-        row["motion"] = {"kind": "PORTAL_TARGET_RUSH"}
-        row["hit"]["schedule"] = {"kind": "EXPLICIT_OFFSETS", "offsetsMs": list(range(0, 900, 50))}
+        row["motion"] = {
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": 500,
+            "speedMps": 20.0,
+            "distanceM": 8.0,
+        }
+        row["hit"]["schedule"] = {
+            "kind": "EXPLICIT_OFFSETS",
+            "offsetsMs": list(range(500, 900, 50)),
+        }
         for effect_cue in stage(warp_p, row["stageId"])["effectCues"]:
             effect_cue["followPolicy"] = "follow"
             effect_cue["localTransform"]["position"] = [0.0, 0.0, 3.0]
@@ -1072,7 +1080,7 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
             pattern(gameplay, pattern_id)["aimPolicy"] = "LOCK_FACING_ON_START"
         for row in pattern(presentation, pattern_id)["stages"]:
             for effect_cue in row["effectCues"]:
-                effect_cue["anchorSlotId"] = "arena.center.facing" if pattern_id == "VALTAN_SIX_PIZZA_106" else "arena.center"
+                effect_cue["anchorSlotId"] = "pattern.target.snapshot" if pattern_id == "VALTAN_SIX_PIZZA_106" else "arena.center"
                 effect_cue["followPolicy"] = "snapshot"
 
     donut = stage(pattern(gameplay, "VALTAN_FIST_IN_OUT"), "INNER")

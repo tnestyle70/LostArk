@@ -10,8 +10,6 @@
 #include <io.h>
 
 #include <algorithm>
-#include <array>
-#include <atomic>
 #include <cmath>
 #include <cstdio>
 #include <fstream>
@@ -392,43 +390,6 @@ namespace
 		return true;
 	}
 
-	std::filesystem::path Make_BossPatternTemporaryPath(
-		const std::filesystem::path& destination)
-	{
-		static std::atomic_uint64_t sequence{ 0u };
-		std::filesystem::path temporary = destination;
-		temporary += L".tmp." + std::to_wstring(GetCurrentProcessId()) +
-			L"." + std::to_wstring(GetCurrentThreadId()) + L"." +
-			std::to_wstring(GetTickCount64()) + L"." +
-			std::to_wstring(sequence.fetch_add(
-				1u, std::memory_order_relaxed) + 1u);
-		return temporary;
-	}
-
-	void Remove_BossPatternTemporary(const std::filesystem::path& path)
-	{
-		std::error_code cleanupError;
-		std::filesystem::remove(path, cleanupError);
-	}
-
-	bool_t Commit_BossPatternTemporary(
-		const std::filesystem::path& destination,
-		const std::filesystem::path& temporary)
-	{
-		std::error_code existsError;
-		const bool_t exists =
-			std::filesystem::exists(destination, existsError);
-		if (existsError)
-			return false;
-		if (exists && FALSE != ReplaceFileW(destination.c_str(),
-			temporary.c_str(), nullptr, REPLACEFILE_WRITE_THROUGH,
-			nullptr, nullptr))
-		{
-			return true;
-		}
-		return FALSE != MoveFileExW(temporary.c_str(), destination.c_str(),
-			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
-	}
 
 	enum class DEPENDENT_CUE_KIND : uint8_t
 	{
@@ -436,71 +397,6 @@ namespace
 		SOUND,
 		SHAKE,
 	};
-
-	struct JOINED_OWNER_SOURCE_SNAPSHOT
-	{
-		std::filesystem::path Path;
-		std::string SourceBytes;
-	};
-
-	class JOINED_OWNER_COMMIT_GUARD final
-	{
-	public:
-		~JOINED_OWNER_COMMIT_GUARD()
-		{
-			for (const HANDLE handle : m_Handles)
-				CloseHandle(handle);
-		}
-
-		bool_t Lock_AndVerify(
-			const std::array<JOINED_OWNER_SOURCE_SNAPSHOT, 4u>& snapshots,
-			std::string& outStatus)
-		{
-			for (const JOINED_OWNER_SOURCE_SNAPSHOT& snapshot : snapshots)
-			{
-				/* Deny write/delete sharing until the animation ReplaceFile has
-				   completed. This closes the small check-to-commit window in which
-				   another typed owner could otherwise replace a cue source. */
-				const HANDLE handle = CreateFileW(snapshot.Path.c_str(),
-					GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
-					FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
-				if (INVALID_HANDLE_VALUE == handle)
-				{
-					outStatus =
-						"Boss pattern binding Save could not lock a joined Encounter/cue owner for commit CAS: " +
-						snapshot.Path.string();
-					return false;
-				}
-				m_Handles.push_back(handle);
-				std::string commitSourceBytes;
-				if (!Read_BinaryText(snapshot.Path, commitSourceBytes) ||
-					commitSourceBytes != snapshot.SourceBytes)
-				{
-					outStatus =
-						"Boss pattern binding Save rejected stale joined owners at commit; Encounter/Effect/Sound/Shake bytes changed while staging: " +
-						snapshot.Path.string();
-					return false;
-				}
-			}
-			return true;
-		}
-
-	private:
-		std::vector<HANDLE> m_Handles;
-	};
-
-	const BOSS_PATTERN_ANIMATION_BINDING* Find_BossPatternBinding(
-		const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& document,
-		const std::string_view actionId)
-	{
-		const auto found = std::find_if(
-			document.Bindings.begin(), document.Bindings.end(),
-			[actionId](const BOSS_PATTERN_ANIMATION_BINDING& binding)
-			{
-				return binding.strActionId == actionId;
-			});
-		return document.Bindings.end() == found ? nullptr : &*found;
-	}
 
 	bool_t Build_BossPatternTimings(
 		const BOSS_PATTERN_ANIMATION_BINDING& binding,
@@ -549,31 +445,6 @@ namespace
 			staged.push_back(timing);
 		}
 		outTimings = std::move(staged);
-		return true;
-	}
-
-	bool_t Validate_ChangedBindingModelTimings(
-		const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& document,
-		const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& baselineDocument,
-		const std::unordered_map<std::string, f32_t>&
-			clipSourceDurationSecondsByName,
-		std::string& outStatus)
-	{
-		for (const BOSS_PATTERN_ANIMATION_BINDING& binding : document.Bindings)
-		{
-			const BOSS_PATTERN_ANIMATION_BINDING* const baseline =
-				Find_BossPatternBinding(baselineDocument, binding.strActionId);
-			if (nullptr != baseline && *baseline == binding)
-				continue;
-			if (binding.bSuppressAnimation)
-				continue;
-			std::vector<ACTION_PRESENTATION_CLIP_TIMING> timings;
-			if (!Build_BossPatternTimings(binding,
-					clipSourceDurationSecondsByName, timings, outStatus))
-			{
-				return false;
-			}
-		}
 		return true;
 	}
 
@@ -936,154 +807,6 @@ namespace
 		return true;
 	}
 
-	bool_t Validate_BossPatternSaveClosure(
-		const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& document,
-		const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& baselineDocument,
-		const std::unordered_map<std::string, f32_t>&
-			clipSourceDurationSecondsByName,
-		const std::string_view animationAssetId,
-		const std::string_view expectedBossArchetypeId,
-		std::array<JOINED_OWNER_SOURCE_SNAPSHOT, 4u>&
-			outDependencySnapshots,
-		std::string& outStatus)
-	{
-		const std::filesystem::path encounterPath = CProjectDataRoot::Resolve(
-			std::filesystem::path(L"Encounters") /
-			std::filesystem::path(animationAssetId) /
-			std::filesystem::path(
-				std::string(animationAssetId) + "Encounter.json"));
-		/* Encounter drives both the required-action set and Server stage walls.
-		   Keep the exact captured bytes stable while its typed loader reads the
-		   path, then carry those bytes into the final four-owner commit CAS. */
-		const HANDLE encounterAdmissionLock = CreateFileW(encounterPath.c_str(),
-			GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
-			FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
-		std::string encounterSourceBytes;
-		std::string encounterAdmissionStatus;
-		CEncounterPatternReference encounter;
-		bool_t encounterAdmitted = false;
-		if (INVALID_HANDLE_VALUE == encounterAdmissionLock)
-		{
-			encounterAdmissionStatus =
-				"could not acquire a stable read lock: " +
-				encounterPath.string();
-		}
-		else if (!Read_BinaryText(encounterPath, encounterSourceBytes))
-		{
-			encounterAdmissionStatus =
-				"could not capture exact source bytes: " +
-				encounterPath.string();
-		}
-		else
-		{
-			encounterAdmitted = encounter.Load(
-				encounterPath, encounterAdmissionStatus);
-		}
-		if (INVALID_HANDLE_VALUE != encounterAdmissionLock)
-			CloseHandle(encounterAdmissionLock);
-		if (!encounterAdmitted ||
-			encounter.Get_BossArchetypeId() != expectedBossArchetypeId)
-		{
-			outStatus =
-				"Boss pattern animation Save could not admit the Encounter owner: " +
-				encounterAdmissionStatus;
-			return false;
-		}
-		std::vector<std::string> requiredActionIds;
-		std::unordered_map<std::string, uint32_t> stageDurationMsByAction;
-		for (const ENCOUNTER_PATTERN_REFERENCE& pattern : encounter.Get_Patterns())
-		{
-			for (const ENCOUNTER_STAGE_REFERENCE& stage : pattern.stages)
-			{
-				requiredActionIds.push_back(stage.actionId);
-				const auto [found, inserted] = stageDurationMsByAction.emplace(
-					stage.actionId, stage.iDurationMs);
-				if (!inserted && found->second != stage.iDurationMs)
-				{
-					outStatus =
-						"Boss pattern Encounter repeats an action with conflicting stage duration: " +
-						stage.actionId;
-					return false;
-				}
-			}
-		}
-		std::sort(requiredActionIds.begin(), requiredActionIds.end());
-		requiredActionIds.erase(
-			std::unique(requiredActionIds.begin(), requiredActionIds.end()),
-			requiredActionIds.end());
-		if (!CValtanPatternAnimationBindingDocument::Validate_RequiredActions(
-			document, requiredActionIds, outStatus))
-		{
-			return false;
-		}
-		if (!Validate_ChangedBindingModelTimings(
-			document, baselineDocument, clipSourceDurationSecondsByName,
-			outStatus))
-		{
-			return false;
-		}
-
-		const std::filesystem::path ownerDirectory = CProjectDataRoot::Resolve(
-			std::filesystem::path(L"Animation/Authored") /
-			std::filesystem::path(animationAssetId));
-		const std::string asset{ animationAssetId };
-		std::array<JOINED_OWNER_SOURCE_SNAPSHOT, 4u> stagedSnapshots = {
-			JOINED_OWNER_SOURCE_SNAPSHOT{
-				encounterPath, std::move(encounterSourceBytes) },
-			JOINED_OWNER_SOURCE_SNAPSHOT{
-				ownerDirectory / (asset + ".patterneffectcues.json"), {} },
-			JOINED_OWNER_SOURCE_SNAPSHOT{
-				ownerDirectory / (asset + ".patternsoundcues.json"), {} },
-			JOINED_OWNER_SOURCE_SNAPSHOT{
-				ownerDirectory / (asset + ".patternshakecues.json"), {} }
-		};
-		if (!Validate_DependentCueOwner(
-			document, baselineDocument, clipSourceDurationSecondsByName,
-			stageDurationMsByAction,
-			stagedSnapshots[1u].Path,
-			"lostark.valtan-pattern-effect-cues", 4u,
-			expectedBossArchetypeId, DEPENDENT_CUE_KIND::EFFECT,
-			stagedSnapshots[1u].SourceBytes, outStatus) ||
-			!Validate_DependentCueOwner(
-				document, baselineDocument, clipSourceDurationSecondsByName,
-				stageDurationMsByAction,
-				stagedSnapshots[2u].Path,
-				"lostark.valtan-pattern-sound-cues", 1u,
-				expectedBossArchetypeId, DEPENDENT_CUE_KIND::SOUND,
-				stagedSnapshots[2u].SourceBytes, outStatus) ||
-			!Validate_DependentCueOwner(
-				document, baselineDocument, clipSourceDurationSecondsByName,
-				stageDurationMsByAction,
-				stagedSnapshots[3u].Path,
-				"lostark.valtan-pattern-shake-cues", 1u,
-				expectedBossArchetypeId, DEPENDENT_CUE_KIND::SHAKE,
-				stagedSnapshots[3u].SourceBytes, outStatus))
-		{
-			return false;
-		}
-		outDependencySnapshots = std::move(stagedSnapshots);
-		return true;
-	}
-
-#if defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
-	void Invoke_DependencyPrecommitMutationTestHook()
-	{
-		constexpr wchar_t TEST_HOOK[] =
-			L"LOSTARK_TEST_VALTAN_BINDING_MUTATE_DEPENDENCY_BEFORE_COMMIT";
-		const DWORD required = GetEnvironmentVariableW(TEST_HOOK, nullptr, 0u);
-		if (required <= 1u)
-			return;
-		std::vector<wchar_t> value(required);
-		const DWORD copied = GetEnvironmentVariableW(
-			TEST_HOOK, value.data(), required);
-		if (0u == copied || copied >= required)
-			return;
-		std::ofstream mutation(std::filesystem::path(value.data()),
-			std::ios::binary | std::ios::app);
-		mutation.put(' ');
-		mutation.flush();
-	}
-#endif
 }
 
 std::filesystem::path Client::CAnimationSkillBindingDocument::Resolve_Path(
@@ -1853,143 +1576,21 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Save_Atomic(
 	std::string& outCommittedSourceBytes,
 	std::string& outStatus)
 {
-	if (3u != document.iFormatVersion)
-	{
-		outStatus =
-			"Boss pattern authored save requires formatVersion 3.";
-		return false;
-	}
-	if (!Validate(document, expectedBossArchetypeId,
-		availableClips, outStatus))
-	{
-		return false;
-	}
+	/* This file is a generated Product. Keeping the legacy function as a hard
+	   rejection lets old binary/test callers fail safely while all writable
+	   rows move through Valtan.presentation.json -> immutable authoring revision
+	   -> projector. No validation or temporary write may precede this guard. */
+	(void)document;
+	(void)animationAssetId;
+	(void)expectedBossArchetypeId;
+	(void)availableClips;
+	(void)clipSourceDurationSecondsByName;
+	(void)expectedBaselineSourceBytes;
+	outCommittedSourceBytes.clear();
+	outStatus =
+		"Valtan.patternbindings.json is a read-only generated Product; edit Data/Valtan/Valtan.presentation.json through the joined authoring revision pipeline.";
+	return false;
 
-	const std::filesystem::path destination = Resolve_Path(animationAssetId);
-	std::string admittedSourceBytes;
-	if (destination.empty() || expectedBaselineSourceBytes.empty() ||
-		!Read_BinaryText(destination, admittedSourceBytes))
-	{
-		outStatus =
-			"Boss pattern binding destination/baseline is unavailable for CAS Save.";
-		return false;
-	}
-	if (admittedSourceBytes != expectedBaselineSourceBytes)
-	{
-		outStatus =
-			"Boss pattern binding Save rejected a stale draft; destination bytes changed after authoring load.";
-		return false;
-	}
-	BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT baselineDocument;
-	std::string baselineStatus;
-	if (!Parse_Text(admittedSourceBytes, baselineDocument, baselineStatus) ||
-		!Validate(baselineDocument, expectedBossArchetypeId,
-			availableClips, baselineStatus))
-	{
-		outStatus =
-			"Boss pattern binding CAS baseline failed strict verification: " +
-			baselineStatus;
-		return false;
-	}
-	std::array<JOINED_OWNER_SOURCE_SNAPSHOT, 4u> dependencySnapshots;
-	if (!Validate_BossPatternSaveClosure(
-		document, baselineDocument, clipSourceDurationSecondsByName,
-		animationAssetId,
-		expectedBossArchetypeId, dependencySnapshots, outStatus))
-	{
-		return false;
-	}
-
-	const std::string serialized = Serialize_BossPatternBindings(document);
-	BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT serializedDocument;
-	std::string verificationStatus;
-	if (!Parse_Text(serialized, serializedDocument, verificationStatus) ||
-		!Validate(serializedDocument, expectedBossArchetypeId,
-			availableClips, verificationStatus) ||
-		serializedDocument != document)
-	{
-		outStatus =
-			"Boss pattern binding serialization failed strict verification: " +
-			verificationStatus;
-		return false;
-	}
-
-	std::error_code directoryError;
-	std::filesystem::create_directories(
-		destination.parent_path(), directoryError);
-	if (directoryError)
-	{
-		outStatus =
-			"Could not create the boss pattern binding authoring directory.";
-		return false;
-	}
-
-	const std::filesystem::path temporary =
-		Make_BossPatternTemporaryPath(destination);
-	FILE* file = nullptr;
-	if (0 != _wfopen_s(&file, temporary.c_str(), L"wb") || nullptr == file)
-	{
-		outStatus =
-			"Could not open the temporary boss pattern binding document.";
-		return false;
-	}
-	const bool_t wrote = serialized.size() == fwrite(
-		serialized.data(), 1u, serialized.size(), file);
-	const bool_t flushed =
-		0 == fflush(file) && 0 == _commit(_fileno(file));
-	const bool_t closed = 0 == fclose(file);
-	if (!wrote || !flushed || !closed)
-	{
-		Remove_BossPatternTemporary(temporary);
-		outStatus =
-			"Could not durably write the temporary boss pattern binding document.";
-		return false;
-	}
-
-	BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT reparsed;
-	if (!Load_BossPatternBindingsFromPath(temporary,
-		expectedBossArchetypeId, availableClips,
-		reparsed, verificationStatus) || reparsed != document)
-	{
-		Remove_BossPatternTemporary(temporary);
-		outStatus = "Boss pattern binding temp verification failed: " +
-			verificationStatus;
-		return false;
-	}
-#if defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
-	Invoke_DependencyPrecommitMutationTestHook();
-#endif
-	JOINED_OWNER_COMMIT_GUARD dependencyCommitGuard;
-	if (!dependencyCommitGuard.Lock_AndVerify(
-		dependencySnapshots, outStatus))
-	{
-		Remove_BossPatternTemporary(temporary);
-		return false;
-	}
-	std::string commitSourceBytes;
-	if (!Read_BinaryText(destination, commitSourceBytes) ||
-		commitSourceBytes != expectedBaselineSourceBytes)
-	{
-		Remove_BossPatternTemporary(temporary);
-		outStatus =
-			"Boss pattern binding Save rejected a stale draft at commit; destination bytes changed while staging.";
-		return false;
-	}
-
-	if (!Commit_BossPatternTemporary(destination, temporary))
-	{
-		const DWORD error = GetLastError();
-		Remove_BossPatternTemporary(temporary);
-		outStatus =
-			"Could not atomically replace the boss pattern binding document "
-			"(Win32 " + std::to_string(error) + "); previous file preserved.";
-		return false;
-	}
-
-	outStatus = "Saved " + std::to_string(document.Bindings.size()) +
-		" boss pattern animation binding(s) to " + destination.string();
-	outCommittedSourceBytes = serialized;
-	return true;
 }
 
 std::filesystem::path

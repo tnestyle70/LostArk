@@ -27,6 +27,7 @@
 #include "PlayableCharacterAssetService.h"
 #include "Transform.h"
 #include "ValtanPatternEffectCueDocument.h"
+#include "ValtanPatternTree.h"
 #include "ValtanPresentationAssetService.h"
 
 #include <algorithm>
@@ -944,8 +945,14 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 
 	if (option.requiresValtanPrewarm)
 	{
-		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
+		CValtanCanonicalProductReadAdmission ProductAdmission;
 		std::string Status;
+		if (!ProductAdmission.Acquire(Status))
+		{
+			Isolate_ValtanSpawnPreparationFailure(Status, false);
+			return false;
+		}
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
 		if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
 				CueDocument, Status) || CueDocument.Cues.empty())
 		{
@@ -984,6 +991,11 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 			pBossActor->combatObjectVisuals)
 		{
 			EffectAssetIds.push_back(Visual.effectAssetId);
+		}
+		if (!ProductAdmission.Validate_StillCurrent(Status))
+		{
+			Isolate_ValtanSpawnPreparationFailure(Status, false);
+			return false;
 		}
 #ifdef _DEBUG
 		/* The Debug V1 audition is background preparation only. The required
@@ -1425,6 +1437,44 @@ bool_t CLevel_CharacterSelect::Enter_Stage(const LOBBY_STAGE stage)
 	return true;
 }
 
+#ifdef _DEBUG
+bool_t CLevel_CharacterSelect::Debug_Request_KakulSaydonArena()
+{
+	if (MODE::SERVER_ARENA != m_eMode ||
+		m_iSelectedClassIndex >= SUPPORTED_CLASSES.size() ||
+		m_iPendingClassIndex.has_value() ||
+		Is_ClassPresentationPreparationPending() ||
+		m_isCreateCharacterModalOpen ||
+		CLevelTransitionService::Is_Pending())
+	{
+		m_strStatus =
+			"KoukuSaton transfer requires an idle, Server-approved Character Select arena.";
+		return false;
+	}
+	if (nullptr == m_pWorldEntityCommandSink)
+	{
+		m_strStatus =
+			"KoukuSaton world-transfer command owner is unavailable.";
+		return false;
+	}
+
+	const std::uint32_t requestSequence =
+		m_iNextKakulArenaRequestSequence++;
+	if (0u == m_iNextKakulArenaRequestSequence)
+		m_iNextKakulArenaRequestSequence = 1u;
+	if (!m_pWorldEntityCommandSink->Request_EnterKakulSaydonArena(
+		requestSequence))
+	{
+		m_strStatus =
+			"KoukuSaton Server arena request could not be sent.";
+		return false;
+	}
+
+	m_strStatus = "KoukuSaton Server arena transfer requested.";
+	return true;
+}
+#endif
+
 void CLevel_CharacterSelect::Render_CreateCharacterProductInputHost()
 {
 	const ImGuiViewport* pViewport = ImGui::GetMainViewport();
@@ -1620,24 +1670,7 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 		Enter_Stage(LOBBY_STAGE::VALTAN);
 	ImGui::SameLine();
 	if (ImGui::Button("Enter KoukuSaton Arena"))
-	{
-		const std::uint32_t requestSequence =
-			m_iNextKakulArenaRequestSequence++;
-		if (0u == m_iNextKakulArenaRequestSequence)
-			m_iNextKakulArenaRequestSequence = 1u;
-		if (nullptr != m_pWorldEntityCommandSink &&
-			m_pWorldEntityCommandSink->Request_EnterKakulSaydonArena(
-				requestSequence))
-		{
-			m_strStatus =
-				"KoukuSaton Server arena transfer requested.";
-		}
-		else
-		{
-			m_strStatus =
-				"KoukuSaton Server arena request could not be sent.";
-		}
-	}
+		(void)Debug_Request_KakulSaydonArena();
 	ImGui::SameLine();
 	if (ImGui::Button("Back"))
 		Leave_ServerArena();

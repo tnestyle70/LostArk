@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import tempfile
 import unittest
@@ -81,7 +82,9 @@ FAKE_PROJECTOR = r"""[CmdletBinding()]
 param(
     [ValidateSet('ValidateV2', 'PublishV2')]
     [string]$Mode,
-    [string]$RepositoryRoot
+    [string]$RepositoryRoot,
+    [switch]$WriterLockAlreadyHeld,
+    [string]$WriterLockOwnerNonce
 )
 $ErrorActionPreference = 'Stop'
 $utf8 = [Text.UTF8Encoding]::new($false)
@@ -106,6 +109,12 @@ if ($Mode -eq 'ValidateV2') {
         [IO.File]::WriteAllText($source, $text, $utf8)
     }
     return
+}
+if (-not $WriterLockAlreadyHeld) {
+    throw 'PublishV2 must inherit the shared canonical writer admission.'
+}
+if ($WriterLockOwnerNonce -cnotmatch '^[0-9a-f]{32}$') {
+    throw 'PublishV2 did not receive the exact writer admission nonce.'
 }
 $published = Join-Path $RepositoryRoot 'Published.presentation.json'
 [IO.File]::WriteAllBytes($published, [IO.File]::ReadAllBytes($source))
@@ -190,6 +199,7 @@ class ValtanPatternEffectUnlinkTests(unittest.TestCase):
         effect_id: str = EFFECT_ID,
         cue_ids: str = f"{CUE_A},{CUE_B}",
         failure_injection: str = "None",
+        writer_lock_timeout_seconds: float = 30.0,
     ) -> subprocess.CompletedProcess[bytes]:
         return subprocess.run(
             [
@@ -211,6 +221,8 @@ class ValtanPatternEffectUnlinkTests(unittest.TestCase):
                 str(self.repo),
                 "-FailureInjection",
                 failure_injection,
+                "-WriterLockTimeoutSeconds",
+                str(writer_lock_timeout_seconds),
             ],
             cwd=ROOT,
             stdout=subprocess.PIPE,
@@ -352,6 +364,38 @@ class ValtanPatternEffectUnlinkTests(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn(b"UTF-8 without BOM", result.stdout)
         self.assertEqual(bom_source, self.presentation.read_bytes())
+        self.assert_shared_product_unchanged()
+        self.assertEqual([], self.projector_modes())
+
+    @unittest.skipUnless(os.name == "nt", "PowerShell/CRT byte-range contention is Windows-only")
+    def test_shared_create_pattern_lock_blocks_unlink_without_any_write(self) -> None:
+        import msvcrt
+
+        lock_path = (
+            self.repo
+            / "out"
+            / "ValtanPatternTransactions"
+            / "create-pattern.lock"
+        )
+        lock_path.parent.mkdir(parents=True)
+        with lock_path.open("a+b") as handle:
+            if lock_path.stat().st_size < 1:
+                handle.write(b"\0")
+                handle.flush()
+                os.fsync(handle.fileno())
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            try:
+                result = self.run_unlink(
+                    "Apply", writer_lock_timeout_seconds=0.0
+                )
+            finally:
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(b"canonical writer admission", result.stdout)
+        self.assertEqual(self.original_presentation, self.presentation.read_bytes())
         self.assert_shared_product_unchanged()
         self.assertEqual([], self.projector_modes())
 

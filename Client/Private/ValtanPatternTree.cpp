@@ -15,6 +15,7 @@
 #include <limits>
 #include <locale>
 #include <map>
+#include <memory>
 #include <set>
 #include <sstream>
 #include <string_view>
@@ -23,6 +24,143 @@ namespace
 {
 	using Client::DATA_JSON_TYPE;
 	using Client::DATA_JSON_VALUE;
+	constexpr const wchar_t* VALTAN_PATTERN_TRANSACTION_LOCK_RELATIVE =
+		L"out\\ValtanPatternTransactions\\create-pattern.lock";
+	constexpr const wchar_t* VALTAN_PATTERN_ACTIVE_GENERATION_RELATIVE =
+		L"out\\ValtanPatternTransactions\\active-generation.json";
+
+	/* Canonical readers share the same byte range that every Python/C++
+	   Create/Project writer locks exclusively.  Holding the handle through the
+	   entire strict join prevents one reader from observing a mixture of owner
+	   and generated Product generations.  This reader never repairs a crashed
+	   writer: a durable active-generation journal is an explicit admission
+	   failure that the next writer transaction must recover. */
+	class SCOPED_VALTAN_PATTERN_TRANSACTION_READ_LOCK final
+	{
+	public:
+		~SCOPED_VALTAN_PATTERN_TRANSACTION_READ_LOCK()
+		{
+			if (INVALID_HANDLE_VALUE == m_hFile)
+				return;
+			UnlockFileEx(m_hFile, 0u, 1u, 0u, &m_Overlap);
+			CloseHandle(m_hFile);
+		}
+
+		bool_t Try_Acquire(
+			const std::filesystem::path& ProjectRoot,
+			std::string& strOutError)
+		{
+			if (ProjectRoot.empty())
+			{
+				strOutError = "project root is unavailable";
+				return false;
+			}
+			const std::filesystem::path LockPath =
+				ProjectRoot / VALTAN_PATTERN_TRANSACTION_LOCK_RELATIVE;
+			std::error_code DirectoryError;
+			std::filesystem::create_directories(
+				LockPath.parent_path(), DirectoryError);
+			if (DirectoryError)
+			{
+				strOutError = "lock directory creation failed: " +
+					DirectoryError.message();
+				return false;
+			}
+
+			m_hFile = CreateFileW(
+				LockPath.c_str(), GENERIC_READ | GENERIC_WRITE,
+				FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+				nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+			if (INVALID_HANDLE_VALUE == m_hFile)
+			{
+				strOutError = "lock open failed with Win32 error " +
+					std::to_string(GetLastError());
+				return false;
+			}
+
+			/* Python's msvcrt writer initializes the same one-byte range.
+			   Initialize it before taking the shared lock so a first writer never
+			   needs to write through an already locked, zero-length file. */
+			LARGE_INTEGER Size{};
+			if (FALSE == GetFileSizeEx(m_hFile, &Size))
+			{
+				strOutError = "lock size query failed with Win32 error " +
+					std::to_string(GetLastError());
+				CloseHandle(m_hFile);
+				m_hFile = INVALID_HANDLE_VALUE;
+				return false;
+			}
+			if (Size.QuadPart < 1)
+			{
+				const char_t Byte = '\0';
+				DWORD iWritten = 0u;
+				LARGE_INTEGER Begin{};
+				if (FALSE == SetFilePointerEx(
+						m_hFile, Begin, nullptr, FILE_BEGIN) ||
+					FALSE == WriteFile(
+						m_hFile, &Byte, 1u, &iWritten, nullptr) ||
+					1u != iWritten || FALSE == FlushFileBuffers(m_hFile))
+				{
+					strOutError =
+						"lock initialization failed with Win32 error " +
+						std::to_string(GetLastError());
+					CloseHandle(m_hFile);
+					m_hFile = INVALID_HANDLE_VALUE;
+					return false;
+				}
+			}
+
+			/* Omitting LOCKFILE_EXCLUSIVE_LOCK is the Windows shared/read mode.
+			   FAIL_IMMEDIATELY keeps a UI reload bounded while a publisher owns
+			   the corresponding exclusive Python msvcrt byte-range lock. */
+			if (FALSE == LockFileEx(m_hFile, LOCKFILE_FAIL_IMMEDIATELY,
+				0u, 1u, 0u, &m_Overlap))
+			{
+				strOutError =
+					"Create/Project transaction is active (Win32 " +
+					std::to_string(GetLastError()) + ")";
+				CloseHandle(m_hFile);
+				m_hFile = INVALID_HANDLE_VALUE;
+				return false;
+			}
+			return true;
+		}
+
+	private:
+		HANDLE m_hFile = INVALID_HANDLE_VALUE;
+		OVERLAPPED m_Overlap{};
+	};
+
+	struct VALTAN_CANONICAL_PRODUCT_READ_STATE final
+	{
+		SCOPED_VALTAN_PATTERN_TRANSACTION_READ_LOCK Lock;
+		std::filesystem::path ProjectRoot;
+	};
+
+	bool_t Require_NoActiveValtanPatternGeneration(
+		const std::filesystem::path& ProjectRoot,
+		std::string& strOutError)
+	{
+		const std::filesystem::path ActiveGeneration =
+			ProjectRoot / VALTAN_PATTERN_ACTIVE_GENERATION_RELATIVE;
+		std::error_code ExistsError;
+		const bool_t bExists =
+			std::filesystem::exists(ActiveGeneration, ExistsError);
+		if (ExistsError)
+		{
+			strOutError = "active-generation journal query failed: " +
+				ExistsError.message();
+			return false;
+		}
+		if (bExists)
+		{
+			strOutError =
+				"active-generation journal requires writer recovery: " +
+				ActiveGeneration.generic_string();
+			return false;
+		}
+		return true;
+	}
 
 	bool Read_TextDocument(
 		const std::filesystem::path& Path,
@@ -233,6 +371,7 @@ namespace
 
 	bool_t Read_StageMotion(
 		const DATA_JSON_VALUE* pValue,
+		const uint32_t iStageDurationMs,
 		std::optional<Client::VALTAN_STAGE_MOTION_VIEW>& Out)
 	{
 		Out.reset();
@@ -246,7 +385,20 @@ namespace
 		Motion.strKind = pKind->Get_String();
 		if ("PORTAL_TARGET_RUSH" == Motion.strKind)
 		{
-			if (!Has_ExactProperties(*pValue, { "kind" }))
+			if (!Has_ExactProperties(*pValue,
+					{ "kind", "retargetDelayMs", "speedMps", "distanceM" }) ||
+				!Read_RequiredUInt32(
+					*pValue, "retargetDelayMs", Motion.iRetargetDelayMs) ||
+				!Read_RequiredFiniteFloat(
+					*pValue, "speedMps", Motion.fSpeedMps) ||
+				!Read_RequiredFiniteFloat(
+					*pValue, "distanceM", Motion.fDistance) ||
+				Motion.fSpeedMps <= 0.f || Motion.fSpeedMps > 1000.f ||
+				Motion.fDistance <= 0.f || Motion.fDistance > 1000.f ||
+				static_cast<double>(Motion.iRetargetDelayMs) +
+					static_cast<double>(Motion.fDistance) /
+					static_cast<double>(Motion.fSpeedMps) * 1000.0 >
+					static_cast<double>(iStageDurationMs) + 0.000001)
 				return false;
 		}
 		else if ("PORTAL_CROSS_ARENA" == Motion.strKind)
@@ -1198,7 +1350,8 @@ namespace
 		if (!pMotion->Is_Null())
 		{
 			std::optional<Client::VALTAN_STAGE_MOTION_VIEW> Motion;
-			if (!Read_StageMotion(pMotion, Motion))
+			if (!Read_StageMotion(pMotion,
+					static_cast<uint32_t>(Read_Number(Value, "durationMs")), Motion))
 			{
 				strOutError = "master stage motion is invalid";
 				return false;
@@ -1462,7 +1615,8 @@ namespace
 			!Read_RequiredFiniteFloat(Value, "pushRangeM", Out.fPushRangeM) ||
 			!Read_RequiredUInt32(Value, "pushMs", Out.iPushMs) ||
 			!Read_RequiredUInt32(Value, "downMs", Out.iDownMs) ||
-			!Read_StageMotion(Value.Find("motion"), Out.Motion) ||
+			!Read_StageMotion(
+				Value.Find("motion"), Out.iDurationMs, Out.Motion) ||
 			!Read_StageActions(
 				Value.Find("actions"), Out.iDurationMs, Out.Actions) ||
 			!Read_StageBranches(pBranches, Out.Branches) ||
@@ -1478,6 +1632,40 @@ namespace
 		}
 		Out.bKnockdown = Required(
 			Value, "knockdown", DATA_JSON_TYPE::BOOLEAN)->Get_Boolean();
+		if (Out.Motion.has_value() &&
+			"PORTAL_TARGET_RUSH" == Out.Motion->strKind)
+		{
+			const VALTAN_STAGE_MOTION_VIEW& Motion = *Out.Motion;
+			const double fTravelEndMs =
+				static_cast<double>(Motion.iRetargetDelayMs) +
+				static_cast<double>(Motion.fDistance) /
+				static_cast<double>(Motion.fSpeedMps) * 1000.0;
+			uint32_t iExpectedOffsetMs = Motion.iRetargetDelayMs;
+			if (Out.HitOffsetsMs.empty())
+			{
+				strOutError =
+					"portal target-rush requires explicit swept-hit offsets";
+				return false;
+			}
+			for (const uint32_t iOffsetMs : Out.HitOffsetsMs)
+			{
+				if (iOffsetMs != iExpectedOffsetMs ||
+					static_cast<double>(iOffsetMs) >= fTravelEndMs)
+				{
+					strOutError =
+						"portal target-rush hit offsets must cover only its 50 ms travel samples";
+					return false;
+				}
+				iExpectedOffsetMs += 50u;
+			}
+			if (static_cast<double>(iExpectedOffsetMs) + 0.000001 <
+				fTravelEndMs)
+			{
+				strOutError =
+					"portal target-rush hit offsets do not cover its full travel";
+				return false;
+			}
+		}
 		std::set<std::string, std::less<>> OccurrenceIds;
 		if (nullptr != pOccurrences)
 		{
@@ -2578,6 +2766,8 @@ namespace
 			return false;
 		return !Left.has_value() ||
 			(Left->strKind == Right->strKind &&
+			 Left->iRetargetDelayMs == Right->iRetargetDelayMs &&
+			 Left->fSpeedMps == Right->fSpeedMps &&
 			 Left->fDistance == Right->fDistance &&
 			 Left->iCornerIndex == Right->iCornerIndex &&
 			 Left->HalfExtentsM == Right->HalfExtentsM);
@@ -4990,7 +5180,24 @@ namespace
 				for (const DATA_JSON_VALUE& Cue : Cues.Get_Array())
 				{
 					const std::string Anchor = Read_String(Cue, "anchorSlotId");
-					if (Anchor.starts_with("arena.center"))
+					if (Anchor.starts_with("pattern.target."))
+					{
+						const bool_t bLockedTarget =
+							Pattern.strTargetPolicy == "LOCK_NEAREST_ON_START" ||
+							Pattern.strTargetPolicy == "LOCK_RANDOM_ALIVE_ON_START" ||
+							Pattern.strTargetPolicy ==
+								"LOCK_RANDOM_ALIVE_BEHIND_ON_START";
+						if (Anchor != "pattern.target.snapshot" ||
+							Read_String(Cue, "followPolicy") != "snapshot" ||
+							!bLockedTarget)
+						{
+							strOutError =
+								"split target cue requires its exact snapshot/locked-target contract: " +
+								Pattern.strPatternId + "/" + Stage.strStageId;
+							return false;
+						}
+					}
+					else if (Anchor.starts_with("arena.center"))
 					{
 						const bool_t bFacing = "arena.center.facing" == Anchor;
 						if ((!bFacing && "arena.center" != Anchor) ||
@@ -5844,6 +6051,64 @@ namespace
 	}
 }
 
+Client::CValtanCanonicalProductReadAdmission::
+	~CValtanCanonicalProductReadAdmission()
+{
+	delete static_cast<VALTAN_CANONICAL_PRODUCT_READ_STATE*>(m_pState);
+	m_pState = nullptr;
+}
+
+bool_t Client::CValtanCanonicalProductReadAdmission::Acquire(
+	std::string& strOutStatus)
+{
+	if (nullptr != m_pState)
+	{
+		strOutStatus = "Valtan canonical Product read admission is already held.";
+		return false;
+	}
+	std::unique_ptr<VALTAN_CANONICAL_PRODUCT_READ_STATE> State =
+		std::make_unique<VALTAN_CANONICAL_PRODUCT_READ_STATE>();
+	State->ProjectRoot = CProjectDataRoot::Get().parent_path();
+	std::string AdmissionError;
+	if (!State->Lock.Try_Acquire(State->ProjectRoot, AdmissionError) ||
+		!Require_NoActiveValtanPatternGeneration(
+			State->ProjectRoot, AdmissionError))
+	{
+		strOutStatus =
+			"Valtan canonical Product read admission failed: " +
+			AdmissionError;
+		return false;
+	}
+	m_pState = State.release();
+	strOutStatus =
+		"Valtan canonical Product generation admitted for a shared read.";
+	return true;
+}
+
+bool_t Client::CValtanCanonicalProductReadAdmission::Validate_StillCurrent(
+	std::string& strOutStatus) const
+{
+	const auto* const pState =
+		static_cast<const VALTAN_CANONICAL_PRODUCT_READ_STATE*>(m_pState);
+	if (nullptr == pState)
+	{
+		strOutStatus = "Valtan canonical Product read admission is not held.";
+		return false;
+	}
+	std::string AdmissionError;
+	if (!Require_NoActiveValtanPatternGeneration(
+			pState->ProjectRoot, AdmissionError))
+	{
+		strOutStatus =
+			"Valtan canonical Product read admission became stale: " +
+			AdmissionError;
+		return false;
+	}
+	strOutStatus =
+		"Valtan canonical Product generation remained stable through the read.";
+	return true;
+}
+
 size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_StageCount() const
 {
 	size_t iCount = 0u;
@@ -6271,6 +6536,7 @@ bool_t Client::CValtanPatternTree::Build_PreviewStagePath(
 	std::set<std::string, std::less<>> VisitedActions;
 	size_t iStage = 0u;
 	bool_t bWallContactTaken = false;
+	bool_t bCounterHitTaken = false;
 	for (;;)
 	{
 		const VALTAN_STAGE_VIEW& Stage = Pattern.Stages[iStage];
@@ -6304,6 +6570,16 @@ bool_t Client::CValtanPatternTree::Build_PreviewStagePath(
 			}
 			return true;
 		};
+		if (VALTAN_PATTERN_PREVIEW_PATH::COUNTER_GROGGY == ePath)
+		{
+			if (!SelectOutcome("COUNTER_HIT"))
+			{
+				strOutStatus =
+					"Valtan preview path has ambiguous COUNTER_HIT edges.";
+				return false;
+			}
+			bCounterHitTaken = bCounterHitTaken || nullptr != pSelected;
+		}
 
 		if (VALTAN_PATTERN_PREVIEW_PATH::PART_BREAK == ePath &&
 			bWallContactTaken)
@@ -6316,7 +6592,8 @@ bool_t Client::CValtanPatternTree::Build_PreviewStagePath(
 			}
 		}
 		if (nullptr == pSelected &&
-			VALTAN_PATTERN_PREVIEW_PATH::NORMAL != ePath &&
+			(VALTAN_PATTERN_PREVIEW_PATH::WALL_GROGGY == ePath ||
+			 VALTAN_PATTERN_PREVIEW_PATH::PART_BREAK == ePath) &&
 			!bWallContactTaken)
 		{
 			if (!SelectOutcome("WALL_CONTACT"))
@@ -6351,6 +6628,13 @@ bool_t Client::CValtanPatternTree::Build_PreviewStagePath(
 		iStage = Next->second;
 	}
 
+	if (VALTAN_PATTERN_PREVIEW_PATH::COUNTER_GROGGY == ePath &&
+		!bCounterHitTaken)
+	{
+		strOutStatus =
+			"Valtan Counter/Groggy preview path has no COUNTER_HIT branch.";
+		return false;
+	}
 	OutStages = std::move(StagedPath);
 	strOutStatus = "Valtan preview path resolved " +
 		std::to_string(OutStages.size()) + " stages.";
@@ -6361,14 +6645,52 @@ bool_t Client::CValtanPatternTree::Load(
 	VALTAN_PATTERN_TREE_VIEW& OutView,
 	std::string& strOutStatus)
 {
-	return Load_FromAuthoringPaths(
+	CValtanCanonicalProductReadAdmission Admission;
+	if (!Admission.Acquire(strOutStatus))
+		return false;
+	return Load_WhileAdmitted(Admission, OutView, strOutStatus);
+}
+
+bool_t Client::CValtanPatternTree::Load_WhileAdmitted(
+	const CValtanCanonicalProductReadAdmission& Admission,
+	VALTAN_PATTERN_TREE_VIEW& OutView,
+	std::string& strOutStatus)
+{
+	std::string AdmissionStatus;
+	if (!Admission.Is_Acquired() ||
+		!Admission.Validate_StillCurrent(AdmissionStatus))
+	{
+		strOutStatus =
+			"Valtan canonical graph read admission failed: " +
+			AdmissionStatus;
+		return false;
+	}
+
+	VALTAN_PATTERN_TREE_VIEW StagedView;
+	if (!Load_FromAuthoringPaths(
 		CProjectDataRoot::Resolve(
 			std::filesystem::path(L"Valtan") / L"Valtan.gameplay.json"),
 		CProjectDataRoot::Resolve(
 			std::filesystem::path(L"Valtan") / L"Valtan.presentation.json"),
-		OutView,
+		StagedView,
 		strOutStatus,
-		VALTAN_PATTERN_TREE_LOAD_POLICY::REQUIRE_ACTIVE_PRODUCT_PARITY);
+		VALTAN_PATTERN_TREE_LOAD_POLICY::REQUIRE_ACTIVE_PRODUCT_PARITY))
+	{
+		return false;
+	}
+	/* The post-join check makes a non-cooperating journal writer visible while
+	   preserving the caller's previously admitted view. Cooperating writers
+	   cannot reach this point because the shared byte-range lock is still held. */
+	if (!Admission.Validate_StillCurrent(AdmissionStatus))
+	{
+		strOutStatus =
+			"Valtan canonical graph read admission failed: " +
+			AdmissionStatus;
+		return false;
+	}
+
+	OutView = std::move(StagedView);
+	return true;
 }
 
 bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
@@ -6460,7 +6782,7 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 	}
 
 	VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
-	if (!CValtanPatternEffectCueDocument::Load_Source(CueDocument, Error))
+	if (!CValtanPatternEffectCueDocument::Load_ReadOnlyProduct(CueDocument, Error))
 	{
 		strOutStatus = "Valtan Product Effect cue load failed: " + Error;
 		return false;
@@ -6900,7 +7222,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 						StageValue, "pushMs", Stage.iPushMs) ||
 					!Read_RequiredUInt32(
 						StageValue, "downMs", Stage.iDownMs) ||
-					!Read_StageMotion(StageValue.Find("motion"), Stage.Motion) ||
+					!Read_StageMotion(StageValue.Find("motion"),
+						Stage.iDurationMs, Stage.Motion) ||
 					!Read_StageActions(StageValue.Find("actions"),
 						Stage.iDurationMs, Stage.Actions) ||
 					!Read_StageBranches(StageValue.Find("branches"), Stage.Branches) ||

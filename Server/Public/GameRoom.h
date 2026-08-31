@@ -1080,7 +1080,21 @@ namespace LostArk::Server
 		std::uint32_t m_iValtanAuditionArmedHealthBar = 0;
 		std::unordered_map<SESSION_ID, std::uint32_t>
 			m_ValtanAuditionSequenceBySessionId;
-		std::unordered_map<SESSION_ID, std::uint32_t>
+		struct VALTAN_PATTERN_ID_COMMAND_RECEIPT final
+		{
+			LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST Request;
+			LostArk::Shared::VALTAN_AUDITION_RESULT Result =
+				LostArk::Shared::VALTAN_AUDITION_RESULT::REJECTED_STALE_REQUEST;
+			std::uint32_t iCurrentHealthBar = 0u;
+			/* A QUEUED receipt must remain reconcilable after its occurrence is no
+			   longer the room's current audition. Keep the last authoritative edge
+			   so an exact retry cannot loop on a verdict without lifecycle. */
+			std::optional<LostArk::Shared::S2C_VALTAN_AUDITION_LIFECYCLE>
+				LastLifecycle;
+		};
+		/* Stable-ID Play/Restart keeps the exact payload and verdict. A retry of
+		   one identity replays that verdict; an altered tuple never inherits it. */
+		std::unordered_map<SESSION_ID, VALTAN_PATTERN_ID_COMMAND_RECEIPT>
 			m_ValtanPatternIdAuditionSequenceBySessionId;
 		struct VALTAN_PATTERN_FLOW_COMMAND_RECEIPT final
 		{
@@ -1090,6 +1104,9 @@ namespace LostArk::Server
 			std::string strFlowRevision;
 			std::string strRequestIdentity;
 			LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
+			LostArk::Shared::VALTAN_PATTERN_FLOW_RESULT eResult =
+				LostArk::Shared::VALTAN_PATTERN_FLOW_RESULT::REJECTED_STALE_FLOW;
+			std::string strReason;
 		};
 		std::unordered_map<SESSION_ID, VALTAN_PATTERN_FLOW_COMMAND_RECEIPT>
 			m_ValtanPatternFlowStartSequenceBySessionId;

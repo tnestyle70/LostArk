@@ -10,7 +10,8 @@ param(
     [string]$CueIds,
     [string]$RepositoryRoot = '',
     [ValidateSet('None', 'SourceCommitPostReplace')]
-    [string]$FailureInjection = 'None'
+    [string]$FailureInjection = 'None',
+    [double]$WriterLockTimeoutSeconds = 30.0
 )
 
 $ErrorActionPreference = 'Stop'
@@ -32,6 +33,59 @@ else {
 }
 if (-not [IO.Directory]::Exists($repoRoot)) {
     throw "RepositoryRoot does not exist: $repoRoot"
+}
+if ([double]::IsNaN($WriterLockTimeoutSeconds) -or
+    [double]::IsInfinity($WriterLockTimeoutSeconds) -or
+    $WriterLockTimeoutSeconds -lt 0.0) {
+    throw 'WriterLockTimeoutSeconds must be finite and non-negative.'
+}
+
+function Acquire-ValtanCanonicalWriterLock {
+    $lockPath = [IO.Path]::GetFullPath((Join-Path $repoRoot `
+        'out\ValtanPatternTransactions\create-pattern.lock'))
+    [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($lockPath)) |
+        Out-Null
+    $stream = [IO.FileStream]::new(
+        $lockPath,
+        [IO.FileMode]::OpenOrCreate,
+        [IO.FileAccess]::ReadWrite,
+        [IO.FileShare]::ReadWrite)
+    try {
+        if ($stream.Length -lt 1) {
+            $stream.SetLength(1)
+            $stream.Flush($true)
+        }
+        $deadline = [DateTime]::UtcNow.AddSeconds($WriterLockTimeoutSeconds)
+        while ($true) {
+            try {
+                $stream.Lock(0L, 1L)
+                $nonce = [Guid]::NewGuid().ToString('N')
+                [byte[]]$markerBytes = [Text.Encoding]::ASCII.GetBytes(
+                    "lostark.valtan-canonical-writer-owner-v1:${PID}:${nonce}`n")
+                $stream.SetLength(1L + $markerBytes.Length)
+                $stream.Position = 0L
+                $stream.WriteByte(0)
+                $stream.Position = 1L
+                $stream.Write($markerBytes, 0, $markerBytes.Length)
+                $stream.Flush($true)
+                return [pscustomobject]@{
+                    Stream = $stream
+                    OwnerPid = $PID
+                    Nonce = $nonce
+                }
+            }
+            catch [IO.IOException] {
+                if ([DateTime]::UtcNow -ge $deadline) {
+                    throw 'Timed out waiting for the shared Valtan canonical writer admission.'
+                }
+                Start-Sleep -Milliseconds 25
+            }
+        }
+    }
+    catch {
+        $stream.Dispose()
+        throw
+    }
 }
 
 function Assert-StableId([string]$Value, [string]$Context) {
@@ -364,7 +418,14 @@ function Invoke-ValtanProjector([string]$ProjectorMode) {
         throw "Missing Valtan split projector: $projector"
     }
     try {
-        & $projector -Mode $ProjectorMode -RepositoryRoot $repoRoot
+        if ($ProjectorMode -ceq 'PublishV2') {
+            & $projector -Mode $ProjectorMode -RepositoryRoot $repoRoot `
+                -WriterLockAlreadyHeld `
+                -WriterLockOwnerNonce ([string]$writerLock.Nonce)
+        }
+        else {
+            & $projector -Mode $ProjectorMode -RepositoryRoot $repoRoot
+        }
     }
     catch {
         throw "Valtan split projector $ProjectorMode failed: $($_.Exception.Message)"
@@ -433,28 +494,11 @@ if ($candidateIndex.CuesById.Count -ne
     throw 'Candidate Valtan presentation removed an unexpected Effect cue.'
 }
 
-$sha256 = [Security.Cryptography.SHA256]::Create()
+$writerLock = $null
+$writerLockHeld = $false
 try {
-    $mutexHash = $sha256.ComputeHash(
-        [Text.Encoding]::UTF8.GetBytes($repoRoot.ToUpperInvariant()))
-}
-finally {
-    $sha256.Dispose()
-}
-$mutexName = 'Local\LostArk.ValtanPatternEffectUnlink.' +
-    (([BitConverter]::ToString($mutexHash) -replace '-', '').Substring(0, 24))
-$mutex = [Threading.Mutex]::new($false, $mutexName)
-$mutexHeld = $false
-try {
-    try {
-        $mutexHeld = $mutex.WaitOne([TimeSpan]::FromSeconds(30))
-    }
-    catch [Threading.AbandonedMutexException] {
-        $mutexHeld = $true
-    }
-    if (-not $mutexHeld) {
-        throw 'Timed out waiting for the Valtan Pattern Effect unlink transaction.'
-    }
+    $writerLock = Acquire-ValtanCanonicalWriterLock
+    $writerLockHeld = $true
 
     Assert-CurrentBytes $presentationPath $source.Bytes `
         'Valtan Pattern Effect unlink preflight'
@@ -549,6 +593,17 @@ try {
     }
 }
 finally {
-    if ($mutexHeld) { $mutex.ReleaseMutex() }
-    $mutex.Dispose()
+    if ($writerLockHeld) {
+        try {
+            $writerLock.Stream.SetLength(1L)
+            $writerLock.Stream.Position = 0L
+            $writerLock.Stream.WriteByte(0)
+            $writerLock.Stream.Flush($true)
+            $writerLock.Stream.Unlock(0L, 1L)
+        }
+        finally { $writerLock.Stream.Dispose() }
+    }
+    elseif ($null -ne $writerLock) {
+        $writerLock.Stream.Dispose()
+    }
 }

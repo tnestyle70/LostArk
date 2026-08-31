@@ -17,6 +17,19 @@ namespace
 	constexpr const char* BOSS = "boss.valtan.center";
 	constexpr uint32_t EPOCH = 17u;
 
+	GameplayDataRevision MakeDefinitionRevision(const uint8_t Value = 0x42u)
+	{
+		GameplayDataRevision Revision{};
+		Revision.Bytes.fill(Value);
+		return Revision;
+	}
+
+	VALTAN_PATTERN_SOUND_SOURCE_RECEIPT SoundReceipt(
+		const char Value = 'a')
+	{
+		return { std::string(64u, Value), 1u };
+	}
+
 	void Require(bool Condition, const char* Message)
 	{
 		if (!Condition)
@@ -106,6 +119,8 @@ namespace
 	{
 		CValtanPatternFlowService& Service = CValtanPatternFlowService::Get();
 		VALTAN_PATTERN_FLOW_DEFINITION Flow = MakeFlow();
+		GameplayDataRevision ExpectedDefinitionRevision =
+			MakeDefinitionRevision();
 		C2S_DEBUG_VALTAN_PATTERN_FLOW_START Current;
 		std::string Status;
 
@@ -115,7 +130,8 @@ namespace
 		C2S_DEBUG_VALTAN_PATTERN_FLOW_START Send(char Revision = 'a')
 		{
 			Require(Service.Start(BOSS, Flow, std::string(64u, Revision),
-				Flow.Slots.front().strSlotId, Status), "Flow start failed");
+				Flow.Slots.front().strSlotId, ExpectedDefinitionRevision,
+				Status), "Flow start failed");
 			return Input().SentStarts.back();
 		}
 
@@ -160,6 +176,8 @@ namespace
 			Replacement.Slots[1].strPatternId == "VALTAN_WHIRLWIND" &&
 			Replacement.Slots[2].strPatternId == "VALTAN_FOUR_SLASH" &&
 			Replacement.strStartSlotId == F.Flow.Slots.front().strSlotId &&
+			Replacement.ExpectedDefinitionRevision ==
+				F.ExpectedDefinitionRevision &&
 			F.Service.Get_Snapshot().iRequestSequence == F.Current.iRequestSequence &&
 			F.Service.Get_Snapshot().strFlowRevision == std::string(64u, 'a'),
 			"restart reordered sparse IDs or replaced the current run before acceptance");
@@ -214,23 +232,33 @@ namespace
 		F.Activate();
 		F.Input().bSendSucceeds = false;
 		Require(!F.Service.Start(BOSS, F.Flow, std::string(64u, 'b'),
-			F.Flow.Slots.front().strSlotId, F.Status), "failed transport accepted restart");
+			F.Flow.Slots.front().strSlotId, F.ExpectedDefinitionRevision,
+			F.Status), "failed transport accepted restart");
 		F.Input().bSendSucceeds = true;
 		auto Invalid = F.Flow;
 		Invalid.Slots[1].strSlotId = Invalid.Slots.front().strSlotId;
 		Require(!F.Service.Start(BOSS, Invalid, std::string(64u, 'b'),
-			Invalid.Slots.front().strSlotId, F.Status), "duplicate slot accepted");
+			Invalid.Slots.front().strSlotId, F.ExpectedDefinitionRevision,
+			F.Status), "duplicate slot accepted");
 		Invalid = F.Flow;
 		Invalid.Slots[1].strPatternId = "../invalid";
 		Require(!F.Service.Start(BOSS, Invalid, std::string(64u, 'b'),
-			Invalid.Slots.front().strSlotId, F.Status), "invalid stable ID accepted");
-		Require(!F.Service.Start(BOSS, F.Flow, "bad revision", F.Flow.Slots.front().strSlotId, F.Status),
+			Invalid.Slots.front().strSlotId, F.ExpectedDefinitionRevision,
+			F.Status), "invalid stable ID accepted");
+		Require(!F.Service.Start(BOSS, F.Flow, "bad revision",
+			F.Flow.Slots.front().strSlotId, F.ExpectedDefinitionRevision,
+			F.Status),
 			"invalid revision accepted");
-		Require(!F.Service.Start(BOSS, F.Flow, std::string(64u, 'b'), "missing.slot", F.Status),
+		Require(!F.Service.Start(BOSS, F.Flow, std::string(64u, 'b'),
+			"missing.slot", F.ExpectedDefinitionRevision, F.Status),
 			"missing start slot accepted");
+		Require(!F.Service.Start(BOSS, F.Flow, std::string(64u, 'b'),
+			F.Flow.Slots.front().strSlotId, GameplayDataRevision{}, F.Status),
+			"missing expected definition revision accepted");
 		F.Input().bPendingNextCommand = true;
 		Require(!F.Service.Start(BOSS, F.Flow, std::string(64u, 'b'),
-			F.Flow.Slots.front().strSlotId, F.Status), "restart raced an unresolved Next control");
+			F.Flow.Slots.front().strSlotId, F.ExpectedDefinitionRevision,
+			F.Status), "restart raced an unresolved Next control");
 		Require(F.Input().SentStarts.size() == 1u && !F.Service.Has_PendingStart() &&
 			F.Service.Get_Snapshot().eState == VALTAN_PATTERN_FLOW_STATE::ACTIVE &&
 			F.Service.Get_Snapshot().iRoomFlowEpoch == EPOCH,
@@ -248,6 +276,11 @@ namespace
 		auto WrongSlot = Event(Replacement, VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ACTIVE, 1u, EPOCH + 1u);
 		WrongSlot.strCurrentPatternId = Replacement.Slots[1].strPatternId;
 		F.Input().Lifecycles.push_back(WrongSlot);
+		auto WrongDefinition = Event(
+			Replacement, VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ACTIVE,
+			1u, EPOCH + 1u);
+		WrongDefinition.PinnedDefinitionRevision.Bytes.front() ^= 0xffu;
+		F.Input().Lifecycles.push_back(WrongDefinition);
 		F.Service.Update();
 		Require(F.Service.Has_PendingStart() && F.Service.Get_Snapshot().iRoomFlowEpoch == EPOCH,
 			"a valid-looking but wrong slot lifecycle confirmed restart");
@@ -282,7 +315,8 @@ namespace
 			F.Service.Get_Snapshot().iRoomFlowEpoch == EPOCH && F.Service.Has_PlaybackOwnership(),
 			"restart timeout discarded the old run or unresolved ownership");
 		Require(!F.Service.Start(BOSS, F.Flow, std::string(64u, 'c'),
-			F.Flow.Slots.front().strSlotId, F.Status) &&
+			F.Flow.Slots.front().strSlotId, F.ExpectedDefinitionRevision,
+			F.Status) &&
 			!F.Service.Stop_AfterCurrent(F.Status), "pending restart allowed ambiguous new controls");
 		F.Input().bSendSucceeds = false;
 		Require(!F.Service.Retry_Start(F.Status) && F.Service.Has_PendingStart(),
@@ -499,7 +533,8 @@ namespace
 		F.Input().Results.push_back(Verdict(Replacement, 0u, VALTAN_PATTERN_FLOW_RESULT::REJECTED_CONFLICT));
 		F.Service.Update();
 		Require(!F.Service.Start(BOSS, F.Flow, std::string(64u, 'c'),
-			F.Flow.Slots.front().strSlotId, F.Status) &&
+			F.Flow.Slots.front().strSlotId, F.ExpectedDefinitionRevision,
+			F.Status) &&
 			F.Service.Get_Snapshot().iRequestSequence == F.Current.iRequestSequence,
 			"Flow start sequence wrapped into an old wire identity");
 	}
@@ -518,7 +553,7 @@ namespace
 		const std::string Revision(64u, 'a');
 		Require(!F.Service.Start(
 				BOSS, F.Flow, Revision, F.Flow.Slots.front().strSlotId,
-				F.Status) &&
+				F.ExpectedDefinitionRevision, F.Status) &&
 			F.Input().SentStarts.empty() &&
 			!F.Service.Has_PendingStart() &&
 			!F.Service.Has_PlaybackOwnership(),
@@ -527,7 +562,7 @@ namespace
 		F.Flow.Slots.pop_back();
 		Require(F.Service.Start(
 				BOSS, F.Flow, Revision, F.Flow.Slots.front().strSlotId,
-				F.Status) &&
+				F.ExpectedDefinitionRevision, F.Status) &&
 			F.Input().SentStarts.size() == 1u &&
 			F.Input().SentStarts.back().Slots.size() ==
 				MAX_VALTAN_PATTERN_FLOW_SLOTS &&
@@ -538,6 +573,63 @@ namespace
 			F.Service.Has_PendingStart() &&
 			F.Service.Has_PlaybackOwnership(),
 			"255-slot Flow did not preserve the exact ordered Client request");
+	}
+
+	void VerifyPatternSoundReceiptPinsFlowAndEverySlotOccurrence()
+	{
+		Fixture Invalid;
+		Require(!Invalid.Service.Start(
+				BOSS, Invalid.Flow, std::string(64u, 'a'),
+				Invalid.Flow.Slots.front().strSlotId,
+				Invalid.ExpectedDefinitionRevision,
+				VALTAN_PATTERN_SOUND_SOURCE_RECEIPT{}, Invalid.Status) &&
+			Invalid.Input().SentStarts.empty(),
+			"Flow accepted a missing S receipt or sent before fail-closed validation");
+		Fixture F;
+		const auto SoundA = SoundReceipt('a');
+		const auto SoundB = SoundReceipt('b');
+		Require(F.Service.Start(
+				BOSS, F.Flow, std::string(64u, 'a'),
+				F.Flow.Slots.front().strSlotId,
+				F.ExpectedDefinitionRevision, SoundA, F.Status),
+			"Flow rejected a valid exact Pattern Sound receipt");
+		F.Current = F.Input().SentStarts.back();
+		Require(F.Service.Get_PendingStart().
+				PinnedPatternSoundSourceReceipt == SoundA &&
+			F.Service.Has_PatternSoundMutationBarrier(),
+			"pending Flow Start did not pin S or expose its mutation barrier");
+		F.Input().Results.push_back(Verdict(F.Current));
+		F.Input().Lifecycles.push_back(Event(
+			F.Current, VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ACTIVE, 1u));
+		F.Service.Update();
+		Require(F.Service.Get_Snapshot().PinnedPatternSoundSourceReceipt ==
+				SoundA &&
+			F.Service.Verify_PatternSoundSourceReceipt(SoundA, F.Status) &&
+			!F.Service.Verify_PatternSoundSourceReceipt(SoundB, F.Status),
+			"active Flow did not retain or verify its exact S receipt");
+		auto SecondSlot = Event(
+			F.Current, VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ACTIVE, 2u);
+		F.Input().Lifecycles.push_back(SecondSlot);
+		F.Service.Update();
+		Require(F.Service.Get_Snapshot().iCurrentSlotOrdinal == 2u &&
+			F.Service.Get_Snapshot().PinnedPatternSoundSourceReceipt == SoundA,
+			"Flow auto-next slot transition lost its pinned S receipt");
+		Require(!F.Service.Start(
+				BOSS, F.Flow, std::string(64u, 'b'),
+				F.Flow.Slots.front().strSlotId,
+				F.ExpectedDefinitionRevision, SoundB, F.Status),
+			"active Flow accepted a replacement pinned to a foreign S receipt");
+
+		Fixture Retry;
+		Require(Retry.Service.Start(
+				BOSS, Retry.Flow, std::string(64u, 'a'),
+				Retry.Flow.Slots.front().strSlotId,
+				Retry.ExpectedDefinitionRevision, SoundA, Retry.Status),
+			"Flow retry fixture could not submit Start");
+		Retry.Advance(5100u);
+		Require(!Retry.Service.Retry_Start(SoundB, Retry.Status) &&
+			Retry.Service.Retry_Start(SoundA, Retry.Status),
+			"unconfirmed Flow Start did not bind exact retry to S");
 	}
 }
 
@@ -555,7 +647,8 @@ int Run_ValtanPatternFlowServiceTests()
 		{ "stop timeout retains identity and retired controls stay retired", VerifyStopTimeoutAndRetiredControl },
 		{ "all data-driven same-slot occurrences keep a correlated wrap-safe cursor", VerifyDataDrivenSameSlotOccurrenceCursor },
 		{ "request identity exhaustion never wraps", VerifyRequestIdentityExhaustion },
-		{ "255-slot Client request succeeds and 256 is atomic", VerifyMaximumSlotBoundary }
+		{ "255-slot Client request succeeds and 256 is atomic", VerifyMaximumSlotBoundary },
+		{ "Pattern Sound S pins Flow and every slot occurrence", VerifyPatternSoundReceiptPinsFlowAndEverySlotOccurrence }
 	};
 	int Failed = 0;
 	for (const auto& [Name, Test] : Tests)

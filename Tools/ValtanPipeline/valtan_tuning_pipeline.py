@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import contextlib
 import copy
 import ctypes
 import hashlib
@@ -23,10 +24,23 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import uuid
 from collections import Counter
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Iterable, Iterator, Mapping, Sequence
+
+try:
+    from Tools.GameplayPipeline.valtan_presentation_generation import (
+        PresentationGeneration,
+        build_presentation_generation,
+    )
+except ModuleNotFoundError:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from Tools.GameplayPipeline.valtan_presentation_generation import (
+        PresentationGeneration,
+        build_presentation_generation,
+    )
 
 
 MASTER_REL = "Data/Valtan/Valtan.pattern.json"
@@ -51,13 +65,16 @@ CAMERA_REL = "Data/Encounters/Valtan/ValtanCinematicCamera.json"
 WORLD_PRODUCT_REL = "Data/Encounters/Valtan/ValtanWorldEvents.json"
 BINDINGS_REL = "Data/Animation/Authored/Valtan/Valtan.patternbindings.json"
 CUES_REL = "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
+SHAKE_CUES_REL = "Data/Animation/Authored/Valtan/Valtan.patternshakecues.json"
 BOSS_CATALOG_REL = "Data/Actors/BossCatalog.json"
 BOSS_PROFILES_REL = "Data/Balance/BossProfiles.json"
 DAMAGE_REL = "Data/Balance/DamageProfiles.json"
 EFFECT_CATALOG_REL = "Data/Effects/EffectCatalog.json"
 PROVENANCE_REL = "Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json"
 GAMEPLAY_BOOTSTRAP_REL = "Runtime/Gameplay/Gameplay.bootstrap"
-GAMEPLAY_BOOTSTRAP_VERSION = 26
+GAMEPLAY_BOOTSTRAP_VERSION = 27
+
+CANONICAL_WRITER_LOCK_REL = "out/ValtanPatternTransactions/create-pattern.lock"
 
 SCRIPTED_SEQUENCE_MODE = "ORDERED_ONCE_THEN_IDLE"
 
@@ -65,6 +82,9 @@ ANIMATION_MODE_CLIP_SEQUENCE = "CLIP_SEQUENCE"
 ANIMATION_MODE_NONE = "NONE"
 CUE_TIMING_BASIS_CLIP_OCCURRENCE = "CLIP_OCCURRENCE"
 CUE_TIMING_BASIS_STAGE_CLOCK = "STAGE_CLOCK"
+COMPOSITION_CUE_ID_PREFIX = "cue.valtan.composition."
+DIRECT_AUTHORED_EFFECT_KIND = "DIRECT_AUTHORED_DOCUMENT"
+SUPPORTED_AUTHORED_EFFECT_VERSIONS = frozenset((13, 15))
 
 REPOSITORY_PRODUCT_ARTIFACTS = (
     ENCOUNTER_REL,
@@ -159,6 +179,16 @@ MANUAL_SERVER_AUDITION = "MANUAL_SERVER_AUDITION"
 ANIMATION_INTAKE_ONLY = "ANIMATION_INTAKE_ONLY"
 DERIVED_SERVER_PATTERN = "DERIVED_SERVER_PATTERN"
 AUDITION_ONLY = "AUDITION_ONLY"
+SHARED_CAPTURE_FRAGMENT_STAGE_IDS = {
+    "VALTAN_TRASH_CATCH_IF": (
+        "STEP_07", "STEP_08", "CATCH_COUNTER", "CATCH_PRE_IMPACT",
+        "CATCH_SLAM", "EXECUTE_TAIL", "RUSH_MISS", "GROGGY",
+    ),
+    "VALTAN_TRASH_CATCH_SUCCESS": (
+        "CATCH_COUNTER", "CATCH_PRE_IMPACT", "CATCH_SLAM", "EXECUTE_TAIL",
+    ),
+    "VALTAN_TRASH_CATCH_FAIL": ("RUSH_MISS",),
+}
 ALLOWED_MAPPING_BASES = frozenset(
     (
         "CURRENT_PRODUCT_BASELINE",
@@ -259,6 +289,93 @@ class PipelineError(RuntimeError):
             "errorCode": self.error_code,
             "message": str(self),
         }
+
+
+@contextlib.contextmanager
+def _exclusive_canonical_writer_admission(
+    root: Path,
+    *,
+    timeout_seconds: float = 0.0,
+) -> Iterator[tuple[int, str]]:
+    """Serialize a candidate snapshot with every canonical Valtan writer.
+
+    Create Pattern, typed source commits, Product projection and the Effect
+    unlink transaction all use byte zero of this retained file.  Keeping the
+    lock path after release is required: deleting it while another process is
+    waiting would allow two independent lock files to exist.
+    """
+
+    if not math.isfinite(timeout_seconds) or timeout_seconds < 0.0:
+        raise PipelineError(
+            "canonical writer lock timeout must be finite and non-negative"
+        )
+    lock_path = root.resolve() / CANONICAL_WRITER_LOCK_REL
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        handle = lock_path.open("a+b")
+    except OSError as exc:
+        raise PipelineError(
+            f"cannot open Valtan canonical writer admission: {exc}"
+        ) from exc
+
+    acquired = False
+    deadline = time.monotonic() + timeout_seconds
+    try:
+        while True:
+            try:
+                handle.seek(0)
+                if os.name == "nt":
+                    import msvcrt
+
+                    if lock_path.stat().st_size < 1:
+                        handle.write(b"\0")
+                        handle.flush()
+                        os.fsync(handle.fileno())
+                        handle.seek(0)
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                acquired = True
+                break
+            except (OSError, BlockingIOError):
+                if time.monotonic() >= deadline:
+                    raise PipelineError(
+                        "Valtan canonical writer admission is held by another process"
+                    )
+                time.sleep(min(0.025, max(0.0, deadline - time.monotonic())))
+        owner_nonce = uuid.uuid4().hex
+        marker = (
+            f"lostark.valtan-canonical-writer-owner-v1:"
+            f"{os.getpid()}:{owner_nonce}\n"
+        ).encode("ascii")
+        handle.seek(0)
+        handle.truncate(1 + len(marker))
+        handle.write(b"\0" + marker)
+        handle.flush()
+        os.fsync(handle.fileno())
+        yield os.getpid(), owner_nonce
+    finally:
+        if acquired:
+            try:
+                handle.seek(0)
+                handle.truncate(1)
+                handle.write(b"\0")
+                handle.flush()
+                os.fsync(handle.fileno())
+                handle.seek(0)
+                if os.name == "nt":
+                    import msvcrt
+
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    import fcntl
+
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            except OSError:
+                pass
+        handle.close()
 
 
 class InjectedFailure(PipelineError):
@@ -366,6 +483,48 @@ def read_text(path: Path) -> str:
         return data.decode("utf-8", errors="strict")
     except UnicodeError as exc:
         raise PipelineError(f"invalid UTF-8 text: {path}: {exc}") from exc
+
+
+def validate_valtan_native_animation_source(
+    root: Path,
+    presentation: Mapping[str, Any],
+) -> dict[str, int]:
+    """Admit source windows against the exact body + AnimSet WModel pair.
+
+    This is a final source/publisher gate, not a generated Product reader.  A
+    checkout without the BossCatalog-owned native assets fails closed instead
+    of silently publishing clip names or explicit trims that CModel will clamp.
+    """
+
+    try:
+        from Tools.ValtanPipeline.valtan_native_animation_inventory import (
+            NativeAnimationInventoryError,
+            load_valtan_composite_animation_inventory,
+            validate_valtan_presentation_native_windows,
+        )
+    except ModuleNotFoundError:
+        from valtan_native_animation_inventory import (  # type: ignore[no-redef]
+            NativeAnimationInventoryError,
+            load_valtan_composite_animation_inventory,
+            validate_valtan_presentation_native_windows,
+        )
+    try:
+        inventory = load_valtan_composite_animation_inventory(root.resolve())
+        report = validate_valtan_presentation_native_windows(
+            presentation, inventory
+        )
+    except NativeAnimationInventoryError as exc:
+        raise PipelineError(
+            "Valtan native Animation source admission failed: " + str(exc)
+        ) from exc
+    return {
+        "inventoryClipCount": len(inventory.clips),
+        "occurrenceCount": report.occurrence_count,
+        "uniqueClipCount": report.unique_clip_count,
+        "nativeRemainderOccurrenceCount": (
+            report.native_remainder_occurrence_count
+        ),
+    }
 
 
 def json_text(value: Any) -> str:
@@ -557,6 +716,125 @@ def validate_cue_scale_policy(scale_policy: Any, context: str) -> str:
             f"{context}.scalePolicy.worldScale must preserve the 1.5 gameplay footprint"
         )
     return kind
+
+
+def validate_canonical_authored_effect_asset(
+    root: Path,
+    effect_catalog: dict[str, Any],
+    effect_asset_id: Any,
+    context: str,
+) -> dict[str, Any]:
+    """Resolve one Effect ID to the editable source contract consumed by Product.
+
+    Pattern authoring stores only the stable Effect asset ID.  Admission must
+    nevertheless prove that the selected catalog row is the canonical,
+    identity-derived authored document rather than a legacy payload, an alias,
+    or an arbitrary path.  The full Effect domain validator remains the owner
+    of element semantics; this join protects the Pattern source transaction
+    from admitting a target that cannot be opened and republished by Effect
+    Tool.
+    """
+
+    effect_asset_id = stable_id(effect_asset_id, f"{context}.effectAssetId")
+    exact(effect_catalog, ("formatVersion", "effects"), "EffectCatalog root")
+    if (
+        isinstance(effect_catalog["formatVersion"], bool)
+        or effect_catalog["formatVersion"] != 1
+        or not isinstance(effect_catalog["effects"], list)
+    ):
+        raise PipelineError("EffectCatalog header is invalid")
+    matches = [
+        row
+        for row in effect_catalog["effects"]
+        if isinstance(row, dict) and row.get("effectAssetId") == effect_asset_id
+    ]
+    if len(matches) != 1:
+        raise PipelineError(
+            f"{context}.effectAssetId must resolve exactly one EffectCatalog row: "
+            f"{effect_asset_id}"
+        )
+    row = matches[0]
+    allowed_fields = {
+        "effectAssetId",
+        "payloadKind",
+        "authoringPath",
+        "screenOverlayPresentationPath",
+    }
+    if (
+        not {"effectAssetId", "payloadKind", "authoringPath"}.issubset(row)
+        or not set(row).issubset(allowed_fields)
+        or row.get("payloadKind") != DIRECT_AUTHORED_EFFECT_KIND
+    ):
+        raise PipelineError(
+            f"{context}.effectAssetId is not a canonical authored Effect: "
+            f"{effect_asset_id}"
+        )
+    expected_relative = f"Effects/Authored/{effect_asset_id}.effect.json"
+    if row.get("authoringPath") != expected_relative:
+        raise PipelineError(
+            f"{context}.effectAssetId authoringPath is not identity-derived: "
+            f"{effect_asset_id}"
+        )
+    source = read_json(repo_path(root, "Data/" + expected_relative))
+    version = source.get("version")
+    if (
+        source.get("schema") != "lostark.effect-authoring"
+        or isinstance(version, bool)
+        or version not in SUPPORTED_AUTHORED_EFFECT_VERSIONS
+        or source.get("effectAssetId") != effect_asset_id
+        or not isinstance(source.get("elements"), list)
+    ):
+        raise PipelineError(
+            f"{context}.effectAssetId authored source contract is invalid: "
+            f"{effect_asset_id}"
+        )
+    return row
+
+
+def validate_effect_cue_catalog_contract(
+    root: Path,
+    master: Mapping[str, Any],
+    effect_catalog: dict[str, Any],
+) -> None:
+    """Keep Composition-authored cues joined to one canonical Effect source.
+
+    Legacy/Product-managed cues have their own frozen projection and migration
+    fixtures, some of which intentionally contain only the manifest inputs
+    needed by that contract.  ADD/UPDATE validates every selected Effect source
+    eagerly.  This repository-wide pass therefore persists the stronger source
+    dependency for cues created through the Composition authoring namespace
+    without retroactively changing the legacy fixture boundary.
+    """
+
+    admitted: set[str] = set()
+    for pattern in master.get("patterns", []):
+        if not isinstance(pattern, dict):
+            continue
+        for stage in pattern.get("stages", []):
+            if not isinstance(stage, dict):
+                continue
+            for cue in stage.get("effectCues", []):
+                if not isinstance(cue, dict):
+                    raise PipelineError("Pattern Effect cue must be an object")
+                cue_id = stable_id(
+                    cue.get("cueId"),
+                    f"{pattern.get('patternId', '')}/{stage.get('stageId', '')} Effect cue ID",
+                )
+                if not cue_id.startswith(COMPOSITION_CUE_ID_PREFIX):
+                    continue
+                effect_asset_id = stable_id(
+                    cue.get("effectAssetId"),
+                    f"{pattern.get('patternId', '')}/{stage.get('stageId', '')} Effect cue asset",
+                )
+                if effect_asset_id in admitted:
+                    continue
+                validate_canonical_authored_effect_asset(
+                    root,
+                    effect_catalog,
+                    effect_asset_id,
+                    f"{pattern.get('patternId', '')}/{stage.get('stageId', '')} Effect cue",
+                )
+                admitted.add(effect_asset_id)
 
 
 def repo_path(root: Path, relative: str) -> Path:
@@ -1083,6 +1361,42 @@ def _pattern_stage_fields(stage: Mapping[str, Any], *, joined: bool) -> tuple[st
     return fields
 
 
+def _validate_wait_stage_invariant(
+    stage: Mapping[str, Any], context: str
+) -> None:
+    """Keep WAIT as one clock-only authoring semantic.
+
+    WAIT projects to the existing ACTIVE Server Stage kind.  It must never
+    become a second gameplay stage type or silently acquire animation, hit,
+    motion, branch, event, Effect, or Camera authority.
+    """
+
+    if stage.get("sequenceRole") != "WAIT":
+        return
+    animation = stage.get("animation")
+    hit = stage.get("hit")
+    shape = hit.get("shape") if isinstance(hit, dict) else None
+    invalid = (
+        stage.get("stageKind") != "ACTIVE"
+        or not isinstance(animation, dict)
+        or animation.get("mode") != ANIMATION_MODE_NONE
+        or not isinstance(shape, dict)
+        or shape.get("kind") != "NONE"
+        or stage.get("motion") is not None
+        or stage.get("events") != []
+        or stage.get("branches") != []
+        or stage.get("effectCues") != []
+        or stage.get("cameraInvocations") != []
+        or stage.get("counterProxy") is not None
+        or stage.get("partDamagePolicy", "NORMAL") != "NORMAL"
+    )
+    if invalid:
+        raise PipelineError(
+            f"{context} WAIT must remain ACTIVE + animation NONE with no "
+            "gameplay/presentation payload"
+        )
+
+
 def _has_closed_stage_flag(stage: Mapping[str, Any], flag_id: str) -> bool:
     return _stage_flag_contract(stage, flag_id) == "CLOSED"
 
@@ -1182,7 +1496,58 @@ def _validate_pattern_stage_extensions(
             for value in motion["halfExtentsM"]:
                 number(value, f"{context}.motion.halfExtentsM", 1, 100)
         elif motion.get("kind") == "PORTAL_TARGET_RUSH":
-            exact(motion, ("kind",), f"{context}.motion")
+            exact(
+                motion,
+                ("kind", "retargetDelayMs", "speedMps", "distanceM"),
+                f"{context}.motion",
+            )
+            retarget_delay_ms = integer(
+                motion["retargetDelayMs"],
+                f"{context}.motion.retargetDelayMs",
+                0,
+                600000,
+            )
+            speed_mps = number(
+                motion["speedMps"], f"{context}.motion.speedMps", 0.000001, 1000
+            )
+            distance_m = number(
+                motion["distanceM"], f"{context}.motion.distanceM", 0.000001, 1000
+            )
+            stage_duration_ms = integer(
+                stage.get("durationMs"), f"{context}.durationMs", 1, 600000
+            )
+            travel_end_ms = retarget_delay_ms + distance_m / speed_mps * 1000.0
+            if travel_end_ms > stage_duration_ms + 0.000001:
+                raise PipelineError(
+                    f"{context}.motion target rush exceeds its Server stage clock"
+                )
+            hit = stage.get("hit")
+            schedule = hit.get("schedule") if isinstance(hit, dict) else None
+            offsets = (
+                schedule.get("offsetsMs")
+                if isinstance(schedule, dict)
+                and schedule.get("kind") == "EXPLICIT_OFFSETS"
+                else None
+            )
+            if not isinstance(offsets, list) or not offsets:
+                raise PipelineError(
+                    f"{context}.motion target rush requires explicit swept-hit offsets"
+                )
+            expected_offset = retarget_delay_ms
+            for offset in offsets:
+                if integer(offset, f"{context}.hit.schedule.offsetsMs", 0, 600000) != expected_offset:
+                    raise PipelineError(
+                        f"{context}.motion target rush hit offsets must start at retargetDelayMs and advance by 50 ms"
+                    )
+                if offset >= travel_end_ms:
+                    raise PipelineError(
+                        f"{context}.motion target rush hit offset occurs after travel ends"
+                    )
+                expected_offset += 50
+            if expected_offset < travel_end_ms - 0.000001:
+                raise PipelineError(
+                    f"{context}.motion target rush hit offsets do not cover the full travel"
+                )
         elif motion.get("kind") == "FORWARD":
             exact(motion, ("kind", "distance"), f"{context}.motion")
             number(motion["distance"], f"{context}.motion.distance", 0.000001, 1000)
@@ -2541,12 +2906,13 @@ def validate_manual_audition_animation_lineage(
     debug_presentation: dict[str, Any],
     promotion_manifest: dict[str, Any],
 ) -> None:
-    """Keep phase-2/3 Server auditions on the reviewed animation intake.
+    """Keep phase-2/3 Server auditions joined to reviewed intake provenance.
 
     Debug intake may leave target IDs and native clip lengths unresolved, but a
-    promoted MANUAL_SERVER_AUDITION must preserve the exact clip order, source
-    offsets, mapping basis, and playback rates.  The joined Product remains the
-    owner of explicit stage walls and loop/hold policy.
+    promoted MANUAL_SERVER_AUDITION retains its source-chain identity.  Its
+    initial Product must exact-match that intake.  Later typed Stage clock or
+    Sequence edits are marked SOURCE_REVIEWED_DELTA and may replace/reorder the
+    Product slots without rewriting the immutable debug intake.
     """
 
     exact(
@@ -2764,8 +3130,21 @@ def validate_manual_audition_animation_lineage(
         product_occurrences = [
             occurrence
             for stage in pattern["stages"]
-            for occurrence in stage["animation"]["occurrences"]
+            for occurrence in (
+                stage["animation"].get("occurrences", [])
+                if isinstance(stage.get("animation"), dict)
+                else []
+            )
         ]
+        has_reviewed_none_delta = any(
+            stage.get("sequenceRole") == "STEP"
+            and stage.get("animation") == {"mode": ANIMATION_MODE_NONE}
+            for stage in pattern["stages"]
+        )
+        has_authored_delta = has_reviewed_none_delta or any(
+            occurrence.get("mappingBasis") == "SOURCE_REVIEWED_DELTA"
+            for occurrence in product_occurrences
+        )
         if pattern_id == "VALTAN_TRASH":
             # The reviewed intake still owns the eight setup/rush clips. The
             # Product graph now owns real capture outcomes, not three separate
@@ -2788,6 +3167,11 @@ def validate_manual_audition_animation_lineage(
             if 420631 not in pattern["sourceActionIds"]:
                 raise PipelineError(f"{context} real groggy source action is missing")
             for branch_stage in pattern["stages"][8:]:
+                if any(
+                    occurrence.get("mappingBasis") == "SOURCE_REVIEWED_DELTA"
+                    for occurrence in branch_stage["animation"]["occurrences"]
+                ):
+                    continue
                 actual = [
                     (clip["clip"], clip["sourceStartMs"], clip["playMs"])
                     for clip in branch_stage["animation"]["occurrences"]
@@ -2797,21 +3181,21 @@ def validate_manual_audition_animation_lineage(
                     for clip in branch_stage["animation"]["occurrences"]
                 ):
                     raise PipelineError(f"{context} capture branch source slice drift")
-            product_occurrences = product_occurrences[:len(occurrences)]
-        trash_fragments = {
-            "VALTAN_TRASH_CATCH_IF": ["STEP_07", "STEP_08", "CATCH_COUNTER", "CATCH_PRE_IMPACT",
-                                      "CATCH_SLAM", "EXECUTE_TAIL", "RUSH_MISS", "GROGGY"],
-            "VALTAN_TRASH_CATCH_SUCCESS": ["CATCH_COUNTER", "CATCH_PRE_IMPACT", "CATCH_SLAM", "EXECUTE_TAIL"],
-            "VALTAN_TRASH_CATCH_FAIL": ["RUSH_MISS"],
-        }
-        if pattern_id in trash_fragments:
+            if not has_authored_delta:
+                product_occurrences = product_occurrences[:len(occurrences)]
+        if pattern_id in SHARED_CAPTURE_FRAGMENT_STAGE_IDS:
             # These are now finite subgraphs of the reviewed main capture
             # pattern, not an unrelated replay of its old animation-only rows.
-            expected_ids = trash_fragments[pattern_id]
+            expected_ids = list(SHARED_CAPTURE_FRAGMENT_STAGE_IDS[pattern_id])
             if [stage["stageId"] for stage in pattern["stages"]] != expected_ids:
                 raise PipelineError(f"{context} shared capture fragment stage inventory drift")
             shared = {stage["stageId"]: stage for stage in patterns["VALTAN_TRASH"]["stages"]}
             for fragment in pattern["stages"]:
+                if any(
+                    occurrence.get("mappingBasis") == "SOURCE_REVIEWED_DELTA"
+                    for occurrence in fragment["animation"]["occurrences"]
+                ):
+                    continue
                 source_fragment = shared[fragment["stageId"]]
                 def slices(value: dict[str, Any]) -> list[tuple[Any, ...]]:
                     return [(clip["clip"], clip["sourceStartMs"], clip["playMs"],
@@ -2819,12 +3203,92 @@ def validate_manual_audition_animation_lineage(
                             for clip in value["animation"]["occurrences"]]
                 if slices(fragment) != slices(source_fragment) or fragment["durationMs"] != source_fragment["durationMs"]:
                     raise PipelineError(f"{context} shared capture fragment source slice drift")
+            if not has_authored_delta:
+                continue
+        def source_signature(source: Mapping[str, Any]) -> tuple[Any, ...]:
+            source_clip = source.get("clip")
+            return (
+                product_clip_name(source_clip)
+                if isinstance(source_clip, str)
+                else json.dumps(source_clip, sort_keys=True),
+                json.dumps(source.get("mappingBasis"), sort_keys=True),
+                json.dumps(source.get("sourceStartMs"), sort_keys=True),
+                json.dumps(source.get("playRate"), sort_keys=True),
+            )
+
+        def product_signature(product: Mapping[str, Any]) -> tuple[Any, ...]:
+            return (
+                product.get("clip"),
+                json.dumps(product.get("mappingBasis"), sort_keys=True),
+                json.dumps(product.get("sourceStartMs"), sort_keys=True),
+                json.dumps(product.get("playRate"), sort_keys=True),
+            )
+
+        immutable_product_occurrences = [
+            occurrence
+            for occurrence in product_occurrences
+            if occurrence.get("mappingBasis") != "SOURCE_REVIEWED_DELTA"
+        ]
+        immutable_intake_preserved = (
+            len(immutable_product_occurrences) == len(occurrences)
+            and Counter(map(product_signature, immutable_product_occurrences))
+            == Counter(map(source_signature, occurrences))
+        )
+        if has_authored_delta and not immutable_intake_preserved:
+            # The typed patch operation is the provenance boundary for the
+            # authored delta.  Still validate every immutable intake row so a
+            # malformed debug chain cannot hide behind an edited Product.
+            for ordinal, source in enumerate(occurrences):
+                occurrence_context = f"{context}.occurrences[{ordinal}]"
+                exact(
+                    source,
+                    (
+                        "clipOccurrenceId",
+                        "clip",
+                        "mappingBasis",
+                        "sourceStartMs",
+                        "playMs",
+                        "playRate",
+                        "repeatUntilStageEnd",
+                    ),
+                    occurrence_context,
+                )
+                stable_id(source["clip"], f"{occurrence_context}.clip")
+                mapping_basis(
+                    source["mappingBasis"],
+                    f"{occurrence_context}.mappingBasis",
+                )
+                integer(
+                    source["sourceStartMs"],
+                    f"{occurrence_context}.sourceStartMs",
+                    0,
+                    600000,
+                )
+                integer(
+                    source["playMs"],
+                    f"{occurrence_context}.playMs",
+                    0,
+                    600000,
+                )
+                number(
+                    source["playRate"],
+                    f"{occurrence_context}.playRate",
+                    0.000001,
+                    1000,
+                )
+                boolean(
+                    source["repeatUntilStageEnd"],
+                    f"{occurrence_context}.repeatUntilStageEnd",
+                )
+            continue
+        if has_authored_delta:
+            # Topology-authored slots are additive SOURCE_REVIEWED_DELTA rows.
+            # The immutable intake must remain an exact multiset; Stage order
+            # may change, but original clip identity cannot disappear.
             continue
         if len(product_occurrences) != len(occurrences):
             raise PipelineError(f"{context} Product occurrence count drift")
-        for ordinal, (source, product) in enumerate(
-            zip(occurrences, product_occurrences)
-        ):
+        for ordinal, source in enumerate(occurrences):
             occurrence_context = f"{context}.occurrences[{ordinal}]"
             exact(
                 source,
@@ -2839,11 +3303,11 @@ def validate_manual_audition_animation_lineage(
                 ),
                 occurrence_context,
             )
-            source_clip = stable_id(source["clip"], f"{occurrence_context}.clip")
+            stable_id(source["clip"], f"{occurrence_context}.clip")
             mapping_basis(
                 source["mappingBasis"], f"{occurrence_context}.mappingBasis"
             )
-            source_start_ms = integer(
+            integer(
                 source["sourceStartMs"],
                 f"{occurrence_context}.sourceStartMs",
                 0,
@@ -2852,7 +3316,7 @@ def validate_manual_audition_animation_lineage(
             integer(
                 source["playMs"], f"{occurrence_context}.playMs", 0, 600000
             )
-            play_rate = number(
+            number(
                 source["playRate"],
                 f"{occurrence_context}.playRate",
                 0.000001,
@@ -2862,15 +3326,10 @@ def validate_manual_audition_animation_lineage(
                 source["repeatUntilStageEnd"],
                 f"{occurrence_context}.repeatUntilStageEnd",
             )
-            if (
-                product_clip_name(source_clip) != product["clip"]
-                or source["mappingBasis"] != product["mappingBasis"]
-                or source_start_ms != product["sourceStartMs"]
-                or play_rate != product["playRate"]
-            ):
-                raise PipelineError(
-                    f"{occurrence_context} no longer matches joined Product"
-                )
+        if not immutable_intake_preserved:
+            raise PipelineError(
+                f"{context} no longer matches joined Product immutable intake"
+            )
 
 
 def validate_v2_master(
@@ -3102,6 +3561,7 @@ def validate_v2_master(
         if not migration_fixture or cue_id in MIGRATION_MANAGED_CUE_IDS
     }
     cue_ids: set[str] = set()
+    cue_occurrence_ids: set[str] = set()
     scale_policy_counts: Counter[str] = Counter()
     spawn_events: set[str] = set()
     world_events: list[tuple[str, str, str]] = []
@@ -3162,6 +3622,9 @@ def validate_v2_master(
                 stage,
                 _pattern_stage_fields(stage, joined=True),
                 f"pattern {pattern_id} stage {stage_id}",
+            )
+            _validate_wait_stage_invariant(
+                stage, f"pattern {pattern_id} stage {stage_id}"
             )
             _validate_pattern_stage_extensions(
                 stage, f"pattern {pattern_id} stage {stage_id}"
@@ -3270,7 +3733,12 @@ def validate_v2_master(
                 exact(animation, animation_fields, f"{pattern_id}/{stage_id}.animation")
                 if animation["endPolicy"] not in ("EXACT", "HOLD_LAST_POSE", "LOOP_TO_STAGE_END"):
                     raise PipelineError(f"invalid animation end policy: {pattern_id}/{stage_id}")
-                integer(animation["repeatCount"], f"{pattern_id}/{stage_id}.repeatCount", 1, 32)
+                repeat_count = integer(
+                    animation["repeatCount"],
+                    f"{pattern_id}/{stage_id}.repeatCount",
+                    1,
+                    32,
+                )
                 if not animation["occurrences"]:
                     raise PipelineError(f"stage has no animation occurrence: {pattern_id}/{stage_id}")
                 known_wall = 0.0
@@ -3304,6 +3772,13 @@ def validate_v2_master(
                         known_wall += play_ms / play_rate
                     if boolean(occurrence["repeatUntilStageEnd"], "repeatUntilStageEnd"):
                         loops += 1
+                if repeat_count > 1 and (
+                    repeat_count != len(animation["occurrences"])
+                    or len({row["clip"] for row in animation["occurrences"]}) != 1
+                ):
+                    raise PipelineError(
+                        f"repeatCount must describe explicit repetitions of one clip: {pattern_id}/{stage_id}"
+                    )
                 if animation["endPolicy"] == "EXACT" and (zero_play or loops or abs(known_wall - duration) > 2.0):
                     raise PipelineError(f"EXACT animation budget mismatch: {pattern_id}/{stage_id}")
                 if animation["endPolicy"] == "LOOP_TO_STAGE_END" and (zero_play != 1 or loops != 1 or known_wall >= duration):
@@ -3514,8 +3989,79 @@ def validate_v2_master(
                         f"unsupported Effect cue timing basis: {pattern_id}/{stage_id}"
                     )
                 cue_id = stable_id(cue["cueId"], f"{pattern_id}/{stage_id}.cueId")
+                occurrence_id = stable_id(
+                    cue["occurrenceId"],
+                    f"{pattern_id}/{stage_id} cue {cue_id}.occurrenceId",
+                )
+                stable_id(
+                    cue["effectAssetId"],
+                    f"{pattern_id}/{stage_id} cue {cue_id}.effectAssetId",
+                )
+                if occurrence_id in cue_occurrence_ids:
+                    raise PipelineError(
+                        f"duplicate managed cue occurrenceId: {occurrence_id}"
+                    )
+                cue_occurrence_ids.add(occurrence_id)
+                if cue["followPolicy"] not in ("follow", "snapshot"):
+                    raise PipelineError(f"unsupported Effect followPolicy: {cue_id}")
+                if cue["stopPolicy"] not in ("natural", "cue_end"):
+                    raise PipelineError(f"unsupported Effect stopPolicy: {cue_id}")
+                if cue["repeatPolicy"] not in ("once", "each_loop"):
+                    raise PipelineError(f"unsupported Effect repeatPolicy: {cue_id}")
+                if (cue["stopPolicy"] == "natural") != (
+                    cue.get("sourceEndMs") is None
+                ):
+                    raise PipelineError(
+                        f"Effect sourceEndMs/stopPolicy contract is invalid: {cue_id}"
+                    )
+                if (
+                    cue["repeatPolicy"] == "each_loop"
+                    and cue_timing_basis == CUE_TIMING_BASIS_CLIP_OCCURRENCE
+                    and occurrences_by_id[cue["clipOccurrenceId"]].get(
+                        "repeatUntilStageEnd"
+                    )
+                    is not True
+                ):
+                    raise PipelineError(
+                        f"each_loop Effect cue targets a non-loop occurrence: {cue_id}"
+                    )
+                transform = cue["localTransform"]
+                exact(
+                    transform,
+                    ("position", "rotationDegrees", "scale"),
+                    f"{pattern_id}/{stage_id} cue {cue_id}.localTransform",
+                )
+                _draft_float3(
+                    transform["position"],
+                    f"{pattern_id}/{stage_id} cue {cue_id}.localTransform.position",
+                    maximum_magnitude=100000.0,
+                )
+                _draft_float3(
+                    transform["rotationDegrees"],
+                    f"{pattern_id}/{stage_id} cue {cue_id}.localTransform.rotationDegrees",
+                    maximum_magnitude=360000.0,
+                )
+                _draft_float3(
+                    transform["scale"],
+                    f"{pattern_id}/{stage_id} cue {cue_id}.localTransform.scale",
+                    maximum_magnitude=1000.0,
+                    positive=True,
+                )
                 anchor_slot = stable_id(cue["anchorSlotId"], f"{cue_id}.anchorSlotId")
-                if anchor_slot.startswith("arena.center"):
+                if anchor_slot.startswith("pattern.target."):
+                    if (
+                        anchor_slot != "pattern.target.snapshot"
+                        or cue["followPolicy"] != "snapshot"
+                        or pattern["targetPolicy"] not in (
+                            "LOCK_NEAREST_ON_START",
+                            "LOCK_RANDOM_ALIVE_ON_START",
+                            "LOCK_RANDOM_ALIVE_BEHIND_ON_START",
+                        )
+                    ):
+                        raise PipelineError(
+                            f"{cue_id} target snapshot anchor requires one locked Server target"
+                        )
+                elif anchor_slot.startswith("arena.center"):
                     motion = pattern.get("serverMotion")
                     if (anchor_slot not in ("arena.center", "arena.center.facing")
                             or not isinstance(motion, dict)
@@ -3534,12 +4080,18 @@ def validate_v2_master(
                     f"{pattern_id}/{stage_id} cue {cue_id}",
                 )
                 expected_scale_kind = expected_cue_policies.get(cue_id)
-                if scale_kind != expected_scale_kind:
+                dynamic_cue = cue_id.startswith(COMPOSITION_CUE_ID_PREFIX)
+                if expected_scale_kind is None and not dynamic_cue:
+                    raise PipelineError(
+                        f"managed cue is outside the fixed or composition identity vocabulary: {cue_id}"
+                    )
+                if expected_scale_kind is not None and scale_kind != expected_scale_kind:
                     raise PipelineError(
                         f"managed cue scalePolicy migration mismatch: {cue_id} "
                         f"expected={expected_scale_kind} actual={scale_kind}"
                     )
-                scale_policy_counts[scale_kind] += 1
+                if expected_scale_kind is not None:
+                    scale_policy_counts[scale_kind] += 1
                 cue_ids.add(cue_id)
             for invocation in stage["cameraInvocations"]:
                 exact(
@@ -3553,10 +4105,10 @@ def validate_v2_master(
         _validate_pattern_counter_groggy_contract(
             pattern, f"pattern {pattern_id}"
         )
-    if not cue_ids.issubset(expected_cue_policies):
-        raise PipelineError("managed cue scalePolicy migration table coverage drift")
     live_expected_scale_policy_counts = Counter(
-        expected_cue_policies[cue_id] for cue_id in cue_ids
+        expected_cue_policies[cue_id]
+        for cue_id in cue_ids
+        if cue_id in expected_cue_policies
     )
     if scale_policy_counts != live_expected_scale_policy_counts:
         raise PipelineError(
@@ -3944,7 +4496,11 @@ def validate_gameplay_authoring(
         for leg in range(8):
             stage_id = f"STEP_{leg + 2:02d}"
             stage = warp_stages.get(stage_id)
-            if stage is None or stage.get("motion") != {"kind": "PORTAL_TARGET_RUSH"}:
+            if (
+                stage is None
+                or not isinstance(stage.get("motion"), dict)
+                or stage["motion"].get("kind") != "PORTAL_TARGET_RUSH"
+            ):
                 raise PipelineError(
                     f"VALTAN_WARP requires target-rush motion: {stage_id}"
                 )
@@ -5206,6 +5762,9 @@ def project_v2_products(
         docs[COMBAT_AUTHORING_REL],
         migration_fixture=migration_fixture,
     )
+    validate_effect_cue_catalog_contract(
+        root, master, docs[EFFECT_CATALOG_REL]
+    )
     if (
         not migration_fixture
         and master["decisionModel"]["scriptedSequence"] is None
@@ -5499,6 +6058,9 @@ def build_repository_product_projection(
     )
     validate_combat_authoring(docs[COMBAT_AUTHORING_REL])
     validate_balance_documents(docs[BOSS_PROFILES_REL], docs[DAMAGE_REL])
+    validate_valtan_native_animation_source(
+        root, docs[PRESENTATION_AUTHORING_REL]
+    )
     joined = join_v2_authoring(
         docs[GAMEPLAY_AUTHORING_REL],
         docs[PRESENTATION_AUTHORING_REL],
@@ -5698,8 +6260,35 @@ DRAFT_PATCH_OPERATIONS = {
     ),
     "SET_PATTERN_REPEAT_LIMIT": ("op", "patternId", "value"),
     "SET_PATTERN_RANGE": ("op", "patternId", "minimumRangeM", "maximumRangeM"),
+    "INSERT_MANUAL_STAGE_AFTER": (
+        "op",
+        "patternId",
+        "afterStageId",
+        "stageId",
+        "actionId",
+        "stageRole",
+        "durationMs",
+    ),
+    "REMOVE_MANUAL_STAGE": ("op", "patternId", "stageId"),
+    "MOVE_MANUAL_STAGE": (
+        "op",
+        "patternId",
+        "stageId",
+        "anchorStageId",
+        "placement",
+    ),
+    "SET_STAGE_KIND": ("op", "patternId", "stageId", "stageKind"),
     "SET_STAGE_DURATION": ("op", "patternId", "stageId", "durationMs"),
+    "SET_STAGE_ANIMATION": ("op", "patternId", "stageId", "animation"),
     "SET_STAGE_HIT": ("op", "patternId", "stageId", "hit"),
+    "SET_STAGE_PORTAL_RUSH_MOTION": (
+        "op",
+        "patternId",
+        "stageId",
+        "retargetDelayMs",
+        "speedMps",
+        "distanceM",
+    ),
     "SET_STAGE_COUNTER_WINDOW": (
         "op",
         "patternId",
@@ -5723,6 +6312,32 @@ DRAFT_PATCH_OPERATIONS = {
         "stageId",
         "occurrenceId",
         "localYawDegrees",
+    ),
+    "ADD_EFFECT_CUE": (
+        "op",
+        "patternId",
+        "stageId",
+        "actionId",
+        "cue",
+    ),
+    "UPDATE_EFFECT_CUE": (
+        "op",
+        "patternId",
+        "stageId",
+        "actionId",
+        "cueId",
+        "occurrenceId",
+        "cue",
+    ),
+    "REMOVE_EFFECT_CUE": (
+        "op",
+        "patternId",
+        "stageId",
+        "actionId",
+        "cueId",
+        "occurrenceId",
+        "effectAssetId",
+        "clipOccurrenceId",
     ),
     "SET_AXE_VOLLEY": (
         "op",
@@ -5919,6 +6534,629 @@ def _draft_stage(
     return matches[0]
 
 
+EFFECT_CUE_SOURCE_FIELDS = (
+    "cueId",
+    "occurrenceId",
+    "effectAssetId",
+    "clipOccurrenceId",
+    "sourceStartMs",
+    "sourceEndMs",
+    "anchorSlotId",
+    "followPolicy",
+    "stopPolicy",
+    "repeatPolicy",
+    "localTransform",
+    "scalePolicy",
+    "mappingBasis",
+)
+
+
+def _draft_effect_cues(
+    master: Mapping[str, Any],
+) -> Iterator[tuple[Mapping[str, Any], Mapping[str, Any], dict[str, Any]]]:
+    for pattern in master.get("patterns", []):
+        if not isinstance(pattern, dict):
+            continue
+        for stage in pattern.get("stages", []):
+            if not isinstance(stage, dict):
+                continue
+            for cue in stage.get("effectCues", []):
+                if isinstance(cue, dict):
+                    yield pattern, stage, cue
+
+
+def _draft_effect_cue_target_stage(
+    master: dict[str, Any], operation: Mapping[str, Any], ordinal: int
+) -> tuple[dict[str, Any], dict[str, Any], str]:
+    pattern = _draft_pattern(master, operation["patternId"], ordinal)
+    stage = _draft_stage(pattern, operation["stageId"], ordinal)
+    action_id = stable_id(
+        operation["actionId"], f"operations[{ordinal}].actionId"
+    )
+    if stage.get("actionId") != action_id:
+        raise _draft_error(
+            "effect cue actionId does not match its exact Pattern Stage",
+            operation_ordinal=ordinal,
+            pattern_id=pattern["patternId"],
+            stage_id=stage["stageId"],
+            field="actionId",
+            error_code="DEPENDENCY_MISMATCH",
+        )
+    if not isinstance(stage.get("effectCues"), list):
+        raise _draft_error(
+            "effect cue target Stage has no typed effectCues array",
+            operation_ordinal=ordinal,
+            pattern_id=pattern["patternId"],
+            stage_id=stage["stageId"],
+            field="stageId",
+            error_code="DEPENDENCY_MISMATCH",
+        )
+    return pattern, stage, action_id
+
+
+def _draft_float3(
+    value: Any,
+    context: str,
+    *,
+    maximum_magnitude: float,
+    positive: bool = False,
+) -> list[float]:
+    if not isinstance(value, list) or len(value) != 3:
+        raise PipelineError(f"{context} must be float3")
+    result: list[float] = []
+    for component_ordinal, component in enumerate(value):
+        component_context = f"{context}[{component_ordinal}]"
+        if isinstance(component, bool) or not isinstance(component, (int, float)):
+            raise PipelineError(f"{component_context} must be a finite number")
+        normalized = float(component)
+        if (
+            not math.isfinite(normalized)
+            or abs(normalized) > maximum_magnitude
+            or (positive and normalized <= 0.0)
+        ):
+            raise PipelineError(f"{component_context} is out of range")
+        result.append(normalized)
+    return result
+
+
+def _validate_draft_effect_cue_payload(
+    repository_root: Path | None,
+    effect_catalog: dict[str, Any] | None,
+    pattern: dict[str, Any],
+    stage: dict[str, Any],
+    cue: Any,
+    ordinal: int,
+) -> dict[str, Any]:
+    context = f"operations[{ordinal}].cue"
+    exact(cue, EFFECT_CUE_SOURCE_FIELDS, context)
+    cue_id = stable_id(cue["cueId"], f"{context}.cueId")
+    occurrence_id = stable_id(
+        cue["occurrenceId"], f"{context}.occurrenceId"
+    )
+    if (
+        cue_id not in MANAGED_CUE_SCALE_POLICIES
+        and not cue_id.startswith(COMPOSITION_CUE_ID_PREFIX)
+    ):
+        raise _draft_error(
+            f"new Effect cue identity must use {COMPOSITION_CUE_ID_PREFIX}",
+            operation_ordinal=ordinal,
+            pattern_id=pattern["patternId"],
+            stage_id=stage["stageId"],
+            field="cue.cueId",
+            error_code="STABLE_ID_NAMESPACE_INVALID",
+        )
+    if not occurrence_id.startswith(cue_id + ".occurrence."):
+        raise _draft_error(
+            "Effect cue occurrenceId must be derived from cueId",
+            operation_ordinal=ordinal,
+            pattern_id=pattern["patternId"],
+            stage_id=stage["stageId"],
+            field="cue.occurrenceId",
+            error_code="STABLE_ID_NAMESPACE_INVALID",
+        )
+
+    effect_asset_id = stable_id(
+        cue["effectAssetId"], f"{context}.effectAssetId"
+    )
+    if repository_root is None or effect_catalog is None:
+        raise _draft_error(
+            "Effect cue authoring requires the physical EffectCatalog/source admission",
+            operation_ordinal=ordinal,
+            pattern_id=pattern["patternId"],
+            stage_id=stage["stageId"],
+            field="cue.effectAssetId",
+            error_code="DEPENDENCY_ADMISSION_UNAVAILABLE",
+        )
+    try:
+        validate_canonical_authored_effect_asset(
+            repository_root,
+            effect_catalog,
+            effect_asset_id,
+            context,
+        )
+    except PipelineError as exc:
+        raise _draft_error(
+            str(exc),
+            operation_ordinal=ordinal,
+            pattern_id=pattern["patternId"],
+            stage_id=stage["stageId"],
+            field="cue.effectAssetId",
+            error_code="EFFECT_SOURCE_DEPENDENCY_INVALID",
+        ) from exc
+
+    animation = stage.get("animation")
+    if (
+        not isinstance(animation, dict)
+        or animation.get("mode", ANIMATION_MODE_CLIP_SEQUENCE)
+        != ANIMATION_MODE_CLIP_SEQUENCE
+        or not isinstance(animation.get("occurrences"), list)
+    ):
+        raise _draft_error(
+            "Effect cue requires a CLIP_SEQUENCE Stage",
+            operation_ordinal=ordinal,
+            pattern_id=pattern["patternId"],
+            stage_id=stage["stageId"],
+            field="cue.clipOccurrenceId",
+            error_code="DEPENDENCY_MISMATCH",
+        )
+    occurrences_by_id = unique_index(
+        animation["occurrences"],
+        "clipOccurrenceId",
+        f"{pattern['patternId']}/{stage['stageId']} animation occurrences",
+    )
+    try:
+        occurrence = validate_cue_animation_join(cue, occurrences_by_id, context)
+    except PipelineError as exc:
+        raise _draft_error(
+            str(exc),
+            operation_ordinal=ordinal,
+            pattern_id=pattern["patternId"],
+            stage_id=stage["stageId"],
+            field="cue.clipOccurrenceId",
+            error_code="DEPENDENCY_MISMATCH",
+        ) from exc
+
+    follow_policy = cue["followPolicy"]
+    stop_policy = cue["stopPolicy"]
+    repeat_policy = cue["repeatPolicy"]
+    if follow_policy not in ("follow", "snapshot"):
+        raise PipelineError(f"{context}.followPolicy is unsupported")
+    if stop_policy not in ("natural", "cue_end"):
+        raise PipelineError(f"{context}.stopPolicy is unsupported")
+    if repeat_policy not in ("once", "each_loop"):
+        raise PipelineError(f"{context}.repeatPolicy is unsupported")
+    if (stop_policy == "natural") != (cue["sourceEndMs"] is None):
+        raise PipelineError(
+            f"{context}.sourceEndMs must be null exactly for natural stopPolicy"
+        )
+    if repeat_policy == "each_loop" and occurrence.get("repeatUntilStageEnd") is not True:
+        raise _draft_error(
+            "each_loop Effect cue must target a looping animation occurrence",
+            operation_ordinal=ordinal,
+            pattern_id=pattern["patternId"],
+            stage_id=stage["stageId"],
+            field="cue.repeatPolicy",
+            error_code="DEPENDENCY_MISMATCH",
+        )
+
+    anchor_slot = stable_id(cue["anchorSlotId"], f"{context}.anchorSlotId")
+    if anchor_slot.startswith("pattern.target."):
+        if (
+            anchor_slot != "pattern.target.snapshot"
+            or follow_policy != "snapshot"
+            or pattern.get("targetPolicy")
+            not in (
+                "LOCK_NEAREST_ON_START",
+                "LOCK_RANDOM_ALIVE_ON_START",
+                "LOCK_RANDOM_ALIVE_BEHIND_ON_START",
+            )
+        ):
+            raise PipelineError(
+                f"{context}.anchorSlotId requires one locked Server target snapshot"
+            )
+    elif anchor_slot.startswith("arena.center"):
+        motion = pattern.get("serverMotion")
+        if (
+            anchor_slot not in ("arena.center", "arena.center.facing")
+            or not isinstance(motion, dict)
+            or motion.get("kind") != "LEAP_TO_ANCHOR"
+            or motion.get("moveToAnchorBeforeTakeoff") is not True
+            or follow_policy != "snapshot"
+        ):
+            raise PipelineError(
+                f"{context}.anchorSlotId requires a fixed center approach"
+            )
+        if anchor_slot == "arena.center.facing" and (
+            pattern.get("aimPolicy") != "LOCK_FACING_ON_START"
+            or pattern.get("targetPolicy") != "LOCK_RANDOM_ALIVE_ON_START"
+        ):
+            raise PipelineError(
+                f"{context}.anchorSlotId facing requires one locked random target"
+            )
+
+    local_transform = cue["localTransform"]
+    exact(
+        local_transform,
+        ("position", "rotationDegrees", "scale"),
+        f"{context}.localTransform",
+    )
+    _draft_float3(
+        local_transform["position"],
+        f"{context}.localTransform.position",
+        maximum_magnitude=100000.0,
+    )
+    _draft_float3(
+        local_transform["rotationDegrees"],
+        f"{context}.localTransform.rotationDegrees",
+        maximum_magnitude=360000.0,
+    )
+    _draft_float3(
+        local_transform["scale"],
+        f"{context}.localTransform.scale",
+        maximum_magnitude=1000.0,
+        positive=True,
+    )
+    scale_kind = validate_cue_scale_policy(cue["scalePolicy"], context)
+    expected_scale_kind = MANAGED_CUE_SCALE_POLICIES.get(cue_id)
+    if expected_scale_kind is not None and scale_kind != expected_scale_kind:
+        raise PipelineError(
+            f"{context}.scalePolicy.kind must preserve {cue_id} as "
+            f"{expected_scale_kind}"
+        )
+    mapping_basis(cue["mappingBasis"], f"{context}.mappingBasis")
+    return copy.deepcopy(cue)
+
+
+def _assert_effect_cue_identity_available(
+    master: Mapping[str, Any],
+    cue: Mapping[str, Any],
+    ordinal: int,
+    *,
+    ignored: Mapping[str, Any] | None = None,
+) -> None:
+    cue_id = cue["cueId"]
+    occurrence_id = cue["occurrenceId"]
+    action_clip_tuple = (
+        cue["clipOccurrenceId"],
+        occurrence_id,
+    )
+    for _pattern, _stage, existing in _draft_effect_cues(master):
+        if existing is ignored:
+            continue
+        if existing.get("cueId") == cue_id:
+            raise _draft_error(
+                f"duplicate Effect cueId: {cue_id}",
+                operation_ordinal=ordinal,
+                field="cue.cueId",
+                error_code="DUPLICATE_TARGET",
+            )
+        if existing.get("occurrenceId") == occurrence_id:
+            raise _draft_error(
+                f"duplicate Effect cue occurrenceId: {occurrence_id}",
+                operation_ordinal=ordinal,
+                field="cue.occurrenceId",
+                error_code="DUPLICATE_TARGET",
+            )
+        if (
+            existing.get("clipOccurrenceId"),
+            existing.get("occurrenceId"),
+        ) == action_clip_tuple:
+            raise _draft_error(
+                f"duplicate Effect cue clip/occurrence dependency: {occurrence_id}",
+                operation_ordinal=ordinal,
+                field="cue.clipOccurrenceId",
+                error_code="DUPLICATE_TARGET",
+            )
+
+
+def _is_manual_server_audition(
+    master: Mapping[str, Any], pattern_id: str
+) -> bool:
+    """Return whether one decision row owns this Pattern as a manual audition.
+
+    Pattern category and naming are presentation metadata, not an authoring
+    capability.  The decision-model admission row is the only typed gate that
+    allows Stage-kind retagging after Create New Pattern promotion.
+    """
+
+    rows = master.get("decisionModel", {}).get("manualAuditions", [])
+    return (
+        isinstance(rows, list)
+        and len(
+            [
+                row
+                for row in rows
+                if isinstance(row, dict)
+                and row.get("patternId") == pattern_id
+                and row.get("admissionState") == MANUAL_SERVER_AUDITION
+            ]
+        )
+        == 1
+    )
+
+
+def _require_manual_linear_stage_topology(
+    master: Mapping[str, Any], pattern: dict[str, Any], ordinal: int
+) -> None:
+    """Admit topology edits only for the bounded manual linear-chain contract.
+
+    Existing authored alternate branches are preserved by stable action ID, but
+    the default path must agree with Stage order before it can be rewritten.
+    This keeps the topology operation from silently flattening legacy graphs
+    such as the Valtan grab/counter subgraphs.
+    """
+
+    pattern_id = pattern["patternId"]
+    if not _is_manual_server_audition(master, pattern_id):
+        raise _draft_error(
+            "Stage topology authoring is limited to MANUAL_SERVER_AUDITION Patterns",
+            operation_ordinal=ordinal,
+            pattern_id=pattern_id,
+            field="patternId",
+            error_code="FIELD_NOT_ALLOWED",
+        )
+    if pattern_id in SHARED_CAPTURE_FRAGMENT_STAGE_IDS:
+        raise _draft_error(
+            "shared capture fragment Stage inventory is owned by VALTAN_TRASH",
+            operation_ordinal=ordinal,
+            pattern_id=pattern_id,
+            field="patternId",
+            error_code="MANUAL_TOPOLOGY_SHARED_FRAGMENT",
+        )
+    stages = pattern.get("stages")
+    if not isinstance(stages, list) or not stages:
+        raise _draft_error(
+            "manual Pattern must own at least one Stage",
+            operation_ordinal=ordinal,
+            pattern_id=pattern_id,
+            field="patternId",
+            error_code="MANUAL_TOPOLOGY_INVALID",
+        )
+    if pattern.get("entryActionId") != stages[0].get("actionId"):
+        raise _draft_error(
+            "manual Stage topology entry does not match Stage order",
+            operation_ordinal=ordinal,
+            pattern_id=pattern_id,
+            field="patternId",
+            error_code="MANUAL_TOPOLOGY_NOT_LINEAR",
+        )
+    for stage_ordinal, stage in enumerate(stages):
+        expected_next = (
+            stages[stage_ordinal + 1].get("actionId")
+            if stage_ordinal + 1 < len(stages)
+            else None
+        )
+        if stage.get("defaultNextActionId") != expected_next:
+            raise _draft_error(
+                "manual Stage topology default path does not match Stage order",
+                operation_ordinal=ordinal,
+                pattern_id=pattern_id,
+                stage_id=str(stage.get("stageId", "")),
+                field="stageId",
+                error_code="MANUAL_TOPOLOGY_NOT_LINEAR",
+            )
+
+
+def _rebuild_manual_linear_stage_topology(pattern: dict[str, Any]) -> None:
+    stages = pattern["stages"]
+    pattern["entryActionId"] = stages[0]["actionId"]
+    for ordinal, stage in enumerate(stages):
+        next_action_id = (
+            stages[ordinal + 1]["actionId"]
+            if ordinal + 1 < len(stages)
+            else None
+        )
+        stage["defaultNextActionId"] = next_action_id
+        # TIMEOUT is the explicit serialized default edge when present.  A
+        # topology operation that changes Stage order must move that edge with
+        # the default path; leaving its old target produces a split source that
+        # the native canonical loader rejects after commit.
+        for branch in stage.get("branches", []):
+            if isinstance(branch, dict) and branch.get("outcome") == "TIMEOUT":
+                branch["nextActionId"] = next_action_id
+
+
+def _contains_manual_stage_identity(value: Any, identities: set[str]) -> bool:
+    if isinstance(value, dict):
+        return any(
+            _contains_manual_stage_identity(child, identities)
+            for child in value.values()
+        )
+    if isinstance(value, list):
+        return any(
+            _contains_manual_stage_identity(child, identities) for child in value
+        )
+    return isinstance(value, str) and value in identities
+
+
+def _require_removable_manual_stage(
+    master: Mapping[str, Any],
+    pattern: dict[str, Any],
+    stage: dict[str, Any],
+    ordinal: int,
+) -> None:
+    """Reject deletion when the Stage owns or is named by runtime structure.
+
+    A source-intake Stage is immutable topology provenance.  Only a newly
+    inserted NONE Stage or a Stage whose slots were explicitly reviewed by the
+    typed authoring path may be removed.
+    """
+
+    pattern_id = pattern["patternId"]
+    stage_id = stage["stageId"]
+    action_id = stage["actionId"]
+    animation = stage.get("animation")
+    occurrences = (
+        animation.get("occurrences") if isinstance(animation, dict) else None
+    )
+    is_authored_topology_stage = stage.get("sequenceRole") in {
+        "ACTIVE",
+        "WINDUP",
+        "GROGGY",
+        "WAIT",
+    } and (
+        (
+            isinstance(animation, dict)
+            and animation.get("mode", ANIMATION_MODE_CLIP_SEQUENCE)
+            == ANIMATION_MODE_NONE
+        )
+        or (
+            isinstance(occurrences, list)
+            and bool(occurrences)
+            and all(
+                isinstance(occurrence, dict)
+                and occurrence.get("mappingBasis") == "SOURCE_REVIEWED_DELTA"
+                for occurrence in occurrences
+            )
+        )
+    )
+    incoming_branches = [
+        (owner, branch)
+        for owner in pattern["stages"]
+        if owner is not stage
+        for branch in owner.get("branches", [])
+        if isinstance(branch, dict) and branch.get("nextActionId") == action_id
+    ]
+    if any(branch.get("outcome") == "COUNTER_HIT" for _, branch in incoming_branches):
+        raise _draft_error(
+            "disable the Counter window before removing its success Stage",
+            operation_ordinal=ordinal,
+            pattern_id=pattern_id,
+            stage_id=stage_id,
+            field="stageId",
+            error_code="COUNTER_TARGET_DANGLING",
+        )
+    if incoming_branches:
+        raise _draft_error(
+            "remove every incoming branch before removing the Stage",
+            operation_ordinal=ordinal,
+            pattern_id=pattern_id,
+            stage_id=stage_id,
+            field="stageId",
+            error_code="STAGE_REFERENCE_DANGLING",
+        )
+
+    branches = stage.get("branches")
+    if isinstance(branches, list) and any(
+        isinstance(branch, dict) and branch.get("outcome") == "COUNTER_HIT"
+        for branch in branches
+    ):
+        raise _draft_error(
+            "disable the owned Counter window before removing its source Stage",
+            operation_ordinal=ordinal,
+            pattern_id=pattern_id,
+            stage_id=stage_id,
+            field="stageId",
+            error_code="COUNTER_SOURCE_DANGLING",
+        )
+
+    if not is_authored_topology_stage:
+        raise _draft_error(
+            "source-intake Stage removal requires a typed authored replacement first",
+            operation_ordinal=ordinal,
+            pattern_id=pattern_id,
+            stage_id=stage_id,
+            field="stageId",
+            error_code="SOURCE_STAGE_IMMUTABLE",
+        )
+
+    hit = stage.get("hit")
+    events = stage.get("events")
+    owns_only_groggy_flag = (
+        stage.get("stageKind") == "GROGGY"
+        and _stage_flag_contract(stage, "boss.flag.groggy") == "CLOSED"
+        and isinstance(events, list)
+        and len(events) == 2
+        and all(
+            isinstance(event, dict)
+            and event.get("kind") == "SET_BOSS_FLAG"
+            and event.get("flagId") == "boss.flag.groggy"
+            for event in events
+        )
+    )
+    unsafe_stage_structure = (
+        not isinstance(hit, dict)
+        or hit.get("shape") != {"kind": "NONE"}
+        or stage.get("motion") is not None
+        or (events != [] and not owns_only_groggy_flag)
+        or stage.get("branches") != []
+        or stage.get("effectCues") != []
+        or stage.get("cameraInvocations") != []
+        or "partDamagePolicy" in stage
+        or "counterProxy" in stage
+    )
+    if unsafe_stage_structure:
+        raise _draft_error(
+            "Stage owns hit, motion, event, branch, Effect, Camera, or reaction structure",
+            operation_ordinal=ordinal,
+            pattern_id=pattern_id,
+            stage_id=stage_id,
+            field="stageId",
+            error_code="STAGE_STRUCTURAL_DEPENDENCY",
+        )
+
+    identities = {stage_id, action_id}
+    for field in ("serverMotion", "reactions", "finale"):
+        if _contains_manual_stage_identity(pattern.get(field), identities):
+            raise _draft_error(
+                f"Pattern {field} still references the Stage",
+                operation_ordinal=ordinal,
+                pattern_id=pattern_id,
+                stage_id=stage_id,
+                field="stageId",
+                error_code="STAGE_REFERENCE_DANGLING",
+            )
+    reaction_layers = master.get("counterReactionLayers", [])
+    if isinstance(reaction_layers, list) and any(
+        isinstance(layer, dict)
+        and layer.get("ownerPatternId") == pattern_id
+        and _contains_manual_stage_identity(layer, identities)
+        for layer in reaction_layers
+    ):
+        raise _draft_error(
+            "counter reaction layer still references the Stage",
+            operation_ordinal=ordinal,
+            pattern_id=pattern_id,
+            stage_id=stage_id,
+            field="stageId",
+            error_code="STAGE_REFERENCE_DANGLING",
+        )
+
+
+def _mark_manual_stage_clock_delta(stage: dict[str, Any]) -> None:
+    """Record that the promoted native-chain wall/slots were intentionally edited.
+
+    The debug intake remains immutable provenance.  Once a typed manual edit
+    changes the Stage clock or its slots, every occurrence in that Stage is
+    marked SOURCE_REVIEWED_DELTA so repository projection can distinguish a
+    deliberate authoring revision from untyped source drift.
+    """
+
+    animation = stage.get("animation")
+    occurrences = animation.get("occurrences") if isinstance(animation, dict) else None
+    if not isinstance(occurrences, list):
+        return
+    occurrence_ids: set[str] = set()
+    for occurrence in occurrences:
+        if isinstance(occurrence, dict):
+            occurrence["mappingBasis"] = "SOURCE_REVIEWED_DELTA"
+            occurrence_id = occurrence.get("clipOccurrenceId")
+            if isinstance(occurrence_id, str):
+                occurrence_ids.add(occurrence_id)
+    # A retained Effect cue and its clip occurrence are one validated
+    # presentation join.  Keep that exact join coherent when the occurrence is
+    # marked as an authored delta; removed occurrence IDs still fail closed in
+    # the normal cue validator.
+    effect_cues = stage.get("effectCues")
+    if isinstance(effect_cues, list):
+        for cue in effect_cues:
+            if (
+                isinstance(cue, dict)
+                and cue.get("clipOccurrenceId") in occurrence_ids
+            ):
+                cue["mappingBasis"] = "SOURCE_REVIEWED_DELTA"
+
+
 def _counter_flag_event_id(
     pattern_id: str, stage_id: str, flag_name: str, trigger: str
 ) -> str:
@@ -6017,6 +7255,9 @@ def apply_draft_patch(
     source_revision: str,
     world_sets: dict[str, Any],
     combat_authoring: dict[str, Any],
+    *,
+    repository_root: Path | None = None,
+    effect_catalog: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], int]:
     """Apply bounded stable-ID operations to copies of the staged authoring views."""
 
@@ -6159,6 +7400,247 @@ def apply_draft_patch(
                 )
             pattern["eligibility"]["minimumRangeM"] = minimum
             pattern["eligibility"]["maximumRangeM"] = maximum
+        elif kind == "INSERT_MANUAL_STAGE_AFTER":
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            _require_manual_linear_stage_topology(patched_master, pattern, ordinal)
+            after_stage = _draft_stage(pattern, operation["afterStageId"], ordinal)
+            stage_id = stable_id(
+                operation["stageId"], f"operations[{ordinal}].stageId"
+            )
+            action_id = stable_id(
+                operation["actionId"], f"operations[{ordinal}].actionId"
+            )
+            stage_role = operation["stageRole"]
+            if stage_role not in ("ACTIVE", "WINDUP", "GROGGY", "WAIT"):
+                raise _draft_error(
+                    "manual Stage role must be ACTIVE, WINDUP, GROGGY, or WAIT",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage_id,
+                    field="stageRole",
+                    error_code="STAGE_ROLE_INVALID",
+                )
+            if any(stage["stageId"] == stage_id for stage in pattern["stages"]):
+                raise _draft_error(
+                    f"manual Stage ID is already owned by the Pattern: {stage_id}",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage_id,
+                    field="stageId",
+                    error_code="STABLE_ID_DUPLICATE",
+                )
+            if any(
+                stage.get("actionId") == action_id
+                for owner in patched_master["patterns"]
+                for stage in owner["stages"]
+            ):
+                raise _draft_error(
+                    f"manual Stage action ID is already owned: {action_id}",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage_id,
+                    field="actionId",
+                    error_code="STABLE_ID_DUPLICATE",
+                )
+            duration_ms = integer(
+                operation["durationMs"],
+                f"operations[{ordinal}].durationMs",
+                1,
+                600000,
+            )
+            inserted_stage = {
+                "stageId": stage_id,
+                "sequenceRole": stage_role,
+                "actionId": action_id,
+                # WAIT is an authoring semantic, not a second runtime Stage kind.
+                "stageKind": "ACTIVE" if stage_role == "WAIT" else stage_role,
+                "durationMs": duration_ms,
+                "defaultNextActionId": None,
+                "hit": {"shape": {"kind": "NONE"}},
+                "motion": None,
+                "events": [],
+                "branches": [],
+                "animation": {"mode": ANIMATION_MODE_NONE},
+                "effectCues": [],
+                "cameraInvocations": [],
+            }
+            if stage_role == "GROGGY":
+                _draft_add_closed_flag(
+                    inserted_stage,
+                    pattern["patternId"],
+                    "boss.flag.groggy",
+                    "groggy",
+                    ordinal,
+                )
+            after_ordinal = pattern["stages"].index(after_stage)
+            pattern["stages"].insert(after_ordinal + 1, inserted_stage)
+            _rebuild_manual_linear_stage_topology(pattern)
+            target = (kind, pattern["patternId"], stage_id)
+        elif kind == "REMOVE_MANUAL_STAGE":
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            _require_manual_linear_stage_topology(patched_master, pattern, ordinal)
+            stage = _draft_stage(pattern, operation["stageId"], ordinal)
+            if len(pattern["stages"]) <= 1:
+                raise _draft_error(
+                    "manual Pattern must retain at least one Stage",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="stageId",
+                    error_code="LAST_STAGE_REMOVAL_FORBIDDEN",
+                )
+            _require_removable_manual_stage(
+                patched_master, pattern, stage, ordinal
+            )
+            pattern["stages"].remove(stage)
+            _rebuild_manual_linear_stage_topology(pattern)
+            target = (kind, pattern["patternId"], stage["stageId"])
+        elif kind == "MOVE_MANUAL_STAGE":
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            _require_manual_linear_stage_topology(patched_master, pattern, ordinal)
+            stage = _draft_stage(pattern, operation["stageId"], ordinal)
+            anchor_stage_id = stable_id(
+                operation["anchorStageId"],
+                f"operations[{ordinal}].anchorStageId",
+            )
+            anchor = _draft_stage(pattern, anchor_stage_id, ordinal)
+            placement = operation["placement"]
+            if placement not in ("BEFORE", "AFTER"):
+                raise _draft_error(
+                    "manual Stage placement must be BEFORE or AFTER",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="placement",
+                    error_code="STAGE_PLACEMENT_INVALID",
+                )
+            if stage is anchor:
+                raise _draft_error(
+                    "manual Stage cannot move relative to itself",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="anchorStageId",
+                    error_code="STAGE_MOVE_SELF",
+                )
+            pattern["stages"].remove(stage)
+            anchor_ordinal = pattern["stages"].index(anchor)
+            insertion_ordinal = anchor_ordinal + (1 if placement == "AFTER" else 0)
+            pattern["stages"].insert(insertion_ordinal, stage)
+            _rebuild_manual_linear_stage_topology(pattern)
+            target = (kind, pattern["patternId"], stage["stageId"])
+        elif kind == "SET_STAGE_KIND":
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            stage = _draft_stage(pattern, operation["stageId"], ordinal)
+            stage_kind = operation["stageKind"]
+            if stage.get("sequenceRole") == "WAIT":
+                raise _draft_error(
+                    "WAIT owns only its Server clock and cannot change Stage kind",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="stageKind",
+                    error_code="WAIT_INVARIANT",
+                )
+            if not _is_manual_server_audition(
+                patched_master, pattern["patternId"]
+            ):
+                raise _draft_error(
+                    "Stage kind authoring is limited to MANUAL_SERVER_AUDITION Patterns",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="stageKind",
+                    error_code="FIELD_NOT_ALLOWED",
+                )
+            if stage_kind not in ("ACTIVE", "WINDUP", "GROGGY"):
+                raise _draft_error(
+                    "manual Stage kind must be ACTIVE, WINDUP, or GROGGY",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="stageKind",
+                    error_code="STAGE_KIND_INVALID",
+                )
+            if stage_kind != stage.get("stageKind"):
+                counter_branches = [
+                    branch
+                    for branch in stage.get("branches", [])
+                    if isinstance(branch, dict)
+                    and branch.get("outcome") == "COUNTER_HIT"
+                ]
+                counter_flag_state = _stage_flag_contract(
+                    stage, "boss.flag.counterable"
+                )
+                if (
+                    counter_branches or counter_flag_state != "ABSENT"
+                ) and stage_kind != "WINDUP":
+                    raise _draft_error(
+                        "disable the owned Counter window before changing its WINDUP Stage kind",
+                        operation_ordinal=ordinal,
+                        pattern_id=pattern["patternId"],
+                        stage_id=stage["stageId"],
+                        field="stageKind",
+                        error_code="COUNTER_SOURCE_KIND_LOCKED",
+                    )
+
+                incoming_counter_branches = [
+                    (owner.get("stageId"), branch)
+                    for owner in pattern["stages"]
+                    for branch in owner.get("branches", [])
+                    if isinstance(branch, dict)
+                    and branch.get("outcome") == "COUNTER_HIT"
+                    and branch.get("nextActionId") == stage.get("actionId")
+                ]
+                groggy_flag_state = _stage_flag_contract(
+                    stage, "boss.flag.groggy"
+                )
+                current_stage_kind = stage.get("stageKind")
+                if (
+                    current_stage_kind == "GROGGY"
+                    and groggy_flag_state != "CLOSED"
+                ) or (
+                    current_stage_kind != "GROGGY"
+                    and groggy_flag_state != "ABSENT"
+                ):
+                    raise _draft_error(
+                        "the admitted Stage kind and Groggy flag transition disagree",
+                        operation_ordinal=ordinal,
+                        pattern_id=pattern["patternId"],
+                        stage_id=stage["stageId"],
+                        field="stageKind",
+                        error_code="COUNTER_TARGET_FLAG_INVALID",
+                    )
+                if incoming_counter_branches and stage_kind != "GROGGY":
+                    raise _draft_error(
+                        "disable every Counter window targeting this GROGGY Stage before changing its kind",
+                        operation_ordinal=ordinal,
+                        pattern_id=pattern["patternId"],
+                        stage_id=stage["stageId"],
+                        field="stageKind",
+                        error_code="COUNTER_TARGET_KIND_LOCKED",
+                    )
+                if stage_kind == "GROGGY" and current_stage_kind != "GROGGY":
+                    _draft_add_closed_flag(
+                        stage,
+                        pattern["patternId"],
+                        "boss.flag.groggy",
+                        "groggy",
+                        ordinal,
+                    )
+                elif (
+                    not incoming_counter_branches
+                    and groggy_flag_state == "CLOSED"
+                    and stage_kind != "GROGGY"
+                ):
+                    _draft_remove_closed_flag(
+                        stage,
+                        pattern["patternId"],
+                        "boss.flag.groggy",
+                        ordinal,
+                    )
+            target = (kind, pattern["patternId"], stage["stageId"])
+            stage["stageKind"] = stage_kind
         elif kind == "SET_STAGE_DURATION":
             pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
             stage = _draft_stage(pattern, operation["stageId"], ordinal)
@@ -6166,10 +7648,83 @@ def apply_draft_patch(
             stage["durationMs"] = integer(
                 operation["durationMs"], f"operations[{ordinal}].durationMs", 1, 600000
             )
+            if _is_manual_server_audition(
+                patched_master, pattern["patternId"]
+            ):
+                _mark_manual_stage_clock_delta(stage)
+        elif kind == "SET_STAGE_ANIMATION":
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            stage = _draft_stage(pattern, operation["stageId"], ordinal)
+            animation = operation["animation"]
+            if stage.get("sequenceRole") == "WAIT":
+                raise _draft_error(
+                    "WAIT owns only its Server clock and cannot acquire Animation slots",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="animation",
+                    error_code="WAIT_INVARIANT",
+                )
+            if not isinstance(animation, dict):
+                raise _draft_error(
+                    "animation must be an object",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="animation",
+                )
+            target = (kind, pattern["patternId"], stage["stageId"])
+            if set(animation) == {"mode"}:
+                exact(
+                    animation,
+                    ("mode",),
+                    f"operations[{ordinal}].animation",
+                )
+                if animation["mode"] != ANIMATION_MODE_NONE:
+                    raise _draft_error(
+                        "the compact animation form admits only mode NONE",
+                        operation_ordinal=ordinal,
+                        pattern_id=pattern["patternId"],
+                        stage_id=stage["stageId"],
+                        field="animation.mode",
+                        error_code="FIELD_NOT_ALLOWED",
+                    )
+                if not _is_manual_server_audition(
+                    patched_master, pattern["patternId"]
+                ):
+                    raise _draft_error(
+                        "Animation NONE authoring is restricted to a MANUAL_SERVER_AUDITION",
+                        operation_ordinal=ordinal,
+                        pattern_id=pattern["patternId"],
+                        stage_id=stage["stageId"],
+                        field="animation.mode",
+                        error_code="FIELD_NOT_ALLOWED",
+                    )
+                stage["animation"] = {"mode": ANIMATION_MODE_NONE}
+            else:
+                exact(
+                    animation,
+                    ("endPolicy", "repeatCount", "occurrences"),
+                    f"operations[{ordinal}].animation",
+                )
+                stage["animation"] = copy.deepcopy(animation)
+            if _is_manual_server_audition(
+                patched_master, pattern["patternId"]
+            ):
+                _mark_manual_stage_clock_delta(stage)
         elif kind == "SET_STAGE_HIT":
             pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
             stage = _draft_stage(pattern, operation["stageId"], ordinal)
             target = (kind, pattern["patternId"], stage["stageId"])
+            if stage.get("sequenceRole") == "WAIT":
+                raise _draft_error(
+                    "WAIT owns only its Server clock and cannot acquire a hit contract",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="hit",
+                    error_code="WAIT_INVARIANT",
+                )
             if not isinstance(operation["hit"], dict):
                 raise _draft_error(
                     "hit must be an object",
@@ -6179,6 +7734,66 @@ def apply_draft_patch(
                     field="hit",
                 )
             stage["hit"] = copy.deepcopy(operation["hit"])
+        elif kind == "SET_STAGE_PORTAL_RUSH_MOTION":
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            stage = _draft_stage(pattern, operation["stageId"], ordinal)
+            if stage.get("sequenceRole") == "WAIT":
+                raise _draft_error(
+                    "WAIT owns only its Server clock and cannot acquire motion",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="stageId",
+                    error_code="WAIT_INVARIANT",
+                )
+            motion = stage.get("motion")
+            if (
+                pattern["patternId"] != "VALTAN_WARP"
+                or not isinstance(motion, dict)
+                or motion.get("kind") != "PORTAL_TARGET_RUSH"
+            ):
+                raise _draft_error(
+                    "typed portal-rush motion only admits an existing VALTAN_WARP target-rush stage",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="stageId",
+                    error_code="FIELD_NOT_ALLOWED",
+                )
+            retarget_delay_ms = integer(
+                operation["retargetDelayMs"],
+                f"operations[{ordinal}].retargetDelayMs",
+                0,
+                600000,
+            )
+            speed_mps = number(
+                operation["speedMps"],
+                f"operations[{ordinal}].speedMps",
+                0.000001,
+                1000,
+            )
+            distance_m = number(
+                operation["distanceM"],
+                f"operations[{ordinal}].distanceM",
+                0.000001,
+                1000,
+            )
+            if retarget_delay_ms + distance_m / speed_mps * 1000.0 > stage["durationMs"] + 0.000001:
+                raise _draft_error(
+                    "portal-rush delay plus travel exceeds the selected Server stage clock",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="distanceM",
+                    error_code="PORTAL_RUSH_STAGE_OVERRUN",
+                )
+            target = (kind, pattern["patternId"], stage["stageId"])
+            stage["motion"] = {
+                "kind": "PORTAL_TARGET_RUSH",
+                "retargetDelayMs": retarget_delay_ms,
+                "speedMps": speed_mps,
+                "distanceM": distance_m,
+            }
         elif kind == "SET_STAGE_COUNTER_WINDOW":
             pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
             stage = _draft_stage(pattern, operation["stageId"], ordinal)
@@ -6377,6 +7992,122 @@ def apply_draft_patch(
             event["speedMps"] = speed_mps
             event["durationMs"] = duration_ms
             event["yawOffsetDegrees"] = yaw_offset_degrees
+        elif kind == "ADD_EFFECT_CUE":
+            pattern, stage, _action_id = _draft_effect_cue_target_stage(
+                patched_master, operation, ordinal
+            )
+            cue = _validate_draft_effect_cue_payload(
+                repository_root,
+                effect_catalog,
+                pattern,
+                stage,
+                operation["cue"],
+                ordinal,
+            )
+            _assert_effect_cue_identity_available(patched_master, cue, ordinal)
+            target = ("EFFECT_CUE", cue["cueId"], cue["occurrenceId"])
+            stage["effectCues"].append(cue)
+        elif kind == "UPDATE_EFFECT_CUE":
+            pattern, stage, _action_id = _draft_effect_cue_target_stage(
+                patched_master, operation, ordinal
+            )
+            cue_id = stable_id(
+                operation["cueId"], f"operations[{ordinal}].cueId"
+            )
+            occurrence_id = stable_id(
+                operation["occurrenceId"],
+                f"operations[{ordinal}].occurrenceId",
+            )
+            matches = [
+                (index, row)
+                for index, row in enumerate(stage["effectCues"])
+                if row.get("cueId") == cue_id
+                and row.get("occurrenceId") == occurrence_id
+            ]
+            if len(matches) != 1:
+                raise _draft_error(
+                    "Effect cue identity must resolve exactly once in its Pattern Stage",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="cueId",
+                    error_code="STABLE_ID_NOT_FOUND",
+                )
+            cue_index, existing_cue = matches[0]
+            cue = _validate_draft_effect_cue_payload(
+                repository_root,
+                effect_catalog,
+                pattern,
+                stage,
+                operation["cue"],
+                ordinal,
+            )
+            if (
+                cue["cueId"] != cue_id
+                or cue["occurrenceId"] != occurrence_id
+            ):
+                raise _draft_error(
+                    "UPDATE_EFFECT_CUE must preserve cueId and occurrenceId",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="cue",
+                    error_code="IDENTITY_MUTATION_FORBIDDEN",
+                )
+            _assert_effect_cue_identity_available(
+                patched_master, cue, ordinal, ignored=existing_cue
+            )
+            target = ("EFFECT_CUE", cue_id, occurrence_id)
+            stage["effectCues"][cue_index] = cue
+        elif kind == "REMOVE_EFFECT_CUE":
+            pattern, stage, _action_id = _draft_effect_cue_target_stage(
+                patched_master, operation, ordinal
+            )
+            cue_id = stable_id(
+                operation["cueId"], f"operations[{ordinal}].cueId"
+            )
+            occurrence_id = stable_id(
+                operation["occurrenceId"],
+                f"operations[{ordinal}].occurrenceId",
+            )
+            effect_asset_id = stable_id(
+                operation["effectAssetId"],
+                f"operations[{ordinal}].effectAssetId",
+            )
+            clip_occurrence_id = stable_id(
+                operation["clipOccurrenceId"],
+                f"operations[{ordinal}].clipOccurrenceId",
+            )
+            matches = [
+                (index, row)
+                for index, row in enumerate(stage["effectCues"])
+                if row.get("cueId") == cue_id
+                and row.get("occurrenceId") == occurrence_id
+            ]
+            if len(matches) != 1:
+                raise _draft_error(
+                    "Effect cue identity must resolve exactly once in its Pattern Stage",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="cueId",
+                    error_code="STABLE_ID_NOT_FOUND",
+                )
+            cue_index, existing_cue = matches[0]
+            if (
+                existing_cue.get("effectAssetId") != effect_asset_id
+                or existing_cue.get("clipOccurrenceId") != clip_occurrence_id
+            ):
+                raise _draft_error(
+                    "REMOVE_EFFECT_CUE predecessor dependency does not match the admitted cue",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="effectAssetId",
+                    error_code="DEPENDENCY_MISMATCH",
+                )
+            target = ("EFFECT_CUE", cue_id, occurrence_id)
+            del stage["effectCues"][cue_index]
         elif kind == "SET_EFFECT_CUE_LOCAL_YAW":
             pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
             stage = _draft_stage(pattern, operation["stageId"], ordinal)
@@ -6415,7 +8146,7 @@ def apply_draft_patch(
                 -180,
                 180,
             )
-            target = (kind, occurrence_id)
+            target = ("EFFECT_CUE", cue.get("cueId"), occurrence_id)
             rotation[1] = local_yaw
         elif kind == "SET_AXE_VOLLEY":
             pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
@@ -6564,6 +8295,10 @@ def apply_draft_patch(
             combat_authoring,
             migration_fixture=migration_fixture,
         )
+        if repository_root is not None and effect_catalog is not None:
+            validate_effect_cue_catalog_contract(
+                repository_root, patched_master, effect_catalog
+            )
         validate_balance_documents(patched_bosses, patched_damage)
         validate_decision_model_against_boss_profiles(
             patched_master, patched_bosses
@@ -6791,6 +8526,7 @@ def _publish_gameplay_bootstrap(
     output_root: Path,
     *,
     input_overlay_root: Path | None,
+    external_writer_identity: tuple[int, str],
 ) -> Path:
     """Run the canonical gameplay publisher against a staged overlay.
 
@@ -6812,6 +8548,10 @@ def _publish_gameplay_bootstrap(
         "-OutputRoot",
         str(output_root),
         "-SkipValtanSplitProjection",
+        "-ExternalCanonicalWriterPid",
+        str(external_writer_identity[0]),
+        "-ExternalCanonicalWriterNonce",
+        external_writer_identity[1],
     ]
     if input_overlay_root is not None:
         command.extend(("-InputOverlayRoot", str(input_overlay_root)))
@@ -6871,6 +8611,25 @@ def _parse_gameplay_bootstrap(path: Path) -> tuple[int, list[str]]:
     return version, rows
 
 
+def _parse_gameplay_presentation_generation_id(path: Path) -> str:
+    _, rows = _parse_gameplay_bootstrap(path)
+    matches = []
+    for row in rows:
+        fields = row.split("\t")
+        if fields and fields[0] == "PATTERNPRESENTATIONGENERATION":
+            matches.append(fields)
+    if (
+        len(matches) != 1
+        or matches[0][1:2] != ["ENCOUNTER_VALTAN"]
+        or len(matches[0]) != 3
+        or re.fullmatch(r"[0-9a-f]{64}", matches[0][2]) is None
+    ):
+        raise PipelineError(
+            "Gameplay.bootstrap presentation generation row is invalid"
+        )
+    return matches[0][2]
+
+
 def _is_valtan_gameplay_row(row: str) -> bool:
     fields = row.split("\t")
     if len(fields) < 2:
@@ -6924,27 +8683,57 @@ def _preserve_byte_identical_client_products(
     root: Path,
     outputs: dict[str, str],
 ) -> None:
-    """Keep aliasable presentation bytes exact, not merely JSON-equivalent."""
+    """Keep semantically unchanged presentation bytes exact.
 
-    for relative in (BINDINGS_REL, CUES_REL, COMBAT_PRODUCT_REL, WORLD_PRODUCT_REL):
+    A changed document remains staged and makes the candidate explicitly
+    REENTRY_REQUIRED; it is never mislabeled as a live byte-identical alias.
+    """
+
+    for relative in (
+        BINDINGS_REL,
+        CUES_REL,
+        ENCOUNTER_REL,
+        COMBAT_PRODUCT_REL,
+        WORLD_PRODUCT_REL,
+    ):
         projected = json.loads(outputs[relative], object_pairs_hook=_reject_duplicate_pairs)
         source_path = repo_path(root, relative)
         source = read_json(source_path)
-        if projected != source:
-            raise PipelineError(
-                "candidate requires a new client presentation generation: " + relative
-            )
-        outputs[relative] = read_text(source_path)
+        if projected == source:
+            outputs[relative] = read_text(source_path)
+
+
+def _stage_presentation_generation_closure(
+    root: Path,
+    stage: Path,
+) -> PresentationGeneration:
+    """Materialize the exact CValtan artifact closure into the candidate."""
+
+    generation = build_presentation_generation(root, stage)
+    for artifact in generation.artifacts:
+        destination = stage / artifact.path
+        _assert_transaction_path(stage, destination, "presentation artifact")
+        if destination.is_file():
+            continue
+        _write_fsync(destination, artifact.source_path.read_bytes())
+    staged = build_presentation_generation(root, stage)
+    if staged.generation_id != generation.generation_id:
+        raise PipelineError(
+            "staged presentation closure changed its generation identity"
+        )
+    return staged
 
 
 def _client_presentation_compatibility(
     root: Path,
     stage: Path,
     client_artifacts: Sequence[tuple[str, str]],
+    presentation_generation_id: str,
 ) -> dict[str, Any]:
     lanes = ["ANIMATION", "EFFECT", "COMBAT_VISUAL", "CAMERA", "WORLD_EVENT_SET"]
     artifacts = []
     covered_lanes: set[str] = set()
+    requires_reentry = False
     for lane, relative in sorted(client_artifacts, key=lambda row: (row[0], row[1])):
         if lane not in lanes:
             raise PipelineError("client presentation artifact has an unknown lane: " + lane)
@@ -6953,9 +8742,7 @@ def _client_presentation_compatibility(
         staged_sha = sha256_file(staged_path)
         source_sha = sha256_file(source_path)
         if staged_path.read_bytes() != source_path.read_bytes() or staged_sha != source_sha:
-            raise PipelineError(
-                "BYTE_IDENTICAL_TO_ACTIVE presentation artifact changed: " + relative
-            )
+            requires_reentry = True
         artifacts.append(
             {
                 "lane": lane,
@@ -6973,7 +8760,10 @@ def _client_presentation_compatibility(
             + ", ".join(missing_lanes)
         )
     return {
-        "mode": "BYTE_IDENTICAL_TO_ACTIVE",
+        "mode": (
+            "REENTRY_REQUIRED" if requires_reentry else "BYTE_IDENTICAL_TO_ACTIVE"
+        ),
+        "presentationGenerationId": presentation_generation_id,
         "requiredLanes": lanes,
         "artifacts": artifacts,
     }
@@ -7067,11 +8857,21 @@ def validate_candidate_revision_manifest(stage: Path, manifest: dict[str, Any]) 
     compatibility = manifest["clientPresentationCompatibility"]
     exact(
         compatibility,
-        ("mode", "requiredLanes", "artifacts"),
+        (
+            "mode",
+            "presentationGenerationId",
+            "requiredLanes",
+            "artifacts",
+        ),
         "candidate client presentation compatibility",
     )
     if (
-        compatibility["mode"] != "BYTE_IDENTICAL_TO_ACTIVE"
+        compatibility["mode"]
+        not in ("BYTE_IDENTICAL_TO_ACTIVE", "REENTRY_REQUIRED")
+        or not isinstance(compatibility["presentationGenerationId"], str)
+        or not re.fullmatch(
+            r"[0-9a-f]{64}", compatibility["presentationGenerationId"]
+        )
         or compatibility["requiredLanes"] != required_lanes
         or not isinstance(compatibility["artifacts"], list)
         or not compatibility["artifacts"]
@@ -7107,7 +8907,10 @@ def validate_candidate_revision_manifest(stage: Path, manifest: dict[str, Any]) 
             0,
             2**63 - 1,
         )
-        if row["sha256"] != row["repositorySourceSha256"]:
+        if (
+            compatibility["mode"] == "BYTE_IDENTICAL_TO_ACTIVE"
+            and row["sha256"] != row["repositorySourceSha256"]
+        ):
             raise PipelineError("candidate presentation alias hash is not byte-identical")
         covered_lanes.add(row["lane"])
         compatibility_paths.add(row["path"])
@@ -7149,6 +8952,17 @@ def validate_candidate_revision_manifest(stage: Path, manifest: dict[str, Any]) 
     ):
         integer(bootstrap[field], f"candidate server gameplay {field}", 0, 4096)
 
+    presentation_generation_id = compatibility["presentationGenerationId"]
+    if (
+        _parse_gameplay_presentation_generation_id(
+            stage / GAMEPLAY_BOOTSTRAP_REL
+        )
+        != presentation_generation_id
+    ):
+        raise PipelineError(
+            "candidate bootstrap and presentation generation differ"
+        )
+
     artifacts = manifest["artifacts"]
     if not isinstance(artifacts, list) or not artifacts:
         raise PipelineError("candidate revision artifact list is empty")
@@ -7183,6 +8997,22 @@ def validate_candidate_revision_manifest(stage: Path, manifest: dict[str, Any]) 
             or artifact_path.stat().st_size != row["bytes"]
         ):
             raise PipelineError("candidate revision artifact hash/size mismatch: " + relative)
+    presentation_manifest_relative = (
+        "Runtime/Gameplay/ValtanPresentationGenerations/"
+        + presentation_generation_id
+        + ".json"
+    )
+    presentation_manifest_artifact = artifact_by_path.get(
+        presentation_manifest_relative
+    )
+    if (
+        presentation_manifest_artifact is None
+        or presentation_manifest_artifact["sha256"]
+        != presentation_generation_id
+    ):
+        raise PipelineError(
+            "candidate presentation generation manifest artifact is missing"
+        )
     if manifest["artifactSetId"] != _manifest_hash(artifacts):
         raise PipelineError("candidate revision artifactSetId mismatch")
     authoring_gameplay_path = stage / "Authoring/Valtan.gameplay.json"
@@ -7942,9 +9772,13 @@ def load_authoring_revision(
     )
     if expected_revision != revision_id:
         raise PipelineError("saved authoring revision hash mismatch")
+    revision_presentation = read_json(
+        revision_root / PRESENTATION_AUTHORING_REL
+    )
+    validate_valtan_native_animation_source(root, revision_presentation)
     master = join_v2_authoring(
         read_json(revision_root / GAMEPLAY_AUTHORING_REL),
-        read_json(revision_root / PRESENTATION_AUTHORING_REL),
+        revision_presentation,
         read_json(revision_root / WORLD_SET_REL),
         read_json(revision_root / COMBAT_AUTHORING_REL),
         read_saved_flow_document(revision_root) if SAVED_FLOW_REL in actual_paths else None,
@@ -7973,6 +9807,15 @@ def _validated_authoring_head(
     if pointer_bytes is None:
         return current_sources["sourceManifestId"]
     revision_id = _validate_pointer_bytes(pointer_bytes, "authoring")["revisionId"]
+    revision_root = staging_root(root, authoring_root, "AuthoringRoot") / "revisions" / revision_id
+    manifest = _validate_authoring_artifact(revision_root, revision_id)
+    # A successful canonical source/Product commit absorbs the effective
+    # immutable overlay into the tracked split owners.  Its old pointer is kept
+    # as immutable history, but it must never be replayed onto the newly
+    # admitted repository generation.  The next draft starts at the repository
+    # head and a later Save supersedes the stale pointer transactionally.
+    if manifest["repositorySourceRevision"] != current_sources["sourceManifestId"]:
+        return current_sources["sourceManifestId"]
     load_authoring_revision(
         root, authoring_root, revision_id, current_sources, docs
     )
@@ -8034,17 +9877,14 @@ def save_authoring(
     previous_pointer_captured = False
     try:
         previous_pointer = _pointer_bytes(pointer_path)
-        previous_head_revision: str | None = None
         if previous_pointer is not None:
-            previous_head_revision = _validate_pointer_bytes(
-                previous_pointer, "authoring"
-            )["revisionId"]
+            _validate_pointer_bytes(previous_pointer, "authoring")
         previous_pointer_captured = True
         current_sources = source_manifest(root)
         docs = load_pipeline_documents(root)
         base_revision = draft_patch.get("sourceRevision") if isinstance(draft_patch, dict) else ""
-        expected_head_revision = (
-            previous_head_revision or current_sources["sourceManifestId"]
+        expected_head_revision = _validated_authoring_head(
+            root, authoring_root, current_sources, docs
         )
         if base_revision != expected_head_revision:
             raise DraftPatchError(
@@ -8064,13 +9904,16 @@ def save_authoring(
             base_revision,
             docs[WORLD_SET_REL],
             docs[COMBAT_AUTHORING_REL],
+            repository_root=root,
+            effect_catalog=docs[EFFECT_CATALOG_REL],
         )
-        stage = authoring_root / (".stage." + transaction_id)
-        _assert_transaction_path(authoring_root, stage, "authoring save stage")
-        stage.mkdir()
         gameplay, presentation = split_v2_authoring(
             master, docs[WORLD_SET_REL], docs[COMBAT_AUTHORING_REL]
         )
+        validate_valtan_native_animation_source(root, presentation)
+        stage = authoring_root / (".stage." + transaction_id)
+        _assert_transaction_path(authoring_root, stage, "authoring save stage")
+        stage.mkdir()
         gameplay = _restore_gameplay_flow_reference(
             gameplay, read_json(repo_path(root, GAMEPLAY_AUTHORING_REL)),
             docs.get(SAVED_FLOW_REL),
@@ -8241,6 +10084,37 @@ def publish_candidate(
     authoring_revision: str | None = None,
     fail_at: str | None = None,
     crash_at: str | None = None,
+    lock_timeout_seconds: float = 0.0,
+) -> dict[str, Any]:
+    """Build one immutable candidate from a single admitted source generation."""
+
+    with _exclusive_canonical_writer_admission(
+        root, timeout_seconds=lock_timeout_seconds
+    ) as external_writer_identity:
+        return _publish_candidate_under_admission(
+            root,
+            candidate_root,
+            expected_source_manifest=expected_source_manifest,
+            draft_patch=draft_patch,
+            authoring_root=authoring_root,
+            authoring_revision=authoring_revision,
+            fail_at=fail_at,
+            crash_at=crash_at,
+            external_writer_identity=external_writer_identity,
+        )
+
+
+def _publish_candidate_under_admission(
+    root: Path,
+    candidate_root: Path,
+    *,
+    expected_source_manifest: dict[str, Any] | None = None,
+    draft_patch: dict[str, Any] | None = None,
+    authoring_root: Path | None = None,
+    authoring_revision: str | None = None,
+    fail_at: str | None = None,
+    crash_at: str | None = None,
+    external_writer_identity: tuple[int, str],
 ) -> dict[str, Any]:
     if authoring_root is not None:
         authoring_root = staging_root(root, authoring_root, "AuthoringRoot")
@@ -8347,20 +10221,30 @@ def publish_candidate(
                 base_revision,
                 docs[WORLD_SET_REL],
                 docs[COMBAT_AUTHORING_REL],
+                repository_root=root,
+                effect_catalog=docs[EFFECT_CATALOG_REL],
             )
         apply_class = classify_candidate_apply_class(
             docs[BOSS_PROFILES_REL], candidate_bosses
         )
+        candidate_gameplay, candidate_presentation = split_v2_authoring(
+            v2, docs[WORLD_SET_REL], docs[COMBAT_AUTHORING_REL]
+        )
+        validate_valtan_native_animation_source(root, candidate_presentation)
         outputs = project_v2_products(root, docs, v2)
         outputs.update(project_balance_products(root, candidate_bosses, candidate_damage))
         outputs[PROVENANCE_REL] = project_provenance_receipt(root, outputs)
+        # Balance-only candidates do not own a presentation projection. Keep the
+        # already admitted Encounter Product byte-exact even when the current
+        # projector would normalize legacy formatting differently. A real V2
+        # pattern edit still reaches the strict comparison below and requires
+        # a new presentation generation/world re-entry.
+        if v2 == repository_v2:
+            outputs[ENCOUNTER_REL] = read_text(repo_path(root, ENCOUNTER_REL))
         _preserve_byte_identical_client_products(root, outputs)
         stage = candidate_root / (".stage." + transaction_id)
         _assert_transaction_path(candidate_root, stage, "candidate publish stage")
         stage.mkdir()
-        candidate_gameplay, candidate_presentation = split_v2_authoring(
-            v2, docs[WORLD_SET_REL], docs[COMBAT_AUTHORING_REL]
-        )
         candidate_gameplay = _restore_gameplay_flow_reference(
             candidate_gameplay, read_json(repo_path(root, GAMEPLAY_AUTHORING_REL)),
             docs.get(SAVED_FLOW_REL),
@@ -8384,6 +10268,9 @@ def publish_candidate(
                 stage / relative,
                 read_text(repo_path(root, relative)).encode("utf-8"),
             )
+        presentation_generation = _stage_presentation_generation_closure(
+            root, stage
+        )
         _failure(fail_at, "after_stage")
         staged_world = read_json(stage / WORLD_PRODUCT_REL)
         if len(staged_world["groups"]) != 105 or len(staged_world["mutations"]) != 105 or len(staged_world["bindings"]) != 224:
@@ -8396,16 +10283,28 @@ def publish_candidate(
             root,
             baseline_runtime_root,
             input_overlay_root=None,
+            external_writer_identity=external_writer_identity,
         )
         candidate_bootstrap = _publish_gameplay_bootstrap(
             root,
             stage / "Runtime/Gameplay",
             input_overlay_root=stage,
+            external_writer_identity=external_writer_identity,
         )
         bootstrap_compatibility = validate_valtan_only_bootstrap_diff(
             baseline_bootstrap,
             candidate_bootstrap,
         )
+        baseline_generation_id = _parse_gameplay_presentation_generation_id(
+            baseline_bootstrap
+        )
+        candidate_generation_id = _parse_gameplay_presentation_generation_id(
+            candidate_bootstrap
+        )
+        if candidate_generation_id != presentation_generation.generation_id:
+            raise PipelineError(
+                "candidate/bootstrap presentation generation identity diverged"
+            )
         shutil.rmtree(baseline_runtime_root)
         baseline_runtime_root = None
         _failure(fail_at, "after_validate")
@@ -8417,21 +10316,20 @@ def publish_candidate(
             BOSS_PROFILES_REL,
             DAMAGE_REL,
             GAMEPLAY_BOOTSTRAP_REL,
+            "Runtime/Gameplay/ValtanPresentationGenerations/"
+            + presentation_generation.generation_id
+            + ".json",
         )
-        client_artifacts = (
-            ("ANIMATION", BINDINGS_REL),
-            ("EFFECT", CUES_REL),
-            ("EFFECT", EFFECT_CATALOG_REL),
-            ("COMBAT_VISUAL", COMBAT_PRODUCT_REL),
-            ("COMBAT_VISUAL", BOSS_CATALOG_REL),
-            ("CAMERA", CAMERA_REL),
-            ("WORLD_EVENT_SET", WORLD_PRODUCT_REL),
+        client_artifacts = tuple(
+            (artifact.lane, artifact.path)
+            for artifact in presentation_generation.artifacts
         )
         client_paths = tuple(relative for _, relative in client_artifacts)
         client_compatibility = _client_presentation_compatibility(
             root,
             stage,
             client_artifacts,
+            presentation_generation.generation_id,
         )
         authoring_paths = tuple(sorted((*authoring_outputs, PROVENANCE_REL)))
         submanifests = {
@@ -8760,14 +10658,18 @@ def source_manifest_with_authoring(
     )
     if pointer_bytes is not None:
         pointer = _validate_pointer_bytes(pointer_bytes, "authoring")
-        authoring_revision = pointer["revisionId"]
-        load_authoring_revision(
-            root,
-            resolved_authoring_root,
-            authoring_revision,
-            repository_manifest,
-            load_pipeline_documents(root),
-        )
+        pointed_revision = pointer["revisionId"]
+        revision_root = resolved_authoring_root / "revisions" / pointed_revision
+        manifest = _validate_authoring_artifact(revision_root, pointed_revision)
+        if manifest["repositorySourceRevision"] == repository_manifest["sourceManifestId"]:
+            authoring_revision = pointed_revision
+            load_authoring_revision(
+                root,
+                resolved_authoring_root,
+                authoring_revision,
+                repository_manifest,
+                load_pipeline_documents(root),
+            )
     payload = copy.deepcopy(repository_manifest)
     payload["authoringRevision"] = authoring_revision
     return (
@@ -8810,7 +10712,13 @@ def validate_draft_patch(
         base_revision,
         docs[WORLD_SET_REL],
         docs[COMBAT_AUTHORING_REL],
+        repository_root=root,
+        effect_catalog=docs[EFFECT_CATALOG_REL],
     )
+    _, candidate_presentation = split_v2_authoring(
+        candidate, docs[WORLD_SET_REL], docs[COMBAT_AUTHORING_REL]
+    )
+    validate_valtan_native_animation_source(root, candidate_presentation)
     projected = project_v2_products(root, docs, candidate)
     projected.update(project_balance_products(root, candidate_bosses, candidate_damage))
     projected[PROVENANCE_REL] = project_provenance_receipt(root, projected)
@@ -8888,6 +10796,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             "after_journal_unlink",
         ),
     )
+    canonical_parser = subparsers.add_parser("commit-canonical-draft")
+    canonical_parser.add_argument("--authoring-root", type=Path, required=True)
+    canonical_parser.add_argument("--draft-patch", type=Path, required=True)
+    canonical_parser.add_argument("--lock-timeout-seconds", type=float, default=0.0)
+    canonical_parser.add_argument(
+        "--inject-failure-after", type=int, default=None, help=argparse.SUPPRESS
+    )
     source_parser = subparsers.add_parser("source-manifest")
     source_parser.add_argument("--output", type=Path)
     source_parser.add_argument("--repository-only", action="store_true")
@@ -8902,6 +10817,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     publish_parser.add_argument("--draft-patch", type=Path)
     publish_parser.add_argument("--authoring-root", type=Path)
     publish_parser.add_argument("--authoring-revision")
+    publish_parser.add_argument("--lock-timeout-seconds", type=float, default=0.0)
     publish_parser.add_argument(
         "--fail-at",
         choices=("after_stage", "after_validate", "after_revision_manifest", "before_promote", "after_promote", "before_pointer", "after_pointer"),
@@ -8969,6 +10885,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                     source_revision,
                     docs[WORLD_SET_REL],
                     docs[COMBAT_AUTHORING_REL],
+                    repository_root=root,
+                    effect_catalog=docs[EFFECT_CATALOG_REL],
                 )
             output_path = args.output.resolve()
             if output_path == repo_path(root, MASTER_REL):
@@ -9031,6 +10949,27 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "authoringRevision": pointer["revisionId"],
                 "pointer": pointer,
             }
+        elif args.command == "commit-canonical-draft":
+            # Import lazily so the shared Create/Publish writer transaction can
+            # reuse this module's strict join/projector without an import cycle.
+            from promote_valtan_animation_chains import commit_typed_authoring_patch
+
+            committed = commit_typed_authoring_patch(
+                root,
+                args.draft_patch,
+                authoring_root=args.authoring_root,
+                lock_timeout_seconds=args.lock_timeout_seconds,
+                inject_failure_after=args.inject_failure_after,
+            )
+            source_revision = committed["sourceRevision"]
+            payload = {
+                "authoringRevision": None,
+                "runtimeActivation": committed["runtimeActivation"],
+                "operationCount": committed["operationCount"],
+                "artifactCount": committed["artifactCount"],
+                "changedCount": committed["changedCount"],
+                "previousSourceRevision": committed["previousSourceRevision"],
+            }
         elif args.command == "source-manifest":
             if args.output:
                 args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -9059,6 +10998,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 authoring_revision=args.authoring_revision,
                 fail_at=args.fail_at,
                 crash_at=args.crash_at,
+                lock_timeout_seconds=args.lock_timeout_seconds,
             )
             if draft_patch is not None:
                 source_revision = draft_patch["sourceRevision"]

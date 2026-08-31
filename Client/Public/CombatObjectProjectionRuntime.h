@@ -107,6 +107,8 @@ public:
 				retry.fPositionY = objects[index].fPositionY;
 				retry.fPositionZ = objects[index].fPositionZ;
 				retry.fYawDegrees = objects[index].fYawDegrees;
+				retry.PinnedDefinitionRevision =
+					record->second.Snapshot.PinnedDefinitionRevision;
 				std::string retryStatus;
 				uint64_t retryHandle = 0u;
 				++record->second.iPresentationAttemptCount;

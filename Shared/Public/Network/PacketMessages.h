@@ -190,6 +190,10 @@ namespace LostArk::Shared
 		// Server-authoritative XZ combat body radius. NPC presentations have no
 		// combat body and therefore publish zero.
 		float fCollisionRadius = 0.f;
+		/* Exact immutable gameplay generation that owns this entity at spawn.
+		   It may differ from the room-active revision when a late join observes
+		   an occurrence retained across a byte-identical live activation. */
+		GameplayDataRevision PinnedDefinitionRevision{};
 	};
 
 	bool Write_Message(
@@ -1015,6 +1019,10 @@ namespace LostArk::Shared
 		// Workbench environment staging. The payload is one stable
 		// VALTAN_ARENA_PRESET and the Server owns every resulting mutation.
 		SET_ARENA_PRESET,
+		// Replaces only the exact ACTIVE stable-ID occurrence named by the
+		// predecessor room epoch, pattern sequence and pinned definition
+		// revision. Unlike PLAY_PATTERN_ID, an ID-only match is never enough.
+		RESTART_PATTERN_ID,
 		END
 	};
 
@@ -1044,6 +1052,11 @@ namespace LostArk::Shared
 		REJECTED_STALE_AUDITION,
 		REJECTED_NOT_OWNER,
 		REJECTED_NEXT_CHANGED,
+		// RESTART_PATTERN_ID matched the exact predecessor occurrence, but a
+		// later preflight rejected the replacement before any boss, player, or
+		// arena state changed. Only this verdict authorizes the Client to keep
+		// presenting the predecessor occurrence as authoritative.
+		REJECTED_OCCURRENCE_PRESERVED,
 		END
 	};
 
@@ -1067,6 +1080,18 @@ namespace LostArk::Shared
 		std::uint32_t iPredecessorRoomAuditionEpoch = 0u;
 		std::uint32_t iPredecessorPatternSequence = 0u;
 		std::uint32_t iExpectedNextRequestSequence = 0u;
+		// PLAY_PATTERN_ID compares the exact active definition that the Client
+		// observed before requesting a new occurrence. RESTART_PATTERN_ID compares
+		// the immutable definition used by its predecessor occurrence. Every Next
+		// queue/replace/clear compares the same predecessor pin; only legacy
+		// operations keep this reserved value zero.
+		GameplayDataRevision ExpectedDefinitionRevision{};
+		// RESTART_PATTERN_ID alone carries a second revision CAS. The predecessor
+		// remains pinned to ExpectedDefinitionRevision while this value names the
+		// Server-active generation which must own the replacement occurrence. This
+		// prevents a concurrent data activation from silently restarting into a
+		// generation the Client did not admit. Every other operation keeps zero.
+		GameplayDataRevision ReplacementDefinitionRevision{};
 	};
 
 	bool Write_Message(
@@ -1094,6 +1119,8 @@ namespace LostArk::Shared
 		std::uint32_t iPredecessorRoomAuditionEpoch = 0u;
 		std::uint32_t iPredecessorPatternSequence = 0u;
 		std::uint32_t iExpectedNextRequestSequence = 0u;
+		GameplayDataRevision ExpectedDefinitionRevision{};
+		GameplayDataRevision ReplacementDefinitionRevision{};
 	};
 
 	bool Write_Message(
@@ -1165,6 +1192,10 @@ namespace LostArk::Shared
 	struct C2S_DEBUG_VALTAN_PATTERN_FLOW_START
 	{
 		std::uint32_t iRequestSequence = 0;
+		// Exact gameplay definition generation admitted by the Client when this
+		// saved Flow was submitted. The Server compare-and-swaps this value against
+		// its active catalog before staging any player, boss, arena, or Flow state.
+		GameplayDataRevision ExpectedDefinitionRevision{};
 		std::string strBossPlacementId;
 		std::string strFlowId;
 		// Exact lowercase SHA-256 of the admitted saved authoring bytes.
@@ -1214,6 +1245,7 @@ namespace LostArk::Shared
 		REJECTED_CONFLICT,
 		REJECTED_INVALID_FLOW,
 		REJECTED_STALE_FLOW,
+		REJECTED_STALE_DEFINITION,
 		END
 	};
 

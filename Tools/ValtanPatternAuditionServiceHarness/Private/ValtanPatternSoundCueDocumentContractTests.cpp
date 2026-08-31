@@ -119,6 +119,23 @@ namespace
 		return text;
 	}
 
+	std::string ReplaceCatalogEventVariantsWithEmpty(
+		std::string text,
+		const std::string_view eventName)
+	{
+		const std::string eventPrefix =
+			"\"" + std::string(eventName) + "\": [";
+		const std::size_t event = text.find(eventPrefix);
+		if (std::string::npos == event)
+			return text;
+		const std::size_t arrayBegin = event + eventPrefix.size() - 1u;
+		const std::size_t arrayEnd = text.find(']', arrayBegin);
+		if (std::string::npos == arrayEnd)
+			return text;
+		text.replace(arrayBegin, arrayEnd - arrayBegin + 1u, "[]");
+		return text;
+	}
+
 	bool HasStagingArtifact(const std::filesystem::path& destination)
 	{
 		const std::string prefix = destination.filename().string() + ".tmp.";
@@ -411,6 +428,63 @@ namespace
 			failedLoadBaseline == "sentinel-baseline" &&
 			WriteText(destination, initialSourceBytes),
 			"failed CAS authoring load changed its document/baseline outputs"))
+		{
+			return false;
+		}
+
+		VALTAN_PATTERN_SOUND_CUE_DOCUMENT runtimeLoaded;
+		VALTAN_PATTERN_SOUND_SOURCE_RECEIPT runtimeReceipt;
+		if (!Require(CValtanPatternSoundCueDocument::Load_Source(
+				runtimeLoaded, runtimeReceipt, status) &&
+			runtimeReceipt.Is_Valid() &&
+			runtimeReceipt.iBytes == initialSourceBytes.size(),
+			("runtime Sound source receipt load failed: " + status).c_str()))
+		{
+			return false;
+		}
+		const std::size_t unresolvedRuntimeRows =
+			static_cast<std::size_t>(std::count_if(
+				runtimeLoaded.Cues.begin(), runtimeLoaded.Cues.end(),
+				[](const VALTAN_PATTERN_SOUND_CUE& cue)
+				{
+					return cue.strSoundEvent ==
+						"G_Voltan1_Attack13_Loop1" &&
+						cue.ResolvedAssetIds.empty();
+				}));
+		const bool hasPinnedRuntimeAsset = std::any_of(
+			runtimeLoaded.Cues.begin(), runtimeLoaded.Cues.end(),
+			[](const VALTAN_PATTERN_SOUND_CUE& cue)
+			{
+				return !cue.ResolvedAssetIds.empty();
+			});
+		if (!Require(3u == unresolvedRuntimeRows && hasPinnedRuntimeAsset,
+			"runtime Sound load did not preserve unresolved cues while pinning resolved assets"))
+		{
+			return false;
+		}
+		{
+			CValtanPatternSoundSourceReadAdmission playbackAdmission;
+			VALTAN_PATTERN_SOUND_SOURCE_RECEIPT lockedReceipt;
+			if (!Require(playbackAdmission.Acquire(lockedReceipt, status) &&
+				lockedReceipt == runtimeReceipt,
+				("playback Sound source admission did not reproduce the runtime receipt: " +
+					status).c_str()))
+			{
+				return false;
+			}
+			const HANDLE conflictingWriter = CreateFileW(
+				destination.c_str(), GENERIC_WRITE, FILE_SHARE_READ,
+				nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+			if (INVALID_HANDLE_VALUE != conflictingWriter)
+				CloseHandle(conflictingWriter);
+			if (!Require(INVALID_HANDLE_VALUE == conflictingWriter,
+				"playback Sound source admission allowed a concurrent destination writer"))
+			{
+				return false;
+			}
+		}
+		if (!Require(WriteText(destination, initialSourceBytes),
+			"Pattern Sound destination remained locked after playback admission release"))
 		{
 			return false;
 		}
@@ -888,11 +962,43 @@ namespace
 		}
 
 		const std::string catalogBytes = ReadText(catalogPath);
-		const std::vector<std::string>& editedVariants =
+		const std::vector<std::string> editedVariants =
 			CSoundCueCatalog::Find_Variants(
 				"Valtan", draft.Cues[editableIndex].strSoundEvent);
 		if (!Require(!editedVariants.empty(),
 			"edited Sound event has no variant for missing-asset coverage"))
+		{
+			return false;
+		}
+		const std::string unresolvedReferencedCatalog =
+			ReplaceCatalogEventVariantsWithEmpty(catalogBytes,
+				draft.Cues[editableIndex].strSoundEvent);
+		if (!Require(unresolvedReferencedCatalog != catalogBytes &&
+			WriteText(catalogPath, unresolvedReferencedCatalog) &&
+			CSoundCueCatalog::Load(status),
+			"could not preserve an unresolved catalog event for consumer validation"))
+		{
+			return false;
+		}
+		VALTAN_PATTERN_SOUND_CUE_DOCUMENT unresolvedCandidate;
+		if (!Require(CValtanPatternSoundCueDocument::Load_AuthoringSource(
+				unresolvedCandidate, status) &&
+			ReadText(destination) == admittedBytes &&
+			std::any_of(unresolvedCandidate.Cues.begin(),
+				unresolvedCandidate.Cues.end(),
+				[&draft, editableIndex](const VALTAN_PATTERN_SOUND_CUE& cue)
+				{
+					return cue.strSoundEvent ==
+						draft.Cues[editableIndex].strSoundEvent &&
+						cue.ResolvedAssetIds.empty();
+				}),
+			"referenced unresolved Valtan Sound event was not preserved as an isolated no-op"))
+		{
+			return false;
+		}
+		if (!Require(WriteText(catalogPath, catalogBytes) &&
+			CSoundCueCatalog::Load(status),
+			"could not restore the resolved Sound catalog after unresolved-event rejection"))
 		{
 			return false;
 		}

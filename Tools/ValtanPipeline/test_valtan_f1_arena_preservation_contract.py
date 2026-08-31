@@ -63,19 +63,23 @@ class ValtanF1ArenaPreservationContractTests(unittest.TestCase):
         boss = read("Client/Private/BossTool.cpp")
         render = function_body(main, "void CMainApp::RenderCompletePlayControls()")
         gate = function_body(
-            boss, "bool_t Client::CBossTool::Can_Play_ServerPattern("
+            boss, "bool_t Client::CBossTool::Get_ServerActivePatternRevision("
         )
         submit = function_body(
             boss, "bool_t Client::CBossTool::Submit_SelectedPattern()"
         )
 
-        self.assertIn("Can_Play_ServerPattern", render)
-        self.assertIn("m_pBalanceTool = make_unique<CBalanceTool>()", render)
-        self.assertIn("Can_Play_ServerPattern", submit)
+        self.assertNotIn("Can_Play_ServerPattern", render)
+        self.assertNotIn("make_unique<CBalanceTool>", render)
+        self.assertIn("validated once when Complete Play is pressed", render)
+        self.assertIn("Acquire_ServerPlaybackAdmission", submit)
         self.assertIn("Has_PendingCommand", gate)
         self.assertIn("strCandidateRevision", gate)
         self.assertIn("bCandidateIsServerActive", gate)
         self.assertIn("Server-active revision", gate)
+        self.assertIn("ServerActiveRevision", gate)
+        self.assertIn("expectedActiveRevision", submit)
+        self.assertIn("CValtanPatternAuditionService::Get().Submit", submit)
 
     def test_arena_presets_are_five_explicit_buttons_with_clear_labels(self) -> None:
         main = read("Client/Private/MainApp.cpp")
@@ -153,13 +157,54 @@ class ValtanF1ArenaPreservationContractTests(unittest.TestCase):
 
     def test_hidden_legacy_panel_is_not_a_second_visible_command_path(self) -> None:
         level = read("Client/Private/Level_ValtanArena.cpp")
+        header = read("Client/Public/Level_ValtanArena.h")
         update = function_body(level, "void CLevel_ValtanArena::Update(")
         main = read("Client/Private/MainApp.cpp")
         developer_tools = function_body(main, "void CMainApp::RenderDeveloperTools()")
 
-        self.assertNotIn("Render_AuditionPanel();", update)
+        for retired in (
+            "Render_AuditionPanel",
+            "Load_AuditionTimeline",
+            "Start_EnvironmentTimeline",
+            "Start_AuthoredRotationPlayback",
+            "Advance_EnvironmentTimeline",
+            "AUDITION_TIMELINE_ROW",
+            "ENVIRONMENT_TIMELINE_STEP",
+        ):
+            self.assertNotIn(retired, level + header)
+        self.assertIn("Update_AuditionTransaction();", update)
         self.assertEqual(1, developer_tools.count("RenderCompletePlayControls();"))
         self.assertEqual(1, developer_tools.count("RenderServerArenaActiveControls();"))
+
+    def test_server_rejects_revision_unaware_auditions_before_mutation(self) -> None:
+        server = read("Server/Private/GameRoom.cpp")
+        evaluate = function_body(
+            server, "LostArk::Server::CGameRoom::Evaluate_ValtanAudition("
+        )
+
+        guard = evaluate.index("if (!isPatternIdCommand && !isArenaPreset)")
+        receipt = evaluate.index("bool shouldStorePatternIdReceipt")
+        mutation = evaluate.index("const auto evaluate = [&]()")
+        self.assertLess(guard, receipt)
+        self.assertLess(guard, mutation)
+        self.assertIn("REJECTED_PATTERN_UNAVAILABLE", evaluate[guard:receipt])
+        self.assertIn("SET_ARENA_PRESET", evaluate[:guard])
+
+    def test_f1_root_window_has_no_hard_minimum_or_maximum(self) -> None:
+        main = read("Client/Private/MainApp.cpp")
+        developer_tools = function_body(main, "void CMainApp::RenderDeveloperTools()")
+
+        self.assertIn("ImGui::SetNextWindowSize(vDefaultSize", developer_tools)
+        self.assertNotIn("ImGui::SetNextWindowSizeConstraints", developer_tools)
+        self.assertIn("LostArkDeveloperToolsResizableV1", developer_tools)
+        self.assertNotIn("ImGuiWindowFlags_AlwaysAutoResize", developer_tools)
+        self.assertIn('"##DeveloperToolLaunchGrid"', developer_tools)
+        self.assertIn("iToolButtonColumns", developer_tools)
+        self.assertIn("ImGui::TableNextColumn()", developer_tools)
+        self.assertNotIn(
+            'toolButton("Boss Tool", DEBUG_TOOL::BOSS, true);\n\tImGui::SameLine()',
+            developer_tools,
+        )
 
     def test_pattern_replay_never_resets_environment_owners(self) -> None:
         server = read("Server/Private/GameRoom.cpp")
@@ -170,8 +215,10 @@ class ValtanF1ArenaPreservationContractTests(unittest.TestCase):
         evaluate = function_body(
             server, "LostArk::Server::CGameRoom::Evaluate_ValtanAudition("
         )
-        pattern_start = evaluate.index("if (isPatternIdPlay)")
-        pattern_end = evaluate.index("const bool isPillarCyclePlay", pattern_start)
+        pattern_start = evaluate.index("if (isPatternIdCommand)")
+        pattern_end = evaluate.index(
+            "SET_ARENA_PRESET is the only consumer", pattern_start
+        )
         pattern_branch = evaluate[pattern_start:pattern_end]
 
         self.assertIn("Build_ValtanBossOnlyAuditionReset", pattern_branch)
@@ -187,6 +234,51 @@ class ValtanF1ArenaPreservationContractTests(unittest.TestCase):
             "Commit_WorldDestruction",
         ):
             self.assertNotIn(forbidden, boss_only)
+
+    def test_explicit_pattern_restart_is_exact_and_arena_preserving(self) -> None:
+        boss = read("Client/Private/BossTool.cpp")
+        service = read("Client/Private/ValtanPatternAuditionService.cpp")
+        server = read("Server/Private/GameRoom.cpp")
+        action_bar = function_body(boss, "void Client::CBossTool::Render_ActionBar()")
+        restart = function_body(
+            service,
+            "bool Client::CValtanPatternAuditionService::Restart_ActivePattern(",
+        )
+        evaluate = function_body(
+            server, "LostArk::Server::CGameRoom::Evaluate_ValtanAudition("
+        )
+
+        self.assertIn("Restart Pattern (Preserve Arena)", action_bar)
+        self.assertIn("Restart_SelectedPattern", action_bar)
+        restart_submit = function_body(
+            boss, "bool_t Client::CBossTool::Restart_SelectedPattern()"
+        )
+        self.assertIn("Restart_ActivePattern", restart_submit)
+        for marker in (
+            "VALTAN_PATTERN_AUDITION_STATE::ACTIVE",
+            "VALTAN_PATTERN_AUDITION_STATE::COMPLETED",
+            "m_hasAuthoritativeLifecycle",
+            "m_NextSnapshot.Is_Live()",
+            "Has_PendingNextCommand()",
+            "Is_FlowInFlight()",
+            "Is_FlowStartPending()",
+            "m_RestartFallback = m_Snapshot",
+        ):
+            self.assertIn(marker, restart)
+        for marker in (
+            "VALTAN_AUDITION_OPERATION::RESTART_PATTERN_ID",
+            "iPredecessorRoomAuditionEpoch",
+            "iPredecessorPatternSequence",
+            "ExpectedDefinitionRevision",
+            "REJECTED_OCCURRENCE_PRESERVED",
+        ):
+            self.assertIn(marker, evaluate)
+        self.assertIn("Reset_ValtanBossOnlyAuditionState", evaluate)
+        pattern_start = evaluate.index("if (isPatternIdCommand)")
+        pattern_end = evaluate.index(
+            "SET_ARENA_PRESET is the only consumer", pattern_start
+        )
+        self.assertNotIn("Reset_ValtanAuditionState(", evaluate[pattern_start:pattern_end])
 
     def test_wire_has_stable_pattern_and_explicit_arena_operations(self) -> None:
         packet = read("Shared/Public/Network/PacketMessages.h")

@@ -12,6 +12,7 @@
 #include "ValtanPatternShakeCueDocument.h"
 #include "ValtanCombatObjectSoundCueDocument.h"
 #include "ValtanPatternTree.h"
+#include "GameplayDataRevision.h"
 
 #include <filesystem>
 #include <string_view>
@@ -32,6 +33,37 @@ struct CAMERA_TOOL_OPEN_REQUEST;
 
 class CAnimation_Tool final
 {
+public:
+	/* Action Composition Workbench consumes only this preview transport.  The
+	   Workbench owns Pattern/Sequencer/Details UI and canonical selection; this
+	   class remains the one owner of the real CModel pose and clip playlist. */
+	struct COMPOSITION_PREVIEW_STATE final
+	{
+		bool_t bModelReady = false;
+		bool_t bPlaying = false;
+		bool_t bPaused = false;
+		uint32_t iPositionMs = 0u;
+		uint32_t iDurationMs = 0u;
+		std::string strPatternId;
+		std::string strStatus;
+	};
+
+	struct COMPOSITION_SEQUENCE_CLIP_VIEW final
+	{
+		std::string strClipName;
+		uint32_t iDurationMs = 0u;
+		bool_t bUsesNativeDuration = false;
+	};
+
+	struct COMPOSITION_SEQUENCE_VIEW final
+	{
+		int32_t iSkillId = 0;
+		int32_t iSequenceIndex = 0;
+		std::string strDisplayName;
+		std::string strMode;
+		std::vector<COMPOSITION_SEQUENCE_CLIP_VIEW> Clips;
+	};
+
 private:
 	/* One exact occurrence on the admitted split Valtan gameplay/presentation
 	   wall-clock. Source time remains independent: sourceStart/playMs/playRate
@@ -105,6 +137,14 @@ private:
 		SOUND,
 		CAMERA,
 		WORLD,
+	};
+
+	enum class VALTAN_PATTERN_MASTER_ADMISSION_STATE
+	{
+		UNLOADED,
+		ADMITTED,
+		STALE_PRESERVED,
+		REJECTED,
 	};
 
 	/* Extracted combat values shared by an authored HIT and a reference row, so
@@ -260,15 +300,151 @@ public:
 
 	void Update(f32_t fTimeDelta, bool_t bIsActiveTool);
 	void Render();
+	void On_LevelChanged();
 	bool_t Consume_EffectToolOpenRequest(
 		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& outRequest);
 	bool_t Consume_CameraToolOpenRequest(
 		CAMERA_TOOL_OPEN_REQUEST& outRequest);
+	/* Opens the canonical Valtan data workspace even when a local preview model
+	   cannot be staged. The Product data shell and Server Complete Play remain
+	   available; only model-dependent preview/edit capabilities are disabled. */
+	bool_t Open_ValtanWorkspace();
 	/* Typed Resource Files handoff for one extracted Kakul profile. 07 is an
 	   authoring profile alias whose physical preview body is MN_RPCT_05. */
 	bool_t Open_KakulProfile(const std::string& profileId);
+	bool_t Stage_ValtanCompositionPreview(std::string& strOutStatus);
+	bool_t Play_ValtanCompositionPattern(
+		const std::string& strPatternId,
+		VALTAN_PATTERN_PREVIEW_PATH ePath,
+		std::string& strOutStatus);
+	/* Local-only preview of the effective typed authoring draft.  It never
+	   changes Server state or reads a generated Product as an owner; the value
+	   copy is compiled into the same real-model playlist as canonical preview. */
+	bool_t Play_ValtanCompositionDraftPattern(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		VALTAN_PATTERN_PREVIEW_PATH ePath,
+		std::string& strOutStatus);
+	bool_t Seek_ValtanCompositionPattern(
+		const std::string& strPatternId,
+		uint32_t iPositionMs,
+		bool_t bPause,
+		std::string& strOutStatus);
+	void Stop_ValtanCompositionPattern(std::string& strOutStatus);
+	COMPOSITION_PREVIEW_STATE Get_ValtanCompositionPreviewState() const;
+	bool_t Get_ValtanCompositionSequences(
+		std::vector<COMPOSITION_SEQUENCE_VIEW>& OutSequences,
+		std::string& strOutStatus);
+	/* Native source-window admission uses the exact body + attached AnimSet
+	   CModel already staged for Valtan.  It never substitutes a scene model and
+	   never treats the extracted .clipcuts wall duration as source play time. */
+	bool_t Resolve_ValtanCompositionNativeClipDurationMs(
+		const std::string& strClipName,
+		uint32_t& iOutRoundedDurationMs,
+		std::string& strOutStatus) const;
+	bool_t Validate_ValtanCompositionAnimationStageMutation(
+		const VALTAN_STAGE_VIEW& BaselineStage,
+		const VALTAN_STAGE_VIEW& CandidateStage,
+		std::string& strOutStatus) const;
+	bool_t Validate_ValtanCompositionAnimationGraphMutations(
+		const std::vector<VALTAN_PATTERN_VIEW>& BaselinePatterns,
+		const std::vector<VALTAN_PATTERN_VIEW>& CandidatePatterns,
+		std::string& strOutStatus) const;
+	bool_t Preview_ValtanCompositionSequence(
+		int32_t iSkillId,
+		int32_t iSequenceIndex,
+		std::string& strOutStatus);
+	bool_t Stage_ValtanCompositionIntakeSequence(
+		int32_t iSkillId,
+		int32_t iSequenceIndex,
+		const std::string& strTargetPatternId,
+		const std::string& strTargetStageId,
+		std::string& strOutStatus);
+	void Set_ValtanCompositionLoop(bool_t bLoop);
+	void Render_ValtanCompositionPatternCreator();
+	bool_t Consume_ValtanCompositionPatternCreated(
+		std::string& strOutPatternId);
+	bool_t Is_ValtanCompositionPatternTransactionActive() const;
+	/* Pattern Sound is a separate typed authoring owner from the split
+	   gameplay/presentation Pattern transaction.  Action Composition Workbench
+	   borrows this one draft instead of loading a second editable document. */
+	bool_t Ensure_ValtanCompositionPatternSounds(std::string& strOutStatus);
+	bool_t Reload_ValtanCompositionPatternSounds(std::string& strOutStatus);
+	/* Save/reload/runtime Apply alter the exact S generation or consumer cue
+	   cache.  Draft edits remain local, but these operations are fail-closed
+	   while any Server audition, Restart, Next or Flow occurrence owns it. */
+	bool_t Can_CommitValtanCompositionPatternSoundGeneration(
+		std::string& strOutStatus);
+	bool_t Retry_ValtanCompositionPatternSoundRuntimeApply(
+		const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+		std::string& strOutStatus);
+	bool_t Is_ValtanCompositionPatternSoundRuntimeReady(
+		const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+		std::string& strOutStatus) const;
+	void Invalidate_ValtanCompositionPatternSoundRuntimeApply(
+		const std::string& strStatus);
+	const VALTAN_PATTERN_SOUND_CUE_DOCUMENT*
+		Get_ValtanCompositionPatternSoundDraft(
+			bool_t& bOutDirty,
+			std::string& strOutStatus) const;
+	[[nodiscard]] uint64_t Get_ValtanCompositionPatternSoundDraftGeneration() const
+	{
+		return m_iValtanPatternSoundDraftGeneration;
+	}
+	std::vector<std::string> Collect_ValtanCompositionPatternSoundEvents() const;
+	bool_t Resolve_ValtanCompositionPatternSoundWindow(
+		const VALTAN_STAGE_VIEW& Stage,
+		const std::string& strClipOccurrenceId,
+		uint32_t& iOutMinimumStartMs,
+		uint32_t& iOutMaximumStartMs,
+		bool_t& bOutLoop,
+		std::string& strOutStatus) const;
+	/* Cross-owner dependency admission.  A Pattern/Animation mutation may not
+	   delete a Sound-qualified clip occurrence, reuse its stable occurrence ID
+	   for another clip, or move its cue outside the candidate Stage/model
+	   timeline.  Stages with no Sound rows remain valid without a model. */
+	bool_t Validate_ValtanCompositionPatternSoundStageDependencies(
+		const VALTAN_PATTERN_VIEW& BaselinePattern,
+		const VALTAN_STAGE_VIEW& BaselineStage,
+		const VALTAN_STAGE_VIEW& CandidateStage,
+		std::string& strOutStatus) const;
+	/* Canonical Save uses the complete effective Pattern draft, not just the
+	   selected Stage, so mutations staged through another typed view cannot
+	   leave the separate Pattern Sound source pointing at an old generation. */
+	bool_t Validate_ValtanCompositionPatternSoundGraphDependencies(
+		const std::vector<VALTAN_PATTERN_VIEW>& BaselinePatterns,
+		const std::vector<VALTAN_PATTERN_VIEW>& CandidatePatterns,
+		std::string& strOutStatus) const;
+	bool_t Patch_ValtanCompositionPatternSound(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const VALTAN_STAGE_VIEW& Stage,
+		const std::string& strOccurrenceId,
+		const std::string& strSoundEvent,
+		uint32_t iStartMs,
+		VALTAN_PATTERN_SOUND_REPEAT_POLICY eRepeatPolicy,
+		std::string& strOutStatus);
+	bool_t Add_ValtanCompositionPatternSound(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const VALTAN_STAGE_VIEW& Stage,
+		const std::string& strClipOccurrenceId,
+		const std::string& strSoundEvent,
+		uint32_t iStartMs,
+		VALTAN_PATTERN_SOUND_REPEAT_POLICY eRepeatPolicy,
+		VALTAN_PATTERN_SOUND_CUE_ROW_ID& OutCreatedRowId,
+		std::string& strOutStatus);
+	bool_t Remove_ValtanCompositionPatternSound(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const VALTAN_STAGE_VIEW& Stage,
+		const VALTAN_PATTERN_SOUND_CUE_ROW_ID& RowId,
+		std::string& strOutStatus);
+	bool_t Save_ValtanCompositionPatternSounds(std::string& strOutStatus);
 
 private:
+	bool_t Resolve_ValtanCompositionNativeModel(
+		shared_ptr<Engine::CModel>& pOutModel,
+		std::string& strOutStatus) const;
+	bool_t Apply_ValtanCompositionPatternSoundsToActiveConsumers(
+		const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+		std::string& strOutStatus);
 	shared_ptr<Engine::CModel> Resolve_Model() const;
 	/* The character owning that model. Its spec names the data files, so the tool
 	follows whichever class the level placed instead of assuming one. */
@@ -278,10 +454,22 @@ private:
 	bool_t Sync_AssetName();
 	void Adopt_AssetName(const std::string& assetName);
 	void Render_TargetConflict();
+	bool_t Is_ValtanDocumentDirty() const;
 	void Render_Playback(const shared_ptr<Engine::CModel>& pModel);
+	void Render_ValtanWorkspaceTabs(
+		const shared_ptr<Engine::CModel>& pModel);
+	void Render_ValtanAnimationSourceWorkspace(
+		const shared_ptr<Engine::CModel>& pModel);
 	void Render_ValtanPatternPreview(const shared_ptr<Engine::CModel>& pModel);
 	void Render_ValtanPatternMaster(
 		const shared_ptr<Engine::CModel>& pModel);
+	void Render_ValtanPatternMasterUnavailableShell(
+		std::size_t iAdmittedPatternCount,
+		bool_t bHasPreviewModel);
+	void Render_ValtanSelectedResourceUsage(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const VALTAN_STAGE_VIEW* pStage);
+	const char_t* ValtanPatternMasterAdmissionLabel() const;
 	void Render_ValtanPatternReferenceWindow(
 		const shared_ptr<Engine::CModel>& pModel);
 	void Render_ValtanCustomChainWindow(
@@ -305,6 +493,15 @@ private:
 	/* Whole-file atomic replace. A rejected write leaves the previous library
 	   on disk and in memory so a failed save never costs saved chains. */
 	bool_t Save_CustomChainLibrary();
+	void Render_ValtanPatternCreatePanel();
+	bool_t Build_ValtanPatternCreateRequest(
+		std::string& strOutRequest,
+		std::string& strOutError) const;
+	bool_t Start_ValtanPatternCreateCommand(bool_t bApply);
+	void Poll_ValtanPatternCreateCommand();
+	bool_t Parse_ValtanPatternCreateResult(
+		const std::string& strDiagnostic,
+		std::string& strOutError) const;
 	bool_t Reload_ValtanPatternMaster();
 	bool_t Reload_ValtanPatternSoundCues();
 	bool_t Reload_ValtanPatternShakeCues();
@@ -355,7 +552,8 @@ private:
 	bool_t Seek_ValtanPatternMasterPreview(
 		const shared_ptr<Engine::CModel>& pModel,
 		f32_t fTimelineSeconds,
-		bool_t bPause);
+		bool_t bPause,
+		bool_t bResetPresentationTransport);
 	void Advance_ValtanPatternMasterPreview(
 		const shared_ptr<Engine::CModel>& pModel);
 	void Stop_ValtanPatternMasterPreview(
@@ -510,11 +708,16 @@ private:
 	bool_t m_bLoop = true;
 	bool_t m_bShowHitAreas = true;
 	VALTAN_PATTERN_TREE_VIEW m_ValtanPatternMasterView;
+	VALTAN_PATTERN_VIEW m_ValtanCompositionDraftPreview;
+	bool_t m_bValtanCompositionDraftPreviewReady = false;
 	std::vector<VALTAN_PATTERN_MASTER_PLAY_ITEM>
 		m_ValtanPatternMasterPlaylist;
 	bool_t m_bValtanPatternMasterLoadAttempted = false;
+	VALTAN_PATTERN_MASTER_ADMISSION_STATE m_eValtanPatternMasterAdmission =
+		VALTAN_PATTERN_MASTER_ADMISSION_STATE::UNLOADED;
 	bool_t m_bValtanPatternMasterPlaying = false;
 	bool_t m_bValtanPatternMasterPaused = false;
+	bool_t m_bValtanCompositionLoop = false;
 	bool_t m_bShowValtanSourceReferenceWindow = false;
 	bool_t m_bShowValtanCustomChainWindow = false;
 	std::vector<CUSTOM_CHAIN_STEP> m_CustomChainSteps;
@@ -525,6 +728,32 @@ private:
 	char m_CustomChainTargetPatternId[64]{};
 	char m_CustomChainTargetStageId[64]{};
 	std::string m_strCustomChainStatus;
+	/* Create New Pattern is a separate explicit transaction over either the
+	   current unsaved steps or one stable saved intake chain. The validated
+	   request digest gates Apply so changed fields can never inherit an earlier
+	   green result. Request and diagnostic files remain on disk for inspection. */
+	int32_t m_iValtanPatternCreateSourceKind = 0;
+	int32_t m_iValtanPatternCreateSavedIndex = 0;
+	char m_ValtanPatternCreatePatternId[161]{};
+	char m_ValtanPatternCreateDisplayName[256]{};
+	int32_t m_iValtanPatternCreateAuthoringPhase = 1;
+	int32_t m_iValtanPatternCreateTargetPolicy = 0;
+	int32_t m_iValtanPatternCreateAimPolicy = 0;
+	void* m_hValtanPatternCreateProcess = nullptr;
+	std::filesystem::path m_ValtanPatternCreateRequestPath;
+	std::filesystem::path m_ValtanPatternCreateDiagnosticPath;
+	std::string m_strValtanPatternCreateStatus;
+	std::string m_strValtanPatternCreateDiagnostic;
+	std::string m_strValtanPatternCreateActiveRequestSha256;
+	std::string m_strValtanPatternCreateValidatedRequestSha256;
+	std::string m_strValtanPatternCreateActivePatternId;
+	bool_t m_bValtanPatternCreateActiveApply = false;
+	bool_t m_bValtanPatternCreateHasExitCode = false;
+	uint32_t m_iValtanPatternCreateExitCode = 0u;
+	uint32_t m_iValtanPatternCreateCommandSequence = 0u;
+	uint64_t m_iValtanPatternCreateStartedAtMilliseconds = 0u;
+	bool_t m_bValtanCompositionPatternCreatedPending = false;
+	std::string m_strValtanCompositionPatternCreatedId;
 	/* Preview-only cross-fade between chain steps. CCharacter already blends
 	   its clips at 0.12 s; the product Valtan does not blend at all yet, so a
 	   sequence judged here reads smoother than the live boss until the boss
@@ -534,6 +763,7 @@ private:
 		VALTAN_WORKBENCH_SELECTION_KIND::STAGE;
 	VALTAN_WORKBENCH_DETAIL_OWNER m_eValtanWorkbenchDetailOwner =
 		VALTAN_WORKBENCH_DETAIL_OWNER::GAMEPLAY;
+	bool_t m_bValtanWorkbenchFocusDetailRequested = false;
 	std::string m_strValtanWorkbenchPatternId;
 	std::string m_strValtanWorkbenchStageId;
 	BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT
@@ -555,6 +785,10 @@ private:
 	VALTAN_PATTERN_SOUND_CUE_DOCUMENT m_ValtanPatternSoundCues;
 	bool_t m_bValtanPatternSoundCuesReady = false;
 	bool_t m_bValtanPatternSoundCuesDirty = false;
+	uint64_t m_iValtanPatternSoundDraftGeneration = 0u;
+	bool_t m_bValtanPatternSoundRuntimeApplyReady = false;
+	LostArk::Shared::GameplayDataRevision
+		m_ValtanPatternSoundRuntimeAppliedRevision{};
 	std::string m_strValtanPatternSoundCueBaselineSourceBytes;
 	std::string m_strValtanPatternSoundCueStatus;
 	std::string m_strValtanPatternSoundAddClipOccurrenceId;
@@ -608,6 +842,10 @@ private:
 	CBalanceTool* m_pBalanceTool = nullptr;
 	CBossTool* m_pBossTool = nullptr;
 	bool_t m_bResetWorkbenchLayoutRequested = false;
+	bool_t m_bValtanDataWorkspaceRequested = false;
+	bool_t m_bValtanWorkspaceTabInitialized = false;
+	uint64_t m_iValtanAutoPreviewAttemptGeneration = 0u;
+	uint64_t m_iValtanAutoPreviewSuccessGeneration = 0u;
 
 	std::vector<ANIM_EVENT> m_Events;
 	/* Empty until a character resolves; Sync_AssetName fills it from the spec. */

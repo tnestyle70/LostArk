@@ -101,6 +101,15 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 	{
 		return true;
 	}
+	for (size_t i = 0u; i < m_SessionLocks.size(); ++i)
+	{
+		if (!m_SessionLocks[i])
+			continue;
+		m_Status = m_SessionLockReasons[i].empty() ?
+			"Preview target change is locked by an unsaved authoring document." :
+			m_SessionLockReasons[i];
+		return false;
+	}
 
 	const auto asset = std::find_if(
 		ANIMATION_PREVIEW_ASSETS.begin(), ANIMATION_PREVIEW_ASSETS.end(),

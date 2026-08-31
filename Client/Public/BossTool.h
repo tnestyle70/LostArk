@@ -19,6 +19,8 @@
 NS_BEGIN(Client)
 
 class IPlayerCommandSink;
+class CValtanPatternSoundSourceReadAdmission;
+struct VALTAN_PATTERN_SOUND_SOURCE_RECEIPT;
 struct EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST;
 
 /* A thin observer/controller over the existing Valtan product path.
@@ -73,6 +75,10 @@ public:
 
 	explicit CBossTool(std::shared_ptr<IPlayerCommandSink> CommandSink);
 	void Open();
+	/* Opens the existing ordered Flow owner and selects its tab.  The Action
+	   Composition Workbench deep-links here instead of cloning a second Flow
+	   document or playback service. */
+	void Open_PatternFlow();
 	void Update(bool_t bToolVisible);
 	void Render();
 	/* Integrated Workbench route.  The caller supplies only the stable Product
@@ -81,10 +87,39 @@ public:
 	bool_t Play_ServerPattern(
 		const std::string& strPatternId,
 		std::string& strOutStatus);
+	/* Action Composition Workbench restarts the exact selected occurrence
+	   without reaching into Boss Tool widget state.  Server-side predecessor
+	   CAS remains authoritative and a stale/completed mismatch is rejected. */
+	bool_t Restart_ServerPattern(
+		const std::string& strPatternId,
+		std::string& strOutStatus);
+	/* Reserves one exact admitted Product Pattern after the current Server
+	   occurrence without resetting the Arena. */
+	bool_t Queue_NextServerPattern(
+		const std::string& strPatternId,
+		std::string& strOutStatus);
 	/* Complete Play must never race a saved gameplay candidate that has not
 	   reached the exact Server-active revision yet.  This gate is shared by the
 	   F1 button and every owner-tool route into the same Product audition. */
 	bool_t Can_Play_ServerPattern(std::string& strOutStatus) const;
+	/* Returns the exact revision admitted by Can_Play_ServerPattern.  Deferred
+	   presentation owners pin their consumer reload receipt to this value rather
+	   than remembering a process-global ready boolean across Server revisions. */
+	bool_t Get_ServerActivePatternRevision(
+		LostArk::Shared::GameplayDataRevision& OutRevision,
+		std::string& strOutStatus) const;
+	/* Cheap, in-memory projection for ImGui enable/disable state only. It never
+	   hashes or parses the physical Product closure. Every command must still
+	   pass Get_ServerActivePatternRevision/Acquire_ServerPlaybackAdmission on
+	   the click edge before it mutates Server state. */
+	bool_t Observe_ServerActivePatternRevision(
+		LostArk::Shared::GameplayDataRevision& OutRevision,
+		std::string& strOutStatus) const;
+	/* Stable owner boundary used by the Animation transport: changing the
+	   independent Pattern Sound S generation or reloading consumer caches is
+	   forbidden while audition/Restart/Next/Flow owns an occurrence. */
+	bool_t Can_CommitPatternSoundGeneration(
+		std::string& strOutStatus) const;
 	/* Read-only projection of the process-wide Server verdict/lifecycle for the
 	   exact Boss Tool pattern request.  A different consumer or Pattern ID is
 	   never reported as this caller's Complete Play status. */
@@ -95,6 +130,10 @@ public:
 	bool_t Get_ServerPatternOptions(
 		std::vector<SERVER_PATTERN_OPTION>& outOptions,
 		std::string& strOutStatus);
+	/* Re-stages the canonical joined graph and every derived audition/Next
+	   inventory as one commit. Owner tools call this after an external authoring
+	   transaction succeeds; a rejected reload preserves the previous graph. */
+	bool_t Reload_CanonicalGraph(std::string& strOutStatus);
 	bool_t Set_ServerArenaPreset(
 		LostArk::Shared::VALTAN_ARENA_PRESET preset,
 		std::string& strOutStatus);
@@ -110,9 +149,21 @@ public:
 
 private:
 	bool_t Reload_Graph();
+	bool_t Can_MutateCanonicalGraph(std::string& strOutStatus) const;
+	/* Core revision observation remains bootstrap-only so the Workbench can
+	   reload a stale presentation consumer. Actual playback commands use this
+	   stronger gate, which requires the primary consumer to hold the same
+	   immutable revision before and after admission. */
+	bool_t Acquire_ServerPlaybackAdmission(
+		LostArk::Shared::GameplayDataRevision& OutRevision,
+		VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& OutSoundReceipt,
+		CValtanPatternSoundSourceReadAdmission& SoundAdmission,
+		std::string& strOutStatus) const;
 	bool_t Submit_SelectedPattern();
+	bool_t Restart_SelectedPattern();
 	bool_t Preview_SelectedFlowSlotIsolated();
 	bool_t Start_Flow(bool_t bFromSelectedSlot);
+	bool_t Refresh_Arena();
 	bool_t Request_RevivePlayer(std::string& strOutStatus);
 	bool_t Reload_FlowDocument();
 	bool_t Save_FlowDocument();
@@ -203,7 +254,11 @@ private:
 	uint32_t m_iNextReviveSequence = 1u;
 	bool_t m_bOpen = false;
 	bool_t m_bFocusPending = false;
+	bool_t m_bSelectPatternFlowTab = false;
 	bool_t m_bGraphLoadAttempted = false;
+	/* m_bGraphReady owns the preserved display snapshot. Mutation requires a
+	   successful reload of the current canonical generation as a separate gate. */
+	bool_t m_bGraphMutationAdmitted = false;
 	bool_t m_bGraphReady = false;
 	bool_t m_bNextPatternInventoryReady = false;
 	bool_t m_bFollowLive = true;

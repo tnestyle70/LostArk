@@ -3,6 +3,7 @@
 #include "GameplayDataRevision.h"
 #include "Network/PacketMessages.h"
 #include "ValtanPatternFlowDocument.h"
+#include "ValtanPatternSoundCueDocument.h"
 
 #include <cstdint>
 #include <string>
@@ -40,6 +41,7 @@ struct VALTAN_PATTERN_FLOW_SNAPSHOT final
 	uint64_t iWorldInboundGeneration = 0u;
 	bool bStopAfterCurrentRequested = false;
 	LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
+	VALTAN_PATTERN_SOUND_SOURCE_RECEIPT PinnedPatternSoundSourceReceipt{};
 	std::string strBossPlacementId;
 	std::string strFlowId;
 	std::string strFlowRevision;
@@ -76,6 +78,7 @@ struct VALTAN_PATTERN_FLOW_START_COMMAND final
 {
 	VALTAN_PATTERN_FLOW_START_STATE eState = VALTAN_PATTERN_FLOW_START_STATE::NONE;
 	LostArk::Shared::C2S_DEBUG_VALTAN_PATTERN_FLOW_START Request{};
+	VALTAN_PATTERN_SOUND_SOURCE_RECEIPT PinnedPatternSoundSourceReceipt{};
 	uint64_t iWorldInboundGeneration = 0u;
 	uint64_t iSentAtMilliseconds = 0u;
 	std::string strStatus;
@@ -116,8 +119,14 @@ public:
 		const VALTAN_PATTERN_FLOW_DEFINITION& Flow,
 		std::string_view strFlowRevision,
 		std::string_view strStartSlotId,
+		const LostArk::Shared::GameplayDataRevision& ExpectedDefinitionRevision,
+		const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
+			PinnedPatternSoundSourceReceipt,
 		std::string& strOutStatus);
-	bool Retry_Start(std::string& strOutStatus);
+	bool Retry_Start(
+		const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
+			ExpectedPatternSoundSourceReceipt,
+		std::string& strOutStatus);
 	bool Stop_AfterCurrent(std::string& strOutStatus);
 	void Update();
 
@@ -138,8 +147,31 @@ public:
 		return m_Snapshot.Is_InFlight() || Has_PendingStart() ||
 			0u != m_iPendingStopControlSequence;
 	}
+	[[nodiscard]] bool Has_PatternSoundMutationBarrier() const
+	{
+		return Has_PlaybackOwnership();
+	}
+	[[nodiscard]] bool Verify_PatternSoundSourceReceipt(
+		const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT& CurrentReceipt,
+		std::string& strOutStatus) const;
 
 #if defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
+	bool Start(
+		std::string_view strBossPlacementId,
+		const VALTAN_PATTERN_FLOW_DEFINITION& Flow,
+		std::string_view strFlowRevision,
+		std::string_view strStartSlotId,
+		const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
+		std::string& strOutStatus)
+	{
+		return Start(strBossPlacementId, Flow, strFlowRevision,
+			strStartSlotId, ExpectedRevision,
+			Harness_PatternSoundReceipt(), strOutStatus);
+	}
+	bool Retry_Start(std::string& strOutStatus)
+	{
+		return Retry_Start(Harness_PatternSoundReceipt(), strOutStatus);
+	}
 	void Harness_Reset();
 	VALTAN_PATTERN_FLOW_HARNESS_INPUT& Harness_Input() { return m_HarnessInput; }
 	void Harness_SetNextRequestSequence(uint32_t iSequence)
@@ -150,6 +182,12 @@ public:
 
 private:
 	CValtanPatternFlowService() = default;
+#if defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
+	static VALTAN_PATTERN_SOUND_SOURCE_RECEIPT Harness_PatternSoundReceipt()
+	{
+		return { std::string(64u, 'a'), 1u };
+	}
+#endif
 	void Set_Terminal(
 		VALTAN_PATTERN_FLOW_STATE eState,
 		std::string strStatus);

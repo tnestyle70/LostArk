@@ -24,6 +24,8 @@ static const uint
     RUNTIME_MATERIAL_V2_PROJECT_TUNED_BASE_COVERAGE_SRGB = 1001u;
 static const uint
     RUNTIME_MATERIAL_V2_PROJECT_TUNED_BASE_COVERAGE_LINEAR = 1002u;
+static const uint
+    RUNTIME_MATERIAL_V2_PROJECT_TUNED_WATER_DROPLET_BURST = 1003u;
 
 bool EffectUe3RibbonLiquid01ParentDefaultPacketIsValid()
 {
@@ -883,6 +885,151 @@ EFFECT_PS_OUT Shade_EffectProjectTunedBaseCoverage(
 
     output.SceneColor = float4(radiance, alpha);
     output.Distortion = float4(0.f, 0.f, 0.f, 0.f);
+    return output;
+}
+
+bool EffectProjectTunedWaterDropletBurstPacketIsValid()
+{
+    return g_RuntimeMaterialV2Enabled == 1u &&
+        g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_PROJECT_TUNED_WATER_DROPLET_BURST &&
+        g_RuntimeMaterialV2TextureLaneCount == 2u &&
+        g_RuntimeMaterialV2TextureMask == 0x03u &&
+        g_SourceTextureMask == 0x03u &&
+        g_RuntimeMaterialV2DynamicConsumedMask == 0u &&
+        g_RuntimeMaterialV2DynamicSuppressedMask == 0x0fu &&
+        g_RuntimeMaterialV2ParticleColorPolicy == 2u &&
+        g_RuntimeMaterialV2ParticleColorConsumedMask == 0x08u &&
+        g_RuntimeMaterialV2ParticleColorSuppressedMask == 0x07u &&
+        g_RuntimeMaterialV2ScalarCount == 16u &&
+        g_RuntimeMaterialV2VectorCount == 2u &&
+        g_RuntimeMaterialV2InputCount == 16u &&
+        all(g_RuntimeMaterialV2InputConsumedMask == uint2(0xffffu, 0u)) &&
+        all(g_RuntimeMaterialV2InputSuppressedMask == uint2(0u, 0u)) &&
+        all(g_RuntimeMaterialV2VectorComponentConsumedMask ==
+            uint3(0x0fu, 0x0fu, 0u)) &&
+        all(g_RuntimeMaterialV2VectorComponentSuppressedMask ==
+            uint3(0u, 0u, 0u)) &&
+        g_RuntimeMaterialV2StaticInputCount == 0u &&
+        g_RuntimeMaterialV2StaticSelectedMask == 0u &&
+        g_RuntimeMaterialV2StaticConsumedMask == 0u &&
+        g_RuntimeMaterialV2StaticSuppressedMask == 0u &&
+        g_RuntimeMaterialV2RenderInputCount == 6u &&
+        g_RuntimeMaterialV2RenderConsumedMask == 0x2fu &&
+        g_RuntimeMaterialV2RenderSuppressedMask == 0x10u;
+}
+
+EFFECT_PS_OUT Shade_EffectProjectTunedWaterDropletBurst(
+    float2 carrierUV,
+    float4 carrierColor)
+{
+    EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
+    const float4 p0 = g_RuntimeMaterialV2ScalarBlocks[0];
+    const float4 p1 = g_RuntimeMaterialV2ScalarBlocks[1];
+    const float4 p2 = g_RuntimeMaterialV2ScalarBlocks[2];
+    const float4 p3 = g_RuntimeMaterialV2ScalarBlocks[3];
+    const float4 bodyColor = g_RuntimeMaterialV2Vectors[0];
+    const float4 rimColor = g_RuntimeMaterialV2Vectors[1];
+    if (!EffectProjectTunedWaterDropletBurstPacketIsValid() ||
+        !all(isfinite(carrierUV)) || !all(isfinite(carrierColor)) ||
+        !all(isfinite(p0)) || !all(isfinite(p1)) || !all(isfinite(p2)) ||
+        !all(isfinite(p3)) || !all(isfinite(bodyColor)) ||
+        !all(isfinite(rimColor)) || !isfinite(g_EffectLocalTime))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    const float noiseTiling = p0.x;
+    const float2 noisePan = p0.yz;
+    const float secondOctaveScale = p0.w;
+    const float flowWarp = p1.x;
+    const float maskThreshold = p1.y;
+    const float edgeSoftness = p1.z;
+    const float rimWidth = p1.w;
+    const float coveragePower = p2.x;
+    const float bodyStrength = p2.y;
+    const float rimStrength = p2.z;
+    const float distortionStrength = p2.w;
+    const float alphaGain = p3.x;
+    const float fadeStart = p3.y;
+    const float fadeEnd = p3.z;
+    const float cardFeather = p3.w;
+    if (noiseTiling < 0.01f || noiseTiling > 16.f ||
+        secondOctaveScale < 0.5f || secondOctaveScale > 8.f ||
+        flowWarp < 0.f || flowWarp > 0.25f ||
+        maskThreshold < 0.f || maskThreshold > 1.f ||
+        edgeSoftness < 0.1f || edgeSoftness > 8.f ||
+        rimWidth < 0.001f || rimWidth > 0.5f ||
+        coveragePower < 0.1f || coveragePower > 4.f ||
+        bodyStrength < 0.f || bodyStrength > 8.f ||
+        rimStrength < 0.f || rimStrength > 8.f ||
+        abs(distortionStrength) > 0.025f ||
+        alphaGain < 0.f || alphaGain > 4.f ||
+        fadeStart < 0.f || fadeEnd <= fadeStart || fadeEnd > 5.f ||
+        cardFeather < 0.001f || cardFeather > 0.49f)
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    /* The Valtan noise is dark-biased, so octave subtraction forms a signed
+       flow field without the large negative bias produced by 2*n-1. */
+    const float2 noiseUV = carrierUV * noiseTiling +
+        noisePan * g_EffectLocalTime;
+    const float2 noiseA = g_SourceTexture0.Sample(
+        g_RuntimeMaterialV2Sampler0, noiseUV).rg;
+    const float2 noiseB = g_SourceTexture0.Sample(
+        g_RuntimeMaterialV2Sampler0,
+        noiseUV * secondOctaveScale + float2(0.37f, 0.61f)).gr;
+    const float2 signedFlow = noiseA - noiseB;
+    const float2 warpedUV = carrierUV + signedFlow * flowWarp;
+    const float4 fluid = g_SourceTexture1.Sample(
+        g_RuntimeMaterialV2Sampler1, warpedUV);
+    const float maskAA = max(fwidth(fluid.a) * edgeSoftness, 1.0e-4f);
+    const float outer = smoothstep(
+        maskThreshold - maskAA, maskThreshold + maskAA, fluid.a);
+    const float inner = smoothstep(
+        maskThreshold + rimWidth - maskAA,
+        maskThreshold + rimWidth + maskAA, fluid.a);
+    const float textureRim = saturate(outer - inner);
+
+    const float2 centered = carrierUV * 2.f - 1.f;
+    const float hemisphereZ = sqrt(saturate(1.f - dot(centered, centered)));
+    const float fresnel = pow(saturate(1.f - hemisphereZ), 2.5f) * outer;
+    const float rim = max(textureRim, fresnel);
+    const float body = pow(saturate(outer), coveragePower);
+    const float cardDistance = min(
+        min(carrierUV.x, 1.f - carrierUV.x),
+        min(carrierUV.y, 1.f - carrierUV.y));
+    const float cardGate = smoothstep(0.f, cardFeather, cardDistance);
+    const float spawnGate = smoothstep(0.f, 0.035f, g_EffectLocalTime);
+    const float lifeGate = 1.f - smoothstep(
+        fadeStart, fadeEnd, g_EffectLocalTime);
+    const float authoredAlpha = saturate(
+        (g_ColorMultiply + g_ColorOffset).a * carrierColor.a * alphaGain);
+    const float coverage = saturate(
+        body * cardGate * spawnGate * lifeGate * authoredAlpha);
+
+    const float fluidLuminance = dot(
+        fluid.rgb, float3(0.299f, 0.587f, 0.114f));
+    float3 radiance = max(bodyColor.rgb, 0.f) * bodyStrength * body *
+        (0.65f + 0.35f * saturate(fluidLuminance)) +
+        max(rimColor.rgb, 0.f) * rimStrength * rim;
+    radiance *= max(g_EmissiveIntensity, 0.f) * cardGate * lifeGate;
+    const float peak = max(radiance.r, max(radiance.g, radiance.b));
+    radiance /= 1.f + peak * 0.35f;
+    const float2 distortion = signedFlow * distortionStrength * coverage;
+    if (!all(isfinite(float4(radiance, coverage))) ||
+        !all(isfinite(distortion)))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    output.SceneColor = float4(radiance, coverage);
+    output.Distortion = float4(distortion, 0.f, 0.f);
+    clip(output.SceneColor.a - g_ColorClip);
     return output;
 }
 

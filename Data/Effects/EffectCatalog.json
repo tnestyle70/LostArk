@@ -168,6 +168,11 @@
       "screenOverlayPresentationPath": "Effects/ScreenOverlays/effect.dimensionmaster.skill.2050230.unified.screen-overlay.json"
     },
     {
+      "effectAssetId": "effect.dimensionmaster.skill.2050230.water-burst",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050230.water-burst.effect.json"
+    },
+    {
       "effectAssetId": "effect.dimensionmaster.skill.2050240.clip1.unified",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050240.clip1.unified.effect.json"

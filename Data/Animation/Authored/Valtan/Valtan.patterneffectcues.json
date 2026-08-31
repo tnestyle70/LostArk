@@ -1769,7 +1769,7 @@
       "actionId": "valtan.sequence.center-six-pizza-charge.step-01",
       "clipOccurrenceId": "valtan.sequence.center-six-pizza-charge.step-01.clip-01",
       "effectAssetId": "effect.valtan.project-tuned.sequence.six-pizza-106",
-      "anchorSlotId": "arena.center.facing",
+      "anchorSlotId": "pattern.target.snapshot",
       "followPolicy": "snapshot",
       "stopPolicy": "natural",
       "repeatPolicy": "once",

@@ -3285,16 +3285,6 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                0,
-                50,
-                100,
-                150,
-                200,
-                250,
-                300,
-                350,
-                400,
-                450,
                 500,
                 550,
                 600,
@@ -3312,7 +3302,10 @@
             "downMs": 1500
           },
           "motion": {
-            "kind": "PORTAL_TARGET_RUSH"
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": 500,
+            "speedMps": 20.0,
+            "distanceM": 8.0
           },
           "events": [
             {
@@ -3338,16 +3331,6 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                0,
-                50,
-                100,
-                150,
-                200,
-                250,
-                300,
-                350,
-                400,
-                450,
                 500,
                 550,
                 600,
@@ -3365,7 +3348,10 @@
             "downMs": 1500
           },
           "motion": {
-            "kind": "PORTAL_TARGET_RUSH"
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": 500,
+            "speedMps": 20.0,
+            "distanceM": 8.0
           },
           "events": [
             {
@@ -3391,16 +3377,6 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                0,
-                50,
-                100,
-                150,
-                200,
-                250,
-                300,
-                350,
-                400,
-                450,
                 500,
                 550,
                 600,
@@ -3418,7 +3394,10 @@
             "downMs": 1500
           },
           "motion": {
-            "kind": "PORTAL_TARGET_RUSH"
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": 500,
+            "speedMps": 20.0,
+            "distanceM": 8.0
           },
           "events": [
             {
@@ -3444,16 +3423,6 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                0,
-                50,
-                100,
-                150,
-                200,
-                250,
-                300,
-                350,
-                400,
-                450,
                 500,
                 550,
                 600,
@@ -3471,7 +3440,10 @@
             "downMs": 1500
           },
           "motion": {
-            "kind": "PORTAL_TARGET_RUSH"
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": 500,
+            "speedMps": 20.0,
+            "distanceM": 8.0
           },
           "events": [
             {
@@ -3497,16 +3469,6 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                0,
-                50,
-                100,
-                150,
-                200,
-                250,
-                300,
-                350,
-                400,
-                450,
                 500,
                 550,
                 600,
@@ -3524,7 +3486,10 @@
             "downMs": 1500
           },
           "motion": {
-            "kind": "PORTAL_TARGET_RUSH"
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": 500,
+            "speedMps": 20.0,
+            "distanceM": 8.0
           },
           "events": [
             {
@@ -3550,16 +3515,6 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                0,
-                50,
-                100,
-                150,
-                200,
-                250,
-                300,
-                350,
-                400,
-                450,
                 500,
                 550,
                 600,
@@ -3577,7 +3532,10 @@
             "downMs": 1500
           },
           "motion": {
-            "kind": "PORTAL_TARGET_RUSH"
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": 500,
+            "speedMps": 20.0,
+            "distanceM": 8.0
           },
           "events": [
             {
@@ -3603,16 +3561,6 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                0,
-                50,
-                100,
-                150,
-                200,
-                250,
-                300,
-                350,
-                400,
-                450,
                 500,
                 550,
                 600,
@@ -3630,7 +3578,10 @@
             "downMs": 1500
           },
           "motion": {
-            "kind": "PORTAL_TARGET_RUSH"
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": 500,
+            "speedMps": 20.0,
+            "distanceM": 8.0
           },
           "events": [
             {
@@ -3656,16 +3607,6 @@
             "schedule": {
               "kind": "EXPLICIT_OFFSETS",
               "offsetsMs": [
-                0,
-                50,
-                100,
-                150,
-                200,
-                250,
-                300,
-                350,
-                400,
-                450,
                 500,
                 550,
                 600,
@@ -3683,7 +3624,10 @@
             "downMs": 1500
           },
           "motion": {
-            "kind": "PORTAL_TARGET_RUSH"
+            "kind": "PORTAL_TARGET_RUSH",
+            "retargetDelayMs": 500,
+            "speedMps": 20.0,
+            "distanceM": 8.0
           },
           "events": [
             {

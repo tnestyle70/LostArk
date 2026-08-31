@@ -118,6 +118,8 @@ struct VALTAN_CLIP_OCCURRENCE_VIEW final
 struct VALTAN_STAGE_MOTION_VIEW final
 {
 	std::string strKind;
+	uint32_t iRetargetDelayMs = 0u;
+	f32_t fSpeedMps = 0.f;
 	f32_t fDistance = 0.f;
 	uint32_t iCornerIndex = 0u;
 	std::array<f32_t, 2u> HalfExtentsM{};
@@ -438,6 +440,7 @@ struct VALTAN_PATTERN_VIEW final
 enum class VALTAN_PATTERN_PREVIEW_PATH : uint8_t
 {
 	NORMAL,
+	COUNTER_GROGGY,
 	WALL_GROGGY,
 	PART_BREAK,
 	END
@@ -554,6 +557,34 @@ struct VALTAN_TOOL_AUDITION_INVENTORY final
 	bool_t Contains(const std::string& strPatternId) const;
 };
 
+/* One bounded reader admission for the complete generated Valtan Product
+   generation. Writers take byte 0 of create-pattern.lock exclusively and
+   publish an active-generation journal while replacement/recovery is in
+   progress. A reader holds the same byte in shared mode from its first
+   component read through its final validation, so animation, Effect, Sound,
+   shake, Encounter and Flow consumers cannot observe a mixed generation.
+   The implementation is opaque here to keep Win32 lock types out of public
+   gameplay headers. */
+class CValtanCanonicalProductReadAdmission final
+{
+public:
+	CValtanCanonicalProductReadAdmission() = default;
+	~CValtanCanonicalProductReadAdmission();
+	CValtanCanonicalProductReadAdmission(
+		const CValtanCanonicalProductReadAdmission&) = delete;
+	CValtanCanonicalProductReadAdmission& operator=(
+		const CValtanCanonicalProductReadAdmission&) = delete;
+
+	bool_t Acquire(std::string& strOutStatus);
+	/* Re-check the durable writer journal before the staged caller commits its
+	   aggregate view. Failure leaves that caller's previous caches untouched. */
+	bool_t Validate_StillCurrent(std::string& strOutStatus) const;
+	bool_t Is_Acquired() const { return nullptr != m_pState; }
+
+private:
+	void* m_pState = nullptr;
+};
+
 /* Read-only strict join of the physical Valtan gameplay/presentation and
    saved Flow source with their generated Encounter, animation binding and
    Effect cue Products. The Tools render the result; nothing here writes. */
@@ -561,6 +592,12 @@ class CValtanPatternTree final
 {
 public:
 	static bool_t Load(
+		VALTAN_PATTERN_TREE_VIEW& OutView,
+		std::string& strOutStatus);
+	/* Aggregate callers which already own canonical Product read admission use
+	   this overload to avoid recursively acquiring the byte-range lock. */
+	static bool_t Load_WhileAdmitted(
+		const CValtanCanonicalProductReadAdmission& Admission,
 		VALTAN_PATTERN_TREE_VIEW& OutView,
 		std::string& strOutStatus);
 	/* Authoring paths may be absolute. Active project Product data still owns
