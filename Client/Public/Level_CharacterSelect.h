@@ -19,7 +19,7 @@ NS_BEGIN(Client)
 
 class CCamera_Free;
 class CCharacter;
-class CHUDRuntimeView;
+class CUILayoutRuntime;
 class CCharacterSelectArenaSpawnGate;
 class CRaidEntryPreviewView;
 class IPlayerCommandSink;
@@ -95,11 +95,28 @@ private:
 #ifdef _DEBUG
 	void Render_SelectionPanel();
 #endif
-	void Render_ClassList();
-	/* Real click/hover for GoBackIcon/SpawnMonsterButton/BossSpawnButton/SpawnCancelButton --
-	CHUDRuntimeView has no hit-test or hover of its own (see HUDRuntimeView.cpp), so this follows
-	the same hand-rolled mouse-vs-rect pattern Render_ClassList already uses for the class list. */
-	void Render_ArenaSpawnButtons();
+	/* Drives the real CUI_Sprite GameObjects (CUILayoutRuntime) for the class roster: the
+	accordion row/symbol/thumbnail slots (ClassList_Row0../Symbol0../Thumb/ThumbSymbol/
+	ThumbFrame) and the selected class's own ownerClass-tagged right panel slots. Called from
+	Update(), not Render() -- these slots self-render through the normal engine pipeline, they
+	don't need a per-frame draw call, only their visibility/position/texture state kept current. */
+	void Update_ClassList();
+	/* Text-only counterpart of Update_ClassList above (class name, category labels, identity
+	blurb, "클래스 선택" header) -- uses ImGui's own font/foreground draw list, not
+	CGameInstance::Draw_Text, so unlike Render_ArenaSpawnLabels this has to stay in the
+	ImGui-active Render() phase instead of the post-EndFrame LOA-font pass. Reads
+	m_iExpandedCategory/m_iSelectedClassIndex only -- Update_ClassList (already run earlier this
+	same frame, from Update()) owns writing them. */
+	void Render_ClassListText();
+	/* Real click/hover for GoBackIcon/SpawnMonsterButton/BossSpawnButton/SpawnCancelButton/
+	CreateCharacterButton via CUIInputRouter. Called from Update() alongside Update_ClassList. */
+	void Update_ArenaSpawnButtons();
+	/* Forces every slot Update_ClassList/Update_ArenaSpawnButtons own invisible, without running
+	their hover/click handling -- used by both their own MODE::SERVER_ARENA-gated early return
+	and Update()'s Is_DebugRaidEntryPreviewOpen() gate, since a CUI_Sprite (unlike the old ImGui
+	pass) keeps showing its last state until told otherwise. */
+	void Hide_ClassList();
+	void Hide_ArenaSpawnButtons();
 
 #ifdef _DEBUG
 	/* O opens a visual-only preview of the same "군단장 레이드 입장" panel
@@ -112,11 +129,11 @@ private:
 
 public:
 	/* SpawnMonsterButton/BossSpawnButton/SpawnCancelButton's small labels ("몬스터 소환"/"보스
-	소환"/"되돌리기"). CGameInstance::Draw_Text submits immediately, but Render_ArenaSpawnButtons'
-	hover art is composited later inside CImGuiLayer::EndFrame(), so this must run after EndFrame
-	(same reason CMainApp::RenderQuickSlotKeyLabels is split out from RenderCombatHUD) --
+	소환"/"되돌리기"). Draw_Text's SpriteBatch submits immediately, so this stays on the same
+	post-CImGuiLayer::EndFrame() pass every other LOA-font label in this codebase uses (same
+	reason CMainApp::RenderQuickSlotKeyLabels is split out from RenderCombatHUD) --
 	m_pClassSelectView is private to this level, so CMainApp reaches it through Get_Active()
-	instead of a second CHUDRuntimeView of its own. */
+	instead of a second CUILayoutRuntime of its own. */
 	void Render_ArenaSpawnLabels();
 #ifdef _DEBUG
 	/* Same split as Render_ArenaSpawnLabels just above, plus the
@@ -162,7 +179,7 @@ private:
 	};
 
 	CMapPlacementRuntime m_MapRuntime;
-	unique_ptr<CHUDRuntimeView> m_pClassSelectView = { nullptr };
+	unique_ptr<CUILayoutRuntime> m_pClassSelectView = { nullptr };
 	int32_t m_iExpandedCategory = -1;
 	MODE m_eMode = MODE::CONNECTING;
 	size_t m_iSelectedClassIndex = 0;

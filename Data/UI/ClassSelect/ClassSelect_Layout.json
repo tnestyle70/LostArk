@@ -833,6 +833,201 @@
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "ClassList_Row0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 950.0, "y": 60.0, "width": 280.0, "height": 48.0 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/Category.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "ClassList_Row1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 950.0, "y": 115.0, "width": 280.0, "height": 48.0 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/Category.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "ClassList_Row2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 950.0, "y": 170.0, "width": 280.0, "height": 48.0 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/Category.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "ClassList_Row3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 950.0, "y": 225.0, "width": 280.0, "height": 48.0 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/Category.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "ClassList_Row4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 950.0, "y": 280.0, "width": 280.0, "height": 48.0 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/Category.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "ClassList_Row5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 950.0, "y": 335.0, "width": 280.0, "height": 48.0 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/Category.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "ClassList_Symbol0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 958.0, "y": 66.0, "width": 36.0, "height": 36.0 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/CategorySymbol_Warrior.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "ClassList_Symbol1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 958.0, "y": 121.0, "width": 36.0, "height": 36.0 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/CategorySymbol_Warrior.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "ClassList_Symbol2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 958.0, "y": 176.0, "width": 36.0, "height": 36.0 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/CategorySymbol_MartialW.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "ClassList_Symbol3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 958.0, "y": 231.0, "width": 36.0, "height": 36.0 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/CategorySymbol_Warrior.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "ClassList_Symbol4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 958.0, "y": 286.0, "width": 36.0, "height": 36.0 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/CategorySymbol_SpecialistF.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "ClassList_Symbol5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 958.0, "y": 341.0, "width": 36.0, "height": 36.0 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/CategorySymbol_Specialist_M.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "ClassList_Thumb",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 950.0, "y": 125.0, "width": 134.0, "height": 78.0 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/CategorySelected.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "ClassList_ThumbSymbol",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1062.0, "y": 121.0, "width": 26.0, "height": 26.0 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/CategorySymbol_Warrior.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "ClassList_ThumbFrame",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 948.0, "y": 123.0, "width": 138.0, "height": 82.0 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/SmallIllustSelected.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     }
   ]
 }

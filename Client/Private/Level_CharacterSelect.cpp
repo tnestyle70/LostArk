@@ -15,7 +15,6 @@
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "ImGuiLayer.h"
-#include "HUDRuntimeView.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "LobbyCommandService.h"
@@ -27,6 +26,8 @@
 #include "PlayableCharacterAssetService.h"
 #include "RaidEntryPreviewView.h"
 #include "Transform.h"
+#include "UIInputRouter.h"
+#include "UILayoutRuntime.h"
 #include "ValtanPatternEffectCueDocument.h"
 #include "ValtanPatternTree.h"
 #include "ValtanPresentationAssetService.h"
@@ -200,10 +201,16 @@ HRESULT CLevel_CharacterSelect::Initialize()
 	if (FAILED(Ready_Camera()))
 		return E_FAIL;
 
-	m_pClassSelectView = std::make_unique<CHUDRuntimeView>(
-		m_pDevice, m_pContext,
-		L"UI/ClassSelect/ClassSelect_Layout.json",
-		CHUDRuntimeView::DRAW_TARGET::FOREGROUND);
+	m_pClassSelectView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::CHARACTER_SELECT), TEXT("Layer_UI"),
+		L"UI/ClassSelect/ClassSelect_Layout.json");
+	/* Authored layer tints are opaque -- every accordion/right-panel/product-button slot would
+	otherwise sit fully visible from this Level's own load until Update_ServerArena's first tick
+	flips m_eMode to SERVER_ARENA. Update_ClassList/Update_ArenaSpawnButtons's own early-return
+	(still MODE::CONNECTING here) already hides everything they own, so this just runs that path
+	once up front instead of duplicating the same slot list a second time. */
+	Update_ClassList();
+	Update_ArenaSpawnButtons();
 
 #ifdef _DEBUG
 	m_pDebugRaidEntryPreviewView =
@@ -239,6 +246,30 @@ void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 	default:
 		break;
 	}
+
+	/* Update_ClassList/Update_ArenaSpawnButtons drive real CUI_Sprite GameObjects now -- same
+	Is_DebugRaidEntryPreviewOpen() reasoning Render() used to gate their old ImGui image draws
+	with (the O-key preview's own left info column and panel frame occupy this same screen
+	region). Unlike the old ImGui pass (which simply stopped drawing that frame), these sprites
+	keep showing their last state unless told otherwise, so the preview being open explicitly
+	hides them (also stopping their hover/click handling) instead of just skipping the call.
+	Is_DebugRaidEntryPreviewOpen() only exists in Debug, so the gate itself has to stay
+	Debug-only too. */
+#ifdef _DEBUG
+	const bool_t isRaidEntryDebugPreviewOpenForClassList = Is_DebugRaidEntryPreviewOpen();
+#else
+	const bool_t isRaidEntryDebugPreviewOpenForClassList = false;
+#endif
+	if (isRaidEntryDebugPreviewOpenForClassList)
+	{
+		Hide_ClassList();
+		Hide_ArenaSpawnButtons();
+	}
+	else
+	{
+		Update_ClassList();
+		Update_ArenaSpawnButtons();
+	}
 }
 
 HRESULT CLevel_CharacterSelect::Render()
@@ -255,8 +286,18 @@ HRESULT CLevel_CharacterSelect::Render()
 	if (!Is_DebugRaidEntryPreviewOpen())
 		Render_SelectionPanel();
 #endif
-	Render_ClassList();
-	Render_ArenaSpawnButtons();
+	/* No matching Render_ClassList()/Render_ArenaSpawnButtons() -- migrated to real CUI_Sprite
+	GameObjects on this Level's own "Layer_UI" (see Update_ClassList/Update_ArenaSpawnButtons,
+	called from Update() instead), so CObject_Manager's normal Update/Late_Update/Render cycle
+	draws them without an explicit call here. Render_ClassListText (ImGui-font text only) still
+	needs the same O-key preview gate its old combined function used, since it draws over that
+	same screen region. */
+#ifdef _DEBUG
+	if (!Is_DebugRaidEntryPreviewOpen())
+		Render_ClassListText();
+#else
+	Render_ClassListText();
+#endif
 	Render_CreateCharacterProductInputHost();
 	Render_ProductStatus();
 	return S_OK;
@@ -1220,10 +1261,19 @@ void CLevel_CharacterSelect::Cancel_CreateCharacter()
 
 void CLevel_CharacterSelect::Render_CreateCharacterModal()
 {
-	if (!m_isCreateCharacterModalOpen)
-		return;
 	if (nullptr == m_pClassSelectView)
 		return;
+	if (!m_isCreateCharacterModalOpen)
+	{
+		/* Sole owner of these 4 slots' visibility (see the class comment on
+		m_isCreateCharacterModalOpen) -- Update_ClassList's own generic pass must never touch
+		them, the same double-draw boundary Esther_GaugeFill/Ready glows use. */
+		m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_Panel", false);
+		m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_TextBox", false);
+		m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_ConfirmButton", false);
+		m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_CancelButton", false);
+		return;
+	}
 
 	ImGuiViewport* pViewport = ImGui::GetMainViewport();
 	if (nullptr == pViewport)
@@ -1236,9 +1286,50 @@ void CLevel_CharacterSelect::Render_CreateCharacterModal()
 			pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
 	};
 
+	/* Panel/TextBox/Confirm/Cancel are now real CUI_Sprite GameObjects (same rects, same authored
+	art) instead of ImGui AddImage calls -- they render through the normal engine pipeline, ahead
+	of this popup's own ImGui pass, so this just keeps their visibility/hover-texture state
+	current. The popup window itself stays: it's still the real input-capture host for
+	ImGui::InputText/IME composition below, stretched over the whole viewport with NoBackground so
+	nothing of its own draws. */
+	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_Panel", true);
+	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_TextBox", true);
+
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pClassSelectView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pClassSelectView->Get_ResolutionHeight();
+	bool_t confirmFromButton = false;
+	bool_t cancel = false;
+	struct MODAL_BUTTON { const char_t* pSlotId; bool_t* pOutClicked; };
+	const MODAL_BUTTON MODAL_BUTTONS[] =
+	{
+		{ "CreateCharacterModal_ConfirmButton", &confirmFromButton },
+		{ "CreateCharacterModal_CancelButton", &cancel },
+	};
+	for (const MODAL_BUTTON& Button : MODAL_BUTTONS)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pClassSelectView->Get_SlotRect(Button.pSlotId, fX, fY, fWidth, fHeight))
+			continue;
+		m_pClassSelectView->Set_SlotVisible(Button.pSlotId, true);
+		const bool_t bHovered = Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
+		m_pClassSelectView->Set_SlotTexture(Button.pSlotId, bHovered ?
+			"UI/ClassSelect/Common/NormalButtonHover.png" :
+			"UI/ClassSelect/Common/NormalButton.png");
+		if (bHovered)
+		{
+			Router.Claim_Mouse_This_Frame();
+			if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+			{
+				CMainApp::Play_UIButtonClickSound();
+				*Button.pOutClicked = true;
+			}
+		}
+	}
+
 	/* Real "캐릭터 이름 입력" panel art instead of ImGui's own modal chrome -- the popup window
 	is stretched over the whole viewport (NoBackground so it stays invisible) purely as an input
-	surface/dim-behind host; every visible pixel is either our own image or the real
+	surface/dim-behind host; every visible pixel is either the CUI_Sprite art above or the real
 	ImGui::InputText widget positioned exactly over CreateCharacterModal_TextBox's art. */
 	ImGui::SetNextWindowPos(pViewport->WorkPos);
 	ImGui::SetNextWindowSize(pViewport->WorkSize);
@@ -1256,69 +1347,9 @@ void CLevel_CharacterSelect::Render_CreateCharacterModal()
 
 	ImDrawList* pDrawList = ImGui::GetWindowDrawList();
 
-	f32_t fPanelX = 0.f, fPanelY = 0.f, fPanelW = 0.f, fPanelH = 0.f;
-	if (m_pClassSelectView->Get_SlotRect(
-		"CreateCharacterModal_Panel", fPanelX, fPanelY, fPanelW, fPanelH))
-	{
-		if (ID3D11ShaderResourceView* pSRV = m_pClassSelectView->Load_Texture(
-			"UI/ClassSelect/Common/CreateCharacterModalPanel.png"))
-		{
-			pDrawList->AddImage(pSRV,
-				Fn_ToScreen(fPanelX, fPanelY),
-				Fn_ToScreen(fPanelX + fPanelW, fPanelY + fPanelH));
-		}
-	}
-
 	f32_t fBoxX = 0.f, fBoxY = 0.f, fBoxW = 0.f, fBoxH = 0.f;
 	const bool_t hasTextBox = m_pClassSelectView->Get_SlotRect(
 		"CreateCharacterModal_TextBox", fBoxX, fBoxY, fBoxW, fBoxH);
-	if (hasTextBox)
-	{
-		if (ID3D11ShaderResourceView* pSRV = m_pClassSelectView->Load_Texture(
-			"UI/ClassSelect/Common/CreateCharacterModalTextBox.png"))
-		{
-			pDrawList->AddImage(pSRV,
-				Fn_ToScreen(fBoxX, fBoxY), Fn_ToScreen(fBoxX + fBoxW, fBoxY + fBoxH));
-		}
-	}
-
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
-	const auto Fn_HitTest = [&](f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight,
-		ImVec2& outTopLeft, ImVec2& outBotRight) -> bool_t
-	{
-		outTopLeft = Fn_ToScreen(fX, fY);
-		outBotRight = Fn_ToScreen(fX + fWidth, fY + fHeight);
-		return vMouse.x >= outTopLeft.x && vMouse.x < outBotRight.x &&
-			vMouse.y >= outTopLeft.y && vMouse.y < outBotRight.y;
-	};
-
-	bool_t confirmFromButton = false;
-	bool_t cancel = false;
-	struct MODAL_BUTTON { const char_t* pSlotId; bool_t* pOutClicked; };
-	const MODAL_BUTTON MODAL_BUTTONS[] =
-	{
-		{ "CreateCharacterModal_ConfirmButton", &confirmFromButton },
-		{ "CreateCharacterModal_CancelButton", &cancel },
-	};
-	for (const MODAL_BUTTON& Button : MODAL_BUTTONS)
-	{
-		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-		if (!m_pClassSelectView->Get_SlotRect(Button.pSlotId, fX, fY, fWidth, fHeight))
-			continue;
-		ImVec2 vTopLeft, vBotRight;
-		const bool_t bHovered = Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
-		const char_t* pPath = bHovered ?
-			"UI/ClassSelect/Common/NormalButtonHover.png" :
-			"UI/ClassSelect/Common/NormalButton.png";
-		if (ID3D11ShaderResourceView* pSRV = m_pClassSelectView->Load_Texture(pPath))
-			pDrawList->AddImage(pSRV, vTopLeft, vBotRight);
-		if (bHovered && bClicked)
-		{
-			CMainApp::Play_UIButtonClickSound();
-			*Button.pOutClicked = true;
-		}
-	}
 
 	/* Real nickname entry -- ImGui::InputText already handles Korean IME/caret correctly (this
 	is unchanged from before), just repositioned with a transparent frame directly over the real
@@ -1698,17 +1729,18 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 
 namespace
 {
-	/* Mirrors the rects CHUDLayoutTool wrote for the same slot ids in
-	Data/UI/ClassSelect/ClassSelect_Layout.json -- CHUDRuntimeView has no public slot query, so
-	the click targets (and the hand-drawn category list / thumbnail / confirm button, which
-	aren't slot-driven at all) are kept in sync with that JSON by hand here. */
+	/* Same fX/fWidth/fHeight ClassList_RowN's own JSON rect was authored with (see
+	Update_ClassList) -- Update_ClassList already owns writing that rect back via
+	Set_SlotPosition every frame (fY moves with the accordion), so this array stays the single
+	source of the constant values instead of a round trip that would just read back what this
+	same array already wrote. */
 	struct CLASS_LIST_ENTRY
 	{
 		f32_t fX, fWidth, fHeight;
 		size_t iSupportedClassIndex;
 		/* "Warlord" etc -- matches ClassSelect_Layout.json's "classes" array and each per-class
 		slot's ownerClass, not Get_CharacterClassName()'s display text ("Dimension Master" has a
-		space CHUDRuntimeView's ownerClass match would never see). */
+		space an ownerClass match would never see). */
 		const char* pJsonClassName;
 		const char* pCategoryLabel;
 		const char* pClassLabel;
@@ -1722,7 +1754,11 @@ namespace
 
 	/* No fY here: rows accordion (a click pushes every row below it down by the expanded
 	thumbnail's height instead of the thumbnail always drawing in one fixed spot), so each row's
-	actual y is only known at render time -- see Render_ClassList's running fRowY. */
+	actual y is only known at update time -- see Update_ClassList's running fRowY. fX/fWidth/
+	fHeight still aren't read from the JSON's own ClassList_RowN slots even though those exist
+	now (added alongside this migration) -- Update_ClassList already owns writing that rect via
+	Set_SlotPosition every frame, so reading it back from the same slot would be a pointless
+	round trip through the exact values this array already holds. */
 	constexpr CLASS_LIST_ENTRY CLASS_LIST_ENTRIES[] =
 	{
 		{ 950.f, 280.f, 48.f, 5, "Warlord",         "\xec\xa0\x84\xec\x82\xac(\xeb\x82\xa8)", "\xec\x9b\x8c\xeb\xa1\x9c\xeb\x93\x9c", "CategorySymbol_Warrior.png" },
@@ -1782,6 +1818,49 @@ namespace
 		{ "DimensionMaster", DIMENSIONMASTER_IDENTITY_DESC, static_cast<int32_t>(std::size(DIMENSIONMASTER_IDENTITY_DESC)) },
 	};
 
+	struct CLASS_OWNED_SLOT final { const char* pSlotId; const char* pOwnerClass; };
+
+	/* ClassSelect_Layout.json's own ownerClass-tagged right panel slots -- CHUDRuntimeView's
+	Render(strSelectedClass, revision) used to filter these automatically (show if ownerClass ==
+	strSelectedClass); CUILayoutRuntime has no such pass, so Update_ClassList applies the same
+	filter by hand against this mirror of the JSON's own ownerClass field. Slayer/Gunslinger
+	have no slots here at all (never authored) -- selecting either one simply shows none of this,
+	same gap as before this migration. Tag_5 only exists for Warlord/Artist (5 tags); LanceMaster/
+	DimensionMaster stop at Tag_4. */
+	constexpr CLASS_OWNED_SLOT CLASS_OWNED_SLOTS[] = {
+		{ "Warlord_DifficultyFill", "Warlord" },
+		{ "LanceMaster_DifficultyFill", "LanceMaster" },
+		{ "Artist_DifficultyFill", "Artist" },
+		{ "DimensionMaster_DifficultyFill", "DimensionMaster" },
+		{ "Warlord_Tag_1", "Warlord" }, { "Warlord_Tag_2", "Warlord" },
+		{ "Warlord_Tag_3", "Warlord" }, { "Warlord_Tag_4", "Warlord" }, { "Warlord_Tag_5", "Warlord" },
+		{ "LanceMaster_Tag_1", "LanceMaster" }, { "LanceMaster_Tag_2", "LanceMaster" },
+		{ "LanceMaster_Tag_3", "LanceMaster" }, { "LanceMaster_Tag_4", "LanceMaster" },
+		{ "Artist_Tag_1", "Artist" }, { "Artist_Tag_2", "Artist" }, { "Artist_Tag_3", "Artist" },
+		{ "Artist_Tag_4", "Artist" }, { "Artist_Tag_5", "Artist" },
+		{ "DimensionMaster_Tag_1", "DimensionMaster" }, { "DimensionMaster_Tag_2", "DimensionMaster" },
+		{ "DimensionMaster_Tag_3", "DimensionMaster" }, { "DimensionMaster_Tag_4", "DimensionMaster" },
+		{ "Warlord_Illustration", "Warlord" }, { "Warlord_NameSymbol", "Warlord" },
+		{ "Warlord_Description", "Warlord" }, { "Warlord_IdentityID", "Warlord" },
+		{ "Warlord_IdentityDescription", "Warlord" },
+		{ "LanceMaster_Illustration", "LanceMaster" }, { "LanceMaster_NameSymbol", "LanceMaster" },
+		{ "LanceMaster_Description", "LanceMaster" }, { "LanceMaster_IdentityID", "LanceMaster" },
+		{ "LanceMaster_IdentityDescription", "LanceMaster" },
+		{ "Artist_Illustration", "Artist" }, { "Artist_NameSymbol", "Artist" },
+		{ "Artist_Description", "Artist" }, { "Artist_IdentityID", "Artist" },
+		{ "Artist_IdentityDescription", "Artist" },
+		{ "DimensionMaster_Illustration", "DimensionMaster" }, { "DimensionMaster_NameSymbol", "DimensionMaster" },
+		{ "DimensionMaster_Description", "DimensionMaster" }, { "DimensionMaster_IdentityID", "DimensionMaster" },
+		{ "DimensionMaster_IdentityDescription", "DimensionMaster" },
+	};
+
+	/* ownerClass == null chrome that used to show via the same generic Render(strSelectedClass,
+	revision) pass -- always visible while SERVER_ARENA regardless of selected class. */
+	constexpr const char* ALWAYS_VISIBLE_CLASS_LIST_CHROME[] = {
+		"PanelBgLeft", "PanelBgRight", "PanelBgRightBottom", "Frame",
+		"DifficultyBg", "TagsBg", "New_Slot", "InfoSeparateBar", "IdentitySeparateBar",
+	};
+
 	constexpr f32_t ROW_Y_START = 60.f;
 	constexpr f32_t ROW_GAP = 7.f;
 	constexpr f32_t THUMB_W = 134.f;
@@ -1837,7 +1916,7 @@ namespace
 		return nullptr;
 	}
 
-	bool_t Has_CompleteProductButtonSlots(CHUDRuntimeView* pView)
+	bool_t Has_CompleteProductButtonSlots(CUILayoutRuntime* pView)
 	{
 		if (nullptr == pView)
 			return false;
@@ -1854,7 +1933,7 @@ namespace
 	}
 
 	void Resolve_ProductButtonRect(
-		CHUDRuntimeView* pView,
+		CUILayoutRuntime* pView,
 		const CHARACTER_SELECT_PRODUCT_SLOT& Slot,
 		const bool_t hasCompleteAuthoredSlots,
 		f32_t& outX, f32_t& outY, f32_t& outWidth, f32_t& outHeight)
@@ -1914,45 +1993,193 @@ bool_t CLevel_CharacterSelect::Is_ProductPointerHovered() const
 	return IsHovered(940.f, 48.f, 320.f, 540.f);
 }
 
-void CLevel_CharacterSelect::Render_ClassList()
+namespace
+{
+	string Get_SelectedJsonClassName(const size_t iSelectedClassIndex)
+	{
+		for (const CLASS_LIST_ENTRY& Entry : CLASS_LIST_ENTRIES)
+			if (Entry.iSupportedClassIndex == iSelectedClassIndex)
+				return Entry.pJsonClassName;
+		return {};
+	}
+}
+
+void CLevel_CharacterSelect::Hide_ClassList()
+{
+	if (nullptr == m_pClassSelectView)
+		return;
+
+	for (const char* pId : ALWAYS_VISIBLE_CLASS_LIST_CHROME)
+		m_pClassSelectView->Set_SlotVisible(pId, false);
+	for (const CLASS_OWNED_SLOT& Slot : CLASS_OWNED_SLOTS)
+		m_pClassSelectView->Set_SlotVisible(Slot.pSlotId, false);
+	for (int32_t i = 0; i < static_cast<int32_t>(std::size(CLASS_LIST_ENTRIES)); ++i)
+	{
+		m_pClassSelectView->Set_SlotVisible("ClassList_Row" + std::to_string(i), false);
+		m_pClassSelectView->Set_SlotVisible("ClassList_Symbol" + std::to_string(i), false);
+	}
+	m_pClassSelectView->Set_SlotVisible("ClassList_Thumb", false);
+	m_pClassSelectView->Set_SlotVisible("ClassList_ThumbSymbol", false);
+	m_pClassSelectView->Set_SlotVisible("ClassList_ThumbFrame", false);
+}
+
+void CLevel_CharacterSelect::Update_ClassList()
 {
 	/* MODE::SERVER_ARENA is the real "scene has finished transitioning" signal --
 	Commit_ServerArena only sets it once the Server-replicated local character has
-	actually spawned and bound to the camera. Drawing this panel any earlier (still
+	actually spawned and bound to the camera. Showing this panel any earlier (still
 	MODE::CONNECTING, still waiting on that network round trip) put the fully-formed
 	side panels on screen while the arena itself had not finished settling, which read
 	as the UI arriving before the scene transition had actually completed. */
 	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)
+	{
+		Hide_ClassList();
 		return;
+	}
 
 	const string strSelectedClass = m_iSelectedClassIndex < SUPPORTED_CLASSES.size()
-		? [this]() -> string
-		{
-			for (const CLASS_LIST_ENTRY& Entry : CLASS_LIST_ENTRIES)
-				if (Entry.iSupportedClassIndex == m_iSelectedClassIndex)
-					return Entry.pJsonClassName;
-			return {};
-		}()
+		? Get_SelectedJsonClassName(m_iSelectedClassIndex)
 		: string{};
 
-	/* Create Character modal's 4 slots (Panel/TextBox/Confirm/Cancel) are drawn entirely by
-	Render_CreateCharacterModal() -- hover-aware, gated on m_isCreateCharacterModalOpen, and with
-	the real InputText overlay positioned relative to them. Left un-hidden, this generic per-slot
-	pass would draw all 4 every frame regardless of whether the modal was open. The common product
-	input host submits those slots conditionally after this pass, so the generic view must never
-	own them -- the same double-draw boundary Esther_GaugeFill/Ready glows use. */
-	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_Panel", false);
-	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_TextBox", false);
-	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_ConfirmButton", false);
-	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_CancelButton", false);
+	for (const char* pId : ALWAYS_VISIBLE_CLASS_LIST_CHROME)
+		m_pClassSelectView->Set_SlotVisible(pId, true);
+	/* ownerClass filter CHUDRuntimeView's own Render(strSelectedClass, revision) used to apply
+	automatically -- CUILayoutRuntime has no such pass, so this shows only the selected class's
+	own right-panel slots and hides every other class's. */
+	for (const CLASS_OWNED_SLOT& Slot : CLASS_OWNED_SLOTS)
+		m_pClassSelectView->Set_SlotVisible(Slot.pSlotId, strSelectedClass == Slot.pOwnerClass);
+
 	const bool_t hasCompleteProductButtons =
 		Has_CompleteProductButtonSlots(m_pClassSelectView.get());
 	for (const CHARACTER_SELECT_PRODUCT_SLOT& Slot : PRODUCT_BUTTON_SLOTS)
+		m_pClassSelectView->Set_SlotVisible(Slot.pSlotId, hasCompleteProductButtons);
+
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pClassSelectView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pClassSelectView->Get_ResolutionHeight();
+	const bool_t bInteractable = MODE::SERVER_ARENA == m_eMode &&
+		!m_isCreateCharacterModalOpen &&
+		!m_iPendingClassIndex.has_value() &&
+		!Is_ClassPresentationPreparationPending() &&
+		!CLevelTransitionService::Is_Pending();
+
+	/* Accordion: fRowY advances past each row, and past the expanded row's thumbnail block too,
+	so a category expanding pushes every row beneath it down instead of the thumbnail always
+	drawing in one fixed spot regardless of which category opened it. Render_ClassListText below
+	recomputes this exact same fRowY sequence for its own text-only pass -- both are pure
+	functions of m_iExpandedCategory/CLASS_LIST_ENTRIES, so recomputing instead of caching stays
+	safe as long as nothing else touches m_iExpandedCategory between here and Render(). */
+	/* Default hidden -- only the loop's own bExpanded branch below shows these, and unlike the
+	old ImGui pass (which simply drew nothing when no category was expanded), a CUI_Sprite would
+	otherwise keep showing whichever class was expanded last even after every row collapses. */
+	m_pClassSelectView->Set_SlotVisible("ClassList_Thumb", false);
+	m_pClassSelectView->Set_SlotVisible("ClassList_ThumbSymbol", false);
+	m_pClassSelectView->Set_SlotVisible("ClassList_ThumbFrame", false);
+
+	const int32_t iExpandedBefore = m_iExpandedCategory;
+	f32_t fRowY = ROW_Y_START;
+	for (int32_t i = 0; i < static_cast<int32_t>(std::size(CLASS_LIST_ENTRIES)); ++i)
 	{
-		m_pClassSelectView->Set_SlotVisible(
-			Slot.pSlotId, hasCompleteProductButtons);
+		const CLASS_LIST_ENTRY& Entry = CLASS_LIST_ENTRIES[i];
+		const string strRowId = "ClassList_Row" + std::to_string(i);
+		const string strSymbolId = "ClassList_Symbol" + std::to_string(i);
+		const bool_t bExpanded = i == iExpandedBefore;
+
+		m_pClassSelectView->Set_SlotVisible(strRowId, true);
+		m_pClassSelectView->Set_SlotPosition(strRowId, Entry.fX, fRowY);
+		m_pClassSelectView->Set_SlotTexture(strRowId, bExpanded ?
+			"UI/ClassSelect/Common/CategorySelected.png" : "UI/ClassSelect/Common/Category.png");
+
+		const bool_t bHovered = bInteractable &&
+			Router.Is_Hovered(Entry.fX, fRowY, Entry.fWidth, Entry.fHeight, fRefWidth, fRefHeight);
+		/* Same hover callout as the old AddRect(...,160,...) outline -- a brighten tint instead
+		of a border image CUILayoutRuntime has no primitive for. Only while collapsed: the
+		expanded row already reads as selected via CategorySelected.png. */
+		m_pClassSelectView->Set_SlotTint(strRowId,
+			(!bExpanded && bHovered) ? float4_t(1.15f, 1.15f, 1.05f, 1.f) : float4_t(1.f, 1.f, 1.f, 1.f));
+
+		if (nullptr != Entry.pCategorySymbolFile)
+		{
+			m_pClassSelectView->Set_SlotVisible(strSymbolId, true);
+			m_pClassSelectView->Set_SlotPosition(strSymbolId, Entry.fX + 8.f, fRowY + 6.f);
+			m_pClassSelectView->Set_SlotTexture(strSymbolId,
+				string("UI/ClassSelect/Common/") + Entry.pCategorySymbolFile);
+		}
+		else
+		{
+			m_pClassSelectView->Set_SlotVisible(strSymbolId, false);
+		}
+
+		if (bHovered)
+		{
+			Router.Claim_Mouse_This_Frame();
+			if (Router.Is_Clicked(Entry.fX, fRowY, Entry.fWidth, Entry.fHeight, fRefWidth, fRefHeight))
+			{
+				CMainApp::Play_UIButtonClickSound();
+				m_iExpandedCategory = bExpanded ? -1 : i;
+			}
+		}
+
+		fRowY += Entry.fHeight + ROW_GAP;
+
+		if (bExpanded)
+		{
+			const bool_t bConfirmed = Entry.iSupportedClassIndex == m_iSelectedClassIndex;
+			const f32_t fThumbY = fRowY + THUMB_MARGIN_TOP;
+
+			m_pClassSelectView->Set_SlotVisible("ClassList_Thumb", true);
+			m_pClassSelectView->Set_SlotPosition("ClassList_Thumb", Entry.fX, fThumbY);
+			/* Set_SlotTexture(missingPath) resolves to a null SRV and reverts the sprite to its
+			own authored default (CategorySelected.png, same fallback as the old
+			Load_Texture-returned-null branch) -- Slayer/Gunslinger have no IllustrationSmall.png
+			today, same gap as before this migration. */
+			m_pClassSelectView->Set_SlotTexture("ClassList_Thumb",
+				Build_ClassSelectAssetPath(Entry.pJsonClassName, "IllustrationSmall.png"));
+
+			/* No missing-asset fallback for the identity symbol overlay (unlike Thumb just
+			above) -- a failed load here reverts to ClassList_ThumbSymbol's own authored
+			placeholder texture instead of hiding, a minor cosmetic gap versus the old
+			Load_Texture-returns-null-so-skip-drawing behavior, only reachable for a class
+			missing this one asset. */
+			m_pClassSelectView->Set_SlotVisible("ClassList_ThumbSymbol", true);
+			m_pClassSelectView->Set_SlotPosition(
+				"ClassList_ThumbSymbol", Entry.fX + THUMB_W - 22.f, fThumbY - 4.f);
+			m_pClassSelectView->Set_SlotTexture("ClassList_ThumbSymbol",
+				Build_ClassSelectAssetPath(Entry.pJsonClassName, "IdentitySymbol.png"));
+
+			const bool_t bThumbHovered = bInteractable &&
+				Router.Is_Hovered(Entry.fX, fThumbY, THUMB_W, THUMB_H, fRefWidth, fRefHeight);
+
+			/* Small illust selected.png is the one hover/confirm frame -- both states use the
+			same authored art instead of a placeholder AddRect() outline. */
+			m_pClassSelectView->Set_SlotVisible("ClassList_ThumbFrame", bConfirmed || bThumbHovered);
+			m_pClassSelectView->Set_SlotPosition(
+				"ClassList_ThumbFrame", Entry.fX - 2.f, fThumbY - 2.f);
+
+			if (bThumbHovered)
+			{
+				Router.Claim_Mouse_This_Frame();
+				if (Router.Is_Clicked(Entry.fX, fThumbY, THUMB_W, THUMB_H, fRefWidth, fRefHeight))
+				{
+					CMainApp::Play_UIButtonClickSound();
+					Request_ClassChange(Entry.iSupportedClassIndex);
+				}
+			}
+
+			fRowY = fThumbY + THUMB_H + THUMB_MARGIN_BOTTOM;
+		}
 	}
-	m_pClassSelectView->Render(strSelectedClass, 0);
+}
+
+void CLevel_CharacterSelect::Render_ClassListText()
+{
+	/* Same MODE::SERVER_ARENA gate as Update_ClassList -- these are that panel's own text, so
+	they must disappear and reappear together with it instead of floating on screen without the
+	art underneath. Uses ImGui's own font/foreground draw list (not CGameInstance::Draw_Text),
+	so unlike Render_ArenaSpawnLabels this has to stay in the ImGui-active Render() phase, not
+	the post-EndFrame LOA-font pass. */
+	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)
+		return;
 
 	ImGuiViewport* pViewport = ImGui::GetMainViewport();
 	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
@@ -1965,14 +2192,6 @@ void CLevel_CharacterSelect::Render_ClassList()
 			pViewport->WorkPos.x + fX * fScaleX,
 			pViewport->WorkPos.y + fY * fScaleY);
 	};
-
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
-	const bool_t bInteractable = MODE::SERVER_ARENA == m_eMode &&
-		!m_isCreateCharacterModalOpen &&
-		!m_iPendingClassIndex.has_value() &&
-		!Is_ClassPresentationPreparationPending() &&
-		!CLevelTransitionService::Is_Pending();
 
 	/* ImGui only ships the one HANYoonGothic330 weight (see ImGuiLayer::Initialize), so "bold"
 	here is the standard faux-bold trick: the same glyphs redrawn a few pixels apart so their
@@ -2049,150 +2268,59 @@ void CLevel_CharacterSelect::Render_ClassList()
 	pDrawList->AddText(Fn_ToScreen(1000.f, 20.f), IM_COL32(255, 220, 140, 255),
 		"\xed\x81\xb4\xeb\x9e\x98\xec\x8a\xa4 \xec\x84\xa0\xed\x83\x9d");
 
-	/* Accordion: fRowY advances past each row, and past the expanded row's thumbnail block too,
-	so a category expanding pushes every row beneath it down instead of the thumbnail always
-	drawing in one fixed spot regardless of which category opened it. */
+	/* Same fRowY recompute as Update_ClassList's own accordion loop, purely for these two text
+	draws -- see that function's comment for why recomputing instead of caching stays safe. */
 	const int32_t iExpandedBefore = m_iExpandedCategory;
 	f32_t fRowY = ROW_Y_START;
 	for (int32_t i = 0; i < static_cast<int32_t>(std::size(CLASS_LIST_ENTRIES)); ++i)
 	{
 		const CLASS_LIST_ENTRY& Entry = CLASS_LIST_ENTRIES[i];
-		const ImVec2 vTopLeft = Fn_ToScreen(Entry.fX, fRowY);
-		const ImVec2 vBotRight = Fn_ToScreen(Entry.fX + Entry.fWidth, fRowY + Entry.fHeight);
-
-		const bool_t bHovered = bInteractable &&
-			vMouse.x >= vTopLeft.x && vMouse.x < vBotRight.x &&
-			vMouse.y >= vTopLeft.y && vMouse.y < vBotRight.y;
 		const bool_t bExpanded = i == iExpandedBefore;
-
-		if (ID3D11ShaderResourceView* pRowBgSRV = m_pClassSelectView->Load_Texture(
-			bExpanded ? "UI/ClassSelect/Common/CategorySelected.png" : "UI/ClassSelect/Common/Category.png"))
-		{
-			pDrawList->AddImage(pRowBgSRV, vTopLeft, vBotRight);
-		}
-
-		if (!bExpanded && bHovered)
-		{
-			pDrawList->AddRect(vTopLeft, vBotRight, IM_COL32(255, 220, 90, 160), 4.f, 0, 1.5f);
-		}
-
-		if (nullptr != Entry.pCategorySymbolFile)
-		{
-			if (ID3D11ShaderResourceView* pSymbolSRV = m_pClassSelectView->Load_Texture(
-				string("UI/ClassSelect/Common/") + Entry.pCategorySymbolFile))
-			{
-				pDrawList->AddImage(pSymbolSRV,
-					Fn_ToScreen(Entry.fX + 8.f, fRowY + 6.f),
-					Fn_ToScreen(Entry.fX + 44.f, fRowY + 42.f));
-			}
-		}
 
 		pDrawList->AddText(Fn_ToScreen(Entry.fX + 52.f, fRowY + 16.f),
 			IM_COL32(230, 230, 230, 255), Entry.pCategoryLabel);
-
-		if (bHovered && bClicked)
-		{
-			CMainApp::Play_UIButtonClickSound();
-			m_iExpandedCategory = bExpanded ? -1 : i;
-		}
 
 		fRowY += Entry.fHeight + ROW_GAP;
 
 		if (bExpanded)
 		{
-			const bool_t bConfirmed = Entry.iSupportedClassIndex == m_iSelectedClassIndex;
 			const f32_t fThumbY = fRowY + THUMB_MARGIN_TOP;
-
-			const ImVec2 vThumbTopLeft = Fn_ToScreen(Entry.fX, fThumbY);
-			const ImVec2 vThumbBotRight = Fn_ToScreen(Entry.fX + THUMB_W, fThumbY + THUMB_H);
-
-			ID3D11ShaderResourceView* pThumbSRV = m_pClassSelectView->Load_Texture(
-				Build_ClassSelectAssetPath(Entry.pJsonClassName, "IllustrationSmall.png"));
-			if (nullptr == pThumbSRV)
-				pThumbSRV = m_pClassSelectView->Load_Texture(
-					"UI/ClassSelect/Common/CategorySelected.png");
-			if (nullptr != pThumbSRV)
-			{
-				pDrawList->AddImage(pThumbSRV, vThumbTopLeft, vThumbBotRight);
-			}
-
-			if (ID3D11ShaderResourceView* pSymbolSRV = m_pClassSelectView->Load_Texture(
-				Build_ClassSelectAssetPath(Entry.pJsonClassName, "IdentitySymbol.png")))
-			{
-				const ImVec2 vSymbolTopLeft = Fn_ToScreen(Entry.fX + THUMB_W - 22.f, fThumbY - 4.f);
-				const ImVec2 vSymbolBotRight = Fn_ToScreen(Entry.fX + THUMB_W + 4.f, fThumbY + 22.f);
-				pDrawList->AddImage(pSymbolSRV, vSymbolTopLeft, vSymbolBotRight);
-			}
-
 			pDrawList->AddText(Fn_ToScreen(Entry.fX + 4.f, fThumbY + THUMB_H - 18.f),
 				IM_COL32(255, 255, 255, 255), Entry.pClassLabel);
-
-			const bool_t bThumbHovered = bInteractable &&
-				vMouse.x >= vThumbTopLeft.x && vMouse.x < vThumbBotRight.x &&
-				vMouse.y >= vThumbTopLeft.y && vMouse.y < vThumbBotRight.y;
-
-			/* Small illust selected.png is the one hover/confirm frame -- both states use the
-			same authored art instead of a placeholder AddRect() outline. */
-			if (bConfirmed || bThumbHovered)
-			{
-				if (ID3D11ShaderResourceView* pSelectedFrameSRV = m_pClassSelectView->Load_Texture(
-					"UI/ClassSelect/Common/SmallIllustSelected.png"))
-				{
-					const ImVec2 vFrameTopLeft = Fn_ToScreen(Entry.fX - 2.f, fThumbY - 2.f);
-					const ImVec2 vFrameBotRight = Fn_ToScreen(Entry.fX + THUMB_W + 2.f, fThumbY + THUMB_H + 2.f);
-					pDrawList->AddImage(pSelectedFrameSRV, vFrameTopLeft, vFrameBotRight);
-				}
-			}
-
-			if (bThumbHovered && bClicked)
-			{
-				CMainApp::Play_UIButtonClickSound();
-				Request_ClassChange(Entry.iSupportedClassIndex);
-			}
-
 			fRowY = fThumbY + THUMB_H + THUMB_MARGIN_BOTTOM;
 		}
 	}
 }
 
-void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
+void CLevel_CharacterSelect::Hide_ArenaSpawnButtons()
 {
-	/* Same MODE::SERVER_ARENA gate as Render_ClassList -- these debug spawn buttons and the
+	if (nullptr == m_pClassSelectView)
+		return;
+	for (const CHARACTER_SELECT_PRODUCT_SLOT& Slot : PRODUCT_BUTTON_SLOTS)
+		m_pClassSelectView->Set_SlotVisible(Slot.pSlotId, false);
+}
+
+void CLevel_CharacterSelect::Update_ArenaSpawnButtons()
+{
+	/* Same MODE::SERVER_ARENA gate as Update_ClassList -- these debug spawn buttons and the
 	Create Character button are gameplay-tied and meaningless (their click handlers all touch
 	m_pWorldEntityCommandSink/m_pPlayerCommandSink, which are only useful once the arena has
 	actually admitted the local character) before the scene has really finished transitioning. */
 	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)
+	{
+		Hide_ArenaSpawnButtons();
 		return;
+	}
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
-	const f32_t fScaleY = pViewport->WorkSize.y / REF_HEIGHT;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
 	const bool_t hasCompleteAuthoredButtons =
 		Has_CompleteProductButtonSlots(m_pClassSelectView.get());
-
-	const auto Fn_ToScreen = [&](f32_t fX, f32_t fY) -> ImVec2
-	{
-		return ImVec2(
-			pViewport->WorkPos.x + fX * fScaleX,
-			pViewport->WorkPos.y + fY * fScaleY);
-	};
-
-	const ImVec2 vMouse = ImGui::GetMousePos();
-	const bool_t bClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pClassSelectView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pClassSelectView->Get_ResolutionHeight();
 	const bool_t bInteractable = MODE::SERVER_ARENA == m_eMode &&
 		!m_isCreateCharacterModalOpen &&
 		!Is_ClassPresentationPreparationPending() &&
 		!CLevelTransitionService::Is_Pending();
-
-	const auto Fn_HitTest = [&](f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight,
-		ImVec2& outTopLeft, ImVec2& outBotRight) -> bool_t
-	{
-		outTopLeft = Fn_ToScreen(fX, fY);
-		outBotRight = Fn_ToScreen(fX + fWidth, fY + fHeight);
-		return vMouse.x >= outTopLeft.x && vMouse.x < outBotRight.x &&
-			vMouse.y >= outTopLeft.y && vMouse.y < outBotRight.y;
-	};
 
 	/* The authored spawn icon rects overlap by a few pixels. Resolve the visually topmost slot
 	first (later draw order wins) so one physical click can submit exactly one typed command. */
@@ -2211,8 +2339,7 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
 				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
-			ImVec2 vTopLeft, vBotRight;
-			if (Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight))
+			if (Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 			{
 				pHoveredSpawnSlotId = pSlotId;
 				break;
@@ -2240,26 +2367,24 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 		Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
 			hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
 
-		ImVec2 vTopLeft, vBotRight;
-		Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
 		const bool_t bHovered = nullptr != pHoveredSpawnSlotId &&
 			0 == std::strcmp(pHoveredSpawnSlotId, Button.pSlotId);
 
-		if (!hasCompleteAuthoredButtons || bHovered)
-		{
-			const char_t* pTexturePath = bHovered ? pSlot->pHoverPath : pSlot->pIdlePath;
-			if (ID3D11ShaderResourceView* pSRV =
-				m_pClassSelectView->Load_Texture(pTexturePath))
-			{
-				pDrawList->AddImage(pSRV, vTopLeft, vBotRight);
-			}
-		}
+		/* Visibility is Update_ClassList's own concern (hasCompleteProductButtons, called just
+		before this from Update()) -- this only owns which texture shows. Empty path reverts the
+		sprite to its own authored default, which is this same pIdlePath art, so only the hover
+		swap needs an explicit override. */
+		m_pClassSelectView->Set_SlotTexture(Button.pSlotId, bHovered ? pSlot->pHoverPath : "");
 
-		if (bHovered && bClicked)
+		if (bHovered)
 		{
-			CMainApp::Play_UIButtonClickSound();
-			m_iSelectedArenaSpawnIndex = Button.iOptionIndex;
-			Request_SelectedArenaSpawn();
+			Router.Claim_Mouse_This_Frame();
+			if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
+			{
+				CMainApp::Play_UIButtonClickSound();
+				m_iSelectedArenaSpawnIndex = Button.iOptionIndex;
+				Request_SelectedArenaSpawn();
+			}
 		}
 	}
 
@@ -2274,30 +2399,25 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 		{
 			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
 				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
-			ImVec2 vTopLeft, vBotRight;
-			Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
 			const bool_t bHovered = nullptr != pHoveredSpawnSlotId &&
 				0 == std::strcmp(pHoveredSpawnSlotId, pSlot->pSlotId);
-			if (!hasCompleteAuthoredButtons || bHovered)
+			m_pClassSelectView->Set_SlotTexture(pSlot->pSlotId, bHovered ? pSlot->pHoverPath : "");
+			if (bHovered)
 			{
-				const char_t* pTexturePath = bHovered ? pSlot->pHoverPath : pSlot->pIdlePath;
-				if (ID3D11ShaderResourceView* pSRV =
-					m_pClassSelectView->Load_Texture(pTexturePath))
+				Router.Claim_Mouse_This_Frame();
+				if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight) &&
+					nullptr != m_pWorldEntityCommandSink)
 				{
-					pDrawList->AddImage(pSRV, vTopLeft, vBotRight);
+					CMainApp::Play_UIButtonClickSound();
+					m_pWorldEntityCommandSink->Request_DespawnAllWorldEntities(
+						m_iNextDespawnRequestSequence++);
+					/* Request_SelectedArenaSpawn refuses to resend once
+					m_ArenaSpawnAccepted[index] is true (see its own gate check) -- that flag only
+					meant "don't ask the Server to spawn something it already told us exists", but
+					never got cleared on despawn, so re-spawning either option silently no-op'd
+					after a revert even though the Server-side entity was really gone. */
+					m_ArenaSpawnAccepted.fill(false);
 				}
-			}
-			if (bHovered && bClicked && nullptr != m_pWorldEntityCommandSink)
-			{
-				CMainApp::Play_UIButtonClickSound();
-				m_pWorldEntityCommandSink->Request_DespawnAllWorldEntities(
-					m_iNextDespawnRequestSequence++);
-				/* Request_SelectedArenaSpawn refuses to resend once
-				m_ArenaSpawnAccepted[index] is true (see its own gate check) -- that flag only
-				meant "don't ask the Server to spawn something it already told us exists", but
-				never got cleared on despawn, so re-spawning either option silently no-op'd
-				after a revert even though the Server-side entity was really gone. */
-				m_ArenaSpawnAccepted.fill(false);
 			}
 		}
 	}
@@ -2315,22 +2435,17 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 		{
 			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
 				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
-			ImVec2 vTopLeft, vBotRight;
 			const bool_t bHovered = bInteractable && !m_iPendingClassIndex.has_value() &&
-				Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
-			if (!hasCompleteAuthoredButtons || bHovered)
+				Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
+			m_pClassSelectView->Set_SlotTexture(pSlot->pSlotId, bHovered ? pSlot->pHoverPath : "");
+			if (bHovered)
 			{
-				const char_t* pTexturePath = bHovered ? pSlot->pHoverPath : pSlot->pIdlePath;
-				if (ID3D11ShaderResourceView* pSRV =
-					m_pClassSelectView->Load_Texture(pTexturePath))
+				Router.Claim_Mouse_This_Frame();
+				if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 				{
-					pDrawList->AddImage(pSRV, vTopLeft, vBotRight);
+					CMainApp::Play_UIButtonClickSound();
+					Request_CreateCharacterButtonClick();
 				}
-			}
-			if (bHovered && bClicked)
-			{
-				CMainApp::Play_UIButtonClickSound();
-				Request_CreateCharacterButtonClick();
 			}
 		}
 	}
@@ -2346,23 +2461,18 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 		{
 			Resolve_ProductButtonRect(m_pClassSelectView.get(), *pSlot,
 				hasCompleteAuthoredButtons, fX, fY, fWidth, fHeight);
-			ImVec2 vTopLeft, vBotRight;
 			const bool_t bHovered = !m_isCreateCharacterModalOpen &&
 				!CLevelTransitionService::Is_Pending() &&
-				Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
-			if (!hasCompleteAuthoredButtons || bHovered)
+				Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
+			m_pClassSelectView->Set_SlotTexture(pSlot->pSlotId, bHovered ? pSlot->pHoverPath : "");
+			if (bHovered)
 			{
-				const char_t* pTexturePath = bHovered ? pSlot->pHoverPath : pSlot->pIdlePath;
-				if (ID3D11ShaderResourceView* pSRV =
-					m_pClassSelectView->Load_Texture(pTexturePath))
+				Router.Claim_Mouse_This_Frame();
+				if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 				{
-					pDrawList->AddImage(pSRV, vTopLeft, vBotRight);
+					CMainApp::Play_UIButtonClickSound();
+					Leave_ServerArena();
 				}
-			}
-			if (bHovered && bClicked)
-			{
-				CMainApp::Play_UIButtonClickSound();
-				Leave_ServerArena();
 			}
 		}
 	}
@@ -2370,7 +2480,7 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 
 void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 {
-	/* Same MODE::SERVER_ARENA gate as Render_ClassList/Render_ArenaSpawnButtons -- these are
+	/* Same MODE::SERVER_ARENA gate as Update_ClassList/Update_ArenaSpawnButtons -- these are
 	just the text captions for that same button art, so they must disappear and reappear
 	together with it instead of floating on screen without their buttons underneath. */
 	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)

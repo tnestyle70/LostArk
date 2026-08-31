@@ -1061,7 +1061,7 @@ HRESULT CMainApp::Render()
 	{
 		if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active())
 		{
-			// Same gate as Render_ArenaSpawnButtons's own image draw -- these are
+			// Same gate as Update_ArenaSpawnButtons's own image draw -- these are
 			// its text labels, drawn from this separate text pass.
 			if (!isCharSelectDebugPreviewOpenForText)
 				pCharacterSelect->Render_ArenaSpawnLabels();
