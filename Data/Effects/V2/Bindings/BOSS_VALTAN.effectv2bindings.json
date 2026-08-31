@@ -13,6 +13,9 @@
     { "group": "boss.valtan.impact", "clip": "att_battle_19_01", "startMs": 2233, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 175.0 },
     { "group": "boss.valtan.impact", "clip": "att_battle_19_01", "startMs": 3233, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 270.0 },
     { "group": "boss.valtan.impact", "clip": "att_battle_19_01", "startMs": 4200, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 90.0 },
+    { "group": "boss.valtan.pounding", "clip": "att_battle_19_03", "startMs": 200, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "group": "boss.valtan.pounding", "clip": "att_battle_19_03", "startMs": 400, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [-1.0, 0.0, 0.0], "yawDegrees": 0.0 },
+    { "group": "boss.valtan.twohand", "clip": "att_battle_19_04", "startMs": 1033, "bone": "b_effectroot", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 },
     { "group": "boss.valtan.impact", "stage": "valtan.sequence.sequence.400440.0.step-01", "startMs": 0, "bone": "", "followBone": false, "rotation": "TargetYaw", "stopWithClip": false, "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0 }
   ]
 }

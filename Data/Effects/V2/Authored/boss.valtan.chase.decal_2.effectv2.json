@@ -1,20 +1,20 @@
 {
   "schema": "lostark.effect-v2",
   "formatVersion": 1,
-  "effectId": "boss.valtan.hit_2",
+  "effectId": "boss.valtan.chase.decal_2",
   "effectType": "Decal",
   "slots": {
     "mesh": "",
-    "base": "Effect/Valtan/Textures/FX_TEX_03/fx_e_hit_009r.dds",
+    "base": "Effect/Valtan/Textures/FX_TEX_02/fx_d_hit_008.dds",
     "noise": "",
-    "mask": "Effect/Valtan/Textures/FX_TEX_03/fx_e_hit_009r.dds",
+    "mask": "Effect/Valtan/Textures/FX_TEX_02/fx_d_hit_008.dds",
     "emissive": "",
     "dissolve": ""
   },
   "params": {
-    "position": { "start": [-0.15, 0.0, 3.15], "end": [0.0, 0.0, 0.0], "lerp": false },
+    "position": { "start": [0.0, 0.0, 2.8], "end": [0.0, 0.0, 0.0], "lerp": false },
     "rotation": { "start": [0.0, 0.0, 0.0], "end": [0.0, 0.0, 0.0], "lerp": false },
-    "scale": { "start": [10.0, 1.0, 10.0], "end": [1.0, 1.0, 1.0], "lerp": false },
+    "scale": { "start": [1.0, 1.0, 1.0], "end": [1.0, 1.0, 1.0], "lerp": false },
     "velocity": { "start": [0.0, 0.0, 0.0], "end": [0.0, 0.0, 0.0], "lerp": false },
     "colorOffset": [0.0, 0.0, 0.0, 0.0],
     "colorOffsetEnd": [0.0, 0.0, 0.0, 0.0],
@@ -45,7 +45,7 @@
     "billboard": true,
     "depthTest": true,
     "softFadeDistance": 0.0,
-    "lifetime": 0.5,
+    "lifetime": 3.0,
     "loop": false,
     "playRate": 1.0,
     "meshPreScale": 0.01,
@@ -87,10 +87,10 @@
       "meshSpinMax": [0.0, 0.0, 0.0]
     },
     "decal": {
-      "size": [1.0, 1.0],
-      "depth": 0.2,
+      "size": [4.0, 4.0],
+      "depth": 0.5,
       "edgeFade": 0.0,
-      "normalCutoff": 0.797
+      "normalCutoff": 0.5
     },
     "trail": {
       "maxPoints": 64,

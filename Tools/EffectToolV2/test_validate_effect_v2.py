@@ -73,7 +73,9 @@ class EffectV2ValidatorTests(unittest.TestCase):
                     "durationMs": 500,
                     "stop": "Deactivate",
                     "offset": [0.0, 0.0, 0.0],
+                    "pitchDegrees": 15.0,
                     "yawDegrees": 0.0,
+                    "rollDegrees": -30.0,
                 }
             ],
         }
@@ -111,7 +113,10 @@ class EffectV2ValidatorTests(unittest.TestCase):
 
     def test_exact_authored_binding_and_resource_join_passes(self) -> None:
         report = VALIDATOR.validate(self.root, self.resource_root)
-        self.assertEqual(report, {"authored": 1, "bindings": 1, "groups": 0, "textures": 1})
+        self.assertEqual(
+            report,
+            {"authored": 1, "bindings": 1, "groups": 0, "independent": 0, "textures": 1},
+        )
 
     def test_missing_resource_fails_closed(self) -> None:
         (self.resource_root / "Effect/Test/base.dds").unlink()
@@ -123,6 +128,32 @@ class EffectV2ValidatorTests(unittest.TestCase):
         binding["bindings"][0]["effectId"] = "effect.test.missing"
         self._write_fixture(self.document, binding)
         with self.assertRaisesRegex(VALIDATOR.ContractError, "no authored effect"):
+            VALIDATOR.validate(self.root, self.resource_root)
+
+    def _write_independent(self, effects: list, groups: list) -> None:
+        self._write_json(
+            self.authored_root.parent / "Independent.json",
+            {
+                "schema": "lostark.effect-v2-independent",
+                "formatVersion": 1,
+                "effects": effects,
+                "groups": groups,
+            },
+        )
+
+    def test_independent_group_passes_without_binding(self) -> None:
+        self._write_group(self.group)
+        self._write_independent([], ["group.test.one"])
+        binding = copy.deepcopy(self.binding)
+        binding["bindings"] = []
+        self._write_fixture(self.document, binding)
+        report = VALIDATOR.validate(self.root, self.resource_root)
+        self.assertEqual(report["independent"], 1)
+        self.assertEqual(report["bindings"], 0)
+
+    def test_independent_unknown_id_fails_closed(self) -> None:
+        self._write_independent([], ["group.test.missing"])
+        with self.assertRaisesRegex(VALIDATOR.ContractError, "has no document"):
             VALIDATOR.validate(self.root, self.resource_root)
 
     def test_binding_offset_and_yaw_pass(self) -> None:
@@ -234,7 +265,10 @@ class EffectV2ValidatorTests(unittest.TestCase):
         self._write_group(self.group)
         self._write_fixture(self.document, self._group_binding())
         report = VALIDATOR.validate(self.root, self.resource_root)
-        self.assertEqual(report, {"authored": 1, "bindings": 1, "groups": 1, "textures": 1})
+        self.assertEqual(
+            report,
+            {"authored": 1, "bindings": 1, "groups": 1, "independent": 0, "textures": 1},
+        )
 
     def test_group_and_direct_leaf_at_same_expanded_clock_fail_closed(self) -> None:
         self._write_group(self.group)
