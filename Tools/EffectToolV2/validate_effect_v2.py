@@ -14,6 +14,7 @@ from typing import Any, Mapping
 AUTHORED_SCHEMA = "lostark.effect-v2"
 BINDING_SCHEMA = "lostark.effect-v2-bindings"
 GROUP_SCHEMA = "lostark.effect-v2-group"
+INDEPENDENT_SCHEMA = "lostark.effect-v2-independent"
 EFFECT_TYPES = {"Decal", "Mesh", "Particle", "ScreenPost", "Texture", "Trail"}
 SLOT_NAMES = ("mesh", "base", "noise", "mask", "emissive", "dissolve")
 TEXTURE_SLOT_NAMES = ("base", "noise", "mask", "emissive", "dissolve")
@@ -230,12 +231,47 @@ def _validate_groups(group_root: Path, authored: dict[str, Path]) -> dict[str, l
     return groups
 
 
+def _load_independent(
+    v2_root: Path, authored: dict[str, Path], groups: dict[str, list[str]]
+) -> tuple[set[str], set[str]]:
+    path = v2_root / "Independent.json"
+    if not path.is_file():
+        return set(), set()
+    document = _require_object(_read_json(path), path.as_posix())
+    if document.get("schema") != INDEPENDENT_SCHEMA or document.get("formatVersion") != 1:
+        raise ContractError(f"unsupported Effect V2 independent document: {path}")
+    independent_effects: set[str] = set()
+    independent_groups: set[str] = set()
+    for key, known, admitted in (
+        ("effects", authored, independent_effects),
+        ("groups", groups, independent_groups),
+    ):
+        rows = document.get(key, [])
+        if not isinstance(rows, list):
+            raise ContractError(f"Effect V2 independent {key} must be an array: {path}")
+        for row in rows:
+            if not isinstance(row, str) or not row:
+                raise ContractError(f"Effect V2 independent {key} entries must be IDs: {path}")
+            if row not in known:
+                raise ContractError(f"Effect V2 independent {key} entry has no document: {row}")
+            if row in admitted:
+                raise ContractError(f"duplicate Effect V2 independent {key} entry: {row}")
+            admitted.add(row)
+    return independent_effects, independent_groups
+
+
 def _validate_bindings(
-    binding_root: Path, authored: dict[str, Path], groups: dict[str, list[str]]
+    binding_root: Path,
+    authored: dict[str, Path],
+    groups: dict[str, list[str]],
+    independent_effects: set[str],
+    independent_groups: set[str],
 ) -> int:
     seen_archetypes: set[str] = set()
-    seen_effects: set[str] = set()
-    seen_groups: set[str] = set()
+    seen_effects: set[str] = set(independent_effects)
+    seen_groups: set[str] = set(independent_groups)
+    for group_id in independent_groups:
+        seen_effects.update(groups[group_id])
     binding_count = 0
     paths = sorted(binding_root.glob("*.effectv2bindings.json"))
     if not paths:
@@ -316,11 +352,15 @@ def validate(repository_root: Path, resource_root: Path) -> dict[str, int]:
     v2_root = repository_root / "Data/Effects/V2"
     authored, usage = _validate_authored(v2_root / "Authored", resource_root)
     groups = _validate_groups(v2_root / "Groups", authored)
-    binding_count = _validate_bindings(v2_root / "Bindings", authored, groups)
+    independent_effects, independent_groups = _load_independent(v2_root, authored, groups)
+    binding_count = _validate_bindings(
+        v2_root / "Bindings", authored, groups, independent_effects, independent_groups
+    )
     return {
         "authored": len(authored),
         "bindings": binding_count,
         "groups": len(groups),
+        "independent": len(independent_effects) + len(independent_groups),
         "textures": len(usage),
     }
 
@@ -344,7 +384,8 @@ def main() -> int:
     print(
         "Effect V2 validation succeeded: "
         f"{report['authored']} authored, {report['bindings']} bindings, "
-        f"{report['groups']} groups, {report['textures']} textures."
+        f"{report['groups']} groups, {report['independent']} independent, "
+        f"{report['textures']} textures."
     )
     return 0
 

@@ -802,7 +802,12 @@ void Client::CEffectV2Object::Apply_Transform()
 	const f32_t fRatio = Life_Ratio();
 	const float3_t vPosition = m_Params.Position.Evaluate(fRatio);
 	const float3_t vRotation = m_Params.Rotation.Evaluate(fRatio);
-	const float3_t vScale = m_Params.Scale.Evaluate(fRatio);
+	float3_t vScale = m_Params.Scale.Evaluate(fRatio);
+	/* A zero axis makes the world matrix singular and Engine consumers of
+	   its inverse crash, so clamp while the tool types values like "0.4". */
+	vScale.x = std::fabs(vScale.x) < 0.001f ? 0.001f : vScale.x;
+	vScale.y = std::fabs(vScale.y) < 0.001f ? 0.001f : vScale.y;
+	vScale.z = std::fabs(vScale.z) < 0.001f ? 0.001f : vScale.z;
 	const f32_t fPreScale =
 		SHAPE::MESH == m_eShape ? (std::max)(0.0001f, m_Params.fMeshPreScale) : 1.f;
 	const matrix_t Scale = XMMatrixScaling(

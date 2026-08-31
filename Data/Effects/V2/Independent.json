@@ -1,0 +1,10 @@
+{
+  "schema": "lostark.effect-v2-independent",
+  "formatVersion": 1,
+  "effects": [],
+  "groups": [
+    "boss.valtan.impact",
+    "boss.valtan.pounding",
+    "boss.valtan.pounding.chase"
+  ]
+}

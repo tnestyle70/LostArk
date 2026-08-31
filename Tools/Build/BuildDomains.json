@@ -233,7 +233,8 @@
         "Data/Encounters/Valtan/**",
         "Data/Valtan/**",
         "Data/Effects/EffectCatalog.json",
-        "Data/Effects/Authored/effect.valtan.*.effect.json"
+        "Data/Effects/Authored/effect.valtan.*.effect.json",
+        "Data/Effects/V2/**"
       ],
       "tools": [
         "Tools/GameplayPipeline/Publish-GameplayBalance.ps1",
