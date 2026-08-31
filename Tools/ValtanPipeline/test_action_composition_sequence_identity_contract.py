@@ -33,35 +33,55 @@ def replace_occurrences(
     existing: list[dict[str, str]],
     selected_clips: list[str],
 ) -> list[dict[str, str]]:
-    """Executable mirror of the bounded identity-selection rule."""
+    """Executable mirror of exact -> unique semantic-role reuse."""
+
+    def role(clip: str) -> str:
+        for token in ("start", "loop", "end"):
+            if f"_{token}" in clip.lower():
+                return token
+        return ""
 
     reused = [False] * len(existing)
+    reusable: list[int | None] = [None] * len(selected_clips)
+    for selected_index, selected_clip in enumerate(selected_clips):
+        for index, row in enumerate(existing):
+            if not reused[index] and row["clip"] == selected_clip:
+                reused[index] = True
+                reusable[selected_index] = index
+                break
+    for selected_index, selected_clip in enumerate(selected_clips):
+        if reusable[selected_index] is not None or not role(selected_clip):
+            continue
+        selected_role = role(selected_clip)
+        unmatched_new = [
+            index
+            for index, clip in enumerate(selected_clips)
+            if reusable[index] is None and role(clip) == selected_role
+        ]
+        unmatched_existing = [
+            index
+            for index, row in enumerate(existing)
+            if not reused[index] and role(row["clip"]) == selected_role
+        ]
+        if len(unmatched_new) == 1 and len(unmatched_existing) == 1:
+            reusable[selected_index] = unmatched_existing[0]
+            reused[unmatched_existing[0]] = True
+
     reserved = {row["id"] for row in existing}
     result: list[dict[str, str]] = []
     for selected_index, selected_clip in enumerate(selected_clips):
-        reusable: int | None = None
-        if (
-            selected_index < len(existing)
-            and not reused[selected_index]
-            and existing[selected_index]["clip"] == selected_clip
-        ):
-            reusable = selected_index
-        else:
-            reusable = next(
-                (
-                    index
-                    for index, row in enumerate(existing)
-                    if not reused[index] and row["clip"] == selected_clip
-                ),
-                None,
-            )
-        if reusable is not None:
-            reused[reusable] = True
+        reusable_index = reusable[selected_index]
+        if reusable_index is not None:
+            old = existing[reusable_index]
             result.append(
                 {
-                    "id": existing[reusable]["id"],
+                    "id": old["id"],
                     "clip": selected_clip,
-                    "mapping": existing[reusable]["mapping"],
+                    "mapping": (
+                        old["mapping"]
+                        if old["clip"] == selected_clip
+                        else "PROJECT_AUTHORED"
+                    ),
                 }
             )
             continue
@@ -85,11 +105,9 @@ def replace_occurrences(
     return result
 
 
-def dependencies_resolve(
-    candidate: list[dict[str, str]], dependencies: list[tuple[str, str]]
-) -> bool:
-    joined = {(row["id"], row["clip"]) for row in candidate}
-    return all(dependency in joined for dependency in dependencies)
+def dependency_ids_resolve(candidate: list[dict[str, str]], ids: list[str]) -> bool:
+    joined = {row["id"] for row in candidate}
+    return all(dependency in joined for dependency in ids)
 
 
 class ActionCompositionSequenceIdentityContractTests(unittest.TestCase):
@@ -99,7 +117,7 @@ class ActionCompositionSequenceIdentityContractTests(unittest.TestCase):
         cls.balance = BALANCE_CPP.read_text(encoding="utf-8")
         cls.animation = ANIMATION_CPP.read_text(encoding="utf-8")
 
-    def test_replace_preserves_only_same_clip_identity_and_reserves_removed_ids(
+    def test_replace_preserves_logical_slot_identity_and_reserves_removed_ids(
         self,
     ) -> None:
         apply = function_body(
@@ -109,8 +127,11 @@ class ActionCompositionSequenceIdentityContractTests(unittest.TestCase):
         for token in (
             "ReservedSlots =\n\t\tDraft.animationSlots",
             "ReusedExistingSlots(iExistingCount, false)",
-            "Draft.animationSlots[iClip].clip ==",
             "Draft.animationSlots[iExisting].clip ==",
+            "ClipReplacementRole(ExpandedClips[iClip].strClip)",
+            "iUnassignedNewRoleCount",
+            "iUnassignedExistingRoleCount",
+            "ReusableSlots[iClip] = iUniqueExisting",
             "BuildNextCompositionSlotId(\n\t\t\t\tPattern.strPatternId, Stage.strStageId, ReservedSlots)",
             'Slot.mappingBasis = "PROJECT_AUTHORED"',
             "ReservedSlots.push_back(Slot)",
@@ -134,8 +155,43 @@ class ActionCompositionSequenceIdentityContractTests(unittest.TestCase):
             ],
             replaced,
         )
-        self.assertFalse(dependencies_resolve(replaced, [(existing[0]["id"], "A")]))
-        self.assertTrue(dependencies_resolve(replaced, [(existing[1]["id"], "B")]))
+        self.assertFalse(dependency_ids_resolve(replaced, [existing[0]["id"]]))
+        self.assertTrue(dependency_ids_resolve(replaced, [existing[1]["id"]]))
+
+    def test_groggy_replace_keeps_the_old_loop_slot_for_linked_sound(self) -> None:
+        existing = [
+            {
+                "id": "valtan.attack.dash-charge.groggy.clip.01",
+                "clip": "mesh_dmg_parts_loop_1",
+                "mapping": "PROJECT_TUNED",
+            }
+        ]
+        replaced = replace_occurrences(
+            "VALTAN_DASH_CHARGE",
+            "GROGGY",
+            existing,
+            [
+                "mesh_abn_groggy_1_start",
+                "mesh_abn_groggy_1_loop",
+                "mesh_abn_groggy_1_end",
+            ],
+        )
+        self.assertEqual(existing[0]["id"], replaced[1]["id"])
+        self.assertEqual("PROJECT_AUTHORED", replaced[1]["mapping"])
+        self.assertEqual(1843, 1833 + 10)
+
+    def test_ambiguous_loop_roles_never_retarget_a_dependency_by_position(self) -> None:
+        existing = [
+            {"id": "P.S.clip.01", "clip": "old_loop_a", "mapping": "M1"},
+            {"id": "P.S.clip.02", "clip": "old_loop_b", "mapping": "M2"},
+        ]
+        replaced = replace_occurrences(
+            "P", "S", existing, ["new_loop_a", "new_loop_b"]
+        )
+        self.assertTrue({row["id"] for row in replaced}.isdisjoint(
+            {row["id"] for row in existing}
+        ))
+        self.assertFalse(dependency_ids_resolve(replaced, ["P.S.clip.01"]))
 
     def test_same_clip_reorder_and_duplicate_occurrences_keep_distinct_ids(self) -> None:
         existing = [
@@ -173,7 +229,8 @@ class ActionCompositionSequenceIdentityContractTests(unittest.TestCase):
             "the Pattern Shake dependency source is unavailable",
             "1u != iBaselineCount || 1u != iCandidateCount",
             "BaselineClip->strClipName != CandidateClip->strClipName",
-            "retarget or remove it explicitly",
+            '"PROJECT_AUTHORED" != CandidateClip->strMappingBasis',
+            "explicit PROJECT_AUTHORED slot replacement",
         ):
             self.assertIn(token, wrapper)
 
@@ -195,7 +252,8 @@ class ActionCompositionSequenceIdentityContractTests(unittest.TestCase):
         for token in (
             "1u != iBaselineClipCount || 1u != iCandidateClipCount",
             "BaselineClip->strClipName != CandidateClip->strClipName",
-            "remove or retarget the Sound row explicitly first",
+            '"PROJECT_AUTHORED" != CandidateClip->strMappingBasis',
+            "explicit PROJECT_AUTHORED slot replacement",
         ):
             self.assertIn(token, sound_validator)
 

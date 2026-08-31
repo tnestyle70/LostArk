@@ -30,6 +30,14 @@ namespace
 	constexpr std::uint64_t MAX_ARTIFACT_BYTES = 64ull * 1024ull * 1024ull;
 	constexpr std::string_view GENERATION_SCHEMA =
 		"lostark.valtan-presentation-generation";
+	constexpr std::string_view EFFECT_V2_BINDINGS_RELATIVE =
+		"Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json";
+	constexpr std::string_view EFFECT_V2_AUTHORED_ROOT =
+		"Data/Effects/V2/Authored";
+	constexpr std::string_view EFFECT_V2_GROUP_ROOT =
+		"Data/Effects/V2/Groups";
+	constexpr std::string_view EFFECT_V2_DOCUMENT_SUFFIX = ".effectv2.json";
+	constexpr std::string_view EFFECT_V2_GROUP_SUFFIX = ".effectv2group.json";
 
 	const std::map<std::string, std::string> FIXED_ARTIFACTS{
 		{ "Data/Animation/Authored/Valtan/Valtan.patternbindings.json", "ANIMATION" },
@@ -39,6 +47,7 @@ namespace
 		{ "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json", "COMBAT_VISUAL" },
 		{ "Data/Sound/CharacterSoundCatalog.json", "COMBAT_VISUAL" },
 		{ "Data/Effects/EffectCatalog.json", "EFFECT" },
+		{ std::string(EFFECT_V2_BINDINGS_RELATIVE), "EFFECT" },
 		{ "Data/Encounters/Valtan/ValtanEncounter.json", "COMBAT_VISUAL" },
 		{ "Data/Encounters/Valtan/ValtanCombatObjects.json", "COMBAT_VISUAL" },
 		{ "Data/Actors/BossCatalog.json", "COMBAT_VISUAL" },
@@ -294,6 +303,359 @@ namespace
 		return static_cast<double>(value) == found->Get_Number();
 	}
 
+	bool Has_ExactProperties(
+		const DATA_JSON_VALUE& object,
+		const std::initializer_list<std::string_view> properties)
+	{
+		if (!object.Is_Object() || object.Get_Object().size() != properties.size())
+			return false;
+		return std::all_of(properties.begin(), properties.end(),
+			[&object](const std::string_view property)
+			{
+				return nullptr != object.Find(property);
+			});
+	}
+
+	bool Is_StableEffectV2Id(const std::string& id)
+	{
+		return !id.empty() && id.size() <= 80u &&
+			std::all_of(id.begin(), id.end(), [](const char value)
+			{
+				return ('A' <= value && value <= 'Z') ||
+					('a' <= value && value <= 'z') ||
+					('0' <= value && value <= '9') ||
+					'.' == value || '_' == value || '-' == value;
+			});
+	}
+
+	bool Build_EffectV2Relative(
+		const std::string_view relativeRoot,
+		const std::string& stableId,
+		const std::string_view suffix,
+		const std::string_view context,
+		std::string& relative,
+		std::string& status)
+	{
+		if (!Is_StableEffectV2Id(stableId))
+		{
+			status = std::string(context) +
+				" is not a stable Effect V2 ID: " + stableId;
+			return false;
+		}
+		relative = std::string(relativeRoot) + "/" + stableId +
+			std::string(suffix);
+		if (!Is_SafeRelativePath(relative))
+		{
+			status = std::string(context) +
+				" produced an unsafe Effect V2 path: " + relative;
+			return false;
+		}
+		return true;
+	}
+
+	bool Read_EffectV2Json(
+		const std::filesystem::path& root,
+		const std::string& relative,
+		const std::string_view context,
+		DATA_JSON_VALUE& document,
+		std::string& status)
+	{
+		if (!Is_SafeRelativePath(relative))
+		{
+			status = std::string(context) +
+				" path is unsafe: " + relative;
+			return false;
+		}
+		const std::filesystem::path physical =
+			root / std::filesystem::path(relative);
+		if (!Is_Descendant(root, physical))
+		{
+			status = std::string(context) +
+				" escaped the repository root: " + relative;
+			return false;
+		}
+		std::error_code error;
+		const std::filesystem::file_status fileStatus =
+			std::filesystem::symlink_status(physical, error);
+		if (error || !std::filesystem::is_regular_file(fileStatus) ||
+			std::filesystem::is_symlink(fileStatus))
+		{
+			status = std::string(context) +
+				" is missing or is not a regular file: " + relative;
+			return false;
+		}
+
+		std::string bytes;
+		if (!Read_File(physical, bytes, status))
+			return false;
+		std::string parseError;
+		if (!Client::CDataJson::Parse(bytes, document, parseError) ||
+			!document.Is_Object())
+		{
+			status = std::string(context) +
+				" JSON parse failed: " + parseError;
+			return false;
+		}
+		return true;
+	}
+
+	bool Read_EffectV2BindingIdentity(
+		const DATA_JSON_VALUE& row,
+		const std::size_t ordinal,
+		std::set<std::tuple<std::string, std::string, std::string,
+			std::string, std::uint64_t, std::string>>& identities,
+		std::set<std::string>& leafIds,
+		std::set<std::string>& groupIds,
+		std::string& status)
+	{
+		const std::string context =
+			"BOSS_VALTAN Effect V2 bindings[" + std::to_string(ordinal) + "]";
+		if (!row.Is_Object())
+		{
+			status = context + " is not an object.";
+			return false;
+		}
+
+		const DATA_JSON_VALUE* effect = row.Find("effectId");
+		const DATA_JSON_VALUE* group = row.Find("group");
+		const bool hasEffect = nullptr != effect;
+		const bool hasGroup = nullptr != group;
+		if (hasEffect == hasGroup)
+		{
+			status = context +
+				" must contain exactly one of effectId/group.";
+			return false;
+		}
+
+		std::string effectId;
+		std::string groupId;
+		std::string ignoredRelative;
+		if (hasEffect)
+		{
+			if (!Read_String(row, "effectId", effectId))
+			{
+				status = context + ".effectId is invalid.";
+				return false;
+			}
+			if (!Build_EffectV2Relative(EFFECT_V2_AUTHORED_ROOT,
+					effectId, EFFECT_V2_DOCUMENT_SUFFIX,
+					context + ".effectId", ignoredRelative, status))
+			{
+				return false;
+			}
+			leafIds.insert(effectId);
+		}
+		else
+		{
+			if (!Read_String(row, "group", groupId))
+			{
+				status = context + ".group is invalid.";
+				return false;
+			}
+			if (!Build_EffectV2Relative(EFFECT_V2_GROUP_ROOT,
+					groupId, EFFECT_V2_GROUP_SUFFIX,
+					context + ".group", ignoredRelative, status))
+			{
+				return false;
+			}
+			groupIds.insert(groupId);
+		}
+
+		const DATA_JSON_VALUE* clip = row.Find("clip");
+		const DATA_JSON_VALUE* stage = row.Find("stage");
+		const bool hasClip = nullptr != clip;
+		const bool hasStage = nullptr != stage;
+		std::string clipId;
+		std::string stageId;
+		std::string bone;
+		std::uint64_t startMs = 0u;
+		if (hasClip == hasStage ||
+			(hasClip && (!Read_String(row, "clip", clipId) || clipId.empty())) ||
+			(hasStage && (!Read_String(row, "stage", stageId) || stageId.empty())) ||
+			!Read_Unsigned(row, "startMs", startMs) || startMs > 600000u ||
+			!Read_String(row, "bone", bone))
+		{
+			status = context +
+				" has an invalid exact subject/clock/startMs/bone identity.";
+			return false;
+		}
+
+		const auto identity = std::make_tuple(
+			effectId, groupId, clipId, stageId, startMs, bone);
+		if (!identities.insert(identity).second)
+		{
+			status = context + " duplicates an earlier binding identity: " +
+				(hasEffect ? effectId : groupId) + ".";
+			return false;
+		}
+		return true;
+	}
+
+	bool Build_EffectV2Closure(
+		const std::filesystem::path& root,
+		std::set<std::string>& expected,
+		std::string& status)
+	{
+		DATA_JSON_VALUE bindings;
+		if (!Read_EffectV2Json(root, std::string(EFFECT_V2_BINDINGS_RELATIVE),
+				"BOSS_VALTAN Effect V2 bindings", bindings, status))
+		{
+			return false;
+		}
+		std::string schema;
+		std::string archetypeId;
+		std::uint64_t version = 0u;
+		const DATA_JSON_VALUE* rows = bindings.Find("bindings");
+		if (!Has_ExactProperties(bindings,
+				{ "schema", "formatVersion", "archetypeId", "bindings" }) ||
+			!Read_String(bindings, "schema", schema) ||
+			"lostark.effect-v2-bindings" != schema ||
+			!Read_Unsigned(bindings, "formatVersion", version) || 1u != version ||
+			!Read_String(bindings, "archetypeId", archetypeId) ||
+			"BOSS_VALTAN" != archetypeId || nullptr == rows ||
+			!rows->Is_Array() || rows->Get_Array().empty())
+		{
+			status = "BOSS_VALTAN Effect V2 binding header/rows are invalid.";
+			return false;
+		}
+
+		std::set<std::string> leafIds;
+		std::set<std::string> groupIds;
+		std::set<std::tuple<std::string, std::string, std::string,
+			std::string, std::uint64_t, std::string>> identities;
+		for (std::size_t ordinal = 0u;
+			ordinal < rows->Get_Array().size(); ++ordinal)
+		{
+			if (!Read_EffectV2BindingIdentity(rows->Get_Array()[ordinal], ordinal,
+					identities, leafIds, groupIds, status))
+			{
+				return false;
+			}
+		}
+		for (const std::string& leafId : leafIds)
+		{
+			if (groupIds.contains(leafId))
+			{
+				status =
+					"BOSS_VALTAN Effect V2 IDs collide between a leaf and group: " +
+					leafId;
+				return false;
+			}
+		}
+
+		for (const std::string& groupId : groupIds)
+		{
+			std::string relative;
+			if (!Build_EffectV2Relative(EFFECT_V2_GROUP_ROOT, groupId,
+					EFFECT_V2_GROUP_SUFFIX, "BOSS_VALTAN Effect V2 groupId",
+					relative, status))
+			{
+				return false;
+			}
+			DATA_JSON_VALUE group;
+			if (!Read_EffectV2Json(root, relative,
+					"BOSS_VALTAN Effect V2 group " + groupId, group, status))
+			{
+				return false;
+			}
+			std::string loadedGroupId;
+			std::string groupSchema;
+			std::uint64_t groupVersion = 0u;
+			const DATA_JSON_VALUE* children = group.Find("children");
+			if (!Has_ExactProperties(group,
+					{ "schema", "formatVersion", "groupId", "durationMs", "children" }) ||
+				!Read_String(group, "schema", groupSchema) ||
+				"lostark.effect-v2-group" != groupSchema ||
+				!Read_Unsigned(group, "formatVersion", groupVersion) ||
+				1u != groupVersion ||
+				!Read_String(group, "groupId", loadedGroupId) ||
+				loadedGroupId != groupId || nullptr == children ||
+				!children->Is_Array() || children->Get_Array().empty())
+			{
+				status =
+					"BOSS_VALTAN Effect V2 group identity/children are invalid: " +
+					groupId;
+				return false;
+			}
+			if (!expected.insert(relative).second)
+			{
+				status = "BOSS_VALTAN Effect V2 closure has a duplicate group path: " +
+					relative;
+				return false;
+			}
+
+			for (std::size_t ordinal = 0u;
+				ordinal < children->Get_Array().size(); ++ordinal)
+			{
+				const DATA_JSON_VALUE& child = children->Get_Array()[ordinal];
+				const std::string context = "BOSS_VALTAN Effect V2 group " +
+					groupId + ".children[" + std::to_string(ordinal) + "]";
+				std::string effectId;
+				std::string ignoredRelative;
+				if (!child.Is_Object() || nullptr != child.Find("group") ||
+					!Read_String(child, "effectId", effectId))
+				{
+					status = context + " has no valid leaf effectId.";
+					return false;
+				}
+				if (!Build_EffectV2Relative(EFFECT_V2_AUTHORED_ROOT, effectId,
+						EFFECT_V2_DOCUMENT_SUFFIX, context + ".effectId",
+						ignoredRelative, status))
+				{
+					return false;
+				}
+				if (effectId == groupId || groupIds.contains(effectId))
+				{
+					status = context +
+						" refers to a group instead of an authored leaf: " + effectId;
+					return false;
+				}
+				leafIds.insert(effectId);
+			}
+		}
+
+		for (const std::string& effectId : leafIds)
+		{
+			std::string relative;
+			if (!Build_EffectV2Relative(EFFECT_V2_AUTHORED_ROOT, effectId,
+					EFFECT_V2_DOCUMENT_SUFFIX,
+					"BOSS_VALTAN Effect V2 leaf effectId", relative, status))
+			{
+				return false;
+			}
+			DATA_JSON_VALUE leaf;
+			if (!Read_EffectV2Json(root, relative,
+					"BOSS_VALTAN Effect V2 leaf " + effectId, leaf, status))
+			{
+				return false;
+			}
+			std::string leafSchema;
+			std::string loadedEffectId;
+			std::uint64_t leafVersion = 0u;
+			if (!Has_ExactProperties(leaf,
+					{ "schema", "formatVersion", "effectId", "effectType",
+						"slots", "params", "parts" }) ||
+				!Read_String(leaf, "schema", leafSchema) ||
+				"lostark.effect-v2" != leafSchema ||
+				!Read_Unsigned(leaf, "formatVersion", leafVersion) ||
+				1u != leafVersion ||
+				!Read_String(leaf, "effectId", loadedEffectId) ||
+				loadedEffectId != effectId)
+			{
+				status = "BOSS_VALTAN Effect V2 leaf identity is invalid: " +
+					effectId;
+				return false;
+			}
+			if (!expected.insert(relative).second)
+			{
+				status = "BOSS_VALTAN Effect V2 closure has a duplicate leaf path: " +
+					relative;
+				return false;
+			}
+		}
+		return !leafIds.empty();
+	}
+
 	bool Build_EffectClosure(
 		const std::filesystem::path& root,
 		std::set<std::string>& expected,
@@ -429,7 +791,8 @@ namespace
 		std::set<std::string> expectedPaths;
 		for (const auto& [path, lane] : expected)
 			expectedPaths.insert(path);
-		if (!Build_EffectClosure(root, expectedPaths, status))
+		if (!Build_EffectClosure(root, expectedPaths, status) ||
+			!Build_EffectV2Closure(root, expectedPaths, status))
 			return false;
 		for (const std::string& path : expectedPaths)
 		{
@@ -471,14 +834,28 @@ namespace
 			std::string physicalBytes;
 			GameplayDataRevision physicalRevision{};
 			GameplayDataRevision declaredRevision{};
-			if (!Read_File(physical, physicalBytes, status) ||
-				physicalBytes.size() != bytes ||
-				!Hash_Bytes(physicalBytes, physicalRevision) ||
-				!LostArk::Shared::Try_Parse_GameplayDataRevision(
-					sha, declaredRevision) || physicalRevision != declaredRevision)
+			if (!Read_File(physical, physicalBytes, status))
+				return false;
+			if (!Hash_Bytes(physicalBytes, physicalRevision))
 			{
-				if (status.empty())
-					status = "Valtan presentation artifact bytes differ from M: " + path;
+				status = "Valtan presentation artifact SHA-256 could not be calculated: " +
+					path;
+				return false;
+			}
+			if (!LostArk::Shared::Try_Parse_GameplayDataRevision(
+					sha, declaredRevision))
+			{
+				status = "Valtan presentation artifact declared SHA-256 is invalid: " +
+					path + "; declared SHA-256=" + sha + ".";
+				return false;
+			}
+			if (physicalBytes.size() != bytes || physicalRevision != declaredRevision)
+			{
+				status = "Valtan presentation artifact mismatch: " + path +
+					"; declared bytes=" + std::to_string(bytes) +
+					", actual bytes=" + std::to_string(physicalBytes.size()) +
+					"; declared SHA-256=" + sha + ", actual SHA-256=" +
+					LostArk::Shared::Format_GameplayDataRevision(physicalRevision) + ".";
 				return false;
 			}
 			rows.push_back({ path, lane, physicalRevision, bytes });

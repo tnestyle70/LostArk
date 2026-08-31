@@ -38,6 +38,13 @@ COMBAT_OBJECT_SOUND_CUES_REL = (
 )
 CHARACTER_SOUND_CATALOG_REL = "Data/Sound/CharacterSoundCatalog.json"
 EFFECT_CATALOG_REL = "Data/Effects/EffectCatalog.json"
+EFFECT_V2_BINDINGS_REL = (
+    "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"
+)
+EFFECT_V2_AUTHORED_ROOT_REL = "Data/Effects/V2/Authored"
+EFFECT_V2_GROUP_ROOT_REL = "Data/Effects/V2/Groups"
+EFFECT_V2_DOCUMENT_SUFFIX = ".effectv2.json"
+EFFECT_V2_GROUP_SUFFIX = ".effectv2group.json"
 ENCOUNTER_REL = "Data/Encounters/Valtan/ValtanEncounter.json"
 COMBAT_OBJECTS_REL = "Data/Encounters/Valtan/ValtanCombatObjects.json"
 BOSS_CATALOG_REL = "Data/Actors/BossCatalog.json"
@@ -57,6 +64,7 @@ FIXED_ARTIFACTS: tuple[tuple[str, str], ...] = (
     ("COMBAT_VISUAL", COMBAT_OBJECT_SOUND_CUES_REL),
     ("COMBAT_VISUAL", CHARACTER_SOUND_CATALOG_REL),
     ("EFFECT", EFFECT_CATALOG_REL),
+    ("EFFECT", EFFECT_V2_BINDINGS_REL),
     ("COMBAT_VISUAL", ENCOUNTER_REL),
     ("COMBAT_VISUAL", COMBAT_OBJECTS_REL),
     ("COMBAT_VISUAL", BOSS_CATALOG_REL),
@@ -67,6 +75,7 @@ LANES = frozenset(
     ("ANIMATION", "EFFECT", "COMBAT_VISUAL", "CAMERA", "WORLD_EVENT_SET")
 )
 LOWER_SHA256 = re.compile(r"[0-9a-f]{64}")
+EFFECT_V2_ID = re.compile(r"[A-Za-z0-9_.-]{1,80}")
 
 
 class PresentationGenerationError(RuntimeError):
@@ -253,6 +262,189 @@ def _effect_artifact_paths(
     return result
 
 
+def _effect_v2_relative(
+    root_relative: str,
+    stable_id: Any,
+    suffix: str,
+    context: str,
+) -> str:
+    if not isinstance(stable_id, str) or EFFECT_V2_ID.fullmatch(stable_id) is None:
+        raise PresentationGenerationError(f"{context} is not a stable Effect V2 ID")
+    relative = f"{root_relative}/{stable_id}{suffix}"
+    if not _is_safe_relative(relative):
+        raise PresentationGenerationError(f"{context} produced an unsafe path")
+    return relative
+
+
+def _require_exact_properties(
+    value: dict[str, Any], expected: frozenset[str], context: str
+) -> None:
+    if frozenset(value) != expected:
+        raise PresentationGenerationError(f"{context} properties are invalid")
+
+
+def _effect_v2_artifact_paths(
+    repository_root: Path,
+    overlay_root: Path | None,
+) -> set[str]:
+    """Resolve the exact BOSS_VALTAN Effect V2 binding closure.
+
+    Effect V2 is not addressed through the V1 semantic Effect catalog.  Its
+    runtime entry point is the archetype binding document, whose rows point to
+    either one leaf document or one group.  Groups in turn contain leaf IDs;
+    they cannot recursively contain another group.  Pin only that reachable
+    closure so unrelated character/Esther V2 authoring remains independently
+    writable without changing Valtan's immutable presentation generation.
+    """
+
+    binding_path = _resolve_input(
+        repository_root, overlay_root, EFFECT_V2_BINDINGS_REL
+    )
+    binding = _read_json(binding_path, "BOSS_VALTAN Effect V2 bindings")
+    _require_exact_properties(
+        binding,
+        frozenset(("schema", "formatVersion", "archetypeId", "bindings")),
+        "BOSS_VALTAN Effect V2 bindings",
+    )
+    if (
+        binding.get("schema") != "lostark.effect-v2-bindings"
+        or type(binding.get("formatVersion")) is not int
+        or binding["formatVersion"] != 1
+        or binding.get("archetypeId") != "BOSS_VALTAN"
+        or not isinstance(binding.get("bindings"), list)
+        or not binding["bindings"]
+    ):
+        raise PresentationGenerationError(
+            "BOSS_VALTAN Effect V2 binding header/rows are invalid"
+        )
+
+    leaf_ids: set[str] = set()
+    group_ids: set[str] = set()
+    for ordinal, row in enumerate(binding["bindings"]):
+        context = f"BOSS_VALTAN Effect V2 bindings[{ordinal}]"
+        if not isinstance(row, dict):
+            raise PresentationGenerationError(f"{context} is not an object")
+        has_effect = "effectId" in row
+        has_group = "group" in row
+        if has_effect == has_group:
+            raise PresentationGenerationError(
+                f"{context} must contain exactly one of effectId/group"
+            )
+        if has_effect:
+            effect_id = row["effectId"]
+            _effect_v2_relative(
+                EFFECT_V2_AUTHORED_ROOT_REL,
+                effect_id,
+                EFFECT_V2_DOCUMENT_SUFFIX,
+                f"{context}.effectId",
+            )
+            leaf_ids.add(effect_id)
+        else:
+            group_id = row["group"]
+            _effect_v2_relative(
+                EFFECT_V2_GROUP_ROOT_REL,
+                group_id,
+                EFFECT_V2_GROUP_SUFFIX,
+                f"{context}.group",
+            )
+            group_ids.add(group_id)
+
+    collisions = leaf_ids & group_ids
+    if collisions:
+        raise PresentationGenerationError(
+            "BOSS_VALTAN Effect V2 IDs collide between a leaf and group: "
+            + sorted(collisions)[0]
+        )
+
+    result: set[str] = set()
+    for group_id in sorted(group_ids):
+        relative = _effect_v2_relative(
+            EFFECT_V2_GROUP_ROOT_REL,
+            group_id,
+            EFFECT_V2_GROUP_SUFFIX,
+            "BOSS_VALTAN Effect V2 groupId",
+        )
+        group_path = _resolve_input(repository_root, overlay_root, relative)
+        group = _read_json(group_path, f"BOSS_VALTAN Effect V2 group {group_id}")
+        _require_exact_properties(
+            group,
+            frozenset(("schema", "formatVersion", "groupId", "durationMs", "children")),
+            f"BOSS_VALTAN Effect V2 group {group_id}",
+        )
+        if (
+            group.get("schema") != "lostark.effect-v2-group"
+            or type(group.get("formatVersion")) is not int
+            or group["formatVersion"] != 1
+            or group.get("groupId") != group_id
+            or not isinstance(group.get("children"), list)
+            or not group["children"]
+        ):
+            raise PresentationGenerationError(
+                f"BOSS_VALTAN Effect V2 group identity/children are invalid: {group_id}"
+            )
+        result.add(relative)
+        for ordinal, child in enumerate(group["children"]):
+            context = f"BOSS_VALTAN Effect V2 group {group_id}.children[{ordinal}]"
+            if not isinstance(child, dict) or "effectId" not in child:
+                raise PresentationGenerationError(
+                    f"{context} has no leaf effectId"
+                )
+            effect_id = child["effectId"]
+            _effect_v2_relative(
+                EFFECT_V2_AUTHORED_ROOT_REL,
+                effect_id,
+                EFFECT_V2_DOCUMENT_SUFFIX,
+                f"{context}.effectId",
+            )
+            if effect_id == group_id:
+                raise PresentationGenerationError(
+                    f"{context} cannot reference its owning group"
+                )
+            if effect_id in group_ids:
+                raise PresentationGenerationError(
+                    f"{context} refers to another group instead of a leaf"
+                )
+            leaf_ids.add(effect_id)
+
+    for effect_id in sorted(leaf_ids):
+        relative = _effect_v2_relative(
+            EFFECT_V2_AUTHORED_ROOT_REL,
+            effect_id,
+            EFFECT_V2_DOCUMENT_SUFFIX,
+            "BOSS_VALTAN Effect V2 leaf effectId",
+        )
+        document_path = _resolve_input(repository_root, overlay_root, relative)
+        document = _read_json(
+            document_path, f"BOSS_VALTAN Effect V2 leaf {effect_id}"
+        )
+        _require_exact_properties(
+            document,
+            frozenset(
+                (
+                    "schema",
+                    "formatVersion",
+                    "effectId",
+                    "effectType",
+                    "slots",
+                    "params",
+                    "parts",
+                )
+            ),
+            f"BOSS_VALTAN Effect V2 leaf {effect_id}",
+        )
+        if (
+            document.get("schema") != "lostark.effect-v2"
+            or type(document.get("formatVersion")) is not int
+            or document["formatVersion"] != 1
+            or document.get("effectId") != effect_id
+        ):
+            raise PresentationGenerationError(
+                f"BOSS_VALTAN Effect V2 leaf identity is invalid: {effect_id}"
+            )
+        result.add(relative)
+    return result
+
+
 def build_presentation_generation(
     repository_root: Path,
     overlay_root: Path | None = None,
@@ -265,6 +457,10 @@ def build_presentation_generation(
     rows.extend(
         ("EFFECT", relative)
         for relative in _effect_artifact_paths(repository_root, overlay_root)
+    )
+    rows.extend(
+        ("EFFECT", relative)
+        for relative in _effect_v2_artifact_paths(repository_root, overlay_root)
     )
     if len({relative for _, relative in rows}) != len(rows):
         raise PresentationGenerationError(

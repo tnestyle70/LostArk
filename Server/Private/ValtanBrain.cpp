@@ -1444,6 +1444,7 @@ namespace
 	void CompletePortalTargetRushAtDeadline(SERVER_WORLD_ENTITY& boss)
 	{
 		if (!boss.bPortalMotionActive ||
+			!boss.bPortalRushTargetLocked ||
 			BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH !=
 				boss.ePatternStageMotionKind ||
 			0u == boss.iPatternStageDurationMs ||
@@ -1469,6 +1470,38 @@ namespace
 			std::sin(yawRadians) * boss.fPortalRushDistanceM;
 		boss.fPositionZ = boss.fPortalStartZ +
 			std::cos(yawRadians) * boss.fPortalRushDistanceM;
+	}
+
+	void LockPortalTargetRushAtRetargetDeadline(
+		SERVER_WORLD_ENTITY& boss,
+		const std::uint64_t elapsedStageTicks)
+	{
+		if (!boss.bPortalMotionActive || boss.bPortalRushTargetLocked ||
+			BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH !=
+				boss.ePatternStageMotionKind ||
+			!HasElapsedMilliseconds(
+				elapsedStageTicks, boss.iPortalRushRetargetDelayMs))
+		{
+			return;
+		}
+		/* LOCK_FACING_ON_START owns the Pattern target identity, while this
+		   Stage contract deliberately snapshots that target's latest position
+		   only after the inter-leg delay has elapsed. */
+		if (boss.bHasPatternTargetLastPosition)
+		{
+			FacePoint(boss, boss.fPatternTargetLastPositionX,
+				boss.fPatternTargetLastPositionZ);
+		}
+		boss.fPortalStartX = boss.fPositionX;
+		boss.fPortalStartZ = boss.fPositionZ;
+		const float yawRadians = boss.fYawDegrees * DEGREES_TO_RADIANS;
+		boss.fPortalEndX = boss.fPortalStartX +
+			std::sin(yawRadians) * boss.fPortalRushDistanceM;
+		boss.fPortalEndZ = boss.fPortalStartZ +
+			std::cos(yawRadians) * boss.fPortalRushDistanceM;
+		boss.fPortalLastHitSampleX = boss.fPortalStartX;
+		boss.fPortalLastHitSampleZ = boss.fPortalStartZ;
+		boss.bPortalRushTargetLocked = true;
 	}
 
 	void EnterPatternStage(
@@ -1769,6 +1802,7 @@ namespace
 		boss.ePatternStageMotionKind = BOSS_PATTERN_STAGE_MOTION_KIND::NONE;
 		boss.PatternStageRootMotion.clear();
 		boss.bPortalMotionActive = false;
+		boss.bPortalRushTargetLocked = false;
 		boss.PortalStageHitTargets.clear();
 		boss.fPortalLastHitSampleX = 0.f;
 		boss.fPortalLastHitSampleZ = 0.f;
@@ -2220,6 +2254,13 @@ void LostArk::Server::CValtanBrain::Update(
 		boss.iAutomaticPatternSequencePauseLastTick = 0u;
 		boss.strPatternStageId.clear();
 		boss.strActionId.clear();
+		boss.ePatternStageMotionKind = BOSS_PATTERN_STAGE_MOTION_KIND::NONE;
+		boss.PatternStageRootMotion.clear();
+		boss.bPortalMotionActive = false;
+		boss.bPortalRushTargetLocked = false;
+		boss.PortalStageHitTargets.clear();
+		boss.fPortalLastHitSampleX = 0.f;
+		boss.fPortalLastHitSampleZ = 0.f;
 		Transition(boss, SERVER_ENTITY_ACTION::DEAD, serverTick);
 		boss.MovePath.clear();
 		return;
@@ -2585,6 +2626,7 @@ void LostArk::Server::CValtanBrain::Update(
 	boss.fActionElapsedSeconds =
 		static_cast<float>(elapsedStageTicks) /
 		static_cast<float>(SERVER_TICK_HZ);
+	LockPortalTargetRushAtRetargetDeadline(boss, elapsedStageTicks);
 	Advance_ArenaBreakLeap(boss);
 	if (BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_CROSS_ARENA ==
 		boss.ePatternStageMotionKind && boss.iPatternStageDurationMs > 0u)
@@ -2782,7 +2824,8 @@ bool LostArk::Server::CValtanBrain::Try_BuildStageMotion(
 	if (BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH ==
 		boss.ePatternStageMotionKind)
 	{
-		if (!std::isfinite(boss.fPortalRushSpeedMps) ||
+		if (!boss.bPortalRushTargetLocked ||
+			!std::isfinite(boss.fPortalRushSpeedMps) ||
 			boss.fPortalRushSpeedMps <= 0.f ||
 			!std::isfinite(boss.fPortalRushDistanceM) ||
 			boss.fPortalRushDistanceM <= 0.f)
@@ -2881,6 +2924,7 @@ void LostArk::Server::CValtanBrain::Configure_PortalMotion(
 	const BOSS_PATTERN_STAGE_DEFINITION& stage)
 {
 	boss.bPortalMotionActive = Is_PortalMotion(stage.Motion.eKind);
+	boss.bPortalRushTargetLocked = false;
 	boss.iPortalRushRetargetDelayMs = 0u;
 	boss.fPortalRushSpeedMps = 0.f;
 	boss.fPortalRushDistanceM = 0.f;
@@ -2892,16 +2936,10 @@ void LostArk::Server::CValtanBrain::Configure_PortalMotion(
 		boss.iPortalRushRetargetDelayMs = stage.Motion.iRetargetDelayMs;
 		boss.fPortalRushSpeedMps = stage.Motion.fSpeedMps;
 		boss.fPortalRushDistanceM = stage.Motion.fDistance;
-		if (boss.bHasPatternTargetLastPosition)
-			FacePoint(boss, boss.fPatternTargetLastPositionX,
-				boss.fPatternTargetLastPositionZ);
 		boss.fPortalStartX = boss.fPositionX;
 		boss.fPortalStartZ = boss.fPositionZ;
-		const float yawRadians = boss.fYawDegrees * DEGREES_TO_RADIANS;
-		boss.fPortalEndX = boss.fPortalStartX +
-			std::sin(yawRadians) * boss.fPortalRushDistanceM;
-		boss.fPortalEndZ = boss.fPortalStartZ +
-			std::cos(yawRadians) * boss.fPortalRushDistanceM;
+		boss.fPortalEndX = boss.fPortalStartX;
+		boss.fPortalEndZ = boss.fPortalStartZ;
 		boss.fPortalLastHitSampleX = boss.fPositionX;
 		boss.fPortalLastHitSampleZ = boss.fPositionZ;
 		return;
@@ -2933,6 +2971,13 @@ void LostArk::Server::CValtanBrain::Configure_PortalMotion(
 	boss.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
 	boss.fPortalLastHitSampleX = boss.fPositionX;
 	boss.fPortalLastHitSampleZ = boss.fPositionZ;
+}
+
+void LostArk::Server::CValtanBrain::Try_LockPortalTargetRush(
+	SERVER_WORLD_ENTITY& boss,
+	const std::uint64_t elapsedStageTicks)
+{
+	LockPortalTargetRushAtRetargetDeadline(boss, elapsedStageTicks);
 }
 
 bool LostArk::Server::CValtanBrain::Complete_ImpactStage(

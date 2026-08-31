@@ -10739,10 +10739,11 @@ void Client::CEffect_Tool::Initialize_CatalogMetadataView()
 		return;
 	}
 
-	/* The Effect catalog is already admitted by the runtime loader.  The first
-	   visible frame consumes only that in-memory identity set: recursive
-	   Resources/Data discovery and authored document decode remain explicit
-	   Refresh/Open/Play operations. */
+	/* Seed a failure-preserving tree from the already admitted runtime catalog,
+	   then perform the same Product/source join as the visible Refresh button.
+	   This runs once per Effect Tool instance, so Saved counts and Product cues
+	   are usable on the first visible frame without turning Render into a disk
+	   polling loop.  Open/Play still own full authored document decoding. */
 	std::vector<EFFECT_DATA_FILE_ENTRY> StagedDataFiles;
 	std::set<std::string> StagedDomains;
 	std::unordered_map<std::string, DIRECT_AUTHORED_EDITABLE_ENTRY>
@@ -10852,11 +10853,23 @@ void Client::CEffect_Tool::Initialize_CatalogMetadataView()
 	}
 	m_strDocumentStatus =
 		"Catalog metadata ready: " + std::to_string(m_DataFiles.size()) +
-		" meaningful entries. Refresh Index performs explicit disk re-admission.";
+		" meaningful entries. Building the automatic initial index join.";
 	m_strDirectAuthoredEditableStatus =
-		"Catalog metadata view is ready; exact source identity is deferred to Open or Play.";
+		"Catalog metadata view is ready; joining exact authored source identities.";
 	m_strUnifiedCandidateStatus =
-		"Initial Effect lists use admitted catalog metadata only. Refresh Index joins Product ownership and diagnostics.";
+		"Building the initial Product ownership and authored source index.";
+
+	const bool_t bInitialProductIndexReady = Refresh_AllEffects(true);
+	const bool_t bInitialAuthoredIndexReady = Refresh_DataFiles();
+	if (!bInitialProductIndexReady || !bInitialAuthoredIndexReady)
+	{
+		const std::string Detail = !bInitialProductIndexReady ?
+			m_strElementStatus : m_strDocumentStatus;
+		m_strUnifiedCandidateStatus =
+			"Automatic initial Effect index join was incomplete; the admitted base catalog remains available.";
+		if (!Detail.empty())
+			m_strUnifiedCandidateStatus += " " + Detail;
+	}
 }
 
 bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(

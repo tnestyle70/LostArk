@@ -1146,24 +1146,19 @@ def build_candidates(
             curve = curves.get(resolved_clip)
             if curve is None:
                 raise PromotionError(f"clip is absent from the reviewed WModel: {source_clip}")
-            source_action_id = clip_skills.get(resolved_clip)
+            notified_source_action_id = clip_skills.get(resolved_clip)
             reviewed_source_action_id = promotion.get("sourceActionId")
-            if source_action_id is None:
-                if reviewed_source_action_id is None:
-                    raise PromotionError(
-                        f"clip has no Valtan.animnotify source action: {resolved_clip}"
-                    )
+            # One model clip can be reused by several recovered .clipseq actions.
+            # For a CURRENT_CHAIN created from the Composition browser, the exact
+            # reviewed action/sequence tuple is the primary presentation owner;
+            # Valtan.animnotify remains only the legacy saved-chain fallback.
+            if reviewed_source_action_id is not None:
                 source_action_id = reviewed_source_action_id
-            elif (
-                reviewed_source_action_id is not None
-                and reviewed_source_action_id != source_action_id
-            ):
+            elif notified_source_action_id is not None:
+                source_action_id = notified_source_action_id
+            else:
                 raise PromotionError(
-                    f"reviewed source action contradicts Valtan.animnotify: {resolved_clip}"
-                )
-            if source_action_id not in set(clip_skills.values()):
-                raise PromotionError(
-                    f"reviewed source action is absent from Valtan.animnotify: {source_action_id}"
+                    f"clip has no Valtan.animnotify source action: {resolved_clip}"
                 )
             if source_action_id not in source_action_ids:
                 source_action_ids.append(source_action_id)
@@ -1376,6 +1371,9 @@ def validate_and_project(
     repo_root: Path,
     gameplay: dict[str, Any],
     presentation: dict[str, Any],
+    *,
+    debug_document: dict[str, Any] | None = None,
+    promotion_manifest: dict[str, Any] | None = None,
 ) -> dict[str, str]:
     pipeline = _load_v2_pipeline(repo_root)
 
@@ -1392,6 +1390,21 @@ def validate_and_project(
             docs[pipeline.WORLD_SET_REL],
             docs[pipeline.COMBAT_AUTHORING_REL],
             docs.get(pipeline.SAVED_FLOW_REL),
+        )
+        pipeline.validate_manual_audition_animation_lineage(
+            joined,
+            debug_document
+            if debug_document is not None
+            else pipeline.read_json(
+                pipeline.repo_path(repo_root, pipeline.DEBUG_PRESENTATION_REL)
+            ),
+            promotion_manifest
+            if promotion_manifest is not None
+            else pipeline.read_json(
+                pipeline.repo_path(
+                    repo_root, pipeline.ANIMATION_PROMOTION_MANIFEST_REL
+                )
+            ),
         )
         pipeline.validate_legacy_manifest(
             docs[pipeline.LEGACY_REL],
@@ -1961,7 +1974,13 @@ def prepare_create_pattern_transaction(
                 f"Product projection collides with an authoring target: {relative}"
             )
         expected_baselines[path] = _read_bytes_or_none(path)
-    outputs = validate_and_project(repo_root, staged_gameplay, staged_presentation)
+    outputs = validate_and_project(
+        repo_root,
+        staged_gameplay,
+        staged_presentation,
+        debug_document=staged_debug,
+        promotion_manifest=staged_manifest,
+    )
     if set(outputs) != set(product_relatives):
         raise PromotionError(
             "Product projection target closure changed during Create New Pattern"

@@ -173,9 +173,11 @@ private:
 	void Synchronize_LiveSelection();
 	void Render_BossVerificationTab();
 	void Render_PatternFlowTab();
+	void Render_FlowGraphEditor();
 	void Render_FlowSlotList();
 	void Render_FlowSelectedSlot();
 	void Render_AddPatternPopup();
+	bool_t Render_AddPatternNodePopup();
 	void Render_NextPatternCard();
 	void Render_NextPatternPicker();
 	void Render_LiveSummary();
@@ -207,6 +209,8 @@ private:
 	const VALTAN_CINEMATIC_CAMERA_CUE* Find_CameraCue(
 		const std::string& strCueId) const;
 	const VALTAN_PATTERN_FLOW_SLOT* Find_SelectedFlowSlot() const;
+	const VALTAN_PATTERN_FLOW_NODE* Find_SelectedFlowNode() const;
+	const VALTAN_PATTERN_FLOW_EDGE* Find_SelectedFlowEdge() const;
 	std::vector<std::string> Build_AdmittedPatternIds() const;
 	std::filesystem::path Resolve_EffectDocumentPath(
 		const std::string& strEffectAssetId,
@@ -236,6 +240,8 @@ private:
 	std::string m_strSelectedPatternId;
 	std::string m_strSelectedStageId;
 	std::string m_strSelectedFlowSlotId;
+	std::string m_strSelectedFlowEdgeId;
+	std::string m_strFlowLinkSourceNodeId;
 	std::string m_strRepeatPatternId;
 	std::string m_strStatus =
 		"Select a pattern, then play it through the Server.";
@@ -252,6 +258,7 @@ private:
 	size_t m_iResourceSearchUnverifiedCount = 0u;
 	double m_dNextResourceSearchFreshnessCheckSeconds = 0.0;
 	uint32_t m_iNextReviveSequence = 1u;
+	uint32_t m_iFlowLinkMaximumTraversals = 1u;
 	bool_t m_bOpen = false;
 	bool_t m_bFocusPending = false;
 	bool_t m_bSelectPatternFlowTab = false;
@@ -267,6 +274,7 @@ private:
 	bool_t m_bPresentationBaselineIntact = false;
 	bool_t m_bResourceSearchStale = false;
 	bool_t m_bConfirmDiscardDirtyFlow = false;
+	bool_t m_bFlowGraphEditor = true;
 	bool_t m_hasCameraToolOpenRequest = false;
 	CAMERA_TOOL_OPEN_REQUEST m_CameraToolOpenRequest;
 	bool_t m_hasEffectToolOpenRequest = false;

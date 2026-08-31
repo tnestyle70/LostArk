@@ -149,13 +149,28 @@ namespace
 				"python.exe was not found through the developer process PATH.";
 			return false;
 		}
-		std::error_code Error;
-		Out = std::filesystem::weakly_canonical(
-			std::filesystem::path(Buffer.data()), Error);
-		if (Error || !std::filesystem::is_regular_file(Out, Error) || Error)
+		/* SearchPathW already returns an absolute executable path.  Do not ask
+		   std::filesystem to resolve the target: WindowsApps App Execution Alias
+		   reparse points can fail weakly_canonical() even though CreateProcessW
+		   launches them correctly. */
+		Out = std::filesystem::path(Buffer.data()).lexically_normal();
+		if (Out.empty())
 		{
 			strOutError =
-				"the resolved Python executable is not a regular file.";
+				"the resolved Python executable path is empty.";
+			Out.clear();
+			return false;
+		}
+		/* Microsoft Store Python is exposed through WindowsApps as a zero-byte
+		   App Execution Alias reparse point.  It is a valid CreateProcessW
+		   target, but std::filesystem::is_regular_file() reports false and used
+		   to reject every Create Pattern request before the backend started. */
+		const DWORD iAttributes = GetFileAttributesW(Out.c_str());
+		if (INVALID_FILE_ATTRIBUTES == iAttributes ||
+			0u != (iAttributes & FILE_ATTRIBUTE_DIRECTORY))
+		{
+			strOutError =
+				"the resolved Python executable is missing or is a directory.";
 			Out.clear();
 			return false;
 		}
@@ -1273,6 +1288,8 @@ void Client::CAnimation_Tool::On_LevelChanged()
 	m_iValtanAutoPreviewAttemptGeneration = 0u;
 	m_iValtanAutoPreviewSuccessGeneration = 0u;
 	m_bValtanWorkspaceTabInitialized = false;
+	m_ValtanPatternSoundDurationModel.reset();
+	m_ValtanPatternSoundClipDurations.clear();
 }
 
 void Client::CAnimation_Tool::Reset_KakulActionDocumentState(
@@ -2022,8 +2039,20 @@ bool_t Client::CAnimation_Tool::Resolve_ValtanCompositionPatternSoundWindow(
 		return false;
 	}
 
-	const std::unordered_map<std::string, f32_t> Durations =
-		CollectModelClipSourceDurationSeconds(Resolve_Model());
+	const shared_ptr<Engine::CModel> pModel = Resolve_Model();
+	if (nullptr == pModel)
+	{
+		m_ValtanPatternSoundDurationModel.reset();
+		m_ValtanPatternSoundClipDurations.clear();
+	}
+	else if (m_ValtanPatternSoundDurationModel.lock() != pModel)
+	{
+		m_ValtanPatternSoundClipDurations =
+			CollectModelClipSourceDurationSeconds(pModel);
+		m_ValtanPatternSoundDurationModel = pModel;
+	}
+	const std::unordered_map<std::string, f32_t>& Durations =
+		m_ValtanPatternSoundClipDurations;
 	if (Durations.empty())
 	{
 		strOutStatus =
@@ -2215,11 +2244,12 @@ Validate_ValtanCompositionPatternSoundStageDependencies(
 				Cue.strClipOccurrenceId + ".";
 			return false;
 		}
-		if (BaselineClip->strClipName != CandidateClip->strClipName)
+		if (BaselineClip->strClipName != CandidateClip->strClipName &&
+			"PROJECT_AUTHORED" != CandidateClip->strMappingBasis)
 		{
 			strOutStatus =
-				"Pattern Sound-qualified clipOccurrenceId cannot be reused for another clip; remove or retarget the Sound row explicitly first: " +
-				Cue.strClipOccurrenceId + ".";
+				"Pattern Sound-qualified clipOccurrenceId can change its resource only through an explicit PROJECT_AUTHORED slot replacement: " +
+					Cue.strClipOccurrenceId + ".";
 			return false;
 		}
 
@@ -2654,7 +2684,7 @@ bool_t Client::CAnimation_Tool::Save_ValtanCompositionPatternSounds(
 		m_ValtanPatternSoundRuntimeAppliedRevision = {};
 	}
 	m_strValtanPatternSoundCueStatus =
-		"Pattern Sound SOURCE SAVED (separate from Pattern Save/Publish). " +
+		"Pattern Sound SOURCE SAVED (separate from Pattern Save & Apply). " +
 		SaveStatus + " " +
 		(bDraftReloaded ? DraftStatus :
 			"WORKBENCH RELOAD REJECTED; saved source remains committed: " +
@@ -4507,7 +4537,7 @@ bool_t Client::CAnimation_Tool::Render_ValtanAnimationBindingInspector(
 			ProductBinding->bSuppressAnimation ? "NONE" : "CLIP_SEQUENCE");
 	}
 	ImGui::TextWrapped(
-		"Sequence rows are read-only until a typed presentation-source adapter stages them through Save Authoring -> Publish Candidate -> admitted Product reload. Direct Product Save is blocked in CValtanPatternAnimationBindingDocument.");
+		"Sequence rows are read-only until a typed presentation-source adapter stages them. Save & Apply validates the data and reloads the admitted animation result.");
 	return false;
 
 }
@@ -4757,7 +4787,8 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 	const uint32_t iOne = 1u;
 	const uint32_t iStepMs = 100u;
 	const uint32_t iFastStepMs = 1000u;
-	ImGui::BeginDisabled(!Draft.durationEditable);
+	ImGui::BeginDisabled(
+		!Draft.durationEditable || Draft.portalRushMotionEditable);
 	ImGui::SetNextItemWidth(210.f);
 	if (ImGui::InputScalar(
 		"Server wall / blank timeline ms",
@@ -4773,6 +4804,11 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 		ImGui::TextDisabled(
 			"Duration is read-only under this Stage's typed gameplay policy.");
 	}
+	else if (Draft.portalRushMotionEditable)
+	{
+		ImGui::TextDisabled(
+			"This Stage clock is derived for all eight WARP legs by the motion controls below.");
+	}
 	if (Draft.durationMs != SavedStage.iDurationMs)
 	{
 		ImGui::TextColored(
@@ -4784,7 +4820,7 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 		"AIRBORNE" == SavedStage.strStageId)
 	{
 		ImGui::TextWrapped(
-			"AIRBORNE duration is the boss stage/blank wall-clock. It extends the looping axe-flight animation, but it does not change a spawned axe's lifetime or its local hit atMs.");
+			"AIRBORNE duration is the boss stage/blank wall-clock. It extends the looping axe-flight animation and derives each spawned axe lifetime; the axe hit remains object-local at +1200 ms.");
 		std::uint32_t iDraftAxes = 0u;
 		std::uint32_t iSavedAxes = 0u;
 		std::uint32_t iArenaRandomAxes = 0u;
@@ -4836,70 +4872,93 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 	}
 	if (Draft.portalRushMotionEditable)
 	{
-		const auto NormalizePortalRush = [&]()
+		CBalanceTool::VALTAN_WARP_RUSH_EDIT RushDraft{};
+		std::string RushStatus;
+		if (!m_pBalanceTool->Get_ValtanWarpRushDraft(RushDraft, RushStatus))
 		{
-			Draft.portalRetargetDelayMs = (std::min)(
-				Draft.portalRetargetDelayMs, Draft.durationMs - 1u);
-			Draft.portalSpeedMps = std::clamp(
-				Draft.portalSpeedMps, 0.1, 1000.0);
-			const double maximumDistanceM = Draft.portalSpeedMps *
-				static_cast<double>(
-					Draft.durationMs - Draft.portalRetargetDelayMs) / 1000.0;
-			Draft.portalDistanceM = std::clamp(
-				Draft.portalDistanceM, 0.000001,
-				(std::min)(1000.0, maximumDistanceM));
-			const double travelEndMs =
-				static_cast<double>(Draft.portalRetargetDelayMs) +
-				Draft.portalDistanceM / Draft.portalSpeedMps * 1000.0;
-			Draft.hitOffsetsMs.clear();
-			for (std::uint32_t offsetMs = Draft.portalRetargetDelayMs;
-				static_cast<double>(offsetMs) < travelEndMs &&
-				Draft.hitOffsetsMs.size() < 64u; offsetMs += 50u)
+			ImGui::TextDisabled("All-leg WARP draft unavailable: %s",
+				RushStatus.c_str());
+		}
+		const auto SubmitPortalRush = [&]()
+		{
+			Draft.portalRetargetDelayMs = RushDraft.retargetDelayMs;
+			Draft.portalSpeedMps = RushDraft.speedMps;
+			Draft.portalDistanceM = RushDraft.distanceM;
+			if (!CBalanceTool::Normalize_ValtanPortalRushDraft(
+					Draft, RushDraft.trailingGapMs, RushStatus))
 			{
-				Draft.hitOffsetsMs.push_back(offsetMs);
+				m_strValtanPatternMasterStatus = RushStatus;
+				return;
 			}
-			Draft.hitCount = static_cast<std::uint32_t>(
-				Draft.hitOffsetsMs.size());
-			Draft.hitIntervalMs = 0u;
-			Draft.hitDelayMs = 0u;
+			RushDraft.retargetDelayMs = Draft.portalRetargetDelayMs;
+			RushDraft.speedMps = Draft.portalSpeedMps;
+			RushDraft.distanceM = Draft.portalDistanceM;
+			if (m_pBalanceTool->Set_ValtanWarpRushDraft(
+					RushDraft, RushStatus))
+			{
+				const std::string AppliedStatus = RushStatus;
+				CBalanceTool::VALTAN_WARP_RUSH_EDIT Refreshed{};
+				std::string RefreshStatus;
+				if (m_pBalanceTool->Get_ValtanWarpRushDraft(
+						Refreshed, RefreshStatus))
+				{
+					RushDraft = Refreshed;
+					Draft.durationMs = Refreshed.legDurationMs;
+					Draft.portalRetargetDelayMs = Refreshed.retargetDelayMs;
+					Draft.portalSpeedMps = Refreshed.speedMps;
+					Draft.portalDistanceM = Refreshed.distanceM;
+					Draft.hitCount = Refreshed.hitCount;
+				}
+				RushStatus = AppliedStatus;
+			}
+			m_strValtanPatternMasterStatus = RushStatus;
 		};
 		ImGui::TextWrapped(
-			"Typed WARP rush: the Server retargets and waits, then moves the selected distance at the selected speed. Swept hit samples are regenerated every 50 ms only while travel is active.");
+			"Typed WARP rush - All 8 Legs: one edit atomically updates STEP_02..STEP_09. The Server waits, travels, and regenerates 50 ms swept-hit samples; portal boundaries remain boss-root snapshots, not predicted endpoints.");
+		ImGui::BeginDisabled(!RushStatus.empty());
 		const std::uint32_t iDelayStepMs = 50u;
 		const std::uint32_t iDelayFastStepMs = 100u;
 		ImGui::SetNextItemWidth(210.f);
 		if (ImGui::InputScalar("Retarget / wait delay ms", ImGuiDataType_U32,
-			&Draft.portalRetargetDelayMs, &iDelayStepMs,
+			&RushDraft.retargetDelayMs, &iDelayStepMs,
 			&iDelayFastStepMs, "%u"))
 		{
-			NormalizePortalRush();
-			SubmitDraft();
+			SubmitPortalRush();
 		}
 		const double fSpeedStep = 0.5;
 		const double fSpeedFastStep = 5.0;
 		ImGui::SetNextItemWidth(210.f);
-		if (ImGui::InputDouble("Rush speed m/s", &Draft.portalSpeedMps,
+		if (ImGui::InputDouble("Rush speed m/s", &RushDraft.speedMps,
 			fSpeedStep, fSpeedFastStep, "%.3f"))
 		{
-			NormalizePortalRush();
-			SubmitDraft();
+			SubmitPortalRush();
 		}
 		const double fDistanceStep = 0.25;
 		const double fDistanceFastStep = 1.0;
 		ImGui::SetNextItemWidth(210.f);
-		if (ImGui::InputDouble("Rush distance m", &Draft.portalDistanceM,
+		if (ImGui::InputDouble("Rush distance m", &RushDraft.distanceM,
 			fDistanceStep, fDistanceFastStep, "%.3f"))
 		{
-			NormalizePortalRush();
-			SubmitDraft();
+			SubmitPortalRush();
 		}
-		const double travelMs = Draft.portalDistanceM /
-			Draft.portalSpeedMps * 1000.0;
+		ImGui::SetNextItemWidth(210.f);
+		if (ImGui::InputScalar(
+			"Portal Gap After Rush (ms)", ImGuiDataType_U32,
+			&RushDraft.trailingGapMs, &iDelayStepMs,
+			&iDelayFastStepMs, "%u"))
+		{
+			RushDraft.trailingGapMs = (std::min)(
+				RushDraft.trailingGapMs, 120000u);
+			SubmitPortalRush();
+		}
 		ImGui::TextDisabled(
-			"Travel %.3f ms | finish %.3f / %u ms | swept hits %zu",
-			travelMs,
-			static_cast<double>(Draft.portalRetargetDelayMs) + travelMs,
-			Draft.durationMs, Draft.hitOffsetsMs.size());
+			"Computed leg total %u ms | travel %.3f ms | portal gap %u ms | swept hits %u",
+			RushDraft.legDurationMs, RushDraft.travelMs,
+			RushDraft.trailingGapMs, RushDraft.hitCount);
+		ImGui::TextColored(
+			ImVec4(1.f, 0.70f, 0.20f, 1.f),
+			"Distance endpoint currently bypasses navigation clamp; keep it inside the arena.");
+		ImGui::EndDisabled();
 	}
 
 	ImGui::SeparatorText("Server Stage Actions");
@@ -7350,7 +7409,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 		ImGui::TextColored(ImVec4(1.f, 0.75f, 0.2f, 1.f),
 			"UNSAVED SERVER-HIT SOUND DRAFT (read-only until its canonical typed transaction is available)");
 	ImGui::BeginDisabled(nullptr == m_pBalanceTool || !bMutationAdmitted);
-	if (ImGui::Button("Save"))
+	if (ImGui::Button("Save & Apply##ValtanPatternMaster"))
 	{
 		std::string Status;
 		if (m_bValtanCombatObjectSoundCuesDirty)
@@ -9009,11 +9068,22 @@ bool_t Client::CAnimation_Tool::Build_ValtanPatternCreateRequest(
 		return false;
 	}
 
-	const std::filesystem::path SourcePath = Get_CustomChainFilePath();
+	/* Create Pattern is a Valtan data transaction and must remain usable from
+	   the data-only Composition Workbench before an Arena Clone/model has
+	   populated m_AssetName.  Its backend owns this one fixed intake source. */
+	const std::filesystem::path SourcePath = CProjectDataRoot::Resolve(
+		std::filesystem::path(L"Valtan") /
+		L"Valtan.presentation.debug.json");
 	std::string strSourceBytes;
-	if (SourcePath.empty() || !Read_BoundedFile(
-			SourcePath, VALTAN_PATTERN_CREATE_MAX_DIAGNOSTIC_BYTES,
-			strSourceBytes, strOutError))
+	if (SourcePath.empty())
+	{
+		strOutError =
+			"Could not resolve Data/Valtan/Valtan.presentation.debug.json for Create Pattern.";
+		return false;
+	}
+	if (!Read_BoundedFile(
+		SourcePath, VALTAN_PATTERN_CREATE_MAX_DIAGNOSTIC_BYTES,
+		strSourceBytes, strOutError))
 	{
 		strOutError = "Could not read the exact Animation Intake source: " +
 			strOutError;
@@ -9577,8 +9647,8 @@ void Client::CAnimation_Tool::Poll_ValtanPatternCreateCommand()
 	}
 	m_strValtanPatternCreateStatus =
 		std::string(bReloadClosureAdmitted ?
-			"Apply completed source -> Product -> canonical reload closure for " :
-			"Apply source transaction committed, but Product/canonical reload closure is INCOMPLETE for ") +
+			"Apply completed the Data source/Product transaction and local canonical reload for " :
+			"Apply committed the Data source transaction, but the local Product/canonical reload is INCOMPLETE for ") +
 		m_strValtanPatternCreateActivePatternId + ". Balance source reload: " +
 		(bBalanceReloaded ? "PASS" : "REJECTED") + " (" +
 		strBalanceReloadStatus +
@@ -9588,6 +9658,11 @@ void Client::CAnimation_Tool::Poll_ValtanPatternCreateCommand()
 		(bAnimationAdmitted && bSelected ? "PASS" : "REJECTED") + " (" +
 		strAnimationStatus + "). Boss canonical graph/inventory reload: " +
 		(bBossReloaded ? "PASS" : "REJECTED") + " (" + strBossStatus + ").";
+	if (bReloadClosureAdmitted)
+	{
+		m_strValtanPatternCreateStatus +=
+			" Data Pattern creation is complete. The Create transaction does not republish Gameplay.bootstrap or restart the active Server; run the Server + Client Product build and restart Server before product entry/playback.";
+	}
 }
 
 void Client::CAnimation_Tool::Render_ValtanCustomChainWindow(

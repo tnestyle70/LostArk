@@ -35381,9 +35381,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 6500,
+      "sourceValue": 8000,
       "transform": "Balance Tool authored override",
-      "resultValue": 6500,
+      "resultValue": 8000,
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
@@ -35793,9 +35793,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 57,
+      "sourceValue": 58,
       "transform": "Balance Tool authored override",
-      "resultValue": 57,
+      "resultValue": 58,
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
@@ -45326,7 +45326,7 @@
           "stageId": "AIRBORNE",
           "actionId": "valtan.attack.high-jump.airborne",
           "stageKind": "WINDUP",
-          "durationMs": 6500,
+          "durationMs": 8000,
           "hitShape": "NONE",
           "hitOuterRadius": 0,
           "hitInnerRadius": 0,
@@ -45430,7 +45430,7 @@
           "stageId": "AIRBORNE",
           "actionId": "valtan.attack.high-jump.airborne",
           "stageKind": "WINDUP",
-          "durationMs": 6500,
+          "durationMs": 8000,
           "hitShape": "NONE",
           "hitOuterRadius": 0,
           "hitInnerRadius": 0,

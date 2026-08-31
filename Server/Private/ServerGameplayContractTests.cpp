@@ -1723,9 +1723,13 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			boss.PendingPatternIds = { "VALTAN_WARP" };
 			std::set<std::uint32_t> portalStages;
 			std::map<std::uint32_t, std::pair<float, float>> portalStageStarts;
+			std::map<std::uint32_t, float> portalStageEntryYaws;
 			std::map<std::uint32_t, float> portalStageTravelMeters;
 			std::map<std::pair<std::uint32_t, NET_ENTITY_ID>, std::uint32_t> hitCounts;
+			std::set<std::uint32_t> retargetedPortalStages;
 			bool targetRushExact = true;
+			bool retargetedAfterDelay = true;
+			bool keptFacingThroughRetargetDelay = true;
 			bool noMotionOrHitBeforeRetarget = true;
 			bool noTeleport = true;
 			bool crossedMissingNavigation = false;
@@ -1738,7 +1742,18 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				target.isCombatReady = true;
 				target.eAction = PLAYER_ACTION_STATE::NONE;
 				target.fPositionX = boss.fSpawnPositionX;
-				target.fPositionZ = boss.fSpawnPositionZ + 100.f;
+				target.fPositionZ = boss.fSpawnPositionZ + 12.f;
+				const bool retargetRight = 0u == boss.iPatternStageIndex % 2u;
+				if (boss.bPortalMotionActive &&
+					!boss.bPortalRushTargetLocked)
+				{
+					/* Move the locked Pattern target during the authored wait. The
+					   rush must snapshot this latest position at the delay boundary,
+					   not the yaw that entered the Stage. */
+					target.fPositionX = boss.fPositionX +
+						(retargetRight ? 12.f : -12.f);
+					target.fPositionZ = boss.fPositionZ;
+				}
 				SERVER_PLAYER& swept = room->m_Players.at(19201u);
 				swept.iCurrentHp = swept.iMaximumHp;
 				swept.eAction = PLAYER_ACTION_STATE::NONE;
@@ -1760,10 +1775,13 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				}
 				const float beforeX = boss.fPositionX;
 				const float beforeZ = boss.fPositionZ;
+				const float beforeYawDegrees = boss.fYawDegrees;
 				const bool beforePortalMotion = boss.bPortalMotionActive;
 				const std::uint32_t beforePortalStage = boss.iPatternStageIndex;
 				const float beforePortalEndX = boss.fPortalEndX;
 				const float beforePortalEndZ = boss.fPortalEndZ;
+				const bool beforePortalRushTargetLocked =
+					boss.bPortalRushTargetLocked;
 				room->m_iServerTick = tick - 1u;
 				room->m_TickDamageEvents.clear();
 				room->Update_WorldEntities(1.f / 30.f);
@@ -1786,18 +1804,48 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				}
 				if (boss.bPortalMotionActive)
 				{
+					if (!beforePortalRushTargetLocked &&
+						boss.bPortalRushTargetLocked)
+					{
+						retargetedPortalStages.insert(boss.iPatternStageIndex);
+						const float expectedYaw = retargetRight ? 90.f : -90.f;
+						const float expectedEndX = boss.fPortalStartX +
+							(retargetRight ? 8.f : -8.f);
+						retargetedAfterDelay = retargetedAfterDelay &&
+							boss.fActionElapsedSeconds >= 0.5f &&
+							std::fabs(std::remainder(
+								boss.fYawDegrees - expectedYaw, 360.f)) < 0.001f &&
+							std::fabs(boss.fPortalEndX - expectedEndX) < 0.001f &&
+							std::fabs(boss.fPortalEndZ - boss.fPortalStartZ) < 0.001f;
+					}
 					if (portalStages.insert(boss.iPatternStageIndex).second)
 					{
+						keptFacingThroughRetargetDelay =
+							keptFacingThroughRetargetDelay &&
+							std::fabs(std::remainder(
+								boss.fYawDegrees - beforeYawDegrees, 360.f)) < 0.001f;
+						portalStageEntryYaws.emplace(
+							boss.iPatternStageIndex, boss.fYawDegrees);
 						portalStageStarts.emplace(boss.iPatternStageIndex,
 							std::make_pair(boss.fPositionX, boss.fPositionZ));
-						targetRushExact = targetRushExact &&
+							targetRushExact = targetRushExact &&
 							BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH ==
 								boss.ePatternStageMotionKind &&
 							500u == boss.iPortalRushRetargetDelayMs &&
 							std::fabs(boss.fPortalRushSpeedMps - 20.f) < 0.0001f &&
 							std::fabs(boss.fPortalRushDistanceM - 8.f) < 0.0001f &&
 							boss.PatternStageRootMotion.empty() &&
-							std::fabs(std::remainder(boss.fYawDegrees, 360.f)) < 0.001f;
+							!boss.bPortalRushTargetLocked;
+					}
+					const auto entryYaw =
+						portalStageEntryYaws.find(boss.iPatternStageIndex);
+					if (!boss.bPortalRushTargetLocked &&
+						portalStageEntryYaws.end() != entryYaw)
+					{
+						keptFacingThroughRetargetDelay =
+							keptFacingThroughRetargetDelay &&
+							std::fabs(std::remainder(
+								boss.fYawDegrees - entryYaw->second, 360.f)) < 0.001f;
 					}
 					const auto start = portalStageStarts.find(boss.iPatternStageIndex);
 					if (portalStageStarts.end() != start)
@@ -1854,18 +1902,73 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					boss.fPositionZ - center.z) < 0.001f;
 			std::cout << "[DIAGNOSTIC] Portal completed=" << completed
 				<< " ready=" << room->Is_Ready()
+				<< " pattern=" << boss.strPatternId
+				<< " stage=" << boss.iPatternStageIndex
+				<< " stageId=" << boss.strPatternStageId
+				<< " elapsed=" << boss.fActionElapsedSeconds
+				<< " startTick=" << boss.iActionStartTick
+				<< " paused=" << boss.bAutomaticPatternSequencePausedForRevive
 				<< " typed=" << targetRushExact
+				<< " retargeted=" << retargetedPortalStages.size()
+				<< " heldFacing=" << keptFacingThroughRetargetDelay
 				<< " noWaitMotionOrHit=" << noMotionOrHitBeforeRetarget
 				<< " noTeleport=" << noTeleport
 				<< " crossedMissingNav=" << crossedMissingNavigation
 				<< " returnedCenter=" << returnedToCenter << '\n';
 			tests.Require(completed && room->Is_Ready() && portalStages.size() == 8u &&
-				targetRushExact && exactLegDistances &&
+				targetRushExact && retargetedPortalStages.size() == 8u &&
+				retargetedAfterDelay && keptFacingThroughRetargetDelay &&
+				exactLegDistances &&
 				noMotionOrHitBeforeRetarget && noTeleport && crossedMissingNavigation &&
 				returnedToCenter,
 				"Portal waits 500 ms, re-aims eight exact 8 m typed rush legs without root-motion double-add, then returns to valid arena center");
 			tests.Require(sweptBodyHits == 8u && noRepeatHits,
 				"Portal 50 ms swept contact catches an inter-pulse body at most once per traversal leg");
+		}
+		{
+			BOSS_PATTERN_STAGE_DEFINITION zeroDelayStage{};
+			zeroDelayStage.Motion.eKind =
+				BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH;
+			zeroDelayStage.Motion.iRetargetDelayMs = 0u;
+			zeroDelayStage.Motion.fSpeedMps = 20.f;
+			zeroDelayStage.Motion.fDistance = 8.f;
+			SERVER_WORLD_ENTITY zeroDelayBoss{};
+			zeroDelayBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+			zeroDelayBoss.eAction = SERVER_ENTITY_ACTION::PATTERN_ACTIVE;
+			zeroDelayBoss.iCurrentHp = 1u;
+			zeroDelayBoss.fPositionX = 10.f;
+			zeroDelayBoss.fPositionZ = 20.f;
+			zeroDelayBoss.fYawDegrees = 0.f;
+			zeroDelayBoss.bHasPatternTargetLastPosition = true;
+			zeroDelayBoss.fPatternTargetLastPositionX = 22.f;
+			zeroDelayBoss.fPatternTargetLastPositionZ = 20.f;
+			zeroDelayBoss.ePatternStageMotionKind =
+				BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH;
+			CValtanBrain::Configure_PortalMotion(zeroDelayBoss, zeroDelayStage);
+			CValtanBrain::Try_LockPortalTargetRush(zeroDelayBoss, 0u);
+			tests.Require(
+				zeroDelayBoss.bPortalRushTargetLocked &&
+				std::fabs(zeroDelayBoss.fYawDegrees - 90.f) < 0.001f &&
+				std::fabs(zeroDelayBoss.fPortalEndX - 18.f) < 0.001f &&
+				std::fabs(zeroDelayBoss.fPortalEndZ - 20.f) < 0.001f,
+				"Portal zero-delay tuning locks its selected target on the ENTER boundary without one fixed-tick latency");
+			zeroDelayBoss.strPatternId = "VALTAN_WARP";
+			zeroDelayBoss.strPatternStageId = "STEP_02";
+			zeroDelayBoss.strActionId = "valtan.sequence.warp.step-02";
+			zeroDelayBoss.iCurrentHp = 0u;
+			std::map<PLAYER_ID, SERVER_PLAYER> noPlayers;
+			std::vector<DAMAGE_EVENT> noDamage;
+			CServerNavigation deathNavigation;
+			CValtanBrain deathBrain;
+			deathBrain.Update(zeroDelayBoss, noPlayers, catalog, deathNavigation,
+				1.f / 30.f, 400u, {}, noDamage);
+			tests.Require(
+				!zeroDelayBoss.bPortalMotionActive &&
+				!zeroDelayBoss.bPortalRushTargetLocked &&
+				BOSS_PATTERN_STAGE_MOTION_KIND::NONE ==
+					zeroDelayBoss.ePatternStageMotionKind &&
+				zeroDelayBoss.PortalStageHitTargets.empty(),
+				"Boss death clears every pending Portal rush motion and hit cursor");
 		}
 		{
 			auto room = prepareRoom();
@@ -5061,7 +5164,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			nullptr != highJumpTakeoff &&
 			1933u == highJumpTakeoff->iDurationMs &&
 			nullptr != highJumpAirborne &&
-			6500u == highJumpAirborne->iDurationMs &&
+			8000u == highJumpAirborne->iDurationMs &&
 			hasExactHighJumpVolley &&
 			nullptr != highJumpLand && 3200u == highJumpLand->iDurationMs &&
 			nullptr != highJumpRecovery &&
@@ -5075,7 +5178,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				highJumpTargetAxe->Hits.front().eTrigger &&
 			1200u == highJumpTargetAxe->Hits.front().iAtMs &&
 			1u == highJumpTargetAxe->Hits.front().iRepeatCount,
-			"Keep three mixed target-axe waves inside the 6.5-second AIRBORNE hold, hit each at 1.2 seconds, and leave LAND at 3.2 seconds");
+			"Derive each target-axe Product lifetime from the 8-second AIRBORNE clock, keep its timed contact object-local at +1.2 seconds, and leave LAND at 3.2 seconds");
 		tests.Require(
 			nullptr != fourSlashPattern && nullptr != swingPattern &&
 			420609u == fourSlashPattern->iSourcePrimaryActionId &&
@@ -20210,7 +20313,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 						lifecycle.PinnedDefinitionRevision == pinnedRevision;
 				});
 
-		request.iRequestSequence = 3u;
+		request.iRequestSequence = 4u;
 		request.strStartSlotId = request.Slots.front().strSlotId;
 		std::uint32_t stopFlowEpoch = 0u;
 		GameplayDataRevision stopPinnedRevision{};
@@ -21124,7 +21227,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		bool enteredLand = false;
 		const std::uint32_t airborneHoldStartTick = leapArcTick;
 		for (std::uint32_t tick = 0u;
-			tick < 200u && !enteredLand; ++tick)
+			tick < 260u && !enteredLand; ++tick)
 		{
 			if ("AIRBORNE" == leapArcBoss.strPatternStageId)
 			{
@@ -21161,7 +21264,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			enteredRecovery = "RECOVERY" == leapArcBoss.strPatternStageId;
 		}
 		tests.Require(
-			heldAtApex && enteredLand && airborneHoldTicks >= 195u && airborneHoldTicks <= 196u &&
+			heldAtApex && enteredLand && airborneHoldTicks >= 240u && airborneHoldTicks <= 241u &&
 			landedInsideFastWindow && enteredRecovery &&
 			2u == leapArcBoss.iPatternLeapTravelStageIndex &&
 			std::abs(leapArcBoss.fPositionX - leapArcTarget.fPositionX) < 0.01f &&

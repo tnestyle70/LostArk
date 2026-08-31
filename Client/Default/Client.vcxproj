@@ -151,6 +151,7 @@
     <ClInclude Include="..\public\Effect_Tool.h" />
     <ClInclude Include="..\Public\Effect_Tool_V2.h" />
     <ClInclude Include="..\Public\EffectV2_Object.h" />
+    <ClInclude Include="..\Public\EffectV2_Catalog.h" />
     <ClInclude Include="..\Public\EffectV2_Document.h" />
     <ClInclude Include="..\Public\EffectV2_Runtime.h" />
     <ClInclude Include="..\Public\EffectV2_Target.h" />
@@ -315,6 +316,7 @@
     </ClCompile>
     <ClCompile Include="..\Private\Effect_Tool_V2.cpp" />
     <ClCompile Include="..\Private\EffectV2_Object.cpp" />
+    <ClCompile Include="..\Private\EffectV2_Catalog.cpp" />
     <ClCompile Include="..\Private\EffectV2_Document.cpp" />
     <ClCompile Include="..\Private\EffectV2_Runtime.cpp" />
     <ClCompile Include="..\Private\HUDLayoutTool.cpp" />

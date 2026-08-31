@@ -18,6 +18,7 @@
 
 #include <Windows.h>
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <cctype>
 #include <cmath>
@@ -41,6 +42,9 @@ namespace
 		"Data/Valtan/Valtan.gameplay.json";
 	constexpr char VALTAN_PRESENTATION_SOURCE_PATH[] =
 		"Data/Valtan/Valtan.presentation.json";
+	constexpr std::array<const char*, 8u> VALTAN_WARP_RUSH_STAGE_IDS = {
+		"STEP_02", "STEP_03", "STEP_04", "STEP_05",
+		"STEP_06", "STEP_07", "STEP_08", "STEP_09" };
 
 	bool ReadJson(const std::filesystem::path& relativePath,
 		DATA_JSON_VALUE& output, std::string& status)
@@ -1640,6 +1644,103 @@ namespace
 			0.0 == stage.hitInnerRadius &&
 			0.0 == stage.hitAngleDegrees;
 	}
+
+	bool DerivePortalRushTrailingGapMs(
+		const CBalanceTool::PATTERN_STAGE_EDIT& stage,
+		std::uint32_t& trailingGapMs,
+		std::string& status)
+	{
+		if (!std::isfinite(stage.portalSpeedMps) ||
+			!std::isfinite(stage.portalDistanceM) ||
+			stage.portalSpeedMps <= 0.0)
+		{
+			status = "Portal-rush trailing gap cannot be recovered from an invalid motion.";
+			return false;
+		}
+		const double travelMs =
+			stage.portalDistanceM / stage.portalSpeedMps * 1000.0;
+		const double remainderMs = static_cast<double>(stage.durationMs) -
+			static_cast<double>(stage.portalRetargetDelayMs) - travelMs;
+		if (!std::isfinite(remainderMs) || remainderMs < -1.0 ||
+			remainderMs > 120001.0)
+		{
+			status = "Portal-rush Stage clock cannot represent delay + travel + trailing gap.";
+			return false;
+		}
+
+		/* durationMs stores ceil(delay + travel + integer gap).  Try the
+		   mathematical floor and its two floating-point neighbours, then accept
+		   only the candidate that reconstructs the exact saved Stage clock. */
+		const std::int64_t floorGap = static_cast<std::int64_t>(
+			std::floor(remainderMs));
+		for (const std::int64_t candidateGap :
+			{ floorGap, floorGap - 1, floorGap + 1 })
+		{
+			if (candidateGap < 0 || candidateGap > 120000)
+				continue;
+			CBalanceTool::PATTERN_STAGE_EDIT normalized = stage;
+			std::string normalizeStatus;
+			if (CBalanceTool::Normalize_ValtanPortalRushDraft(
+					normalized, static_cast<std::uint32_t>(candidateGap),
+					normalizeStatus) &&
+				normalized.durationMs == stage.durationMs)
+			{
+				trailingGapMs = static_cast<std::uint32_t>(candidateGap);
+				status.clear();
+				return true;
+			}
+		}
+		status = "Portal-rush Stage clock is not the derived ceil(delay + travel + trailing gap) value.";
+		return false;
+	}
+
+	bool RetargetPortalRushLoopToStageEnd(
+		VALTAN_STAGE_VIEW& stage,
+		const std::uint32_t stageDurationMs,
+		bool& changed,
+		std::string& status)
+	{
+		if ("LOOP_TO_STAGE_END" != stage.strAnimationEndPolicy ||
+			stage.ClipOccurrences.empty())
+		{
+			status = "Portal-rush presentation must use LOOP_TO_STAGE_END.";
+			return false;
+		}
+		VALTAN_CLIP_OCCURRENCE_VIEW* loop = nullptr;
+		std::uint64_t knownWallMs = 0u;
+		for (VALTAN_CLIP_OCCURRENCE_VIEW& occurrence : stage.ClipOccurrences)
+		{
+			if (occurrence.bLoop)
+			{
+				if (nullptr != loop || 0u != occurrence.iPlayMs)
+				{
+					status = "Portal-rush presentation must contain exactly one open LOOP_TO_STAGE_END occurrence.";
+					return false;
+				}
+				loop = &occurrence;
+				continue;
+			}
+			if (0u == occurrence.iAuthoringWallMs ||
+				occurrence.iAuthoringWallMs > 120000u ||
+				knownWallMs + occurrence.iAuthoringWallMs > 120000u)
+			{
+				status = "Portal-rush presentation has an invalid finite animation wall.";
+				return false;
+			}
+			knownWallMs += occurrence.iAuthoringWallMs;
+		}
+		if (nullptr == loop || knownWallMs >= stageDurationMs)
+		{
+			status = "Portal-rush LOOP_TO_STAGE_END presentation does not fit the derived Stage clock.";
+			return false;
+		}
+		const std::uint32_t loopWallMs = static_cast<std::uint32_t>(
+			static_cast<std::uint64_t>(stageDurationMs) - knownWallMs);
+		changed = changed || loop->iAuthoringWallMs != loopWallMs;
+		loop->iAuthoringWallMs = loopWallMs;
+		status.clear();
+		return true;
+	}
 }
 
 
@@ -1907,6 +2008,281 @@ bool Client::CBalanceTool::Get_ValtanStageDraft(
 	}
 	stage = BuildValtanStageDraft(*pattern, *admitted);
 	status.clear();
+	return true;
+}
+
+bool Client::CBalanceTool::Normalize_ValtanPortalRushDraft(
+	PATTERN_STAGE_EDIT& stage,
+	const std::uint32_t trailingGapMs,
+	std::string& status)
+{
+	if (!stage.portalRushMotionEditable ||
+		"PORTAL_TARGET_RUSH" != stage.motionKind)
+	{
+		status = "Portal-rush normalization requires an admitted PORTAL_TARGET_RUSH Stage.";
+		return false;
+	}
+	if (!std::isfinite(stage.portalSpeedMps) ||
+		!std::isfinite(stage.portalDistanceM))
+	{
+		status = "Portal-rush speed and distance must be finite.";
+		return false;
+	}
+	if (stage.portalRetargetDelayMs > 120000u ||
+		trailingGapMs > 120000u || stage.portalSpeedMps < 0.1 ||
+		stage.portalSpeedMps > 1000.0 || stage.portalDistanceM <= 0.0 ||
+		stage.portalDistanceM > 1000.0)
+	{
+		status = "Portal-rush inputs require delay/gap 0..120000 ms, speed 0.1..1000 m/s, and distance greater than 0 up to 1000 m.";
+		return false;
+	}
+
+	/* Motion persists as float in the canonical tree. Normalize calculations
+	   from those exact stored values so save/reload cannot change a ceil edge. */
+	stage.portalSpeedMps = static_cast<double>(
+		static_cast<float>(stage.portalSpeedMps));
+	stage.portalDistanceM = static_cast<double>(
+		static_cast<float>(stage.portalDistanceM));
+	const double travelMs =
+		stage.portalDistanceM / stage.portalSpeedMps * 1000.0;
+	const double totalMs = static_cast<double>(stage.portalRetargetDelayMs) +
+		travelMs + static_cast<double>(trailingGapMs);
+	if (!std::isfinite(travelMs) || !std::isfinite(totalMs) ||
+		travelMs <= 0.0 || totalMs <= 0.0 || totalMs > 120000.0)
+	{
+		status = "Portal-rush delay + distance/speed travel + gap must fit a finite 1..120000 ms Stage clock.";
+		return false;
+	}
+	const double ceiledDurationMs = std::ceil(totalMs);
+	if (!std::isfinite(ceiledDurationMs) || ceiledDurationMs < 1.0 ||
+		ceiledDurationMs > 120000.0)
+	{
+		status = "Portal-rush derived Stage clock overflowed the 120000 ms limit.";
+		return false;
+	}
+	stage.durationMs = static_cast<std::uint32_t>(ceiledDurationMs);
+	const double travelEndMs =
+		static_cast<double>(stage.portalRetargetDelayMs) + travelMs;
+
+	stage.hitOffsetsMs.clear();
+	std::uint64_t offsetMs = stage.portalRetargetDelayMs;
+	for (; static_cast<double>(offsetMs) < travelEndMs &&
+		stage.hitOffsetsMs.size() < 64u; offsetMs += 50u)
+	{
+		stage.hitOffsetsMs.push_back(static_cast<std::uint32_t>(offsetMs));
+	}
+	if (static_cast<double>(offsetMs) < travelEndMs)
+	{
+		status = "Portal-rush travel exceeds the 64-sample 50 ms swept-hit contract (maximum 3200 ms).";
+		return false;
+	}
+	if (stage.hitOffsetsMs.empty())
+	{
+		status = "Portal-rush normalization did not produce a swept-hit sample.";
+		return false;
+	}
+	stage.hitCount = static_cast<std::uint32_t>(stage.hitOffsetsMs.size());
+	stage.hitIntervalMs = 0u;
+	stage.hitDelayMs = 0u;
+	status.clear();
+	return true;
+}
+
+bool Client::CBalanceTool::Get_ValtanWarpRushDraft(
+	VALTAN_WARP_RUSH_EDIT& rush,
+	std::string& status) const
+{
+	if (!Require_ValtanAuthoringAdmission("Valtan WARP rush draft", status))
+		return false;
+	const VALTAN_PATTERN_VIEW* const pattern =
+		FindValtanPattern(m_valtanPatternTree, "VALTAN_WARP");
+	if (nullptr == pattern || !pattern->bAuthoringMasterManaged)
+	{
+		status = "VALTAN_WARP is not admitted by the authoring master.";
+		return false;
+	}
+
+	VALTAN_WARP_RUSH_EDIT aggregate{};
+	bool first = true;
+	for (const char* const stageId : VALTAN_WARP_RUSH_STAGE_IDS)
+	{
+		const VALTAN_STAGE_VIEW* const stage = FindValtanStage(*pattern, stageId);
+		if (nullptr == stage)
+		{
+			status = std::string("VALTAN_WARP is missing required rush leg ") +
+				stageId + ".";
+			return false;
+		}
+		PATTERN_STAGE_EDIT draft = BuildValtanStageDraft(*pattern, *stage);
+		std::uint32_t trailingGapMs = 0u;
+		std::string normalizeStatus;
+		if (!DerivePortalRushTrailingGapMs(
+				draft, trailingGapMs, normalizeStatus))
+		{
+			status = std::string("VALTAN_WARP rush leg has no valid authored trailing gap: ") +
+				stageId + ". " + normalizeStatus;
+			return false;
+		}
+		PATTERN_STAGE_EDIT normalized = draft;
+		if (!Normalize_ValtanPortalRushDraft(
+				normalized, trailingGapMs, normalizeStatus) ||
+			normalized.durationMs != draft.durationMs ||
+			normalized.hitOffsetsMs != draft.hitOffsetsMs ||
+			normalized.hitCount != draft.hitCount ||
+			0u != draft.hitIntervalMs || 0u != draft.hitDelayMs)
+		{
+			status = std::string("VALTAN_WARP rush leg is not a normalized 50 ms Server sweep: ") +
+				stageId + ". " + normalizeStatus;
+			return false;
+		}
+		VALTAN_STAGE_VIEW presentation = *stage;
+		bool loopWallChanged = false;
+		if (!RetargetPortalRushLoopToStageEnd(
+				presentation, draft.durationMs, loopWallChanged,
+				normalizeStatus) || loopWallChanged)
+		{
+			status = std::string("VALTAN_WARP rush leg presentation does not follow its Stage clock: ") +
+				stageId + ". " + normalizeStatus;
+			return false;
+		}
+		if (first)
+		{
+			aggregate.legDurationMs = draft.durationMs;
+			aggregate.retargetDelayMs = draft.portalRetargetDelayMs;
+			aggregate.speedMps = draft.portalSpeedMps;
+			aggregate.distanceM = draft.portalDistanceM;
+			aggregate.trailingGapMs = trailingGapMs;
+			aggregate.hitCount = draft.hitCount;
+			first = false;
+		}
+		else if (aggregate.legDurationMs != draft.durationMs ||
+			aggregate.retargetDelayMs != draft.portalRetargetDelayMs ||
+			std::abs(aggregate.speedMps - draft.portalSpeedMps) > 0.000001 ||
+			std::abs(aggregate.distanceM - draft.portalDistanceM) > 0.000001 ||
+			aggregate.trailingGapMs != trailingGapMs ||
+			aggregate.hitCount != draft.hitCount)
+		{
+			status = "VALTAN_WARP STEP_02..STEP_09 do not share one rush contract; reload or repair the canonical source before all-leg tuning.";
+			return false;
+		}
+	}
+	aggregate.travelMs = aggregate.distanceM / aggregate.speedMps * 1000.0;
+	rush = aggregate;
+	status.clear();
+	return true;
+}
+
+bool Client::CBalanceTool::Set_ValtanWarpRushDraft(
+	const VALTAN_WARP_RUSH_EDIT& rush,
+	std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission("Valtan WARP all-leg edit", status))
+		return false;
+	VALTAN_WARP_RUSH_EDIT current{};
+	if (!Get_ValtanWarpRushDraft(current, status))
+	{
+		status = "VALTAN_WARP all-leg edit rejected before mutation: " + status;
+		return false;
+	}
+	if (rush.legDurationMs != current.legDurationMs)
+	{
+		status = "VALTAN_WARP all-leg edit rejected before mutation: the aggregate Stage clock changed; refresh Details and retry.";
+		return false;
+	}
+	VALTAN_PATTERN_TREE_VIEW staged = m_valtanPatternTree;
+	VALTAN_PATTERN_VIEW* const pattern =
+		FindValtanPattern(staged, "VALTAN_WARP");
+	if (nullptr == pattern || !pattern->bAuthoringMasterManaged)
+	{
+		status = "VALTAN_WARP all-leg edit rejected: Pattern is not authoring-master managed.";
+		return false;
+	}
+
+	bool changed = false;
+	PATTERN_STAGE_EDIT admittedNormalized{};
+	for (const char* const stageId : VALTAN_WARP_RUSH_STAGE_IDS)
+	{
+		VALTAN_STAGE_VIEW* const stage = FindValtanStage(*pattern, stageId);
+		if (nullptr == stage)
+		{
+			status = std::string("VALTAN_WARP all-leg edit rejected before mutation: missing ") +
+				stageId + ".";
+			return false;
+		}
+		PATTERN_STAGE_EDIT draft = BuildValtanStageDraft(*pattern, *stage);
+		if (!draft.portalRushMotionEditable ||
+			"PORTAL_TARGET_RUSH" != draft.motionKind ||
+			current.legDurationMs != draft.durationMs ||
+			!stage->Motion.has_value())
+		{
+			status = std::string("VALTAN_WARP all-leg edit rejected before mutation: stale or malformed rush leg ") +
+				stageId + ".";
+			return false;
+		}
+		draft.portalRetargetDelayMs = rush.retargetDelayMs;
+		draft.portalSpeedMps = rush.speedMps;
+		draft.portalDistanceM = rush.distanceM;
+		std::string normalizeStatus;
+		if (!Normalize_ValtanPortalRushDraft(
+				draft, rush.trailingGapMs, normalizeStatus))
+		{
+			status = std::string("VALTAN_WARP all-leg edit rejected before mutation: ") +
+				normalizeStatus;
+			return false;
+		}
+		if (admittedNormalized.stageId.empty())
+			admittedNormalized = draft;
+		else if (admittedNormalized.portalRetargetDelayMs !=
+				draft.portalRetargetDelayMs ||
+			admittedNormalized.durationMs != draft.durationMs ||
+			std::abs(admittedNormalized.portalSpeedMps -
+				draft.portalSpeedMps) > 0.000001 ||
+			std::abs(admittedNormalized.portalDistanceM -
+				draft.portalDistanceM) > 0.000001 ||
+			admittedNormalized.hitOffsetsMs != draft.hitOffsetsMs)
+		{
+			status = "VALTAN_WARP all-leg edit rejected before mutation: the eight Stage clocks normalize to different rush contracts.";
+			return false;
+		}
+		bool loopWallChanged = false;
+		if (!RetargetPortalRushLoopToStageEnd(
+				*stage, draft.durationMs, loopWallChanged, normalizeStatus))
+		{
+			status = std::string("VALTAN_WARP all-leg edit rejected before mutation: ") +
+				stageId + " " + normalizeStatus;
+			return false;
+		}
+
+		changed = changed ||
+			stage->iDurationMs != draft.durationMs || loopWallChanged ||
+			stage->Motion->iRetargetDelayMs != draft.portalRetargetDelayMs ||
+			std::abs(stage->Motion->fSpeedMps -
+				static_cast<float>(draft.portalSpeedMps)) > 0.000001f ||
+			std::abs(stage->Motion->fDistance -
+				static_cast<float>(draft.portalDistanceM)) > 0.000001f ||
+			stage->HitOffsetsMs != draft.hitOffsetsMs ||
+			stage->iHitCount != draft.hitCount ||
+			0u != stage->iHitIntervalMs || 0u != stage->iHitDelayMs;
+		stage->iDurationMs = draft.durationMs;
+		stage->Motion->iRetargetDelayMs = draft.portalRetargetDelayMs;
+		stage->Motion->fSpeedMps = static_cast<float>(draft.portalSpeedMps);
+		stage->Motion->fDistance = static_cast<float>(draft.portalDistanceM);
+		stage->HitOffsetsMs = draft.hitOffsetsMs;
+		stage->iHitCount = draft.hitCount;
+		stage->iHitIntervalMs = 0u;
+		stage->iHitDelayMs = 0u;
+	}
+
+	if (!changed)
+	{
+		status = "VALTAN_WARP all eight rush legs are unchanged.";
+		return true;
+	}
+	/* This is the only live-tree mutation: every required Stage was found and
+	   normalized in the value copy above before the aggregate is committed. */
+	m_valtanPatternTree = std::move(staged);
+	MarkDirty(true);
+	status = "Staged VALTAN_WARP delay/speed/distance/portal gap, derived Stage clocks, loop presentation, and 50 ms travel sweeps atomically for STEP_02..STEP_09. Use Save & Apply to validate and activate the data.";
 	return true;
 }
 
@@ -2647,6 +3023,16 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 		candidate.portalRetargetDelayMs != current.portalRetargetDelayMs ||
 		candidate.portalSpeedMps != current.portalSpeedMps ||
 		candidate.portalDistanceM != current.portalDistanceM;
+	const bool portalRushSweepChanged =
+		candidate.hitCount != current.hitCount ||
+		candidate.hitIntervalMs != current.hitIntervalMs ||
+		candidate.hitDelayMs != current.hitDelayMs || hitOffsetsChanged;
+	if (portalRushMotion &&
+		(durationChanged || portalRushMotionChanged || portalRushSweepChanged))
+	{
+		status = "VALTAN_WARP Stage clock, rush motion, and swept-hit timing are owned by Warp Rush — All 8 Legs.";
+		return false;
+	}
 	if (portalRushMotion)
 	{
 		const bool finiteMotion = std::isfinite(candidate.portalSpeedMps) &&
@@ -3112,17 +3498,20 @@ bool Client::CBalanceTool::Set_ValtanCounterWindowDraft(
 bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)
 {
 	std::string stepStatus;
-	if (!Validate_ValtanDraft(stepStatus))
-	{
-		status = "Save validation failed; source and active runtime were preserved: " +
-			stepStatus;
-		return false;
-	}
-
 	const bool hadDirtyDraft = m_dirty;
-	if (hadDirtyDraft && !Save_ValtanAuthoring(stepStatus))
+	if (hadDirtyDraft)
 	{
-		status = "Save authoring failed; active runtime was preserved: " +
+		if (!Save_ValtanCanonicalProduct(stepStatus))
+		{
+			status =
+				"Save & Apply could not commit the canonical Pattern JSON/Product closure; the previous admitted generation remains active: " +
+				stepStatus;
+			return false;
+		}
+	}
+	else if (!Validate_ValtanDraft(stepStatus))
+	{
+		status = "Save & Apply validation failed; source and active runtime were preserved: " +
 			stepStatus;
 		return false;
 	}
@@ -3135,9 +3524,9 @@ bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)
 				Record_GameplaySourceActivationExpectation({}, {}, stepStatus);
 		}
 		status = hadDirtyDraft ?
-			"Authoring was saved, but Product bundle generation failed. The active runtime is unchanged; press Save again after fixing the diagnostic: " +
+			"Canonical Pattern JSON/Product data was saved, but Server apply preparation failed. The active runtime is unchanged; press Save & Apply again after fixing the diagnostic: " +
 				stepStatus :
-			"Product bundle generation failed; source and active runtime are unchanged: " +
+			"Server apply preparation failed; source and active runtime are unchanged: " +
 				stepStatus;
 		return false;
 	}
@@ -8732,7 +9121,7 @@ void Client::CBalanceTool::Render()
 				m_valtanSourceJoin.state;
 		ImGui::BeginDisabled(
 			m_valtanSourceRevision.empty() || !splitJoinValidated);
-		if (ImGui::Button("Save"))
+		if (ImGui::Button("Save & Apply##ValtanBalance"))
 		{
 			std::string status;
 			(void)Save_ValtanProduct(status);

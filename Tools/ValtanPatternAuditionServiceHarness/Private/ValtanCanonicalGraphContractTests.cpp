@@ -357,6 +357,83 @@ namespace
 				*Document.Get_DefaultFlow()),
 			"watchdog graph remained exposed as a legacy-playable slot projection");
 
+		CValtanPatternFlowDocument GraphEditor;
+		Require(GraphEditor.Load(AdmittedPatternIds, Status),
+			"v2 graph editor contract could not load a clean Flow");
+		const VALTAN_PATTERN_FLOW_DEFINITION* EditorFlow =
+			GraphEditor.Get_DefaultFlow();
+		Require(nullptr != EditorFlow && !EditorFlow->Nodes.empty(),
+			"v2 graph editor contract loaded no nodes");
+		const std::size_t OriginalNodeCount = EditorFlow->Nodes.size();
+		const std::string OriginalEntryId = EditorFlow->strEntryNodeId;
+		const std::string InsertAfterId = EditorFlow->Nodes.back().strNodeId;
+		const std::string RepeatTargetId = EditorFlow->Nodes[1u].strNodeId;
+		const std::string InsertPatternId =
+			EditorFlow->Nodes[1u].strPatternId;
+		std::string InsertedNodeId;
+		Require(GraphEditor.Insert_Node_After(
+			InsertAfterId, InsertPatternId, AdmittedPatternIds,
+			InsertedNodeId, Status),
+			"v2 graph editor rejected a valid terminal node insertion");
+		EditorFlow = GraphEditor.Get_DefaultFlow();
+		Require(nullptr != EditorFlow &&
+			OriginalNodeCount + 1u == EditorFlow->Nodes.size() &&
+			CValtanPatternFlowDocument::Has_LegacyLinearProjection(*EditorFlow),
+			"v2 graph editor insertion did not preserve its linear projection");
+
+		std::string RepeatEdgeId;
+		Require(GraphEditor.Connect_CompletedEdge(
+			InsertedNodeId, RepeatTargetId,
+			EditorFlow->iDefaultPursuitMs, 2u,
+			AdmittedPatternIds, RepeatEdgeId, Status),
+			"v2 graph editor rejected a finite terminal back-edge");
+		EditorFlow = GraphEditor.Get_DefaultFlow();
+		Require(nullptr != EditorFlow &&
+			!CValtanPatternFlowDocument::Has_LegacyLinearProjection(*EditorFlow),
+			"finite graph editor back-edge remained legacy-playable");
+		Require(GraphEditor.Set_EdgePursuitMs(
+			RepeatEdgeId, 1200u, AdmittedPatternIds, Status) &&
+			GraphEditor.Set_EdgeMaxTraversals(
+				RepeatEdgeId, 3u, AdmittedPatternIds, Status) &&
+			GraphEditor.Set_NodeWatchdogMs(
+				InsertedNodeId, 1000u, AdmittedPatternIds, Status),
+			"v2 graph editor rejected typed edge or watchdog tuning");
+		const VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT BeforeInvalidDelete =
+			GraphEditor.Get_Draft();
+		Require(!GraphEditor.Remove_Edge(
+			BeforeInvalidDelete.Flows.front().Edges.front().strEdgeId,
+			AdmittedPatternIds, Status) &&
+			GraphEditor.Get_Draft() == BeforeInvalidDelete,
+			"v2 graph editor partially committed an orphaning edge deletion");
+		Require(GraphEditor.Remove_Edge(
+			RepeatEdgeId, AdmittedPatternIds, Status) &&
+			GraphEditor.Set_NodeWatchdogMs(
+				InsertedNodeId, 0u, AdmittedPatternIds, Status),
+			"v2 graph editor could not remove its repeat edge and watchdog");
+		EditorFlow = GraphEditor.Get_DefaultFlow();
+		Require(nullptr != EditorFlow &&
+			CValtanPatternFlowDocument::Has_LegacyLinearProjection(*EditorFlow),
+			"v2 graph editor did not restore the linear projection");
+		Require(GraphEditor.Set_EntryNode(
+			RepeatTargetId, AdmittedPatternIds, Status),
+			"v2 graph editor could not rotate its first acyclic start");
+		Require(GraphEditor.Remove_Node(
+			OriginalEntryId, AdmittedPatternIds, Status),
+			"v2 graph editor could not remove and rejoin a non-terminal node");
+		EditorFlow = GraphEditor.Get_DefaultFlow();
+		Require(nullptr != EditorFlow && EditorFlow->Nodes.size() >= 5u,
+			"v2 graph editor lost its deterministic path after entry removal");
+		const std::string RotatedEntryId = EditorFlow->Nodes[4u].strNodeId;
+		Require(GraphEditor.Set_EntryNode(
+			RotatedEntryId, AdmittedPatternIds, Status),
+			"v2 graph editor could not rotate an acyclic Flow start");
+		EditorFlow = GraphEditor.Get_DefaultFlow();
+		Require(nullptr != EditorFlow &&
+			EditorFlow->strEntryNodeId == RotatedEntryId &&
+			CValtanPatternFlowDocument::Validate(
+				GraphEditor.Get_Draft(), AdmittedPatternIds, Status),
+			"v2 graph editor start rotation did not remain strictly admitted");
+
 		std::string WrongVersion = Serialized;
 		const std::string VersionToken = "\"formatVersion\": 2";
 		WrongVersion.replace(

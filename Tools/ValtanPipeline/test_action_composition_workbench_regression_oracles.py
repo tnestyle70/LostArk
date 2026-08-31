@@ -91,6 +91,38 @@ def source_dependency_window_accepts(
     return not requires_loop or loop
 
 
+def fit_hold_chain_to_stage(cuts_ms: list[int], stage_ms: int) -> list[int]:
+    """Executable mirror of the Workbench's preserve-edges HOLD fitter."""
+
+    if sum(cuts_ms) <= stage_ms:
+        return cuts_ms.copy()
+    if len(cuts_ms) < 3:
+        raise ValueError("no deterministic middle HOLD window")
+    middle_count = len(cuts_ms) - 2
+    edge_ms = cuts_ms[0] + cuts_ms[-1]
+    if edge_ms + middle_count > stage_ms:
+        raise ValueError("no positive middle HOLD window")
+    fitted = cuts_ms.copy()
+    remaining_budget = stage_ms - edge_ms
+    remaining_requested = sum(cuts_ms[1:-1])
+    for index in range(1, len(cuts_ms) - 1):
+        remaining_count = len(cuts_ms) - index - 2
+        allocation = remaining_budget
+        if remaining_count:
+            proportional = (
+                1
+                if not remaining_requested
+                else remaining_budget * cuts_ms[index] // remaining_requested
+            )
+            allocation = max(
+                1, min(proportional, remaining_budget - remaining_count)
+            )
+        fitted[index] = allocation
+        remaining_budget -= allocation
+        remaining_requested -= min(remaining_requested, cuts_ms[index])
+    return fitted
+
+
 class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -123,6 +155,31 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertLess(guard, latch)
         self.assertLess(latch, reload_call)
 
+    def test_sequence_intake_routes_to_creator_then_back_to_created_pattern(self) -> None:
+        browser = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render_SequenceBrowser(",
+        )
+        patterns = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render_PatternsWindow(",
+        )
+        render = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render()",
+        )
+        intake = browser.index("Stage_ValtanCompositionIntakeSequence(")
+        route_to_creator = browser.index("m_iRequestedPatternTab = 1", intake)
+        self.assertLess(intake, route_to_creator)
+        self.assertIn("ImGuiTabItemFlags_SetSelected", patterns)
+        self.assertIn('"Create New Pattern"', patterns)
+        self.assertIn("m_iRequestedPatternTab = -1", patterns)
+
+        created = render.index("Consume_ValtanCompositionPatternCreated(")
+        route_to_browser = render.index("m_iRequestedPatternTab = 0", created)
+        reload_canonical = render.index("Reload_Canonical()", created)
+        self.assertLess(route_to_browser, reload_canonical)
+
     def test_details_owns_a_deferred_pattern_save_without_stale_frame_views(self) -> None:
         details = function_body(
             self.workbench_cpp,
@@ -133,7 +190,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             "void Client::CActionCompositionWorkbench::Render()",
         )
         self.assertIn("UNSAVED PATTERN DRAFT", details)
-        self.assertIn('ImGui::Button("Save Pattern##CompositionDetails")', details)
+        self.assertIn('ImGui::Button("Save & Apply##CompositionDetails")', details)
         self.assertIn("m_bSavePatternRequested = true", details)
 
         resources = render.index("Render_ResourcesWindow(")
@@ -143,8 +200,8 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertLess(consume, save)
         self.assertNotIn("Render_", render[save:])
 
-        self.assertIn("LAST SAVE: SAVED", details)
-        self.assertIn("LAST SAVE: FAILED", details)
+        self.assertIn("LAST SAVE: SAVED - APPLY STATUS BELOW", details)
+        self.assertIn("LAST SAVE & APPLY: FAILED", details)
         self.assertIn("m_strPatternSaveStatus", details)
         self.assertIn("m_bPatternSaveSucceeded = Save_Publish_Reload()", render)
 
@@ -252,7 +309,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             save.index("Save_ValtanCanonicalProduct"),
         )
 
-    def test_extracted_clipcuts_preserve_exact_or_final_loop_semantics(self) -> None:
+    def test_extracted_hold_chain_fits_the_existing_stage_with_exact_slots(self) -> None:
         apply = function_body(
             self.workbench_cpp,
             "bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage(",
@@ -263,16 +320,27 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         self.assertIn("must remain Animation NONE", apply)
         self.assertIn("Resolve_ValtanCompositionNativeClipDurationMs", apply)
-        self.assertIn("iOverlongCount > 1u", apply)
-        self.assertIn("iOverlongIndex + 1u != Selected->Clips.size()", apply)
-        self.assertIn("bLoopToFillStep ?\n\t\t\t0u", apply)
-        self.assertIn("Slot.repeatUntilStageEnd = bLoopToFillStep", apply)
-        self.assertIn('"EXACT" : "LOOP_TO_STAGE_END"', apply)
-        for forbidden in (
-            'Draft.animationEndPolicy = "HOLD_LAST_POSE"',
-            'Insert_ValtanManualStageAfter',
-        ):
-            self.assertNotIn(forbidden, apply)
+        self.assertIn("FitCompositionSequenceCutsToStage(", apply)
+        self.assertIn('"HOLD" != Selected->strMode', apply)
+        self.assertIn("bDeterministicHoldChain", apply)
+        self.assertIn("3u == Selected->Clips.size()", apply)
+        self.assertIn('"start" == ClipReplacementRole(', apply)
+        self.assertIn('"loop" == ClipReplacementRole(', apply)
+        self.assertIn('"end" == ClipReplacementRole(', apply)
+        self.assertIn("while (iRemainingMs > NativeDurationsMs[iClip])", apply)
+        self.assertIn('"loop" != ClipReplacementRole(', apply)
+        self.assertIn("start/end/one-shot clips are never repeated", apply)
+        self.assertIn("Slot.repeatUntilStageEnd = false", apply)
+        self.assertIn('"EXACT" : "HOLD_LAST_POSE"', apply)
+        self.assertNotIn("Draft.durationMs = static_cast<uint32_t>(iDurationMs);\n\tif (!Set", apply)
+        self.assertNotIn("Insert_ValtanManualStageAfter", apply)
+
+        fitted = fit_hold_chain_to_stage([1833, 3000, 2000], 5000)
+        self.assertEqual([1833, 1167, 2000], fitted)
+        self.assertEqual(5000, sum(fitted))
+        self.assertTrue(all(value <= native for value, native in zip(
+            fitted, [1833, 1333, 2000]
+        )))
 
     def test_no_model_sequence_intake_is_a_strict_265_row_join(self) -> None:
         sequence_lines = read(
@@ -899,11 +967,10 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertLess(canonical, candidate_publish)
         self.assertLess(candidate_publish, boss_reload)
         self.assertLess(boss_reload, workbench_reload)
-        self.assertIn("IMMUTABLE CANDIDATE PUBLISH", save)
-        self.assertIn("DATA-ONLY CANONICAL RELOAD", save)
-        self.assertIn("REENTRY_REQUIRED", save)
-        self.assertIn("exact candidate revision is Server-active", save)
-        self.assertIn("mixed revision", save)
+        self.assertIn("SAVE & APPLY: data files saved", save)
+        self.assertIn("Server apply status follows", save)
+        self.assertIn("exact saved revision is active", save)
+        self.assertIn("presentation changes can require re-entry", save)
 
         balance_save = function_body(
             self.balance_cpp,
@@ -973,6 +1040,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         for renderer in renderers:
             self.assertIn(renderer, self.workbench_h)
+
             self.assertEqual(
                 1,
                 render.count(renderer + "("),
@@ -1012,6 +1080,37 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             self.assertNotIn(hard_constraint, self.workbench_cpp)
         self.assertIn("ImGuiCond_FirstUseEver", self.workbench_cpp)
         self.assertIn("ImGuiCond_FirstUseEver", self.blueprint_cpp)
+
+    def test_lane_plus_opens_one_large_typed_resource_picker(self) -> None:
+        request = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Request_LaneAuthoring(",
+        )
+        resources = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render_ResourcesWindow(",
+        )
+        for token in (
+            "m_bResourcesWindowExpandRequested = true",
+            "m_bResourcesWindowFocusRequested = true",
+            "m_strResourceTargetPatternId = Pattern.strPatternId",
+            "m_strResourceTargetStageId = Stage.strStageId",
+        ):
+            self.assertIn(token, request)
+        for token in (
+            "ImGui::SetNextWindowFocus()",
+            "ImGui::SetNextWindowCollapsed(false, ImGuiCond_Always)",
+            'ImGui::Button("Append V1 Effect to Pattern Draft")',
+            'ImGui::Button("Append + Save V2 Stage Binding")',
+            'ImGui::Button("Append Selected Sound to Stage")',
+            "Render_SequenceBrowser(",
+            'ImGui::SeparatorText("Sound Event Tree")',
+            "RenderResourceTree(",
+        ):
+            self.assertIn(token, resources)
+        self.assertNotIn(
+            "Resolve_ValtanCompositionPatternSoundWindow(", resources
+        )
 
     def test_boss_pattern_graph_is_queue_only_and_generation_cached(self) -> None:
         render = function_body(
@@ -1492,13 +1591,16 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         preview_sequence = animation.index(
             'ImGui::Button("Preview Sequence on Arena Clone")'
         )
-        animation_clipper = animation.index("ImGuiListClipper", animation_commit)
+        animation_tree = animation.index(
+            'ImGui::SeparatorText("Animation Sequence Tree")',
+            animation_commit,
+        )
         self.assertLess(animation_gate, animation_filter)
         self.assertLess(animation_filter, animation_commit)
         self.assertLess(animation_commit, animation_status)
         self.assertLess(animation_status, selected_sequence)
         self.assertLess(selected_sequence, preview_sequence)
-        self.assertLess(preview_sequence, animation_clipper)
+        self.assertLess(preview_sequence, animation_tree)
         preview_call = animation.index(
             "if (m_pAnimationTool->Preview_ValtanCompositionSequence(",
             preview_sequence,
@@ -1519,10 +1621,11 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             'ImGui::Button("Append to Stage Slots")',
             'ImGui::Button("Use for Create New Pattern")',
         ):
-            self.assertLess(animation.index(selected_action), animation_clipper)
+            self.assertLess(animation.index(selected_action), animation_tree)
         self.assertIn(
-            "m_FilteredAnimationSequenceIndices[", animation[animation_clipper:]
+            "m_AnimationSequences[iSequence]", animation[animation_tree:]
         )
+        self.assertIn("RenderResourceTree(", animation[animation_tree:])
         self.assertIn("std::to_string(Sequence.iSequenceIndex)", animation)
         self.assertNotIn("std::vector<std::size_t> Filtered", animation)
 
@@ -1540,11 +1643,19 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         effect_gate = resources.index("if (m_bEffectFilterDirty", effect_tab)
         effect_filter = resources.index("ContainsInsensitive", effect_gate)
         effect_commit = resources.index("m_bEffectFilterDirty = false", effect_filter)
-        effect_clipper = resources.index("ImGuiListClipper", effect_commit)
+        effect_tree = resources.index(
+            'ImGui::SeparatorText("All Effect Resources")', effect_commit
+        )
         self.assertLess(effect_gate, effect_filter)
         self.assertLess(effect_filter, effect_commit)
-        self.assertLess(effect_commit, effect_clipper)
-        self.assertIn("m_FilteredEffectAssetIndices[", resources[effect_clipper:])
+        self.assertLess(effect_commit, effect_tree)
+        self.assertIn(
+            "for (const std::size_t i : m_FilteredEffectAssetIndices)",
+            resources[effect_filter:effect_commit],
+        )
+        self.assertIn("RenderResourceTree(", resources[effect_tree:])
+        self.assertIn("m_EffectV2DocumentResourceTree", resources[effect_tree:])
+        self.assertIn("m_EffectV2GroupResourceTree", resources[effect_tree:])
         self.assertNotIn("std::vector<std::size_t> Filtered", resources)
 
     def test_source_sequence_server_owner_index_is_primary_only_and_cached(
@@ -1654,7 +1765,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             "canvas width must consume the already capped clock",
         )
         ruler_at = timeline.index('"##TimelineRuler"')
-        ruler_end = timeline.index("ImGui::IsItemClicked", ruler_at)
+        ruler_end = timeline.index("const std::vector<TIMELINE_ITEM>& TimelineItems", ruler_at)
         ruler = timeline[ruler_at:ruler_end]
         self.assertRegex(ruler, r"for\s*\(\s*(?:const\s+)?uint64_t\s+")
         self.assertNotRegex(ruler, r"for\s*\(\s*(?:const\s+)?uint32_t\s+")

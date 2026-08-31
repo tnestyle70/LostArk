@@ -292,7 +292,8 @@ Selected Slot
 
 - commit `3bd06b02`의 Save, Preview, Create New Pattern frame, Blueprint graph 계약을 유지한다.
 - 새 작업은 별도 commit으로 분리한다.
-- `VALTAN_HIGH_JUMP/AIRBORNE`의 현재 정본 6500 ms를 임의로 8000 ms로 바꾸지 않는다.
+- Composition 즉시 튜닝 slice에서 `VALTAN_HIGH_JUMP/AIRBORNE` 정본을 8000 ms로 승인해
+  변경했다. 후속 작업은 이 Stage clock과 함께 투영되는 도끼 lifetime 8000 ms를 보존한다.
 
 종료 증거: focused 165 tests, native graph 9 tests, Product Debug build receipt를 baseline으로 보존한다.
 

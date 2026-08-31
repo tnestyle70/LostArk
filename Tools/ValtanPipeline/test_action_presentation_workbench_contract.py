@@ -130,7 +130,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             '"Composition Sequencer###CompositionSequencerWindow"',
             '"Composition Details###CompositionDetailsWindow"',
             '"Composition Resources###CompositionResourcesWindow"',
-            '"Composition Session / Validation###CompositionSessionWindow"',
+            '"Composition Save / Validate / Server###CompositionSessionWindow"',
         ):
             self.assertIn(window, self.composition_cpp)
         self.assertIn(
@@ -939,7 +939,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         for token in (
             "AUTHORING OWNER: Data/Valtan/Valtan.presentation.json",
             "READ-ONLY GENERATED PRODUCT:",
-            "Direct Product Save is blocked",
+            "Sequence rows are read-only until a typed presentation-source adapter stages them",
             "Stage.ClipOccurrences",
             "strClipOccurrenceId",
             "ProductBinding->Clips.size()",
@@ -1270,7 +1270,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "AUTHORING OWNER: Data/Valtan/Valtan.presentation.json",
             "READ-ONLY GENERATED PRODUCT: Data/Animation/Authored/Valtan/Valtan.patternbindings.json",
             "Reload Read-only Animation Product",
-            "Direct Product Save is blocked",
+            "Sequence rows are read-only until a typed presentation-source adapter stages them",
         ):
             self.assertIn(token, inspector)
         for forbidden in (
@@ -1708,7 +1708,13 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             self.animation_cpp,
             "void Client::CAnimation_Tool::Render_ValtanPatternMaster(",
         )
-        self.assertEqual(1, len(re.findall(r'ImGui::Button\(\s*"Save"', workbench)))
+        self.assertEqual(
+            1,
+            len(re.findall(
+                r'ImGui::Button\(\s*"Save & Apply##ValtanPatternMaster"',
+                workbench,
+            )),
+        )
         for forbidden_label in (
             '"Validate Joined"',
             '"Save Domain"',
@@ -1750,10 +1756,11 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "bool Client::CBalanceTool::Save_ValtanProduct(",
         )
         validation = save.index("Validate_ValtanDraft")
-        authoring = save.index("Save_ValtanAuthoring")
+        canonical = save.index("Save_ValtanCanonicalProduct")
         product = save.index("Publish_ValtanCandidate")
-        self.assertLess(validation, authoring)
-        self.assertLess(authoring, product)
+        self.assertLess(validation, product)
+        self.assertLess(canonical, product)
+        self.assertNotIn("Save_ValtanAuthoring", save)
         self.assertIn("Apply_ValtanRevision", save)
         apply_revision = function_body(
             self.balance_cpp,

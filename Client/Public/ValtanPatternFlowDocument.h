@@ -154,6 +154,45 @@ namespace Client
 			std::uint32_t transitions,
 			const std::vector<std::string>& admittedPatternIds,
 			std::string& outStatus);
+		/* Graph authoring mutations are staged on a copy and replace the live
+		   draft only after the complete v2 graph validates.  A rejected edit
+		   therefore never leaves an unreachable half-wire in memory. */
+		bool Insert_Node_After(
+			std::string_view afterNodeId,
+			std::string_view patternId,
+			const std::vector<std::string>& admittedPatternIds,
+			std::string& outNodeId,
+			std::string& outStatus);
+		bool Remove_Node(
+			std::string_view nodeId,
+			const std::vector<std::string>& admittedPatternIds,
+			std::string& outStatus);
+		bool Set_EntryNode(
+			std::string_view nodeId,
+			const std::vector<std::string>& admittedPatternIds,
+			std::string& outStatus);
+		bool Connect_CompletedEdge(
+			std::string_view fromNodeId,
+			std::string_view toNodeId,
+			std::uint32_t pursuitMs,
+			std::uint32_t maximumTraversals,
+			const std::vector<std::string>& admittedPatternIds,
+			std::string& outEdgeId,
+			std::string& outStatus);
+		bool Remove_Edge(
+			std::string_view edgeId,
+			const std::vector<std::string>& admittedPatternIds,
+			std::string& outStatus);
+		bool Set_EdgePursuitMs(
+			std::string_view edgeId,
+			std::uint32_t pursuitMs,
+			const std::vector<std::string>& admittedPatternIds,
+			std::string& outStatus);
+		bool Set_EdgeMaxTraversals(
+			std::string_view edgeId,
+			std::uint32_t maximumTraversals,
+			const std::vector<std::string>& admittedPatternIds,
+			std::string& outStatus);
 
 		static bool Has_LegacyLinearProjection(
 			const VALTAN_PATTERN_FLOW_DEFINITION& flow) noexcept;

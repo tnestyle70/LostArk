@@ -16,6 +16,7 @@
 
 #include <filesystem>
 #include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 
 NS_BEGIN(Engine)
@@ -401,9 +402,11 @@ public:
 		bool_t& bOutLoop,
 		std::string& strOutStatus) const;
 	/* Cross-owner dependency admission.  A Pattern/Animation mutation may not
-	   delete a Sound-qualified clip occurrence, reuse its stable occurrence ID
-	   for another clip, or move its cue outside the candidate Stage/model
-	   timeline.  Stages with no Sound rows remain valid without a model. */
+	   delete a Sound-qualified clip occurrence or move its cue outside the
+	   candidate Stage/model timeline.  An explicit PROJECT_AUTHORED resource
+	   replacement may preserve the logical occurrence ID only after the new
+	   source window/repeat policy is revalidated.  Stages with no Sound rows
+	   remain valid without a model. */
 	bool_t Validate_ValtanCompositionPatternSoundStageDependencies(
 		const VALTAN_PATTERN_VIEW& BaselinePattern,
 		const VALTAN_STAGE_VIEW& BaselineStage,
@@ -801,6 +804,12 @@ private:
 		m_ValtanPatternSoundRuntimeAppliedRevision{};
 	std::string m_strValtanPatternSoundCueBaselineSourceBytes;
 	std::string m_strValtanPatternSoundCueStatus;
+	/* Sound Detail can ask for the same clip window every ImGui frame.  Cache
+	   immutable native durations per resolved model instead of walking every
+	   animation on each draw; authoring mutations still revalidate on submit. */
+	mutable std::weak_ptr<Engine::CModel> m_ValtanPatternSoundDurationModel;
+	mutable std::unordered_map<std::string, f32_t>
+		m_ValtanPatternSoundClipDurations;
 	std::string m_strValtanPatternSoundAddClipOccurrenceId;
 	std::string m_strValtanPatternSoundAddEvent;
 	uint32_t m_iValtanPatternSoundAddStartMs = 0u;

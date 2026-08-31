@@ -698,12 +698,16 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         ):
             self.assertIn(token, active_query)
 
-    def test_reload_is_disk_only_and_save_publishes_default(self) -> None:
+    def test_reload_is_disk_only_and_save_conditionally_applies_default(self) -> None:
         reload_body = self.boss_tool[
             self.boss_tool.index("bool_t Client::CBossTool::Reload_FlowDocument()"):
             self.boss_tool.index("bool_t Client::CBossTool::Save_FlowDocument()")
         ]
-        self.assertLess(reload_body.index("m_FlowDocument.Reload("), reload_body.index("pFlow->Slots.front().strSlotId"))
+        self.assertLess(
+            reload_body.index("m_FlowDocument.Reload("),
+            reload_body.index("pFlow->strEntryNodeId"),
+        )
+        self.assertIn("!pFlow->Nodes.empty()", reload_body)
         self.assertIn("playback unchanged", reload_body)
         self.assertIn("Has_PendingCommand()", reload_body)
         self.assertNotIn("Start_Flow(", reload_body)
@@ -713,8 +717,28 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.boss_tool.index("bool_t Client::CBossTool::Apply_SavedFlow()")
         ]
         self.assertLess(save_body.index("m_FlowDocument.Save("), save_body.index("Publish_SavedPatternFlow("))
+        self.assertLess(
+            save_body.index("Has_LegacyLinearProjection("),
+            save_body.index("Publish_SavedPatternFlow("),
+        )
+        self.assertIn("Graph draft saved to disk", save_body)
+        draft_branch = save_body[
+            save_body.index("Graph draft saved to disk") :
+            save_body.index("Publish_SavedPatternFlow(")
+        ]
+        self.assertIn("return true", draft_branch)
         self.assertNotIn("Start_Flow(", save_body)
         self.assertIn("Saved, but the Server order has not changed", save_body)
+        apply_body = self.boss_tool[
+            self.boss_tool.index("bool_t Client::CBossTool::Apply_SavedFlow()"):
+            self.boss_tool.index("void Client::CBossTool::Render_FlowPublicationStatus()")
+        ]
+        self.assertIn("Has_LegacyLinearProjection(", apply_body)
+        publication_body = self.boss_tool[
+            self.boss_tool.index("void Client::CBossTool::Render_FlowPublicationStatus()"):
+            self.boss_tool.index("void Client::CBossTool::Synchronize_LiveSelection()")
+        ]
+        self.assertIn("!bHasServerProjection", publication_body)
         self.assertIn("CValtanTuningCommandService::Get().Update();", self.main_app)
         self.assertIn("flow.Nodes.empty()", self.source)
 
@@ -774,12 +798,17 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
     def test_flow_commands_have_explicit_non_composed_ui_contracts(self) -> None:
         for label in (
             'ImGui::Button("Reload Saved Flow")',
-            'ImGui::Button("Save + Publish Flow")',
             'ImGui::Button("Restart Saved Flow (Fresh Arena)")',
             'ImGui::Button("Refresh Arena")',
             'ImGui::Button("Restart Pattern (Preserve Arena)")',
         ):
             self.assertIn(label, self.boss_tool)
+        self.assertIn('"Save & Apply Flow" : "Save Graph Draft"', self.boss_tool)
+        flow_tab = self.boss_tool[
+            self.boss_tool.index("void Client::CBossTool::Render_PatternFlowTab()"):
+            self.boss_tool.index("void Client::CBossTool::Render_PatternList()")
+        ]
+        self.assertIn("Has_LegacyLinearProjection(", flow_tab)
 
         refresh_body = self.boss_tool[
             self.boss_tool.index("bool_t Client::CBossTool::Refresh_Arena()"):
@@ -808,6 +837,71 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.boss_tool.index("Save a clean revision to enable Start")
         ]
         self.assertIn("!Playback.Is_InFlight()", isolated_status)
+
+    def test_v2_graph_editor_uses_strict_document_mutations_and_one_save_owner(self) -> None:
+        for method in (
+            "Insert_Node_After",
+            "Remove_Node",
+            "Set_EntryNode",
+            "Connect_CompletedEdge",
+            "Remove_Edge",
+            "Set_EdgePursuitMs",
+            "Set_EdgeMaxTraversals",
+        ):
+            self.assertIn(method, self.header)
+            self.assertIn(
+                f"CValtanPatternFlowDocument::{method}", self.source
+            )
+        self.assertGreaterEqual(
+            self.source.count(
+                "VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT staged = m_Draft"
+            ),
+            10,
+        )
+        self.assertGreaterEqual(
+            self.source.count("if (!Validate(staged, admittedPatternIds, outStatus))"),
+            10,
+        )
+        for marker in (
+            'ImGui::Checkbox("Node Graph Editor"',
+            "Render_FlowGraphEditor",
+            'ImGui::Button("Add Pattern Node...")',
+            'ImGui::Button("Make Start Node")',
+            'ImGui::Button("Delete Node")',
+            'ImGui::Button("Begin COMPLETED Link")',
+            'ImGui::Button("Connect Source -> Selected")',
+            'ImGui::Button("Delete Edge")',
+            '"Max transitions / run"',
+            "m_FlowDocument.Connect_CompletedEdge",
+            "m_FlowDocument.Set_EdgeMaxTraversals",
+            "CValtanPatternFlowDocument::Has_LegacyLinearProjection(*pFlow)",
+        ):
+            self.assertIn(marker, self.boss_tool)
+        graph_editor = self.boss_tool[
+            self.boss_tool.index(
+                "void Client::CBossTool::Render_FlowGraphEditor()"
+            ) : self.boss_tool.index(
+                "bool_t Client::CBossTool::Render_AddPatternNodePopup()"
+            )
+        ]
+        self.assertIn("if (Render_AddPatternNodePopup())", graph_editor)
+        self.assertIn("return;", graph_editor)
+        add_popup = self.boss_tool[
+            self.boss_tool.index(
+                "bool_t Client::CBossTool::Render_AddPatternNodePopup()"
+            ) : self.boss_tool.index(
+                "void Client::CBossTool::Render_FlowSlotList()"
+            )
+        ]
+        self.assertIn("bDocumentMutated = true", add_popup)
+        self.assertIn("return bDocumentMutated", add_popup)
+        save = self.boss_tool[
+            self.boss_tool.index("bool_t Client::CBossTool::Save_FlowDocument()") :
+            self.boss_tool.index("bool_t Client::CBossTool::Apply_SavedFlow()")
+        ]
+        self.assertIn("m_FlowDocument.Save", save)
+        self.assertIn("Publish_SavedPatternFlow", save)
+        self.assertNotIn("CNetworkManager", self.source)
 
     def test_world_change_and_late_lifecycle_cannot_resurrect_flow(self) -> None:
         for marker in (

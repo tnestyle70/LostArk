@@ -1608,11 +1608,11 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             row["patternId"]: row
             for row in self.docs[pipeline.PRESENTATION_AUTHORING_REL]["patterns"]
         }
-        for stage in presentation["VALTAN_WARP"]["stages"][1:9]:
+        for stage in presentation["VALTAN_WARP"]["stages"][1:10]:
             cue = stage["effectCues"][0]
-            self.assertEqual("follow", cue["followPolicy"])
+            self.assertEqual("snapshot", cue["followPolicy"])
             self.assertEqual("root", cue["anchorSlotId"])
-            self.assertEqual([0.0, 0.0, 3.0], cue["localTransform"]["position"])
+            self.assertEqual([0.0, 0.0, 0.0], cue["localTransform"]["position"])
         for stage in presentation["VALTAN_GHOST_FINALE"]["stages"][1:9]:
             cue = stage["effectCues"][0]
             self.assertEqual("snapshot", cue["followPolicy"])
@@ -1837,7 +1837,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             for stage in gameplay_pattern["stages"]
             if stage["stageId"] == "AIRBORNE"
         )
-        self.assertEqual(6500, gameplay_airborne["durationMs"])
+        self.assertEqual(8000, gameplay_airborne["durationMs"])
         self.assertEqual(
             {
                 "eventId": "event.valtan.high-jump.airborne.spawn-target-axe",
@@ -1902,7 +1902,15 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             for stage in product_pattern["stages"]
             if stage["stageId"] == "AIRBORNE"
         )
-        self.assertEqual(6500, product_airborne["durationMs"])
+        self.assertEqual(8000, product_airborne["durationMs"])
+        combat_product = json.loads(outputs[pipeline.COMBAT_PRODUCT_REL])
+        target_axe = next(
+            row
+            for row in combat_product["objects"]
+            if row["combatObjectArchetypeId"]
+            == "combatobject.valtan.high-jump.target-axe"
+        )
+        self.assertEqual(8000, target_axe["lifeMs"])
         self.assertEqual(
             {
                 "spawnCount": 3,

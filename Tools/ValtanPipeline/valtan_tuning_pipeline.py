@@ -225,7 +225,7 @@ MANAGED_CUE_SCALE_POLICIES = {
     "cue.valtan.phase2.four.slashes": GAMEPLAY_FOOTPRINT,
     **{
         f"cue.valtan.phase2.warp.step-{leg:02d}.composite": OWNER_RELATIVE
-        for leg in range(2, 10)
+        for leg in range(2, 11)
     },
     **{
         f"cue.valtan.finale.warp.step-{leg:02d}.composite": OWNER_RELATIVE
@@ -1507,7 +1507,7 @@ def _validate_pattern_stage_extensions(
                 motion["retargetDelayMs"],
                 f"{context}.motion.retargetDelayMs",
                 0,
-                600000,
+                120000,
             )
             speed_mps = number(
                 motion["speedMps"], f"{context}.motion.speedMps", 0.000001, 1000
@@ -1516,9 +1516,10 @@ def _validate_pattern_stage_extensions(
                 motion["distanceM"], f"{context}.motion.distanceM", 0.000001, 1000
             )
             stage_duration_ms = integer(
-                stage.get("durationMs"), f"{context}.durationMs", 1, 600000
+                stage.get("durationMs"), f"{context}.durationMs", 1, 120000
             )
-            travel_end_ms = retarget_delay_ms + distance_m / speed_mps * 1000.0
+            travel_ms = distance_m / speed_mps * 1000.0
+            travel_end_ms = retarget_delay_ms + travel_ms
             if travel_end_ms > stage_duration_ms + 0.000001:
                 raise PipelineError(
                     f"{context}.motion target rush exceeds its Server stage clock"
@@ -1535,9 +1536,13 @@ def _validate_pattern_stage_extensions(
                 raise PipelineError(
                     f"{context}.motion target rush requires explicit swept-hit offsets"
                 )
+            if len(offsets) > 64:
+                raise PipelineError(
+                    f"{context}.motion target rush exceeds the 64-sample swept-hit contract"
+                )
             expected_offset = retarget_delay_ms
             for offset in offsets:
-                if integer(offset, f"{context}.hit.schedule.offsetsMs", 0, 600000) != expected_offset:
+                if integer(offset, f"{context}.hit.schedule.offsetsMs", 0, 120000) != expected_offset:
                     raise PipelineError(
                         f"{context}.motion target rush hit offsets must start at retargetDelayMs and advance by 50 ms"
                     )
@@ -1549,6 +1554,27 @@ def _validate_pattern_stage_extensions(
             if expected_offset < travel_end_ms - 0.000001:
                 raise PipelineError(
                     f"{context}.motion target rush hit offsets do not cover the full travel"
+                )
+            remainder_ms = stage_duration_ms - retarget_delay_ms - travel_ms
+            trailing_gap_ms = next(
+                (
+                    candidate
+                    for candidate in (
+                        math.floor(remainder_ms),
+                        math.floor(remainder_ms) - 1,
+                        math.floor(remainder_ms) + 1,
+                    )
+                    if 0 <= candidate <= 120000
+                    and math.ceil(
+                        retarget_delay_ms + travel_ms + candidate
+                    )
+                    == stage_duration_ms
+                ),
+                None,
+            )
+            if trailing_gap_ms is None:
+                raise PipelineError(
+                    f"{context}.motion target rush Stage clock must equal ceil(delay + travel + integer trailing gap)"
                 )
         elif motion.get("kind") == "FORWARD":
             exact(motion, ("kind", "distance"), f"{context}.motion")
@@ -2430,7 +2456,7 @@ def migrate_v1_to_v2(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
                     "actionId": stage["actionId"],
                     "stageKind": stage["stageKind"],
                     "durationMs": (
-                        6500
+                        8000
                         if pattern_id == "VALTAN_HIGH_JUMP"
                         and stage["stageId"] == "AIRBORNE"
                         else stage["durationMs"]
@@ -3196,7 +3222,12 @@ def validate_manual_audition_animation_lineage(
         "authoringPhase",
         "admissionState",
     }
-    promotion_optional = {"targetPolicy", "aimPolicy", "sourceActionId"}
+    promotion_optional = {
+        "targetPolicy",
+        "aimPolicy",
+        "sourceActionId",
+        "sourceSequenceIndex",
+    }
     for ordinal, row in enumerate(promotion_rows):
         context = f"animation promotion patterns[{ordinal}]"
         if not isinstance(row, dict):
@@ -3211,6 +3242,17 @@ def validate_manual_audition_animation_lineage(
             raise PipelineError(f"{context} target/aim policy must be paired")
         if "sourceActionId" in row:
             integer(row["sourceActionId"], f"{context}.sourceActionId", 1)
+        if "sourceSequenceIndex" in row:
+            if "sourceActionId" not in row:
+                raise PipelineError(
+                    f"{context} sourceSequenceIndex requires sourceActionId"
+                )
+            integer(
+                row["sourceSequenceIndex"],
+                f"{context}.sourceSequenceIndex",
+                0,
+                4096,
+            )
         pattern_id = stable_id(row["patternId"], f"{context}.patternId")
         chain_id = stable_id(row["sourceChainId"], f"{context}.sourceChainId")
         phase = integer(
@@ -4702,6 +4744,7 @@ def validate_gameplay_authoring(
     warp = patterns.get("VALTAN_WARP")
     if warp is not None:
         warp_stages = {stage["stageId"]: stage for stage in warp["stages"]}
+        warp_rush_contract: tuple[Any, ...] | None = None
         for leg in range(8):
             stage_id = f"STEP_{leg + 2:02d}"
             stage = warp_stages.get(stage_id)
@@ -4712,6 +4755,43 @@ def validate_gameplay_authoring(
             ):
                 raise PipelineError(
                     f"VALTAN_WARP requires target-rush motion: {stage_id}"
+                )
+            motion = stage["motion"]
+            schedule = stage["hit"]["schedule"]
+            travel_ms = motion["distanceM"] / motion["speedMps"] * 1000.0
+            remainder_ms = (
+                stage["durationMs"] - motion["retargetDelayMs"] - travel_ms
+            )
+            trailing_gap_ms = next(
+                (
+                    candidate
+                    for candidate in (
+                        math.floor(remainder_ms),
+                        math.floor(remainder_ms) - 1,
+                        math.floor(remainder_ms) + 1,
+                    )
+                    if 0 <= candidate <= 120000
+                    and math.ceil(
+                        motion["retargetDelayMs"] + travel_ms + candidate
+                    )
+                    == stage["durationMs"]
+                ),
+                None,
+            )
+            contract = (
+                stage["durationMs"],
+                motion["retargetDelayMs"],
+                motion["speedMps"],
+                motion["distanceM"],
+                trailing_gap_ms,
+                tuple(schedule["offsetsMs"]),
+            )
+            if warp_rush_contract is None:
+                warp_rush_contract = contract
+            elif contract != warp_rush_contract:
+                raise PipelineError(
+                    "VALTAN_WARP STEP_02..STEP_09 must share one derived "
+                    "duration/delay/speed/distance/trailing-gap/sweep contract"
                 )
 
     finale = patterns.get("VALTAN_GHOST_FINALE")

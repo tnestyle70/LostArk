@@ -5,6 +5,8 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
+#include <set>
 #include <string>
 #include <system_error>
 
@@ -85,6 +87,83 @@ namespace
 			return false;
 		}
 		return true;
+	}
+
+	bool Replace_FixtureText(
+		const std::filesystem::path& path,
+		const std::string& expected,
+		const std::string& replacement,
+		std::string& status)
+	{
+		std::ifstream input(path, std::ios::binary);
+		if (!input)
+		{
+			status = "Could not open the presentation fixture for mutation: " +
+				path.string();
+			return false;
+		}
+		std::string bytes{
+			std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>() };
+		const std::size_t offset = bytes.find(expected);
+		if (std::string::npos == offset ||
+			std::string::npos != bytes.find(expected, offset + expected.size()))
+		{
+			status = "Presentation fixture mutation source was not unique: " +
+				expected;
+			return false;
+		}
+		bytes.replace(offset, expected.size(), replacement);
+		std::ofstream output(path, std::ios::binary | std::ios::trunc);
+		if (!output)
+		{
+			status = "Could not open the presentation fixture mutation output: " +
+				path.string();
+			return false;
+		}
+		output.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+		output.flush();
+		if (!output.good())
+		{
+			status = "Could not write the presentation fixture mutation: " +
+				path.string();
+			return false;
+		}
+		return true;
+	}
+
+	bool Duplicate_FirstBindingRow(
+		const std::filesystem::path& path,
+		std::string& status)
+	{
+		std::ifstream input(path, std::ios::binary);
+		if (!input)
+		{
+			status = "Could not open the Effect V2 binding fixture.";
+			return false;
+		}
+		std::string bytes{
+			std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>() };
+		const std::string firstIdentity =
+			"    { \"effectId\": \"boss.valtan.hand_1\"";
+		const std::size_t begin = bytes.find(firstIdentity);
+		const std::size_t end = std::string::npos == begin ?
+			std::string::npos : bytes.find('\n', begin);
+		if (std::string::npos == begin || std::string::npos == end)
+		{
+			status = "Could not find the first Effect V2 binding fixture row.";
+			return false;
+		}
+		const std::string row = bytes.substr(begin, end - begin + 1u);
+		bytes.insert(end + 1u, row);
+		std::ofstream output(path, std::ios::binary | std::ios::trunc);
+		if (!output)
+		{
+			status = "Could not open the duplicated Effect V2 binding output.";
+			return false;
+		}
+		output.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+		output.flush();
+		return output.good();
 	}
 }
 
@@ -185,11 +264,18 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 		}
 
 		bool artifactChanged = false;
+		std::string changedArtifactPath;
+		std::uint64_t declaredArtifactBytes = 0u;
+		std::string declaredArtifactSha;
 		if (fixtureAdmitted && !fixtureReceipt.Artifacts.empty())
 		{
+			changedArtifactPath =
+				fixtureReceipt.Artifacts.front().strRelativePath;
+			declaredArtifactBytes = fixtureReceipt.Artifacts.front().iBytes;
+			declaredArtifactSha = LostArk::Shared::Format_GameplayDataRevision(
+				fixtureReceipt.Artifacts.front().Revision);
 			const std::filesystem::path changedArtifact = fixture.Path /
-				std::filesystem::path(
-					fixtureReceipt.Artifacts.front().strRelativePath);
+				std::filesystem::path(changedArtifactPath);
 			std::ofstream stream(
 				changedArtifact, std::ios::binary | std::ios::app);
 			if (stream)
@@ -204,10 +290,180 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 		if (artifactChanged)
 		{
 			CValtanPresentationGenerationReadAdmission changedAdmission;
-			require(!changedAdmission.Acquire_ReceiptFromRoot(
+			status = "stale successful admission status";
+			const bool reopened = changedAdmission.Acquire_ReceiptFromRoot(
 					fixture.Path, fixtureReceipt.ServerGameplayRevision,
-					fixtureReceipt, status),
+					fixtureReceipt, status);
+			require(!reopened,
 				"changed physical Product bytes re-opened the old world-entry M");
+			const std::string expectedPrefix =
+				"Valtan presentation artifact mismatch: " + changedArtifactPath +
+				"; declared bytes=" + std::to_string(declaredArtifactBytes) +
+				", actual bytes=" + std::to_string(declaredArtifactBytes + 1u) +
+				"; declared SHA-256=" + declaredArtifactSha +
+				", actual SHA-256=";
+			const bool hasExactMismatch = status.starts_with(expectedPrefix) &&
+				status.size() == expectedPrefix.size() + 65u && status.back() == '.' &&
+				status.substr(expectedPrefix.size(), 64u) != declaredArtifactSha;
+			require(hasExactMismatch,
+				"physical Product mismatch status did not replace stale success with exact path/bytes/SHA-256 evidence");
+		}
+
+		/* M now pins the BOSS_VALTAN Effect V2 entry artifact plus only its
+		   reachable groups/leaves. Exercise semantic drift before the generic
+		   artifact hash comparison so every failure names the broken owner. */
+		const auto copyExactClosure = [&](const std::filesystem::path& target)
+		{
+			bool copied = Copy_FixtureFile(
+				repositoryRoot, target, bootstrap, status) &&
+				Copy_FixtureFile(repositoryRoot, target, manifest, status);
+			for (const auto& artifact : receipt.Artifacts)
+			{
+				if (!copied)
+					break;
+				copied = Copy_FixtureFile(repositoryRoot, target,
+					std::filesystem::path(artifact.strRelativePath), status);
+			}
+			return copied;
+		};
+
+		const std::string v2BindingRelative =
+			"Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json";
+		const std::string v2GroupRelative =
+			"Data/Effects/V2/Groups/boss.valtan.impact.effectv2group.json";
+		const std::string v2LeafRelative =
+			"Data/Effects/V2/Authored/boss.valtan.hit_1.effectv2.json";
+		std::set<std::string> v2Closure;
+		for (const auto& artifact : receipt.Artifacts)
+		{
+			if (artifact.strRelativePath == v2BindingRelative ||
+				artifact.strRelativePath.starts_with("Data/Effects/V2/Groups/") ||
+				artifact.strRelativePath.starts_with("Data/Effects/V2/Authored/"))
+			{
+				v2Closure.insert(artifact.strRelativePath);
+			}
+		}
+		require(14u == v2Closure.size() &&
+			v2Closure.contains(v2BindingRelative) &&
+			v2Closure.contains(v2GroupRelative) &&
+			v2Closure.contains(v2LeafRelative),
+			"immutable M did not pin the exact 14-artifact BOSS_VALTAN Effect V2 closure");
+
+		struct V2_REPLACE_CASE final
+		{
+			const char* pRelative;
+			const char* pExpected;
+			const char* pReplacement;
+			const char* pStatus;
+			const char* pFailure;
+		};
+		const V2_REPLACE_CASE replaceCases[]{
+			{
+				"Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json",
+				"\"effectId\": \"boss.valtan.hand_1\"",
+				"\"effectId\": \"../boss.valtan.hand_1\"",
+				"BOSS_VALTAN Effect V2 bindings[0].effectId is not a stable Effect V2 ID: ../boss.valtan.hand_1",
+				"unsafe Effect V2 binding identity was not rejected with exact diagnostics"
+			},
+			{
+				"Data/Effects/V2/Groups/boss.valtan.impact.effectv2group.json",
+				"\"groupId\": \"boss.valtan.impact\"",
+				"\"groupId\": \"boss.valtan.other\"",
+				"BOSS_VALTAN Effect V2 group identity/children are invalid: boss.valtan.impact",
+				"mismatched Effect V2 group identity was not rejected with exact diagnostics"
+			},
+			{
+				"Data/Effects/V2/Groups/boss.valtan.impact.effectv2group.json",
+				"\"effectId\": \"boss.valtan.hit_1\"",
+				"\"effectId\": \"boss.valtan.impact\"",
+				"BOSS_VALTAN Effect V2 group boss.valtan.impact.children[0] refers to a group instead of an authored leaf: boss.valtan.impact",
+				"nested Effect V2 group reference was not rejected with exact diagnostics"
+			},
+			{
+				"Data/Effects/V2/Authored/boss.valtan.hit_1.effectv2.json",
+				"\"effectId\": \"boss.valtan.hit_1\"",
+				"\"effectId\": \"boss.valtan.other\"",
+				"BOSS_VALTAN Effect V2 leaf identity is invalid: boss.valtan.hit_1",
+				"mismatched Effect V2 leaf identity was not rejected with exact diagnostics"
+			},
+		};
+		for (const V2_REPLACE_CASE& drift : replaceCases)
+		{
+			SCOPED_TEMPORARY_ROOT driftFixture;
+			driftFixture.Path = Create_TemporaryRoot(status);
+			bool prepared = !driftFixture.Path.empty() &&
+				copyExactClosure(driftFixture.Path) &&
+				Replace_FixtureText(driftFixture.Path / drift.pRelative,
+					drift.pExpected, drift.pReplacement, status);
+			require(prepared, "could not prepare an Effect V2 semantic drift fixture");
+			if (!prepared)
+				continue;
+			CValtanPresentationGenerationReadAdmission driftAdmission;
+			status = "stale successful admission status";
+			const bool admitted = driftAdmission.Acquire_PackagedBaselineFromRoot(
+				driftFixture.Path, fixtureReceipt, status);
+			require(!admitted && status == drift.pStatus, drift.pFailure);
+		}
+
+		struct V2_MISSING_CASE final
+		{
+			const char* pRelative;
+			const char* pStatus;
+			const char* pFailure;
+		};
+		const V2_MISSING_CASE missingCases[]{
+			{
+				"Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json",
+				"BOSS_VALTAN Effect V2 bindings is missing or is not a regular file: Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json",
+				"missing BOSS_VALTAN Effect V2 binding artifact was not rejected exactly"
+			},
+			{
+				"Data/Effects/V2/Groups/boss.valtan.impact.effectv2group.json",
+				"BOSS_VALTAN Effect V2 group boss.valtan.impact is missing or is not a regular file: Data/Effects/V2/Groups/boss.valtan.impact.effectv2group.json",
+				"missing referenced Effect V2 group was not rejected exactly"
+			},
+			{
+				"Data/Effects/V2/Authored/boss.valtan.hit_1.effectv2.json",
+				"BOSS_VALTAN Effect V2 leaf boss.valtan.hit_1 is missing or is not a regular file: Data/Effects/V2/Authored/boss.valtan.hit_1.effectv2.json",
+				"missing referenced Effect V2 leaf was not rejected exactly"
+			},
+		};
+		for (const V2_MISSING_CASE& missing : missingCases)
+		{
+			SCOPED_TEMPORARY_ROOT missingFixture;
+			missingFixture.Path = Create_TemporaryRoot(status);
+			bool prepared = !missingFixture.Path.empty() &&
+				copyExactClosure(missingFixture.Path);
+			std::error_code removeError;
+			prepared = prepared && std::filesystem::remove(
+				missingFixture.Path / missing.pRelative, removeError) && !removeError;
+			require(prepared, "could not prepare a missing Effect V2 artifact fixture");
+			if (!prepared)
+				continue;
+			CValtanPresentationGenerationReadAdmission missingAdmission;
+			status = "stale successful admission status";
+			const bool admitted = missingAdmission.Acquire_PackagedBaselineFromRoot(
+				missingFixture.Path, fixtureReceipt, status);
+			require(!admitted && status == missing.pStatus, missing.pFailure);
+		}
+
+		SCOPED_TEMPORARY_ROOT duplicateFixture;
+		duplicateFixture.Path = Create_TemporaryRoot(status);
+		bool duplicatePrepared = !duplicateFixture.Path.empty() &&
+			copyExactClosure(duplicateFixture.Path) &&
+			Duplicate_FirstBindingRow(
+				duplicateFixture.Path / v2BindingRelative, status);
+		require(duplicatePrepared,
+			"could not prepare a duplicate Effect V2 binding fixture");
+		if (duplicatePrepared)
+		{
+			CValtanPresentationGenerationReadAdmission duplicateAdmission;
+			status = "stale successful admission status";
+			const bool admitted = duplicateAdmission.Acquire_PackagedBaselineFromRoot(
+				duplicateFixture.Path, fixtureReceipt, status);
+			require(!admitted && status ==
+				"BOSS_VALTAN Effect V2 bindings[1] duplicates an earlier binding identity: boss.valtan.hand_1.",
+				"duplicate Effect V2 binding identity was not rejected with exact diagnostics");
 		}
 	}
 

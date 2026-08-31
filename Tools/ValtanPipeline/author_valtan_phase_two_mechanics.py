@@ -368,12 +368,25 @@ def author_existing_patterns(
                     "effect.valtan.project-tuned.sequence.warp.portal",
                     leg_p,
                     scale_kind="OWNER_RELATIVE",
-                    position=(0.0, 0.0, 3.0),
+                    position=(0.0, 0.0, 0.0),
+                    follow_policy="snapshot",
                 ),
             ],
         )
     recovery_p = stage(warp_p, "STEP_10")
-    replace_phase_two_cues(recovery_p, [])
+    replace_phase_two_cues(
+        recovery_p,
+        [
+            cue(
+                f"{CUE_PREFIX}warp.step-10.composite",
+                "effect.valtan.project-tuned.sequence.warp.portal",
+                recovery_p,
+                scale_kind="OWNER_RELATIVE",
+                position=(0.0, 0.0, 0.0),
+                follow_policy="snapshot",
+            ),
+        ],
+    )
 
     counter = gameplay_by_id["VALTAN_COUNTER"]
     counter_p = presentation_by_id["VALTAN_COUNTER"]
@@ -1065,8 +1078,8 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
             "offsetsMs": list(range(500, 900, 50)),
         }
         for effect_cue in stage(warp_p, row["stageId"])["effectCues"]:
-            effect_cue["followPolicy"] = "follow"
-            effect_cue["localTransform"]["position"] = [0.0, 0.0, 3.0]
+            effect_cue["followPolicy"] = "snapshot"
+            effect_cue["localTransform"]["position"] = [0.0, 0.0, 0.0]
     stage(warp, "STEP_10")["events"] = [{
         "eventId": "event.valtan.warp.return-center", "trigger": "ENTER",
         "kind": "RETURN_TO_ARENA_CENTER",
