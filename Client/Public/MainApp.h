@@ -456,7 +456,6 @@ private:
 	unique_ptr<CHUDRuntimeView> m_pLobbyBackgroundView = { nullptr };
 	/* Not _DEBUG-gated: K opens the skill window during real gameplay, in Release too. */
 	unique_ptr<CSkillWindowView> m_pSkillWindowView = { nullptr };
-	bool_t m_bKDown = false;
 	/* Not _DEBUG-gated: I opens the inventory during real gameplay, in Release too. */
 	unique_ptr<CInventoryView> m_pInventoryView = { nullptr };
 	bool_t m_bIDown = false;

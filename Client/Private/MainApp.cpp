@@ -38,6 +38,7 @@
 #include "ClickMoveEffect.h"
 #include "SoundCueCatalog.h"
 #include "UI_Sprite.h"
+#include "UIInputRouter.h"
 
 #ifdef _DEBUG
 #include "Animation_Tool.h"
@@ -489,26 +490,16 @@ HRESULT CMainApp::Initialize()
 
 void CMainApp::Update(const f32_t fTimeDelta)
 {
+	/* Once per frame, before any screen's Update()/Render() checks its own widgets via
+	CUIInputRouter -- resets its click-edge tracking. End_Frame() (this function's very end)
+	applies the gameplay-mouse block for anything that claimed the mouse this frame. */
+	CUIInputRouter::Get().Begin_Frame();
+
 #ifdef _DEBUG
 	UpdateDebugToolShortcut();
 #endif
 
-	/* Not _DEBUG-gated: K is a normal gameplay keybind (the skill window), not one of the
-	F1/F6 tool-switch keys AGENTS.md reserves. Skip it while ImGui already owns text input,
-	so typing in the rune search box (once that becomes real) cannot also toggle the window. */
-	if (nullptr != m_pSkillWindowView && !ImGui::GetIO().WantTextInput)
-	{
-		const bool_t windowFocused =
-			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
-		const bool_t kDown = windowFocused &&
-			0 != (GetAsyncKeyState(0x4B /* VK_K */) & 0x8000);
-		if (kDown && !m_bKDown)
-			m_pSkillWindowView->Toggle();
-		m_bKDown = kDown;
-	}
-
-	/* Same reasoning/gating as K above: I is a normal gameplay keybind (the inventory), not
-	an F1/F6 tool-switch key. */
+	/* I is a normal gameplay keybind (the inventory), not an F1/F6 tool-switch key. */
 	if (nullptr != m_pInventoryView && !ImGui::GetIO().WantTextInput)
 	{
 		const bool_t windowFocused =
@@ -1028,9 +1019,28 @@ HRESULT CMainApp::Render()
 		m_pImGuiLayer->EndFrame();
 	}
 	CEstherCutinPresentationService::Render(m_pDevice, m_pContext);
-	RenderCombatHUDText();
-	RenderBossHealthBarText();
-	RenderChargeGaugeText();
+	/* Same reasoning as the RenderCombatHUD/RenderBossHealthBar/RenderChargeGauge
+	   image gate above (isCharSelectDebugPreviewOpen there) -- these are that
+	   HUD's own text counterparts (HP/MP numbers, boss HP text, gauge percent),
+	   drawn from this separate post-EndFrame() text pass, so they need the same
+	   gate here instead of bleeding the resource numbers through the O-key raid-
+	   entry preview. That earlier local is out of scope by this point (declared
+	   inside the now-closed m_pImGuiLayer block), so it is recomputed
+	   Release-safely. */
+#ifdef _DEBUG
+	const bool_t isCharSelectDebugPreviewOpenForText =
+		ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID() &&
+		nullptr != CLevel_CharacterSelect::Get_Active() &&
+		CLevel_CharacterSelect::Get_Active()->Is_DebugRaidEntryPreviewOpen();
+#else
+	const bool_t isCharSelectDebugPreviewOpenForText = false;
+#endif
+	if (!isCharSelectDebugPreviewOpenForText)
+	{
+		RenderCombatHUDText();
+		RenderBossHealthBarText();
+		RenderChargeGaugeText();
+	}
 	RenderDeadSceneText();
 	RenderRaidClearText();
 	RenderItemAnnounceText();
@@ -1051,7 +1061,10 @@ HRESULT CMainApp::Render()
 	{
 		if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active())
 		{
-			pCharacterSelect->Render_ArenaSpawnLabels();
+			// Same gate as Render_ArenaSpawnButtons's own image draw -- these are
+			// its text labels, drawn from this separate text pass.
+			if (!isCharSelectDebugPreviewOpenForText)
+				pCharacterSelect->Render_ArenaSpawnLabels();
 #ifdef _DEBUG
 			pCharacterSelect->Render_RaidEntryDebugPreviewText();
 #endif
@@ -1070,6 +1083,12 @@ HRESULT CMainApp::Render()
 		if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
 			pValtanArena->Render_PartyInviteText();
 	}
+
+	/* Every CUIInputRouter-based screen's click-edge check has run by this point (both this
+	function's own render pass and the Update() pass earlier this same frame) -- rolls the
+	left-button edge state forward for next frame and applies SetInputBlocked for anything
+	that called Claim_Mouse_This_Frame(). */
+	CUIInputRouter::Get().End_Frame();
 
 	return CGameInstance::Get().Render_End();
 }

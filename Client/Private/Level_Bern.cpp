@@ -7,6 +7,7 @@
 #include "DataJson.h"
 #include "GameInstance.h"
 #include "HUDRuntimeView.h"
+#include "UILayoutRuntime.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MainApp.h"
@@ -427,7 +428,7 @@ HRESULT CLevel_Bern::Initialize()
 		float2_t(-1000.f, -1000.f), Colors::White, 0.f,
 		float2_t(0.5f, 0.5f), 1.f);
 
-	m_PartyInteraction.Initialize(m_pDevice, m_pContext);
+	m_PartyInteraction.Initialize(m_pDevice, m_pContext, ETOUI(LEVEL::BERN));
 
 #ifdef _DEBUG
 	if (!Ready_DebugLevelChangeTriggers(pEntry->pMapAreaId))

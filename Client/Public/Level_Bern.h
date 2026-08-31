@@ -59,7 +59,11 @@ public:
 	void Render_ValtanEntryModal();
 	/* Same reasoning, for CPartyInteractionView's invite-confirm popup text --
 	   see CPartyInteractionView::Render_InvitePopupText's own comment. */
-	void Render_PartyInviteText() { m_PartyInteraction.Render_InvitePopupText(); }
+	void Render_PartyInviteText()
+	{
+		m_PartyInteraction.Render_InvitePopupText();
+		m_PartyInteraction.Render_ContextMenuText();
+	}
 	static CLevel_Bern* Get_Active() { return s_pActiveInstance; }
 	const LostArk::Shared::S2C_PARTY_ROSTER& Get_PartyRoster() const
 	{

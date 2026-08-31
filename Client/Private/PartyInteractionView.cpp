@@ -1,27 +1,83 @@
-#include "imgui.h"
-
 #include "PartyInteractionView.h"
 
 #include "Character.h"
 #include "GameInstance.h"
-#include "HUDRuntimeView.h"
 #include "MainApp.h"
 #include "PlayerCommandSink.h"
 #include "PlayerController.h"
 #include "PartyTransferNotice.h"
 #include "RuntimeAssetRoot.h"
 #include "Transform.h"
+#include "UIInputRouter.h"
+#include "UILayoutRuntime.h"
 
 #include <cfloat>
 #include <filesystem>
 
-void Client::CPartyInteractionView::Initialize(
-	ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
+namespace
 {
-	m_pInviteView = std::make_unique<CHUDRuntimeView>(
-		pDevice, pContext, L"UI/Party/PartyInviteConfirm_Layout.json");
-	m_pContextMenuView = std::make_unique<CHUDRuntimeView>(
-		pDevice, pContext, L"UI/Party/PartyContextMenu_Layout.json");
+	/* Same MultiByteToWideChar pattern as Level_ValtanArena.cpp's own file-local
+	   ConvertUtf8ToWide (this project already has that conversion duplicated per-file rather
+	   than shared, e.g. WorldPlayerNameplateView.cpp's own Try_ConvertUtf8) -- for
+	   m_strContextMenuTargetNickname (real player nickname, UTF-8) since
+	   CGameInstance::Draw_Text needs a wide string. */
+	bool_t Convert_NicknameToWide(const std::string& strUtf8, std::wstring& outWide)
+	{
+		outWide.clear();
+		if (strUtf8.empty())
+			return false;
+		const int iRequiredLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+			strUtf8.data(), static_cast<int>(strUtf8.size()), nullptr, 0);
+		if (iRequiredLength <= 0)
+			return false;
+		std::wstring staged(static_cast<size_t>(iRequiredLength), L'\0');
+		if (iRequiredLength != MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+			strUtf8.data(), static_cast<int>(strUtf8.size()), staged.data(), iRequiredLength))
+		{
+			return false;
+		}
+		outWide = std::move(staged);
+		return true;
+	}
+}
+
+void Client::CPartyInteractionView::Initialize(
+	ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext,
+	const uint32_t iOwnerLevelIndex)
+{
+	m_pInviteView = std::make_unique<CUILayoutRuntime>(
+		pDevice, pContext, iOwnerLevelIndex, TEXT("Layer_UI"),
+		L"UI/Party/PartyInviteConfirm_Layout.json");
+	m_pInviteView->Set_SlotVisible("PartyInvite_Panel", false);
+	m_pInviteView->Set_SlotVisible("PartyInvite_ConfirmButton", false);
+	m_pInviteView->Set_SlotVisible("PartyInvite_CancelButton", false);
+	m_pInviteView->Set_SlotVisible("PartyInvite_TitleTextBox", false);
+	m_pInviteView->Set_SlotVisible("PartyInvite_DescTextBox", false);
+	m_pInviteView->Set_SlotVisible("PartyInvite_AcceptIcon", false);
+	m_pInviteView->Set_SlotVisible("PartyInvite_DeclineIcon", false);
+
+	/* Migrated off CHUDRuntimeView/ImGui -- real CUI_Sprite GameObjects on the calling Level's
+	   own "Layer_UI" (see .md/TJ/08-31/2026-08-31_ImGui_런타임UI_전환_PLAN.md). Hidden at
+	   construction since a CUI_Sprite defaults to fully visible/opaque, unlike the old ImGui
+	   path which simply never drew anything outside BeginPopupModal. */
+	m_pContextMenuView = std::make_unique<CUILayoutRuntime>(
+		pDevice, pContext, iOwnerLevelIndex, TEXT("Layer_UI"),
+		L"UI/Party/PartyContextMenu_Layout.json");
+	m_pContextMenuView->Set_SlotVisible("PartyContextMenu_Panel", false);
+	m_pContextMenuView->Set_SlotVisible("PartyContextMenu_HoverHighlight", false);
+
+	/* Captured once, before either slot ever moves -- see this member's own declaration
+	   comment for why re-reading this at open time would be wrong after the first open. */
+	f32_t fPanelX = 0.f, fPanelY = 0.f, fPanelW = 0.f, fPanelH = 0.f;
+	f32_t fHighlightX = 0.f, fHighlightY = 0.f, fHighlightW = 0.f, fHighlightH = 0.f;
+	if (m_pContextMenuView->Get_SlotRect(
+			"PartyContextMenu_Panel", fPanelX, fPanelY, fPanelW, fPanelH) &&
+		m_pContextMenuView->Get_SlotRect(
+			"PartyContextMenu_HoverHighlight", fHighlightX, fHighlightY, fHighlightW, fHighlightH))
+	{
+		m_fContextMenuHighlightOffsetX = fHighlightX - fPanelX;
+		m_fContextMenuHighlightOffsetY = fHighlightY - fPanelY;
+	}
 
 	/* Same first-draw-invisible issue CLevel_Bern's Valtan-entry popup had --
 	   see Level_Bern::Initialize's own warm-up comment. A bare space doesn't
@@ -127,9 +183,36 @@ bool_t Client::CPartyInteractionView::Update_ContextMenuTrigger(
 	if (nullptr == pHit)
 		return false;
 
-	const ImVec2 mouse = ImGui::GetMousePos();
-	m_fContextMenuScreenX = mouse.x;
-	m_fContextMenuScreenY = mouse.y;
+	/* Native cursor position (GetCursorPos/ScreenToClient), not ImGui::GetMousePos -- matches
+	   Try_PickWorldRay's own source a few lines above and CUIInputRouter's, since this class no
+	   longer depends on ImGui for its context menu. Converted to the menu document's own
+	   reference-resolution units (Get_SlotRect/Set_SlotPosition's unit) via the same viewport
+	   scale CUIInputRouter derives internally. */
+	::POINT cursor{};
+	if (!GetCursorPos(&cursor) || !ScreenToClient(g_hWnd, &cursor))
+		return false;
+	if (nullptr == m_pContextMenuView)
+		return false;
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fResolutionWidth = m_pContextMenuView->Get_ResolutionWidth();
+	const f32_t fResolutionHeight = m_pContextMenuView->Get_ResolutionHeight();
+	if (vViewportSize.x <= 0.f || vViewportSize.y <= 0.f ||
+		fResolutionWidth <= 0.f || fResolutionHeight <= 0.f)
+	{
+		return false;
+	}
+	m_fContextMenuScreenX = static_cast<f32_t>(cursor.x) * (fResolutionWidth / vViewportSize.x);
+	m_fContextMenuScreenY = static_cast<f32_t>(cursor.y) * (fResolutionHeight / vViewportSize.y);
+
+	m_pContextMenuView->Set_SlotPosition(
+		"PartyContextMenu_Panel", m_fContextMenuScreenX, m_fContextMenuScreenY);
+	m_pContextMenuView->Set_SlotPosition(
+		"PartyContextMenu_HoverHighlight",
+		m_fContextMenuScreenX + m_fContextMenuHighlightOffsetX,
+		m_fContextMenuScreenY + m_fContextMenuHighlightOffsetY);
+	m_pContextMenuView->Set_SlotVisible("PartyContextMenu_Panel", true);
+	m_pContextMenuView->Set_SlotVisible("PartyContextMenu_HoverHighlight", true);
+
 	m_iContextMenuTargetNetEntityId = pHit->iNetEntityId;
 	m_strContextMenuTargetNickname = pHit->strNickname;
 	m_hasContextMenuTarget = true;
@@ -150,11 +233,20 @@ void Client::CPartyInteractionView::Render_ContextMenu(
 	if (nullptr == m_pContextMenuView)
 		return;
 
-	/* Panel (Name Box, shows the target's nickname) and Button (Black box,
-	   the actual "파티초대" invite action) are authored stacked in one
-	   1280x720 canvas -- their relative offset is what carries over here,
-	   not their absolute authored position, since the menu has to appear
-	   wherever the player was right-clicked. */
+	/* Captured before clearing -- the outside-right-click-close check below must not fire on
+	   this same frame the menu opened on (opening is also a right-click, so
+	   Router.Is_RightClickEdge() would otherwise read true the instant the menu appears and
+	   close it immediately). */
+	const bool_t wasJustOpenedThisFrame = m_hasContextMenuJustOpened;
+	m_hasContextMenuJustOpened = false;
+
+	if (!m_hasContextMenuTarget)
+		return;
+
+	/* Panel (Name Box, shows the target's nickname) and Button (Black box, the actual
+	   "파티초대" invite action) already sit at wherever Update_ContextMenuTrigger's
+	   Set_SlotPosition calls moved them (the click point + their authored relative offset) --
+	   this function only needs their current rects for hover/click, not any repositioning. */
 	f32_t fPanelX = 0.f, fPanelY = 0.f, fPanelW = 0.f, fPanelH = 0.f;
 	f32_t fButtonX = 0.f, fButtonY = 0.f, fButtonW = 0.f, fButtonH = 0.f;
 	if (!m_pContextMenuView->Get_SlotRect(
@@ -163,133 +255,69 @@ void Client::CPartyInteractionView::Render_ContextMenu(
 			"PartyContextMenu_HoverHighlight",
 			fButtonX, fButtonY, fButtonW, fButtonH))
 	{
-		return;
-	}
-
-	if (m_hasContextMenuJustOpened)
-	{
-		ImGui::OpenPopup("PartyContextMenu");
-		m_hasContextMenuJustOpened = false;
-	}
-
-	if (!m_hasContextMenuTarget)
-		return;
-
-	/* Full-viewport invisible modal, same pattern as Render_InvitePopup /
-	   Level_Bern's Render_ValtanEntryModal -- a non-modal BeginPopup
-	   auto-positioned at the click point closed itself within a frame or two
-	   here, because its own "click outside closes" heuristic doesn't
-	   reconcile cleanly against a raw-DirectInput-driven OpenPopup (no ImGui
-	   item ever "opened" it from ImGui's own point of view). Owning open/close
-	   manually below sidesteps that fragility entirely, matching the two
-	   other popups in this same codebase that already work reliably. */
-	const ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(pViewport->WorkPos);
-	ImGui::SetNextWindowSize(pViewport->WorkSize);
-
-	const ImGuiWindowFlags flags =
-		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground |
-		ImGuiWindowFlags_NoSavedSettings;
-	/* Same dim-rect suppression as Render_InvitePopup -- BeginPopupModal draws
-	   it before returning regardless of ImGuiWindowFlags_NoBackground. */
-	ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, ImVec4(0.f, 0.f, 0.f, 0.f));
-	const bool_t isMenuOpen =
-		ImGui::BeginPopupModal("PartyContextMenu", nullptr, flags);
-	ImGui::PopStyleColor();
-	if (!isMenuOpen)
-	{
 		m_hasContextMenuTarget = false;
 		return;
 	}
 
-	const f32_t fScaleX = pViewport->WorkSize.x / 1280.f;
-	const f32_t fScaleY = pViewport->WorkSize.y / 720.f;
-	const auto Fn_ToScreen = [&](f32_t fX, f32_t fY)
-	{
-		return ImVec2(
-			m_fContextMenuScreenX + (fX - fPanelX) * fScaleX,
-			m_fContextMenuScreenY + (fY - fPanelY) * fScaleY);
-	};
+	const f32_t fResolutionWidth = m_pContextMenuView->Get_ResolutionWidth();
+	const f32_t fResolutionHeight = m_pContextMenuView->Get_ResolutionHeight();
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const bool_t isButtonHovered = Router.Is_Hovered(
+		fButtonX, fButtonY, fButtonW, fButtonH, fResolutionWidth, fResolutionHeight);
 
-	ImDrawList* pDrawList = ImGui::GetWindowDrawList();
-
-	const ImVec2 vPanelMin = Fn_ToScreen(fPanelX, fPanelY);
-	const ImVec2 vPanelMax = Fn_ToScreen(fPanelX + fPanelW, fPanelY + fPanelH);
-	if (ID3D11ShaderResourceView* pPanel =
-		m_pContextMenuView->Load_Texture("UI/Party/Name Box.png"))
-	{
-		pDrawList->AddImage(
-			reinterpret_cast<ImTextureID>(pPanel), vPanelMin, vPanelMax);
-	}
-	{
-		const f32_t fNicknameFontSize = ImGui::GetFontSize() * 1.3f;
-		const ImVec2 vNicknameSize = ImGui::GetFont()->CalcTextSizeA(
-			fNicknameFontSize, FLT_MAX, 0.f, m_strContextMenuTargetNickname.c_str());
-		pDrawList->AddText(
-			ImGui::GetFont(), fNicknameFontSize,
-			ImVec2(
-				(vPanelMin.x + vPanelMax.x) * 0.5f - vNicknameSize.x * 0.5f,
-				(vPanelMin.y + vPanelMax.y) * 0.5f - vNicknameSize.y * 0.5f),
-			IM_COL32(255, 255, 0, 255), m_strContextMenuTargetNickname.c_str());
-	}
-
-	const ImVec2 vButtonMin = Fn_ToScreen(fButtonX, fButtonY);
-	const ImVec2 vButtonMax = Fn_ToScreen(fButtonX + fButtonW, fButtonY + fButtonH);
-	const bool_t isButtonHovered =
-		ImGui::IsMouseHoveringRect(vButtonMin, vButtonMax);
-	if (ID3D11ShaderResourceView* pButton =
-		m_pContextMenuView->Load_Texture("UI/Party/Black box.png"))
-	{
-		pDrawList->AddImage(
-			reinterpret_cast<ImTextureID>(pButton), vButtonMin, vButtonMax,
-			ImVec2(0.f, 0.f), ImVec2(1.f, 1.f),
-			isButtonHovered ?
-				IM_COL32(255, 255, 255, 255) : IM_COL32(210, 210, 210, 255));
-	}
-	constexpr const char* INVITE_LABEL = "\xed\x8c\x8c\xed\x8b\xb0\xec\xb4\x88\xeb\x8c\x80"; // "파티초대"
-	const ImVec2 vLabelSize = ImGui::CalcTextSize(INVITE_LABEL);
-	pDrawList->AddText(
-		ImVec2(
-			(vButtonMin.x + vButtonMax.x) * 0.5f - vLabelSize.x * 0.5f,
-			(vButtonMin.y + vButtonMax.y) * 0.5f - vLabelSize.y * 0.5f),
-		IM_COL32(255, 255, 255, 255), INVITE_LABEL);
+	/* Same darken-when-not-hovered feedback as the old IM_COL32(210,210,210,255) tint. */
+	m_pContextMenuView->Set_SlotTint("PartyContextMenu_HoverHighlight",
+		isButtonHovered ?
+			float4_t(1.f, 1.f, 1.f, 1.f) :
+			float4_t(210.f / 255.f, 210.f / 255.f, 210.f / 255.f, 1.f));
 
 	bool_t closeMenu = false;
-	if (isButtonHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	if (isButtonHovered)
 	{
-		if (nullptr != pCommandSink)
+		/* Is_Hovered(button) above already true, so this call's own internal hover check
+		   claims the mouse for this frame regardless of whether the click edge fires too --
+		   the menu keeps owning input while the cursor sits over its button. */
+		if (Router.Is_Clicked(
+				fButtonX, fButtonY, fButtonW, fButtonH, fResolutionWidth, fResolutionHeight))
 		{
-			pCommandSink->Request_PartyInvite(
-				m_iNextRequestSequence++, m_iContextMenuTargetNetEntityId);
+			if (nullptr != pCommandSink)
+			{
+				pCommandSink->Request_PartyInvite(
+					m_iNextRequestSequence++, m_iContextMenuTargetNetEntityId);
+			}
+			CMainApp::Play_UIButtonClickSound();
+			closeMenu = true;
 		}
-		CMainApp::Play_UIButtonClickSound();
-		closeMenu = true;
 	}
-	else if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	else
 	{
-		/* Left-click anywhere outside the menu's own art dismisses it without
-		   sending an invite. The opening right-click itself never reaches
-		   here (wrong button), so this can't immediately re-close the popup
-		   the same frame it opens. */
-		const ImVec2 vMenuMin(
-			(std::min)(vPanelMin.x, vButtonMin.x),
-			(std::min)(vPanelMin.y, vButtonMin.y));
-		const ImVec2 vMenuMax(
-			(std::max)(vPanelMax.x, vButtonMax.x),
-			(std::max)(vPanelMax.y, vButtonMax.y));
-		if (!ImGui::IsMouseHoveringRect(vMenuMin, vMenuMax))
+		/* Still owns the mouse while open even when hovering neither its own button nor
+		   nothing at all -- matches the old BeginPopupModal's own always-capture behavior. */
+		Router.Claim_Mouse_This_Frame();
+
+		/* Right-click anywhere outside the menu's own art (Panel ∪ HoverHighlight) dismisses
+		   it without sending an invite -- the real dismiss gesture, not a left click.
+		   wasJustOpenedThisFrame excludes the opening right-click itself, which would
+		   otherwise read as "right-click outside" on this exact frame (the cursor is over the
+		   clicked character in the 3D world, not this 2D menu rect) and instantly re-close the
+		   menu the same frame it opened. */
+		const f32_t fMenuX = (std::min)(fPanelX, fButtonX);
+		const f32_t fMenuY = (std::min)(fPanelY, fButtonY);
+		const f32_t fMenuRight = (std::max)(fPanelX + fPanelW, fButtonX + fButtonW);
+		const f32_t fMenuBottom = (std::max)(fPanelY + fPanelH, fButtonY + fButtonH);
+		const bool_t isMenuHovered = Router.Is_Hovered(
+			fMenuX, fMenuY, fMenuRight - fMenuX, fMenuBottom - fMenuY,
+			fResolutionWidth, fResolutionHeight);
+		if (!wasJustOpenedThisFrame && !isMenuHovered && Router.Is_RightClickEdge())
 			closeMenu = true;
 	}
 
 	if (closeMenu)
 	{
 		m_hasContextMenuTarget = false;
-		ImGui::CloseCurrentPopup();
+		m_pContextMenuView->Set_SlotVisible("PartyContextMenu_Panel", false);
+		m_pContextMenuView->Set_SlotVisible("PartyContextMenu_HoverHighlight", false);
 	}
-
-	ImGui::EndPopup();
 }
 
 void Client::CPartyInteractionView::Render_InvitePopup(
@@ -300,73 +328,24 @@ void Client::CPartyInteractionView::Render_InvitePopup(
 
 	if (m_hasInvitePopupJustOpened)
 	{
-		ImGui::OpenPopup("PartyInviteConfirm");
+		static constexpr const char* SLOTS[7] =
+		{
+			"PartyInvite_Panel", "PartyInvite_ConfirmButton", "PartyInvite_CancelButton",
+			"PartyInvite_TitleTextBox", "PartyInvite_DescTextBox",
+			"PartyInvite_AcceptIcon", "PartyInvite_DeclineIcon",
+		};
+		for (const char* pSlotId : SLOTS)
+			m_pInviteView->Set_SlotVisible(pSlotId, true);
 		m_hasInvitePopupJustOpened = false;
 	}
 
 	if (!m_isInvitePopupOpen)
 		return;
 
-	const ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(pViewport->WorkPos);
-	ImGui::SetNextWindowSize(pViewport->WorkSize);
-
-	const ImGuiWindowFlags flags =
-		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground |
-		ImGuiWindowFlags_NoSavedSettings;
-
-	/* BeginPopupModal draws its own full-viewport dim rect before returning,
-	   independent of ImGuiWindowFlags_NoBackground (which only covers the
-	   popup window itself) -- StyleColorsDark's default ModalWindowDimBg is a
-	   light translucent grey, which reads as a wash of white over the game
-	   behind it. Suppressed here since this popup only wants its own panel
-	   art visible, not a dimmed backdrop. */
-	ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, ImVec4(0.f, 0.f, 0.f, 0.f));
-	const bool_t isPopupOpen =
-		ImGui::BeginPopupModal("PartyInviteConfirm", nullptr, flags);
-	ImGui::PopStyleColor();
-	if (!isPopupOpen)
-	{
-		m_isInvitePopupOpen = false;
-		return;
-	}
-
-	const auto Fn_ToScreen = [pViewport](f32_t fX, f32_t fY)
-	{
-		const f32_t fScaleX = pViewport->WorkSize.x / 1280.f;
-		const f32_t fScaleY = pViewport->WorkSize.y / 720.f;
-		return ImVec2(
-			pViewport->WorkPos.x + fX * fScaleX,
-			pViewport->WorkPos.y + fY * fScaleY);
-	};
-	const auto Fn_HitTest = [](const ImVec2& corner0, const ImVec2& corner1)
-	{
-		const ImVec2 mouse = ImGui::GetMousePos();
-		return mouse.x >= corner0.x && mouse.x < corner1.x &&
-			mouse.y >= corner0.y && mouse.y < corner1.y;
-	};
-
-	ImDrawList* pDrawList = ImGui::GetWindowDrawList();
-
-	f32_t fPanelX = 0.f, fPanelY = 0.f, fPanelW = 0.f, fPanelH = 0.f;
-	if (m_pInviteView->Get_SlotRect(
-		"PartyInvite_Panel", fPanelX, fPanelY, fPanelW, fPanelH))
-	{
-		ID3D11ShaderResourceView* pPanel = m_pInviteView->Load_Texture(
-			"UI/ClassSelect/Common/CreateCharacterModalPanel.png");
-		if (nullptr != pPanel)
-		{
-			pDrawList->AddImage(
-				reinterpret_cast<ImTextureID>(pPanel),
-				Fn_ToScreen(fPanelX, fPanelY),
-				Fn_ToScreen(fPanelX + fPanelW, fPanelY + fPanelH));
-		}
-	}
-
-	/* PartyInvite_TitleTextBox/DescTextBox are position-only markers for the
-	   text pass below -- no background image, same as Valtan Entry. */
+	const f32_t fResolutionWidth = m_pInviteView->Get_ResolutionWidth();
+	const f32_t fResolutionHeight = m_pInviteView->Get_ResolutionHeight();
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	Router.Claim_Mouse_This_Frame();
 
 	struct MODAL_BUTTON
 	{
@@ -386,51 +365,18 @@ void Client::CPartyInteractionView::Render_InvitePopup(
 		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
 		if (!m_pInviteView->Get_SlotRect(button.pSlotId, fX, fY, fW, fH))
 			continue;
-		const ImVec2 corner0 = Fn_ToScreen(fX, fY);
-		const ImVec2 corner1 = Fn_ToScreen(fX + fW, fY + fH);
-		const bool_t isHovered = Fn_HitTest(corner0, corner1);
-		ID3D11ShaderResourceView* pTexture = m_pInviteView->Load_Texture(
-			isHovered ?
-				"UI/ClassSelect/Common/NormalButtonHover.png" :
-				"UI/ClassSelect/Common/NormalButton.png");
-		if (nullptr != pTexture)
-		{
-			pDrawList->AddImage(
-				reinterpret_cast<ImTextureID>(pTexture), corner0, corner1);
-		}
-		if (isHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		const bool_t isHovered = Router.Is_Hovered(
+			fX, fY, fW, fH, fResolutionWidth, fResolutionHeight);
+		m_pInviteView->Set_SlotTexture(button.pSlotId, isHovered ?
+			"UI/ClassSelect/Common/NormalButtonHover.png" :
+			"UI/ClassSelect/Common/NormalButton.png");
+		if (isHovered && Router.Is_Clicked(fX, fY, fW, fH, fResolutionWidth, fResolutionHeight))
 		{
 			CMainApp::Play_UIButtonClickSound();
 			if (button.isConfirm)
 				acceptClicked = true;
 			else
 				declineClicked = true;
-		}
-	}
-
-	/* Drawn after the buttons so the button art doesn't paint over them. */
-	struct MODAL_ICON_SLOT
-	{
-		const char* pSlotId;
-		const char* pTexturePath;
-	};
-	static constexpr MODAL_ICON_SLOT ICON_SLOTS[2] =
-	{
-		{ "PartyInvite_AcceptIcon", "UI/Bern/Accept.png" },
-		{ "PartyInvite_DeclineIcon", "UI/Bern/Decline.png" },
-	};
-	for (const MODAL_ICON_SLOT& icon : ICON_SLOTS)
-	{
-		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
-		if (!m_pInviteView->Get_SlotRect(icon.pSlotId, fX, fY, fW, fH))
-			continue;
-		ID3D11ShaderResourceView* pTexture =
-			m_pInviteView->Load_Texture(icon.pTexturePath);
-		if (nullptr != pTexture)
-		{
-			pDrawList->AddImage(
-				reinterpret_cast<ImTextureID>(pTexture),
-				Fn_ToScreen(fX, fY), Fn_ToScreen(fX + fW, fY + fH));
 		}
 	}
 
@@ -450,10 +396,15 @@ void Client::CPartyInteractionView::Render_InvitePopup(
 			CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
 		}
 		m_isInvitePopupOpen = false;
-		ImGui::CloseCurrentPopup();
+		static constexpr const char* SLOTS[7] =
+		{
+			"PartyInvite_Panel", "PartyInvite_ConfirmButton", "PartyInvite_CancelButton",
+			"PartyInvite_TitleTextBox", "PartyInvite_DescTextBox",
+			"PartyInvite_AcceptIcon", "PartyInvite_DeclineIcon",
+		};
+		for (const char* pSlotId : SLOTS)
+			m_pInviteView->Set_SlotVisible(pSlotId, false);
 	}
-
-	ImGui::EndPopup();
 }
 
 void Client::CPartyInteractionView::Render_InvitePopupText()
@@ -532,4 +483,54 @@ void Client::CPartyInteractionView::Render_InvitePopupText()
 			(fIconRight + fButtonRight) * 0.5f, fButtonY + fButtonH * 0.5f,
 			Label.pLabel, fButtonH * 0.48f, Colors::White);
 	}
+}
+
+void Client::CPartyInteractionView::Render_ContextMenuText()
+{
+	if (!m_hasContextMenuTarget || nullptr == m_pContextMenuView)
+		return;
+
+	f32_t fPanelX = 0.f, fPanelY = 0.f, fPanelW = 0.f, fPanelH = 0.f;
+	f32_t fButtonX = 0.f, fButtonY = 0.f, fButtonW = 0.f, fButtonH = 0.f;
+	if (!m_pContextMenuView->Get_SlotRect(
+			"PartyContextMenu_Panel", fPanelX, fPanelY, fPanelW, fPanelH) ||
+		!m_pContextMenuView->Get_SlotRect(
+			"PartyContextMenu_HoverHighlight", fButtonX, fButtonY, fButtonW, fButtonH))
+	{
+		return;
+	}
+
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const f32_t fResolutionWidth = m_pContextMenuView->Get_ResolutionWidth();
+	const f32_t fResolutionHeight = m_pContextMenuView->Get_ResolutionHeight();
+	if (fResolutionWidth <= 0.f || fResolutionHeight <= 0.f)
+		return;
+	const f32_t textScaleX = vViewportSize.x / fResolutionWidth;
+	const f32_t textScaleY = vViewportSize.y / fResolutionHeight;
+	const f32_t textUiScale = (std::min)(textScaleX, textScaleY);
+
+	std::wstring strNickname;
+	if (Convert_NicknameToWide(m_strContextMenuTargetNickname, strNickname))
+	{
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strNickname.c_str());
+		const f32_t fScale = (vMeasured.y > 0.f) ? (fPanelH * 0.5f / vMeasured.y) : 1.f;
+		// Same IM_COL32(255,255,0,255) yellow the old ImGui draw used.
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strNickname.c_str(),
+			float2_t((fPanelX + fPanelW * 0.5f) * textScaleX,
+				(fPanelY + fPanelH * 0.5f) * textScaleY),
+			XMVectorSet(1.f, 1.f, 0.f, 1.f), 0.f, float2_t(0.5f, 0.5f),
+			fScale * textUiScale);
+	}
+
+	// "파티초대"
+	constexpr wchar_t INVITE_LABEL[] =
+		L"\xD30C\xD2F0\xCD08\xB300";
+	const float2_t vLabelMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), INVITE_LABEL);
+	const f32_t fLabelScale = (vLabelMeasured.y > 0.f) ? (fButtonH * 0.5f / vLabelMeasured.y) : 1.f;
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), INVITE_LABEL,
+		float2_t((fButtonX + fButtonW * 0.5f) * textScaleX,
+			(fButtonY + fButtonH * 0.5f) * textScaleY),
+		Colors::White, 0.f, float2_t(0.5f, 0.5f), fLabelScale * textUiScale);
 }

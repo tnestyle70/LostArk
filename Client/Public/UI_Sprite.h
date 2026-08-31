@@ -37,12 +37,30 @@ public:
 	/* Repositions/resizes in place, e.g. a progress bar fill growing toward one edge each frame. */
 	void Set_Rect(f32_t fCenterX, f32_t fCenterY, f32_t fSizeX, f32_t fSizeY);
 
+	/* Runtime-only overrides for the JSON UI layout runtime factory (button hover swap, dim
+	backdrop alpha, a mirrored corner-frame slot). Default state (white tint, no flip, no
+	override texture, non-additive) renders identically to a CUI_Sprite that never calls any of
+	these, so existing callers (loading background, progress bar fills) are unaffected. */
+	void Set_Tint(const float4_t& vTint);
+	void Set_FlipX(bool_t bFlipX);
+	void Set_Additive(bool_t bAdditive);
+	/* Takes an already-resolved SRV (the caller owns loading/caching -- CUI_Sprite stays a thin
+	render primitive, not a second texture cache) and takes over from the prototype-tag texture
+	bound at construction for as long as it's set. Pass nullptr to fall back to that original
+	texture again. */
+	void Set_Texture(ComPtr<ID3D11ShaderResourceView> pOverrideSRV);
+
 private:
 	wstring_t						m_strTextureTag;
 
 	shared_ptr<CShader>				m_pShaderCom = { nullptr };
 	shared_ptr<CTexture>			m_pTextureCom = { nullptr };
 	shared_ptr<CVIBuffer_Rect>		m_pVIBufferCom = { nullptr };
+
+	float4_t						m_vTint = float4_t(1.f, 1.f, 1.f, 1.f);
+	bool_t							m_bFlipX = false;
+	bool_t							m_bAdditive = false;
+	ComPtr<ID3D11ShaderResourceView>	m_pOverrideTextureSRV;
 
 private:
 	HRESULT Ready_Components();

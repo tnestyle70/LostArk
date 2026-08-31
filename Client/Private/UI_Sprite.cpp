@@ -46,14 +46,36 @@ HRESULT Client::CUI_Sprite::Render()
 
 	/* Pass 2 (UIBlend) alpha-blends and skips the depth-based soft fade pass 1 needs, since
 	this sprite has no depth texture to sample -- pass 0's default blend state would otherwise
-	paint every transparent pixel as opaque, showing whatever raw color sits behind the alpha. */
-	if (FAILED(m_pShaderCom->Begin(2)))
+	paint every transparent pixel as opaque, showing whatever raw color sits behind the alpha.
+	Pass 3 (UIBlendAdditive) is the same shader with an additive blend state, for a layer
+	authored with a Scaleform additive blendMode. */
+	if (FAILED(m_pShaderCom->Begin(m_bAdditive ? 3 : 2)))
 		return E_FAIL;
 
 	if (FAILED(m_pVIBufferCom->Render()))
 		return E_FAIL;
 
 	return S_OK;
+}
+
+void Client::CUI_Sprite::Set_Tint(const float4_t& vTint)
+{
+	m_vTint = vTint;
+}
+
+void Client::CUI_Sprite::Set_FlipX(bool_t bFlipX)
+{
+	m_bFlipX = bFlipX;
+}
+
+void Client::CUI_Sprite::Set_Additive(bool_t bAdditive)
+{
+	m_bAdditive = bAdditive;
+}
+
+void Client::CUI_Sprite::Set_Texture(ComPtr<ID3D11ShaderResourceView> pOverrideSRV)
+{
+	m_pOverrideTextureSRV = pOverrideSRV;
 }
 
 void Client::CUI_Sprite::Set_Rect(f32_t fCenterX, f32_t fCenterY, f32_t fSizeX, f32_t fSizeY)
@@ -102,7 +124,21 @@ HRESULT Client::CUI_Sprite::Bind_ShaderResources()
 	if (FAILED(__super::Bind_ShaderResource(m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)))
 		return E_FAIL;
 
-	if (FAILED(m_pTextureCom->Bind_ShaderResource(m_pShaderCom, "g_Texture", 0)))
+	if (nullptr != m_pOverrideTextureSRV)
+	{
+		if (FAILED(m_pShaderCom->Bind_Texture("g_Texture", m_pOverrideTextureSRV)))
+			return E_FAIL;
+	}
+	else if (FAILED(m_pTextureCom->Bind_ShaderResource(m_pShaderCom, "g_Texture", 0)))
+	{
+		return E_FAIL;
+	}
+
+	if (FAILED(m_pShaderCom->Bind_RawValue("g_TintColor", &m_vTint, sizeof(m_vTint))))
+		return E_FAIL;
+
+	const int32_t iFlipX = m_bFlipX ? 1 : 0;
+	if (FAILED(m_pShaderCom->Bind_RawValue("g_FlipX", &iFlipX, sizeof(iFlipX))))
 		return E_FAIL;
 
 	return S_OK;
