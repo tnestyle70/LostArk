@@ -276,9 +276,16 @@ private:
 	fills (rect AND the already-localized "OO을(를) 획득하였습니다" text) every frame a toast is
 	showing. */
 	void RenderItemAnnounceText();
-	/* Room-shared raid Esther gauge bar. Draws nothing when the snapshot says
-	the world has no Esther roster (maximum 0). */
-	void RenderEstherGauge();
+	/* Room-shared raid Esther gauge bar -- drives m_pEstherUIView's real CUI_Sprite slots
+	(static frame/portraits/track, fill-ratio-clipped gauge fill, gauge-full ready glows) from
+	Update(). Hides everything (Hide_EstherUI) when the snapshot says the world has no Esther
+	roster (maximum 0) or outside VALTAN_ARENA -- unlike the old ImGui pass, these slots live
+	under LEVEL::STATIC and keep their last state unless told otherwise. */
+	void Update_EstherGauge();
+	void Hide_EstherUI();
+	/* The "ESTHER"/"ESTHER READY  Ctrl+Z/X/C" label above the gauge track -- LOA-font
+	Draw_Text in the post-EndFrame text pass, same split as every other HUD label. */
+	void RenderEstherGaugeText();
 	/* LanceMaster's 3-segment identity meter -- drawn procedurally (matching the real
 	LanceMasterProgress.as formula: target.rotation = maxDegree * value/100, cascading through
 	3 segments) rather than from extracted art, since the real asset's moving "target" piece is
@@ -332,10 +339,11 @@ private:
 	isn't part of the always-on top/bottom menu chrome (Screen UI) either, so it owns its own
 	document/tab instead of being folded into either. */
 	unique_ptr<CUILayoutRuntime> m_pBossUIView = { nullptr };
-	/* UI/Esther/EstherUI.json's runtime consumer (RenderEstherGauge) -- same reasoning as
-	m_pBossUIView: the Esther skill window is shared across every class, not tied to Combat HUD
-	or Screen UI, so it gets its own document/tab too. */
-	unique_ptr<CHUDRuntimeView> m_pEstherUIView = { nullptr };
+	/* UI/Esther/EstherUI.json's runtime consumer (Update_EstherGauge) -- real CUI_Sprite
+	GameObjects under LEVEL::STATIC, same reasoning as m_pBossUIView: the Esther skill window is
+	shared across every class, not tied to Combat HUD or Screen UI, so it gets its own
+	document/tab too. */
+	unique_ptr<CUILayoutRuntime> m_pEstherUIView = { nullptr };
 	/* UI/ItemUpgrade/ItemUpgradeUI.json's runtime consumer -- real CUI_Sprite GameObjects under
 	LEVEL::STATIC (Update_ItemUpgrade drives the gauge/effect state machine and hover/click; no
 	real Server-side 재련/enhancement data exists yet, so there is still no per-slot balance

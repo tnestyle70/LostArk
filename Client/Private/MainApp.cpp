@@ -713,8 +713,12 @@ HRESULT CMainApp::Initialize()
 	this Level::STATIC construction until the first Update_BossHealthBar() call finds a valid
 	boss. */
 	Hide_BossHealthBar();
-	m_pEstherUIView = std::make_unique<CHUDRuntimeView>(
-		m_pDevice, m_pContext, L"UI/Esther/EstherUI.json");
+	m_pEstherUIView = std::make_unique<CUILayoutRuntime>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
+		L"UI/Esther/EstherUI.json");
+	/* Same reasoning as Hide_BossHealthBar just above -- hidden until Update_EstherGauge finds a
+	real Esther roster in a Valtan room. */
+	Hide_EstherUI();
 	m_pItemUpgradeView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/ItemUpgrade/ItemUpgradeUI.json");
@@ -798,6 +802,7 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	Update_ItemUpgrade(fTimeDelta);
 	Update_BossHealthBar();
+	Update_EstherGauge();
 
 	/* 1/2/3/4 use whatever item is registered on Item_1..4 (drag-drop from the inventory --
 	see Render_ItemQuickSlots). Same gating as K/I; the Server is the one that actually
@@ -1124,7 +1129,6 @@ HRESULT CMainApp::Render()
 	#endif
 			RenderCombatHUD();
 			RenderChargeGauge();
-			RenderEstherGauge();
 			/* RenderQuickSlot only draws the extracted QuickSlot.gfx on-use flash overlay -- it does
 			not draw icon art, cooldown sweep, or keybind text for any class, so it is additive on top
 			of the existing icon/cooldown rendering below, not a replacement for it. Disabling these
@@ -1300,6 +1304,9 @@ HRESULT CMainApp::Render()
 		RenderCombatHUDText();
 		RenderBossHealthBarText();
 		RenderChargeGaugeText();
+		/* VALTAN_ARENA-only inside; no CharSelect-preview overlap possible, but grouped with the
+		other combat-HUD text anyway since it is that HUD's own caption. */
+		RenderEstherGaugeText();
 	}
 	RenderDeadSceneText();
 	RenderRaidClearText();
@@ -1717,24 +1724,9 @@ void CMainApp::RenderCombatHUD()
 		}
 		m_pHUDRuntimeView->Render(strOwnerClass, 0);
 		RenderPlayerHealthManaBar();
-		/* Static Esther slots (portraits/frame/lock/track) draw generically here. GaugeFill and the
-		3 Ready glows are also authored as ordinary Tool-placeable slots (so they show up on the
-		canvas for placement), but their real gameplay visibility is gauge-state-driven, not
-		always-on -- force them hidden here and let RenderEstherGauge() (called later) draw the real
-		clipped fill / conditional glow instead, so there's no double-draw. Esther is a Valtan raid
-		mechanic -- RenderEstherGauge() already skips outside VALTAN_ARENA, but this static frame is
-		a separate draw call reached by RenderCombatHUD's own broader level gate (which includes
-		CHARACTER_SELECT for HP/mana/skill icons), so it needs the same VALTAN_ARENA-only check or
-		the empty portrait frame keeps showing there. */
-		if (nullptr != m_pEstherUIView &&
-			ETOUI(LEVEL::VALTAN_ARENA) == currentLevel)
-		{
-			m_pEstherUIView->Set_SlotVisible("Esther_GaugeFill", false);
-			m_pEstherUIView->Set_SlotVisible("Esther_Slot1_Ready", false);
-			m_pEstherUIView->Set_SlotVisible("Esther_Slot2_Ready", false);
-			m_pEstherUIView->Set_SlotVisible("Esther_Slot3_Ready", false);
-			m_pEstherUIView->Render("Default", 0);
-		}
+		/* No Esther block here anymore -- Update_EstherGauge() (called from Update()) owns every
+		Esther slot's visibility now, static frame/portraits included, and its CUI_Sprite slots
+		self-render through the normal engine pipeline. */
 	}
 
 	/* Real gauge0/1/2 fill (target-rotation-masked track) and burn flourish are baked and wired;
@@ -3857,112 +3849,117 @@ void CMainApp::RenderChargeGaugeText()
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 }
 
-void CMainApp::RenderEstherGauge()
+void CMainApp::Hide_EstherUI()
 {
-	/* Esther's skill-select window is a Valtan raid mechanic -- Character Select's live Server
-	room can still populate a nonzero gauge maximum for the selected class, which drew this
-	window there too even though there is no raid encounter to use it against. */
-	if (ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+	if (nullptr == m_pEstherUIView)
 		return;
+	constexpr const char_t* ESTHER_ALL_SLOTS[] = {
+		"Esther_HeaderFrame",
+		"Esther_Slot1_Frame", "Esther_Slot1_Icon", "Esther_Slot1_Ready",
+		"Esther_Slot2_Frame", "Esther_Slot2_Icon", "Esther_Slot2_Ready",
+		"Esther_Slot3_Frame", "Esther_Slot3_Icon", "Esther_Slot3_Ready",
+		"Esther_GaugeTrack", "Esther_GaugeFill",
+	};
+	for (const char_t* pSlotId : ESTHER_ALL_SLOTS)
+		m_pEstherUIView->Set_SlotVisible(pSlotId, false);
+}
 
-	const uint32_t maximum =
-		CCombatHUDViewModel::Get().Get_EstherGaugeMaximum();
-	if (0u == maximum)
-		return;
-	if (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open())
-		return;
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	if (!player.isValid)
-		return;
+void CMainApp::Update_EstherGauge()
+{
 	if (nullptr == m_pEstherUIView)
 		return;
 
-	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	if (nullptr == pViewport)
+	/* Esther's skill-select window is a Valtan raid mechanic -- Character Select's live Server
+	room can still populate a nonzero gauge maximum for the selected class, which drew this
+	window there too even though there is no raid encounter to use it against. */
+	const uint32_t maximum =
+		CCombatHUDViewModel::Get().Get_EstherGaugeMaximum();
+	const bool_t skillWindowOpen =
+		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
+	if (ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID() ||
+		0u == maximum || skillWindowOpen ||
+		!CCombatHUDViewModel::Get().Get_Player().isValid)
+	{
+		Hide_EstherUI();
 		return;
-	const float scaleX = pViewport->WorkSize.x / 1280.f;
-	const float scaleY = pViewport->WorkSize.y / 720.f;
-	const float uiScale = (std::min)(scaleX, scaleY);
+	}
+
+	/* Static pieces (frame/portraits/track) show whenever the window itself shows; real pieces
+	(frame/lock/gauge) traced from the actual estherweaponskill.gfx + EFUI_ICONATLAS_E packages,
+	not placeholder rects. Esther_GaugeFill is a separate Tool-placeable slot (own rect,
+	independently adjustable) fill-ratio-clipped by the real gauge value -- same technique as the
+	boss/player HP bars. The 3 Ready glows only show at full gauge. */
+	constexpr const char_t* ESTHER_STATIC_SLOTS[] = {
+		"Esther_HeaderFrame",
+		"Esther_Slot1_Frame", "Esther_Slot1_Icon",
+		"Esther_Slot2_Frame", "Esther_Slot2_Icon",
+		"Esther_Slot3_Frame", "Esther_Slot3_Icon",
+		"Esther_GaugeTrack",
+	};
+	for (const char_t* pSlotId : ESTHER_STATIC_SLOTS)
+		m_pEstherUIView->Set_SlotVisible(pSlotId, true);
+
 	const uint32_t gauge = CCombatHUDViewModel::Get().Get_EstherGauge();
 	const float fillRatio = (std::clamp)(
 		static_cast<float>(gauge) / static_cast<float>(maximum), 0.f, 1.f);
+	m_pEstherUIView->Set_SlotFillRatio("Esther_GaugeFill", fillRatio);
+	m_pEstherUIView->Set_SlotVisible("Esther_GaugeFill", fillRatio > 0.f);
 
-	/* Esther_GaugeTrack's own rect (EstherUI.json, Tool-editable) positions the static background
-	image (drawn generically by m_pEstherUIView->Render()) and the label below. Esther_GaugeFill is
-	a separate Tool-placeable slot (own rect, independently adjustable) whose static art is forced
-	hidden every frame (see the Set_SlotVisible calls above); this draws the real UV-clipped fill in
-	its place -- same technique as the boss/player HP bars. Real pieces (frame/lock/gauge) traced
-	from the actual estherweaponskill.gfx + EFUI_ICONATLAS_E packages, not placeholder rects. */
+	const bool_t bReady = gauge >= maximum;
+	m_pEstherUIView->Set_SlotVisible("Esther_Slot1_Ready", bReady);
+	m_pEstherUIView->Set_SlotVisible("Esther_Slot2_Ready", bReady);
+	m_pEstherUIView->Set_SlotVisible("Esther_Slot3_Ready", bReady);
+}
+
+void CMainApp::RenderEstherGaugeText()
+{
+	/* Same gates as Update_EstherGauge -- this label is that window's own caption, so it must
+	disappear and reappear together with the art instead of floating without it. */
+	if (nullptr == m_pEstherUIView ||
+		ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+	{
+		return;
+	}
+	const uint32_t maximum =
+		CCombatHUDViewModel::Get().Get_EstherGaugeMaximum();
+	if (0u == maximum ||
+		(nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open()) ||
+		!CCombatHUDViewModel::Get().Get_Player().isValid)
+	{
+		return;
+	}
+
 	f32_t fTrackX = 0.f, fTrackY = 0.f, fTrackWidth = 0.f, fTrackHeight = 0.f;
 	if (!m_pEstherUIView->Get_SlotRect(
 		"Esther_GaugeTrack", fTrackX, fTrackY, fTrackWidth, fTrackHeight))
 	{
 		return;
 	}
-	const ImVec2 barMin{
-		pViewport->WorkPos.x + fTrackX * scaleX,
-		pViewport->WorkPos.y + fTrackY * scaleY };
-	const ImVec2 barMax{
-		barMin.x + fTrackWidth * scaleX,
-		barMin.y + fTrackHeight * scaleY };
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
 
-	f32_t fFillX = 0.f, fFillY = 0.f, fFillWidth = 0.f, fFillHeight = 0.f;
-	if (m_pEstherUIView->Get_SlotRect("Esther_GaugeFill", fFillX, fFillY, fFillWidth, fFillHeight))
-	{
-		const ImVec2 fillMin{
-			pViewport->WorkPos.x + fFillX * scaleX,
-			pViewport->WorkPos.y + fFillY * scaleY };
-		const ImVec2 fillMax{
-			fillMin.x + fFillWidth * scaleX,
-			fillMin.y + fFillHeight * scaleY };
-		const float fillRight = fillMin.x + (fillMax.x - fillMin.x) * fillRatio;
-		if (fillRight > fillMin.x)
-		{
-			if (ID3D11ShaderResourceView* pFillSRV =
-				m_pEstherUIView->Load_Texture("UI/Esther/esther_gauge_fill_gold.png"))
-			{
-				pDrawList->AddImage(pFillSRV, fillMin, ImVec2(fillRight, fillMax.y),
-					ImVec2(0.f, 0.f), ImVec2(fillRatio, 1.f));
-			}
-		}
-	}
-	if (gauge >= maximum)
-	{
-		ID3D11ShaderResourceView* pReadySRV =
-			m_pEstherUIView->Load_Texture("UI/Esther/esther_slot_ready.png");
-		if (nullptr != pReadySRV)
-		{
-			for (const char* pReadySlotId :
-				{ "Esther_Slot1_Ready", "Esther_Slot2_Ready", "Esther_Slot3_Ready" })
-			{
-				f32_t fReadyX = 0.f, fReadyY = 0.f, fReadyWidth = 0.f, fReadyHeight = 0.f;
-				if (!m_pEstherUIView->Get_SlotRect(
-					pReadySlotId, fReadyX, fReadyY, fReadyWidth, fReadyHeight))
-				{
-					continue;
-				}
-				const ImVec2 readyMin{
-					pViewport->WorkPos.x + fReadyX * scaleX,
-					pViewport->WorkPos.y + fReadyY * scaleY };
-				const ImVec2 readyMax{
-					readyMin.x + fReadyWidth * scaleX,
-					readyMin.y + fReadyHeight * scaleY };
-				pDrawList->AddImage(pReadySRV, readyMin, readyMax);
-			}
-		}
-	}
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	const char* pLabel = gauge >= maximum ?
-		"ESTHER READY  Ctrl+Z/X/C" : "ESTHER";
-	const ImVec2 labelSize = ImGui::CalcTextSize(pLabel);
-	const ImVec2 labelPos(
-		(barMin.x + barMax.x - labelSize.x) * 0.5f,
-		barMin.y - labelSize.y - 2.f * uiScale);
-	pDrawList->AddText(
-		ImVec2(labelPos.x + 1.f, labelPos.y + 1.f),
-		IM_COL32(0, 0, 0, 220), pLabel);
-	pDrawList->AddText(labelPos, IM_COL32(214, 238, 255, 255), pLabel);
+	const uint32_t gauge = CCombatHUDViewModel::Get().Get_EstherGauge();
+	const wchar_t* pLabel = gauge >= maximum ?
+		L"ESTHER READY  Ctrl+Z/X/C" : L"ESTHER";
+	const float2_t vMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+	/* ~12 reference px tall, centered above the track's own top edge -- matching the old
+	ImGui-font label's placement (its default font was ~13 screen px). */
+	constexpr f32_t LABEL_HEIGHT = 12.f;
+	const f32_t fScale = (vMeasured.y > 0.f) ? (LABEL_HEIGHT / vMeasured.y) : 1.f;
+	const f32_t fCenterX = fTrackX + fTrackWidth * 0.5f;
+	const f32_t fCenterY = fTrackY - 2.f - LABEL_HEIGHT * 0.5f;
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
+		float2_t(fCenterX * textScaleX + 1.f, fCenterY * textScaleY + 1.f),
+		XMVectorSet(0.f, 0.f, 0.f, 220.f / 255.f), 0.f, float2_t(0.5f, 0.5f),
+		fScale * textUiScale);
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
+		float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
+		XMVectorSet(214.f / 255.f, 238.f / 255.f, 1.f, 1.f), 0.f, float2_t(0.5f, 0.5f),
+		fScale * textUiScale);
 }
 
 void CMainApp::RenderSkillIcons()
