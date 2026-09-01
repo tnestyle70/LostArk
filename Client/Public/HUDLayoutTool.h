@@ -167,6 +167,10 @@ private:
 	/* Editor-only visibility aid: redraws base layers with extra additive passes so dark art keeps
 	   visible edges to align against. Purely a canvas preview toggle; never written to the cfg. */
 	bool				m_bBoostDarkArt = false;
+	/* Text-only slots carry no art at all -- the runtime draws their string at the slot's rect and
+	the document stores a fully transparent placeholder layer. On the canvas that is nothing to see
+	and nothing to grab, so they cannot be positioned without this. */
+	bool				m_bShowEmptySlots = true;
 
 	/* Which charge stage the canvas is previewing; one control drives every slot at once. */
 	int32_t				m_iPreviewStage = 0;

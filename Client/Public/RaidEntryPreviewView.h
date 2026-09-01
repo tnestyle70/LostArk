@@ -38,6 +38,12 @@ public:
 	void Open();
 	bool_t Is_Open() const { return m_isOpen; }
 
+	/* "나의 아이템 레벨 N". There is no item-level system yet -- equipment upgrade is meant to
+	   feed this -- so the value lives here as one number the owner sets rather than baked into
+	   the drawn string, which is what made it a fixed 1556. */
+	void Set_MyItemLevel(int32_t iItemLevel) { m_iMyItemLevel = iItemLevel; }
+	int32_t Get_MyItemLevel() const { return m_iMyItemLevel; }
+
 	/* Drives the popup's own CUI_Sprite visibility/hover state and hit-testing
 	   for one frame (the sprites themselves draw in CObject_Manager's normal
 	   render cycle, so there is no ordering requirement against the combat HUD
@@ -65,11 +71,32 @@ private:
 	   which would turn each invisible marker into a white box. */
 	void Hide_AllSlots();
 	void Hide_ConfirmSlots();
+	/* Applies the selected raid to every slot that differs per raid (boss art, left panel,
+	   esther portraits, reward icons and their grade colours) and drives the tab strip's own
+	   selected look. Called on open and whenever the selection changes, not per frame. */
+	void Apply_RaidSelection();
+	/* Tab strip hit-test plus the selected tab's grow/lit pass. Separate from Apply because the
+	   grow is eased over a few frames while the raid swap is a one-shot. */
+	void Update_TabStrip(f32_t fTimeDelta);
 
 private:
 	unique_ptr<CUILayoutRuntime> m_pView;
 	bool_t m_isOpen = false;
 	bool_t m_hasJustOpened = false;
+	/* Index into RAID_DEFS, not a tab slot number -- only the raids with real content are
+	   selectable, and the tab a raid sits on is the raid's own property. */
+	int32_t m_iSelectedRaid = 0;
+	/* 0..1 ease driving the selected tab's grow. Reset on selection change so the new tab
+	   grows in rather than snapping. */
+	f32_t m_fTabGrow = 1.f;
+	/* Free-running clock for the selected tab's gold pulse -- independent of the grow, which
+	   settles, so the lit look keeps breathing after the tab has finished rising. */
+	f32_t m_fGlowPhase = 0.f;
+	int32_t m_iMyItemLevel = 1556;
+	/* Authored tab rects, captured once: the grow rewrites them through Set_SlotRect, so the
+	   document's own values have to survive somewhere to grow from. */
+	bool_t m_hasTabBaseRects = false;
+	f32_t m_TabBaseRect[8][4] = {};
 	/* ImGui's own modal consumed Escape; with no popup left, this reproduces that close
 	   gesture (the screen itself is labelled "닫기 (Esc)") with its own down-edge state. */
 	bool_t m_wasEscapeDown = false;

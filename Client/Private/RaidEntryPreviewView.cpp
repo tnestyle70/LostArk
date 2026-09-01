@@ -6,36 +6,185 @@
 #include "UILayoutRuntime.h"
 
 #include <algorithm>
+#include <cmath>
+#include <cstdio>
 
 namespace
 {
-	/* Every slot in ValtanRaidEntry_Layout.json that carries real art. The rest are
-	   position-only markers (authored tint alpha 0 -- boss portrait, text boxes, tier badges,
-	   warning box, nav arrows, top border strip) whose text, where any, RenderText() draws at
-	   their rect. Those must never be passed to Set_SlotVisible: showing a slot resets its tint
-	   to opaque white, which would turn each marker into a white box. */
+	/* Every slot in ValtanRaidEntry_Layout.json that carries real art. The rest are position-only
+	   markers (authored tint alpha 0 -- the text boxes) whose text RenderText() draws at their
+	   rect; they stay out of this list because there is nothing to show or hide. Set_SlotVisible
+	   itself only moves the visibility flag, so the per-raid grade tints Apply_RaidSelection
+	   writes survive the show pass below. */
 	constexpr const char* MAIN_ART_SLOTS[] =
 	{
-		"RaidEntry_Vignette",
-		"RaidEntry_EstherFrame_0", "RaidEntry_EstherPortrait_0",
-		"RaidEntry_EstherFrame_1", "RaidEntry_EstherPortrait_1",
-		"RaidEntry_EstherFrame_2", "RaidEntry_EstherPortrait_2",
-		/* TopRight carries flipX in the document itself now -- the old manual draw path never
-		   consulted the JSON layer's own flipX and mirrored via swapped UVs in code instead. */
-		"RaidEntry_PanelFrame_TopLeft", "RaidEntry_PanelFrame_TopRight",
-		"RaidEntry_TopThumb_0", "RaidEntry_TopThumb_1", "RaidEntry_TopThumb_2",
-		"RaidEntry_TopThumb_3", "RaidEntry_TopThumb_4", "RaidEntry_TopThumb_5",
-		"RaidEntry_TopThumb_6",
-		"RaidEntry_RewardIcon_0", "RaidEntry_RewardIcon_1", "RaidEntry_RewardIcon_2",
-		"RaidEntry_RewardIcon_3", "RaidEntry_RewardIcon_4", "RaidEntry_RewardIcon_5",
-		"RaidEntry_RewardIcon_6", "RaidEntry_RewardIcon_7",
-		"RaidEntry_MatchingButton", "RaidEntry_FindPartyButton",
-		"RaidEntry_EntranceButton", "RaidEntry_AcceptIcon", "RaidEntry_CloseButtonSlot",
+		/* Every slot the rebuilt document gives real art, in the document's own order so this
+		   list stays readable next to it. Rects come from epicgatecommanderentrance.gfx itself
+		   (PlaceObject matrices for position, DefineSubImage for size) traced on its 1920x1080
+		   canvas, then scaled by a uniform 2/3 onto this project's shared 1280x720 one.
+
+		   The remaining position-only markers (title/subtitle/description, the left column
+		   captions and the right panel's condition lines) are TextFields in the source --
+		   RenderText draws those at their rect. */
+		"RaidEntry_DimBackdrop",
+		"RaidEntry_WindowBg",
+		"RaidEntry_BossNameBar",
+		"RaidEntry_TopBorderStrip",
+		"RaidEntry_BossPortrait",
+		"RaidEntry_TabSelPlate",
+		"RaidEntry_TopThumb_0",
+		"RaidEntry_TopThumb_1",
+		"RaidEntry_TopThumb_2",
+		"RaidEntry_TopThumb_3",
+		"RaidEntry_TopTitleArt",
+		"RaidEntry_TopThumb_4",
+		"RaidEntry_TabSelName",
+		"RaidEntry_TabSelGlow",
+		"RaidEntry_CloseButtonSlot",
+		"RaidEntry_RaidIconSlot",
+		"RaidEntry_LeftPanelEmblem",
+		"RaidEntry_EstherPanelBg",
+		"RaidEntry_EstherFrame_0",
+		"RaidEntry_EstherFrame_1",
+		"RaidEntry_EstherFrame_2",
+		"RaidEntry_EstherPortrait_0",
+		"RaidEntry_EstherPortrait_1",
+		"RaidEntry_EstherPortrait_2",
+		"RaidEntry_RewardArrowLeft",
+		"RaidEntry_RewardArrowRight",
+		"RaidEntry_RewardSlotBg_0",
+		"RaidEntry_RewardIcon_0",
+		"RaidEntry_RewardSlotBorder_0",
+		"RaidEntry_RewardSlotBg_1",
+		"RaidEntry_RewardIcon_1",
+		"RaidEntry_RewardSlotBorder_1",
+		"RaidEntry_RewardSlotBg_2",
+		"RaidEntry_RewardIcon_2",
+		"RaidEntry_RewardSlotBorder_2",
+		"RaidEntry_RewardSlotBg_3",
+		"RaidEntry_RewardIcon_3",
+		"RaidEntry_RewardSlotBorder_3",
+		"RaidEntry_RewardSlotBg_4",
+		"RaidEntry_RewardIcon_4",
+		"RaidEntry_RewardSlotBorder_4",
+		"RaidEntry_RewardSlotBg_5",
+		"RaidEntry_RewardIcon_5",
+		"RaidEntry_RewardSlotBorder_5",
+		"RaidEntry_RewardSlotBg_6",
+		"RaidEntry_RewardIcon_6",
+		"RaidEntry_RewardSlotBorder_6",
+		"RaidEntry_RewardSlotBg_7",
+		"RaidEntry_RewardIcon_7",
+		"RaidEntry_RewardSlotBorder_7",
+		"RaidEntry_SoloBadgeSlot",
+		"RaidEntry_TierBadge_0",
+		"RaidEntry_GateLine_0",
+		"RaidEntry_GateLine_1",
+		"RaidEntry_GateIcon_0",
+		"RaidEntry_GateIcon_1",
+		"RaidEntry_GateIcon_2",
+		"RaidEntry_ConditionHeaderButton",
+		"RaidEntry_MatchingButton",
+		"RaidEntry_FindPartyButton",
+		"RaidEntry_EntranceButton",
 	};
 
-	/* Authored tint of RaidEntry_DimBackdrop -- a black wash, not a white sprite, so it is shown
-	   with Set_SlotTint rather than Set_SlotVisible(true)'s opaque white. */
-	const float4_t DIM_BACKDROP_TINT{ 0.f, 0.f, 0.f, 0.72f };
+	/* Item grade backing. A flat tinted square read far too solid next to the icons; the item
+	   upgrade window already solves the same problem with the client's own per-grade gradient
+	   art plus one shared slot border, so the reward row uses those instead of inventing a
+	   colour. Indexed by RAID_DEF::iRewardGrades in this file order. */
+	const char_t* GRADE_BACKGROUNDS[] =
+	{
+		"UI/ItemUpgrade/buildup_gradebg_normal.png",
+		"UI/ItemUpgrade/buildup_gradebg_elite.png",
+		"UI/ItemUpgrade/buildup_gradebg_rare.png",
+		"UI/ItemUpgrade/buildup_gradebg_epic.png",
+		"UI/ItemUpgrade/buildup_gradebg_unique.png",
+		"UI/ItemUpgrade/buildup_gradebg_legend.png",
+		"UI/ItemUpgrade/buildup_gradebg_avatar.png",
+	};
+
+	/* One raid the tab strip can select. Only the two with real content are listed -- the other
+	   tabs stay drawn but inert, since selecting them would show another raid's boss art and
+	   rewards that nothing has been extracted for yet. */
+	struct RAID_DEF
+	{
+		int32_t			iTabIndex;
+		const wchar_t*	pRaidName;		// left panel headline
+		const wchar_t*	pBossTitle;		// small line above the boss name
+		const wchar_t*	pBossName;
+		const wchar_t*	pGateLevels;	// 관문별 아이템 레벨 row
+		const wchar_t*	pMatchLimit;	// 아이템 레벨 N 미만 매칭 불가
+		const char_t*	pBossPortrait;
+		/* leftBg is a six-frame clip in the source and the raid's emblem is painted into each
+		   frame, so the left panel swaps as one texture rather than an emblem on a shared plate.
+		   Only frame 1 carries an extra emblem strip on top of its own panel. */
+		const char_t*	pLeftPanel;
+		bool_t			hasEmblemStrip;
+		const char_t*	pEstherPortraits[3];
+		const char_t*	pRewardIcons[8];
+		int32_t			iRewardGrades[8];
+	};
+	const RAID_DEF RAID_DEFS[] =
+	{
+		{
+			2,
+			// "한밤중의 서커스" / "광기군단장" / "쿠크세이튼"
+			L"\xD55C\xBC24\xC911\xC758 \xC11C\xCEE4\xC2A4",
+			L"\xAD11\xAE30\xAD70\xB2E8\xC7A5",
+			L"\xCFE0\xD06C\xC138\xC774\xD2BC",
+			L"1475  1475  1475",
+			// "아이템 레벨 1475 미만 매칭 불가"
+			L"\xC544\xC774\xD15C \xB808\xBCA8 1475 \xBBF8\xB9CC \xB9E4\xCE6D \xBD88\xAC00",
+			"UI/Bern/RaidEntry_BossPortrait.png",
+			"UI/Bern/RaidEntry_LeftPanel_2.png", false,
+			/* Kakul's three esther skills, in the order the real window lists them.
+			   esther_icon_3/4 are cut from EFUI_ICONATLAS_E/esther_0.dds; only the three
+			   already on disk had names, so the rest keep their atlas index. */
+			{ "UI/Esther/esther_icon_3.png",
+			  "UI/Esther/esther_portrait_wei.png",
+			  "UI/Esther/esther_icon_4.png" },
+			{ "UI/ItemUpgrade/lm_head_icon.png", "UI/ItemUpgrade/lm_shoulder_icon.png",
+			  "UI/ItemUpgrade/lm_top_icon.png", "UI/ItemUpgrade/lm_bottom_icon.png",
+			  "UI/ItemUpgrade/lm_glove_icon.png", "UI/ItemUpgrade/lm_weapon_icon.png",
+			  "UI/ItemUpgrade/lm_head_icon.png", "UI/ItemUpgrade/lm_weapon_icon.png" },
+			{ 5, 5, 5, 5, 5, 5, 4, 4 },
+		},
+		{
+			0,
+			// "부활한 마수의 심장" / "마수군단장" / "발탄"
+			L"\xBD80\xD65C\xD55C \xB9C8\xC218\xC758 \xC2EC\xC7A5",
+			L"\xB9C8\xC218\xAD70\xB2E8\xC7A5",
+			L"\xBC1C\xD0C4",
+			L"1415  1415  1415",
+			// "아이템 레벨 1415 미만 매칭 불가"
+			L"\xC544\xC774\xD15C \xB808\xBCA8 1415 \xBBF8\xB9CC \xB9E4\xCE6D \xBD88\xAC00",
+			/* No greyscale key art exists for Valtan: bossImage only carries frames 3..6, and
+			   EpicGateCommanderEntranceContent::satisfiedChangedHandler shows that clip only
+			   while entry conditions are NOT met. The two earliest commanders have no locked
+			   state to draw, so Kakul's art stands in until a Valtan one is sourced. */
+			"UI/Bern/RaidEntry_BossPortrait.png",
+			"UI/Bern/RaidEntry_LeftPanel_0.png", true,
+			{ "UI/Esther/esther_portrait_sillian.png",
+			  "UI/Esther/esther_portrait_wei.png",
+			  "UI/Esther/esther_portrait_bahuntur.png" },
+			{ "UI/ItemUpgrade/lm_weapon_icon.png", "UI/ItemUpgrade/lm_head_icon.png",
+			  "UI/ItemUpgrade/lm_top_icon.png", "UI/ItemUpgrade/lm_glove_icon.png",
+			  "UI/ItemUpgrade/lm_shoulder_icon.png", "UI/ItemUpgrade/lm_bottom_icon.png",
+			  "UI/ItemUpgrade/lm_weapon_icon.png", "UI/ItemUpgrade/lm_head_icon.png" },
+			{ 4, 4, 4, 4, 4, 4, 3, 3 },
+		},
+	};
+	constexpr int32_t RAID_COUNT = static_cast<int32_t>(sizeof(RAID_DEFS) / sizeof(RAID_DEFS[0]));
+	/* Tabs the document draws. Five, not the movie's six: the sixth commander has no content
+	   here, so its slot was removed from the document. */
+	constexpr int32_t TAB_COUNT = 5;
+	/* How much the selected tab grows, anchored on its own bottom edge so it rises out of the
+	   strip rather than spreading both ways. */
+	constexpr f32_t TAB_SELECTED_GROW = 0.22f;
+	/* Unselected tabs sit back; the selected one is at full brightness. */
+	const float4_t TAB_IDLE_TINT{ 0.55f, 0.55f, 0.58f, 1.f };
+	const float4_t TAB_SELECTED_TINT{ 1.f, 1.f, 1.f, 1.f };
 
 	constexpr const char* CONFIRM_ART_SLOTS[] =
 	{
@@ -68,7 +217,6 @@ void CRaidEntryPreviewView::Hide_AllSlots()
 {
 	if (nullptr == m_pView)
 		return;
-	m_pView->Set_SlotTint("RaidEntry_DimBackdrop", float4_t(0.f, 0.f, 0.f, 0.f));
 	for (const char* pSlotId : MAIN_ART_SLOTS)
 		m_pView->Set_SlotVisible(pSlotId, false);
 }
@@ -85,6 +233,166 @@ void CRaidEntryPreviewView::Open()
 {
 	m_isOpen = true;
 	m_hasJustOpened = true;
+	Apply_RaidSelection();
+}
+
+void CRaidEntryPreviewView::Apply_RaidSelection()
+{
+	if (nullptr == m_pView || m_iSelectedRaid < 0 || m_iSelectedRaid >= RAID_COUNT)
+		return;
+
+	const RAID_DEF& Raid = RAID_DEFS[m_iSelectedRaid];
+	m_pView->Set_SlotTexture("RaidEntry_BossPortrait", Raid.pBossPortrait);
+	m_pView->Set_SlotTexture("RaidEntry_RaidIconSlot", Raid.pLeftPanel);
+
+	char_t szSlot[64] = {};
+	for (int32_t i = 0; i < 3; ++i)
+	{
+		(void)sprintf_s(szSlot, "RaidEntry_EstherPortrait_%d", i);
+		m_pView->Set_SlotTexture(szSlot, Raid.pEstherPortraits[i]);
+	}
+	for (int32_t i = 0; i < 8; ++i)
+	{
+		(void)sprintf_s(szSlot, "RaidEntry_RewardIcon_%d", i);
+		m_pView->Set_SlotTexture(szSlot, Raid.pRewardIcons[i]);
+
+		const int32_t iGrade = Raid.iRewardGrades[i];
+		const int32_t iGradeCount =
+			static_cast<int32_t>(sizeof(GRADE_BACKGROUNDS) / sizeof(GRADE_BACKGROUNDS[0]));
+		(void)sprintf_s(szSlot, "RaidEntry_RewardSlotBg_%d", i);
+		m_pView->Set_SlotTexture(szSlot,
+			GRADE_BACKGROUNDS[(iGrade >= 0 && iGrade < iGradeCount) ? iGrade : 0]);
+	}
+
+	/* Restart the grow so the newly selected tab rises instead of appearing already large. */
+	m_fTabGrow = 0.f;
+}
+
+void CRaidEntryPreviewView::Update_TabStrip(f32_t fTimeDelta)
+{
+	if (nullptr == m_pView)
+		return;
+
+	CUIInputRouter& Router = CUIInputRouter::Get();
+	const f32_t fRefWidth = m_pView->Get_ResolutionWidth();
+	const f32_t fRefHeight = m_pView->Get_ResolutionHeight();
+
+	char_t szSlot[64] = {};
+	if (!m_hasTabBaseRects)
+	{
+		for (int32_t i = 0; i < TAB_COUNT; ++i)
+		{
+			(void)sprintf_s(szSlot, "RaidEntry_TopThumb_%d", i);
+			(void)m_pView->Get_SlotRect(szSlot, m_TabBaseRect[i][0], m_TabBaseRect[i][1],
+				m_TabBaseRect[i][2], m_TabBaseRect[i][3]);
+		}
+		m_hasTabBaseRects = true;
+	}
+
+	const int32_t iSelectedTab = (m_iSelectedRaid >= 0 && m_iSelectedRaid < RAID_COUNT)
+		? RAID_DEFS[m_iSelectedRaid].iTabIndex : -1;
+
+	/* Only tabs backed by a RAID_DEF answer a click; the rest still draw so the strip reads
+	   as the full roster, but selecting one would show content nothing has been extracted for. */
+	for (int32_t iRaid = 0; iRaid < RAID_COUNT; ++iRaid)
+	{
+		const int32_t iTab = RAID_DEFS[iRaid].iTabIndex;
+		if (iTab < 0 || iTab >= TAB_COUNT)
+			continue;
+		const f32_t* pBase = m_TabBaseRect[iTab];
+		if (pBase[2] <= 0.f)
+			continue;
+		if (Router.Is_Clicked(pBase[0], pBase[1], pBase[2], pBase[3], fRefWidth, fRefHeight) &&
+			iRaid != m_iSelectedRaid)
+		{
+			CMainApp::Play_UIButtonClickSound();
+			m_iSelectedRaid = iRaid;
+			Apply_RaidSelection();
+			break;
+		}
+	}
+
+	m_fTabGrow = (std::min)(1.f, m_fTabGrow + (std::max)(0.f, fTimeDelta) * 6.f);
+	/* Ease-out so the grow settles instead of arriving at constant speed. */
+	const f32_t fEased = 1.f - (1.f - m_fTabGrow) * (1.f - m_fTabGrow);
+
+	/* Re-applied per frame, not in Apply_RaidSelection: Render()'s own blanket show pass turns
+	   every art slot back on, so a one-shot hide here would not survive it. */
+	m_pView->Set_SlotVisible("RaidEntry_LeftPanelEmblem",
+		(m_iSelectedRaid >= 0 && m_iSelectedRaid < RAID_COUNT)
+		&& RAID_DEFS[m_iSelectedRaid].hasEmblemStrip);
+
+	f32_t fGlowRect[4] = {};
+	for (int32_t i = 0; i < TAB_COUNT; ++i)
+	{
+		const f32_t* pBase = m_TabBaseRect[i];
+		if (pBase[2] <= 0.f)
+			continue;
+		(void)sprintf_s(szSlot, "RaidEntry_TopThumb_%d", i);
+
+		const bool_t isSelected = (i == iSelectedTab);
+		m_pView->Set_SlotTint(szSlot, isSelected ? TAB_SELECTED_TINT : TAB_IDLE_TINT);
+
+		const f32_t fGrow = isSelected ? (TAB_SELECTED_GROW * fEased) : 0.f;
+		const f32_t fWidth = pBase[2] * (1.f + fGrow);
+		const f32_t fHeight = pBase[3] * (1.f + fGrow);
+		/* Anchored on the bottom edge and horizontal centre: the tab rises out of the strip
+		   and keeps its own column, which is the movement the reference reads as. */
+		const f32_t fLeft = pBase[0] - (fWidth - pBase[2]) * 0.5f;
+		const f32_t fTop = pBase[1] + (pBase[3] - fHeight);
+		m_pView->Set_SlotRect(szSlot, fLeft, fTop, fWidth, fHeight);
+
+		if (isSelected)
+		{
+			fGlowRect[0] = fLeft; fGlowRect[1] = fTop;
+			fGlowRect[2] = fWidth; fGlowRect[3] = fHeight;
+		}
+	}
+
+	/* The selected tab's own chrome, straight out of the movie's selected_up frame: the plate
+	   behind the thumbnail, the lit overlay across it, and the gold name plate under it. All
+	   three are placed from the selected tab's live rect using the source's own local offsets
+	   against its 139x79 thumbnail, so none of them has to be positioned by hand -- the rects
+	   the document carries for them are placeholders. */
+	struct SELECTED_PIECE
+	{
+		const char_t* pSlotId;
+		f32_t fOffsetY;		// source-local y against the 139x79 thumbnail
+		f32_t fWidth;
+		f32_t fHeight;
+		bool_t isLit;		// additive, and pulses
+	};
+	static constexpr f32_t SOURCE_THUMB_W = 139.f;
+	static constexpr f32_t SOURCE_THUMB_H = 79.f;
+	static constexpr SELECTED_PIECE SELECTED_PIECES[] =
+	{
+		{ "RaidEntry_TabSelPlate", -27.f, 169.f, 106.f, false },
+		{ "RaidEntry_TabSelGlow",    0.f, 162.f,  78.f, true  },
+		{ "RaidEntry_TabSelName",   51.f, 149.f,  28.f, true  },
+	};
+
+	m_fGlowPhase += (std::max)(0.f, fTimeDelta);
+	const f32_t fPulse = 0.72f + 0.28f * sinf(m_fGlowPhase * 3.2f);
+
+	for (const SELECTED_PIECE& Piece : SELECTED_PIECES)
+	{
+		if (iSelectedTab < 0 || fGlowRect[2] <= 0.f)
+		{
+			m_pView->Set_SlotVisible(Piece.pSlotId, false);
+			continue;
+		}
+		const f32_t fScaleX = fGlowRect[2] / SOURCE_THUMB_W;
+		const f32_t fScaleY = fGlowRect[3] / SOURCE_THUMB_H;
+		m_pView->Set_SlotRect(Piece.pSlotId,
+			fGlowRect[0], fGlowRect[1] + Piece.fOffsetY * fScaleY,
+			Piece.fWidth * fScaleX, Piece.fHeight * fScaleY);
+		/* Both lit pieces fade in with the grow so a fresh selection lights up instead of
+		   popping, and keep breathing once it has settled. */
+		m_pView->Set_SlotTint(Piece.pSlotId, Piece.isLit
+			? float4_t(1.f, 1.f, 1.f, fPulse * fEased)
+			: float4_t(1.f, 1.f, 1.f, fEased));
+		m_pView->Set_SlotVisible(Piece.pSlotId, true);
+	}
 }
 
 bool_t CRaidEntryPreviewView::Render()
@@ -135,12 +443,15 @@ bool_t CRaidEntryPreviewView::Render()
 	}
 	Hide_ConfirmSlots();
 
-	m_pView->Set_SlotTint("RaidEntry_DimBackdrop", DIM_BACKDROP_TINT);
 	for (const char* pSlotId : MAIN_ART_SLOTS)
 		m_pView->Set_SlotVisible(pSlotId, true);
 
 	const f32_t fRefWidth = m_pView->Get_ResolutionWidth();
 	const f32_t fRefHeight = m_pView->Get_ResolutionHeight();
+
+	/* Timer_Default is the frame clock Client.cpp registers at startup; the grow is eased over
+	   real time so it settles the same way regardless of framerate. */
+	Update_TabStrip(CGameInstance::Get().Get_TimeDelta(TEXT("Timer_Default")));
 
 	/* Matching / Find Party are visual-only per PLAN scope (no matching system exists yet) --
 	   static art, no hover swap, no click handling. Decline always closes internally; Entrance
@@ -218,6 +529,28 @@ void CRaidEntryPreviewView::RenderText()
 	const float textScaleY = vViewportSize.y / 1080.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
+	/* Every offset and target height below is in the source movie's own 1920x1080 units, traced
+	from epicgatecommanderentrance.gfx alongside the art placement. Get_SlotRect answers in the
+	layout document's units instead, and those two agreed only while the document still carried
+	that same canvas -- it has since been scaled onto this project's shared 1280x720 authoring
+	canvas. Convert the rects back here rather than restating every authored number as a fraction
+	of itself, which would leave the traced font sizes unreadable as the values they came from. */
+	const f32_t fDocumentWidth = m_pView->Get_ResolutionWidth();
+	const f32_t fDocumentHeight = m_pView->Get_ResolutionHeight();
+	const f32_t fToAuthoredX = (fDocumentWidth > 0.f) ? (1920.f / fDocumentWidth) : 1.f;
+	const f32_t fToAuthoredY = (fDocumentHeight > 0.f) ? (1080.f / fDocumentHeight) : 1.f;
+	const auto Fn_SlotRect = [&](const char_t* pSlotId,
+		f32_t& fX, f32_t& fY, f32_t& fW, f32_t& fH) -> bool_t
+	{
+		if (!m_pView->Get_SlotRect(pSlotId, fX, fY, fW, fH))
+			return false;
+		fX *= fToAuthoredX;
+		fW *= fToAuthoredX;
+		fY *= fToAuthoredY;
+		fH *= fToAuthoredY;
+		return true;
+	};
+
 	const auto Fn_DrawCentered = [&](f32_t fCenterX, f32_t fCenterY,
 		const wchar_t* pLabel, f32_t fTargetHeight, const fvector_t& vColor)
 	{
@@ -230,44 +563,51 @@ void CRaidEntryPreviewView::RenderText()
 			vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 	};
 
-	/* Content pivoted from "발탄" to "쿠크세이튼" ("한밤중의 서커스") on request --
-	   the team's already bringing in real Kakul-Saydon map resources
-	   (LV_LUT_MIDNIGHTC_ED), so this screen previews that raid's own identity
-	   instead of Valtan's, even though the boss portrait itself is still a
-	   mood-only placeholder (no real Kakul key art has been extracted yet). */
-	/* Real coordinates for both lines, traced from monsterInfo's own children
-	   in the root sprite (titleTxt local (68,728), commanderNameTxt local
-	   (68,759), monsterInfo itself at root (0,0) -- so these y values are the
-	   real absolute ones). X centering (rather than the real field's own
-	   left-anchored x=68) is kept since the real textField's width/alignment
-	   isn't recoverable from PlaceObject data alone, and centered clearly
-	   matches the reference screenshot. */
-	f32_t fSubtitleX = 0.f, fSubtitleY = 0.f, fSubtitleW = 0.f, fSubtitleH = 0.f;
-	if (m_pView->Get_SlotRect(
-		"RaidEntry_SubtitleTextBox", fSubtitleX, fSubtitleY, fSubtitleW, fSubtitleH))
+	const RAID_DEF& Raid = RAID_DEFS[
+		(m_iSelectedRaid >= 0 && m_iSelectedRaid < RAID_COUNT) ? m_iSelectedRaid : 0];
+	/* Boss title, boss name and the reward heading all sit on the same vertical spine as the
+	   ornament under them, so they share one centre rather than each slot's own. */
+	const fvector_t vGold = XMVectorSet(1.f, 0.85f, 0.42f, 1.f);
+	f32_t fSpineX = 0.f;
 	{
-		// "광기군단장"
-		Fn_DrawCentered(fSubtitleX + fSubtitleW * 0.5f, fSubtitleY + fSubtitleH * 0.5f,
-			L"\xAD11\xAE30\xAD70\xB2E8\xC7A5", 18.f, Colors::White);
+		f32_t fOrnX = 0.f, fOrnY = 0.f, fOrnW = 0.f, fOrnH = 0.f;
+		fSpineX = Fn_SlotRect("RaidEntry_TopTitleArt", fOrnX, fOrnY, fOrnW, fOrnH)
+			? (fOrnX + fOrnW * 0.5f) : 0.f;
 	}
 
 	f32_t fTitleX = 0.f, fTitleY = 0.f, fTitleW = 0.f, fTitleH = 0.f;
-	if (m_pView->Get_SlotRect(
-		"RaidEntry_TitleTextBox", fTitleX, fTitleY, fTitleW, fTitleH))
+	const bool_t hasTitle =
+		Fn_SlotRect("RaidEntry_TitleTextBox", fTitleX, fTitleY, fTitleW, fTitleH);
+
+	f32_t fSubtitleX = 0.f, fSubtitleY = 0.f, fSubtitleW = 0.f, fSubtitleH = 0.f;
+	if (Fn_SlotRect(
+		"RaidEntry_SubtitleTextBox", fSubtitleX, fSubtitleY, fSubtitleW, fSubtitleH))
 	{
-		// "쿠크세이튼"
-		Fn_DrawCentered(fTitleX + fTitleW * 0.5f, fTitleY + fTitleH * 0.5f,
-			L"\xCFE0\xD06C\xC138\xC774\xD2BC",
-			40.f, Colors::White);
+		/* Pulled down against the boss name instead of sitting at its slot's own centre --
+		   the two read as one block in the reference, not two separate lines. */
+		const f32_t fSubtitleCentreY = hasTitle
+			? (fTitleY - fSubtitleH * 0.35f) : (fSubtitleY + fSubtitleH * 0.5f);
+		Fn_DrawCentered(
+			(fSpineX > 0.f) ? fSpineX : (fSubtitleX + fSubtitleW * 0.5f),
+			fSubtitleCentreY, Raid.pBossTitle, 21.6f, vGold);
+	}
+
+	if (hasTitle)
+	{
+		Fn_DrawCentered(
+			(fSpineX > 0.f) ? fSpineX : (fTitleX + fTitleW * 0.5f),
+			fTitleY + fTitleH * 0.5f, Raid.pBossName, 48.f, vGold);
 	}
 
 	f32_t fDescX = 0.f, fDescY = 0.f, fDescW = 0.f, fDescH = 0.f;
-	if (m_pView->Get_SlotRect(
+	if (Fn_SlotRect(
 		"RaidEntry_DescTextBox", fDescX, fDescY, fDescW, fDescH))
 	{
+		/* On the same spine as the boss name and the reward heading -- this line belongs to
+		   that block, not to its own slot's centre. */
 		// "필요 인원 4명"
-		Fn_DrawCentered(fDescX + fDescW * 0.5f, fDescY + fDescH * 0.5f,
-			L"\xD544\xC694 \xC778\xC6D0 4\xBA85",
+		Fn_DrawCentered((fSpineX > 0.f) ? fSpineX : (fDescX + fDescW * 0.5f),
+			fDescY + fDescH * 0.5f, L"\xD544\xC694 \xC778\xC6D0 4\xBA85",
 			20.f, Colors::White);
 	}
 
@@ -285,26 +625,27 @@ void CRaidEntryPreviewView::RenderText()
 		const char_t* pSlotId;
 		const wchar_t* pLabel;
 		f32_t fTargetHeight;
+		bool_t isGold;
 	};
 	const LEFT_LABEL LEFT_LABELS[] =
 	{
-		// "군단장 레이드"
-		{ "RaidEntry_AdaptLabelBox", L"\xAD70\xB2E8\xC7A5 \xB808\xC774\xB4DC", 16.f },
-		// "한밤중의 서커스"
-		{ "RaidEntry_GoldLabelBox", L"\xD55C\xBC24\xC911\xC758 \xC11C\xCEE4\xC2A4", 26.f },
+		// "군단장 레이드" -- the panel's headline, so it outsizes the raid name below it.
+		{ "RaidEntry_AdaptLabelBox", L"\xAD70\xB2E8\xC7A5 \xB808\xC774\xB4DC", 36.f, false },
+		// The selected raid's own name, in gold under that headline.
+		{ "RaidEntry_GoldLabelBox", Raid.pRaidName, 21.6f, true },
 		// "엔드 콘텐츠"
-		{ "RaidEntry_EndContentCaptionBox", L"\xC5D4\xB4DC \xCF58\xD150\xCE20", 14.f },
+		{ "RaidEntry_EndContentCaptionBox", L"\xC5D4\xB4DC \xCF58\xD150\xCE20", 14.f, false },
 		// "사용 가능한 에스더 스킬"
 		{ "RaidEntry_EstherCaptionBox",
-			L"\xC0AC\xC6A9 \xAC00\xB2A5\xD55C \xC5D0\xC2A4\xB354 \xC2A4\xD0AC", 16.f },
+			L"\xC0AC\xC6A9 \xAC00\xB2A5\xD55C \xC5D0\xC2A4\xB354 \xC2A4\xD0AC", 19.2f, false },
 	};
 	for (const LEFT_LABEL& label : LEFT_LABELS)
 	{
 		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
-		if (!m_pView->Get_SlotRect(label.pSlotId, fX, fY, fW, fH))
+		if (!Fn_SlotRect(label.pSlotId, fX, fY, fW, fH))
 			continue;
 		Fn_DrawCentered(fX + fW * 0.5f, fY + fH * 0.5f, label.pLabel,
-			label.fTargetHeight, Colors::White);
+			label.fTargetHeight, label.isGold ? vGold : Colors::White);
 	}
 
 	/* Tier "3" / "솔로" badges, "보상 더보기" link, and the top-right close
@@ -318,8 +659,6 @@ void CRaidEntryPreviewView::RenderText()
 	const ICON_LABEL ICON_LABELS[] =
 	{
 		{ "RaidEntry_TierNumberBadgeSlot", L"3", 22.f },
-		// "솔로"
-		{ "RaidEntry_SoloBadgeSlot", L"\xC194\xB85C", 13.f },
 		// "보상 더보기 >"
 		{ "RaidEntry_RewardMoreLinkBox", L"\xBCF4\xC0C1 \xB354\xBCF4\xAE30 >", 16.f },
 		// "추천 스킬"
@@ -328,78 +667,95 @@ void CRaidEntryPreviewView::RenderText()
 	for (const ICON_LABEL& label : ICON_LABELS)
 	{
 		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
-		if (!m_pView->Get_SlotRect(label.pSlotId, fX, fY, fW, fH))
+		if (!Fn_SlotRect(label.pSlotId, fX, fY, fW, fH))
 			continue;
 		Fn_DrawCentered(fX + fW * 0.5f, fY + fH * 0.5f, label.pLabel,
 			label.fTargetHeight, Colors::White);
 	}
-	// "닫기 (Esc)" -- sits just left of RaidEntry_CloseButtonSlot's X icon.
+	/* Right-side condition panel: heading, item-level display (honest dash placeholder --
+	   no item-level system exists yet), the real, currently-true entry facts (party size
+	   cap, single-gate boss), a restriction list matching the reference's own bullet
+	   lines, the weekly-limit warning text, and the preset/gold-limit lines -- none of
+	   these gate anything server-side yet, they mirror the reference's own static copy
+	   per PLAN "남은 미해결 사항".
+
+	   Each line owns a slot rather than an offset from the panel's rect. The offsets
+	   these replace were measured against an earlier, larger panel and no longer agreed
+	   with it, and more to the point a hardcoded offset cannot be moved in the layout
+	   tool: the whole block could only travel together. Same for the two below. */
+	struct PANEL_LINE
+	{
+		const char_t* pSlotId;
+		const wchar_t* pLabel;
+		f32_t fTargetHeight;
+		bool_t isAccent;
+		bool_t isWarning;
+	};
+	/* "나의 아이템 레벨 N" -- N comes from m_iMyItemLevel, not the literal, so equipment upgrade
+	   can drive it through Set_MyItemLevel once that system exists. */
+	wchar_t szMyItemLevel[64] = {};
+	(void)swprintf_s(szMyItemLevel,
+		L"\xB098\xC758 \xC544\xC774\xD15C \xB808\xBCA8 %d", m_iMyItemLevel);
+
+	/* The three restriction lines and the gold-limit line read a step small against the rest of
+	   the panel, so they carry their own 1.2x over the base sizes. */
+	constexpr f32_t RESTRICTION_HEIGHT = 14.f * 1.2f;
+	/* And they sit a touch high under the item-level row. */
+	constexpr f32_t RESTRICTION_DROP = 6.f;
+
+	const PANEL_LINE PANEL_LINES[] =
+	{
+		// "입장 조건"
+		{ "RaidEntry_CondLine_0", L"\xC785\xC7A5 \xC870\xAC74", 24.f, false, false },
+		// "관문별 아이템 레벨"
+		{ "RaidEntry_CondLine_1",
+			L"\xAD00\xBB38\xBCC4 \xC544\xC774\xD15C \xB808\xBCA8", 16.f, false, false },
+		{ "RaidEntry_CondLine_2", Raid.pGateLevels, 18.f, false, false },
+		{ "RaidEntry_CondLine_3", szMyItemLevel, 18.f, true, false },
+		{ "RaidEntry_CondLine_4", Raid.pMatchLimit, RESTRICTION_HEIGHT, false, false },
+		// "일반 물약 사용 불가"
+		{ "RaidEntry_CondLine_5",
+			L"\xC77C\xBC18 \xBB3C\xC57D \xC0AC\xC6A9 \xBD88\xAC00",
+			RESTRICTION_HEIGHT, false, false },
+		// "장비 변경 불가"
+		{ "RaidEntry_CondLine_6",
+			L"\xC7A5\xBE44 \xBCC0\xACBD \xBD88\xAC00", RESTRICTION_HEIGHT, false, false },
+		// "주간 입장 횟수 초과"
+		{ "RaidEntry_CondLine_7",
+			L"\xC8FC\xAC04 \xC785\xC7A5 \xD69F\xC218 \xCD08\xACFC", 16.f, false, true },
+		// "통합 프리셋 설정 가능"
+		{ "RaidEntry_CondLine_8",
+			L"\xD1B5\xD569 \xD504\xB9AC\xC14B \xC124\xC815 \xAC00\xB2A5", 14.f, false, false },
+		// "주간 골드 획득 제한 (1/6)"
+		{ "RaidEntry_CondLine_9",
+			L"\xC8FC\xAC04 \xACE8\xB4DC \xD68D\xB4DD \xC81C\xD55C (1/6)",
+			14.f * 1.2f, true, false },
+		// "닫기 (Esc)"
+		{ "RaidEntry_CloseLabelBox", L"\xB2EB\xAE30 (Esc)", 16.f, false, false },
+	};
+	for (const PANEL_LINE& Line : PANEL_LINES)
 	{
 		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
-		if (m_pView->Get_SlotRect("RaidEntry_CloseButtonSlot", fX, fY, fW, fH))
+		if (!Fn_SlotRect(Line.pSlotId, fX, fY, fW, fH))
+			continue;
+		const bool_t isRestriction =
+			(Line.fTargetHeight == RESTRICTION_HEIGHT) && !Line.isAccent && !Line.isWarning;
+		const fvector_t vColor = Line.isWarning
+			? XMVectorSet(1.f, 0.55f, 0.4f, 1.f)
+			: (Line.isAccent ? vGold : Colors::White);
+		Fn_DrawCentered(fX + fW * 0.5f,
+			fY + fH * 0.5f + (isRestriction ? RESTRICTION_DROP : 0.f),
+			Line.pLabel, Line.fTargetHeight, vColor);
+	}
+
+	/* "기대 보상" shares the boss name's spine so it lines up with the ornament under it. */
+	{
+		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
+		if (Fn_SlotRect("RaidEntry_RewardTitleBox", fX, fY, fW, fH))
 		{
-			Fn_DrawCentered(fX - 70.f, fY + fH * 0.5f,
-				L"\xB2EB\xAE30 (Esc)", 16.f, Colors::White);
+			Fn_DrawCentered((fSpineX > 0.f) ? fSpineX : (fX + fW * 0.5f),
+				fY + fH * 0.5f, L"\xAE30\xB300 \xBCF4\xC0C1", 20.f, Colors::White);
 		}
-	}
-
-	/* Right-side condition panel: heading, the 3 tier badges drawn above,
-	   item-level display (honest dash placeholder -- no item-level system
-	   exists yet), the real, currently-true entry facts (party size cap,
-	   single-gate boss), a restriction list matching the reference's own
-	   bullet lines, the weekly-limit warning box's text, and the
-	   preset/gold-limit lines -- none of these gate anything server-side yet,
-	   they mirror the reference's own static copy per PLAN "남은 미해결 사항". */
-	f32_t fCondX = 0.f, fCondY = 0.f, fCondW = 0.f, fCondH = 0.f;
-	if (m_pView->Get_SlotRect(
-		"RaidEntry_ConditionTextBox", fCondX, fCondY, fCondW, fCondH))
-	{
-		const f32_t fCenterX = fCondX + fCondW * 0.5f;
-		// "입장 조건"
-		Fn_DrawCentered(fCenterX, fCondY + 30.f,
-			L"\xC785\xC7A5 \xC870\xAC74", 24.f, Colors::White);
-		// "관문별 아이템 레벨" -- below the 3 tier badges (fixed at y=300..364)
-		Fn_DrawCentered(fCenterX, fCondY + 150.f,
-			L"\xAD00\xBB38\xBCC4 \xC544\xC774\xD15C \xB808\xBCA8", 16.f, Colors::White);
-		// "1475  1475  1475"
-		Fn_DrawCentered(fCenterX, fCondY + 175.f,
-			L"1475  1475  1475", 18.f, Colors::White);
-		// "나의 아이템 레벨 1556"
-		Fn_DrawCentered(fCenterX, fCondY + 205.f,
-			L"\xB098\xC758 \xC544\xC774\xD15C \xB808\xBCA8 1556",
-			18.f, XMVectorSet(1.f, 0.85f, 0.4f, 1.f));
-		// "아이템 레벨 1475 미만 매칭 불가"
-		Fn_DrawCentered(fCenterX, fCondY + 240.f,
-			L"\xC544\xC774\xD15C \xB808\xBCA8 1475 \xBBF8\xB9CC \xB9E4\xCE6D \xBD88\xAC00",
-			14.f, Colors::White);
-		// "일반 물약 사용 불가"
-		Fn_DrawCentered(fCenterX, fCondY + 264.f,
-			L"\xC77C\xBC18 \xBB3C\xC57D \xC0AC\xC6A9 \xBD88\xAC00", 14.f, Colors::White);
-		// "장비 변경 불가"
-		Fn_DrawCentered(fCenterX, fCondY + 288.f,
-			L"\xC7A5\xBE44 \xBCC0\xACBD \xBD88\xAC00", 14.f, Colors::White);
-		// "주간 입장 횟수 초과" -- centered inside RaidEntry_WarningBoxSlot
-		// (fixed at y=560, height 60).
-		Fn_DrawCentered(fCenterX, fCondY + 345.f,
-			L"\xC8FC\xAC04 \xC785\xC7A5 \xD69F\xC218 \xCD08\xACFC",
-			16.f, XMVectorSet(1.f, 0.55f, 0.4f, 1.f));
-		// "통합 프리셋 설정 가능"
-		Fn_DrawCentered(fCenterX, fCondY + 410.f,
-			L"\xD1B5\xD569 \xD504\xB9AC\xC14B \xC124\xC815 \xAC00\xB2A5",
-			14.f, Colors::White);
-		// "주간 골드 획득 제한 (1/6)"
-		Fn_DrawCentered(fCenterX, fCondY + 438.f,
-			L"\xC8FC\xAC04 \xACE8\xB4DC \xD68D\xB4DD \xC81C\xD55C (1/6)",
-			14.f, Colors::White);
-	}
-
-	f32_t fRewardX = 0.f, fRewardY = 0.f, fRewardW = 0.f, fRewardH = 0.f;
-	if (m_pView->Get_SlotRect(
-		"RaidEntry_RewardPanel", fRewardX, fRewardY, fRewardW, fRewardH))
-	{
-		// "기대 보상"
-		Fn_DrawCentered(fRewardX + fRewardW * 0.5f, fRewardY + 18.f,
-			L"\xAE30\xB300 \xBCF4\xC0C1", 20.f, Colors::White);
 	}
 
 	/* Matching / Find Party are visual-only per PLAN scope -- still labelled
@@ -411,50 +767,35 @@ void CRaidEntryPreviewView::RenderText()
 	};
 	const STATIC_BUTTON_LABEL STATIC_BUTTON_LABELS[] =
 	{
-		// "매칭"
-		{ "RaidEntry_MatchingButton", L"\xB9E4\xCE6D" },
+		// "매칭 신청"
+		{ "RaidEntry_MatchingButton", L"\xB9E4\xCE6D \xC2E0\xCCAD" },
 		// "파티 찾기"
 		{ "RaidEntry_FindPartyButton", L"\xD30C\xD2F0 \xCC3E\xAE30" },
 	};
 	for (const STATIC_BUTTON_LABEL& label : STATIC_BUTTON_LABELS)
 	{
 		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
-		if (!m_pView->Get_SlotRect(label.pSlotId, fX, fY, fW, fH))
+		if (!Fn_SlotRect(label.pSlotId, fX, fY, fW, fH))
 			continue;
 		Fn_DrawCentered(fX + fW * 0.5f, fY + fH * 0.5f, label.pLabel,
 			fH * 0.48f, Colors::White);
 	}
 
-	/* Label sits to the right of the icon inside the same button, not centered
-	   on the whole button -- Get_SlotRect gives both rects so no hardcoded
-	   offset is needed. */
-	struct MODAL_BUTTON_LABEL
-	{
-		const char_t* pButtonSlotId;
-		const char_t* pIconSlotId;
-		const wchar_t* pLabel;
-	};
-	const MODAL_BUTTON_LABEL BUTTON_LABELS[] =
-	{
-		// "입장하기"
-		{ "RaidEntry_EntranceButton", "RaidEntry_AcceptIcon", L"\xC785\xC7A5\xD558\xAE30" },
-	};
-	for (const MODAL_BUTTON_LABEL& Label : BUTTON_LABELS)
+	/* "입장하기" on the gold button. This used to require a RaidEntry_AcceptIcon slot to offset
+	   the label past its icon, and bailed out when that slot was missing -- which is why the
+	   button read as blank once the icon was removed from the document. The icon is optional
+	   now: with one the label centres on the space to its right, without one on the button. */
 	{
 		f32_t fButtonX = 0.f, fButtonY = 0.f, fButtonW = 0.f, fButtonH = 0.f;
-		f32_t fIconX = 0.f, fIconY = 0.f, fIconW = 0.f, fIconH = 0.f;
-		if (!m_pView->Get_SlotRect(
-				Label.pButtonSlotId, fButtonX, fButtonY, fButtonW, fButtonH) ||
-			!m_pView->Get_SlotRect(
-				Label.pIconSlotId, fIconX, fIconY, fIconW, fIconH))
+		if (Fn_SlotRect("RaidEntry_EntranceButton", fButtonX, fButtonY, fButtonW, fButtonH))
 		{
-			continue;
+			f32_t fIconX = 0.f, fIconY = 0.f, fIconW = 0.f, fIconH = 0.f;
+			const f32_t fLeft = Fn_SlotRect("RaidEntry_AcceptIcon", fIconX, fIconY, fIconW, fIconH)
+				? (fIconX + fIconW) : fButtonX;
+			Fn_DrawCentered(
+				(fLeft + fButtonX + fButtonW) * 0.5f, fButtonY + fButtonH * 0.5f,
+				L"\xC785\xC7A5\xD558\xAE30", fButtonH * 0.48f, Colors::White);
 		}
-		const f32_t fIconRight = fIconX + fIconW;
-		const f32_t fButtonRight = fButtonX + fButtonW;
-		Fn_DrawCentered(
-			(fIconRight + fButtonRight) * 0.5f, fButtonY + fButtonH * 0.5f,
-			Label.pLabel, fButtonH * 0.48f, Colors::White);
 	}
 }
 

@@ -1,2398 +1,1022 @@
 {
   "schema": "lostark.ui-layout",
   "formatVersion": 1,
-  "resolution": {
-    "width": 1920,
-    "height": 1080
-  },
-  "classes": [
-    "Default"
-  ],
+  "resolution": { "width": 1280, "height": 720 },
+  "classes": ["Default"],
   "slots": [
     {
       "id": "RaidEntry_DimBackdrop",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "width": 1920,
-        "height": 1080
-      },
+      "rect": { "x": 2.43463516, "y": -0.219414592, "width": 1280, "height": 720 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            0,
-            0,
-            0,
-            0.72
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Bern/RaidEntry_ScreenDim.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
-      "id": "RaidEntry_BossPortrait",
+      "id": "RaidEntry_WindowBg",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "width": 1920,
-        "height": 920
-      },
+      "rect": { "x": 0, "y": 89.9999924, "width": 1280, "height": 478.666687 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Bern/RaidEntry_WindowBg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
-      "id": "RaidEntry_PortraitFrame",
+      "id": "RaidEntry_BossNameBar",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "width": 1920,
-        "height": 920
-      },
+      "rect": { "x": 275.634583, "y": 450.075958, "width": 805.333313, "height": 115.333298 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Bern/RaidEntry_BossNameBar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "RaidEntry_TopBorderStrip",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 380,
-        "y": 118,
-        "width": 1160,
-        "height": 8
-      },
+      "rect": { "x": 0, "y": 88.6666946, "width": 1280, "height": 33.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Bern/RaidEntry_TopDeco.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
-      "id": "RaidEntry_Vignette",
+      "id": "RaidEntry_BossPortrait",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 0,
-        "y": 0,
-        "width": 1920,
-        "height": 920
-      },
+      "rect": { "x": 274.154266, "y": -47.6262131, "width": 800.666687, "height": 562 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Bern/RaidEntry_Vignette.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Bern/RaidEntry_BossPortrait.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
-      "id": "RaidEntry_EstherFrame_0",
+      "id": "RaidEntry_TabSelPlate",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 100,
-        "y": 570,
-        "width": 90,
-        "height": 96
-      },
+      "rect": { "x": 10, "y": 69, "width": 83.4000015, "height": 47.4000015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Esther/esther_slot_frame.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Bern/RaidEntry_TabSelectedPlate.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_EstherPortrait_0",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 110,
-        "y": 578,
-        "width": 70,
-        "height": 70
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Esther/esther_portrait_bahuntur.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_EstherFrame_1",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 200,
-        "y": 570,
-        "width": 90,
-        "height": 96
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Esther/esther_slot_frame.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_EstherPortrait_1",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 210,
-        "y": 578,
-        "width": 70,
-        "height": 70
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Esther/esther_portrait_sillian.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_EstherFrame_2",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 300,
-        "y": 570,
-        "width": 90,
-        "height": 96
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Esther/esther_slot_frame.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_EstherPortrait_2",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 310,
-        "y": 578,
-        "width": 70,
-        "height": 70
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Esther/esther_portrait_wei.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_PanelFrame_TopLeft",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 60,
-        "y": 40,
-        "width": 320,
-        "height": 130
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Bern/RaidEntry_CornerFrame.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_PanelFrame_TopRight",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 1540,
-        "y": 40,
-        "width": 320,
-        "height": 130
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Bern/RaidEntry_CornerFrame.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": true
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_TitleTextBox",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 680,
-        "y": 760,
-        "width": 560,
-        "height": 84
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_ConditionTextBox",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 1520,
-        "y": 245,
-        "width": 320,
-        "height": 440
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_RewardPanel",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 460,
-        "y": 860,
-        "width": 1000,
-        "height": 160
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_MatchingButton",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 1627.0,
-        "y": 803.0,
-        "width": 130.0,
-        "height": 44.0
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Bern/RaidEntry_ButtonSteel.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_FindPartyButton",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 1768.0,
-        "y": 803.0,
-        "width": 130.0,
-        "height": 44.0
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Bern/RaidEntry_ButtonSteel.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_EntranceButton",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 1627.0,
-        "y": 849.0,
-        "width": 271.0,
-        "height": 50.0
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Bern/RaidEntry_ButtonGold.png",
-          "hoverPath": "UI/Bern/RaidEntry_ButtonGoldHover.png",
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_AcceptIcon",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 1675.0,
-        "y": 858.0,
-        "width": 32.0,
-        "height": 32.0
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Bern/Accept.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_CloseButtonSlot",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 1830,
-        "y": 40,
-        "width": 40,
-        "height": 40
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Bern/Decline.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_TierNumberBadgeSlot",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 580,
-        "y": 160,
-        "width": 44,
-        "height": 44
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_SoloBadgeSlot",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 632,
-        "y": 168,
-        "width": 40,
-        "height": 40
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_TierBadge_0",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 1625,
-        "y": 295,
-        "width": 90,
-        "height": 70
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_TierBadge_1",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 1719,
-        "y": 295,
-        "width": 90,
-        "height": 70
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_TierBadge_2",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 1813,
-        "y": 295,
-        "width": 90,
-        "height": 70
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_WarningBoxSlot",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 1500,
-        "y": 560,
-        "width": 360,
-        "height": 60
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_RewardArrowLeft",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 470,
-        "y": 925,
-        "width": 28,
-        "height": 28
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_RewardArrowRight",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 1410,
-        "y": 925,
-        "width": 28,
-        "height": 28
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "RaidEntry_TopThumb_0",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 400,
-        "y": 20,
-        "width": 150,
-        "height": 90
-      },
+      "rect": { "x": 10, "y": 69, "width": 83.4000015, "height": 47.4000015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Bern/thumb_a.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Bern/RaidEntry_TabThumb_0.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "RaidEntry_TopThumb_1",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 555,
-        "y": 20,
-        "width": 150,
-        "height": 90
-      },
+      "rect": { "x": 83.136879, "y": 69, "width": 83.4000015, "height": 47.4000015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Bern/thumb_b.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Bern/RaidEntry_TabThumb_1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "RaidEntry_TopThumb_2",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 710,
-        "y": 20,
-        "width": 150,
-        "height": 90
-      },
+      "rect": { "x": 156.273804, "y": 69, "width": 83.4000015, "height": 47.4000015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Bern/thumb_c.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Bern/RaidEntry_TabThumb_2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "RaidEntry_TopThumb_3",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 865,
-        "y": 20,
-        "width": 150,
-        "height": 90
-      },
+      "rect": { "x": 228.559372, "y": 69, "width": 83.4000015, "height": 47.4000015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Bern/RaidEntry_KakulThumb.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Bern/RaidEntry_TabThumb_3.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_TopTitleArt",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 347.656158, "y": 472.424835, "width": 722, "height": 60 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Bern/RaidEntry_TopTitleArt.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "RaidEntry_TopThumb_4",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1020,
-        "y": 20,
-        "width": 150,
-        "height": 90
-      },
+      "rect": { "x": 301.032959, "y": 69, "width": 83.4000015, "height": 47.4000015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Bern/thumb_e.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Bern/RaidEntry_TabThumb_4.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
-      "id": "RaidEntry_TopThumb_5",
+      "id": "RaidEntry_TabSelName",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1175,
-        "y": 20,
-        "width": 150,
-        "height": 90
-      },
+      "rect": { "x": 10, "y": 69, "width": 83.4000015, "height": 47.4000015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Bern/thumb_f.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Bern/RaidEntry_TabNamePlate.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": true, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
-      "id": "RaidEntry_TopThumb_6",
+      "id": "RaidEntry_TabSelGlow",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1330,
-        "y": 20,
-        "width": 150,
-        "height": 90
-      },
+      "rect": { "x": 10, "y": 69, "width": 83.4000015, "height": 47.4000015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Bern/thumb_g.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Bern/RaidEntry_TabSelected.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": true, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
-      "id": "RaidEntry_RewardMoreLinkBox",
+      "id": "RaidEntry_CloseButtonSlot",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 680,
-        "y": 168,
-        "width": 160,
-        "height": 32
-      },
+      "rect": { "x": 1153.33325, "y": 93.9999924, "width": 126.666702, "height": 24 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Bern/RaidEntry_CloseBar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_RecommendSkillBox",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 1280,
-        "y": 862,
-        "width": 160,
-        "height": 26
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_SubtitleTextBox",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 680,
-        "y": 728,
-        "width": 560,
-        "height": 28
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_AdaptLabelBox",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 100,
-        "y": 245,
-        "width": 320,
-        "height": 30
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_GoldLabelBox",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 100,
-        "y": 280,
-        "width": 320,
-        "height": 50
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
-    },
-    {
-      "id": "RaidEntry_EndContentCaptionBox",
-      "ownerClass": null,
-      "type": 0,
-      "rect": {
-        "x": 100,
-        "y": 315,
-        "width": 220,
-        "height": 26
-      },
-      "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
-      "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
-      ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "RaidEntry_RaidIconSlot",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 145,
-        "y": 350,
-        "width": 170,
-        "height": 170
-      },
+      "rect": { "x": 0, "y": 122.546005, "width": 271.333313, "height": 442.666687 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Bern/RaidEntry_LeftPanelBg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_LeftPanelEmblem",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 56.6666985, "y": 173.212448, "width": 158, "height": 32.6666985 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Bern/RaidEntry_LeftPanelEmblem.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_EstherPanelBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 18.6667004, "y": 398.545715, "width": 234, "height": 154.666702 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Bern/RaidEntry_EstherPanelBg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_EstherFrame_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 52.6666985, "y": 462.54599, "width": 56, "height": 56.6666985 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Esther/esther_slot_frame.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_EstherFrame_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 107.333298, "y": 462.545624, "width": 56, "height": 56.6666985 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Esther/esther_slot_frame.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_EstherFrame_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 162, "y": 462.545624, "width": 56, "height": 56.6666985 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Esther/esther_slot_frame.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_EstherPortrait_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 64, "y": 474.07901, "width": 33.3333015, "height": 33.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Esther/esther_portrait_bahuntur.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_EstherPortrait_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 118.666702, "y": 474.078918, "width": 33.3333015, "height": 33.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Esther/esther_portrait_sillian.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_EstherPortrait_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 173.333298, "y": 474.078918, "width": 33.3333015, "height": 33.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Esther/esther_portrait_wei.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_AdaptLabelBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 26.542305, "y": 152.707794, "width": 213.333298, "height": 20 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_GoldLabelBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 25.9193668, "y": 181.02092, "width": 213.333298, "height": 33.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "RaidEntry_EstherCaptionBox",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 100,
-        "y": 540,
-        "width": 290,
-        "height": 26
-      },
+      "rect": { "x": 35.6666985, "y": 445.478973, "width": 193.333298, "height": 17.3332996 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_SubtitleTextBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 540.163452, "y": 409.215881, "width": 373.333313, "height": 18.6667004 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_TitleTextBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 541.478821, "y": 431.86499, "width": 373.333313, "height": 56 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "RaidEntry_DescTextBox",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 680,
-        "y": 848,
-        "width": 560,
-        "height": 36
-      },
+      "rect": { "x": 542.172668, "y": 475.884705, "width": 373.333313, "height": 24 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/Common/White1x1.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            0
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardArrowLeft",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 431.654449, "y": 529.69635, "width": 26, "height": 36 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Bern/RaidEntry_Arrow.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardArrowRight",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 982.217285, "y": 530.418518, "width": 26, "height": 36 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Bern/RaidEntry_Arrow.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": true }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardPanel",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 460.971558, "y": 531.190125, "width": 518.666687, "height": 33.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardSlotBg_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 459.876495, "y": 527.084473, "width": 38.3333015, "height": 38.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemUpgrade/buildup_gradebg_legend.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "RaidEntry_RewardIcon_0",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 527.0,
-        "y": 960.0,
-        "width": 78.0,
-        "height": 78.0
-      },
+      "rect": { "x": 462.376526, "y": 529.584473, "width": 33.3333015, "height": 33.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_head_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/lm_head_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardSlotBorder_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 459.876495, "y": 527.084473, "width": 38.3333015, "height": 38.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemUpgrade/buildup_slot_border.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardSlotBg_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 498.543213, "y": 527.084473, "width": 38.3333015, "height": 38.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemUpgrade/buildup_gradebg_legend.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "RaidEntry_RewardIcon_1",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 639.7,
-        "y": 960.0,
-        "width": 78.0,
-        "height": 78.0
-      },
+      "rect": { "x": 501.043213, "y": 529.584473, "width": 33.3333015, "height": 33.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_shoulder_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/lm_shoulder_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardSlotBorder_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 498.543213, "y": 527.084473, "width": 38.3333015, "height": 38.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemUpgrade/buildup_slot_border.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardSlotBg_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 537.210083, "y": 527.084473, "width": 38.3333015, "height": 38.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemUpgrade/buildup_gradebg_legend.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "RaidEntry_RewardIcon_2",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 752.4,
-        "y": 960.0,
-        "width": 78.0,
-        "height": 78.0
-      },
+      "rect": { "x": 539.710144, "y": 529.584473, "width": 33.3333015, "height": 33.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_top_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/lm_top_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardSlotBorder_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 537.210083, "y": 527.084473, "width": 38.3333015, "height": 38.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemUpgrade/buildup_slot_border.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardSlotBg_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 575.877014, "y": 527.084473, "width": 38.3333015, "height": 38.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemUpgrade/buildup_gradebg_legend.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "RaidEntry_RewardIcon_3",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 865.1,
-        "y": 960.0,
-        "width": 78.0,
-        "height": 78.0
-      },
+      "rect": { "x": 578.377014, "y": 529.584473, "width": 33.3333015, "height": 33.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_bottom_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/lm_bottom_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardSlotBorder_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 575.877014, "y": 527.084473, "width": 38.3333015, "height": 38.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemUpgrade/buildup_slot_border.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardSlotBg_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 614.543701, "y": 527.084473, "width": 38.3333015, "height": 38.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemUpgrade/buildup_gradebg_legend.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "RaidEntry_RewardIcon_4",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 977.9,
-        "y": 960.0,
-        "width": 78.0,
-        "height": 78.0
-      },
+      "rect": { "x": 617.043701, "y": 529.584473, "width": 33.3333015, "height": 33.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_glove_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/lm_glove_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardSlotBorder_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 614.543701, "y": 527.084473, "width": 38.3333015, "height": 38.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemUpgrade/buildup_slot_border.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardSlotBg_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 653.210327, "y": 527.084473, "width": 38.3333015, "height": 38.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemUpgrade/buildup_gradebg_legend.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "RaidEntry_RewardIcon_5",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1090.6,
-        "y": 960.0,
-        "width": 78.0,
-        "height": 78.0
-      },
+      "rect": { "x": 655.710327, "y": 529.584473, "width": 33.3333015, "height": 33.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_weapon_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/lm_weapon_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardSlotBorder_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 653.210327, "y": 527.084473, "width": 38.3333015, "height": 38.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemUpgrade/buildup_slot_border.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardSlotBg_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 691.877014, "y": 527.084473, "width": 38.3333015, "height": 38.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemUpgrade/buildup_gradebg_legend.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "RaidEntry_RewardIcon_6",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1203.3,
-        "y": 960.0,
-        "width": 78.0,
-        "height": 78.0
-      },
+      "rect": { "x": 694.377014, "y": 529.584473, "width": 33.3333015, "height": 33.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_head_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/lm_head_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardSlotBorder_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 691.877014, "y": 527.084473, "width": 38.3333015, "height": 38.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemUpgrade/buildup_slot_border.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardSlotBg_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 730.543701, "y": 527.084473, "width": 38.3333015, "height": 38.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemUpgrade/buildup_gradebg_legend.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "RaidEntry_RewardIcon_7",
       "ownerClass": null,
       "type": 0,
-      "rect": {
-        "x": 1316.0,
-        "y": 960.0,
-        "width": 78.0,
-        "height": 78.0
-      },
+      "rect": { "x": 733.043701, "y": 529.584473, "width": 33.3333015, "height": 33.3333015 },
       "rotation": 0,
-      "stages": {
-        "baseFrom": 0,
-        "shineFrom": 1
-      },
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        {
-          "path": "UI/ItemUpgrade/lm_weapon_icon.png",
-          "hoverPath": null,
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
-          "additive": false,
-          "flipX": false
-        }
+        { "path": "UI/ItemUpgrade/lm_weapon_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
-      "shine": {
-        "texture": null,
-        "additive": false
-      },
-      "animation": {
-        "fps": 10,
-        "scale": 1,
-        "offset": {
-          "x": 0,
-          "y": 0
-        },
-        "frames": [],
-        "loop": true,
-        "additive": false
-      }
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardSlotBorder_7",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 730.543701, "y": 527.084473, "width": 38.3333015, "height": 38.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ItemUpgrade/buildup_slot_border.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_SoloBadgeSlot",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1075, "y": 169.132401, "width": 206.667007, "height": 74.6667023 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Bern/RaidEntry_SoloBadge.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_TierBadge_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1075, "y": 358.666565, "width": 204.332993, "height": 90.6667023 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Bern/RaidEntry_GateGroup.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_GateLine_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1149.63635, "y": 247.659454, "width": 33.3333015, "height": 15.3332996 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Bern/RaidEntry_GateLine.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_GateLine_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1178.3031, "y": 247.659454, "width": 33.3333015, "height": 15.3332996 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Bern/RaidEntry_GateLine.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_GateIcon_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1135.63635, "y": 239.659454, "width": 28.3332996, "height": 31.2000008 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Bern/RaidEntry_GateIcon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_GateIcon_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1166.3031, "y": 239.659454, "width": 28.3332996, "height": 31.2000008 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Bern/RaidEntry_GateIcon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_GateIcon_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1196.9696, "y": 239.659454, "width": 28.3332996, "height": 31.2000008 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Bern/RaidEntry_GateIcon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_ConditionHeaderButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1073.70984, "y": 119.355629, "width": 208.667007, "height": 50.3320007 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Bern/RaidEntry_ButtonSteel.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_CondLine_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1089.63232, "y": 134.366135, "width": 175.333298, "height": 16 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_CondLine_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1091.60706, "y": 231.698013, "width": 175.333298, "height": 10.6667004 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_CondLine_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1091.53918, "y": 268.335571, "width": 175.333298, "height": 12 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_CondLine_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1092.39819, "y": 289.19455, "width": 175.333298, "height": 12 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_CondLine_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1089.82129, "y": 340.491089, "width": 175.333298, "height": 9.33329964 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_CondLine_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1089.82129, "y": 356.491119, "width": 175.333298, "height": 9.33329964 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_CondLine_6",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1089.82129, "y": 372.491119, "width": 175.333298, "height": 9.33329964 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_CondLine_9",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1085.52576, "y": 487.386505, "width": 175.333298, "height": 9.33329964 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_RewardTitleBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 460.504303, "y": 502.851501, "width": 518.666687, "height": 13.3332996 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_CloseLabelBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1181.51782, "y": 100.574478, "width": 80, "height": 10.6667004 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Common/White1x1.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_MatchingButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1083.86169, "y": 504.057129, "width": 86.6667023, "height": 29.3332996 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Bern/RaidEntry_ButtonSteel.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_FindPartyButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1177.86169, "y": 504.057129, "width": 86.6667023, "height": 29.3332996 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Bern/RaidEntry_ButtonSteel.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "RaidEntry_EntranceButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1083.86169, "y": 535.390259, "width": 180.666702, "height": 33.3333015 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Bern/RaidEntry_ButtonGold.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     }
   ]
 }

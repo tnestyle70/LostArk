@@ -184,6 +184,18 @@ namespace
 		TitleTextMarker/RenderDeadSceneText. BgFlash/Emblem are real crops from
 		epicgatecommonclear_i6a.dds. */
 		{ "Raid Clear",     "UI/RaidClear/RaidClear_Layout.json", "UI/RaidClear/", false },
+		/* Commander raid entry window. Everything the source could give is already placed from
+		epicgatecommanderentrance.gfx: instances sitting directly in EpicGateCommanderEntranceContent
+		carry real PlaceObject matrices, traced on that movie's own 1920x1080 canvas and then scaled
+		by a uniform 2/3 (1280/1920 == 720/1080, so no aspect change) onto this project's shared
+		1280x720 authoring canvas.
+
+		What the source cannot give is anything inside a runtime-laid-out list -- raidStageTab's
+		boss tabs, rewardList's tiles, bindConditionList's rows. Their authored child coordinates
+		are scratch positions, not final layout: the tab frames sit at a regular 123px x spacing but
+		at three different y values (116/156.1/187), because the component repositions them itself
+		at runtime. Those are placed by hand here rather than guessed from the shipped art. */
+		{ "Raid Entry",     "UI/Bern/ValtanRaidEntry_Layout.json", "UI/Bern/", false },
 	};
 
 	constexpr int32_t g_iDocumentCount = static_cast<int32_t>(sizeof(g_Documents) / sizeof(g_Documents[0]));
@@ -606,6 +618,10 @@ void Client::CHUDLayoutTool::Render()
 	ImGui::Checkbox("Boost Dark Art", &m_bBoostDarkArt);
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("Editor-only: layers under a dark background lose their edges when aligning by eye.\nThis redraws them with extra additive passes just for visibility here; it changes nothing saved to the cfg or seen in-game.");
+	ImGui::SameLine();
+	ImGui::Checkbox("Show Empty Slots", &m_bShowEmptySlots);
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Editor-only: outlines and names the slots that draw nothing -- text boxes, whose string the runtime draws at the slot rect, and any slot whose layers are fully transparent.\nWithout this they are invisible on the canvas and cannot be picked up.");
 
 	/* One control drives every slot, so a charge state can be judged as a whole. */
 	if (ImGui::Button("Animation Stage"))
@@ -1206,7 +1222,11 @@ void Client::CHUDLayoutTool::Render_Canvas()
 					ImVec4(Layer.vTint[0], Layer.vTint[1], Layer.vTint[2], Layer.vTint[3]));
 
 				Draw_Image_Quad(pDrawList, pLayerSRV, Corners, iTint, Layer.bAdditive, Layer.bFlipX);
-				bAnyLayerDrawn = true;
+				/* A layer at zero alpha put nothing on screen, so it must not count as drawn -- that
+				is exactly what a text-only slot's placeholder layer is, and counting it suppressed
+				the empty-slot outline that makes such a slot selectable. */
+				if (Layer.vTint[3] > (1.f / 255.f))
+					bAnyLayerDrawn = true;
 
 				/* Extra additive passes of the same art lift dark pixels toward visible without
 				   touching the layer's own (correct) alpha-blended look; already-additive layers
@@ -1232,8 +1252,17 @@ void Client::CHUDLayoutTool::Render_Canvas()
 
 		/* A slot with nothing to show at this stage gets a faint outline so it stays findable while
 		   editing, but that marker is editor chrome: clicking the background clears the selection and
-		   with it every outline, leaving a clean preview of the layout itself. */
-		if (!bAnyLayerDrawn && !m_SelectedSlots.empty())
+		   with it every outline, leaving a clean preview of the layout itself. Show Empty Slots keeps
+		   them outlined and named with nothing selected, which is the only way to find and drag a
+		   text-only slot -- turn it off for that clean preview. */
+		if (!bAnyLayerDrawn && m_bShowEmptySlots)
+		{
+			pDrawList->AddQuad(Corners[0], Corners[1], Corners[2], Corners[3], IM_COL32(120, 220, 150, 190));
+			if (!bSelected)
+				pDrawList->AddText(ImVec2(Corners[0].x + 3.f, Corners[0].y + 2.f),
+					IM_COL32(120, 220, 150, 220), Slot.strName.c_str());
+		}
+		else if (!bAnyLayerDrawn && !m_SelectedSlots.empty())
 			pDrawList->AddQuad(Corners[0], Corners[1], Corners[2], Corners[3], IM_COL32(150, 150, 160, 80));
 
 		if (bSelected)
