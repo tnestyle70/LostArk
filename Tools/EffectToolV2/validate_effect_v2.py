@@ -7,8 +7,15 @@ import collections
 import json
 import math
 import os
+import sys
 from pathlib import Path, PurePosixPath
 from typing import Any, Mapping
+
+
+MODULE_ROOT = Path(__file__).resolve().parent
+if str(MODULE_ROOT) not in sys.path:
+    sys.path.insert(0, str(MODULE_ROOT))
+import effect_v2_binding_pipeline as binding_v2  # noqa: E402
 
 
 AUTHORED_SCHEMA = "lostark.effect-v2"
@@ -35,10 +42,22 @@ def _reject_non_finite(value: str) -> None:
     raise ContractError(f"non-finite JSON number is forbidden: {value}")
 
 
+def _reject_duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ContractError(f"duplicate JSON property: {key}")
+        result[key] = value
+    return result
+
+
 def _read_json(path: Path) -> Any:
     try:
-        with path.open(encoding="utf-8") as handle:
-            return json.load(handle, parse_constant=_reject_non_finite)
+        return json.loads(
+            path.read_text(encoding="utf-8"),
+            parse_constant=_reject_non_finite,
+            object_pairs_hook=_reject_duplicate_pairs,
+        )
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise ContractError(f"invalid JSON: {path}: {exc}") from exc
 
@@ -144,7 +163,9 @@ def _validate_authored(
         raise ContractError("Effect V2 authored set is empty")
     for path in paths:
         document = _require_object(_read_json(path), path.as_posix())
-        if document.get("schema") != AUTHORED_SCHEMA or document.get("formatVersion") != 1:
+        if document.get("schema") != AUTHORED_SCHEMA or not binding_v2._is_format_version(
+            document.get("formatVersion"), 1
+        ):
             raise ContractError(f"unsupported Effect V2 document: {path}")
         effect_id = document.get("effectId")
         if not isinstance(effect_id, str) or not effect_id:
@@ -181,15 +202,20 @@ def _validate_authored(
 
 
 def _validate_groups(
-    group_root: Path, authored: dict[str, Path]
+    repository_root: Path, group_root: Path, authored: dict[str, Path]
 ) -> dict[str, list[tuple[str, int]]]:
-    """Group documents are optional; each child must be an authored leaf (no nesting)."""
+    """Validate v1 compatibility groups and strict stable-child v2 groups."""
     groups: dict[str, list[tuple[str, int]]] = {}
+    v2_group_ids: list[str] = []
     if not group_root.is_dir():
         return groups
     for path in sorted(group_root.glob("*.effectv2group.json")):
         document = _require_object(_read_json(path), path.as_posix())
-        if document.get("schema") != GROUP_SCHEMA or document.get("formatVersion") != 1:
+        version = document.get("formatVersion")
+        if document.get("schema") != GROUP_SCHEMA or not (
+            binding_v2._is_format_version(version, 1)
+            or binding_v2._is_format_version(version, 2)
+        ):
             raise ContractError(f"unsupported Effect V2 group document: {path}")
         group_id = document.get("groupId")
         if not isinstance(group_id, str) or not group_id:
@@ -200,6 +226,10 @@ def _validate_groups(
             raise ContractError(f"duplicate Effect V2 groupId: {group_id}")
         if group_id in authored:
             raise ContractError(f"Effect V2 groupId collides with an authored effect: {group_id}")
+        if binding_v2._is_format_version(version, 2):
+            v2_group_ids.append(group_id)
+            groups[group_id] = []
+            continue
         _require_ms(document.get("durationMs", 0), group_id, "durationMs")
         children = document.get("children")
         if not isinstance(children, list) or not children:
@@ -234,6 +264,24 @@ def _validate_groups(
             child_clocks.append((effect_id, child_start_ms))
         _validate_numbers(document, group_id)
         groups[group_id] = child_clocks
+    if v2_group_ids:
+        try:
+            resource_authored, resource_groups = binding_v2._load_resource_documents(
+                repository_root
+            )
+            for group_id in v2_group_ids:
+                leaves, _span_ms = binding_v2._resolve_group(
+                    group_id,
+                    resource_authored,
+                    resource_groups,
+                    require_v2=True,
+                )
+                groups[group_id] = [
+                    (effect_id, start_ms)
+                    for effect_id, start_ms, _child_ids, _transforms in leaves
+                ]
+        except binding_v2.BindingContractError as exc:
+            raise ContractError(str(exc)) from exc
     return groups
 
 
@@ -243,6 +291,9 @@ def _load_canonical_clip_inventories(
     """Load clip IDs only for archetypes whose binding contract defines one."""
     boss_bindings = binding_root / "BOSS_VALTAN.effectv2bindings.json"
     if not boss_bindings.is_file():
+        return {}
+    binding_document = _require_object(_read_json(boss_bindings), boss_bindings.as_posix())
+    if not binding_v2._is_format_version(binding_document.get("formatVersion"), 1):
         return {}
     presentation_path = repository_root / "Data/Valtan/Valtan.presentation.json"
     if not presentation_path.is_file():
@@ -279,7 +330,9 @@ def _load_independent(
     if not path.is_file():
         return set(), set()
     document = _require_object(_read_json(path), path.as_posix())
-    if document.get("schema") != INDEPENDENT_SCHEMA or document.get("formatVersion") != 1:
+    if document.get("schema") != INDEPENDENT_SCHEMA or not binding_v2._is_format_version(
+        document.get("formatVersion"), 1
+    ):
         raise ContractError(f"unsupported Effect V2 independent document: {path}")
     independent_effects: set[str] = set()
     independent_groups: set[str] = set()
@@ -302,25 +355,27 @@ def _load_independent(
 
 
 def _validate_bindings(
+    repository_root: Path,
     binding_root: Path,
     authored: dict[str, Path],
     groups: dict[str, list[tuple[str, int]]],
     canonical_clips: Mapping[str, set[str]],
     independent_effects: set[str],
     independent_groups: set[str],
-) -> int:
+) -> tuple[int, int]:
     seen_archetypes: set[str] = set()
     seen_effects: set[str] = set(independent_effects)
     seen_groups: set[str] = set(independent_groups)
     for group_id in independent_groups:
         seen_effects.update(effect for effect, _ in groups[group_id])
     binding_count = 0
+    boss_v1_compatibility_count = 0
     paths = sorted(binding_root.glob("*.effectv2bindings.json"))
     if not paths:
         raise ContractError("Effect V2 binding set is empty")
     for path in paths:
         document = _require_object(_read_json(path), path.as_posix())
-        if document.get("schema") != BINDING_SCHEMA or document.get("formatVersion") != 1:
+        if document.get("schema") != BINDING_SCHEMA:
             raise ContractError(f"unsupported Effect V2 binding document: {path}")
         archetype_id = document.get("archetypeId")
         if not isinstance(archetype_id, str) or not archetype_id:
@@ -331,6 +386,39 @@ def _validate_bindings(
         rows = document.get("bindings")
         if not isinstance(rows, list):
             raise ContractError(f"Effect V2 bindings must be an array: {path}")
+        if archetype_id == binding_v2.VALTAN_ARCHETYPE_ID and binding_v2._is_format_version(
+            document.get("formatVersion"), binding_v2.BINDING_FORMAT_VERSION
+        ):
+            try:
+                binding_v2.validate_binding_document(
+                    repository_root,
+                    document,
+                    _read_json(repository_root / "Data/Valtan/Valtan.gameplay.json"),
+                    _read_json(
+                        repository_root
+                        / "Data/Animation/Authored/Valtan/Valtan.patternbindings.json"
+                    ),
+                    _read_json(
+                        repository_root
+                        / "Data/Valtan/Valtan.legacy-compatibility.json"
+                    ),
+                )
+            except binding_v2.BindingContractError as exc:
+                raise ContractError(str(exc)) from exc
+            for row in rows:
+                resource = row["resource"]
+                if resource["kind"] == "LEAF":
+                    seen_effects.add(resource["id"])
+                else:
+                    group_id = resource["id"]
+                    seen_groups.add(group_id)
+                    seen_effects.update(effect for effect, _ in groups[group_id])
+            binding_count += len(rows)
+            continue
+        if not binding_v2._is_format_version(document.get("formatVersion"), 1):
+            raise ContractError(f"unsupported Effect V2 binding document: {path}")
+        if archetype_id == binding_v2.VALTAN_ARCHETYPE_ID:
+            boss_v1_compatibility_count += 1
         row_identities: set[tuple[Any, ...]] = set()
         validated_rows: list[tuple[str | None, str | None, Any, Any, int]] = []
         for row in rows:
@@ -415,20 +503,21 @@ def _validate_bindings(
     missing_groups = sorted(set(groups) - seen_groups)
     if missing_groups:
         raise ContractError(f"unbound Effect V2 groups: {missing_groups[:5]}")
-    return binding_count
+    return binding_count, boss_v1_compatibility_count
 
 
 def validate(repository_root: Path, resource_root: Path) -> dict[str, int]:
     resource_root = resolve_resource_root(repository_root, resource_root)
     v2_root = repository_root / "Data/Effects/V2"
     authored, usage = _validate_authored(v2_root / "Authored", resource_root)
-    groups = _validate_groups(v2_root / "Groups", authored)
+    groups = _validate_groups(repository_root, v2_root / "Groups", authored)
     binding_root = v2_root / "Bindings"
     canonical_clips = _load_canonical_clip_inventories(
         repository_root, binding_root
     )
     independent_effects, independent_groups = _load_independent(v2_root, authored, groups)
-    binding_count = _validate_bindings(
+    binding_count, boss_v1_compatibility_count = _validate_bindings(
+        repository_root,
         binding_root,
         authored,
         groups,
@@ -442,6 +531,7 @@ def validate(repository_root: Path, resource_root: Path) -> dict[str, int]:
         "groups": len(groups),
         "independent": len(independent_effects) + len(independent_groups),
         "textures": len(usage),
+        "bossBindingCompatibilityV1": boss_v1_compatibility_count,
     }
 
 
@@ -461,11 +551,17 @@ def main() -> int:
     except ContractError as exc:
         print(f"Effect V2 validation failed: {exc}")
         return 1
+    compatibility = (
+        " BOSS_VALTAN v1 compatibility is active; Composition Save remains "
+        "disabled until the reviewed v2 migration."
+        if report["bossBindingCompatibilityV1"]
+        else ""
+    )
     print(
         "Effect V2 validation succeeded: "
         f"{report['authored']} authored, {report['bindings']} bindings, "
         f"{report['groups']} groups, {report['independent']} independent, "
-        f"{report['textures']} textures."
+        f"{report['textures']} textures.{compatibility}"
     )
     return 0
 

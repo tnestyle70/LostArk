@@ -60,6 +60,11 @@ TRANSACTION_GENERATION_FORMAT_VERSION = 1
 TRANSACTION_ACTIVE_SCHEMA = "lostark.valtan-animation-pattern-active-generation"
 TRANSACTION_ACTIVE_FORMAT_VERSION = 1
 EXTERNAL_LOCK_MARKER_PREFIX = "lostark.valtan-canonical-writer-owner-v1"
+LOCK_DIAGNOSTIC_MARKER_PREFIX = (
+    "lostark.valtan-canonical-writer-diagnostic-v1"
+)
+LOCK_DIAGNOSTIC_MAX_BYTES = 4096
+LOCK_OPERATION = re.compile(r"^[A-Za-z0-9_.-]{1,96}$")
 
 STABLE_ID = re.compile(r"^[A-Za-z0-9_.-]{1,160}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -70,11 +75,222 @@ class PromotionError(RuntimeError):
     pass
 
 
+class CanonicalTransactionBusyError(PromotionError):
+    error_code = "CANONICAL_TRANSACTION_BUSY"
+
+    def __init__(self, message: str, lock_owner: Mapping[str, Any]) -> None:
+        super().__init__(message)
+        self.lock_owner = dict(lock_owner)
+        self.lock_owner_pid = self.lock_owner["pid"]
+        self.lock_owner_operation = self.lock_owner["operation"]
+        self.lock_acquisition_age_ms = self.lock_owner["acquisitionAgeMs"]
+        self.lock_owner_relation = self.lock_owner["relation"]
+
+    def as_error(self) -> dict[str, Any]:
+        return {
+            "errorCode": self.error_code,
+            "message": str(self),
+            "lockOwner": dict(self.lock_owner),
+        }
+
+
+def _process_is_ancestor(ancestor_pid: int) -> bool:
+    if ancestor_pid <= 0:
+        return False
+    if os.name != "nt":
+        return os.getppid() == ancestor_pid
+
+    import ctypes
+    from ctypes import wintypes
+
+    class ProcessEntry32W(ctypes.Structure):
+        _fields_ = (
+            ("dwSize", wintypes.DWORD),
+            ("cntUsage", wintypes.DWORD),
+            ("th32ProcessID", wintypes.DWORD),
+            ("th32DefaultHeapID", ctypes.c_size_t),
+            ("th32ModuleID", wintypes.DWORD),
+            ("cntThreads", wintypes.DWORD),
+            ("th32ParentProcessID", wintypes.DWORD),
+            ("pcPriClassBase", wintypes.LONG),
+            ("dwFlags", wintypes.DWORD),
+            ("szExeFile", wintypes.WCHAR * 260),
+        )
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateToolhelp32Snapshot.argtypes = (wintypes.DWORD, wintypes.DWORD)
+    kernel32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    kernel32.Process32FirstW.argtypes = (
+        wintypes.HANDLE,
+        ctypes.POINTER(ProcessEntry32W),
+    )
+    kernel32.Process32FirstW.restype = wintypes.BOOL
+    kernel32.Process32NextW.argtypes = (
+        wintypes.HANDLE,
+        ctypes.POINTER(ProcessEntry32W),
+    )
+    kernel32.Process32NextW.restype = wintypes.BOOL
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    snapshot = kernel32.CreateToolhelp32Snapshot(0x00000002, 0)
+    if snapshot == ctypes.c_void_p(-1).value:
+        return False
+    parents: dict[int, int] = {}
+    try:
+        entry = ProcessEntry32W()
+        entry.dwSize = ctypes.sizeof(ProcessEntry32W)
+        has_entry = kernel32.Process32FirstW(snapshot, ctypes.byref(entry))
+        while has_entry:
+            parents[int(entry.th32ProcessID)] = int(entry.th32ParentProcessID)
+            has_entry = kernel32.Process32NextW(snapshot, ctypes.byref(entry))
+    finally:
+        kernel32.CloseHandle(snapshot)
+
+    current = os.getpid()
+    seen: set[int] = set()
+    while current not in seen and current > 0:
+        if current == ancestor_pid:
+            return True
+        seen.add(current)
+        current = parents.get(current, 0)
+    return False
+
+
+def _unknown_lock_owner() -> dict[str, Any]:
+    return {
+        "pid": None,
+        "operation": "UNKNOWN",
+        "acquisitionAgeMs": None,
+        "relation": "UNKNOWN",
+    }
+
+
+def _parse_lock_diagnostic_marker(marker: bytes) -> dict[str, Any] | None:
+    prefix = (LOCK_DIAGNOSTIC_MARKER_PREFIX + ":").encode("ascii")
+    if not marker.startswith(prefix) or not marker.endswith(b"\n"):
+        return None
+    try:
+        payload = json.loads(marker[len(prefix) : -1].decode("ascii"))
+    except (UnicodeError, ValueError):
+        return None
+    if not isinstance(payload, dict) or set(payload) != {
+        "acquiredAtUnixMs",
+        "operation",
+        "pid",
+    }:
+        return None
+    pid = payload["pid"]
+    operation = payload["operation"]
+    acquired_at_ms = payload["acquiredAtUnixMs"]
+    if (
+        not isinstance(pid, int)
+        or isinstance(pid, bool)
+        or pid <= 0
+        or not isinstance(operation, str)
+        or LOCK_OPERATION.fullmatch(operation) is None
+        or not isinstance(acquired_at_ms, int)
+        or isinstance(acquired_at_ms, bool)
+        or acquired_at_ms <= 0
+    ):
+        return None
+    now_ms = time.time_ns() // 1_000_000
+    if acquired_at_ms > now_ms:
+        return None
+    return {
+        "pid": pid,
+        "operation": operation,
+        "acquisitionAgeMs": now_ms - acquired_at_ms,
+    }
+
+
+def _read_lock_owner(handle: Any) -> dict[str, Any]:
+    owner = _unknown_lock_owner()
+    try:
+        handle.seek(1)
+        raw = handle.read(LOCK_DIAGNOSTIC_MAX_BYTES + 1)
+    except OSError:
+        return owner
+    if len(raw) > LOCK_DIAGNOSTIC_MAX_BYTES:
+        return owner
+
+    lines = raw.splitlines(keepends=True)
+    external_prefix = (EXTERNAL_LOCK_MARKER_PREFIX + ":").encode("ascii")
+    external_pid: int | None = None
+    diagnostic: dict[str, Any] | None = None
+    for line in lines:
+        if line.startswith(external_prefix):
+            try:
+                pid_text, nonce = line[len(external_prefix) : -1].decode("ascii").split(
+                    ":", 1
+                )
+                parsed_pid = int(pid_text)
+                if parsed_pid > 0 and re.fullmatch(r"[0-9a-f]{32}", nonce):
+                    external_pid = parsed_pid
+            except (UnicodeError, ValueError):
+                pass
+        parsed_diagnostic = _parse_lock_diagnostic_marker(line)
+        if parsed_diagnostic is not None:
+            diagnostic = parsed_diagnostic
+
+    if diagnostic is not None and (
+        external_pid is None or diagnostic["pid"] == external_pid
+    ):
+        owner.update(diagnostic)
+    elif external_pid is not None:
+        owner["pid"] = external_pid
+
+    owner_pid = owner["pid"]
+    if owner_pid == os.getpid():
+        owner["relation"] = "SELF"
+    elif isinstance(owner_pid, int) and _process_is_ancestor(owner_pid):
+        owner["relation"] = "ANCESTOR"
+    elif isinstance(owner_pid, int):
+        owner["relation"] = "OTHER_PROCESS"
+    return owner
+
+
+def _lock_diagnostic_marker(operation: str) -> bytes:
+    payload = {
+        "acquiredAtUnixMs": time.time_ns() // 1_000_000,
+        "operation": operation,
+        "pid": os.getpid(),
+    }
+    return (
+        LOCK_DIAGNOSTIC_MARKER_PREFIX
+        + ":"
+        + json.dumps(payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
+        + "\n"
+    ).encode("ascii")
+
+
+def _canonical_busy_error(owner: Mapping[str, Any]) -> CanonicalTransactionBusyError:
+    relation = owner["relation"]
+    if relation == "SELF":
+        summary = "Create Pattern transaction lock is held by this process (nested acquisition)"
+    elif relation == "ANCESTOR":
+        summary = "Create Pattern transaction lock is held by an ancestor process"
+    else:
+        summary = "Create Pattern transaction lock is held by another process"
+    pid = owner["pid"] if owner["pid"] is not None else "UNKNOWN"
+    age = (
+        owner["acquisitionAgeMs"]
+        if owner["acquisitionAgeMs"] is not None
+        else "UNKNOWN"
+    )
+    message = (
+        f"{summary}; lockOwnerPid={pid}; "
+        f"lockOwnerOperation={owner['operation']}; "
+        f"lockAcquisitionAgeMs={age}; lockOwnerRelation={relation}"
+    )
+    return CanonicalTransactionBusyError(message, owner)
+
+
 @contextlib.contextmanager
 def _exclusive_transaction_lock(
     repo_root: Path,
     *,
     timeout_seconds: float = 0.0,
+    operation: str = "UNKNOWN",
 ) -> Iterator[Path]:
     """Serialize every Valtan Create/Project writer across processes.
 
@@ -86,12 +302,23 @@ def _exclusive_transaction_lock(
 
     if not math.isfinite(timeout_seconds) or timeout_seconds < 0.0:
         raise PromotionError("transaction lock timeout must be finite and non-negative")
+    if not isinstance(operation, str) or LOCK_OPERATION.fullmatch(operation) is None:
+        raise PromotionError("transaction lock operation identity is invalid")
     repo_root = repo_root.resolve()
     lock_path = repo_root / TRANSACTION_LOCK_REL
     lock_path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor: int | None = None
     try:
-        handle = lock_path.open("a+b")
+        descriptor = os.open(
+            lock_path,
+            os.O_RDWR | os.O_CREAT | getattr(os, "O_BINARY", 0),
+            0o666,
+        )
+        handle = os.fdopen(descriptor, "r+b")
+        descriptor = None
     except OSError as exc:
+        if descriptor is not None:
+            os.close(descriptor)
         raise PromotionError(f"cannot open Create Pattern transaction lock: {exc}") from exc
 
     acquired = False
@@ -117,11 +344,12 @@ def _exclusive_transaction_lock(
                 break
             except (OSError, BlockingIOError):
                 if time.monotonic() >= deadline:
-                    raise PromotionError(
-                        "Create Pattern transaction lock is held by another process"
-                    )
+                    raise _canonical_busy_error(_read_lock_owner(handle))
                 time.sleep(min(0.025, max(0.0, deadline - time.monotonic())))
-        handle.truncate(1)
+        marker = _lock_diagnostic_marker(operation)
+        handle.seek(0)
+        handle.truncate(1 + len(marker))
+        handle.write(b"\0" + marker)
         handle.flush()
         os.fsync(handle.fileno())
         _recover_incomplete_product_transaction(repo_root)
@@ -129,6 +357,11 @@ def _exclusive_transaction_lock(
     finally:
         if acquired:
             try:
+                handle.seek(0)
+                handle.truncate(1)
+                handle.write(b"\0")
+                handle.flush()
+                os.fsync(handle.fileno())
                 handle.seek(0)
                 if os.name == "nt":
                     import msvcrt
@@ -221,11 +454,14 @@ def _assert_external_transaction_lock(
     if re.fullmatch(r"[0-9a-f]{32}", owner_nonce) is None:
         raise PromotionError("external writer admission nonce is invalid")
     try:
-        with _exclusive_transaction_lock(repo_root, timeout_seconds=0.0):
+        with _exclusive_transaction_lock(
+            repo_root,
+            timeout_seconds=0.0,
+            operation="ExternalAdmissionProbe",
+        ):
             pass
-    except PromotionError as exc:
-        if str(exc) != "Create Pattern transaction lock is held by another process":
-            raise
+    except CanonicalTransactionBusyError:
+        pass
     else:
         raise PromotionError(
             "external writer admission was requested without a held create-pattern.lock"
@@ -674,7 +910,10 @@ def _expand_trash_capture_promotion(
 
 
 def _preserve_manual_gameplay_enrichment(
-    generated: dict[str, Any], existing: dict[str, Any] | None
+    generated: dict[str, Any],
+    existing: dict[str, Any] | None,
+    *,
+    preserve_sequence_append: bool = False,
 ) -> dict[str, Any]:
     """Keep reviewed gameplay semantics while rebuilding animation lineage.
 
@@ -708,6 +947,27 @@ def _preserve_manual_gameplay_enrichment(
     ):
         if field in existing:
             generated[field] = copy.deepcopy(existing[field])
+    if preserve_sequence_append:
+        generated_sources = generated.get("sourceActionIds")
+        existing_sources = existing.get("sourceActionIds")
+        if (
+            not isinstance(generated_sources, list)
+            or not isinstance(existing_sources, list)
+            or len(existing_sources) < len(generated_sources)
+            or existing_sources[: len(generated_sources)] != generated_sources
+            or len(existing_sources) != len(set(existing_sources))
+            or any(
+                not isinstance(source_action_id, int)
+                or isinstance(source_action_id, bool)
+                or source_action_id <= 0
+                for source_action_id in existing_sources
+            )
+        ):
+            raise PromotionError(
+                "manual Sequence append gameplay provenance drift: "
+                f"{generated['patternId']}"
+            )
+        generated["sourceActionIds"] = copy.deepcopy(existing_sources)
     generated_action_ids = {
         stage["actionId"] for stage in generated_stages.values()
     }
@@ -736,7 +996,7 @@ def _preserve_manual_gameplay_enrichment(
         existing_duration_ms = existing_stage.get("durationMs")
         generated_duration_ms = generated_stage.get("durationMs")
         if (
-            existing_stage.get("motion") is not None
+            (existing_stage.get("motion") is not None or preserve_sequence_append)
             and isinstance(existing_duration_ms, int)
             and not isinstance(existing_duration_ms, bool)
             and isinstance(generated_duration_ms, int)
@@ -760,6 +1020,59 @@ def _preserve_manual_gameplay_enrichment(
     return generated
 
 
+def _typed_appended_sequence_sources(
+    generated: dict[str, Any], existing: dict[str, Any] | None
+) -> list[dict[str, Any]]:
+    if existing is None:
+        return []
+    generated_sources = generated.get("presentationSources")
+    existing_sources = existing.get("presentationSources")
+    if generated_sources is None and existing_sources is None:
+        return []
+    if not isinstance(generated_sources, list) or not isinstance(existing_sources, list):
+        raise PromotionError(
+            f"manual presentation source list is invalid: {generated['patternId']}"
+        )
+    if len(existing_sources) <= len(generated_sources):
+        return []
+    if existing_sources[: len(generated_sources)] != generated_sources:
+        raise PromotionError(
+            "manual Sequence append rewrote immutable presentation lineage: "
+            f"{generated['patternId']}"
+        )
+    extras = existing_sources[len(generated_sources) :]
+    identities: set[tuple[int, int]] = set()
+    roles: set[str] = set()
+    for source in extras:
+        if not isinstance(source, dict):
+            raise PromotionError(
+                f"manual Sequence append source is invalid: {generated['patternId']}"
+            )
+        source_action_id = source.get("sourceActionId")
+        sequence_index = source.get("sequenceIndex")
+        role = source.get("role")
+        expected_role = f"REFERENCE_{source_action_id}_{sequence_index}"
+        identity = (source_action_id, sequence_index)
+        if (
+            not isinstance(source_action_id, int)
+            or isinstance(source_action_id, bool)
+            or source_action_id <= 0
+            or not isinstance(sequence_index, int)
+            or isinstance(sequence_index, bool)
+            or not 0 <= sequence_index <= 4096
+            or role != expected_role
+            or identity in identities
+            or role in roles
+        ):
+            raise PromotionError(
+                "manual Sequence append requires unique deterministic provenance: "
+                f"{generated['patternId']}"
+            )
+        identities.add(identity)
+        roles.add(role)
+    return extras
+
+
 def _preserve_manual_presentation_enrichment(
     generated: dict[str, Any], existing: dict[str, Any] | None
 ) -> dict[str, Any]:
@@ -767,6 +1080,13 @@ def _preserve_manual_presentation_enrichment(
 
     if existing is None:
         return generated
+    appended_sequence_sources = _typed_appended_sequence_sources(
+        generated, existing
+    )
+    if appended_sequence_sources:
+        generated["presentationSources"] = copy.deepcopy(
+            existing["presentationSources"]
+        )
     generated_stages = {
         stage["stageId"]: stage for stage in generated["stages"]
     }
@@ -789,6 +1109,31 @@ def _preserve_manual_presentation_enrichment(
         for field in ("sequenceRole", "effectCues", "cameraInvocations"):
             if field in existing_stage:
                 generated_stage[field] = copy.deepcopy(existing_stage[field])
+        if appended_sequence_sources:
+            generated_animation = generated_stage.get("animation")
+            existing_animation = existing_stage.get("animation")
+            if (
+                not isinstance(generated_animation, dict)
+                or not isinstance(existing_animation, dict)
+                or not isinstance(generated_animation.get("occurrences"), list)
+                or not isinstance(existing_animation.get("occurrences"), list)
+            ):
+                raise PromotionError(
+                    "manual Sequence append animation is invalid: "
+                    f"{generated['patternId']}/{stage_id}"
+                )
+            existing_occurrences = existing_animation["occurrences"]
+            for occurrence in existing_occurrences:
+                if (
+                    not isinstance(occurrence, dict)
+                    or occurrence.get("mappingBasis")
+                    not in ("PROJECT_AUTHORED", "SOURCE_REVIEWED_DELTA")
+                ):
+                    raise PromotionError(
+                        "manual Sequence append occurrence provenance is invalid: "
+                        f"{generated['patternId']}/{stage_id}"
+                    )
+            generated_stage["animation"] = copy.deepcopy(existing_animation)
     return generated
 
 
@@ -1301,14 +1646,39 @@ def build_candidates(
                 {"patterns": [shared_presentation, presentation_pattern]},
                 audition_pattern_ids=(promotion["patternId"],),
             )
-        gameplay_pattern = _preserve_manual_gameplay_enrichment(
-            gameplay_pattern,
-            existing_gameplay_by_id.get(promotion["patternId"]),
+        existing_gameplay_pattern = existing_gameplay_by_id.get(
+            promotion["patternId"]
         )
-        presentation_pattern = _preserve_manual_presentation_enrichment(
-            presentation_pattern,
-            existing_presentation_by_id.get(promotion["patternId"]),
+        existing_presentation_pattern = existing_presentation_by_id.get(
+            promotion["patternId"]
         )
+        if (
+            promotion["patternId"] == "VALTAN_COUNTER"
+            and existing_gameplay_pattern is not None
+            and existing_presentation_pattern is not None
+            and "VALTAN_COUNTER_GROGGY" in current_gameplay_ids
+            and "VALTAN_COUNTER_GROGGY" in current_presentation_ids
+        ):
+            # STEP_04 was promoted into its own reusable outcome Pattern.  The
+            # animation-chain receipt continues to prove the reviewed four-step
+            # source closure, while canonical gameplay deliberately owns the
+            # parent/result split and its cross-pattern branch identity.
+            gameplay_pattern = copy.deepcopy(existing_gameplay_pattern)
+            presentation_pattern = copy.deepcopy(existing_presentation_pattern)
+        else:
+            preserve_sequence_append = bool(_typed_appended_sequence_sources(
+                presentation_pattern,
+                existing_presentation_pattern,
+            ))
+            gameplay_pattern = _preserve_manual_gameplay_enrichment(
+                gameplay_pattern,
+                existing_gameplay_pattern,
+                preserve_sequence_append=preserve_sequence_append,
+            )
+            presentation_pattern = _preserve_manual_presentation_enrichment(
+                presentation_pattern,
+                existing_presentation_pattern,
+            )
         gameplay["patterns"].append(gameplay_pattern)
         presentation["patterns"].append(presentation_pattern)
         gameplay["decisionModel"]["manualAuditions"].append(
@@ -1437,7 +1807,6 @@ def validate_and_project(
             presentation,
             docs[pipeline.WORLD_SET_REL],
             docs[pipeline.COMBAT_AUTHORING_REL],
-            docs.get(pipeline.SAVED_FLOW_REL),
         )
         pipeline.validate_manual_audition_animation_lineage(
             joined,
@@ -1453,6 +1822,7 @@ def validate_and_project(
                     repo_root, pipeline.ANIMATION_PROMOTION_MANIFEST_REL
                 )
             ),
+            repository_root=repo_root,
         )
         pipeline.validate_legacy_manifest(
             docs[pipeline.LEGACY_REL],
@@ -1753,7 +2123,7 @@ def _validate_pattern_sound_dependencies_against_candidate_products(
             )
 
 
-def _validate_effect_v2_bindings_against_candidate_products(
+def _validate_effect_v2_bindings_v1_compatibility(
     repo_root: Path,
     outputs: Mapping[str, str],
     binding_source_bytes: bytes,
@@ -1935,6 +2305,56 @@ def _validate_effect_v2_bindings_against_candidate_products(
                     "Effect V2 leaf overlaps the same group child at the same clock: "
                     f"{effect_id}/{group_id}@{start_ms}"
                 )
+
+
+def _load_effect_v2_binding_pipeline(repo_root: Path) -> Any:
+    root_text = str(repo_root)
+    if root_text not in sys.path:
+        sys.path.insert(0, root_text)
+    try:
+        from Tools.EffectToolV2 import effect_v2_binding_pipeline as binding_pipeline
+    except ImportError as exc:
+        raise PromotionError(
+            f"cannot import Effect V2 binding pipeline: {exc}"
+        ) from exc
+    return binding_pipeline
+
+
+def _validate_effect_v2_bindings_against_candidate_products(
+    repo_root: Path,
+    outputs: Mapping[str, str],
+    binding_source_bytes: bytes,
+    gameplay_document: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate the v2 owner against one immutable candidate Product closure."""
+
+    binding_pipeline = _load_effect_v2_binding_pipeline(repo_root)
+    pipeline = _load_v2_pipeline(repo_root)
+    binding_path = repo_root / EFFECT_V2_BINDINGS_REL
+    document = _read_json_bytes(binding_source_bytes, binding_path)
+    if document.get("formatVersion") != binding_pipeline.BINDING_FORMAT_VERSION:
+        raise PromotionError(
+            "BOSS_VALTAN Effect V2 Composition Save requires formatVersion 2; "
+            "run and review the explicit legacy migration before Save"
+        )
+    animation_text = outputs.get(pipeline.BINDINGS_REL)
+    if not isinstance(animation_text, str):
+        raise PromotionError(
+            "Effect V2 admission is missing the candidate Animation Product"
+        )
+    animation = _read_json_bytes(
+        animation_text.encode("utf-8"), repo_root / pipeline.BINDINGS_REL
+    )
+    try:
+        return binding_pipeline.validate_binding_document(
+            repo_root,
+            document,
+            gameplay_document,
+            animation,
+            _read_json(repo_root / pipeline.LEGACY_REL),
+        )
+    except binding_pipeline.BindingContractError as exc:
+        raise PromotionError(str(exc)) from exc
 
 
 def _validate_create_request(request: dict[str, Any]) -> dict[str, Any]:
@@ -2692,7 +3112,9 @@ def _atomic_commit(
         )
         return
     with _exclusive_transaction_lock(
-        repository_root, timeout_seconds=lock_timeout_seconds
+        repository_root,
+        timeout_seconds=lock_timeout_seconds,
+        operation="AtomicCommit",
     ):
         _atomic_commit_locked(
             repository_root,
@@ -2751,7 +3173,9 @@ def commit_projected_products(
         )
     if external_lock_owner_pid is None:
         admission = _exclusive_transaction_lock(
-            repo_root, timeout_seconds=lock_timeout_seconds
+            repo_root,
+            timeout_seconds=lock_timeout_seconds,
+            operation="CommitProjectedProducts",
         )
     else:
         if lock_timeout_seconds != 0.0:
@@ -2857,6 +3281,7 @@ def commit_typed_authoring_patch(
     pattern_sound_candidate_path: Path | None = None,
     effect_v2_baseline_path: Path | None = None,
     effect_v2_candidate_path: Path | None = None,
+    effect_v2_read_set_path: Path | None = None,
     lock_timeout_seconds: float = 0.0,
     inject_failure_after: int | None = None,
 ) -> dict[str, Any]:
@@ -2919,7 +3344,9 @@ def commit_typed_authoring_patch(
         return baseline, candidate
 
     with _exclusive_transaction_lock(
-        repo_root, timeout_seconds=lock_timeout_seconds
+        repo_root,
+        timeout_seconds=lock_timeout_seconds,
+        operation="ApplyTypedPatch",
     ):
         pipeline._recover_durable_transaction(
             repo_root, resolved_authoring_root, "authoring"
@@ -2945,18 +3372,20 @@ def commit_typed_authoring_patch(
                 raise PromotionError(
                     "typed Pattern draft source revision is not the current authoring head"
                 )
-            master, bosses, damage = pipeline.resolve_authoring_base(
-                repo_root,
-                resolved_authoring_root,
-                base_revision,
-                current_sources,
-                docs,
+            committed_master, committed_bosses, committed_damage = (
+                pipeline.resolve_authoring_base(
+                    repo_root,
+                    resolved_authoring_root,
+                    base_revision,
+                    current_sources,
+                    docs,
+                )
             )
             committed_master, committed_bosses, committed_damage, operation_count = (
                 pipeline.apply_draft_patch(
-                    master,
-                    bosses,
-                    damage,
+                    committed_master,
+                    committed_bosses,
+                    committed_damage,
                     draft_patch,
                     base_revision,
                     docs[pipeline.WORLD_SET_REL],
@@ -2978,13 +3407,6 @@ def commit_typed_authoring_patch(
                 docs[pipeline.WORLD_SET_REL],
                 docs[pipeline.COMBAT_AUTHORING_REL],
             )
-            gameplay = pipeline._restore_gameplay_flow_reference(
-                gameplay,
-                pipeline.read_json(
-                    pipeline.repo_path(repo_root, pipeline.GAMEPLAY_AUTHORING_REL)
-                ),
-                docs.get(pipeline.SAVED_FLOW_REL),
-            )
             outputs = validate_and_project(repo_root, gameplay, presentation)
             pattern_sound_pair = read_owner_pair(
                 "Pattern Sound",
@@ -2996,6 +3418,20 @@ def commit_typed_authoring_patch(
                 effect_v2_baseline_path,
                 effect_v2_candidate_path,
             )
+            pattern_sound_target = repo_root / PATTERN_SOUND_REL
+            effect_v2_target = repo_root / EFFECT_V2_BINDINGS_REL
+            if effect_v2_pair is None and effect_v2_read_set_path is not None:
+                raise PromotionError(
+                    "Effect V2 resource read-set requires a baseline/candidate pair"
+                )
+            effect_v2_physical_baseline = _read_bytes_or_none(effect_v2_target)
+            if not effect_v2_physical_baseline:
+                raise PromotionError("BOSS_VALTAN Effect V2 binding owner is missing")
+            effect_v2_effective_bytes = (
+                effect_v2_physical_baseline
+                if effect_v2_pair is None
+                else effect_v2_pair[1]
+            )
             _validate_pattern_sound_dependencies_against_candidate_products(
                 repo_root,
                 outputs,
@@ -3005,10 +3441,40 @@ def commit_typed_authoring_patch(
                     else pattern_sound_pair[1]
                 ),
             )
-            if effect_v2_pair is not None:
-                _validate_effect_v2_bindings_against_candidate_products(
-                    repo_root, outputs, effect_v2_pair[1]
+            effect_v2_effective_header = _read_json_bytes(
+                effect_v2_effective_bytes, effect_v2_target
+            )
+            if effect_v2_effective_header.get("formatVersion") == 1:
+                if effect_v2_read_set_path is not None:
+                    raise PromotionError(
+                        "BOSS_VALTAN Effect V2 formatVersion 1 does not admit a "
+                        "formatVersion 2 resource read-set snapshot"
+                    )
+                _validate_effect_v2_bindings_v1_compatibility(
+                    repo_root, outputs, effect_v2_effective_bytes
                 )
+                effect_v2_document = None
+            else:
+                if effect_v2_pair is not None and effect_v2_read_set_path is None:
+                    raise PromotionError(
+                        "Effect V2 formatVersion 2 Composition Save requires its "
+                        "resource read-set snapshot; Reload before Save"
+                    )
+                effect_v2_document = (
+                    _validate_effect_v2_bindings_against_candidate_products(
+                        repo_root, outputs, effect_v2_effective_bytes, gameplay
+                    )
+                )
+            if effect_v2_pair is not None and effect_v2_document is not None:
+                binding_pipeline = _load_effect_v2_binding_pipeline(repo_root)
+                try:
+                    binding_pipeline.assert_resource_read_set_current(
+                        repo_root,
+                        effect_v2_document,
+                        _read_json(effect_v2_read_set_path.resolve()),
+                    )
+                except binding_pipeline.BindingContractError as exc:
+                    raise PromotionError(str(exc)) from exc
 
             target_payloads: dict[Path, bytes] = {
                 repo_root / GAMEPLAY_REL: _json_text(gameplay).encode("utf-8"),
@@ -3018,11 +3484,9 @@ def commit_typed_authoring_patch(
                 target_payloads[repo_root / relative] = text.encode("utf-8")
             provided_baselines: dict[Path, bytes] = {}
             if pattern_sound_pair is not None:
-                pattern_sound_target = repo_root / PATTERN_SOUND_REL
                 target_payloads[pattern_sound_target] = pattern_sound_pair[1]
                 provided_baselines[pattern_sound_target] = pattern_sound_pair[0]
             if effect_v2_pair is not None:
-                effect_v2_target = repo_root / EFFECT_V2_BINDINGS_REL
                 target_payloads[effect_v2_target] = effect_v2_pair[1]
                 provided_baselines[effect_v2_target] = effect_v2_pair[0]
             expected_baselines = {
@@ -3038,6 +3502,10 @@ def commit_typed_authoring_patch(
                         f"{path.relative_to(repo_root).as_posix()} changed after the Composition draft began"
                     )
                 expected_baselines[path] = provided_baseline
+            if _read_bytes_or_none(effect_v2_target) != effect_v2_physical_baseline:
+                raise PromotionError(
+                    "BOSS_VALTAN Effect V2 binding owner changed while the typed patch was staged"
+                )
             if pipeline.source_manifest(repo_root) != current_sources:
                 raise PromotionError(
                     "Valtan source/Product closure changed while the typed patch was staged"
@@ -3090,7 +3558,9 @@ def create_pattern_from_request(
     repo_root = repo_root.resolve()
     request = _read_json(request_path.resolve())
     with _exclusive_transaction_lock(
-        repo_root, timeout_seconds=lock_timeout_seconds
+        repo_root,
+        timeout_seconds=lock_timeout_seconds,
+        operation=f"CreatePattern.{mode}",
     ):
         targets, expected_baselines, result = prepare_create_pattern_transaction(
             repo_root, request
@@ -3126,7 +3596,9 @@ def run(
     if mode not in {"Validate", "Apply"}:
         raise PromotionError(f"unsupported mode: {mode}")
     with _exclusive_transaction_lock(
-        repo_root, timeout_seconds=lock_timeout_seconds
+        repo_root,
+        timeout_seconds=lock_timeout_seconds,
+        operation=f"AnimationPromotion.{mode}",
     ):
         gameplay, presentation, receipt = build_candidates(repo_root)
         outputs = validate_and_project(repo_root, gameplay, presentation)

@@ -27,6 +27,16 @@
 
 namespace
 {
+	constexpr std::uint64_t ENTRY_PRESENTATION_BASELINE_RETRY_MILLISECONDS = 250u;
+
+	bool Is_TransientCanonicalPresentationAdmissionFailure(
+		const std::string_view status)
+	{
+		return std::string_view::npos !=
+			status.find("Create/Project transaction is active") ||
+			std::string_view::npos != status.find("Win32 33");
+	}
+
 #ifdef _DEBUG
 	std::string Resolve_DebugLocalServerHost()
 	{
@@ -2050,11 +2060,125 @@ bool CNetworkManager::Is_PresentationRevisionAvailable(
 		m_GameplayRevisionState.AvailablePresentationAliases.end();
 }
 
+bool CNetworkManager::Try_Recover_EntryPresentationBaseline(
+	std::string& status)
+{
+	if (!m_GameplayRevisionState.
+		hasPendingEntryPresentationBaselineRecovery)
+	{
+		status = m_GameplayRevisionState.hasPresentationArtifactBaseline ?
+			"The world-entry Valtan presentation baseline is already available." :
+			"The world-entry Valtan presentation baseline is not recoverable.";
+		return m_GameplayRevisionState.hasPresentationArtifactBaseline;
+	}
+	const LostArk::Shared::GameplayDataRevision activeRevision =
+		m_GameplayRevisionState.ServerActiveRevision;
+	if (!activeRevision.Is_Valid())
+	{
+		m_GameplayRevisionState.
+			hasPendingEntryPresentationBaselineRecovery = false;
+		status =
+			"World-entry presentation recovery has no valid Server-active revision.";
+		return false;
+	}
+
+	const std::uint64_t nowMilliseconds = ::GetTickCount64();
+	if (nowMilliseconds < m_GameplayRevisionState.
+		iNextEntryPresentationBaselineRecoveryAtMilliseconds)
+	{
+		status =
+			"World-entry Valtan presentation recovery is waiting for the canonical transaction retry boundary.";
+		return false;
+	}
+
+	std::vector<PRESENTATION_ARTIFACT_BASELINE> stagedArtifacts;
+	Client::VALTAN_PRESENTATION_GENERATION_RECEIPT stagedReceipt;
+	std::string captureStatus;
+	if (!CapturePresentationArtifactBaseline(
+			stagedArtifacts, stagedReceipt, captureStatus))
+	{
+		if (Is_TransientCanonicalPresentationAdmissionFailure(captureStatus))
+		{
+			m_GameplayRevisionState.
+				iNextEntryPresentationBaselineRecoveryAtMilliseconds =
+				nowMilliseconds +
+				ENTRY_PRESENTATION_BASELINE_RETRY_MILLISECONDS;
+			status =
+				"World-entry Valtan presentation recovery is waiting for the active canonical transaction: " +
+				captureStatus;
+			return false;
+		}
+
+		m_GameplayRevisionState.
+			hasPendingEntryPresentationBaselineRecovery = false;
+		m_GameplayRevisionState.isPresentationIsolated = true;
+		m_GameplayRevisionState.strIsolationReason =
+			"World-entry presentation baseline recovery failed validation: " +
+			captureStatus;
+		status = m_GameplayRevisionState.strIsolationReason;
+		m_SessionDiagnostic.Record_Event(
+			"presentation.baseline-recovery-failed", status);
+		return false;
+	}
+	if (m_GameplayRevisionState.ServerActiveRevision != activeRevision)
+	{
+		m_GameplayRevisionState.
+			iNextEntryPresentationBaselineRecoveryAtMilliseconds =
+			nowMilliseconds + ENTRY_PRESENTATION_BASELINE_RETRY_MILLISECONDS;
+		status =
+			"Server-active revision changed while recovering the world-entry presentation baseline.";
+		return false;
+	}
+
+	stagedReceipt.ServerGameplayRevision = activeRevision;
+	m_GameplayRevisionState.PresentationArtifactBaseline =
+		std::move(stagedArtifacts);
+	m_GameplayRevisionState.BootstrapPresentationReceipt =
+		std::move(stagedReceipt);
+	m_GameplayRevisionState.hasPresentationArtifactBaseline = true;
+	m_GameplayRevisionState.hasBootstrapPresentationRevision = true;
+	m_GameplayRevisionState.BootstrapPresentationRevision = activeRevision;
+	m_GameplayRevisionState.AvailablePresentationAliases.clear();
+	for (const LostArk::Shared::GameplayDataRevision& requiredRevision :
+		m_GameplayRevisionState.RequiredPinnedRevisions)
+	{
+		if (requiredRevision == activeRevision ||
+			m_GameplayRevisionState.AvailablePresentationAliases.end() !=
+				std::find(
+					m_GameplayRevisionState.AvailablePresentationAliases.begin(),
+					m_GameplayRevisionState.AvailablePresentationAliases.end(),
+					requiredRevision))
+		{
+			continue;
+		}
+		m_GameplayRevisionState.AvailablePresentationAliases.push_back(
+			requiredRevision);
+	}
+	m_GameplayRevisionState.
+		hasPendingEntryPresentationBaselineRecovery = false;
+	m_GameplayRevisionState.
+		iNextEntryPresentationBaselineRecoveryAtMilliseconds = 0u;
+	m_GameplayRevisionState.isPresentationIsolated = false;
+	m_GameplayRevisionState.strIsolationReason.clear();
+	status =
+		"Recovered the saved Valtan presentation baseline after the canonical transaction completed.";
+	m_SessionDiagnostic.Record_Event(
+		"presentation.baseline-recovered", status);
+	return true;
+}
+
 bool CNetworkManager::Try_Get_ValtanPresentationGenerationReceipt(
 	const LostArk::Shared::GameplayDataRevision& revision,
 	Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& outReceipt,
-	std::string& status) const
+	std::string& status)
 {
+	if (m_GameplayRevisionState.
+		hasPendingEntryPresentationBaselineRecovery &&
+		Is_AnnouncedWorldRevision(revision) &&
+		!Try_Recover_EntryPresentationBaseline(status))
+	{
+		return false;
+	}
 	if (!Is_PresentationRevisionAvailable(revision) ||
 		!m_GameplayRevisionState.BootstrapPresentationReceipt.Is_Valid())
 	{
@@ -2787,6 +2911,16 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		}
 		else
 		{
+			m_GameplayRevisionState.
+				hasPendingEntryPresentationBaselineRecovery =
+				Is_TransientCanonicalPresentationAdmissionFailure(
+					baselineStatus);
+			m_GameplayRevisionState.
+				iNextEntryPresentationBaselineRecoveryAtMilliseconds =
+				m_GameplayRevisionState.
+					hasPendingEntryPresentationBaselineRecovery ?
+				::GetTickCount64() +
+					ENTRY_PRESENTATION_BASELINE_RETRY_MILLISECONDS : 0u;
 			m_GameplayRevisionState.isPresentationIsolated = true;
 			m_GameplayRevisionState.strIsolationReason =
 				"Gameplay entry was admitted, but Client presentation source validation failed. Reload the presentation sources before using revision-dependent preview or live apply. " +
@@ -2878,7 +3012,20 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			Record_PresentationIsolation(
 				spawned.PinnedDefinitionRevision,
 				"World-entity spawn");
-			break;
+			const std::string revision = Format_GameplayDataRevision(
+				spawned.PinnedDefinitionRevision);
+			m_SessionDiagnostic.Record_Event(
+				"presentation.authoritative-entity-forwarded",
+				"World entity " + std::to_string(spawned.iNetEntityId) +
+				" remains authoritative while revision-dependent presentation "
+				"lanes are isolated for unavailable revision " +
+				(revision.empty() ? std::string{ "INVALID" } : revision) + ".");
+			/* The reliable entity identity, transform and combat body are Server
+			   truth, not a presentation artifact. Forward the spawn so
+			   CClientReplication can create the catalog model and apply its existing
+			   primary-Valtan animation/Effect/Sound isolation policy. Dropping this
+			   one-shot packet also made every later HP snapshot unusable because a
+			   snapshot intentionally cannot recreate archetype/placement identity. */
 		}
 		Client::CLIENT_REPLICATION_EVENT event{};
 		event.eType =
@@ -3388,16 +3535,12 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 					"World-entity occurrence");
 			}
 		}
-		snapshot.Entities.erase(
-			std::remove_if(
-				snapshot.Entities.begin(),
-				snapshot.Entities.end(),
-				[this](const WORLD_ENTITY_SNAPSHOT& entity)
-				{
-					return !Is_PresentationRevisionAvailable(
-						entity.PinnedDefinitionRevision);
-				}),
-			snapshot.Entities.end());
+		/* Keep every authoritative entity row. CClientReplication owns the
+		   per-entity presentation fallback and, for primary Valtan, advances HUD
+		   gameplay truth even while revision-dependent animation/Effect/Sound is
+		   isolated. Combat-object occurrences and one-shot boss presentation events
+		   below remain filtered because those lanes cannot be reconstructed without
+		   their exact presentation generation. */
 		for (const COMBAT_OBJECT_SNAPSHOT& object : snapshot.CombatObjects)
 		{
 			if (!Is_AnnouncedWorldRevision(

@@ -152,7 +152,8 @@ class ActionCompositionResourceCategoryTests(unittest.TestCase):
             self.assertIn(f'"{label}"', self.workbench)
         for token in (
             "m_iAnimationSequenceCategory",
-            "Sequence.strCategory ==",
+            '"All Categories"',
+            "m_iAnimationSequenceCategory < 0 || Sequence.strCategory ==",
             "Sequence.strProfileId",
             "m_strSelectedSequenceStableId",
             "Open_KakulAction(",
@@ -161,6 +162,19 @@ class ActionCompositionResourceCategoryTests(unittest.TestCase):
             "Stage_ValtanCompositionIntakeSequence(",
         ):
             self.assertIn(token, browser)
+        self.assertIn(
+            'int32_t m_iAnimationSequenceCategory = -1;',
+            (ROOT / "Client/Public/ActionCompositionWorkbench.h").read_text(
+                encoding="utf-8"
+            ),
+        )
+        category_segment = browser.index(
+            'Sequence.strCategory.empty() ? "UNCATEGORIZED"'
+        )
+        profile_segment = browser.index(
+            'Sequence.strProfileId.empty() ? "UNKNOWN PROFILE"'
+        )
+        self.assertLess(category_segment, profile_segment)
         self.assertIn("!Selected->bValtanPatternCompatible", apply)
 
 

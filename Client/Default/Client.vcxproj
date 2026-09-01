@@ -47,6 +47,7 @@
       <ClInclude Include="..\Public\BossTool.h" />
 	  <ClInclude Include="..\Public\CameraTool.h" />
 	<ClInclude Include="..\Public\ActionCompositionGraphModel.h" />
+	<ClInclude Include="..\Public\BossLogicFlowView.h" />
 	<ClInclude Include="..\Public\ActionCompositionWorkbench.h" />
     <ClInclude Include="..\Public\Animation_Tool.h" />
     <ClInclude Include="..\Public\Character.h" />
@@ -211,6 +212,8 @@
 	<ClCompile Include="..\Private\ActionCompositionWorkbench.cpp" />
 	<ClCompile Include="..\Private\ActionCompositionWorkbench_Blueprint.cpp" />
 	<ClCompile Include="..\Private\ActionCompositionGraphModel.cpp" />
+	<ClCompile Include="..\Private\BossLogicFlowViewModel.cpp" />
+	<ClCompile Include="..\Private\BossLogicFlowRenderer.cpp" />
 	<ClCompile Include="..\Private\ActionPresentationTimeline.cpp" />
 	<ClCompile Include="..\Private\CameraShakeService.cpp" />
 	<ClCompile Include="..\Private\ValtanCinematicCameraController.cpp" />
@@ -491,7 +494,6 @@
 	<None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanCombatObjects.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanDebugAudition.json" />
-	<None Include="..\..\Data\Encounters\Valtan\ValtanBossAuditionFlows.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanCinematicCamera.json" />
     <None Include="..\..\Data\Encounters\Valtan\ValtanWallContactActions.json" />
     <None Include="..\..\Data\Encounters\Valtan\ValtanWorldEvents.json" />

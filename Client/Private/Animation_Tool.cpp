@@ -1566,15 +1566,43 @@ bool_t Client::CAnimation_Tool::Stage_ValtanCompositionPreview(
 	if (!Open_ValtanWorkspace())
 	{
 		strOutStatus = m_Status;
+		m_strValtanPatternPreviewStatus = strOutStatus;
 		return false;
 	}
-	if (nullptr == m_pPreviewPanel ||
-		!m_pPreviewPanel->Select_TargetAsset("Valtan"))
+	if (nullptr == m_pPreviewPanel)
 	{
-		strOutStatus = nullptr == m_pPreviewPanel ?
-			"Valtan preview panel is unavailable; canonical data-only authoring remains available." :
+		strOutStatus =
+			"Valtan preview panel is unavailable; canonical data-only authoring remains available.";
+		m_strValtanPatternPreviewStatus = strOutStatus;
+		return false;
+	}
+	/* Workbench transport is a programmatic request for the same typed Valtan
+	   target, not a user-driven target change.  Animation Tool already applies
+	   this same-owner exception during arena auto-stage; apply it here as well
+	   so an unsaved Valtan Sound/Binding draft cannot deadlock its own preview.
+	   Locks owned by Effect/Equipment or another tool remain set and continue
+	   to reject the selection transaction. */
+	const bool_t bTemporarilyReleaseOwnLock =
+		Is_AnyDocumentDirty() && Is_ValtanDocumentDirty();
+	if (bTemporarilyReleaseOwnLock)
+	{
+		m_pPreviewPanel->Set_SessionLock(
+			CHARACTER_PREVIEW_LOCK_OWNER::ANIMATION_TOOL, false, {});
+	}
+	const bool_t bSelected =
+		m_pPreviewPanel->Select_TargetAsset("Valtan");
+	if (bTemporarilyReleaseOwnLock)
+	{
+		m_pPreviewPanel->Set_SessionLock(
+			CHARACTER_PREVIEW_LOCK_OWNER::ANIMATION_TOOL, true,
+			"Save or discard Animation Events, Skill Bindings, Valtan Pattern Animation Bindings, Valtan Pattern Sound, KoukuSaton Action Bindings/Patterns, and Workbench Sound bindings before changing target.");
+	}
+	if (!bSelected)
+	{
+		strOutStatus =
 			"Valtan Model View could not be staged; canonical data-only authoring remains available: " +
-				m_pPreviewPanel->Get_Status();
+			m_pPreviewPanel->Get_Status();
+		m_strValtanPatternPreviewStatus = strOutStatus;
 		return false;
 	}
 	const std::string strAssetName =
@@ -1586,11 +1614,13 @@ bool_t Client::CAnimation_Tool::Stage_ValtanCompositionPreview(
 	{
 		strOutStatus =
 			"The selected target is not the dedicated Valtan Model View; no unrelated scene model was substituted.";
+		m_strValtanPatternPreviewStatus = strOutStatus;
 		return false;
 	}
 	if (!Sync_AssetName())
 	{
 		strOutStatus = m_Status;
+		m_strValtanPatternPreviewStatus = strOutStatus;
 		return false;
 	}
 	m_iValtanAutoPreviewAttemptGeneration =
@@ -1598,6 +1628,7 @@ bool_t Client::CAnimation_Tool::Stage_ValtanCompositionPreview(
 	m_iValtanAutoPreviewSuccessGeneration =
 		m_iValtanAutoPreviewAttemptGeneration;
 	strOutStatus = "Dedicated Valtan Model View is ready for Action Composition preview.";
+	m_strValtanPatternPreviewStatus = strOutStatus;
 	return true;
 }
 
@@ -2115,6 +2146,23 @@ bool_t Client::CAnimation_Tool::Reload_ValtanCompositionPatternSounds(
 }
 
 bool_t Client::CAnimation_Tool::
+Discard_ValtanCompositionPatternSoundDraftAndReload(
+	std::string& strOutStatus)
+{
+	const bool_t bDiscardedDraft = m_bValtanPatternSoundCuesDirty;
+	if (!Reload_ValtanPatternSoundCues())
+	{
+		strOutStatus = m_strValtanPatternSoundCueStatus;
+		return false;
+	}
+	m_strValtanPatternSoundCueStatus = bDiscardedDraft ?
+		"Discarded the unsaved Pattern Sound composition draft and reloaded the physical owner." :
+		"Reloaded the Pattern Sound composition owner; no draft required discard.";
+	strOutStatus = m_strValtanPatternSoundCueStatus;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::
 Can_CommitValtanCompositionPatternSoundGeneration(
 	std::string& strOutStatus)
 {
@@ -2425,12 +2473,6 @@ Validate_ValtanCompositionPatternSoundStageDependencies(
 	{
 		strOutStatus =
 			"Pattern/Animation mutation requires the admitted Pattern Sound source before dependency validation.";
-		return false;
-	}
-	if (m_bValtanPatternSoundCuesDirty)
-	{
-		strOutStatus =
-			"Pattern/Animation mutation is blocked while the separate Pattern Sound source has an unsaved draft.";
 		return false;
 	}
 	if (BaselinePattern.strPatternId.empty() ||
@@ -2915,6 +2957,102 @@ bool_t Client::CAnimation_Tool::Remove_ValtanCompositionPatternSound(
 	m_strValtanPatternSoundCueStatus =
 		"UNSAVED Pattern Sound row removed: " + RowId.strBindingId +
 		" / " + RowId.strOccurrenceId + ". " + RemoveStatus;
+	strOutStatus = m_strValtanPatternSoundCueStatus;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::
+Stage_ValtanCompositionPatternSoundCascadeForAnimationDelete(
+	const VALTAN_PATTERN_VIEW& Pattern,
+	const VALTAN_STAGE_VIEW& Stage,
+	const std::string& strClipOccurrenceId,
+	VALTAN_PATTERN_SOUND_CUE_DOCUMENT& OutPreviousDraft,
+	bool_t& bOutPreviousDirty,
+	uint64_t& iOutMutationGeneration,
+	std::size_t& iOutRemovedRowCount,
+	std::string& strOutStatus)
+{
+	OutPreviousDraft = {};
+	bOutPreviousDirty = false;
+	iOutMutationGeneration = m_iValtanPatternSoundDraftGeneration;
+	iOutRemovedRowCount = 0u;
+	if (Is_ValtanCompositionPatternTransactionActive() ||
+		!m_bValtanPatternSoundCuesReady ||
+		Pattern.strPatternId.empty() || Stage.strStageId.empty() ||
+		Stage.strActionId.empty() || strClipOccurrenceId.empty())
+	{
+		strOutStatus =
+			"Animation Delete Sound cascade requires one admitted Pattern/Stage/occurrence and an idle Create transaction.";
+		return false;
+	}
+
+	OutPreviousDraft = m_ValtanPatternSoundCues;
+	bOutPreviousDirty = m_bValtanPatternSoundCuesDirty;
+	VALTAN_PATTERN_SOUND_CUE_DOCUMENT Staged = m_ValtanPatternSoundCues;
+	std::vector<VALTAN_PATTERN_SOUND_CUE_ROW_ID> Rows;
+	for (const VALTAN_PATTERN_SOUND_CUE& Cue : Staged.Cues)
+	{
+		if (Cue.strPatternId != Pattern.strPatternId ||
+			Cue.strStageId != Stage.strStageId ||
+			Cue.strActionId != Stage.strActionId ||
+			Cue.strClipOccurrenceId != strClipOccurrenceId)
+		{
+			continue;
+		}
+		Rows.push_back({ Cue.strBindingId, Cue.strOccurrenceId });
+	}
+	if (Rows.empty())
+	{
+		strOutStatus =
+			"The selected Animation occurrence has no exact Pattern Sound dependency.";
+		return true;
+	}
+
+	for (const VALTAN_PATTERN_SOUND_CUE_ROW_ID& Row : Rows)
+	{
+		std::string RemoveStatus;
+		if (!CValtanPatternSoundCueDocument::Remove_AuthoringRow(
+				Staged, Row, RemoveStatus))
+		{
+			strOutStatus =
+				"Animation Delete Sound cascade was rejected before either owner changed: " +
+				RemoveStatus;
+			return false;
+		}
+	}
+
+	m_ValtanPatternSoundCues = std::move(Staged);
+	m_bValtanPatternSoundCuesDirty = true;
+	++m_iValtanPatternSoundDraftGeneration;
+	iOutMutationGeneration = m_iValtanPatternSoundDraftGeneration;
+	iOutRemovedRowCount = Rows.size();
+	m_strValtanPatternSoundCueStatus =
+		"UNSAVED cascade: removed " + std::to_string(Rows.size()) +
+		" Pattern Sound row(s) linked to Animation occurrence " +
+		strClipOccurrenceId + ".";
+	strOutStatus = m_strValtanPatternSoundCueStatus;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::
+Restore_ValtanCompositionPatternSoundCascade(
+	const VALTAN_PATTERN_SOUND_CUE_DOCUMENT& PreviousDraft,
+	const bool_t bPreviousDirty,
+	const uint64_t iExpectedMutationGeneration,
+	std::string& strOutStatus)
+{
+	if (m_iValtanPatternSoundDraftGeneration !=
+		iExpectedMutationGeneration)
+	{
+		strOutStatus =
+			"Pattern Sound cascade rollback rejected a stale draft generation; reload before editing again.";
+		return false;
+	}
+	m_ValtanPatternSoundCues = PreviousDraft;
+	m_bValtanPatternSoundCuesDirty = bPreviousDirty;
+	++m_iValtanPatternSoundDraftGeneration;
+	m_strValtanPatternSoundCueStatus =
+		"Pattern Sound cascade rolled back with the rejected Animation Delete.";
 	strOutStatus = m_strValtanPatternSoundCueStatus;
 	return true;
 }
@@ -4503,11 +4641,45 @@ bool_t Client::CAnimation_Tool::Build_ValtanPatternMasterTimeline(
 				return false;
 			}
 		}
-		if (iStageAnimationWallMs != Stage.iDurationMs)
+		if (iStageAnimationWallMs > Stage.iDurationMs)
 		{
-			strOutStatus = "Master occurrences do not fill Server stage " +
+			strOutStatus = "Master occurrences exceed Server stage " +
 				Stage.strStageId + ".";
 			return false;
+		}
+		if (iStageAnimationWallMs < Stage.iDurationMs)
+		{
+			if ("HOLD_LAST_POSE" != Stage.strAnimationEndPolicy)
+			{
+				strOutStatus =
+					"Only HOLD_LAST_POSE may leave a trailing Server Stage gap: " +
+					Stage.strStageId + ".";
+				return false;
+			}
+			/* HOLD_LAST_POSE deliberately allows the finite source playlist to
+			   finish before the Server Stage clock.  Keep one master item active
+			   through that trailing gap so local pattern sampling, collider debug,
+			   and the next Stage all remain on the exact Server clock. */
+			const uint32_t iTrailingHoldMs = static_cast<uint32_t>(
+				Stage.iDurationMs - iStageAnimationWallMs);
+			VALTAN_PATTERN_MASTER_PLAY_ITEM& LastStageItem = OutPlaylist.back();
+			if (LastStageItem.strStageId != Stage.strStageId ||
+				LastStageItem.iAuthoringWallMs >
+					(std::numeric_limits<uint32_t>::max)() - iTrailingHoldMs)
+			{
+				strOutStatus =
+					"Master trailing pose hold lost its exact Stage owner clock.";
+				return false;
+			}
+			LastStageItem.iAuthoringWallMs += iTrailingHoldMs;
+			iStageAnimationWallMs = Stage.iDurationMs;
+			iTimelineMs += iTrailingHoldMs;
+			if (iTimelineMs > static_cast<uint64_t>(
+					(std::numeric_limits<uint32_t>::max)()))
+			{
+				strOutStatus = "Master authoring timeline duration overflowed.";
+				return false;
+			}
 		}
 	}
 	if (OutPlaylist.empty() || 0u == iTimelineMs)
@@ -5568,6 +5740,11 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 		{
 			ImGui::TextDisabled(
 				"Sector final yaw = Server-selected target facing + this local Y rotation.");
+		}
+		else if ("arena.center.target-follow" == Cue.strAnchorSlotId)
+		{
+			ImGui::TextDisabled(
+				"Sector yaw = current locked-target Server tick facing + this local Y rotation.");
 		}
 		ImGui::TextDisabled("Source %u..%s | stage clock %s +%u ms",
 			Cue.iSourceStartMs,

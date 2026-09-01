@@ -371,7 +371,31 @@ bool Client::CActionCompositionGraphModel::Project(
 			Edge.eOrigin = ACTION_COMPOSITION_GRAPH_EDGE_ORIGIN::AUTHORED_BRANCH;
 			Edge.bDefault = "TIMEOUT" == Branch.strOutcome;
 			bHasTimeout = bHasTimeout || Edge.bDefault;
-			if (!Branch.strNextActionId.has_value())
+			if (Branch.strNextActionId.has_value() &&
+				Branch.strNextPatternId.has_value())
+			{
+				return Fail(OutError,
+					ACTION_COMPOSITION_GRAPH_ERROR_CODE::AMBIGUOUS_BRANCH_TARGET,
+					"Pattern graph branch cannot target a local action and another Pattern.",
+					Pattern.strPatternId, Stage.strStageId,
+					Stage.strActionId, Branch.strOutcome);
+			}
+			if (Branch.strNextPatternId.has_value())
+			{
+				Edge.strTargetPatternId = *Branch.strNextPatternId;
+				if (!Is_StableToken(Edge.strTargetPatternId))
+				{
+					return Fail(OutError,
+						ACTION_COMPOSITION_GRAPH_ERROR_CODE::INVALID_TARGET_PATTERN_ID,
+						"Pattern graph branch targets an invalid Pattern identity.",
+						Pattern.strPatternId, Stage.strStageId,
+						Stage.strActionId, Branch.strOutcome);
+				}
+				/* This projection owns one Pattern only. The destination is retained
+				   for inspection, while its entry Stage begins in the next snapshot. */
+				Edge.bTerminal = true;
+			}
+			else if (!Branch.strNextActionId.has_value())
 			{
 				Edge.bTerminal = true;
 			}

@@ -93,10 +93,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
         )
         cls.project = PROJECT.read_text(encoding="utf-8")
         cls.filters = FILTERS.read_text(encoding="utf-8")
-        cls.gameplay = tuning_pipeline.resolve_gameplay_flow_reference(
-            json.loads(GAMEPLAY.read_text(encoding="utf-8")),
-            json.loads((ROOT / tuning_pipeline.SAVED_FLOW_REL).read_text(encoding="utf-8")),
-        )
+        cls.gameplay = json.loads(GAMEPLAY.read_text(encoding="utf-8"))
 
     def test_project_and_f1_hub_register_one_boss_tool(self) -> None:
         for source in (self.project, self.filters):
@@ -114,6 +111,39 @@ class ValtanBossToolContractTests(unittest.TestCase):
             1,
             self.main_cpp.count('toolCell("Boss Tool", DEBUG_TOOL::BOSS)'),
         )
+
+    def test_logic_flow_tab_is_live_synchronized_and_read_only(self) -> None:
+        for source in (self.project, self.filters):
+            for file_name in (
+                "BossLogicFlowView.h",
+                "BossLogicFlowViewModel.cpp",
+                "BossLogicFlowRenderer.cpp",
+            ):
+                self.assertEqual(1, source.count(file_name))
+        self.assertIn('ImGui::BeginTabItem("Logic Flow")', self.boss_cpp)
+        self.assertIn("void Render_LogicFlowTab();", self.boss_h)
+        render = function_body(
+            self.boss_cpp,
+            "void Client::CBossTool::Render_LogicFlowTab()",
+        )
+        for marker in (
+            '"Current Flow: %s | Slot %u / %u | %s"',
+            '"Current Pattern: %s%s"',
+            "FlowPlayback.iPatternSequence == Boss.iPatternSequence",
+            "CBossLogicFlowViewModel::Project(",
+            "CBossLogicFlowRenderer::Render(",
+            "Context.bAllowSelection = false",
+            "COUNTER_HIT and TIMEOUT branches",
+        ):
+            self.assertIn(marker, render)
+        for forbidden in (
+            "m_FlowDocument.Move_",
+            "m_FlowDocument.Remove_",
+            "m_FlowDocument.Connect_",
+            "CValtanPatternFlowService::Get().Start(",
+            "CValtanPatternAuditionService::Get().Submit(",
+        ):
+            self.assertNotIn(forbidden, render)
 
     def test_tool_reuses_product_views_and_typed_server_commands(self) -> None:
         for marker in (
@@ -425,9 +455,9 @@ class ValtanBossToolContractTests(unittest.TestCase):
         self.assertIn("Build_PlayablePatternInventory", reload_body)
         self.assertIn("StagedAdmittedPatternIds", reload_body)
         self.assertIn("CValtanPatternFlowDocument StagedFlowDocument", reload_body)
-        self.assertIn("StagedFlowDocument.Verify_SourceRevision", reload_body)
-        self.assertIn("StagedGraph.strSavedFlowSourceRevision", reload_body)
-        self.assertIn(
+        self.assertIn("CanonicalFlowDocument.Load_CanonicalSequence", reload_body)
+        self.assertIn("CanonicalAdmission.Validate_StillCurrent", reload_body)
+        self.assertNotIn(
             "strSavedFlowSourceRevision", self.tree_h + self.tree_cpp
         )
         self.assertGreaterEqual(
@@ -439,7 +469,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
             reload_body.index("m_Graph = std::move(StagedGraph)"),
         )
         self.assertLess(
-            reload_body.index("StagedGraph.strSavedFlowSourceRevision"),
+            reload_body.index("CanonicalAdmission.Validate_StillCurrent"),
             reload_body.index("m_Graph = std::move(StagedGraph)"),
         )
         self.assertLess(
@@ -482,8 +512,13 @@ class ValtanBossToolContractTests(unittest.TestCase):
             self.boss_cpp,
             "void Client::CBossTool::Render_PatternList()",
         )
-        self.assertIn("Repeat stopped after selecting a different Pattern", pattern_list)
-        self.assertIn("m_strRepeatPatternId.clear()", pattern_list)
+        select_pattern = function_body(
+            self.boss_cpp,
+            "void Client::CBossTool::Select_Pattern(",
+        )
+        self.assertIn("Select_Pattern(*pPattern)", pattern_list)
+        self.assertIn("Repeat stopped after selecting a different Pattern", select_pattern)
+        self.assertIn("m_strRepeatPatternId.clear()", select_pattern)
 
     def test_repeat_stops_when_hidden_or_closed_and_waits_for_revive(self) -> None:
         update = function_body(
@@ -615,9 +650,6 @@ class ValtanBossToolContractTests(unittest.TestCase):
         acquire = reload_graph.index("CanonicalAdmission.Acquire")
         load = reload_graph.index("CValtanPatternTree::Load_WhileAdmitted")
         camera_stage = reload_graph.index("StagedCamera.Load")
-        final_flow_check = reload_graph.rindex(
-            "StagedFlowDocument.Verify_SourceRevision"
-        )
         final_generation_check = reload_graph.rindex(
             "CanonicalAdmission.Validate_StillCurrent"
         )
@@ -625,8 +657,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
         mutation_admitted = reload_graph.index("m_bGraphMutationAdmitted = true")
         self.assertLess(acquire, load)
         self.assertLess(load, camera_stage)
-        self.assertLess(camera_stage, final_flow_check)
-        self.assertLess(final_flow_check, final_generation_check)
+        self.assertLess(camera_stage, final_generation_check)
         self.assertLess(final_generation_check, graph_commit)
         self.assertLess(graph_commit, mutation_admitted)
 

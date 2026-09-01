@@ -186,17 +186,8 @@
     },
     {
       "actionId": "valtan.attack.dash-charge.groggy",
-      "clips": [
-        {
-          "clipOccurrenceId": "valtan.attack.dash-charge.groggy.clip.01",
-          "clip": "mesh_dmg_parts_loop_1",
-          "mappingBasis": "PATTERN_PR_REFERENCE",
-          "sourceStartMs": 0,
-          "playMs": 0,
-          "playRate": 1.0,
-          "loop": true
-        }
-      ]
+      "playbackMode": "NONE",
+      "clips": []
     },
     {
       "actionId": "valtan.attack.dash-charge.part-break",
@@ -216,12 +207,48 @@
       "actionId": "valtan.attack.dash-charge.recovery",
       "clips": [
         {
-          "clipOccurrenceId": "valtan.attack.dash-charge.recovery.project-tuned.clip.01",
-          "clip": "mesh_att_battle_4_01",
+          "clipOccurrenceId": "valtan.attack.dash-charge.recovery.groggy.clip.01",
+          "clip": "mesh_abn_groggy_1_start",
           "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 3350,
-          "playMs": 1383,
-          "playRate": 1.5366667,
+          "sourceStartMs": 0,
+          "playMs": 1833,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.attack.dash-charge.recovery.groggy.clip.02",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 1333,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.attack.dash-charge.recovery.groggy.clip.03",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 1333,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.attack.dash-charge.recovery.groggy.clip.04",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 334,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.attack.dash-charge.recovery.groggy.clip.05",
+          "clip": "mesh_abn_groggy_1_end",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1.0,
           "loop": false
         }
       ]
@@ -3876,9 +3903,18 @@
         {
           "clipOccurrenceId": "valtan.sequence.sequence.400440.0.step-01.clip-01",
           "clip": "mesh_att_battle_11_01",
-          "mappingBasis": "PROJECT_AUTHORED",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
           "sourceStartMs": 0,
           "playMs": 1800,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.sequence.sequence.400440.0.step-01.roar.clip-05",
+          "clip": "mesh_att_battle_5_01_end",
+          "mappingBasis": "SOURCE_REVIEWED_DELTA",
+          "sourceStartMs": 0,
+          "playMs": 4433,
           "playRate": 1.0,
           "loop": false
         }
@@ -4115,8 +4151,53 @@
     },
     {
       "actionId": "valtan.authoring.stagger-slot.groggy",
-      "playbackMode": "NONE",
-      "clips": []
+      "clips": [
+        {
+          "clipOccurrenceId": "VALTAN_STAGGER_SLOT.GROGGY.composition.clip.01",
+          "clip": "mesh_abn_groggy_1_start",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 1833,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "VALTAN_STAGGER_SLOT.GROGGY.composition.clip.02",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 1333,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "VALTAN_STAGGER_SLOT.GROGGY.composition.clip.03",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 1333,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "VALTAN_STAGGER_SLOT.GROGGY.composition.clip.04",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 334,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "VALTAN_STAGGER_SLOT.GROGGY.composition.clip.05",
+          "clip": "mesh_abn_groggy_1_end",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ]
     },
     {
       "actionId": "valtan.authoring.stagger-slot.recovery",
@@ -4125,13 +4206,81 @@
     },
     {
       "actionId": "valtan.authoring.bind-slot.step-01",
-      "playbackMode": "NONE",
-      "clips": []
+      "clips": [
+        {
+          "clipOccurrenceId": "VALTAN_BIND_SLOT.STEP_01.composition.clip.01",
+          "clip": "mesh_att_battle_5_01_start",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 1400,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "VALTAN_BIND_SLOT.STEP_01.composition.clip.02",
+          "clip": "mesh_att_battle_5_01_loop",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 900,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "VALTAN_BIND_SLOT.STEP_01.composition.clip.03",
+          "clip": "mesh_att_battle_5_01_loop",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 900,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "VALTAN_BIND_SLOT.STEP_01.composition.clip.04",
+          "clip": "mesh_att_battle_5_01_loop",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 900,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "VALTAN_BIND_SLOT.STEP_01.composition.clip.05",
+          "clip": "mesh_att_battle_5_01_end",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 4433,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ]
     },
     {
       "actionId": "valtan.authoring.silence-slot.step-01",
-      "playbackMode": "NONE",
-      "clips": []
+      "clips": [
+        {
+          "clipOccurrenceId": "VALTAN_SILENCE_SLOT.STEP_01.composition.clip.01",
+          "clip": "mesh_evt1_att_battle_5_01_end",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 2633,
+          "playRate": 1,
+          "loop": false
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.ghost.portal-once.active",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.ghost.portal-once.active.clip-01",
+          "clip": "mesh_att_battle_18_02",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     }
   ]
 }

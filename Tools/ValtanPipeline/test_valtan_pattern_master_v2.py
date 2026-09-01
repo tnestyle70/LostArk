@@ -28,6 +28,12 @@ EXPECTED_SCRIPTED_SEQUENCE = {
     "interStepPursuitMs": 1000,
     "patternIds": [
         "VALTAN_WHIRLWIND",
+        "VALTAN_CROSS",
+        "VALTAN_SIX_PIZZA_106",
+        "VALTAN_SIX_PIZZA_106",
+        "VALTAN_DASH_CHARGE",
+        "VALTAN_DASH_CHARGE",
+        "VALTAN_HIGH_JUMP",
         "VALTAN_FOUR_SLASH",
         "VALTAN_WHIRLWIND",
         "VALTAN_FIST_IN_OUT",
@@ -435,7 +441,18 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         self.assertIn(pipeline.GAMEPLAY_AUTHORING_REL, source_paths)
         self.assertIn(pipeline.PRESENTATION_AUTHORING_REL, source_paths)
         self.assertIn(pipeline.ANIMATION_PROMOTION_MANIFEST_REL, source_paths)
-        self.assertIn(pipeline.SAVED_FLOW_REL, source_paths)
+        self.assertNotIn("ValtanBossAuditionFlows.json", source_paths)
+        for generated_relative in (
+            pipeline.ENCOUNTER_REL,
+            pipeline.ROTATIONS_REL,
+            pipeline.COMBAT_PRODUCT_REL,
+            pipeline.CAMERA_REL,
+            pipeline.WORLD_PRODUCT_REL,
+            pipeline.BINDINGS_REL,
+            pipeline.CUES_REL,
+            pipeline.PROVENANCE_REL,
+        ):
+            self.assertNotIn(generated_relative, source_paths)
         self.assertNotIn(pipeline.MASTER_REL, source_paths)
         self.assertEqual(1, self.source_manifest["gameplaySourceVersion"])
         self.assertEqual(1, self.source_manifest["presentationSourceVersion"])
@@ -717,8 +734,6 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 shutil.copy2(source, destination)
 
             for row in self.source_manifest["files"]:
-                if row["path"] == pipeline.SAVED_FLOW_REL:
-                    continue
                 path = repository_root / row["path"]
                 text = (
                     pipeline.read_text(path)
@@ -731,8 +746,6 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             raw_lf = pipeline.sha256_file(gameplay_path)
 
             for row in self.source_manifest["files"]:
-                if row["path"] == pipeline.SAVED_FLOW_REL:
-                    continue
                 path = repository_root / row["path"]
                 text = pipeline.read_text(path).replace("\n", "\r\n")
                 path.write_bytes(text.encode("utf-8"))
@@ -740,8 +753,6 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             raw_crlf = pipeline.sha256_file(gameplay_path)
 
             for row in self.source_manifest["files"]:
-                if row["path"] == pipeline.SAVED_FLOW_REL:
-                    continue
                 path = repository_root / row["path"]
                 text = pipeline.read_text(path).replace("\r\n", "\r")
                 path.write_bytes(text.encode("utf-8"))
@@ -750,14 +761,6 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.assertNotEqual(raw_lf, raw_crlf)
             self.assertEqual(lf_manifest, crlf_manifest)
             self.assertEqual(lf_manifest, cr_manifest)
-            flow_path = repository_root / pipeline.SAVED_FLOW_REL
-            flow_path.write_bytes(flow_path.read_bytes() + b"\n")
-            flow_changed_manifest = pipeline.source_manifest(repository_root)
-            self.assertNotEqual(
-                cr_manifest["sourceManifestId"],
-                flow_changed_manifest["sourceManifestId"],
-                "Flow revisions use the exact raw bytes hashed by the Client",
-            )
 
     def test_split_authoring_strict_join_rejects_drift_and_role_leaks(self) -> None:
         gameplay = self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
@@ -1001,11 +1004,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
     def assert_v1_migration_fixture_is_excluded_from_normal_revision_and_load(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repository_root = Path(temporary) / "repository"
-            for row in self.source_manifest["files"]:
-                source = self.root / row["path"]
-                destination = repository_root / row["path"]
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(source, destination)
+            shutil.copytree(self.root / "Data", repository_root / "Data")
             fixture = repository_root / pipeline.MASTER_REL
             fixture.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(self.root / pipeline.MASTER_REL, fixture)
@@ -1135,6 +1134,66 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         forbidden = {"ownerPatternId", "ownerStageActionId", "lifeMs", "clientVisualId"}
         for row in companion["objects"]:
             self.assertFalse(forbidden & set(row), row["combatObjectArchetypeId"])
+
+    def test_live_independent_inventory_preserves_authored_combat_lifetime(self) -> None:
+        master = pipeline.join_v2_authoring(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+            self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        self.assertEqual(
+            pipeline.REQUIRED_LIVE_INDEPENDENT_EFFECT_IDS,
+            {
+                row["independentEffectId"]
+                for row in master["independentEffects"]
+            },
+        )
+
+        invalid = copy.deepcopy(master)
+        invalid["independentEffects"][-1]["independentEffectId"] = (
+            "valtan.independent-effect.unexpected"
+        )
+        with self.assertRaisesRegex(
+            pipeline.PipelineError, "live independent effect inventory mismatch"
+        ):
+            pipeline.validate_v2_master(
+                invalid,
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+
+        ground_roar = next(
+            row for row in master["patterns"]
+            if row["patternId"] == "VALTAN_GROUND_ROAR"
+        )
+        owner_stage = next(
+            stage for stage in ground_roar["stages"]
+            if any(
+                event["eventId"] == "valtan.ground-roar.cardinal-rocks"
+                for event in stage["events"]
+            )
+        )
+        authored = next(
+            row for row in self.docs[pipeline.COMBAT_AUTHORING_REL]["objects"]
+            if row["combatObjectArchetypeId"]
+            == "combatobject.valtan.ground-roar.rock"
+        )
+        self.assertEqual(5000, authored["lifetimeMs"])
+        # Combat-object lifetime is an independent authored clock. It may be
+        # shorter or longer than the Stage that schedules the spawn event.
+        projected = pipeline._compile_combat_products(
+            master,
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+            self.docs[pipeline.LEGACY_REL],
+            self.docs[pipeline.BOSS_CATALOG_REL],
+        )
+        product = next(
+            row for row in projected
+            if row["combatObjectArchetypeId"]
+            == "combatobject.valtan.ground-roar.rock"
+        )
+        self.assertEqual(authored["lifetimeMs"], product["lifeMs"])
 
     def test_legacy_manifest_seals_unmanaged_closure(self) -> None:
         legacy = self.docs[pipeline.LEGACY_REL]
@@ -1727,11 +1786,9 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         self.assertIn("VALTAN_GHOST_FINALE", {
             row["patternId"] for row in master["decisionModel"]["manualAuditions"]})
         self.assertEqual(
-            self.saved_flow_pattern_ids(
-                self.docs[pipeline.SAVED_FLOW_REL]
-            ),
+            EXPECTED_SCRIPTED_SEQUENCE["patternIds"],
             master["decisionModel"]["scriptedSequence"]["patternIds"],
-            "joining derived patterns must preserve the user's saved Flow graph projection exactly",
+            "joining derived patterns must preserve the canonical gameplay sequence",
         )
 
     def test_ghost_finale_rejects_invalid_owner_shape_and_recursive_graphs(self) -> None:
@@ -1788,14 +1845,16 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         with self.assertRaisesRegex(pipeline.PipelineError, "navigation-blocked outcome requires a capture rush"):
             pipeline.validate_gameplay_authoring(invalid)
 
-    def test_center_jump_and_pizza_facing_anchor_project_without_world_rotation_loss(self) -> None:
+    def test_center_jump_and_pizza_target_follow_anchor_project_without_world_rotation_loss(self) -> None:
         master = pipeline.join_v2_authoring(
             self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
             self.docs[pipeline.PRESENTATION_AUTHORING_REL],
             self.docs[pipeline.WORLD_SET_REL], self.docs[pipeline.COMBAT_AUTHORING_REL])
-        expected = {"VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK": "arena.center",
-                    "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK": "arena.center",
-                    "VALTAN_SIX_PIZZA_106": "arena.center.facing"}
+        expected = {
+            "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK": ("arena.center", "snapshot"),
+            "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK": ("arena.center", "snapshot"),
+            "VALTAN_SIX_PIZZA_106": ("arena.center.target-follow", "follow"),
+        }
         for row in master["patterns"]:
             if row["patternId"] not in expected:
                 continue
@@ -1806,16 +1865,16 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             cues = [cue for stage in row["stages"] for cue in stage["effectCues"]]
             self.assertTrue(cues)
             for cue in cues:
-                self.assertEqual(expected[row["patternId"]], cue["anchorSlotId"])
-                self.assertEqual("snapshot", cue["followPolicy"])
+                self.assertEqual(expected[row["patternId"]][0], cue["anchorSlotId"])
+                self.assertEqual(expected[row["patternId"]][1], cue["followPolicy"])
                 cue["localTransform"]["rotationDegrees"][1] = 37.0
             if row["patternId"] == "VALTAN_SIX_PIZZA_106":
-                self.assertEqual(("LOCK_RANDOM_ALIVE_ON_START", "LOCK_FACING_ON_START"),
+                self.assertEqual(("LOCK_RANDOM_ALIVE_ON_START", "TRACK_TARGET_EACH_TICK"),
                                  (row["targetPolicy"], row["aimPolicy"]))
         outputs = pipeline.project_v2_products(self.root, self.docs, master)
         product = {row["patternId"]: row for row in json.loads(outputs[pipeline.ENCOUNTER_REL])["patterns"]}
         cues = json.loads(outputs[pipeline.CUES_REL])["cues"]
-        for pattern_id, anchor in expected.items():
+        for pattern_id, (anchor, _) in expected.items():
             authored = next(row for row in master["patterns"] if row["patternId"] == pattern_id)
             self.assertEqual(authored["serverMotion"], product[pattern_id]["serverMotion"])
             projected = [cue for cue in cues if cue["patternId"] == pattern_id]
@@ -1834,8 +1893,10 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
              lambda row, cue: row.update(serverMotion=None)),
             ("VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK", "no preposition",
              lambda row, cue: row["serverMotion"].update(moveToAnchorBeforeTakeoff=False)),
-            ("VALTAN_SIX_PIZZA_106", "moving effect root",
-             lambda row, cue: cue.update(followPolicy="follow")),
+            ("VALTAN_SIX_PIZZA_106", "fixed effect root",
+             lambda row, cue: cue.update(followPolicy="snapshot")),
+            ("VALTAN_SIX_PIZZA_106", "fixed occurrence facing",
+             lambda row, cue: row.update(aimPolicy="LOCK_FACING_ON_START")),
             ("VALTAN_SIX_PIZZA_106", "unknown reserved anchor",
              lambda row, cue: cue.update(anchorSlotId="arena.center.unknown")),
             ("VALTAN_SIX_PIZZA_106", "unlocked target",
@@ -2096,166 +2157,88 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
 
-    def test_dash_charge_uses_one_visible_server_and_presentation_clock(self) -> None:
-        gameplay = self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
-        presentation = self.docs[pipeline.PRESENTATION_AUTHORING_REL]
-        dash_gameplay = next(
-            pattern
-            for pattern in gameplay["patterns"]
-            if pattern["patternId"] == "VALTAN_DASH_CHARGE"
-        )
+    def test_dash_charge_followups_keep_three_visible_pattern_clocks(self) -> None:
+        gameplay = {
+            row["patternId"]: row
+            for row in self.docs[pipeline.GAMEPLAY_AUTHORING_REL]["patterns"]
+        }
+        presentation = {
+            row["patternId"]: row
+            for row in self.docs[pipeline.PRESENTATION_AUTHORING_REL]["patterns"]
+        }
+        dash_gameplay = gameplay["VALTAN_DASH_CHARGE"]
+        groggy_gameplay = gameplay["VALTAN_DASH_CHARGE_GROGGY"]
+        part_break_gameplay = gameplay["VALTAN_PART_BREAK"]
+        dash_presentation = presentation["VALTAN_DASH_CHARGE"]
+        groggy_presentation = presentation["VALTAN_DASH_CHARGE_GROGGY"]
+        part_break_presentation = presentation["VALTAN_PART_BREAK"]
         charge_gameplay = next(
-            stage
-            for stage in dash_gameplay["stages"]
-            if stage["stageId"] == "CHARGE"
-        )
-        recovery_gameplay = next(
-            stage
-            for stage in dash_gameplay["stages"]
-            if stage["stageId"] == "RECOVERY"
-        )
-        groggy_gameplay = next(
-            stage
-            for stage in dash_gameplay["stages"]
-            if stage["stageId"] == "GROGGY"
-        )
-        dash_presentation = next(
-            pattern
-            for pattern in presentation["patterns"]
-            if pattern["patternId"] == "VALTAN_DASH_CHARGE"
+            row for row in dash_gameplay["stages"] if row["stageId"] == "CHARGE"
         )
         charge_presentation = next(
-            stage
-            for stage in dash_presentation["stages"]
-            if stage["stageId"] == "CHARGE"
+            row for row in dash_presentation["stages"] if row["stageId"] == "CHARGE"
         )
-        groggy_presentation = next(
-            stage
-            for stage in dash_presentation["stages"]
-            if stage["stageId"] == "GROGGY"
+        groggy = groggy_gameplay["stages"][0]
+        groggy_visual = groggy_presentation["stages"][0]
+        part_break = part_break_gameplay["stages"][0]
+        part_break_visual = part_break_presentation["stages"][0]
+
+        self.assertEqual(["WINDUP", "CHARGE"], [row["stageId"] for row in dash_gameplay["stages"]])
+        self.assertEqual(["GROGGY"], [row["stageId"] for row in groggy_gameplay["stages"]])
+        self.assertEqual(["PART_BREAK"], [row["stageId"] for row in part_break_gameplay["stages"]])
+        self.assertEqual([420604], dash_gameplay["sourceActionIds"])
+        self.assertEqual([400430], groggy_gameplay["sourceActionIds"])
+        self.assertEqual([420627], part_break_gameplay["sourceActionIds"])
+        self.assertEqual(
+            {"WALL_CONTACT": "VALTAN_DASH_CHARGE_GROGGY", "TIMEOUT": "VALTAN_DASH_CHARGE_GROGGY"},
+            {row["outcome"]: row["nextPatternId"] for row in charge_gameplay["branches"]},
         )
-        recovery_presentation = next(
-            stage
-            for stage in dash_presentation["stages"]
-            if stage["stageId"] == "RECOVERY"
-        )
+        self.assertTrue(all(row["nextActionId"] is None for row in charge_gameplay["branches"]))
+        self.assertEqual(1500, charge_gameplay["durationMs"])
+        self.assertEqual({"kind": "FORWARD", "distance": 20.0}, charge_gameplay["motion"])
         occurrences = charge_presentation["animation"]["occurrences"]
-        presentation_wall_ms = sum(
-            occurrence["playMs"] / occurrence["playRate"]
-            for occurrence in occurrences
+        self.assertEqual((2450, 900, 0.6), (
+            occurrences[0]["sourceStartMs"], occurrences[0]["playMs"], occurrences[0]["playRate"]
+        ))
+
+        self.assertEqual(("GROGGY", 6833), (groggy["stageKind"], groggy["durationMs"]))
+        self.assertEqual("GROGGY", groggy_visual["sequenceRole"])
+        self.assertEqual("DESTROY_FIRST_ELIGIBLE", groggy["partDamagePolicy"])
+        self.assertEqual(
+            {"PART_DESTROYED": "VALTAN_PART_BREAK", "TIMEOUT": None},
+            {row["outcome"]: row.get("nextPatternId") for row in groggy["branches"]},
+        )
+        self.assertEqual(
+            [
+                ("mesh_abn_groggy_1_start", 1833),
+                ("mesh_abn_groggy_1_loop", 1333),
+                ("mesh_abn_groggy_1_loop", 1333),
+                ("mesh_abn_groggy_1_loop", 334),
+                ("mesh_abn_groggy_1_end", 2000),
+            ],
+            [(row["clip"], row["playMs"]) for row in groggy_visual["animation"]["occurrences"]],
+        )
+        self.assertEqual(("PART_BREAK", 1400), (part_break["stageKind"], part_break["durationMs"]))
+        self.assertEqual(
+            ["mesh_dmg_parts_end_1"],
+            [row["clip"] for row in part_break_visual["animation"]["occurrences"]],
         )
 
-        self.assertEqual(1500, charge_gameplay["durationMs"])
-        self.assertEqual(
-            {"kind": "FORWARD", "distance": 20.0},
-            charge_gameplay["motion"],
+        joined = pipeline.join_v2_authoring(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+            self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
-        self.assertEqual(1, len(occurrences))
-        self.assertEqual(2450, occurrences[0]["sourceStartMs"])
-        self.assertEqual(900, occurrences[0]["playMs"])
-        self.assertEqual(0.6, occurrences[0]["playRate"])
-        self.assertAlmostEqual(
-            charge_gameplay["durationMs"], presentation_wall_ms, delta=2.0
-        )
-        self.assertEqual(
-            {
-                "WALL_CONTACT": "valtan.attack.dash-charge.groggy",
-                "TIMEOUT": "valtan.attack.dash-charge.recovery",
-            },
-            {
-                branch["outcome"]: branch["nextActionId"]
-                for branch in charge_gameplay["branches"]
-            },
-        )
-        wall_contact_target = next(
-            branch["nextActionId"]
-            for branch in charge_gameplay["branches"]
-            if branch["outcome"] == "WALL_CONTACT"
-        )
-        self.assertEqual(groggy_presentation["actionId"], wall_contact_target)
-        self.assertNotEqual(recovery_presentation["actionId"], wall_contact_target)
-        self.assertEqual(
-            "LOOP_TO_STAGE_END",
-            groggy_presentation["animation"]["endPolicy"],
-        )
-        self.assertEqual(
-            [
-                {
-                    "clipOccurrenceId": "valtan.attack.dash-charge.groggy.clip.01",
-                    "clip": "mesh_dmg_parts_loop_1",
-                    "mappingBasis": "PATTERN_PR_REFERENCE",
-                    "sourceStartMs": 0,
-                    "playMs": 0,
-                    "playRate": 1.0,
-                    "repeatUntilStageEnd": True,
-                }
-            ],
-            groggy_presentation["animation"]["occurrences"],
-        )
-        self.assertEqual(
-            "DESTROY_FIRST_ELIGIBLE",
-            groggy_gameplay["partDamagePolicy"],
-        )
-        self.assertEqual(
-            {
-                "PART_DESTROYED": "valtan.attack.dash-charge.part-break",
-                "TIMEOUT": "valtan.attack.dash-charge.recovery",
-            },
-            {
-                branch["outcome"]: branch["nextActionId"]
-                for branch in groggy_gameplay["branches"]
-            },
-        )
-        self.assertEqual(
-            {
-                "TIMEOUT": None,
-            },
-            {
-                branch["outcome"]: branch["nextActionId"]
-                for branch in recovery_gameplay["branches"]
-            },
-        )
-        self.assertTrue(
-            pipeline._has_closed_stage_flag(
-                groggy_gameplay, "boss.flag.groggy"
-            )
-        )
-        _, _, outputs = pipeline.build_repository_product_projection(self.root)
-        encounter = json.loads(outputs[pipeline.ENCOUNTER_REL])
-        bindings = json.loads(outputs[pipeline.BINDINGS_REL])
-        projected_dash = next(
-            pattern
-            for pattern in encounter["patterns"]
-            if pattern["patternId"] == "VALTAN_DASH_CHARGE"
-        )
-        projected_groggy = next(
-            stage
-            for stage in projected_dash["stages"]
-            if stage["stageId"] == "GROGGY"
-        )
-        self.assertEqual(
-            "DESTROY_FIRST_ELIGIBLE",
-            projected_groggy["partDamagePolicy"],
-        )
-        projected_groggy_binding = next(
-            binding
-            for binding in bindings["bindings"]
-            if binding["actionId"] == "valtan.attack.dash-charge.groggy"
-        )
-        self.assertEqual(
-            [
-                {
-                    "clipOccurrenceId": "valtan.attack.dash-charge.groggy.clip.01",
-                    "clip": "mesh_dmg_parts_loop_1",
-                    "mappingBasis": "PATTERN_PR_REFERENCE",
-                    "sourceStartMs": 0,
-                    "playMs": 0,
-                    "playRate": 1.0,
-                    "loop": True,
-                }
-            ],
-            projected_groggy_binding["clips"],
-        )
+        for pattern_id in (
+            "VALTAN_DASH_CHARGE",
+            "VALTAN_DASH_CHARGE_GROGGY",
+            "VALTAN_PART_BREAK",
+        ):
+            owner = next(row for row in joined["patterns"] if row["patternId"] == pattern_id)
+            projected = pipeline.compile_pattern_product(joined, owner)
+            expected_branches = [row["branches"] for row in gameplay[pattern_id]["stages"]]
+            self.assertEqual(expected_branches, [row.get("branches", []) for row in projected["stages"]])
 
     def test_charge_lock_and_counter_terminal_graph_are_explicit(self) -> None:
         gameplay = self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
@@ -2291,7 +2274,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
 
         bad_policy = copy.deepcopy(gameplay)
         stage(
-            bad_policy, "VALTAN_DASH_CHARGE", "GROGGY"
+            bad_policy, "VALTAN_DASH_CHARGE", "RECOVERY"
         )["partDamagePolicy"] = "DESTROY_ALL"
         with self.assertRaisesRegex(
             pipeline.PipelineError, "partDamagePolicy is unsupported"
@@ -2300,7 +2283,11 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
 
         open_part_window = copy.deepcopy(gameplay)
         groggy = stage(
-            open_part_window, "VALTAN_DASH_CHARGE", "GROGGY"
+            open_part_window, "VALTAN_TRASH", "GROGGY"
+        )
+        groggy["partDamagePolicy"] = "DESTROY_FIRST_ELIGIBLE"
+        groggy["branches"].append(
+            {"outcome": "PART_DESTROYED", "nextActionId": None}
         )
         groggy["events"] = [
             event for event in groggy["events"]
@@ -2653,13 +2640,201 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             ]
             self.assertEqual(20, weight_entry["resultValue"])
 
+    def test_typed_dash_topology_remove_operations_converge_to_three_stage_draft(self) -> None:
+        joined = pipeline.join_v2_authoring(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+            self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        dash = next(
+            pattern for pattern in joined["patterns"]
+            if pattern["patternId"] == "VALTAN_DASH_CHARGE"
+        )
+        # Exercise the old topology-removal patch against a synthetic legacy
+        # draft.  The canonical product now deliberately keeps the saved
+        # RECOVERY identity as GROGGY plus a trailing PART_BREAK reaction.
+        dash["stages"] = [
+            row for row in dash["stages"] if row["stageId"] != "PART_BREAK"
+        ]
+        recovery = next(
+            row for row in dash["stages"] if row["stageId"] == "RECOVERY"
+        )
+        recovery["stageKind"] = "RECOVERY"
+        recovery.pop("partDamagePolicy", None)
+        recovery["events"] = []
+        recovery["branches"] = [{"outcome": "TIMEOUT", "nextActionId": None}]
+        recovery["sequenceRole"] = "RECOVERY"
+        stage_ids = {stage["stageId"] for stage in dash["stages"]}
+        if "GROGGY" not in stage_ids:
+            if 420627 not in dash["sourceActionIds"]:
+                dash["sourceActionIds"].insert(1, 420627)
+            reaction_source = {
+                "sourceActionId": 420627,
+                "sequenceIndex": 1,
+                "role": "PART_BREAK_REACTION",
+            }
+            if reaction_source not in dash["presentationSources"]:
+                dash["presentationSources"].insert(1, reaction_source)
+            dash["reactions"] = [
+                {"triggerKind": "WALL_COLLISION", "stageId": "GROGGY"},
+                {"triggerKind": "PART_BREAK_SUCCESS", "stageId": "PART_BREAK"},
+            ]
+            charge = next(
+                stage for stage in dash["stages"] if stage["stageId"] == "CHARGE"
+            )
+            next(
+                branch for branch in charge["branches"]
+                if branch["outcome"] == "WALL_CONTACT"
+            )["nextActionId"] = "valtan.attack.dash-charge.groggy"
+            recovery_index = next(
+                index for index, stage in enumerate(dash["stages"])
+                if stage["stageId"] == "RECOVERY"
+            )
+            dash["stages"].insert(recovery_index, {
+                "stageId": "GROGGY",
+                "sequenceRole": "GROGGY",
+                "actionId": "valtan.attack.dash-charge.groggy",
+                "stageKind": "GROGGY",
+                "durationMs": 5000,
+                "defaultNextActionId": "valtan.attack.dash-charge.recovery",
+                "hit": {"shape": {"kind": "NONE"}},
+                "motion": None,
+                "events": [],
+                "branches": [
+                    {
+                        "outcome": "PART_DESTROYED",
+                        "nextActionId": "valtan.attack.dash-charge.part-break",
+                    },
+                    {
+                        "outcome": "TIMEOUT",
+                        "nextActionId": "valtan.attack.dash-charge.recovery",
+                    },
+                ],
+                "animation": {
+                    "endPolicy": "LOOP_TO_STAGE_END",
+                    "repeatCount": 1,
+                    "occurrences": [{
+                        "clipOccurrenceId": "valtan.attack.dash-charge.groggy.clip.01",
+                        "clip": "mesh_dmg_parts_loop_1",
+                        "mappingBasis": "PATTERN_PR_REFERENCE",
+                        "sourceStartMs": 0,
+                        "playMs": 0,
+                        "playRate": 1.0,
+                        "repeatUntilStageEnd": True,
+                    }],
+                },
+                "effectCues": [],
+                "cameraInvocations": [],
+                "partDamagePolicy": "DESTROY_FIRST_ELIGIBLE",
+            })
+            dash["stages"].append({
+                "stageId": "PART_BREAK",
+                "sequenceRole": "PART_BREAK",
+                "actionId": "valtan.attack.dash-charge.part-break",
+                "stageKind": "PART_BREAK",
+                "durationMs": 1400,
+                "defaultNextActionId": None,
+                "hit": {"shape": {"kind": "NONE"}},
+                "motion": None,
+                "events": [],
+                "branches": [{"outcome": "TIMEOUT", "nextActionId": None}],
+                "animation": {
+                    "endPolicy": "LOOP_TO_STAGE_END",
+                    "repeatCount": 1,
+                    "occurrences": [{
+                        "clipOccurrenceId": "valtan.attack.dash-charge.part-break.clip.01",
+                        "clip": "mesh_dmg_parts_end_1",
+                        "mappingBasis": "PATTERN_PR_REFERENCE",
+                        "sourceStartMs": 0,
+                        "playMs": 0,
+                        "playRate": 1.0,
+                        "repeatUntilStageEnd": True,
+                    }],
+                },
+                "effectCues": [],
+                "cameraInvocations": [],
+            })
+
+        patch = {
+            "schema": pipeline.DRAFT_PATCH_SCHEMA,
+            "formatVersion": 1,
+            "sourceRevision": self.source_manifest["sourceManifestId"],
+            "operations": [
+                {
+                    "op": "SET_STAGE_BRANCH",
+                    "patternId": "VALTAN_DASH_CHARGE",
+                    "stageId": "CHARGE",
+                    "outcome": "WALL_CONTACT",
+                    "nextActionId": "valtan.attack.dash-charge.recovery",
+                },
+                {
+                    "op": "REMOVE_PATTERN_REACTION",
+                    "patternId": "VALTAN_DASH_CHARGE",
+                    "triggerKind": "WALL_COLLISION",
+                    "stageId": "GROGGY",
+                },
+                {
+                    "op": "REMOVE_PATTERN_REACTION",
+                    "patternId": "VALTAN_DASH_CHARGE",
+                    "triggerKind": "PART_BREAK_SUCCESS",
+                    "stageId": "PART_BREAK",
+                },
+                {
+                    "op": "REMOVE_PATTERN_STAGE",
+                    "patternId": "VALTAN_DASH_CHARGE",
+                    "stageId": "GROGGY",
+                    "actionId": "valtan.attack.dash-charge.groggy",
+                },
+                {
+                    "op": "REMOVE_PATTERN_STAGE",
+                    "patternId": "VALTAN_DASH_CHARGE",
+                    "stageId": "PART_BREAK",
+                    "actionId": "valtan.attack.dash-charge.part-break",
+                },
+                {
+                    "op": "REMOVE_PATTERN_SEQUENCE_SOURCE",
+                    "patternId": "VALTAN_DASH_CHARGE",
+                    "sourceActionId": 420627,
+                    "sequenceIndex": 1,
+                    "role": "PART_BREAK_REACTION",
+                },
+            ],
+        }
+        candidate, _, _, count = pipeline.apply_draft_patch(
+            joined,
+            self.docs[pipeline.BOSS_PROFILES_REL],
+            self.docs[pipeline.DAMAGE_REL],
+            patch,
+            self.source_manifest["sourceManifestId"],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        self.assertEqual(6, count)
+        pruned = next(
+            pattern for pattern in candidate["patterns"]
+            if pattern["patternId"] == "VALTAN_DASH_CHARGE"
+        )
+        self.assertEqual(
+            ["WINDUP", "CHARGE", "RECOVERY"],
+            [stage["stageId"] for stage in pruned["stages"]],
+        )
+        self.assertEqual([], pruned["reactions"])
+        self.assertEqual([420604, 400430], pruned["sourceActionIds"])
+        charge = next(
+            stage for stage in pruned["stages"] if stage["stageId"] == "CHARGE"
+        )
+        self.assertEqual(
+            {"valtan.attack.dash-charge.recovery"},
+            {branch["nextActionId"] for branch in charge["branches"]},
+        )
+
     def test_workbench_release_yaw_and_sector_cue_yaw_are_typed_and_atomic(self) -> None:
         joined = pipeline.join_v2_authoring(
             self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
             self.docs[pipeline.PRESENTATION_AUTHORING_REL],
             self.docs[pipeline.WORLD_SET_REL],
             self.docs[pipeline.COMBAT_AUTHORING_REL],
-            self.docs[pipeline.SAVED_FLOW_REL],
         )
         sector_occurrence = (
             "cue.valtan.requested.20260827.six-pizza.composite.occurrence.01"
@@ -2724,7 +2899,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             cue for cue in sector_stage["effectCues"]
             if cue["occurrenceId"] == sector_occurrence
         )
-        self.assertEqual("arena.center.facing", sector["anchorSlotId"])
+        self.assertEqual("arena.center.target-follow", sector["anchorSlotId"])
         self.assertEqual(-30.0, sector["localTransform"]["rotationDegrees"][1])
 
         invalid = copy.deepcopy(patch)
@@ -2819,11 +2994,9 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         ]
         self.assertEqual(19, len(phase_two_ids))
         self.assertEqual(
-            self.saved_flow_pattern_ids(
-                self.docs[pipeline.SAVED_FLOW_REL]
-            ),
+            EXPECTED_SCRIPTED_SEQUENCE["patternIds"],
             staged["decisionModel"]["scriptedSequence"]["patternIds"],
-            "Product order must preserve the saved Flow graph projection including repetitions and explicit Phase-3 rows",
+            "Product order must preserve canonical gameplay repetitions and Phase-3 rows",
         )
 
         projected = pipeline.project_v2_products(self.root, self.docs, staged)
@@ -2881,22 +3054,19 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.assertEqual(rotations, candidate_rotations)
             manifest = pipeline.read_json(revision_root / "revision-manifest.json")
             self.assertEqual("HOT_RELOAD", manifest["applyClass"])
-            candidate_flow_path = revision_root / pipeline.SAVED_FLOW_REL
-            candidate_flow_bytes = candidate_flow_path.read_bytes()
-            self.assertEqual(
-                (self.root / pipeline.SAVED_FLOW_REL).read_bytes(),
-                candidate_flow_bytes,
-            )
+            candidate_gameplay_path = revision_root / "Authoring/Valtan.gameplay.json"
+            candidate_gameplay_bytes = candidate_gameplay_path.read_bytes()
             self.assertEqual(
                 pipeline.read_json(self.root / pipeline.GAMEPLAY_AUTHORING_REL)["decisionModel"]["scriptedSequence"],
                 pipeline.read_json(revision_root / "Authoring/Valtan.gameplay.json")["decisionModel"]["scriptedSequence"],
             )
-            self.assertIn(
-                pipeline.SAVED_FLOW_REL,
-                {
-                    row["path"]
-                    for row in pipeline.read_json(revision_root / "_manifest/authoring.json")["artifacts"]
-                },
+            self.assertFalse(
+                any(
+                    "ValtanBossAuditionFlows.json" in row["path"]
+                    for row in pipeline.read_json(
+                        revision_root / "_manifest/authoring.json"
+                    )["artifacts"]
+                )
             )
             self.assertEqual(
                 pipeline.GAMEPLAY_BOOTSTRAP_VERSION,
@@ -2973,426 +3143,188 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
             )
             candidate_pointer_before = (candidate_root / "current-candidate.json").read_bytes()
-            changed_flow = pipeline.read_saved_flow_document(revision_root)
-            changed_nodes = self.saved_flow_ordered_nodes(changed_flow)
-            changed_nodes[0]["patternId"], changed_nodes[1]["patternId"] = (
-                changed_nodes[1]["patternId"], changed_nodes[0]["patternId"]
+            changed_gameplay = pipeline.read_json(candidate_gameplay_path)
+            changed_sequence = changed_gameplay["decisionModel"]["scriptedSequence"][
+                "patternIds"
+            ]
+            changed_sequence[0], changed_sequence[1] = (
+                changed_sequence[1],
+                changed_sequence[0],
             )
-            candidate_flow_path.write_bytes(pipeline.json_text(changed_flow).encode("utf-8"))
+            candidate_gameplay_path.write_bytes(
+                pipeline.json_text(changed_gameplay).encode("utf-8")
+            )
             changed_manifest = copy.deepcopy(manifest)
-            flow_artifact = next(
+            gameplay_artifact = next(
                 row for row in changed_manifest["artifacts"]
-                if row["path"] == pipeline.SAVED_FLOW_REL
+                if row["path"] == "Authoring/Valtan.gameplay.json"
             )
-            flow_artifact["sha256"] = pipeline.sha256_file(candidate_flow_path)
-            flow_artifact["bytes"] = candidate_flow_path.stat().st_size
+            gameplay_artifact["sha256"] = pipeline.sha256_file(
+                candidate_gameplay_path
+            )
+            gameplay_artifact["bytes"] = candidate_gameplay_path.stat().st_size
             changed_manifest["artifactSetId"] = pipeline._manifest_hash(changed_manifest["artifacts"])
-            with self.assertRaisesRegex(pipeline.PipelineError, "saved Flow order does not match"):
+            with self.assertRaisesRegex(
+                pipeline.PipelineError,
+                "canonical scriptedSequence does not match",
+            ):
                 pipeline.validate_candidate_revision_manifest(revision_root, changed_manifest)
-            candidate_flow_path.write_bytes(candidate_flow_bytes)
+            candidate_gameplay_path.write_bytes(candidate_gameplay_bytes)
             pipeline.validate_candidate_revision_manifest(revision_root, manifest)
             self.assertEqual(
                 candidate_pointer_before,
                 (candidate_root / "current-candidate.json").read_bytes(),
             )
 
-    def test_saved_flow_reference_resolves_exact_repeated_graph_order(self) -> None:
-        physical = pipeline.read_json(self.root / pipeline.GAMEPLAY_AUTHORING_REL)
-        before = copy.deepcopy(physical)
-        source_pattern_ids = self.saved_flow_pattern_ids(
-            self.docs[pipeline.SAVED_FLOW_REL]
-        )
-        expected = [
-            source_pattern_ids[2],
-            source_pattern_ids[0],
-            source_pattern_ids[1],
-            source_pattern_ids[6],
-        ]
-        flow_document = self.make_saved_flow(expected)
-        flow = flow_document["flows"][0]
-        flow["nodes"] = [
-            flow["nodes"][2], flow["nodes"][0],
-            flow["nodes"][3], flow["nodes"][1],
-        ]
-        flow["defaultPursuitMs"] = 4321
-        for edge in flow["edges"]:
-            edge["pursuitMs"] = 4321
-        joined = pipeline.join_v2_authoring(
-            physical, self.docs[pipeline.PRESENTATION_AUTHORING_REL],
-            self.docs[pipeline.WORLD_SET_REL], self.docs[pipeline.COMBAT_AUTHORING_REL],
-            flow_document,
-        )
-        sequence = joined["decisionModel"]["scriptedSequence"]
-        self.assertEqual(expected, sequence["patternIds"])
-        self.assertEqual(4321, sequence["interStepPursuitMs"])
-        projected = pipeline.project_v2_products(self.root, self.docs, joined)
-        self.assertEqual(sequence, json.loads(projected[pipeline.ROTATIONS_REL])["scriptedSequence"])
-        self.assertEqual(before, physical, "resolving must not rewrite the physical Flow reference")
 
-    def test_valid_graph_feature_reports_typed_runtime_projection_boundary(self) -> None:
-        physical = pipeline.read_json(self.root / pipeline.GAMEPLAY_AUTHORING_REL)
-        document = self.make_saved_flow(
-            ["VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH"]
-        )
-        flow = document["flows"][0]
-        edge_ordinal = flow["nextEdgeOrdinal"]
-        flow["edges"].append({
-            "edgeId": f"{flow['flowId']}.edge.{edge_ordinal:06d}",
-            "fromNodeId": flow["nodes"][-1]["nodeId"],
-            "outcome": "COMPLETED",
-            "toNodeId": flow["entryNodeId"],
-            "pursuitMs": flow["defaultPursuitMs"],
-            "maxTraversals": 2,
-        })
-        flow["nextEdgeOrdinal"] = edge_ordinal + 1
-        with self.assertRaises(pipeline.RuntimeProjectionError) as captured:
-            pipeline.resolve_gameplay_flow_reference(physical, document)
+
+    def test_inline_scripted_sequence_is_the_only_product_order_source(self) -> None:
+        gameplay = self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
+        sequence = gameplay["decisionModel"]["scriptedSequence"]
         self.assertEqual(
-            "RUNTIME_PROJECTION_UNSUPPORTED", captured.exception.error_code
+            {"sequenceId", "mode", "interStepPursuitMs", "patternIds"},
+            set(sequence),
         )
-
-    @staticmethod
-    def saved_flow_ordered_nodes(document: dict) -> list[dict]:
-        return pipeline.linearize_saved_flow_for_legacy_product(
-            document["flows"][0]
+        self.assertEqual(EXPECTED_SCRIPTED_SEQUENCE, sequence)
+        self.assertNotIn(
+            "ValtanBossAuditionFlows.json",
+            {row["path"] for row in self.source_manifest["files"]},
         )
-
-    @classmethod
-    def saved_flow_pattern_ids(cls, document: dict) -> list[str]:
-        return [
-            node["patternId"]
-            for node in cls.saved_flow_ordered_nodes(document)
-        ]
-
-    def make_saved_flow(self, pattern_ids: list[str]) -> dict:
-        document = copy.deepcopy(self.docs[pipeline.SAVED_FLOW_REL])
-        flow = document["flows"][0]
-        node_ids = [
-            f"{flow['flowId']}.node.{ordinal:06d}"
-            for ordinal in range(1, len(pattern_ids) + 1)
-        ]
-        flow["entryNodeId"] = node_ids[0]
-        flow["nextNodeOrdinal"] = len(node_ids) + 1
-        flow["nextEdgeOrdinal"] = len(node_ids)
-        flow["nodes"] = [
-            {
-                "nodeId": node_id,
-                "patternId": pattern_id,
-                "watchdogMs": 0,
-            }
-            for node_id, pattern_id in zip(node_ids, pattern_ids)
-        ]
-        flow["edges"] = [
-            {
-                "edgeId": f"{flow['flowId']}.edge.{ordinal:06d}",
-                "fromNodeId": node_ids[ordinal - 1],
-                "outcome": "COMPLETED",
-                "toNodeId": node_ids[ordinal],
-                "pursuitMs": flow["defaultPursuitMs"],
-            }
-            for ordinal, pattern_id in enumerate(pattern_ids, start=1)
-            if ordinal < len(node_ids)
-        ]
-        return document
-
-    def test_saved_flow_admits_every_authored_pattern_through_product_projection(self) -> None:
-        physical = pipeline.read_json(self.root / pipeline.GAMEPLAY_AUTHORING_REL)
-        before = copy.deepcopy(physical)
-        for pattern in physical["patterns"]:
-            pattern_id = pattern["patternId"]
-            with self.subTest(pattern=pattern_id):
-                expected = [pattern_id, "VALTAN_WHIRLWIND"]
-                if pattern_id != pipeline.OPTIONAL_ENTRY_PATTERN_ID:
-                    expected.append(pattern_id)
-                document = self.make_saved_flow(expected)
-                joined = pipeline.join_v2_authoring(
-                    physical, self.docs[pipeline.PRESENTATION_AUTHORING_REL],
-                    self.docs[pipeline.WORLD_SET_REL], self.docs[pipeline.COMBAT_AUTHORING_REL],
-                    document,
-                )
-                products = pipeline.project_v2_products(self.root, self.docs, joined)
-                self.assertEqual(expected, joined["decisionModel"]["scriptedSequence"]["patternIds"])
-                self.assertEqual(expected, json.loads(products[pipeline.ROTATIONS_REL])["scriptedSequence"]["patternIds"])
-        self.assertEqual(before, physical)
-
-    def test_saved_flow_new_core_manual_and_derived_patterns_need_no_allowlist(self) -> None:
-        staged = self.with_manual_audition(
-            pattern_id="VALTAN_EXPANSION_CORE", source_chain_id="expansion-core")
-        staged["decisionModel"]["manualAuditions"].pop()
-        staged["patterns"][-1]["compatibilitySelectionWeight"] = 1
-        for selection_set in staged["decisionModel"]["selectionSets"]:
-            selection_set["candidates"].append({
-                "patternId": "VALTAN_EXPANSION_CORE", "weight": 1, "enabled": True})
-        staged = self.with_manual_audition(
-            staged, pattern_id="VALTAN_EXPANSION_MANUAL", source_chain_id="expansion-manual")
-        staged = self.with_manual_audition(
-            staged, pattern_id="VALTAN_EXPANSION_DERIVED", source_chain_id="expansion-derived")
-        staged["decisionModel"]["manualAuditions"][-1]["admissionState"] = pipeline.DERIVED_SERVER_PATTERN
-        gameplay, presentation = pipeline.split_v2_authoring(
-            staged, self.docs[pipeline.WORLD_SET_REL], self.docs[pipeline.COMBAT_AUTHORING_REL])
-        gameplay["decisionModel"]["scriptedSequence"] = copy.deepcopy(
-            pipeline.read_json(self.root / pipeline.GAMEPLAY_AUTHORING_REL)["decisionModel"]["scriptedSequence"])
-        expected = ["VALTAN_EXPANSION_DERIVED", "VALTAN_EXPANSION_CORE", "VALTAN_EXPANSION_MANUAL", "VALTAN_EXPANSION_DERIVED"]
-        document = self.make_saved_flow(expected)
         joined = pipeline.join_v2_authoring(
-            gameplay, presentation, self.docs[pipeline.WORLD_SET_REL],
-            self.docs[pipeline.COMBAT_AUTHORING_REL], document)
-        products = pipeline.project_v2_products(self.root, self.docs, joined)
-        self.assertEqual(expected, json.loads(products[pipeline.ROTATIONS_REL])["scriptedSequence"]["patternIds"])
-        product_patterns = {row["patternId"]: row for row in json.loads(products[pipeline.ENCOUNTER_REL])["patterns"]}
-        for pattern_id in expected:
-            self.assertEqual(pattern_id, product_patterns[pattern_id]["patternId"])
-            self.assertTrue(product_patterns[pattern_id]["stages"])
-
-    def test_saved_flow_inventory_can_exceed_slot_capacity_and_remove_unused_definitions(self) -> None:
-        # Registered definitions and selected Flow slots have independent sizes.
-        for extra_count in (1, 7, 36):
-            with self.subTest(extra_patterns=extra_count):
-                staged = None
-                for ordinal in range(extra_count):
-                    staged = self.with_manual_audition(
-                        staged, pattern_id=f"VALTAN_EXPANSION_{ordinal}",
-                        source_chain_id=f"expansion-{ordinal}")
-                    staged["decisionModel"]["manualAuditions"][-1]["admissionState"] = pipeline.DERIVED_SERVER_PATTERN
-                gameplay, presentation = pipeline.split_v2_authoring(
-                    staged, self.docs[pipeline.WORLD_SET_REL], self.docs[pipeline.COMBAT_AUTHORING_REL])
-                gameplay["decisionModel"]["scriptedSequence"] = copy.deepcopy(
-                    pipeline.read_json(self.root / pipeline.GAMEPLAY_AUTHORING_REL)["decisionModel"]["scriptedSequence"])
-                expected = [f"VALTAN_EXPANSION_{extra_count - 1}", "VALTAN_WHIRLWIND"]
-                document = self.make_saved_flow(expected)
-                joined = pipeline.join_v2_authoring(
-                    gameplay, presentation, self.docs[pipeline.WORLD_SET_REL],
-                    self.docs[pipeline.COMBAT_AUTHORING_REL], document)
-                self.assertEqual(expected, joined["decisionModel"]["scriptedSequence"]["patternIds"])
-                # Retire the added definitions without changing the remaining saved slots.
-                gameplay["patterns"] = [r for r in gameplay["patterns"] if not r["patternId"].startswith("VALTAN_EXPANSION_")]
-                presentation["patterns"] = [r for r in presentation["patterns"] if not r["patternId"].startswith("VALTAN_EXPANSION_")]
-                gameplay["decisionModel"]["manualAuditions"] = [r for r in gameplay["decisionModel"]["manualAuditions"] if not r["patternId"].startswith("VALTAN_EXPANSION_")]
-                remaining = self.make_saved_flow(["VALTAN_WHIRLWIND"])
-                joined = pipeline.join_v2_authoring(
-                    gameplay, presentation, self.docs[pipeline.WORLD_SET_REL],
-                    self.docs[pipeline.COMBAT_AUTHORING_REL], remaining)
-                self.assertEqual(["VALTAN_WHIRLWIND"], joined["decisionModel"]["scriptedSequence"]["patternIds"])
-                with self.assertRaisesRegex(pipeline.PipelineError, "not in the Boss Tool inventory"):
-                    pipeline.resolve_gameplay_flow_reference(gameplay, document)
-
-    def test_saved_flow_reference_rejects_invalid_documents_and_mixed_shapes(self) -> None:
-        physical = pipeline.read_json(self.root / pipeline.GAMEPLAY_AUTHORING_REL)
-        baseline = self.docs[pipeline.SAVED_FLOW_REL]
-        cases = []
-        def invalid(label, change):
-            document = copy.deepcopy(baseline)
-            change(document)
-            cases.append((label, document))
-        invalid("schema", lambda doc: doc.update(schema="wrong"))
-        invalid("float version", lambda doc: doc.update(formatVersion=2.0))
-        invalid("boolean version", lambda doc: doc.update(formatVersion=True))
-        invalid("two flows", lambda doc: doc["flows"].append(copy.deepcopy(doc["flows"][0])))
-        invalid("unknown flow", lambda doc: doc["flows"][0].update(flowId="flow.other"))
-        invalid("float pursuit", lambda doc: doc["flows"][0].update(defaultPursuitMs=1000.0))
-        invalid("pursuit zero", lambda doc: doc["flows"][0].update(defaultPursuitMs=0))
-        invalid("empty", lambda doc: doc["flows"][0].update(nodes=[]))
-        invalid("unknown pattern", lambda doc: doc["flows"][0]["nodes"][0].update(patternId="VALTAN_UNKNOWN"))
-        invalid("entry after first node", lambda doc: doc["flows"][0]["nodes"][1].update(patternId="VALTAN_ENTRANCE_CINEMATIC"))
-        invalid("legacy-only pattern", lambda doc: doc["flows"][0]["nodes"][0].update(patternId="VALTAN_SWING"))
-        invalid("duplicate node", lambda doc: doc["flows"][0]["nodes"][1].update(nodeId=doc["flows"][0]["nodes"][0]["nodeId"]))
-        invalid("foreign node", lambda doc: doc["flows"][0]["nodes"][0].update(nodeId="flow.other.node.000001"))
-        invalid("non-numeric node", lambda doc: doc["flows"][0]["nodes"][0].update(nodeId=pipeline.DEFAULT_SAVED_FLOW_ID + ".node.00000x"))
-        invalid("dangling entry", lambda doc: doc["flows"][0].update(entryNodeId=pipeline.DEFAULT_SAVED_FLOW_ID + ".node.999999"))
-        invalid("duplicate edge", lambda doc: doc["flows"][0]["edges"][1].update(edgeId=doc["flows"][0]["edges"][0]["edgeId"]))
-        invalid("dangling edge", lambda doc: doc["flows"][0]["edges"][0].update(toNodeId=pipeline.DEFAULT_SAVED_FLOW_ID + ".node.999999"))
-        invalid("node counter reuse", lambda doc: doc["flows"][0].update(nextNodeOrdinal=1))
-        invalid("float node counter", lambda doc: doc["flows"][0].update(nextNodeOrdinal=41.0))
-        invalid("edge counter reuse", lambda doc: doc["flows"][0].update(nextEdgeOrdinal=1))
-        invalid("float edge counter", lambda doc: doc["flows"][0].update(nextEdgeOrdinal=29.0))
-        for label, document in cases:
-            with self.subTest(case=label), self.assertRaises(pipeline.PipelineError):
-                pipeline.resolve_gameplay_flow_reference(physical, document)
-        overflow = self.make_saved_flow(
-            ["VALTAN_WHIRLWIND"] * (pipeline.SAVED_FLOW_MAX_SLOTS + 1)
+            gameplay,
+            self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
-        with self.assertRaisesRegex(pipeline.PipelineError, "1..255 nodes"):
-            pipeline.resolve_gameplay_flow_reference(physical, overflow)
-        for field, value in (("patternIds", ["VALTAN_WHIRLWIND"]), ("path", "../outside.json"), ("flowId", "flow.other")):
-            mixed = copy.deepcopy(physical)
-            mixed["decisionModel"]["scriptedSequence"][field] = value
-            with self.subTest(field=field), self.assertRaises(pipeline.PipelineError):
-                pipeline.resolve_gameplay_flow_reference(mixed, baseline)
-        with self.assertRaisesRegex(pipeline.PipelineError, "snapshot-local Flow"):
-            pipeline.join_v2_authoring(
-                physical, self.docs[pipeline.PRESENTATION_AUTHORING_REL],
-                self.docs[pipeline.WORLD_SET_REL], self.docs[pipeline.COMBAT_AUTHORING_REL],
-            )
-        with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / pipeline.SAVED_FLOW_REL
-            path.parent.mkdir(parents=True)
-            for raw in (
-                b'{"schema":"a","schema":"b"}',
-                b'{"formatVersion":NaN}',
-                b'[' * 9 + b']' * 9,
-                b'x' * (pipeline.SAVED_FLOW_MAX_BYTES + 1),
-            ):
-                path.write_bytes(raw)
-                with self.assertRaises(pipeline.PipelineError):
-                    pipeline.read_saved_flow_document(Path(temporary))
+        products = pipeline.project_v2_products(self.root, self.docs, joined)
+        self.assertEqual(
+            sequence,
+            json.loads(products[pipeline.ROTATIONS_REL])["scriptedSequence"],
+        )
 
-    def test_saved_flow_projects_33_and_255_ordered_occurrences(self) -> None:
-        physical = pipeline.read_json(self.root / pipeline.GAMEPLAY_AUTHORING_REL)
-        for count in (33, pipeline.SAVED_FLOW_MAX_SLOTS):
-            with self.subTest(occurrence_count=count):
-                expected = ["VALTAN_WHIRLWIND"] * count
-                joined = pipeline.join_v2_authoring(
-                    physical,
-                    self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+    def test_set_scripted_sequence_typed_patch_updates_canonical_owner(self) -> None:
+        base = pipeline.join_v2_authoring(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+            self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        expected = copy.deepcopy(EXPECTED_SCRIPTED_SEQUENCE)
+        expected["interStepPursuitMs"] = 900
+        expected["patternIds"] = [
+            "VALTAN_FOUR_SLASH",
+            "VALTAN_WHIRLWIND",
+            "VALTAN_FOUR_SLASH",
+        ]
+        patch = {
+            "schema": pipeline.DRAFT_PATCH_SCHEMA,
+            "formatVersion": 1,
+            "sourceRevision": self.source_manifest["sourceManifestId"],
+            "operations": [{"op": "SET_SCRIPTED_SEQUENCE", **expected}],
+        }
+        staged, _, _, operation_count = pipeline.apply_draft_patch(
+            base,
+            self.docs[pipeline.BOSS_PROFILES_REL],
+            self.docs[pipeline.DAMAGE_REL],
+            patch,
+            self.source_manifest["sourceManifestId"],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+            repository_root=self.root,
+            effect_catalog=self.docs[pipeline.EFFECT_CATALOG_REL],
+        )
+        self.assertEqual(1, operation_count)
+        self.assertEqual(expected, staged["decisionModel"]["scriptedSequence"])
+        products = pipeline.project_v2_products(self.root, self.docs, staged)
+        self.assertEqual(
+            expected,
+            json.loads(products[pipeline.ROTATIONS_REL])["scriptedSequence"],
+        )
+
+        bad_operations = (
+            {**expected, "sequenceId": "sequence.other"},
+            {**expected, "mode": "ORDERED_REPEAT"},
+            {**expected, "interStepPursuitMs": 0},
+            {**expected, "patternIds": []},
+            {**expected, "patternIds": ["VALTAN_UNKNOWN"]},
+            {**expected, "patternIds": ["../invalid-pattern-id"]},
+            {
+                **expected,
+                "patternIds": [
+                    "VALTAN_WHIRLWIND",
+                    pipeline.OPTIONAL_ENTRY_PATTERN_ID,
+                ],
+            },
+            {
+                **expected,
+                "patternIds": [
+                    pipeline.OPTIONAL_ENTRY_PATTERN_ID,
+                    pipeline.OPTIONAL_ENTRY_PATTERN_ID,
+                ],
+            },
+            {
+                **expected,
+                "patternIds": ["VALTAN_WHIRLWIND"]
+                * (pipeline.SCRIPTED_SEQUENCE_MAX_PATTERNS + 1),
+            },
+        )
+        for operation in bad_operations:
+            with self.subTest(operation=operation), self.assertRaises(
+                pipeline.PipelineError
+            ):
+                pipeline.apply_draft_patch(
+                    base,
+                    self.docs[pipeline.BOSS_PROFILES_REL],
+                    self.docs[pipeline.DAMAGE_REL],
+                    {
+                        "schema": pipeline.DRAFT_PATCH_SCHEMA,
+                        "formatVersion": 1,
+                        "sourceRevision": self.source_manifest[
+                            "sourceManifestId"
+                        ],
+                        "operations": [
+                            {"op": "SET_SCRIPTED_SEQUENCE", **operation}
+                        ],
+                    },
+                    self.source_manifest["sourceManifestId"],
                     self.docs[pipeline.WORLD_SET_REL],
                     self.docs[pipeline.COMBAT_AUTHORING_REL],
-                    self.make_saved_flow(expected),
-                )
-                self.assertEqual(
-                    expected,
-                    joined["decisionModel"]["scriptedSequence"]["patternIds"],
-                )
-                products = pipeline.project_v2_products(
-                    self.root, self.docs, joined
-                )
-                self.assertEqual(
-                    expected,
-                    json.loads(products[pipeline.ROTATIONS_REL])[
-                        "scriptedSequence"
-                    ]["patternIds"],
+                    repository_root=self.root,
+                    effect_catalog=self.docs[pipeline.EFFECT_CATALOG_REL],
                 )
 
-    def test_saved_flow_source_manifest_and_immutable_authoring_cas(self) -> None:
+    def test_authoring_revision_contains_inline_sequence_without_flow_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary) / "repository"
-            for entry in self.source_manifest["files"]:
-                destination = root / entry["path"]
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(self.root / entry["path"], destination)
-            self.copy_native_valtan_animation_fixture(root)
-            sources = pipeline.source_manifest(root)
-            authoring_root = Path(temporary) / "authoring"
-            patch = {"schema": pipeline.DRAFT_PATCH_SCHEMA, "formatVersion": 1,
-                     "sourceRevision": sources["sourceManifestId"], "operations": []}
-            pointer = pipeline.save_authoring(root, authoring_root, patch)
-            revision_root = authoring_root / "revisions" / pointer["revisionId"]
-            self.assertEqual((root / pipeline.SAVED_FLOW_REL).read_bytes(),
-                             (revision_root / pipeline.SAVED_FLOW_REL).read_bytes())
-            self.assertEqual(
-                pipeline.read_json(root / pipeline.GAMEPLAY_AUTHORING_REL)["decisionModel"]["scriptedSequence"],
-                pipeline.read_json(revision_root / pipeline.GAMEPLAY_AUTHORING_REL)["decisionModel"]["scriptedSequence"],
-            )
-            docs = pipeline.load_pipeline_documents(root)
-            loaded, _, _ = pipeline.load_authoring_revision(root, authoring_root, pointer["revisionId"], sources, docs)
-            self.assertEqual(EXPECTED_SCRIPTED_SEQUENCE, loaded["decisionModel"]["scriptedSequence"])
-            changed = pipeline.read_saved_flow_document(root)
-            changed_nodes = self.saved_flow_ordered_nodes(changed)
-            changed_nodes[0]["patternId"], changed_nodes[1]["patternId"] = (
-                changed_nodes[1]["patternId"], changed_nodes[0]["patternId"]
-            )
-            (root / pipeline.SAVED_FLOW_REL).write_text(pipeline.json_text(changed), encoding="utf-8")
-            updated = pipeline.source_manifest(root)
-            self.assertNotEqual(sources["sourceManifestId"], updated["sourceManifestId"])
-            self.assertEqual(pipeline.sha256_file(root / pipeline.SAVED_FLOW_REL),
-                             next(row["sha256"] for row in updated["files"] if row["path"] == pipeline.SAVED_FLOW_REL))
-            pointer_before = (authoring_root / "current-authoring.json").read_bytes()
-            with self.assertRaisesRegex(pipeline.PipelineError, "repository source changed"):
-                pipeline.load_authoring_revision(root, authoring_root, pointer["revisionId"], updated, docs)
-            self.assertEqual(pointer_before, (authoring_root / "current-authoring.json").read_bytes())
-            (revision_root / pipeline.SAVED_FLOW_REL).unlink()
-            with self.assertRaises(pipeline.PipelineError):
-                pipeline._validate_authoring_artifact(revision_root, pointer["revisionId"])
-
-    def test_saved_flow_publish_cas_and_publisher_failure_do_not_start_a_candidate(self) -> None:
-        current_revision = pipeline.sha256_file(self.root / pipeline.SAVED_FLOW_REL)
-        with tempfile.TemporaryDirectory() as temporary, mock.patch.object(pipeline.subprocess, "run") as run, mock.patch.object(pipeline, "publish_candidate") as publish:
-            with self.assertRaisesRegex(pipeline.PipelineError, "revision changed"):
-                pipeline.publish_saved_flow(self.root, Path(temporary), "0" * 64)
-            run.assert_not_called()
-            publish.assert_not_called()
-            run.return_value = subprocess.CompletedProcess([], 1, "", "injected Product failure")
-            with self.assertRaisesRegex(pipeline.PipelineError, "injected Product failure"):
-                pipeline.publish_saved_flow(self.root, Path(temporary), current_revision)
-            # A timeout on this publisher seam would kill its rollback owner.
-            self.assertNotIn("timeout", run.call_args.kwargs)
-            publish.assert_not_called()
-            run.return_value = subprocess.CompletedProcess([], 0, "Project complete", "")
-            with mock.patch.object(pipeline, "_require_saved_flow_revision", side_effect=[None, pipeline.PipelineError("concurrent Flow save")]):
-                with self.assertRaisesRegex(pipeline.PipelineError, "concurrent Flow save"):
-                    pipeline.publish_saved_flow(self.root, Path(temporary), current_revision)
-            publish.assert_not_called()
-
-    def test_inline_legacy_authoring_remains_closed_without_a_flow_document(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary) / "repository"
-            for entry in self.source_manifest["files"]:
-                if entry["path"] == pipeline.SAVED_FLOW_REL:
-                    continue
-                destination = root / entry["path"]
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(self.root / entry["path"], destination)
-            self.copy_native_valtan_animation_fixture(root)
-            (root / pipeline.GAMEPLAY_AUTHORING_REL).write_bytes(
-                pipeline.json_text(self.docs[pipeline.GAMEPLAY_AUTHORING_REL]).encode("utf-8")
-            )
-            sources = pipeline.source_manifest(root)
-            self.assertNotIn(pipeline.SAVED_FLOW_REL, {row["path"] for row in sources["files"]})
             authoring_root = Path(temporary) / "authoring"
             patch = {
-                "schema": pipeline.DRAFT_PATCH_SCHEMA, "formatVersion": 1,
-                "sourceRevision": sources["sourceManifestId"], "operations": [],
+                "schema": pipeline.DRAFT_PATCH_SCHEMA,
+                "formatVersion": 1,
+                "sourceRevision": self.source_manifest["sourceManifestId"],
+                "operations": [],
             }
-            pointer = pipeline.save_authoring(root, authoring_root, patch)
-            revision_root = authoring_root / "revisions" / pointer["revisionId"]
-            self.assertFalse((revision_root / pipeline.SAVED_FLOW_REL).exists())
-            manifest = pipeline._validate_authoring_artifact(revision_root, pointer["revisionId"])
+            pointer = pipeline.save_authoring(self.root, authoring_root, patch)
+            revision_root = (
+                authoring_root / "revisions" / pointer["revisionId"]
+            )
+            manifest = pipeline._validate_authoring_artifact(
+                revision_root, pointer["revisionId"]
+            )
             self.assertEqual(
-                set(pipeline.LEGACY_AUTHORING_ARTIFACTS),
+                set(pipeline.AUTHORING_ARTIFACTS),
                 {row["path"] for row in manifest["artifacts"]},
             )
-            loaded, _, _ = pipeline.load_authoring_revision(
-                root, authoring_root, pointer["revisionId"], sources,
-                pipeline.load_pipeline_documents(root),
+            self.assertFalse(
+                any(
+                    "ValtanBossAuditionFlows.json" in row["path"]
+                    for row in manifest["artifacts"]
+                )
             )
-            self.assertEqual(EXPECTED_SCRIPTED_SEQUENCE, loaded["decisionModel"]["scriptedSequence"])
-
-    def test_saved_flow_publish_command_returns_one_structured_identity(self) -> None:
-        result = {"sourceRevision": "a" * 64, "candidateRevision": "b" * 64,
-                  "flowRevision": "c" * 64, "applyClass": "HOT_RELOAD",
-                  "splitJoinValidated": True, "pointer": {"revisionId": "b" * 64}}
-        stdout = io.StringIO()
-        with mock.patch.object(pipeline, "publish_saved_flow", return_value=result), contextlib.redirect_stdout(stdout):
-            exit_code = pipeline.main([
-                "--repository-root", str(self.root), "publish-saved-flow",
-                "--candidate-root", "Intermediate/TestFlowCandidates",
-                "--expected-flow-revision", "c" * 64,
-            ])
-        response = json.loads(stdout.getvalue())
-        self.assertEqual(0, exit_code)
-        self.assertEqual("PUBLISH_SAVED_FLOW", response["command"])
-        self.assertEqual("b" * 64, response["candidateRevision"])
-        self.assertEqual("c" * 64, response["payload"]["flowRevision"])
-        self.assertTrue(response["payload"]["splitJoinValidated"])
-        stdout = io.StringIO()
-        stderr = io.StringIO()
-        with mock.patch.object(
-            pipeline, "publish_saved_flow",
-            side_effect=pipeline.PipelineError("injected Flow candidate rejection"),
-        ), contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-            exit_code = pipeline.main([
-                "--repository-root", str(self.root), "publish-saved-flow",
-                "--candidate-root", "Intermediate/TestFlowCandidates",
-                "--expected-flow-revision", "c" * 64,
-            ])
-        response = json.loads(stderr.getvalue())
-        self.assertEqual(1, exit_code)
-        self.assertEqual("", stdout.getvalue())
-        self.assertFalse(response["ok"])
-        self.assertEqual("PUBLISH_SAVED_FLOW", response["command"])
-        self.assertIsNone(response["candidateRevision"])
-        self.assertEqual(
-            "injected Flow candidate rejection", response["errors"][0]["message"]
-        )
+            self.assertEqual(
+                EXPECTED_SCRIPTED_SEQUENCE,
+                pipeline.read_json(
+                    revision_root / pipeline.GAMEPLAY_AUTHORING_REL
+                )["decisionModel"]["scriptedSequence"],
+            )
 
     def test_scripted_sequence_invalid_inputs_fail_closed(self) -> None:
         base = pipeline.join_v2_authoring(
@@ -5162,11 +5094,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             temporary_root = Path(temporary)
             repository_root = temporary_root / "repository"
-            for row in self.source_manifest["files"]:
-                source = self.root / row["path"]
-                destination = repository_root / row["path"]
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(source, destination)
+            shutil.copytree(self.root / "Data", repository_root / "Data")
             self.copy_native_valtan_animation_fixture(repository_root)
             local_source = pipeline.source_manifest(repository_root)
             patch = self.draft_patch()

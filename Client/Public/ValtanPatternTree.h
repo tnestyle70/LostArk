@@ -73,6 +73,12 @@ struct VALTAN_PRODUCT_EFFECT_CUE_VIEW final
    belongs under the semantic stage that spawns it so All Effects can expose
    the same editable Unified Effect families without pretending the boss
    animation owns the moving world root. */
+struct VALTAN_COMBAT_OBJECT_PRESENTATION_EVENT_VIEW final
+{
+	std::string strPresentationEventId;
+	uint32_t iAtMs = 0u;
+};
+
 struct VALTAN_COMBAT_OBJECT_EFFECT_VIEW final
 {
 	std::string strCombatObjectArchetypeId;
@@ -80,6 +86,14 @@ struct VALTAN_COMBAT_OBJECT_EFFECT_VIEW final
 	std::string strEffectAssetId;
 	std::string strTrigger;
 	uint32_t iSpawnValue = 0u;
+	/* Preserve the authored volley projection instead of reducing it to the
+	   display-only spawn count. Local Arena Clone preview consumes only the
+	   BOSS_RELATIVE/RADIAL form; the other forms remain visible to diagnostics. */
+	std::string strVolleyPolicy;
+	std::string strVolleyLayout;
+	f32_t fVolleyRadiusM = 0.f;
+	f32_t fVolleyStartAngleDegrees = 0.f;
+	f32_t fVolleyAngleStepDegrees = 0.f;
 	/* Read-only Product diagnostics.  Combat-object timing is authored and
 	   published by the Valtan combat-object pipeline, not by stage-duration
 	   editing, so Workbench must show these as a separate clock. */
@@ -94,6 +108,11 @@ struct VALTAN_COMBAT_OBJECT_EFFECT_VIEW final
 	   no Sound cue instead of merely showing that an object spawned. */
 	std::vector<std::string> HitIds;
 	std::vector<uint32_t> HitOffsetsMs;
+	/* Semantic terminal presentation clocks are independent of Server hits.
+	   The catalog selects the visual asset; this joined row preserves only the
+	   combat-object-owned identity and clock. */
+	std::vector<VALTAN_COMBAT_OBJECT_PRESENTATION_EVENT_VIEW>
+		PresentationEvents;
 	bool_t bHasHitAnchor = false;
 	std::string strHitAnchorKind = "BOSS_CURRENT";
 	f32_t fHitAnchorForwardOffsetM = 0.f;
@@ -164,11 +183,13 @@ struct VALTAN_CAMERA_INVOCATION_VIEW final
 };
 
 /* Branch order is part of the Server projection. A missing next action is an
-   authored terminal edge, not an empty action identity. */
+   authored terminal edge unless nextPatternId names a separate Pattern entry.
+   Cross-Pattern edges intentionally do not carry a local action identity. */
 struct VALTAN_STAGE_BRANCH_VIEW final
 {
 	std::string strOutcome;
 	std::optional<std::string> strNextActionId;
+	std::optional<std::string> strNextPatternId;
 };
 
 /* Some Server stages extend the normal hit contract with a typed gameplay
@@ -468,7 +489,9 @@ enum class VALTAN_PATTERN_PREVIEW_PATH : uint8_t
 enum class VALTAN_PATTERN_TREE_LOAD_POLICY : uint8_t
 {
 	/* Repository admission: both physical authoring sources must project
-	   byte-semantically to the active generated Product view. */
+	   byte-semantically to the active generated Product view. The saved Flow
+	   JSON directly owns scripted order, so an older generated rotations order
+	   is validated structurally but is not a second editable parity authority. */
 	REQUIRE_ACTIVE_PRODUCT_PARITY,
 	/* Immutable revision restore: stable pattern/stage/action topology and
 	   presentation references remain exact, while saved gameplay values are
@@ -528,9 +551,13 @@ struct VALTAN_PHASE_VIEW final
 
 struct VALTAN_PATTERN_TREE_VIEW final
 {
-	/* Raw SHA-256 of the exact saved Flow bytes consumed while resolving the
-	   scripted sequence. Boss Tool uses it for one staged graph/Flow commit. */
-	std::string strSavedFlowSourceRevision;
+	/* The physical gameplay authoring document owns both Pattern definitions
+	   and their ordered execution sequence.  Tool views consume this same
+	   staged sequence instead of joining a second saved-Flow document. */
+	std::string strScriptedSequenceId;
+	std::string strScriptedSequenceMode;
+	uint32_t iScriptedSequenceInterStepPursuitMs = 0u;
+	std::vector<std::string> ScriptedSequencePatternIds;
 	std::vector<VALTAN_PATTERN_VIEW> Gimmicks;
 	std::vector<VALTAN_PATTERN_VIEW> Rotation;
 	std::vector<VALTAN_INDEPENDENT_EFFECT_VIEW> IndependentEffects;
@@ -604,9 +631,9 @@ private:
 	void* m_pState = nullptr;
 };
 
-/* Read-only strict join of the physical Valtan gameplay/presentation and
-   saved Flow source with their generated Encounter, animation binding and
-   Effect cue Products. The Tools render the result; nothing here writes. */
+/* Read-only strict join of the physical Valtan gameplay/presentation source
+   with its generated Encounter, animation binding and Effect cue Products.
+   The Tools render the result; nothing here writes. */
 class CValtanPatternTree final
 {
 public:

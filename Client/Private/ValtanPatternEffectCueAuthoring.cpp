@@ -222,20 +222,27 @@ namespace
 			("LOCK_NEAREST_ON_START" == Pattern.strTargetPolicy ||
 			 "LOCK_RANDOM_ALIVE_ON_START" == Pattern.strTargetPolicy ||
 			 "LOCK_RANDOM_ALIVE_BEHIND_ON_START" == Pattern.strTargetPolicy);
+		const bool_t bArenaTargetFollow =
+			"arena.center.target-follow" == Cue.strAnchorSlotId;
 		const bool_t bArenaCenterAnchor =
 			("arena.center" == Cue.strAnchorSlotId ||
-			 "arena.center.facing" == Cue.strAnchorSlotId) &&
-			"snapshot" == Cue.strFollowPolicy && Pattern.ServerMotion.has_value() &&
+			 "arena.center.facing" == Cue.strAnchorSlotId ||
+			 bArenaTargetFollow) &&
+			(bArenaTargetFollow ? "follow" : "snapshot") ==
+				Cue.strFollowPolicy && Pattern.ServerMotion.has_value() &&
 			"LEAP_TO_ANCHOR" == Pattern.ServerMotion->strKind &&
 			Pattern.ServerMotion->bMoveToAnchorBeforeTakeoff &&
 			("arena.center.facing" != Cue.strAnchorSlotId ||
 			 ("LOCK_FACING_ON_START" == Pattern.strAimPolicy &&
+			  "LOCK_RANDOM_ALIVE_ON_START" == Pattern.strTargetPolicy)) &&
+			(!bArenaTargetFollow ||
+			 ("TRACK_TARGET_EACH_TICK" == Pattern.strAimPolicy &&
 			  "LOCK_RANDOM_ALIVE_ON_START" == Pattern.strTargetPolicy));
 		if ("root" != Cue.strAnchorSlotId && !bTargetSnapshotAnchor &&
 			!bArenaCenterAnchor)
 		{
 			strOutStatus =
-				"Valtan Effect invocation anchor must be root, an admitted pattern.target.snapshot, or an admitted arena.center snapshot.";
+				"Valtan Effect invocation anchor must be root, an admitted pattern.target.snapshot, or an admitted arena.center fixed/follow root.";
 			return false;
 		}
 

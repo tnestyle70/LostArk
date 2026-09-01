@@ -31,7 +31,7 @@
           "-File",
           "Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1",
           "-Mode",
-          "ValidateV2",
+          "Validate",
           "-RepositoryRoot",
           "{repositoryRoot}"
         ]
@@ -81,7 +81,13 @@
       "kind": "validation",
       "profiles": ["Core", "FullDiagnostic"],
       "inputs": ["Data/Effects/V2/**"],
-      "tools": ["Tools/EffectToolV2/validate_effect_v2.py"],
+      "tools": [
+        "Tools/EffectToolV2/validate_effect_v2.py",
+        "Tools/EffectToolV2/effect_v2_binding_pipeline.py",
+        "Tools/EffectToolV2/Schemas/lostark.effect-v2-bindings.v2.schema.json",
+        "Tools/EffectToolV2/Schemas/lostark.effect-v2-binding-read-set.v1.schema.json",
+        "Tools/EffectToolV2/Schemas/lostark.effect-v2-group.v2.schema.json"
+      ],
       "resourceReferenceDocuments": [
         "Data/Effects/V2/Authored/*.effectv2.json"
       ],

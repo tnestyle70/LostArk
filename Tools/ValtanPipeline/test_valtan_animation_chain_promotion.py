@@ -106,6 +106,77 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
         )
         self.assertTrue(all(row["stageCount"] == 1 for row in ghost_wrappers))
 
+    def test_refresh_preserves_ground_roar_appended_sequence_source(self) -> None:
+        saved_gameplay = promotion._read_json(self.root / promotion.GAMEPLAY_REL)
+        saved_presentation = promotion._read_json(
+            self.root / promotion.PRESENTATION_REL
+        )
+
+        def row(document: dict) -> dict:
+            return next(
+                item
+                for item in document["patterns"]
+                if item["patternId"] == "VALTAN_GROUND_ROAR"
+            )
+
+        saved_g = row(saved_gameplay)
+        saved_g["sourceActionIds"].append(400437)
+        saved_g["stages"][0]["durationMs"] += 2633
+        saved_p = row(saved_presentation)
+        saved_p["presentationSources"].append(
+            {
+                "sourceActionId": 400437,
+                "sequenceIndex": 0,
+                "role": "REFERENCE_400437_0",
+            }
+        )
+        saved_p["stages"][0]["animation"]["occurrences"].append(
+            {
+                "clipOccurrenceId": (
+                    "valtan.sequence.sequence.400440.0.step-01."
+                    "composition.clip.01"
+                ),
+                "clip": "mesh_evt1_att_battle_5_01_end",
+                "mappingBasis": "SOURCE_REVIEWED_DELTA",
+                "sourceStartMs": 0,
+                "playMs": 2633,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": False,
+            }
+        )
+
+        gameplay, presentation, _receipt = self._build_with_source_fixture(
+            saved_gameplay, saved_presentation
+        )
+
+        promoted_g = row(gameplay)
+        self.assertEqual(
+            [400440, 400425, 400437], saved_g["sourceActionIds"]
+        )
+        self.assertEqual(saved_g["sourceActionIds"], promoted_g["sourceActionIds"])
+        self.assertEqual(
+            saved_g["stages"][0]["durationMs"],
+            promoted_g["stages"][0]["durationMs"],
+        )
+
+        promoted_p = row(presentation)
+        self.assertEqual(
+            {
+                "sourceActionId": 400437,
+                "sequenceIndex": 0,
+                "role": "REFERENCE_400437_0",
+            },
+            saved_p["presentationSources"][-1],
+        )
+        self.assertEqual(
+            saved_p["presentationSources"], promoted_p["presentationSources"]
+        )
+        self.assertEqual(
+            saved_p["stages"][0]["animation"]["occurrences"],
+            promoted_p["stages"][0]["animation"]["occurrences"],
+        )
+        promotion.validate_and_project(self.root, gameplay, presentation)
+
     def test_production_closure_counts_follow_reviewed_manifest_and_debug(self) -> None:
         promotions = [{"sourceChainId": "phase-three-a"}, {"sourceChainId": "phase-three-b"}]
         chains = [
@@ -243,13 +314,14 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
             [stage["events"] for stage in pattern(authored_gameplay)["stages"]],
         )
 
-    def test_promotion_and_reauthoring_preserve_saved_flow_reference(self) -> None:
+    def test_promotion_and_reauthoring_preserve_canonical_scripted_sequence(self) -> None:
         saved_gameplay = promotion._read_json(self.root / promotion.GAMEPLAY_REL)
         expected_reference = copy.deepcopy(
             saved_gameplay["decisionModel"]["scriptedSequence"]
         )
         self.assertEqual(
-            {"sequenceId", "mode", "flowId"}, set(expected_reference)
+            {"sequenceId", "mode", "interStepPursuitMs", "patternIds"},
+            set(expected_reference),
         )
         promoted_gameplay, promoted_presentation, _receipt = promotion.build_candidates(self.root)
         self.assertEqual(

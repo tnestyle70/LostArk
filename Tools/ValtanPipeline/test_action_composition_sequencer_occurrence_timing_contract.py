@@ -9,6 +9,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 WORKBENCH_H = ROOT / "Client/Public/ActionCompositionWorkbench.h"
 WORKBENCH_CPP = ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
+BALANCE_H = ROOT / "Client/Public/BalanceTool.h"
+BALANCE_CPP = ROOT / "Client/Private/BalanceTool.cpp"
 
 
 def body(source: str, signature: str) -> str:
@@ -34,6 +36,8 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
     def setUpClass(cls) -> None:
         cls.header = WORKBENCH_H.read_text(encoding="utf-8")
         cls.source = WORKBENCH_CPP.read_text(encoding="utf-8")
+        cls.balance_header = BALANCE_H.read_text(encoding="utf-8")
+        cls.balance_source = BALANCE_CPP.read_text(encoding="utf-8")
 
     def test_timeline_rows_keep_clip_qualified_effect_and_point_sound_semantics(self) -> None:
         timeline = body(
@@ -47,6 +51,8 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
             "DETAIL_OWNER::SOUND, TIMELINE_LANE::SOUND", timeline
         )
         self.assertIn("iStageStartMs + iLocalMs, iStageStartMs + iLocalMs, true", timeline)
+        self.assertIn("0u, SOUND_EVENT_MINIMUM_WIDTH_PX", timeline)
+        self.assertIn("SOUND_EVENT_MINIMUM_WIDTH_PX = 180.f", self.source)
         self.assertIn('Cue.eRepeatPolicy ? " [each_loop]" : " [once]"', timeline)
 
     def test_dependency_preflight_is_full_join_and_fail_closed_for_all_three_lanes(self) -> None:
@@ -75,7 +81,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
             "bool_t Client::CActionCompositionWorkbench::Apply_EffectOccurrenceTiming(",
         )
         self.assertIn("VALTAN_PRODUCT_EFFECT_CUE_VIEW Candidate = Current", patch)
-        self.assertIn("Is_PatternSoundDraftDirty", patch)
+        self.assertNotIn("Is_PatternSoundDraftDirty", patch)
         self.assertIn("Candidate.iSourceStartMs = iSourceStartMs", patch)
         self.assertIn(
             "Candidate.iSourceEndMs = Candidate.bHasSourceEnd ? iSourceEndMs : 0u",
@@ -94,7 +100,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
         ):
             self.assertNotIn(preserved, patch)
         self.assertNotIn("Save_Publish_Reload(", patch)
-        self.assertIn("use Save & Apply when the timing is ready", patch)
+        self.assertIn("use Save when the timing is ready", patch)
 
     def test_sound_timing_patch_changes_only_point_start_in_separate_owner_draft(self) -> None:
         patch = body(
@@ -128,16 +134,19 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
             "const std::vector<TIMELINE_ITEM>& TimelineItems = m_TimelineItems",
             "bPatternMutationAdmitted",
             "bSoundMoveAdmitted",
-            "!m_bAuthoringDraftDirty",
             "m_iTimelineMoveSourceStartMs",
             "m_iTimelineMoveSourceEndMs",
             "Apply_EffectOccurrenceTiming",
             "Resolve_ValtanCompositionPatternSoundWindow",
             "Apply_PatternSoundOccurrenceTiming",
             "bAnimationMove",
-            "Reorder_AnimationOccurrence",
+            "Transfer_AnimationOccurrence",
         ):
             self.assertIn(token, timeline)
+        self.assertNotIn(
+            "bSoundMoveAdmitted = bMutationAdmitted &&\n\t\t!m_bAuthoringDraftDirty",
+            timeline,
+        )
         self.assertIn('"cue_end" == pEffectCue->strStopPolicy', timeline)
         self.assertIn('"once" == pEffectCue->strRepeatPolicy', timeline)
         self.assertNotIn("Save_Publish_Reload(", timeline)
@@ -147,13 +156,80 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
         self.assertIn("bool_t bMutationAdmitted,", self.header)
         self.assertIn("bool_t bPatternMutationAdmitted);", self.header)
 
+    def test_animation_drag_routes_across_stage_clocks_as_one_transaction(self) -> None:
+        timeline = body(
+            self.source,
+            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+        )
+        for token in (
+            "pTargetStageItem",
+            "TIMELINE_LANE::STAGE",
+            "pTargetStage->strStageId",
+            "Transfer_AnimationOccurrence(",
+        ):
+            self.assertIn(token, timeline)
+
+        transfer = body(
+            self.source,
+            "bool_t Client::CActionCompositionWorkbench::Transfer_AnimationOccurrence(",
+        )
+        for token in (
+            "SourceDraft.animationSlots.erase(Found)",
+            "TargetDraft.animationSlots.insert(",
+            "bLinkedEffect",
+            "bLinkedEffectV2",
+            "bLinkedSound",
+            "bLinkedShake",
+            "SetValtanStageDraftWithSoundDependencyAdmission(",
+            "Set_ValtanAnimationTransferDrafts(",
+        ):
+            self.assertIn(token, transfer)
+        self.assertLess(
+            transfer.index("SetValtanStageDraftWithSoundDependencyAdmission("),
+            transfer.index("Set_ValtanAnimationTransferDrafts("),
+        )
+
+        self.assertIn("Set_ValtanAnimationTransferDrafts", self.balance_header)
+        atomic = body(
+            self.balance_source,
+            "bool Client::CBalanceTool::Set_ValtanAnimationTransferDrafts(",
+        )
+        for token in (
+            "const VALTAN_PATTERN_VIEW PatternBefore = *pPattern",
+            "Set_ValtanStageDraft(",
+            "*pRollbackPattern = PatternBefore",
+            "m_valtanDraftGeneration = iDraftGenerationBefore",
+        ):
+            self.assertIn(token, atomic)
+        self.assertLess(
+            atomic.index("const VALTAN_PATTERN_VIEW PatternBefore = *pPattern"),
+            atomic.index("Set_ValtanStageDraft("),
+        )
+
+    def test_short_boxes_pack_labels_except_collider_semantic_width(self) -> None:
+        timeline = body(
+            self.source,
+            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+        )
+        self.assertIn(
+            "ResolveTimelineDisplayWidthPx(\n\t\t\t\tItem.strLabel, Item.fMinimumDisplayWidthPx)",
+            timeline,
+        )
+        self.assertIn("bColliderTimelineItem", timeline)
+        self.assertIn("TIMELINE_POINT_MINIMUM_WIDTH_PX", timeline)
+        self.assertIn("fSemanticEndX", timeline)
+        self.assertIn("fStartX + fDisplayWidthPx", timeline)
+        self.assertNotIn("fStartX + Item.fMinimumDisplayWidthPx", timeline)
+        self.assertIn("EFFECT_V2_LEAF_MINIMUM_WIDTH_PX = 180.f", self.source)
+        self.assertIn("EFFECT_V2_GROUP_MINIMUM_WIDTH_PX = 240.f", self.source)
+
     def test_selected_box_toolbar_dispatches_typed_duplicate_and_delete(self) -> None:
         timeline = body(
             self.source,
             "void Client::CActionCompositionWorkbench::Render_Timeline(",
         )
-        self.assertIn('ImGui::Button("Duplicate Selected Box")', timeline)
-        self.assertIn('ImGui::Button("Delete Selected Box")', timeline)
+        self.assertIn('ImGui::Button("Duplicate Box")', timeline)
+        self.assertIn('ImGui::Button("Delete Box")', timeline)
         self.assertIn("Duplicate_SelectedTimelineBox(", timeline)
         self.assertIn("Delete_SelectedTimelineBox(", timeline)
 

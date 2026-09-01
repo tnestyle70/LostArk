@@ -2286,8 +2286,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(51u == NETWORK_PROTOCOL_VERSION,
-				"World Spawn Revision Pin And Existing Contracts Use Protocol 50");
+			testRunner.Require(52u == NETWORK_PROTOCOL_VERSION,
+				"Restart Replacement Revision And Existing Contracts Use Protocol 52");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -4744,6 +4744,8 @@ namespace
 		request.iPredecessorPatternSequence = 29u;
 		request.ExpectedDefinitionRevision =
 			Make_GameplayDataRevision(101u);
+		request.ReplacementDefinitionRevision =
+			Make_GameplayDataRevision(121u);
 
 		CPacketWriter requestWriter;
 		const bool wroteRequest = Write_Message(requestWriter, request);
@@ -4762,8 +4764,10 @@ namespace
 				decodedRequest.iPredecessorPatternSequence &&
 			0u == decodedRequest.iExpectedNextRequestSequence &&
 			request.ExpectedDefinitionRevision ==
-				decodedRequest.ExpectedDefinitionRevision,
-			"Restart Pattern Request Round Trips Exact Predecessor And Revision");
+				decodedRequest.ExpectedDefinitionRevision &&
+			request.ReplacementDefinitionRevision ==
+				decodedRequest.ReplacementDefinitionRevision,
+			"Restart Pattern Request Round Trips Predecessor And Replacement Revisions");
 
 		bool requestTruncationIsAtomic = wroteRequest;
 		for (std::size_t length = 0u;
@@ -4779,6 +4783,8 @@ namespace
 			unchanged.iPredecessorPatternSequence = 47u;
 			unchanged.ExpectedDefinitionRevision =
 				Make_GameplayDataRevision(141u);
+			unchanged.ReplacementDefinitionRevision =
+				Make_GameplayDataRevision(151u);
 			CPacketWriter before;
 			CPacketWriter after;
 			const bool wroteBefore = Write_Message(before, unchanged);
@@ -4793,7 +4799,7 @@ namespace
 			"Every Truncated Restart Request Preserves Its Destination");
 
 		for (std::size_t malformedField = 0u;
-			malformedField < 4u; ++malformedField)
+			malformedField < 5u; ++malformedField)
 		{
 			C2S_VALTAN_AUDITION_REQUEST malformed = request;
 			switch (malformedField)
@@ -4807,6 +4813,9 @@ namespace
 			case 2u:
 				malformed.ExpectedDefinitionRevision = {};
 				break;
+			case 3u:
+				malformed.ReplacementDefinitionRevision = {};
+				break;
 			default:
 				malformed.iExpectedNextRequestSequence = 1u;
 				break;
@@ -4815,7 +4824,7 @@ namespace
 			testRunner.Require(
 				!Write_Message(malformedWriter, malformed) &&
 				malformedWriter.Get_Buffer().empty(),
-				"Reject Restart Without Exact Epoch Sequence Revision Or With Next Token");
+				"Reject Restart Without Exact Epoch Sequence Or Either Revision, Or With Next Token");
 		}
 
 		for (std::size_t hiddenField = 0u; hiddenField < 3u; ++hiddenField)
@@ -4828,6 +4837,7 @@ namespace
 			hidden.iExpectedNextRequestSequence = 0u;
 			hidden.ExpectedDefinitionRevision =
 				request.ExpectedDefinitionRevision;
+			hidden.ReplacementDefinitionRevision = {};
 			switch (hiddenField)
 			{
 			case 0u:
@@ -4846,6 +4856,16 @@ namespace
 				hiddenWriter.Get_Buffer().empty(),
 				"Reject Hidden Restart Predecessor Identity On PLAY_PATTERN_ID");
 		}
+		C2S_VALTAN_AUDITION_REQUEST hiddenReplacement = request;
+		hiddenReplacement.eOperation =
+			VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID;
+		hiddenReplacement.iPredecessorRoomAuditionEpoch = 0u;
+		hiddenReplacement.iPredecessorPatternSequence = 0u;
+		CPacketWriter hiddenReplacementWriter;
+		testRunner.Require(
+			!Write_Message(hiddenReplacementWriter, hiddenReplacement) &&
+			hiddenReplacementWriter.Get_Buffer().empty(),
+			"Reject Hidden Replacement Revision On Plain PLAY_PATTERN_ID");
 
 		C2S_VALTAN_AUDITION_REQUEST missingPlayRevision = request;
 		missingPlayRevision.eOperation =
@@ -4854,6 +4874,7 @@ namespace
 		missingPlayRevision.iPredecessorPatternSequence = 0u;
 		missingPlayRevision.iExpectedNextRequestSequence = 0u;
 		missingPlayRevision.ExpectedDefinitionRevision = {};
+		missingPlayRevision.ReplacementDefinitionRevision = {};
 		CPacketWriter missingPlayRevisionWriter;
 		testRunner.Require(
 			!Write_Message(missingPlayRevisionWriter, missingPlayRevision) &&
@@ -4878,6 +4899,8 @@ namespace
 				request.iPredecessorPatternSequence;
 			result.ExpectedDefinitionRevision =
 				request.ExpectedDefinitionRevision;
+			result.ReplacementDefinitionRevision =
+				request.ReplacementDefinitionRevision;
 			CPacketWriter resultWriter;
 			const bool wroteResult = Write_Message(resultWriter, result);
 			CPacketReader resultReader{ resultWriter.Get_Buffer() };
@@ -4897,7 +4920,9 @@ namespace
 					decodedResult.iPredecessorPatternSequence &&
 				0u == decodedResult.iExpectedNextRequestSequence &&
 				result.ExpectedDefinitionRevision ==
-					decodedResult.ExpectedDefinitionRevision,
+					decodedResult.ExpectedDefinitionRevision &&
+				result.ReplacementDefinitionRevision ==
+					decodedResult.ReplacementDefinitionRevision,
 				VALTAN_AUDITION_RESULT::QUEUED == verdict ?
 					"Restart QUEUED Result Round Trip" :
 					(VALTAN_AUDITION_RESULT::REJECTED_OCCURRENCE_PRESERVED ==
@@ -4919,6 +4944,8 @@ namespace
 			request.iPredecessorPatternSequence;
 		validResult.ExpectedDefinitionRevision =
 			request.ExpectedDefinitionRevision;
+		validResult.ReplacementDefinitionRevision =
+			request.ReplacementDefinitionRevision;
 		CPacketWriter validResultWriter;
 		const bool wroteValidResult =
 			Write_Message(validResultWriter, validResult);
@@ -4935,6 +4962,8 @@ namespace
 				VALTAN_AUDITION_RESULT::REJECTED_STALE_AUDITION;
 			unchanged.ExpectedDefinitionRevision =
 				Make_GameplayDataRevision(171u);
+			unchanged.ReplacementDefinitionRevision =
+				Make_GameplayDataRevision(181u);
 			CPacketWriter before;
 			CPacketWriter after;
 			const bool wroteBefore = Write_Message(before, unchanged);
@@ -5238,8 +5267,8 @@ namespace
 		}
 
 		testRunner.Require(
-			51u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Protocol Version 50");
+			52u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 52");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -5266,8 +5295,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			51u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Restart CAS Use Protocol 50");
+			52u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 52");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =

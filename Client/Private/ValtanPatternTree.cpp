@@ -668,15 +668,23 @@ namespace
 		std::set<std::string, std::less<>> Outcomes;
 		for (const DATA_JSON_VALUE& Value : pValue->Get_Array())
 		{
-			if (!Has_ExactProperties(Value, { "outcome", "nextActionId" }))
+			if (!Has_ExactPropertiesWithOptional(
+					Value, { "outcome", "nextActionId" }, { "nextPatternId" }))
 				return false;
 			const DATA_JSON_VALUE* pOutcome = Required(
 				Value, "outcome", DATA_JSON_TYPE::STRING);
 			std::string strNextActionId;
+			std::string strNextPatternId;
+			const DATA_JSON_VALUE* const pNextPatternId =
+				Value.Find("nextPatternId");
 			if (nullptr == pOutcome || !Is_StableToken(pOutcome->Get_String()) ||
 				!Outcomes.insert(pOutcome->Get_String()).second ||
 				!Read_NullableStableToken(
-					Value, "nextActionId", strNextActionId))
+					Value, "nextActionId", strNextActionId) ||
+				(nullptr != pNextPatternId &&
+				 !Read_NullableStableToken(
+					Value, "nextPatternId", strNextPatternId)) ||
+				(!strNextActionId.empty() && !strNextPatternId.empty()))
 			{
 				return false;
 			}
@@ -684,6 +692,8 @@ namespace
 			Branch.strOutcome = pOutcome->Get_String();
 			if (!strNextActionId.empty())
 				Branch.strNextActionId = std::move(strNextActionId);
+			if (!strNextPatternId.empty())
+				Branch.strNextPatternId = std::move(strNextPatternId);
 			Out.push_back(std::move(Branch));
 		}
 		return true;
@@ -2699,6 +2709,24 @@ namespace
 			}
 			Out.Patterns.push_back(std::move(Pattern));
 		}
+		for (const MASTER_PATTERN& Pattern : Out.Patterns)
+		{
+			for (const MASTER_STAGE& Stage : Pattern.Stages)
+			{
+				for (const Client::VALTAN_STAGE_BRANCH_VIEW& Branch :
+					Stage.Branches)
+				{
+					if (Branch.strNextPatternId.has_value() &&
+						!PatternIds.contains(*Branch.strNextPatternId))
+					{
+						strOutError =
+							"master branch targets an unknown pattern: " +
+							*Branch.strNextPatternId;
+						return false;
+					}
+				}
+			}
+		}
 		std::set<std::string, std::less<>> FinitePatternIds = {
 			"VALTAN_TRASH", "VALTAN_TRASH_CATCH_IF",
 			"VALTAN_TRASH_CATCH_SUCCESS", "VALTAN_TRASH_CATCH_FAIL" };
@@ -2814,6 +2842,8 @@ namespace
 		uint32_t iLifetimeMs = 0u;
 		std::vector<std::string> HitIds;
 		std::vector<uint32_t> HitOffsetsMs;
+		std::vector<Client::VALTAN_COMBAT_OBJECT_PRESENTATION_EVENT_VIEW>
+			PresentationEvents;
 	};
 
 	Client::VALTAN_CLIP_OCCURRENCE_VIEW Build_ClipOccurrenceView(
@@ -2983,7 +3013,8 @@ namespace
 		for (size_t i = 0u; i < Left.size(); ++i)
 		{
 			if (Left[i].strOutcome != Right[i].strOutcome ||
-				Left[i].strNextActionId != Right[i].strNextActionId)
+				Left[i].strNextActionId != Right[i].strNextActionId ||
+				Left[i].strNextPatternId != Right[i].strNextPatternId)
 			{
 				return false;
 			}
@@ -3797,108 +3828,6 @@ namespace
 		return true;
 	}
 
-	bool_t Resolve_SavedFlowSequence(
-		const std::filesystem::path& GameplayPath,
-		DATA_JSON_VALUE& Gameplay,
-		std::string& strOutFlowRevision,
-		std::string& strOutError)
-	{
-		strOutFlowRevision.clear();
-		const DATA_JSON_VALUE* pDecision = Required(
-			Gameplay, "decisionModel", DATA_JSON_TYPE::OBJECT);
-		const DATA_JSON_VALUE* pSequence = nullptr == pDecision ? nullptr :
-			Required(*pDecision, "scriptedSequence", DATA_JSON_TYPE::OBJECT);
-		if (nullptr == pSequence || nullptr == pSequence->Find("flowId"))
-			return true; // The existing strict parser admits only the inline shape.
-		if (!Has_ExactProperties(*pSequence, { "sequenceId", "mode", "flowId" }) ||
-			!Is_StableToken(Read_String(*pSequence, "sequenceId")) ||
-			"ORDERED_ONCE_THEN_IDLE" != Read_String(*pSequence, "mode") ||
-			Client::CValtanPatternFlowDocument::DEFAULT_FLOW_ID !=
-				Read_String(*pSequence, "flowId"))
-		{
-			strOutError = "scriptedSequence saved Flow reference is invalid";
-			return false;
-		}
-
-		const DATA_JSON_VALUE* pPatterns = Required(
-			Gameplay, "patterns", DATA_JSON_TYPE::ARRAY);
-		if (nullptr == pPatterns || pPatterns->Get_Array().empty())
-		{
-			strOutError = "saved Flow requires split gameplay pattern definitions";
-			return false;
-		}
-		std::vector<std::string> AdmittedPatterns;
-		std::set<std::string, std::less<>> UniquePatternIds;
-		for (const DATA_JSON_VALUE& Pattern : pPatterns->Get_Array())
-		{
-			const std::string PatternId = Read_String(Pattern, "patternId");
-			if (!Is_StableToken(PatternId) || !UniquePatternIds.insert(PatternId).second)
-			{
-				strOutError = "saved Flow split pattern identity is invalid or duplicated: " + PatternId;
-				return false;
-			}
-			AdmittedPatterns.push_back(PatternId);
-		}
-
-		/* Immutable authoring restores must read their own Flow, never a newer
-		   workspace copy. Gameplay lives at <snapshot>/Data/Valtan/... . */
-		std::error_code PathError;
-		const std::filesystem::path DataRoot = std::filesystem::weakly_canonical(
-			GameplayPath.parent_path().parent_path(), PathError);
-		if (PathError || DataRoot.empty() ||
-			GameplayPath.parent_path().filename() != L"Valtan" ||
-			DataRoot.filename() != L"Data")
-		{
-			strOutError = "saved Flow gameplay path has no fixed Data/Valtan owner";
-			return false;
-		}
-		const std::filesystem::path FlowPath = std::filesystem::weakly_canonical(
-			DataRoot / L"Encounters" / L"Valtan" / L"ValtanBossAuditionFlows.json",
-			PathError);
-		const std::filesystem::path Relative = FlowPath.lexically_relative(DataRoot);
-		if (PathError || Relative.empty() || Relative.is_absolute() ||
-			*Relative.begin() == L"..")
-		{
-			strOutError = "saved Flow path escaped its authoring snapshot";
-			return false;
-		}
-		std::string FlowText;
-		Client::VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT FlowDocument;
-		if (!Read_TextDocument(FlowPath, FlowText, strOutError) ||
-			!Client::CValtanPatternFlowDocument::Parse_Text(
-				FlowText, FlowDocument, strOutError) ||
-			!Client::CValtanPatternFlowDocument::Validate(
-				FlowDocument, AdmittedPatterns, strOutError))
-			return false;
-		if (!Client::CValtanPatternFlowDocument::Compute_SourceRevision(
-				FlowText, strOutFlowRevision))
-		{
-			strOutError = "saved Flow source revision could not be computed";
-			return false;
-		}
-		const Client::VALTAN_PATTERN_FLOW_DEFINITION& Flow = FlowDocument.Flows.front();
-		if (Flow.Slots.empty())
-		{
-			strOutError = "the saved default Flow must contain at least one slot";
-			return false;
-		}
-		DATA_JSON_VALUE::ARRAY PatternIds;
-		for (const Client::VALTAN_PATTERN_FLOW_SLOT& Slot : Flow.Slots)
-			PatternIds.push_back(DATA_JSON_VALUE::String(Slot.strPatternId));
-		DATA_JSON_VALUE::OBJECT Sequence;
-		Sequence.emplace("sequenceId", *pSequence->Find("sequenceId"));
-		Sequence.emplace("mode", *pSequence->Find("mode"));
-		Sequence.emplace("interStepPursuitMs",
-			DATA_JSON_VALUE::Number(Flow.iInterStepPursuitMs));
-		Sequence.emplace("patternIds", DATA_JSON_VALUE::Array(std::move(PatternIds)));
-		DATA_JSON_VALUE::OBJECT Decision = pDecision->Get_Object();
-		Decision["scriptedSequence"] = DATA_JSON_VALUE::Object(std::move(Sequence));
-		DATA_JSON_VALUE::OBJECT Root = Gameplay.Get_Object();
-		Root["decisionModel"] = DATA_JSON_VALUE::Object(std::move(Decision));
-		Gameplay = DATA_JSON_VALUE::Object(std::move(Root));
-		return true;
-	}
-
 	bool_t Build_SplitDecisionProjection(
 		const DATA_JSON_VALUE& Decision,
 		DATA_JSON_VALUE& OutNormalSelection,
@@ -4614,6 +4543,40 @@ namespace
 					"split gameplay combat-object volley arena random contract is invalid";
 				return false;
 			}
+			/* The repository-facing Product projection uses one flat, typed volley
+			   row. Preserve every radial field here so Parse_MasterDocument and the
+			   local Arena Clone join see the same contract as the Server bootstrap. */
+			Action.emplace("targetId", DATA_JSON_VALUE::String(
+				Read_String(Event, "combatObjectArchetypeId")));
+			Action.emplace("targetingPolicy",
+				DATA_JSON_VALUE::String(strVolleyPolicy));
+			Action.emplace("countPerResolvedTarget",
+				*Event.Find("countPerResolvedTarget"));
+			Action.emplace("layout", DATA_JSON_VALUE::String(
+				bTargetCenter ? "SINGLE" : "RADIAL"));
+			Action.emplace("radiusM", DATA_JSON_VALUE::Number(
+				bTargetCenter ? 0.0 : Read_Number(*pLayout, "radiusM")));
+			Action.emplace("startAngleDegrees", DATA_JSON_VALUE::Number(
+				bTargetCenter ? 0.0 :
+					Read_Number(*pLayout, "startAngleDegrees")));
+			Action.emplace("angleStepDegrees", DATA_JSON_VALUE::Number(
+				bTargetCenter ? 0.0 :
+					Read_Number(*pLayout, "angleStepDegrees")));
+			Action.emplace("allowOverlap", *pAllowOverlap);
+			Action.emplace("maximumTotalObjects",
+				*Event.Find("maximumTotalObjects"));
+			Action.emplace("spawnCount", *pSpawnSchedule->Find("count"));
+			Action.emplace("spawnIntervalMs",
+				*pSpawnSchedule->Find("intervalMs"));
+			Action.emplace("arenaRandomCount", DATA_JSON_VALUE::Number(
+				bPerAlivePlayer ? Read_Number(*pArenaRandom, "count") : 0.0));
+			Action.emplace("arenaRandomRadiusM", DATA_JSON_VALUE::Number(
+				bPerAlivePlayer ? Read_Number(*pArenaRandom, "radiusM") : 0.0));
+			Action.emplace("arenaHeightToleranceM", DATA_JSON_VALUE::Number(
+				bPerAlivePlayer ?
+					Read_Number(*pArenaRandom, "heightToleranceM") : 0.0));
+			Action.emplace("arenaAnchorPolicy", DATA_JSON_VALUE::String(
+				bPerAlivePlayer ? Read_String(*pArenaRandom, "anchor") : "NONE"));
 			strOutSpawnArchetypeId = Read_String(
 				Event, "combatObjectArchetypeId");
 			return true;
@@ -5522,16 +5485,25 @@ namespace
 					}
 					else if (Anchor.starts_with("arena.center"))
 					{
-						const bool_t bFacing = "arena.center.facing" == Anchor;
-						if ((!bFacing && "arena.center" != Anchor) ||
+						const bool_t bFixedFacing =
+							"arena.center.facing" == Anchor;
+						const bool_t bTargetFollow =
+							"arena.center.target-follow" == Anchor;
+						if (("arena.center" != Anchor && !bFixedFacing &&
+							 !bTargetFollow) ||
 							!Pattern.ServerMotion.has_value() ||
 							Pattern.ServerMotion->strKind != "LEAP_TO_ANCHOR" ||
 							!Pattern.ServerMotion->bMoveToAnchorBeforeTakeoff ||
-							Read_String(Cue, "followPolicy") != "snapshot" ||
-							(bFacing && (Pattern.strAimPolicy != "LOCK_FACING_ON_START" ||
-								Pattern.strTargetPolicy != "LOCK_RANDOM_ALIVE_ON_START")))
+							Read_String(Cue, "followPolicy") !=
+								(bTargetFollow ? "follow" : "snapshot") ||
+							(bFixedFacing &&
+							 (Pattern.strAimPolicy != "LOCK_FACING_ON_START" ||
+							  Pattern.strTargetPolicy != "LOCK_RANDOM_ALIVE_ON_START")) ||
+							(bTargetFollow &&
+							 (Pattern.strAimPolicy != "TRACK_TARGET_EACH_TICK" ||
+							  Pattern.strTargetPolicy != "LOCK_RANDOM_ALIVE_ON_START")))
 						{
-							strOutError = "split arena center cue requires its fixed approach/facing contract: " +
+							strOutError = "split arena center cue requires its exact fixed/follow approach contract: " +
 								Pattern.strPatternId + "/" + Stage.strStageId;
 							return false;
 						}
@@ -5910,19 +5882,29 @@ namespace
 			}
 			ProductScriptedPatternIds.push_back(PatternId.Get_String());
 		}
+		/* The gameplay scriptedSequence is the editable order authority and the
+		   rotations document is its generated Product.  An admitted canonical
+		   generation must therefore contain exact sequence identity, timing and
+		   ordered Pattern parity. */
 		if (bRequireProductParity &&
 			(Read_String(*pProductScriptedSequence, "sequenceId") !=
 				Master.ScriptedSequence.strSequenceId ||
 			 Read_String(*pProductScriptedSequence, "mode") !=
 				Master.ScriptedSequence.strMode ||
 			 static_cast<uint32_t>(pProductScriptedSequence->Find(
-				"interStepPursuitMs")->Get_Number()) !=
-				Master.ScriptedSequence.iInterStepPursuitMs ||
-			 ProductScriptedPatternIds != Master.ScriptedSequence.PatternIds))
+					"interStepPursuitMs")->Get_Number()) !=
+					Master.ScriptedSequence.iInterStepPursuitMs ||
+				 ProductScriptedPatternIds !=
+					Master.ScriptedSequence.PatternIds))
 		{
 			strOutError = "Valtan scripted-sequence Product parity drifted";
 			return false;
 		}
+		View.strScriptedSequenceId = Master.ScriptedSequence.strSequenceId;
+		View.strScriptedSequenceMode = Master.ScriptedSequence.strMode;
+		View.iScriptedSequenceInterStepPursuitMs =
+			Master.ScriptedSequence.iInterStepPursuitMs;
+		View.ScriptedSequencePatternIds = Master.ScriptedSequence.PatternIds;
 		std::map<std::string, const Client::VALTAN_SELECTION_WINDOW_VIEW*,
 			std::less<>> WindowByRotation;
 		for (const Client::VALTAN_SELECTION_WINDOW_VIEW& Window :
@@ -7073,13 +7055,6 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		strOutStatus = "Valtan normal-selection product load failed: " + Error;
 		return false;
 	}
-	std::string SavedFlowSourceRevision;
-	if (!Resolve_SavedFlowSequence(
-			GameplayPath, GameplayRoot, SavedFlowSourceRevision, Error))
-	{
-		strOutStatus = "Valtan saved Flow sequence resolution failed: " + Error;
-		return false;
-	}
 	MASTER_DOCUMENT MasterDocument;
 	if (!Parse_SplitMasterDocument(
 			GameplayRoot, PresentationRoot, MasterDocument, Error))
@@ -7297,6 +7272,10 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 						strArchetypeId;
 					return false;
 				}
+				Client::VALTAN_COMBAT_OBJECT_PRESENTATION_EVENT_VIEW View;
+				View.strPresentationEventId = strEventId;
+				View.iAtMs = iEventOffsetMs;
+				Reference->second.PresentationEvents.push_back(std::move(View));
 			}
 		}
 		if (strClientVisualId != Reference->second.strClientVisualId ||
@@ -7421,7 +7400,6 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 	}
 
 	VALTAN_PATTERN_TREE_VIEW Staged;
-	Staged.strSavedFlowSourceRevision = std::move(SavedFlowSourceRevision);
 	size_t iResolvedCueCount = 0u;
 	std::set<std::string, std::less<>> ResolvedCombatObjectEffects;
 	const std::string strEncounterBossArchetypeId = Read_String(
@@ -7724,6 +7702,18 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 							Reference->second.strEffectAssetId;
 						View.strTrigger = Read_String(Action, "trigger");
 						View.iSpawnValue = static_cast<uint32_t>(SpawnValue);
+						if ("SPAWN_COMBAT_OBJECT_VOLLEY" == strSpawnKind)
+						{
+							View.strVolleyPolicy = Read_String(
+								Action, "targetingPolicy");
+							View.strVolleyLayout = Read_String(Action, "layout");
+							View.fVolleyRadiusM = static_cast<f32_t>(
+								Read_Number(Action, "radiusM"));
+							View.fVolleyStartAngleDegrees = static_cast<f32_t>(
+								Read_Number(Action, "startAngleDegrees"));
+							View.fVolleyAngleStepDegrees = static_cast<f32_t>(
+								Read_Number(Action, "angleStepDegrees"));
+						}
 						View.strKind = Reference->second.strKind;
 						View.strOriginPolicy =
 							Reference->second.strOriginPolicy;
@@ -7735,6 +7725,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 						View.iLifetimeMs = Reference->second.iLifetimeMs;
 						View.HitIds = Reference->second.HitIds;
 						View.HitOffsetsMs = Reference->second.HitOffsetsMs;
+						View.PresentationEvents =
+							Reference->second.PresentationEvents;
 						Stage.CombatObjectEffects.push_back(std::move(View));
 					}
 				}

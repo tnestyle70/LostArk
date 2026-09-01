@@ -237,6 +237,23 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
         counter_gate = counter.index("IsValtanCounterTopologyFiniteForward")
         self.assertLess(counter_gate, counter.index("*currentPattern = std::move(*stagedPattern)"))
 
+    def test_unchanged_complex_manual_graph_bypasses_linear_topology_rewrite(self) -> None:
+        builder = function_body(
+            self.balance_cpp, "bool BuildValtanManualStageTopologyPatch("
+        )
+        for token in (
+            "const bool stableTopology",
+            "current.Stages.size() == loaded.Stages.size()",
+            "currentStage.strStageId == loadedStage.strStageId",
+            "currentStage.strActionId == loadedStage.strActionId",
+            "if (stableTopology)",
+        ):
+            self.assertIn(token, builder)
+        stable = builder.index("if (stableTopology)")
+        linear = builder.index("IsValtanManualStageTopologyLinear")
+        self.assertLess(stable, linear)
+        self.assertIn("return true;", builder[stable:linear])
+
     def test_blueprint_owns_insert_move_remove_and_sound_preflight(self) -> None:
         topology = function_body(
             self.workbench_blueprint_cpp,

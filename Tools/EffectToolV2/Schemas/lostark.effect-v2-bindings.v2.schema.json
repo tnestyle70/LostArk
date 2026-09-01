@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lostark.effect-v2-bindings.v2.schema.json",
+  "title": "LostArk BOSS_VALTAN Effect V2 bindings",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "formatVersion", "archetypeId", "bindings"],
+  "properties": {
+    "schema": { "const": "lostark.effect-v2-bindings" },
+    "formatVersion": { "const": 2 },
+    "archetypeId": { "const": "BOSS_VALTAN" },
+    "bindings": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": { "$ref": "#/$defs/binding" }
+    }
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]{1,160}$"
+    },
+    "vector3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "type": "number" }
+    },
+    "nonZeroVector3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "type": "number", "not": { "const": 0 } }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bindingId", "resource", "scope", "clock", "anchor", "stopPolicy"],
+      "properties": {
+        "bindingId": { "$ref": "#/$defs/stableId" },
+        "resource": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "id"],
+          "properties": {
+            "kind": { "enum": ["LEAF", "GROUP"] },
+            "id": { "$ref": "#/$defs/stableId" }
+          }
+        },
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["patternId", "stageId", "actionId"],
+          "properties": {
+            "patternId": { "$ref": "#/$defs/stableId" },
+            "stageId": { "$ref": "#/$defs/stableId" },
+            "actionId": { "$ref": "#/$defs/stableId" }
+          }
+        },
+        "clock": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["basis", "clipOccurrenceId", "startMs", "repeatPolicy"],
+          "properties": {
+            "basis": { "enum": ["STAGE", "CLIP_OCCURRENCE"] },
+            "clipOccurrenceId": {
+              "oneOf": [
+                { "type": "null" },
+                { "$ref": "#/$defs/stableId" }
+              ]
+            },
+            "startMs": { "type": "integer", "minimum": 0, "maximum": 600000 },
+            "repeatPolicy": { "enum": ["ONCE", "EACH_LOOP"] }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "basis": { "const": "STAGE" } } },
+              "then": {
+                "properties": {
+                  "clipOccurrenceId": { "type": "null" },
+                  "repeatPolicy": { "const": "ONCE" }
+                }
+              },
+              "else": {
+                "properties": {
+                  "clipOccurrenceId": { "$ref": "#/$defs/stableId" }
+                }
+              }
+            }
+          ]
+        },
+        "anchor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["slotId", "followPolicy", "rotationBasis", "localTransform"],
+          "properties": {
+            "slotId": { "$ref": "#/$defs/stableId" },
+            "followPolicy": { "enum": ["FOLLOW_SLOT", "SNAPSHOT_AT_START"] },
+            "rotationBasis": { "enum": ["SLOT", "TARGET_YAW", "WORLD"] },
+            "localTransform": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["translation", "rotation", "scale"],
+              "properties": {
+                "translation": { "$ref": "#/$defs/vector3", "description": "Local XYZ translation." },
+                "rotation": { "$ref": "#/$defs/vector3", "description": "Local pitch/yaw/roll rotation in degrees." },
+                "scale": { "$ref": "#/$defs/nonZeroVector3", "description": "Local XYZ scale; zero components are forbidden." }
+              }
+            }
+          }
+        },
+        "stopPolicy": { "enum": ["NATURAL", "STAGE_END", "CLIP_OCCURRENCE_END", "EXPLICIT"] }
+      }
+    }
+  }
+}

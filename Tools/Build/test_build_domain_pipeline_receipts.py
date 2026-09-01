@@ -66,7 +66,7 @@ class BuildDomainManifestContractTests(unittest.TestCase):
             valtan["profiles"], ["Product", "Core", "FullDiagnostic"]
         )
         self.assertEqual(
-            valtan["action"]["arguments"].count("ValidateV2"), 1
+            valtan["action"]["arguments"].count("Validate"), 1
         )
         self.assertIn(
             "Tools/ValtanPipeline/Format-PreservingJsonArray.ps1",
@@ -78,6 +78,13 @@ class BuildDomainManifestContractTests(unittest.TestCase):
         self.assertIn("Data/Effects/V2/**", effect_v2["inputs"])
         self.assertEqual(len(effect_v2["resourceReferenceFields"]), 6)
         self.assertIn("validate_effect_v2.py", json.dumps(effect_v2))
+        for tool in (
+            "Tools/EffectToolV2/effect_v2_binding_pipeline.py",
+            "Tools/EffectToolV2/Schemas/lostark.effect-v2-bindings.v2.schema.json",
+            "Tools/EffectToolV2/Schemas/lostark.effect-v2-binding-read-set.v1.schema.json",
+            "Tools/EffectToolV2/Schemas/lostark.effect-v2-group.v2.schema.json",
+        ):
+            self.assertIn(tool, effect_v2["tools"])
 
     def test_publishers_have_owned_outputs_and_skip_duplicate_valtan_join(self) -> None:
         publishers = {

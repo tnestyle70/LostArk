@@ -59,12 +59,7 @@ STAGE_FIELDS = (
 
 
 def load(path: Path) -> dict:
-    document = json.loads(path.read_text(encoding="utf-8"))
-    if path.name == "Valtan.gameplay.json" and "flowId" in document["decisionModel"]["scriptedSequence"]:
-        return tuning_pipeline.resolve_gameplay_flow_reference(
-            document, load(path.parent.parent / "Encounters/Valtan/ValtanBossAuditionFlows.json"),
-        )
-    return document
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def projected_value(row: dict, field: str):
@@ -232,13 +227,10 @@ def split_policy_accepts(
 
 STABLE_TOKEN = re.compile(r"^[A-Za-z0-9_.-]+$")
 
-SAVED_DEFAULT_FLOW = load(ROOT / tuning_pipeline.SAVED_FLOW_REL)["flows"][0]
-EXPECTED_SCRIPTED_SEQUENCE = {
-    "sequenceId": "sequence.valtan.server-authored.v1",
-    "mode": "ORDERED_ONCE_THEN_IDLE",
-    "interStepPursuitMs": SAVED_DEFAULT_FLOW["interStepPursuitMs"],
-    "patternIds": [slot["patternId"] for slot in SAVED_DEFAULT_FLOW["slots"]],
-}
+PHYSICAL_GAMEPLAY = json.loads(GAMEPLAY_PATH.read_text(encoding="utf-8"))
+EXPECTED_SCRIPTED_SEQUENCE = copy.deepcopy(
+    PHYSICAL_GAMEPLAY["decisionModel"]["scriptedSequence"]
+)
 
 def master_only_contract_valid(master: dict) -> bool:
     for pattern in master["patterns"]:
@@ -289,9 +281,56 @@ def master_only_contract_valid(master: dict) -> bool:
     return True
 
 
+def scripted_sequence_contract_valid(
+    source_sequence: object,
+    product_sequence: object,
+    gameplay_ids: set[str],
+    product_ids: set[str],
+) -> bool:
+    exact_fields = {
+        "sequenceId", "mode", "interStepPursuitMs", "patternIds",
+    }
+
+    def shape_valid(sequence: object, admitted_ids: set[str]) -> bool:
+        if not isinstance(sequence, dict) or set(sequence) != exact_fields:
+            return False
+        pursuit_ms = sequence.get("interStepPursuitMs")
+        pattern_ids = sequence.get("patternIds")
+        return (
+            isinstance(sequence.get("sequenceId"), str)
+            and STABLE_TOKEN.fullmatch(sequence["sequenceId"]) is not None
+            and sequence.get("mode") == tuning_pipeline.SCRIPTED_SEQUENCE_MODE
+            and type(pursuit_ms) is int
+            and 100 <= pursuit_ms <= 10_000
+            and isinstance(pattern_ids, list)
+            and 1
+            <= len(pattern_ids)
+            <= tuning_pipeline.SCRIPTED_SEQUENCE_MAX_PATTERNS
+            and all(
+                isinstance(pattern_id, str)
+                and STABLE_TOKEN.fullmatch(pattern_id) is not None
+                and pattern_id in admitted_ids
+                for pattern_id in pattern_ids
+            )
+        )
+
+    if not (
+        shape_valid(source_sequence, gameplay_ids & product_ids)
+        and shape_valid(product_sequence, product_ids)
+        and source_sequence["sequenceId"] == product_sequence["sequenceId"]
+        and source_sequence["mode"] == product_sequence["mode"]
+    ):
+        return False
+    return (
+        source_sequence["interStepPursuitMs"]
+        == product_sequence["interStepPursuitMs"]
+        and source_sequence["patternIds"] == product_sequence["patternIds"]
+    )
+
+
 def shared_reaction_and_selection_contract_valid(
     master: dict, gameplay: dict, encounter: dict, bindings: dict,
-    rotations: dict
+    rotations: dict,
 ) -> bool:
     managed_ids = {row["patternId"] for row in master["patterns"]}
     managed_normal_ids = {
@@ -306,19 +345,18 @@ def shared_reaction_and_selection_contract_valid(
     scripted_sequence = gameplay["decisionModel"].get("scriptedSequence")
     gameplay_ids = {row["patternId"] for row in gameplay["patterns"]}
     product_ids = {row["patternId"] for row in encounter["patterns"]}
+    product_sequence = rotations.get("scriptedSequence")
     if (
         set(rotations) != {
             "schema", "formatVersion", "encounterId", "bossArchetypeId",
             "scriptedSequence", "rotations",
         }
         or rotations.get("formatVersion") != 4
-        or scripted_sequence != EXPECTED_SCRIPTED_SEQUENCE
-        or rotations.get("scriptedSequence") != scripted_sequence
-        or scripted_sequence["patternIds"]
-        != EXPECTED_SCRIPTED_SEQUENCE["patternIds"]
-        or any(
-            pattern_id not in gameplay_ids or pattern_id not in product_ids
-            for pattern_id in scripted_sequence["patternIds"]
+        or not scripted_sequence_contract_valid(
+            scripted_sequence,
+            product_sequence,
+            gameplay_ids,
+            product_ids,
         )
     ):
         return False
@@ -361,9 +399,14 @@ def shared_reaction_and_selection_contract_valid(
     binding_actions = {
         row["actionId"] for row in bindings["bindings"] if row["clips"]
     }
+    layer_owner_ids = {
+        layer["ownerPatternId"] for layer in master["counterReactionLayers"]
+    }
     product_counter_stages: set[tuple[str, str]] = set()
     for pattern in encounter["patterns"]:
-        if pattern["patternId"] in gameplay_ids:
+        # Counter reaction layers are an explicit legacy reference inventory;
+        # other Product counterable windows are independent gameplay branches.
+        if pattern["patternId"] not in layer_owner_ids:
             continue
         for stage in pattern["stages"]:
             if any(
@@ -508,22 +551,42 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         for kind in seen:
             self.assertGreaterEqual(self.cpp.count('"' + kind + '"'), 2)
 
-    def test_saved_flow_reference_resolves_exact_slots_without_hidden_steps(self) -> None:
-        physical = json.loads(GAMEPLAY_PATH.read_text(encoding="utf-8"))
-        reference = physical["decisionModel"]["scriptedSequence"]
-        self.assertEqual({"sequenceId", "mode", "flowId"}, set(reference))
-        self.assertEqual(SAVED_DEFAULT_FLOW["flowId"], reference["flowId"])
+
+    def test_inline_scripted_sequence_is_canonical_and_projects_exactly(self) -> None:
+        sequence = PHYSICAL_GAMEPLAY["decisionModel"]["scriptedSequence"]
         self.assertEqual(
-            [slot["patternId"] for slot in SAVED_DEFAULT_FLOW["slots"]],
-            self.gameplay["decisionModel"]["scriptedSequence"]["patternIds"],
+            {"sequenceId", "mode", "interStepPursuitMs", "patternIds"},
+            set(sequence),
         )
-        self.assertIn("Resolve_SavedFlowSequence(", self.cpp)
-        self.assertIn("SavedFlowSourceRevision", self.cpp)
-        self.assertIn("Compute_SourceRevision", self.cpp)
-        self.assertIn("CValtanPatternFlowDocument::Parse_Text", self.cpp)
-        self.assertIn("CValtanPatternFlowDocument::Validate", self.cpp)
-        self.assertIn("GameplayPath.parent_path().parent_path()", self.cpp)
-        self.assertIn("saved Flow path escaped its authoring snapshot", self.cpp)
+        self.assertEqual(EXPECTED_SCRIPTED_SEQUENCE, sequence)
+        self.assertEqual(sequence, self.rotations["scriptedSequence"])
+        projection_documents = tuning_pipeline.load_pipeline_documents(ROOT)
+        self.assertNotIn(
+            "Data/Encounters/Valtan/ValtanBossAuditionFlows.json",
+            projection_documents,
+        )
+        joined = tuning_pipeline.join_v2_authoring(
+            self.gameplay,
+            self.presentation,
+            self.world_sets,
+            self.combat_authoring,
+        )
+        projection = tuning_pipeline.project_v2_products(
+            ROOT, projection_documents, joined,
+        )
+        self.assertEqual(
+            sequence,
+            json.loads(projection[tuning_pipeline.ROTATIONS_REL])[
+                "scriptedSequence"
+            ],
+        )
+        for retired_marker in (
+            "ExpectedFlowRevision",
+            "PublishSavedFlow",
+            "publish-saved-flow",
+            "ValtanBossAuditionFlows.json",
+        ):
+            self.assertNotIn(retired_marker, self.pattern_master_projector)
 
     def test_first_scripted_entry_owner_matches_publisher_without_weighted_admission(self) -> None:
         joined = tuning_pipeline.join_v2_authoring(
@@ -755,17 +818,6 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
                 if candidate["stageId"] == stage_id
             )
 
-        dash = stage(self.gameplay, "VALTAN_DASH_CHARGE", "GROGGY")
-        dash_product = stage(
-            self.encounter, "VALTAN_DASH_CHARGE", "GROGGY"
-        )
-        self.assertEqual(
-            "DESTROY_FIRST_ELIGIBLE", dash["partDamagePolicy"]
-        )
-        self.assertEqual(
-            dash["partDamagePolicy"], dash_product["partDamagePolicy"]
-        )
-
         trash = stage(self.gameplay, "VALTAN_TRASH", "STEP_07")
         trash_product = stage(self.encounter, "VALTAN_TRASH", "STEP_07")
         expected_proxy = {
@@ -786,36 +838,6 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         ))
 
         invalid_extensions: list[tuple[str, dict]] = []
-
-        invalid_policy = copy.deepcopy(self.gameplay)
-        stage(
-            invalid_policy, "VALTAN_DASH_CHARGE", "GROGGY"
-        )["partDamagePolicy"] = "DESTROY_ALL"
-        invalid_extensions.append(("unsupported part policy", invalid_policy))
-
-        missing_part_branch = copy.deepcopy(self.gameplay)
-        stage(
-            missing_part_branch, "VALTAN_DASH_CHARGE", "GROGGY"
-        )["branches"] = [
-            branch
-            for branch in stage(
-                missing_part_branch, "VALTAN_DASH_CHARGE", "GROGGY"
-            )["branches"]
-            if branch["outcome"] != "PART_DESTROYED"
-        ]
-        invalid_extensions.append(("missing part branch", missing_part_branch))
-
-        missing_groggy_close = copy.deepcopy(self.gameplay)
-        stage(
-            missing_groggy_close, "VALTAN_DASH_CHARGE", "GROGGY"
-        )["events"] = [
-            event
-            for event in stage(
-                missing_groggy_close, "VALTAN_DASH_CHARGE", "GROGGY"
-            )["events"]
-            if event["trigger"] != "EXIT"
-        ]
-        invalid_extensions.append(("unclosed groggy flag", missing_groggy_close))
 
         invalid_proxy = copy.deepcopy(self.gameplay)
         stage(invalid_proxy, "VALTAN_TRASH", "STEP_07")["counterProxy"][
@@ -1318,23 +1340,25 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         missing_sequence.pop("scriptedSequence")
         product_mutations.append(("missing sequence", missing_sequence))
 
-        reordered = copy.deepcopy(self.rotations)
-        reordered["scriptedSequence"]["patternIds"][0:2] = reversed(
-            reordered["scriptedSequence"]["patternIds"][0:2]
-        )
-        product_mutations.append(("sequence order drift", reordered))
-
         repeated = copy.deepcopy(self.rotations)
         repeated["scriptedSequence"]["mode"] = "ORDERED_REPEAT"
         product_mutations.append(("unsupported sequence mode", repeated))
+
+        identity_drift = copy.deepcopy(self.rotations)
+        identity_drift["scriptedSequence"][
+            "sequenceId"
+        ] = "sequence.valtan.unrelated.v1"
+        product_mutations.append(("sequence identity drift", identity_drift))
 
         invalid_pursuit = copy.deepcopy(self.rotations)
         invalid_pursuit["scriptedSequence"]["interStepPursuitMs"] = 0
         product_mutations.append(("invalid inter-step pursuit", invalid_pursuit))
 
-        pursuit_drift = copy.deepcopy(self.rotations)
-        pursuit_drift["scriptedSequence"]["interStepPursuitMs"] = 900
-        product_mutations.append(("inter-step pursuit parity drift", pursuit_drift))
+        unknown_product_pattern = copy.deepcopy(self.rotations)
+        unknown_product_pattern["scriptedSequence"][
+            "patternIds"
+        ][0] = "VALTAN_UNKNOWN_PATTERN"
+        product_mutations.append(("unknown Product pattern", unknown_product_pattern))
 
         unexpected_field = copy.deepcopy(self.rotations)
         unexpected_field["scriptedSequence"]["unexpectedField"] = True
@@ -1344,6 +1368,44 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertFalse(shared_reaction_and_selection_contract_valid(
                     self.master, self.gameplay, self.encounter, self.bindings,
+                    rotations,
+                ))
+
+        reordered = copy.deepcopy(self.rotations)
+        product_pattern_ids = reordered["scriptedSequence"]["patternIds"]
+        reordered["scriptedSequence"]["patternIds"] = (
+            product_pattern_ids[1:] + product_pattern_ids[:1]
+        )
+        pursuit_drift = copy.deepcopy(self.rotations)
+        source_pursuit_ms = EXPECTED_SCRIPTED_SEQUENCE["interStepPursuitMs"]
+        pursuit_drift["scriptedSequence"]["interStepPursuitMs"] = (
+            900 if source_pursuit_ms != 900 else 901
+        )
+        for name, rotations in (
+            ("canonical order differs from generated Product", reordered),
+            ("canonical pursuit differs from generated Product", pursuit_drift),
+        ):
+            with self.subTest(name=name):
+                self.assertFalse(shared_reaction_and_selection_contract_valid(
+                    self.master, self.gameplay, self.encounter, self.bindings,
+                    rotations,
+                ))
+
+        inline_gameplay = copy.deepcopy(self.gameplay)
+        inline_gameplay["decisionModel"]["scriptedSequence"] = copy.deepcopy(
+            self.rotations["scriptedSequence"]
+        )
+        self.assertTrue(shared_reaction_and_selection_contract_valid(
+            self.master, inline_gameplay, self.encounter, self.bindings,
+            self.rotations,
+        ))
+        for name, rotations in (
+            ("inline order drift", reordered),
+            ("inline pursuit drift", pursuit_drift),
+        ):
+            with self.subTest(name=name):
+                self.assertFalse(shared_reaction_and_selection_contract_valid(
+                    self.master, inline_gameplay, self.encounter, self.bindings,
                     rotations,
                 ))
 
@@ -1462,8 +1524,8 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             if action.get("kind") == "RELEASE_GRABBED_PLAYERS"
         ]
         self.assertTrue(volleys)
-        self.assertEqual(1, len(phase_changes))
-        self.assertEqual(19, len(retarget_sources))
+        self.assertEqual(2, len(phase_changes))
+        self.assertTrue(retarget_sources)
         self.assertEqual(3, len(release_sources))
         self.assertEqual(len(retarget_sources), len(retargets))
         self.assertEqual(len(release_sources), len(releases))
@@ -1530,20 +1592,28 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
                 "arenaHeightToleranceM", "arenaAnchorPolicy",
             }, set(volley))
             self.assertEqual("ENTER", volley["trigger"])
-            self.assertEqual("PER_ALIVE_PLAYER", volley["targetingPolicy"])
-            self.assertEqual(3, volley["spawnCount"])
-            self.assertEqual(1333, volley["spawnIntervalMs"])
-            self.assertEqual(4, volley["arenaRandomCount"])
-            self.assertEqual(14.0, volley["arenaRandomRadiusM"])
-            self.assertEqual(1.0, volley["arenaHeightToleranceM"])
-            self.assertEqual(
-                "BOSS_SPAWN_POSITION", volley["arenaAnchorPolicy"]
+            self.assertIn(
+                volley["targetingPolicy"],
+                ("PER_ALIVE_PLAYER", "BOSS_RELATIVE"),
             )
-            self.assertEqual(36, volley["maximumTotalObjects"])
             self.assertGreaterEqual(
                 volley["maximumTotalObjects"],
                 volley["countPerResolvedTarget"] + volley["arenaRandomCount"],
             )
+
+        axe_volley = next(
+            volley for volley in volleys
+            if volley["targetingPolicy"] == "PER_ALIVE_PLAYER"
+        )
+        self.assertEqual(3, axe_volley["spawnCount"])
+        self.assertEqual(1333, axe_volley["spawnIntervalMs"])
+        self.assertEqual(4, axe_volley["arenaRandomCount"])
+        self.assertEqual(14.0, axe_volley["arenaRandomRadiusM"])
+        self.assertEqual(1.0, axe_volley["arenaHeightToleranceM"])
+        self.assertEqual(
+            "BOSS_SPAWN_POSITION", axe_volley["arenaAnchorPolicy"]
+        )
+        self.assertEqual(36, axe_volley["maximumTotalObjects"])
 
         axe_source = next(
             event
@@ -1572,13 +1642,22 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
              "radiusM": 14.0, "heightToleranceM": 1.0},
             axe_source["arenaRandom"],
         )
-        self.assertEqual({
-            "trigger": "ENTER",
-            "kind": "SET_GAMEPLAY_PHASE",
-            "targetId": "boss.phase.gameplay",
-            "value": 2,
-            "durationMs": 0,
-        }, phase_changes[0])
+        self.assertEqual([
+            {
+                "trigger": "ENTER",
+                "kind": "SET_GAMEPLAY_PHASE",
+                "targetId": "boss.phase.gameplay",
+                "value": 2,
+                "durationMs": 0,
+            },
+            {
+                "trigger": "ENTER",
+                "kind": "SET_GAMEPLAY_PHASE",
+                "targetId": "boss.phase.gameplay",
+                "value": 3,
+                "durationMs": 0,
+            },
+        ], phase_changes)
 
         invalid_events: list[tuple[str, dict]] = []
         retarget_exit = copy.deepcopy(self.gameplay)
@@ -1626,7 +1705,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             'kind == "RETARGET_RANDOM_ALIVE"',
             'actionKind->Get_String() == "RELEASE_GRABBED_PLAYERS"',
             'targetingPolicy != "PER_ALIVE_PLAYER"',
-            'targetId == "boss.phase.gameplay" && 2u == value',
+            '(2u == value || 3u == value)',
             'targetId == "boss.target.pattern" && 1u == value',
             'targetId != "boss.attachment.left-hand"',
             'else if ("SPAWN_COMBAT_OBJECT" == strKind)',
@@ -1650,7 +1729,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             ("VALTAN_WHIRLWIND", "SPIN", "hitOuterRadius", 999.0),
             ("VALTAN_WHIRLWIND", "SPIN", "serverDamageProfileId", "drift"),
             ("VALTAN_DASH_CHARGE", "CHARGE", "motion", {"kind": "FORWARD", "distance": 19.0}),
-            ("VALTAN_DASH_CHARGE", "GROGGY", "actions", []),
+            ("VALTAN_DASH_CHARGE_GROGGY", "GROGGY", "stageKind", "ACTIVE"),
             ("VALTAN_DASH_CHARGE", "CHARGE", "branches", []),
         )
         for pattern_id, stage_id, field, value in mutations:

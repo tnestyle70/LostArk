@@ -99,7 +99,7 @@ class EffectV2CatalogContractTests(unittest.TestCase):
         reload_body = function_tail(
             source,
             "bool_t Client::CEffectV2Catalog::Reload_BossValtan(",
-            "bool_t Client::CEffectV2Catalog::Commit_BossValtanBindingsLocked(",
+            "Discard_BossValtanBindingDraftAndReload(",
         )
         ordered = (
             "!Stage_Documents(",
@@ -117,6 +117,28 @@ class EffectV2CatalogContractTests(unittest.TestCase):
         self.assertIn("return false;", reload_body[: positions[5]])
         self.assertIn("const std::lock_guard Lock(m_SnapshotMutex);", reload_body)
         self.assertIn("failed before commit", reload_body)
+
+    def test_explicit_discard_reloads_before_replacing_the_v2_draft(self) -> None:
+        source = read(SOURCE)
+        discard = function_tail(
+            source,
+            "Discard_BossValtanBindingDraftAndReload(",
+            "bool_t Client::CEffectV2Catalog::Commit_BossValtanBindingsLocked(",
+        )
+        ordered = (
+            "!Stage_Documents(",
+            "!Stage_Groups(",
+            "!Stage_BossValtanBindings(",
+            "!Isolate_InvalidCrossReferences(",
+            "std::make_shared<EFFECT_V2_CATALOG_SNAPSHOT>()",
+            "m_pSnapshot = std::move(pStaged);",
+            "m_bBossValtanBindingDraftDirty = false;",
+        )
+        positions = [discard.index(token) for token in ordered]
+        self.assertEqual(positions, sorted(positions))
+        self.assertEqual(discard.count("m_pSnapshot ="), 1)
+        self.assertIn("failed before commit", discard)
+        self.assertIn("CEffectV2Runtime::Invalidate_Caches();", discard)
 
     def test_binding_commit_self_validates_then_atomically_commits(self) -> None:
         source = read(SOURCE)

@@ -5165,6 +5165,8 @@ namespace
 				Out.LinearLerp.fEndRingFillProgress, strOutError) &&
 			Read_UInt(*pParticle, "maxParticles", Out.Particle.iMaxParticles, strOutError) &&
 			Read_Float(*pParticle, "spawnRatePerSecond", Out.Particle.fSpawnRatePerSecond, strOutError) &&
+			Read_OptionalFloat(*pParticle, "fixedCenterSpacingWorldUnits",
+				Out.Particle.fFixedCenterSpacingWorldUnits, strOutError) &&
 			Read_UInt(*pParticle, "burstCount", Out.Particle.iBurstCount, strOutError) &&
 			Read_UInt(*pParticle, "randomSeed", Out.Particle.iRandomSeed, strOutError) &&
 			Read_Array(*pParticle, "lifeTimeSeconds", &Out.Particle.vLifeTimeSeconds.x, 2u, strOutError) &&
@@ -5236,7 +5238,8 @@ namespace
 		Write_Float4(Output, Detail.Color.vColorOffset);
 		Output << ", \"multiply\": ";
 		Write_Float4(Output, Detail.Color.vColorMultiply);
-		Output << ", \"clip\": " << Detail.Color.fColorClip
+		Output << ", \"clip\": " << Detail.Color.fColorClip;
+		Output
 			<< ", \"emissiveIntensity\": " << Detail.Color.fEmissiveIntensity
 			<< ", \"distortionIntensity\": " << Detail.Color.fDistortionIntensity
 			<< ", \"distortionOnBaseMaterial\": " << (Detail.Color.bDistortionOnBaseMaterial ? "true" : "false")
@@ -5348,8 +5351,13 @@ namespace
 		}
 		Output << " },\n"
 			<< "        \"particle\": { \"maxParticles\": " << Detail.Particle.iMaxParticles
-			<< ", \"spawnRatePerSecond\": " << Detail.Particle.fSpawnRatePerSecond
-			<< ", \"burstCount\": " << Detail.Particle.iBurstCount
+			<< ", \"spawnRatePerSecond\": " << Detail.Particle.fSpawnRatePerSecond;
+		if (Detail.Particle.fFixedCenterSpacingWorldUnits > 0.f)
+		{
+			Output << ", \"fixedCenterSpacingWorldUnits\": "
+				<< Detail.Particle.fFixedCenterSpacingWorldUnits;
+		}
+		Output << ", \"burstCount\": " << Detail.Particle.iBurstCount
 			<< ", \"randomSeed\": " << Detail.Particle.iRandomSeed
 			<< ", \"lifeTimeSeconds\": ";
 		Write_Float2(Output, Detail.Particle.vLifeTimeSeconds);
@@ -7022,7 +7030,8 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			Is_Finite(D.Transform.vRevolutionDegreesPerSecond) && Is_Finite(D.Transform.vScale) &&
 			D.Transform.vScale.x > 0.f && D.Transform.vScale.y > 0.f && D.Transform.vScale.z > 0.f &&
 			Is_Finite(D.Transform.vVelocityPerSecond) && Is_Finite(D.Color.vColorOffset) &&
-			Is_Finite(D.Color.vColorMultiply) && std::isfinite(D.Color.fColorClip) &&
+			Is_Finite(D.Color.vColorMultiply) &&
+			std::isfinite(D.Color.fColorClip) &&
 			D.Color.fColorClip >= 0.f && D.Color.fColorClip <= 1.f &&
 			std::isfinite(D.Color.fEmissiveIntensity) && D.Color.fEmissiveIntensity >= 0.f &&
 			std::isfinite(D.Color.fDistortionIntensity) && D.Color.fDistortionIntensity >= 0.f &&
@@ -7080,6 +7089,11 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			D.Particle.iMaxParticles >= 1u && D.Particle.iMaxParticles <= 2048u &&
 			D.Particle.iBurstCount <= D.Particle.iMaxParticles && D.Particle.iRandomSeed != 0u &&
 			std::isfinite(D.Particle.fSpawnRatePerSecond) && D.Particle.fSpawnRatePerSecond >= 0.f && D.Particle.fSpawnRatePerSecond <= 2048.f &&
+			std::isfinite(D.Particle.fFixedCenterSpacingWorldUnits) &&
+			D.Particle.fFixedCenterSpacingWorldUnits >= 0.f &&
+			(D.Particle.fFixedCenterSpacingWorldUnits == 0.f ||
+			 D.Particle.fFixedCenterSpacingWorldUnits >= 0.001f) &&
+			D.Particle.fFixedCenterSpacingWorldUnits <= 1000.f &&
 			Is_Finite(D.Particle.vLifeTimeSeconds) && D.Particle.vLifeTimeSeconds.x > 0.f && D.Particle.vLifeTimeSeconds.y >= D.Particle.vLifeTimeSeconds.x && D.Particle.vLifeTimeSeconds.y <= 30.f &&
 			Is_Finite(D.Particle.vInitialPositionMin) && Is_Finite(D.Particle.vInitialPositionMax) &&
 			D.Particle.vInitialPositionMax.x >= D.Particle.vInitialPositionMin.x &&
@@ -7104,6 +7118,32 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			D.Particle.InitialOrientation;
 		const EFFECT_PARTICLE_INITIAL_VELOCITY_DESC& Emission =
 			D.Particle.InitialVelocity;
+		const bool_t bFixedCenterSpacingEnabled =
+			D.Particle.fFixedCenterSpacingWorldUnits > 0.f;
+		const bool_t bFixedCenterSpacingValid =
+			!bFixedCenterSpacingEnabled ||
+			(bManualParticle && !D.Particle.bLocalSpace &&
+			 D.Particle.fSpawnRatePerSecond == 0.f &&
+			 D.Particle.iBurstCount == 0u &&
+			 D.Particle.vInitialPositionMin.x == 0.f &&
+			 D.Particle.vInitialPositionMin.y == 0.f &&
+			 D.Particle.vInitialPositionMin.z == 0.f &&
+			 D.Particle.vInitialPositionMax.x == 0.f &&
+			 D.Particle.vInitialPositionMax.y == 0.f &&
+			 D.Particle.vInitialPositionMax.z == 0.f &&
+			 D.Particle.vInitialVelocityMin.x == 0.f &&
+			 D.Particle.vInitialVelocityMin.y == 0.f &&
+			 D.Particle.vInitialVelocityMin.z == 0.f &&
+			 D.Particle.vInitialVelocityMax.x == 0.f &&
+			 D.Particle.vInitialVelocityMax.y == 0.f &&
+				 D.Particle.vInitialVelocityMax.z == 0.f &&
+				 D.Particle.vAcceleration.x == 0.f &&
+				 D.Particle.vAcceleration.y == 0.f &&
+				 D.Particle.vAcceleration.z == 0.f &&
+				 Shape.eKind == EFFECT_PARTICLE_SPAWN_SHAPE::POINT &&
+				 Shape.eDistribution == EFFECT_PARTICLE_SPAWN_DISTRIBUTION::RANDOM &&
+				 Emission.eMode == EFFECT_PARTICLE_VELOCITY_MODE::FIXED &&
+				 D.Particle.TargetAttractor.Is_Default());
 		const bool_t bSpawnShapeValid =
 			Shape.eKind < EFFECT_PARTICLE_SPAWN_SHAPE::END &&
 			Shape.eDistribution < EFFECT_PARTICLE_SPAWN_DISTRIBUTION::END &&
@@ -7347,7 +7387,8 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			 Decal.Is_ReceiverDefault());
 		if (!bCompositionLayerValid || !bCommonValid ||
 			!bDecalReceiverValid || !bLerpValid || !bParticleValid ||
-			!bSpawnShapeValid || !bInitialOrientationValid ||
+			!bFixedCenterSpacingValid || !bSpawnShapeValid ||
+			!bInitialOrientationValid ||
 			!bInitialVelocityValid || !bRingFillValid ||
 			!bLinearRevealValid ||
 			!bTargetAttractorValid ||
@@ -8622,7 +8663,8 @@ bool_t Client::CEffectDocumentCodec::Build_GenericAuthoredElementStartingCopy(
 	}
 	if (Lowered.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
 		Lowered.Detail.Particle.fSpawnRatePerSecond <= 0.f &&
-		0u == Lowered.Detail.Particle.iBurstCount)
+		0u == Lowered.Detail.Particle.iBurstCount &&
+		Lowered.Detail.Particle.fFixedCenterSpacingWorldUnits <= 0.f)
 	{
 		/* Source-authored Particle carriers may receive every occurrence from
 		   SourceRecipe while their editable direct emission stays at 0/0.  The

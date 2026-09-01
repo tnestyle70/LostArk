@@ -73,11 +73,113 @@ class ActionCompositionAtomicSaveContractTests(unittest.TestCase):
         ):
             self.assertIn(token, wrapper)
             self.assertIn(token, cli)
+        self.assertIn("EffectV2ReadSetPath", wrapper)
+        self.assertIn("--effect-v2-read-set", wrapper)
+        self.assertIn("--effect-v2-read-set", cli)
         self.assertIn("provided_baselines", promote)
         self.assertIn("target_payloads[pattern_sound_target]", promote)
         self.assertIn("target_payloads[effect_v2_target]", promote)
         self.assertIn(
             "_validate_effect_v2_bindings_against_candidate_products", promote
+        )
+        typed_commit = promote.split("def commit_typed_authoring_patch(", 1)[1].split(
+            "def create_pattern_from_request(", 1
+        )[0]
+        ordered_read_set_cas = (
+            "with _exclusive_transaction_lock(",
+            "_validate_effect_v2_bindings_against_candidate_products(",
+            "assert_resource_read_set_current(",
+            "target_payloads: dict[Path, bytes]",
+            "_atomic_commit(",
+        )
+        positions = [typed_commit.index(token) for token in ordered_read_set_cas]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn("Reload before Save", typed_commit)
+        self.assertIn("effect_v2_effective_bytes", typed_commit)
+        self.assertIn(
+            "_read_bytes_or_none(effect_v2_target) != effect_v2_physical_baseline",
+            typed_commit,
+        )
+        self.assertLess(
+            typed_commit.index("effect_v2_effective_bytes"),
+            typed_commit.index("target_payloads: dict[Path, bytes]"),
+        )
+
+    def test_effect_v2_draft_cas_preserves_the_physical_owner_bytes(self) -> None:
+        source = (
+            REPOSITORY_ROOT / "Client/Private/EffectV2_Catalog.cpp"
+        ).read_text(encoding="utf-8")
+        stage = source.split("bool_t Stage_BossValtanBindings(", 1)[1].split(
+            "bool_t Cross_Validate(", 1
+        )[0]
+        commit = source.split(
+            "bool_t Client::CEffectV2Catalog::Commit_BossValtanBindingsLocked(",
+            1,
+        )[1].split(
+            "bool_t Client::CEffectV2Catalog::Mutate_BossValtanStageBinding(",
+            1,
+        )[0]
+        prepare = source.split(
+            "bool_t Client::CEffectV2Catalog::Prepare_BossValtanBindingDraftSave(",
+            1,
+        )[1].split(
+            "bool_t Client::CEffectV2Catalog::Accept_BossValtanBindingDraftSave(",
+            1,
+        )[0]
+
+        for token in (
+            "std::string* const pOutSourceBytes = nullptr",
+            "*pOutSourceBytes = strText",
+        ):
+            self.assertIn(token, stage)
+        self.assertIn("&strDiskSourceBytes", commit)
+        self.assertIn(
+            "strDiskSourceBytes == m_strBossValtanBindingDraftBaselineBytes",
+            commit,
+        )
+        self.assertIn("std::move(strDiskSourceBytes)", commit)
+        self.assertIn("&strDiskSourceBytes", prepare)
+        self.assertIn(
+            "strDiskSourceBytes != m_strBossValtanBindingDraftBaselineBytes",
+            prepare,
+        )
+        self.assertNotIn(
+            "Serialize_Bindings(\n\t\t\tBOSS_VALTAN_ARCHETYPE_ID, DiskBindings) !=\n"
+            "\t\t\tm_strBossValtanBindingDraftBaselineBytes",
+            prepare,
+        )
+
+    def test_canonical_save_uses_one_bounded_lock_wait_contract(self) -> None:
+        balance = (REPOSITORY_ROOT / "Client/Private/BalanceTool.cpp").read_text(
+            encoding="utf-8"
+        )
+        wrapper = (
+            REPOSITORY_ROOT
+            / "Tools/ValtanPipeline/Publish-ValtanTuningRuntimeSet.ps1"
+        ).read_text(encoding="utf-8")
+        pipeline = (
+            REPOSITORY_ROOT / "Tools/ValtanPipeline/valtan_tuning_pipeline.py"
+        ).read_text(encoding="utf-8")
+        promote = (
+            REPOSITORY_ROOT
+            / "Tools/ValtanPipeline/promote_valtan_animation_chains.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            "VALTAN_CANONICAL_SAVE_LOCK_TIMEOUT_SECONDS = 30u", balance
+        )
+        self.assertIn('L" -LockTimeoutSeconds "', balance)
+        self.assertIn("[double]$LockTimeoutSeconds = 30.0", wrapper)
+        self.assertIn("'--lock-timeout-seconds'", wrapper)
+
+        typed_commit_signature = promote.split(
+            "def commit_typed_authoring_patch(", 1
+        )[1].split(") -> dict[str, Any]:", 1)[0]
+        self.assertIn("lock_timeout_seconds: float = 0.0", typed_commit_signature)
+        self.assertIn(
+            'canonical_parser.add_argument("--lock-timeout-seconds", '
+            "type=float, default=0.0)",
+            pipeline,
         )
 
     def test_shared_commit_rolls_pattern_sound_and_v2_back_byte_exactly(self) -> None:
@@ -124,13 +226,24 @@ class ActionCompositionAtomicSaveContractTests(unittest.TestCase):
                 REPOSITORY_ROOT / promotion.PATTERN_SOUND_REL
             ).read_bytes(),
         )
-        promotion._validate_effect_v2_bindings_against_candidate_products(
+        promotion._validate_effect_v2_bindings_v1_compatibility(
             REPOSITORY_ROOT,
             outputs,
             (
                 REPOSITORY_ROOT / promotion.EFFECT_V2_BINDINGS_REL
             ).read_bytes(),
         )
+        with self.assertRaisesRegex(
+            promotion.PromotionError, "formatVersion 2.*explicit legacy migration"
+        ):
+            promotion._validate_effect_v2_bindings_against_candidate_products(
+                REPOSITORY_ROOT,
+                outputs,
+                (
+                    REPOSITORY_ROOT / promotion.EFFECT_V2_BINDINGS_REL
+                ).read_bytes(),
+                promotion._read_json(REPOSITORY_ROOT / promotion.GAMEPLAY_REL),
+            )
 
         sound_path = REPOSITORY_ROOT / promotion.PATTERN_SOUND_REL
         sound_baseline = sound_path.read_bytes()
@@ -151,7 +264,7 @@ class ActionCompositionAtomicSaveContractTests(unittest.TestCase):
         malformed_v2 = json.loads(v2_baseline)
         malformed_v2["bindings"][0]["startMs"] = 600001
         with self.assertRaises(promotion.PromotionError):
-            promotion._validate_effect_v2_bindings_against_candidate_products(
+            promotion._validate_effect_v2_bindings_v1_compatibility(
                 REPOSITORY_ROOT,
                 outputs,
                 json.dumps(malformed_v2, ensure_ascii=False).encode("utf-8"),

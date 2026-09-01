@@ -102,6 +102,20 @@ namespace
 		return { std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>() };
 	}
 
+	std::size_t CountToken(const std::string_view text,
+		const std::string_view token)
+	{
+		std::size_t count = 0u;
+		std::size_t offset = 0u;
+		while (!token.empty() &&
+			std::string_view::npos != (offset = text.find(token, offset)))
+		{
+			++count;
+			offset += token.size();
+		}
+		return count;
+	}
+
 	bool WriteText(const std::filesystem::path& path,
 		const std::string& text)
 	{
@@ -238,16 +252,22 @@ namespace
 		VALTAN_PATTERN_SOUND_CUE_DOCUMENT document;
 		std::string status;
 		const auto authored = root / "Data/Animation/Authored/Valtan";
+		const std::string soundSource =
+			ReadText(authored / "Valtan.patternsoundcues.json");
+		const std::size_t authoredCueCount =
+			CountToken(soundSource, "\"bindingId\"");
 		const bool loaded = encounter.Load(root / "Data/Encounters/Valtan/ValtanEncounter.json", status) &&
 			CValtanPatternAnimationBindingDocument::Parse_Text(
 				ReadText(authored / "Valtan.patternbindings.json"), animation, status) &&
 			CValtanPatternSoundCueDocument::Parse_Text(
-				ReadText(authored / "Valtan.patternsoundcues.json"), encounter, animation, document, status);
+				soundSource, encounter, animation, document, status);
 		if (!Require(loaded, status.c_str()))
 			return false;
 		const std::string realDocumentStatus = "real sound document admission mismatch: active=" +
-			std::to_string(document.Cues.size()) + ", status=" + status;
-		if (!Require(566u == document.Cues.size() &&
+			std::to_string(document.Cues.size()) + ", authored=" +
+			std::to_string(authoredCueCount) + ", status=" + status;
+		if (!Require(0u != authoredCueCount &&
+			authoredCueCount == document.Cues.size() &&
 			status.find("0 explicitly suppressed-animation") != std::string::npos &&
 			status.find("0 not-yet-implemented-pattern") != std::string::npos,
 			realDocumentStatus.c_str()))
@@ -410,7 +430,10 @@ namespace
 		const bool sourceLoaded =
 			CValtanPatternSoundCueDocument::Load_ForAuthoring(
 				loaded, authoringBaseline, status);
-		if (!Require(sourceLoaded && 566u == loaded.Cues.size() &&
+		const std::size_t authoredCueCount =
+			CountToken(authoringBaseline, "\"bindingId\"");
+		if (!Require(sourceLoaded && 0u != authoredCueCount &&
+			authoredCueCount == loaded.Cues.size() &&
 			authoringBaseline == ReadText(destination),
 			("strict full Valtan pattern Sound load failed: " + status).c_str()))
 		{
@@ -457,7 +480,7 @@ namespace
 			{
 				return !cue.ResolvedAssetIds.empty();
 			});
-		if (!Require(3u == unresolvedRuntimeRows && hasPinnedRuntimeAsset,
+		if (!Require(2u == unresolvedRuntimeRows && hasPinnedRuntimeAsset,
 			"runtime Sound load did not preserve unresolved cues while pinning resolved assets"))
 		{
 			return false;

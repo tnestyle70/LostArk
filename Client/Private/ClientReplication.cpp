@@ -605,22 +605,29 @@ bool_t Client::CClientReplication::Ensure_ValtanPresentationRevision(
 	const bool_t bHasReceipt =
 		CNetworkManager::Get().Try_Get_ValtanPresentationGenerationReceipt(
 			ExpectedRevision, Receipt, ReceiptStatus);
+	const bool_t bEntryReceiptRecoveryPending = !bHasReceipt &&
+		CNetworkManager::Get().Get_GameplayRevisionState().
+			hasPendingEntryPresentationBaselineRecovery;
 	const bool_t bReloaded = bHasReceipt &&
 		pValtan->Reload_PatternPresentationAuthoring(
 			ExpectedRevision, Receipt, ReloadStatus);
 	if (!bReloaded)
 	{
 		Presentation.AdmittedPresentationRevision = {};
-		Presentation.RejectedPresentationRevision = ExpectedRevision;
+		Presentation.RejectedPresentationRevision =
+			bEntryReceiptRecoveryPending ?
+			LostArk::Shared::GameplayDataRevision{} : ExpectedRevision;
 		Presentation.bPresentationIsolated = true;
 		CEffectPresentationService::Stop_BossOwner(pValtan);
 		strOutStatus =
 			"Valtan occurrence presentation revision " +
 			Format_GameplayDataRevision(ExpectedRevision) +
-			" was isolated after one exact reload attempt: " +
+			(bEntryReceiptRecoveryPending ?
+				" is waiting for the saved entry presentation JSON after a canonical transaction: " :
+				" was isolated after one exact reload attempt: ") +
 			(bHasReceipt ? ReloadStatus : ReceiptStatus);
 		m_strPendingPresentationFailure = strOutStatus;
-		if (bIsPrimary)
+		if (bIsPrimary && !bEntryReceiptRecoveryPending)
 		{
 			m_PrimaryValtanJoinedPresentationFreshness.Reject(strOutStatus);
 			m_PrimaryValtanCombatObjectSoundFreshness.Reject(strOutStatus);
@@ -1611,6 +1618,9 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		CNetworkManager::Get().Try_Get_ValtanPresentationGenerationReceipt(
 			spawned.PinnedDefinitionRevision,
 			PresentationReceipt, ReceiptStatus);
+	const bool_t entryReceiptRecoveryPending = !hasExactReceipt &&
+		CNetworkManager::Get().Get_GameplayRevisionState().
+			hasPendingEntryPresentationBaselineRecovery;
 	const bool_t joinedReloaded = hasExactReceipt &&
 		valtan->Reload_PatternPresentationAuthoring(
 			spawned.PinnedDefinitionRevision,
@@ -1625,8 +1635,11 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	}
 	else
 	{
-		presentation.RejectedPresentationRevision =
-			spawned.PinnedDefinitionRevision;
+		if (!entryReceiptRecoveryPending)
+		{
+			presentation.RejectedPresentationRevision =
+				spawned.PinnedDefinitionRevision;
+		}
 		presentation.bPresentationIsolated = true;
 	}
 #ifdef _DEBUG
@@ -1667,9 +1680,12 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		else
 		{
 			const std::string Diagnostic =
-				"Primary replicated Valtan spawn could not admit the joined presentation cache: " +
+				(entryReceiptRecoveryPending ?
+					"Primary replicated Valtan spawn is waiting to recover the saved joined presentation cache: " :
+					"Primary replicated Valtan spawn could not admit the joined presentation cache: ") +
 				(hasExactReceipt ? JoinedReloadStatus : ReceiptStatus);
-			m_PrimaryValtanJoinedPresentationFreshness.Reject(Diagnostic);
+			if (!entryReceiptRecoveryPending)
+				m_PrimaryValtanJoinedPresentationFreshness.Reject(Diagnostic);
 			m_strPendingPresentationFailure = Diagnostic;
 		}
 		if (combatObjectSoundReloaded)
@@ -1681,9 +1697,12 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		else
 		{
 			const std::string Diagnostic =
-				"Primary replicated Valtan spawn could not admit the combat-object Sound cache: " +
+				(entryReceiptRecoveryPending ?
+					"Primary replicated Valtan spawn is waiting to recover the saved combat-object Sound cache: " :
+					"Primary replicated Valtan spawn could not admit the combat-object Sound cache: ") +
 				CombatObjectSoundReloadStatus;
-			m_PrimaryValtanCombatObjectSoundFreshness.Reject(Diagnostic);
+			if (!entryReceiptRecoveryPending)
+				m_PrimaryValtanCombatObjectSoundFreshness.Reject(Diagnostic);
 			if (!m_strPendingPresentationFailure.empty())
 				m_strPendingPresentationFailure += " ";
 			m_strPendingPresentationFailure += Diagnostic;

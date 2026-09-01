@@ -50,6 +50,11 @@
           "clientVisualId": "combatobject.visual.valtan.ground-roar.rock.v1",
           "effectAssetId": "effect.valtan.ground-roar.rock.active",
           "hitEffectAssetId": "effect.valtan.ground-roar.rock.explode"
+        },
+        {
+          "combatObjectArchetypeId": "combatobject.valtan.ghost.portal-charge",
+          "clientVisualId": "combatobject.visual.valtan.ghost.portal-charge.v1",
+          "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal"
         }
       ],
       "animationSetId": "Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel",

@@ -107,6 +107,44 @@ class BuildProfileContractTests(unittest.TestCase):
         ):
             self.assertIn(token, guard)
 
+    def test_core_runs_effect_v2_binding_schema_migration_and_read_set_gate(self) -> None:
+        runner = read("Tools/Build/Invoke-BuildAndRegression.ps1")
+        self.assertIn(
+            "Effect Tool V2 binding schema, migration, and read-set gate", runner
+        )
+        self.assertIn(
+            "Tools/EffectToolV2/test_effect_v2_binding_pipeline.py", runner
+        )
+
+    def test_full_diagnostic_runs_valtan_cross_product_cue_gate(self) -> None:
+        runner = read("Tools/Build/Invoke-BuildAndRegression.ps1")
+        gate = "Valtan CROSS Product cue and fixed-step rock wave gate"
+        test_path = "Tools/EffectPipeline/test_valtan_cross_rock_wave_effect.py"
+        gate_position = runner.index(gate)
+        full_diagnostic_position = runner.rfind(
+            "if ($includeFullDiagnostic) {", 0, gate_position
+        )
+        block_end = runner.index("\n\t}", gate_position)
+        self.assertGreater(full_diagnostic_position, -1)
+        self.assertLess(gate_position, block_end)
+        self.assertIn(test_path, runner[gate_position:block_end])
+
+    def test_full_diagnostic_runs_valtan_combat_object_hit_effect_gate(self) -> None:
+        runner = read("Tools/Build/Invoke-BuildAndRegression.ps1")
+        gate = "Valtan combat-object hit Effect presentation gate"
+        test_path = (
+            "Tools/ValtanPipeline/"
+            "test_valtan_combat_object_hit_effect_presentation_contract.py"
+        )
+        gate_position = runner.index(gate)
+        full_diagnostic_position = runner.rfind(
+            "if ($includeFullDiagnostic) {", 0, gate_position
+        )
+        block_end = runner.index("\n\t}", gate_position)
+        self.assertGreater(full_diagnostic_position, -1)
+        self.assertLess(gate_position, block_end)
+        self.assertIn(test_path, runner[gate_position:block_end])
+
     def test_product_output_guard_uses_real_process_fixture(self) -> None:
         result = subprocess.run(
             [
@@ -285,6 +323,7 @@ class BuildProfileContractTests(unittest.TestCase):
             "ValtanPatternAuditionService.cpp",
             "ValtanPatternTree.cpp",
             "ActionCompositionGraphModel.cpp",
+            "BossLogicFlowViewModel.cpp",
             "ValtanPresentationGenerationAdmission.cpp",
             "ValtanPatternFlowDocument.cpp",
             "ValtanPatternEffectCueDocument.cpp",

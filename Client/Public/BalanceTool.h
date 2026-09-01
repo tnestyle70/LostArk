@@ -125,6 +125,10 @@ public:
 	   transaction (for example Create New Pattern) commits it. Dirty Balance
 	   drafts are never discarded implicitly. */
 	bool Reload_ValtanSource(std::string& status);
+	/* Explicit Workbench navigation boundary.  This is the only reload entry
+	   that may replace an unsaved Balance-owned Valtan composition draft, and
+	   its underlying Reload stages every physical owner before commit. */
+	bool Discard_ValtanCompositionDraftAndReload(std::string& status);
 	/* Verify the physical repository source/Product identity while the caller
 	   holds the same canonical read admission used for its separate tree load.
 	   This prevents a Workbench from pairing a Balance draft from generation A
@@ -165,12 +169,46 @@ public:
 		std::string& sourceRevision,
 		bool_t& dirty,
 		std::string& status) const;
+	/* Pattern Flow is an editor over the same gameplay authoring draft.  It
+	   stages only the inline scriptedSequence fields; the ordinary canonical
+	   Save then commits Pattern definitions, order and generated Products as one
+	   source revision. */
+	bool Get_ValtanScriptedSequenceDraft(
+		std::vector<std::string>& patternIds,
+		std::uint32_t& interStepPursuitMs,
+		std::string& status) const;
+	bool Set_ValtanScriptedSequenceDraft(
+		const std::vector<std::string>& patternIds,
+		std::uint32_t interStepPursuitMs,
+		std::string& status);
 	bool Get_ValtanCanonicalSourceRevision(
 		std::string& repositoryRevision,
 		std::string& status) const;
 	bool Set_ValtanStageDraft(
 		const std::string& patternId,
 		const std::string& stageId,
+		const PATTERN_STAGE_EDIT& stage,
+		std::string& status);
+	/* Moving one stable Animation occurrence across Stage boundaries changes two
+	   Stage-owned clocks.  Apply both validated drafts as one in-memory command;
+	   if either side fails, the Pattern and dirty/revision state are restored. */
+	bool Set_ValtanAnimationTransferDrafts(
+		const std::string& patternId,
+		const std::string& sourceStageId,
+		const PATTERN_STAGE_EDIT& sourceStage,
+		const std::string& targetStageId,
+		const PATTERN_STAGE_EDIT& targetStage,
+		std::string& status);
+	/* Cross-source Sequence assignment is one authoring transaction: the exact
+	   Stage draft and its gameplay/presentation provenance either both enter the
+	   in-memory draft or neither does.  The first source remains PRIMARY; this
+	   API appends only the selected validated secondary source to the managed
+	   Pattern; topology and gameplay authority remain unchanged. */
+	bool Set_ValtanStageSequenceDraft(
+		const std::string& patternId,
+		const std::string& stageId,
+		std::uint32_t sourceActionId,
+		std::uint32_t sourceSequenceIndex,
 		const PATTERN_STAGE_EDIT& stage,
 		std::string& status);
 	/* The normalizer is shared by every portal-rush editor. It validates the

@@ -105,7 +105,8 @@ class ValtanPatternTreeTransactionReadGateTests(unittest.TestCase):
             "CValtanPresentationGenerationReadAdmission GenerationAdmission;",
             body,
         )
-        self.assertIn("GenerationAdmission.Acquire_ExactReceipt(", body)
+        self.assertIn("GenerationAdmission.Acquire_Receipt(", body)
+        self.assertNotIn("GenerationAdmission.Acquire_ExactReceipt(", body)
         self.assertIn("CanonicalAdmission.Acquire(strOutStatus)", body)
         for component in (
             "Reload_PatternBindings_WhileAdmitted",
@@ -243,7 +244,7 @@ class ValtanPatternTreeTransactionReadGateTests(unittest.TestCase):
 
         save_body = function_body(
             workbench,
-            "bool_t Client::CActionCompositionWorkbench::Save_Publish_Reload()",
+            "bool_t Client::CActionCompositionWorkbench::Save_Reload()",
         )
         self.assertIn("Get_ValtanCanonicalSourceRevision(", save_body)
         self.assertIn(
@@ -252,7 +253,7 @@ class ValtanPatternTreeTransactionReadGateTests(unittest.TestCase):
         )
         self.assertLess(
             save_body.index("CurrentCanonicalSourceRevision !="),
-            save_body.index("Save_ValtanCanonicalProduct("),
+            save_body.index("Save_ValtanCompositionProduct("),
         )
 
     def test_python_exclusive_writer_conflicts_with_win32_shared_reader(self) -> None:

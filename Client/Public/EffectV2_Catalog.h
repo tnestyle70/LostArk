@@ -84,6 +84,11 @@ public:
 	static CEffectV2Catalog& Get();
 
 	bool_t Reload_BossValtan(std::string& strOutError);
+	/* Explicit Workbench navigation boundary.  Unlike ordinary Reload, this
+	   typed command may replace an unsaved BOSS_VALTAN binding draft after the
+	   user chooses Discard; staging failure preserves the previous snapshot. */
+	bool_t Discard_BossValtanBindingDraftAndReload(
+		std::string& strOutError);
 	/* Writes one exact Server-stage binding into the BOSS_VALTAN authoring
 	   owner.  The candidate is cross-validated and serialized/parsed before
 	   the atomic file replacement; success also commits the matching immutable

@@ -318,18 +318,13 @@ require(not any(
 presentation = json.loads(read("Data/Valtan/Valtan.presentation.json"))
 gameplay = json.loads(read("Data/Valtan/Valtan.gameplay.json"))
 scripted_sequence = gameplay["decisionModel"]["scriptedSequence"]
-saved_flows = json.loads(read("Data/Encounters/Valtan/ValtanBossAuditionFlows.json"))
-saved_flow = next(row for row in saved_flows["flows"]
-                  if row["flowId"] == scripted_sequence["flowId"])
 product_sequence = json.loads(read(
     "Data/Encounters/Valtan/ValtanPatternRotations.json"))["scriptedSequence"]
 require(
-    "patternIds" not in scripted_sequence and
-    product_sequence["sequenceId"] == scripted_sequence["sequenceId"] and
-    product_sequence["mode"] == scripted_sequence["mode"] and
-    product_sequence["interStepPursuitMs"] == saved_flow["interStepPursuitMs"] and
-    product_sequence["patternIds"] == [row["patternId"] for row in saved_flow["slots"]],
-    "Server sequence must preserve the selected saved Flow order, including an optional entrance",
+    set(scripted_sequence) == {
+        "sequenceId", "mode", "interStepPursuitMs", "patternIds"
+    } and product_sequence == scripted_sequence,
+    "generated Server sequence must equal the canonical gameplay sequence",
 )
 entrance_gameplay = next(
     row for row in gameplay["patterns"]

@@ -295,6 +295,15 @@ public:
 	bool_t Stage_LocalPatternAuthoringPreview(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		std::string& strOutStatus);
+	/* Effect Tool-only combat-object clock. The staged Product topology is
+	   reused, but boss animation, Product cues, hit debug, and Effect V2 stage
+	   playback remain untouched so an independent world-root lifecycle can be
+	   inspected against the paused IDLE clone. */
+	bool_t Apply_LocalCombatObjectAuthoringPreviewSample(
+		std::string_view actionId,
+		f32_t fActionAgeSeconds,
+		bool_t bResetTransport,
+		std::string& strOutStatus);
 	/* Rewinds only tool-owned presentation instances while preserving the
 	   staged authoring draft.  Used before an explicit Sequencer seek/loop. */
 	void Reset_LocalPatternPreviewTransport();
@@ -384,6 +393,9 @@ private:
 	uint32_t m_iPrototypeLevelIndex = {};
 	bool_t m_isServerAuthoritative = false;
 	std::string m_strArchetypeId = "BOSS_VALTAN";
+	/* Gameplay/network identity stays m_strArchetypeId.  This second ID names
+	   only the atomically committed body/weapon/armour presentation group. */
+	std::string m_strPresentationPartArchetypeId = "BOSS_VALTAN";
 	LostArk::Shared::NET_ENTITY_ID m_iOwnerBossNetEntityId =
 		LostArk::Shared::INVALID_NET_ENTITY_ID;
 	bool_t m_isRaidBgmEnabled = false;
@@ -415,6 +427,9 @@ private:
 	f32_t m_fServerActionAgeSeconds = 0.f;
 	// Authoritative facing captured once per occurrence, never the interpolated visual yaw.
 	f32_t m_fServerPatternFacingYawDegrees = 0.f;
+	// Latest accepted authoritative boss yaw. Dynamic arena roots consume this
+	// instead of the interpolated presentation transform.
+	f32_t m_fServerPatternCurrentYawDegrees = 0.f;
 	/* Target virtual anchors never read the interpolated Character transform.
 	   These fields are replaced from each accepted snapshot and remain usable
 	   only while both the locked identity and pattern sequence still match. */
@@ -425,6 +440,24 @@ private:
 	f32_t m_fServerPatternTargetSnapshotYawDegrees = 0.f;
 	bool_t m_bHasServerPatternTargetSnapshotPose = false;
 	bool_t m_bServerPatternTargetIdentityStable = false;
+	/* One composite invocation owns one root handle.  The Server pattern keeps
+	   the target identity fixed while current yaw changes per fixed tick; late
+	   Effect elements therefore inherit the same updated root rather than
+	   rebuilding independent element transforms. */
+	struct PATTERN_TARGET_FOLLOW_EFFECT_ROOT final
+	{
+		uint64_t iWorldRootHandle = 0u;
+		uint32_t iPatternSequence = 0u;
+		LostArk::Shared::NET_ENTITY_ID iTargetNetEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		float3_t vArenaCenter = {};
+		EFFECT_TRANSFORM_DESC LocalTransform{};
+		VALTAN_PATTERN_EFFECT_SCALE_POLICY eScalePolicy =
+			VALTAN_PATTERN_EFFECT_SCALE_POLICY::OWNER_RELATIVE;
+		float3_t vWorldScale{ 1.f, 1.f, 1.f };
+	};
+	std::vector<PATTERN_TARGET_FOLLOW_EFFECT_ROOT>
+		m_PatternTargetFollowEffectRoots;
 	std::size_t m_iPatternPresentationClipOccurrenceIndex =
 		(std::numeric_limits<std::size_t>::max)();
 	/* Presentation only: pattern stage actionId -> ordered original clip
@@ -446,6 +479,41 @@ private:
 		m_LocalPreviewStageIndexByActionId;
 	std::unordered_map<std::string, float3_t>
 		m_LocalPreviewArenaCenterAnchors;
+	struct LOCAL_PATTERN_COMBAT_OBJECT_EVENT final
+	{
+		std::string strPresentationEventId;
+		uint32_t iAtMs = 0u;
+	};
+	struct LOCAL_PATTERN_COMBAT_OBJECT_TEMPLATE final
+	{
+		std::string strCombatObjectArchetypeId;
+		std::string strClientVisualId;
+		std::string strActiveEffectAssetId;
+		std::string strTerminalEffectAssetId;
+		uint32_t iCount = 0u;
+		f32_t fRadiusM = 0.f;
+		f32_t fStartAngleDegrees = 0.f;
+		f32_t fAngleStepDegrees = 0.f;
+		uint32_t iLifetimeMs = 0u;
+		std::vector<LOCAL_PATTERN_COMBAT_OBJECT_EVENT> PresentationEvents;
+	};
+	struct LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE final
+	{
+		LOCAL_PATTERN_COMBAT_OBJECT_TEMPLATE Template;
+		uint32_t iOrdinal = 0u;
+		float3_t vPosition = {};
+		f32_t fYawDegrees = 0.f;
+		uint64_t iActiveHandle = 0u;
+		std::vector<uint64_t> TerminalHandles;
+		std::vector<bool_t> TerminalAttempts;
+	};
+	std::unordered_map<std::string,
+		std::vector<LOCAL_PATTERN_COMBAT_OBJECT_TEMPLATE>>
+		m_LocalPreviewCombatObjectsByActionId;
+	std::vector<LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE>
+		m_LocalPreviewCombatObjectInstances;
+	std::string m_strLocalPreviewCombatObjectActionId;
+	std::string m_strLocalPreviewCombatObjectStatus;
 	std::string m_strLocalPreviewPatternId;
 	std::string m_strLocalPreviewActionId;
 	uint32_t m_iLocalPreviewStageIndex = 0u;
@@ -505,6 +573,7 @@ private:
 		uint32_t iHitCount = 0u;
 		uint32_t iHitIntervalMs = 0u;
 		uint32_t iHitDelayMs = 0u;
+		uint32_t iStageDurationMs = 0u;
 		std::vector<uint32_t> HitOffsetsMs;
 		/* Separate player-attack -> boss hurt proxy.  It is active for the
 		   whole WINDUP Stage and must never be presented as a boss damage hit. */
@@ -532,6 +601,9 @@ private:
 		std::string& strOutStatus);
 	HRESULT Ready_PartObjects();
 	void Ready_ArmorParts();
+	bool_t Replace_PresentationPartGroup(
+		std::string_view presentationArchetypeId,
+		std::string& strOutStatus);
 	/* Hides exactly the plates the Server reports broken. Presentation never
 	decides this: a plate comes off because durability reached zero. */
 	void Set_ArmorPartVisible(uint32_t iStateMask, bool_t isVisible);
@@ -549,6 +621,13 @@ private:
 	void Load_PatternEffectCues();
 	bool_t Reload_PatternEffectCues_WhileAdmitted(std::string& strOutStatus);
 	void Spawn_DuePatternEffectCues(f32_t fActionAgeSeconds);
+	void Update_PatternTargetFollowEffectRoots();
+	void Detach_PatternTargetFollowEffectRoots();
+	bool_t Sync_LocalPatternCombatObjectPreview(
+		std::string_view actionId,
+		f32_t fActionAgeSeconds,
+		std::string& strOutStatus);
+	void Stop_LocalPatternCombatObjectPreview();
 	void Load_PatternSoundCues();
 	bool_t Reload_PatternSoundCues_WhileAdmitted(std::string& strOutStatus);
 	void Spawn_DuePatternSoundCues(f32_t fActionAgeSeconds);

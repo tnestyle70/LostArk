@@ -329,6 +329,42 @@ namespace
 			return "";
 		}
 	}
+
+	/* Server tick deadlines wrap at uint32_t. Keep the HUD's status presentation on the same
+	half-range ordering as CGameRoom instead of treating a wrapped future deadline as expired. */
+	bool_t Is_ServerDeadlinePending(const uint32_t iServerTick, const uint32_t iDeadlineTick)
+	{
+		return 0u != iDeadlineTick &&
+			static_cast<int32_t>(iServerTick - iDeadlineTick) < 0;
+	}
+
+	void Apply_SilenceQuickSlotTint(
+		Client::CUILayoutRuntime* pView,
+		const Client::HUD_PLAYER_STATE& Player)
+	{
+		if (nullptr == pView)
+			return;
+
+		const bool_t bSilenced =
+			Is_ServerDeadlinePending(Player.iServerTick, Player.iSilenceEndTick);
+		const float4_t vIconTint = bSilenced ?
+			float4_t(1.f, 0.2f, 0.2f, 1.f) :
+			float4_t(1.f, 1.f, 1.f, 1.f);
+
+		constexpr const char* INPUT_SLOTS[] =
+			{ "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V" };
+		for (const char* pInputSlot : INPUT_SLOTS)
+			pView->Set_SlotTintMultiplier(
+				string("Skill_") + pInputSlot + "_Icon", vIconTint);
+
+		/* Warlord and Artist Z/X are extracted keyframe slots rather than generic icon slots.
+		Update all four even while their owner class is hidden, so a class change cannot leave a
+		latent red multiplier in LEVEL::STATIC. */
+		constexpr const char* KEYFRAME_ICON_SLOTS[] =
+			{ "Skill_Z", "Skill_X", "Yin_Skill_Z", "Yin_Skill_X" };
+		for (const char* pSlotId : KEYFRAME_ICON_SLOTS)
+			pView->Set_SlotTintMultiplier(pSlotId, vIconTint);
+	}
 }
 
 CMainApp* CMainApp::s_pActiveInstance = nullptr;
@@ -1776,6 +1812,7 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	Update_ChargeGauge();
 	Update_SkillIcons();
 	Update_SkillCooldowns();
+	Apply_SilenceQuickSlotTint(m_pHUDRuntimeView.get(), player);
 	Update_QuickSlotFlash();
 	Update_ItemQuickSlots();
 	if (nullptr != m_pInventoryView)
@@ -2956,6 +2993,11 @@ void CMainApp::Update_SkillCooldowns()
 	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V" };
 
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	const bool_t bSilenced =
+		Is_ServerDeadlinePending(player.iServerTick, player.iSilenceEndTick);
+	const float4_t vCooldownTint = bSilenced ?
+		float4_t(0.85f, 0.04f, 0.04f, 0.7f) :
+		float4_t(0.f, 0.f, 0.f, 150.f / 255.f);
 
 	/* Default every overlay off; the loop below turns on just the ones actually cooling down.
 	Sweeps clockwise from 12 o'clock as the *remaining* cooldown, shrinking back to nothing as
@@ -2965,7 +3007,13 @@ void CMainApp::Update_SkillCooldowns()
 	square quad reproduces the old "radius past the corners, clipped to the rect" construction
 	exactly. The "Ns" numbers moved to RenderSkillCooldownText (post-EndFrame text pass). */
 	for (const char* pInputSlot : INPUT_SLOTS)
-		m_pHUDRuntimeView->Set_SlotVisible(string("Skill_") + pInputSlot + "_Cooldown", false);
+	{
+		const string strOverlaySlot = string("Skill_") + pInputSlot + "_Cooldown";
+		/* Silence owns only presentation color. At its exact Server deadline, a longer real
+		cooldown keeps sweeping with the authored black tint instead of staying red. */
+		m_pHUDRuntimeView->Set_SlotTint(strOverlaySlot, vCooldownTint);
+		m_pHUDRuntimeView->Set_SlotVisible(strOverlaySlot, false);
+	}
 
 	for (const HUD_SKILL_STATE& Skill : player.Skills)
 	{
@@ -4797,7 +4845,8 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 			m_pBalanceTool = make_unique<CBalanceTool>();
 		if (nullptr == m_pBossTool)
 			m_pBossTool = make_unique<CBossTool>(
-				make_shared<CNetworkPlayerCommandSink>());
+				make_shared<CNetworkPlayerCommandSink>(),
+				m_pBalanceTool.get());
 		/* Composition exposes Server Pattern playback without opening the Boss
 		   Tool window.  Admit that owner's canonical inventory on this explicit
 		   tool-open edge so its cheap revision observer is usable immediately;
@@ -4833,21 +4882,34 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 			m_pBalanceTool = make_unique<CBalanceTool>();
 		if (nullptr == m_pBossTool)
 			m_pBossTool = make_unique<CBossTool>(
-				make_shared<CNetworkPlayerCommandSink>());
+				make_shared<CNetworkPlayerCommandSink>(),
+				m_pBalanceTool.get());
 		if (nullptr == m_pAnimationTool)
 			m_pAnimationTool = make_unique<CAnimation_Tool>(
 				m_pCharacterPreviewPanel,
 				m_pBalanceTool.get(), m_pBossTool.get());
 		break;
 	case DEBUG_TOOL::EFFECT:
+	{
 		if (nullptr == m_pCharacterPreviewPanel)
 			m_pCharacterPreviewPanel =
 				make_shared<CCharacterPreviewPanel>(m_pDevice, m_pContext);
+		const bool_t bFirstEffectToolOpen = nullptr == m_pEffectTool;
 		if (nullptr == m_pEffectTool)
 			m_pEffectTool =
 				make_unique<CEffect_Tool>(
 					m_pDevice, m_pContext, m_pCharacterPreviewPanel);
+		/* The Valtan Arena's normal F1 entry should open the existing authored /
+		   Server Pattern / independent Effect workspace, not an unrelated Player
+		   skill list.  Preserve an explicit Character selection on later hide/show. */
+		if (bFirstEffectToolOpen &&
+			ETOUI(LEVEL::VALTAN_ARENA) ==
+				CGameInstance::Get().Get_CurrentLevelID())
+		{
+			(void)m_pEffectTool->Open_ValtanAllEffectsWorkspace();
+		}
 		break;
+	}
 	case DEBUG_TOOL::EFFECT_V2:
 		if (nullptr == m_pEffectToolV2)
 			m_pEffectToolV2 =
@@ -4877,9 +4939,12 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		m_pBalanceTool->Open();
 		break;
 	case DEBUG_TOOL::BOSS:
+		if (nullptr == m_pBalanceTool)
+			m_pBalanceTool = make_unique<CBalanceTool>();
 		if (nullptr == m_pBossTool)
 			m_pBossTool = make_unique<CBossTool>(
-				make_shared<CNetworkPlayerCommandSink>());
+				make_shared<CNetworkPlayerCommandSink>(),
+				m_pBalanceTool.get());
 		m_pBossTool->Open();
 		break;
 	case DEBUG_TOOL::CAMERA:
@@ -5649,10 +5714,13 @@ void CMainApp::RenderDebugResourceFiles()
 
 void CMainApp::RefreshCompletePlayPatternOptions()
 {
+	if (nullptr == m_pBalanceTool)
+		m_pBalanceTool = make_unique<CBalanceTool>();
 	if (nullptr == m_pBossTool)
 	{
 		m_pBossTool = make_unique<CBossTool>(
-			make_shared<CNetworkPlayerCommandSink>());
+			make_shared<CNetworkPlayerCommandSink>(),
+			m_pBalanceTool.get());
 	}
 	m_bCompletePlayPatternLoadAttempted = true;
 	std::vector<CBossTool::SERVER_PATTERN_OPTION> options;
@@ -5877,10 +5945,13 @@ void CMainApp::RenderServerArenaActiveControls()
 		}
 		else
 		{
+			if (nullptr == m_pBalanceTool)
+				m_pBalanceTool = make_unique<CBalanceTool>();
 			if (nullptr == m_pBossTool)
 			{
 				m_pBossTool = make_unique<CBossTool>(
-					make_shared<CNetworkPlayerCommandSink>());
+					make_shared<CNetworkPlayerCommandSink>(),
+					m_pBalanceTool.get());
 			}
 
 			CBossTool::VALTAN_ARENA_ACTIVE_STATE state{};

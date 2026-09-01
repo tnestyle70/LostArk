@@ -439,14 +439,16 @@ namespace
 		"boss.valtan.center";
 	constexpr const char* CHARACTER_SELECT_AUDITION_PLACEMENT_ID =
 		"boss.valtan.character-select.lazy";
-	constexpr std::array<const char*, 6u>
+	constexpr std::array<const char*, 8u>
 		CHARACTER_SELECT_ENVIRONMENT_DEPENDENT_PATTERNS{
 			"VALTAN_ARMOR_BREAK_OPENING",
 			"VALTAN_ENTRANCE_WHIRLWIND",
 			"VALTAN_ARENA_BREAK_109",
 			"VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
 			"VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
-			"VALTAN_FOUR_PILLARS_105" };
+			"VALTAN_FOUR_PILLARS_105",
+			"VALTAN_SIX_PIZZA_106",
+			"VALTAN_GHOST_PORTAL_ONCE" };
 
 	bool Is_CharacterSelectEnvironmentDependentPattern(
 		const std::string& patternId)
@@ -458,6 +460,41 @@ namespace
 			{
 				return patternId == blockedPatternId;
 			});
+	}
+
+	bool Is_ValtanOutcomeFollowupInFlight(
+		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
+		const std::uint32_t rootPatternSequence,
+		const LostArk::Shared::GameplayDataRevision& definitionRevision)
+	{
+		if (0u == rootPatternSequence || !definitionRevision.Is_Valid())
+			return false;
+		if (boss.PendingPatternFollowup.Is_Pending())
+		{
+			return boss.PendingPatternFollowup.iRootPatternSequence ==
+					rootPatternSequence &&
+				boss.PendingPatternFollowup.PinnedDefinitionRevision ==
+					definitionRevision;
+		}
+		return boss.iPatternFollowupDepth > 0u &&
+			!boss.strPatternId.empty() &&
+			boss.iPatternFollowupRootSequence == rootPatternSequence &&
+			boss.PinnedDefinitionRevision == definitionRevision;
+	}
+
+	bool Has_ValtanOutcomeGroupCompleted(
+		const LostArk::Server::SERVER_WORLD_ENTITY& boss,
+		const std::uint32_t rootPatternSequence,
+		const LostArk::Shared::GameplayDataRevision& definitionRevision)
+	{
+		return 0u != rootPatternSequence && definitionRevision.Is_Valid() &&
+			boss.strPatternId.empty() &&
+			!boss.PendingPatternFollowup.Is_Pending() &&
+			boss.PatternTerminalReceipt.iRootPatternSequence ==
+				rootPatternSequence &&
+			LostArk::Server::SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED ==
+				boss.PatternTerminalReceipt.eResult &&
+			boss.PinnedDefinitionRevision == definitionRevision;
 	}
 
 	constexpr const char* WALL_ATTACK_PATTERN_ID = "VALTAN_DOWN_SMASH";
@@ -4640,9 +4677,12 @@ LostArk::Server::CGameRoom::Evaluate_ValtanNextPatternControl(
 		}
 		const bool liveOccurrence =
 			VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE == current.ePhase &&
-			boss->iPatternSequence == current.iExpectedPatternSequence &&
-			boss->strPatternId == current.strPatternId &&
-			boss->PinnedDefinitionRevision == current.PinnedDefinitionRevision;
+			((boss->iPatternSequence == current.iExpectedPatternSequence &&
+			  boss->strPatternId == current.strPatternId &&
+			  boss->PinnedDefinitionRevision == current.PinnedDefinitionRevision) ||
+			 Is_ValtanOutcomeFollowupInFlight(
+				 *boss, current.iExpectedPatternSequence,
+				 current.PinnedDefinitionRevision));
 		const bool pendingOccurrence =
 			VALTAN_PATTERN_ID_AUDITION_PHASE::PENDING == current.ePhase &&
 			boss->iPatternSequence == current.iExpectedPatternSequence - 1u &&
@@ -4650,9 +4690,9 @@ LostArk::Server::CGameRoom::Evaluate_ValtanNextPatternControl(
 				boss->PendingPatternIds.begin(), boss->PendingPatternIds.end(), current.strPatternId);
 		const bool completedOccurrence =
 			VALTAN_PATTERN_ID_AUDITION_PHASE::COMPLETED_HOLD == current.ePhase &&
-			boss->strPatternId.empty() && boss->iPatternSequence == current.iExpectedPatternSequence &&
-			boss->PatternTerminalReceipt.iPatternSequence == current.iExpectedPatternSequence &&
-			SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED == boss->PatternTerminalReceipt.eResult;
+			Has_ValtanOutcomeGroupCompleted(
+				*boss, current.iExpectedPatternSequence,
+				current.PinnedDefinitionRevision);
 		if ((!liveOccurrence && !pendingOccurrence && !completedOccurrence) ||
 			boss->bMechanicLedgerRequiresReset)
 		{
@@ -4748,6 +4788,11 @@ LostArk::Server::CGameRoom::Adopt_ValtanLiveNextPattern(
 		return VALTAN_AUDITION_RESULT::REJECTED_NEXT_CHANGED;
 	if (VALTAN_PATTERN_ID_AUDITION_PHASE::PENDING == current.ePhase)
 		return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+	if (boss.PendingPatternFollowup.Is_Pending() ||
+		boss.iPatternFollowupDepth > 0u)
+	{
+		return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+	}
 	if (VALTAN_TIMELINE_AUDITION_PHASE::INACTIVE != m_ValtanTimelineAudition.ePhase ||
 		m_ValtanFightPageStart.Is_Active() || 0u != m_iValtanAuditionArmedHealthBar ||
 		boss.bMechanicLedgerRequiresReset || 0u == m_iNextValtanAuditionEpoch ||
@@ -4861,12 +4906,15 @@ void LostArk::Server::CGameRoom::Try_PromoteValtanNextPattern(SERVER_WORLD_ENTIT
 	}
 	auto& next = *m_ValtanNextPattern;
 	const auto& current = m_ValtanPatternIdAudition;
+	const bool completedOutcomeGroup = idleAnchor ||
+		Has_ValtanOutcomeGroupCompleted(
+			boss, current.iExpectedPatternSequence,
+			current.PinnedDefinitionRevision);
 	if (!m_PlayerIdBySessionId.contains(next.iOwnerSessionId) ||
 		next.iOwnerSessionId != current.iOwnerSessionId ||
 		next.iBossEntityId != boss.iNetEntityId ||
 		next.strBossPlacementId != boss.strPlacementId ||
 		next.iRoomAuditionEpoch != current.iRoomAuditionEpoch ||
-		next.iPredecessorPatternSequence != boss.iPatternSequence ||
 		next.iPredecessorPatternSequence != current.iExpectedPatternSequence ||
 		next.iExpectedPatternSequence <= next.iPredecessorPatternSequence ||
 		next.iExpectedPatternSequence != next.iPredecessorPatternSequence + 1u ||
@@ -4874,10 +4922,7 @@ void LostArk::Server::CGameRoom::Try_PromoteValtanNextPattern(SERVER_WORLD_ENTIT
 		next.PinnedDefinitionRevision != boss.PinnedDefinitionRevision ||
 		nullptr == m_GameplayCatalog.Resolve(next.PinnedDefinitionRevision) ||
 		!boss.strPatternId.empty() || !boss.PendingPatternIds.empty() ||
-		boss.bMechanicLedgerRequiresReset ||
-		(!idleAnchor &&
-		 (boss.PatternTerminalReceipt.iPatternSequence != current.iExpectedPatternSequence ||
-		  SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED != boss.PatternTerminalReceipt.eResult)))
+		boss.bMechanicLedgerRequiresReset || !completedOutcomeGroup)
 	{
 		Cancel_ValtanNextPatternReservation("predecessor no longer owns the completed occurrence");
 		return;
@@ -4894,6 +4939,13 @@ void LostArk::Server::CGameRoom::Try_PromoteValtanNextPattern(SERVER_WORLD_ENTIT
 		}
 		return;
 	}
+	/* A branch-owned child consumes its own PatternSequence values. Keep the
+	   reservation's root CAS immutable while it is replaceable/waiting, then
+	   rebase the consumed successor exactly once to the completed leaf. */
+	next.iPredecessorPatternSequence = boss.iPatternSequence;
+	next.iExpectedPatternSequence =
+		(std::numeric_limits<std::uint32_t>::max)() == boss.iPatternSequence ?
+			1u : boss.iPatternSequence + 1u;
 	VALTAN_PATTERN_ID_AUDITION_STATE promoted{};
 	promoted.ePhase = VALTAN_PATTERN_ID_AUDITION_PHASE::PENDING;
 	promoted.iOwnerSessionId = next.iOwnerSessionId;
@@ -4925,10 +4977,18 @@ bool LostArk::Server::CGameRoom::Prepare_ValtanPatternIdAuditionBeforeBrain(
 	if (VALTAN_PATTERN_ID_AUDITION_PHASE::COMPLETED_HOLD == m_ValtanPatternIdAudition.ePhase ||
 		VALTAN_PATTERN_ID_AUDITION_PHASE::IDLE_HOLD == m_ValtanPatternIdAudition.ePhase)
 		return false;
-	if (VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE == m_ValtanPatternIdAudition.ePhase &&
-		(boss.iPatternSequence != m_ValtanPatternIdAudition.iExpectedPatternSequence ||
-		 boss.strPatternId != m_ValtanPatternIdAudition.strPatternId ||
-		 boss.PinnedDefinitionRevision != m_ValtanPatternIdAudition.PinnedDefinitionRevision))
+	const bool exactActiveOccurrence =
+		boss.iPatternSequence ==
+			m_ValtanPatternIdAudition.iExpectedPatternSequence &&
+		boss.strPatternId == m_ValtanPatternIdAudition.strPatternId &&
+		boss.PinnedDefinitionRevision ==
+			m_ValtanPatternIdAudition.PinnedDefinitionRevision;
+	const bool outcomeFollowupInFlight = Is_ValtanOutcomeFollowupInFlight(
+		boss, m_ValtanPatternIdAudition.iExpectedPatternSequence,
+		m_ValtanPatternIdAudition.PinnedDefinitionRevision);
+	if (VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE ==
+			m_ValtanPatternIdAudition.ePhase &&
+		!exactActiveOccurrence && !outcomeFollowupInFlight)
 	{
 		boss.bAutomaticPatternSequenceAuditionOverride = true;
 		boss.bAutomaticPatternSequenceAuditionHold = true;
@@ -5034,6 +5094,14 @@ bool LostArk::Server::CGameRoom::Refresh_ValtanPatternIdAuditionState()
 		}
 		return true;
 	}
+	if (VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE ==
+			m_ValtanPatternIdAudition.ePhase &&
+		Is_ValtanOutcomeFollowupInFlight(
+			*boss, m_ValtanPatternIdAudition.iExpectedPatternSequence,
+			m_ValtanPatternIdAudition.PinnedDefinitionRevision))
+	{
+		return true;
+	}
 	if (VALTAN_PATTERN_ID_AUDITION_PHASE::PENDING == m_ValtanPatternIdAudition.ePhase &&
 		boss->iPatternSequence == m_ValtanPatternIdAudition.iExpectedPatternSequence - 1u &&
 		boss->PendingPatternIds.end() != std::find(
@@ -5050,16 +5118,13 @@ bool LostArk::Server::CGameRoom::Refresh_ValtanPatternIdAuditionState()
 	// may advance the chain after this tick's final world/prop/damage commits.
 	if (VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE ==
 			m_ValtanPatternIdAudition.ePhase &&
-		boss->iPatternSequence ==
-			m_ValtanPatternIdAudition.iExpectedPatternSequence &&
-		boss->strPatternId.empty() &&
-		boss->PatternTerminalReceipt.iPatternSequence ==
-			m_ValtanPatternIdAudition.iExpectedPatternSequence &&
-		SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED ==
-			boss->PatternTerminalReceipt.eResult &&
-		boss->PinnedDefinitionRevision == m_ValtanPatternIdAudition.PinnedDefinitionRevision &&
+		Has_ValtanOutcomeGroupCompleted(
+			*boss, m_ValtanPatternIdAudition.iExpectedPatternSequence,
+			m_ValtanPatternIdAudition.PinnedDefinitionRevision) &&
 		!boss->bMechanicLedgerRequiresReset)
 	{
+		boss->iPatternFollowupDepth = 0u;
+		boss->iPatternFollowupRootSequence = 0u;
 		boss->bAutomaticPatternSequenceAuditionOverride = true;
 		boss->bAutomaticPatternSequenceAuditionHold = true;
 		Queue_ValtanPatternIdAuditionLifecycle(
@@ -5235,6 +5300,30 @@ void LostArk::Server::CGameRoom::Refresh_ValtanPatternFlowState(
 			boss, VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ABORTED,
 			"Valtan pattern-flow boss became unavailable");
 		return;
+	}
+	if (boss.PendingPatternFollowup.Is_Pending() ||
+		(boss.iPatternFollowupDepth > 0u && !boss.strPatternId.empty()))
+	{
+		/* The source already advanced the saved-flow cursor. Its targetless
+		outcome children remain part of that same slot, so stop/final completion
+		waits until the leaf commits. */
+		return;
+	}
+	if (boss.iPatternFollowupDepth > 0u)
+	{
+		if (SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED !=
+				boss.PatternTerminalReceipt.eResult ||
+			boss.PatternTerminalReceipt.iRootPatternSequence !=
+				boss.iPatternFollowupRootSequence ||
+			boss.PinnedDefinitionRevision != flow.PinnedDefinitionRevision)
+		{
+			Finish_ValtanPatternFlow(
+				boss, VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ABORTED,
+				"Valtan pattern flow outcome follow-up did not complete");
+			return;
+		}
+		boss.iPatternFollowupDepth = 0u;
+		boss.iPatternFollowupRootSequence = 0u;
 	}
 
 	const std::size_t sequenceIndex =
@@ -6151,6 +6240,12 @@ bool LostArk::Server::CGameRoom::Stop_ValtanTimelineRow(
 		boss->iNetEntityId == m_ValtanTimelineAudition.iBossEntityId)
 	{
 		boss->PendingPatternIds.clear();
+		if (boss->strPatternId.empty())
+		{
+			boss->PendingPatternFollowup = {};
+			boss->iPatternFollowupDepth = 0u;
+			boss->iPatternFollowupRootSequence = 0u;
+		}
 		boss->bScriptedPatternPlayback = false;
 	}
 	if (const auto owner = m_Players.find(
@@ -6200,6 +6295,12 @@ bool LostArk::Server::CGameRoom::Prepare_ValtanTimelineRowBeforeBrain(
 	const auto fail = [this, &boss](const char* reason)
 	{
 		boss.PendingPatternIds.clear();
+		if (boss.strPatternId.empty())
+		{
+			boss.PendingPatternFollowup = {};
+			boss.iPatternFollowupDepth = 0u;
+			boss.iPatternFollowupRootSequence = 0u;
+		}
 		m_iPillarAuditionBreakTick = 0u;
 		m_bPillarAuditionCycleArmed = false;
 		if (const auto owner = m_Players.find(
@@ -6357,6 +6458,13 @@ bool LostArk::Server::CGameRoom::Prepare_ValtanTimelineRowBeforeBrain(
 			{
 				return true;
 			}
+			if (Is_ValtanOutcomeFollowupInFlight(
+					boss,
+					m_ValtanTimelineAudition.iExpectedPatternSequence,
+					m_ValtanTimelineAudition.PinnedDefinitionRevision))
+			{
+				return true;
+			}
 			fail("Valtan timeline pattern identity changed");
 			return false;
 		case VALTAN_TIMELINE_AUDITION_PHASE::COMPLETED_HOLD:
@@ -6420,7 +6528,16 @@ void LostArk::Server::CGameRoom::Restore_ValtanTimelineRowAfterBrain(
 			VALTAN_TIMELINE_AUDITION_PHASE::WAITING_PATTERN_FINISH;
 		return;
 	}
-	if (!expectedSequence || !boss.strPatternId.empty())
+	if (Is_ValtanOutcomeFollowupInFlight(
+			boss, m_ValtanTimelineAudition.iExpectedPatternSequence,
+			m_ValtanTimelineAudition.PinnedDefinitionRevision))
+	{
+		return;
+	}
+	const bool completedOutcomeGroup = Has_ValtanOutcomeGroupCompleted(
+		boss, m_ValtanTimelineAudition.iExpectedPatternSequence,
+		m_ValtanTimelineAudition.PinnedDefinitionRevision);
+	if (!completedOutcomeGroup)
 	{
 		owner->second.isCombatReady = false;
 		boss.PendingPatternIds.clear();
@@ -6431,6 +6548,8 @@ void LostArk::Server::CGameRoom::Restore_ValtanTimelineRowAfterBrain(
 		m_strStatus = "Valtan timeline observed an unexpected pattern";
 		return;
 	}
+	boss.iPatternFollowupDepth = 0u;
+	boss.iPatternFollowupRootSequence = 0u;
 	Prepare_TimelineAuditionPlayer(owner->second, updateTick);
 	m_ServerTriggerSystem.Remove_Player(owner->second.iPlayerId);
 	if (!m_ServerTriggerSystem.Place_PlayerAtValtanAuditionBait(
@@ -6836,7 +6955,9 @@ LostArk::Server::CGameRoom::Evaluate_ValtanPatternFlowStopAfterCurrent(
 	const std::string flowRevision =
 		m_ValtanPatternFlowAudition.strFlowRevision;
 	if (boss->bAutomaticPatternSequenceStepRunning ||
-		!boss->strPatternId.empty())
+		!boss->strPatternId.empty() ||
+		boss->PendingPatternFollowup.Is_Pending() ||
+		boss->iPatternFollowupDepth > 0u)
 	{
 		m_ValtanPatternFlowAudition.bStopAfterCurrent = true;
 	}
@@ -6930,7 +7051,9 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 						request.iExpectedNextRequestSequence ==
 							prior.Request.iExpectedNextRequestSequence &&
 						request.ExpectedDefinitionRevision ==
-							prior.Request.ExpectedDefinitionRevision;
+							prior.Request.ExpectedDefinitionRevision &&
+						request.ReplacementDefinitionRevision ==
+							prior.Request.ReplacementDefinitionRevision;
 					if (!exactRetry)
 						return VALTAN_AUDITION_RESULT::REJECTED_STALE_REQUEST;
 					currentHealthBar = prior.iCurrentHealthBar;
@@ -6955,23 +7078,26 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 							predecessor.strPatternId == prior.Request.strPatternId &&
 							predecessorBoss->iNetEntityId ==
 								predecessor.iBossEntityId &&
-							predecessorBoss->iPatternSequence ==
-								predecessor.iExpectedPatternSequence &&
-							predecessorBoss->PinnedDefinitionRevision ==
-								predecessor.PinnedDefinitionRevision &&
 							!predecessorBoss->bMechanicLedgerRequiresReset;
 						const bool activePredecessor = sameIdentity &&
 							VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE ==
 								predecessor.ePhase &&
-							predecessorBoss->strPatternId == predecessor.strPatternId;
+							((predecessorBoss->iPatternSequence ==
+									predecessor.iExpectedPatternSequence &&
+							  predecessorBoss->strPatternId == predecessor.strPatternId &&
+							  predecessorBoss->PinnedDefinitionRevision ==
+									predecessor.PinnedDefinitionRevision) ||
+							 Is_ValtanOutcomeFollowupInFlight(
+								 *predecessorBoss,
+								 predecessor.iExpectedPatternSequence,
+								 predecessor.PinnedDefinitionRevision));
 						const bool completedPredecessor = sameIdentity &&
 							VALTAN_PATTERN_ID_AUDITION_PHASE::COMPLETED_HOLD ==
 								predecessor.ePhase &&
-							predecessorBoss->strPatternId.empty() &&
-							predecessorBoss->PatternTerminalReceipt.iPatternSequence ==
-								predecessor.iExpectedPatternSequence &&
-							SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED ==
-								predecessorBoss->PatternTerminalReceipt.eResult;
+							Has_ValtanOutcomeGroupCompleted(
+								*predecessorBoss,
+								predecessor.iExpectedPatternSequence,
+								predecessor.PinnedDefinitionRevision);
 						if (!activePredecessor && !completedPredecessor)
 							return VALTAN_AUDITION_RESULT::REJECTED_STALE_AUDITION;
 						Queue_ValtanAuditionLifecycle(
@@ -7099,6 +7225,21 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			if (isPatternIdRestart)
 			{
 				const auto& predecessor = m_ValtanPatternIdAudition;
+				const bool activeRootOccurrence =
+					VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE == predecessor.ePhase &&
+					((boss->iPatternSequence == predecessor.iExpectedPatternSequence &&
+					  boss->strPatternId == predecessor.strPatternId &&
+					  boss->PinnedDefinitionRevision ==
+						  predecessor.PinnedDefinitionRevision) ||
+					 Is_ValtanOutcomeFollowupInFlight(
+						 *boss, predecessor.iExpectedPatternSequence,
+						 predecessor.PinnedDefinitionRevision));
+				const bool completedRootOccurrence =
+					VALTAN_PATTERN_ID_AUDITION_PHASE::COMPLETED_HOLD ==
+						predecessor.ePhase &&
+					Has_ValtanOutcomeGroupCompleted(
+						*boss, predecessor.iExpectedPatternSequence,
+						predecessor.PinnedDefinitionRevision);
 				if (m_ValtanNextPattern.has_value() ||
 					request.iPredecessorRoomAuditionEpoch !=
 						predecessor.iRoomAuditionEpoch ||
@@ -7110,11 +7251,8 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 					request.strPatternId != predecessor.strPatternId ||
 					boss->iNetEntityId != predecessor.iBossEntityId ||
 					boss->strPlacementId != predecessor.strBossPlacementId ||
-					boss->iPatternSequence !=
-						predecessor.iExpectedPatternSequence ||
-					boss->PinnedDefinitionRevision !=
-						predecessor.PinnedDefinitionRevision ||
-					boss->bMechanicLedgerRequiresReset)
+					boss->bMechanicLedgerRequiresReset ||
+					(!activeRootOccurrence && !completedRootOccurrence))
 				{
 					m_strStatus =
 						"Valtan restart predecessor occurrence is no longer current";
@@ -7122,20 +7260,18 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 				}
 				if (sessionId != predecessor.iOwnerSessionId)
 					return VALTAN_AUDITION_RESULT::REJECTED_NOT_OWNER;
-				const bool activeOccurrence =
-					VALTAN_PATTERN_ID_AUDITION_PHASE::ACTIVE ==
-						predecessor.ePhase &&
-					boss->strPatternId == predecessor.strPatternId;
-				const bool completedOccurrence =
-					VALTAN_PATTERN_ID_AUDITION_PHASE::COMPLETED_HOLD ==
-						predecessor.ePhase &&
-					boss->strPatternId.empty() &&
-					boss->PatternTerminalReceipt.iPatternSequence ==
-						predecessor.iExpectedPatternSequence &&
-					SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED ==
-						boss->PatternTerminalReceipt.eResult;
-				if (!activeOccurrence && !completedOccurrence)
+				if (!activeRootOccurrence && !completedRootOccurrence)
 					return VALTAN_AUDITION_RESULT::REJECTED_STALE_AUDITION;
+				/* The predecessor pin and the replacement generation are distinct
+				   compare-and-swap inputs. Check the live occurrence first so only
+				   an exact predecessor can receive the preserving rejection. */
+				if (request.ReplacementDefinitionRevision !=
+						activeDefinitionRevision)
+				{
+					m_strStatus =
+						"Valtan restart replacement definition revision is no longer active";
+					return VALTAN_AUDITION_RESULT::REJECTED_OCCURRENCE_PRESERVED;
+				}
 			}
 			const auto rejectPreservingExactPredecessor =
 				[isPatternIdRestart](const VALTAN_AUDITION_RESULT ordinary)
@@ -7151,8 +7287,14 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 				return rejectPreservingExactPredecessor(
 					VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE);
 			}
+			const GameplayDataRevision commandDefinitionRevision =
+				isPatternIdRestart ? request.ReplacementDefinitionRevision :
+				activeDefinitionRevision;
+			const CGameplayCatalog* const commandDefinitions =
+				m_GameplayCatalog.Resolve(commandDefinitionRevision);
 			const std::vector<BOSS_PATTERN_DEFINITION>* patterns =
-				m_GameplayCatalog.Find_BossPatterns(boss->strEncounterId);
+				nullptr == commandDefinitions ? nullptr :
+				commandDefinitions->Find_BossPatterns(boss->strEncounterId);
 			if (nullptr == patterns || patterns->end() == std::find_if(
 					patterns->begin(), patterns->end(),
 					[&request](const BOSS_PATTERN_DEFINITION& pattern)
@@ -7224,6 +7366,13 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 				return rejectPreservingExactPredecessor(
 					VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE);
 			}
+			if (resetProbe.PinnedDefinitionRevision != commandDefinitionRevision)
+			{
+				m_strStatus =
+					"Valtan restart reset did not use the admitted replacement definition";
+				return rejectPreservingExactPredecessor(
+					VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE);
+			}
 			if (stagedPlayer)
 			{
 				const float deltaX = stagedPlayer->fPositionX - resetProbe.fPositionX;
@@ -7274,7 +7423,7 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 					m_iNextValtanAuditionEpoch ?
 				0u : m_iNextValtanAuditionEpoch + 1u;
 			m_ValtanPatternIdAudition.PinnedDefinitionRevision =
-				activeDefinitionRevision;
+				commandDefinitionRevision;
 			Queue_ValtanPatternIdAuditionLifecycle(
 				VALTAN_AUDITION_LIFECYCLE_STATE::PENDING);
 			m_iValtanAuditionArmedHealthBar = 0u;
@@ -7527,7 +7676,9 @@ bool LostArk::Server::CGameRoom::Build_RequiredPinnedGameplayRevisions(
 	{
 		if (!append(entity.PinnedDefinitionRevision) ||
 			(entity.ProductSequencePinnedDefinitionRevision.Is_Valid() &&
-			 !append(entity.ProductSequencePinnedDefinitionRevision)))
+			 !append(entity.ProductSequencePinnedDefinitionRevision)) ||
+			(entity.PendingPatternFollowup.Is_Pending() &&
+			 !append(entity.PendingPatternFollowup.PinnedDefinitionRevision)))
 		{
 			outRevisions.clear();
 			return false;
@@ -7620,6 +7771,11 @@ LostArk::Server::CGameRoom::Resolve_ValtanGameplayCatalog(
 			m_ValtanPatternIdAudition.PinnedDefinitionRevision);
 	}
 	#endif
+	if (boss.PendingPatternFollowup.Is_Pending())
+	{
+		return m_GameplayCatalog.Resolve(
+			boss.PendingPatternFollowup.PinnedDefinitionRevision);
+	}
 	if (boss.ProductSequencePinnedDefinitionRevision.Is_Valid())
 		return m_GameplayCatalog.Resolve(boss.ProductSequencePinnedDefinitionRevision);
 	if (boss.strPatternId.empty())
@@ -7906,6 +8062,8 @@ bool LostArk::Server::CGameRoom::Send_ValtanAuditionResult(
 	message.iPredecessorPatternSequence = request.iPredecessorPatternSequence;
 	message.iExpectedNextRequestSequence = request.iExpectedNextRequestSequence;
 	message.ExpectedDefinitionRevision = request.ExpectedDefinitionRevision;
+	message.ReplacementDefinitionRevision =
+		request.ReplacementDefinitionRevision;
 	CPacketWriter writer;
 	return nullptr != session && Write_Message(writer, message) &&
 		session->Send_Frame(
@@ -9420,10 +9578,15 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 				"boss.phase.gameplay" != action.strTargetId ||
 				action.iValue < 2u || action.iValue > 3u ||
 				(isValtan &&
-					("VALTAN_ARENA_BREAK_109" != patternId ||
-					 "valtan.mechanic.arena-break-109.impact" != actionId ||
-					 BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER != trigger ||
-					 2u != action.iValue)) ||
+					BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger &&
+					!(("VALTAN_ARENA_BREAK_109" == patternId &&
+					   "valtan.mechanic.arena-break-109.impact" == actionId &&
+					   2u == action.iValue) ||
+					  ("VALTAN_GHOST_RESPAWN_AUDITION" == patternId &&
+					   "valtan.sequence.respawn.step-01" == actionId &&
+					   3u == action.iValue))) ||
+				(isValtan &&
+					BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER != trigger) ||
 				action.iValue < stagedGameplayPhase)
 			{
 				m_strStatus = "Boss gameplay phase stage action is invalid";
@@ -11903,6 +12066,128 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 	}
 }
 
+bool LostArk::Server::CGameRoom::Activate_ValtanGhostPhaseLoop(
+	SERVER_WORLD_ENTITY& boss,
+	const CGameplayCatalog& catalog)
+{
+	using namespace LostArk::Shared;
+	if (WORLD_ID::VALTAN_ARENA != m_eWorldId ||
+		WORLD_BOOTSTRAP_KIND::BOSS != boss.eKind ||
+		INVALID_NET_ENTITY_ID != boss.iOwnerBossNetEntityId ||
+		"BOSS_VALTAN" != boss.strArchetypeId ||
+		"boss.valtan.center" != boss.strPlacementId ||
+		3u != boss.iPhase || 0u == boss.iCurrentHp ||
+		SERVER_ENTITY_ACTION::DEAD == boss.eAction)
+	{
+		m_strStatus = "Valtan ghost phase activation owner is invalid";
+		return false;
+	}
+	const auto* patterns = catalog.Find_BossPatterns(boss.strEncounterId);
+	if (nullptr == patterns)
+	{
+		m_strStatus = "Valtan ghost phase loop definition is unavailable";
+		return false;
+	}
+	const auto finale = std::find_if(
+		patterns->begin(), patterns->end(),
+		[](const BOSS_PATTERN_DEFINITION& definition)
+		{ return "VALTAN_GHOST_FINALE" == definition.strPatternId; });
+	if (patterns->end() == finale ||
+		BOSS_PATTERN_FINALE_KIND::GHOST_PORTAL_LOOP != finale->Finale.eKind ||
+		6u != finale->Finale.GhostPatternIds.size())
+	{
+		m_strStatus = "Valtan ghost phase loop definition is unavailable";
+		return false;
+	}
+	BOSS_PATTERN_SEQUENCE_DEFINITION sequence{};
+	sequence.strEncounterId = boss.strEncounterId;
+	sequence.strSequenceId = "sequence.valtan.ghost-phase.primary-loop";
+	sequence.eMode = BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE;
+	sequence.iExpectedStepCount =
+		static_cast<std::uint32_t>(finale->Finale.GhostPatternIds.size());
+	sequence.PatternIds = finale->Finale.GhostPatternIds;
+	boss.GhostPhasePatternSequence = std::move(sequence);
+	boss.bGhostPhasePatternLoopActive = true;
+	boss.strRotationId.clear();
+	boss.iRotationStepIndex = 0u;
+	boss.bAutomaticPatternSequenceStepRunning = false;
+	boss.iAutomaticPatternSequenceInterStepPursuitTicks = 0u;
+	boss.iAutomaticPatternSequencePursuitTicksRemaining = 0u;
+	boss.iGhostPortalLastSpawnTick = 0u;
+	boss.iGhostPortalOccurrenceSequence = 0u;
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Update_ValtanGhostPortalScheduler(
+	SERVER_WORLD_ENTITY& boss,
+	const CGameplayCatalog& catalog,
+	const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	constexpr std::uint32_t PORTAL_INTERVAL_TICKS = 5u * SERVER_TICK_HZ;
+	if (!boss.bGhostPhasePatternLoopActive)
+		return true;
+	if (WORLD_ID::VALTAN_ARENA != m_eWorldId ||
+		WORLD_BOOTSTRAP_KIND::BOSS != boss.eKind ||
+		INVALID_NET_ENTITY_ID != boss.iOwnerBossNetEntityId ||
+		"BOSS_VALTAN" != boss.strArchetypeId || 3u != boss.iPhase ||
+		0u == boss.iCurrentHp || SERVER_ENTITY_ACTION::DEAD == boss.eAction)
+	{
+		return true;
+	}
+	if (0u != boss.iGhostPortalLastSpawnTick &&
+		Elapsed_ServerTicksSkippingReservedZero(
+			boss.iGhostPortalLastSpawnTick, serverTick) < PORTAL_INTERVAL_TICKS)
+	{
+		return true;
+	}
+	const auto* patterns = catalog.Find_BossPatterns(boss.strEncounterId);
+	if (nullptr == patterns)
+	{
+		m_strStatus = "Valtan ghost portal occurrence definition is unavailable";
+		return false;
+	}
+	const auto portal = std::find_if(
+		patterns->begin(), patterns->end(),
+		[](const BOSS_PATTERN_DEFINITION& definition)
+		{ return "VALTAN_GHOST_PORTAL_ONCE" == definition.strPatternId; });
+	if (patterns->end() == portal ||
+		1u != portal->Stages.size() ||
+		"valtan.ghost.portal-once.active" != portal->Stages.front().strActionId)
+	{
+		m_strStatus = "Valtan ghost portal occurrence definition is unavailable";
+		return false;
+	}
+	std::uint32_t occurrenceSequence =
+		(std::numeric_limits<std::uint32_t>::max)() ==
+			boss.iGhostPortalOccurrenceSequence ?
+			1u : boss.iGhostPortalOccurrenceSequence + 1u;
+	if (0u == occurrenceSequence)
+		occurrenceSequence = 1u;
+	SERVER_WORLD_ENTITY synthetic = boss;
+	synthetic.strPatternId = portal->strPatternId;
+	synthetic.strPatternStageId = portal->Stages.front().strStageId;
+	synthetic.strActionId = portal->Stages.front().strActionId;
+	synthetic.iPatternSequence = occurrenceSequence;
+	synthetic.PinnedDefinitionRevision = catalog.Get_ActiveRevision();
+	synthetic.ProductSequencePinnedDefinitionRevision = catalog.Get_ActiveRevision();
+	/* The square is authored around the immutable encounter centre, not around
+	where a foreground attack happened to move the damageable primary body. */
+	synthetic.fPositionX = boss.fSpawnPositionX;
+	synthetic.fPositionY = boss.fSpawnPositionY;
+	synthetic.fPositionZ = boss.fSpawnPositionZ;
+	synthetic.fYawDegrees = 0.f;
+	if (!Apply_BossPatternStageActions(
+		synthetic, portal->strPatternId, portal->Stages.front().strActionId,
+		BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, serverTick))
+	{
+		return false;
+	}
+	boss.iGhostPortalOccurrenceSequence = occurrenceSequence;
+	boss.iGhostPortalLastSpawnTick = serverTick;
+	return true;
+}
+
 bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serverTick)
 {
 	using namespace LostArk::Shared;
@@ -11912,7 +12197,8 @@ bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serv
 		if (WORLD_BOOTSTRAP_KIND::BOSS != owner.eKind ||
 			INVALID_NET_ENTITY_ID != owner.iOwnerBossNetEntityId ||
 			0u == owner.iCurrentHp || SERVER_ENTITY_ACTION::DEAD == owner.eAction ||
-			owner.strPatternId.empty() || owner.bMechanicLedgerRequiresReset)
+			owner.strPatternId.empty() || owner.bMechanicLedgerRequiresReset ||
+			owner.bGhostPhasePatternLoopActive)
 			return nullptr;
 		const CGameplayCatalog* catalog = Resolve_ValtanGameplayCatalog(owner);
 		const auto* patterns = nullptr == catalog ? nullptr :
@@ -12217,6 +12503,9 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 #endif
 				if (LostArk::Shared::INVALID_NET_ENTITY_ID != entity.iOwnerBossNetEntityId)
 					patternFlowSequence = &entity.DependentPatternSequence;
+				else if (nullptr == patternFlowSequence &&
+					entity.bGhostPhasePatternLoopActive)
+					patternFlowSequence = &entity.GhostPhasePatternSequence;
 				/* Only a stele that is standing right now is cover. A slot that
 				   is breaking or hidden stops answering the blow on the same
 				   tick the Server retired it. */
@@ -12289,16 +12578,22 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				const auto& objects = m_CombatObjectRuntime.Get_LiveObjects();
 				const bool independentEffectStillRunning = std::any_of(
 					objects.begin(), objects.end(),
-					[&entity, previousPatternSequence](const SERVER_COMBAT_OBJECT& object)
+					[&entity, &previousPatternId, previousPatternSequence](
+						const SERVER_COMBAT_OBJECT& object)
 					{
 						return object.iSourceNetEntityId == entity.iNetEntityId &&
+							object.LiveState.strOwnerPatternId == previousPatternId &&
 							object.LiveState.iOwnerPatternSequence == previousPatternSequence &&
 							object.fRemainingMilliseconds > 0.f;
 					});
 				/* The object owns its tail clock and immutable birth pose. A completed
 				foreground must not insert a pursuit hold before its successor. */
-				if (independentEffectStillRunning)
+				if (independentEffectStillRunning &&
+					!entity.PendingPatternFollowup.Is_Pending() &&
+					0u == entity.iPatternFollowupDepth)
+				{
 					entity.iAutomaticPatternSequencePursuitTicksRemaining = 0u;
+				}
 			}
 			bool finaleCycleRestarted = false;
 			if (updateValtanBrain &&
@@ -12428,6 +12723,47 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				entity.TriggeredPatternIds = std::move(triggeredPatternIds);
 				entity.bMechanicLedgerRequiresReset = mechanicResetRequired;
 				entity.iLastEvaluatedHealthBar = lastEvaluatedHealthBar;
+				m_isReady = false;
+				return;
+			}
+			const bool completedRespawn = stageIdentityChanged &&
+				LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
+				LostArk::Shared::INVALID_NET_ENTITY_ID == entity.iOwnerBossNetEntityId &&
+				"BOSS_VALTAN" == entity.strArchetypeId &&
+				"boss.valtan.center" == entity.strPlacementId &&
+				"VALTAN_GHOST_RESPAWN_AUDITION" == previousPatternId &&
+				entity.strPatternId.empty() &&
+				SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED ==
+					entity.PatternTerminalReceipt.eResult &&
+				entity.PatternTerminalReceipt.iPatternSequence == previousPatternSequence;
+			if (completedRespawn &&
+				!Activate_ValtanGhostPhaseLoop(entity, *occurrenceCatalog))
+			{
+				releaseBossAttachments(entity);
+				m_isReady = false;
+				return;
+			}
+			const bool completedGhostLoopStep =
+				entity.bGhostPhasePatternLoopActive &&
+				!previousPatternId.empty() && entity.strPatternId.empty() &&
+				SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED ==
+					entity.PatternTerminalReceipt.eResult &&
+				entity.PatternTerminalReceipt.iPatternSequence == previousPatternSequence &&
+				std::find(entity.GhostPhasePatternSequence.PatternIds.begin(),
+					entity.GhostPhasePatternSequence.PatternIds.end(),
+					previousPatternId) !=
+					entity.GhostPhasePatternSequence.PatternIds.end();
+			if (completedGhostLoopStep &&
+				entity.iRotationStepIndex >=
+					entity.GhostPhasePatternSequence.PatternIds.size())
+			{
+				entity.iRotationStepIndex = 0u;
+				entity.iAutomaticPatternSequencePursuitTicksRemaining = 0u;
+			}
+			if (!Update_ValtanGhostPortalScheduler(
+				entity, *occurrenceCatalog, updateTick))
+			{
+				releaseBossAttachments(entity);
 				m_isReady = false;
 				return;
 			}
@@ -12679,6 +13015,22 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			if (updateValtanBrain)
 				Refresh_ValtanPatternFlowState(entity);
 #endif
+			/* Debug controllers consume the root-group receipt above. Product has no
+			   controller, so retire the leaf-only bookkeeping at the same post-brain
+			   seam; the terminal receipt keeps the immutable root identity. */
+			if (entity.strPatternId.empty() &&
+				!entity.PendingPatternFollowup.Is_Pending() &&
+				entity.iPatternFollowupDepth > 0u &&
+				SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED ==
+					entity.PatternTerminalReceipt.eResult &&
+				entity.PatternTerminalReceipt.iPatternSequence ==
+					previousPatternSequence &&
+				entity.PatternTerminalReceipt.iRootPatternSequence ==
+					entity.iPatternFollowupRootSequence)
+			{
+				entity.iPatternFollowupDepth = 0u;
+				entity.iPatternFollowupRootSequence = 0u;
+			}
 			if (LostArk::Shared::INVALID_NET_ENTITY_ID == entity.iOwnerBossNetEntityId &&
 				entity.strPatternId.empty() &&
 				occurrenceCatalog->Get_ActiveRevision() ==

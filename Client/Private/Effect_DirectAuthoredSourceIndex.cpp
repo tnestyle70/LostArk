@@ -91,17 +91,19 @@ namespace
 			std::string_view Prefix;
 			CHARACTER_CLASS_ID eClass = CHARACTER_CLASS_ID::END;
 		};
-		static constexpr std::array<OWNER_PREFIX, 4u> Prefixes = {
+		static constexpr std::array<OWNER_PREFIX, 6u> Prefixes = {
 			OWNER_PREFIX{ "effect.artist.skill.", CHARACTER_CLASS_ID::ARTIST },
 			OWNER_PREFIX{ "effect.dimensionmaster.skill.",
 				CHARACTER_CLASS_ID::DIMENSIONMASTER },
+			OWNER_PREFIX{ "effect.gunslinger.skill.",
+				CHARACTER_CLASS_ID::GUNSLINGER },
 			OWNER_PREFIX{ "effect.lancemaster.skill.",
 				CHARACTER_CLASS_ID::LANCE_MASTER },
+			OWNER_PREFIX{ "effect.slayer.skill.",
+				CHARACTER_CLASS_ID::SLAYER },
 			OWNER_PREFIX{ "effect.warlord.skill.",
 				CHARACTER_CLASS_ID::WARLORD }
 		};
-		if (!strAssetId.ends_with(".unified"))
-			return false;
 		for (const OWNER_PREFIX& Owner : Prefixes)
 		{
 			if (!strAssetId.starts_with(Owner.Prefix))

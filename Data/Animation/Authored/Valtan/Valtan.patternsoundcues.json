@@ -376,54 +376,6 @@
    "startMs": 3200
   },
   {
-   "bindingId": "cue.sound.valtan.attack.dash-charge.groggy.clip.01.01",
-   "occurrenceId": "cue.sound.valtan.attack.dash-charge.groggy.clip.01.01.occurrence.01",
-   "patternId": "VALTAN_DASH_CHARGE",
-   "stageId": "GROGGY",
-   "actionId": "valtan.attack.dash-charge.groggy",
-   "clipOccurrenceId": "valtan.attack.dash-charge.groggy.clip.01",
-   "soundBank": "S_Mob_G_Voltan1",
-   "soundEvent": "G_Voltan1_Attack13_Loop1",
-   "repeatPolicy": "once",
-   "startMs": 10
-  },
-  {
-   "bindingId": "cue.sound.valtan.attack.dash-charge.part-break.clip.01.01",
-   "occurrenceId": "cue.sound.valtan.attack.dash-charge.part-break.clip.01.01.occurrence.01",
-   "patternId": "VALTAN_DASH_CHARGE",
-   "stageId": "PART_BREAK",
-   "actionId": "valtan.attack.dash-charge.part-break",
-   "clipOccurrenceId": "valtan.attack.dash-charge.part-break.clip.01",
-   "soundBank": "S_Mob_G_Voltan1",
-   "soundEvent": "G_Voltan1_Attack9_Cast1",
-   "repeatPolicy": "once",
-   "startMs": 10
-  },
-  {
-   "bindingId": "cue.sound.valtan.attack.dash-charge.part-break.clip.01.02",
-   "occurrenceId": "cue.sound.valtan.attack.dash-charge.part-break.clip.01.02.occurrence.01",
-   "patternId": "VALTAN_DASH_CHARGE",
-   "stageId": "PART_BREAK",
-   "actionId": "valtan.attack.dash-charge.part-break",
-   "clipOccurrenceId": "valtan.attack.dash-charge.part-break.clip.01",
-   "soundBank": "S_Mob_G_Voltan1",
-   "soundEvent": "G_Voltan1_Attack9_ShotVox1",
-   "repeatPolicy": "once",
-   "startMs": 10
-  },
-  {
-   "bindingId": "cue.sound.valtan.attack.dash-charge.recovery.project-tuned.clip.01.01",
-   "occurrenceId": "cue.sound.valtan.attack.dash-charge.recovery.project-tuned.clip.01.01.occurrence.01",
-   "patternId": "VALTAN_DASH_CHARGE",
-   "stageId": "RECOVERY",
-   "actionId": "valtan.attack.dash-charge.recovery",
-   "clipOccurrenceId": "valtan.attack.dash-charge.recovery.project-tuned.clip.01",
-   "soundBank": "S_Mob_G_Voltan2",
-   "soundEvent": "G_Voltan2_FootStep1",
-   "repeatPolicy": "once",
-   "startMs": 3600
-  },
-  {
    "bindingId": "cue.sound.valtan.attack.dash-charge.windup.clip.01.01",
    "occurrenceId": "cue.sound.valtan.attack.dash-charge.windup.clip.01.01.occurrence.01",
    "patternId": "VALTAN_DASH_CHARGE",

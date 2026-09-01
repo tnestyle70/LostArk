@@ -387,6 +387,10 @@ public:
 	   borrows this one draft instead of loading a second editable document. */
 	bool_t Ensure_ValtanCompositionPatternSounds(std::string& strOutStatus);
 	bool_t Reload_ValtanCompositionPatternSounds(std::string& strOutStatus);
+	/* Explicit Save/Discard/Cancel navigation boundary.  Ordinary reload
+	   callers never imply consent to lose a Pattern Sound draft. */
+	bool_t Discard_ValtanCompositionPatternSoundDraftAndReload(
+		std::string& strOutStatus);
 	/* Save/reload/runtime Apply alter the exact S generation or consumer cue
 	   cache.  Draft edits remain local, but these operations are fail-closed
 	   while any Server audition, Restart, Next or Flow occurrence owns it. */
@@ -455,6 +459,24 @@ public:
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
 		const VALTAN_PATTERN_SOUND_CUE_ROW_ID& RowId,
+		std::string& strOutStatus);
+	/* Deleting one Animation occurrence may intentionally retire the Sound rows
+	   that are qualified by that exact occurrence.  The Workbench snapshots the
+	   typed Sound draft here, stages every exact dependent removal together, and
+	   restores the snapshot if the paired Pattern mutation is rejected. */
+	bool_t Stage_ValtanCompositionPatternSoundCascadeForAnimationDelete(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const VALTAN_STAGE_VIEW& Stage,
+		const std::string& strClipOccurrenceId,
+		VALTAN_PATTERN_SOUND_CUE_DOCUMENT& OutPreviousDraft,
+		bool_t& bOutPreviousDirty,
+		uint64_t& iOutMutationGeneration,
+		std::size_t& iOutRemovedRowCount,
+		std::string& strOutStatus);
+	bool_t Restore_ValtanCompositionPatternSoundCascade(
+		const VALTAN_PATTERN_SOUND_CUE_DOCUMENT& PreviousDraft,
+		bool_t bPreviousDirty,
+		uint64_t iExpectedMutationGeneration,
 		std::string& strOutStatus);
 	bool_t Prepare_ValtanCompositionPatternSoundSave(
 		std::string& strOutBaselineBytes,

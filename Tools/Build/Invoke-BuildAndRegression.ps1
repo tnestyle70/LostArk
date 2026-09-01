@@ -305,6 +305,9 @@ try {
             'Effect Tool V2 authored document gate' `
             @('Tools/EffectToolV2/test_validate_effect_v2.py')
         Invoke-PythonGate `
+            'Effect Tool V2 binding schema, migration, and read-set gate' `
+            @('Tools/EffectToolV2/test_effect_v2_binding_pipeline.py')
+        Invoke-PythonGate `
             'Effect Tool V2 Product transaction gate' `
             @('Tools/EffectToolV2/test_effect_v2_product_contract.py')
         Invoke-PythonGate `
@@ -409,6 +412,12 @@ try {
 		Invoke-PythonGate `
 			'Valtan Effect Tool master tree gate' `
 			@('Tools/EffectPipeline/test_effect_tool_valtan_saved_rows.py')
+		Invoke-PythonGate `
+			'Valtan CROSS Product cue and fixed-step rock wave gate' `
+			@('Tools/EffectPipeline/test_valtan_cross_rock_wave_effect.py')
+		Invoke-PythonGate `
+			'Valtan combat-object hit Effect presentation gate' `
+			@('Tools/ValtanPipeline/test_valtan_combat_object_hit_effect_presentation_contract.py')
 	}
 
     $global:LASTEXITCODE = 0

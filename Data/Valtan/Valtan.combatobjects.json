@@ -148,6 +148,47 @@
           }
         }
       ]
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.ghost.portal-charge",
+      "kind": "MISSILE",
+      "lifetimeMs": 5000,
+      "spawn": {
+        "origin": {
+          "kind": "BOSS_POSITION",
+          "forwardOffsetM": 0.0,
+          "rightOffsetM": 0.0
+        },
+        "direction": {
+          "kind": "RADIAL_INWARD"
+        }
+      },
+      "movement": {
+        "kind": "LINEAR",
+        "speedMps": 12.44508,
+        "maximumDistanceM": 62.2254
+      },
+      "hits": [
+        {
+          "hitId": "hit.valtan.ghost.portal-charge.01",
+          "trigger": {
+            "kind": "CONTACT"
+          },
+          "repeat": {
+            "count": 1,
+            "intervalMs": 0
+          },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 2.5
+          },
+          "serverDamageProfileId": "damage.valtan.portal-rush",
+          "pushRangeM": 3.0,
+          "pushMs": 180,
+          "knockdown": true,
+          "downMs": 1500
+        }
+      ]
     }
   ]
 }

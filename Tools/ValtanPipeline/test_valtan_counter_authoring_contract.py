@@ -120,14 +120,25 @@ class ValtanCounterAuthoringContractTests(unittest.TestCase):
     def test_repository_counter_targets_are_closed_groggy_stages(self) -> None:
         gameplay = self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
         expected = {
-            "VALTAN_TRASH": ("STEP_07", "GROGGY"),
-            "VALTAN_TRASH_CATCH_IF": ("STEP_07", "GROGGY"),
-            "VALTAN_COUNTER": ("STEP_02", "STEP_04"),
+            "VALTAN_TRASH": ("STEP_07", "VALTAN_TRASH", "GROGGY"),
+            "VALTAN_TRASH_CATCH_IF": (
+                "STEP_07",
+                "VALTAN_TRASH_CATCH_IF",
+                "GROGGY",
+            ),
+            "VALTAN_COUNTER": (
+                "STEP_02",
+                "VALTAN_COUNTER_GROGGY",
+                "GROGGY",
+            ),
         }
-        for pattern_id, (source_id, target_id) in expected.items():
+        for pattern_id, (source_id, target_pattern_id, target_id) in expected.items():
             pattern = _pattern({"patterns": gameplay["patterns"]}, pattern_id)
             source = _stage(pattern, source_id)
-            target = _stage(pattern, target_id)
+            target_pattern = _pattern(
+                {"patterns": gameplay["patterns"]}, target_pattern_id
+            )
+            target = _stage(target_pattern, target_id)
             self.assertEqual(source["stageKind"], "WINDUP")
             self.assertEqual(target["stageKind"], "GROGGY")
             self.assertEqual(len(_flag_events(source, "boss.flag.counterable")), 2)
@@ -135,7 +146,20 @@ class ValtanCounterAuthoringContractTests(unittest.TestCase):
             counter = [
                 row for row in source["branches"] if row["outcome"] == "COUNTER_HIT"
             ]
-            self.assertEqual(counter, [{"outcome": "COUNTER_HIT", "nextActionId": target["actionId"]}])
+            if pattern_id == target_pattern_id:
+                self.assertEqual(
+                    counter,
+                    [{"outcome": "COUNTER_HIT", "nextActionId": target["actionId"]}],
+                )
+            else:
+                self.assertEqual(
+                    counter,
+                    [{
+                        "outcome": "COUNTER_HIT",
+                        "nextActionId": None,
+                        "nextPatternId": target_pattern_id,
+                    }],
+                )
 
     def test_typed_operation_disables_proxy_window_without_touching_groggy(self) -> None:
         cases = (
@@ -238,16 +262,9 @@ class ValtanCounterAuthoringContractTests(unittest.TestCase):
             )
 
     def test_typed_operation_enables_selected_same_pattern_groggy(self) -> None:
-        candidate = self.apply(
-            self.operation(
-                pattern_id="VALTAN_DASH_CHARGE",
-                stage_id="WINDUP",
-                success_stage_id="GROGGY",
-                success_action_id="valtan.attack.dash-charge.groggy",
-            )
-        )
-        pattern = _pattern(candidate, "VALTAN_DASH_CHARGE")
-        source = _stage(pattern, "WINDUP")
+        candidate = self.apply(self.operation())
+        pattern = _pattern(candidate, "VALTAN_TRASH")
+        source = _stage(pattern, "STEP_07")
         target = _stage(pattern, "GROGGY")
         self.assertEqual(len(_flag_events(source, "boss.flag.counterable")), 2)
         self.assertEqual(len(_flag_events(target, "boss.flag.groggy")), 2)

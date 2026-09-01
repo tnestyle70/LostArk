@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lostark.effect-v2-binding-read-set.v1.schema.json",
+  "title": "LostArk Effect V2 Composition ephemeral resource read-set",
+  "$comment": "Created from the immutable raw leaf/group bytes pinned when the Composition catalog was loaded. It is never persisted in the binding owner and must not be recomputed from disk at Save time.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "formatVersion", "archetypeId", "resources", "readSetHash"],
+  "properties": {
+    "schema": { "const": "lostark.effect-v2-binding-read-set" },
+    "formatVersion": { "const": 1 },
+    "archetypeId": { "const": "BOSS_VALTAN" },
+    "resources": {
+      "type": "array",
+      "maxItems": 8192,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "id", "path", "sha256"],
+        "properties": {
+          "kind": { "enum": ["LEAF", "GROUP"] },
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{1,160}$"
+          },
+          "path": {
+            "type": "string",
+            "pattern": "^Data/Effects/V2/(Authored/[A-Za-z0-9_.-]+\\.effectv2\\.json|Groups/[A-Za-z0-9_.-]+\\.effectv2group\\.json)$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "readSetHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

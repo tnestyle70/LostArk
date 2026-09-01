@@ -36,6 +36,11 @@ namespace
 	constexpr f32_t MAX_SCALE = 1000.f;
 	constexpr std::string_view PATTERN_TARGET_SNAPSHOT_ANCHOR =
 		"pattern.target.snapshot";
+	constexpr std::string_view ARENA_CENTER_ANCHOR = "arena.center";
+	constexpr std::string_view ARENA_CENTER_FACING_ANCHOR =
+		"arena.center.facing";
+	constexpr std::string_view ARENA_CENTER_TARGET_FOLLOW_ANCHOR =
+		"arena.center.target-follow";
 
 	bool_t Is_LockedPatternTargetPolicy(const std::string_view Policy)
 	{
@@ -444,9 +449,10 @@ bool_t Client::CValtanPatternEffectCueDocument::Try_BuildArenaCenterAnchor(
 	const f32_t fLockedFacingYawDegrees,
 	float4x4_t& OutAnchor)
 {
-	const bool_t bUsesLockedFacing =
-		"arena.center.facing" == strAnchorSlotId;
-	if (("arena.center" != strAnchorSlotId && !bUsesLockedFacing) ||
+	const bool_t bUsesServerFacing =
+		"arena.center.facing" == strAnchorSlotId ||
+		"arena.center.target-follow" == strAnchorSlotId;
+	if (("arena.center" != strAnchorSlotId && !bUsesServerFacing) ||
 		!std::isfinite(vArenaCenter.x) ||
 		!std::isfinite(vArenaCenter.y) ||
 		!std::isfinite(vArenaCenter.z) ||
@@ -458,7 +464,7 @@ bool_t Client::CValtanPatternEffectCueDocument::Try_BuildArenaCenterAnchor(
 	float4x4_t Staged{};
 	DirectX::XMStoreFloat4x4(&Staged,
 		DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(
-			bUsesLockedFacing ? fLockedFacingYawDegrees : 0.f)) *
+			bUsesServerFacing ? fLockedFacingYawDegrees : 0.f)) *
 		DirectX::XMMatrixTranslation(
 			vArenaCenter.x, vArenaCenter.y, vArenaCenter.z));
 	OutAnchor = Staged;
@@ -752,6 +758,37 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 				"Valtan pattern target Effect cue requires snapshot follow and a locked Server target: " +
 				Cue.strBindingId;
 			return false;
+		}
+		if (Cue.strAnchorSlotId.starts_with("arena.center"))
+		{
+			const bool_t bFixedCenter =
+				Cue.strAnchorSlotId == ARENA_CENTER_ANCHOR;
+			const bool_t bFixedFacing =
+				Cue.strAnchorSlotId == ARENA_CENTER_FACING_ANCHOR;
+			const bool_t bTargetFollow =
+				Cue.strAnchorSlotId == ARENA_CENTER_TARGET_FOLLOW_ANCHOR;
+			const bool_t bHasCenterApproach = pPattern->serverMotion.has_value() &&
+				pPattern->serverMotion->kind == "LEAP_TO_ANCHOR" &&
+				pPattern->serverMotion->bMoveToAnchorBeforeTakeoff;
+			const bool_t bExactFixedCenter = bFixedCenter &&
+				Cue.eFollowPolicy == EFFECT_FOLLOW_POLICY::SNAPSHOT;
+			const bool_t bExactFixedFacing = bFixedFacing &&
+				Cue.eFollowPolicy == EFFECT_FOLLOW_POLICY::SNAPSHOT &&
+				pPattern->targetPolicy == "LOCK_RANDOM_ALIVE_ON_START" &&
+				pPattern->aimPolicy == "LOCK_FACING_ON_START";
+			const bool_t bExactTargetFollow = bTargetFollow &&
+				Cue.eFollowPolicy == EFFECT_FOLLOW_POLICY::FOLLOW &&
+				pPattern->targetPolicy == "LOCK_RANDOM_ALIVE_ON_START" &&
+				pPattern->aimPolicy == "TRACK_TARGET_EACH_TICK";
+			if (!bHasCenterApproach ||
+				(!bExactFixedCenter && !bExactFixedFacing &&
+				 !bExactTargetFollow))
+			{
+				strOutStatus =
+					"Valtan arena-center Effect cue requires its exact fixed/follow Server contract: " +
+					Cue.strBindingId;
+				return false;
+			}
 		}
 		const auto Stage = std::find_if(pPattern->stages.begin(),
 			pPattern->stages.end(), [&Cue](const ENCOUNTER_STAGE_REFERENCE& Value)

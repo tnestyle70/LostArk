@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('Validate', 'ValidateDraft', 'SaveAuthoring', 'CommitCanonicalDraft', 'SourceManifest', 'PublishCandidate', 'PublishSavedFlow')]
+    [ValidateSet('Validate', 'ValidateDraft', 'SaveAuthoring', 'CommitCanonicalDraft', 'SourceManifest', 'PublishCandidate')]
     [string]$Mode = 'Validate',
     [string]$RepositoryRoot = '',
     [string]$CandidateRoot = 'Intermediate/ValtanTuningCandidates',
@@ -12,7 +12,9 @@ param(
     [string]$PatternSoundCandidatePath = '',
     [string]$EffectV2BaselinePath = '',
     [string]$EffectV2CandidatePath = '',
-    [string]$ExpectedFlowRevision = '',
+    [string]$EffectV2ReadSetPath = '',
+    [ValidateRange(0.0, 300.0)]
+    [double]$LockTimeoutSeconds = 30.0,
     [ValidateSet('', 'after_stage', 'after_validate', 'after_revision_manifest',
         'before_promote', 'after_promote', 'before_pointer', 'after_pointer')]
     [string]$FailAt = ''
@@ -59,20 +61,8 @@ $resolvedPatternSoundBaseline = Resolve-OptionalPath $PatternSoundBaselinePath
 $resolvedPatternSoundCandidate = Resolve-OptionalPath $PatternSoundCandidatePath
 $resolvedEffectV2Baseline = Resolve-OptionalPath $EffectV2BaselinePath
 $resolvedEffectV2Candidate = Resolve-OptionalPath $EffectV2CandidatePath
+$resolvedEffectV2ReadSet = Resolve-OptionalPath $EffectV2ReadSetPath
 switch ($Mode) {
-    'PublishSavedFlow' {
-        $candidatePath = if ([IO.Path]::IsPathRooted($CandidateRoot)) {
-            [IO.Path]::GetFullPath($CandidateRoot)
-        }
-        else {
-            [IO.Path]::GetFullPath((Join-Path $repoRoot $CandidateRoot))
-        }
-        $command += @('publish-saved-flow', '--candidate-root', $candidatePath,
-            '--expected-flow-revision', $ExpectedFlowRevision)
-        if (-not [string]::IsNullOrWhiteSpace($FailAt)) {
-            $command += @('--fail-at', $FailAt)
-        }
-    }
     'Validate' {
         $command += 'validate'
     }
@@ -106,7 +96,10 @@ switch ($Mode) {
         $command += @(
             'commit-canonical-draft',
             '--authoring-root', $resolvedAuthoringRoot,
-            '--draft-patch', $resolvedDraftPatch
+            '--draft-patch', $resolvedDraftPatch,
+            '--lock-timeout-seconds',
+            $LockTimeoutSeconds.ToString(
+                [Globalization.CultureInfo]::InvariantCulture)
         )
         if (-not [string]::IsNullOrWhiteSpace($resolvedPatternSoundBaseline)) {
             $command += @(
@@ -119,6 +112,9 @@ switch ($Mode) {
                 '--effect-v2-baseline', $resolvedEffectV2Baseline,
                 '--effect-v2-candidate', $resolvedEffectV2Candidate
             )
+            if (-not [string]::IsNullOrWhiteSpace($resolvedEffectV2ReadSet)) {
+                $command += @('--effect-v2-read-set', $resolvedEffectV2ReadSet)
+            }
         }
     }
     'SourceManifest' {

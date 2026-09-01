@@ -14,6 +14,7 @@ int Run_ValtanPresentationContractTests();
 int Run_ValtanEncounterReferenceContractTests();
 int Run_ValtanCanonicalGraphContractTests();
 int Run_ActionCompositionGraphModelContractTests();
+int Run_BossLogicFlowViewModelContractTests();
 int Run_ValtanPatternSoundCueDocumentContractTests();
 int Run_ValtanPatternAnimationBindingDocumentContractTests();
 int Run_ValtanPatternEffectCueAuthoringContractTests();
@@ -38,6 +39,13 @@ namespace
 	{
 		GameplayDataRevision Revision{};
 		Revision.Bytes.fill(0x42u);
+		return Revision;
+	}
+
+	GameplayDataRevision ReplacementRevision()
+	{
+		GameplayDataRevision Revision{};
+		Revision.Bytes.fill(0x24u);
 		return Revision;
 	}
 
@@ -67,6 +75,8 @@ namespace
 		Out.iPredecessorPatternSequence = Request.iPredecessorPatternSequence;
 		Out.iExpectedNextRequestSequence = Request.iExpectedNextRequestSequence;
 		Out.ExpectedDefinitionRevision = Request.ExpectedDefinitionRevision;
+		Out.ReplacementDefinitionRevision =
+			Request.ReplacementDefinitionRevision;
 		Out.eResult = Result;
 		return Out;
 	}
@@ -85,7 +95,9 @@ namespace
 			SEQUENCE : Request.iPredecessorPatternSequence + 1u;
 		Out.strPatternId = Request.strPatternId;
 		Out.eState = State;
-		Out.PinnedDefinitionRevision = ActiveRevision();
+		Out.PinnedDefinitionRevision =
+			VALTAN_AUDITION_OPERATION::RESTART_PATTERN_ID == Request.eOperation ?
+				Request.ReplacementDefinitionRevision : ActiveRevision();
 		if (VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED == State)
 			Out.strReason = "harness terminal abort";
 		return Out;
@@ -278,6 +290,48 @@ namespace
 		F.Service.Update();
 		Require(F.Service.Get_Snapshot().eState == VALTAN_PATTERN_AUDITION_STATE::ACTIVE &&
 			!F.Service.Get_NextSnapshot().Is_Live(), "late verdict recreated an activated reservation");
+	}
+
+	void VerifyOutcomeFollowupRebasesNextOccurrence()
+	{
+		Fixture F;
+		F.Start();
+		const auto Next = F.Queue();
+		F.Input().Lifecycles.push_back(
+			Event(Next, VALTAN_AUDITION_LIFECYCLE_STATE::NEXT_RESERVED));
+		F.Service.Update();
+		F.Complete();
+
+		/* Two outcome-owned children used root+1 and root+2. The queued user
+		   pattern is therefore born at root+3 even though its immutable command
+		   CAS still names the root occurrence. */
+		auto Pending = Event(Next, VALTAN_AUDITION_LIFECYCLE_STATE::PENDING);
+		Pending.iPatternSequence = SEQUENCE + 3u;
+		F.Input().Lifecycles.push_back(Pending);
+		F.Service.Update();
+		Require(F.Service.Get_NextSnapshot().eState ==
+				VALTAN_NEXT_PATTERN_STATE::START_PENDING &&
+			F.Service.Get_NextSnapshot().iPredecessorPatternSequence == SEQUENCE &&
+			F.Service.Get_NextSnapshot().iExpectedPatternSequence == SEQUENCE + 3u &&
+			F.Service.Get_NextSnapshot().bReservationConsumed,
+			"outcome chain did not rebase the consumed Next occurrence");
+
+		F.Input().Lifecycles.push_back(
+			Event(Next, VALTAN_AUDITION_LIFECYCLE_STATE::NEXT_RESERVED));
+		F.Service.Update();
+		Require(F.Service.Get_NextSnapshot().iExpectedPatternSequence == SEQUENCE + 3u,
+			"late root+1 reservation lifecycle regressed the rebased occurrence");
+
+		auto Active = Event(Next, VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE);
+		Active.iPatternSequence = SEQUENCE + 3u;
+		F.Input().Lifecycles.push_back(Active);
+		F.Service.Update();
+		Require(F.Service.Get_Snapshot().strPatternId == B &&
+			F.Service.Get_Snapshot().iObservedPatternSequence == SEQUENCE + 3u,
+			"rebased Next ACTIVE lifecycle was discarded by the Client service");
+		const auto Following = F.Queue(C);
+		Require(Following.iPredecessorPatternSequence == SEQUENCE + 3u,
+			"rebased Next did not become the next command's predecessor");
 	}
 
 	void VerifyRejectedReplacementPreservesReservation()
@@ -968,7 +1022,7 @@ namespace
 		const VALTAN_PATTERN_AUDITION_SNAPSHOT Before =
 			F.Service.Get_Snapshot();
 		Require(F.Service.Restart_ActivePattern(
-			"Boss Tool", BOSS, A, F.Status),
+			"Boss Tool", BOSS, A, ReplacementRevision(), F.Status),
 			"exact active restart was rejected");
 		const auto Restart = F.Input().SentRequests.back();
 		Require(Restart.eOperation ==
@@ -978,8 +1032,11 @@ namespace
 			Restart.iPredecessorRoomAuditionEpoch == Before.iRoomAuditionEpoch &&
 			Restart.iPredecessorPatternSequence == Before.iObservedPatternSequence &&
 			Restart.ExpectedDefinitionRevision == Before.PinnedDefinitionRevision &&
+			Restart.ReplacementDefinitionRevision == ReplacementRevision() &&
 			F.Service.Get_Snapshot().eState ==
-				VALTAN_PATTERN_AUDITION_STATE::REQUEST_PENDING,
+				VALTAN_PATTERN_AUDITION_STATE::REQUEST_PENDING &&
+			F.Service.Get_Snapshot().PinnedDefinitionRevision ==
+				ReplacementRevision(),
 			"restart did not allocate a fresh stable-ID request identity");
 		const std::vector<uint8_t> RestartWire = Wire(Restart);
 		CPacketReader RestartReader{ RestartWire };
@@ -994,8 +1051,10 @@ namespace
 			DecodedRestart.iPredecessorPatternSequence ==
 				Before.iObservedPatternSequence &&
 			DecodedRestart.ExpectedDefinitionRevision ==
-				Before.PinnedDefinitionRevision,
-			"restart wire dropped an exact predecessor CAS field");
+				Before.PinnedDefinitionRevision &&
+			DecodedRestart.ReplacementDefinitionRevision ==
+				ReplacementRevision(),
+			"restart wire dropped a predecessor or replacement CAS field");
 		auto InvalidRestart = Restart;
 		InvalidRestart.iPredecessorRoomAuditionEpoch = 0u;
 		CPacketWriter InvalidEpochWriter;
@@ -1012,6 +1071,11 @@ namespace
 		Require(!Write_Message(InvalidRevisionWriter, InvalidRestart),
 			"restart wire accepted a missing predecessor revision");
 		InvalidRestart = Restart;
+		InvalidRestart.ReplacementDefinitionRevision = {};
+		CPacketWriter InvalidReplacementWriter;
+		Require(!Write_Message(InvalidReplacementWriter, InvalidRestart),
+			"restart wire accepted a missing replacement revision");
+		InvalidRestart = Restart;
 		InvalidRestart.iExpectedNextRequestSequence = 7u;
 		CPacketWriter HiddenNextWriter;
 		Require(!Write_Message(HiddenNextWriter, InvalidRestart),
@@ -1021,6 +1085,13 @@ namespace
 		   new occurrence. That old edge must not terminate the replacement. */
 		F.Input().Lifecycles.push_back(Event(
 			F.Current, VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED));
+		auto WrongReplacementVerdict = Verdict(Restart);
+		WrongReplacementVerdict.ReplacementDefinitionRevision = ActiveRevision();
+		F.Input().Results.push_back(WrongReplacementVerdict);
+		F.Service.Update();
+		Require(F.Service.Get_Snapshot().eState ==
+				VALTAN_PATTERN_AUDITION_STATE::REQUEST_PENDING,
+			"restart admitted a verdict for another replacement revision");
 		F.Input().Results.push_back(Verdict(Restart));
 		auto Pending = Event(
 			Restart, VALTAN_AUDITION_LIFECYCLE_STATE::PENDING);
@@ -1032,7 +1103,9 @@ namespace
 				VALTAN_PATTERN_AUDITION_STATE::QUEUED &&
 			F.Service.Get_Snapshot().iRequestSequence == Restart.iRequestSequence &&
 			F.Service.Get_Snapshot().iRoomAuditionEpoch == EPOCH + 1u &&
-			F.Service.Get_Snapshot().iObservedPatternSequence == SEQUENCE + 1u,
+			F.Service.Get_Snapshot().iObservedPatternSequence == SEQUENCE + 1u &&
+			F.Service.Get_Snapshot().PinnedDefinitionRevision ==
+				ReplacementRevision(),
 			"restart did not ignore the old abort and adopt the new pending occurrence");
 
 		auto Active = Pending;
@@ -1052,6 +1125,8 @@ namespace
 		F.Start();
 		const size_t SentBefore = F.Input().SentRequests.size();
 		Require(!F.Service.Restart_ActivePattern(
+			"Boss Tool", BOSS, A, GameplayDataRevision{}, F.Status) &&
+			!F.Service.Restart_ActivePattern(
 			"Effect Tool", BOSS, A, F.Status) &&
 			!F.Service.Restart_ActivePattern(
 				"Boss Tool", "boss.valtan.other", A, F.Status) &&
@@ -1193,7 +1268,9 @@ namespace
 			Retry.iPredecessorPatternSequence ==
 				Restart.iPredecessorPatternSequence &&
 			Retry.ExpectedDefinitionRevision ==
-				Restart.ExpectedDefinitionRevision,
+				Restart.ExpectedDefinitionRevision &&
+			Retry.ReplacementDefinitionRevision ==
+				Restart.ReplacementDefinitionRevision,
 			"restart retry allocated or altered a wire identity");
 		F.Input().Results.push_back(Verdict(
 			Retry, VALTAN_AUDITION_RESULT::REJECTED_OCCURRENCE_PRESERVED));
@@ -1248,9 +1325,9 @@ namespace
 			!F.Service.Verify_PatternSoundSourceReceipt(SoundB, F.Status),
 			"ACTIVE occurrence did not retain or verify its exact S receipt");
 		Require(!F.Service.Restart_ActivePattern(
-				"Boss Tool", BOSS, A, SoundB, F.Status) &&
+				"Boss Tool", BOSS, A, ActiveRevision(), SoundB, F.Status) &&
 			F.Service.Restart_ActivePattern(
-				"Boss Tool", BOSS, A, SoundA, F.Status),
+				"Boss Tool", BOSS, A, ActiveRevision(), SoundA, F.Status),
 			"Restart did not reject a foreign S or retain the predecessor S");
 		F.Advance(5100u);
 		Require(!F.Service.Retry_UnconfirmedRestart(SoundB, F.Status) &&
@@ -1289,6 +1366,7 @@ int main()
 		{ "A completed before B verdict and PENDING", VerifyCompletionBeforeVerdictAndPending },
 		{ "B verdict before A completed and player wait", VerifyVerdictBeforeCompletionAndDeadPlayerWait },
 		{ "B lifecycle before verdict", VerifyLifecycleBeforeVerdict },
+		{ "outcome followup rebases Next occurrence", VerifyOutcomeFollowupRebasesNextOccurrence },
 		{ "rejected C preserves B", VerifyRejectedReplacementPreservesReservation },
 		{ "accepted C ignores late B abort", VerifyAcceptedReplacementIgnoresOldAbort },
 		{ "clear timeout same-payload retry and replay", VerifyClearTimeoutRetryAndReplayedVerdict },
@@ -1336,6 +1414,8 @@ int main()
 		Run_ValtanCanonicalGraphContractTests();
 	const int CompositionGraphFailures =
 		Run_ActionCompositionGraphModelContractTests();
+	const int BossLogicFlowFailures =
+		Run_BossLogicFlowViewModelContractTests();
 	const int PatternSoundCueFailures =
 		Run_ValtanPatternSoundCueDocumentContractTests();
 	const int AnimationBindingDocumentFailures =
@@ -1348,6 +1428,7 @@ int main()
 		0 == PresentationFailures && 0 == EncounterReferenceFailures &&
 		0 == CanonicalGraphFailures &&
 		0 == CompositionGraphFailures &&
+		0 == BossLogicFlowFailures &&
 		0 == PatternSoundCueFailures &&
 		0 == AnimationBindingDocumentFailures &&
 		0 == EffectCueAuthoringFailures &&

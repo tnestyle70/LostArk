@@ -80,7 +80,7 @@ PRESENTATION_TEXT = """{
 
 FAKE_PROJECTOR = r"""[CmdletBinding()]
 param(
-    [ValidateSet('ValidateV2', 'PublishV2')]
+    [ValidateSet('Validate', 'PublishV2')]
     [string]$Mode,
     [string]$RepositoryRoot,
     [switch]$WriterLockAlreadyHeld,
@@ -91,14 +91,14 @@ $utf8 = [Text.UTF8Encoding]::new($false)
 $source = Join-Path $RepositoryRoot 'Data\Valtan\Valtan.presentation.json'
 $log = Join-Path $RepositoryRoot 'projector.log'
 [IO.File]::AppendAllText($log, $Mode + "`n", $utf8)
-if ($Mode -eq 'ValidateV2') {
+if ($Mode -eq 'Validate') {
     $validationFailureMarker = Join-Path $RepositoryRoot `
         'fail-candidate-validate-once'
     $validationText = [IO.File]::ReadAllText($source, $utf8)
     if ([IO.File]::Exists($validationFailureMarker) -and
         -not $validationText.Contains('cue.valtan.target.a')) {
         [IO.File]::Delete($validationFailureMarker)
-        throw 'injected candidate ValidateV2 failure'
+        throw 'injected candidate Validate failure'
     }
     $mutationMarker = Join-Path $RepositoryRoot 'mutate-source-during-validate'
     if ([IO.File]::Exists($mutationMarker)) {
@@ -245,14 +245,14 @@ class ValtanPatternEffectUnlinkTests(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stdout.decode(errors="replace"))
         self.assertEqual(self.original_presentation, self.presentation.read_bytes())
         self.assert_shared_product_unchanged()
-        self.assertEqual(["ValidateV2"], self.projector_modes())
+        self.assertEqual(["Validate"], self.projector_modes())
         self.assertFalse((self.repo / "Published.presentation.json").exists())
 
         mismatch = self.run_unlink("Validate", cue_ids=CUE_A)
         self.assertNotEqual(0, mismatch.returncode)
         self.assertIn(b"exact set", mismatch.stdout)
         self.assertEqual(self.original_presentation, self.presentation.read_bytes())
-        self.assertEqual(["ValidateV2"], self.projector_modes())
+        self.assertEqual(["Validate"], self.projector_modes())
 
         invalid_id = self.run_unlink("Validate", pattern_id="../VALTAN_TARGET")
         self.assertNotEqual(0, invalid_id.returncode)
@@ -286,7 +286,7 @@ class ValtanPatternEffectUnlinkTests(unittest.TestCase):
         self.assertIn('      "patternId" : "VALTAN_OTHER",', text)
         self.assertIn('      "marker" : "KEEP-EXACT",', text)
         self.assert_shared_product_unchanged()
-        self.assertEqual(["PublishV2", "ValidateV2"], self.projector_modes())
+        self.assertEqual(["PublishV2", "Validate"], self.projector_modes())
         self.assertEqual(
             self.presentation.read_bytes(),
             (self.repo / "Published.presentation.json").read_bytes(),
@@ -327,7 +327,7 @@ class ValtanPatternEffectUnlinkTests(unittest.TestCase):
         )
         self.assert_shared_product_unchanged()
         self.assertEqual(
-            ["PublishV2", "ValidateV2", "PublishV2"], self.projector_modes()
+            ["PublishV2", "Validate", "PublishV2"], self.projector_modes()
         )
 
     def test_post_replace_verification_failure_uses_preserved_backup(self) -> None:
@@ -355,7 +355,7 @@ class ValtanPatternEffectUnlinkTests(unittest.TestCase):
         self.assertIn('"scope": "CONCURRENT_EDIT"', concurrent_text)
         self.assertNotEqual(self.original_presentation, self.presentation.read_bytes())
         self.assert_shared_product_unchanged()
-        self.assertEqual(["PublishV2", "ValidateV2"], self.projector_modes())
+        self.assertEqual(["PublishV2", "Validate"], self.projector_modes())
 
     def test_utf8_bom_is_rejected_without_writes(self) -> None:
         bom_source = b"\xef\xbb\xbf" + self.original_presentation

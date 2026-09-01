@@ -42,6 +42,7 @@ namespace
 		"Data/Valtan/Valtan.gameplay.json";
 	constexpr char VALTAN_PRESENTATION_SOURCE_PATH[] =
 		"Data/Valtan/Valtan.presentation.json";
+	constexpr std::uint32_t VALTAN_CANONICAL_SAVE_LOCK_TIMEOUT_SECONDS = 30u;
 	constexpr std::array<const char*, 8u> VALTAN_WARP_RUSH_STAGE_IDS = {
 		"STEP_02", "STEP_03", "STEP_04", "STEP_05",
 		"STEP_06", "STEP_07", "STEP_08", "STEP_09" };
@@ -329,6 +330,34 @@ namespace
 		const auto begin = std::find_if_not(value.begin(), value.end(), isWhitespace);
 		const auto end = std::find_if_not(value.rbegin(), value.rend(), isWhitespace).base();
 		return begin < end ? std::string(begin, end) : std::string{};
+	}
+
+	std::string SummarizePipelineOutput(const std::string& captured)
+	{
+		const std::string trimmed = TrimWhitespace(captured);
+		std::string flattened;
+		flattened.reserve((std::min)(trimmed.size(), std::size_t{ 1200u }));
+		bool previousWhitespace = false;
+		for (const unsigned char character : trimmed)
+		{
+			const bool whitespace = 0 != std::isspace(character);
+			if (whitespace)
+			{
+				if (!previousWhitespace)
+					flattened.push_back(' ');
+			}
+			else
+			{
+				flattened.push_back(static_cast<char>(character));
+			}
+			previousWhitespace = whitespace;
+			if (flattened.size() >= 1200u)
+			{
+				flattened += " ...";
+				break;
+			}
+		}
+		return flattened;
 	}
 
 	bool IsLowerSha256(const std::string& value)
@@ -1064,6 +1093,26 @@ namespace
 		{
 			status = "Manual Stage topology patch requires one admitted MANUAL_SERVER_AUDITION with 1..64 Stages.";
 			return false;
+		}
+		/* Complex authored boss graphs may still be exposed as manual Server
+		   auditions even though their TIMEOUT edges are intentionally not one
+		   linear Stage chain.  Animation/effect/sound-only Save must not try to
+		   reinterpret that unchanged graph as a manual topology edit. */
+		const bool stableTopology =
+			current.Stages.size() == loaded.Stages.size() &&
+			std::equal(
+				current.Stages.begin(), current.Stages.end(),
+				loaded.Stages.begin(),
+				[](const VALTAN_STAGE_VIEW& currentStage,
+					const VALTAN_STAGE_VIEW& loadedStage)
+				{
+					return currentStage.strStageId == loadedStage.strStageId &&
+						currentStage.strActionId == loadedStage.strActionId;
+				});
+		if (stableTopology)
+		{
+			status.clear();
+			return true;
 		}
 		std::string topologyStatus;
 		if (!IsValtanManualStageTopologyLinear(current, topologyStatus) ||
@@ -1902,6 +1951,30 @@ bool Client::CBalanceTool::Reload_ValtanSource(std::string& status)
 	return true;
 }
 
+bool Client::CBalanceTool::Discard_ValtanCompositionDraftAndReload(
+	std::string& status)
+{
+	const bool bDiscardedDraft = m_dirty;
+	if (!Reload())
+	{
+		status = m_status.empty() ?
+			"Valtan composition discard/reload failed before commit; the previous Balance draft was preserved." :
+			m_status;
+		return false;
+	}
+	if (VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED != m_valtanSourceJoin.state)
+	{
+		status =
+			"Valtan composition discard/reload did not admit the joined gameplay/presentation closure: " +
+			m_valtanSourceJoin.diagnostic;
+		return false;
+	}
+	status = bDiscardedDraft ?
+		"Discarded the unsaved Balance-owned Valtan composition draft and reloaded the physical source." :
+		"Reloaded the Balance-owned Valtan composition source; no draft required discard.";
+	return true;
+}
+
 bool Client::CBalanceTool::
 	Verify_ValtanCanonicalSourceRevision_WhileAdmitted(
 		const CValtanCanonicalProductReadAdmission& admission,
@@ -2404,6 +2477,85 @@ bool Client::CBalanceTool::Get_ValtanAuthoringState(
 	status = dirty ?
 		"Effective joined authoring draft has unsaved changes." :
 		"Effective joined authoring source is clean.";
+	return true;
+}
+
+bool Client::CBalanceTool::Get_ValtanScriptedSequenceDraft(
+	std::vector<std::string>& patternIds,
+	std::uint32_t& interStepPursuitMs,
+	std::string& status) const
+{
+	if (!Require_ValtanAuthoringAdmission(
+			"Valtan scripted sequence draft", status))
+	{
+		return false;
+	}
+	if (m_valtanPatternTree.strScriptedSequenceId.empty() ||
+		m_valtanPatternTree.strScriptedSequenceMode !=
+			"ORDERED_ONCE_THEN_IDLE" ||
+		m_valtanPatternTree.ScriptedSequencePatternIds.empty() ||
+		m_valtanPatternTree.iScriptedSequenceInterStepPursuitMs < 100u ||
+		m_valtanPatternTree.iScriptedSequenceInterStepPursuitMs > 10000u)
+	{
+		status = "Valtan gameplay scriptedSequence is not admitted.";
+		return false;
+	}
+	patternIds = m_valtanPatternTree.ScriptedSequencePatternIds;
+	interStepPursuitMs =
+		m_valtanPatternTree.iScriptedSequenceInterStepPursuitMs;
+	status = "Valtan gameplay scriptedSequence draft is ready.";
+	return true;
+}
+
+bool Client::CBalanceTool::Set_ValtanScriptedSequenceDraft(
+	const std::vector<std::string>& patternIds,
+	const std::uint32_t interStepPursuitMs,
+	std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission(
+			"Valtan scripted sequence edit", status))
+	{
+		return false;
+	}
+	if (patternIds.empty() || patternIds.size() > 255u ||
+		interStepPursuitMs < 100u || interStepPursuitMs > 10000u)
+	{
+		status =
+			"Valtan scriptedSequence requires 1..255 Patterns and a 100..10000 ms pursuit interval.";
+		return false;
+	}
+	for (std::size_t index = 0u; index < patternIds.size(); ++index)
+	{
+		const std::string& patternId = patternIds[index];
+		if (!IsValtanStableAuthoringId(patternId) ||
+			nullptr == FindValtanPattern(m_valtanPatternTree, patternId))
+		{
+			status = "Valtan scriptedSequence Pattern is not in the canonical gameplay inventory: " +
+				patternId + ".";
+			return false;
+		}
+		if ("VALTAN_ENTRANCE_CINEMATIC" == patternId &&
+			(0u != index || 1u != static_cast<std::size_t>(std::count(
+				patternIds.begin(), patternIds.end(), patternId))))
+		{
+			status =
+				"VALTAN_ENTRANCE_CINEMATIC may occur exactly once at scriptedSequence Pattern 01.";
+			return false;
+		}
+	}
+	if (m_valtanPatternTree.ScriptedSequencePatternIds == patternIds &&
+		m_valtanPatternTree.iScriptedSequenceInterStepPursuitMs ==
+			interStepPursuitMs)
+	{
+		status = "Valtan gameplay scriptedSequence is unchanged.";
+		return true;
+	}
+	m_valtanPatternTree.ScriptedSequencePatternIds = patternIds;
+	m_valtanPatternTree.iScriptedSequenceInterStepPursuitMs =
+		interStepPursuitMs;
+	MarkDirty(true);
+	status =
+		"Staged the Valtan gameplay scriptedSequence. Save commits this order with the Pattern definitions and generated Products.";
 	return true;
 }
 
@@ -3434,6 +3586,157 @@ bool Client::CBalanceTool::Set_ValtanStageDraft(
 	status = "Staged typed Server gameplay edit for " + patternId + "/" +
 		stageId +
 		". Press Save to validate the joined revision before Product generation.";
+	return true;
+}
+
+bool Client::CBalanceTool::Set_ValtanAnimationTransferDrafts(
+	const std::string& patternId,
+	const std::string& sourceStageId,
+	const PATTERN_STAGE_EDIT& sourceStage,
+	const std::string& targetStageId,
+	const PATTERN_STAGE_EDIT& targetStage,
+	std::string& status)
+{
+	if (sourceStageId.empty() || targetStageId.empty() ||
+		sourceStageId == targetStageId)
+	{
+		status =
+			"Animation transfer requires two distinct stable Stage owners.";
+		return false;
+	}
+	if (!Require_ValtanAuthoringAdmission(
+			"Valtan Animation Stage transfer", status))
+	{
+		return false;
+	}
+	VALTAN_PATTERN_VIEW* const pPattern =
+		FindValtanPattern(m_valtanPatternTree, patternId);
+	if (nullptr == pPattern || !pPattern->bAuthoringMasterManaged ||
+		nullptr == FindValtanStage(*pPattern, sourceStageId) ||
+		nullptr == FindValtanStage(*pPattern, targetStageId))
+	{
+		status =
+			"Animation transfer requires two admitted Stages in one authoring-master Pattern: " +
+			patternId + ".";
+		return false;
+	}
+
+	/* Both ordinary setters are fail-before-mutation for their own Stage.  Keep
+	   the enclosing Pattern plus dirty metadata so the two-Stage command also
+	   has rollback semantics if the second admission ever rejects. */
+	const VALTAN_PATTERN_VIEW PatternBefore = *pPattern;
+	const bool bDirtyBefore = m_dirty;
+	const std::uint64_t iDraftGenerationBefore = m_valtanDraftGeneration;
+	const bool bValidatedBefore = m_valtanDraftValidated;
+	const std::string CandidateRevisionBefore = m_valtanCandidateRevision;
+	const std::string CandidateApplyClassBefore = m_valtanCandidateApplyClass;
+	std::string SourceStatus;
+	if (!Set_ValtanStageDraft(
+			patternId, sourceStageId, sourceStage, SourceStatus))
+	{
+		status = "Animation transfer source rejected: " + SourceStatus;
+		return false;
+	}
+	std::string TargetStatus;
+	if (!Set_ValtanStageDraft(
+			patternId, targetStageId, targetStage, TargetStatus))
+	{
+		VALTAN_PATTERN_VIEW* const pRollbackPattern =
+			FindValtanPattern(m_valtanPatternTree, patternId);
+		if (nullptr != pRollbackPattern)
+			*pRollbackPattern = PatternBefore;
+		m_dirty = bDirtyBefore;
+		m_valtanDraftGeneration = iDraftGenerationBefore;
+		m_valtanDraftValidated = bValidatedBefore;
+		m_valtanCandidateRevision = CandidateRevisionBefore;
+		m_valtanCandidateApplyClass = CandidateApplyClassBefore;
+		status =
+			"Animation transfer target rejected; the source Stage was restored: " +
+			TargetStatus;
+		return false;
+	}
+
+	/* One drag is one document command even though two Stage setters performed
+	   the value validation. */
+	m_dirty = true;
+	m_valtanDraftGeneration = iDraftGenerationBefore + 1u;
+	m_valtanDraftValidated = false;
+	m_valtanCandidateRevision.clear();
+	m_valtanCandidateApplyClass.clear();
+	status = "Staged one atomic cross-Stage Animation occurrence transfer.";
+	return true;
+}
+
+bool Client::CBalanceTool::Set_ValtanStageSequenceDraft(
+	const std::string& patternId,
+	const std::string& stageId,
+	const std::uint32_t sourceActionId,
+	const std::uint32_t sourceSequenceIndex,
+	const PATTERN_STAGE_EDIT& candidate,
+	std::string& status)
+{
+	if (0u == sourceActionId || sourceSequenceIndex > 4096u)
+	{
+		status =
+			"Valtan Sequence source requires action 1..UINT32 and sequence 0..4096.";
+		return false;
+	}
+	VALTAN_PATTERN_VIEW* pattern =
+		FindValtanPattern(m_valtanPatternTree, patternId);
+	if (nullptr == pattern || !pattern->bAuthoringMasterManaged)
+	{
+		status =
+			"Valtan Sequence assignment requires one authoring-master Pattern: " +
+			patternId + ".";
+		return false;
+	}
+	const auto ExistingSource = std::find_if(
+		pattern->PresentationSources.begin(), pattern->PresentationSources.end(),
+		[sourceActionId, sourceSequenceIndex](
+			const VALTAN_PRESENTATION_SOURCE_VIEW& Source)
+		{
+			return Source.iSourceActionId == sourceActionId &&
+				Source.iSequenceIndex == sourceSequenceIndex;
+		});
+	const bool_t bSourceAlreadyDeclared =
+		pattern->PresentationSources.end() != ExistingSource;
+	const std::string strRole = "REFERENCE_" +
+		std::to_string(sourceActionId) + "_" +
+		std::to_string(sourceSequenceIndex);
+	if (!bSourceAlreadyDeclared && std::any_of(
+			pattern->PresentationSources.begin(), pattern->PresentationSources.end(),
+			[&strRole](const VALTAN_PRESENTATION_SOURCE_VIEW& Source)
+			{ return Source.strRole == strRole; }))
+	{
+		status =
+			"Valtan Sequence source role collides with another exact tuple: " +
+			strRole + ".";
+		return false;
+	}
+
+	/* Set_ValtanStageDraft validates its value copy and mutates only after every
+	   Stage/dependency check succeeds.  Source insertion below is prevalidated
+	   and cannot fail, so the two changes form one in-memory transaction. */
+	if (!Set_ValtanStageDraft(patternId, stageId, candidate, status))
+		return false;
+	if (!bSourceAlreadyDeclared)
+	{
+		if (pattern->SourceActionIds.end() == std::find(
+				pattern->SourceActionIds.begin(), pattern->SourceActionIds.end(),
+				sourceActionId))
+		{
+			pattern->SourceActionIds.push_back(sourceActionId);
+		}
+		VALTAN_PRESENTATION_SOURCE_VIEW Source;
+		Source.iSourceActionId = sourceActionId;
+		Source.iSequenceIndex = sourceSequenceIndex;
+		Source.strRole = strRole;
+		pattern->PresentationSources.push_back(std::move(Source));
+		MarkDirty(true);
+		status += " Added exact Sequence provenance " +
+			std::to_string(sourceActionId) + "/" +
+			std::to_string(sourceSequenceIndex) + ".";
+	}
 	return true;
 }
 
@@ -4626,11 +4929,14 @@ bool Client::CBalanceTool::RestoreValtanSavedAuthoring(
 		validationResult.authoringRevision != authoringRevision ||
 		!validationResult.candidateRevision.empty())
 	{
+		const std::string rawFailure = SummarizePipelineOutput(captured);
 		status = !validationResult.diagnostic.empty() ?
 			validationResult.diagnostic :
+			(!processSucceeded && !rawFailure.empty() ?
+				"Valtan pipeline failed before structured JSON: " + rawFailure :
 			(!parseStatus.empty() ? parseStatus :
 				"Saved Valtan authoring empty-draft validation failed: " +
-				processStatus);
+				processStatus));
 		return false;
 	}
 
@@ -7257,8 +7563,12 @@ bool Client::CBalanceTool::QueryValtanSourceRevision(
 	VALTAN_PIPELINE_RESULT result;
 	if (!ParseValtanPipelineResult(captured, result, status))
 	{
-		if (!processSucceeded && captured.empty())
-			status = processStatus;
+		if (!processSucceeded)
+		{
+			const std::string rawFailure = SummarizePipelineOutput(captured);
+			status = rawFailure.empty() ? processStatus :
+				"Valtan pipeline failed before structured JSON: " + rawFailure;
+		}
 		return false;
 	}
 	if (!processSucceeded || !result.ok || result.command != "SOURCE_MANIFEST" ||
@@ -7377,6 +7687,45 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 			<< Quote(field) << ", \"value\": " << value << " }";
 		append(operation);
 	};
+
+	if (m_valtanPatternTree.strScriptedSequenceId !=
+			m_loadedValtanPatternTree.strScriptedSequenceId ||
+		m_valtanPatternTree.strScriptedSequenceMode !=
+			m_loadedValtanPatternTree.strScriptedSequenceMode ||
+		m_valtanPatternTree.strScriptedSequenceId.empty() ||
+		m_valtanPatternTree.strScriptedSequenceMode !=
+			"ORDERED_ONCE_THEN_IDLE")
+	{
+		status =
+			"Valtan scriptedSequence stable identity changed during editing.";
+		return false;
+	}
+	if (m_valtanPatternTree.ScriptedSequencePatternIds !=
+			m_loadedValtanPatternTree.ScriptedSequencePatternIds ||
+		m_valtanPatternTree.iScriptedSequenceInterStepPursuitMs !=
+			m_loadedValtanPatternTree.iScriptedSequenceInterStepPursuitMs)
+	{
+		std::ostringstream operation;
+		operation << "    { \"op\": \"SET_SCRIPTED_SEQUENCE\", "
+			"\"sequenceId\": " <<
+			Quote(m_valtanPatternTree.strScriptedSequenceId)
+			<< ", \"mode\": " <<
+			Quote(m_valtanPatternTree.strScriptedSequenceMode)
+			<< ", \"interStepPursuitMs\": " <<
+			m_valtanPatternTree.iScriptedSequenceInterStepPursuitMs
+			<< ", \"patternIds\": [";
+		for (std::size_t index = 0u;
+			index < m_valtanPatternTree.ScriptedSequencePatternIds.size();
+			++index)
+		{
+			if (0u != index)
+				operation << ", ";
+			operation << Quote(
+				m_valtanPatternTree.ScriptedSequencePatternIds[index]);
+		}
+		operation << "] }";
+		append(operation);
+	}
 
 	const auto currentBoss = std::find_if(m_bosses.begin(), m_bosses.end(),
 		[](const BOSS_EDIT& boss) { return boss.archetypeId == "BOSS_VALTAN"; });
@@ -7585,6 +7934,84 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 					<< ", \"maximumRangeM\": "
 					<< FormatJsonNumber(pattern.fMaximumRange) << " }";
 				append(operation);
+			}
+
+			const bool_t bSourceActionPrefixPreserved =
+				pattern.SourceActionIds.size() >= loaded->SourceActionIds.size() &&
+				std::equal(
+					loaded->SourceActionIds.begin(), loaded->SourceActionIds.end(),
+					pattern.SourceActionIds.begin());
+			const bool_t bPresentationSourcePrefixPreserved =
+				pattern.PresentationSources.size() >=
+					loaded->PresentationSources.size() &&
+				std::equal(
+					loaded->PresentationSources.begin(),
+					loaded->PresentationSources.end(),
+					pattern.PresentationSources.begin(),
+					[](const VALTAN_PRESENTATION_SOURCE_VIEW& Left,
+						const VALTAN_PRESENTATION_SOURCE_VIEW& Right)
+					{
+						return Left.iSourceActionId == Right.iSourceActionId &&
+							Left.iSequenceIndex == Right.iSequenceIndex &&
+							Left.strRole == Right.strRole;
+					});
+			if (!bSourceActionPrefixPreserved ||
+				!bPresentationSourcePrefixPreserved)
+			{
+				status =
+					"Valtan Sequence provenance edit may append exact sources but cannot remove, reorder, or rewrite an existing source: " +
+					pattern.strPatternId + ".";
+				return false;
+			}
+			for (std::size_t iSource = loaded->PresentationSources.size();
+				iSource < pattern.PresentationSources.size(); ++iSource)
+			{
+				const VALTAN_PRESENTATION_SOURCE_VIEW& Source =
+					pattern.PresentationSources[iSource];
+				const std::string strExpectedRole = "REFERENCE_" +
+					std::to_string(Source.iSourceActionId) + "_" +
+					std::to_string(Source.iSequenceIndex);
+				if (Source.strRole != strExpectedRole ||
+					pattern.SourceActionIds.end() == std::find(
+						pattern.SourceActionIds.begin(),
+						pattern.SourceActionIds.end(),
+						Source.iSourceActionId))
+				{
+					status =
+						"Valtan appended Sequence provenance requires its deterministic exact-tuple role and matching gameplay sourceActionId: " +
+						pattern.strPatternId + ".";
+					return false;
+				}
+				std::ostringstream operation;
+				operation <<
+					"    { \"op\": \"ADD_PATTERN_SEQUENCE_SOURCE\", "
+					"\"patternId\": " << Quote(pattern.strPatternId)
+					<< ", \"sourceActionId\": " << Source.iSourceActionId
+					<< ", \"sequenceIndex\": " << Source.iSequenceIndex
+					<< ", \"role\": " << Quote(Source.strRole) << " }";
+				append(operation);
+			}
+			for (std::size_t iSource = loaded->SourceActionIds.size();
+				iSource < pattern.SourceActionIds.size(); ++iSource)
+			{
+				const uint32_t iSourceActionId = pattern.SourceActionIds[iSource];
+				const bool_t bHasAppendedPresentationSource = std::any_of(
+					pattern.PresentationSources.begin() +
+						loaded->PresentationSources.size(),
+					pattern.PresentationSources.end(),
+					[iSourceActionId](
+						const VALTAN_PRESENTATION_SOURCE_VIEW& Source)
+					{
+						return Source.iSourceActionId == iSourceActionId;
+					});
+				if (!bHasAppendedPresentationSource)
+				{
+					status =
+						"Valtan appended gameplay sourceActionId has no exact presentation source tuple: " +
+						pattern.strPatternId + "/" +
+						std::to_string(iSourceActionId) + ".";
+					return false;
+				}
 			}
 
 			VALTAN_PATTERN_VIEW topologyBaseline;
@@ -8432,6 +8859,11 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 		return false;
 	std::wstring arguments = L"-Mode " + std::wstring(mode) +
 		L" -DraftPatchPath \"" + patchPath.wstring() + L"\"";
+	if (0 == std::wcscmp(mode, L"CommitCanonicalDraft"))
+	{
+		arguments += L" -LockTimeoutSeconds " +
+			std::to_wstring(VALTAN_CANONICAL_SAVE_LOCK_TIMEOUT_SECONDS);
+	}
 	if (nullptr != pOwnerDrafts)
 	{
 		if (0 != std::wcscmp(mode, L"CommitCanonicalDraft"))
@@ -8508,7 +8940,16 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 	std::string parseStatus;
 	if (!ParseValtanPipelineResult(captured, result, parseStatus))
 	{
-		status = !processSucceeded && captured.empty() ? processStatus : parseStatus;
+		if (!processSucceeded)
+		{
+			const std::string rawFailure = SummarizePipelineOutput(captured);
+			status = rawFailure.empty() ? processStatus :
+				"Valtan pipeline failed before structured JSON: " + rawFailure;
+		}
+		else
+		{
+			status = parseStatus;
+		}
 		return false;
 	}
 	if (!processSucceeded || !result.ok)
@@ -8592,19 +9033,24 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 		if (!Reload())
 		{
 			status =
-				"Pattern files were saved, but the editor could not load them: " +
+				"COMMIT_SUCCEEDED_REOPEN_FAILED: Pattern files were saved, but the editor could not load them: " +
 				m_status;
-			return false;
+			/* The typed command receipt is the durable commit boundary.  A
+			   subsequent editor reopen failure must not be reported as
+			   "Nothing was saved" or invite the caller to repeat a write that
+			   already committed.  Keep the current in-memory draft available for
+			   diagnosis and let the caller retry only the canonical reload. */
+			return true;
 		}
 		if (m_valtanSourceRevision != committedRevision ||
 			VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED !=
 				m_valtanSourceJoin.state)
 		{
 			status =
-				"Pattern files were saved, but the editor loaded a different saved revision than " +
+				"COMMIT_SUCCEEDED_REOPEN_FAILED: Pattern files were saved, but the editor loaded a different saved revision than " +
 				committedRevision.substr(0u, 12u) +
 				". Reload the current files before editing again.";
-			return false;
+			return true;
 		}
 		if (0u != result.changedCount)
 		{
@@ -8613,7 +9059,7 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 					{}, "NOT_ACTIVATED",
 					"Pattern data was saved locally. Restart or re-enter the Server arena to load the saved revision.");
 		}
-		status = "Saved Valtan Pattern data " +
+		status = "COMMITTED_AND_RELOADED: Saved Valtan Pattern data " +
 			committedRevision.substr(0u, 12u) +
 			(0u == result.changedCount ?
 				" with no file changes." :

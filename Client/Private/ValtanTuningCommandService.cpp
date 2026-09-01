@@ -1,22 +1,17 @@
-#include "DataJson.h"
 #include "ValtanTuningCommandService.h"
 
 #include <algorithm>
-#include <fstream>
 #include <limits>
 #include <utility>
 
 #include "Network/PacketWriter.h"
 #if !defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
 #include "NetworkManager.h"
-#include "ProjectDataRoot.h"
 #endif
 
 namespace
 {
-	constexpr uint64_t PUBLISH_TIMEOUT_MILLISECONDS = 120000u;
 	constexpr uint64_t APPLY_TIMEOUT_MILLISECONDS = 10000u;
-	constexpr std::size_t MAX_PUBLISH_OUTPUT_BYTES = 2u * 1024u * 1024u;
 
 	bool Is_LowerSha256(const std::string_view Value)
 	{
@@ -28,79 +23,6 @@ namespace
 			});
 	}
 
-	const Client::DATA_JSON_VALUE* Field(
-		const Client::DATA_JSON_VALUE& Object,
-		const std::string_view Name, const Client::DATA_JSON_TYPE Type)
-	{
-		const auto* Value = Object.Find(Name);
-		return nullptr != Value && Value->Get_Type() == Type ? Value : nullptr;
-	}
-
-	bool Parse_PublishResult(const std::string& Output, const std::string& ExpectedFlow,
-		std::string& CandidateRevision, std::string& ApplyClass, std::string& Status)
-	{
-		using namespace Client;
-		DATA_JSON_VALUE Root;
-		DATA_JSON_PARSE_LIMITS Limits;
-		Limits.iMaximumBytes = MAX_PUBLISH_OUTPUT_BYTES;
-		Limits.iMaximumDepth = 32u;
-		Limits.iMaximumValues = 65536u;
-		if (!CDataJson::Parse(Output, Root, Status, Limits) || !Root.Is_Object())
-		{
-			Status = "Saved Flow publisher returned malformed JSON: " + Status;
-			return false;
-		}
-		const auto* Schema = Field(Root, "schema", DATA_JSON_TYPE::STRING);
-		const auto* Version = Field(Root, "formatVersion", DATA_JSON_TYPE::NUMBER);
-		const auto* Command = Field(Root, "command", DATA_JSON_TYPE::STRING);
-		const auto* Ok = Field(Root, "ok", DATA_JSON_TYPE::BOOLEAN);
-		const auto* Payload = Field(Root, "payload", DATA_JSON_TYPE::OBJECT);
-		const auto* Errors = Field(Root, "errors", DATA_JSON_TYPE::ARRAY);
-		if (nullptr == Schema || Schema->Get_String() != "lostark.valtan-tuning-command-result" ||
-			nullptr == Version || Version->Was_FloatingPointToken() || Version->Get_Number() != 1.0 ||
-			nullptr == Command || Command->Get_String() != "PUBLISH_SAVED_FLOW" ||
-			nullptr == Ok || nullptr == Payload || nullptr == Errors)
-		{
-			Status = "Saved Flow publisher returned an invalid command/result schema.";
-			return false;
-		}
-		if (!Ok->Get_Boolean() || !Errors->Get_Array().empty())
-		{
-			Status = "Saved Flow publish failed; the saved draft is retained and Server application was not requested.";
-			for (const auto& Error : Errors->Get_Array())
-			{
-				const auto* Code = Field(Error, "errorCode", DATA_JSON_TYPE::STRING);
-				const auto* Message = Field(Error, "message", DATA_JSON_TYPE::STRING);
-				if (nullptr != Code) Status += " " + Code->Get_String() + ":";
-				if (nullptr != Message) Status += " " + Message->Get_String();
-				if (Status.size() > 4096u)
-				{
-					Status.resize(4096u);
-					break;
-				}
-			}
-			return false;
-		}
-		const auto* Flow = Field(*Payload, "flowRevision", DATA_JSON_TYPE::STRING);
-		const auto* Source = Field(Root, "sourceRevision", DATA_JSON_TYPE::STRING);
-		const auto* Candidate = Field(Root, "candidateRevision", DATA_JSON_TYPE::STRING);
-		const auto* Apply = Field(*Payload, "applyClass", DATA_JSON_TYPE::STRING);
-		const auto* Joined = Field(*Payload, "splitJoinValidated", DATA_JSON_TYPE::BOOLEAN);
-		if (nullptr == Flow || Flow->Get_String() != ExpectedFlow ||
-			nullptr == Source || !Is_LowerSha256(Source->Get_String()) ||
-			nullptr == Candidate || !Is_LowerSha256(Candidate->Get_String()) ||
-			nullptr == Apply || (Apply->Get_String() != "HOT_RELOAD" &&
-				Apply->Get_String() != "ENCOUNTER_RESET" && Apply->Get_String() != "SERVER_RESTART") ||
-			nullptr == Joined || !Joined->Get_Boolean())
-		{
-			Status = "Saved Flow publisher identity, source join, or apply class does not match this save.";
-			return false;
-		}
-		CandidateRevision = Candidate->Get_String();
-		ApplyClass = Apply->Get_String();
-		Status.clear();
-		return true;
-	}
 }
 
 Client::CValtanTuningCommandService& Client::CValtanTuningCommandService::Get()
@@ -109,45 +31,10 @@ Client::CValtanTuningCommandService& Client::CValtanTuningCommandService::Get()
 	return Service;
 }
 
-Client::CValtanTuningCommandService::~CValtanTuningCommandService()
-{
-#if !defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
-	// Closing the editor must not kill a helper inside its durable transaction.
-	if (nullptr != m_hPublishProcess)
-		CloseHandle(m_hPublishProcess);
-#endif
-}
-
 bool Client::CValtanTuningCommandService::Has_PendingCommand() const
 {
-	return m_bPublishing || m_bApplyPending ||
+	return m_bApplyPending ||
 		Read_RevisionObservation().bOtherTransactionPending;
-}
-
-bool Client::CValtanTuningCommandService::Is_SavedPatternFlowServerActive(
-	const std::string_view strSavedRevision) const
-{
-	using namespace LostArk::Shared;
-	const bool bTerminal =
-		VALTAN_TUNING_COMMAND_STATE::COMMITTED == m_Snapshot.eState ||
-		VALTAN_TUNING_COMMAND_STATE::ALREADY_ACTIVE == m_Snapshot.eState;
-	GameplayDataRevision CandidateRevision;
-	if (!Is_LowerSha256(strSavedRevision) ||
-		m_Snapshot.strFlowRevision != strSavedRevision || !bTerminal ||
-		!Try_Parse_GameplayDataRevision(
-			m_Snapshot.strCandidateRevision, CandidateRevision))
-	{
-		return false;
-	}
-
-	const REVISION_OBSERVATION Observation = Read_RevisionObservation();
-	return Observation.bConnected &&
-		0u != Observation.iConnectionGeneration &&
-		0u != Observation.iWorldInboundGeneration &&
-		m_Snapshot.iConnectionGeneration == Observation.iConnectionGeneration &&
-		m_Snapshot.iWorldInboundGeneration == Observation.iWorldInboundGeneration &&
-		Observation.ServerActiveRevision.Is_Valid() &&
-		Observation.ServerActiveRevision == CandidateRevision;
 }
 
 void Client::CValtanTuningCommandService::
@@ -173,11 +60,28 @@ void Client::CValtanTuningCommandService::
 bool Client::CValtanTuningCommandService::
 	Is_LatestGameplaySourceServerActive(std::string& strOutStatus) const
 {
-	using namespace LostArk::Shared;
 	if (!m_bGameplaySourceActivationObserved)
 	{
 		strOutStatus.clear();
 		return true;
+	}
+	LostArk::Shared::GameplayDataRevision ignoredRevision{};
+	return Try_GetLatestGameplaySourceServerActiveRevision(
+		ignoredRevision, strOutStatus);
+}
+
+bool Client::CValtanTuningCommandService::
+	Try_GetLatestGameplaySourceServerActiveRevision(
+		LostArk::Shared::GameplayDataRevision& outRevision,
+		std::string& strOutStatus) const
+{
+	using namespace LostArk::Shared;
+	outRevision = {};
+	if (!m_bGameplaySourceActivationObserved)
+	{
+		strOutStatus =
+			"No saved gameplay source activation expectation is registered.";
+		return false;
 	}
 
 	GameplayDataRevision CandidateRevision;
@@ -197,6 +101,7 @@ bool Client::CValtanTuningCommandService::
 		Observation.ServerActiveRevision.Is_Valid() &&
 		Observation.ServerActiveRevision == CandidateRevision)
 	{
+		outRevision = CandidateRevision;
 		strOutStatus.clear();
 		return true;
 	}
@@ -210,39 +115,6 @@ bool Client::CValtanTuningCommandService::
 	if (!m_strGameplayActivationStatus.empty())
 		strOutStatus += " " + m_strGameplayActivationStatus;
 	return false;
-}
-
-bool Client::CValtanTuningCommandService::Publish_SavedPatternFlow(
-	const std::string_view strSavedRevision, std::string& strOutStatus)
-{
-	const std::string SavedRevision(strSavedRevision);
-	Update();
-	if (!Is_ActivationEnabled())
-	{
-		strOutStatus = "Saved Flow publication is a Debug editor command.";
-		return false;
-	}
-	if (!Is_LowerSha256(SavedRevision))
-	{
-		strOutStatus = "Save a valid Flow revision before publishing the Product order.";
-		return false;
-	}
-	if (Has_PendingCommand() || Read_RevisionObservation().bOtherTransactionPending)
-	{
-		strOutStatus = "A Valtan publish or revision transaction is still pending; the current command is retained.";
-		return false;
-	}
-	if (!Start_PublishProcess(SavedRevision, strOutStatus))
-		return false;
-	VALTAN_TUNING_COMMAND_SNAPSHOT Pending;
-	Pending.eState = VALTAN_TUNING_COMMAND_STATE::PUBLISHING;
-	Pending.strFlowRevision = SavedRevision;
-	Pending.strStatus = "Saved Flow is publishing. The Server revision is unchanged until application is confirmed.";
-	m_Snapshot = std::move(Pending);
-	m_bPublishing = true;
-	m_iPublishStartedAtMilliseconds = Now_Milliseconds();
-	strOutStatus = m_Snapshot.strStatus;
-	return true;
 }
 
 bool Client::CValtanTuningCommandService::ApplyCandidate(
@@ -349,28 +221,6 @@ bool Client::CValtanTuningCommandService::Submit_Candidate(
 	return true;
 }
 
-void Client::CValtanTuningCommandService::Consume_PublishResult(
-	const uint32_t iExitCode, const std::string& strOutput)
-{
-	std::string Candidate;
-	std::string ApplyClass;
-	std::string Status;
-	const bool Parsed = Parse_PublishResult(strOutput, m_Snapshot.strFlowRevision,
-		Candidate, ApplyClass, Status);
-	if (!Parsed || iExitCode != 0u)
-	{
-		m_Snapshot.eState = VALTAN_TUNING_COMMAND_STATE::FAILED;
-		m_Snapshot.strStatus = !Status.empty() ? Status :
-			"Saved Flow publisher exited with code " + std::to_string(iExitCode) +
-			". Server application was not requested; the saved draft is retained.";
-		return;
-	}
-	m_Snapshot.strCandidateRevision = std::move(Candidate);
-	m_Snapshot.strApplyClass = std::move(ApplyClass);
-	m_Snapshot.eState = VALTAN_TUNING_COMMAND_STATE::PUBLISHED_APPLY_NEEDED;
-	Submit_Candidate(Read_RevisionObservation(), Status);
-}
-
 void Client::CValtanTuningCommandService::Refresh_ActiveCandidate(
 	const REVISION_OBSERVATION& Observation)
 {
@@ -403,31 +253,6 @@ void Client::CValtanTuningCommandService::Refresh_ActiveCandidate(
 void Client::CValtanTuningCommandService::Update()
 {
 	using namespace LostArk::Shared;
-	if (m_bPublishing)
-	{
-		bool Finished = false;
-		uint32_t ExitCode = 1u;
-		std::string Output;
-		std::string Status;
-		const bool Polled = Poll_PublishProcess(Finished, ExitCode, Output, Status);
-		if (Finished)
-		{
-			m_bPublishing = false;
-			if (Polled)
-				Consume_PublishResult(ExitCode, Output);
-			else
-			{
-				m_Snapshot.eState = VALTAN_TUNING_COMMAND_STATE::FAILED;
-				m_Snapshot.strStatus = std::move(Status);
-			}
-		}
-		else if (!Polled || Now_Milliseconds() - m_iPublishStartedAtMilliseconds >= PUBLISH_TIMEOUT_MILLISECONDS)
-		{
-			m_Snapshot.eState = VALTAN_TUNING_COMMAND_STATE::UNCONFIRMED;
-			m_Snapshot.strStatus = !Status.empty() ? Status :
-				"Publisher outcome is still unconfirmed. Its owned process is retained; another Save/Apply is blocked until it exits.";
-		}
-	}
 	const REVISION_OBSERVATION Observation = Read_RevisionObservation();
 	if (m_bApplyPending)
 	{
@@ -540,153 +365,12 @@ bool Client::CValtanTuningCommandService::Send_PrepareRequest(
 #endif
 }
 
-bool Client::CValtanTuningCommandService::Start_PublishProcess(
-	const std::string_view strFlowRevision, std::string& strOutStatus)
-{
-#if defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
-	if (!m_HarnessInput.bPublishStartSucceeds)
-	{
-		strOutStatus = "Could not start the saved Flow publisher.";
-		return false;
-	}
-	m_HarnessInput.PublishedFlowRevisions.emplace_back(strFlowRevision);
-	return true;
-#else
-	std::error_code Error;
-	const auto Root = std::filesystem::weakly_canonical(CProjectDataRoot::Get().parent_path(), Error);
-	const auto Script = Root / L"Tools/ValtanPipeline/Publish-ValtanTuningRuntimeSet.ps1";
-	if (Error || Root.empty() || !std::filesystem::is_regular_file(Script, Error))
-	{
-		strOutStatus = "The fixed saved Flow publisher script could not be resolved.";
-		return false;
-	}
-	const auto TemporaryRoot = std::filesystem::temp_directory_path(Error);
-	if (Error)
-	{
-		strOutStatus = "Could not resolve the publisher output directory: " + Error.message();
-		return false;
-	}
-	const auto OutputPath = TemporaryRoot / (L"LostArk.ValtanSavedFlow." +
-		std::to_wstring(GetCurrentProcessId()) + L"." + std::to_wstring(GetTickCount64()) + L".json");
-	SECURITY_ATTRIBUTES Security{};
-	Security.nLength = sizeof(Security);
-	Security.bInheritHandle = TRUE;
-	const HANDLE Output = CreateFileW(OutputPath.c_str(), GENERIC_WRITE,
-		FILE_SHARE_READ | FILE_SHARE_DELETE, &Security, CREATE_NEW, FILE_ATTRIBUTE_TEMPORARY, nullptr);
-	if (Output == INVALID_HANDLE_VALUE)
-	{
-		strOutStatus = "Could not create publisher output (Win32 " + std::to_string(GetLastError()) + ").";
-		return false;
-	}
-	const HANDLE Input = CreateFileW(L"NUL", GENERIC_READ,
-		FILE_SHARE_READ | FILE_SHARE_WRITE, &Security, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-	if (Input == INVALID_HANDLE_VALUE)
-	{
-		const DWORD Code = GetLastError();
-		CloseHandle(Output);
-		std::filesystem::remove(OutputPath, Error);
-		strOutStatus = "Could not create publisher input (Win32 " + std::to_string(Code) + ").";
-		return false;
-	}
-	// Only the validated hex revision varies; script and repository paths are fixed.
-	std::wstring Command = L"powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"" +
-		Script.wstring() + L"\" -Mode PublishSavedFlow -ExpectedFlowRevision " +
-		std::wstring(strFlowRevision.begin(), strFlowRevision.end()) + L" -RepositoryRoot \"" + Root.wstring() + L"\"";
-	std::vector<wchar_t> MutableCommand(Command.begin(), Command.end());
-	MutableCommand.push_back(L'\0');
-	STARTUPINFOW Startup{};
-	Startup.cb = sizeof(Startup);
-	Startup.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-	Startup.wShowWindow = SW_HIDE;
-	Startup.hStdInput = Input;
-	Startup.hStdOutput = Output;
-	Startup.hStdError = Output;
-	PROCESS_INFORMATION Process{};
-	const BOOL Created = CreateProcessW(nullptr, MutableCommand.data(), nullptr,
-		nullptr, TRUE, CREATE_NO_WINDOW, nullptr, Root.c_str(), &Startup, &Process);
-	const DWORD Code = Created ? ERROR_SUCCESS : GetLastError();
-	CloseHandle(Input);
-	CloseHandle(Output);
-	if (!Created)
-	{
-		std::filesystem::remove(OutputPath, Error);
-		strOutStatus = "Could not start the saved Flow publisher (Win32 " + std::to_string(Code) + ").";
-		return false;
-	}
-	CloseHandle(Process.hThread);
-	m_hPublishProcess = Process.hProcess;
-	m_PublishOutputPath = OutputPath;
-	return true;
-#endif
-}
-
-bool Client::CValtanTuningCommandService::Poll_PublishProcess(
-	bool& bFinished, uint32_t& iExitCode, std::string& strOutput, std::string& strOutStatus)
-{
-	bFinished = false;
-#if defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
-	if (!m_HarnessInput.bPublishPollSucceeds)
-	{
-		strOutStatus = "Publisher process status is unconfirmed; the current operation is retained.";
-		return false;
-	}
-	if (m_HarnessInput.bPublishRunning)
-		return true;
-	bFinished = true;
-	if (!m_HarnessInput.bPublishOutputReadable)
-	{
-		strOutStatus = "Publisher exited, but its structured result could not be read. Server application was not requested.";
-		return false;
-	}
-	iExitCode = m_HarnessInput.iPublishExitCode;
-	strOutput = m_HarnessInput.strPublishOutput;
-	return true;
-#else
-	const DWORD Wait = WaitForSingleObject(m_hPublishProcess, 0u);
-	if (Wait == WAIT_TIMEOUT)
-		return true;
-	if (Wait != WAIT_OBJECT_0)
-	{
-		strOutStatus = "Publisher process status is unconfirmed (Win32 " +
-			std::to_string(GetLastError()) + "). Its process and duplicate-command lock are retained.";
-		return false;
-	}
-	bFinished = true;
-	DWORD ExitCode = 1u;
-	const bool ExitKnown = GetExitCodeProcess(m_hPublishProcess, &ExitCode) != FALSE;
-	CloseHandle(m_hPublishProcess);
-	m_hPublishProcess = nullptr;
-	std::error_code Error;
-	const auto Size = std::filesystem::file_size(m_PublishOutputPath, Error);
-	if (!ExitKnown || Error || Size > MAX_PUBLISH_OUTPUT_BYTES)
-	{
-		strOutStatus = "Publisher exited without a readable bounded result. Server application was not requested; inspect " +
-			m_PublishOutputPath.string();
-		return false;
-	}
-	std::ifstream Stream(m_PublishOutputPath, std::ios::binary);
-	strOutput.resize(static_cast<std::size_t>(Size));
-	if (!Stream || (Size != 0u && !Stream.read(strOutput.data(), static_cast<std::streamsize>(Size))))
-	{
-		strOutStatus = "Publisher exited, but its structured output could not be read: " + m_PublishOutputPath.string();
-		return false;
-	}
-	Stream.close();
-	std::filesystem::remove(m_PublishOutputPath, Error);
-	m_PublishOutputPath.clear();
-	iExitCode = ExitCode;
-	return true;
-#endif
-}
-
 #if defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
 void Client::CValtanTuningCommandService::Harness_Reset()
 {
 	m_Snapshot = {};
 	m_ApplyRequest = {};
-	m_bPublishing = false;
 	m_bApplyPending = false;
-	m_iPublishStartedAtMilliseconds = 0u;
 	m_iApplyStartedAtMilliseconds = 0u;
 	m_iNextRequestSequence = 1u;
 	m_bGameplaySourceActivationObserved = false;
@@ -702,7 +386,6 @@ const char* Client::Describe_ValtanTuningCommandState(const VALTAN_TUNING_COMMAN
 	switch (eState)
 	{
 	case VALTAN_TUNING_COMMAND_STATE::IDLE: return "IDLE";
-	case VALTAN_TUNING_COMMAND_STATE::PUBLISHING: return "PUBLISHING";
 	case VALTAN_TUNING_COMMAND_STATE::UNCONFIRMED: return "UNCONFIRMED";
 	case VALTAN_TUNING_COMMAND_STATE::PUBLISHED_APPLY_NEEDED: return "PUBLISHED / APPLY NEEDED";
 	case VALTAN_TUNING_COMMAND_STATE::APPLY_PENDING: return "APPLY PENDING";

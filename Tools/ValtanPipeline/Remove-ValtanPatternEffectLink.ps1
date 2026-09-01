@@ -506,13 +506,13 @@ try {
         'Valtan Pattern Effect unlink preflight'
 
     if ($Mode -eq 'Validate') {
-        Invoke-ValtanProjector 'ValidateV2'
+        Invoke-ValtanProjector 'Validate'
         Assert-CurrentBytes $presentationPath $source.Bytes `
             'Valtan Pattern Effect unlink validation'
         Assert-TargetEffectSnapshotUnchanged $effectSnapshot `
             'Valtan Pattern Effect unlink validation'
         Write-Host (("Valtan Pattern Effect unlink candidate is structurally valid and " +
-            "the current split graph passed ValidateV2: pattern={0} effect={1} cues={2}. " +
+            "the current split graph passed Validate: pattern={0} effect={1} cues={2}. " +
             "Apply validates and publishes the candidate.") -f
             $PatternId, $EffectAssetId, $requestedCueIds.Count)
         return
@@ -533,7 +533,7 @@ try {
         Assert-TargetEffectSnapshotUnchanged $effectSnapshot `
             'Valtan Pattern Effect unlink post-publish'
 
-        Invoke-ValtanProjector 'ValidateV2'
+        Invoke-ValtanProjector 'Validate'
         Assert-CurrentBytes $presentationPath $candidateBytes `
             'Valtan Pattern Effect unlink post-validation'
         Assert-TargetEffectSnapshotUnchanged $effectSnapshot `

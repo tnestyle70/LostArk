@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "BossLogicFlowView.h"
 #include "CameraTool.h"
 #include "EncounterPatternReference.h"
 #include "Network/PacketMessages.h"
@@ -18,6 +19,7 @@
 NS_BEGIN(Client)
 
 class IPlayerCommandSink;
+class CBalanceTool;
 class CValtanPatternSoundSourceReadAdmission;
 struct VALTAN_PATTERN_SOUND_SOURCE_RECEIPT;
 struct EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST;
@@ -45,7 +47,9 @@ public:
 		std::string strDisplayName;
 	};
 
-	explicit CBossTool(std::shared_ptr<IPlayerCommandSink> CommandSink);
+	CBossTool(
+		std::shared_ptr<IPlayerCommandSink> CommandSink,
+		CBalanceTool* pBalanceTool);
 	void Open();
 	/* Opens the existing ordered Flow owner and selects its tab.  The Action
 	   Composition Workbench deep-links here instead of cloning a second Flow
@@ -132,10 +136,20 @@ private:
 		std::string& strOutStatus) const;
 	bool_t Submit_SelectedPattern();
 	bool_t Restart_SelectedPattern();
+	/* Boss Verification's default replay is the canonical saved one-Pattern
+	   workflow. It deliberately reuses the Flow transaction so the Server
+	   restores the complete arena before starting saved Pattern 01. */
+	bool_t Restart_SavedSinglePatternFreshArena();
 	bool_t Preview_SelectedFlowSlotIsolated();
-	bool_t Start_Flow();
-	bool_t Start_FlowAtSlot(const std::string& strStartSlotId);
+	bool_t Start_Flow(
+		const LostArk::Shared::GameplayDataRevision*
+			pRequiredDefinitionRevision = nullptr);
+	bool_t Start_FlowAtSlot(
+		const std::string& strStartSlotId,
+		const LostArk::Shared::GameplayDataRevision*
+			pRequiredDefinitionRevision = nullptr);
 	bool_t Restart_SavedFlow();
+	bool_t Restart_SavedFlow(bool_t bRequireSingleSavedPattern);
 	bool_t Request_RevivePlayer(std::string& strOutStatus);
 	bool_t Reload_FlowDocument();
 	bool_t Save_FlowDocument();
@@ -143,6 +157,7 @@ private:
 	void Synchronize_LiveSelection();
 	void Render_BossVerificationTab();
 	void Render_PatternFlowTab();
+	void Render_LogicFlowTab();
 	void Render_FlowGraphEditor();
 	void Render_FlowSlotList();
 	void Render_FlowSelectedSlot();
@@ -153,7 +168,10 @@ private:
 	void Render_LiveSummary();
 	void Render_ActionBar();
 	void Render_PatternList();
+	void Render_CurrentPatternList();
 	void Render_SelectedPattern();
+	void Select_Pattern(const VALTAN_PATTERN_VIEW& Pattern);
+	void Normalize_CurrentFlowSelection();
 	void Render_ConnectionSummary(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage);
@@ -180,7 +198,10 @@ private:
 	CEncounterPatternReference m_EncounterReference;
 	CValtanCinematicCameraDocument m_CameraDocument;
 	CValtanPatternFlowDocument m_FlowDocument;
+	BOSS_LOGIC_FLOW_VIEW m_LogicFlowView;
+	BOSS_LOGIC_FLOW_CANVAS_STATE m_LogicFlowCanvasState;
 	std::shared_ptr<IPlayerCommandSink> m_pCommandSink;
+	CBalanceTool* m_pBalanceTool = nullptr;
 
 	std::array<char_t, 128u> m_PatternSearch{};
 	std::array<char_t, 128u> m_FlowPatternSearch{};
@@ -188,19 +209,22 @@ private:
 	std::string m_strSelectedPatternId;
 	std::string m_strSelectedStageId;
 	std::string m_strSelectedFlowSlotId;
+	std::string m_strSelectedCurrentFlowSlotId;
 	std::string m_strSelectedFlowEdgeId;
 	std::string m_strFlowLinkSourceNodeId;
 	std::string m_strRepeatPatternId;
 	std::string m_strStatus =
 		"Select a pattern, then play it through the Server.";
 	std::string m_strFlowStatus =
-		"Load a saved Flow, then start it through the Server.";
+		"Load the gameplay scriptedSequence, then start it through the Server.";
 	std::string m_strNextPatternStatus =
 		"Choose the next pattern during live Server playback or while Valtan is idle.";
 	std::string m_strCameraStatus;
 	std::string m_strActionFeedback;
 	std::string m_strPresentationFreshnessStatus;
 	std::string m_strPresentationFreshnessRevision;
+	std::string m_strLogicFlowStatus;
+	uint64_t m_iLogicFlowSourceGeneration = 0u;
 	uint32_t m_iNextReviveSequence = 1u;
 	uint32_t m_iFlowLinkMaximumTraversals = 1u;
 	bool_t m_bOpen = false;

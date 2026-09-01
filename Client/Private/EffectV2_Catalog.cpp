@@ -270,10 +270,13 @@ namespace
 		std::vector<Client::EFFECT_V2_BINDING>& OutBindings,
 		bool_t& bOutComplete,
 		std::vector<std::string>& Diagnostics,
-		std::string& strOutError)
+		std::string& strOutError,
+		std::string* const pOutSourceBytes = nullptr)
 	{
 		OutBindings.clear();
 		bOutComplete = true;
+		if (nullptr != pOutSourceBytes)
+			pOutSourceBytes->clear();
 		const std::filesystem::path Path =
 			Client::CEffectV2Document::Binding_Path(BOSS_VALTAN_ARCHETYPE_ID);
 		std::string strText;
@@ -285,6 +288,8 @@ namespace
 			bOutComplete = false;
 			return true;
 		}
+		if (nullptr != pOutSourceBytes)
+			*pOutSourceBytes = strText;
 
 		Client::DATA_JSON_VALUE Root;
 		if (!Client::CDataJson::Parse(strText, Root, strOutError) ||
@@ -908,6 +913,76 @@ bool_t Client::CEffectV2Catalog::Reload_BossValtan(std::string& strOutError)
 	}
 }
 
+bool_t Client::CEffectV2Catalog::
+Discard_BossValtanBindingDraftAndReload(std::string& strOutError)
+{
+	try
+	{
+		std::vector<EFFECT_V2_DOCUMENT> StagedDocuments;
+		std::vector<EFFECT_V2_GROUP> StagedGroups;
+		std::vector<EFFECT_V2_BINDING> StagedBindings;
+		std::vector<std::string> Diagnostics;
+		bool_t bBindingsComplete = true;
+		if (!Stage_Documents(
+				StagedDocuments, Diagnostics, strOutError) ||
+			!Stage_Groups(
+				StagedGroups, Diagnostics, strOutError) ||
+			!Stage_BossValtanBindings(
+				StagedBindings, bBindingsComplete,
+				Diagnostics, strOutError) ||
+			!Isolate_InvalidCrossReferences(
+				StagedDocuments, StagedGroups, StagedBindings,
+				bBindingsComplete, Diagnostics, strOutError))
+		{
+			return false;
+		}
+
+		auto pStaged = std::make_shared<EFFECT_V2_CATALOG_SNAPSHOT>();
+		pStaged->m_Documents = std::move(StagedDocuments);
+		pStaged->m_Groups = std::move(StagedGroups);
+		pStaged->m_BossValtanBindings = std::move(StagedBindings);
+		pStaged->m_Diagnostics = std::move(Diagnostics);
+		pStaged->m_bBossValtanBindingsComplete = bBindingsComplete;
+		const std::string strIsolationSummary =
+			Format_IsolationSummary(pStaged->m_Diagnostics);
+		bool_t bDiscardedDraft = false;
+
+		{
+			const std::lock_guard Lock(m_SnapshotMutex);
+			const uint64_t iPreviousRevision =
+				nullptr != m_pSnapshot ? m_pSnapshot->Get_Revision() : 0u;
+			if ((std::numeric_limits<uint64_t>::max)() == iPreviousRevision)
+			{
+				return Fail(strOutError,
+					"Effect V2 catalog revision is exhausted.");
+			}
+			pStaged->m_iRevision = iPreviousRevision + 1u;
+			bDiscardedDraft = m_bBossValtanBindingDraftDirty;
+			m_pSnapshot = std::move(pStaged);
+			m_strBossValtanBindingDraftBaselineBytes.clear();
+			m_bBossValtanBindingDraftDirty = false;
+		}
+		CEffectV2Runtime::Invalidate_Caches();
+		strOutError = bDiscardedDraft ?
+			"Discarded the unsaved Effect V2 BOSS_VALTAN binding draft and reloaded the physical owner. " +
+				strIsolationSummary :
+			"Reloaded the Effect V2 BOSS_VALTAN owner; no draft required discard. " +
+				strIsolationSummary;
+		return true;
+	}
+	catch (const std::exception& Exception)
+	{
+		return Fail(strOutError,
+			"Effect V2 discard/reload failed before commit; the previous snapshot was preserved: " +
+			std::string(Exception.what()));
+	}
+	catch (...)
+	{
+		return Fail(strOutError,
+			"Effect V2 discard/reload failed before commit; the previous snapshot was preserved.");
+	}
+}
+
 bool_t Client::CEffectV2Catalog::Commit_BossValtanBindingsLocked(
 	std::vector<EFFECT_V2_BINDING> CandidateBindings,
 	const char* pOperation,
@@ -978,13 +1053,14 @@ bool_t Client::CEffectV2Catalog::Commit_BossValtanBindingsLocked(
 	std::vector<EFFECT_V2_BINDING> DiskBindings;
 	std::vector<std::string> DiskDiagnostics;
 	bool_t bDiskBindingsComplete = true;
+	std::string strDiskSourceBytes;
 	if (!Stage_Documents(
 			DiskDocuments, DiskDiagnostics, strOutError) ||
 		!Stage_Groups(
 			DiskGroups, DiskDiagnostics, strOutError) ||
 		!Stage_BossValtanBindings(
 			DiskBindings, bDiskBindingsComplete,
-			DiskDiagnostics, strOutError) ||
+			DiskDiagnostics, strOutError, &strDiskSourceBytes) ||
 		!Isolate_InvalidCrossReferences(
 			DiskDocuments, DiskGroups, DiskBindings,
 			bDiskBindingsComplete, DiskDiagnostics, strOutError))
@@ -1007,14 +1083,14 @@ bool_t Client::CEffectV2Catalog::Commit_BossValtanBindingsLocked(
 		return Fail(strOutError,
 			"Effect V2 immediate save is blocked while Composition owns an unsaved binding draft.");
 	}
-	const std::string strSnapshotBaseline = m_bBossValtanBindingDraftDirty ?
-		m_strBossValtanBindingDraftBaselineBytes :
-		CEffectV2Document::Serialize_Bindings(
+	const bool_t bBindingBaselineMatches = m_bBossValtanBindingDraftDirty ?
+		strDiskSourceBytes == m_strBossValtanBindingDraftBaselineBytes :
+		strDiskBaseline == CEffectV2Document::Serialize_Bindings(
 			BOSS_VALTAN_ARCHETYPE_ID, m_pSnapshot->m_BossValtanBindings);
 	if (!Matches_DocumentBaseline(
 			DiskDocuments, m_pSnapshot->m_Documents) ||
 		!Matches_GroupBaseline(DiskGroups, m_pSnapshot->m_Groups) ||
-		strDiskBaseline != strSnapshotBaseline)
+		!bBindingBaselineMatches)
 	{
 		return Fail(strOutError,
 			"Effect V2 catalog source changed; reload before saving.");
@@ -1048,7 +1124,8 @@ bool_t Client::CEffectV2Catalog::Commit_BossValtanBindingsLocked(
 	else
 	{
 		if (!m_bBossValtanBindingDraftDirty)
-			m_strBossValtanBindingDraftBaselineBytes = strDiskBaseline;
+			m_strBossValtanBindingDraftBaselineBytes =
+				std::move(strDiskSourceBytes);
 		m_bBossValtanBindingDraftDirty = true;
 	}
 	CEffectV2Runtime::Invalidate_Caches();
@@ -1345,12 +1422,12 @@ bool_t Client::CEffectV2Catalog::Prepare_BossValtanBindingDraftSave(
 	std::vector<EFFECT_V2_BINDING> DiskBindings;
 	std::vector<std::string> DiskDiagnostics;
 	bool_t bDiskComplete = true;
+	std::string strDiskSourceBytes;
 	if (!Stage_BossValtanBindings(
-			DiskBindings, bDiskComplete, DiskDiagnostics, strOutError) ||
+			DiskBindings, bDiskComplete, DiskDiagnostics, strOutError,
+			&strDiskSourceBytes) ||
 		!bDiskComplete ||
-		CEffectV2Document::Serialize_Bindings(
-			BOSS_VALTAN_ARCHETYPE_ID, DiskBindings) !=
-			m_strBossValtanBindingDraftBaselineBytes)
+		strDiskSourceBytes != m_strBossValtanBindingDraftBaselineBytes)
 	{
 		return Fail(strOutError,
 			"Effect V2 binding source changed after this Composition draft began; Load before saving.");

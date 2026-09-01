@@ -685,9 +685,10 @@ namespace Client
 			ESTHER_ACTION_SOUND_PLAYBACK_STATE EstherActionSoundState;
 			f32_t fCollisionRadius = 0.f;
 			/* The Server occurrence pin and the R -> M generation admitted by the
-			   concrete CValtan are tracked independently.  A failed exact reload
-			   isolates only this presentation and the rejected revision suppresses
-			   an unbounded retry on every subsequent snapshot. */
+			   concrete CValtan are tracked independently. A structural exact-reload
+			   failure latches RejectedPresentationRevision; transient world-entry
+			   lock contention leaves it empty so the bounded baseline recovery may
+			   admit the same occurrence on a later snapshot. */
 			LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
 			LostArk::Shared::GameplayDataRevision AdmittedPresentationRevision{};
 			LostArk::Shared::GameplayDataRevision RejectedPresentationRevision{};

@@ -850,6 +850,10 @@ struct EFFECT_PARTICLE_DESC final
 {
 	uint32_t iMaxParticles = 256u;
 	f32_t fSpawnRatePerSecond = 20.f;
+	/* Opt-in direct-authored world-space lattice.  Zero preserves the legacy
+	   time-rate emitter; a positive value places birth centres by travelled
+	   world distance and therefore ignores random position ranges. */
+	f32_t fFixedCenterSpacingWorldUnits = 0.f;
 	uint32_t iBurstCount = 0u;
 	uint32_t iRandomSeed = 1u;
 	float2_t vLifeTimeSeconds = { 0.5f, 1.f };

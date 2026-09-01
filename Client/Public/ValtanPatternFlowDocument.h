@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <filesystem>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -77,9 +76,10 @@ namespace Client
 			const VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT&) const = default;
 	};
 
-	/* Saved order shared by Debug playback and Product sequence projection.
-	   This document owns durable authoring only; publication and Server
-	   revision admission are separate typed commands. */
+	/* In-memory Boss Tool projection of the canonical gameplay
+	   scriptedSequence.  Durable authoring is owned exclusively by the shared
+	   Valtan gameplay transaction; this adapter never reads or writes a second
+	   Flow file. */
 	class CValtanPatternFlowDocument final
 	{
 	public:
@@ -99,7 +99,6 @@ namespace Client
 			"flow.valtan.boss-tool.default";
 
 	public:
-		static std::filesystem::path Resolve_Path();
 		static bool Parse_Text(
 			std::string_view text,
 			VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT& outDocument,
@@ -114,19 +113,19 @@ namespace Client
 		static std::string Serialize_Text(
 			const VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT& document);
 
-		/* Load/Reload and Save commit baseline + draft only after every disk,
-		parse, inventory join, revision, and replacement check succeeds. */
-		bool Load(
+		/* Stage the canonical gameplay scriptedSequence as the existing linear
+		   Boss Tool view.  Node/edge IDs are deterministic editor projections and
+		   are never another durable source document. */
+		bool Load_CanonicalSequence(
+			std::string_view sequenceId,
+			std::string_view mode,
+			std::uint32_t interStepPursuitMs,
+			const std::vector<std::string>& patternIds,
 			const std::vector<std::string>& admittedPatternIds,
 			std::string& outStatus);
-		bool Reload(
-			const std::vector<std::string>& admittedPatternIds,
-			std::string& outStatus);
-		bool Save(
-			const std::vector<std::string>& admittedPatternIds,
-			std::string& outStatus);
-		/* Read-only CAS preflight used immediately before playback.  It never
-		   replaces the admitted draft or baseline. */
+		/* Read-only preflight for the staged canonical sequence. The complete
+		   Product/source revision is separately admitted by Boss Tool before the
+		   Server command. */
 		bool Verify_SourceRevision(std::string& outStatus);
 
 		bool Add_Slot(
@@ -208,17 +207,12 @@ namespace Client
 			return m_Draft;
 		}
 		const VALTAN_PATTERN_FLOW_DEFINITION* Get_DefaultFlow() const noexcept;
+		const VALTAN_PATTERN_FLOW_DEFINITION* Get_SavedDefaultFlow() const noexcept;
 		const std::string& Get_SourceRevision() const noexcept
 		{
 			return m_strSourceRevision;
 		}
-		const std::filesystem::path& Get_Path() const noexcept
-		{
-			return m_Path;
-		}
-
 	private:
-		std::filesystem::path m_Path;
 		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT m_Baseline;
 		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT m_Draft;
 		std::string m_strSourceRevision;

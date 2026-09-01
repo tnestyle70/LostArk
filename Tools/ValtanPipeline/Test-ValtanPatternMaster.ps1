@@ -17,7 +17,7 @@ if (-not [IO.File]::Exists($pythonSuite)) {
 # rewrite a rotation-v3 document with v2 patternIds rows. Keep the public
 # entrypoint, but route its positive and negative coverage through the active
 # split-authoring contract instead of preserving a second runtime path.
-& $projector -Mode ValidateV2 -RepositoryRoot $repositoryRoot
+& $projector -Mode Validate -RepositoryRoot $repositoryRoot
 
 $legacyPublishRejected = $false
 try {
@@ -40,5 +40,5 @@ if ($global:LASTEXITCODE -ne 0) {
     throw "Valtan split pattern master Python suite failed with exit code $global:LASTEXITCODE."
 }
 
-& $projector -Mode ValidateV2 -RepositoryRoot $repositoryRoot
+& $projector -Mode Validate -RepositoryRoot $repositoryRoot
 Write-Host 'Valtan split pattern master harness: PASS'

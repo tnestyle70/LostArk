@@ -50,9 +50,10 @@ namespace
 		if (!Require(nullptr != committedPizza &&
 				committedPizza->targetPolicy ==
 					"LOCK_RANDOM_ALIVE_ON_START" &&
-				committedPizza->aimPolicy == "LOCK_FACING_ON_START" &&
+				committedPizza->aimPolicy == "TRACK_TARGET_EACH_TICK" &&
 				committedPizza->serverMotion.has_value() &&
 				committedPizza->serverMotion->kind == "LEAP_TO_ANCHOR" &&
+				committedPizza->serverMotion->bMoveToAnchorBeforeTakeoff &&
 				committedPizza->serverMotion->anchorId ==
 					"anchor.valtan.six-pizza-106.landing" &&
 				std::all_of(
@@ -224,6 +225,15 @@ namespace
 			text.replace(begin, end - begin, mutation.replacement);
 			return text;
 		};
+		const auto invalidGameplayPhase = replaceField(original,
+			{ "VALTAN_GHOST_RESPAWN_AUDITION", "STEP_01", "value", "4" });
+		if (!Require(!invalidGameplayPhase.empty(),
+				"ghost-respawn gameplay phase fixture was not staged") ||
+			!rejectedWithoutCommit(invalidGameplayPhase,
+				"ghost-respawn gameplay phase 4"))
+		{
+			return false;
+		}
 		auto dynamicFinale = replaceField(original,
 			{ "VALTAN_GHOST_FINALE", "finale", "maximumActiveGhosts", "2" });
 		dynamicFinale = replaceField(std::move(dynamicFinale),
@@ -289,12 +299,8 @@ namespace
 			{ "VALTAN_TRASH_CATCH_FAIL", "RUSH_MISS", "nextActionId", "\"valtan.sequence.rush-fail.rush-miss\"" },
 			{ "VALTAN_GHOST_FINALE", "STEP_10", "durationMs",
 				"1667,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":\"valtan.sequence.ghost-finale.step-01\"}]", extensionError },
-			{ "VALTAN_WHIRLWIND", "RECOVERY", "durationMs",
-				"1467,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":\"valtan.attack.whirlwind.windup\"}]", extensionError },
-			{ "VALTAN_FOUR_SLASH", "RECOVERY", "durationMs",
-				"800,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":\"valtan.attack.four-slash.windup\"}]", extensionError },
-			{ "VALTAN_SEQUENCE_FOUR", "STEP_01", "durationMs",
-				"5000,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":\"valtan.sequence.four.step-01\"}]" }
+			{ "VALTAN_SIX_PIZZA_106", "STEP_11", "durationMs",
+				"1300,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":\"valtan.sequence.center-six-pizza-charge.step-01\"}]", extensionError }
 		};
 		for (const auto& mutation : malformedFields)
 		{
@@ -308,12 +314,12 @@ namespace
 		// tail still cannot be admitted as a finite ghost animation graph.
 		auto unreachableCycle = original;
 		for (const auto& mutation : std::array<FieldMutation, 3>{
-			FieldMutation{ "VALTAN_WHIRLWIND", "WINDUP", "durationMs",
-				"1333,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":null}]" },
-			FieldMutation{ "VALTAN_WHIRLWIND", "SPIN", "durationMs",
-				"1200,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":\"valtan.attack.whirlwind.recovery\"}]" },
-			FieldMutation{ "VALTAN_WHIRLWIND", "RECOVERY", "durationMs",
-				"1467,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":\"valtan.attack.whirlwind.active\"}]" } })
+			FieldMutation{ "VALTAN_SIX_PIZZA_106", "STEP_01", "durationMs",
+				"1200,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":null}]" },
+			FieldMutation{ "VALTAN_SIX_PIZZA_106", "STEP_02", "durationMs",
+				"1000,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":\"valtan.sequence.center-six-pizza-charge.step-03\"}]" },
+			FieldMutation{ "VALTAN_SIX_PIZZA_106", "STEP_03", "durationMs",
+				"1200,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":\"valtan.sequence.center-six-pizza-charge.step-02\"}]" } })
 		{
 			unreachableCycle = replaceField(std::move(unreachableCycle), mutation);
 			if (!Require(!unreachableCycle.empty(), "unreachable-cycle fixture was not staged"))

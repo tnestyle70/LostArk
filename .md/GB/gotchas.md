@@ -392,8 +392,8 @@ adapter가 필요하다. 도화가 F에서 사람이 쓴 전용 파일은 이 �
 ### All Effects의 `Delete Effect`는 소유권에 따라 의미가 다르다
 
 - `[PRODUCT]` 행 삭제는 선택한 Pattern의 exact cue 연결만 split `Valtan.presentation.json`에서 제거하고
-  candidate source CAS 뒤 `PublishV2 -> ValidateV2`한다. `ValidateV2`를 publish 전에 실행하면 새 source와
-  이전 Product의 정상 drift를 실패로 오인한다. 공유 `EffectCatalog` 행과 authored Effect 파일, 다른 Pattern
+  candidate source CAS 뒤 Product를 투영한 다음 단일 `Validate` postcondition을 실행한다. 이전 Product parity를
+  source Save 전에 요구하면 새 source와 이전 Product의 정상 drift를 실패로 오인한다. 공유 `EffectCatalog` 행과 authored Effect 파일, 다른 Pattern
   연결은 보존한다.
 - `DRAFT_ATTACHED`만 sidecar row와 deterministic `Effects/Authored/<effectId>.effect.json` 파일을 함께
   삭제할 수 있다. Product catalog/cue 참조가 있으면 파일 삭제를 거부한다.
@@ -415,7 +415,7 @@ adapter가 필요하다. 도화가 F에서 사람이 쓴 전용 파일은 이 �
 
 #### publisher를 소유한 child process는 timeout으로 죽이지 않는다
 
-- Product unlink는 source commit 뒤 원자적 `PublishV2 -> ValidateV2`와 실패 시 source/Product rollback을
+- Product unlink는 source commit 뒤 원자적 Product projection + `Validate` postcondition과 실패 시 source/Product rollback을
   수행한다. managed cue scale-policy migration 표는 현재 cue의 허용 정책 ledger이며 live cue 전체 개수를
   고정하지 않는다. sealed legacy Effect cue도 전역 배열 ordinal이 아니라 stable `bindingId`로 검증한다. 이 child를 180초
   timeout에서 `TerminateProcess`하면 PowerShell의 catch/finally가 실행되지 않아 source/Product가 반쪽 상태로

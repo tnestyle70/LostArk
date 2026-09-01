@@ -1772,8 +1772,8 @@
       "actionId": "valtan.sequence.center-six-pizza-charge.step-01",
       "clipOccurrenceId": "valtan.sequence.center-six-pizza-charge.step-01.clip-01",
       "effectAssetId": "effect.valtan.project-tuned.sequence.six-pizza-106",
-      "anchorSlotId": "arena.center.facing",
-      "followPolicy": "snapshot",
+      "anchorSlotId": "arena.center.target-follow",
+      "followPolicy": "follow",
       "stopPolicy": "natural",
       "repeatPolicy": "once",
       "sourceStartMs": 0,
@@ -2882,6 +2882,46 @@
       },
       "scalePolicy": {
         "kind": "OWNER_RELATIVE"
+      }
+    },
+    {
+      "bindingId": "cue.valtan.sequence.cross.step-01",
+      "occurrenceId": "cue.valtan.sequence.cross.step-01.occurrence.01",
+      "patternId": "VALTAN_CROSS",
+      "stageId": "STEP_01",
+      "actionId": "valtan.sequence.cross.step-01",
+      "clipOccurrenceId": "valtan.sequence.cross.step-01.clip-01",
+      "effectAssetId": "effect.valtan.sequence.cross",
+      "anchorSlotId": "root",
+      "followPolicy": "snapshot",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 1617,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "GAMEPLAY_FOOTPRINT",
+        "worldScale": [
+          1.5,
+          1.5,
+          1.5
+        ]
       }
     }
   ]

@@ -557,21 +557,24 @@ CGameRoom::Tick
 -> CValtan presentation + world-root Effect + CCombatHUDViewModel
 ```
 
-발탄 저작 정본은 `Data/Valtan`의 다음 다섯 split source와 저장 Flow 참조다.
+발탄 저작 정본은 `Data/Valtan`의 다음 다섯 split source다.
 
 | source | 소유 내용 |
 |---|---|
-| `Valtan.gameplay.json` | Server pattern graph, decision, stage, action, hit, motion, volley |
+| `Valtan.gameplay.json` | Server pattern graph, decision, stage, action, hit, motion, volley와 inline `scriptedSequence` 순서·반복·간격 |
 | `Valtan.presentation.json` | animation occurrence, Effect invocation, camera invocation, cue scale policy |
 | `Valtan.combatobjects.json` | combat-object origin, movement, hit geometry, damage profile reference와 optional 독립 `lifetimeMs` |
 | `Valtan.worldeventsets.json` | stable world-event set membership |
 | `Valtan.legacy-compatibility.json` | 아직 승격하지 않은 Product closure와 migration identity |
-| `Data/Encounters/Valtan/ValtanBossAuditionFlows.json` | `scriptedSequence.flowId`가 참조하는 default 순서와 inter-step pursuit |
 
-`Data/Valtan/Valtan.pattern.json`은 migration fixture이며 새 값을 저장하지 않는다. publisher가 split source와 Flow를 stable
-ID로 strict join해 `ValtanEncounter.json`, rotations, combat objects, world events, pattern bindings/cues와 Server
-bootstrap을 생성한다. 이 generated Product는 read-only이고 Server와 Arena가 split source를 두 번째 런타임으로
-직접 읽지 않는다.
+`Data/Valtan/Valtan.pattern.json`은 migration fixture이며 새 값을 저장하지 않는다. publisher는 다섯 split source를
+stable ID로 strict join해 `ValtanEncounter.json`, rotations, combat objects, world events, pattern bindings/cues와
+Server bootstrap을 생성한다. `Valtan.gameplay.json`의 `decisionModel.scriptedSequence`가 Product 순서의 유일한
+저작 정본이며 publisher가 generated `ValtanPatternRotations.json`에 exact 투영한다. 정본이 31 Pattern이면 Product도
+31 Pattern이어야 하며 29 Pattern 상태를 병행 허용하지 않는다. 외부 validator는 `Validate` 하나다. canonical Save는
+source candidate를 먼저 검증하고 같은 transaction에서 Product를 생성·commit하며, 이전 generated Product parity를
+저장 선행조건으로 사용하지 않는다. generated Product는 read-only이고 Server와 Arena가 split source를 두 번째
+런타임으로 직접 읽지 않는다.
 
 `Data/Actors/BossCatalog.json` format v5의 현재 Valtan `presentationScale: 1.0`은 replicated Arena와 Character/Boss
 Preview가 함께 소비하는 Client actor scale이다. 일반 `BOSS_VALTAN.maximumHp`는 `600000`, 종속
@@ -585,26 +588,48 @@ Effect cue의 scale policy는 `OWNER_RELATIVE`, `GAMEPLAY_FOOTPRINT`,
 아니다. 세부 필드와 publish 절차는 `발탄인수인계서.md`를 따른다.
 
 v5의 `bodyModelPreScale/weaponModelPreScale`은 모델 단위를 맞추는 admission 값이다. 본체는
-`0.0001/100.0`, `BOSS_VALTAN_GHOST`는 `0.01/1.0`을 사용한다. 유령은 기존 Server BOSS
-spawn/snapshot/despawn 경로의 종속 entity이며 `iOwnerBossNetEntityId`로 본체를 참조한다.
-primary HUD/BGM/툴 target은 본체만 소유한다. protocol v44는 이 owner와 typed 사망 despawn reason을
+`0.0001/100.0`, `BOSS_VALTAN_GHOST`는 `0.01/1.0`을 사용한다. 종속 유령 entity는 기존 Server BOSS
+spawn/snapshot/despawn 경로와 `iOwnerBossNetEntityId`를 계속 사용하지만, phase 3 primary 망령화는
+별도 damage entity를 만들지 않는다. Server의 primary archetype/NetEntityId/HP/damage/HUD/reward owner는
+`BOSS_VALTAN` 그대로이고 Client만 `BOSS_VALTAN_GHOST` body/weapon part group을 원자 교체한다. 부활 완료
+뒤 primary는 Six Pizza/Ground Roar/Stagger/Bind/Silence/Triple Counter exact 6-pattern을 순환하며, 독립
+150-tick scheduler가 arena spawn center의 네 꼭짓점에서 inward portal combat object 네 개를 같은 tick에
+생성한다. primary HUD/BGM/툴 target은 계속 본체만 소유한다. protocol v44는 이 owner와 typed 사망 despawn reason을
 추가하므로 Server/Client를 함께 배포한다. Server는 HP 0에서 전투 entity를 제거하고 Client만 유효한
 사망 clip 종료까지 기존 presentation을 보존한다. clip 없음·재생 실패·퇴장은 즉시 정리한다.
 
 Gameplay bootstrap v26은 `PORTAL_CROSS_ARENA`, `RETURN_TO_ARENA_CENTER`, `ARENA_EJECTION`,
 `NAVIGATION_BLOCKED`, `GHOST_PORTAL_LOOP`와 중앙 접근 옵션을 소비한다. `arena.center`는 중앙/yaw 0,
 `arena.center.facing`은 중앙/해당 occurrence의 서버 확정 yaw를 사용하는 snapshot cue anchor다.
+`arena.center.target-follow`은 `LOCK_RANDOM_ALIVE_ON_START`가 고른 동일 player ID를 유지한 채 Server가
+매 fixed tick 저작 landing center→현재 target 위치로 계산한 yaw를 사용하는 follow cue anchor다. Client는
+복제된 현재 boss yaw로 기존 world-root handle만 갱신하며 target을 다시 고르거나 player yaw를 사용하지 않는다.
 도넛은 `SPAWN_COMBAT_OBJECT`로 생성한 2600ms 독립 object이며 foreground INNER는 100ms다.
-기존 stage 피해와 cue를 중복 재생하지 않는다. 모든 element의 world birth anchor는 고정하고,
-element 자체의 scale curve는 계속 진행한다. 세부 ID와 실패 경계는 `발탄인수인계서.md` 11.9~11.10을 따른다.
+기존 stage 피해와 cue를 중복 재생하지 않는다. 일반 element의 world birth anchor는 생성 tick root를 사용하고,
+Six Pizza의 정적 sector처럼 root를 계속 따라야 하는 particle만 authored local-space를 명시한다. element 자체의
+scale curve는 계속 진행한다. 세부 ID와 실패 경계는 `발탄인수인계서.md` 11.9~11.10을 따른다.
 
 Boss Tool의 Next는 live Product, 같은 owner의 Flow/isolated 또는 idle에서 선택하는 Server 권위 예약 한 칸이다.
 현재 패턴의 최종 world/prop/hit commit 뒤 다음 fixed tick에서 시작하며 맵·플레이어·HP·cooldown을 reset하지 않는다.
 Flow 중에는 현재 occurrence 뒤 남은 재생만 종료하며 저장 배열을 수정하지 않는다. 공용
-`CValtanPatternAuditionService`만 command/result/lifecycle을 소비한다. `Save Flow`는 파일 저장 뒤 기존
-publisher/candidate/2PC로 다음 encounter의 Product 기본 순서를 적용한다. `Reload Flow`는 확정된 저장본의
-첫 배열 슬롯(화면 01)부터 기존 FLOW_START를 제출한다. 순서와 중복 Pattern을 보존하고 실패 시 이전 실행을 유지한다.
+`CValtanPatternAuditionService`가 isolated/Next lifecycle을, `CValtanPatternFlowService`가 Ordered Flow lifecycle을
+각각 소비한다. UI가 NetworkManager queue를 직접 나눠 읽지 않는다. `Save Flow`는 현재 slot을 inline
+`decisionModel.scriptedSequence` draft로 stage하고 gameplay와 generated Product를 한 canonical transaction으로
+commit한다. 물리 commit 성공과 editor reopen/candidate apply 상태를 구분하며, 성공 즉시
+`Boss Verification -> Current Patterns`가 saved order를 표시한다. 실행 중 Flow는 pinned 이전 revision을 중간
+교체하지 않는다. `Load Flow`는 `Valtan.gameplay.json` saved sequence를 다시 읽을 뿐 playback을 바꾸지 않는다.
+`Restart Flow (Fresh Arena)`는 최신 saved candidate와 Server-active gameplay revision이 같은지 확인하고,
+저장된 scriptedSequence를 다시 읽은 뒤 walls/floors/props/collision/navigation/combat objects를 Server에서
+초기화하고 그 동일 revision의 첫 배열 슬롯(화면 01)부터 새 FLOW_START를 제출한다. Boss Verification의
+`Restart Saved Pattern (Fresh Arena)`도 saved slot이 정확히 하나일 때 이 transaction을 공유한다. 순서와
+중복 Pattern을 보존하고 admission/reset 실패 시 새 playback을 시작하지 않는다.
 예약·적용 상태·전멸 대기·취소와 Trash 포획 분기의 상세 계약은 `보스툴.md`와 `발탄인수인계서.md`의 10.4, 11.9를 따른다.
+
+Boss Tool의 `Logic Flow`는 선택 또는 live Pattern 하나의 Stage role, 실제 clip 이름, authored branch와
+`COUNTER_HIT/TIMEOUT`을 읽기 전용으로 그린다. 기본 입력은 pan/zoom뿐이며 graph나 Server 상태를 수정하지 않는다.
+`Save Flow Product publish 성공 -> Product-synced Current Patterns 갱신 -> 같은 revision으로 Restart Flow -> 01 재생`과
+live 강조·시각 가독성은 사용자가 Debug Server와 Client에서 직접 smoke한다. 에이전트는 Client/UI를 자율 실행하거나
+visual PASS를 대신 판정하지 않는다.
 
 패턴 선택은 `Build_PlayablePatternInventory`가 strict joined split 정의에서 만든 공통 집합을 사용한다.
 Boss Tool·Play/Repeat·Next·Flow·All Effects와 publisher 사이에 별도 고정 개수나 Core ID 목록을 두지 않는다.

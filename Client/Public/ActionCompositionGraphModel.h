@@ -68,6 +68,9 @@ namespace Client
 		std::string strSourceActionId;
 		std::string strOutcome;
 		std::string strTargetActionId;
+		/* A cross-Pattern branch ends this one-Pattern DAG while retaining the
+		   stable destination for read-only graph/timeline inspection. */
+		std::string strTargetPatternId;
 		std::size_t iSourceNodeIndex = ACTION_COMPOSITION_GRAPH_INVALID_INDEX;
 		std::size_t iTargetNodeIndex = ACTION_COMPOSITION_GRAPH_INVALID_INDEX;
 		/* Branch order is part of the canonical Server projection.  Authored
@@ -124,6 +127,8 @@ namespace Client
 		ENTRY_IS_NOT_FIRST_ACTION,
 		INVALID_OUTCOME,
 		DUPLICATE_OUTCOME,
+		AMBIGUOUS_BRANCH_TARGET,
+		INVALID_TARGET_PATTERN_ID,
 		DANGLING_TARGET_ACTION,
 		DUPLICATE_OUTCOME_OVERRIDE,
 		UNKNOWN_OVERRIDE_ACTION,

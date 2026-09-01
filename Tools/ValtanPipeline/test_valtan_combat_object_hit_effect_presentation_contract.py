@@ -72,6 +72,177 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
             visual,
         )
 
+    def test_ground_roar_active_effect_reuses_one_cross_stone_for_each_root(self) -> None:
+        document = json.loads(_read(
+            "Data/Effects/Authored/"
+            "effect.valtan.ground-roar.rock.active.effect.json"
+        ))
+        self.assertEqual(
+            "effect.valtan.ground-roar.rock.active",
+            document["effectAssetId"],
+        )
+        self.assertEqual(1, len(document["elements"]))
+        element = document["elements"][0]
+        self.assertEqual("mesh", element["kind"])
+        self.assertEqual("valtan.ground-roar.rock", element["groupId"])
+        resources = {
+            row["slotId"]: row["assetId"]
+            for row in element["resources"]
+        }
+        self.assertEqual(
+            {
+                "meshModel":
+                    "Effect/Valtan/Meshes/FX_SM_00/"
+                    "fm_d_stoneparts_003.wmodel",
+                "base":
+                    "Effect/Valtan/Textures/FX_TEX_02/"
+                    "fx_d_electric_013_ycl.dds",
+                "noise":
+                    "Effect/Valtan/Textures/FX_TEX_02/"
+                    "fx_d_stoneparts_002.dds",
+                "mask":
+                    "Effect/Valtan/Textures/FX_TEX_02/"
+                    "fx_d_fluid_020.dds",
+                "dissolve":
+                    "Effect/Valtan/Textures/FX_TEX_04/"
+                    "fx_h_noise_001.dds",
+            },
+            resources,
+        )
+        self.assertEqual(
+            "fx_m_mi_n_00.fx_mi.fx_n_me_dissolve_01_04_ma",
+            element["material"]["sourceMaterialPath"],
+        )
+        self.assertEqual(
+            "opaque_back_depth_write",
+            element["material"]["renderProfile"],
+        )
+        detail = element["detail"]
+        self.assertEqual([0.0, 0.0, 0.0], detail["transform"]["position"])
+        self.assertEqual(
+            [0.0, 0.0, 0.0],
+            detail["transform"]["velocityPerSecond"],
+        )
+        self.assertEqual(
+            [0.400000006, 0.400000006, 0.699999988],
+            detail["transform"]["scale"],
+        )
+        self.assertEqual(5.0, detail["timing"]["lifeTimeSeconds"])
+        self.assertEqual(
+            5.0,
+            detail["timing"]["transformMotionDurationSeconds"],
+        )
+        self.assertEqual(
+            0.96,
+            detail["timing"]["dissolveStartNormalized"],
+        )
+        overrides = {
+            row["slotId"]: (row["assetId"], row["compilerAssetId"])
+            for row in element["authoringOverrides"]["resources"]
+        }
+        self.assertEqual(
+            {
+                "mask": (
+                    "Effect/Valtan/Textures/FX_TEX_02/"
+                    "fx_d_fluid_020.dds",
+                    "Effect/Valtan/Textures/FX_TEX_04/"
+                    "fx_h_noise_001.dds",
+                ),
+                "base": (
+                    "Effect/Valtan/Textures/FX_TEX_02/"
+                    "fx_d_electric_013_ycl.dds",
+                    "Effect/Valtan/Textures/FX_TEX_02/"
+                    "fx_d_fluid_020.dds",
+                ),
+            },
+            overrides,
+        )
+
+    def test_ground_roar_independent_effect_joins_exact_cardinal_instances(self) -> None:
+        presentation = json.loads(_read("Data/Valtan/Valtan.presentation.json"))
+        self.assertEqual(
+            [
+                "valtan.independent-effect.target-axe",
+                "valtan.independent-effect.donut-in-out",
+                "valtan.independent-effect.ground-roar-cardinal-rocks",
+            ],
+            [row["independentEffectId"] for row in presentation["independentEffects"]],
+        )
+        independent = next(
+            row for row in presentation["independentEffects"]
+            if row["independentEffectId"]
+            == "valtan.independent-effect.ground-roar-cardinal-rocks"
+        )
+        self.assertEqual(
+            {
+                "independentEffectId":
+                    "valtan.independent-effect.ground-roar-cardinal-rocks",
+                "displayName": "땅구르기 후 사자후 / 4방향 돌",
+                "ownership": "SERVER_COMBAT_OBJECT",
+                "spawnEventId": "valtan.ground-roar.cardinal-rocks",
+            },
+            independent,
+        )
+
+        gameplay = json.loads(_read("Data/Valtan/Valtan.gameplay.json"))
+        ground_roar = next(
+            row for row in gameplay["patterns"]
+            if row["patternId"] == "VALTAN_GROUND_ROAR"
+        )
+        event = next(
+            row for stage in ground_roar["stages"]
+            for row in stage["events"]
+            if row["eventId"] == independent["spawnEventId"]
+        )
+        self.assertEqual("SPAWN_COMBAT_OBJECT_VOLLEY", event["kind"])
+        self.assertEqual(
+            "combatobject.valtan.ground-roar.rock",
+            event["combatObjectArchetypeId"],
+        )
+        self.assertEqual(4, event["countPerResolvedTarget"])
+        self.assertEqual("RADIAL_AROUND_BOSS", event["layout"]["kind"])
+        angles = [
+            event["layout"]["startAngleDegrees"]
+            + index * event["layout"]["angleStepDegrees"]
+            for index in range(event["countPerResolvedTarget"])
+        ]
+        self.assertEqual([0.0, 90.0, 180.0, 270.0], angles)
+
+        combat_authoring = json.loads(
+            _read("Data/Valtan/Valtan.combatobjects.json")
+        )
+        authored_rock = next(
+            row for row in combat_authoring["objects"]
+            if row["combatObjectArchetypeId"]
+            == event["combatObjectArchetypeId"]
+        )
+        self.assertEqual(5000, authored_rock["lifetimeMs"])
+
+        combat_product = json.loads(
+            _read("Data/Encounters/Valtan/ValtanCombatObjects.json")
+        )
+        product_rock = next(
+            row for row in combat_product["objects"]
+            if row["combatObjectArchetypeId"]
+            == event["combatObjectArchetypeId"]
+        )
+        self.assertEqual(authored_rock["lifetimeMs"], product_rock["lifeMs"])
+
+        catalog = json.loads(_read("Data/Actors/BossCatalog.json"))
+        valtan = next(
+            boss for boss in catalog["bosses"]
+            if boss["archetypeId"] == "BOSS_VALTAN"
+        )
+        visual = next(
+            row for row in valtan["combatObjectVisuals"]
+            if row["combatObjectArchetypeId"]
+            == event["combatObjectArchetypeId"]
+        )
+        self.assertEqual(
+            "effect.valtan.ground-roar.rock.active",
+            visual["effectAssetId"],
+        )
+
     def test_actor_catalog_parses_optional_typed_hit_effect(self) -> None:
         header = _read("Client/Public/ActorCatalog.h")
         source = _read("Client/Private/ActorCatalog.cpp")
@@ -128,6 +299,158 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
             validator,
         )
 
+    def test_effect_tool_indexes_hit_effect_under_the_same_combat_object_owner(self) -> None:
+        source = _read("Client/Private/Effect_Tool.cpp")
+        body = _function(
+            source,
+            "bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(",
+            "const std::filesystem::path*\nClient::CEffect_Tool::Resolve_DirectAuthoredEditablePath(",
+        )
+        owner = body.index(
+            "const EFFECT_DIRECT_AUTHORED_BOSS_COMBAT_OBJECT_OWNER Owner{"
+        )
+        active = body.index(
+            "BossCombatObjectOwners.emplace(Visual.effectAssetId, Owner);"
+        )
+        non_empty = body.index("if (!Visual.hitEffectAssetId.empty())")
+        terminal = body.index(
+            "BossCombatObjectOwners.emplace(\n"
+            "\t\t\t\t\t\tVisual.hitEffectAssetId, Owner);"
+        )
+        self.assertLess(owner, active)
+        self.assertLess(active, non_empty)
+        self.assertLess(non_empty, terminal)
+
+    def test_local_independent_sample_skips_boss_animation_and_product_cues(self) -> None:
+        header = _read("Client/Public/Valtan.h")
+        source = _read("Client/Private/Valtan.cpp")
+        self.assertIn(
+            "bool_t Apply_LocalCombatObjectAuthoringPreviewSample(", header
+        )
+        sample = _function(
+            source,
+            "bool_t CValtan::Apply_LocalCombatObjectAuthoringPreviewSample(",
+            "void CValtan::Reset_LocalPatternPreviewTransport()",
+        )
+        self.assertIn("Reset_LocalPatternPreviewTransport();", sample)
+        self.assertIn("Sync_LocalPatternCombatObjectPreview(", sample)
+        for forbidden in (
+            "Apply_PatternPresentationSample(",
+            "Spawn_DuePatternEffectCues(",
+            "CEffectV2Runtime::Sync_StageAuthoring(",
+        ):
+            self.assertNotIn(forbidden, sample)
+
+        sync = _function(
+            source,
+            "bool_t CValtan::Sync_LocalPatternCombatObjectPreview(",
+            "bool_t CValtan::Stage_LocalPatternAuthoringPreview(",
+        )
+        for token in (
+            "Template.fStartAngleDegrees +",
+            "Template.fAngleStepDegrees * static_cast<f32_t>(iOrdinal)",
+            "fActionAgeMs < static_cast<f32_t>(Instance.Template.iLifetimeMs)",
+            "CEffectPresentationService::Stop_WorldRoot(Handle);",
+            "Desc.strEffectAssetId = Visual->hitEffectAssetId;",
+            "Event.iAtMs",
+        ):
+            self.assertIn(token, sync)
+        self.assertLess(
+            sync.index("fActionAgeMs < static_cast<f32_t>(Instance.Template.iLifetimeMs)"),
+            sync.index("Desc.strEffectAssetId = Visual->hitEffectAssetId;"),
+        )
+        staging = _function(
+            source,
+            "bool_t CValtan::Stage_LocalPatternAuthoringPreview(",
+            "bool_t CValtan::Apply_LocalCombatObjectAuthoringPreviewSample(",
+        )
+        self.assertIn("0u == Source.iLifetimeMs", staging)
+        self.assertNotIn("Source.iLifetimeMs > Stage.iDurationMs", staging)
+
+    def test_effect_tool_plays_ground_roar_as_one_locked_multi_root_lifecycle(self) -> None:
+        source = _read("Client/Private/Effect_Tool.cpp")
+        play = _function(
+            source,
+            "bool_t Client::CEffect_Tool::Try_PlayValtanCombatObjectIndependentEffect(",
+            "bool_t Client::CEffect_Tool::Sync_ValtanCombatObjectIndependentPreview(",
+        )
+        for token in (
+            '"BOSS_RELATIVE" != pCombatObject->strVolleyPolicy',
+            '"RADIAL" != pCombatObject->strVolleyLayout',
+            "Prepare_ValtanStandaloneEffectTarget()",
+            "Stage_LocalPatternAuthoringPreview(",
+            "Preview.iInstanceCount = pCombatObject->iSpawnValue;",
+            "Preview.iLifetimeMs = pCombatObject->iLifetimeMs;",
+            "m_ValtanCombatObjectIndependentPreview = std::move(Preview);",
+            "Set_SessionLock(",
+            "Sync_ValtanCombatObjectIndependentPreview(true)",
+        ):
+            self.assertIn(token, play)
+
+        effect_sync = _function(
+            source,
+            "bool_t Client::CEffect_Tool::Sync_ValtanCombatObjectIndependentPreview(",
+            "void Client::CEffect_Tool::Clear_ValtanCombatObjectIndependentPreview()",
+        )
+        self.assertIn("Resolve_TargetGeneration()", effect_sync)
+        self.assertIn("VALTAN_STANDALONE_STATIC_CLIP", effect_sync)
+        self.assertIn("pModel->Set_AnimPaused(true);", effect_sync)
+        self.assertIn(
+            "Apply_LocalCombatObjectAuthoringPreviewSample(", effect_sync
+        )
+
+        render = _function(
+            source,
+            "void Client::CEffect_Tool::Render_ValtanIndependentEffectNode(",
+            "bool_t Client::CEffect_Tool::Refresh_ValtanAreaStaticEffects()",
+        )
+        self.assertIn('"Play Combat Object Lifecycle"', render)
+        self.assertIn("Try_PlayValtanCombatObjectIndependentEffect(", render)
+        self.assertIn("Valtan IDLE", render)
+        self.assertIn("fVolleyStartAngleDegrees", render)
+        self.assertIn("fVolleyAngleStepDegrees", render)
+
+        update = _function(
+            source,
+            "void Client::CEffect_Tool::Update(const f32_t fTimeDelta)",
+            "void Client::CEffect_Tool::Render()",
+        )
+        self.assertIn("bCombatObjectIndependentPreviewActive", update)
+        self.assertIn(
+            "Sync_ValtanCombatObjectIndependentPreview(bSeekAfterLoop)", update
+        )
+
+        restart = _function(
+            source,
+            "void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()",
+            "void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()",
+        )
+        combat_restart = restart.index(
+            "m_ValtanCombatObjectIndependentPreview.has_value()"
+        )
+        self.assertLess(
+            combat_restart,
+            restart.index("Stage_WorldPreview()"),
+        )
+        self.assertIn(
+            "Sync_ValtanCombatObjectIndependentPreview(true)", restart
+        )
+
+        release = _function(
+            source,
+            "void Client::CEffect_Tool::Release_WorldPreview(",
+            "void Client::CEffect_Tool::Discard_ActiveDocument()",
+        )
+        self.assertIn("Clear_ValtanCombatObjectIndependentPreview();", release)
+
+        clear = _function(
+            source,
+            "void Client::CEffect_Tool::Clear_ValtanCombatObjectIndependentPreview()",
+            "bool_t Client::CEffect_Tool::Can_PlayValtanServerPattern(",
+        )
+        self.assertIn("Reset_LocalPatternPresentationSample();", clear)
+        self.assertIn("Set_SessionLock(", clear)
+
     def test_hit_effect_does_not_replace_combat_object_despawn(self) -> None:
         source = _read("Client/Private/ClientReplication.cpp")
         body = _function(
@@ -148,7 +471,7 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
             "void Client::CActionCompositionWorkbench::Pack_TimelineSubrows()",
         )
         self.assertIn(
-            '"Combat Object x" + std::to_string(Object.iSpawnValue)',
+            '"Server Combat Object (read-only) x" +',
             timeline,
         )
         self.assertIn("Object.iLifetimeMs", timeline)
@@ -157,6 +480,27 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
         )
         self.assertIn("iTimelineTailMs", timeline)
         self.assertIn("Item.iEndMs", timeline)
+
+    def test_composition_combat_object_selection_is_visible_but_read_only(self) -> None:
+        source = _read("Client/Private/ActionCompositionWorkbench.cpp")
+        self.assertIn(
+            "Item.eOwner == DETAIL_OWNER::COMBAT_OBJECT ||",
+            source,
+        )
+        self.assertIn(
+            "DETAIL_OWNER::COMBAT_OBJECT == SelectedTimelineBox->eOwner",
+            source,
+        )
+        self.assertGreaterEqual(
+            source.count("Item.eOwner == m_eDetailOwner"),
+            2,
+            "selection lookup and yellow outline must use the same owner identity",
+        )
+        self.assertIn("!bSelectedReadOnlyBox", source)
+        self.assertIn(
+            "not an Effect V2 binding",
+            source,
+        )
 
 
 if __name__ == "__main__":

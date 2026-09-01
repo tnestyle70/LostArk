@@ -57,6 +57,11 @@ public:
 		   diagnostics. PREPARE does not compare against these historical bytes; it
 		   captures the current saved typed closure into StagedPresentationReceipt. */
 		bool hasPresentationArtifactBaseline = false;
+		/* Entry may overlap a short canonical reader/writer transaction. Gameplay
+		   admission remains authoritative while this bounded, main-thread retry
+		   reacquires the same saved presentation closure after that transaction. */
+		bool hasPendingEntryPresentationBaselineRecovery = false;
+		std::uint64_t iNextEntryPresentationBaselineRecoveryAtMilliseconds = 0u;
 		std::vector<PRESENTATION_ARTIFACT_BASELINE>
 			PresentationArtifactBaseline;
 		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT
@@ -353,7 +358,7 @@ public:
 	[[nodiscard]] bool Try_Get_ValtanPresentationGenerationReceipt(
 		const LostArk::Shared::GameplayDataRevision& revision,
 		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& outReceipt,
-		std::string& status) const;
+		std::string& status);
 	/* Read-only Debug truth for tools that reload repository presentation JSON.
 	   This validates the current typed closure under canonical reader admission;
 	   it is not a comparison with historical world-entry bytes. */
@@ -385,6 +390,7 @@ private:
 			LostArk::Shared::PACKET_TYPE::INVALID,
 		std::string_view detail = "Protocol validation failed.");
 	void Reset_WorldInboundState();
+	bool Try_Recover_EntryPresentationBaseline(std::string& status);
 	void Record_WorldRevisionSet(
 		const LostArk::Shared::GameplayDataRevision& activeRevision,
 		const std::vector<LostArk::Shared::GameplayDataRevision>&

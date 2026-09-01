@@ -5,7 +5,9 @@
 
 namespace LostArk::Shared
 {
-	/* 49 requires stable-ID Valtan Complete Play to carry the exact active
+	/* 52 adds the Server-active replacement definition revision to exact
+	Valtan Restart requests and verdict echoes.
+	49 requires stable-ID Valtan Complete Play to carry the exact active
 	definition revision that the Client observed before requesting mutation.
 	48 adds exact-occurrence Valtan Restart CAS identity and its pinned
 	definition revision to the stable-ID audition wire.
