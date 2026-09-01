@@ -2,6 +2,7 @@
 
 #include "GameInstance.h"
 #include "MainApp.h"
+#include "RaidBossShowcaseService.h"
 #include "UIInputRouter.h"
 #include "UILayoutRuntime.h"
 
@@ -115,6 +116,10 @@ namespace
 		const wchar_t*	pBossName;
 		const wchar_t*	pGateLevels;	// 관문별 아이템 레벨 row
 		const wchar_t*	pMatchLimit;	// 아이템 레벨 N 미만 매칭 불가
+		/* Live showcase boss for this raid, rendered over the portrait by
+		   CRaidBossShowcaseService -- nullptr keeps the static key art (Kakul's model is
+		   still in production). */
+		const char_t*	pShowcaseArchetypeId;
 		const char_t*	pBossPortrait;
 		/* leftBg is a six-frame clip in the source and the raid's emblem is painted into each
 		   frame, so the left panel swaps as one texture rather than an emblem on a shared plate.
@@ -136,6 +141,7 @@ namespace
 			L"1475  1475  1475",
 			// "아이템 레벨 1475 미만 매칭 불가"
 			L"\xC544\xC774\xD15C \xB808\xBCA8 1475 \xBBF8\xB9CC \xB9E4\xCE6D \xBD88\xAC00",
+			nullptr,
 			"UI/Bern/RaidEntry_BossPortrait.png",
 			"UI/Bern/RaidEntry_LeftPanel_2.png", false,
 			/* Kakul's three esther skills, in the order the real window lists them.
@@ -159,11 +165,13 @@ namespace
 			L"1415  1415  1415",
 			// "아이템 레벨 1415 미만 매칭 불가"
 			L"\xC544\xC774\xD15C \xB808\xBCA8 1415 \xBBF8\xB9CC \xB9E4\xCE6D \xBD88\xAC00",
-			/* No greyscale key art exists for Valtan: bossImage only carries frames 3..6, and
-			   EpicGateCommanderEntranceContent::satisfiedChangedHandler shows that clip only
-			   while entry conditions are NOT met. The two earliest commanders have no locked
-			   state to draw, so Kakul's art stands in until a Valtan one is sourced. */
-			"UI/Bern/RaidEntry_BossPortrait.png",
+			/* Valtan's own locked-state key art. It is absent from the entrance movie -- bossImage
+			   only carries frames 3..6 -- but not from the game: EFUI_BACKGROUNDIMG ships it as
+			   lv_lut_commander_valtan_lock at 1200x848, which is this very slot's size. The
+			   package names the two states the movie switches between in
+			   satisfiedChangedHandler: _lock for entry-blocked, _special for the colour art. */
+			"BOSS_VALTAN",
+			"UI/Bern/RaidEntry_BossPortrait_Valtan.png",
 			"UI/Bern/RaidEntry_LeftPanel_0.png", true,
 			{ "UI/Esther/esther_portrait_sillian.png",
 			  "UI/Esther/esther_portrait_wei.png",
@@ -234,6 +242,11 @@ void CRaidEntryPreviewView::Open()
 	m_isOpen = true;
 	m_hasJustOpened = true;
 	Apply_RaidSelection();
+	/* Pay the boss model's one synchronous admission behind the open transition, so the
+	   first click on its tab doesn't hitch. */
+	for (const RAID_DEF& Raid : RAID_DEFS)
+		if (nullptr != Raid.pShowcaseArchetypeId)
+			CRaidBossShowcaseService::Request_Prewarm(Raid.pShowcaseArchetypeId);
 }
 
 void CRaidEntryPreviewView::Apply_RaidSelection()
@@ -452,6 +465,24 @@ bool_t CRaidEntryPreviewView::Render()
 	/* Timer_Default is the frame clock Client.cpp registers at startup; the grow is eased over
 	   real time so it settles the same way regardless of framerate. */
 	Update_TabStrip(CGameInstance::Get().Get_TimeDelta(TEXT("Timer_Default")));
+
+	/* The live boss render over the portrait area. Requested per frame; silence (popup
+	   closed, other raid selected) lets the service retire itself. */
+	if (m_iSelectedRaid >= 0 && m_iSelectedRaid < RAID_COUNT &&
+		nullptr != RAID_DEFS[m_iSelectedRaid].pShowcaseArchetypeId)
+	{
+		CRaidBossShowcaseService::Request_Frame(
+			RAID_DEFS[m_iSelectedRaid].pShowcaseArchetypeId);
+	}
+
+	/* The original switches bossImage (locked greyscale) and imageTexture (live) exclusively
+	   in satisfiedChangedHandler -- mirror that: once the live boss is actually staged and
+	   drawing, the static key art goes away instead of layering under it. */
+	const bool_t isLiveBossShowing =
+		m_iSelectedRaid >= 0 && m_iSelectedRaid < RAID_COUNT &&
+		nullptr != RAID_DEFS[m_iSelectedRaid].pShowcaseArchetypeId &&
+		CRaidBossShowcaseService::Is_Live();
+	m_pView->Set_SlotVisible("RaidEntry_BossPortrait", !isLiveBossShowing);
 
 	/* Matching / Find Party are visual-only per PLAN scope (no matching system exists yet) --
 	   static art, no hover swap, no click handling. Decline always closes internally; Entrance
