@@ -197,10 +197,21 @@ struct VALTAN_STAGE_BRANCH_VIEW final
    not silently discard mechanics that the Server actually executes. */
 struct VALTAN_COUNTER_PROXY_VIEW final
 {
+	/* Product v4 writes one typed shape.  strSpace remains the legacy Tool
+	   convenience mirror for BOSS_LOCAL circle authoring. */
+	std::string strKind = "BOSS_LOCAL_CIRCLE";
 	std::string strSpace;
 	f32_t fForwardOffsetM = 0.f;
 	f32_t fRightOffsetM = 0.f;
 	f32_t fRadiusM = 0.f;
+	f32_t fArcDegrees = 0.f;
+};
+
+struct VALTAN_BOSS_RESPONSE_VIEW final
+{
+	std::string strKind;
+	uint32_t iThreshold = 0u;
+	bool operator==(const VALTAN_BOSS_RESPONSE_VIEW&) const = default;
 };
 
 /* The stage is where a Valtan pattern actually becomes work: it owns the
@@ -252,6 +263,7 @@ struct VALTAN_STAGE_VIEW final
 	std::string strAttachmentSlot = "NONE";
 	std::string strPartDamagePolicy = "NORMAL";
 	std::optional<VALTAN_COUNTER_PROXY_VIEW> CounterProxy;
+	std::optional<VALTAN_BOSS_RESPONSE_VIEW> BossResponse;
 	f32_t fPushRangeM = 0.f;
 	uint32_t iPushMs = 0u;
 	bool_t bKnockdown = false;
@@ -454,6 +466,9 @@ struct VALTAN_PATTERN_VIEW final
 	uint32_t iMaximumConsecutiveUses = 0u;
 	f32_t fMinimumRange = 0.f;
 	f32_t fMaximumRange = 0.f;
+	/* Zero means the optional Product field is absent. Authored values are
+	   validated as finite, non-zero and bounded before reaching this view. */
+	f32_t fVerticalOffsetM = 0.f;
 	std::optional<VALTAN_PATTERN_SERVER_MOTION_VIEW> ServerMotion;
 	std::optional<VALTAN_PATTERN_FINALE_VIEW> Finale;
 	uint32_t iSourceSequenceIndex = 0u;

@@ -44,6 +44,8 @@ private:
 		COMPOSITION,
 		ANIMATION,
 		EFFECT,
+		/* Compatibility-only route. MainApp canonicalizes it to EFFECT so old
+		   callers cannot reopen a second user-facing tool entry. */
 		EFFECT_V2,
 		RENDERING,
 		UI,

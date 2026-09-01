@@ -1,6 +1,7 @@
 #include "ValtanPresentationGenerationAdmission.h"
 
 #include "DataJson.h"
+#include "EffectV2_Document.h"
 #include "ProjectDataRoot.h"
 #include "ValtanPatternTree.h"
 
@@ -9,6 +10,7 @@
 #include <bcrypt.h>
 #include <cwctype>
 #include <fstream>
+#include <functional>
 #include <limits>
 #include <map>
 #include <set>
@@ -26,7 +28,6 @@ namespace
 	using Client::VALTAN_PRESENTATION_GENERATION_RECEIPT;
 	using LostArk::Shared::GameplayDataRevision;
 
-	constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 28u;
 	constexpr std::uint64_t MAX_ARTIFACT_BYTES = 64ull * 1024ull * 1024ull;
 	constexpr std::string_view EFFECT_V2_BINDINGS_RELATIVE =
 		"Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json";
@@ -226,7 +227,8 @@ namespace
 			status = "Gameplay.bootstrap header is invalid.";
 			return false;
 		}
-		if (GAMEPLAY_BOOTSTRAP_VERSION != version || 0u == rowCount ||
+		if (LostArk::Shared::GAMEPLAY_BOOTSTRAP_FORMAT_VERSION != version ||
+			0u == rowCount ||
 			rowCount > 4096u)
 		{
 			status = "Gameplay.bootstrap version or row count is invalid.";
@@ -346,7 +348,8 @@ namespace
 		const std::string& relative,
 		const std::string_view context,
 		DATA_JSON_VALUE& document,
-		std::string& status)
+		std::string& status,
+		std::string* const pSourceBytes = nullptr)
 	{
 		if (!Is_SafeRelativePath(relative))
 		{
@@ -376,6 +379,8 @@ namespace
 		std::string bytes;
 		if (!Read_File(physical, bytes, status))
 			return false;
+		if (nullptr != pSourceBytes)
+			*pSourceBytes = bytes;
 		std::string parseError;
 		if (!Client::CDataJson::Parse(bytes, document, parseError) ||
 			!document.Is_Object())
@@ -485,8 +490,9 @@ namespace
 		std::string& status)
 	{
 		DATA_JSON_VALUE bindings;
+		std::string bindingBytes;
 		if (!Read_EffectV2Json(root, std::string(EFFECT_V2_BINDINGS_RELATIVE),
-				"BOSS_VALTAN Effect V2 bindings", bindings, status))
+				"BOSS_VALTAN Effect V2 bindings", bindings, status, &bindingBytes))
 		{
 			return false;
 		}
@@ -498,7 +504,7 @@ namespace
 				{ "schema", "formatVersion", "archetypeId", "bindings" }) ||
 			!Read_String(bindings, "schema", schema) ||
 			"lostark.effect-v2-bindings" != schema ||
-			!Read_Unsigned(bindings, "formatVersion", version) || 1u != version ||
+			!Read_Unsigned(bindings, "formatVersion", version) || 2u != version ||
 			!Read_String(bindings, "archetypeId", archetypeId) ||
 			"BOSS_VALTAN" != archetypeId || nullptr == rows ||
 			!rows->Is_Array() || rows->Get_Array().empty())
@@ -507,18 +513,24 @@ namespace
 			return false;
 		}
 
+		std::vector<Client::EFFECT_V2_BINDING> parsedBindings;
+		std::string parseError;
+		if (!Client::CEffectV2Document::Parse_Bindings(
+				bindingBytes, "BOSS_VALTAN", parsedBindings, parseError) ||
+			parsedBindings.empty())
+		{
+			status = "BOSS_VALTAN Effect V2 bindings failed strict v2 admission: " +
+				parseError;
+			return false;
+		}
 		std::set<std::string> leafIds;
 		std::set<std::string> groupIds;
-		std::set<std::tuple<std::string, std::string, std::string,
-			std::string, std::uint64_t, std::string>> identities;
-		for (std::size_t ordinal = 0u;
-			ordinal < rows->Get_Array().size(); ++ordinal)
+		for (const Client::EFFECT_V2_BINDING& binding : parsedBindings)
 		{
-			if (!Read_EffectV2BindingIdentity(rows->Get_Array()[ordinal], ordinal,
-					identities, leafIds, groupIds, status))
-			{
-				return false;
-			}
+			if (Client::EFFECT_V2_RESOURCE_KIND::LEAF == binding.eResourceKind)
+				leafIds.insert(binding.strResourceId);
+			else
+				groupIds.insert(binding.strResourceId);
 		}
 		for (const std::string& leafId : leafIds)
 		{
@@ -541,9 +553,20 @@ namespace
 				return false;
 			}
 			DATA_JSON_VALUE group;
+			std::string groupBytes;
 			if (!Read_EffectV2Json(root, relative,
-					"BOSS_VALTAN Effect V2 group " + groupId, group, status))
+					"BOSS_VALTAN Effect V2 group " + groupId, group, status,
+					&groupBytes))
 			{
+				return false;
+			}
+			Client::EFFECT_V2_GROUP parsedGroup;
+			if (!Client::CEffectV2Document::Parse_Group(
+					groupBytes, parsedGroup, parseError) ||
+				parsedGroup.strGroupId != groupId)
+			{
+				status = "BOSS_VALTAN Effect V2 group failed strict v2 admission: " +
+					groupId + ": " + parseError;
 				return false;
 			}
 			std::string loadedGroupId;
@@ -555,7 +578,7 @@ namespace
 				!Read_String(group, "schema", groupSchema) ||
 				"lostark.effect-v2-group" != groupSchema ||
 				!Read_Unsigned(group, "formatVersion", groupVersion) ||
-				1u != groupVersion ||
+				2u != groupVersion ||
 				!Read_String(group, "groupId", loadedGroupId) ||
 				loadedGroupId != groupId || nullptr == children ||
 				!children->Is_Array() || children->Get_Array().empty())
@@ -573,32 +596,35 @@ namespace
 			}
 
 			for (std::size_t ordinal = 0u;
-				ordinal < children->Get_Array().size(); ++ordinal)
+				ordinal < parsedGroup.Children.size(); ++ordinal)
 			{
-				const DATA_JSON_VALUE& child = children->Get_Array()[ordinal];
 				const std::string context = "BOSS_VALTAN Effect V2 group " +
 					groupId + ".children[" + std::to_string(ordinal) + "]";
-				std::string effectId;
+				const Client::EFFECT_V2_GROUP_CHILD& child =
+					parsedGroup.Children[ordinal];
 				std::string ignoredRelative;
-				if (!child.Is_Object() || nullptr != child.Find("group") ||
-					!Read_String(child, "effectId", effectId))
+				if (Client::EFFECT_V2_RESOURCE_KIND::GROUP == child.eResourceKind)
 				{
-					status = context + " has no valid leaf effectId.";
+					status = context +
+						" references a nested group, which the current Valtan Effect V2 runtime does not admit.";
 					return false;
 				}
-				if (!Build_EffectV2Relative(EFFECT_V2_AUTHORED_ROOT, effectId,
-						EFFECT_V2_DOCUMENT_SUFFIX, context + ".effectId",
+				if (!Build_EffectV2Relative(EFFECT_V2_AUTHORED_ROOT,
+						child.strResourceId, EFFECT_V2_DOCUMENT_SUFFIX,
+						context + ".resource.id",
 						ignoredRelative, status))
 				{
 					return false;
 				}
-				if (effectId == groupId || groupIds.contains(effectId))
+				if (child.strResourceId == groupId ||
+					groupIds.contains(child.strResourceId))
 				{
 					status = context +
-						" refers to a group instead of an authored leaf: " + effectId;
+						" refers to a group instead of an authored leaf: " +
+						child.strResourceId;
 					return false;
 				}
-				leafIds.insert(effectId);
+				leafIds.insert(child.strResourceId);
 			}
 		}
 

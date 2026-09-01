@@ -601,6 +601,17 @@ namespace
 		boss.fPatternTargetLastPositionZ = 0.f;
 	}
 
+	void RestorePatternVerticalOffset(SERVER_WORLD_ENTITY& boss)
+	{
+		if (boss.bPatternVerticalOffsetApplied &&
+			std::isfinite(boss.fPatternVerticalBaseY))
+		{
+			boss.fPositionY = boss.fPatternVerticalBaseY;
+		}
+		boss.bPatternVerticalOffsetApplied = false;
+		boss.fPatternVerticalBaseY = 0.f;
+	}
+
 	void FacePoint(SERVER_WORLD_ENTITY& boss, const float x, const float z)
 	{
 		const float deltaX = x - boss.fPositionX;
@@ -1632,11 +1643,15 @@ namespace
 		boss.ePatternAttachmentSlot = stage.eAttachmentSlot;
 		boss.ePatternPartDamagePolicy = stage.ePartDamagePolicy;
 		boss.bPatternHasCounterProxy = stage.bHasCounterProxy;
+		boss.ePatternCounterProxyKind = stage.eCounterProxyKind;
 		boss.fPatternCounterProxyForwardOffsetM =
 			stage.fCounterProxyForwardOffsetM;
 		boss.fPatternCounterProxyRightOffsetM =
 			stage.fCounterProxyRightOffsetM;
 		boss.fPatternCounterProxyRadiusM = stage.fCounterProxyRadiusM;
+		boss.fPatternCounterProxyArcDegrees = stage.fCounterProxyArcDegrees;
+		boss.ePatternBossResponseKind = stage.eBossResponseKind;
+		boss.iPatternBossResponseThreshold = stage.iBossResponseThreshold;
 		boss.fPatternHitOuterRadius = stage.fHitOuterRadius;
 		boss.fPatternHitInnerRadius = stage.fHitInnerRadius;
 		boss.fPatternHitAngleDegrees = stage.fHitAngleDegrees;
@@ -1717,6 +1732,15 @@ namespace
 		const LostArk::Shared::GameplayDataRevision& definitionRevision,
 		const std::uint32_t serverTick)
 	{
+		/* A new occurrence must never inherit an offset or response latch from a
+		previous aborted definition. The ordinary path already restored these in
+		FinishPattern; this guard also closes direct reset/re-entry callers. */
+		RestorePatternVerticalOffset(boss);
+		boss.ePatternBossResponseKind =
+			BOSS_PATTERN_BOSS_RESPONSE_KIND::NONE;
+		boss.iPatternBossResponseThreshold = 0u;
+		boss.iPatternBossResponseAccumulatedHealthDamage = 0u;
+		boss.bPatternBossResponsePublished = false;
 		boss.bAutomaticPatternSequencePausedForRevive = false;
 		boss.iAutomaticPatternSequencePauseLastTick = 0u;
 		boss.PinnedDefinitionRevision = definitionRevision;
@@ -1729,6 +1753,13 @@ namespace
 			pattern.Motion.bMoveToAnchorBeforeTakeoff;
 		boss.fPatternMinimumRange = pattern.fMinimumRange;
 		boss.fPatternMaximumRange = pattern.fMaximumRange;
+		if (0.f != pattern.fVerticalOffsetM)
+		{
+			boss.fPatternVerticalBaseY = boss.fPositionY;
+			boss.fPositionY = boss.fPatternVerticalBaseY +
+				pattern.fVerticalOffsetM;
+			boss.bPatternVerticalOffsetApplied = true;
+		}
 		StartPatternCooldown(boss, pattern, serverTick);
 		boss.iPatternSequence = boss.iPatternSequence ==
 			(std::numeric_limits<std::uint32_t>::max)() ?
@@ -1847,6 +1878,7 @@ namespace
 		const SERVER_BOSS_MECHANIC_FAILURE failure =
 			SERVER_BOSS_MECHANIC_FAILURE::NONE)
 	{
+		RestorePatternVerticalOffset(boss);
 		if (!boss.strPatternId.empty())
 		{
 			boss.PatternTerminalReceipt.iPatternSequence = boss.iPatternSequence;
@@ -1918,9 +1950,17 @@ namespace
 		boss.ePatternPartDamagePolicy =
 			BOSS_PATTERN_PART_DAMAGE_POLICY::NORMAL;
 		boss.bPatternHasCounterProxy = false;
+		boss.ePatternCounterProxyKind =
+			BOSS_PATTERN_COUNTER_PROXY_KIND::NONE;
 		boss.fPatternCounterProxyForwardOffsetM = 0.f;
 		boss.fPatternCounterProxyRightOffsetM = 0.f;
 		boss.fPatternCounterProxyRadiusM = 0.f;
+		boss.fPatternCounterProxyArcDegrees = 0.f;
+		boss.ePatternBossResponseKind =
+			BOSS_PATTERN_BOSS_RESPONSE_KIND::NONE;
+		boss.iPatternBossResponseThreshold = 0u;
+		boss.iPatternBossResponseAccumulatedHealthDamage = 0u;
+		boss.bPatternBossResponsePublished = false;
 		boss.iPatternHitCount = 0u;
 		boss.iPatternHitDelayMs = 0u;
 		boss.iAppliedPatternHitCount = 0u;
@@ -2434,6 +2474,7 @@ void LostArk::Server::CValtanBrain::Update(
 		return;
 	if (0u == boss.iCurrentHp || SERVER_ENTITY_ACTION::DEAD == boss.eAction)
 	{
+		RestorePatternVerticalOffset(boss);
 		if (!boss.strPatternId.empty())
 		{
 			boss.PatternTerminalReceipt.iPatternSequence = boss.iPatternSequence;
@@ -2463,6 +2504,18 @@ void LostArk::Server::CValtanBrain::Update(
 		boss.iAutomaticPatternSequencePauseLastTick = 0u;
 		boss.strPatternStageId.clear();
 		boss.strActionId.clear();
+		boss.bPatternHasCounterProxy = false;
+		boss.ePatternCounterProxyKind =
+			BOSS_PATTERN_COUNTER_PROXY_KIND::NONE;
+		boss.fPatternCounterProxyForwardOffsetM = 0.f;
+		boss.fPatternCounterProxyRightOffsetM = 0.f;
+		boss.fPatternCounterProxyRadiusM = 0.f;
+		boss.fPatternCounterProxyArcDegrees = 0.f;
+		boss.ePatternBossResponseKind =
+			BOSS_PATTERN_BOSS_RESPONSE_KIND::NONE;
+		boss.iPatternBossResponseThreshold = 0u;
+		boss.iPatternBossResponseAccumulatedHealthDamage = 0u;
+		boss.bPatternBossResponsePublished = false;
 		boss.ePatternStageMotionKind = BOSS_PATTERN_STAGE_MOTION_KIND::NONE;
 		boss.PatternStageRootMotion.clear();
 		boss.bPortalMotionActive = false;
@@ -2593,6 +2646,13 @@ void LostArk::Server::CValtanBrain::Update(
 	const bool continueTargetlessPatternFollowup = nullptr == target &&
 		(boss.PendingPatternFollowup.Is_Pending() ||
 		 (boss.iPatternFollowupDepth > 0u && !boss.strPatternId.empty()));
+	const auto* runningDefinition = FindPattern(*patterns, boss.strPatternId);
+	const bool verticalOffsetTerminalDamageCommitted =
+		nullptr == target && !players.empty() &&
+		boss.bPatternVerticalOffsetApplied && nullptr != runningDefinition &&
+		boss.iPatternStageIndex + 1u == runningDefinition->Stages.size() &&
+		0u != boss.iPatternHitCount &&
+		boss.iAppliedPatternHitCount >= boss.iPatternHitCount;
 	const bool runningAutomaticSequenceStep =
 		nullptr != automaticSequence && !boss.bScriptedPatternPlayback &&
 		!boss.bAutomaticPatternSequenceAuditionOverride &&
@@ -2616,8 +2676,8 @@ void LostArk::Server::CValtanBrain::Update(
 		nullptr == target && runningAutomaticSequenceStep && !players.empty() &&
 		HasPlayerAwaitingRevive(players) &&
 		!continueTargetlessOwnedGrabPattern &&
-		!continueTargetlessOrderedFloorWipe;
-	const auto* runningDefinition = FindPattern(*patterns, boss.strPatternId);
+		!continueTargetlessOrderedFloorWipe &&
+		!verticalOffsetTerminalDamageCommitted;
 	const bool independentFinaleOrChild = !players.empty() &&
 		(LostArk::Shared::INVALID_NET_ENTITY_ID != boss.iOwnerBossNetEntityId ||
 			(nullptr != runningDefinition &&
@@ -2639,7 +2699,9 @@ void LostArk::Server::CValtanBrain::Update(
 	const bool continueTargetlessRunningStage =
 		continueTargetlessScheduledArenaStage ||
 		continueTargetlessOwnedGrabPattern ||
-		continueTargetlessOrderedFloorWipe || continueTargetlessPatternFollowup ||
+		continueTargetlessOrderedFloorWipe ||
+		verticalOffsetTerminalDamageCommitted ||
+		continueTargetlessPatternFollowup ||
 		independentFinaleOrChild;
 	/* The ordered review program deliberately lets FLOOR_WIPE finish its
 	   already-started recovery after killing the last player. FinishPattern then
@@ -2973,7 +3035,14 @@ void LostArk::Server::CValtanBrain::Fail_Mechanic(
 {
 	if (!patternId.empty() && patternId == boss.strPatternId)
 	{
+		/* Preflight and commit failures report through this public abort edge
+		without reaching FinishPattern. Restore occurrence-owned height here so a
+		failed room transaction cannot strand the authoritative body in the air. */
+		RestorePatternVerticalOffset(boss);
 		boss.PatternTerminalReceipt.iPatternSequence = boss.iPatternSequence;
+		boss.PatternTerminalReceipt.iRootPatternSequence =
+			0u == boss.iPatternFollowupDepth ? boss.iPatternSequence :
+			boss.iPatternFollowupRootSequence;
 		boss.PatternTerminalReceipt.eResult =
 			SERVER_BOSS_PATTERN_TERMINAL_RESULT::ABORTED;
 	}

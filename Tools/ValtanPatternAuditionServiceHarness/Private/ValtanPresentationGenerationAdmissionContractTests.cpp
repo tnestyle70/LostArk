@@ -1,5 +1,6 @@
 #include "ProjectDataRoot.h"
 #include "DataJson.h"
+#include "EffectV2_Document.h"
 #include "ValtanPresentationGenerationAdmission.h"
 
 #include <chrono>
@@ -134,6 +135,7 @@ namespace
 
 	bool Duplicate_FirstBindingRow(
 		const std::filesystem::path& path,
+		std::string& outBindingId,
 		std::string& status)
 	{
 		std::ifstream input(path, std::ios::binary);
@@ -144,18 +146,19 @@ namespace
 		}
 		std::string bytes{
 			std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>() };
-		const std::string firstIdentity =
-			"    { \"effectId\": \"boss.valtan.hand_1\"";
-		const std::size_t begin = bytes.find(firstIdentity);
-		const std::size_t end = std::string::npos == begin ?
-			std::string::npos : bytes.find('\n', begin);
-		if (std::string::npos == begin || std::string::npos == end)
+		std::vector<Client::EFFECT_V2_BINDING> bindings;
+		std::string parseError;
+		if (!Client::CEffectV2Document::Parse_Bindings(
+				bytes, "BOSS_VALTAN", bindings, parseError) || bindings.empty())
 		{
-			status = "Could not find the first Effect V2 binding fixture row.";
+			status = "Could not parse the strict v2 binding fixture: " +
+				parseError;
 			return false;
 		}
-		const std::string row = bytes.substr(begin, end - begin + 1u);
-		bytes.insert(end + 1u, row);
+		outBindingId = bindings.front().strBindingId;
+		bindings.push_back(bindings.front());
+		bytes = Client::CEffectV2Document::Serialize_Bindings(
+			"BOSS_VALTAN", bindings);
 		std::ofstream output(path, std::ios::binary | std::ios::trunc);
 		if (!output)
 		{
@@ -191,6 +194,35 @@ namespace
 		return true;
 	}
 
+	bool Read_V2Resource(
+		const Client::DATA_JSON_VALUE& owner,
+		const std::string& context,
+		std::string& outKind,
+		std::string& outId,
+		std::string& status)
+	{
+		const Client::DATA_JSON_VALUE* const resource = owner.Find("resource");
+		if (nullptr == resource || !resource->Is_Object() ||
+			2u != resource->Get_Object().size())
+		{
+			status = context +
+				" has no exact resource { kind, id } object.";
+			return false;
+		}
+		const Client::DATA_JSON_VALUE* const kind = resource->Find("kind");
+		const Client::DATA_JSON_VALUE* const id = resource->Find("id");
+		if (nullptr == kind || !kind->Is_String() ||
+			("LEAF" != kind->Get_String() && "GROUP" != kind->Get_String()) ||
+			nullptr == id || !id->Is_String() || id->Get_String().empty())
+		{
+			status = context + " has an invalid v2 resource identity.";
+			return false;
+		}
+		outKind = kind->Get_String();
+		outId = id->Get_String();
+		return true;
+	}
+
 	bool Collect_ReachableV2Closure(
 		const std::filesystem::path& repositoryRoot,
 		std::set<std::string>& outClosure,
@@ -218,22 +250,22 @@ namespace
 		std::set<std::string> leafIds;
 		for (const Client::DATA_JSON_VALUE& binding : bindings->Get_Array())
 		{
-			if (!binding.Is_Object())
+			if (!binding.Is_Object() || 6u != binding.Get_Object().size() ||
+				nullptr == binding.Find("bindingId") ||
+				nullptr == binding.Find("scope") ||
+				nullptr == binding.Find("clock") ||
+				nullptr == binding.Find("anchor") ||
+				nullptr == binding.Find("stopPolicy"))
 			{
-				status = "Effect V2 binding closure fixture contains a non-object row.";
+				status = "Effect V2 binding closure fixture contains a non-v2 row.";
 				return false;
 			}
-			const Client::DATA_JSON_VALUE* const group = binding.Find("group");
-			const Client::DATA_JSON_VALUE* const effect = binding.Find("effectId");
-			if (nullptr != group && group->Is_String())
-				groupIds.insert(group->Get_String());
-			else if (nullptr != effect && effect->Is_String())
-				leafIds.insert(effect->Get_String());
-			else
-			{
-				status = "Effect V2 binding closure fixture has no group or effectId.";
+			std::string kind;
+			std::string id;
+			if (!Read_V2Resource(binding,
+					"Effect V2 binding closure fixture row", kind, id, status))
 				return false;
-			}
+			(kind == "GROUP" ? groupIds : leafIds).insert(id);
 		}
 
 		for (const std::string& groupId : groupIds)
@@ -257,15 +289,32 @@ namespace
 			}
 			for (const Client::DATA_JSON_VALUE& child : children->Get_Array())
 			{
-				const Client::DATA_JSON_VALUE* const effect =
-					child.Is_Object() ? child.Find("effectId") : nullptr;
-				if (nullptr == effect || !effect->Is_String())
+				if (!child.Is_Object() || 6u != child.Get_Object().size() ||
+					nullptr == child.Find("childId") ||
+					nullptr == child.Find("startMs") ||
+					nullptr == child.Find("durationMs") ||
+					nullptr == child.Find("stop") ||
+					nullptr == child.Find("localTransform"))
 				{
-					status = "Effect V2 group closure fixture has an invalid child: " +
+					status = "Effect V2 group closure fixture has a non-v2 child: " +
 						groupId;
 					return false;
 				}
-				leafIds.insert(effect->Get_String());
+				std::string kind;
+				std::string id;
+				if (!Read_V2Resource(child,
+						"Effect V2 group closure fixture child " + groupId,
+						kind, id, status))
+				{
+					return false;
+				}
+				if ("GROUP" == kind)
+				{
+					status = "Effect V2 group closure fixture contains a nested group: " +
+						groupId + "/" + id;
+					return false;
+				}
+				leafIds.insert(id);
 			}
 		}
 
@@ -519,22 +568,22 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 		const V2_REPLACE_CASE replaceCases[]{
 			{
 				"Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json",
-				"\"effectId\": \"boss.valtan.hand_1\"",
-				"\"effectId\": \"../boss.valtan.hand_1\"",
-				"BOSS_VALTAN Effect V2 bindings[0].effectId is not a stable Effect V2 ID: ../boss.valtan.hand_1",
+				"\"id\": \"boss.valtan.hand_1\"",
+				"\"id\": \"../boss.valtan.hand_1\"",
+				"BOSS_VALTAN Effect V2 bindings failed strict v2 admission: id must be a stable ID.",
 				"unsafe Effect V2 binding identity was not rejected with exact diagnostics"
 			},
 			{
 				"Data/Effects/V2/Groups/boss.valtan.impact.effectv2group.json",
 				"\"groupId\": \"boss.valtan.impact\"",
 				"\"groupId\": \"boss.valtan.other\"",
-				"BOSS_VALTAN Effect V2 group identity/children are invalid: boss.valtan.impact",
+				"BOSS_VALTAN Effect V2 group failed strict v2 admission: boss.valtan.impact: ",
 				"mismatched Effect V2 group identity was not rejected with exact diagnostics"
 			},
 			{
 				"Data/Effects/V2/Groups/boss.valtan.impact.effectv2group.json",
-				"\"effectId\": \"boss.valtan.hit_1\"",
-				"\"effectId\": \"boss.valtan.impact\"",
+				"\"id\": \"boss.valtan.hit_1\"",
+				"\"id\": \"boss.valtan.impact\"",
 				"BOSS_VALTAN Effect V2 group boss.valtan.impact.children[0] refers to a group instead of an authored leaf: boss.valtan.impact",
 				"nested Effect V2 group reference was not rejected with exact diagnostics"
 			},
@@ -608,10 +657,12 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 
 		SCOPED_TEMPORARY_ROOT duplicateFixture;
 		duplicateFixture.Path = Create_TemporaryRoot(status);
+		std::string duplicatedBindingId;
 		bool duplicatePrepared = !duplicateFixture.Path.empty() &&
 			copyExactClosure(duplicateFixture.Path) &&
 			Duplicate_FirstBindingRow(
-				duplicateFixture.Path / v2BindingRelative, status);
+				duplicateFixture.Path / v2BindingRelative,
+				duplicatedBindingId, status);
 		require(duplicatePrepared,
 			"could not prepare a duplicate Effect V2 binding fixture");
 		if (duplicatePrepared)
@@ -620,8 +671,10 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 			status = "stale successful admission status";
 			const bool admitted = duplicateAdmission.Acquire_PackagedBaselineFromRoot(
 				duplicateFixture.Path, fixtureReceipt, status);
-			require(!admitted && status ==
-				"BOSS_VALTAN Effect V2 bindings[1] duplicates an earlier binding identity: boss.valtan.hand_1.",
+			const std::string expectedDuplicateStatus =
+				"BOSS_VALTAN Effect V2 bindings failed strict v2 admission: "
+				"duplicate Effect V2 bindingId: " + duplicatedBindingId;
+			require(!admitted && status == expectedDuplicateStatus,
 				"duplicate Effect V2 binding identity was not rejected with exact diagnostics");
 		}
 	}

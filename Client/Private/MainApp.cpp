@@ -338,7 +338,7 @@ namespace
 			static_cast<int32_t>(iServerTick - iDeadlineTick) < 0;
 	}
 
-	void Apply_SilenceQuickSlotTint(
+	void Apply_SilenceRSlotTint(
 		Client::CUILayoutRuntime* pView,
 		const Client::HUD_PLAYER_STATE& Player)
 	{
@@ -351,19 +351,10 @@ namespace
 			float4_t(1.f, 0.2f, 0.2f, 1.f) :
 			float4_t(1.f, 1.f, 1.f, 1.f);
 
-		constexpr const char* INPUT_SLOTS[] =
-			{ "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V" };
-		for (const char* pInputSlot : INPUT_SLOTS)
-			pView->Set_SlotTintMultiplier(
-				string("Skill_") + pInputSlot + "_Icon", vIconTint);
-
-		/* Warlord and Artist Z/X are extracted keyframe slots rather than generic icon slots.
-		Update all four even while their owner class is hidden, so a class change cannot leave a
-		latent red multiplier in LEVEL::STATIC. */
-		constexpr const char* KEYFRAME_ICON_SLOTS[] =
-			{ "Skill_Z", "Skill_X", "Yin_Skill_Z", "Yin_Skill_X" };
-		for (const char* pSlotId : KEYFRAME_ICON_SLOTS)
-			pView->Set_SlotTintMultiplier(pSlotId, vIconTint);
+		/* Silence is presented on the already-resolved R icon only. The texture
+		remains the live class/stance skill icon; this multiplier is reset at the
+		exact replicated deadline and never mutates any other quick slot. */
+		pView->Set_SlotTintMultiplier("Skill_R_Icon", vIconTint);
 	}
 }
 
@@ -1279,16 +1270,13 @@ HRESULT CMainApp::Render()
 				focusNextWindow(DEBUG_TOOL::ANIMATION);
 				m_pAnimationTool->Render();
 			}
-			if (IsDebugToolVisible(DEBUG_TOOL::EFFECT) && nullptr != m_pEffectTool)
+			if (IsDebugToolVisible(DEBUG_TOOL::EFFECT))
 			{
 				focusNextWindow(DEBUG_TOOL::EFFECT);
-				m_pEffectTool->Render();
-			}
-			if (IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2) &&
-				nullptr != m_pEffectToolV2)
-			{
-				focusNextWindow(DEBUG_TOOL::EFFECT_V2);
-				m_pEffectToolV2->Render();
+				if (nullptr != m_pEffectTool)
+					m_pEffectTool->Render();
+				if (nullptr != m_pEffectToolV2)
+					m_pEffectToolV2->Render();
 			}
 			if (IsDebugToolVisible(DEBUG_TOOL::RENDERING))
 			{
@@ -1812,7 +1800,7 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	Update_ChargeGauge();
 	Update_SkillIcons();
 	Update_SkillCooldowns();
-	Apply_SilenceQuickSlotTint(m_pHUDRuntimeView.get(), player);
+	Apply_SilenceRSlotTint(m_pHUDRuntimeView.get(), player);
 	Update_QuickSlotFlash();
 	Update_ItemQuickSlots();
 	if (nullptr != m_pInventoryView)
@@ -2993,10 +2981,7 @@ void CMainApp::Update_SkillCooldowns()
 	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V" };
 
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	const bool_t bSilenced =
-		Is_ServerDeadlinePending(player.iServerTick, player.iSilenceEndTick);
-	const float4_t vCooldownTint = bSilenced ?
-		float4_t(0.85f, 0.04f, 0.04f, 0.7f) :
+	const float4_t vCooldownTint =
 		float4_t(0.f, 0.f, 0.f, 150.f / 255.f);
 
 	/* Default every overlay off; the loop below turns on just the ones actually cooling down.
@@ -3009,8 +2994,6 @@ void CMainApp::Update_SkillCooldowns()
 	for (const char* pInputSlot : INPUT_SLOTS)
 	{
 		const string strOverlaySlot = string("Skill_") + pInputSlot + "_Cooldown";
-		/* Silence owns only presentation color. At its exact Server deadline, a longer real
-		cooldown keeps sweeping with the authored black tint instead of staying red. */
 		m_pHUDRuntimeView->Set_SlotTint(strOverlaySlot, vCooldownTint);
 		m_pHUDRuntimeView->Set_SlotVisible(strOverlaySlot, false);
 	}
@@ -3041,6 +3024,26 @@ void CMainApp::Update_SkillCooldowns()
 		const string strOverlaySlot = "Skill_" + Skill.strInputSlot + "_Cooldown";
 		m_pHUDRuntimeView->Set_SlotArcRatio(strOverlaySlot, fFraction);
 		m_pHUDRuntimeView->Set_SlotVisible(strOverlaySlot, true);
+	}
+
+	/* Silence is not written into HUD_SKILL_STATE cooldowns. While its Server
+	deadline is pending it temporarily owns only R's existing pie overlay. If R
+	also has a real cooldown, that ordinary black sweep resumes on the first tick
+	after silence without changing the underlying cooldown state. */
+	if (Is_ServerDeadlinePending(player.iServerTick, player.iSilenceEndTick))
+	{
+		const uint32_t iRemainingTicks =
+			player.iSilenceEndTick - player.iServerTick;
+		const uint32_t iTotalTicks = player.iSilenceDurationTicks > 0u ?
+			player.iSilenceDurationTicks : iRemainingTicks;
+		const f32_t fFraction = iTotalTicks > 0u ?
+			(std::min)(1.f, static_cast<f32_t>(iRemainingTicks) /
+				static_cast<f32_t>(iTotalTicks)) : 0.f;
+		constexpr const char* SILENCE_OVERLAY_SLOT = "Skill_R_Cooldown";
+		m_pHUDRuntimeView->Set_SlotTint(
+			SILENCE_OVERLAY_SLOT, float4_t(0.85f, 0.04f, 0.04f, 0.7f));
+		m_pHUDRuntimeView->Set_SlotArcRatio(SILENCE_OVERLAY_SLOT, fFraction);
+		m_pHUDRuntimeView->Set_SlotVisible(SILENCE_OVERLAY_SLOT, true);
 	}
 }
 
@@ -4781,8 +4784,11 @@ HRESULT CMainApp::ReadyDebugTools()
 
 bool_t CMainApp::IsDebugToolVisible(const DEBUG_TOOL eTool) const
 {
-	const size_t iTool = static_cast<size_t>(eTool);
-	return DEBUG_TOOL::NONE != eTool && DEBUG_TOOL::COUNT != eTool &&
+	const DEBUG_TOOL eCanonicalTool = DEBUG_TOOL::EFFECT_V2 == eTool ?
+		DEBUG_TOOL::EFFECT : eTool;
+	const size_t iTool = static_cast<size_t>(eCanonicalTool);
+	return DEBUG_TOOL::NONE != eCanonicalTool &&
+		DEBUG_TOOL::COUNT != eCanonicalTool &&
 		iTool < m_DebugToolVisible.size() && m_DebugToolVisible[iTool];
 }
 
@@ -4790,26 +4796,44 @@ void CMainApp::SetDebugToolVisible(
 	const DEBUG_TOOL eTool,
 	const bool_t bVisible)
 {
-	const size_t iTool = static_cast<size_t>(eTool);
-	if (DEBUG_TOOL::NONE == eTool || DEBUG_TOOL::COUNT == eTool ||
+	const DEBUG_TOOL eCanonicalTool = DEBUG_TOOL::EFFECT_V2 == eTool ?
+		DEBUG_TOOL::EFFECT : eTool;
+	const size_t iTool = static_cast<size_t>(eCanonicalTool);
+	if (DEBUG_TOOL::NONE == eCanonicalTool ||
+		DEBUG_TOOL::COUNT == eCanonicalTool ||
 		iTool >= m_DebugToolVisible.size())
 	{
 		return;
 	}
 
 	m_DebugToolVisible[iTool] = bVisible;
+	if (DEBUG_TOOL::EFFECT == eCanonicalTool)
+	{
+		/* The retired compatibility slot never owns independent visibility. */
+		m_DebugToolVisible[static_cast<size_t>(DEBUG_TOOL::EFFECT_V2)] = false;
+	}
 	if (!bVisible)
 	{
-		if (m_eDebugInputOwner == eTool)
+		if (m_eDebugInputOwner == eCanonicalTool ||
+			(DEBUG_TOOL::EFFECT == eCanonicalTool &&
+			 DEBUG_TOOL::EFFECT_V2 == m_eDebugInputOwner))
 			m_eDebugInputOwner = DEBUG_TOOL::NONE;
-		if (m_eDebugWindowFocusPending == eTool)
+		if (m_eDebugWindowFocusPending == eCanonicalTool ||
+			(DEBUG_TOOL::EFFECT == eCanonicalTool &&
+			 DEBUG_TOOL::EFFECT_V2 == m_eDebugWindowFocusPending))
 			m_eDebugWindowFocusPending = DEBUG_TOOL::NONE;
-		if (DEBUG_TOOL::MAP == eTool && nullptr != m_pMapTool)
+		if (DEBUG_TOOL::MAP == eCanonicalTool && nullptr != m_pMapTool)
 			m_pMapTool->SetOpen(false);
-		else if (DEBUG_TOOL::CAMERA == eTool && nullptr != m_pCameraTool)
+		else if (DEBUG_TOOL::CAMERA == eCanonicalTool && nullptr != m_pCameraTool)
 			m_pCameraTool->Deactivate();
-		else if (DEBUG_TOOL::EFFECT_V2 == eTool && nullptr != m_pEffectToolV2)
+		else if (DEBUG_TOOL::EFFECT == eCanonicalTool &&
+			nullptr != m_pEffectToolV2)
+		{
+			/* Both codecs stop rendering on this shared visibility edge. The
+			   typed backend additionally owns standalone preview actors, so it
+			   explicitly releases them while preserving its authored draft. */
 			m_pEffectToolV2->Deactivate();
+		}
 	}
 }
 
@@ -4818,13 +4842,19 @@ void CMainApp::CloseAllDebugTools()
 	for (size_t iTool = static_cast<size_t>(DEBUG_TOOL::NONE) + 1u;
 		iTool < static_cast<size_t>(DEBUG_TOOL::COUNT); ++iTool)
 	{
-		SetDebugToolVisible(static_cast<DEBUG_TOOL>(iTool), false);
+		const DEBUG_TOOL eTool = static_cast<DEBUG_TOOL>(iTool);
+		if (DEBUG_TOOL::EFFECT_V2 != eTool)
+			SetDebugToolVisible(eTool, false);
 	}
 	m_strToolStatus = "All authoring windows hidden; domain drafts remain owned by their tools.";
 }
 
 HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 {
+	/* Keep the old enum value as an internal compatibility route only. */
+	if (DEBUG_TOOL::EFFECT_V2 == eTool)
+		return EnsureDebugTool(DEBUG_TOOL::EFFECT);
+
 	switch (eTool)
 	{
 	case DEBUG_TOOL::MAP:
@@ -4899,6 +4929,9 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 			m_pEffectTool =
 				make_unique<CEffect_Tool>(
 					m_pDevice, m_pContext, m_pCharacterPreviewPanel);
+		if (nullptr == m_pEffectToolV2)
+			m_pEffectToolV2 =
+				make_unique<CEffect_Tool_V2>(m_pDevice, m_pContext);
 		/* The Valtan Arena's normal F1 entry should open the existing authored /
 		   Server Pattern / independent Effect workspace, not an unrelated Player
 		   skill list.  Preserve an explicit Character selection on later hide/show. */
@@ -4910,11 +4943,6 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		}
 		break;
 	}
-	case DEBUG_TOOL::EFFECT_V2:
-		if (nullptr == m_pEffectToolV2)
-			m_pEffectToolV2 =
-				make_unique<CEffect_Tool_V2>(m_pDevice, m_pContext);
-		break;
 	case DEBUG_TOOL::RENDERING:
 		if (!m_bRenderQualityDraftInitialized)
 		{
@@ -5260,19 +5288,16 @@ void CMainApp::RefreshDebugAuthoringSources()
 		1u,
 		sourceExists(L"Valtan/Valtan.presentation.json"), true, false);
 	addSource(
-		"Effect V1", "Valtan Authored Effects",
-		"Data/Effects/EffectCatalog.json",
-		"EffectCatalog is the semantic entry point. Exact effect.valtan.* resources are enumerated only after Effect Tool is opened.",
-		"Open Effect Detail", DEBUG_TOOL::EFFECT,
-		1u,
-		sourceExists(L"Effects/EffectCatalog.json"), false, true);
-	addSource(
-		"Effect V2", "Valtan Effect V2 Bindings",
-		"Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json",
-		"BOSS_VALTAN bindings and boss.valtan.* Effect V2 documents owned by Effect Tool v2.",
-		"Open Effect V2 Detail", DEBUG_TOOL::EFFECT_V2,
-		1u,
-		sourceExists(L"Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"), false, false);
+		"Effect Resource", "Valtan Effect Resources",
+		"Data/Effects",
+		"One Effect Resource entry joins direct-authored effect.valtan.* documents with typed boss.valtan.* leaves, groups and BOSS_VALTAN bindings.",
+		"Open Effect Tool", DEBUG_TOOL::EFFECT,
+		2u,
+		sourceExists(L"Effects/EffectCatalog.json") &&
+			sourceExists(L"Effects/V2/Authored") &&
+			sourceExists(L"Effects/V2/Groups") &&
+			sourceExists(L"Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"),
+		false, true);
 	addSource(
 		"Sound", "Valtan Pattern Sound Cues",
 		"Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json",
@@ -5348,7 +5373,7 @@ void CMainApp::OpenDebugAuthoringSource(const size_t iSource)
 		(nullptr == m_pEffectTool ||
 		!m_pEffectTool->Open_ValtanAllEffectsWorkspace()))
 	{
-		m_strToolStatus = "Valtan EffectCatalog is ready, but the exact effect.valtan.* authored workspace could not be opened.";
+		m_strToolStatus = "Valtan Effect Resource is ready, but its direct-authored workspace could not be opened.";
 		return;
 	}
 	m_strToolStatus = "Opened " + source.strDisplayName + " from " +
@@ -5382,14 +5407,14 @@ void CMainApp::RefreshDebugResourceFiles()
 			"Data/Encounters", DEBUG_TOOL::BOSS },
 		{ "Boss / Pattern", "Data", dataRoot / L"Actors",
 			"Data/Actors", DEBUG_TOOL::BOSS },
-		{ "Effect V1", "Resources", resourceRoot / L"Effect",
+		{ "Effect Resource", "Resources", resourceRoot / L"Effect",
 			"Resources/Effect", DEBUG_TOOL::EFFECT },
-		{ "Effect V1", "Data", dataRoot / L"Effects" / L"Authored",
+		{ "Effect Resource", "Data", dataRoot / L"Effects" / L"Authored",
 			"Data/Effects/Authored", DEBUG_TOOL::EFFECT },
-		{ "Effect V1", "Data", dataRoot / L"Effects" / L"Assemblies",
+		{ "Effect Resource", "Data", dataRoot / L"Effects" / L"Assemblies",
 			"Data/Effects/Assemblies", DEBUG_TOOL::EFFECT },
-		{ "Effect V2", "Data", dataRoot / L"Effects" / L"V2",
-			"Data/Effects/V2", DEBUG_TOOL::EFFECT_V2 },
+		{ "Effect Resource", "Data", dataRoot / L"Effects" / L"V2",
+			"Data/Effects/V2", DEBUG_TOOL::EFFECT },
 		{ "Sound", "Resources", resourceRoot / L"Sound",
 			"Resources/Sound", DEBUG_TOOL::ANIMATION },
 		{ "Sound", "Data", dataRoot / L"Sound",
@@ -5931,7 +5956,7 @@ void CMainApp::RenderServerArenaActiveControls()
 		return;
 	}
 	ImGui::TextDisabled(
-		"Shared control for Effect V1/V2, Boss, Map, UI and Workbench. Values are replicated Server actual state.");
+		"Shared control for Effect Resource, Boss, Map, UI and Workbench. Values are replicated Server actual state.");
 	if (!ImGui::BeginTabBar("##ServerArenaActiveTabs"))
 		return;
 
@@ -6196,7 +6221,6 @@ void CMainApp::RenderDeveloperTools()
 		toolCell("Action Composition Workbench", DEBUG_TOOL::COMPOSITION);
 		toolCell("Animation Clip Tool", DEBUG_TOOL::ANIMATION);
 		toolCell("Effect Tool", DEBUG_TOOL::EFFECT);
-		toolCell("Effect Tool v2", DEBUG_TOOL::EFFECT_V2);
 		toolCell("Map Tool", DEBUG_TOOL::MAP);
 		toolCell("Rendering Workbench", DEBUG_TOOL::RENDERING);
 		toolCell("HUD Layout Tool", DEBUG_TOOL::UI);
@@ -6206,13 +6230,12 @@ void CMainApp::RenderDeveloperTools()
 	}
 	if (ImGui::Button("Close All Tools"))
 		CloseAllDebugTools();
-	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 11>
+	constexpr std::array<std::pair<DEBUG_TOOL, const char_t*>, 10>
 		TOOL_FOCUS_OPTIONS = {{
 			{ DEBUG_TOOL::MAP, "Map Tool" },
 			{ DEBUG_TOOL::COMPOSITION, "Action Composition Workbench" },
 			{ DEBUG_TOOL::ANIMATION, "Animation Clip Tool" },
 			{ DEBUG_TOOL::EFFECT, "Effect Tool" },
-			{ DEBUG_TOOL::EFFECT_V2, "Effect Tool v2" },
 			{ DEBUG_TOOL::RENDERING, "Rendering Workbench" },
 			{ DEBUG_TOOL::UI, "HUD Layout Tool" },
 			{ DEBUG_TOOL::BALANCE, "Balance Tool" },

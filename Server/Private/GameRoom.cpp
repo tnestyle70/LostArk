@@ -375,11 +375,15 @@ namespace
 	static_assert(static_cast<std::uint32_t>(
 		SERVER_BOSS_COMBAT_FLAG::GROGGY) ==
 		static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::GROGGY));
+	static_assert(static_cast<std::uint32_t>(
+		SERVER_BOSS_COMBAT_FLAG::GHOST_HIDDEN) ==
+		static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::GHOST_HIDDEN));
 	static_assert(
 		(static_cast<std::uint32_t>(SERVER_BOSS_COMBAT_FLAG::INVULNERABLE) |
 		 static_cast<std::uint32_t>(SERVER_BOSS_COMBAT_FLAG::SHIELDED) |
 		 static_cast<std::uint32_t>(SERVER_BOSS_COMBAT_FLAG::COUNTERABLE) |
-		 static_cast<std::uint32_t>(SERVER_BOSS_COMBAT_FLAG::GROGGY)) ==
+		 static_cast<std::uint32_t>(SERVER_BOSS_COMBAT_FLAG::GROGGY) |
+		 static_cast<std::uint32_t>(SERVER_BOSS_COMBAT_FLAG::GHOST_HIDDEN)) ==
 		BOSS_COMBAT_STATE_KNOWN_FLAG_MASK);
 
 	bool Has_ReachedServerTick(
@@ -388,6 +392,29 @@ namespace
 	{
 		return currentTick == targetTick ||
 			static_cast<std::int32_t>(currentTick - targetTick) > 0;
+	}
+
+	void Clear_ValtanGhostRelocationState(SERVER_WORLD_ENTITY& boss)
+	{
+		/* A relocation can overlap a different typed invulnerability owner only
+		after future catalog expansion. Never clear a flag unless this exact
+		transaction recorded that it introduced it. */
+		if (boss.bGhostRelocationOwnsHiddenFlag)
+		{
+			(void)CBossCombatRuntime::Set_Flag(
+				boss.BossCombat, SERVER_BOSS_COMBAT_FLAG::GHOST_HIDDEN, false);
+		}
+		if (boss.bGhostRelocationOwnsInvulnerableFlag)
+		{
+			(void)CBossCombatRuntime::Set_Flag(
+				boss.BossCombat, SERVER_BOSS_COMBAT_FLAG::INVULNERABLE, false);
+		}
+		boss.bGhostRepositionPending = false;
+		boss.iGhostReappearTick = 0u;
+		boss.bGhostRelocationRetryPending = false;
+		boss.iGhostRelocationRetryTick = 0u;
+		boss.bGhostRelocationOwnsHiddenFlag = false;
+		boss.bGhostRelocationOwnsInvulnerableFlag = false;
 	}
 
 	std::uint32_t DurationMillisecondsToServerTicks(
@@ -5486,6 +5513,7 @@ bool LostArk::Server::CGameRoom::Reset_ValtanBossOnlyAuditionState(
 		LostArk::Shared::VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ABORTED,
 		&boss, "Flow replaced by an authoritative audition restart");
 	#endif
+	Clear_ValtanGhostRelocationState(boss);
 	boss = std::move(stagedBoss);
 	/* A boss-only restart preserves the arena and props, but no Debug pillar
 	   reservation from the replaced occurrence may fire during the new one. */
@@ -5543,6 +5571,7 @@ bool LostArk::Server::CGameRoom::Reset_ValtanAuditionState(
 		LostArk::Shared::VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::ABORTED,
 		&boss, "Flow replaced by an authoritative audition restart");
 	#endif
+	Clear_ValtanGhostRelocationState(boss);
 	boss = std::move(stagedBoss);
 	m_WorldDestructionRuntime = std::move(stagedDestruction);
 	m_EncounterPropRuntime = std::move(stagedProps);
@@ -9721,6 +9750,17 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 			{
 				const std::uint32_t count =
 					action.Volley.iCountPerResolvedTarget;
+				const bool phaseThreePortalSquareMayStartOffNavigation =
+					BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NEXT_RADIAL_SLOT ==
+						definition->eDirectionPolicy &&
+					"combatobject.valtan.ghost.portal-charge" ==
+						definition->strCombatObjectArchetypeId &&
+					"VALTAN_GHOST_PORTAL_ONCE" == patternId &&
+					"valtan.ghost.portal-once.active" == actionId &&
+					boss.bGhostPhasePatternLoopActive && 3u == boss.iPhase &&
+					LostArk::Shared::INVALID_NET_ENTITY_ID ==
+						boss.iOwnerBossNetEntityId &&
+					"BOSS_VALTAN" == boss.strArchetypeId && 4u == count;
 				if (count < 2u || count > 8u || action.iValue != count ||
 					BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL !=
 						action.Volley.eLayout ||
@@ -9747,7 +9787,8 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 					const float z = boss.fPositionZ +
 						std::cos(radians) * action.Volley.fRadiusM;
 					if (!std::isfinite(x) || !std::isfinite(z) ||
-						!m_ServerNavigation.Is_PointWalkableExact(x, z))
+						(!phaseThreePortalSquareMayStartOffNavigation &&
+						 !m_ServerNavigation.Is_PointWalkableExact(x, z)))
 					{
 						m_strStatus =
 							"Boss-relative combat object leaves navigable arena";
@@ -10290,7 +10331,8 @@ bool LostArk::Server::CGameRoom::Commit_BossPatternPlayerStageActions(
 						continue;
 					}
 					SERVER_PLAYER staged = player;
-					Restore_PatternBoundPlayer(staged);
+					if (!Restore_PatternBoundPlayer(staged))
+						return false;
 					stagedPlayers.emplace(playerId, std::move(staged));
 				}
 			}
@@ -11547,45 +11589,96 @@ a fall when the authored ground under the player is gone, advances a running
 fall, and turns it into the ordinary death the revive path already
 understands. Returning true is what keeps trigger motion, skills and movement
 from running at all this tick. */
-void LostArk::Server::CGameRoom::Restore_PatternBoundPlayer(
+bool LostArk::Server::CGameRoom::Restore_PatternBoundPlayer(
 	SERVER_PLAYER& player)
 {
-	SERVER_NAV_POINT ground{};
+	float restoreX = player.fPatternBindRestoreX;
+	float restoreY = player.fPatternBindRestoreY;
+	float restoreZ = player.fPatternBindRestoreZ;
+	bool resolved = std::isfinite(restoreX) && std::isfinite(restoreY) &&
+		std::isfinite(restoreZ);
 	if (m_ServerNavigation.Is_Loaded())
 	{
-		if (m_ServerNavigation.Is_PointWalkableExact(
-			player.fPatternBindRestoreX, player.fPatternBindRestoreZ) &&
+		resolved = false;
+		SERVER_NAV_POINT ground{};
+		if (std::isfinite(player.fPatternBindRestoreX) &&
+			std::isfinite(player.fPatternBindRestoreZ) &&
+			m_ServerNavigation.Is_PointWalkableExact(
+				player.fPatternBindRestoreX, player.fPatternBindRestoreZ) &&
 			m_ServerNavigation.Sample_Position(
 				player.fPatternBindRestoreX,
-				player.fPatternBindRestoreZ, ground))
+				player.fPatternBindRestoreZ, ground) &&
+			std::isfinite(ground.x) && std::isfinite(ground.y) &&
+			std::isfinite(ground.z))
 		{
-			player.fPositionX = player.fPatternBindRestoreX;
-			player.fPositionY = player.fPatternBindRestoreY;
-			player.fPositionZ = player.fPatternBindRestoreZ;
+			restoreX = player.fPatternBindRestoreX;
+			restoreY = ground.y;
+			restoreZ = player.fPatternBindRestoreZ;
+			resolved = true;
 		}
-		else if (m_ServerNavigation.Project_PointOnSameLevel(
+		else if (std::isfinite(player.fPatternBindRestoreX) &&
+			std::isfinite(player.fPatternBindRestoreZ) &&
+			(m_ServerNavigation.Project_PointOnSameLevel(
 			player.fPatternBindRestoreX, player.fPatternBindRestoreZ, ground) ||
 			m_ServerNavigation.Project_Point(
-				player.fPatternBindRestoreX, player.fPatternBindRestoreZ, ground))
+				player.fPatternBindRestoreX, player.fPatternBindRestoreZ, ground)) &&
+			std::isfinite(ground.x) && std::isfinite(ground.y) &&
+			std::isfinite(ground.z))
 		{
-			player.fPositionX = ground.x;
-			player.fPositionY = ground.y;
-			player.fPositionZ = ground.z;
+			restoreX = ground.x;
+			restoreY = ground.y;
+			restoreZ = ground.z;
+			resolved = true;
+		}
+		if (!resolved && std::isfinite(player.fPositionX) &&
+			std::isfinite(player.fPositionZ) &&
+			m_ServerNavigation.Is_PointWalkableExact(
+				player.fPositionX, player.fPositionZ) &&
+			m_ServerNavigation.Sample_Position(
+				player.fPositionX, player.fPositionZ, ground) &&
+			std::isfinite(ground.x) && std::isfinite(ground.y) &&
+			std::isfinite(ground.z))
+		{
+			restoreX = player.fPositionX;
+			restoreY = ground.y;
+			restoreZ = player.fPositionZ;
+			resolved = true;
+		}
+		if (!resolved && !player.strSpawnPlacementId.empty())
+		{
+			const WORLD_BOOTSTRAP_PLACEMENT* spawn =
+				Find_Placement(player.strSpawnPlacementId);
+			if (nullptr != spawn &&
+				m_ServerNavigation.Is_PointWalkableExact(
+					spawn->fPositionX, spawn->fPositionZ) &&
+				m_ServerNavigation.Sample_Position(
+					spawn->fPositionX, spawn->fPositionZ, ground) &&
+				std::isfinite(ground.x) && std::isfinite(ground.y) &&
+				std::isfinite(ground.z))
+			{
+				restoreX = spawn->fPositionX;
+				restoreY = ground.y;
+				restoreZ = spawn->fPositionZ;
+				resolved = true;
+			}
 		}
 	}
-	else
-	{
-		player.fPositionX = player.fPatternBindRestoreX;
-		player.fPositionY = player.fPatternBindRestoreY;
-		player.fPositionZ = player.fPatternBindRestoreZ;
-	}
-	player.fYawDegrees = player.fPatternBindRestoreYawDegrees;
+	if (!resolved)
+		return false;
+	const float restoreYaw = std::isfinite(player.fPatternBindRestoreYawDegrees) ?
+		player.fPatternBindRestoreYawDegrees :
+		(std::isfinite(player.fYawDegrees) ? player.fYawDegrees : 0.f);
+	player.fPositionX = restoreX;
+	player.fPositionY = restoreY;
+	player.fPositionZ = restoreZ;
+	player.fYawDegrees = restoreYaw;
 	player.eAction = 0u == player.iCurrentHp ?
 		LostArk::Shared::PLAYER_ACTION_STATE::DEAD :
 		LostArk::Shared::PLAYER_ACTION_STATE::NONE;
 	player.isCombatReady = 0u != player.iCurrentHp &&
 		player.bPatternBindRestoreCombatReady;
 	player.Clear_PatternBindStatus();
+	return true;
 }
 
 bool LostArk::Server::CGameRoom::Update_PlayerFall(
@@ -11660,7 +11753,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			the arena. Restore the admitted pose first, while preserving DEAD and
 			combat-disabled state, then release both occurrence owners. */
 			if (player.bPatternBound)
-				Restore_PatternBoundPlayer(player);
+				(void)Restore_PatternBoundPlayer(player);
 			player.Clear_SilenceStatus();
 		}
 		else
@@ -11671,7 +11764,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 					player.iPatternBindOwnerNetEntityId,
 					player.iPatternBindSequence)))
 			{
-				Restore_PatternBoundPlayer(player);
+				(void)Restore_PatternBoundPlayer(player);
 			}
 			if (0u != player.iSilenceEndTick &&
 				(Has_ReachedServerTick(updateTick, player.iSilenceEndTick) ||
@@ -12144,6 +12237,196 @@ bool LostArk::Server::CGameRoom::Activate_ValtanGhostPhaseLoop(
 	boss.iAutomaticPatternSequencePursuitTicksRemaining = 0u;
 	boss.iGhostPortalLastSpawnTick = 0u;
 	boss.iGhostPortalOccurrenceSequence = 0u;
+	Clear_ValtanGhostRelocationState(boss);
+	boss.iGhostRelocationSequence = 0u;
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Begin_ValtanGhostRelocation(
+	SERVER_WORLD_ENTITY& boss,
+	const CGameplayCatalog& catalog,
+	const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	if (!boss.bGhostPhasePatternLoopActive || boss.bGhostRepositionPending ||
+		WORLD_ID::VALTAN_ARENA != m_eWorldId ||
+		WORLD_BOOTSTRAP_KIND::BOSS != boss.eKind ||
+		INVALID_NET_ENTITY_ID != boss.iOwnerBossNetEntityId ||
+		"BOSS_VALTAN" != boss.strArchetypeId ||
+		"boss.valtan.center" != boss.strPlacementId ||
+		3u != boss.iPhase || 0u == boss.iCurrentHp ||
+		SERVER_ENTITY_ACTION::DEAD == boss.eAction ||
+		0u == serverTick || !boss.strPatternId.empty() ||
+		(boss.bGhostRelocationRetryPending &&
+		 !Has_ReachedServerTick(serverTick, boss.iGhostRelocationRetryTick)))
+	{
+		m_strStatus = "Valtan ghost relocation owner is invalid";
+		return false;
+	}
+	const auto* patterns = catalog.Find_BossPatterns(boss.strEncounterId);
+	const auto finale = nullptr == patterns ? nullptr :
+		[patterns]() -> const BOSS_PATTERN_DEFINITION*
+		{
+			const auto found = std::find_if(
+				patterns->begin(), patterns->end(),
+				[](const BOSS_PATTERN_DEFINITION& definition)
+				{ return "VALTAN_GHOST_FINALE" == definition.strPatternId; });
+			return found == patterns->end() ? nullptr : &*found;
+		}();
+	const BOSS_RUNTIME_PROFILE* profile = catalog.Find_Boss(boss.strArchetypeId);
+	if (nullptr == finale ||
+		BOSS_PATTERN_FINALE_KIND::GHOST_PORTAL_LOOP != finale->Finale.eKind ||
+		6u != finale->Finale.GhostPatternIds.size() || nullptr == profile ||
+		!std::isfinite(finale->Finale.fSpawnHalfExtentsX) ||
+		!std::isfinite(finale->Finale.fSpawnHalfExtentsZ) ||
+		finale->Finale.fSpawnHalfExtentsX <= 0.f ||
+		finale->Finale.fSpawnHalfExtentsZ <= 0.f ||
+		!std::isfinite(profile->fCollisionRadius) ||
+		profile->fCollisionRadius <= 0.f)
+	{
+		m_strStatus = "Valtan ghost relocation definition is unavailable";
+		return false;
+	}
+	if (CBossCombatRuntime::Has_Flag(
+			boss.BossCombat, SERVER_BOSS_COMBAT_FLAG::GHOST_HIDDEN) ||
+		CBossCombatRuntime::Has_Flag(
+			boss.BossCombat, SERVER_BOSS_COMBAT_FLAG::INVULNERABLE))
+	{
+		m_strStatus = "Valtan ghost relocation inherited an unclosed combat flag";
+		return false;
+	}
+
+	const auto hasSpawnClearance = [this, &boss, profile](
+		const SERVER_NAV_POINT& center)
+	{
+		/* A random centre is admitted only when the entire boss footprint remains
+		on the same walkable deck. This is the same half-cell conservative sampling
+		used by the former dependent-ghost path. */
+		const float radius = profile->fCollisionRadius;
+		const float spacing = (std::max)(
+			0.05f, m_ServerNavigation.Get_CellSize() * 0.5f);
+		const std::uint32_t segments = (std::max)(1u,
+			static_cast<std::uint32_t>(std::ceil(2.f * radius / spacing)));
+		for (std::uint32_t row = 0u; row <= segments; ++row)
+		{
+			for (std::uint32_t column = 0u; column <= segments; ++column)
+			{
+				const float x = center.x - radius +
+					2.f * radius * column / segments;
+				const float z = center.z - radius +
+					2.f * radius * row / segments;
+				SERVER_NAV_POINT ground{};
+				if (!m_ServerNavigation.Is_PointWalkableExact(x, z) ||
+					!m_ServerNavigation.Sample_Position(x, z, ground) ||
+					std::fabs(ground.y - boss.fSpawnPositionY) > 1.5f)
+				{
+					return false;
+				}
+			}
+		}
+		return true;
+	};
+
+	std::uint32_t relocationSequence =
+		(std::numeric_limits<std::uint32_t>::max)() ==
+			boss.iGhostRelocationSequence ?
+			1u : boss.iGhostRelocationSequence + 1u;
+	if (0u == relocationSequence)
+		relocationSequence = 1u;
+	const std::uint64_t seed = Mix_DeterministicRandom(
+		(static_cast<std::uint64_t>(boss.iNetEntityId) << 32u) ^
+		static_cast<std::uint64_t>(relocationSequence) ^
+		static_cast<std::uint64_t>(serverTick));
+	SERVER_NAV_POINT spawn{};
+	bool foundSpawn = false;
+	for (std::uint32_t attempt = 0u; attempt < 128u && !foundSpawn; ++attempt)
+	{
+		const float x = boss.fSpawnPositionX +
+			(2.f * DeterministicUnitFloat(seed + attempt * 2u) - 1.f) *
+				finale->Finale.fSpawnHalfExtentsX;
+		const float z = boss.fSpawnPositionZ +
+			(2.f * DeterministicUnitFloat(seed + attempt * 2u + 1u) - 1.f) *
+				finale->Finale.fSpawnHalfExtentsZ;
+		foundSpawn = m_ServerNavigation.Is_PointWalkableExact(x, z) &&
+			m_ServerNavigation.Sample_Position(x, z, spawn) &&
+			std::fabs(spawn.y - boss.fSpawnPositionY) <= 1.5f &&
+			hasSpawnClearance(spawn);
+	}
+	if (!foundSpawn)
+	{
+		/* The arena can be changing on the same fixed tick as an attack finishes.
+		A bounded random miss is therefore not room corruption. Preserve a valid
+		current footprint, or move to the immutable encounter anchor only when that
+		anchor validates, then retry with the next tick in the deterministic seed. */
+		const SERVER_NAV_POINT currentPose{
+			boss.fPositionX, boss.fPositionY, boss.fPositionZ };
+		SERVER_NAV_POINT currentGround{};
+		const bool currentPoseValid = std::isfinite(currentPose.x) &&
+			std::isfinite(currentPose.y) && std::isfinite(currentPose.z) &&
+			m_ServerNavigation.Is_PointWalkableExact(
+				currentPose.x, currentPose.z) &&
+			m_ServerNavigation.Sample_Position(
+				currentPose.x, currentPose.z, currentGround) &&
+			std::fabs(currentPose.y - currentGround.y) <= 1.5f &&
+			std::fabs(currentGround.y - boss.fSpawnPositionY) <= 1.5f &&
+			hasSpawnClearance(currentGround);
+		SERVER_NAV_POINT fallback = currentPose;
+		bool fallbackValid = currentPoseValid;
+		bool fallbackRequiresCommit = false;
+		if (!fallbackValid)
+		{
+			fallback = {
+				boss.fSpawnPositionX, boss.fSpawnPositionY,
+				boss.fSpawnPositionZ };
+			fallbackValid = std::isfinite(fallback.x) &&
+				std::isfinite(fallback.y) && std::isfinite(fallback.z) &&
+				m_ServerNavigation.Is_PointWalkableExact(fallback.x, fallback.z) &&
+				m_ServerNavigation.Sample_Position(
+					fallback.x, fallback.z, fallback) &&
+				std::fabs(fallback.y - boss.fSpawnPositionY) <= 1.5f &&
+				hasSpawnClearance(fallback);
+			fallbackRequiresCommit = fallbackValid;
+		}
+		if (fallbackRequiresCommit)
+		{
+			boss.fPositionX = fallback.x;
+			boss.fPositionY = fallback.y;
+			boss.fPositionZ = fallback.z;
+		}
+		boss.bGhostRelocationRetryPending = true;
+		boss.iGhostRelocationRetryTick =
+			Add_ServerTicksSkippingReservedZero(serverTick, 1u);
+		boss.iAutomaticPatternSequencePursuitTicksRemaining = 0u;
+		m_strStatus = fallbackValid ?
+			"Valtan ghost relocation retry pending from a validated pose" :
+			"Valtan ghost relocation retry pending while preserving its current pose";
+		return true;
+	}
+
+	SERVER_BOSS_COMBAT_STATE stagedCombat = boss.BossCombat;
+	if (!CBossCombatRuntime::Set_Flag(
+			stagedCombat, SERVER_BOSS_COMBAT_FLAG::INVULNERABLE, true) ||
+		!CBossCombatRuntime::Set_Flag(
+			stagedCombat, SERVER_BOSS_COMBAT_FLAG::GHOST_HIDDEN, true))
+	{
+		m_strStatus = "Valtan ghost relocation flags could not be staged";
+		return false;
+	}
+
+	/* Commit pose, replication flags, and the one-tick latch together. The
+	immutable spawn pose remains the portal-square centre. */
+	boss.fPositionX = spawn.x;
+	boss.fPositionY = spawn.y;
+	boss.fPositionZ = spawn.z;
+	boss.BossCombat = std::move(stagedCombat);
+	boss.bGhostRepositionPending = true;
+	boss.iGhostReappearTick = Add_ServerTicksSkippingReservedZero(serverTick, 1u);
+	boss.iGhostRelocationSequence = relocationSequence;
+	boss.bGhostRelocationRetryPending = false;
+	boss.iGhostRelocationRetryTick = 0u;
+	boss.bGhostRelocationOwnsHiddenFlag = true;
+	boss.bGhostRelocationOwnsInvulnerableFlag = true;
+	boss.iAutomaticPatternSequencePursuitTicksRemaining = 0u;
 	return true;
 }
 
@@ -12483,8 +12766,80 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				m_isReady = false;
 				return;
 			}
+			bool updateValtanBrain = true;
+			const bool ghostRelocationOwnerAlive =
+				entity.bGhostPhasePatternLoopActive &&
+				LostArk::Shared::INVALID_NET_ENTITY_ID ==
+					entity.iOwnerBossNetEntityId &&
+				"BOSS_VALTAN" == entity.strArchetypeId &&
+				3u == entity.iPhase && 0u != entity.iCurrentHp &&
+				SERVER_ENTITY_ACTION::DEAD != entity.eAction &&
+				entity.strPatternId.empty();
+			if ((entity.bGhostRepositionPending ||
+				 entity.bGhostRelocationRetryPending) &&
+				!ghostRelocationOwnerAlive)
+			{
+				/* Death, reset and identity replacement are ordinary cancellation
+				edges. Cleanup is ownership-aware and never makes the room fatal. */
+				Clear_ValtanGhostRelocationState(entity);
+			}
+			if (entity.bGhostRelocationRetryPending)
+			{
+				updateValtanBrain = false;
+				if (Has_ReachedServerTick(
+						updateTick, entity.iGhostRelocationRetryTick) &&
+					!Begin_ValtanGhostRelocation(
+						entity, *occurrenceCatalog, updateTick))
+				{
+					/* A transient definition/flag conflict retains the visible pose and
+					retries. Unknown state does not clear another mechanic's flag. */
+					entity.bGhostRelocationRetryPending = true;
+					entity.iGhostRelocationRetryTick =
+						Add_ServerTicksSkippingReservedZero(updateTick, 1u);
+					m_strStatus = "Valtan ghost relocation retry deferred";
+				}
+			}
+			if (entity.bGhostRepositionPending)
+			{
+				const bool relocationLatchValid = ghostRelocationOwnerAlive &&
+					entity.bGhostRelocationOwnsInvulnerableFlag &&
+					entity.bGhostRelocationOwnsHiddenFlag &&
+					CBossCombatRuntime::Has_Flag(
+						entity.BossCombat,
+						SERVER_BOSS_COMBAT_FLAG::INVULNERABLE) &&
+					CBossCombatRuntime::Has_Flag(
+						entity.BossCombat,
+						SERVER_BOSS_COMBAT_FLAG::GHOST_HIDDEN) &&
+					0u != entity.iGhostReappearTick;
+				if (!relocationLatchValid)
+				{
+					Clear_ValtanGhostRelocationState(entity);
+					if (ghostRelocationOwnerAlive)
+					{
+						entity.bGhostRelocationRetryPending = true;
+						entity.iGhostRelocationRetryTick =
+							Add_ServerTicksSkippingReservedZero(updateTick, 1u);
+						updateValtanBrain = false;
+					}
+					m_strStatus = "Valtan ghost relocation latch was safely cancelled";
+				}
+				else if (Has_ReachedServerTick(
+					updateTick, entity.iGhostReappearTick))
+				{
+					Clear_ValtanGhostRelocationState(entity);
+					updateValtanBrain = true;
+				}
+				else
+				{
+					/* The completion tick already published the hidden pose. Do not let
+					the ordered selector start another pattern until the next tick clears
+					the render/invulnerability edge. */
+					updateValtanBrain = false;
+				}
+			}
 #ifdef _DEBUG
-			if (!Prepare_ValtanPatternIdAuditionBeforeBrain(entity))
+			if (updateValtanBrain &&
+				!Prepare_ValtanPatternIdAuditionBeforeBrain(entity))
 				continue;
 #endif
 			const std::uint32_t previousPatternSequence =
@@ -12511,10 +12866,12 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			const float contactStartX = entity.fPositionX;
 			const float contactStartY = entity.fPositionY;
 			const float contactStartZ = entity.fPositionZ;
-			bool updateValtanBrain = true;
 #ifdef _DEBUG
-			updateValtanBrain = Prepare_ValtanFightPageBeforeBrain(
-				entity, updateTick);
+			if (updateValtanBrain)
+			{
+				updateValtanBrain = Prepare_ValtanFightPageBeforeBrain(
+					entity, updateTick);
+			}
 			if (updateValtanBrain)
 			{
 				updateValtanBrain = Prepare_ValtanTimelineRowBeforeBrain(
@@ -12580,6 +12937,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				if (SERVER_ENTITY_ACTION::DEAD == entity.eAction ||
 					0u == entity.iCurrentHp)
 				{
+					Clear_ValtanGhostRelocationState(entity);
 					(void)Release_PlayerAttachments(
 						entity.iNetEntityId, 0.f, 0u, false, 0u, updateTick);
 				}
@@ -12744,9 +13102,23 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 					entity.bMechanicLedgerRequiresReset;
 				const std::uint32_t lastEvaluatedHealthBar =
 					entity.iLastEvaluatedHealthBar;
+				const bool restoreVerticalOffsetAfterRollback =
+					bossBeforeBrain.bPatternVerticalOffsetApplied &&
+					std::isfinite(bossBeforeBrain.fPatternVerticalBaseY);
+				const float restoredVerticalBaseY =
+					bossBeforeBrain.fPatternVerticalBaseY;
 				if (!preserveGrabbedPlayersOnFailure)
 					releaseBossAttachments(entity);
 				entity = bossBeforeBrain;
+				/* Apply_BossPatternStageTransition already classified the occurrence as
+				   aborted and restored its typed vertical offset. Do not let this
+				   transaction rollback resurrect the preflight pose at Y+offset. */
+				if (restoreVerticalOffsetAfterRollback)
+				{
+					entity.fPositionY = restoredVerticalBaseY;
+					entity.bPatternVerticalOffsetApplied = false;
+					entity.fPatternVerticalBaseY = 0.f;
+				}
 				entity.MechanicOccurrences = std::move(mechanicOccurrences);
 				entity.PendingPatternIds = std::move(pendingPatternIds);
 				entity.TriggeredPatternIds = std::move(triggeredPatternIds);
@@ -12772,9 +13144,10 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				m_isReady = false;
 				return;
 			}
-			const bool completedGhostLoopStep =
+			const bool completedDirectGhostLoopStep =
 				entity.bGhostPhasePatternLoopActive &&
 				!previousPatternId.empty() && entity.strPatternId.empty() &&
+				!entity.PendingPatternFollowup.Is_Pending() &&
 				SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED ==
 					entity.PatternTerminalReceipt.eResult &&
 				entity.PatternTerminalReceipt.iPatternSequence == previousPatternSequence &&
@@ -12782,12 +13155,43 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 					entity.GhostPhasePatternSequence.PatternIds.end(),
 					previousPatternId) !=
 					entity.GhostPhasePatternSequence.PatternIds.end();
-			if (completedGhostLoopStep &&
-				entity.iRotationStepIndex >=
-					entity.GhostPhasePatternSequence.PatternIds.size())
+			const bool completedGhostLoopOutcomeGroup =
+				entity.bGhostPhasePatternLoopActive &&
+				!previousPatternId.empty() &&
+				entity.strPatternId.empty() &&
+				!entity.PendingPatternFollowup.Is_Pending() &&
+				bossBeforeBrain.iPatternFollowupDepth > 0u &&
+				0u != bossBeforeBrain.iPatternFollowupRootSequence &&
+				bossBeforeBrain.iRotationStepIndex > 0u &&
+				bossBeforeBrain.iRotationStepIndex <=
+					bossBeforeBrain.GhostPhasePatternSequence.PatternIds.size() &&
+				!bossBeforeBrain.bAutomaticPatternSequenceStepRunning &&
+				SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED ==
+					entity.PatternTerminalReceipt.eResult &&
+				entity.PatternTerminalReceipt.iPatternSequence ==
+					previousPatternSequence &&
+				entity.PatternTerminalReceipt.iRootPatternSequence ==
+					bossBeforeBrain.iPatternFollowupRootSequence;
+			const bool completedGhostLoopStep =
+				completedDirectGhostLoopStep || completedGhostLoopOutcomeGroup;
+			if (completedGhostLoopStep)
 			{
-				entity.iRotationStepIndex = 0u;
 				entity.iAutomaticPatternSequencePursuitTicksRemaining = 0u;
+				if (entity.iRotationStepIndex >=
+					entity.GhostPhasePatternSequence.PatternIds.size())
+				{
+					entity.iRotationStepIndex = 0u;
+				}
+				if (!Begin_ValtanGhostRelocation(
+						entity, *occurrenceCatalog, updateTick))
+				{
+					/* Keep the completed root group authoritative while a transient
+					relocation precondition retries. The selector remains paused. */
+					entity.bGhostRelocationRetryPending = true;
+					entity.iGhostRelocationRetryTick =
+						Add_ServerTicksSkippingReservedZero(updateTick, 1u);
+					m_strStatus = "Valtan ghost relocation retry deferred";
+				}
 			}
 			if (!Update_ValtanGhostPortalScheduler(
 				entity, *occurrenceCatalog, updateTick))
@@ -13160,6 +13564,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 		}
 		if (WORLD_BOOTSTRAP_KIND::BOSS == iter->eKind)
 		{
+			Clear_ValtanGhostRelocationState(*iter);
 			(void)Release_PlayerAttachments(
 				iter->iNetEntityId, 0.f, 0u, false, 0u, updateTick);
 		}

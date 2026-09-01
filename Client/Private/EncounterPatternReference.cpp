@@ -736,12 +736,15 @@ namespace
 			outcome == "STAGGER_BROKEN" || outcome == "WALL_CONTACT" ||
 			outcome == "PART_DESTROYED" || outcome == "PROP_DESTROYED" ||
 			outcome == "SUMMON_DEAD" || outcome == "ALL_PLAYERS_GRABBED" ||
-			outcome == "ANY_PLAYER_GRABBED" || outcome == "NAVIGATION_BLOCKED";
+			outcome == "ANY_PLAYER_GRABBED" || outcome == "NAVIGATION_BLOCKED" ||
+			outcome == "HEALTH_DAMAGE_THRESHOLD_REACHED";
 	}
 
 	bool_t Validate_StageBranches(
 		const DATA_JSON_VALUE& stage,
 		const std::unordered_set<std::string>& stageActionIds,
+		const std::unordered_set<std::string>& patternIds,
+		const std::string& currentPatternId,
 		const std::string& currentActionId,
 		const bool_t hasForwardMotion,
 		const bool_t hasCounterableEnter,
@@ -764,10 +767,12 @@ namespace
 		bool_t hasCounterHit = false;
 		bool_t hasStaggerBroken = false;
 		bool_t hasNavigationBlocked = false;
+		bool_t hasHealthDamageThreshold = false;
 		for (const DATA_JSON_VALUE& branch : branches->Get_Array())
 		{
 			std::string outcome;
-			if (!Is_ExactObject(branch, { "outcome", "nextActionId" }) ||
+			if (!Is_ExactObjectWithOptional(branch,
+					{ "outcome", "nextActionId" }, { "nextPatternId" }) ||
 				!Read_String(branch, "outcome", false, outcome) ||
 				!Is_KnownBranchOutcome(outcome) ||
 				!outcomes.insert(outcome).second)
@@ -775,6 +780,7 @@ namespace
 				return false;
 			}
 			const DATA_JSON_VALUE* nextActionId = branch.Find("nextActionId");
+			const DATA_JSON_VALUE* nextPatternId = branch.Find("nextPatternId");
 			if (nullptr == nextActionId)
 				return false;
 			if (!nextActionId->Is_Null())
@@ -787,13 +793,48 @@ namespace
 					return false;
 				}
 			}
+			if (nullptr != nextPatternId)
+			{
+				if (!nextActionId->Is_Null() || !nextPatternId->Is_String() ||
+					!Is_StableId(nextPatternId->Get_String()) ||
+					nextPatternId->Get_String() == currentPatternId ||
+					0u == patternIds.count(nextPatternId->Get_String()))
+				{
+					return false;
+				}
+			}
 			hasTimeout = hasTimeout || outcome == "TIMEOUT";
 			hasWallContact = hasWallContact || outcome == "WALL_CONTACT";
 			hasCounterHit = hasCounterHit || outcome == "COUNTER_HIT";
 			hasStaggerBroken = hasStaggerBroken || outcome == "STAGGER_BROKEN";
 			hasNavigationBlocked = hasNavigationBlocked || outcome == "NAVIGATION_BLOCKED";
+			hasHealthDamageThreshold = hasHealthDamageThreshold ||
+				outcome == "HEALTH_DAMAGE_THRESHOLD_REACHED";
 		}
 		const DATA_JSON_VALUE* response = stage.Find("playerResponse");
+		const DATA_JSON_VALUE* bossResponse = stage.Find("bossResponse");
+		if (nullptr == bossResponse)
+		{
+			if (hasHealthDamageThreshold)
+				return false;
+		}
+		else
+		{
+			std::string kind;
+			uint32_t threshold = 0u;
+			const DATA_JSON_VALUE* stageKind = stage.Find("stageKind");
+			if (!Is_ExactObject(*bossResponse, { "kind", "threshold" }) ||
+				!Read_String(*bossResponse, "kind", false, kind) ||
+				kind != "ACCUMULATED_HEALTH_DAMAGE" ||
+				!Read_Unsigned(*bossResponse, "threshold", UINT32_MAX,
+					threshold) ||
+				0u == threshold || !hasHealthDamageThreshold ||
+				nullptr == stageKind || !stageKind->Is_String() ||
+				stageKind->Get_String() != "ACTIVE")
+			{
+				return false;
+			}
+		}
 		return (!hasNavigationBlocked || (nullptr != response && response->Is_String() &&
 			response->Get_String() == "CAPTURE")) &&
 			hasTimeout && (!hasWallContact || hasForwardMotion) &&
@@ -862,6 +903,17 @@ bool_t Client::CEncounterPatternReference::Load(
 	std::vector<ENCOUNTER_PATTERN_REFERENCE> staged;
 	staged.reserve(patterns->Get_Array().size());
 	std::unordered_set<std::string> patternIds;
+	std::unordered_set<std::string> allPatternIds;
+	for (const DATA_JSON_VALUE& entry : patterns->Get_Array())
+	{
+		std::string patternId;
+		if (!Read_String(entry, "patternId", false, patternId) ||
+			!Is_StableId(patternId) || !allPatternIds.insert(patternId).second)
+		{
+			outStatus = "Encounter pattern identity is invalid or duplicated";
+			return false;
+		}
+	}
 
 	for (const DATA_JSON_VALUE& entry : patterns->Get_Array())
 	{
@@ -874,7 +926,7 @@ bool_t Client::CEncounterPatternReference::Load(
 				"invulnerableWhileRunning", "selectionWeight",
 				"maximumConsecutiveUses", "minimumRange", "maximumRange",
 				"stages" },
-				{ "serverMotion", "finale" }))
+				{ "serverMotion", "finale", "verticalOffsetM" }))
 		{
 			outStatus = "Encounter pattern has unexpected properties";
 			return false;
@@ -929,7 +981,11 @@ bool_t Client::CEncounterPatternReference::Load(
 			!Read_Unsigned(entry, "maximumConsecutiveUses", 1000u, ignored) ||
 			!Is_FiniteNumber(entry, "minimumRange") ||
 			!Is_FiniteNumber(entry, "maximumRange") ||
-			!Is_FiniteNumberArray(entry, "sourceActionIds"))
+			!Is_FiniteNumberArray(entry, "sourceActionIds") ||
+			(nullptr != entry.Find("verticalOffsetM") &&
+			 (!Is_FiniteNumber(entry, "verticalOffsetM") ||
+			  0.0 == entry.Find("verticalOffsetM")->Get_Number() ||
+			  std::fabs(entry.Find("verticalOffsetM")->Get_Number()) > 100.0)))
 		{
 			outStatus = "Encounter pattern field is invalid";
 			return false;
@@ -982,7 +1038,7 @@ bool_t Client::CEncounterPatternReference::Load(
 					"pushRangeM", "pushMs", "knockdown", "downMs" },
 					{ "hitOffsetsMs", "motion", "actions", "branches",
 					  "playerResponse", "attachmentSlot", "partDamagePolicy",
-					  "counterProxy", "hitAnchor", "hitActivation" }))
+					  "counterProxy", "bossResponse", "hitAnchor", "hitActivation" }))
 			{
 				outStatus = "Encounter stage has unexpected properties: " +
 					pattern.patternId;
@@ -1037,26 +1093,38 @@ bool_t Client::CEncounterPatternReference::Load(
 			const DATA_JSON_VALUE* counterProxy = stageEntry.Find("counterProxy");
 			if (nullptr != counterProxy)
 			{
-				std::string space;
+				std::string kind;
 				if (!Is_ExactObject(*counterProxy,
-						{ "space", "forwardOffsetM", "rightOffsetM", "radiusM" }) ||
-					!Read_String(*counterProxy, "space", false, space) ||
-					"BOSS_LOCAL" != space ||
+						{ "kind", "forwardOffsetM", "rightOffsetM", "radiusM",
+						  "arcDegrees" }) ||
+					!Read_String(*counterProxy, "kind", false, kind) ||
+					(kind != "BOSS_LOCAL_CIRCLE" &&
+					 kind != "BOSS_FORWARD_ARC") ||
 					!Read_Float(*counterProxy, "forwardOffsetM",
 						stage.fCounterProxyForwardOffsetM) ||
 					!Read_Float(*counterProxy, "rightOffsetM",
 						stage.fCounterProxyRightOffsetM) ||
 					!Read_Float(*counterProxy, "radiusM",
 						stage.fCounterProxyRadiusM) ||
+					!Read_Float(*counterProxy, "arcDegrees",
+						stage.fCounterProxyArcDegrees) ||
 					std::fabs(stage.fCounterProxyForwardOffsetM) > 20.f ||
 					std::fabs(stage.fCounterProxyRightOffsetM) > 20.f ||
-					stage.fCounterProxyRadiusM <= 0.f ||
-					stage.fCounterProxyRadiusM > 20.f)
+					(kind == "BOSS_LOCAL_CIRCLE" &&
+					 (stage.fCounterProxyRadiusM <= 0.f ||
+					  stage.fCounterProxyRadiusM > 20.f ||
+					  0.f != stage.fCounterProxyArcDegrees)) ||
+					(kind == "BOSS_FORWARD_ARC" &&
+					 (0.f != stage.fCounterProxyForwardOffsetM ||
+					  0.f != stage.fCounterProxyRightOffsetM ||
+					  0.f != stage.fCounterProxyRadiusM ||
+					  180.f != stage.fCounterProxyArcDegrees)))
 				{
 					outStatus = "Encounter counter proxy is invalid: " +
 						pattern.patternId + "/" + stage.stageId;
 					return false;
 				}
+				stage.counterProxyKind = std::move(kind);
 				stage.bHasCounterProxy = true;
 			}
 			const DATA_JSON_VALUE* hitAnchor = stageEntry.Find("hitAnchor");
@@ -1190,7 +1258,8 @@ bool_t Client::CEncounterPatternReference::Load(
 				!Validate_StageActions(stageEntry, activeStageActionLifetimes,
 					hasCounterableEnter, hasCounterableExit,
 					hasStaggerEnter, hasStaggerExit) ||
-				!Validate_StageBranches(stageEntry, stageActionIds, stage.actionId,
+				!Validate_StageBranches(stageEntry, stageActionIds, allPatternIds,
+					pattern.patternId, stage.actionId,
 					hasForwardMotion, hasCounterableEnter, hasCounterableExit,
 					hasStaggerEnter, hasStaggerExit))
 			{

@@ -133,11 +133,11 @@
       "ownerStageActionId": "valtan.ghost.portal-once.active",
       "kind": "MISSILE",
       "originPolicy": "BOSS_POSITION",
-      "directionPolicy": "RADIAL_INWARD",
+      "directionPolicy": "NEXT_RADIAL_SLOT",
       "offsetForwardM": 0.0,
       "offsetRightM": 0.0,
-      "speedMps": 12.44508,
-      "maximumDistanceM": 62.2254,
+      "speedMps": 8.8,
+      "maximumDistanceM": 44.0,
       "lifeMs": 5000,
       "hits": [
         {

@@ -69,7 +69,7 @@ DAMAGE_REL = "Data/Balance/DamageProfiles.json"
 EFFECT_CATALOG_REL = "Data/Effects/EffectCatalog.json"
 PROVENANCE_REL = "Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json"
 GAMEPLAY_BOOTSTRAP_REL = "Runtime/Gameplay/Gameplay.bootstrap"
-GAMEPLAY_BOOTSTRAP_VERSION = 29
+GAMEPLAY_BOOTSTRAP_VERSION = 30
 # Keep the authored cross-pattern follow-up bound aligned with the native
 # GameplayCatalog/ValtanBrain traversal guard.  A single edge has depth 1.
 PATTERN_FOLLOWUP_MAX_DEPTH = 32
@@ -1407,7 +1407,7 @@ def _pattern_stage_fields(stage: Mapping[str, Any], *, joined: bool) -> tuple[st
         "events",
         "branches",
     )
-    for optional in ("partDamagePolicy", "counterProxy"):
+    for optional in ("partDamagePolicy", "counterProxy", "bossResponse"):
         if optional in stage:
             fields += (optional,)
     return fields
@@ -1440,6 +1440,7 @@ def _validate_wait_stage_invariant(
         or stage.get("effectCues") != []
         or stage.get("cameraInvocations") != []
         or stage.get("counterProxy") is not None
+        or stage.get("bossResponse") is not None
         or stage.get("partDamagePolicy", "NORMAL") != "NORMAL"
     )
     if invalid:
@@ -1567,8 +1568,14 @@ def _validate_pattern_counter_groggy_contract(
                 else None
             )
             timeout_target = action_stages.get(timeout_action_id)
+            stage_proxy = stage.get("counterProxy")
+            valid_counter_source_kind = stage.get("stageKind") == "WINDUP" or (
+                stage.get("stageKind") == "ACTIVE"
+                and isinstance(stage_proxy, dict)
+                and stage_proxy.get("kind") == "BOSS_FORWARD_ARC"
+            )
             if (
-                stage.get("stageKind") != "WINDUP"
+                not valid_counter_source_kind
                 or counter_state != "CLOSED"
                 or target is None
                 or target.get("stageKind") not in success_stage_kinds
@@ -1578,7 +1585,7 @@ def _validate_pattern_counter_groggy_contract(
             ):
                 raise PipelineError(
                     f"{context}/{stage_id} COUNTER_HIT requires one closed "
-                    "WINDUP window, a forward local or cross-pattern success, "
+                    "counter window, a forward local or cross-pattern success, "
                     "and a forward same-pattern TIMEOUT target"
                 )
             target_groggy_state = _stage_flag_contract(target, "boss.flag.groggy")
@@ -1608,6 +1615,41 @@ def _validate_pattern_counter_groggy_contract(
 def _validate_pattern_stage_extensions(
     stage: Mapping[str, Any], context: str
 ) -> None:
+    boss_response = stage.get("bossResponse")
+    health_threshold_branches = [
+        branch
+        for branch in stage.get("branches", [])
+        if isinstance(branch, dict)
+        and branch.get("outcome") == "HEALTH_DAMAGE_THRESHOLD_REACHED"
+    ]
+    if boss_response is None:
+        if health_threshold_branches:
+            raise PipelineError(
+                f"{context} health-damage outcome requires bossResponse"
+            )
+    else:
+        if not isinstance(boss_response, dict):
+            raise PipelineError(f"{context}.bossResponse must be an object")
+        exact(
+            boss_response,
+            ("kind", "threshold"),
+            f"{context}.bossResponse",
+        )
+        if (
+            boss_response["kind"] != "ACCUMULATED_HEALTH_DAMAGE"
+            or len(health_threshold_branches) != 1
+            or stage.get("stageKind") != "ACTIVE"
+        ):
+            raise PipelineError(
+                f"{context} accumulated health damage response is incoherent"
+            )
+        integer(
+            boss_response["threshold"],
+            f"{context}.bossResponse.threshold",
+            1,
+            0xFFFFFFFF,
+        )
+
     motion = stage.get("motion")
     if motion is not None:
         if not isinstance(motion, dict):
@@ -1727,19 +1769,52 @@ def _validate_pattern_stage_extensions(
         return
     if not isinstance(proxy, dict):
         raise PipelineError(f"{context}.counterProxy must be an object")
-    exact(
-        proxy,
-        ("space", "forwardOffsetM", "rightOffsetM", "radiusM"),
-        f"{context}.counterProxy",
-    )
-    if proxy["space"] != "BOSS_LOCAL":
-        raise PipelineError(f"{context}.counterProxy space is unsupported")
-    number(proxy["forwardOffsetM"], f"{context}.counterProxy.forwardOffsetM", -20, 20)
-    number(proxy["rightOffsetM"], f"{context}.counterProxy.rightOffsetM", -20, 20)
-    number(proxy["radiusM"], f"{context}.counterProxy.radiusM", 0.1, 20)
-    if stage.get("stageKind") != "WINDUP":
+    is_forward_arc = "kind" in proxy
+    if not is_forward_arc:
+        exact(
+            proxy,
+            ("space", "forwardOffsetM", "rightOffsetM", "radiusM"),
+            f"{context}.counterProxy",
+        )
+        if proxy["space"] != "BOSS_LOCAL":
+            raise PipelineError(f"{context}.counterProxy space is unsupported")
+        number(proxy["forwardOffsetM"], f"{context}.counterProxy.forwardOffsetM", -20, 20)
+        number(proxy["rightOffsetM"], f"{context}.counterProxy.rightOffsetM", -20, 20)
+        number(proxy["radiusM"], f"{context}.counterProxy.radiusM", 0.1, 20)
+    else:
+        exact(
+            proxy,
+            ("kind", "forwardOffsetM", "rightOffsetM", "radiusM", "arcDegrees"),
+            f"{context}.counterProxy",
+        )
+        if proxy["kind"] != "BOSS_FORWARD_ARC":
+            raise PipelineError(f"{context}.counterProxy kind is unsupported")
+        forward = number(
+            proxy["forwardOffsetM"],
+            f"{context}.counterProxy.forwardOffsetM",
+            -20,
+            20,
+        )
+        right = number(
+            proxy["rightOffsetM"],
+            f"{context}.counterProxy.rightOffsetM",
+            -20,
+            20,
+        )
+        radius = number(
+            proxy["radiusM"], f"{context}.counterProxy.radiusM", 0, 0
+        )
+        arc = number(
+            proxy["arcDegrees"], f"{context}.counterProxy.arcDegrees", 180, 180
+        )
+        if forward != 0 or right != 0 or radius != 0 or arc != 180:
+            raise PipelineError(
+                f"{context} forward arc must be the boss-centred 180-degree half-plane"
+            )
+    valid_stage_kinds = ("WINDUP", "ACTIVE") if is_forward_arc else ("WINDUP",)
+    if stage.get("stageKind") not in valid_stage_kinds:
         raise PipelineError(
-            f"{context} counter proxy preset requires a WINDUP authoring stage"
+            f"{context} counter proxy preset is not allowed on this authoring stage kind"
         )
 
 
@@ -1805,7 +1880,8 @@ def validate_combat_authoring(document: dict[str, Any]) -> None:
         direction = obj["spawn"]["direction"]
         exact(direction, ("kind",), f"{context}.spawn.direction")
         if direction["kind"] not in (
-            "NONE", "PATTERN_FACING_AT_SPAWN", "RADIAL_INWARD"
+            "NONE", "PATTERN_FACING_AT_SPAWN", "RADIAL_INWARD",
+            "NEXT_RADIAL_SLOT",
         ):
             raise PipelineError(f"{context} direction kind is unsupported")
         movement = obj["movement"]
@@ -1817,23 +1893,23 @@ def validate_combat_authoring(document: dict[str, Any]) -> None:
             number(movement["maximumDistanceM"], f"{context}.maximumDistanceM", 0.000001, 10000.0)
         else:
             raise PipelineError(f"{context} movement kind is unsupported")
-        radial_inward = direction["kind"] == "RADIAL_INWARD"
+        next_radial_slot = direction["kind"] == "NEXT_RADIAL_SLOT"
         is_ghost_portal = (
             archetype == "combatobject.valtan.ghost.portal-charge"
         )
-        if radial_inward != is_ghost_portal or (
+        if next_radial_slot != is_ghost_portal or (
             is_ghost_portal
             and (
                 obj["kind"] != "MISSILE"
                 or origin["kind"] != "BOSS_POSITION"
                 or movement["kind"] != "LINEAR"
                 or obj.get("lifetimeMs") != 5000
-                or abs(movement["speedMps"] - 12.44508) > 0.000001
-                or abs(movement["maximumDistanceM"] - 62.2254) > 0.000001
+                or abs(movement["speedMps"] - 8.8) > 0.000001
+                or abs(movement["maximumDistanceM"] - 44.0) > 0.000001
             )
         ):
             raise PipelineError(
-                "RADIAL_INWARD is reserved for the exact ghost portal missile"
+                "NEXT_RADIAL_SLOT is reserved for the exact ghost portal missile"
             )
         presentation_events = obj.get("presentationEvents", [])
         if (
@@ -3913,7 +3989,7 @@ def validate_v2_master(
     for pattern_id, pattern in pattern_by_id.items():
         exact(
             pattern,
-            ("patternId", "displayName", "category", "compatibilitySelectionWeight", "actionId", "entryActionId", "targetPolicy", "aimPolicy", "eligibility", "invulnerableWhileRunning", "sourceActionIds", "sourceSequenceIndex", "presentationSources", "serverMotion", "reactions", "stages") + (("finale",) if "finale" in pattern else ()),
+            ("patternId", "displayName", "category", "compatibilitySelectionWeight", "actionId", "entryActionId", "targetPolicy", "aimPolicy", "eligibility", "invulnerableWhileRunning", "sourceActionIds", "sourceSequenceIndex", "presentationSources", "serverMotion", "reactions", "stages") + (("finale",) if "finale" in pattern else ()) + (("verticalOffsetM",) if "verticalOffsetM" in pattern else ()),
             f"pattern {pattern_id}",
         )
         _validate_pattern_target_aim(pattern, f"pattern {pattern_id}")
@@ -3936,6 +4012,20 @@ def validate_v2_master(
             )
         stable_id(pattern["actionId"], f"pattern {pattern_id}.actionId")
         stable_id(pattern["entryActionId"], f"pattern {pattern_id}.entryActionId")
+        if "verticalOffsetM" in pattern:
+            vertical_offset = number(
+                pattern["verticalOffsetM"],
+                f"pattern {pattern_id}.verticalOffsetM",
+                -100,
+                100,
+            )
+            if vertical_offset == 0 or not any(
+                isinstance(stage, dict) and "bossResponse" in stage
+                for stage in pattern.get("stages", [])
+            ):
+                raise PipelineError(
+                    f"pattern {pattern_id} vertical offset requires an active boss response"
+                )
         exact(
             pattern["eligibility"],
             ("armorRequirement", "phaseRequirement", "minimumGameplayPhase", "maximumGameplayPhase", "minimumHealthBarInclusive", "maximumHealthBarInclusive", "minimumRangeM", "maximumRangeM", "cooldownPolicy", "selectionCooldownMs", "cooldownGroupId", "repeatPolicy"),
@@ -4896,7 +4986,8 @@ def validate_gameplay_authoring(document: dict[str, Any]) -> None:
                 "serverMotion",
                 "reactions",
                 "stages",
-            ) + (("finale",) if "finale" in pattern else ()),
+            ) + (("finale",) if "finale" in pattern else ()) +
+            (("verticalOffsetM",) if "verticalOffsetM" in pattern else ()),
             f"gameplay pattern {pattern_id}",
         )
         _validate_finale(pattern, patterns, document["bossArchetypeId"])
@@ -4920,6 +5011,20 @@ def validate_gameplay_authoring(document: dict[str, Any]) -> None:
                 f"patterns: {pattern_id}"
             )
         stable_id(pattern["actionId"], f"gameplay pattern {pattern_id}.actionId")
+        if "verticalOffsetM" in pattern:
+            vertical_offset = number(
+                pattern["verticalOffsetM"],
+                f"gameplay pattern {pattern_id}.verticalOffsetM",
+                -100,
+                100,
+            )
+            if vertical_offset == 0 or not any(
+                isinstance(candidate, dict) and "bossResponse" in candidate
+                for candidate in pattern.get("stages", [])
+            ):
+                raise PipelineError(
+                    f"gameplay pattern {pattern_id} vertical offset requires an active boss response"
+                )
         if not isinstance(pattern["sourceActionIds"], list) or not pattern["sourceActionIds"]:
             raise PipelineError(f"gameplay pattern sourceActionIds is empty: {pattern_id}")
         source_action_ids = [
@@ -5253,7 +5358,7 @@ def split_v2_authoring(
                 "events": copy.deepcopy(stage["events"]),
                 "branches": copy.deepcopy(stage["branches"]),
             }
-            for optional in ("partDamagePolicy", "counterProxy"):
+            for optional in ("partDamagePolicy", "counterProxy", "bossResponse"):
                 if optional in stage:
                     gameplay_stage[optional] = copy.deepcopy(stage[optional])
             gameplay_stages.append(gameplay_stage)
@@ -5291,6 +5396,8 @@ def split_v2_authoring(
         )
         if "finale" in pattern:
             gameplay_patterns[-1]["finale"] = copy.deepcopy(pattern["finale"])
+        if "verticalOffsetM" in pattern:
+            gameplay_patterns[-1]["verticalOffsetM"] = pattern["verticalOffsetM"]
         presentation_patterns.append(
             {
                 "patternId": pattern["patternId"],
@@ -5409,7 +5516,7 @@ def join_v2_authoring(
                     presentation_stage["cameraInvocations"]
                 ),
             }
-            for optional in ("partDamagePolicy", "counterProxy"):
+            for optional in ("partDamagePolicy", "counterProxy", "bossResponse"):
                 if optional in gameplay_stage:
                     joined_stage[optional] = copy.deepcopy(
                         gameplay_stage[optional]
@@ -5447,6 +5554,10 @@ def join_v2_authoring(
         )
         if "finale" in gameplay_pattern:
             joined_patterns[-1]["finale"] = copy.deepcopy(gameplay_pattern["finale"])
+        if "verticalOffsetM" in gameplay_pattern:
+            joined_patterns[-1]["verticalOffsetM"] = gameplay_pattern[
+                "verticalOffsetM"
+            ]
     joined = {
         "schema": "lostark.valtan-pattern-master",
         "formatVersion": 2,
@@ -5696,13 +5807,26 @@ def compile_pattern_product(
             projected["branches"] = copy.deepcopy(stage["branches"])
         if "partDamagePolicy" in stage:
             projected["partDamagePolicy"] = copy.deepcopy(stage["partDamagePolicy"])
+        if "bossResponse" in stage:
+            projected["bossResponse"] = copy.deepcopy(stage["bossResponse"])
         has_counter_hit = any(
             branch.get("outcome") == "COUNTER_HIT"
             for branch in stage["branches"]
             if isinstance(branch, dict)
         )
         if has_counter_hit and "counterProxy" in stage:
-            projected["counterProxy"] = copy.deepcopy(stage["counterProxy"])
+            proxy = stage["counterProxy"]
+            projected["counterProxy"] = (
+                {
+                    "kind": "BOSS_LOCAL_CIRCLE",
+                    "forwardOffsetM": proxy["forwardOffsetM"],
+                    "rightOffsetM": proxy["rightOffsetM"],
+                    "radiusM": proxy["radiusM"],
+                    "arcDegrees": 0.0,
+                }
+                if "kind" not in proxy
+                else copy.deepcopy(proxy)
+            )
         projected_stages.append(projected)
     if is_manual_audition:
         selection_fields = {
@@ -5770,6 +5894,8 @@ def compile_pattern_product(
     }
     if pattern["serverMotion"] is not None:
         result["serverMotion"] = copy.deepcopy(pattern["serverMotion"])
+    if "verticalOffsetM" in pattern:
+        result["verticalOffsetM"] = pattern["verticalOffsetM"]
     if "finale" in pattern:
         result["finale"] = copy.deepcopy(pattern["finale"])
     result["stages"] = projected_stages
@@ -7731,6 +7857,7 @@ def _require_removable_manual_stage(
         or stage.get("cameraInvocations") != []
         or "partDamagePolicy" in stage
         or "counterProxy" in stage
+        or "bossResponse" in stage
     )
     if unsafe_stage_structure:
         raise _draft_error(

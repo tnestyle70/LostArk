@@ -75,6 +75,7 @@ class EffectToolLazyMetadataContractTests(unittest.TestCase):
         body = function_body(
             "bool_t Client::CEffect_Tool::Open_ValtanAllEffectsWorkspace()"
         )
+        self.assertIn('Select_AuthoringDomain("Valtan");', body)
         self.assertIn("Initialize_CatalogMetadataView();", body)
         self.assertNotIn("Refresh_DataFiles(", body)
         self.assertNotIn("Refresh_AllEffects(", body)

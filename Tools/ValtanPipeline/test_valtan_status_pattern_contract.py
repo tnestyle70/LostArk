@@ -54,48 +54,101 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
             documents[pipeline.COMBAT_AUTHORING_REL],
         )
 
-    def test_stagger_break_and_timeout_are_exact_typed_edges(self) -> None:
+    def test_magic_orb_damage_threshold_and_wipe_are_exact_typed_edges(self) -> None:
         pattern = self.gameplay_by_id["VALTAN_STAGGER_SLOT"]
-        self.assertEqual("마력구파괴 패턴", pattern["displayName"])
+        self.assertEqual("마력구 파괴 패턴", pattern["displayName"])
         self.assertEqual("NONE", pattern["targetPolicy"])
-        self.assertEqual(["STEP_01", "GROGGY", "RECOVERY"],
+        self.assertEqual(5.0, pattern["verticalOffsetM"])
+        self.assertEqual(["CHANNEL", "FINAL_ATTACK"],
                          [row["stageId"] for row in pattern["stages"]])
-        active, groggy, recovery = pattern["stages"]
-        self.assertEqual(5000, active["durationMs"])
+        channel, final_attack = pattern["stages"]
+        self.assertEqual(12000, channel["durationMs"])
         self.assertEqual(
-            [("STAGGER_BROKEN", "valtan.authoring.stagger-slot.groggy"),
-             ("TIMEOUT", "valtan.authoring.stagger-slot.recovery")],
-            [(row["outcome"], row["nextActionId"])
-             for row in active["branches"]],
+            {"kind": "ACCUMULATED_HEALTH_DAMAGE", "threshold": 1000},
+            channel["bossResponse"],
         )
-        self.assertNotIn("targetActionId", json.dumps(active))
         self.assertEqual(
-            [("ENTER", 100), ("EXIT", 0)],
-            [(row["trigger"], row["value"]) for row in active["events"]],
+            [
+                ("HEALTH_DAMAGE_THRESHOLD_REACHED", None,
+                 "VALTAN_GROGGY_FOLLOWUP"),
+                ("TIMEOUT", "valtan.authoring.stagger-slot.final-attack", None),
+            ],
+            [
+                (row["outcome"], row["nextActionId"], row.get("nextPatternId"))
+                for row in channel["branches"]
+            ],
         )
-        self.assertEqual("GROGGY", groggy["stageKind"])
-        self.assertEqual(6833, groggy["durationMs"])
-        self.assertEqual("RECOVERY", recovery["stageKind"])
-        self.assertEqual(1000, recovery["durationMs"])
+        self.assertEqual(3000, final_attack["durationMs"])
+        self.assertEqual(
+            {
+                "kind": "INTERVAL",
+                "count": 1,
+                "firstOffsetMs": 2900,
+                "intervalMs": 0,
+            },
+            final_attack["hit"]["schedule"],
+        )
+        self.assertEqual(100.0, final_attack["hit"]["shape"]["outerRadiusM"])
+        self.assertEqual(
+            "damage.valtan.omnidirectional-wipe-130",
+            final_attack["hit"]["serverDamageProfileId"],
+        )
+
+        groggy = self.gameplay_by_id["VALTAN_GROGGY_FOLLOWUP"]
+        self.assertEqual("NONE", groggy["targetPolicy"])
+        self.assertEqual(["GROGGY"], [row["stageId"] for row in groggy["stages"]])
+        groggy_stage = groggy["stages"][0]
+        self.assertEqual("GROGGY", groggy_stage["stageKind"])
+        self.assertEqual(6833, groggy_stage["durationMs"])
+        self.assertEqual(
+            "DESTROY_FIRST_ELIGIBLE", groggy_stage["partDamagePolicy"]
+        )
+        self.assertEqual(
+            {
+                "PART_DESTROYED": "VALTAN_PART_BREAK",
+                "TIMEOUT": None,
+            },
+            {
+                row["outcome"]: row.get("nextPatternId")
+                for row in groggy_stage["branches"]
+            },
+        )
+        self.assertEqual(
+            [("ENTER", True), ("EXIT", False)],
+            [
+                (row["trigger"], row["enabled"])
+                for row in groggy_stage["events"]
+                if row["kind"] == "SET_BOSS_FLAG"
+                and row["flagId"] == "boss.flag.groggy"
+            ],
+        )
 
     def test_bind_and_silence_follow_their_authored_stage_clocks(self) -> None:
         bind = self.gameplay_by_id["VALTAN_BIND_SLOT"]
         self.assertEqual("속박 패턴", bind["displayName"])
         self.assertEqual("LOCK_RANDOM_ALIVE_ON_START", bind["targetPolicy"])
         self.assertEqual([420623, 400442], bind["sourceActionIds"])
-        self.assertEqual(8533, bind["stages"][0]["durationMs"])
+        self.assertEqual(
+            [("STEP_01", 5000), ("RECOVERY", 3533)],
+            [(row["stageId"], row["durationMs"]) for row in bind["stages"]],
+        )
         bind_events = bind["stages"][0]["events"]
         self.assertEqual(
-            [("ENTER", "SET_PLAYER_BIND", 10.0, 8533),
+            [("ENTER", "SET_PLAYER_BIND", 10.0, 5000),
              ("EXIT", "SET_PLAYER_BIND", 0.0, 0)],
             [(row["trigger"], row["kind"], row["heightM"], row["durationMs"])
              for row in bind_events],
         )
         silence = self.gameplay_by_id["VALTAN_SILENCE_SLOT"]
         self.assertEqual("침묵 패턴", silence["displayName"])
-        silence_events = silence["stages"][0]["events"]
         self.assertEqual(
-            [("ENTER", "SET_PLAYER_SILENCE", 2633),
+            [("STEP_01", 2633), ("SILENCE_HOLD", 5000)],
+            [(row["stageId"], row["durationMs"]) for row in silence["stages"]],
+        )
+        self.assertEqual([], silence["stages"][0]["events"])
+        silence_events = silence["stages"][1]["events"]
+        self.assertEqual(
+            [("ENTER", "SET_PLAYER_SILENCE", 5000),
              ("EXIT", "SET_PLAYER_SILENCE", 0)],
             [(row["trigger"], row["kind"], row["durationMs"])
              for row in silence_events],
@@ -122,7 +175,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
                 ("mesh_att_battle_5_01_loop", 900),
                 ("mesh_att_battle_5_01_loop", 900),
                 ("mesh_att_battle_5_01_loop", 900),
-                ("mesh_att_battle_5_01_end", 4433),
+                ("mesh_att_battle_5_01_end", 900),
             ],
             [(row["clip"], row["playMs"])
              for row in bind_animation["occurrences"]],
@@ -136,14 +189,40 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
             [(row["clip"], row["playMs"])
              for row in bind_binding["clips"]],
         )
+        bind_recovery = bind["stages"][1]["animation"]
+        self.assertEqual("EXACT", bind_recovery["endPolicy"])
+        self.assertEqual(
+            [("mesh_att_battle_5_01_end", 900, 3533)],
+            [
+                (row["clip"], row["sourceStartMs"], row["playMs"])
+                for row in bind_recovery["occurrences"]
+            ],
+        )
 
-        stagger_stages = {
+        magic_stages = {
             stage["stageId"]: stage
             for stage in self.presentation_by_id["VALTAN_STAGGER_SLOT"]["stages"]
         }
-        self.assertEqual({"mode": "NONE"}, stagger_stages["STEP_01"]["animation"])
-        self.assertEqual({"mode": "NONE"}, stagger_stages["RECOVERY"]["animation"])
-        groggy_occurrences = stagger_stages["GROGGY"]["animation"]["occurrences"]
+        self.assertEqual(
+            ["mesh_att_battle_17_start", "mesh_att_battle_17_loop"],
+            [row["clip"] for row in magic_stages["CHANNEL"]["animation"]["occurrences"]],
+        )
+        self.assertTrue(
+            magic_stages["CHANNEL"]["animation"]["occurrences"][-1][
+                "repeatUntilStageEnd"
+            ]
+        )
+        self.assertEqual(
+            [("mesh_att_battle_17_end", 3000)],
+            [
+                (row["clip"], row["playMs"])
+                for row in magic_stages["FINAL_ATTACK"]["animation"]["occurrences"]
+            ],
+        )
+
+        groggy_occurrences = self.presentation_by_id[
+            "VALTAN_GROGGY_FOLLOWUP"
+        ]["stages"][0]["animation"]["occurrences"]
         self.assertEqual(
             ["mesh_abn_groggy_1_start", "mesh_abn_groggy_1_loop",
              "mesh_abn_groggy_1_loop", "mesh_abn_groggy_1_loop",
@@ -163,7 +242,8 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         )
 
         for pattern_id in (
-            "VALTAN_STAGGER_SLOT", "VALTAN_BIND_SLOT", "VALTAN_SILENCE_SLOT"
+            "VALTAN_STAGGER_SLOT", "VALTAN_GROGGY_FOLLOWUP",
+            "VALTAN_BIND_SLOT", "VALTAN_SILENCE_SLOT",
         ):
             stages = self.presentation_by_id[pattern_id]["stages"]
             self.assertEqual(
@@ -223,7 +303,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         invalid = copy.deepcopy(gameplay)
         bind = next(row for row in invalid["patterns"]
                     if row["patternId"] == "VALTAN_BIND_SLOT")
-        bind["stages"][0]["events"][0]["durationMs"] = 8532
+        bind["stages"][0]["events"][0]["durationMs"] = 4999
         with self.assertRaises(pipeline.PipelineError):
             pipeline.join_v2_authoring(
                 invalid, documents[pipeline.PRESENTATION_AUTHORING_REL],
@@ -232,7 +312,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         invalid = copy.deepcopy(gameplay)
         silence = next(row for row in invalid["patterns"]
                        if row["patternId"] == "VALTAN_SILENCE_SLOT")
-        silence["stages"][0]["events"][1]["durationMs"] = 1
+        silence["stages"][1]["events"][1]["durationMs"] = 1
         with self.assertRaises(pipeline.PipelineError):
             pipeline.join_v2_authoring(
                 invalid, documents[pipeline.PRESENTATION_AUTHORING_REL],
@@ -249,9 +329,10 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
             documents[pipeline.COMBAT_AUTHORING_REL],
         )
 
-        for pattern_id, status_kind, duration_ms in (
-            ("VALTAN_BIND_SLOT", "SET_PLAYER_BIND", 8000),
-            ("VALTAN_SILENCE_SLOT", "SET_PLAYER_SILENCE", 2000),
+        for pattern_id, stage_id, status_kind, duration_ms, resize_animation in (
+            ("VALTAN_BIND_SLOT", "STEP_01", "SET_PLAYER_BIND", 8000, True),
+            ("VALTAN_SILENCE_SLOT", "SILENCE_HOLD",
+             "SET_PLAYER_SILENCE", 2000, False),
         ):
             with self.subTest(pattern_id=pattern_id):
                 current_stage = next(
@@ -259,12 +340,25 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
                     for pattern in master["patterns"]
                     if pattern["patternId"] == pattern_id
                     for stage in pattern["stages"]
-                    if stage["stageId"] == "STEP_01"
+                    if stage["stageId"] == stage_id
                 )
-                resized_animation = copy.deepcopy(current_stage["animation"])
-                resized_animation["occurrences"][-1]["playMs"] += (
-                    duration_ms - current_stage["durationMs"]
-                )
+                operations = [{
+                    "op": "SET_STAGE_DURATION",
+                    "patternId": pattern_id,
+                    "stageId": stage_id,
+                    "durationMs": duration_ms,
+                }]
+                if resize_animation:
+                    resized_animation = copy.deepcopy(current_stage["animation"])
+                    resized_animation["occurrences"][-1]["playMs"] += (
+                        duration_ms - current_stage["durationMs"]
+                    )
+                    operations.append({
+                        "op": "SET_STAGE_ANIMATION",
+                        "patternId": pattern_id,
+                        "stageId": stage_id,
+                        "animation": resized_animation,
+                    })
                 candidate, _, _, operation_count = pipeline.apply_draft_patch(
                     master,
                     copy.deepcopy(documents[pipeline.BOSS_PROFILES_REL]),
@@ -273,40 +367,33 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
                         "schema": pipeline.DRAFT_PATCH_SCHEMA,
                         "formatVersion": 1,
                         "sourceRevision": source_revision,
-                        "operations": [
-                            {
-                                "op": "SET_STAGE_DURATION",
-                                "patternId": pattern_id,
-                                "stageId": "STEP_01",
-                                "durationMs": duration_ms,
-                            },
-                            {
-                                "op": "SET_STAGE_ANIMATION",
-                                "patternId": pattern_id,
-                                "stageId": "STEP_01",
-                                "animation": resized_animation,
-                            },
-                        ],
+                        "operations": operations,
                     },
                     source_revision,
                     documents[pipeline.WORLD_SET_REL],
                     documents[pipeline.COMBAT_AUTHORING_REL],
                     repository_root=ROOT,
                 )
-                self.assertEqual(2, operation_count)
+                self.assertEqual(len(operations), operation_count)
                 patched_pattern = next(
                     row for row in candidate["patterns"]
                     if row["patternId"] == pattern_id
                 )
-                patched_stage = patched_pattern["stages"][0]
-                self.assertEqual(duration_ms, patched_stage["durationMs"])
-                self.assertEqual(
-                    duration_ms,
-                    sum(
-                        occurrence["playMs"]
-                        for occurrence in patched_stage["animation"]["occurrences"]
-                    ),
+                patched_stage = next(
+                    row for row in patched_pattern["stages"]
+                    if row["stageId"] == stage_id
                 )
+                self.assertEqual(duration_ms, patched_stage["durationMs"])
+                if resize_animation:
+                    self.assertEqual(
+                        duration_ms,
+                        sum(
+                            occurrence["playMs"]
+                            for occurrence in patched_stage["animation"]["occurrences"]
+                        ),
+                    )
+                else:
+                    self.assertEqual({"mode": "NONE"}, patched_stage["animation"])
                 self.assertEqual(
                     [("ENTER", duration_ms), ("EXIT", 0)],
                     [
@@ -353,7 +440,11 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         self.assertIn("NETWORK_PROTOCOL_VERSION = 52", protocol)
         self.assertIn("Pattern-Bound Player Snapshot Round Trip", harness)
         self.assertIn("iSilenceDurationTicks", harness)
-        self.assertIn("m_Player.iSilenceEndTick > state.iCooldownEndTick", hud)
+        skill_build = hud[
+            hud.index("void Client::CCombatHUDViewModel::Build_PlayerSkills"):
+            hud.index("void Client::CCombatHUDViewModel::Apply_Boss")
+        ]
+        self.assertNotIn("iSilenceEndTick", skill_build)
         self.assertIn("boss.iMaximumStagger - (std::min)", main_app)
         for marker in (
             "Stagger Gauge | ", "Bind | +", "Silence | ",
@@ -391,13 +482,17 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
 
         for marker in (
             "Is_ServerDeadlinePending(Player.iServerTick, Player.iSilenceEndTick)",
-            "Apply_SilenceQuickSlotTint(m_pHUDRuntimeView.get(), player)",
+            "Apply_SilenceRSlotTint(m_pHUDRuntimeView.get(), player)",
             "float4_t(1.f, 0.2f, 0.2f, 1.f)",
-            'string("Skill_") + pInputSlot + "_Icon"',
-            '"Skill_Z", "Skill_X", "Yin_Skill_Z", "Yin_Skill_X"',
-            "Set_SlotTintMultiplier(pSlotId, vIconTint)",
+            'Set_SlotTintMultiplier("Skill_R_Icon", vIconTint)',
         ):
             self.assertIn(marker, main_app)
+        silence_tint = main_app[
+            main_app.index("void Apply_SilenceRSlotTint"):
+            main_app.index("CMainApp* CMainApp::s_pActiveInstance")
+        ]
+        self.assertNotIn("Skill_Q_Icon", silence_tint)
+        self.assertNotIn("for (", silence_tint)
 
         self.assertIn("Set_SlotTintMultiplier", runtime_h)
         self.assertIn("pKeySprite->Set_TintMultiplier", runtime_cpp)

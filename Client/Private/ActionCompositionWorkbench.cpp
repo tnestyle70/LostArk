@@ -10450,7 +10450,8 @@ void Client::CActionCompositionWorkbench::Render_ResourcesWindow(
 			}
 			ImGui::EndDisabled();
 			const bool_t bV2AppendAdmitted = !bV1Selection &&
-				nullptr != pResourceStage && bMutationAdmitted &&
+				nullptr != pResourcePattern && nullptr != pResourceStage &&
+				bMutationAdmitted &&
 				!m_strEffectAddAssetId.empty();
 			ImGui::BeginDisabled(!bV2AppendAdmitted);
 			if (ImGui::Button("Append V2 Stage Binding") &&
@@ -10461,6 +10462,8 @@ void Client::CActionCompositionWorkbench::Render_ResourcesWindow(
 						m_strEffectAddAssetId,
 						EFFECT_RESOURCE_KIND::V2_GROUP ==
 							m_eEffectAddResourceKind,
+						pResourcePattern->strPatternId,
+						pResourceStage->strStageId,
 						pResourceStage->strActionId,
 						m_iEffectV2AddStartMs, Status))
 				{

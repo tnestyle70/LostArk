@@ -1,28 +1,548 @@
 {
   "schema": "lostark.effect-v2-group",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "groupId": "boss.valtan.shout",
   "durationMs": 0,
   "children": [
-    { "effectId": "boss.valtan.shout.comet_1", "startMs": 200, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.shout.comet_1", "startMs": 300, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 90.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.shout.comet_1", "startMs": 700, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 180.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.shout.comet_1", "startMs": 400, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 270.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.shout.comet_2", "startMs": 900, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 45.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.shout.comet_2", "startMs": 500, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 135.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.shout.comet_2", "startMs": 300, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 225.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.shout.comet_2", "startMs": 800, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 315.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.shout.converge_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.shout.comet_1", "startMs": 1500, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 45.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.shout.comet_1", "startMs": 1200, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 135.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.shout.comet_1", "startMs": 1400, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 225.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.shout.comet_1", "startMs": 1300, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 315.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.shout.comet_1", "startMs": 1100, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 60.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.shout.comet_2", "startMs": 1050, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 45.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.shout.comet_2", "startMs": 1350, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 135.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.shout.comet_2", "startMs": 1650, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 225.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.shout.comet_2", "startMs": 1450, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 315.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.shout.comet_2", "startMs": 1250, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 60.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.blur_3", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] }
+    {
+      "childId": "child.migrated.000.9ef0a9318ad7c42a",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.comet_1"
+      },
+      "startMs": 200,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.001.1e2d6f47cda8af2e",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.comet_1"
+      },
+      "startMs": 300,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          90.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.002.8e026afdcd4a4ef7",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.comet_1"
+      },
+      "startMs": 700,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          180.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.003.3028e0f23a6bdd71",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.comet_1"
+      },
+      "startMs": 400,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          270.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.004.d32b458a7687abf5",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.comet_2"
+      },
+      "startMs": 900,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          45.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.005.6b5529c668c14441",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.comet_2"
+      },
+      "startMs": 500,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          135.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.006.3ba8d714fd05ddfd",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.comet_2"
+      },
+      "startMs": 300,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          225.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.007.49daf59d2770ffcc",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.comet_2"
+      },
+      "startMs": 800,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          315.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.008.04ef518181f70af6",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.converge_1"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.009.52269850a649bf5a",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.comet_1"
+      },
+      "startMs": 1500,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          45.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.010.bab476b11961c3c4",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.comet_1"
+      },
+      "startMs": 1200,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          135.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.011.45a61c949bd89395",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.comet_1"
+      },
+      "startMs": 1400,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          225.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.012.a4b44333e312125c",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.comet_1"
+      },
+      "startMs": 1300,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          315.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.013.a759c71bc654ebbf",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.comet_1"
+      },
+      "startMs": 1100,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          60.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.014.83b0463a72fd3210",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.comet_2"
+      },
+      "startMs": 1050,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          45.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.015.73e66f4f6698dbbc",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.comet_2"
+      },
+      "startMs": 1350,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          135.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.016.7a2f51b8478e2e3a",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.comet_2"
+      },
+      "startMs": 1650,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          225.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.017.c62fe780b7d84006",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.comet_2"
+      },
+      "startMs": 1450,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          315.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.018.8f84d66ba8fd9c65",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.shout.comet_2"
+      },
+      "startMs": 1250,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          60.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.019.c670a14d973252f9",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.blur_3"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    }
   ]
 }

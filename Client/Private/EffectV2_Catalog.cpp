@@ -1,8 +1,8 @@
 #include "EffectV2_Catalog.h"
-#include "DataJson.h"
 #include "EffectV2_Runtime.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
 #include <exception>
@@ -32,56 +32,6 @@ namespace
 		std::string strMessage)
 	{
 		Diagnostics.push_back(std::move(strMessage));
-	}
-
-	std::string Json_String(const std::string_view strValue)
-	{
-		return "\"" + Client::CDataJson::Escape(strValue) + "\"";
-	}
-
-	std::string Serialize_JsonValue(const Client::DATA_JSON_VALUE& Value)
-	{
-		switch (Value.Get_Type())
-		{
-		case Client::DATA_JSON_TYPE::NULL_VALUE:
-			return "null";
-		case Client::DATA_JSON_TYPE::BOOLEAN:
-			return Value.Get_Boolean() ? "true" : "false";
-		case Client::DATA_JSON_TYPE::NUMBER:
-		{
-			char szNumber[64]{};
-			std::snprintf(
-				szNumber, sizeof(szNumber), "%.17g", Value.Get_Number());
-			return szNumber;
-		}
-		case Client::DATA_JSON_TYPE::STRING:
-			return Json_String(Value.Get_String());
-		case Client::DATA_JSON_TYPE::ARRAY:
-		{
-			std::string strText = "[";
-			for (size_t iIndex = 0u; iIndex < Value.Get_Array().size(); ++iIndex)
-			{
-				if (0u != iIndex)
-					strText += ',';
-				strText += Serialize_JsonValue(Value.Get_Array()[iIndex]);
-			}
-			return strText + ']';
-		}
-		case Client::DATA_JSON_TYPE::OBJECT:
-		{
-			std::string strText = "{";
-			size_t iIndex = 0u;
-			for (const auto& [strKey, Child] : Value.Get_Object())
-			{
-				if (0u != iIndex++)
-					strText += ',';
-				strText += Json_String(strKey) + ':' + Serialize_JsonValue(Child);
-			}
-			return strText + '}';
-		}
-		default:
-			return "null";
-		}
 	}
 
 	bool_t Read_TextFile(
@@ -254,18 +204,6 @@ namespace
 		return true;
 	}
 
-	bool_t Matches_BindingParserIdentity(
-		const Client::EFFECT_V2_BINDING& Left,
-		const Client::EFFECT_V2_BINDING& Right)
-	{
-		return Left.strEffectId == Right.strEffectId &&
-			Left.strGroupId == Right.strGroupId &&
-			Left.strClip == Right.strClip &&
-			Left.strStage == Right.strStage &&
-			Left.iStartMs == Right.iStartMs &&
-			Left.strBone == Right.strBone;
-	}
-
 	bool_t Stage_BossValtanBindings(
 		std::vector<Client::EFFECT_V2_BINDING>& OutBindings,
 		bool_t& bOutComplete,
@@ -274,7 +212,8 @@ namespace
 		std::string* const pOutSourceBytes = nullptr)
 	{
 		OutBindings.clear();
-		bOutComplete = true;
+		bOutComplete = false;
+		(void)Diagnostics;
 		if (nullptr != pOutSourceBytes)
 			pOutSourceBytes->clear();
 		const std::filesystem::path Path =
@@ -282,88 +221,109 @@ namespace
 		std::string strText;
 		if (!Read_TextFile(Path, strText, strOutError))
 		{
-			Diagnose(Diagnostics,
-				"Skipped BOSS_VALTAN Effect V2 bindings: " + strOutError);
-			strOutError.clear();
-			bOutComplete = false;
-			return true;
+			strOutError =
+				"BOSS_VALTAN strict formatVersion 2 binding read failed before "
+				"snapshot commit: " + strOutError;
+			return false;
 		}
+		std::vector<Client::EFFECT_V2_BINDING> Staged;
+		if (!Client::CEffectV2Document::Parse_Bindings(
+				strText, BOSS_VALTAN_ARCHETYPE_ID, Staged, strOutError))
+		{
+			strOutError =
+				"BOSS_VALTAN strict formatVersion 2 binding parse failed before "
+				"snapshot commit: " + strOutError;
+			return false;
+		}
+
+		OutBindings = std::move(Staged);
+		bOutComplete = true;
 		if (nullptr != pOutSourceBytes)
-			*pOutSourceBytes = strText;
-
-		Client::DATA_JSON_VALUE Root;
-		if (!Client::CDataJson::Parse(strText, Root, strOutError) ||
-			!Root.Is_Object())
-		{
-			if (strOutError.empty())
-				strOutError = "bindings root is not an object.";
-			Diagnose(Diagnostics,
-				"Skipped BOSS_VALTAN Effect V2 bindings: " + strOutError);
-			strOutError.clear();
-			bOutComplete = false;
-			return true;
-		}
-
-		const Client::DATA_JSON_VALUE* pSchema = Root.Find("schema");
-		const Client::DATA_JSON_VALUE* pVersion = Root.Find("formatVersion");
-		const Client::DATA_JSON_VALUE* pArchetype = Root.Find("archetypeId");
-		const Client::DATA_JSON_VALUE* pRows = Root.Find("bindings");
-		if (nullptr == pSchema || !pSchema->Is_String() ||
-			pSchema->Get_String() != "lostark.effect-v2-bindings" ||
-			nullptr == pVersion || !pVersion->Is_Number() ||
-			pVersion->Get_Number() != 1.0 ||
-			nullptr == pArchetype || !pArchetype->Is_String() ||
-			pArchetype->Get_String() != BOSS_VALTAN_ARCHETYPE_ID ||
-			nullptr == pRows || !pRows->Is_Array())
-		{
-			Diagnose(Diagnostics,
-				"Skipped BOSS_VALTAN Effect V2 bindings: "
-				"schema/formatVersion/archetypeId/bindings mismatch.");
-			bOutComplete = false;
-			return true;
-		}
-
-		const auto& Rows = pRows->Get_Array();
-		OutBindings.reserve(Rows.size());
-		for (size_t iRow = 0u; iRow < Rows.size(); ++iRow)
-		{
-			const std::string strSingleRow =
-				"{\"schema\":\"lostark.effect-v2-bindings\","
-				"\"formatVersion\":1,\"archetypeId\":" +
-				Json_String(BOSS_VALTAN_ARCHETYPE_ID) +
-				",\"bindings\":[" + Serialize_JsonValue(Rows[iRow]) + "]}";
-			std::vector<Client::EFFECT_V2_BINDING> Parsed;
-			std::string strRowError;
-			if (!Client::CEffectV2Document::Parse_Bindings(
-					strSingleRow, BOSS_VALTAN_ARCHETYPE_ID,
-					Parsed, strRowError) ||
-				1u != Parsed.size())
-			{
-				Diagnose(Diagnostics,
-					"Skipped BOSS_VALTAN Effect V2 binding row " +
-					std::to_string(iRow) + ": " + strRowError);
-				bOutComplete = false;
-				continue;
-			}
-
-			const auto Duplicate = std::find_if(
-				OutBindings.begin(), OutBindings.end(),
-				[&Parsed](const Client::EFFECT_V2_BINDING& Existing)
-				{
-					return Matches_BindingParserIdentity(
-						Existing, Parsed.front());
-				});
-			if (Duplicate != OutBindings.end())
-			{
-				Diagnose(Diagnostics,
-					"Skipped duplicate BOSS_VALTAN Effect V2 binding row " +
-					std::to_string(iRow) + ".");
-				bOutComplete = false;
-				continue;
-			}
-			OutBindings.push_back(std::move(Parsed.front()));
-		}
+			*pOutSourceBytes = std::move(strText);
 		return true;
+	}
+
+	bool_t Is_StableAsciiId(
+		const std::string_view strId,
+		const size_t iMaximumLength = 160u)
+	{
+		if (strId.empty() || strId.size() > iMaximumLength)
+			return false;
+		return std::all_of(strId.begin(), strId.end(), [](const char Value)
+		{
+			const unsigned char Character = static_cast<unsigned char>(Value);
+			return 0 != std::isalnum(Character) || '.' == Value ||
+				'_' == Value || '-' == Value;
+		});
+	}
+
+	bool_t Is_ValidLocalTransform(
+		const Client::EFFECT_V2_LOCAL_TRANSFORM& Transform)
+	{
+		return std::isfinite(Transform.vTranslation.x) &&
+			std::isfinite(Transform.vTranslation.y) &&
+			std::isfinite(Transform.vTranslation.z) &&
+			std::isfinite(Transform.vRotation.x) &&
+			std::isfinite(Transform.vRotation.y) &&
+			std::isfinite(Transform.vRotation.z) &&
+			std::isfinite(Transform.vScale.x) &&
+			std::isfinite(Transform.vScale.y) &&
+			std::isfinite(Transform.vScale.z) &&
+			Transform.vScale.x > 0.f && Transform.vScale.y > 0.f &&
+			Transform.vScale.z > 0.f;
+	}
+
+	bool_t Contains_BindingId(
+		const std::vector<Client::EFFECT_V2_BINDING>& Bindings,
+		const std::string_view strBindingId)
+	{
+		return Bindings.end() != std::find_if(
+			Bindings.begin(), Bindings.end(), [strBindingId](
+				const Client::EFFECT_V2_BINDING& Binding)
+			{
+				return Binding.strBindingId == strBindingId;
+			});
+	}
+
+	uint64_t Hash_Fnv1a64(const std::string_view strValue)
+	{
+		uint64_t iHash = 14695981039346656037ull;
+		for (const unsigned char Value : strValue)
+		{
+			iHash ^= static_cast<uint64_t>(Value);
+			iHash *= 1099511628211ull;
+		}
+		return iHash;
+	}
+
+	std::string Generate_StableBindingId(
+		const std::vector<Client::EFFECT_V2_BINDING>& Bindings,
+		const Client::EFFECT_V2_BINDING& Binding)
+	{
+		Client::EFFECT_V2_BINDING HashBinding = Binding;
+		HashBinding.strBindingId = "binding.valtan.pending";
+		const uint64_t iHash = Hash_Fnv1a64(
+			Client::CEffectV2Document::Serialize_Bindings(
+				BOSS_VALTAN_ARCHETYPE_ID, { HashBinding }));
+		for (uint32_t iSuffix = 0u; iSuffix < 100000u; ++iSuffix)
+		{
+			char szBindingId[96]{};
+			if (0u == iSuffix)
+			{
+				std::snprintf(szBindingId, sizeof(szBindingId),
+					"binding.valtan.authored.%016llx",
+					static_cast<unsigned long long>(iHash));
+			}
+			else
+			{
+				std::snprintf(szBindingId, sizeof(szBindingId),
+					"binding.valtan.authored.%016llx.%u",
+					static_cast<unsigned long long>(iHash), iSuffix);
+			}
+			if (!Contains_BindingId(Bindings, szBindingId))
+				return szBindingId;
+		}
+		return {};
 	}
 
 	bool_t Cross_Validate(
@@ -401,37 +361,122 @@ namespace
 			}
 			for (const Client::EFFECT_V2_GROUP_CHILD& Child : Group.Children)
 			{
-				if (!DocumentsById.contains(Child.strEffectId))
+				if (Client::EFFECT_V2_RESOURCE_KIND::GROUP ==
+					Child.eResourceKind)
+				{
+					return Fail(strOutError,
+						"Nested Effect V2 groups are not supported by the current "
+						"runtime: " + Group.strGroupId + " -> " +
+						Child.strResourceId);
+				}
+				if (Client::EFFECT_V2_RESOURCE_KIND::LEAF !=
+						Child.eResourceKind ||
+					!DocumentsById.contains(Child.strResourceId))
 				{
 					return Fail(strOutError,
 						"Effect V2 group child has no authored leaf document: " +
-						Group.strGroupId + " -> " + Child.strEffectId);
+						Group.strGroupId + " -> " + Child.strResourceId);
 				}
 			}
 		}
 
+		std::map<std::string, bool_t, std::less<>> BindingIds;
 		for (const Client::EFFECT_V2_BINDING& Binding : Bindings)
 		{
-			if (Binding.strEffectId.empty() == Binding.strGroupId.empty() ||
-				Binding.strClip.empty() == Binding.strStage.empty())
+			if (!Is_StableAsciiId(Binding.strBindingId) ||
+				!BindingIds.emplace(Binding.strBindingId, true).second)
 			{
 				return Fail(strOutError,
-					"BOSS_VALTAN Effect V2 binding lost its exact subject or clock owner.");
+					"BOSS_VALTAN Effect V2 binding requires one unique stable bindingId.");
 			}
-			if (!Binding.strEffectId.empty())
+			if ((Client::EFFECT_V2_RESOURCE_KIND::LEAF !=
+					Binding.eResourceKind &&
+				Client::EFFECT_V2_RESOURCE_KIND::GROUP !=
+					Binding.eResourceKind) ||
+				!Is_StableAsciiId(Binding.strResourceId,
+					Client::EFFECT_V2_RESOURCE_KIND::LEAF ==
+						Binding.eResourceKind ? 80u : 160u) ||
+				!Binding.strResourceId.starts_with(BOSS_VALTAN_RESOURCE_PREFIX))
 			{
-				if (!DocumentsById.contains(Binding.strEffectId))
+				return Fail(strOutError,
+					"BOSS_VALTAN Effect V2 binding has an invalid typed boss.valtan.* resource.");
+			}
+			if (!Is_StableAsciiId(Binding.strPatternId) ||
+				!Is_StableAsciiId(Binding.strStageId) ||
+				!Is_StableAsciiId(Binding.strActionId))
+			{
+				return Fail(strOutError,
+					"BOSS_VALTAN Effect V2 binding has an invalid typed pattern/stage/action scope.");
+			}
+			if (Binding.iStartMs > MAX_BINDING_MS ||
+				(Client::EFFECT_V2_CLOCK_BASIS::STAGE !=
+					Binding.eClockBasis &&
+				Client::EFFECT_V2_CLOCK_BASIS::CLIP_OCCURRENCE !=
+					Binding.eClockBasis) ||
+				(Client::EFFECT_V2_REPEAT_POLICY::ONCE !=
+					Binding.eRepeatPolicy &&
+				Client::EFFECT_V2_REPEAT_POLICY::EACH_LOOP !=
+					Binding.eRepeatPolicy) ||
+				(Client::EFFECT_V2_CLOCK_BASIS::STAGE ==
+						Binding.eClockBasis &&
+					(!Binding.strClipOccurrenceId.empty() ||
+					 Client::EFFECT_V2_REPEAT_POLICY::ONCE !=
+						Binding.eRepeatPolicy)) ||
+				(Client::EFFECT_V2_CLOCK_BASIS::CLIP_OCCURRENCE ==
+						Binding.eClockBasis &&
+					!Is_StableAsciiId(Binding.strClipOccurrenceId)))
+			{
+				return Fail(strOutError,
+					"BOSS_VALTAN Effect V2 binding has an invalid typed clock.");
+			}
+			if (!Is_StableAsciiId(Binding.strAnchorSlotId) ||
+				(Client::EFFECT_V2_FOLLOW_POLICY::FOLLOW_SLOT !=
+					Binding.eFollowPolicy &&
+				Client::EFFECT_V2_FOLLOW_POLICY::SNAPSHOT_AT_START !=
+					Binding.eFollowPolicy) ||
+				(Client::EFFECT_V2_ROTATION_BASIS::SLOT !=
+					Binding.eRotationBasis &&
+				Client::EFFECT_V2_ROTATION_BASIS::TARGET_YAW !=
+					Binding.eRotationBasis &&
+				Client::EFFECT_V2_ROTATION_BASIS::WORLD !=
+					Binding.eRotationBasis) ||
+				!Is_ValidLocalTransform(Binding.LocalTransform))
+			{
+				return Fail(strOutError,
+					"BOSS_VALTAN Effect V2 binding has an invalid typed anchor.");
+			}
+			if ((Client::EFFECT_V2_STOP_POLICY::NATURAL !=
+					Binding.eStopPolicy &&
+				Client::EFFECT_V2_STOP_POLICY::STAGE_END !=
+					Binding.eStopPolicy &&
+				Client::EFFECT_V2_STOP_POLICY::CLIP_OCCURRENCE_END !=
+					Binding.eStopPolicy &&
+				Client::EFFECT_V2_STOP_POLICY::EXPLICIT !=
+					Binding.eStopPolicy) ||
+				(Client::EFFECT_V2_STOP_POLICY::CLIP_OCCURRENCE_END ==
+						Binding.eStopPolicy &&
+				 Client::EFFECT_V2_CLOCK_BASIS::CLIP_OCCURRENCE !=
+					Binding.eClockBasis))
+			{
+				return Fail(strOutError,
+					"BOSS_VALTAN Effect V2 binding has an invalid typed stopPolicy.");
+			}
+
+			if (Client::EFFECT_V2_RESOURCE_KIND::LEAF ==
+				Binding.eResourceKind)
+			{
+				if (!DocumentsById.contains(Binding.strResourceId))
 				{
 					return Fail(strOutError,
 						"BOSS_VALTAN Effect V2 binding has no authored document: " +
-						Binding.strEffectId);
+						Binding.strResourceId);
 				}
 			}
-			else if (!GroupsById.contains(Binding.strGroupId))
+			else if (!GroupsById.contains(Binding.strResourceId))
 			{
 				return Fail(strOutError,
 					"BOSS_VALTAN Effect V2 binding has no group document: " +
-					Binding.strGroupId);
+					Binding.strResourceId);
 			}
 		}
 		return true;
@@ -471,36 +516,39 @@ namespace
 		return true;
 	}
 
-	bool_t Validate_StageBindingKey(
+	bool_t Validate_StageBindingIdentity(
 		const Client::EFFECT_V2_STAGE_BINDING_KEY& Key,
 		std::string& strOutError)
 	{
-		if (!Client::CEffectV2Document::Is_ValidEffectId(Key.strResourceId))
+		if (!Is_StableAsciiId(Key.strBindingId))
 		{
 			return Fail(strOutError,
-				"Effect V2 mutation rejected an invalid stable resource ID.");
+				"Effect V2 mutation requires one stable formatVersion 2 bindingId.");
 		}
-		if (Key.strStageActionId.empty() == Key.strClipName.empty() ||
-			Key.strStageActionId.size() > 160u || Key.strClipName.size() > 160u)
+		return true;
+	}
+
+	bool_t Validate_StageBindingAppendRequest(
+		const Client::EFFECT_V2_STAGE_BINDING_KEY& Key,
+		std::string& strOutError)
+	{
+		if (!Is_StableAsciiId(
+				Key.strResourceId, Key.bGroup ? 160u : 80u))
 		{
 			return Fail(strOutError,
-				"Effect V2 mutation requires exactly one stable Server Stage actionId or Animation clip name.");
+				"Effect V2 append rejected an invalid stable resource ID.");
+		}
+		if (!Is_StableAsciiId(Key.strPatternId) ||
+			!Is_StableAsciiId(Key.strStageId) ||
+			!Is_StableAsciiId(Key.strActionId))
+		{
+			return Fail(strOutError,
+				"Effect V2 append requires stable patternId, stageId and actionId scope fields.");
 		}
 		if (Key.iStartMs > MAX_BINDING_MS)
 		{
 			return Fail(strOutError,
-				"Effect V2 mutation startMs exceeds the ten-minute authoring limit.");
-		}
-		if (Key.strBone.size() > 160u ||
-			Key.eRotation < Client::CEffectV2Object::PIVOT_ROTATION::BONE ||
-			Key.eRotation >= Client::CEffectV2Object::PIVOT_ROTATION::END ||
-			!std::isfinite(Key.vOffset.x) ||
-			!std::isfinite(Key.vOffset.y) ||
-			!std::isfinite(Key.vOffset.z) ||
-			!std::isfinite(Key.fYawDegrees))
-		{
-			return Fail(strOutError,
-				"Effect V2 mutation requires one valid persisted row baseline.");
+				"Effect V2 append startMs exceeds the ten-minute authoring limit.");
 		}
 		return true;
 	}
@@ -522,21 +570,7 @@ namespace
 		const Client::EFFECT_V2_BINDING& Binding,
 		const Client::EFFECT_V2_STAGE_BINDING_KEY& Key)
 	{
-		return Binding.strStage == Key.strStageActionId &&
-			Binding.strClip == Key.strClipName &&
-			Binding.iStartMs == Key.iStartMs &&
-			Binding.strBone == Key.strBone &&
-			Binding.bFollowBone == Key.bFollowBone &&
-			Binding.eRotation == Key.eRotation &&
-			Binding.bStopWithClip == Key.bStopWithClip &&
-			Binding.vOffset.x == Key.vOffset.x &&
-			Binding.vOffset.y == Key.vOffset.y &&
-			Binding.vOffset.z == Key.vOffset.z &&
-			Binding.fYawDegrees == Key.fYawDegrees &&
-			(Key.bGroup ? Binding.strEffectId.empty() :
-				Binding.strGroupId.empty()) &&
-			(Key.bGroup ? Binding.strGroupId : Binding.strEffectId) ==
-				Key.strResourceId;
+		return Binding.strBindingId == Key.strBindingId;
 	}
 
 	bool_t Resolve_UniqueStageBindingIndex(
@@ -564,22 +598,6 @@ namespace
 			"Effect V2 Stage binding identity is ambiguous. Refresh and repair the source.");
 	}
 
-	bool_t Contains_StageBindingKey(
-		const std::vector<Client::EFFECT_V2_BINDING>& Bindings,
-		const Client::EFFECT_V2_STAGE_BINDING_KEY& Key,
-		const size_t iIgnoredIndex = (std::numeric_limits<size_t>::max)())
-	{
-		for (size_t iIndex = 0u; iIndex < Bindings.size(); ++iIndex)
-		{
-			if (iIndex != iIgnoredIndex &&
-				Matches_StageBindingKey(Bindings[iIndex], Key))
-			{
-				return true;
-			}
-		}
-		return false;
-	}
-
 	bool_t Validate_NoLeafGroupClockOverlap(
 		const std::vector<Client::EFFECT_V2_GROUP>& Groups,
 		const std::vector<Client::EFFECT_V2_BINDING>& Bindings,
@@ -592,17 +610,24 @@ namespace
 
 		for (const Client::EFFECT_V2_BINDING& LeafBinding : Bindings)
 		{
-			if (LeafBinding.strEffectId.empty())
+			if (Client::EFFECT_V2_RESOURCE_KIND::LEAF !=
+				LeafBinding.eResourceKind)
 				continue;
 			for (const Client::EFFECT_V2_BINDING& GroupBinding : Bindings)
 			{
-				if (GroupBinding.strGroupId.empty() ||
-					LeafBinding.strClip != GroupBinding.strClip ||
-					LeafBinding.strStage != GroupBinding.strStage)
+				if (Client::EFFECT_V2_RESOURCE_KIND::GROUP !=
+						GroupBinding.eResourceKind ||
+					LeafBinding.strPatternId != GroupBinding.strPatternId ||
+					LeafBinding.strStageId != GroupBinding.strStageId ||
+					LeafBinding.strActionId != GroupBinding.strActionId ||
+					LeafBinding.eClockBasis != GroupBinding.eClockBasis ||
+					LeafBinding.strClipOccurrenceId !=
+						GroupBinding.strClipOccurrenceId ||
+					LeafBinding.eRepeatPolicy != GroupBinding.eRepeatPolicy)
 				{
 					continue;
 				}
-				const auto Found = GroupsById.find(GroupBinding.strGroupId);
+				const auto Found = GroupsById.find(GroupBinding.strResourceId);
 				if (Found == GroupsById.end())
 					continue;
 				for (const Client::EFFECT_V2_GROUP_CHILD& Child :
@@ -611,13 +636,16 @@ namespace
 					const uint64_t iEffectiveStartMs =
 						static_cast<uint64_t>(GroupBinding.iStartMs) +
 						static_cast<uint64_t>(Child.iStartMs);
-					if (Child.strEffectId == LeafBinding.strEffectId &&
+					if (Client::EFFECT_V2_RESOURCE_KIND::LEAF ==
+							Child.eResourceKind &&
+						Child.strResourceId == LeafBinding.strResourceId &&
 						iEffectiveStartMs == LeafBinding.iStartMs)
 					{
 						return Fail(strOutError,
 							"Effect V2 leaf overlaps the same leaf inside group '" +
-							GroupBinding.strGroupId + "' at the same Stage clock: " +
-							LeafBinding.strEffectId);
+							GroupBinding.strResourceId +
+							"' at the same typed clock: " +
+							LeafBinding.strResourceId);
 					}
 				}
 			}
@@ -633,6 +661,11 @@ namespace
 		std::vector<std::string>& Diagnostics,
 		std::string& strOutError)
 	{
+		if (!bInOutBindingsComplete)
+		{
+			return Fail(strOutError,
+				"BOSS_VALTAN formatVersion 2 bindings cannot be admitted as a partial document.");
+		}
 		std::map<std::string, bool_t, std::less<>> DocumentIds;
 		for (const Client::EFFECT_V2_DOCUMENT& Document : Documents)
 			DocumentIds.emplace(Document.strEffectId, true);
@@ -655,9 +688,20 @@ namespace
 			{
 				for (const Client::EFFECT_V2_GROUP_CHILD& Child : Group.Children)
 				{
-					if (!DocumentIds.contains(Child.strEffectId))
+					if (Client::EFFECT_V2_RESOURCE_KIND::GROUP ==
+						Child.eResourceKind)
 					{
-						strReason = "missing authored leaf " + Child.strEffectId;
+						strReason =
+							"nested groups are not supported by the current runtime: " +
+							Child.strResourceId;
+						break;
+					}
+					if (Client::EFFECT_V2_RESOURCE_KIND::LEAF !=
+							Child.eResourceKind ||
+						!DocumentIds.contains(Child.strResourceId))
+					{
+						strReason =
+							"missing authored leaf " + Child.strResourceId;
 						break;
 					}
 				}
@@ -674,40 +718,6 @@ namespace
 			ValidGroups.push_back(std::move(Group));
 		}
 		Groups = std::move(ValidGroups);
-
-		std::vector<Client::EFFECT_V2_BINDING> ValidBindings;
-		ValidBindings.reserve(Bindings.size());
-		for (Client::EFFECT_V2_BINDING& Binding : Bindings)
-		{
-			const std::string& strResourceId = Binding.strEffectId.empty() ?
-				Binding.strGroupId : Binding.strEffectId;
-			const bool_t bResourceExists = Binding.strEffectId.empty() ?
-				GroupIds.contains(Binding.strGroupId) :
-				DocumentIds.contains(Binding.strEffectId);
-			if (!bResourceExists)
-			{
-				Diagnose(Diagnostics,
-					"Skipped BOSS_VALTAN Effect V2 binding for unavailable resource '" +
-					strResourceId + "'.");
-				bInOutBindingsComplete = false;
-				continue;
-			}
-
-			std::vector<Client::EFFECT_V2_BINDING> Candidate = ValidBindings;
-			Candidate.push_back(Binding);
-			std::string strOverlapError;
-			if (!Validate_NoLeafGroupClockOverlap(
-					Groups, Candidate, strOverlapError))
-			{
-				Diagnose(Diagnostics,
-					"Skipped BOSS_VALTAN Effect V2 binding for '" +
-					strResourceId + "': " + strOverlapError);
-				bInOutBindingsComplete = false;
-				continue;
-			}
-			ValidBindings.push_back(std::move(Binding));
-		}
-		Bindings = std::move(ValidBindings);
 
 		return Cross_Validate(Documents, Groups, Bindings, strOutError) &&
 			Validate_NoLeafGroupClockOverlap(Groups, Bindings, strOutError);
@@ -811,17 +821,13 @@ Client::EFFECT_V2_STAGE_BINDING_KEY::From_Binding(
 	const EFFECT_V2_BINDING& Binding)
 {
 	EFFECT_V2_STAGE_BINDING_KEY Key;
-	Key.bGroup = !Binding.strGroupId.empty();
-	Key.strResourceId = Key.bGroup ? Binding.strGroupId : Binding.strEffectId;
-	Key.strStageActionId = Binding.strStage;
-	Key.strClipName = Binding.strClip;
+	Key.strBindingId = Binding.strBindingId;
+	Key.bGroup = EFFECT_V2_RESOURCE_KIND::GROUP == Binding.eResourceKind;
+	Key.strResourceId = Binding.strResourceId;
+	Key.strPatternId = Binding.strPatternId;
+	Key.strStageId = Binding.strStageId;
+	Key.strActionId = Binding.strActionId;
 	Key.iStartMs = Binding.iStartMs;
-	Key.strBone = Binding.strBone;
-	Key.bFollowBone = Binding.bFollowBone;
-	Key.eRotation = Binding.eRotation;
-	Key.bStopWithClip = Binding.bStopWithClip;
-	Key.vOffset = Binding.vOffset;
-	Key.fYawDegrees = Binding.fYawDegrees;
 	return Key;
 }
 
@@ -997,8 +1003,8 @@ bool_t Client::CEffectV2Catalog::Commit_BossValtanBindingsLocked(
 	if (!m_pSnapshot->Can_MutateBossValtanBindings())
 	{
 		return Fail(strOutError,
-			"The bindings source contains an isolated row. Repair that row before "
-			"saving another binding so the source is not silently discarded.");
+			"The snapshot did not admit one complete formatVersion 2 bindings "
+			"owner. Reload and repair the source before saving.");
 	}
 	if ((std::numeric_limits<uint64_t>::max)() ==
 		m_pSnapshot->Get_Revision())
@@ -1073,8 +1079,8 @@ bool_t Client::CEffectV2Catalog::Commit_BossValtanBindingsLocked(
 	if (!bDiskBindingsComplete)
 	{
 		return Fail(strOutError,
-			"Effect V2 bindings changed to an incomplete source; reload and repair "
-			"the isolated row before saving.");
+			"Effect V2 bindings changed to an incomplete formatVersion 2 owner; "
+			"reload and repair the source before saving.");
 	}
 	const std::string strDiskBaseline = CEffectV2Document::Serialize_Bindings(
 		BOSS_VALTAN_ARCHETYPE_ID, DiskBindings);
@@ -1140,10 +1146,15 @@ bool_t Client::CEffectV2Catalog::Mutate_BossValtanStageBinding(
 	const bool_t bWriteOwner,
 	std::string& strOutError)
 {
-	if (!Validate_StageBindingKey(SourceKey, strOutError))
-		return false;
-	if (BOSS_VALTAN_BINDING_MUTATION::REMOVE_BINDING != eMutation &&
-		!Validate_BossValtanMutationSubject(SourceKey, strOutError))
+	if (BOSS_VALTAN_BINDING_MUTATION::APPEND_BINDING == eMutation)
+	{
+		if (!Validate_StageBindingAppendRequest(SourceKey, strOutError) ||
+			!Validate_BossValtanMutationSubject(SourceKey, strOutError))
+		{
+			return false;
+		}
+	}
+	else if (!Validate_StageBindingIdentity(SourceKey, strOutError))
 	{
 		return false;
 	}
@@ -1152,13 +1163,6 @@ bool_t Client::CEffectV2Catalog::Mutate_BossValtanStageBinding(
 		return Fail(strOutError,
 			"Effect V2 mutation target startMs exceeds the ten-minute authoring limit.");
 	}
-	if (BOSS_VALTAN_BINDING_MUTATION::UPDATE_BINDING_START == eMutation &&
-		SourceKey.iStartMs == iTargetStartMs)
-	{
-		return Fail(strOutError,
-			"Effect V2 update requires a different Stage clock.");
-	}
-
 	try
 	{
 		const std::lock_guard Lock(m_SnapshotMutex);
@@ -1191,26 +1195,29 @@ bool_t Client::CEffectV2Catalog::Mutate_BossValtanStageBinding(
 					"Effect V2 append leaf is not in the admitted catalog: " +
 					SourceKey.strResourceId);
 			}
-			if (Contains_StageBindingKey(CandidateBindings, SourceKey))
+			EFFECT_V2_BINDING Binding;
+			Binding.eResourceKind = SourceKey.bGroup ?
+				EFFECT_V2_RESOURCE_KIND::GROUP : EFFECT_V2_RESOURCE_KIND::LEAF;
+			Binding.strResourceId = SourceKey.strResourceId;
+			Binding.strPatternId = SourceKey.strPatternId;
+			Binding.strStageId = SourceKey.strStageId;
+			Binding.strActionId = SourceKey.strActionId;
+			Binding.eClockBasis = EFFECT_V2_CLOCK_BASIS::STAGE;
+			Binding.strClipOccurrenceId.clear();
+			Binding.iStartMs = SourceKey.iStartMs;
+			Binding.eRepeatPolicy = EFFECT_V2_REPEAT_POLICY::ONCE;
+			Binding.strAnchorSlotId = "b_effectroot";
+			Binding.eFollowPolicy = EFFECT_V2_FOLLOW_POLICY::SNAPSHOT_AT_START;
+			Binding.eRotationBasis = EFFECT_V2_ROTATION_BASIS::TARGET_YAW;
+			Binding.LocalTransform = {};
+			Binding.eStopPolicy = EFFECT_V2_STOP_POLICY::NATURAL;
+			Binding.strBindingId = Generate_StableBindingId(
+				CandidateBindings, Binding);
+			if (Binding.strBindingId.empty())
 			{
 				return Fail(strOutError,
-					"Effect V2 binding already exists with this exact row baseline.");
+					"Effect V2 append could not allocate a unique stable bindingId.");
 			}
-
-			EFFECT_V2_BINDING Binding;
-			if (SourceKey.bGroup)
-				Binding.strGroupId = SourceKey.strResourceId;
-			else
-				Binding.strEffectId = SourceKey.strResourceId;
-			Binding.strStage = SourceKey.strStageActionId;
-			Binding.strClip = SourceKey.strClipName;
-			Binding.iStartMs = SourceKey.iStartMs;
-			Binding.strBone = SourceKey.strBone;
-			Binding.bFollowBone = SourceKey.bFollowBone;
-			Binding.eRotation = SourceKey.eRotation;
-			Binding.bStopWithClip = SourceKey.bStopWithClip;
-			Binding.vOffset = SourceKey.vOffset;
-			Binding.fYawDegrees = SourceKey.fYawDegrees;
 			CandidateBindings.push_back(std::move(Binding));
 			pOperation = "append";
 			break;
@@ -1236,21 +1243,22 @@ bool_t Client::CEffectV2Catalog::Mutate_BossValtanStageBinding(
 			{
 				return false;
 			}
-			EFFECT_V2_STAGE_BINDING_KEY TargetKey = SourceKey;
-			TargetKey.iStartMs = iTargetStartMs;
-			const size_t iIgnoredIndex =
-				BOSS_VALTAN_BINDING_MUTATION::UPDATE_BINDING_START == eMutation ?
-				iSourceIndex : (std::numeric_limits<size_t>::max)();
-			if (Contains_StageBindingKey(
-					CandidateBindings, TargetKey, iIgnoredIndex))
+			if (CandidateBindings[iSourceIndex].iStartMs == iTargetStartMs)
 			{
 				return Fail(strOutError,
-					"Effect V2 mutation target already exists at this Stage clock.");
+					"Effect V2 mutation requires a different typed clock.");
 			}
 			if (BOSS_VALTAN_BINDING_MUTATION::DUPLICATE_BINDING == eMutation)
 			{
 				EFFECT_V2_BINDING Duplicate = CandidateBindings[iSourceIndex];
 				Duplicate.iStartMs = iTargetStartMs;
+				Duplicate.strBindingId = Generate_StableBindingId(
+					CandidateBindings, Duplicate);
+				if (Duplicate.strBindingId.empty())
+				{
+					return Fail(strOutError,
+						"Effect V2 duplicate could not allocate a unique stable bindingId.");
+				}
 				CandidateBindings.push_back(std::move(Duplicate));
 				pOperation = "duplicate";
 			}
@@ -1291,14 +1299,18 @@ bool_t Client::CEffectV2Catalog::Mutate_BossValtanStageBinding(
 bool_t Client::CEffectV2Catalog::Append_BossValtanStageBinding(
 	const std::string& strResourceId,
 	const bool_t bGroup,
-	const std::string& strStageActionId,
+	const std::string& strPatternId,
+	const std::string& strStageId,
+	const std::string& strActionId,
 	const uint32_t iStartMs,
 	std::string& strOutError)
 {
 	EFFECT_V2_STAGE_BINDING_KEY Key{};
 	Key.strResourceId = strResourceId;
 	Key.bGroup = bGroup;
-	Key.strStageActionId = strStageActionId;
+	Key.strPatternId = strPatternId;
+	Key.strStageId = strStageId;
+	Key.strActionId = strActionId;
 	Key.iStartMs = iStartMs;
 	return Mutate_BossValtanStageBinding(
 		Key, iStartMs,
@@ -1337,14 +1349,18 @@ bool_t Client::CEffectV2Catalog::Update_BossValtanStageBindingStart(
 bool_t Client::CEffectV2Catalog::Stage_AppendBossValtanStageBinding(
 	const std::string& strResourceId,
 	const bool_t bGroup,
-	const std::string& strStageActionId,
+	const std::string& strPatternId,
+	const std::string& strStageId,
+	const std::string& strActionId,
 	const uint32_t iStartMs,
 	std::string& strOutError)
 {
 	EFFECT_V2_STAGE_BINDING_KEY Key{};
 	Key.strResourceId = strResourceId;
 	Key.bGroup = bGroup;
-	Key.strStageActionId = strStageActionId;
+	Key.strPatternId = strPatternId;
+	Key.strStageId = strStageId;
+	Key.strActionId = strActionId;
 	Key.iStartMs = iStartMs;
 	return Mutate_BossValtanStageBinding(
 		Key, iStartMs,

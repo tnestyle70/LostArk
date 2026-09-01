@@ -947,7 +947,7 @@ namespace LostArk::Server
 			bool knockdown,
 			std::uint32_t downMs,
 			std::uint32_t serverTick);
-		void Restore_PatternBoundPlayer(SERVER_PLAYER& player);
+		[[nodiscard]] bool Restore_PatternBoundPlayer(SERVER_PLAYER& player);
 		void Update_Players(float fixedDeltaSeconds);
 		bool Prepare_ArenaEjection(
 			SERVER_PLAYER& staged,
@@ -960,6 +960,10 @@ namespace LostArk::Server
 		bool Activate_ValtanGhostPhaseLoop(
 			SERVER_WORLD_ENTITY& boss,
 			const CGameplayCatalog& catalog);
+		bool Begin_ValtanGhostRelocation(
+			SERVER_WORLD_ENTITY& boss,
+			const CGameplayCatalog& catalog,
+			std::uint32_t serverTick);
 		bool Update_ValtanGhostPortalScheduler(
 			SERVER_WORLD_ENTITY& boss,
 			const CGameplayCatalog& catalog,

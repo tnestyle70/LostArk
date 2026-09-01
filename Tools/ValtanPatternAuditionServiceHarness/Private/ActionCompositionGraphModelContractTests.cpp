@@ -17,9 +17,9 @@ namespace
 	using namespace Client;
 
 	constexpr std::uint64_t SOURCE_GENERATION = 0x47524150484D4F44ull;
-	constexpr std::uint64_t DASH_DEFAULT_DURATION_MS = 11983u;
-	constexpr std::uint64_t DASH_WALL_DURATION_MS = 11983u;
-	constexpr std::uint64_t DASH_MAXIMUM_DURATION_MS = 11983u;
+	constexpr std::uint64_t DASH_DEFAULT_DURATION_MS = 5150u;
+	constexpr std::uint64_t DASH_WALL_DURATION_MS = 5150u;
+	constexpr std::uint64_t DASH_MAXIMUM_DURATION_MS = 5150u;
 
 	void Require(const bool bCondition, const char* const pMessage)
 	{
@@ -426,16 +426,16 @@ namespace
 			"projection lost its source generation or stable Pattern identity");
 		Require(DASH_DEFAULT_DURATION_MS == Snapshot.DefaultPath.iDurationMs &&
 			Snapshot.DefaultPath.bTerminal,
-			"VALTAN_DASH_CHARGE default path is no longer 11983 ms terminal");
+			"VALTAN_DASH_CHARGE default path is no longer a 5150 ms local boundary");
 		Require(DASH_MAXIMUM_DURATION_MS == Snapshot.MaximumPath.iDurationMs &&
 			Snapshot.MaximumPath.bTerminal,
-			"VALTAN_DASH_CHARGE maximum path is no longer 11983 ms terminal");
+			"VALTAN_DASH_CHARGE maximum path is no longer a 5150 ms local boundary");
 		Require(StageIds(Snapshot, Snapshot.DefaultPath) ==
-			std::vector<std::string>{ "WINDUP", "CHARGE", "RECOVERY" },
-			"default path is not the saved three-Stage Product");
+			std::vector<std::string>{ "WINDUP", "CHARGE" },
+			"default path did not stop at the saved groggy follow-up boundary");
 		Require(StageIds(Snapshot, Snapshot.MaximumPath) ==
-			std::vector<std::string>{ "WINDUP", "CHARGE", "RECOVERY" },
-			"maximum path diverged from the saved three-Stage Product");
+			std::vector<std::string>{ "WINDUP", "CHARGE" },
+			"maximum path did not stop at the saved groggy follow-up boundary");
 	}
 
 	void VerifyPreviewOutcomeOverride(const VALTAN_PATTERN_VIEW& Dash)
@@ -449,10 +449,18 @@ namespace
 			"preview outcome override mutated the default path");
 		Require(DASH_WALL_DURATION_MS == Snapshot.SelectedPath.iDurationMs &&
 			Snapshot.SelectedPath.bTerminal,
-			"WALL_CONTACT preview path is no longer 11983 ms terminal");
+			"WALL_CONTACT preview path is no longer a 5150 ms local boundary");
 		Require(StageIds(Snapshot, Snapshot.SelectedPath) ==
-			std::vector<std::string>{ "WINDUP", "CHARGE", "RECOVERY" },
-			"selected WALL_CONTACT outcome did not converge on RECOVERY");
+			std::vector<std::string>{ "WINDUP", "CHARGE" },
+			"selected WALL_CONTACT outcome crossed into the follow-up Pattern");
+		Require(!Snapshot.SelectedPath.EdgeIndices.empty() &&
+			Snapshot.SelectedPath.EdgeIndices.back() < Snapshot.Edges.size(),
+			"selected WALL_CONTACT path lost its terminal boundary edge");
+		const ACTION_COMPOSITION_GRAPH_EDGE& Boundary = Snapshot.Edges[
+			Snapshot.SelectedPath.EdgeIndices.back()];
+		Require("WALL_CONTACT" == Boundary.strOutcome && Boundary.bTerminal &&
+			"VALTAN_DASH_CHARGE_GROGGY" == Boundary.strTargetPatternId,
+			"selected WALL_CONTACT path lost its groggy follow-up identity");
 		Require(DASH_MAXIMUM_DURATION_MS == Snapshot.MaximumPath.iDurationMs,
 			"preview outcome override mutated the maximum path");
 	}
@@ -511,16 +519,21 @@ namespace
 			Snapshot, Admitted);
 
 		VALTAN_PATTERN_VIEW Dangling = Dash;
-		FindBranch(FindStage(Dangling, "CHARGE"), "WALL_CONTACT").
-			strNextActionId = "valtan.attack.dash-charge.missing";
+		VALTAN_STAGE_BRANCH_VIEW& DanglingBranch =
+			FindBranch(FindStage(Dangling, "CHARGE"), "WALL_CONTACT");
+		DanglingBranch.strNextPatternId.reset();
+		DanglingBranch.strNextActionId =
+			"valtan.attack.dash-charge.missing";
 		RequireRejectedWithoutSnapshotMutation(
 			Dangling,
 			ACTION_COMPOSITION_GRAPH_ERROR_CODE::DANGLING_TARGET_ACTION,
 			Snapshot, Admitted);
 
 		VALTAN_PATTERN_VIEW Cyclic = Dash;
-		FindBranch(FindStage(Cyclic, "RECOVERY"), "TIMEOUT").
-			strNextActionId = Cyclic.strEntryActionId;
+		VALTAN_STAGE_BRANCH_VIEW& CyclicBranch =
+			FindBranch(FindStage(Cyclic, "CHARGE"), "TIMEOUT");
+		CyclicBranch.strNextPatternId.reset();
+		CyclicBranch.strNextActionId = Cyclic.strEntryActionId;
 		RequireRejectedWithoutSnapshotMutation(
 			Cyclic,
 			ACTION_COMPOSITION_GRAPH_ERROR_CODE::CYCLE,
@@ -558,13 +571,15 @@ namespace
 			Snapshot.Edges.begin(), Snapshot.Edges.end(),
 			[](const ACTION_COMPOSITION_GRAPH_EDGE& Candidate)
 			{
-				return "valtan.attack.dash-charge.recovery" ==
+				return "valtan.attack.dash-charge.active" ==
 					Candidate.strSourceActionId &&
 					"TIMEOUT" == Candidate.strOutcome &&
-					Candidate.bTerminal;
+					Candidate.bTerminal &&
+					"VALTAN_DASH_CHARGE_GROGGY" ==
+						Candidate.strTargetPatternId;
 			});
 		Require(Edge != Snapshot.Edges.end() && Edge->Polyline.size() >= 2u,
-			"projection is missing the RECOVERY terminal edge geometry");
+			"projection is missing the CHARGE follow-up boundary geometry");
 		const std::size_t iEdge = static_cast<std::size_t>(
 			std::distance(Snapshot.Edges.begin(), Edge));
 		const ACTION_COMPOSITION_GRAPH_POINT OnEdge{

@@ -46,9 +46,11 @@ struct ENCOUNTER_STAGE_REFERENCE final
 	   reference so tools can diagnose the same contract that the Server loaded. */
 	std::string partDamagePolicy;
 	bool_t bHasCounterProxy = false;
+	std::string counterProxyKind;
 	f32_t fCounterProxyForwardOffsetM = 0.f;
 	f32_t fCounterProxyRightOffsetM = 0.f;
 	f32_t fCounterProxyRadiusM = 0.f;
+	f32_t fCounterProxyArcDegrees = 0.f;
 };
 
 /* Projected Product motion retained for presentation consumers that need the

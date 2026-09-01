@@ -43,15 +43,16 @@ private:
 	std::vector<EFFECT_V2_GROUP> m_Groups;
 	std::vector<EFFECT_V2_BINDING> m_BossValtanBindings;
 	std::vector<std::string> m_Diagnostics;
-	/* False when one or more rows from the single bindings source were
-	   isolated. Typed mutation must preserve that source instead of silently
-	   serializing only the valid subset. */
+	/* The canonical v2 bindings owner is admitted as one strict document.
+	   False is retained as a compatibility guard for snapshots created before
+	   that admission completes; a partially parsed bindings source is never
+	   committed. */
 	bool_t m_bBossValtanBindingsComplete = true;
 };
 
-/* Stable authoring identity for one Server-stage Effect V2 binding.  The
-   binding document has no ordinal identity, so mutation carries the complete
-   persisted row baseline and rejects a stale or ambiguous match. */
+/* Stable authoring identity for one Server-stage Effect V2 binding. Existing
+   rows are addressed only by formatVersion 2 bindingId. The remaining fields
+   carry the typed scope/resource request used when appending a new row. */
 struct EFFECT_V2_STAGE_BINDING_KEY final
 {
 	[[nodiscard]] static EFFECT_V2_STAGE_BINDING_KEY From_Binding(
@@ -59,25 +60,21 @@ struct EFFECT_V2_STAGE_BINDING_KEY final
 	[[nodiscard]] static EFFECT_V2_STAGE_BINDING_KEY From_StageBinding(
 		const EFFECT_V2_BINDING& Binding);
 
+	std::string strBindingId;
 	std::string strResourceId;
 	bool_t bGroup = false;
-	std::string strStageActionId;
-	std::string strClipName;
+	std::string strPatternId;
+	std::string strStageId;
+	std::string strActionId;
 	uint32_t iStartMs = 0u;
-	std::string strBone;
-	bool_t bFollowBone = false;
-	CEffectV2Object::PIVOT_ROTATION eRotation =
-		CEffectV2Object::PIVOT_ROTATION::TARGET_YAW;
-	bool_t bStopWithClip = false;
-	float3_t vOffset = { 0.f, 0.f, 0.f };
-	f32_t fYawDegrees = 0.f;
 };
 
 /* Main-thread authoring catalog. Reload_BossValtan is the explicit full-read
    boundary; typed binding mutations are the only write boundary. Each source
-   item remains strict, while a malformed document/group/binding row is
-   isolated so the valid subset can atomically replace the immutable snapshot.
-   Fatal directory/read-set failure preserves the previous snapshot revision. */
+   item remains strict. Malformed leaf/group files may be isolated, but the
+   canonical BOSS_VALTAN binding document is admitted only as one complete
+   formatVersion 2 owner. Any binding read/parse/cross-reference failure
+   preserves the previous snapshot revision. */
 class CEffectV2Catalog final
 {
 public:
@@ -96,7 +93,9 @@ public:
 	bool_t Append_BossValtanStageBinding(
 		const std::string& strResourceId,
 		bool_t bGroup,
-		const std::string& strStageActionId,
+		const std::string& strPatternId,
+		const std::string& strStageId,
+		const std::string& strActionId,
 		uint32_t iStartMs,
 		std::string& strOutError);
 	bool_t Remove_BossValtanStageBinding(
@@ -117,7 +116,9 @@ public:
 	bool_t Stage_AppendBossValtanStageBinding(
 		const std::string& strResourceId,
 		bool_t bGroup,
-		const std::string& strStageActionId,
+		const std::string& strPatternId,
+		const std::string& strStageId,
+		const std::string& strActionId,
 		uint32_t iStartMs,
 		std::string& strOutError);
 	bool_t Stage_RemoveBossValtanStageBinding(

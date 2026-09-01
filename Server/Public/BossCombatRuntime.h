@@ -16,7 +16,8 @@ namespace LostArk::Server
 		INVULNERABLE = 1u << 0u,
 		SHIELDED = 1u << 1u,
 		COUNTERABLE = 1u << 2u,
-		GROGGY = 1u << 3u
+		GROGGY = 1u << 3u,
+		GHOST_HIDDEN = 1u << 4u
 	};
 
 	struct SERVER_BOSS_PART_STATE final
@@ -95,6 +96,7 @@ namespace LostArk::Server
 		std::uint32_t iAlivePartMask = 0u;
 		std::string strDestroyedPartId;
 		bool bBlockedByInvulnerability = false;
+		bool bHealthDamageThresholdReached = false;
 		bool bCounterTriggered = false;
 		bool bStaggerBroken = false;
 		bool bPartDestroyed = false;

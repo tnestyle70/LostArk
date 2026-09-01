@@ -325,6 +325,7 @@ class BuildProfileContractTests(unittest.TestCase):
             "ActionCompositionGraphModel.cpp",
             "BossLogicFlowViewModel.cpp",
             "ValtanPresentationGenerationAdmission.cpp",
+            "EffectV2_Document.cpp",
             "ValtanPatternFlowDocument.cpp",
             "ValtanPatternEffectCueDocument.cpp",
             "ValtanPatternEffectCueAuthoring.cpp",

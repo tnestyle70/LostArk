@@ -1363,6 +1363,461 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
     four = stage(pattern(gameplay, "VALTAN_SEQUENCE_FOUR"), "STEP_01")
     four["hit"]["shape"] = {"kind": "CROSS", "lengthM": 18.0, "halfWidthM": 2.5}
 
+    silence = pattern(gameplay, "VALTAN_SILENCE_SLOT")
+    silence["stages"] = [
+        {
+            "stageId": "STEP_01",
+            "actionId": "valtan.authoring.silence-slot.step-01",
+            "stageKind": "ACTIVE",
+            "durationMs": 2633,
+            "defaultNextActionId": "valtan.authoring.silence-slot.hold",
+            "hit": none_hit(),
+            "motion": None,
+            "events": [],
+            "branches": [],
+        },
+        {
+            "stageId": "SILENCE_HOLD",
+            "actionId": "valtan.authoring.silence-slot.hold",
+            "stageKind": "ACTIVE",
+            "durationMs": 5000,
+            "defaultNextActionId": None,
+            "hit": none_hit(),
+            "motion": None,
+            "events": [
+                {
+                    "eventId": "event.valtan.silence-slot.hold.enter",
+                    "trigger": "ENTER",
+                    "kind": "SET_PLAYER_SILENCE",
+                    "durationMs": 5000,
+                },
+                {
+                    "eventId": "event.valtan.silence-slot.hold.exit",
+                    "trigger": "EXIT",
+                    "kind": "SET_PLAYER_SILENCE",
+                    "durationMs": 0,
+                },
+            ],
+            "branches": [],
+        },
+    ]
+    silence_p = pattern(presentation, "VALTAN_SILENCE_SLOT")
+    silence_p["stages"] = [
+        {
+            "stageId": "STEP_01",
+            "actionId": "valtan.authoring.silence-slot.step-01",
+            "sequenceRole": "ROAR",
+            "animation": {
+                "endPolicy": "EXACT",
+                "repeatCount": 1,
+                "occurrences": [{
+                    "clipOccurrenceId":
+                        "VALTAN_SILENCE_SLOT.STEP_01.composition.clip.01",
+                    "clip": "mesh_evt1_att_battle_5_01_end",
+                    "mappingBasis": "PROJECT_AUTHORED",
+                    "sourceStartMs": 0,
+                    "playMs": 2633,
+                    "playRate": 1.0,
+                    "repeatUntilStageEnd": False,
+                }],
+            },
+            "effectCues": [],
+            "cameraInvocations": [],
+        },
+        {
+            "stageId": "SILENCE_HOLD",
+            "actionId": "valtan.authoring.silence-slot.hold",
+            "sequenceRole": "SILENCE_HOLD",
+            "animation": {"mode": "NONE"},
+            "effectCues": [],
+            "cameraInvocations": [],
+        },
+    ]
+
+    bind = pattern(gameplay, "VALTAN_BIND_SLOT")
+    bind["stages"] = [
+        {
+            "stageId": "STEP_01",
+            "actionId": "valtan.authoring.bind-slot.step-01",
+            "stageKind": "ACTIVE",
+            "durationMs": 5000,
+            "defaultNextActionId": "valtan.authoring.bind-slot.recovery",
+            "hit": none_hit(),
+            "motion": None,
+            "events": [
+                {
+                    "eventId": "event.valtan.bind-slot.step-01.enter",
+                    "trigger": "ENTER",
+                    "kind": "SET_PLAYER_BIND",
+                    "heightM": 10.0,
+                    "durationMs": 5000,
+                },
+                {
+                    "eventId": "event.valtan.bind-slot.step-01.exit",
+                    "trigger": "EXIT",
+                    "kind": "SET_PLAYER_BIND",
+                    "heightM": 0.0,
+                    "durationMs": 0,
+                },
+            ],
+            "branches": [],
+        },
+        {
+            "stageId": "RECOVERY",
+            "actionId": "valtan.authoring.bind-slot.recovery",
+            "stageKind": "RECOVERY",
+            "durationMs": 3533,
+            "defaultNextActionId": None,
+            "hit": none_hit(),
+            "motion": None,
+            "events": [],
+            "branches": [],
+        },
+    ]
+    bind_p = pattern(presentation, "VALTAN_BIND_SLOT")
+    bind_p["stages"] = [
+        {
+            "stageId": "STEP_01",
+            "actionId": "valtan.authoring.bind-slot.step-01",
+            "sequenceRole": "BIND_HOLD",
+            "animation": {
+                "endPolicy": "EXACT",
+                "repeatCount": 1,
+                "occurrences": [
+                    {
+                        "clipOccurrenceId":
+                            "VALTAN_BIND_SLOT.STEP_01.composition.clip.01",
+                        "clip": "mesh_att_battle_5_01_start",
+                        "mappingBasis": "PROJECT_AUTHORED",
+                        "sourceStartMs": 0, "playMs": 1400,
+                        "playRate": 1.0, "repeatUntilStageEnd": False,
+                    },
+                    *[
+                        {
+                            "clipOccurrenceId":
+                                f"VALTAN_BIND_SLOT.STEP_01.composition.clip.{ordinal:02d}",
+                            "clip": "mesh_att_battle_5_01_loop",
+                            "mappingBasis": "PROJECT_AUTHORED",
+                            "sourceStartMs": 0, "playMs": 900,
+                            "playRate": 1.0, "repeatUntilStageEnd": False,
+                        }
+                        for ordinal in range(2, 5)
+                    ],
+                    {
+                        "clipOccurrenceId":
+                            "VALTAN_BIND_SLOT.STEP_01.composition.clip.05",
+                        "clip": "mesh_att_battle_5_01_end",
+                        "mappingBasis": "PROJECT_AUTHORED",
+                        "sourceStartMs": 0, "playMs": 900,
+                        "playRate": 1.0, "repeatUntilStageEnd": False,
+                    },
+                ],
+            },
+            "effectCues": [],
+            "cameraInvocations": [],
+        },
+        {
+            "stageId": "RECOVERY",
+            "actionId": "valtan.authoring.bind-slot.recovery",
+            "sequenceRole": "RECOVERY",
+            "animation": {
+                "endPolicy": "EXACT",
+                "repeatCount": 1,
+                "occurrences": [{
+                    "clipOccurrenceId":
+                        "VALTAN_BIND_SLOT.RECOVERY.composition.clip.01",
+                    "clip": "mesh_att_battle_5_01_end",
+                    "mappingBasis": "PROJECT_AUTHORED",
+                    "sourceStartMs": 900,
+                    "playMs": 3533,
+                    "playRate": 1.0,
+                    "repeatUntilStageEnd": False,
+                }],
+            },
+            "effectCues": [],
+            "cameraInvocations": [],
+        },
+    ]
+
+    groggy_id = "VALTAN_GROGGY_FOLLOWUP"
+    stagger = pattern(gameplay, "VALTAN_STAGGER_SLOT")
+    stagger.update(
+        displayName="마력구 파괴 패턴",
+        entryActionId="valtan.authoring.stagger-slot.channel",
+        sourceActionIds=[420617],
+        verticalOffsetM=5.0,
+    )
+    stagger["stages"] = [
+        {
+            "stageId": "CHANNEL",
+            "actionId": "valtan.authoring.stagger-slot.channel",
+            "stageKind": "ACTIVE",
+            "durationMs": 12000,
+            "defaultNextActionId": "valtan.authoring.stagger-slot.final-attack",
+            "hit": none_hit(),
+            "motion": None,
+            "events": [],
+            "branches": [
+                {
+                    "outcome": "HEALTH_DAMAGE_THRESHOLD_REACHED",
+                    "nextActionId": None,
+                    "nextPatternId": groggy_id,
+                },
+                {
+                    "outcome": "TIMEOUT",
+                    "nextActionId": "valtan.authoring.stagger-slot.final-attack",
+                },
+            ],
+            "bossResponse": {
+                "kind": "ACCUMULATED_HEALTH_DAMAGE",
+                "threshold": 1000,
+            },
+        },
+        {
+            "stageId": "FINAL_ATTACK",
+            "actionId": "valtan.authoring.stagger-slot.final-attack",
+            "stageKind": "ACTIVE",
+            "durationMs": 3000,
+            "defaultNextActionId": None,
+            "hit": {
+                "shape": {"kind": "CIRCLE", "outerRadiusM": 100.0},
+                "schedule": {
+                    "kind": "INTERVAL", "count": 1,
+                    "firstOffsetMs": 2900, "intervalMs": 0,
+                },
+                "serverDamageProfileId":
+                    "damage.valtan.omnidirectional-wipe-130",
+                "pushRangeM": 0.0,
+                "pushMs": 0,
+                "knockdown": True,
+                "downMs": 2000,
+            },
+            "motion": None,
+            "events": [],
+            "branches": [],
+        },
+    ]
+    stagger_p = pattern(presentation, "VALTAN_STAGGER_SLOT")
+    stagger_p.update(
+        sourceSequenceIndex=1,
+        presentationSources=[{
+            "sourceActionId": 420617,
+            "sequenceIndex": 1,
+            "role": "PRIMARY",
+        }],
+    )
+    stagger_p["stages"] = [
+        {
+            "stageId": "CHANNEL",
+            "actionId": "valtan.authoring.stagger-slot.channel",
+            "sequenceRole": "CHANNEL",
+            "animation": {
+                "endPolicy": "LOOP_TO_STAGE_END",
+                "repeatCount": 1,
+                "occurrences": [
+                    {
+                        "clipOccurrenceId":
+                            "VALTAN_STAGGER_SLOT.CHANNEL.composition.clip.01",
+                        "clip": "mesh_att_battle_17_start",
+                        "mappingBasis": "PROJECT_AUTHORED",
+                        "sourceStartMs": 0, "playMs": 2000,
+                        "playRate": 1.0, "repeatUntilStageEnd": False,
+                    },
+                    {
+                        "clipOccurrenceId":
+                            "VALTAN_STAGGER_SLOT.CHANNEL.composition.clip.02",
+                        "clip": "mesh_att_battle_17_loop",
+                        "mappingBasis": "PROJECT_AUTHORED",
+                        "sourceStartMs": 0, "playMs": 0,
+                        "playRate": 1.0, "repeatUntilStageEnd": True,
+                    },
+                ],
+            },
+            "effectCues": [],
+            "cameraInvocations": [],
+        },
+        {
+            "stageId": "FINAL_ATTACK",
+            "actionId": "valtan.authoring.stagger-slot.final-attack",
+            "sequenceRole": "FINAL_ATTACK",
+            "animation": {
+                "endPolicy": "EXACT",
+                "repeatCount": 1,
+                "occurrences": [{
+                    "clipOccurrenceId":
+                        "VALTAN_STAGGER_SLOT.FINAL_ATTACK.composition.clip.01",
+                    "clip": "mesh_att_battle_17_end",
+                    "mappingBasis": "PROJECT_AUTHORED",
+                    "sourceStartMs": 0, "playMs": 3000,
+                    "playRate": 1.0, "repeatUntilStageEnd": False,
+                }],
+            },
+            "effectCues": [],
+            "cameraInvocations": [],
+        },
+    ]
+
+    groggy = {
+        "patternId": groggy_id,
+        "displayName": "발탄 공용 그로기 후속",
+        "category": "NORMAL",
+        "compatibilitySelectionWeight": 0,
+        "actionId": "valtan.followup.groggy",
+        "entryActionId": "valtan.followup.groggy.active",
+        "targetPolicy": "NONE",
+        "aimPolicy": "NONE",
+        "eligibility": copy.deepcopy(stagger["eligibility"]),
+        "invulnerableWhileRunning": False,
+        "sourceActionIds": [420618],
+        "serverMotion": None,
+        "reactions": [],
+        "stages": [{
+            "stageId": "GROGGY",
+            "actionId": "valtan.followup.groggy.active",
+            "stageKind": "GROGGY",
+            "durationMs": 6833,
+            "defaultNextActionId": None,
+            "hit": none_hit(),
+            "motion": None,
+            "events": [
+                {
+                    "eventId": "event.valtan.followup.groggy.enter",
+                    "trigger": "ENTER", "kind": "SET_BOSS_FLAG",
+                    "flagId": "boss.flag.groggy", "enabled": True,
+                },
+                {
+                    "eventId": "event.valtan.followup.groggy.exit",
+                    "trigger": "EXIT", "kind": "SET_BOSS_FLAG",
+                    "flagId": "boss.flag.groggy", "enabled": False,
+                },
+            ],
+            "branches": [
+                {
+                    "outcome": "PART_DESTROYED",
+                    "nextActionId": None,
+                    "nextPatternId": "VALTAN_PART_BREAK",
+                },
+                {"outcome": "TIMEOUT", "nextActionId": None},
+            ],
+            "partDamagePolicy": "DESTROY_FIRST_ELIGIBLE",
+        }],
+    }
+    groggy_p = {
+        "patternId": groggy_id,
+        "sourceSequenceIndex": 0,
+        "presentationSources": [{
+            "sourceActionId": 420618,
+            "sequenceIndex": 0,
+            "role": "PRIMARY",
+        }],
+        "stages": [{
+            "stageId": "GROGGY",
+            "actionId": "valtan.followup.groggy.active",
+            "sequenceRole": "GROGGY",
+            "animation": {
+                "endPolicy": "EXACT",
+                "repeatCount": 1,
+                "occurrences": [
+                    {
+                        "clipOccurrenceId":
+                            f"{groggy_id}.GROGGY.composition.clip.{ordinal:02d}",
+                        "clip": clip,
+                        "mappingBasis": "PROJECT_AUTHORED",
+                        "sourceStartMs": 0,
+                        "playMs": play_ms,
+                        "playRate": 1.0,
+                        "repeatUntilStageEnd": False,
+                    }
+                    for ordinal, (clip, play_ms) in enumerate((
+                        ("mesh_abn_groggy_1_start", 1833),
+                        ("mesh_abn_groggy_1_loop", 1333),
+                        ("mesh_abn_groggy_1_loop", 1333),
+                        ("mesh_abn_groggy_1_loop", 334),
+                        ("mesh_abn_groggy_1_end", 2000),
+                    ), start=1)
+                ],
+            },
+            "effectCues": [],
+            "cameraInvocations": [],
+        }],
+    }
+    for document, replacement in ((gameplay, groggy), (presentation, groggy_p)):
+        matching = next((index for index, row in enumerate(document["patterns"])
+                         if row["patternId"] == groggy_id), None)
+        if matching is None:
+            stagger_index = next(
+                index for index, row in enumerate(document["patterns"])
+                if row["patternId"] == "VALTAN_STAGGER_SLOT"
+            )
+            document["patterns"].insert(stagger_index + 1, replacement)
+        else:
+            document["patterns"][matching] = replacement
+    manual_rows = gameplay["decisionModel"]["manualAuditions"]
+    manual_rows[:] = [row for row in manual_rows if row["patternId"] != groggy_id]
+    stagger_manual_index = next(
+        index for index, row in enumerate(manual_rows)
+        if row["patternId"] == "VALTAN_STAGGER_SLOT"
+    )
+    manual_rows.insert(stagger_manual_index + 1, {
+        "patternId": groggy_id,
+        "sourceChainId": "derived.valtan-groggy-followup",
+        "authoringPhase": 3,
+        "admissionState": "DERIVED_SERVER_PATTERN",
+    })
+
+    triple = pattern(gameplay, "VALTAN_TRIPLE_COUNTER")
+    # The counter response remains live from the first telegraph through the
+    # first two attack recoveries.  FAIL_3 is the committed third strike: its
+    # hit is the wipe and therefore it intentionally does not reopen counter.
+    for counter_stage_id in (
+        "COUNTER_1", "FAIL_1", "COUNTER_2", "FAIL_2", "COUNTER_3",
+    ):
+        counter_stage = stage(triple, counter_stage_id)
+        timeout_branch = next(
+            branch for branch in counter_stage["branches"]
+            if branch["outcome"] == "TIMEOUT"
+        )
+        has_counter_flag = any(
+            event.get("kind") == "SET_BOSS_FLAG"
+            and event.get("flagId") == "boss.flag.counterable"
+            for event in counter_stage["events"]
+        )
+        if not has_counter_flag:
+            event_root = counter_stage_id.lower().replace("_", "-")
+            counter_stage["events"] += [
+                {
+                    "eventId":
+                        f"event.valtan.triple-counter.{event_root}.counter-window.enter",
+                    "trigger": "ENTER",
+                    "kind": "SET_BOSS_FLAG",
+                    "flagId": "boss.flag.counterable",
+                    "enabled": True,
+                },
+                {
+                    "eventId":
+                        f"event.valtan.triple-counter.{event_root}.counter-window.exit",
+                    "trigger": "EXIT",
+                    "kind": "SET_BOSS_FLAG",
+                    "flagId": "boss.flag.counterable",
+                    "enabled": False,
+                },
+            ]
+        counter_stage["branches"] = [
+            {
+                "outcome": "COUNTER_HIT",
+                "nextActionId": None,
+                "nextPatternId": groggy_id,
+            },
+            timeout_branch,
+        ]
+        counter_stage["counterProxy"] = {
+            "kind": "BOSS_FORWARD_ARC",
+            "forwardOffsetM": 0.0,
+            "rightOffsetM": 0.0,
+            "radiusM": 0.0,
+            "arcDegrees": 180.0,
+        }
+
     warp = pattern(gameplay, "VALTAN_WARP")
     warp_p = pattern(presentation, "VALTAN_WARP")
     for leg in range(8):

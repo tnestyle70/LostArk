@@ -913,58 +913,39 @@ class EffectV2BindingPipelineTests(unittest.TestCase):
 
 
 class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
-    def test_repository_v1_migration_reports_four_orphans_without_partial_output(self) -> None:
+    def test_repository_binding_owner_is_canonical_v2_and_fully_admitted(self) -> None:
         repository_root = Path(__file__).resolve().parents[2]
-        legacy = pipeline.read_json(
+        canonical = pipeline.read_json(
             repository_root
             / "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"
         )
-        self.assertEqual(1, legacy["formatVersion"])
-        with self.assertRaises(pipeline.BindingMigrationAmbiguityError) as raised:
-            pipeline.migrate_v1_document(
-                legacy,
-                pipeline.read_json(
-                    repository_root / "Data/Valtan/Valtan.gameplay.json"
-                ),
-                pipeline.read_json(
-                    repository_root
-                    / "Data/Animation/Authored/Valtan/Valtan.patternbindings.json"
-                ),
-                pipeline.read_json(
-                    repository_root
-                    / "Data/Valtan/Valtan.legacy-compatibility.json"
-                ),
+        admitted = pipeline.validate_binding_document(
+            repository_root,
+            canonical,
+            pipeline.read_json(repository_root / "Data/Valtan/Valtan.gameplay.json"),
+            pipeline.read_json(
+                repository_root
+                / "Data/Animation/Authored/Valtan/Valtan.patternbindings.json"
+            ),
+            pipeline.read_json(
+                repository_root / "Data/Valtan/Valtan.legacy-compatibility.json"
+            ),
+            repository_root / "Client/Bin/Resources",
+        )
+        self.assertEqual(2, canonical["formatVersion"])
+        self.assertEqual(42, len(admitted["bindings"]))
+        binding_ids = [row["bindingId"] for row in admitted["bindings"]]
+        self.assertEqual(sorted(binding_ids), binding_ids)
+        self.assertEqual(len(binding_ids), len(set(binding_ids)))
+        self.assertFalse(
+            any(
+                row["scope"]["actionId"]
+                in {
+                    "valtan.sequence.rush-success.step-01",
+                    "valtan.sequence.rush-if.step-01",
+                }
+                for row in admitted["bindings"]
             )
-        report = raised.exception.report
-        self.assertEqual(15, report["legacyBindingCount"])
-        self.assertEqual(21, report["migratedBindingCount"])
-        self.assertEqual([2, 3, 4, 5], [row["legacyRowIndex"] for row in report["rejectedRows"]])
-        clip_counts: dict[str, set[int]] = {}
-        for row in report["rows"]:
-            if row["sourceKind"] == "CLIP_NAME":
-                clip_counts.setdefault(row["source"], set()).add(
-                    row["expandedOccurrenceCount"]
-                )
-        self.assertEqual(
-            {
-                "mesh_att_battle_19_01": {3},
-                "mesh_att_battle_19_02": {2},
-                "mesh_att_battle_19_03": {1},
-                "mesh_att_battle_19_04": {2},
-            },
-            clip_counts,
-        )
-        front_back = next(
-            scope
-            for row in report["rows"]
-            if row["source"] == "mesh_att_battle_19_01"
-            for scope in row["expandedScopes"]
-            if scope["actionId"] == "valtan.attack.front-back-front.active"
-        )
-        self.assertEqual("VALTAN_FRONT_BACK_FRONT", front_back["patternId"])
-        self.assertEqual(
-            "Data/Valtan/Valtan.legacy-compatibility.json",
-            front_back["sourceOwner"],
         )
 
     def test_repository_group_migration_is_dry_run_and_resolves_natural_tails(self) -> None:
@@ -974,20 +955,14 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="effect-v2-group-dry-run-") as temporary:
             staged_root = Path(temporary)
             shutil.copytree(
-                repository_root / "Data/Effects/V2/Authored",
-                staged_root / "Data/Effects/V2/Authored",
+                repository_root / "Data/Effects/V2",
+                staged_root / "Data/Effects/V2",
             )
-            staged_groups = staged_root / "Data/Effects/V2/Groups"
-            staged_groups.mkdir(parents=True)
             child_counts: dict[str, int] = {}
             for source in baselines:
-                migrated, report = pipeline.migrate_v1_group_document(
-                    pipeline.read_json(source)
-                )
-                child_counts[migrated["groupId"]] = report["migratedChildCount"]
-                (staged_groups / source.name).write_text(
-                    pipeline.json_text(migrated), encoding="utf-8"
-                )
+                document = pipeline.read_json(source)
+                child_counts[document["groupId"]] = len(document["children"])
+                self.assertEqual(2, document["formatVersion"])
             authored, groups = pipeline._load_resource_documents(staged_root)
             spans = {
                 group_id: pipeline._resolve_group(
@@ -1001,18 +976,26 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
             }
         self.assertEqual(
             {
+                "boss.valtan.axe": 9,
                 "boss.valtan.impact": 17,
+                "boss.valtan.magicball": 2,
                 "boss.valtan.pounding": 2,
                 "boss.valtan.pounding.chase": 4,
+                "boss.valtan.shout": 20,
+                "boss.valtan.shout.burst": 6,
                 "boss.valtan.twohand": 9,
             },
             child_counts,
         )
         self.assertEqual(
             {
+                "boss.valtan.axe": 5600,
                 "boss.valtan.impact": 5000,
+                "boss.valtan.magicball": 10000,
                 "boss.valtan.pounding": 2000,
                 "boss.valtan.pounding.chase": 4100,
+                "boss.valtan.shout": 3000,
+                "boss.valtan.shout.burst": 1000,
                 "boss.valtan.twohand": 2000,
             },
             spans,

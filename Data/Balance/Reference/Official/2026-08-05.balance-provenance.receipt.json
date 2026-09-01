@@ -35507,10 +35507,10 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": "RADIAL_INWARD",
+      "sourceValue": "NEXT_RADIAL_SLOT",
       "transform": "Balance Tool authored override",
-      "resultValue": "RADIAL_INWARD",
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "resultValue": "NEXT_RADIAL_SLOT",
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
@@ -35601,10 +35601,10 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 62.2254,
+      "sourceValue": 44.0,
       "transform": "Balance Tool authored override",
-      "resultValue": 62.2254,
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "resultValue": 44.0,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
@@ -35685,10 +35685,10 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 12.44508,
+      "sourceValue": 8.8,
       "transform": "Balance Tool authored override",
-      "resultValue": 12.44508,
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "resultValue": 8.8,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
@@ -36219,9 +36219,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 65,
+      "sourceValue": 66,
       "transform": "Balance Tool authored override",
-      "resultValue": 65,
+      "resultValue": 66,
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
@@ -52448,7 +52448,8 @@
           "branches": [
             {
               "outcome": "COUNTER_HIT",
-              "nextActionId": "valtan.reactive.triple-counter.second"
+              "nextActionId": null,
+              "nextPatternId": "VALTAN_GROGGY_FOLLOWUP"
             },
             {
               "outcome": "TIMEOUT",
@@ -52456,10 +52457,11 @@
             }
           ],
           "counterProxy": {
-            "space": "BOSS_LOCAL",
-            "forwardOffsetM": 1.0,
+            "kind": "BOSS_FORWARD_ARC",
+            "forwardOffsetM": 0.0,
             "rightOffsetM": 0.0,
-            "radiusM": 2.25
+            "radiusM": 0.0,
+            "arcDegrees": 180.0
           }
         },
         {
@@ -52481,12 +52483,40 @@
           "pushMs": 0,
           "knockdown": true,
           "downMs": 2000,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "SET_BOSS_FLAG",
+              "targetId": "boss.flag.counterable",
+              "value": 1,
+              "durationMs": 0
+            },
+            {
+              "trigger": "EXIT",
+              "kind": "SET_BOSS_FLAG",
+              "targetId": "boss.flag.counterable",
+              "value": 0,
+              "durationMs": 0
+            }
+          ],
           "branches": [
+            {
+              "outcome": "COUNTER_HIT",
+              "nextActionId": null,
+              "nextPatternId": "VALTAN_GROGGY_FOLLOWUP"
+            },
             {
               "outcome": "TIMEOUT",
               "nextActionId": "valtan.reactive.triple-counter.second"
             }
-          ]
+          ],
+          "counterProxy": {
+            "kind": "BOSS_FORWARD_ARC",
+            "forwardOffsetM": 0.0,
+            "rightOffsetM": 0.0,
+            "radiusM": 0.0,
+            "arcDegrees": 180.0
+          }
         },
         {
           "stageId": "COUNTER_2",
@@ -52526,7 +52556,8 @@
           "branches": [
             {
               "outcome": "COUNTER_HIT",
-              "nextActionId": "valtan.reactive.triple-counter.third"
+              "nextActionId": null,
+              "nextPatternId": "VALTAN_GROGGY_FOLLOWUP"
             },
             {
               "outcome": "TIMEOUT",
@@ -52534,10 +52565,11 @@
             }
           ],
           "counterProxy": {
-            "space": "BOSS_LOCAL",
-            "forwardOffsetM": 1.0,
+            "kind": "BOSS_FORWARD_ARC",
+            "forwardOffsetM": 0.0,
             "rightOffsetM": 0.0,
-            "radiusM": 2.25
+            "radiusM": 0.0,
+            "arcDegrees": 180.0
           }
         },
         {
@@ -52559,12 +52591,40 @@
           "pushMs": 0,
           "knockdown": true,
           "downMs": 2000,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "SET_BOSS_FLAG",
+              "targetId": "boss.flag.counterable",
+              "value": 1,
+              "durationMs": 0
+            },
+            {
+              "trigger": "EXIT",
+              "kind": "SET_BOSS_FLAG",
+              "targetId": "boss.flag.counterable",
+              "value": 0,
+              "durationMs": 0
+            }
+          ],
           "branches": [
+            {
+              "outcome": "COUNTER_HIT",
+              "nextActionId": null,
+              "nextPatternId": "VALTAN_GROGGY_FOLLOWUP"
+            },
             {
               "outcome": "TIMEOUT",
               "nextActionId": "valtan.reactive.triple-counter.third"
             }
-          ]
+          ],
+          "counterProxy": {
+            "kind": "BOSS_FORWARD_ARC",
+            "forwardOffsetM": 0.0,
+            "rightOffsetM": 0.0,
+            "radiusM": 0.0,
+            "arcDegrees": 180.0
+          }
         },
         {
           "stageId": "COUNTER_3",
@@ -52604,7 +52664,8 @@
           "branches": [
             {
               "outcome": "COUNTER_HIT",
-              "nextActionId": "valtan.reactive.triple-counter.recovery"
+              "nextActionId": null,
+              "nextPatternId": "VALTAN_GROGGY_FOLLOWUP"
             },
             {
               "outcome": "TIMEOUT",
@@ -52612,10 +52673,11 @@
             }
           ],
           "counterProxy": {
-            "space": "BOSS_LOCAL",
-            "forwardOffsetM": 1.0,
+            "kind": "BOSS_FORWARD_ARC",
+            "forwardOffsetM": 0.0,
             "rightOffsetM": 0.0,
-            "radiusM": 2.25
+            "radiusM": 0.0,
+            "arcDegrees": 180.0
           }
         },
         {
@@ -52711,7 +52773,8 @@
           "branches": [
             {
               "outcome": "COUNTER_HIT",
-              "nextActionId": "valtan.reactive.triple-counter.second"
+              "nextActionId": null,
+              "nextPatternId": "VALTAN_GROGGY_FOLLOWUP"
             },
             {
               "outcome": "TIMEOUT",
@@ -52719,10 +52782,11 @@
             }
           ],
           "counterProxy": {
-            "space": "BOSS_LOCAL",
-            "forwardOffsetM": 1.0,
+            "kind": "BOSS_FORWARD_ARC",
+            "forwardOffsetM": 0.0,
             "rightOffsetM": 0.0,
-            "radiusM": 2.25
+            "radiusM": 0.0,
+            "arcDegrees": 180.0
           }
         },
         {
@@ -52744,12 +52808,40 @@
           "pushMs": 0,
           "knockdown": true,
           "downMs": 2000,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "SET_BOSS_FLAG",
+              "targetId": "boss.flag.counterable",
+              "value": 1,
+              "durationMs": 0
+            },
+            {
+              "trigger": "EXIT",
+              "kind": "SET_BOSS_FLAG",
+              "targetId": "boss.flag.counterable",
+              "value": 0,
+              "durationMs": 0
+            }
+          ],
           "branches": [
+            {
+              "outcome": "COUNTER_HIT",
+              "nextActionId": null,
+              "nextPatternId": "VALTAN_GROGGY_FOLLOWUP"
+            },
             {
               "outcome": "TIMEOUT",
               "nextActionId": "valtan.reactive.triple-counter.second"
             }
-          ]
+          ],
+          "counterProxy": {
+            "kind": "BOSS_FORWARD_ARC",
+            "forwardOffsetM": 0.0,
+            "rightOffsetM": 0.0,
+            "radiusM": 0.0,
+            "arcDegrees": 180.0
+          }
         },
         {
           "stageId": "COUNTER_2",
@@ -52789,7 +52881,8 @@
           "branches": [
             {
               "outcome": "COUNTER_HIT",
-              "nextActionId": "valtan.reactive.triple-counter.third"
+              "nextActionId": null,
+              "nextPatternId": "VALTAN_GROGGY_FOLLOWUP"
             },
             {
               "outcome": "TIMEOUT",
@@ -52797,10 +52890,11 @@
             }
           ],
           "counterProxy": {
-            "space": "BOSS_LOCAL",
-            "forwardOffsetM": 1.0,
+            "kind": "BOSS_FORWARD_ARC",
+            "forwardOffsetM": 0.0,
             "rightOffsetM": 0.0,
-            "radiusM": 2.25
+            "radiusM": 0.0,
+            "arcDegrees": 180.0
           }
         },
         {
@@ -52822,12 +52916,40 @@
           "pushMs": 0,
           "knockdown": true,
           "downMs": 2000,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "SET_BOSS_FLAG",
+              "targetId": "boss.flag.counterable",
+              "value": 1,
+              "durationMs": 0
+            },
+            {
+              "trigger": "EXIT",
+              "kind": "SET_BOSS_FLAG",
+              "targetId": "boss.flag.counterable",
+              "value": 0,
+              "durationMs": 0
+            }
+          ],
           "branches": [
+            {
+              "outcome": "COUNTER_HIT",
+              "nextActionId": null,
+              "nextPatternId": "VALTAN_GROGGY_FOLLOWUP"
+            },
             {
               "outcome": "TIMEOUT",
               "nextActionId": "valtan.reactive.triple-counter.third"
             }
-          ]
+          ],
+          "counterProxy": {
+            "kind": "BOSS_FORWARD_ARC",
+            "forwardOffsetM": 0.0,
+            "rightOffsetM": 0.0,
+            "radiusM": 0.0,
+            "arcDegrees": 180.0
+          }
         },
         {
           "stageId": "COUNTER_3",
@@ -52867,7 +52989,8 @@
           "branches": [
             {
               "outcome": "COUNTER_HIT",
-              "nextActionId": "valtan.reactive.triple-counter.recovery"
+              "nextActionId": null,
+              "nextPatternId": "VALTAN_GROGGY_FOLLOWUP"
             },
             {
               "outcome": "TIMEOUT",
@@ -52875,10 +52998,11 @@
             }
           ],
           "counterProxy": {
-            "space": "BOSS_LOCAL",
-            "forwardOffsetM": 1.0,
+            "kind": "BOSS_FORWARD_ARC",
+            "forwardOffsetM": 0.0,
             "rightOffsetM": 0.0,
-            "radiusM": 2.25
+            "radiusM": 0.0,
+            "arcDegrees": 180.0
           }
         },
         {

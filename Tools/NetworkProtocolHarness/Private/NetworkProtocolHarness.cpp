@@ -2854,6 +2854,37 @@ namespace
 			decoded.Entities[0].BossCombat.iGameplayPhase == 1u,
 			"World Snapshot Entities Round Trip");
 
+		S2C_WORLD_SNAPSHOT hiddenGhost = source;
+		hiddenGhost.Entities[0].iPhase = 3u;
+		hiddenGhost.Entities[0].BossCombat.iGameplayPhase = 3u;
+		hiddenGhost.Entities[0].BossCombat.iFlags =
+			static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::INVULNERABLE) |
+			static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::GHOST_HIDDEN);
+		std::vector<std::uint8_t> hiddenGhostPayload;
+		S2C_WORLD_SNAPSHOT decodedHiddenGhost{};
+		bool hiddenGhostRoundTrip = Build_WorldSnapshotPayload(
+			hiddenGhost, hiddenGhostPayload);
+		if (hiddenGhostRoundTrip)
+		{
+			CPacketReader hiddenGhostReader{ hiddenGhostPayload };
+			hiddenGhostRoundTrip = Read_Message(
+				hiddenGhostReader, decodedHiddenGhost) &&
+				0u == hiddenGhostReader.Get_RemainingSize();
+		}
+		testRunner.Require(
+			hiddenGhostRoundTrip &&
+			hiddenGhostPayload.size() == payload.size() &&
+			1u == decodedHiddenGhost.Entities.size() &&
+			3u == decodedHiddenGhost.Entities[0].iPhase &&
+			3u == decodedHiddenGhost.Entities[0].BossCombat.iGameplayPhase &&
+			Has_BossCombatFlag(
+				decodedHiddenGhost.Entities[0].BossCombat.iFlags,
+				BOSS_COMBAT_STATE_FLAG::INVULNERABLE) &&
+			Has_BossCombatFlag(
+				decodedHiddenGhost.Entities[0].BossCombat.iFlags,
+				BOSS_COMBAT_STATE_FLAG::GHOST_HIDDEN),
+			"Phase-Three Hidden Ghost Flag Round Trip Without Wire Growth");
+
 		S2C_WORLD_SNAPSHOT overArmoured = source;
 		overArmoured.Entities[0].iBrokenArmorMask = static_cast<std::uint8_t>(
 			1u << MAX_WORLD_ENTITY_ARMOR_PLATES);
@@ -3219,6 +3250,32 @@ namespace
 			testRunner.Require(
 				!Write_Message(unknownBossFlagWriter, unknownBossFlag),
 				"Reject Unknown Boss Combat Flag");
+
+			S2C_WORLD_SNAPSHOT visibleDamageableHiddenGhost = source;
+			visibleDamageableHiddenGhost.Entities[0].iPhase = 3u;
+			visibleDamageableHiddenGhost.Entities[0].BossCombat.iGameplayPhase = 3u;
+			visibleDamageableHiddenGhost.Entities[0].BossCombat.iFlags =
+				static_cast<std::uint16_t>(
+					BOSS_COMBAT_STATE_FLAG::GHOST_HIDDEN);
+			CPacketWriter visibleDamageableHiddenGhostWriter;
+			testRunner.Require(
+				!Write_Message(
+					visibleDamageableHiddenGhostWriter,
+					visibleDamageableHiddenGhost),
+				"Reject Hidden Ghost Without Invulnerability");
+
+			S2C_WORLD_SNAPSHOT earlyHiddenGhost = source;
+			earlyHiddenGhost.Entities[0].iPhase = 2u;
+			earlyHiddenGhost.Entities[0].BossCombat.iGameplayPhase = 2u;
+			earlyHiddenGhost.Entities[0].BossCombat.iFlags =
+				static_cast<std::uint16_t>(
+					BOSS_COMBAT_STATE_FLAG::INVULNERABLE) |
+				static_cast<std::uint16_t>(
+					BOSS_COMBAT_STATE_FLAG::GHOST_HIDDEN);
+			CPacketWriter earlyHiddenGhostWriter;
+			testRunner.Require(
+				!Write_Message(earlyHiddenGhostWriter, earlyHiddenGhost),
+				"Reject Hidden Ghost Before Phase Three");
 
 			S2C_WORLD_SNAPSHOT staggerOverflow = source;
 			staggerOverflow.Entities[0].BossCombat.iCurrentStagger = 1001u;

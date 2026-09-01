@@ -103,6 +103,12 @@ namespace
 		}
 		return false;
 	}
+
+	bool_t Is_PlayerControlCaptured(const Client::HUD_PLAYER_STATE& player)
+	{
+		return player.isPatternBound ||
+			LostArk::Shared::PLAYER_ACTION_STATE::GRABBED == player.eAction;
+	}
 }
 
 void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>& character)
@@ -155,8 +161,8 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 	runs this frame -- see Suppress_MoveClickThisFrame's own comment. */
 	const bool_t isMoveClickSuppressed = m_isMoveClickSuppressed;
 	m_isMoveClickSuppressed = false;
-	const bool_t isGrabbed = LostArk::Shared::PLAYER_ACTION_STATE::GRABBED ==
-		CCombatHUDViewModel::Get().Get_Player().eAction;
+	const bool_t isControlCaptured = Is_PlayerControlCaptured(
+		CCombatHUDViewModel::Get().Get_Player());
 	const bool_t isLeftMousePhysicallyDown =
 		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::LB) & 0x80);
 	const bool_t isRightMousePhysicallyDown =
@@ -165,15 +171,15 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 	{
 		const bool_t down = 0 != (CGameInstance::Get().Get_DIKeyStateRaw(
 			static_cast<uint8_t>(key)) & 0x80);
-		m_CaptureInputGate.Observe(key, down, isGrabbed);
-		if (isGrabbed)
+		m_CaptureInputGate.Observe(key, down, isControlCaptured);
+		if (isControlCaptured)
 			m_wasKeyDown[key] = down;
 	}
 	m_CaptureInputGate.Observe(CPLAYER_CAPTURE_INPUT_GATE::LEFT_MOUSE,
-		isLeftMousePhysicallyDown, isGrabbed);
+		isLeftMousePhysicallyDown, isControlCaptured);
 	m_CaptureInputGate.Observe(CPLAYER_CAPTURE_INPUT_GATE::RIGHT_MOUSE,
-		isRightMousePhysicallyDown, isGrabbed);
-	if (isGrabbed)
+		isRightMousePhysicallyDown, isControlCaptured);
+	if (isControlCaptured)
 	{
 		Cancel_GroundTargeting();
 		m_iHeldSkillId = LostArk::Shared::INVALID_SKILL_ID;
@@ -675,9 +681,9 @@ bool_t Client::CPlayerController::Request_Revive()
 {
 	if (nullptr == m_pCommandSink)
 		return false;
-	const bool_t grabbed = LostArk::Shared::PLAYER_ACTION_STATE::GRABBED ==
-		CCombatHUDViewModel::Get().Get_Player().eAction;
-	if (!Try_SubmitUncapturedPlayerCommand(grabbed, [this]()
+	const bool_t captured = Is_PlayerControlCaptured(
+		CCombatHUDViewModel::Get().Get_Player());
+	if (!Try_SubmitUncapturedPlayerCommand(captured, [this]()
 		{ return m_pCommandSink->Request_RevivePlayer(m_iNextActionSequence); }))
 		return false;
 	++m_iNextActionSequence;
@@ -691,9 +697,9 @@ bool_t Client::CPlayerController::Request_DebugKillSelf()
 {
 	if (nullptr == m_pCommandSink)
 		return false;
-	const bool_t grabbed = LostArk::Shared::PLAYER_ACTION_STATE::GRABBED ==
-		CCombatHUDViewModel::Get().Get_Player().eAction;
-	if (!Try_SubmitUncapturedPlayerCommand(grabbed, [this]()
+	const bool_t captured = Is_PlayerControlCaptured(
+		CCombatHUDViewModel::Get().Get_Player());
+	if (!Try_SubmitUncapturedPlayerCommand(captured, [this]()
 		{ return m_pCommandSink->Request_DebugKillSelf(m_iNextActionSequence); }))
 		return false;
 	++m_iNextActionSequence;
@@ -902,8 +908,8 @@ bool_t Client::CPlayerController::Try_PickGroundPlane(
 
 bool_t Client::CPlayerController::Request_MoveToPoint(const float3_t& goal)
 {
-	if (LostArk::Shared::PLAYER_ACTION_STATE::GRABBED ==
-		CCombatHUDViewModel::Get().Get_Player().eAction)
+	if (Is_PlayerControlCaptured(
+			CCombatHUDViewModel::Get().Get_Player()))
 	{
 		return false;
 	}

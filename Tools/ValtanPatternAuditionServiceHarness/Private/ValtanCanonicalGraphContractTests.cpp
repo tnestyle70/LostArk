@@ -42,6 +42,7 @@ namespace
 		"VALTAN_GROUND_ROAR",
 		"VALTAN_TRIPLE_COUNTER",
 		"VALTAN_STAGGER_SLOT",
+		"VALTAN_GROGGY_FOLLOWUP",
 		"VALTAN_BIND_SLOT",
 		"VALTAN_SILENCE_SLOT",
 	};
@@ -586,12 +587,10 @@ namespace
 			"VALTAN_STAGGER_SLOT", "VALTAN_BIND_SLOT", "VALTAN_SILENCE_SLOT" })
 		{
 			const VALTAN_PATTERN_VIEW& Skeleton = *Patterns.at(pPatternId);
-			const std::size_t iExpectedStageCount =
-				"VALTAN_STAGGER_SLOT" == std::string_view(pPatternId) ? 3u : 1u;
 			Require(Skeleton.bAuthoringMasterManaged &&
 				Skeleton.bManualServerAudition &&
 				"DERIVED_SERVER_PATTERN" == Skeleton.strAdmissionState &&
-				iExpectedStageCount == Skeleton.Stages.size(),
+				2u == Skeleton.Stages.size(),
 				"status-pattern authoring row lost its derived Product contract");
 		}
 		const auto ClipNames = [](const VALTAN_STAGE_VIEW& Stage)
@@ -603,12 +602,19 @@ namespace
 			return Names;
 		};
 		const VALTAN_PATTERN_VIEW& Stagger = *Patterns.at("VALTAN_STAGGER_SLOT");
+		const VALTAN_PATTERN_VIEW& Groggy =
+			*Patterns.at("VALTAN_GROGGY_FOLLOWUP");
 		const VALTAN_PATTERN_VIEW& Bind = *Patterns.at("VALTAN_BIND_SLOT");
 		const VALTAN_PATTERN_VIEW& Silence = *Patterns.at("VALTAN_SILENCE_SLOT");
-		Require(Stagger.Stages[0].bSuppressAnimation &&
+		Require(!Stagger.Stages[0].bSuppressAnimation &&
+			ClipNames(Stagger.Stages[0]) == std::vector<std::string>{
+				"mesh_att_battle_17_start", "mesh_att_battle_17_loop" } &&
 			!Stagger.Stages[1].bSuppressAnimation &&
-			Stagger.Stages[2].bSuppressAnimation &&
 			ClipNames(Stagger.Stages[1]) == std::vector<std::string>{
+				"mesh_att_battle_17_end" } &&
+			1u == Groggy.Stages.size() &&
+			!Groggy.Stages[0].bSuppressAnimation &&
+			ClipNames(Groggy.Stages[0]) == std::vector<std::string>{
 				"mesh_abn_groggy_1_start", "mesh_abn_groggy_1_loop",
 				"mesh_abn_groggy_1_loop", "mesh_abn_groggy_1_loop",
 				"mesh_abn_groggy_1_end" } &&
@@ -617,10 +623,15 @@ namespace
 				"mesh_att_battle_5_01_start", "mesh_att_battle_5_01_loop",
 				"mesh_att_battle_5_01_loop", "mesh_att_battle_5_01_loop",
 				"mesh_att_battle_5_01_end" } &&
+			!Bind.Stages[1].bSuppressAnimation &&
+			ClipNames(Bind.Stages[1]) == std::vector<std::string>{
+				"mesh_att_battle_5_01_end" } &&
 			!Silence.Stages[0].bSuppressAnimation &&
 			ClipNames(Silence.Stages[0]) == std::vector<std::string>{
-				"mesh_evt1_att_battle_5_01_end" },
-			"status-pattern NONE and saved animation occurrence contract drifted");
+				"mesh_evt1_att_battle_5_01_end" } &&
+			Silence.Stages[1].bSuppressAnimation &&
+			Silence.Stages[1].ClipOccurrences.empty(),
+			"status/follow-up saved animation occurrence contract drifted");
 		std::vector<std::string> AdmittedPatternIds;
 		AdmittedPatternIds.reserve(Inventory.Get_PatternCount());
 
