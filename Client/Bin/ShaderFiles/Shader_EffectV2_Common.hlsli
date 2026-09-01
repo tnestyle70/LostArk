@@ -306,7 +306,12 @@ PS_EFFECT_OUT PS_OUTLINE_V2(PS_EFFECT_IN input)
 	PS_EFFECT_OUT output;
 	if (0 != g_HasDissolve)
 	{
-		const float2 uv = input.vTexcoord * g_UVTileCount + g_UVStart + g_UVSpeed * g_Time;
+		float2 uv = input.vTexcoord * g_UVTileCount + g_UVStart + g_UVSpeed * g_Time;
+		if (0 != g_DissolveWarp && 0 != g_HasNoise)
+		{
+			const float2 noiseUV = uv * g_NoiseScale + g_NoisePan * g_Time;
+			uv += (g_NoiseTexture.Sample(LinearSampler, noiseUV).rg * 2.f - 1.f) * g_NoiseStrength;
+		}
 		const float threshold = g_DissolveTexture.Sample(LinearSampler, uv).r;
 		const float dissolve = smoothstep(
 			g_DissolveAmount - g_DissolveSoftness,
