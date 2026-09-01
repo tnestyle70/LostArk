@@ -98,11 +98,11 @@ class EffectToolSavedElementCloneTests(unittest.TestCase):
             self.assertLess(duplicate.index(commit), duplicate.index(output))
         self.assertNotIn(".fStartDelaySeconds =", duplicate)
 
-    def test_refresh_stages_parsed_authored_documents_for_tree_projection(self) -> None:
+    def test_refresh_indexes_metadata_and_defers_exact_document_decode(self) -> None:
         refresh = function_slice(
             self.cpp,
             "bool_t Client::CEffect_Tool::Refresh_DataFiles()",
-            "bool_t Client::CEffect_Tool::Try_AppendSavedElementToActiveDocument(",
+            "bool_t Client::CEffect_Tool::Ensure_DataFileDocumentParsed(",
         )
         for token in (
             "pParsedDocument",
@@ -112,16 +112,56 @@ class EffectToolSavedElementCloneTests(unittest.TestCase):
             self.assertIn(token, self.header)
         for token in (
             "EFFECT_DOCUMENT_SOURCE::AUTHORED == eSource",
-            "CEffectDocumentCodec::Load(",
-            "ParsedDocument.strEffectAssetId != EffectAssetId",
-            "std::make_shared<const EFFECT_DOCUMENT_DESC>",
+            '"Metadata indexed; Open or Play decodes this exact document on demand."',
+            "Refresh_DirectAuthoredEditableIndex(Staged)",
             "m_DataFiles = std::move(Staged)",
         ):
             self.assertIn(token, refresh)
-        self.assertLess(
-            refresh.index("std::make_shared<const EFFECT_DOCUMENT_DESC>"),
-            refresh.index("m_DataFiles = std::move(Staged)"),
+        self.assertNotIn("CEffectDocumentCodec::Load(", refresh)
+
+        explicit_load = function_slice(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(",
+            "bool_t Client::CEffect_Tool::Execute_PendingDocumentLoad(",
         )
+        self.assertIn("CEffectDocumentCodec::Load(Path, Staged, Error)", explicit_load)
+        self.assertIn("Staged.strEffectAssetId != strSelectionId", explicit_load)
+
+    def test_expanded_saved_effect_lazily_loads_physical_element_tree(self) -> None:
+        ensure = function_slice(
+            self.cpp,
+            "bool_t Client::CEffect_Tool::Ensure_DataFileDocumentParsed(",
+            "bool_t Client::CEffect_Tool::Try_AppendSavedElementToActiveDocument(",
+        )
+        ordered = (
+            "Entry.bDocumentParseAttempted = true",
+            "CEffectDocumentCodec::Load(Entry.Path, Staged, Error)",
+            "Staged.strEffectAssetId != Entry.strAssetId",
+            "std::make_shared<const EFFECT_DOCUMENT_DESC>(std::move(Staged))",
+        )
+        for token in ordered:
+            self.assertIn(token, ensure)
+        self.assertEqual(
+            [ensure.index(token) for token in ordered],
+            sorted(ensure.index(token) for token in ordered),
+        )
+        self.assertIn("if (Entry.bDocumentParseAttempted)", ensure)
+
+        render = function_slice(
+            self.cpp,
+            "void Client::CEffect_Tool::Render_DataFilesWindow()",
+            "bool_t Client::CEffect_Tool::Try_CreateDocument()",
+        )
+        self.assertLess(
+            render.index("if (!bEffectOpen)"),
+            render.index("Ensure_DataFileDocumentParsed(DataFile)"),
+        )
+        self.assertLess(
+            render.index("Ensure_DataFileDocumentParsed(DataFile)"),
+            render.index("if (nullptr == DataFile.pParsedDocument)"),
+        )
+        self.assertIn('RowLabel += "###saved-" + DataFile.strAssetId', render)
+        self.assertNotIn('RowLabel += "##saved-" + DataFile.strAssetId', render)
 
     def test_saved_effect_rows_project_effect_family_element_tree(self) -> None:
         render = function_slice(

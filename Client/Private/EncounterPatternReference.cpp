@@ -683,7 +683,8 @@ namespace
 				validKind = trigger == "ENTER" && 1u == value && 0u == durationMs;
 			else if (kind == "SET_GAMEPLAY_PHASE")
 				validKind = trigger == "ENTER" &&
-					targetId == "boss.phase.gameplay" && 2u == value &&
+					targetId == "boss.phase.gameplay" &&
+					(2u == value || 3u == value) &&
 					0u == durationMs;
 			else if (kind == "RETARGET_RANDOM_ALIVE")
 				validKind = trigger == "ENTER" &&
@@ -1236,6 +1237,10 @@ bool_t Client::CEncounterPatternReference::Load(
 				projectedMotion.landingPosition[coordinate] =
 					static_cast<f32_t>(landing[coordinate].Get_Number());
 			}
+			const DATA_JSON_VALUE* moveToAnchor =
+				serverMotion->Find("moveToAnchorBeforeTakeoff");
+			projectedMotion.bMoveToAnchorBeforeTakeoff =
+				nullptr != moveToAnchor && moveToAnchor->Get_Boolean();
 			pattern.serverMotion = std::move(projectedMotion);
 		}
 		staged.push_back(std::move(pattern));

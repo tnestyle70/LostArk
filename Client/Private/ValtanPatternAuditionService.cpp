@@ -77,7 +77,9 @@ namespace
 			Request.iPredecessorRoomAuditionEpoch == Result.iPredecessorRoomAuditionEpoch &&
 			Request.iPredecessorPatternSequence == Result.iPredecessorPatternSequence &&
 			Request.iExpectedNextRequestSequence == Result.iExpectedNextRequestSequence &&
-			Request.ExpectedDefinitionRevision == Result.ExpectedDefinitionRevision;
+			Request.ExpectedDefinitionRevision == Result.ExpectedDefinitionRevision &&
+			Request.ReplacementDefinitionRevision ==
+				Result.ReplacementDefinitionRevision;
 	}
 
 	bool Can_IntroduceOccurrence(
@@ -232,6 +234,8 @@ bool Client::CValtanPatternAuditionService::Restart_ActivePattern(
 	const std::string_view strConsumerId,
 	const std::string_view strBossPlacementId,
 	const std::string_view strPatternId,
+	const LostArk::Shared::GameplayDataRevision&
+		replacementActiveDefinitionRevision,
 	const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
 		ExpectedPatternSoundSourceReceipt,
 	std::string& strOutStatus)
@@ -266,6 +270,12 @@ bool Client::CValtanPatternAuditionService::Restart_ActivePattern(
 	{
 		strOutStatus =
 			"Pattern Restart requires one authoritative ACTIVE or COMPLETED stable-ID occurrence.";
+		return false;
+	}
+	if (!replacementActiveDefinitionRevision.Is_Valid())
+	{
+		strOutStatus =
+			"Pattern Restart requires the exact saved and Server-active replacement definition revision.";
 		return false;
 	}
 	if (!ExpectedPatternSoundSourceReceipt.Is_Valid() ||
@@ -307,6 +317,8 @@ bool Client::CValtanPatternAuditionService::Restart_ActivePattern(
 	Request.iPredecessorRoomAuditionEpoch = m_Snapshot.iRoomAuditionEpoch;
 	Request.iPredecessorPatternSequence = m_Snapshot.iObservedPatternSequence;
 	Request.ExpectedDefinitionRevision = m_Snapshot.PinnedDefinitionRevision;
+	Request.ReplacementDefinitionRevision =
+		replacementActiveDefinitionRevision;
 	if (!Send_Request(Request))
 	{
 		strOutStatus =
@@ -322,7 +334,7 @@ bool Client::CValtanPatternAuditionService::Restart_ActivePattern(
 	m_Snapshot.iRequestSequence = Request.iRequestSequence;
 	m_Snapshot.iWorldInboundGeneration = World_InboundGeneration();
 	m_Snapshot.PinnedDefinitionRevision =
-		Request.ExpectedDefinitionRevision;
+		Request.ReplacementDefinitionRevision;
 	m_Snapshot.PinnedPatternSoundSourceReceipt =
 		m_RestartFallback.PinnedPatternSoundSourceReceipt;
 	m_Snapshot.strConsumerId = strConsumerId;
@@ -349,7 +361,8 @@ bool Client::CValtanPatternAuditionService::Retry_UnconfirmedRestart(
 		0u == m_Snapshot.iRequestSequence ||
 		0u == m_RestartFallback.iRoomAuditionEpoch ||
 		0u == m_RestartFallback.iObservedPatternSequence ||
-		!m_RestartFallback.PinnedDefinitionRevision.Is_Valid())
+		!m_RestartFallback.PinnedDefinitionRevision.Is_Valid() ||
+		!m_Snapshot.PinnedDefinitionRevision.Is_Valid())
 	{
 		strOutStatus = "There is no unconfirmed exact Restart request to retry.";
 		return false;
@@ -382,6 +395,8 @@ bool Client::CValtanPatternAuditionService::Retry_UnconfirmedRestart(
 		m_RestartFallback.iObservedPatternSequence;
 	Request.ExpectedDefinitionRevision =
 		m_RestartFallback.PinnedDefinitionRevision;
+	Request.ReplacementDefinitionRevision =
+		m_Snapshot.PinnedDefinitionRevision;
 	if (!Send_Request(Request))
 	{
 		strOutStatus =
@@ -667,7 +682,9 @@ bool Client::CValtanPatternAuditionService::Retry_NextPatternCommand(
 	return true;
 }
 
-void Client::CValtanPatternAuditionService::Accept_NextCommand(const uint32_t iRoomAuditionEpoch)
+void Client::CValtanPatternAuditionService::Accept_NextCommand(
+	const uint32_t iRoomAuditionEpoch,
+	const uint32_t iExpectedPatternSequence)
 {
 	const auto& Request = m_NextCommand.Request;
 	const bool bAdoptsLivePredecessor =
@@ -683,7 +700,8 @@ void Client::CValtanPatternAuditionService::Accept_NextCommand(const uint32_t iR
 	m_NextSnapshot.iWorldInboundGeneration = m_NextCommand.iWorldInboundGeneration;
 	m_NextSnapshot.iRoomAuditionEpoch = iRoomAuditionEpoch;
 	m_NextSnapshot.iPredecessorPatternSequence = Request.iPredecessorPatternSequence;
-	m_NextSnapshot.iExpectedPatternSequence = Request.iPredecessorPatternSequence + 1u;
+	m_NextSnapshot.iExpectedPatternSequence = 0u == iExpectedPatternSequence ?
+		Request.iPredecessorPatternSequence + 1u : iExpectedPatternSequence;
 	m_NextSnapshot.PinnedDefinitionRevision = PinnedRevision;
 	m_NextSnapshot.PinnedPatternSoundSourceReceipt =
 		m_NextCommand.PinnedPatternSoundSourceReceipt;
@@ -721,7 +739,9 @@ void Client::CValtanPatternAuditionService::Apply_ServerResult(
 				m_RestartFallback.iObservedPatternSequence ||
 			 0u != Result.iExpectedNextRequestSequence ||
 			 Result.ExpectedDefinitionRevision !=
-				m_RestartFallback.PinnedDefinitionRevision))
+				m_RestartFallback.PinnedDefinitionRevision ||
+			 Result.ReplacementDefinitionRevision !=
+				m_Snapshot.PinnedDefinitionRevision))
 		{
 			return;
 		}
@@ -731,7 +751,8 @@ void Client::CValtanPatternAuditionService::Apply_ServerResult(
 			 0u != Result.iExpectedNextRequestSequence ||
 			 !m_Snapshot.PinnedDefinitionRevision.Is_Valid() ||
 			 Result.ExpectedDefinitionRevision !=
-				m_Snapshot.PinnedDefinitionRevision))
+				m_Snapshot.PinnedDefinitionRevision ||
+			 Result.ReplacementDefinitionRevision.Is_Valid()))
 		{
 			return;
 		}
@@ -837,12 +858,19 @@ bool Client::CValtanPatternAuditionService::Apply_NextLifecycle(
 		VALTAN_AUDITION_OPERATION::QUEUE_NEXT_LIVE_PATTERN_ID == Request.eOperation;
 	const GameplayDataRevision CandidatePinnedRevision =
 		Request.ExpectedDefinitionRevision;
+	const uint32_t iReservedSequence =
+		Request.iPredecessorPatternSequence + 1u;
+	const bool bCanIntroduceRebasedOccurrence =
+		VALTAN_AUDITION_LIFECYCLE_STATE::NEXT_RESERVED != Lifecycle.eState &&
+		CActionPresentationTimeline::Is_ForwardTick(
+			Lifecycle.iPatternSequence, iReservedSequence);
 	const bool bCandidate = Has_PendingNextCommand() &&
 		(VALTAN_AUDITION_OPERATION::QUEUE_NEXT_PATTERN_ID == Request.eOperation || bLiveCandidate) &&
 		Lifecycle.iRequestSequence == Request.iRequestSequence &&
 		0u != Lifecycle.iRoomAuditionEpoch &&
 		(bLiveCandidate || Lifecycle.iRoomAuditionEpoch == Request.iPredecessorRoomAuditionEpoch) &&
-		Lifecycle.iPatternSequence == Request.iPredecessorPatternSequence + 1u &&
+		(Lifecycle.iPatternSequence == iReservedSequence ||
+		 bCanIntroduceRebasedOccurrence) &&
 		Lifecycle.strPatternId == Request.strPatternId &&
 		CandidatePinnedRevision == Lifecycle.PinnedDefinitionRevision;
 	/* NEXT_RESERVED can overtake its verdict. It confirms only the exact
@@ -857,15 +885,25 @@ bool Client::CValtanPatternAuditionService::Apply_NextLifecycle(
 		case VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE:
 		case VALTAN_AUDITION_LIFECYCLE_STATE::COMPLETED:
 		case VALTAN_AUDITION_LIFECYCLE_STATE::ABORTED:
-			Accept_NextCommand(Lifecycle.iRoomAuditionEpoch);
+			Accept_NextCommand(
+				Lifecycle.iRoomAuditionEpoch,
+				Lifecycle.iPatternSequence);
 			break;
 		default: return false;
 		}
 	}
+	const bool bSameExpectedSequence =
+		Lifecycle.iPatternSequence == m_NextSnapshot.iExpectedPatternSequence;
+	const bool bCanRebaseExpectedSequence =
+		!m_NextSnapshot.bReservationConsumed &&
+		VALTAN_AUDITION_LIFECYCLE_STATE::NEXT_RESERVED != Lifecycle.eState &&
+		CActionPresentationTimeline::Is_ForwardTick(
+			Lifecycle.iPatternSequence,
+			m_NextSnapshot.iExpectedPatternSequence);
 	if (!m_NextSnapshot.Is_Live() ||
 		Lifecycle.iRequestSequence != m_NextSnapshot.iRequestSequence ||
 		Lifecycle.iRoomAuditionEpoch != m_NextSnapshot.iRoomAuditionEpoch ||
-		Lifecycle.iPatternSequence != m_NextSnapshot.iExpectedPatternSequence ||
+		(!bSameExpectedSequence && !bCanRebaseExpectedSequence) ||
 		Lifecycle.strPatternId != m_NextSnapshot.strPatternId ||
 		!Lifecycle.PinnedDefinitionRevision.Is_Valid() ||
 		(m_NextSnapshot.PinnedDefinitionRevision.Is_Valid() &&
@@ -873,6 +911,14 @@ bool Client::CValtanPatternAuditionService::Apply_NextLifecycle(
 		return false;
 
 	m_hasAuthoritativeLifecycle = true;
+	if (bCanRebaseExpectedSequence)
+	{
+		/* Outcome-owned child patterns consume sequence values before the queued
+		   Next occurrence. The exact request/epoch/pin tuple authorizes this one
+		   forward rebase; once consumed, later lifecycle cannot move it again. */
+		m_NextSnapshot.iExpectedPatternSequence = Lifecycle.iPatternSequence;
+		m_NextSnapshot.bReservationConsumed = true;
+	}
 	m_NextSnapshot.PinnedDefinitionRevision = Lifecycle.PinnedDefinitionRevision;
 	m_NextSnapshot.isPresentationRevisionAvailable =
 		Is_PresentationAvailable(Lifecycle.PinnedDefinitionRevision);

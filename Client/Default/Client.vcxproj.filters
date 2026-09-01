@@ -474,6 +474,12 @@
 	<ClCompile Include="..\Private\ActionCompositionGraphModel.cpp">
 	  <Filter>03. Tools\05. Sequencer</Filter>
 	</ClCompile>
+	<ClCompile Include="..\Private\BossLogicFlowViewModel.cpp">
+	  <Filter>03. Tools\05. Sequencer</Filter>
+	</ClCompile>
+	<ClCompile Include="..\Private\BossLogicFlowRenderer.cpp">
+	  <Filter>03. Tools\05. Sequencer</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\Effect_PresentationService.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
@@ -875,6 +881,9 @@
 	  <Filter>03. Tools\05. Sequencer</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\ActionCompositionGraphModel.h">
+	  <Filter>03. Tools\05. Sequencer</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\BossLogicFlowView.h">
 	  <Filter>03. Tools\05. Sequencer</Filter>
 	</ClInclude>
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h">
@@ -1562,9 +1571,6 @@
 	  <Filter>96.DataFiles\Encounters</Filter>
 	</None>
 	<None Include="..\..\Data\Encounters\Valtan\ValtanDebugAudition.json">
-	  <Filter>96.DataFiles\Encounters</Filter>
-	</None>
-	<None Include="..\..\Data\Encounters\Valtan\ValtanBossAuditionFlows.json">
 	  <Filter>96.DataFiles\Encounters</Filter>
 	</None>
 	<None Include="..\..\Data\Encounters\Valtan\ValtanCinematicCamera.json">

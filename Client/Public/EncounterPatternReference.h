@@ -59,6 +59,7 @@ struct ENCOUNTER_PATTERN_SERVER_MOTION_REFERENCE final
 	std::string kind;
 	std::string anchorId;
 	std::array<f32_t, 3u> landingPosition{};
+	bool_t bMoveToAnchorBeforeTakeoff = false;
 };
 
 struct ENCOUNTER_PATTERN_REFERENCE final

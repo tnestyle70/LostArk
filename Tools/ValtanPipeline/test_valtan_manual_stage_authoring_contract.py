@@ -54,9 +54,626 @@ class ValtanManualStageAuthoringContractTests(unittest.TestCase):
             self.source_revision,
             self.docs[pipeline.WORLD_SET_REL],
             self.docs[pipeline.COMBAT_AUTHORING_REL],
+            repository_root=ROOT,
         )
         self.assertEqual(len(operations), count)
         return candidate
+
+    @staticmethod
+    def sequence_420617_animation(*, invalid_clip: bool = False) -> dict:
+        clips = [
+            ("mesh_att_battle_17_start", 2000),
+            ("mesh_att_battle_17_loop", 1000),
+            ("mesh_att_battle_17_end", 3000),
+            ("mesh_att_battle_17_loop", 1000),
+            ("mesh_att_battle_17_end", 3000),
+        ]
+        if invalid_clip:
+            clips[1] = ("mesh_att_battle_19_01", 1000)
+        return {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+                {
+                    "clipOccurrenceId": (
+                        f"valtan.sequence.four.step-01.clip-{index:02d}"
+                    ),
+                    "clip": clip,
+                    "mappingBasis": "PROJECT_AUTHORED",
+                    "sourceStartMs": 0,
+                    "playMs": play_ms,
+                    "playRate": 1.0,
+                    "repeatUntilStageEnd": False,
+                }
+                for index, (clip, play_ms) in enumerate(clips, 1)
+            ],
+        }
+
+    def sequence_source_operations(self, *, invalid_clip: bool = False) -> list[dict]:
+        return [
+            {
+                "op": "ADD_PATTERN_SEQUENCE_SOURCE",
+                "patternId": "VALTAN_SEQUENCE_FOUR",
+                "sourceActionId": 420617,
+                "sequenceIndex": 1,
+                "role": "REFERENCE_420617_1",
+            },
+            {
+                "op": "SET_STAGE_DURATION",
+                "patternId": "VALTAN_SEQUENCE_FOUR",
+                "stageId": "STEP_01",
+                "durationMs": 10000,
+            },
+            {
+                "op": "SET_STAGE_ANIMATION",
+                "patternId": "VALTAN_SEQUENCE_FOUR",
+                "stageId": "STEP_01",
+                "animation": self.sequence_420617_animation(
+                    invalid_clip=invalid_clip
+                ),
+            },
+        ]
+
+    def assert_provenance_rejected(
+        self,
+        operations: list[dict],
+        message: str = "exact ordered concatenation",
+    ) -> None:
+        before = copy.deepcopy(self.master)
+        with self.assertRaisesRegex(
+            pipeline.DraftPatchError, message
+        ) as raised:
+            self.patch(operations, before)
+        self.assertEqual("SOURCE_PROVENANCE_MISMATCH", raised.exception.error_code)
+        self.assertEqual(self.master, before)
+
+    def test_sequence_source_append_adds_exact_ordered_provenance(self) -> None:
+        candidate = self.patch(self.sequence_source_operations())
+        authored = pattern(candidate, "VALTAN_SEQUENCE_FOUR")
+        self.assertEqual([420624, 420617], authored["sourceActionIds"])
+        self.assertEqual(
+            {
+                "sourceActionId": 420617,
+                "sequenceIndex": 1,
+                "role": "REFERENCE_420617_1",
+            },
+            authored["presentationSources"][-1],
+        )
+        self.assertEqual(
+            [
+                "mesh_att_battle_17_start",
+                "mesh_att_battle_17_loop",
+                "mesh_att_battle_17_end",
+                "mesh_att_battle_17_loop",
+                "mesh_att_battle_17_end",
+            ],
+            [
+                row["clip"]
+                for row in stage(authored, "STEP_01")["animation"]["occurrences"]
+            ],
+        )
+
+        self.assert_provenance_rejected(
+            self.sequence_source_operations(invalid_clip=True)
+        )
+
+    def test_ground_roar_delta_primary_accepts_exact_magic_emission_append(self) -> None:
+        original = pattern(self.master, "VALTAN_GROUND_ROAR")
+        original_occurrences = copy.deepcopy(
+            stage(original, "STEP_01")["animation"]["occurrences"]
+        )
+        candidate = self.patch(
+            [
+                {
+                    "op": "ADD_PATTERN_SEQUENCE_SOURCE",
+                    "patternId": "VALTAN_GROUND_ROAR",
+                    "sourceActionId": 400437,
+                    "sequenceIndex": 0,
+                    "role": "REFERENCE_400437_0",
+                },
+                {
+                    "op": "SET_STAGE_DURATION",
+                    "patternId": "VALTAN_GROUND_ROAR",
+                    "stageId": "STEP_01",
+                    "durationMs": 9091,
+                },
+                {
+                    "op": "SET_STAGE_ANIMATION",
+                    "patternId": "VALTAN_GROUND_ROAR",
+                    "stageId": "STEP_01",
+                    "animation": {
+                        "endPolicy": "HOLD_LAST_POSE",
+                        "repeatCount": 1,
+                        "occurrences": [
+                            *original_occurrences,
+                            {
+                                "clipOccurrenceId": (
+                                    "valtan.sequence.sequence.400440.0.step-01."
+                                    "composition.clip.01"
+                                ),
+                                "clip": "mesh_evt1_att_battle_5_01_end",
+                                "mappingBasis": "PROJECT_AUTHORED",
+                                "sourceStartMs": 0,
+                                "playMs": 2633,
+                                "playRate": 1.0,
+                                "repeatUntilStageEnd": False,
+                            },
+                        ],
+                    },
+                },
+            ]
+        )
+        authored = pattern(candidate, "VALTAN_GROUND_ROAR")
+        authored_stage = stage(authored, "STEP_01")
+        self.assertEqual(9091, authored_stage["durationMs"])
+        self.assertEqual([400440, 400425, 400437], authored["sourceActionIds"])
+        self.assertEqual(
+            [
+                "mesh_att_battle_11_01",
+                "mesh_att_battle_5_01_end",
+                "mesh_evt1_att_battle_5_01_end",
+            ],
+            [row["clip"] for row in authored_stage["animation"]["occurrences"]],
+        )
+        self.assertTrue(
+            all(
+                row["mappingBasis"] == "SOURCE_REVIEWED_DELTA"
+                for row in authored_stage["animation"]["occurrences"]
+            )
+        )
+
+        gameplay, presentation = pipeline.split_v2_authoring(
+            candidate,
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        rejoined = pipeline.join_v2_authoring(
+            gameplay,
+            presentation,
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        pipeline.validate_manual_audition_animation_lineage(
+            rejoined,
+            pipeline.read_json(ROOT / pipeline.DEBUG_PRESENTATION_REL),
+            pipeline.read_json(ROOT / pipeline.ANIMATION_PROMOTION_MANIFEST_REL),
+            repository_root=ROOT,
+        )
+
+    def test_sequence_source_rejects_reordered_occurrences(self) -> None:
+        operations = self.sequence_source_operations()
+        occurrences = operations[2]["animation"]["occurrences"]
+        occurrences[1], occurrences[2] = occurrences[2], occurrences[1]
+        self.assert_provenance_rejected(operations)
+
+    def test_sequence_source_rejects_duplicate_removal(self) -> None:
+        operations = self.sequence_source_operations()
+        del operations[2]["animation"]["occurrences"][3]
+        self.assert_provenance_rejected(operations)
+
+    def test_sequence_source_rejects_set_union_assembly(self) -> None:
+        operations = self.sequence_source_operations()
+        operations.insert(
+            1,
+            {
+                "op": "ADD_PATTERN_SEQUENCE_SOURCE",
+                "patternId": "VALTAN_SEQUENCE_FOUR",
+                "sourceActionId": 400440,
+                "sequenceIndex": 0,
+                "role": "REFERENCE_400440_0",
+            },
+        )
+        operations[2]["durationMs"] = 11800
+        occurrences = operations[3]["animation"]["occurrences"]
+        occurrences.insert(
+            1,
+            {
+                "clipOccurrenceId": "",
+                "clip": "mesh_att_battle_11_01",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 1800,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": False,
+            },
+        )
+        for index, occurrence in enumerate(occurrences, 1):
+            occurrence["clipOccurrenceId"] = (
+                f"valtan.sequence.four.step-01.clip-{index:02d}"
+            )
+        self.assert_provenance_rejected(operations)
+
+    def test_sequence_source_rejects_primary_role(self) -> None:
+        operation = self.sequence_source_operations()[0]
+        operation["role"] = "PRIMARY"
+        before = copy.deepcopy(self.master)
+        with self.assertRaisesRegex(
+            pipeline.DraftPatchError, "deterministic exact-tuple role"
+        ) as raised:
+            self.patch([operation], before)
+        self.assertEqual("FIELD_NOT_ALLOWED", raised.exception.error_code)
+        self.assertEqual(self.master, before)
+
+    def test_sequence_source_rejects_unused_provenance(self) -> None:
+        self.assert_provenance_rejected([self.sequence_source_operations()[0]])
+
+    def test_sequence_source_accepts_an_exact_reused_occurrence_identity(self) -> None:
+        owner = copy.deepcopy(self.master)
+        source_animation = self.sequence_420617_animation()
+        owner_stage = stage(pattern(owner, "VALTAN_SEQUENCE_FOUR"), "STEP_01")
+        # The first logical slot already contains the exact first source clip.
+        # Replace is allowed to preserve that stable row while the rest of the
+        # selected Sequence is materialized with new identities.
+        owner_stage["animation"]["occurrences"] = [
+            copy.deepcopy(source_animation["occurrences"][0])
+        ]
+        candidate = self.patch(self.sequence_source_operations(), owner)
+        candidate_stage = stage(
+            pattern(candidate, "VALTAN_SEQUENCE_FOUR"), "STEP_01"
+        )
+        self.assertEqual(
+            [row["clip"] for row in source_animation["occurrences"]],
+            [
+                row["clip"]
+                for row in candidate_stage["animation"]["occurrences"]
+            ],
+        )
+        self.assertEqual(
+            source_animation["occurrences"][0]["clipOccurrenceId"],
+            candidate_stage["animation"]["occurrences"][0][
+                "clipOccurrenceId"
+            ],
+        )
+
+    def test_sequence_source_accepts_finite_materialized_hold_loops(self) -> None:
+        clips = [
+            "mesh_att_battle_5_01_start",
+            "mesh_att_battle_5_01_loop",
+            "mesh_att_battle_5_01_loop",
+            "mesh_att_battle_5_01_end",
+        ]
+        operations = [
+            {
+                "op": "ADD_PATTERN_SEQUENCE_SOURCE",
+                "patternId": "VALTAN_SEQUENCE_FOUR",
+                "sourceActionId": 400425,
+                "sequenceIndex": 0,
+                "role": "REFERENCE_400425_0",
+            },
+            {
+                "op": "SET_STAGE_DURATION",
+                "patternId": "VALTAN_SEQUENCE_FOUR",
+                "stageId": "STEP_01",
+                "durationMs": 5000,
+            },
+            {
+                "op": "SET_STAGE_ANIMATION",
+                "patternId": "VALTAN_SEQUENCE_FOUR",
+                "stageId": "STEP_01",
+                "animation": {
+                    "endPolicy": "EXACT",
+                    "repeatCount": 1,
+                    "occurrences": [
+                        {
+                            "clipOccurrenceId": (
+                                "valtan.sequence.four.step-01.clip-01"
+                                if index == 1
+                                else f"valtan.sequence.four.step-01.hold-{index:02d}"
+                            ),
+                            "clip": clip,
+                            "mappingBasis": "PROJECT_AUTHORED",
+                            "sourceStartMs": 0,
+                            "playMs": 1250,
+                            "playRate": 1.0,
+                            "repeatUntilStageEnd": False,
+                        }
+                        for index, clip in enumerate(clips, 1)
+                    ],
+                },
+            },
+        ]
+        candidate = self.patch(operations)
+        candidate_stage = stage(
+            pattern(candidate, "VALTAN_SEQUENCE_FOUR"), "STEP_01"
+        )
+        self.assertEqual(
+            clips,
+            [
+                row["clip"]
+                for row in candidate_stage["animation"]["occurrences"]
+            ],
+        )
+
+    def test_sequence_source_accepts_an_end_only_ordered_slice(self) -> None:
+        owner = copy.deepcopy(self.master)
+        original = pattern(owner, "VALTAN_GROUND_ROAR")
+        original["sourceActionIds"] = [400440]
+        original["presentationSources"] = original["presentationSources"][:1]
+        original_stage = stage(original, "STEP_01")
+        stomp = copy.deepcopy(original_stage["animation"]["occurrences"][0])
+        original_stage["durationMs"] = 1800
+        original_stage["animation"] = {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [stomp],
+        }
+        candidate = self.patch(
+            [
+                {
+                    "op": "ADD_PATTERN_SEQUENCE_SOURCE",
+                    "patternId": "VALTAN_GROUND_ROAR",
+                    "sourceActionId": 400425,
+                    "sequenceIndex": 0,
+                    "role": "REFERENCE_400425_0",
+                },
+                {
+                    "op": "SET_STAGE_DURATION",
+                    "patternId": "VALTAN_GROUND_ROAR",
+                    "stageId": "STEP_01",
+                    "durationMs": 6458,
+                },
+                {
+                    "op": "SET_STAGE_ANIMATION",
+                    "patternId": "VALTAN_GROUND_ROAR",
+                    "stageId": "STEP_01",
+                    "animation": {
+                        "endPolicy": "HOLD_LAST_POSE",
+                        "repeatCount": 1,
+                        "occurrences": [
+                            stomp,
+                            {
+                                "clipOccurrenceId": (
+                                    "valtan.sequence.sequence.400440.0.step-01."
+                                    "roar.clip-05"
+                                ),
+                                "clip": "mesh_att_battle_5_01_end",
+                                "mappingBasis": "PROJECT_AUTHORED",
+                                "sourceStartMs": 0,
+                                "playMs": 4433,
+                                "playRate": 1.0,
+                                "repeatUntilStageEnd": False,
+                            }
+                        ],
+                    },
+                },
+            ],
+            owner,
+        )
+        authored = pattern(candidate, "VALTAN_GROUND_ROAR")
+        self.assertEqual([400440, 400425], authored["sourceActionIds"])
+        self.assertEqual(
+            {
+                "sourceActionId": 400425,
+                "sequenceIndex": 0,
+                "role": "REFERENCE_400425_0",
+            },
+            authored["presentationSources"][-1],
+        )
+        self.assertEqual(
+            ["mesh_att_battle_11_01", "mesh_att_battle_5_01_end"],
+            [
+                row["clip"]
+                for row in stage(authored, "STEP_01")["animation"]["occurrences"]
+            ],
+        )
+
+    def test_managed_canonical_pattern_preserves_exact_cross_source_sequence(self) -> None:
+        expected_clips = [
+            "mesh_abn_groggy_1_start",
+            "mesh_abn_groggy_1_loop",
+            "mesh_abn_groggy_1_loop",
+            "mesh_abn_groggy_1_loop",
+            "mesh_abn_groggy_1_end",
+        ]
+        dash = pattern(self.master, "VALTAN_DASH_CHARGE")
+        groggy = pattern(self.master, "VALTAN_DASH_CHARGE_GROGGY")
+        part_break = pattern(self.master, "VALTAN_PART_BREAK")
+        self.assertEqual([420604], dash["sourceActionIds"])
+        self.assertEqual([400430], groggy["sourceActionIds"])
+        self.assertEqual([420627], part_break["sourceActionIds"])
+        self.assertEqual(
+            [{"sourceActionId": 400430, "sequenceIndex": 0, "role": "PRIMARY"}],
+            groggy["presentationSources"],
+        )
+        self.assertEqual(
+            [{"sourceActionId": 420627, "sequenceIndex": 1, "role": "PRIMARY"}],
+            part_break["presentationSources"],
+        )
+        recovery = stage(groggy, "GROGGY")
+        self.assertEqual(6833, recovery["durationMs"])
+        self.assertEqual("GROGGY", recovery["stageKind"])
+        self.assertEqual(
+            "DESTROY_FIRST_ELIGIBLE", recovery["partDamagePolicy"]
+        )
+        self.assertEqual(
+            expected_clips,
+            [
+                row["clip"]
+                for row in recovery["animation"]["occurrences"]
+            ],
+        )
+        self.assertEqual(
+            [1833, 1333, 1333, 334, 2000],
+            [row["playMs"] for row in recovery["animation"]["occurrences"]],
+        )
+
+        gameplay, presentation = pipeline.split_v2_authoring(
+            self.master,
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        rejoined = pipeline.join_v2_authoring(
+            gameplay,
+            presentation,
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        pipeline.validate_manual_audition_animation_lineage(
+            rejoined,
+            pipeline.read_json(ROOT / pipeline.DEBUG_PRESENTATION_REL),
+            pipeline.read_json(ROOT / pipeline.ANIMATION_PROMOTION_MANIFEST_REL),
+            repository_root=ROOT,
+        )
+
+    def test_existing_sequence_append_can_be_removed_with_its_provenance(self) -> None:
+        owner = self.ground_roar_with_420617_append()
+        original = pattern(owner, "VALTAN_GROUND_ROAR")
+        original_stage = stage(original, "STEP_01")
+        self.assertEqual(
+            [400440, 400425, 420617], original["sourceActionIds"]
+        )
+        self.assertEqual(7, len(original_stage["animation"]["occurrences"]))
+
+        candidate = self.patch(
+            [
+                {
+                    "op": "SET_STAGE_ANIMATION",
+                    "patternId": "VALTAN_GROUND_ROAR",
+                    "stageId": "STEP_01",
+                    "animation": {
+                        "endPolicy": "HOLD_LAST_POSE",
+                        "repeatCount": 1,
+                        "occurrences": copy.deepcopy(
+                            original_stage["animation"]["occurrences"][:2]
+                        ),
+                    },
+                }
+            ],
+            owner,
+        )
+        ground_roar = pattern(candidate, "VALTAN_GROUND_ROAR")
+        self.assertEqual([400440, 400425], ground_roar["sourceActionIds"])
+        self.assertEqual(
+            [
+                {
+                    "sourceActionId": 400440,
+                    "sequenceIndex": 0,
+                    "role": "PRIMARY",
+                },
+                {
+                    "sourceActionId": 400425,
+                    "sequenceIndex": 0,
+                    "role": "REFERENCE_400425_0",
+                },
+            ],
+            ground_roar["presentationSources"],
+        )
+        self.assertEqual(
+            [
+                "mesh_att_battle_11_01",
+                "mesh_att_battle_5_01_end",
+            ],
+            [
+                occurrence["clip"]
+                for occurrence in stage(ground_roar, "STEP_01")["animation"][
+                    "occurrences"
+                ]
+            ],
+        )
+        self.assertEqual(
+            "SOURCE_REVIEWED_DELTA",
+            stage(ground_roar, "STEP_01")["animation"]["occurrences"][0][
+                "mappingBasis"
+            ],
+        )
+
+        gameplay, presentation = pipeline.split_v2_authoring(
+            candidate,
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        rejoined = pipeline.join_v2_authoring(
+            gameplay,
+            presentation,
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        pipeline.validate_manual_audition_animation_lineage(
+            rejoined,
+            pipeline.read_json(ROOT / pipeline.DEBUG_PRESENTATION_REL),
+            pipeline.read_json(ROOT / pipeline.ANIMATION_PROMOTION_MANIFEST_REL),
+            repository_root=ROOT,
+        )
+
+    def test_partial_sequence_append_removal_keeps_ordered_slice_provenance(self) -> None:
+        owner = self.ground_roar_with_420617_append()
+        original = pattern(owner, "VALTAN_GROUND_ROAR")
+        original_occurrences = stage(original, "STEP_01")["animation"][
+            "occurrences"
+        ]
+        candidate = self.patch(
+            [
+                {
+                    "op": "SET_STAGE_ANIMATION",
+                    "patternId": "VALTAN_GROUND_ROAR",
+                    "stageId": "STEP_01",
+                    "animation": {
+                        "endPolicy": "HOLD_LAST_POSE",
+                        "repeatCount": 1,
+                        "occurrences": copy.deepcopy(original_occurrences[:-1]),
+                    },
+                }
+            ],
+            owner,
+        )
+        ground_roar = pattern(candidate, "VALTAN_GROUND_ROAR")
+        self.assertEqual(
+            [400440, 400425, 420617], ground_roar["sourceActionIds"]
+        )
+        self.assertEqual(3, len(ground_roar["presentationSources"]))
+
+        gameplay, presentation = pipeline.split_v2_authoring(
+            candidate,
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        rejoined = pipeline.join_v2_authoring(
+            gameplay,
+            presentation,
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        pipeline.validate_manual_audition_animation_lineage(
+            rejoined,
+            pipeline.read_json(ROOT / pipeline.DEBUG_PRESENTATION_REL),
+            pipeline.read_json(
+                ROOT / pipeline.ANIMATION_PROMOTION_MANIFEST_REL
+            ),
+            repository_root=ROOT,
+        )
+
+    def ground_roar_with_420617_append(self) -> dict:
+        owner = copy.deepcopy(self.master)
+        ground_roar = pattern(owner, "VALTAN_GROUND_ROAR")
+        ground_roar["sourceActionIds"].append(420617)
+        ground_roar["presentationSources"].append(
+            {
+                "sourceActionId": 420617,
+                "sequenceIndex": 1,
+                "role": "REFERENCE_420617_1",
+            }
+        )
+        ground_roar_stage = stage(ground_roar, "STEP_01")
+        ground_roar_stage["durationMs"] += 10000
+        appended = self.sequence_420617_animation()["occurrences"]
+        original_occurrences = copy.deepcopy(
+            ground_roar_stage["animation"]["occurrences"]
+        )
+        for index, occurrence in enumerate(
+            appended, len(original_occurrences) + 1
+        ):
+            occurrence["clipOccurrenceId"] = (
+                f"valtan.sequence.sequence.400440.0.step-01.composition.clip-{index:02d}"
+            )
+        ground_roar_stage["animation"] = {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+                *original_occurrences,
+                *appended,
+            ],
+        }
+        return owner
 
     @staticmethod
     def authored_animation() -> dict:
@@ -118,6 +735,8 @@ class ValtanManualStageAuthoringContractTests(unittest.TestCase):
                 "enabled": True,
                 "successStageId": "STEP_03",
                 "successActionId": "valtan.sequence.charge.step-03",
+                "timeoutStageId": "STEP_02",
+                "timeoutActionId": "valtan.sequence.charge.step-02",
             },
         ]
 

@@ -180,6 +180,31 @@ namespace
 		return Out;
 	}
 
+	bool_t ReadSixPizzaParticleLocalSpace(
+		const DATA_JSON_VALUE& Root,
+		const std::string_view ElementId)
+	{
+		const DATA_JSON_VALUE& Elements = RequireJsonField(
+			Root, "elements", DATA_JSON_TYPE::ARRAY);
+		const auto Found = std::find_if(
+			Elements.Get_Array().begin(), Elements.Get_Array().end(),
+			[ElementId](const DATA_JSON_VALUE& Element)
+			{
+				const DATA_JSON_VALUE* const pId = Element.Find("id");
+				return nullptr != pId && pId->Is_String() &&
+					pId->Get_String() == ElementId;
+			});
+		Require(Elements.Get_Array().end() != Found,
+			(std::string("six-pizza composite lost static sector: ") +
+				std::string(ElementId)).c_str());
+		const DATA_JSON_VALUE& Detail = RequireJsonField(
+			*Found, "detail", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE& Particle = RequireJsonField(
+			Detail, "particle", DATA_JSON_TYPE::OBJECT);
+		return RequireJsonField(
+			Particle, "localSpace", DATA_JSON_TYPE::BOOLEAN).Get_Boolean();
+	}
+
 	bool_t MatrixNearlyEquals(
 		const float4x4_t& Left,
 		const float4x4_t& Right,
@@ -216,7 +241,7 @@ namespace
 		return Out;
 	}
 
-	void VerifySixPizzaArenaFacingRoot()
+	void VerifySixPizzaArenaTargetFollowRoot()
 	{
 		VALTAN_PATTERN_TREE_VIEW View;
 		std::string Status;
@@ -240,10 +265,10 @@ namespace
 		const VALTAN_PATTERN_VIEW* const pPizza = FindPattern();
 		Require(nullptr != pPizza && pPizza->ServerMotion.has_value() &&
 			pPizza->strTargetPolicy == "LOCK_RANDOM_ALIVE_ON_START" &&
-			pPizza->strAimPolicy == "LOCK_FACING_ON_START" &&
+			pPizza->strAimPolicy == "TRACK_TARGET_EACH_TICK" &&
 			pPizza->ServerMotion->strKind == "LEAP_TO_ANCHOR" &&
 			pPizza->ServerMotion->bMoveToAnchorBeforeTakeoff,
-			"six-pizza canonical pattern lost its locked arena-facing authority");
+			"six-pizza canonical pattern lost its locked-target tick-facing authority");
 
 		const VALTAN_PRODUCT_EFFECT_CUE_VIEW* pCompositeCue = nullptr;
 		for (const VALTAN_STAGE_VIEW& Stage : pPizza->Stages)
@@ -261,8 +286,8 @@ namespace
 			}
 		}
 		Require(nullptr != pCompositeCue &&
-			pCompositeCue->strAnchorSlotId == "arena.center.facing" &&
-			pCompositeCue->eFollowPolicy == EFFECT_FOLLOW_POLICY::SNAPSHOT &&
+			pCompositeCue->strAnchorSlotId == "arena.center.target-follow" &&
+			pCompositeCue->eFollowPolicy == EFFECT_FOLLOW_POLICY::FOLLOW &&
 			pCompositeCue->eScalePolicy ==
 				VALTAN_PATTERN_EFFECT_SCALE_POLICY::GAMEPLAY_FOOTPRINT &&
 			pCompositeCue->vWorldScale.x == 1.5f &&
@@ -277,43 +302,56 @@ namespace
 			pCompositeCue->LocalTransform.vScale.x == 1.f &&
 			pCompositeCue->LocalTransform.vScale.y == 1.f &&
 			pCompositeCue->LocalTransform.vScale.z == 1.f,
-			"six-pizza composite cue did not retain its fixed center-facing root");
+			"six-pizza composite cue did not retain its center target-follow root");
 
 		const float3_t ArenaCenter{
 			pPizza->ServerMotion->LandingPosition[0],
 			pPizza->ServerMotion->LandingPosition[1],
 			pPizza->ServerMotion->LandingPosition[2] };
-		const float3_t LockedTarget{
+		const float3_t FirstTickTarget{
 			ArenaCenter.x + 12.f, ArenaCenter.y, ArenaCenter.z - 7.f };
-		const f32_t fLockedYawDegrees = std::atan2(
-			LockedTarget.x - ArenaCenter.x,
-			LockedTarget.z - ArenaCenter.z) *
-			(180.f / 3.14159265358979323846f);
-		float4x4_t ArenaAnchor{};
+		const float3_t SecondTickTarget{
+			ArenaCenter.x - 5.f, ArenaCenter.y, ArenaCenter.z + 16.f };
+		const auto TargetYaw = [&ArenaCenter](const float3_t& Target)
+		{
+			return std::atan2(
+				Target.x - ArenaCenter.x,
+				Target.z - ArenaCenter.z) *
+				(180.f / 3.14159265358979323846f);
+		};
+		const f32_t fFirstTickYawDegrees = TargetYaw(FirstTickTarget);
+		const f32_t fSecondTickYawDegrees = TargetYaw(SecondTickTarget);
+		float4x4_t FirstTickAnchor{};
 		Require(CValtanPatternEffectCueDocument::Try_BuildArenaCenterAnchor(
 			pCompositeCue->strAnchorSlotId, ArenaCenter,
-			fLockedYawDegrees, ArenaAnchor),
-			"runtime rejected the admitted six-pizza arena-facing anchor");
-		const f32_t fRootYawDegrees = std::atan2(
-			ArenaAnchor._31, ArenaAnchor._33) *
+			fFirstTickYawDegrees, FirstTickAnchor),
+			"runtime rejected the first admitted six-pizza target-follow yaw");
+		float4x4_t SecondTickAnchor{};
+		Require(CValtanPatternEffectCueDocument::Try_BuildArenaCenterAnchor(
+			pCompositeCue->strAnchorSlotId, ArenaCenter,
+			fSecondTickYawDegrees, SecondTickAnchor),
+			"runtime rejected the second admitted six-pizza target-follow yaw");
+		const f32_t fSecondRootYawDegrees = std::atan2(
+			SecondTickAnchor._31, SecondTickAnchor._33) *
 			(180.f / 3.14159265358979323846f);
 		Require(std::abs(std::remainder(
-			fRootYawDegrees - fLockedYawDegrees, 360.f)) < 0.001f &&
-			std::abs(ArenaAnchor._41 - ArenaCenter.x) < 0.0001f &&
-			std::abs(ArenaAnchor._42 - ArenaCenter.y) < 0.0001f &&
-			std::abs(ArenaAnchor._43 - ArenaCenter.z) < 0.0001f,
-			"arena.center.facing did not use the Server-locked landing-to-target yaw");
+			fSecondRootYawDegrees - fSecondTickYawDegrees, 360.f)) < 0.001f &&
+			std::abs(SecondTickAnchor._41 - ArenaCenter.x) < 0.0001f &&
+			std::abs(SecondTickAnchor._42 - ArenaCenter.y) < 0.0001f &&
+			std::abs(SecondTickAnchor._43 - ArenaCenter.z) < 0.0001f &&
+			!MatrixNearlyEquals(FirstTickAnchor, SecondTickAnchor),
+			"arena.center.target-follow did not rotate at the fixed center on tick two");
 
-		float4x4_t Preserved = ArenaAnchor;
+		float4x4_t Preserved = SecondTickAnchor;
 		const float4x4_t Baseline = Preserved;
 		Require(!CValtanPatternEffectCueDocument::Try_BuildArenaCenterAnchor(
-			"arena.center.unknown", ArenaCenter, fLockedYawDegrees, Preserved) &&
+			"arena.center.unknown", ArenaCenter, fSecondTickYawDegrees, Preserved) &&
 			MatrixNearlyEquals(Preserved, Baseline, 0.f) &&
 			!CValtanPatternEffectCueDocument::Try_BuildArenaCenterAnchor(
-				"arena.center.facing", ArenaCenter,
+				"arena.center.target-follow", ArenaCenter,
 				(std::numeric_limits<f32_t>::quiet_NaN)(), Preserved) &&
 			MatrixNearlyEquals(Preserved, Baseline, 0.f),
-			"invalid arena-facing input replaced the previously admitted root");
+			"invalid target-follow yaw replaced the previously admitted root matrix");
 
 		const std::filesystem::path EffectPath = CProjectDataRoot::Resolve(
 			std::filesystem::path(L"Effects") / L"Authored" /
@@ -332,34 +370,77 @@ namespace
 			"authored.copy.requested.20260827.terrain-3.landing.01.1");
 		const SIX_PIZZA_ELEMENT_EVIDENCE Sector = ReadSixPizzaElement(
 			EffectRoot, "requested.20260827.six-pizza.sector.yellow-05");
+		const SIX_PIZZA_ELEMENT_EVIDENCE MirroredSector = ReadSixPizzaElement(
+			EffectRoot,
+			"authored.copy.authored.copy.authored.copy.sprite_particle_8.1.1.1");
+		const SIX_PIZZA_ELEMENT_EVIDENCE LateSector = ReadSixPizzaElement(
+			EffectRoot,
+			"authored.copy.authored.copy.authored.copy.authored.copy."
+			"sprite_particle_8.1.1.1.1");
 		const SIX_PIZZA_ELEMENT_EVIDENCE Finale = ReadSixPizzaElement(
 			EffectRoot,
 			"authored.copy.authored.copy.whirlwind.mesh.10.cyan.phase000.2.1");
 		Require(Landing.fStartDelaySeconds > 5.f &&
 			Sector.fStartDelaySeconds > Landing.fStartDelaySeconds &&
-			Finale.fStartDelaySeconds > Sector.fStartDelaySeconds,
+			MirroredSector.fStartDelaySeconds == Sector.fStartDelaySeconds &&
+			LateSector.fStartDelaySeconds > Sector.fStartDelaySeconds &&
+			Finale.fStartDelaySeconds > LateSector.fStartDelaySeconds,
 			"six-pizza composite no longer contains ordered late-root elements");
+		Require(ReadSixPizzaParticleLocalSpace(
+				EffectRoot, "requested.20260827.six-pizza.sector.yellow-05") &&
+			ReadSixPizzaParticleLocalSpace(EffectRoot,
+				"authored.copy.authored.copy.authored.copy.sprite_particle_8.1.1.1") &&
+			ReadSixPizzaParticleLocalSpace(EffectRoot,
+				"authored.copy.authored.copy.authored.copy.authored.copy."
+				"sprite_particle_8.1.1.1.1"),
+			"all three static six-pizza sectors must inherit the mutable root");
 
-		float4x4_t CueRoot{};
-		DirectX::XMStoreFloat4x4(&CueRoot,
-			DirectX::XMMatrixScaling(
-				pCompositeCue->vWorldScale.x,
-				pCompositeCue->vWorldScale.y,
-				pCompositeCue->vWorldScale.z) *
-			DirectX::XMLoadFloat4x4(&ArenaAnchor));
+		struct ROOT_TICK_EVIDENCE final
+		{
+			uint64_t iWorldRootHandle = 0u;
+			float4x4_t CueRoot{};
+		};
+		const auto BuildCueRoot = [pCompositeCue](const float4x4_t& Anchor)
+		{
+			float4x4_t Root{};
+			DirectX::XMStoreFloat4x4(&Root,
+				DirectX::XMMatrixScaling(
+					pCompositeCue->vWorldScale.x,
+					pCompositeCue->vWorldScale.y,
+					pCompositeCue->vWorldScale.z) *
+				DirectX::XMLoadFloat4x4(&Anchor));
+			return Root;
+		};
+		constexpr uint64_t SHARED_WORLD_ROOT_HANDLE = 77u;
+		const ROOT_TICK_EVIDENCE FirstTickRoot{
+			SHARED_WORLD_ROOT_HANDLE, BuildCueRoot(FirstTickAnchor) };
+		const ROOT_TICK_EVIDENCE SecondTickRoot{
+			SHARED_WORLD_ROOT_HANDLE, BuildCueRoot(SecondTickAnchor) };
+		Require(FirstTickRoot.iWorldRootHandle ==
+				SecondTickRoot.iWorldRootHandle &&
+			!MatrixNearlyEquals(FirstTickRoot.CueRoot, SecondTickRoot.CueRoot),
+			"two Server yaw ticks did not update one shared world-root handle");
 		const float4x4_t LandingWorld = ComposeElementWorld(
-			Landing.LocalTransform, CueRoot);
-		Require(MatrixNearlyEquals(LandingWorld, CueRoot),
-			"late landing element did not preserve the shared fixed cue root");
+			Landing.LocalTransform, FirstTickRoot.CueRoot);
+		Require(MatrixNearlyEquals(LandingWorld, FirstTickRoot.CueRoot),
+			"initial landing element did not use the shared composite root");
 		const float4x4_t SectorWorld = ComposeElementWorld(
-			Sector.LocalTransform, CueRoot);
+			Sector.LocalTransform, SecondTickRoot.CueRoot);
+		const float4x4_t MirroredSectorWorld = ComposeElementWorld(
+			MirroredSector.LocalTransform, SecondTickRoot.CueRoot);
+		const float4x4_t LateSectorWorld = ComposeElementWorld(
+			LateSector.LocalTransform, SecondTickRoot.CueRoot);
 		const float4x4_t FinaleWorld = ComposeElementWorld(
-			Finale.LocalTransform, CueRoot);
+			Finale.LocalTransform, SecondTickRoot.CueRoot);
 		Require(std::isfinite(SectorWorld._41) &&
 			std::isfinite(SectorWorld._43) &&
+			std::isfinite(MirroredSectorWorld._41) &&
+			std::isfinite(MirroredSectorWorld._43) &&
+			std::isfinite(LateSectorWorld._41) &&
+			std::isfinite(LateSectorWorld._43) &&
 			std::isfinite(FinaleWorld._41) &&
 			std::isfinite(FinaleWorld._43),
-			"late six-pizza elements did not compose under the shared cue root");
+			"late six-pizza elements did not compose under the updated shared root");
 	}
 
 	void VerifyCanonicalGraphInventoryAndFlow()
@@ -375,6 +456,65 @@ namespace
 		AppendPatterns(View.Rotation, Patterns);
 		Require(!Patterns.empty() && Patterns.size() == View.Get_PatternCount(),
 			"canonical graph pattern count does not match its stable-ID closure");
+		std::size_t iCrossPatternBranchCount = 0u;
+		for (const auto& [PatternId, pPattern] : Patterns)
+		{
+			for (const VALTAN_STAGE_VIEW& Stage : pPattern->Stages)
+			{
+				for (const VALTAN_STAGE_BRANCH_VIEW& Branch : Stage.Branches)
+				{
+					if (!Branch.strNextPatternId.has_value())
+						continue;
+					++iCrossPatternBranchCount;
+					Require(!Branch.strNextActionId.has_value() &&
+						Patterns.contains(*Branch.strNextPatternId),
+						"canonical cross-Pattern branch is ambiguous or dangling");
+				}
+			}
+		}
+		Require(iCrossPatternBranchCount >= 3u,
+			"canonical graph did not preserve the dash/groggy/part-break Pattern boundaries");
+		const auto RequireCrossTarget = [&Patterns](
+			const char* const pPatternId, const char* const pStageId,
+			const char* const pOutcome, const char* const pTargetPatternId)
+		{
+			const VALTAN_PATTERN_VIEW& Pattern = *Patterns.at(pPatternId);
+			const auto Stage = std::find_if(
+				Pattern.Stages.begin(), Pattern.Stages.end(),
+				[pStageId](const VALTAN_STAGE_VIEW& Candidate)
+				{ return Candidate.strStageId == pStageId; });
+			Require(Stage != Pattern.Stages.end(),
+				"canonical cross-Pattern source Stage is missing");
+			const auto Branch = std::find_if(
+				Stage->Branches.begin(), Stage->Branches.end(),
+				[pOutcome](const VALTAN_STAGE_BRANCH_VIEW& Candidate)
+				{ return Candidate.strOutcome == pOutcome; });
+			Require(Branch != Stage->Branches.end() &&
+				!Branch->strNextActionId.has_value() &&
+				Branch->strNextPatternId.has_value() &&
+				*Branch->strNextPatternId == pTargetPatternId,
+				"canonical cross-Pattern branch target drifted");
+		};
+		RequireCrossTarget(
+			"VALTAN_DASH_CHARGE", "CHARGE", "WALL_CONTACT",
+			"VALTAN_DASH_CHARGE_GROGGY");
+		RequireCrossTarget(
+			"VALTAN_DASH_CHARGE", "CHARGE", "TIMEOUT",
+			"VALTAN_DASH_CHARGE_GROGGY");
+		RequireCrossTarget(
+			"VALTAN_DASH_CHARGE_GROGGY", "GROGGY", "PART_DESTROYED",
+			"VALTAN_PART_BREAK");
+		std::vector<const VALTAN_STAGE_VIEW*> DashWallBoundaryPath;
+		if (!CValtanPatternTree::Build_PreviewStagePath(
+				*Patterns.at("VALTAN_DASH_CHARGE"),
+				VALTAN_PATTERN_PREVIEW_PATH::WALL_GROGGY,
+				DashWallBoundaryPath, Status))
+		{
+			throw std::runtime_error(Status);
+		}
+		Require(!DashWallBoundaryPath.empty() &&
+			"CHARGE" == DashWallBoundaryPath.back()->strStageId,
+			"local dash preview did not stop cleanly at its cross-Pattern boundary");
 		std::set<std::string, std::less<>> ManagedPatternIds;
 		std::set<std::string, std::less<>> ReferencePatternIds;
 		for (const auto& [PatternId, pPattern] : Patterns)
@@ -451,12 +591,36 @@ namespace
 			Require(Skeleton.bAuthoringMasterManaged &&
 				Skeleton.bManualServerAudition &&
 				"DERIVED_SERVER_PATTERN" == Skeleton.strAdmissionState &&
-				iExpectedStageCount == Skeleton.Stages.size() &&
-				std::all_of(Skeleton.Stages.begin(), Skeleton.Stages.end(),
-					[](const VALTAN_STAGE_VIEW& Stage)
-					{ return Stage.bSuppressAnimation; }),
-				"animationless authoring skeleton lost its derived NONE contract");
+				iExpectedStageCount == Skeleton.Stages.size(),
+				"status-pattern authoring row lost its derived Product contract");
 		}
+		const auto ClipNames = [](const VALTAN_STAGE_VIEW& Stage)
+		{
+			std::vector<std::string> Names;
+			Names.reserve(Stage.ClipOccurrences.size());
+			for (const VALTAN_CLIP_OCCURRENCE_VIEW& Occurrence : Stage.ClipOccurrences)
+				Names.push_back(Occurrence.strClipName);
+			return Names;
+		};
+		const VALTAN_PATTERN_VIEW& Stagger = *Patterns.at("VALTAN_STAGGER_SLOT");
+		const VALTAN_PATTERN_VIEW& Bind = *Patterns.at("VALTAN_BIND_SLOT");
+		const VALTAN_PATTERN_VIEW& Silence = *Patterns.at("VALTAN_SILENCE_SLOT");
+		Require(Stagger.Stages[0].bSuppressAnimation &&
+			!Stagger.Stages[1].bSuppressAnimation &&
+			Stagger.Stages[2].bSuppressAnimation &&
+			ClipNames(Stagger.Stages[1]) == std::vector<std::string>{
+				"mesh_abn_groggy_1_start", "mesh_abn_groggy_1_loop",
+				"mesh_abn_groggy_1_loop", "mesh_abn_groggy_1_loop",
+				"mesh_abn_groggy_1_end" } &&
+			!Bind.Stages[0].bSuppressAnimation &&
+			ClipNames(Bind.Stages[0]) == std::vector<std::string>{
+				"mesh_att_battle_5_01_start", "mesh_att_battle_5_01_loop",
+				"mesh_att_battle_5_01_loop", "mesh_att_battle_5_01_loop",
+				"mesh_att_battle_5_01_end" } &&
+			!Silence.Stages[0].bSuppressAnimation &&
+			ClipNames(Silence.Stages[0]) == std::vector<std::string>{
+				"mesh_evt1_att_battle_5_01_end" },
+			"status-pattern NONE and saved animation occurrence contract drifted");
 		std::vector<std::string> AdmittedPatternIds;
 		AdmittedPatternIds.reserve(Inventory.Get_PatternCount());
 
@@ -502,29 +666,40 @@ namespace
 			"Next inventory does not close over the Complete Play inventory");
 
 		CValtanPatternFlowDocument FlowDocument;
-		if (!FlowDocument.Load(AdmittedPatternIds, Status))
+		if (!FlowDocument.Load_CanonicalSequence(
+				View.strScriptedSequenceId,
+				View.strScriptedSequenceMode,
+				View.iScriptedSequenceInterStepPursuitMs,
+				View.ScriptedSequencePatternIds,
+				AdmittedPatternIds, Status))
 			throw std::runtime_error(Status);
 		Require(FlowDocument.Is_Ready(),
-			"saved Flow did not enter the ready state");
+			"canonical sequence adapter did not enter the ready state");
 		const VALTAN_PATTERN_FLOW_DEFINITION* const pFlow =
 			FlowDocument.Get_DefaultFlow();
 		Require(nullptr != pFlow && !pFlow->Slots.empty(),
-			"default saved Flow has no selectable slots");
-		Require(View.strSavedFlowSourceRevision ==
-			FlowDocument.Get_SourceRevision(),
-			"canonical graph and saved Flow revisions do not exact-join");
+			"canonical sequence adapter has no selectable slots");
+		Require(pFlow->Slots.size() ==
+				View.ScriptedSequencePatternIds.size() &&
+			std::equal(
+				pFlow->Slots.begin(), pFlow->Slots.end(),
+				View.ScriptedSequencePatternIds.begin(),
+				[](const VALTAN_PATTERN_FLOW_SLOT& Slot,
+					const std::string& PatternId)
+				{ return Slot.strPatternId == PatternId; }),
+			"canonical sequence adapter drifted from gameplay order");
 
 		std::set<std::string, std::less<>> SlotIds;
-		std::cout << "Saved Flow: " << pFlow->strFlowId << " slots=" <<
+		std::cout << "Canonical sequence adapter: " << pFlow->strFlowId << " slots=" <<
 			pFlow->Slots.size() << " interStepPursuitMs=" <<
 			pFlow->iInterStepPursuitMs << '\n';
 		for (const VALTAN_PATTERN_FLOW_SLOT& Slot : pFlow->Slots)
 		{
 			Require(!Slot.strSlotId.empty() &&
 				SlotIds.insert(Slot.strSlotId).second,
-				"saved Flow contains an empty or duplicate slot ID");
+				"canonical sequence contains an empty or duplicate projected slot ID");
 			Require(Inventory.Contains(Slot.strPatternId),
-				"saved Flow slot is unavailable in Complete Play inventory");
+				"canonical sequence Pattern is unavailable in Complete Play inventory");
 			std::cout << "  " << Slot.strSlotId << " -> " <<
 				Slot.strPatternId << " [available]\n";
 		}
@@ -533,44 +708,43 @@ namespace
 	void VerifyFlowDocumentV2AuthoringContract()
 	{
 		std::string Status;
-		std::ifstream Input(
-			CValtanPatternFlowDocument::Resolve_Path(), std::ios::binary);
-		Require(static_cast<bool_t>(Input),
-			"v2 Flow contract could not open its authoring document");
-		const std::string Source{
-			std::istreambuf_iterator<char>(Input),
-			std::istreambuf_iterator<char>() };
-		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT ParsedSource;
-		Require(CValtanPatternFlowDocument::Parse_Text(
-			Source, ParsedSource, Status),
-			"v2 Flow contract could not parse its authoring document");
-		std::vector<std::string> AdmittedPatternIds;
-		std::set<std::string, std::less<>> AdmittedSet;
-		for (const VALTAN_PATTERN_FLOW_NODE& Node :
-			ParsedSource.Flows.front().Nodes)
-		{
-			if (AdmittedSet.insert(Node.strPatternId).second)
-				AdmittedPatternIds.push_back(Node.strPatternId);
-		}
-		if (AdmittedSet.insert("VALTAN_ENTRANCE_CINEMATIC").second)
-			AdmittedPatternIds.push_back("VALTAN_ENTRANCE_CINEMATIC");
+		const std::vector<std::string> SequencePatternIds{
+			"VALTAN_WHIRLWIND", "VALTAN_DASH_CHARGE",
+			"VALTAN_DASH_CHARGE", "VALTAN_FOUR_SLASH",
+			"VALTAN_HIGH_JUMP", "VALTAN_COUNTER",
+			"VALTAN_WARP", "VALTAN_TRASH" };
+		std::vector<std::string> AdmittedPatternIds = SequencePatternIds;
+		std::sort(AdmittedPatternIds.begin(), AdmittedPatternIds.end());
+		AdmittedPatternIds.erase(std::unique(
+			AdmittedPatternIds.begin(), AdmittedPatternIds.end()),
+			AdmittedPatternIds.end());
+		AdmittedPatternIds.push_back("VALTAN_ENTRANCE_CINEMATIC");
 
 		CValtanPatternFlowDocument Document;
-		Require(Document.Load(AdmittedPatternIds, Status),
-			"v2 Flow document did not load");
+		Require(Document.Load_CanonicalSequence(
+				"sequence.valtan.server-authored.v1",
+				"ORDERED_ONCE_THEN_IDLE", 1000u,
+				SequencePatternIds, AdmittedPatternIds, Status),
+			"canonical sequence adapter did not load");
 		const VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT Canonical =
 			Document.Get_Draft();
 		Require(2u == Canonical.iFormatVersion && 1u == Canonical.Flows.size(),
-			"v2 Flow header was not admitted");
+			"canonical sequence adapter header was not admitted");
 		const VALTAN_PATTERN_FLOW_DEFINITION& Flow = Canonical.Flows.front();
-		Require(29u == Flow.Nodes.size() && 28u == Flow.Edges.size() &&
-			41u == Flow.iNextNodeOrdinal && 29u == Flow.iNextEdgeOrdinal &&
+		Require(Flow.Nodes.size() == SequencePatternIds.size() &&
+			Flow.Edges.size() + 1u == Flow.Nodes.size() &&
 			255u == Flow.iMaxTransitionsPerRun &&
-			Flow.strEntryNodeId == Flow.Nodes.front().strNodeId,
-			"v1 stable slots were not preserved as the 29 v2 nodes");
+			Flow.strEntryNodeId == Flow.Nodes.front().strNodeId &&
+			std::equal(
+				Flow.Nodes.begin(), Flow.Nodes.end(),
+				SequencePatternIds.begin(),
+				[](const VALTAN_PATTERN_FLOW_NODE& Node,
+					const std::string& PatternId)
+				{ return Node.strPatternId == PatternId; }),
+			"canonical sequence adapter changed order or topology");
 		Require(CValtanPatternFlowDocument::Has_LegacyLinearProjection(Flow) &&
 			Flow.Slots.size() == Flow.Nodes.size(),
-			"acyclic v2 Flow did not expose the bounded legacy projection");
+			"canonical sequence adapter did not expose its ordered projection");
 		for (const VALTAN_PATTERN_FLOW_NODE& Node : Flow.Nodes)
 			Require(0u == Node.iWatchdogMs,
 				"migrated v2 node unexpectedly enabled a watchdog");
@@ -632,7 +806,7 @@ namespace
 			BoundedCycle, AdmittedPatternIds, Status),
 			"v2 Flow rejected a finite cycle-closing back-edge");
 		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT PrematureWatchdog = BoundedCycle;
-		PrematureWatchdog.Flows.front().iMaxTransitionsPerRun = 80u;
+		PrematureWatchdog.Flows.front().iMaxTransitionsPerRun = 5u;
 		Reject(PrematureWatchdog,
 			"v2 Flow admitted a transition watchdog before its authored terminal");
 
@@ -648,7 +822,7 @@ namespace
 			"v2 Flow admitted an entrance cinematic outside entryNodeId");
 
 		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT BadOrdinal = Canonical;
-		BadOrdinal.Flows.front().iNextNodeOrdinal = 40u;
+		BadOrdinal.Flows.front().iNextNodeOrdinal = 8u;
 		Reject(BadOrdinal, "v2 Flow admitted a reused node ordinal");
 		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT DuplicateOrdinal = Canonical;
 		DuplicateOrdinal.Flows.front().Nodes[1u].strNodeId =
@@ -676,8 +850,11 @@ namespace
 			"watchdog graph remained exposed as a legacy-playable slot projection");
 
 		CValtanPatternFlowDocument GraphEditor;
-		Require(GraphEditor.Load(AdmittedPatternIds, Status),
-			"v2 graph editor contract could not load a clean Flow");
+		Require(GraphEditor.Load_CanonicalSequence(
+				"sequence.valtan.server-authored.v1",
+				"ORDERED_ONCE_THEN_IDLE", 1000u,
+				SequencePatternIds, AdmittedPatternIds, Status),
+			"v2 graph editor contract could not stage the canonical sequence");
 		const VALTAN_PATTERN_FLOW_DEFINITION* EditorFlow =
 			GraphEditor.Get_DefaultFlow();
 		Require(nullptr != EditorFlow && !EditorFlow->Nodes.empty(),
@@ -773,92 +950,6 @@ namespace
 			std::istreambuf_iterator<char>());
 	}
 
-	void VerifyFlowSaveAdmissionExcludesWriter()
-	{
-		const std::filesystem::path FlowPath =
-			CValtanPatternFlowDocument::Resolve_Path();
-		const std::string OriginalBytes = ReadExactBytes(FlowPath);
-		VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT Parsed;
-		std::string Status;
-		Require(CValtanPatternFlowDocument::Parse_Text(
-			OriginalBytes, Parsed, Status),
-			"Flow writer admission oracle could not parse its source");
-		std::vector<std::string> AdmittedPatternIds;
-		std::set<std::string, std::less<>> AdmittedSet;
-		for (const VALTAN_PATTERN_FLOW_NODE& Node : Parsed.Flows.front().Nodes)
-		{
-			if (AdmittedSet.insert(Node.strPatternId).second)
-				AdmittedPatternIds.push_back(Node.strPatternId);
-		}
-		if (AdmittedSet.insert("VALTAN_ENTRANCE_CINEMATIC").second)
-			AdmittedPatternIds.push_back("VALTAN_ENTRANCE_CINEMATIC");
-
-		CValtanPatternFlowDocument Document;
-		Require(Document.Load(AdmittedPatternIds, Status),
-			"Flow writer admission oracle could not load its source");
-		const std::uint32_t ChangedPursuit =
-			Parsed.Flows.front().iDefaultPursuitMs == 1000u ? 1100u : 1000u;
-		Require(Document.Set_InterStepPursuitMs(ChangedPursuit, Status) &&
-			Document.Is_Dirty(),
-			"Flow writer admission oracle could not stage a draft mutation");
-
-		const std::filesystem::path LockPath =
-			CProjectDataRoot::Get().parent_path() /
-			L"out\\ValtanPatternTransactions\\create-pattern.lock";
-		HANDLE hWriter = CreateFileW(
-			LockPath.c_str(), GENERIC_READ | GENERIC_WRITE,
-			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-			nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-		Require(INVALID_HANDLE_VALUE != hWriter,
-			"Flow writer admission oracle could not open canonical lock");
-		OVERLAPPED WriterOverlap{};
-		bool_t bLocked = false;
-		try
-		{
-			LARGE_INTEGER Size{};
-			Require(FALSE != GetFileSizeEx(hWriter, &Size),
-				"Flow writer admission oracle could not query lock size");
-			if (Size.QuadPart < 1)
-			{
-				const char Byte = '\0';
-				DWORD Written = 0u;
-				LARGE_INTEGER Begin{};
-				Require(FALSE != SetFilePointerEx(
-					hWriter, Begin, nullptr, FILE_BEGIN) &&
-					FALSE != WriteFile(
-						hWriter, &Byte, 1u, &Written, nullptr) &&
-					1u == Written && FALSE != FlushFileBuffers(hWriter),
-					"Flow writer admission oracle could not initialize lock");
-			}
-			Require(FALSE != LockFileEx(
-				hWriter,
-				LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY,
-				0u, 1u, 0u, &WriterOverlap),
-				"Flow writer admission oracle could not acquire canonical lock");
-			bLocked = true;
-
-			Require(!Document.Save(AdmittedPatternIds, Status) &&
-				std::string::npos != Status.find("Save rejected before mutation") &&
-				Document.Is_Dirty(),
-				"Flow Save did not fail closed while another writer owned admission");
-			Require(OriginalBytes == ReadExactBytes(FlowPath),
-				"Flow Save changed source bytes while writer admission was denied");
-
-			Require(FALSE != UnlockFileEx(
-				hWriter, 0u, 1u, 0u, &WriterOverlap),
-				"Flow writer admission oracle could not release canonical lock");
-			bLocked = false;
-			CloseHandle(hWriter);
-		}
-		catch (...)
-		{
-			if (bLocked)
-				UnlockFileEx(hWriter, 0u, 1u, 0u, &WriterOverlap);
-			CloseHandle(hWriter);
-			throw;
-		}
-	}
-
 	void VerifyCanonicalProductReadAdmissionExcludesWriter()
 	{
 		const std::filesystem::path LockPath =
@@ -928,11 +1019,10 @@ int Run_ValtanCanonicalGraphContractTests()
 	{
 		VerifyFlowDocumentV2AuthoringContract();
 		std::cout << "ValtanPatternFlowDocumentContractTests: PASS\n";
-		VerifyFlowSaveAdmissionExcludesWriter();
 		VerifyCanonicalProductReadAdmissionExcludesWriter();
-		VerifySixPizzaArenaFacingRoot();
+		VerifySixPizzaArenaTargetFollowRoot();
 		VerifyCanonicalGraphInventoryAndFlow();
-		std::cout << "ValtanCanonicalGraphContractTests: 6/6 passed\n";
+		std::cout << "ValtanCanonicalGraphContractTests: 4/4 passed\n";
 		return 0;
 	}
 	catch (const std::exception& Error)

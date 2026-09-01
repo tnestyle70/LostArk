@@ -11,6 +11,7 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -124,6 +125,24 @@ private:
 		std::vector<const VALTAN_PATTERN_VIEW*> Owners;
 	};
 
+	/* Browser navigation never retains a pointer into the immutable canonical
+	   frame view.  The requested Pattern and optional Stage remain stable IDs
+	   until every Composition window has finished rendering and the pending
+	   Save/Discard decision has completed. */
+	struct PENDING_PATTERN_SELECTION final
+	{
+		std::string strPatternId;
+		std::string strStageId;
+	};
+
+	enum class PENDING_PATTERN_SELECTION_DECISION : uint8_t
+	{
+		NONE,
+		SELECT,
+		SAVE_AND_SELECT,
+		DISCARD_AND_SELECT,
+	};
+
 public:
 	CActionCompositionWorkbench(
 		CAnimation_Tool* pAnimationTool,
@@ -156,10 +175,17 @@ private:
 	bool_t Reload_Canonical();
 	bool_t Save_Reload();
 	bool_t Is_PatternSoundDraftDirty(std::string& strOutStatus) const;
+	bool_t Has_UnsavedCompositionDrafts(std::string& strOutStatus) const;
+	bool_t Discard_CompositionDraftsAndReload();
 	bool_t Validate_ManualStageTopologySoundDependencies(
 		const VALTAN_PATTERN_VIEW& CandidatePattern,
 		std::string& strOutStatus) const;
 	void Normalize_Selection();
+	void Request_PatternSelection(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const std::string& strStageId = {});
+	void Render_PendingPatternSelectionModal();
+	void Resolve_PendingPatternSelection();
 	void Select_Pattern(const VALTAN_PATTERN_VIEW& Pattern);
 	void Select_Stage(
 		const VALTAN_PATTERN_VIEW& Pattern,
@@ -167,6 +193,8 @@ private:
 		DETAIL_OWNER eOwner = DETAIL_OWNER::GAMEPLAY_STAGE,
 		const std::string& strStableId = {});
 	const VALTAN_PATTERN_VIEW* Find_SelectedPattern() const;
+	const VALTAN_PATTERN_VIEW* Find_PatternById(
+		const std::string& strPatternId) const;
 	const VALTAN_STAGE_VIEW* Find_SelectedStage(
 		const VALTAN_PATTERN_VIEW* pPattern) const;
 	std::vector<const VALTAN_PATTERN_VIEW*> Collect_Patterns() const;
@@ -219,6 +247,13 @@ private:
 		const std::string& strClipOccurrenceId,
 		std::size_t iTargetIndex,
 		std::string& strOutStatus);
+	bool_t Transfer_AnimationOccurrence(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const VALTAN_STAGE_VIEW& SourceStage,
+		const VALTAN_STAGE_VIEW& TargetStage,
+		const std::string& strClipOccurrenceId,
+		std::size_t iTargetIndex,
+		std::string& strOutStatus);
 	bool_t Duplicate_SelectedTimelineBox(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage,
@@ -228,6 +263,9 @@ private:
 		const VALTAN_STAGE_VIEW& Stage,
 		std::string& strOutStatus);
 	void Refresh_EffectV2LocalPreviewAfterMutation(
+		const VALTAN_PATTERN_VIEW* pPattern,
+		std::string& strInOutStatus);
+	void Refresh_PatternLocalPreviewAfterMutation(
 		const VALTAN_PATTERN_VIEW* pPattern,
 		std::string& strInOutStatus);
 	bool_t Apply_AnimationOccurrenceTiming(
@@ -254,7 +292,7 @@ private:
 		bool_t bMutationAdmitted);
 	void Render_Preview(
 		const VALTAN_PATTERN_VIEW* pPattern,
-		bool_t bMutationAdmitted);
+		bool_t bLocalPreviewAdmitted);
 	void Render_Details(
 		const VALTAN_PATTERN_VIEW* pPattern,
 		const VALTAN_STAGE_VIEW* pStage,
@@ -266,6 +304,7 @@ private:
 		bool_t bMutationAdmitted);
 	void Render_Timeline(
 		const VALTAN_PATTERN_VIEW* pPattern,
+		bool_t bLocalPreviewAdmitted,
 		bool_t bMutationAdmitted,
 		bool_t bPatternMutationAdmitted);
 	void Render_PatternDurationControl(
@@ -313,9 +352,10 @@ private:
 		bool_t bPatternMutationAdmitted);
 	void Render_PreviewWindow(
 		const VALTAN_PATTERN_VIEW* pPattern,
-		bool_t bMutationAdmitted);
+		bool_t bLocalPreviewAdmitted);
 	void Render_SequencerWindow(
 		const VALTAN_PATTERN_VIEW* pPattern,
+		bool_t bLocalPreviewAdmitted,
 		bool_t bMutationAdmitted,
 		bool_t bPatternMutationAdmitted);
 	void Render_DetailsWindow(
@@ -367,6 +407,11 @@ private:
 	ADMISSION_STATE m_eAdmission = ADMISSION_STATE::UNLOADED;
 	DETAIL_OWNER m_eDetailOwner = DETAIL_OWNER::PATTERN;
 	bool_t m_bLoadAttempted = false;
+	/* A publisher owns the canonical byte-range lock only briefly.  A load that
+	   lands in that window must not freeze the Browser at zero rows for the
+	   lifetime of the Workbench; Render retries after the writer releases it. */
+	bool_t m_bCanonicalReloadRetryPending = false;
+	double m_dNextCanonicalReloadRetrySeconds = 0.0;
 	bool_t m_bPatternShakesReady = false;
 	bool_t m_bCombatObjectSoundsReady = false;
 	bool_t m_bResetLayoutRequested = false;
@@ -395,9 +440,12 @@ private:
 	bool_t m_bEffectToolOpenRequested = false;
 	bool_t m_bCameraToolOpenRequested = false;
 	bool_t m_bTimelineTrimActive = false;
+	bool_t m_bTimelineTrimStartEdge = false;
 	std::string m_strTimelineTrimPatternId;
 	std::string m_strTimelineTrimStageId;
 	std::string m_strTimelineTrimStableId;
+	uint32_t m_iTimelineTrimMouseStartMs = 0u;
+	uint32_t m_iTimelineTrimSourceEndpointMs = 0u;
 	bool_t m_bTimelineMoveActive = false;
 	std::string m_strTimelineMovePatternId;
 	std::string m_strTimelineMoveStageId;
@@ -446,7 +494,9 @@ private:
 	std::string m_strAnimationSequenceFilterQuery;
 	bool_t m_bAnimationSequenceFilterDirty = true;
 	bool_t m_bAnimationSequenceLoadAttempted = false;
-	int32_t m_iAnimationSequenceCategory = 0;
+	/* -1 is the authoring-first All view; 0..N map to the semantic category
+	   catalog and remain available as optional quick filters. */
+	int32_t m_iAnimationSequenceCategory = -1;
 	std::string m_strSelectedSequenceStableId;
 	int32_t m_iSelectedSequenceSkillId = -1;
 	int32_t m_iSelectedSequenceIndex = -1;
@@ -457,6 +507,10 @@ private:
 	bool_t m_bAuthoringDraftDirty = false;
 	bool_t m_bPatternSoundDependencyDirty = false;
 	bool_t m_bConfirmDiscardPatternSoundDraft = false;
+	std::optional<PENDING_PATTERN_SELECTION> m_PendingPatternSelection;
+	PENDING_PATTERN_SELECTION_DECISION m_ePendingPatternSelectionDecision =
+		PENDING_PATTERN_SELECTION_DECISION::NONE;
+	bool_t m_bPendingPatternSelectionModalRequested = false;
 	bool_t m_bSavePatternRequested = false;
 	bool_t m_bPatternSaveResultAvailable = false;
 	bool_t m_bPatternSaveSucceeded = false;

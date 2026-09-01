@@ -885,8 +885,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			findPattern("VALTAN_CATCH_BREATH");
 		const BOSS_PATTERN_DEFINITION* dash =
 			findPattern("VALTAN_DASH_CHARGE");
+		const BOSS_PATTERN_DEFINITION* dashGroggyPattern =
+			findPattern("VALTAN_DASH_CHARGE_GROGGY");
 		const BOSS_PATTERN_STAGE_DEFINITION* dashGroggy =
-			findStage(dash, "GROGGY");
+			findStage(dashGroggyPattern, "GROGGY");
 		const BOSS_PATTERN_STAGE_DEFINITION* catchGrab =
 			findStage(catchBreath, "STEP_02");
 		const BOSS_PATTERN_STAGE_DEFINITION* catchRelease =
@@ -932,9 +934,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			nullptr != pizza &&
 			BOSS_PATTERN_TARGET_POLICY::LOCK_RANDOM_ALIVE_ON_START ==
 				pizza->eTargetPolicy &&
-			BOSS_PATTERN_AIM_POLICY::LOCK_FACING_ON_START ==
+			BOSS_PATTERN_AIM_POLICY::TRACK_TARGET_EACH_TICK ==
 				pizza->eAimPolicy,
-			"Load one random six-pizza target and lock its arena-center facing for the whole occurrence");
+			"Load one random six-pizza target and track its arena-center facing for the whole occurrence");
 		tests.Require(
 			nullptr != attackWhirlwind && 4u == attackWhirlwind->Stages.size() &&
 			BOSS_PATTERN_TARGET_POLICY::LOCK_NEAREST_ON_START ==
@@ -986,7 +988,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				0.f, 0u, 0.f),
 			"Load the pre-charge Valtan counter window, frontal counter proxy, and groggy hold release contract");
 		tests.Require(
-			nullptr != dashGroggy &&
+			nullptr != dash && 2u == dash->Stages.size() &&
+			nullptr != dashGroggyPattern && nullptr != dashGroggy &&
+			BOSS_PATTERN_SELECTION::AUDITION_ONLY == dashGroggyPattern->eSelection &&
+			BOSS_PATTERN_TARGET_POLICY::NONE == dashGroggyPattern->eTargetPolicy &&
+			BOSS_PATTERN_AIM_POLICY::NONE == dashGroggyPattern->eAimPolicy &&
+			6833u == dashGroggy->iDurationMs &&
 			BOSS_PATTERN_PART_DAMAGE_POLICY::DESTROY_FIRST_ELIGIBLE ==
 				dashGroggy->ePartDamagePolicy &&
 			hasBossFlagAction(
@@ -995,7 +1002,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			hasBossFlagAction(
 				dashGroggy, BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT,
 				"boss.flag.groggy", 0u),
-			"Load the Dash GROGGY part-damage refinement and its closed groggy window");
+			"Load Dash and its targetless saved 6833 ms GROGGY follow-up as separate patterns");
 		tests.Require(
 			nullptr != catchBreath && nullptr != catchGrab &&
 			nullptr != catchRelease &&
@@ -1353,8 +1360,11 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			SERVER_WORLD_ENTITY& boss = room->m_WorldEntities.front();
 			bool valid = true, captured = false, counter = false, reachedMiss = false;
 			bool reachedSlam = false, reachedExecution = false, detached = false;
+			bool reachedRetryWait02 = false, reachedRetryRush02 = false;
+			bool reachedRetryWait03 = false, reachedRetryRush03 = false;
+			bool reachedRetryExhausted = false;
 			std::uint32_t counterTick = 0u, impactTick = 0u, terminalTick = 0u;
-			for (std::uint32_t tick = 1000u; tick < 1800u && valid; ++tick)
+			for (std::uint32_t tick = 1000u; tick < 2200u && valid; ++tick)
 			{
 				if ("STEP_08" == boss.strPatternStageId)
 				{
@@ -1374,6 +1384,16 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				captured = captured || 0u != CValtanBrain::Classify_GrabbedPlayers(boss, room->m_Players).iGrabbedCount;
 				if ("CATCH_COUNTER" == boss.strPatternStageId && 0u == counterTick) counterTick = tick;
 				reachedMiss = reachedMiss || "RUSH_MISS" == boss.strPatternStageId;
+				reachedRetryWait02 = reachedRetryWait02 ||
+					"RECHARGE_WAIT_02" == boss.strPatternStageId;
+				reachedRetryRush02 = reachedRetryRush02 ||
+					"RETRY_RUSH_02" == boss.strPatternStageId;
+				reachedRetryWait03 = reachedRetryWait03 ||
+					"RECHARGE_WAIT_03" == boss.strPatternStageId;
+				reachedRetryRush03 = reachedRetryRush03 ||
+					"RETRY_RUSH_03" == boss.strPatternStageId;
+				reachedRetryExhausted = reachedRetryExhausted ||
+					"RETRY_EXHAUSTED" == boss.strPatternStageId;
 				if ("CATCH_SLAM" == boss.strPatternStageId && !reachedSlam)
 				{
 					reachedSlam = true;
@@ -1411,8 +1431,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			const bool completed = terminalTick != 0u &&
 				boss.PatternTerminalReceipt.eResult == SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED;
 			if (branch == 0u)
-				tests.Require(valid && reachedMiss && !captured && counterTick == 0u &&
-					completed, "Trash NONE completes its finite miss recovery without restarting the rush");
+				tests.Require(valid && reachedMiss && reachedRetryWait02 &&
+					reachedRetryRush02 && reachedRetryWait03 && reachedRetryRush03 &&
+					reachedRetryExhausted && !captured && counterTick == 0u && completed,
+					"Trash NONE completes its full finite three-rush miss path before exhausting retries");
 			if (branch == 1u)
 				tests.Require(valid && captured && reachedSlam && !reachedExecution && detached &&
 					impactTick - counterTick == 45u && completed,
@@ -1734,7 +1756,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			bool noTeleport = true;
 			bool crossedMissingNavigation = false;
 			bool completed = false;
-			for (std::uint32_t tick = 1u; tick < 400u && room->Is_Ready(); ++tick)
+			for (std::uint32_t tick = 1u; tick < 700u && room->Is_Ready(); ++tick)
 			{
 				const float yaw = boss.fYawDegrees * 3.14159265358979323846f / 180.f;
 				SERVER_PLAYER& target = room->m_Players.at(19200u);
@@ -1810,7 +1832,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 						retargetedPortalStages.insert(boss.iPatternStageIndex);
 						const float expectedYaw = retargetRight ? 90.f : -90.f;
 						const float expectedEndX = boss.fPortalStartX +
-							(retargetRight ? 8.f : -8.f);
+							(retargetRight ? 16.f : -16.f);
 						retargetedAfterDelay = retargetedAfterDelay &&
 							boss.fActionElapsedSeconds >= 0.5f &&
 							std::fabs(std::remainder(
@@ -1833,7 +1855,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 								boss.ePatternStageMotionKind &&
 							500u == boss.iPortalRushRetargetDelayMs &&
 							std::fabs(boss.fPortalRushSpeedMps - 20.f) < 0.0001f &&
-							std::fabs(boss.fPortalRushDistanceM - 8.f) < 0.0001f &&
+							std::fabs(boss.fPortalRushDistanceM - 16.f) < 0.0001f &&
 							boss.PatternStageRootMotion.empty() &&
 							!boss.bPortalRushTargetLocked;
 					}
@@ -1889,7 +1911,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				std::all_of(portalStageTravelMeters.begin(), portalStageTravelMeters.end(),
 					[](const auto& entry)
 					{
-						return std::fabs(entry.second - 8.f) < 0.01f;
+						return std::fabs(entry.second - 16.f) < 0.01f;
 					});
 			std::cout << "[DIAGNOSTIC] Portal legs=" << portalStages.size()
 				<< " sweptBodyHitLegs=" << sweptBodyHits
@@ -1921,7 +1943,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				exactLegDistances &&
 				noMotionOrHitBeforeRetarget && noTeleport && crossedMissingNavigation &&
 				returnedToCenter,
-				"Portal waits 500 ms, re-aims eight exact 8 m typed rush legs without root-motion double-add, then returns to valid arena center");
+				"Portal waits 500 ms, re-aims eight exact 16 m typed rush legs without root-motion double-add, then returns to valid arena center");
 			tests.Require(sweptBodyHits == 8u && noRepeatHits,
 				"Portal 50 ms swept contact catches an inter-pulse body at most once per traversal leg");
 		}
@@ -1982,7 +2004,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			bool clearance = true;
 			bool finaleCornersExact = true;
 			std::set<std::uint32_t> finalePortalStages;
-			for (std::uint32_t tick = 1u; tick <= 1200u && room->Is_Ready(); ++tick)
+			for (std::uint32_t tick = 1u; tick <= 4000u && room->Is_Ready(); ++tick)
 			{
 				room->m_iServerTick = tick - 1u;
 				room->m_TickDamageEvents.clear();
@@ -2051,8 +2073,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				primary->iRotationStepIndex == 0u && bounded && spawnWireValid && clearance &&
 				finalePortalStages.size() == 8u && finaleCornersExact &&
 				ghostReplaced && firstGhostPatterns == std::vector<std::string>{
-					"VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH", "VALTAN_SEQUENCE_FOUR" },
-				"Finale repeats fresh portal occurrences while one owned ghost completes three finite attacks and respawns");
+					"VALTAN_SIX_PIZZA_106", "VALTAN_GROUND_ROAR",
+					"VALTAN_STAGGER_SLOT", "VALTAN_BIND_SLOT",
+					"VALTAN_SILENCE_SLOT", "VALTAN_TRIPLE_COUNTER" },
+				"Finale repeats fresh portal occurrences while one owned ghost completes the six-pattern finite pool and respawns");
 			tests.Require(nonTargetable,
 				"Dependent ghost cannot consume player damage or change HP despite its boss presentation");
 			if (primary != room->m_WorldEntities.end()) primary->iCurrentHp = 0u;
@@ -2260,9 +2284,13 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				room->m_Players.emplace(extra.iPlayerId, extra);
 			}
 			std::set<NET_ENTITY_ID> selectedPlayers;
-			bool facingLocked = true;
+			bool facingTracked = true;
 			bool centeredBeforeTakeoff = true;
 			bool landedAtCenter = true;
+			const auto yawMatches = [](const float actual, const float expected)
+			{
+				return std::fabs(std::remainder(actual - expected, 360.f)) < 0.001f;
+			};
 			for (std::uint32_t seed = 0u; seed < 32u && room->Is_Ready(); ++seed)
 			{
 				room->m_WorldEntities.front() = originalBoss;
@@ -2277,20 +2305,32 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					player.fPositionX = boss.fSpawnPositionX + std::sin(angle) * 10.f;
 					player.fPositionZ = boss.fSpawnPositionZ + std::cos(angle) * 10.f;
 				}
-				float expectedYaw = 0.f;
 				for (std::uint32_t tick = 1u; tick <= 80u && room->Is_Ready(); ++tick)
 				{
 					room->m_iServerTick = seed * 100u + tick - 1u;
 					room->Update_WorldEntities(1.f / 30.f);
+					const auto selected = std::find_if(
+						room->m_Players.begin(), room->m_Players.end(),
+						[&boss](const auto& entry)
+						{ return entry.second.iNetEntityId == boss.iPatternTargetEntityId; });
+					if (room->m_Players.end() == selected)
+					{
+						facingTracked = false;
+					}
+					else
+					{
+						const float expectedYaw = std::atan2(
+							selected->second.fPositionX - boss.fLeapLandingX,
+							selected->second.fPositionZ - boss.fLeapLandingZ) *
+							57.2957795131f;
+						facingTracked = facingTracked &&
+							yawMatches(boss.fYawDegrees, expectedYaw);
+					}
 					if (tick == 1u)
 					{
 						selectedPlayers.insert(boss.iPatternTargetEntityId);
-						expectedYaw = std::atan2(
-							boss.fPatternTargetLastPositionX - boss.fLeapLandingX,
-							boss.fPatternTargetLastPositionZ - boss.fLeapLandingZ) * 57.2957795131f;
 						for (auto& [id, player] : room->m_Players) player.fPositionX += 5.f;
 					}
-					facingLocked = facingLocked && std::fabs(boss.fYawDegrees - expectedYaw) < 0.001f;
 					if (tick == 25u)
 						centeredBeforeTakeoff = centeredBeforeTakeoff &&
 							std::hypot(boss.fPositionX - boss.fLeapLandingX,
@@ -2299,9 +2339,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				landedAtCenter = landedAtCenter &&
 					std::fabs(boss.fPositionY - boss.fLeapLandingY) < 0.001f;
 			}
-			tests.Require(room->Is_Ready() && selectedPlayers.size() == 4u && facingLocked &&
+			tests.Require(room->Is_Ready() && selectedPlayers.size() == 4u && facingTracked &&
 				centeredBeforeTakeoff && landedAtCenter,
-				"Pizza selects across four alive players and locks center-relative yaw through approach, takeoff and landing");
+				"Pizza selects across four alive players and tracks center-relative yaw through approach, takeoff and landing");
 		}
 		for (const char* patternId : { "VALTAN_TRASH_CATCH_IF",
 			"VALTAN_TRASH_CATCH_SUCCESS", "VALTAN_TRASH_CATCH_FAIL" })
@@ -2638,8 +2678,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			bindRestoreZ = bound.fPatternBindRestoreZ;
 			bindOccurrenceValid =
 				bindBoss.iPatternTargetEntityId == bound.iNetEntityId &&
+				8533u == bindBoss.iPatternStageDurationMs &&
 				0u != bound.iCurrentHp &&
-				150u == bound.iPatternBindEndTick - 2000u &&
+				256u == bound.iPatternBindEndTick - 2000u &&
 				std::abs(bound.fPositionX - bindRestoreX) < 0.001f &&
 				std::abs(bound.fPositionY - bindRestoreY - 10.f) < 0.001f &&
 				std::abs(bound.fPositionZ - bindRestoreZ) < 0.001f &&
@@ -2669,7 +2710,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				resourceBefore == blocked.iCurrentResource;
 		}
 		for (std::uint32_t tick = 2001u;
-			bindOccurrenceValid && tick < 2150u; ++tick)
+			bindOccurrenceValid && tick < 2255u; ++tick)
 		{
 			bindOccurrenceValid = advanceStatusOccurrence(*bindRoom, tick);
 		}
@@ -2677,9 +2718,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const bool boundThroughLastTick = bindOccurrenceValid &&
 			bindRoom->m_Players.end() != lastBoundTickEntry &&
 			lastBoundTickEntry->second.bPatternBound &&
-			2150u == lastBoundTickEntry->second.iPatternBindEndTick;
-		for (std::uint32_t tick = 2150u;
-			bindOccurrenceValid && tick <= 2160u &&
+			2256u == lastBoundTickEntry->second.iPatternBindEndTick;
+		for (std::uint32_t tick = 2255u;
+			bindOccurrenceValid && tick <= 2266u &&
 			0u == bindBoss.PatternTerminalReceipt.iPatternSequence; ++tick)
 		{
 			bindOccurrenceValid = advanceStatusOccurrence(*bindRoom, tick);
@@ -2741,7 +2782,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			cancelledBindEntry->second.isCombatReady;
 		tests.Require(
 			bindOccurrenceValid && bindExited && bindCancelValid,
-			"Catalog-loaded Bind slot locks one random alive target at Y+10m for 150 ticks, blocks movement/skills, and restores its admitted pose on EXIT or occurrence cancel");
+			"Catalog-loaded Bind slot locks one random alive target at Y+10m for the authored 8533 ms (256 ticks), blocks movement/skills, and restores its admitted pose on EXIT or occurrence cancel");
 
 		auto silenceRoom = prepareStatusRoom("VALTAN_SILENCE_SLOT", 20000u);
 		bool silenceOccurrenceValid = advanceStatusOccurrence(*silenceRoom, 3000u);
@@ -2749,8 +2790,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		SERVER_PLAYER& silenced = silenceRoom->m_Players.at(19600u);
 		const std::uint32_t silenceResourceBefore = silenced.iCurrentResource;
 		silenceOccurrenceValid = silenceOccurrenceValid &&
-			150u == silenced.iSilenceEndTick - 3000u &&
-			150u == silenced.iSilenceDurationTicks &&
+			2633u == silenceBoss.iPatternStageDurationMs &&
+			79u == silenced.iSilenceEndTick - 3000u &&
+			79u == silenced.iSilenceDurationTicks &&
 			0u != silenceRoom->m_Players.at(19601u).iSilenceEndTick &&
 			0u == silenceRoom->m_Players.at(19602u).iSilenceEndTick;
 		C2S_USE_SKILL silencedSkill{};
@@ -2764,7 +2806,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			0u == silenced.iLastSkillSequence &&
 			silenceResourceBefore == silenced.iCurrentResource;
 		for (std::uint32_t tick = 3001u;
-			silenceOccurrenceValid && tick < 3150u; ++tick)
+			silenceOccurrenceValid && tick < 3078u; ++tick)
 		{
 			silenceOccurrenceValid = advanceStatusOccurrence(*silenceRoom, tick);
 		}
@@ -2773,7 +2815,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			INVALID_SKILL_ID == silenced.iCurrentSkillId &&
 			0u == silenced.iLastSkillSequence;
 		silenceOccurrenceValid = silenceOccurrenceValid &&
-			advanceStatusOccurrence(*silenceRoom, 3150u);
+			advanceStatusOccurrence(*silenceRoom, 3078u);
 		silenceRoom->Handle_UseSkill(20600u, silencedSkill);
 		tests.Require(
 			silenceOccurrenceValid && rejectedThroughLastTick &&
@@ -2786,7 +2828,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			("VALTAN_SILENCE_SLOT" == silenceBoss.strPatternId ||
 			 SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED ==
 				silenceBoss.PatternTerminalReceipt.eResult),
-			"Catalog-loaded Silence slot rejects skills through its 150-tick window and admits the same unconsumed command at the exact five-second boundary");
+			"Catalog-loaded Silence slot rejects skills through its authored 2633 ms (79 ticks) and admits the same unconsumed command at the exact boundary");
 	}
 	{
 		namespace fs = std::filesystem;
@@ -3737,17 +3779,23 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const bool madeUnknownSequenceStep = replaceBootstrapRow(
 			unknownSequenceStepBootstrap, sequenceSteps[1u],
 			"PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\tsequence.valtan.contract.repeat\t1\tVALTAN_UNKNOWN_SEQUENCE_STEP");
-		const std::string partDamageRow =
-			"PATTERNSTAGEPARTDAMAGE\tENCOUNTER_VALTAN\tVALTAN_DASH_CHARGE\t"
-			"valtan.attack.dash-charge.groggy\tDESTROY_FIRST_ELIGIBLE";
-		std::string invalidPartDamageBootstrap = bootstrapText;
-		const bool madeInvalidPartDamage = replaceBootstrapRow(
-			invalidPartDamageBootstrap, partDamageRow,
-			"PATTERNSTAGEPARTDAMAGE\tENCOUNTER_VALTAN\tVALTAN_DASH_CHARGE\t"
-			"valtan.attack.dash-charge.groggy\tUNKNOWN");
+		const std::string dashTimeoutRecoveryRow =
+			"PATTERNSTAGEFOLLOWUP\tENCOUNTER_VALTAN\tVALTAN_DASH_CHARGE\t"
+			"valtan.attack.dash-charge.active\tTIMEOUT\t"
+			"VALTAN_DASH_CHARGE_GROGGY";
+		std::string divergentDashRecoveryBootstrap = bootstrapText;
+		const bool madeDivergentDashRecovery = replaceBootstrapRow(
+			divergentDashRecoveryBootstrap, dashTimeoutRecoveryRow,
+			"PATTERNSTAGEFOLLOWUP\tENCOUNTER_VALTAN\tVALTAN_DASH_CHARGE\t"
+			"valtan.attack.dash-charge.active\tTIMEOUT\tVALTAN_UNKNOWN_FOLLOWUP");
 		const std::string counterProxyRow =
 			"PATTERNSTAGECOUNTERPROXY\tENCOUNTER_VALTAN\tVALTAN_TRASH\t"
 			"valtan.sequence.center-trash-rush-if.step-07\t1\t0\t2.25";
+		std::string invalidPartDamageBootstrap = bootstrapText;
+		const bool madeInvalidPartDamage = replaceBootstrapRow(
+			invalidPartDamageBootstrap, counterProxyRow,
+			"PATTERNSTAGEPARTDAMAGE\tENCOUNTER_VALTAN\tVALTAN_DASH_CHARGE_GROGGY\t"
+			"valtan.attack.dash-charge.recovery\tUNKNOWN");
 		std::string invalidCounterProxyBootstrap = bootstrapText;
 		const bool madeInvalidCounterProxy = replaceBootstrapRow(
 			invalidCounterProxyBootstrap, counterProxyRow,
@@ -3847,6 +3895,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				"ordered contract"),
 			"Reject missing, invalid-pursuit, incomplete, duplicate-ordinal, non-contiguous, out-of-bounds or unknown sequence rows without replacing the active generation");
 		tests.Require(
+			madeDivergentDashRecovery && rejectsSequenceVariant(
+				L"dash-charge-divergent-recovery",
+				divergentDashRecoveryBootstrap,
+				"branch or action contract"),
+			"Reject a Dash outcome whose target pattern is absent from the pinned encounter graph");
+		tests.Require(
 			madeInvalidPartDamage && madeInvalidCounterProxy &&
 			madeInvalidRearTargetPolicy &&
 			rejectsSequenceVariant(
@@ -3890,10 +3944,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		};
 		const std::string finalePrefix =
 			"PATTERNFINALE\tENCOUNTER_VALTAN\tVALTAN_GHOST_FINALE\tGHOST_PORTAL_LOOP\tBOSS_VALTAN_GHOST\t";
-		const std::string finaleRow = finalePrefix +
-			"10\t10\t1\tVALTAN_WHIRLWIND\tVALTAN_FOUR_SLASH\tVALTAN_SEQUENCE_FOUR";
-		const std::string dynamicFinaleRow = finalePrefix +
-			"10\t10\t2\tVALTAN_FOUR_SLASH\tVALTAN_WHIRLWIND";
+		const std::string finaleChildren =
+			"\tVALTAN_SIX_PIZZA_106\tVALTAN_GROUND_ROAR\tVALTAN_STAGGER_SLOT"
+			"\tVALTAN_BIND_SLOT\tVALTAN_SILENCE_SLOT\tVALTAN_TRIPLE_COUNTER";
+		const std::string finaleRow = finalePrefix + "10\t10\t1" + finaleChildren;
+		const std::string dynamicFinaleRow =
+			finalePrefix + "10\t10\t2" + finaleChildren;
 		std::string dynamicFinaleBootstrap = bootstrapText;
 		const bool madeDynamicFinale = replaceBootstrapRow(
 			dynamicFinaleBootstrap, finaleRow, dynamicFinaleRow);
@@ -3910,33 +3966,39 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			dynamicFinale != dynamicFinalePatterns->end() &&
 			2u == dynamicFinale->Finale.iMaximumActiveGhosts &&
 			dynamicFinale->Finale.GhostPatternIds == std::vector<std::string>{
-				"VALTAN_FOUR_SLASH", "VALTAN_WHIRLWIND" },
-			"Load a data-driven two-child reordered finale and retain its authored capacity");
+				"VALTAN_SIX_PIZZA_106", "VALTAN_GROUND_ROAR",
+				"VALTAN_STAGGER_SLOT", "VALTAN_BIND_SLOT",
+				"VALTAN_SILENCE_SLOT", "VALTAN_TRIPLE_COUNTER" },
+			"Load the canonical six-child finale pool and retain its authored capacity");
 		tests.Require(
 			rejectsRuntimeRefinement(L"finale-half-extent", finaleRow,
-				finalePrefix + "0.5\t10\t1\tVALTAN_WHIRLWIND\tVALTAN_FOUR_SLASH\tVALTAN_SEQUENCE_FOUR",
+				finalePrefix + "0.5\t10\t1" + finaleChildren,
 				"finale row is invalid") &&
 			rejectsRuntimeRefinement(L"finale-maximum-active-zero", finaleRow,
-				finalePrefix + "10\t10\t0\tVALTAN_WHIRLWIND\tVALTAN_FOUR_SLASH\tVALTAN_SEQUENCE_FOUR",
+				finalePrefix + "10\t10\t0" + finaleChildren,
 				"finale row is invalid") &&
 			rejectsRuntimeRefinement(L"finale-maximum-active-overflow", finaleRow,
-				finalePrefix + "10\t10\t65\tVALTAN_WHIRLWIND\tVALTAN_FOUR_SLASH\tVALTAN_SEQUENCE_FOUR",
+				finalePrefix + "10\t10\t65" + finaleChildren,
 				"finale row is invalid") &&
 			rejectsRuntimeRefinement(L"finale-empty-children", finaleRow,
 				finalePrefix + "10\t10\t1", "finale row is invalid") &&
 			rejectsRuntimeRefinement(L"finale-duplicate-child", finaleRow,
-				finalePrefix + "10\t10\t1\tVALTAN_WHIRLWIND\tVALTAN_WHIRLWIND",
+				finalePrefix + "10\t10\t1\tVALTAN_SIX_PIZZA_106\tVALTAN_GROUND_ROAR"
+					"\tVALTAN_STAGGER_SLOT\tVALTAN_BIND_SLOT\tVALTAN_SILENCE_SLOT"
+					"\tVALTAN_SILENCE_SLOT",
 				"child pattern identity") &&
 			rejectsRuntimeRefinement(L"finale-missing-child", finaleRow,
-				finalePrefix + "10\t10\t1\tVALTAN_UNKNOWN_GHOST_ATTACK",
-				"dependent attack is missing"),
+				finalePrefix + "10\t10\t1\tVALTAN_SIX_PIZZA_106\tVALTAN_GROUND_ROAR"
+					"\tVALTAN_STAGGER_SLOT\tVALTAN_BIND_SLOT\tVALTAN_SILENCE_SLOT"
+					"\tVALTAN_UNKNOWN_GHOST_ATTACK",
+				"primary-loop order is invalid"),
 			"Finale rejects invalid ranges, empty/duplicate children and unresolved references transactionally");
 		const std::string targetPortalRow =
-			"PATTERNSTAGEMOTION\tENCOUNTER_VALTAN\tVALTAN_WARP\tvaltan.sequence.warp.step-02\tPORTAL_TARGET_RUSH\t500\t20\t8";
+			"PATTERNSTAGEMOTION\tENCOUNTER_VALTAN\tVALTAN_WARP\tvaltan.sequence.warp.step-02\tPORTAL_TARGET_RUSH\t500\t20\t16";
 		const std::string cornerPortalPrefix =
 			"PATTERNSTAGEMOTION\tENCOUNTER_VALTAN\tVALTAN_GHOST_FINALE\tvaltan.sequence.ghost-finale.step-02\tPORTAL_CROSS_ARENA\t";
 		tests.Require(rejectsRuntimeRefinement(L"portal-target-speed", targetPortalRow,
-			"PATTERNSTAGEMOTION\tENCOUNTER_VALTAN\tVALTAN_WARP\tvaltan.sequence.warp.step-02\tPORTAL_TARGET_RUSH\t500\t0\t8",
+			"PATTERNSTAGEMOTION\tENCOUNTER_VALTAN\tVALTAN_WARP\tvaltan.sequence.warp.step-02\tPORTAL_TARGET_RUSH\t500\t0\t16",
 			"stage motion policy is invalid") &&
 			rejectsRuntimeRefinement(L"portal-corner", cornerPortalPrefix + "0\t22\t22",
 				cornerPortalPrefix + "4\t22\t22", "stage motion policy is invalid") &&
@@ -3945,7 +4007,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Portal target and corner policies reject malformed rows without replacing the active generation");
 		const std::string trashMissBranch =
 			"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TRASH\tvaltan.sequence.center-trash-rush-if.rush-miss\tTIMEOUT\t";
-		tests.Require(rejectsRuntimeRefinement(L"trash-cycle", trashMissBranch + "-",
+		tests.Require(rejectsRuntimeRefinement(L"trash-cycle",
+			trashMissBranch + "valtan.sequence.center-trash-rush-if.recharge-wait-02",
 			trashMissBranch + "valtan.sequence.center-trash-rush-if.step-07", "cyclic or dangling"),
 			"Server rejects reintroduced trash retry cycles while preserving the previous immutable catalog");
 		GameplayDataRevision repeatRevision = candidateRevision;
@@ -4303,13 +4366,13 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		std::string mismatchedManagedWindow = bootstrapText;
 		const bool madeMismatchedManagedWindow = replaceBootstrapRow(
 			mismatchedManagedWindow,
-			"PATTERNROTATIONWINDOW\tENCOUNTER_VALTAN\trotation.valtan.160.130\twindow.valtan.phase1.160.130\t1\tselectionset.valtan.160.130\t160\t130\t5",
-			"PATTERNROTATIONWINDOW\tENCOUNTER_VALTAN\trotation.valtan.160.130\twindow.valtan.phase1.160.130\t1\tselectionset.valtan.160.130\t159\t130\t5");
+			"PATTERNROTATIONWINDOW\tENCOUNTER_VALTAN\trotation.valtan.160.130\twindow.valtan.phase1.160.130\t1\tselectionset.valtan.160.130\t160\t130\t6",
+			"PATTERNROTATIONWINDOW\tENCOUNTER_VALTAN\trotation.valtan.160.130\twindow.valtan.phase1.160.130\t1\tselectionset.valtan.160.130\t159\t130\t6");
 		std::string invalidManagedPhase = bootstrapText;
 		const bool madeInvalidManagedPhase = replaceBootstrapRow(
 			invalidManagedPhase,
-			"PATTERNROTATIONWINDOW\tENCOUNTER_VALTAN\trotation.valtan.160.130\twindow.valtan.phase1.160.130\t1\tselectionset.valtan.160.130\t160\t130\t5",
-			"PATTERNROTATIONWINDOW\tENCOUNTER_VALTAN\trotation.valtan.160.130\twindow.valtan.phase1.160.130\t4\tselectionset.valtan.160.130\t160\t130\t5");
+			"PATTERNROTATIONWINDOW\tENCOUNTER_VALTAN\trotation.valtan.160.130\twindow.valtan.phase1.160.130\t1\tselectionset.valtan.160.130\t160\t130\t6",
+			"PATTERNROTATIONWINDOW\tENCOUNTER_VALTAN\trotation.valtan.160.130\twindow.valtan.phase1.160.130\t4\tselectionset.valtan.160.130\t160\t130\t6");
 		std::string collidingHealthMechanic = bootstrapText;
 		const bool madeCollidingHealthMechanic = replaceBootstrapRow(
 			collidingHealthMechanic,
@@ -5294,6 +5357,20 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 						branch.strNextActionId == nextActionId;
 				});
 		};
+		const auto hasPatternFollowup = [](
+			const BOSS_PATTERN_STAGE_DEFINITION* stage,
+			const BOSS_PATTERN_STAGE_OUTCOME outcome,
+			const std::string_view nextPatternId)
+		{
+			return nullptr != stage && std::any_of(
+				stage->Branches.begin(), stage->Branches.end(),
+				[outcome, nextPatternId](const BOSS_PATTERN_STAGE_BRANCH& branch)
+				{
+					return branch.eOutcome == outcome &&
+						branch.strNextActionId.empty() &&
+						branch.strNextPatternId == nextPatternId;
+				});
+		};
 		const auto hasClosedFlag = [&hasAction](
 			const BOSS_PATTERN_STAGE_DEFINITION* stage,
 			const std::string_view targetId)
@@ -5360,6 +5437,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			findStage("VALTAN_CENTER_GRAB_COUNTER_64", "COUNTER_WINDOW");
 		const BOSS_PATTERN_STAGE_DEFINITION* counterSlam =
 			findStage("VALTAN_COUNTER", "STEP_03");
+		const BOSS_PATTERN_STAGE_DEFINITION* counterWindow =
+			findStage("VALTAN_COUNTER", "STEP_02");
+		const BOSS_PATTERN_DEFINITION* counterGroggyPattern =
+			findPattern("VALTAN_COUNTER_GROGGY");
+		const BOSS_PATTERN_STAGE_DEFINITION* counterGroggy =
+			findStage("VALTAN_COUNTER_GROGGY", "GROGGY");
 		const bool entranceCameraGateExact =
 			nullptr != entranceCinematic &&
 			BOSS_PATTERN_SELECTION::NORMAL == entranceCinematic->eSelection &&
@@ -5480,7 +5563,20 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			hasBranch(centerCounter, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
 				"valtan.mechanic.center-grab-counter-64.failed-charge") &&
 			nullptr != counterSlam && 1u == counterSlam->Branches.size() &&
-			hasBranch(counterSlam, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT, "");
+			hasBranch(counterSlam, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT, "") &&
+			nullptr != counterWindow && 2u == counterWindow->Branches.size() &&
+			hasPatternFollowup(counterWindow,
+				BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT,
+				"VALTAN_COUNTER_GROGGY") &&
+			hasBranch(counterWindow, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
+				"valtan.sequence.counter.step-03") &&
+			nullptr != counterGroggyPattern && nullptr != counterGroggy &&
+			BOSS_PATTERN_SELECTION::AUDITION_ONLY ==
+				counterGroggyPattern->eSelection &&
+			BOSS_PATTERN_TARGET_POLICY::NONE ==
+				counterGroggyPattern->eTargetPolicy &&
+			BOSS_PATTERN_AIM_POLICY::NONE == counterGroggyPattern->eAimPolicy &&
+			hasClosedFlag(counterGroggy, "boss.flag.groggy");
 		tests.Require(reactiveTopologyExact,
 			"Load the named reactive Valtan actions, branches, motions, and terminal counter slam without constraining unrelated Pattern totals");
 		if (!reactiveTopologyExact)
@@ -10061,135 +10157,6 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Break one plate per groggy window, close it, and queue the part-break reaction");
 	}
 	{
-		/* The Arena boss owns typed parts. Exercise the ordinary authored skill
-		path inside Dash GROGGY: its first landed sub-hit must destroy one eligible
-		part, publish the typed outcome, and drive GROGGY -> PART_BREAK directly. */
-		const BOSS_RUNTIME_PROFILE* armorProfile =
-			catalog.Find_Boss("BOSS_VALTAN");
-		const std::vector<BOSS_PART_DEFINITION>* partDefinitions =
-			catalog.Find_BossParts("BOSS_VALTAN");
-		SERVER_WORLD_ENTITY typedDashBoss = boss;
-		typedDashBoss.iNetEntityId = 88001u;
-		typedDashBoss.strPatternId = "VALTAN_DASH_CHARGE";
-		typedDashBoss.strEncounterId = "ENCOUNTER_VALTAN";
-		typedDashBoss.strPatternStageId = "GROGGY";
-		typedDashBoss.strActionId = "valtan.attack.dash-charge.groggy";
-		typedDashBoss.iPatternSequence = 901u;
-		typedDashBoss.iPatternStageIndex = 2u;
-		typedDashBoss.iPatternStageDurationMs = 5000u;
-		typedDashBoss.iPatternStageFirstEvaluationTick = 11u;
-		typedDashBoss.eAction = SERVER_ENTITY_ACTION::PATTERN_ACTIVE;
-		typedDashBoss.ePatternPartDamagePolicy =
-			BOSS_PATTERN_PART_DAMAGE_POLICY::DESTROY_FIRST_ELIGIBLE;
-		typedDashBoss.bPatternGroggy = true;
-		typedDashBoss.bIntroPatternConsumed = true;
-		typedDashBoss.bAutomaticPatternSequenceAuditionOverride = true;
-		typedDashBoss.fEngageDistance = 35.f;
-		typedDashBoss.PinnedDefinitionRevision = catalog.Get_ActiveRevision();
-		typedDashBoss.ArmorPlates.clear();
-		if (nullptr != armorProfile)
-		{
-			for (const BOSS_ARMOR_PLATE& plate : armorProfile->ArmorPlates)
-			{
-				typedDashBoss.ArmorPlates.push_back({
-					plate.iPlateIndex, plate.iDurability, plate.iDefense });
-			}
-		}
-		std::string typedDashStatus;
-		const bool initializedTypedDash = nullptr != partDefinitions &&
-			CBossCombatRuntime::Initialize(
-				typedDashBoss.BossCombat, *partDefinitions, typedDashStatus) &&
-			!typedDashBoss.BossCombat.Parts.empty();
-		if (initializedTypedDash)
-		{
-			typedDashBoss.BossCombat.Parts.front().iCurrentDurability = 100u;
-			(void)CBossCombatRuntime::Set_Flag(
-				typedDashBoss.BossCombat,
-				SERVER_BOSS_COMBAT_FLAG::GROGGY, true);
-		}
-		const std::uint32_t aliveMaskBefore =
-			typedDashBoss.BossCombat.iAlivePartMask;
-		const std::uint32_t hpBeforeTypedDash = typedDashBoss.iCurrentHp;
-		std::vector<SERVER_WORLD_ENTITY> typedDashEntities{ typedDashBoss };
-
-		SERVER_PLAYER typedDashPlayer{};
-		typedDashPlayer.iPlayerId = 88002u;
-		typedDashPlayer.iNetEntityId = 88003u;
-		typedDashPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
-		typedDashPlayer.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
-		typedDashPlayer.iCurrentHp = 1000u;
-		typedDashPlayer.iMaximumHp = 1000u;
-		typedDashPlayer.isCombatReady = true;
-		typedDashPlayer.iCurrentResource = 1000u;
-		typedDashPlayer.iMaximumResource = 1000u;
-		typedDashPlayer.fPositionX = boss.fPositionX;
-		typedDashPlayer.fPositionY = boss.fPositionY;
-		typedDashPlayer.fPositionZ = boss.fPositionZ - skillTargetStandOff;
-		typedDashEntities.front().iPatternTargetEntityId =
-			typedDashPlayer.iNetEntityId;
-		C2S_USE_SKILL typedDashSkill = useSkill;
-		typedDashSkill.iClientSequence = 75u;
-		CPlayerSkillSystem typedDashSkills;
-		const bool startedTypedDashSkill = typedDashSkills.Try_Start(
-			typedDashPlayer, typedDashSkill, catalog, 10u);
-		std::vector<DAMAGE_EVENT> typedDashEvents;
-		for (std::uint32_t tick = 11u; tick < 70u; ++tick)
-		{
-			typedDashSkills.Update(
-				typedDashPlayer, typedDashEntities, catalog, &navigation,
-				nullptr, 1.f / 30.f, tick, typedDashEvents);
-		}
-		SERVER_WORLD_ENTITY& resolvedTypedDash = typedDashEntities.front();
-		const std::uint32_t destroyedMask = aliveMaskBefore &
-			~resolvedTypedDash.BossCombat.iAlivePartMask;
-		const bool mirroredLegacyPlate = std::any_of(
-			resolvedTypedDash.ArmorPlates.begin(),
-			resolvedTypedDash.ArmorPlates.end(),
-			[destroyedMask](const SERVER_BOSS_ARMOR_PLATE_STATE& plate)
-			{
-				return plate.iPlateIndex < 32u &&
-					0u != (destroyedMask & (1u << plate.iPlateIndex)) &&
-					0u == plate.iRemainingDurability;
-			});
-		std::uint32_t typedDashEventDamage = 0u;
-		for (const DAMAGE_EVENT& event : typedDashEvents)
-			typedDashEventDamage += event.iAmount;
-		SERVER_WORLD_ENTITY typedDashOutcomeProbe = resolvedTypedDash;
-		const bool publishedPartDestroyed =
-			CBossCombatRuntime::Consume_PatternOutcome(
-				typedDashOutcomeProbe, "valtan.attack.dash-charge.groggy",
-				BOSS_PATTERN_STAGE_OUTCOME::PART_DESTROYED);
-		const bool closedGroggyAfterPartHit =
-			"GROGGY" == resolvedTypedDash.strPatternStageId &&
-			2u == resolvedTypedDash.iPatternStageIndex &&
-			!resolvedTypedDash.bPatternGroggy &&
-			resolvedTypedDash.bPendingArmorBreakReaction;
-		std::map<PLAYER_ID, SERVER_PLAYER> typedDashBranchPlayers;
-		typedDashBranchPlayers.emplace(
-			typedDashPlayer.iPlayerId, typedDashPlayer);
-		CValtanBrain typedDashBrain;
-		std::vector<DAMAGE_EVENT> typedDashBranchEvents;
-		typedDashBrain.Update(
-			resolvedTypedDash, typedDashBranchPlayers, catalog, navigation,
-			1.f / 30.f, 70u, {}, typedDashBranchEvents);
-		const bool enteredPartBreakFromGroggy =
-			"PART_BREAK" == resolvedTypedDash.strPatternStageId &&
-			4u == resolvedTypedDash.iPatternStageIndex &&
-			!resolvedTypedDash.bPatternGroggy &&
-			!resolvedTypedDash.bPendingArmorBreakReaction;
-		tests.Require(
-			initializedTypedDash && startedTypedDashSkill &&
-			(1u == destroyedMask || 2u == destroyedMask) &&
-			mirroredLegacyPlate && publishedPartDestroyed &&
-			closedGroggyAfterPartHit && enteredPartBreakFromGroggy &&
-			!CBossCombatRuntime::Has_Flag(
-				typedDashOutcomeProbe.BossCombat,
-				SERVER_BOSS_COMBAT_FLAG::GROGGY) &&
-			hpBeforeTypedDash - typedDashOutcomeProbe.iCurrentHp ==
-				typedDashEventDamage,
-			"Route a real skill hit through Dash GROGGY and directly into PART_BREAK without double HP damage");
-	}
-	{
 		/* The only authored counter-power skill reaches the boss through the same
 		path after its guard promotes to stage two.  A live boss counter window
 		publishes one typed edge and closes on that landed hit. */
@@ -10505,14 +10472,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	}
 
 	{
-		/* Both charges use the same typed impact marker and enter GROGGY directly
-		on a wall contact. Dash timeout still bypasses the groggy part window and
-		enters ordinary RECOVERY. */
+		/* Both charges use the same typed impact marker. Dash keeps the exact
+		user-saved RECOVERY occurrence identity, but that animation span is now a
+		Server-owned GROGGY part-damage window. */
 		const auto* chargePatterns = catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
 		const auto findChargeStage =
-			[&](const char* patternId,
-				const BOSS_PATTERN_STAGE_KIND expectedNextKind,
-				const std::string_view expectedNextActionId)
+			[&](const char* patternId)
 				-> const BOSS_PATTERN_STAGE_DEFINITION*
 		{
 			if (nullptr == chargePatterns)
@@ -10525,28 +10490,20 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				{
 					if (!pattern.Stages[index].bChargeImpact)
 						continue;
-					return index + 1u < pattern.Stages.size() &&
-						expectedNextKind == pattern.Stages[index + 1u].eStageKind &&
-						expectedNextActionId ==
-							pattern.Stages[index + 1u].strActionId ?
-						&pattern.Stages[index] : nullptr;
+					return &pattern.Stages[index];
 				}
 			}
 			return nullptr;
 		};
 		const BOSS_PATTERN_STAGE_DEFINITION* openingCharge =
-			findChargeStage(
-				"VALTAN_ARMOR_BREAK_OPENING", BOSS_PATTERN_STAGE_KIND::GROGGY,
-				"valtan.mechanic.armor-break-opening.groggy");
+			findChargeStage("VALTAN_ARMOR_BREAK_OPENING");
 		const BOSS_PATTERN_STAGE_DEFINITION* dashCharge =
-			findChargeStage(
-				"VALTAN_DASH_CHARGE", BOSS_PATTERN_STAGE_KIND::GROGGY,
-				"valtan.attack.dash-charge.groggy");
+			findChargeStage("VALTAN_DASH_CHARGE");
 		tests.Require(
 			nullptr != openingCharge && nullptr != dashCharge &&
 			openingCharge->strStageId == "WALL_CHARGE" &&
 			dashCharge->strStageId == "CHARGE",
-			"Load both wall-contact charge graphs into their immediate GROGGY windows");
+			"Load each wall-contact charge graph into its immediate typed target");
 
 		std::uint32_t chargeStageCount = 0u;
 		std::uint32_t groggyStageCount = 0u;
@@ -10555,7 +10512,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			for (const BOSS_PATTERN_DEFINITION& pattern : *chargePatterns)
 			{
 				if (pattern.strPatternId != "VALTAN_ARMOR_BREAK_OPENING" &&
-					pattern.strPatternId != "VALTAN_DASH_CHARGE")
+					pattern.strPatternId != "VALTAN_DASH_CHARGE" &&
+					pattern.strPatternId != "VALTAN_DASH_CHARGE_GROGGY")
 					continue;
 				for (const BOSS_PATTERN_STAGE_DEFINITION& stage : pattern.Stages)
 				{
@@ -10568,17 +10526,23 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		}
 		tests.Require(
 			2u == chargeStageCount && 2u == groggyStageCount,
-			"Author exactly one groggy reaction in each of the two charge graphs");
+			"Open a typed GROGGY window after each Valtan charge graph");
 
-		/* The dash repeats, so a fight can open more than one window and strip
-		more than one plate; the scripted opening alone never could. */
+		/* Dash remains a repeatable weighted attack. Its saved start/loop/end
+		composition owns the damage window and a separate event-entered reaction. */
 		const BOSS_PATTERN_DEFINITION* dashPattern = nullptr;
+		const BOSS_PATTERN_DEFINITION* dashGroggyPattern = nullptr;
+		const BOSS_PATTERN_DEFINITION* partBreakPattern = nullptr;
 		if (nullptr != chargePatterns)
 		{
 			for (const BOSS_PATTERN_DEFINITION& pattern : *chargePatterns)
 			{
 				if (pattern.strPatternId == "VALTAN_DASH_CHARGE")
 					dashPattern = &pattern;
+				else if (pattern.strPatternId == "VALTAN_DASH_CHARGE_GROGGY")
+					dashGroggyPattern = &pattern;
+				else if (pattern.strPatternId == "VALTAN_PART_BREAK")
+					partBreakPattern = &pattern;
 			}
 		}
 		const auto hasDashBranch = [](
@@ -10594,7 +10558,21 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 						branch.strNextActionId == nextActionId;
 				});
 		};
-		const auto hasDashFlagAction = [](
+		const auto hasPatternFollowup = [](
+			const BOSS_PATTERN_STAGE_DEFINITION& stage,
+			const BOSS_PATTERN_STAGE_OUTCOME outcome,
+			const std::string_view nextPatternId)
+		{
+			return std::any_of(
+				stage.Branches.begin(), stage.Branches.end(),
+				[outcome, nextPatternId](const BOSS_PATTERN_STAGE_BRANCH& branch)
+				{
+					return branch.eOutcome == outcome &&
+						branch.strNextActionId.empty() &&
+						branch.strNextPatternId == nextPatternId;
+				});
+		};
+		const auto hasDashGroggyFlag = [](
 			const BOSS_PATTERN_STAGE_DEFINITION& stage,
 			const BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
 			const std::uint32_t value)
@@ -10603,10 +10581,11 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				stage.Actions.begin(), stage.Actions.end(),
 				[trigger, value](const BOSS_PATTERN_STAGE_ACTION& action)
 				{
-					return BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG ==
-						action.eKind && trigger == action.eTrigger &&
-						"boss.flag.groggy" == action.strTargetId &&
-						value == action.iValue;
+					return action.eTrigger == trigger &&
+						action.eKind ==
+							BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG &&
+						action.strTargetId == "boss.flag.groggy" &&
+						action.iValue == value;
 				});
 		};
 		tests.Require(
@@ -10614,10 +10593,18 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			BOSS_PATTERN_SELECTION::NORMAL == dashPattern->eSelection &&
 			0u != dashPattern->iSelectionWeight &&
 			dashPattern->fMaximumRange > 0.f,
-			"Keep the armour-opening dash a repeatable weighted pattern with travel distance");
+			"Keep Dash Charge a repeatable weighted pattern with travel distance");
 		tests.Require(
-			nullptr != dashPattern && 5u == dashPattern->Stages.size() &&
+			nullptr != dashPattern && 2u == dashPattern->Stages.size() &&
 			nullptr != dashCharge && &dashPattern->Stages[1] == dashCharge &&
+			nullptr != dashGroggyPattern && 1u == dashGroggyPattern->Stages.size() &&
+			nullptr != partBreakPattern && 1u == partBreakPattern->Stages.size() &&
+			BOSS_PATTERN_SELECTION::AUDITION_ONLY == dashGroggyPattern->eSelection &&
+			BOSS_PATTERN_SELECTION::AUDITION_ONLY == partBreakPattern->eSelection &&
+			BOSS_PATTERN_TARGET_POLICY::NONE == dashGroggyPattern->eTargetPolicy &&
+			BOSS_PATTERN_AIM_POLICY::NONE == dashGroggyPattern->eAimPolicy &&
+			BOSS_PATTERN_TARGET_POLICY::NONE == partBreakPattern->eTargetPolicy &&
+			BOSS_PATTERN_AIM_POLICY::NONE == partBreakPattern->eAimPolicy &&
 			420604u == dashPattern->iSourcePrimaryActionId &&
 			BOSS_PATTERN_TARGET_POLICY::LOCK_NEAREST_ON_START ==
 				dashPattern->eTargetPolicy &&
@@ -10645,58 +10632,43 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				dashCharge->Motion.eKind &&
 			std::abs(dashCharge->Motion.fDistance - 20.f) < 1.0e-6f &&
 			BOSS_PATTERN_STAGE_KIND::GROGGY ==
-				dashPattern->Stages[2].eStageKind &&
-			5000u == dashPattern->Stages[2].iDurationMs &&
+				dashGroggyPattern->Stages[0].eStageKind &&
+			6833u == dashGroggyPattern->Stages[0].iDurationMs &&
 			BOSS_PATTERN_HIT_SHAPE::NONE ==
-				dashPattern->Stages[2].eHitShape &&
-			0u == dashPattern->Stages[2].iHitCount &&
+				dashGroggyPattern->Stages[0].eHitShape &&
+			0u == dashGroggyPattern->Stages[0].iHitCount &&
 			BOSS_PATTERN_STAGE_MOTION_KIND::NONE ==
-				dashPattern->Stages[2].Motion.eKind &&
+				dashGroggyPattern->Stages[0].Motion.eKind &&
 			BOSS_PATTERN_PART_DAMAGE_POLICY::DESTROY_FIRST_ELIGIBLE ==
-				dashPattern->Stages[2].ePartDamagePolicy &&
-			hasDashFlagAction(
-				dashPattern->Stages[2],
+				dashGroggyPattern->Stages[0].ePartDamagePolicy &&
+			2u == dashGroggyPattern->Stages[0].Actions.size() &&
+			hasDashGroggyFlag(dashGroggyPattern->Stages[0],
 				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 1u) &&
-			hasDashFlagAction(
-				dashPattern->Stages[2],
+			hasDashGroggyFlag(dashGroggyPattern->Stages[0],
 				BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT, 0u) &&
-			BOSS_PATTERN_STAGE_KIND::RECOVERY ==
-				dashPattern->Stages[3].eStageKind &&
-			900u == dashPattern->Stages[3].iDurationMs &&
-			BOSS_PATTERN_HIT_SHAPE::NONE ==
-				dashPattern->Stages[3].eHitShape &&
-			0u == dashPattern->Stages[3].iHitCount &&
-			BOSS_PATTERN_STAGE_MOTION_KIND::NONE ==
-				dashPattern->Stages[3].Motion.eKind &&
-			BOSS_PATTERN_PART_DAMAGE_POLICY::NORMAL ==
-				dashPattern->Stages[3].ePartDamagePolicy &&
 			BOSS_PATTERN_STAGE_KIND::PART_BREAK ==
-				dashPattern->Stages[4].eStageKind,
-			"Keep Dash Charge ordered as WINDUP, CHARGE, GROGGY, RECOVERY, and PART_BREAK with part damage confined to GROGGY");
+				partBreakPattern->Stages[0].eStageKind &&
+			1400u == partBreakPattern->Stages[0].iDurationMs,
+			"Keep Dash Charge, saved GROGGY, and PART_BREAK as an explicit targetless outcome chain");
 		tests.Require(
 			nullptr != dashPattern &&
 			2u == dashPattern->Stages[1].Branches.size() &&
-			hasDashBranch(dashPattern->Stages[1],
+			hasPatternFollowup(dashPattern->Stages[1],
 				BOSS_PATTERN_STAGE_OUTCOME::WALL_CONTACT,
-				"valtan.attack.dash-charge.groggy") &&
-			hasDashBranch(dashPattern->Stages[1],
+				"VALTAN_DASH_CHARGE_GROGGY") &&
+			hasPatternFollowup(dashPattern->Stages[1],
 				BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
-				"valtan.attack.dash-charge.recovery") &&
-			2u == dashPattern->Stages[2].Branches.size() &&
-			hasDashBranch(dashPattern->Stages[2],
+				"VALTAN_DASH_CHARGE_GROGGY") &&
+			2u == dashGroggyPattern->Stages[0].Branches.size() &&
+			hasPatternFollowup(dashGroggyPattern->Stages[0],
 				BOSS_PATTERN_STAGE_OUTCOME::PART_DESTROYED,
-				"valtan.attack.dash-charge.part-break") &&
-			hasDashBranch(dashPattern->Stages[2],
-				BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
-				"valtan.attack.dash-charge.recovery") &&
-			1u == dashPattern->Stages[3].Branches.size() &&
-			hasDashBranch(dashPattern->Stages[3],
-				BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
-				"") &&
-			1u == dashPattern->Stages[4].Branches.size() &&
-			hasDashBranch(dashPattern->Stages[4],
+				"VALTAN_PART_BREAK") &&
+			hasDashBranch(dashGroggyPattern->Stages[0],
+				BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT, "") &&
+			1u == partBreakPattern->Stages[0].Branches.size() &&
+			hasDashBranch(partBreakPattern->Stages[0],
 				BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT, ""),
-			"Compile Dash wall-contact GROGGY, timeout RECOVERY, direct part-break, and terminal branches exactly");
+			"Interrupt saved Dash GROGGY only on a typed part-destroyed edge");
 	}
 
 	{
@@ -10707,7 +10679,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
 		std::uint32_t partBreakStageCount = 0u;
 		bool everyPartBreakIsLast = true;
-		bool everyChargePatternHasOne = true;
+		bool everyChargePatternHasExpectedReaction = true;
 		if (nullptr != reactionPatterns)
 		{
 			for (const BOSS_PATTERN_DEFINITION& pattern : *reactionPatterns)
@@ -10728,14 +10700,20 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					if (index + 1u != pattern.Stages.size())
 						everyPartBreakIsLast = false;
 				}
-				if (hasCharge && 1u != patternPartBreaks)
-					everyChargePatternHasOne = false;
+				if (hasCharge)
+				{
+					const std::uint32_t expected =
+						"VALTAN_ARMOR_BREAK_OPENING" == pattern.strPatternId ?
+							1u : 0u;
+					if (expected != patternPartBreaks)
+						everyChargePatternHasExpectedReaction = false;
+				}
 			}
 		}
 		tests.Require(
 			2u == partBreakStageCount && everyPartBreakIsLast &&
-			everyChargePatternHasOne,
-			"Author one trailing part-break reaction for each charge pattern");
+			everyChargePatternHasExpectedReaction,
+			"Keep the opening reaction local and the Dash reaction in one targetless follow-up pattern");
 		tests.Require(
 			Is_EventEnteredStage(BOSS_PATTERN_STAGE_KIND::GROGGY) &&
 			Is_EventEnteredStage(BOSS_PATTERN_STAGE_KIND::PART_BREAK) &&
@@ -12195,6 +12173,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 					1.f / 30.f, automaticTick++, {}, events,
 					&catalog, 1u, nullptr, &reviewSequence);
 				if (nullptr != observedOrder && !boss.strPatternId.empty() &&
+					0u == boss.iPatternFollowupDepth &&
 					(observedOrder->empty() ||
 					 observedOrder->back() != boss.strPatternId))
 				{
@@ -12291,17 +12270,20 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			{
 				return entry.second.iNetEntityId != lockedPizzaTarget;
 			});
-		const float lockedPizzaYaw = std::atan2(
-			pacingBoss.fPatternTargetLastPositionX - pacingBoss.fLeapLandingX,
-			pacingBoss.fPatternTargetLastPositionZ - pacingBoss.fLeapLandingZ) *
-			180.f / 3.14159265358979323846f;
 		const auto yawMatches = [](const float actual, const float expected)
 		{
 			return std::abs(std::remainder(actual - expected, 360.f)) <
 				0.001f;
 		};
+		const auto trackedPizzaYaw = [&pacingBoss](const SERVER_PLAYER& target)
+		{
+			return std::atan2(
+				target.fPositionX - pacingBoss.fLeapLandingX,
+				target.fPositionZ - pacingBoss.fLeapLandingZ) *
+				180.f / 3.14159265358979323846f;
+		};
 		bool retainedRandomTargetWhileNearestChanged = false;
-		bool followedIndependentLockedTargetMove = false;
+		bool trackedIndependentLockedTargetMove = false;
 		bool retainedAndTrackedAcrossStage = false;
 		if (entrancePlayers.end() != lockedPizzaPlayer &&
 			entrancePlayers.end() != nonlockedPizzaPlayer)
@@ -12318,17 +12300,17 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				nonlockedPlayer.iNetEntityId == pacingBoss.iTargetEntityId &&
 				yawMatches(
 					pacingBoss.fYawDegrees,
-					lockedPizzaYaw);
+					trackedPizzaYaw(lockedPlayer));
 
 			lockedPlayer.fPositionX = pacingBoss.fPositionX - 9.f;
 			lockedPlayer.fPositionZ = pacingBoss.fPositionZ + 5.f;
 			advanceBoss(pacingBoss, 1u);
-			followedIndependentLockedTargetMove =
+			trackedIndependentLockedTargetMove =
 				lockedPizzaTarget == pacingBoss.iPatternTargetEntityId &&
 				nonlockedPlayer.iNetEntityId == pacingBoss.iTargetEntityId &&
 				yawMatches(
 					pacingBoss.fYawDegrees,
-					lockedPizzaYaw);
+					trackedPizzaYaw(lockedPlayer));
 
 			const std::uint32_t initialPizzaStageIndex =
 				pacingBoss.iPatternStageIndex;
@@ -12355,15 +12337,15 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				nonlockedPlayer.iNetEntityId == pacingBoss.iTargetEntityId &&
 				yawMatches(
 					pacingBoss.fYawDegrees,
-					lockedPizzaYaw);
+					trackedPizzaYaw(lockedPlayer));
 		}
 		tests.Require(
 			INVALID_NET_ENTITY_ID != lockedPizzaTarget &&
 			retainedRandomTargetWhileNearestChanged,
 			"Keep six-pizza on its random start target when another alive player becomes nearest");
 		tests.Require(
-			followedIndependentLockedTargetMove,
-			"Keep six-pizza yaw locked to its initial arena-center direction after the target moves");
+			trackedIndependentLockedTargetMove,
+			"Track six-pizza yaw from arena center to its locked target after that target moves");
 		tests.Require(
 			retainedAndTrackedAcrossStage,
 			"Retain the same six-pizza target and facing after advancing from STEP_01 to STEP_02");
@@ -12599,7 +12581,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				openingSpan->eSelectionMode &&
 			160u == openingSpan->iFromHealthBar &&
 			130u == openingSpan->iToHealthBar &&
-			5u == openingSpan->Candidates.size() &&
+			6u == openingSpan->Candidates.size() &&
 			openingSpan == catalog.Find_BossPatternRotation(
 				"ENCOUNTER_VALTAN", 1u, 131u) &&
 			nullptr != secondSpan && openingSpan != secondSpan &&
@@ -16667,14 +16649,21 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			ordinaryWallSameTick = 1u == breakingCount &&
 				travelledDistance > 0.f &&
 				travelledDistance < ordinaryWallContactDistance &&
-				"VALTAN_DASH_CHARGE" == liveBoss.strPatternId &&
-				"GROGGY" == liveBoss.strPatternStageId &&
-				"valtan.attack.dash-charge.groggy" == liveBoss.strActionId &&
-				2u == liveBoss.iPatternStageIndex &&
-				updateTick == liveBoss.iActionStartTick &&
-				liveBoss.bPatternGroggy && !liveBoss.bPatternChargeImpact &&
+				liveBoss.strPatternId.empty() &&
+				liveBoss.PendingPatternFollowup.Is_Pending() &&
+				"VALTAN_DASH_CHARGE_GROGGY" ==
+					liveBoss.PendingPatternFollowup.strPatternId &&
+				650u == liveBoss.PendingPatternFollowup.iSourcePatternSequence &&
+				650u == liveBoss.PendingPatternFollowup.iRootPatternSequence &&
+				1u == liveBoss.PendingPatternFollowup.iDepth &&
+				650u == liveBoss.PatternTerminalReceipt.iPatternSequence &&
+				650u == liveBoss.PatternTerminalReceipt.iRootPatternSequence &&
+				SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED ==
+					liveBoss.PatternTerminalReceipt.eResult &&
+				SERVER_ENTITY_ACTION::IDLE == liveBoss.eAction &&
+				!liveBoss.bPatternGroggy && !liveBoss.bPatternChargeImpact &&
 				0.f == liveBoss.fPatternForcedMotionSpeed &&
-				CBossCombatRuntime::Has_Flag(
+				!CBossCombatRuntime::Has_Flag(
 					liveBoss.BossCombat,
 					SERVER_BOSS_COMBAT_FLAG::GROGGY);
 		}
@@ -16684,7 +16673,33 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Resolve a fresh centre-origin Dash to the first ordinary collision wall before the outer receivers");
 		tests.Require(
 			ordinaryWallRoom.m_isReady && ordinaryWallSameTick,
-			"Break the first ordinary wall, stop the Dash, and enter GROGGY on that fixed tick");
+			"Break the first ordinary wall, stop the Dash, and pin its GROGGY follow-up on that fixed tick");
+		const std::uint32_t ordinaryFollowupTick =
+			ordinaryWallRoom.m_iServerTick + 1u;
+		ordinaryWallRoom.Update_WorldEntities(1.f / 30.f);
+		ordinaryWallRoom.m_iServerTick = ordinaryFollowupTick;
+		const SERVER_WORLD_ENTITY& ordinaryFollowupBoss =
+			ordinaryWallRoom.m_WorldEntities.front();
+		const bool beganOrdinaryFollowup = ordinaryWallRoom.m_isReady &&
+			!ordinaryFollowupBoss.PendingPatternFollowup.Is_Pending() &&
+			"VALTAN_DASH_CHARGE_GROGGY" == ordinaryFollowupBoss.strPatternId &&
+			"GROGGY" == ordinaryFollowupBoss.strPatternStageId &&
+			"valtan.attack.dash-charge.recovery" == ordinaryFollowupBoss.strActionId &&
+			651u == ordinaryFollowupBoss.iPatternSequence &&
+			1u == ordinaryFollowupBoss.iPatternFollowupDepth &&
+			650u == ordinaryFollowupBoss.iPatternFollowupRootSequence &&
+			ordinaryFollowupBoss.bPatternGroggy &&
+			CBossCombatRuntime::Has_Flag(
+				ordinaryFollowupBoss.BossCombat,
+				SERVER_BOSS_COMBAT_FLAG::GROGGY);
+		ordinaryWallRoom.Update_WorldEntities(1.f / 30.f);
+		const SERVER_WORLD_ENTITY& ordinaryFollowupSecondTick =
+			ordinaryWallRoom.m_WorldEntities.front();
+		tests.Require(
+			beganOrdinaryFollowup && 651u == ordinaryFollowupSecondTick.iPatternSequence &&
+			"VALTAN_DASH_CHARGE_GROGGY" ==
+				ordinaryFollowupSecondTick.strPatternId,
+			"Begin the pinned GROGGY exactly once on the next fixed tick");
 
 		CGameRoom boundRoom{ WORLD_ID::VALTAN_ARENA };
 		const BOSS_RUNTIME_PROFILE* boundProfile =
@@ -16758,8 +16773,6 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			VALTAN_WALL_CENTER_Z, 90.f, 500u, 701u);
 		const float boundStartX = boundBoss.fPositionX;
 		const SERVER_WORLD_ENTITY consumedCharge = boundBoss;
-		const std::uint32_t boundContactUpdateTick =
-			boundRoom.m_iServerTick + 1u;
 		boundRoom.Update_WorldEntities(1.f / 30.f);
 		const auto boundStates =
 			boundRoom.m_WorldDestructionRuntime.Get_GroupStates();
@@ -16769,22 +16782,22 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			{
 				return WORLD_DESTRUCTION_STATE::BREAKING == state.eState;
 			}));
-		const SERVER_WORLD_ENTITY& groggyBoss = boundRoom.m_WorldEntities.front();
+		const SERVER_WORLD_ENTITY& recoveryBoss = boundRoom.m_WorldEntities.front();
 		tests.Require(
 			foundBoundContact && isolatedBoundWall &&
 			boundRoom.m_isReady && 1u == breakingCount &&
-			groggyBoss.fPositionX >= boundStartX &&
-			groggyBoss.fPositionX < boundContactX &&
-			"VALTAN_DASH_CHARGE" == groggyBoss.strPatternId &&
-			"GROGGY" == groggyBoss.strPatternStageId &&
-			"valtan.attack.dash-charge.groggy" == groggyBoss.strActionId &&
-			2u == groggyBoss.iPatternStageIndex &&
-			SERVER_ENTITY_ACTION::PATTERN_ACTIVE == groggyBoss.eAction &&
-			boundContactUpdateTick == groggyBoss.iActionStartTick &&
-			groggyBoss.bPatternGroggy && !groggyBoss.bPatternChargeImpact &&
-			CBossCombatRuntime::Has_Flag(
-				groggyBoss.BossCombat, SERVER_BOSS_COMBAT_FLAG::GROGGY),
-			"Commit BREAKING and replace the charge action with GROGGY on the exact swept collision tick");
+			recoveryBoss.fPositionX >= boundStartX &&
+			recoveryBoss.fPositionX < boundContactX &&
+			recoveryBoss.strPatternId.empty() &&
+			recoveryBoss.PendingPatternFollowup.Is_Pending() &&
+			"VALTAN_DASH_CHARGE_GROGGY" ==
+				recoveryBoss.PendingPatternFollowup.strPatternId &&
+			701u == recoveryBoss.PendingPatternFollowup.iRootPatternSequence &&
+			SERVER_ENTITY_ACTION::IDLE == recoveryBoss.eAction &&
+			!recoveryBoss.bPatternGroggy && !recoveryBoss.bPatternChargeImpact &&
+			!CBossCombatRuntime::Has_Flag(
+				recoveryBoss.BossCombat, SERVER_BOSS_COMBAT_FLAG::GROGGY),
+			"Commit BREAKING and reserve the pinned GROGGY follow-up on the exact swept collision tick");
 
 		SERVER_WORLD_ENTITY consumedProbe = consumedCharge;
 		consumedProbe.iNetEntityId = 99004u;
@@ -16797,7 +16810,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			consumedAccepted && !consumedTriggered &&
 			"CHARGE" == consumedProbe.strPatternStageId &&
 			!consumedProbe.bPatternGroggy,
-			"Refuse a consumed dash receiver without manufacturing GROGGY");
+			"Refuse a consumed dash receiver without changing the active CHARGE stage");
 
 	#ifdef _DEBUG
 		CGameRoom outerRoom{ WORLD_ID::VALTAN_ARENA };
@@ -16926,12 +16939,15 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			sameTickOuterImpact = 1u == tickOuterBreakingCount &&
 				travelledDistance > 0.f &&
 				travelledDistance < outerContactDistance &&
-				"VALTAN_DASH_CHARGE" == liveBoss.strPatternId &&
-				"GROGGY" == liveBoss.strPatternStageId &&
-				liveBoss.bPatternGroggy &&
+				liveBoss.strPatternId.empty() &&
+				liveBoss.PendingPatternFollowup.Is_Pending() &&
+				"VALTAN_DASH_CHARGE_GROGGY" ==
+					liveBoss.PendingPatternFollowup.strPatternId &&
+				SERVER_ENTITY_ACTION::IDLE == liveBoss.eAction &&
+				!liveBoss.bPatternGroggy &&
 				!liveBoss.bPatternChargeImpact &&
 				0.f == liveBoss.fPatternForcedMotionSpeed &&
-				CBossCombatRuntime::Has_Flag(
+				!CBossCombatRuntime::Has_Flag(
 					liveBoss.BossCombat,
 					SERVER_BOSS_COMBAT_FLAG::GROGGY);
 		}
@@ -16949,7 +16965,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Resolve the centre-origin Dash Charge's first swept contact to one stable outer-ring receiver");
 		tests.Require(
 			outerRoom.m_isReady && sameTickOuterImpact,
-			"Stop the centre-origin Dash Charge at its first outer-ring receiver and commit BREAKING plus GROGGY on that fixed tick");
+			"Stop the centre-origin Dash Charge at its first outer-ring receiver and commit BREAKING plus a pinned GROGGY on that fixed tick");
 		tests.Require(
 			1u == outerBreakingCount,
 			"Break exactly one outer-ring wall from the centre-origin Dash Charge");
@@ -16960,7 +16976,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		   outer receiver into BREAKING, then expose its receiver again to emulate
 		   a stale collision frame. The one-way mutation still answers NO_CHANGE,
 		   but the intact collision surface is a real wall contact and must end the
-		   charge in GROGGY. The same consumed group then proves the later 109 stage
+		   charge in RECOVERY. The same consumed group then proves the later 109 stage
 		   admits only the other twenty-nine in Release as well. */
 		CGameRoom partialOuterRoom{ WORLD_ID::VALTAN_ARENA };
 		const BOSS_RUNTIME_PROFILE* partialOuterProfile =
@@ -17027,7 +17043,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 
 		/* Isolate the actual source/receiver pair for this consumed-contact
 		   probe. Keeping the other ordinary walls here used to let an unrelated
-		   first hit manufacture the expected GROGGY result. Restore the complete
+		   first hit manufacture the expected RECOVERY result. Restore the complete
 		   collision state before the later 109 batch exercises the whole arena. */
 		CServerCollisionSystem collisionBeforeStaleReceiver =
 			partialOuterRoom.m_ServerCollisionSystem;
@@ -17089,7 +17105,6 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			"Sweep the consumed outer source and receiver identity before the real Dash room tick");
 		const std::uint64_t destructionSequenceBeforeStaleContact =
 			partialOuterRoom.m_iNextWorldDestructionEventSequence;
-		const std::uint32_t staleContactTick = partialOuterRoom.m_iServerTick + 1u;
 		partialOuterRoom.Update_WorldEntities(1.f / 30.f);
 		const SERVER_WORLD_ENTITY& safeStoppedBoss =
 			partialOuterRoom.m_WorldEntities.front();
@@ -17110,14 +17125,14 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			safeStoppedBoss.fPositionZ >= staleReceiverStartZ &&
 			safeStoppedBoss.fPositionZ < partialContactZ &&
 			0.f == safeStoppedBoss.fPatternForcedMotionSpeed &&
-			"VALTAN_DASH_CHARGE" == safeStoppedBoss.strPatternId &&
-			"GROGGY" == safeStoppedBoss.strPatternStageId &&
-			"valtan.attack.dash-charge.groggy" == safeStoppedBoss.strActionId &&
-			2u == safeStoppedBoss.iPatternStageIndex &&
-			staleContactTick == safeStoppedBoss.iActionStartTick &&
+			safeStoppedBoss.strPatternId.empty() &&
+			safeStoppedBoss.PendingPatternFollowup.Is_Pending() &&
+			"VALTAN_DASH_CHARGE_GROGGY" ==
+				safeStoppedBoss.PendingPatternFollowup.strPatternId &&
+			SERVER_ENTITY_ACTION::IDLE == safeStoppedBoss.eAction &&
 			!safeStoppedBoss.bPatternChargeImpact &&
-			safeStoppedBoss.bPatternGroggy &&
-			CBossCombatRuntime::Has_Flag(
+			!safeStoppedBoss.bPatternGroggy &&
+			!CBossCombatRuntime::Has_Flag(
 				safeStoppedBoss.BossCombat,
 				SERVER_BOSS_COMBAT_FLAG::GROGGY);
 		tests.Require(
@@ -17132,16 +17147,18 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			0.f == safeStoppedBoss.fPatternForcedMotionSpeed,
 			"Clamp the repeat Dash to its swept safe position and zero its forced speed");
 		tests.Require(
-			"GROGGY" == safeStoppedBoss.strPatternStageId &&
+			safeStoppedBoss.PendingPatternFollowup.Is_Pending() &&
+			"VALTAN_DASH_CHARGE_GROGGY" ==
+				safeStoppedBoss.PendingPatternFollowup.strPatternId &&
 			!safeStoppedBoss.bPatternChargeImpact &&
-			safeStoppedBoss.bPatternGroggy &&
-			CBossCombatRuntime::Has_Flag(
+			!safeStoppedBoss.bPatternGroggy &&
+			!CBossCombatRuntime::Has_Flag(
 				safeStoppedBoss.BossCombat,
 				SERVER_BOSS_COMBAT_FLAG::GROGGY),
-			"Enter GROGGY on a consumed receiver's still-blocking wall surface");
+			"Reserve GROGGY on a consumed receiver's still-blocking wall surface");
 		tests.Require(
 			stoppedOnConsumedOuter,
-			"Stop at the swept safe position and enter GROGGY without repeating the consumed mutation");
+			"Stop at the swept safe position and reserve GROGGY without repeating the consumed mutation");
 		const std::size_t collisionCountBeforeStaleReceiver =
 			collisionBeforeStaleReceiver.Get_CollisionBoxCount();
 		partialOuterRoom.m_ServerCollisionSystem = std::move(collisionBeforeStaleReceiver);
@@ -17860,6 +17877,50 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				room.m_ServerCollisionSystem.Get_Revision(),
 			"Complete Play starts the selected Server pattern on the first room tick without changing the chosen arena");
 
+		/* Saving and activating a new canonical gameplay Product must not rewrite
+		   the live predecessor pin. Restart carries the old occurrence revision and
+		   the newly active replacement revision as two independent CAS values. */
+		const GameplayDataRevision predecessorDefinitionRevision =
+			room.m_ValtanPatternIdAudition.PinnedDefinitionRevision;
+		GameplayDataRevision replacementDefinitionRevision =
+			predecessorDefinitionRevision;
+		replacementDefinitionRevision.Bytes[30] ^= 0x6du;
+		std::vector<wchar_t> restartPathBuffer(32768u);
+		std::filesystem::path restartDataRoot;
+		const DWORD restartConfigured = GetEnvironmentVariableW(
+			L"LOSTARK_SERVER_DATA_ROOT", restartPathBuffer.data(),
+			static_cast<DWORD>(restartPathBuffer.size()));
+		if (restartConfigured > 0u &&
+			restartConfigured < restartPathBuffer.size())
+		{
+			restartDataRoot = restartPathBuffer.data();
+		}
+		else if (GetModuleFileNameW(
+			nullptr, restartPathBuffer.data(),
+			static_cast<DWORD>(restartPathBuffer.size())) > 0u)
+		{
+			restartDataRoot = std::filesystem::path(restartPathBuffer.data()).
+				parent_path().parent_path() / L"DataFiles";
+		}
+		std::error_code restartPathError;
+		const auto restartBootstrapPath = std::filesystem::canonical(
+			restartDataRoot / L"Gameplay" / L"Gameplay.bootstrap",
+			restartPathError);
+		auto replacementGeneration = std::make_shared<CGameplayCatalog>();
+		std::string replacementActivationStatus;
+		const bool replacementActivated = !restartPathError &&
+			replacementGeneration->Load_FromBootstrap(
+				restartBootstrapPath, predecessorDefinitionRevision,
+				replacementDefinitionRevision) &&
+			room.Stage_GameplayGeneration(
+				7001u, predecessorDefinitionRevision, replacementGeneration,
+				replacementActivationStatus) &&
+			room.Commit_GameplayGeneration(7001u) &&
+			predecessorDefinitionRevision ==
+				room.m_ValtanPatternIdAudition.PinnedDefinitionRevision &&
+			replacementDefinitionRevision ==
+				room.m_GameplayCatalog.Get_ActiveRevision();
+
 		const std::uint32_t activePatternSequenceBeforeRestart =
 			nullptr == auditionBoss ? 0u : auditionBoss->iPatternSequence;
 		const std::uint32_t activeRoomEpochBeforeRestart =
@@ -17874,11 +17935,14 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			activePatternSequenceBeforeRestart;
 		restartPattern.ExpectedDefinitionRevision =
 			room.m_ValtanPatternIdAudition.PinnedDefinitionRevision;
+		restartPattern.ReplacementDefinitionRevision =
+			replacementDefinitionRevision;
 		const VALTAN_AUDITION_RESULT restartPatternResult =
 			room.Evaluate_ValtanAudition(
 				AUDITION_SESSION, restartPattern, reportedBar);
 		auditionBoss = room.Find_AuditionBoss();
 		tests.Require(
+			replacementActivated &&
 			VALTAN_AUDITION_RESULT::QUEUED == restartPatternResult &&
 			nullptr != auditionBoss &&
 			CGameRoom::VALTAN_PATTERN_ID_AUDITION_PHASE::PENDING ==
@@ -17890,6 +17954,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				room.m_ValtanPatternIdAudition.iRoomAuditionEpoch &&
 			activePatternSequenceBeforeRestart + 1u ==
 				room.m_ValtanPatternIdAudition.iExpectedPatternSequence &&
+			replacementDefinitionRevision ==
+				room.m_ValtanPatternIdAudition.PinnedDefinitionRevision &&
+			replacementDefinitionRevision ==
+				auditionBoss->PinnedDefinitionRevision &&
 			1u == auditionBoss->PendingPatternIds.size() &&
 			"VALTAN_FIST_IN_OUT" == auditionBoss->PendingPatternIds.front() &&
 			sameDestructionState(
@@ -17904,7 +17972,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				room.m_ServerNavigation.Get_Revision() &&
 			completePlayCollisionRevisionBefore ==
 				room.m_ServerCollisionSystem.Get_Revision(),
-			"Restart the same owner's exact active stable-ID occurrence with a new request and room epoch while preserving the arena");
+			"Restart the exact old occurrence into the newly activated canonical gameplay revision while preserving the arena");
 
 		room.Tick(1.f / 30.f);
 		auditionBoss = room.Find_AuditionBoss();
@@ -17959,6 +18027,16 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const VALTAN_AUDITION_RESULT wrongRevisionResult =
 			room.Evaluate_ValtanAudition(
 				AUDITION_SESSION, wrongRevisionRestart, reportedBar);
+		C2S_VALTAN_AUDITION_REQUEST wrongReplacementRestart = restartPattern;
+		wrongReplacementRestart.iRequestSequence = 5u;
+		wrongReplacementRestart.iPredecessorRoomAuditionEpoch = restartedEpoch;
+		wrongReplacementRestart.iPredecessorPatternSequence = restartedSequence;
+		wrongReplacementRestart.ExpectedDefinitionRevision = restartedRevision;
+		wrongReplacementRestart.ReplacementDefinitionRevision.Bytes[0] ^=
+			0xa5u;
+		const VALTAN_AUDITION_RESULT wrongReplacementResult =
+			room.Evaluate_ValtanAudition(
+				AUDITION_SESSION, wrongReplacementRestart, reportedBar);
 		auditionBoss = room.Find_AuditionBoss();
 		tests.Require(
 			VALTAN_AUDITION_RESULT::QUEUED == exactRestartRetryResult &&
@@ -17968,13 +18046,15 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				staleRestartResult &&
 			VALTAN_AUDITION_RESULT::REJECTED_STALE_AUDITION ==
 				wrongRevisionResult &&
+			VALTAN_AUDITION_RESULT::REJECTED_OCCURRENCE_PRESERVED ==
+				wrongReplacementResult &&
 			nullptr != auditionBoss &&
 			"VALTAN_FIST_IN_OUT" == auditionBoss->strPatternId &&
 			restartedSequence == auditionBoss->iPatternSequence &&
 			restartedEpoch == room.m_ValtanPatternIdAudition.iRoomAuditionEpoch &&
 			restartedRevision ==
 				room.m_ValtanPatternIdAudition.PinnedDefinitionRevision,
-			"Reject delayed or revision-mismatched Restart CAS without replacing the successor occurrence");
+			"Reject stale predecessor or inactive replacement Restart CAS without replacing the successor occurrence");
 
 		/* Force the canonical reset preflight to fail after bait staging. The live
 		   player's pose, movement and combat-ready state must remain byte-for-byte
@@ -18082,6 +18162,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				left.iPatternSequence == right.iPatternSequence &&
 				left.PatternTerminalReceipt.iPatternSequence ==
 					right.PatternTerminalReceipt.iPatternSequence &&
+				left.PatternTerminalReceipt.iRootPatternSequence ==
+					right.PatternTerminalReceipt.iRootPatternSequence &&
 				left.PatternTerminalReceipt.eResult ==
 					right.PatternTerminalReceipt.eResult &&
 				left.iPatternStageIndex == right.iPatternStageIndex &&
@@ -18116,6 +18198,19 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				left.BossCombat.iStaggerCurrent == right.BossCombat.iStaggerCurrent &&
 				left.BossCombat.iShieldCurrent == right.BossCombat.iShieldCurrent &&
 				left.PendingPatternIds == right.PendingPatternIds &&
+				left.PendingPatternFollowup.strPatternId ==
+					right.PendingPatternFollowup.strPatternId &&
+				left.PendingPatternFollowup.PinnedDefinitionRevision ==
+					right.PendingPatternFollowup.PinnedDefinitionRevision &&
+				left.PendingPatternFollowup.iSourcePatternSequence ==
+					right.PendingPatternFollowup.iSourcePatternSequence &&
+				left.PendingPatternFollowup.iRootPatternSequence ==
+					right.PendingPatternFollowup.iRootPatternSequence &&
+				left.PendingPatternFollowup.iDepth ==
+					right.PendingPatternFollowup.iDepth &&
+				left.iPatternFollowupDepth == right.iPatternFollowupDepth &&
+				left.iPatternFollowupRootSequence ==
+					right.iPatternFollowupRootSequence &&
 				left.TriggeredPatternIds == right.TriggeredPatternIds &&
 				sameCooldowns && sameOccurrences &&
 				left.bMechanicLedgerRequiresReset ==
@@ -18172,7 +18267,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		if (nullptr != resetPlacement)
 			resetPlacement->isEnabled = true;
 		C2S_VALTAN_AUDITION_REQUEST failedRestart = restartPattern;
-		failedRestart.iRequestSequence = 5u;
+		failedRestart.iRequestSequence = 6u;
 		failedRestart.iPredecessorRoomAuditionEpoch = restartedEpoch;
 		failedRestart.iPredecessorPatternSequence = restartedSequence;
 		failedRestart.ExpectedDefinitionRevision = restartedRevision;
@@ -18246,7 +18341,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const bool pillarCycleBeforeStaleCompletePlay =
 			room.m_bPillarAuditionCycleArmed;
 		C2S_VALTAN_AUDITION_REQUEST staleCompletePlay{};
-		staleCompletePlay.iRequestSequence = 6u;
+		staleCompletePlay.iRequestSequence = 7u;
 		staleCompletePlay.eOperation =
 			VALTAN_AUDITION_OPERATION::PLAY_PATTERN_ID;
 		staleCompletePlay.strBossPlacementId = "boss.valtan.center";
@@ -18852,15 +18947,64 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		placement->isEnabled = false;
 		const bool failedResetPreserved = before == captureLiveNextGameplay(fixture) &&
 			room.m_ValtanPatternFlowAudition.iRoomFlowEpoch == originalEpoch;
+		const GameplayDataRevision predecessorDefinitionRevision =
+			room.m_ValtanPatternFlowAudition.PinnedDefinitionRevision;
+		GameplayDataRevision replacementDefinitionRevision =
+			predecessorDefinitionRevision;
+		replacementDefinitionRevision.Bytes[29] ^= 0x57u;
+		std::vector<wchar_t> flowRestartPathBuffer(32768u);
+		std::filesystem::path flowRestartDataRoot;
+		const DWORD flowRestartConfigured = GetEnvironmentVariableW(
+			L"LOSTARK_SERVER_DATA_ROOT", flowRestartPathBuffer.data(),
+			static_cast<DWORD>(flowRestartPathBuffer.size()));
+		if (flowRestartConfigured > 0u &&
+			flowRestartConfigured < flowRestartPathBuffer.size())
+		{
+			flowRestartDataRoot = flowRestartPathBuffer.data();
+		}
+		else if (GetModuleFileNameW(
+			nullptr, flowRestartPathBuffer.data(),
+			static_cast<DWORD>(flowRestartPathBuffer.size())) > 0u)
+		{
+			flowRestartDataRoot =
+				std::filesystem::path(flowRestartPathBuffer.data()).
+					parent_path().parent_path() / L"DataFiles";
+		}
+		std::error_code flowRestartPathError;
+		const auto flowRestartBootstrapPath = std::filesystem::canonical(
+			flowRestartDataRoot / L"Gameplay" / L"Gameplay.bootstrap",
+			flowRestartPathError);
+		auto flowReplacementGeneration =
+			std::make_shared<CGameplayCatalog>();
+		std::string flowReplacementActivationStatus;
+		const bool flowReplacementActivated = !flowRestartPathError &&
+			flowReplacementGeneration->Load_FromBootstrap(
+				flowRestartBootstrapPath, predecessorDefinitionRevision,
+				replacementDefinitionRevision) &&
+			room.Stage_GameplayGeneration(
+				7002u, predecessorDefinitionRevision,
+				flowReplacementGeneration, flowReplacementActivationStatus) &&
+			room.Commit_GameplayGeneration(7002u) &&
+			predecessorDefinitionRevision ==
+				room.m_ValtanPatternFlowAudition.PinnedDefinitionRevision &&
+			predecessorDefinitionRevision == boss->PinnedDefinitionRevision &&
+			replacementDefinitionRevision ==
+				room.m_GameplayCatalog.Get_ActiveRevision();
 		auto replacement = original;
 		replacement.iRequestSequence = 4u;
+		replacement.ExpectedDefinitionRevision =
+			replacementDefinitionRevision;
 		replacement.strFlowRevision = std::string(64u, 'b');
 		replacement.Slots = { original.Slots[2], original.Slots[0], original.Slots[1] };
 		replacement.strStartSlotId = replacement.Slots.front().strSlotId;
 		const auto restarted = room.Evaluate_ValtanPatternFlowStart(NEXT_OWNER_SESSION, replacement, epoch, pin, reason);
 		const auto newEpoch = epoch;
 		const bool resetOnce = boss->iCurrentHp == boss->iMaximumHp &&
-			room.m_Players.at(NEXT_OWNER_PLAYER).CooldownEndTickBySkillId.empty();
+			room.m_Players.at(NEXT_OWNER_PLAYER).CooldownEndTickBySkillId.empty() &&
+			pin == replacementDefinitionRevision &&
+			room.m_ValtanPatternFlowAudition.PinnedDefinitionRevision ==
+				replacementDefinitionRevision &&
+			boss->PinnedDefinitionRevision == replacementDefinitionRevision;
 		boss->iCurrentHp -= 17u;
 		const auto after = captureLiveNextGameplay(fixture);
 		const auto duplicate = room.Evaluate_ValtanPatternFlowStart(NEXT_OWNER_SESSION, replacement, epoch, pin, reason);
@@ -18887,11 +19031,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			VALTAN_PATTERN_FLOW_RESULT::REJECTED_INVALID_FLOW == invalidVerdict && invalidPreserved &&
 			VALTAN_PATTERN_FLOW_RESULT::REJECTED_CONFLICT == foreign && foreignPreserved &&
 			VALTAN_PATTERN_FLOW_RESULT::REJECTED_INVALID_FLOW == failedReset && failedResetPreserved &&
+			flowReplacementActivated &&
 			VALTAN_PATTERN_FLOW_RESULT::QUEUED == restarted && newEpoch != originalEpoch && resetOnce &&
 			VALTAN_PATTERN_FLOW_RESULT::DUPLICATE_IGNORED == duplicate &&
 			VALTAN_PATTERN_FLOW_RESULT::REJECTED_STALE_FLOW == stopped && duplicatePreserved &&
 			observed == expected && !room.Is_ValtanPatternFlowRunning() && boss->bAutomaticPatternSequenceAuditionHold,
-			"Reload replaces an owned active Flow with the exact new saved array from its first sparse slot; rejection, duplicate and stale Stop preserve the admitted run");
+			"Reload replaces an owned active Flow with the exact new saved array and newly Server-active definition revision from its first sparse slot; rejection, duplicate and stale Stop preserve the admitted run");
 		fixture.Session->Request_Close();
 	}
 	for (const bool finishPredecessor : { false, true })
@@ -19801,6 +19946,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			firstActivePatternSequence;
 		otherOwnerRestart.ExpectedDefinitionRevision =
 			room.m_ValtanPatternIdAudition.PinnedDefinitionRevision;
+		otherOwnerRestart.ReplacementDefinitionRevision =
+			room.m_GameplayCatalog.Get_ActiveRevision();
 		const VALTAN_AUDITION_RESULT otherOwnerRestartResult =
 			room.Evaluate_ValtanAudition(
 				SECOND_SESSION, otherOwnerRestart, reportedBar);
@@ -20042,7 +20189,9 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 						item.Result.iExpectedNextRequestSequence ==
 							source.iExpectedNextRequestSequence &&
 						item.Result.ExpectedDefinitionRevision ==
-							source.ExpectedDefinitionRevision;
+							source.ExpectedDefinitionRevision &&
+						item.Result.ReplacementDefinitionRevision ==
+							source.ReplacementDefinitionRevision;
 					if (exactSource)
 					{
 						/* Snapshot coalescing can erase a frame before a numeric
@@ -20087,6 +20236,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			room.m_ValtanPatternIdAudition.iExpectedPatternSequence;
 		restart.ExpectedDefinitionRevision =
 			room.m_ValtanPatternIdAudition.PinnedDefinitionRevision;
+		restart.ReplacementDefinitionRevision =
+			room.m_GameplayCatalog.Get_ActiveRevision();
 		const std::uint32_t predecessorSequence =
 			restart.iPredecessorPatternSequence;
 		room.Handle_ValtanAudition(HANDLER_SESSION, restart);
@@ -20227,6 +20378,8 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			room.m_ValtanPatternIdAudition.iExpectedPatternSequence;
 		restart.ExpectedDefinitionRevision =
 			room.m_ValtanPatternIdAudition.PinnedDefinitionRevision;
+		restart.ReplacementDefinitionRevision =
+			room.m_GameplayCatalog.Get_ActiveRevision();
 		room.Handle_ValtanAudition(RECEIPT_SESSION, restart);
 		boss = room.Find_AuditionBoss();
 		const std::uint32_t queuedSuccessorSequence = nullptr == boss ? 0u :

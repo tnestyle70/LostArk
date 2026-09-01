@@ -40,7 +40,13 @@ namespace
 
 	bool Is_ArenaCenterCueAnchor(const std::string_view slot)
 	{
-		return slot == "arena.center" || slot == "arena.center.facing";
+		return slot == "arena.center" || slot == "arena.center.facing" ||
+			slot == "arena.center.target-follow";
+	}
+
+	bool Is_ArenaCenterTargetFollowCueAnchor(const std::string_view slot)
+	{
+		return slot == "arena.center.target-follow";
 	}
 
 	bool Is_PatternTargetSnapshotCueAnchor(const std::string_view slot)
@@ -64,6 +70,7 @@ namespace
 	constexpr f32_t NETWORK_PLAYBACK_DRIFT_GAIN = 4.f;
 	constexpr f32_t NETWORK_TELEPORT_DISTANCE_SQ = 100.f;
 	constexpr f32_t NETWORK_TURN_DEGREES_PER_SECOND = 720.f;
+	constexpr f32_t VALTAN_TARGET_FOLLOW_ROOT_YAW_OFFSET_DEGREES = 180.f;
 	constexpr const char_t* ROOT_MOTION_BONE = "b_root";
 	constexpr int32_t ROOT_MOTION_VERTICAL_AXIS = 2;
 	constexpr int32_t ROOT_MOTION_LOCK_ALL_AXES = -1;
@@ -291,6 +298,7 @@ HRESULT CValtan::Initialize(void* pArg)
 	m_iPrototypeLevelIndex = desc.iPrototypeLevelIndex;
 	m_isServerAuthoritative = desc.isServerAuthoritative;
 	m_strArchetypeId = desc.strArchetypeId;
+	m_strPresentationPartArchetypeId = desc.strArchetypeId;
 	m_iOwnerBossNetEntityId = desc.iOwnerBossNetEntityId;
 	m_isRaidBgmEnabled = m_isServerAuthoritative &&
 		LostArk::Shared::INVALID_NET_ENTITY_ID == m_iOwnerBossNetEntityId &&
@@ -376,6 +384,7 @@ void CValtan::Load_PatternHitAreaDebug()
 				area.iHitIntervalMs = stage.iHitIntervalMs;
 				area.iHitDelayMs = stage.iHitDelayMs;
 				area.HitOffsetsMs = stage.hitOffsetsMs;
+				area.iStageDurationMs = stage.iDurationMs;
 			}
 			area.bHasCounterProxy = stage.bHasCounterProxy;
 			area.fCounterProxyForwardOffsetM =
@@ -425,11 +434,20 @@ void CValtan::Draw_PatternHitAreaDebug() const
 			break;
 		}
 	}
-	if (!isHitWindow && !area.bHasCounterProxy)
+	/* A local authoring seek must keep the Server-authored geometry inspectable
+	   for the whole stage. Pink still marks the actual pulse window; the amber
+	   outline is geometry-only and never performs Client hit judgment. */
+	const bool_t isAuthoringGeometryWindow = isPreviewDriven &&
+		fAgeMs >= 0.f &&
+		fAgeMs <= static_cast<f32_t>(area.iStageDurationMs);
+	if (!isHitWindow && !isAuthoringGeometryWindow &&
+		!area.bHasCounterProxy)
 		return;
 
 	constexpr uint32_t PATTERN_HIT_COLOR_RGBA =
 		255u | (60u << 8) | (200u << 16) | (255u << 24);
+	constexpr uint32_t PATTERN_AUTHORING_GEOMETRY_COLOR_RGBA =
+		255u | (185u << 8) | (40u << 16) | (210u << 24);
 	constexpr uint32_t COUNTER_PROXY_COLOR_RGBA =
 		60u | (180u << 8) | (255u << 16) | (255u << 24);
 	constexpr f32_t METERS_TO_UNITS = 100.f;
@@ -467,29 +485,33 @@ void CValtan::Draw_PatternHitAreaDebug() const
 	};
 
 	HIT_AREA_SHAPE Shape{};
-	if (isHitWindow &&
+	const bool_t bDrawHitGeometry =
+		isHitWindow || isAuthoringGeometryWindow;
+	const uint32_t iHitGeometryColor = isHitWindow ?
+		PATTERN_HIT_COLOR_RGBA : PATTERN_AUTHORING_GEOMETRY_COLOR_RGBA;
+	if (bDrawHitGeometry &&
 		("CIRCLE" == area.strHitShape || "RING" == area.strHitShape))
 	{
 		Shape.iAreaType = 1;
 		Shape.iAreaRange = ToUnits(area.fOuterRadius);
 		Shape.iAreaInner = ToUnits(area.fInnerRadius);
-		Draw_WithYawOffset(0.f, 0.f, 0.f, Shape, PATTERN_HIT_COLOR_RGBA);
+		Draw_WithYawOffset(0.f, 0.f, 0.f, Shape, iHitGeometryColor);
 	}
-	else if (isHitWindow && "CONE" == area.strHitShape)
+	else if (bDrawHitGeometry && "CONE" == area.strHitShape)
 	{
 		Shape.iAreaType = 3;
 		Shape.iAreaRange = ToUnits(area.fLength);
 		Shape.iAreaAngle = static_cast<int32_t>(area.fAngleDegrees + 0.5f);
-		Draw_WithYawOffset(0.f, 0.f, 0.f, Shape, PATTERN_HIT_COLOR_RGBA);
+		Draw_WithYawOffset(0.f, 0.f, 0.f, Shape, iHitGeometryColor);
 	}
-	else if (isHitWindow && "BOX" == area.strHitShape)
+	else if (bDrawHitGeometry && "BOX" == area.strHitShape)
 	{
 		Shape.iAreaType = 2;
 		Shape.iAreaRange = ToUnits(area.fLength);
 		Shape.iAreaAngle = ToUnits(area.fHalfWidth * 2.f);
-		Draw_WithYawOffset(0.f, 0.f, 0.f, Shape, PATTERN_HIT_COLOR_RGBA);
+		Draw_WithYawOffset(0.f, 0.f, 0.f, Shape, iHitGeometryColor);
 	}
-	else if (isHitWindow && ("CROSS" == area.strHitShape ||
+	else if (bDrawHitGeometry && ("CROSS" == area.strHitShape ||
 		"SIX_DIRECTIONS" == area.strHitShape))
 	{
 		/* The server tests centered strips spanning [-length, +length] along
@@ -499,13 +521,13 @@ void CValtan::Draw_PatternHitAreaDebug() const
 		Shape.iAreaOffsetX = -ToUnits(area.fLength);
 		Shape.iAreaRange = ToUnits(area.fLength * 2.f);
 		Shape.iAreaAngle = ToUnits(area.fHalfWidth * 2.f);
-		Draw_WithYawOffset(0.f, 0.f, 0.f, Shape, PATTERN_HIT_COLOR_RGBA);
+		Draw_WithYawOffset(0.f, 0.f, 0.f, Shape, iHitGeometryColor);
 		if ("CROSS" == area.strHitShape)
-			Draw_WithYawOffset(90.f, 0.f, 0.f, Shape, PATTERN_HIT_COLOR_RGBA);
+			Draw_WithYawOffset(90.f, 0.f, 0.f, Shape, iHitGeometryColor);
 		else
 		{
-			Draw_WithYawOffset(60.f, 0.f, 0.f, Shape, PATTERN_HIT_COLOR_RGBA);
-			Draw_WithYawOffset(-60.f, 0.f, 0.f, Shape, PATTERN_HIT_COLOR_RGBA);
+			Draw_WithYawOffset(60.f, 0.f, 0.f, Shape, iHitGeometryColor);
+			Draw_WithYawOffset(-60.f, 0.f, 0.f, Shape, iHitGeometryColor);
 		}
 	}
 	if (area.bHasCounterProxy)
@@ -644,7 +666,7 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	CValtanCanonicalProductReadAdmission CanonicalAdmission;
 	Client::CValtanPresentationGenerationReadAdmission GenerationAdmission;
 	if (bExact ?
-		!GenerationAdmission.Acquire_ExactReceipt(
+		!GenerationAdmission.Acquire_Receipt(
 			*pExpectedServerRevision, *pExpectedReceipt, strOutStatus) :
 		!CanonicalAdmission.Acquire(strOutStatus))
 	{
@@ -962,6 +984,7 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 		{
 			const std::shared_ptr<CValtan> Owner =
 				static_pointer_cast<CValtan>(shared_from_this());
+			Stop_LocalPatternCombatObjectPreview();
 			if (bClockRewind)
 			{
 				CEffectPresentationService::Stop_BossOwner(Owner);
@@ -980,6 +1003,16 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 		}
 		m_strLocalPreviewActionId.assign(actionId);
 		m_iLocalPreviewStageIndex = LocalStage->second;
+		std::string CombatObjectStatus;
+		if (!Sync_LocalPatternCombatObjectPreview(
+				actionId, fActionAgeSeconds, CombatObjectStatus))
+		{
+			m_strLocalPreviewCombatObjectStatus = CombatObjectStatus;
+			OutputDebugStringA((
+				"[Client][Valtan] local combat-object preview isolated: " +
+				CombatObjectStatus + "\n").c_str());
+			return false;
+		}
 		Spawn_DuePatternEffectCues(fActionAgeSeconds);
 	}
 	const Client::EFFECT_V2_TARGET EffectV2Target =
@@ -1002,11 +1035,242 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 	return true;
 }
 
+void CValtan::Stop_LocalPatternCombatObjectPreview()
+{
+	for (LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE& Instance :
+		m_LocalPreviewCombatObjectInstances)
+	{
+		if (0u != Instance.iActiveHandle)
+		{
+			EFFECT_WORLD_ROOT_HANDLE Handle;
+			Handle.iValue = Instance.iActiveHandle;
+			CEffectPresentationService::Stop_WorldRoot(Handle);
+			Instance.iActiveHandle = 0u;
+		}
+		for (uint64_t& iTerminalHandle : Instance.TerminalHandles)
+		{
+			if (0u == iTerminalHandle)
+				continue;
+			EFFECT_WORLD_ROOT_HANDLE Handle;
+			Handle.iValue = iTerminalHandle;
+			CEffectPresentationService::Stop_WorldRoot(Handle);
+			iTerminalHandle = 0u;
+		}
+	}
+	m_LocalPreviewCombatObjectInstances.clear();
+	m_strLocalPreviewCombatObjectActionId.clear();
+}
+
+bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
+	const std::string_view actionId,
+	const f32_t fActionAgeSeconds,
+	std::string& strOutStatus)
+{
+	strOutStatus.clear();
+	if (m_isServerAuthoritative || !m_bLocalPatternAuthoringPreview ||
+		nullptr == m_pTransformCom || actionId.empty() ||
+		!std::isfinite(fActionAgeSeconds) || fActionAgeSeconds < 0.f)
+	{
+		strOutStatus = "Local combat-object preview clock is invalid.";
+		return false;
+	}
+
+	const auto Found = m_LocalPreviewCombatObjectsByActionId.find(
+		std::string(actionId));
+	if (m_LocalPreviewCombatObjectsByActionId.end() == Found)
+	{
+		if (!m_LocalPreviewCombatObjectInstances.empty())
+			Stop_LocalPatternCombatObjectPreview();
+		return true;
+	}
+
+	if (m_strLocalPreviewCombatObjectActionId != actionId)
+	{
+		Stop_LocalPatternCombatObjectPreview();
+		float3_t BossPosition{};
+		XMStoreFloat3(&BossPosition,
+			m_pTransformCom->Get_State(STATE::POSITION));
+		if (!std::isfinite(BossPosition.x) ||
+			!std::isfinite(BossPosition.y) ||
+			!std::isfinite(BossPosition.z) ||
+			!std::isfinite(m_fPresentationYawDegrees))
+		{
+			strOutStatus =
+				"Local combat-object preview has no finite stage-enter boss pose.";
+			return false;
+		}
+
+		std::vector<LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE> StagedInstances;
+		for (const LOCAL_PATTERN_COMBAT_OBJECT_TEMPLATE& Template : Found->second)
+		{
+			for (uint32_t iOrdinal = 0u; iOrdinal < Template.iCount; ++iOrdinal)
+			{
+				const f32_t fRelativeDegrees = Template.fStartAngleDegrees +
+					Template.fAngleStepDegrees * static_cast<f32_t>(iOrdinal);
+				const f32_t fWorldDegrees =
+					m_fPresentationYawDegrees + fRelativeDegrees;
+				const f32_t fRadians = XMConvertToRadians(fWorldDegrees);
+				LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE Instance;
+				Instance.Template = Template;
+				Instance.iOrdinal = iOrdinal;
+				Instance.vPosition = {
+					BossPosition.x + std::sin(fRadians) * Template.fRadiusM,
+					BossPosition.y,
+					BossPosition.z + std::cos(fRadians) * Template.fRadiusM };
+				Instance.fYawDegrees = fWorldDegrees;
+				Instance.TerminalHandles.resize(
+					Template.PresentationEvents.size(), 0u);
+				Instance.TerminalAttempts.resize(
+					Template.PresentationEvents.size(), false);
+				StagedInstances.push_back(std::move(Instance));
+			}
+		}
+		m_LocalPreviewCombatObjectInstances = std::move(StagedInstances);
+		m_strLocalPreviewCombatObjectActionId.assign(actionId);
+	}
+
+	const std::shared_ptr<CValtan> Owner =
+		std::static_pointer_cast<CValtan>(shared_from_this());
+	const auto Rollback = [this, &strOutStatus](const std::string& Status)
+	{
+		Stop_LocalPatternCombatObjectPreview();
+		strOutStatus = Status;
+		m_strLocalPreviewCombatObjectStatus = Status;
+		return false;
+	};
+	for (LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE& Instance :
+		m_LocalPreviewCombatObjectInstances)
+	{
+		const BOSS_COMBAT_OBJECT_VISUAL_ENTRY* Visual =
+			CActorCatalog::Find_BossCombatObjectVisual(
+				m_strArchetypeId,
+				Instance.Template.strCombatObjectArchetypeId,
+				Instance.Template.strClientVisualId);
+		if (nullptr == Visual ||
+			Visual->effectAssetId != Instance.Template.strActiveEffectAssetId ||
+			Visual->hitEffectAssetId !=
+				Instance.Template.strTerminalEffectAssetId)
+		{
+			return Rollback(
+				"Local combat-object preview catalog visual changed after staging.");
+		}
+		const float4x4_t Root = Visual->Make_WorldRoot(
+			Instance.vPosition, Instance.fYawDegrees);
+		const f32_t fActionAgeMs = fActionAgeSeconds * 1000.f;
+		if (fActionAgeMs < static_cast<f32_t>(Instance.Template.iLifetimeMs))
+		{
+			if (0u == Instance.iActiveHandle)
+			{
+				EFFECT_WORLD_ROOT_SPAWN_DESC Desc;
+				Desc.strEffectAssetId = Visual->effectAssetId;
+				Desc.pBossBudgetAndLifetimeOwner = Owner;
+				Desc.RootWorld = Root;
+				Desc.strOccurrenceId =
+					"valtan:local-preview:combat-object:generation:" +
+					std::to_string(m_iLocalPreviewEffectGeneration) + "/stage:" +
+					std::to_string(m_iLocalPreviewStageIndex) + "/archetype:" +
+					Instance.Template.strCombatObjectArchetypeId + "/ordinal:" +
+					std::to_string(Instance.iOrdinal) + "/active";
+				Desc.iSpawnTick = m_iLocalPreviewEffectGeneration;
+				Desc.fInitialSampleTimeSeconds = fActionAgeSeconds;
+				EFFECT_WORLD_ROOT_HANDLE Handle;
+				std::string Status;
+				if (!CEffectPresentationService::Spawn_WorldRoot(
+						Desc, Handle, Status) ||
+					!CEffectPresentationService::Seek_WorldRoot(
+						Handle, fActionAgeSeconds))
+				{
+					CEffectPresentationService::Stop_WorldRoot(Handle);
+					return Rollback(Status.empty() ?
+						"Local combat-object active Effect seek failed." : Status);
+				}
+				Instance.iActiveHandle = Handle.iValue;
+			}
+			else
+			{
+				EFFECT_WORLD_ROOT_HANDLE Handle;
+				Handle.iValue = Instance.iActiveHandle;
+				if (!CEffectPresentationService::Seek_WorldRoot(
+						Handle, fActionAgeSeconds))
+				{
+					return Rollback(
+						"Local combat-object active Effect left its preview handle.");
+				}
+			}
+		}
+		else if (0u != Instance.iActiveHandle)
+		{
+			EFFECT_WORLD_ROOT_HANDLE Handle;
+			Handle.iValue = Instance.iActiveHandle;
+			CEffectPresentationService::Stop_WorldRoot(Handle);
+			Instance.iActiveHandle = 0u;
+		}
+
+		for (size_t iEvent = 0u;
+			iEvent < Instance.Template.PresentationEvents.size(); ++iEvent)
+		{
+			const LOCAL_PATTERN_COMBAT_OBJECT_EVENT& Event =
+				Instance.Template.PresentationEvents[iEvent];
+			if (fActionAgeMs < static_cast<f32_t>(Event.iAtMs))
+				continue;
+			const f32_t fTerminalAgeSeconds = fActionAgeSeconds -
+				static_cast<f32_t>(Event.iAtMs) * 0.001f;
+			if (!Instance.TerminalAttempts[iEvent])
+			{
+				Instance.TerminalAttempts[iEvent] = true;
+				EFFECT_WORLD_ROOT_SPAWN_DESC Desc;
+				Desc.strEffectAssetId = Visual->hitEffectAssetId;
+				Desc.pBossBudgetAndLifetimeOwner = Owner;
+				Desc.RootWorld = Root;
+				Desc.strOccurrenceId =
+					"valtan:local-preview:combat-object:generation:" +
+					std::to_string(m_iLocalPreviewEffectGeneration) + "/stage:" +
+					std::to_string(m_iLocalPreviewStageIndex) + "/archetype:" +
+					Instance.Template.strCombatObjectArchetypeId + "/ordinal:" +
+					std::to_string(Instance.iOrdinal) + "/event:" +
+					Event.strPresentationEventId;
+				Desc.iSpawnTick = m_iLocalPreviewEffectGeneration;
+				Desc.fInitialSampleTimeSeconds = fTerminalAgeSeconds;
+				EFFECT_WORLD_ROOT_HANDLE Handle;
+				std::string Status;
+				if (!CEffectPresentationService::Spawn_WorldRoot(
+						Desc, Handle, Status) ||
+					!CEffectPresentationService::Seek_WorldRoot(
+						Handle, fTerminalAgeSeconds))
+				{
+					CEffectPresentationService::Stop_WorldRoot(Handle);
+					return Rollback(Status.empty() ?
+						"Local combat-object terminal Effect seek failed." : Status);
+				}
+				Instance.TerminalHandles[iEvent] = Handle.iValue;
+			}
+			else if (0u != Instance.TerminalHandles[iEvent])
+			{
+				EFFECT_WORLD_ROOT_HANDLE Handle;
+				Handle.iValue = Instance.TerminalHandles[iEvent];
+				/* A missing terminal handle means its authored NATURAL lifetime has
+				   completed. Keep the attempt consumed until an explicit rewind. */
+				if (!CEffectPresentationService::Seek_WorldRoot(
+						Handle, fTerminalAgeSeconds))
+				{
+					Instance.TerminalHandles[iEvent] = 0u;
+				}
+			}
+		}
+	}
+	strOutStatus = "Mirrored " +
+		std::to_string(m_LocalPreviewCombatObjectInstances.size()) +
+		" local combat-object Effect root(s).";
+	m_strLocalPreviewCombatObjectStatus = strOutStatus;
+	return true;
+}
+
 bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 	const Client::VALTAN_PATTERN_VIEW& Pattern,
 	std::string& strOutStatus)
 {
 	if (m_isServerAuthoritative || nullptr == m_pBodyModelCom ||
+		nullptr == m_pTransformCom ||
 		Pattern.strPatternId.empty() || Pattern.Stages.empty())
 	{
 		strOutStatus =
@@ -1019,6 +1283,10 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 		std::vector<Client::VALTAN_PATTERN_EFFECT_CUE>> StagedEffectCues;
 	std::unordered_map<std::string, uint32_t> StagedStageIndices;
 	std::unordered_map<std::string, float3_t> StagedArenaCenters;
+	std::unordered_map<std::string,
+		std::vector<LOCAL_PATTERN_COMBAT_OBJECT_TEMPLATE>>
+		StagedCombatObjects;
+	size_t iStagedCombatObjectCount = 0u;
 #ifdef _DEBUG
 	std::unordered_map<std::string, PATTERN_HIT_AREA_DEBUG> StagedHitAreas;
 #endif
@@ -1144,6 +1412,82 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 			Cue.iStageDurationMs = Stage.iDurationMs;
 			StagedEffectCues[Stage.strActionId].push_back(std::move(Cue));
 		}
+		for (const Client::VALTAN_COMBAT_OBJECT_EFFECT_VIEW& Source :
+			Stage.CombatObjectEffects)
+		{
+			/* Player-relative volleys need Server-resolved player poses and remain
+			   intentionally absent from local preview. Boss-relative radial rows are
+			   fully deterministic from the fixed stage-enter boss pose. */
+			if ("BOSS_RELATIVE" != Source.strVolleyPolicy ||
+				"RADIAL" != Source.strVolleyLayout)
+			{
+				continue;
+			}
+			const bool_t bFiniteLayout =
+				std::isfinite(Source.fVolleyRadiusM) &&
+				std::isfinite(Source.fVolleyStartAngleDegrees) &&
+				std::isfinite(Source.fVolleyAngleStepDegrees);
+			if ("ENTER" != Source.strTrigger || Source.iSpawnValue < 2u ||
+				Source.iSpawnValue > 8u || !bFiniteLayout ||
+				Source.fVolleyRadiusM <= 0.f ||
+				Source.fVolleyAngleStepDegrees <= 0.f ||
+				Source.fVolleyAngleStepDegrees *
+					static_cast<f32_t>(Source.iSpawnValue) > 360.00001f ||
+				0u == Source.iLifetimeMs)
+			{
+				strOutStatus =
+					"Local Pattern draft preview rejected a boss-relative combat-object volley: " +
+					Source.strCombatObjectArchetypeId + ".";
+				return false;
+			}
+			const BOSS_COMBAT_OBJECT_VISUAL_ENTRY* Visual =
+				CActorCatalog::Find_BossCombatObjectVisual(
+					m_strArchetypeId,
+					Source.strCombatObjectArchetypeId,
+					Source.strClientVisualId);
+			if (nullptr == Visual || Visual->effectAssetId.empty() ||
+				Visual->effectAssetId != Source.strEffectAssetId ||
+				(!Source.PresentationEvents.empty() &&
+				 Visual->hitEffectAssetId.empty()))
+			{
+				strOutStatus =
+					"Local Pattern draft preview rejected a combat-object visual join: " +
+					Source.strCombatObjectArchetypeId + ".";
+				return false;
+			}
+			LOCAL_PATTERN_COMBAT_OBJECT_TEMPLATE Template;
+			Template.strCombatObjectArchetypeId =
+				Source.strCombatObjectArchetypeId;
+			Template.strClientVisualId = Source.strClientVisualId;
+			Template.strActiveEffectAssetId = Visual->effectAssetId;
+			Template.strTerminalEffectAssetId = Visual->hitEffectAssetId;
+			Template.iCount = Source.iSpawnValue;
+			Template.fRadiusM = Source.fVolleyRadiusM;
+			Template.fStartAngleDegrees =
+				Source.fVolleyStartAngleDegrees;
+			Template.fAngleStepDegrees = Source.fVolleyAngleStepDegrees;
+			Template.iLifetimeMs = Source.iLifetimeMs;
+			for (const Client::VALTAN_COMBAT_OBJECT_PRESENTATION_EVENT_VIEW&
+				Event : Source.PresentationEvents)
+			{
+				if (Event.strPresentationEventId.empty() ||
+					Event.iAtMs > Source.iLifetimeMs)
+				{
+					strOutStatus =
+						"Local Pattern draft preview rejected a combat-object presentation clock: " +
+						Source.strCombatObjectArchetypeId + ".";
+					return false;
+				}
+				LOCAL_PATTERN_COMBAT_OBJECT_EVENT StagedEvent;
+				StagedEvent.strPresentationEventId =
+					Event.strPresentationEventId;
+				StagedEvent.iAtMs = Event.iAtMs;
+				Template.PresentationEvents.push_back(std::move(StagedEvent));
+			}
+			StagedCombatObjects[Stage.strActionId].push_back(
+				std::move(Template));
+			iStagedCombatObjectCount += Source.iSpawnValue;
+		}
 		StagedStageIndices.emplace(
 			Stage.strActionId, static_cast<uint32_t>(iStage));
 		StagedBindings.emplace(Stage.strActionId, std::move(Clips));
@@ -1165,6 +1509,7 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 				Area.iHitIntervalMs = Stage.iHitIntervalMs;
 				Area.iHitDelayMs = Stage.iHitDelayMs;
 				Area.HitOffsetsMs = Stage.HitOffsetsMs;
+				Area.iStageDurationMs = Stage.iDurationMs;
 			}
 			if (Stage.CounterProxy.has_value())
 			{
@@ -1215,6 +1560,7 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 	m_LocalPreviewEffectCuesByActionId = std::move(StagedEffectCues);
 	m_LocalPreviewStageIndexByActionId = std::move(StagedStageIndices);
 	m_LocalPreviewArenaCenterAnchors = std::move(StagedArenaCenters);
+	m_LocalPreviewCombatObjectsByActionId = std::move(StagedCombatObjects);
 	m_strLocalPreviewPatternId = Pattern.strPatternId;
 	m_strLocalPreviewActionId.clear();
 	m_iLocalPreviewStageIndex = 0u;
@@ -1228,8 +1574,37 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 	m_iPatternPresentationClipOccurrenceIndex =
 		(std::numeric_limits<std::size_t>::max)();
 	strOutStatus = "Staged effective Pattern draft animation/collider/Effect mirror for local preview: " +
-		Pattern.strPatternId + ".";
+		Pattern.strPatternId + " (" +
+		std::to_string(iStagedCombatObjectCount) +
+		" local combat-object root(s)).";
 	return true;
+}
+
+bool_t CValtan::Apply_LocalCombatObjectAuthoringPreviewSample(
+	const std::string_view actionId,
+	const f32_t fActionAgeSeconds,
+	const bool_t bResetTransport,
+	std::string& strOutStatus)
+{
+	strOutStatus.clear();
+	const auto Stage = m_LocalPreviewStageIndexByActionId.find(
+		std::string(actionId));
+	if (m_isServerAuthoritative || !m_bLocalPatternAuthoringPreview ||
+		actionId.empty() ||
+		m_LocalPreviewStageIndexByActionId.end() == Stage ||
+		!std::isfinite(fActionAgeSeconds) || fActionAgeSeconds < 0.f)
+	{
+		strOutStatus =
+			"Local independent combat-object preview sample is invalid.";
+		return false;
+	}
+
+	if (bResetTransport || m_strLocalPreviewActionId != actionId)
+		Reset_LocalPatternPreviewTransport();
+	m_strLocalPreviewActionId.assign(actionId);
+	m_iLocalPreviewStageIndex = Stage->second;
+	return Sync_LocalPatternCombatObjectPreview(
+		actionId, fActionAgeSeconds, strOutStatus);
 }
 
 void CValtan::Reset_LocalPatternPreviewTransport()
@@ -1238,6 +1613,7 @@ void CValtan::Reset_LocalPatternPreviewTransport()
 		return;
 	const std::shared_ptr<CValtan> Owner =
 		static_pointer_cast<CValtan>(shared_from_this());
+	Stop_LocalPatternCombatObjectPreview();
 	CEffectPresentationService::Stop_BossOwner(Owner);
 	Client::CEffectV2Runtime::Reset_LocalPreviewTarget(
 		Client::EFFECT_V2_TARGET::From_Valtan(
@@ -1266,6 +1642,10 @@ void CValtan::Reset_LocalPatternPresentationSample()
 	m_LocalPreviewEffectCuesByActionId.clear();
 	m_LocalPreviewStageIndexByActionId.clear();
 	m_LocalPreviewArenaCenterAnchors.clear();
+	m_LocalPreviewCombatObjectsByActionId.clear();
+	m_LocalPreviewCombatObjectInstances.clear();
+	m_strLocalPreviewCombatObjectActionId.clear();
+	m_strLocalPreviewCombatObjectStatus.clear();
 	m_strLocalPreviewPatternId.clear();
 	m_strLocalPreviewActionId.clear();
 	m_iLocalPreviewStageIndex = 0u;
@@ -1698,15 +2078,28 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 				const auto& ArenaCenters = bLocalPreview ?
 					m_LocalPreviewArenaCenterAnchors : m_PatternArenaCenterAnchors;
 				const auto center = ArenaCenters.find(Cue.strPatternId);
+				const bool_t bTargetFollow =
+					Is_ArenaCenterTargetFollowCueAnchor(Cue.strAnchorSlotId);
 				float4x4_t anchor{}, root{};
-				if (center != ArenaCenters.end())
+				const bool_t bHasAdmittedTargetFollowPose = bLocalPreview ||
+					(m_bServerPatternTargetIdentityStable &&
+					 m_bHasServerPatternTargetSnapshotPose &&
+					 m_iServerPatternTargetPoseSequence == m_iServerPatternSequence &&
+					 m_iServerPatternTargetNetEntityId !=
+						LostArk::Shared::INVALID_NET_ENTITY_ID);
+				if (center != ArenaCenters.end() &&
+					(!bTargetFollow || bHasAdmittedTargetFollowPose))
 				{
-					const f32_t yaw = Cue.strAnchorSlotId == "arena.center.facing" ?
+					const f32_t yaw = bTargetFollow ?
 						(bLocalPreview ? m_fPresentationYawDegrees :
-							m_fServerPatternFacingYawDegrees) : 0.f;
-					/* Fixed center. Product Arena uses the Server-locked occurrence
-					   facing; local composition preview uses the staged boss facing and
-					   never invents a pattern-target snapshot. */
+							m_fServerPatternCurrentYawDegrees) +
+							VALTAN_TARGET_FOLLOW_ROOT_YAW_OFFSET_DEGREES :
+						(Cue.strAnchorSlotId == "arena.center.facing" ?
+							(bLocalPreview ? m_fPresentationYawDegrees :
+								m_fServerPatternFacingYawDegrees) : 0.f);
+					/* Position stays on the authored landing center. Fixed-facing cues
+					   use the occurrence lock; target-follow cues use the latest accepted
+					   Server tick yaw and retain one mutable composite root handle. */
 					if (CValtanPatternEffectCueDocument::Try_BuildArenaCenterAnchor(
 							Cue.strAnchorSlotId, center->second, yaw, anchor) &&
 						CEffectPresentationService::Build_CueScalePolicyRoot(
@@ -1715,10 +2108,27 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 						EFFECT_WORLD_ROOT_HANDLE handle;
 						spawned = CEffectPresentationService::Spawn_WorldRoot(
 							Desc, root, handle, Status);
+						if (spawned && bTargetFollow && !bLocalPreview)
+						{
+							PATTERN_TARGET_FOLLOW_EFFECT_ROOT FollowRoot;
+							FollowRoot.iWorldRootHandle = handle.iValue;
+							FollowRoot.iPatternSequence = m_iServerPatternSequence;
+							FollowRoot.iTargetNetEntityId =
+								m_iServerPatternTargetNetEntityId;
+							FollowRoot.vArenaCenter = center->second;
+							FollowRoot.LocalTransform = Cue.LocalTransform;
+							FollowRoot.eScalePolicy = Cue.eScalePolicy;
+							FollowRoot.vWorldScale = Cue.vWorldScale;
+							m_PatternTargetFollowEffectRoots.push_back(
+								std::move(FollowRoot));
+						}
 					}
 					else
 						Status = "Arena-center cue local transform is invalid.";
 				}
+				else if (bTargetFollow && !bHasAdmittedTargetFollowPose)
+					Status =
+						"Arena-center target-follow cue has no admitted locked target pose.";
 				else
 					Status = "Arena-center cue has no admitted landing anchor.";
 			}
@@ -1732,6 +2142,56 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 			}
 		}
 	}
+}
+
+void CValtan::Update_PatternTargetFollowEffectRoots()
+{
+	auto FollowRoot = m_PatternTargetFollowEffectRoots.begin();
+	while (FollowRoot != m_PatternTargetFollowEffectRoots.end())
+	{
+		const bool_t bSameAdmittedTarget =
+			FollowRoot->iWorldRootHandle != 0u &&
+			FollowRoot->iPatternSequence == m_iServerPatternSequence &&
+			m_iServerPatternTargetPoseSequence == m_iServerPatternSequence &&
+			m_bServerPatternTargetIdentityStable &&
+			m_bHasServerPatternTargetSnapshotPose &&
+			FollowRoot->iTargetNetEntityId ==
+				m_iServerPatternTargetNetEntityId &&
+			m_iServerPatternTargetNetEntityId !=
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
+		if (!bSameAdmittedTarget)
+		{
+			/* Detaching freezes the natural Effect on its last valid root.  A
+			   missing/changed target never selects a replacement or writes yaw 0. */
+			FollowRoot = m_PatternTargetFollowEffectRoots.erase(FollowRoot);
+			continue;
+		}
+
+		float4x4_t Anchor{}, Root{};
+		if (!CValtanPatternEffectCueDocument::Try_BuildArenaCenterAnchor(
+				"arena.center.target-follow", FollowRoot->vArenaCenter,
+				m_fServerPatternCurrentYawDegrees +
+					VALTAN_TARGET_FOLLOW_ROOT_YAW_OFFSET_DEGREES, Anchor) ||
+			!CEffectPresentationService::Build_CueScalePolicyRoot(
+				FollowRoot->LocalTransform, FollowRoot->eScalePolicy,
+				FollowRoot->vWorldScale, Anchor, Root) ||
+			!CEffectPresentationService::Update_WorldRoot(
+				EFFECT_WORLD_ROOT_HANDLE{ FollowRoot->iWorldRootHandle }, Root))
+		{
+			/* Build/update is transactional.  The service still owns the last
+			   accepted matrix, so dropping only this updater preserves it. */
+			FollowRoot = m_PatternTargetFollowEffectRoots.erase(FollowRoot);
+			continue;
+		}
+		++FollowRoot;
+	}
+}
+
+void CValtan::Detach_PatternTargetFollowEffectRoots()
+{
+	/* NATURAL documents may still contain delayed elements.  Do not stop the
+	   handles here; the final accepted matrix is their terminal root. */
+	m_PatternTargetFollowEffectRoots.clear();
 }
 
 void CValtan::Load_PatternSoundCues()
@@ -2608,6 +3068,164 @@ HRESULT CValtan::Ready_PartObjects()
 	return S_OK;
 }
 
+bool_t CValtan::Replace_PresentationPartGroup(
+	const std::string_view presentationArchetypeId,
+	std::string& strOutStatus)
+{
+	strOutStatus.clear();
+	if (presentationArchetypeId.empty())
+	{
+		strOutStatus = "Valtan presentation part archetype is empty.";
+		return false;
+	}
+	if (m_strPresentationPartArchetypeId == presentationArchetypeId)
+		return true;
+
+	const BOSS_ACTOR_ENTRY* pActor =
+		CActorCatalog::Find_Boss(presentationArchetypeId);
+	if (nullptr == pActor ||
+		pActor->clientPresentationId != "boss.valtan.client.v1")
+	{
+		strOutStatus = "Valtan presentation part catalog entry is unavailable: " +
+			std::string(presentationArchetypeId) + ".";
+		return false;
+	}
+	if (!CValtanPresentationAssetService::Is_Ready(
+			m_iPrototypeLevelIndex, presentationArchetypeId) &&
+		FAILED(CValtanPresentationAssetService::Ensure_Prototypes(
+			m_pDevice, m_pContext, m_iPrototypeLevelIndex,
+			presentationArchetypeId)))
+	{
+		strOutStatus = "Valtan presentation part resources are unavailable: " +
+			std::string(presentationArchetypeId) + ".";
+		return false;
+	}
+
+	PART_OBJECT_MAP StagedParts;
+	std::unordered_map<uint32_t, wstring_t> StagedArmorPartTags;
+	std::string StagedPresentationArchetypeId(presentationArchetypeId);
+
+	CBody_Valtan::BODY_VALTAN_DESC bodyDesc{};
+	bodyDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
+	bodyDesc.pParentState = &m_iState;
+	bodyDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
+	bodyDesc.strModelPrototypeTag =
+		CValtanPresentationAssetService::Get_BodyModelPrototypeTag(
+			presentationArchetypeId);
+	bodyDesc.pEmissiveOverride = &m_HitFlash;
+	shared_ptr<CPartObject> StagedBodyPart;
+	if (FAILED(__super::Clone_PartObject(
+			m_iPrototypeLevelIndex,
+			TEXT("Prototype_GameObject_Body_Valtan"),
+			&bodyDesc, StagedBodyPart)))
+	{
+		strOutStatus = "Valtan presentation body clone failed: " +
+			std::string(presentationArchetypeId) + ".";
+		return false;
+	}
+	const shared_ptr<CModel> StagedBodyModel =
+		dynamic_pointer_cast<CModel>(
+			StagedBodyPart->Get_Component(TEXT("Com_Model")));
+	const shared_ptr<CTransform> StagedBodyVisualRoot =
+		dynamic_pointer_cast<CTransform>(
+			StagedBodyPart->Get_Component(g_strTransformComTag));
+	if (nullptr == StagedBodyModel || nullptr == StagedBodyVisualRoot)
+	{
+		strOutStatus = "Valtan presentation body components are incomplete: " +
+			std::string(presentationArchetypeId) + ".";
+		return false;
+	}
+	StagedBodyModel->Enable_RootMotionSuppression(
+		ROOT_MOTION_BONE,
+		m_isServerAuthoritative ?
+			ROOT_MOTION_LOCK_ALL_AXES : ROOT_MOTION_VERTICAL_AXIS);
+	StagedParts.emplace(BODY_PART_TAG, StagedBodyPart);
+
+	CPart_Equipment::PART_EQUIPMENT_DESC weaponDesc{};
+	weaponDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
+	weaponDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
+	weaponDesc.strModelTag =
+		CValtanPresentationAssetService::Get_WeaponModelPrototypeTag(
+			presentationArchetypeId);
+	weaponDesc.strShaderTag =
+		TEXT("Prototype_Component_Shader_VtxMeshBinary");
+	weaponDesc.pSkeletonModel = StagedBodyModel;
+	weaponDesc.pSocketBoneName = WEAPON_SOCKET_BONE;
+	weaponDesc.pSocketRootMatrix =
+		StagedBodyVisualRoot->Get_WorldMatrixPtr();
+	weaponDesc.strMaterialProfileId = "material.valtan.monster-base.v1";
+	weaponDesc.pEmissiveOverride = &m_HitFlash;
+	shared_ptr<CPartObject> StagedWeaponPart;
+	if (FAILED(__super::Clone_PartObject(
+			m_iPrototypeLevelIndex,
+			TEXT("Prototype_GameObject_Part_Equipment"),
+			&weaponDesc, StagedWeaponPart)) ||
+		nullptr == dynamic_pointer_cast<CPart_Equipment>(StagedWeaponPart))
+	{
+		strOutStatus = "Valtan presentation weapon clone failed: " +
+			std::string(presentationArchetypeId) + ".";
+		return false;
+	}
+	StagedParts.emplace(WEAPON_PART_TAG, StagedWeaponPart);
+
+	StagedArmorPartTags.reserve(pActor->armorParts.size());
+	for (const BOSS_ARMOR_PART_ENTRY& armorPart : pActor->armorParts)
+	{
+		CPart_Equipment::PART_EQUIPMENT_DESC armorDesc{};
+		armorDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
+		armorDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
+		armorDesc.strModelTag = Build_ArmorModelPrototypeTag(
+			armorPart.stateMask, presentationArchetypeId);
+		armorDesc.strShaderTag =
+			TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
+		armorDesc.pSkeletonModel = StagedBodyModel;
+		armorDesc.pSocketBoneName = nullptr;
+		armorDesc.pSocketRootMatrix =
+			StagedBodyVisualRoot->Get_WorldMatrixPtr();
+		armorDesc.strMaterialProfileId =
+			"material.valtan.monster-base.v1";
+		armorDesc.pEmissiveOverride = &m_HitFlash;
+
+		const wstring_t armorPartTag =
+			Build_ArmorPartTag(armorPart.stateMask);
+		shared_ptr<CPartObject> StagedArmorPart;
+		if (FAILED(__super::Clone_PartObject(
+				m_iPrototypeLevelIndex,
+				TEXT("Prototype_GameObject_Part_Equipment"),
+				&armorDesc, StagedArmorPart)) ||
+			nullptr == dynamic_pointer_cast<CPart_Equipment>(StagedArmorPart) ||
+			!StagedParts.emplace(
+				armorPartTag, StagedArmorPart).second ||
+			!StagedArmorPartTags.emplace(
+				armorPart.stateMask, armorPartTag).second)
+		{
+			strOutStatus = "Valtan presentation armour group clone failed: " +
+				armorPart.partId + ".";
+			return false;
+		}
+	}
+
+	/* Nothing above mutates the live part map.  One group swap publishes body,
+	   weapon and the complete armour set together; any resource/clone failure
+	   has already returned with the previous group and component pointers live. */
+	if (FAILED(__super::Replace_PartObjectGroup(
+			TEXT("Part_"), std::move(StagedParts))))
+	{
+		strOutStatus = "Valtan presentation part group commit failed: " +
+			std::string(presentationArchetypeId) + ".";
+		return false;
+	}
+
+	m_pBodyModelCom = StagedBodyModel;
+	m_pBodyVisualRootCom = StagedBodyVisualRoot;
+	m_ArmorPartTagsByStateMask = std::move(StagedArmorPartTags);
+	m_strPresentationPartArchetypeId =
+		std::move(StagedPresentationArchetypeId);
+	strOutStatus = "Committed Valtan presentation part group: " +
+		m_strPresentationPartArchetypeId + ".";
+	return true;
+}
+
 /* The shoulder and arm plates are authored on the body rig, so they are
 skinned parts: no socket bone, and the body model owns the bone palette
 they render with. Breaking a plate later only has to hide its part.
@@ -2893,6 +3511,30 @@ bool_t CValtan::Apply_BossCombatState(
 		if (state.iStateRevision == m_BossCombatState.iStateRevision)
 			return Is_SameBossCombatState(state, m_BossCombatState);
 	}
+	/* Phase 3 changes only the primary boss's presentation group.  Its
+	   archetype/NetEntityId, HP and Server damage authority remain untouched;
+	   dependent BOSS_VALTAN_GHOST entities keep their own ownership contract. */
+	if ("BOSS_VALTAN" == m_strArchetypeId &&
+		LostArk::Shared::INVALID_NET_ENTITY_ID == m_iOwnerBossNetEntityId)
+	{
+		const std::string_view DesiredPresentationArchetype =
+			state.iGameplayPhase >= 3u ?
+			"BOSS_VALTAN_GHOST" : "BOSS_VALTAN";
+		if (m_strPresentationPartArchetypeId != DesiredPresentationArchetype)
+		{
+			std::string PresentationStatus;
+			if (!Replace_PresentationPartGroup(
+					DesiredPresentationArchetype, PresentationStatus))
+			{
+				/* Presentation admission is isolated from the valid authoritative
+				   combat snapshot.  The old complete group remains drawable and a
+				   later state revision may retry after the Drive asset is restored. */
+				OutputDebugStringA((
+					"[Client][Valtan] phase presentation swap isolated: " +
+					PresentationStatus + "\n").c_str());
+			}
+		}
+	}
 
 	m_BossCombatState = state;
 	m_hasBossCombatState = true;
@@ -3107,6 +3749,7 @@ bool_t CValtan::Begin_NetworkDeathPresentation()
 	m_fHitFlashRemainingSeconds = 0.f;
 	m_HitFlash = {};
 	const auto owner = std::static_pointer_cast<CValtan>(shared_from_this());
+	Detach_PatternTargetFollowEffectRoots();
 	CEffectPresentationService::Stop_BossOwner(owner);
 	Client::CEffectV2Runtime::Sync_Stage(
 		Client::EFFECT_V2_TARGET::From_Valtan(owner), "", 0.f, m_pDevice, m_pContext);
@@ -3217,6 +3860,7 @@ bool_t CValtan::Apply_NetworkState(
 	}
 	if (VALTAN_STATE::DEAD == nextState)
 	{
+		Detach_PatternTargetFollowEffectRoots();
 		m_iServerPatternTargetNetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
 		m_iServerPatternTargetPoseSequence = 0u;
@@ -3340,8 +3984,10 @@ bool_t CValtan::Apply_NetworkState(
 	{
 		CEffectPresentationService::Stop_BossAction(
 			std::static_pointer_cast<CValtan>(shared_from_this()),
-			iPreviousActionStartTick);
+			 iPreviousActionStartTick);
 	}
+	if (!isPatternState || iPatternSequence != m_iServerPatternSequence)
+		Detach_PatternTargetFollowEffectRoots();
 
 	Queue_NetworkTransformSample(position, yawDegrees, iServerTick);
 	m_strServerActionId.assign(actionId);
@@ -3352,6 +3998,7 @@ bool_t CValtan::Apply_NetworkState(
 	{
 		if (iPatternSequence != m_iServerPatternSequence)
 			m_fServerPatternFacingYawDegrees = yawDegrees;
+		m_fServerPatternCurrentYawDegrees = yawDegrees;
 		m_strServerPatternId.assign(patternId);
 		m_iServerActionStartTick = iActionStartTick;
 		m_iServerPatternSequence = iPatternSequence;
@@ -3399,8 +4046,9 @@ bool_t CValtan::Apply_NetworkState(
 		if (bCommitPatternClipOccurrenceIndex)
 		{
 			m_iPatternPresentationClipOccurrenceIndex =
-				iAcceptedPatternClipOccurrenceIndex;
+				 iAcceptedPatternClipOccurrenceIndex;
 		}
+		Update_PatternTargetFollowEffectRoots();
 	}
 	else
 	{
@@ -3410,6 +4058,7 @@ bool_t CValtan::Apply_NetworkState(
 		m_iServerPatternTargetNetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
 		m_iServerPatternTargetPoseSequence = 0u;
+		m_fServerPatternCurrentYawDegrees = 0.f;
 		m_bHasServerPatternTargetSnapshotPose = false;
 		m_bServerPatternTargetIdentityStable = false;
 		m_iPatternPresentationClipOccurrenceIndex =

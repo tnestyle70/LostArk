@@ -15,30 +15,42 @@ from pathlib import Path
 from typing import Any
 
 
-ANIMATIONLESS_SKELETON_CONTRACTS: dict[str, dict[str, Any]] = {
+STATUS_PATTERN_CONTRACTS: dict[str, dict[str, Any]] = {
     "VALTAN_STAGGER_SLOT": {
-        "displayName": "무력화 패턴 (애니메이션 슬롯 미지정)",
+        "displayName": "마력구파괴 패턴",
         "sourceChainId": "derived.stagger-slot",
-        "sourceActionId": 420642,
+        "sourceActionIds": (420642, 400430),
         "sourceSequenceIndex": 1,
+        "presentationSources": (
+            (420642, 1, "PRIMARY"),
+            (400430, 0, "REFERENCE_400430_0"),
+        ),
         "actionId": "valtan.authoring.stagger-slot",
         "targetPolicy": "NONE",
         "aimPolicy": "NONE",
     },
     "VALTAN_BIND_SLOT": {
-        "displayName": "속박 패턴 (애니메이션 슬롯 미지정)",
+        "displayName": "속박 패턴",
         "sourceChainId": "derived.bind-slot",
-        "sourceActionId": 420623,
+        "sourceActionIds": (420623, 400442),
         "sourceSequenceIndex": 1,
+        "presentationSources": (
+            (420623, 1, "PRIMARY"),
+            (400442, 0, "REFERENCE_400442_0"),
+        ),
         "actionId": "valtan.authoring.bind-slot",
         "targetPolicy": "LOCK_RANDOM_ALIVE_ON_START",
         "aimPolicy": "LOCK_FACING_ON_START",
     },
     "VALTAN_SILENCE_SLOT": {
-        "displayName": "침묵 패턴 (애니메이션 슬롯 미지정)",
+        "displayName": "침묵 패턴",
         "sourceChainId": "derived.silence-slot",
-        "sourceActionId": 400440,
+        "sourceActionIds": (400440, 400437),
         "sourceSequenceIndex": 0,
+        "presentationSources": (
+            (400440, 0, "PRIMARY"),
+            (400437, 0, "REFERENCE_400437_0"),
+        ),
         "actionId": "valtan.authoring.silence-slot",
         "targetPolicy": "NONE",
         "aimPolicy": "NONE",
@@ -75,8 +87,8 @@ class CoverageReport:
     encounter_count: int
     product_ids: frozenset[str]
     encounter_ids: frozenset[str]
-    flow_pattern_ids: frozenset[str]
-    animationless_skeleton_ids: frozenset[str]
+    scripted_pattern_ids: frozenset[str]
+    status_pattern_ids: frozenset[str]
 
 
 def _load_object(path: Path) -> dict[str, Any]:
@@ -126,139 +138,7 @@ def _stage_identity(row: dict[str, Any], owner: str) -> list[tuple[str, str]]:
     return identities
 
 
-def _skeleton_eligibility() -> dict[str, Any]:
-    return {
-        "armorRequirement": "ANY",
-        "phaseRequirement": "ANY",
-        "minimumGameplayPhase": 1,
-        "maximumGameplayPhase": 3,
-        "minimumHealthBarInclusive": 0,
-        "maximumHealthBarInclusive": 0,
-        "minimumRangeM": 0.0,
-        "maximumRangeM": 1.0,
-        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
-        "selectionCooldownMs": None,
-        "cooldownGroupId": None,
-        "repeatPolicy": {
-            "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
-            "limit": 0,
-        },
-    }
-
-
-def _expected_gameplay_skeleton(
-    pattern_id: str, contract: dict[str, Any]
-) -> dict[str, Any]:
-    stage_action_id = f'{contract["actionId"]}.step-01'
-    return {
-        "patternId": pattern_id,
-        "displayName": contract["displayName"],
-        "category": "NORMAL",
-        "compatibilitySelectionWeight": 0,
-        "actionId": contract["actionId"],
-        "entryActionId": stage_action_id,
-        "targetPolicy": contract["targetPolicy"],
-        "aimPolicy": contract["aimPolicy"],
-        "eligibility": _skeleton_eligibility(),
-        "invulnerableWhileRunning": False,
-        "sourceActionIds": [contract["sourceActionId"]],
-        "serverMotion": None,
-        "reactions": [],
-        "stages": [
-            {
-                "stageId": "STEP_01",
-                "actionId": stage_action_id,
-                "stageKind": "ACTIVE",
-                "durationMs": 5000,
-                "defaultNextActionId": None,
-                "hit": {"shape": {"kind": "NONE"}},
-                "motion": None,
-                "events": [],
-                "branches": [],
-            }
-        ],
-    }
-
-
-def _expected_presentation_skeleton(
-    pattern_id: str, contract: dict[str, Any]
-) -> dict[str, Any]:
-    stage_action_id = f'{contract["actionId"]}.step-01'
-    return {
-        "patternId": pattern_id,
-        "sourceSequenceIndex": contract["sourceSequenceIndex"],
-        "presentationSources": [
-            {
-                "sourceActionId": contract["sourceActionId"],
-                "sequenceIndex": contract["sourceSequenceIndex"],
-                "role": "PRIMARY",
-            }
-        ],
-        "stages": [
-            {
-                "stageId": "STEP_01",
-                "actionId": stage_action_id,
-                "sequenceRole": "STEP",
-                "animation": {"mode": "NONE"},
-                "effectCues": [],
-                "cameraInvocations": [],
-            }
-        ],
-    }
-
-
-def _expected_encounter_skeleton(
-    pattern_id: str, contract: dict[str, Any]
-) -> dict[str, Any]:
-    stage_action_id = f'{contract["actionId"]}.step-01'
-    return {
-        "patternId": pattern_id,
-        "category": "NORMAL",
-        "minimumPhase": 1,
-        "maximumPhase": 3,
-        "targetPolicy": contract["targetPolicy"],
-        "aimPolicy": contract["aimPolicy"],
-        "displayName": contract["displayName"],
-        "actionId": contract["actionId"],
-        "sourceActionIds": [contract["sourceActionId"]],
-        "selectionMode": "AUDITION_ONLY",
-        "minimumHealthBar": 0,
-        "maximumHealthBar": 0,
-        "triggerHealthBar": 0,
-        "triggerOrder": 0,
-        "armorRequirement": "ANY",
-        "phaseRequirement": "ANY",
-        "invulnerableWhileRunning": False,
-        "selectionWeight": 0,
-        "maximumConsecutiveUses": 0,
-        "minimumRange": 0.0,
-        "maximumRange": 1.0,
-        "stages": [
-            {
-                "stageId": "STEP_01",
-                "actionId": stage_action_id,
-                "stageKind": "ACTIVE",
-                "durationMs": 5000,
-                "hitShape": "NONE",
-                "hitOuterRadius": 0.0,
-                "hitInnerRadius": 0.0,
-                "hitAngleDegrees": 0.0,
-                "hitLength": 0.0,
-                "hitHalfWidth": 0.0,
-                "hitCount": 0,
-                "hitIntervalMs": 0,
-                "hitDelayMs": 0,
-                "serverDamageProfileId": "",
-                "pushRangeM": 0.0,
-                "pushMs": 0,
-                "knockdown": False,
-                "downMs": 0,
-            }
-        ],
-    }
-
-
-def _validate_animationless_skeletons(
+def _validate_status_patterns(
     gameplay: dict[str, Any],
     gameplay_by_id: dict[str, dict[str, Any]],
     presentation_by_id: dict[str, dict[str, Any]],
@@ -314,18 +194,38 @@ def _validate_animationless_skeletons(
     expected_status_events = {
         "VALTAN_STAGGER_SLOT": (
             ("STEP_01", "SET_STAGGER_GAUGE", 100, 5000),
-            ("GROGGY", "SET_BOSS_FLAG", 1, 3000),
+            ("GROGGY", "SET_BOSS_FLAG", 1, 6833),
             ("RECOVERY", None, 0, 1000),
         ),
         "VALTAN_BIND_SLOT": (
-            ("STEP_01", "SET_PLAYER_BIND", 10000, 5000),
+            ("STEP_01", "SET_PLAYER_BIND", 10000, 8533),
         ),
         "VALTAN_SILENCE_SLOT": (
-            ("STEP_01", "SET_PLAYER_SILENCE", 1, 5000),
+            ("STEP_01", "SET_PLAYER_SILENCE", 1, 2633),
         ),
     }
 
-    for pattern_id, contract in ANIMATIONLESS_SKELETON_CONTRACTS.items():
+    expected_animation_occurrences = {
+        ("VALTAN_STAGGER_SLOT", "GROGGY"): (
+            ("mesh_abn_groggy_1_start", 1833),
+            ("mesh_abn_groggy_1_loop", 1333),
+            ("mesh_abn_groggy_1_loop", 1333),
+            ("mesh_abn_groggy_1_loop", 334),
+            ("mesh_abn_groggy_1_end", 2000),
+        ),
+        ("VALTAN_BIND_SLOT", "STEP_01"): (
+            ("mesh_att_battle_5_01_start", 1400),
+            ("mesh_att_battle_5_01_loop", 900),
+            ("mesh_att_battle_5_01_loop", 900),
+            ("mesh_att_battle_5_01_loop", 900),
+            ("mesh_att_battle_5_01_end", 4433),
+        ),
+        ("VALTAN_SILENCE_SLOT", "STEP_01"): (
+            ("mesh_evt1_att_battle_5_01_end", 2633),
+        ),
+    }
+
+    for pattern_id, contract in STATUS_PATTERN_CONTRACTS.items():
         expected_manual = {
             "patternId": pattern_id,
             "sourceChainId": contract["sourceChainId"],
@@ -334,7 +234,7 @@ def _validate_animationless_skeletons(
         }
         if manual_by_id.get(pattern_id) != expected_manual:
             raise CoverageError(
-                f"animationless skeleton manual owner differs: {pattern_id}"
+                f"status Pattern manual owner differs: {pattern_id}"
             )
         gameplay_row = gameplay_by_id.get(pattern_id)
         presentation_row = presentation_by_id.get(pattern_id)
@@ -343,6 +243,35 @@ def _validate_animationless_skeletons(
             raise CoverageError(f"status Pattern split owner is missing: {pattern_id}")
         if not isinstance(encounter_row, dict):
             raise CoverageError(f"status Pattern Product row is missing: {pattern_id}")
+        if (gameplay_row.get("displayName") != contract["displayName"] or
+                encounter_row.get("displayName") != contract["displayName"]):
+            raise CoverageError(f"status Pattern display name differs: {pattern_id}")
+        expected_source_action_ids = contract["sourceActionIds"]
+        if (tuple(gameplay_row.get("sourceActionIds", ())) !=
+                expected_source_action_ids or
+                tuple(encounter_row.get("sourceActionIds", ())) !=
+                expected_source_action_ids):
+            raise CoverageError(
+                f"status Pattern source action closure differs: {pattern_id}"
+            )
+        presentation_sources = presentation_row.get("presentationSources")
+        if (not isinstance(presentation_sources, list) or
+                len(presentation_sources) != len(contract["presentationSources"]) or
+                any(not isinstance(row, dict) for row in presentation_sources) or
+                presentation_row.get("sourceSequenceIndex") !=
+                contract["sourceSequenceIndex"] or
+                tuple(
+                    (
+                        row.get("sourceActionId"),
+                        row.get("sequenceIndex"),
+                        row.get("role"),
+                    )
+                    for row in presentation_sources
+                    if isinstance(row, dict)
+                ) != contract["presentationSources"]):
+            raise CoverageError(
+                f"status Pattern presentation source closure differs: {pattern_id}"
+            )
         if (gameplay_row.get("targetPolicy") != contract["targetPolicy"] or
                 gameplay_row.get("aimPolicy") != contract["aimPolicy"]):
             raise CoverageError(f"status Pattern target contract differs: {pattern_id}")
@@ -377,30 +306,78 @@ def _validate_animationless_skeletons(
             elif expected_kind == "SET_PLAYER_SILENCE" and (
                     enter.get("durationMs") != expected_duration):
                 raise CoverageError(f"status silence contract differs: {pattern_id}")
+        gameplay_stage_by_id = {stage["stageId"]: stage for stage in gameplay_stages}
         for stage in presentation_stages:
-            if stage.get("animation") != {"mode": "NONE"} or stage.get("effectCues"):
-                raise CoverageError(f"status Pattern must remain animationless: {pattern_id}")
+            stage_id = stage["stageId"]
+            expected_occurrences = expected_animation_occurrences.get(
+                (pattern_id, stage_id)
+            )
+            animation = stage.get("animation")
+            if expected_occurrences is None:
+                if animation != {"mode": "NONE"}:
+                    raise CoverageError(
+                        f"status Pattern unexpected animation: {pattern_id}/{stage_id}"
+                    )
+            else:
+                occurrences = animation.get("occurrences") if isinstance(animation, dict) else None
+                if (not isinstance(occurrences, list) or
+                        animation.get("endPolicy") != "EXACT" or
+                        animation.get("repeatCount") != 1 or
+                        tuple(
+                            (row.get("clip"), row.get("playMs"))
+                            for row in occurrences
+                        ) != expected_occurrences or
+                        any(
+                            row.get("mappingBasis") != "PROJECT_AUTHORED" or
+                            row.get("sourceStartMs") != 0 or
+                            row.get("playRate") != 1 or
+                            row.get("repeatUntilStageEnd") is not False
+                            for row in occurrences
+                        ) or
+                        sum(row.get("playMs", 0) for row in occurrences) !=
+                        gameplay_stage_by_id[stage_id]["durationMs"]):
+                    raise CoverageError(
+                        f"status Pattern selected animation differs: {pattern_id}/{stage_id}"
+                    )
+            if stage.get("effectCues"):
+                raise CoverageError(f"status Pattern unexpectedly owns an Effect cue: {pattern_id}")
             binding = binding_by_action.get(stage["actionId"])
-            if binding is not None and binding != {
-                "actionId": stage["actionId"], "playbackMode": "NONE", "clips": []
-            }:
-                raise CoverageError(f"status Pattern binding is not NONE: {pattern_id}")
+            if expected_occurrences is None:
+                if binding is not None and binding != {
+                    "actionId": stage["actionId"], "playbackMode": "NONE", "clips": []
+                }:
+                    raise CoverageError(f"status Pattern binding is not NONE: {pattern_id}")
+            elif (not isinstance(binding, dict) or
+                  tuple(
+                      (row.get("clip"), row.get("playMs"))
+                      for row in binding.get("clips", [])
+                  ) != expected_occurrences or
+                  any(
+                      row.get("mappingBasis") != "PROJECT_AUTHORED" or
+                      row.get("sourceStartMs") != 0 or
+                      row.get("playRate") != 1 or
+                      row.get("loop") is not False
+                      for row in binding.get("clips", [])
+                  )):
+                raise CoverageError(
+                    f"status Pattern binding differs: {pattern_id}/{stage_id}"
+                )
         if any(
             isinstance(row, dict) and row.get("patternId") == pattern_id
             for row in cue_rows
         ):
             raise CoverageError(
-                f"animationless skeleton unexpectedly owns an Effect cue: {pattern_id}"
+                f"status Pattern unexpectedly owns an Effect cue: {pattern_id}"
             )
         if (
             pattern_id in promoted_pattern_ids
             or contract["sourceChainId"] in promoted_chain_ids
         ):
             raise CoverageError(
-                f"derived skeleton leaked into manual animation promotion: {pattern_id}"
+                f"derived status Pattern leaked into manual animation promotion: {pattern_id}"
             )
 
-    return frozenset(ANIMATIONLESS_SKELETON_CONTRACTS)
+    return frozenset(STATUS_PATTERN_CONTRACTS)
 
 
 def _validate_runtime_inventory_source(root: Path) -> None:
@@ -442,7 +419,9 @@ def validate(root: Path) -> CoverageReport:
     gameplay = _load_object(root / "Data/Valtan/Valtan.gameplay.json")
     presentation = _load_object(root / "Data/Valtan/Valtan.presentation.json")
     encounter = _load_object(root / "Data/Encounters/Valtan/ValtanEncounter.json")
-    flow = _load_object(root / "Data/Encounters/Valtan/ValtanBossAuditionFlows.json")
+    rotations = _load_object(
+        root / "Data/Encounters/Valtan/ValtanPatternRotations.json"
+    )
     bindings = _load_object(
         root / "Data/Animation/Authored/Valtan/Valtan.patternbindings.json"
     )
@@ -499,7 +478,7 @@ def validate(root: Path) -> CoverageReport:
                 f"reference-only pattern was silently admitted to Product: {pattern_id}"
             )
 
-    animationless_skeleton_ids = _validate_animationless_skeletons(
+    status_pattern_ids = _validate_status_patterns(
         gameplay,
         gameplay_by_id,
         presentation_by_id,
@@ -509,37 +488,44 @@ def validate(root: Path) -> CoverageReport:
         promotion_manifest,
     )
 
-    flows = flow.get("flows")
-    if not isinstance(flows, list) or not flows:
-        raise CoverageError("ValtanBossAuditionFlows.flows must be a non-empty array")
-    flow_pattern_ids: set[str] = set()
-    for flow_ordinal, flow_row in enumerate(flows):
-        if not isinstance(flow_row, dict):
-            raise CoverageError(f"flow[{flow_ordinal}] must be an object")
-        rows = flow_row.get("nodes")
-        row_label = "nodes"
-        if not isinstance(rows, list):
-            rows = flow_row.get("slots")
-            row_label = "slots"
-        if not isinstance(rows, list):
-            raise CoverageError(f"flow[{flow_ordinal}] has no nodes or slots")
-        for slot_ordinal, slot in enumerate(rows):
-            if not isinstance(slot, dict) or not isinstance(slot.get("patternId"), str):
-                raise CoverageError(
-                    f"flow[{flow_ordinal}].{row_label}[{slot_ordinal}] has no patternId"
-                )
-            pattern_id = slot["patternId"]
-            if pattern_id not in product_ids:
-                raise CoverageError(
-                    f"saved Flow admits non-Product pattern {pattern_id}"
-                )
-            flow_pattern_ids.add(pattern_id)
-
-    unexpected_flow_skeletons = animationless_skeleton_ids & flow_pattern_ids
-    if unexpected_flow_skeletons:
+    decision_model = gameplay.get("decisionModel")
+    sequence = (
+        decision_model.get("scriptedSequence")
+        if isinstance(decision_model, dict)
+        else None
+    )
+    if not isinstance(sequence, dict) or set(sequence) != {
+        "sequenceId",
+        "mode",
+        "interStepPursuitMs",
+        "patternIds",
+    }:
         raise CoverageError(
-            "animationless skeleton entered the saved Flow: "
-            + ", ".join(sorted(unexpected_flow_skeletons))
+            "Valtan.gameplay scriptedSequence must be the inline canonical contract"
+        )
+    rows = sequence.get("patternIds")
+    if not isinstance(rows, list) or not rows:
+        raise CoverageError("Valtan.gameplay scriptedSequence.patternIds is empty")
+    scripted_pattern_ids: set[str] = set()
+    for ordinal, pattern_id in enumerate(rows):
+        if not isinstance(pattern_id, str) or pattern_id not in product_ids:
+            raise CoverageError(
+                "canonical scriptedSequence admits non-Product pattern at "
+                f"index {ordinal}: {pattern_id!r}"
+            )
+        scripted_pattern_ids.add(pattern_id)
+    if rotations.get("scriptedSequence") != sequence:
+        raise CoverageError(
+            "generated ValtanPatternRotations scriptedSequence differs from canonical gameplay"
+        )
+
+    unexpected_scripted_status_patterns = (
+        status_pattern_ids & scripted_pattern_ids
+    )
+    if unexpected_scripted_status_patterns:
+        raise CoverageError(
+            "derived status Pattern entered the canonical scriptedSequence: "
+            + ", ".join(sorted(unexpected_scripted_status_patterns))
         )
 
     _validate_runtime_inventory_source(root)
@@ -548,8 +534,8 @@ def validate(root: Path) -> CoverageReport:
         encounter_count=len(encounter_ids),
         product_ids=product_ids,
         encounter_ids=encounter_ids,
-        flow_pattern_ids=frozenset(flow_pattern_ids),
-        animationless_skeleton_ids=animationless_skeleton_ids,
+        scripted_pattern_ids=frozenset(scripted_pattern_ids),
+        status_pattern_ids=status_pattern_ids,
     )
 
 
@@ -576,9 +562,12 @@ def main() -> int:
         print(f"  PRODUCT_SPLIT_PLAYABLE: {pattern_id}")
     for pattern_id in REQUESTED_REFERENCE_ONLY_IDS:
         print(f"  ENCOUNTER_REFERENCE_ONLY: {pattern_id}")
-    for pattern_id in ANIMATIONLESS_SKELETON_CONTRACTS:
-        print(f"  DERIVED_ANIMATIONLESS_SKELETON: {pattern_id}")
-    print(f"  SAVED_FLOW_PRODUCT_IDS: {len(report.flow_pattern_ids)}")
+    for pattern_id in STATUS_PATTERN_CONTRACTS:
+        print(f"  DERIVED_STATUS_PATTERN: {pattern_id}")
+    print(
+        "  CANONICAL_SCRIPTED_SEQUENCE_PRODUCT_IDS: "
+        f"{len(report.scripted_pattern_ids)}"
+    )
     return 0
 
 

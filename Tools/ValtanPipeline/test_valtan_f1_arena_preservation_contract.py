@@ -237,6 +237,7 @@ class ValtanF1ArenaPreservationContractTests(unittest.TestCase):
 
     def test_explicit_pattern_restart_is_exact_and_arena_preserving(self) -> None:
         boss = read("Client/Private/BossTool.cpp")
+        header = read("Client/Public/BossTool.h")
         service = read("Client/Private/ValtanPatternAuditionService.cpp")
         server = read("Server/Private/GameRoom.cpp")
         action_bar = function_body(boss, "void Client::CBossTool::Render_ActionBar()")
@@ -248,8 +249,10 @@ class ValtanF1ArenaPreservationContractTests(unittest.TestCase):
             server, "LostArk::Server::CGameRoom::Evaluate_ValtanAudition("
         )
 
-        self.assertIn("Restart Pattern (Preserve Arena)", action_bar)
-        self.assertIn("Restart_SelectedPattern", action_bar)
+        self.assertNotIn("Restart Pattern (Preserve Arena)", action_bar)
+        self.assertNotIn("Restart_SelectedPattern()", action_bar)
+        self.assertIn("Restart_SelectedPattern", header)
+        self.assertIn("Restart_ServerPattern", header)
         restart_submit = function_body(
             boss, "bool_t Client::CBossTool::Restart_SelectedPattern()"
         )
@@ -279,6 +282,41 @@ class ValtanF1ArenaPreservationContractTests(unittest.TestCase):
             "SET_ARENA_PRESET is the only consumer", pattern_start
         )
         self.assertNotIn("Reset_ValtanAuditionState(", evaluate[pattern_start:pattern_end])
+
+    def test_boss_verification_default_restart_uses_one_saved_pattern_and_fresh_arena(self) -> None:
+        boss = read("Client/Private/BossTool.cpp")
+        action_bar = function_body(boss, "void Client::CBossTool::Render_ActionBar()")
+        restart_single = function_body(
+            boss,
+            "bool_t Client::CBossTool::Restart_SavedSinglePatternFreshArena()",
+        )
+        restart_flow = function_body(
+            boss,
+            "bool_t Client::CBossTool::Restart_SavedFlow(\n"
+            "\tconst bool_t bRequireSingleSavedPattern)",
+        )
+        server = read("Server/Private/GameRoom.cpp")
+        flow_start = function_body(
+            server, "LostArk::Server::CGameRoom::Evaluate_ValtanPatternFlowStart("
+        )
+
+        self.assertIn("Restart Saved Pattern (Fresh Arena)", action_bar)
+        self.assertIn("Restart_SavedSinglePatternFreshArena", action_bar)
+        self.assertIn("Get_SavedDefaultFlow", restart_single)
+        self.assertIn("1u != iSavedSlotCount", restart_single)
+        self.assertIn("exactly one saved scriptedSequence slot", restart_single)
+        self.assertIn("Restart_SavedFlow(true)", restart_single)
+        for marker in (
+            "bRequireSingleSavedPattern",
+            "Pending.Request.Slots.size() != 1u",
+            "exact saved one-slot scriptedSequence request",
+            "Reload_FlowDocument()",
+            "Start_Flow(",
+        ):
+            self.assertIn(marker, restart_flow)
+        self.assertIn("Reset_ValtanAuditionState(*boss", flow_start)
+        self.assertIn("m_WorldDestructionRuntime", flow_start)
+        self.assertIn("m_EncounterPropRuntime", flow_start)
 
     def test_wire_has_stable_pattern_and_explicit_arena_operations(self) -> None:
         packet = read("Shared/Public/Network/PacketMessages.h")

@@ -25,9 +25,8 @@ Valtan 전용 candidate transaction에 포함되지 않는 Player/skill/item/wor
 
 | 정본 | 소유 의미 |
 |---|---|
-| `Data/Valtan/Valtan.gameplay.json` | Server pattern graph, selection, eligibility, stage, hit, motion, event, branch |
+| `Data/Valtan/Valtan.gameplay.json` | Server pattern graph, selection, eligibility, stage, hit, motion, event, branch와 inline `scriptedSequence` |
 | `Data/Valtan/Valtan.presentation.json` | animation occurrence, managed Effect invocation, camera invocation |
-| `Data/Encounters/Valtan/ValtanBossAuditionFlows.json` | gameplay의 `scriptedSequence.flowId`가 참조하는 기본 순서와 inter-step pursuit |
 
 `Valtan.combatobjects.json`, `Valtan.worldeventsets.json`은 각 stable gameplay definition을 소유한다.
 `Valtan.pattern.json`은 migration/legacy compatibility fixture일 뿐 새 UI 값이나 draft baseline이 아니다.
@@ -44,7 +43,7 @@ formatVersion 21이 후보 ordinal 그대로 소비한다. post-109 legacy rotat
 
 ## 3. 현재 활성화한 Hot Reload 범위
 
-Debug F1 Balance Tool의 Valtan candidate와 Boss Tool의 Save/Apply Saved Flow는 같은
+Debug F1 Balance Tool의 Valtan candidate와 Boss Tool의 canonical sequence Save/Restart는 같은
 `CValtanTuningCommandService`와 Server-authoritative Hot Reload 경로를 사용한다. 허용 범위는
 **모든 required Client presentation artifact가 해당 Client가 world entry 때 고정한 immutable presentation
 baseline과 byte-identical인 gameplay-only diff**다. PREPARE 중 repository disk를 다시 읽어 이미 로드된
@@ -136,7 +135,8 @@ v21 Server의 live admission 대상이 아니다.
 `Apply Hot Reload -> Play Server Pattern` 순서다. reset/restart class는 Apply 성공으로 기록하지 않는다.
 자동 검증과 animation/Effect의 사용자 육안 판정은 RESULT에서 분리한다.
 
-순서 편집은 `F1 -> Boss Tool -> Pattern Flow -> Save Flow`를 사용한다. 파일의 SAVED와 Server의
-COMMITTED/ALREADY ACTIVE를 구분한다. 실패 이유와 저장본은 유지되며 `Apply Saved Flow`로 재시도한다.
-immutable authoring/candidate는 같은 snapshot 안의 Flow 파일과 raw-byte revision을 보존한다.
-Flow 파일이 없거나 flow/slot/pattern ID가 잘못됐을 때 현재 workspace 또는 이전 배열로 대체하지 않는다.
+순서 편집은 `F1 -> Boss Tool -> Pattern Flow -> Save Flow`를 사용한다. slot 편집은
+`Valtan.gameplay.json > decisionModel.scriptedSequence` typed draft로 저장되며 별도 Flow 파일을 만들지 않는다.
+물리 SAVED, candidate PUBLISHED, Server COMMITTED/ALREADY ACTIVE를 구분한다. 저장 뒤 candidate apply가 실패해도
+물리 commit 성공을 되돌려 표시하지 않는다. Restart는 최신 saved candidate와 Server-active definition revision이
+exact-equal일 때만 그 sequence를 시작하며, 잘못된 slot/pattern ID를 이전 배열로 대체하지 않는다.

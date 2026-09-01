@@ -5,7 +5,9 @@
 
 namespace LostArk::Shared
 {
-	/* 49 requires stable-ID Valtan Complete Play to carry the exact active
+	/* 52 adds the Server-active replacement definition revision to exact
+	Valtan Restart requests and verdict echoes.
+	49 requires stable-ID Valtan Complete Play to carry the exact active
 	definition revision that the Client observed before requesting mutation.
 	48 adds exact-occurrence Valtan Restart CAS identity and its pinned
 	definition revision to the stable-ID audition wire.
@@ -23,7 +25,7 @@ namespace LostArk::Shared
 	used 40 before integration, so neither v40 peer is wire-compatible.
 	39 adds bounded Debug Valtan pattern-flow authoring playback.
 	51 adds Server-owned Pattern bind and silence deadlines to player snapshots. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 51;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 52;
 
 	enum class WORLD_ID : std::uint16_t
 	{

@@ -39,9 +39,11 @@ public:
 	tint/alpha/texture state is untouched, so showing again restores exactly what was set
 	before. For a keyframe slot this gates whether Update() drives its layer sprites at all. */
 	void Set_SlotVisible(const string& strId, bool_t bVisible);
-	/* Runtime tint override (0..1 RGBA) on every layer sprite -- e.g. a dim backdrop's alpha,
-	independent of the slot's authored layer tint. */
+	/* Runtime tint override (0..1 RGBA) on every authored static layer sprite. */
 	void Set_SlotTint(const string& strId, const float4_t& vTint);
+	/* Multiplies every static and keyframe layer's own tint without replacing authored RGB or
+	key alpha. White restores the unmodified appearance. */
+	void Set_SlotTintMultiplier(const string& strId, const float4_t& vTintMultiplier);
 	/* Alpha-only override (0..1, RGB stays white) -- for a fade-in/out reveal timeline
 	   (RaidClear's celebration layers) that isn't a hard on/off like Set_SlotVisible. */
 	void Set_SlotAlpha(const string& strId, f32_t fAlpha);

@@ -46,7 +46,7 @@ $hasExplicitOverlay = -not [string]::IsNullOrWhiteSpace($resolvedInputOverlayRoo
 if (-not $hasExplicitOverlay -and -not $SkipValtanSplitProjection) {
     $valtanProjector = Join-Path $repoRoot `
         'Tools\ValtanPipeline\Project-ValtanPatternMaster.ps1'
-    & $valtanProjector -Mode ValidateV2 -RepositoryRoot $repoRoot
+    & $valtanProjector -Mode Validate -RepositoryRoot $repoRoot
     if ($LASTEXITCODE -ne 0) {
         throw 'Valtan split Product validation failed.'
     }
@@ -132,6 +132,55 @@ function Assert-FinitePatternGraph([object]$Pattern) {
     if ($visited -ne $stages.Count) {
         throw "Finite pattern stage graph contains a cycle: $($Pattern.patternId)"
     }
+}
+
+function Assert-FinitePatternFollowupGraph([object[]]$Patterns) {
+	# This is the authored equivalent of the native GameplayCatalog/ValtanBrain
+	# cross-pattern traversal guard.  A single edge has depth 1.
+	$maximumDepth = 32
+	$successors = @{}
+	foreach ($pattern in $Patterns) {
+		$targets = [Collections.Generic.HashSet[string]]::new(
+			[StringComparer]::Ordinal)
+		foreach ($stage in @($pattern.stages)) {
+			foreach ($branch in @($stage.branches)) {
+				if ($null -eq $branch -or
+					$null -eq $branch.PSObject.Properties['nextPatternId']) {
+					continue
+				}
+				$targets.Add([string]$branch.nextPatternId) | Out-Null
+			}
+		}
+		$successors[[string]$pattern.patternId] = @($targets)
+	}
+	foreach ($rootPatternId in @($successors.Keys)) {
+		$pending = [Collections.Generic.Stack[object]]::new()
+		$pending.Push([pscustomobject]@{
+			PatternId = [string]$rootPatternId
+			Path = [string[]]@()
+		})
+		while ($pending.Count -gt 0) {
+			$state = $pending.Pop()
+			$path = [string[]]@($state.Path)
+			$patternId = [string]$state.PatternId
+			if ($path -ccontains $patternId) {
+				throw "Pattern follow-up graph contains a cycle: $($path -join ' -> ') -> $patternId"
+			}
+			if ($path.Count -gt $maximumDepth) {
+				throw "Pattern follow-up graph exceeds maximum depth ${maximumDepth}: $rootPatternId"
+			}
+			if (-not $successors.ContainsKey($patternId)) {
+				throw "Pattern follow-up graph has a dangling target: $patternId"
+			}
+			$nextPath = [string[]]@($path + $patternId)
+			foreach ($target in @($successors[$patternId])) {
+				$pending.Push([pscustomobject]@{
+					PatternId = [string]$target
+					Path = $nextPath
+				})
+			}
+		}
+	}
 }
 
 function Get-Fnv1a32([string]$Text) {
@@ -1421,6 +1470,8 @@ $patternStageDurationByKey = @{}
 $patternStageMotionKindByKey = @{}
 $spawnCombatObjectOwnerById = @{}
 $gameplayPhaseActionCount = 0
+$hasExactValtanArenaBreakPhaseAction = $false
+$hasExactValtanGhostRespawnPhaseAction = $false
 foreach ($pattern in @($encounterDocument.patterns)) {
 	# serverMotion is optional. Only a pattern whose boss motion the Server has to
 	# compute itself, like the 109 leap to its landing anchor, carries one.
@@ -1633,6 +1684,14 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			}
 		}
 		$ghostPatternIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+		$expectedValtanGhostPatternIds = @(
+			'VALTAN_SIX_PIZZA_106','VALTAN_GROUND_ROAR','VALTAN_STAGGER_SLOT',
+			'VALTAN_BIND_SLOT','VALTAN_SILENCE_SLOT','VALTAN_TRIPLE_COUNTER')
+		if ([string]$pattern.patternId -ceq 'VALTAN_GHOST_FINALE' -and
+			(@($finale.ghostPatternIds) -join "`n") -cne
+			($expectedValtanGhostPatternIds -join "`n")) {
+			throw 'Valtan ghost finale primary-loop order is invalid.'
+		}
 		foreach ($ghostPatternId in @($finale.ghostPatternIds)) {
 			Assert-StableId $ghostPatternId 'ghost attack patternId'
 			$ghostPattern = @($encounterDocument.patterns | Where-Object { $_.patternId -ceq $ghostPatternId })
@@ -2234,6 +2293,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 					$spawnCombatObjectOwnerById[$actionTargetId] = [pscustomobject]@{
 						PatternId = [string]$pattern.patternId
 						StageActionId = [string]$stage.actionId
+						TargetingPolicy = $targetingPolicy
 					}
 					$hasSpawnCombatObjectAction = $true
 					$patternRows.Add((@(
@@ -2342,9 +2402,20 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 							$actionValue -eq 1
 					}
 					'SET_GAMEPLAY_PHASE' {
+						$exactArenaBreakPhaseAction =
+							[string]$pattern.patternId -ceq 'VALTAN_ARENA_BREAK_109' -and
+							[string]$stage.stageId -ceq 'IMPACT' -and
+							[string]$stage.actionId -ceq 'valtan.mechanic.arena-break-109.impact' -and
+							$actionValue -eq 2
+						$exactGhostRespawnPhaseAction =
+							[string]$pattern.patternId -ceq 'VALTAN_GHOST_RESPAWN_AUDITION' -and
+							[string]$stage.stageId -ceq 'STEP_01' -and
+							[string]$stage.actionId -ceq 'valtan.sequence.respawn.step-01' -and
+							$actionValue -eq 3
 						$validTypedAction = $actionTrigger -ceq 'ENTER' -and
 							$actionTargetId -ceq 'boss.phase.gameplay' -and
-							$actionValue -eq 2
+							($exactArenaBreakPhaseAction -or
+							 $exactGhostRespawnPhaseAction)
 					}
 					'RETARGET_RANDOM_ALIVE' {
 						$validTypedAction = $actionTrigger -ceq 'ENTER' -and
@@ -2402,11 +2473,18 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 					$spawnCombatObjectOwnerById[$actionTargetId] = [pscustomobject]@{
 						PatternId = [string]$pattern.patternId
 						StageActionId = [string]$stage.actionId
+						TargetingPolicy = 'NONE'
 					}
 					$hasSpawnCombatObjectAction = $true
 				}
 				elseif ($actionKind -ceq 'SET_GAMEPLAY_PHASE') {
 					++$gameplayPhaseActionCount
+					$hasExactValtanArenaBreakPhaseAction =
+						$hasExactValtanArenaBreakPhaseAction -or
+						$exactArenaBreakPhaseAction
+					$hasExactValtanGhostRespawnPhaseAction =
+						$hasExactValtanGhostRespawnPhaseAction -or
+						$exactGhostRespawnPhaseAction
 				}
 				elseif ($actionKind -cne 'RETARGET_RANDOM_ALIVE' -and
 					$actionKind -cne 'RETURN_TO_ARENA_CENTER' -and
@@ -2471,8 +2549,12 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			$hasWallContact = $false
 			$hasStaggerBroken = $false
 			foreach ($branch in @($stage.branches)) {
-				Assert-ExactProperties $branch @(
-					'outcome','nextActionId') 'encounter pattern stage branch'
+				$hasNextPatternId = $null -ne `
+					$branch.PSObject.Properties['nextPatternId']
+				$branchProperties = @('outcome','nextActionId')
+				if ($hasNextPatternId) { $branchProperties += 'nextPatternId' }
+				Assert-ExactProperties $branch $branchProperties `
+					'encounter pattern stage branch'
 				Assert-JsonString $branch.outcome 'pattern stage branch outcome'
 				$outcome = [string]$branch.outcome
 				if ($outcome -notin @(
@@ -2484,6 +2566,9 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				}
 				$nextActionId = '-'
 				if ($null -ne $branch.nextActionId) {
+					if ($hasNextPatternId) {
+						throw "Pattern stage branch must choose nextActionId or nextPatternId, not both: $($pattern.patternId) stage $stageIndex"
+					}
 					Assert-JsonString $branch.nextActionId `
 						'pattern stage branch nextActionId'
 					Assert-StableId $branch.nextActionId `
@@ -2494,16 +2579,48 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 						throw "Pattern stage branch target is dangling or self-referential: $($pattern.patternId) stage $stageIndex"
 					}
 				}
+				$nextPatternId = ''
+				if ($hasNextPatternId) {
+					Assert-JsonString $branch.nextPatternId `
+						'pattern stage branch nextPatternId'
+					Assert-StableId $branch.nextPatternId `
+						'pattern stage branch nextPatternId'
+					$nextPatternId = [string]$branch.nextPatternId
+					$followupTargets = @($encounterDocument.patterns | Where-Object {
+						[string]$_.patternId -ceq $nextPatternId })
+					if ($null -ne $branch.nextActionId -or
+						$nextPatternId -ceq [string]$pattern.patternId -or
+						$followupTargets.Count -ne 1) {
+						throw "Pattern stage follow-up target is missing, self-referential, or conflicts with nextActionId: $($pattern.patternId) stage $stageIndex"
+					}
+					$followupTarget = $followupTargets[0]
+					if ([string]$followupTarget.selectionMode -cne 'AUDITION_ONLY' -or
+						[uint32]$followupTarget.selectionWeight -ne 0 -or
+						[uint32]$followupTarget.minimumHealthBar -ne 0 -or
+						[uint32]$followupTarget.maximumHealthBar -ne 0 -or
+						[string]$followupTarget.targetPolicy -cne 'NONE' -or
+						[string]$followupTarget.aimPolicy -cne 'NONE') {
+						throw "Pattern stage follow-up target must be an untargeted AUDITION_ONLY pattern with zero selection/health bars: $($pattern.patternId) stage $stageIndex"
+					}
+				}
 				$hasTimeout = $hasTimeout -or $outcome -eq 'TIMEOUT'
 				$hasWallContact = $hasWallContact -or $outcome -eq 'WALL_CONTACT'
 				$hasCounterHit = $hasCounterHit -or $outcome -eq 'COUNTER_HIT'
 				$hasPartDestroyed = $hasPartDestroyed -or
 					$outcome -eq 'PART_DESTROYED'
 				$hasStaggerBroken = $hasStaggerBroken -or $outcome -eq 'STAGGER_BROKEN'
-				$patternRows.Add((@(
-					'PATTERNSTAGEBRANCH', $encounterDocument.encounterId,
-					$pattern.patternId, $stage.actionId, $outcome,
-					$nextActionId) -join "`t"))
+				if ($hasNextPatternId) {
+					$patternRows.Add((@(
+						'PATTERNSTAGEFOLLOWUP', $encounterDocument.encounterId,
+						$pattern.patternId, $stage.actionId, $outcome,
+						$nextPatternId) -join "`t"))
+				}
+				else {
+					$patternRows.Add((@(
+						'PATTERNSTAGEBRANCH', $encounterDocument.encounterId,
+						$pattern.patternId, $stage.actionId, $outcome,
+						$nextActionId) -join "`t"))
+				}
 			}
 			if (-not $hasTimeout -or
 				($hasWallContact -and $stageMotionKind -cne 'FORWARD') -or
@@ -2553,10 +2670,13 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		throw "Pattern stage action lifetime is not closed: $($pattern.patternId)"
 	}
 }
+Assert-FinitePatternFollowupGraph @($encounterDocument.patterns)
 if ([string]$encounterBoss[0].phasePolicy.kind -ceq
 	'AUTHORED_PATTERN_EVENT') {
-	if ($gameplayPhaseActionCount -eq 0) {
-		throw 'Valtan authored phase policy requires at least one SET_GAMEPLAY_PHASE action.'
+	if ($gameplayPhaseActionCount -ne 2 -or
+		-not $hasExactValtanArenaBreakPhaseAction -or
+		-not $hasExactValtanGhostRespawnPhaseAction) {
+		throw 'Valtan authored phase policy requires the exact phase-two and phase-three actions.'
 	}
 }
 elseif ($gameplayPhaseActionCount -ne 0) {
@@ -2673,11 +2793,20 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 	}
 	elseif ($kind -ceq 'MISSILE') {
 		$maximumTravelM = $speedMps * ([double]$lifeMs / 1000.0)
-		$validMotion = $originPolicy -ceq 'BOSS_POSITION' -and
+		$radialInward =
+			$directionPolicy -ceq 'RADIAL_INWARD' -and
+			$combatObjectId -ceq 'combatobject.valtan.ghost.portal-charge' -and
+			$ownerPatternId -ceq 'VALTAN_GHOST_PORTAL_ONCE' -and
+			$ownerStageActionId -ceq 'valtan.ghost.portal-once.active' -and
+			[string]$spawnOwner.TargetingPolicy -ceq 'BOSS_RELATIVE' -and
+			[string]$ownerPattern.aimPolicy -ceq 'NONE'
+		$patternFacing =
 			$directionPolicy -ceq 'PATTERN_FACING_AT_SPAWN' -and
-			$speedMps -gt 0.0 -and $maximumDistanceM -gt 0.0 -and
-			$maximumTravelM + 0.00001 -ge $maximumDistanceM -and
 			[string]$ownerPattern.aimPolicy -ceq 'LOCK_FACING_ON_START'
+		$validMotion = $originPolicy -ceq 'BOSS_POSITION' -and
+			($patternFacing -or $radialInward) -and
+			$speedMps -gt 0.0 -and $maximumDistanceM -gt 0.0 -and
+			$maximumTravelM + 0.00001 -ge $maximumDistanceM
 	}
 	$presentationEvents = @()
 	if ($null -ne $combatObject.PSObject.Properties['presentationEvents']) {
@@ -3497,33 +3626,46 @@ foreach ($chargeOwner in @($encounterDocument.patterns)) {
 			throw "Valtan charge distance must be positive: $chargeActionId"
 		}
 		$nextActionId = [string]$wallContacts[0].nextActionId
-		$expectedTargetActionId = ''
+		$nextPatternId = [string]$wallContacts[0].nextPatternId
+		$expectedPartBreakCount = 0
 		if ([string]$chargeOwner.patternId -ceq 'VALTAN_DASH_CHARGE') {
-			$expectedTargetActionId = 'valtan.attack.dash-charge.groggy'
+			$groggyOwners = @($encounterDocument.patterns | Where-Object {
+				[string]$_.patternId -ceq 'VALTAN_DASH_CHARGE_GROGGY' })
+			if ($nextActionId -cne '' -or
+				$nextPatternId -cne 'VALTAN_DASH_CHARGE_GROGGY' -or
+				$groggyOwners.Count -ne 1 -or
+				@($groggyOwners[0].stages).Count -ne 1 -or
+				[string]$groggyOwners[0].stages[0].actionId -cne
+					'valtan.attack.dash-charge.recovery' -or
+				[string]$groggyOwners[0].stages[0].stageKind -cne 'GROGGY') {
+				throw "Valtan dash WALL_CONTACT must follow up to its exact GROGGY pattern: $chargeActionId"
+			}
 		}
 		elseif ([string]$chargeOwner.patternId -ceq
 			'VALTAN_ARMOR_BREAK_OPENING') {
 			$expectedTargetActionId =
 				'valtan.mechanic.armor-break-opening.groggy'
+			$expectedPartBreakCount = 1
+			$targetStageIndex = $chargeStageIndex + 1
+			$targetOwners = @($ownerStages | Where-Object {
+				[string]$_.actionId -ceq $nextActionId })
+			if ($nextPatternId -cne '' -or
+				$nextActionId -cne $expectedTargetActionId -or
+				$targetOwners.Count -ne 1 -or
+				$targetStageIndex -ge $ownerStages.Count -or
+				[string]$ownerStages[$targetStageIndex].actionId -cne
+					$expectedTargetActionId -or
+				[string]$ownerStages[$targetStageIndex].stageKind -cne 'GROGGY') {
+				throw "Valtan armour-break WALL_CONTACT must target its immediate fixed GROGGY stage: $chargeActionId"
+			}
 		}
 		else {
 			throw "Valtan WALL_CONTACT pattern has no fixed impact target contract: $($chargeOwner.patternId)"
 		}
-		$targetStageIndex = $chargeStageIndex + 1
-		$targetOwners = @($ownerStages | Where-Object {
-			[string]$_.actionId -ceq $nextActionId })
-		if ($nextActionId -cne $expectedTargetActionId -or
-			$targetOwners.Count -ne 1 -or
-			$targetStageIndex -ge $ownerStages.Count -or
-			[string]$ownerStages[$targetStageIndex].actionId -cne
-				$expectedTargetActionId -or
-			[string]$ownerStages[$targetStageIndex].stageKind -cne 'GROGGY') {
-			throw "Valtan WALL_CONTACT must target its immediate fixed GROGGY stage: $chargeActionId"
-		}
 		$partBreakCount = @($ownerStages | Where-Object {
 			[string]$_.stageKind -ceq 'PART_BREAK' }).Count
-		if ($partBreakCount -ne 1) {
-			throw "Valtan charge impact pattern needs exactly one PART_BREAK stage: $chargeActionId"
+		if ($partBreakCount -ne $expectedPartBreakCount) {
+			throw "Valtan charge impact pattern has an invalid PART_BREAK stage count: $chargeActionId"
 		}
 		Assert-JsonNumber $chargeOwner.maximumRange `
 			"Valtan charge maximumRange $chargeActionId"
@@ -4405,7 +4547,7 @@ $rows = @($damageRows + $skillRows + $playerRows + $bossRows +
 	$bossPartRows + $combatObjectRows + $rootMotionRows + $hitShapeRows +
 	$patternRows + @($presentationGenerationRow) | Sort-Object -Property @{
 		Expression = { Get-BootstrapRowSortKey -Row $_ } })
-$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 28 } elseif (
+$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 29 } elseif (
 	$rotationFormatVersion -eq 3) { 21 } else { 18 }
 $lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t$gameplayBootstrapVersion`t$($rows.Count)") + $rows
 

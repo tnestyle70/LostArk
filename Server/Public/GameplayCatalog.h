@@ -13,7 +13,7 @@ namespace LostArk::Server
 	/* The only gameplay bootstrap version this build reads. The publisher
 	stamps it and the loader refuses anything else, so a bump has to travel
 	through both sides at once instead of leaving one of them behind. */
-	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 28u;
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 29u;
 
 	/* One point on the displacement an animator baked into a clip. The player
 	reads it per skill and the boss per pattern stage, so it carries no owner in
@@ -258,7 +258,8 @@ namespace LostArk::Server
 	enum class BOSS_COMBAT_OBJECT_DIRECTION_POLICY : std::uint8_t
 	{
 		NONE,
-		PATTERN_FACING_AT_SPAWN
+		PATTERN_FACING_AT_SPAWN,
+		RADIAL_INWARD
 	};
 
 	enum class BOSS_COMBAT_OBJECT_HIT_TRIGGER : std::uint8_t
@@ -386,9 +387,15 @@ namespace LostArk::Server
 	{
 		BOSS_PATTERN_STAGE_OUTCOME eOutcome =
 			BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT;
-		/* Empty means the pattern finishes. Otherwise this is another actionId
-		inside the same pattern, never a vector index. */
+		/* Empty means no local-stage target. Otherwise this is another actionId
+		inside the same pattern, never a vector index. It is mutually exclusive
+		with strNextPatternId. */
 		std::string strNextActionId;
+		/* Empty means no cross-pattern target. Otherwise this names one
+		AUDITION_ONLY, targetless pattern in the same encounter. The Brain commits
+		the source terminal edge first and begins this pinned follow-up on the next
+		fixed tick. */
+		std::string strNextPatternId;
 	};
 
 	enum class BOSS_PATTERN_STAGE_ACTION_TRIGGER : std::uint8_t

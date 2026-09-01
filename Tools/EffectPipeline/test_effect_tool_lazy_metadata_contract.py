@@ -92,13 +92,22 @@ class EffectToolLazyMetadataContractTests(unittest.TestCase):
             body.index("Try_OpenValtanStandaloneEffect("),
         )
 
-    def test_pattern_binding_refresh_joins_metadata_without_document_decode(self) -> None:
+    def test_pattern_binding_refresh_validates_each_exact_draft_identity(self) -> None:
         body = function_body(
             "bool_t Client::CEffect_Tool::Refresh_ValtanPatternAuthoringEffects()"
         )
-        self.assertNotIn("CEffectDocumentCodec::Load", body)
-        self.assertIn("m_DirectAuthoredEditableEntries.find(", body)
-        self.assertIn("bExactAuthoredMetadata", body)
+        ordered = (
+            "Resolve_AuthoringPath(",
+            "CEffectDocumentCodec::Load(",
+            "DraftDocument.strEffectAssetId != Binding.strEffectAssetId",
+            "m_ValtanPatternAuthoringEffects = std::move(Staged)",
+        )
+        for token in ordered:
+            self.assertIn(token, body)
+        self.assertEqual(
+            [body.index(token) for token in ordered],
+            sorted(body.index(token) for token in ordered),
+        )
 
     def test_manual_data_refresh_indexes_metadata_without_document_decode(self) -> None:
         body = function_body("bool_t Client::CEffect_Tool::Refresh_DataFiles()")

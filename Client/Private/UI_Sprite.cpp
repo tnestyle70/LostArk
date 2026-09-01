@@ -65,6 +65,11 @@ void Client::CUI_Sprite::Set_Tint(const float4_t& vTint)
 	m_vTint = vTint;
 }
 
+void Client::CUI_Sprite::Set_TintMultiplier(const float4_t& vTintMultiplier)
+{
+	m_vTintMultiplier = vTintMultiplier;
+}
+
 void Client::CUI_Sprite::Set_FlipX(bool_t bFlipX)
 {
 	m_bFlipX = bFlipX;
@@ -170,7 +175,13 @@ HRESULT Client::CUI_Sprite::Bind_ShaderResources()
 		return E_FAIL;
 	}
 
-	if (FAILED(m_pShaderCom->Bind_RawValue("g_TintColor", &m_vTint, sizeof(m_vTint))))
+	const float4_t vEffectiveTint = float4_t(
+		m_vTint.x * m_vTintMultiplier.x,
+		m_vTint.y * m_vTintMultiplier.y,
+		m_vTint.z * m_vTintMultiplier.z,
+		m_vTint.w * m_vTintMultiplier.w);
+	if (FAILED(m_pShaderCom->Bind_RawValue(
+		"g_TintColor", &vEffectiveTint, sizeof(vEffectiveTint))))
 		return E_FAIL;
 
 	const int32_t iFlipX = m_bFlipX ? 1 : 0;

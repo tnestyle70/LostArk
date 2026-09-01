@@ -79,9 +79,11 @@ struct VALTAN_PATTERN_EFFECT_CUE_DOCUMENT final
 class CValtanPatternEffectCueDocument final
 {
 public:
-	/* Arena-centered cues never sample a player transform.  The fixed landing
-	   position and the occurrence-facing yaw already locked by the Server form
-	   their world anchor; arena.center deliberately ignores that yaw. */
+	/* Arena-centered cues never sample a Client player transform.  The authored
+	   landing position and a Server-owned facing form their world anchor;
+	   arena.center deliberately ignores that yaw, arena.center.facing consumes
+	   the occurrence lock, and arena.center.target-follow consumes the current
+	   accepted Server-tick facing. */
 	static bool_t Try_BuildArenaCenterAnchor(
 		std::string_view strAnchorSlotId,
 		const float3_t& vArenaCenter,

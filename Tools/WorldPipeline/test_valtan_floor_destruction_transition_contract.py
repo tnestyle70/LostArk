@@ -22,7 +22,6 @@ GAMEPLAY_AUTHORING_PATH = ROOT / "Data/Valtan/Valtan.gameplay.json"
 PRESENTATION_AUTHORING_PATH = ROOT / "Data/Valtan/Valtan.presentation.json"
 ENCOUNTER_PATH = ROOT / "Data/Encounters/Valtan/ValtanEncounter.json"
 ROTATIONS_PATH = ROOT / "Data/Encounters/Valtan/ValtanPatternRotations.json"
-FLOWS_PATH = ROOT / "Data/Encounters/Valtan/ValtanBossAuditionFlows.json"
 WORLD_EVENTS_PATH = ROOT / "Data/Encounters/Valtan/ValtanWorldEvents.json"
 WORLD_EVENT_SETS_PATH = ROOT / "Data/Valtan/Valtan.worldeventsets.json"
 DEBUG_AUDITION_PATH = ROOT / "Data/Encounters/Valtan/ValtanDebugAudition.json"
@@ -117,7 +116,6 @@ class ValtanFloorDestructionTransitionContractTests(unittest.TestCase):
         )
         cls.encounter = json.loads(ENCOUNTER_PATH.read_text(encoding="utf-8-sig"))
         cls.rotations = json.loads(ROTATIONS_PATH.read_text(encoding="utf-8-sig"))
-        cls.flows = json.loads(FLOWS_PATH.read_text(encoding="utf-8-sig"))
         cls.world_events = json.loads(
             WORLD_EVENTS_PATH.read_text(encoding="utf-8-sig")
         )
@@ -140,18 +138,10 @@ class ValtanFloorDestructionTransitionContractTests(unittest.TestCase):
             "worldeventset.valtan.terrain-destruction-3.floor84",
             "worldeventset.valtan.terrain-destruction-9.floor30",
         )
-        sequence_reference = self.gameplay_authoring["decisionModel"]["scriptedSequence"]
-        source_flow = next(
-            row for row in self.flows["flows"]
-            if row["flowId"] == sequence_reference["flowId"]
-        )
-        source_sequence = [row["patternId"] for row in source_flow["slots"]]
-        product_sequence = self.rotations["scriptedSequence"]["patternIds"]
-        self.assertEqual(source_sequence, product_sequence)
-        self.assertEqual(
-            self.rotations["scriptedSequence"]["interStepPursuitMs"],
-            source_flow["interStepPursuitMs"],
-        )
+        canonical_sequence = self.gameplay_authoring["decisionModel"][
+            "scriptedSequence"
+        ]
+        self.assertEqual(canonical_sequence, self.rotations["scriptedSequence"])
 
         gameplay_by_id = {
             row["patternId"]: row for row in self.gameplay_authoring["patterns"]

@@ -17,9 +17,9 @@ namespace
 	using namespace Client;
 
 	constexpr std::uint64_t SOURCE_GENERATION = 0x47524150484D4F44ull;
-	constexpr std::uint64_t DASH_DEFAULT_DURATION_MS = 6050u;
-	constexpr std::uint64_t DASH_WALL_DURATION_MS = 11050u;
-	constexpr std::uint64_t DASH_MAXIMUM_DURATION_MS = 11550u;
+	constexpr std::uint64_t DASH_DEFAULT_DURATION_MS = 11983u;
+	constexpr std::uint64_t DASH_WALL_DURATION_MS = 11983u;
+	constexpr std::uint64_t DASH_MAXIMUM_DURATION_MS = 11983u;
 
 	void Require(const bool bCondition, const char* const pMessage)
 	{
@@ -109,6 +109,12 @@ namespace
 		return Snapshot;
 	}
 
+	void RequireRejectedWithoutSnapshotMutation(
+		const VALTAN_PATTERN_VIEW& InvalidPattern,
+		ACTION_COMPOSITION_GRAPH_ERROR_CODE ExpectedCode,
+		ACTION_COMPOSITION_GRAPH_SNAPSHOT& InOutSnapshot,
+		const ACTION_COMPOSITION_GRAPH_SNAPSHOT& ExpectedSnapshot);
+
 	bool SamePoint(
 		const ACTION_COMPOSITION_GRAPH_POINT& Left,
 		const ACTION_COMPOSITION_GRAPH_POINT& Right)
@@ -162,6 +168,7 @@ namespace
 			Left.strSourceActionId != Right.strSourceActionId ||
 			Left.strOutcome != Right.strOutcome ||
 			Left.strTargetActionId != Right.strTargetActionId ||
+			Left.strTargetPatternId != Right.strTargetPatternId ||
 			Left.iSourceNodeIndex != Right.iSourceNodeIndex ||
 			Left.iTargetNodeIndex != Right.iTargetNodeIndex ||
 			Left.iSourceBranchIndex != Right.iSourceBranchIndex ||
@@ -327,6 +334,50 @@ namespace
 			"recovered deleted-route default path is not the new Stage order");
 	}
 
+	void VerifyCrossPatternBoundary()
+	{
+		VALTAN_PATTERN_VIEW CrossPattern = BuildManualLinearPattern();
+		VALTAN_STAGE_BRANCH_VIEW Cross;
+		Cross.strOutcome = "TIMEOUT";
+		Cross.strNextPatternId = "VALTAN_GRAPH_FOLLOW_UP";
+		CrossPattern.Stages.front().Branches.push_back(Cross);
+
+		const ACTION_COMPOSITION_GRAPH_SNAPSHOT Snapshot =
+			ProjectOrThrow(CrossPattern);
+		const auto Boundary = std::find_if(
+			Snapshot.Edges.begin(), Snapshot.Edges.end(),
+			[](const ACTION_COMPOSITION_GRAPH_EDGE& Edge)
+			{
+				return "valtan.graph.manual-test.windup" ==
+					Edge.strSourceActionId && "TIMEOUT" == Edge.strOutcome;
+			});
+		Require(Boundary != Snapshot.Edges.end() && Boundary->bTerminal &&
+			Boundary->strTargetActionId.empty() &&
+			"VALTAN_GRAPH_FOLLOW_UP" == Boundary->strTargetPatternId,
+			"cross-Pattern edge was not preserved as a local graph boundary");
+		Require(StageIds(Snapshot, Snapshot.DefaultPath) ==
+			std::vector<std::string>{ "WINDUP" } &&
+			1000u == Snapshot.DefaultPath.iDurationMs &&
+			Snapshot.DefaultPath.bTerminal,
+			"cross-Pattern edge leaked into the local action path");
+
+		ACTION_COMPOSITION_GRAPH_SNAPSHOT Preserved = Snapshot;
+		VALTAN_PATTERN_VIEW Ambiguous = CrossPattern;
+		Ambiguous.Stages.front().Branches.front().strNextActionId =
+			Ambiguous.Stages[1].strActionId;
+		RequireRejectedWithoutSnapshotMutation(
+			Ambiguous,
+			ACTION_COMPOSITION_GRAPH_ERROR_CODE::AMBIGUOUS_BRANCH_TARGET,
+			Preserved, Snapshot);
+		VALTAN_PATTERN_VIEW InvalidTarget = CrossPattern;
+		InvalidTarget.Stages.front().Branches.front().strNextPatternId =
+			"not/a/stable/pattern";
+		RequireRejectedWithoutSnapshotMutation(
+			InvalidTarget,
+			ACTION_COMPOSITION_GRAPH_ERROR_CODE::INVALID_TARGET_PATTERN_ID,
+			Preserved, Snapshot);
+	}
+
 	void VerifyAuthoredEdgeSourceIdentity(const VALTAN_PATTERN_VIEW& Dash)
 	{
 		const ACTION_COMPOSITION_GRAPH_SNAPSHOT Snapshot = ProjectOrThrow(Dash);
@@ -358,6 +409,8 @@ namespace
 			const VALTAN_STAGE_BRANCH_VIEW& Branch =
 				Stage.Branches[Edge.iSourceBranchIndex];
 			Require(Branch.strOutcome == Edge.strOutcome &&
+				Branch.strNextPatternId.value_or(std::string{}) ==
+					Edge.strTargetPatternId &&
 				Branch.strNextActionId.has_value() != Edge.bTerminal &&
 				(Edge.bTerminal ||
 				 *Branch.strNextActionId == Edge.strTargetActionId),
@@ -373,17 +426,16 @@ namespace
 			"projection lost its source generation or stable Pattern identity");
 		Require(DASH_DEFAULT_DURATION_MS == Snapshot.DefaultPath.iDurationMs &&
 			Snapshot.DefaultPath.bTerminal,
-			"VALTAN_DASH_CHARGE default path is no longer 6050 ms terminal");
+			"VALTAN_DASH_CHARGE default path is no longer 11983 ms terminal");
 		Require(DASH_MAXIMUM_DURATION_MS == Snapshot.MaximumPath.iDurationMs &&
 			Snapshot.MaximumPath.bTerminal,
-			"VALTAN_DASH_CHARGE maximum path is no longer 11550 ms terminal");
+			"VALTAN_DASH_CHARGE maximum path is no longer 11983 ms terminal");
 		Require(StageIds(Snapshot, Snapshot.DefaultPath) ==
 			std::vector<std::string>{ "WINDUP", "CHARGE", "RECOVERY" },
-			"default path did not skip event-entered GROGGY/PART_BREAK Stages");
+			"default path is not the saved three-Stage Product");
 		Require(StageIds(Snapshot, Snapshot.MaximumPath) ==
-			std::vector<std::string>{
-				"WINDUP", "CHARGE", "GROGGY", "PART_BREAK" },
-			"maximum path did not select WALL_CONTACT then PART_DESTROYED");
+			std::vector<std::string>{ "WINDUP", "CHARGE", "RECOVERY" },
+			"maximum path diverged from the saved three-Stage Product");
 	}
 
 	void VerifyPreviewOutcomeOverride(const VALTAN_PATTERN_VIEW& Dash)
@@ -397,11 +449,10 @@ namespace
 			"preview outcome override mutated the default path");
 		Require(DASH_WALL_DURATION_MS == Snapshot.SelectedPath.iDurationMs &&
 			Snapshot.SelectedPath.bTerminal,
-			"WALL_CONTACT preview path is no longer 11050 ms terminal");
+			"WALL_CONTACT preview path is no longer 11983 ms terminal");
 		Require(StageIds(Snapshot, Snapshot.SelectedPath) ==
-			std::vector<std::string>{
-				"WINDUP", "CHARGE", "GROGGY", "RECOVERY" },
-			"selected preview outcome did not fall back to GROGGY TIMEOUT");
+			std::vector<std::string>{ "WINDUP", "CHARGE", "RECOVERY" },
+			"selected WALL_CONTACT outcome did not converge on RECOVERY");
 		Require(DASH_MAXIMUM_DURATION_MS == Snapshot.MaximumPath.iDurationMs,
 			"preview outcome override mutated the maximum path");
 	}
@@ -507,13 +558,13 @@ namespace
 			Snapshot.Edges.begin(), Snapshot.Edges.end(),
 			[](const ACTION_COMPOSITION_GRAPH_EDGE& Candidate)
 			{
-				return "valtan.attack.dash-charge.part-break" ==
+				return "valtan.attack.dash-charge.recovery" ==
 					Candidate.strSourceActionId &&
 					"TIMEOUT" == Candidate.strOutcome &&
 					Candidate.bTerminal;
 			});
 		Require(Edge != Snapshot.Edges.end() && Edge->Polyline.size() >= 2u,
-			"projection is missing the PART_BREAK terminal edge geometry");
+			"projection is missing the RECOVERY terminal edge geometry");
 		const std::size_t iEdge = static_cast<std::size_t>(
 			std::distance(Snapshot.Edges.begin(), Edge));
 		const ACTION_COMPOSITION_GRAPH_POINT OnEdge{
@@ -573,6 +624,8 @@ int Run_ActionCompositionGraphModelContractTests()
 			[&] { VerifyPreviewOutcomeOverride(Dash); } },
 		{ "manual immediate TIMEOUT path",
 			[&] { VerifyManualImmediateTimeoutPath(); } },
+		{ "cross-Pattern boundary",
+			[&] { VerifyCrossPatternBoundary(); } },
 		{ "deleted route override reset",
 			[&] { VerifyDeletedRouteRecoversAfterOverrideReset(); } },
 		{ "authored edge source identity",

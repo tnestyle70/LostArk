@@ -163,7 +163,7 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         )
         self.assertIn("Files load when Resource Library opens.", select_domain)
 
-    def test_save_and_apply_updates_only_the_local_effect_preview(self) -> None:
+    def test_save_and_apply_hot_reloads_the_selected_direct_product_effect(self) -> None:
         session_bar = source_section(
             self.cpp,
             "void Client::CEffect_Tool::Render_AuthoringSessionBar()",
@@ -185,18 +185,22 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         )
         for token in (
             "CEffectDocumentCodec::Save_AtomicIfUnchanged(",
+            "PreviousCommittedDocument",
+            "CEffectPresentationService::Reload_SelectedProductEffect(",
+            "the previous disk source was restored",
+            "Product runtime rollback status",
+            "subsequent Product spawns",
+            "Refresh_RuntimeEquivalence();",
             "RefreshObservedValtanProductCache();",
             "m_SourcePreviewDocument = *m_ActiveDocument;",
             "Stage_WorldPreview(*m_ActiveDocument)",
             "Start_WorldPreviewFromBeginning();",
-            "Refresh Server data",
-            "re-enter Valtan",
         ):
             self.assertIn(token, save)
         for forbidden in (
             "Try_HotReloadSavedProduct",
-            "Reload_SelectedProductEffect",
-            "Save was not committed because",
+            "Refresh Server data",
+            "re-enter Valtan",
         ):
             self.assertNotIn(forbidden, save)
         for removed in (
@@ -1531,7 +1535,7 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         self.assertEqual("BOSS_VALTAN", document["bossArchetypeId"])
         self.assertIsInstance(document["bindings"], list)
         self.assertEqual(
-            {("VALTAN_CROSS", "effect.valtan.sequence.cross")},
+            set(),
             {
                 (binding["patternId"], binding["effectAssetId"])
                 for binding in document["bindings"]

@@ -171,6 +171,8 @@ namespace
 		const Client::VALTAN_STAGE_BRANCH_VIEW& Branch =
 			Stage.Branches[Edge.iSourceBranchIndex];
 		if (Branch.strOutcome != Edge.strOutcome ||
+			Branch.strNextPatternId.value_or(std::string{}) !=
+				Edge.strTargetPatternId ||
 			Branch.strNextActionId.has_value() == Edge.bTerminal)
 		{
 			return false;
@@ -618,6 +620,8 @@ void Client::CActionCompositionWorkbench::Render_BossPatternWindow(
 		if (!Points.empty())
 		{
 			const std::string Label = Edge.strOutcome +
+				(Edge.strTargetPatternId.empty() ? std::string{} :
+					" -> PATTERN " + Edge.strTargetPatternId) +
 				(bAuthored ? std::string{} : " (derived)");
 			pDrawList->AddText(
 				ImVec2(Points.front().x + 6.f, Points.front().y - 17.f),
@@ -725,9 +729,14 @@ void Client::CActionCompositionWorkbench::Render_BossPatternWindow(
 							const bool_t bAuthored =
 								ACTION_COMPOSITION_GRAPH_EDGE_ORIGIN::
 									AUTHORED_BRANCH == Edge.eOrigin;
+							const std::string TargetLabel =
+								!Edge.strTargetPatternId.empty() ?
+									"PATTERN " + Edge.strTargetPatternId :
+									(Edge.bTerminal ? "PATTERN END" :
+										Edge.strTargetActionId);
 							const std::string StableId = bAuthored ?
 								Stage.strStageId + "/branch/" + Edge.strOutcome + "/" +
-									(Edge.bTerminal ? "PATTERN END" : Edge.strTargetActionId) :
+									TargetLabel :
 								Stage.strStageId;
 							m_bDetailsWindowVisible = true;
 							Select_Stage(*pPattern, Stage,

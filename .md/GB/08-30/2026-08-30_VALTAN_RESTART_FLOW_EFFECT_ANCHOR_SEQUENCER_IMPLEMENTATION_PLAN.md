@@ -402,3 +402,28 @@ Effect cue Detail 수정 → Save → runtime reload → 같은 Pattern Restart 
 ```
 
 에이전트는 Client/UI를 실행·조작하거나 시각·음향 PASS를 대신 기록하지 않는다.
+
+## 2026-09-01 확정 변경: audition Flow와 Logic Flow 가시화
+
+이 절은 위의 `Save + Publish` 및 active Flow 중 문서 편집 잠금보다 나중에 사용자가 확정한 계약이다.
+Boss Tool의 저장 Flow는 Product 자동 전투 `scriptedSequence`를 암묵적으로 바꾸는 버튼이 아니라,
+전체 ordered slot과 source revision을 `FLOW_START`에 복사해 제출하는 Debug audition 정본이다.
+따라서 Pattern/Stage/Animation/Effect Product parity는 계속 fail-closed로 검증하되, audition Flow의
+순서와 pursuit를 stale Product 배열과 비교해 canonical graph 전체를 폐기하지 않는다.
+
+- `Boss Verification`의 Pattern 목록을 `All Patterns`와 `Current Patterns`로 나눈다.
+- `Current Patterns`는 unsaved draft가 아니라 마지막 Save 성공으로 commit된 document baseline을
+  순서와 중복까지 그대로 표시한다. Save 성공 프레임부터 최신 baseline을 표시한다.
+- active run은 제출 당시 slot 사본을 유지한다. 그동안 다음 draft를 Add/Up/Down/Discard Selected/Save할
+  수 있고, `Restart Flow`가 저장 파일을 다시 읽은 뒤 새 첫 slot부터 replacement request를 제출한다.
+  Server verdict 전에는 이전 run이 계속 authoritative다.
+- `Discard Selected`는 선택한 Flow slot 하나만 제거한다. 전체 unsaved draft 복원 명령과 합성하지 않는다.
+- 세 번째 `Logic Flow` 탭은 1차 범위에서 읽기 전용이다. 상단에 현재/선택 Pattern을 표시하고,
+  기존 `CActionCompositionGraphModel` projection에 Stage role, 실제 clip 이름, `COUNTER_HIT`, `TIMEOUT`,
+  counterable flag/CounterProxy를 주석으로 합쳐 코드에 이미 연결된 흐름을 시각화한다.
+- Logic Flow는 새로운 JSON, runtime VM, branch writer를 만들지 않는다. topology 저작은 기존 typed owner에
+  남기며 이번 탭은 pan/zoom/fit 이외의 로직 상호작용을 제공하지 않는다.
+
+회귀 검증은 saved Flow duplicate/reorder/pursuit 변경이 Sequencer cold admission을 0 patterns로 만들지
+않는 경우, inline Product sequence drift는 계속 거부되는 경우, Save 직후 baseline 전환, active run 중
+draft 편집과 replacement restart, malformed Counter 묶음의 경고 투영을 포함한다.

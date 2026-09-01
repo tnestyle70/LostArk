@@ -340,12 +340,9 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             sequence_start,
         )
         sequence_body = self.workbench_cpp[sequence_start:sequence_end]
-        self.assertIn("Is_PatternSoundDraftDirty(SoundStatus)", sequence_body)
-        self.assertLess(
-            sequence_body.index("Is_PatternSoundDraftDirty(SoundStatus)"),
-            sequence_body.index(
-                "SetValtanStageDraftWithSoundDependencyAdmission("
-            ),
+        self.assertNotIn("Is_PatternSoundDraftDirty(SoundStatus)", sequence_body)
+        self.assertIn(
+            "SetValtanStageDraftWithSoundDependencyAdmission(", sequence_body
         )
 
         save_start = self.workbench_cpp.index(
@@ -357,6 +354,10 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
         )
         save_body = self.workbench_cpp[save_start:save_end]
         self.assertIn("const bool_t bSaveSound = Is_PatternSoundDraftDirty(SoundStatus)", save_body)
+        self.assertIn(
+            "Can_CommitValtanCompositionPatternSoundGeneration(SoundStatus)",
+            save_body,
+        )
         self.assertLess(
             save_body.index("Validate_ValtanCompositionPatternSoundGraphDependencies("),
             save_body.index("Save_ValtanCompositionProduct("),
@@ -370,6 +371,158 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             "View Collider Authority (New Add Unavailable)",
         ):
             self.assertIn(token, self.workbench_cpp)
+
+    def test_animation_delete_cascades_exact_sound_rows_and_rolls_back_together(self) -> None:
+        delete_start = self.workbench_cpp.index(
+            "bool_t Client::CActionCompositionWorkbench::Remove_AnimationOccurrence("
+        )
+        delete_end = self.workbench_cpp.index(
+            "bool_t Client::CActionCompositionWorkbench::Duplicate_AnimationOccurrence(",
+            delete_start,
+        )
+        delete_body = self.workbench_cpp[delete_start:delete_end]
+        for token in (
+            "Stage_ValtanCompositionPatternSoundCascadeForAnimationDelete(",
+            "SetValtanStageDraftWithSoundDependencyAdmission(",
+            "Restore_ValtanCompositionPatternSoundCascade(",
+            "Append or replace a Sequence, then use Save once.",
+        ):
+            self.assertIn(token, delete_body)
+        self.assertLess(
+            delete_body.index(
+                "Stage_ValtanCompositionPatternSoundCascadeForAnimationDelete("
+            ),
+            delete_body.index("SetValtanStageDraftWithSoundDependencyAdmission("),
+        )
+
+        cascade_start = self.animation_cpp.index(
+            "Stage_ValtanCompositionPatternSoundCascadeForAnimationDelete("
+        )
+        cascade_end = self.animation_cpp.index(
+            "bool_t Client::CAnimation_Tool::\nRestore_ValtanCompositionPatternSoundCascade(",
+            cascade_start,
+        )
+        cascade_body = self.animation_cpp[cascade_start:cascade_end]
+        for token in (
+            "Cue.strPatternId != Pattern.strPatternId",
+            "Cue.strStageId != Stage.strStageId",
+            "Cue.strActionId != Stage.strActionId",
+            "Cue.strClipOccurrenceId != strClipOccurrenceId",
+            "CValtanPatternSoundCueDocument::Remove_AuthoringRow(",
+            "m_bValtanPatternSoundCuesDirty = true",
+            "++m_iValtanPatternSoundDraftGeneration",
+        ):
+            self.assertIn(token, cascade_body)
+
+    def test_dash_charge_recovery_fixture_is_canonical_groggy_and_sound_joined(
+        self,
+    ) -> None:
+        root = pathlib.Path(__file__).resolve().parents[2]
+        presentation = json.loads(
+            (root / "Data/Valtan/Valtan.presentation.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        gameplay = json.loads(
+            (root / "Data/Valtan/Valtan.gameplay.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        sounds = json.loads(
+            (
+                root
+                / "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json"
+            ).read_text(encoding="utf-8")
+        )
+        groggy_pattern = next(
+            row
+            for row in presentation["patterns"]
+            if row["patternId"] == "VALTAN_DASH_CHARGE_GROGGY"
+        )
+        recovery = next(
+            row for row in groggy_pattern["stages"] if row["stageId"] == "GROGGY"
+        )
+        occurrences = recovery["animation"]["occurrences"]
+        self.assertEqual(
+            [
+                "mesh_abn_groggy_1_start",
+                "mesh_abn_groggy_1_loop",
+                "mesh_abn_groggy_1_loop",
+                "mesh_abn_groggy_1_loop",
+                "mesh_abn_groggy_1_end",
+            ],
+            [row["clip"] for row in occurrences],
+        )
+        self.assertEqual(
+            [1833, 1333, 1333, 334, 2000],
+            [row["playMs"] for row in occurrences],
+        )
+        self.assertEqual(
+            [
+                "valtan.attack.dash-charge.recovery.groggy.clip.01",
+                "valtan.attack.dash-charge.recovery.groggy.clip.02",
+                "valtan.attack.dash-charge.recovery.groggy.clip.03",
+                "valtan.attack.dash-charge.recovery.groggy.clip.04",
+                "valtan.attack.dash-charge.recovery.groggy.clip.05",
+            ],
+            [row["clipOccurrenceId"] for row in occurrences],
+        )
+        self.assertEqual(6833, sum(row["playMs"] for row in occurrences))
+        self.assertIn(
+            {
+                "sourceActionId": 400430,
+                "sequenceIndex": 0,
+                "role": "PRIMARY",
+            },
+            groggy_pattern["presentationSources"],
+        )
+        gameplay_pattern = next(
+            row
+            for row in gameplay["patterns"]
+            if row["patternId"] == "VALTAN_DASH_CHARGE_GROGGY"
+        )
+        gameplay_recovery = next(
+            row
+            for row in gameplay_pattern["stages"]
+            if row["stageId"] == "GROGGY"
+        )
+        self.assertEqual(6833, gameplay_recovery["durationMs"])
+        self.assertIn(400430, gameplay_pattern["sourceActionIds"])
+
+        recovery_sounds = [
+            row
+            for row in sounds["cues"]
+            if row["patternId"] == "VALTAN_DASH_CHARGE_GROGGY"
+            and row["stageId"] == "GROGGY"
+        ]
+        self.assertEqual([], recovery_sounds)
+        self.assertNotIn(
+            "valtan.attack.dash-charge.recovery.project-tuned.clip.01",
+            {row["clipOccurrenceId"] for row in sounds["cues"]},
+        )
+
+        dash_sound_rows = [
+            row
+            for row in sounds["cues"]
+            if row["patternId"] == "VALTAN_DASH_CHARGE"
+        ]
+        dash_pattern = next(
+            row
+            for row in presentation["patterns"]
+            if row["patternId"] == "VALTAN_DASH_CHARGE"
+        )
+        stages_by_id = {row["stageId"]: row for row in dash_pattern["stages"]}
+        for cue in dash_sound_rows:
+            with self.subTest(soundOccurrenceId=cue["occurrenceId"]):
+                stage = stages_by_id[cue["stageId"]]
+                self.assertEqual(stage["actionId"], cue["actionId"])
+                self.assertEqual(
+                    1,
+                    sum(
+                        row["clipOccurrenceId"] == cue["clipOccurrenceId"]
+                        for row in stage["animation"]["occurrences"]
+                    ),
+                )
         self.assertNotIn(
             'ImGui::BeginDisabled(!bHasServerCollider)',
             self.workbench_cpp,

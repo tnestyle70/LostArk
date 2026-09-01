@@ -275,11 +275,6 @@
           "sourceActionId": 420604,
           "sequenceIndex": 2,
           "role": "PRIMARY"
-        },
-        {
-          "sourceActionId": 420627,
-          "sequenceIndex": 1,
-          "role": "PART_BREAK_REACTION"
         }
       ],
       "stages": [
@@ -417,51 +412,91 @@
             }
           ],
           "cameraInvocations": []
-        },
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_DASH_CHARGE_GROGGY",
+      "sourceSequenceIndex": 0,
+      "presentationSources": [
+        {
+          "sourceActionId": 400430,
+          "sequenceIndex": 0,
+          "role": "PRIMARY"
+        }
+      ],
+      "stages": [
         {
           "stageId": "GROGGY",
-          "actionId": "valtan.attack.dash-charge.groggy",
-          "sequenceRole": "GROGGY",
-          "animation": {
-            "endPolicy": "LOOP_TO_STAGE_END",
-            "repeatCount": 1,
-            "occurrences": [
-              {
-                "clipOccurrenceId": "valtan.attack.dash-charge.groggy.clip.01",
-                "clip": "mesh_dmg_parts_loop_1",
-                "mappingBasis": "PATTERN_PR_REFERENCE",
-                "sourceStartMs": 0,
-                "playMs": 0,
-                "playRate": 1.0,
-                "repeatUntilStageEnd": true
-              }
-            ]
-          },
-          "effectCues": [],
-          "cameraInvocations": []
-        },
-        {
-          "stageId": "RECOVERY",
           "actionId": "valtan.attack.dash-charge.recovery",
-          "sequenceRole": "RECOVERY",
+          "sequenceRole": "GROGGY",
           "animation": {
             "endPolicy": "EXACT",
             "repeatCount": 1,
             "occurrences": [
               {
-                "clipOccurrenceId": "valtan.attack.dash-charge.recovery.project-tuned.clip.01",
-                "clip": "mesh_att_battle_4_01",
+                "clipOccurrenceId": "valtan.attack.dash-charge.recovery.groggy.clip.01",
+                "clip": "mesh_abn_groggy_1_start",
                 "mappingBasis": "PROJECT_AUTHORED",
-                "sourceStartMs": 3350,
-                "playMs": 1383,
-                "playRate": 1.5366667,
+                "sourceStartMs": 0,
+                "playMs": 1833,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              },
+              {
+                "clipOccurrenceId": "valtan.attack.dash-charge.recovery.groggy.clip.02",
+                "clip": "mesh_abn_groggy_1_loop",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 1333,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              },
+              {
+                "clipOccurrenceId": "valtan.attack.dash-charge.recovery.groggy.clip.03",
+                "clip": "mesh_abn_groggy_1_loop",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 1333,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              },
+              {
+                "clipOccurrenceId": "valtan.attack.dash-charge.recovery.groggy.clip.04",
+                "clip": "mesh_abn_groggy_1_loop",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 334,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              },
+              {
+                "clipOccurrenceId": "valtan.attack.dash-charge.recovery.groggy.clip.05",
+                "clip": "mesh_abn_groggy_1_end",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 2000,
+                "playRate": 1.0,
                 "repeatUntilStageEnd": false
               }
             ]
           },
           "effectCues": [],
           "cameraInvocations": []
-        },
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_PART_BREAK",
+      "sourceSequenceIndex": 1,
+      "presentationSources": [
+        {
+          "sourceActionId": 420627,
+          "sequenceIndex": 1,
+          "role": "PRIMARY"
+        }
+      ],
+      "stages": [
         {
           "stageId": "PART_BREAK",
           "actionId": "valtan.attack.dash-charge.part-break",
@@ -2183,6 +2218,524 @@
       ]
     },
     {
+      "patternId": "VALTAN_GHOST_PORTAL_ONCE",
+      "sourceSequenceIndex": 1,
+      "presentationSources": [
+        {
+          "sourceActionId": 420622,
+          "sequenceIndex": 1,
+          "role": "PRIMARY"
+        }
+      ],
+      "stages": [
+        {
+          "stageId": "ACTIVE",
+          "actionId": "valtan.ghost.portal-once.active",
+          "sequenceRole": "STEP",
+          "animation": {
+            "endPolicy": "LOOP_TO_STAGE_END",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.ghost.portal-once.active.clip-01",
+                "clip": "mesh_att_battle_18_02",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 0,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": true
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_COUNTER_GROGGY",
+      "sourceSequenceIndex": 1,
+      "presentationSources": [
+        {
+          "sourceActionId": 420644,
+          "sequenceIndex": 1,
+          "role": "PRIMARY"
+        }
+      ],
+      "stages": [
+        {
+          "stageId": "GROGGY",
+          "actionId": "valtan.sequence.counter.step-04",
+          "sequenceRole": "GROGGY",
+          "animation": {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.sequence.counter.step-04.clip-01",
+                "clip": "mesh_att_battle_14_04-2",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 1000,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_STAGGER_SLOT",
+      "sourceSequenceIndex": 1,
+      "presentationSources": [
+        {
+          "sourceActionId": 420642,
+          "sequenceIndex": 1,
+          "role": "PRIMARY"
+        },
+        {
+          "sourceActionId": 400430,
+          "sequenceIndex": 0,
+          "role": "REFERENCE_400430_0"
+        }
+      ],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.authoring.stagger-slot.step-01",
+          "sequenceRole": "STEP",
+          "animation": {
+            "mode": "NONE"
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "GROGGY",
+          "actionId": "valtan.authoring.stagger-slot.groggy",
+          "sequenceRole": "GROGGY",
+          "animation": {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "VALTAN_STAGGER_SLOT.GROGGY.composition.clip.01",
+                "clip": "mesh_abn_groggy_1_start",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 1833,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              },
+              {
+                "clipOccurrenceId": "VALTAN_STAGGER_SLOT.GROGGY.composition.clip.02",
+                "clip": "mesh_abn_groggy_1_loop",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 1333,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              },
+              {
+                "clipOccurrenceId": "VALTAN_STAGGER_SLOT.GROGGY.composition.clip.03",
+                "clip": "mesh_abn_groggy_1_loop",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 1333,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              },
+              {
+                "clipOccurrenceId": "VALTAN_STAGGER_SLOT.GROGGY.composition.clip.04",
+                "clip": "mesh_abn_groggy_1_loop",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 334,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              },
+              {
+                "clipOccurrenceId": "VALTAN_STAGGER_SLOT.GROGGY.composition.clip.05",
+                "clip": "mesh_abn_groggy_1_end",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 2000,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "RECOVERY",
+          "actionId": "valtan.authoring.stagger-slot.recovery",
+          "sequenceRole": "RECOVERY",
+          "animation": {
+            "mode": "NONE"
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_BIND_SLOT",
+      "sourceSequenceIndex": 1,
+      "presentationSources": [
+        {
+          "sourceActionId": 420623,
+          "sequenceIndex": 1,
+          "role": "PRIMARY"
+        },
+        {
+          "sourceActionId": 400442,
+          "sequenceIndex": 0,
+          "role": "REFERENCE_400442_0"
+        }
+      ],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.authoring.bind-slot.step-01",
+          "sequenceRole": "STEP",
+          "animation": {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "VALTAN_BIND_SLOT.STEP_01.composition.clip.01",
+                "clip": "mesh_att_battle_5_01_start",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 1400,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              },
+              {
+                "clipOccurrenceId": "VALTAN_BIND_SLOT.STEP_01.composition.clip.02",
+                "clip": "mesh_att_battle_5_01_loop",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 900,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              },
+              {
+                "clipOccurrenceId": "VALTAN_BIND_SLOT.STEP_01.composition.clip.03",
+                "clip": "mesh_att_battle_5_01_loop",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 900,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              },
+              {
+                "clipOccurrenceId": "VALTAN_BIND_SLOT.STEP_01.composition.clip.04",
+                "clip": "mesh_att_battle_5_01_loop",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 900,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              },
+              {
+                "clipOccurrenceId": "VALTAN_BIND_SLOT.STEP_01.composition.clip.05",
+                "clip": "mesh_att_battle_5_01_end",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 4433,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": false
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SILENCE_SLOT",
+      "sourceSequenceIndex": 0,
+      "presentationSources": [
+        {
+          "sourceActionId": 400440,
+          "sequenceIndex": 0,
+          "role": "PRIMARY"
+        },
+        {
+          "sourceActionId": 400437,
+          "sequenceIndex": 0,
+          "role": "REFERENCE_400437_0"
+        }
+      ],
+      "stages": [
+        {
+          "stageId": "STEP_01",
+          "actionId": "valtan.authoring.silence-slot.step-01",
+          "sequenceRole": "STEP",
+          "animation": {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "VALTAN_SILENCE_SLOT.STEP_01.composition.clip.01",
+                "clip": "mesh_evt1_att_battle_5_01_end",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 2633,
+                "playRate": 1,
+                "repeatUntilStageEnd": false
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_TRIPLE_COUNTER",
+      "sourceSequenceIndex": 1,
+      "presentationSources": [
+        {
+          "sourceActionId": 420640,
+          "sequenceIndex": 1,
+          "role": "PRIMARY"
+        },
+        {
+          "sourceActionId": 420641,
+          "sequenceIndex": 1,
+          "role": "REFERENCE"
+        },
+        {
+          "sourceActionId": 420642,
+          "sequenceIndex": 1,
+          "role": "REFERENCE"
+        },
+        {
+          "sourceActionId": 420643,
+          "sequenceIndex": 1,
+          "role": "REFERENCE"
+        },
+        {
+          "sourceActionId": 420644,
+          "sequenceIndex": 1,
+          "role": "REFERENCE"
+        },
+        {
+          "sourceActionId": 420645,
+          "sequenceIndex": 1,
+          "role": "REFERENCE"
+        },
+        {
+          "sourceActionId": 420646,
+          "sequenceIndex": 1,
+          "role": "REFERENCE"
+        },
+        {
+          "sourceActionId": 420647,
+          "sequenceIndex": 1,
+          "role": "REFERENCE"
+        }
+      ],
+      "stages": [
+        {
+          "stageId": "COUNTER_1",
+          "actionId": "valtan.reactive.triple-counter.first",
+          "sequenceRole": "COUNTER_1",
+          "animation": {
+            "endPolicy": "LOOP_TO_STAGE_END",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.reactive.triple-counter.first.clip.01",
+                "clip": "mesh_abn_groggy_1_start",
+                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                "sourceStartMs": 0,
+                "playMs": 0,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": true
+              }
+            ]
+          },
+          "effectCues": [
+            {
+              "cueId": "cue.valtan.carrier-v1.reactive.triple-counter.first.clip-01",
+              "occurrenceId": "cue.valtan.carrier-v1.reactive.triple-counter.first.clip-01.occurrence.01",
+              "effectAssetId": "effect.valtan.carrier-v1.reactive.triple-counter.first.clip-01",
+              "clipOccurrenceId": "valtan.reactive.triple-counter.first.clip.01",
+              "sourceStartMs": 0,
+              "sourceEndMs": null,
+              "anchorSlotId": "root",
+              "followPolicy": "follow",
+              "stopPolicy": "natural",
+              "repeatPolicy": "once",
+              "localTransform": {
+                "position": [
+                  0,
+                  0,
+                  0
+                ],
+                "rotationDegrees": [
+                  0,
+                  0,
+                  0
+                ],
+                "scale": [
+                  1,
+                  1,
+                  1
+                ]
+              },
+              "scalePolicy": {
+                "kind": "OWNER_RELATIVE"
+              },
+              "mappingBasis": "CURRENT_PRODUCT_BASELINE"
+            }
+          ],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "FAIL_1",
+          "actionId": "valtan.reactive.triple-counter.first-fail",
+          "sequenceRole": "FAIL_1",
+          "animation": {
+            "endPolicy": "LOOP_TO_STAGE_END",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.reactive.triple-counter.first-fail.clip.01",
+                "clip": "mesh_abn_groggy_1_loop",
+                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                "sourceStartMs": 0,
+                "playMs": 0,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": true
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "COUNTER_2",
+          "actionId": "valtan.reactive.triple-counter.second",
+          "sequenceRole": "COUNTER_2",
+          "animation": {
+            "endPolicy": "LOOP_TO_STAGE_END",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.reactive.triple-counter.second.clip.01",
+                "clip": "mesh_abn_groggy_1_loop",
+                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                "sourceStartMs": 0,
+                "playMs": 0,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": true
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "FAIL_2",
+          "actionId": "valtan.reactive.triple-counter.second-fail",
+          "sequenceRole": "FAIL_2",
+          "animation": {
+            "endPolicy": "LOOP_TO_STAGE_END",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.reactive.triple-counter.second-fail.clip.01",
+                "clip": "mesh_abn_groggy_1_loop",
+                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                "sourceStartMs": 0,
+                "playMs": 0,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": true
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "COUNTER_3",
+          "actionId": "valtan.reactive.triple-counter.third",
+          "sequenceRole": "COUNTER_3",
+          "animation": {
+            "endPolicy": "LOOP_TO_STAGE_END",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.reactive.triple-counter.third.clip.01",
+                "clip": "mesh_abn_groggy_1_loop",
+                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                "sourceStartMs": 0,
+                "playMs": 0,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": true
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "FAIL_3",
+          "actionId": "valtan.reactive.triple-counter.third-fail",
+          "sequenceRole": "FAIL_3",
+          "animation": {
+            "endPolicy": "LOOP_TO_STAGE_END",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.reactive.triple-counter.third-fail.clip.01",
+                "clip": "mesh_abn_groggy_1_loop",
+                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                "sourceStartMs": 0,
+                "playMs": 0,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": true
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        },
+        {
+          "stageId": "RECOVERY",
+          "actionId": "valtan.reactive.triple-counter.recovery",
+          "sequenceRole": "RECOVERY",
+          "animation": {
+            "endPolicy": "LOOP_TO_STAGE_END",
+            "repeatCount": 1,
+            "occurrences": [
+              {
+                "clipOccurrenceId": "valtan.reactive.triple-counter.recovery.clip.01",
+                "clip": "mesh_abn_groggy_1_end",
+                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                "sourceStartMs": 0,
+                "playMs": 0,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": true
+              }
+            ]
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        }
+      ]
+    },
+    {
       "patternId": "VALTAN_SIX_PIZZA_106",
       "sourceSequenceIndex": 1,
       "presentationSources": [
@@ -2258,8 +2811,8 @@
               "clipOccurrenceId": "valtan.sequence.center-six-pizza-charge.step-01.clip-01",
               "sourceStartMs": 0,
               "sourceEndMs": null,
-              "anchorSlotId": "arena.center.facing",
-              "followPolicy": "snapshot",
+              "anchorSlotId": "arena.center.target-follow",
+              "followPolicy": "follow",
               "stopPolicy": "natural",
               "repeatPolicy": "once",
               "localTransform": {
@@ -5791,11 +6344,6 @@
           "sourceActionId": 420643,
           "sequenceIndex": 1,
           "role": "REFERENCE"
-        },
-        {
-          "sourceActionId": 420644,
-          "sequenceIndex": 1,
-          "role": "REFERENCE"
         }
       ],
       "stages": [
@@ -5902,28 +6450,6 @@
               "mappingBasis": "PROJECT_AUTHORED"
             }
           ],
-          "cameraInvocations": []
-        },
-        {
-          "stageId": "STEP_04",
-          "actionId": "valtan.sequence.counter.step-04",
-          "sequenceRole": "STEP",
-          "animation": {
-            "endPolicy": "EXACT",
-            "repeatCount": 1,
-            "occurrences": [
-              {
-                "clipOccurrenceId": "valtan.sequence.counter.step-04.clip-01",
-                "clip": "mesh_att_battle_14_04-2",
-                "mappingBasis": "PROJECT_AUTHORED",
-                "sourceStartMs": 0,
-                "playMs": 1000,
-                "playRate": 1.0,
-                "repeatUntilStageEnd": false
-              }
-            ]
-          },
-          "effectCues": [],
           "cameraInvocations": []
         }
       ]
@@ -6086,7 +6612,46 @@
               }
             ]
           },
-          "effectCues": [],
+          "effectCues": [
+            {
+              "cueId": "cue.valtan.sequence.cross.step-01",
+              "scalePolicy": {
+                "kind": "GAMEPLAY_FOOTPRINT",
+                "worldScale": [
+                  1.5,
+                  1.5,
+                  1.5
+                ]
+              },
+              "occurrenceId": "cue.valtan.sequence.cross.step-01.occurrence.01",
+              "effectAssetId": "effect.valtan.sequence.cross",
+              "clipOccurrenceId": "valtan.sequence.cross.step-01.clip-01",
+              "sourceStartMs": 1617,
+              "sourceEndMs": null,
+              "anchorSlotId": "root",
+              "followPolicy": "snapshot",
+              "stopPolicy": "natural",
+              "repeatPolicy": "once",
+              "localTransform": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rotationDegrees": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": [
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              },
+              "mappingBasis": "PROJECT_AUTHORED"
+            }
+          ],
           "cameraInvocations": []
         }
       ]
@@ -6456,6 +7021,11 @@
           "sourceActionId": 400440,
           "sequenceIndex": 0,
           "role": "PRIMARY"
+        },
+        {
+          "sourceActionId": 400425,
+          "sequenceIndex": 0,
+          "role": "REFERENCE_400425_0"
         }
       ],
       "stages": [
@@ -6464,342 +7034,26 @@
           "actionId": "valtan.sequence.sequence.400440.0.step-01",
           "sequenceRole": "STEP",
           "animation": {
-            "endPolicy": "EXACT",
+            "endPolicy": "HOLD_LAST_POSE",
             "repeatCount": 1,
             "occurrences": [
               {
                 "clipOccurrenceId": "valtan.sequence.sequence.400440.0.step-01.clip-01",
                 "clip": "mesh_att_battle_11_01",
-                "mappingBasis": "PROJECT_AUTHORED",
+                "mappingBasis": "SOURCE_REVIEWED_DELTA",
                 "sourceStartMs": 0,
                 "playMs": 1800,
                 "playRate": 1.0,
                 "repeatUntilStageEnd": false
-              }
-            ]
-          },
-          "effectCues": [],
-          "cameraInvocations": []
-        }
-      ]
-    },
-    {
-      "patternId": "VALTAN_STAGGER_SLOT",
-      "sourceSequenceIndex": 1,
-      "presentationSources": [
-        {
-          "sourceActionId": 420642,
-          "sequenceIndex": 1,
-          "role": "PRIMARY"
-        }
-      ],
-      "stages": [
-        {
-          "stageId": "STEP_01",
-          "actionId": "valtan.authoring.stagger-slot.step-01",
-          "sequenceRole": "STEP",
-          "animation": {
-            "mode": "NONE"
-          },
-          "effectCues": [],
-          "cameraInvocations": []
-        },
-        {
-          "stageId": "GROGGY",
-          "actionId": "valtan.authoring.stagger-slot.groggy",
-          "sequenceRole": "GROGGY",
-          "animation": {
-            "mode": "NONE"
-          },
-          "effectCues": [],
-          "cameraInvocations": []
-        },
-        {
-          "stageId": "RECOVERY",
-          "actionId": "valtan.authoring.stagger-slot.recovery",
-          "sequenceRole": "RECOVERY",
-          "animation": {
-            "mode": "NONE"
-          },
-          "effectCues": [],
-          "cameraInvocations": []
-        }
-      ]
-    },
-    {
-      "patternId": "VALTAN_BIND_SLOT",
-      "sourceSequenceIndex": 1,
-      "presentationSources": [
-        {
-          "sourceActionId": 420623,
-          "sequenceIndex": 1,
-          "role": "PRIMARY"
-        }
-      ],
-      "stages": [
-        {
-          "stageId": "STEP_01",
-          "actionId": "valtan.authoring.bind-slot.step-01",
-          "sequenceRole": "STEP",
-          "animation": {
-            "mode": "NONE"
-          },
-          "effectCues": [],
-          "cameraInvocations": []
-        }
-      ]
-    },
-    {
-      "patternId": "VALTAN_SILENCE_SLOT",
-      "sourceSequenceIndex": 0,
-      "presentationSources": [
-        {
-          "sourceActionId": 400440,
-          "sequenceIndex": 0,
-          "role": "PRIMARY"
-        }
-      ],
-      "stages": [
-        {
-          "stageId": "STEP_01",
-          "actionId": "valtan.authoring.silence-slot.step-01",
-          "sequenceRole": "STEP",
-          "animation": {
-            "mode": "NONE"
-          },
-          "effectCues": [],
-          "cameraInvocations": []
-        }
-      ]
-    },
-    {
-      "patternId": "VALTAN_TRIPLE_COUNTER",
-      "sourceSequenceIndex": 1,
-      "presentationSources": [
-        {
-          "sourceActionId": 420640,
-          "sequenceIndex": 1,
-          "role": "PRIMARY"
-        },
-        {
-          "sourceActionId": 420641,
-          "sequenceIndex": 1,
-          "role": "REFERENCE"
-        },
-        {
-          "sourceActionId": 420642,
-          "sequenceIndex": 1,
-          "role": "REFERENCE"
-        },
-        {
-          "sourceActionId": 420643,
-          "sequenceIndex": 1,
-          "role": "REFERENCE"
-        },
-        {
-          "sourceActionId": 420644,
-          "sequenceIndex": 1,
-          "role": "REFERENCE"
-        },
-        {
-          "sourceActionId": 420645,
-          "sequenceIndex": 1,
-          "role": "REFERENCE"
-        },
-        {
-          "sourceActionId": 420646,
-          "sequenceIndex": 1,
-          "role": "REFERENCE"
-        },
-        {
-          "sourceActionId": 420647,
-          "sequenceIndex": 1,
-          "role": "REFERENCE"
-        }
-      ],
-      "stages": [
-        {
-          "stageId": "COUNTER_1",
-          "actionId": "valtan.reactive.triple-counter.first",
-          "sequenceRole": "COUNTER_1",
-          "animation": {
-            "endPolicy": "LOOP_TO_STAGE_END",
-            "repeatCount": 1,
-            "occurrences": [
-              {
-                "clipOccurrenceId": "valtan.reactive.triple-counter.first.clip.01",
-                "clip": "mesh_abn_groggy_1_start",
-                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
-                "sourceStartMs": 0,
-                "playMs": 0,
-                "playRate": 1.0,
-                "repeatUntilStageEnd": true
-              }
-            ]
-          },
-          "effectCues": [
-            {
-              "cueId": "cue.valtan.carrier-v1.reactive.triple-counter.first.clip-01",
-              "occurrenceId": "cue.valtan.carrier-v1.reactive.triple-counter.first.clip-01.occurrence.01",
-              "effectAssetId": "effect.valtan.carrier-v1.reactive.triple-counter.first.clip-01",
-              "clipOccurrenceId": "valtan.reactive.triple-counter.first.clip.01",
-              "sourceStartMs": 0,
-              "sourceEndMs": null,
-              "anchorSlotId": "root",
-              "followPolicy": "follow",
-              "stopPolicy": "natural",
-              "repeatPolicy": "once",
-              "localTransform": {
-                "position": [
-                  0,
-                  0,
-                  0
-                ],
-                "rotationDegrees": [
-                  0,
-                  0,
-                  0
-                ],
-                "scale": [
-                  1,
-                  1,
-                  1
-                ]
               },
-              "scalePolicy": {
-                "kind": "OWNER_RELATIVE"
-              },
-              "mappingBasis": "CURRENT_PRODUCT_BASELINE"
-            }
-          ],
-          "cameraInvocations": []
-        },
-        {
-          "stageId": "FAIL_1",
-          "actionId": "valtan.reactive.triple-counter.first-fail",
-          "sequenceRole": "FAIL_1",
-          "animation": {
-            "endPolicy": "LOOP_TO_STAGE_END",
-            "repeatCount": 1,
-            "occurrences": [
               {
-                "clipOccurrenceId": "valtan.reactive.triple-counter.first-fail.clip.01",
-                "clip": "mesh_abn_groggy_1_loop",
-                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+                "clipOccurrenceId": "valtan.sequence.sequence.400440.0.step-01.roar.clip-05",
+                "clip": "mesh_att_battle_5_01_end",
+                "mappingBasis": "SOURCE_REVIEWED_DELTA",
                 "sourceStartMs": 0,
-                "playMs": 0,
+                "playMs": 4433,
                 "playRate": 1.0,
-                "repeatUntilStageEnd": true
-              }
-            ]
-          },
-          "effectCues": [],
-          "cameraInvocations": []
-        },
-        {
-          "stageId": "COUNTER_2",
-          "actionId": "valtan.reactive.triple-counter.second",
-          "sequenceRole": "COUNTER_2",
-          "animation": {
-            "endPolicy": "LOOP_TO_STAGE_END",
-            "repeatCount": 1,
-            "occurrences": [
-              {
-                "clipOccurrenceId": "valtan.reactive.triple-counter.second.clip.01",
-                "clip": "mesh_abn_groggy_1_loop",
-                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
-                "sourceStartMs": 0,
-                "playMs": 0,
-                "playRate": 1.0,
-                "repeatUntilStageEnd": true
-              }
-            ]
-          },
-          "effectCues": [],
-          "cameraInvocations": []
-        },
-        {
-          "stageId": "FAIL_2",
-          "actionId": "valtan.reactive.triple-counter.second-fail",
-          "sequenceRole": "FAIL_2",
-          "animation": {
-            "endPolicy": "LOOP_TO_STAGE_END",
-            "repeatCount": 1,
-            "occurrences": [
-              {
-                "clipOccurrenceId": "valtan.reactive.triple-counter.second-fail.clip.01",
-                "clip": "mesh_abn_groggy_1_loop",
-                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
-                "sourceStartMs": 0,
-                "playMs": 0,
-                "playRate": 1.0,
-                "repeatUntilStageEnd": true
-              }
-            ]
-          },
-          "effectCues": [],
-          "cameraInvocations": []
-        },
-        {
-          "stageId": "COUNTER_3",
-          "actionId": "valtan.reactive.triple-counter.third",
-          "sequenceRole": "COUNTER_3",
-          "animation": {
-            "endPolicy": "LOOP_TO_STAGE_END",
-            "repeatCount": 1,
-            "occurrences": [
-              {
-                "clipOccurrenceId": "valtan.reactive.triple-counter.third.clip.01",
-                "clip": "mesh_abn_groggy_1_loop",
-                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
-                "sourceStartMs": 0,
-                "playMs": 0,
-                "playRate": 1.0,
-                "repeatUntilStageEnd": true
-              }
-            ]
-          },
-          "effectCues": [],
-          "cameraInvocations": []
-        },
-        {
-          "stageId": "FAIL_3",
-          "actionId": "valtan.reactive.triple-counter.third-fail",
-          "sequenceRole": "FAIL_3",
-          "animation": {
-            "endPolicy": "LOOP_TO_STAGE_END",
-            "repeatCount": 1,
-            "occurrences": [
-              {
-                "clipOccurrenceId": "valtan.reactive.triple-counter.third-fail.clip.01",
-                "clip": "mesh_abn_groggy_1_loop",
-                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
-                "sourceStartMs": 0,
-                "playMs": 0,
-                "playRate": 1.0,
-                "repeatUntilStageEnd": true
-              }
-            ]
-          },
-          "effectCues": [],
-          "cameraInvocations": []
-        },
-        {
-          "stageId": "RECOVERY",
-          "actionId": "valtan.reactive.triple-counter.recovery",
-          "sequenceRole": "RECOVERY",
-          "animation": {
-            "endPolicy": "LOOP_TO_STAGE_END",
-            "repeatCount": 1,
-            "occurrences": [
-              {
-                "clipOccurrenceId": "valtan.reactive.triple-counter.recovery.clip.01",
-                "clip": "mesh_abn_groggy_1_end",
-                "mappingBasis": "CURRENT_PRODUCT_BASELINE",
-                "sourceStartMs": 0,
-                "playMs": 0,
-                "playRate": 1.0,
-                "repeatUntilStageEnd": true
+                "repeatUntilStageEnd": false
               }
             ]
           },
@@ -6821,6 +7075,18 @@
       "displayName": "INNER / OUTER 도넛",
       "ownership": "SERVER_COMBAT_OBJECT",
       "spawnEventId": "event.valtan.fist-in-out.spawn-donut"
+    },
+    {
+      "independentEffectId": "valtan.independent-effect.ground-roar-cardinal-rocks",
+      "displayName": "땅구르기 후 사자후 / 4방향 돌",
+      "ownership": "SERVER_COMBAT_OBJECT",
+      "spawnEventId": "valtan.ground-roar.cardinal-rocks"
+    },
+    {
+      "independentEffectId": "valtan.independent-effect.ghost-portal-once",
+      "displayName": "망령 포탈 돌진 1회 / 4꼭짓점",
+      "ownership": "SERVER_COMBAT_OBJECT",
+      "spawnEventId": "event.valtan.ghost.portal-once.volley"
     }
   ]
 }

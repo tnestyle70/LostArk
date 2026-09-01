@@ -848,6 +848,11 @@
       "authoringPath": "Effects/Authored/effect.valtan.sequence.charge2.effect.json"
     },
     {
+      "effectAssetId": "effect.valtan.sequence.cross",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
+      "authoringPath": "Effects/Authored/effect.valtan.sequence.cross.effect.json"
+    },
+    {
       "effectAssetId": "effect.valtan.sequence.roar-charge",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.valtan.sequence.roar-charge.effect.json"

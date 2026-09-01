@@ -1,17 +1,12 @@
 #include "ValtanPatternFlowDocument.h"
 
 #include "DataJson.h"
-#include "ProjectDataRoot.h"
-
 #include <Windows.h>
 #include <bcrypt.h>
-#include <io.h>
 
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstdio>
-#include <fstream>
 #include <iomanip>
 #include <limits>
 #include <sstream>
@@ -32,104 +27,8 @@ namespace
 	constexpr std::uint64_t MAX_NODE_ORDINAL = 999999u;
 	constexpr std::uint64_t MAX_EDGE_ORDINAL = 999999u;
 	constexpr std::size_t SHA256_BYTE_COUNT = 32u;
-	constexpr const wchar_t* VALTAN_PATTERN_TRANSACTION_LOCK_RELATIVE =
-		L"out\\ValtanPatternTransactions\\create-pattern.lock";
 	constexpr std::string_view OPTIONAL_ENTRY_PATTERN_ID =
 		"VALTAN_ENTRANCE_CINEMATIC";
-
-	/* Flow authoring participates in the same one-byte writer admission as
-	   Create Pattern and every Product projector.  The lock is held from the
-	   first source-revision read through post-replace verification/rollback so
-	   no second writer can be overwritten by this document's recovery path. */
-	class SCOPED_VALTAN_PATTERN_FLOW_WRITE_LOCK final
-	{
-	public:
-		~SCOPED_VALTAN_PATTERN_FLOW_WRITE_LOCK()
-		{
-			if (INVALID_HANDLE_VALUE == m_hFile)
-				return;
-			UnlockFileEx(m_hFile, 0u, 1u, 0u, &m_Overlap);
-			CloseHandle(m_hFile);
-		}
-
-		bool_t Try_Acquire(
-			const std::filesystem::path& projectRoot,
-			std::string& outStatus)
-		{
-			if (projectRoot.empty())
-			{
-				outStatus = "project root is unavailable";
-				return false;
-			}
-			const std::filesystem::path lockPath =
-				projectRoot / VALTAN_PATTERN_TRANSACTION_LOCK_RELATIVE;
-			std::error_code directoryError;
-			std::filesystem::create_directories(
-				lockPath.parent_path(), directoryError);
-			if (directoryError)
-			{
-				outStatus = "lock directory creation failed: " +
-					directoryError.message();
-				return false;
-			}
-
-			m_hFile = CreateFileW(
-				lockPath.c_str(), GENERIC_READ | GENERIC_WRITE,
-				FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-				nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-			if (INVALID_HANDLE_VALUE == m_hFile)
-			{
-				outStatus = "lock open failed with Win32 error " +
-					std::to_string(GetLastError());
-				return false;
-			}
-
-			LARGE_INTEGER size{};
-			if (FALSE == GetFileSizeEx(m_hFile, &size))
-			{
-				outStatus = "lock size query failed with Win32 error " +
-					std::to_string(GetLastError());
-				CloseHandle(m_hFile);
-				m_hFile = INVALID_HANDLE_VALUE;
-				return false;
-			}
-			if (size.QuadPart < 1)
-			{
-				const char byte = '\0';
-				DWORD written = 0u;
-				LARGE_INTEGER begin{};
-				if (FALSE == SetFilePointerEx(
-						m_hFile, begin, nullptr, FILE_BEGIN) ||
-					FALSE == WriteFile(
-						m_hFile, &byte, 1u, &written, nullptr) ||
-					1u != written || FALSE == FlushFileBuffers(m_hFile))
-				{
-					outStatus = "lock initialization failed with Win32 error " +
-						std::to_string(GetLastError());
-					CloseHandle(m_hFile);
-					m_hFile = INVALID_HANDLE_VALUE;
-					return false;
-				}
-			}
-
-			if (FALSE == LockFileEx(
-				m_hFile,
-				LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY,
-				0u, 1u, 0u, &m_Overlap))
-			{
-				outStatus = "another canonical writer owns the lock (Win32 " +
-					std::to_string(GetLastError()) + ")";
-				CloseHandle(m_hFile);
-				m_hFile = INVALID_HANDLE_VALUE;
-				return false;
-			}
-			return true;
-		}
-
-	private:
-		HANDLE m_hFile = INVALID_HANDLE_VALUE;
-		OVERLAPPED m_Overlap{};
-	};
 
 	const DATA_JSON_VALUE* Required(
 		const DATA_JSON_VALUE& object,
@@ -404,30 +303,6 @@ namespace
 		return true;
 	}
 
-	bool_t Read_Bytes(
-		const std::filesystem::path& path,
-		std::string& outBytes,
-		std::string& outStatus)
-	{
-		std::ifstream input(path, std::ios::binary);
-		if (path.empty() || !input)
-		{
-			outStatus = "Valtan Boss Flow document is missing: " + path.string();
-			return false;
-		}
-		std::string staged{
-			std::istreambuf_iterator<char>(input),
-			std::istreambuf_iterator<char>() };
-		if (input.bad() || staged.empty() ||
-			staged.size() > MAX_DOCUMENT_BYTES)
-		{
-			outStatus = "Valtan Boss Flow document is empty, oversized, or unreadable.";
-			return false;
-		}
-		outBytes = std::move(staged);
-		return true;
-	}
-
 	bool_t Compute_Sha256(
 		const std::string_view bytes,
 		std::array<std::uint8_t, SHA256_BYTE_COUNT>& outDigest)
@@ -501,39 +376,12 @@ namespace
 		return true;
 	}
 
-	bool_t Write_Durable(
-		const std::filesystem::path& path,
-		const std::string_view bytes)
-	{
-		FILE* file = nullptr;
-		if (0 != _wfopen_s(&file, path.c_str(), L"wb") || nullptr == file)
-			return false;
-		const bool_t wrote = bytes.size() ==
-			fwrite(bytes.data(), 1u, bytes.size(), file);
-		const bool_t flushed = 0 == fflush(file) &&
-			0 == _commit(_fileno(file));
-		const bool_t closed = 0 == fclose(file);
-		return wrote && flushed && closed;
-	}
-
-	void Remove_BestEffort(const std::filesystem::path& path)
-	{
-		std::error_code error;
-		std::filesystem::remove(path, error);
-	}
-
 	bool_t Documents_AreEqual(
 		const VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT& left,
 		const VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT& right)
 	{
 		return left == right;
 	}
-}
-
-std::filesystem::path Client::CValtanPatternFlowDocument::Resolve_Path()
-{
-	return CProjectDataRoot::Resolve(
-		std::filesystem::path(L"Encounters/Valtan/ValtanBossAuditionFlows.json"));
 }
 
 bool_t Client::CValtanPatternFlowDocument::Compute_SourceRevision(
@@ -1030,195 +878,71 @@ std::string Client::CValtanPatternFlowDocument::Serialize_Text(
 	return output.str();
 }
 
-bool_t Client::CValtanPatternFlowDocument::Load(
+bool_t Client::CValtanPatternFlowDocument::Load_CanonicalSequence(
+	const std::string_view sequenceId,
+	const std::string_view mode,
+	const std::uint32_t interStepPursuitMs,
+	const std::vector<std::string>& patternIds,
 	const std::vector<std::string>& admittedPatternIds,
 	std::string& outStatus)
 {
 	outStatus.clear();
-	const std::filesystem::path path = Resolve_Path();
-	std::string bytes;
-	VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT staged;
-	std::string revision;
-	if (path.empty())
+	if (!Is_StableId(sequenceId) ||
+		"ORDERED_ONCE_THEN_IDLE" != mode || patternIds.empty() ||
+		patternIds.size() > MAX_NODES ||
+		interStepPursuitMs < MIN_INTER_STEP_PURSUIT_MS ||
+		interStepPursuitMs > MAX_INTER_STEP_PURSUIT_MS)
 	{
-		outStatus = "Could not resolve the Valtan Boss Flow document path.";
-		return false;
-	}
-	if (!Read_Bytes(path, bytes, outStatus) ||
-		!Parse_Text(bytes, staged, outStatus) ||
-		!Validate(staged, admittedPatternIds, outStatus))
-	{
-		return false;
-	}
-	if (!Build_Revision(bytes, revision))
-	{
-		outStatus = "Could not compute the Valtan Boss Flow source revision.";
+		outStatus =
+			"Canonical gameplay scriptedSequence identity, mode, size, or pursuit interval is invalid.";
 		return false;
 	}
 
-	m_Path = path;
+	VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT staged;
+	staged.iFormatVersion = DOCUMENT_VERSION;
+	VALTAN_PATTERN_FLOW_DEFINITION flow;
+	flow.strFlowId = std::string(DEFAULT_FLOW_ID);
+	flow.iDefaultPursuitMs = interStepPursuitMs;
+	flow.iInterStepPursuitMs = interStepPursuitMs;
+	flow.iMaxTransitionsPerRun = 255u;
+	flow.iNextNodeOrdinal = 1u;
+	flow.iNextEdgeOrdinal = 1u;
+	std::vector<std::string> orderedNodeIds;
+	orderedNodeIds.reserve(patternIds.size());
+	flow.Nodes.reserve(patternIds.size());
+	for (const std::string& patternId : patternIds)
+	{
+		const std::string nodeId = Build_OrdinalId(
+			flow.strFlowId, "slot", flow.iNextNodeOrdinal++);
+		orderedNodeIds.push_back(nodeId);
+		flow.Nodes.push_back({ nodeId, patternId, 0u });
+	}
+	if (!Rebuild_LinearFlow(flow, orderedNodeIds, outStatus))
+		return false;
+	staged.Flows.push_back(std::move(flow));
+	if (!Validate(staged, admittedPatternIds, outStatus))
+		return false;
+
+	std::ostringstream identity;
+	identity << sequenceId << '\n' << mode << '\n' << interStepPursuitMs << '\n';
+	for (const std::string& patternId : patternIds)
+		identity << patternId << '\n';
+	std::string revision;
+	if (!Build_Revision(identity.str(), revision))
+	{
+		outStatus =
+			"Could not compute the canonical gameplay scriptedSequence revision.";
+		return false;
+	}
+
 	m_Baseline = staged;
 	m_Draft = std::move(staged);
 	m_strSourceRevision = std::move(revision);
 	m_bReady = true;
 	m_bExternalConflict = false;
-	outStatus = "Loaded Valtan Boss Flow revision " + m_strSourceRevision + ".";
-	return true;
-}
-
-bool_t Client::CValtanPatternFlowDocument::Reload(
-	const std::vector<std::string>& admittedPatternIds,
-	std::string& outStatus)
-{
-	return Load(admittedPatternIds, outStatus);
-}
-
-bool_t Client::CValtanPatternFlowDocument::Save(
-	const std::vector<std::string>& admittedPatternIds,
-	std::string& outStatus)
-{
-	outStatus.clear();
-	if (!m_bReady || m_Path.empty())
-	{
-		outStatus = "Valtan Boss Flow must be loaded before Save.";
-		return false;
-	}
-	if (!Validate(m_Draft, admittedPatternIds, outStatus))
-		return false;
-
-	SCOPED_VALTAN_PATTERN_FLOW_WRITE_LOCK writerLock;
-	std::string lockStatus;
-	if (!writerLock.Try_Acquire(
-		CProjectDataRoot::Get().parent_path(), lockStatus))
-	{
-		outStatus =
-			"Valtan Boss Flow Save rejected before mutation: " + lockStatus +
-			". Draft and source bytes were preserved.";
-		return false;
-	}
-
-	std::string diskBytes;
-	std::string diskRevision;
-	if (!Read_Bytes(m_Path, diskBytes, outStatus))
-	{
-		return false;
-	}
-	if (!Build_Revision(diskBytes, diskRevision))
-	{
-		outStatus = "Could not compute the current Valtan Boss Flow revision.";
-		return false;
-	}
-	if (diskRevision != m_strSourceRevision)
-	{
-		m_bExternalConflict = true;
-		outStatus = "Valtan Boss Flow changed on disk; Reload before Save.";
-		return false;
-	}
-
-	const std::string serialized = Serialize_Text(m_Draft);
-	VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT verifiedDraft;
-	std::string verifyStatus;
-	if (!Parse_Text(serialized, verifiedDraft, verifyStatus) ||
-		!Validate(verifiedDraft, admittedPatternIds, verifyStatus) ||
-		!Documents_AreEqual(m_Draft, verifiedDraft))
-	{
-		outStatus = "Valtan Boss Flow serialization verification failed: " +
-			verifyStatus;
-		return false;
-	}
-
-	const std::wstring uniqueSuffix =
-		L"." + std::to_wstring(GetCurrentProcessId()) + L"." +
-		std::to_wstring(GetTickCount64());
-	std::filesystem::path temporary = m_Path;
-	temporary += L".tmp" + uniqueSuffix;
-	std::filesystem::path backup = m_Path;
-	backup += L".backup" + uniqueSuffix;
-	if (!Write_Durable(temporary, serialized))
-	{
-		Remove_BestEffort(temporary);
-		outStatus = "Could not durably write the temporary Valtan Boss Flow document.";
-		return false;
-	}
-
-	std::string temporaryBytes;
-	VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT temporaryDocument;
-	if (!Read_Bytes(temporary, temporaryBytes, verifyStatus) ||
-		temporaryBytes != serialized ||
-		!Parse_Text(temporaryBytes, temporaryDocument, verifyStatus) ||
-		!Validate(temporaryDocument, admittedPatternIds, verifyStatus) ||
-		!Documents_AreEqual(m_Draft, temporaryDocument))
-	{
-		Remove_BestEffort(temporary);
-		outStatus = "Valtan Boss Flow temporary verification failed: " +
-			verifyStatus;
-		return false;
-	}
-
-	if (!CopyFileW(m_Path.c_str(), backup.c_str(), TRUE))
-	{
-		Remove_BestEffort(temporary);
-		outStatus = "Could not create the Valtan Boss Flow recovery backup.";
-		return false;
-	}
-
-	std::string preCommitBytes;
-	std::string preCommitRevision;
-	if (!Read_Bytes(m_Path, preCommitBytes, verifyStatus) ||
-		!Build_Revision(preCommitBytes, preCommitRevision) ||
-		preCommitRevision != m_strSourceRevision)
-	{
-		Remove_BestEffort(temporary);
-		Remove_BestEffort(backup);
-		m_bExternalConflict = true;
-		outStatus = "Valtan Boss Flow changed during Save; disk and draft were preserved.";
-		return false;
-	}
-
-	if (!MoveFileExW(
-			temporary.c_str(), m_Path.c_str(),
-			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
-	{
-		Remove_BestEffort(temporary);
-		Remove_BestEffort(backup);
-		outStatus = "Could not atomically replace the Valtan Boss Flow document.";
-		return false;
-	}
-
-	std::string committedBytes;
-	std::string committedRevision;
-	VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT committedDocument;
-	if (!Read_Bytes(m_Path, committedBytes, verifyStatus) ||
-		committedBytes != serialized ||
-		!Parse_Text(committedBytes, committedDocument, verifyStatus) ||
-		!Validate(committedDocument, admittedPatternIds, verifyStatus) ||
-		!Documents_AreEqual(m_Draft, committedDocument) ||
-		!Build_Revision(committedBytes, committedRevision))
-	{
-		if (MoveFileExW(
-				backup.c_str(), m_Path.c_str(),
-				MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
-		{
-			outStatus =
-				"Valtan Boss Flow post-replace verification failed; the baseline was restored: " +
-				verifyStatus;
-		}
-		else
-		{
-			m_bExternalConflict = true;
-			outStatus =
-				"Valtan Boss Flow post-replace verification and rollback failed; recovery backup remains at " +
-				backup.string() + ": " + verifyStatus;
-		}
-		return false;
-	}
-
-	Remove_BestEffort(backup);
-	m_Baseline = committedDocument;
-	m_Draft = std::move(committedDocument);
-	m_strSourceRevision = std::move(committedRevision);
-	m_bExternalConflict = false;
-	outStatus = "Saved Valtan Boss Flow revision " + m_strSourceRevision + ".";
+	outStatus =
+		"Loaded the canonical Valtan.gameplay.json scriptedSequence revision " +
+		m_strSourceRevision + ".";
 	return true;
 }
 
@@ -1226,36 +950,14 @@ bool_t Client::CValtanPatternFlowDocument::Verify_SourceRevision(
 	std::string& outStatus)
 {
 	outStatus.clear();
-	if (!m_bReady || m_Path.empty() || m_strSourceRevision.empty())
+	if (!m_bReady || m_strSourceRevision.empty() || m_bExternalConflict)
 	{
 		outStatus =
-			"Valtan Boss Flow must be loaded before checking its source revision.";
+			"Canonical gameplay scriptedSequence must be reloaded before Server playback.";
 		return false;
 	}
-
-	std::string diskBytes;
-	std::string diskRevision;
-	if (!Read_Bytes(m_Path, diskBytes, outStatus))
-	{
-		m_bExternalConflict = true;
-		return false;
-	}
-	if (!Build_Revision(diskBytes, diskRevision))
-	{
-		m_bExternalConflict = true;
-		outStatus = "Could not compute the current Valtan Boss Flow revision.";
-		return false;
-	}
-	if (diskRevision != m_strSourceRevision)
-	{
-		m_bExternalConflict = true;
-		outStatus =
-			"Valtan Boss Flow changed on disk; Reload before Server playback.";
-		return false;
-	}
-
-	m_bExternalConflict = false;
-	outStatus = "Valtan Boss Flow source revision is current.";
+	outStatus =
+		"Canonical gameplay scriptedSequence is pinned to the staged graph revision.";
 	return true;
 }
 
@@ -2027,4 +1729,11 @@ Client::CValtanPatternFlowDocument::Get_DefaultFlow() const noexcept
 {
 	return m_bReady && 1u == m_Draft.Flows.size() ?
 		&m_Draft.Flows.front() : nullptr;
+}
+
+const Client::VALTAN_PATTERN_FLOW_DEFINITION*
+Client::CValtanPatternFlowDocument::Get_SavedDefaultFlow() const noexcept
+{
+	return m_bReady && 1u == m_Baseline.Flows.size() ?
+		&m_Baseline.Flows.front() : nullptr;
 }

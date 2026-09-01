@@ -42,6 +42,9 @@ public:
 	override texture, non-additive) renders identically to a CUI_Sprite that never calls any of
 	these, so existing callers (loading background, progress bar fills) are unaffected. */
 	void Set_Tint(const float4_t& vTint);
+	/* Runtime presentation multiplier applied after the sprite's own authored/current tint.
+	White restores the base tint without the caller having to know its authored value. */
+	void Set_TintMultiplier(const float4_t& vTintMultiplier);
 	void Set_FlipX(bool_t bFlipX);
 	void Set_Additive(bool_t bAdditive);
 	/* 1.f (default) draws the whole sprite; a value in [0,1) clips texels past that fraction of
@@ -75,6 +78,7 @@ private:
 	shared_ptr<CVIBuffer_Rect>		m_pVIBufferCom = { nullptr };
 
 	float4_t						m_vTint = float4_t(1.f, 1.f, 1.f, 1.f);
+	float4_t						m_vTintMultiplier = float4_t(1.f, 1.f, 1.f, 1.f);
 	bool_t							m_bFlipX = false;
 	bool_t							m_bAdditive = false;
 	f32_t							m_fFillRatio = 1.f;

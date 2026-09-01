@@ -165,6 +165,12 @@
     "interStepPursuitMs": 1000,
     "patternIds": [
       "VALTAN_WHIRLWIND",
+      "VALTAN_CROSS",
+      "VALTAN_SIX_PIZZA_106",
+      "VALTAN_SIX_PIZZA_106",
+      "VALTAN_DASH_CHARGE",
+      "VALTAN_DASH_CHARGE",
+      "VALTAN_HIGH_JUMP",
       "VALTAN_FOUR_SLASH",
       "VALTAN_WHIRLWIND",
       "VALTAN_FIST_IN_OUT",

@@ -2852,7 +2852,8 @@ namespace
 		const std::uint32_t predecessorEpoch,
 		const std::uint32_t predecessorPatternSequence,
 		const std::uint32_t expectedNextRequestSequence,
-		const GameplayDataRevision& expectedDefinitionRevision)
+		const GameplayDataRevision& expectedDefinitionRevision,
+		const GameplayDataRevision& replacementDefinitionRevision)
 	{
 		if (0u == requestSequence ||
 			rawOperation >= static_cast<std::uint8_t>(
@@ -2866,9 +2867,12 @@ namespace
 				0u != predecessorPatternSequence &&
 				0u == expectedNextRequestSequence &&
 				expectedDefinitionRevision.Is_Valid() &&
+				replacementDefinitionRevision.Is_Valid() &&
 				Is_Valid_StableId(bossPlacementId, false) &&
 				Is_Valid_StableId(patternId, false);
 		}
+		if (replacementDefinitionRevision.Is_Valid())
+			return false;
 		if (Is_PlayPatternIdAuditionOperation(rawOperation))
 		{
 			return 0u == targetHealthBar && 0u == predecessorEpoch &&
@@ -3025,6 +3029,8 @@ namespace
 			{
 				return false;
 			}
+			return Write_GameplayDataRevision(
+				writer, message.ReplacementDefinitionRevision);
 		}
 		else if (Is_PlayPatternIdAuditionOperation(operation) &&
 			!Write_GameplayDataRevision(
@@ -3059,7 +3065,9 @@ namespace
 			return reader.Read_U32(message.iPredecessorRoomAuditionEpoch) &&
 				reader.Read_U32(message.iPredecessorPatternSequence) &&
 				Read_GameplayDataRevision(
-					reader, message.ExpectedDefinitionRevision);
+					reader, message.ExpectedDefinitionRevision) &&
+				Read_GameplayDataRevision(
+					reader, message.ReplacementDefinitionRevision);
 		}
 		if (Is_PlayPatternIdAuditionOperation(operation))
 		{
@@ -3081,7 +3089,8 @@ bool LostArk::Shared::Write_Message(
 		message.strBossPlacementId, message.strPatternId,
 		message.iPredecessorRoomAuditionEpoch, message.iPredecessorPatternSequence,
 		message.iExpectedNextRequestSequence,
-		message.ExpectedDefinitionRevision))
+		message.ExpectedDefinitionRevision,
+		message.ReplacementDefinitionRevision))
 	{
 		return false;
 	}
@@ -3112,7 +3121,8 @@ bool LostArk::Shared::Read_Message(
 		decoded.strBossPlacementId, decoded.strPatternId,
 		decoded.iPredecessorRoomAuditionEpoch, decoded.iPredecessorPatternSequence,
 		decoded.iExpectedNextRequestSequence,
-		decoded.ExpectedDefinitionRevision))
+		decoded.ExpectedDefinitionRevision,
+		decoded.ReplacementDefinitionRevision))
 	{
 		return false;
 	}
@@ -3135,7 +3145,8 @@ bool LostArk::Shared::Write_Message(
 		message.strBossPlacementId, message.strPatternId,
 		message.iPredecessorRoomAuditionEpoch, message.iPredecessorPatternSequence,
 		message.iExpectedNextRequestSequence,
-		message.ExpectedDefinitionRevision) ||
+		message.ExpectedDefinitionRevision,
+		message.ReplacementDefinitionRevision) ||
 		!Is_Valid_AuditionResult(rawOperation, rawResult))
 	{
 		return false;
@@ -3172,7 +3183,8 @@ bool LostArk::Shared::Read_Message(
 		decoded.strBossPlacementId, decoded.strPatternId,
 		decoded.iPredecessorRoomAuditionEpoch, decoded.iPredecessorPatternSequence,
 		decoded.iExpectedNextRequestSequence,
-		decoded.ExpectedDefinitionRevision) ||
+		decoded.ExpectedDefinitionRevision,
+		decoded.ReplacementDefinitionRevision) ||
 		!Is_Valid_AuditionResult(rawOperation, rawResult))
 	{
 		return false;

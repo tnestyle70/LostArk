@@ -552,9 +552,15 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 					radialDirectionX * volley->fRadiusM;
 				object.LiveState.CurrentPose.fPositionZ +=
 					radialDirectionZ * volley->fRadiusM;
-				object.LiveState.CurrentPose.fDirectionX = radialDirectionX;
-				object.LiveState.CurrentPose.fDirectionZ = radialDirectionZ;
-				object.LiveState.CurrentPose.fYawDegrees = worldDegrees;
+				const bool radialInward =
+					BOSS_COMBAT_OBJECT_DIRECTION_POLICY::RADIAL_INWARD ==
+						definition.eDirectionPolicy;
+				object.LiveState.CurrentPose.fDirectionX = radialInward ?
+					-radialDirectionX : radialDirectionX;
+				object.LiveState.CurrentPose.fDirectionZ = radialInward ?
+					-radialDirectionZ : radialDirectionZ;
+				object.LiveState.CurrentPose.fYawDegrees = radialInward ?
+					worldDegrees + 180.f : worldDegrees;
 			}
 		}
 		for (const BOSS_COMBAT_OBJECT_HIT& authored : definition.Hits)

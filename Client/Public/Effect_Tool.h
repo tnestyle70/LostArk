@@ -34,6 +34,7 @@ NS_BEGIN(Client)
 
 class CEffectObject;
 class CEffectThumbnailCache;
+class CValtan;
 class EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION;
 struct EFFECT_FIXED_STEP_TRANSFORM_SAMPLE;
 struct EFFECT_VISUAL_PROGRAM;
@@ -414,6 +415,20 @@ private:
 		std::string strSourceDocumentRawSha256;
 	};
 
+	struct VALTAN_COMBAT_OBJECT_INDEPENDENT_PREVIEW final
+	{
+		std::string strIndependentEffectId;
+		std::string strEffectAssetId;
+		std::string strOwnerPatternId;
+		std::string strOwnerStageId;
+		std::string strOwnerActionId;
+		uint32_t iInstanceCount = 0u;
+		uint32_t iLifetimeMs = 0u;
+		uint32_t iTimelineDurationMs = 0u;
+		uint64_t iTargetGeneration = 0u;
+		weak_ptr<CValtan> pBoss;
+	};
+
     struct PENDING_DOCUMENT_LOAD final
     {
 		std::filesystem::path Path;
@@ -422,6 +437,7 @@ private:
 		EFFECT_DOCUMENT_PREVIEW_INTENT ePreviewIntent =
 			EFFECT_DOCUMENT_PREVIEW_INTENT::SYNCHRONIZED_PRODUCT;
 		std::string strValtanPatternId;
+		std::string strValtanIndependentEffectId;
 		VALTAN_PATTERN_PREVIEW_PATH eValtanPatternPreviewPath =
 			VALTAN_PATTERN_PREVIEW_PATH::NORMAL;
 		std::string strElementSelectionId;
@@ -628,6 +644,13 @@ private:
 	bool_t Try_PlayValtanStandaloneEffect(
 		const std::filesystem::path& Path,
 		const std::string& strEffectAssetId);
+	bool_t Try_PlayValtanCombatObjectIndependentEffect(
+		const std::filesystem::path& Path,
+		const VALTAN_INDEPENDENT_EFFECT_VIEW& Effect,
+		const VALTAN_PATTERN_VIEW& OwnerPattern);
+	bool_t Sync_ValtanCombatObjectIndependentPreview(
+		bool_t bResetTransport);
+	void Clear_ValtanCombatObjectIndependentPreview();
 	bool_t Refresh_ValtanPatternAuthoringEffects();
 	const VALTAN_PATTERN_AUTHORING_EFFECT_BINDING*
 		Find_ValtanPatternAuthoringEffect(
@@ -771,6 +794,7 @@ private:
     bool_t Try_BindMeshAuthoringResource(const std::string& strAssetId);
     bool_t Try_ClearMeshAuthoringSlot();
 	bool_t Try_DuplicateSelectedElement();
+	bool_t Try_MoveSelectedElement(int32_t iDirection);
     bool_t Try_DeleteSelectedElement();
     bool_t Try_ClearElements();
     bool_t Try_ApplyDraftAndSave();
@@ -781,7 +805,7 @@ private:
 	bool_t Try_SaveSelectedAdapterElementAsGenericAuthoredCopy(
 		const std::string& strAssetId);
     bool_t Try_PromoteImportedDocument();
-    bool_t Try_ReloadActiveDocument();
+    bool_t Try_ReloadActiveDocument(bool_t bDiscardActiveDocumentDraft = false);
     bool_t Try_LoadDocument(const std::string& strAssetId);
     bool_t Try_LoadDocumentPath(
         const std::filesystem::path& Path,
@@ -800,6 +824,7 @@ private:
     bool_t Refresh_AllEffects(bool_t bReloadSkillCatalog = false);
 	bool_t Refresh_ValtanPatternTree();
     bool_t Refresh_DataFiles();
+	bool_t Ensure_DataFileDocumentParsed(EFFECT_DATA_FILE_ENTRY& Entry);
 	bool_t Try_AppendSavedElementToActiveDocument(
 		const std::filesystem::path& Path,
 		const std::string& strExpectedEffectAssetId,
@@ -1094,6 +1119,8 @@ private:
 	optional<EFFECT_DOCUMENT_DESC> m_SourcePreviewDocument;
     optional<EFFECT_PRODUCT_PREVIEW> m_ProductPreview;
 	optional<VALTAN_PRODUCT_PREVIEW> m_ValtanProductPreview;
+	optional<VALTAN_COMBAT_OBJECT_INDEPENDENT_PREVIEW>
+		m_ValtanCombatObjectIndependentPreview;
     EFFECT_ELEMENT_DESC m_MeshAuthoringDraft;
 	optional<SOURCE_ELEMENT_PRESET_SELECTION> m_SourceElementPresetSelection;
     optional<EFFECT_PARTICLE_SYSTEM_DESC> m_ParticleSystemDraft;
@@ -1315,8 +1342,9 @@ private:
 	bool_t m_bModelCueDraftDirty = false;
 	bool_t m_bOccurrenceTuningDirty = false;
 	bool_t m_bOccurrenceTransformDraftDirty = false;
-	bool_t m_bSourceAuthoringOverlayNeedsInitialSave = false;
+    bool_t m_bSourceAuthoringOverlayNeedsInitialSave = false;
     bool_t m_bDiscardConfirmationRequested = false;
+	bool_t m_bDiscardActiveDocumentDraftConfirmationRequested = false;
     bool_t m_bPromoteConfirmationRequested = false;
     bool_t m_bPendingDocumentLoadModalRequested = false;
     bool_t m_bProductCueSnapshotCaptured = false;

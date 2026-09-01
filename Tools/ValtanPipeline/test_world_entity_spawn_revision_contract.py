@@ -26,6 +26,9 @@ class WorldEntitySpawnRevisionContractTests(unittest.TestCase):
         cls.network_manager = (
             REPO_ROOT / "Client/Private/NetworkManager.cpp"
         ).read_text(encoding="utf-8")
+        cls.network_manager_h = (
+            REPO_ROOT / "Client/Public/NetworkManager.h"
+        ).read_text(encoding="utf-8")
         cls.replication_h = (
             REPO_ROOT / "Client/Public/ClientReplication.h"
         ).read_text(encoding="utf-8")
@@ -40,7 +43,7 @@ class WorldEntitySpawnRevisionContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
     def test_wire_requires_one_exact_spawn_revision(self) -> None:
-        self.assertIn("NETWORK_PROTOCOL_VERSION = 50;", self.packet_type)
+        self.assertIn("NETWORK_PROTOCOL_VERSION = 52;", self.packet_type)
         spawned_start = self.messages_h.index("struct S2C_WORLD_ENTITY_SPAWNED")
         spawned_end = self.messages_h.index("bool Write_Message", spawned_start)
         spawned = self.messages_h[spawned_start:spawned_end]
@@ -92,7 +95,40 @@ class WorldEntitySpawnRevisionContractTests(unittest.TestCase):
             "Is_PresentationRevisionAvailable(\n\t\t\t\tspawned.PinnedDefinitionRevision)",
             spawn_case,
         )
+        self.assertIn(
+            '"presentation.authoritative-entity-forwarded"', spawn_case
+        )
+        self.assertIn("Record_PresentationIsolation(", spawn_case)
+        isolation_start = spawn_case.index(
+            "if (!Is_PresentationRevisionAvailable("
+        )
+        enqueue_start = spawn_case.index(
+            "Enqueue_ReplicationEvent(std::move(event))", isolation_start
+        )
+        self.assertNotIn("break;", spawn_case[isolation_start:enqueue_start])
+        self.assertNotIn("return;", spawn_case[isolation_start:enqueue_start])
         self.assertNotIn("ServerActiveRevision", spawn_case)
+
+    def test_unavailable_presentation_keeps_authoritative_snapshot_truth(self) -> None:
+        snapshot_case = self.network_manager[
+            self.network_manager.index(
+                "case PACKET_TYPE::S2C_WORLD_SNAPSHOT"
+            ) : self.network_manager.index(
+                "case PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC"
+            )
+        ]
+        self.assertIn(
+            '"World-entity occurrence"', snapshot_case
+        )
+        self.assertNotIn("snapshot.Entities.erase(", snapshot_case)
+        self.assertIn("snapshot.CombatObjects.erase(", snapshot_case)
+        self.assertIn("snapshot.BossCombatEvents.erase(", snapshot_case)
+        self.assertIn("isolatedEntityIds", snapshot_case)
+        self.assertIn(
+            "CClientReplication owns the\n"
+            "\t\t   per-entity presentation fallback",
+            snapshot_case,
+        )
 
     def test_snapshot_revision_change_is_bounded_and_isolated(self) -> None:
         for token in (
@@ -116,11 +152,21 @@ class WorldEntitySpawnRevisionContractTests(unittest.TestCase):
         )
         for token in (
             "Reload_PatternPresentationAuthoring(",
+            "bEntryReceiptRecoveryPending",
+            "hasPendingEntryPresentationBaselineRecovery",
             "Presentation.bPresentationIsolated = true;",
             "CEffectPresentationService::Stop_BossOwner(pValtan);",
             "Presentation.bPresentationIsolated = false;",
         ):
             self.assertIn(token, ensure)
+        self.assertIn(
+            "bEntryReceiptRecoveryPending ?\n"
+            "\t\t\tLostArk::Shared::GameplayDataRevision{} : ExpectedRevision",
+            ensure,
+        )
+        self.assertIn(
+            "if (bIsPrimary && !bEntryReceiptRecoveryPending)", ensure
+        )
 
         snapshot_start = self.replication_cpp.index(
             "bool Client::CClientReplication::Apply_WorldSnapshot("
@@ -147,6 +193,55 @@ class WorldEntitySpawnRevisionContractTests(unittest.TestCase):
             "object.PinnedDefinitionRevision",
         ):
             self.assertIn(token, self.combat_projection_cpp)
+
+    def test_entry_lock_contention_retries_without_latching_primary_rejection(self) -> None:
+        for token in (
+            "hasPendingEntryPresentationBaselineRecovery",
+            "iNextEntryPresentationBaselineRecoveryAtMilliseconds",
+            "Try_Recover_EntryPresentationBaseline",
+        ):
+            self.assertIn(token, self.network_manager_h)
+
+        recovery_start = self.network_manager.index(
+            "bool CNetworkManager::Try_Recover_EntryPresentationBaseline("
+        )
+        recovery_end = self.network_manager.index(
+            "bool CNetworkManager::Try_Get_ValtanPresentationGenerationReceipt(",
+            recovery_start,
+        )
+        recovery = self.network_manager[recovery_start:recovery_end]
+        for token in (
+            "ENTRY_PRESENTATION_BASELINE_RETRY_MILLISECONDS",
+            "CapturePresentationArtifactBaseline(",
+            "Is_TransientCanonicalPresentationAdmissionFailure",
+            "BootstrapPresentationReceipt",
+            "BootstrapPresentationRevision = activeRevision",
+            '"presentation.baseline-recovered"',
+        ):
+            self.assertIn(token, recovery)
+        capture = recovery.index("CapturePresentationArtifactBaseline(")
+        commit = recovery.index(
+            "m_GameplayRevisionState.PresentationArtifactBaseline =", capture
+        )
+        self.assertLess(capture, commit)
+        self.assertIn(
+            "m_GameplayRevisionState.ServerActiveRevision != activeRevision",
+            recovery[capture:commit],
+        )
+
+        spawn_start = self.replication_cpp.index(
+            "bool Client::CClientReplication::Apply_WorldEntitySpawn("
+        )
+        spawn_end = self.replication_cpp.index(
+            "void Client::CClientReplication::Remove_DependentBossPresentations(",
+            spawn_start,
+        )
+        spawn = self.replication_cpp[spawn_start:spawn_end]
+        self.assertIn("entryReceiptRecoveryPending", spawn)
+        self.assertIn("if (!entryReceiptRecoveryPending)", spawn)
+        self.assertIn(
+            "presentation.RejectedPresentationRevision =", spawn
+        )
 
     def test_late_join_native_oracle_keeps_existing_r_old(self) -> None:
         for token in (

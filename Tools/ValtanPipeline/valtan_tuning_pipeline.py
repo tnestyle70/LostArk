@@ -45,12 +45,7 @@ except ModuleNotFoundError:
 
 MASTER_REL = "Data/Valtan/Valtan.pattern.json"
 GAMEPLAY_AUTHORING_REL = "Data/Valtan/Valtan.gameplay.json"
-SAVED_FLOW_REL = "Data/Encounters/Valtan/ValtanBossAuditionFlows.json"
-SAVED_FLOW_MAX_SLOTS = 255
-SAVED_FLOW_MAX_EDGES = 255
-SAVED_FLOW_MAX_TRANSITIONS = 4096
-DEFAULT_SAVED_FLOW_ID = "flow.valtan.boss-tool.default"
-SAVED_FLOW_MAX_BYTES = 256 * 1024
+SCRIPTED_SEQUENCE_MAX_PATTERNS = 255
 OPTIONAL_ENTRY_PATTERN_ID = "VALTAN_ENTRANCE_CINEMATIC"
 PRESENTATION_AUTHORING_REL = "Data/Valtan/Valtan.presentation.json"
 DEBUG_PRESENTATION_REL = "Data/Valtan/Valtan.presentation.debug.json"
@@ -74,7 +69,10 @@ DAMAGE_REL = "Data/Balance/DamageProfiles.json"
 EFFECT_CATALOG_REL = "Data/Effects/EffectCatalog.json"
 PROVENANCE_REL = "Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json"
 GAMEPLAY_BOOTSTRAP_REL = "Runtime/Gameplay/Gameplay.bootstrap"
-GAMEPLAY_BOOTSTRAP_VERSION = 28
+GAMEPLAY_BOOTSTRAP_VERSION = 29
+# Keep the authored cross-pattern follow-up bound aligned with the native
+# GameplayCatalog/ValtanBrain traversal guard.  A single edge has depth 1.
+PATTERN_FOLLOWUP_MAX_DEPTH = 32
 
 CANONICAL_WRITER_LOCK_REL = "out/ValtanPatternTransactions/create-pattern.lock"
 
@@ -87,6 +85,14 @@ CUE_TIMING_BASIS_STAGE_CLOCK = "STAGE_CLOCK"
 COMPOSITION_CUE_ID_PREFIX = "cue.valtan.composition."
 DIRECT_AUTHORED_EFFECT_KIND = "DIRECT_AUTHORED_DOCUMENT"
 SUPPORTED_AUTHORED_EFFECT_VERSIONS = frozenset((13, 15))
+REQUIRED_LIVE_INDEPENDENT_EFFECT_IDS = frozenset(
+    (
+        "valtan.independent-effect.target-axe",
+        "valtan.independent-effect.donut-in-out",
+        "valtan.independent-effect.ground-roar-cardinal-rocks",
+        "valtan.independent-effect.ghost-portal-once",
+    )
+)
 
 REPOSITORY_PRODUCT_ARTIFACTS = (
     ENCOUNTER_REL,
@@ -107,10 +113,6 @@ AUTHORING_ARTIFACTS = (
     WORLD_SET_REL,
     LEGACY_REL,
     PROVENANCE_REL,
-    SAVED_FLOW_REL,
-)
-LEGACY_AUTHORING_ARTIFACTS = tuple(
-    relative for relative in AUTHORING_ARTIFACTS if relative != SAVED_FLOW_REL
 )
 
 WORLD_SET_ID = "worldeventset.valtan.arena-break-109.outer-wall"
@@ -245,6 +247,7 @@ MANAGED_CUE_SCALE_POLICIES = {
     "cue.valtan.requested.20260827.attack-whirlwind.composite": GAMEPLAY_FOOTPRINT,
     "cue.valtan.requested.20260827.charge.axe-follow": OWNER_RELATIVE,
     "cue.valtan.requested.20260827.charge2.red-fan": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.sequence.cross.step-01": GAMEPLAY_FOOTPRINT,
     "cue.valtan.requested.20260827.roar-charge.composite": OWNER_RELATIVE,
     "cue.valtan.requested.20260827.three.composite": GAMEPLAY_FOOTPRINT,
     "cue.valtan.requested.20260827.front-back-front.electric-fan": GAMEPLAY_FOOTPRINT,
@@ -297,6 +300,31 @@ class PipelineError(RuntimeError):
         }
 
 
+class CanonicalTransactionBusyError(PipelineError):
+    error_code = "CANONICAL_TRANSACTION_BUSY"
+
+    def __init__(
+        self,
+        message: str,
+        lock_owner: Mapping[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.lock_owner = dict(
+            lock_owner
+            or {
+                "pid": None,
+                "operation": "UNKNOWN",
+                "acquisitionAgeMs": None,
+                "relation": "UNKNOWN",
+            }
+        )
+
+    def as_error(self) -> dict[str, Any]:
+        error = super().as_error()
+        error["lockOwner"] = dict(self.lock_owner)
+        return error
+
+
 @contextlib.contextmanager
 def _exclusive_canonical_writer_admission(
     root: Path,
@@ -317,9 +345,18 @@ def _exclusive_canonical_writer_admission(
         )
     lock_path = root.resolve() / CANONICAL_WRITER_LOCK_REL
     lock_path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor: int | None = None
     try:
-        handle = lock_path.open("a+b")
+        descriptor = os.open(
+            lock_path,
+            os.O_RDWR | os.O_CREAT | getattr(os, "O_BINARY", 0),
+            0o666,
+        )
+        handle = os.fdopen(descriptor, "r+b")
+        descriptor = None
     except OSError as exc:
+        if descriptor is not None:
+            os.close(descriptor)
         raise PipelineError(
             f"cannot open Valtan canonical writer admission: {exc}"
         ) from exc
@@ -347,8 +384,19 @@ def _exclusive_canonical_writer_admission(
                 break
             except (OSError, BlockingIOError):
                 if time.monotonic() >= deadline:
-                    raise PipelineError(
-                        "Valtan canonical writer admission is held by another process"
+                    from promote_valtan_animation_chains import (
+                        _canonical_busy_error,
+                        _read_lock_owner,
+                    )
+
+                    busy = _canonical_busy_error(_read_lock_owner(handle))
+                    raise CanonicalTransactionBusyError(
+                        str(busy).replace(
+                            "Create Pattern transaction lock",
+                            "Valtan canonical writer admission",
+                            1,
+                        ),
+                        busy.lock_owner,
                     )
                 time.sleep(min(0.025, max(0.0, deadline - time.monotonic())))
         owner_nonce = uuid.uuid4().hex
@@ -1434,7 +1482,9 @@ def _stage_flag_contract(stage: Mapping[str, Any], flag_id: str) -> str:
 
 
 def _validate_pattern_counter_groggy_contract(
-    pattern: Mapping[str, Any], context: str
+    pattern: Mapping[str, Any],
+    pattern_by_id: Mapping[str, dict[str, Any]],
+    context: str,
 ) -> None:
     stages = pattern.get("stages")
     if not isinstance(stages, list):
@@ -1484,6 +1534,33 @@ def _validate_pattern_counter_groggy_contract(
             branch = counter_branches[0]
             target_action_id = branch.get("nextActionId")
             target = action_stages.get(target_action_id)
+            target_is_forward = (
+                target is not None
+                and action_positions.get(target_action_id, -1) > source_index
+            )
+            target_pattern_id = branch.get("nextPatternId")
+            if target_action_id is None and isinstance(target_pattern_id, str):
+                target_pattern = pattern_by_id.get(target_pattern_id)
+                target_stages = (
+                    target_pattern.get("stages")
+                    if isinstance(target_pattern, dict)
+                    else None
+                )
+                target_entry_action_id = (
+                    target_pattern.get("entryActionId")
+                    if isinstance(target_pattern, dict)
+                    else None
+                )
+                target = next(
+                    (
+                        candidate
+                        for candidate in target_stages
+                        if isinstance(candidate, dict)
+                        and candidate.get("actionId") == target_entry_action_id
+                    ),
+                    None,
+                ) if isinstance(target_stages, list) else None
+                target_is_forward = target is not None
             timeout_action_id = (
                 timeout_branches[0].get("nextActionId")
                 if len(timeout_branches) == 1
@@ -1495,12 +1572,14 @@ def _validate_pattern_counter_groggy_contract(
                 or counter_state != "CLOSED"
                 or target is None
                 or target.get("stageKind") not in success_stage_kinds
-                or action_positions.get(target_action_id, -1) <= source_index
+                or not target_is_forward
                 or timeout_target is None
                 or action_positions.get(timeout_action_id, -1) <= source_index
             ):
                 raise PipelineError(
-                    f"{context}/{stage_id} COUNTER_HIT requires one closed WINDUP window plus forward same-pattern success and TIMEOUT targets"
+                    f"{context}/{stage_id} COUNTER_HIT requires one closed "
+                    "WINDUP window, a forward local or cross-pattern success, "
+                    "and a forward same-pattern TIMEOUT target"
                 )
             target_groggy_state = _stage_flag_contract(target, "boss.flag.groggy")
             if (
@@ -1725,7 +1804,9 @@ def validate_combat_authoring(document: dict[str, Any]) -> None:
             raise PipelineError(f"{context} origin kind is unsupported")
         direction = obj["spawn"]["direction"]
         exact(direction, ("kind",), f"{context}.spawn.direction")
-        if direction["kind"] not in ("NONE", "PATTERN_FACING_AT_SPAWN"):
+        if direction["kind"] not in (
+            "NONE", "PATTERN_FACING_AT_SPAWN", "RADIAL_INWARD"
+        ):
             raise PipelineError(f"{context} direction kind is unsupported")
         movement = obj["movement"]
         if movement.get("kind") == "STATIC":
@@ -1736,6 +1817,24 @@ def validate_combat_authoring(document: dict[str, Any]) -> None:
             number(movement["maximumDistanceM"], f"{context}.maximumDistanceM", 0.000001, 10000.0)
         else:
             raise PipelineError(f"{context} movement kind is unsupported")
+        radial_inward = direction["kind"] == "RADIAL_INWARD"
+        is_ghost_portal = (
+            archetype == "combatobject.valtan.ghost.portal-charge"
+        )
+        if radial_inward != is_ghost_portal or (
+            is_ghost_portal
+            and (
+                obj["kind"] != "MISSILE"
+                or origin["kind"] != "BOSS_POSITION"
+                or movement["kind"] != "LINEAR"
+                or obj.get("lifetimeMs") != 5000
+                or abs(movement["speedMps"] - 12.44508) > 0.000001
+                or abs(movement["maximumDistanceM"] - 62.2254) > 0.000001
+            )
+        ):
+            raise PipelineError(
+                "RADIAL_INWARD is reserved for the exact ghost portal missile"
+            )
         presentation_events = obj.get("presentationEvents", [])
         if (
             not isinstance(obj["hits"], list)
@@ -2389,14 +2488,8 @@ def _current_split_master(
         raise PipelineError(
             "current split authoring requires both gameplay and presentation sources"
         )
-    gameplay = read_json(gameplay_path)
-    sequence = gameplay.get("decisionModel", {}).get("scriptedSequence")
-    if isinstance(sequence, dict) and "flowId" in sequence:
-        gameplay = resolve_gameplay_flow_reference(
-            gameplay, read_saved_flow_document(root)
-        )
     return join_v2_authoring(
-        gameplay,
+        read_json(gameplay_path),
         read_json(presentation_path),
         docs[WORLD_SET_REL],
         docs[COMBAT_AUTHORING_REL],
@@ -2864,375 +2957,112 @@ def _validate_manual_auditions(
     return pattern_ids
 
 
-def _require_saved_flow_json_depth(text: str, maximum_depth: int = 8) -> None:
-    """Bound parser stack cost before CPython's recursive JSON decoder runs."""
-
-    depth = 0
-    in_string = False
-    escaped = False
-    for character in text:
-        if in_string:
-            if escaped:
-                escaped = False
-            elif character == "\\":
-                escaped = True
-            elif character == '"':
-                in_string = False
-            continue
-        if character == '"':
-            in_string = True
-        elif character in "[{":
-            depth += 1
-            if depth > maximum_depth:
-                raise PipelineError(
-                    f"saved Flow document exceeds JSON depth {maximum_depth}"
-                )
-        elif character in "]}" and depth > 0:
-            depth -= 1
-
-
-def read_saved_flow_document(root: Path) -> dict[str, Any]:
-    """Read the one repository-relative Flow input, never a caller-supplied path."""
-
-    path = repo_path(root, SAVED_FLOW_REL)
-    try:
-        raw = path.read_bytes()
-        if not raw or len(raw) > SAVED_FLOW_MAX_BYTES:
-            raise PipelineError("saved Flow document is empty or exceeds 256 KiB")
-        text = raw.decode("utf-8")
-        _require_saved_flow_json_depth(text)
-        return json.loads(
-            text,
-            object_pairs_hook=_reject_duplicate_pairs,
-            parse_constant=_reject_nonfinite_constant,
-        )
-    except PipelineError:
-        raise
-    except (OSError, UnicodeError, ValueError, RecursionError) as exc:
-        raise PipelineError(f"cannot read saved Flow document: {exc}") from exc
-
-
-def validate_saved_flow_document(
-    document: dict[str, Any],
-    admitted_pattern_ids: Iterable[str],
+def _validate_pattern_stage_branch(
+    branch: Any,
+    context: str,
     *,
-    require_nonempty: bool = True,
-) -> dict[str, Any]:
-    """Validate the saved v2 graph without sorting or changing stable identities."""
+    owner_pattern_id: str,
+    owner_action_ids: set[str],
+    pattern_by_id: Mapping[str, dict[str, Any]],
+    manual_pattern_ids: set[str],
+) -> None:
+    """Validate a local stage edge or an explicit cross-pattern follow-up.
 
-    exact(document, ("schema", "formatVersion", "flows"), "saved Flow document")
-    if document["schema"] != "lostark.valtan-boss-audition-flows":
-        raise PipelineError("saved Flow schema is invalid")
-    integer(document["formatVersion"], "saved Flow formatVersion", 2, 2)
-    flows = document["flows"]
-    if not isinstance(flows, list) or len(flows) != 1:
-        raise PipelineError("saved Flow must contain exactly one default flow")
-    flow = flows[0]
+    A terminal edge keeps ``nextActionId`` null and omits ``nextPatternId``.
+    A local edge names only ``nextActionId``. A follow-up keeps the legacy
+    field null and names exactly one reaction-only pattern so old branch rows
+    and their loader contract remain unchanged.
+    """
+
+    if not isinstance(branch, dict):
+        raise PipelineError(f"{context} must be an object")
+    has_next_pattern = "nextPatternId" in branch
     exact(
-        flow,
-        (
-            "flowId",
-            "entryNodeId",
-            "nextNodeOrdinal",
-            "nextEdgeOrdinal",
-            "defaultPursuitMs",
-            "maxTransitionsPerRun",
-            "nodes",
-            "edges",
-        ),
-        "saved Flow definition",
+        branch,
+        ("outcome", "nextActionId")
+        + (("nextPatternId",) if has_next_pattern else ()),
+        context,
     )
-    if flow["flowId"] != DEFAULT_SAVED_FLOW_ID:
-        raise PipelineError("saved Flow flowId is not the supported default flow")
-    entry_node_id = stable_id(flow["entryNodeId"], "saved Flow entryNodeId")
-    next_node_ordinal = integer(
-        flow["nextNodeOrdinal"], "saved Flow nextNodeOrdinal", 1, 1000000
+    stable_id(branch["outcome"], f"{context}.outcome")
+
+    next_action_id = branch["nextActionId"]
+    if next_action_id is not None:
+        if has_next_pattern:
+            raise PipelineError(
+                f"{context} must choose nextActionId or nextPatternId, not both"
+            )
+        next_action_id = stable_id(next_action_id, f"{context}.nextActionId")
+        if next_action_id not in owner_action_ids:
+            raise PipelineError(f"{context} local action target is missing")
+        return
+
+    if not has_next_pattern:
+        return
+
+    next_pattern_id = stable_id(
+        branch["nextPatternId"], f"{context}.nextPatternId"
     )
-    next_edge_ordinal = integer(
-        flow["nextEdgeOrdinal"], "saved Flow nextEdgeOrdinal", 1, 1000000
+    if next_pattern_id == owner_pattern_id:
+        raise PipelineError(f"{context} cannot follow up to its owner pattern")
+    target = pattern_by_id.get(next_pattern_id)
+    if target is None:
+        raise PipelineError(f"{context} follow-up pattern target is missing")
+
+    eligibility = target.get("eligibility")
+    is_reaction_only = (
+        next_pattern_id in manual_pattern_ids
+        and target.get("compatibilitySelectionWeight") == 0
+        and isinstance(eligibility, dict)
+        and eligibility.get("minimumHealthBarInclusive") == 0
+        and eligibility.get("maximumHealthBarInclusive") == 0
+        and target.get("targetPolicy") == "NONE"
+        and target.get("aimPolicy") == "NONE"
     )
-    integer(flow["defaultPursuitMs"], "saved Flow defaultPursuitMs", 100, 10000)
-    max_transitions = integer(
-        flow["maxTransitionsPerRun"],
-        "saved Flow maxTransitionsPerRun",
-        1,
-        SAVED_FLOW_MAX_TRANSITIONS,
-    )
-    nodes = flow["nodes"]
-    if (
-        not isinstance(nodes, list)
-        or len(nodes) > SAVED_FLOW_MAX_SLOTS
-        or (require_nonempty and not nodes)
-    ):
+    if not is_reaction_only:
         raise PipelineError(
-            f"saved Flow requires 1..{SAVED_FLOW_MAX_SLOTS} nodes for Product playback"
+            f"{context} follow-up target must project to an untargeted "
+            "AUDITION_ONLY pattern with zero selection/health bars"
         )
-    edges = flow["edges"]
-    if not isinstance(edges, list) or len(edges) > SAVED_FLOW_MAX_EDGES:
-        raise PipelineError(
-            f"saved Flow allows at most {SAVED_FLOW_MAX_EDGES} edges"
-        )
-    admitted_rows = list(admitted_pattern_ids)
-    admitted = set(admitted_rows)
-    if (
-        not admitted
-        or len(admitted) != len(admitted_rows)
-        or any(
-            not isinstance(value, str)
-            or re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", value) is None
-            for value in admitted
-        )
-    ):
-        raise PipelineError("saved Flow admitted inventory is invalid or duplicated")
-    node_by_id: dict[str, dict[str, Any]] = {}
-    node_ordinals: set[int] = set()
-    maximum_node_ordinal = 0
-    entry_pattern_count = 0
-    for index, node in enumerate(nodes):
-        context = f"saved Flow nodes[{index}]"
-        exact(node, ("nodeId", "patternId", "watchdogMs"), context)
-        node_id = node["nodeId"]
-        match = re.fullmatch(
-            re.escape(DEFAULT_SAVED_FLOW_ID)
-            + r"\.(?:slot|node)\.([0-9]{6})",
-            node_id if isinstance(node_id, str) else "",
-        )
-        node_ordinal = int(match.group(1)) if match is not None else 0
-        if (
-            match is None
-            or len(node_id) > 128
-            or node_ordinal == 0
-            or node_ordinal in node_ordinals
-            or node_id in node_by_id
-        ):
-            raise PipelineError(f"{context}.nodeId is malformed or duplicated")
-        pattern_id = node["patternId"]
-        if not isinstance(pattern_id, str) or pattern_id not in admitted:
-            raise PipelineError(f"{context}.patternId is not in the Boss Tool inventory")
-        watchdog_ms = integer(
-            node["watchdogMs"], f"{context}.watchdogMs", 0, 300000
-        )
-        if 0 < watchdog_ms < 1000:
-            raise PipelineError(f"{context}.watchdogMs must be zero or at least 1000")
-        if pattern_id == OPTIONAL_ENTRY_PATTERN_ID:
-            entry_pattern_count += 1
-            if node_id != entry_node_id:
-                raise PipelineError(
-                    "the optional entry cinematic must be the Flow entry node"
-                )
-        node_by_id[node_id] = node
-        node_ordinals.add(node_ordinal)
-        maximum_node_ordinal = max(maximum_node_ordinal, node_ordinal)
-    if entry_node_id not in node_by_id:
-        raise PipelineError("saved Flow entryNodeId is dangling")
-    if entry_pattern_count > 1:
-        raise PipelineError("the optional entry cinematic may occur only once")
-    if next_node_ordinal <= maximum_node_ordinal:
-        raise PipelineError("saved Flow nextNodeOrdinal would reuse a stable node ID")
 
-    edge_ids: set[str] = set()
-    outgoing: dict[str, dict[str, Any]] = {}
-    maximum_edge_ordinal = 0
-    for index, edge in enumerate(edges):
-        context = f"saved Flow edges[{index}]"
-        if not isinstance(edge, dict):
-            raise PipelineError(f"{context} must be an object")
-        has_cap = "maxTraversals" in edge
-        exact(
-            edge,
-            (
-                "edgeId",
-                "fromNodeId",
-                "outcome",
-                "toNodeId",
-                "pursuitMs",
-                *(("maxTraversals",) if has_cap else ()),
-            ),
-            context,
+
+def _validate_pattern_followup_graph(
+    pattern_by_id: Mapping[str, dict[str, Any]],
+) -> None:
+    successors: dict[str, set[str]] = {}
+    for pattern_id, pattern in pattern_by_id.items():
+        successors[pattern_id] = {
+            branch["nextPatternId"]
+            for stage in pattern.get("stages", [])
+            for branch in stage.get("branches", [])
+            if isinstance(branch, dict)
+            and isinstance(branch.get("nextPatternId"), str)
+        }
+
+    active: set[str] = set()
+    maximum_depth_by_pattern: dict[str, int] = {}
+
+    def maximum_depth(pattern_id: str) -> int:
+        if pattern_id in active:
+            raise PipelineError("pattern follow-up graph contains a cycle")
+        cached = maximum_depth_by_pattern.get(pattern_id)
+        if cached is not None:
+            return cached
+        active.add(pattern_id)
+        depth = max(
+            (1 + maximum_depth(target) for target in successors[pattern_id]),
+            default=0,
         )
-        edge_id = edge["edgeId"]
-        edge_match = re.fullmatch(
-            re.escape(DEFAULT_SAVED_FLOW_ID) + r"\.edge\.([0-9]{6})",
-            edge_id if isinstance(edge_id, str) else "",
-        )
-        if (
-            edge_match is None
-            or len(edge_id) > 128
-            or int(edge_match.group(1)) == 0
-            or edge_id in edge_ids
-        ):
-            raise PipelineError(f"{context}.edgeId is malformed or duplicated")
-        from_node_id = stable_id(edge["fromNodeId"], f"{context}.fromNodeId")
-        to_node_id = stable_id(edge["toNodeId"], f"{context}.toNodeId")
-        if from_node_id not in node_by_id or to_node_id not in node_by_id:
-            raise PipelineError(f"{context} has a dangling node reference")
-        if edge["outcome"] != "COMPLETED":
-            raise PipelineError(f"{context}.outcome is unsupported")
-        if from_node_id in outgoing:
+        active.remove(pattern_id)
+        if depth > PATTERN_FOLLOWUP_MAX_DEPTH:
             raise PipelineError(
-                f"{context} duplicates the deterministic COMPLETED outcome"
+                "pattern follow-up graph exceeds maximum depth "
+                f"{PATTERN_FOLLOWUP_MAX_DEPTH}: {pattern_id}"
             )
-        integer(edge["pursuitMs"], f"{context}.pursuitMs", 100, 10000)
-        if has_cap:
-            integer(
-                edge["maxTraversals"],
-                f"{context}.maxTraversals",
-                1,
-                SAVED_FLOW_MAX_SLOTS,
-            )
-        if entry_pattern_count and to_node_id == entry_node_id:
-            raise PipelineError("the entry cinematic node cannot be targeted")
-        edge_ids.add(edge_id)
-        outgoing[from_node_id] = edge
-        maximum_edge_ordinal = max(
-            maximum_edge_ordinal, int(edge_match.group(1))
-        )
-    if next_edge_ordinal <= maximum_edge_ordinal:
-        raise PipelineError("saved Flow nextEdgeOrdinal would reuse a stable edge ID")
+        maximum_depth_by_pattern[pattern_id] = depth
+        return depth
 
-    reachable = {entry_node_id}
-    current_node_id = entry_node_id
-    cycle_edge: dict[str, Any] | None = None
-    while current_node_id in outgoing:
-        edge = outgoing[current_node_id]
-        to_node_id = edge["toNodeId"]
-        if to_node_id in reachable:
-            cycle_edge = edge
-            break
-        reachable.add(to_node_id)
-        current_node_id = to_node_id
-    if reachable != set(node_by_id):
-        raise PipelineError("saved Flow contains an unreachable node or edge")
-    for edge in edges:
-        if (edge is cycle_edge) != ("maxTraversals" in edge):
-            raise PipelineError(
-                "only the cycle-closing back-edge may own maxTraversals, and every cycle must be capped"
-            )
-
-    traversal_counts: dict[str, int] = {}
-    current_node_id = entry_node_id
-    transition_count = 0
-    while current_node_id in outgoing:
-        edge = outgoing[current_node_id]
-        traversals = traversal_counts.get(edge["edgeId"], 0)
-        cap = edge.get("maxTraversals")
-        if cap is not None and traversals >= cap:
-            break
-        if transition_count >= max_transitions:
-            raise PipelineError(
-                "saved Flow cannot terminate within maxTransitionsPerRun"
-            )
-        traversal_counts[edge["edgeId"]] = traversals + 1
-        transition_count += 1
-        current_node_id = edge["toNodeId"]
-    return flow
-
-
-def linearize_saved_flow_for_legacy_product(flow: dict[str, Any]) -> list[dict[str, Any]]:
-    """Bridge v2 authoring to the current ordered Product IR until G02 lands."""
-
-    node_by_id = {node["nodeId"]: node for node in flow["nodes"]}
-    outgoing = {edge["fromNodeId"]: edge for edge in flow["edges"]}
-    ordered: list[dict[str, Any]] = []
-    visited: set[str] = set()
-    current_node_id = flow["entryNodeId"]
-    while True:
-        if current_node_id in visited:
-            raise RuntimeProjectionError(
-                "finite Flow repeats require the G02 Server graph runtime before publish"
-            )
-        visited.add(current_node_id)
-        node = node_by_id[current_node_id]
-        if node["watchdogMs"] != 0:
-            raise RuntimeProjectionError(
-                "Flow node watchdogs require the G02 Server graph runtime before publish"
-            )
-        ordered.append(node)
-        edge = outgoing.get(current_node_id)
-        if edge is None:
-            break
-        if (
-            "maxTraversals" in edge
-            or edge["pursuitMs"] != flow["defaultPursuitMs"]
-        ):
-            raise RuntimeProjectionError(
-                "per-edge pursuit or finite repeats require the G02 Server graph runtime before publish"
-            )
-        current_node_id = edge["toNodeId"]
-    if visited != set(node_by_id):
-        raise PipelineError("saved Flow legacy projection omitted a node")
-    return ordered
-
-
-def resolve_gameplay_flow_reference(
-    gameplay: dict[str, Any],
-    flow_document: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Resolve the tagged physical source to the existing inline sequence IR."""
-
-    decision = gameplay.get("decisionModel") if isinstance(gameplay, dict) else None
-    sequence = decision.get("scriptedSequence") if isinstance(decision, dict) else None
-    if not isinstance(sequence, dict) or "flowId" not in sequence:
-        return gameplay
-    exact(sequence, ("sequenceId", "mode", "flowId"), "scriptedSequence Flow reference")
-    stable_id(sequence["sequenceId"], "scriptedSequence.sequenceId")
-    if sequence["mode"] != SCRIPTED_SEQUENCE_MODE:
-        raise PipelineError("scriptedSequence.mode must be ORDERED_ONCE_THEN_IDLE")
-    if sequence["flowId"] != DEFAULT_SAVED_FLOW_ID:
-        raise PipelineError("scriptedSequence flowId is not the supported default flow")
-    if flow_document is None:
-        raise PipelineError("scriptedSequence Flow reference requires its snapshot-local Flow document")
-    patterns = gameplay.get("patterns")
-    if not isinstance(patterns, list) or not patterns or any(
-        not isinstance(pattern, dict) for pattern in patterns
-    ):
-        raise PipelineError("saved Flow requires authored pattern definitions")
-    pattern_by_id = unique_index(patterns, "patternId", "gameplay patterns")
-    _validate_manual_auditions(decision, pattern_by_id)
-    # Match the Client's strictly joined split-owned inventory. Grouping is
-    # presentation metadata, never another list of IDs or a fixed count gate.
-    # Full gameplay/presentation/owner validation still follows this resolve.
-    flow = validate_saved_flow_document(flow_document, pattern_by_id)
-    resolved = copy.deepcopy(gameplay)
-    resolved["decisionModel"]["scriptedSequence"] = {
-        "sequenceId": sequence["sequenceId"],
-        "mode": sequence["mode"],
-        "interStepPursuitMs": flow["defaultPursuitMs"],
-        "patternIds": [
-            node["patternId"]
-            for node in linearize_saved_flow_for_legacy_product(flow)
-        ],
-    }
-    return resolved
-
-
-def _restore_gameplay_flow_reference(
-    gameplay: dict[str, Any],
-    source_gameplay: dict[str, Any],
-    flow_document: dict[str, Any] | None,
-) -> dict[str, Any]:
-    """Keep immutable authoring on the same reference plus Flow source closure."""
-
-    sequence = source_gameplay["decisionModel"]["scriptedSequence"]
-    if not isinstance(sequence, dict) or "flowId" not in sequence:
-        return gameplay
-    restored = copy.deepcopy(gameplay)
-    restored["decisionModel"]["scriptedSequence"] = copy.deepcopy(sequence)
-    resolved = resolve_gameplay_flow_reference(restored, flow_document)
-    if resolved["decisionModel"]["scriptedSequence"] != gameplay["decisionModel"]["scriptedSequence"]:
-        raise PipelineError("saved Flow source does not match the immutable authoring sequence")
-    return restored
-
-
-def _snapshot_saved_flow_text(root: Path, sources: dict[str, Any]) -> str | None:
-    entry = next((row for row in sources["files"] if row["path"] == SAVED_FLOW_REL), None)
-    if entry is None:
-        return None
-    text = read_text(repo_path(root, SAVED_FLOW_REL))
-    raw = text.encode("utf-8")
-    if sha256_bytes(raw) != entry["sha256"] or len(raw) != entry["bytes"]:
-        raise PipelineError("saved Flow changed while its immutable source was staged")
-    return text
+    for pattern_id in pattern_by_id:
+        maximum_depth(pattern_id)
 
 
 def _validate_scripted_sequence(
@@ -3264,7 +3094,7 @@ def _validate_scripted_sequence(
     if (
         not isinstance(rows, list)
         or not rows
-        or len(rows) > SAVED_FLOW_MAX_SLOTS
+        or len(rows) > SCRIPTED_SEQUENCE_MAX_PATTERNS
     ):
         raise PipelineError("scriptedSequence.patternIds count is invalid")
     pattern_ids = tuple(
@@ -3287,6 +3117,8 @@ def validate_manual_audition_animation_lineage(
     master: dict[str, Any],
     debug_presentation: dict[str, Any],
     promotion_manifest: dict[str, Any],
+    *,
+    repository_root: Path | None = None,
 ) -> None:
     """Keep phase-2/3 Server auditions joined to reviewed intake provenance.
 
@@ -3345,6 +3177,11 @@ def validate_manual_audition_animation_lineage(
         debug_presentation["chains"], "chainId", "Valtan debug chains"
     )
     patterns = unique_index(master["patterns"], "patternId", "v2 patterns")
+    manual_audition_by_pattern_id = unique_index(
+        master["decisionModel"]["manualAuditions"],
+        "patternId",
+        "manual audition lineage rows",
+    )
     manual_rows = [
         row
         for row in master["decisionModel"]["manualAuditions"]
@@ -3534,6 +3371,44 @@ def validate_manual_audition_animation_lineage(
                 else []
             )
         ]
+        if pattern_id == "VALTAN_COUNTER":
+            counter_followups = [
+                branch
+                for stage in pattern["stages"]
+                for branch in stage.get("branches", [])
+                if isinstance(branch, dict)
+                and branch.get("outcome") == "COUNTER_HIT"
+                and branch.get("nextActionId") is None
+                and isinstance(branch.get("nextPatternId"), str)
+            ]
+            if len(counter_followups) != 1:
+                raise PipelineError(
+                    f"{context} must own exactly one counter-success follow-up"
+                )
+            successor_id = counter_followups[0]["nextPatternId"]
+            successor_row = manual_audition_by_pattern_id.get(successor_id)
+            successor = patterns.get(successor_id)
+            if (
+                successor_id != "VALTAN_COUNTER_GROGGY"
+                or successor_row is None
+                or successor_row.get("admissionState") != DERIVED_SERVER_PATTERN
+                or successor is None
+                or successor.get("targetPolicy") != "NONE"
+                or successor.get("aimPolicy") != "NONE"
+            ):
+                raise PipelineError(
+                    f"{context} counter-success follow-up must resolve the "
+                    "derived untargeted GROGGY pattern"
+                )
+            product_occurrences.extend(
+                occurrence
+                for stage in successor["stages"]
+                for occurrence in (
+                    stage["animation"].get("occurrences", [])
+                    if isinstance(stage.get("animation"), dict)
+                    else []
+                )
+            )
         has_reviewed_none_delta = any(
             stage.get("sequenceRole") == "STEP"
             and stage.get("animation") == {"mode": ANIMATION_MODE_NONE}
@@ -3543,6 +3418,14 @@ def validate_manual_audition_animation_lineage(
             occurrence.get("mappingBasis") == "SOURCE_REVIEWED_DELTA"
             for occurrence in product_occurrences
         )
+        declared_sequence_sources = [
+            source
+            for source in pattern.get("presentationSources", [])[1:]
+            if isinstance(source, dict)
+            and isinstance(source.get("role"), str)
+            and source["role"].startswith("REFERENCE_")
+        ]
+        has_declared_sequence_append = bool(declared_sequence_sources)
         if pattern_id == "VALTAN_TRASH":
             # The reviewed intake still owns the eight setup/rush clips. The
             # Product graph now owns real capture outcomes, not three separate
@@ -3634,11 +3517,83 @@ def validate_manual_audition_animation_lineage(
             for occurrence in product_occurrences
             if occurrence.get("mappingBasis") != "SOURCE_REVIEWED_DELTA"
         ]
+        intake_signatures = Counter(map(source_signature, occurrences))
+        product_signatures = Counter(
+            map(product_signature, immutable_product_occurrences)
+        )
         immutable_intake_preserved = (
             len(immutable_product_occurrences) == len(occurrences)
-            and Counter(map(product_signature, immutable_product_occurrences))
-            == Counter(map(source_signature, occurrences))
+            and product_signatures == intake_signatures
         )
+        if has_declared_sequence_append:
+            missing_intake = intake_signatures - product_signatures
+            if missing_intake and not has_authored_delta:
+                raise PipelineError(
+                    f"{context} sequence append removed immutable promotion intake"
+                )
+            if repository_root is not None:
+                span_options: list[list[tuple[str, tuple[str, ...]]]] = []
+                source_labels: list[str] = []
+                for source in declared_sequence_sources:
+                    source_action_id = source.get("sourceActionId")
+                    sequence_index = source.get("sequenceIndex")
+                    role = source.get("role")
+                    expected_role = (
+                        f"REFERENCE_{source_action_id}_{sequence_index}"
+                    )
+                    if (
+                        not isinstance(source_action_id, int)
+                        or isinstance(source_action_id, bool)
+                        or source_action_id <= 0
+                        or not isinstance(sequence_index, int)
+                        or isinstance(sequence_index, bool)
+                        or not 0 <= sequence_index <= 4096
+                        or role != expected_role
+                    ):
+                        raise PipelineError(
+                            f"{context} has malformed deterministic Sequence provenance"
+                        )
+                    try:
+                        source_clips = _load_exact_valtan_source_sequence_clips(
+                            repository_root,
+                            source_action_id,
+                            sequence_index,
+                            0,
+                        )
+                    except PipelineError as exc:
+                        raise PipelineError(
+                            f"{context} declared Sequence source does not resolve: "
+                            f"{source_action_id}/{sequence_index}: {exc}"
+                        ) from exc
+                    available_spans = [
+                        span
+                        for span in _pattern_sequence_source_spans(
+                            pattern, source_clips
+                        )
+                    ]
+                    if not available_spans:
+                        raise PipelineError(
+                            f"{context} declared Sequence source has no exact "
+                            "ordered Product occurrence slice: "
+                            f"{source_action_id}/{sequence_index}"
+                        )
+                    span_options.append(available_spans)
+                    source_labels.append(
+                        f"{source_action_id}/{sequence_index}"
+                    )
+                if _assign_non_overlapping_sequence_spans(span_options) is None:
+                    raise PipelineError(
+                        f"{context} declared Sequence sources do not resolve "
+                        "to distinct ordered Product occurrence slices: "
+                        + ", ".join(source_labels)
+                    )
+            elif not has_authored_delta:
+                appended_signatures = product_signatures - intake_signatures
+                if not appended_signatures:
+                    raise PipelineError(
+                        f"{context} declares an appended Sequence source without Product occurrences"
+                    )
+            continue
         if has_authored_delta and not immutable_intake_preserved:
             # The typed patch operation is the provenance boundary for the
             # authored delta.  Still validate every immutable intake row so a
@@ -4026,9 +3981,14 @@ def validate_v2_master(
             if grab_impacts and (len(stage["events"]) != 1 or stage["hit"]["shape"]["kind"] != "NONE"):
                 raise PipelineError(f"grabbed-player impact must own its stage transaction: {pattern_id}/{stage_id}")
             for branch in stage["branches"]:
-                exact(branch, ("outcome", "nextActionId"), f"{pattern_id}/{stage_id}.branch")
-                if branch["nextActionId"] is not None and branch["nextActionId"] not in action_ids:
-                    raise PipelineError(f"branch target is missing: {pattern_id}/{stage_id}")
+                _validate_pattern_stage_branch(
+                    branch,
+                    f"{pattern_id}/{stage_id}.branch",
+                    owner_pattern_id=pattern_id,
+                    owner_action_ids=action_ids,
+                    pattern_by_id=pattern_by_id,
+                    manual_pattern_ids=manual_patterns,
+                )
             hit = stage["hit"]
             if hit["shape"]["kind"] == "NONE":
                 exact(hit, ("shape",), f"{pattern_id}/{stage_id}.hit")
@@ -4596,16 +4556,44 @@ def validate_v2_master(
                         )
                 elif anchor_slot.startswith("arena.center"):
                     motion = pattern.get("serverMotion")
-                    if (anchor_slot not in ("arena.center", "arena.center.facing")
-                            or not isinstance(motion, dict)
-                            or motion.get("kind") != "LEAP_TO_ANCHOR"
-                            or motion.get("moveToAnchorBeforeTakeoff") is not True
-                            or cue["followPolicy"] != "snapshot"):
-                        raise PipelineError(f"{cue_id} arena center anchor requires a fixed center approach")
-                    if (anchor_slot == "arena.center.facing"
-                            and (pattern["aimPolicy"] != "LOCK_FACING_ON_START"
-                                 or pattern["targetPolicy"] != "LOCK_RANDOM_ALIVE_ON_START")):
-                        raise PipelineError(f"{cue_id} facing anchor requires one locked random target")
+                    if (
+                        anchor_slot
+                        not in (
+                            "arena.center",
+                            "arena.center.facing",
+                            "arena.center.target-follow",
+                        )
+                        or not isinstance(motion, dict)
+                        or motion.get("kind") != "LEAP_TO_ANCHOR"
+                        or motion.get("moveToAnchorBeforeTakeoff") is not True
+                    ):
+                        raise PipelineError(
+                            f"{cue_id} arena center anchor requires a fixed center approach"
+                        )
+                    if anchor_slot == "arena.center.facing" and (
+                        cue["followPolicy"] != "snapshot"
+                        or pattern["aimPolicy"] != "LOCK_FACING_ON_START"
+                        or pattern["targetPolicy"] != "LOCK_RANDOM_ALIVE_ON_START"
+                    ):
+                        raise PipelineError(
+                            f"{cue_id} facing anchor requires one locked random target"
+                        )
+                    if anchor_slot == "arena.center.target-follow" and (
+                        cue["followPolicy"] != "follow"
+                        or pattern["aimPolicy"] != "TRACK_TARGET_EACH_TICK"
+                        or pattern["targetPolicy"] != "LOCK_RANDOM_ALIVE_ON_START"
+                    ):
+                        raise PipelineError(
+                            f"{cue_id} target-follow anchor requires one tick-tracked "
+                            "locked random target"
+                        )
+                    if (
+                        anchor_slot == "arena.center"
+                        and cue["followPolicy"] != "snapshot"
+                    ):
+                        raise PipelineError(
+                            f"{cue_id} arena center anchor requires snapshot follow policy"
+                        )
                 if cue_id in cue_ids:
                     raise PipelineError(f"duplicate managed cue: {cue_id}")
                 scale_kind = validate_cue_scale_policy(
@@ -4635,8 +4623,9 @@ def validate_v2_master(
                     raise PipelineError("initial camera migration uses EXPLICIT duration")
                 integer(invocation["durationMs"], "camera invocation durationMs", 1, duration)
         _validate_pattern_counter_groggy_contract(
-            pattern, f"pattern {pattern_id}"
+            pattern, pattern_by_id, f"pattern {pattern_id}"
         )
+    _validate_pattern_followup_graph(pattern_by_id)
     live_expected_scale_policy_counts = Counter(
         expected_cue_policies[cue_id]
         for cue_id in cue_ids
@@ -4668,6 +4657,55 @@ def validate_v2_master(
             "v2 master has duplicate gameplay phase transitions: "
             f"{gameplay_phase_events}"
         )
+    if not migration_fixture:
+        expected_phase_events = {
+            ("VALTAN_ARENA_BREAK_109", "IMPACT", "ENTER", 2),
+            ("VALTAN_GHOST_RESPAWN_AUDITION", "STEP_01", "ENTER", 3),
+        }
+        if set(gameplay_phase_events) != expected_phase_events:
+            raise PipelineError(
+                "live gameplay phase edges must be the exact arena-break and "
+                f"ghost-respawn transitions: {gameplay_phase_events}"
+            )
+        portal = pattern_by_id.get("VALTAN_GHOST_PORTAL_ONCE")
+        if portal is None or len(portal["stages"]) != 1:
+            raise PipelineError("live ghost portal pattern is missing")
+        portal_stage = portal["stages"][0]
+        portal_events = portal_stage["events"]
+        if (
+            portal["targetPolicy"] != "NONE"
+            or portal["aimPolicy"] != "NONE"
+            or portal_stage["stageId"] != "ACTIVE"
+            or portal_stage["actionId"] != "valtan.ghost.portal-once.active"
+            or portal_stage["durationMs"] != 5000
+            or len(portal_events) != 1
+        ):
+            raise PipelineError("live ghost portal pattern topology drifted")
+        portal_event = portal_events[0]
+        if (
+            portal_event["eventId"] != "event.valtan.ghost.portal-once.volley"
+            or portal_event["trigger"] != "ENTER"
+            or portal_event["kind"] != "SPAWN_COMBAT_OBJECT_VOLLEY"
+            or portal_event["combatObjectArchetypeId"]
+            != "combatobject.valtan.ghost.portal-charge"
+            or portal_event["volleyPolicy"] != "BOSS_RELATIVE"
+            or portal_event["countPerResolvedTarget"] != 4
+            or portal_event["layout"] != {
+                "kind": "RADIAL_AROUND_BOSS",
+                "radiusM": 31.112698,
+                "startAngleDegrees": 45.0,
+                "angleStepDegrees": 90.0,
+                "mappingBasis": "PROJECT_TUNED",
+            }
+            or portal_event["spawnSchedule"] != {
+                "kind": "INTERVAL", "count": 1,
+                "firstOffsetMs": 0, "intervalMs": 0,
+            }
+            or portal_event["arenaRandom"] != {"kind": "NONE"}
+            or portal_event["allowOverlap"] is not False
+            or portal_event["maximumTotalObjects"] != 4
+        ):
+            raise PipelineError("live ghost portal volley contract drifted")
     independent_ids: set[str] = set()
     referenced_cues: set[str] = set()
     referenced_spawns: set[str] = set()
@@ -4691,6 +4729,15 @@ def validate_v2_master(
         if independent_id in independent_ids:
             raise PipelineError(f"duplicate independentEffectId: {independent_id}")
         independent_ids.add(independent_id)
+    if (
+        not migration_fixture
+        and independent_ids != REQUIRED_LIVE_INDEPENDENT_EFFECT_IDS
+    ):
+        raise PipelineError(
+            "live independent effect inventory mismatch: "
+            f"expected={sorted(REQUIRED_LIVE_INDEPENDENT_EFFECT_IDS)} "
+            f"actual={sorted(independent_ids)}"
+        )
 
 
 def _validate_finite_pattern_graph(pattern: Mapping[str, Any]) -> None:
@@ -4759,6 +4806,15 @@ def _validate_finale(
         stable_id(child_id, f"{context}.ghostPatternIds")
     if len(set(children)) != len(children):
         raise PipelineError(f"{context}.ghostPatternIds has duplicate IDs")
+    if pattern["patternId"] == "VALTAN_GHOST_FINALE" and children != [
+        "VALTAN_SIX_PIZZA_106",
+        "VALTAN_GROUND_ROAR",
+        "VALTAN_STAGGER_SLOT",
+        "VALTAN_BIND_SLOT",
+        "VALTAN_SILENCE_SLOT",
+        "VALTAN_TRIPLE_COUNTER",
+    ]:
+        raise PipelineError(f"{context}.ghostPatternIds primary-loop order drifted")
     for child_id in children:
         stable_id(child_id, f"{context}.ghostPatternIds")
         child = patterns.get(child_id)
@@ -4772,11 +4828,7 @@ def _validate_finale(
         raise PipelineError(f"{context} must remain damageable until owner death")
 
 
-def validate_gameplay_authoring(
-    document: dict[str, Any],
-    flow_document: dict[str, Any] | None = None,
-) -> None:
-    document = resolve_gameplay_flow_reference(document, flow_document)
+def validate_gameplay_authoring(document: dict[str, Any]) -> None:
     exact(
         document,
         (
@@ -5027,6 +5079,38 @@ def validate_gameplay_authoring(
                     f"{pattern_id}/{stage_id}"
                 )
 
+        entry_action_id = stable_id(
+            pattern["entryActionId"],
+            f"gameplay pattern {pattern_id}.entryActionId",
+        )
+        if entry_action_id not in action_ids:
+            raise PipelineError(
+                f"gameplay pattern entryActionId is missing: {pattern_id}"
+            )
+        for stage_id, stage in stages.items():
+            default_next_action_id = stage["defaultNextActionId"]
+            if (
+                default_next_action_id is not None
+                and default_next_action_id not in action_ids
+            ):
+                raise PipelineError(
+                    f"gameplay defaultNextActionId is missing: "
+                    f"{pattern_id}/{stage_id}"
+                )
+            for branch in stage["branches"]:
+                _validate_pattern_stage_branch(
+                    branch,
+                    f"gameplay {pattern_id}/{stage_id}.branch",
+                    owner_pattern_id=pattern_id,
+                    owner_action_ids=action_ids,
+                    pattern_by_id=patterns,
+                    manual_pattern_ids=manual_patterns,
+                )
+
+
+    _validate_pattern_followup_graph(patterns)
+
+
 def validate_presentation_authoring(document: dict[str, Any]) -> None:
     exact(
         document,
@@ -5249,11 +5333,9 @@ def join_v2_authoring(
     presentation: dict[str, Any],
     world_sets: dict[str, Any],
     combat_authoring: dict[str, Any],
-    flow_document: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Strictly join the two physical authoring roles into the internal v2 IR."""
 
-    gameplay = resolve_gameplay_flow_reference(gameplay, flow_document)
     validate_gameplay_authoring(gameplay)
     validate_presentation_authoring(presentation)
     for field in ("bossArchetypeId", "encounterId", "scope"):
@@ -6124,6 +6206,8 @@ def _compile_combat_products(
             ordinal = sealed["originalOrdinal"]
         else:
             raise PipelineError(f"combat object has no exact managed/legacy owner: {archetype}")
+        # Explicit combat-object authoring owns Product lifetime.  Pattern stage
+        # duration is only the fallback for definitions without lifetimeMs.
         life_ms = obj.get("lifetimeMs", life_ms)
         client_visual = visuals.get(archetype)
         if client_visual is None:
@@ -6598,6 +6682,7 @@ def build_repository_product_projection(
         joined,
         read_json(repo_path(root, DEBUG_PRESENTATION_REL)),
         read_json(repo_path(root, ANIMATION_PROMOTION_MANIFEST_REL)),
+        repository_root=root,
     )
     managed = {row["patternId"] for row in joined["patterns"]}
     validate_legacy_manifest(docs[LEGACY_REL], managed)
@@ -6613,7 +6698,8 @@ def build_repository_product_projection(
 
 
 def stage_repository_product_projection(
-    root: Path, output_root: Path
+    root: Path,
+    output_root: Path,
 ) -> dict[str, Any]:
     """Materialize a validated projection below an isolated external root."""
 
@@ -6680,15 +6766,7 @@ def load_pipeline_documents(
         relatives.extend((GAMEPLAY_AUTHORING_REL, PRESENTATION_AUTHORING_REL))
     if include_companions:
         relatives.extend((COMBAT_AUTHORING_REL, WORLD_SET_REL, LEGACY_REL))
-    docs = require_documents(root, relatives)
-    if include_split_authoring:
-        sequence = docs[GAMEPLAY_AUTHORING_REL].get("decisionModel", {}).get("scriptedSequence")
-        if isinstance(sequence, dict) and "flowId" in sequence:
-            docs[SAVED_FLOW_REL] = read_saved_flow_document(root)
-            docs[GAMEPLAY_AUTHORING_REL] = resolve_gameplay_flow_reference(
-                docs[GAMEPLAY_AUTHORING_REL], docs[SAVED_FLOW_REL]
-            )
-    return docs
+    return require_documents(root, relatives)
 
 
 def source_manifest(root: Path) -> dict[str, Any]:
@@ -6698,35 +6776,18 @@ def source_manifest(root: Path) -> dict[str, Any]:
         COMBAT_AUTHORING_REL,
         WORLD_SET_REL,
         LEGACY_REL,
-        ENCOUNTER_REL,
-        ROTATIONS_REL,
-        COMBAT_PRODUCT_REL,
-        CAMERA_REL,
-        WORLD_PRODUCT_REL,
-        BINDINGS_REL,
-        CUES_REL,
         BOSS_CATALOG_REL,
         BOSS_PROFILES_REL,
         DAMAGE_REL,
         EFFECT_CATALOG_REL,
         DEBUG_PRESENTATION_REL,
         ANIMATION_PROMOTION_MANIFEST_REL,
-        PROVENANCE_REL,
     )
-    source_gameplay = read_json(repo_path(root, GAMEPLAY_AUTHORING_REL))
-    sequence = source_gameplay.get("decisionModel", {}).get("scriptedSequence")
-    references_flow = isinstance(sequence, dict) and "flowId" in sequence
-    if references_flow:
-        paths += (SAVED_FLOW_REL,)
 
     def snapshot_entries() -> list[dict[str, Any]]:
         entries = []
         for relative in sorted(paths):
-            if relative == SAVED_FLOW_REL:
-                flow_bytes = repo_path(root, relative).read_bytes()
-                sha256, byte_count = sha256_bytes(flow_bytes), len(flow_bytes)
-            else:
-                sha256, byte_count = source_text_identity(repo_path(root, relative))
+            sha256, byte_count = source_text_identity(repo_path(root, relative))
             entries.append(
                 {
                     "path": relative,
@@ -6751,7 +6812,6 @@ def source_manifest(root: Path) -> dict[str, Any]:
         split_documents[PRESENTATION_AUTHORING_REL],
         split_documents[WORLD_SET_REL],
         split_documents[COMBAT_AUTHORING_REL],
-        read_saved_flow_document(root) if references_flow else None,
     )
     if entries != snapshot_entries():
         raise PipelineError("Valtan source files changed during strict split join")
@@ -6776,6 +6836,13 @@ def source_manifest(root: Path) -> dict[str, Any]:
 
 DRAFT_PATCH_SCHEMA = "lostark.valtan-tuning-draft-patch"
 DRAFT_PATCH_OPERATIONS = {
+    "SET_SCRIPTED_SEQUENCE": (
+        "op",
+        "sequenceId",
+        "mode",
+        "interStepPursuitMs",
+        "patternIds",
+    ),
     "SET_PATTERN_WEIGHT": ("op", "selectionSetId", "patternId", "value"),
     "SET_PATTERN_ENABLED": ("op", "selectionSetId", "patternId", "value"),
     "SET_MECHANIC_TRIGGER": (
@@ -6787,6 +6854,33 @@ DRAFT_PATCH_OPERATIONS = {
     ),
     "SET_PATTERN_REPEAT_LIMIT": ("op", "patternId", "value"),
     "SET_PATTERN_RANGE": ("op", "patternId", "minimumRangeM", "maximumRangeM"),
+    "SET_PATTERN_DISPLAY_NAME": ("op", "patternId", "displayName"),
+    "SET_STAGE_BRANCH": (
+        "op",
+        "patternId",
+        "stageId",
+        "outcome",
+        "nextActionId",
+    ),
+    "REMOVE_PATTERN_REACTION": (
+        "op",
+        "patternId",
+        "triggerKind",
+        "stageId",
+    ),
+    "REMOVE_PATTERN_STAGE": (
+        "op",
+        "patternId",
+        "stageId",
+        "actionId",
+    ),
+    "REMOVE_PATTERN_SEQUENCE_SOURCE": (
+        "op",
+        "patternId",
+        "sourceActionId",
+        "sequenceIndex",
+        "role",
+    ),
     "INSERT_MANUAL_STAGE_AFTER": (
         "op",
         "patternId",
@@ -6806,6 +6900,13 @@ DRAFT_PATCH_OPERATIONS = {
     ),
     "SET_STAGE_KIND": ("op", "patternId", "stageId", "stageKind"),
     "SET_STAGE_DURATION": ("op", "patternId", "stageId", "durationMs"),
+    "ADD_PATTERN_SEQUENCE_SOURCE": (
+        "op",
+        "patternId",
+        "sourceActionId",
+        "sequenceIndex",
+        "role",
+    ),
     "SET_STAGE_ANIMATION": ("op", "patternId", "stageId", "animation"),
     "SET_STAGE_HIT": ("op", "patternId", "stageId", "hit"),
     "SET_STAGE_PORTAL_RUSH_MOTION": (
@@ -7291,21 +7392,39 @@ def _validate_draft_effect_cue_payload(
     elif anchor_slot.startswith("arena.center"):
         motion = pattern.get("serverMotion")
         if (
-            anchor_slot not in ("arena.center", "arena.center.facing")
+            anchor_slot
+            not in (
+                "arena.center",
+                "arena.center.facing",
+                "arena.center.target-follow",
+            )
             or not isinstance(motion, dict)
             or motion.get("kind") != "LEAP_TO_ANCHOR"
             or motion.get("moveToAnchorBeforeTakeoff") is not True
-            or follow_policy != "snapshot"
         ):
             raise PipelineError(
                 f"{context}.anchorSlotId requires a fixed center approach"
             )
         if anchor_slot == "arena.center.facing" and (
-            pattern.get("aimPolicy") != "LOCK_FACING_ON_START"
+            follow_policy != "snapshot"
+            or pattern.get("aimPolicy") != "LOCK_FACING_ON_START"
             or pattern.get("targetPolicy") != "LOCK_RANDOM_ALIVE_ON_START"
         ):
             raise PipelineError(
                 f"{context}.anchorSlotId facing requires one locked random target"
+            )
+        if anchor_slot == "arena.center.target-follow" and (
+            follow_policy != "follow"
+            or pattern.get("aimPolicy") != "TRACK_TARGET_EACH_TICK"
+            or pattern.get("targetPolicy") != "LOCK_RANDOM_ALIVE_ON_START"
+        ):
+            raise PipelineError(
+                f"{context}.anchorSlotId target-follow requires one tick-tracked "
+                "locked random target"
+            )
+        if anchor_slot == "arena.center" and follow_policy != "snapshot":
+            raise PipelineError(
+                f"{context}.anchorSlotId arena center requires snapshot follow policy"
             )
 
     local_transform = cue["localTransform"]
@@ -7783,6 +7902,502 @@ def _validate_volley_layout(layout: Any, count: int, context: str) -> dict[str, 
     return copy.deepcopy(layout)
 
 
+VALTAN_CLIP_SEQUENCE_REL = "Data/Animation/Reference/Valtan/Valtan.clipseq"
+
+
+def _load_exact_valtan_source_sequence_clips(
+    root: Path | None,
+    source_action_id: int,
+    sequence_index: int,
+    operation_ordinal: int,
+) -> list[str]:
+    if root is None:
+        raise _draft_error(
+            "Sequence provenance admission requires the repository source catalog",
+            operation_ordinal=operation_ordinal,
+            field="sourceActionId",
+            error_code="SOURCE_CATALOG_UNAVAILABLE",
+        )
+    source = read_text(repo_path(root, VALTAN_CLIP_SEQUENCE_REL))
+    pattern = re.compile(
+        rf"(?m)^{source_action_id}\s+.*?\sseq={sequence_index}\s+"
+        r"mode=\S+\s+clips=\"([^\"]*)\"\s*$"
+    )
+    matches = pattern.findall(source)
+    if len(matches) != 1:
+        raise _draft_error(
+            "Sequence provenance does not resolve exactly one source tuple: "
+            f"{source_action_id}/{sequence_index}",
+            operation_ordinal=operation_ordinal,
+            field="sourceActionId",
+            error_code="SOURCE_SEQUENCE_NOT_FOUND",
+        )
+    # Clip order and multiplicity are part of the authored Sequence contract.
+    # HOLD rows may intentionally repeat loop/end clips, so a set would admit
+    # an arbitrary reordering or a partial union assembled from several rows.
+    clips = [clip for clip in matches[0].split(",") if clip]
+    if not clips:
+        raise _draft_error(
+            "Sequence provenance resolved an empty clip inventory",
+            operation_ordinal=operation_ordinal,
+            field="sequenceIndex",
+            error_code="SOURCE_SEQUENCE_EMPTY",
+        )
+    return clips
+
+
+def _sequence_source_match_ends(
+    clips: list[str], offset: int, source_clips: list[str]
+) -> set[int]:
+    """Return exact/finite-HOLD ends for one admitted source Sequence."""
+
+    ends: set[int] = set()
+    exact_end = offset + len(source_clips)
+    if clips[offset:exact_end] == source_clips:
+        ends.add(exact_end)
+    # A three-part HOLD source is materialized as one start, one-or-more
+    # finite native loop occurrences, and one end.  The loop may be split only
+    # by repeating its exact clip; start/end are never inferred or duplicated.
+    if (
+        len(source_clips) == 3
+        and source_clips[0].lower().endswith("_start")
+        and source_clips[1].lower().endswith("_loop")
+        and source_clips[2].lower().endswith("_end")
+        and offset < len(clips)
+        and clips[offset] == source_clips[0]
+    ):
+        cursor = offset + 1
+        loop_count = 0
+        while cursor < len(clips) and clips[cursor] == source_clips[1]:
+            cursor += 1
+            loop_count += 1
+        if (
+            loop_count > 0
+            and cursor < len(clips)
+            and clips[cursor] == source_clips[2]
+        ):
+            ends.add(cursor + 1)
+    return ends
+
+
+def _sequence_source_slice_match_ends(
+    clips: list[str], offset: int, source_clips: list[str]
+) -> set[int]:
+    """Return non-empty contiguous source slices at one Product offset.
+
+    A saved Composition may intentionally trim the beginning or end of a raw
+    Sequence while retaining deterministic provenance for the boxes that
+    remain.  Order and multiplicity are still exact: unrelated clips and a
+    reordered assembly do not form one returned slice.  Three-part HOLD
+    sources additionally admit a finite run of their exact loop clip.
+    """
+
+    if not 0 <= offset < len(clips) or not source_clips:
+        return set()
+
+    ends: set[int] = set()
+    for source_offset in range(len(source_clips)):
+        maximum = min(
+            len(clips) - offset,
+            len(source_clips) - source_offset,
+        )
+        for length in range(1, maximum + 1):
+            end = offset + length
+            if clips[offset:end] == source_clips[
+                source_offset : source_offset + length
+            ]:
+                ends.add(end)
+
+    if (
+        len(source_clips) == 3
+        and source_clips[0].lower().endswith("_start")
+        and source_clips[1].lower().endswith("_loop")
+        and source_clips[2].lower().endswith("_end")
+    ):
+        start_clip, loop_clip, end_clip = source_clips
+        cursor = offset
+        if clips[cursor] == start_clip:
+            ends.add(cursor + 1)
+            cursor += 1
+        if cursor < len(clips) and clips[cursor] == loop_clip:
+            while cursor < len(clips) and clips[cursor] == loop_clip:
+                cursor += 1
+                ends.add(cursor)
+            if cursor < len(clips) and clips[cursor] == end_clip:
+                ends.add(cursor + 1)
+
+    return ends
+
+
+def _pattern_sequence_source_spans(
+    pattern: Mapping[str, Any],
+    source_clips: list[str],
+    *,
+    allow_partial_slice: bool = True,
+) -> list[tuple[str, tuple[str, ...]]]:
+    """Resolve ordered occurrence-ID spans without crossing Stage clocks."""
+
+    spans: list[tuple[str, tuple[str, ...]]] = []
+    for stage in pattern.get("stages", []):
+        if not isinstance(stage, dict):
+            continue
+        animation = stage.get("animation")
+        occurrences = (
+            animation.get("occurrences")
+            if isinstance(animation, dict)
+            else None
+        )
+        if not isinstance(occurrences, list):
+            continue
+        clips = [
+            occurrence.get("clip") if isinstance(occurrence, dict) else None
+            for occurrence in occurrences
+        ]
+        if not all(isinstance(clip, str) for clip in clips):
+            continue
+        matcher = (
+            _sequence_source_slice_match_ends
+            if allow_partial_slice
+            else _sequence_source_match_ends
+        )
+        for offset in range(len(clips)):
+            for end in matcher(clips, offset, source_clips):
+                occurrence_ids = tuple(
+                    occurrence.get("clipOccurrenceId")
+                    for occurrence in occurrences[offset:end]
+                    if isinstance(occurrence, dict)
+                )
+                if (
+                    len(occurrence_ids) == end - offset
+                    and all(
+                        isinstance(occurrence_id, str) and occurrence_id
+                        for occurrence_id in occurrence_ids
+                    )
+                ):
+                    spans.append((stage.get("stageId", ""), occurrence_ids))
+    return spans
+
+
+def _assign_non_overlapping_sequence_spans(
+    options: list[list[tuple[str, tuple[str, ...]]]],
+) -> list[tuple[str, tuple[str, ...]]] | None:
+    """Choose one globally non-overlapping occurrence span per declaration."""
+
+    if not options:
+        return []
+    ordered_options = [
+        sorted(
+            candidates,
+            key=lambda span: (-len(span[1]), span[0], span[1]),
+        )
+        for candidates in options
+    ]
+    selected: list[tuple[str, tuple[str, ...]]] = []
+
+    def visit(source_index: int, claimed_ids: frozenset[str]) -> bool:
+        if source_index == len(ordered_options):
+            return True
+        for span in ordered_options[source_index]:
+            occurrence_ids = frozenset(span[1])
+            if occurrence_ids.intersection(claimed_ids):
+                continue
+            selected.append(span)
+            if visit(source_index + 1, claimed_ids.union(occurrence_ids)):
+                return True
+            selected.pop()
+        return False
+
+    return selected.copy() if visit(0, frozenset()) else None
+
+
+def _prune_removed_manual_sequence_provenance(
+    original_master: dict[str, Any],
+    patched_master: dict[str, Any],
+    repository_root: Path | None,
+    edited_pattern_ordinals: Mapping[str, int],
+) -> None:
+    """Detach an Append declaration only when no admitted source slice remains.
+
+    The Client's SET_STAGE_ANIMATION operation owns the complete current slot
+    list but has no second, independently mutable "remove provenance" command.
+    A partial contiguous slice remains valid deterministic provenance.  The
+    REFERENCE tuple is removed atomically only after every occurrence owned by
+    its one exact baseline span is gone.  Invented, replaced, reordered,
+    ambiguous, or malformed provenance remains untouched and is rejected by
+    the normal joined/Product validators.
+    """
+
+    if repository_root is None or not edited_pattern_ordinals:
+        return
+    original_patterns = {
+        pattern["patternId"]: pattern for pattern in original_master["patterns"]
+    }
+    patched_patterns = {
+        pattern["patternId"]: pattern for pattern in patched_master["patterns"]
+    }
+
+    def occurrence_rows(
+        pattern: Mapping[str, Any],
+    ) -> list[tuple[str, int, dict[str, Any]]]:
+        rows: list[tuple[str, int, dict[str, Any]]] = []
+        for stage in pattern.get("stages", []):
+            if not isinstance(stage, dict):
+                continue
+            animation = stage.get("animation")
+            occurrences = (
+                animation.get("occurrences")
+                if isinstance(animation, dict)
+                else None
+            )
+            if not isinstance(occurrences, list):
+                continue
+            for index, occurrence in enumerate(occurrences):
+                if isinstance(occurrence, dict):
+                    rows.append((stage.get("stageId", ""), index, occurrence))
+        return rows
+
+    for pattern_id, operation_ordinal in edited_pattern_ordinals.items():
+        original = original_patterns.get(pattern_id)
+        patched = patched_patterns.get(pattern_id)
+        if (
+            original is None
+            or patched is None
+            or not _is_manual_server_audition(patched_master, pattern_id)
+        ):
+            continue
+        original_sources = original.get("presentationSources")
+        patched_sources = patched.get("presentationSources")
+        if (
+            not isinstance(original_sources, list)
+            or not isinstance(patched_sources, list)
+            or len(original_sources) < 2
+        ):
+            continue
+
+        original_rows = occurrence_rows(original)
+        candidate_rows = occurrence_rows(patched)
+        original_by_id = {
+            row["clipOccurrenceId"]: row
+            for _stage_id, _index, row in original_rows
+            if isinstance(row.get("clipOccurrenceId"), str)
+        }
+        candidate_by_id = {
+            row["clipOccurrenceId"]: row
+            for _stage_id, _index, row in candidate_rows
+            if isinstance(row.get("clipOccurrenceId"), str)
+        }
+        candidate_locations = {
+            row["clipOccurrenceId"]: (stage_id, index)
+            for stage_id, index, row in candidate_rows
+            if isinstance(row.get("clipOccurrenceId"), str)
+        }
+        candidate_id_order = [
+            row["clipOccurrenceId"]
+            for _stage_id, _index, row in candidate_rows
+            if isinstance(row.get("clipOccurrenceId"), str)
+        ]
+
+        def source_key(source: Mapping[str, Any]) -> tuple[Any, Any, Any]:
+            return (
+                source.get("sourceActionId"),
+                source.get("sequenceIndex"),
+                source.get("role"),
+            )
+
+        def retained_row_is_unchanged(occurrence_id: str) -> bool:
+            baseline = original_by_id.get(occurrence_id)
+            candidate = candidate_by_id.get(occurrence_id)
+            if baseline is None or candidate is None:
+                return False
+            normalized = copy.deepcopy(candidate)
+            if normalized.get("mappingBasis") != "SOURCE_REVIEWED_DELTA":
+                return False
+            normalized["mappingBasis"] = baseline.get("mappingBasis")
+            return normalized == baseline
+
+        reference_rows: list[tuple[dict[str, Any], list[str]]] = []
+        exact_options: list[list[tuple[str, tuple[str, ...]]]] = []
+        baseline_provenance_valid = True
+        for source in original_sources[1:]:
+            if not isinstance(source, dict):
+                baseline_provenance_valid = False
+                break
+            source_action_id, sequence_index, role = source_key(source)
+            if (
+                not isinstance(source_action_id, int)
+                or isinstance(source_action_id, bool)
+                or not isinstance(sequence_index, int)
+                or isinstance(sequence_index, bool)
+                or role != f"REFERENCE_{source_action_id}_{sequence_index}"
+            ):
+                baseline_provenance_valid = False
+                break
+            source_clips = _load_exact_valtan_source_sequence_clips(
+                repository_root,
+                source_action_id,
+                sequence_index,
+                operation_ordinal,
+            )
+            # A previously committed reference may already own a trimmed
+            # contiguous slice (for example an end-only roar occurrence).
+            # The longest globally non-overlapping current slice is the stable
+            # baseline ownership span for a subsequent edit.
+            options = _pattern_sequence_source_spans(
+                original,
+                source_clips,
+            )
+            if not options:
+                baseline_provenance_valid = False
+                break
+            reference_rows.append((source, source_clips))
+            exact_options.append(options)
+        if not baseline_provenance_valid:
+            continue
+        assigned_spans = _assign_non_overlapping_sequence_spans(exact_options)
+        if assigned_spans is None:
+            continue
+
+        original_source_keys = {
+            source_key(source)
+            for source in original_sources
+            if isinstance(source, dict)
+        }
+        added_source_occurrence_ids: set[str] = set()
+        for source in patched_sources:
+            if not isinstance(source, dict) or source_key(source) in original_source_keys:
+                continue
+            source_action_id, sequence_index, role = source_key(source)
+            if (
+                not isinstance(source_action_id, int)
+                or isinstance(source_action_id, bool)
+                or not isinstance(sequence_index, int)
+                or isinstance(sequence_index, bool)
+                or role != f"REFERENCE_{source_action_id}_{sequence_index}"
+            ):
+                continue
+            source_clips = _load_exact_valtan_source_sequence_clips(
+                repository_root,
+                source_action_id,
+                sequence_index,
+                operation_ordinal,
+            )
+            for _stage_id, span_ids in _pattern_sequence_source_spans(
+                patched,
+                source_clips,
+            ):
+                added_source_occurrence_ids.update(span_ids)
+
+        removed_sources: set[tuple[int, int, str]] = set()
+        for (source, source_clips), assigned_span in zip(
+            reference_rows,
+            assigned_spans,
+        ):
+            source_action_id, sequence_index, role = source_key(source)
+            baseline_span_ids = list(assigned_span[1])
+            baseline_span_id_set = set(baseline_span_ids)
+            survivors = [
+                occurrence_id
+                for occurrence_id in candidate_id_order
+                if occurrence_id in baseline_span_id_set
+            ]
+            candidate_spans = _pattern_sequence_source_spans(
+                patched,
+                source_clips,
+            )
+            if not survivors:
+                unowned_candidate_spans = [
+                    span
+                    for span in candidate_spans
+                    if not set(span[1]).issubset(added_source_occurrence_ids)
+                ]
+                if unowned_candidate_spans:
+                    raise _draft_error(
+                        "declared Sequence source has no exact ordered Product "
+                        f"occurrence slice: {source_action_id}/{sequence_index}; "
+                        "stable source occurrence IDs were replaced",
+                        operation_ordinal=operation_ordinal,
+                        pattern_id=pattern_id,
+                        field="animation.occurrences",
+                        error_code="SOURCE_PROVENANCE_MISMATCH",
+                    )
+                removed_sources.add(
+                    (source_action_id, sequence_index, role)
+                )
+                continue
+
+            survivor_indices = [
+                baseline_span_ids.index(occurrence_id)
+                for occurrence_id in survivors
+            ]
+            expected_indices = list(
+                range(survivor_indices[0], survivor_indices[-1] + 1)
+            )
+            survivor_locations = [
+                candidate_locations[occurrence_id]
+                for occurrence_id in survivors
+            ]
+            same_candidate_stage = len(
+                {stage_id for stage_id, _index in survivor_locations}
+            ) == 1
+            candidate_positions = [index for _stage_id, index in survivor_locations]
+            consecutive_candidate_positions = candidate_positions == list(
+                range(candidate_positions[0], candidate_positions[-1] + 1)
+            )
+            exact_slice = any(
+                span[1] == tuple(survivors) for span in candidate_spans
+            )
+            if (
+                survivor_indices != expected_indices
+                or not same_candidate_stage
+                or not consecutive_candidate_positions
+                or not exact_slice
+                or not all(
+                    retained_row_is_unchanged(occurrence_id)
+                    for occurrence_id in survivors
+                )
+            ):
+                raise _draft_error(
+                    "declared Sequence source has no exact ordered Product "
+                    f"occurrence slice: {source_action_id}/{sequence_index}; "
+                    "retained stable occurrence IDs must be one unchanged "
+                    "contiguous baseline slice",
+                    operation_ordinal=operation_ordinal,
+                    pattern_id=pattern_id,
+                    field="animation.occurrences",
+                    error_code="SOURCE_PROVENANCE_MISMATCH",
+                )
+        if not removed_sources:
+            continue
+        patched["presentationSources"] = [
+            source
+            for source in patched_sources
+            if not (
+                isinstance(source, dict)
+                and (
+                    source.get("sourceActionId"),
+                    source.get("sequenceIndex"),
+                    source.get("role"),
+                )
+                in removed_sources
+            )
+        ]
+        remaining_source_action_ids = {
+            source.get("sourceActionId")
+            for source in patched["presentationSources"]
+            if isinstance(source, dict)
+        }
+        removed_source_action_ids = {
+            source_action_id
+            for source_action_id, _sequence_index, _role in removed_sources
+        }
+        patched["sourceActionIds"] = [
+            source_action_id
+            for source_action_id in patched["sourceActionIds"]
+            if source_action_id not in removed_source_action_ids
+            or source_action_id in remaining_source_action_ids
+        ]
+
+
 def apply_draft_patch(
     master: dict[str, Any],
     boss_profiles: dict[str, Any],
@@ -7824,6 +8439,10 @@ def apply_draft_patch(
     boss_by_id = unique_index(patched_bosses["bosses"], "archetypeId", "BossProfiles bosses")
     damage_by_id = unique_index(patched_damage["profiles"], "damageProfileId", "DamageProfiles profiles")
     touched: set[tuple[Any, ...]] = set()
+    added_sequence_source_clips: dict[
+        str, list[tuple[int, int, list[str]]]
+    ] = {}
+    edited_manual_animation_ordinals: dict[str, int] = {}
 
     for ordinal, operation in enumerate(operations):
         if not isinstance(operation, dict):
@@ -7842,7 +8461,67 @@ def apply_draft_patch(
         except PipelineError as exc:
             raise _draft_error(str(exc), operation_ordinal=ordinal) from exc
 
-        if kind in ("SET_PATTERN_WEIGHT", "SET_PATTERN_ENABLED"):
+        if kind == "SET_SCRIPTED_SEQUENCE":
+            current_sequence = patched_master["decisionModel"].get(
+                "scriptedSequence"
+            )
+            if not isinstance(current_sequence, dict):
+                raise _draft_error(
+                    "canonical scriptedSequence is unavailable",
+                    operation_ordinal=ordinal,
+                    field="sequenceId",
+                    error_code="STABLE_ID_NOT_FOUND",
+                )
+            sequence_id = stable_id(
+                operation["sequenceId"],
+                f"operations[{ordinal}].sequenceId",
+            )
+            if sequence_id != current_sequence.get("sequenceId"):
+                raise _draft_error(
+                    "scriptedSequence stable identity cannot be changed",
+                    operation_ordinal=ordinal,
+                    field="sequenceId",
+                    error_code="FIELD_NOT_ALLOWED",
+                )
+            mode = operation["mode"]
+            if mode != current_sequence.get("mode") or mode != SCRIPTED_SEQUENCE_MODE:
+                raise _draft_error(
+                    "scriptedSequence mode cannot be changed",
+                    operation_ordinal=ordinal,
+                    field="mode",
+                    error_code="FIELD_NOT_ALLOWED",
+                )
+            candidate_sequence = {
+                "sequenceId": sequence_id,
+                "mode": mode,
+                "interStepPursuitMs": integer(
+                    operation["interStepPursuitMs"],
+                    f"operations[{ordinal}].interStepPursuitMs",
+                    100,
+                    10000,
+                ),
+                "patternIds": copy.deepcopy(operation["patternIds"]),
+            }
+            try:
+                _validate_scripted_sequence(
+                    {"scriptedSequence": candidate_sequence},
+                    unique_index(
+                        patched_master["patterns"],
+                        "patternId",
+                        "canonical patterns",
+                    ),
+                )
+            except PipelineError as exc:
+                raise _draft_error(
+                    str(exc),
+                    operation_ordinal=ordinal,
+                    field="patternIds",
+                ) from exc
+            patched_master["decisionModel"]["scriptedSequence"] = (
+                candidate_sequence
+            )
+            target = (kind,)
+        elif kind in ("SET_PATTERN_WEIGHT", "SET_PATTERN_ENABLED"):
             set_id = stable_id(operation["selectionSetId"], f"operations[{ordinal}].selectionSetId")
             pattern_id = stable_id(operation["patternId"], f"operations[{ordinal}].patternId")
             target = (kind, set_id, pattern_id)
@@ -7936,6 +8615,211 @@ def apply_draft_patch(
                 )
             pattern["eligibility"]["minimumRangeM"] = minimum
             pattern["eligibility"]["maximumRangeM"] = maximum
+        elif kind == "SET_PATTERN_DISPLAY_NAME":
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            display_name = operation["displayName"]
+            if not isinstance(display_name, str) or not display_name.strip():
+                raise _draft_error(
+                    "Pattern displayName must be a non-empty string",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    field="displayName",
+                    error_code="FIELD_VALUE_INVALID",
+                )
+            if display_name != display_name.strip():
+                raise _draft_error(
+                    "Pattern displayName must not have leading or trailing whitespace",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    field="displayName",
+                    error_code="FIELD_VALUE_INVALID",
+                )
+            target = (kind, pattern["patternId"])
+            pattern["displayName"] = display_name
+        elif kind == "SET_STAGE_BRANCH":
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            stage = _draft_stage(pattern, operation["stageId"], ordinal)
+            outcome = stable_id(
+                operation["outcome"], f"operations[{ordinal}].outcome"
+            )
+            next_action_id = operation["nextActionId"]
+            if next_action_id is not None:
+                next_action_id = stable_id(
+                    next_action_id, f"operations[{ordinal}].nextActionId"
+                )
+            matching = [
+                branch
+                for branch in stage.get("branches", [])
+                if isinstance(branch, dict) and branch.get("outcome") == outcome
+            ]
+            if len(matching) != 1:
+                raise _draft_error(
+                    "Stage branch outcome does not resolve exactly once",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="outcome",
+                    error_code="STABLE_ID_NOT_FOUND",
+                )
+            matching[0]["nextActionId"] = next_action_id
+            target = (kind, pattern["patternId"], stage["stageId"], outcome)
+        elif kind == "REMOVE_PATTERN_REACTION":
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            trigger_kind = stable_id(
+                operation["triggerKind"],
+                f"operations[{ordinal}].triggerKind",
+            )
+            stage_id = stable_id(
+                operation["stageId"], f"operations[{ordinal}].stageId"
+            )
+            matching = [
+                reaction
+                for reaction in pattern.get("reactions", [])
+                if isinstance(reaction, dict)
+                and reaction.get("triggerKind") == trigger_kind
+                and reaction.get("stageId") == stage_id
+            ]
+            if len(matching) != 1:
+                raise _draft_error(
+                    "Pattern reaction identity does not resolve exactly once",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage_id,
+                    field="triggerKind",
+                    error_code="STABLE_ID_NOT_FOUND",
+                )
+            pattern["reactions"].remove(matching[0])
+            target = (kind, pattern["patternId"], trigger_kind, stage_id)
+        elif kind == "REMOVE_PATTERN_STAGE":
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            stage = _draft_stage(pattern, operation["stageId"], ordinal)
+            expected_action_id = stable_id(
+                operation["actionId"], f"operations[{ordinal}].actionId"
+            )
+            if stage.get("actionId") != expected_action_id:
+                raise _draft_error(
+                    "Stage action identity changed before removal",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="actionId",
+                    error_code="STABLE_ID_NOT_FOUND",
+                )
+            if len(pattern["stages"]) <= 1:
+                raise _draft_error(
+                    "Pattern must retain at least one Stage",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="stageId",
+                    error_code="LAST_STAGE_REMOVAL_FORBIDDEN",
+                )
+            if pattern.get("entryActionId") == expected_action_id:
+                raise _draft_error(
+                    "Pattern entry Stage cannot be removed",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="stageId",
+                    error_code="STAGE_REFERENCE_DANGLING",
+                )
+            incoming_default = any(
+                owner is not stage
+                and owner.get("defaultNextActionId") == expected_action_id
+                for owner in pattern["stages"]
+            )
+            incoming_branch = any(
+                owner is not stage
+                and any(
+                    isinstance(branch, dict)
+                    and branch.get("nextActionId") == expected_action_id
+                    for branch in owner.get("branches", [])
+                )
+                for owner in pattern["stages"]
+            )
+            identities = {stage["stageId"], expected_action_id}
+            referenced_by_pattern = any(
+                _contains_manual_stage_identity(pattern.get(field), identities)
+                for field in ("serverMotion", "reactions", "finale")
+            )
+            referenced_by_counter_layer = any(
+                isinstance(layer, dict)
+                and layer.get("ownerPatternId") == pattern["patternId"]
+                and _contains_manual_stage_identity(layer, identities)
+                for layer in patched_master.get("counterReactionLayers", [])
+            )
+            if (
+                incoming_default
+                or incoming_branch
+                or referenced_by_pattern
+                or referenced_by_counter_layer
+            ):
+                raise _draft_error(
+                    "remove every incoming topology or reaction reference before removing the Stage",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    stage_id=stage["stageId"],
+                    field="stageId",
+                    error_code="STAGE_REFERENCE_DANGLING",
+                )
+            pattern["stages"].remove(stage)
+            target = (kind, pattern["patternId"], stage["stageId"])
+        elif kind == "REMOVE_PATTERN_SEQUENCE_SOURCE":
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            source_action_id = integer(
+                operation["sourceActionId"],
+                f"operations[{ordinal}].sourceActionId",
+                1,
+            )
+            sequence_index = integer(
+                operation["sequenceIndex"],
+                f"operations[{ordinal}].sequenceIndex",
+                0,
+                4096,
+            )
+            role = stable_id(operation["role"], f"operations[{ordinal}].role")
+            matching = [
+                source
+                for source in pattern.get("presentationSources", [])
+                if isinstance(source, dict)
+                and source.get("sourceActionId") == source_action_id
+                and source.get("sequenceIndex") == sequence_index
+                and source.get("role") == role
+            ]
+            if len(matching) != 1:
+                raise _draft_error(
+                    "Sequence provenance tuple does not resolve exactly once",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    field="sourceActionId",
+                    error_code="STABLE_ID_NOT_FOUND",
+                )
+            if role == "PRIMARY":
+                raise _draft_error(
+                    "PRIMARY Sequence provenance cannot be removed",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    field="role",
+                    error_code="FIELD_NOT_ALLOWED",
+                )
+            pattern["presentationSources"].remove(matching[0])
+            if not any(
+                source.get("sourceActionId") == source_action_id
+                for source in pattern["presentationSources"]
+                if isinstance(source, dict)
+            ):
+                pattern["sourceActionIds"] = [
+                    candidate
+                    for candidate in pattern["sourceActionIds"]
+                    if candidate != source_action_id
+                ]
+            target = (
+                kind,
+                pattern["patternId"],
+                source_action_id,
+                sequence_index,
+                role,
+            )
         elif kind == "INSERT_MANUAL_STAGE_AFTER":
             pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
             _require_manual_linear_stage_topology(patched_master, pattern, ordinal)
@@ -8181,13 +9065,97 @@ def apply_draft_patch(
             pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
             stage = _draft_stage(pattern, operation["stageId"], ordinal)
             target = (kind, pattern["patternId"], stage["stageId"])
-            stage["durationMs"] = integer(
+            stage_duration_ms = integer(
                 operation["durationMs"], f"operations[{ordinal}].durationMs", 1, 600000
             )
+            stage["durationMs"] = stage_duration_ms
+            # Bind and Silence ENTER rows are a derived whole-Stage status
+            # window.  SET_STAGE_DURATION is the only authored clock mutation;
+            # keep those dependent durations in the same atomic operation so a
+            # valid Stage draft cannot be rejected later by the joined-source
+            # validator.  EXIT rows remain the explicit zero-duration clear.
+            for event in stage.get("events", []):
+                if (
+                    event.get("trigger") == "ENTER"
+                    and event.get("kind")
+                    in ("SET_PLAYER_BIND", "SET_PLAYER_SILENCE")
+                ):
+                    event["durationMs"] = stage_duration_ms
             if _is_manual_server_audition(
                 patched_master, pattern["patternId"]
             ):
                 _mark_manual_stage_clock_delta(stage)
+        elif kind == "ADD_PATTERN_SEQUENCE_SOURCE":
+            pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
+            source_action_id = integer(
+                operation["sourceActionId"],
+                f"operations[{ordinal}].sourceActionId",
+                1,
+                2**32 - 1,
+            )
+            sequence_index = integer(
+                operation["sequenceIndex"],
+                f"operations[{ordinal}].sequenceIndex",
+                0,
+                4096,
+            )
+            role = stable_id(
+                operation["role"], f"operations[{ordinal}].role"
+            )
+            expected_role = f"REFERENCE_{source_action_id}_{sequence_index}"
+            if role != expected_role:
+                raise _draft_error(
+                    "Appended Sequence provenance role must be the deterministic "
+                    f"exact-tuple role {expected_role}",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    field="role",
+                    error_code="FIELD_NOT_ALLOWED",
+                )
+            if any(
+                source["sourceActionId"] == source_action_id
+                and source["sequenceIndex"] == sequence_index
+                for source in pattern["presentationSources"]
+            ):
+                raise _draft_error(
+                    "Sequence provenance tuple is already declared",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    field="sourceActionId",
+                    error_code="DUPLICATE_TARGET",
+                )
+            if any(
+                source["role"] == role
+                for source in pattern["presentationSources"]
+            ):
+                raise _draft_error(
+                    "Sequence provenance role is already declared",
+                    operation_ordinal=ordinal,
+                    pattern_id=pattern["patternId"],
+                    field="role",
+                    error_code="DUPLICATE_TARGET",
+                )
+            clips = _load_exact_valtan_source_sequence_clips(
+                repository_root, source_action_id, sequence_index, ordinal
+            )
+            if source_action_id not in pattern["sourceActionIds"]:
+                pattern["sourceActionIds"].append(source_action_id)
+            pattern["presentationSources"].append(
+                {
+                    "sourceActionId": source_action_id,
+                    "sequenceIndex": sequence_index,
+                    "role": role,
+                }
+            )
+            added_sequence_source_clips.setdefault(
+                pattern["patternId"], []
+            ).append((source_action_id, sequence_index, clips))
+            target = (
+                kind,
+                pattern["patternId"],
+                source_action_id,
+                sequence_index,
+            )
         elif kind == "SET_STAGE_ANIMATION":
             pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
             stage = _draft_stage(pattern, operation["stageId"], ordinal)
@@ -8248,6 +9216,7 @@ def apply_draft_patch(
                 patched_master, pattern["patternId"]
             ):
                 _mark_manual_stage_clock_delta(stage)
+                edited_manual_animation_ordinals[pattern["patternId"]] = ordinal
         elif kind == "SET_STAGE_HIT":
             pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
             stage = _draft_stage(pattern, operation["stageId"], ordinal)
@@ -8928,6 +9897,138 @@ def apply_draft_patch(
         touched.add(target)
 
     try:
+        _prune_removed_manual_sequence_provenance(
+            master,
+            patched_master,
+            repository_root,
+            edited_manual_animation_ordinals,
+        )
+        if added_sequence_source_clips:
+            original_patterns = {
+                pattern["patternId"]: pattern for pattern in master["patterns"]
+            }
+            patched_patterns = {
+                pattern["patternId"]: pattern
+                for pattern in patched_master["patterns"]
+            }
+            for pattern_id, admitted_sources in added_sequence_source_clips.items():
+                original_stages = {
+                    stage["stageId"]: stage
+                    for stage in original_patterns[pattern_id]["stages"]
+                }
+                changed_positions: set[tuple[str, int]] = set()
+                candidate_rows: dict[str, list[dict[str, Any]]] = {}
+                for candidate_stage in patched_patterns[pattern_id]["stages"]:
+                    stage_id = candidate_stage["stageId"]
+                    rows = candidate_stage["animation"].get("occurrences", [])
+                    candidate_rows[stage_id] = rows
+                    original_rows = original_stages.get(stage_id, {}).get(
+                        "animation", {}
+                    ).get("occurrences", [])
+                    original_by_id = {
+                        row["clipOccurrenceId"]: row for row in original_rows
+                    }
+                    candidate_ids = {
+                        row["clipOccurrenceId"] for row in rows
+                    }
+                    original_survivor_order = [
+                        row["clipOccurrenceId"]
+                        for row in original_rows
+                        if row["clipOccurrenceId"] in candidate_ids
+                    ]
+                    candidate_existing_order = [
+                        row["clipOccurrenceId"]
+                        for row in rows
+                        if row["clipOccurrenceId"] in original_by_id
+                    ]
+                    reordered_ids = (
+                        set(candidate_existing_order)
+                        if candidate_existing_order != original_survivor_order
+                        else set()
+                    )
+                    for index, row in enumerate(rows):
+                        occurrence_id = row["clipOccurrenceId"]
+                        if (
+                            original_by_id.get(occurrence_id) != row
+                            or occurrence_id in reordered_ids
+                        ):
+                            changed_positions.add((stage_id, index))
+
+                position_rank = {
+                    (stage_id, index): rank
+                    for rank, (stage_id, index) in enumerate(
+                        (stage_id, index)
+                        for stage_id, rows in candidate_rows.items()
+                        for index in range(len(rows))
+                    )
+                }
+                candidate_spans: list[list[frozenset[tuple[str, int]]]] = [
+                    [] for _ in admitted_sources
+                ]
+                for stage_id, rows in candidate_rows.items():
+                    clips = [row["clip"] for row in rows]
+                    for offset in range(len(clips)):
+                        for source_index, (_, _, source_clips) in enumerate(
+                            admitted_sources
+                        ):
+                            for end in _sequence_source_slice_match_ends(
+                                clips, offset, source_clips
+                            ):
+                                span = frozenset(
+                                    (stage_id, index)
+                                    for index in range(offset, end)
+                                )
+                                if not span.intersection(changed_positions):
+                                    continue
+                                if span not in candidate_spans[source_index]:
+                                    candidate_spans[source_index].append(span)
+
+                def has_ordered_non_overlapping_cover(
+                    source_index: int,
+                    covered: frozenset[tuple[str, int]],
+                    prior_last_rank: int,
+                ) -> bool:
+                    if source_index == len(candidate_spans):
+                        return changed_positions.issubset(covered)
+                    for span in candidate_spans[source_index]:
+                        if span.intersection(covered):
+                            continue
+                        ranks = sorted(position_rank[position] for position in span)
+                        if ranks[0] <= prior_last_rank:
+                            continue
+                        if has_ordered_non_overlapping_cover(
+                            source_index + 1,
+                            covered.union(span),
+                            ranks[-1],
+                        ):
+                            return True
+                    return False
+
+                if (
+                    not changed_positions
+                    or not has_ordered_non_overlapping_cover(
+                        0,
+                        frozenset(),
+                        -1,
+                    )
+                ):
+                    changed_clips = [
+                        candidate_rows[stage_id][index]["clip"]
+                        for stage_id, index in sorted(changed_positions)
+                    ]
+                    declared = ", ".join(
+                        f"{action_id}/{sequence_index}"
+                        for action_id, sequence_index, _ in admitted_sources
+                    )
+                    raise _draft_error(
+                        "New or replaced Animation occurrences must be an exact "
+                        "ordered concatenation of the Sequence provenance added "
+                        "in the same transaction (including duplicate clips): "
+                        f"{pattern_id}; declared={declared}; changed={changed_clips}",
+                        pattern_id=pattern_id,
+                        field="animation.occurrences",
+                        error_code="SOURCE_PROVENANCE_MISMATCH",
+                    )
         # Draft patches are also exercised against the frozen v1 migration
         # fixture.  That fixture intentionally has no current scripted sequence
         # and owns only MIGRATION_MANAGED_CUE_IDS; validating it as the live
@@ -9665,17 +10766,13 @@ def validate_candidate_revision_manifest(stage: Path, manifest: dict[str, Any]) 
     authoring_gameplay_path = stage / "Authoring/Valtan.gameplay.json"
     if authoring_gameplay_path.is_file():
         authoring_gameplay = read_json(authoring_gameplay_path)
-        sequence = authoring_gameplay.get("decisionModel", {}).get("scriptedSequence")
-        if isinstance(sequence, dict) and "flowId" in sequence:
-            if SAVED_FLOW_REL not in artifact_by_path:
-                raise PipelineError("candidate Flow reference has no immutable Flow artifact")
-            resolved_gameplay = resolve_gameplay_flow_reference(
-                authoring_gameplay, read_saved_flow_document(stage)
+        validate_gameplay_authoring(authoring_gameplay)
+        if read_json(stage / ROTATIONS_REL).get("scriptedSequence") != (
+            authoring_gameplay["decisionModel"]["scriptedSequence"]
+        ):
+            raise PipelineError(
+                "candidate canonical scriptedSequence does not match its generated Product"
             )
-            if read_json(stage / ROTATIONS_REL).get("scriptedSequence") != (
-                resolved_gameplay["decisionModel"]["scriptedSequence"]
-            ):
-                raise PipelineError("candidate saved Flow order does not match its Product sequence")
     for row in compatibility["artifacts"]:
         artifact = artifact_by_path.get(row["path"])
         if (
@@ -9980,15 +11077,10 @@ def _validate_authoring_artifact(directory: Path, revision_id: str) -> dict[str,
         ):
             raise PipelineError("recovery authoring artifact hash/path mismatch")
         paths.add(relative)
-    expected_paths = set(
-        AUTHORING_ARTIFACTS if SAVED_FLOW_REL in paths else LEGACY_AUTHORING_ARTIFACTS
-    )
+    expected_paths = set(AUTHORING_ARTIFACTS)
     if paths != expected_paths or _manifest_hash(artifacts) != manifest["artifactSetId"]:
         raise PipelineError("recovery authoring artifact set mismatch")
-    resolve_gameplay_flow_reference(
-        read_json(directory / GAMEPLAY_AUTHORING_REL),
-        read_saved_flow_document(directory) if SAVED_FLOW_REL in paths else None,
-    )
+    validate_gameplay_authoring(read_json(directory / GAMEPLAY_AUTHORING_REL))
     expected_revision = sha256_bytes(
         (
             manifest["repositorySourceRevision"]
@@ -10400,10 +11492,7 @@ def load_authoring_revision(
         ):
             raise PipelineError(f"saved authoring artifact hash/size mismatch: {relative}")
         actual_paths.append(relative)
-    expected_paths = (
-        AUTHORING_ARTIFACTS if SAVED_FLOW_REL in actual_paths else LEGACY_AUTHORING_ARTIFACTS
-    )
-    if tuple(sorted(actual_paths)) != tuple(sorted(expected_paths)):
+    if tuple(sorted(actual_paths)) != tuple(sorted(AUTHORING_ARTIFACTS)):
         raise PipelineError("saved authoring artifact set is incomplete")
     if _manifest_hash(artifacts) != manifest["artifactSetId"]:
         raise PipelineError("saved authoring artifact-set hash mismatch")
@@ -10428,7 +11517,6 @@ def load_authoring_revision(
         revision_presentation,
         read_json(revision_root / WORLD_SET_REL),
         read_json(revision_root / COMBAT_AUTHORING_REL),
-        read_saved_flow_document(revision_root) if SAVED_FLOW_REL in actual_paths else None,
     )
     bosses = read_json(revision_root / BOSS_PROFILES_REL)
     damage = read_json(revision_root / DAMAGE_REL)
@@ -10561,10 +11649,6 @@ def save_authoring(
         stage = authoring_root / (".stage." + transaction_id)
         _assert_transaction_path(authoring_root, stage, "authoring save stage")
         stage.mkdir()
-        gameplay = _restore_gameplay_flow_reference(
-            gameplay, read_json(repo_path(root, GAMEPLAY_AUTHORING_REL)),
-            docs.get(SAVED_FLOW_REL),
-        )
         values = {
             GAMEPLAY_AUTHORING_REL: gameplay,
             PRESENTATION_AUTHORING_REL: presentation,
@@ -10576,9 +11660,6 @@ def save_authoring(
         }
         for relative, value in values.items():
             _write_fsync(stage / relative, json_text(value).encode("utf-8"))
-        saved_flow_text = _snapshot_saved_flow_text(root, current_sources)
-        if saved_flow_text is not None:
-            _write_fsync(stage / SAVED_FLOW_REL, saved_flow_text.encode("utf-8"))
         balance_outputs = project_balance_products(root, bosses, damage)
         _write_fsync(
             stage / PROVENANCE_REL,
@@ -10590,7 +11671,6 @@ def save_authoring(
             read_json(stage / PRESENTATION_AUTHORING_REL),
             read_json(stage / WORLD_SET_REL),
             read_json(stage / COMBAT_AUTHORING_REL),
-            read_saved_flow_document(stage) if saved_flow_text is not None else None,
         )
         validate_balance_documents(
             read_json(stage / BOSS_PROFILES_REL), read_json(stage / DAMAGE_REL)
@@ -10892,10 +11972,6 @@ def _publish_candidate_under_admission(
         stage = candidate_root / (".stage." + transaction_id)
         _assert_transaction_path(candidate_root, stage, "candidate publish stage")
         stage.mkdir()
-        candidate_gameplay = _restore_gameplay_flow_reference(
-            candidate_gameplay, read_json(repo_path(root, GAMEPLAY_AUTHORING_REL)),
-            docs.get(SAVED_FLOW_REL),
-        )
         authoring_outputs = {
             "Authoring/Valtan.gameplay.json": json_text(candidate_gameplay),
             "Authoring/Valtan.presentation.json": json_text(candidate_presentation),
@@ -10903,9 +11979,6 @@ def _publish_candidate_under_admission(
             "Authoring/Valtan.worldeventsets.json": json_text(docs[WORLD_SET_REL]),
             "Authoring/Valtan.legacy-compatibility.json": json_text(docs[LEGACY_REL]),
         }
-        saved_flow_text = _snapshot_saved_flow_text(root, current_sources)
-        if saved_flow_text is not None:
-            authoring_outputs[SAVED_FLOW_REL] = saved_flow_text
         if draft_patch is not None:
             authoring_outputs["Authoring/Valtan.tuning-draft-patch.json"] = json_text(draft_patch)
         for relative, text in {**authoring_outputs, **outputs}.items():
@@ -11164,76 +12237,6 @@ def _publish_candidate_under_admission(
         lock_path.unlink(missing_ok=True)
 
 
-def _require_saved_flow_revision(root: Path, expected_revision: str) -> None:
-    if not isinstance(expected_revision, str) or re.fullmatch(r"[0-9a-f]{64}", expected_revision) is None:
-        raise PipelineError("expectedFlowRevision must be a lowercase SHA-256")
-    if sha256_file(repo_path(root, SAVED_FLOW_REL)) != expected_revision:
-        raise PipelineError("saved Flow revision changed; reload the saved Flow before publishing")
-
-
-def publish_saved_flow(
-    root: Path,
-    candidate_root: Path,
-    expected_flow_revision: str,
-    *,
-    fail_at: str | None = None,
-) -> dict[str, Any]:
-    """Project the saved canonical Flow, then build an inactive immutable candidate."""
-
-    _require_saved_flow_revision(root, expected_flow_revision)
-    source_gameplay = read_json(repo_path(root, GAMEPLAY_AUTHORING_REL))
-    sequence = source_gameplay.get("decisionModel", {}).get("scriptedSequence")
-    if not isinstance(sequence, dict) or sequence.get("flowId") != DEFAULT_SAVED_FLOW_ID:
-        raise PipelineError("Product scriptedSequence does not reference the saved default Flow")
-    # Validate the reference, inventory, and full joined source before a Product
-    # publisher may replace any generated document. Saved Balance overlays are
-    # intentionally neither selected nor discarded by this Flow-only command.
-    source_manifest(root)
-    command = [
-        _powershell_executable(), "-NoProfile", "-ExecutionPolicy", "Bypass",
-        "-File", str(repo_path(root, "Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1")),
-        "-Mode", "PublishV2", "-RepositoryRoot", str(root),
-        "-ExpectedFlowRevision", expected_flow_revision,
-    ]
-    # The editor owns this asynchronous process and reports long-running work
-    # as unconfirmed. subprocess.run(timeout=...) would kill the inner Product
-    # publisher before its durable commit/rollback can finish.
-    try:
-        completed = subprocess.run(
-            command, cwd=root, capture_output=True, text=True,
-            encoding="utf-8", errors="replace", check=False,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        )
-    except OSError as exc:
-        raise PipelineError(f"saved Flow Product publisher did not complete: {exc}") from exc
-    if completed.returncode != 0:
-        detail = (completed.stderr or completed.stdout).strip()[-4000:]
-        raise PipelineError("saved Flow Product publication failed" + (f": {detail}" if detail else ""))
-    _require_saved_flow_revision(root, expected_flow_revision)
-    current_sources = source_manifest(root)
-    pointer = publish_candidate(
-        root, candidate_root, expected_source_manifest=current_sources, fail_at=fail_at
-    )
-    _require_saved_flow_revision(root, expected_flow_revision)
-    manifest = _validate_transaction_artifact(
-        staging_root(root, candidate_root, "CandidateRoot") / "revisions" / pointer["revisionId"],
-        pointer["revisionId"], "candidate",
-    )
-    flow_artifact = next(
-        (row for row in manifest["artifacts"] if row["path"] == SAVED_FLOW_REL), None
-    )
-    if flow_artifact is None or flow_artifact["sha256"] != expected_flow_revision:
-        raise PipelineError("published candidate does not contain the requested saved Flow revision")
-    return {
-        "sourceRevision": current_sources["sourceManifestId"],
-        "candidateRevision": pointer["revisionId"],
-        "flowRevision": expected_flow_revision,
-        "applyClass": manifest["applyClass"],
-        "splitJoinValidated": True,
-        "pointer": pointer,
-    }
-
-
 def emit_bootstrap_patch(root: Path) -> str:
     docs = load_pipeline_documents(
         root,
@@ -11454,6 +12457,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     canonical_parser.add_argument("--pattern-sound-candidate", type=Path)
     canonical_parser.add_argument("--effect-v2-baseline", type=Path)
     canonical_parser.add_argument("--effect-v2-candidate", type=Path)
+    canonical_parser.add_argument("--effect-v2-read-set", type=Path)
     canonical_parser.add_argument("--lock-timeout-seconds", type=float, default=0.0)
     canonical_parser.add_argument(
         "--inject-failure-after", type=int, default=None, help=argparse.SUPPRESS
@@ -11488,17 +12492,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             "after_journal_unlink",
         ),
     )
-    flow_publish_parser = subparsers.add_parser("publish-saved-flow")
-    flow_publish_parser.add_argument("--candidate-root", type=Path, required=True)
-    flow_publish_parser.add_argument("--expected-flow-revision", required=True)
-    flow_publish_parser.add_argument(
-        "--fail-at",
-        choices=("after_stage", "after_validate", "after_revision_manifest", "before_promote", "after_promote", "before_pointer", "after_pointer"),
-    )
     args = parser.parse_args(argv)
     root = args.repository_root.resolve()
     command_name = args.command.replace("-", "_").upper()
     source_revision: str | None = None
+    promotion_busy_error_type: type[BaseException] | None = None
     try:
         if args.command == "emit-bootstrap-patch":
             sys.stdout.write(emit_bootstrap_patch(root))
@@ -11506,14 +12504,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         source_manifest_payload: dict[str, Any] | None = None
         if args.command == "source-manifest":
+            source_authoring_root = args.authoring_root
+            if not source_authoring_root.is_absolute():
+                source_authoring_root = root / source_authoring_root
             if args.repository_only:
                 current_sources = source_manifest(root)
                 source_manifest_payload = {**current_sources, "authoringRevision": None}
                 source_revision = current_sources["sourceManifestId"]
             else:
-                source_authoring_root = args.authoring_root
-                if not source_authoring_root.is_absolute():
-                    source_authoring_root = root / source_authoring_root
                 current_sources, source_manifest_payload, source_revision = (
                     source_manifest_with_authoring(root, source_authoring_root)
                 )
@@ -11607,7 +12605,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.command == "commit-canonical-draft":
             # Import lazily so the shared Create/Publish writer transaction can
             # reuse this module's strict join/projector without an import cycle.
-            from promote_valtan_animation_chains import commit_typed_authoring_patch
+            from promote_valtan_animation_chains import (
+                CanonicalTransactionBusyError as PromotionBusyError,
+                commit_typed_authoring_patch,
+            )
+
+            promotion_busy_error_type = PromotionBusyError
 
             committed = commit_typed_authoring_patch(
                 root,
@@ -11617,6 +12620,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 pattern_sound_candidate_path=args.pattern_sound_candidate,
                 effect_v2_baseline_path=args.effect_v2_baseline,
                 effect_v2_candidate_path=args.effect_v2_candidate,
+                effect_v2_read_set_path=args.effect_v2_read_set,
                 lock_timeout_seconds=args.lock_timeout_seconds,
                 inject_failure_after=args.inject_failure_after,
             )
@@ -11638,13 +12642,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             if source_manifest_payload is None:
                 raise PipelineError("source manifest payload was not initialized")
             payload = source_manifest_payload
-        elif args.command == "publish-saved-flow":
-            published = publish_saved_flow(
-                root, args.candidate_root, args.expected_flow_revision, fail_at=args.fail_at
-            )
-            source_revision = published.pop("sourceRevision")
-            candidate_revision = published.pop("candidateRevision")
-            payload = published
         elif args.command == "publish-candidate":
             expected = read_json(args.expected_source_manifest) if args.expected_source_manifest else None
             draft_patch = read_json(args.draft_patch.resolve()) if args.draft_patch else None
@@ -11697,7 +12694,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 0
     except Exception as exc:
-        error = exc if isinstance(exc, PipelineError) else PipelineError(str(exc))
+        if isinstance(exc, PipelineError):
+            error = exc
+        elif promotion_busy_error_type is not None and isinstance(
+            exc, promotion_busy_error_type
+        ):
+            error = CanonicalTransactionBusyError(
+                str(exc),
+                getattr(exc, "lock_owner", None),
+            )
+        else:
+            error = PipelineError(str(exc))
         if source_revision is None:
             try:
                 source_revision = source_manifest(root)["sourceManifestId"]

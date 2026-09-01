@@ -1,11 +1,10 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('Validate', 'Publish', 'ValidateV2', 'PublishV2', 'MigrateV2Preview')]
+    [ValidateSet('Validate', 'Publish', 'PublishV2', 'MigrateV2Preview')]
     [string]$Mode = 'Validate',
     [string]$MasterPath = 'Data/Valtan/Valtan.pattern.json',
     [string]$ReceiptPath = '',
     [string]$V2OutputPath = '',
-    [string]$ExpectedFlowRevision = '',
     [switch]$SkipProductDriftCheck,
     [switch]$WriterLockAlreadyHeld,
     [string]$WriterLockOwnerNonce = '',
@@ -42,13 +41,13 @@ if (-not $WriterLockAlreadyHeld -and
     -not [string]::IsNullOrWhiteSpace($WriterLockOwnerNonce)) {
     throw 'WriterLockOwnerNonce requires WriterLockAlreadyHeld.'
 }
-if ($Mode -in @('Validate', 'ValidateV2', 'MigrateV2Preview')) {
+if ($Mode -in @('Validate', 'MigrateV2Preview')) {
     $pipeline = Join-Path $PSScriptRoot 'valtan_tuning_pipeline.py'
     if (-not [IO.File]::Exists($pipeline)) {
         throw "Missing Valtan v2 tuning pipeline: $pipeline"
     }
     $command = @($pipeline, '--repository-root', $repoRoot)
-    if ($Mode -in @('Validate', 'ValidateV2')) {
+    if ($Mode -eq 'Validate') {
         $command += 'validate'
     }
     else {
@@ -540,31 +539,6 @@ function Commit-StagedDocuments([object[]]$Entries) {
     }
 }
 
-function Get-Sha256Hex([string]$Path) {
-    $stream = [IO.File]::OpenRead($Path)
-    $sha256 = [Security.Cryptography.SHA256]::Create()
-    try {
-        $hash = $sha256.ComputeHash($stream)
-        return ([BitConverter]::ToString($hash) -replace '-', '')
-    }
-    finally {
-        $sha256.Dispose()
-        $stream.Dispose()
-    }
-}
-
-function Assert-ExpectedSavedFlowRevision {
-    if ([string]::IsNullOrWhiteSpace($ExpectedFlowRevision)) { return }
-    if ($ExpectedFlowRevision -cnotmatch '^[0-9a-f]{64}$') {
-        throw 'ExpectedFlowRevision must be a lowercase SHA-256.'
-    }
-    $flowPath = Join-Path $repoRoot 'Data\Encounters\Valtan\ValtanBossAuditionFlows.json'
-    if (-not [IO.File]::Exists($flowPath) -or
-        (Get-Sha256Hex $flowPath).ToLowerInvariant() -cne $ExpectedFlowRevision) {
-        throw 'Saved Flow revision changed before Product publication.'
-    }
-}
-
 if ($Mode -eq 'PublishV2') {
     $pipeline = Join-Path $PSScriptRoot 'valtan_tuning_pipeline.py'
     if (-not [IO.File]::Exists($pipeline)) {
@@ -601,8 +575,6 @@ if ($Mode -eq 'PublishV2') {
                 throw 'Timed out waiting for the Valtan split Product publisher.'
             }
         }
-        Assert-ExpectedSavedFlowRevision
-
         $projectCommand = @($pipeline, '--repository-root', $repoRoot,
             'project-products', '--output-root', $projectionRoot)
         $projectText = (& python @projectCommand | Out-String).Trim()
@@ -645,14 +617,11 @@ if ($Mode -eq 'PublishV2') {
                 [string]$projectResult.payload.sourceManifestId) {
             throw 'Valtan sources changed before Product commit.'
         }
-        Assert-ExpectedSavedFlowRevision
-
         $transactionBackend = Join-Path $PSScriptRoot `
             'promote_valtan_animation_chains.py'
         if (-not [IO.File]::Exists($transactionBackend)) {
             throw "Missing shared Valtan Product transaction backend: $transactionBackend"
         }
-        Assert-ExpectedSavedFlowRevision
         $commitCommand = @(
             $transactionBackend,
             '--repo-root', $repoRoot,
@@ -686,7 +655,6 @@ if ($Mode -eq 'PublishV2') {
             [int]$commitResult.changedCount -gt $expectedRelativePaths.Count) {
             throw 'Valtan shared Product commit returned an invalid result.'
         }
-        Assert-ExpectedSavedFlowRevision
         Write-Host ("Valtan split Products committed: changed={0} artifacts={1}" -f `
             [int]$commitResult.changedCount, $expectedRelativePaths.Count)
     }

@@ -20,6 +20,7 @@ namespace
 	constexpr float MILLISECONDS_TO_SECONDS = 0.001f;
 	constexpr std::uint32_t SERVER_TICK_HZ = 30u;
 	constexpr std::uint64_t MILLISECONDS_PER_SECOND = 1000u;
+	constexpr std::uint8_t MAX_PATTERN_FOLLOWUP_DEPTH = 32u;
 	constexpr float PATH_POINT_STOP_DISTANCE = 0.1f;
 	/* The converted Valtan model carries no jump clip, so the leap is a Server
 	transform arc instead of root motion. Both the apex and the landing point
@@ -609,6 +610,35 @@ namespace
 		boss.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
 	}
 
+	void FacePatternTarget(
+		SERVER_WORLD_ENTITY& boss,
+		const BOSS_PATTERN_DEFINITION& pattern,
+		const SERVER_PLAYER& target)
+	{
+		float originX = boss.fPositionX;
+		float originZ = boss.fPositionZ;
+		if (BOSS_PATTERN_MOTION_KIND::LEAP_TO_ANCHOR == pattern.Motion.eKind &&
+			pattern.Motion.bMoveToAnchorBeforeTakeoff)
+		{
+			/* The boss moves toward this anchor during the first takeoff window,
+			   but a center-owned telegraph must not change its pivot while that
+			   movement is still in progress. */
+			originX = pattern.Motion.fLandingX;
+			originZ = pattern.Motion.fLandingZ;
+		}
+		if (!std::isfinite(originX) || !std::isfinite(originZ) ||
+			!std::isfinite(target.fPositionX) ||
+			!std::isfinite(target.fPositionZ))
+		{
+			return;
+		}
+		const float deltaX = target.fPositionX - originX;
+		const float deltaZ = target.fPositionZ - originZ;
+		if (deltaX * deltaX + deltaZ * deltaZ <= 0.000001f)
+			return;
+		boss.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
+	}
+
 	SERVER_PLAYER* SelectDeterministicRandomTarget(
 		std::vector<SERVER_PLAYER*>& candidates,
 		const std::uint32_t patternSequence)
@@ -716,7 +746,7 @@ namespace
 			(BOSS_PATTERN_AIM_POLICY::TRACK_TARGET_EACH_TICK == pattern.eAimPolicy ||
 			 BOSS_PATTERN_AIM_POLICY::LOCK_FACING_ON_START == pattern.eAimPolicy))
 		{
-			FacePoint(boss, selected->fPositionX, selected->fPositionZ);
+			FacePatternTarget(boss, pattern, *selected);
 		}
 	}
 
@@ -740,8 +770,7 @@ namespace
 		if (BOSS_PATTERN_AIM_POLICY::TRACK_TARGET_EACH_TICK ==
 			pattern.eAimPolicy && nullptr != patternTarget)
 		{
-			FacePoint(
-				boss, patternTarget->fPositionX, patternTarget->fPositionZ);
+			FacePatternTarget(boss, pattern, *patternTarget);
 		}
 	}
 
@@ -847,7 +876,14 @@ namespace
 		trace.bIntroPatternConsumed = boss.bIntroPatternConsumed;
 		trace.strRotationId = boss.strRotationId;
 		trace.iRotationStepIndex = boss.iRotationStepIndex;
-		if (!boss.PendingPatternIds.empty())
+		if (boss.PendingPatternFollowup.Is_Pending())
+		{
+			trace.strPendingPatternId =
+				boss.PendingPatternFollowup.strPatternId;
+			trace.ePendingSource =
+				VALTAN_DECISION_SOURCE::FORCED_AUDITION;
+		}
+		else if (!boss.PendingPatternIds.empty())
 		{
 			trace.strPendingPatternId = boss.PendingPatternIds.front();
 			const SERVER_BOSS_MECHANIC_OCCURRENCE* occurrence =
@@ -1103,6 +1139,7 @@ namespace
 	const BOSS_PATTERN_DEFINITION* SelectPattern(
 		SERVER_WORLD_ENTITY& boss,
 		const std::vector<BOSS_PATTERN_DEFINITION>& patterns,
+		const LostArk::Shared::GameplayDataRevision& definitionRevision,
 		const std::string& introPatternId,
 		const BOSS_PATTERN_SEQUENCE_DEFINITION* scriptedSequence,
 		const BOSS_PATTERN_ROTATION_DEFINITION* rotation,
@@ -1111,6 +1148,65 @@ namespace
 		const std::uint32_t serverTick,
 		VALTAN_DECISION_TRACE& trace)
 	{
+		if (boss.PendingPatternFollowup.Is_Pending())
+		{
+			const SERVER_BOSS_PATTERN_FOLLOWUP pending =
+				boss.PendingPatternFollowup;
+			trace.strPendingPatternId = pending.strPatternId;
+			trace.ePendingSource = VALTAN_DECISION_SOURCE::FORCED_AUDITION;
+			const bool ownsExactCompletedSource =
+				pending.PinnedDefinitionRevision.Is_Valid() &&
+				pending.PinnedDefinitionRevision == definitionRevision &&
+				0u != pending.iSourcePatternSequence &&
+				0u != pending.iRootPatternSequence &&
+				pending.iSourcePatternSequence == boss.iPatternSequence &&
+				pending.iSourcePatternSequence ==
+					boss.PatternTerminalReceipt.iPatternSequence &&
+				pending.iRootPatternSequence ==
+					boss.PatternTerminalReceipt.iRootPatternSequence &&
+				SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED ==
+					boss.PatternTerminalReceipt.eResult &&
+				pending.iDepth > 0u &&
+				pending.iDepth <= MAX_PATTERN_FOLLOWUP_DEPTH;
+			const BOSS_PATTERN_DEFINITION* followup =
+				ownsExactCompletedSource ?
+					FindPattern(patterns, pending.strPatternId) : nullptr;
+			const bool validFollowup = nullptr != followup &&
+				BOSS_PATTERN_SELECTION::AUDITION_ONLY == followup->eSelection &&
+				BOSS_PATTERN_TARGET_POLICY::NONE == followup->eTargetPolicy &&
+				BOSS_PATTERN_AIM_POLICY::NONE == followup->eAimPolicy;
+			if (!validFollowup)
+			{
+				boss.PendingPatternFollowup = {};
+				boss.iPatternFollowupDepth = 0u;
+				boss.iPatternFollowupRootSequence = 0u;
+				boss.bMechanicLedgerRequiresReset = true;
+				trace.eSource = VALTAN_DECISION_SOURCE::FORCED_AUDITION;
+				trace.eResult =
+					VALTAN_DECISION_RESULT::MECHANIC_RESET_REQUIRED;
+				VALTAN_DECISION_CANDIDATE_TRACE candidate{};
+				candidate.strPatternId = pending.strPatternId;
+				candidate.iExclusionMask =
+					VALTAN_EXCLUDE_UNRESOLVED_DEFINITION;
+				trace.Candidates.push_back(std::move(candidate));
+				return nullptr;
+			}
+			boss.PendingPatternFollowup = {};
+			boss.iPatternFollowupDepth = pending.iDepth;
+			boss.iPatternFollowupRootSequence =
+				pending.iRootPatternSequence;
+			trace.eSource = VALTAN_DECISION_SOURCE::FORCED_AUDITION;
+			trace.eResult = VALTAN_DECISION_RESULT::SELECTED;
+			trace.strSelectedPatternId = followup->strPatternId;
+			VALTAN_DECISION_CANDIDATE_TRACE candidate{};
+			candidate.strPatternId = followup->strPatternId;
+			candidate.iAuthoredWeight = 1u;
+			candidate.iEffectiveWeight = 1u;
+			candidate.iWeightEndExclusive = 1u;
+			candidate.bSelected = true;
+			trace.Candidates.push_back(std::move(candidate));
+			return followup;
+		}
 		/* An explicit Product sequence is the complete automatic program. It owns
 		the intro slot, may reference normal or health-bar mechanics, and has no
 		weighted fallback after its terminal step. Forced Debug queues and the
@@ -1648,15 +1744,6 @@ namespace
 		/* The target has to be locked before the landing is chosen, because a
 		leap that follows its target lands where that lock put it. */
 		BeginPatternTargetAndAim(boss, pattern, players, nearestTarget);
-		if (pattern.Motion.bMoveToAnchorBeforeTakeoff &&
-			BOSS_PATTERN_AIM_POLICY::LOCK_FACING_ON_START == pattern.eAimPolicy &&
-			boss.bHasPatternTargetLastPosition)
-		{
-			const float deltaX = boss.fPatternTargetLastPositionX - pattern.Motion.fLandingX;
-			const float deltaZ = boss.fPatternTargetLastPositionZ - pattern.Motion.fLandingZ;
-			if (deltaX * deltaX + deltaZ * deltaZ > 0.000001f)
-				boss.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
-		}
 		/* A pattern that owns a compiled landing anchor lands on it, and one that
 		follows its target lands where the lock found it. The authored position is
 		the anchor a targetless leap falls back to, so the arc always has a real
@@ -1763,6 +1850,9 @@ namespace
 		if (!boss.strPatternId.empty())
 		{
 			boss.PatternTerminalReceipt.iPatternSequence = boss.iPatternSequence;
+			boss.PatternTerminalReceipt.iRootPatternSequence =
+				0u == boss.iPatternFollowupDepth ? boss.iPatternSequence :
+				boss.iPatternFollowupRootSequence;
 			boss.PatternTerminalReceipt.eResult = completed ?
 				SERVER_BOSS_PATTERN_TERMINAL_RESULT::COMPLETED :
 				SERVER_BOSS_PATTERN_TERMINAL_RESULT::ABORTED;
@@ -1869,6 +1959,46 @@ namespace
 		const BOSS_PATTERN_STAGE_BRANCH& branch,
 		const std::uint32_t serverTick)
 	{
+		if (!branch.strNextActionId.empty() &&
+			!branch.strNextPatternId.empty())
+		{
+			boss.bMechanicLedgerRequiresReset = true;
+			FinishPattern(
+				boss, serverTick, false,
+				SERVER_BOSS_MECHANIC_FAILURE::INVALID_RUNNING_DEFINITION);
+			return true;
+		}
+		if (!branch.strNextPatternId.empty())
+		{
+			const std::uint32_t nextDepth =
+				static_cast<std::uint32_t>(boss.iPatternFollowupDepth) + 1u;
+			if (boss.PendingPatternFollowup.Is_Pending() ||
+				!boss.PinnedDefinitionRevision.Is_Valid() ||
+				nextDepth > MAX_PATTERN_FOLLOWUP_DEPTH ||
+				0u == boss.iPatternSequence)
+			{
+				boss.bMechanicLedgerRequiresReset = true;
+				FinishPattern(
+					boss, serverTick, false,
+					SERVER_BOSS_MECHANIC_FAILURE::INVALID_RUNNING_DEFINITION);
+				return true;
+			}
+			boss.PendingPatternFollowup.strPatternId =
+				branch.strNextPatternId;
+			boss.PendingPatternFollowup.PinnedDefinitionRevision =
+				boss.PinnedDefinitionRevision;
+			boss.PendingPatternFollowup.iSourcePatternSequence =
+				boss.iPatternSequence;
+			boss.PendingPatternFollowup.iRootPatternSequence =
+				0u == boss.iPatternFollowupDepth ? boss.iPatternSequence :
+				boss.iPatternFollowupRootSequence;
+			boss.PendingPatternFollowup.iDepth =
+				static_cast<std::uint8_t>(nextDepth);
+			/* Finish owns the Product ordered cursor. The successor is selected from
+			this exact receipt next tick and therefore never advances that cursor. */
+			FinishPattern(boss, serverTick, true);
+			return true;
+		}
 		if (branch.strNextActionId.empty())
 		{
 			FinishPattern(boss, serverTick, true);
@@ -2307,11 +2437,17 @@ void LostArk::Server::CValtanBrain::Update(
 		if (!boss.strPatternId.empty())
 		{
 			boss.PatternTerminalReceipt.iPatternSequence = boss.iPatternSequence;
+			boss.PatternTerminalReceipt.iRootPatternSequence =
+				0u == boss.iPatternFollowupDepth ? boss.iPatternSequence :
+				boss.iPatternFollowupRootSequence;
 			boss.PatternTerminalReceipt.eResult =
 				SERVER_BOSS_PATTERN_TERMINAL_RESULT::ABORTED;
 		}
 		boss.iGrabExecutionCommittedPatternSequence = 0u;
 		boss.iGrabExecutionCommittedStageIndex = 0u;
+		boss.PendingPatternFollowup = {};
+		boss.iPatternFollowupDepth = 0u;
+		boss.iPatternFollowupRootSequence = 0u;
 		FailMechanic(
 			boss, boss.strPatternId,
 			SERVER_BOSS_MECHANIC_FAILURE::BOSS_DIED, serverTick);
@@ -2454,6 +2590,9 @@ void LostArk::Server::CValtanBrain::Update(
 	const bool continueTargetlessOwnedGrabPattern =
 		nullptr == target &&
 		CanContinueTargetlessOwnedGrabPattern(boss, players, *patterns);
+	const bool continueTargetlessPatternFollowup = nullptr == target &&
+		(boss.PendingPatternFollowup.Is_Pending() ||
+		 (boss.iPatternFollowupDepth > 0u && !boss.strPatternId.empty()));
 	const bool runningAutomaticSequenceStep =
 		nullptr != automaticSequence && !boss.bScriptedPatternPlayback &&
 		!boss.bAutomaticPatternSequenceAuditionOverride &&
@@ -2500,7 +2639,8 @@ void LostArk::Server::CValtanBrain::Update(
 	const bool continueTargetlessRunningStage =
 		continueTargetlessScheduledArenaStage ||
 		continueTargetlessOwnedGrabPattern ||
-		continueTargetlessOrderedFloorWipe || independentFinaleOrChild;
+		continueTargetlessOrderedFloorWipe || continueTargetlessPatternFollowup ||
+		independentFinaleOrChild;
 	/* The ordered review program deliberately lets FLOOR_WIPE finish its
 	   already-started recovery after killing the last player. FinishPattern then
 	   advances exactly once to the arena-break cursor; with no target the boss
@@ -2564,8 +2704,11 @@ void LostArk::Server::CValtanBrain::Update(
 		trace.fTargetDistance = distance;
 		trace.Candidates.reserve((std::min)(
 			patterns->size(), MAX_DECISION_CANDIDATE_COUNT));
+		const bool selectingPatternFollowup =
+			boss.PendingPatternFollowup.Is_Pending();
 		const BOSS_PATTERN_DEFINITION* selected = SelectPattern(
-			boss, *patterns, catalog.Find_IntroPatternId(boss.strEncounterId),
+			boss, *patterns, catalog.Get_ActiveRevision(),
+			catalog.Find_IntroPatternId(boss.strEncounterId),
 			automaticSequence,
 			catalog.Find_BossPatternRotation(
 				boss.strEncounterId, boss.iPhase, currentHealthBar),
@@ -2646,6 +2789,11 @@ void LostArk::Server::CValtanBrain::Update(
 			!boss.ProductSequencePinnedDefinitionRevision.Is_Valid())
 		{
 			boss.ProductSequencePinnedDefinitionRevision = catalog.Get_ActiveRevision();
+		}
+		if (!selectingPatternFollowup)
+		{
+			boss.iPatternFollowupDepth = 0u;
+			boss.iPatternFollowupRootSequence = 0u;
 		}
 		BeginPattern(
 			boss, *selected, players, target,

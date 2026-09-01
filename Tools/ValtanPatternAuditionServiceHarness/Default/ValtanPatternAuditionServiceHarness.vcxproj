@@ -62,6 +62,7 @@
     <ClCompile Include="..\Private\ValtanPatternAuditionServiceHarness.cpp" />
 	<ClCompile Include="..\Private\ValtanCanonicalGraphContractTests.cpp" />
 	<ClCompile Include="..\Private\ActionCompositionGraphModelContractTests.cpp" />
+	<ClCompile Include="..\Private\BossLogicFlowViewModelContractTests.cpp" />
 	<ClCompile Include="..\Private\ValtanPresentationGenerationAdmissionContractTests.cpp" />
 	<ClCompile Include="..\Private\ValtanEncounterReferenceContractTests.cpp" />
     <ClCompile Include="..\Private\ValtanPatternFlowServiceTests.cpp" />
@@ -75,6 +76,7 @@
     <ClCompile Include="..\..\..\Client\Private\ValtanPatternAuditionService.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\ValtanPatternTree.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\ActionCompositionGraphModel.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\BossLogicFlowViewModel.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\ValtanPresentationGenerationAdmission.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\ValtanPatternFlowDocument.cpp">
 	  <ForcedIncludeFiles>Windows.h;objbase.h;bcrypt.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
@@ -100,6 +102,7 @@
     <ClInclude Include="..\..\..\Client\Public\ValtanPatternAuditionService.h" />
 	<ClInclude Include="..\..\..\Client\Public\ValtanPatternTree.h" />
 	<ClInclude Include="..\..\..\Client\Public\ActionCompositionGraphModel.h" />
+	<ClInclude Include="..\..\..\Client\Public\BossLogicFlowView.h" />
 	<ClInclude Include="..\..\..\Client\Public\ValtanPresentationGenerationAdmission.h" />
 	<ClInclude Include="..\..\..\Client\Public\ValtanPatternEffectCueDocument.h" />
 	<ClInclude Include="..\..\..\Client\Public\ValtanPatternEffectCueAuthoring.h" />

@@ -145,6 +145,39 @@ def set_tracking(row: dict[str, Any], *, random_lock: bool = False) -> None:
     )
 
 
+def audition_only_eligibility() -> dict[str, Any]:
+    return {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 1.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": None,
+        "cooldownGroupId": None,
+        "repeatPolicy": {
+            "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+            "limit": 0,
+        },
+    }
+
+
+def replace_pattern_after(
+    rows: list[dict[str, Any]], anchor_id: str, replacement: dict[str, Any]
+) -> None:
+    replacement_id = replacement["patternId"]
+    filtered = [row for row in rows if row["patternId"] != replacement_id]
+    anchor_index = next(
+        index for index, row in enumerate(filtered)
+        if row["patternId"] == anchor_id
+    )
+    filtered.insert(anchor_index + 1, replacement)
+    rows[:] = filtered
+
+
 def author_existing_patterns(
     gameplay: dict[str, Any], presentation: dict[str, Any]
 ) -> None:
@@ -154,56 +187,165 @@ def author_existing_patterns(
     dash = gameplay_by_id["VALTAN_DASH_CHARGE"]
     dash["targetPolicy"] = "LOCK_NEAREST_ON_START"
     dash["aimPolicy"] = "LOCK_FACING_ON_START"
+    dash_presentation = presentation_by_id["VALTAN_DASH_CHARGE"]
+    saved_dash_groggy = gameplay_by_id.get("VALTAN_DASH_CHARGE_GROGGY")
+    saved_dash_groggy_p = presentation_by_id.get("VALTAN_DASH_CHARGE_GROGGY")
+    saved_part_break = gameplay_by_id.get("VALTAN_PART_BREAK")
+    saved_part_break_p = presentation_by_id.get("VALTAN_PART_BREAK")
+    dash_groggy_stage = copy.deepcopy(
+        stage(saved_dash_groggy, "GROGGY")
+        if saved_dash_groggy is not None else stage(dash, "RECOVERY")
+    )
+    dash_groggy_p_stage = copy.deepcopy(
+        stage(saved_dash_groggy_p, "GROGGY")
+        if saved_dash_groggy_p is not None
+        else stage(dash_presentation, "RECOVERY")
+    )
+    dash_part_break_stage = copy.deepcopy(
+        stage(saved_part_break, "PART_BREAK")
+        if saved_part_break is not None else stage(dash, "PART_BREAK")
+    )
+    dash_part_break_p_stage = copy.deepcopy(
+        stage(saved_part_break_p, "PART_BREAK")
+        if saved_part_break_p is not None
+        else stage(dash_presentation, "PART_BREAK")
+    )
     dash_charge = stage(dash, "CHARGE")
     dash_charge["branches"] = [
         {
             "outcome": "WALL_CONTACT",
-            "nextActionId": "valtan.attack.dash-charge.groggy",
+            "nextActionId": None,
+            "nextPatternId": "VALTAN_DASH_CHARGE_GROGGY",
         },
         {
             "outcome": "TIMEOUT",
-            "nextActionId": "valtan.attack.dash-charge.recovery",
+            "nextActionId": None,
+            "nextPatternId": "VALTAN_DASH_CHARGE_GROGGY",
         },
     ]
-    dash_charge["defaultNextActionId"] = "valtan.attack.dash-charge.recovery"
-    dash_recovery = stage(dash, "RECOVERY")
-    dash_recovery.pop("partDamagePolicy", None)
-    dash_recovery["events"] = []
-    dash_recovery["branches"] = [
-        {"outcome": "TIMEOUT", "nextActionId": None},
+    dash_charge["defaultNextActionId"] = None
+    dash_groggy_stage["stageId"] = "GROGGY"
+    dash_groggy_stage["stageKind"] = "GROGGY"
+    dash_groggy_stage["defaultNextActionId"] = None
+    dash_groggy_stage["partDamagePolicy"] = "DESTROY_FIRST_ELIGIBLE"
+    dash_groggy_stage["events"] = [
+        {
+            "eventId": "event.valtan.dash-charge.groggy.enter",
+            "trigger": "ENTER",
+            "kind": "SET_BOSS_FLAG",
+            "flagId": "boss.flag.groggy",
+            "enabled": True,
+        },
+        {
+            "eventId": "event.valtan.dash-charge.groggy.exit",
+            "trigger": "EXIT",
+            "kind": "SET_BOSS_FLAG",
+            "flagId": "boss.flag.groggy",
+            "enabled": False,
+        },
     ]
-    dash_recovery["defaultNextActionId"] = None
-    dash_groggy = stage(dash, "GROGGY")
-    dash_groggy["partDamagePolicy"] = "DESTROY_FIRST_ELIGIBLE"
-    dash_groggy["branches"] = [
+    dash_groggy_stage["branches"] = [
         {
             "outcome": "PART_DESTROYED",
-            "nextActionId": "valtan.attack.dash-charge.part-break",
+            "nextActionId": None,
+            "nextPatternId": "VALTAN_PART_BREAK",
         },
-        {
-            "outcome": "TIMEOUT",
-            "nextActionId": "valtan.attack.dash-charge.recovery",
-        },
+        {"outcome": "TIMEOUT", "nextActionId": None},
     ]
-    dash_groggy["defaultNextActionId"] = "valtan.attack.dash-charge.recovery"
-    stage(dash, "PART_BREAK")["defaultNextActionId"] = None
-    dash_stage_order = ("WINDUP", "CHARGE", "GROGGY", "RECOVERY", "PART_BREAK")
+    dash["reactions"] = []
+    dash["sourceActionIds"] = [420604]
+    dash_stage_order = ("WINDUP", "CHARGE")
     dash_stages = indexed(dash["stages"], "stageId")
     dash["stages"] = [dash_stages[stage_id] for stage_id in dash_stage_order]
-    dash_presentation = presentation_by_id["VALTAN_DASH_CHARGE"]
+    dash_presentation["presentationSources"] = [{
+        "sourceActionId": 420604,
+        "sequenceIndex": 2,
+        "role": "PRIMARY",
+    }]
     dash_presentation_stages = indexed(
         dash_presentation["stages"], "stageId"
     )
     dash_presentation["stages"] = [
         dash_presentation_stages[stage_id] for stage_id in dash_stage_order
     ]
-
-    scripted_sequence = gameplay["decisionModel"]["scriptedSequence"]
-    if "flowId" not in scripted_sequence:
-        # The saved Flow owns Product order; only legacy inline migrations reorder it.
-        sequence = scripted_sequence["patternIds"]
-        sequence[:] = [row for row in sequence if row != "VALTAN_DASH_CHARGE"]
-        sequence.insert(sequence.index("VALTAN_ARENA_BREAK_109"), "VALTAN_DASH_CHARGE")
+    dash_groggy_p_stage["stageId"] = "GROGGY"
+    dash_groggy_p_stage["sequenceRole"] = "GROGGY"
+    dash_groggy = {
+        "patternId": "VALTAN_DASH_CHARGE_GROGGY",
+        "displayName": "3회 땅 치기 후 돌진 - 그로기",
+        "category": "NORMAL",
+        "compatibilitySelectionWeight": 0,
+        "actionId": "valtan.reaction.dash-charge-groggy",
+        "entryActionId": dash_groggy_stage["actionId"],
+        "targetPolicy": "NONE",
+        "aimPolicy": "NONE",
+        "eligibility": audition_only_eligibility(),
+        "invulnerableWhileRunning": False,
+        "sourceActionIds": [400430],
+        "serverMotion": None,
+        "reactions": [],
+        "stages": [dash_groggy_stage],
+    }
+    dash_groggy_p = {
+        "patternId": "VALTAN_DASH_CHARGE_GROGGY",
+        "sourceSequenceIndex": 0,
+        "presentationSources": [{
+            "sourceActionId": 400430,
+            "sequenceIndex": 0,
+            "role": "PRIMARY",
+        }],
+        "stages": [dash_groggy_p_stage],
+    }
+    dash_part_break_stage["stageId"] = "PART_BREAK"
+    dash_part_break_stage["stageKind"] = "PART_BREAK"
+    dash_part_break_stage["durationMs"] = 1400
+    dash_part_break_stage["defaultNextActionId"] = None
+    dash_part_break_stage["hit"] = none_hit()
+    dash_part_break_stage["motion"] = None
+    dash_part_break_stage["events"] = []
+    dash_part_break_stage["branches"] = [
+        {"outcome": "TIMEOUT", "nextActionId": None}
+    ]
+    dash_part_break_p_stage["stageId"] = "PART_BREAK"
+    dash_part_break_p_stage["sequenceRole"] = "PART_BREAK"
+    part_break = {
+        "patternId": "VALTAN_PART_BREAK",
+        "displayName": "부위 파괴",
+        "category": "NORMAL",
+        "compatibilitySelectionWeight": 0,
+        "actionId": "valtan.reaction.part-break",
+        "entryActionId": dash_part_break_stage["actionId"],
+        "targetPolicy": "NONE",
+        "aimPolicy": "NONE",
+        "eligibility": audition_only_eligibility(),
+        "invulnerableWhileRunning": False,
+        "sourceActionIds": [420627],
+        "serverMotion": None,
+        "reactions": [],
+        "stages": [dash_part_break_stage],
+    }
+    part_break_p = {
+        "patternId": "VALTAN_PART_BREAK",
+        "sourceSequenceIndex": 1,
+        "presentationSources": [{
+            "sourceActionId": 420627,
+            "sequenceIndex": 1,
+            "role": "PRIMARY",
+        }],
+        "stages": [dash_part_break_p_stage],
+    }
+    replace_pattern_after(
+        gameplay["patterns"], "VALTAN_DASH_CHARGE", dash_groggy
+    )
+    replace_pattern_after(
+        gameplay["patterns"], "VALTAN_DASH_CHARGE_GROGGY", part_break
+    )
+    replace_pattern_after(
+        presentation["patterns"], "VALTAN_DASH_CHARGE", dash_groggy_p
+    )
+    replace_pattern_after(
+        presentation["patterns"], "VALTAN_DASH_CHARGE_GROGGY", part_break_p
+    )
 
     attack_whirlwind = gameplay_by_id["VALTAN_ATTACK_WHIRLWIND"]
     attack_whirlwind_p = presentation_by_id["VALTAN_ATTACK_WHIRLWIND"]
@@ -391,6 +533,16 @@ def author_existing_patterns(
 
     counter = gameplay_by_id["VALTAN_COUNTER"]
     counter_p = presentation_by_id["VALTAN_COUNTER"]
+    saved_counter_groggy = gameplay_by_id.get("VALTAN_COUNTER_GROGGY")
+    saved_counter_groggy_p = presentation_by_id.get("VALTAN_COUNTER_GROGGY")
+    counter_groggy_stage = copy.deepcopy(
+        stage(saved_counter_groggy, "GROGGY")
+        if saved_counter_groggy is not None else stage(counter, "STEP_04")
+    )
+    counter_groggy_p_stage = copy.deepcopy(
+        stage(saved_counter_groggy_p, "GROGGY")
+        if saved_counter_groggy_p is not None else stage(counter_p, "STEP_04")
+    )
     set_tracking(counter)
     counter_one = stage(counter, "STEP_01")
     counter_one["stageKind"] = "WINDUP"
@@ -415,7 +567,8 @@ def author_existing_patterns(
     counter_two["branches"] = [
         {
             "outcome": "COUNTER_HIT",
-            "nextActionId": "valtan.sequence.counter.step-04",
+            "nextActionId": None,
+            "nextPatternId": "VALTAN_COUNTER_GROGGY",
         },
         {
             "outcome": "TIMEOUT",
@@ -436,7 +589,6 @@ def author_existing_patterns(
     counter_three["branches"] = [
         {"outcome": "TIMEOUT", "nextActionId": None}
     ]
-    stage(counter, "STEP_04")["stageKind"] = "GROGGY"
     counter_slam_p = stage(counter_p, "STEP_03")
     replace_phase_two_cues(
         counter_slam_p,
@@ -449,6 +601,85 @@ def author_existing_patterns(
             )
         ],
     )
+    counter["sourceActionIds"] = [420642, 420643]
+    counter["stages"] = [
+        row for row in counter["stages"] if row["stageId"] != "STEP_04"
+    ]
+    counter_p["presentationSources"] = [
+        source for source in counter_p["presentationSources"]
+        if source["sourceActionId"] != 420644
+    ]
+    counter_p["stages"] = [
+        row for row in counter_p["stages"] if row["stageId"] != "STEP_04"
+    ]
+    counter_groggy_stage["stageId"] = "GROGGY"
+    counter_groggy_stage["stageKind"] = "GROGGY"
+    counter_groggy_stage["defaultNextActionId"] = None
+    counter_groggy_stage["branches"] = [
+        {"outcome": "TIMEOUT", "nextActionId": None}
+    ]
+    counter_groggy_p_stage["stageId"] = "GROGGY"
+    counter_groggy_p_stage["sequenceRole"] = "GROGGY"
+    counter_groggy = {
+        "patternId": "VALTAN_COUNTER_GROGGY",
+        "displayName": "카운터 쳐야 하는 내려치기 - 성공 그로기",
+        "category": "NORMAL",
+        "compatibilitySelectionWeight": 0,
+        "actionId": "valtan.reaction.counter-groggy",
+        "entryActionId": counter_groggy_stage["actionId"],
+        "targetPolicy": "NONE",
+        "aimPolicy": "NONE",
+        "eligibility": audition_only_eligibility(),
+        "invulnerableWhileRunning": False,
+        "sourceActionIds": [420644],
+        "serverMotion": None,
+        "reactions": [],
+        "stages": [counter_groggy_stage],
+    }
+    counter_groggy_p = {
+        "patternId": "VALTAN_COUNTER_GROGGY",
+        "sourceSequenceIndex": 1,
+        "presentationSources": [{
+            "sourceActionId": 420644,
+            "sequenceIndex": 1,
+            "role": "PRIMARY",
+        }],
+        "stages": [counter_groggy_p_stage],
+    }
+    replace_pattern_after(
+        gameplay["patterns"], "VALTAN_COUNTER", counter_groggy
+    )
+    replace_pattern_after(
+        presentation["patterns"], "VALTAN_COUNTER", counter_groggy_p
+    )
+    reaction_pattern_ids = {
+        "VALTAN_DASH_CHARGE_GROGGY",
+        "VALTAN_PART_BREAK",
+        "VALTAN_COUNTER_GROGGY",
+    }
+    gameplay["decisionModel"]["manualAuditions"] = [
+        row for row in gameplay["decisionModel"]["manualAuditions"]
+        if row["patternId"] not in reaction_pattern_ids
+    ] + [
+        {
+            "patternId": "VALTAN_DASH_CHARGE_GROGGY",
+            "sourceChainId": "derived.dash-charge-groggy",
+            "authoringPhase": 1,
+            "admissionState": "DERIVED_SERVER_PATTERN",
+        },
+        {
+            "patternId": "VALTAN_PART_BREAK",
+            "sourceChainId": "derived.part-break",
+            "authoringPhase": 1,
+            "admissionState": "DERIVED_SERVER_PATTERN",
+        },
+        {
+            "patternId": "VALTAN_COUNTER_GROGGY",
+            "sourceChainId": "derived.counter-groggy",
+            "authoringPhase": 1,
+            "admissionState": "DERIVED_SERVER_PATTERN",
+        },
+    ]
 
     terrain = gameplay_by_id["VALTAN_TERRAIN_DESTRUCTION"]
     terrain_p = presentation_by_id["VALTAN_TERRAIN_DESTRUCTION"]
@@ -1090,15 +1321,6 @@ def author_terrain_pairs(
             else:
                 document["patterns"][matching] = replacement
 
-    scripted_sequence = gameplay["decisionModel"]["scriptedSequence"]
-    if "flowId" not in scripted_sequence:
-        sequence = scripted_sequence["patternIds"]
-        sequence[:] = [row for row in sequence if row not in authored_ids]
-        terrain_index = sequence.index("VALTAN_TERRAIN_DESTRUCTION")
-        sequence[terrain_index:terrain_index] = [
-            "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK",
-            "VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK",
-        ]
     manual_rows = gameplay["decisionModel"]["manualAuditions"]
     manual_rows[:] = [
         row for row in manual_rows if row["patternId"] not in authored_ids
@@ -1130,7 +1352,7 @@ def author_terrain_pairs(
 
 
 def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, Any]) -> None:
-    """Author independent hazards and finite boss motion without editing saved Flow slots."""
+    """Author independent hazards and finite boss motion without reordering the canonical sequence."""
     release = stage(pattern(gameplay, "VALTAN_CATCH_BREATH"), "STEP_04")["events"][0]
     release.update(
         releaseMode="ARENA_EJECTION",
@@ -1169,15 +1391,19 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
         pattern(gameplay, pattern_id)["serverMotion"]["moveToAnchorBeforeTakeoff"] = True
         if pattern_id == "VALTAN_SIX_PIZZA_106":
             pattern(gameplay, pattern_id)["targetPolicy"] = "LOCK_RANDOM_ALIVE_ON_START"
-            pattern(gameplay, pattern_id)["aimPolicy"] = "LOCK_FACING_ON_START"
+            pattern(gameplay, pattern_id)["aimPolicy"] = "TRACK_TARGET_EACH_TICK"
         for row in pattern(presentation, pattern_id)["stages"]:
             for effect_cue in row["effectCues"]:
                 effect_cue["anchorSlotId"] = (
-                    "arena.center.facing"
+                    "arena.center.target-follow"
                     if pattern_id == "VALTAN_SIX_PIZZA_106"
                     else "arena.center"
                 )
-                effect_cue["followPolicy"] = "snapshot"
+                effect_cue["followPolicy"] = (
+                    "follow"
+                    if pattern_id == "VALTAN_SIX_PIZZA_106"
+                    else "snapshot"
+                )
 
     donut = stage(pattern(gameplay, "VALTAN_FIST_IN_OUT"), "INNER")
     donut["durationMs"] = 100
@@ -1229,6 +1455,14 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
     # inherit the normal WARP target-rush policy from its original clone.
     finale = pattern(gameplay, finale_id)
     finale_p = pattern(presentation, finale_id)
+    finale["finale"]["ghostPatternIds"] = [
+        "VALTAN_SIX_PIZZA_106",
+        "VALTAN_GROUND_ROAR",
+        "VALTAN_STAGGER_SLOT",
+        "VALTAN_BIND_SLOT",
+        "VALTAN_SILENCE_SLOT",
+        "VALTAN_TRIPLE_COUNTER",
+    ]
     for leg in range(8):
         row = stage(finale, f"STEP_{leg + 2:02d}")
         row["motion"] = {
@@ -1243,6 +1477,128 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
         for effect_cue in stage(finale_p, row["stageId"])["effectCues"]:
             effect_cue["followPolicy"] = "snapshot"
             effect_cue["localTransform"]["position"] = [0.0, 0.0, 0.0]
+
+    respawn = stage(pattern(gameplay, "VALTAN_GHOST_RESPAWN_AUDITION"), "STEP_01")
+    respawn["events"] = [{
+        "eventId": "event.valtan.ghost-respawn.phase-3",
+        "trigger": "ENTER",
+        "kind": "SET_GAMEPLAY_PHASE",
+        "gameplayPhase": 3,
+    }]
+
+    portal_id = "VALTAN_GHOST_PORTAL_ONCE"
+    portal = {
+        "patternId": portal_id,
+        "displayName": "망령 포탈 돌진 1회",
+        "category": "NORMAL",
+        "compatibilitySelectionWeight": 0,
+        "actionId": "valtan.ghost.portal-once",
+        "entryActionId": "valtan.ghost.portal-once.active",
+        "targetPolicy": "NONE",
+        "aimPolicy": "NONE",
+        "eligibility": {
+            "armorRequirement": "ANY", "phaseRequirement": "ANY",
+            "minimumGameplayPhase": 1, "maximumGameplayPhase": 3,
+            "minimumHealthBarInclusive": 0, "maximumHealthBarInclusive": 0,
+            "minimumRangeM": 0.0, "maximumRangeM": 1.0,
+            "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+            "selectionCooldownMs": None, "cooldownGroupId": None,
+            "repeatPolicy": {
+                "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE", "limit": 0,
+            },
+        },
+        "invulnerableWhileRunning": False,
+        "sourceActionIds": [420622],
+        "serverMotion": None,
+        "reactions": [],
+        "stages": [{
+            "stageId": "ACTIVE",
+            "actionId": "valtan.ghost.portal-once.active",
+            "stageKind": "ACTIVE",
+            "durationMs": 5000,
+            "defaultNextActionId": None,
+            "hit": none_hit(),
+            "motion": None,
+            "events": [{
+                "eventId": "event.valtan.ghost.portal-once.volley",
+                "trigger": "ENTER",
+                "kind": "SPAWN_COMBAT_OBJECT_VOLLEY",
+                "combatObjectArchetypeId":
+                    "combatobject.valtan.ghost.portal-charge",
+                "volleyPolicy": "BOSS_RELATIVE",
+                "countPerResolvedTarget": 4,
+                "layout": {
+                    "kind": "RADIAL_AROUND_BOSS",
+                    "radiusM": 31.112698,
+                    "startAngleDegrees": 45.0,
+                    "angleStepDegrees": 90.0,
+                    "mappingBasis": "PROJECT_TUNED",
+                },
+                "spawnSchedule": {
+                    "kind": "INTERVAL", "count": 1,
+                    "firstOffsetMs": 0, "intervalMs": 0,
+                },
+                "arenaRandom": {"kind": "NONE"},
+                "allowOverlap": False,
+                "maximumTotalObjects": 4,
+            }],
+            "branches": [],
+        }],
+    }
+    portal_p = {
+        "patternId": portal_id,
+        "sourceSequenceIndex": 1,
+        "presentationSources": [{
+            "sourceActionId": 420622, "sequenceIndex": 1, "role": "PRIMARY",
+        }],
+        "stages": [{
+            "stageId": "ACTIVE",
+            "actionId": "valtan.ghost.portal-once.active",
+            "sequenceRole": "STEP",
+            "animation": {
+                "endPolicy": "LOOP_TO_STAGE_END", "repeatCount": 1,
+                "occurrences": [{
+                    "clipOccurrenceId": "valtan.ghost.portal-once.active.clip-01",
+                    "clip": "mesh_att_battle_18_02",
+                    "mappingBasis": "PROJECT_AUTHORED",
+                    "sourceStartMs": 0, "playMs": 0, "playRate": 1.0,
+                    "repeatUntilStageEnd": True,
+                }],
+            },
+            "effectCues": [],
+            "cameraInvocations": [],
+        }],
+    }
+    for document, replacement in ((gameplay, portal), (presentation, portal_p)):
+        matching = next((index for index, row in enumerate(document["patterns"])
+                         if row["patternId"] == portal_id), None)
+        if matching is None:
+            finale_index = next(index for index, row in enumerate(document["patterns"])
+                                if row["patternId"] == finale_id)
+            document["patterns"].insert(finale_index + 1, replacement)
+        else:
+            document["patterns"][matching] = replacement
+    manual_rows = gameplay["decisionModel"]["manualAuditions"]
+    manual_rows[:] = [row for row in manual_rows if row["patternId"] != portal_id]
+    finale_manual_index = next(index for index, row in enumerate(manual_rows)
+                               if row["patternId"] == finale_id)
+    manual_rows.insert(finale_manual_index + 1, {
+        "patternId": portal_id,
+        "sourceChainId": "derived.ghost-portal-once",
+        "authoringPhase": 3,
+        "admissionState": "DERIVED_SERVER_PATTERN",
+    })
+    independent_id = "valtan.independent-effect.ghost-portal-once"
+    presentation["independentEffects"] = [
+        row for row in presentation["independentEffects"]
+        if row["independentEffectId"] != independent_id
+    ]
+    presentation["independentEffects"].append({
+        "independentEffectId": independent_id,
+        "displayName": "망령 포탈 돌진 1회 / 4꼭짓점",
+        "ownership": "SERVER_COMBAT_OBJECT",
+        "spawnEventId": "event.valtan.ghost.portal-once.volley",
+    })
 
 
 def build(pattern_id: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -1259,6 +1615,18 @@ def build(pattern_id: str | None = None) -> tuple[dict[str, Any], dict[str, Any]
     for authored in presentation["patterns"]:
         # Seed cues for new patterns, but retain the exact authored cue list
         # (including Unlink's empty list) once a pattern has been saved.
+        # Dash is mutated in-place from that saved document above and gains an
+        # event-entered PART_BREAK stage.  Its existing occurrences/cues are
+        # already preserved, while the generic promotion helper intentionally
+        # rejects any stage-closure change.
+        if authored["patternId"] in {
+            "VALTAN_DASH_CHARGE",
+            "VALTAN_DASH_CHARGE_GROGGY",
+            "VALTAN_PART_BREAK",
+            "VALTAN_COUNTER",
+            "VALTAN_COUNTER_GROGGY",
+        }:
+            continue
         promotion._preserve_manual_presentation_enrichment(
             authored, saved_patterns.get(authored["patternId"])
         )

@@ -3448,19 +3448,26 @@ bool_t Client::CEffectPlayback::Step(
 			}
 			else
 			{
-				if (!State.bBurstSpawned)
+				if (Element.Detail.Particle.fFixedCenterSpacingWorldUnits > 0.f)
 				{
-					Spawn_Particles(Element, State,
-						Element.Detail.Particle.iBurstCount, RootWorld,
-						nullptr, true);
-					State.bBurstSpawned = true;
+					Spawn_FixedCenterSpacingParticles(Element, State, RootWorld);
 				}
-				State.fSpawnAccumulator +=
-					Element.Detail.Particle.fSpawnRatePerSecond * fFixedDelta;
-				const uint32_t iSpawnCount = static_cast<uint32_t>(
-					std::floor(State.fSpawnAccumulator));
-				State.fSpawnAccumulator -= static_cast<f32_t>(iSpawnCount);
-				Spawn_Particles(Element, State, iSpawnCount, RootWorld);
+				else
+				{
+					if (!State.bBurstSpawned)
+					{
+						Spawn_Particles(Element, State,
+							Element.Detail.Particle.iBurstCount, RootWorld,
+							nullptr, true);
+						State.bBurstSpawned = true;
+					}
+					State.fSpawnAccumulator +=
+						Element.Detail.Particle.fSpawnRatePerSecond * fFixedDelta;
+					const uint32_t iSpawnCount = static_cast<uint32_t>(
+						std::floor(State.fSpawnAccumulator));
+					State.fSpawnAccumulator -= static_cast<f32_t>(iSpawnCount);
+					Spawn_Particles(Element, State, iSpawnCount, RootWorld);
+				}
 			}
 			}
 		}
@@ -3612,19 +3619,113 @@ uint32_t Client::CEffectPlayback::Consume_SourceSpawnPerUnit(
 	return (std::min)(iWholeParticles, Element.Detail.Particle.iMaxParticles);
 }
 
+void Client::CEffectPlayback::Spawn_FixedCenterSpacingParticles(
+	const EFFECT_ELEMENT_DESC& Element,
+	ELEMENT_STATE& State,
+	const float4x4_t& RootWorld)
+{
+	const f64_t fSpacing = static_cast<f64_t>(
+		Element.Detail.Particle.fFixedCenterSpacingWorldUnits);
+	if (!std::isfinite(fSpacing) || fSpacing <= 0.0 ||
+		!Can_EvaluateElementWorld(Element))
+	{
+		return;
+	}
+
+	const float4x4_t CurrentWorld = Evaluate_ElementWorld(
+		Element, m_fSampleTimeSeconds, RootWorld);
+	const float3_t CurrentOrigin = Get_Translation(CurrentWorld);
+	if (!std::isfinite(CurrentOrigin.x) || !std::isfinite(CurrentOrigin.y) ||
+		!std::isfinite(CurrentOrigin.z))
+	{
+		State.bFixedCenterSpacingInitialized = false;
+		State.fFixedCenterSpacingResidualWorldUnits = 0.0;
+		return;
+	}
+
+	if (!State.bFixedCenterSpacingInitialized)
+	{
+		State.bFixedCenterSpacingInitialized = true;
+		State.vFixedCenterSpacingPreviousOrigin = CurrentOrigin;
+		State.fFixedCenterSpacingResidualWorldUnits = 0.0;
+		/* The first lattice point is the first eligible carrier pose.  Later
+		   points are distance crossings along the sampled world path. */
+		Spawn_Particles(
+			Element, State, 1u, RootWorld, nullptr, false, &CurrentWorld);
+		return;
+	}
+
+	const float3_t Segment = Subtract3(
+		CurrentOrigin, State.vFixedCenterSpacingPreviousOrigin);
+	const f64_t fSegmentLength = std::sqrt(static_cast<f64_t>(
+		DistanceSquared(CurrentOrigin,
+			State.vFixedCenterSpacingPreviousOrigin)));
+	if (!std::isfinite(fSegmentLength))
+	{
+		State.bFixedCenterSpacingInitialized = false;
+		State.fFixedCenterSpacingResidualWorldUnits = 0.0;
+		return;
+	}
+	if (fSegmentLength <= 1.0e-9)
+	{
+		State.vFixedCenterSpacingPreviousOrigin = CurrentOrigin;
+		return;
+	}
+
+	const f64_t fResidual = std::clamp(
+		State.fFixedCenterSpacingResidualWorldUnits, 0.0, fSpacing);
+	const f64_t fTravel = fResidual + fSegmentLength;
+	const f64_t fCrossingCount = std::floor(
+		(fTravel + 1.0e-9) / fSpacing);
+	const uint32_t iMaxParticles = Scale_SourceCount(
+		Element, Element.Detail.Particle.iMaxParticles);
+	const uint32_t iAvailable = iMaxParticles > State.Particles.size() ?
+		iMaxParticles - static_cast<uint32_t>(State.Particles.size()) : 0u;
+	const uint32_t iSpawnCount = static_cast<uint32_t>((std::min)(
+		fCrossingCount, static_cast<f64_t>(iAvailable)));
+	const f64_t fFirstCrossingDistance = fSpacing - fResidual;
+	for (uint32_t iCrossing = 0u; iCrossing < iSpawnCount; ++iCrossing)
+	{
+		const f64_t fDistance = fFirstCrossingDistance +
+			static_cast<f64_t>(iCrossing) * fSpacing;
+		const f32_t T = static_cast<f32_t>(std::clamp(
+			fDistance / fSegmentLength, 0.0, 1.0));
+		const float3_t SpawnOrigin = Add3(
+			State.vFixedCenterSpacingPreviousOrigin, Scale3(Segment, T));
+		float4x4_t SpawnWorld = CurrentWorld;
+		SpawnWorld._41 = SpawnOrigin.x;
+		SpawnWorld._42 = SpawnOrigin.y;
+		SpawnWorld._43 = SpawnOrigin.z;
+		Spawn_Particles(
+			Element, State, 1u, RootWorld, nullptr, false, &SpawnWorld);
+	}
+
+	/* Crossings skipped because Max Particles is saturated are consumed.  They
+	   must not be replayed later as a clump after older particles expire. */
+	State.fFixedCenterSpacingResidualWorldUnits = std::fmod(fTravel, fSpacing);
+	if (State.fFixedCenterSpacingResidualWorldUnits < 1.0e-9 ||
+		fSpacing - State.fFixedCenterSpacingResidualWorldUnits < 1.0e-9)
+	{
+		State.fFixedCenterSpacingResidualWorldUnits = 0.0;
+	}
+	State.vFixedCenterSpacingPreviousOrigin = CurrentOrigin;
+}
+
 void Client::CEffectPlayback::Spawn_Particles(
 	const EFFECT_ELEMENT_DESC& Element,
 	ELEMENT_STATE& State,
 	const uint32_t iCount,
 	const float4x4_t& RootWorld,
 	const SOURCE_PARTICLE_EVENT* pSourceEvent,
-	const bool_t bAuthoredFixedBurst)
+	const bool_t bAuthoredFixedBurst,
+	const float4x4_t* pSpawnWorldOverride)
 {
 	const EFFECT_PARTICLE_DESC& Desc = Element.Detail.Particle;
 	if (!Can_EvaluateElementWorld(Element))
 		return;
-	const float4x4_t ElementWorld = Evaluate_ElementWorld(
-		Element, m_fSampleTimeSeconds, RootWorld);
+	const float4x4_t ElementWorld = nullptr != pSpawnWorldOverride ?
+		*pSpawnWorldOverride : Evaluate_ElementWorld(
+			Element, m_fSampleTimeSeconds, RootWorld);
 	const matrix_t InverseElementWorld = XMMatrixInverse(
 		nullptr, XMLoadFloat4x4(&ElementWorld));
 	/* The ceiling rises with the trim, otherwise asking for more particles would

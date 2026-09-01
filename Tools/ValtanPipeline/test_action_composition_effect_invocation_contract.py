@@ -86,11 +86,13 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
             '"pattern.target.snapshot"',
             '"arena.center"',
             '"arena.center.facing"',
+            '"arena.center.target-follow"',
             '"each_loop"',
             '(1.f != Cue.vWorldScale.x || 1.f != Cue.vWorldScale.y',
         ):
             self.assertIn(token, validator)
         self.assertIn('"LOCK_FACING_ON_START" == Pattern.strAimPolicy', validator)
+        self.assertIn('"TRACK_TARGET_EACH_TICK" == Pattern.strAimPolicy', validator)
         self.assertIn('"LOCK_RANDOM_ALIVE_ON_START" == Pattern.strTargetPolicy', validator)
 
     def test_patch_uses_source_owner_effect_ops_and_exact_payload(self) -> None:
@@ -148,6 +150,7 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
             '"pattern.target.snapshot"',
             '"arena.center"',
             '"arena.center.facing"',
+            '"arena.center.target-follow"',
             '"Tune / Remove Existing Server Collider / Hit Schedule"',
             '"Add Manual Audition Server Collider / Hit Schedule"',
             '"View Collider Authority (New Add Unavailable)"',
@@ -159,6 +162,7 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
         self.assertIn('"WAIT" != pStage->strSequenceRole', details)
         self.assertIn("!pStage->ClipOccurrences.empty()", details)
         self.assertIn("bArenaFacingAnchorAdmitted", details)
+        self.assertIn("bArenaTargetFollowAnchorAdmitted", details)
         self.assertNotIn("Valtan.patterneffectcues.json is an editable", details)
 
     def test_workbench_explains_selected_effect_anchor_basis(self) -> None:
@@ -169,20 +173,33 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
         arena_start = details.index(
             'if ("arena.center.facing" == Draft.strAnchorSlotId)'
         )
+        follow_anchor_start = details.index(
+            'else if ("arena.center.target-follow" == Draft.strAnchorSlotId)',
+            arena_start,
+        )
         target_start = details.index(
             'else if ("pattern.target.snapshot" == Draft.strAnchorSlotId)',
-            arena_start,
+            follow_anchor_start,
         )
         follow_start = details.index(
             'if ("root" == Draft.strAnchorSlotId)', target_start
         )
 
-        arena_basis = details[arena_start:target_start]
+        arena_basis = details[arena_start:follow_anchor_start]
         self.assertIn(
             '"Position Basis = Authored Landing Center"', arena_basis
         )
         self.assertIn(
             '"Facing Basis = Server Locked Pattern Facing"', arena_basis
+        )
+
+        follow_basis = details[follow_anchor_start:target_start]
+        self.assertIn(
+            '"Position Basis = Authored Landing Center"', follow_basis
+        )
+        self.assertIn(
+            '"Facing Basis = Current Locked Target (Server Tick)"',
+            follow_basis,
         )
 
         target_basis = details[target_start:follow_start]

@@ -131,6 +131,98 @@ class EffectV2ValidatorTests(unittest.TestCase):
         row["group"] = "group.test.one"
         return binding
 
+    def _write_boss_valtan_v2_fixture(self) -> dict:
+        (self.binding_root / "NPC_TEST.effectv2bindings.json").unlink()
+        strict_leaf = copy.deepcopy(self.document)
+        strict_leaf["params"] = {
+            "lifetime": 1.0,
+            "loop": False,
+            "playRate": 1.0,
+            "particle": {"lifetime": [0.25, 0.5]},
+        }
+        strict_leaf["parts"] = []
+        self._write_json(
+            self.authored_root / "effect.test.one.effectv2.json", strict_leaf
+        )
+        binding = {
+            "schema": "lostark.effect-v2-bindings",
+            "formatVersion": 2,
+            "archetypeId": "BOSS_VALTAN",
+            "bindings": [
+                {
+                    "bindingId": "binding.valtan.test",
+                    "resource": {"kind": "LEAF", "id": "effect.test.one"},
+                    "scope": {
+                        "patternId": "PATTERN_TEST",
+                        "stageId": "STAGE_TEST",
+                        "actionId": "action.test",
+                    },
+                    "clock": {
+                        "basis": "CLIP_OCCURRENCE",
+                        "clipOccurrenceId": "action.test.clip.01",
+                        "startMs": 0,
+                        "repeatPolicy": "ONCE",
+                    },
+                    "anchor": {
+                        "slotId": "b_effectroot",
+                        "followPolicy": "FOLLOW_SLOT",
+                        "rotationBasis": "TARGET_YAW",
+                        "localTransform": {
+                            "translation": [0.0, 0.0, 0.0],
+                            "rotation": [0.0, 0.0, 0.0],
+                            "scale": [1.0, 1.0, 1.0],
+                        },
+                    },
+                    "stopPolicy": "NATURAL",
+                }
+            ],
+        }
+        self._write_json(
+            self.binding_root / "BOSS_VALTAN.effectv2bindings.json", binding
+        )
+        self._write_json(
+            self.root / "Data/Valtan/Valtan.gameplay.json",
+            {
+                "patterns": [
+                    {
+                        "patternId": "PATTERN_TEST",
+                        "stages": [
+                            {
+                                "stageId": "STAGE_TEST",
+                                "actionId": "action.test",
+                                "durationMs": 1000,
+                            }
+                        ],
+                    }
+                ]
+            },
+        )
+        self._write_json(
+            self.root
+            / "Data/Animation/Authored/Valtan/Valtan.patternbindings.json",
+            {
+                "bindings": [
+                    {
+                        "actionId": "action.test",
+                        "clips": [
+                            {
+                                "clipOccurrenceId": "action.test.clip.01",
+                                "clip": "test_clip",
+                                "sourceStartMs": 0,
+                                "playMs": 1000,
+                                "loop": False,
+                            }
+                        ],
+                    }
+                ]
+            },
+        )
+        self._write_json(
+            self.root / "Data/Valtan/Valtan.legacy-compatibility.json",
+            {"patternEntries": []},
+        )
+        return binding
+
     def _group_and_leaf_binding(self, leaf_start_ms: int) -> dict:
         binding = self._group_binding()
         leaf = copy.deepcopy(self.binding["bindings"][0])
@@ -142,7 +234,14 @@ class EffectV2ValidatorTests(unittest.TestCase):
         report = VALIDATOR.validate(self.root, self.resource_root)
         self.assertEqual(
             report,
-            {"authored": 1, "bindings": 1, "groups": 0, "independent": 0, "textures": 1},
+            {
+                "authored": 1,
+                "bindings": 1,
+                "groups": 0,
+                "independent": 0,
+                "textures": 1,
+                "bossBindingCompatibilityV1": 0,
+            },
         )
 
     def test_boss_valtan_clip_binding_joins_canonical_inventory(self) -> None:
@@ -151,6 +250,7 @@ class EffectV2ValidatorTests(unittest.TestCase):
         )
         report = VALIDATOR.validate(self.root, self.resource_root)
         self.assertEqual(report["bindings"], 1)
+        self.assertEqual(report["bossBindingCompatibilityV1"], 1)
 
     def test_boss_valtan_legacy_clip_binding_fails_closed(self) -> None:
         self._write_boss_valtan_clip_fixture(
@@ -159,6 +259,21 @@ class EffectV2ValidatorTests(unittest.TestCase):
         with self.assertRaisesRegex(
             VALIDATOR.ContractError, "absent from the canonical BOSS_VALTAN"
         ):
+            VALIDATOR.validate(self.root, self.resource_root)
+
+    def test_boss_valtan_format_v2_stable_occurrence_binding_passes(self) -> None:
+        self._write_boss_valtan_v2_fixture()
+        report = VALIDATOR.validate(self.root, self.resource_root)
+        self.assertEqual(1, report["bindings"])
+        self.assertEqual(0, report["bossBindingCompatibilityV1"])
+
+    def test_boss_valtan_format_v2_invalid_scope_fails_closed(self) -> None:
+        binding = self._write_boss_valtan_v2_fixture()
+        binding["bindings"][0]["scope"]["actionId"] = "action.missing"
+        self._write_json(
+            self.binding_root / "BOSS_VALTAN.effectv2bindings.json", binding
+        )
+        with self.assertRaisesRegex(VALIDATOR.ContractError, "does not resolve one exact"):
             VALIDATOR.validate(self.root, self.resource_root)
 
     def test_missing_resource_fails_closed(self) -> None:
@@ -310,7 +425,14 @@ class EffectV2ValidatorTests(unittest.TestCase):
         report = VALIDATOR.validate(self.root, self.resource_root)
         self.assertEqual(
             report,
-            {"authored": 1, "bindings": 1, "groups": 1, "independent": 0, "textures": 1},
+            {
+                "authored": 1,
+                "bindings": 1,
+                "groups": 1,
+                "independent": 0,
+                "textures": 1,
+                "bossBindingCompatibilityV1": 0,
+            },
         )
 
     def test_group_and_direct_leaf_at_same_expanded_clock_fail_closed(self) -> None:

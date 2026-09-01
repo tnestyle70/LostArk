@@ -125,6 +125,40 @@
           "atMs": 5000
         }
       ]
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.ghost.portal-charge",
+      "clientVisualId": "combatobject.visual.valtan.ghost.portal-charge.v1",
+      "ownerPatternId": "VALTAN_GHOST_PORTAL_ONCE",
+      "ownerStageActionId": "valtan.ghost.portal-once.active",
+      "kind": "MISSILE",
+      "originPolicy": "BOSS_POSITION",
+      "directionPolicy": "RADIAL_INWARD",
+      "offsetForwardM": 0.0,
+      "offsetRightM": 0.0,
+      "speedMps": 12.44508,
+      "maximumDistanceM": 62.2254,
+      "lifeMs": 5000,
+      "hits": [
+        {
+          "hitShape": "CIRCLE",
+          "hitOuterRadius": 2.5,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.ghost.portal-charge.01",
+          "trigger": "CONTACT",
+          "atMs": 0,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "serverDamageProfileId": "damage.valtan.portal-rush",
+          "pushRangeM": 3.0,
+          "pushMs": 180,
+          "knockdown": true,
+          "downMs": 1500
+        }
+      ]
     }
   ]
 }

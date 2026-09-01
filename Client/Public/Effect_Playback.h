@@ -280,6 +280,9 @@ private:
 	{
 		uint32_t iRandomState = 1u;
 		f32_t fSpawnAccumulator = 0.f;
+		bool_t bFixedCenterSpacingInitialized = false;
+		float3_t vFixedCenterSpacingPreviousOrigin{};
+		f64_t fFixedCenterSpacingResidualWorldUnits = 0.0;
 		f32_t fSourceSpawnPerUnitAccumulator = 0.f;
 		f32_t fTrailSampleAccumulator = 0.f;
 		f32_t fTrailCumulativeDistance = 0.f;
@@ -454,7 +457,12 @@ private:
 		uint32_t iCount,
 		const float4x4_t& RootWorld,
 		const SOURCE_PARTICLE_EVENT* pSourceEvent = nullptr,
-		bool_t bAuthoredFixedBurst = false);
+		bool_t bAuthoredFixedBurst = false,
+		const float4x4_t* pSpawnWorldOverride = nullptr);
+	void Spawn_FixedCenterSpacingParticles(
+		const EFFECT_ELEMENT_DESC& Element,
+		ELEMENT_STATE& State,
+		const float4x4_t& RootWorld);
 	uint32_t Consume_SourceSpawnPerUnit(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_STATE& State,

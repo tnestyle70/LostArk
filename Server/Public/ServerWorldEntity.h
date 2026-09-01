@@ -96,8 +96,30 @@ namespace LostArk::Server
 	struct SERVER_BOSS_PATTERN_TERMINAL_RECEIPT final
 	{
 		std::uint32_t iPatternSequence = 0u;
+		/* Equal to iPatternSequence for an ordinary occurrence. A follow-up
+		chain retains the sequence of the selector-owned source so Debug
+		lifecycle owners can close the whole outcome group only after its leaf. */
+		std::uint32_t iRootPatternSequence = 0u;
 		SERVER_BOSS_PATTERN_TERMINAL_RESULT eResult =
 			SERVER_BOSS_PATTERN_TERMINAL_RESULT::NONE;
+	};
+
+	/* One outcome-owned successor waiting behind an exact completed occurrence.
+	Unlike the legacy ID queue, this reservation carries the immutable gameplay
+	generation that authored the branch and therefore cannot be reinterpreted
+	against a later hot-reload generation. */
+	struct SERVER_BOSS_PATTERN_FOLLOWUP final
+	{
+		std::string strPatternId;
+		LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
+		std::uint32_t iSourcePatternSequence = 0u;
+		std::uint32_t iRootPatternSequence = 0u;
+		std::uint8_t iDepth = 0u;
+
+		[[nodiscard]] bool Is_Pending() const noexcept
+		{
+			return !strPatternId.empty();
+		}
 	};
 
 	struct SERVER_WORLD_ENTITY
@@ -109,6 +131,13 @@ namespace LostArk::Server
 		LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
 		BOSS_PATTERN_SEQUENCE_DEFINITION DependentPatternSequence;
+		/* Phase-three keeps the primary Valtan entity as the sole HP, damage,
+		HUD, and reward authority. The finale-authored list becomes its ordered
+		foreground loop while the portal occurrence runs on an independent clock. */
+		BOSS_PATTERN_SEQUENCE_DEFINITION GhostPhasePatternSequence;
+		bool bGhostPhasePatternLoopActive = false;
+		std::uint32_t iGhostPortalLastSpawnTick = 0u;
+		std::uint32_t iGhostPortalOccurrenceSequence = 0u;
 		std::string strPlacementId;
 		std::string strArchetypeId;
 		std::string strEncounterId;
@@ -218,6 +247,11 @@ namespace LostArk::Server
 		std::uint32_t iPatternRecoveryMs = 0;
 		std::uint32_t iPatternSequence = 0;
 		SERVER_BOSS_PATTERN_TERMINAL_RECEIPT PatternTerminalReceipt;
+		SERVER_BOSS_PATTERN_FOLLOWUP PendingPatternFollowup;
+		/* Zero for a selector-owned occurrence; one-based for a pattern entered
+		from a cross-pattern outcome chain. */
+		std::uint8_t iPatternFollowupDepth = 0u;
+		std::uint32_t iPatternFollowupRootSequence = 0u;
 		/* Only a committed typed grab execution authorizes the current stage to
 		finish its animation clock after the last living target was executed. */
 		std::uint32_t iGrabExecutionCommittedPatternSequence = 0u;

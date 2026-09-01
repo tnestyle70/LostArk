@@ -406,6 +406,8 @@ namespace
 		else if ("PATTERN_FACING_AT_SPAWN" == value)
 			output = BOSS_COMBAT_OBJECT_DIRECTION_POLICY::
 				PATTERN_FACING_AT_SPAWN;
+		else if ("RADIAL_INWARD" == value)
+			output = BOSS_COMBAT_OBJECT_DIRECTION_POLICY::RADIAL_INWARD;
 		else
 			return false;
 		return true;
@@ -685,7 +687,7 @@ namespace
 			return false;
 		case BOSS_PATTERN_STAGE_ACTION_KIND::SET_GAMEPLAY_PHASE:
 			return isSet && "boss.phase.gameplay" == targetId &&
-				2u == value;
+				(2u == value || 3u == value);
 		case BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT:
 			return isSet && 1u == value && IsStableId(targetId);
 		case BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT_VOLLEY:
@@ -745,6 +747,52 @@ namespace
 		for (std::size_t index = 0u; index < pattern.Stages.size(); ++index)
 			if (!visit(visit, index)) return false;
 		return !pattern.Stages.empty();
+	}
+
+	bool HasFiniteBossPatternFollowupGraph(
+		const std::vector<LostArk::Server::BOSS_PATTERN_DEFINITION>& patterns)
+	{
+		constexpr std::size_t MAX_FOLLOWUP_DEPTH = 32u;
+		std::unordered_map<std::string, std::size_t> patternIndexById;
+		for (std::size_t index = 0u; index < patterns.size(); ++index)
+		{
+			if (!patternIndexById.emplace(patterns[index].strPatternId, index).second)
+				return false;
+		}
+		std::vector<std::uint8_t> visited(patterns.size(), 0u);
+		std::vector<std::size_t> longestDepth(patterns.size(), 0u);
+		const auto visit = [&](auto&& self, const std::size_t index) -> bool
+		{
+			if (1u == visited[index]) return false;
+			if (2u == visited[index]) return true;
+			visited[index] = 1u;
+			std::size_t maximumChildDepth = 0u;
+			for (const auto& stage : patterns[index].Stages)
+			{
+				for (const auto& branch : stage.Branches)
+				{
+					if (branch.strNextPatternId.empty()) continue;
+					const auto target = patternIndexById.find(
+						branch.strNextPatternId);
+					if (patternIndexById.end() == target ||
+						!self(self, target->second))
+					{
+						return false;
+					}
+					maximumChildDepth = (std::max)(
+						maximumChildDepth,
+						1u + longestDepth[target->second]);
+					if (maximumChildDepth > MAX_FOLLOWUP_DEPTH)
+						return false;
+				}
+			}
+			longestDepth[index] = maximumChildDepth;
+			visited[index] = 2u;
+			return true;
+		};
+		for (std::size_t index = 0u; index < patterns.size(); ++index)
+			if (!visit(visit, index)) return false;
+		return true;
 	}
 
 	bool ParseBossPhasePolicyKind(
@@ -1894,11 +1942,15 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			const double maximumTravelM =
 				static_cast<double>(definition.fSpeedMps) *
 				(static_cast<double>(definition.iLifeMs) / 1000.0);
+			const bool validMissileDirection =
+				BOSS_COMBAT_OBJECT_DIRECTION_POLICY::PATTERN_FACING_AT_SPAWN ==
+					definition.eDirectionPolicy ||
+				BOSS_COMBAT_OBJECT_DIRECTION_POLICY::RADIAL_INWARD ==
+					definition.eDirectionPolicy;
 			const bool validMissile = !fixedArea &&
 				BOSS_COMBAT_OBJECT_ORIGIN_POLICY::BOSS_POSITION ==
 					definition.eOriginPolicy &&
-				BOSS_COMBAT_OBJECT_DIRECTION_POLICY::PATTERN_FACING_AT_SPAWN ==
-					definition.eDirectionPolicy &&
+				validMissileDirection &&
 				definition.fSpeedMps > 0.f && definition.fMaximumDistanceM > 0.f &&
 				maximumTravelM + 0.00001 >= definition.fMaximumDistanceM;
 			if (!validFixedArea && !validMissile)
@@ -3239,6 +3291,48 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				"-" == fields[5] ? "" : std::string(fields[5]);
 			stage->Branches.push_back(std::move(branch));
 		}
+		else if (!fields.empty() && "PATTERNSTAGEFOLLOWUP" == fields[0])
+		{
+			BOSS_PATTERN_STAGE_BRANCH branch{};
+			if (6u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				!ParseBossPatternStageOutcome(fields[4], branch.eOutcome) ||
+				!IsStableId(fields[5]))
+			{
+				m_strStatus = "Boss pattern stage follow-up row is invalid";
+				return false;
+			}
+			const auto ownerMap = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == ownerMap)
+			{
+				m_strStatus = "Boss pattern stage follow-up has no encounter";
+				return false;
+			}
+			const auto owner = std::find_if(
+				ownerMap->second.begin(), ownerMap->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == fields[2]; });
+			if (ownerMap->second.end() == owner)
+			{
+				m_strStatus = "Boss pattern stage follow-up has no pattern owner";
+				return false;
+			}
+			const auto stage = std::find_if(
+				owner->Stages.begin(), owner->Stages.end(),
+				[&fields](const BOSS_PATTERN_STAGE_DEFINITION& candidate)
+				{ return candidate.strActionId == fields[3]; });
+			if (owner->Stages.end() == stage || stage->Branches.size() >= 8u ||
+				std::any_of(stage->Branches.begin(), stage->Branches.end(),
+					[&branch](const BOSS_PATTERN_STAGE_BRANCH& existing)
+					{ return existing.eOutcome == branch.eOutcome; }))
+			{
+				m_strStatus =
+					"Boss pattern stage follow-up has no stage owner or is duplicated";
+				return false;
+			}
+			branch.strNextPatternId = std::string(fields[5]);
+			stage->Branches.push_back(std::move(branch));
+		}
 		else if (!fields.empty() && "PATTERNSTAGEMOTION" == fields[0])
 		{
 			BOSS_PATTERN_STAGE_MOTION motion{};
@@ -3485,16 +3579,15 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
 				{ return pattern.strPatternId == fields[2]; });
 			if (ownerMap->second.end() == owner ||
-				stageIndex + 1u >= owner->Stages.size())
+				stageIndex >= owner->Stages.size())
 			{
 				m_strStatus = "Boss pattern charge-impact has no stage owner";
 				return false;
 			}
 			BOSS_PATTERN_STAGE_DEFINITION& stage = owner->Stages[stageIndex];
-			/* The authored WALL_CONTACT edge must end this stage in the immediate
-			GROGGY stage. The collision/world-destruction transaction publishes the
-			outcome only after an exact receiver mutation commits, so allowing an
-			intermediate recovery here would delay the visible impact reaction. */
+			/* WALL_CONTACT must end the charge in its immediate authored reaction.
+			A scripted armour-opening charge owns GROGGY, while an ordinary authored
+			charge may converge both wall contact and timeout directly on RECOVERY. */
 			const auto wallBranch = std::find_if(
 				stage.Branches.begin(), stage.Branches.end(),
 				[](const BOSS_PATTERN_STAGE_BRANCH& branch)
@@ -3502,15 +3595,29 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 					return BOSS_PATTERN_STAGE_OUTCOME::WALL_CONTACT ==
 						branch.eOutcome;
 				});
-			const BOSS_PATTERN_STAGE_DEFINITION& impactStage =
-				owner->Stages[stageIndex + 1u];
-			const bool validImpactKind =
-				BOSS_PATTERN_STAGE_KIND::GROGGY == impactStage.eStageKind;
+			const auto timeoutBranch = std::find_if(
+				stage.Branches.begin(), stage.Branches.end(),
+				[](const BOSS_PATTERN_STAGE_BRANCH& branch)
+				{
+					return BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT ==
+						branch.eOutcome;
+				});
+			const BOSS_PATTERN_STAGE_DEFINITION* impactStage =
+				stageIndex + 1u < owner->Stages.size() ?
+					&owner->Stages[stageIndex + 1u] : nullptr;
+			const bool hasLocalImpact = stage.Branches.end() != wallBranch;
+			const bool isGroggyImpact = nullptr != impactStage &&
+				BOSS_PATTERN_STAGE_KIND::GROGGY == impactStage->eStageKind;
+			const bool isConvergedRecovery = nullptr != impactStage &&
+				BOSS_PATTERN_STAGE_KIND::RECOVERY == impactStage->eStageKind &&
+				stage.Branches.end() != timeoutBranch &&
+				timeoutBranch->strNextActionId == impactStage->strActionId;
 			if (stage.strStageId != fields[4] ||
 				stage.strActionId != fields[5] || stage.bChargeImpact ||
-				stage.Branches.end() == wallBranch ||
-				wallBranch->strNextActionId != impactStage.strActionId ||
-				!validImpactKind ||
+				(hasLocalImpact &&
+				 (nullptr == impactStage ||
+				  wallBranch->strNextActionId != impactStage->strActionId ||
+				  (!isGroggyImpact && !isConvergedRecovery))) ||
 				owner->fMaximumRange <= 0.f)
 			{
 				m_strStatus = "Boss pattern charge-impact join is invalid";
@@ -3838,6 +3945,24 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				return false;
 			}
 			dependentBossArchetypeIds.insert(ghost->first);
+			if ("ENCOUNTER_VALTAN" == encounterId &&
+				"VALTAN_GHOST_FINALE" == pattern.strPatternId)
+			{
+				const std::vector<std::string> expectedGhostPatterns = {
+					"VALTAN_SIX_PIZZA_106",
+					"VALTAN_GROUND_ROAR",
+					"VALTAN_STAGGER_SLOT",
+					"VALTAN_BIND_SLOT",
+					"VALTAN_SILENCE_SLOT",
+					"VALTAN_TRIPLE_COUNTER"
+				};
+				if (pattern.Finale.GhostPatternIds != expectedGhostPatterns)
+				{
+					m_strStatus =
+						"Valtan ghost finale primary-loop order is invalid";
+					return false;
+				}
+			}
 			std::unordered_set<std::string> childPatternIds;
 			for (const std::string& patternId : pattern.Finale.GhostPatternIds)
 			{
@@ -3911,8 +4036,11 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		}
 		std::size_t gameplayPhaseActionCount = 0u;
 		bool hasExactValtanArenaBreakPhaseAction = false;
+		bool hasExactValtanGhostRespawnPhaseAction = false;
 		bool hasExactValtanHighJumpTypedVolley = false;
 		std::size_t valtanHighJumpTypedVolleyCount = 0u;
+		bool hasExactValtanGhostPortalTypedVolley = false;
+		std::size_t valtanGhostPortalTypedVolleyCount = 0u;
 		std::unordered_set<std::uint64_t> healthMechanicOrderKeys;
 		for (const BOSS_PATTERN_DEFINITION& pattern : foundPatterns->second)
 		{
@@ -4169,8 +4297,12 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 								branch.eOutcome;
 						}));
 				bool validBranches = 1u == timeoutCount && !stage.Branches.empty();
+				bool hasWallContactOutcome = false;
 				for (const BOSS_PATTERN_STAGE_BRANCH& branch : stage.Branches)
 				{
+					validBranches = validBranches &&
+						(branch.strNextActionId.empty() ||
+						 branch.strNextPatternId.empty());
 					if (!branch.strNextActionId.empty())
 					{
 						const auto target = std::find_if(
@@ -4183,8 +4315,27 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 							target != pattern.Stages.end() &&
 							branch.strNextActionId != stage.strActionId;
 					}
+					if (!branch.strNextPatternId.empty())
+					{
+						const auto target = std::find_if(
+							foundPatterns->second.begin(), foundPatterns->second.end(),
+							[&branch](const BOSS_PATTERN_DEFINITION& candidate)
+							{
+								return candidate.strPatternId ==
+									branch.strNextPatternId;
+							});
+						validBranches = validBranches &&
+							target != foundPatterns->second.end() &&
+							branch.strNextPatternId != pattern.strPatternId &&
+							BOSS_PATTERN_SELECTION::AUDITION_ONLY ==
+								target->eSelection &&
+							BOSS_PATTERN_TARGET_POLICY::NONE ==
+								target->eTargetPolicy &&
+							BOSS_PATTERN_AIM_POLICY::NONE == target->eAimPolicy;
+					}
 					if (BOSS_PATTERN_STAGE_OUTCOME::WALL_CONTACT == branch.eOutcome)
 					{
+						hasWallContactOutcome = true;
 						validBranches = validBranches &&
 							BOSS_PATTERN_STAGE_MOTION_KIND::FORWARD ==
 								stage.Motion.eKind;
@@ -4198,6 +4349,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 								!stage.Motion.RootMotion.empty());
 					}
 				}
+				if (stage.bChargeImpact && !hasWallContactOutcome)
+					validBranches = false;
 				bool validActions = true;
 				for (const BOSS_PATTERN_STAGE_ACTION& action : stage.Actions)
 				{
@@ -4216,15 +4369,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 						action.eKind)
 					{
 						++gameplayPhaseActionCount;
-						validActions = validActions &&
+						const bool exactArenaBreak =
 							BOSS_PATTERN_SELECTION::HEALTH_BAR == pattern.eSelection &&
 							BOSS_PATTERN_CATEGORY::MECHANIC == pattern.eCategory &&
-							BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER ==
-								action.eTrigger &&
-							"boss.phase.gameplay" == action.strTargetId &&
-							2u == action.iValue && 0u == action.iDurationMs;
-						if ("BOSS_VALTAN" == archetypeId &&
-							"ENCOUNTER_VALTAN" == boss.strEncounterId &&
 							"VALTAN_ARENA_BREAK_109" == pattern.strPatternId &&
 							"IMPACT" == stage.strStageId &&
 							"valtan.mechanic.arena-break-109.impact" ==
@@ -4232,9 +4379,30 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 							BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER ==
 								action.eTrigger &&
 							"boss.phase.gameplay" == action.strTargetId &&
-							2u == action.iValue && 0u == action.iDurationMs)
+							2u == action.iValue && 0u == action.iDurationMs;
+						const bool exactGhostRespawn =
+							BOSS_PATTERN_SELECTION::AUDITION_ONLY == pattern.eSelection &&
+							BOSS_PATTERN_CATEGORY::NORMAL == pattern.eCategory &&
+							"VALTAN_GHOST_RESPAWN_AUDITION" == pattern.strPatternId &&
+							"STEP_01" == stage.strStageId &&
+							"valtan.sequence.respawn.step-01" == stage.strActionId &&
+							BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER ==
+								action.eTrigger &&
+							"boss.phase.gameplay" == action.strTargetId &&
+							3u == action.iValue && 0u == action.iDurationMs;
+						validActions = validActions &&
+							(exactArenaBreak || exactGhostRespawn);
+						if ("BOSS_VALTAN" == archetypeId &&
+							"ENCOUNTER_VALTAN" == boss.strEncounterId &&
+							exactArenaBreak)
 						{
 							hasExactValtanArenaBreakPhaseAction = true;
+						}
+						if ("BOSS_VALTAN" == archetypeId &&
+							"ENCOUNTER_VALTAN" == boss.strEncounterId &&
+							exactGhostRespawn)
+						{
+							hasExactValtanGhostRespawnPhaseAction = true;
 						}
 						continue;
 					}
@@ -4260,6 +4428,12 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 						const bool isVolley =
 							BOSS_PATTERN_STAGE_ACTION_KIND::
 								SPAWN_COMBAT_OBJECT_VOLLEY == action.eKind;
+						const bool isValtanGhostPortal = isVolley &&
+							"BOSS_VALTAN" == archetypeId &&
+							"ENCOUNTER_VALTAN" == boss.strEncounterId &&
+							"VALTAN_GHOST_PORTAL_ONCE" == pattern.strPatternId;
+						if (isValtanGhostPortal)
+							++valtanGhostPortalTypedVolleyCount;
 						if (isVolley && "BOSS_VALTAN" == archetypeId &&
 							"ENCOUNTER_VALTAN" == boss.strEncounterId &&
 							"VALTAN_HIGH_JUMP" == pattern.strPatternId)
@@ -4288,6 +4462,36 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 						{
 							hasExactValtanHighJumpTypedVolley = true;
 						}
+						const bool validRadialInwardMissile =
+							m_BossCombatObjects.end() != combatObject &&
+							BOSS_COMBAT_OBJECT_DIRECTION_POLICY::RADIAL_INWARD ==
+								combatObject->second.eDirectionPolicy &&
+							BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
+								action.Volley.ePolicy;
+						if (isValtanGhostPortal &&
+							"ACTIVE" == stage.strStageId &&
+							"valtan.ghost.portal-once.active" == stage.strActionId &&
+							5000u == stage.iDurationMs &&
+							!stage.Actions.empty() && &action == &stage.Actions.front() &&
+							"combatobject.valtan.ghost.portal-charge" ==
+								action.strTargetId &&
+							BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
+								action.Volley.ePolicy &&
+							4u == action.Volley.iCountPerResolvedTarget &&
+							BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL ==
+								action.Volley.eLayout &&
+							std::fabs(action.Volley.fRadiusM - 31.112698f) < 0.0001f &&
+							45.f == action.Volley.fStartAngleDegrees &&
+							90.f == action.Volley.fAngleStepDegrees &&
+							!action.Volley.bAllowOverlap &&
+							4u == action.Volley.iMaximumTotalObjects &&
+							1u == action.Volley.iSpawnCount &&
+							0u == action.Volley.iSpawnIntervalMs &&
+							0u == action.Volley.iArenaRandomCount &&
+							validRadialInwardMissile)
+						{
+							hasExactValtanGhostPortalTypedVolley = true;
+						}
 						if (m_BossCombatObjects.end() == combatObject ||
 							combatObject->second.strEncounterId != pattern.strEncounterId ||
 							combatObject->second.strOwnerPatternId != pattern.strPatternId ||
@@ -4311,7 +4515,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 									combatObject->second.eOriginPolicy) ||
 							  BOSS_COMBAT_OBJECT_VOLLEY_POLICY::NONE ==
 									action.Volley.ePolicy)) ||
-							(!fixedArea &&
+							(!fixedArea && !validRadialInwardMissile &&
 							 BOSS_PATTERN_AIM_POLICY::LOCK_FACING_ON_START !=
 								pattern.eAimPolicy))
 						{
@@ -4548,31 +4752,49 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				return false;
 			}
 		}
+		if (!HasFiniteBossPatternFollowupGraph(foundPatterns->second))
+		{
+			m_strStatus =
+				"Boss cross-pattern follow-up graph is cyclic or dangling";
+			return false;
+		}
 		const bool expectsAuthoredPhaseAction =
 			BOSS_PHASE_POLICY_KIND::AUTHORED_PATTERN_EVENT ==
 				boss.PhasePolicy.eKind;
-		if ((expectsAuthoredPhaseAction && 1u != gameplayPhaseActionCount) ||
+		const bool isValtanPrimary = "BOSS_VALTAN" == archetypeId &&
+			"ENCOUNTER_VALTAN" == boss.strEncounterId;
+		const std::size_t expectedGameplayPhaseActionCount =
+			isValtanPrimary ? 2u : 1u;
+		if ((expectsAuthoredPhaseAction &&
+			 expectedGameplayPhaseActionCount != gameplayPhaseActionCount) ||
 			(!expectsAuthoredPhaseAction && 0u != gameplayPhaseActionCount))
 		{
 			m_strStatus =
 				"Boss phase policy and gameplay phase actions differ";
 			return false;
 		}
-		if (expectsAuthoredPhaseAction && "BOSS_VALTAN" == archetypeId &&
-			"ENCOUNTER_VALTAN" == boss.strEncounterId &&
-			!hasExactValtanArenaBreakPhaseAction)
+		if (expectsAuthoredPhaseAction && isValtanPrimary &&
+			(!hasExactValtanArenaBreakPhaseAction ||
+			 !hasExactValtanGhostRespawnPhaseAction))
 		{
 			m_strStatus =
-				"Valtan authored phase action is not the 109 IMPACT ENTER edge";
+				"Valtan authored phase actions are not the exact phase-two/three edges";
 			return false;
 		}
-		if (expectsAuthoredPhaseAction && "BOSS_VALTAN" == archetypeId &&
-			"ENCOUNTER_VALTAN" == boss.strEncounterId &&
+		if (expectsAuthoredPhaseAction && isValtanPrimary &&
 			(1u != valtanHighJumpTypedVolleyCount ||
 			 !hasExactValtanHighJumpTypedVolley))
 		{
 			m_strStatus =
 				"Valtan high jump does not own the typed AIRBORNE volley";
+			return false;
+		}
+		if (expectsAuthoredPhaseAction && isValtanPrimary &&
+			(1u != valtanGhostPortalTypedVolleyCount ||
+			 !hasExactValtanGhostPortalTypedVolley))
+		{
+			m_strStatus =
+				"Valtan ghost portal does not own the exact four-corner volley";
 			return false;
 		}
 	}

@@ -165,12 +165,16 @@ public:
 			PinnedPatternSoundSourceReceipt,
 		std::string& strOutStatus);
 	/* Restart replaces only the exact authoritative ACTIVE or COMPLETED
-	   occurrence currently owned by this consumer. It allocates a new wire
-	   request identity and never clears an ordered Flow or reserved Next. */
+	   occurrence currently owned by this consumer. The predecessor keeps its
+	   immutable revision while replacementActiveDefinitionRevision names the
+	   saved Product generation currently active on the Server. It allocates a
+	   new wire request identity and never clears an ordered Flow or reserved Next. */
 	bool Restart_ActivePattern(
 		std::string_view strConsumerId,
 		std::string_view strBossPlacementId,
 		std::string_view strPatternId,
+		const LostArk::Shared::GameplayDataRevision&
+			replacementActiveDefinitionRevision,
 		const VALTAN_PATTERN_SOUND_SOURCE_RECEIPT&
 			ExpectedPatternSoundSourceReceipt,
 		std::string& strOutStatus);
@@ -252,7 +256,19 @@ public:
 		std::string& strOutStatus)
 	{
 		return Restart_ActivePattern(strConsumerId, strBossPlacementId,
-			strPatternId, Harness_PatternSoundReceipt(), strOutStatus);
+			strPatternId, m_Snapshot.PinnedDefinitionRevision,
+			Harness_PatternSoundReceipt(), strOutStatus);
+	}
+	bool Restart_ActivePattern(
+		std::string_view strConsumerId,
+		std::string_view strBossPlacementId,
+		std::string_view strPatternId,
+		const LostArk::Shared::GameplayDataRevision& ReplacementRevision,
+		std::string& strOutStatus)
+	{
+		return Restart_ActivePattern(strConsumerId, strBossPlacementId,
+			strPatternId, ReplacementRevision,
+			Harness_PatternSoundReceipt(), strOutStatus);
 	}
 	bool Retry_UnconfirmedRestart(std::string& strOutStatus)
 	{
@@ -314,7 +330,9 @@ private:
 			expectedDefinitionRevision,
 		LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& Request,
 		std::string& strOutStatus) const;
-	void Accept_NextCommand(uint32_t iRoomAuditionEpoch);
+	void Accept_NextCommand(
+		uint32_t iRoomAuditionEpoch,
+		uint32_t iExpectedPatternSequence = 0u);
 	void Apply_ServerResult(const LostArk::Shared::S2C_VALTAN_AUDITION_RESULT& Result);
 	void Apply_ServerLifecycle(const LostArk::Shared::S2C_VALTAN_AUDITION_LIFECYCLE& Lifecycle);
 	bool Apply_NextLifecycle(const LostArk::Shared::S2C_VALTAN_AUDITION_LIFECYCLE& Lifecycle);

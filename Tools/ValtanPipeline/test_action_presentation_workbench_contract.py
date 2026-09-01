@@ -127,9 +127,9 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         for window in (
             '"Composition Patterns###CompositionPatternsWindow"',
             '"Composition Preview###CompositionPreviewWindow"',
-            '"Composition Sequencer###CompositionSequencerWindow"',
+            '"Composition Sequencer###CompositionSequencerWindowResizableV3"',
             '"Box Detail###CompositionDetailsWindow"',
-            '"Composition Resources###CompositionResourcesWindow"',
+            '"Composition Resources###CompositionResourcesWindowResizableV2"',
             '"Server Replay###CompositionSessionWindow"',
         ):
             self.assertIn(window, self.composition_cpp)
@@ -206,11 +206,53 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "ImGuiCond_FirstUseEver",
         ):
             self.assertIn(token, self.composition_cpp)
-        self.assertNotIn("ImGuiWindowFlags_AlwaysAutoResize", self.composition_cpp)
+        for window_signature in (
+            "void Client::CActionCompositionWorkbench::Render_PatternsWindow(",
+            "void Client::CActionCompositionWorkbench::Render_PreviewWindow(",
+            "void Client::CActionCompositionWorkbench::Render_SequencerWindow(",
+            "void Client::CActionCompositionWorkbench::Render_DetailsWindow(",
+            "void Client::CActionCompositionWorkbench::Render_ResourcesWindow(",
+        ):
+            self.assertNotIn(
+                "ImGuiWindowFlags_AlwaysAutoResize",
+                function_body(self.composition_cpp, window_signature),
+            )
         self.assertNotIn(
             "ImGui::SetNextWindowSizeConstraints",
             self.composition_cpp,
             "Composition must not turn its default size into a hard bound",
+        )
+        for token in (
+            "COMPOSITION_RESOURCES_DEFAULT_HEIGHT_SCALE = 2.f",
+            "COMPOSITION_SEQUENCER_DEFAULT_HEIGHT_SCALE = 2.f",
+            "COMPOSITION_LEFT_COLUMN_WIDTH_RATIO = 0.18f",
+            "COMPOSITION_RIGHT_COLUMN_WIDTH_RATIO = 0.20f",
+            "TIMELINE_ROW_HEIGHT = 48.f",
+            "TIMELINE_BLOCK_VERTICAL_PADDING = 6.f",
+            "TIMELINE_CANVAS_MINIMUM_HEIGHT = 420.f",
+            "leftBottomHeight * COMPOSITION_RESOURCES_DEFAULT_HEIGHT_SCALE",
+            "sequencerHeight * COMPOSITION_SEQUENCER_DEFAULT_HEIGHT_SCALE",
+            '"Composition Resources###CompositionResourcesWindowResizableV2"',
+            '"Composition Sequencer###CompositionSequencerWindowResizableV3"',
+        ):
+            self.assertIn(token, self.composition_cpp)
+        column_ratios = re.search(
+            r"COMPOSITION_LEFT_COLUMN_WIDTH_RATIO\s*=\s*([0-9.]+)f;"
+            r"[\s\S]*?COMPOSITION_RIGHT_COLUMN_WIDTH_RATIO\s*=\s*([0-9.]+)f;",
+            self.composition_cpp,
+        )
+        self.assertIsNotNone(column_ratios)
+        left_ratio, right_ratio = map(float, column_ratios.groups())
+        self.assertAlmostEqual(0.18, left_ratio)
+        self.assertAlmostEqual(0.20, right_ratio)
+        self.assertAlmostEqual(0.62, 1.0 - left_ratio - right_ratio)
+        self.assertNotIn(
+            '"Composition Resources###CompositionResourcesWindow"',
+            self.composition_cpp,
+        )
+        self.assertNotIn(
+            '"Composition Sequencer###CompositionSequencerWindow"',
+            self.composition_cpp,
         )
         self.assertIn("bool_t m_bResetLayoutRequested = false;", self.composition_h)
 
@@ -297,13 +339,13 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "Find_SelectedPattern()",
             "Ensure_TimelineCache(pPattern)",
             "Render_SequencerWindow(",
-            "Render_SessionWindow(",
             "Render_PatternsWindow(",
             "Render_PreviewWindow(",
             "Render_DetailsWindow(",
             "Render_ResourcesWindow(",
         ):
             self.assertIn(token, render)
+        self.assertNotIn("Render_SessionWindow(", render)
         self.assertLess(
             render.index("Reload_Canonical()"),
             render.index("Render_SequencerWindow("),
@@ -366,7 +408,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         )
         self.assertNotIn("m_eDebugInputOwner", self.composition_cpp)
 
-    def test_data_files_exposes_selected_semantic_links_without_raw_scan(
+    def test_resources_omits_redundant_selected_semantic_links_without_raw_scan(
         self,
     ) -> None:
         linked = function_body(
@@ -421,18 +463,8 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, linked)
 
-        self.assertIn("Render_SemanticLinkedRows", self.composition_h)
-        self.assertIn(
-            "Render_SemanticLinkedRows(pResourcePattern, pResourceStage)",
-            resources,
-        )
-        self.assertLess(
-            resources.index(
-                "Render_SemanticLinkedRows(pResourcePattern, pResourceStage)"
-            ),
-            resources.index('"##CompositionResourceDomainTabs"'),
-            "selected semantic links must precede the typed resource browsers",
-        )
+        self.assertNotIn("Render_SemanticLinkedRows(", resources)
+        self.assertIn('"##CompositionResourceDomainTabs"', resources)
 
     def test_pattern_details_exposes_core_tuning_and_truthful_create_boundary(
         self,
@@ -1306,7 +1338,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "PreviousShakeCues",
             "CValtanCanonicalProductReadAdmission CanonicalAdmission",
             "CValtanPresentationGenerationReadAdmission GenerationAdmission",
-            "GenerationAdmission.Acquire_ExactReceipt(",
+            "GenerationAdmission.Acquire_Receipt(",
             "CanonicalAdmission.Acquire(strOutStatus)",
             "Reload_PatternBindings_WhileAdmitted(StepStatus)",
             "Reload_PatternEffectCues_WhileAdmitted(StepStatus)",
@@ -1327,6 +1359,9 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "std::move(CurrentPresentationReceipt)",
         ):
             self.assertIn(token, joined_reload)
+        self.assertNotIn(
+            "GenerationAdmission.Acquire_ExactReceipt(", joined_reload
+        )
 
         workbench = function_body(
             self.animation_cpp,
@@ -1509,7 +1544,9 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "bool_t Client::CBossTool::Start_Flow(",
         )
         first_slot = flow_start.index("pFlow->Slots.front().strSlotId")
-        delegate = flow_start.index("Start_FlowAtSlot(StartSlotId)")
+        delegate = flow_start.index(
+            "Start_FlowAtSlot(StartSlotId, pRequiredDefinitionRevision)"
+        )
         self.assertLess(first_slot, delegate)
         flow_submit = function_body(
             self.boss_cpp,
@@ -1522,7 +1559,11 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         )
         self.assertLess(
             restart_saved.index("Reload_FlowDocument()"),
-            restart_saved.index("return Start_Flow()"),
+            restart_saved.index("return Start_Flow("),
+        )
+        self.assertIn(
+            "bHasSavedGameplayExpectation ? &SavedCandidateRevision : nullptr",
+            restart_saved,
         )
 
         server_start = function_body(
@@ -1712,7 +1753,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
         for token in (
             "S2C_COMBAT_OBJECT_PRESENTATION_EVENT",
-            "NETWORK_PROTOCOL_VERSION = 51;",
+            "NETWORK_PROTOCOL_VERSION = 52;",
         ):
             self.assertIn(token, self.packet_type_h)
         for token in (
@@ -1956,6 +1997,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             '"Release yaw offset deg"',
             '"Local Y rotation deg"',
             '"arena.center.facing"',
+            '"arena.center.target-follow"',
         ):
             self.assertIn(token, inspector)
         for forbidden in ("CDataJson", "CNetworkManager", "ofstream"):
@@ -2128,6 +2170,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
                 f"IsDebugToolVisible(DEBUG_TOOL::{tool})",
                 render,
             )
+        self.assertIn("m_pBossTool->Render()", render)
         self.assertNotIn("switch (m_eActiveDebugTool)", render)
 
         for relative, token in (

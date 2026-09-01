@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lostark.effect-v2-group.v2.schema.json",
+  "title": "LostArk Effect V2 stable group",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "formatVersion", "groupId", "durationMs", "children"],
+  "properties": {
+    "schema": { "const": "lostark.effect-v2-group" },
+    "formatVersion": { "const": 2 },
+    "groupId": { "$ref": "#/$defs/stableId" },
+    "durationMs": { "$ref": "#/$defs/ms" },
+    "children": {
+      "type": "array",
+      "description": "Authored array order is the deterministic spawn order; childId remains the mutation identity.",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": { "$ref": "#/$defs/child" }
+    }
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]{1,160}$"
+    },
+    "ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 600000
+    },
+    "vector3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "type": "number" }
+    },
+    "nonZeroVector3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "type": "number", "not": { "const": 0 } }
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "enum": ["LEAF", "GROUP"] },
+        "id": { "$ref": "#/$defs/stableId" }
+      }
+    },
+    "transform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["translation", "rotation", "scale"],
+      "properties": {
+        "translation": { "$ref": "#/$defs/vector3", "description": "Local XYZ translation." },
+        "rotation": { "$ref": "#/$defs/vector3", "description": "Local pitch/yaw/roll rotation in degrees." },
+        "scale": { "$ref": "#/$defs/nonZeroVector3", "description": "Local XYZ scale; zero components are forbidden." }
+      }
+    },
+    "child": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["childId", "resource", "startMs", "durationMs", "stop", "localTransform"],
+      "properties": {
+        "childId": { "$ref": "#/$defs/stableId" },
+        "resource": { "$ref": "#/$defs/resource" },
+        "startMs": { "$ref": "#/$defs/ms" },
+        "durationMs": { "$ref": "#/$defs/ms" },
+        "stop": { "enum": ["Kill", "Deactivate"] },
+        "localTransform": { "$ref": "#/$defs/transform" }
+      }
+    }
+  }
+}

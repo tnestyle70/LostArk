@@ -374,11 +374,30 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             "Clip.iPlayMs",
             "Clip.fPlayRate",
             "Clip.bLoop",
-            "iStageAnimationWallMs != Stage.iDurationMs",
+            "iStageAnimationWallMs > Stage.iDurationMs",
             "Stage.iAuthoringRepeatCount",
             "iPlayableOccurrenceCount",
         ):
             self.assertIn(token, build)
+        for token in (
+            "iStageAnimationWallMs < Stage.iDurationMs",
+            '"HOLD_LAST_POSE" != Stage.strAnimationEndPolicy',
+            '"Only HOLD_LAST_POSE may leave a trailing Server Stage gap: "',
+            "const uint32_t iTrailingHoldMs",
+            "LastStageItem.iAuthoringWallMs += iTrailingHoldMs",
+            "iStageAnimationWallMs = Stage.iDurationMs",
+            "iTimelineMs += iTrailingHoldMs",
+            '"Master occurrences exceed Server stage "',
+        ):
+            self.assertIn(token, build)
+        self.assertLess(
+            build.index("iStageAnimationWallMs > Stage.iDurationMs"),
+            build.index("iStageAnimationWallMs < Stage.iDurationMs"),
+        )
+        self.assertLess(
+            build.index('"HOLD_LAST_POSE" != Stage.strAnimationEndPolicy'),
+            build.index("LastStageItem.iAuthoringWallMs += iTrailingHoldMs"),
+        )
         for token in (
             "m_ValtanPatternMasterBoss.lock()",
             "Boss->Apply_LocalPatternPresentationSample(",
@@ -463,6 +482,16 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             for pattern in self.presentation["patterns"]
             if pattern["patternId"] == "VALTAN_DASH_CHARGE"
         )
+        gameplay_groggy = next(
+            pattern
+            for pattern in self.gameplay["patterns"]
+            if pattern["patternId"] == "VALTAN_DASH_CHARGE_GROGGY"
+        )
+        presentation_groggy = next(
+            pattern
+            for pattern in self.presentation["patterns"]
+            if pattern["patternId"] == "VALTAN_DASH_CHARGE_GROGGY"
+        )
         gameplay_by_stage = {
             stage["stageId"]: stage for stage in gameplay_dash["stages"]
         }
@@ -470,7 +499,7 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             stage["stageId"]: stage for stage in presentation_dash["stages"]
         }
 
-        normal_stage_ids = ("WINDUP", "CHARGE", "RECOVERY")
+        normal_stage_ids = ("WINDUP", "CHARGE")
         timeline_ms = 0.0
         occurrence_starts: dict[tuple[str, int], float] = {}
         for stage_id in normal_stage_ids:
@@ -488,13 +517,63 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
 
         self.assertAlmostEqual(1200.0, occurrence_starts[("WINDUP", 2)])
         self.assertAlmostEqual(3650.0, occurrence_starts[("CHARGE", 0)])
-        self.assertAlmostEqual(5150.0, occurrence_starts[("RECOVERY", 0)])
-        self.assertAlmostEqual(6050.0, timeline_ms, delta=0.1)
+        self.assertAlmostEqual(5150.0, timeline_ms, delta=0.1)
+
+        groggy_timeline_ms = sum(
+            occurrence["playMs"] / occurrence["playRate"]
+            for occurrence in presentation_groggy["stages"][0]["animation"][
+                "occurrences"
+            ]
+        )
+        self.assertEqual("GROGGY", gameplay_groggy["stages"][0]["stageId"])
+        self.assertAlmostEqual(6833.0, groggy_timeline_ms, delta=0.1)
 
         # Apply_ValtanPatternMasterPose converts occurrence-local wall time to
         # the same stage-age clock consumed by CValtan's Product sampler.
         third_windup_stage_age_seconds = (1200.0 - 0.0) * 0.001 + 0.604
         self.assertAlmostEqual(1.804, third_windup_stage_age_seconds)
+
+    def test_cross_pattern_snapshot_requires_a_forward_sequence_edge(self) -> None:
+        network_apply = function_slice(
+            self.valtan_cpp,
+            "bool_t CValtan::Apply_NetworkState(",
+            "unique_ptr<CValtan> CValtan::Create(",
+        )
+        self.assertRegex(
+            network_apply,
+            r"if \(iPatternSequence != m_iServerPatternSequence &&\s*"
+            r"!Client::CActionPresentationTimeline::Is_ForwardTick\(\s*"
+            r"iPatternSequence, m_iServerPatternSequence\)\)\s*"
+            r"\{\s*return false;\s*\}",
+        )
+        self.assertRegex(
+            network_apply,
+            r"if \(iPatternSequence == m_iServerPatternSequence &&\s*"
+            r"\(m_strServerPatternId != patternId \|\|[\s\S]*?\)\)\s*"
+            r"\{\s*return false;\s*\}",
+        )
+        self.assertRegex(
+            network_apply,
+            r"const bool_t patternEdgeChanged = isPatternState &&\s*"
+            r"\(patternIdChanged \|\| actionIdChanged \|\|\s*"
+            r"iPatternSequence != m_iServerPatternSequence",
+        )
+        stop_previous = network_apply.index(
+            "CEffectPresentationService::Stop_BossAction("
+        )
+        commit_pattern = network_apply.index(
+            "m_strServerPatternId.assign(patternId);"
+        )
+        commit_sequence = network_apply.index(
+            "m_iServerPatternSequence = iPatternSequence;"
+        )
+        clear_occurrences = network_apply.index(
+            "m_AttemptedPatternEffectOccurrenceKeys.clear();",
+            commit_sequence,
+        )
+        self.assertLess(stop_previous, commit_pattern)
+        self.assertLess(commit_pattern, commit_sequence)
+        self.assertLess(commit_sequence, clear_occurrences)
 
     def test_arena_fallback_mapping_and_exact_preview_cleanup_are_explicit(self) -> None:
         mapper = function_slice(

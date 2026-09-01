@@ -35,6 +35,37 @@ VS_OUT VS_MAIN(VS_IN input)
     return output;
 }
 
+float3 Resolve_DecalReceiverNormalV1(
+    const float3 worldPosition,
+    const float3 encodedSceneNormal)
+{
+    /* Target_Normal is the deferred lighting normal.  Map and model writers
+       apply their tangent-space normal maps before encoding it, so using that
+       value as a receiver-plane test makes a geometrically flat floor fail a
+       strict cutoff wherever the material normal is strongly perturbed.
+
+       Depth reconstruction already gives this pass the receiver position.
+       Its screen derivatives recover the geometric plane used by the cutoff,
+       while the decoded G-buffer normal is retained only to choose the same
+       front-facing hemisphere. */
+    const float3 shadingNormal = encodedSceneNormal * 2.f - 1.f;
+    const float shadingLengthSquared = dot(shadingNormal, shadingNormal);
+    const float3 normalizedShadingNormal = shadingLengthSquared > 0.000001f ?
+        shadingNormal * rsqrt(shadingLengthSquared) :
+        float3(0.f, 1.f, 0.f);
+    float3 geometricNormal = cross(
+        ddx(worldPosition),
+        ddy(worldPosition));
+    const float geometricLengthSquared =
+        dot(geometricNormal, geometricNormal);
+    if (geometricLengthSquared <= 0.000001f)
+        return normalizedShadingNormal;
+    geometricNormal *= rsqrt(geometricLengthSquared);
+    if (dot(geometricNormal, normalizedShadingNormal) < 0.f)
+        geometricNormal *= -1.f;
+    return geometricNormal;
+}
+
 EFFECT_PS_OUT PS_MAIN(VS_OUT input)
 {
     const float4 depth = g_DepthTexture.Sample(PointSampler, input.uv);
@@ -58,9 +89,10 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
     clip(halfDepth - abs(local.y));
     if (g_DecalNormalCutoff > -1.f)
     {
-        const float3 sceneNormal =
-            g_NormalTexture.Sample(PointSampler, input.uv).xyz * 2.f - 1.f;
-        clip(dot(normalize(sceneNormal), normalize(g_DecalUp)) -
+        const float3 receiverNormal = Resolve_DecalReceiverNormalV1(
+            worldPosition.xyz,
+            g_NormalTexture.Sample(PointSampler, input.uv).xyz);
+        clip(dot(receiverNormal, normalize(g_DecalUp)) -
             g_DecalNormalCutoff);
     }
 

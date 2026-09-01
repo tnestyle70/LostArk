@@ -71,7 +71,6 @@ RECOVERED_VALTAN_EFFECT_ELEMENT_IDS = {
         "sky-axe-flight-line",
         "authored.copy.mesh_particle_6.1",
         "sprite_particle_7",
-        "authored.copy.authored.copy.authored.copy.authored.copy.authored.copy.sprite_particle_8.1.1.2.1.1",
     }),
     "effect.valtan.floor-wipe-130": frozenset({
         "authored.copy.authored.copy.sprite_particle_8.1.1",
@@ -654,7 +653,7 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
             "expanded Product rows must not decode or stat authored Effects every frame"
         )
     for token in (
-        "EDITOR-ONLY EXACT SOURCES",
+        "INDEPENDENT / EDITOR-ONLY EFFECTS",
         "PlayerSkills Product ownership is unavailable",
         "Product preview tree unavailable",
     ):
@@ -668,6 +667,19 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
         "bool_t Client::CEffect_Tool::Try_SaveDocument()",
         "bool_t Client::CEffect_Tool::Try_SaveDocumentAs(",
     )
+    # A bound direct-authored Save is one disk/runtime transaction.  Active
+    # occurrences keep their immutable resources; subsequent spawns consume the
+    # selected prepared-target replacement.
+    source_save = save_helper.find("CEffectDocumentCodec::Save_AtomicIfUnchanged(")
+    runtime_reload = save_helper.find(
+        "CEffectPresentationService::Reload_SelectedProductEffect(", source_save
+    )
+    disk_rollback = save_helper.find(
+        "CEffectDocumentCodec::Save_AtomicIfUnchanged(", source_save + 1
+    )
+    runtime_equivalence = save_helper.find(
+        "Refresh_RuntimeEquivalence();", runtime_reload
+    )
     cache_lookup = save_helper.find("m_ValtanUnifiedEffectCaches.find(")
     cache_reset = save_helper.find("ValtanCache->second = {};", cache_lookup)
     cache_refresh = save_helper.find("Refresh_UnifiedEffectCache(", cache_lookup)
@@ -677,28 +689,48 @@ def validate_drawable_preflight_contract(cpp_text: str) -> None:
     local_stage = save_helper.find(
         "Stage_WorldPreview(*m_ActiveDocument)", local_source
     )
-    if min(cache_lookup, cache_reset, cache_refresh, local_source, local_stage) < 0 or not (
-        cache_lookup < cache_reset < cache_refresh < local_source < local_stage
+    if min(
+        source_save,
+        runtime_reload,
+        disk_rollback,
+        runtime_equivalence,
+        cache_lookup,
+        cache_reset,
+        cache_refresh,
+        local_source,
+        local_stage,
+    ) < 0 or not (
+        source_save
+        < runtime_reload
+        < disk_rollback
+        < runtime_equivalence
+        < cache_lookup
+        < cache_reset
+        < cache_refresh
+        < local_source
+        < local_stage
     ):
         raise AssertionError(
-            "Authored save must refresh only the Effect Tool cache and local preview"
+            "Authored Product save must hot-reload atomically before refreshing Tool preview state"
         )
     for forbidden in (
         "Try_HotReloadSavedProduct",
-        "Reload_SelectedProductEffect",
-        "Save was not committed because",
-    ):
-        if forbidden in save_helper:
-            raise AssertionError(
-                f"Authored save must not mutate the admitted Product generation: {forbidden}"
-            )
-    for token in (
         "Refresh Server data",
         "re-enter Valtan",
     ):
+        if forbidden in save_helper:
+            raise AssertionError(
+                f"Authored save retained an obsolete deferred-activation path: {forbidden}"
+            )
+    for token in (
+        "PreviousCommittedDocument",
+        "the previous disk source was restored",
+        "Product runtime rollback status",
+        "subsequent Product spawns",
+    ):
         if token not in save_helper:
             raise AssertionError(
-                f"Authored save must state the Server Replay boundary: {token}"
+                f"Authored save transaction contract is missing: {token}"
             )
 
 
@@ -2478,13 +2510,16 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
 
     def test_dash_charge_project_tuned_segments_and_cues_are_exact(self) -> None:
         encounter = json.loads(ENCOUNTER_PATH.read_text(encoding="utf-8"))
-        pattern = next(
-            row
-            for row in encounter["patterns"]
-            if row["patternId"] == "VALTAN_DASH_CHARGE"
-        )
+        patterns = {row["patternId"]: row for row in encounter["patterns"]}
+        pattern = patterns["VALTAN_DASH_CHARGE"]
+        groggy = patterns["VALTAN_DASH_CHARGE_GROGGY"]
+        part_break = patterns["VALTAN_PART_BREAK"]
         self.assertEqual([420604], pattern["sourceActionIds"])
+        self.assertEqual([400430], groggy["sourceActionIds"])
+        self.assertEqual([420627], part_break["sourceActionIds"])
         stages = {row["stageId"]: row for row in pattern["stages"]}
+        groggy_stage = groggy["stages"][0]
+        part_break_stage = part_break["stages"][0]
         self.assertEqual(3650, stages["WINDUP"]["durationMs"])
         self.assertEqual("NONE", stages["WINDUP"]["hitShape"])
         self.assertEqual(0, stages["WINDUP"]["hitCount"])
@@ -2495,8 +2530,14 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             {"kind": "FORWARD", "distance": 20.0},
             stages["CHARGE"]["motion"],
         )
-        self.assertEqual(900, stages["RECOVERY"]["durationMs"])
-        self.assertEqual("NONE", stages["RECOVERY"]["hitShape"])
+        self.assertEqual(6833, groggy_stage["durationMs"])
+        self.assertEqual("GROGGY", groggy_stage["stageKind"])
+        self.assertEqual(
+            "DESTROY_FIRST_ELIGIBLE",
+            groggy_stage["partDamagePolicy"],
+        )
+        self.assertEqual("NONE", groggy_stage["hitShape"])
+        self.assertEqual(1400, part_break_stage["durationMs"])
 
         bindings = {
             row["actionId"]: row["clips"]
@@ -2553,16 +2594,50 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             ],
             "valtan.attack.dash-charge.recovery": [
                 {
-                    "clipOccurrenceId": (
-                        "valtan.attack.dash-charge.recovery.project-tuned.clip.01"
-                    ),
-                    "clip": "mesh_att_battle_4_01",
+                    "clipOccurrenceId": "valtan.attack.dash-charge.recovery.groggy.clip.01",
+                    "clip": "mesh_abn_groggy_1_start",
                     "mappingBasis": "PROJECT_AUTHORED",
-                    "sourceStartMs": 3350,
-                    "playMs": 1383,
-                    "playRate": 1.5366667,
+                    "sourceStartMs": 0,
+                    "playMs": 1833,
+                    "playRate": 1.0,
                     "loop": False,
-                }
+                },
+                {
+                    "clipOccurrenceId": "valtan.attack.dash-charge.recovery.groggy.clip.02",
+                    "clip": "mesh_abn_groggy_1_loop",
+                    "mappingBasis": "PROJECT_AUTHORED",
+                    "sourceStartMs": 0,
+                    "playMs": 1333,
+                    "playRate": 1.0,
+                    "loop": False,
+                },
+                {
+                    "clipOccurrenceId": "valtan.attack.dash-charge.recovery.groggy.clip.03",
+                    "clip": "mesh_abn_groggy_1_loop",
+                    "mappingBasis": "PROJECT_AUTHORED",
+                    "sourceStartMs": 0,
+                    "playMs": 1333,
+                    "playRate": 1.0,
+                    "loop": False,
+                },
+                {
+                    "clipOccurrenceId": "valtan.attack.dash-charge.recovery.groggy.clip.04",
+                    "clip": "mesh_abn_groggy_1_loop",
+                    "mappingBasis": "PROJECT_AUTHORED",
+                    "sourceStartMs": 0,
+                    "playMs": 334,
+                    "playRate": 1.0,
+                    "loop": False,
+                },
+                {
+                    "clipOccurrenceId": "valtan.attack.dash-charge.recovery.groggy.clip.05",
+                    "clip": "mesh_abn_groggy_1_end",
+                    "mappingBasis": "PROJECT_AUTHORED",
+                    "sourceStartMs": 0,
+                    "playMs": 2000,
+                    "playRate": 1.0,
+                    "loop": False,
+                },
             ],
         }
         for action_id, expected in expected_clips.items():

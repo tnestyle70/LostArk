@@ -417,6 +417,27 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         self.assertNotIn("Save_ValtanAuthoring", save_product)
         self.assertNotIn('ImGui::Button("Apply Hot Reload")', self.balance_cpp)
 
+    def test_canonical_commit_receipt_is_not_reclassified_as_nothing_saved(self) -> None:
+        command = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::RunValtanDraftCommand(",
+        )
+        commit = command[command.index('if (0 == std::wcscmp(mode, L"CommitCanonicalDraft"))') :]
+        reopen_failure = commit[
+            commit.index("if (!Reload())") :
+            commit.index("if (m_valtanSourceRevision != committedRevision")
+        ]
+        self.assertIn("COMMIT_SUCCEEDED_REOPEN_FAILED", reopen_failure)
+        self.assertIn("return true;", reopen_failure)
+        self.assertNotIn("return false;", reopen_failure)
+        revision_mismatch = commit[
+            commit.index("if (m_valtanSourceRevision != committedRevision") :
+            commit.index("if (0u != result.changedCount)")
+        ]
+        self.assertIn("COMMIT_SUCCEEDED_REOPEN_FAILED", revision_mismatch)
+        self.assertIn("return true;", revision_mismatch)
+        self.assertIn("COMMITTED_AND_RELOADED", commit)
+
     def test_candidate_apply_class_is_strict_and_blocks_hot_reload(self) -> None:
         self.assertIn("std::string applyClass;", self.balance_cpp)
         self.assertIn("bool hasApplyClassField = false;", self.balance_cpp)
@@ -463,6 +484,10 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
             self.tuning_command_cpp,
             "Is_LatestGameplaySourceServerActive(std::string& strOutStatus) const",
         )
+        exact_activation_gate = function_body(
+            self.tuning_command_cpp,
+            "Try_GetLatestGameplaySourceServerActiveRevision(",
+        )
         reload_balance = function_body(
             self.balance_cpp,
             "bool Client::CBalanceTool::Reload()",
@@ -483,9 +508,16 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         self.assertNotIn("Is_LatestGameplaySourceServerActive", replay_gate)
         self.assertIn("ServerActiveRevision", replay_gate)
         self.assertIn("activeRevision.Is_Valid()", replay_gate)
-        self.assertIn("Read_RevisionObservation", activation_gate)
-        self.assertIn("Observation.ServerActiveRevision == CandidateRevision", activation_gate)
-        self.assertIn("no admitted Product candidate", activation_gate)
+        self.assertIn(
+            "Try_GetLatestGameplaySourceServerActiveRevision", activation_gate
+        )
+        self.assertIn("Read_RevisionObservation", exact_activation_gate)
+        self.assertIn(
+            "Observation.ServerActiveRevision == CandidateRevision",
+            exact_activation_gate,
+        )
+        self.assertIn("outRevision = CandidateRevision", exact_activation_gate)
+        self.assertIn("no admitted Product candidate", exact_activation_gate)
         self.assertIn("Has_GameplaySourceActivationExpectation", reload_balance)
         self.assertIn("A saved Valtan authoring head was resumed", reload_balance)
         self.assertIn("if (!Reload()", construct_balance)
@@ -658,6 +690,15 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         )
         self.assertIn("m_GameplayRevisionState.isPresentationIsolated = true", entry)
         self.assertIn("Reload the presentation sources", entry)
+        self.assertIn(
+            "hasPendingEntryPresentationBaselineRecovery", entry
+        )
+        self.assertIn(
+            "Is_TransientCanonicalPresentationAdmissionFailure", entry
+        )
+        self.assertIn(
+            "ENTRY_PRESENTATION_BASELINE_RETRY_MILLISECONDS", entry
+        )
         self.assertLess(
             entry.index("if (!admitEntryRevision"),
             entry.index("Reset_WorldInboundState();"),
@@ -942,7 +983,7 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
             "Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1",
             valtan_domain["action"]["arguments"],
         )
-        self.assertIn("ValidateV2", valtan_domain["action"]["arguments"])
+        self.assertIn("Validate", valtan_domain["action"]["arguments"])
         gameplay_domain = next(
             row for row in self.build_domains["domains"]
             if row["id"] == "gameplay.balance"
@@ -953,7 +994,7 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
             gameplay_domain["action"]["arguments"],
         )
         self.assertIn("-SkipValtanSplitProjection", gameplay_domain["action"]["arguments"])
-        self.assertIn("-Mode ValidateV2", self.gameplay_publisher)
+        self.assertIn("-Mode Validate", self.gameplay_publisher)
         self.assertNotIn("if ($Mode -eq 'Publish') { 'PublishV2' }", self.gameplay_publisher)
         self.assertIn('project-products', self.valtan_projector)
         self.assertNotIn('ValtanChargeImpactActions.json', self.gameplay_publisher)

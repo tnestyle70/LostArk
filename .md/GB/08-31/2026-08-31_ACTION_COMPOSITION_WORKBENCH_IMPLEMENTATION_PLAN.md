@@ -73,7 +73,7 @@ LAN role       : server-host, Server + Client profile
 | Animation occurrence, Effect invocation, Camera invocation | `Data/Valtan/Valtan.presentation.json` |
 | Pattern Sound occurrence | `Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json` 별도 CAS owner |
 | Pattern Shake occurrence | `Data/Animation/Authored/Valtan/Valtan.patternshakecues.json` projector 생성 read-only dependency |
-| 패턴 간 Boss audition Flow | `Data/Encounters/Valtan/ValtanBossAuditionFlows.json` graph v2 source |
+| 패턴 간 Boss audition Flow | `Data/Valtan/Valtan.gameplay.json > decisionModel.scriptedSequence` inline source |
 | 생성 Product | `Data/Encounters/Valtan/ValtanEncounter.json`, `Valtan.patternbindings.json`, `Valtan.patterneffectcues.json` |
 | Client authoring/read view | `CValtanPatternTree` canonical load -> Workbench/Boss Tool inventory |
 | Server gameplay 소비 | publisher -> `Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap` -> `CGameplayCatalog/CGameRoom/CValtanBrain` fixed tick |
@@ -515,7 +515,7 @@ materialize한다.
   `STEP_07` counter flag/branch 제거, `CATCH_COUNTER` role/event/branch 추가, animation clock과
   Server harness를 포함한 별도 source migration으로 수행한다.
 
-Boss Tool의 `ValtanBossAuditionFlows.json` graph v2 finite edge는 패턴 간 실행 순서다. 위 패턴 내부
+Boss Tool의 in-memory Flow adapter가 inline `scriptedSequence`를 finite route로 투영한 edge는 패턴 간 실행 순서다. 위 패턴 내부
 retry를 Boss Flow로 우회 구현하지 않는다.
 
 ## G06. Resource와 owner별 편집 완결
@@ -716,6 +716,14 @@ Pattern silence window 5000ms
 HUD mask red/height는 presentation이며 Server silence authority를 대신하지 않는다. 종료·cancel·re-entry
 후 status가 남지 않는 native oracle을 둔다.
 
+- 새 HUD나 별도 local timer를 만들지 않고 기존 `Skill_<slot>_Icon`과
+  `Skill_<slot>_Cooldown` CUILayout/CUI_Sprite를 재사용한다.
+- 붉은색은 effective skill cooldown이 아니라 snapshot의 `iSilenceEndTick`이 현재 Server tick보다
+  미래인지 독립 판정한다. 침묵이 끝난 뒤 더 긴 실제 cooldown이 남으면 red만 빠지고 기존 검은
+  cooldown sweep은 계속한다.
+- Q/W/E/R/A/S/D/F/T/V와 현재 제품 HUD가 별도 keyframe으로 소유한 Warlord/Artist Z/X도 같은
+  침묵 tint를 적용하고, 종료·cancel snapshot에서 원색으로 복원한다.
+
 ## G08-D. 땅구르기 후 사자후 네 방향 돌
 
 `VALTAN_GROUND_ROAR`의 typed Server action이 exact 네 combat object를 생성한다.
@@ -752,6 +760,43 @@ random alive player snapshot
 Effect element별 yaw 복사로 우회하지 않고 composite invocation의 typed rotation root 하나를 사용한다.
 data -> snapshot -> matrix -> early sector spawn -> late element spawn native test에서 동일 root identity와
 각도를 검증한다. anchor/facing source가 없으면 fallback 회전으로 정상처럼 재생하지 않는다.
+
+### 2026-09-01 구현 결정
+
+- `LOCK_RANDOM_ALIVE_ON_START`가 고른 한 플레이어의 `NetEntityId`는 occurrence 끝까지 고정한다.
+  `aimPolicy`는 `TRACK_TARGET_EACH_TICK`으로 복구해 Server fixed tick이 같은 플레이어의 현재 위치를
+  향한 facing을 계산한다. Client가 다른 플레이어를 다시 고르거나 임의 각속도를 만들지 않는다.
+- 여기서 "플레이어가 중심"이라는 뜻은 피자 전체의 world position을 플레이어에게 옮기는 것이 아니다.
+  저작된 landing arena center에서 선택 플레이어를 향하는 방향이 회전하는 sector의 중심선이다.
+- 기존 고정 계약 `arena.center.facing + snapshot`은 보존한다. Six Pizza composite만 새 typed anchor
+  `arena.center.target-follow + follow`을 사용한다. position은 저작 landing center, yaw는 현재 수락한
+  Server snapshot facing이며 local transform과 scale policy는 그 root 아래에서 한 번만 합성한다.
+- `CValtan`은 `Spawn_WorldRoot`가 반환한 handle과 pattern sequence/locked target identity를 보존한다.
+  같은 sequence의 다음 snapshot마다 같은 handle을 `Update_WorldRoot`하고, 이미 보이는 sector와 이후
+  생성되는 landing/impact/finale Element가 각각 현재/terminal root를 소비하게 한다.
+- 새 pattern sequence, pattern 종료, target identity 변경에는 다른 대상이나 0도로 fallback하지 않는다.
+  갱신 소유권만 해제하고 마지막 정상 root를 terminal 값으로 남긴다. non-finite yaw, missing target,
+  degenerate matrix, 끝난 handle도 기존 root를 덮어쓰지 않고 격리한다.
+- root를 따라 계속 보여야 하는 정적 sector particle만 authored Effect에서 `localSpace=true`로 둔다.
+  나중에 burst되는 world-space 입자는 생성 tick의 갱신된 root를 사용하므로 전역 particle 의미를
+  바꾸거나 모든 Element의 yaw를 복사하지 않는다.
+- Shared packet은 이미 boss의 현재 Server yaw와 locked pattern target ID/pose를 같은 snapshot으로
+  전달하므로 새 protocol이나 두 번째 Effect runtime을 추가하지 않는다. 현재 모든 Six Pizza stage의
+  Server hit가 `NONE`인 범위에서 presentation 회전만 닫으며, 향후 damage를 추가할 때는 같은 root track을
+  Server hit primitive가 소비하는 별도 수직 슬라이스로 연다.
+
+### 수정·검증 범위
+
+- 정본/생성: `Data/Valtan/Valtan.gameplay.json`, `Data/Valtan/Valtan.presentation.json`,
+  Six Pizza authored Effect, phase-two authoring helper, Valtan publisher가 생성하는 Product cue.
+- runtime/authoring: `CValtanPatternEffectCueDocument`, `CValtan`, strict split join,
+  Effect cue authoring admission, Action Composition anchor picker/설명.
+- 자동 검증은 source/Product가 locked random target + per-tick aim + target-follow anchor로 일치하는지,
+  두 Server tick yaw가 같은 handle의 서로 다른 root를 만드는지, invalid 입력이 마지막 root를 보존하는지,
+  초기/late Element와 정적 sector local-space 계약이 같은 composite root를 소비하는지 확인한다.
+- 사용자는 `Server + Client`로 Valtan에 진입해 `VALTAN_SIX_PIZZA_106`을 실행하고 선택 플레이어가
+  arena center 둘레로 움직일 때 sector 중심선과 19.5/23/28.5초 late Element가 같은 회전 기준을
+  따르는지 직접 판정한다. 사용자 관찰 전에는 visual PASS로 기록하지 않는다.
 
 ## G08-F. 잡기 후 날리기와 left-hand anchor
 
@@ -942,7 +987,7 @@ background index하고 stale worker generation은 commit하지 않는다.
 ### publisher와 canonical admission
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1 -Mode ValidateV2
+powershell -ExecutionPolicy Bypass -File Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1 -Mode Validate
 powershell -ExecutionPolicy Bypass -File Tools/ValtanPipeline/Test-ValtanPatternMaster.ps1
 powershell -ExecutionPolicy Bypass -File Tools/ValtanPipeline/Publish-ValtanTuningRuntimeSet.ps1 -Mode Validate
 powershell -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-GameplayBalance.ps1 -Mode Validate -SkipValtanSplitProjection
@@ -1043,3 +1088,280 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
   root, Portal은 8 x (500ms target + 800ms travel + 1000ms gap)로 실행/표시된다.
 - V2 Group은 Arena Clone과 Product replay 양쪽에서 같은 child occurrence를 재생한다.
 - Debug Core, Release Product, 필요한 FullDiagnostic과 사용자 수동 검증 결과가 RESULT에 분리된다.
+
+## 2026-09-01 Ground Roar 로컬 Preview와 cross-source Sequence Append 교정
+
+### 현재 실측
+
+- `VALTAN_GROUND_ROAR/STEP_01`은 `mesh_att_battle_11_01` 1800 ms 한 occurrence만 가진
+  `MANUAL_SERVER_AUDITION` 정본이다.
+- Workbench는 로컬 Arena Clone `Play/Restart/Play Selected Stage`를 저장 mutation admission과 같은
+  boolean으로 막는다. Pattern Sound owner나 effective draft cache가 일시적으로 준비되지 않으면 저장된
+  immutable Product가 있어도 로컬 preview까지 비활성화된다.
+- Sequence `420617/1`은 정본 Reference에서 `레이드 발탄_마력구 폭발`, HOLD,
+  `17_start/17_loop/17_end/17_loop/17_end`, cut `2000/1000/3000/1000/3000 ms`다.
+- 현재 Append 구현은 Stage animation slot과 clock만 바꾸며 선택한 cross-source tuple을
+  `presentationSources` typed patch에 추가하지 않는다. 따라서 버튼을 활성화하는 것만으로는 저장 가능한
+  정본 transaction이 완성되지 않는다.
+
+### 구현 계약
+
+1. 로컬 Preview admission을 저장 mutation admission과 분리한다. Product snapshot이 존재하는
+   `ADMITTED` 또는 `STALE_PRESERVED` 상태에서는 Server/Sound runtime readiness와 무관하게 Arena Clone
+   transport를 허용한다. `REJECTED`와 model/catalog stage 실패는 계속 fail-closed다.
+2. Pattern mutation UI는 effective-view cache 성공 여부가 아니라 exact Balance authoring join과 선택
+   Pattern 존재 여부를 사용한다. 실제 command는 기존 typed owner가 다시 검증하고 실패 이유를 보존한다.
+3. cross-source Replace/Append는 Stage animation 변경과 함께 `(sourceActionId, sequenceIndex, role)`을
+   같은 draft transaction에 추가한다. 기존 source의 제거·재배치·role 변경은 허용하지 않는다.
+4. Python canonical patch pipeline에 manual audition 전용 presentation-source 추가 op를 두고 중복 tuple,
+   중복 role, unknown source/sequence, non-manual Pattern을 거부한다.
+5. `VALTAN_GROUND_ROAR/STEP_01` 정본에 `420617/1`을 `REFERENCE` source로 추가하고 5개 exact occurrence를
+   기존 1800 ms occurrence 뒤에 붙인다. Server Stage clock과 animation wall은 11800 ms `EXACT`로 맞춘다.
+   기존 cardinal-rock ENTER event와 네 combat object 계약은 변경하지 않는다.
+6. `Project-ValtanPatternMaster.ps1 -Mode PublishV2`로 joined master와 generated Product를 재투영한다.
+   generated 파일을 직접 저작하지 않는다.
+
+### 회귀 검증
+
+- Workbench source oracle: local Preview gate가 mutation/Sound gate와 분리되고 Sequence 버튼은 항상 같은
+  위치에 렌더되며 exact typed mutation command를 호출하는지 검사한다.
+- typed patch transaction: presentation source와 Stage animation/clock이 전부 commit되거나 전부
+  rollback되는지, duplicate/invalid/non-manual 입력이 source bytes를 바꾸지 않는지 검사한다.
+- canonical fixture: Ground Roar의 source tuple, 6 occurrence 순서, 11800 ms exact wall, 기존 네 rock
+  event가 함께 유지되는지 검사한다.
+- canonical `Validate`, `Test-ValtanPatternMaster`, tuning runtime validate, 관련 Python focused suite, Debug Product,
+  JSON/XML parse와 `git diff --check`를 실행한다. Client 화면은 사용자가 새 실행 파일에서 직접 판정한다.
+
+## 2026-09-01 Pattern JSON 단일 정본 Save/Restart 교정
+
+### 문제 실측과 최종 정본 결정
+
+- `Project-ValtanPatternMaster.ps1`의 퇴역 duplicate validate mode는 별도 검증기가 아니라 Python `validate`를
+  다시 호출하는 중복 별칭이었다. 빌드 domain, gameplay publisher, unlink transaction과 테스트가 이
+  문자열에 결합되어 있어 실제 실패 원인과 저장 경계를 흐린다.
+- Boss Flow Save는 별도 Flow JSON과 Product를 독립 owner로 두어 뒤 단계 실패 시 새 Flow와 이전 Product가
+  동시에 존재할 수 있었다.
+- Action Composition에서 Pattern을 바꾸면 owner draft가 남아 있어도 즉시 selection이 교체된다. Effect
+  Tool의 `Unsaved Effect Changes`와 같은 Save/Discard/Cancel 전환 경계가 없다.
+- 최종 authoring 정본은 `Data/Valtan/Valtan.gameplay.json`의 inline
+  `decisionModel.scriptedSequence`다. 이 object가 `patternIds`의 순서·반복과 `interStepPursuitMs`를 직접
+  소유한다. 별도 Flow JSON과 `flowId` resolver는 퇴역하며 rotations/animation/effect/sound runtime 문서는
+  같은 saved revision에서 재생성되는 파생 Product다.
+
+### 구현 범위
+
+1. 퇴역 duplicate validate mode와 모든 live caller/test 기대값을 제거한다. 동일 검증은 `-Mode Validate` 하나만
+   사용하며 `PublishV2`의 이름은 이번 변경에서 저장 정본을 뜻하지 않는 내부 파생 투영 command로만
+   남기거나, 통합 저장 command가 직접 호출한다.
+2. Flow Save는 slot을 `SET_SCRIPTED_SEQUENCE` typed patch로 만든 뒤 candidate bytes를
+   stage/parse/validate하고 shared canonical writer lock에서 gameplay owner와 그 exact sequence로 투영한
+   Pattern rotations 및 animation/effect/sound runtime Product를 한 transaction으로 교체한다.
+3. 어느 stage, projection, replacement, candidate 또는 Server apply 단계가 실패하면 저장 성공을 표시하지
+   않는다. Flow와 Product disk bytes는 모두 이전 generation으로 rollback하고 draft는 화면에 남긴다.
+4. Save 성공 뒤 document baseline/source revision과 Current Pattern 목록을 gameplay disk 재로드 결과로만
+   갱신한다. Append로 추가한 sequence도 이 한 Save가 실제 물리 JSON과 파생 Product를 함께 갱신한다.
+5. Restart는 매번 gameplay의 saved sequence를 다시 parse/validate하고 최신 saved candidate가
+   Server-active gameplay definition revision과 exact-equal인 경우에만 실행한다. memory draft, 이전 Product
+   또는 임의 fallback을 재생하지 않는다.
+6. 첫 Arena 진입도 동일한 gameplay revision의 initial boss placement/presentation admission을 사용한다.
+   Pattern publication 실패를 boss entity/presentation 생략으로 숨기지 않고 typed 상태로 실패시킨다.
+7. 다른 Pattern 선택 요청에 unsaved owner가 있으면 pending stable Pattern ID를 보존하고 modal을 연다.
+   `Save All & Switch`, `Discard Listed Drafts & Switch`, `Cancel`을 제공한다. Save는 canonical transaction과
+   reload 성공 뒤에만 switch하며, Discard는 Balance/Pattern Sound/Effect V2의 표시된 draft만 각 typed
+   owner로 폐기한 뒤 disk generation을 재로드한다.
+
+### 대상 파일과 호출 흐름
+
+- Pipeline: `Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1`,
+  `valtan_tuning_pipeline.py`, `promote_valtan_animation_chains.py`,
+  `Publish-ValtanTuningRuntimeSet.ps1`, 관련 build/gameplay/effect caller와 focused tests
+- Client Flow: `CValtanPatternFlowDocument`, `CBossTool`, `CValtanTuningCommandService`
+- Composition UX: `CActionCompositionWorkbench`와 Balance/Sound/Effect typed discard/save owner
+- Server/initial admission: saved Flow revision을 소비하는 Valtan entry/spawn/pattern runtime과 contract harness
+
+```text
+Append/Edit
+  -> in-memory owner draft
+  -> Save
+  -> stage canonical gameplay candidate + derive Product from that candidate
+  -> validate once
+  -> shared writer lock + atomic generation commit
+  -> candidate/apply exact revision
+  -> reload physical Valtan.gameplay.json
+  -> Current Pattern refresh
+  -> Restart reloads and executes the same active SHA
+```
+
+### G별 완료 조건
+
+- G1: duplicate validate mode의 live source/test 문자열 0건, `Validate` 정상/invalid fixture 회귀 통과
+- G2: Append 후 Save가 `Valtan.gameplay.json` inline sequence와 exact derived Product를 갱신하고 재로드 revision이 일치
+- G3: injected projection/commit/apply 실패에서 source/Product byte-identical rollback, draft 보존
+- G4: Restart와 첫 Arena entry가 exact saved/active revision 및 실제 Valtan presentation을 소비
+- G5: Pattern 전환 modal의 Save/Discard/Cancel과 save-failure selection 보존을 native/source oracle로 고정
+
+## 2026-09-01 망령 본체·동시 포탈·Pizza·저장 재시작 교정
+
+### 실측 결론과 이전 계약 정정
+
+- `VALTAN_GHOST_FINALE`의 현재 구현은 일반 본체가 8개 corner leg를 순차 이동하고, 별도
+  `BOSS_VALTAN_GHOST` child가 공격 세 개를 한 번 실행하는 구조다. child는 damage/HUD/blocker/reward
+  대상이 아니므로 사용자가 요구한 "진짜 피해가 들어가는 망령 본체"가 아니다.
+- primary archetype과 NetEntityId를 despawn/spawn으로 바꾸지 않는다. 기존 primary
+  `BOSS_VALTAN`의 HP, damage, HUD, blocker, reward identity를 유지하고 gameplay phase 3 snapshot이
+  Client의 body/weapon/armor presentation group만 `BOSS_VALTAN_GHOST` asset variant로 원자 교체한다.
+  fresh arena reset으로 phase가 돌아오면 같은 transaction으로 일반 body/weapon/armor를 복구한다.
+- 반복 여섯 공격은 이번 08-31 요청 묶음의 exact ID인
+  `VALTAN_SIX_PIZZA_106`, `VALTAN_GROUND_ROAR`, `VALTAN_STAGGER_SLOT`,
+  `VALTAN_BIND_SLOT`, `VALTAN_SILENCE_SLOT`, `VALTAN_TRIPLE_COUNTER`다.
+  Respawn/Death는 전환·종료 표현이므로 loop에 넣지 않는다. 기존 finale의 세 child ID는 이 여섯 ID로
+  교체하고 primary가 respawn 완료 뒤 ordered sequence를 끝까지 실행한 다음 cursor 0으로 되돌린다.
+- 네 포탈은 foreground Pattern을 점유하지 않는다. `VALTAN_GHOST_PORTAL_ONCE`가 소유한
+  `combatobject.valtan.ghost.portal-charge` 정의를 phase-3 auxiliary scheduler가 5000ms마다 소비한다.
+  한 transaction에서 arena spawn center 기준 반폭 22m의 네 꼭짓점을 같은 tick에 만들고 각 missile은
+  반대 꼭짓점 방향으로 이동한다. 네 개 중 하나라도 preflight/commit에 실패하면 그 volley 전체를 만들지
+  않는다. primary death, fresh reset, room teardown은 owner combat object를 정리한다.
+- 망령 body/donor 파일은 `Client/Bin/Resources/Character/Valtan/Ghost/...` Drive payload다. 현재 물리
+  pack에 파일이 없으면 일반 body를 보존하고 해당 presentation variant만 격리한다. 모델 누락을 Server
+  gameplay나 primary damage authority의 성공으로 숨기지 않으며 사용자 육안 PASS로 기록하지 않는다.
+
+### Six Pizza 사용자 실측 정정과 180도 보정
+
+- 사용자가 현재 `VALTAN_SIX_PIZZA_106`의 player target-follow와 이후 delayed decal 재생이 정상임을
+  실측했다. 따라서 occurrence dedupe/catch-up, abort tail 정리, 초기 telegraph 추가 및 기존 authored
+  decal 구성은 이번 변경 범위에서 제외한다.
+- 남은 결함은 화면의 피자 방향이 선택 플레이어 방향과 정확히 반대로 보여야 하는데 같은 방향을 쓰는
+  것이다. 기존 Server 권위 target yaw와 같은 world-root handle/update 경로는 그대로 유지하고, 최초
+  spawn과 이후 tick update에 공통으로 `+180 degrees`를 적용한 yaw만 전달한다.
+- 회전 행렬의 주기성 안에서 공통 `+180 degrees`만 적용하고 player identity, pattern sequence,
+  target-follow lifetime, authored Effect timing은 바꾸지 않는다. focused contract는 spawn/update 두 경로가 같은 반대 방향 offset을 소비하는지와
+  기존 피자 JSON이 변하지 않았는지를 고정한다.
+
+### V1 Decal Normal Cut 바닥 누락
+
+- `Normal Cutoff`는 opacity가 아니라 GBuffer scene normal과 projector 방향의 dot product receiver filter다.
+  V1 `Shader_VtxEffectDecal`의 decode 방향, V1 reconstructed projection world와 `g_DecalUp` bind가 실제
+  Map GBuffer normal encoding과 일치하는지 먼저 고정한다.
+- 평평한 바닥 normal은 `upwardSurfaces / 0.75`에서 반드시 통과하고 수직 벽은 거부되어야 한다. 이 계약을
+  shader/source oracle로 재현한 뒤 V1 경로만 최소 교정하며 V2와 authored cutoff 값을 일괄 변경하지 않는다.
+- empty depth/background와 비유한 normal은 계속 fail-close한다. normal filter를 끄거나 모든 opaque actor에
+  투영하는 방식으로 증상을 숨기지 않는다.
+
+### Independent Effect 장판 중복 조사 경계
+
+- 화면의 `Server Combat Object (read-only) x1`은 Effect cue 한 행 수이지 runtime spawn 수가 아니다.
+  `VALTAN_HIGH_JUMP/AIRBORNE`의 한 event는 `count=3 / interval=1333ms`이므로 같은 combat-object visual을
+  세 번 생성한다. 한편 Six Pizza composite 내부에도 authored-copy element가 있으므로 두 owner를 혼동하지
+  않도록 별도 추적한다.
+- 사용자가 `effect.valtan.sky-axe.active`의 INDEPENDENT EFFECT element 하나를 직접 삭제하고 재검증 중이다.
+  그 결과 전에는 Server spawn count, Pizza composite 또는 추가 authored element를 임의 삭제하지 않는다.
+  사용자 물리 Save를 publisher나 자동 교정으로 되돌리지 않는다.
+- direct-authored Product Effect의 `Save Changes`는 파일과 Tool preview만 갱신하고 process-global
+  `CEffectCatalog`/prepared GPU target을 그대로 두는 현재 동작을 폐기한다. 이미 구현된
+  `Reload_SelectedProductEffect` transaction을 Save commit에 연결해 active occurrence는 기존 immutable
+  resource로 자연 종료하고 이후 combat-object spawn부터 새 문서를 사용한다.
+- save-time catalog/GPU preparation이 실패하면 새 파일을 exact CAS로 이전 canonical bytes에 되돌리고,
+  runtime prepared target도 이전 pointer를 유지하며 편집 draft는 dirty 상태로 보존한다. 성공 상태 문구는
+  재입장/Server refresh가 아니라 "subsequent spawns use this Save"를 명시한다.
+
+### 저장 Pattern/Flow 재시작 단일 계약
+
+이 절은 G07의 "Restart는 arena reset이 아님" 문장을 사용자-facing 버튼에 한해 대체한다. 기존
+`RESTART_PATTERN_ID` exact occurrence CAS는 내부/고급 API로 보존하지만 Boss Verification의 기본
+`Restart Pattern`은 저장된 scriptedSequence가 정확히 한 slot일 때만 `Restart_SavedFlow`를 호출한다.
+Pattern Flow의 `Restart Flow`와 동일하게 다음 transaction을 사용한다.
+
+```text
+reload saved Valtan.gameplay.json scriptedSequence
+-> exact latest saved candidate == Server-active gameplay revision
+-> current typed presentation closure stage + still-current check
+-> full arena reset (walls/floors/props/collision/navigation/combat objects)
+-> saved first Pattern occurrence start
+```
+
+- slot이 0개 또는 2개 이상이면 Boss Verification은 임의 Pattern을 고르지 않고 명시적으로 거부한다.
+- 현재 `Acquire_ExactReceipt`가 world-entry 시점 presentation receipt와 이후 합법적인 Save 결과를 비교해
+  Server request 전에 막는 경로는 퇴역한다. authoritative reload도 gameplay revision은 exact CAS하되,
+  현재 physical presentation closure를 typed parse/stage하고 `Validate_StillCurrent` 뒤 aggregate commit한다.
+  malformed/mid-read 변경은 이전 cache를 보존한다.
+- latest gameplay Save candidate가 pending이거나 Server-active revision과 다르면 Complete/Restart/Flow 모두
+  명령을 보내지 않는다. 상태 문구는 특정 Complete Play가 아니라 "Server playback/reset request not sent"로
+  표시해 버튼이 무반응처럼 보이지 않게 한다.
+
+### HIGH_JUMP SYMBOL 검토 결론
+
+`VALTAN_HIGH_JUMP/AIRBORNE`의 한 event가 `count=3`, `intervalMs=1333`으로 세 wave를 저작한다.
+각 wave가 solo target axe 하나와 arena random axe 네 개를 만들며, `effect.valtan.sky-axe.active` 내부의
+SYMBOL particle 자체는 한 번뿐이다. 따라서 관찰된 세 SYMBOL은 Effect 중복 재생이 아니라 Server의
+세 wave 결과다. 이번 변경에서는 gameplay 횟수나 공용 Effect asset을 임의 수정하지 않고 이 원인과
+분리 필요성만 RESULT에 기록한다.
+
+### 검증
+
+- Python source/Product validator는 phase-3 exact six IDs, respawn phase=3 edge, portal owner/4-corner
+  layout/5000ms clock, Character Select rejection, saved one-slot fresh restart route를 검사한다.
+- Server native harness는 same primary NetEntityId/HP damage authority, six cursor loop, 네 portal object의
+  same spawn tick/inward yaw, 4999ms 이전 미생성/5000ms 재생성, partial failure rollback, fresh reset cleanup을
+  검사한다.
+- Client native/source harness는 phase 1↔3 part-group atomic replacement와 실패 시 이전 body 보존,
+  current presentation generation reload, Pizza 최초 spawn/tick update의 공통 `+180 degrees`와 기존 authored
+  Pizza JSON byte 보존을 검사한다.
+- 관련 publisher Validate, focused harness, Debug `Server/Client ClCompile`, JSON/XML parse,
+  `git diff --check`를 실행한다. Client 실행과 망령 모델·Pizza·네 포탈의 visual fidelity는 사용자가 직접
+  판정한다.
+
+### 검증
+
+- temp repository fixture에서 validate, atomic save success, stale SHA, lock contention, injected middle commit
+  rollback을 검사한다. 실제 저장소 canonical lock을 테스트가 점유하지 않는다.
+- gameplay sequence/rotation 1:1 order와 revision receipt, Restart reload/Server-active admission, initial Valtan spawn/presentation
+  contract harness를 실행한다.
+- 관련 Debug Product/Core, JSON/XML parse, `git diff --check`를 실행한다. Client/UI 실행과 첫 화면의
+  발탄 가시성, modal 조작, Effect/Animation/Sound fidelity는 사용자가 직접 판정한다.
+
+## 2026-09-01 Effect V2 binding stable identity와 Composition read-set CAS
+
+### 문제 실측
+
+- `BOSS_VALTAN.effectv2bindings.json` v1은 row identity 없이 `effectId/group`, `stage` 또는 raw clip 이름과
+  `startMs`를 저장한다. 같은 clip을 여러 Pattern/Stage occurrence가 사용하면 exact owner를 구분하지 못하고,
+  시간·offset 수정이 UI 합성 identity 자체를 바꾼다.
+- Group child도 vector index가 selection identity이며 `durationMs=0` group은 child start/duration만 합산해
+  leaf의 자연수명·tail·loop를 반영하지 못한다.
+- Composition binding draft가 열린 동안 Effect Tool에서 leaf/group body를 저장해도 canonical Save가 참조
+  body의 transitive revision을 CAS하지 않아 preview와 저장 의미가 달라질 수 있다.
+
+### persisted binding v2 계약
+
+- row는 stable `bindingId`, `resource { kind, id }`, `scope { patternId, stageId, actionId }`,
+  `clock { basis, clipOccurrenceId, startMs, repeatPolicy }`, `anchor { slotId, followPolicy,
+  rotationBasis, localTransform { translation, rotation, scale } }`, `stopPolicy`를 소유한다.
+- 기본 Append는 Stage clock이다. Animation box가 선택된 경우에만 `CLIP_OCCURRENCE`를 사용하며
+  `clipOccurrenceId`가 정확히 한 canonical Pattern/Stage/action occurrence로 resolve돼야 한다.
+- legacy clip-name row는 exact occurrence별 stable row로 migration한다. 다중 후보를 임의 fan-out하지 않고
+  ambiguous row를 stable diagnostic과 함께 거부한다.
+- Group child는 stable `childId`와 full local transform을 소유하고 배열 순서는 canonical spawn order다.
+  같은 leaf의 다른 transform 반복은 허용하며 완전히 동일한 occurrence만 중복 거부한다.
+
+### immutable read-set과 Save
+
+- persisted binding owner에는 body hash를 넣지 않는다. candidate가 참조하는 direct leaf 또는 group과 ordered
+  transitive leaf closure의 path/SHA를 canonical sort한 ephemeral read-set receipt를 만든다.
+- Composition Save는 binding baseline/candidate와 receipt를 함께 제출한다. shared writer lock 안에서 exact
+  transitive closure를 다시 계산해 hash가 다르면 `Reload Effect V2` 진단으로 zero-write 거부한다.
+- Pattern occurrence 시작 시 binding/group/leaf는 같은 admitted immutable snapshot revision을 pin한다.
+  Stage/clip/prewarm 경로가 서로 다른 catalog 세대를 읽지 않는다.
+- `durationMs=0` legacy group은 leaf 자연수명, playRate와 tail을 재귀 resolve한다. cycle, missing child,
+  unbounded loop는 Composition Append/Save를 fail-closed한다.
+
+### UX와 검증 순서
+
+1. data schema/migration/read-set CAS와 rollback fixture
+2. Client catalog/runtime snapshot pin 및 stable binding/child identity
+3. Resources를 Groups → Leaves(Advanced) → V1 순으로 표시하고 Stage/clip occurrence Append를 구분
+4. group은 timeline 한 box, child는 Details에서만 reorder/duplicate/delete
+5. semantic duration과 최소 visual hit rect를 분리하고 Effect/Sound click height를 확대
+
+validator는 bad scope/occurrence, duplicate bindingId/childId, stale body read-set, cycle/unbounded group,
+rollback, same leaf/different transform을 포함한다. publisher/Debug Product/Core를 통과한 뒤 group 단독 Preview와
+Pattern Arena Clone 결과는 사용자가 직접 판정한다.

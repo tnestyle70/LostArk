@@ -953,6 +953,13 @@ namespace LostArk::Server
 		bool Resolve_ArenaCenter(
 			const SERVER_WORLD_ENTITY& boss,
 			SERVER_NAV_POINT& point);
+		bool Activate_ValtanGhostPhaseLoop(
+			SERVER_WORLD_ENTITY& boss,
+			const CGameplayCatalog& catalog);
+		bool Update_ValtanGhostPortalScheduler(
+			SERVER_WORLD_ENTITY& boss,
+			const CGameplayCatalog& catalog,
+			std::uint32_t serverTick);
 		bool Update_DependentBosses(std::uint32_t serverTick);
 		/* Slides a hit player along the armed knockback window, clamped to
 		walkable floor and blocking bodies; a wall ends the window early. */

@@ -512,6 +512,26 @@ void Client::CUILayoutRuntime::Set_SlotTint(const string& strId, const float4_t&
 	}
 }
 
+void Client::CUILayoutRuntime::Set_SlotTintMultiplier(
+	const string& strId,
+	const float4_t& vTintMultiplier)
+{
+	for (RUNTIME_SLOT& Slot : m_Slots)
+	{
+		if (Slot.strId != strId)
+			continue;
+		if (nullptr != Slot.pSprite)
+			Slot.pSprite->Set_TintMultiplier(vTintMultiplier);
+		for (const shared_ptr<CUI_Sprite>& pExtra : Slot.ExtraLayerSprites)
+			if (nullptr != pExtra)
+				pExtra->Set_TintMultiplier(vTintMultiplier);
+		for (const shared_ptr<CUI_Sprite>& pKeySprite : Slot.KeyframeSprites)
+			if (nullptr != pKeySprite)
+				pKeySprite->Set_TintMultiplier(vTintMultiplier);
+		return;
+	}
+}
+
 void Client::CUILayoutRuntime::Set_SlotAlpha(const string& strId, f32_t fAlpha)
 {
 	Set_SlotTint(strId, float4_t(1.f, 1.f, 1.f, fAlpha));
