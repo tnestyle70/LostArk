@@ -1350,6 +1350,7 @@ HRESULT Client::CEffectV2Object::Bind_Common(
 	const uint32_t iColorClipChannel = static_cast<uint32_t>(P.eColorClipChannel);
 	const f32_t fDissolveAmount = Dissolve_Amount();
 	const uint32_t iDissolveWarp = P.bDissolveWarp ? 1u : 0u;
+	const uint32_t iMaskWarp = P.bMaskWarp ? 1u : 0u;
 	const f32_t fLifeRatio = Life_Ratio();
 	float4_t vColorMul = P.vColorMul;
 	float4_t vColorOffset = P.vColorOffset;
@@ -1384,6 +1385,7 @@ HRESULT Client::CEffectV2Object::Bind_Common(
 		FAILED(pShader->Bind_RawValue("g_DissolveAmount", &fDissolveAmount, sizeof(f32_t))) ||
 		FAILED(pShader->Bind_RawValue("g_DissolveSoftness", &P.fDissolveSoftness, sizeof(f32_t))) ||
 		FAILED(pShader->Bind_RawValue("g_DissolveWarp", &iDissolveWarp, sizeof(iDissolveWarp))) ||
+		FAILED(pShader->Bind_RawValue("g_MaskWarp", &iMaskWarp, sizeof(iMaskWarp))) ||
 		FAILED(pShader->Bind_RawValue("g_SoftFadeDistance", &P.fSoftFadeDistance, sizeof(f32_t))))
 	{
 		return E_FAIL;

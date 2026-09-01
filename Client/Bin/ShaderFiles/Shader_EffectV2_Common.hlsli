@@ -25,6 +25,7 @@ float2 g_NoisePan = float2(0.f, 0.f);
 float g_DissolveAmount = 0.f;
 float g_DissolveSoftness = 0.1f;
 uint g_DissolveWarp = 0;
+uint g_MaskWarp = 0;
 float g_OutlineWidth = 0.f;
 float4 g_OutlineColor = float4(1.f, 1.f, 1.f, 1.f);
 float g_SoftFadeDistance = 0.f;
@@ -245,7 +246,7 @@ PS_EFFECT_OUT PS_EFFECT_V2(PS_EFFECT_IN input)
 
 	float mask = 1.f;
 	if (0 != g_HasMask)
-		mask = g_MaskTexture.Sample(LinearSampler, uv).r;
+		mask = g_MaskTexture.Sample(LinearSampler, 0 != g_MaskWarp ? uv + warp : uv).r;
 
 	float dissolve = 1.f;
 	if (0 != g_HasDissolve)

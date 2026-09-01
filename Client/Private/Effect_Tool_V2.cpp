@@ -3406,6 +3406,11 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("Applies the Noise warp to the dissolve edge too, so the erosion boundary wobbles instead of tracing the mask exactly. Needs a Noise texture and Noise Strength.");
 	ImGui::EndDisabled();
+	ImGui::BeginDisabled(!pPreview->Has_Texture(CEffectV2Object::TEXTURE_INPUT::MASK));
+	ImGui::Checkbox("Mask UV Warp", &P.bMaskWarp);
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Applies the Noise warp to the Mask sample. Needs a Noise texture and Noise Strength.");
+	ImGui::EndDisabled();
 	if (pPreview->Has_Texture(CEffectV2Object::TEXTURE_INPUT::DISSOLVE))
 	{
 		ImGui::TextDisabled("Dissolve amount now %.2f", pPreview->Dissolve_Amount());

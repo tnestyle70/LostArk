@@ -225,6 +225,7 @@ public:
 		f32_t fDissolveInEnd = 0.f;
 		f32_t fDissolveSoftness = 0.1f;
 		bool_t bDissolveWarp = false;
+		bool_t bMaskWarp = false;
 		f32_t fAlphaInEnd = 0.f;
 		f32_t fAlphaOutStart = 1.f;
 		BLEND_MODE eBlend = BLEND_MODE::ADDITIVE;
