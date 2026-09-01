@@ -175,6 +175,18 @@ function Get-FileHashValue {
 }
 
 function Invoke-ProductEffectShaderWarpProbe {
+    # A bare `powershell.exe` child process defaults its console output
+    # decoding to the OEM codepage (949 on Korean Windows), not UTF-8. The
+    # probe below prints its result JSON as UTF-8, so a repository path that
+    # holds non-ASCII characters comes back mangled here, and a CP949 lead
+    # byte can even swallow the following backslash - which turns the JSON
+    # into an invalid escape and fails this gate for anyone whose clone sits
+    # under such a path. Force UTF-8 decoding for this function's probe
+    # output, as Get-BuildGitIdentity already does for git.
+    $previousOutputEncoding = [Console]::OutputEncoding
+    [Console]::OutputEncoding = [Text.Encoding]::UTF8
+    try {
+
     $sourcePath = Join-Path $repositoryPath `
         'Tools\RenderingPipeline\ProductEffectShaderWarpProbe.cpp'
     if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
@@ -443,6 +455,10 @@ function Invoke-ProductEffectShaderWarpProbe {
             }
             Remove-Item -LiteralPath $resolvedProbeRoot -Recurse -Force
         }
+    }
+
+    } finally {
+        [Console]::OutputEncoding = $previousOutputEncoding
     }
 }
 
