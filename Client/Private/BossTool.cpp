@@ -1238,26 +1238,6 @@ bool_t Client::CBossTool::Restart_SavedFlow(
 				". No Server reset or playback command was submitted.";
 			return nullptr;
 		};
-	const VALTAN_PATTERN_FLOW_DEFINITION* pRequiredSavedFlow =
-		bRequireSingleSavedPattern ? RequireSingleSavedPattern() : nullptr;
-	if (bRequireSingleSavedPattern && nullptr == pRequiredSavedFlow)
-		return false;
-
-	CValtanTuningCommandService& TuningService =
-		CValtanTuningCommandService::Get();
-	TuningService.Update();
-	LostArk::Shared::GameplayDataRevision SavedCandidateRevision{};
-	const bool_t bHasSavedGameplayExpectation =
-		TuningService.Has_GameplaySourceActivationExpectation();
-	if (bHasSavedGameplayExpectation &&
-		!TuningService.Try_GetLatestGameplaySourceServerActiveRevision(
-			SavedCandidateRevision, m_strFlowStatus))
-	{
-		m_strFlowStatus =
-			"Restart Flow (Fresh Arena) is blocked until the exact Product candidate from the latest canonical Save is Server-active. " +
-			m_strFlowStatus;
-		return false;
-	}
 	CValtanPatternFlowService& FlowService =
 		CValtanPatternFlowService::Get();
 	FlowService.Update();
@@ -1265,6 +1245,10 @@ bool_t Client::CBossTool::Restart_SavedFlow(
 		FlowService.Get_PendingStart();
 	if (VALTAN_PATTERN_FLOW_START_STATE::UNCONFIRMED == Pending.eState)
 	{
+		const VALTAN_PATTERN_FLOW_DEFINITION* const pRequiredSavedFlow =
+			bRequireSingleSavedPattern ? RequireSingleSavedPattern() : nullptr;
+		if (bRequireSingleSavedPattern && nullptr == pRequiredSavedFlow)
+			return false;
 		if (bRequireSingleSavedPattern &&
 			(Pending.Request.Slots.size() != 1u ||
 			 Pending.Request.strFlowId != pRequiredSavedFlow->strFlowId ||
@@ -1279,6 +1263,21 @@ bool_t Client::CBossTool::Restart_SavedFlow(
 		{
 			m_strFlowStatus =
 				"Fresh Arena Pattern restart cannot retry the unresolved Flow because it is not the exact saved one-slot scriptedSequence request.";
+			return false;
+		}
+		CValtanTuningCommandService& TuningService =
+			CValtanTuningCommandService::Get();
+		TuningService.Update();
+		LostArk::Shared::GameplayDataRevision SavedCandidateRevision{};
+		const bool_t bHasSavedGameplayExpectation =
+			TuningService.Has_GameplaySourceActivationExpectation();
+		if (bHasSavedGameplayExpectation &&
+			!TuningService.Try_GetLatestGameplaySourceServerActiveRevision(
+				SavedCandidateRevision, m_strFlowStatus))
+		{
+			m_strFlowStatus =
+				"Restart Flow (Fresh Arena) is blocked until the exact Product candidate from the latest canonical Save is Server-active. " +
+				m_strFlowStatus;
 			return false;
 		}
 		LostArk::Shared::GameplayDataRevision ExpectedRevision{};
@@ -1316,10 +1315,31 @@ bool_t Client::CBossTool::Restart_SavedFlow(
 	}
 	if (!Reload_FlowDocument())
 		return false;
-	pRequiredSavedFlow = bRequireSingleSavedPattern ?
+	const VALTAN_PATTERN_FLOW_DEFINITION* const pRequiredSavedFlow =
+		bRequireSingleSavedPattern ?
 		RequireSingleSavedPattern() : nullptr;
 	if (bRequireSingleSavedPattern && nullptr == pRequiredSavedFlow)
 		return false;
+
+	/* Restart is a disk-backed command. Resolve the activation expectation only
+	   after Reload has committed the exact canonical saved baseline that will be
+	   copied into FLOW_START. This avoids rejecting a newly saved one-slot Flow
+	   from an older in-memory Current Patterns count. */
+	CValtanTuningCommandService& TuningService =
+		CValtanTuningCommandService::Get();
+	TuningService.Update();
+	LostArk::Shared::GameplayDataRevision SavedCandidateRevision{};
+	const bool_t bHasSavedGameplayExpectation =
+		TuningService.Has_GameplaySourceActivationExpectation();
+	if (bHasSavedGameplayExpectation &&
+		!TuningService.Try_GetLatestGameplaySourceServerActiveRevision(
+			SavedCandidateRevision, m_strFlowStatus))
+	{
+		m_strFlowStatus =
+			"Restart Flow (Fresh Arena) is blocked until the exact Product candidate from the latest canonical Save is Server-active. " +
+			m_strFlowStatus;
+		return false;
+	}
 	return Start_Flow(
 		bHasSavedGameplayExpectation ? &SavedCandidateRevision : nullptr);
 }

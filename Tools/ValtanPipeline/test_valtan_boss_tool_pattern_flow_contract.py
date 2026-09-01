@@ -820,11 +820,11 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             "Try_GetLatestGameplaySourceServerActiveRevision(", restart_flow
         )
         self.assertLess(
-            restart_flow.index("Try_GetLatestGameplaySourceServerActiveRevision("),
             restart_flow.index("Reload_FlowDocument()"),
+            restart_flow.rindex("Try_GetLatestGameplaySourceServerActiveRevision("),
         )
         self.assertLess(
-            restart_flow.index("Reload_FlowDocument()"),
+            restart_flow.rindex("Try_GetLatestGameplaySourceServerActiveRevision("),
             restart_flow.index("Start_Flow("),
         )
         self.assertIn("&SavedCandidateRevision", restart_flow)
@@ -1086,6 +1086,32 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         self.assertIn("automaticSequenceOverride", self.server_brain)
         self.assertIn("Resolve_ValtanPatternFlowSequence(entity)", self.server_room)
         self.assertNotIn("PendingPatternIds", start_body)
+
+    def test_boss_tool_flow_must_match_the_server_active_saved_sequence(self) -> None:
+        start_body = self.server_room[
+            self.server_room.index("Evaluate_ValtanPatternFlowStart(") :
+            self.server_room.index("Evaluate_ValtanPatternFlowStopAfterCurrent(")
+        ]
+        for marker in (
+            'CANONICAL_BOSS_TOOL_FLOW_ID',
+            '"flow.valtan.boss-tool.default"',
+            'pinnedCatalog->Find_BossPatternSequence(boss->strEncounterId)',
+            'request.strStartSlotId == request.Slots.front().strSlotId',
+            'savedSequence->iInterStepPursuitMs',
+            'savedSequence->PatternIds.size() == request.Slots.size()',
+            'patternId == slot.strPatternId',
+            'does not match the Server-active canonical scriptedSequence',
+        ):
+            self.assertIn(marker, start_body)
+        self.assertLess(
+            start_body.index('does not match the Server-active canonical scriptedSequence'),
+            start_body.index('Reset_ValtanAuditionState(*boss, resetTick, resetStatus)'),
+        )
+        self.assertIn(
+            'Boss Tool Restart rejects a reordered saved Flow without mutation, '
+            'then fresh-resets and starts exact Server-active scriptedSequence Pattern 01',
+            self.server_tests,
+        )
 
     def test_server_duplicate_identity_stop_hold_and_release_rejection_are_locked(self) -> None:
         for marker in (

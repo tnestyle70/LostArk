@@ -87,6 +87,10 @@ class EffectToolElementOrderContractTests(unittest.TestCase):
 
 
 class ValtanSkyAxeRedTelegraphContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.effect_tool = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+
     def test_high_jump_owns_exact_direct_authored_effect(self) -> None:
         gameplay = load_json("Data/Valtan/Valtan.gameplay.json")
         pattern = next(
@@ -104,6 +108,17 @@ class ValtanSkyAxeRedTelegraphContractTests(unittest.TestCase):
         self.assertEqual(
             spawn["combatObjectArchetypeId"],
             "combatobject.valtan.high-jump.target-axe",
+        )
+        self.assertEqual(spawn["volleyPolicy"], "PER_ALIVE_PLAYER")
+        self.assertEqual(spawn["countPerResolvedTarget"], 1)
+        self.assertEqual(
+            spawn["spawnSchedule"],
+            {
+                "kind": "INTERVAL",
+                "count": 3,
+                "firstOffsetMs": 0,
+                "intervalMs": 1333,
+            },
         )
 
         combat_objects = load_json(
@@ -141,6 +156,42 @@ class ValtanSkyAxeRedTelegraphContractTests(unittest.TestCase):
             "Effects/Authored/effect.valtan.sky-axe.active.effect.json",
         )
 
+        presentation = load_json("Data/Valtan/Valtan.presentation.json")
+        independent_rows = [
+            row
+            for row in presentation["independentEffects"]
+            if row["independentEffectId"]
+            == "valtan.independent-effect.target-axe"
+        ]
+        self.assertEqual(1, len(independent_rows))
+        self.assertEqual(
+            "event.valtan.high-jump.airborne.spawn-target-axe",
+            independent_rows[0]["spawnEventId"],
+        )
+
+        product_cues = load_json(
+            "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
+        )["cues"]
+        sky_axe_product_cues = [
+            row
+            for row in product_cues
+            if row["effectAssetId"] == "effect.valtan.sky-axe.active"
+        ]
+        self.assertEqual(4, len(sky_axe_product_cues))
+        self.assertEqual(
+            {"VALTAN_TERRAIN_DESTRUCTION"},
+            {row["patternId"] for row in sky_axe_product_cues},
+        )
+        self.assertEqual(
+            0,
+            sum(
+                row["patternId"] == "VALTAN_HIGH_JUMP"
+                for row in sky_axe_product_cues
+            ),
+            "the three target-axe plays come from the one Server combat-object "
+            "schedule, not duplicate Pattern cue owners",
+        )
+
     def test_user_deleted_independent_red_floor_stays_absent(self) -> None:
         authored = load_json(
             "Data/Effects/Authored/effect.valtan.sky-axe.active.effect.json"
@@ -152,6 +203,35 @@ class ValtanSkyAxeRedTelegraphContractTests(unittest.TestCase):
         self.assertNotIn(
             deleted_element_id,
             {row["id"] for row in authored["elements"]},
+        )
+
+    def test_combat_object_product_save_hot_reloads_without_a_pattern_cue(self) -> None:
+        refresh_index = extract_function(
+            self.effect_tool,
+            "bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(",
+        )
+        compact_refresh_index = "".join(refresh_index.split())
+        self.assertIn(
+            "++StagedBossProductCueMappingCounts[Visual.effectAssetId];",
+            compact_refresh_index,
+        )
+        self.assertIn(
+            "++StagedBossProductCueMappingCounts[Visual.hitEffectAssetId];",
+            compact_refresh_index,
+        )
+
+        save = extract_function(
+            self.effect_tool,
+            "bool_t Client::CEffect_Tool::Try_SaveDocument()",
+        )
+        registered_product = (
+            "constbool_tbRegisteredDirectProduct="
+            "CEffectCatalog::Is_DirectAuthoredDocument("
+            "m_ActiveDocument->strEffectAssetId);"
+        )
+        self.assertIn(registered_product, "".join(save.split()))
+        self.assertIn(
+            "CEffectPresentationService::Reload_SelectedProductEffect(", save
         )
 
     def test_every_sky_axe_resource_exists_physically(self) -> None:

@@ -979,26 +979,47 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             for stage in pattern["stages"]
             if stage["stageId"] == "IMPACT"
         )
+        original_impact_events = copy.deepcopy(impact["events"])
         impact["events"] = [
             event
             for event in impact["events"]
             if event["kind"] != "SET_GAMEPLAY_PHASE"
         ]
-        without_fixed_phase_transition = pipeline.join_v2_authoring(
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "live gameplay phase edges must be the exact arena-break and ghost-respawn transitions",
+        ):
+            pipeline.join_v2_authoring(
+                missing_phase,
+                copy.deepcopy(presentation),
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+
+        impact["events"] = original_impact_events
+        restored = pipeline.join_v2_authoring(
             missing_phase,
             copy.deepcopy(presentation),
             self.docs[pipeline.WORLD_SET_REL],
             self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
-        joined_impact = next(
-            stage
-            for pattern in without_fixed_phase_transition["patterns"]
-            if pattern["patternId"] == "VALTAN_ARENA_BREAK_109"
-            for stage in pattern["stages"]
-            if stage["stageId"] == "IMPACT"
-        )
-        self.assertFalse(
-            any(event["kind"] == "SET_GAMEPLAY_PHASE" for event in joined_impact["events"])
+        self.assertEqual(
+            {
+                ("VALTAN_ARENA_BREAK_109", "IMPACT", "ENTER", 2),
+                ("VALTAN_GHOST_RESPAWN_AUDITION", "STEP_01", "ENTER", 3),
+            },
+            {
+                (
+                    pattern["patternId"],
+                    stage["stageId"],
+                    event["trigger"],
+                    event["gameplayPhase"],
+                )
+                for pattern in restored["patterns"]
+                for stage in pattern["stages"]
+                for event in stage["events"]
+                if event["kind"] == "SET_GAMEPLAY_PHASE"
+            },
         )
 
     def assert_v1_migration_fixture_is_excluded_from_normal_revision_and_load(self) -> None:
@@ -1124,7 +1145,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         self.assertEqual({"combatobject.valtan.high-jump.target-axe",
                           "combatobject.valtan.red-blade-wave.projectile",
                           "combatobject.valtan.fist-in-out.donut",
-                          "combatobject.valtan.ground-roar.rock"},
+                          "combatobject.valtan.ground-roar.rock",
+                          "combatobject.valtan.ghost.portal-charge"},
                          {row["combatObjectArchetypeId"] for row in companion["objects"]})
         axe = next(
             row for row in companion["objects"]
@@ -1761,7 +1783,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             with self.subTest(case=name), self.assertRaises(pipeline.PipelineError):
                 pipeline.validate_gameplay_authoring(invalid)
 
-    def test_ghost_finale_projects_a_finite_cycle_and_three_scripted_attacks(self) -> None:
+    def test_ghost_finale_projects_a_finite_cycle_and_six_scripted_attacks(self) -> None:
         master = pipeline.join_v2_authoring(
             self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
             self.docs[pipeline.PRESENTATION_AUTHORING_REL],
@@ -1770,7 +1792,14 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         finale = patterns["VALTAN_GHOST_FINALE"]
         self.assertEqual({
             "kind": "GHOST_PORTAL_LOOP", "ghostArchetypeId": "BOSS_VALTAN_GHOST",
-            "ghostPatternIds": ["VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH", "VALTAN_SEQUENCE_FOUR"],
+            "ghostPatternIds": [
+                "VALTAN_SIX_PIZZA_106",
+                "VALTAN_GROUND_ROAR",
+                "VALTAN_STAGGER_SLOT",
+                "VALTAN_BIND_SLOT",
+                "VALTAN_SILENCE_SLOT",
+                "VALTAN_TRIPLE_COUNTER",
+            ],
             "spawnHalfExtentsM": [10.0, 10.0], "maximumActiveGhosts": 1}, finale["finale"])
         self.assertIsNone(finale["stages"][-1]["defaultNextActionId"],
                           "the persistent outer run must not be a cyclic stage graph")
@@ -1818,7 +1847,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 pipeline.validate_gameplay_authoring(invalid)
         for recursive in (False, True):
             invalid = copy.deepcopy(base)
-            child = next(row for row in invalid["patterns"] if row["patternId"] == "VALTAN_WHIRLWIND")
+            child_id = owner(invalid)["finale"]["ghostPatternIds"][0]
+            child = next(row for row in invalid["patterns"] if row["patternId"] == child_id)
             if recursive:
                 child["finale"] = copy.deepcopy(owner(invalid)["finale"])
             else:
@@ -2274,7 +2304,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
 
         bad_policy = copy.deepcopy(gameplay)
         stage(
-            bad_policy, "VALTAN_DASH_CHARGE", "RECOVERY"
+            bad_policy, "VALTAN_DASH_CHARGE_GROGGY", "GROGGY"
         )["partDamagePolicy"] = "DESTROY_ALL"
         with self.assertRaisesRegex(
             pipeline.PipelineError, "partDamagePolicy is unsupported"
@@ -2652,8 +2682,27 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             if pattern["patternId"] == "VALTAN_DASH_CHARGE"
         )
         # Exercise the old topology-removal patch against a synthetic legacy
-        # draft.  The canonical product now deliberately keeps the saved
-        # RECOVERY identity as GROGGY plus a trailing PART_BREAK reaction.
+        # draft.  The canonical graph now owns GROGGY and PART_BREAK as
+        # separate successor Patterns, so fold their saved rows back into the
+        # root only inside this fixture before testing the legacy removals.
+        groggy_owner = next(
+            pattern for pattern in joined["patterns"]
+            if pattern["patternId"] == "VALTAN_DASH_CHARGE_GROGGY"
+        )
+        recovery = copy.deepcopy(groggy_owner["stages"][0])
+        recovery["stageId"] = "RECOVERY"
+        recovery["sequenceRole"] = "RECOVERY"
+        dash["stages"].append(recovery)
+        dash["sourceActionIds"].extend(groggy_owner["sourceActionIds"])
+        dash["presentationSources"].extend(
+            copy.deepcopy(groggy_owner["presentationSources"])
+        )
+        charge = next(
+            stage for stage in dash["stages"] if stage["stageId"] == "CHARGE"
+        )
+        for branch in charge["branches"]:
+            branch.pop("nextPatternId", None)
+            branch["nextActionId"] = "valtan.attack.dash-charge.recovery"
         dash["stages"] = [
             row for row in dash["stages"] if row["stageId"] != "PART_BREAK"
         ]
@@ -3898,7 +3947,19 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.docs[pipeline.WORLD_SET_REL],
             self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
-        removed_id = staged["decisionModel"]["manualAuditions"][-1]["patternId"]
+        finale_children = set(
+            next(
+                row for row in staged["patterns"]
+                if row["patternId"] == "VALTAN_GHOST_FINALE"
+            )["finale"]["ghostPatternIds"]
+        )
+        removed_id = next(
+            row["patternId"]
+            for row in reversed(staged["decisionModel"]["manualAuditions"])
+            if row["patternId"] not in finale_children
+            and row["patternId"] != "VALTAN_GHOST_FINALE"
+        )
+        self.assertNotIn(removed_id, finale_children)
         removed_pattern = next(
             row for row in staged["patterns"] if row["patternId"] == removed_id
         )
@@ -3989,7 +4050,14 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             encounter = copy.deepcopy(self.docs[pipeline.ENCOUNTER_REL])
             finale = next(row for row in encounter["patterns"]
                           if row["patternId"] == "VALTAN_GHOST_FINALE")
-            finale["finale"]["ghostPatternIds"] = ["VALTAN_FOUR_SLASH", "VALTAN_WHIRLWIND"]
+            finale["finale"]["ghostPatternIds"] = [
+                "VALTAN_SIX_PIZZA_106",
+                "VALTAN_GROUND_ROAR",
+                "VALTAN_STAGGER_SLOT",
+                "VALTAN_BIND_SLOT",
+                "VALTAN_SILENCE_SLOT",
+                "VALTAN_TRIPLE_COUNTER",
+            ]
             finale["finale"]["maximumActiveGhosts"] = 2
             overlay_root = Path(temporary)
             encounter_path = overlay_root / pipeline.ENCOUNTER_REL
@@ -4016,7 +4084,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     finale["invulnerableWhileRunning"] = True
                 else:
                     child = next(row for row in encounter["patterns"]
-                                 if row["patternId"] == "VALTAN_WHIRLWIND")
+                                 if row["patternId"] == "VALTAN_STAGGER_SLOT")
                     # A terminal first stage makes the late two-node cycle unreachable.
                     # The Product validator must still inspect every node.
                     child["stages"][0]["branches"] = [
@@ -4024,7 +4092,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     tail = child["stages"][-1]
                     tail["branches"] = [
                         {"outcome": "TIMEOUT", "nextActionId": child["stages"][-2]["actionId"]}]
-                    expected = "Finite pattern stage graph contains a cycle: VALTAN_WHIRLWIND"
+                    expected = "Finite pattern stage graph contains a cycle: VALTAN_STAGGER_SLOT"
                 overlay_root = Path(temporary)
                 encounter_path = overlay_root / pipeline.ENCOUNTER_REL
                 encounter_path.parent.mkdir(parents=True)
@@ -4087,6 +4155,9 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 deploy = Path("Data/Maps/Authoring") / area_id / f"{area_id}.deployplacements"
                 if (self.root / deploy).is_file():
                     inputs.append(deploy)
+                sequences = Path("Data/Maps/Authoring") / area_id / f"{area_id}.worldsequences.json"
+                if (self.root / sequences).is_file():
+                    inputs.append(sequences)
             for relative in inputs:
                 destination = repository_root / relative
                 destination.parent.mkdir(parents=True, exist_ok=True)

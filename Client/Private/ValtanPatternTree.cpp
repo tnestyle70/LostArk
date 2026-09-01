@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <functional>
 #include <iomanip>
 #include <initializer_list>
 #include <limits>
@@ -28,6 +29,7 @@ namespace
 		L"out\\ValtanPatternTransactions\\create-pattern.lock";
 	constexpr const wchar_t* VALTAN_PATTERN_ACTIVE_GENERATION_RELATIVE =
 		L"out\\ValtanPatternTransactions\\active-generation.json";
+	constexpr uint32_t VALTAN_PATTERN_FOLLOWUP_MAX_DEPTH = 32u;
 
 	/* Canonical readers share the same byte range that every Python/C++
 	   Create/Project writer locks exclusively.  Holding the handle through the
@@ -674,7 +676,6 @@ namespace
 			const DATA_JSON_VALUE* pOutcome = Required(
 				Value, "outcome", DATA_JSON_TYPE::STRING);
 			std::string strNextActionId;
-			std::string strNextPatternId;
 			const DATA_JSON_VALUE* const pNextPatternId =
 				Value.Find("nextPatternId");
 			if (nullptr == pOutcome || !Is_StableToken(pOutcome->Get_String()) ||
@@ -682,9 +683,9 @@ namespace
 				!Read_NullableStableToken(
 					Value, "nextActionId", strNextActionId) ||
 				(nullptr != pNextPatternId &&
-				 !Read_NullableStableToken(
-					Value, "nextPatternId", strNextPatternId)) ||
-				(!strNextActionId.empty() && !strNextPatternId.empty()))
+				 (!pNextPatternId->Is_String() ||
+				  !Is_StableToken(pNextPatternId->Get_String()))) ||
+				(!strNextActionId.empty() && nullptr != pNextPatternId))
 			{
 				return false;
 			}
@@ -692,8 +693,8 @@ namespace
 			Branch.strOutcome = pOutcome->Get_String();
 			if (!strNextActionId.empty())
 				Branch.strNextActionId = std::move(strNextActionId);
-			if (!strNextPatternId.empty())
-				Branch.strNextPatternId = std::move(strNextPatternId);
+			if (nullptr != pNextPatternId)
+				Branch.strNextPatternId = pNextPatternId->Get_String();
 			Out.push_back(std::move(Branch));
 		}
 		return true;
@@ -2709,6 +2710,15 @@ namespace
 			}
 			Out.Patterns.push_back(std::move(Pattern));
 		}
+		std::map<std::string, const MASTER_PATTERN*, std::less<>> PatternById;
+		std::map<std::string, std::set<std::string, std::less<>>, std::less<>>
+			FollowupSuccessors;
+		for (const MASTER_PATTERN& Pattern : Out.Patterns)
+		{
+			PatternById.emplace(Pattern.strPatternId, &Pattern);
+			FollowupSuccessors.emplace(
+				Pattern.strPatternId, std::set<std::string, std::less<>>{});
+		}
 		for (const MASTER_PATTERN& Pattern : Out.Patterns)
 		{
 			for (const MASTER_STAGE& Stage : Pattern.Stages)
@@ -2716,16 +2726,85 @@ namespace
 				for (const Client::VALTAN_STAGE_BRANCH_VIEW& Branch :
 					Stage.Branches)
 				{
-					if (Branch.strNextPatternId.has_value() &&
-						!PatternIds.contains(*Branch.strNextPatternId))
+					if (!Branch.strNextPatternId.has_value())
+						continue;
+					const std::string& strNextPatternId =
+						*Branch.strNextPatternId;
+					if (strNextPatternId == Pattern.strPatternId)
+					{
+						strOutError =
+							"master branch cannot follow up to its owner pattern: " +
+							Pattern.strPatternId;
+						return false;
+					}
+					const auto Target = PatternById.find(strNextPatternId);
+					if (Target == PatternById.end())
 					{
 						strOutError =
 							"master branch targets an unknown pattern: " +
-							*Branch.strNextPatternId;
+							strNextPatternId;
 						return false;
 					}
+					const MASTER_PATTERN& Followup = *Target->second;
+					if ("AUDITION_ONLY" != Followup.strSelectionMode ||
+						0u != Followup.iSelectionWeight ||
+						0 != Followup.iMinimumHealthBar ||
+						0 != Followup.iMaximumHealthBar ||
+						"NONE" != Followup.strTargetPolicy ||
+						"NONE" != Followup.strAimPolicy)
+					{
+						strOutError =
+							"master branch follow-up target must be an untargeted "
+							"AUDITION_ONLY pattern with zero selection/health bars: " +
+							strNextPatternId;
+						return false;
+					}
+					FollowupSuccessors.at(Pattern.strPatternId).insert(
+						strNextPatternId);
 				}
 			}
+		}
+		std::map<std::string, uint32_t, std::less<>> FollowupVisitState;
+		std::map<std::string, uint32_t, std::less<>> FollowupDepth;
+		std::function<bool_t(const std::string&)> ValidateFollowupDepth;
+		ValidateFollowupDepth = [&](const std::string& strPatternId) -> bool_t
+		{
+			uint32_t& iVisitState = FollowupVisitState[strPatternId];
+			if (1u == iVisitState)
+			{
+				strOutError = "master pattern follow-up graph contains a cycle: " +
+					strPatternId;
+				return false;
+			}
+			if (2u == iVisitState)
+				return true;
+			iVisitState = 1u;
+			uint32_t iMaximumDepth = 0u;
+			for (const std::string& strTargetId :
+				FollowupSuccessors.at(strPatternId))
+			{
+				if (!ValidateFollowupDepth(strTargetId))
+					return false;
+				const uint32_t iTargetDepth = FollowupDepth.at(strTargetId);
+				if (iTargetDepth >= VALTAN_PATTERN_FOLLOWUP_MAX_DEPTH)
+				{
+					strOutError =
+						"master pattern follow-up graph exceeds maximum depth " +
+						std::to_string(VALTAN_PATTERN_FOLLOWUP_MAX_DEPTH) + ": " +
+						strPatternId;
+					return false;
+				}
+				iMaximumDepth = (std::max)(
+					iMaximumDepth, iTargetDepth + 1u);
+			}
+			iVisitState = 2u;
+			FollowupDepth.emplace(strPatternId, iMaximumDepth);
+			return true;
+		};
+		for (const MASTER_PATTERN& Pattern : Out.Patterns)
+		{
+			if (!ValidateFollowupDepth(Pattern.strPatternId))
+				return false;
 		}
 		std::set<std::string, std::less<>> FinitePatternIds = {
 			"VALTAN_TRASH", "VALTAN_TRASH_CATCH_IF",

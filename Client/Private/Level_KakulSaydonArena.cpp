@@ -12,7 +12,6 @@
 #include "Transform.h"
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -23,37 +22,6 @@ namespace
 {
 	constexpr std::string_view KAKULSAYDON_AREA_ID =
 		"LV_LUT_MIDNIGHTC_ED";
-	/* Runtime placement IDs from the authored deploy placements. Rows 1 and 4
-	   are the paper stage bridges; rows 2 and 3 are the levers that raise them
-	   and stay visible from the first frame. */
-	constexpr std::array<uint64_t, 2> KAKULSAYDON_PAPER_BRIDGE_PLACEMENT_IDS = {
-		1ull,
-		4ull,
-	};
-	/* One lever raises exactly one bridge. The authored sequence instances play
-	   the lever pull and the bridge unfold, so the level only decides when. */
-	struct PAPER_BRIDGE_LINK final
-	{
-		uint64_t leverPlacementId;
-		uint64_t bridgePlacementId;
-		std::string_view leverSequenceInstanceId;
-		std::string_view bridgeSequenceInstanceId;
-	};
-	constexpr std::array<PAPER_BRIDGE_LINK, 2> KAKULSAYDON_PAPER_BRIDGE_LINKS = {
-		PAPER_BRIDGE_LINK{ 2ull, 1ull,
-			"world.sequence.instance.3", "world.sequence.instance.1" },
-		PAPER_BRIDGE_LINK{ 3ull, 4ull,
-			"world.sequence.instance.6", "world.sequence.instance.5" },
-	};
-	/* Map placement IDs the circus finale raises. They are authored standing so
-	   the Map Tool can edit them in place, so the level suppresses them here
-	   instead of letting the arena open with the finale already assembled. The
-	   paper wall is deliberately absent: it must stand until the sequence
-	   topples it. */
-	constexpr std::array<uint64_t, 18> KAKULSAYDON_CIRCUS_FINALE_PLACEMENT_IDS = {
-		8ull, 10ull, 11ull, 12ull, 13ull, 14ull, 15ull, 16ull, 18ull,
-		19ull, 20ull, 21ull, 23ull, 24ull, 25ull, 26ull, 27ull, 28ull,
-	};
 	constexpr std::string_view STAGE_MARKER_SCHEMA =
 		"lostark.kakul-stage-markers-runtime";
 	constexpr std::string_view STAGE_SEMANTIC_STATUS =
@@ -149,8 +117,6 @@ Client::CLevel_KakulSaydonArena::~CLevel_KakulSaydonArena()
 	m_pPlayerCommandSink.reset();
 	m_pCameraTarget.reset();
 	m_pCamera.reset();
-	m_SequencePlayer.Clear();
-	m_DeployRuntime.Clear();
 	m_MapRuntime.Clear();
 }
 
@@ -173,64 +139,6 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 			m_MapRuntime.Get_Status() + "\n").c_str());
 		return E_FAIL;
 	}
-	if (!m_DeployRuntime.Load_Area(
-		ETOUI(LEVEL::KAKULSAYDON_ARENA),
-		pEntry->pMapAreaId))
-	{
-		OutputDebugStringA((
-			"[Level_KakulSaydonArena][DeployProp] " +
-			m_DeployRuntime.Get_Status() + "\n").c_str());
-		m_MapRuntime.Clear();
-		return E_FAIL;
-	}
-	/* Levers stay INTACT so the player can find them. Each paper stage bridge
-	   only exists once its lever is pulled, so suppress it here rather than
-	   waiting for the first sequence frame and flashing an unfolded bridge. */
-	std::vector<std::pair<uint64_t, DEPLOY_PROP_STATE>> hiddenBridges;
-	hiddenBridges.reserve(KAKULSAYDON_PAPER_BRIDGE_PLACEMENT_IDS.size());
-	for (const uint64_t placementId : KAKULSAYDON_PAPER_BRIDGE_PLACEMENT_IDS)
-		hiddenBridges.emplace_back(placementId, DEPLOY_PROP_STATE::DESPAWNED);
-	if (!m_DeployRuntime.Set_States(hiddenBridges))
-	{
-		OutputDebugStringA((
-			"[Level_KakulSaydonArena][PaperBridge] " +
-			m_DeployRuntime.Get_Status() + "\n").c_str());
-		m_DeployRuntime.Clear();
-		m_MapRuntime.Clear();
-		return E_FAIL;
-	}
-
-	/* The finale reveals each of these on its own keyframe. Hiding them now
-	   costs nothing if the sequence never runs, and a placement the runtime
-	   cannot address is reported rather than silently left standing. */
-	for (const uint64_t placementId : KAKULSAYDON_CIRCUS_FINALE_PLACEMENT_IDS)
-	{
-		MAP_RUNTIME_PLACED_ENTRY* const entry = CWorldSequencePlayer::Find_Placement(
-			m_MapRuntime.Get_MutablePlacements(), placementId);
-		if (nullptr == entry ||
-			!CMapPlacementRuntime::Set_RuntimeVisible(*entry, false))
-		{
-			OutputDebugStringA((
-				"[Level_KakulSaydonArena][CircusFinale] placement not hidden: " +
-				std::to_string(placementId) + "\n").c_str());
-		}
-	}
-
-	/* A missing or rejected sequence document only costs the scripted props
-	   their animation. The arena itself, its Server contracts and every other
-	   placement stay enterable, so report the loss instead of blocking entry. */
-	CWorldSequencePlayer::TARGET_SET sequenceTargets{};
-	sequenceTargets.levelIndex = ETOUI(LEVEL::KAKULSAYDON_ARENA);
-	sequenceTargets.pCatalog = &m_MapRuntime.Get_Catalog();
-	sequenceTargets.pPlacements = &m_MapRuntime.Get_MutablePlacements();
-	sequenceTargets.pDeployRuntime = &m_DeployRuntime;
-	if (!m_SequencePlayer.Load_Area(pEntry->pMapAreaId, sequenceTargets))
-	{
-		OutputDebugStringA((
-			"[Level_KakulSaydonArena][WorldSequence] " +
-			m_SequencePlayer.Get_Status() + "\n").c_str());
-	}
-
 	std::string stageStatus;
 	if (!Load_StageMarkers(stageStatus))
 	{
@@ -311,112 +219,6 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	m_PlayerController.Set_LocalCharacter(localCharacter);
 	m_PlayerController.Update(
 		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled());
-
-	CWorldSequencePlayer::TARGET_SET targets{};
-	targets.levelIndex = ETOUI(LEVEL::KAKULSAYDON_ARENA);
-	targets.pCatalog = &m_MapRuntime.Get_Catalog();
-	targets.pPlacements = &m_MapRuntime.Get_MutablePlacements();
-	targets.pDeployRuntime = &m_DeployRuntime;
-	/* The Server decided these started; this level only resolves each stable
-	   instance ID against what it loaded and plays the presentation. */
-	for (const std::string& instanceId :
-		m_Replication.Consume_WorldSequencePlays())
-	{
-		std::string status;
-		if (!Start_ServerRequestedSequence(instanceId, targets, status))
-		{
-			OutputDebugStringA((
-				"[Level_KakulSaydonArena][WorldSequence] " + instanceId +
-				": " + status + "\n").c_str());
-		}
-	}
-	m_SequencePlayer.Update(fTimeDelta, targets);
-}
-
-bool_t Client::CLevel_KakulSaydonArena::Start_ServerRequestedSequence(
-	const std::string& instanceId,
-	const CWorldSequencePlayer::TARGET_SET& targets,
-	std::string& outStatus)
-{
-	/* A bridge unfold is more than its sequence: the Deploy prop must leave
-	   DESPAWNED first. Route those through the bridge contract so the reveal
-	   and the animation stay one decision. */
-	const auto link = std::find_if(
-		KAKULSAYDON_PAPER_BRIDGE_LINKS.begin(),
-		KAKULSAYDON_PAPER_BRIDGE_LINKS.end(),
-		[&instanceId](const PAPER_BRIDGE_LINK& value)
-		{
-			return value.bridgeSequenceInstanceId == instanceId;
-		});
-	if (KAKULSAYDON_PAPER_BRIDGE_LINKS.end() != link)
-		return Request_PaperBridgeUnfold(link->leverPlacementId, outStatus);
-
-	if (!m_SequencePlayer.Play(instanceId, targets))
-	{
-		outStatus = m_SequencePlayer.Get_Status();
-		return false;
-	}
-	outStatus = "World sequence started";
-	return true;
-}
-
-bool_t Client::CLevel_KakulSaydonArena::Request_PaperBridgeUnfold(
-	const uint64_t leverPlacementId,
-	std::string& outStatus)
-{
-	const auto link = std::find_if(
-		KAKULSAYDON_PAPER_BRIDGE_LINKS.begin(),
-		KAKULSAYDON_PAPER_BRIDGE_LINKS.end(),
-		[leverPlacementId](const PAPER_BRIDGE_LINK& value)
-		{
-			return value.leverPlacementId == leverPlacementId;
-		});
-	if (KAKULSAYDON_PAPER_BRIDGE_LINKS.end() == link)
-	{
-		outStatus = "Unknown paper lever placement";
-		return false;
-	}
-	if (!m_RaisedPaperBridges.insert(link->bridgePlacementId).second)
-	{
-		outStatus = "Paper bridge is already raised";
-		return true;
-	}
-
-	CWorldSequencePlayer::TARGET_SET targets{};
-	targets.levelIndex = ETOUI(LEVEL::KAKULSAYDON_ARENA);
-	targets.pCatalog = &m_MapRuntime.Get_Catalog();
-	targets.pPlacements = &m_MapRuntime.Get_MutablePlacements();
-	targets.pDeployRuntime = &m_DeployRuntime;
-
-	/* Reveal before the first sample so the unfold plays from its own opening
-	   frame. A failed reveal leaves the bridge hidden and stays retryable. */
-	if (!m_DeployRuntime.Set_State(
-		link->bridgePlacementId, DEPLOY_PROP_STATE::INTACT))
-	{
-		m_RaisedPaperBridges.erase(link->bridgePlacementId);
-		outStatus = m_DeployRuntime.Get_Status();
-		return false;
-	}
-	if (!m_SequencePlayer.Play(
-			std::string(link->bridgeSequenceInstanceId), targets))
-	{
-		m_DeployRuntime.Set_State(
-			link->bridgePlacementId, DEPLOY_PROP_STATE::DESPAWNED);
-		m_RaisedPaperBridges.erase(link->bridgePlacementId);
-		outStatus = m_SequencePlayer.Get_Status();
-		return false;
-	}
-	/* The lever pull is decoration on top of the bridge contract: losing it
-	   must not undo a bridge that is already unfolding. */
-	if (!m_SequencePlayer.Play(
-		std::string(link->leverSequenceInstanceId), targets))
-	{
-		OutputDebugStringA((
-			"[Level_KakulSaydonArena][PaperLever] " +
-			m_SequencePlayer.Get_Status() + "\n").c_str());
-	}
-	outStatus = "Paper bridge unfold started";
-	return true;
 }
 
 HRESULT Client::CLevel_KakulSaydonArena::Render()

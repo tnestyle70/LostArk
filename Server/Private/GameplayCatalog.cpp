@@ -4620,8 +4620,14 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 							return BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT ==
 								branch.eOutcome;
 						});
-					const auto counterTarget = counterBranch == stage.Branches.end() ?
-						pattern.Stages.end() : std::find_if(
+					const std::size_t sourceIndex = static_cast<std::size_t>(
+						&stage - pattern.Stages.data());
+					const BOSS_PATTERN_STAGE_DEFINITION* counterTarget = nullptr;
+					bool counterTargetIsForward = false;
+					if (counterBranch != stage.Branches.end() &&
+						!counterBranch->strNextActionId.empty())
+					{
+						const auto localTarget = std::find_if(
 							pattern.Stages.begin(), pattern.Stages.end(),
 							[&counterBranch](
 								const BOSS_PATTERN_STAGE_DEFINITION& candidate)
@@ -4629,6 +4635,32 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 								return candidate.strActionId ==
 									counterBranch->strNextActionId;
 							});
+						if (localTarget != pattern.Stages.end())
+						{
+							counterTarget = &*localTarget;
+							counterTargetIsForward = static_cast<std::size_t>(
+								localTarget - pattern.Stages.begin()) > sourceIndex;
+						}
+					}
+					else if (counterBranch != stage.Branches.end() &&
+						!counterBranch->strNextPatternId.empty())
+					{
+						const auto followupPattern = std::find_if(
+							foundPatterns->second.begin(), foundPatterns->second.end(),
+							[&counterBranch](const BOSS_PATTERN_DEFINITION& candidate)
+							{
+								return candidate.strPatternId ==
+									counterBranch->strNextPatternId;
+							});
+						if (followupPattern != foundPatterns->second.end() &&
+							!followupPattern->Stages.empty())
+						{
+							counterTarget = &followupPattern->Stages.front();
+							/* Cross-pattern ordering is owned by the finite follow-up
+							graph, not by either pattern's local stage index. */
+							counterTargetIsForward = true;
+						}
+					}
 					const auto timeoutBranch = std::find_if(
 						stage.Branches.begin(), stage.Branches.end(),
 						[](const BOSS_PATTERN_STAGE_BRANCH& branch)
@@ -4645,18 +4677,12 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 								return candidate.strActionId ==
 									timeoutBranch->strNextActionId;
 							});
-					const std::size_t sourceIndex = static_cast<std::size_t>(
-						&stage - pattern.Stages.data());
-					const bool counterTargetIsForward =
-						counterTarget != pattern.Stages.end() &&
-						static_cast<std::size_t>(
-							counterTarget - pattern.Stages.begin()) > sourceIndex;
 					const bool timeoutTargetIsForward =
 						timeoutTarget != pattern.Stages.end() &&
 						static_cast<std::size_t>(
 							timeoutTarget - pattern.Stages.begin()) > sourceIndex;
 					const bool counterTargetKindIsSupported =
-						counterTarget != pattern.Stages.end() &&
+						nullptr != counterTarget &&
 						(BOSS_PATTERN_STAGE_KIND::WINDUP ==
 							counterTarget->eStageKind ||
 						 BOSS_PATTERN_STAGE_KIND::GROGGY ==
@@ -4664,15 +4690,15 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 						 BOSS_PATTERN_STAGE_KIND::RECOVERY ==
 							counterTarget->eStageKind);
 					const bool counterTargetIsGroggy =
-						counterTarget != pattern.Stages.end() &&
+						nullptr != counterTarget &&
 						BOSS_PATTERN_STAGE_KIND::GROGGY ==
 							counterTarget->eStageKind;
 					const auto targetHasGroggyAction =
-						[&counterTarget, &pattern](
+						[&counterTarget](
 							const BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
 							const std::uint32_t value)
 					{
-							return counterTarget != pattern.Stages.end() &&
+							return nullptr != counterTarget &&
 								std::any_of(
 									counterTarget->Actions.begin(),
 									counterTarget->Actions.end(),

@@ -303,9 +303,6 @@
 	<ClCompile Include="..\Private\WorldSequenceDocument.cpp">
 	  <Filter>03. Tools\00. Map</Filter>
 	</ClCompile>
-	<ClCompile Include="..\Private\WorldSequencePlayer.cpp">
-	  <Filter>03. Tools\00. Map</Filter>
-	</ClCompile>
 	<ClCompile Include="..\Private\WorldSequenceToolPanel.cpp">
 	  <Filter>03. Tools\00. Map</Filter>
 	</ClCompile>
@@ -773,9 +770,6 @@
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
 	<ClInclude Include="..\Public\WorldSequenceDocument.h">
-	  <Filter>03. Tools\00. Map</Filter>
-	</ClInclude>
-	<ClInclude Include="..\Public\WorldSequencePlayer.h">
 	  <Filter>03. Tools\00. Map</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\WorldSequenceToolPanel.h">
