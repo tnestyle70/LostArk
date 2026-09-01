@@ -1324,6 +1324,10 @@ HRESULT CMainApp::Render()
 		/* VALTAN_ARENA-only inside; no CharSelect-preview overlap possible, but grouped with the
 		other combat-HUD text anyway since it is that HUD's own caption. */
 		RenderEstherGaugeText();
+		/* The quick slot key captions belong to that same combat HUD. Left outside this gate
+		they kept drawing over the raid entry preview -- this whole text pass runs after
+		CImGuiLayer::EndFrame(), so it lands on top of every sprite including that popup. */
+		RenderQuickSlotKeyLabels();
 	}
 	RenderDeadSceneText();
 	RenderRaidClearText();
@@ -1331,7 +1335,6 @@ HRESULT CMainApp::Render()
 	RenderDamageNumbers();
 	if (nullptr != m_pInventoryView)
 		m_pInventoryView->Render_Text();
-	RenderQuickSlotKeyLabels();
 	RenderLobbyButtonText();
 	RenderItemUpgradeButtonText();
 	RenderItemUpgradeLevelText();
@@ -3853,8 +3856,11 @@ void CMainApp::Update_EstherGauge()
 		CCombatHUDViewModel::Get().Get_EstherGaugeMaximum();
 	const bool_t skillWindowOpen =
 		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
-	if (ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID() ||
-		0u == maximum || skillWindowOpen ||
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	const bool_t isRaidArena =
+		ETOUI(LEVEL::VALTAN_ARENA) == currentLevel ||
+		ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel;
+	if (!isRaidArena || 0u == maximum || skillWindowOpen ||
 		!CCombatHUDViewModel::Get().Get_Player().isValid)
 	{
 		Hide_EstherUI();
@@ -3875,6 +3881,17 @@ void CMainApp::Update_EstherGauge()
 	};
 	for (const char_t* pSlotId : ESTHER_STATIC_SLOTS)
 		m_pEstherUIView->Set_SlotVisible(pSlotId, true);
+
+	/* Each raid grants its own three esther skills, in its own order -- the same three the raid
+	entry screen lists for that raid, so the window a player sees inside the raid matches what
+	they were shown on the way in. The level is the raid: this only runs in an arena level, and
+	the document's authored icons are Valtan's, so only Kakul needs to be swapped in. */
+	if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel)
+	{
+		m_pEstherUIView->Set_SlotTexture("Esther_Slot1_Icon", "UI/Esther/esther_icon_3.png");
+		m_pEstherUIView->Set_SlotTexture("Esther_Slot2_Icon", "UI/Esther/esther_portrait_wei.png");
+		m_pEstherUIView->Set_SlotTexture("Esther_Slot3_Icon", "UI/Esther/esther_icon_4.png");
+	}
 
 	const uint32_t gauge = CCombatHUDViewModel::Get().Get_EstherGauge();
 	const float fillRatio = (std::clamp)(
