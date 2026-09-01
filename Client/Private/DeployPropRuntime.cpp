@@ -2,6 +2,7 @@
 
 #include "DeployPropObject.h"
 #include "GameInstance.h"
+#include "Model.h"
 
 #include <algorithm>
 #include <utility>
@@ -12,6 +13,103 @@ namespace
 		TEXT("Prototype_GameObject_DeployProp");
 	constexpr const wchar_t* DEPLOY_PROP_LAYER =
 		TEXT("Layer_DeployProps");
+}
+
+bool_t CDeployPropRuntime::Ensure_ObjectPrototype(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext,
+	const uint32_t levelIndex,
+	std::string& outStatus)
+{
+	if (levelIndex >= ETOUI(LEVEL::END))
+	{
+		outStatus = "Deploy prop prototype level index is invalid";
+		return false;
+	}
+	if (FAILED(CGameInstance::Get().Add_Prototype(
+		levelIndex,
+		DEPLOY_PROP_PROTOTYPE,
+		CDeployPropObject::Create(pDevice, pContext))))
+	{
+		outStatus = "Deploy prop object prototype was rejected";
+		return false;
+	}
+	outStatus = "Deploy prop prototypes ready";
+	return true;
+}
+
+bool_t CDeployPropRuntime::Ensure_AreaPrototypes(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext,
+	const uint32_t levelIndex,
+	const std::string& areaId,
+	std::string& outStatus,
+	const std::function<bool_t()>& isCancellationRequested)
+{
+	if (levelIndex >= ETOUI(LEVEL::END) || areaId.empty())
+	{
+		outStatus = "Deploy prop area request is invalid";
+		return false;
+	}
+
+	CDeployPropCatalog catalog;
+	if (!catalog.Load_Default(areaId))
+	{
+		outStatus = catalog.Get_Status();
+		return false;
+	}
+
+	const matrix_t modelTransform = XMMatrixScaling(0.01f, 0.01f, 0.01f);
+	for (const DEPLOY_PROP_ASSET_ENTRY& asset : catalog.Get_Assets())
+	{
+		if (isCancellationRequested && isCancellationRequested())
+		{
+			outStatus = "Deploy prop admission was cancelled";
+			return false;
+		}
+
+		const MODEL modelKind =
+			DEPLOY_PROP_MODEL_KIND::ANIM == asset.kind ?
+			MODEL::ANIM : MODEL::NONANIM;
+		auto intactModel = CModel::Create(
+			pDevice,
+			pContext,
+			modelKind,
+			asset.intactResolvedPath.string().c_str(),
+			modelTransform);
+		if (nullptr == intactModel ||
+			FAILED(CGameInstance::Get().Add_Prototype(
+				levelIndex,
+				asset.intactPrototypeTag,
+				std::move(intactModel))))
+		{
+			outStatus = "Deploy prop model was rejected: " + asset.id;
+			return false;
+		}
+
+		// A STATIC prop whose authored mutation ends at DESPAWNED owns no
+		// fractured mesh, so there is no second prototype to admit for it.
+		if (DEPLOY_PROP_MODEL_KIND::STATIC != asset.kind ||
+			asset.fracturedPrototypeTag.empty())
+			continue;
+		auto fracturedModel = CModel::Create(
+			pDevice,
+			pContext,
+			MODEL::NONANIM,
+			asset.fracturedResolvedPath.string().c_str(),
+			modelTransform);
+		if (nullptr == fracturedModel ||
+			FAILED(CGameInstance::Get().Add_Prototype(
+				levelIndex,
+				asset.fracturedPrototypeTag,
+				std::move(fracturedModel))))
+		{
+			outStatus =
+				"Deploy prop fractured model was rejected: " + asset.id;
+			return false;
+		}
+	}
+	return Ensure_ObjectPrototype(pDevice, pContext, levelIndex, outStatus);
 }
 
 CDeployPropRuntime::~CDeployPropRuntime()

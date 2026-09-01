@@ -88,6 +88,7 @@
     <ClInclude Include="..\Public\Level_CharacterSelect.h" />
     <ClInclude Include="..\Public\PlayableCharacterAssetService.h" />
     <ClInclude Include="..\Public\DeployPropRuntime.h" />
+    <ClInclude Include="..\Public\WorldSequencePlayer.h" />
     <ClInclude Include="..\Public\DestructionSimulationDocument.h" />
     <ClInclude Include="..\Public\DestructionSimulationRuntime.h" />
     <ClInclude Include="..\Public\DestructionSimulationController.h" />
@@ -360,6 +361,7 @@
     <ClCompile Include="..\Private\DeployPropCatalog.cpp" />
     <ClCompile Include="..\Private\DeployPropObject.cpp" />
     <ClCompile Include="..\Private\DeployPropRuntime.cpp" />
+    <ClCompile Include="..\Private\WorldSequencePlayer.cpp" />
     <ClCompile Include="..\Private\DestructionSimulationDocument.cpp" />
     <ClCompile Include="..\Private\DestructionSimulationRuntime.cpp" />
     <ClCompile Include="..\Private\DestructionSimulationController.cpp" />

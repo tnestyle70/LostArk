@@ -375,6 +375,9 @@
     <ClCompile Include="..\Private\DeployPropRuntime.cpp">
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\WorldSequencePlayer.cpp">
+      <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\MapAssetPreview.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
@@ -848,6 +851,9 @@
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\DeployPropRuntime.h">
+      <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\WorldSequencePlayer.h">
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\MapAssetPreview.h">
