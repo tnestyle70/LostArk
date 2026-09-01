@@ -2,6 +2,8 @@
 param(
     [string]$SelectionPath,
     [string]$OutputDirectory,
+    [string]$SourceRoot,
+    [string]$ResourceRoot,
     [string]$PythonPath,
     [switch]$Overwrite
 )
@@ -64,6 +66,14 @@ $arguments = @(
     '--output'
     ([System.IO.Path]::GetFullPath($OutputDirectory))
 )
+if (-not [string]::IsNullOrWhiteSpace($SourceRoot)) {
+    $arguments += '--source-root'
+    $arguments += [System.IO.Path]::GetFullPath($SourceRoot)
+}
+if (-not [string]::IsNullOrWhiteSpace($ResourceRoot)) {
+    $arguments += '--resource-root'
+    $arguments += [System.IO.Path]::GetFullPath($ResourceRoot)
+}
 if ($Overwrite) {
     $arguments += '--overwrite'
 }

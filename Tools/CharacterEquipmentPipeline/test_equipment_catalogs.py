@@ -39,8 +39,11 @@ class EquipmentCatalogTests(unittest.TestCase):
         self.assertEqual(SLOTS, self.catalog["slotIds"])
 
         visual_sets = self.catalog["visualSets"]
-        self.assertEqual(12, len(visual_sets))
-        self.assertEqual(17, sum(len(item["parts"]) for item in visual_sets))
+        self.assertEqual(len(self.selection["sets"]), len(visual_sets))
+        self.assertEqual(
+            sum(len(item["parts"]) for item in self.selection["sets"]),
+            sum(len(item["parts"]) for item in visual_sets),
+        )
         self.assertEqual(CLASSES, {item["classId"] for item in visual_sets})
 
         selected_by_id = {
@@ -73,54 +76,18 @@ class EquipmentCatalogTests(unittest.TestCase):
             for visual_set in self.catalog["visualSets"]
             for part in visual_set["parts"]
         }
-        expected_socket_contract = {
-            ("character.lance_master.wp_wflm_00", "long_spear"): (
-                "b_weapon_rhand",
-                0.0,
-                "LANCE_MASTER_LONG_SPEAR",
-            ),
-            ("character.lance_master.wp_wflm_00", "short_spear"): (
-                "b_weapon_rhand",
-                0.0,
-                "LANCE_MASTER_SHORT_SPEAR",
-            ),
-            ("character.slayer.wp_wwbk_03", "main"): (
-                "b_weapon_rhand",
-                0.0,
-                None,
-            ),
-            ("character.artist.wp_wsdm_09", "main"): ("b_wp_1", 0.0, None),
-            ("character.warlord.wp_wwgl_04", "main"): (
-                "b_weapon_rhand",
-                0.0,
-                None,
-            ),
-            ("character.warlord.wp_wwgl_04", "shield"): (
-                "b_weapon_lhand",
-                0.0,
-                None,
-            ),
-            ("character.dimensionmaster.wp_wswp_m_06", "l"): (
-                "b_wp_swm_m_1",
-                0.0,
-                None,
-            ),
-            ("character.dimensionmaster.wp_wswp_m_06", "s"): (
-                "b_wp_swm_m_2",
-                0.0,
-                None,
-            ),
-            ("character.dimensionmaster.wp_wswp_m_06", "p"): (
-                "b_wp_swm_m_3",
-                0.0,
-                None,
-            ),
-            ("character.dimensionmaster.wp_wswp_m_06", "e"): (
-                "b_wp_swm_m_4_02",
-                180.0,
-                None,
-            ),
-        }
+        expected_socket_contract = {}
+        for visual_set in self.selection["sets"]:
+            for part in visual_set["parts"]:
+                if part["attachmentMode"] != "SOCKETED":
+                    continue
+                stances = part["visibleStances"]
+                self.assertLessEqual(len(stances), 1)
+                expected_socket_contract[(visual_set["visualSetId"], part["partId"])] = (
+                    part["socketBone"],
+                    float(part["socketYawDegrees"]),
+                    stances[0] if stances else None,
+                )
         socketed = {key: value for key, value in parts.items() if value["attachmentMode"] == "SOCKETED"}
         self.assertEqual(set(expected_socket_contract), set(socketed))
         for key, expected in expected_socket_contract.items():
@@ -144,6 +111,15 @@ class EquipmentCatalogTests(unittest.TestCase):
             )
         )
 
+    def test_every_class_has_a_visible_ready_weapon_alternative(self):
+        ready_weapon_classes = {
+            visual_set["classId"]
+            for visual_set in self.catalog["visualSets"]
+            if visual_set["catalogStatus"] == "READY_ALTERNATIVE"
+            and visual_set["primarySlot"] == "WEAPON"
+        }
+        self.assertEqual(CLASSES, ready_weapon_classes)
+
     def test_presets_are_authoring_only_and_reference_primary_slots_without_overlap(self):
         self.assertEqual("lostark.equipment-loadout-presets", self.presets["schema"])
         self.assertEqual(1, self.presets["formatVersion"])
@@ -160,6 +136,10 @@ class EquipmentCatalogTests(unittest.TestCase):
         for preset in class_presets:
             selections = preset["slotSelections"]
             self.assertEqual(set(SLOTS), set(selections))
+            self.assertTrue(
+                all(value is None for value in selections.values()),
+                "Authoring preview must start at character default so Equip is visibly comparative.",
+            )
             occupied = set()
             for slot in SLOTS:
                 visual_set_id = selections[slot]

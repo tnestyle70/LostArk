@@ -17,6 +17,9 @@ CHARACTER_CPP = ROOT / "Client" / "Private" / "Character.cpp"
 PRESENTATION_SERVICE_CPP = (
     ROOT / "Client" / "Private" / "EquipmentPresentationService.cpp"
 )
+PRESENTATION_CATALOG_CPP = (
+    ROOT / "Client" / "Private" / "EquipmentPresentationCatalog.cpp"
+)
 LOGIC_CPP = {
     name: ROOT / "Client" / "Private" / f"Logic_{name}.cpp"
     for name in (
@@ -39,6 +42,9 @@ class EquipmentAuthoringToolContractTests(unittest.TestCase):
         cls.character_spec_h = CHARACTER_SPEC_H.read_text(encoding="utf-8-sig")
         cls.character_cpp = CHARACTER_CPP.read_text(encoding="utf-8-sig")
         cls.presentation_service_cpp = PRESENTATION_SERVICE_CPP.read_text(
+            encoding="utf-8-sig"
+        )
+        cls.presentation_catalog_cpp = PRESENTATION_CATALOG_CPP.read_text(
             encoding="utf-8-sig"
         )
         cls.logic_cpp = {
@@ -92,6 +98,17 @@ class EquipmentAuthoringToolContractTests(unittest.TestCase):
         ):
             self.assertIn(f'"{action}"', self.tool_cpp)
         self.assertIn("SLOT_COUNT = ETOI(EQUIPMENT_SLOT_ID::END)", self.tool_h)
+
+    def test_catalog_accepts_every_six_slot_apparel_category(self):
+        for category in (
+            "APPAREL_HEAD",
+            "APPAREL_SHOULDER",
+            "APPAREL_UPPER",
+            "APPAREL_LOWER",
+            "APPAREL_HANDS",
+            "APPAREL_OUTFIT",
+        ):
+            self.assertIn(f'"{category}"', self.presentation_catalog_cpp)
 
     def test_compound_slot_conflicts_clear_primary_selection_transactionally(self):
         self.assertIn("Set_OccupiedMask(*pCandidate)", self.tool_cpp)

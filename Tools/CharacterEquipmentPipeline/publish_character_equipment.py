@@ -21,9 +21,6 @@ EXPECTED_RESOURCE_FOLDERS = frozenset(
     {"Fonts", "Character", "Deploy", "Effect", "Map", "Sound", "UI"}
 )
 EXPECTED_CLASS_COUNT = 6
-EXPECTED_VISUAL_SET_COUNT = 12
-EXPECTED_PART_COUNT = 17
-EXPECTED_RUNTIME_FILE_COUNT = 73
 ALLOWED_KINDS = frozenset({"WMODEL", "TEXTURE"})
 
 
@@ -47,7 +44,12 @@ class EquipmentGroup:
     asset_id: str
     target_path: Path
     entries: tuple[ClosureEntry, ...]
-    already_published: bool
+    existing_entries: tuple[ClosureEntry, ...]
+    new_entries: tuple[ClosureEntry, ...]
+
+    @property
+    def already_published(self) -> bool:
+        return not self.new_entries
 
 
 @dataclass(frozen=True)
@@ -64,6 +66,14 @@ class PublishPlan:
     @property
     def existing_groups(self) -> tuple[EquipmentGroup, ...]:
         return tuple(group for group in self.groups if group.already_published)
+
+    @property
+    def new_entries(self) -> tuple[ClosureEntry, ...]:
+        return tuple(entry for group in self.groups for entry in group.new_entries)
+
+    @property
+    def existing_entries(self) -> tuple[ClosureEntry, ...]:
+        return tuple(entry for group in self.groups for entry in group.existing_entries)
 
 
 def sha256_file(path: Path) -> str:
@@ -86,11 +96,17 @@ def _load_json(path: Path) -> dict:
     return value
 
 
-def _require_count(counts: dict, key: str, expected: int) -> None:
-    actual = counts.get(key)
-    if actual != expected:
+def _require_reported_count(counts: dict, key: str, actual: int) -> None:
+    reported = counts.get(key)
+    if (
+        not isinstance(reported, int)
+        or isinstance(reported, bool)
+        or reported < 0
+        or reported != actual
+    ):
         raise PublishError(
-            f"Admission counts.{key} must be {expected}, got {actual!r}."
+            f"Admission counts.{key} must match the receipt contents: "
+            f"reported={reported!r}, actual={actual}."
         )
 
 
@@ -144,12 +160,8 @@ def _parse_entries(
     resource_root: Path,
 ) -> tuple[ClosureEntry, ...]:
     closure = receipt.get("runtimeClosure")
-    if not isinstance(closure, list) or len(closure) != EXPECTED_RUNTIME_FILE_COUNT:
-        actual = len(closure) if isinstance(closure, list) else None
-        raise PublishError(
-            "Admission runtimeClosure must contain exactly "
-            f"{EXPECTED_RUNTIME_FILE_COUNT} entries, got {actual!r}."
-        )
+    if not isinstance(closure, list) or not closure:
+        raise PublishError("Admission runtimeClosure must be a non-empty array.")
 
     runtime_root = (admission_root / "Runtime").resolve(strict=False)
     if not runtime_root.is_dir():
@@ -244,33 +256,37 @@ def _group_entries(
                 f"promotion: {parent_path}"
             )
         group_entries = tuple(sorted(grouped[asset_id], key=lambda item: item.asset_id.casefold()))
-        already_published = False
+        existing_entries: list[ClosureEntry] = []
+        new_entries: list[ClosureEntry] = []
         if target_path.exists():
             if not target_path.is_dir():
                 raise PublishError(f"Equipment target is not a directory: {target_path}")
-            missing: list[str] = []
             mismatched: list[str] = []
             for entry in group_entries:
-                if not entry.target_path.is_file():
-                    missing.append(entry.asset_id)
+                if not entry.target_path.exists() and not entry.target_path.is_symlink():
+                    new_entries.append(entry)
                     continue
-                if (
+                if not entry.target_path.is_file() or (
                     entry.target_path.stat().st_size != entry.byte_size
                     or sha256_file(entry.target_path) != entry.sha256
                 ):
                     mismatched.append(entry.asset_id)
-            if missing or mismatched:
+                    continue
+                existing_entries.append(entry)
+            if mismatched:
                 raise PublishError(
                     f"Equipment target collision under {asset_id}; "
-                    f"missing={missing}, mismatched={mismatched}."
+                    f"mismatched={mismatched}."
                 )
-            already_published = True
+        else:
+            new_entries.extend(group_entries)
         groups.append(
             EquipmentGroup(
                 asset_id=asset_id,
                 target_path=target_path,
                 entries=group_entries,
-                already_published=already_published,
+                existing_entries=tuple(existing_entries),
+                new_entries=tuple(new_entries),
             )
         )
     return tuple(groups)
@@ -293,16 +309,10 @@ def build_publish_plan(admission_root: Path, resource_root: Path) -> PublishPlan
     counts = receipt.get("counts")
     if not isinstance(counts, dict):
         raise PublishError("Admission counts must be an object.")
-    _require_count(counts, "classCount", EXPECTED_CLASS_COUNT)
-    _require_count(counts, "visualSetCount", EXPECTED_VISUAL_SET_COUNT)
-    _require_count(counts, "partCount", EXPECTED_PART_COUNT)
-    _require_count(counts, "runtimeClosureFileCount", EXPECTED_RUNTIME_FILE_COUNT)
 
     visual_sets = receipt.get("sets")
-    if not isinstance(visual_sets, list) or len(visual_sets) != EXPECTED_VISUAL_SET_COUNT:
-        raise PublishError(
-            f"Admission sets must contain exactly {EXPECTED_VISUAL_SET_COUNT} entries."
-        )
+    if not isinstance(visual_sets, list) or not visual_sets:
+        raise PublishError("Admission sets must be a non-empty array.")
     class_ids: set[str] = set()
     model_asset_ids: set[str] = set()
     actual_part_count = 0
@@ -325,13 +335,18 @@ def build_publish_plan(admission_root: Path, resource_root: Path) -> PublishPlan
             model_asset_id = part.get("targetModelAssetId")
             _safe_asset_parts(model_asset_id)
             model_asset_ids.add(model_asset_id.casefold())
+    closure = receipt.get("runtimeClosure")
+    if not isinstance(closure, list) or not closure:
+        raise PublishError("Admission runtimeClosure must be a non-empty array.")
+
+    _require_reported_count(counts, "classCount", len(class_ids))
+    _require_reported_count(counts, "visualSetCount", len(visual_sets))
+    _require_reported_count(counts, "partCount", actual_part_count)
+    _require_reported_count(counts, "runtimeClosureFileCount", len(closure))
+
     if len(class_ids) != EXPECTED_CLASS_COUNT:
         raise PublishError(
             f"Admission sets must cover {EXPECTED_CLASS_COUNT} classes, got {len(class_ids)}."
-        )
-    if actual_part_count != EXPECTED_PART_COUNT:
-        raise PublishError(
-            f"Admission sets must contain {EXPECTED_PART_COUNT} parts, got {actual_part_count}."
         )
 
     entries = _parse_entries(receipt, admission_root, resource_root)
@@ -355,56 +370,114 @@ def build_publish_plan(admission_root: Path, resource_root: Path) -> PublishPlan
     )
 
 
+def _promote_new_file(source: Path, target: Path) -> None:
+    """Atomically expose a staged file without replacing an existing target."""
+
+    os.link(source, target)
+    try:
+        source.unlink()
+    except OSError:
+        try:
+            target.unlink()
+        except OSError:
+            pass
+        raise
+
+
+def _ensure_parent_directories(
+    directory: Path,
+    resource_root: Path,
+    created_directories: list[Path],
+) -> None:
+    missing: list[Path] = []
+    cursor = directory
+    while cursor != resource_root and not cursor.exists():
+        if cursor.is_symlink():
+            raise PublishError(f"Resource target parent is a dangling symlink: {cursor}")
+        missing.append(cursor)
+        cursor = cursor.parent
+    if cursor != resource_root and not cursor.is_dir():
+        raise PublishError(f"Resource target parent is not a directory: {cursor}")
+    for candidate in reversed(missing):
+        try:
+            candidate.mkdir()
+            created_directories.append(candidate)
+        except FileExistsError:
+            if not candidate.is_dir():
+                raise PublishError(
+                    f"Resource target parent appeared as a non-directory: {candidate}"
+                )
+
+
 def publish_plan(
     plan: PublishPlan,
-    promote_directory: Callable[[Path, Path], object] = os.replace,
+    promote_file: Callable[[Path, Path], object] = _promote_new_file,
 ) -> str:
-    if not plan.new_groups:
+    if not plan.new_entries:
         return "PUBLISHED_NO_CHANGE"
 
     stage_root = (
         plan.resource_root.parent
         / f".{plan.resource_root.name}.character-equipment-stage-{uuid4().hex}"
     )
-    promoted: list[Path] = []
+    promoted: list[ClosureEntry] = []
+    created_directories: list[Path] = []
     try:
         stage_root.mkdir(parents=False, exist_ok=False)
-        for group in plan.new_groups:
-            staged_equipment_root = stage_root.joinpath(
-                *PurePosixPath(group.asset_id).parts
-            )
-            staged_equipment_root.mkdir(parents=True, exist_ok=False)
-            for entry in group.entries:
-                relative_inside_equipment = entry.target_path.relative_to(group.target_path)
-                staged_file = staged_equipment_root / relative_inside_equipment
-                staged_file.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(entry.source_path, staged_file)
-                if (
-                    staged_file.stat().st_size != entry.byte_size
-                    or sha256_file(staged_file) != entry.sha256
-                ):
-                    raise PublishError(
-                        f"Staged asset verification failed: {entry.asset_id}"
-                    )
+        for entry in plan.new_entries:
+            staged_file = stage_root.joinpath(*PurePosixPath(entry.asset_id).parts)
+            staged_file.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(entry.source_path, staged_file)
+            if (
+                staged_file.stat().st_size != entry.byte_size
+                or sha256_file(staged_file) != entry.sha256
+            ):
+                raise PublishError(f"Staged asset verification failed: {entry.asset_id}")
 
-        for group in plan.new_groups:
-            staged_equipment_root = stage_root.joinpath(
-                *PurePosixPath(group.asset_id).parts
+        for entry in plan.new_entries:
+            current_target = _path_beneath(
+                plan.resource_root,
+                PurePosixPath(entry.asset_id).parts,
+                "Resource target",
             )
-            if group.target_path.exists():
+            if current_target != entry.target_path:
                 raise PublishError(
-                    f"Equipment target appeared after preflight: {group.target_path}"
+                    f"Resource target changed after preflight: {entry.asset_id}"
                 )
-            promote_directory(staged_equipment_root, group.target_path)
-            promoted.append(group.target_path)
+            if entry.target_path.exists() or entry.target_path.is_symlink():
+                raise PublishError(
+                    f"Resource target appeared after preflight: {entry.target_path}"
+                )
+            _ensure_parent_directories(
+                entry.target_path.parent,
+                plan.resource_root,
+                created_directories,
+            )
+            staged_file = stage_root.joinpath(*PurePosixPath(entry.asset_id).parts)
+            promote_file(staged_file, entry.target_path)
+            promoted.append(entry)
+            if (
+                not entry.target_path.is_file()
+                or entry.target_path.stat().st_size != entry.byte_size
+                or sha256_file(entry.target_path) != entry.sha256
+            ):
+                raise PublishError(f"Promoted asset verification failed: {entry.asset_id}")
     except Exception as error:
         rollback_errors: list[str] = []
-        for promoted_path in reversed(promoted):
+        for promoted_entry in reversed(promoted):
             try:
-                if promoted_path.exists():
-                    shutil.rmtree(promoted_path)
+                if promoted_entry.target_path.exists() or promoted_entry.target_path.is_symlink():
+                    promoted_entry.target_path.unlink()
             except OSError as rollback_error:
-                rollback_errors.append(f"{promoted_path}: {rollback_error}")
+                rollback_errors.append(
+                    f"{promoted_entry.target_path}: {rollback_error}"
+                )
+        for created_directory in reversed(created_directories):
+            try:
+                created_directory.rmdir()
+            except OSError as rollback_error:
+                if created_directory.exists() and not any(created_directory.iterdir()):
+                    rollback_errors.append(f"{created_directory}: {rollback_error}")
         if rollback_errors:
             raise PublishError(
                 f"Equipment publish failed ({error}); rollback also failed: "
@@ -425,6 +498,8 @@ def _print_plan(mode: str, plan: PublishPlan, result: str) -> None:
     print(f"AdmissionRoot={plan.admission_root}")
     print(f"ResourceRoot={plan.resource_root}")
     print(f"RuntimeClosureFiles={len(plan.entries)}")
+    print(f"NewRuntimeClosureFiles={len(plan.new_entries)}")
+    print(f"ExistingIdenticalRuntimeClosureFiles={len(plan.existing_entries)}")
     print(f"EquipmentDirectories={len(plan.groups)}")
     print(f"NewEquipmentDirectories={len(plan.new_groups)}")
     print(f"ExistingIdenticalEquipmentDirectories={len(plan.existing_groups)}")

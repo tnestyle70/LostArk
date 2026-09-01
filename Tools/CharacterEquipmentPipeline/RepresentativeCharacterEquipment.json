@@ -1,7 +1,7 @@
 {
   "schema": "lostark.character-equipment-representative-selection",
   "formatVersion": 1,
-  "sourceAssociationPolicy": "CURATED_EXISTING_WMODEL_ASSOCIATION_NOT_BUILD_PROVENANCE",
+  "sourceAssociationPolicy": "CURATED_EXISTING_OR_EXACT_AUTHORED_STATIC_COOK_V1",
   "sourceInventory": "out/CharacterEquipmentExtraction/Inventory/Generated/character-equipment-source-inventory.json",
   "pendingNormalizationCandidates": [
     {
@@ -480,6 +480,638 @@
           "expectedSourceRole": "WEAPON_E",
           "existingModelAssetId": "Character/WP_WSWP_M_06/WP_WSWP_M_06E.wmodel",
           "targetModelAssetId": "Character/DimensionMaster/Equipment/wp_wswp_m_06/e.wmodel",
+          "partRole": "WEAPON_E",
+          "attachmentMode": "SOCKETED",
+          "modelKind": "NONANIM_SOCKETED",
+          "socketBone": "b_wp_swm_m_4_02",
+          "socketYawDegrees": 180.0,
+          "visibleStances": []
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.standard_00.head",
+      "classId": "LANCE_MASTER",
+      "curatedVariantId": "pc_flm_00_helmet",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "coverageSlots": [
+        "HEAD"
+      ],
+      "masterBodyAssetId": "Character/LanceMaster/LanceMaster.wmodel",
+      "bodyCoveragePolicy": "INHERIT_BASELINE",
+      "parts": [
+        {
+          "partId": "head",
+          "sourceClassId": "LANCE_MASTER",
+          "sourcePackageName": "PC_FLM_00",
+          "sourceObjectName": "pc_flm_00_helmet_sk",
+          "expectedSourceRole": "APPAREL_HEAD",
+          "existingModelAssetId": "Character/LanceMaster/LanceMaster_Helmet.wmodel",
+          "targetModelAssetId": "Character/LanceMaster/Equipment/standard_00_head/head.wmodel",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelKind": "ANIM_SKINNED"
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.standard_00.outfit",
+      "classId": "LANCE_MASTER",
+      "curatedVariantId": "pc_flm_00_outfit",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "UPPER",
+      "coverageSlots": [
+        "UPPER",
+        "LOWER",
+        "HANDS",
+        "SHOULDER"
+      ],
+      "masterBodyAssetId": "Character/LanceMaster/LanceMaster.wmodel",
+      "bodyCoveragePolicy": "INHERIT_BASELINE",
+      "parts": [
+        {
+          "partId": "upper",
+          "sourceClassId": "LANCE_MASTER",
+          "sourcePackageName": "PC_FLM_00",
+          "sourceObjectName": "pc_flm_00_upper_sk_loc_int",
+          "expectedSourceRole": "APPAREL_UPPER",
+          "existingModelAssetId": "Character/LanceMaster/LanceMaster_Upper.wmodel",
+          "targetModelAssetId": "Character/LanceMaster/Equipment/standard_00_outfit/upper.wmodel",
+          "partRole": "UPPER",
+          "attachmentMode": "SKINNED",
+          "modelKind": "ANIM_SKINNED"
+        },
+        {
+          "partId": "lower",
+          "sourceClassId": "LANCE_MASTER",
+          "sourcePackageName": "PC_FLM_00",
+          "sourceObjectName": "pc_flm_00_lower_sk_loc_int",
+          "expectedSourceRole": "APPAREL_LOWER",
+          "existingModelAssetId": "Character/LanceMaster/LanceMaster_Lower.wmodel",
+          "targetModelAssetId": "Character/LanceMaster/Equipment/standard_00_outfit/lower.wmodel",
+          "partRole": "LOWER",
+          "attachmentMode": "SKINNED",
+          "modelKind": "ANIM_SKINNED"
+        },
+        {
+          "partId": "hands",
+          "sourceClassId": "LANCE_MASTER",
+          "sourcePackageName": "PC_FLM_00",
+          "sourceObjectName": "pc_flm_00_arm_sk",
+          "expectedSourceRole": "APPAREL_HANDS",
+          "existingModelAssetId": "Character/LanceMaster/LanceMaster_Arm.wmodel",
+          "targetModelAssetId": "Character/LanceMaster/Equipment/standard_00_outfit/hands.wmodel",
+          "partRole": "HANDS",
+          "attachmentMode": "SKINNED",
+          "modelKind": "ANIM_SKINNED"
+        },
+        {
+          "partId": "shoulder",
+          "sourceClassId": "LANCE_MASTER",
+          "sourcePackageName": "PC_FLM_00",
+          "sourceObjectName": "pc_flm_00_shoulder_sk",
+          "expectedSourceRole": "APPAREL_SHOULDER",
+          "existingModelAssetId": "Character/LanceMaster/LanceMaster_Shoulder.wmodel",
+          "targetModelAssetId": "Character/LanceMaster/Equipment/standard_00_outfit/shoulder.wmodel",
+          "partRole": "SHOULDER",
+          "attachmentMode": "SKINNED",
+          "modelKind": "ANIM_SKINNED"
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.default_variant_01.lower",
+      "classId": "ARTIST",
+      "curatedVariantId": "pc_sdm_00_lower1",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "LOWER",
+      "coverageSlots": [
+        "LOWER"
+      ],
+      "masterBodyAssetId": "Character/Artist/Artist.wmodel",
+      "bodyCoveragePolicy": "INHERIT_BASELINE",
+      "parts": [
+        {
+          "partId": "lower",
+          "sourceClassId": "ARTIST",
+          "sourcePackageName": "PC_SDM_00",
+          "sourceObjectName": "pc_sdm_00_lower1_sk_loc_int",
+          "expectedSourceRole": "APPAREL_LOWER",
+          "existingModelAssetId": "Character/Artist/Artist_Lower1.wmodel",
+          "targetModelAssetId": "Character/Artist/Equipment/default_variant_01_lower/lower.wmodel",
+          "partRole": "LOWER",
+          "attachmentMode": "SKINNED",
+          "modelKind": "ANIM_SKINNED"
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.default_00.hair",
+      "classId": "WARLORD",
+      "curatedVariantId": "pc_wr_00_hair",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "HEAD",
+      "coverageSlots": [
+        "HEAD"
+      ],
+      "masterBodyAssetId": "Character/Warlord/Warlord.wmodel",
+      "bodyCoveragePolicy": "INHERIT_BASELINE",
+      "parts": [
+        {
+          "partId": "head",
+          "sourceClassId": "WARLORD",
+          "sourcePackageName": "PC_WR_00_HAIR",
+          "sourceObjectName": "pc_wr_00_hair_sk",
+          "expectedSourceRole": "HAIR_APPEARANCE",
+          "existingModelAssetId": "Character/Warlord/Warlord_Hair.wmodel",
+          "targetModelAssetId": "Character/Warlord/Equipment/default_00_hair/head.wmodel",
+          "partRole": "HEAD",
+          "attachmentMode": "SKINNED",
+          "modelKind": "ANIM_SKINNED"
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.lance_master.wp_wflm_07",
+      "classId": "LANCE_MASTER",
+      "curatedVariantId": "wp_wflm_07",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "WEAPON",
+      "coverageSlots": [
+        "WEAPON"
+      ],
+      "masterBodyAssetId": "Character/LanceMaster/LanceMaster.wmodel",
+      "bodyCoveragePolicy": "INHERIT_BASELINE",
+      "parts": [
+        {
+          "partId": "long_spear",
+          "sourceClassId": "LANCE_MASTER",
+          "sourcePackageName": "WP_WFLM_07",
+          "sourceObjectName": "wp_wflm_07l_sk",
+          "expectedSourceRole": "WEAPON_L",
+          "cookProfile": {
+            "kind": "NONANIM_SOCKETED_GLTF_V1",
+            "basis": "GLTF_ROOT_X_POSITIVE_90_TO_WMODEL_V1",
+            "sourceToWModelScale": 100.0,
+            "baselineModelAssetId": "Character/WP_WFLM_00L/WP_WFLM_00L.wmodel",
+            "materials": [
+              {
+                "materialName": "wp_wflm_07l_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/LanceMaster/WP_WFLM_07/tex/wp_wflm_07l_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/LanceMaster/WP_WFLM_07/tex/wp_wflm_07l_n.dds",
+                "specularSourcePath": "out/CharacterEquipmentExtraction/Raw/LanceMaster/WP_WFLM_07/tex/wp_wflm_07l_s.dds",
+                "emissiveSourcePath": "out/CharacterEquipmentExtraction/Raw/LanceMaster/WP_WFLM_07/tex/wp_wflm_07l_e.dds"
+              }
+            ]
+          },
+          "targetModelAssetId": "Character/LanceMaster/Equipment/wp_wflm_07/long_spear.wmodel",
+          "partRole": "WEAPON_L",
+          "attachmentMode": "SOCKETED",
+          "modelKind": "NONANIM_SOCKETED",
+          "socketBone": "b_weapon_rhand",
+          "socketYawDegrees": 0.0,
+          "visibleStances": [
+            "LANCE_MASTER_LONG_SPEAR"
+          ]
+        },
+        {
+          "partId": "short_spear",
+          "sourceClassId": "LANCE_MASTER",
+          "sourcePackageName": "WP_WFLM_07",
+          "sourceObjectName": "wp_wflm_07s_sk",
+          "expectedSourceRole": "WEAPON_S",
+          "cookProfile": {
+            "kind": "NONANIM_SOCKETED_GLTF_V1",
+            "basis": "GLTF_ROOT_X_POSITIVE_90_TO_WMODEL_V1",
+            "sourceToWModelScale": 100.0,
+            "baselineModelAssetId": "Character/WP_WFLM_00S/WP_WFLM_00S.wmodel",
+            "materials": [
+              {
+                "materialName": "wp_wflm_07s_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/LanceMaster/WP_WFLM_07/tex/wp_wflm_07s_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/LanceMaster/WP_WFLM_07/tex/wp_wflm_07s_n.dds",
+                "specularSourcePath": "out/CharacterEquipmentExtraction/Raw/LanceMaster/WP_WFLM_07/tex/wp_wflm_07s_s.dds",
+                "emissiveSourcePath": "out/CharacterEquipmentExtraction/Raw/LanceMaster/WP_WFLM_07/tex/wp_wflm_07s_e.dds"
+              }
+            ]
+          },
+          "targetModelAssetId": "Character/LanceMaster/Equipment/wp_wflm_07/short_spear.wmodel",
+          "partRole": "WEAPON_S",
+          "attachmentMode": "SOCKETED",
+          "modelKind": "NONANIM_SOCKETED",
+          "socketBone": "b_weapon_rhand",
+          "socketYawDegrees": 0.0,
+          "visibleStances": [
+            "LANCE_MASTER_SHORT_SPEAR"
+          ]
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.gunslinger.wp_wgdh_tf01_05",
+      "classId": "GUNSLINGER",
+      "curatedVariantId": "wp_wgdh_tf01_05",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "WEAPON",
+      "coverageSlots": [
+        "WEAPON"
+      ],
+      "masterBodyAssetId": "Character/GunSlinger/GunSlinger.wmodel",
+      "bodyCoveragePolicy": "INHERIT_BASELINE",
+      "parts": [
+        {
+          "partId": "right_pistol",
+          "sourceClassId": "GUNSLINGER",
+          "sourcePackageName": "WP_WGDH_TF01_05",
+          "sourceObjectName": "wp_wgdh_tf01_05h_sk",
+          "expectedSourceRole": "WEAPON_H",
+          "cookProfile": {
+            "kind": "NONANIM_SOCKETED_GLTF_V1",
+            "basis": "GLTF_ROOT_X_POSITIVE_90_TO_WMODEL_V1",
+            "sourceToWModelScale": 100.0,
+            "baselineModelAssetId": "Character/WP_WGDH_02H/WP_WGDH_02H.wmodel",
+            "materials": [
+              {
+                "materialName": "wp_wgdh_tf01_05h_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/Gunslinger/WP_WGDH_TF01_05/tex/wp_wgdh_tf01_05h_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/Gunslinger/WP_WGDH_TF01_05/tex/wp_wgdh_tf01_05h_n.dds",
+                "specularSourcePath": "out/CharacterEquipmentExtraction/Raw/Gunslinger/WP_WGDH_TF01_05/tex/wp_wgdh_tf01_05h_s.dds",
+                "emissiveSourcePath": "out/CharacterEquipmentExtraction/Raw/Gunslinger/WP_WGDH_TF01_05/tex/wp_wgdh_tf01_05h_e.dds"
+              }
+            ]
+          },
+          "targetModelAssetId": "Character/GunSlinger/Equipment/wp_wgdh_tf01_05/right_pistol.wmodel",
+          "partRole": "WEAPON_H_RIGHT",
+          "attachmentMode": "SOCKETED",
+          "modelKind": "NONANIM_SOCKETED",
+          "socketBone": "b_wp_1",
+          "socketYawDegrees": 0.0,
+          "visibleStances": []
+        },
+        {
+          "partId": "left_pistol",
+          "sourceClassId": "GUNSLINGER",
+          "sourcePackageName": "WP_WGDH_TF01_05",
+          "sourceObjectName": "wp_wgdh_tf01_05h_sk",
+          "expectedSourceRole": "WEAPON_H",
+          "cookProfile": {
+            "kind": "NONANIM_SOCKETED_GLTF_V1",
+            "basis": "GLTF_ROOT_X_POSITIVE_90_TO_WMODEL_V1",
+            "sourceToWModelScale": 100.0,
+            "baselineModelAssetId": "Character/WP_WGDH_02H/WP_WGDH_02H.wmodel",
+            "materials": [
+              {
+                "materialName": "wp_wgdh_tf01_05h_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/Gunslinger/WP_WGDH_TF01_05/tex/wp_wgdh_tf01_05h_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/Gunslinger/WP_WGDH_TF01_05/tex/wp_wgdh_tf01_05h_n.dds",
+                "specularSourcePath": "out/CharacterEquipmentExtraction/Raw/Gunslinger/WP_WGDH_TF01_05/tex/wp_wgdh_tf01_05h_s.dds",
+                "emissiveSourcePath": "out/CharacterEquipmentExtraction/Raw/Gunslinger/WP_WGDH_TF01_05/tex/wp_wgdh_tf01_05h_e.dds"
+              }
+            ]
+          },
+          "targetModelAssetId": "Character/GunSlinger/Equipment/wp_wgdh_tf01_05/left_pistol.wmodel",
+          "partRole": "WEAPON_H_LEFT",
+          "attachmentMode": "SOCKETED",
+          "modelKind": "NONANIM_SOCKETED",
+          "socketBone": "b_wp_2",
+          "socketYawDegrees": 0.0,
+          "visibleStances": []
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.slayer.wp_wwbk_f_tf01_07",
+      "classId": "SLAYER",
+      "curatedVariantId": "wp_wwbk_f_tf01_07",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "WEAPON",
+      "coverageSlots": [
+        "WEAPON"
+      ],
+      "masterBodyAssetId": "Character/Slayer/Slayer.wmodel",
+      "bodyCoveragePolicy": "INHERIT_BASELINE",
+      "parts": [
+        {
+          "partId": "main",
+          "sourceClassId": "SLAYER",
+          "sourcePackageName": "WP_WWBK_F_TF01_07",
+          "sourceObjectName": "wp_wwbk_f_tf01_07_sk",
+          "expectedSourceRole": "WEAPON_MAIN",
+          "cookProfile": {
+            "kind": "NONANIM_SOCKETED_GLTF_V1",
+            "basis": "GLTF_ROOT_X_POSITIVE_90_TO_WMODEL_V1",
+            "sourceToWModelScale": 100.0,
+            "baselineModelAssetId": "Character/WP_WWBK_03/WP_WWBK_03.wmodel",
+            "materials": [
+              {
+                "materialName": "wp_wwbk_f_tf01_07_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/Slayer/WP_WWBK_F_TF01_07/tex/wp_wwbk_f_tf01_07_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/Slayer/WP_WWBK_F_TF01_06/tex/wp_wwbk_f_tf01_06_n.dds",
+                "specularSourcePath": "out/CharacterEquipmentExtraction/Raw/Slayer/WP_WWBK_F_TF01_06/tex/wp_wwbk_f_tf01_06_s.dds",
+                "emissiveSourcePath": "out/CharacterEquipmentExtraction/Raw/Slayer/WP_WWBK_F_TF01_06/tex/wp_wwbk_f_tf01_06_e.dds"
+              },
+              {
+                "materialName": "wp_wwbk_f_tf01_07-1_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/Slayer/WP_WWBK_F_TF01_07/tex/wp_wwbk_f_tf01_07-1_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/Slayer/WP_WWBK_F_TF01_07/tex/wp_wwbk_f_tf01_07-1_n.dds",
+                "specularSourcePath": "out/CharacterEquipmentExtraction/Raw/Slayer/WP_WWBK_F_TF01_07/tex/wp_wwbk_f_tf01_07-1_s.dds"
+              }
+            ]
+          },
+          "targetModelAssetId": "Character/Slayer/Equipment/wp_wwbk_f_tf01_07/main.wmodel",
+          "partRole": "WEAPON_MAIN",
+          "attachmentMode": "SOCKETED",
+          "modelKind": "NONANIM_SOCKETED",
+          "socketBone": "b_weapon_rhand",
+          "socketYawDegrees": 0.0,
+          "visibleStances": []
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.artist.wp_wsdm_tf01_06",
+      "classId": "ARTIST",
+      "curatedVariantId": "wp_wsdm_tf01_06",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "WEAPON",
+      "coverageSlots": [
+        "WEAPON"
+      ],
+      "masterBodyAssetId": "Character/Artist/Artist.wmodel",
+      "bodyCoveragePolicy": "INHERIT_BASELINE",
+      "parts": [
+        {
+          "partId": "main",
+          "sourceClassId": "ARTIST",
+          "sourcePackageName": "WP_WSDM_TF01_06",
+          "sourceObjectName": "wp_wsdm_tf01_06_sk",
+          "expectedSourceRole": "WEAPON_MAIN",
+          "cookProfile": {
+            "kind": "NONANIM_SOCKETED_GLTF_V1",
+            "basis": "GLTF_ROOT_X_POSITIVE_90_TO_WMODEL_V1",
+            "sourceToWModelScale": 100.0,
+            "baselineModelAssetId": "Character/WP_WSDM_09/WP_WSDM_09.wmodel",
+            "materials": [
+              {
+                "materialName": "wp_wsdm_tf01_06_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/Artist/WP_WSDM_TF01_06/tex/wp_wsdm_tf01_06_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/Artist/WP_WSDM_TF01_06/tex/wp_wsdm_tf01_06_n.dds",
+                "specularSourcePath": "out/CharacterEquipmentExtraction/Raw/Artist/WP_WSDM_TF01_06/tex/wp_wsdm_tf01_06_s.dds",
+                "emissiveSourcePath": "out/CharacterEquipmentExtraction/Raw/Artist/WP_WSDM_TF01_06/tex/wp_wsdm_tf01_06_e.dds"
+              }
+            ]
+          },
+          "targetModelAssetId": "Character/Artist/Equipment/wp_wsdm_tf01_06/main.wmodel",
+          "partRole": "WEAPON_MAIN",
+          "attachmentMode": "SOCKETED",
+          "modelKind": "NONANIM_SOCKETED",
+          "socketBone": "b_wp_1",
+          "socketYawDegrees": 0.0,
+          "visibleStances": []
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.warlord.wp_wwgl_18",
+      "classId": "WARLORD",
+      "curatedVariantId": "wp_wwgl_18",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "WEAPON",
+      "coverageSlots": [
+        "WEAPON"
+      ],
+      "masterBodyAssetId": "Character/Warlord/Warlord.wmodel",
+      "bodyCoveragePolicy": "INHERIT_BASELINE",
+      "parts": [
+        {
+          "partId": "main",
+          "sourceClassId": "WARLORD",
+          "sourcePackageName": "WP_WWGL_18",
+          "sourceObjectName": "wp_wwgl_18_sk",
+          "expectedSourceRole": "WEAPON_MAIN",
+          "cookProfile": {
+            "kind": "NONANIM_SOCKETED_GLTF_V1",
+            "basis": "GLTF_ROOT_X_POSITIVE_90_TO_WMODEL_V1",
+            "sourceToWModelScale": 100.0,
+            "baselineModelAssetId": "Character/WP_WWGL_04/WP_WWGL_04.wmodel",
+            "materials": [
+              {
+                "materialName": "wp_wwgl_18_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/Warlord/WP_WWGL_18/tex/wp_wwgl_18_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/Warlord/WP_WWGL_18/tex/wp_wwgl_18_n.dds",
+                "specularSourcePath": "out/CharacterEquipmentExtraction/Raw/Warlord/WP_WWGL_18/tex/wp_wwgl_18_s.dds"
+              }
+            ]
+          },
+          "targetModelAssetId": "Character/Warlord/Equipment/wp_wwgl_18/main.wmodel",
+          "partRole": "WEAPON_MAIN",
+          "attachmentMode": "SOCKETED",
+          "modelKind": "NONANIM_SOCKETED",
+          "socketBone": "b_weapon_rhand",
+          "socketYawDegrees": 0.0,
+          "visibleStances": []
+        },
+        {
+          "partId": "shield",
+          "sourceClassId": "WARLORD",
+          "sourcePackageName": "WP_WWGL_18",
+          "sourceObjectName": "wp_wwgl_sd_18_sk",
+          "expectedSourceRole": "WEAPON_SHIELD",
+          "cookProfile": {
+            "kind": "NONANIM_SOCKETED_GLTF_V1",
+            "basis": "GLTF_ROOT_X_POSITIVE_90_TO_WMODEL_V1",
+            "sourceToWModelScale": 100.0,
+            "baselineModelAssetId": "Character/WP_WWGL_SD_04/WP_WWGL_SD_04.wmodel",
+            "materials": [
+              {
+                "materialName": "wp_wwgl_18-6_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/Warlord/WP_WWGL_18/tex/wp_wwgl_18_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/Warlord/WP_WWGL_18/tex/wp_wwgl_18_n.dds",
+                "specularSourcePath": "out/CharacterEquipmentExtraction/Raw/Warlord/WP_WWGL_18/tex/wp_wwgl_18_s.dds"
+              }
+            ]
+          },
+          "targetModelAssetId": "Character/Warlord/Equipment/wp_wwgl_18/shield.wmodel",
+          "partRole": "WEAPON_SHIELD",
+          "attachmentMode": "SOCKETED",
+          "modelKind": "NONANIM_SOCKETED",
+          "socketBone": "b_weapon_lhand",
+          "socketYawDegrees": 0.0,
+          "visibleStances": []
+        }
+      ]
+    },
+    {
+      "visualSetId": "character.dimensionmaster.wp_wswp_m_tf01_07",
+      "classId": "DIMENSIONMASTER",
+      "curatedVariantId": "wp_wswp_m_tf01_07",
+      "catalogStatus": "READY_ALTERNATIVE",
+      "primarySlot": "WEAPON",
+      "coverageSlots": [
+        "WEAPON"
+      ],
+      "masterBodyAssetId": "Character/DimensionMaster/DimensionMaster_Character.wmodel",
+      "bodyCoveragePolicy": "INHERIT_BASELINE",
+      "parts": [
+        {
+          "partId": "l",
+          "sourceClassId": "DIMENSIONMASTER",
+          "sourcePackageName": "WP_WSWP_M_TF01_07",
+          "sourceObjectName": "wp_wswp_m_tf01_07l_sk",
+          "expectedSourceRole": "WEAPON_L",
+          "cookProfile": {
+            "kind": "NONANIM_SOCKETED_GLTF_V1",
+            "basis": "GLTF_ROOT_X_POSITIVE_90_TO_WMODEL_V1",
+            "sourceToWModelScale": 100.0,
+            "baselineModelAssetId": "Character/WP_WSWP_M_06/WP_WSWP_M_06L.wmodel",
+            "materials": [
+              {
+                "materialName": "wp_wswp_m_tf01_07l_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07l_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07l_n.dds",
+                "emissiveSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07l_e.dds",
+                "ormSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07l_orm.dds"
+              },
+              {
+                "materialName": "wp_wswp_m_tf01_07e1_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_06/tex/wp_wswp_m_tf01_06e1_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_06/tex/wp_wswp_m_tf01_06e1_n.dds",
+                "emissiveSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07e1_e.dds",
+                "ormSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_06/tex/wp_wswp_m_tf01_06e1_orm.dds"
+              }
+            ]
+          },
+          "targetModelAssetId": "Character/DimensionMaster/Equipment/wp_wswp_m_tf01_07/l.wmodel",
+          "partRole": "WEAPON_L",
+          "attachmentMode": "SOCKETED",
+          "modelKind": "NONANIM_SOCKETED",
+          "socketBone": "b_wp_swm_m_1",
+          "socketYawDegrees": 0.0,
+          "visibleStances": []
+        },
+        {
+          "partId": "s",
+          "sourceClassId": "DIMENSIONMASTER",
+          "sourcePackageName": "WP_WSWP_M_TF01_07",
+          "sourceObjectName": "wp_wswp_m_tf01_07s_sk",
+          "expectedSourceRole": "WEAPON_S",
+          "cookProfile": {
+            "kind": "NONANIM_SOCKETED_GLTF_V1",
+            "basis": "GLTF_ROOT_X_POSITIVE_90_TO_WMODEL_V1",
+            "sourceToWModelScale": 100.0,
+            "baselineModelAssetId": "Character/WP_WSWP_M_06/WP_WSWP_M_06S.wmodel",
+            "materials": [
+              {
+                "materialName": "wp_wswp_m_tf01_07s_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07s_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07s_n.dds",
+                "emissiveSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07s_e.dds",
+                "ormSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07s_orm.dds"
+              },
+              {
+                "materialName": "wp_wswp_m_tf01_07e1_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_06/tex/wp_wswp_m_tf01_06e1_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_06/tex/wp_wswp_m_tf01_06e1_n.dds",
+                "emissiveSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07e1_e.dds",
+                "ormSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_06/tex/wp_wswp_m_tf01_06e1_orm.dds"
+              }
+            ]
+          },
+          "targetModelAssetId": "Character/DimensionMaster/Equipment/wp_wswp_m_tf01_07/s.wmodel",
+          "partRole": "WEAPON_S",
+          "attachmentMode": "SOCKETED",
+          "modelKind": "NONANIM_SOCKETED",
+          "socketBone": "b_wp_swm_m_2",
+          "socketYawDegrees": 0.0,
+          "visibleStances": []
+        },
+        {
+          "partId": "p",
+          "sourceClassId": "DIMENSIONMASTER",
+          "sourcePackageName": "WP_WSWP_M_TF01_07",
+          "sourceObjectName": "wp_wswp_m_tf01_07p_sk",
+          "expectedSourceRole": "WEAPON_P",
+          "cookProfile": {
+            "kind": "NONANIM_SOCKETED_GLTF_V1",
+            "basis": "GLTF_ROOT_X_POSITIVE_90_TO_WMODEL_V1",
+            "sourceToWModelScale": 100.0,
+            "baselineModelAssetId": "Character/WP_WSWP_M_06/WP_WSWP_M_06P.wmodel",
+            "materials": [
+              {
+                "materialName": "wp_wswp_m_tf01_07l_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07l_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07l_n.dds",
+                "emissiveSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07l_e.dds",
+                "ormSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07l_orm.dds"
+              },
+              {
+                "materialName": "wp_wswp_m_tf01_07s_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07s_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07s_n.dds",
+                "emissiveSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07s_e.dds",
+                "ormSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07s_orm.dds"
+              },
+              {
+                "materialName": "wp_wswp_m_tf01_07e1_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_06/tex/wp_wswp_m_tf01_06e1_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_06/tex/wp_wswp_m_tf01_06e1_n.dds",
+                "emissiveSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07e1_e.dds",
+                "ormSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_06/tex/wp_wswp_m_tf01_06e1_orm.dds"
+              }
+            ]
+          },
+          "targetModelAssetId": "Character/DimensionMaster/Equipment/wp_wswp_m_tf01_07/p.wmodel",
+          "partRole": "WEAPON_P",
+          "attachmentMode": "SOCKETED",
+          "modelKind": "NONANIM_SOCKETED",
+          "socketBone": "b_wp_swm_m_3",
+          "socketYawDegrees": 0.0,
+          "visibleStances": []
+        },
+        {
+          "partId": "e",
+          "sourceClassId": "DIMENSIONMASTER",
+          "sourcePackageName": "WP_WSWP_M_TF01_07",
+          "sourceObjectName": "wp_wswp_m_tf01_07e_sk",
+          "expectedSourceRole": "WEAPON_E",
+          "cookProfile": {
+            "kind": "NONANIM_SOCKETED_GLTF_V1",
+            "basis": "GLTF_ROOT_X_POSITIVE_90_TO_WMODEL_V1",
+            "sourceToWModelScale": 100.0,
+            "baselineModelAssetId": "Character/WP_WSWP_M_06/WP_WSWP_M_06E.wmodel",
+            "materials": [
+              {
+                "materialName": "wp_wswp_m_tf01_07e_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07e_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07e_n.dds",
+                "emissiveSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07e_e.dds",
+                "ormSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07e_orm.dds"
+              },
+              {
+                "materialName": "wp_wswp_m_tf01_07l_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07l_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07l_n.dds",
+                "emissiveSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07l_e.dds",
+                "ormSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07l_orm.dds"
+              },
+              {
+                "materialName": "wp_wswp_m_tf01_07s_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07s_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07s_n.dds",
+                "emissiveSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07s_e.dds",
+                "ormSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07s_orm.dds"
+              },
+              {
+                "materialName": "wp_wswp_m_tf01_07e1_mi",
+                "baseColorSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_06/tex/wp_wswp_m_tf01_06e1_d.dds",
+                "normalSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_06/tex/wp_wswp_m_tf01_06e1_n.dds",
+                "emissiveSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_07/tex/wp_wswp_m_tf01_07e1_e.dds",
+                "ormSourcePath": "out/CharacterEquipmentExtraction/Raw/DimensionMaster/WP_WSWP_M_TF01_06/tex/wp_wswp_m_tf01_06e1_orm.dds"
+              }
+            ]
+          },
+          "targetModelAssetId": "Character/DimensionMaster/Equipment/wp_wswp_m_tf01_07/e.wmodel",
           "partRole": "WEAPON_E",
           "attachmentMode": "SOCKETED",
           "modelKind": "NONANIM_SOCKETED",
