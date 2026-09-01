@@ -4,6 +4,7 @@
 #include "DeployPropCatalog.h"
 #include "DeployPropObject.h"
 
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -27,6 +28,24 @@ public:
 	CDeployPropRuntime& operator=(const CDeployPropRuntime&) = delete;
 	CDeployPropRuntime(CDeployPropRuntime&& other) noexcept;
 	CDeployPropRuntime& operator=(CDeployPropRuntime&& other) noexcept;
+
+	/* Admits the shared DeployProp game object prototype and, for an Area, the
+	   deploy models Load_Area later clones. The product loader stages these on
+	   its worker thread; an Area whose loader contract keeps deploy out of that
+	   bundle calls the same entry point so admission stays one implementation
+	   rather than a second runtime path. */
+	static bool_t Ensure_ObjectPrototype(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		uint32_t levelIndex,
+		std::string& outStatus);
+	static bool_t Ensure_AreaPrototypes(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		uint32_t levelIndex,
+		const std::string& areaId,
+		std::string& outStatus,
+		const std::function<bool_t()>& isCancellationRequested = nullptr);
 
 	bool_t Load_Area(uint32_t levelIndex, const std::string& areaId);
 	bool_t Load(uint32_t levelIndex, CDeployPropCatalog catalog);

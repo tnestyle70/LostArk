@@ -9,6 +9,7 @@
 #include "Collider.h"
 #include "DeployPropCatalog.h"
 #include "DeployPropObject.h"
+#include "DeployPropRuntime.h"
 #include "Effect_Catalog.h"
 #include "Effect_LoadPreparationJob.h"
 #include "Effect_PresentationService.h"
@@ -1078,12 +1079,20 @@ HRESULT CLoader::Ready_DeployPropCore(const uint32_t iLevelIndex)
 {
 	if (iLevelIndex >= ETOUI(LEVEL::END))
 		return E_INVALIDARG;
-	return CGameInstance::Get().Add_Prototype(
-		iLevelIndex,
-		TEXT("Prototype_GameObject_DeployProp"),
-		CDeployPropObject::Create(m_pDevice, m_pContext));
+	std::string status;
+	if (!CDeployPropRuntime::Ensure_ObjectPrototype(
+		m_pDevice, m_pContext, iLevelIndex, status))
+	{
+		OutputDebugStringA(("[Loader][DeployProp] " + status +
+			"\n").c_str());
+		return E_FAIL;
+	}
+	return S_OK;
 }
 
+/* The deploy admission itself lives with CDeployPropRuntime so an Area whose
+   loader contract excludes deploy can stage the same prototypes from its own
+   Level without a second implementation. */
 HRESULT CLoader::Ready_DeployPropArea(
 	const uint32_t iLevelIndex,
 	const std::string& areaId)
@@ -1091,62 +1100,26 @@ HRESULT CLoader::Ready_DeployPropArea(
 	if (iLevelIndex >= ETOUI(LEVEL::END) || areaId.empty())
 		return E_INVALIDARG;
 
-	CDeployPropCatalog catalog;
-	if (!catalog.Load_Default(areaId))
-	{
-		OutputDebugStringA(("[Loader][DeployProp] " +
-			catalog.Get_Status() + "\n").c_str());
-		return E_FAIL;
-	}
-
-	const matrix_t modelTransform =
-		XMMatrixScaling(0.01f, 0.01f, 0.01f);
-	for (const DEPLOY_PROP_ASSET_ENTRY& asset : catalog.Get_Assets())
-	{
-		if (m_isCancellationRequested.load(std::memory_order_acquire))
-			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-
-		const MODEL modelKind =
-			DEPLOY_PROP_MODEL_KIND::ANIM == asset.kind ?
-			MODEL::ANIM : MODEL::NONANIM;
-		auto intactModel = CModel::Create(
-			m_pDevice,
-			m_pContext,
-			modelKind,
-			asset.intactResolvedPath.string().c_str(),
-			modelTransform);
-		if (nullptr == intactModel ||
-			FAILED(CGameInstance::Get().Add_Prototype(
-				iLevelIndex,
-				asset.intactPrototypeTag,
-				std::move(intactModel))))
+	std::string status;
+	if (!CDeployPropRuntime::Ensure_AreaPrototypes(
+		m_pDevice,
+		m_pContext,
+		iLevelIndex,
+		areaId,
+		status,
+		[this]() -> bool_t
 		{
-			return E_FAIL;
-		}
-
-		// A STATIC prop whose authored mutation ends at DESPAWNED owns no
-		// fractured mesh, so there is no second prototype to admit for it.
-		if (DEPLOY_PROP_MODEL_KIND::STATIC != asset.kind ||
-			asset.fracturedPrototypeTag.empty())
-			continue;
-		auto fracturedModel = CModel::Create(
-			m_pDevice,
-			m_pContext,
-			MODEL::NONANIM,
-			asset.fracturedResolvedPath.string().c_str(),
-			modelTransform);
-		if (nullptr == fracturedModel ||
-			FAILED(CGameInstance::Get().Add_Prototype(
-				iLevelIndex,
-				asset.fracturedPrototypeTag,
-				std::move(fracturedModel))))
-		{
-			return E_FAIL;
-		}
+			return m_isCancellationRequested.load(
+				std::memory_order_acquire);
+		}))
+	{
+		OutputDebugStringA(("[Loader][DeployProp] " + status +
+			"\n").c_str());
+		return m_isCancellationRequested.load(std::memory_order_acquire) ?
+			HRESULT_FROM_WIN32(ERROR_CANCELLED) : E_FAIL;
 	}
-	return Ready_DeployPropCore(iLevelIndex);
+	return S_OK;
 }
-
 HRESULT CLoader::Ready_Character_Rendering(
 	const uint32_t iLevelIndex,
 	const std::span<const LostArk::Shared::CHARACTER_CLASS_ID>
