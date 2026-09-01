@@ -77,7 +77,8 @@ namespace
 	bool_t Is_AllowedCategory(const std::string& value)
 	{
 		return value == "APPAREL_HEAD" || value == "APPAREL_OUTFIT" ||
-			value == "APPAREL_UPPER" || value == "APPAREL_SHOULDER" ||
+			value == "APPAREL_UPPER" || value == "APPAREL_LOWER" ||
+			value == "APPAREL_HANDS" || value == "APPAREL_SHOULDER" ||
 			value == "WEAPON_SET";
 	}
 

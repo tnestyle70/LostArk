@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -16,6 +18,22 @@ assert SPEC is not None and SPEC.loader is not None
 MODULE = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
+
+
+def create_directory_link(link: Path, target: Path) -> bool:
+    try:
+        link.symlink_to(target, target_is_directory=True)
+        return True
+    except OSError:
+        if os.name != "nt":
+            return False
+    completed = subprocess.run(
+        ["cmd", "/c", "mklink", "/J", str(link), str(target)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return completed.returncode == 0 and link.is_dir()
 
 
 def bone(name: str, diagonal: float = 1.0):
@@ -143,6 +161,36 @@ def minimal_selection():
     }
 
 
+def make_static_weapon_cook(selection, set_index: int = 0):
+    visual_set = selection["sets"][set_index]
+    visual_set["primarySlot"] = "WEAPON"
+    visual_set["coverageSlots"] = ["WEAPON"]
+    visual_set["catalogStatus"] = "READY_ALTERNATIVE"
+    part = visual_set["parts"][0]
+    part["partRole"] = "WEAPON_MAIN"
+    part["expectedSourceRole"] = "WEAPON_MAIN"
+    part["attachmentMode"] = "SOCKETED"
+    part["modelKind"] = "NONANIM_SOCKETED"
+    part["socketBone"] = "b_weapon_rhand"
+    part["socketYawDegrees"] = 0.0
+    part["visibleStances"] = []
+    part.pop("existingModelAssetId", None)
+    part["cookProfile"] = {
+        "kind": MODULE.STATIC_COOK_KIND,
+        "basis": MODULE.STATIC_COOK_BASIS,
+        "sourceToWModelScale": MODULE.STATIC_COOK_SCALE,
+        "baselineModelAssetId": f"Character/{visual_set['classId']}/baseline.wmodel",
+        "materials": [
+            {
+                "materialName": "weapon_mi",
+                "baseColorSourcePath": "out/Raw/weapon_d.dds",
+                "normalSourcePath": "out/Raw/weapon_n.dds",
+            }
+        ],
+    }
+    return visual_set, part
+
+
 class RelativePathTests(unittest.TestCase):
     def test_resource_id_accepts_character_relative_wmodel(self):
         self.assertEqual(
@@ -170,12 +218,42 @@ class RelativePathTests(unittest.TestCase):
             root.mkdir()
             outside.mkdir()
             link = root / "link"
-            try:
-                link.symlink_to(outside, target_is_directory=True)
-            except OSError:
+            if not create_directory_link(link, outside):
                 self.skipTest("symlink creation is unavailable")
             with self.assertRaises(MODULE.PackError):
                 MODULE.resolved_under(root, "link/file.bin", "fixture")
+
+    def test_input_junctions_require_explicit_physical_roots(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            repo = temporary_root / "repo"
+            outside_source = temporary_root / "source"
+            outside_resources = temporary_root / "resources"
+            (repo / "Client" / "Bin").mkdir(parents=True)
+            outside_source.mkdir()
+            outside_resources.mkdir()
+            (outside_source / "inventory.json").write_text("{}", encoding="utf-8")
+            source_link = repo / "out"
+            resource_link = repo / "Client" / "Bin" / "Resources"
+            if not create_directory_link(source_link, outside_source) or not create_directory_link(
+                resource_link, outside_resources
+            ):
+                self.skipTest("directory symlink creation is unavailable")
+
+            with self.assertRaises(MODULE.PackError):
+                MODULE.resolve_input_roots(repo.resolve(), None, None)
+            with self.assertRaises(MODULE.PackError):
+                MODULE.resolved_under(repo.resolve(), "out/inventory.json", "source")
+
+            source_root, resource_root = MODULE.resolve_input_roots(
+                repo.resolve(), outside_source, outside_resources
+            )
+            self.assertEqual(source_root, outside_source.resolve())
+            self.assertEqual(resource_root, outside_resources.resolve())
+            self.assertEqual(
+                MODULE.resolved_under(source_root, "inventory.json", "source"),
+                (outside_source / "inventory.json").resolve(),
+            )
 
     def test_pack_output_must_be_strictly_below_admission_root(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -244,6 +322,57 @@ class SelectionTests(unittest.TestCase):
         with self.assertRaisesRegex(MODULE.PackError, "socketBone"):
             MODULE.validate_selection_document(selection)
 
+    def test_static_weapon_cook_profile_is_admitted(self):
+        selection = minimal_selection()
+        make_static_weapon_cook(selection)
+        self.assertIs(MODULE.validate_selection_document(selection), selection)
+
+    def test_part_requires_exactly_one_existing_model_or_cook_profile(self):
+        selection = minimal_selection()
+        _visual_set, part = make_static_weapon_cook(selection)
+        part["existingModelAssetId"] = "Character/Artist/existing.wmodel"
+        with self.assertRaisesRegex(MODULE.PackError, "exactly one"):
+            MODULE.validate_selection_document(selection)
+
+        selection = minimal_selection()
+        part = selection["sets"][0]["parts"][0]
+        part.pop("existingModelAssetId")
+        with self.assertRaisesRegex(MODULE.PackError, "exactly one"):
+            MODULE.validate_selection_document(selection)
+
+    def test_static_cook_contract_is_fail_closed(self):
+        selection = minimal_selection()
+        _visual_set, part = make_static_weapon_cook(selection)
+        part["cookProfile"]["sourceToWModelScale"] = 1.0
+        with self.assertRaisesRegex(MODULE.PackError, "exactly 100.0"):
+            MODULE.validate_selection_document(selection)
+
+        selection = minimal_selection()
+        _visual_set, part = make_static_weapon_cook(selection)
+        del part["cookProfile"]["materials"][0]["baseColorSourcePath"]
+        with self.assertRaisesRegex(MODULE.PackError, "material contract"):
+            MODULE.validate_selection_document(selection)
+
+    def test_weapon_ready_alternative_status_is_allowed(self):
+        selection = minimal_selection()
+        visual_set = selection["sets"][0]
+        visual_set["primarySlot"] = "WEAPON"
+        visual_set["coverageSlots"] = ["WEAPON"]
+        visual_set["catalogStatus"] = "READY_ALTERNATIVE"
+        part = visual_set["parts"][0]
+        part["attachmentMode"] = "SOCKETED"
+        part["modelKind"] = "NONANIM_SOCKETED"
+        part["socketBone"] = "b_weapon_rhand"
+        part["socketYawDegrees"] = 0.0
+        part["visibleStances"] = []
+        self.assertIs(MODULE.validate_selection_document(selection), selection)
+
+    def test_nonweapon_baseline_weapon_status_is_rejected(self):
+        selection = minimal_selection()
+        selection["sets"][0]["catalogStatus"] = "BASELINE_WEAPON"
+        with self.assertRaisesRegex(MODULE.PackError, "nonweapon"):
+            MODULE.validate_selection_document(selection)
+
 
 class InventoryResolutionTests(unittest.TestCase):
     @staticmethod
@@ -270,6 +399,57 @@ class InventoryResolutionTests(unittest.TestCase):
         second = self.entry("out/Raw/B/mesh/pc_sdm_00_helmet1_sk.gltf")
         with self.assertRaisesRegex(MODULE.PackError, "ambiguous"):
             MODULE.resolve_inventory_entry({key: [first, second]}, key)
+
+
+class StaticCookDocumentTests(unittest.TestCase):
+    @staticmethod
+    def document():
+        return {
+            "asset": {"version": "2.0"},
+            "scene": 0,
+            "scenes": [{"nodes": [0, 1]}],
+            "nodes": [
+                {"mesh": 0},
+                {"name": "group", "children": [2]},
+                {"mesh": 1},
+            ],
+            "meshes": [
+                {"primitives": [{"material": 0}]},
+                {"primitives": [{"material": 1}]},
+            ],
+            "materials": [{"name": "main_mi"}, {"name": "trim_mi"}],
+        }
+
+    def test_basis_parent_is_added_above_active_scene_roots(self):
+        document = self.document()
+        used = MODULE._author_static_cook_document(
+            document, {"main_mi", "trim_mi"}, "fixture"
+        )
+        self.assertEqual(used, ("main_mi", "trim_mi"))
+        self.assertEqual(document["scenes"][0]["nodes"], [3])
+        self.assertEqual(document["nodes"][3]["children"], [0, 1])
+        self.assertEqual(
+            tuple(document["nodes"][3]["rotation"]),
+            MODULE.STATIC_COOK_ROOT_QUATERNION,
+        )
+
+    def test_every_used_material_requires_exact_mapping(self):
+        with self.assertRaisesRegex(MODULE.PackError, "mappings differ"):
+            MODULE._author_static_cook_document(
+                self.document(), {"main_mi"}, "fixture"
+            )
+        with self.assertRaisesRegex(MODULE.PackError, "mappings differ"):
+            MODULE._author_static_cook_document(
+                self.document(), {"main_mi", "trim_mi", "unused_mi"}, "fixture"
+            )
+
+    def test_animated_input_is_rejected(self):
+        document = self.document()
+        document["animations"] = [{"channels": [], "samplers": []}]
+        with self.assertRaisesRegex(MODULE.PackError, "contains animations"):
+            MODULE._author_static_cook_document(
+                document, {"main_mi", "trim_mi"}, "fixture"
+            )
 
 
 class LegacyMeshContractTests(unittest.TestCase):

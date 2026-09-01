@@ -14,20 +14,20 @@
     {
       "classId": "LANCE_MASTER",
       "slotSelections": {
-        "HEAD": "character.lance_master.mokoko_pleasant.head",
+        "HEAD": null,
         "SHOULDER": null,
-        "UPPER": "character.lance_master.mokoko_pleasant.outfit",
+        "UPPER": null,
         "LOWER": null,
         "HANDS": null,
-        "WEAPON": "character.lance_master.wp_wflm_00"
+        "WEAPON": null
       }
     },
     {
       "classId": "GUNSLINGER",
       "slotSelections": {
-        "HEAD": "character.gunslinger.default_variant_01.head",
+        "HEAD": null,
         "SHOULDER": null,
-        "UPPER": "character.gunslinger.default_variant_01.upper",
+        "UPPER": null,
         "LOWER": null,
         "HANDS": null,
         "WEAPON": null
@@ -36,23 +36,23 @@
     {
       "classId": "SLAYER",
       "slotSelections": {
-        "HEAD": "character.slayer.default_variant_01.head",
+        "HEAD": null,
         "SHOULDER": null,
         "UPPER": null,
         "LOWER": null,
         "HANDS": null,
-        "WEAPON": "character.slayer.wp_wwbk_03"
+        "WEAPON": null
       }
     },
     {
       "classId": "ARTIST",
       "slotSelections": {
-        "HEAD": "character.artist.default_variant_01.head",
+        "HEAD": null,
         "SHOULDER": null,
         "UPPER": null,
         "LOWER": null,
         "HANDS": null,
-        "WEAPON": "character.artist.wp_wsdm_09"
+        "WEAPON": null
       }
     },
     {
@@ -63,18 +63,18 @@
         "UPPER": null,
         "LOWER": null,
         "HANDS": null,
-        "WEAPON": "character.dimensionmaster.wp_wswp_m_06"
+        "WEAPON": null
       }
     },
     {
       "classId": "WARLORD",
       "slotSelections": {
         "HEAD": null,
-        "SHOULDER": "character.warlord.default_00.shoulder",
+        "SHOULDER": null,
         "UPPER": null,
         "LOWER": null,
         "HANDS": null,
-        "WEAPON": "character.warlord.wp_wwgl_04"
+        "WEAPON": null
       }
     }
   ]

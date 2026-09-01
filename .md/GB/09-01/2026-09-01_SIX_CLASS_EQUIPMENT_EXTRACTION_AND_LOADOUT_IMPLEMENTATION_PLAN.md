@@ -13,9 +13,35 @@
 대응 결과서: `2026-09-01_SIX_CLASS_EQUIPMENT_EXTRACTION_AND_LOADOUT_RESULT.md`
 
 이번 PR은 최종 Server 권위 흐름 전체가 아니라 그 앞단의 검증 가능한 저작·표현 슬라이스를 닫는다.
-대표 12 visual set/17 named part를 6개 stable slot으로 분류하고, 기존 공용 Character preview에서
+1차 대표 12 visual set/17 named part에 가시 외형 보강분을 더한 최종 22 visual set/36 named part를
+6개 stable slot으로 분류하고, 기존 공용 Character preview에서
 장착·해제·원자 교체와 툴 전용 preset 저장을 확인할 수 있게 한다. `authoringOnly` preset은 회원정보,
 Server inventory 또는 재접속 저장 계약으로 승격하지 않는다.
+
+### 2026-09-01 가시 외형 보강 슬라이스
+
+첫 대표 pack의 baseline weapon은 원래 기본 무기와 byte-identical하여 `Equip Selected`를 눌러도
+외형 변화가 없었다. 이번 보강은 어제 추출한 raw 전체를 다시 감사한 뒤, 골격 정규화가 필요 없는
+static/socketed weapon만 `ModelAssetConverter --pretransform --scale 100`으로 새로 Cook하여 여섯 클래스에
+각각 하나의 `READY_ALTERNATIVE` 무기 세트를 추가한다. 각 Cook은 exact inventory source, 명시적 material
+texture binding, converter hash와 인자, static/no-skeleton/no-animation 계약, texture closure, 기본 무기와
+다른 geometry를 admission receipt에 남긴다.
+
+추가 대상은 창술사 `WP_WFLM_07` L/S, 건슬링어 `WP_WGDH_TF01_05` H dual-pistol,
+슬레이어 `WP_WWBK_F_TF01_07`, 도화가 `WP_WSDM_TF01_06`, 워로드 `WP_WWGL_18` main/shield,
+차원술사 `WP_WSWP_M_TF01_07` E/L/P/S다. 기존 Cook 호환성이 검증된 창술사 표준 head/outfit,
+도화가 lower, 워로드 hair도 별도 `READY_ALTERNATIVE` 의상 set으로 승격한다. 기본 preset은 모든 slot을
+비워 두어 Reset 상태와 Equip 이후의 차이가 바로 보이게 한다.
+
+기존 publisher의 12 set/17 part/73 file 고정 분모와 Equipment-directory 전체 충돌 정책은 제거한다.
+receipt 내부 실제 count와 모델 closure를 상호 검증하고, 이미 배포된 managed 파일은 hash가 같을 때만
+재사용하며 신규 파일은 전체 staging 검증 뒤 per-file 원자 승격한다. 중간 실패는 이번 호출에서 새로
+승격한 파일을 전부 rollback한다. raw skinned apparel은 master-skeleton normalizer와 weighted palette
+검증이 닫히기 전까지 Resources에 옮기지 않는다.
+
+이 슬라이스의 종료 증거는 Python domain tests, 6개 신규 무기 WModel의 static decode와 texture closure,
+각 클래스 기본 무기 대비 다른 vertex/hash, publisher Validate/Publish, Catalog/preset contract,
+Client Product build와 `git diff --check`다. Client 실행과 시각 PASS는 사용자가 직접 확인한다.
 
 ## 0. 목표와 종료 상태
 
