@@ -52,7 +52,19 @@
   Action Composition 10/10, Effect cue 11/11, presentation admission PASS)
 - Client x64 Debug 전체 build/link: PASS, compile errors 0
 - `git diff --check`: PASS
-- Kakul #292 통합 계약과 Debug Product 결과는 PR 직전 실행 결과로 이 절에 갱신한다.
+- Kakul #292 통합 계약: PASS (Client product 8/8, world admission 7/7)
+- Debug Product: PASS
+- Debug Core: PASS (Network failures 0, Valtan admission PASS, Character Select live
+  isolation failures 0)
+
+## Post-merge pull 회귀 수정
+
+- Core가 설정하는 `LOSTARK_RESOURCE_ROOT`가 Effect V2 임시 fixture를 가리키지 않도록 해당
+  테스트가 자신의 임시 Resources root를 명시한다. 환경값 설정/해제 양쪽 focused test와
+  전체 Debug Core가 통과했다.
+- Kakul source map header의 실제 수량 `318 assets / 2971 placements`에 맞춰
+  `Data/Maps/MapCatalog.json`의 집계값을 교정했다. live `server-product-level` admission은
+  Resource Collection, Development Geometry Preview, Server Product Level을 모두 허용한다.
 
 ## 수동 검증 경계
 
