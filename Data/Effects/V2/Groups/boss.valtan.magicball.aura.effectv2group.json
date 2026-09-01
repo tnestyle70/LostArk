@@ -1,0 +1,10 @@
+{
+  "schema": "lostark.effect-v2-group",
+  "formatVersion": 2,
+  "groupId": "boss.valtan.magicball.aura",
+  "durationMs": 0,
+  "children": [
+    { "childId": "child.migrated.000.13cc8c721c0a7ccc", "resource": { "kind": "LEAF", "id": "boss.valtan.egg.aura_1" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } },
+    { "childId": "child.migrated.001.8fb6df815d51672c", "resource": { "kind": "LEAF", "id": "boss.valtan.egg.aura_2" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } }
+  ]
+}
