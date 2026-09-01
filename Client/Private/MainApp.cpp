@@ -8,6 +8,7 @@
 #include "DataJson.h"
 #include "Effect_Catalog.h"
 #include "EstherCutinPresentationService.h"
+#include "RaidBossShowcaseService.h"
 #include "EstherActionSoundCueDocument.h"
 #include "Effect_Object.h"
 #include "Effect_PresentationService.h"
@@ -1323,6 +1324,9 @@ HRESULT CMainApp::Render()
 		m_pImGuiLayer->EndFrame();
 	}
 	CEstherCutinPresentationService::Render(m_pDevice, m_pContext);
+	/* Raid entry popup's live boss: same slot in the frame as the cutin -- over the popup's
+	   own sprites, under the Draw_Text pass that letters it. */
+	CRaidBossShowcaseService::Render(m_pDevice, m_pContext);
 	/* Same reasoning as the old combat-HUD/boss-bar/charge-gauge
 	   image gate above (isCharSelectDebugPreviewOpen there) -- these are that
 	   HUD's own text counterparts (HP/MP numbers, boss HP text, gauge percent),
@@ -6437,6 +6441,44 @@ void CMainApp::RenderDeveloperTools()
 			cutinTuning.fRectY,
 			cutinTuning.fRectWidth,
 			cutinTuning.fRectHeight);
+	}
+
+	if (ImGui::CollapsingHeader("Raid Boss Showcase (Debug)"))
+	{
+		RAID_BOSS_SHOWCASE_TUNING& showcaseTuning =
+			CRaidBossShowcaseService::Debug_Tuning();
+		ImGui::DragFloat("Yaw (deg)##Showcase",
+			&showcaseTuning.fModelYawDegrees, 1.f, -360.f, 360.f);
+		ImGui::DragFloat("Eye X / Height##Showcase",
+			&showcaseTuning.fEyeXPerHeight, 0.01f, -2.f, 2.f);
+		ImGui::DragFloat("Eye Y / Height##Showcase",
+			&showcaseTuning.fEyeYPerHeight, 0.01f, -1.f, 3.f);
+		ImGui::DragFloat("Distance / Height##Showcase",
+			&showcaseTuning.fDistancePerHeight, 0.02f, 0.3f, 6.f);
+		ImGui::DragFloat("Target Y / Height##Showcase",
+			&showcaseTuning.fAtYPerHeight, 0.01f, 0.f, 2.f);
+		ImGui::DragFloat("FOV (deg)##Showcase",
+			&showcaseTuning.fFovDegrees, 0.5f, 10.f, 90.f);
+		ImGui::DragFloat4("Rect X/Y/W/H (720p)##Showcase",
+			&showcaseTuning.fRectX, 2.f, -400.f, 1600.f);
+		if (ImGui::Button("Reset Tuning##Showcase"))
+			CRaidBossShowcaseService::Debug_ResetTuning();
+		ImGui::TextDisabled(
+			"Open the raid entry popup on its Valtan tab to see the live"
+			" boss; values apply immediately.");
+		ImGui::Text(
+			"yaw %.1f  eye(%.2f, %.2f)  dist %.2f  target %.2f  fov %.1f\n"
+			"rect (%.0f, %.0f, %.0f, %.0f)",
+			showcaseTuning.fModelYawDegrees,
+			showcaseTuning.fEyeXPerHeight,
+			showcaseTuning.fEyeYPerHeight,
+			showcaseTuning.fDistancePerHeight,
+			showcaseTuning.fAtYPerHeight,
+			showcaseTuning.fFovDegrees,
+			showcaseTuning.fRectX,
+			showcaseTuning.fRectY,
+			showcaseTuning.fRectWidth,
+			showcaseTuning.fRectHeight);
 	}
 
 	ImGui::TextDisabled("F1: Developer Tools  |  F6: Follow/Free Camera");
