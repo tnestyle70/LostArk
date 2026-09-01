@@ -302,6 +302,37 @@ namespace
 		return true;
 	}
 
+	bool ParseBossPatternBossResponseKind(
+		const std::string_view value,
+		LostArk::Server::BOSS_PATTERN_BOSS_RESPONSE_KIND& output)
+	{
+		using LostArk::Server::BOSS_PATTERN_BOSS_RESPONSE_KIND;
+		if ("ACCUMULATED_HEALTH_DAMAGE" == value)
+		{
+			output = BOSS_PATTERN_BOSS_RESPONSE_KIND::
+				ACCUMULATED_HEALTH_DAMAGE;
+		}
+		else
+		{
+			return false;
+		}
+		return true;
+	}
+
+	bool ParseBossPatternCounterProxyKind(
+		const std::string_view value,
+		LostArk::Server::BOSS_PATTERN_COUNTER_PROXY_KIND& output)
+	{
+		using LostArk::Server::BOSS_PATTERN_COUNTER_PROXY_KIND;
+		if ("BOSS_LOCAL_CIRCLE" == value)
+			output = BOSS_PATTERN_COUNTER_PROXY_KIND::BOSS_LOCAL_CIRCLE;
+		else if ("BOSS_FORWARD_ARC" == value)
+			output = BOSS_PATTERN_COUNTER_PROXY_KIND::BOSS_FORWARD_ARC;
+		else
+			return false;
+		return true;
+	}
+
 	bool ParseBossPatternHitAnchorKind(
 		const std::string_view value,
 		LostArk::Server::BOSS_PATTERN_HIT_ANCHOR_KIND& output)
@@ -408,6 +439,8 @@ namespace
 				PATTERN_FACING_AT_SPAWN;
 		else if ("RADIAL_INWARD" == value)
 			output = BOSS_COMBAT_OBJECT_DIRECTION_POLICY::RADIAL_INWARD;
+		else if ("NEXT_RADIAL_SLOT" == value)
+			output = BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NEXT_RADIAL_SLOT;
 		else
 			return false;
 		return true;
@@ -508,6 +541,11 @@ namespace
 			output = BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT;
 		else if ("STAGGER_BROKEN" == value)
 			output = BOSS_PATTERN_STAGE_OUTCOME::STAGGER_BROKEN;
+		else if ("HEALTH_DAMAGE_THRESHOLD_REACHED" == value)
+		{
+			output = BOSS_PATTERN_STAGE_OUTCOME::
+				HEALTH_DAMAGE_THRESHOLD_REACHED;
+		}
 		else if ("WALL_CONTACT" == value)
 			output = BOSS_PATTERN_STAGE_OUTCOME::WALL_CONTACT;
 		else if ("PART_DESTROYED" == value)
@@ -1379,8 +1417,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	std::unordered_set<LostArk::Shared::SKILL_ID> skillCombatTraitOwners;
 	std::unordered_set<LostArk::Shared::SKILL_ID> skillTargetOwners;
 	std::unordered_set<std::string> patternPolicyOwners;
+	std::unordered_set<std::string> patternVerticalOffsetOwners;
 	std::unordered_set<std::string> patternStagePartDamageOwners;
 	std::unordered_set<std::string> patternStageCounterProxyOwners;
+	std::unordered_set<std::string> patternStageBossResponseOwners;
 	for (std::uint32_t row = 0; row < rowCount; ++row)
 	{
 		if (!std::getline(input, line))
@@ -1946,6 +1986,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				BOSS_COMBAT_OBJECT_DIRECTION_POLICY::PATTERN_FACING_AT_SPAWN ==
 					definition.eDirectionPolicy ||
 				BOSS_COMBAT_OBJECT_DIRECTION_POLICY::RADIAL_INWARD ==
+					definition.eDirectionPolicy ||
+				BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NEXT_RADIAL_SLOT ==
 					definition.eDirectionPolicy;
 			const bool validMissile = !fixedArea &&
 				BOSS_COMBAT_OBJECT_ORIGIN_POLICY::BOSS_POSITION ==
@@ -2191,6 +2233,40 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				return false;
 			}
 			owner->bAuthoringMasterManaged = true;
+		}
+		else if (!fields.empty() && "PATTERNVERTICALOFFSET" == fields[0])
+		{
+			float verticalOffsetM = 0.f;
+			if (4u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) ||
+				!ParseNumber(fields[3], verticalOffsetM) ||
+				!std::isfinite(verticalOffsetM) || 0.f == verticalOffsetM ||
+				std::fabs(verticalOffsetM) > 100.f)
+			{
+				m_strStatus = "Boss pattern vertical-offset row is invalid";
+				return false;
+			}
+			const auto ownerMap = m_BossPatterns.find(std::string(fields[1]));
+			const std::string ownerKey =
+				std::string(fields[1]) + "\n" + std::string(fields[2]);
+			if (m_BossPatterns.end() == ownerMap ||
+				!patternVerticalOffsetOwners.insert(ownerKey).second)
+			{
+				m_strStatus =
+					"Boss pattern vertical-offset owner is missing or duplicated";
+				return false;
+			}
+			const auto owner = std::find_if(
+				ownerMap->second.begin(), ownerMap->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == fields[2]; });
+			if (ownerMap->second.end() == owner || 0.f != owner->fVerticalOffsetM)
+			{
+				m_strStatus =
+					"Boss pattern vertical-offset has no pattern owner or is duplicated";
+				return false;
+			}
+			owner->fVerticalOffsetM = verticalOffsetM;
 		}
 		else if (!fields.empty() && "PATTERNPOLICY" == fields[0])
 		{
@@ -2698,21 +2774,39 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		}
 		else if (!fields.empty() && "PATTERNSTAGECOUNTERPROXY" == fields[0])
 		{
+			BOSS_PATTERN_COUNTER_PROXY_KIND kind =
+				BOSS_PATTERN_COUNTER_PROXY_KIND::NONE;
 			float forwardOffsetM = 0.f;
 			float rightOffsetM = 0.f;
 			float radiusM = 0.f;
-			if (7u != fields.size() || !IsStableId(fields[1]) ||
+			float arcDegrees = 0.f;
+			if (9u != fields.size() || !IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) || !IsStableId(fields[3]) ||
-				!ParseNumber(fields[4], forwardOffsetM) ||
-				!ParseNumber(fields[5], rightOffsetM) ||
-				!ParseNumber(fields[6], radiusM) ||
+				!ParseBossPatternCounterProxyKind(fields[4], kind) ||
+				!ParseNumber(fields[5], forwardOffsetM) ||
+				!ParseNumber(fields[6], rightOffsetM) ||
+				!ParseNumber(fields[7], radiusM) ||
+				!ParseNumber(fields[8], arcDegrees) ||
 				!std::isfinite(forwardOffsetM) ||
 				!std::isfinite(rightOffsetM) || !std::isfinite(radiusM) ||
-				std::fabs(forwardOffsetM) > 20.f ||
-				std::fabs(rightOffsetM) > 20.f ||
-				radiusM <= 0.f || radiusM > 20.f)
+				!std::isfinite(arcDegrees))
 			{
 				m_strStatus = "Boss pattern stage counter-proxy row is invalid";
+				return false;
+			}
+			const bool validCircle =
+				BOSS_PATTERN_COUNTER_PROXY_KIND::BOSS_LOCAL_CIRCLE == kind &&
+				std::fabs(forwardOffsetM) <= 20.f &&
+				std::fabs(rightOffsetM) <= 20.f && radiusM > 0.f &&
+				radiusM <= 20.f && 0.f == arcDegrees;
+			const bool validForwardArc =
+				BOSS_PATTERN_COUNTER_PROXY_KIND::BOSS_FORWARD_ARC == kind &&
+				0.f == forwardOffsetM && 0.f == rightOffsetM &&
+				0.f == radiusM && 180.f == arcDegrees;
+			if (!validCircle && !validForwardArc)
+			{
+				m_strStatus =
+					"Boss pattern stage counter-proxy geometry is invalid";
 				return false;
 			}
 			const std::string ownerKey = std::string(fields[1]) + "\n" +
@@ -2746,9 +2840,58 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				return false;
 			}
 			stage->bHasCounterProxy = true;
+			stage->eCounterProxyKind = kind;
 			stage->fCounterProxyForwardOffsetM = forwardOffsetM;
 			stage->fCounterProxyRightOffsetM = rightOffsetM;
 			stage->fCounterProxyRadiusM = radiusM;
+			stage->fCounterProxyArcDegrees = arcDegrees;
+		}
+		else if (!fields.empty() && "PATTERNSTAGERESPONSE" == fields[0])
+		{
+			BOSS_PATTERN_BOSS_RESPONSE_KIND kind =
+				BOSS_PATTERN_BOSS_RESPONSE_KIND::NONE;
+			std::uint32_t threshold = 0u;
+			if (6u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				!ParseBossPatternBossResponseKind(fields[4], kind) ||
+				!ParseNumber(fields[5], threshold) || 0u == threshold)
+			{
+				m_strStatus = "Boss pattern stage response row is invalid";
+				return false;
+			}
+			const std::string ownerKey = std::string(fields[1]) + "\n" +
+				std::string(fields[2]) + "\n" + std::string(fields[3]);
+			const auto ownerMap = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == ownerMap ||
+				!patternStageBossResponseOwners.insert(ownerKey).second)
+			{
+				m_strStatus =
+					"Boss pattern stage response owner is missing or duplicated";
+				return false;
+			}
+			const auto owner = std::find_if(
+				ownerMap->second.begin(), ownerMap->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == fields[2]; });
+			if (ownerMap->second.end() == owner)
+			{
+				m_strStatus = "Boss pattern stage response has no pattern owner";
+				return false;
+			}
+			const auto stage = std::find_if(
+				owner->Stages.begin(), owner->Stages.end(),
+				[&fields](const BOSS_PATTERN_STAGE_DEFINITION& candidate)
+				{ return candidate.strActionId == fields[3]; });
+			if (owner->Stages.end() == stage ||
+				BOSS_PATTERN_BOSS_RESPONSE_KIND::NONE != stage->eBossResponseKind ||
+				0u != stage->iBossResponseThreshold)
+			{
+				m_strStatus =
+					"Boss pattern stage response has no stage owner or is duplicated";
+				return false;
+			}
+			stage->eBossResponseKind = kind;
+			stage->iBossResponseThreshold = threshold;
 		}
 		/* Sorted after PATTERN and ahead of its own steps, so the span opens an
 		empty list the step rows then fill in order. */
@@ -4057,6 +4200,13 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			}
 			const std::string patternPolicyKey =
 				pattern.strEncounterId + "\n" + pattern.strPatternId;
+			const bool hasVerticalOffset = 0.f != pattern.fVerticalOffsetM;
+			const bool validVerticalOffset =
+				std::isfinite(pattern.fVerticalOffsetM) &&
+				std::fabs(pattern.fVerticalOffsetM) <= 100.f &&
+				(!hasVerticalOffset ||
+				 (patternVerticalOffsetOwners.contains(patternPolicyKey) &&
+				  BOSS_PATTERN_MOTION_KIND::NONE == pattern.Motion.eKind));
 			const bool isNormal =
 				BOSS_PATTERN_SELECTION::NORMAL == pattern.eSelection;
 			const bool isHealthMechanic =
@@ -4093,7 +4243,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				BOSS_PATTERN_CATEGORY::MECHANIC != pattern.eCategory;
 			const bool validSelection = validNormalSelection ||
 				validHealthSelection || validAuditionSelection;
-			if (!validSelection ||
+			if (!validSelection || !validVerticalOffset ||
 				!patternPolicyOwners.contains(patternPolicyKey) ||
 				(BOSS_PATTERN_AIM_POLICY::FACE_MOTION_ANCHOR ==
 					pattern.eAimPolicy &&
@@ -4130,6 +4280,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				}
 			}
 			std::unordered_set<std::string> activeStageActions;
+			bool patternOwnsBossResponse = false;
 			for (std::size_t stageIndex = 0u;
 				stageIndex < pattern.Stages.size(); ++stageIndex)
 			{
@@ -4260,20 +4411,45 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 						 !stage.bKnockdown && 0u == stage.iDownMs);
 				const bool validCounterProxy =
 					(!stage.bHasCounterProxy &&
+					 BOSS_PATTERN_COUNTER_PROXY_KIND::NONE ==
+						stage.eCounterProxyKind &&
 					 0.f == stage.fCounterProxyForwardOffsetM &&
 					 0.f == stage.fCounterProxyRightOffsetM &&
-					 0.f == stage.fCounterProxyRadiusM) ||
+					 0.f == stage.fCounterProxyRadiusM &&
+					 0.f == stage.fCounterProxyArcDegrees) ||
 					(stage.bHasCounterProxy &&
 					 std::isfinite(stage.fCounterProxyForwardOffsetM) &&
 					 std::isfinite(stage.fCounterProxyRightOffsetM) &&
 					 std::isfinite(stage.fCounterProxyRadiusM) &&
-					 std::fabs(stage.fCounterProxyForwardOffsetM) <= 20.f &&
-					 std::fabs(stage.fCounterProxyRightOffsetM) <= 20.f &&
-					 stage.fCounterProxyRadiusM > 0.f &&
-					 stage.fCounterProxyRadiusM <= 20.f);
+					 std::isfinite(stage.fCounterProxyArcDegrees) &&
+					 ((BOSS_PATTERN_COUNTER_PROXY_KIND::BOSS_LOCAL_CIRCLE ==
+						stage.eCounterProxyKind &&
+					   std::fabs(stage.fCounterProxyForwardOffsetM) <= 20.f &&
+					   std::fabs(stage.fCounterProxyRightOffsetM) <= 20.f &&
+					   stage.fCounterProxyRadiusM > 0.f &&
+					   stage.fCounterProxyRadiusM <= 20.f &&
+					   0.f == stage.fCounterProxyArcDegrees) ||
+					  (BOSS_PATTERN_COUNTER_PROXY_KIND::BOSS_FORWARD_ARC ==
+						stage.eCounterProxyKind &&
+					   0.f == stage.fCounterProxyForwardOffsetM &&
+					   0.f == stage.fCounterProxyRightOffsetM &&
+					   0.f == stage.fCounterProxyRadiusM &&
+					   180.f == stage.fCounterProxyArcDegrees)));
+				const bool hasBossResponse =
+					BOSS_PATTERN_BOSS_RESPONSE_KIND::NONE !=
+						stage.eBossResponseKind;
+				const bool validBossResponse =
+					(!hasBossResponse && 0u == stage.iBossResponseThreshold) ||
+					(BOSS_PATTERN_BOSS_RESPONSE_KIND::ACCUMULATED_HEALTH_DAMAGE ==
+						stage.eBossResponseKind &&
+					 stage.iBossResponseThreshold > 0u &&
+					 !pattern.bInvulnerableWhileRunning &&
+					 !patternOwnsBossResponse);
+				if (hasBossResponse)
+					patternOwnsBossResponse = true;
 				if (!validShape || !validHitAnchor || !validPortalHitAuthority ||
 					!validPlayerResponse ||
-					!validCounterProxy ||
+					!validCounterProxy || !validBossResponse ||
 					(stage.bWallContact &&
 						(BOSS_PATTERN_STAGE_KIND::ACTIVE != stage.eStageKind ||
 						 BOSS_PATTERN_HIT_SHAPE::NONE == stage.eHitShape ||
@@ -4298,6 +4474,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 						}));
 				bool validBranches = 1u == timeoutCount && !stage.Branches.empty();
 				bool hasWallContactOutcome = false;
+				bool hasHealthDamageThresholdOutcome = false;
 				for (const BOSS_PATTERN_STAGE_BRANCH& branch : stage.Branches)
 				{
 					validBranches = validBranches &&
@@ -4332,6 +4509,22 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 							BOSS_PATTERN_TARGET_POLICY::NONE ==
 								target->eTargetPolicy &&
 							BOSS_PATTERN_AIM_POLICY::NONE == target->eAimPolicy;
+						if (BOSS_PATTERN_STAGE_OUTCOME::
+							HEALTH_DAMAGE_THRESHOLD_REACHED == branch.eOutcome)
+						{
+							validBranches = validBranches &&
+								target != foundPatterns->second.end() &&
+								!target->Stages.empty() &&
+								BOSS_PATTERN_STAGE_KIND::GROGGY ==
+									target->Stages.front().eStageKind;
+						}
+					}
+					if (BOSS_PATTERN_STAGE_OUTCOME::
+						HEALTH_DAMAGE_THRESHOLD_REACHED == branch.eOutcome)
+					{
+						hasHealthDamageThresholdOutcome = true;
+						validBranches = validBranches && hasBossResponse &&
+							!branch.strNextPatternId.empty();
 					}
 					if (BOSS_PATTERN_STAGE_OUTCOME::WALL_CONTACT == branch.eOutcome)
 					{
@@ -4349,6 +4542,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 								!stage.Motion.RootMotion.empty());
 					}
 				}
+				validBranches = validBranches &&
+					(hasBossResponse == hasHealthDamageThresholdOutcome);
 				if (stage.bChargeImpact && !hasWallContactOutcome)
 					validBranches = false;
 				bool validActions = true;
@@ -4462,12 +4657,36 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 						{
 							hasExactValtanHighJumpTypedVolley = true;
 						}
-						const bool validRadialInwardMissile =
+						const bool validBossRelativeMissile =
 							m_BossCombatObjects.end() != combatObject &&
-							BOSS_COMBAT_OBJECT_DIRECTION_POLICY::RADIAL_INWARD ==
-								combatObject->second.eDirectionPolicy &&
+							(BOSS_COMBAT_OBJECT_DIRECTION_POLICY::RADIAL_INWARD ==
+								combatObject->second.eDirectionPolicy ||
+							 BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NEXT_RADIAL_SLOT ==
+								combatObject->second.eDirectionPolicy) &&
 							BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
 								action.Volley.ePolicy;
+						const bool validNextRadialSlotMissile =
+							m_BossCombatObjects.end() != combatObject &&
+							BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NEXT_RADIAL_SLOT ==
+								combatObject->second.eDirectionPolicy &&
+							std::fabs(combatObject->second.fSpeedMps - 8.8f) <
+								0.0001f &&
+							std::fabs(combatObject->second.fMaximumDistanceM - 44.f) <
+								0.0001f &&
+							5000u == combatObject->second.iLifeMs &&
+							BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
+								action.Volley.ePolicy;
+						const bool validNextRadialSlotLayout =
+							m_BossCombatObjects.end() == combatObject ||
+							BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NEXT_RADIAL_SLOT !=
+								combatObject->second.eDirectionPolicy ||
+							(isVolley &&
+							 BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
+								action.Volley.ePolicy &&
+							 BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL == action.Volley.eLayout &&
+							 action.Volley.iCountPerResolvedTarget >= 2u &&
+							 action.Volley.iMaximumTotalObjects ==
+								action.Volley.iCountPerResolvedTarget);
 						if (isValtanGhostPortal &&
 							"ACTIVE" == stage.strStageId &&
 							"valtan.ghost.portal-once.active" == stage.strActionId &&
@@ -4488,7 +4707,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 							1u == action.Volley.iSpawnCount &&
 							0u == action.Volley.iSpawnIntervalMs &&
 							0u == action.Volley.iArenaRandomCount &&
-							validRadialInwardMissile)
+							validNextRadialSlotMissile)
 						{
 							hasExactValtanGhostPortalTypedVolley = true;
 						}
@@ -4500,6 +4719,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 							BOSS_PATTERN_HIT_SHAPE::NONE != stage.eHitShape ||
 							!spawnedBossCombatObjectIds.insert(
 								action.strTargetId).second ||
+							!validNextRadialSlotLayout ||
 							(fixedArea && !targetLocksOnStart &&
 								BOSS_COMBAT_OBJECT_ORIGIN_POLICY::BOSS_POSITION !=
 									combatObject->second.eOriginPolicy) ||
@@ -4515,7 +4735,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 									combatObject->second.eOriginPolicy) ||
 							  BOSS_COMBAT_OBJECT_VOLLEY_POLICY::NONE ==
 									action.Volley.ePolicy)) ||
-							(!fixedArea && !validRadialInwardMissile &&
+							(!fixedArea && !validBossRelativeMissile &&
 							 BOSS_PATTERN_AIM_POLICY::LOCK_FACING_ON_START !=
 								pattern.eAimPolicy))
 						{
@@ -4712,8 +4932,13 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 											value == action.iValue;
 									});
 						};
+					const bool counterSourceKindIsSupported =
+						BOSS_PATTERN_STAGE_KIND::WINDUP == stage.eStageKind ||
+						(BOSS_PATTERN_STAGE_KIND::ACTIVE == stage.eStageKind &&
+						 BOSS_PATTERN_COUNTER_PROXY_KIND::BOSS_FORWARD_ARC ==
+							stage.eCounterProxyKind);
 					validBranches = validBranches &&
-						BOSS_PATTERN_STAGE_KIND::WINDUP == stage.eStageKind &&
+						counterSourceKindIsSupported &&
 						counterTargetIsForward && timeoutTargetIsForward &&
 						counterTargetKindIsSupported;
 					validActions = validActions &&

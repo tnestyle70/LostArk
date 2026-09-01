@@ -631,19 +631,38 @@ function Compile-ValtanWorldDestruction {
 			if ($null -ne $stage.PSObject.Properties['counterProxy']) {
 				$expectedStageProperties += 'counterProxy'
 				Assert-ExactProperties -Value $stage.counterProxy -Expected @(
-					'space','forwardOffsetM','rightOffsetM','radiusM') `
+					'kind','forwardOffsetM','rightOffsetM','radiusM','arcDegrees') `
 					-Context "$($pattern.patternId) counterProxy"
-				if ([string]$stage.counterProxy.space -cne 'BOSS_LOCAL') {
-					throw "Encounter counterProxy space is invalid: $($pattern.patternId)/$($stage.stageId)"
-				}
 				# Numeric validators return their input; keep compiler output to one artifact set.
-				$null = Assert-JsonNumber $stage.counterProxy.forwardOffsetM `
+				$forwardOffsetM = Assert-JsonNumber $stage.counterProxy.forwardOffsetM `
 					"$($pattern.patternId) counterProxy forwardOffsetM" -20.0 20.0
-				$null = Assert-JsonNumber $stage.counterProxy.rightOffsetM `
+				$rightOffsetM = Assert-JsonNumber $stage.counterProxy.rightOffsetM `
 					"$($pattern.patternId) counterProxy rightOffsetM" -20.0 20.0
-				$null = Assert-JsonNumber $stage.counterProxy.radiusM `
-					"$($pattern.patternId) counterProxy radiusM" 0.0 20.0 `
-					-MinimumExclusive
+				$radiusM = Assert-JsonNumber $stage.counterProxy.radiusM `
+					"$($pattern.patternId) counterProxy radiusM" 0.0 20.0
+				$arcDegrees = Assert-JsonNumber $stage.counterProxy.arcDegrees `
+					"$($pattern.patternId) counterProxy arcDegrees" 0.0 180.0
+				$validCircle =
+					[string]$stage.counterProxy.kind -ceq 'BOSS_LOCAL_CIRCLE' -and
+					[double]$radiusM -gt 0.0 -and [double]$arcDegrees -eq 0.0
+				$validForwardArc =
+					[string]$stage.counterProxy.kind -ceq 'BOSS_FORWARD_ARC' -and
+					[double]$forwardOffsetM -eq 0.0 -and
+					[double]$rightOffsetM -eq 0.0 -and
+					[double]$radiusM -eq 0.0 -and [double]$arcDegrees -eq 180.0
+				if (-not $validCircle -and -not $validForwardArc) {
+					throw "Encounter counterProxy shape is invalid: $($pattern.patternId)/$($stage.stageId)"
+				}
+			}
+			if ($null -ne $stage.PSObject.Properties['bossResponse']) {
+				$expectedStageProperties += 'bossResponse'
+				Assert-ExactProperties -Value $stage.bossResponse -Expected @(
+					'kind','threshold') -Context "$($pattern.patternId) bossResponse"
+				if ([string]$stage.bossResponse.kind -cne 'ACCUMULATED_HEALTH_DAMAGE') {
+					throw "Encounter bossResponse kind is invalid: $($pattern.patternId)/$($stage.stageId)"
+				}
+				$null = Assert-JsonInteger $stage.bossResponse.threshold `
+					"$($pattern.patternId) bossResponse threshold" 1 ([uint32]::MaxValue)
 			}
 			$hasPlayerResponse =
 				$null -ne $stage.PSObject.Properties['playerResponse']

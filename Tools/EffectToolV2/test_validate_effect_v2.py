@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 MODULE_PATH = Path(__file__).with_name("validate_effect_v2.py")
@@ -264,6 +265,19 @@ class EffectV2ValidatorTests(unittest.TestCase):
     def test_boss_valtan_format_v2_stable_occurrence_binding_passes(self) -> None:
         self._write_boss_valtan_v2_fixture()
         report = VALIDATOR.validate(self.root, self.resource_root)
+        self.assertEqual(1, report["bindings"])
+        self.assertEqual(0, report["bossBindingCompatibilityV1"])
+
+    def test_boss_valtan_format_v2_explicit_resource_root_precedes_environment(self) -> None:
+        self._write_boss_valtan_v2_fixture()
+        unrelated_resource_root = self.root / "unrelated-resources"
+        unrelated_resource_root.mkdir()
+        with mock.patch.dict(
+            "os.environ",
+            {"LOSTARK_RESOURCE_ROOT": str(unrelated_resource_root)},
+            clear=False,
+        ):
+            report = VALIDATOR.validate(self.root, self.resource_root)
         self.assertEqual(1, report["bindings"])
         self.assertEqual(0, report["bossBindingCompatibilityV1"])
 

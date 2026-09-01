@@ -4151,53 +4151,8 @@
     },
     {
       "actionId": "valtan.authoring.stagger-slot.groggy",
-      "clips": [
-        {
-          "clipOccurrenceId": "VALTAN_STAGGER_SLOT.GROGGY.composition.clip.01",
-          "clip": "mesh_abn_groggy_1_start",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 0,
-          "playMs": 1833,
-          "playRate": 1.0,
-          "loop": false
-        },
-        {
-          "clipOccurrenceId": "VALTAN_STAGGER_SLOT.GROGGY.composition.clip.02",
-          "clip": "mesh_abn_groggy_1_loop",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 0,
-          "playMs": 1333,
-          "playRate": 1.0,
-          "loop": false
-        },
-        {
-          "clipOccurrenceId": "VALTAN_STAGGER_SLOT.GROGGY.composition.clip.03",
-          "clip": "mesh_abn_groggy_1_loop",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 0,
-          "playMs": 1333,
-          "playRate": 1.0,
-          "loop": false
-        },
-        {
-          "clipOccurrenceId": "VALTAN_STAGGER_SLOT.GROGGY.composition.clip.04",
-          "clip": "mesh_abn_groggy_1_loop",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 0,
-          "playMs": 334,
-          "playRate": 1.0,
-          "loop": false
-        },
-        {
-          "clipOccurrenceId": "VALTAN_STAGGER_SLOT.GROGGY.composition.clip.05",
-          "clip": "mesh_abn_groggy_1_end",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 0,
-          "playMs": 2000,
-          "playRate": 1.0,
-          "loop": false
-        }
-      ]
+      "playbackMode": "NONE",
+      "clips": []
     },
     {
       "actionId": "valtan.authoring.stagger-slot.recovery",
@@ -4248,7 +4203,7 @@
           "clip": "mesh_att_battle_5_01_end",
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
-          "playMs": 4433,
+          "playMs": 900,
           "playRate": 1.0,
           "loop": false
         }
@@ -4263,7 +4218,7 @@
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
           "playMs": 2633,
-          "playRate": 1,
+          "playRate": 1.0,
           "loop": false
         }
       ]
@@ -4281,6 +4236,112 @@
           "loop": true
         }
       ]
+    },
+    {
+      "actionId": "valtan.authoring.stagger-slot.channel",
+      "clips": [
+        {
+          "clipOccurrenceId": "VALTAN_STAGGER_SLOT.CHANNEL.composition.clip.01",
+          "clip": "mesh_att_battle_17_start",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "VALTAN_STAGGER_SLOT.CHANNEL.composition.clip.02",
+          "clip": "mesh_att_battle_17_loop",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.authoring.stagger-slot.final-attack",
+      "clips": [
+        {
+          "clipOccurrenceId": "VALTAN_STAGGER_SLOT.FINAL_ATTACK.composition.clip.01",
+          "clip": "mesh_att_battle_17_end",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 3000,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.followup.groggy.active",
+      "clips": [
+        {
+          "clipOccurrenceId": "VALTAN_GROGGY_FOLLOWUP.GROGGY.composition.clip.01",
+          "clip": "mesh_abn_groggy_1_start",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 1833,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "VALTAN_GROGGY_FOLLOWUP.GROGGY.composition.clip.02",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 1333,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "VALTAN_GROGGY_FOLLOWUP.GROGGY.composition.clip.03",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 1333,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "VALTAN_GROGGY_FOLLOWUP.GROGGY.composition.clip.04",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 334,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "VALTAN_GROGGY_FOLLOWUP.GROGGY.composition.clip.05",
+          "clip": "mesh_abn_groggy_1_end",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.authoring.bind-slot.recovery",
+      "clips": [
+        {
+          "clipOccurrenceId": "VALTAN_BIND_SLOT.RECOVERY.composition.clip.01",
+          "clip": "mesh_att_battle_5_01_end",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 900,
+          "playMs": 3533,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.authoring.silence-slot.hold",
+      "playbackMode": "NONE",
+      "clips": []
     }
   ]
 }

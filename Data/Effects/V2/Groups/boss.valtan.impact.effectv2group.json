@@ -1,25 +1,467 @@
 {
   "schema": "lostark.effect-v2-group",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "groupId": "boss.valtan.impact",
   "durationMs": 0,
   "children": [
-    { "effectId": "boss.valtan.hit_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.hit_2", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.hit_3", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.decal_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.decal_2", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.spread_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.spread_1", "startMs": 50, "durationMs": 0, "stop": "Deactivate", "offset": [-0.5, 0.0, 0.5], "yawDegrees": 0.0, "scale": [1.2, 1.2, 1.0] },
-    { "effectId": "boss.valtan.spread_1", "startMs": 100, "durationMs": 0, "stop": "Deactivate", "offset": [0.5, 0.0, 1.0], "yawDegrees": 0.0, "scale": [1.3, 1.2, 1.0] },
-    { "effectId": "boss.valtan.spread_1", "startMs": 150, "durationMs": 0, "stop": "Deactivate", "offset": [-0.7, 0.0, 1.5], "yawDegrees": 0.0, "scale": [1.4, 1.3, 1.0] },
-    { "effectId": "boss.valtan.spread_1", "startMs": 200, "durationMs": 0, "stop": "Deactivate", "offset": [0.7, 0.0, 2.0], "yawDegrees": 0.0, "scale": [1.5, 1.3, 1.0] },
-    { "effectId": "boss.valtan.spread_2", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.spread_2", "startMs": 40, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, -0.5], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.spread_2", "startMs": 80, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, -1.0], "yawDegrees": 0.0, "scale": [1.1, 1.0, 1.0] },
-    { "effectId": "boss.valtan.spread_2", "startMs": 120, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, -1.5], "yawDegrees": 0.0, "scale": [1.15, 1.0, 1.0] },
-    { "effectId": "boss.valtan.spread_2", "startMs": 160, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, -2.0], "yawDegrees": 0.0, "scale": [1.2, 1.0, 1.0] },
-    { "effectId": "boss.valtan.hit_3", "startMs": 30, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 1.5], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.hit_3", "startMs": 60, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 3.0], "yawDegrees": 0.0, "scale": [1.0, 1.0, 1.0] }
+    {
+      "childId": "child.migrated.000.8cd33271c24fc423",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.hit_1"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.001.380f70cc22c9390d",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.hit_2"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.002.4171d2d04d970f12",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.hit_3"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.003.a99e63d53e932640",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.decal_1"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.004.b01b309ec6144bc6",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.decal_2"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.005.59d141da2662e026",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.spread_1"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.006.c63d41359e8a0f3c",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.spread_1"
+      },
+      "startMs": 50,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          -0.5,
+          0.0,
+          0.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.2,
+          1.2,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.007.90f594fa3e99410b",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.spread_1"
+      },
+      "startMs": 100,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.5,
+          0.0,
+          1.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.3,
+          1.2,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.008.98c7f76d28351980",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.spread_1"
+      },
+      "startMs": 150,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          -0.7,
+          0.0,
+          1.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.4,
+          1.3,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.009.cfad017917f44e3b",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.spread_1"
+      },
+      "startMs": 200,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.7,
+          0.0,
+          2.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.5,
+          1.3,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.010.cd58696e183e8fc3",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.spread_2"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.011.c63756b48a81bbfb",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.spread_2"
+      },
+      "startMs": 40,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          -0.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.012.f62eebb57861d002",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.spread_2"
+      },
+      "startMs": 80,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.1,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.013.d61dd8869f2e534a",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.spread_2"
+      },
+      "startMs": 120,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          -1.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.15,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.014.ebce80178919cf4b",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.spread_2"
+      },
+      "startMs": 160,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          -2.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.2,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.015.f2e1c644e882ef31",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.hit_3"
+      },
+      "startMs": 30,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          1.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.016.002fac85c7b79807",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.hit_3"
+      },
+      "startMs": 60,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          3.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    }
   ]
 }

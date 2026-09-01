@@ -75,6 +75,7 @@
     <ClInclude Include="..\Public\Effect_ScreenOverlayPresentation.h" />
     <ClInclude Include="..\Public\Effect_ThumbnailCache.h" />
     <ClInclude Include="..\Public\Effect_Catalog.h" />
+    <ClInclude Include="..\Public\EffectResourceCatalog.h" />
     <ClInclude Include="..\Public\Effect_LoadPreparationJob.h" />
     <ClInclude Include="..\Public\Effect_OccurrenceTuning.h" />
     <ClInclude Include="..\Public\Effect_VisualProgramCorpus.h" />
@@ -260,6 +261,7 @@
     <ClCompile Include="..\Private\Effect_ScreenOverlayPresentation.cpp" />
     <ClCompile Include="..\Private\Effect_ThumbnailCache.cpp" />
     <ClCompile Include="..\Private\Effect_Catalog.cpp" />
+    <ClCompile Include="..\Private\EffectResourceCatalog.cpp" />
     <ClCompile Include="..\Private\Effect_LoadPreparationJob.cpp" />
     <ClCompile Include="..\Private\Effect_OccurrenceTuning.cpp" />
     <ClCompile Include="..\Private\Effect_VisualProgramCorpus.cpp" />

@@ -447,6 +447,9 @@
     <ClCompile Include="..\Private\Effect_Catalog.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\EffectResourceCatalog.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Effect_LoadPreparationJob.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
@@ -1223,6 +1226,9 @@
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Effect_Catalog.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EffectResourceCatalog.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Effect_LoadPreparationJob.h">

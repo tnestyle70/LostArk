@@ -41,19 +41,20 @@ namespace Client
 		bool_t m_suppressUntilRelease = false;
 	};
 
-	/* A Server grab consumes every held physical press. A different released
-	key can be used immediately after detach, but the captured press cannot turn
-	into an automatic move, skill release, Esther or basic-attack resend. */
+	/* A Server capture (left-hand grab or pattern bind) consumes every held
+	physical press. A different released key can be used immediately after the
+	capture ends, but the captured press cannot turn into an automatic move,
+	skill release, Esther or basic-attack resend. */
 	class CPLAYER_CAPTURE_INPUT_GATE final
 	{
 	public:
 		constexpr void Reset() { m_blocked.fill(false); }
 		constexpr void Observe(const std::size_t input, const bool_t physicallyDown,
-			const bool_t grabbed)
+			const bool_t captured)
 		{
 			if (!physicallyDown)
 				m_blocked[input] = false;
-			else if (grabbed)
+			else if (captured)
 				m_blocked[input] = true;
 		}
 		constexpr bool_t Is_Blocked(const std::size_t input) const
@@ -68,12 +69,12 @@ namespace Client
 	};
 
 	/* Public player commands can be called outside Update, so they share the
-	grab admission gate with a counted fake-sink contract below. */
+	capture admission gate with a counted fake-sink contract below. */
 	template <typename TRequest>
 	constexpr bool_t Try_SubmitUncapturedPlayerCommand(
-		const bool_t grabbed, const TRequest& request)
+		const bool_t captured, const TRequest& request)
 	{
-		return !grabbed && request();
+		return !captured && request();
 	}
 
 	/* A tap submits only its first command. A physical hold waits long enough for
@@ -192,7 +193,7 @@ namespace Client
 		}
 		static_assert(Validate_CapturePhysicalReleaseRearm(),
 			"captured input must remain blocked until physical release");
-		constexpr bool_t Validate_GrabbedPublicCommandSuppression()
+		constexpr bool_t Validate_CapturedPublicCommandSuppression()
 		{
 			std::uint32_t submitted = 0u;
 			const auto request = [&submitted]() { ++submitted; return true; };
@@ -203,8 +204,8 @@ namespace Client
 				return false;
 			return !Try_SubmitUncapturedPlayerCommand(false, []() { return false; });
 		}
-		static_assert(Validate_GrabbedPublicCommandSuppression(),
-			"grabbed public player commands must not call the command sink");
+		static_assert(Validate_CapturedPublicCommandSuppression(),
+			"captured public player commands must not call the command sink");
 		struct CONFIRM_REQUEST_STUB final
 		{
 			bool_t accepted = false;

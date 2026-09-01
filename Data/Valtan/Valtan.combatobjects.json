@@ -160,13 +160,13 @@
           "rightOffsetM": 0.0
         },
         "direction": {
-          "kind": "RADIAL_INWARD"
+          "kind": "NEXT_RADIAL_SLOT"
         }
       },
       "movement": {
         "kind": "LINEAR",
-        "speedMps": 12.44508,
-        "maximumDistanceM": 62.2254
+        "speedMps": 8.8,
+        "maximumDistanceM": 44.0
       },
       "hits": [
         {

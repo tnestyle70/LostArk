@@ -1,17 +1,251 @@
 {
   "schema": "lostark.effect-v2-group",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "groupId": "boss.valtan.axe",
   "durationMs": 0,
   "children": [
-    { "effectId": "boss.valtan.axe.decal_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.axe.decal_2", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.axe_fall_1", "startMs": 2000, "durationMs": 0, "stop": "Kill", "offset": [-0.15, 0.0, -0.8], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.axe_stuck_1", "startMs": 2400, "durationMs": 0, "stop": "Deactivate", "offset": [-0.15, 0.0, -0.8], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.axe_elec_1", "startMs": 2100, "durationMs": 0, "stop": "Deactivate", "offset": [-0.9, 0.0, -0.4], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.hit_3", "startMs": 2350, "durationMs": 0, "stop": "Deactivate", "offset": [0.15, 0.0, 1.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.sw_1", "startMs": 2350, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 2.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.3, 1.0, 1.3] },
-    { "effectId": "boss.valtan.blur_2", "startMs": 2350, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
-    { "effectId": "boss.valtan.chase.decal_2", "startMs": 2600, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 1.25], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] }
+    {
+      "childId": "child.migrated.000.2d83e6cd3950e817",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.axe.decal_1"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.001.2562693833b61235",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.axe.decal_2"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.002.d92c1949b9933ebc",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.axe_fall_1"
+      },
+      "startMs": 2000,
+      "durationMs": 0,
+      "stop": "Kill",
+      "localTransform": {
+        "translation": [
+          -0.15,
+          0.0,
+          -0.8
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.003.93f71d88699655f4",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.axe_stuck_1"
+      },
+      "startMs": 2400,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          -0.15,
+          0.0,
+          -0.8
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.004.6160b18638e02d3e",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.axe_elec_1"
+      },
+      "startMs": 2100,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          -0.9,
+          0.0,
+          -0.4
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.005.f6b61fa08fcaf039",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.hit_3"
+      },
+      "startMs": 2350,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.15,
+          0.0,
+          1.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.006.eb703afb61d378e1",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.sw_1"
+      },
+      "startMs": 2350,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          2.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.3,
+          1.0,
+          1.3
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.007.e44b2353ddead28f",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.blur_2"
+      },
+      "startMs": 2350,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.008.d6154465b3c49d5f",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.chase.decal_2"
+      },
+      "startMs": 2600,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          1.25
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    }
   ]
 }

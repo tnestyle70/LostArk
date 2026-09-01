@@ -267,16 +267,6 @@ void Client::CCombatHUDViewModel::Build_PlayerSkills(
 			if (pCooldowns->end() != cooldown)
 				state.iCooldownEndTick = cooldown->iCooldownEndTick;
 		}
-		/* Silence is not a synthetic gameplay cooldown: the Server independently
-		gates skill commands. It only reuses the established cooldown-mask visual.
-		A longer real cooldown remains authoritative; otherwise the mask covers the
-		full five-second silence interval on every quick slot. */
-		if (m_Player.iSilenceEndTick > serverTick &&
-			m_Player.iSilenceEndTick > state.iCooldownEndTick)
-		{
-			state.iCooldownEndTick = m_Player.iSilenceEndTick;
-			state.iCooldownDurationTicks = m_Player.iSilenceDurationTicks;
-		}
 		m_Player.Skills.push_back(std::move(state));
 	}
 	std::sort(m_Player.Skills.begin(), m_Player.Skills.end(),

@@ -289,11 +289,11 @@ def _effect_v2_artifact_paths(
 ) -> set[str]:
     """Resolve the exact BOSS_VALTAN Effect V2 binding closure.
 
-    Effect V2 is not addressed through the V1 semantic Effect catalog.  Its
-    runtime entry point is the archetype binding document, whose rows point to
-    either one leaf document or one group.  Groups in turn contain leaf IDs;
-    they cannot recursively contain another group.  Pin only that reachable
-    closure so unrelated character/Esther V2 authoring remains independently
+    Effect V2 is not addressed through the direct-authored semantic Effect
+    catalog.  Its runtime entry point is the strict formatVersion 2 archetype
+    binding document.  Bindings and group children carry typed resource
+    references and groups may nest, so walk only the reachable, acyclic
+    closure.  Unrelated character/Esther authoring remains independently
     writable without changing Valtan's immutable presentation generation.
     """
 
@@ -309,7 +309,7 @@ def _effect_v2_artifact_paths(
     if (
         binding.get("schema") != "lostark.effect-v2-bindings"
         or type(binding.get("formatVersion")) is not int
-        or binding["formatVersion"] != 1
+        or binding["formatVersion"] != 2
         or binding.get("archetypeId") != "BOSS_VALTAN"
         or not isinstance(binding.get("bindings"), list)
         or not binding["bindings"]
@@ -320,34 +320,44 @@ def _effect_v2_artifact_paths(
 
     leaf_ids: set[str] = set()
     group_ids: set[str] = set()
+    binding_ids: set[str] = set()
+    previous_binding_id = ""
     for ordinal, row in enumerate(binding["bindings"]):
         context = f"BOSS_VALTAN Effect V2 bindings[{ordinal}]"
         if not isinstance(row, dict):
             raise PresentationGenerationError(f"{context} is not an object")
-        has_effect = "effectId" in row
-        has_group = "group" in row
-        if has_effect == has_group:
+        _require_exact_properties(
+            row,
+            frozenset(("bindingId", "resource", "scope", "clock", "anchor", "stopPolicy")),
+            context,
+        )
+        binding_id = row["bindingId"]
+        if (
+            not isinstance(binding_id, str)
+            or EFFECT_V2_ID.fullmatch(binding_id) is None
+            or binding_id in binding_ids
+            or (previous_binding_id and previous_binding_id >= binding_id)
+        ):
             raise PresentationGenerationError(
-                f"{context} must contain exactly one of effectId/group"
+                f"{context}.bindingId must be unique and ordinally sorted"
             )
-        if has_effect:
-            effect_id = row["effectId"]
-            _effect_v2_relative(
-                EFFECT_V2_AUTHORED_ROOT_REL,
-                effect_id,
-                EFFECT_V2_DOCUMENT_SUFFIX,
-                f"{context}.effectId",
-            )
-            leaf_ids.add(effect_id)
-        else:
-            group_id = row["group"]
-            _effect_v2_relative(
-                EFFECT_V2_GROUP_ROOT_REL,
-                group_id,
-                EFFECT_V2_GROUP_SUFFIX,
-                f"{context}.group",
-            )
-            group_ids.add(group_id)
+        binding_ids.add(binding_id)
+        previous_binding_id = binding_id
+        resource = row["resource"]
+        if not isinstance(resource, dict):
+            raise PresentationGenerationError(f"{context}.resource is not an object")
+        _require_exact_properties(resource, frozenset(("kind", "id")), f"{context}.resource")
+        kind = resource["kind"]
+        resource_id = resource["id"]
+        if kind not in ("LEAF", "GROUP"):
+            raise PresentationGenerationError(f"{context}.resource.kind is invalid")
+        _effect_v2_relative(
+            EFFECT_V2_AUTHORED_ROOT_REL if kind == "LEAF" else EFFECT_V2_GROUP_ROOT_REL,
+            resource_id,
+            EFFECT_V2_DOCUMENT_SUFFIX if kind == "LEAF" else EFFECT_V2_GROUP_SUFFIX,
+            f"{context}.resource.id",
+        )
+        (leaf_ids if kind == "LEAF" else group_ids).add(resource_id)
 
     collisions = leaf_ids & group_ids
     if collisions:
@@ -357,7 +367,14 @@ def _effect_v2_artifact_paths(
         )
 
     result: set[str] = set()
-    for group_id in sorted(group_ids):
+    group_edges: dict[str, set[str]] = {}
+    pending_groups = list(sorted(group_ids))
+    visited_groups: set[str] = set()
+    while pending_groups:
+        group_id = pending_groups.pop(0)
+        if group_id in visited_groups:
+            continue
+        visited_groups.add(group_id)
         relative = _effect_v2_relative(
             EFFECT_V2_GROUP_ROOT_REL,
             group_id,
@@ -374,7 +391,7 @@ def _effect_v2_artifact_paths(
         if (
             group.get("schema") != "lostark.effect-v2-group"
             or type(group.get("formatVersion")) is not int
-            or group["formatVersion"] != 1
+            or group["formatVersion"] != 2
             or group.get("groupId") != group_id
             or not isinstance(group.get("children"), list)
             or not group["children"]
@@ -383,28 +400,64 @@ def _effect_v2_artifact_paths(
                 f"BOSS_VALTAN Effect V2 group identity/children are invalid: {group_id}"
             )
         result.add(relative)
+        group_edges[group_id] = set()
+        child_ids: set[str] = set()
         for ordinal, child in enumerate(group["children"]):
             context = f"BOSS_VALTAN Effect V2 group {group_id}.children[{ordinal}]"
-            if not isinstance(child, dict) or "effectId" not in child:
-                raise PresentationGenerationError(
-                    f"{context} has no leaf effectId"
-                )
-            effect_id = child["effectId"]
-            _effect_v2_relative(
-                EFFECT_V2_AUTHORED_ROOT_REL,
-                effect_id,
-                EFFECT_V2_DOCUMENT_SUFFIX,
-                f"{context}.effectId",
+            if not isinstance(child, dict):
+                raise PresentationGenerationError(f"{context} is not an object")
+            _require_exact_properties(
+                child,
+                frozenset(("childId", "resource", "startMs", "durationMs", "stop", "localTransform")),
+                context,
             )
-            if effect_id == group_id:
-                raise PresentationGenerationError(
-                    f"{context} cannot reference its owning group"
-                )
-            if effect_id in group_ids:
-                raise PresentationGenerationError(
-                    f"{context} refers to another group instead of a leaf"
-                )
-            leaf_ids.add(effect_id)
+            child_id = child["childId"]
+            if (
+                not isinstance(child_id, str)
+                or EFFECT_V2_ID.fullmatch(child_id) is None
+                or child_id in child_ids
+            ):
+                raise PresentationGenerationError(f"{context}.childId is invalid or duplicated")
+            child_ids.add(child_id)
+            resource = child["resource"]
+            if not isinstance(resource, dict):
+                raise PresentationGenerationError(f"{context}.resource is not an object")
+            _require_exact_properties(resource, frozenset(("kind", "id")), f"{context}.resource")
+            kind = resource["kind"]
+            resource_id = resource["id"]
+            if kind not in ("LEAF", "GROUP"):
+                raise PresentationGenerationError(f"{context}.resource.kind is invalid")
+            _effect_v2_relative(
+                EFFECT_V2_AUTHORED_ROOT_REL if kind == "LEAF" else EFFECT_V2_GROUP_ROOT_REL,
+                resource_id,
+                EFFECT_V2_DOCUMENT_SUFFIX if kind == "LEAF" else EFFECT_V2_GROUP_SUFFIX,
+                f"{context}.resource.id",
+            )
+            if kind == "LEAF":
+                leaf_ids.add(resource_id)
+            else:
+                group_ids.add(resource_id)
+                group_edges[group_id].add(resource_id)
+                pending_groups.append(resource_id)
+
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit_group(group_id: str) -> None:
+        if group_id in visiting:
+            raise PresentationGenerationError(
+                f"BOSS_VALTAN Effect V2 group cycle is invalid: {group_id}"
+            )
+        if group_id in visited:
+            return
+        visiting.add(group_id)
+        for child_group_id in sorted(group_edges.get(group_id, set())):
+            visit_group(child_group_id)
+        visiting.remove(group_id)
+        visited.add(group_id)
+
+    for group_id in sorted(group_ids):
+        visit_group(group_id)
 
     for effect_id in sorted(leaf_ids):
         relative = _effect_v2_relative(

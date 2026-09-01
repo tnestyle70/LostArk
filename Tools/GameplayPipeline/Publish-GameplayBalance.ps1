@@ -1486,6 +1486,9 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 	if ($hasServerMotion) { $patternProperties += 'serverMotion' }
 	$hasFinale = $null -ne $pattern.PSObject.Properties['finale']
 	if ($hasFinale) { $patternProperties += 'finale' }
+	$hasVerticalOffset =
+		$null -ne $pattern.PSObject.Properties['verticalOffsetM']
+	if ($hasVerticalOffset) { $patternProperties += 'verticalOffsetM' }
 	Assert-ExactProperties $pattern $patternProperties 'encounter pattern'
 	foreach ($field in @(
 		'patternId','displayName','actionId','selectionMode','category',
@@ -1644,6 +1647,21 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		'PATTERNPOLICY', $encounterDocument.encounterId, $pattern.patternId,
 		$category, [uint32]$pattern.minimumPhase, [uint32]$pattern.maximumPhase,
 		$targetPolicy, $aimPolicy) -join "`t"))
+	if ($hasVerticalOffset) {
+		Assert-JsonNumber $pattern.verticalOffsetM `
+			"pattern $($pattern.patternId) verticalOffsetM"
+		$verticalOffsetM = [double]$pattern.verticalOffsetM
+		if ([double]::IsNaN($verticalOffsetM) -or
+			[double]::IsInfinity($verticalOffsetM) -or
+			$verticalOffsetM -eq 0.0 -or [Math]::Abs($verticalOffsetM) -gt 100.0) {
+			throw "Pattern verticalOffsetM is invalid: $($pattern.patternId)"
+		}
+		$patternRows.Add((@(
+			'PATTERNVERTICALOFFSET', $encounterDocument.encounterId,
+			$pattern.patternId,
+			(Format-InvariantSignedFloat $verticalOffsetM `
+				'pattern verticalOffsetM')) -join "`t"))
+	}
 	# sourceActionIds[0] is the pattern entry skill. The remaining IDs are
 	# continuations/variants and are still checked above, but only the entry
 	# skill owns selection cooldown/range/approach/turn metadata.
@@ -1841,6 +1859,8 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			$null -ne $stage.PSObject.Properties['partDamagePolicy']
 		$hasCounterProxy =
 			$null -ne $stage.PSObject.Properties['counterProxy']
+		$hasBossResponse =
+			$null -ne $stage.PSObject.Properties['bossResponse']
 		$hasPlayerResponse =
 			$null -ne $stage.PSObject.Properties['playerResponse']
 		$hasAttachmentSlot =
@@ -1856,6 +1876,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		if ($hasHitActivation) { $stageProperties += 'hitActivation' }
 		if ($hasPartDamagePolicy) { $stageProperties += 'partDamagePolicy' }
 		if ($hasCounterProxy) { $stageProperties += 'counterProxy' }
+		if ($hasBossResponse) { $stageProperties += 'bossResponse' }
 		if ($hasPlayerResponse) {
 			$stageProperties += @('playerResponse','attachmentSlot')
 		}
@@ -1870,31 +1891,61 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				throw "Pattern stage partDamagePolicy is invalid: $($pattern.patternId) stage $stageIndex"
 			}
 		}
+		$counterProxyKind = 'NONE'
 		$counterProxyForwardOffsetM = 0.0
 		$counterProxyRightOffsetM = 0.0
 		$counterProxyRadiusM = 0.0
+		$counterProxyArcDegrees = 0.0
 		if ($hasCounterProxy) {
 			Assert-ExactProperties $stage.counterProxy @(
-				'space','forwardOffsetM','rightOffsetM','radiusM') `
+				'kind','forwardOffsetM','rightOffsetM','radiusM','arcDegrees') `
 				'encounter pattern stage counter proxy'
-			Assert-JsonString $stage.counterProxy.space `
-				"pattern $($pattern.patternId) stage $stageIndex counter proxy space"
+			Assert-JsonString $stage.counterProxy.kind `
+				"pattern $($pattern.patternId) stage $stageIndex counter proxy kind"
 			foreach ($field in @(
-				'forwardOffsetM','rightOffsetM','radiusM')) {
+				'forwardOffsetM','rightOffsetM','radiusM','arcDegrees')) {
 				Assert-JsonNumber $stage.counterProxy.$field `
 					"pattern $($pattern.patternId) stage $stageIndex counter proxy $field"
 			}
+			$counterProxyKind = [string]$stage.counterProxy.kind
 			$counterProxyForwardOffsetM =
 				[double]$stage.counterProxy.forwardOffsetM
 			$counterProxyRightOffsetM =
 				[double]$stage.counterProxy.rightOffsetM
 			$counterProxyRadiusM = [double]$stage.counterProxy.radiusM
-			if ([string]$stage.counterProxy.space -cne 'BOSS_LOCAL' -or
-				[Math]::Abs($counterProxyForwardOffsetM) -gt 20.0 -or
+			$counterProxyArcDegrees = [double]$stage.counterProxy.arcDegrees
+			$validCircle =
+				$counterProxyKind -ceq 'BOSS_LOCAL_CIRCLE' -and
+				$counterProxyRadiusM -gt 0.0 -and
+				$counterProxyRadiusM -le 20.0 -and
+				$counterProxyArcDegrees -eq 0.0
+			$validForwardArc =
+				$counterProxyKind -ceq 'BOSS_FORWARD_ARC' -and
+				$counterProxyForwardOffsetM -eq 0.0 -and
+				$counterProxyRightOffsetM -eq 0.0 -and
+				$counterProxyRadiusM -eq 0.0 -and
+				$counterProxyArcDegrees -eq 180.0
+			if ([Math]::Abs($counterProxyForwardOffsetM) -gt 20.0 -or
 				[Math]::Abs($counterProxyRightOffsetM) -gt 20.0 -or
-				$counterProxyRadiusM -le 0.0 -or
-				$counterProxyRadiusM -gt 20.0) {
+				(-not $validCircle -and -not $validForwardArc)) {
 				throw "Pattern stage counter proxy is invalid: $($pattern.patternId) stage $stageIndex"
+			}
+		}
+		$bossResponseKind = 'NONE'
+		$bossResponseThreshold = 0
+		if ($hasBossResponse) {
+			Assert-ExactProperties $stage.bossResponse @('kind','threshold') `
+				'encounter pattern stage boss response'
+			Assert-JsonString $stage.bossResponse.kind `
+				"pattern $($pattern.patternId) stage $stageIndex boss response kind"
+			Assert-JsonInteger $stage.bossResponse.threshold `
+				"pattern $($pattern.patternId) stage $stageIndex boss response threshold" `
+				1 ([uint32]::MaxValue)
+			$bossResponseKind = [string]$stage.bossResponse.kind
+			$bossResponseThreshold = [uint32]$stage.bossResponse.threshold
+			if ($bossResponseKind -cne 'ACCUMULATED_HEALTH_DAMAGE' -or
+				[string]$stage.stageKind -cne 'ACTIVE') {
+				throw "Pattern stage boss response is invalid: $($pattern.patternId) stage $stageIndex"
 			}
 		}
 		foreach ($field in @('stageId','actionId','stageKind','hitShape','serverDamageProfileId')) {
@@ -2538,6 +2589,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 
 		$hasPartDestroyed = $false
 		$hasCounterHit = $false
+		$hasHealthDamageThresholdReached = $false
 		if ($hasStageBranches) {
 			if ($stage.branches -isnot [Array] -or
 				@($stage.branches).Count -lt 1 -or
@@ -2560,7 +2612,8 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				if ($outcome -notin @(
 					'TIMEOUT','COUNTER_HIT','STAGGER_BROKEN','WALL_CONTACT',
 					'PART_DESTROYED','PROP_DESTROYED','SUMMON_DEAD',
-					'ALL_PLAYERS_GRABBED','ANY_PLAYER_GRABBED','NAVIGATION_BLOCKED') -or
+					'ALL_PLAYERS_GRABBED','ANY_PLAYER_GRABBED','NAVIGATION_BLOCKED',
+					'HEALTH_DAMAGE_THRESHOLD_REACHED') -or
 					-not $branchOutcomes.Add($outcome)) {
 					throw "Pattern stage branch outcome is unknown or duplicated: $($pattern.patternId) stage $stageIndex"
 				}
@@ -2609,6 +2662,9 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				$hasPartDestroyed = $hasPartDestroyed -or
 					$outcome -eq 'PART_DESTROYED'
 				$hasStaggerBroken = $hasStaggerBroken -or $outcome -eq 'STAGGER_BROKEN'
+				$hasHealthDamageThresholdReached =
+					$hasHealthDamageThresholdReached -or
+					$outcome -eq 'HEALTH_DAMAGE_THRESHOLD_REACHED'
 				if ($hasNextPatternId) {
 					$patternRows.Add((@(
 						'PATTERNSTAGEFOLLOWUP', $encounterDocument.encounterId,
@@ -2625,7 +2681,8 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			if (-not $hasTimeout -or
 				($hasWallContact -and $stageMotionKind -cne 'FORWARD') -or
 				($hasCounterHit -and (-not $hasCounterableEnter -or -not $hasCounterableExit)) -or
-				($hasStaggerBroken -and (-not $hasStaggerGaugeEnter -or -not $hasStaggerGaugeExit))) {
+				($hasStaggerBroken -and (-not $hasStaggerGaugeEnter -or -not $hasStaggerGaugeExit)) -or
+				($hasBossResponse -ne $hasHealthDamageThresholdReached)) {
 				throw "Pattern stage branches need one TIMEOUT and WALL_CONTACT needs FORWARD motion: $($pattern.patternId) stage $stageIndex"
 			}
 		}
@@ -2658,12 +2715,24 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			$patternRows.Add((@(
 				'PATTERNSTAGECOUNTERPROXY', $encounterDocument.encounterId,
 				$pattern.patternId, $stage.actionId,
+				$counterProxyKind,
 				(Format-InvariantSignedFloat $counterProxyForwardOffsetM `
 					'pattern stage counter proxy forwardOffsetM'),
 				(Format-InvariantSignedFloat $counterProxyRightOffsetM `
 					'pattern stage counter proxy rightOffsetM'),
 				(Format-InvariantFloat $counterProxyRadiusM `
-					'pattern stage counter proxy radiusM')) -join "`t"))
+					'pattern stage counter proxy radiusM'),
+				(Format-InvariantFloat $counterProxyArcDegrees `
+					'pattern stage counter proxy arcDegrees')) -join "`t"))
+		}
+		if ($hasBossResponse) {
+			if (-not $hasStageBranches -or -not $hasHealthDamageThresholdReached) {
+				throw "Pattern stage boss response requires a HEALTH_DAMAGE_THRESHOLD_REACHED branch: $($pattern.patternId) stage $stageIndex"
+			}
+			$patternRows.Add((@(
+				'PATTERNSTAGERESPONSE', $encounterDocument.encounterId,
+				$pattern.patternId, $stage.actionId,
+				$bossResponseKind, $bossResponseThreshold) -join "`t"))
 		}
 	}
 	if ($activeStageActionKeys.Count -ne 0) {
@@ -2793,8 +2862,8 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 	}
 	elseif ($kind -ceq 'MISSILE') {
 		$maximumTravelM = $speedMps * ([double]$lifeMs / 1000.0)
-		$radialInward =
-			$directionPolicy -ceq 'RADIAL_INWARD' -and
+		$nextRadialSlot =
+			$directionPolicy -ceq 'NEXT_RADIAL_SLOT' -and
 			$combatObjectId -ceq 'combatobject.valtan.ghost.portal-charge' -and
 			$ownerPatternId -ceq 'VALTAN_GHOST_PORTAL_ONCE' -and
 			$ownerStageActionId -ceq 'valtan.ghost.portal-once.active' -and
@@ -2804,7 +2873,7 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 			$directionPolicy -ceq 'PATTERN_FACING_AT_SPAWN' -and
 			[string]$ownerPattern.aimPolicy -ceq 'LOCK_FACING_ON_START'
 		$validMotion = $originPolicy -ceq 'BOSS_POSITION' -and
-			($patternFacing -or $radialInward) -and
+			($patternFacing -or $nextRadialSlot) -and
 			$speedMps -gt 0.0 -and $maximumDistanceM -gt 0.0 -and
 			$maximumTravelM + 0.00001 -ge $maximumDistanceM
 	}
@@ -4547,7 +4616,7 @@ $rows = @($damageRows + $skillRows + $playerRows + $bossRows +
 	$bossPartRows + $combatObjectRows + $rootMotionRows + $hitShapeRows +
 	$patternRows + @($presentationGenerationRow) | Sort-Object -Property @{
 		Expression = { Get-BootstrapRowSortKey -Row $_ } })
-$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 29 } elseif (
+$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 30 } elseif (
 	$rotationFormatVersion -eq 3) { 21 } else { 18 }
 $lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t$gameplayBootstrapVersion`t$($rows.Count)") + $rows
 

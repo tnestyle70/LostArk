@@ -168,6 +168,12 @@ function Get-EncounterProfiles {
 			if ($null -ne $pattern.PSObject.Properties['finale']) {
 				$patternProperties += 'finale'
 			}
+			if ($null -ne $pattern.PSObject.Properties['verticalOffsetM']) {
+				# The gameplay-balance publisher owns the strict value and stage-response
+				# contract.  The world publisher only needs to preserve compatibility
+				# while resolving encounter IDs for placements.
+				$patternProperties += 'verticalOffsetM'
+			}
 			Assert-ExactProperties $pattern $patternProperties "$($document.encounterId) pattern"
 			Assert-JsonNumber $pattern.minimumRange "$($document.encounterId) minimumRange"
 			Assert-JsonNumber $pattern.maximumRange "$($document.encounterId) maximumRange"

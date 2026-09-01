@@ -14,6 +14,8 @@ AUTHORED = ROOT / "Data/Effects/V2/Authored"
 GROUPS = ROOT / "Data/Effects/V2/Groups"
 BOSS_BINDINGS = ROOT / "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"
 VALTAN_PRESENTATION = ROOT / "Data/Valtan/Valtan.presentation.json"
+EFFECT_TOOL_V2_HEADER = ROOT / "Client/Public/Effect_Tool_V2.h"
+EFFECT_TOOL_V2_SOURCE = ROOT / "Client/Private/Effect_Tool_V2.cpp"
 
 
 def read(path: Path) -> str:
@@ -27,33 +29,61 @@ def function_tail(text: str, signature: str, next_signature: str) -> str:
 
 
 class EffectV2CatalogContractTests(unittest.TestCase):
-    def test_boss_clip_bindings_join_the_canonical_presentation_inventory(self) -> None:
-        presentation = json.loads(VALTAN_PRESENTATION.read_text(encoding="utf-8"))
-        canonical_clips: set[str] = set()
+    def test_effect_tool_v2_data_files_lists_groups_and_openable_children(self) -> None:
+        header = read(EFFECT_TOOL_V2_HEADER)
+        source = read(EFFECT_TOOL_V2_SOURCE)
+        panel = function_tail(
+            source,
+            "void Client::CEffect_Tool_V2::Render_DocumentPanel()",
+            "namespace\n{\n\tconstexpr const wchar_t* TARGET_LAYER_TAG",
+        )
+        scan = function_tail(
+            source,
+            "void Client::CEffect_Tool_V2::Scan_Groups()",
+            "bool_t Client::CEffect_Tool_V2::Load_Group(",
+        )
+        self.assertIn("std::vector<EFFECT_V2_GROUP> m_GroupLibrary;", header)
+        for token in (
+            'SeparatorText("Valtan Effect Resources")',
+            "for (const EFFECT_V2_GROUP& Group : m_GroupLibrary)",
+            "for (const EFFECT_V2_GROUP_CHILD& Child : Group.Children)",
+            "Load_Group(Group.strGroupId)",
+            "Load_Document(Child.strEffectId)",
+        ):
+            self.assertIn(token, panel)
+        self.assertIn("std::vector<EFFECT_V2_GROUP> StagedGroups;", scan)
+        self.assertIn("Load_GroupFile(strGroupId, Group, strError)", scan)
+        self.assertLess(scan.index("StagedGroups"), scan.index("m_GroupLibrary ="))
 
-        def collect(value: object) -> None:
-            if isinstance(value, dict):
-                clip = value.get("clip")
-                if isinstance(clip, str) and clip:
-                    canonical_clips.add(clip)
-                for child in value.values():
-                    collect(child)
-            elif isinstance(value, list):
-                for child in value:
-                    collect(child)
-
-        collect(presentation)
-        bindings = json.loads(BOSS_BINDINGS.read_text(encoding="utf-8"))["bindings"]
-        clip_bindings = [binding for binding in bindings if "clip" in binding]
-        self.assertTrue(clip_bindings)
-        for binding in clip_bindings:
-            self.assertIn(binding["clip"], canonical_clips)
-        impact_clips = [
-            binding["clip"]
-            for binding in clip_bindings
-            if binding.get("group") == "boss.valtan.impact"
-        ]
-        self.assertEqual(impact_clips, ["mesh_att_battle_19_01"] * 4)
+    def test_boss_bindings_are_one_canonical_strict_v2_document(self) -> None:
+        document = json.loads(BOSS_BINDINGS.read_text(encoding="utf-8"))
+        self.assertEqual(
+            set(document), {"schema", "formatVersion", "archetypeId", "bindings"}
+        )
+        self.assertEqual(document["schema"], "lostark.effect-v2-bindings")
+        self.assertEqual(document["formatVersion"], 2)
+        self.assertEqual(document["archetypeId"], "BOSS_VALTAN")
+        binding_ids = [binding["bindingId"] for binding in document["bindings"]]
+        self.assertEqual(binding_ids, sorted(binding_ids))
+        self.assertEqual(len(binding_ids), len(set(binding_ids)))
+        self.assertGreater(len(binding_ids), 0)
+        for binding in document["bindings"]:
+            self.assertEqual(
+                set(binding),
+                {"bindingId", "resource", "scope", "clock", "anchor", "stopPolicy"},
+            )
+            self.assertEqual(set(binding["resource"]), {"kind", "id"})
+            self.assertEqual(
+                set(binding["scope"]), {"patternId", "stageId", "actionId"}
+            )
+            self.assertEqual(
+                set(binding["clock"]),
+                {"basis", "clipOccurrenceId", "startMs", "repeatPolicy"},
+            )
+            self.assertEqual(
+                set(binding["anchor"]),
+                {"slotId", "followPolicy", "rotationBasis", "localTransform"},
+            )
 
     def test_catalog_is_registered_as_one_effect_v2_source_pair(self) -> None:
         project = read(PROJECT)
@@ -94,7 +124,7 @@ class EffectV2CatalogContractTests(unittest.TestCase):
         self.assertNotIn("Render", header)
         self.assertNotIn("Tick", header)
 
-    def test_explicit_reload_commits_one_strict_valid_subset(self) -> None:
+    def test_explicit_reload_commits_one_strict_snapshot(self) -> None:
         source = read(SOURCE)
         reload_body = function_tail(
             source,
@@ -155,7 +185,7 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             "!Stage_Groups(",
             "Stage_BossValtanBindings(",
             "Isolate_InvalidCrossReferences(",
-            "strDiskBaseline != strSnapshotBaseline",
+            "const bool_t bBindingBaselineMatches =",
             "CEffectV2Document::Write_AtomicFile(",
             "m_pSnapshot = std::move(pCandidate);",
         )
@@ -171,7 +201,7 @@ class EffectV2CatalogContractTests(unittest.TestCase):
         self.assertIn("Validate_NoLeafGroupClockOverlap(", commit_body)
         self.assertEqual(commit_body.count("m_pSnapshot ="), 1)
 
-    def test_malformed_sources_are_isolated_per_item(self) -> None:
+    def test_binding_owner_is_parsed_whole_and_never_row_isolated(self) -> None:
         source = read(SOURCE)
         documents = function_tail(
             source,
@@ -188,14 +218,21 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             "\tbool_t Cross_Validate(",
         )
         for token in (
-            "CDataJson::Parse(",
-            "for (size_t iRow = 0u; iRow < Rows.size(); ++iRow)",
             "CEffectV2Document::Parse_Bindings(",
-            "Skipped BOSS_VALTAN Effect V2 binding row",
-            "bOutComplete = false;",
-            "continue;",
+            "strText, BOSS_VALTAN_ARCHETYPE_ID, Staged, strOutError",
+            "strict formatVersion 2 binding parse failed before",
+            "OutBindings = std::move(Staged);",
+            "bOutComplete = true;",
+            "return false;",
         ):
             self.assertIn(token, bindings)
+        for forbidden in (
+            "CDataJson::Parse(",
+            "for (size_t iRow",
+            "Skipped BOSS_VALTAN Effect V2 binding row",
+            "formatVersion\":1",
+        ):
+            self.assertNotIn(forbidden, bindings)
 
         isolation = function_tail(
             source,
@@ -205,13 +242,13 @@ class EffectV2CatalogContractTests(unittest.TestCase):
         for token in (
             "ValidGroups",
             "missing authored leaf",
-            "ValidBindings",
-            "unavailable resource",
+            "formatVersion 2 bindings cannot be admitted as a partial document",
             "Validate_NoLeafGroupClockOverlap(",
             "Groups = std::move(ValidGroups);",
-            "Bindings = std::move(ValidBindings);",
         ):
             self.assertIn(token, isolation)
+        self.assertNotIn("ValidBindings", isolation)
+        self.assertNotIn("Bindings = std::move(ValidBindings);", isolation)
 
     def test_valtan_runtime_uses_catalog_revision_and_valid_subset(self) -> None:
         runtime = read(ROOT / "Client/Private/EffectV2_Runtime.cpp")
@@ -233,23 +270,19 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             ensure.index("Catalog.Reload_BossValtan("),
         )
 
-    def test_stage_binding_mutations_use_one_typed_exact_key(self) -> None:
+    def test_stage_binding_mutations_use_binding_id_identity_and_typed_append(self) -> None:
         header = read(HEADER)
         source = read(SOURCE)
         for token in (
             "struct EFFECT_V2_STAGE_BINDING_KEY final",
             "From_StageBinding(",
+            "std::string strBindingId;",
             "std::string strResourceId;",
             "bool_t bGroup = false;",
-            "std::string strStageActionId;",
-            "std::string strClipName;",
+            "std::string strPatternId;",
+            "std::string strStageId;",
+            "std::string strActionId;",
             "uint32_t iStartMs = 0u;",
-            "std::string strBone;",
-            "bool_t bFollowBone = false;",
-            "CEffectV2Object::PIVOT_ROTATION eRotation =",
-            "bool_t bStopWithClip = false;",
-            "float3_t vOffset = { 0.f, 0.f, 0.f };",
-            "f32_t fYawDegrees = 0.f;",
             "Remove_BossValtanStageBinding(",
             "Duplicate_BossValtanStageBinding(",
             "Update_BossValtanStageBindingStart(",
@@ -266,6 +299,7 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             "CandidateBindings.erase(",
             "EFFECT_V2_BINDING Duplicate =",
             "Duplicate.iStartMs = iTargetStartMs;",
+            "Duplicate.strBindingId = Generate_StableBindingId(",
             "CandidateBindings[iSourceIndex].iStartMs = iTargetStartMs;",
             "Commit_BossValtanBindingsLocked(",
         ):
@@ -276,19 +310,9 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             "\tbool_t Matches_StageBindingKey(",
             "\tbool_t Resolve_UniqueStageBindingIndex(",
         )
-        for field in (
-			"Binding.strStage == Key.strStageActionId",
-			"Binding.strClip == Key.strClipName",
-            "Binding.strBone == Key.strBone",
-            "Binding.bFollowBone == Key.bFollowBone",
-            "Binding.eRotation == Key.eRotation",
-            "Binding.bStopWithClip == Key.bStopWithClip",
-            "Binding.vOffset.x == Key.vOffset.x",
-            "Binding.vOffset.y == Key.vOffset.y",
-            "Binding.vOffset.z == Key.vOffset.z",
-            "Binding.fYawDegrees == Key.fYawDegrees",
-        ):
-            self.assertIn(field, match_body)
+        self.assertIn("Binding.strBindingId == Key.strBindingId", match_body)
+        for forbidden in ("Binding.strStage", "Binding.strClip", "Binding.strBone"):
+            self.assertNotIn(forbidden, match_body)
 
         key_factory = function_tail(
             source,
@@ -296,17 +320,13 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             "Client::CEffectV2Catalog& Client::CEffectV2Catalog::Get()",
         )
         for field in (
-            "Binding.strGroupId",
-            "Binding.strEffectId",
-            "Binding.strStage",
-            "Binding.strClip",
+            "Binding.strBindingId",
+            "Binding.eResourceKind",
+            "Binding.strResourceId",
+            "Binding.strPatternId",
+            "Binding.strStageId",
+            "Binding.strActionId",
             "Binding.iStartMs",
-            "Binding.strBone",
-            "Binding.bFollowBone",
-            "Binding.eRotation",
-            "Binding.bStopWithClip",
-            "Binding.vOffset",
-            "Binding.fYawDegrees",
         ):
             self.assertIn(field, key_factory)
 
@@ -341,11 +361,20 @@ class EffectV2CatalogContractTests(unittest.TestCase):
                 "EFFECT_V2_STAGE_BINDING_KEY Key{};",
                 "Key.strResourceId = strResourceId;",
                 "Key.bGroup = bGroup;",
-                "Key.strStageActionId = strStageActionId;",
+                "Key.strPatternId = strPatternId;",
+                "Key.strStageId = strStageId;",
+                "Key.strActionId = strActionId;",
                 "Key.iStartMs = iStartMs;",
             ):
                 self.assertIn(token, append_body)
-            self.assertNotIn("Key.strClipName =", append_body)
+
+        for signature in (
+            "Append_BossValtanStageBinding(",
+            "Stage_AppendBossValtanStageBinding(",
+        ):
+            declaration = header[header.index(signature) : header.index(");", header.index(signature))]
+            for parameter in ("strPatternId", "strStageId", "strActionId"):
+                self.assertIn(parameter, declaration)
 
     def test_new_boss_mutations_reject_foreign_subjects_and_overlaps(self) -> None:
         source = read(SOURCE)
@@ -365,9 +394,11 @@ class EffectV2CatalogContractTests(unittest.TestCase):
         for token in (
             "GroupBinding.iStartMs",
             "Child.iStartMs",
-            "Child.strEffectId == LeafBinding.strEffectId",
+            "Child.strResourceId == LeafBinding.strResourceId",
             "iEffectiveStartMs == LeafBinding.iStartMs",
             "leaf overlaps the same leaf inside group",
+            "LeafBinding.strPatternId != GroupBinding.strPatternId",
+            "LeafBinding.eClockBasis != GroupBinding.eClockBasis",
         ):
             self.assertIn(token, overlap)
 
@@ -377,7 +408,7 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             "bool_t Client::CEffectV2Catalog::Append_BossValtanStageBinding(",
         )
         self.assertIn(
-            "BOSS_VALTAN_BINDING_MUTATION::REMOVE_BINDING != eMutation &&",
+            "BOSS_VALTAN_BINDING_MUTATION::APPEND_BINDING == eMutation",
             mutation_body,
         )
         self.assertIn("Validate_BossValtanMutationSubject(", mutation_body)
@@ -394,11 +425,14 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             "DocumentsById.emplace",
             "groupId collides with an authored effect",
             "Group.Children",
+            "Nested Effect V2 groups are not supported",
             "group child has no authored leaf document",
-            "Binding.strEffectId",
-            "Binding.strEffectId.empty() == Binding.strGroupId.empty()",
-            "Binding.strClip.empty() == Binding.strStage.empty()",
-            "GroupsById.contains(Binding.strGroupId)",
+            "Binding.strBindingId",
+            "Binding.eResourceKind",
+            "Binding.strPatternId",
+            "Binding.strStageId",
+            "Binding.strActionId",
+            "GroupsById.contains(Binding.strResourceId)",
         ):
             self.assertIn(token, validation)
 
@@ -412,16 +446,18 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             groups[value["groupId"]] = value
             self.assertNotIn(value["groupId"], documents)
             for child in value["children"]:
-                self.assertIn(child["effectId"], documents)
+                self.assertEqual(child["resource"]["kind"], "LEAF")
+                self.assertIn(child["resource"]["id"], documents)
 
         bindings = json.loads(BOSS_BINDINGS.read_text(encoding="utf-8"))
         self.assertEqual(bindings["archetypeId"], "BOSS_VALTAN")
         self.assertGreater(len(bindings["bindings"]), 0)
         for binding in bindings["bindings"]:
-            if "effectId" in binding:
-                self.assertIn(binding["effectId"], documents)
+            resource = binding["resource"]
+            if resource["kind"] == "LEAF":
+                self.assertIn(resource["id"], documents)
             else:
-                self.assertIn(binding["group"], groups)
+                self.assertIn(resource["id"], groups)
 
 
 if __name__ == "__main__":

@@ -743,10 +743,12 @@ namespace
 	bool_t Read_StageGameplayExtensions(
 		const DATA_JSON_VALUE& Stage,
 		std::string& strOutPartDamagePolicy,
-		std::optional<Client::VALTAN_COUNTER_PROXY_VIEW>& OutCounterProxy)
+		std::optional<Client::VALTAN_COUNTER_PROXY_VIEW>& OutCounterProxy,
+		std::optional<Client::VALTAN_BOSS_RESPONSE_VIEW>& OutBossResponse)
 	{
 		strOutPartDamagePolicy = "NORMAL";
 		OutCounterProxy.reset();
+		OutBossResponse.reset();
 
 		const DATA_JSON_VALUE* pPartDamagePolicy =
 			Stage.Find("partDamagePolicy");
@@ -763,29 +765,77 @@ namespace
 		}
 
 		const DATA_JSON_VALUE* pCounterProxy = Stage.Find("counterProxy");
-		if (nullptr == pCounterProxy)
-			return true;
-
-		Client::VALTAN_COUNTER_PROXY_VIEW CounterProxy;
-		if (!Has_ExactProperties(*pCounterProxy,
-				{ "space", "forwardOffsetM", "rightOffsetM", "radiusM" }) ||
-			"BOSS_LOCAL" != Read_String(*pCounterProxy, "space") ||
-			!Read_RequiredFiniteFloat(*pCounterProxy, "forwardOffsetM",
-				CounterProxy.fForwardOffsetM) ||
-			!Read_RequiredFiniteFloat(*pCounterProxy, "rightOffsetM",
-				CounterProxy.fRightOffsetM) ||
-			!Read_RequiredFiniteFloat(*pCounterProxy, "radiusM",
-				CounterProxy.fRadiusM) ||
-			CounterProxy.fForwardOffsetM < -20.f ||
-			CounterProxy.fForwardOffsetM > 20.f ||
-			CounterProxy.fRightOffsetM < -20.f ||
-			CounterProxy.fRightOffsetM > 20.f ||
-			CounterProxy.fRadiusM < 0.1f || CounterProxy.fRadiusM > 20.f)
+		if (nullptr != pCounterProxy)
 		{
-			return false;
+			Client::VALTAN_COUNTER_PROXY_VIEW CounterProxy;
+			const bool_t bLegacyCircle = Has_ExactProperties(*pCounterProxy,
+				{ "space", "forwardOffsetM", "rightOffsetM", "radiusM" });
+			const bool_t bTypedShape = Has_ExactProperties(*pCounterProxy,
+				{ "kind", "forwardOffsetM", "rightOffsetM", "radiusM",
+				  "arcDegrees" });
+			if (bLegacyCircle)
+			{
+				CounterProxy.strKind = "BOSS_LOCAL_CIRCLE";
+				CounterProxy.strSpace = Read_String(*pCounterProxy, "space");
+			}
+			else if (bTypedShape)
+			{
+				CounterProxy.strKind = Read_String(*pCounterProxy, "kind");
+				CounterProxy.strSpace = "BOSS_LOCAL";
+			}
+			else
+			{
+				return false;
+			}
+			if (!Read_RequiredFiniteFloat(*pCounterProxy, "forwardOffsetM",
+					CounterProxy.fForwardOffsetM) ||
+				!Read_RequiredFiniteFloat(*pCounterProxy, "rightOffsetM",
+					CounterProxy.fRightOffsetM) ||
+				!Read_RequiredFiniteFloat(*pCounterProxy, "radiusM",
+					CounterProxy.fRadiusM) ||
+				(bTypedShape && !Read_RequiredFiniteFloat(
+					*pCounterProxy, "arcDegrees", CounterProxy.fArcDegrees)) ||
+				CounterProxy.fForwardOffsetM < -20.f ||
+				CounterProxy.fForwardOffsetM > 20.f ||
+				CounterProxy.fRightOffsetM < -20.f ||
+				CounterProxy.fRightOffsetM > 20.f)
+			{
+				return false;
+			}
+			const bool_t bValidCircle =
+				"BOSS_LOCAL_CIRCLE" == CounterProxy.strKind &&
+				"BOSS_LOCAL" == CounterProxy.strSpace &&
+				CounterProxy.fRadiusM >= 0.1f &&
+				CounterProxy.fRadiusM <= 20.f &&
+				0.f == CounterProxy.fArcDegrees;
+			const bool_t bValidForwardArc =
+				"BOSS_FORWARD_ARC" == CounterProxy.strKind &&
+				0.f == CounterProxy.fForwardOffsetM &&
+				0.f == CounterProxy.fRightOffsetM &&
+				0.f == CounterProxy.fRadiusM &&
+				180.f == CounterProxy.fArcDegrees;
+			if (!bValidCircle && !bValidForwardArc)
+				return false;
+			OutCounterProxy = std::move(CounterProxy);
 		}
-		CounterProxy.strSpace = "BOSS_LOCAL";
-		OutCounterProxy = std::move(CounterProxy);
+
+		const DATA_JSON_VALUE* pBossResponse = Stage.Find("bossResponse");
+		if (nullptr != pBossResponse)
+		{
+			Client::VALTAN_BOSS_RESPONSE_VIEW BossResponse;
+			if (!Has_ExactProperties(
+					*pBossResponse, { "kind", "threshold" }) ||
+				"ACCUMULATED_HEALTH_DAMAGE" !=
+					Read_String(*pBossResponse, "kind") ||
+				!Read_RequiredUInt32(*pBossResponse, "threshold",
+					BossResponse.iThreshold) ||
+				0u == BossResponse.iThreshold)
+			{
+				return false;
+			}
+			BossResponse.strKind = "ACCUMULATED_HEALTH_DAMAGE";
+			OutBossResponse = std::move(BossResponse);
+		}
 		return true;
 	}
 
@@ -873,8 +923,9 @@ namespace
 
 		std::string strPartDamagePolicy;
 		std::optional<Client::VALTAN_COUNTER_PROXY_VIEW> CounterProxy;
+		std::optional<Client::VALTAN_BOSS_RESPONSE_VIEW> BossResponse;
 		if (!Read_StageGameplayExtensions(
-				Stage, strPartDamagePolicy, CounterProxy))
+				Stage, strPartDamagePolicy, CounterProxy, BossResponse))
 		{
 			strOutError = "split gameplay stage extension values are invalid: " +
 				std::string(strPatternId) + "/" + std::string(strStageId);
@@ -897,10 +948,31 @@ namespace
 				std::string(strPatternId) + "/" + std::string(strStageId);
 			return false;
 		}
+		const std::string strStageKind = Read_String(Stage, "stageKind");
 		if (CounterProxy.has_value() &&
-			"WINDUP" != Read_String(Stage, "stageKind"))
+			(("BOSS_FORWARD_ARC" == CounterProxy->strKind &&
+			  "WINDUP" != strStageKind && "ACTIVE" != strStageKind) ||
+			 ("BOSS_LOCAL_CIRCLE" == CounterProxy->strKind &&
+			  "WINDUP" != strStageKind)))
 		{
-			strOutError = "split gameplay counterProxy preset requires WINDUP: " +
+			strOutError = "split gameplay counterProxy preset/stage kind is invalid: " +
+				std::string(strPatternId) + "/" + std::string(strStageId);
+			return false;
+		}
+		const std::size_t iHealthThresholdCount =
+			static_cast<std::size_t>(std::count_if(
+				Branches.begin(), Branches.end(),
+				[](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
+				{
+					return "HEALTH_DAMAGE_THRESHOLD_REACHED" ==
+						Branch.strOutcome;
+				}));
+		if ((BossResponse.has_value() &&
+			 ("ACTIVE" != strStageKind || 1u != iHealthThresholdCount)) ||
+			(!BossResponse.has_value() && 0u != iHealthThresholdCount))
+		{
+			strOutError =
+				"split gameplay accumulated health-damage response is incoherent: " +
 				std::string(strPatternId) + "/" + std::string(strStageId);
 			return false;
 		}
@@ -909,6 +981,7 @@ namespace
 
 	bool_t Validate_SplitCounterBranchContract(
 		const DATA_JSON_VALUE& GameplayPattern,
+		const DATA_JSON_VALUE::ARRAY& GameplayPatterns,
 		const std::string_view strPatternId,
 		std::string& strOutError)
 	{
@@ -951,6 +1024,36 @@ namespace
 		};
 
 		const auto& Stages = pStages->Get_Array();
+		const auto ResolvePatternEntry = [&GameplayPatterns](
+			const std::string_view strTargetPatternId)
+			-> const DATA_JSON_VALUE*
+		{
+			const auto Pattern = std::find_if(
+				GameplayPatterns.begin(), GameplayPatterns.end(),
+				[strTargetPatternId](const DATA_JSON_VALUE& Candidate)
+				{
+					return strTargetPatternId ==
+						Read_String(Candidate, "patternId");
+				});
+			if (Pattern == GameplayPatterns.end())
+				return nullptr;
+			const std::string strEntryActionId =
+				Read_String(*Pattern, "entryActionId");
+			const DATA_JSON_VALUE* pTargetStages = Required(
+				*Pattern, "stages", DATA_JSON_TYPE::ARRAY);
+			if (!Is_StableToken(strEntryActionId) || nullptr == pTargetStages)
+				return nullptr;
+			const auto Entry = std::find_if(
+				pTargetStages->Get_Array().begin(),
+				pTargetStages->Get_Array().end(),
+				[&strEntryActionId](const DATA_JSON_VALUE& Candidate)
+				{
+					return strEntryActionId ==
+						Read_String(Candidate, "actionId");
+				});
+			return Entry == pTargetStages->Get_Array().end() ?
+				nullptr : &*Entry;
+		};
 		for (std::size_t iStageIndex = 0u;
 			iStageIndex < Stages.size(); ++iStageIndex)
 		{
@@ -978,6 +1081,14 @@ namespace
 				[](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
 				{ return "TIMEOUT" == Branch.strOutcome; });
 			const int iCounterState = FlagState(Stage, "boss.flag.counterable");
+			std::string strPartDamagePolicy;
+			std::optional<Client::VALTAN_COUNTER_PROXY_VIEW> CounterProxy;
+			std::optional<Client::VALTAN_BOSS_RESPONSE_VIEW> BossResponse;
+			if (!Read_StageGameplayExtensions(Stage, strPartDamagePolicy,
+					CounterProxy, BossResponse))
+			{
+				return false;
+			}
 			if (0u == iCounterCount)
 			{
 				if (0 != iCounterState)
@@ -986,13 +1097,48 @@ namespace
 						std::string(strPatternId) + "/" + strStageId;
 					return false;
 				}
+				if (CounterProxy.has_value())
+				{
+					const DATA_JSON_VALUE* pTimeoutTarget = nullptr;
+					std::size_t iTimeoutTargetIndex = Stages.size();
+					if (1u == iTimeoutCount && Timeout != Branches.end() &&
+						Timeout->strNextActionId.has_value() &&
+						!Timeout->strNextPatternId.has_value())
+					{
+						for (std::size_t iCandidate = 0u;
+							iCandidate < Stages.size(); ++iCandidate)
+						{
+							if (*Timeout->strNextActionId == Read_String(
+									Stages[iCandidate], "actionId"))
+							{
+								pTimeoutTarget = &Stages[iCandidate];
+								iTimeoutTargetIndex = iCandidate;
+							}
+						}
+					}
+					if (nullptr == pTimeoutTarget ||
+						iTimeoutTargetIndex <= iStageIndex)
+					{
+						strOutError =
+							"split dormant counter proxy requires one forward same-pattern TIMEOUT: " +
+							std::string(strPatternId) + "/" + strStageId;
+						return false;
+					}
+				}
 			}
 			else
 			{
+				const bool_t bCounterUsesLocalSuccess =
+					Counter != Branches.end() &&
+					Counter->strNextActionId.has_value();
+				const bool_t bCounterUsesPatternSuccess =
+					Counter != Branches.end() &&
+					Counter->strNextPatternId.has_value();
 				if (1u != iCounterCount || 1u != iTimeoutCount ||
 					Branches.end() == Counter || Branches.end() == Timeout ||
-					!Counter->strNextActionId.has_value() ||
-					!Timeout->strNextActionId.has_value())
+					bCounterUsesLocalSuccess == bCounterUsesPatternSuccess ||
+					!Timeout->strNextActionId.has_value() ||
+					Timeout->strNextPatternId.has_value())
 				{
 					strOutError =
 						"split Counter source requires exactly one COUNTER_HIT and TIMEOUT edge: " +
@@ -1009,7 +1155,8 @@ namespace
 					const DATA_JSON_VALUE& Candidate = Stages[iCandidate];
 					const std::string strActionId =
 						Read_String(Candidate, "actionId");
-					if (*Counter->strNextActionId == strActionId)
+					if (bCounterUsesLocalSuccess &&
+						*Counter->strNextActionId == strActionId)
 					{
 						pTarget = &Candidate;
 						iTargetIndex = iCandidate;
@@ -1020,22 +1167,33 @@ namespace
 						iTimeoutTargetIndex = iCandidate;
 					}
 				}
+				if (bCounterUsesPatternSuccess &&
+					*Counter->strNextPatternId != strPatternId)
+				{
+					pTarget = ResolvePatternEntry(
+						*Counter->strNextPatternId);
+				}
 				const std::string strTargetKind = nullptr == pTarget ?
 					std::string{} : Read_String(*pTarget, "stageKind");
 				const bool bTypedSuccessTarget = "WINDUP" == strTargetKind ||
 					"GROGGY" == strTargetKind || "RECOVERY" == strTargetKind;
 				const int iTargetGroggyState = nullptr == pTarget ? -1 :
 					FlagState(*pTarget, "boss.flag.groggy");
-				if ("WINDUP" != Read_String(Stage, "stageKind") ||
+				const std::string strSourceKind =
+					Read_String(Stage, "stageKind");
+				const bool_t bValidSourceKind = "WINDUP" == strSourceKind ||
+					("ACTIVE" == strSourceKind && CounterProxy.has_value() &&
+					 "BOSS_FORWARD_ARC" == CounterProxy->strKind);
+				if (!bValidSourceKind ||
 					1 != iCounterState || nullptr == pTarget ||
 					nullptr == pTimeoutTarget || !bTypedSuccessTarget ||
-					iTargetIndex <= iStageIndex ||
+					(bCounterUsesLocalSuccess && iTargetIndex <= iStageIndex) ||
 					iTimeoutTargetIndex <= iStageIndex ||
 					("GROGGY" == strTargetKind && 1 != iTargetGroggyState) ||
 					("GROGGY" != strTargetKind && 0 != iTargetGroggyState))
 				{
 					strOutError =
-						"split Counter branch requires a closed WINDUP window plus forward typed success/TIMEOUT targets: " +
+						"split Counter branch requires a closed typed window plus forward local/cross-pattern success and same-pattern TIMEOUT targets: " +
 						std::string(strPatternId) + "/" + strStageId;
 					return false;
 				}
@@ -1247,6 +1405,7 @@ namespace
 		std::string strAttachmentSlot = "NONE";
 		std::string strPartDamagePolicy = "NORMAL";
 		std::optional<Client::VALTAN_COUNTER_PROXY_VIEW> CounterProxy;
+		std::optional<Client::VALTAN_BOSS_RESPONSE_VIEW> BossResponse;
 		f32_t fPushRangeM = 0.f;
 		uint32_t iPushMs = 0u;
 		bool_t bKnockdown = false;
@@ -1305,6 +1464,7 @@ namespace
 		uint32_t iMaximumConsecutiveUses = 0u;
 		f32_t fMinimumRange = 0.f;
 		f32_t fMaximumRange = 0.f;
+		f32_t fVerticalOffsetM = 0.f;
 		std::optional<Client::VALTAN_PATTERN_SERVER_MOTION_VIEW> ServerMotion;
 		std::optional<Client::VALTAN_PATTERN_FINALE_VIEW> Finale;
 		uint32_t iSourceSequenceIndex = 0u;
@@ -1647,7 +1807,7 @@ namespace
 				  "serverDamageProfileId", "pushRangeM", "pushMs", "knockdown",
 				  "downMs", "motion", "actions", "branches", "animation",
 				  "effectRefs", "cameraInvocations" },
-				{ "partDamagePolicy", "counterProxy", "hitAnchor",
+				{ "partDamagePolicy", "counterProxy", "bossResponse", "hitAnchor",
 				  "hitActivation" });
 		const bool_t bCaptureShape = Has_ExactPropertiesWithOptional(Value,
 				{ "stageId", "sequenceRole", "actionId", "stageKind",
@@ -1658,7 +1818,7 @@ namespace
 				  "pushRangeM", "pushMs", "knockdown", "downMs", "motion",
 				  "actions", "branches", "animation", "effectRefs",
 				  "cameraInvocations" },
-				{ "partDamagePolicy", "counterProxy", "hitAnchor",
+				{ "partDamagePolicy", "counterProxy", "bossResponse", "hitAnchor",
 				  "hitActivation" });
 		if (!bBaseShape && !bCaptureShape)
 		{
@@ -1780,7 +1940,7 @@ namespace
 			!Read_StageBranches(pBranches, Out.Branches) ||
 			!Has_ValidNavigationBlockedCapture(Out.Branches, Out.strPlayerResponse) ||
 			!Read_StageGameplayExtensions(Value, Out.strPartDamagePolicy,
-				Out.CounterProxy) ||
+				Out.CounterProxy, Out.BossResponse) ||
 			!Read_StageHitAuthority(
 				Value, Out.iDurationMs, Out.bHasHitAnchor,
 				Out.strHitAnchorKind, Out.fHitAnchorForwardOffsetM,
@@ -1792,6 +1952,27 @@ namespace
 				Out.CameraInvocations))
 		{
 			strOutError = "master stage gameplay values are invalid";
+			return false;
+		}
+		const std::size_t iHealthThresholdCount =
+			static_cast<std::size_t>(std::count_if(
+				Out.Branches.begin(), Out.Branches.end(),
+				[](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
+				{
+					return "HEALTH_DAMAGE_THRESHOLD_REACHED" ==
+						Branch.strOutcome;
+				}));
+		if ((Out.BossResponse.has_value() &&
+			 ("ACTIVE" != Out.strStageKind || 1u != iHealthThresholdCount)) ||
+			(!Out.BossResponse.has_value() && 0u != iHealthThresholdCount) ||
+			(Out.CounterProxy.has_value() &&
+			 (("BOSS_FORWARD_ARC" == Out.CounterProxy->strKind &&
+			   "WINDUP" != Out.strStageKind &&
+			   "ACTIVE" != Out.strStageKind) ||
+			  ("BOSS_LOCAL_CIRCLE" == Out.CounterProxy->strKind &&
+			   "WINDUP" != Out.strStageKind))))
+		{
+			strOutError = "master stage response/proxy contract is invalid";
 			return false;
 		}
 		const bool_t bHasExplicitOffsets = !Out.HitOffsetsMs.empty();
@@ -2008,7 +2189,8 @@ namespace
 				  "invulnerableWhileRunning", "selectionWeight",
 				  "maximumConsecutiveUses", "minimumRange", "maximumRange",
 				  "serverMotion", "reactions", "cameraCueIds",
-				  "worldEventTriggerRefs", "stages" }, { "finale" }))
+				  "worldEventTriggerRefs", "stages" },
+				{ "finale", "verticalOffsetM" }))
 		{
 			strOutError = "master pattern has unexpected properties";
 			return false;
@@ -2058,8 +2240,13 @@ namespace
 				return false;
 			}
 		}
+		const DATA_JSON_VALUE* pVerticalOffset = Value.Find("verticalOffsetM");
 		if (!Is_FiniteNumber(Value.Find("minimumRange")) ||
 			!Is_FiniteNumber(Value.Find("maximumRange")) ||
+			(nullptr != pVerticalOffset &&
+			 (!Is_FiniteNumber(pVerticalOffset) ||
+			  0.0 == pVerticalOffset->Get_Number() ||
+			  std::fabs(pVerticalOffset->Get_Number()) > 100.0)) ||
 			nullptr == Required(
 				Value, "invulnerableWhileRunning", DATA_JSON_TYPE::BOOLEAN) ||
 			!Validate_MasterServerMotion(Value, strOutError))
@@ -2238,6 +2425,8 @@ namespace
 			Value.Find("minimumRange")->Get_Number());
 		Out.fMaximumRange = static_cast<f32_t>(
 			Value.Find("maximumRange")->Get_Number());
+		Out.fVerticalOffsetM = nullptr == pVerticalOffset ? 0.f :
+			static_cast<f32_t>(pVerticalOffset->Get_Number());
 		if (!Read_PatternServerMotion(Value.Find("serverMotion"), Out.ServerMotion) ||
 			!Read_PatternFinale(Value.Find("finale"), Out.Finale) ||
 			(Out.Finale.has_value() && Out.bInvulnerableWhileRunning))
@@ -2271,6 +2460,19 @@ namespace
 				return false;
 			}
 			Out.Stages.push_back(std::move(Stage));
+		}
+		const std::size_t iBossResponseCount =
+			static_cast<std::size_t>(std::count_if(
+				Out.Stages.begin(), Out.Stages.end(),
+				[](const MASTER_STAGE& Stage)
+				{ return Stage.BossResponse.has_value(); }));
+		if (1u < iBossResponseCount ||
+			(0.f != Out.fVerticalOffsetM && 0u == iBossResponseCount))
+		{
+			strOutError =
+				"master verticalOffsetM requires an active boss-response pattern: " +
+				Out.strPatternId;
+			return false;
 		}
 		for (const Client::VALTAN_PATTERN_REACTION_VIEW& Reaction :
 			Out.Reactions)
@@ -2719,10 +2921,118 @@ namespace
 			FollowupSuccessors.emplace(
 				Pattern.strPatternId, std::set<std::string, std::less<>>{});
 		}
+		const auto MasterFlagState = [](const MASTER_STAGE& Stage,
+			const std::string_view strFlagId)
+		{
+			uint32_t iTotal = 0u;
+			uint32_t iEnter = 0u;
+			uint32_t iExit = 0u;
+			for (const Client::VALTAN_STAGE_ACTION_VIEW& Action : Stage.Actions)
+			{
+				if ("SET_BOSS_FLAG" != Action.strKind ||
+					strFlagId != Action.strTargetId)
+				{
+					continue;
+				}
+				++iTotal;
+				iEnter += "ENTER" == Action.strTrigger && 1.f == Action.fValue ?
+					1u : 0u;
+				iExit += "EXIT" == Action.strTrigger && 0.f == Action.fValue ?
+					1u : 0u;
+			}
+			if (0u == iTotal)
+				return 0;
+			return 2u == iTotal && 1u == iEnter && 1u == iExit ? 1 : -1;
+		};
 		for (const MASTER_PATTERN& Pattern : Out.Patterns)
 		{
-			for (const MASTER_STAGE& Stage : Pattern.Stages)
+			std::map<std::string, size_t, std::less<>> StageByAction;
+			for (size_t iStage = 0u; iStage < Pattern.Stages.size(); ++iStage)
+				StageByAction.emplace(
+					Pattern.Stages[iStage].strActionId, iStage);
+			for (size_t iStage = 0u; iStage < Pattern.Stages.size(); ++iStage)
 			{
+				const MASTER_STAGE& Stage = Pattern.Stages[iStage];
+				const auto Counter = std::find_if(
+					Stage.Branches.begin(), Stage.Branches.end(),
+					[](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
+					{ return "COUNTER_HIT" == Branch.strOutcome; });
+				if (Counter != Stage.Branches.end())
+				{
+					const std::size_t iCounterCount =
+						static_cast<std::size_t>(std::count_if(
+							Stage.Branches.begin(), Stage.Branches.end(),
+							[](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
+							{ return "COUNTER_HIT" == Branch.strOutcome; }));
+					const auto Timeout = std::find_if(
+						Stage.Branches.begin(), Stage.Branches.end(),
+						[](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
+						{ return "TIMEOUT" == Branch.strOutcome; });
+					const std::size_t iTimeoutCount =
+						static_cast<std::size_t>(std::count_if(
+							Stage.Branches.begin(), Stage.Branches.end(),
+							[](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
+							{ return "TIMEOUT" == Branch.strOutcome; }));
+					const bool_t bLocalSuccess =
+						Counter->strNextActionId.has_value();
+					const bool_t bPatternSuccess =
+						Counter->strNextPatternId.has_value();
+					const MASTER_STAGE* pSuccess = nullptr;
+					size_t iSuccessIndex = Pattern.Stages.size();
+					if (bLocalSuccess)
+					{
+						const auto Target = StageByAction.find(
+							*Counter->strNextActionId);
+						if (Target != StageByAction.end())
+						{
+							iSuccessIndex = Target->second;
+							pSuccess = &Pattern.Stages[iSuccessIndex];
+						}
+					}
+					else if (bPatternSuccess)
+					{
+						const auto Target = PatternById.find(
+							*Counter->strNextPatternId);
+						if (Target != PatternById.end() &&
+							!Target->second->Stages.empty())
+						{
+							pSuccess = &Target->second->Stages.front();
+						}
+					}
+					const auto TimeoutTarget = Timeout == Stage.Branches.end() ||
+						!Timeout->strNextActionId.has_value() ||
+						Timeout->strNextPatternId.has_value() ?
+						StageByAction.end() : StageByAction.find(
+							*Timeout->strNextActionId);
+					const bool_t bValidSourceKind =
+						"WINDUP" == Stage.strStageKind ||
+						("ACTIVE" == Stage.strStageKind &&
+						 Stage.CounterProxy.has_value() &&
+						 "BOSS_FORWARD_ARC" == Stage.CounterProxy->strKind);
+					const bool_t bTypedSuccess = nullptr != pSuccess &&
+						("WINDUP" == pSuccess->strStageKind ||
+						 "GROGGY" == pSuccess->strStageKind ||
+						 "RECOVERY" == pSuccess->strStageKind);
+					const int iSuccessGroggyState = nullptr == pSuccess ? -1 :
+						MasterFlagState(*pSuccess, "boss.flag.groggy");
+					if (1u != iCounterCount || 1u != iTimeoutCount ||
+						bLocalSuccess == bPatternSuccess || !bValidSourceKind ||
+						1 != MasterFlagState(Stage, "boss.flag.counterable") ||
+						!bTypedSuccess ||
+						(bLocalSuccess && iSuccessIndex <= iStage) ||
+						TimeoutTarget == StageByAction.end() ||
+						TimeoutTarget->second <= iStage ||
+						("GROGGY" == pSuccess->strStageKind &&
+						 1 != iSuccessGroggyState) ||
+						("GROGGY" != pSuccess->strStageKind &&
+						 0 != iSuccessGroggyState))
+					{
+						strOutError =
+							"master COUNTER_HIT requires a typed Pattern entry success and forward same-pattern TIMEOUT: " +
+							Pattern.strPatternId + "/" + Stage.strStageId;
+						return false;
+					}
+				}
 				for (const Client::VALTAN_STAGE_BRANCH_VIEW& Branch :
 					Stage.Branches)
 				{
@@ -3108,10 +3418,12 @@ namespace
 		if (Left.has_value() != Right.has_value())
 			return false;
 		return !Left.has_value() ||
-			(Left->strSpace == Right->strSpace &&
+			(Left->strKind == Right->strKind &&
+			 Left->strSpace == Right->strSpace &&
 			 Left->fForwardOffsetM == Right->fForwardOffsetM &&
 			 Left->fRightOffsetM == Right->fRightOffsetM &&
-			 Left->fRadiusM == Right->fRadiusM);
+			 Left->fRadiusM == Right->fRadiusM &&
+			 Left->fArcDegrees == Right->fArcDegrees);
 	}
 
 	bool_t Equal_MasterStageGameplay(
@@ -3155,6 +3467,7 @@ namespace
 			Product.strAttachmentSlot == Master.strAttachmentSlot &&
 			Product.strPartDamagePolicy == Master.strPartDamagePolicy &&
 			Equal_CounterProxy(Product.CounterProxy, ProductCounterProxy) &&
+			Product.BossResponse == Master.BossResponse &&
 			Product.fPushRangeM == Master.fPushRangeM &&
 			Product.iPushMs == Master.iPushMs &&
 			Product.bKnockdown == Master.bKnockdown &&
@@ -3210,6 +3523,7 @@ namespace
 				Master.iMaximumConsecutiveUses &&
 			Product.fMinimumRange == Master.fMinimumRange &&
 			Product.fMaximumRange == Master.fMaximumRange &&
+			Product.fVerticalOffsetM == Master.fVerticalOffsetM &&
 			Equal_PatternServerMotion(Product.ServerMotion, Master.ServerMotion) &&
 			Product.Finale == Master.Finale;
 	}
@@ -4842,7 +5156,8 @@ namespace
 					  "compatibilitySelectionWeight", "actionId",
 					  "entryActionId", "targetPolicy", "aimPolicy", "eligibility",
 					  "invulnerableWhileRunning", "sourceActionIds", "serverMotion",
-					  "reactions", "stages" }, { "finale" }) ||
+					  "reactions", "stages" },
+					{ "finale", "verticalOffsetM" }) ||
 				!Has_ExactProperties(PresentationPattern,
 					{ "patternId", "sourceSequenceIndex", "presentationSources",
 					  "stages" }))
@@ -4913,7 +5228,7 @@ namespace
 						{ "stageId", "actionId", "stageKind", "durationMs",
 						  "defaultNextActionId", "hit", "motion", "events",
 						  "branches" },
-						{ "partDamagePolicy", "counterProxy" }) ||
+						{ "partDamagePolicy", "counterProxy", "bossResponse" }) ||
 					!Has_ExactProperties(PresentationStage,
 						{ "stageId", "actionId", "sequenceRole", "animation",
 						  "effectCues", "cameraInvocations" }))
@@ -5008,6 +5323,11 @@ namespace
 						GameplayStage.Find("counterProxy"))
 				{
 					LegacyStage.emplace("counterProxy", *pCounterProxy);
+				}
+				if (const DATA_JSON_VALUE* pBossResponse =
+						GameplayStage.Find("bossResponse"))
+				{
+					LegacyStage.emplace("bossResponse", *pBossResponse);
 				}
 				const DATA_JSON_VALUE* pHit = Required(
 					GameplayStage, "hit", DATA_JSON_TYPE::OBJECT);
@@ -5232,7 +5552,8 @@ namespace
 					DATA_JSON_VALUE::Object(std::move(LegacyStage)));
 			}
 			if (!Validate_SplitCounterBranchContract(
-					GameplayPattern, strPatternId, strOutError))
+					GameplayPattern, pGameplayPatterns->Get_Array(),
+					strPatternId, strOutError))
 			{
 				return false;
 			}
@@ -5282,6 +5603,24 @@ namespace
 				!Is_FiniteNumber(pEligibility->Find("maximumRangeM")))
 			{
 				strOutError = "split gameplay eligibility range is invalid";
+				return false;
+			}
+			const DATA_JSON_VALUE* pVerticalOffset =
+				GameplayPattern.Find("verticalOffsetM");
+			const bool_t bOwnsBossResponse = std::any_of(
+				pGameplayStages->Get_Array().begin(),
+				pGameplayStages->Get_Array().end(),
+				[](const DATA_JSON_VALUE& Stage)
+				{ return nullptr != Stage.Find("bossResponse"); });
+			if (nullptr != pVerticalOffset &&
+				(!Is_FiniteNumber(pVerticalOffset) ||
+				 0.0 == pVerticalOffset->Get_Number() ||
+				 std::fabs(pVerticalOffset->Get_Number()) > 100.0 ||
+				 !bOwnsBossResponse))
+			{
+				strOutError =
+					"split gameplay verticalOffsetM requires an active boss response: " +
+					strPatternId;
 				return false;
 			}
 
@@ -5341,6 +5680,8 @@ namespace
 			}
 			if (const DATA_JSON_VALUE* pFinale = GameplayPattern.Find("finale"))
 				LegacyPattern.emplace("finale", *pFinale);
+			if (nullptr != pVerticalOffset)
+				LegacyPattern.emplace("verticalOffsetM", *pVerticalOffset);
 			LegacyPattern.emplace("minimumPhase",
 				*pEligibility->Find("minimumGameplayPhase"));
 			LegacyPattern.emplace("maximumPhase",
@@ -5659,6 +6000,7 @@ namespace
 		Out.iMaximumConsecutiveUses = Master.iMaximumConsecutiveUses;
 		Out.fMinimumRange = Master.fMinimumRange;
 		Out.fMaximumRange = Master.fMaximumRange;
+		Out.fVerticalOffsetM = Master.fVerticalOffsetM;
 		Out.ServerMotion = Master.ServerMotion;
 		Out.Finale = Master.Finale;
 		for (size_t iStage = 0u; iStage < Master.Stages.size(); ++iStage)
@@ -5692,6 +6034,7 @@ namespace
 			Stage.strAttachmentSlot = Source.strAttachmentSlot;
 			Stage.strPartDamagePolicy = Source.strPartDamagePolicy;
 			Stage.CounterProxy = Source.CounterProxy;
+			Stage.BossResponse = Source.BossResponse;
 			Stage.fPushRangeM = Source.fPushRangeM;
 			Stage.iPushMs = Source.iPushMs;
 			Stage.bKnockdown = Source.bKnockdown;
@@ -7505,6 +7848,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			PatternValue, "armorRequirement");
 		Pattern.strPhaseRequirement = Read_String(
 			PatternValue, "phaseRequirement");
+		const DATA_JSON_VALUE* pVerticalOffset =
+			PatternValue.Find("verticalOffsetM");
 		uint32_t iMinimumHealthBar = 0u;
 		uint32_t iMaximumHealthBar = 0u;
 		uint32_t iTriggerHealthBar = 0u;
@@ -7539,6 +7884,10 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 				PatternValue, "minimumRange", Pattern.fMinimumRange) ||
 			!Read_RequiredFiniteFloat(
 				PatternValue, "maximumRange", Pattern.fMaximumRange) ||
+			(nullptr != pVerticalOffset &&
+			 (!Is_FiniteNumber(pVerticalOffset) ||
+			  0.0 == pVerticalOffset->Get_Number() ||
+			  std::fabs(pVerticalOffset->Get_Number()) > 100.0)) ||
 			!Read_PatternServerMotion(
 				PatternValue.Find("serverMotion"), Pattern.ServerMotion) ||
 			!Read_PatternFinale(PatternValue.Find("finale"), Pattern.Finale) ||
@@ -7556,6 +7905,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		Pattern.iMaximumHealthBar = static_cast<int32_t>(iMaximumHealthBar);
 		Pattern.iTriggerHealthBar = static_cast<int32_t>(iTriggerHealthBar);
 		Pattern.bInvulnerableWhileRunning = pInvulnerable->Get_Boolean();
+		Pattern.fVerticalOffsetM = nullptr == pVerticalOffset ? 0.f :
+			static_cast<f32_t>(pVerticalOffset->Get_Number());
 		for (const DATA_JSON_VALUE& SourceAction :
 			pSourceActionIds->Get_Array())
 		{
@@ -7674,7 +8025,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					!Read_StageBranches(StageValue.Find("branches"), Stage.Branches) ||
 					!Has_ValidNavigationBlockedCapture(Stage.Branches, Stage.strPlayerResponse) ||
 					!Read_StageGameplayExtensions(StageValue,
-						Stage.strPartDamagePolicy, Stage.CounterProxy) ||
+						Stage.strPartDamagePolicy, Stage.CounterProxy,
+						Stage.BossResponse) ||
 					!Read_StageHitAuthority(
 						StageValue, Stage.iDurationMs, Stage.bHasHitAnchor,
 						Stage.strHitAnchorKind,
@@ -7691,6 +8043,31 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					return false;
 				}
 				Stage.bKnockdown = pKnockdown->Get_Boolean();
+				const std::size_t iHealthThresholdCount =
+					static_cast<std::size_t>(std::count_if(
+						Stage.Branches.begin(), Stage.Branches.end(),
+						[](const VALTAN_STAGE_BRANCH_VIEW& Branch)
+						{
+							return "HEALTH_DAMAGE_THRESHOLD_REACHED" ==
+								Branch.strOutcome;
+						}));
+				if ((Stage.BossResponse.has_value() &&
+					 ("ACTIVE" != Stage.strStageKind ||
+					  1u != iHealthThresholdCount)) ||
+					(!Stage.BossResponse.has_value() &&
+					 0u != iHealthThresholdCount) ||
+					(Stage.CounterProxy.has_value() &&
+					 (("BOSS_FORWARD_ARC" == Stage.CounterProxy->strKind &&
+					   "WINDUP" != Stage.strStageKind &&
+					   "ACTIVE" != Stage.strStageKind) ||
+					  ("BOSS_LOCAL_CIRCLE" == Stage.CounterProxy->strKind &&
+					   "WINDUP" != Stage.strStageKind))))
+				{
+					strOutStatus =
+						"Valtan encounter stage response/proxy contract is invalid: " +
+						Stage.strActionId;
+					return false;
+				}
 				if (("DAMAGE" == Stage.strPlayerResponse &&
 					 "NONE" != Stage.strAttachmentSlot) ||
 					("CAPTURE" == Stage.strPlayerResponse &&
@@ -7963,6 +8340,16 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		{
 			strOutStatus =
 				"Valtan encounter serverMotion window is outside its authored stage: " +
+				Pattern.strPatternId;
+			return false;
+		}
+		if (0.f != Pattern.fVerticalOffsetM &&
+			std::none_of(Pattern.Stages.begin(), Pattern.Stages.end(),
+				[](const VALTAN_STAGE_VIEW& Stage)
+				{ return Stage.BossResponse.has_value(); }))
+		{
+			strOutStatus =
+				"Valtan encounter verticalOffsetM has no active boss response: " +
 				Pattern.strPatternId;
 			return false;
 		}

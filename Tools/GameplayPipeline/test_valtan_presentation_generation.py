@@ -76,23 +76,49 @@ class ValtanPresentationGenerationTests(unittest.TestCase):
 
     def test_boss_valtan_effect_v2_binding_group_leaf_closure_is_exact(self) -> None:
         built = generation.build_presentation_generation(REPOSITORY_ROOT)
-        expected = {
-            generation.EFFECT_V2_BINDINGS_REL,
-            "Data/Effects/V2/Groups/boss.valtan.impact.effectv2group.json",
-            *(
-                f"Data/Effects/V2/Authored/boss.valtan.hand_{index}.effectv2.json"
-                for index in range(1, 7)
-            ),
-            *(
-                f"Data/Effects/V2/Authored/boss.valtan.hit_{index}.effectv2.json"
-                for index in range(1, 4)
-            ),
-            "Data/Effects/V2/Authored/boss.valtan.decal_1.effectv2.json",
-            "Data/Effects/V2/Authored/boss.valtan.decal_2.effectv2.json",
-            "Data/Effects/V2/Authored/boss.valtan.spread_1.effectv2.json",
+        binding = json.loads(
+            (REPOSITORY_ROOT / generation.EFFECT_V2_BINDINGS_REL).read_text(
+                encoding="utf-8"
+            )
+        )
+        expected = {generation.EFFECT_V2_BINDINGS_REL}
+        leaf_ids = {
+            row["resource"]["id"]
+            for row in binding["bindings"]
+            if row["resource"]["kind"] == "LEAF"
         }
+        pending_groups = {
+            row["resource"]["id"]
+            for row in binding["bindings"]
+            if row["resource"]["kind"] == "GROUP"
+        }
+        visited_groups: set[str] = set()
+        while pending_groups:
+            group_id = min(pending_groups)
+            pending_groups.remove(group_id)
+            if group_id in visited_groups:
+                continue
+            visited_groups.add(group_id)
+            relative = (
+                f"{generation.EFFECT_V2_GROUP_ROOT_REL}/{group_id}"
+                f"{generation.EFFECT_V2_GROUP_SUFFIX}"
+            )
+            expected.add(relative)
+            group = json.loads((REPOSITORY_ROOT / relative).read_text(encoding="utf-8"))
+            for child in group["children"]:
+                resource = child["resource"]
+                if resource["kind"] == "LEAF":
+                    leaf_ids.add(resource["id"])
+                else:
+                    pending_groups.add(resource["id"])
+        expected.update(
+            f"{generation.EFFECT_V2_AUTHORED_ROOT_REL}/{effect_id}"
+            f"{generation.EFFECT_V2_DOCUMENT_SUFFIX}"
+            for effect_id in leaf_ids
+        )
 
-        self.assertEqual(14, len(expected))
+        self.assertTrue(visited_groups)
+        self.assertTrue(leaf_ids)
         self.assertEqual(expected, self._valtan_effect_v2_paths(built))
 
     def test_each_referenced_effect_v2_layer_changes_generation(self) -> None:
@@ -156,8 +182,12 @@ class ValtanPresentationGenerationTests(unittest.TestCase):
 
         cases: list[tuple[str, str, dict]] = []
         missing_group = copy.deepcopy(binding_source)
-        group_binding = next(row for row in missing_group["bindings"] if "group" in row)
-        group_binding["group"] = "boss.valtan.missing-group"
+        group_binding = next(
+            row
+            for row in missing_group["bindings"]
+            if row["resource"]["kind"] == "GROUP"
+        )
+        group_binding["resource"]["id"] = "boss.valtan.missing-group"
         cases.append(("missing group", generation.EFFECT_V2_BINDINGS_REL, missing_group))
 
         mismatched_group = copy.deepcopy(group_source)
@@ -165,7 +195,7 @@ class ValtanPresentationGenerationTests(unittest.TestCase):
         cases.append(("mismatched group", group_relative, mismatched_group))
 
         missing_leaf = copy.deepcopy(group_source)
-        missing_leaf["children"][0]["effectId"] = "boss.valtan.missing-leaf"
+        missing_leaf["children"][0]["resource"]["id"] = "boss.valtan.missing-leaf"
         cases.append(("missing leaf", group_relative, missing_leaf))
 
         mismatched_leaf = copy.deepcopy(leaf_source)

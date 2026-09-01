@@ -3,11 +3,13 @@
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
 
-#include <cctype>
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <fstream>
+#include <initializer_list>
 #include <iterator>
+#include <set>
 
 namespace
 {
@@ -22,7 +24,17 @@ namespace
 	const char* ALIGNMENT_KEYS[] = { "Camera", "Velocity", "Horizontal" };
 	const char* TRAIL_EDGE_KEYS[] = { "CenterlineCamera", "CenterlineUp", "LocalOffset" };
 	const char* CHILD_STOP_KEYS[] = { "Kill", "Deactivate" };
+	const char* RESOURCE_KIND_KEYS[] = { "LEAF", "GROUP" };
+	const char* CLOCK_BASIS_KEYS[] = { "STAGE", "CLIP_OCCURRENCE" };
+	const char* REPEAT_POLICY_KEYS[] = { "ONCE", "EACH_LOOP" };
+	const char* FOLLOW_POLICY_KEYS[] = { "FOLLOW_SLOT", "SNAPSHOT_AT_START" };
+	const char* ROTATION_BASIS_KEYS[] = { "SLOT", "TARGET_YAW", "WORLD" };
+	const char* STOP_POLICY_KEYS[] = {
+		"NATURAL", "STAGE_END", "CLIP_OCCURRENCE_END", "EXPLICIT" };
 	constexpr double MAX_BINDING_MS = 600000.0;
+	constexpr size_t MAX_BINDINGS = 4096u;
+	constexpr size_t MAX_GROUP_CHILDREN = 4096u;
+	constexpr size_t MAX_STABLE_ID_LENGTH = 160u;
 
 	std::string Json_String(const std::string& strValue)
 	{
@@ -67,6 +79,68 @@ namespace
 	const char* Json_Bool(const bool_t bValue)
 	{
 		return bValue ? "true" : "false";
+	}
+
+	const char* Enum_Key(const char* const* const pKeys,
+		const size_t iKeyCount, const int32_t iValue, const char* const pFallback)
+	{
+		return iValue >= 0 && static_cast<size_t>(iValue) < iKeyCount ?
+			pKeys[iValue] : pFallback;
+	}
+
+	std::string Json_LocalTransform(
+		const Client::EFFECT_V2_LOCAL_TRANSFORM& Transform)
+	{
+		return "{ \"translation\": " + Json_Float3(Transform.vTranslation) +
+			", \"rotation\": " + Json_Float3(Transform.vRotation) +
+			", \"scale\": " + Json_Float3(Transform.vScale) + " }";
+	}
+
+	bool_t Is_StableAsciiId(const std::string& strValue, const size_t iMaximumLength)
+	{
+		if (strValue.empty() || strValue.size() > iMaximumLength)
+			return false;
+		for (const unsigned char Character : strValue)
+		{
+			const bool_t bAlphaNumeric =
+				(Character >= 'A' && Character <= 'Z') ||
+				(Character >= 'a' && Character <= 'z') ||
+				(Character >= '0' && Character <= '9');
+			if (!bAlphaNumeric && '.' != Character &&
+				'_' != Character && '-' != Character)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool_t Has_ExactFields(const Client::DATA_JSON_VALUE& Object,
+		const std::initializer_list<const char*> Fields)
+	{
+		if (!Object.Is_Object() || Object.Get_Object().size() != Fields.size())
+			return false;
+		for (const char* const pField : Fields)
+		{
+			if (nullptr == Object.Find(pField))
+				return false;
+		}
+		return true;
+	}
+
+	bool_t Read_StableId(const Client::DATA_JSON_VALUE& Object,
+		const char* const pKey, std::string& strOut, std::string& strError,
+		const size_t iMaximumLength = MAX_STABLE_ID_LENGTH)
+	{
+		const Client::DATA_JSON_VALUE* const pValue = Object.Find(pKey);
+		if (nullptr == pValue || !pValue->Is_String() ||
+			!Is_StableAsciiId(pValue->Get_String(), iMaximumLength))
+		{
+			strError = std::string(pKey) + " must be a stable ID.";
+			return false;
+		}
+		strOut = pValue->Get_String();
+		return true;
 	}
 
 	bool_t Read_Number(const Client::DATA_JSON_VALUE& Object,
@@ -199,8 +273,12 @@ namespace
 	{
 		const Client::DATA_JSON_VALUE* pValue = Object.Find(pKey);
 		if (nullptr == pValue)
-			return true;
+		{
+			strError = std::string(pKey) + " is required.";
+			return false;
+		}
 		if (!pValue->Is_Number() || !std::isfinite(pValue->Get_Number()) ||
+			pValue->Was_FloatingPointToken() ||
 			pValue->Get_Number() < 0.0 || pValue->Get_Number() > MAX_BINDING_MS)
 		{
 			strError = std::string(pKey) + " must be an integer in [0, 600000].";
@@ -208,6 +286,145 @@ namespace
 		}
 		iOut = static_cast<uint32_t>(pValue->Get_Number());
 		return true;
+	}
+
+	bool_t Read_RequiredFloat3(const Client::DATA_JSON_VALUE& Object,
+		const char* const pKey, float3_t& vOut, std::string& strError,
+		const bool_t bNonZero)
+	{
+		const Client::DATA_JSON_VALUE* const pValue = Object.Find(pKey);
+		if (nullptr == pValue || !pValue->Is_Array() ||
+			3u != pValue->Get_Array().size())
+		{
+			strError = std::string(pKey) + " must be exactly three finite numbers.";
+			return false;
+		}
+		f32_t* const pComponents = &vOut.x;
+		for (size_t iComponent = 0u; iComponent < 3u; ++iComponent)
+		{
+			const Client::DATA_JSON_VALUE& Component = pValue->Get_Array()[iComponent];
+			if (!Component.Is_Number() || !std::isfinite(Component.Get_Number()) ||
+				(bNonZero && 0.0 == Component.Get_Number()))
+			{
+				strError = std::string(pKey) + (bNonZero ?
+					" components must be finite and non-zero." :
+					" must be exactly three finite numbers.");
+				return false;
+			}
+			pComponents[iComponent] = static_cast<f32_t>(Component.Get_Number());
+		}
+		return true;
+	}
+
+	bool_t Read_LocalTransform(const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_V2_LOCAL_TRANSFORM& OutTransform, std::string& strError)
+	{
+		if (!Has_ExactFields(Value, { "translation", "rotation", "scale" }))
+		{
+			strError = "localTransform fields must be exactly translation, rotation, scale.";
+			return false;
+		}
+		return Read_RequiredFloat3(
+			Value, "translation", OutTransform.vTranslation, strError, false) &&
+			Read_RequiredFloat3(
+				Value, "rotation", OutTransform.vRotation, strError, false) &&
+			Read_RequiredFloat3(
+				Value, "scale", OutTransform.vScale, strError, true);
+	}
+
+	bool_t Equal_Float3(const float3_t& Left, const float3_t& Right)
+	{
+		return Left.x == Right.x && Left.y == Right.y && Left.z == Right.z;
+	}
+
+	bool_t Equal_LocalTransform(
+		const Client::EFFECT_V2_LOCAL_TRANSFORM& Left,
+		const Client::EFFECT_V2_LOCAL_TRANSFORM& Right)
+	{
+		return Equal_Float3(Left.vTranslation, Right.vTranslation) &&
+			Equal_Float3(Left.vRotation, Right.vRotation) &&
+			Equal_Float3(Left.vScale, Right.vScale);
+	}
+
+	bool_t Equal_BindingSemantic(
+		const Client::EFFECT_V2_BINDING& Left,
+		const Client::EFFECT_V2_BINDING& Right)
+	{
+		return Left.eResourceKind == Right.eResourceKind &&
+			Left.strResourceId == Right.strResourceId &&
+			Left.strPatternId == Right.strPatternId &&
+			Left.strStageId == Right.strStageId &&
+			Left.strActionId == Right.strActionId &&
+			Left.eClockBasis == Right.eClockBasis &&
+			Left.strClipOccurrenceId == Right.strClipOccurrenceId &&
+			Left.iStartMs == Right.iStartMs &&
+			Left.eRepeatPolicy == Right.eRepeatPolicy &&
+			Left.strAnchorSlotId == Right.strAnchorSlotId &&
+			Left.eFollowPolicy == Right.eFollowPolicy &&
+			Left.eRotationBasis == Right.eRotationBasis &&
+			Equal_LocalTransform(Left.LocalTransform, Right.LocalTransform) &&
+			Left.eStopPolicy == Right.eStopPolicy;
+	}
+
+	bool_t Equal_GroupChildSemantic(
+		const Client::EFFECT_V2_GROUP_CHILD& Left,
+		const Client::EFFECT_V2_GROUP_CHILD& Right)
+	{
+		return Left.eResourceKind == Right.eResourceKind &&
+			Left.strResourceId == Right.strResourceId &&
+			Left.iStartMs == Right.iStartMs &&
+			Left.iDurationMs == Right.iDurationMs &&
+			Left.eStop == Right.eStop &&
+			Equal_LocalTransform(Left.LocalTransform, Right.LocalTransform);
+	}
+
+	void Populate_BindingConvenience(Client::EFFECT_V2_BINDING& Binding)
+	{
+		Binding.strEffectId.clear();
+		Binding.strGroupId.clear();
+		if (Client::EFFECT_V2_RESOURCE_KIND::LEAF == Binding.eResourceKind)
+			Binding.strEffectId = Binding.strResourceId;
+		else
+			Binding.strGroupId = Binding.strResourceId;
+
+		Binding.strStage = Binding.strActionId;
+		Binding.strClip = Client::EFFECT_V2_CLOCK_BASIS::CLIP_OCCURRENCE ==
+			Binding.eClockBasis ? Binding.strClipOccurrenceId : std::string{};
+		Binding.strBone = Binding.strAnchorSlotId;
+		Binding.bFollowBone = Client::EFFECT_V2_FOLLOW_POLICY::FOLLOW_SLOT ==
+			Binding.eFollowPolicy;
+		switch (Binding.eRotationBasis)
+		{
+		case Client::EFFECT_V2_ROTATION_BASIS::SLOT:
+			Binding.eRotation = Client::CEffectV2Object::PIVOT_ROTATION::BONE;
+			break;
+		case Client::EFFECT_V2_ROTATION_BASIS::WORLD:
+			Binding.eRotation = Client::CEffectV2Object::PIVOT_ROTATION::WORLD;
+			break;
+		default:
+			Binding.eRotation = Client::CEffectV2Object::PIVOT_ROTATION::TARGET_YAW;
+			break;
+		}
+		Binding.bStopWithClip =
+			Client::EFFECT_V2_STOP_POLICY::STAGE_END == Binding.eStopPolicy ||
+			Client::EFFECT_V2_STOP_POLICY::CLIP_OCCURRENCE_END == Binding.eStopPolicy;
+		Binding.vOffset = Binding.LocalTransform.vTranslation;
+		Binding.fYawDegrees = Binding.LocalTransform.vRotation.y;
+	}
+
+	void Populate_GroupChildConvenience(Client::EFFECT_V2_GROUP_CHILD& Child)
+	{
+		Child.strEffectId.clear();
+		Child.strGroupId.clear();
+		if (Client::EFFECT_V2_RESOURCE_KIND::LEAF == Child.eResourceKind)
+			Child.strEffectId = Child.strResourceId;
+		else
+			Child.strGroupId = Child.strResourceId;
+		Child.vOffset = Child.LocalTransform.vTranslation;
+		Child.fPitchDegrees = Child.LocalTransform.vRotation.x;
+		Child.fYawDegrees = Child.LocalTransform.vRotation.y;
+		Child.fRollDegrees = Child.LocalTransform.vRotation.z;
+		Child.vScale = Child.LocalTransform.vScale;
 	}
 }
 
@@ -243,15 +460,7 @@ std::filesystem::path Client::CEffectV2Document::Group_Path(const std::string& s
 
 bool_t Client::CEffectV2Document::Is_ValidEffectId(const std::string& strEffectId)
 {
-	if (strEffectId.empty() || strEffectId.size() > 80u)
-		return false;
-	for (const char Character : strEffectId)
-	{
-		if (!std::isalnum(static_cast<unsigned char>(Character)) &&
-			'.' != Character && '_' != Character && '-' != Character)
-			return false;
-	}
-	return true;
+	return Is_StableAsciiId(strEffectId, 80u);
 }
 
 const char* Client::CEffectV2Document::Type_Key(const EFFECT_V2_TYPE eType)
@@ -634,12 +843,18 @@ bool_t Client::CEffectV2Document::Parse_Bindings(
 			strOutError = "Bindings root is not an object.";
 		return false;
 	}
-	const DATA_JSON_VALUE* pSchema = Root.Find("schema");
-	const DATA_JSON_VALUE* pVersion = Root.Find("formatVersion");
-	const DATA_JSON_VALUE* pArchetype = Root.Find("archetypeId");
+	if (!Has_ExactFields(
+		Root, { "schema", "formatVersion", "archetypeId", "bindings" }))
+	{
+		strOutError = "Bindings fields must be exactly schema, formatVersion, archetypeId, bindings.";
+		return false;
+	}
+	const DATA_JSON_VALUE* const pSchema = Root.Find("schema");
+	const DATA_JSON_VALUE* const pVersion = Root.Find("formatVersion");
+	const DATA_JSON_VALUE* const pArchetype = Root.Find("archetypeId");
 	if (nullptr == pSchema || !pSchema->Is_String() ||
 		pSchema->Get_String() != "lostark.effect-v2-bindings" ||
-		nullptr == pVersion || !pVersion->Is_Number() || pVersion->Get_Number() != 1.0 ||
+		nullptr == pVersion || !pVersion->Is_Number() || pVersion->Get_Number() != 2.0 ||
 		nullptr == pArchetype || !pArchetype->Is_String() ||
 		pArchetype->Get_String() != strExpectedArchetypeId)
 	{
@@ -647,74 +862,154 @@ bool_t Client::CEffectV2Document::Parse_Bindings(
 		return false;
 	}
 	const DATA_JSON_VALUE* pRows = Root.Find("bindings");
-	if (nullptr == pRows || !pRows->Is_Array())
+	if (nullptr == pRows || !pRows->Is_Array() ||
+		pRows->Get_Array().size() > MAX_BINDINGS)
 	{
-		strOutError = "bindings must be an array.";
+		strOutError = "bindings must be an array with at most 4096 entries.";
 		return false;
 	}
 	std::vector<EFFECT_V2_BINDING> Staged;
+	Staged.reserve(pRows->Get_Array().size());
+	std::set<std::string, std::less<>> BindingIds;
+	std::string strPreviousBindingId;
 	for (const DATA_JSON_VALUE& Row : pRows->Get_Array())
 	{
-		if (!Row.Is_Object())
+		if (!Has_ExactFields(Row,
+			{ "bindingId", "resource", "scope", "clock", "anchor", "stopPolicy" }))
 		{
-			strOutError = "bindings[] entries must be objects.";
+			strOutError = "bindings[] fields must be exactly bindingId, resource, scope, clock, anchor, stopPolicy.";
 			return false;
 		}
 		EFFECT_V2_BINDING Binding;
-		const DATA_JSON_VALUE* pEffect = Row.Find("effectId");
-		const DATA_JSON_VALUE* pGroup = Row.Find("group");
-		const DATA_JSON_VALUE* pClip = Row.Find("clip");
-		const DATA_JSON_VALUE* pStage = Row.Find("stage");
-		const DATA_JSON_VALUE* pStart = Row.Find("startMs");
-		const DATA_JSON_VALUE* pBone = Row.Find("bone");
-		const bool_t bHasEffect = nullptr != pEffect && pEffect->Is_String() && !pEffect->Get_String().empty();
-		const bool_t bHasGroup = nullptr != pGroup && pGroup->Is_String() && !pGroup->Get_String().empty();
-		const bool_t bHasClip = nullptr != pClip && pClip->Is_String() && !pClip->Get_String().empty();
-		const bool_t bHasStage = nullptr != pStage && pStage->Is_String() && !pStage->Get_String().empty();
-		if (bHasEffect == bHasGroup ||
-			(bHasEffect && !Is_ValidEffectId(pEffect->Get_String())) ||
-			(bHasGroup && !Is_ValidEffectId(pGroup->Get_String())) ||
-			bHasClip == bHasStage ||
-			nullptr == pStart || !pStart->Is_Number() || pStart->Get_Number() < 0.0 ||
-			pStart->Get_Number() > MAX_BINDING_MS ||
-			nullptr == pBone || !pBone->Is_String())
+		if (!Read_StableId(Row, "bindingId", Binding.strBindingId, strOutError))
+			return false;
+		if (!BindingIds.insert(Binding.strBindingId).second)
 		{
-			strOutError = "bindings[] requires exactly one of effectId/group, exactly one of clip/stage, startMs (0-600000), bone.";
+			strOutError = "duplicate Effect V2 bindingId: " + Binding.strBindingId;
 			return false;
 		}
-		if (bHasEffect)
-			Binding.strEffectId = pEffect->Get_String();
-		else
-			Binding.strGroupId = pGroup->Get_String();
-		if (bHasClip)
-			Binding.strClip = pClip->Get_String();
-		else
-			Binding.strStage = pStage->Get_String();
-		Binding.iStartMs = static_cast<uint32_t>(pStart->Get_Number());
-		Binding.strBone = pBone->Get_String();
-		int32_t iRotation = static_cast<int32_t>(Binding.eRotation);
-		if (!Read_Bool(Row, "followBone", Binding.bFollowBone, strOutError) ||
-			!Read_Enum(Row, "rotation", PIVOT_ROTATION_KEYS,
-				_countof(PIVOT_ROTATION_KEYS), iRotation, strOutError) ||
-			!Read_Bool(Row, "stopWithClip", Binding.bStopWithClip, strOutError) ||
-			!Read_FloatArray(Row, "offset", &Binding.vOffset.x, 3u, strOutError) ||
-			!Read_Number(Row, "yawDegrees", Binding.fYawDegrees, strOutError))
-			return false;
-		Binding.eRotation = static_cast<CEffectV2Object::PIVOT_ROTATION>(iRotation);
-		for (const EFFECT_V2_BINDING& Existing : Staged)
+		if (!strPreviousBindingId.empty() &&
+			!(strPreviousBindingId < Binding.strBindingId))
 		{
-			if (Existing.strEffectId == Binding.strEffectId &&
-				Existing.strGroupId == Binding.strGroupId &&
-				Existing.strClip == Binding.strClip && Existing.strStage == Binding.strStage &&
-				Existing.iStartMs == Binding.iStartMs && Existing.strBone == Binding.strBone)
+			strOutError = "BOSS_VALTAN Effect V2 bindings must be sorted by bindingId.";
+			return false;
+		}
+		strPreviousBindingId = Binding.strBindingId;
+
+		const DATA_JSON_VALUE* const pResource = Row.Find("resource");
+		if (nullptr == pResource ||
+			!Has_ExactFields(*pResource, { "kind", "id" }))
+		{
+			strOutError = "bindings[].resource fields must be exactly kind, id.";
+			return false;
+		}
+		int32_t iResourceKind = static_cast<int32_t>(Binding.eResourceKind);
+		if (!Read_Enum(*pResource, "kind", RESOURCE_KIND_KEYS,
+			_countof(RESOURCE_KIND_KEYS), iResourceKind, strOutError))
+		{
+			return false;
+		}
+		Binding.eResourceKind = static_cast<EFFECT_V2_RESOURCE_KIND>(iResourceKind);
+		if (!Read_StableId(*pResource, "id", Binding.strResourceId, strOutError,
+			EFFECT_V2_RESOURCE_KIND::LEAF == Binding.eResourceKind ?
+			80u : MAX_STABLE_ID_LENGTH))
+		{
+			return false;
+		}
+
+		const DATA_JSON_VALUE* const pScope = Row.Find("scope");
+		if (nullptr == pScope || !Has_ExactFields(
+			*pScope, { "patternId", "stageId", "actionId" }) ||
+			!Read_StableId(*pScope, "patternId", Binding.strPatternId, strOutError) ||
+			!Read_StableId(*pScope, "stageId", Binding.strStageId, strOutError) ||
+			!Read_StableId(*pScope, "actionId", Binding.strActionId, strOutError))
+		{
+			if (strOutError.empty())
+				strOutError = "bindings[].scope fields must be exactly patternId, stageId, actionId.";
+			return false;
+		}
+
+		const DATA_JSON_VALUE* const pClock = Row.Find("clock");
+		if (nullptr == pClock || !Has_ExactFields(
+			*pClock, { "basis", "clipOccurrenceId", "startMs", "repeatPolicy" }))
+		{
+			strOutError = "bindings[].clock fields must be exactly basis, clipOccurrenceId, startMs, repeatPolicy.";
+			return false;
+		}
+		int32_t iClockBasis = static_cast<int32_t>(Binding.eClockBasis);
+		int32_t iRepeatPolicy = static_cast<int32_t>(Binding.eRepeatPolicy);
+		if (!Read_Enum(*pClock, "basis", CLOCK_BASIS_KEYS,
+				_countof(CLOCK_BASIS_KEYS), iClockBasis, strOutError) ||
+			!Read_MsField(*pClock, "startMs", Binding.iStartMs, strOutError) ||
+			!Read_Enum(*pClock, "repeatPolicy", REPEAT_POLICY_KEYS,
+				_countof(REPEAT_POLICY_KEYS), iRepeatPolicy, strOutError))
+		{
+			return false;
+		}
+		Binding.eClockBasis = static_cast<EFFECT_V2_CLOCK_BASIS>(iClockBasis);
+		Binding.eRepeatPolicy = static_cast<EFFECT_V2_REPEAT_POLICY>(iRepeatPolicy);
+		const DATA_JSON_VALUE* const pOccurrence = pClock->Find("clipOccurrenceId");
+		if (EFFECT_V2_CLOCK_BASIS::STAGE == Binding.eClockBasis)
+		{
+			if (nullptr == pOccurrence || !pOccurrence->Is_Null() ||
+				EFFECT_V2_REPEAT_POLICY::ONCE != Binding.eRepeatPolicy)
 			{
-				strOutError = "duplicate binding: " +
-					(Binding.strGroupId.empty() ? Binding.strEffectId : Binding.strGroupId) + " / " +
-					(Binding.strStage.empty() ? Binding.strClip : Binding.strStage) +
-					" @" + std::to_string(Binding.iStartMs) + "ms";
+				strOutError = "STAGE clock requires null clipOccurrenceId and ONCE repeatPolicy.";
 				return false;
 			}
 		}
+		else if (!Read_StableId(*pClock, "clipOccurrenceId",
+			Binding.strClipOccurrenceId, strOutError))
+		{
+			return false;
+		}
+
+		const DATA_JSON_VALUE* const pAnchor = Row.Find("anchor");
+		if (nullptr == pAnchor || !Has_ExactFields(
+			*pAnchor, { "slotId", "followPolicy", "rotationBasis", "localTransform" }) ||
+			!Read_StableId(*pAnchor, "slotId", Binding.strAnchorSlotId, strOutError))
+		{
+			if (strOutError.empty())
+				strOutError = "bindings[].anchor fields must be exactly slotId, followPolicy, rotationBasis, localTransform.";
+			return false;
+		}
+		int32_t iFollowPolicy = static_cast<int32_t>(Binding.eFollowPolicy);
+		int32_t iRotationBasis = static_cast<int32_t>(Binding.eRotationBasis);
+		const DATA_JSON_VALUE* const pTransform = pAnchor->Find("localTransform");
+		if (!Read_Enum(*pAnchor, "followPolicy", FOLLOW_POLICY_KEYS,
+				_countof(FOLLOW_POLICY_KEYS), iFollowPolicy, strOutError) ||
+			!Read_Enum(*pAnchor, "rotationBasis", ROTATION_BASIS_KEYS,
+				_countof(ROTATION_BASIS_KEYS), iRotationBasis, strOutError) ||
+			nullptr == pTransform ||
+			!Read_LocalTransform(*pTransform, Binding.LocalTransform, strOutError))
+		{
+			return false;
+		}
+		Binding.eFollowPolicy = static_cast<EFFECT_V2_FOLLOW_POLICY>(iFollowPolicy);
+		Binding.eRotationBasis = static_cast<EFFECT_V2_ROTATION_BASIS>(iRotationBasis);
+
+		int32_t iStopPolicy = static_cast<int32_t>(Binding.eStopPolicy);
+		if (!Read_Enum(Row, "stopPolicy", STOP_POLICY_KEYS,
+			_countof(STOP_POLICY_KEYS), iStopPolicy, strOutError))
+			return false;
+		Binding.eStopPolicy = static_cast<EFFECT_V2_STOP_POLICY>(iStopPolicy);
+		if (EFFECT_V2_STOP_POLICY::CLIP_OCCURRENCE_END == Binding.eStopPolicy &&
+			EFFECT_V2_CLOCK_BASIS::CLIP_OCCURRENCE != Binding.eClockBasis)
+		{
+			strOutError = "CLIP_OCCURRENCE_END requires a CLIP_OCCURRENCE clock.";
+			return false;
+		}
+
+		for (const EFFECT_V2_BINDING& Existing : Staged)
+		{
+			if (Equal_BindingSemantic(Existing, Binding))
+			{
+				strOutError = "duplicate Effect V2 semantic binding occurrence: " +
+					Binding.strBindingId;
+				return false;
+			}
+		}
+		Populate_BindingConvenience(Binding);
 		Staged.push_back(std::move(Binding));
 	}
 	OutBindings = std::move(Staged);
@@ -733,13 +1028,20 @@ bool_t Client::CEffectV2Document::Parse_Group(
 			strOutError = "Group root is not an object.";
 		return false;
 	}
-	const DATA_JSON_VALUE* pSchema = Root.Find("schema");
-	const DATA_JSON_VALUE* pVersion = Root.Find("formatVersion");
-	const DATA_JSON_VALUE* pGroupId = Root.Find("groupId");
+	if (!Has_ExactFields(
+		Root, { "schema", "formatVersion", "groupId", "durationMs", "children" }))
+	{
+		strOutError = "Group fields must be exactly schema, formatVersion, groupId, durationMs, children.";
+		return false;
+	}
+	const DATA_JSON_VALUE* const pSchema = Root.Find("schema");
+	const DATA_JSON_VALUE* const pVersion = Root.Find("formatVersion");
+	const DATA_JSON_VALUE* const pGroupId = Root.Find("groupId");
 	if (nullptr == pSchema || !pSchema->Is_String() ||
 		pSchema->Get_String() != "lostark.effect-v2-group" ||
-		nullptr == pVersion || !pVersion->Is_Number() || pVersion->Get_Number() != 1.0 ||
-		nullptr == pGroupId || !pGroupId->Is_String() || !Is_ValidEffectId(pGroupId->Get_String()))
+		nullptr == pVersion || !pVersion->Is_Number() || pVersion->Get_Number() != 2.0 ||
+		nullptr == pGroupId || !pGroupId->Is_String() ||
+		!Is_StableAsciiId(pGroupId->Get_String(), MAX_STABLE_ID_LENGTH))
 	{
 		strOutError = "schema/formatVersion/groupId mismatch.";
 		return false;
@@ -749,38 +1051,75 @@ bool_t Client::CEffectV2Document::Parse_Group(
 	if (!Read_MsField(Root, "durationMs", Group.iDurationMs, strOutError))
 		return false;
 	const DATA_JSON_VALUE* pChildren = Root.Find("children");
-	if (nullptr == pChildren || !pChildren->Is_Array() || pChildren->Get_Array().empty())
+	if (nullptr == pChildren || !pChildren->Is_Array() ||
+		pChildren->Get_Array().empty() ||
+		pChildren->Get_Array().size() > MAX_GROUP_CHILDREN)
 	{
-		strOutError = "children must be a non-empty array.";
+		strOutError = "children must be an array with 1..4096 entries.";
 		return false;
 	}
+	Group.Children.reserve(pChildren->Get_Array().size());
+	std::set<std::string, std::less<>> ChildIds;
 	for (const DATA_JSON_VALUE& Row : pChildren->Get_Array())
 	{
-		if (!Row.Is_Object())
+		if (!Has_ExactFields(Row,
+			{ "childId", "resource", "startMs", "durationMs", "stop", "localTransform" }))
 		{
-			strOutError = "children[] entries must be objects.";
+			strOutError = "children[] fields must be exactly childId, resource, startMs, durationMs, stop, localTransform.";
 			return false;
 		}
 		EFFECT_V2_GROUP_CHILD Child;
-		const DATA_JSON_VALUE* pEffect = Row.Find("effectId");
-		if (nullptr == pEffect || !pEffect->Is_String() || !Is_ValidEffectId(pEffect->Get_String()) ||
-			pEffect->Get_String() == Group.strGroupId)
+		if (!Read_StableId(Row, "childId", Child.strChildId, strOutError))
+			return false;
+		if (!ChildIds.insert(Child.strChildId).second)
 		{
-			strOutError = "children[].effectId must be a valid effect ID different from the group.";
+			strOutError = "duplicate Effect V2 group childId: " +
+				Group.strGroupId + "/" + Child.strChildId;
 			return false;
 		}
-		Child.strEffectId = pEffect->Get_String();
+
+		const DATA_JSON_VALUE* const pResource = Row.Find("resource");
+		if (nullptr == pResource ||
+			!Has_ExactFields(*pResource, { "kind", "id" }))
+		{
+			strOutError = "children[].resource fields must be exactly kind, id.";
+			return false;
+		}
+		int32_t iResourceKind = static_cast<int32_t>(Child.eResourceKind);
+		if (!Read_Enum(*pResource, "kind", RESOURCE_KIND_KEYS,
+			_countof(RESOURCE_KIND_KEYS), iResourceKind, strOutError))
+		{
+			return false;
+		}
+		Child.eResourceKind = static_cast<EFFECT_V2_RESOURCE_KIND>(iResourceKind);
+		if (!Read_StableId(*pResource, "id", Child.strResourceId, strOutError,
+			EFFECT_V2_RESOURCE_KIND::LEAF == Child.eResourceKind ?
+			80u : MAX_STABLE_ID_LENGTH))
+		{
+			return false;
+		}
+
 		int32_t iStop = static_cast<int32_t>(Child.eStop);
+		const DATA_JSON_VALUE* const pTransform = Row.Find("localTransform");
 		if (!Read_MsField(Row, "startMs", Child.iStartMs, strOutError) ||
 			!Read_MsField(Row, "durationMs", Child.iDurationMs, strOutError) ||
 			!Read_Enum(Row, "stop", CHILD_STOP_KEYS, _countof(CHILD_STOP_KEYS), iStop, strOutError) ||
-			!Read_FloatArray(Row, "offset", &Child.vOffset.x, 3u, strOutError) ||
-			!Read_Number(Row, "pitchDegrees", Child.fPitchDegrees, strOutError) ||
-			!Read_Number(Row, "yawDegrees", Child.fYawDegrees, strOutError) ||
-			!Read_Number(Row, "rollDegrees", Child.fRollDegrees, strOutError) ||
-			!Read_FloatArray(Row, "scale", &Child.vScale.x, 3u, strOutError))
+			nullptr == pTransform ||
+			!Read_LocalTransform(*pTransform, Child.LocalTransform, strOutError))
+		{
 			return false;
+		}
 		Child.eStop = static_cast<EFFECT_V2_CHILD_STOP>(iStop);
+		for (const EFFECT_V2_GROUP_CHILD& Existing : Group.Children)
+		{
+			if (Equal_GroupChildSemantic(Existing, Child))
+			{
+				strOutError = "duplicate Effect V2 group semantic child: " +
+					Group.strGroupId + "/" + Child.strChildId;
+				return false;
+			}
+		}
+		Populate_GroupChildConvenience(Child);
 		Group.Children.push_back(std::move(Child));
 	}
 	OutGroup = std::move(Group);
@@ -942,30 +1281,79 @@ std::string Client::CEffectV2Document::Serialize_Bindings(
 	const std::string& strArchetypeId,
 	const std::vector<EFFECT_V2_BINDING>& Bindings)
 {
+	std::vector<const EFFECT_V2_BINDING*> Sorted;
+	Sorted.reserve(Bindings.size());
+	for (const EFFECT_V2_BINDING& Binding : Bindings)
+		Sorted.push_back(&Binding);
+	std::sort(Sorted.begin(), Sorted.end(),
+		[](const EFFECT_V2_BINDING* const pLeft,
+			const EFFECT_V2_BINDING* const pRight)
+		{
+			return pLeft->strBindingId < pRight->strBindingId;
+		});
+
 	std::string Text;
 	Text += "{\n";
 	Text += "  \"schema\": \"lostark.effect-v2-bindings\",\n";
-	Text += "  \"formatVersion\": 1,\n";
+	Text += "  \"formatVersion\": 2,\n";
 	Text += "  \"archetypeId\": " + Json_String(strArchetypeId) + ",\n";
 	Text += "  \"bindings\": [\n";
-	for (size_t iIndex = 0u; iIndex < Bindings.size(); ++iIndex)
+	for (size_t iIndex = 0u; iIndex < Sorted.size(); ++iIndex)
 	{
-		const EFFECT_V2_BINDING& Binding = Bindings[iIndex];
-		Text += std::string("    { ") +
-			(Binding.strGroupId.empty() ?
-				"\"effectId\": " + Json_String(Binding.strEffectId) :
-				"\"group\": " + Json_String(Binding.strGroupId)) +
-			(Binding.strStage.empty() ?
-				", \"clip\": " + Json_String(Binding.strClip) :
-				", \"stage\": " + Json_String(Binding.strStage)) +
+		const EFFECT_V2_BINDING& Binding = *Sorted[iIndex];
+		EFFECT_V2_RESOURCE_KIND eResourceKind = Binding.eResourceKind;
+		std::string strResourceId = Binding.strResourceId;
+		if (strResourceId.empty())
+		{
+			if (!Binding.strGroupId.empty())
+			{
+				eResourceKind = EFFECT_V2_RESOURCE_KIND::GROUP;
+				strResourceId = Binding.strGroupId;
+			}
+			else
+			{
+				eResourceKind = EFFECT_V2_RESOURCE_KIND::LEAF;
+				strResourceId = Binding.strEffectId;
+			}
+		}
+		const std::string& strActionId = Binding.strActionId.empty() ?
+			Binding.strStage : Binding.strActionId;
+		const std::string& strAnchorSlotId = Binding.strAnchorSlotId.empty() ?
+			Binding.strBone : Binding.strAnchorSlotId;
+
+		Text += "    {\n";
+		Text += "      \"bindingId\": " + Json_String(Binding.strBindingId) + ",\n";
+		Text += "      \"resource\": { \"kind\": " +
+			Json_String(Enum_Key(RESOURCE_KIND_KEYS, _countof(RESOURCE_KIND_KEYS),
+				static_cast<int32_t>(eResourceKind), "LEAF")) +
+			", \"id\": " + Json_String(strResourceId) + " },\n";
+		Text += "      \"scope\": { \"patternId\": " +
+			Json_String(Binding.strPatternId) + ", \"stageId\": " +
+			Json_String(Binding.strStageId) + ", \"actionId\": " +
+			Json_String(strActionId) + " },\n";
+		Text += "      \"clock\": { \"basis\": " +
+			Json_String(Enum_Key(CLOCK_BASIS_KEYS, _countof(CLOCK_BASIS_KEYS),
+				static_cast<int32_t>(Binding.eClockBasis), "STAGE")) +
+			", \"clipOccurrenceId\": " +
+			(EFFECT_V2_CLOCK_BASIS::STAGE == Binding.eClockBasis ?
+				std::string("null") : Json_String(Binding.strClipOccurrenceId)) +
 			", \"startMs\": " + std::to_string(Binding.iStartMs) +
-			", \"bone\": " + Json_String(Binding.strBone) +
-			", \"followBone\": " + Json_Bool(Binding.bFollowBone) +
-			", \"rotation\": " + Json_String(Rotation_Key(Binding.eRotation)) +
-			", \"stopWithClip\": " + Json_Bool(Binding.bStopWithClip) +
-			", \"offset\": " + Json_Float3(Binding.vOffset) +
-			", \"yawDegrees\": " + Json_Number(Binding.fYawDegrees) + " }" +
-			(iIndex + 1u < Bindings.size() ? ",\n" : "\n");
+			", \"repeatPolicy\": " +
+			Json_String(Enum_Key(REPEAT_POLICY_KEYS, _countof(REPEAT_POLICY_KEYS),
+				static_cast<int32_t>(Binding.eRepeatPolicy), "ONCE")) + " },\n";
+		Text += "      \"anchor\": { \"slotId\": " +
+			Json_String(strAnchorSlotId) + ", \"followPolicy\": " +
+			Json_String(Enum_Key(FOLLOW_POLICY_KEYS, _countof(FOLLOW_POLICY_KEYS),
+				static_cast<int32_t>(Binding.eFollowPolicy), "FOLLOW_SLOT")) +
+			", \"rotationBasis\": " +
+			Json_String(Enum_Key(ROTATION_BASIS_KEYS, _countof(ROTATION_BASIS_KEYS),
+				static_cast<int32_t>(Binding.eRotationBasis), "TARGET_YAW")) +
+			", \"localTransform\": " + Json_LocalTransform(Binding.LocalTransform) + " },\n";
+		Text += "      \"stopPolicy\": " +
+			Json_String(Enum_Key(STOP_POLICY_KEYS, _countof(STOP_POLICY_KEYS),
+				static_cast<int32_t>(Binding.eStopPolicy), "NATURAL")) + "\n";
+		Text += std::string("    }") +
+			(iIndex + 1u < Sorted.size() ? ",\n" : "\n");
 	}
 	Text += "  ]\n";
 	Text += "}\n";
@@ -977,22 +1365,37 @@ std::string Client::CEffectV2Document::Serialize_Group(const EFFECT_V2_GROUP& Gr
 	std::string Text;
 	Text += "{\n";
 	Text += "  \"schema\": \"lostark.effect-v2-group\",\n";
-	Text += "  \"formatVersion\": 1,\n";
+	Text += "  \"formatVersion\": 2,\n";
 	Text += "  \"groupId\": " + Json_String(Group.strGroupId) + ",\n";
 	Text += "  \"durationMs\": " + std::to_string(Group.iDurationMs) + ",\n";
 	Text += "  \"children\": [\n";
 	for (size_t iIndex = 0u; iIndex < Group.Children.size(); ++iIndex)
 	{
 		const EFFECT_V2_GROUP_CHILD& Child = Group.Children[iIndex];
-		Text += "    { \"effectId\": " + Json_String(Child.strEffectId) +
+		EFFECT_V2_RESOURCE_KIND eResourceKind = Child.eResourceKind;
+		std::string strResourceId = Child.strResourceId;
+		if (strResourceId.empty())
+		{
+			if (!Child.strGroupId.empty())
+			{
+				eResourceKind = EFFECT_V2_RESOURCE_KIND::GROUP;
+				strResourceId = Child.strGroupId;
+			}
+			else
+			{
+				eResourceKind = EFFECT_V2_RESOURCE_KIND::LEAF;
+				strResourceId = Child.strEffectId;
+			}
+		}
+		Text += "    { \"childId\": " + Json_String(Child.strChildId) +
+			", \"resource\": { \"kind\": " +
+			Json_String(Enum_Key(RESOURCE_KIND_KEYS, _countof(RESOURCE_KIND_KEYS),
+				static_cast<int32_t>(eResourceKind), "LEAF")) +
+			", \"id\": " + Json_String(strResourceId) + " }" +
 			", \"startMs\": " + std::to_string(Child.iStartMs) +
 			", \"durationMs\": " + std::to_string(Child.iDurationMs) +
 			", \"stop\": " + Json_String(Child_Stop_Key(Child.eStop)) +
-			", \"offset\": " + Json_Float3(Child.vOffset) +
-			", \"pitchDegrees\": " + Json_Number(Child.fPitchDegrees) +
-			", \"yawDegrees\": " + Json_Number(Child.fYawDegrees) +
-			", \"rollDegrees\": " + Json_Number(Child.fRollDegrees) +
-			", \"scale\": " + Json_Float3(Child.vScale) + " }" +
+			", \"localTransform\": " + Json_LocalTransform(Child.LocalTransform) + " }" +
 			(iIndex + 1u < Group.Children.size() ? ",\n" : "\n");
 	}
 	Text += "  ]\n";

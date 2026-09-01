@@ -116,7 +116,7 @@ void Client::CEffect_Tool_V2::Deactivate()
 	Despawn_Target();
 	m_fTargetLastClipSeconds = -1.f;
 	m_strPreviewStatus =
-		"Effect Tool v2 hidden: active preview/playback released; authored draft preserved.";
+		"Effect Resource library hidden: active preview/playback released; authored draft preserved.";
 }
 
 void Client::CEffect_Tool_V2::On_LevelChanged()
@@ -137,7 +137,7 @@ void Client::CEffect_Tool_V2::Render()
 	if (!Slot_VisibleForType(m_eSelectedSlot))
 		m_eSelectedSlot = RESOURCE_SLOT::BASE;
 
-	if (!ImGui::Begin("Effect Tool v2"))
+	if (!ImGui::Begin("Effect Resource Library"))
 	{
 		ImGui::End();
 		return;
@@ -1284,6 +1284,8 @@ void Client::CEffect_Tool_V2::Render_DocumentPanel()
 {
 	if (!m_bDocumentsScanned)
 		Scan_Documents();
+	if (!m_bGroupsScanned)
+		Scan_Groups();
 	ImGui::TextUnformatted("Document (Data/Effects/V2/Authored)");
 	ImGui::SetNextItemWidth(-1.f);
 	ImGui::InputTextWithHint("##EffectId", "Effect ID (e.g. esther.wei.dochul)",
@@ -1300,6 +1302,52 @@ void Client::CEffect_Tool_V2::Render_DocumentPanel()
 	ImGui::SameLine();
 	if (ImGui::Button("Rescan"))
 		Scan_Documents();
+	ImGui::SeparatorText("Valtan Effect Resources");
+	ImGui::TextDisabled(
+		"%zu groups | %zu elements. Double-click a group or Element to open it in the Effect Tool.",
+		m_GroupLibrary.size(), m_Documents.size());
+	for (const EFFECT_V2_GROUP& Group : m_GroupLibrary)
+	{
+		ImGui::PushID(Group.strGroupId.c_str());
+		const std::string GroupLabel = Group.strGroupId + " (" +
+			std::to_string(Group.Children.size()) + ")";
+		const bool_t bOpen = ImGui::TreeNodeEx(
+			GroupLabel.c_str(), ImGuiTreeNodeFlags_OpenOnArrow |
+				ImGuiTreeNodeFlags_OpenOnDoubleClick |
+				ImGuiTreeNodeFlags_SpanAvailWidth);
+		if (ImGui::IsItemClicked())
+		{
+			std::snprintf(m_szGroupId, sizeof(m_szGroupId), "%s",
+				Group.strGroupId.c_str());
+			if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) &&
+				Load_Group(Group.strGroupId))
+			{
+				m_bGroupWindowOpen = true;
+			}
+		}
+		if (bOpen)
+		{
+			for (const EFFECT_V2_GROUP_CHILD& Child : Group.Children)
+			{
+				ImGui::PushID(Child.strEffectId.c_str());
+				const std::string ChildLabel = Child.strEffectId + " @ +" +
+					std::to_string(Child.iStartMs) + " ms";
+				if (ImGui::Selectable(
+						ChildLabel.c_str(), Child.strEffectId == m_szEffectId))
+				{
+					std::snprintf(m_szEffectId, sizeof(m_szEffectId), "%s",
+						Child.strEffectId.c_str());
+					if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+						Load_Document(Child.strEffectId);
+				}
+				ImGui::PopID();
+			}
+			ImGui::TreePop();
+		}
+		ImGui::PopID();
+	}
+
+	ImGui::SeparatorText("All Effect Elements");
 	if (m_Documents.empty())
 		ImGui::TextDisabled("No saved documents.");
 	else if (ImGui::BeginListBox("##Documents", ImVec2(-1.f, 88.f)))
@@ -2571,7 +2619,7 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 void Client::CEffect_Tool_V2::Scan_Groups()
 {
 	m_bGroupsScanned = true;
-	m_Groups.clear();
+	std::vector<EFFECT_V2_GROUP> StagedGroups;
 	std::error_code Error;
 	const std::filesystem::path Directory = CEffectV2Document::Group_Directory();
 	if (Directory.empty() || !std::filesystem::is_directory(Directory, Error))
@@ -2587,9 +2635,30 @@ void Client::CEffect_Tool_V2::Scan_Groups()
 		if (strName.size() <= iSuffix ||
 			strName.compare(strName.size() - iSuffix, iSuffix, SUFFIX) != 0)
 			continue;
-		m_Groups.push_back(strName.substr(0u, strName.size() - iSuffix));
+		const std::string strGroupId =
+			strName.substr(0u, strName.size() - iSuffix);
+		EFFECT_V2_GROUP Group;
+		std::string strError;
+		if (!CEffectV2Document::Load_GroupFile(strGroupId, Group, strError))
+		{
+			m_strGroupStatus =
+				"V2 Data Files scan preserved the previous group index: " +
+				strError;
+			return;
+		}
+		StagedGroups.push_back(std::move(Group));
 	}
-	std::sort(m_Groups.begin(), m_Groups.end());
+	std::sort(StagedGroups.begin(), StagedGroups.end(),
+		[](const EFFECT_V2_GROUP& Left, const EFFECT_V2_GROUP& Right)
+		{
+			return Left.strGroupId < Right.strGroupId;
+		});
+	std::vector<std::string> StagedIds;
+	StagedIds.reserve(StagedGroups.size());
+	for (const EFFECT_V2_GROUP& Group : StagedGroups)
+		StagedIds.push_back(Group.strGroupId);
+	m_GroupLibrary = std::move(StagedGroups);
+	m_Groups = std::move(StagedIds);
 }
 
 bool_t Client::CEffect_Tool_V2::Load_Group(const std::string& strGroupId)

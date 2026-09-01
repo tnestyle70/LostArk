@@ -60,32 +60,41 @@ class ValtanTripleCounterSplitMigrationContract(unittest.TestCase):
             & reaction_ids
         )
 
-    def test_three_counter_windows_and_failure_dag_are_exact(self) -> None:
-        expected = {
-            "COUNTER_1": (1800, FIRST, SECOND, FIRST_FAIL),
-            "COUNTER_2": (1600, SECOND, THIRD, SECOND_FAIL),
-            "COUNTER_3": (1400, THIRD, RECOVERY, THIRD_FAIL),
+    def test_whole_sequence_counter_windows_and_failure_dag_are_exact(self) -> None:
+        expected_windows = {
+            "COUNTER_1": ("WINDUP", 1800, FIRST, FIRST_FAIL),
+            "FAIL_1": ("ACTIVE", 600, FIRST_FAIL, SECOND),
+            "COUNTER_2": ("WINDUP", 1600, SECOND, SECOND_FAIL),
+            "FAIL_2": ("ACTIVE", 600, SECOND_FAIL, THIRD),
+            "COUNTER_3": ("WINDUP", 1400, THIRD, THIRD_FAIL),
         }
-        for stage_id, (duration_ms, action_id, success, timeout) in expected.items():
+        for stage_id, (stage_kind, duration_ms, action_id, timeout) in (
+            expected_windows.items()
+        ):
             with self.subTest(stage_id=stage_id):
                 stage = self.stages[stage_id]
-                self.assertEqual("WINDUP", stage["stageKind"])
+                self.assertEqual(stage_kind, stage["stageKind"])
                 self.assertEqual(duration_ms, stage["durationMs"])
                 self.assertEqual(action_id, stage["actionId"])
                 self.assertEqual(timeout, stage["defaultNextActionId"])
                 self.assertEqual(
                     [
-                        {"outcome": "COUNTER_HIT", "nextActionId": success},
+                        {
+                            "outcome": "COUNTER_HIT",
+                            "nextActionId": None,
+                            "nextPatternId": "VALTAN_GROGGY_FOLLOWUP",
+                        },
                         {"outcome": "TIMEOUT", "nextActionId": timeout},
                     ],
                     stage["branches"],
                 )
                 self.assertEqual(
                     {
-                        "space": "BOSS_LOCAL",
-                        "forwardOffsetM": 1.0,
+                        "kind": "BOSS_FORWARD_ARC",
+                        "forwardOffsetM": 0.0,
                         "rightOffsetM": 0.0,
-                        "radiusM": 2.25,
+                        "radiusM": 0.0,
+                        "arcDegrees": 180.0,
                     },
                     stage["counterProxy"],
                 )
@@ -97,20 +106,20 @@ class ValtanTripleCounterSplitMigrationContract(unittest.TestCase):
                 ]
                 self.assertEqual([("ENTER", True), ("EXIT", False)], flag_edges)
 
-        for stage_id, radius_m, damage, target in (
-            ("FAIL_1", 18.0, "damage.valtan.triple-counter", SECOND),
-            ("FAIL_2", 18.0, "damage.valtan.triple-counter", THIRD),
-            ("FAIL_3", 100.0, "damage.valtan.omnidirectional-wipe-130", RECOVERY),
+        for stage_id, radius_m, damage in (
+            ("FAIL_1", 18.0, "damage.valtan.triple-counter"),
+            ("FAIL_2", 18.0, "damage.valtan.triple-counter"),
+            ("FAIL_3", 100.0, "damage.valtan.omnidirectional-wipe-130"),
         ):
             with self.subTest(stage_id=stage_id):
                 stage = self.stages[stage_id]
                 self.assertEqual(radius_m, stage["hit"]["shape"]["outerRadiusM"])
                 self.assertEqual(damage, stage["hit"]["serverDamageProfileId"])
-                self.assertEqual(target, stage["defaultNextActionId"])
-                self.assertEqual(
-                    [{"outcome": "TIMEOUT", "nextActionId": target}],
-                    stage["branches"],
-                )
+        self.assertEqual(RECOVERY, self.stages["FAIL_3"]["defaultNextActionId"])
+        self.assertEqual(
+            [{"outcome": "TIMEOUT", "nextActionId": RECOVERY}],
+            self.stages["FAIL_3"]["branches"],
+        )
         self.assertEqual(1200, self.stages["RECOVERY"]["durationMs"])
         self.assertIsNone(self.stages["RECOVERY"]["defaultNextActionId"])
         self.assertEqual(

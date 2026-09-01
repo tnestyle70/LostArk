@@ -3121,6 +3121,12 @@ Client::CEffect_Tool::~CEffect_Tool()
 bool_t Client::CEffect_Tool::Open_ValtanAllEffectsWorkspace()
 {
 	m_bAllEffectsValtanBossSelected = true;
+	/* Valtan is an explicit workspace selection, so its saved authored rows
+	   must also become the active Data Files category. Leaving the constructor
+	   default (DimensionMaster) here made the exact Valtan source index ready
+	   while the visible reusable Element tree appeared empty. This metadata
+	   selection does not scan Resources/Effect or decode any Effect document. */
+	Select_AuthoringDomain("Valtan");
 	/* Opening the workspace must stay metadata-only.  The catalog already owns
 	   each stable Effect ID and authored path; decoding every authored document
 	   here made the first visible frame proportional to the complete Effect

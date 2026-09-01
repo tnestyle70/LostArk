@@ -1149,6 +1149,7 @@ def validate_binding_document(
     gameplay: Mapping[str, Any],
     animation: Mapping[str, Any],
     legacy_compatibility: Mapping[str, Any] | None = None,
+    resource_root: Path | None = None,
 ) -> dict[str, Any]:
     """Validate and return a deep-copied formatVersion 2 BOSS_VALTAN owner."""
 
@@ -1198,11 +1199,18 @@ def validate_binding_document(
             raise BindingContractError(f"Effect V2 binding has no group document: {resource_id}")
         if kind == "LEAF":
             natural_span = _validate_leaf_resource(
-                resource_id, authored[resource_id], read_json(authored[resource_id])
+                resource_id,
+                authored[resource_id],
+                read_json(authored[resource_id]),
+                resource_root=resource_root,
             )
         else:
             _leaf_clocks, natural_span = _resolve_group(
-                resource_id, authored, groups, require_v2=True
+                resource_id,
+                authored,
+                groups,
+                require_v2=True,
+                resource_root=resource_root,
             )
 
         scope = _exact(row["scope"], SCOPE_FIELDS, f"{binding_id}.scope")

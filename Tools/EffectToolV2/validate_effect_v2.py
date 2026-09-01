@@ -356,6 +356,7 @@ def _load_independent(
 
 def _validate_bindings(
     repository_root: Path,
+    resource_root: Path,
     binding_root: Path,
     authored: dict[str, Path],
     groups: dict[str, list[tuple[str, int]]],
@@ -402,6 +403,7 @@ def _validate_bindings(
                         repository_root
                         / "Data/Valtan/Valtan.legacy-compatibility.json"
                     ),
+                    resource_root=resource_root,
                 )
             except binding_v2.BindingContractError as exc:
                 raise ContractError(str(exc)) from exc
@@ -518,6 +520,7 @@ def validate(repository_root: Path, resource_root: Path) -> dict[str, int]:
     independent_effects, independent_groups = _load_independent(v2_root, authored, groups)
     binding_count, boss_v1_compatibility_count = _validate_bindings(
         repository_root,
+        resource_root,
         binding_root,
         authored,
         groups,

@@ -80,12 +80,22 @@ class ValtanDynamicAuthoringAdmissionTests(unittest.TestCase):
         self.assertEqual(20.0, product_leg["motion"]["distanceM"])
         self.assertEqual(2600, product_leg["durationMs"])
 
-    def test_ghost_finale_children_capacity_and_portal_legs_are_data_driven(self) -> None:
+    def test_ghost_finale_primary_children_are_fixed_while_capacity_and_portal_are_data_driven(
+        self,
+    ) -> None:
+        gameplay, presentation, docs = self.sources()
+        gameplay_finale = self.pattern(gameplay, "VALTAN_GHOST_FINALE")
+        gameplay_finale["finale"]["ghostPatternIds"] = [
+            "VALTAN_FOUR_SLASH",
+            "VALTAN_WHIRLWIND",
+        ]
+        with self.assertRaisesRegex(pipeline.PipelineError, "primary-loop order drifted"):
+            self.join(gameplay, presentation, docs)
+
         gameplay, presentation, docs = self.sources()
         gameplay_finale = self.pattern(gameplay, "VALTAN_GHOST_FINALE")
         presentation_finale = self.pattern(presentation, "VALTAN_GHOST_FINALE")
         finale = gameplay_finale["finale"]
-        finale["ghostPatternIds"] = ["VALTAN_FOUR_SLASH", "VALTAN_WHIRLWIND"]
         finale["maximumActiveGhosts"] = 2
 
         gameplay_leg = self.stage(gameplay_finale, "STEP_02")
@@ -116,7 +126,9 @@ class ValtanDynamicAuthoringAdmissionTests(unittest.TestCase):
             self.stage(product, "PORTAL_LEG_ALPHA")["motion"]["halfExtentsM"],
         )
 
-    def test_phase_and_volley_events_may_move_by_stable_id(self) -> None:
+    def test_phase_edges_are_fixed_while_volley_events_may_move_by_stable_id(
+        self,
+    ) -> None:
         gameplay, presentation, docs = self.sources()
         arena_break = self.pattern(gameplay, "VALTAN_ARENA_BREAK_109")
         impact = self.stage(arena_break, "IMPACT")
@@ -125,7 +137,12 @@ class ValtanDynamicAuthoringAdmissionTests(unittest.TestCase):
         )
         impact["events"].remove(phase_event)
         self.stage(arena_break, "RECOVERY")["events"].append(phase_event)
+        with self.assertRaisesRegex(
+            pipeline.PipelineError, "exact arena-break and ghost-respawn transitions"
+        ):
+            self.join(gameplay, presentation, docs)
 
+        gameplay, presentation, docs = self.sources()
         high_jump = self.pattern(gameplay, "VALTAN_HIGH_JUMP")
         airborne = self.stage(high_jump, "AIRBORNE")
         volley = next(
@@ -142,12 +159,6 @@ class ValtanDynamicAuthoringAdmissionTests(unittest.TestCase):
             row["patternId"]: row
             for row in json.loads(projected[pipeline.ENCOUNTER_REL])["patterns"]
         }
-        self.assertEqual(
-            "SET_GAMEPLAY_PHASE",
-            self.stage(product["VALTAN_ARENA_BREAK_109"], "RECOVERY")["actions"][0][
-                "kind"
-            ],
-        )
         combat_product = json.loads(projected[pipeline.COMBAT_PRODUCT_REL])
         target_axe = next(
             row

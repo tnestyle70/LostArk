@@ -17,15 +17,27 @@ from typing import Any
 
 STATUS_PATTERN_CONTRACTS: dict[str, dict[str, Any]] = {
     "VALTAN_STAGGER_SLOT": {
-        "displayName": "마력구파괴 패턴",
+        "displayName": "마력구 파괴 패턴",
         "sourceChainId": "derived.stagger-slot",
-        "sourceActionIds": (420642, 400430),
+        "sourceActionIds": (420617,),
         "sourceSequenceIndex": 1,
         "presentationSources": (
-            (420642, 1, "PRIMARY"),
-            (400430, 0, "REFERENCE_400430_0"),
+            (420617, 1, "PRIMARY"),
         ),
         "actionId": "valtan.authoring.stagger-slot",
+        "targetPolicy": "NONE",
+        "aimPolicy": "NONE",
+    },
+    "VALTAN_GROGGY_FOLLOWUP": {
+        "displayName": "발탄 공용 그로기 후속",
+        "sourceChainId": "derived.valtan-groggy-followup",
+        "authoringPhase": 3,
+        "sourceActionIds": (420618,),
+        "sourceSequenceIndex": 0,
+        "presentationSources": (
+            (420618, 0, "PRIMARY"),
+        ),
+        "actionId": "valtan.followup.groggy",
         "targetPolicy": "NONE",
         "aimPolicy": "NONE",
     },
@@ -68,6 +80,7 @@ REQUESTED_PRODUCT_IDS = (
     "VALTAN_GROUND_ROAR",
     "VALTAN_TRIPLE_COUNTER",
     "VALTAN_STAGGER_SLOT",
+    "VALTAN_GROGGY_FOLLOWUP",
     "VALTAN_BIND_SLOT",
     "VALTAN_SILENCE_SLOT",
 )
@@ -193,43 +206,71 @@ def _validate_status_patterns(
 
     expected_status_events = {
         "VALTAN_STAGGER_SLOT": (
-            ("STEP_01", "SET_STAGGER_GAUGE", 100, 5000),
-            ("GROGGY", "SET_BOSS_FLAG", 1, 6833),
-            ("RECOVERY", None, 0, 1000),
+            ("CHANNEL", None, 0, 12000),
+            ("FINAL_ATTACK", None, 0, 3000),
+        ),
+        "VALTAN_GROGGY_FOLLOWUP": (
+            ("GROGGY", "SET_BOSS_FLAG", True, 6833),
         ),
         "VALTAN_BIND_SLOT": (
-            ("STEP_01", "SET_PLAYER_BIND", 10000, 8533),
+            ("STEP_01", "SET_PLAYER_BIND", 10000, 5000),
+            ("RECOVERY", None, 0, 3533),
         ),
         "VALTAN_SILENCE_SLOT": (
-            ("STEP_01", "SET_PLAYER_SILENCE", 1, 2633),
+            ("STEP_01", None, 0, 2633),
+            ("SILENCE_HOLD", "SET_PLAYER_SILENCE", 1, 5000),
         ),
     }
 
     expected_animation_occurrences = {
-        ("VALTAN_STAGGER_SLOT", "GROGGY"): (
-            ("mesh_abn_groggy_1_start", 1833),
-            ("mesh_abn_groggy_1_loop", 1333),
-            ("mesh_abn_groggy_1_loop", 1333),
-            ("mesh_abn_groggy_1_loop", 334),
-            ("mesh_abn_groggy_1_end", 2000),
-        ),
-        ("VALTAN_BIND_SLOT", "STEP_01"): (
-            ("mesh_att_battle_5_01_start", 1400),
-            ("mesh_att_battle_5_01_loop", 900),
-            ("mesh_att_battle_5_01_loop", 900),
-            ("mesh_att_battle_5_01_loop", 900),
-            ("mesh_att_battle_5_01_end", 4433),
-        ),
-        ("VALTAN_SILENCE_SLOT", "STEP_01"): (
-            ("mesh_evt1_att_battle_5_01_end", 2633),
-        ),
+        ("VALTAN_STAGGER_SLOT", "CHANNEL"): {
+            "endPolicy": "LOOP_TO_STAGE_END",
+            "occurrences": (
+                ("mesh_att_battle_17_start", 0, 2000, False),
+                ("mesh_att_battle_17_loop", 0, 0, True),
+            ),
+        },
+        ("VALTAN_STAGGER_SLOT", "FINAL_ATTACK"): {
+            "endPolicy": "EXACT",
+            "occurrences": (("mesh_att_battle_17_end", 0, 3000, False),),
+        },
+        ("VALTAN_GROGGY_FOLLOWUP", "GROGGY"): {
+            "endPolicy": "EXACT",
+            "occurrences": (
+                ("mesh_abn_groggy_1_start", 0, 1833, False),
+                ("mesh_abn_groggy_1_loop", 0, 1333, False),
+                ("mesh_abn_groggy_1_loop", 0, 1333, False),
+                ("mesh_abn_groggy_1_loop", 0, 334, False),
+                ("mesh_abn_groggy_1_end", 0, 2000, False),
+            ),
+        },
+        ("VALTAN_BIND_SLOT", "STEP_01"): {
+            "endPolicy": "EXACT",
+            "occurrences": (
+                ("mesh_att_battle_5_01_start", 0, 1400, False),
+                ("mesh_att_battle_5_01_loop", 0, 900, False),
+                ("mesh_att_battle_5_01_loop", 0, 900, False),
+                ("mesh_att_battle_5_01_loop", 0, 900, False),
+                ("mesh_att_battle_5_01_end", 0, 900, False),
+            ),
+        },
+        ("VALTAN_BIND_SLOT", "RECOVERY"): {
+            "endPolicy": "EXACT",
+            "occurrences": (("mesh_att_battle_5_01_end", 900, 3533, False),),
+        },
+        ("VALTAN_SILENCE_SLOT", "STEP_01"): {
+            "endPolicy": "EXACT",
+            "occurrences": (
+                ("mesh_evt1_att_battle_5_01_end", 0, 2633, False),
+            ),
+        },
     }
 
     for pattern_id, contract in STATUS_PATTERN_CONTRACTS.items():
         expected_manual = {
             "patternId": pattern_id,
             "sourceChainId": contract["sourceChainId"],
-            "authoringPhase": 1,
+            "authoringPhase": contract.get("authoringPhase", 1),
             "admissionState": "DERIVED_SERVER_PATTERN",
         }
         if manual_by_id.get(pattern_id) != expected_manual:
@@ -294,11 +335,9 @@ def _validate_status_patterns(
                           if event.get("trigger") == "ENTER"), None)
             if expected_kind is None:
                 if stage.get("events"):
-                    raise CoverageError(f"status recovery must be event-free: {pattern_id}")
+                    raise CoverageError(f"status stage must be event-free: {pattern_id}")
             elif not isinstance(enter, dict) or enter.get("kind") != expected_kind:
                 raise CoverageError(f"status Pattern typed ENTER differs: {pattern_id}")
-            elif expected_kind == "SET_STAGGER_GAUGE" and enter.get("value") != expected_value:
-                raise CoverageError(f"status stagger capacity differs: {pattern_id}")
             elif expected_kind == "SET_PLAYER_BIND" and (
                     enter.get("heightM") != expected_value / 1000 or
                     enter.get("durationMs") != expected_duration):
@@ -306,57 +345,104 @@ def _validate_status_patterns(
             elif expected_kind == "SET_PLAYER_SILENCE" and (
                     enter.get("durationMs") != expected_duration):
                 raise CoverageError(f"status silence contract differs: {pattern_id}")
+            elif expected_kind == "SET_BOSS_FLAG" and (
+                    enter.get("flagId") != "boss.flag.groggy" or
+                    enter.get("enabled") is not expected_value):
+                raise CoverageError(f"status groggy contract differs: {pattern_id}")
+
+        if pattern_id == "VALTAN_STAGGER_SLOT":
+            channel, final_attack = gameplay_stages
+            channel_branches = channel.get("branches")
+            if not isinstance(channel_branches, list) or len(channel_branches) != 2:
+                raise CoverageError("magic-orb response branches differ")
+            success, timeout = channel_branches
+            if (gameplay_row.get("verticalOffsetM") != 5.0 or
+                    channel.get("bossResponse") != {
+                        "kind": "ACCUMULATED_HEALTH_DAMAGE",
+                        "threshold": 1000,
+                    } or
+                    success != {
+                        "outcome": "HEALTH_DAMAGE_THRESHOLD_REACHED",
+                        "nextActionId": None,
+                        "nextPatternId": "VALTAN_GROGGY_FOLLOWUP",
+                    } or
+                    timeout != {
+                        "outcome": "TIMEOUT",
+                        "nextActionId": "valtan.authoring.stagger-slot.final-attack",
+                    } or
+                    final_attack.get("hit", {}).get("shape") != {
+                        "kind": "CIRCLE", "outerRadiusM": 100.0
+                    } or
+                    final_attack.get("hit", {}).get("schedule") != {
+                        "kind": "INTERVAL", "count": 1,
+                        "firstOffsetMs": 2900, "intervalMs": 0,
+                    } or
+                    final_attack.get("hit", {}).get("serverDamageProfileId") !=
+                    "damage.valtan.omnidirectional-wipe-130"):
+                raise CoverageError("magic-orb damage response or wipe contract differs")
         gameplay_stage_by_id = {stage["stageId"]: stage for stage in gameplay_stages}
         for stage in presentation_stages:
             stage_id = stage["stageId"]
-            expected_occurrences = expected_animation_occurrences.get(
+            expected_animation = expected_animation_occurrences.get(
                 (pattern_id, stage_id)
             )
             animation = stage.get("animation")
-            if expected_occurrences is None:
+            if expected_animation is None:
                 if animation != {"mode": "NONE"}:
                     raise CoverageError(
                         f"status Pattern unexpected animation: {pattern_id}/{stage_id}"
                     )
             else:
+                expected_occurrences = expected_animation["occurrences"]
+                expected_end_policy = expected_animation["endPolicy"]
                 occurrences = animation.get("occurrences") if isinstance(animation, dict) else None
                 if (not isinstance(occurrences, list) or
-                        animation.get("endPolicy") != "EXACT" or
+                        animation.get("endPolicy") != expected_end_policy or
                         animation.get("repeatCount") != 1 or
                         tuple(
-                            (row.get("clip"), row.get("playMs"))
+                            (
+                                row.get("clip"), row.get("sourceStartMs"),
+                                row.get("playMs"), row.get("repeatUntilStageEnd"),
+                            )
                             for row in occurrences
                         ) != expected_occurrences or
                         any(
                             row.get("mappingBasis") != "PROJECT_AUTHORED" or
-                            row.get("sourceStartMs") != 0 or
-                            row.get("playRate") != 1 or
-                            row.get("repeatUntilStageEnd") is not False
+                            row.get("playRate") != 1
                             for row in occurrences
-                        ) or
+                        ) or (
+                        expected_end_policy == "EXACT" and
                         sum(row.get("playMs", 0) for row in occurrences) !=
-                        gameplay_stage_by_id[stage_id]["durationMs"]):
+                        gameplay_stage_by_id[stage_id]["durationMs"])):
                     raise CoverageError(
                         f"status Pattern selected animation differs: {pattern_id}/{stage_id}"
+                    )
+                if expected_end_policy == "LOOP_TO_STAGE_END" and (
+                        not occurrences[-1].get("repeatUntilStageEnd") or
+                        sum(row.get("playMs", 0) for row in occurrences[:-1]) >=
+                        gameplay_stage_by_id[stage_id]["durationMs"]):
+                    raise CoverageError(
+                        f"status Pattern loop animation differs: {pattern_id}/{stage_id}"
                     )
             if stage.get("effectCues"):
                 raise CoverageError(f"status Pattern unexpectedly owns an Effect cue: {pattern_id}")
             binding = binding_by_action.get(stage["actionId"])
-            if expected_occurrences is None:
+            if expected_animation is None:
                 if binding is not None and binding != {
                     "actionId": stage["actionId"], "playbackMode": "NONE", "clips": []
                 }:
                     raise CoverageError(f"status Pattern binding is not NONE: {pattern_id}")
             elif (not isinstance(binding, dict) or
                   tuple(
-                      (row.get("clip"), row.get("playMs"))
+                      (
+                          row.get("clip"), row.get("sourceStartMs"),
+                          row.get("playMs"), row.get("loop"),
+                      )
                       for row in binding.get("clips", [])
                   ) != expected_occurrences or
                   any(
                       row.get("mappingBasis") != "PROJECT_AUTHORED" or
-                      row.get("sourceStartMs") != 0 or
-                      row.get("playRate") != 1 or
-                      row.get("loop") is not False
+                      row.get("playRate") != 1
                       for row in binding.get("clips", [])
                   )):
                 raise CoverageError(

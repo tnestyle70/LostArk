@@ -18,6 +18,7 @@
 	<ClCompile Include="..\..\..\Client\Private\ActionCompositionGraphModel.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\BossLogicFlowViewModel.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\ValtanPresentationGenerationAdmission.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\EffectV2_Document.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\ValtanPatternFlowDocument.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\ValtanPatternEffectCueDocument.cpp" />
 	<ClCompile Include="..\..\..\Client\Private\ValtanPatternEffectCueAuthoring.cpp" />
@@ -42,6 +43,7 @@
 	<ClInclude Include="..\..\..\Client\Public\ActionCompositionGraphModel.h" />
 	<ClInclude Include="..\..\..\Client\Public\BossLogicFlowView.h" />
 	<ClInclude Include="..\..\..\Client\Public\ValtanPresentationGenerationAdmission.h" />
+	<ClInclude Include="..\..\..\Client\Public\EffectV2_Document.h" />
 	<ClInclude Include="..\..\..\Client\Public\ValtanPatternEffectCueDocument.h" />
 	<ClInclude Include="..\..\..\Client\Public\ValtanPatternEffectCueAuthoring.h" />
 	<ClInclude Include="..\..\..\Client\Public\Effect_DirectAuthoredSourceIndex.h" />

@@ -253,6 +253,9 @@ private:
 	bool_t m_bGroupWindowOpen = false;
 	bool_t m_bGroupsScanned = false;
 	std::vector<std::string> m_Groups;
+	/* Parsed once on the explicit Data Files scan edge.  The visible hierarchy
+	   never performs group-file I/O per frame. */
+	std::vector<EFFECT_V2_GROUP> m_GroupLibrary;
 	EFFECT_V2_GROUP m_Group;
 	char m_szGroupId[96] = {};
 	std::string m_strBindingGroupId;

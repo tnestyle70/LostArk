@@ -356,12 +356,20 @@ namespace
 		const bool hasShield = LostArk::Shared::Has_BossCombatFlag(
 			snapshot.iFlags,
 			LostArk::Shared::BOSS_COMBAT_STATE_FLAG::SHIELDED);
+		const bool isInvulnerable = LostArk::Shared::Has_BossCombatFlag(
+			snapshot.iFlags,
+			LostArk::Shared::BOSS_COMBAT_STATE_FLAG::INVULNERABLE);
+		const bool isGhostHidden = LostArk::Shared::Has_BossCombatFlag(
+			snapshot.iFlags,
+			LostArk::Shared::BOSS_COMBAT_STATE_FLAG::GHOST_HIDDEN);
 		return 0u != snapshot.iStateRevision &&
 			0u == (snapshot.iFlags &
 				~LostArk::Shared::BOSS_COMBAT_STATE_KNOWN_FLAG_MASK) &&
 			snapshot.iCurrentStagger <= snapshot.iMaximumStagger &&
 			snapshot.iCurrentShield <= snapshot.iMaximumShield &&
 			(hasShield == (0u != snapshot.iCurrentShield)) &&
+			(!isGhostHidden ||
+				(isInvulnerable && snapshot.iGameplayPhase >= 3u)) &&
 			0u != snapshot.iGameplayPhase;
 	}
 

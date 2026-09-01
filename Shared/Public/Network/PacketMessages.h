@@ -689,14 +689,18 @@ namespace LostArk::Shared
 		INVULNERABLE = 1u << 0,
 		SHIELDED = 1u << 1,
 		COUNTERABLE = 1u << 2,
-		GROGGY = 1u << 3
+		GROGGY = 1u << 3,
+		/* Phase-three keeps the primary boss identity and HP alive while its
+		presentation is absent for the one-tick relocation boundary. */
+		GHOST_HIDDEN = 1u << 4
 	};
 
 	inline constexpr std::uint16_t BOSS_COMBAT_STATE_KNOWN_FLAG_MASK =
 		static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::INVULNERABLE) |
 		static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::SHIELDED) |
 		static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::COUNTERABLE) |
-		static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::GROGGY);
+		static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::GROGGY) |
+		static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::GHOST_HIDDEN);
 
 	[[nodiscard]]
 	constexpr bool Has_BossCombatFlag(

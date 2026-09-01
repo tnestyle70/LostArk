@@ -13,7 +13,8 @@ namespace LostArk::Server
 	/* The only gameplay bootstrap version this build reads. The publisher
 	stamps it and the loader refuses anything else, so a bump has to travel
 	through both sides at once instead of leaving one of them behind. */
-	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 29u;
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION =
+		LostArk::Shared::GAMEPLAY_BOOTSTRAP_FORMAT_VERSION;
 
 	/* One point on the displacement an animator baked into a clip. The player
 	reads it per skill and the boss per pattern stage, so it carries no owner in
@@ -259,7 +260,10 @@ namespace LostArk::Server
 	{
 		NONE,
 		PATTERN_FACING_AT_SPAWN,
-		RADIAL_INWARD
+		RADIAL_INWARD,
+		/* A BOSS_RELATIVE radial volley sends each ordinal toward the following
+		spawn slot, wrapping the terminal slot back to zero. */
+		NEXT_RADIAL_SLOT
 	};
 
 	enum class BOSS_COMBAT_OBJECT_HIT_TRIGGER : std::uint8_t
@@ -374,6 +378,7 @@ namespace LostArk::Server
 		TIMEOUT,
 		COUNTER_HIT,
 		STAGGER_BROKEN,
+		HEALTH_DAMAGE_THRESHOLD_REACHED,
 		WALL_CONTACT,
 		PART_DESTROYED,
 		PROP_DESTROYED,
@@ -381,6 +386,23 @@ namespace LostArk::Server
 		ALL_PLAYERS_GRABBED,
 		ANY_PLAYER_GRABBED,
 		NAVIGATION_BLOCKED
+	};
+
+	enum class BOSS_PATTERN_BOSS_RESPONSE_KIND : std::uint8_t
+	{
+		NONE,
+		/* Sum only health damage that survived defense, invulnerability and
+		shield resolution. The occurrence publishes its edge exactly once. */
+		ACCUMULATED_HEALTH_DAMAGE
+	};
+
+	enum class BOSS_PATTERN_COUNTER_PROXY_KIND : std::uint8_t
+	{
+		NONE,
+		BOSS_LOCAL_CIRCLE,
+		/* Source admission is the closed forward half-plane. The authored arc is
+		fixed at 180 degrees and deliberately owns no radius. */
+		BOSS_FORWARD_ARC
 	};
 
 	struct BOSS_PATTERN_STAGE_BRANCH final
@@ -565,12 +587,19 @@ namespace LostArk::Server
 			LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
 		BOSS_PATTERN_PART_DAMAGE_POLICY ePartDamagePolicy =
 			BOSS_PATTERN_PART_DAMAGE_POLICY::NORMAL;
-		/* Optional boss-local hurt proxy used only while this stage is
-		counterable. Offsets are right/forward metres from the gameplay root. */
+		/* Optional source gate used only while this stage is counterable. Circle
+		offsets are right/forward metres from the gameplay root; the forward arc
+		uses only fCounterProxyArcDegrees. */
 		bool bHasCounterProxy = false;
+		BOSS_PATTERN_COUNTER_PROXY_KIND eCounterProxyKind =
+			BOSS_PATTERN_COUNTER_PROXY_KIND::NONE;
 		float fCounterProxyForwardOffsetM = 0.f;
 		float fCounterProxyRightOffsetM = 0.f;
 		float fCounterProxyRadiusM = 0.f;
+		float fCounterProxyArcDegrees = 0.f;
+		BOSS_PATTERN_BOSS_RESPONSE_KIND eBossResponseKind =
+			BOSS_PATTERN_BOSS_RESPONSE_KIND::NONE;
+		std::uint32_t iBossResponseThreshold = 0u;
 		std::uint32_t iDurationMs = 0;
 		float fHitOuterRadius = 0.f;
 		float fHitInnerRadius = 0.f;
@@ -756,6 +785,9 @@ namespace LostArk::Server
 		bool bAuthoringMasterManaged = false;
 		BOSS_PATTERN_MOTION Motion;
 		BOSS_PATTERN_FINALE Finale;
+		/* A nonzero authored offset is applied once from the occurrence's entry
+		Y and restored on every terminal path before a follow-up may begin. */
+		float fVerticalOffsetM = 0.f;
 		BOSS_PATTERN_SELECTION eSelection = BOSS_PATTERN_SELECTION::NORMAL;
 		BOSS_PATTERN_ARMOR_REQUIREMENT eArmorRequirement =
 			BOSS_PATTERN_ARMOR_REQUIREMENT::ANY;

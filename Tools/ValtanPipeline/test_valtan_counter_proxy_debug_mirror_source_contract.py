@@ -27,8 +27,9 @@ class ValtanCounterProxyDebugMirrorSourceContractTests(unittest.TestCase):
 
     def test_counter_proxy_is_not_gated_by_damage_pulse_clock(self) -> None:
         self.assertIn(
-            "if (!isHitWindow && !area.bHasCounterProxy)", self.source
+            "if (!isHitWindow && !isAuthoringGeometryWindow &&", self.source
         )
+        self.assertIn("!area.bHasCounterProxy)\n\t\treturn;", self.source)
         self.assertIn("COUNTER_PROXY_COLOR_RGBA", self.source)
         self.assertIn("CounterShape.iAreaType = 1", self.source)
         self.assertIn("area.fCounterProxyForwardOffsetM", self.source)

@@ -26,15 +26,12 @@ namespace
 		const float sourceX,
 		const float sourceZ) noexcept
 	{
+		using LostArk::Server::BOSS_PATTERN_COUNTER_PROXY_KIND;
 		if (!boss.bPatternHasCounterProxy ||
 			!std::isfinite(sourceX) || !std::isfinite(sourceZ) ||
 			!std::isfinite(boss.fPositionX) ||
 			!std::isfinite(boss.fPositionZ) ||
-			!std::isfinite(boss.fYawDegrees) ||
-			!std::isfinite(boss.fPatternCounterProxyForwardOffsetM) ||
-			!std::isfinite(boss.fPatternCounterProxyRightOffsetM) ||
-			!std::isfinite(boss.fPatternCounterProxyRadiusM) ||
-			boss.fPatternCounterProxyRadiusM <= 0.f)
+			!std::isfinite(boss.fYawDegrees))
 		{
 			return false;
 		}
@@ -42,6 +39,31 @@ namespace
 		const float yawRadians = boss.fYawDegrees * DEGREES_TO_RADIANS;
 		const float forwardX = std::sin(yawRadians);
 		const float forwardZ = std::cos(yawRadians);
+		if (BOSS_PATTERN_COUNTER_PROXY_KIND::BOSS_FORWARD_ARC ==
+			boss.ePatternCounterProxyKind)
+		{
+			if (!std::isfinite(boss.fPatternCounterProxyArcDegrees) ||
+				180.f != boss.fPatternCounterProxyArcDegrees ||
+				0.f != boss.fPatternCounterProxyForwardOffsetM ||
+				0.f != boss.fPatternCounterProxyRightOffsetM ||
+				0.f != boss.fPatternCounterProxyRadiusM)
+			{
+				return false;
+			}
+			const float deltaX = sourceX - boss.fPositionX;
+			const float deltaZ = sourceZ - boss.fPositionZ;
+			return deltaX * forwardX + deltaZ * forwardZ >= 0.f;
+		}
+		if (BOSS_PATTERN_COUNTER_PROXY_KIND::BOSS_LOCAL_CIRCLE !=
+				boss.ePatternCounterProxyKind ||
+			!std::isfinite(boss.fPatternCounterProxyForwardOffsetM) ||
+			!std::isfinite(boss.fPatternCounterProxyRightOffsetM) ||
+			!std::isfinite(boss.fPatternCounterProxyRadiusM) ||
+			0.f != boss.fPatternCounterProxyArcDegrees ||
+			boss.fPatternCounterProxyRadiusM <= 0.f)
+		{
+			return false;
+		}
 		const float rightX = forwardZ;
 		const float rightZ = -forwardX;
 		const float proxyX = boss.fPositionX +
@@ -158,6 +180,31 @@ LostArk::Server::CBossCombatRuntime::Apply_PlayerHit(
 		}
 		result.iHealthDamage = (std::min)(resolved, boss.iCurrentHp);
 		boss.iCurrentHp -= result.iHealthDamage;
+	}
+	if (BOSS_PATTERN_BOSS_RESPONSE_KIND::ACCUMULATED_HEALTH_DAMAGE ==
+			boss.ePatternBossResponseKind &&
+		!boss.bPatternBossResponsePublished &&
+		0u != boss.iPatternBossResponseThreshold &&
+		0u != result.iHealthDamage)
+	{
+		const std::uint64_t accumulated =
+			static_cast<std::uint64_t>(
+				boss.iPatternBossResponseAccumulatedHealthDamage) +
+			result.iHealthDamage;
+		boss.iPatternBossResponseAccumulatedHealthDamage =
+			static_cast<std::uint32_t>((std::min)(
+				accumulated,
+				static_cast<std::uint64_t>(boss.iPatternBossResponseThreshold)));
+		if (boss.iPatternBossResponseAccumulatedHealthDamage >=
+			boss.iPatternBossResponseThreshold)
+		{
+			result.bHealthDamageThresholdReached = Publish_PatternOutcome(
+				boss,
+				BOSS_PATTERN_STAGE_OUTCOME::HEALTH_DAMAGE_THRESHOLD_REACHED,
+				hit.iServerTick);
+			boss.bPatternBossResponsePublished =
+				result.bHealthDamageThresholdReached;
+		}
 	}
 
 	if (0u != hit.iCounterPower &&

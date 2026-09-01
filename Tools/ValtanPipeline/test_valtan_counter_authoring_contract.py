@@ -258,7 +258,14 @@ class ValtanCounterAuthoringContractTests(unittest.TestCase):
                 enabled_master, enabled_pattern
             )
             self.assertEqual(
-                original, _stage(enabled_product, "STEP_07")["counterProxy"]
+                {
+                    "kind": "BOSS_LOCAL_CIRCLE",
+                    "forwardOffsetM": original["forwardOffsetM"],
+                    "rightOffsetM": original["rightOffsetM"],
+                    "radiusM": original["radiusM"],
+                    "arcDegrees": 0.0,
+                },
+                _stage(enabled_product, "STEP_07")["counterProxy"],
             )
 
     def test_typed_operation_enables_selected_same_pattern_groggy(self) -> None:

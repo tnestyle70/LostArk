@@ -107,12 +107,20 @@ namespace
 		const bool_t hasShield = LostArk::Shared::Has_BossCombatFlag(
 			state.iFlags,
 			LostArk::Shared::BOSS_COMBAT_STATE_FLAG::SHIELDED);
+		const bool_t isInvulnerable = LostArk::Shared::Has_BossCombatFlag(
+			state.iFlags,
+			LostArk::Shared::BOSS_COMBAT_STATE_FLAG::INVULNERABLE);
+		const bool_t isGhostHidden = LostArk::Shared::Has_BossCombatFlag(
+			state.iFlags,
+			LostArk::Shared::BOSS_COMBAT_STATE_FLAG::GHOST_HIDDEN);
 		return 0u != state.iStateRevision &&
 			0u == (state.iFlags & static_cast<std::uint16_t>(
 				~LostArk::Shared::BOSS_COMBAT_STATE_KNOWN_FLAG_MASK)) &&
 			state.iCurrentStagger <= state.iMaximumStagger &&
 			state.iCurrentShield <= state.iMaximumShield &&
 			(hasShield == (0u != state.iCurrentShield)) &&
+			(!isGhostHidden ||
+				(isInvulnerable && state.iGameplayPhase >= 3u)) &&
 			0u != state.iGameplayPhase;
 	}
 
@@ -389,11 +397,13 @@ void CValtan::Load_PatternHitAreaDebug()
 				area.iStageDurationMs = stage.iDurationMs;
 			}
 			area.bHasCounterProxy = stage.bHasCounterProxy;
+			area.strCounterProxyKind = stage.counterProxyKind;
 			area.fCounterProxyForwardOffsetM =
 				stage.fCounterProxyForwardOffsetM;
 			area.fCounterProxyRightOffsetM =
 				stage.fCounterProxyRightOffsetM;
 			area.fCounterProxyRadiusM = stage.fCounterProxyRadiusM;
+			area.fCounterProxyArcDegrees = stage.fCounterProxyArcDegrees;
 			m_PatternHitAreaByActionId.emplace(
 				stage.actionId, std::move(area));
 		}
@@ -535,7 +545,16 @@ void CValtan::Draw_PatternHitAreaDebug() const
 	if (area.bHasCounterProxy)
 	{
 		HIT_AREA_SHAPE CounterShape{};
-		CounterShape.iAreaType = 1;
+		if ("BOSS_FORWARD_ARC" == area.strCounterProxyKind)
+		{
+			CounterShape.iAreaType = 3;
+			CounterShape.iAreaAngle = static_cast<int32_t>(
+				area.fCounterProxyArcDegrees + 0.5f);
+		}
+		else
+		{
+			CounterShape.iAreaType = 1;
+		}
 		CounterShape.iAreaRange = ToUnits(area.fCounterProxyRadiusM);
 		Draw_WithYawOffset(
 			0.f, area.fCounterProxyForwardOffsetM,
@@ -1516,12 +1535,15 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 			if (Stage.CounterProxy.has_value())
 			{
 				Area.bHasCounterProxy = true;
+				Area.strCounterProxyKind = Stage.CounterProxy->strKind;
 				Area.fCounterProxyForwardOffsetM =
 					Stage.CounterProxy->fForwardOffsetM;
 				Area.fCounterProxyRightOffsetM =
 					Stage.CounterProxy->fRightOffsetM;
 				Area.fCounterProxyRadiusM =
 					Stage.CounterProxy->fRadiusM;
+				Area.fCounterProxyArcDegrees =
+					Stage.CounterProxy->fArcDegrees;
 			}
 			StagedHitAreas.emplace(Stage.strActionId, std::move(Area));
 		}
@@ -2959,7 +2981,11 @@ void CValtan::Update(f32_t fTimeDelta)
 
 void CValtan::Late_Update(f32_t fTimeDelta)
 {
-	__super::Late_Update(fTimeDelta);
+	/* Container Update still advances the body animation and every Effect clock.
+	Only render submission is suppressed for the authoritative relocation edge;
+	clearing the snapshot flag therefore restores the same presentation group. */
+	if (!m_isGhostPresentationHidden)
+		__super::Late_Update(fTimeDelta);
 	Client::CEffectV2Runtime::Tick(
 		Client::EFFECT_V2_TARGET::From_Valtan(
 			static_pointer_cast<CValtan>(shared_from_this())),
@@ -3349,6 +3375,13 @@ void CValtan::Queue_NetworkTransformSample(
 	const uint32_t iServerTick)
 {
 	bool_t reset =
+		/* The relocation snapshot is admitted before its BossCombat flags in
+		   CClientReplication.  While the previous accepted snapshot is hidden,
+		   every queued pose therefore belongs to the teleport edge and must not
+		   retain the two-tick interpolation history.  This also covers the first
+		   visible snapshot: m_isGhostPresentationHidden is cleared only after
+		   Apply_NetworkState has committed this sample. */
+		m_isGhostPresentationHidden ||
 		!m_hasNetworkTransformState || 0u == m_iNetworkSampleCount;
 	if (!reset)
 	{
@@ -3506,6 +3539,15 @@ bool_t CValtan::Apply_BossCombatState(
 {
 	if (!m_isServerAuthoritative || !Is_ValidBossCombatState(state))
 		return false;
+	const bool_t isGhostHidden = LostArk::Shared::Has_BossCombatFlag(
+		state.iFlags,
+		LostArk::Shared::BOSS_COMBAT_STATE_FLAG::GHOST_HIDDEN);
+	if (isGhostHidden &&
+		("BOSS_VALTAN" != m_strArchetypeId ||
+		 LostArk::Shared::INVALID_NET_ENTITY_ID != m_iOwnerBossNetEntityId))
+	{
+		return false;
+	}
 	if (m_hasBossCombatState)
 	{
 		if (state.iStateRevision < m_BossCombatState.iStateRevision)
@@ -3538,8 +3580,20 @@ bool_t CValtan::Apply_BossCombatState(
 		}
 	}
 
+	if (m_isGhostPresentationHidden != isGhostHidden)
+	{
+		/* Relocation hides the whole presentation occurrence, not only the
+		   skinned parts.  Retire target-owned V2 objects on the hidden edge and
+		   re-admit the target on the visible edge; the following authoritative
+		   stage snapshot rebuilds only effects that still belong to that stage. */
+		CEffectV2Runtime::Set_Ignored(
+			EFFECT_V2_TARGET::From_Valtan(
+				static_pointer_cast<CValtan>(shared_from_this())),
+			isGhostHidden);
+	}
 	m_BossCombatState = state;
 	m_hasBossCombatState = true;
+	m_isGhostPresentationHidden = isGhostHidden;
 	Refresh_ArmorPartVisibility();
 	return true;
 }

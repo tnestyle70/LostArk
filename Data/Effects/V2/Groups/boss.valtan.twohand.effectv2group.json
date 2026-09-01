@@ -1,17 +1,251 @@
 {
   "schema": "lostark.effect-v2-group",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "groupId": "boss.valtan.twohand",
   "durationMs": 0,
   "children": [
-    { "effectId": "boss.valtan.twohand.decal_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.1, 1.0, 1.1] },
-    { "effectId": "boss.valtan.twohand.decal_2", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.1, 1.0, 1.1] },
-    { "effectId": "boss.valtan.twohand.decal_3", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.1, 1.0, 1.1] },
-    { "effectId": "boss.valtan.twohand.decal_4", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.1, 1.0, 1.1] },
-    { "effectId": "boss.valtan.sw_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.7, 1.0, 1.7] },
-    { "effectId": "boss.valtan.fluid_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.1, 0.0, 0.05], "pitchDegrees": 0.0, "yawDegrees": 1.0, "rollDegrees": 0.0, "scale": [1.5, 1.1, 1.5] },
-    { "effectId": "boss.valtan.fluid_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.85], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": -40.0, "scale": [1.5, 1.1, 1.5] },
-    { "effectId": "boss.valtan.fluid_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.75], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 40.0, "scale": [1.5, 1.1, 1.5] },
-    { "effectId": "boss.valtan.blur_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] }
+    {
+      "childId": "child.migrated.000.f90ab634ebcbdbb8",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.twohand.decal_1"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.1,
+          1.0,
+          1.1
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.001.56644451ec756adf",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.twohand.decal_2"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.1,
+          1.0,
+          1.1
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.002.380e33e208724cd8",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.twohand.decal_3"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.1,
+          1.0,
+          1.1
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.003.537a8e8a9a9f8550",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.twohand.decal_4"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.1,
+          1.0,
+          1.1
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.004.3da66354e139e8dd",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.sw_1"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.7,
+          1.0,
+          1.7
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.005.2fdaf3e442c84afe",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.fluid_1"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.1,
+          0.0,
+          0.05
+        ],
+        "rotation": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "scale": [
+          1.5,
+          1.1,
+          1.5
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.006.be0a67dee7ec0401",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.fluid_1"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.85
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -40.0
+        ],
+        "scale": [
+          1.5,
+          1.1,
+          1.5
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.007.42c1b65668f6bb03",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.fluid_1"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.75
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          40.0
+        ],
+        "scale": [
+          1.5,
+          1.1,
+          1.5
+        ]
+      }
+    },
+    {
+      "childId": "child.migrated.008.e6edb055712d58e0",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.blur_1"
+      },
+      "startMs": 0,
+      "durationMs": 0,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    }
   ]
 }

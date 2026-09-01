@@ -36,14 +36,82 @@ struct EFFECT_V2_DOCUMENT final
 	std::string strAnimationClip;
 };
 
+enum class EFFECT_V2_RESOURCE_KIND : int32_t
+{
+	LEAF,
+	GROUP,
+	END
+};
+
+enum class EFFECT_V2_CLOCK_BASIS : int32_t
+{
+	STAGE,
+	CLIP_OCCURRENCE,
+	END
+};
+
+enum class EFFECT_V2_REPEAT_POLICY : int32_t
+{
+	ONCE,
+	EACH_LOOP,
+	END
+};
+
+enum class EFFECT_V2_FOLLOW_POLICY : int32_t
+{
+	FOLLOW_SLOT,
+	SNAPSHOT_AT_START,
+	END
+};
+
+enum class EFFECT_V2_ROTATION_BASIS : int32_t
+{
+	SLOT,
+	TARGET_YAW,
+	WORLD,
+	END
+};
+
+enum class EFFECT_V2_STOP_POLICY : int32_t
+{
+	NATURAL,
+	STAGE_END,
+	CLIP_OCCURRENCE_END,
+	EXPLICIT,
+	END
+};
+
+struct EFFECT_V2_LOCAL_TRANSFORM final
+{
+	float3_t vTranslation = { 0.f, 0.f, 0.f };
+	/* Pitch, yaw and roll in degrees. */
+	float3_t vRotation = { 0.f, 0.f, 0.f };
+	float3_t vScale = { 1.f, 1.f, 1.f };
+};
+
 struct EFFECT_V2_BINDING final
 {
-	/* Exactly one of strEffectId (leaf document) or strGroupId (group
-	   document) names what spawns. */
+	/* Stable formatVersion 2 identity and typed document fields. */
+	std::string strBindingId;
+	EFFECT_V2_RESOURCE_KIND eResourceKind = EFFECT_V2_RESOURCE_KIND::LEAF;
+	std::string strResourceId;
+	std::string strPatternId;
+	std::string strStageId;
+	std::string strActionId;
+	EFFECT_V2_CLOCK_BASIS eClockBasis = EFFECT_V2_CLOCK_BASIS::STAGE;
+	std::string strClipOccurrenceId;
+	EFFECT_V2_REPEAT_POLICY eRepeatPolicy = EFFECT_V2_REPEAT_POLICY::ONCE;
+	std::string strAnchorSlotId;
+	EFFECT_V2_FOLLOW_POLICY eFollowPolicy = EFFECT_V2_FOLLOW_POLICY::FOLLOW_SLOT;
+	EFFECT_V2_ROTATION_BASIS eRotationBasis = EFFECT_V2_ROTATION_BASIS::TARGET_YAW;
+	EFFECT_V2_LOCAL_TRANSFORM LocalTransform;
+	EFFECT_V2_STOP_POLICY eStopPolicy = EFFECT_V2_STOP_POLICY::NATURAL;
+
+	/* Runtime convenience mirrors. Parse_Bindings fills these from the typed
+	   v2 fields so existing consumers can migrate without an ABI-breaking
+	   replacement of their member access. */
 	std::string strEffectId;
 	std::string strGroupId;
-	/* Exactly one of strClip (model clip start clock) or strStage (Server
-	   pattern stage actionId, stage-local clock) keys the binding. */
 	std::string strClip;
 	std::string strStage;
 	uint32_t iStartMs = 0u;
@@ -70,7 +138,15 @@ enum class EFFECT_V2_CHILD_STOP : int32_t
    relative to the group pivot and survive bone following. */
 struct EFFECT_V2_GROUP_CHILD final
 {
+	std::string strChildId;
+	EFFECT_V2_RESOURCE_KIND eResourceKind = EFFECT_V2_RESOURCE_KIND::LEAF;
+	std::string strResourceId;
+	EFFECT_V2_LOCAL_TRANSFORM LocalTransform;
+
+	/* Runtime convenience mirrors for the leaf-only consumer during its
+	   migration to typed nested resources. */
 	std::string strEffectId;
+	std::string strGroupId;
 	uint32_t iStartMs = 0u;
 	uint32_t iDurationMs = 0u;
 	EFFECT_V2_CHILD_STOP eStop = EFFECT_V2_CHILD_STOP::DEACTIVATE;
@@ -83,9 +159,10 @@ struct EFFECT_V2_GROUP_CHILD final
 	float3_t vScale = { 1.f, 1.f, 1.f };
 };
 
-/* A group owns clock and placement only; every look comes from the child
-   documents. iDurationMs 0 ends with the last child, otherwise it caps
-   every child stop. Children must be leaf documents (no nesting). */
+/* A group owns clock and placement only; every look comes from a typed leaf
+   or nested group resource. iDurationMs 0 ends with the last child, otherwise
+   it caps every child stop. Authored array order is deterministic spawn order;
+   strChildId is the stable mutation identity. */
 struct EFFECT_V2_GROUP final
 {
 	std::string strGroupId;

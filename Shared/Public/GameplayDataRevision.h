@@ -14,6 +14,10 @@ namespace LostArk::Shared
 	inline constexpr std::size_t GAMEPLAY_DATA_REVISION_BYTES = 32u;
 	inline constexpr std::size_t GAMEPLAY_DATA_REVISION_HEX_BYTES =
 		GAMEPLAY_DATA_REVISION_BYTES * 2u;
+	/* Shared by the publisher, Server loader, and Client presentation
+	   admission so an authored bootstrap version bump cannot leave one
+	   consumer silently pinned to an older format. */
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_FORMAT_VERSION = 30u;
 
 	// SHA-256 content identity for one immutable gameplay/presentation bundle.
 	// The all-zero value is reserved as "no revision" and is never valid on wire.

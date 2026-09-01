@@ -54,7 +54,7 @@ class ValtanRequestedPatternCoverageContractTests(unittest.TestCase):
             ROOT / "Data/Valtan/Valtan.animation-chain-promotions.json"
         )
 
-    def test_real_owner_sets_include_three_derived_status_patterns(self) -> None:
+    def test_real_owner_sets_include_derived_mechanic_patterns(self) -> None:
         self.assertEqual(self.report.product_count, len(self.report.product_ids))
         self.assertEqual(self.report.encounter_count, len(self.report.encounter_ids))
         self.assertGreater(self.report.product_count, 0)
@@ -132,7 +132,7 @@ class ValtanRequestedPatternCoverageContractTests(unittest.TestCase):
             row for row in bindings["bindings"]
             if row["actionId"] == "valtan.authoring.bind-slot.step-01"
         )
-        bind_binding["clips"][-1]["playMs"] = 4432
+        bind_binding["clips"][-1]["playMs"] = 899
         with self.assertRaisesRegex(CoverageError, "binding differs"):
             validate_status(self.gameplay, self.presentation, bindings)
 

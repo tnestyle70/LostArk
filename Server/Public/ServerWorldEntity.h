@@ -138,6 +138,21 @@ namespace LostArk::Server
 		bool bGhostPhasePatternLoopActive = false;
 		std::uint32_t iGhostPortalLastSpawnTick = 0u;
 		std::uint32_t iGhostPortalOccurrenceSequence = 0u;
+		/* A completed phase-three foreground reserves exactly one hidden tick.
+		The room commits relocation and then clears this latch at reappearTick. */
+		bool bGhostRepositionPending = false;
+		std::uint32_t iGhostReappearTick = 0u;
+		std::uint32_t iGhostRelocationSequence = 0u;
+		/* A relocation search never makes the room fatal. If this tick's bounded
+		candidate set has no same-deck footprint, the primary holds its current
+		pose and retries from a deterministic next-tick seed before another attack
+		may start. */
+		bool bGhostRelocationRetryPending = false;
+		std::uint32_t iGhostRelocationRetryTick = 0u;
+		/* Cleanup may clear only the combat flags committed by the relocation
+		transaction. Other mechanics can independently own INVULNERABLE. */
+		bool bGhostRelocationOwnsHiddenFlag = false;
+		bool bGhostRelocationOwnsInvulnerableFlag = false;
 		std::string strPlacementId;
 		std::string strArchetypeId;
 		std::string strEncounterId;
@@ -282,9 +297,21 @@ namespace LostArk::Server
 		BOSS_PATTERN_PART_DAMAGE_POLICY ePatternPartDamagePolicy =
 			BOSS_PATTERN_PART_DAMAGE_POLICY::NORMAL;
 		bool bPatternHasCounterProxy = false;
+		BOSS_PATTERN_COUNTER_PROXY_KIND ePatternCounterProxyKind =
+			BOSS_PATTERN_COUNTER_PROXY_KIND::NONE;
 		float fPatternCounterProxyForwardOffsetM = 0.f;
 		float fPatternCounterProxyRightOffsetM = 0.f;
 		float fPatternCounterProxyRadiusM = 0.f;
+		float fPatternCounterProxyArcDegrees = 0.f;
+		BOSS_PATTERN_BOSS_RESPONSE_KIND ePatternBossResponseKind =
+			BOSS_PATTERN_BOSS_RESPONSE_KIND::NONE;
+		std::uint32_t iPatternBossResponseThreshold = 0u;
+		std::uint32_t iPatternBossResponseAccumulatedHealthDamage = 0u;
+		bool bPatternBossResponsePublished = false;
+		/* Pattern vertical offset is relative to this captured occurrence base,
+		never to the previous offset pose, so repeated finale cycles cannot drift. */
+		bool bPatternVerticalOffsetApplied = false;
+		float fPatternVerticalBaseY = 0.f;
 		float fPatternHitOuterRadius = 0.f;
 		float fPatternHitInnerRadius = 0.f;
 		float fPatternHitAngleDegrees = 0.f;

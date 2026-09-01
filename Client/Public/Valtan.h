@@ -385,6 +385,9 @@ private:
 	std::unordered_map<uint32_t, wstring_t> m_ArmorPartTagsByStateMask;
 	LostArk::Shared::BOSS_COMBAT_SNAPSHOT m_BossCombatState;
 	bool_t m_hasBossCombatState = false;
+	/* The Server keeps this primary boss alive and damage-authoritative while
+	one phase-three relocation snapshot suppresses only its part render queues. */
+	bool_t m_isGhostPresentationHidden = false;
 	uint8_t m_iBrokenArmorMask = 0u;
 	std::uint64_t m_iLastBossCombatEventSequence = 0u;
 	DEFERRED_EMISSIVE_OVERRIDE m_HitFlash;
@@ -578,9 +581,11 @@ private:
 		/* Separate player-attack -> boss hurt proxy.  It is active for the
 		   whole WINDUP Stage and must never be presented as a boss damage hit. */
 		bool_t bHasCounterProxy = false;
+		std::string strCounterProxyKind = "BOSS_LOCAL_CIRCLE";
 		f32_t fCounterProxyForwardOffsetM = 0.f;
 		f32_t fCounterProxyRightOffsetM = 0.f;
 		f32_t fCounterProxyRadiusM = 0.f;
+		f32_t fCounterProxyArcDegrees = 0.f;
 	};
 	bool_t m_isNavigationDebugVisible = { false };
 	bool_t m_isCombatColliderDebugVisible = { false };

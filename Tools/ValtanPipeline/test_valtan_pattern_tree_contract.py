@@ -826,8 +826,15 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             "rightOffsetM": 0.0,
             "radiusM": 2.25,
         }
+        expected_product_proxy = {
+            "kind": "BOSS_LOCAL_CIRCLE",
+            "forwardOffsetM": 1.0,
+            "rightOffsetM": 0.0,
+            "radiusM": 2.25,
+            "arcDegrees": 0.0,
+        }
         self.assertEqual(expected_proxy, trash["counterProxy"])
-        self.assertEqual(trash["counterProxy"], trash_product["counterProxy"])
+        self.assertEqual(expected_product_proxy, trash_product["counterProxy"])
         self.assertTrue(split_policy_accepts(
             self.gameplay,
             self.presentation,
@@ -894,7 +901,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             "Read_StageGameplayExtensions",
             "Validate_SplitGameplayStageExtensions",
             "split gameplay instant part destruction contract is invalid",
-            "split gameplay counterProxy preset requires WINDUP",
+            "split gameplay counterProxy preset/stage kind is invalid",
             'LegacyStage.emplace("partDamagePolicy"',
             'LegacyStage.emplace("counterProxy"',
             "Product.strPartDamagePolicy == Master.strPartDamagePolicy",

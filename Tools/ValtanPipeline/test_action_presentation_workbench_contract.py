@@ -2164,7 +2164,6 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "MAP",
             "ANIMATION",
             "EFFECT",
-            "EFFECT_V2",
             "RENDERING",
             "UI",
             "BALANCE",
@@ -2175,6 +2174,10 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
                 f"IsDebugToolVisible(DEBUG_TOOL::{tool})",
                 render,
             )
+        self.assertNotIn(
+            "IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2)", render
+        )
+        self.assertIn("m_pEffectToolV2->Render()", render)
         self.assertIn("m_pBossTool->Render()", render)
         self.assertNotIn("switch (m_eActiveDebugTool)", render)
 
@@ -2394,8 +2397,8 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             '"Valtan Action Composition"',
             '"Data/Valtan/Valtan.gameplay.json"',
             '"Data/Valtan/Valtan.presentation.json"',
-            '"Valtan Authored Effects"',
-            '"Data/Effects/EffectCatalog.json"',
+            '"Valtan Effect Resources"',
+            '"Data/Effects"',
             '"Valtan Pattern Sound Cues"',
             '"Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json"',
             '"Valtan Encounter Runtime"',

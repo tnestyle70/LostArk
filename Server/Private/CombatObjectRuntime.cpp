@@ -552,15 +552,59 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 					radialDirectionX * volley->fRadiusM;
 				object.LiveState.CurrentPose.fPositionZ +=
 					radialDirectionZ * volley->fRadiusM;
+				const bool nextRadialSlot =
+					BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NEXT_RADIAL_SLOT ==
+						definition.eDirectionPolicy;
 				const bool radialInward =
 					BOSS_COMBAT_OBJECT_DIRECTION_POLICY::RADIAL_INWARD ==
 						definition.eDirectionPolicy;
-				object.LiveState.CurrentPose.fDirectionX = radialInward ?
-					-radialDirectionX : radialDirectionX;
-				object.LiveState.CurrentPose.fDirectionZ = radialInward ?
-					-radialDirectionZ : radialDirectionZ;
-				object.LiveState.CurrentPose.fYawDegrees = radialInward ?
-					worldDegrees + 180.f : worldDegrees;
+				if (nextRadialSlot)
+				{
+					/* The spawn remains the current radial slot. Its movement vector is
+					the exact chord to the following authored slot, including the final
+					ordinal's natural angular wrap back to slot zero. */
+					const std::uint32_t nextOrdinal = (ordinal + 1u) % count;
+					const float nextWorldDegrees = boss.fYawDegrees +
+						volley->fStartAngleDegrees +
+						volley->fAngleStepDegrees *
+							static_cast<float>(nextOrdinal);
+					const float nextWorldRadians =
+						nextWorldDegrees * DEGREES_TO_RADIANS;
+					const float routeX =
+						(std::sin(nextWorldRadians) - radialDirectionX) *
+						volley->fRadiusM;
+					const float routeZ =
+						(std::cos(nextWorldRadians) - radialDirectionZ) *
+						volley->fRadiusM;
+					const float routeLengthSquared = routeX * routeX + routeZ * routeZ;
+					if (!std::isfinite(routeLengthSquared) ||
+						routeLengthSquared <= 0.000001f)
+					{
+						status = "Boss combat object next radial slot is invalid";
+						return false;
+					}
+					const float inverseRouteLength =
+						1.f / std::sqrt(routeLengthSquared);
+					object.LiveState.CurrentPose.fDirectionX =
+						routeX * inverseRouteLength;
+					object.LiveState.CurrentPose.fDirectionZ =
+						routeZ * inverseRouteLength;
+					object.LiveState.CurrentPose.fYawDegrees = std::atan2(
+						object.LiveState.CurrentPose.fDirectionX,
+						object.LiveState.CurrentPose.fDirectionZ) *
+						RADIANS_TO_DEGREES;
+				}
+				else
+				{
+					/* Preserve the existing radial inward/outward behavior for every
+					pre-existing direction policy. */
+					object.LiveState.CurrentPose.fDirectionX = radialInward ?
+						-radialDirectionX : radialDirectionX;
+					object.LiveState.CurrentPose.fDirectionZ = radialInward ?
+						-radialDirectionZ : radialDirectionZ;
+					object.LiveState.CurrentPose.fYawDegrees = radialInward ?
+						worldDegrees + 180.f : worldDegrees;
+				}
 			}
 		}
 		for (const BOSS_COMBAT_OBJECT_HIT& authored : definition.Hits)
