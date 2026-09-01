@@ -24,6 +24,7 @@ float g_NoiseScale = 1.f;
 float2 g_NoisePan = float2(0.f, 0.f);
 float g_DissolveAmount = 0.f;
 float g_DissolveSoftness = 0.1f;
+uint g_DissolveWarp = 0;
 float g_OutlineWidth = 0.f;
 float4 g_OutlineColor = float4(1.f, 1.f, 1.f, 1.f);
 float g_SoftFadeDistance = 0.f;
@@ -249,7 +250,8 @@ PS_EFFECT_OUT PS_EFFECT_V2(PS_EFFECT_IN input)
 	float dissolve = 1.f;
 	if (0 != g_HasDissolve)
 	{
-		const float threshold = g_DissolveTexture.Sample(LinearSampler, uv).r;
+		const float2 dissolveUV = 0 != g_DissolveWarp ? uv + warp : uv;
+		const float threshold = g_DissolveTexture.Sample(LinearSampler, dissolveUV).r;
 		dissolve = smoothstep(
 			g_DissolveAmount - g_DissolveSoftness,
 			g_DissolveAmount + g_DissolveSoftness,

@@ -2962,7 +2962,18 @@ namespace
 				ImGui::Unindent(24.f);
 			}
 		}
-		if ((P.bColorMulLerp || (bShowOffset && P.bColorOffsetLerp)) && P.fLifetime <= 0.f)
+		ImGui::SliderFloat("Alpha In End (life 0-1, 0 = off)", &P.fAlphaInEnd, 0.f, 1.f);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Alpha fades in from 0 to full until this life ratio.");
+		ImGui::SliderFloat("Alpha Out Start (life 0-1, 1 = off)", &P.fAlphaOutStart, 0.f, 1.f);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Alpha fades out from full to 0 starting at this life ratio. Multiplies Color Mul alpha, so color lerp can stay for tinting.");
+		if (0.f < P.fAlphaInEnd && P.fAlphaOutStart < P.fAlphaInEnd)
+			ImGui::TextDisabled(
+				"Alpha Out Start clamped to %.2f so the fade-in finishes first.",
+				P.fAlphaInEnd);
+		if ((P.bColorMulLerp || (bShowOffset && P.bColorOffsetLerp) ||
+			0.f < P.fAlphaInEnd || P.fAlphaOutStart < 1.f) && P.fLifetime <= 0.f)
 			ImGui::TextColored(ImVec4(1.f, 0.8f, 0.3f, 1.f), "Lifetime is 0: color stays at Start.");
 	}
 
@@ -3179,7 +3190,9 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		}
 		else
 		{
-			ImGui::DragFloat2("Speed (m/s min/max)", &E.vSpeedRange.x, 0.05f, 0.f, 100.f);
+			ImGui::DragFloat2("Speed (m/s min/max)", &E.vSpeedRange.x, 0.05f, -100.f, 100.f);
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Negative speed with Outward mode pulls particles toward the spawn center (suction).");
 			if (E.vSpeedRange.y < E.vSpeedRange.x)
 				E.vSpeedRange.y = E.vSpeedRange.x;
 		}
@@ -3389,6 +3402,9 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 	ImGui::SliderFloat("Dissolve In End (life 0-1, 0 = off)", &P.fDissolveInEnd, 0.f, 1.f);
 	ImGui::SliderFloat("Dissolve Start (life 0-1)", &P.fDissolveStart, 0.f, 1.f);
 	ImGui::SliderFloat("Dissolve Softness", &P.fDissolveSoftness, 0.f, 0.5f);
+	ImGui::Checkbox("Dissolve UV Warp", &P.bDissolveWarp);
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Applies the Noise warp to the dissolve edge too, so the erosion boundary wobbles instead of tracing the mask exactly. Needs a Noise texture and Noise Strength.");
 	ImGui::EndDisabled();
 	if (pPreview->Has_Texture(CEffectV2Object::TEXTURE_INPUT::DISSOLVE))
 	{

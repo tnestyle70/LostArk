@@ -224,6 +224,9 @@ public:
 		f32_t fDissolveStart = 0.f;
 		f32_t fDissolveInEnd = 0.f;
 		f32_t fDissolveSoftness = 0.1f;
+		bool_t bDissolveWarp = false;
+		f32_t fAlphaInEnd = 0.f;
+		f32_t fAlphaOutStart = 1.f;
 		BLEND_MODE eBlend = BLEND_MODE::ADDITIVE;
 		bool_t bBillboard = true;
 		bool_t bDepthTest = true;
@@ -312,6 +315,7 @@ public:
 	f32_t Time() const { return m_fTime; }
 	f32_t Life_Ratio() const;
 	f32_t Dissolve_Amount() const;
+	f32_t Alpha_Envelope() const;
 	bool_t Has_Texture(const TEXTURE_INPUT eInput) const
 	{
 		return nullptr != m_Textures[static_cast<size_t>(eInput)];
