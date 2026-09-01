@@ -1,0 +1,17 @@
+{
+  "schema": "lostark.effect-v2-group",
+  "formatVersion": 1,
+  "groupId": "boss.valtan.axe",
+  "durationMs": 0,
+  "children": [
+    { "effectId": "boss.valtan.axe.decal_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.axe.decal_2", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.axe_fall_1", "startMs": 2000, "durationMs": 0, "stop": "Kill", "offset": [-0.15, 0.0, -0.8], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.axe_stuck_1", "startMs": 2400, "durationMs": 0, "stop": "Deactivate", "offset": [-0.15, 0.0, -0.8], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.axe_elec_1", "startMs": 2100, "durationMs": 0, "stop": "Deactivate", "offset": [-0.9, 0.0, -0.4], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.hit_3", "startMs": 2350, "durationMs": 0, "stop": "Deactivate", "offset": [0.15, 0.0, 1.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.sw_1", "startMs": 2350, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 2.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.3, 1.0, 1.3] },
+    { "effectId": "boss.valtan.blur_2", "startMs": 2350, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.chase.decal_2", "startMs": 2600, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 1.25], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] }
+  ]
+}

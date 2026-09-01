@@ -24,6 +24,8 @@ float g_NoiseScale = 1.f;
 float2 g_NoisePan = float2(0.f, 0.f);
 float g_DissolveAmount = 0.f;
 float g_DissolveSoftness = 0.1f;
+uint g_DissolveWarp = 0;
+uint g_MaskWarp = 0;
 float g_OutlineWidth = 0.f;
 float4 g_OutlineColor = float4(1.f, 1.f, 1.f, 1.f);
 float g_SoftFadeDistance = 0.f;
@@ -244,12 +246,13 @@ PS_EFFECT_OUT PS_EFFECT_V2(PS_EFFECT_IN input)
 
 	float mask = 1.f;
 	if (0 != g_HasMask)
-		mask = g_MaskTexture.Sample(LinearSampler, uv).r;
+		mask = g_MaskTexture.Sample(LinearSampler, 0 != g_MaskWarp ? uv + warp : uv).r;
 
 	float dissolve = 1.f;
 	if (0 != g_HasDissolve)
 	{
-		const float threshold = g_DissolveTexture.Sample(LinearSampler, uv).r;
+		const float2 dissolveUV = 0 != g_DissolveWarp ? uv + warp : uv;
+		const float threshold = g_DissolveTexture.Sample(LinearSampler, dissolveUV).r;
 		dissolve = smoothstep(
 			g_DissolveAmount - g_DissolveSoftness,
 			g_DissolveAmount + g_DissolveSoftness,
@@ -304,7 +307,12 @@ PS_EFFECT_OUT PS_OUTLINE_V2(PS_EFFECT_IN input)
 	PS_EFFECT_OUT output;
 	if (0 != g_HasDissolve)
 	{
-		const float2 uv = input.vTexcoord * g_UVTileCount + g_UVStart + g_UVSpeed * g_Time;
+		float2 uv = input.vTexcoord * g_UVTileCount + g_UVStart + g_UVSpeed * g_Time;
+		if (0 != g_DissolveWarp && 0 != g_HasNoise)
+		{
+			const float2 noiseUV = uv * g_NoiseScale + g_NoisePan * g_Time;
+			uv += (g_NoiseTexture.Sample(LinearSampler, noiseUV).rg * 2.f - 1.f) * g_NoiseStrength;
+		}
 		const float threshold = g_DissolveTexture.Sample(LinearSampler, uv).r;
 		const float dissolve = smoothstep(
 			g_DissolveAmount - g_DissolveSoftness,

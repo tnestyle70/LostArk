@@ -1,0 +1,28 @@
+{
+  "schema": "lostark.effect-v2-group",
+  "formatVersion": 1,
+  "groupId": "boss.valtan.shout",
+  "durationMs": 0,
+  "children": [
+    { "effectId": "boss.valtan.shout.comet_1", "startMs": 200, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.shout.comet_1", "startMs": 300, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 90.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.shout.comet_1", "startMs": 700, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 180.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.shout.comet_1", "startMs": 400, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 270.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.shout.comet_2", "startMs": 900, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 45.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.shout.comet_2", "startMs": 500, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 135.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.shout.comet_2", "startMs": 300, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 225.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.shout.comet_2", "startMs": 800, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 315.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.shout.converge_1", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.shout.comet_1", "startMs": 1500, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 45.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.shout.comet_1", "startMs": 1200, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 135.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.shout.comet_1", "startMs": 1400, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 225.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.shout.comet_1", "startMs": 1300, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 315.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.shout.comet_1", "startMs": 1100, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 60.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.shout.comet_2", "startMs": 1050, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 45.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.shout.comet_2", "startMs": 1350, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 135.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.shout.comet_2", "startMs": 1650, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 225.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.shout.comet_2", "startMs": 1450, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 315.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.shout.comet_2", "startMs": 1250, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 60.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] },
+    { "effectId": "boss.valtan.blur_3", "startMs": 0, "durationMs": 0, "stop": "Deactivate", "offset": [0.0, 0.0, 0.0], "pitchDegrees": 0.0, "yawDegrees": 0.0, "rollDegrees": 0.0, "scale": [1.0, 1.0, 1.0] }
+  ]
+}
