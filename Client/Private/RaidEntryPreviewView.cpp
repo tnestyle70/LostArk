@@ -159,11 +159,12 @@ namespace
 			L"1415  1415  1415",
 			// "아이템 레벨 1415 미만 매칭 불가"
 			L"\xC544\xC774\xD15C \xB808\xBCA8 1415 \xBBF8\xB9CC \xB9E4\xCE6D \xBD88\xAC00",
-			/* No greyscale key art exists for Valtan: bossImage only carries frames 3..6, and
-			   EpicGateCommanderEntranceContent::satisfiedChangedHandler shows that clip only
-			   while entry conditions are NOT met. The two earliest commanders have no locked
-			   state to draw, so Kakul's art stands in until a Valtan one is sourced. */
-			"UI/Bern/RaidEntry_BossPortrait.png",
+			/* Valtan's own locked-state key art. It is absent from the entrance movie -- bossImage
+			   only carries frames 3..6 -- but not from the game: EFUI_BACKGROUNDIMG ships it as
+			   lv_lut_commander_valtan_lock at 1200x848, which is this very slot's size. The
+			   package names the two states the movie switches between in
+			   satisfiedChangedHandler: _lock for entry-blocked, _special for the colour art. */
+			"UI/Bern/RaidEntry_BossPortrait_Valtan.png",
 			"UI/Bern/RaidEntry_LeftPanel_0.png", true,
 			{ "UI/Esther/esther_portrait_sillian.png",
 			  "UI/Esther/esther_portrait_wei.png",
