@@ -33,12 +33,17 @@ EXPECTED_CUES = [
     (700, WATER_ID),
     (700, SINGLE_GLASS_ID),
 ]
-ORIGINAL_RAW_SHA256 = {
+# Line endings are a checkout artifact, not document content: git hands a
+# core.autocrlf=true clone CRLF while an LF clone keeps LF, so hashing the raw
+# bytes pins the checkout rather than the authored document and the gate fails
+# for whichever half of the team is configured the other way. Normalise to LF
+# before hashing so the immutability contract holds in every working tree.
+ORIGINAL_LF_SHA256 = {
     "effect.dimensionmaster.skill.2050230.unified.effect.json": (
-        "afab680bd36b4efcc4baf654c4848a1f3571a29cbc338b0ed58fec940de60e09"
+        "73932a1b241bcd4a430b66e7ecea14908b618f230578227244ec0d3ca957f646"
     ),
     "effect.dimensionmaster.skill.2050120.clip2.unified.effect.json": (
-        "bf09a2f1b87789081a94458e71214ec71a9a433823f8ba8e0bb4d0f3f2aaaf7a"
+        "38ceaa0e971f7d45d529c9acc9811940a63dae0e00fb6fca80897071ccd9cbcb"
     ),
     "effect.dimensionmaster.skill.2050120.clip3.unified.effect.json": (
         "f0492a1563f7d14ea43778bcc973c4ab373d6da764ef0eee966fa7de6dd2fc1d"
@@ -301,10 +306,9 @@ class DimensionMasterGlassWaterVisualCanaryTests(unittest.TestCase):
         cls.water = load_json(WATER_PATH)
 
     def test_original_f_and_w_documents_are_byte_immutable(self) -> None:
-        for name, expected in ORIGINAL_RAW_SHA256.items():
-            self.assertEqual(
-                expected, hashlib.sha256((AUTHORED_ROOT / name).read_bytes()).hexdigest()
-            )
+        for name, expected in ORIGINAL_LF_SHA256.items():
+            content = (AUTHORED_ROOT / name).read_bytes().replace(b"\r\n", b"\n")
+            self.assertEqual(expected, hashlib.sha256(content).hexdigest())
 
     def test_valtan_water_resource_donor_remains_canonical(self) -> None:
         donor_document = load_json(
