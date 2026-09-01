@@ -1,10 +1,15 @@
 {
   "schema": "lostark.effect-v2-independent",
   "formatVersion": 1,
-  "effects": [],
+  "effects": [
+    "boss.valtan.egg.black_1",
+    "boss.valtan.egg.black_2"
+  ],
   "groups": [
     "boss.valtan.axe",
     "boss.valtan.impact",
+    "boss.valtan.magicball.aura",
+    "boss.valtan.portal",
     "boss.valtan.pounding",
     "boss.valtan.pounding.chase",
     "boss.valtan.twohand"
