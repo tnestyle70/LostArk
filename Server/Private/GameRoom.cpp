@@ -1763,6 +1763,14 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		[this](const WORLD_TRIGGER_ACTION_KIND kind,
 			const std::string& targetId)
 		{
+			if (WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE == kind)
+			{
+				/* Presentation has no Server state to commit, so the entry
+				   itself is the whole result: tell the room and report the
+				   action handled. */
+				Broadcast_WorldSequencePlay(targetId);
+				return true;
+			}
 			if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP == kind)
 				return m_SpawnGroupRuntime.Activate(targetId);
 			if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER == kind)
@@ -3950,6 +3958,30 @@ void LostArk::Server::CGameRoom::Broadcast_PartyRoster(
 		if (nullptr != session &&
 			!session->Send_Frame(
 				PACKET_TYPE::S2C_PARTY_ROSTER, writer.Get_Buffer()))
+		{
+			session->Request_Close();
+		}
+	}
+}
+
+void LostArk::Server::CGameRoom::Broadcast_WorldSequencePlay(
+	const std::string& instanceId)
+{
+	using namespace LostArk::Shared;
+
+	S2C_WORLD_SEQUENCE_PLAY message{};
+	message.strSequenceInstanceId = instanceId;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return;
+	for (const auto& [playerId, player] : m_Players)
+	{
+		(void)playerId;
+		const std::shared_ptr<CClientSession> session =
+			Find_Session(player.iSessionId);
+		if (nullptr != session &&
+			!session->Send_Frame(
+				PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY, writer.Get_Buffer()))
 		{
 			session->Request_Close();
 		}

@@ -601,6 +601,24 @@ function Convert-WorldDocument {
 					}
 					$triggerFields += @('activateEncounter', '1', [string]$event.targetPlacementId)
 				}
+				elseif ($event.type -eq 'playSequence') {
+					Assert-ExactProperties $event @('type','sequenceInstanceId') "$relativePath playSequence event"
+					Assert-StableId $event.sequenceInstanceId "$relativePath sequenceInstanceId"
+					# The instance must exist in this Area's authored world
+					# sequence document, otherwise the trigger would fire into
+					# nothing once the level is running.
+					$sequencePath = "Data/Maps/Authoring/$AreaId/$AreaId.worldsequences.json"
+					$sequenceFull = [IO.Path]::GetFullPath((Join-Path $repoRoot $sequencePath))
+					if (-not [IO.File]::Exists($sequenceFull)) {
+						throw "playSequence trigger requires an authored world sequence document: $sequencePath"
+					}
+					$sequenceDocument = Read-ProjectJson $sequencePath
+					$known = @($sequenceDocument.instances | ForEach-Object { [string]$_.instanceId })
+					if (-not $known.Contains([string]$event.sequenceInstanceId)) {
+						throw "Trigger references an unknown world sequence instance: $($event.sequenceInstanceId)"
+					}
+					$triggerFields += @('playSequence', '1', [string]$event.sequenceInstanceId)
+				}
 				else {
 					throw "Unsupported product trigger event: $($event.type)"
 				}

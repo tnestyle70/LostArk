@@ -420,15 +420,27 @@ namespace
 	   World Sequence panel keeps its own equivalent for keyframe offsets. */
 	float3_t DeployQuaternionToEulerDegrees(const float4_t& value)
 	{
+		/* Exact inverse of XMQuaternionRotationRollPitchYaw (M = Mz*Mx*My,
+		   row-vector). Yaw and roll use atan2 so Y keeps the full +-180
+		   range; only pitch stays asin-limited to +-90. */
 		constexpr f32_t radiansToDegrees = 180.f / DirectX::XM_PI;
-		const f32_t pitch = std::atan2(
-			2.f * (value.w * value.x + value.y * value.z),
-			1.f - 2.f * (value.x * value.x + value.y * value.y));
-		const f32_t yaw = std::asin((std::max)(-1.f, (std::min)(1.f,
-			2.f * (value.w * value.y - value.z * value.x))));
-		const f32_t roll = std::atan2(
-			2.f * (value.w * value.z + value.x * value.y),
-			1.f - 2.f * (value.y * value.y + value.z * value.z));
+		float4x4_t rotation{};
+		XMStoreFloat4x4(&rotation, XMMatrixRotationQuaternion(
+			XMLoadFloat4(&value)));
+		const f32_t sinPitch =
+			(std::max)(-1.f, (std::min)(1.f, -rotation._32));
+		const f32_t pitch = std::asin(sinPitch);
+		f32_t yaw = 0.f;
+		f32_t roll = 0.f;
+		if (std::abs(sinPitch) < 0.99999f)
+		{
+			yaw = std::atan2(rotation._31, rotation._33);
+			roll = std::atan2(rotation._12, rotation._22);
+		}
+		else
+		{
+			yaw = std::atan2(-rotation._13, rotation._11);
+		}
 		return float3_t(pitch * radiansToDegrees, yaw * radiansToDegrees,
 			roll * radiansToDegrees);
 	}
@@ -2553,6 +2565,9 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 				case WORLD_TRIGGER_EVENT_KIND::ACTIVATE_ENCOUNTER:
 					actionOption = 4;
 					break;
+				case WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE:
+					actionOption = 5;
+					break;
 				default:
 					break;
 				}
@@ -2560,7 +2575,7 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 			const char_t* actionOptions[] =
 			{
 				"None", "Move Player", "Change Level",
-				"Activate Spawn Group", "Activate Encounter"
+				"Activate Spawn Group", "Activate Encounter", "Play Sequence"
 			};
 			if (ImGui::Combo("Action", &actionOption,
 				actionOptions, static_cast<int>(std::size(actionOptions))))
@@ -2584,6 +2599,18 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 						action.eKind = WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL;
 						action.eTargetWorldId =
 							LostArk::Shared::WORLD_ID::VALTAN_ARENA;
+					}
+					else if (5 == actionOption)
+					{
+						/* Seed the first authored instance so the field is
+						   never blank; the author picks the real one below. */
+						action.eKind = WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE;
+						const std::vector<std::string> instanceIds =
+							nullptr == m_pWorldSequenceToolPanel ?
+								std::vector<std::string>{} :
+								m_pWorldSequenceToolPanel->Get_InstanceIds();
+						if (!instanceIds.empty())
+							action.targetId = instanceIds.front();
 					}
 					else
 					{
@@ -2720,9 +2747,41 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 				}
 			}
 
+			const bool_t hasPlaySequenceAction =
+				1u == staged.triggerEvents.size() &&
+				WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE ==
+					staged.triggerEvents.front().eKind;
+			if (hasPlaySequenceAction)
+			{
+				WORLD_TRIGGER_EVENT& action = staged.triggerEvents.front();
+				ImGui::SeparatorText("Play Sequence Action");
+				const char_t* preview = action.targetId.empty() ?
+					"<select sequence instance>" : action.targetId.c_str();
+				const std::vector<std::string> instanceIds =
+					nullptr == m_pWorldSequenceToolPanel ?
+						std::vector<std::string>{} :
+						m_pWorldSequenceToolPanel->Get_InstanceIds();
+				if (ImGui::BeginCombo("Sequence Instance", preview))
+				{
+					for (const std::string& instanceId : instanceIds)
+					{
+						const bool_t isSelected = action.targetId == instanceId;
+						if (ImGui::Selectable(instanceId.c_str(), isSelected))
+						{
+							action.targetId = instanceId;
+							edited = true;
+						}
+					}
+					ImGui::EndCombo();
+				}
+				ImGui::TextDisabled(
+					"Plays one authored world sequence instance from this Area.");
+			}
+
 			const bool_t hasSupportedAction =
 				hasMoveAction || hasChangeLevelAction ||
-				hasSpawnGroupAction || hasEncounterAction;
+				hasSpawnGroupAction || hasEncounterAction ||
+				hasPlaySequenceAction;
 			ImGui::BeginDisabled(!hasSupportedAction);
 			edited |= ImGui::Checkbox("Enabled", &staged.isEnabled);
 			ImGui::EndDisabled();
@@ -9188,14 +9247,13 @@ bool_t Client::CMapTool::Validate_DestructionExternalReferences(
 				" has a missing mutation or group";
 			return false;
 		}
+		/* A wall that never crosses a base-walkable cell owns no blocker to
+		open when it breaks, so an empty navigation closure is authored, not
+		missing. Publish-ValtanWorldDestruction.ps1 accepts zero or one
+		region and demanding one here blocks the Area on data the publisher
+		already admits. The declared regions are still checked below. */
 		const bool requiresNavigation = binding.isEnabled &&
 			DESTRUCTION_TRIGGER_KIND::COLLISION_IMPACT == binding.eTriggerKind;
-		if (requiresNavigation && group->navigationRegionIds.empty())
-		{
-			outStatus = "Save blocked: enabled binding " + binding.bindingId +
-				" requires a navigation blocker region";
-			return false;
-		}
 		if (binding.isEnabled && group->memberPlacementIds.empty())
 		{
 			outStatus = "Save blocked: enabled binding " + binding.bindingId +

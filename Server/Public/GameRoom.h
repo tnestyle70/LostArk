@@ -646,6 +646,10 @@ namespace LostArk::Server
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_PARTY_INVITE_RESPOND& request);
 		void Broadcast_PartyRoster(std::uint32_t partyId);
+		/* Tells every session in this room that an authored world sequence
+		   instance started. Presentation only: the Server keeps no sequence
+		   state, so a session that joins later simply misses a played edge. */
+		void Broadcast_WorldSequencePlay(const std::string& instanceId);
 		/* Leave() calls this so a disconnecting player does not linger as a
 		   ghost roster entry for whoever they partied with. */
 		void Remove_FromParty(LostArk::Shared::PLAYER_ID playerId);

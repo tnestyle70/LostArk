@@ -113,12 +113,74 @@ class CharacterEquipmentPublisherTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-    def test_validate_accepts_hash_verified_73_file_closure_without_mutation(self):
+    def _add_runtime_asset(self, asset_id: str, payload: bytes, kind: str):
+        runtime_file = self.runtime_root.joinpath(*asset_id.split("/"))
+        runtime_file.parent.mkdir(parents=True, exist_ok=True)
+        runtime_file.write_bytes(payload)
+        entry = {
+            "kind": kind,
+            "assetId": asset_id,
+            "byteSize": len(payload),
+            "sha256": sha256_bytes(payload),
+        }
+        self.receipt["runtimeClosure"].append(entry)
+        return entry
+
+    @staticmethod
+    def _promote_without_replace(source: Path, target: Path):
+        os.link(source, target)
+        source.unlink()
+
+    def _seed_identical_target(self, entry):
+        source = self.runtime_root.joinpath(*entry["assetId"].split("/"))
+        target = self.resource_root.joinpath(*entry["assetId"].split("/"))
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(source.read_bytes())
+        return target
+
+    def test_validate_accepts_hash_verified_receipt_counts_without_mutation(self):
         plan = build_publish_plan(self.admission_root, self.resource_root)
         self.assertEqual(73, len(plan.entries))
         self.assertEqual(6, len(plan.groups))
         self.assertEqual(6, len(plan.new_groups))
         self.assertFalse(any((self.resource_root / "Character" / item / "Equipment").exists() for item in CLASS_FOLDERS))
+
+    def test_validate_accepts_counts_above_legacy_fixed_denominators(self):
+        model = self._add_runtime_asset(
+            "Character/LanceMaster/Equipment/added/set/added.wmodel",
+            b"added-model",
+            "WMODEL",
+        )
+        self.receipt["sets"].append(
+            {
+                "visualSetId": "test.set.added",
+                "classId": "CLASS_0",
+                "parts": [
+                    {
+                        "partId": "added_part",
+                        "targetModelAssetId": model["assetId"],
+                    }
+                ],
+            }
+        )
+        self.receipt["counts"].update(
+            {
+                "visualSetCount": 13,
+                "partCount": 18,
+                "runtimeClosureFileCount": 74,
+            }
+        )
+        self._write_receipt()
+
+        plan = build_publish_plan(self.admission_root, self.resource_root)
+        self.assertEqual(74, len(plan.entries))
+        self.assertEqual(74, len(plan.new_entries))
+
+    def test_reported_count_must_match_receipt_contents(self):
+        self.receipt["counts"]["runtimeClosureFileCount"] += 1
+        self._write_receipt()
+        with self.assertRaisesRegex(PublishError, "must match the receipt contents"):
+            build_publish_plan(self.admission_root, self.resource_root)
 
     def test_hash_mismatch_fails_before_publish(self):
         first = self.receipt["runtimeClosure"][0]
@@ -166,7 +228,35 @@ class CharacterEquipmentPublisherTests(unittest.TestCase):
         self.assertEqual(6, len(second_plan.existing_groups))
         self.assertEqual("PUBLISHED_NO_CHANGE", publish_plan(second_plan))
 
-    def test_intermediate_promotion_failure_rolls_back_new_directories(self):
+    def test_additive_publish_preserves_existing_managed_and_unmanaged_files(self):
+        existing_entry = self.receipt["runtimeClosure"][0]
+        existing_target = self._seed_identical_target(existing_entry)
+        unmanaged_target = existing_target.parent / "unmanaged.keep"
+        unmanaged_target.write_bytes(b"must-survive")
+
+        plan = build_publish_plan(self.admission_root, self.resource_root)
+        self.assertEqual(1, len(plan.existing_entries))
+        self.assertEqual(72, len(plan.new_entries))
+        self.assertEqual("PUBLISHED", publish_plan(plan))
+
+        self.assertEqual(b"must-survive", unmanaged_target.read_bytes())
+        self.assertEqual(
+            self.runtime_root.joinpath(*existing_entry["assetId"].split("/")).read_bytes(),
+            existing_target.read_bytes(),
+        )
+        for entry in plan.entries:
+            self.assertTrue(entry.target_path.is_file())
+
+        second_plan = build_publish_plan(self.admission_root, self.resource_root)
+        self.assertEqual(73, len(second_plan.existing_entries))
+        self.assertEqual(0, len(second_plan.new_entries))
+        self.assertEqual("PUBLISHED_NO_CHANGE", publish_plan(second_plan))
+
+    def test_intermediate_file_promotion_failure_rolls_back_only_new_files(self):
+        existing_entry = self.receipt["runtimeClosure"][0]
+        existing_target = self._seed_identical_target(existing_entry)
+        unmanaged_target = existing_target.parent / "unmanaged.keep"
+        unmanaged_target.write_bytes(b"must-survive")
         plan = build_publish_plan(self.admission_root, self.resource_root)
         calls = 0
 
@@ -175,15 +265,38 @@ class CharacterEquipmentPublisherTests(unittest.TestCase):
             calls += 1
             if calls == 2:
                 raise OSError("injected promotion failure")
-            os.replace(source, target)
+            self._promote_without_replace(source, target)
 
         with self.assertRaisesRegex(PublishError, "rolled back"):
-            publish_plan(plan, promote_directory=fail_second_promotion)
+            publish_plan(plan, promote_file=fail_second_promotion)
         self.assertEqual(2, calls)
-        self.assertFalse(any((self.resource_root / "Character" / item / "Equipment").exists() for item in CLASS_FOLDERS))
+        self.assertTrue(existing_target.is_file())
+        self.assertEqual(b"must-survive", unmanaged_target.read_bytes())
+        for entry in plan.new_entries:
+            self.assertFalse(entry.target_path.exists())
         self.assertFalse(
             list(self.resource_root.parent.glob(".Resources.character-equipment-stage-*"))
         )
+
+    def test_target_appearing_after_preflight_does_not_get_overwritten(self):
+        plan = build_publish_plan(self.admission_root, self.resource_root)
+        appeared_entry = plan.new_entries[1]
+        appeared_payload = b"concurrent-owner"
+        calls = 0
+
+        def create_next_target_after_first(source: Path, target: Path):
+            nonlocal calls
+            calls += 1
+            self._promote_without_replace(source, target)
+            if calls == 1:
+                appeared_entry.target_path.parent.mkdir(parents=True, exist_ok=True)
+                appeared_entry.target_path.write_bytes(appeared_payload)
+
+        with self.assertRaisesRegex(PublishError, "appeared after preflight"):
+            publish_plan(plan, promote_file=create_next_target_after_first)
+
+        self.assertEqual(appeared_payload, appeared_entry.target_path.read_bytes())
+        self.assertFalse(plan.new_entries[0].target_path.exists())
 
 
 if __name__ == "__main__":

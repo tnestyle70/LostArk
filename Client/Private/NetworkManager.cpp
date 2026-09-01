@@ -3395,6 +3395,21 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}
+	case PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY:
+	{
+		S2C_WORLD_SEQUENCE_PLAY play{};
+		if (!Read_Message(reader, play) || 0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType =
+			Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_SEQUENCE_PLAY;
+		event.WorldSequencePlay = std::move(play);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
 	case PACKET_TYPE::S2C_PARTY_ROSTER:
 	{
 		S2C_PARTY_ROSTER roster{};

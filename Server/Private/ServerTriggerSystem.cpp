@@ -34,6 +34,8 @@ bool LostArk::Server::CServerTriggerSystem::Initialize(
 			WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP !=
 				placement.TriggerActions.front().eKind &&
 			WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER !=
+				placement.TriggerActions.front().eKind &&
+			WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE !=
 				placement.TriggerActions.front().eKind))
 		{
 			outStatus = "Enabled trigger requires one supported action: " +
@@ -152,7 +154,8 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 					outTransfers.push_back(std::move(transfer));
 			}
 			else if ((WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP == action.eKind ||
-				WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER == action.eKind) &&
+				WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER == action.eKind ||
+				WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE == action.eKind) &&
 				activateTarget)
 			{
 				fired = activateTarget(action.eKind, action.strTargetId);

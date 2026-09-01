@@ -2,14 +2,15 @@
 """Build a validated representative character-equipment staging pack.
 
 This tool does not mutate Client/Bin/Resources.  It joins an exact authored
-selection to the extracted source inventory, verifies the already-cooked
-WModel against the owning character body, copies only the selected source
-objects and runtime texture closure, and writes an admission receipt under
-``out/CharacterEquipmentExtraction/Admission``.
+selection to the extracted source inventory, validates either an existing
+WModel association or an exact authored static weapon cook, copies only the
+selected source objects and runtime texture closure, and writes an admission
+receipt under ``out/CharacterEquipmentExtraction/Admission``.
 
-The first batch intentionally reuses WModels that already pass the current
-runtime path.  Raw glTF that still needs master-skeleton normalization remains
-outside the admitted set instead of being copied into Resources unsafely.
+Skinned raw glTF that still needs master-skeleton normalization remains outside
+the admitted set.  The only raw-to-WModel route admitted here is the explicit,
+non-animated socketed glTF profile below; every input and output stays inside
+the staging pack until the separate publisher promotes the receipt.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ import os
 import re
 import shutil
 import struct
+import subprocess
 import sys
 import uuid
 from dataclasses import dataclass
@@ -33,7 +35,25 @@ from typing import Any, Iterable
 SELECTION_SCHEMA = "lostark.character-equipment-representative-selection"
 INVENTORY_SCHEMA = "lostark.character-equipment-source-inventory"
 RECEIPT_SCHEMA = "lostark.character-equipment-runtime-admission"
-SOURCE_ASSOCIATION_POLICY = "CURATED_EXISTING_WMODEL_ASSOCIATION_NOT_BUILD_PROVENANCE"
+SOURCE_ASSOCIATION_POLICY = "CURATED_EXISTING_OR_EXACT_AUTHORED_STATIC_COOK_V1"
+STATIC_COOK_KIND = "NONANIM_SOCKETED_GLTF_V1"
+STATIC_COOK_BASIS = "GLTF_ROOT_X_POSITIVE_90_TO_WMODEL_V1"
+STATIC_COOK_SCALE = 100.0
+STATIC_COOK_ROOT_QUATERNION = (
+    0.7071067811865476,
+    0.0,
+    0.0,
+    0.7071067811865476,
+)
+STATIC_COOK_READINESS = "COOK_AND_SOCKET_PROFILE_REQUIRED"
+CONVERTER_ASSET_ID = "Tools/ModelAssetConverter/Bin/ModelAssetConverter.exe"
+MATERIAL_SOURCE_FIELDS = (
+    ("baseColorSourcePath", "--material-remap", "BASE_COLOR"),
+    ("normalSourcePath", "--normal-remap", "NORMAL"),
+    ("specularSourcePath", "--specular-remap", "SPECULAR"),
+    ("emissiveSourcePath", "--emissive-remap", "EMISSIVE"),
+    ("ormSourcePath", "--orm-remap", "ORM"),
+)
 
 ALLOWED_CLASSES = {
     "LANCE_MASTER",
@@ -395,6 +415,15 @@ def _parse_mesh(blob: bytes, label: str) -> tuple[int, int, tuple[BoneRecord, ..
                 matrix,
             )
         )
+    bounds_offset = bone_offset + bone_count * MESH_BONE.size
+    for bounds_index in range(has_bounding * submesh_count):
+        bounds = MESH_BOUNDS_V1.unpack_from(
+            payload, bounds_offset + bounds_index * MESH_BOUNDS_V1.size
+        )
+        require(
+            all(math.isfinite(value) for value in bounds),
+            f"{label} has non-finite mesh bounds",
+        )
     return int(submesh_count), int(vertex_count), tuple(bones), frozenset(positive_indices)
 
 
@@ -545,6 +574,63 @@ def derive_category_id(primary_slot: str, coverage_slots: Iterable[str]) -> str:
     return f"APPAREL_{primary_slot}"
 
 
+def _validate_cook_profile(profile: Any, label: str) -> dict[str, Any]:
+    require(isinstance(profile, dict), f"{label} must be an object")
+    require(
+        set(profile) == {
+            "kind",
+            "basis",
+            "sourceToWModelScale",
+            "baselineModelAssetId",
+            "materials",
+        },
+        f"{label} fields differ from the static cook contract",
+    )
+    require(profile.get("kind") == STATIC_COOK_KIND, f"{label}.kind is invalid")
+    require(profile.get("basis") == STATIC_COOK_BASIS, f"{label}.basis is invalid")
+    scale = profile.get("sourceToWModelScale")
+    require(
+        isinstance(scale, (int, float))
+        and not isinstance(scale, bool)
+        and math.isfinite(float(scale))
+        and float(scale) == STATIC_COOK_SCALE,
+        f"{label}.sourceToWModelScale must be exactly {STATIC_COOK_SCALE}",
+    )
+    normalize_resource_asset_id(
+        profile.get("baselineModelAssetId", ""), f"{label}.baselineModelAssetId"
+    )
+    materials = profile.get("materials")
+    require(isinstance(materials, list) and materials, f"{label}.materials must be non-empty")
+    material_names: set[str] = set()
+    allowed_material_fields = {"materialName"} | {
+        source_field for source_field, _flag, _kind in MATERIAL_SOURCE_FIELDS
+    }
+    for material_index, material in enumerate(materials):
+        material_label = f"{label}.materials[{material_index}]"
+        require(isinstance(material, dict), f"{material_label} must be an object")
+        require(
+            set(material).issubset(allowed_material_fields)
+            and {"materialName", "baseColorSourcePath"}.issubset(material),
+            f"{material_label} fields differ from the authored material contract",
+        )
+        material_name = material.get("materialName")
+        require(
+            isinstance(material_name, str)
+            and material_name
+            and material_name.strip() == material_name,
+            f"{material_label}.materialName is invalid",
+        )
+        material_key = material_name.casefold()
+        require(material_key not in material_names, f"duplicate materialName in {label}: {material_name}")
+        material_names.add(material_key)
+        for source_field, _flag, _kind in MATERIAL_SOURCE_FIELDS:
+            if source_field in material:
+                normalize_relative_path(
+                    material[source_field], f"{material_label}.{source_field}"
+                )
+    return profile
+
+
 def validate_selection_document(document: dict[str, Any]) -> dict[str, Any]:
     require(document.get("schema") == SELECTION_SCHEMA, "representative selection schema is invalid")
     require(document.get("formatVersion") == 1, "representative selection formatVersion is invalid")
@@ -627,10 +713,16 @@ def validate_selection_document(document: dict[str, Any]) -> dict[str, Any]:
             and primary_slot in coverage_slots,
             f"coverageSlots are invalid in {visual_set_id}",
         )
-        require(
-            (primary_slot == "WEAPON") == (catalog_status == "BASELINE_WEAPON"),
-            f"catalogStatus/primarySlot differ in {visual_set_id}",
-        )
+        if primary_slot == "WEAPON":
+            require(
+                catalog_status in {"BASELINE_WEAPON", "READY_ALTERNATIVE"},
+                f"weapon catalogStatus is invalid in {visual_set_id}",
+            )
+        else:
+            require(
+                catalog_status != "BASELINE_WEAPON",
+                f"nonweapon set cannot be BASELINE_WEAPON in {visual_set_id}",
+            )
         normalize_resource_asset_id(visual_set.get("masterBodyAssetId", ""), f"{visual_set_id}.masterBodyAssetId")
         require(
             visual_set.get("bodyCoveragePolicy") == "INHERIT_BASELINE",
@@ -658,9 +750,25 @@ def validate_selection_document(document: dict[str, Any]) -> dict[str, Any]:
                 isinstance(part.get("expectedSourceRole"), str) and part["expectedSourceRole"],
                 f"expectedSourceRole is missing in {visual_set_id}/{part_id}",
             )
-            normalize_resource_asset_id(
-                part.get("existingModelAssetId", ""), f"{visual_set_id}/{part_id}.existingModelAssetId"
+            require(
+                isinstance(part.get("partRole"), str) and part["partRole"],
+                f"partRole is missing in {visual_set_id}/{part_id}",
             )
+            has_existing_model = "existingModelAssetId" in part
+            has_cook_profile = "cookProfile" in part
+            require(
+                has_existing_model != has_cook_profile,
+                f"{visual_set_id}/{part_id} must declare exactly one of existingModelAssetId or cookProfile",
+            )
+            if has_existing_model:
+                normalize_resource_asset_id(
+                    part.get("existingModelAssetId", ""),
+                    f"{visual_set_id}/{part_id}.existingModelAssetId",
+                )
+            else:
+                _validate_cook_profile(
+                    part.get("cookProfile"), f"{visual_set_id}/{part_id}.cookProfile"
+                )
             target_asset_id = normalize_resource_asset_id(
                 part.get("targetModelAssetId", ""), f"{visual_set_id}/{part_id}.targetModelAssetId"
             )
@@ -683,6 +791,20 @@ def validate_selection_document(document: dict[str, Any]) -> dict[str, Any]:
                 yaw = part.get("socketYawDegrees")
                 require(isinstance(yaw, (int, float)) and math.isfinite(float(yaw)), f"socket yaw is invalid in {visual_set_id}/{part_id}")
                 require(isinstance(part.get("visibleStances"), list), f"visibleStances is invalid in {visual_set_id}/{part_id}")
+            if has_cook_profile:
+                require(
+                    primary_slot == "WEAPON"
+                    and catalog_status == "READY_ALTERNATIVE"
+                    and attachment_mode == "SOCKETED"
+                    and model_kind == "NONANIM_SOCKETED",
+                    f"static cook is only admitted for READY_ALTERNATIVE socketed weapons in {visual_set_id}/{part_id}",
+                )
+                require(
+                    part["sourceClassId"] == class_id
+                    and part["expectedSourceRole"].startswith("WEAPON_")
+                    and part["partRole"].startswith("WEAPON_"),
+                    f"static cook source/part role is not a same-class weapon in {visual_set_id}/{part_id}",
+                )
     require(classes == ALLOWED_CLASSES, f"representative selection must cover six classes, got {sorted(classes)}")
     return document
 
@@ -759,8 +881,8 @@ def _copy_file_once(source: Path, destination: Path) -> dict[str, Any]:
     return {"byteSize": destination_size, "sha256": destination_hash}
 
 
-def _copy_gltf_source(repo_root: Path, work_root: Path, source_path_id: str, visual_set_id: str, part_id: str) -> dict[str, Any]:
-    source_path = resolved_under(repo_root, source_path_id, "source inventory path")
+def _copy_gltf_source(source_root: Path, work_root: Path, source_path_id: str, visual_set_id: str, part_id: str) -> dict[str, Any]:
+    source_path = resolved_under(source_root, source_path_id, "source inventory path")
     require(source_path.suffix.lower() == ".gltf", f"source inventory path is not glTF: {source_path_id}")
     document = load_json(source_path)
     destination_root = work_root / "Source" / visual_set_id / part_id
@@ -789,7 +911,433 @@ def _copy_gltf_source(repo_root: Path, work_root: Path, source_path_id: str, vis
             copy_dependency(dependency, normalized_uri, kind)
     return {
         "inventorySourcePath": source_path_id,
+        "stagedSourceRoot": (PurePosixPath("Source") / visual_set_id / part_id).as_posix(),
+        "stagedGltfPath": (
+            PurePosixPath("Source") / visual_set_id / part_id / source_path.name
+        ).as_posix(),
         "files": copied,
+    }
+
+
+def _canonical_json_sha256(value: Any) -> str:
+    return sha256_bytes(
+        json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    )
+
+
+def _author_static_cook_document(
+    document: dict[str, Any], mapped_material_names: set[str], label: str
+) -> tuple[str, ...]:
+    require(
+        not document.get("animations"),
+        f"{label} contains animations and cannot use the non-animated cook profile",
+    )
+    scenes = document.get("scenes")
+    nodes = document.get("nodes")
+    meshes = document.get("meshes")
+    materials = document.get("materials")
+    require(isinstance(scenes, list) and scenes, f"{label} has no scenes")
+    require(isinstance(nodes, list), f"{label} nodes are invalid")
+    require(isinstance(meshes, list), f"{label} meshes are invalid")
+    require(isinstance(materials, list) and materials, f"{label} materials are invalid")
+    scene_index = document.get("scene", 0)
+    require(
+        isinstance(scene_index, int)
+        and not isinstance(scene_index, bool)
+        and 0 <= scene_index < len(scenes),
+        f"{label} active scene index is invalid",
+    )
+    active_scene = scenes[scene_index]
+    require(isinstance(active_scene, dict), f"{label} active scene is invalid")
+    roots = active_scene.get("nodes")
+    require(isinstance(roots, list) and roots, f"{label} active scene has no roots")
+    require(
+        all(
+            isinstance(node_index, int)
+            and not isinstance(node_index, bool)
+            and 0 <= node_index < len(nodes)
+            for node_index in roots
+        ),
+        f"{label} active scene root index is invalid",
+    )
+
+    used_material_indices: set[int] = set()
+    visiting: set[int] = set()
+    visited: set[int] = set()
+
+    def visit_node(node_index: int) -> None:
+        require(node_index not in visiting, f"{label} node graph contains a cycle")
+        if node_index in visited:
+            return
+        visiting.add(node_index)
+        node = nodes[node_index]
+        require(isinstance(node, dict), f"{label} node {node_index} is invalid")
+        mesh_index = node.get("mesh")
+        if mesh_index is not None:
+            require(
+                isinstance(mesh_index, int)
+                and not isinstance(mesh_index, bool)
+                and 0 <= mesh_index < len(meshes),
+                f"{label} node {node_index} mesh index is invalid",
+            )
+            mesh = meshes[mesh_index]
+            primitives = mesh.get("primitives") if isinstance(mesh, dict) else None
+            require(
+                isinstance(primitives, list) and primitives,
+                f"{label} mesh {mesh_index} primitives are invalid",
+            )
+            for primitive_index, primitive in enumerate(primitives):
+                require(
+                    isinstance(primitive, dict),
+                    f"{label} mesh {mesh_index} primitive {primitive_index} is invalid",
+                )
+                material_index = primitive.get("material")
+                require(
+                    isinstance(material_index, int)
+                    and not isinstance(material_index, bool)
+                    and 0 <= material_index < len(materials),
+                    f"{label} mesh {mesh_index} primitive {primitive_index} lacks an authored material",
+                )
+                used_material_indices.add(material_index)
+        children = node.get("children", [])
+        require(isinstance(children, list), f"{label} node {node_index} children are invalid")
+        for child_index in children:
+            require(
+                isinstance(child_index, int)
+                and not isinstance(child_index, bool)
+                and 0 <= child_index < len(nodes),
+                f"{label} node {node_index} child index is invalid",
+            )
+            visit_node(child_index)
+        visiting.remove(node_index)
+        visited.add(node_index)
+
+    for root_index in roots:
+        visit_node(root_index)
+    require(used_material_indices, f"{label} active scene has no material-bearing mesh")
+
+    used_material_names: set[str] = set()
+    for material_index in sorted(used_material_indices):
+        material = materials[material_index]
+        material_name = material.get("name") if isinstance(material, dict) else None
+        require(
+            isinstance(material_name, str)
+            and material_name
+            and material_name.strip() == material_name,
+            f"{label} material {material_index} has no stable name",
+        )
+        used_material_names.add(material_name)
+    require(
+        used_material_names == mapped_material_names,
+        f"{label} authored material mappings differ: used={sorted(used_material_names)}, "
+        f"mapped={sorted(mapped_material_names)}",
+    )
+
+    parent_index = len(nodes)
+    nodes.append(
+        {
+            "name": "__lostark_wmodel_basis_x_positive_90__",
+            "rotation": list(STATIC_COOK_ROOT_QUATERNION),
+            "children": list(roots),
+        }
+    )
+    active_scene["nodes"] = [parent_index]
+    return tuple(sorted(used_material_names, key=str.casefold))
+
+
+def _tracked_converter(repo_root: Path) -> tuple[Path, dict[str, Any]]:
+    converter = resolved_under(repo_root, CONVERTER_ASSET_ID, "ModelAssetConverter asset ID")
+    require(converter.is_file(), f"tracked ModelAssetConverter is missing: {converter}")
+    try:
+        tracked = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(repo_root),
+                "ls-files",
+                "--error-unmatch",
+                "--",
+                CONVERTER_ASSET_ID,
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise PackError(f"failed to verify tracked ModelAssetConverter: {error}") from error
+    require(
+        tracked.returncode == 0
+        and CONVERTER_ASSET_ID.casefold()
+        in {line.strip().replace("\\", "/").casefold() for line in tracked.stdout.splitlines()},
+        f"ModelAssetConverter is not tracked by this worktree: {CONVERTER_ASSET_ID}",
+    )
+    return converter, {
+        "assetId": CONVERTER_ASSET_ID,
+        "byteSize": converter.stat().st_size,
+        "sha256": sha256_file(converter),
+    }
+
+
+def _prepare_static_cook_input(
+    source_root: Path,
+    work_root: Path,
+    source_evidence: dict[str, Any],
+    visual_set_id: str,
+    part_id: str,
+    cook_profile: dict[str, Any],
+) -> tuple[Path, list[str], dict[str, Any]]:
+    staged_source_root = resolved_under(
+        work_root, source_evidence["stagedSourceRoot"], "staged source root"
+    )
+    source_root_relative = PurePosixPath(source_evidence["stagedSourceRoot"])
+    cook_key = sha256_bytes(f"{visual_set_id}/{part_id}".encode("utf-8"))[:16].lower()
+    cook_root_relative = PurePosixPath("CookInput") / cook_key
+    cook_root = resolved_under(work_root, cook_root_relative.as_posix(), "cook input root")
+    require(not cook_root.exists(), f"cook input root already exists: {cook_root}")
+    cook_root.mkdir(parents=True)
+
+    copied_relative_paths: list[PurePosixPath] = []
+    for file_row in source_evidence["files"]:
+        staged_path = PurePosixPath(file_row["path"])
+        try:
+            relative = staged_path.relative_to(source_root_relative)
+        except ValueError as error:
+            raise PackError(f"source evidence escapes its part root: {staged_path}") from error
+        source = resolved_under(staged_source_root, relative.as_posix(), "staged source file")
+        destination = resolved_under(cook_root, relative.as_posix(), "cook input file")
+        _copy_file_once(source, destination)
+        copied_relative_paths.append(relative)
+
+    raw_gltf_relative = PurePosixPath(source_evidence["stagedGltfPath"])
+    try:
+        gltf_relative = raw_gltf_relative.relative_to(source_root_relative)
+    except ValueError as error:
+        raise PackError("staged glTF evidence escapes its source part root") from error
+    cook_gltf = resolved_under(cook_root, gltf_relative.as_posix(), "cook glTF")
+    document = load_json(cook_gltf)
+    mapped_names = {material["materialName"] for material in cook_profile["materials"]}
+    used_material_names = _author_static_cook_document(
+        document, mapped_names, source_evidence["inventorySourcePath"]
+    )
+    write_json(cook_gltf, document)
+
+    remap_arguments: list[str] = []
+    material_evidence: list[dict[str, Any]] = []
+    copied_material_sources: dict[str, tuple[Path, dict[str, Any]]] = {}
+    for material in sorted(cook_profile["materials"], key=lambda value: value["materialName"].casefold()):
+        for source_field, flag, slot_kind in MATERIAL_SOURCE_FIELDS:
+            source_path_id = material.get(source_field)
+            if source_path_id is None:
+                continue
+            source_path = resolved_under(source_root, source_path_id, f"{source_field} source path")
+            require(source_path.is_file(), f"authored material source is missing: {source_path_id}")
+            source_hash = sha256_file(source_path)
+            source_key = source_path_id.casefold()
+            copied = copied_material_sources.get(source_key)
+            if copied is None:
+                staged_name = f"{source_hash[:16].lower()}{source_path.suffix.lower()}"
+                staged_relative = PurePosixPath("t") / staged_name
+                staged_path = resolved_under(
+                    cook_root, staged_relative.as_posix(), "authored material staging path"
+                )
+                copy_evidence = _copy_file_once(source_path, staged_path)
+                copied = (staged_path, copy_evidence)
+                copied_material_sources[source_key] = copied
+                copied_relative_paths.append(staged_relative)
+            staged_path, copy_evidence = copied
+            remap_arguments.extend(
+                [flag, f"{material['materialName']}={staged_path}"]
+            )
+            material_evidence.append(
+                {
+                    "materialName": material["materialName"],
+                    "slot": slot_kind,
+                    "sourcePath": source_path_id,
+                    "stagedPath": staged_path.relative_to(work_root).as_posix(),
+                    **copy_evidence,
+                }
+            )
+
+    input_files: list[dict[str, Any]] = []
+    for relative in sorted(set(copied_relative_paths), key=lambda value: value.as_posix().casefold()):
+        path = resolved_under(cook_root, relative.as_posix(), "cooked input closure file")
+        input_files.append(
+            {
+                "path": path.relative_to(work_root).as_posix(),
+                "byteSize": path.stat().st_size,
+                "sha256": sha256_file(path),
+            }
+        )
+    basis_definition = {
+        "contract": STATIC_COOK_BASIS,
+        "rootQuaternionXyzw": list(STATIC_COOK_ROOT_QUATERNION),
+    }
+    input_closure_hash = _canonical_json_sha256(
+        [{"path": row["path"], "sha256": row["sha256"]} for row in input_files]
+    )
+    return cook_gltf, remap_arguments, {
+        "basis": {**basis_definition, "sha256": _canonical_json_sha256(basis_definition)},
+        "usedMaterialNames": list(used_material_names),
+        "materialBindings": material_evidence,
+        "files": input_files,
+        "closureSha256": input_closure_hash,
+        "authoredGltfSha256": sha256_file(cook_gltf),
+    }
+
+
+def _cooked_runtime_closure(
+    work_root: Path, target_asset_id: str, model: ModelInfo
+) -> list[dict[str, Any]]:
+    runtime_root = work_root / "Runtime"
+    target_path = resolved_under(runtime_root, target_asset_id, "cooked target model asset ID")
+    require(target_path.is_file(), f"cooked WModel is missing: {target_asset_id}")
+    closure = [
+        {
+            "kind": "WMODEL",
+            "assetId": target_asset_id,
+            "sourceKind": "EXACT_AUTHORED_STATIC_COOK",
+            "byteSize": target_path.stat().st_size,
+            "sha256": sha256_file(target_path),
+        }
+    ]
+    require(model.texture_paths, f"cooked WModel has no texture closure: {target_asset_id}")
+    for texture_path in model.texture_paths:
+        texture = resolved_under(target_path.parent, texture_path, "cooked WModel texture path")
+        require(texture.is_file(), f"cooked WModel texture is missing: {texture_path}")
+        texture_asset_id = texture.relative_to(runtime_root).as_posix()
+        closure.append(
+            {
+                "kind": "TEXTURE",
+                "assetId": texture_asset_id,
+                "sourceKind": "EXACT_AUTHORED_STATIC_COOK",
+                "byteSize": texture.stat().st_size,
+                "sha256": sha256_file(texture),
+            }
+        )
+    return closure
+
+
+def _cook_static_socketed_part(
+    repo_root: Path,
+    source_root: Path,
+    work_root: Path,
+    source_evidence: dict[str, Any],
+    visual_set_id: str,
+    part_id: str,
+    target_asset_id: str,
+    cook_profile: dict[str, Any],
+    baseline_model: ModelInfo,
+) -> tuple[ModelInfo, list[dict[str, Any]], dict[str, Any]]:
+    require(
+        baseline_model.animation_count == 0
+        and not baseline_model.mesh_bones
+        and not baseline_model.skeleton_bones
+        and not baseline_model.positive_weight_indices,
+        f"static cook baseline is not a non-animated socketed WModel: {baseline_model.path}",
+    )
+    converter, converter_evidence = _tracked_converter(repo_root)
+    cook_gltf, remap_arguments, input_evidence = _prepare_static_cook_input(
+        source_root,
+        work_root,
+        source_evidence,
+        visual_set_id,
+        part_id,
+        cook_profile,
+    )
+    target_path = resolved_under(
+        work_root / "Runtime", target_asset_id, "static cook target model asset ID"
+    )
+    require(not target_path.exists(), f"static cook target already exists: {target_asset_id}")
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    command = [
+        str(converter),
+        str(cook_gltf),
+        "-o",
+        str(target_path),
+        "--pretransform",
+        "--scale",
+        str(int(STATIC_COOK_SCALE)),
+        "--no-auto-textures",
+        *remap_arguments,
+    ]
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=converter.parent,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=180,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise PackError(f"ModelAssetConverter failed to run for {visual_set_id}/{part_id}: {error}") from error
+    require(
+        completed.returncode == 0,
+        f"ModelAssetConverter failed for {visual_set_id}/{part_id}: "
+        f"{(completed.stderr or completed.stdout).strip()}",
+    )
+    require(target_path.is_file(), f"ModelAssetConverter produced no WModel: {target_asset_id}")
+    model = read_wmodel(target_path)
+    require(
+        model.section_count == 2
+        and set(model.section_types) == {1, 2}
+        and model.animation_count == 0
+        and not model.mesh_bones
+        and not model.skeleton_bones
+        and not model.positive_weight_indices,
+        f"static cook output is not a finite non-animated socketed WModel: {target_asset_id}",
+    )
+    baseline_asset_id = normalize_resource_asset_id(
+        cook_profile["baselineModelAssetId"], "baselineModelAssetId"
+    )
+    baseline_hash = sha256_file(baseline_model.path)
+    output_hash = sha256_file(target_path)
+    require(
+        output_hash != baseline_hash,
+        f"static cook output hash equals baseline {baseline_asset_id}",
+    )
+    require(
+        model.vertex_count != baseline_model.vertex_count,
+        f"static cook vertexCount equals baseline {baseline_asset_id}: {model.vertex_count}",
+    )
+    closure = _cooked_runtime_closure(work_root, target_asset_id, model)
+    original_gltf_rows = [
+        row for row in source_evidence["files"] if row.get("kind") == "GLTF"
+    ]
+    require(len(original_gltf_rows) == 1, "source evidence must contain exactly one raw glTF")
+    return model, closure, {
+        "kind": STATIC_COOK_KIND,
+        "converter": converter_evidence,
+        "basis": input_evidence["basis"],
+        "sourceToWModelScale": STATIC_COOK_SCALE,
+        "flags": ["--pretransform", "--scale 100", "--no-auto-textures", "explicit-remap"],
+        "input": {
+            "inventorySourcePath": source_evidence["inventorySourcePath"],
+            "originalGltfSha256": original_gltf_rows[0]["sha256"],
+            "authoredGltfSha256": input_evidence["authoredGltfSha256"],
+            "closureSha256": input_evidence["closureSha256"],
+            "files": input_evidence["files"],
+            "usedMaterialNames": input_evidence["usedMaterialNames"],
+            "materialBindings": input_evidence["materialBindings"],
+        },
+        "output": {
+            "targetModelAssetId": target_asset_id,
+            "sha256": output_hash,
+            "vertexCount": model.vertex_count,
+            "baselineModelAssetId": baseline_asset_id,
+            "baselineSha256": baseline_hash,
+            "baselineVertexCount": baseline_model.vertex_count,
+        },
     }
 
 
@@ -841,8 +1389,8 @@ def _render_markdown(receipt: dict[str, Any]) -> str:
         f"- pending normalization candidates: {receipt['counts']['pendingNormalizationCandidateCount']}",
         "",
         "이 폴더는 검증된 staging pack이다. `Client/Bin/Resources`와 제품 catalog는 변경하지 않았다.",
-        "raw object와 existing WModel은 독립 검증 뒤 authored association으로 묶였으며, "
-        "exact build provenance를 뜻하지 않는다.",
+        "existing WModel part는 raw object와 독립적인 curated association이며 exact build provenance가 아니다. "
+        "`NONANIM_SOCKETED_GLTF_V1` part는 receipt에 기록된 glTF, basis, material, converter hash로 exact cook을 증명한다.",
         "",
         "## 클래스별 교체 카테고리",
         "",
@@ -900,7 +1448,40 @@ def _render_markdown(receipt: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def build_pack(repo_root: Path, selection_path: Path, output_directory: Path, overwrite: bool) -> dict[str, Any]:
+def resolve_input_roots(
+    repo_root: Path,
+    source_root: Path | None,
+    resource_root: Path | None,
+) -> tuple[Path, Path]:
+    if source_root is None:
+        resolved_source_root = repo_root
+    else:
+        resolved_source_root = source_root.resolve()
+        require(
+            resolved_source_root.is_dir(),
+            f"explicit source root does not exist: {resolved_source_root}",
+        )
+    if resource_root is None:
+        resolved_resource_root = resolved_under(
+            repo_root, "Client/Bin/Resources", "default Resources root"
+        )
+    else:
+        resolved_resource_root = resource_root.resolve()
+        require(
+            resolved_resource_root.is_dir(),
+            f"explicit Resources root does not exist: {resolved_resource_root}",
+        )
+    return resolved_source_root, resolved_resource_root
+
+
+def build_pack(
+    repo_root: Path,
+    selection_path: Path,
+    output_directory: Path,
+    overwrite: bool,
+    source_root: Path | None = None,
+    resource_root: Path | None = None,
+) -> dict[str, Any]:
     repo_root = repo_root.resolve()
     require(repo_root.is_dir(), f"repository root does not exist: {repo_root}")
     selection_path = strict_descendant(repo_root, selection_path, "selection file")
@@ -909,10 +1490,12 @@ def build_pack(repo_root: Path, selection_path: Path, output_directory: Path, ov
     require(selection_path.is_file(), f"selection file does not exist: {selection_path}")
 
     selection = validate_selection_document(load_json(selection_path))
-    inventory_path = resolved_under(repo_root, selection["sourceInventory"], "sourceInventory")
+    source_root, resources_root = resolve_input_roots(
+        repo_root, source_root, resource_root
+    )
+    inventory_path = resolved_under(source_root, selection["sourceInventory"], "sourceInventory")
     inventory_document = load_json(inventory_path)
     inventory = inventory_index(inventory_document)
-    resources_root = (repo_root / "Client" / "Bin" / "Resources").resolve()
     require(resources_root.is_dir(), f"Resources root does not exist: {resources_root}")
     require(overwrite or not output_directory.exists(), f"output directory already exists: {output_directory}")
     parent = output_directory.parent
@@ -945,7 +1528,7 @@ def build_pack(repo_root: Path, selection_path: Path, output_directory: Path, ov
             f"pending source state/role/readiness differs for {inventory_key}",
         )
         source_evidence = _copy_gltf_source(
-            repo_root,
+            source_root,
             work_root,
             source_entry["sourcePath"],
             candidate["candidateId"],
@@ -975,6 +1558,8 @@ def build_pack(repo_root: Path, selection_path: Path, output_directory: Path, ov
     receipt_sets: list[dict[str, Any]] = []
     all_runtime_files: dict[str, dict[str, Any]] = {}
     part_count = 0
+    existing_association_part_count = 0
+    authored_static_cook_part_count = 0
     try:
         for visual_set in selection["sets"]:
             body = get_model(visual_set["masterBodyAssetId"])
@@ -989,30 +1574,68 @@ def build_pack(repo_root: Path, selection_path: Path, output_directory: Path, ov
                     part["sourceObjectName"],
                 )
                 source_entry = resolve_inventory_entry(inventory, inventory_key)
+                has_cook_profile = "cookProfile" in part
                 require(
                     source_entry.get("extractionState") == "EXTRACTED"
-                    and source_entry.get("partRole") == part["expectedSourceRole"],
-                    f"selected source state/role differs for {inventory_key}",
+                    and source_entry.get("partRole") == part["expectedSourceRole"]
+                    and (
+                        not has_cook_profile
+                        or source_entry.get("runtimeReadiness") == STATIC_COOK_READINESS
+                    ),
+                    f"selected source state/role/readiness differs for {inventory_key}",
                 )
                 source_evidence = _copy_gltf_source(
-                    repo_root,
+                    source_root,
                     work_root,
                     source_entry["sourcePath"],
                     visual_set["visualSetId"],
                     part["partId"],
                 )
 
-                existing_asset_id = normalize_resource_asset_id(
-                    part["existingModelAssetId"], "existingModelAssetId"
-                )
                 target_asset_id = normalize_resource_asset_id(
                     part["targetModelAssetId"], "targetModelAssetId"
                 )
-                model = get_model(existing_asset_id)
+                cook_evidence: dict[str, Any] | None = None
+                existing_asset_id: str | None = None
+                if has_cook_profile:
+                    cook_profile = part["cookProfile"]
+                    baseline_asset_id = normalize_resource_asset_id(
+                        cook_profile["baselineModelAssetId"], "baselineModelAssetId"
+                    )
+                    require(
+                        target_asset_id.casefold() != baseline_asset_id.casefold(),
+                        f"static cook target equals its baseline: {target_asset_id}",
+                    )
+                    baseline_model = get_model(baseline_asset_id)
+                    model, closure, cook_evidence = _cook_static_socketed_part(
+                        repo_root,
+                        source_root,
+                        work_root,
+                        source_evidence,
+                        visual_set["visualSetId"],
+                        part["partId"],
+                        target_asset_id,
+                        cook_profile,
+                        baseline_model,
+                    )
+                    authored_static_cook_part_count += 1
+                else:
+                    existing_asset_id = normalize_resource_asset_id(
+                        part["existingModelAssetId"], "existingModelAssetId"
+                    )
+                    model = get_model(existing_asset_id)
+                    closure = _copy_runtime_closure(
+                        resources_root,
+                        work_root,
+                        existing_asset_id,
+                        target_asset_id,
+                        model,
+                    )
+                    existing_association_part_count += 1
                 admission: dict[str, Any]
                 if part["attachmentMode"] == "SKINNED":
-                    require(model.skeleton_bones, f"skinned part has no skeleton: {existing_asset_id}")
-                    require(model.animation_count == 0, f"skinned equipment part carries animations: {existing_asset_id}")
+                    require(model.skeleton_bones, f"skinned part has no skeleton: {model.path}")
+                    require(model.animation_count == 0, f"skinned equipment part carries animations: {model.path}")
                     admission = {
                         "modelContract": "ANIM_SKINNED",
                         "submeshCount": model.submesh_count,
@@ -1020,8 +1643,8 @@ def build_pack(repo_root: Path, selection_path: Path, output_directory: Path, ov
                         "palette": compare_weighted_palette(model, body),
                     }
                 else:
-                    require(not model.skeleton_bones, f"socketed weapon unexpectedly has a skeleton: {existing_asset_id}")
-                    require(model.animation_count == 0, f"socketed weapon carries animations: {existing_asset_id}")
+                    require(not model.skeleton_bones, f"socketed weapon unexpectedly has a skeleton: {model.path}")
+                    require(model.animation_count == 0, f"socketed weapon carries animations: {model.path}")
                     socket_bone = part["socketBone"]
                     require(
                         socket_bone in body_bone_names,
@@ -1036,13 +1659,6 @@ def build_pack(repo_root: Path, selection_path: Path, output_directory: Path, ov
                         "visibleStances": list(part["visibleStances"]),
                     }
 
-                closure = _copy_runtime_closure(
-                    resources_root,
-                    work_root,
-                    existing_asset_id,
-                    target_asset_id,
-                    model,
-                )
                 for file_row in closure:
                     runtime_asset_key = file_row["assetId"].casefold()
                     previous = all_runtime_files.get(runtime_asset_key)
@@ -1054,26 +1670,33 @@ def build_pack(repo_root: Path, selection_path: Path, output_directory: Path, ov
                             and previous["sha256"] == file_row["sha256"],
                             f"runtime closure asset collision: {file_row['assetId']}",
                         )
-                receipt_parts.append(
-                    {
-                        "partId": part["partId"],
-                        "partRole": part["partRole"],
-                        "attachmentMode": part["attachmentMode"],
-                        "modelKind": part["modelKind"],
-                        "source": {
-                            "sourceFamilyId": source_entry["visualSetId"],
-                            "classId": source_entry["classId"],
-                            "packageName": source_entry["packageName"],
-                            "objectName": source_entry["objectName"],
-                            "partRole": source_entry["partRole"],
-                            **source_evidence,
-                        },
-                        "existingModelAssetId": existing_asset_id,
-                        "targetModelAssetId": target_asset_id,
-                        "resourceClosure": closure,
-                        "admission": {"state": "VALIDATED", **admission},
-                    }
-                )
+                receipt_part = {
+                    "partId": part["partId"],
+                    "partRole": part["partRole"],
+                    "attachmentMode": part["attachmentMode"],
+                    "modelKind": part["modelKind"],
+                    "source": {
+                        "sourceFamilyId": source_entry["visualSetId"],
+                        "classId": source_entry["classId"],
+                        "packageName": source_entry["packageName"],
+                        "objectName": source_entry["objectName"],
+                        "partRole": source_entry["partRole"],
+                        **source_evidence,
+                    },
+                    "targetModelAssetId": target_asset_id,
+                    "resourceClosure": closure,
+                    "admission": {"state": "VALIDATED", **admission},
+                }
+                if cook_evidence is None:
+                    receipt_part["sourceAssociation"] = "CURATED_EXISTING_WMODEL_NOT_BUILD_PROVENANCE"
+                    receipt_part["existingModelAssetId"] = existing_asset_id
+                else:
+                    receipt_part["sourceAssociation"] = "EXACT_AUTHORED_STATIC_COOK"
+                    receipt_part["baselineModelAssetId"] = cook_evidence["output"][
+                        "baselineModelAssetId"
+                    ]
+                    receipt_part["cook"] = cook_evidence
+                receipt_parts.append(receipt_part)
             receipt_sets.append(
                 {
                     "visualSetId": visual_set["visualSetId"],
@@ -1127,20 +1750,22 @@ def build_pack(repo_root: Path, selection_path: Path, output_directory: Path, ov
             "generatedAtUtc": dt.datetime.now(dt.timezone.utc).isoformat(),
             "state": "STAGED_VALIDATED_NOT_PROMOTED",
             "sourceAssociation": {
-                "state": "CURATED_NOT_BUILD_PROVENANCE",
+                "state": "MIXED_CURATED_EXISTING_AND_EXACT_AUTHORED_STATIC_COOK",
                 "policy": selection["sourceAssociationPolicy"],
                 "meaning": (
-                    "The selected raw object and existing cooked WModel are independently validated and "
-                    "authored together; no historical cook receipt or geometry derivation proves that the "
-                    "WModel was built from that exact raw object."
+                    "Existing WModel parts remain curated associations without historical build provenance. "
+                    "NONANIM_SOCKETED_GLTF_V1 parts are exact authored cooks from the receipt's transformed "
+                    "glTF and material inputs using the hashed tracked converter."
                 ),
+                "existingAssociationPartCount": existing_association_part_count,
+                "authoredStaticCookPartCount": authored_static_cook_part_count,
             },
             "selection": {
                 "path": selection_path.relative_to(repo_root).as_posix(),
                 "sha256": sha256_file(selection_path),
             },
             "sourceInventory": {
-                "path": inventory_path.relative_to(repo_root).as_posix(),
+                "path": selection["sourceInventory"],
                 "sha256": sha256_file(inventory_path),
                 "sourceObjectCount": inventory_document.get("sourceObjectCount"),
                 "runtimeAdmittedCount": inventory_document.get("runtimeAdmittedCount"),
@@ -1191,6 +1816,16 @@ def parse_arguments(argv: Iterable[str]) -> argparse.Namespace:
     parser.add_argument("--repo-root", type=Path, required=True)
     parser.add_argument("--selection", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--source-root",
+        type=Path,
+        help="Explicit physical root containing inventory/raw/material source IDs",
+    )
+    parser.add_argument(
+        "--resource-root",
+        type=Path,
+        help="Explicit physical Client/Bin/Resources root for existing WModel inputs",
+    )
     parser.add_argument("--overwrite", action="store_true")
     return parser.parse_args(list(argv))
 
@@ -1203,6 +1838,8 @@ def main(argv: Iterable[str] | None = None) -> int:
             arguments.selection,
             arguments.output,
             arguments.overwrite,
+            arguments.source_root,
+            arguments.resource_root,
         )
     except PackError as error:
         print(f"Character equipment representative pack FAILED: {error}", file=sys.stderr)

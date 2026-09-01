@@ -19,17 +19,23 @@
 - 각 object에 part role, slot hint, locale/quality, 저장 후보 종류, runtime readiness를 기록했다.
 - 이미 Cook된 호환 WModel 중 6 class, 12 visual set, 17 part를 curated source association과 함께
   self-contained 대표 staging pack으로 산출했다.
+- 첫 pack의 기본 무기가 현재 캐릭터 기본 무기와 byte-identical이라 장착해도 변화가 보이지 않는 원인을
+  확인했다. 어제 추출한 source inventory를 실파일과 다시 대조한 뒤, 여섯 class에 형상이 다른
+  `READY_ALTERNATIVE` 무기 6 set/12 static part를 exact source에서 새로 Cook했다.
+- 기존 Cook 호환 의상 중 창술사 표준 head/4-slot outfit, 도화가 lower, 워로드 hair를 추가해 최종
+  6 class, 22 visual set, 36 named part admission pack을 산출했다.
 - 여섯 class별 신규 shoulder raw 후보를 하나씩 pack에 포함하고 정규화 대기 카테고리로 기록했다.
 - 장비 교체·해제, Server random reward, inventory instance, per-class loadout의 구현 계획서를 작성했다.
 - 현재 회원/account 저장 경로가 없음을 코드로 확인하고 durable repository 계획을 추가했다.
-- 대표 12 visual set, 17 part를 stable slot과 named part로 승격한
+- 최종 22 visual set, 36 part를 stable slot과 named part로 승격한
   `Data/Actors/EquipmentPresentationCatalog.json`을 생성했다.
 - 여섯 class의 툴 전용 초기 선택을 `Data/Actors/EquipmentLoadoutPresets.json`에 분리했다. 이 문서는
   `authoringOnly: true`이며 회원/account 저장 계약이 아니다.
-- admission의 runtime closure 73개를 전부 해시 검증하고 새 `Character/<Class>/Equipment` 디렉터리만
-  stage/promote하는 `Publish-CharacterEquipment.ps1`과 rollback harness를 구현했다.
-- 검증된 runtime closure 73개를 실제 정본 Resources의 여섯 class `Equipment` 디렉터리로 Publish하고,
-  재검증에서 여섯 디렉터리가 모두 identical 상태임을 확인했다.
+- 최종 admission의 runtime closure 162개를 전부 해시 검증하고, 기존 동일 managed 파일은 재사용하면서
+  신규 파일만 stage/promote하는 additive `Publish-CharacterEquipment.ps1`과 rollback harness를 구현했다.
+- 검증된 runtime closure 162개를 실제 정본 Resources의 여섯 class `Equipment` 디렉터리로 Publish했다.
+  73개는 기존 동일 파일로 재사용하고 89개를 새로 승격했으며, 사후 검증에서 162개 모두 size/SHA-256이
+  receipt와 일치했다.
 - 기존 공용 `CCharacterPreviewPanel`을 재사용하는 F1 `Equipment Authoring Tool`을 추가했다. 여섯 class와
   `HEAD/SHOULDER/UPPER/LOWER/HANDS/WEAPON`을 선택하고 대표 set을 장착·해제·초기화할 수 있다.
 - Catalog와 preset은 strict parse/validate/stage/commit을 사용한다. visual set의 모든 model/socket 검증과
@@ -38,6 +44,8 @@
   HEAD-only, WEAPON-only와 복합 outfit이 서로 비점유 기본 외형을 지우지 않는다.
 - 툴 preset은 `Data/Actors/EquipmentLoadoutPresets.json`에 sibling temp write, 재파싱, atomic replace로
   저장한다. 이 문서는 계속 `authoringOnly: true`이며 회원정보 저장이 아니다.
+- 기본 preset은 여섯 class의 여섯 slot을 모두 `null`로 두어 기본 외형에서 `Equip Selected`를 누를 때
+  변경이 바로 비교되도록 했다.
 
 완료하지 않은 범위는 다음과 같다.
 
@@ -151,8 +159,8 @@ source denominator: 7,475
 extracted:          7,464
 blocked:               11
 coverage:          99.8528%
-product runtime admitted: 0
-validated staging parts: 17
+raw inventory direct product admission: 0
+validated staging parts: 36 (최신 visible-variant pack)
 pending normalization raw parts: 6
 ```
 
@@ -285,9 +293,10 @@ hash 단순 동등 비교를 사용하면 안 된다.
 - raw glTF/DDS는 모두 `out/CharacterEquipmentExtraction`에 유지했다.
 - direct-cook probe도 `out/.../Probe`에만 유지했다.
 - `Client/Bin/Resources`에는 raw, source, 불완전 WModel을 복사하지 않았고, admission을 통과한 runtime
-  closure 73개만 이후 publisher로 승격했다.
+  closure만 publisher로 승격했다. 1차 pack은 73개였고 최신 visible-variant pack은 162개다.
 - `Resources/LostArk` wrapper를 만들지 않았다.
-- Drive 관리 Resources 물리 payload에는 여섯 Equipment 디렉터리를 반영했지만 Git index에는 넣지 않았다.
+- 로컬 정본 Resources 물리 payload에는 여섯 Equipment 디렉터리를 반영했지만 Git index에는 넣지 않았다.
+  외부 Drive 전달·동기화 여부는 이번 로컬 검증 범위가 아니다.
 
 ## 9. 1차 대표 staging pack
 
@@ -397,6 +406,69 @@ repository/Data/Resources 밖인 `C:\ProgramData\LostArkTeam\Server\CharacterSta
 `itemId`, `itemInstanceId`, stable slot이고 model path나 `visualSetId`는 저장하지 않는다. 현재는 인증
 provider와 repository 모두 미구현이므로 이 경로에 DB 파일을 생성하지 않았다.
 
+### 9.4 가시 외형 보강 pack과 실제 Resources 재배치
+
+어제 추출한 파일을 source inventory와 다시 대조한 결과는 다음과 같다.
+
+```text
+Raw:       18,431 files / 1,167 glTF / 4,125,384,783 bytes
+RawShared: 74,632 files / 6,696 glTF / 26,667,729,274 bytes
+Total:     93,063 files / 7,863 glTF / 30,793,114,057 bytes
+
+inventory rows: 7,475
+EXTRACTED:      7,464 / source glTF 존재·nonzero·unique, missing 0
+BLOCKED:        11 / 최초부터 기록된 decoder serialization 차단
+visual sets:    2,159 / glTF 보유 2,156 / 전부 차단 3
+```
+
+즉 어제 성공으로 기록한 추출물은 전부 남아 있으며 새 누락은 0이다. 차단 11개는 창술사
+`PC_FT_AV_247` 2개와 슬레이어 `PC_WR_F_AV_220A/B` 9개로 기존 receipt와 동일하다.
+
+가시 외형용 최종 admission은 다음 위치에 산출했다.
+
+```text
+C:\Users\user\Desktop\LostArk\out\CharacterEquipmentExtraction\Admission\representative-20260901-visible-variants
+
+classes:              6
+visual sets:          22
+parts:                36
+runtime closure:      162
+existing association: 24
+exact static cooks:   12
+pending raw parts:    6
+pack:                 349 files / 226,425,376 bytes
+```
+
+새 무기는 골격이 없는 static/socketed glTF만 대상으로 삼았다. glTF scene root의 X축 +90도 기준 변환,
+scale 100, 명시 material remap을 적용하고 converter/input/output/baseline hash를 receipt에 기록했다. 생성된
+12 WModel은 skeleton 0, mesh bone 0, animation 0이며 각각 기본 무기와 hash와 vertex count가 다르다.
+raw skinned apparel은 master-skeleton normalization과 weighted palette 검증이 없으므로 그대로 Resources에
+복사하지 않았다.
+
+| 클래스 | 눈으로 비교할 대표 선택 |
+|---|---|
+| 창술사 | HEAD `character.lance_master.standard_00.head`, UPPER `character.lance_master.standard_00.outfit`, WEAPON `character.lance_master.wp_wflm_07` |
+| 건슬링어 | HEAD/UPPER `default_variant_01`, WEAPON `character.gunslinger.wp_wgdh_tf01_05` |
+| 슬레이어 | HEAD `character.slayer.default_variant_01.head`, WEAPON `character.slayer.wp_wwbk_f_tf01_07` |
+| 도화가 | HEAD/LOWER `default_variant_01`, WEAPON `character.artist.wp_wsdm_tf01_06` |
+| 워로드 | HEAD `character.warlord.default_00.hair`, WEAPON `character.warlord.wp_wwgl_18` |
+| 차원술사 | WEAPON `character.dimensionmaster.wp_wswp_m_tf01_07` |
+
+정본 물리 경로 `C:\Users\user\Desktop\LostArk\Client\Bin\Resources`에는 162-file closure를 Publish했다.
+사전 검증은 신규 89개/기존 동일 73개/충돌 0이었고, Publish 뒤 162개 전부 기존 동일 상태로 재검증됐다.
+Catalog의 36개 model target도 모두 물리 파일이 존재한다.
+
+Publish 전에 Resources 최상위에 있던 `Character.zip`은 7-folder 계약을 위반해 자동 Publish를 막았다.
+임의 삭제하지 않고 다음 복구 가능한 격리 경로로 이동했다.
+
+```text
+C:\Users\user\Desktop\LostArk\out\CharacterEquipmentExtraction\ResourceRootQuarantine\Character.pre-visible-equipment-publish.20260901.zip
+size:   1,184,734,410 bytes
+SHA256: 0EBCBBEF725647A75E3985F13DBBDC9480ED1331CA8B0F1C6AB566AAEB2C62A5
+```
+
+이후 Resources 최상위는 `Character, Deploy, Effect, Fonts, Map, Sound, UI` 정확히 일곱 폴더다.
+
 ## 10. 자동 검증
 
 실행 완료:
@@ -494,13 +566,55 @@ Equipment Authoring Tool/runtime focused contract
   다른 hash collision=0, raw Source publish=0
 ```
 
+위 73-file 결과는 1차 pack의 이력이다. 가시 외형 보강 뒤 최신 검증은 다음과 같다.
+
+```text
+CharacterEquipmentPipeline unittest discovery
+  55 PASS
+  exact static cook, basis transform, material closure, baseline difference PASS
+  additive publish, idempotence, no-replace race, mid-failure rollback PASS
+
+Equipment catalog focused tests
+  4 PASS
+  classes=6, sets=22, parts=36, 모든 class READY_ALTERNATIVE weapon PASS
+  여섯 class × 여섯 slot 초기 preset null PASS
+
+Equipment Authoring Tool/runtime focused contract
+  12 PASS
+  APPAREL_HEAD/SHOULDER/UPPER/LOWER/HANDS와 WEAPON_SET category 수용 PASS
+
+visible variant pack build
+  classes=6, sets=22, parts=36, runtime closure=162
+  exact static cooks=12, pending raw parts=6
+  349 files / 226,425,376 bytes
+
+실제 정본 Resources 최신 Publish
+  pre-Validate new=89, existing-identical=73, mismatch=0
+  Publish=PUBLISHED
+  post-Validate new=0, existing-identical=162, mismatch=0
+  receipt closure 162/162 size+SHA-256 PASS
+  catalog target WModel 36/36 존재 PASS
+
+신규 weapon WModel 물리 audit
+  WModel 12/12 static, skeleton=0, mesh bones=0, animation=0
+  baseline 대비 output hash와 vertex count 모두 다름
+  AABB가 baseline과 같은 단위·주축 범위, scale/basis 이상 징후 0
+
+JSON/XML parse
+  변경 JSON과 프로젝트 XML PASS
+
+git diff --check
+  exit 0
+```
+
 Engine Debug x64 focused build와 Client Debug x64 compile/link는 성공했고 `Client.exe`를 생성했다.
 최신 `origin/main` rebase 뒤 정본 명령
 `Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product`도 exit 0으로 완료했다. build-domain
 gate와 Map/World/Navigation/Destruction/Balance/Item/Reward publisher, Engine/Shared/Server/Client compile/link,
 Product compiled-shader closure가 모두 PASS했다. WARP readback은 V1/V2 각각 1,352 pixels였고 제품 build
-receipt와 run evidence를 생성했다. 컴파일 오류는 없었으며 기존 C4819/C4828 인코딩 및 DirectXTK PDB
-경고만 남았다.
+receipt와 run evidence를 생성했다. visible-variant 최종 변경에서도 같은 명령을 재실행해 exit 0과
+`out/BuildPipeline/receipts/product.debug.receipt.json`을 확인했다. 컴파일 오류는 없었으며 기존
+C4819/C4828 인코딩 및 DirectXTK PDB 경고만 남았다.
 
 ## 11. 수동 검증 상태
 
@@ -510,12 +624,20 @@ receipt와 run evidence를 생성했다. 컴파일 오류는 없었으며 기존
 - visual fidelity: 미판정
 - manual first pixel / visual PASS: 사용자 판정 필요
 
+사용자 확인 순서는 `F1 -> Equipment Authoring Tool -> Reload Catalog -> Reload Presets`다. class button과
+같은 class의 live Character preview row를 선택하고, 위 9.4 표의 slot/set을 고른 뒤 `Equip Selected`를
+누른다. 상태가 `READY_ALTERNATIVE`인 정확한 ID를 선택해야 하며 `BASELINE_PART`와 `BASELINE_WEAPON`,
+특히 워로드 `default_00.shoulder`는 기본 외형과 같아 변화가 없는 것이 정상이다. `Unequip Slot`은 해당
+slot을 기본 외형으로 되돌린다. `Save Presets`는 현재 preview 선택을
+`authoringOnly` JSON으로 저장할 뿐 회원정보나 Server inventory에는 저장하지 않으며, 버튼 자체가 외형을
+장착하는 동작도 아니다. 창술사 무기는 long/short stance에 따라 두 part의 visibility가 바뀐다.
+
 현재 LAN sync는 이 PC를 `server-host`로 판정했지만 TCP 7777 LocalSubnet 방화벽 규칙이 없거나 오래돼
 관리자 PowerShell 실행이 필요하다. 코드·데이터 검증은 계속했지만 Client를 자율 실행하지 않았다.
 
 ## 12. 다음 구현 시작점
 
-다음 G는 계획서의 G00이다.
+다음 G는 계획서 G00의 skinned-apparel 잔여와 G01 이후다.
 
 1. class master skeleton normalizer와 실패 harness를 만든다.
 2. 위 shoulder 6개를 정규화 Cook하고 기존 대표 staging과 같은 admission receipt를 만든다.

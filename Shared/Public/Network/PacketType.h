@@ -224,7 +224,13 @@ namespace LostArk::Shared
 		// still a Server room transfer and stage movement still lands on an exact
 		// authored PLAYER_SPAWN placement; the Client never sends a world transform.
 		C2S_DEBUG_ENTER_KAKULSAYDON_ARENA,
-		C2S_DEBUG_TELEPORT_TO_PLACEMENT
+		C2S_DEBUG_TELEPORT_TO_PLACEMENT,
+
+		// Reliable one-shot edge telling every session in the room that an
+		// authored world sequence instance started. The Server owns the trigger
+		// entry that decides when; the Client owns only how it looks. Append-only
+		// so an older payload is never reinterpreted as this identity.
+		S2C_WORLD_SEQUENCE_PLAY
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -297,6 +303,7 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_PARTY_INVITE_RESPOND:
 		case PACKET_TYPE::S2C_PARTY_ROSTER:
 		case PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT:
+		case PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY:
 			return true;
 		default:
 			return  false;
@@ -321,4 +328,6 @@ namespace LostArk::Shared
 	// Matches CChatWindowView::INPUT_BUFFER_SIZE (including the terminator),
 	// so a locally-typeable line always round-trips.
 	inline constexpr std::size_t MAX_CHAT_TEXT_BYTES = 256;
+	// Matches the stable ID budget the authored world sequence document uses.
+	inline constexpr std::size_t MAX_SEQUENCE_INSTANCE_ID_BYTES = 128;
 }

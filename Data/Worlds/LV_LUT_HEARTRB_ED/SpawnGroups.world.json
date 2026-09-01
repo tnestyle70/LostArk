@@ -193,7 +193,7 @@
     },
     {
       "spawnGroupId": "spawn.valtan.stage02.miniboss",
-      "requiredCompletedGroupId": "spawn.valtan.stage01",
+      "requiredCompletedGroupId": null,
       "maxAlive": 1,
       "repeatPolicy": "ONCE",
       "repeatDelayMs": 0,
@@ -218,7 +218,7 @@
     },
     {
       "spawnGroupId": "spawn.valtan.stage03",
-      "requiredCompletedGroupId": "spawn.valtan.stage02.miniboss",
+      "requiredCompletedGroupId": null,
       "maxAlive": 10,
       "repeatPolicy": "ONCE",
       "repeatDelayMs": 0,

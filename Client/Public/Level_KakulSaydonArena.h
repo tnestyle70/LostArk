@@ -2,9 +2,11 @@
 
 #include "Client_Defines.h"
 #include "ClientReplication.h"
+#include "DeployPropRuntime.h"
 #include "Level.h"
 #include "MapPlacementRuntime.h"
 #include "PlayerController.h"
+#include "WorldSequencePlayer.h"
 
 #include <string>
 #include <string_view>
@@ -62,13 +64,32 @@ public:
 		return m_StageMarkers;
 	}
 
+	/* Raises one paper stage bridge: the Deploy prop leaves DESPAWNED and its
+	   authored unfold sequence starts on the same frame, so the bridge is
+	   never visible in its finished pose before it has unfolded. Playing an
+	   already raised bridge is a no-op rather than a rewind. */
+	bool_t Request_PaperBridgeUnfold(
+		uint64_t leverPlacementId,
+		std::string& outStatus);
+
 private:
+	bool_t Start_ServerRequestedSequence(
+		const std::string& instanceId,
+		const CWorldSequencePlayer::TARGET_SET& targets,
+		std::string& outStatus);
 	bool_t Load_StageMarkers(std::string& outStatus);
 	HRESULT Ready_Layer_Camera(const wstring_t& strLayerTag);
 	bool_t Bind_CameraToLocalCharacter();
 
 private:
 	CMapPlacementRuntime m_MapRuntime;
+	/* The authored deploy catalog carries both paper levers and both paper
+	   stage bridges. A bridge stays DESPAWNED until its lever is pulled, so
+	   suppress the bridges before the first rendered frame instead of letting
+	   them appear already unfolded. */
+	CDeployPropRuntime m_DeployRuntime;
+	CWorldSequencePlayer m_SequencePlayer;
+	std::unordered_set<uint64_t> m_RaisedPaperBridges;
 	shared_ptr<CCamera_Free> m_pCamera;
 	weak_ptr<CCharacter> m_pCameraTarget;
 	CClientReplication m_Replication;

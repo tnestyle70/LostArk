@@ -596,6 +596,21 @@ f32_t Client::CEffectV2Object::Dissolve_Amount() const
 	return Saturate((fRatio - fStart) / (1.f - fStart));
 }
 
+f32_t Client::CEffectV2Object::Alpha_Envelope() const
+{
+	if (m_Params.fLifetime <= 0.f)
+		return 1.f;
+	const f32_t fRatio = Life_Ratio();
+	f32_t fEnvelope = 1.f;
+	const f32_t fInEnd = Saturate(m_Params.fAlphaInEnd);
+	if (0.f < fInEnd && fRatio < fInEnd)
+		fEnvelope = fRatio / fInEnd;
+	const f32_t fOutStart = (std::max)(Saturate(m_Params.fAlphaOutStart), fInEnd);
+	if (fOutStart < 1.f && fRatio > fOutStart)
+		fEnvelope = (std::min)(fEnvelope, (1.f - fRatio) / (1.f - fOutStart));
+	return Saturate(fEnvelope);
+}
+
 Client::EFFECT_V2_TARGET Client::EFFECT_V2_TARGET::From_Npc(
 	const std::shared_ptr<CNpc>& pNpc)
 {
@@ -1334,6 +1349,8 @@ HRESULT Client::CEffectV2Object::Bind_Common(
 	const PARAMS& P = m_Params;
 	const uint32_t iColorClipChannel = static_cast<uint32_t>(P.eColorClipChannel);
 	const f32_t fDissolveAmount = Dissolve_Amount();
+	const uint32_t iDissolveWarp = P.bDissolveWarp ? 1u : 0u;
+	const uint32_t iMaskWarp = P.bMaskWarp ? 1u : 0u;
 	const f32_t fLifeRatio = Life_Ratio();
 	float4_t vColorMul = P.vColorMul;
 	float4_t vColorOffset = P.vColorOffset;
@@ -1343,6 +1360,7 @@ HRESULT Client::CEffectV2Object::Bind_Common(
 	if (P.bColorOffsetLerp)
 		XMStoreFloat4(&vColorOffset, XMVectorLerp(
 			XMLoadFloat4(&P.vColorOffset), XMLoadFloat4(&P.vColorOffsetEnd), fLifeRatio));
+	vColorMul.w *= Alpha_Envelope();
 	const float4_t* pCameraPosition = GameInstance.Get_CamPosition();
 	const float4_t vCameraPosition =
 		nullptr != pCameraPosition ? *pCameraPosition : float4_t(0.f, 0.f, 0.f, 1.f);
@@ -1366,6 +1384,8 @@ HRESULT Client::CEffectV2Object::Bind_Common(
 		FAILED(pShader->Bind_RawValue("g_NoisePan", &P.vNoisePan, sizeof(P.vNoisePan))) ||
 		FAILED(pShader->Bind_RawValue("g_DissolveAmount", &fDissolveAmount, sizeof(f32_t))) ||
 		FAILED(pShader->Bind_RawValue("g_DissolveSoftness", &P.fDissolveSoftness, sizeof(f32_t))) ||
+		FAILED(pShader->Bind_RawValue("g_DissolveWarp", &iDissolveWarp, sizeof(iDissolveWarp))) ||
+		FAILED(pShader->Bind_RawValue("g_MaskWarp", &iMaskWarp, sizeof(iMaskWarp))) ||
 		FAILED(pShader->Bind_RawValue("g_SoftFadeDistance", &P.fSoftFadeDistance, sizeof(f32_t))))
 	{
 		return E_FAIL;
