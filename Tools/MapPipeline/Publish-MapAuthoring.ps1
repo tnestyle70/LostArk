@@ -26,6 +26,7 @@ $authoringDeployPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$Area
 $authoringLightPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.maplights.json"
 $authoringEffectPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.mapeffects.json"
 $authoringWaterPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.mapwater.json"
+$authoringSequencePath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.worldsequences.json"
 $importRoot = Join-Path $ProjectRoot "Data\Maps\Imported\$AreaId"
 $sourceCatalogPath = Join-Path $importRoot "$AreaId.mapassets"
 $sourceShardSetPath = Join-Path $importRoot "$AreaId.mapset"
@@ -35,6 +36,7 @@ $runtimePath = Join-Path $runtimeRoot "$AreaId.mapplacements"
 $runtimeLightPath = Join-Path $runtimeRoot "$AreaId.maplights.json"
 $runtimeEffectPath = Join-Path $runtimeRoot "$AreaId.mapeffects.json"
 $runtimeWaterPath = Join-Path $runtimeRoot "$AreaId.mapwater.json"
+$runtimeSequencePath = Join-Path $runtimeRoot "$AreaId.worldsequences.json"
 $mapCatalogPath = Join-Path $ProjectRoot 'Data\Maps\MapCatalog.json'
 $worldDestructionPath = Join-Path $ProjectRoot "Client\Bin\DataFiles\World\$AreaId.worlddestruction.json"
 $worldDestructionSourcePath = Join-Path $ProjectRoot 'Data\Encounters\Valtan\ValtanWorldEvents.json'
@@ -1303,6 +1305,179 @@ function Read-MapWaterDocument {
     return @([IO.File]::ReadAllLines($Path, [Text.Encoding]::UTF8))
 }
 
+function Read-WorldSequenceDocument {
+    param([string]$Path)
+    $raw = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8)
+    try { $document = $raw | ConvertFrom-Json }
+    catch { throw "World sequence JSON parse failed: $Path" }
+    Assert-ExactJsonProperties $document `
+        @('schema','formatVersion','areaId','revision','templates','instances') `
+        'World sequence root'
+    if ($document.schema -isnot [string] -or
+        $document.schema -ne 'lostark.world-sequences' -or
+        -not (Test-JsonNumber $document.formatVersion) -or
+        [double]$document.formatVersion -ne 2.0 -or
+        $document.areaId -isnot [string] -or $document.areaId -ne $AreaId -or
+        -not (Test-JsonNumber $document.revision) -or
+        [double]$document.revision -lt 0) {
+        throw "World sequence header is invalid: $Path"
+    }
+    if ($document.templates -isnot [System.Array] -or
+        $document.instances -isnot [System.Array]) {
+        throw "World sequence templates and instances must be arrays: $Path"
+    }
+    # WorldSequenceDocument.cpp 의 상한과 동일하게 검사한다.
+    $templates = @($document.templates)
+    $instances = @($document.instances)
+    if ($templates.Count -gt 256 -or $instances.Count -gt 2048) {
+        throw "World sequence document exceeds its limits: $Path"
+    }
+    $stableId = '^[A-Za-z0-9._-]{1,128}$'
+    $trackCounts = @{}
+    $templateIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($template in $templates) {
+        Assert-ExactJsonProperties $template `
+            @('sequenceId','displayName','category','durationMs','interpolation',
+              'tracks','animationTracks') 'World sequence template'
+        if ($template.sequenceId -isnot [string] -or
+            $template.sequenceId -notmatch $stableId -or
+            -not $templateIds.Add([string]$template.sequenceId) -or
+            $template.displayName -isnot [string] -or
+            $template.displayName.Length -lt 1 -or
+            $template.displayName.Length -gt 128 -or
+            $template.category -isnot [string] -or
+            $template.category.Length -lt 1 -or $template.category.Length -gt 64 -or
+            -not (Test-JsonNumber $template.durationMs) -or
+            [double]$template.durationMs -le 0 -or
+            [double]$template.durationMs -gt 600000 -or
+            $template.interpolation -isnot [string] -or
+            $template.interpolation -notin @('LINEAR','SMOOTH_STEP') -or
+            $template.tracks -isnot [System.Array] -or
+            $template.animationTracks -isnot [System.Array]) {
+            throw "World sequence template is invalid: $($template.sequenceId)"
+        }
+        $tracks = @($template.tracks)
+        $animationTracks = @($template.animationTracks)
+        $total = $tracks.Count + $animationTracks.Count
+        if ($total -lt 1 -or $total -gt 32) {
+            throw "World sequence template track count is invalid: $($template.sequenceId)"
+        }
+        $trackCounts[[string]$template.sequenceId] = $total
+        $slotIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($track in $tracks) {
+            Assert-ExactJsonProperties $track @('slotId','keys') 'World sequence track'
+            if ($track.slotId -isnot [string] -or $track.slotId -notmatch $stableId -or
+                -not $slotIds.Add([string]$track.slotId) -or
+                $track.keys -isnot [System.Array]) {
+                throw "World sequence track is invalid: $($template.sequenceId)"
+            }
+            $keys = @($track.keys)
+            if ($keys.Count -lt 2 -or $keys.Count -gt 256) {
+                throw "World sequence key count is invalid: $($template.sequenceId)/$($track.slotId)"
+            }
+            $previous = -1
+            foreach ($key in $keys) {
+                Assert-ExactJsonProperties $key `
+                    @('timeMs','positionOffset','rotationQuaternion',
+                      'scaleMultiplier','visible') 'World sequence key'
+                if (-not (Test-JsonNumber $key.timeMs) -or
+                    [double]$key.timeMs -le $previous -or
+                    [double]$key.timeMs -gt [double]$template.durationMs -or
+                    $key.visible -isnot [bool] -or
+                    $key.positionOffset -isnot [System.Array] -or
+                    @($key.positionOffset).Count -ne 3 -or
+                    $key.rotationQuaternion -isnot [System.Array] -or
+                    @($key.rotationQuaternion).Count -ne 4 -or
+                    $key.scaleMultiplier -isnot [System.Array] -or
+                    @($key.scaleMultiplier).Count -ne 3) {
+                    throw "World sequence key is invalid: $($template.sequenceId)/$($track.slotId)"
+                }
+                foreach ($component in (@($key.positionOffset) +
+                        @($key.rotationQuaternion) + @($key.scaleMultiplier))) {
+                    if (-not (Test-JsonNumber $component)) {
+                        throw "World sequence key component is not finite: $($template.sequenceId)/$($track.slotId)"
+                    }
+                }
+                $previous = [double]$key.timeMs
+            }
+            if ([double]$keys[0].timeMs -ne 0 -or
+                [double]$keys[$keys.Count - 1].timeMs -ne [double]$template.durationMs) {
+                throw "World sequence track must span the whole duration: $($template.sequenceId)/$($track.slotId)"
+            }
+        }
+        foreach ($track in $animationTracks) {
+            Assert-ExactJsonProperties $track `
+                @('slotId','clipName','playbackRate','loop','holdLastFrame') `
+                'World sequence animation track'
+            if ($track.slotId -isnot [string] -or $track.slotId -notmatch $stableId -or
+                -not $slotIds.Add([string]$track.slotId) -or
+                $track.clipName -isnot [string] -or
+                $track.clipName.Length -lt 1 -or $track.clipName.Length -gt 128 -or
+                -not (Test-JsonNumber $track.playbackRate) -or
+                [double]$track.playbackRate -lt 0.05 -or
+                [double]$track.playbackRate -gt 8.0 -or
+                $track.loop -isnot [bool] -or
+                $track.holdLastFrame -isnot [bool]) {
+                throw "World sequence animation track is invalid: $($template.sequenceId)"
+            }
+        }
+    }
+    $instanceIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($instance in $instances) {
+        Assert-ExactJsonProperties $instance `
+            @('instanceId','templateId','enabled','startDelayMs','playbackSpeed',
+              'bindings') 'World sequence instance'
+        if ($instance.instanceId -isnot [string] -or
+            $instance.instanceId -notmatch $stableId -or
+            -not $instanceIds.Add([string]$instance.instanceId) -or
+            $instance.templateId -isnot [string] -or
+            -not $trackCounts.ContainsKey([string]$instance.templateId) -or
+            $instance.enabled -isnot [bool] -or
+            -not (Test-JsonNumber $instance.startDelayMs) -or
+            [double]$instance.startDelayMs -lt 0 -or
+            [double]$instance.startDelayMs -gt 600000 -or
+            -not (Test-JsonNumber $instance.playbackSpeed) -or
+            [double]$instance.playbackSpeed -lt 0.05 -or
+            [double]$instance.playbackSpeed -gt 8.0 -or
+            $instance.bindings -isnot [System.Array]) {
+            throw "World sequence instance is invalid: $($instance.instanceId)"
+        }
+        $bindings = @($instance.bindings)
+        if ($bindings.Count -ne $trackCounts[[string]$instance.templateId]) {
+            throw "World sequence instance binding count does not match its template: $($instance.instanceId)"
+        }
+        $boundSlots = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        $boundTargets = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($binding in $bindings) {
+            Assert-ExactJsonProperties $binding `
+                @('slotId','targetKind','targetId') 'World sequence binding'
+            if ($binding.slotId -isnot [string] -or
+                -not $boundSlots.Add([string]$binding.slotId) -or
+                $binding.targetKind -isnot [string] -or
+                $binding.targetKind -notin @('MAP_PLACEMENT','DEPLOY_PLACEMENT') -or
+                $binding.targetId -isnot [string] -or
+                $binding.targetId -notmatch '^[0-9]{1,20}$' -or
+                -not $boundTargets.Add("$($binding.targetKind):$($binding.targetId)")) {
+                throw "World sequence binding is invalid: $($instance.instanceId)"
+            }
+        }
+    }
+    return @([IO.File]::ReadAllLines($Path, [Text.Encoding]::UTF8))
+}
+
+function Add-WorldSequencePublishFile {
+    param([Collections.Generic.List[object]]$Files)
+    if ($script:worldSequencesDeclared) {
+        if (-not [IO.File]::Exists($authoringSequencePath)) {
+            throw "Declared world sequence authoring source is missing: $authoringSequencePath"
+        }
+        $Files.Add([pscustomobject]@{
+            Name = "$AreaId.worldsequences.json"
+            Lines = Read-WorldSequenceDocument $authoringSequencePath
+        })
+    }
+}
+
 function Add-MapWaterPublishFile {
     param([Collections.Generic.List[object]]$Files)
     if ($script:mapWaterDeclared) {
@@ -1391,6 +1566,26 @@ if ($script:mapWaterDeclared) {
 }
 elseif ([IO.File]::Exists($authoringWaterPath)) {
     throw "Map water source exists without a MapCatalog declaration: $AreaId"
+}
+
+$sourceSequencesProperty = $areaEntry.PSObject.Properties['sourceSequences']
+$runtimeSequencesProperty = $areaEntry.PSObject.Properties['sequences']
+if (($null -eq $sourceSequencesProperty) -ne ($null -eq $runtimeSequencesProperty)) {
+    throw "Map catalog world sequence source/runtime declaration is incomplete: $AreaId"
+}
+$script:worldSequencesDeclared = $null -ne $sourceSequencesProperty
+if ($script:worldSequencesDeclared) {
+    $expectedSourceSequences = "Data/Maps/Authoring/$AreaId/$AreaId.worldsequences.json"
+    $expectedRuntimeSequences = "Client/Bin/DataFiles/Map/$AreaId.worldsequences.json"
+    if ($areaEntry.sourceSequences -isnot [string] -or
+        $areaEntry.sourceSequences -ne $expectedSourceSequences -or
+        $areaEntry.sequences -isnot [string] -or
+        $areaEntry.sequences -ne $expectedRuntimeSequences) {
+        throw "Map catalog world sequence paths are not canonical: $AreaId"
+    }
+}
+elseif ([IO.File]::Exists($authoringSequencePath)) {
+    throw "World sequence source exists without a MapCatalog declaration: $AreaId"
 }
 
 function Invoke-FileSetTransaction {
@@ -1586,6 +1781,7 @@ if (-not [IO.File]::Exists($sourceShardSetPath)) {
     Add-MapLightPublishFile $files
     Add-MapEffectPublishFile $files
     Add-MapWaterPublishFile $files
+    Add-WorldSequencePublishFile $files
 
     Complete-MapPublish $files 'single' $runtimePath
     return
@@ -1710,4 +1906,5 @@ Add-DeployPublishFiles $files
 Add-MapLightPublishFile $files
 Add-MapEffectPublishFile $files
 Add-MapWaterPublishFile $files
+Add-WorldSequencePublishFile $files
 Complete-MapPublish $files 'shard-set' $shardSetPath $shards.Count

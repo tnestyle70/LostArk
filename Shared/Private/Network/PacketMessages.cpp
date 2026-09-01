@@ -784,6 +784,28 @@ namespace
 	}
 }
 
+bool LostArk::Shared::Is_Valid_SequenceInstanceId(
+	const std::string_view instanceId) noexcept
+{
+	if (instanceId.empty() ||
+		instanceId.size() > MAX_SEQUENCE_INSTANCE_ID_BYTES)
+	{
+		return false;
+	}
+	for (const char character : instanceId)
+	{
+		const auto value = static_cast<unsigned char>(character);
+		const bool allowed =
+			(value >= 'a' && value <= 'z') ||
+			(value >= 'A' && value <= 'Z') ||
+			(value >= '0' && value <= '9') ||
+			'_' == value || '-' == value || '.' == value;
+		if (!allowed)
+			return false;
+	}
+	return true;
+}
+
 bool LostArk::Shared::Is_Valid_PlayerNickname(
 	const std::string_view nickname) noexcept
 {
@@ -4749,5 +4771,28 @@ bool LostArk::Shared::Read_Message(
 	decoded.eTargetWorldId = static_cast<WORLD_ID>(world);
 	decoded.eResult = static_cast<PARTY_TRANSFER_RESULT>(result);
 	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const S2C_WORLD_SEQUENCE_PLAY& message)
+{
+	if (!Is_Valid_SequenceInstanceId(message.strSequenceInstanceId))
+		return false;
+	return writer.Write_String(
+		message.strSequenceInstanceId, MAX_SEQUENCE_INSTANCE_ID_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, S2C_WORLD_SEQUENCE_PLAY& message)
+{
+	S2C_WORLD_SEQUENCE_PLAY decoded{};
+	if (!reader.Read_String(
+			decoded.strSequenceInstanceId, MAX_SEQUENCE_INSTANCE_ID_BYTES) ||
+		!Is_Valid_SequenceInstanceId(decoded.strSequenceInstanceId))
+	{
+		return false;
+	}
+	message = std::move(decoded);
 	return true;
 }

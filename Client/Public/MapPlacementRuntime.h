@@ -56,6 +56,13 @@ public:
 	{
 		return m_Placements;
 	}
+	/* Presentation drivers such as an authored world sequence write the sampled
+	   pose back onto the live entries. The set of placements itself stays owned
+	   here; only their transforms and visibility are written. */
+	std::vector<MAP_RUNTIME_PLACED_ENTRY>& Get_MutablePlacements()
+	{
+		return m_Placements;
+	}
 	bool_t Try_Get_PlacementBounds(
 		float3_t& outMinimum,
 		float3_t& outMaximum) const;

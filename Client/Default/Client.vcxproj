@@ -189,6 +189,7 @@
     <ClInclude Include="..\Public\MapLoadScope.h" />
     <ClInclude Include="..\Public\MapTool.h" />
 	<ClInclude Include="..\Public\WorldSequenceDocument.h" />
+	<ClInclude Include="..\Public\WorldSequencePlayer.h" />
 	<ClInclude Include="..\Public\WorldSequenceToolPanel.h" />
     <ClInclude Include="..\Public\WorldGameplayDocument.h" />
     <ClInclude Include="..\Public\EncounterPatternReference.h" />
@@ -363,6 +364,7 @@
     <ClCompile Include="..\Private\MapPlacementRuntime.cpp" />
     <ClCompile Include="..\Private\MapTool.cpp" />
 	<ClCompile Include="..\Private\WorldSequenceDocument.cpp" />
+	<ClCompile Include="..\Private\WorldSequencePlayer.cpp" />
 	<ClCompile Include="..\Private\WorldSequenceToolPanel.cpp">
 	  <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
 	</ClCompile>

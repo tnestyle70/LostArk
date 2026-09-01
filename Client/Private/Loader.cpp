@@ -752,6 +752,14 @@ HRESULT CLoader::Ready_For_KakulSaydonArena()
 		return E_FAIL;
 	}
 
+	Set_Status(TEXT("KoukuSaton: deploy environment prototypes"));
+	if (FAILED(Ready_DeployPropArea(
+		ETOUI(LEVEL::KAKULSAYDON_ARENA),
+		pEntry->pMapAreaId)))
+	{
+		return E_FAIL;
+	}
+
 	Set_Status(TEXT("KoukuSaton arena loading complete"));
 	rollback.Commit();
 	return S_OK;

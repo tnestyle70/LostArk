@@ -506,6 +506,25 @@ bool_t Client::CWorldGameplayDocument::Load(
 						return false;
 					event.targetId = targetPlacementId->Get_String();
 				}
+				else if (WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE == event.eKind)
+				{
+					if (!Is_ExactObject(eventValue,
+						{ "type", "sequenceInstanceId" }))
+					{
+						outStatus = "Gameplay playSequence event has invalid fields";
+						return false;
+					}
+					const DATA_JSON_VALUE* sequenceInstanceId =
+						eventValue.Find("sequenceInstanceId");
+					if (nullptr == sequenceInstanceId ||
+						!sequenceInstanceId->Is_String() ||
+						!Is_ValidStableId(sequenceInstanceId->Get_String()))
+					{
+						outStatus = "Gameplay playSequence target is invalid";
+						return false;
+					}
+					event.targetId = sequenceInstanceId->Get_String();
+				}
 				else
 				{
 					if (!Is_ExactObject(eventValue, { "type", "targetId", "value" }))
@@ -864,6 +883,11 @@ bool_t Client::CWorldGameplayDocument::Save(
 					output << ", \"targetPlacementId\": \""
 						<< CDataJson::Escape(event.targetId) << '"';
 				}
+				else if (WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE == event.eKind)
+				{
+					output << ", \"sequenceInstanceId\": \""
+						<< CDataJson::Escape(event.targetId) << '"';
+				}
 				else
 				{
 					output << ", \"targetId\": \"" << CDataJson::Escape(event.targetId)
@@ -1010,6 +1034,14 @@ bool_t Client::CWorldGameplayDocument::Is_Valid(
 								event.eTargetWorldId ||
 							LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA ==
 								event.eTargetWorldId;
+					}
+					if (WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE == event.eKind)
+					{
+						/* The referenced instance lives in the Area's world
+						   sequence document, which this document cannot see.
+						   Shape is checked here; existence is checked when the
+						   sequence player admits the instance. */
+						return Is_ValidStableId(event.targetId);
 					}
 					return WORLD_TRIGGER_EVENT_KIND::END != event.eKind &&
 						Is_ValidStableId(event.targetId) &&
@@ -1198,6 +1230,7 @@ const char_t* Client::CWorldGameplayDocument::TriggerEventKind_ToString(
 	case WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL: return "changeLevel";
 	case WORLD_TRIGGER_EVENT_KIND::ACTIVATE_SPAWN_GROUP: return "activateSpawnGroup";
 	case WORLD_TRIGGER_EVENT_KIND::ACTIVATE_ENCOUNTER: return "activateEncounter";
+	case WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE: return "playSequence";
 	case WORLD_TRIGGER_EVENT_KIND::SET_CONDITION: return "setCondition";
 	case WORLD_TRIGGER_EVENT_KIND::SET_DESTROYABLE_STATE: return "setDestroyableState";
 	default: return "invalid";
@@ -1215,6 +1248,8 @@ bool_t Client::CWorldGameplayDocument::Try_ParseTriggerEventKind(
 		outKind = WORLD_TRIGGER_EVENT_KIND::ACTIVATE_SPAWN_GROUP;
 	else if ("activateEncounter" == value)
 		outKind = WORLD_TRIGGER_EVENT_KIND::ACTIVATE_ENCOUNTER;
+	else if ("playSequence" == value)
+		outKind = WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE;
 	else if ("setCondition" == value)
 		outKind = WORLD_TRIGGER_EVENT_KIND::SET_CONDITION;
 	else if ("setDestroyableState" == value)

@@ -29,7 +29,8 @@ namespace Client
 		PARTY_INVITE_RECEIVED,
 		PARTY_ROSTER,
 		PARTY_TRANSFER_RESULT,
-		CHAT_RECEIVED
+		CHAT_RECEIVED,
+		WORLD_SEQUENCE_PLAY
 	};
 
 	/* Only adjacent full snapshots are replaceable.  Every reliable lifecycle
@@ -77,5 +78,6 @@ namespace Client
 		LostArk::Shared::S2C_PARTY_ROSTER PartyRoster;
 		LostArk::Shared::S2C_PARTY_TRANSFER_RESULT PartyTransferResult;
 		LostArk::Shared::S2C_CHAT ChatReceived;
+		LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY WorldSequencePlay;
 	};
 }

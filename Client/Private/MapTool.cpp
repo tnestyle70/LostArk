@@ -2565,6 +2565,9 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 				case WORLD_TRIGGER_EVENT_KIND::ACTIVATE_ENCOUNTER:
 					actionOption = 4;
 					break;
+				case WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE:
+					actionOption = 5;
+					break;
 				default:
 					break;
 				}
@@ -2572,7 +2575,7 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 			const char_t* actionOptions[] =
 			{
 				"None", "Move Player", "Change Level",
-				"Activate Spawn Group", "Activate Encounter"
+				"Activate Spawn Group", "Activate Encounter", "Play Sequence"
 			};
 			if (ImGui::Combo("Action", &actionOption,
 				actionOptions, static_cast<int>(std::size(actionOptions))))
@@ -2596,6 +2599,18 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 						action.eKind = WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL;
 						action.eTargetWorldId =
 							LostArk::Shared::WORLD_ID::VALTAN_ARENA;
+					}
+					else if (5 == actionOption)
+					{
+						/* Seed the first authored instance so the field is
+						   never blank; the author picks the real one below. */
+						action.eKind = WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE;
+						const std::vector<std::string> instanceIds =
+							nullptr == m_pWorldSequenceToolPanel ?
+								std::vector<std::string>{} :
+								m_pWorldSequenceToolPanel->Get_InstanceIds();
+						if (!instanceIds.empty())
+							action.targetId = instanceIds.front();
 					}
 					else
 					{
@@ -2732,9 +2747,41 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 				}
 			}
 
+			const bool_t hasPlaySequenceAction =
+				1u == staged.triggerEvents.size() &&
+				WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE ==
+					staged.triggerEvents.front().eKind;
+			if (hasPlaySequenceAction)
+			{
+				WORLD_TRIGGER_EVENT& action = staged.triggerEvents.front();
+				ImGui::SeparatorText("Play Sequence Action");
+				const char_t* preview = action.targetId.empty() ?
+					"<select sequence instance>" : action.targetId.c_str();
+				const std::vector<std::string> instanceIds =
+					nullptr == m_pWorldSequenceToolPanel ?
+						std::vector<std::string>{} :
+						m_pWorldSequenceToolPanel->Get_InstanceIds();
+				if (ImGui::BeginCombo("Sequence Instance", preview))
+				{
+					for (const std::string& instanceId : instanceIds)
+					{
+						const bool_t isSelected = action.targetId == instanceId;
+						if (ImGui::Selectable(instanceId.c_str(), isSelected))
+						{
+							action.targetId = instanceId;
+							edited = true;
+						}
+					}
+					ImGui::EndCombo();
+				}
+				ImGui::TextDisabled(
+					"Plays one authored world sequence instance from this Area.");
+			}
+
 			const bool_t hasSupportedAction =
 				hasMoveAction || hasChangeLevelAction ||
-				hasSpawnGroupAction || hasEncounterAction;
+				hasSpawnGroupAction || hasEncounterAction ||
+				hasPlaySequenceAction;
 			ImGui::BeginDisabled(!hasSupportedAction);
 			edited |= ImGui::Checkbox("Enabled", &staged.isEnabled);
 			ImGui::EndDisabled();

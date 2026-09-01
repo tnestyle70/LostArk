@@ -2,8 +2,20 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 1340,
+  "revision": 1652,
   "placements": [
+    {
+      "placementId": "1Stage_Final",
+      "kind": "triggerBox",
+      "position": [33.5, 0.449999988, -70],
+      "yawDegrees": 123.5,
+      "enabled": true,
+      "halfExtents": [6, 1, 1],
+      "triggerOnce": true,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.circusfinale" }
+      ]
+    },
     {
       "placementId": "jump.1",
       "kind": "triggerBox",
@@ -38,6 +50,30 @@
       "triggerOnce": false,
       "events": [
         { "type": "movePlayer", "targetPosition": [2.58599997, 1.023, -24.7789993], "durationSeconds": 0.800000012, "arcHeight": 1 }
+      ]
+    },
+    {
+      "placementId": "paper.1",
+      "kind": "triggerBox",
+      "position": [0.414999992, 0.547999978, -46.1549988],
+      "yawDegrees": 11,
+      "enabled": true,
+      "halfExtents": [0.5, 0.5, 0.5],
+      "triggerOnce": true,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.1" }
+      ]
+    },
+    {
+      "placementId": "paper.2",
+      "kind": "triggerBox",
+      "position": [15.0349998, 0.247999996, -61.7910004],
+      "yawDegrees": 17,
+      "enabled": true,
+      "halfExtents": [0.5, 0.5, 0.5],
+      "triggerOnce": true,
+      "events": [
+        { "type": "playSequence", "sequenceInstanceId": "world.sequence.instance.5" }
       ]
     },
     {

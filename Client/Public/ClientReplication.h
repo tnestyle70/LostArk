@@ -484,6 +484,12 @@ namespace Client
 			return m_PartyRoster;
 		}
 		const CReplicatedPlayerHealth& Get_PlayerHealth() const { return m_PlayerHealth; }
+		/* Server-decided world sequence starts, in arrival order. The caller
+		   takes them so one start is never played twice. */
+		std::vector<std::string> Consume_WorldSequencePlays()
+		{
+			return std::move(m_PendingWorldSequencePlays);
+		}
 		bool Try_Consume_PartyTransferResult(
 			LostArk::Shared::S2C_PARTY_TRANSFER_RESULT& outResult);
 		/* Head-bubble text for whoever last chatted, while their line is still
@@ -643,6 +649,7 @@ namespace Client
 		CReplicatedPlayerHealth m_PlayerHealth;
 		bool m_hasPendingPartyTransferResult = false;
 		LostArk::Shared::S2C_PARTY_TRANSFER_RESULT m_PendingPartyTransferResult{};
+		std::vector<std::string> m_PendingWorldSequencePlays;
 
 		struct CHAT_BUBBLE_ENTRY
 		{

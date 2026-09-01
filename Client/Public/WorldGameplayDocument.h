@@ -28,6 +28,9 @@ enum class WORLD_TRIGGER_EVENT_KIND
 	CHANGE_LEVEL,
 	ACTIVATE_SPAWN_GROUP,
 	ACTIVATE_ENCOUNTER,
+	/* Starts one authored world sequence instance by its stable ID. The
+	   sequence itself owns what moves; the trigger only owns when. */
+	PLAY_SEQUENCE,
 	SET_CONDITION,
 	SET_DESTROYABLE_STATE,
 	END

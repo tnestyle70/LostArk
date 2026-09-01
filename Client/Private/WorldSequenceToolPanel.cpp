@@ -292,6 +292,16 @@ Client::CWorldSequenceToolPanel::Collect_Placements(
 	return result;
 }
 
+std::vector<std::string>
+Client::CWorldSequenceToolPanel::Get_InstanceIds() const
+{
+	std::vector<std::string> result;
+	result.reserve(m_Document.Get_Instances().size());
+	for (const WORLD_SEQUENCE_INSTANCE& instance : m_Document.Get_Instances())
+		result.push_back(instance.instanceId);
+	return result;
+}
+
 Client::MAP_RUNTIME_PLACED_ENTRY*
 Client::CWorldSequenceToolPanel::Find_Placement(
 	std::vector<MAP_RUNTIME_PLACED_ENTRY>& placements,
@@ -1542,6 +1552,14 @@ void Client::CWorldSequenceToolPanel::Render_TemplateEditor(
 		m_Document.Find_Template(m_SelectedTemplateId);
 	if (nullptr == sequence)
 	{
+		/* Retire a delete confirmation left open for a template that no
+		   longer resolves; an open-but-unsubmitted modal blocks all input. */
+		if (ImGui::BeginPopupModal("Delete sequence template?", nullptr,
+			ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			ImGui::CloseCurrentPopup();
+			ImGui::EndPopup();
+		}
 		ImGui::TextDisabled("Create or select a sequence template.");
 		return;
 	}
@@ -1630,8 +1648,13 @@ void Client::CWorldSequenceToolPanel::Render_TemplateEditor(
 	if (ImGui::Button("Delete Template"))
 		ImGui::OpenPopup("Delete sequence template?");
 	ShowKoreanHelp("이 템플릿과 연결된 배치 인스턴스를 함께 삭제합니다.");
+	/* A modal must not be submitted inside a disabled scope, and it needs a
+	   close button. Without both, the popup keeps blocking every other input
+	   while offering no way to dismiss it. */
+	ImGui::EndDisabled();
 	bool_t deletedTemplate = false;
-	if (ImGui::BeginPopupModal("Delete sequence template?", nullptr,
+	bool_t deletePopupOpen = true;
+	if (ImGui::BeginPopupModal("Delete sequence template?", &deletePopupOpen,
 		ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::TextWrapped("Delete '%s' and every placed instance that uses it?",
@@ -1648,7 +1671,6 @@ void Client::CWorldSequenceToolPanel::Render_TemplateEditor(
 			ImGui::CloseCurrentPopup();
 		ImGui::EndPopup();
 	}
-	ImGui::EndDisabled();
 	if (deletedTemplate)
 		return;
 	if (duplicatedTemplate)
