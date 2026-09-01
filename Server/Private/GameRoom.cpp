@@ -6612,6 +6612,8 @@ LostArk::Server::CGameRoom::Evaluate_ValtanPatternFlowStart(
 	outReason = "Valtan pattern flow is unavailable in a Release Server";
 	return VALTAN_PATTERN_FLOW_RESULT::REJECTED_RELEASE_BUILD;
 #else
+	static constexpr std::string_view CANONICAL_BOSS_TOOL_FLOW_ID =
+		"flow.valtan.boss-tool.default";
 	if (WORLD_ID::VALTAN_ARENA != m_eWorldId ||
 		!m_PlayerIdBySessionId.contains(sessionId))
 	{
@@ -6766,6 +6768,33 @@ LostArk::Server::CGameRoom::Evaluate_ValtanPatternFlowStart(
 	{
 		outReason = "Valtan pattern-flow start slot is not in the flow";
 		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_INVALID_FLOW;
+	}
+	if (CANONICAL_BOSS_TOOL_FLOW_ID == request.strFlowId)
+	{
+		const BOSS_PATTERN_SEQUENCE_DEFINITION* const savedSequence =
+			pinnedCatalog->Find_BossPatternSequence(boss->strEncounterId);
+		const bool bMatchesSavedSequence = nullptr != savedSequence &&
+			BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE ==
+				savedSequence->eMode &&
+			!request.Slots.empty() &&
+			request.strStartSlotId == request.Slots.front().strSlotId &&
+			savedSequence->iInterStepPursuitMs ==
+				request.iInterStepPursuitMs &&
+			savedSequence->PatternIds.size() == request.Slots.size() &&
+			std::equal(
+				savedSequence->PatternIds.begin(),
+				savedSequence->PatternIds.end(), request.Slots.begin(),
+				[](const std::string& patternId,
+					const VALTAN_PATTERN_FLOW_SLOT_WIRE& slot)
+				{
+					return patternId == slot.strPatternId;
+				});
+		if (!bMatchesSavedSequence)
+		{
+			outReason =
+				"Boss Tool pattern flow does not match the Server-active canonical scriptedSequence";
+			return VALTAN_PATTERN_FLOW_RESULT::REJECTED_INVALID_FLOW;
+		}
 	}
 
 	const std::uint32_t resetTick =

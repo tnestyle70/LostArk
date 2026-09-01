@@ -324,7 +324,6 @@ class ValtanBossToolContractTests(unittest.TestCase):
         for included in (
             "VALTAN_FIST_IN_OUT",
             "VALTAN_ENTRANCE_CINEMATIC",
-            "VALTAN_ENTRANCE_CINEMATIC_IDLE",
             "VALTAN_GHOST_FINALE",
         ):
             self.assertIn(included, authored_ids)

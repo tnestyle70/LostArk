@@ -1553,10 +1553,15 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "bool_t Client::CBossTool::Start_FlowAtSlot(",
         )
         self.assertIn("CValtanPatternFlowService::Get().Start(", flow_submit)
-        restart_saved = function_body(
-            self.boss_cpp,
-            "bool_t Client::CBossTool::Restart_SavedFlow(",
-        )
+        restart_saved = self.boss_cpp[
+            self.boss_cpp.index(
+                "bool_t Client::CBossTool::Restart_SavedFlow(\n"
+                "\tconst bool_t bRequireSingleSavedPattern)"
+            ) :
+            self.boss_cpp.index(
+                "bool_t Client::CBossTool::Request_RevivePlayer("
+            )
+        ]
         self.assertLess(
             restart_saved.index("Reload_FlowDocument()"),
             restart_saved.index("return Start_Flow("),

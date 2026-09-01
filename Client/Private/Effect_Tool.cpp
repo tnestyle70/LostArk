@@ -11093,10 +11093,13 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 					Visual.combatObjectArchetypeId,
 					Visual.clientVisualId };
 				BossCombatObjectOwners.emplace(Visual.effectAssetId, Owner);
+				++StagedBossProductCueMappingCounts[Visual.effectAssetId];
 				if (!Visual.hitEffectAssetId.empty())
 				{
 					BossCombatObjectOwners.emplace(
 						Visual.hitEffectAssetId, Owner);
+					++StagedBossProductCueMappingCounts[
+						Visual.hitEffectAssetId];
 				}
 			}
 		}
@@ -21140,12 +21143,9 @@ bool_t Client::CEffect_Tool::Try_SaveDocument()
 			FreshnessStatus;
 		return false;
 	}
-    const size_t iProductCueMappingCount =
-        Count_ProductCueMappings(m_ActiveDocument->strEffectAssetId);
     const bool_t bRegisteredDirectProduct =
         CEffectCatalog::Is_DirectAuthoredDocument(
-            m_ActiveDocument->strEffectAssetId) &&
-        0u != iProductCueMappingCount;
+            m_ActiveDocument->strEffectAssetId);
     if (bRegisteredDirectProduct && !m_bActiveDocumentDrawable)
     {
         m_strDocumentStatus =

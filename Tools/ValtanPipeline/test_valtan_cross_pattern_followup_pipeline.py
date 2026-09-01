@@ -14,6 +14,7 @@ import valtan_tuning_pipeline as pipeline
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 PUBLISHER = ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1"
+CLIENT_PATTERN_TREE = ROOT / "Client/Private/ValtanPatternTree.cpp"
 
 
 def pattern(master: dict, pattern_id: str) -> dict:
@@ -211,6 +212,35 @@ class ValtanCrossPatternFollowupPipelineTests(unittest.TestCase):
         self.assertIn("follow-up target must be an untargeted AUDITION_ONLY pattern", source)
         self.assertIn("Pattern follow-up graph exceeds maximum depth", source)
         self.assertEqual(29, pipeline.GAMEPLAY_BOOTSTRAP_VERSION)
+
+    def test_client_read_gate_revalidates_followup_shape_and_graph(self) -> None:
+        source = CLIENT_PATTERN_TREE.read_text(encoding="utf-8")
+        branch_reader = source[
+            source.index("bool_t Read_StageBranches(") :
+            source.index("bool_t Has_ValidNavigationBlockedCapture(")
+        ]
+        self.assertIn("!pNextPatternId->Is_String()", branch_reader)
+        self.assertNotIn(
+            'Read_NullableStableToken(\n\t\t\t\t\tValue, "nextPatternId"',
+            branch_reader,
+        )
+
+        master_reader = source[
+            source.index("bool_t Parse_MasterDocument(") :
+            source.index("bool_t Read_OptionalOrderedHitOffsets(")
+        ]
+        self.assertIn("VALTAN_PATTERN_FOLLOWUP_MAX_DEPTH = 32u", source)
+        self.assertIn("cannot follow up to its owner pattern", master_reader)
+        self.assertIn(
+            '"AUDITION_ONLY" != Followup.strSelectionMode', master_reader
+        )
+        self.assertIn("0u != Followup.iSelectionWeight", master_reader)
+        self.assertIn("0 != Followup.iMinimumHealthBar", master_reader)
+        self.assertIn("0 != Followup.iMaximumHealthBar", master_reader)
+        self.assertIn('"NONE" != Followup.strTargetPolicy', master_reader)
+        self.assertIn('"NONE" != Followup.strAimPolicy', master_reader)
+        self.assertIn("follow-up graph contains a cycle", master_reader)
+        self.assertIn("exceeds maximum depth", master_reader)
 
 
 if __name__ == "__main__":

@@ -18566,6 +18566,109 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		return request;
 	};
 	{
+		/* The Boss Tool's saved Flow is not an arbitrary Debug program: it is the
+		   exact projection of the scriptedSequence in the Server-active gameplay
+		   generation. Reject a reordered client copy before the arena reset, then
+		   admit that generation's exact Pattern 01 sequence and reset once. */
+		auto fixture = makeResetlessNextRoom("", false);
+		CGameRoom& room = *fixture.Room;
+		const CGameplayCatalog* const activeCatalog =
+			room.m_GameplayCatalog.Resolve(
+				room.m_GameplayCatalog.Get_ActiveRevision());
+		const BOSS_PATTERN_SEQUENCE_DEFINITION* const savedSequence =
+			nullptr == activeCatalog ? nullptr :
+			activeCatalog->Find_BossPatternSequence("ENCOUNTER_VALTAN");
+		const bool canonicalReady = nullptr != savedSequence &&
+			BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE ==
+				savedSequence->eMode &&
+			savedSequence->PatternIds.size() >= 2u;
+		if (canonicalReady)
+		{
+			C2S_DEBUG_VALTAN_PATTERN_FLOW_START exact{};
+			exact.iRequestSequence = 1u;
+			exact.ExpectedDefinitionRevision =
+				room.m_GameplayCatalog.Get_ActiveRevision();
+			exact.strBossPlacementId = "boss.valtan.center";
+			exact.strFlowId = "flow.valtan.boss-tool.default";
+			exact.strFlowRevision = std::string(64u, 'd');
+			exact.iInterStepPursuitMs =
+				savedSequence->iInterStepPursuitMs;
+			for (std::size_t index = 0u;
+				index < savedSequence->PatternIds.size(); ++index)
+			{
+				exact.Slots.push_back({
+					"flow.valtan.boss-tool.default.node." +
+						std::to_string(index + 1u),
+					savedSequence->PatternIds[index] });
+			}
+			exact.strStartSlotId = exact.Slots.front().strSlotId;
+
+			SERVER_WORLD_ENTITY* boss = room.Find_AuditionBoss();
+			if (nullptr != boss)
+				boss->iCurrentHp -= 123u;
+			room.m_Players.at(NEXT_OWNER_PLAYER).
+				CooldownEndTickBySkillId.emplace(34000u, 9000u);
+			const auto beforeMismatch = captureLiveNextGameplay(fixture);
+			const auto navigationRevision =
+				room.m_ServerNavigation.Get_Revision();
+			const auto collisionRevision =
+				room.m_ServerCollisionSystem.Get_Revision();
+			auto reordered = exact;
+			std::swap(reordered.Slots[0], reordered.Slots[1]);
+			std::uint32_t roomFlowEpoch = 0u;
+			GameplayDataRevision pinnedRevision{};
+			std::string reason;
+			const auto rejected = room.Evaluate_ValtanPatternFlowStart(
+				NEXT_OWNER_SESSION, reordered, roomFlowEpoch,
+				pinnedRevision, reason);
+			boss = room.Find_AuditionBoss();
+			const bool rejectedBeforeReset = nullptr != boss &&
+				VALTAN_PATTERN_FLOW_RESULT::REJECTED_INVALID_FLOW == rejected &&
+				!reason.empty() && 0u == roomFlowEpoch &&
+				!pinnedRevision.Is_Valid() &&
+				beforeMismatch == captureLiveNextGameplay(fixture) &&
+				navigationRevision == room.m_ServerNavigation.Get_Revision() &&
+				collisionRevision == room.m_ServerCollisionSystem.Get_Revision() &&
+				boss->iCurrentHp + 123u == boss->iMaximumHp &&
+				room.m_Players.at(NEXT_OWNER_PLAYER).
+					CooldownEndTickBySkillId.contains(34000u) &&
+				!room.Is_ValtanPatternFlowRunning();
+
+			exact.iRequestSequence = 2u;
+			const auto admitted = room.Evaluate_ValtanPatternFlowStart(
+				NEXT_OWNER_SESSION, exact, roomFlowEpoch,
+				pinnedRevision, reason);
+			boss = room.Find_AuditionBoss();
+			const bool freshResetCommitted = nullptr != boss &&
+				VALTAN_PATTERN_FLOW_RESULT::QUEUED == admitted &&
+				reason.empty() && 0u != roomFlowEpoch &&
+				pinnedRevision == exact.ExpectedDefinitionRevision &&
+				boss->iCurrentHp == boss->iMaximumHp &&
+				room.m_Players.at(NEXT_OWNER_PLAYER).
+					CooldownEndTickBySkillId.empty() &&
+				room.Is_ValtanPatternFlowRunning() &&
+				0u == room.m_ValtanPatternFlowAudition.iStartSlotIndex &&
+				room.m_ValtanPatternFlowAudition.Sequence.PatternIds ==
+					savedSequence->PatternIds;
+			room.Tick(1.f / 30.f);
+			boss = room.Find_AuditionBoss();
+			const bool startedAtPattern01 = nullptr != boss &&
+				boss->strPatternId == savedSequence->PatternIds.front() &&
+				boss->PinnedDefinitionRevision ==
+					exact.ExpectedDefinitionRevision;
+			tests.Require(
+				rejectedBeforeReset && freshResetCommitted &&
+				startedAtPattern01,
+				"Boss Tool Restart rejects a reordered saved Flow without mutation, then fresh-resets and starts exact Server-active scriptedSequence Pattern 01");
+		}
+		else
+		{
+			tests.Require(false,
+				"Boss Tool Restart canonical scriptedSequence fixture is available");
+		}
+		fixture.Session->Request_Close();
+	}
+	{
 		/* Lifecycle correlation is a wire contract on its own. Exercise it
 		   without relying on one pattern's duration: the second PENDING crosses
 		   UINT32_MAX, then Stop loses the authoritative boss pointer. */
