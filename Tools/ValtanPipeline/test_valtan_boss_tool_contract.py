@@ -291,7 +291,12 @@ class ValtanBossToolContractTests(unittest.TestCase):
         manual_ids = [row["patternId"] for row in self.gameplay["decisionModel"]["manualAuditions"]]
         self.assertEqual(len(authored_ids), len(set(authored_ids)))
         self.assertLessEqual(set(manual_ids), set(authored_ids))
-        for included in ("VALTAN_FIST_IN_OUT", "VALTAN_ENTRANCE_CINEMATIC", "VALTAN_GHOST_FINALE"):
+        for included in (
+            "VALTAN_FIST_IN_OUT",
+            "VALTAN_ENTRANCE_CINEMATIC",
+            "VALTAN_ENTRANCE_CINEMATIC_IDLE",
+            "VALTAN_GHOST_FINALE",
+        ):
             self.assertIn(included, authored_ids)
         for ghost_wrapper in (
             "VALTAN_GHOST_RESPAWN_AUDITION",

@@ -531,7 +531,9 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             self.combat_authoring,
         )
         decision = joined["decisionModel"]
-        entry_id = "VALTAN_ENTRANCE_CINEMATIC"
+        original_entry_id = "VALTAN_ENTRANCE_CINEMATIC"
+        idle_entry_id = "VALTAN_ENTRANCE_CINEMATIC_IDLE"
+        entry_ids = (original_entry_id, idle_entry_id)
         owned_ids = {
             row["patternId"]
             for selection_set in decision["selectionSets"]
@@ -541,11 +543,24 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         } | {
             row["patternId"] for row in decision["manualAuditions"]
         }
-        self.assertNotIn(entry_id, owned_ids)
-        entry = next(row for row in joined["patterns"] if row["patternId"] == entry_id)
-        product = next(row for row in self.encounter["patterns"] if row["patternId"] == entry_id)
-        self.assertEqual("NORMAL", product["selectionMode"])
-        self.assertEqual(tuning_pipeline.compile_pattern_product(joined, entry), product)
+        for entry_id in entry_ids:
+            self.assertNotIn(entry_id, owned_ids)
+            entry = next(
+                row for row in joined["patterns"]
+                if row["patternId"] == entry_id
+            )
+            product = next(
+                row for row in self.encounter["patterns"]
+                if row["patternId"] == entry_id
+            )
+            self.assertEqual("NORMAL", product["selectionMode"])
+            self.assertEqual(
+                tuning_pipeline.compile_pattern_product(joined, entry), product
+            )
+        sequence_ids = decision["scriptedSequence"]["patternIds"]
+        self.assertEqual(idle_entry_id, sequence_ids[0])
+        self.assertEqual(1, sum(row in entry_ids for row in sequence_ids))
+        self.assertNotIn(original_entry_id, sequence_ids)
 
         split = self.cpp[
             self.cpp.index("bool_t Parse_SplitMasterDocument("):
@@ -556,44 +571,59 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             split.index("DATA_JSON_VALUE::OBJECT LegacyPattern;")
         ]
         for token in (
-            "bScriptedEntryOnly = 0u == iOwnerCount",
-            '"VALTAN_ENTRANCE_CINEMATIC" == strPatternId',
+            "Is_OptionalEntryPatternId(strPatternId)",
+            "bOptionalEntryPattern && 0u == iOwnerCount",
             "EntryInSequence != ScriptedSequence.PatternIds.begin()",
-            "(1u != iOwnerCount && !bScriptedEntryOnly)",
+            "(bOptionalEntryPattern && !bScriptedEntryOnly)",
             "(bCandidate || bScriptedEntryOnly)",
-            "strScriptedEntryOnlyPatternId = strPatternId",
+            "ScriptedEntryOnlyPatternIds.insert(strPatternId)",
         ):
             self.assertIn(token, owner)
-        self.assertIn(entry_id, owner)
-        self.assertIn("strScriptedEntryOnlyPatternId, Out, strOutError", split)
+        for entry_id in entry_ids:
+            self.assertIn(entry_id, self.cpp)
+        self.assertIn("ScriptedEntryOnlyPatternIds, Out, strOutError", split)
         compatibility = self.cpp[
             self.cpp.index("bool_t Parse_MasterDocument("):
             self.cpp.index("bool_t Read_OptionalOrderedHitOffsets(")
         ]
         self.assertIn(
-            "ManagedNormalPatternIds.erase(strScriptedEntryOnlyPatternId)",
+            "for (const std::string& PatternId : ScriptedEntryOnlyPatternIds)",
             compatibility,
         )
-        self.assertIn("WeightedPatternIds.contains(strScriptedEntryOnlyPatternId)", compatibility)
+        self.assertIn("ManagedNormalPatternIds.erase(PatternId)", compatibility)
+        self.assertIn("WeightedPatternIds.contains(PatternId)", compatibility)
         self.assertIn("WeightedPatternIds != ManagedNormalPatternIds", compatibility)
 
     def test_scripted_entry_owner_failures_keep_the_staged_load_boundary(self) -> None:
-        entry_id = "VALTAN_ENTRANCE_CINEMATIC"
+        entry_ids = (
+            "VALTAN_ENTRANCE_CINEMATIC",
+            "VALTAN_ENTRANCE_CINEMATIC_IDLE",
+        )
         invalid_sources: list[tuple[str, dict, str]] = []
-        later_entry = copy.deepcopy(self.gameplay)
-        sequence = later_entry["decisionModel"]["scriptedSequence"]["patternIds"]
-        sequence[:] = ["VALTAN_WHIRLWIND", entry_id]
+        for entry_id in entry_ids:
+            later_entry = copy.deepcopy(self.gameplay)
+            sequence = later_entry["decisionModel"]["scriptedSequence"]["patternIds"]
+            sequence[:] = ["VALTAN_WHIRLWIND", entry_id]
+            invalid_sources.append((
+                f"{entry_id} is no longer first", later_entry,
+                "optional entry cinematic",
+            ))
+            zero_weight = copy.deepcopy(self.gameplay)
+            next(
+                row for row in zero_weight["patterns"]
+                if row["patternId"] == entry_id
+            )["compatibilitySelectionWeight"] = 0
+            invalid_sources.append((
+                f"{entry_id} has zero compatibility weight", zero_weight,
+                "compatibilitySelectionWeight must be positive",
+            ))
+        mixed_entries = copy.deepcopy(self.gameplay)
+        mixed_entries["decisionModel"]["scriptedSequence"]["patternIds"][:] = [
+            entry_ids[0], entry_ids[1], "VALTAN_WHIRLWIND",
+        ]
         invalid_sources.append((
-            "entry is no longer first", later_entry,
+            "both optional entrances are present", mixed_entries,
             "optional entry cinematic",
-        ))
-        zero_weight = copy.deepcopy(self.gameplay)
-        next(row for row in zero_weight["patterns"] if row["patternId"] == entry_id)[
-            "compatibilitySelectionWeight"
-        ] = 0
-        invalid_sources.append((
-            "entry has zero compatibility weight", zero_weight,
-            "compatibilitySelectionWeight must be positive",
         ))
         overlap = copy.deepcopy(self.gameplay)
         candidate_id = overlap["decisionModel"]["selectionSets"][0]["candidates"][0]["patternId"]

@@ -304,6 +304,13 @@ bool Client::CClientReplication::Update()
 		case CLIENT_REPLICATION_EVENT_TYPE::CHAT_RECEIVED:
 			Apply_ChatReceived(event.ChatReceived);
 			break;
+
+		case CLIENT_REPLICATION_EVENT_TYPE::WORLD_SEQUENCE_PLAY:
+			/* Queued rather than played here: the level owns the sequence
+			   player and drains this on its own update. */
+			m_PendingWorldSequencePlays.push_back(
+				event.WorldSequencePlay.strSequenceInstanceId);
+			break;
 		}
 	}
 

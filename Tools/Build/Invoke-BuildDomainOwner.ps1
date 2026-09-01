@@ -9,6 +9,12 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+# Publishers pipe native tool output (git, python) that is UTF-8 and can
+# carry this repository's non-ASCII path. Under msbuild the console is the
+# ANSI code page, which corrupts that output before ConvertFrom-Json or
+# GetFullPath ever sees it, so the whole owner process decodes as UTF-8.
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+$OutputEncoding = [Text.UTF8Encoding]::new($false)
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 if ([string]::IsNullOrWhiteSpace($ResourceRoot)) {
     $ResourceRoot = Join-Path $repositoryRoot 'Client\Bin\Resources'

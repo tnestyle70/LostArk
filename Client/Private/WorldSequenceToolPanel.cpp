@@ -57,16 +57,26 @@ namespace
 
 	float3_t QuaternionToEulerDegrees(const float4_t& value)
 	{
-		const f32_t x = value.x;
-		const f32_t y = value.y;
-		const f32_t z = value.z;
-		const f32_t w = value.w;
-		const f32_t pitch = std::atan2(
-			2.f * (w * x + y * z), 1.f - 2.f * (x * x + y * y));
-		const f32_t yaw = std::asin((std::max)(-1.f,
-			(std::min)(1.f, 2.f * (w * y - z * x))));
-		const f32_t roll = std::atan2(
-			2.f * (w * z + x * y), 1.f - 2.f * (y * y + z * z));
+		/* Exact inverse of XMQuaternionRotationRollPitchYaw (M = Mz*Mx*My,
+		   row-vector). Yaw and roll use atan2 so Y keeps the full +-180
+		   range; only pitch stays asin-limited to +-90. */
+		float4x4_t rotation{};
+		XMStoreFloat4x4(&rotation, XMMatrixRotationQuaternion(
+			XMLoadFloat4(&value)));
+		const f32_t sinPitch =
+			(std::max)(-1.f, (std::min)(1.f, -rotation._32));
+		const f32_t pitch = std::asin(sinPitch);
+		f32_t yaw = 0.f;
+		f32_t roll = 0.f;
+		if (std::abs(sinPitch) < 0.99999f)
+		{
+			yaw = std::atan2(rotation._31, rotation._33);
+			roll = std::atan2(rotation._12, rotation._22);
+		}
+		else
+		{
+			yaw = std::atan2(-rotation._13, rotation._11);
+		}
 		return float3_t(pitch * RAD_TO_DEG, yaw * RAD_TO_DEG,
 			roll * RAD_TO_DEG);
 	}
@@ -279,6 +289,16 @@ Client::CWorldSequenceToolPanel::Collect_Placements(
 				placement.record.signedScale,
 				IsSequenceTargetSupported(catalog, placement.record) });
 	}
+	return result;
+}
+
+std::vector<std::string>
+Client::CWorldSequenceToolPanel::Get_InstanceIds() const
+{
+	std::vector<std::string> result;
+	result.reserve(m_Document.Get_Instances().size());
+	for (const WORLD_SEQUENCE_INSTANCE& instance : m_Document.Get_Instances())
+		result.push_back(instance.instanceId);
 	return result;
 }
 
@@ -1532,6 +1552,14 @@ void Client::CWorldSequenceToolPanel::Render_TemplateEditor(
 		m_Document.Find_Template(m_SelectedTemplateId);
 	if (nullptr == sequence)
 	{
+		/* Retire a delete confirmation left open for a template that no
+		   longer resolves; an open-but-unsubmitted modal blocks all input. */
+		if (ImGui::BeginPopupModal("Delete sequence template?", nullptr,
+			ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			ImGui::CloseCurrentPopup();
+			ImGui::EndPopup();
+		}
 		ImGui::TextDisabled("Create or select a sequence template.");
 		return;
 	}
@@ -1620,8 +1648,13 @@ void Client::CWorldSequenceToolPanel::Render_TemplateEditor(
 	if (ImGui::Button("Delete Template"))
 		ImGui::OpenPopup("Delete sequence template?");
 	ShowKoreanHelp("이 템플릿과 연결된 배치 인스턴스를 함께 삭제합니다.");
+	/* A modal must not be submitted inside a disabled scope, and it needs a
+	   close button. Without both, the popup keeps blocking every other input
+	   while offering no way to dismiss it. */
+	ImGui::EndDisabled();
 	bool_t deletedTemplate = false;
-	if (ImGui::BeginPopupModal("Delete sequence template?", nullptr,
+	bool_t deletePopupOpen = true;
+	if (ImGui::BeginPopupModal("Delete sequence template?", &deletePopupOpen,
 		ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::TextWrapped("Delete '%s' and every placed instance that uses it?",
@@ -1638,7 +1671,6 @@ void Client::CWorldSequenceToolPanel::Render_TemplateEditor(
 			ImGui::CloseCurrentPopup();
 		ImGui::EndPopup();
 	}
-	ImGui::EndDisabled();
 	if (deletedTemplate)
 		return;
 	if (duplicatedTemplate)

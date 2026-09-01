@@ -26,6 +26,9 @@ namespace LostArk::Server
 		CHANGE_LEVEL,
 		ACTIVATE_SPAWN_GROUP,
 		ACTIVATE_ENCOUNTER,
+		/* Starts one authored world sequence instance. The Server owns the OBB
+		   entry that decides when; the sequence itself is Client presentation. */
+		PLAY_SEQUENCE,
 		END
 	};
 

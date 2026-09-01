@@ -22,6 +22,11 @@ namespace LostArk::Shared
 	[[nodiscard]] bool Is_Valid_PlayerNickname(
 		std::string_view nickname) noexcept;
 
+	// Same stable-ID alphabet the authored world sequence document enforces, so
+	// a wire value can never name something the Client could not have loaded.
+	[[nodiscard]] bool Is_Valid_SequenceInstanceId(
+		std::string_view instanceId) noexcept;
+
 	//Enter World
 	struct C2S_ENTER_WORLD
 	{
@@ -1806,4 +1811,14 @@ namespace LostArk::Shared
 	};
 	bool Write_Message(CPacketWriter& writer, const S2C_PARTY_TRANSFER_RESULT& message);
 	bool Read_Message(CPacketReader& reader, S2C_PARTY_TRANSFER_RESULT& message);
+
+	// One authored world sequence instance started. The Server owns the trigger
+	// entry that decided when; the Client resolves the stable instance ID
+	// against the Area document it already loaded and plays only presentation.
+	struct S2C_WORLD_SEQUENCE_PLAY
+	{
+		std::string strSequenceInstanceId;
+	};
+	bool Write_Message(CPacketWriter& writer, const S2C_WORLD_SEQUENCE_PLAY& message);
+	bool Read_Message(CPacketReader& reader, S2C_WORLD_SEQUENCE_PLAY& message);
 }

@@ -84,6 +84,9 @@ public:
 		CDeployPropRuntime& deployRuntime);
 	void Reset();
 
+	/* Stable instance IDs an authored trigger may start, in document order. */
+	std::vector<std::string> Get_InstanceIds() const;
+
 	bool_t Is_Dirty() const noexcept { return m_bDirty; }
 	bool_t Is_Ready() const noexcept { return !m_Document.Get_AreaId().empty(); }
 	bool_t Is_PreviewActive() const noexcept { return m_bPreviewActive; }

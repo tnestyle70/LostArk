@@ -29,6 +29,16 @@ namespace
 	constexpr const char_t* CONSUMER_ID = "Boss Tool";
 	constexpr const char_t* FLOW_PREVIEW_CONSUMER_ID =
 		"Boss Tool Pattern Flow Preview";
+	constexpr const char_t* VALTAN_CINEMATIC_ENTRANCE_PATTERN_ID =
+		"VALTAN_ENTRANCE_CINEMATIC";
+	constexpr const char_t* VALTAN_IDLE_CINEMATIC_ENTRANCE_PATTERN_ID =
+		"VALTAN_ENTRANCE_CINEMATIC_IDLE";
+
+	bool_t Is_OptionalEntryPatternId(const std::string& PatternId)
+	{
+		return VALTAN_CINEMATIC_ENTRANCE_PATTERN_ID == PatternId ||
+			VALTAN_IDLE_CINEMATIC_ENTRANCE_PATTERN_ID == PatternId;
+	}
 
 	std::string To_Lower(std::string Text)
 	{
@@ -1981,9 +1991,9 @@ void Client::CBossTool::Render_FlowSlotList()
 			});
 	const bool_t bHasSelection = pFlow->Slots.end() != SelectedAt;
 	const bool_t bSelectedIsEntry = nullptr != pSelected &&
-		"VALTAN_ENTRANCE_CINEMATIC" == pSelected->strPatternId;
+		Is_OptionalEntryPatternId(pSelected->strPatternId);
 	const bool_t bFirstIsEntry = !pFlow->Slots.empty() &&
-		"VALTAN_ENTRANCE_CINEMATIC" == pFlow->Slots.front().strPatternId;
+		Is_OptionalEntryPatternId(pFlow->Slots.front().strPatternId);
 	const bool_t bWouldCrossEntry = bHasSelection && bFirstIsEntry &&
 		SelectedAt == std::next(pFlow->Slots.begin());
 	const bool_t bCanMoveUp = bHasSelection &&
