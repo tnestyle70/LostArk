@@ -734,7 +734,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         self.assertLess(load_body.index("Parse_SplitMasterDocument("), load_body.index(commit))
         self.assertLess(load_body.index("Apply_MasterDocument("), load_body.index(commit))
 
-    def test_stage_clock_cue_is_independent_of_animation_mode(self) -> None:
+    def test_stage_clock_cue_stays_a_direct_binding_unless_promoted(self) -> None:
         fist = next(
             row for row in self.presentation["patterns"]
             if row["patternId"] == "VALTAN_FIST_IN_OUT"
@@ -746,11 +746,91 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
                            if row["independentEffectId"] == "valtan.independent-effect.donut-in-out")
         self.assertEqual("SERVER_COMBAT_OBJECT", independent["ownership"])
         self.assertEqual("event.valtan.fist-in-out.spawn-donut", independent["spawnEventId"])
+
+        expected_independent_ids = {
+            "valtan.independent-effect.target-axe",
+            "valtan.independent-effect.donut-in-out",
+            "valtan.independent-effect.ground-roar-cardinal-rocks",
+            "valtan.independent-effect.six-pizza-rock-pillars",
+            "valtan.independent-effect.struggling-rock-pillars",
+            "valtan.independent-effect.ghost-portal-once",
+        }
+        self.assertEqual(
+            expected_independent_ids,
+            {
+                row["independentEffectId"]
+                for row in self.presentation["independentEffects"]
+            },
+        )
+
+        warp_presentation = next(
+            row for row in self.presentation["patterns"]
+            if row["patternId"] == "VALTAN_WARP"
+        )
+        warp_gameplay = next(
+            row for row in self.gameplay["patterns"]
+            if row["patternId"] == "VALTAN_WARP"
+        )
+        duration_by_stage = {
+            stage["stageId"]: stage["durationMs"]
+            for stage in warp_gameplay["stages"]
+        }
+        independent_cue_ids = {
+            row["cueId"]
+            for row in self.presentation["independentEffects"]
+            if row["ownership"] == "SERVER_PATTERN_STAGE"
+        }
+        stage_clock_cues = [
+            (stage, cue)
+            for stage in warp_presentation["stages"]
+            for cue in stage["effectCues"]
+            if cue.get("timingBasis") == "STAGE_CLOCK"
+        ]
+        self.assertEqual(8, len(stage_clock_cues))
+        for stage, cue in stage_clock_cues:
+            with self.subTest(stage=stage["stageId"], cue=cue["cueId"]):
+                self.assertTrue(stage["animation"]["occurrences"])
+                self.assertLess(
+                    cue["stageOffsetMs"], duration_by_stage[stage["stageId"]]
+                )
+                self.assertNotIn(cue["cueId"], independent_cue_ids)
+
+        split_cue_join_start = self.cpp.index(
+            "for (const DATA_JSON_VALUE& Cue : pCues->Get_Array())"
+        )
+        split_cue_join = self.cpp[
+            split_cue_join_start:self.cpp.index(
+                'LegacyStage.emplace("animation"', split_cue_join_start
+            )
+        ]
+        for token in (
+            'DATA_JSON_VALUE::String("CUE_BINDING")',
+            'Projection.emplace("timingBasis", *Cue.Find("timingBasis"))',
+            'Projection.emplace("stageOffsetMs", *Cue.Find("stageOffsetMs"))',
+            "split stage-clock cue left its Stage wall",
+        ):
+            self.assertIn(token, split_cue_join)
+
+        master_reference_start = self.cpp.index(
+            "struct MASTER_EFFECT_REFERENCE final"
+        )
+        master_reference = self.cpp[
+            master_reference_start:self.cpp.index(
+                "bool_t Validate_MasterServerMotion(", master_reference_start
+            )
+        ]
+        for token in (
+            'Has_ExactProperties(\n\t\t\t\t\t\t\t*pProjection, { "timingBasis", "stageOffsetMs" })',
+            '"STAGE_CLOCK" != pTimingBasis->Get_String()',
+            "Reference.bUsesStageClock = true;",
+            "Reference.iStageOffsetMs = static_cast<uint32_t>(",
+        ):
+            self.assertIn(token, master_reference)
+
         for token in (
             "bSuppressAnimation",
             "bUsesStageClock",
             "NONE animation cannot own a clip wall budget",
-            "split stage-clock cue must be an independent Effect inside its Stage wall",
             "Valtan stage-clock Effect cue left its Stage wall",
             "STAGE_CLOCK Valtan Effect cue requires its owning action binding",
             "Valtan stage-clock Effect cue binding rejected",
@@ -767,6 +847,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             "STAGE_CLOCK Valtan Effect cue requires an explicit NONE animation binding",
             "Only an Effect stage-clock row may omit clipOccurrenceId on an explicit NONE action",
             "Valtan stage-clock Effect cue NONE binding rejected",
+            "split stage-clock cue must be an independent Effect inside its Stage wall",
         ):
             self.assertNotIn(
                 stale_none_only_rule,
