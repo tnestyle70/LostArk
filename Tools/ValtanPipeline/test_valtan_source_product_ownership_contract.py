@@ -115,13 +115,20 @@ class ValtanSourceProductOwnershipContractTests(unittest.TestCase):
 
     def test_stale_preserved_workbench_is_diagnostic_only(self) -> None:
         tool = read("Client/Private/Animation_Tool.cpp")
+        admission = read("Client/Public/ValtanViewAdmission.h")
+        for token in (
+            "enum class VALTAN_VIEW_ADMISSION",
+            "Can_DisplayValtanView(",
+            "Can_MutateValtanView(",
+        ):
+            self.assertIn(token, admission)
         master = function_body(
             tool, "void Client::CAnimation_Tool::Render_ValtanPatternMaster("
         )
         for token in (
             "bMutationAdmitted",
-            "VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED",
-            "READ-ONLY DIAGNOSTIC VIEW",
+            "Can_MutateValtanView(m_eValtanPatternMasterAdmission)",
+            "READ-ONLY: Pattern data is %s",
             "nullptr == m_pBossTool || !bMutationAdmitted",
             "nullptr == m_pBalanceTool || !bMutationAdmitted",
             'ImGui::Button("Complete Play (Server/Arena)")',
@@ -134,9 +141,9 @@ class ValtanSourceProductOwnershipContractTests(unittest.TestCase):
             "bool_t Client::CAnimation_Tool::Start_ValtanPatternCreateCommand(",
         )
         self.assertIn(
-            "VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED !=", create
+            "!Can_MutateValtanView(m_eValtanPatternMasterAdmission)", create
         )
-        self.assertIn("preserved stale data is diagnostic-only", create)
+        self.assertIn("Create stopped before writing", create)
 
     def test_create_apply_reports_incomplete_reload_closure_as_failure(self) -> None:
         poll = function_body(
@@ -146,7 +153,7 @@ class ValtanSourceProductOwnershipContractTests(unittest.TestCase):
         for token in (
             "bReloadClosureAdmitted",
             "bAnimationAdmitted",
-            "Product/canonical reload closure is INCOMPLETE",
+            "local Product/canonical reload is INCOMPLETE",
             "Boss canonical graph/inventory reload",
         ):
             self.assertIn(token, poll)

@@ -91,7 +91,7 @@
       "ownerStageId": "AIRBORNE",
       "triggerPolicy": "STAGE_ENTER_PER_ALIVE_PLAYER",
       "combatObjectArchetypeId": "combatobject.valtan.high-jump.target-axe",
-      "clientVisualId": "combatobject.visual.valtan.high-jump.target-axe.v1",
+      "clientVisualId": "combatobject.visual.valtan.high-jump.target-axe.v2",
       "effectCueBindingId": null,
       "cueProjection": null
     },

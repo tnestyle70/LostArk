@@ -35,7 +35,7 @@ presentation 정본을 편집하는 UI projection이고, Boss Tool은 Publish된
 | 무력화 Pattern | `VALTAN_STAGGER_SLOT` 빈 topology에서 시작해 Server stagger gauge, damage contribution, depleted branch와 구형 Effect presentation을 구현 |
 | 속박 Pattern | `VALTAN_BIND_SLOT`에서 random alive player를 Server가 lock하고 약 10m 상승, 5초 이동/스킬 제한, 안전한 복귀와 disconnect/death rollback을 구현 |
 | 침묵 Pattern | `VALTAN_SILENCE_SLOT`에서 5초 Server skill-use reject와 Client HUD cooldown-mask presentation을 구현. UI mask는 권위가 아님 |
-| 땅구르기 후 사자후 | `VALTAN_GROUND_ROAR`에서 boss-relative yaw `0/90/180/270`의 정확히 네 rock combat object를 생성하고 5000ms 뒤 explode Effect와 함께 despawn |
+| 땅구르기 후 사자후 | `VALTAN_GROUND_ROAR`에서 boss-relative `radiusM=4.9497475`, 시작각 45도, 90도 간격의 정확히 네 rock combat object를 X/Z `±3.5` 사각형 꼭짓점에 생성하고 5000ms 뒤 explode Effect와 함께 despawn |
 | Six Pizza | random alive target 기준 Server-locked facing을 sector root에 적용하고, 늦게 생성되는 모든 Effect Element도 같은 회전 root/누적 회전을 소비 |
 | 버러지 Pattern | Counter success Groggy, timeout rush, capture, left-hand attach, all/any grabbed 분기, miss/retry terminal을 유한 graph로 구현 |
 | 3연속 Counter | 세 Counter window를 실제 Stage box로 표시하고 success progress/failure/마지막 실패 전멸 분기를 Server에서 검증 |
@@ -730,16 +730,17 @@ HUD mask red/height는 presentation이며 Server silence authority를 대신하�
 
 ```text
 pattern/boss transform at spawn
-  + yaw 0   -> rock occurrence 0
-  + yaw 90  -> rock occurrence 1
-  + yaw 180 -> rock occurrence 2
-  + yaw 270 -> rock occurrence 3
+  + yaw 45  / radius 4.9497475 -> rock occurrence 0 -> X/Z ( 3.5,  3.5)
+  + yaw 135 / radius 4.9497475 -> rock occurrence 1 -> X/Z ( 3.5, -3.5)
+  + yaw 225 / radius 4.9497475 -> rock occurrence 2 -> X/Z (-3.5, -3.5)
+  + yaw 315 / radius 4.9497475 -> rock occurrence 3 -> X/Z (-3.5,  3.5)
 
 each rock: visible active Effect -> lifetime 5000ms -> reliable explode event -> hit Effect -> despawn
 ```
 
 - 네 occurrence는 vector index가 아니라 stable occurrence ID를 가진다.
-- boss yaw를 두 번 더하거나 world cardinal로 고정하지 않는다.
+- 위 좌표는 boss yaw 0도 기준이다. boss yaw를 따라 네 root가 함께 회전하며,
+  boss yaw를 두 번 더하거나 world cardinal로 고정하지 않는다.
 - 사용자가 지정하지 않은 damage/radius를 임의로 추가하지 않는다. visual-only typed object가 불가능하면
   실제 기존 authored 근거를 사용하고 PROJECT_TUNED 값으로 명시한다.
 - rollback/Pattern cancel/room teardown에서 남은 rock을 모두 제거한다.

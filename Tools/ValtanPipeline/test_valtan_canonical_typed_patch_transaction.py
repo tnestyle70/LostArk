@@ -30,6 +30,11 @@ class ValtanCanonicalTypedPatchTransactionTests(unittest.TestCase):
             self.root / "Tools/GameplayPipeline",
         )
         shutil.copytree(
+            REPOSITORY_ROOT / "Tools/EffectToolV2",
+            self.root / "Tools/EffectToolV2",
+            ignore=shutil.ignore_patterns("__pycache__"),
+        )
+        shutil.copytree(
             REPOSITORY_ROOT / "Tools/ValtanPipeline",
             self.root / "Tools/ValtanPipeline",
         )
@@ -71,6 +76,9 @@ class ValtanCanonicalTypedPatchTransactionTests(unittest.TestCase):
         self.authoring_root = self.root / "Intermediate/ValtanTuningAuthoring"
         self.environment = dict(os.environ)
         self.environment["PYTHONDONTWRITEBYTECODE"] = "1"
+        self.environment["LOSTARK_RESOURCE_ROOT"] = str(
+            REPOSITORY_ROOT / "Client/Bin/Resources"
+        )
         self.repository_revision = self.source_manifest()["sourceRevision"]
 
     def tearDown(self) -> None:
@@ -1094,8 +1102,8 @@ finally:
             committed_gameplay_ground_roar["stages"][0]["events"][0]["kind"],
         )
 
-    def test_dash_charge_groggy_sequence_and_sound_save_physically(self) -> None:
-        """The separate Groggy pattern and its Sound row are replaced atomically."""
+    def test_dash_charge_local_groggy_sequence_and_sound_save_physically(self) -> None:
+        """The dash Pattern's local Groggy stage and Sound row replace atomically."""
 
         presentation_target = self.root / "Data/Valtan/Valtan.presentation.json"
         gameplay_target = self.root / "Data/Valtan/Valtan.gameplay.json"
@@ -1107,7 +1115,7 @@ finally:
         groggy_pattern = next(
             pattern
             for pattern in presentation["patterns"]
-            if pattern["patternId"] == "VALTAN_DASH_CHARGE_GROGGY"
+            if pattern["patternId"] == "VALTAN_DASH_CHARGE"
         )
         groggy = next(
             stage for stage in groggy_pattern["stages"]
@@ -1142,7 +1150,7 @@ finally:
         seed_sound_candidate = self.read_json(sound_target)
         self.assertFalse(
             any(
-                cue.get("patternId") == "VALTAN_DASH_CHARGE_GROGGY"
+                cue.get("patternId") == "VALTAN_DASH_CHARGE"
                 and cue.get("stageId") == "GROGGY"
                 for cue in seed_sound_candidate["cues"]
             )
@@ -1154,7 +1162,7 @@ finally:
                     "project-tuned.clip.01.01"
                 ),
                 "occurrenceId": old_sound_occurrence_id,
-                "patternId": "VALTAN_DASH_CHARGE_GROGGY",
+                "patternId": "VALTAN_DASH_CHARGE",
                 "stageId": "GROGGY",
                 "actionId": "valtan.attack.dash-charge.recovery",
                 "clipOccurrenceId": old_clip_occurrence_id,
@@ -1174,13 +1182,13 @@ finally:
             [
                 {
                     "op": "SET_STAGE_DURATION",
-                    "patternId": "VALTAN_DASH_CHARGE_GROGGY",
+                    "patternId": "VALTAN_DASH_CHARGE",
                     "stageId": "GROGGY",
                     "durationMs": 900,
                 },
                 {
                     "op": "SET_STAGE_ANIMATION",
-                    "patternId": "VALTAN_DASH_CHARGE_GROGGY",
+                    "patternId": "VALTAN_DASH_CHARGE",
                     "stageId": "GROGGY",
                     "animation": {
                         "endPolicy": "EXACT",
@@ -1241,7 +1249,7 @@ finally:
             [
                 cue["occurrenceId"]
                 for cue in seeded_sound["cues"]
-                if cue.get("patternId") == "VALTAN_DASH_CHARGE_GROGGY"
+                if cue.get("patternId") == "VALTAN_DASH_CHARGE"
                 and cue.get("stageId") == "GROGGY"
             ],
         )
@@ -1254,7 +1262,7 @@ finally:
         removed_sound_occurrences = [
             cue["occurrenceId"]
             for cue in sound_candidate["cues"]
-            if cue.get("patternId") == "VALTAN_DASH_CHARGE_GROGGY"
+            if cue.get("patternId") == "VALTAN_DASH_CHARGE"
             and cue.get("stageId") == "GROGGY"
             and cue.get("clipOccurrenceId") == old_clip_occurrence_id
         ]
@@ -1283,13 +1291,13 @@ finally:
             [
                 {
                     "op": "SET_STAGE_DURATION",
-                    "patternId": "VALTAN_DASH_CHARGE_GROGGY",
+                    "patternId": "VALTAN_DASH_CHARGE",
                     "stageId": "GROGGY",
                     "durationMs": 6833,
                 },
                 {
                     "op": "SET_STAGE_ANIMATION",
-                    "patternId": "VALTAN_DASH_CHARGE_GROGGY",
+                    "patternId": "VALTAN_DASH_CHARGE",
                     "stageId": "GROGGY",
                     "animation": {
                         "endPolicy": "EXACT",
@@ -1353,13 +1361,13 @@ finally:
         committed_groggy_pattern = next(
             pattern
             for pattern in committed_presentation["patterns"]
-            if pattern["patternId"] == "VALTAN_DASH_CHARGE_GROGGY"
+            if pattern["patternId"] == "VALTAN_DASH_CHARGE"
         )
         self.assertIn(
             {
                 "sourceActionId": 400430,
                 "sequenceIndex": 0,
-                "role": "PRIMARY",
+                "role": "REFERENCE_400430_0",
             },
             committed_groggy_pattern["presentationSources"],
         )
@@ -1388,7 +1396,7 @@ finally:
         committed_gameplay_groggy_pattern = next(
             pattern
             for pattern in committed_gameplay["patterns"]
-            if pattern["patternId"] == "VALTAN_DASH_CHARGE_GROGGY"
+            if pattern["patternId"] == "VALTAN_DASH_CHARGE"
         )
         committed_gameplay_groggy = next(
             stage
@@ -1397,7 +1405,7 @@ finally:
         )
         self.assertEqual(6833, committed_gameplay_groggy["durationMs"])
         self.assertEqual(
-            [400430],
+            [420604, 400430],
             committed_gameplay_groggy_pattern["sourceActionIds"],
         )
 
@@ -1410,7 +1418,7 @@ finally:
         )
         self.assertFalse(
             any(
-                cue.get("patternId") == "VALTAN_DASH_CHARGE_GROGGY"
+                cue.get("patternId") == "VALTAN_DASH_CHARGE"
                 and cue.get("stageId") == "GROGGY"
                 for cue in committed_sound["cues"]
             )

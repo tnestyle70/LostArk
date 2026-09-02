@@ -535,8 +535,9 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		if (bValtanArena)
 		{
 			CValtanCanonicalProductReadAdmission ProductAdmission;
-			if (!ProductAdmission.Acquire(Status))
-				return IsolateFailure(Status);
+			VALTAN_CANONICAL_READ_DIAGNOSTIC ProductDiagnostic;
+			if (!ProductAdmission.Acquire(ProductDiagnostic))
+				return IsolateFailure(ProductDiagnostic.strStatus);
 			VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
 			if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
 					CueDocument, Status) || CueDocument.Cues.empty())
@@ -570,7 +571,11 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 			for (const BOSS_COMBAT_OBJECT_VISUAL_ENTRY& Visual :
 				pBossActor->combatObjectVisuals)
 			{
-				EffectAssetIds.push_back(Visual.effectAssetId);
+				if (BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V1 ==
+					Visual.activeEffectKind)
+				{
+					EffectAssetIds.push_back(Visual.effectAssetId);
+				}
 				if (!Visual.hitEffectAssetId.empty())
 					EffectAssetIds.push_back(Visual.hitEffectAssetId);
 			}

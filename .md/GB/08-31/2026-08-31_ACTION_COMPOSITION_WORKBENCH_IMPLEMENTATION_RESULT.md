@@ -12,7 +12,7 @@ V2 `81 authored / 80 bindings / 1 group`, TRASH retry terminal, 빌드 미실행
 | canonical graph | 실제 Product validator가 62 Pattern / 276 Stage를 읽고 managed 39 / legacy 25를 구분한다. | Gameplay publisher Validate PASS. 이번 dirty 통합본의 최종 Product/Core는 타 세션 취합 뒤 대기 | 미검증 |
 | stale SHA/bytes entry blocker | Network entry와 replay는 현재 typed closure와 Server gameplay revision을 사용한다. 과거 고정 SHA/bytes generation을 정상 수정의 차단 조건으로 사용하던 경로는 교정했다. | 최종 Debug/Release Core PASS | 미검증 |
 | Counter/상태 Pattern | Counter Logic box/proxy, 무력화 gauge, 속박(+10m/5초), 침묵(5초), Counter→Groggy의 typed source·Server·Client 소비가 연결됐다. | focused contract와 최종 Core PASS | 미검증 |
-| Ground Roar 네 돌 | 발탄 yaw 기준 0/90/180/270의 독립 Server object 4개가 생성되고 5초 뒤 explode pulse와 함께 despawn한다. Composition은 같은 5초 tail을 표시한다. | focused contract와 최종 Core PASS | 미검증 |
+| Ground Roar 네 돌 | 발탄 yaw 기준 `radiusM=4.9497475`, 시작각 45도, 90도 간격의 독립 Server object 4개가 X/Z `±3.5` 사각형 꼭짓점에 생성되고 5초 뒤 explode pulse와 함께 despawn한다. Composition은 같은 5초 tail을 표시한다. | focused contract는 새 기하로 PASS. 현재 통합 Core 결과는 09-02 최종 RESULT를 따름 | 실제 배치/크기/폭발 육안 검증 대기 |
 | Six Pizza | Server가 occurrence 시작 때 고른 플레이어를 유지하고 authored landing center에서 그 플레이어의 현재 XZ를 향하는 yaw를 fixed tick마다 갱신한다. Client는 `arena.center.target-follow`의 동일 root handle에 공통 `+180°`를 적용해 초기 sector와 delayed Element가 플레이어 반대 방향으로 함께 회전한다. 피자 source JSON과 timing은 추가 수정하지 않았다. | focused contract와 Server/Client Debug `ClCompile` PASS. 통합 Core는 다른 세션 취합 뒤 대기 | 반대 방향 육안 확인 대기 |
 | 버러지 retry | `VALTAN_TRASH`와 `VALTAN_TRASH_CATCH_IF` 모두 최초 rush 뒤 `RECHARGE_WAIT_02 → RETRY_RUSH_02 → RETRY_MISS_02 → RECHARGE_WAIT_03 → RETRY_RUSH_03 → RETRY_EXHAUSTED`의 finite retry를 가진다. | canonical/transaction/Core PASS | 미검증 |
 | 잡기/왼손/날리기 | `BOSS_LEFT_HAND` capture, left-hand bone world matrix attachment, `ARENA_EJECTION` speed/duration/yaw editor와 Server boss-facing 상대 launch가 연결됐다. | focused contract와 최종 Core PASS | 미검증 |
@@ -20,7 +20,7 @@ V2 `81 authored / 80 bindings / 1 group`, TRASH retry terminal, 빌드 미실행
 | Phase 3 망령 본체/포탈 | primary `BOSS_VALTAN`의 NetEntityId·HP·damage·HUD 권위를 유지한 채 phase 3에서 ghost part group으로 교체한다. 부활 완료 뒤 exact 6 Pattern을 순환하고, 별도 5초 clock이 arena center 기준 네 꼭짓점의 portal missile을 같은 tick에 생성해 중심을 지나 반대 꼭짓점까지 돌진시킨다. | Gameplay publisher Validate, focused contract 4/4, Server/Client Debug `ClCompile` PASS | Ghost Drive asset 누락 및 실제 6-loop/4-portal 육안 확인 대기 |
 | Effect Save 즉시 반영 | direct-authored Product Effect Save는 disk CAS 뒤 선택 catalog/GPU target을 원자 교체한다. 성공 뒤 새 spawn만 새 문서를 쓰고 이미 재생 중인 occurrence는 이전 immutable resource로 끝난다. 실패하면 disk를 이전 canonical로 CAS 복구하고 편집 draft를 dirty로 보존한다. | Effect focused/saved-row contract PASS, `Effect_Tool.cpp` 및 Client Debug `ClCompile` PASS | 새 통합 EXE에서 sky-axe 7-element Save/replay 확인 대기 |
 | V1 Decal Normal Cut | V1 cutoff는 normal-mapped lighting normal 대신 depth 복원 위치의 기하 수신 노멀을 사용한다. GBuffer normal은 hemisphere 정렬에만 쓰므로 평평한 바닥은 통과하고 벽 cutoff는 유지한다. | shader contract 4/4, `fx_5_0` compile PASS | 바닥 decal 육안 확인 대기 |
-| Saved Pattern/Flow Restart | Boss Verification 기본 재시작과 Pattern Flow 재시작은 저장된 `scriptedSequence`를 다시 읽고 walls/floors/props/collision/Nav/combat objects를 복구한 뒤 Pattern 01부터 시작한다. Boss Verification은 saved slot이 정확히 1개일 때만 허용한다. | restart focused contract 48/48, Client Debug `ClCompile` PASS | 실제 arena reset/replay 확인 대기 |
+| Pattern/Flow Replay | Boss Verification의 Play/Restart는 `PLAY_PATTERN_ID`/`RESTART_PATTERN_ID` boss-only reset으로 선택 Pattern 하나를 첫 Stage부터 재생하고 현재 arena를 유지한다. Pattern Flow의 `Restart Saved Flow (Fresh Arena)`만 전체 saved `scriptedSequence`를 다시 읽고 arena를 복구한 뒤 Pattern 01과 saved order/Wait를 실행한다. 퇴역한 one-slot Flow alias는 아래 중간 기록에만 남는다. | replay focused Python 125, native Audition 30/30 및 Flow 13/13, Client Debug `ClCompile` PASS | 실제 arena reset/replay 확인 대기 |
 | Effect V2 | 92 authored / 84 bindings / 4 groups / 4 independent / 56 textures를 admit한다. `VALTAN_STRUGGLING` STEP_04~07에 4 group, 8 timeline box를 연결했고 canonical reload 시 V2 catalog를 한 번 stage한다. | V2/Workbench 59/59, Effect V2 validator 24/24, 최종 Core PASS | 실제 group/leaf 재생 미검증 |
 | Root Motion transaction | candidate Encounter와 patternbindings에서 `Valtan.rootmotion.json`을 함께 투영하고 Create Pattern, ApplyTypedPatch, 일반 Apply의 동일 atomic commit/rollback closure에 포함한다. 현재 44 Pattern / 119 Stage / 6,617 sample이다. | transaction 49/49, typed patch 7/7, root-motion/atomic 9/9, freshness PASS | TRASH 전진 동작 미검증 |
 | Tool 프레임 저하 | Effect JSON은 catalog metadata와 선택 문서 lazy decode를 사용한다. Workbench의 V2 eager load는 canonical reload 시 한 번만 실행하며 per-frame repository scan을 하지 않는다. | source/focused contract와 최종 Core PASS | 사용자 FPS smoke 대기 |
@@ -1096,8 +1096,10 @@ Save하여 dirty 해제, 물리 owner commit, 재선택 reload를 확인하는 �
 ## 2026-09-01 후속 — Ground Roar 4방향 돌 Independent 외형 확정
 
 - `valtan.independent-effect.ground-roar-cardinal-rocks`는 `INDEPENDENT EFFECT`에 한 행만 둔다.
-  `VALTAN_GROUND_ROAR/STEP_01`의 Server `SPAWN_COMBAT_OBJECT_VOLLEY`가 반경 2.25m,
-  yaw `0/90/180/270`에 `combatobject.valtan.ground-roar.rock` world root 네 개를 만든다.
+  최종 `VALTAN_GROUND_ROAR/STEP_01`의 Server `SPAWN_COMBAT_OBJECT_VOLLEY`가
+  `radiusM=4.9497475`, 시작각 45도, 90도 간격에
+  `combatobject.valtan.ground-roar.rock` world root 네 개를 만든다. boss yaw 0도에서
+  X/Z는 `(3.5,3.5)`, `(3.5,-3.5)`, `(-3.5,-3.5)`, `(-3.5,3.5)`이다.
 - 각 world root는 `effect.valtan.ground-roar.rock.active`의 단일 `kind=mesh` Element를 재생한다.
   문서에 mesh 네 개를 중복 저장하지 않으므로 Product 결과도 정확히 네 돌이다.
 - active Element는 사용자가 확정한 CROSS 돌 외형을 재사용한다:

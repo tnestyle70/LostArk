@@ -89,6 +89,8 @@ namespace
 	{
 		float4x4_t Pivot;
 		f32_t fSeconds = 0.f;
+		f32_t fPlaybackRate = 1.f;
+		bool_t bProductOwned = false;
 		std::vector<PENDING_SPAWN> Pending;
 		std::vector<SPAWNED_EFFECT> Spawned;
 		std::shared_ptr<const Client::EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot;
@@ -391,7 +393,9 @@ namespace
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext,
 		const Client::EFFECT_V2_CATALOG_SNAPSHOT* const pSnapshot = nullptr,
-		std::string* const pOutFailure = nullptr)
+		std::string* const pOutFailure = nullptr,
+		const f32_t fPlaybackRate = 1.f,
+		const f32_t fInitialElapsedSeconds = 0.f)
 	{
 		Pending.bSpawned = true;
 		const auto Reject = [pOutFailure](const std::string& strFailure)
@@ -485,6 +489,9 @@ namespace
 		}
 		if (NO_CHILD != Pending.iChildIndex)
 			Apply_ChildScale(*pObject, *pDocument, Pending.vScale);
+		pObject->Params().fPlayRate *= fPlaybackRate;
+		if (fInitialElapsedSeconds > 0.f)
+			pObject->Seek_ElapsedSeconds(fInitialElapsedSeconds);
 		SPAWNED_EFFECT Effect;
 		Effect.pObject = pObject;
 		Effect.bStopWithClip = Pending.Binding.bStopWithClip;
@@ -692,6 +699,60 @@ namespace
 		Apply_ChildStops(State.Spawned, fAgeSeconds, true, true);
 		Prune_Spawned(State, false, false);
 	}
+
+	void Advance_FreeGroupLanes(
+		const bool_t bProductOwned,
+		const f32_t fTimeDelta,
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext)
+	{
+		if (!std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
+			return;
+		for (auto Iterator = g_FreeGroups.begin(); Iterator != g_FreeGroups.end();)
+		{
+			FREE_GROUP& Group = Iterator->second;
+			if (Group.bProductOwned != bProductOwned)
+			{
+				++Iterator;
+				continue;
+			}
+			Group.fSeconds += fTimeDelta * Group.fPlaybackRate;
+			for (PENDING_SPAWN& Pending : Group.Pending)
+			{
+				if (Pending.bSpawned)
+					continue;
+				if (Group.fSeconds >= Ms_ToSeconds(Pending.Binding.iStartMs))
+				{
+					std::string SpawnFailure;
+					const f32_t fChildStartSeconds =
+						Ms_ToSeconds(Pending.Binding.iStartMs);
+					const f32_t fInitialElapsedSeconds =
+						(Group.fSeconds - fChildStartSeconds) / Group.fPlaybackRate;
+					Spawn(Pending, Group.Pivot, Client::EFFECT_V2_TARGET{}, false,
+						Group.Spawned, pDevice, pContext, Group.pSnapshot.get(),
+						&SpawnFailure, Group.fPlaybackRate, fInitialElapsedSeconds);
+					if (Group.strFailure.empty() && !SpawnFailure.empty())
+						Group.strFailure = std::move(SpawnFailure);
+				}
+			}
+			Apply_ChildStops(Group.Spawned, Group.fSeconds, false, false);
+			Prune_List(Group.Spawned, false, false);
+			const bool_t bAllSpawned = std::all_of(
+				Group.Pending.begin(), Group.Pending.end(),
+				[](const PENDING_SPAWN& Pending) { return Pending.bSpawned; });
+			if (bAllSpawned && Group.Spawned.empty())
+			{
+				if (!Group.strFailure.empty())
+				{
+					g_FreeGroupTerminalFailures[Iterator->first] =
+						std::move(Group.strFailure);
+				}
+				Iterator = g_FreeGroups.erase(Iterator);
+				continue;
+			}
+			++Iterator;
+		}
+	}
 }
 
 void Client::CEffectV2Runtime::Prewarm_Archetype(
@@ -715,6 +776,31 @@ void Client::CEffectV2Runtime::Prewarm_Archetype(
 			Report("prewarm failed " + Pending.Binding.strEffectId + ": " + strError);
 	}
 	Ensure_Prototype(pDevice, pContext);
+}
+
+bool_t Client::CEffectV2Runtime::Prewarm_Group(
+	const EFFECT_V2_GROUP& Group,
+	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
+	const ComPtr<ID3D11Device>& pDevice,
+	const ComPtr<ID3D11DeviceContext>& pContext)
+{
+	if (nullptr == pSnapshot || !pSnapshot->Is_Ready())
+		return false;
+	for (const EFFECT_V2_GROUP_CHILD& Child : Group.Children)
+	{
+		const EFFECT_V2_DOCUMENT* pDocument =
+			pSnapshot->Find_Document(Child.strEffectId);
+		std::string strError;
+		if (nullptr == pDocument || FAILED(CEffectV2Object::Prewarm(
+				pDevice, pContext, pDocument->Desc, strError)))
+		{
+			Report(nullptr == pDocument ?
+				"group prewarm document missing: " + Child.strEffectId :
+				"group prewarm failed " + Child.strEffectId + ": " + strError);
+			return false;
+		}
+	}
+	return Ensure_Prototype(pDevice, pContext);
 }
 
 void Client::CEffectV2Runtime::Set_Ignored(const EFFECT_V2_TARGET& Target, const bool_t bIgnored)
@@ -890,6 +976,26 @@ uint32_t Client::CEffectV2Runtime::Play_Group(
 	const ComPtr<ID3D11Device>& pDevice,
 	const ComPtr<ID3D11DeviceContext>& pContext)
 {
+	EFFECT_V2_GROUP_PLAYBACK_DESC Playback;
+	Playback.PivotWorld = PivotWorld;
+	return Play_Group(Group, std::move(pSnapshot), Playback, pDevice, pContext);
+}
+
+uint32_t Client::CEffectV2Runtime::Play_Group(
+	const EFFECT_V2_GROUP& Group,
+	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
+	const EFFECT_V2_GROUP_PLAYBACK_DESC& Playback,
+	const ComPtr<ID3D11Device>& pDevice,
+	const ComPtr<ID3D11DeviceContext>& pContext)
+{
+	if (!std::isfinite(Playback.fInitialAgeSeconds) ||
+		Playback.fInitialAgeSeconds < 0.f ||
+		!std::isfinite(Playback.fPlaybackRate) ||
+		Playback.fPlaybackRate <= 0.f || Playback.fPlaybackRate > 16.f)
+	{
+		Report("group playback has an invalid age/rate: " + Group.strGroupId);
+		return 0u;
+	}
 	if (nullptr == pSnapshot || !pSnapshot->Is_Ready())
 	{
 		Report("group preview requires one ready typed authoring snapshot: " +
@@ -910,7 +1016,10 @@ uint32_t Client::CEffectV2Runtime::Play_Group(
 	EFFECT_V2_BINDING Binding;
 	Binding.bFollowBone = false;
 	FREE_GROUP Lane;
-	Lane.Pivot = PivotWorld;
+	Lane.Pivot = Playback.PivotWorld;
+	Lane.fPlaybackRate = Playback.fPlaybackRate;
+	Lane.fSeconds = Playback.fInitialAgeSeconds * Playback.fPlaybackRate;
+	Lane.bProductOwned = Playback.bProductOwned;
 	Lane.pSnapshot = std::move(pSnapshot);
 	Expand_Group(Group, Binding, Lane.Pending);
 	if (Lane.Pending.empty())
@@ -923,6 +1032,9 @@ uint32_t Client::CEffectV2Runtime::Play_Group(
 		g_iNextFreeGroupHandle = 1u;
 	g_FreeGroupTerminalFailures.erase(iHandle);
 	g_FreeGroups.emplace(iHandle, std::move(Lane));
+	/* Prime zero-time and late-snapshot children immediately. This advances no
+	   other lane clock and preserves one global frame advance in MainApp. */
+	Advance_FreeGroupLanes(Playback.bProductOwned, 0.f, pDevice, pContext);
 	return iHandle;
 }
 
@@ -1032,39 +1144,13 @@ void Client::CEffectV2Runtime::Advance_FreeGroups(
 	const ComPtr<ID3D11Device>& pDevice,
 	const ComPtr<ID3D11DeviceContext>& pContext)
 {
-	if (!std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
-		return;
-	for (auto Iterator = g_FreeGroups.begin(); Iterator != g_FreeGroups.end();)
-	{
-		FREE_GROUP& Group = Iterator->second;
-		Group.fSeconds += fTimeDelta;
-		for (PENDING_SPAWN& Pending : Group.Pending)
-		{
-			if (Pending.bSpawned)
-				continue;
-			if (Group.fSeconds >= Ms_ToSeconds(Pending.Binding.iStartMs))
-			{
-				std::string SpawnFailure;
-				Spawn(Pending, Group.Pivot, EFFECT_V2_TARGET{}, false, Group.Spawned,
-					pDevice, pContext, Group.pSnapshot.get(), &SpawnFailure);
-				if (Group.strFailure.empty() && !SpawnFailure.empty())
-					Group.strFailure = std::move(SpawnFailure);
-			}
-		}
-		Apply_ChildStops(Group.Spawned, Group.fSeconds, false, false);
-		Prune_List(Group.Spawned, false, false);
-		const bool_t bAllSpawned = std::all_of(Group.Pending.begin(), Group.Pending.end(),
-			[](const PENDING_SPAWN& Pending) { return Pending.bSpawned; });
-		if (bAllSpawned && Group.Spawned.empty())
-		{
-			if (!Group.strFailure.empty())
-			{
-				g_FreeGroupTerminalFailures[Iterator->first] =
-					std::move(Group.strFailure);
-			}
-			Iterator = g_FreeGroups.erase(Iterator);
-			continue;
-		}
-		++Iterator;
-	}
+	Advance_FreeGroupLanes(false, fTimeDelta, pDevice, pContext);
+}
+
+void Client::CEffectV2Runtime::Advance_ProductGroups(
+	const f32_t fTimeDelta,
+	const ComPtr<ID3D11Device>& pDevice,
+	const ComPtr<ID3D11DeviceContext>& pContext)
+{
+	Advance_FreeGroupLanes(true, fTimeDelta, pDevice, pContext);
 }

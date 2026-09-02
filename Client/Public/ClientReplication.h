@@ -564,12 +564,13 @@ namespace Client
 		void Reset_World();
 		bool Spawn_CombatObjectPresentation(
 			const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned,
-			uint64_t& outHandle,
+			COMBAT_OBJECT_PRESENTATION_HANDLE& outHandle,
 			std::string& outStatus);
 		bool Update_CombatObjectPresentation(
-			uint64_t handle,
+			COMBAT_OBJECT_PRESENTATION_HANDLE handle,
 			const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot);
-		void Stop_CombatObjectPresentation(uint64_t handle);
+		void Stop_CombatObjectPresentation(
+			COMBAT_OBJECT_PRESENTATION_HANDLE handle);
 		void Stage_PlayerAttachmentPresentation(
 			const LostArk::Shared::PLAYER_SNAPSHOT& snapshot);
 		void Update_PlayerAttachmentPresentations();
@@ -579,19 +580,19 @@ namespace Client
 			CClientReplication& Owner;
 			bool Spawn(
 				const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& message,
-				uint64_t& outHandle,
+				COMBAT_OBJECT_PRESENTATION_HANDLE& outHandle,
 				std::string& outStatus)
 			{
 				return Owner.Spawn_CombatObjectPresentation(
 					message, outHandle, outStatus);
 			}
 			bool Update(
-				uint64_t handle,
+				COMBAT_OBJECT_PRESENTATION_HANDLE handle,
 				const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot)
 			{
 				return Owner.Update_CombatObjectPresentation(handle, snapshot);
 			}
-			void Stop(uint64_t handle)
+			void Stop(COMBAT_OBJECT_PRESENTATION_HANDLE handle)
 			{
 				Owner.Stop_CombatObjectPresentation(handle);
 			}

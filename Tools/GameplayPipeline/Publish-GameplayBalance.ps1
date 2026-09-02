@@ -1276,9 +1276,9 @@ Assert-ExactProperties $bossCatalogDocument @(
 	'schema','formatVersion','bosses') 'boss presentation catalog'
 Assert-JsonString $bossCatalogDocument.schema 'boss presentation catalog schema'
 Assert-JsonInteger $bossCatalogDocument.formatVersion `
-	'boss presentation catalog formatVersion' 5 5
+	'boss presentation catalog formatVersion' 6 6
 if ([string]$bossCatalogDocument.schema -cne 'lostark.boss-catalog' -or
-	[uint32]$bossCatalogDocument.formatVersion -ne 5 -or
+	[uint32]$bossCatalogDocument.formatVersion -ne 6 -or
 	$bossCatalogDocument.bosses -isnot [Array]) {
 	throw 'Boss presentation catalog header is invalid.'
 }
@@ -1347,8 +1347,17 @@ foreach ($part in @($bossPartDocument.parts)) {
 	}
 }
 $combatObjectVisualByArchetypeId = @{}
+$combatObjectEffectV2GroupByArchetypeId = @{}
 foreach ($visual in @($bossCatalogOwners[0].combatObjectVisuals)) {
+	$hasEffectAssetId = $null -ne $visual.PSObject.Properties['effectAssetId']
+	$hasEffectV2Group = $null -ne $visual.PSObject.Properties['effectV2Group']
+	if (-not $hasEffectAssetId) {
+		throw 'Boss combat object visual must keep its V1 authoring effectAssetId.'
+	}
 	$visualProperties = @('combatObjectArchetypeId','clientVisualId','effectAssetId')
+	if ($hasEffectV2Group) {
+		$visualProperties += 'effectV2Group'
+	}
 	if ($null -ne $visual.PSObject.Properties['hitEffectAssetId']) {
 		$visualProperties += 'hitEffectAssetId'
 	}
@@ -1365,10 +1374,54 @@ foreach ($visual in @($bossCatalogOwners[0].combatObjectVisuals)) {
 		}
 	}
 	Assert-ExactProperties $visual $visualProperties 'boss combat object visual'
-	foreach ($field in @(
-		'combatObjectArchetypeId','clientVisualId','effectAssetId')) {
+	foreach ($field in @('combatObjectArchetypeId','clientVisualId')) {
 		Assert-JsonString $visual.$field "boss combat object visual $field"
 		Assert-StableId $visual.$field "boss combat object visual $field"
+	}
+	Assert-JsonString $visual.effectAssetId 'boss combat object visual effectAssetId'
+	Assert-StableId $visual.effectAssetId 'boss combat object visual effectAssetId'
+	if ($hasEffectV2Group) {
+		Assert-ExactProperties $visual.effectV2Group @(
+			'groupId','playbackRate','visualHitMs','serverHitId') `
+			'boss combat object Effect V2 group'
+		Assert-JsonString $visual.effectV2Group.groupId `
+			'boss combat object Effect V2 groupId'
+		Assert-StableId $visual.effectV2Group.groupId `
+			'boss combat object Effect V2 groupId'
+		Assert-JsonNumber $visual.effectV2Group.playbackRate `
+			'boss combat object Effect V2 playbackRate'
+		Assert-JsonInteger $visual.effectV2Group.visualHitMs `
+			'boss combat object Effect V2 visualHitMs' 1 60000
+		Assert-JsonString $visual.effectV2Group.serverHitId `
+			'boss combat object Effect V2 serverHitId'
+		Assert-StableId $visual.effectV2Group.serverHitId `
+			'boss combat object Effect V2 serverHitId'
+		$playbackRate = [double]$visual.effectV2Group.playbackRate
+		if ([double]::IsNaN($playbackRate) -or
+			[double]::IsInfinity($playbackRate) -or
+			$playbackRate -le 0.0 -or $playbackRate -gt 16.0) {
+			throw 'Boss combat object Effect V2 playbackRate is out of range.'
+		}
+		$groupId = [string]$visual.effectV2Group.groupId
+		$groupDocument = Read-JsonDocument `
+			("Data/Effects/V2/Groups/{0}.effectv2group.json" -f $groupId)
+		Assert-ExactProperties $groupDocument @(
+			'schema','formatVersion','groupId','durationMs','children') `
+			'boss combat object Effect V2 group document'
+		if ([string]$groupDocument.schema -cne 'lostark.effect-v2-group' -or
+			[uint32]$groupDocument.formatVersion -ne 2 -or
+			[string]$groupDocument.groupId -cne $groupId -or
+			$groupDocument.children -isnot [Array]) {
+			throw "Boss combat object Effect V2 group document is invalid: $groupId"
+		}
+		$impactChildren = @($groupDocument.children | Where-Object {
+			[uint32]$_.startMs -eq [uint32]$visual.effectV2Group.visualHitMs
+		})
+		if ($impactChildren.Count -lt 1) {
+			throw "Boss combat object Effect V2 visualHitMs resolves to no group child: $groupId"
+		}
+		$combatObjectEffectV2GroupByArchetypeId[
+			[string]$visual.combatObjectArchetypeId] = $visual.effectV2Group
 	}
 	if ($null -ne $visual.PSObject.Properties['hitEffectAssetId']) {
 		Assert-JsonString $visual.hitEffectAssetId `
@@ -2434,7 +2487,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 						$validTypedAction =
 							$actionTargetId -ceq 'player.status.bind' -and
 							(($actionTrigger -ceq 'ENTER' -and
-							  $actionValue -eq 10000 -and
+							  $actionValue -eq 5000 -and
 							  $actionDurationMs -ge 100 -and $actionDurationMs -le 120000) -or
 							 ($actionTrigger -ceq 'EXIT' -and
 							  $actionValue -eq 0 -and $actionDurationMs -eq 0))
@@ -2442,11 +2495,11 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 					'SET_PLAYER_SILENCE' {
 						$validTypedAction =
 							$actionTargetId -ceq 'player.status.silence' -and
-							(($actionTrigger -ceq 'ENTER' -and
-							  $actionValue -eq 1 -and
-							  $actionDurationMs -ge 100 -and $actionDurationMs -le 120000) -or
-							 ($actionTrigger -ceq 'EXIT' -and
-							  $actionValue -eq 0 -and $actionDurationMs -eq 0))
+							$actionTrigger -ceq 'ENTER' -and
+							$actionValue -eq 1 -and
+							$actionDurationMs -ge [uint32]$stage.durationMs -and
+							$actionDurationMs -ge 100 -and
+							$actionDurationMs -le 120000
 					}
 					'SPAWN_COMBAT_OBJECT' {
 						$validTypedAction = $actionTrigger -ceq 'ENTER' -and
@@ -2537,7 +2590,8 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 						$hasExactValtanGhostRespawnPhaseAction -or
 						$exactGhostRespawnPhaseAction
 				}
-				elseif ($actionKind -cne 'RETARGET_RANDOM_ALIVE' -and
+				elseif ($actionKind -cne 'SET_PLAYER_SILENCE' -and
+					$actionKind -cne 'RETARGET_RANDOM_ALIVE' -and
 					$actionKind -cne 'RETURN_TO_ARENA_CENTER' -and
 					$actionKind -cne 'RELEASE_GRABBED_PLAYERS' -and
 					$actionKind -cne 'DAMAGE_GRABBED_PLAYERS' -and
@@ -2814,6 +2868,19 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 	if ($null -eq $visual -or
 		[string]$visual.clientVisualId -cne $clientVisualId) {
 		throw "Valtan combat object visual join is invalid: $combatObjectId"
+	}
+	if ($combatObjectEffectV2GroupByArchetypeId.ContainsKey($combatObjectId)) {
+		$v2Group = $combatObjectEffectV2GroupByArchetypeId[$combatObjectId]
+		$joinedHits = @($combatObject.hits | Where-Object {
+			[string]$_.hitId -ceq [string]$v2Group.serverHitId
+		})
+		$expectedHitMs = [double]$v2Group.visualHitMs /
+			[double]$v2Group.playbackRate
+		if ($joinedHits.Count -ne 1 -or
+			[string]$joinedHits[0].trigger -cne 'TIMED' -or
+			[Math]::Abs([double]$joinedHits[0].atMs - $expectedHitMs) -gt 0.001) {
+			throw "Valtan combat object Effect V2 visual/server hit timing join is invalid: $combatObjectId"
+		}
 	}
 	$ownerPattern = $patternById[$ownerPatternId]
 	$ownerStage = $stageOwnerByKey["$ownerPatternId`n$ownerStageActionId"]
@@ -3698,16 +3765,18 @@ foreach ($chargeOwner in @($encounterDocument.patterns)) {
 		$nextPatternId = [string]$wallContacts[0].nextPatternId
 		$expectedPartBreakCount = 0
 		if ([string]$chargeOwner.patternId -ceq 'VALTAN_DASH_CHARGE') {
-			$groggyOwners = @($encounterDocument.patterns | Where-Object {
-				[string]$_.patternId -ceq 'VALTAN_DASH_CHARGE_GROGGY' })
-			if ($nextActionId -cne '' -or
-				$nextPatternId -cne 'VALTAN_DASH_CHARGE_GROGGY' -or
-				$groggyOwners.Count -ne 1 -or
-				@($groggyOwners[0].stages).Count -ne 1 -or
-				[string]$groggyOwners[0].stages[0].actionId -cne
-					'valtan.attack.dash-charge.recovery' -or
-				[string]$groggyOwners[0].stages[0].stageKind -cne 'GROGGY') {
-				throw "Valtan dash WALL_CONTACT must follow up to its exact GROGGY pattern: $chargeActionId"
+			$expectedTargetActionId = 'valtan.attack.dash-charge.recovery'
+			$targetStageIndex = $chargeStageIndex + 1
+			$targetOwners = @($ownerStages | Where-Object {
+				[string]$_.actionId -ceq $nextActionId })
+			if ($nextPatternId -cne '' -or
+				$nextActionId -cne $expectedTargetActionId -or
+				$targetOwners.Count -ne 1 -or
+				$targetStageIndex -ge $ownerStages.Count -or
+				[string]$ownerStages[$targetStageIndex].actionId -cne
+					$expectedTargetActionId -or
+				[string]$ownerStages[$targetStageIndex].stageKind -cne 'GROGGY') {
+				throw "Valtan dash WALL_CONTACT must target its immediate same-pattern GROGGY stage: $chargeActionId"
 			}
 		}
 		elseif ([string]$chargeOwner.patternId -ceq

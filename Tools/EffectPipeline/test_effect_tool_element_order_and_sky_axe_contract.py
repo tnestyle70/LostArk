@@ -91,7 +91,7 @@ class ValtanSkyAxeRedTelegraphContractTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.effect_tool = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
 
-    def test_high_jump_owns_exact_direct_authored_effect(self) -> None:
+    def test_high_jump_owns_exact_v2_group_runtime_effect(self) -> None:
         gameplay = load_json("Data/Valtan/Valtan.gameplay.json")
         pattern = next(
             row for row in gameplay["patterns"] if row["patternId"] == "VALTAN_HIGH_JUMP"
@@ -142,7 +142,29 @@ class ValtanSkyAxeRedTelegraphContractTests(unittest.TestCase):
             if row["combatObjectArchetypeId"]
             == "combatobject.valtan.high-jump.target-axe"
         )
-        self.assertEqual(visual["effectAssetId"], "effect.valtan.sky-axe.active")
+        self.assertEqual(
+            visual["clientVisualId"],
+            "combatobject.visual.valtan.high-jump.target-axe.v2",
+        )
+        self.assertEqual(
+            visual["effectAssetId"], "effect.valtan.sky-axe.active"
+        )
+        self.assertEqual(
+            visual["effectV2Group"],
+            {
+                "groupId": "boss.valtan.axe",
+                "playbackRate": 47 / 24,
+                "visualHitMs": 2350,
+                "serverHitId": "hit.valtan.high-jump.target-axe.01",
+            },
+        )
+
+        group = load_json(
+            "Data/Effects/V2/Groups/boss.valtan.axe.effectv2group.json"
+        )
+        self.assertEqual(group["groupId"], "boss.valtan.axe")
+        self.assertEqual(9, len(group["children"]))
+        self.assertIn(2350, {child["startMs"] for child in group["children"]})
 
         catalog = load_json("Data/Effects/EffectCatalog.json")
         catalog_row = next(
@@ -155,6 +177,34 @@ class ValtanSkyAxeRedTelegraphContractTests(unittest.TestCase):
             catalog_row["authoringPath"],
             "Effects/Authored/effect.valtan.sky-axe.active.effect.json",
         )
+
+        master = load_json("Data/Valtan/Valtan.pattern.json")
+        independent = next(
+            row
+            for row in master["independentEffects"]
+            if row["independentEffectId"]
+            == "valtan.independent-effect.target-axe"
+        )
+        self.assertEqual(
+            independent["effectAssetId"], "effect.valtan.sky-axe.active"
+        )
+
+        actor_catalog = (REPO_ROOT / "Client/Private/ActorCatalog.cpp").read_text(
+            encoding="utf-8"
+        )
+        replication = (REPO_ROOT / "Client/Private/ClientReplication.cpp").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(
+            '"effectAssetId", entryVisual.effectAssetId',
+            actor_catalog,
+        )
+        self.assertIn("if (nullptr != pEffectV2Group)", actor_catalog)
+        self.assertIn(
+            "BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V2_GROUP",
+            replication,
+        )
+        self.assertIn("CEffectV2Runtime::Play_Group(", replication)
 
         presentation = load_json("Data/Valtan/Valtan.presentation.json")
         independent_rows = [

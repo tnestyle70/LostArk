@@ -444,6 +444,28 @@ class ValtanCounterAuthoringContractTests(unittest.TestCase):
         self.assertIn("outsideProxyRejected", server)
         self.assertIn("valtan.sequence.center-trash-rush-if.groggy", server)
 
+    def test_balance_save_preserves_typed_cross_pattern_counter_followup(self) -> None:
+        gameplay = self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
+        source = _stage(_pattern({"patterns": gameplay["patterns"]}, "VALTAN_COUNTER"), "STEP_02")
+        self.assertEqual(
+            [{
+                "outcome": "COUNTER_HIT",
+                "nextActionId": None,
+                "nextPatternId": "VALTAN_COUNTER_GROGGY",
+            }],
+            [row for row in source["branches"] if row["outcome"] == "COUNTER_HIT"],
+        )
+
+        header = BALANCE_H.read_text(encoding="utf-8")
+        balance = BALANCE_CPP.read_text(encoding="utf-8")
+        for marker in (
+            "successPatternId",
+            "counterUsesPatternSuccess",
+            "targetPattern->strEntryActionId",
+            "Cross-Pattern Counter windows are preserved read-only",
+        ):
+            self.assertIn(marker, header + balance)
+
 
 if __name__ == "__main__":
     unittest.main()

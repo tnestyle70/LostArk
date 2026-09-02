@@ -347,6 +347,8 @@ namespace
 			0u == snapshot.iMaximumStagger &&
 			0u == snapshot.iCurrentShield &&
 			0u == snapshot.iMaximumShield &&
+			0u == snapshot.iResponseProgress &&
+			0u == snapshot.iResponseThreshold &&
 			1u == snapshot.iGameplayPhase;
 	}
 
@@ -367,6 +369,7 @@ namespace
 				~LostArk::Shared::BOSS_COMBAT_STATE_KNOWN_FLAG_MASK) &&
 			snapshot.iCurrentStagger <= snapshot.iMaximumStagger &&
 			snapshot.iCurrentShield <= snapshot.iMaximumShield &&
+			snapshot.iResponseProgress <= snapshot.iResponseThreshold &&
 			(hasShield == (0u != snapshot.iCurrentShield)) &&
 			(!isGhostHidden ||
 				(isInvulnerable && snapshot.iGameplayPhase >= 3u)) &&
@@ -2289,6 +2292,8 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 			writer.Write_U32(entity.BossCombat.iMaximumStagger);
 			writer.Write_U32(entity.BossCombat.iCurrentShield);
 			writer.Write_U32(entity.BossCombat.iMaximumShield);
+			writer.Write_U32(entity.BossCombat.iResponseProgress);
+			writer.Write_U32(entity.BossCombat.iResponseThreshold);
 			writer.Write_U8(entity.BossCombat.iGameplayPhase);
 		}
 		if (!Write_GameplayDataRevision(
@@ -2508,6 +2513,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			 !reader.Read_U32(entity.BossCombat.iMaximumStagger) ||
 			 !reader.Read_U32(entity.BossCombat.iCurrentShield) ||
 			 !reader.Read_U32(entity.BossCombat.iMaximumShield) ||
+			 !reader.Read_U32(entity.BossCombat.iResponseProgress) ||
+			 !reader.Read_U32(entity.BossCombat.iResponseThreshold) ||
 			 !reader.Read_U8(entity.BossCombat.iGameplayPhase)))
 		{
 			return false;

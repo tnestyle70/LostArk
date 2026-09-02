@@ -10,6 +10,7 @@
 #include "Effect_Tool.h"
 #include "EffectV2_Catalog.h"
 #include "MainApp.h"
+#include "ProjectDataRoot.h"
 
 #include <algorithm>
 #include <cctype>
@@ -53,14 +54,6 @@ namespace
 	   unbounded main-thread loop. Product authoring already caps each edited
 	   clock at ten minutes; the renderer applies the same defensive ceiling. */
 	constexpr uint32_t MAX_TIMELINE_RENDER_DURATION_MS = 600000u;
-
-	bool IsTransientCanonicalReadAdmissionFailure(
-		const std::string_view status)
-	{
-		return std::string_view::npos !=
-			status.find("Create/Project transaction is active") ||
-			std::string_view::npos != status.find("Win32 33");
-	}
 
 	struct COMPOSITION_DEFAULT_LAYOUT final
 	{
@@ -1316,7 +1309,7 @@ bool_t Client::CActionCompositionWorkbench::Open_Valtan()
 	m_bSequencerWindowVisible = true;
 	m_bDetailsWindowVisible = true;
 	m_bResourcesWindowVisible = true;
-	if (!m_bLoadAttempted || ADMISSION_STATE::ADMITTED != m_eAdmission)
+	if (!m_bLoadAttempted || !Can_MutateValtanView(m_eAdmission))
 		return Reload_Canonical();
 	return true;
 }
@@ -1332,13 +1325,13 @@ const char_t* Client::CActionCompositionWorkbench::Admission_Label() const
 {
 	switch (m_eAdmission)
 	{
-	case ADMISSION_STATE::UNLOADED:
+	case VALTAN_VIEW_ADMISSION::UNLOADED:
 		return "NOT LOADED";
-	case ADMISSION_STATE::ADMITTED:
+	case VALTAN_VIEW_ADMISSION::ADMITTED:
 		return "ADMITTED";
-	case ADMISSION_STATE::STALE_PRESERVED:
+	case VALTAN_VIEW_ADMISSION::STALE_PRESERVED:
 		return "STALE PRESERVED / READ ONLY";
-	case ADMISSION_STATE::REJECTED:
+	case VALTAN_VIEW_ADMISSION::REJECTED:
 		return "REJECTED";
 	default:
 		return "INVALID";
@@ -1592,6 +1585,32 @@ void Client::CActionCompositionWorkbench::Normalize_Selection()
 			Collect_Patterns();
 		if (Patterns.empty())
 		{
+			if (m_bProductFallbackReady)
+			{
+				const auto& ProductPatterns =
+					m_ProductFallbackEncounter.Get_Patterns();
+				const ENCOUNTER_PATTERN_REFERENCE* pFallback =
+					m_ProductFallbackEncounter.Find_Pattern(
+						m_strSelectedPatternId);
+				if (nullptr == pFallback && !ProductPatterns.empty())
+					pFallback = &ProductPatterns.front();
+				m_strSelectedPatternId = nullptr == pFallback ?
+					std::string{} : pFallback->patternId;
+				if (nullptr == pFallback || pFallback->stages.empty())
+					m_strSelectedStageId.clear();
+				else if (pFallback->stages.end() == std::find_if(
+						pFallback->stages.begin(), pFallback->stages.end(),
+						[this](const ENCOUNTER_STAGE_REFERENCE& Stage)
+						{ return Stage.stageId == m_strSelectedStageId; }))
+				{
+					m_strSelectedStageId =
+						pFallback->stages.front().stageId;
+				}
+				m_strSelectedStableId = m_strSelectedPatternId;
+				m_TimelineItems.clear();
+				m_iTimelineDurationMs = 0u;
+				return;
+			}
 			m_strSelectedPatternId.clear();
 			m_strSelectedStageId.clear();
 			m_strSelectedStableId.clear();
@@ -1628,62 +1647,92 @@ bool_t Client::CActionCompositionWorkbench::Reload_Canonical()
 	std::string AuthoringRevision;
 	std::string CanonicalSourceRevision;
 	bool_t bAuthoringDirty = false;
-	if (nullptr != m_pBalanceTool)
+	const bool_t bBalanceDraftDirty = nullptr != m_pBalanceTool &&
+		m_pBalanceTool->Is_ValtanDraftDirty();
+	const bool_t bHasDisplaySnapshot =
+		0u != m_CanonicalView.Get_PatternCount();
+	if (bBalanceDraftDirty && bHasDisplaySnapshot)
 	{
-		if (m_pBalanceTool->Is_ValtanDraftDirty())
-		{
-			m_strStatus =
-				"Canonical reload skipped because the admitted effective authoring draft has unsaved changes. Save it first; the current admitted draft remains editable.";
-			return false;
-		}
+		m_strStatus =
+			"Canonical reload skipped because the admitted effective authoring draft has unsaved changes. Save it first; the current admitted draft and read-only Product display were preserved.";
+		return false;
 	}
 	CValtanCanonicalProductReadAdmission CanonicalAdmission;
-	std::string CanonicalAdmissionStatus;
-	if (!CanonicalAdmission.Acquire(CanonicalAdmissionStatus))
+	VALTAN_CANONICAL_READ_DIAGNOSTIC CanonicalDiagnostic;
+	if (!CanonicalAdmission.Acquire(CanonicalDiagnostic))
 	{
 		const bool_t bPreserved = 0u != m_CanonicalView.Get_PatternCount();
 		m_bCanonicalReloadRetryPending =
-			IsTransientCanonicalReadAdmissionFailure(
-				CanonicalAdmissionStatus);
+			CanonicalDiagnostic.Is_AutomaticRetryable();
 		if (m_bCanonicalReloadRetryPending)
 		{
 			m_dNextCanonicalReloadRetrySeconds =
 				ImGui::GetTime() + CANONICAL_RELOAD_RETRY_SECONDS;
 		}
-		m_eAdmission = bPreserved ? ADMISSION_STATE::STALE_PRESERVED :
-			ADMISSION_STATE::REJECTED;
+		m_eAdmission = bPreserved ? VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
+			VALTAN_VIEW_ADMISSION::REJECTED;
 		if (m_bCanonicalReloadRetryPending)
 		{
 			m_strStatus = bPreserved ?
 				"Canonical reload admission was busy; previous Workbench data is read-only and reload will retry automatically: " +
-					CanonicalAdmissionStatus :
+					CanonicalDiagnostic.strStatus :
 				"Canonical reload admission is temporarily busy; Pattern / Stage Browser will retry automatically: " +
-					CanonicalAdmissionStatus;
+					CanonicalDiagnostic.strStatus;
 		}
 		else
 		{
 			m_strStatus = bPreserved ?
 				"Canonical reload admission failed; previous Workbench data is preserved read-only: " +
-					CanonicalAdmissionStatus :
-				"Canonical reload admission failed; no mutation or Server playback is available: " +
-					CanonicalAdmissionStatus;
+					CanonicalDiagnostic.strStatus :
+				(m_bProductFallbackReady ?
+					"READ-ONLY PRODUCT FALLBACK STALE_PRESERVED; canonical admission failed, so no unpinned Product files were reopened: " +
+						CanonicalDiagnostic.strStatus :
+					"Canonical reload admission failed; no mutation or Server playback is available and no unpinned fallback read was attempted: " +
+						CanonicalDiagnostic.strStatus);
 		}
 		return false;
 	}
 	VALTAN_PATTERN_TREE_VIEW Staged;
-	std::string Diagnostic;
 	if (!CValtanPatternTree::Load_WhileAdmitted(
-			CanonicalAdmission, Staged, Diagnostic))
+			CanonicalAdmission, Staged, CanonicalDiagnostic))
 	{
+		std::string LoadFailure = CanonicalDiagnostic.strStatus;
+		if (CanonicalDiagnostic.Requires_ProductProjection())
+		{
+			LoadFailure =
+				"REPROJECTION_REQUIRED: the joined source changed without its "
+				"generated Product revision. Save/Project is required; the pinned "
+				"Product remains browse-only. Run: " +
+				std::string(VALTAN_CANONICAL_READ_DIAGNOSTIC::
+					PRODUCT_PROJECTION_COMMAND) + ". " + LoadFailure;
+			if (!CanonicalDiagnostic.strRejectedPatternId.empty())
+			{
+				LoadFailure += " | quarantined source owner=" +
+					CanonicalDiagnostic.strRejectedPatternId;
+				if (!CanonicalDiagnostic.strRejectedStageId.empty())
+				{
+					LoadFailure += "/" +
+						CanonicalDiagnostic.strRejectedStageId;
+				}
+			}
+		}
 		const bool_t bPreserved = 0u != m_CanonicalView.Get_PatternCount();
 		m_eAdmission = bPreserved ?
-			ADMISSION_STATE::STALE_PRESERVED : ADMISSION_STATE::REJECTED;
-		m_strStatus = bPreserved ?
-			"Canonical reload rejected; previous graph is displayed read-only: " + Diagnostic :
-			"Canonical graph admission failed; no mutation or Server playback is available: " + Diagnostic;
-		Normalize_Selection();
+			VALTAN_VIEW_ADMISSION::STALE_PRESERVED : VALTAN_VIEW_ADMISSION::REJECTED;
+		if (bPreserved)
+		{
+			m_strStatus =
+				"Canonical reload rejected; previous graph is displayed read-only: " +
+				LoadFailure;
+			Normalize_Selection();
+		}
+		else
+		{
+			(void)Stage_ProductFallback(CanonicalAdmission, LoadFailure);
+		}
 		return false;
 	}
+	std::string Diagnostic = CanonicalDiagnostic.strStatus;
 	VALTAN_TOOL_AUDITION_INVENTORY Inventory;
 	std::string InventoryStatus;
 	if (!CValtanPatternTree::Build_PlayablePatternInventory(
@@ -1691,11 +1740,19 @@ bool_t Client::CActionCompositionWorkbench::Reload_Canonical()
 	{
 		const bool_t bPreserved = 0u != m_CanonicalView.Get_PatternCount();
 		m_eAdmission = bPreserved ?
-			ADMISSION_STATE::STALE_PRESERVED : ADMISSION_STATE::REJECTED;
-		m_strStatus = bPreserved ?
-			"Playable inventory rejected; previous graph is displayed read-only: " + InventoryStatus :
-			"Canonical graph loaded but its playable inventory was rejected: " + InventoryStatus;
-		Normalize_Selection();
+			VALTAN_VIEW_ADMISSION::STALE_PRESERVED : VALTAN_VIEW_ADMISSION::REJECTED;
+		if (bPreserved)
+		{
+			m_strStatus =
+				"Playable inventory rejected; previous graph is displayed read-only: " +
+				InventoryStatus;
+			Normalize_Selection();
+		}
+		else
+		{
+			(void)Stage_ProductFallback(
+				CanonicalAdmission, InventoryStatus);
+		}
 		return false;
 	}
 	const auto PreserveOrCommitReadOnlyProduct =
@@ -1717,8 +1774,8 @@ bool_t Client::CActionCompositionWorkbench::Reload_Canonical()
 		{
 			const bool_t bPreserved =
 				0u != m_CanonicalView.Get_PatternCount();
-			m_eAdmission = bPreserved ? ADMISSION_STATE::STALE_PRESERVED :
-				ADMISSION_STATE::REJECTED;
+			m_eAdmission = bPreserved ? VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
+				VALTAN_VIEW_ADMISSION::REJECTED;
 			m_strStatus = bPreserved ?
 				"Product/source join failed and the candidate Product generation changed before display commit; the previous display snapshot was preserved: " +
 					CurrentStatus + " " + Cause :
@@ -1732,6 +1789,8 @@ bool_t Client::CActionCompositionWorkbench::Reload_Canonical()
 		{
 			m_CanonicalView = std::move(Staged);
 			m_PlayableInventory = Inventory;
+			m_ProductFallbackEncounter.Clear();
+			m_bProductFallbackReady = false;
 			++m_iCanonicalDisplayGeneration;
 			Invalidate_SourceSequenceOwnerIndex();
 			m_strPinnedAuthoringSourceRevision.clear();
@@ -1755,7 +1814,7 @@ bool_t Client::CActionCompositionWorkbench::Reload_Canonical()
 			Invalidate_TimelineCache();
 			Normalize_Selection();
 		}
-		m_eAdmission = ADMISSION_STATE::STALE_PRESERVED;
+		m_eAdmission = VALTAN_VIEW_ADMISSION::STALE_PRESERVED;
 		m_bConfirmDiscardPatternSoundDraft = false;
 		m_strStatus = bPreserved ?
 			"Typed source-owner join failed; the previous display snapshot was preserved read-only without mixing generations. Provenance: " +
@@ -1770,6 +1829,11 @@ bool_t Client::CActionCompositionWorkbench::Reload_Canonical()
 				m_strDisplayProvenance + " Cause: " + Cause + " " + Diagnostic;
 		return false;
 	};
+	if (bBalanceDraftDirty)
+	{
+		return PreserveOrCommitReadOnlyProduct(
+			"Balance Tool has unsaved Valtan changes. The draft was left untouched; only the last saved canonical Product was staged for read-only browsing.");
+	}
 
 	std::string AuthoringStatus;
 	if (nullptr == m_pBalanceTool ||
@@ -1805,28 +1869,31 @@ bool_t Client::CActionCompositionWorkbench::Reload_Canonical()
 	const bool_t bStagedCombatObjectSoundsReady =
 		CValtanCombatObjectSoundCueDocument::Load_Source(
 			StagedCombatObjectSounds, StagedCombatObjectSoundStatus);
-	if (!CanonicalAdmission.Validate_StillCurrent(CanonicalAdmissionStatus))
+	VALTAN_CANONICAL_READ_DIAGNOSTIC CommitDiagnostic;
+	if (!CanonicalAdmission.Validate_StillCurrent(CommitDiagnostic))
 	{
 		const bool_t bPreserved = 0u != m_CanonicalView.Get_PatternCount();
-		m_eAdmission = bPreserved ? ADMISSION_STATE::STALE_PRESERVED :
-			ADMISSION_STATE::REJECTED;
+		m_eAdmission = bPreserved ? VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
+			VALTAN_VIEW_ADMISSION::REJECTED;
 		m_strStatus = bPreserved ?
 			"Canonical generation changed before Workbench commit; previous composition remains read-only: " +
-				CanonicalAdmissionStatus :
+				CommitDiagnostic.strStatus :
 			"Canonical generation changed before Workbench commit: " +
-				CanonicalAdmissionStatus;
+				CommitDiagnostic.strStatus;
 		return false;
 	}
 
 	m_CanonicalView = std::move(Staged);
 	m_PlayableInventory = Inventory;
+	m_ProductFallbackEncounter.Clear();
+	m_bProductFallbackReady = false;
 	++m_iCanonicalDisplayGeneration;
 	Invalidate_SourceSequenceOwnerIndex();
 	m_strPinnedAuthoringSourceRevision = std::move(AuthoringRevision);
 	m_strPinnedCanonicalSourceRevision =
 		std::move(CanonicalSourceRevision);
 	m_bAuthoringDraftDirty = false;
-	m_eAdmission = ADMISSION_STATE::ADMITTED;
+	m_eAdmission = VALTAN_VIEW_ADMISSION::ADMITTED;
 	m_bConfirmDiscardPatternSoundDraft = false;
 	m_strDisplayProvenance =
 		"FULL_JOIN / canonical Product + typed authoring source + Pattern Sound source; authoring revision " +
@@ -1914,6 +1981,51 @@ bool_t Client::CActionCompositionWorkbench::Reload_Canonical()
 	Reload_SemanticValtanEffects();
 	Invalidate_TimelineCache();
 	Normalize_Selection();
+	return true;
+}
+
+bool_t Client::CActionCompositionWorkbench::Stage_ProductFallback(
+	const CValtanCanonicalProductReadAdmission& Admission,
+	const std::string& strStrictFailure)
+{
+	CEncounterPatternReference Staged;
+	std::string ProductStatus;
+	if (!Staged.Load(
+			CProjectDataRoot::Resolve(
+				L"Encounters/Valtan/ValtanEncounter.json"),
+			ProductStatus))
+	{
+		m_strStatus = m_bProductFallbackReady ?
+			"READ-ONLY PRODUCT FALLBACK STALE_PRESERVED; strict graph and fallback refresh failed. Strict failure: " +
+				strStrictFailure + " | Product failure: " + ProductStatus :
+			"Canonical graph admission and generated Product fallback both failed: " +
+				strStrictFailure + " | " + ProductStatus;
+		return false;
+	}
+	std::string CurrentStatus;
+	if (!Admission.Validate_StillCurrent(CurrentStatus))
+	{
+		m_strStatus = m_bProductFallbackReady ?
+			"READ-ONLY PRODUCT FALLBACK STALE_PRESERVED; Product generation changed before fallback commit: " + CurrentStatus :
+			"Generated Product fallback generation changed before commit: " +
+				CurrentStatus;
+		return false;
+	}
+	m_ProductFallbackEncounter = std::move(Staged);
+	m_bProductFallbackReady = true;
+	const auto& Patterns = m_ProductFallbackEncounter.Get_Patterns();
+	const ENCOUNTER_PATTERN_REFERENCE* pSelected =
+		m_ProductFallbackEncounter.Find_Pattern(m_strSelectedPatternId);
+	if (nullptr == pSelected && !Patterns.empty())
+		pSelected = &Patterns.front();
+	m_strSelectedPatternId = nullptr == pSelected ?
+		std::string{} : pSelected->patternId;
+	m_strSelectedStageId = nullptr == pSelected || pSelected->stages.empty() ?
+		std::string{} : pSelected->stages.front().stageId;
+	m_strStatus =
+		"READ-ONLY PRODUCT FALLBACK: " + std::to_string(Patterns.size()) +
+		" generated Product patterns remain visible in Composition Patterns. Save, preview, authoring, and Server playback stay blocked. Strict failure: " +
+		strStrictFailure;
 	return true;
 }
 
@@ -2035,7 +2147,7 @@ bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage(
 	const VALTAN_STAGE_VIEW& Stage,
 	const bool_t bAppend)
 {
-	if (ADMISSION_STATE::ADMITTED != m_eAdmission ||
+	if (VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission ||
 		nullptr == m_pBalanceTool || nullptr == m_pAnimationTool)
 	{
 		m_strStatus =
@@ -3186,7 +3298,7 @@ void Client::CActionCompositionWorkbench::Render_SelectedAnimationTiming(
 	const VALTAN_STAGE_VIEW* const pStage = Find_SelectedStage(&Pattern);
 	if (nullptr == pStage)
 		return;
-	if (ADMISSION_STATE::ADMITTED != m_eAdmission)
+	if (VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission)
 	{
 		const auto Pinned = std::find_if(
 			pStage->ClipOccurrences.begin(), pStage->ClipOccurrences.end(),
@@ -3505,7 +3617,7 @@ void Client::CActionCompositionWorkbench::Build_Timeline(
 	bool_t bPatternSoundDirty = false;
 	std::string PatternSoundStatus;
 	const VALTAN_PATTERN_SOUND_CUE_DOCUMENT* const pPatternSounds =
-		ADMISSION_STATE::ADMITTED != m_eAdmission ||
+		VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission ||
 		nullptr == m_pAnimationTool ? nullptr :
 		m_pAnimationTool->Get_ValtanCompositionPatternSoundDraft(
 			bPatternSoundDirty, PatternSoundStatus);
@@ -3547,7 +3659,7 @@ void Client::CActionCompositionWorkbench::Build_Timeline(
 		uint32_t iStageDurationMs = Stage.iDurationMs;
 		CBalanceTool::PATTERN_STAGE_EDIT StageDraft;
 		bool_t bHasStageDraft = false;
-		if (ADMISSION_STATE::ADMITTED == m_eAdmission &&
+		if (VALTAN_VIEW_ADMISSION::ADMITTED == m_eAdmission &&
 			nullptr != m_pBalanceTool)
 		{
 			std::string DraftStatus;
@@ -4391,7 +4503,7 @@ Validate_ManualStageTopologySoundDependencies(
 
 bool_t Client::CActionCompositionWorkbench::Save_Reload()
 {
-	if (ADMISSION_STATE::ADMITTED != m_eAdmission || nullptr == m_pBalanceTool ||
+	if (VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission || nullptr == m_pBalanceTool ||
 		nullptr == m_pBossTool)
 	{
 		m_strStatus =
@@ -4410,7 +4522,7 @@ bool_t Client::CActionCompositionWorkbench::Save_Reload()
 		CurrentAuthoringRevision != m_strPinnedAuthoringSourceRevision ||
 		CurrentCanonicalSourceRevision != m_strPinnedCanonicalSourceRevision)
 	{
-		m_eAdmission = ADMISSION_STATE::STALE_PRESERVED;
+		m_eAdmission = VALTAN_VIEW_ADMISSION::STALE_PRESERVED;
 		m_strStatus =
 			"The Pattern files changed after this window opened. Reload, then try again; no file was changed. " +
 			CurrentRevisionStatus;
@@ -4852,6 +4964,11 @@ void Client::CActionCompositionWorkbench::Render_Browser(
 	ImGui::InputTextWithHint(
 		"##CompositionPatternSearch", "Search Pattern ID or display name...",
 		m_PatternSearch.data(), m_PatternSearch.size());
+	if (m_bProductFallbackReady && 0u == m_CanonicalView.Get_PatternCount())
+	{
+		Render_ProductFallbackBrowser();
+		return;
+	}
 	const std::string Query = m_PatternSearch.data();
 	const std::vector<const VALTAN_PATTERN_VIEW*> Patterns = Collect_Patterns();
 	ImGui::TextDisabled("%zu canonical patterns", Patterns.size());
@@ -4904,6 +5021,76 @@ void Client::CActionCompositionWorkbench::Render_Browser(
 							*pDisplayPattern, Stage.strStageId);
 				}
 				ImGui::PopID();
+			}
+			ImGui::TreePop();
+		}
+		ImGui::PopID();
+	}
+}
+
+void Client::CActionCompositionWorkbench::Render_ProductFallbackBrowser()
+{
+	const std::string Query = m_PatternSearch.data();
+	const auto& Patterns = m_ProductFallbackEncounter.Get_Patterns();
+	ImGui::TextColored(
+		ImVec4(1.f, 0.72f, 0.18f, 1.f),
+		"READ-ONLY PRODUCT FALLBACK");
+	ImGui::TextDisabled("%zu generated Product patterns", Patterns.size());
+	ImGui::TextWrapped(
+		"Pattern and Stage identities remain visible, but Logic branch authoring, preview, Save, and Server playback require the strict canonical join.");
+	for (const ENCOUNTER_PATTERN_REFERENCE& Pattern : Patterns)
+	{
+		if (!Query.empty() &&
+			!ContainsInsensitive(Pattern.patternId, Query) &&
+			!ContainsInsensitive(Pattern.displayName, Query) &&
+			!ContainsInsensitive(Pattern.actionId, Query))
+		{
+			continue;
+		}
+		ImGui::PushID(Pattern.patternId.c_str());
+		const bool_t bSelected =
+			Pattern.patternId == m_strSelectedPatternId;
+		const std::string Label =
+			(Pattern.displayName.empty() ? Pattern.patternId :
+				Pattern.displayName) + "##productFallbackPattern";
+		const bool_t bOpen = ImGui::TreeNodeEx(
+			Label.c_str(), ImGuiTreeNodeFlags_OpenOnArrow |
+				ImGuiTreeNodeFlags_SpanAvailWidth |
+				(bSelected ? ImGuiTreeNodeFlags_Selected : 0));
+		if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+		{
+			m_strSelectedPatternId = Pattern.patternId;
+			m_strSelectedStageId = Pattern.stages.empty() ?
+				std::string{} : Pattern.stages.front().stageId;
+			m_strSelectedStableId = Pattern.patternId;
+			m_eDetailOwner = DETAIL_OWNER::PATTERN;
+		}
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Product Pattern ID: %s",
+				Pattern.patternId.c_str());
+		if (bOpen)
+		{
+			ImGui::TextDisabled("%s | %zu stages | %u ms",
+				Pattern.patternId.c_str(), Pattern.stages.size(),
+				Pattern.iTotalDurationMs);
+			for (const ENCOUNTER_STAGE_REFERENCE& Stage : Pattern.stages)
+			{
+				const bool_t bStageSelected = bSelected &&
+					Stage.stageId == m_strSelectedStageId;
+				const std::string StageLabel = Stage.stageId + " | " +
+					Stage.stageKind + " | " +
+					std::to_string(Stage.iDurationMs) + " ms" +
+					(Stage.bHasCounterHitBranch ? " | COUNTER" : "");
+				if (ImGui::Selectable(StageLabel.c_str(), bStageSelected))
+				{
+					m_strSelectedPatternId = Pattern.patternId;
+					m_strSelectedStageId = Stage.stageId;
+					m_strSelectedStableId = Stage.stageId;
+					m_eDetailOwner = DETAIL_OWNER::GAMEPLAY_STAGE;
+				}
+				if (ImGui::IsItemHovered())
+					ImGui::SetTooltip("Product action: %s",
+						Stage.actionId.c_str());
 			}
 			ImGui::TreePop();
 		}
@@ -5460,7 +5647,7 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 	const VALTAN_STAGE_VIEW& Stage,
 	const bool_t bMutationAdmitted)
 {
-	if (ADMISSION_STATE::ADMITTED != m_eAdmission)
+	if (VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission)
 	{
 		/* STALE_PRESERVED is one immutable pinned generation. Never pair its
 		   canonical Pattern with a newer Balance draft merely to fill widgets. */
@@ -6520,7 +6707,7 @@ void Client::CActionCompositionWorkbench::Render_AnimationStageDetails(
 	const VALTAN_STAGE_VIEW& Stage,
 	const bool_t bMutationAdmitted)
 {
-	if (ADMISSION_STATE::ADMITTED != m_eAdmission)
+	if (VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission)
 	{
 		ImGui::TextWrapped(
 			"Pinned canonical Animation generation (read only). Reload Canonical before viewing or editing a newer authoring draft.");
@@ -6787,7 +6974,7 @@ void Client::CActionCompositionWorkbench::Render_Details(
 	bool_t bPatternSoundDirty = false;
 	std::string PatternSoundStatus;
 	const VALTAN_PATTERN_SOUND_CUE_DOCUMENT* const pPatternSounds =
-		ADMISSION_STATE::ADMITTED != m_eAdmission ||
+		VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission ||
 		nullptr == m_pAnimationTool ? nullptr :
 		m_pAnimationTool->Get_ValtanCompositionPatternSoundDraft(
 			bPatternSoundDirty, PatternSoundStatus);
@@ -7378,7 +7565,7 @@ void Client::CActionCompositionWorkbench::Render_Details(
 			const VALTAN_PATTERN_VIEW* pSavedPattern = nullptr;
 			const VALTAN_STAGE_VIEW* pSavedStage = nullptr;
 			const VALTAN_PRODUCT_EFFECT_CUE_VIEW* pSavedCue = nullptr;
-			if (ADMISSION_STATE::ADMITTED == m_eAdmission)
+			if (VALTAN_VIEW_ADMISSION::ADMITTED == m_eAdmission)
 			{
 				pSavedPattern = Find_SelectedPattern();
 				if (nullptr != pSavedPattern &&
@@ -7556,7 +7743,7 @@ void Client::CActionCompositionWorkbench::Render_Details(
 			Found->strActionId == pStage->strActionId;
 
 		const bool_t bFreshSoundOwnerAdmitted =
-			ADMISSION_STATE::ADMITTED == m_eAdmission && bMutationAdmitted;
+			VALTAN_VIEW_ADMISSION::ADMITTED == m_eAdmission && bMutationAdmitted;
 		const bool_t bSoundMutationAdmitted =
 			bMutationAdmitted && bFreshSoundOwnerAdmitted;
 		std::string SoundLifecycleStatus;
@@ -7993,7 +8180,7 @@ bool_t Client::CActionCompositionWorkbench::Validate_TimelineDependencyWindows(
 	const VALTAN_PATTERN_SOUND_CUE* const pSoundOverride,
 	std::string& strOutStatus) const
 {
-	if (ADMISSION_STATE::ADMITTED != m_eAdmission ||
+	if (VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission ||
 		nullptr == m_pAnimationTool)
 	{
 		strOutStatus =
@@ -8141,7 +8328,7 @@ bool_t Client::CActionCompositionWorkbench::Apply_EffectOccurrenceTiming(
 	const uint32_t iSourceEndMs,
 	std::string& strOutStatus)
 {
-	if (ADMISSION_STATE::ADMITTED != m_eAdmission ||
+	if (VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission ||
 		nullptr == m_pBalanceTool || Current.bUsesStageClock)
 	{
 		strOutStatus =
@@ -8186,7 +8373,7 @@ Apply_PatternSoundOccurrenceTiming(
 	const uint32_t iSourceStartMs,
 	std::string& strOutStatus)
 {
-	if (ADMISSION_STATE::ADMITTED != m_eAdmission ||
+	if (VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission ||
 		nullptr == m_pAnimationTool)
 	{
 		strOutStatus =
@@ -8317,7 +8504,7 @@ void Client::CActionCompositionWorkbench::Render_SelectedStageGapControl(
 {
 	const VALTAN_STAGE_VIEW* const pStage = Find_SelectedStage(&Pattern);
 	if (nullptr == pStage || nullptr == m_pBalanceTool ||
-		ADMISSION_STATE::ADMITTED != m_eAdmission)
+		VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission)
 	{
 		return;
 	}
@@ -8805,7 +8992,7 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 	bool_t bTimelineSoundDraftDirty = false;
 	std::string TimelineSoundStatus;
 	const VALTAN_PATTERN_SOUND_CUE_DOCUMENT* const pTimelineSounds =
-		ADMISSION_STATE::ADMITTED != m_eAdmission ||
+		VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission ||
 		nullptr == m_pAnimationTool ? nullptr :
 		m_pAnimationTool->Get_ValtanCompositionPatternSoundDraft(
 			bTimelineSoundDraftDirty, TimelineSoundStatus);
@@ -9674,7 +9861,7 @@ void Client::CActionCompositionWorkbench::Render_SemanticLinkedRows(
 	bool_t bSoundDirty = false;
 	std::string SoundStatus;
 	const VALTAN_PATTERN_SOUND_CUE_DOCUMENT* const pSounds =
-		ADMISSION_STATE::ADMITTED == m_eAdmission &&
+		VALTAN_VIEW_ADMISSION::ADMITTED == m_eAdmission &&
 		nullptr != m_pAnimationTool ?
 		m_pAnimationTool->Get_ValtanCompositionPatternSoundDraft(
 			bSoundDirty, SoundStatus) : nullptr;
@@ -9914,6 +10101,13 @@ void Client::CActionCompositionWorkbench::Render_PatternsWindow(
 		return;
 	}
 	Render_WindowMenu();
+	ImGui::TextDisabled("Canonical admission: %s", Admission_Label());
+	ImGui::SameLine();
+	if (ImGui::SmallButton("Reload Canonical"))
+		(void)Reload_Canonical();
+	if (!m_strStatus.empty())
+		ImGui::TextWrapped("Canonical status: %s", m_strStatus.c_str());
+	ImGui::Separator();
 	if (ImGui::BeginTabBar("##CompositionPatternDomainTabs"))
 	{
 		if (ImGui::BeginTabItem(
@@ -10754,7 +10948,7 @@ void Client::CActionCompositionWorkbench::Render()
 				}
 				else
 				{
-					m_eAdmission = ADMISSION_STATE::STALE_PRESERVED;
+					m_eAdmission = VALTAN_VIEW_ADMISSION::STALE_PRESERVED;
 					m_strStatus =
 						"The saved Pattern was not found after reload: " +
 						CreatedPatternId + ".";
@@ -10776,18 +10970,18 @@ void Client::CActionCompositionWorkbench::Render()
 		m_pBalanceTool->Get_ValtanAuthoringState(
 			AuthoringRevision, bAuthoringDirty, AuthoringStatus) &&
 		AuthoringRevision == m_strPinnedAuthoringSourceRevision;
-	if (ADMISSION_STATE::ADMITTED == m_eAdmission && !bCanonicalSourceJoined)
+	if (VALTAN_VIEW_ADMISSION::ADMITTED == m_eAdmission && !bCanonicalSourceJoined)
 	{
-		m_eAdmission = ADMISSION_STATE::STALE_PRESERVED;
+		m_eAdmission = VALTAN_VIEW_ADMISSION::STALE_PRESERVED;
 		m_bConfirmDiscardPatternSoundDraft = false;
 		m_strStatus =
 			"The Balance draft moved away from the Workbench canonical source pin; the previous composition is now read-only until Reload Canonical succeeds. " +
 			AuthoringStatus;
 	}
-	m_bAuthoringDraftDirty = ADMISSION_STATE::ADMITTED == m_eAdmission &&
+	m_bAuthoringDraftDirty = VALTAN_VIEW_ADMISSION::ADMITTED == m_eAdmission &&
 		bAuthoringJoined && bAuthoringDirty;
 	bool_t bEffectivePatternReady = false;
-	if (ADMISSION_STATE::ADMITTED == m_eAdmission && nullptr != pSavedPattern &&
+	if (VALTAN_VIEW_ADMISSION::ADMITTED == m_eAdmission && nullptr != pSavedPattern &&
 		bAuthoringJoined)
 	{
 		const std::uint64_t iDraftGeneration =
@@ -10850,12 +11044,12 @@ void Client::CActionCompositionWorkbench::Render()
 	   last admitted Product snapshot even when a source-owner reload has moved
 	   the Workbench to STALE_PRESERVED. */
 	const bool_t bLocalPreviewAdmitted = nullptr != pPattern &&
-		ADMISSION_STATE::REJECTED != m_eAdmission;
+		Can_DisplayValtanView(m_eAdmission);
 	const bool_t bMutationAdmitted =
-		ADMISSION_STATE::ADMITTED == m_eAdmission && bEffectivePatternReady;
+		Can_MutateValtanView(m_eAdmission) && bEffectivePatternReady;
 	std::string SoundDependencyStatus;
 	m_bPatternSoundDependencyDirty = false;
-	if (ADMISSION_STATE::ADMITTED == m_eAdmission)
+	if (VALTAN_VIEW_ADMISSION::ADMITTED == m_eAdmission)
 	{
 		m_bPatternSoundDependencyDirty =
 			Is_PatternSoundDraftDirty(SoundDependencyStatus);

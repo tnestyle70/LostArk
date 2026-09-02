@@ -267,7 +267,7 @@ bool Client::CValtanPatternFlowService::Start(
 	Staged.iSentAtMilliseconds = Now_Milliseconds();
 	Staged.PinnedPatternSoundSourceReceipt =
 		PinnedPatternSoundSourceReceipt;
-	Staged.strStatus = "Waiting for Server acceptance. The current run remains authoritative until the saved Flow replaces it.";
+	Staged.strStatus = "Waiting for Server acceptance. The current run remains authoritative until the complete saved Flow replaces it, resets the arena, and starts at saved Pattern 01.";
 	C2S_DEBUG_VALTAN_PATTERN_FLOW_START& Message = Staged.Request;
 	Message.iRequestSequence = m_iNextRequestSequence;
 	Message.ExpectedDefinitionRevision = ExpectedDefinitionRevision;

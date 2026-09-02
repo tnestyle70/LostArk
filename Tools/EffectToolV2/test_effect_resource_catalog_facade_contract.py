@@ -10,6 +10,11 @@ HEADER = ROOT / "Client/Public/EffectResourceCatalog.h"
 SOURCE = ROOT / "Client/Private/EffectResourceCatalog.cpp"
 PROJECT = ROOT / "Client/Default/Client.vcxproj"
 FILTERS = ROOT / "Client/Default/Client.vcxproj.filters"
+EFFECT_TOOL_HEADER = ROOT / "Client/Public/Effect_Tool.h"
+EFFECT_TOOL_SOURCE = ROOT / "Client/Private/Effect_Tool.cpp"
+EFFECT_V2_HEADER = ROOT / "Client/Public/Effect_Tool_V2.h"
+EFFECT_V2_SOURCE = ROOT / "Client/Private/Effect_Tool_V2.cpp"
+MAIN_APP_SOURCE = ROOT / "Client/Private/MainApp.cpp"
 
 
 def read(path: Path) -> str:
@@ -61,6 +66,8 @@ class EffectResourceCatalogFacadeContractTests(unittest.TestCase):
             "bCanPreview",
         ):
             self.assertIn(capability, header)
+        for owner_kind in ("V1_DOCUMENT", "V2_LEAF", "V2_GROUP"):
+            self.assertIn(owner_kind, header)
 
     def test_parse_consumes_only_ready_owner_catalog_snapshots(self) -> None:
         source = read(SOURCE)
@@ -120,6 +127,18 @@ class EffectResourceCatalogFacadeContractTests(unittest.TestCase):
         self.assertLess(validate.index("if (!bInserted)"), validate.index("OutValidated ="))
         self.assertNotIn("eOwnerKind, iResource", validate)
 
+    def test_dual_owner_stable_id_is_rejected_before_snapshot_commit(self) -> None:
+        source = read(SOURCE)
+        validate = function_tail(
+            source,
+            "\tbool_t Validate_ValtanResources(",
+            "bool_t Client::EFFECT_RESOURCE_KEY::Is_Valid()",
+        )
+        self.assertIn("Validated.StableIdIndex.emplace(", validate)
+        self.assertIn("if (!bInserted)", validate)
+        self.assertIn("Unified Effect Resource stable ID collision", validate)
+        self.assertNotIn("insert_or_assign", validate)
+
     def test_labels_are_version_neutral_and_capabilities_are_validated(self) -> None:
         source = read(SOURCE)
         self.assertIn("Descriptor.strDisplayLabel = Descriptor.Key.strStableId;", source)
@@ -137,6 +156,65 @@ class EffectResourceCatalogFacadeContractTests(unittest.TestCase):
             self.assertIn(category, source)
         for forbidden_label in ('"V1 ', '"V2 ', '"Effect V1', '"Effect V2'):
             self.assertNotIn(forbidden_label, source)
+
+    def test_v1_document_is_an_atomic_composite_and_remains_clip_appendable(self) -> None:
+        source = read(SOURCE)
+        capabilities = function_tail(
+            source,
+            "\tEFFECT_RESOURCE_CAPABILITIES Capabilities_For(",
+            "\tbool_t Matches_Capabilities(",
+        )
+        v1_case = capabilities[
+            capabilities.index("case EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT:") :
+            capabilities.index("case EFFECT_RESOURCE_OWNER_KIND::V2_LEAF:")
+        ]
+        self.assertIn("Capabilities.bCanAppendToClip = true;", v1_case)
+        self.assertIn("Capabilities.bComposite = true;", v1_case)
+
+    def test_all_effects_consumes_last_good_facade_and_groups_v1_documents(self) -> None:
+        header = read(EFFECT_TOOL_HEADER)
+        source = read(EFFECT_TOOL_SOURCE)
+        for token in (
+            "m_pValtanEffectResourceSnapshot",
+            "m_eValtanEffectResourceAdmission",
+            "Refresh_ValtanEffectResourceSnapshot",
+            "Render_ValtanEffectResourceSection(strSearch)",
+            'RenderRows("GROUPS / COMPOSITIONS", Groups)',
+            'RenderRows("LEAVES", Leaves)',
+            "Resource.Capabilities.bComposite ? Groups : Leaves",
+            "VALTAN_VIEW_ADMISSION::STALE_PRESERVED",
+            "STALE PRESERVED / READ ONLY",
+            "Can_MutateValtanView(m_eValtanEffectResourceAdmission)",
+        ):
+            self.assertIn(token, header + source)
+        self.assertLess(
+            source.index("Render_ValtanEffectResourceSection(strSearch)"),
+            source.index("Render_ValtanExactAuthoredSourceSection(strSearch)"),
+        )
+
+    def test_all_effects_dispatches_open_to_the_exact_owner_backend(self) -> None:
+        effect_header = read(EFFECT_TOOL_HEADER)
+        effect_source = read(EFFECT_TOOL_SOURCE)
+        typed_header = read(EFFECT_V2_HEADER)
+        typed_source = read(EFFECT_V2_SOURCE)
+        main_app = read(MAIN_APP_SOURCE)
+        for token in (
+            "Consume_TypedEffectResourceOpenRequest",
+            "m_PendingTypedEffectResourceOpen = Resource.Key",
+            "EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT",
+            "Try_LoadDocumentPath(",
+        ):
+            self.assertIn(token, effect_header + effect_source)
+        for token in (
+            "Open_Resource(const EFFECT_RESOURCE_KEY& Key)",
+            "EFFECT_RESOURCE_OWNER_KIND::V2_LEAF",
+            "EFFECT_RESOURCE_OWNER_KIND::V2_GROUP",
+            "Load_Document(Key.strStableId)",
+            "Load_Group(Key.strStableId)",
+        ):
+            self.assertIn(token, typed_header + typed_source)
+        self.assertIn(
+            "m_pEffectToolV2->Open_Resource(ResourceKey)", main_app)
 
     def test_snapshot_queries_are_immutable_and_io_free(self) -> None:
         header = read(HEADER)

@@ -8,6 +8,7 @@
 #include "ValtanCinematicCameraDocument.h"
 #include "ValtanPatternFlowDocument.h"
 #include "ValtanPatternTree.h"
+#include "ValtanViewAdmission.h"
 
 #include <array>
 #include <filesystem>
@@ -23,6 +24,7 @@ class CBalanceTool;
 class CValtanPatternSoundSourceReadAdmission;
 struct VALTAN_PATTERN_SOUND_SOURCE_RECEIPT;
 struct EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST;
+struct HUD_BOSS_STATE;
 
 /* A thin observer/controller over the existing Valtan product path.
    It never samples clips, spawns Effects, or mutates gameplay locally. */
@@ -51,12 +53,26 @@ public:
 		std::shared_ptr<IPlayerCommandSink> CommandSink,
 		CBalanceTool* pBalanceTool);
 	void Open();
+	[[nodiscard]] bool_t Is_Open() const noexcept
+	{
+		return m_bOpen;
+	}
 	/* Opens the existing ordered Flow owner and selects its tab.  The Action
 	   Composition Workbench deep-links here instead of cloning a second Flow
 	   document or playback service. */
 	void Open_PatternFlow();
-	void Update(bool_t bToolVisible);
+	/* Opens the one large read-only Logic Pattern window.  It reuses this Boss
+	   Tool's admitted graph, live HUD cursor and canvas state; no second parser,
+	   service or gameplay runtime is constructed. */
+	void Open_LogicPattern();
+	bool_t Consume_LogicPatternOpenRequest();
+	[[nodiscard]] bool_t Is_LogicPatternOpen() const noexcept
+	{
+		return m_bLogicPatternOpen;
+	}
+	void Update(bool_t bBossToolVisible, bool_t bLogicPatternVisible);
 	void Render();
+	void Render_LogicPatternWindow();
 	/* Integrated Workbench route.  The caller supplies only the stable Product
 	   pattern identity; Boss Tool re-resolves its current Server-audition
 	   inventory before submitting through the existing typed service. */
@@ -124,6 +140,17 @@ public:
 
 private:
 	bool_t Reload_Graph();
+	/* A publisher owns the canonical byte-range lock only briefly. Retry only
+	   transient admission/generation races; semantic join failures remain
+	   fail-closed until their source data changes. */
+	void Schedule_CanonicalReloadRetry();
+	/* A strict split-authoring rejection must not erase the generated Product
+	   inventory on a fresh Tool launch.  This fallback has no mutation or
+	   playback authority; it exists only to resolve live Product identities
+	   while the strict authoring failure remains visible. */
+	bool_t Fail_GraphReload(
+		const std::string& strStrictFailure,
+		CValtanCanonicalProductReadAdmission* pCanonicalAdmission);
 	bool_t Can_MutateCanonicalGraph(std::string& strOutStatus) const;
 	/* Core revision observation remains bootstrap-only so the Workbench can
 	   reload a stale presentation consumer. Actual playback commands use this
@@ -135,11 +162,10 @@ private:
 		CValtanPatternSoundSourceReadAdmission& SoundAdmission,
 		std::string& strOutStatus) const;
 	bool_t Submit_SelectedPattern();
+	/* Restarts only this Tool's exact active/completed single-Pattern
+	   occurrence. The Server performs a boss-only reset, preserves the current
+	   arena state, and starts that Pattern again from its first Stage. */
 	bool_t Restart_SelectedPattern();
-	/* Boss Verification's default replay is the canonical saved one-Pattern
-	   workflow. It deliberately reuses the Flow transaction so the Server
-	   restores the complete arena before starting saved Pattern 01. */
-	bool_t Restart_SavedSinglePatternFreshArena();
 	bool_t Preview_SelectedFlowSlotIsolated();
 	bool_t Start_Flow(
 		const LostArk::Shared::GameplayDataRevision*
@@ -148,16 +174,29 @@ private:
 		const std::string& strStartSlotId,
 		const LostArk::Shared::GameplayDataRevision*
 			pRequiredDefinitionRevision = nullptr);
+	/* Reloads the complete saved scriptedSequence and asks the Server to reset
+	   the authoritative arena before Pattern 01. This is intentionally distinct
+	   from Restart_SelectedPattern and retains every saved slot/order/wait. */
 	bool_t Restart_SavedFlow();
-	bool_t Restart_SavedFlow(bool_t bRequireSingleSavedPattern);
 	bool_t Request_RevivePlayer(std::string& strOutStatus);
 	bool_t Reload_FlowDocument();
 	bool_t Save_FlowDocument();
+	bool_t Retry_FlowProductPublishApply();
 	void Refresh_PresentationFreshness(bool_t bForce = false);
 	void Synchronize_LiveSelection();
 	void Render_BossVerificationTab();
 	void Render_PatternFlowTab();
 	void Render_LogicFlowTab();
+	void Render_LogicPatternContent();
+	void Render_LogicPatternInspector(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const HUD_BOSS_STATE& Boss,
+		bool_t bLivePattern);
+	void Render_ProductFallbackPatternList();
+	void Render_ProductFallbackSelectedPattern();
+	void Render_ProductFallbackLogicPattern();
+	void Update_LogicFlowObservation();
+	bool_t Project_LogicFlowView(const VALTAN_PATTERN_VIEW& Pattern);
 	void Render_FlowGraphEditor();
 	void Render_FlowSlotList();
 	void Render_FlowSelectedSlot();
@@ -179,6 +218,11 @@ private:
 		const std::string& strPatternId) const;
 	const VALTAN_PATTERN_VIEW* Find_AuditionPattern(
 		const std::string& strPatternId) const;
+	const ENCOUNTER_PATTERN_REFERENCE* Find_ProductFallbackPattern(
+		const std::string& strPatternId) const;
+	const ENCOUNTER_STAGE_REFERENCE* Find_ProductFallbackStage(
+		const ENCOUNTER_PATTERN_REFERENCE& Pattern,
+		const std::string& strActionId) const;
 	const VALTAN_STAGE_VIEW* Find_LiveStage(
 		const VALTAN_PATTERN_VIEW& Pattern) const;
 	const VALTAN_STAGE_VIEW* Find_SelectedStage(
@@ -196,10 +240,13 @@ private:
 	VALTAN_TOOL_AUDITION_INVENTORY m_AuditionInventory;
 	std::vector<std::string> m_NextPatternIds;
 	CEncounterPatternReference m_EncounterReference;
+	CEncounterPatternReference m_ProductFallbackEncounterReference;
 	CValtanCinematicCameraDocument m_CameraDocument;
 	CValtanPatternFlowDocument m_FlowDocument;
 	BOSS_LOGIC_FLOW_VIEW m_LogicFlowView;
 	BOSS_LOGIC_FLOW_CANVAS_STATE m_LogicFlowCanvasState;
+	BOSS_LOGIC_FLOW_SELECTION m_LogicFlowSelection;
+	CBossLogicFlowObservedEdgeResolver m_LogicFlowObservedEdges;
 	std::shared_ptr<IPlayerCommandSink> m_pCommandSink;
 	CBalanceTool* m_pBalanceTool = nullptr;
 
@@ -229,12 +276,20 @@ private:
 	uint32_t m_iFlowLinkMaximumTraversals = 1u;
 	bool_t m_bOpen = false;
 	bool_t m_bFocusPending = false;
+	bool_t m_bLogicPatternOpen = false;
+	bool_t m_bLogicPatternFocusPending = false;
+	bool_t m_bLogicPatternOpenRequest = false;
 	bool_t m_bSelectPatternFlowTab = false;
 	bool_t m_bGraphLoadAttempted = false;
-	/* m_bGraphReady owns the preserved display snapshot. Mutation requires a
-	   successful reload of the current canonical generation as a separate gate. */
-	bool_t m_bGraphMutationAdmitted = false;
+	bool_t m_bCanonicalReloadRetryPending = false;
+	double m_dNextCanonicalReloadRetrySeconds = 0.0;
+	/* The graph/fallback payload and its authority are separate. A failed reload
+	   keeps the payload visible as STALE_PRESERVED, while every command remains
+	   gated by Can_MutateValtanView. */
+	VALTAN_VIEW_ADMISSION m_eGraphAdmission =
+		VALTAN_VIEW_ADMISSION::UNLOADED;
 	bool_t m_bGraphReady = false;
+	bool_t m_bProductFallbackReady = false;
 	bool_t m_bNextPatternInventoryReady = false;
 	bool_t m_bFollowLive = true;
 	bool_t m_bRepeat = false;

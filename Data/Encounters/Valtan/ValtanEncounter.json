@@ -98,7 +98,8 @@
       "displayName": "3회 땅 치기 후 돌진",
       "actionId": "valtan.attack.dash-charge",
       "sourceActionIds": [
-        420604
+        420604,
+        400430
       ],
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1,
@@ -159,15 +160,61 @@
           "branches": [
             {
               "outcome": "WALL_CONTACT",
-              "nextActionId": null,
-              "nextPatternId": "VALTAN_DASH_CHARGE_GROGGY"
+              "nextActionId": "valtan.attack.dash-charge.recovery"
             },
             {
               "outcome": "TIMEOUT",
-              "nextActionId": null,
-              "nextPatternId": "VALTAN_DASH_CHARGE_GROGGY"
+              "nextActionId": "valtan.attack.dash-charge.recovery"
             }
           ]
+        },
+        {
+          "stageId": "GROGGY",
+          "actionId": "valtan.attack.dash-charge.recovery",
+          "stageKind": "GROGGY",
+          "durationMs": 6833,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "SET_BOSS_FLAG",
+              "targetId": "boss.flag.groggy",
+              "value": 1,
+              "durationMs": 0
+            },
+            {
+              "trigger": "EXIT",
+              "kind": "SET_BOSS_FLAG",
+              "targetId": "boss.flag.groggy",
+              "value": 0,
+              "durationMs": 0
+            }
+          ],
+          "branches": [
+            {
+              "outcome": "PART_DESTROYED",
+              "nextActionId": null,
+              "nextPatternId": "VALTAN_PART_BREAK"
+            },
+            {
+              "outcome": "TIMEOUT",
+              "nextActionId": null
+            }
+          ],
+          "partDamagePolicy": "DESTROY_FIRST_ELIGIBLE"
         }
       ]
     },
@@ -922,7 +969,7 @@
       "maximumPhase": 3,
       "targetPolicy": "NEAREST_EACH_TICK",
       "aimPolicy": "TRACK_TARGET_EACH_TICK",
-      "displayName": "연속 카운터 내려찍기",
+      "displayName": "3연속 내려치기 - 카운터",
       "actionId": "valtan.reactive.triple-counter",
       "sourceActionIds": [
         420640,
@@ -5263,7 +5310,17 @@
           "knockdown": false,
           "downMs": 0,
           "playerResponse": "CAPTURE",
-          "attachmentSlot": "BOSS_LEFT_HAND"
+          "attachmentSlot": "BOSS_LEFT_HAND",
+          "branches": [
+            {
+              "outcome": "ANY_PLAYER_GRABBED",
+              "nextActionId": "valtan.sequence.catch-breath.step-03"
+            },
+            {
+              "outcome": "TIMEOUT",
+              "nextActionId": null
+            }
+          ]
         },
         {
           "stageId": "STEP_03",
@@ -6912,8 +6969,8 @@
               "targetingPolicy": "BOSS_RELATIVE",
               "countPerResolvedTarget": 4,
               "layout": "RADIAL",
-              "radiusM": 2.25,
-              "startAngleDegrees": 0.0,
+              "radiusM": 4.9497475,
+              "startAngleDegrees": 45.0,
               "angleStepDegrees": 90.0,
               "allowOverlap": false,
               "maximumTotalObjects": 4,
@@ -6952,7 +7009,7 @@
       "maximumConsecutiveUses": 0,
       "minimumRange": 0.0,
       "maximumRange": 1.0,
-      "verticalOffsetM": 5.0,
+      "verticalOffsetM": 3.0,
       "stages": [
         {
           "stageId": "CHANNEL",
@@ -7061,7 +7118,7 @@
               "trigger": "ENTER",
               "kind": "SET_PLAYER_BIND",
               "targetId": "player.status.bind",
-              "value": 10000,
+              "value": 5000,
               "durationMs": 5000
             },
             {
@@ -7142,10 +7199,10 @@
           "downMs": 0
         },
         {
-          "stageId": "SILENCE_HOLD",
-          "actionId": "valtan.authoring.silence-slot.hold",
+          "stageId": "SILENCE_APPLY",
+          "actionId": "valtan.authoring.silence-slot.apply",
           "stageKind": "ACTIVE",
-          "durationMs": 5000,
+          "durationMs": 100,
           "hitShape": "NONE",
           "hitOuterRadius": 0.0,
           "hitInnerRadius": 0.0,
@@ -7167,13 +7224,6 @@
               "targetId": "player.status.silence",
               "value": 1,
               "durationMs": 5000
-            },
-            {
-              "trigger": "EXIT",
-              "kind": "SET_PLAYER_SILENCE",
-              "targetId": "player.status.silence",
-              "value": 0,
-              "durationMs": 0
             }
           ]
         }
@@ -7244,81 +7294,6 @@
               "arenaAnchorPolicy": "NONE"
             }
           ]
-        }
-      ]
-    },
-    {
-      "patternId": "VALTAN_DASH_CHARGE_GROGGY",
-      "category": "NORMAL",
-      "minimumPhase": 1,
-      "maximumPhase": 3,
-      "targetPolicy": "NONE",
-      "aimPolicy": "NONE",
-      "displayName": "3회 땅 치기 후 돌진 - 그로기",
-      "actionId": "valtan.reaction.dash-charge-groggy",
-      "sourceActionIds": [
-        400430
-      ],
-      "selectionMode": "AUDITION_ONLY",
-      "minimumHealthBar": 0,
-      "maximumHealthBar": 0,
-      "triggerHealthBar": 0,
-      "triggerOrder": 0,
-      "armorRequirement": "ANY",
-      "phaseRequirement": "ANY",
-      "invulnerableWhileRunning": false,
-      "selectionWeight": 0,
-      "maximumConsecutiveUses": 0,
-      "minimumRange": 0.0,
-      "maximumRange": 1.0,
-      "stages": [
-        {
-          "stageId": "GROGGY",
-          "actionId": "valtan.attack.dash-charge.recovery",
-          "stageKind": "GROGGY",
-          "durationMs": 6833,
-          "hitShape": "NONE",
-          "hitOuterRadius": 0.0,
-          "hitInnerRadius": 0.0,
-          "hitAngleDegrees": 0.0,
-          "hitLength": 0.0,
-          "hitHalfWidth": 0.0,
-          "hitCount": 0,
-          "hitIntervalMs": 0,
-          "hitDelayMs": 0,
-          "serverDamageProfileId": "",
-          "pushRangeM": 0.0,
-          "pushMs": 0,
-          "knockdown": false,
-          "downMs": 0,
-          "actions": [
-            {
-              "trigger": "ENTER",
-              "kind": "SET_BOSS_FLAG",
-              "targetId": "boss.flag.groggy",
-              "value": 1,
-              "durationMs": 0
-            },
-            {
-              "trigger": "EXIT",
-              "kind": "SET_BOSS_FLAG",
-              "targetId": "boss.flag.groggy",
-              "value": 0,
-              "durationMs": 0
-            }
-          ],
-          "branches": [
-            {
-              "outcome": "PART_DESTROYED",
-              "nextActionId": null,
-              "nextPatternId": "VALTAN_PART_BREAK"
-            },
-            {
-              "outcome": "TIMEOUT",
-              "nextActionId": null
-            }
-          ],
-          "partDamagePolicy": "DESTROY_FIRST_ELIGIBLE"
         }
       ]
     },

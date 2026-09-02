@@ -1305,6 +1305,7 @@ namespace
 	}
 
 	bool ReadValtanCounterWindow(
+		const VALTAN_PATTERN_TREE_VIEW& tree,
 		const VALTAN_PATTERN_VIEW& pattern,
 		const VALTAN_STAGE_VIEW& stage,
 		CBalanceTool::VALTAN_COUNTER_WINDOW_EDIT& output,
@@ -1358,24 +1359,59 @@ namespace
 			}
 			return true;
 		}
-		if (1u != counterBranches.size() || 1u != timeoutBranches.size() ||
-			1 != counterState ||
-			"WINDUP" != stage.strStageKind ||
-			!counterBranches.front()->strNextActionId.has_value() ||
-			!timeoutBranches.front()->strNextActionId.has_value())
+		if (1u != counterBranches.size() || 1u != timeoutBranches.size())
 		{
-			status = "Counter draft requires one paired WINDUP window plus exactly one COUNTER_HIT and TIMEOUT branch: " +
+			status = "Counter draft requires exactly one COUNTER_HIT and TIMEOUT branch: " +
 				pattern.strPatternId + "/" + stage.strStageId + ".";
 			return false;
 		}
-		const VALTAN_STAGE_VIEW* target = FindValtanStageByAction(
-			pattern, *counterBranches.front()->strNextActionId);
+		const VALTAN_STAGE_BRANCH_VIEW& counterBranch =
+			*counterBranches.front();
+		const VALTAN_STAGE_BRANCH_VIEW& timeoutBranch =
+			*timeoutBranches.front();
+		const bool counterUsesLocalSuccess =
+			counterBranch.strNextActionId.has_value() &&
+			!counterBranch.strNextPatternId.has_value();
+		const bool counterUsesPatternSuccess =
+			!counterBranch.strNextActionId.has_value() &&
+			counterBranch.strNextPatternId.has_value();
+		const bool validSourceKind = "WINDUP" == stage.strStageKind ||
+			("ACTIVE" == stage.strStageKind && stage.CounterProxy.has_value() &&
+			 "BOSS_FORWARD_ARC" == stage.CounterProxy->strKind);
+		if (1 != counterState || !validSourceKind ||
+			counterUsesLocalSuccess == counterUsesPatternSuccess ||
+			!timeoutBranch.strNextActionId.has_value() ||
+			timeoutBranch.strNextPatternId.has_value())
+		{
+			status = "Counter draft requires one paired typed window plus exactly one local/cross-Pattern COUNTER_HIT and local TIMEOUT branch: " +
+				pattern.strPatternId + "/" + stage.strStageId + ".";
+			return false;
+		}
+
+		const VALTAN_PATTERN_VIEW* targetPattern = &pattern;
+		const VALTAN_STAGE_VIEW* target = nullptr;
+		if (counterUsesLocalSuccess)
+		{
+			target = FindValtanStageByAction(
+				pattern, *counterBranch.strNextActionId);
+		}
+		else
+		{
+			targetPattern = FindValtanPattern(
+				tree, *counterBranch.strNextPatternId);
+			if (nullptr != targetPattern && targetPattern != &pattern &&
+				!targetPattern->strEntryActionId.empty())
+			{
+				target = FindValtanStageByAction(
+					*targetPattern, targetPattern->strEntryActionId);
+			}
+		}
 		const VALTAN_STAGE_VIEW* timeoutTarget = FindValtanStageByAction(
-			pattern, *timeoutBranches.front()->strNextActionId);
+			pattern, *timeoutBranch.strNextActionId);
 		if (nullptr == target || nullptr == timeoutTarget ||
 			!IsValtanCounterSuccessStageKind(target->strStageKind))
 		{
-			status = "Counter success/timeout must resolve to same-pattern typed Stage actions: " +
+			status = "Counter success/timeout must resolve to a typed local/cross-Pattern success and local timeout Stage: " +
 				pattern.strPatternId + "/" + stage.strStageId + ".";
 			return false;
 		}
@@ -1389,6 +1425,8 @@ namespace
 			return false;
 		}
 		output.enabled = true;
+		output.successPatternId = counterUsesPatternSuccess ?
+			targetPattern->strPatternId : std::string{};
 		output.successStageId = target->strStageId;
 		output.successActionId = target->strActionId;
 		output.timeoutStageId = timeoutTarget->strStageId;
@@ -1397,6 +1435,7 @@ namespace
 	}
 
 	bool IsValtanCounterTopologyFiniteForward(
+		const VALTAN_PATTERN_TREE_VIEW& tree,
 		const VALTAN_PATTERN_VIEW& pattern,
 		std::string& status)
 	{
@@ -1405,7 +1444,8 @@ namespace
 		{
 			const VALTAN_STAGE_VIEW& source = pattern.Stages[sourceIndex];
 			CBalanceTool::VALTAN_COUNTER_WINDOW_EDIT counter;
-			if (!ReadValtanCounterWindow(pattern, source, counter, status))
+			if (!ReadValtanCounterWindow(
+					tree, pattern, source, counter, status))
 				return false;
 
 			const auto IsLaterStage = [&](const std::string& targetStageId)
@@ -1423,12 +1463,13 @@ namespace
 			if (!counter.enabled && !dormantCounterTimeout)
 				continue;
 			if ((counter.enabled &&
-				 (!IsLaterStage(counter.successStageId) ||
+				 ((counter.successPatternId.empty() &&
+				   !IsLaterStage(counter.successStageId)) ||
 				  !IsLaterStage(counter.timeoutStageId))) ||
 				(dormantCounterTimeout &&
 				 !IsLaterStage(counter.timeoutStageId)))
 			{
-				status = "Counter topology rejected: typed success/TIMEOUT targets must remain later same-Pattern Stages so the finite Server graph cannot cycle: " +
+				status = "Counter topology rejected: local success/TIMEOUT targets must remain later same-Pattern Stages; a typed cross-Pattern success is validated by the canonical graph: " +
 					pattern.strPatternId + "/" + source.strStageId + " -> " +
 					counter.successStageId + " / " + counter.timeoutStageId + ".";
 				return false;
@@ -1912,7 +1953,8 @@ bool Client::CBalanceTool::Require_ValtanAuthoringAdmission(
 	const char* const operation,
 	std::string& status) const
 {
-	if (VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED ==
+	if (Can_MutateValtanView(m_eValtanViewAdmission) &&
+		VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED ==
 			m_valtanSourceJoin.state &&
 		!m_valtanSourceRevision.empty())
 	{
@@ -2900,7 +2942,7 @@ bool Client::CBalanceTool::Move_ValtanManualStage(
 	{
 		return false;
 	}
-	if (!IsValtanCounterTopologyFiniteForward(*pattern, status))
+	if (!IsValtanCounterTopologyFiniteForward(staged, *pattern, status))
 	{
 		status = "Manual Stage reorder rejected before the draft changed: " +
 			status;
@@ -3766,7 +3808,8 @@ bool Client::CBalanceTool::Get_ValtanCounterWindowDraft(
 			"/" + stageId + ".";
 		return false;
 	}
-	if (!ReadValtanCounterWindow(*pattern, *stage, counter, status))
+	if (!ReadValtanCounterWindow(
+			m_valtanPatternTree, *pattern, *stage, counter, status))
 		return false;
 	status.clear();
 	return true;
@@ -3800,19 +3843,35 @@ bool Client::CBalanceTool::Set_ValtanCounterWindowDraft(
 	}
 	VALTAN_COUNTER_WINDOW_EDIT current;
 	if (!ReadValtanCounterWindow(
-			*currentPattern, *currentStage, current, status))
+			m_valtanPatternTree, *currentPattern, *currentStage,
+			current, status))
 	{
 		return false;
 	}
 	if (counter.enabled == current.enabled &&
 		(!counter.enabled ||
-		 (counter.successStageId == current.successStageId &&
+		 (counter.successPatternId == current.successPatternId &&
+		  counter.successStageId == current.successStageId &&
 		  counter.successActionId == current.successActionId &&
 		  counter.timeoutStageId == current.timeoutStageId &&
 		  counter.timeoutActionId == current.timeoutActionId)))
 	{
 		status = "Valtan counter window draft is unchanged.";
 		return true;
+	}
+	if (!current.successPatternId.empty())
+	{
+		status =
+			"Cross-Pattern Counter windows are preserved read-only by this local Stage editor: " +
+			patternId + "/" + stageId + " -> " +
+			current.successPatternId + ".";
+		return false;
+	}
+	if (!counter.successPatternId.empty())
+	{
+		status =
+			"Valtan counter edit rejected: the local Stage editor cannot author a cross-Pattern success target.";
+		return false;
 	}
 	if ("WINDUP" != currentStage->strStageKind)
 	{
@@ -3821,7 +3880,9 @@ bool Client::CBalanceTool::Set_ValtanCounterWindowDraft(
 		return false;
 	}
 	if (!counter.enabled && current.enabled &&
-		((!counter.successStageId.empty() &&
+		((!counter.successPatternId.empty() &&
+		  counter.successPatternId != current.successPatternId) ||
+		 (!counter.successStageId.empty() &&
 		  counter.successStageId != current.successStageId) ||
 		 (!counter.successActionId.empty() &&
 		  counter.successActionId != current.successActionId) ||
@@ -3921,7 +3982,7 @@ bool Client::CBalanceTool::Set_ValtanCounterWindowDraft(
 	{
 		VALTAN_COUNTER_WINDOW_EDIT ignored;
 		if (!ReadValtanCounterWindow(
-				*stagedPattern, candidateStage, ignored, status))
+				stagedTree, *stagedPattern, candidateStage, ignored, status))
 		{
 			return false;
 		}
@@ -3935,7 +3996,8 @@ bool Client::CBalanceTool::Set_ValtanCounterWindowDraft(
 			return false;
 		}
 	}
-	if (!IsValtanCounterTopologyFiniteForward(*stagedPattern, status))
+	if (!IsValtanCounterTopologyFiniteForward(
+			stagedTree, *stagedPattern, status))
 	{
 		status = "Valtan counter edit rejected before the draft changed: " +
 			status;
@@ -4008,7 +4070,8 @@ bool Client::CBalanceTool::Set_ValtanCounterProxyDraft(
 		return false;
 	}
 	VALTAN_COUNTER_WINDOW_EDIT counter;
-	if (!ReadValtanCounterWindow(*pattern, *stage, counter, status) ||
+	if (!ReadValtanCounterWindow(
+			m_valtanPatternTree, *pattern, *stage, counter, status) ||
 		!counter.enabled || "WINDUP" != stage->strStageKind)
 	{
 		if (status.empty())
@@ -4046,6 +4109,12 @@ bool Client::CBalanceTool::Set_ValtanCounterProxyDraft(
 bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)
 {
 	std::string stepStatus;
+	if (m_dirty && !m_valtanCommittedRevisionPendingReopen.empty())
+	{
+		status =
+			"Save & Apply will not repeat an already committed Valtan source write. Use Retry Product Publish / Apply to reopen that exact commit, or explicitly discard/save newer edits.";
+		return false;
+	}
 	const bool hadDirtyDraft = m_dirty;
 	if (hadDirtyDraft)
 	{
@@ -4055,6 +4124,14 @@ bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)
 				"Save & Apply could not commit the canonical Pattern JSON/Product closure; the previous admitted generation remains active: " +
 				stepStatus;
 			return false;
+		}
+		if (0u == stepStatus.rfind(
+				"COMMIT_SUCCEEDED_REOPEN_FAILED:", 0u))
+		{
+			status =
+				"Canonical Pattern source/Product files were committed, but their exact editor reopen did not complete. No candidate was published or applied; use Retry Product Publish / Apply after fixing the diagnostic. " +
+				stepStatus;
+			return true;
 		}
 	}
 	else if (!Validate_ValtanDraft(stepStatus))
@@ -4081,8 +4158,9 @@ bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)
 
 	const std::string revisionLabel = m_valtanCandidateRevision.empty() ?
 		std::string("UNKNOWN") : m_valtanCandidateRevision.substr(0u, 12u);
-	CValtanTuningCommandService::Get().
-		Record_GameplaySourceActivationExpectation(
+	CValtanTuningCommandService& TuningService =
+		CValtanTuningCommandService::Get();
+	TuningService.Record_GameplaySourceActivationExpectation(
 			m_valtanCandidateRevision, m_valtanCandidateApplyClass, stepStatus);
 	if ("HOT_RELOAD" != m_valtanCandidateApplyClass)
 	{
@@ -4103,10 +4181,19 @@ bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)
 			". No admitted Debug Server revision is connected, so it will be active after Server restart/re-entry.";
 		return true;
 	}
-	if (CValtanTuningCommandService::Get().Has_PendingCommand())
+	if (TuningService.Has_PendingCommand())
 	{
-		status = "Saved Product revision " + revisionLabel +
-			". A previous live-update transaction is still pending; active runtime was not replaced.";
+		std::string QueueStatus;
+		if (!TuningService.Queue_GameplaySourceCandidateAfterPending(
+				m_valtanCandidateRevision, m_valtanCandidateApplyClass,
+				QueueStatus))
+		{
+			status = "Saved Product revision " + revisionLabel +
+				". The previous live-update transaction is still pending and the latest candidate could not be queued: " +
+				QueueStatus;
+			return true;
+		}
+		status = "Saved Product revision " + revisionLabel + ". " + QueueStatus;
 		return true;
 	}
 	if (!Apply_ValtanRevision(stepStatus))
@@ -4143,6 +4230,63 @@ bool Client::CBalanceTool::Save_ValtanCanonicalProduct(std::string& status)
 		return false;
 	}
 	status = std::move(stepStatus);
+	return true;
+}
+
+bool Client::CBalanceTool::Retry_ValtanProductPublishApply(
+	std::string& status)
+{
+	/* CommitCanonicalDraft is the only source writer. A successful commit may
+	   have returned its durable receipt before this editor could reopen the new
+	   Product. Reopen exactly that receipt only while no subsequent authoring
+	   command advanced the preserved in-memory draft. */
+	if (!m_valtanCommittedRevisionPendingReopen.empty())
+	{
+		if (m_valtanDraftGeneration !=
+			m_valtanCommittedReopenDraftGeneration)
+		{
+			status =
+				"Retry Publish / Apply preserved newer unsaved Valtan edits. Save or discard those edits before reopening the earlier committed revision.";
+			return false;
+		}
+		const std::string ExpectedRevision =
+			m_valtanCommittedRevisionPendingReopen;
+		if (!Reload())
+		{
+			status =
+				"Retry Publish / Apply could not reopen the already committed Valtan revision; no source file was rewritten: " +
+				m_status;
+			return false;
+		}
+		if (m_valtanSourceRevision != ExpectedRevision ||
+			VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED !=
+				m_valtanSourceJoin.state)
+		{
+			status =
+				"Retry Publish / Apply reopened a different canonical Valtan revision; no candidate was published or applied.";
+			return false;
+		}
+	}
+	else if (m_dirty)
+	{
+		status =
+			"Retry Publish / Apply requires a clean saved Valtan source. Existing unsaved edits were preserved.";
+		return false;
+	}
+
+	/* Save_ValtanProduct writes canonical source only when m_dirty is true. The
+	   guards above make this a typed publish/apply-only continuation. */
+	std::string RetryStatus;
+	if (!Save_ValtanProduct(RetryStatus))
+	{
+		status =
+			"Retry Publish / Apply failed without rewriting the saved Valtan source: " +
+			RetryStatus;
+		return false;
+	}
+	status =
+		"Retry Publish / Apply reused the clean saved Valtan source without another canonical commit. " +
+		RetryStatus;
 	return true;
 }
 
@@ -4214,13 +4358,21 @@ void Client::CBalanceTool::MarkDirty(const bool changed)
 
 bool Client::CBalanceTool::Reload()
 {
+	/* Revoke write authority before any I/O. Every early return below keeps the
+	   prior committed vectors intact, but they are diagnostic-only until this
+	   exact parse/validate/stage transaction reaches the final commit. */
+	const bool_t bHadDisplayableValtanView =
+		Can_DisplayValtanView(m_eValtanViewAdmission);
+	m_eValtanViewAdmission = bHadDisplayableValtanView ?
+		VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
+		VALTAN_VIEW_ADMISSION::REJECTED;
 	CValtanCanonicalProductReadAdmission CanonicalAdmission;
-	std::string CanonicalAdmissionStatus;
-	if (!CanonicalAdmission.Acquire(CanonicalAdmissionStatus))
+	VALTAN_CANONICAL_READ_DIAGNOSTIC CanonicalDiagnostic;
+	if (!CanonicalAdmission.Acquire(CanonicalDiagnostic))
 	{
 		m_status =
 			"Reload failed before staging; the previous Balance/Workbench draft was preserved: " +
-			CanonicalAdmissionStatus;
+			CanonicalDiagnostic.strStatus;
 		return false;
 	}
 	DATA_JSON_VALUE playerRoot;
@@ -4667,11 +4819,11 @@ bool Client::CBalanceTool::Reload()
 			status;
 		return false;
 	}
-	if (!CanonicalAdmission.Validate_StillCurrent(CanonicalAdmissionStatus))
+	if (!CanonicalAdmission.Validate_StillCurrent(CanonicalDiagnostic))
 	{
 		m_status =
 			"Reload failed before commit; the previous Balance/Workbench draft was preserved: " +
-			CanonicalAdmissionStatus;
+			CanonicalDiagnostic.strStatus;
 		return false;
 	}
 
@@ -4706,8 +4858,16 @@ bool Client::CBalanceTool::Reload()
 	m_valtanSourceRevision = std::move(valtanSourceRevision);
 	m_valtanAuthoringRevision = std::move(valtanAuthoringRevision);
 	m_valtanSourceJoin = std::move(valtanSourceJoin);
+	m_eValtanViewAdmission =
+		VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED ==
+			m_valtanSourceJoin.state &&
+		!m_valtanSourceRevision.empty() ?
+			VALTAN_VIEW_ADMISSION::ADMITTED :
+			VALTAN_VIEW_ADMISSION::REJECTED;
 	m_valtanCandidateRevision.clear();
 	m_valtanCandidateApplyClass.clear();
+	m_valtanCommittedRevisionPendingReopen.clear();
+	m_valtanCommittedReopenDraftGeneration = 0u;
 	if (!m_valtanAuthoringRevision.empty() &&
 		!CValtanTuningCommandService::Get().
 			Has_GameplaySourceActivationExpectation())
@@ -8033,19 +8193,30 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 					VALTAN_COUNTER_WINDOW_EDIT currentCounter;
 					VALTAN_COUNTER_WINDOW_EDIT loadedCounter;
 					if (!ReadValtanCounterWindow(
-							pattern, currentStage, currentCounter, status) ||
+							m_valtanPatternTree, pattern, currentStage,
+							currentCounter, status) ||
 						!ReadValtanCounterWindow(
-							*loaded, *originalLoadedStage,
+							m_loadedValtanPatternTree, *loaded, *originalLoadedStage,
 							loadedCounter, status))
 					{
 						return false;
 					}
 					const bool targetChanged = currentCounter.enabled &&
 						loadedCounter.enabled &&
-						(currentCounter.successStageId != loadedCounter.successStageId ||
+						(currentCounter.successPatternId != loadedCounter.successPatternId ||
+						 currentCounter.successStageId != loadedCounter.successStageId ||
 						 currentCounter.successActionId != loadedCounter.successActionId ||
 						 currentCounter.timeoutStageId != loadedCounter.timeoutStageId ||
 						 currentCounter.timeoutActionId != loadedCounter.timeoutActionId);
+					if ((!currentCounter.successPatternId.empty() ||
+						 !loadedCounter.successPatternId.empty()) &&
+						(currentCounter.enabled != loadedCounter.enabled || targetChanged))
+					{
+						status =
+							"Cross-Pattern Counter windows are preserved read-only during canonical Save: " +
+							pattern.strPatternId + "/" + currentStage.strStageId + ".";
+						return false;
+					}
 					if (loadedCounter.enabled && !currentCounter.enabled)
 					{
 						std::ostringstream operation;
@@ -8145,12 +8316,20 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 						continue;
 					VALTAN_COUNTER_WINDOW_EDIT loadedCounter;
 					if (!ReadValtanCounterWindow(
-							*loaded, loadedStage, loadedCounter, status))
+							m_loadedValtanPatternTree, *loaded, loadedStage,
+							loadedCounter, status))
 					{
 						return false;
 					}
 					if (!loadedCounter.enabled)
 						continue;
+					if (!loadedCounter.successPatternId.empty())
+					{
+						status =
+							"Cross-Pattern Counter source removal requires an explicit canonical topology migration: " +
+							pattern.strPatternId + "/" + loadedStage.strStageId + ".";
+						return false;
+					}
 					std::ostringstream operation;
 					operation << "    { \"op\": \"SET_STAGE_COUNTER_WINDOW\", "
 						"\"patternId\": " << Quote(pattern.strPatternId)
@@ -8312,10 +8491,17 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 				if (nullptr == FindValtanStage(*loaded, stage.strStageId))
 				{
 					VALTAN_COUNTER_WINDOW_EDIT counter;
-					if (!ReadValtanCounterWindow(pattern, stage, counter, status))
+					if (!ReadValtanCounterWindow(
+							m_valtanPatternTree, pattern, stage, counter, status))
 						return false;
 					if (counter.enabled)
 					{
+						if (!counter.successPatternId.empty())
+						{
+							status =
+								"Inserted manual Counter Stages cannot invent a cross-Pattern follow-up.";
+							return false;
+						}
 						std::ostringstream operation;
 						operation << "    { \"op\": \"SET_STAGE_COUNTER_WINDOW\", "
 							"\"patternId\": " << Quote(pattern.strPatternId)
@@ -8341,7 +8527,8 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 						return false;
 					}
 					VALTAN_COUNTER_WINDOW_EDIT counter;
-					if (!ReadValtanCounterWindow(pattern, stage, counter, status) ||
+					if (!ReadValtanCounterWindow(
+							m_valtanPatternTree, pattern, stage, counter, status) ||
 						!counter.enabled)
 					{
 						status = "Counter Box area can change only while its Counter window is enabled: " +
@@ -9030,6 +9217,18 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 			return false;
 		}
 		const std::string committedRevision = result.sourceRevision;
+		/* The durable source receipt must gate Server replay even when the
+		   following editor reopen fails. Candidate publication will replace this
+		   revision-less NOT_ACTIVATED expectation with its exact Product hash. */
+		if (0u != result.changedCount)
+		{
+			CValtanTuningCommandService::Get().
+				Record_GameplaySourceActivationExpectation(
+					{}, "NOT_ACTIVATED",
+					"Pattern data was saved locally. Retry Product Publish / Apply, restart, or re-enter the Server arena before playback.");
+		}
+		m_valtanCommittedRevisionPendingReopen = committedRevision;
+		m_valtanCommittedReopenDraftGeneration = m_valtanDraftGeneration;
 		if (!Reload())
 		{
 			status =
@@ -9051,13 +9250,6 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 				committedRevision.substr(0u, 12u) +
 				". Reload the current files before editing again.";
 			return true;
-		}
-		if (0u != result.changedCount)
-		{
-			CValtanTuningCommandService::Get().
-				Record_GameplaySourceActivationExpectation(
-					{}, "NOT_ACTIVATED",
-					"Pattern data was saved locally. Restart or re-enter the Server arena to load the saved revision.");
 		}
 		status = "COMMITTED_AND_RELOADED: Saved Valtan Pattern data " +
 			committedRevision.substr(0u, 12u) +
@@ -10051,8 +10243,14 @@ void Client::CBalanceTool::Render()
 		const bool splitJoinValidated =
 			VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED ==
 				m_valtanSourceJoin.state;
+		const bool hasCommittedReopen =
+			!m_valtanCommittedRevisionPendingReopen.empty();
+		const bool canRetryProduct = !m_dirty ||
+			(hasCommittedReopen && m_valtanDraftGeneration ==
+				m_valtanCommittedReopenDraftGeneration);
 		ImGui::BeginDisabled(
-			m_valtanSourceRevision.empty() || !splitJoinValidated);
+			m_valtanSourceRevision.empty() || !splitJoinValidated ||
+			hasCommittedReopen);
 		if (ImGui::Button("Save & Apply##ValtanBalance"))
 		{
 			std::string status;
@@ -10064,6 +10262,22 @@ void Client::CBalanceTool::Render()
 		{
 			ImGui::SetTooltip(
 				"One action: validate joined stable IDs, save authoring, build Product data, and request a fail-closed live update when supported.");
+		}
+		ImGui::SameLine();
+		ImGui::BeginDisabled(
+			m_valtanSourceRevision.empty() || !splitJoinValidated ||
+			!canRetryProduct);
+		if (ImGui::Button("Retry Product Publish / Apply##ValtanBalance"))
+		{
+			std::string status;
+			(void)Retry_ValtanProductPublishApply(status);
+			m_status = std::move(status);
+		}
+		ImGui::EndDisabled();
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		{
+			ImGui::SetTooltip(
+				"Reopen a completed canonical commit when needed, then retry only Product publication/runtime apply. It never repeats the source write and never discards newer edits.");
 		}
 		const CNetworkManager::GAMEPLAY_REVISION_CLIENT_STATE& revisionState =
 			CNetworkManager::Get().Get_GameplayRevisionState();

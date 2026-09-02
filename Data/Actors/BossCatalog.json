@@ -1,6 +1,6 @@
 {
   "schema": "lostark.boss-catalog",
-  "formatVersion": 5,
+  "formatVersion": 6,
   "bosses": [
     {
       "archetypeId": "BOSS_VALTAN",
@@ -27,8 +27,14 @@
       "combatObjectVisuals": [
         {
           "combatObjectArchetypeId": "combatobject.valtan.high-jump.target-axe",
-          "clientVisualId": "combatobject.visual.valtan.high-jump.target-axe.v1",
-          "effectAssetId": "effect.valtan.sky-axe.active"
+          "clientVisualId": "combatobject.visual.valtan.high-jump.target-axe.v2",
+          "effectAssetId": "effect.valtan.sky-axe.active",
+          "effectV2Group": {
+            "groupId": "boss.valtan.axe",
+            "playbackRate": 1.9583333333333333,
+            "visualHitMs": 2350,
+            "serverHitId": "hit.valtan.high-jump.target-axe.01"
+          }
         },
         {
           "combatObjectArchetypeId": "combatobject.valtan.red-blade-wave.projectile",

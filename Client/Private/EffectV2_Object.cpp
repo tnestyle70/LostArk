@@ -514,6 +514,21 @@ void Client::CEffectV2Object::Restart()
 	Sync_Animation(true);
 }
 
+void Client::CEffectV2Object::Seek_ElapsedSeconds(const f32_t fElapsedSeconds)
+{
+	if (!std::isfinite(fElapsedSeconds) || fElapsedSeconds < 0.f)
+		return;
+	Restart();
+	constexpr f32_t MAX_STEP_SECONDS = 1.f / 60.f;
+	f32_t fRemaining = fElapsedSeconds;
+	while (fRemaining > 0.f && !m_bFinished)
+	{
+		const f32_t fStep = (std::min)(MAX_STEP_SECONDS, fRemaining);
+		Update(fStep);
+		fRemaining -= fStep;
+	}
+}
+
 uint32_t Client::CEffectV2Object::Animation_Count() const
 {
 	if (!m_bSkinned || nullptr == m_pModel)

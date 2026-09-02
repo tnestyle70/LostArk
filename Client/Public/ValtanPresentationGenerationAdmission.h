@@ -10,6 +10,8 @@
 
 namespace Client
 {
+	struct VALTAN_CANONICAL_READ_DIAGNOSTIC;
+
 	struct VALTAN_PRESENTATION_GENERATION_ARTIFACT_RECEIPT final
 	{
 		std::string strRelativePath;
@@ -53,6 +55,9 @@ namespace Client
 		bool Acquire_PackagedBaseline(
 			VALTAN_PRESENTATION_GENERATION_RECEIPT& OutReceipt,
 			std::string& strOutStatus);
+		bool Acquire_PackagedBaseline(
+			VALTAN_PRESENTATION_GENERATION_RECEIPT& OutReceipt,
+			VALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic);
 		bool Acquire_Receipt(
 			const LostArk::Shared::GameplayDataRevision& ExpectedServerRevision,
 			const VALTAN_PRESENTATION_GENERATION_RECEIPT& ExpectedReceipt,
@@ -70,6 +75,10 @@ namespace Client
 			const std::filesystem::path& RepositoryRoot,
 			VALTAN_PRESENTATION_GENERATION_RECEIPT& OutReceipt,
 			std::string& strOutStatus);
+		bool Acquire_PackagedBaselineFromRoot(
+			const std::filesystem::path& RepositoryRoot,
+			VALTAN_PRESENTATION_GENERATION_RECEIPT& OutReceipt,
+			VALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic);
 		bool Acquire_ReceiptFromRoot(
 			const std::filesystem::path& RepositoryRoot,
 			const LostArk::Shared::GameplayDataRevision& ExpectedServerRevision,
@@ -82,6 +91,8 @@ namespace Client
 			std::string& strOutStatus);
 
 		bool Validate_StillCurrent(std::string& strOutStatus) const;
+		bool Validate_StillCurrent(
+			VALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic) const;
 		bool Try_Get_CurrentReceipt(
 			VALTAN_PRESENTATION_GENERATION_RECEIPT& OutReceipt) const;
 		bool Is_Acquired() const;

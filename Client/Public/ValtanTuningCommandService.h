@@ -77,6 +77,16 @@ public:
 		std::string_view strCandidateRevision,
 		std::string_view strApplyClass,
 		std::string_view strStatus);
+	/* A second immutable Save must not replace an unresolved 2PC request, but it
+	   also must not strand the newer saved revision forever. Queue exactly that
+	   latest HOT_RELOAD candidate and submit it once the prior transaction has an
+	   exact terminal observation or its immutable candidate is explicitly the
+	   current Server-active revision. Newer Saves replace only this deferred
+	   identity; they never mutate the in-flight request. */
+	bool Queue_GameplaySourceCandidateAfterPending(
+		std::string_view strCandidateRevision,
+		std::string_view strApplyClass,
+		std::string& strOutStatus);
 	[[nodiscard]] bool Is_LatestGameplaySourceServerActive(
 		std::string& strOutStatus) const;
 	/* Returns the exact immutable Product revision only when the latest saved
@@ -133,6 +143,9 @@ private:
 	bool Submit_Candidate(const REVISION_OBSERVATION& Observation, std::string& strOutStatus);
 	bool Send_PrepareRequest(const LostArk::Shared::C2S_DATA_REVISION_PREPARE_REQUEST& Request);
 	void Refresh_ActiveCandidate(const REVISION_OBSERVATION& Observation);
+	void Submit_QueuedGameplayCandidateAfterPending(
+		const REVISION_OBSERVATION& Observation,
+		bool bPriorApplyResolvedExactly);
 
 	VALTAN_TUNING_COMMAND_SNAPSHOT m_Snapshot;
 	LostArk::Shared::C2S_DATA_REVISION_PREPARE_REQUEST m_ApplyRequest;
@@ -143,6 +156,9 @@ private:
 	std::string m_strGameplayCandidateRevision;
 	std::string m_strGameplayCandidateApplyClass;
 	std::string m_strGameplayActivationStatus;
+	std::string m_strQueuedGameplayCandidateRevision;
+	std::string m_strQueuedGameplayCandidateApplyClass;
+	bool m_bQueuedGameplayCandidateWaitsForPriorResolution = false;
 #if defined(LOSTARK_VALTAN_AUDITION_SERVICE_HARNESS)
 	VALTAN_TUNING_COMMAND_HARNESS_INPUT m_HarnessInput;
 #endif

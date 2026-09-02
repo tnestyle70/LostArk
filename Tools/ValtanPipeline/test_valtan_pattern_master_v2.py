@@ -28,6 +28,23 @@ EXPECTED_SCRIPTED_SEQUENCE = {
     "interStepPursuitMs": 1000,
     "patternIds": [
         "VALTAN_WHIRLWIND",
+        "VALTAN_SILENCE_SLOT",
+        "VALTAN_BIND_SLOT",
+        "VALTAN_STAGGER_SLOT",
+        "VALTAN_GROUND_ROAR",
+        "VALTAN_CROSS",
+        "VALTAN_TRASH",
+        "VALTAN_WARP",
+        "VALTAN_TRIPLE_COUNTER",
+        "VALTAN_DASH_CHARGE",
+        "VALTAN_FIST_IN_OUT",
+        "VALTAN_HIGH_JUMP",
+        "VALTAN_SIX_PIZZA_106",
+        "VALTAN_STRUGGLING",
+        "VALTAN_GHOST_DEATH_AUDITION",
+        "VALTAN_GHOST_RESPAWN_AUDITION",
+        "VALTAN_GHOST_FINALE",
+        "VALTAN_COUNTER_GROGGY",
         "VALTAN_CROSS",
         "VALTAN_SIX_PIZZA_106",
         "VALTAN_SIX_PIZZA_106",
@@ -869,6 +886,27 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 self.docs[pipeline.COMBAT_AUTHORING_REL],
             )
 
+        excessive_schedule = copy.deepcopy(gameplay)
+        excessive_event = next(
+            event
+            for pattern in excessive_schedule["patterns"]
+            if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+            for stage in pattern["stages"]
+            if stage["stageId"] == "AIRBORNE"
+            for event in stage["events"]
+            if event["kind"] == "SPAWN_COMBAT_OBJECT_VOLLEY"
+        )
+        excessive_event["spawnSchedule"]["count"] = 9
+        with self.assertRaisesRegex(
+            pipeline.PipelineError, "spawnSchedule.count out of range"
+        ):
+            pipeline.join_v2_authoring(
+                excessive_schedule,
+                copy.deepcopy(presentation),
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+
         single_schedule = copy.deepcopy(gameplay)
         single_event = next(
             event
@@ -934,6 +972,27 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         ):
             pipeline.join_v2_authoring(
                 wrong_arena_random,
+                copy.deepcopy(presentation),
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+
+        wrapping_radial = copy.deepcopy(gameplay)
+        wrapping_event = next(
+            event
+            for pattern in wrapping_radial["patterns"]
+            if pattern["patternId"] == "VALTAN_GHOST_PORTAL_ONCE"
+            for stage in pattern["stages"]
+            if stage["stageId"] == "ACTIVE"
+            for event in stage["events"]
+            if event["kind"] == "SPAWN_COMBAT_OBJECT_VOLLEY"
+        )
+        wrapping_event["layout"]["angleStepDegrees"] = 100.0
+        with self.assertRaisesRegex(
+            pipeline.PipelineError, "radial volley wraps onto itself"
+        ):
+            pipeline.join_v2_authoring(
+                wrapping_radial,
                 copy.deepcopy(presentation),
                 self.docs[pipeline.WORLD_SET_REL],
                 self.docs[pipeline.COMBAT_AUTHORING_REL],
@@ -1595,6 +1654,17 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             ),
         )
         self.assertEqual(
+            [
+                {
+                    "outcome": "ANY_PLAYER_GRABBED",
+                    "nextActionId": "valtan.sequence.catch-breath.step-03",
+                },
+                {"outcome": "TIMEOUT", "nextActionId": None},
+            ],
+            catch_grab["branches"],
+        )
+        self.assertIsNone(catch_grab["defaultNextActionId"])
+        self.assertEqual(
             ("ARENA_EJECTION", 24.0, 500, 180.0),
             tuple(
                 next(
@@ -1628,7 +1698,13 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            trash_counter["counterProxy"],
+            {
+                "kind": "BOSS_LOCAL_CIRCLE",
+                "forwardOffsetM": 1.0,
+                "rightOffsetM": 0.0,
+                "radiusM": 2.25,
+                "arcDegrees": 0.0,
+            },
             projected_trash["STEP_07"]["counterProxy"],
         )
         self.assertIn(
@@ -1649,6 +1725,16 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 projected_catch["STEP_02"]["playerResponse"],
                 projected_catch["STEP_02"]["attachmentSlot"],
             ),
+        )
+        self.assertEqual(
+            [
+                {
+                    "outcome": "ANY_PLAYER_GRABBED",
+                    "nextActionId": "valtan.sequence.catch-breath.step-03",
+                },
+                {"outcome": "TIMEOUT", "nextActionId": None},
+            ],
+            projected_catch["STEP_02"]["branches"],
         )
         self.assertIn(
             {
@@ -2187,7 +2273,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
 
-    def test_dash_charge_followups_keep_three_visible_pattern_clocks(self) -> None:
+    def test_dash_charge_keeps_local_groggy_and_separate_part_break_clock(self) -> None:
         gameplay = {
             row["patternId"]: row
             for row in self.docs[pipeline.GAMEPLAY_AUTHORING_REL]["patterns"]
@@ -2197,10 +2283,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             for row in self.docs[pipeline.PRESENTATION_AUTHORING_REL]["patterns"]
         }
         dash_gameplay = gameplay["VALTAN_DASH_CHARGE"]
-        groggy_gameplay = gameplay["VALTAN_DASH_CHARGE_GROGGY"]
         part_break_gameplay = gameplay["VALTAN_PART_BREAK"]
         dash_presentation = presentation["VALTAN_DASH_CHARGE"]
-        groggy_presentation = presentation["VALTAN_DASH_CHARGE_GROGGY"]
         part_break_presentation = presentation["VALTAN_PART_BREAK"]
         charge_gameplay = next(
             row for row in dash_gameplay["stages"] if row["stageId"] == "CHARGE"
@@ -2208,22 +2292,32 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         charge_presentation = next(
             row for row in dash_presentation["stages"] if row["stageId"] == "CHARGE"
         )
-        groggy = groggy_gameplay["stages"][0]
-        groggy_visual = groggy_presentation["stages"][0]
+        groggy = next(
+            row for row in dash_gameplay["stages"] if row["stageId"] == "GROGGY"
+        )
+        groggy_visual = next(
+            row for row in dash_presentation["stages"] if row["stageId"] == "GROGGY"
+        )
         part_break = part_break_gameplay["stages"][0]
         part_break_visual = part_break_presentation["stages"][0]
 
-        self.assertEqual(["WINDUP", "CHARGE"], [row["stageId"] for row in dash_gameplay["stages"]])
-        self.assertEqual(["GROGGY"], [row["stageId"] for row in groggy_gameplay["stages"]])
+        self.assertEqual(
+            ["WINDUP", "CHARGE", "GROGGY"],
+            [row["stageId"] for row in dash_gameplay["stages"]],
+        )
         self.assertEqual(["PART_BREAK"], [row["stageId"] for row in part_break_gameplay["stages"]])
-        self.assertEqual([420604], dash_gameplay["sourceActionIds"])
-        self.assertEqual([400430], groggy_gameplay["sourceActionIds"])
+        self.assertEqual([420604, 400430], dash_gameplay["sourceActionIds"])
         self.assertEqual([420627], part_break_gameplay["sourceActionIds"])
         self.assertEqual(
-            {"WALL_CONTACT": "VALTAN_DASH_CHARGE_GROGGY", "TIMEOUT": "VALTAN_DASH_CHARGE_GROGGY"},
-            {row["outcome"]: row["nextPatternId"] for row in charge_gameplay["branches"]},
+            {
+                "WALL_CONTACT": "valtan.attack.dash-charge.recovery",
+                "TIMEOUT": "valtan.attack.dash-charge.recovery",
+            },
+            {row["outcome"]: row["nextActionId"] for row in charge_gameplay["branches"]},
         )
-        self.assertTrue(all(row["nextActionId"] is None for row in charge_gameplay["branches"]))
+        self.assertTrue(
+            all(row.get("nextPatternId") is None for row in charge_gameplay["branches"])
+        )
         self.assertEqual(1500, charge_gameplay["durationMs"])
         self.assertEqual({"kind": "FORWARD", "distance": 20.0}, charge_gameplay["motion"])
         occurrences = charge_presentation["animation"]["occurrences"]
@@ -2262,7 +2356,6 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         )
         for pattern_id in (
             "VALTAN_DASH_CHARGE",
-            "VALTAN_DASH_CHARGE_GROGGY",
             "VALTAN_PART_BREAK",
         ):
             owner = next(row for row in joined["patterns"] if row["patternId"] == pattern_id)
@@ -2304,7 +2397,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
 
         bad_policy = copy.deepcopy(gameplay)
         stage(
-            bad_policy, "VALTAN_DASH_CHARGE_GROGGY", "GROGGY"
+            bad_policy, "VALTAN_DASH_CHARGE", "GROGGY"
         )["partDamagePolicy"] = "DESTROY_ALL"
         with self.assertRaisesRegex(
             pipeline.PipelineError, "partDamagePolicy is unsupported"
@@ -2381,7 +2474,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             wrong_kind_proxy, "VALTAN_TRASH", "STEP_07"
         )["stageKind"] = "ACTIVE"
         with self.assertRaisesRegex(
-            pipeline.PipelineError, "WINDUP authoring stage"
+            pipeline.PipelineError, "not allowed on this authoring stage kind"
         ):
             pipeline.validate_gameplay_authoring(wrong_kind_proxy)
 
@@ -2682,21 +2775,18 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             if pattern["patternId"] == "VALTAN_DASH_CHARGE"
         )
         # Exercise the old topology-removal patch against a synthetic legacy
-        # draft.  The canonical graph now owns GROGGY and PART_BREAK as
-        # separate successor Patterns, so fold their saved rows back into the
-        # root only inside this fixture before testing the legacy removals.
-        groggy_owner = next(
-            pattern for pattern in joined["patterns"]
-            if pattern["patternId"] == "VALTAN_DASH_CHARGE_GROGGY"
-        )
-        recovery = copy.deepcopy(groggy_owner["stages"][0])
+        # draft.  Canonical DASH_CHARGE already owns its GROGGY stage, so turn
+        # that saved row into the legacy RECOVERY first, then inject the old
+        # inline GROGGY/PART_BREAK topology below.
+        recovery = copy.deepcopy(next(
+            stage for stage in dash["stages"] if stage["stageId"] == "GROGGY"
+        ))
         recovery["stageId"] = "RECOVERY"
         recovery["sequenceRole"] = "RECOVERY"
+        dash["stages"] = [
+            stage for stage in dash["stages"] if stage["stageId"] != "GROGGY"
+        ]
         dash["stages"].append(recovery)
-        dash["sourceActionIds"].extend(groggy_owner["sourceActionIds"])
-        dash["presentationSources"].extend(
-            copy.deepcopy(groggy_owner["presentationSources"])
-        )
         charge = next(
             stage for stage in dash["stages"] if stage["stageId"] == "CHARGE"
         )
@@ -3953,10 +4043,18 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 if row["patternId"] == "VALTAN_GHOST_FINALE"
             )["finale"]["ghostPatternIds"]
         )
+        followup_targets = {
+            branch.get("nextPatternId")
+            for pattern in staged["patterns"]
+            for stage in pattern["stages"]
+            for branch in stage["branches"]
+            if branch.get("nextPatternId") is not None
+        }
         removed_id = next(
             row["patternId"]
             for row in reversed(staged["decisionModel"]["manualAuditions"])
             if row["patternId"] not in finale_children
+            and row["patternId"] not in followup_targets
             and row["patternId"] != "VALTAN_GHOST_FINALE"
         )
         self.assertNotIn(removed_id, finale_children)
@@ -4085,10 +4183,9 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 else:
                     child = next(row for row in encounter["patterns"]
                                  if row["patternId"] == "VALTAN_STAGGER_SLOT")
-                    # A terminal first stage makes the late two-node cycle unreachable.
-                    # The Product validator must still inspect every node.
-                    child["stages"][0]["branches"] = [
-                        {"outcome": "TIMEOUT", "nextActionId": None}]
+                    # Keep the channel's paired health/timeout branch shape
+                    # intact and close its timeout -> final edge back to the
+                    # channel.  This is a validly shaped two-node cycle.
                     tail = child["stages"][-1]
                     tail["branches"] = [
                         {"outcome": "TIMEOUT", "nextActionId": child["stages"][-2]["actionId"]}]

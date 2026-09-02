@@ -35,6 +35,7 @@ namespace
 		"VALTAN_ENTRANCE_CINEMATIC";
 	constexpr const char_t* VALTAN_IDLE_CINEMATIC_ENTRANCE_PATTERN_ID =
 		"VALTAN_ENTRANCE_CINEMATIC_IDLE";
+	constexpr double CANONICAL_RELOAD_RETRY_SECONDS = 0.25;
 
 	bool_t Is_OptionalEntryPatternId(const std::string& PatternId)
 	{
@@ -95,6 +96,14 @@ namespace
 		ImGui::TextDisabled("%s", pLane);
 		ImGui::TableSetColumnIndex(1);
 		ImGui::TextWrapped("%s", Value.c_str());
+	}
+
+	void Render_LogicCounterBadge(const bool_t bHasCounterHitBranch)
+	{
+		if (!bHasCounterHitBranch)
+			return;
+		ImGui::SameLine();
+		ImGui::TextColored(ImVec4(0.36f, 0.86f, 0.96f, 1.f), "COUNTER");
 	}
 
 	std::string Format_Vector3(const float3_t& Value)
@@ -173,17 +182,51 @@ void Client::CBossTool::Open_PatternFlow()
 	m_bSelectPatternFlowTab = true;
 }
 
-void Client::CBossTool::Update(const bool_t bToolVisible)
+void Client::CBossTool::Open_LogicPattern()
 {
-	if (!bToolVisible || !m_bOpen)
+	m_bLogicPatternOpen = true;
+	m_bLogicPatternFocusPending = true;
+	if (!m_bGraphLoadAttempted)
+		(void)Reload_Graph();
+}
+
+bool_t Client::CBossTool::Consume_LogicPatternOpenRequest()
+{
+	if (!m_bLogicPatternOpenRequest)
+		return false;
+	m_bLogicPatternOpenRequest = false;
+	return true;
+}
+
+void Client::CBossTool::Update(
+	const bool_t bBossToolVisible,
+	const bool_t bLogicPatternVisible)
+{
+	if ((!bBossToolVisible || !m_bOpen) &&
+		(!bLogicPatternVisible || !m_bLogicPatternOpen))
 	{
 		m_bRepeat = false;
 		m_strRepeatPatternId.clear();
 		return;
 	}
+	if (m_bCanonicalReloadRetryPending &&
+		ImGui::GetTime() >= m_dNextCanonicalReloadRetrySeconds)
+	{
+		(void)Reload_Graph();
+	}
 
 	Synchronize_LiveSelection();
+	Update_LogicFlowObservation();
 	Refresh_PresentationFreshness();
+	/* Logic Pattern observes the admitted graph and replicated cursor only.
+	   Keeping that standalone window open must never keep Boss Tool Repeat or
+	   any other mutation lifecycle alive after the Boss Tool route is hidden. */
+	if (!bBossToolVisible || !m_bOpen)
+	{
+		m_bRepeat = false;
+		m_strRepeatPatternId.clear();
+		return;
+	}
 	const bool_t bFlowOwnsPlayback =
 		CValtanPatternFlowService::Get().Has_PlaybackOwnership();
 	const HUD_PLAYER_STATE& Player = CCombatHUDViewModel::Get().Get_Player();
@@ -238,46 +281,70 @@ void Client::CBossTool::Update(const bool_t bToolVisible)
 	(void)Submit_SelectedPattern();
 }
 
+void Client::CBossTool::Schedule_CanonicalReloadRetry()
+{
+	m_bCanonicalReloadRetryPending = true;
+	m_dNextCanonicalReloadRetrySeconds =
+		ImGui::GetTime() + CANONICAL_RELOAD_RETRY_SECONDS;
+}
+
 bool_t Client::CBossTool::Reload_Graph()
 {
 	m_bReviveFeedbackPending = false;
 	m_strActionFeedback.clear();
 	m_bGraphLoadAttempted = true;
+	m_bCanonicalReloadRetryPending = false;
 	/* A reload attempt revokes mutation admission immediately. The last good
 	   graph remains available for diagnosis, but it cannot authorize commands
 	   unless this exact staging transaction commits. */
-	m_bGraphMutationAdmitted = false;
+	m_eGraphAdmission = Can_DisplayValtanView(m_eGraphAdmission) ?
+		VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
+		VALTAN_VIEW_ADMISSION::UNLOADED;
 	VALTAN_PATTERN_TREE_VIEW StagedGraph;
-	std::string Status;
+	VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic;
 	CValtanCanonicalProductReadAdmission CanonicalAdmission;
-	if (!CanonicalAdmission.Acquire(Status) ||
-		!CValtanPatternTree::Load_WhileAdmitted(
-			CanonicalAdmission, StagedGraph, Status))
+	if (!CanonicalAdmission.Acquire(Diagnostic))
 	{
-		m_strStatus = m_bGraphReady ?
-			"Canonical graph STALE_PRESERVED; previous rows are display-only: " + Status :
-			"Graph reload failed: " + Status;
-		return false;
+		if (Diagnostic.Is_AutomaticRetryable())
+			Schedule_CanonicalReloadRetry();
+		return Fail_GraphReload(Diagnostic.strStatus, nullptr);
+	}
+	if (!CValtanPatternTree::Load_WhileAdmitted(
+			CanonicalAdmission, StagedGraph, Diagnostic))
+	{
+		if (Diagnostic.Is_AutomaticRetryable())
+			Schedule_CanonicalReloadRetry();
+		std::string Status = Diagnostic.strStatus;
+		if (Diagnostic.Requires_ProductProjection())
+		{
+			Status = "REPROJECTION_REQUIRED: Save/Project the joined Valtan source "
+				"generation before command admission. Recovery command: " +
+				std::string{
+					VALTAN_CANONICAL_READ_DIAGNOSTIC::PRODUCT_PROJECTION_COMMAND } +
+				" | " + Status;
+			if (!Diagnostic.strRejectedPatternId.empty())
+			{
+				Status += " | quarantined source owner=" +
+					Diagnostic.strRejectedPatternId;
+				if (!Diagnostic.strRejectedStageId.empty())
+					Status += "/" + Diagnostic.strRejectedStageId;
+			}
+		}
+		return Fail_GraphReload(Status, &CanonicalAdmission);
 	}
 	VALTAN_TOOL_AUDITION_INVENTORY StagedAuditionInventory;
 	std::string InventoryError;
 	if (!CValtanPatternTree::Build_PlayablePatternInventory(
 			StagedGraph, StagedAuditionInventory, InventoryError))
 	{
-		m_strStatus = m_bGraphReady ?
-			"Canonical graph STALE_PRESERVED; previous rows are display-only: " + InventoryError :
-			"Graph reload failed: " + InventoryError;
-		return false;
+		return Fail_GraphReload(InventoryError, &CanonicalAdmission);
 	}
 
 	std::vector<std::string> StagedNextPatternIds;
 	if (!CValtanPatternTree::Build_NextPatternInventory(
 			StagedGraph, StagedNextPatternIds, InventoryError))
 	{
-		m_strStatus = m_bGraphReady ?
-			"Canonical graph STALE_PRESERVED; previous rows are display-only: " + InventoryError :
-			"Graph reload failed: " + InventoryError;
-		return false;
+		return Fail_GraphReload(InventoryError, &CanonicalAdmission);
 	}
 	std::vector<std::string> StagedAdmittedPatternIds;
 	StagedAdmittedPatternIds.reserve(StagedAuditionInventory.Get_PatternCount());
@@ -300,15 +367,12 @@ bool_t Client::CBossTool::Reload_Graph()
 			StagedGraph.ScriptedSequencePatternIds,
 			StagedAdmittedPatternIds, StagedFlowStatus))
 	{
-		m_strStatus = m_bGraphReady ?
-			"Canonical graph STALE_PRESERVED; previous rows are display-only because its scriptedSequence could not be staged: " +
-				StagedFlowStatus :
-			"Graph reload failed because the gameplay scriptedSequence could not be staged: " +
-				StagedFlowStatus;
 		m_strFlowStatus =
 			"Canonical scriptedSequence load failed; graph reload was not committed: " +
 			StagedFlowStatus;
-		return false;
+		return Fail_GraphReload(
+			"gameplay scriptedSequence could not be staged: " +
+			StagedFlowStatus, &CanonicalAdmission);
 	}
 	CValtanPatternFlowDocument StagedFlowDocument = CanonicalFlowDocument;
 	if (bFlowWasReady && m_FlowDocument.Is_Dirty())
@@ -320,13 +384,12 @@ bool_t Client::CBossTool::Reload_Graph()
 				m_FlowDocument.Get_Draft(), StagedAdmittedPatternIds,
 				StagedFlowStatus))
 		{
-			m_strStatus = m_bGraphReady ?
-				"Canonical graph STALE_PRESERVED; previous rows are display-only because an unsaved sequence draft conflicts with the current gameplay revision." :
-				"Graph reload failed because an unsaved sequence draft conflicts with the current gameplay revision.";
 			m_strFlowStatus =
 				"Save, discard, or reload the canonical scriptedSequence draft: " +
 				StagedFlowStatus;
-			return false;
+			return Fail_GraphReload(
+				"an unsaved sequence draft conflicts with the current gameplay revision: " +
+				StagedFlowStatus, &CanonicalAdmission);
 		}
 		StagedFlowDocument = m_FlowDocument;
 	}
@@ -350,12 +413,10 @@ bool_t Client::CBossTool::Reload_Graph()
 	std::string FinalAdmissionStatus;
 	if (!CanonicalAdmission.Validate_StillCurrent(FinalAdmissionStatus))
 	{
-		m_strStatus = m_bGraphReady ?
-			"Canonical graph STALE_PRESERVED; previous rows are display-only because the canonical Product generation changed before commit: " +
-				FinalAdmissionStatus :
-			"Graph reload failed because the canonical Product generation changed before commit: " +
-				FinalAdmissionStatus;
-		return false;
+		Schedule_CanonicalReloadRetry();
+		return Fail_GraphReload(
+			"canonical Product generation changed before commit: " +
+			FinalAdmissionStatus, nullptr);
 	}
 
 	m_Graph = std::move(StagedGraph);
@@ -363,6 +424,8 @@ bool_t Client::CBossTool::Reload_Graph()
 		(std::numeric_limits<uint64_t>::max)() ==
 			m_iLogicFlowSourceGeneration ?
 			1u : m_iLogicFlowSourceGeneration + 1u;
+	m_LogicFlowSelection.Clear();
+	m_LogicFlowObservedEdges.Reset();
 	m_AuditionInventory = std::move(StagedAuditionInventory);
 	m_NextPatternIds = std::move(StagedNextPatternIds);
 	m_FlowDocument = std::move(StagedFlowDocument);
@@ -376,7 +439,9 @@ bool_t Client::CBossTool::Reload_Graph()
 		"Camera lane unavailable: " +
 			(bEncounterReady ? CameraStatus : EncounterStatus);
 	m_bGraphReady = true;
-	m_bGraphMutationAdmitted = true;
+	m_eGraphAdmission = VALTAN_VIEW_ADMISSION::ADMITTED;
+	m_ProductFallbackEncounterReference.Clear();
+	m_bProductFallbackReady = false;
 	Refresh_PresentationFreshness(true);
 	if (!bFlowWasReady)
 	{
@@ -446,14 +511,17 @@ bool_t Client::CBossTool::Reload_Graph()
 bool_t Client::CBossTool::Can_MutateCanonicalGraph(
 	std::string& strOutStatus) const
 {
-	if (m_bGraphMutationAdmitted)
+	if (Can_MutateValtanView(m_eGraphAdmission))
 	{
 		strOutStatus.clear();
 		return true;
 	}
-	strOutStatus = m_bGraphReady ?
+	strOutStatus = Can_DisplayValtanView(m_eGraphAdmission) &&
+		m_bGraphReady ?
 		"Canonical graph is STALE_PRESERVED. Previous rows are display-only until a fresh reload is ADMITTED." :
-		"Canonical graph is not ADMITTED; reload it before using a mutation command.";
+		(m_bProductFallbackReady ?
+			"READ-ONLY PRODUCT FALLBACK has no command authority. Repair the strict split authoring join and reload it before using Save, Restart, Play, Repeat, or Next." :
+			"Canonical graph is not ADMITTED; reload it before using a mutation command.");
 	return false;
 }
 
@@ -569,46 +637,6 @@ bool_t Client::CBossTool::Restart_SelectedPattern()
 	m_bFollowLive = true;
 	m_strStatus = std::move(Status);
 	return true;
-}
-
-bool_t Client::CBossTool::Restart_SavedSinglePatternFreshArena()
-{
-	m_bReviveFeedbackPending = false;
-	m_strActionFeedback.clear();
-	if (m_FlowDocument.Is_Dirty())
-	{
-		m_strActionFeedback =
-			"Fresh Arena Pattern restart uses the saved scriptedSequence. Save or discard the current Flow draft first.";
-		m_strFlowStatus = m_strActionFeedback;
-		m_strStatus = m_strActionFeedback;
-		return false;
-	}
-	const VALTAN_PATTERN_FLOW_DEFINITION* const pSavedFlow =
-		m_FlowDocument.Get_SavedDefaultFlow();
-	const std::size_t iSavedSlotCount = nullptr == pSavedFlow ?
-		0u : pSavedFlow->Slots.size();
-	if (1u != iSavedSlotCount)
-	{
-		m_strActionFeedback =
-			"Fresh Arena Pattern restart requires exactly one saved scriptedSequence slot; found " +
-			std::to_string(iSavedSlotCount) +
-			". Save exactly one Pattern in Current Patterns, then retry.";
-		m_strFlowStatus = m_strActionFeedback;
-		m_strStatus = m_strActionFeedback;
-		return false;
-	}
-
-	m_strSelectedPatternId = pSavedFlow->Slots.front().strPatternId;
-	const bool_t bStarted = Restart_SavedFlow(true);
-	m_strActionFeedback = m_strFlowStatus.empty() ?
-		(bStarted ?
-			"Fresh Arena Pattern restart was submitted." :
-			"Fresh Arena Pattern restart was rejected.") :
-		m_strFlowStatus;
-	m_strStatus = m_strActionFeedback;
-	if (bStarted)
-		m_bFollowLive = true;
-	return bStarted;
 }
 
 bool_t Client::CBossTool::Restart_ServerPattern(
@@ -916,7 +944,7 @@ bool_t Client::CBossTool::Get_ServerPatternOptions(
 		strOutStatus = "The current Valtan graph admitted no Complete Play pattern.";
 		return false;
 	}
-	strOutStatus = m_bGraphMutationAdmitted ?
+	strOutStatus = Can_MutateValtanView(m_eGraphAdmission) ?
 		"Loaded " + std::to_string(outOptions.size()) +
 			" Server-admitted Complete Play patterns." :
 		"Showing " + std::to_string(outOptions.size()) +
@@ -1217,27 +1245,6 @@ bool_t Client::CBossTool::Start_FlowAtSlot(
 
 bool_t Client::CBossTool::Restart_SavedFlow()
 {
-	return Restart_SavedFlow(false);
-}
-
-bool_t Client::CBossTool::Restart_SavedFlow(
-	const bool_t bRequireSingleSavedPattern)
-{
-	const auto RequireSingleSavedPattern =
-		[this]() -> const VALTAN_PATTERN_FLOW_DEFINITION*
-		{
-			const VALTAN_PATTERN_FLOW_DEFINITION* const pSavedFlow =
-				m_FlowDocument.Get_SavedDefaultFlow();
-			const std::size_t iSavedSlotCount = nullptr == pSavedFlow ?
-				0u : pSavedFlow->Slots.size();
-			if (1u == iSavedSlotCount)
-				return pSavedFlow;
-			m_strFlowStatus =
-				"Fresh Arena Pattern restart requires exactly one saved scriptedSequence slot; found " +
-				std::to_string(iSavedSlotCount) +
-				". No Server reset or playback command was submitted.";
-			return nullptr;
-		};
 	CValtanPatternFlowService& FlowService =
 		CValtanPatternFlowService::Get();
 	FlowService.Update();
@@ -1245,26 +1252,6 @@ bool_t Client::CBossTool::Restart_SavedFlow(
 		FlowService.Get_PendingStart();
 	if (VALTAN_PATTERN_FLOW_START_STATE::UNCONFIRMED == Pending.eState)
 	{
-		const VALTAN_PATTERN_FLOW_DEFINITION* const pRequiredSavedFlow =
-			bRequireSingleSavedPattern ? RequireSingleSavedPattern() : nullptr;
-		if (bRequireSingleSavedPattern && nullptr == pRequiredSavedFlow)
-			return false;
-		if (bRequireSingleSavedPattern &&
-			(Pending.Request.Slots.size() != 1u ||
-			 Pending.Request.strFlowId != pRequiredSavedFlow->strFlowId ||
-			 Pending.Request.strFlowRevision !=
-				m_FlowDocument.Get_SourceRevision() ||
-			 Pending.Request.strStartSlotId !=
-				pRequiredSavedFlow->Slots.front().strSlotId ||
-			 Pending.Request.Slots.front().strSlotId !=
-				pRequiredSavedFlow->Slots.front().strSlotId ||
-			 Pending.Request.Slots.front().strPatternId !=
-				pRequiredSavedFlow->Slots.front().strPatternId))
-		{
-			m_strFlowStatus =
-				"Fresh Arena Pattern restart cannot retry the unresolved Flow because it is not the exact saved one-slot scriptedSequence request.";
-			return false;
-		}
 		CValtanTuningCommandService& TuningService =
 			CValtanTuningCommandService::Get();
 		TuningService.Update();
@@ -1276,7 +1263,7 @@ bool_t Client::CBossTool::Restart_SavedFlow(
 				SavedCandidateRevision, m_strFlowStatus))
 		{
 			m_strFlowStatus =
-				"Restart Flow (Fresh Arena) is blocked until the exact Product candidate from the latest canonical Save is Server-active. " +
+				"Restart Saved Flow (Fresh Arena) is blocked until the exact Product candidate from the latest canonical Save is Server-active. " +
 				m_strFlowStatus;
 			return false;
 		}
@@ -1301,7 +1288,7 @@ bool_t Client::CBossTool::Restart_SavedFlow(
 		if (Pending.Request.ExpectedDefinitionRevision != ExpectedRevision)
 		{
 			m_strFlowStatus =
-				"The unresolved Flow is pinned to a different Product revision. Re-enter Valtan Arena to clear that ambiguous request, then use Restart Flow (Fresh Arena) again.";
+				"The unresolved Flow is pinned to a different Product revision. Re-enter Valtan Arena to clear that ambiguous request, then use Restart Saved Flow (Fresh Arena) again.";
 			return false;
 		}
 		return FlowService.Retry_Start(
@@ -1310,15 +1297,10 @@ bool_t Client::CBossTool::Restart_SavedFlow(
 	if (FlowService.Has_PendingStart())
 	{
 		m_strFlowStatus =
-			"Restart Flow (Fresh Arena) is waiting for the Server response.";
+			"Restart Saved Flow (Fresh Arena) is waiting for the Server response.";
 		return false;
 	}
 	if (!Reload_FlowDocument())
-		return false;
-	const VALTAN_PATTERN_FLOW_DEFINITION* const pRequiredSavedFlow =
-		bRequireSingleSavedPattern ?
-		RequireSingleSavedPattern() : nullptr;
-	if (bRequireSingleSavedPattern && nullptr == pRequiredSavedFlow)
 		return false;
 
 	/* Restart is a disk-backed command. Resolve the activation expectation only
@@ -1336,7 +1318,7 @@ bool_t Client::CBossTool::Restart_SavedFlow(
 			SavedCandidateRevision, m_strFlowStatus))
 	{
 		m_strFlowStatus =
-			"Restart Flow (Fresh Arena) is blocked until the exact Product candidate from the latest canonical Save is Server-active. " +
+			"Restart Saved Flow (Fresh Arena) is blocked until the exact Product candidate from the latest canonical Save is Server-active. " +
 			m_strFlowStatus;
 		return false;
 	}
@@ -1461,7 +1443,50 @@ bool_t Client::CBossTool::Save_FlowDocument()
 				"The physical Save succeeded, but Product candidate publication/activation preparation failed: " +
 					ActivationStatus + " " :
 				ActivationStatus + " ")) +
-		"The running Flow was not changed. Restart Flow (Fresh Arena) is admitted only after that exact saved Product revision is Server-active.";
+		"The running Flow was not changed. Restart Saved Flow (Fresh Arena) is admitted only after that exact saved Product revision is Server-active.";
+	return true;
+}
+
+bool_t Client::CBossTool::Retry_FlowProductPublishApply()
+{
+	if (m_FlowDocument.Is_Dirty() ||
+		m_FlowDocument.Has_ExternalConflict())
+	{
+		m_strFlowStatus =
+			"Retry Product Publish / Apply requires the saved clean Flow. Save, discard, or reload the current Flow draft first.";
+		return false;
+	}
+	if (nullptr == m_pBalanceTool)
+	{
+		m_strFlowStatus =
+			"Retry Product Publish / Apply is unavailable because the shared Valtan source owner is missing.";
+		return false;
+	}
+
+	std::string RetryStatus;
+	if (!m_pBalanceTool->Retry_ValtanProductPublishApply(RetryStatus))
+	{
+		m_strFlowStatus = std::move(RetryStatus);
+		return false;
+	}
+
+	/* Publication does not mutate the saved Flow. If the prior source commit
+	   succeeded but a transient Product reopen revoked this window's mutation
+	   admission, retry the ordinary read-only graph staging as well. */
+	const bool_t bGraphReopened =
+		Can_MutateValtanView(m_eGraphAdmission) || Reload_Graph();
+	m_strFlowStatus = std::move(RetryStatus);
+	if (bGraphReopened)
+	{
+		m_strFlowStatus +=
+			" Canonical Pattern and Flow views are admitted for the current saved revision.";
+	}
+	else
+	{
+		m_strFlowStatus +=
+			" Product publish/apply retry completed, but the canonical editor graph still could not reopen: " +
+			m_strStatus;
+	}
 	return true;
 }
 
@@ -1547,20 +1572,77 @@ void Client::CBossTool::Render()
 	ImGui::End();
 }
 
+void Client::CBossTool::Render_LogicPatternWindow()
+{
+	if (!m_bLogicPatternOpen)
+		return;
+	if (!m_bGraphLoadAttempted)
+		(void)Reload_Graph();
+
+	ImGui::SetNextWindowPos(ImVec2(52.f, 36.f), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(1420.f, 840.f), ImGuiCond_FirstUseEver);
+	if (m_bLogicPatternFocusPending)
+	{
+		ImGui::SetNextWindowCollapsed(false, ImGuiCond_Always);
+		ImGui::SetNextWindowFocus();
+		m_bLogicPatternFocusPending = false;
+	}
+	if (!ImGui::Begin("Valtan Logic Pattern", &m_bLogicPatternOpen))
+	{
+		ImGui::End();
+		return;
+	}
+	ImGui::TextDisabled(
+		"Read-only blueprint over the Boss Tool's one admitted Pattern graph and replicated Server cursor.");
+	Render_LogicPatternContent();
+	ImGui::End();
+}
+
 void Client::CBossTool::Render_BossVerificationTab()
 {
 	Render_LiveSummary();
 	Render_ActionBar();
 	ImGui::Separator();
 
-	if (!m_bGraphReady)
+	if (!Can_DisplayValtanView(m_eGraphAdmission))
 	{
 		ImGui::TextWrapped("%s", m_strStatus.c_str());
 		if (ImGui::Button("Retry Graph Load"))
 			(void)Reload_Graph();
 		return;
 	}
-	if (!m_bGraphMutationAdmitted)
+	if (!m_bGraphReady && m_bProductFallbackReady &&
+		Can_DisplayValtanView(m_eGraphAdmission))
+	{
+		ImGui::TextColored(
+			ImVec4(1.f, 0.72f, 0.18f, 1.f),
+			"READ-ONLY PRODUCT FALLBACK");
+		ImGui::TextWrapped("%s", m_strStatus.c_str());
+		if (ImGui::Button("Retry Strict Graph Load##productFallback"))
+			(void)Reload_Graph();
+		ImGui::Separator();
+		if (ImGui::BeginTable(
+				"##bossToolProductFallbackLayout", 2,
+				ImGuiTableFlags_Resizable |
+				ImGuiTableFlags_BordersInnerV |
+				ImGuiTableFlags_SizingStretchProp))
+		{
+			ImGui::TableSetupColumn(
+				"Generated Product Patterns",
+				ImGuiTableColumnFlags_WidthFixed, 330.f);
+			ImGui::TableSetupColumn(
+				"Read-only Product Detail",
+				ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			Render_ProductFallbackPatternList();
+			ImGui::TableSetColumnIndex(1);
+			Render_ProductFallbackSelectedPattern();
+			ImGui::EndTable();
+		}
+		return;
+	}
+	if (!Can_MutateValtanView(m_eGraphAdmission))
 	{
 		ImGui::TextWrapped("%s", m_strStatus.c_str());
 		if (ImGui::Button("Retry Graph Load##preserved"))
@@ -1603,17 +1685,87 @@ void Client::CBossTool::Render_BossVerificationTab()
 
 void Client::CBossTool::Render_LogicFlowTab()
 {
-	if (!m_bGraphReady)
+	const HUD_BOSS_STATE& Boss = CCombatHUDViewModel::Get().Get_Boss();
+	ImGui::TextWrapped(
+		"The canonical Logic canvas now lives in its own large Logic Pattern window. This tab keeps only the Boss Tool context and deep link.");
+	if (Boss.isValid && !Boss.strPatternId.empty())
+	{
+		const VALTAN_PATTERN_VIEW* const pLivePattern =
+			Find_AuditionPattern(Boss.strPatternId);
+		const ENCOUNTER_PATTERN_REFERENCE* const pFallbackPattern =
+			nullptr == pLivePattern ?
+				Find_ProductFallbackPattern(Boss.strPatternId) : nullptr;
+		const ENCOUNTER_STAGE_REFERENCE* const pFallbackStage =
+			nullptr == pFallbackPattern ? nullptr :
+				Find_ProductFallbackStage(*pFallbackPattern, Boss.strActionId);
+		const bool_t bHasCounterHitBranch =
+			(nullptr != pLivePattern &&
+			 CBossLogicFlowViewModel::Has_CounterHitBranch(*pLivePattern)) ||
+			(nullptr != pFallbackPattern && std::any_of(
+				pFallbackPattern->stages.begin(), pFallbackPattern->stages.end(),
+				[](const ENCOUNTER_STAGE_REFERENCE& Stage)
+				{ return Stage.bHasCounterHitBranch; }));
+		const std::string& DisplayName =
+			nullptr != pLivePattern && !pLivePattern->strDisplayName.empty() ?
+				pLivePattern->strDisplayName :
+				(nullptr != pFallbackPattern &&
+				 !pFallbackPattern->displayName.empty() ?
+					pFallbackPattern->displayName : Boss.strPatternId);
+		ImGui::Text("Server live: %s | Sequence %u",
+			DisplayName.c_str(), Boss.iPatternSequence);
+		Render_LogicCounterBadge(bHasCounterHitBranch);
+		ImGui::SameLine();
+		ImGui::Text("| Stage %u", Boss.iPatternStageIndex);
+		if (nullptr != pFallbackPattern)
+		{
+			ImGui::TextColored(
+				ImVec4(1.f, 0.72f, 0.18f, 1.f),
+				"READ-ONLY PRODUCT FALLBACK");
+		}
+		ImGui::TextWrapped("Action: %s%s%s",
+			Boss.strActionId.empty() ? "None" : Boss.strActionId.c_str(),
+			nullptr == pFallbackStage ? "" : " | Product Stage: ",
+			nullptr == pFallbackStage ? "" : pFallbackStage->stageId.c_str());
+	}
+	else
+	{
+		ImGui::TextDisabled("Server live: IDLE");
+	}
+	const auto& History = m_LogicFlowObservedEdges.Get_History();
+	if (!History.empty())
+	{
+		const BOSS_LOGIC_FLOW_OBSERVED_EDGE& Latest = History.back();
+		ImGui::TextWrapped(
+			"Latest fail-closed observation: %s / %s",
+			Latest.strSourceStageId.c_str(), Latest.strOutcome.c_str());
+	}
+	if (ImGui::Button("Open Large Logic Pattern Window"))
+	{
+		Open_LogicPattern();
+		m_bLogicPatternOpenRequest = true;
+	}
+	ImGui::TextDisabled(
+		"F1 > Logic Pattern opens the same window directly; no graph or playback owner is cloned.");
+}
+
+void Client::CBossTool::Render_LogicPatternContent()
+{
+	if (!Can_DisplayValtanView(m_eGraphAdmission))
 	{
 		ImGui::TextWrapped("%s", m_strStatus.c_str());
-		if (ImGui::Button("Retry Graph Load##logicFlow"))
+		if (ImGui::Button("Retry Graph Load##logicPattern"))
 			(void)Reload_Graph();
 		return;
 	}
-	if (!m_bGraphMutationAdmitted)
+	if (!m_bGraphReady && m_bProductFallbackReady)
+	{
+		Render_ProductFallbackLogicPattern();
+		return;
+	}
+	if (!Can_MutateValtanView(m_eGraphAdmission))
 	{
 		ImGui::TextWrapped(
-			"Logic Flow is showing the previous admitted graph read-only: %s",
+			"Logic Pattern is showing the previous admitted graph read-only: %s",
 			m_strStatus.c_str());
 	}
 
@@ -1626,9 +1778,6 @@ void Client::CBossTool::Render_LogicFlowTab()
 		FlowPlayback.strCurrentPatternId == Boss.strPatternId &&
 		0u != FlowPlayback.iPatternSequence &&
 		FlowPlayback.iPatternSequence == Boss.iPatternSequence;
-
-	const VALTAN_PATTERN_FLOW_DEFINITION* const pSavedFlow =
-		m_FlowDocument.Get_SavedDefaultFlow();
 	if (FlowPlayback.Is_InFlight())
 	{
 		ImGui::TextWrapped(
@@ -1638,12 +1787,6 @@ void Client::CBossTool::Render_LogicFlowTab()
 			static_cast<uint32_t>(FlowPlayback.iCurrentSlotOrdinal),
 			static_cast<uint32_t>(FlowPlayback.iSlotCount),
 			bFlowLifecycleMatchesBoss ? "LIVE SYNC" : "WAITING FOR LIVE SYNC");
-	}
-	else
-	{
-		ImGui::TextDisabled(
-			"Current Flow: IDLE | Saved order: %zu Patterns",
-			nullptr == pSavedFlow ? 0u : pSavedFlow->Slots.size());
 	}
 
 	std::string PatternId;
@@ -1661,60 +1804,358 @@ void Client::CBossTool::Render_LogicFlowTab()
 	{
 		PatternId = m_strSelectedPatternId;
 	}
-
 	const VALTAN_PATTERN_VIEW* const pPattern =
 		Find_AuditionPattern(PatternId);
 	if (nullptr == pPattern)
 	{
-		ImGui::TextWrapped(
-			"Current Pattern: %s",
+		ImGui::TextWrapped("Current Pattern: %s",
 			PatternId.empty() ? "None" : PatternId.c_str());
 		ImGui::TextDisabled(
-			"Start a Server Pattern or select one in Boss Verification to inspect its code-connected flow.");
+			"Start a Server Pattern or select one in Boss Verification to inspect its admitted blueprint.");
+		return;
+	}
+	if (!Project_LogicFlowView(*pPattern))
+	{
+		ImGui::TextWrapped("%s", m_strLogicFlowStatus.c_str());
 		return;
 	}
 
-	ImGui::TextWrapped(
-		"Current Pattern: %s%s",
-		pPattern->strDisplayName.empty() ? pPattern->strPatternId.c_str() :
-			pPattern->strDisplayName.c_str(),
-		bLivePattern ? "  [SERVER LIVE]" : "  [SELECTED]");
-	if (!pPattern->strDisplayName.empty() && ImGui::IsItemHovered())
-		ImGui::SetTooltip("Pattern ID: %s", pPattern->strPatternId.c_str());
-	ImGui::TextDisabled(
-		"Read-only code projection: Stage roles, exact animation clips, COUNTER_HIT and TIMEOUT branches.");
-
-	if (m_LogicFlowView.strPatternId != pPattern->strPatternId ||
-		m_LogicFlowView.Graph.iSourceGeneration !=
-			m_iLogicFlowSourceGeneration)
-	{
-		ACTION_COMPOSITION_GRAPH_ERROR Error;
-		if (!CBossLogicFlowViewModel::Project(
-				*pPattern, m_iLogicFlowSourceGeneration,
-				m_LogicFlowView, Error))
-		{
-			m_strLogicFlowStatus = Error.strMessage.empty() ?
-				"Logic Flow projection failed." : Error.strMessage;
-			ImGui::TextWrapped("%s", m_strLogicFlowStatus.c_str());
-			return;
-		}
-		m_strLogicFlowStatus =
-			"Logic Flow projected from the admitted Pattern graph.";
-	}
-
 	BOSS_LOGIC_FLOW_RENDER_CONTEXT Context;
-	Context.strSelectedStageId =
-		pPattern->strPatternId == m_strSelectedPatternId ?
-			std::string_view(m_strSelectedStageId) : std::string_view{};
+	if (m_LogicFlowSelection.strPatternId == pPattern->strPatternId &&
+		BOSS_LOGIC_FLOW_SELECTION_KIND::NONE != m_LogicFlowSelection.eKind)
+	{
+		Context.strSelectedStageId = m_LogicFlowSelection.strStageId;
+	}
+	else if (pPattern->strPatternId == m_strSelectedPatternId)
+	{
+		Context.strSelectedStageId = m_strSelectedStageId;
+	}
 	Context.strLiveActionId = bLivePattern ?
 		std::string_view(Boss.strActionId) : std::string_view{};
+	const auto& History = m_LogicFlowObservedEdges.Get_History();
+	Context.pObservedEdge = History.empty() ? nullptr : &History.back();
 	Context.bLivePattern = bLivePattern;
-	Context.bAllowSelection = false;
-	Context.fMinimumCanvasHeight = 420.f;
-	BOSS_LOGIC_FLOW_SELECTION IgnoredSelection;
-	(void)CBossLogicFlowRenderer::Render(
-		m_LogicFlowView, Context, m_LogicFlowCanvasState,
-		IgnoredSelection);
+	Context.bAllowSelection = true;
+	Context.fMinimumCanvasHeight = 560.f;
+
+	if (ImGui::BeginTable("##LogicPatternWorkspace", 2,
+			ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV |
+			ImGuiTableFlags_SizingStretchProp,
+			ImGui::GetContentRegionAvail()))
+	{
+		ImGui::TableSetupColumn("Blueprint", ImGuiTableColumnFlags_WidthStretch,
+			0.72f);
+		ImGui::TableSetupColumn("Inspector", ImGuiTableColumnFlags_WidthStretch,
+			0.28f);
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
+		ImGui::BeginChild("##LogicPatternCanvasPane", ImVec2(0.f, 0.f), false,
+			ImGuiWindowFlags_NoScrollbar);
+		BOSS_LOGIC_FLOW_SELECTION Selection;
+		if (CBossLogicFlowRenderer::Render(
+				m_LogicFlowView, Context, m_LogicFlowCanvasState, Selection))
+		{
+			m_LogicFlowSelection = std::move(Selection);
+		}
+		ImGui::EndChild();
+
+		ImGui::TableNextColumn();
+		ImGui::BeginChild("##LogicPatternInspectorPane", ImVec2(0.f, 0.f),
+			false);
+		Render_LogicPatternInspector(*pPattern, Boss, bLivePattern);
+		ImGui::EndChild();
+		ImGui::EndTable();
+	}
+}
+
+void Client::CBossTool::Render_LogicPatternInspector(
+	const VALTAN_PATTERN_VIEW& Pattern,
+	const HUD_BOSS_STATE& Boss,
+	const bool_t bLivePattern)
+{
+	ImGui::SeparatorText("Live snapshot");
+	if (bLivePattern)
+	{
+		ImGui::TextWrapped("Pattern %s", Boss.strPatternId.c_str());
+		ImGui::Text("Sequence %u", Boss.iPatternSequence);
+		Render_LogicCounterBadge(m_LogicFlowView.bHasCounterHitBranch);
+		ImGui::SameLine();
+		ImGui::Text("| Stage %u | Tick %u",
+			Boss.iPatternStageIndex, Boss.iServerTick);
+		ImGui::TextWrapped("Action %s", Boss.strActionId.c_str());
+		if (Boss.iResponseThreshold > 0u)
+		{
+			ImGui::TextWrapped(
+				"Response: %u / %u confirmed HP damage",
+				Boss.iResponseProgress, Boss.iResponseThreshold);
+		}
+		const bool_t bCounterable = LostArk::Shared::Has_BossCombatFlag(
+			Boss.iBossCombatFlags,
+			LostArk::Shared::BOSS_COMBAT_STATE_FLAG::COUNTERABLE);
+		const bool_t bGroggy = LostArk::Shared::Has_BossCombatFlag(
+			Boss.iBossCombatFlags,
+			LostArk::Shared::BOSS_COMBAT_STATE_FLAG::GROGGY);
+		ImGui::TextDisabled("COUNTERABLE %s | GROGGY %s",
+			bCounterable ? "ON" : "OFF", bGroggy ? "ON" : "OFF");
+	}
+	else
+	{
+		ImGui::TextDisabled("Sequence --");
+		Render_LogicCounterBadge(m_LogicFlowView.bHasCounterHitBranch);
+		ImGui::TextDisabled("No matching live Server Pattern.");
+	}
+
+	std::string InspectorActionId;
+	if (m_LogicFlowSelection.strPatternId == Pattern.strPatternId &&
+		!m_LogicFlowSelection.strActionId.empty())
+	{
+		InspectorActionId = m_LogicFlowSelection.strActionId;
+	}
+	else if (bLivePattern)
+	{
+		InspectorActionId = Boss.strActionId;
+	}
+	else if (Pattern.strPatternId == m_strSelectedPatternId)
+	{
+		const VALTAN_STAGE_VIEW* const pSelected = Find_SelectedStage(Pattern);
+		if (nullptr != pSelected)
+			InspectorActionId = pSelected->strActionId;
+	}
+	const auto NodeAt = std::find_if(
+		m_LogicFlowView.Nodes.begin(), m_LogicFlowView.Nodes.end(),
+		[&InspectorActionId](const BOSS_LOGIC_FLOW_NODE_VIEW& Node)
+		{ return Node.strActionId == InspectorActionId; });
+	ImGui::SeparatorText("Stage conditions");
+	if (m_LogicFlowView.Nodes.end() == NodeAt)
+	{
+		ImGui::TextDisabled("Click a Stage or branch to inspect it.");
+	}
+	else
+	{
+		ImGui::Text("%s | %s", NodeAt->strStageKind.c_str(),
+			NodeAt->strStageId.c_str());
+		ImGui::TextWrapped("%s", NodeAt->strActionId.c_str());
+		if (NodeAt->ConditionSummaries.empty())
+			ImGui::TextDisabled("No authored conditional input on this Stage.");
+		else
+		{
+			for (const std::string& Summary : NodeAt->ConditionSummaries)
+				ImGui::BulletText("%s", Summary.c_str());
+		}
+		ImGui::TextDisabled("Counter contract: %s",
+			NodeAt->bCounterWindow ? "CLOSED" :
+				(NodeAt->bCounterContractIncomplete ? "INCOMPLETE" : "N/A"));
+
+		ImGui::SeparatorText("Outgoing branches");
+		for (const ACTION_COMPOSITION_GRAPH_EDGE& Edge :
+			m_LogicFlowView.Graph.Edges)
+		{
+			if (Edge.strSourceActionId != NodeAt->strActionId)
+				continue;
+			std::string Destination = !Edge.strTargetPatternId.empty() ?
+				("Pattern " + Edge.strTargetPatternId) :
+				(!Edge.strTargetActionId.empty() ? Edge.strTargetActionId : "END");
+			ImGui::BulletText("%s -> %s%s", Edge.strOutcome.c_str(),
+				Destination.c_str(),
+				ACTION_COMPOSITION_GRAPH_EDGE_ORIGIN::DERIVED_TIMEOUT ==
+					Edge.eOrigin ? " (derived)" : "");
+		}
+	}
+	if (BOSS_LOGIC_FLOW_SELECTION_KIND::BRANCH ==
+		m_LogicFlowSelection.eKind &&
+		m_LogicFlowSelection.strPatternId == Pattern.strPatternId)
+	{
+		ImGui::SeparatorText("Selected branch");
+		ImGui::Text("Outcome: %s", m_LogicFlowSelection.strOutcome.c_str());
+		if (!m_LogicFlowSelection.strTargetPatternId.empty())
+			ImGui::TextWrapped("Target Pattern: %s",
+				m_LogicFlowSelection.strTargetPatternId.c_str());
+		else if (!m_LogicFlowSelection.strTargetActionId.empty())
+			ImGui::TextWrapped("Target Action: %s",
+				m_LogicFlowSelection.strTargetActionId.c_str());
+		else
+			ImGui::TextDisabled("Target: END");
+	}
+
+	ImGui::SeparatorText("Observed edge history");
+	ImGui::TextDisabled(
+		"Only consecutive Server ticks plus one unique graph edge are admitted. Gaps and ambiguous targets stay blank.");
+	const auto& History = m_LogicFlowObservedEdges.Get_History();
+	if (History.empty())
+	{
+		ImGui::TextDisabled("No fail-closed edge observed yet.");
+	}
+	else
+	{
+		if (ImGui::SmallButton("Clear observed history"))
+			m_LogicFlowObservedEdges.Reset();
+		for (auto At = History.rbegin(); At != History.rend(); ++At)
+		{
+			const std::string Destination = !At->strTargetPatternId.empty() ?
+				("Pattern " + At->strTargetPatternId) :
+				(!At->strTargetActionId.empty() ? At->strTargetActionId : "END");
+			ImGui::PushID(static_cast<int>(At->iObservationSequence));
+			ImGui::TextWrapped("#%llu  tick %u -> %u",
+				static_cast<unsigned long long>(At->iObservationSequence),
+				At->iSourceServerTick, At->iTargetServerTick);
+			ImGui::TextWrapped("%s / %s -> %s",
+				At->strSourceStageId.c_str(), At->strOutcome.c_str(),
+				Destination.c_str());
+			ImGui::Separator();
+			ImGui::PopID();
+		}
+	}
+}
+
+bool_t Client::CBossTool::Project_LogicFlowView(
+	const VALTAN_PATTERN_VIEW& Pattern)
+{
+	if (m_LogicFlowView.strPatternId == Pattern.strPatternId &&
+		m_LogicFlowView.Graph.iSourceGeneration ==
+			m_iLogicFlowSourceGeneration)
+	{
+		return true;
+	}
+	ACTION_COMPOSITION_GRAPH_ERROR Error;
+	if (!CBossLogicFlowViewModel::Project(
+			Pattern, m_iLogicFlowSourceGeneration, m_LogicFlowView, Error))
+	{
+		m_strLogicFlowStatus = Error.strMessage.empty() ?
+			"Logic Pattern projection failed." : Error.strMessage;
+		return false;
+	}
+	if (m_LogicFlowSelection.strPatternId != Pattern.strPatternId)
+		m_LogicFlowSelection.Clear();
+	m_strLogicFlowStatus =
+		"Logic Pattern projected from the admitted Pattern graph.";
+	return true;
+}
+
+bool_t Client::CBossTool::Fail_GraphReload(
+	const std::string& strStrictFailure,
+	CValtanCanonicalProductReadAdmission* const pCanonicalAdmission)
+{
+	if (m_bGraphReady)
+	{
+		/* Never replace a fully joined display snapshot with the reduced Product
+		   projection.  Its command admission was revoked by Reload_Graph(), so the
+		   preserved graph remains diagnosis-only until a strict reload succeeds. */
+		m_eGraphAdmission = VALTAN_VIEW_ADMISSION::STALE_PRESERVED;
+		m_strStatus =
+			"Canonical graph STALE_PRESERVED; previous rows are display-only: " +
+			strStrictFailure;
+		return false;
+	}
+	if (nullptr == pCanonicalAdmission)
+	{
+		/* Acquire failure (including a publisher writer window) provides no
+		   generation pin.  Never open Product files outside an admission and risk
+		   displaying a mixed transaction. */
+		m_eGraphAdmission = m_bProductFallbackReady ?
+			VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
+			VALTAN_VIEW_ADMISSION::REJECTED;
+		m_strStatus = m_bProductFallbackReady ?
+			"READ-ONLY PRODUCT FALLBACK STALE_PRESERVED: canonical Product read admission failed, so the prior fallback generation was preserved and no files were reopened. Commands remain blocked. Failure: " +
+				strStrictFailure :
+			"Graph reload failed before canonical Product read admission; no unpinned fallback read was attempted: " +
+				strStrictFailure;
+		return false;
+	}
+
+	CEncounterPatternReference StagedProduct;
+	std::string ProductStatus;
+	if (StagedProduct.Load(
+			CProjectDataRoot::Resolve(
+				L"Encounters/Valtan/ValtanEncounter.json"),
+			ProductStatus))
+	{
+		std::string CurrentStatus;
+		if (!pCanonicalAdmission->Validate_StillCurrent(CurrentStatus))
+		{
+			Schedule_CanonicalReloadRetry();
+			m_eGraphAdmission = m_bProductFallbackReady ?
+				VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
+				VALTAN_VIEW_ADMISSION::REJECTED;
+			m_strStatus = m_bProductFallbackReady ?
+				"READ-ONLY PRODUCT FALLBACK STALE_PRESERVED: Product generation changed before fallback commit; the prior fallback was preserved. Commands remain blocked. Strict failure: " +
+					strStrictFailure + " | Product admission failure: " +
+					CurrentStatus :
+				"Graph reload failed and the generated Product fallback generation changed before commit; no fallback was published. Strict failure: " +
+					strStrictFailure + " | Product admission failure: " +
+					CurrentStatus;
+			return false;
+		}
+		m_ProductFallbackEncounterReference = std::move(StagedProduct);
+		m_bProductFallbackReady = true;
+		m_eGraphAdmission = VALTAN_VIEW_ADMISSION::STALE_PRESERVED;
+		const HUD_BOSS_STATE& Boss = CCombatHUDViewModel::Get().Get_Boss();
+		const ENCOUNTER_PATTERN_REFERENCE* pSelected =
+			m_ProductFallbackEncounterReference.Find_Pattern(
+				m_strSelectedPatternId);
+		if (nullptr == pSelected && Boss.isValid)
+		{
+			pSelected = m_ProductFallbackEncounterReference.Find_Pattern(
+				Boss.strPatternId);
+		}
+		if (nullptr == pSelected &&
+			!m_ProductFallbackEncounterReference.Get_Patterns().empty())
+		{
+			pSelected =
+				&m_ProductFallbackEncounterReference.Get_Patterns().front();
+		}
+		m_strSelectedPatternId = nullptr == pSelected ?
+			std::string{} : pSelected->patternId;
+		m_strSelectedStageId = nullptr == pSelected || pSelected->stages.empty() ?
+			std::string{} : pSelected->stages.front().stageId;
+		m_strStatus =
+			"READ-ONLY PRODUCT FALLBACK: strict split authoring join failed; " +
+			std::to_string(
+				m_ProductFallbackEncounterReference.Get_Patterns().size()) +
+			" generated Product patterns remain visible. Save, Restart, Play, "
+			"Repeat, and Next stay blocked. Strict failure: " +
+			strStrictFailure;
+		return false;
+	}
+
+	if (m_bProductFallbackReady)
+	{
+		m_eGraphAdmission = VALTAN_VIEW_ADMISSION::STALE_PRESERVED;
+		m_strStatus =
+			"READ-ONLY PRODUCT FALLBACK STALE_PRESERVED: strict split authoring "
+			"join and Product fallback refresh both failed. Commands remain "
+			"blocked. Strict failure: " + strStrictFailure +
+			" | Product fallback failure: " + ProductStatus;
+		return false;
+	}
+
+	m_eGraphAdmission = VALTAN_VIEW_ADMISSION::REJECTED;
+	m_strStatus = "Graph reload failed: " + strStrictFailure +
+		" | Product fallback failed: " + ProductStatus;
+	return false;
+}
+
+void Client::CBossTool::Update_LogicFlowObservation()
+{
+	BOSS_LOGIC_FLOW_LIVE_SNAPSHOT Snapshot;
+	const HUD_BOSS_STATE& Boss = CCombatHUDViewModel::Get().Get_Boss();
+	Snapshot.bValid = Can_DisplayValtanView(m_eGraphAdmission) &&
+		m_bGraphReady && Boss.isValid && 0u != Boss.iCurrentHp &&
+		!Boss.strPatternId.empty() && !Boss.strActionId.empty();
+	Snapshot.iServerTick = Boss.iServerTick;
+	Snapshot.iPatternSequence = Boss.iPatternSequence;
+	Snapshot.strPatternId = Boss.strPatternId;
+	Snapshot.strActionId = Boss.strActionId;
+
+	const BOSS_LOGIC_FLOW_VIEW* pCurrentView = nullptr;
+	if (Snapshot.bValid)
+	{
+		const VALTAN_PATTERN_VIEW* const pPattern =
+			Find_AuditionPattern(Snapshot.strPatternId);
+		if (nullptr != pPattern && Project_LogicFlowView(*pPattern))
+			pCurrentView = &m_LogicFlowView;
+	}
+	(void)m_LogicFlowObservedEdges.Observe(
+		Snapshot, pCurrentView, nullptr);
 }
 
 void Client::CBossTool::Render_PatternFlowTab()
@@ -1724,9 +2165,9 @@ void Client::CBossTool::Render_PatternFlowTab()
 	const bool_t bHasServerProjection = nullptr != pCurrentFlow &&
 		CValtanPatternFlowDocument::Has_LegacyLinearProjection(*pCurrentFlow);
 	ImGui::TextDisabled(bHasServerProjection ?
-		"Load reads Valtan.gameplay.json. Save commits its scriptedSequence with Pattern data. Restart reloads that revision from Pattern 01." :
+		"Pattern Play/Restart in Boss Verification runs one selected Pattern from Stage 1 and keeps the current arena. Restart Saved Flow here reloads the complete scriptedSequence, restores the arena, starts Pattern 01, then follows every saved Next Pattern and Wait." :
 		"Product Save supports one finite ordered scriptedSequence; remove debug-only routing before Save.");
-	if (!m_bGraphMutationAdmitted)
+	if (!Can_MutateValtanView(m_eGraphAdmission))
 	{
 		ImGui::TextWrapped("%s", m_strStatus.c_str());
 		if (ImGui::Button("Retry Graph Load##flow"))
@@ -1752,7 +2193,8 @@ void Client::CBossTool::Render_PatternFlowTab()
 	ImGui::Text("Flow: %s", pDocumentState);
 	ImGui::SameLine();
 	ImGui::BeginDisabled(
-		bDocumentCommandPending || !m_bGraphMutationAdmitted);
+		bDocumentCommandPending ||
+		!Can_MutateValtanView(m_eGraphAdmission));
 	if (ImGui::Button("Load Flow"))
 	{
 		if (m_FlowDocument.Is_Dirty())
@@ -1776,9 +2218,25 @@ void Client::CBossTool::Render_PatternFlowTab()
 	ImGui::EndDisabled();
 	ImGui::EndDisabled();
 	ImGui::SameLine();
+	const bool_t bCleanFlowProductRetry =
+		!m_FlowDocument.Is_Dirty() &&
+		!m_FlowDocument.Has_ExternalConflict();
+	ImGui::BeginDisabled(
+		bDocumentCommandPending || nullptr == m_pBalanceTool ||
+		!bCleanFlowProductRetry);
+	if (ImGui::Button("Retry Product Publish / Apply"))
+		(void)Retry_FlowProductPublishApply();
+	ImGui::EndDisabled();
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+	{
+		ImGui::SetTooltip(
+			"Retry only Product reopen, candidate publication, and runtime apply for the clean saved Flow. Canonical source files are not saved again.");
+	}
+	ImGui::SameLine();
 	ImGui::BeginDisabled(
 		bDocumentCommandPending ||
-		!m_bGraphMutationAdmitted || !m_FlowDocument.Is_Ready() ||
+		!Can_MutateValtanView(m_eGraphAdmission) ||
+		!m_FlowDocument.Is_Ready() ||
 		!m_FlowDocument.Is_Dirty());
 	if (ImGui::Button("Discard Changes..."))
 	{
@@ -1790,20 +2248,21 @@ void Client::CBossTool::Render_PatternFlowTab()
 	ImGui::SameLine();
 	ImGui::BeginDisabled(
 		bRestartWaiting ||
-		!m_bGraphMutationAdmitted || m_FlowDocument.Is_Dirty());
-	if (ImGui::Button("Restart Flow (Fresh Arena)"))
+		!Can_MutateValtanView(m_eGraphAdmission) ||
+		m_FlowDocument.Is_Dirty());
+	if (ImGui::Button("Restart Saved Flow (Fresh Arena)"))
 		(void)Restart_SavedFlow();
 	ImGui::EndDisabled();
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 		ImGui::SetTooltip(
-			"Reload the saved scriptedSequence from Valtan.gameplay.json, restore the authoritative walls, floors, props, collision, Nav, and combat objects, then start Pattern 01 from a fresh arena.");
+			"Reload the complete saved scriptedSequence from Valtan.gameplay.json, restore the authoritative walls, floors, props, collision, Nav, and combat objects, then start saved Pattern 01 and follow every saved Next Pattern and inter-pattern Wait.");
 	if (m_bConfirmDiscardDirtyFlow)
 	{
 		ImGui::TextWrapped(
 			"Discard every unsaved sequence change and restore scriptedSequence from Valtan.gameplay.json?");
 		ImGui::BeginDisabled(
 			bDocumentCommandPending ||
-			!m_bGraphMutationAdmitted);
+			!Can_MutateValtanView(m_eGraphAdmission));
 		if (ImGui::Button("Discard Changes##ConfirmFlowDiscard"))
 			(void)Reload_FlowDocument();
 		ImGui::SameLine();
@@ -1847,7 +2306,8 @@ void Client::CBossTool::Render_PatternFlowTab()
 		ImGui::TableSetColumnIndex(0);
 		if (ImGui::BeginChild("##bossFlowSlotsPane", ImVec2(0.f, fColumnHeight)))
 		{
-			if (m_bGraphReady && m_FlowDocument.Is_Ready())
+			if (Can_DisplayValtanView(m_eGraphAdmission) &&
+				m_bGraphReady && m_FlowDocument.Is_Ready())
 			{
 				if (m_bFlowGraphEditor)
 					Render_FlowGraphEditor();
@@ -1861,7 +2321,8 @@ void Client::CBossTool::Render_PatternFlowTab()
 		ImGui::TableSetColumnIndex(1);
 		if (ImGui::BeginChild("##bossFlowSelectedPane", ImVec2(0.f, fSelectedHeight), true))
 		{
-			if (m_bGraphReady && m_FlowDocument.Is_Ready())
+			if (Can_DisplayValtanView(m_eGraphAdmission) &&
+				m_bGraphReady && m_FlowDocument.Is_Ready())
 				Render_FlowSelectedSlot();
 			else
 				ImGui::TextWrapped("%s", m_strFlowStatus.c_str());
@@ -1916,7 +2377,7 @@ void Client::CBossTool::Render_NextPatternCard()
 	const bool_t bRuntimeCanChoose = bRevisionAdmitted &&
 		Service.Can_QueueNextPattern(
 			BOSS_PLACEMENT_ID, ExpectedNextRevision, SelectionStatus);
-	const bool_t bCanChoose = m_bGraphMutationAdmitted &&
+	const bool_t bCanChoose = Can_MutateValtanView(m_eGraphAdmission) &&
 		m_bNextPatternInventoryReady &&
 		!m_NextPatternIds.empty() && bRuntimeCanChoose;
 	ImGui::BeginDisabled(!bCanChoose);
@@ -1965,7 +2426,7 @@ void Client::CBossTool::Render_NextPatternCard()
 			(void)Request_RevivePlayer(m_strNextPatternStatus);
 		ImGui::EndDisabled();
 	}
-	if (!m_bGraphMutationAdmitted)
+	if (!Can_MutateValtanView(m_eGraphAdmission))
 	{
 		ImGui::TextWrapped(
 			"Preserved Next rows are display-only until canonical reload is ADMITTED.");
@@ -2003,7 +2464,7 @@ void Client::CBossTool::Render_NextPatternPicker()
 	   admission runs once when Queue_NextServerPattern submits the command. */
 	const bool_t bPlaybackAdmitted = Observe_ServerActivePatternRevision(
 		ExpectedRevision, SelectionStatus);
-	ImGui::BeginDisabled(!m_bGraphMutationAdmitted ||
+	ImGui::BeginDisabled(!Can_MutateValtanView(m_eGraphAdmission) ||
 		!m_bNextPatternInventoryReady ||
 		!bPlaybackAdmitted ||
 		!Service.Can_QueueNextPattern(
@@ -2055,7 +2516,7 @@ void Client::CBossTool::Render_FlowGraphEditor()
 	const VALTAN_PATTERN_FLOW_SNAPSHOT& Playback =
 		CValtanPatternFlowService::Get().Get_Snapshot();
 	const bool_t bEditingLocked =
-		!m_bGraphMutationAdmitted ||
+		!Can_MutateValtanView(m_eGraphAdmission) ||
 		CValtanPatternFlowService::Get().Has_PendingStart() ||
 		CValtanPatternAuditionService::Get().Has_PlaybackOwnership() ||
 		Is_ServerArenaPresetPending();
@@ -2236,7 +2697,7 @@ bool_t Client::CBossTool::Render_AddPatternNodePopup()
 		return false;
 	bool_t bDocumentMutated = false;
 	const bool_t bEditingLocked =
-		!m_bGraphMutationAdmitted ||
+		!Can_MutateValtanView(m_eGraphAdmission) ||
 		CValtanPatternFlowService::Get().Has_PendingStart() ||
 		CValtanPatternAuditionService::Get().Has_PlaybackOwnership() ||
 		Is_ServerArenaPresetPending();
@@ -2318,7 +2779,7 @@ void Client::CBossTool::Render_FlowSlotList()
 	const VALTAN_PATTERN_FLOW_SNAPSHOT& Playback =
 		CValtanPatternFlowService::Get().Get_Snapshot();
 	const bool_t bEditingLocked =
-		!m_bGraphMutationAdmitted ||
+		!Can_MutateValtanView(m_eGraphAdmission) ||
 		CValtanPatternFlowService::Get().Has_PendingStart() ||
 		CValtanPatternAuditionService::Get().Has_PlaybackOwnership() ||
 		Is_ServerArenaPresetPending();
@@ -2453,7 +2914,7 @@ void Client::CBossTool::Render_AddPatternPopup()
 	if (!ImGui::BeginPopup("##addBossFlowPattern"))
 		return;
 	const bool_t bEditingLocked =
-		!m_bGraphMutationAdmitted ||
+		!Can_MutateValtanView(m_eGraphAdmission) ||
 		CValtanPatternFlowService::Get().Has_PendingStart() ||
 		CValtanPatternAuditionService::Get().Has_PlaybackOwnership() ||
 		Is_ServerArenaPresetPending();
@@ -2533,7 +2994,8 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 		Find_AuditionPattern(pNode->strPatternId);
 	CValtanPatternFlowService& FlowService = CValtanPatternFlowService::Get();
 	const bool_t bEditingLocked =
-		!m_bGraphMutationAdmitted || FlowService.Has_PendingStart() ||
+		!Can_MutateValtanView(m_eGraphAdmission) ||
+		FlowService.Has_PendingStart() ||
 		CValtanPatternAuditionService::Get().Has_PlaybackOwnership() ||
 		Is_ServerArenaPresetPending();
 	const std::vector<std::string> AdmittedIds = Build_AdmittedPatternIds();
@@ -2908,7 +3370,7 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 	const bool_t bRuntimeReady = CNetworkManager::Get().Is_Connected() &&
 		Boss.isValid && Player.isValid && 0u != Player.iCurrentHp &&
 		Player.isCombatReady;
-	const bool_t bCanPreview = m_bGraphMutationAdmitted &&
+	const bool_t bCanPreview = Can_MutateValtanView(m_eGraphAdmission) &&
 		nullptr != pNode && nullptr != pPattern &&
 		bRuntimeReady && !FlowService.Has_PlaybackOwnership() &&
 		!CValtanPatternAuditionService::Get().Has_PlaybackOwnership();
@@ -2972,7 +3434,7 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 		"Server: %s | %s",
 		Describe_ValtanPatternFlowState(Playback.eState),
 		Playback.strStatus.empty() ?
-			"No gameplay sequence is active. Restart Flow (Fresh Arena) reloads the saved canonical order, restores the arena, and starts at Pattern 01." :
+			"No gameplay sequence is active. Restart Saved Flow (Fresh Arena) reloads the complete saved order, restores the arena, starts Pattern 01, then follows its saved Next Pattern and Wait values." :
 			Playback.strStatus.c_str());
 	if (!Playback.strFlowRevision.empty())
 	{
@@ -2980,7 +3442,7 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 			Playback.strFlowRevision != m_FlowDocument.Get_SourceRevision())
 		{
 			ImGui::TextWrapped(
-				"The current run keeps its pinned revision. Restart Flow (Fresh Arena) loads the latest saved canonical gameplay order and restores the arena before Pattern 01.");
+				"The current run keeps its pinned revision. Restart Saved Flow (Fresh Arena) loads the latest complete saved gameplay order and restores the arena before Pattern 01.");
 		}
 	}
 	const VALTAN_PATTERN_FLOW_START_COMMAND& StartCommand = FlowService.Get_PendingStart();
@@ -3028,33 +3490,55 @@ void Client::CBossTool::Render_LiveSummary()
 		const VALTAN_PATTERN_VIEW* pPattern = Find_Pattern(Boss.strPatternId);
 		const VALTAN_STAGE_VIEW* pStage = nullptr == pPattern ?
 			nullptr : Find_LiveStage(*pPattern);
+		const ENCOUNTER_PATTERN_REFERENCE* const pFallbackPattern =
+			nullptr == pPattern ?
+				Find_ProductFallbackPattern(Boss.strPatternId) : nullptr;
+		const ENCOUNTER_STAGE_REFERENCE* const pFallbackStage =
+			nullptr == pFallbackPattern ? nullptr :
+				Find_ProductFallbackStage(*pFallbackPattern, Boss.strActionId);
 		std::string PatternText = Boss.strPatternId.empty() ?
 			"IDLE" :
 			(nullptr != pPattern && !pPattern->strDisplayName.empty() ?
-				pPattern->strDisplayName : Boss.strPatternId);
-		if (!Boss.strPatternId.empty() &&
+				pPattern->strDisplayName :
+				(nullptr != pFallbackPattern &&
+				 !pFallbackPattern->displayName.empty() ?
+					pFallbackPattern->displayName : Boss.strPatternId));
+		if (nullptr != pFallbackPattern)
+		{
+			PatternText += " [READ-ONLY PRODUCT FALLBACK]";
+		}
+		else if (!Boss.strPatternId.empty() &&
 			!m_AuditionInventory.Contains(Boss.strPatternId))
 		{
 			PatternText += " [live only; outside All Effects list]";
 		}
 		std::string StageText = nullptr == pStage ?
-			(Boss.strActionId.empty() ? "IDLE" :
-				"UNKNOWN ACTION " + Boss.strActionId) :
+			(nullptr != pFallbackStage ? pFallbackStage->stageId :
+				(Boss.strActionId.empty() ? "IDLE" :
+					"UNKNOWN ACTION " + Boss.strActionId)) :
 			pStage->strStageId;
 
 		std::string TimeText = "tick " + std::to_string(Boss.iServerTick);
-		if (nullptr != pStage && m_EncounterReference.Is_Ready() &&
-			0u != m_EncounterReference.Get_FixedTickHz())
+		const CEncounterPatternReference* const pTimingReference =
+			nullptr != pStage ? &m_EncounterReference :
+				(nullptr != pFallbackStage ?
+					&m_ProductFallbackEncounterReference : nullptr);
+		const uint32_t iStageDurationMs = nullptr != pStage ?
+			pStage->iDurationMs :
+			(nullptr != pFallbackStage ? pFallbackStage->iDurationMs : 0u);
+		if (nullptr != pTimingReference && pTimingReference->Is_Ready() &&
+			0u != pTimingReference->Get_FixedTickHz() &&
+			0u != iStageDurationMs)
 		{
 			const uint32_t iElapsedTicks = Boss.iServerTick >= Boss.iActionStartTick ?
 				Boss.iServerTick - Boss.iActionStartTick : 0u;
 			const f32_t fElapsedSeconds = static_cast<f32_t>(iElapsedTicks) /
-				static_cast<f32_t>(m_EncounterReference.Get_FixedTickHz());
+				static_cast<f32_t>(pTimingReference->Get_FixedTickHz());
 			char_t Buffer[96]{};
 			std::snprintf(
 				Buffer, sizeof(Buffer), "%.2f / %.2f s",
 				fElapsedSeconds,
-				static_cast<f32_t>(pStage->iDurationMs) / 1000.f);
+				static_cast<f32_t>(iStageDurationMs) / 1000.f);
 			TimeText = Buffer;
 		}
 
@@ -3079,7 +3563,9 @@ void Client::CBossTool::Render_LiveSummary()
 			"Live: %s / %s  |  %s  |  Phase %u  |  HP %u bars  |  %s",
 			PatternText.c_str(), StageText.c_str(), TimeText.c_str(),
 			static_cast<uint32_t>(Boss.iPhase), iHealthBars, pFreshness);
-		if (nullptr != pPattern && !pPattern->strDisplayName.empty() &&
+		if (((nullptr != pPattern && !pPattern->strDisplayName.empty()) ||
+			 (nullptr != pFallbackPattern &&
+			  !pFallbackPattern->displayName.empty())) &&
 			ImGui::IsItemHovered())
 		{
 			ImGui::SetTooltip("Pattern ID: %s", Boss.strPatternId.c_str());
@@ -3101,7 +3587,7 @@ void Client::CBossTool::Render_ActionBar()
 	const HUD_PLAYER_STATE& Player = CCombatHUDViewModel::Get().Get_Player();
 	const VALTAN_PATTERN_VIEW* pSelected =
 		Find_AuditionPattern(m_strSelectedPatternId);
-	const bool_t bCanPlay = m_bGraphMutationAdmitted &&
+	const bool_t bCanPlay = Can_MutateValtanView(m_eGraphAdmission) &&
 		nullptr != pSelected &&
 		CNetworkManager::Get().Is_Connected() && Boss.isValid &&
 		Player.isValid && 0u != Player.iCurrentHp && Player.isCombatReady &&
@@ -3110,21 +3596,18 @@ void Client::CBossTool::Render_ActionBar()
 	const bool_t bNextOwnsPlayback =
 		PatternService.Get_NextSnapshot().Is_Live() ||
 		PatternService.Has_PendingNextCommand();
-	const bool_t bCanReplaceOwnedPattern =
-		(VALTAN_PATTERN_AUDITION_STATE::QUEUED == Audition.eState ||
-		 VALTAN_PATTERN_AUDITION_STATE::ACTIVE == Audition.eState) &&
-		CONSUMER_ID == Audition.strConsumerId &&
-		BOSS_PLACEMENT_ID == Audition.strBossPlacementId &&
-		!bNextOwnsPlayback;
-	const VALTAN_PATTERN_FLOW_START_STATE eFlowStartState =
-		FlowService.Get_PendingStart().eState;
-	const bool_t bCanRestartFreshArena = m_bGraphMutationAdmitted &&
+	const bool_t bRestartablePatternOccurrence =
+		VALTAN_PATTERN_AUDITION_STATE::ACTIVE == Audition.eState ||
+		VALTAN_PATTERN_AUDITION_STATE::COMPLETED == Audition.eState;
+	const bool_t bCanRestartActivePattern =
+		Can_MutateValtanView(m_eGraphAdmission) && nullptr != pSelected &&
+		m_strSelectedPatternId == Audition.strPatternId &&
 		CNetworkManager::Get().Is_Connected() && Boss.isValid &&
 		Player.isValid && 0u != Player.iCurrentHp && Player.isCombatReady &&
-		!Is_ServerArenaPresetPending() &&
-		VALTAN_PATTERN_FLOW_START_STATE::WAITING_VERDICT != eFlowStartState &&
-		(!PatternService.Has_PlaybackOwnership() ||
-		 bCanReplaceOwnedPattern);
+		!Is_ServerArenaPresetPending() && !bFlowOwnsPlayback &&
+		!bNextOwnsPlayback && bRestartablePatternOccurrence &&
+		CONSUMER_ID == Audition.strConsumerId &&
+		BOSS_PLACEMENT_ID == Audition.strBossPlacementId;
 	const bool_t bCanRetryRestart = CNetworkManager::Get().Is_Connected() &&
 		VALTAN_PATTERN_AUDITION_STATE::RESTART_UNCONFIRMED ==
 			Audition.eState &&
@@ -3140,7 +3623,7 @@ void Client::CBossTool::Render_ActionBar()
 			pSelected->strDisplayName.c_str()));
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!bCanPlay);
-	if (ImGui::Button("Complete Play Selected"))
+	if (ImGui::Button("Play Selected Pattern (Keep Arena)"))
 	{
 #ifdef _DEBUG
 		if (CMainApp* const pApp = CMainApp::Get_Active())
@@ -3164,14 +3647,17 @@ void Client::CBossTool::Render_ActionBar()
 #endif
 	}
 	ImGui::EndDisabled();
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		ImGui::SetTooltip(
+			"Boss-only reset through PLAY_PATTERN_ID. Plays only the selected Pattern from its first Stage; keeps current walls, floors, props, collision, and Nav; cancels only the replaced boss's combat objects; and does not run the saved Flow, Next Pattern, or inter-pattern Wait.");
 	ImGui::SameLine();
-	ImGui::BeginDisabled(!bCanRestartFreshArena);
-	if (ImGui::Button("Restart Saved Pattern (Fresh Arena)"))
-		(void)Restart_SavedSinglePatternFreshArena();
+	ImGui::BeginDisabled(!bCanRestartActivePattern);
+	if (ImGui::Button("Restart Active Pattern (Keep Arena)"))
+		(void)Restart_SelectedPattern();
 	ImGui::EndDisabled();
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 		ImGui::SetTooltip(
-			"Requires exactly one Pattern in the saved Valtan.gameplay.json scriptedSequence. Restores walls, floors, props, collision, Nav, and combat objects, then starts saved Pattern 01 from a fresh arena.");
+			"Exact-occurrence restart through RESTART_PATTERN_ID. Restarts only this Tool's active or completed selected Pattern from its first Stage; keeps current walls, floors, props, collision, and Nav; cancels only the replaced boss's combat objects; and does not reload the saved Flow.");
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!bCanRetryRestart);
 	if (ImGui::Button("Retry Restart Verdict"))
@@ -3202,7 +3688,8 @@ void Client::CBossTool::Render_ActionBar()
 	}
 	ImGui::EndDisabled();
 	ImGui::SameLine();
-	ImGui::BeginDisabled(!m_bGraphMutationAdmitted || nullptr == pSelected ||
+	ImGui::BeginDisabled(!Can_MutateValtanView(m_eGraphAdmission) ||
+		nullptr == pSelected ||
 		bNextOwnsPlayback || bFlowOwnsPlayback);
 	if (ImGui::Checkbox("Repeat", &m_bRepeat))
 	{
@@ -3239,7 +3726,7 @@ void Client::CBossTool::Render_ActionBar()
 		m_strStatus : m_strActionFeedback;
 	if (m_strActionFeedback.empty())
 	{
-		if (!m_bGraphReady)
+		if (!Can_DisplayValtanView(m_eGraphAdmission) || !m_bGraphReady)
 			Status = "Play unavailable: canonical Valtan graph did not load.";
 		else if (nullptr == pSelected)
 			Status = "Play unavailable: select one pattern from the list.";
@@ -3327,6 +3814,221 @@ void Client::CBossTool::Select_Pattern(const VALTAN_PATTERN_VIEW& Pattern)
 	m_bFollowLive = false;
 }
 
+void Client::CBossTool::Render_ProductFallbackPatternList()
+{
+	ImGui::TextUnformatted("Generated Product Patterns");
+	ImGui::TextDisabled("Selection is display-only; no Tool command is armed.");
+	ImGui::SetNextItemWidth(-1.f);
+	ImGui::InputTextWithHint(
+		"##bossProductFallbackPatternSearch", "Search Product pattern...",
+		m_PatternSearch.data(), m_PatternSearch.size());
+	const std::string Query = m_PatternSearch.data();
+	if (!ImGui::BeginChild(
+			"##bossProductFallbackPatternList", ImVec2(0.f, 0.f), true))
+	{
+		ImGui::EndChild();
+		return;
+	}
+
+	size_t iVisible = 0u;
+	for (const ENCOUNTER_PATTERN_REFERENCE& Pattern :
+		m_ProductFallbackEncounterReference.Get_Patterns())
+	{
+		bool_t bMatches = Contains_CaseInsensitive(Pattern.patternId, Query) ||
+			Contains_CaseInsensitive(Pattern.displayName, Query) ||
+			Contains_CaseInsensitive(Pattern.actionId, Query);
+		if (!bMatches)
+		{
+			bMatches = std::any_of(
+				Pattern.stages.begin(), Pattern.stages.end(),
+				[&Query](const ENCOUNTER_STAGE_REFERENCE& Stage)
+				{
+					return Contains_CaseInsensitive(Stage.stageId, Query) ||
+						Contains_CaseInsensitive(Stage.actionId, Query);
+				});
+		}
+		if (!bMatches)
+			continue;
+		++iVisible;
+		ImGui::PushID(Pattern.patternId.c_str());
+		if (ImGui::Selectable(
+				Pattern.displayName.empty() ? Pattern.patternId.c_str() :
+					Pattern.displayName.c_str(),
+				m_strSelectedPatternId == Pattern.patternId))
+		{
+			m_strSelectedPatternId = Pattern.patternId;
+			m_strSelectedStageId = Pattern.stages.empty() ?
+				std::string{} : Pattern.stages.front().stageId;
+			m_bFollowLive = false;
+			m_bRepeat = false;
+			m_strRepeatPatternId.clear();
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip(
+				"Product Pattern ID: %s\nEntry action: %s",
+				Pattern.patternId.c_str(), Pattern.actionId.c_str());
+		}
+		ImGui::PopID();
+	}
+	if (0u == iVisible)
+		ImGui::TextDisabled("No Product pattern matches this search.");
+	ImGui::EndChild();
+}
+
+void Client::CBossTool::Render_ProductFallbackSelectedPattern()
+{
+	const ENCOUNTER_PATTERN_REFERENCE* const pPattern =
+		Find_ProductFallbackPattern(m_strSelectedPatternId);
+	if (nullptr == pPattern)
+	{
+		ImGui::TextDisabled("Select a generated Product pattern on the left.");
+		return;
+	}
+
+	ImGui::TextColored(
+		ImVec4(1.f, 0.72f, 0.18f, 1.f),
+		"READ-ONLY PRODUCT FALLBACK");
+	ImGui::Text("Selected: %s",
+		pPattern->displayName.empty() ? pPattern->patternId.c_str() :
+			pPattern->displayName.c_str());
+	ImGui::TextWrapped("Pattern ID: %s | Entry action: %s",
+		pPattern->patternId.c_str(), pPattern->actionId.c_str());
+	ImGui::TextDisabled("Target %s | Aim %s | %u ms total",
+		pPattern->targetPolicy.c_str(), pPattern->aimPolicy.c_str(),
+		pPattern->iTotalDurationMs);
+	ImGui::TextWrapped(
+		"This generated Product projection can identify patterns and live actions only. Strict split authoring did not pass, so Save, Restart, Play, Repeat, Next, and authoring branch edits remain unavailable.");
+
+	if (pPattern->stages.empty())
+		return;
+	const ENCOUNTER_STAGE_REFERENCE* pSelectedStage =
+		Find_ProductFallbackStage(*pPattern, m_strSelectedStageId);
+	if (nullptr == pSelectedStage)
+	{
+		m_strSelectedStageId = pPattern->stages.front().stageId;
+		pSelectedStage = &pPattern->stages.front();
+	}
+	const std::string Preview = pSelectedStage->stageId + " / " +
+		pSelectedStage->actionId;
+	ImGui::SetNextItemWidth(-1.f);
+	if (ImGui::BeginCombo("##bossProductFallbackStage", Preview.c_str()))
+	{
+		for (const ENCOUNTER_STAGE_REFERENCE& Stage : pPattern->stages)
+		{
+			const bool_t bSelected = Stage.stageId == m_strSelectedStageId;
+			const std::string Label = Stage.stageId + " / " + Stage.actionId;
+			if (ImGui::Selectable(Label.c_str(), bSelected))
+				m_strSelectedStageId = Stage.stageId;
+			if (bSelected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+	pSelectedStage = Find_ProductFallbackStage(
+		*pPattern, m_strSelectedStageId);
+	if (nullptr != pSelectedStage)
+	{
+		ImGui::Text("%s | %u ms", pSelectedStage->stageKind.c_str(),
+			pSelectedStage->iDurationMs);
+		ImGui::TextWrapped("Action: %s", pSelectedStage->actionId.c_str());
+		if (pSelectedStage->bHasCounterHitBranch)
+			ImGui::TextColored(
+				ImVec4(0.36f, 0.86f, 0.96f, 1.f), "COUNTER");
+	}
+}
+
+void Client::CBossTool::Render_ProductFallbackLogicPattern()
+{
+	ImGui::TextColored(
+		ImVec4(1.f, 0.72f, 0.18f, 1.f),
+		"READ-ONLY PRODUCT FALLBACK");
+	ImGui::TextWrapped("%s", m_strStatus.c_str());
+	if (ImGui::Button("Retry Strict Graph Load##logicProductFallback"))
+		(void)Reload_Graph();
+	ImGui::Separator();
+
+	const HUD_BOSS_STATE& Boss = CCombatHUDViewModel::Get().Get_Boss();
+	const bool_t bHasLivePattern = Boss.isValid &&
+		!Boss.strPatternId.empty() && nullptr !=
+		Find_ProductFallbackPattern(Boss.strPatternId);
+	const std::string& PatternId = bHasLivePattern ?
+		Boss.strPatternId : m_strSelectedPatternId;
+	const ENCOUNTER_PATTERN_REFERENCE* const pPattern =
+		Find_ProductFallbackPattern(PatternId);
+	if (nullptr == pPattern)
+	{
+		ImGui::TextDisabled(
+			"No live or selected generated Product pattern can be resolved.");
+		return;
+	}
+
+	const bool_t bHasCounterHitBranch = std::any_of(
+		pPattern->stages.begin(), pPattern->stages.end(),
+		[](const ENCOUNTER_STAGE_REFERENCE& Stage)
+		{ return Stage.bHasCounterHitBranch; });
+	ImGui::Text("%s | %s",
+		pPattern->displayName.empty() ? pPattern->patternId.c_str() :
+			pPattern->displayName.c_str(),
+		bHasLivePattern ? "SERVER LIVE" : "SELECTED");
+	if (bHasLivePattern)
+	{
+		ImGui::Text("Sequence %u", Boss.iPatternSequence);
+		Render_LogicCounterBadge(bHasCounterHitBranch);
+		ImGui::SameLine();
+		ImGui::Text("| Stage %u | Tick %u",
+			Boss.iPatternStageIndex, Boss.iServerTick);
+	}
+	else if (bHasCounterHitBranch)
+	{
+		ImGui::TextColored(
+			ImVec4(0.36f, 0.86f, 0.96f, 1.f), "COUNTER");
+	}
+	ImGui::TextDisabled(
+		"Generated Product stage topology only. Conditional branch authoring requires a successful strict split join.");
+
+	if (ImGui::BeginTable(
+			"##logicProductFallbackStages", 4,
+			ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders |
+			ImGuiTableFlags_SizingStretchProp))
+	{
+		ImGui::TableSetupColumn("Stage");
+		ImGui::TableSetupColumn("Kind");
+		ImGui::TableSetupColumn("Action");
+		ImGui::TableSetupColumn("Duration");
+		ImGui::TableHeadersRow();
+		for (const ENCOUNTER_STAGE_REFERENCE& Stage : pPattern->stages)
+		{
+			const bool_t bLive = bHasLivePattern &&
+				Stage.actionId == Boss.strActionId;
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text("%s%s", bLive ? "> " : "", Stage.stageId.c_str());
+			ImGui::TableSetColumnIndex(1);
+			ImGui::TextUnformatted(Stage.stageKind.c_str());
+			ImGui::TableSetColumnIndex(2);
+			ImGui::TextWrapped("%s", Stage.actionId.c_str());
+			if (Stage.bHasCounterHitBranch)
+			{
+				ImGui::SameLine();
+				ImGui::TextColored(
+					ImVec4(0.36f, 0.86f, 0.96f, 1.f), "COUNTER");
+			}
+			ImGui::TableSetColumnIndex(3);
+			ImGui::Text("%u ms", Stage.iDurationMs);
+		}
+		ImGui::EndTable();
+	}
+
+	if (bHasLivePattern &&
+		nullptr == Find_ProductFallbackStage(*pPattern, Boss.strActionId))
+	{
+		ImGui::TextWrapped(
+			"Live action is not present in the generated Product fallback: %s",
+			Boss.strActionId.c_str());
+	}
+}
+
 void Client::CBossTool::Render_CurrentPatternList()
 {
 	Normalize_CurrentFlowSelection();
@@ -3353,7 +4055,7 @@ void Client::CBossTool::Render_CurrentPatternList()
 	if (Playback.Is_InFlight() && !bPlaybackMatchesSavedRevision)
 	{
 		ImGui::TextDisabled(
-			"The previous gameplay revision is running. Restart Flow (Fresh Arena) uses the latest saved order below and restores the arena before Pattern 01.");
+			"The previous gameplay revision is running. Restart Saved Flow (Fresh Arena) uses the latest complete saved order below and restores the arena before Pattern 01.");
 	}
 
 	if (!ImGui::BeginChild(
@@ -3869,6 +4571,33 @@ const Client::VALTAN_PATTERN_VIEW* Client::CBossTool::Find_AuditionPattern(
 	if (!m_AuditionInventory.Contains(strPatternId))
 		return nullptr;
 	return Find_Pattern(strPatternId);
+}
+
+const Client::ENCOUNTER_PATTERN_REFERENCE*
+Client::CBossTool::Find_ProductFallbackPattern(
+	const std::string& strPatternId) const
+{
+	if (!Can_DisplayValtanView(m_eGraphAdmission) ||
+		!m_bProductFallbackReady || strPatternId.empty())
+		return nullptr;
+	return m_ProductFallbackEncounterReference.Find_Pattern(strPatternId);
+}
+
+const Client::ENCOUNTER_STAGE_REFERENCE*
+Client::CBossTool::Find_ProductFallbackStage(
+	const ENCOUNTER_PATTERN_REFERENCE& Pattern,
+	const std::string& strActionId) const
+{
+	if (strActionId.empty())
+		return nullptr;
+	const auto Stage = std::find_if(
+		Pattern.stages.begin(), Pattern.stages.end(),
+		[&strActionId](const ENCOUNTER_STAGE_REFERENCE& Candidate)
+		{
+			return Candidate.actionId == strActionId ||
+				Candidate.stageId == strActionId;
+		});
+	return Pattern.stages.end() == Stage ? nullptr : &*Stage;
 }
 
 const Client::VALTAN_PATTERN_FLOW_SLOT*

@@ -13,6 +13,7 @@
 #include "ValtanPatternShakeCueDocument.h"
 #include "ValtanCombatObjectSoundCueDocument.h"
 #include "ValtanPatternTree.h"
+#include "ValtanViewAdmission.h"
 #include "GameplayDataRevision.h"
 
 #include <filesystem>
@@ -145,14 +146,6 @@ private:
 		SOUND,
 		CAMERA,
 		WORLD,
-	};
-
-	enum class VALTAN_PATTERN_MASTER_ADMISSION_STATE
-	{
-		UNLOADED,
-		ADMITTED,
-		STALE_PRESERVED,
-		REJECTED,
 	};
 
 	/* Extracted combat values shared by an authored HIT and a reference row, so
@@ -797,8 +790,8 @@ private:
 	std::vector<VALTAN_PATTERN_MASTER_PLAY_ITEM>
 		m_ValtanPatternMasterPlaylist;
 	bool_t m_bValtanPatternMasterLoadAttempted = false;
-	VALTAN_PATTERN_MASTER_ADMISSION_STATE m_eValtanPatternMasterAdmission =
-		VALTAN_PATTERN_MASTER_ADMISSION_STATE::UNLOADED;
+	VALTAN_VIEW_ADMISSION m_eValtanPatternMasterAdmission =
+		VALTAN_VIEW_ADMISSION::UNLOADED;
 	bool_t m_bValtanPatternMasterPlaying = false;
 	bool_t m_bValtanPatternMasterPaused = false;
 	bool_t m_bValtanCompositionLoop = false;

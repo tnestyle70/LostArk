@@ -992,7 +992,6 @@ Discard_BossValtanBindingDraftAndReload(std::string& strOutError)
 bool_t Client::CEffectV2Catalog::Commit_BossValtanBindingsLocked(
 	std::vector<EFFECT_V2_BINDING> CandidateBindings,
 	const char* pOperation,
-	const bool_t bWriteOwner,
 	std::string& strOutError)
 {
 	if (nullptr == m_pSnapshot || !m_pSnapshot->Is_Ready())
@@ -1047,13 +1046,10 @@ bool_t Client::CEffectV2Catalog::Commit_BossValtanBindingsLocked(
 	}
 	pCandidate->m_BossValtanBindings = std::move(ParsedBindings);
 	pCandidate->m_iRevision = m_pSnapshot->Get_Revision() + 1u;
-	std::string strSuccess = bWriteOwner ?
-		"Saved Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json (" +
-			std::string(nullptr != pOperation ? pOperation : "mutation") +
-			"). Runtime caches were refreshed for the next Stage occurrence." :
+	const std::string strSuccess =
 		"Staged Effect V2 binding " +
-			std::string(nullptr != pOperation ? pOperation : "mutation") +
-			" in the Composition draft. Use Save to commit every owner together.";
+		std::string(nullptr != pOperation ? pOperation : "mutation") +
+		" in the Composition draft. Use Save to commit every owner together.";
 	std::vector<EFFECT_V2_DOCUMENT> DiskDocuments;
 	std::vector<EFFECT_V2_GROUP> DiskGroups;
 	std::vector<EFFECT_V2_BINDING> DiskBindings;
@@ -1084,11 +1080,6 @@ bool_t Client::CEffectV2Catalog::Commit_BossValtanBindingsLocked(
 	}
 	const std::string strDiskBaseline = CEffectV2Document::Serialize_Bindings(
 		BOSS_VALTAN_ARCHETYPE_ID, DiskBindings);
-	if (bWriteOwner && m_bBossValtanBindingDraftDirty)
-	{
-		return Fail(strOutError,
-			"Effect V2 immediate save is blocked while Composition owns an unsaved binding draft.");
-	}
 	const bool_t bBindingBaselineMatches = m_bBossValtanBindingDraftDirty ?
 		strDiskSourceBytes == m_strBossValtanBindingDraftBaselineBytes :
 		strDiskBaseline == CEffectV2Document::Serialize_Bindings(
@@ -1112,30 +1103,13 @@ bool_t Client::CEffectV2Catalog::Commit_BossValtanBindingsLocked(
 			strOutError;
 		return false;
 	}
-	if (bWriteOwner && !CEffectV2Document::Write_AtomicFile(
-			CEffectV2Document::Binding_Path(BOSS_VALTAN_ARCHETYPE_ID),
-			strSerialized, strOutError))
-	{
-		strOutError = "Effect V2 binding save failed before commit: " +
-			strOutError;
-		return false;
-	}
-
 	m_pSnapshot = std::move(pCandidate);
-	if (bWriteOwner)
-	{
-		m_strBossValtanBindingDraftBaselineBytes.clear();
-		m_bBossValtanBindingDraftDirty = false;
-	}
-	else
-	{
-		if (!m_bBossValtanBindingDraftDirty)
-			m_strBossValtanBindingDraftBaselineBytes =
-				std::move(strDiskSourceBytes);
-		m_bBossValtanBindingDraftDirty = true;
-	}
+	if (!m_bBossValtanBindingDraftDirty)
+		m_strBossValtanBindingDraftBaselineBytes =
+			std::move(strDiskSourceBytes);
+	m_bBossValtanBindingDraftDirty = true;
 	CEffectV2Runtime::Invalidate_Caches();
-	strOutError = std::move(strSuccess);
+	strOutError = strSuccess;
 	return true;
 }
 
@@ -1143,7 +1117,6 @@ bool_t Client::CEffectV2Catalog::Mutate_BossValtanStageBinding(
 	const EFFECT_V2_STAGE_BINDING_KEY& SourceKey,
 	const uint32_t iTargetStartMs,
 	const BOSS_VALTAN_BINDING_MUTATION eMutation,
-	const bool_t bWriteOwner,
 	std::string& strOutError)
 {
 	if (BOSS_VALTAN_BINDING_MUTATION::APPEND_BINDING == eMutation)
@@ -1281,7 +1254,7 @@ bool_t Client::CEffectV2Catalog::Mutate_BossValtanStageBinding(
 			return false;
 		}
 		return Commit_BossValtanBindingsLocked(
-			std::move(CandidateBindings), pOperation, bWriteOwner, strOutError);
+			std::move(CandidateBindings), pOperation, strOutError);
 	}
 	catch (const std::exception& Exception)
 	{
@@ -1294,56 +1267,6 @@ bool_t Client::CEffectV2Catalog::Mutate_BossValtanStageBinding(
 		return Fail(strOutError,
 			"Effect V2 binding mutation failed before commit.");
 	}
-}
-
-bool_t Client::CEffectV2Catalog::Append_BossValtanStageBinding(
-	const std::string& strResourceId,
-	const bool_t bGroup,
-	const std::string& strPatternId,
-	const std::string& strStageId,
-	const std::string& strActionId,
-	const uint32_t iStartMs,
-	std::string& strOutError)
-{
-	EFFECT_V2_STAGE_BINDING_KEY Key{};
-	Key.strResourceId = strResourceId;
-	Key.bGroup = bGroup;
-	Key.strPatternId = strPatternId;
-	Key.strStageId = strStageId;
-	Key.strActionId = strActionId;
-	Key.iStartMs = iStartMs;
-	return Mutate_BossValtanStageBinding(
-		Key, iStartMs,
-		BOSS_VALTAN_BINDING_MUTATION::APPEND_BINDING, true, strOutError);
-}
-
-bool_t Client::CEffectV2Catalog::Remove_BossValtanStageBinding(
-	const EFFECT_V2_STAGE_BINDING_KEY& Key,
-	std::string& strOutError)
-{
-	return Mutate_BossValtanStageBinding(
-		Key, Key.iStartMs,
-		BOSS_VALTAN_BINDING_MUTATION::REMOVE_BINDING, true, strOutError);
-}
-
-bool_t Client::CEffectV2Catalog::Duplicate_BossValtanStageBinding(
-	const EFFECT_V2_STAGE_BINDING_KEY& SourceKey,
-	const uint32_t iDuplicateStartMs,
-	std::string& strOutError)
-{
-	return Mutate_BossValtanStageBinding(
-		SourceKey, iDuplicateStartMs,
-		BOSS_VALTAN_BINDING_MUTATION::DUPLICATE_BINDING, true, strOutError);
-}
-
-bool_t Client::CEffectV2Catalog::Update_BossValtanStageBindingStart(
-	const EFFECT_V2_STAGE_BINDING_KEY& SourceKey,
-	const uint32_t iNewStartMs,
-	std::string& strOutError)
-{
-	return Mutate_BossValtanStageBinding(
-		SourceKey, iNewStartMs,
-		BOSS_VALTAN_BINDING_MUTATION::UPDATE_BINDING_START, true, strOutError);
 }
 
 bool_t Client::CEffectV2Catalog::Stage_AppendBossValtanStageBinding(
@@ -1364,7 +1287,7 @@ bool_t Client::CEffectV2Catalog::Stage_AppendBossValtanStageBinding(
 	Key.iStartMs = iStartMs;
 	return Mutate_BossValtanStageBinding(
 		Key, iStartMs,
-		BOSS_VALTAN_BINDING_MUTATION::APPEND_BINDING, false, strOutError);
+		BOSS_VALTAN_BINDING_MUTATION::APPEND_BINDING, strOutError);
 }
 
 bool_t Client::CEffectV2Catalog::Stage_RemoveBossValtanStageBinding(
@@ -1373,7 +1296,7 @@ bool_t Client::CEffectV2Catalog::Stage_RemoveBossValtanStageBinding(
 {
 	return Mutate_BossValtanStageBinding(
 		Key, Key.iStartMs,
-		BOSS_VALTAN_BINDING_MUTATION::REMOVE_BINDING, false, strOutError);
+		BOSS_VALTAN_BINDING_MUTATION::REMOVE_BINDING, strOutError);
 }
 
 bool_t Client::CEffectV2Catalog::Stage_DuplicateBossValtanStageBinding(
@@ -1383,7 +1306,7 @@ bool_t Client::CEffectV2Catalog::Stage_DuplicateBossValtanStageBinding(
 {
 	return Mutate_BossValtanStageBinding(
 		SourceKey, iDuplicateStartMs,
-		BOSS_VALTAN_BINDING_MUTATION::DUPLICATE_BINDING, false, strOutError);
+		BOSS_VALTAN_BINDING_MUTATION::DUPLICATE_BINDING, strOutError);
 }
 
 bool_t Client::CEffectV2Catalog::Stage_UpdateBossValtanStageBindingStart(
@@ -1393,7 +1316,7 @@ bool_t Client::CEffectV2Catalog::Stage_UpdateBossValtanStageBindingStart(
 {
 	return Mutate_BossValtanStageBinding(
 		SourceKey, iNewStartMs,
-		BOSS_VALTAN_BINDING_MUTATION::UPDATE_BINDING_START, false, strOutError);
+		BOSS_VALTAN_BINDING_MUTATION::UPDATE_BINDING_START, strOutError);
 }
 
 bool_t Client::CEffectV2Catalog::Prepare_BossValtanBindingDraftSave(

@@ -12,6 +12,16 @@ NS_BEGIN(Client)
 
 class EFFECT_V2_CATALOG_SNAPSHOT;
 
+struct EFFECT_V2_GROUP_PLAYBACK_DESC final
+{
+	float4x4_t PivotWorld{};
+	/* Real elapsed age of the owning occurrence. The runtime converts this to
+	   the authored group clock with fPlaybackRate, including late snapshots. */
+	f32_t fInitialAgeSeconds = 0.f;
+	f32_t fPlaybackRate = 1.f;
+	bool_t bProductOwned = false;
+};
+
 class CEffectV2Runtime final
 {
 public:
@@ -49,6 +59,11 @@ public:
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext,
 		const std::string& strArchetypeId);
+	static bool_t Prewarm_Group(
+		const EFFECT_V2_GROUP& Group,
+		std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext);
 	static void Set_Ignored(const EFFECT_V2_TARGET& Target, bool_t bIgnored);
 	/* Drop lazy source caches and re-arm active clip/stage lanes. Existing
 	   spawned effects keep their authored stop policy; the next occurrence reads
@@ -71,6 +86,12 @@ public:
 		const float4x4_t& PivotWorld,
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext);
+	static uint32_t Play_Group(
+		const EFFECT_V2_GROUP& Group,
+		std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
+		const EFFECT_V2_GROUP_PLAYBACK_DESC& Playback,
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext);
 	static void Update_Group(uint32_t iHandle, const EFFECT_V2_GROUP& Group);
 	/* Moves the lane pivot; the next Update_Group re-places spawned objects. */
 	static void Set_GroupPivot(uint32_t iHandle, const float4x4_t& PivotWorld);
@@ -81,6 +102,12 @@ public:
 	static bool_t Consume_GroupFailure(
 		uint32_t iHandle, std::string& strOutFailure);
 	static void Advance_FreeGroups(
+		f32_t fTimeDelta,
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext);
+	/* Product-owned groups have a MainApp clock independent from whether the
+	   authoring tool exists or is visible. */
+	static void Advance_ProductGroups(
 		f32_t fTimeDelta,
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext);

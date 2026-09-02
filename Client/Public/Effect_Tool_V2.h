@@ -1,10 +1,12 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "EffectResourceCatalog.h"
 #include "EffectV2_Document.h"
 #include "EffectV2_Object.h"
 #include "Engine_Defines.h"
 #include "ValtanPatternTree.h"
+#include "ValtanViewAdmission.h"
 
 #include <array>
 #include <cstdint>
@@ -111,6 +113,9 @@ public:
 	   weak targets before the next render. */
 	void Deactivate();
 	void On_LevelChanged();
+	/* Version-neutral browser dispatch. Only V2 owner keys are admitted; the
+	   concrete leaf/group loaders remain private codec implementation details. */
+	bool_t Open_Resource(const EFFECT_RESOURCE_KEY& Key);
 
 private:
 	void Scan_Resources();
@@ -154,6 +159,8 @@ private:
 	void Play_TargetClip(const char_t* pClipName, bool_t bLoop);
 	void Render_ValtanPatternSection();
 	bool_t Ensure_ValtanTree();
+	bool_t Reload_ValtanTree(bool_t bResetAutomaticRetryBudget);
+	bool_t Schedule_ValtanTreeReloadRetry();
 	bool_t Build_ValtanTimeline(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		VALTAN_PATTERN_PREVIEW_PATH ePath);
@@ -266,7 +273,12 @@ private:
 	std::string m_strGroupStatus;
 
 	VALTAN_PATTERN_TREE_VIEW m_ValtanTree;
-	bool_t m_bValtanTreeLoaded = false;
+	VALTAN_VIEW_ADMISSION m_eValtanTreeAdmission =
+		VALTAN_VIEW_ADMISSION::UNLOADED;
+	bool_t m_bValtanTreeLoadAttempted = false;
+	bool_t m_bValtanTreeReloadRetryPending = false;
+	double m_dNextValtanTreeReloadRetrySeconds = 0.0;
+	uint32_t m_iValtanTreeAutomaticRetryCount = 0u;
 	std::string m_strValtanTreeStatus;
 	std::vector<const VALTAN_PATTERN_VIEW*> m_ValtanPatterns;
 	int32_t m_iValtanPatternSelection = -1;

@@ -434,13 +434,13 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
                 / "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json"
             ).read_text(encoding="utf-8")
         )
-        groggy_pattern = next(
+        dash_pattern = next(
             row
             for row in presentation["patterns"]
-            if row["patternId"] == "VALTAN_DASH_CHARGE_GROGGY"
+            if row["patternId"] == "VALTAN_DASH_CHARGE"
         )
         recovery = next(
-            row for row in groggy_pattern["stages"] if row["stageId"] == "GROGGY"
+            row for row in dash_pattern["stages"] if row["stageId"] == "GROGGY"
         )
         occurrences = recovery["animation"]["occurrences"]
         self.assertEqual(
@@ -472,14 +472,14 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             {
                 "sourceActionId": 400430,
                 "sequenceIndex": 0,
-                "role": "PRIMARY",
+                "role": "REFERENCE_400430_0",
             },
-            groggy_pattern["presentationSources"],
+            dash_pattern["presentationSources"],
         )
         gameplay_pattern = next(
             row
             for row in gameplay["patterns"]
-            if row["patternId"] == "VALTAN_DASH_CHARGE_GROGGY"
+            if row["patternId"] == "VALTAN_DASH_CHARGE"
         )
         gameplay_recovery = next(
             row
@@ -492,7 +492,7 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
         recovery_sounds = [
             row
             for row in sounds["cues"]
-            if row["patternId"] == "VALTAN_DASH_CHARGE_GROGGY"
+            if row["patternId"] == "VALTAN_DASH_CHARGE"
             and row["stageId"] == "GROGGY"
         ]
         self.assertEqual([], recovery_sounds)
@@ -506,11 +506,6 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             for row in sounds["cues"]
             if row["patternId"] == "VALTAN_DASH_CHARGE"
         ]
-        dash_pattern = next(
-            row
-            for row in presentation["patterns"]
-            if row["patternId"] == "VALTAN_DASH_CHARGE"
-        )
         stages_by_id = {row["stageId"]: row for row in dash_pattern["stages"]}
         for cue in dash_sound_rows:
             with self.subTest(soundOccurrenceId=cue["occurrenceId"]):
@@ -772,21 +767,21 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
         for token in (
             '#include "ValtanPatternTree.h"',
             "CValtanCanonicalProductReadAdmission CanonicalAdmission;",
-            "CanonicalAdmission.Acquire(CanonicalAdmissionStatus)",
-            "CanonicalAdmission.Validate_StillCurrent(CanonicalAdmissionStatus)",
+            "VALTAN_CANONICAL_READ_DIAGNOSTIC CanonicalDiagnostic;",
+            "CanonicalAdmission.Acquire(CanonicalDiagnostic)",
+            "VALTAN_CANONICAL_READ_DIAGNOSTIC CommitDiagnostic;",
+            "CanonicalAdmission.Validate_StillCurrent(CommitDiagnostic)",
             "SOUND_JOINED_OWNER_COMMIT_GUARD CommitGuard;",
             "Commit_Temporary(Destination, Temporary)",
         ):
             self.assertIn(token, self.pattern_sound_cpp)
         self.assertLess(
-            save_body.index(
-                "CanonicalAdmission.Acquire(CanonicalAdmissionStatus)"
-            ),
+            save_body.index("CanonicalAdmission.Acquire(CanonicalDiagnostic)"),
             save_body.index("Read_File(Destination, PreviousBytes)"),
         )
         self.assertLess(
             save_body.index(
-                "CanonicalAdmission.Validate_StillCurrent(CanonicalAdmissionStatus)"
+                "CanonicalAdmission.Validate_StillCurrent(CommitDiagnostic)"
             ),
             save_body.index("Commit_Temporary(Destination, Temporary)"),
         )

@@ -41,11 +41,31 @@ struct BOSS_ARMOR_PART_ENTRY final
 	std::string modelAssetId;
 };
 
+enum class BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND : uint8_t
+{
+	EFFECT_V1,
+	EFFECT_V2_GROUP
+};
+
+struct BOSS_COMBAT_OBJECT_EFFECT_V2_GROUP final
+{
+	std::string groupId;
+	f32_t playbackRate = 1.f;
+	uint32_t visualHitMs = 0u;
+	std::string serverHitId;
+};
+
 struct BOSS_COMBAT_OBJECT_VISUAL_ENTRY final
 {
 	std::string combatObjectArchetypeId;
 	std::string clientVisualId;
+	/* effectAssetId remains the stable V1 authoring/editor reference consumed by
+	   All Effects and Composition.  An optional effectV2Group overrides only the
+	   spawned Product presentation; the runtime never plays both lanes. */
+	BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND activeEffectKind =
+		BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V1;
 	std::string effectAssetId;
+	BOSS_COMBAT_OBJECT_EFFECT_V2_GROUP effectV2Group;
 	/* Optional natural-lifetime Effect spawned for each reliable HIT_PULSE.
 	   The Server sends only the stable combat-object/hit identity and pose;
 	   presentation assets remain a typed Client catalog concern. */

@@ -738,30 +738,70 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         self.assertNotIn("Render_FlowPublicationStatus", self.boss_tool)
         self.assertIn("flow.Nodes.empty()", self.source)
 
+    def test_clean_flow_can_retry_product_publish_apply_without_second_save(self) -> None:
+        retry = self.boss_tool[
+            self.boss_tool.index(
+                "bool_t Client::CBossTool::Retry_FlowProductPublishApply()"
+            ) : self.boss_tool.index(
+                "void Client::CBossTool::Synchronize_LiveSelection()"
+            )
+        ]
+        self.assertLess(
+            retry.index("m_FlowDocument.Is_Dirty()"),
+            retry.index("Retry_ValtanProductPublishApply"),
+        )
+        self.assertIn("m_FlowDocument.Has_ExternalConflict()", retry)
+        self.assertIn(
+            "m_pBalanceTool->Retry_ValtanProductPublishApply", retry
+        )
+        self.assertIn("Reload_Graph()", retry)
+        self.assertNotIn("Set_ValtanScriptedSequenceDraft", retry)
+        self.assertNotIn("Save_ValtanCanonicalProduct", retry)
+
+        flow_tab = self.boss_tool[
+            self.boss_tool.index("void Client::CBossTool::Render_PatternFlowTab()") :
+            self.boss_tool.index("void Client::CBossTool::Render_PatternList()")
+        ]
+        save_button = flow_tab.index('ImGui::Button("Save Flow")')
+        retry_button = flow_tab.index(
+            'ImGui::Button("Retry Product Publish / Apply")'
+        )
+        self.assertLess(save_button, retry_button)
+        retry_ui = flow_tab[save_button:retry_button]
+        self.assertIn("!m_FlowDocument.Is_Dirty()", retry_ui)
+        self.assertIn("!m_FlowDocument.Has_ExternalConflict()", retry_ui)
+        self.assertIn("Canonical source files are not saved again", flow_tab)
+        self.assertIn("Retry_FlowProductPublishApply", self.boss_tool)
+
     def test_failed_canonical_reload_keeps_display_rows_but_revokes_mutation(self) -> None:
         header = (ROOT / "Client/Public/BossTool.h").read_text(encoding="utf-8")
         reload_body = self.boss_tool[
             self.boss_tool.index("bool_t Client::CBossTool::Reload_Graph()") :
             self.boss_tool.index("void Client::CBossTool::Refresh_PresentationFreshness(")
         ]
-        self.assertIn("m_bGraphMutationAdmitted", header)
+        self.assertIn('#include "ValtanViewAdmission.h"', header)
+        self.assertIn("m_eGraphAdmission", header)
         self.assertIn("m_bGraphReady", header)
         self.assertLess(
-            reload_body.index("m_bGraphMutationAdmitted = false"),
+            reload_body.index(
+                "m_eGraphAdmission = Can_DisplayValtanView(m_eGraphAdmission)"
+            ),
             reload_body.index("CValtanPatternTree::Load_WhileAdmitted("),
         )
         self.assertIn("STALE_PRESERVED", reload_body)
-        self.assertIn("previous rows are display-only", reload_body)
+        self.assertIn("Previous rows are display-only", reload_body)
         self.assertLess(
             reload_body.index("m_bGraphReady = true"),
-            reload_body.index("m_bGraphMutationAdmitted = true"),
+            reload_body.index(
+                "m_eGraphAdmission = VALTAN_VIEW_ADMISSION::ADMITTED"
+            ),
         )
 
         gate = self.boss_tool[
             self.boss_tool.index("bool_t Client::CBossTool::Can_MutateCanonicalGraph(") :
             self.boss_tool.index("void Client::CBossTool::Refresh_PresentationFreshness(")
         ]
-        self.assertIn("m_bGraphMutationAdmitted", gate)
+        self.assertIn("Can_MutateValtanView(m_eGraphAdmission)", gate)
         self.assertIn("display-only", gate)
         for start, end, marker in (
             ("bool_t Client::CBossTool::Can_Play_ServerPattern(",
@@ -794,8 +834,9 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             'ImGui::Button("Save Flow")',
             'ImGui::Button("Discard Changes...")',
             'ImGui::Button("Discard Changes##ConfirmFlowDiscard")',
-            'ImGui::Button("Restart Flow (Fresh Arena)")',
-            'ImGui::Button("Restart Saved Pattern (Fresh Arena)")',
+            'ImGui::Button("Restart Saved Flow (Fresh Arena)")',
+            'ImGui::Button("Play Selected Pattern (Keep Arena)")',
+            'ImGui::Button("Restart Active Pattern (Keep Arena)")',
         ):
             self.assertIn(label, self.boss_tool)
         self.assertNotIn("Save & Apply Flow", self.boss_tool)
@@ -809,7 +850,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         self.assertIn("Reload_FlowDocument()", flow_tab)
         for marker in (
             "restore the authoritative walls, floors, props, collision, Nav, and combat objects",
-            "then start Pattern 01 from a fresh arena",
+            "then start saved Pattern 01 and follow every saved Next Pattern and inter-pattern Wait",
         ):
             self.assertIn(marker, flow_tab)
         restart_flow = self.boss_tool[
@@ -847,28 +888,29 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             self.boss_tool.index("void Client::CBossTool::Render_ActionBar()"):
             self.boss_tool.index("void Client::CBossTool::Normalize_CurrentFlowSelection()")
         ]
-        self.assertIn("Restart_SavedSinglePatternFreshArena()", action_bar)
-        self.assertNotIn("Restart_SelectedPattern()", action_bar)
-        single_restart = self.boss_tool[
-            self.boss_tool.index(
-                "bool_t Client::CBossTool::Restart_SavedSinglePatternFreshArena()"
-            ):
-            self.boss_tool.index("bool_t Client::CBossTool::Restart_ServerPattern(")
-        ]
+        self.assertIn("Restart_SelectedPattern()", action_bar)
+        self.assertNotIn("Restart_SavedSinglePatternFreshArena", self.boss_tool)
         for marker in (
-            "m_FlowDocument.Get_SavedDefaultFlow()",
-            "1u != iSavedSlotCount",
+            "bRestartablePatternOccurrence",
+            "VALTAN_PATTERN_AUDITION_STATE::ACTIVE",
+            "VALTAN_PATTERN_AUDITION_STATE::COMPLETED",
+            "m_strSelectedPatternId == Audition.strPatternId",
+            "!bFlowOwnsPlayback",
+            "!bNextOwnsPlayback",
+        ):
+            self.assertIn(marker, action_bar)
+        for marker in (
+            "Reload_FlowDocument()",
+            "Try_GetLatestGameplaySourceServerActiveRevision(",
+            "return Start_Flow(",
+        ):
+            self.assertIn(marker, restart_flow)
+        for forbidden in (
+            "bRequireSingleSavedPattern",
             "exactly one saved scriptedSequence slot",
             "Restart_SavedFlow(true)",
         ):
-            self.assertIn(marker, single_restart)
-        for marker in (
-            "bRequireSingleSavedPattern",
-            "Pending.Request.Slots.size() != 1u",
-            "Pending.Request.strFlowRevision",
-            "exact saved one-slot scriptedSequence request",
-        ):
-            self.assertIn(marker, restart_flow)
+            self.assertNotIn(forbidden, self.boss_tool)
 
     def test_authoring_playback_and_preview_status_are_rendered_separately(self) -> None:
         for marker in (
@@ -1122,7 +1164,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, self.server_room)
         for marker in (
-            "Run a saved slot-two suffix through duplicate ordered patterns with one reset, revive pause, preserved between-slot state, terminal hold, and correlated lifecycle",
+            "Run a saved slot-two suffix through a targetless IDLE retry and duplicate ordered patterns with preserved between-slot state, terminal hold, and correlated lifecycle",
             "Stop a running Boss Tool flow after its current occurrence and reject a stale flow epoch without starting the next slot",
             "Reject Boss Tool pattern-flow start and stop commands in a Release Server without staging room state",
         ):

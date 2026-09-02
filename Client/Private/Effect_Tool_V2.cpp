@@ -45,6 +45,8 @@ namespace
 	constexpr float SLOT_CARD_SIZE = 96.f;
 	constexpr float BROWSER_TILE_SIZE = 80.f;
 	constexpr float PREVIEW_PANEL_SIZE = 256.f;
+	constexpr double VALTAN_TREE_RELOAD_RETRY_SECONDS = 0.25;
+	constexpr uint32_t VALTAN_TREE_MAX_AUTOMATIC_RETRY_COUNT = 3u;
 
 	constexpr const char* ASSET_KIND_FOLDERS[] = {
 		"meshes", "textures", "models", "animations", "vectorfields"
@@ -83,6 +85,7 @@ namespace
 		}
 		return " Saved source and live catalog are loaded for the next preview or Stage occurrence.";
 	}
+
 }
 
 Client::CEffect_Tool_V2::CEffect_Tool_V2(
@@ -130,6 +133,11 @@ void Client::CEffect_Tool_V2::On_LevelChanged()
 
 void Client::CEffect_Tool_V2::Render()
 {
+	if (m_bValtanTreeReloadRetryPending &&
+		ImGui::GetTime() >= m_dNextValtanTreeReloadRetrySeconds)
+	{
+		(void)Reload_ValtanTree(false);
+	}
 	Update_ValtanServerPatternStatus();
 	m_iLoadsThisFrame = 0u;
 	if (!m_bScanned)
@@ -1738,18 +1746,166 @@ void Client::CEffect_Tool_V2::Snap_PivotToTarget()
 
 bool_t Client::CEffect_Tool_V2::Ensure_ValtanTree()
 {
-	if (m_bValtanTreeLoaded)
-		return !m_ValtanPatterns.empty();
-	m_bValtanTreeLoaded = true;
-	m_ValtanPatterns.clear();
-	m_iValtanPatternSelection = -1;
-	VALTAN_PATTERN_TREE_VIEW Staged;
-	if (!CValtanPatternTree::Load(Staged, m_strValtanTreeStatus))
+	if (!m_bValtanTreeLoadAttempted)
+		return Reload_ValtanTree(true);
+	return Can_DisplayValtanView(m_eValtanTreeAdmission) &&
+		!m_ValtanPatterns.empty();
+}
+
+bool_t Client::CEffect_Tool_V2::Open_Resource(
+	const EFFECT_RESOURCE_KEY& Key)
+{
+	if (!Key.Is_Valid())
 	{
-		m_ValtanTree = {};
+		m_strDocumentStatus =
+			"Typed Effect owner rejected an invalid resource key.";
 		return false;
 	}
+	const std::shared_ptr<const EFFECT_RESOURCE_CATALOG_SNAPSHOT> pResources =
+		CEffectResourceCatalog::Get().Get_Snapshot();
+	const EFFECT_RESOURCE_DESCRIPTOR* pDescriptor =
+		nullptr == pResources ? nullptr : pResources->Find(Key);
+	if (nullptr == pDescriptor || !pDescriptor->Capabilities.bCanLoad)
+	{
+		m_strDocumentStatus =
+			"Typed Effect owner rejected a stale or unresolved resource key: " +
+			Key.strStableId;
+		return false;
+	}
+
+	if (EFFECT_RESOURCE_OWNER_KIND::V2_LEAF == Key.eOwnerKind)
+	{
+		m_bGroupWindowOpen = false;
+		return Load_Document(Key.strStableId);
+	}
+	if (EFFECT_RESOURCE_OWNER_KIND::V2_GROUP == Key.eOwnerKind)
+	{
+		m_bGroupWindowOpen = true;
+		const bool_t bLoaded = Load_Group(Key.strStableId);
+		if (!bLoaded)
+			m_strDocumentStatus = m_strGroupStatus;
+		return bLoaded;
+	}
+
+	m_strDocumentStatus =
+		"Typed Effect owner cannot open a V1 document; dispatch it to the "
+		"direct-authored Effect editor.";
+	return false;
+}
+
+bool_t Client::CEffect_Tool_V2::Schedule_ValtanTreeReloadRetry()
+{
+	if (m_iValtanTreeAutomaticRetryCount >=
+		VALTAN_TREE_MAX_AUTOMATIC_RETRY_COUNT)
+	{
+		m_bValtanTreeReloadRetryPending = false;
+		return false;
+	}
+	++m_iValtanTreeAutomaticRetryCount;
+	m_bValtanTreeReloadRetryPending = true;
+	m_dNextValtanTreeReloadRetrySeconds =
+		ImGui::GetTime() + VALTAN_TREE_RELOAD_RETRY_SECONDS;
+	return true;
+}
+
+bool_t Client::CEffect_Tool_V2::Reload_ValtanTree(
+	const bool_t bResetAutomaticRetryBudget)
+{
+	m_bValtanTreeLoadAttempted = true;
+	m_bValtanTreeReloadRetryPending = false;
+	if (bResetAutomaticRetryBudget)
+		m_iValtanTreeAutomaticRetryCount = 0u;
+
+	std::string strSelectedPatternId;
+	if (m_iValtanPatternSelection >= 0 &&
+		m_iValtanPatternSelection < static_cast<int32_t>(m_ValtanPatterns.size()) &&
+		nullptr != m_ValtanPatterns[static_cast<size_t>(m_iValtanPatternSelection)])
+	{
+		strSelectedPatternId = m_ValtanPatterns[
+			static_cast<size_t>(m_iValtanPatternSelection)]->strPatternId;
+	}
+	const bool_t bHasPreservedView =
+		Can_DisplayValtanView(m_eValtanTreeAdmission) &&
+		!m_ValtanPatterns.empty();
+	/* Every reload revokes command authority before staging. The previously
+	   committed tree remains address-stable and displayable until a complete
+	   replacement commits. */
+	if (m_bValtanTimelineActive)
+		Stop_ValtanTimeline();
+	m_eValtanTreeAdmission = bHasPreservedView ?
+		VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
+		VALTAN_VIEW_ADMISSION::UNLOADED;
+
+	VALTAN_PATTERN_TREE_VIEW Staged;
+	VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic;
+	if (!CValtanPatternTree::Load(Staged, Diagnostic))
+	{
+		const bool_t bRetryScheduled = Diagnostic.Is_AutomaticRetryable() &&
+			Schedule_ValtanTreeReloadRetry();
+		std::string Status = Diagnostic.strStatus;
+		if (Diagnostic.Requires_ProductProjection())
+		{
+			Status = "REPROJECTION_REQUIRED: project the joined Valtan source "
+				"before Pattern playback or binding mutation. Recovery command: " +
+				std::string{
+					VALTAN_CANONICAL_READ_DIAGNOSTIC::PRODUCT_PROJECTION_COMMAND } +
+				" | " + Status;
+			if (!Diagnostic.strRejectedPatternId.empty())
+			{
+				Status += " | quarantined source owner=" +
+					Diagnostic.strRejectedPatternId;
+				if (!Diagnostic.strRejectedStageId.empty())
+					Status += "/" + Diagnostic.strRejectedStageId;
+			}
+		}
+		if (Diagnostic.Is_AutomaticRetryable())
+		{
+			Status += bRetryScheduled ?
+				" | bounded automatic retry " +
+					std::to_string(m_iValtanTreeAutomaticRetryCount) + "/" +
+					std::to_string(VALTAN_TREE_MAX_AUTOMATIC_RETRY_COUNT) +
+					" scheduled" :
+				" | automatic retry budget exhausted; press Retry";
+		}
+		m_eValtanTreeAdmission = bHasPreservedView ?
+			VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
+			VALTAN_VIEW_ADMISSION::REJECTED;
+		m_strValtanTreeStatus = bHasPreservedView ?
+			"STALE_PRESERVED / READ ONLY: previous Valtan Pattern view was "
+				"preserved after reload rejection. " + Status :
+			"Valtan Pattern view rejected before first commit. " + Status;
+		if (m_bValtanTimelineActive)
+			Stop_ValtanTimeline();
+		return false;
+	}
+
+	size_t iPatternCount = 0u;
+	for (const VALTAN_PATTERN_VIEW& Pattern : Staged.Gimmicks)
+	{
+		if (Pattern.bAuthoringMasterManaged && !Pattern.Stages.empty())
+			++iPatternCount;
+	}
+	for (const VALTAN_PATTERN_VIEW& Pattern : Staged.Rotation)
+	{
+		if (Pattern.bAuthoringMasterManaged && !Pattern.Stages.empty())
+			++iPatternCount;
+	}
+	if (0u == iPatternCount)
+	{
+		m_eValtanTreeAdmission = bHasPreservedView ?
+			VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
+			VALTAN_VIEW_ADMISSION::REJECTED;
+		m_strValtanTreeStatus = bHasPreservedView ?
+			"STALE_PRESERVED / READ ONLY: strict reload produced no master-managed "
+				"Pattern; the previous view was preserved." :
+			"Valtan Pattern view rejected: strict reload produced no master-managed Pattern.";
+		if (m_bValtanTimelineActive)
+			Stop_ValtanTimeline();
+		return false;
+	}
+
 	m_ValtanTree = std::move(Staged);
+	m_ValtanPatterns.clear();
 	for (const VALTAN_PATTERN_VIEW& Pattern : m_ValtanTree.Gimmicks)
 	{
 		if (Pattern.bAuthoringMasterManaged && !Pattern.Stages.empty())
@@ -1760,8 +1916,27 @@ bool_t Client::CEffect_Tool_V2::Ensure_ValtanTree()
 		if (Pattern.bAuthoringMasterManaged && !Pattern.Stages.empty())
 			m_ValtanPatterns.push_back(&Pattern);
 	}
-	m_strValtanTreeStatus = "Loaded " + std::to_string(m_ValtanPatterns.size()) +
-		" master pattern(s).";
+	m_iValtanPatternSelection = -1;
+	if (!strSelectedPatternId.empty())
+	{
+		const auto Found = std::find_if(
+			m_ValtanPatterns.begin(), m_ValtanPatterns.end(),
+			[&strSelectedPatternId](const VALTAN_PATTERN_VIEW* const pPattern)
+			{
+				return nullptr != pPattern &&
+					pPattern->strPatternId == strSelectedPatternId;
+			});
+		if (m_ValtanPatterns.end() != Found)
+		{
+			m_iValtanPatternSelection = static_cast<int32_t>(
+				std::distance(m_ValtanPatterns.begin(), Found));
+		}
+	}
+	m_eValtanTreeAdmission = VALTAN_VIEW_ADMISSION::ADMITTED;
+	m_iValtanTreeAutomaticRetryCount = 0u;
+	m_strValtanTreeStatus = "ADMITTED: loaded " +
+		std::to_string(m_ValtanPatterns.size()) + " master pattern(s). " +
+		Diagnostic.strStatus;
 	return !m_ValtanPatterns.empty();
 }
 
@@ -1769,6 +1944,13 @@ bool_t Client::CEffect_Tool_V2::Build_ValtanTimeline(
 	const VALTAN_PATTERN_VIEW& Pattern,
 	const VALTAN_PATTERN_PREVIEW_PATH ePath)
 {
+	if (!Can_MutateValtanView(m_eValtanTreeAdmission))
+	{
+		m_strAttachStatus =
+			"Pattern Timeline playback requires a freshly ADMITTED Valtan view; "
+			"the preserved tree is display-only.";
+		return false;
+	}
 	m_ValtanTimeline.clear();
 	m_iValtanTimelineDurationMs = 0u;
 	m_iValtanTimelineStage = static_cast<size_t>(-1);
@@ -1841,6 +2023,8 @@ bool_t Client::CEffect_Tool_V2::Try_ResolveValtanTimelineStage(
 
 bool_t Client::CEffect_Tool_V2::Apply_ValtanTimeline(const f32_t fSeconds, const bool_t bForceEdge)
 {
+	if (!Can_MutateValtanView(m_eValtanTreeAdmission))
+		return false;
 	const std::shared_ptr<CGameObject> pOwner = m_Target.pOwner.lock();
 	if (EFFECT_V2_TARGET_KIND::VALTAN != m_Target.eKind || nullptr == pOwner ||
 		m_ValtanTimeline.empty() || !std::isfinite(fSeconds))
@@ -1875,6 +2059,11 @@ void Client::CEffect_Tool_V2::Update_ValtanTimeline(const f32_t fTimeDelta)
 {
 	if (!m_bValtanTimelineActive)
 		return;
+	if (!Can_MutateValtanView(m_eValtanTreeAdmission))
+	{
+		Stop_ValtanTimeline();
+		return;
+	}
 	if (EFFECT_V2_TARGET_KIND::VALTAN != m_Target.eKind || !m_Target.Is_Valid() ||
 		m_ValtanTimeline.empty())
 	{
@@ -1938,8 +2127,14 @@ bool_t Client::CEffect_Tool_V2::Try_LocateValtanStage(
 	const std::string& strActionId,
 	const uint32_t iOffsetMs)
 {
-	if (EFFECT_V2_TARGET_KIND::VALTAN != m_Target.eKind || !Ensure_ValtanTree())
+	if (EFFECT_V2_TARGET_KIND::VALTAN != m_Target.eKind ||
+		!Ensure_ValtanTree() ||
+		!Can_MutateValtanView(m_eValtanTreeAdmission))
+	{
+		m_strAttachStatus =
+			"Stage binding preview requires a freshly ADMITTED Valtan Pattern view.";
 		return false;
+	}
 	constexpr VALTAN_PATTERN_PREVIEW_PATH Paths[] = {
 		VALTAN_PATTERN_PREVIEW_PATH::NORMAL,
 		VALTAN_PATTERN_PREVIEW_PATH::COUNTER_GROGGY,
@@ -1990,14 +2185,40 @@ void Client::CEffect_Tool_V2::Render_ValtanPatternSection()
 	if (EFFECT_V2_TARGET_KIND::VALTAN != m_Target.eKind || !m_Target.Is_Valid())
 		return;
 	ImGui::SeparatorText("Pattern Timeline (Valtan master)");
-	if (!Ensure_ValtanTree())
+	(void)Ensure_ValtanTree();
+	if (!Can_DisplayValtanView(m_eValtanTreeAdmission))
 	{
 		ImGui::TextWrapped("%s", m_strValtanTreeStatus.c_str());
 		ImGui::SameLine();
 		if (ImGui::SmallButton("Retry"))
-			m_bValtanTreeLoaded = false;
+			(void)Reload_ValtanTree(true);
 		return;
 	}
+	if (!Can_MutateValtanView(m_eValtanTreeAdmission))
+	{
+		ImGui::TextColored(
+			ImVec4(1.f, 0.72f, 0.18f, 1.f),
+			"STALE_PRESERVED / READ ONLY");
+		ImGui::TextWrapped("%s", m_strValtanTreeStatus.c_str());
+		ImGui::SameLine();
+		if (ImGui::SmallButton("Retry"))
+		{
+			(void)Reload_ValtanTree(true);
+			return;
+		}
+	}
+	else
+	{
+		if (!m_strValtanTreeStatus.empty())
+			ImGui::TextDisabled("%s", m_strValtanTreeStatus.c_str());
+		if (ImGui::SmallButton("Refresh Pattern View"))
+		{
+			(void)Reload_ValtanTree(true);
+			return;
+		}
+	}
+	const bool_t bMutationAdmitted =
+		Can_MutateValtanView(m_eValtanTreeAdmission);
 
 #ifdef _DEBUG
 	if (CMainApp* const pApp = CMainApp::Get_Active())
@@ -2036,9 +2257,12 @@ void Client::CEffect_Tool_V2::Render_ValtanPatternSection()
 			{
 				m_iValtanPatternSelection = iIndex;
 #ifdef _DEBUG
-				if (CMainApp* const pApp = CMainApp::Get_Active())
-					(void)pApp->Debug_SelectCompletePlayPattern(
-						Pattern.strPatternId);
+				if (bMutationAdmitted)
+				{
+					if (CMainApp* const pApp = CMainApp::Get_Active())
+						(void)pApp->Debug_SelectCompletePlayPattern(
+							Pattern.strPatternId);
+				}
 #endif
 				if (m_bValtanTimelineActive)
 					Stop_ValtanTimeline();
@@ -2056,7 +2280,7 @@ void Client::CEffect_Tool_V2::Render_ValtanPatternSection()
 	}
 	const bool_t bHasPattern = m_iValtanPatternSelection >= 0 &&
 		m_iValtanPatternSelection < static_cast<int32_t>(m_ValtanPatterns.size());
-	ImGui::BeginDisabled(!bHasPattern);
+	ImGui::BeginDisabled(!bHasPattern || !bMutationAdmitted);
 	if (ImGui::Button(m_bValtanTimelineActive ?
 		(m_bValtanTimelinePaused ? "Resume Offline" : "Pause Offline") :
 		"Pattern Offline"))
@@ -2084,12 +2308,12 @@ void Client::CEffect_Tool_V2::Render_ValtanPatternSection()
 	}
 	ImGui::EndDisabled();
 	ImGui::SameLine();
-	ImGui::BeginDisabled(!bHasPattern);
+	ImGui::BeginDisabled(!bHasPattern || !bMutationAdmitted);
 	if (ImGui::Button("Complete Play (Server/Arena)"))
 		(void)Try_PlayValtanServerPattern();
 	ImGui::EndDisabled();
 	ImGui::SameLine();
-	ImGui::BeginDisabled(!m_bValtanTimelineActive);
+	ImGui::BeginDisabled(!m_bValtanTimelineActive || !bMutationAdmitted);
 	if (ImGui::Button("Stop"))
 		Stop_ValtanTimeline();
 	ImGui::SameLine();
@@ -2106,7 +2330,9 @@ void Client::CEffect_Tool_V2::Render_ValtanPatternSection()
 	}
 	ImGui::EndDisabled();
 	ImGui::SameLine();
+	ImGui::BeginDisabled(!bMutationAdmitted);
 	ImGui::Checkbox("Loop##Pattern", &m_bValtanTimelineLoop);
+	ImGui::EndDisabled();
 	if (!m_strValtanServerPatternStatus.empty())
 		ImGui::TextWrapped("Server: %s", m_strValtanServerPatternStatus.c_str());
 	ImGui::TextDisabled(
@@ -2117,6 +2343,7 @@ void Client::CEffect_Tool_V2::Render_ValtanPatternSection()
 		return;
 	}
 
+	ImGui::BeginDisabled(!bMutationAdmitted);
 	int32_t iTimelineMs = static_cast<int32_t>(std::lround(m_fValtanTimelineSeconds * 1000.f));
 	ImGui::SetNextItemWidth(-1.f);
 	if (ImGui::SliderInt("##PatternScrub", &iTimelineMs, 0,
@@ -2141,6 +2368,7 @@ void Client::CEffect_Tool_V2::Render_ValtanPatternSection()
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(140.f);
 	ImGui::InputInt("Spawn Point (ms)", &m_iValtanSpawnTimelineMs);
+	ImGui::EndDisabled();
 	m_iValtanSpawnTimelineMs = (std::max)(0,
 		(std::min)(m_iValtanSpawnTimelineMs, static_cast<int32_t>(m_iValtanTimelineDurationMs)));
 	size_t iSpawnStage = 0u;
@@ -2155,7 +2383,9 @@ void Client::CEffect_Tool_V2::Render_ValtanPatternSection()
 
 bool_t Client::CEffect_Tool_V2::Try_PlayValtanServerPattern()
 {
-	if (!Ensure_ValtanTree() || m_iValtanPatternSelection < 0 ||
+	if (!Ensure_ValtanTree() ||
+		!Can_MutateValtanView(m_eValtanTreeAdmission) ||
+		m_iValtanPatternSelection < 0 ||
 		m_iValtanPatternSelection >= static_cast<int32_t>(m_ValtanPatterns.size()))
 	{
 		m_strValtanServerPatternStatus =
@@ -2235,6 +2465,15 @@ bool_t Client::CEffect_Tool_V2::Save_Bindings()
 	if (m_strTargetArchetypeId.empty())
 	{
 		m_strAttachStatus = "Spawn a target first.";
+		return false;
+	}
+	if (VALTAN_TARGET_ARCHETYPE_ID == m_strTargetArchetypeId)
+	{
+		m_strAttachStatus =
+			"BOSS_VALTAN bindings are read-only in Effect Attach v2. Edit and "
+			"stage them in Action Composition, then use its Save command to commit "
+			"Pattern, Sound, and Effect V2 through one canonical transaction. "
+			"No binding owner was written.";
 		return false;
 	}
 	std::string strError;
@@ -2438,6 +2677,16 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		static_cast<uint32_t>(static_cast<f32_t>(m_iSpawnFrame) * 1000.f / BINDING_FRAME_RATE));
 
 	ImGui::SeparatorText("Bindings (Data/Effects/V2/Bindings)");
+	const bool_t bDirectBindingMutationAllowed =
+		VALTAN_TARGET_ARCHETYPE_ID != m_strTargetArchetypeId;
+	if (!m_strTargetArchetypeId.empty() &&
+		!bDirectBindingMutationAllowed)
+	{
+		ImGui::TextColored(
+			ImVec4(1.f, 0.72f, 0.18f, 1.f),
+			"BOSS_VALTAN bindings are READ ONLY here. Use Action Composition and "
+			"its canonical Save command.");
+	}
 	const char_t* pClipForBinding =
 		nullptr != pModel ? pModel->Get_AnimationName(pModel->Get_CurrentAnimIndex()) : nullptr;
 	std::string strStageForBinding;
@@ -2492,7 +2741,8 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		bStageBinding ? strStageForBinding.c_str() :
 			(nullptr != pClipForBinding ? pClipForBinding : "(none)"),
 		m_strPivotBone.empty() ? "(none)" : m_strPivotBone.c_str());
-	ImGui::BeginDisabled((!bGroupBinding && '\0' == m_szEffectId[0]) || !bHasTarget ||
+	ImGui::BeginDisabled(!bDirectBindingMutationAllowed ||
+		(!bGroupBinding && '\0' == m_szEffectId[0]) || !bHasTarget ||
 		(!bStageBinding && nullptr == pClipForBinding));
 	if (ImGui::Button("Add / Update Binding"))
 	{
@@ -2537,10 +2787,13 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 	}
 	ImGui::EndDisabled();
 	ImGui::SameLine();
-	ImGui::BeginDisabled(m_strTargetArchetypeId.empty());
+	ImGui::BeginDisabled(m_strTargetArchetypeId.empty() ||
+		!bDirectBindingMutationAllowed);
 	if (ImGui::Button("Save Bindings"))
 		Save_Bindings();
+	ImGui::EndDisabled();
 	ImGui::SameLine();
+	ImGui::BeginDisabled(m_strTargetArchetypeId.empty());
 	if (ImGui::Button("Reload"))
 		Load_Bindings(m_strTargetArchetypeId);
 	ImGui::EndDisabled();
@@ -2600,10 +2853,13 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 				Play_TargetClip(Binding.strClip.c_str(), m_bTargetClipLoop);
 			}
 		}
+		ImGui::BeginDisabled(!bDirectBindingMutationAllowed);
 		ImGui::SameLine();
 		ImGui::Checkbox("Stop w/ clip", &Binding.bStopWithClip);
 		ImGui::SameLine();
-		if (ImGui::SmallButton("Remove"))
+		const bool_t bRemove = ImGui::SmallButton("Remove");
+		ImGui::EndDisabled();
+		if (bRemove)
 		{
 			m_Bindings.erase(m_Bindings.begin() + static_cast<std::ptrdiff_t>(iIndex));
 			ImGui::PopID();

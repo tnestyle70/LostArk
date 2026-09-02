@@ -155,7 +155,7 @@ def _boss_model_asset_ids(
 ) -> tuple[str, str]:
     if (
         boss_catalog.get("schema") != "lostark.boss-catalog"
-        or boss_catalog.get("formatVersion") != 5
+        or boss_catalog.get("formatVersion") != 6
         or not isinstance(boss_catalog.get("bosses"), list)
     ):
         raise NativeAnimationInventoryError("BossCatalog header is invalid")

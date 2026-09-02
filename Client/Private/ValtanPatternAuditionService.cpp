@@ -223,7 +223,7 @@ bool Client::CValtanPatternAuditionService::Submit(
 	m_Snapshot.strBossPlacementId = strBossPlacementId;
 	m_Snapshot.strPatternId = strPatternId;
 	m_Snapshot.strStatus =
-		"Waiting for the Server to reset replicated Valtan and queue the pattern.";
+		"Waiting for the Server to reset only Valtan, keep the current arena, and queue this one Pattern from its first Stage.";
 	m_iStateStartedAtMilliseconds = Now_Milliseconds();
 	m_hasAuthoritativeLifecycle = false;
 	strOutStatus = m_Snapshot.strStatus;
@@ -341,7 +341,7 @@ bool Client::CValtanPatternAuditionService::Restart_ActivePattern(
 	m_Snapshot.strBossPlacementId = strBossPlacementId;
 	m_Snapshot.strPatternId = strPatternId;
 	m_Snapshot.strStatus =
-		"Waiting for the Server to restart this pattern while preserving the arena.";
+		"Waiting for the Server to restart this exact one-Pattern occurrence from its first Stage while preserving the current arena.";
 	m_iStateStartedAtMilliseconds = Now_Milliseconds();
 	m_hasAuthoritativeLifecycle = false;
 	strOutStatus = m_Snapshot.strStatus;

@@ -16,6 +16,8 @@
 #include "Effect_DocumentCodec.h"
 #include "Effect_DocumentRenderer.h"
 #include "Effect_DirectAuthoredSourceIndex.h"
+#include "EffectResourceCatalog.h"
+#include "EffectV2_Catalog.h"
 #include "ValtanPatternEffectCueDocument.h"
 #include "ValtanPatternAuditionService.h"
 #include "Effect_MaterialTemplate.h"
@@ -88,6 +90,7 @@ namespace
 		"effect.valtan.pattern.420633.active.v1.unified";
 	constexpr const char_t* VALTAN_STANDALONE_STATIC_CLIP =
 		"mesh_idle_battle_1";
+	constexpr double VALTAN_PATTERN_TREE_RELOAD_RETRY_SECONDS = 0.25;
 	constexpr const char_t* VALTAN_ARENA_BOSS_PLACEMENT_ID =
 		"boss.valtan.center";
 	constexpr const char_t* VALTAN_AREA_ID = "LV_LUT_HEARTRB_ED";
@@ -3132,6 +3135,8 @@ bool_t Client::CEffect_Tool::Open_ValtanAllEffectsWorkspace()
 	   here made the first visible frame proportional to the complete Effect
 	   corpus.  Exact document decoding remains owned by Open/Play. */
 	Initialize_CatalogMetadataView();
+	const bool_t bResourceCatalogReady =
+		Refresh_ValtanEffectResourceSnapshot();
 	const bool_t bExactSourcesReady =
 		!m_ValtanExactAuthoredSources.empty();
 	const bool_t bCanonicalGraphReady = Refresh_ValtanPatternTree();
@@ -3140,7 +3145,8 @@ bool_t Client::CEffect_Tool::Open_ValtanAllEffectsWorkspace()
 	/* The exact authored source index is the usable fallback inventory.  A
 	   canonical graph failure must gate Product/Server play, but it must not
 	   hide effect.valtan.* documents that can still be opened and edited. */
-	if (bExactSourcesReady && !m_ValtanExactAuthoredSources.empty())
+	if ((bResourceCatalogReady || bExactSourcesReady) &&
+		!m_ValtanExactAuthoredSources.empty())
 	{
 		m_strElementStatus = bCanonicalGraphReady ?
 			"Opened Valtan All Effects from the canonical graph and exact authored source index." :
@@ -3154,6 +3160,16 @@ bool_t Client::CEffect_Tool::Open_ValtanAllEffectsWorkspace()
 	if (!m_strUnifiedCandidateStatus.empty())
 		m_strElementStatus += " " + m_strUnifiedCandidateStatus;
 	return false;
+}
+
+bool_t Client::CEffect_Tool::Consume_TypedEffectResourceOpenRequest(
+	EFFECT_RESOURCE_KEY& OutKey)
+{
+	if (!m_PendingTypedEffectResourceOpen.has_value())
+		return false;
+	OutKey = std::move(*m_PendingTypedEffectResourceOpen);
+	m_PendingTypedEffectResourceOpen.reset();
+	return true;
 }
 
 bool_t Client::CEffect_Tool::Open_ValtanProductEffect(
@@ -12836,13 +12852,65 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 	Initialize_CatalogMetadataView();
 	m_bValtanPatternTreeLoadAttempted = true;
 	m_bValtanPatternTreeLastRefreshSucceeded = false;
+	m_bValtanPatternTreeReloadRetryPending = false;
+	/* Revoke command authority before staging. A previously committed strict
+	   tree or Product fallback remains one immutable display snapshot. */
+	m_eValtanPatternTreeAdmission =
+		Can_DisplayValtanView(m_eValtanPatternTreeAdmission) ?
+			VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
+			VALTAN_VIEW_ADMISSION::UNLOADED;
 	VALTAN_PATTERN_TREE_VIEW Staged;
-	std::string Status;
-	if (!CValtanPatternTree::Load(Staged, Status))
+	VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic;
+	CValtanCanonicalProductReadAdmission CanonicalAdmission;
+	if (!CanonicalAdmission.Acquire(Diagnostic))
 	{
+		if (Diagnostic.Is_AutomaticRetryable())
+			Schedule_ValtanPatternTreeReloadRetry();
+		const std::string RetryStatus = m_bValtanPatternTreeReloadRetryPending ?
+			" Automatic retry is scheduled." : std::string{};
+		m_eValtanPatternTreeAdmission =
+			(m_bValtanPatternTreeLoaded || m_bValtanProductFallbackReady) ?
+				VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
+				VALTAN_VIEW_ADMISSION::REJECTED;
 		m_strValtanPatternTreeStatus = m_bValtanPatternTreeLoaded ?
-			("Valtan tree reload preserved the previous tree: " + Status) :
-			Status;
+			("Valtan tree reload preserved the previous tree; canonical Product read admission failed: " +
+				Diagnostic.strStatus + RetryStatus) :
+			(m_bValtanProductFallbackReady ?
+				"READ-ONLY PRODUCT FALLBACK STALE_PRESERVED; admission failed, so no unpinned Product files were reopened: " + Diagnostic.strStatus + RetryStatus :
+				"Valtan canonical Product read admission failed; no unpinned fallback read was attempted: " + Diagnostic.strStatus + RetryStatus);
+		return false;
+	}
+	if (!CValtanPatternTree::Load_WhileAdmitted(
+			CanonicalAdmission, Staged, Diagnostic))
+	{
+		std::string Status = Diagnostic.strStatus;
+		if (Diagnostic.Requires_ProductProjection())
+		{
+			Status = "REPROJECTION_REQUIRED: the generated Product is older than "
+				"the joined Valtan source; pattern browsing falls back to the pinned "
+				"Product until Save/Project succeeds. Recovery command: " +
+				std::string{
+					VALTAN_CANONICAL_READ_DIAGNOSTIC::PRODUCT_PROJECTION_COMMAND } +
+				" | " + Status;
+			if (!Diagnostic.strRejectedPatternId.empty())
+			{
+				Status += " | quarantined source owner=" +
+					Diagnostic.strRejectedPatternId;
+				if (!Diagnostic.strRejectedStageId.empty())
+					Status += "/" + Diagnostic.strRejectedStageId;
+			}
+		}
+		if (m_bValtanPatternTreeLoaded)
+		{
+			m_eValtanPatternTreeAdmission =
+				VALTAN_VIEW_ADMISSION::STALE_PRESERVED;
+			m_strValtanPatternTreeStatus =
+				"Valtan tree reload preserved the previous tree: " + Status;
+		}
+		else
+		{
+			(void)Stage_ValtanProductFallback(CanonicalAdmission, Status);
+		}
 		return false;
 	}
 	VALTAN_TOOL_AUDITION_INVENTORY StagedAuditionInventory;
@@ -12850,14 +12918,44 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 	if (!CValtanPatternTree::Build_PlayablePatternInventory(
 			Staged, StagedAuditionInventory, InventoryError))
 	{
-		m_strValtanPatternTreeStatus = m_bValtanPatternTreeLoaded ?
-			("Valtan tree reload preserved the previous tree: " +
-			 InventoryError) : InventoryError;
+		if (m_bValtanPatternTreeLoaded)
+		{
+			m_eValtanPatternTreeAdmission =
+				VALTAN_VIEW_ADMISSION::STALE_PRESERVED;
+			m_strValtanPatternTreeStatus =
+				"Valtan tree reload preserved the previous tree: " +
+				InventoryError;
+		}
+		else
+		{
+			(void)Stage_ValtanProductFallback(
+				CanonicalAdmission, InventoryError);
+		}
 		return false;
 	}
+	VALTAN_CANONICAL_READ_DIAGNOSTIC CurrentDiagnostic;
+	if (!CanonicalAdmission.Validate_StillCurrent(CurrentDiagnostic))
+	{
+		if (CurrentDiagnostic.Is_AutomaticRetryable())
+			Schedule_ValtanPatternTreeReloadRetry();
+		m_eValtanPatternTreeAdmission =
+			(m_bValtanPatternTreeLoaded || m_bValtanProductFallbackReady) ?
+				VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
+				VALTAN_VIEW_ADMISSION::REJECTED;
+		m_strValtanPatternTreeStatus = m_bValtanPatternTreeLoaded ?
+			"Valtan tree generation changed before commit; previous tree was preserved: " + CurrentDiagnostic.strStatus :
+			(m_bValtanProductFallbackReady ?
+				"READ-ONLY PRODUCT FALLBACK STALE_PRESERVED; strict tree generation changed before commit: " + CurrentDiagnostic.strStatus :
+				"Valtan tree generation changed before commit: " + CurrentDiagnostic.strStatus);
+		return false;
+	}
+	const std::string Status = Diagnostic.strStatus;
 	m_ValtanPatternTree = std::move(Staged);
 	m_ValtanToolAuditionInventory = std::move(StagedAuditionInventory);
 	m_bValtanPatternTreeLoaded = true;
+	m_eValtanPatternTreeAdmission = VALTAN_VIEW_ADMISSION::ADMITTED;
+	m_ValtanProductFallbackEncounter.Clear();
+	m_bValtanProductFallbackReady = false;
 	m_strValtanPatternTreeStatus = Status;
 	if (!Refresh_ValtanPatternAuthoringEffects())
 	{
@@ -12879,6 +12977,60 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 			m_strSelectedValtanPatternId.clear();
 	}
 	m_bValtanPatternTreeLastRefreshSucceeded = true;
+	return true;
+}
+
+void Client::CEffect_Tool::Schedule_ValtanPatternTreeReloadRetry()
+{
+	m_bValtanPatternTreeReloadRetryPending = true;
+	m_dNextValtanPatternTreeReloadRetrySeconds =
+		ImGui::GetTime() + VALTAN_PATTERN_TREE_RELOAD_RETRY_SECONDS;
+}
+
+bool_t Client::CEffect_Tool::Stage_ValtanProductFallback(
+	const CValtanCanonicalProductReadAdmission& Admission,
+	const std::string& strStrictFailure)
+{
+	CEncounterPatternReference Staged;
+	std::string ProductStatus;
+	if (!Staged.Load(
+			CProjectDataRoot::Resolve(
+				L"Encounters/Valtan/ValtanEncounter.json"),
+			ProductStatus))
+	{
+		m_eValtanPatternTreeAdmission = m_bValtanProductFallbackReady ?
+			VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
+			VALTAN_VIEW_ADMISSION::REJECTED;
+		m_strValtanPatternTreeStatus = m_bValtanProductFallbackReady ?
+			"READ-ONLY PRODUCT FALLBACK STALE_PRESERVED; strict join and fallback refresh failed. Strict failure: " +
+				strStrictFailure + " | Product failure: " + ProductStatus :
+			"Valtan strict join failed and generated Product fallback could not load: " +
+				strStrictFailure + " | " + ProductStatus;
+		return false;
+	}
+	std::string CurrentStatus;
+	if (!Admission.Validate_StillCurrent(CurrentStatus))
+	{
+		Schedule_ValtanPatternTreeReloadRetry();
+		m_eValtanPatternTreeAdmission = m_bValtanProductFallbackReady ?
+			VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
+			VALTAN_VIEW_ADMISSION::REJECTED;
+		m_strValtanPatternTreeStatus = m_bValtanProductFallbackReady ?
+			"READ-ONLY PRODUCT FALLBACK STALE_PRESERVED; Product generation changed before fallback commit: " + CurrentStatus :
+			"Generated Product fallback generation changed before commit: " +
+				CurrentStatus;
+		return false;
+	}
+	m_ValtanProductFallbackEncounter = std::move(Staged);
+	m_bValtanProductFallbackReady = true;
+	m_eValtanPatternTreeAdmission =
+		VALTAN_VIEW_ADMISSION::STALE_PRESERVED;
+	m_strValtanPatternTreeStatus =
+		"READ-ONLY PRODUCT FALLBACK: " +
+		std::to_string(
+			m_ValtanProductFallbackEncounter.Get_Patterns().size()) +
+		" generated Product patterns remain visible. Product-linked Pattern editing and Server playback stay blocked. Strict failure: " +
+		strStrictFailure;
 	return true;
 }
 
@@ -14147,6 +14299,12 @@ bool_t Client::CEffect_Tool::Can_PlayValtanServerPattern(
 	std::string& strOutReason) const
 {
 	strOutReason.clear();
+	if (!Can_MutateValtanView(m_eValtanPatternTreeAdmission))
+	{
+		strOutReason =
+			"Complete Play requires a freshly ADMITTED Valtan Pattern view; preserved rows are display-only.";
+		return false;
+	}
 	if (Pattern.strPatternId.empty())
 	{
 		strOutReason = "Complete Play requires one stable Pattern ID.";
@@ -14350,6 +14508,12 @@ void Client::CEffect_Tool::Update_ValtanPatternProductEffectUnlink()
 bool_t Client::CEffect_Tool::Try_CreateValtanPatternEffect(
 	const VALTAN_PATTERN_VIEW& Pattern)
 {
+	if (!Can_MutateValtanView(m_eValtanPatternTreeAdmission))
+	{
+		m_strValtanPatternEffectStatus =
+			"Create Effect requires a freshly ADMITTED Valtan Pattern view; preserved rows are display-only.";
+		return false;
+	}
 	if (!m_bValtanPatternAuthoringEffectsLoaded)
 	{
 		m_strValtanPatternEffectStatus =
@@ -14548,6 +14712,12 @@ bool_t Client::CEffect_Tool::Can_DeleteSelectedValtanPatternEffect(
 	std::string& strOutReason) const
 {
 	strOutReason.clear();
+	if (!Can_MutateValtanView(m_eValtanPatternTreeAdmission))
+	{
+		strOutReason =
+			"Delete/Unlink requires a freshly ADMITTED Valtan Pattern view; preserved rows are display-only.";
+		return false;
+	}
 	if (m_ValtanPatternProductUnlinkOperation.has_value())
 	{
 		strOutReason =
@@ -14800,6 +14970,12 @@ bool_t Client::CEffect_Tool::Try_DeleteValtanPatternDraftEffect(
 bool_t Client::CEffect_Tool::Try_UnlinkValtanPatternProductEffect(
 	const VALTAN_PATTERN_EFFECT_SELECTION& Selection)
 {
+	if (!Can_MutateValtanView(m_eValtanPatternTreeAdmission))
+	{
+		m_strValtanPatternEffectStatus =
+			"Product Effect unlink requires a freshly ADMITTED Valtan Pattern view; no source transaction was started.";
+		return false;
+	}
 	if (m_ValtanPatternProductUnlinkOperation.has_value())
 	{
 		m_strValtanPatternEffectStatus =
@@ -16915,6 +17091,226 @@ void Client::CEffect_Tool::Render_ValtanAreaStaticEffectSection(
 	ImGui::TreePop();
 }
 
+bool_t Client::CEffect_Tool::Refresh_ValtanEffectResourceSnapshot()
+{
+	m_bValtanEffectResourceLoadAttempted = true;
+	std::string OwnerStatus;
+	const std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pTypedBefore =
+		CEffectV2Catalog::Get().Get_Snapshot();
+	if ((nullptr == pTypedBefore || !pTypedBefore->Is_Ready()) &&
+		!CEffectV2Catalog::Get().Reload_BossValtan(OwnerStatus))
+	{
+		const auto pPrevious = CEffectResourceCatalog::Get().Get_Snapshot();
+		if (nullptr != pPrevious && pPrevious->Is_Ready())
+		{
+			m_pValtanEffectResourceSnapshot = pPrevious;
+			m_eValtanEffectResourceAdmission =
+				VALTAN_VIEW_ADMISSION::STALE_PRESERVED;
+			m_strValtanEffectResourceStatus =
+				"STALE PRESERVED / READ ONLY: typed Effect owner reload failed; "
+				"the last validated V1/V2 namespace remains visible. " +
+				OwnerStatus;
+		}
+		else
+		{
+			m_eValtanEffectResourceAdmission = VALTAN_VIEW_ADMISSION::REJECTED;
+			m_strValtanEffectResourceStatus =
+				"Unified Effect Resources rejected before first commit: " +
+				OwnerStatus;
+		}
+		return false;
+	}
+
+	std::string FacadeStatus;
+	if (!CEffectResourceCatalog::Get().Reload_Valtan(FacadeStatus))
+	{
+		const auto pPrevious = CEffectResourceCatalog::Get().Get_Snapshot();
+		if (nullptr != pPrevious && pPrevious->Is_Ready())
+		{
+			m_pValtanEffectResourceSnapshot = pPrevious;
+			m_eValtanEffectResourceAdmission =
+				VALTAN_VIEW_ADMISSION::STALE_PRESERVED;
+			m_strValtanEffectResourceStatus =
+				"STALE PRESERVED / READ ONLY: the V1/V2 owner join was rejected; "
+				"the last collision-free namespace remains visible. " +
+				FacadeStatus;
+		}
+		else
+		{
+			m_pValtanEffectResourceSnapshot.reset();
+			m_eValtanEffectResourceAdmission = VALTAN_VIEW_ADMISSION::REJECTED;
+			m_strValtanEffectResourceStatus =
+				"Unified Effect Resources rejected before first commit: " +
+				FacadeStatus;
+		}
+		return false;
+	}
+
+	m_pValtanEffectResourceSnapshot =
+		CEffectResourceCatalog::Get().Get_Snapshot();
+	if (nullptr == m_pValtanEffectResourceSnapshot ||
+		!m_pValtanEffectResourceSnapshot->Is_Ready())
+	{
+		m_eValtanEffectResourceAdmission = VALTAN_VIEW_ADMISSION::REJECTED;
+		m_strValtanEffectResourceStatus =
+			"Unified Effect Resources committed no readable snapshot.";
+		return false;
+	}
+	m_eValtanEffectResourceAdmission = VALTAN_VIEW_ADMISSION::ADMITTED;
+	m_strValtanEffectResourceStatus =
+		"ADMITTED: one collision-free V1 document / V2 leaf / V2 group "
+		"namespace is ready (revision " +
+		std::to_string(m_pValtanEffectResourceSnapshot->Get_Revision()) + ").";
+	return true;
+}
+
+bool_t Client::CEffect_Tool::Open_ValtanEffectResource(
+	const EFFECT_RESOURCE_DESCRIPTOR& Resource)
+{
+	if (!Can_MutateValtanView(m_eValtanEffectResourceAdmission))
+	{
+		m_strValtanEffectResourceStatus =
+			"Resource open is read-only while the owner join is stale. Refresh "
+			"after resolving the displayed rejection reason.";
+		return false;
+	}
+	if (!Resource.Key.Is_Valid())
+	{
+		m_strValtanEffectResourceStatus =
+			"Resource open rejected an invalid owner/stable-ID key.";
+		return false;
+	}
+
+	if (EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT ==
+		Resource.Key.eOwnerKind)
+	{
+		std::string Status;
+		const std::filesystem::path* pPath =
+			Resolve_DirectAuthoredEditablePath(
+				Resource.Key.strStableId, Status);
+		if (nullptr == pPath)
+		{
+			m_strValtanEffectResourceStatus = std::move(Status);
+			return false;
+		}
+		const bool_t bOpened = Try_LoadDocumentPath(
+			*pPath, EFFECT_DOCUMENT_SOURCE::AUTHORED,
+			Resource.Key.strStableId,
+			EFFECT_DOCUMENT_PREVIEW_INTENT::STANDALONE_EFFECT);
+		m_strValtanEffectResourceStatus = bOpened ?
+			"Opened the V1 composition document in its owning Effect editor: " +
+				Resource.Key.strStableId :
+			"V1 owner preserved the current editor state: " + m_strPreviewStatus;
+		return bOpened;
+	}
+
+	if (EFFECT_RESOURCE_OWNER_KIND::V2_LEAF == Resource.Key.eOwnerKind ||
+		EFFECT_RESOURCE_OWNER_KIND::V2_GROUP == Resource.Key.eOwnerKind)
+	{
+		m_PendingTypedEffectResourceOpen = Resource.Key;
+		m_strValtanEffectResourceStatus =
+			"Queued the selected resource for its typed Effect owner: " +
+			Resource.Key.strStableId;
+		return true;
+	}
+
+	m_strValtanEffectResourceStatus =
+		"Resource open rejected an unknown owner kind.";
+	return false;
+}
+
+void Client::CEffect_Tool::Render_ValtanEffectResourceSection(
+	const std::string& strSearch)
+{
+	if (!m_bValtanEffectResourceLoadAttempted)
+		(void)Refresh_ValtanEffectResourceSnapshot();
+	if (!m_strValtanEffectResourceStatus.empty())
+		ImGui::TextWrapped("%s", m_strValtanEffectResourceStatus.c_str());
+	if (!Can_DisplayValtanView(m_eValtanEffectResourceAdmission) ||
+		nullptr == m_pValtanEffectResourceSnapshot ||
+		!m_pValtanEffectResourceSnapshot->Is_Ready())
+	{
+		ImGui::TextDisabled(
+			"No unified Effect Resource snapshot was admitted; exact authored "
+			"diagnostics remain listed below.");
+		return;
+	}
+
+	std::vector<const EFFECT_RESOURCE_DESCRIPTOR*> Groups;
+	std::vector<const EFFECT_RESOURCE_DESCRIPTOR*> Leaves;
+	for (const EFFECT_RESOURCE_DESCRIPTOR& Resource :
+		m_pValtanEffectResourceSnapshot->Get_Resources())
+	{
+		if (!strSearch.empty() &&
+			!Contains_NoCase(Resource.Key.strStableId, strSearch) &&
+			!Contains_NoCase(Resource.strCategoryLabel, strSearch))
+		{
+			continue;
+		}
+		(Resource.Capabilities.bComposite ? Groups : Leaves).push_back(&Resource);
+	}
+
+	const std::string RootLabel = "EFFECT RESOURCES (" +
+		std::to_string(Groups.size() + Leaves.size()) + "/" +
+		std::to_string(
+			m_pValtanEffectResourceSnapshot->Get_Resources().size()) + ")";
+	if (!strSearch.empty())
+		ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+	if (!ImGui::TreeNodeEx(RootLabel.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
+		return;
+	ImGui::TextDisabled(
+		"One stable-ID namespace; Groups contain V1 composition documents and "
+		"typed groups, while Leaves contain typed atomic resources.");
+	if (!Can_MutateValtanView(m_eValtanEffectResourceAdmission))
+	{
+		ImGui::TextColored(ImVec4(1.f, 0.72f, 0.18f, 1.f),
+			"STALE PRESERVED / READ ONLY");
+	}
+
+	const auto RenderRows = [this](
+		const char_t* pLabel,
+		const std::vector<const EFFECT_RESOURCE_DESCRIPTOR*>& Rows)
+	{
+		const std::string Label = std::string(pLabel) + " (" +
+			std::to_string(Rows.size()) + ")";
+		if (!ImGui::TreeNodeEx(Label.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
+			return;
+		for (const EFFECT_RESOURCE_DESCRIPTOR* pResource : Rows)
+		{
+			if (nullptr == pResource)
+				continue;
+			ImGui::PushID(pResource->Key.strStableId.c_str());
+			ImGui::TextWrapped("%s | %s",
+				pResource->strDisplayLabel.c_str(),
+				pResource->strCategoryLabel.c_str());
+			ImGui::SameLine();
+			const bool_t bCanOpen =
+				Can_MutateValtanView(m_eValtanEffectResourceAdmission) &&
+				pResource->Capabilities.bCanLoad;
+			ImGui::BeginDisabled(!bCanOpen);
+			const char_t* pAction =
+				EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT ==
+					pResource->Key.eOwnerKind ?
+					"Open Editor" : "Open Owner Tool";
+			if (ImGui::SmallButton(pAction))
+				(void)Open_ValtanEffectResource(*pResource);
+			ImGui::EndDisabled();
+			if (!bCanOpen &&
+				ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			{
+				ImGui::SetTooltip(
+					"Read-only last-good snapshot. Resolve the join error and Refresh "
+					"before opening a mutable owner editor.");
+			}
+			ImGui::PopID();
+		}
+		ImGui::TreePop();
+	};
+	RenderRows("GROUPS / COMPOSITIONS", Groups);
+	RenderRows("LEAVES", Leaves);
+	ImGui::TreePop();
+}
+
 void Client::CEffect_Tool::Render_ValtanExactAuthoredSourceSection(
 	const std::string& strSearch)
 {
@@ -17039,6 +17435,7 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 	   "Animation-first manual audition | phase %u | source chain %s | automatic rotation disabled"
 	   Animator order now comes from ManualAuditions. All Effects and Boss Tool
 	   both submit the one shared typed Server audition service. */
+	Render_ValtanEffectResourceSection(strSearch);
 	Render_ValtanExactAuthoredSourceSection(strSearch);
 	if (m_ValtanPatternProductUnlinkOperation.has_value())
 	{
@@ -17049,21 +17446,51 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 	}
 	if (!m_bValtanAreaMapEffectLoadAttempted)
 		Refresh_ValtanAreaStaticEffects();
-	if (!m_bValtanPatternTreeLoaded && !m_bValtanPatternTreeLoadAttempted)
+	if (VALTAN_VIEW_ADMISSION::UNLOADED ==
+			m_eValtanPatternTreeAdmission &&
+		!m_bValtanPatternTreeLoadAttempted)
 		Refresh_ValtanPatternTree();
+	if (m_bValtanPatternTreeReloadRetryPending &&
+		ImGui::GetTime() >= m_dNextValtanPatternTreeReloadRetrySeconds)
+	{
+		(void)Refresh_ValtanPatternTree();
+	}
 	if (!m_bValtanPatternTreeLastRefreshSucceeded &&
 		!m_strValtanPatternTreeStatus.empty())
 		ImGui::TextDisabled("%s", m_strValtanPatternTreeStatus.c_str());
+	if (Can_DisplayValtanView(m_eValtanPatternTreeAdmission) &&
+		!Can_MutateValtanView(m_eValtanPatternTreeAdmission))
+	{
+		ImGui::TextColored(
+			ImVec4(1.f, 0.72f, 0.18f, 1.f),
+			"STALE PRESERVED / READ ONLY");
+	}
 	if (!m_bValtanPatternAuthoringEffectsLastRefreshSucceeded &&
 		!m_strValtanPatternAuthoringEffectsStatus.empty())
 	{
 		ImGui::TextDisabled("Pattern Effect ownership: %s",
 			m_strValtanPatternAuthoringEffectsStatus.c_str());
 	}
-	if (!m_bValtanPatternTreeLoaded)
+	if (!Can_DisplayValtanView(m_eValtanPatternTreeAdmission))
 	{
 		ImGui::TextDisabled(
 			"No Valtan pattern inventory was staged; press Refresh for the reason.");
+		if (m_ValtanAreaMapEffectDocument.Is_Ready())
+		{
+			if (!strSearch.empty())
+				ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+			if (ImGui::TreeNodeEx("INDEPENDENT EFFECT",
+					ImGuiTreeNodeFlags_OpenOnArrow))
+			{
+				Render_ValtanAreaStaticEffectSection(strSearch);
+				ImGui::TreePop();
+			}
+		}
+		return;
+	}
+	if (!m_bValtanPatternTreeLoaded && m_bValtanProductFallbackReady)
+	{
+		Render_ValtanProductFallbackSection(strSearch);
 		if (m_ValtanAreaMapEffectDocument.Is_Ready())
 		{
 			if (!strSearch.empty())
@@ -17226,7 +17653,9 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 			CEffectCatalog::Contains(Aggregate.strEffectAssetId) ||
 			m_DirectAuthoredEditableEntries.contains(Aggregate.strEffectAssetId);
 	}
-	const bool_t bCanCreate = nullptr != pSelectedPattern &&
+	const bool_t bCanCreate =
+		Can_MutateValtanView(m_eValtanPatternTreeAdmission) &&
+		nullptr != pSelectedPattern &&
 		nullptr == pSelectedBinding &&
 		m_bValtanPatternAuthoringEffectsLoaded &&
 		!Has_UnsavedWork() && !bExistingAggregate &&
@@ -17239,7 +17668,9 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 	{
 		const char_t* pReason =
 			"Create one empty v13 Effect and attach DRAFT_ATTACHED ownership.";
-		if (nullptr == pSelectedPattern)
+		if (!Can_MutateValtanView(m_eValtanPatternTreeAdmission))
+			pReason = "Reload the canonical Valtan Pattern view before creating or changing a Pattern Effect.";
+		else if (nullptr == pSelectedPattern)
 			pReason = "Select one Pattern row first.";
 		else if (nullptr != pSelectedBinding)
 			pReason = "The selected Pattern already owns its one aggregate Effect.";
@@ -17513,6 +17944,86 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 	}
 }
 
+void Client::CEffect_Tool::Render_ValtanProductFallbackSection(
+	const std::string& strSearch)
+{
+	ImGui::TextColored(
+		ImVec4(1.f, 0.72f, 0.18f, 1.f),
+		"READ-ONLY PRODUCT FALLBACK");
+	ImGui::TextWrapped(
+		"Generated Product pattern identities remain browsable. Exact authored Effect documents are listed above; Product cue ownership, Open/Play, Create/Delete, and Server playback stay blocked until the strict split join succeeds.");
+	const auto Matches = [&strSearch](
+		const ENCOUNTER_PATTERN_REFERENCE& Pattern)
+	{
+		if (strSearch.empty() ||
+			Contains_NoCase(Pattern.patternId, strSearch) ||
+			Contains_NoCase(Pattern.displayName, strSearch) ||
+			Contains_NoCase(Pattern.actionId, strSearch))
+		{
+			return true;
+		}
+		return std::any_of(
+			Pattern.stages.begin(), Pattern.stages.end(),
+			[&strSearch](const ENCOUNTER_STAGE_REFERENCE& Stage)
+			{
+				return Contains_NoCase(Stage.stageId, strSearch) ||
+					Contains_NoCase(Stage.actionId, strSearch);
+			});
+	};
+	const auto RenderGroup = [&Matches](
+		const char_t* const pLabel,
+		const std::vector<const ENCOUNTER_PATTERN_REFERENCE*>& Patterns)
+	{
+		const size_t iVisible = std::count_if(
+			Patterns.begin(), Patterns.end(),
+			[&Matches](const ENCOUNTER_PATTERN_REFERENCE* const pPattern)
+			{ return nullptr != pPattern && Matches(*pPattern); });
+		if (0u == iVisible)
+			return;
+		const std::string Label = std::string(pLabel) + " (" +
+			std::to_string(Patterns.size()) + ")";
+		if (!ImGui::TreeNodeEx(Label.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
+			return;
+		for (const ENCOUNTER_PATTERN_REFERENCE* const pPattern : Patterns)
+		{
+			if (nullptr == pPattern || !Matches(*pPattern))
+				continue;
+			ImGui::PushID(pPattern->patternId.c_str());
+			const std::string PatternLabel =
+				(pPattern->displayName.empty() ? pPattern->patternId :
+					pPattern->displayName) + "###productFallbackPattern";
+			if (ImGui::TreeNodeEx(
+					PatternLabel.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
+			{
+				ImGui::TextDisabled("%s | entry %s | %u ms",
+					pPattern->patternId.c_str(), pPattern->actionId.c_str(),
+					pPattern->iTotalDurationMs);
+				for (const ENCOUNTER_STAGE_REFERENCE& Stage : pPattern->stages)
+				{
+					ImGui::BulletText("%s | %s | %s | %u ms%s",
+						Stage.stageId.c_str(), Stage.stageKind.c_str(),
+						Stage.actionId.c_str(), Stage.iDurationMs,
+						Stage.bHasCounterHitBranch ? " | COUNTER" : "");
+				}
+				ImGui::TreePop();
+			}
+			ImGui::PopID();
+		}
+		ImGui::TreePop();
+	};
+
+	std::vector<const ENCOUNTER_PATTERN_REFERENCE*> Gimmicks;
+	std::vector<const ENCOUNTER_PATTERN_REFERENCE*> Rotation;
+	for (const ENCOUNTER_PATTERN_REFERENCE& Pattern :
+		m_ValtanProductFallbackEncounter.Get_Patterns())
+	{
+		(0u != Pattern.iTriggerHealthBar ? Gimmicks : Rotation).push_back(
+			&Pattern);
+	}
+	RenderGroup("PRODUCT GIMMICK PATTERNS / READ-ONLY", Gimmicks);
+	RenderGroup("PRODUCT ROTATION PATTERNS / READ-ONLY", Rotation);
+}
+
 void Client::CEffect_Tool::Render_AllEffectsWindow()
 {
 	ImGui::SetNextWindowPos(ImVec2(1110.f, 705.f), ImGuiCond_FirstUseEver);
@@ -17585,6 +18096,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 	{
 		Refresh_AllEffects(true);
 		Refresh_DataFiles();
+		Refresh_ValtanEffectResourceSnapshot();
 		Refresh_ValtanPatternTree();
 		if (m_bAllEffectsValtanBossSelected)
 			Refresh_ValtanAreaStaticEffects();
@@ -21031,6 +21543,18 @@ size_t Client::CEffect_Tool::Count_ProductCueMappings(
 
 bool_t Client::CEffect_Tool::Try_ApplyDraftAndSave()
 {
+	const bool_t bJoinedValtanPatternDocument =
+		!m_strActiveValtanPatternDraftId.empty() ||
+		m_ValtanProductPreview.has_value() ||
+		m_ValtanCombatObjectIndependentPreview.has_value() ||
+		0u != m_iValtanWorldOwnerStageDurationMs;
+	if (bJoinedValtanPatternDocument &&
+		!Can_MutateValtanView(m_eValtanPatternTreeAdmission))
+	{
+		m_strDocumentStatus =
+			"Apply + Save requires a freshly ADMITTED Valtan Pattern view; the open draft was preserved without writing.";
+		return false;
+	}
 	if (!m_ActiveDocument.has_value())
 	{
 		m_strDocumentStatus = "There is no active Document to save.";
@@ -21094,6 +21618,18 @@ bool_t Client::CEffect_Tool::Try_ApplyDraftAndSave()
 
 bool_t Client::CEffect_Tool::Try_SaveDocument()
 {
+	const bool_t bJoinedValtanPatternDocument =
+		!m_strActiveValtanPatternDraftId.empty() ||
+		m_ValtanProductPreview.has_value() ||
+		m_ValtanCombatObjectIndependentPreview.has_value() ||
+		0u != m_iValtanWorldOwnerStageDurationMs;
+	if (bJoinedValtanPatternDocument &&
+		!Can_MutateValtanView(m_eValtanPatternTreeAdmission))
+	{
+		m_strDocumentStatus =
+			"Save requires a freshly ADMITTED Valtan Pattern view; the open draft was preserved without writing.";
+		return false;
+	}
 	if (EFFECT_DETAIL_SELECTION::RUNTIME_OCCURRENCE == m_eDetailSelection)
 		return Try_SaveRuntimeOccurrenceTuning();
     if (!m_ActiveDocument.has_value())

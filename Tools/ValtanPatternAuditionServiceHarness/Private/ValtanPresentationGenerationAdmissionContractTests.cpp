@@ -1,6 +1,7 @@
 #include "ProjectDataRoot.h"
 #include "DataJson.h"
 #include "EffectV2_Document.h"
+#include "ValtanPatternTree.h"
 #include "ValtanPresentationGenerationAdmission.h"
 
 #include <chrono>
@@ -268,6 +269,69 @@ namespace
 			(kind == "GROUP" ? groupIds : leafIds).insert(id);
 		}
 
+		/* Combat-object visuals are a second typed BOSS_VALTAN owner lane.  They
+		   are not duplicated into animation bindings, but their groups are part
+		   of the same entry-required presentation closure. */
+		Client::DATA_JSON_VALUE bossCatalog;
+		if (!Load_JsonFixture(repositoryRoot / "Data/Actors/BossCatalog.json",
+				bossCatalog, status))
+		{
+			return false;
+		}
+		const Client::DATA_JSON_VALUE* const bosses = bossCatalog.Find("bosses");
+		if (nullptr == bosses || !bosses->Is_Array())
+		{
+			status = "Effect V2 owner closure fixture has no bosses array.";
+			return false;
+		}
+		std::size_t valtanOwnerCount = 0u;
+		for (const Client::DATA_JSON_VALUE& boss : bosses->Get_Array())
+		{
+			const Client::DATA_JSON_VALUE* const archetypeId =
+				boss.Is_Object() ? boss.Find("archetypeId") : nullptr;
+			if (nullptr == archetypeId || !archetypeId->Is_String() ||
+				"BOSS_VALTAN" != archetypeId->Get_String())
+			{
+				continue;
+			}
+			++valtanOwnerCount;
+			const Client::DATA_JSON_VALUE* const visuals =
+				boss.Find("combatObjectVisuals");
+			if (nullptr == visuals || !visuals->Is_Array())
+			{
+				status =
+					"Effect V2 owner closure fixture has invalid combatObjectVisuals.";
+				return false;
+			}
+			for (const Client::DATA_JSON_VALUE& visual : visuals->Get_Array())
+			{
+				const Client::DATA_JSON_VALUE* const owner =
+					visual.Is_Object() ? visual.Find("effectV2Group") : nullptr;
+				if (nullptr == owner)
+					continue;
+				if (!owner->Is_Object())
+				{
+					status =
+						"Effect V2 owner closure fixture has an invalid group object.";
+					return false;
+				}
+				const Client::DATA_JSON_VALUE* const groupId = owner->Find("groupId");
+				if (nullptr == groupId ||
+					!groupId->Is_String() || groupId->Get_String().empty())
+				{
+					status =
+						"Effect V2 owner closure fixture has an invalid group identity.";
+					return false;
+				}
+				groupIds.insert(groupId->Get_String());
+			}
+		}
+		if (1u != valtanOwnerCount)
+		{
+			status = "Effect V2 owner closure fixture has no unique BOSS_VALTAN.";
+			return false;
+		}
+
 		for (const std::string& groupId : groupIds)
 		{
 			const std::string groupRelative =
@@ -345,15 +409,21 @@ int Run_ValtanPresentationGenerationAdmissionContractTests()
 	std::string status;
 	{
 		CValtanPresentationGenerationReadAdmission admission;
+		Client::VALTAN_CANONICAL_READ_DIAGNOSTIC diagnostic;
 		const bool acquired =
-			admission.Acquire_PackagedBaseline(receipt, status);
+			admission.Acquire_PackagedBaseline(receipt, diagnostic);
+		status = diagnostic.strStatus;
 		if (!acquired)
 			std::cerr << "  admission detail: " << status << '\n';
 		require(acquired,
 			"current typed presentation sources were not admitted");
+		require(Client::VALTAN_CANONICAL_READ_FAILURE_KIND::NONE ==
+				diagnostic.eFailure,
+			"successful presentation admission returned a failure kind");
 		require(receipt.Is_Valid(), "successful admission returned no source receipt");
-		require(admission.Validate_StillCurrent(status),
+		require(admission.Validate_StillCurrent(diagnostic),
 			"typed presentation sources changed before commit");
+		status = diagnostic.strStatus;
 	}
 
 	if (receipt.Is_Valid())

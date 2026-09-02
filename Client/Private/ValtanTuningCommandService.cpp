@@ -43,6 +43,13 @@ void Client::CValtanTuningCommandService::
 		const std::string_view strApplyClass,
 		const std::string_view strStatus)
 {
+	if (m_strGameplayCandidateRevision != strCandidateRevision ||
+		m_strGameplayCandidateApplyClass != strApplyClass)
+	{
+		m_strQueuedGameplayCandidateRevision.clear();
+		m_strQueuedGameplayCandidateApplyClass.clear();
+		m_bQueuedGameplayCandidateWaitsForPriorResolution = false;
+	}
 	m_bGameplaySourceActivationObserved = true;
 	m_strGameplayCandidateRevision = std::string(strCandidateRevision);
 	m_strGameplayCandidateApplyClass = std::string(strApplyClass);
@@ -55,6 +62,56 @@ void Client::CValtanTuningCommandService::
 		m_strGameplayCandidateRevision.clear();
 		m_strGameplayCandidateApplyClass.clear();
 	}
+}
+
+bool Client::CValtanTuningCommandService::
+	Queue_GameplaySourceCandidateAfterPending(
+		const std::string_view strCandidateRevision,
+		const std::string_view strApplyClass,
+		std::string& strOutStatus)
+{
+	const std::string Candidate(strCandidateRevision);
+	const std::string ApplyClass(strApplyClass);
+	Update();
+	if (!Is_LowerSha256(Candidate) || "HOT_RELOAD" != ApplyClass)
+	{
+		strOutStatus =
+			"Only a valid immutable HOT_RELOAD candidate can wait behind another revision transaction.";
+		return false;
+	}
+	if (!m_bGameplaySourceActivationObserved ||
+		m_strGameplayCandidateRevision != Candidate ||
+		m_strGameplayCandidateApplyClass != ApplyClass)
+	{
+		strOutStatus =
+			"The deferred candidate is not the exact latest saved gameplay source expectation.";
+		return false;
+	}
+	if (!Has_PendingCommand())
+	{
+		if (m_strQueuedGameplayCandidateRevision == Candidate)
+		{
+			m_strQueuedGameplayCandidateRevision.clear();
+			m_strQueuedGameplayCandidateApplyClass.clear();
+			m_bQueuedGameplayCandidateWaitsForPriorResolution = false;
+		}
+		return ApplyCandidate(Candidate, ApplyClass, strOutStatus);
+	}
+	if (m_bApplyPending && m_Snapshot.strCandidateRevision == Candidate)
+	{
+		strOutStatus =
+			"The exact latest saved candidate is already the in-flight revision transaction.";
+		m_strGameplayActivationStatus = strOutStatus;
+		return true;
+	}
+
+	m_strQueuedGameplayCandidateRevision = Candidate;
+	m_strQueuedGameplayCandidateApplyClass = ApplyClass;
+	m_bQueuedGameplayCandidateWaitsForPriorResolution = m_bApplyPending;
+	strOutStatus =
+		"The latest saved candidate is queued behind the unresolved revision transaction and will submit after an exact terminal result or explicit Server-active revision reconciliation.";
+	m_strGameplayActivationStatus = strOutStatus;
+	return true;
 }
 
 bool Client::CValtanTuningCommandService::
@@ -254,6 +311,7 @@ void Client::CValtanTuningCommandService::Update()
 {
 	using namespace LostArk::Shared;
 	const REVISION_OBSERVATION Observation = Read_RevisionObservation();
+	bool bPriorApplyResolvedExactly = false;
 	if (m_bApplyPending)
 	{
 		if (m_Snapshot.iConnectionGeneration != Observation.iConnectionGeneration ||
@@ -271,6 +329,7 @@ void Client::CValtanTuningCommandService::Update()
 			if (Observation.eLatestResult == DATA_REVISION_RESULT::ABORTED)
 			{
 				m_bApplyPending = false;
+				bPriorApplyResolvedExactly = true;
 				m_Snapshot.eState = VALTAN_TUNING_COMMAND_STATE::FAILED;
 				m_Snapshot.strStatus = "Server rejected the candidate; its previous revision remains active. " + Observation.strReason;
 			}
@@ -278,6 +337,7 @@ void Client::CValtanTuningCommandService::Update()
 				Observation.ServerActiveRevision == m_ApplyRequest.CandidateRevision)
 			{
 				m_bApplyPending = false;
+				bPriorApplyResolvedExactly = true;
 				m_Snapshot.eState = VALTAN_TUNING_COMMAND_STATE::COMMITTED;
 				m_Snapshot.strStatus = "Server committed this candidate. A running Product sequence keeps its old definition; the next encounter/reset uses the saved order.";
 			}
@@ -289,7 +349,86 @@ void Client::CValtanTuningCommandService::Update()
 			m_Snapshot.strStatus = "The Server Apply outcome is unconfirmed. No success or cancellation is assumed; another revision command is blocked.";
 		}
 	}
+
+	/* A lost result must not strand the next immutable Save once the Server's
+	   current revision explicitly proves that the unresolved candidate is active.
+	   This is not reported as this Client transaction COMMITTED: ALREADY_ACTIVE
+	   records only the observed Server truth.  A concurrent revision transaction
+	   must settle first so the queued candidate takes an exact stable base. */
+	GameplayDataRevision SnapshotCandidate{};
+	const bool bCanReconcileFromServerActiveRevision =
+		(VALTAN_TUNING_COMMAND_STATE::UNCONFIRMED == m_Snapshot.eState ||
+		 VALTAN_TUNING_COMMAND_STATE::PUBLISHED_APPLY_NEEDED ==
+			m_Snapshot.eState) &&
+		Try_Parse_GameplayDataRevision(
+			m_Snapshot.strCandidateRevision, SnapshotCandidate) &&
+		m_ApplyRequest.CandidateRevision.Is_Valid() &&
+		SnapshotCandidate == m_ApplyRequest.CandidateRevision &&
+		Observation.bConnected && 0u != Observation.iConnectionGeneration &&
+		0u != Observation.iWorldInboundGeneration &&
+		Observation.ServerActiveRevision.Is_Valid() &&
+		Observation.ServerActiveRevision == m_ApplyRequest.CandidateRevision &&
+		!Observation.bOtherTransactionPending;
+	if (bCanReconcileFromServerActiveRevision)
+	{
+		m_bApplyPending = false;
+		bPriorApplyResolvedExactly = true;
+		m_Snapshot.eState = VALTAN_TUNING_COMMAND_STATE::ALREADY_ACTIVE;
+		m_Snapshot.iRequestSequence = 0u;
+		m_Snapshot.iConnectionGeneration = Observation.iConnectionGeneration;
+		m_Snapshot.iWorldInboundGeneration = Observation.iWorldInboundGeneration;
+		m_Snapshot.bCandidateIsServerActive = true;
+		m_Snapshot.strStatus =
+			"The current Server explicitly reports the unresolved candidate active. The missing transaction result was not fabricated; deferred work may continue from this exact revision.";
+	}
 	Refresh_ActiveCandidate(Observation);
+	Submit_QueuedGameplayCandidateAfterPending(
+		Observation, bPriorApplyResolvedExactly);
+}
+
+void Client::CValtanTuningCommandService::
+	Submit_QueuedGameplayCandidateAfterPending(
+		const REVISION_OBSERVATION& Observation,
+		const bool bPriorApplyResolvedExactly)
+{
+	if (m_strQueuedGameplayCandidateRevision.empty() || m_bApplyPending ||
+		Observation.bOtherTransactionPending ||
+		(m_bQueuedGameplayCandidateWaitsForPriorResolution &&
+		 !bPriorApplyResolvedExactly))
+	{
+		return;
+	}
+
+	const std::string Candidate = m_strQueuedGameplayCandidateRevision;
+	const std::string ApplyClass = m_strQueuedGameplayCandidateApplyClass;
+	m_strQueuedGameplayCandidateRevision.clear();
+	m_strQueuedGameplayCandidateApplyClass.clear();
+	m_bQueuedGameplayCandidateWaitsForPriorResolution = false;
+	if (!Is_LowerSha256(Candidate) || "HOT_RELOAD" != ApplyClass ||
+		m_strGameplayCandidateRevision != Candidate ||
+		m_strGameplayCandidateApplyClass != ApplyClass)
+	{
+		m_strGameplayActivationStatus =
+			"The deferred gameplay candidate became stale before submission and was not applied.";
+		return;
+	}
+
+	if (m_Snapshot.strCandidateRevision != Candidate)
+	{
+		m_Snapshot = {};
+		m_Snapshot.strCandidateRevision = Candidate;
+	}
+	m_Snapshot.strApplyClass = ApplyClass;
+	m_Snapshot.eState = VALTAN_TUNING_COMMAND_STATE::PUBLISHED_APPLY_NEEDED;
+	std::string Status;
+	if (!Submit_Candidate(Observation, Status))
+	{
+		m_strGameplayActivationStatus =
+			"The queued latest saved candidate could not start after the previous transaction settled: " +
+			Status;
+		return;
+	}
+	m_strGameplayActivationStatus = Status;
 }
 
 bool Client::CValtanTuningCommandService::Is_ActivationEnabled() const
@@ -377,6 +516,9 @@ void Client::CValtanTuningCommandService::Harness_Reset()
 	m_strGameplayCandidateRevision.clear();
 	m_strGameplayCandidateApplyClass.clear();
 	m_strGameplayActivationStatus.clear();
+	m_strQueuedGameplayCandidateRevision.clear();
+	m_strQueuedGameplayCandidateApplyClass.clear();
+	m_bQueuedGameplayCandidateWaitsForPriorResolution = false;
 	m_HarnessInput = {};
 }
 #endif

@@ -593,8 +593,11 @@ spawn/snapshot/despawn 경로와 `iOwnerBossNetEntityId`를 계속 사용하지�
 별도 damage entity를 만들지 않는다. Server의 primary archetype/NetEntityId/HP/damage/HUD/reward owner는
 `BOSS_VALTAN` 그대로이고 Client만 `BOSS_VALTAN_GHOST` body/weapon part group을 원자 교체한다. 부활 완료
 뒤 primary는 Six Pizza/Ground Roar/Stagger/Bind/Silence/Triple Counter exact 6-pattern을 순환하며, 독립
-150-tick scheduler가 arena spawn center의 네 꼭짓점에서 inward portal combat object 네 개를 같은 tick에
-생성한다. primary HUD/BGM/툴 target은 계속 본체만 소유한다. protocol v44는 이 owner와 typed 사망 despawn reason을
+150-tick scheduler가 immutable arena center 기준의 네 radial slot에 portal combat object 네 개를 같은 tick에
+생성한다. 각 object는 `NEXT_RADIAL_SLOT`으로 0->1, 1->2, 2->3, 3->0의 사각형 네 변을
+동시에 질주한다. authored world angle은 45/135/225/315도이며 네 개는 독립 boss-body가
+아니라 portal presentation을 가진 combat object다. primary HUD/BGM/툴 target은 계속 본체만 소유한다.
+protocol v44는 이 owner와 typed 사망 despawn reason을
 추가하므로 Server/Client를 함께 배포한다. Server는 HP 0에서 전투 entity를 제거하고 Client만 유효한
 사망 clip 종료까지 기존 presentation을 보존한다. clip 없음·재생 실패·퇴장은 즉시 정리한다.
 
@@ -625,8 +628,12 @@ commit한다. 물리 commit 성공과 editor reopen/candidate apply 상태를 �
 중복 Pattern을 보존하고 admission/reset 실패 시 새 playback을 시작하지 않는다.
 예약·적용 상태·전멸 대기·취소와 Trash 포획 분기의 상세 계약은 `보스툴.md`와 `발탄인수인계서.md`의 10.4, 11.9를 따른다.
 
-Boss Tool의 `Logic Flow`는 선택 또는 live Pattern 하나의 Stage role, 실제 clip 이름, authored branch와
-`COUNTER_HIT/TIMEOUT`을 읽기 전용으로 그린다. 기본 입력은 pan/zoom뿐이며 graph나 Server 상태를 수정하지 않는다.
+F1의 `Logic Pattern`은 Boss Tool과 동급인 독립 대형 창이지만, 소유자는 같은 하나의
+`CBossTool`이다. 선택 또는 live Pattern의 Stage role, 실제 clip, authored/cross-pattern branch,
+counter proxy, response threshold/progress, status action과 damage profile을 읽기 전용으로 그린다.
+연속 Server snapshot의 source/target이 단 하나의 저작 edge와 맞을 때만 observed branch로 표시하며,
+여러 outcome이 같은 target을 가리키면 추측하지 않는다. graph, Server 상태와 world/preview를
+수정하거나 input owner를 가져가지 않는다.
 `Save Flow Product publish 성공 -> Product-synced Current Patterns 갱신 -> 같은 revision으로 Restart Flow -> 01 재생`과
 live 강조·시각 가독성은 사용자가 Debug Server와 Client에서 직접 smoke한다. 에이전트는 Client/UI를 자율 실행하거나
 visual PASS를 대신 판정하지 않는다.

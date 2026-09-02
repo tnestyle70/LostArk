@@ -667,7 +667,7 @@ namespace
 				0.f == releaseSpeedMps && 0.f == releaseYawOffsetDegrees &&
 				"player.status.bind" == targetId &&
 				((BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger &&
-				  10000u == value && durationMs >= 100u && durationMs <= 120000u) ||
+				  5000u == value && durationMs >= 100u && durationMs <= 120000u) ||
 				 (BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT == trigger &&
 				  0u == value && 0u == durationMs));
 		}
@@ -676,10 +676,8 @@ namespace
 			return BOSS_GRABBED_RELEASE_MODE::NONE == releaseMode &&
 				0.f == releaseSpeedMps && 0.f == releaseYawOffsetDegrees &&
 				"player.status.silence" == targetId &&
-				((BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger &&
-				  1u == value && durationMs >= 100u && durationMs <= 120000u) ||
-				 (BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT == trigger &&
-				  0u == value && 0u == durationMs));
+				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger &&
+				1u == value && durationMs >= 100u && durationMs <= 120000u;
 		}
 		if (BOSS_GRABBED_RELEASE_MODE::NONE != releaseMode ||
 			0.f != releaseSpeedMps || 0.f != releaseYawOffsetDegrees ||
@@ -757,6 +755,11 @@ namespace
 				DAMAGE_GRABBED_PLAYERS != kind &&
 			LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND::
 				EXECUTE_GRABBED_PLAYERS != kind &&
+			/* Silence is a deadline-latched player status. Its authored ENTER
+			   schedules the exact Server expiry and intentionally has no matching
+			   pattern-occurrence EXIT action. */
+			LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND::
+				SET_PLAYER_SILENCE != kind &&
 			LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND::
 				RETURN_TO_ARENA_CENTER != kind;
 	}
@@ -3217,6 +3220,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				[&fields](const BOSS_PATTERN_STAGE_DEFINITION& candidate)
 				{ return candidate.strActionId == fields[3]; });
 			if (owner->Stages.end() == stage ||
+				(BOSS_PATTERN_STAGE_ACTION_KIND::SET_PLAYER_SILENCE ==
+					action.eKind && action.iDurationMs < stage->iDurationMs) ||
 				actionOrder != stage->Actions.size() || actionOrder >= 8u ||
 				std::any_of(stage->Actions.begin(), stage->Actions.end(),
 					[&action, &fields](const BOSS_PATTERN_STAGE_ACTION& existing)
@@ -4556,6 +4561,12 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 							action.iValue, action.iDurationMs,
 							action.eReleaseMode, action.fReleaseSpeedMps,
 							action.fReleaseYawOffsetDegrees))
+					{
+						validActions = false;
+						continue;
+					}
+					if (BOSS_PATTERN_STAGE_ACTION_KIND::SET_PLAYER_SILENCE ==
+						action.eKind && action.iDurationMs < stage.iDurationMs)
 					{
 						validActions = false;
 						continue;

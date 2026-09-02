@@ -295,6 +295,143 @@ namespace
 			f.Status.find("invalid candidate revision") != std::string::npos,
 			"an invalid canonical candidate failed open");
 	}
+
+	void VerifyTwoSaveRestartCandidateLiveness()
+	{
+		Fixture f;
+		f.Service.Record_GameplaySourceActivationExpectation(
+			Revision('b'), "HOT_RELOAD", "first Flow save");
+		f.Apply('b');
+		const auto first = f.Input().SentRequests.back();
+
+		f.Service.Record_GameplaySourceActivationExpectation(
+			Revision('c'), "HOT_RELOAD", "second Flow save");
+		Require(f.Service.Queue_GameplaySourceCandidateAfterPending(
+				Revision('c'), "HOT_RELOAD", f.Status) &&
+			f.Input().SentRequests.size() == 1u,
+			"the second Save either replaced the unresolved first transaction or was not queued");
+
+		f.Terminal();
+		Require(f.Input().SentRequests.size() == 2u &&
+			f.Input().SentRequests.back().iTransactionSequence ==
+				first.iTransactionSequence + 1u &&
+			f.Input().SentRequests.back().BaseRevision == Identity('b') &&
+			f.Input().SentRequests.back().CandidateRevision == Identity('c') &&
+			f.Snapshot().eState == VALTAN_TUNING_COMMAND_STATE::APPLY_PENDING,
+			"the second saved candidate did not begin after the first exact terminal result");
+
+		f.Terminal();
+		GameplayDataRevision exactRevision{};
+		Require(f.Service.Try_GetLatestGameplaySourceServerActiveRevision(
+				exactRevision, f.Status) && exactRevision == Identity('c') &&
+			!f.Service.Has_PendingCommand(),
+			"Save A -> restart A -> Save B -> restart B did not release the exact latest candidate gate");
+
+		Fixture interrupted;
+		interrupted.Service.Record_GameplaySourceActivationExpectation(
+			Revision('b'), "HOT_RELOAD", "first Flow save");
+		interrupted.Apply('b');
+		interrupted.Service.Record_GameplaySourceActivationExpectation(
+			Revision('c'), "HOT_RELOAD", "second Flow save");
+		Require(interrupted.Service.Queue_GameplaySourceCandidateAfterPending(
+			Revision('c'), "HOT_RELOAD", interrupted.Status),
+			"interrupted second Save was not queued");
+		++interrupted.Input().iWorldInboundGeneration;
+		interrupted.Input().bOutstandingPrepareRequest = false;
+		interrupted.Service.Update();
+		Require(interrupted.Input().SentRequests.size() == 1u &&
+			interrupted.Snapshot().eState ==
+				VALTAN_TUNING_COMMAND_STATE::PUBLISHED_APPLY_NEEDED,
+			"a world change was mistaken for an exact terminal result and submitted the queued candidate");
+		Require(interrupted.Service.Queue_GameplaySourceCandidateAfterPending(
+				Revision('c'), "HOT_RELOAD", interrupted.Status) &&
+			interrupted.Input().SentRequests.size() == 2u,
+			"an explicit retry in the fresh world did not release the still-latest saved candidate");
+	}
+
+	void VerifyUnconfirmedApplyReconcilesOnlyFromExplicitActiveRevision()
+	{
+		Fixture observed;
+		observed.Apply('b');
+		observed.Input().bOutstandingPrepareRequest = false;
+		observed.Input().iNowMilliseconds += 10001u;
+		observed.Service.Update();
+		Require(observed.Snapshot().eState ==
+				VALTAN_TUNING_COMMAND_STATE::UNCONFIRMED &&
+			observed.Service.Has_PendingCommand(),
+			"a lost Apply result did not remain truthfully unresolved");
+
+		observed.Input().ServerActiveRevision = Identity('e');
+		observed.Service.Update();
+		Require(observed.Snapshot().eState ==
+				VALTAN_TUNING_COMMAND_STATE::UNCONFIRMED &&
+			observed.Service.Has_PendingCommand(),
+			"a different active revision was guessed to settle the lost Apply result");
+
+		observed.Input().ServerActiveRevision = Identity('b');
+		observed.Service.Update();
+		Require(observed.Snapshot().eState ==
+				VALTAN_TUNING_COMMAND_STATE::ALREADY_ACTIVE &&
+			!observed.Service.Has_PendingCommand() &&
+			observed.Snapshot().bCandidateIsServerActive &&
+			observed.Snapshot().strStatus.find("not fabricated") !=
+				std::string::npos,
+			"the exact active revision did not truthfully reconcile the lost Apply observation");
+
+		Fixture deferred;
+		deferred.Service.Record_GameplaySourceActivationExpectation(
+			Revision('b'), "HOT_RELOAD", "first Flow save");
+		deferred.Apply('b');
+		deferred.Service.Record_GameplaySourceActivationExpectation(
+			Revision('c'), "HOT_RELOAD", "second Flow save");
+		Require(deferred.Service.Queue_GameplaySourceCandidateAfterPending(
+				Revision('c'), "HOT_RELOAD", deferred.Status),
+			"the second saved candidate was not deferred behind Apply A");
+		deferred.Input().bOutstandingPrepareRequest = false;
+		deferred.Input().iNowMilliseconds += 10001u;
+		deferred.Service.Update();
+		Require(deferred.Snapshot().eState ==
+				VALTAN_TUNING_COMMAND_STATE::UNCONFIRMED &&
+			deferred.Input().SentRequests.size() == 1u,
+			"Apply A timeout incorrectly released deferred candidate B");
+
+		deferred.Input().ServerActiveRevision = Identity('b');
+		deferred.Service.Update();
+		Require(deferred.Input().SentRequests.size() == 2u &&
+			deferred.Input().SentRequests.back().BaseRevision == Identity('b') &&
+			deferred.Input().SentRequests.back().CandidateRevision == Identity('c') &&
+			deferred.Snapshot().eState ==
+				VALTAN_TUNING_COMMAND_STATE::APPLY_PENDING,
+			"explicit Server-active A did not release deferred candidate B from exact base A");
+
+		Fixture changedWorld;
+		changedWorld.Service.Record_GameplaySourceActivationExpectation(
+			Revision('b'), "HOT_RELOAD", "first Flow save");
+		changedWorld.Apply('b');
+		changedWorld.Service.Record_GameplaySourceActivationExpectation(
+			Revision('c'), "HOT_RELOAD", "second Flow save");
+		Require(changedWorld.Service.Queue_GameplaySourceCandidateAfterPending(
+				Revision('c'), "HOT_RELOAD", changedWorld.Status),
+			"the fresh-world fixture did not defer candidate B");
+		++changedWorld.Input().iWorldInboundGeneration;
+		changedWorld.Input().bOutstandingPrepareRequest = false;
+		changedWorld.Input().ServerActiveRevision = Identity('c');
+		changedWorld.Service.Update();
+		Require(changedWorld.Input().SentRequests.size() == 1u &&
+			changedWorld.Snapshot().eState ==
+				VALTAN_TUNING_COMMAND_STATE::PUBLISHED_APPLY_NEEDED &&
+			!changedWorld.Service.Has_PendingCommand(),
+			"world change inferred Apply A success from a different active revision");
+
+		changedWorld.Input().ServerActiveRevision = Identity('b');
+		changedWorld.Service.Update();
+		Require(changedWorld.Input().SentRequests.size() == 2u &&
+			changedWorld.Input().SentRequests.back().BaseRevision == Identity('b') &&
+			changedWorld.Input().SentRequests.back().CandidateRevision == Identity('c') &&
+			changedWorld.Snapshot().eState ==
+				VALTAN_TUNING_COMMAND_STATE::APPLY_PENDING,
+			"fresh-world explicit active A did not release deferred candidate B");
+	}
 }
 
 int Run_ValtanTuningCommandServiceTests()
@@ -308,7 +445,9 @@ int Run_ValtanTuningCommandServiceTests()
 		{ "Apply timeout and rejection preserve truthful state", VerifyTimeoutAndRejectionRemainTruthful },
 		{ "connection/world freshness is scoped", VerifyWorldGenerationAndFreshness },
 		{ "request identity exhaustion does not wrap", VerifySequenceExhaustionDoesNotWrap },
-		{ "saved gameplay source requires exact Server-active candidate", VerifyGameplaySourceActivationGate }
+		{ "saved gameplay source requires exact Server-active candidate", VerifyGameplaySourceActivationGate },
+		{ "two Save and Restart cycles keep latest candidate live", VerifyTwoSaveRestartCandidateLiveness },
+		{ "lost Apply reconciles only from explicit Server-active revision", VerifyUnconfirmedApplyReconcilesOnlyFromExplicitActiveRevision }
 	};
 	int failed = 0;
 	for (const auto& [name, test] : tests)

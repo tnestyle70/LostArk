@@ -194,12 +194,13 @@ def author_existing_patterns(
     saved_part_break_p = presentation_by_id.get("VALTAN_PART_BREAK")
     dash_groggy_stage = copy.deepcopy(
         stage(saved_dash_groggy, "GROGGY")
-        if saved_dash_groggy is not None else stage(dash, "RECOVERY")
+        if saved_dash_groggy is not None
+        else stage(dash, "GROGGY")
     )
     dash_groggy_p_stage = copy.deepcopy(
         stage(saved_dash_groggy_p, "GROGGY")
         if saved_dash_groggy_p is not None
-        else stage(dash_presentation, "RECOVERY")
+        else stage(dash_presentation, "GROGGY")
     )
     dash_part_break_stage = copy.deepcopy(
         stage(saved_part_break, "PART_BREAK")
@@ -214,16 +215,14 @@ def author_existing_patterns(
     dash_charge["branches"] = [
         {
             "outcome": "WALL_CONTACT",
-            "nextActionId": None,
-            "nextPatternId": "VALTAN_DASH_CHARGE_GROGGY",
+            "nextActionId": dash_groggy_stage["actionId"],
         },
         {
             "outcome": "TIMEOUT",
-            "nextActionId": None,
-            "nextPatternId": "VALTAN_DASH_CHARGE_GROGGY",
+            "nextActionId": dash_groggy_stage["actionId"],
         },
     ]
-    dash_charge["defaultNextActionId"] = None
+    dash_charge["defaultNextActionId"] = dash_groggy_stage["actionId"]
     dash_groggy_stage["stageId"] = "GROGGY"
     dash_groggy_stage["stageKind"] = "GROGGY"
     dash_groggy_stage["defaultNextActionId"] = None
@@ -253,49 +252,32 @@ def author_existing_patterns(
         {"outcome": "TIMEOUT", "nextActionId": None},
     ]
     dash["reactions"] = []
-    dash["sourceActionIds"] = [420604]
-    dash_stage_order = ("WINDUP", "CHARGE")
+    dash["sourceActionIds"] = [420604, 400430]
+    dash_stage_order = ("WINDUP", "CHARGE", "GROGGY")
     dash_stages = indexed(dash["stages"], "stageId")
+    dash_stages["GROGGY"] = dash_groggy_stage
     dash["stages"] = [dash_stages[stage_id] for stage_id in dash_stage_order]
-    dash_presentation["presentationSources"] = [{
-        "sourceActionId": 420604,
-        "sequenceIndex": 2,
-        "role": "PRIMARY",
-    }]
+    dash_presentation["presentationSources"] = [
+        {
+            "sourceActionId": 420604,
+            "sequenceIndex": 2,
+            "role": "PRIMARY",
+        },
+        {
+            "sourceActionId": 400430,
+            "sequenceIndex": 0,
+            "role": "REFERENCE_400430_0",
+        },
+    ]
     dash_presentation_stages = indexed(
         dash_presentation["stages"], "stageId"
     )
+    dash_presentation_stages["GROGGY"] = dash_groggy_p_stage
     dash_presentation["stages"] = [
         dash_presentation_stages[stage_id] for stage_id in dash_stage_order
     ]
     dash_groggy_p_stage["stageId"] = "GROGGY"
     dash_groggy_p_stage["sequenceRole"] = "GROGGY"
-    dash_groggy = {
-        "patternId": "VALTAN_DASH_CHARGE_GROGGY",
-        "displayName": "3회 땅 치기 후 돌진 - 그로기",
-        "category": "NORMAL",
-        "compatibilitySelectionWeight": 0,
-        "actionId": "valtan.reaction.dash-charge-groggy",
-        "entryActionId": dash_groggy_stage["actionId"],
-        "targetPolicy": "NONE",
-        "aimPolicy": "NONE",
-        "eligibility": audition_only_eligibility(),
-        "invulnerableWhileRunning": False,
-        "sourceActionIds": [400430],
-        "serverMotion": None,
-        "reactions": [],
-        "stages": [dash_groggy_stage],
-    }
-    dash_groggy_p = {
-        "patternId": "VALTAN_DASH_CHARGE_GROGGY",
-        "sourceSequenceIndex": 0,
-        "presentationSources": [{
-            "sourceActionId": 400430,
-            "sequenceIndex": 0,
-            "role": "PRIMARY",
-        }],
-        "stages": [dash_groggy_p_stage],
-    }
     dash_part_break_stage["stageId"] = "PART_BREAK"
     dash_part_break_stage["stageKind"] = "PART_BREAK"
     dash_part_break_stage["durationMs"] = 1400
@@ -334,17 +316,19 @@ def author_existing_patterns(
         }],
         "stages": [dash_part_break_p_stage],
     }
+    gameplay["patterns"][:] = [
+        row for row in gameplay["patterns"]
+        if row["patternId"] != "VALTAN_DASH_CHARGE_GROGGY"
+    ]
+    presentation["patterns"][:] = [
+        row for row in presentation["patterns"]
+        if row["patternId"] != "VALTAN_DASH_CHARGE_GROGGY"
+    ]
     replace_pattern_after(
-        gameplay["patterns"], "VALTAN_DASH_CHARGE", dash_groggy
+        gameplay["patterns"], "VALTAN_DASH_CHARGE", part_break
     )
     replace_pattern_after(
-        gameplay["patterns"], "VALTAN_DASH_CHARGE_GROGGY", part_break
-    )
-    replace_pattern_after(
-        presentation["patterns"], "VALTAN_DASH_CHARGE", dash_groggy_p
-    )
-    replace_pattern_after(
-        presentation["patterns"], "VALTAN_DASH_CHARGE_GROGGY", part_break_p
+        presentation["patterns"], "VALTAN_DASH_CHARGE", part_break_p
     )
 
     attack_whirlwind = gameplay_by_id["VALTAN_ATTACK_WHIRLWIND"]
@@ -662,12 +646,6 @@ def author_existing_patterns(
         if row["patternId"] not in reaction_pattern_ids
     ] + [
         {
-            "patternId": "VALTAN_DASH_CHARGE_GROGGY",
-            "sourceChainId": "derived.dash-charge-groggy",
-            "authoringPhase": 1,
-            "admissionState": "DERIVED_SERVER_PATTERN",
-        },
-        {
             "patternId": "VALTAN_PART_BREAK",
             "sourceChainId": "derived.part-break",
             "authoringPhase": 1,
@@ -767,6 +745,15 @@ def author_existing_patterns(
     catch_breath = gameplay_by_id["VALTAN_CATCH_BREATH"]
     catch_breath["targetPolicy"] = "LOCK_RANDOM_ALIVE_BEHIND_ON_START"
     catch_breath["aimPolicy"] = "LOCK_FACING_ON_START"
+    catch_grab = stage(catch_breath, "STEP_02")
+    catch_grab["defaultNextActionId"] = None
+    catch_grab["branches"] = [
+        {
+            "outcome": "ANY_PLAYER_GRABBED",
+            "nextActionId": stage(catch_breath, "STEP_03")["actionId"],
+        },
+        {"outcome": "TIMEOUT", "nextActionId": None},
+    ]
 
     for pattern_id, cue_suffix, effect_asset_id in (
         (
@@ -1370,32 +1357,26 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
             "actionId": "valtan.authoring.silence-slot.step-01",
             "stageKind": "ACTIVE",
             "durationMs": 2633,
-            "defaultNextActionId": "valtan.authoring.silence-slot.hold",
+            "defaultNextActionId": "valtan.authoring.silence-slot.apply",
             "hit": none_hit(),
             "motion": None,
             "events": [],
             "branches": [],
         },
         {
-            "stageId": "SILENCE_HOLD",
-            "actionId": "valtan.authoring.silence-slot.hold",
+            "stageId": "SILENCE_APPLY",
+            "actionId": "valtan.authoring.silence-slot.apply",
             "stageKind": "ACTIVE",
-            "durationMs": 5000,
+            "durationMs": 100,
             "defaultNextActionId": None,
             "hit": none_hit(),
             "motion": None,
             "events": [
                 {
-                    "eventId": "event.valtan.silence-slot.hold.enter",
+                    "eventId": "event.valtan.silence-slot.apply.enter",
                     "trigger": "ENTER",
                     "kind": "SET_PLAYER_SILENCE",
                     "durationMs": 5000,
-                },
-                {
-                    "eventId": "event.valtan.silence-slot.hold.exit",
-                    "trigger": "EXIT",
-                    "kind": "SET_PLAYER_SILENCE",
-                    "durationMs": 0,
                 },
             ],
             "branches": [],
@@ -1425,9 +1406,9 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
             "cameraInvocations": [],
         },
         {
-            "stageId": "SILENCE_HOLD",
-            "actionId": "valtan.authoring.silence-slot.hold",
-            "sequenceRole": "SILENCE_HOLD",
+            "stageId": "SILENCE_APPLY",
+            "actionId": "valtan.authoring.silence-slot.apply",
+            "sequenceRole": "SILENCE_APPLY",
             "animation": {"mode": "NONE"},
             "effectCues": [],
             "cameraInvocations": [],
@@ -1449,7 +1430,7 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
                     "eventId": "event.valtan.bind-slot.step-01.enter",
                     "trigger": "ENTER",
                     "kind": "SET_PLAYER_BIND",
-                    "heightM": 10.0,
+                    "heightM": 5.0,
                     "durationMs": 5000,
                 },
                 {
@@ -1545,7 +1526,7 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
         displayName="마력구 파괴 패턴",
         entryActionId="valtan.authoring.stagger-slot.channel",
         sourceActionIds=[420617],
-        verticalOffsetM=5.0,
+        verticalOffsetM=3.0,
     )
     stagger["stages"] = [
         {
@@ -1766,6 +1747,7 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
     })
 
     triple = pattern(gameplay, "VALTAN_TRIPLE_COUNTER")
+    triple["displayName"] = "3연속 내려치기 - 카운터"
     # The counter response remains live from the first telegraph through the
     # first two attack recoveries.  FAIL_3 is the committed third strike: its
     # hit is the wipe and therefore it intentionally does not reopen counter.
@@ -2070,13 +2052,12 @@ def build(pattern_id: str | None = None) -> tuple[dict[str, Any], dict[str, Any]
     for authored in presentation["patterns"]:
         # Seed cues for new patterns, but retain the exact authored cue list
         # (including Unlink's empty list) once a pattern has been saved.
-        # Dash is mutated in-place from that saved document above and gains an
-        # event-entered PART_BREAK stage.  Its existing occurrences/cues are
-        # already preserved, while the generic promotion helper intentionally
-        # rejects any stage-closure change.
+        # Dash is mutated in-place from that saved document above and owns its
+        # GROGGY stage directly. Its existing occurrences/cues are already
+        # preserved, while the generic promotion helper intentionally rejects
+        # any stage-closure change.
         if authored["patternId"] in {
             "VALTAN_DASH_CHARGE",
-            "VALTAN_DASH_CHARGE_GROGGY",
             "VALTAN_PART_BREAK",
             "VALTAN_COUNTER",
             "VALTAN_COUNTER_GROGGY",

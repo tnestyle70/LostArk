@@ -320,6 +320,56 @@ def _effect_v2_artifact_paths(
 
     leaf_ids: set[str] = set()
     group_ids: set[str] = set()
+
+    boss_catalog_path = _resolve_input(
+        repository_root, overlay_root, BOSS_CATALOG_REL
+    )
+    boss_catalog = _read_json(boss_catalog_path, "BossCatalog Effect V2 owners")
+    _require_exact_properties(
+        boss_catalog,
+        frozenset(("schema", "formatVersion", "bosses")),
+        "BossCatalog Effect V2 owners",
+    )
+    if (
+        boss_catalog.get("schema") != "lostark.boss-catalog"
+        or type(boss_catalog.get("formatVersion")) is not int
+        or boss_catalog["formatVersion"] != 6
+        or not isinstance(boss_catalog.get("bosses"), list)
+    ):
+        raise PresentationGenerationError("BossCatalog Effect V2 owner header is invalid")
+    valtan_rows = [
+        row for row in boss_catalog["bosses"]
+        if isinstance(row, dict) and row.get("archetypeId") == "BOSS_VALTAN"
+    ]
+    if len(valtan_rows) != 1 or not isinstance(
+        valtan_rows[0].get("combatObjectVisuals"), list
+    ):
+        raise PresentationGenerationError("BossCatalog has no unique Valtan visual owner")
+    for ordinal, visual in enumerate(valtan_rows[0]["combatObjectVisuals"]):
+        if not isinstance(visual, dict):
+            raise PresentationGenerationError(
+                f"BossCatalog combatObjectVisuals[{ordinal}] is not an object"
+            )
+        v2_group = visual.get("effectV2Group")
+        if v2_group is None:
+            continue
+        if not isinstance(v2_group, dict):
+            raise PresentationGenerationError(
+                f"BossCatalog combatObjectVisuals[{ordinal}].effectV2Group is invalid"
+            )
+        _require_exact_properties(
+            v2_group,
+            frozenset(("groupId", "playbackRate", "visualHitMs", "serverHitId")),
+            f"BossCatalog combatObjectVisuals[{ordinal}].effectV2Group",
+        )
+        _effect_v2_relative(
+            EFFECT_V2_GROUP_ROOT_REL,
+            v2_group.get("groupId"),
+            EFFECT_V2_GROUP_SUFFIX,
+            f"BossCatalog combatObjectVisuals[{ordinal}].effectV2Group.groupId",
+        )
+        group_ids.add(v2_group["groupId"])
+
     binding_ids: set[str] = set()
     previous_binding_id = ""
     for ordinal, row in enumerate(binding["bindings"]):

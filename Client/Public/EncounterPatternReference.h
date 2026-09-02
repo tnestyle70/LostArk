@@ -46,6 +46,9 @@ struct ENCOUNTER_STAGE_REFERENCE final
 	   reference so tools can diagnose the same contract that the Server loaded. */
 	std::string partDamagePolicy;
 	bool_t bHasCounterProxy = false;
+	/* Retained only for Product fallback diagnostics.  Command-capable Logic
+	   Flow still consumes the strictly joined authoring graph. */
+	bool_t bHasCounterHitBranch = false;
 	std::string counterProxyKind;
 	f32_t fCounterProxyForwardOffsetM = 0.f;
 	f32_t fCounterProxyRightOffsetM = 0.f;

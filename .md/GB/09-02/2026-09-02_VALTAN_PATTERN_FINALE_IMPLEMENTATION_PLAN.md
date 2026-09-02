@@ -33,7 +33,7 @@
 ### 요구와 다른 부분
 
 - Silence는 사자후와 동시에 시작해 2633ms만 유지되고, R 하나가 아니라 모든 skill slot을 붉게 덮는다.
-- Bind는 8533ms 동안 Y +10m 상태를 유지해 정확한 5초가 아니며 Client 입력 capture가 없어
+- Bind는 후속 교정 전 8533ms 동안 Y +10m 상태를 유지했으며, 최종 높이 계약은 Y +5m다. Client 입력 capture가 없어
   Server가 버릴 입력을 계속 보낸다.
 - `VALTAN_STAGGER_SLOT`은 5초 stagger gauge 100 placeholder이며 Y +5m, 실제 HP damage 1000,
   마지막 attack/wipe 분기를 가지지 않는다.
@@ -92,7 +92,7 @@ Data/Valtan authoring
 ### Bind
 
 - `STEP_01`을 5000ms hold와 3533ms boss recovery로 나눈다.
-- 랜덤 생존자 선택과 Y +10m는 기존 Server authority를 유지한다. 5초 stage ENTER에서 저장하고
+- 랜덤 생존자 선택과 Y +5m는 기존 Server authority를 유지한다. 5초 stage ENTER에서 저장하고
   EXIT에서 navigation-valid 원위치로 복구한다.
 - 실제 `GRABBED/BOSS_LEFT_HAND` attachment는 world Y hold와 서로 다른 transform owner라 겹치지 않는다.
   대신 Trash grab과 동일한 입력 불가 결과를 `isPatternBound` capture gate에 연결한다.
@@ -233,3 +233,151 @@ Data/Valtan authoring
 - 구현 완료, 자동 검증 완료, 사용자 육안 검증은 RESULT에서 분리해 기록한다.
 - Product/Core가 모두 통과하지 않으면 완료로 기록하지 않는다.
 - 물리 Resource pack과 Client 화면 fidelity는 자동 PASS로 기록하지 않는다.
+
+---
+
+## 2026-09-02 main 후속 기준
+
+- 기준 commit: `1e56f64ced1af3b4cb680ba5056ff27373d5a869` (`main == origin/main`)
+- 작업 branch: `codex/valtan-logic-pattern-blueprint`
+- 기존 G00~G06의 Server authority와 authoring/publish 경계는 유지한다.
+- 새 branch parser나 두 번째 Boss runtime을 만들지 않는다. 기존
+  `VALTAN_PATTERN_TREE_VIEW`, `CBossTool`, `CCombatHUDViewModel`을 읽기 전용으로 재사용한다.
+
+## G07. 실측과 요청의 차이 교정
+
+1. Bind의 Server-authoritative 공중 높이를 Y +10m에서 Y +5m로 변경한다.
+   5초 hold, 입력 차단, navigation-valid 원위치 복구는 유지한다.
+2. Silence는 R icon tint와 cooldown arc를 진척하지 않고, `Skill_R_SilenceMask`
+   stable slot에 기존 Resources-relative lock texture를 5초 동안만 표시한다.
+   실제 R cooldown과 icon texture는 독립적으로 유지한다.
+3. Magic-orb 현재 성공도를 Boss snapshot의 generic `progress/threshold`로 반영한다.
+   누적값은 Server가 확정한 HP damage만 사용하고 Client가 damage event를 재합산하지
+   않는다. Shared wire 변경은 protocol version, round-trip, invalid-state harness를 같은 변경
+   단위로 닫는다.
+
+## G08. Logic Pattern 대형 분기 blueprint
+
+- F1 Developer Tools에 `Boss Tool`과 동급인 `Logic Pattern`을 추가한다.
+- 두 진입점은 단 하나의 `CBossTool`과 단 하나의 패턴 tree snapshot을 공유한다.
+  `Logic Pattern`은 gameplay/network command를 보내지 않는 읽기 전용 독립 창이다.
+- 왼쪽 대형 canvas는 pattern/action/stage/branch를 그리고, 오른쪽 inspector는
+  duration, counter proxy, response threshold/progress, bind/silence, part policy, damage profile,
+  cross-pattern target을 표시한다.
+- Counter Tool projection은 `WINDUP + nextActionId`만 인정하던 오판을 제거한다.
+  paired counter flags/proxy/branch를 기준으로 `ACTIVE` stage와 `nextPatternId`
+  성공 target도 정확히 인정한다.
+- 실시간 branch 관측은 연속한 Server snapshot의 identity 전환과 저작 branch target을
+  매칭한다. 단 하나의 edge만 맞으면 exact로 기록하고, 여러 edge가 같은
+  target을 가리키면 ambiguous로 표시하여 outcome을 추측하지 않는다. 최근 관측은
+  stable ID만 저장하는 bounded history로 유지한다.
+
+### 현재 코드 기준 조건 분기 ASCII
+
+```text
+VALTAN_DASH_CHARGE
+  [WINDUP 3650ms / roll clip occurrence x3]
+       -> [CHARGE 1500ms]
+             | WALL_CONTACT --------------------+
+             ` TIMEOUT -------------------------+--> [GROGGY 6833ms / same Pattern]
+                                                        | PART_DESTROYED
+                                                        v
+                                                [PART_BREAK 1400ms] -> END
+                                                        ` TIMEOUT --------> END / next
+```
+
+```text
+VALTAN_TRIPLE_COUNTER_SPLIT       every marked window: boss forward +/-90 deg
+  [COUNTER_1 1800] --COUNTER_HIT------------------------------------------> GROGGY
+       | TIMEOUT
+  [FAIL_1 600] ----COUNTER_HIT--------------------------------------------> GROGGY
+       | TIMEOUT
+  [COUNTER_2 1600] --COUNTER_HIT------------------------------------------> GROGGY
+       | TIMEOUT
+  [FAIL_2 600] ----COUNTER_HIT--------------------------------------------> GROGGY
+       | TIMEOUT
+  [COUNTER_3 1400] --COUNTER_HIT------------------------------------------> GROGGY
+       | TIMEOUT
+  [FAIL_3 600 / radius 100 wipe] -> [RECOVERY 1200] -> END
+```
+
+```text
+VALTAN_TRASH
+  [SETUP STEP_01..06] -> ATTEMPT #1
+
+  ATTEMPT #n [COUNTER 1000]
+       | COUNTER_HIT -> [GROGGY 4433 / release grabbed] -> END
+       ` TIMEOUT -> [CAPTURE_RUSH 667]
+             | ANY_PLAYER_GRABBED -> [CATCH_COUNTER]
+             |                         | ALL_PLAYERS_GRABBED -> EXECUTE_TAIL -> END
+             |                         ` TIMEOUT -> CATCH_SLAM -> END
+             ` NAVIGATION_BLOCKED/TIMEOUT -> MISS
+                         | n < 3 -> RECHARGE 4100 -> ATTEMPT #(n+1)
+                         ` n = 3 -> RETRY_EXHAUSTED -> END
+```
+
+```text
+VALTAN_STAGGER_SLOT
+  [ENTER boss baseY +5m] -> [CHANNEL 12000 / confirmed HP damage]
+       | accumulated >= 1000 -> restore Y -> GROGGY_FOLLOWUP -> next
+       ` TIMEOUT -> [FINAL_ATTACK 3000 / 2900ms radius 100 wipe]
+                      -> restore Y -> END
+```
+
+```text
+VALTAN_BIND_SLOT
+  [random alive target] -> [Y +5m + bound 5000]
+       -> [clear bound + navigation-valid landing] -> [RECOVERY 3533] -> END
+
+VALTAN_SILENCE_SLOT
+  [ROAR 2633] -> [SILENCE_HOLD 5000 / R-only mask] -> [clear] -> END
+```
+
+```text
+PHASE 3 PRIMARY (same NetEntityId / HP / damage authority)
+  SIX_PIZZA -> GROUND_ROAR -> STAGGER -> BIND -> SILENCE -> TRIPLE_COUNTER
+       ^                                                               |
+       +-- hide+invulnerable 1 tick <- nav-valid random relocate <------+
+
+  parallel every 5 seconds:
+    [four portal combat objects around immutable center]
+       radial slot 0->1, 1->2, 2->3, 3->0 -> square-edge charge -> repeat
+```
+
+Phase 3의 현재 네 개는 네 개의 독립 boss-body entity가 아니라 portal combat object
+presentation이다. authored world angle은 45/135/225/315도이고 ordinal next-slot으로
+사각형 네 변을 만든다. 이 후속은 현재 product authority를 위조해 네 boss-body로 바꾸지
+않고 Logic Pattern에서 이 차이를 그대로 표시한다.
+
+## G09. 후속 검증과 수동 경계
+
+1. production triple-counter 다섯 counter window와 cross-pattern groggy target native contract
+2. observed-edge resolver의 exact, ambiguous, no-match, cross-pattern contract
+3. Shared boss response snapshot round-trip, invalid progress/threshold, protocol pinning
+4. bind +5m, silence dedicated mask, HUD slot isolation Python contracts
+5. Valtan projection/publisher Validate, native Logic harness, NetworkProtocolHarness
+6. Debug Product/Core, `git diff --check`
+7. Client는 에이전트가 실행하지 않는다. 사용자가 F1 -> Logic Pattern에서
+   현재 node, 조건/threshold, 관측 branch history와 R mask fidelity를 직접 판정한다.
+
+## G10. Pattern Flow 재시작, Composition 복구와 Ground Roar 그룹 배치
+
+- `VALTAN_DASH_CHARGE_GROGGY`를 독립 pattern/manual audition에서 제거하고
+  `VALTAN_DASH_CHARGE`의 세 번째 `GROGGY` stage로 병합한다. `WALL_CONTACT`와
+  `TIMEOUT`은 같은 pattern의 `valtan.attack.dash-charge.recovery` action을 가리키며,
+  부위 파괴만 `VALTAN_PART_BREAK` cross-pattern branch로 유지한다. 제거 ID는 stale
+  Product를 안전하게 투영하기 위한 `retiredPatternIds` tombstone으로만 남긴다.
+- 실제 counter 조건을 소유하는 `VALTAN_TRIPLE_COUNTER` 표시명은
+  `3연속 내려치기 - 카운터`로 바꾼다. counter가 없는 `VALTAN_THREE` 이름은 유지한다.
+- Ground Roar의 사용자 저작 돌+폭발 Effect 문서 전체를 하나의 composition으로 유지한다.
+  Server combat-object volley가 boss-relative `radiusM=4.9497475`, 시작각 45도, 90도 간격에
+  네 root를 만든다. boss yaw 0도 기준 X/Z는 `±3.5`의 축 정렬 사각형 꼭짓점이며,
+  각 root가 동일한 Effect element closure를 생성한다. V1 `groupId`를 transform parent로
+  오해하거나 element를 네 벌로 수동 복제하지 않는다.
+- canonical Save adapter는 local `nextActionId`뿐 아니라 합법적인 cross-pattern Counter
+  성공 target을 읽기 전용으로 보존한다. 첫 live candidate가 pending인 동안 두 번째 Save가
+  들어오면 latest candidate를 deferred queue에 보관하고 첫 transaction의 exact terminal 뒤
+  자동 제출한다.
+- Composition Patterns 첫 진입에서 Balance draft가 dirty여도 draft를 reload/discard하지 않는다.
+  저장된 Product와 inventory를 read-only `STALE_PRESERVED` snapshot으로 stage하며,
+  창 상단에 canonical admission, status 원문과 `Reload Canonical`을 표시한다.

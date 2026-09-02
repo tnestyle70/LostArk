@@ -1239,6 +1239,38 @@ def stage_effect_asset_id(pattern: dict[str, object], stage: dict[str, object]) 
     return f"effect.valtan.{pattern_slug}.{stage_slug}"
 
 
+def combat_visual_saved_effects(
+    boss_catalog: dict[str, object],
+) -> dict[str, str]:
+    """Resolve the local saved-document row for each combat-object visual.
+
+    A V2 Product group has no V1 ``effectAssetId`` in BossCatalog. All Effects
+    intentionally keeps the master-owned V1 document as a local authoring
+    reference; this helper does not make it a Product runtime fallback.
+    """
+    master = json.loads(VALTAN_MASTER_PATH.read_text(encoding="utf-8"))
+    editor_effects = {
+        row["combatObjectArchetypeId"]: row["effectAssetId"]
+        for row in master["independentEffects"]
+        if row.get("ownership") == "SERVER_COMBAT_OBJECT"
+    }
+    valtan = next(
+        boss
+        for boss in boss_catalog["bosses"]
+        if boss["archetypeId"] == "BOSS_VALTAN"
+    )
+    result: dict[str, str] = {}
+    for visual in valtan["combatObjectVisuals"]:
+        archetype = visual["combatObjectArchetypeId"]
+        effect_id = visual.get("effectAssetId", editor_effects.get(archetype))
+        if not isinstance(effect_id, str) or not effect_id:
+            raise AssertionError(
+                f"Valtan combat visual has no local saved Effect reference: {archetype}"
+            )
+        result[archetype] = effect_id
+    return result
+
+
 def derive_authoritative_saved_link_closure(
     include_v1_aliases: bool = True,
     include_reference_only: bool = False,
@@ -1311,10 +1343,7 @@ def derive_authoritative_saved_link_closure(
     ]
     if len(combat_archetype_ids) != len(set(combat_archetype_ids)):
         raise AssertionError("Valtan combat visuals have duplicate archetypes")
-    combat_visuals = {
-        row["combatObjectArchetypeId"]: row["effectAssetId"]
-        for row in combat_rows
-    }
+    combat_visuals = combat_visual_saved_effects(boss_catalog)
 
     expected: dict[str, list[str]] = {}
     raw_link_count = 0
@@ -1378,10 +1407,7 @@ def project_saved_rows(
         for boss in boss_catalog["bosses"]
         if boss["archetypeId"] == "BOSS_VALTAN"
     )
-    combat_visuals = {
-        visual["combatObjectArchetypeId"]: visual["effectAssetId"]
-        for visual in valtan["combatObjectVisuals"]
-    }
+    combat_visuals = combat_visual_saved_effects(boss_catalog)
 
     projected: dict[str, list[str]] = {}
     raw_links = 0
@@ -2512,13 +2538,11 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         encounter = json.loads(ENCOUNTER_PATH.read_text(encoding="utf-8"))
         patterns = {row["patternId"]: row for row in encounter["patterns"]}
         pattern = patterns["VALTAN_DASH_CHARGE"]
-        groggy = patterns["VALTAN_DASH_CHARGE_GROGGY"]
         part_break = patterns["VALTAN_PART_BREAK"]
-        self.assertEqual([420604], pattern["sourceActionIds"])
-        self.assertEqual([400430], groggy["sourceActionIds"])
+        self.assertEqual([420604, 400430], pattern["sourceActionIds"])
         self.assertEqual([420627], part_break["sourceActionIds"])
         stages = {row["stageId"]: row for row in pattern["stages"]}
-        groggy_stage = groggy["stages"][0]
+        groggy_stage = stages["GROGGY"]
         part_break_stage = part_break["stages"][0]
         self.assertEqual(3650, stages["WINDUP"]["durationMs"])
         self.assertEqual("NONE", stages["WINDUP"]["hitShape"])

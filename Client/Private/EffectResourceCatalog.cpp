@@ -55,12 +55,16 @@ namespace
 		Capabilities.bCanPreview = true;
 		switch (eOwnerKind)
 		{
-		case EFFECT_RESOURCE_OWNER_KIND::DIRECT_AUTHORED_DOCUMENT:
+		case EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT:
 			Capabilities.bCanAppendToClip = true;
+			// A direct-authored document owns its complete element composition.
+			// Consumers may therefore treat it as one atomic group resource
+			// without pretending that its elements are typed V2 leaves.
+			Capabilities.bComposite = true;
 			break;
-		case EFFECT_RESOURCE_OWNER_KIND::TYPED_DOCUMENT:
+		case EFFECT_RESOURCE_OWNER_KIND::V2_LEAF:
 			break;
-		case EFFECT_RESOURCE_OWNER_KIND::TYPED_GROUP:
+		case EFFECT_RESOURCE_OWNER_KIND::V2_GROUP:
 			Capabilities.bComposite = true;
 			break;
 		default:
@@ -138,7 +142,7 @@ namespace
 				CEffectCatalog::Is_DirectAuthoredDocument(strEffectId))
 			{
 				Parsed.Resources.push_back(Make_Descriptor(
-					EFFECT_RESOURCE_OWNER_KIND::DIRECT_AUTHORED_DOCUMENT,
+					EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT,
 					strEffectId, "Authored"));
 			}
 		}
@@ -146,7 +150,7 @@ namespace
 			Parsed.Resources.begin(), Parsed.Resources.end(),
 			[](const EFFECT_RESOURCE_DESCRIPTOR& Descriptor)
 			{
-				return EFFECT_RESOURCE_OWNER_KIND::DIRECT_AUTHORED_DOCUMENT ==
+				return EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT ==
 					Descriptor.Key.eOwnerKind;
 			}))
 		{
@@ -183,7 +187,7 @@ namespace
 					Document.strEffectId);
 			}
 			Parsed.Resources.push_back(Make_Descriptor(
-				EFFECT_RESOURCE_OWNER_KIND::TYPED_DOCUMENT,
+				EFFECT_RESOURCE_OWNER_KIND::V2_LEAF,
 				Document.strEffectId, pCategory));
 		}
 		for (const EFFECT_V2_GROUP& Group : pTypedSnapshot->Get_Groups())
@@ -191,7 +195,7 @@ namespace
 			if (Starts_With(Group.strGroupId, TYPED_VALTAN_PREFIX))
 			{
 				Parsed.Resources.push_back(Make_Descriptor(
-					EFFECT_RESOURCE_OWNER_KIND::TYPED_GROUP,
+					EFFECT_RESOURCE_OWNER_KIND::V2_GROUP,
 					Group.strGroupId, "Composite"));
 			}
 		}
@@ -239,7 +243,7 @@ namespace
 					"Unified Effect Resource contains an invalid stable ID.");
 			}
 			const bool_t bExpectedPrefix =
-				EFFECT_RESOURCE_OWNER_KIND::DIRECT_AUTHORED_DOCUMENT ==
+				EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT ==
 					Descriptor.Key.eOwnerKind ?
 				Starts_With(Descriptor.Key.strStableId,
 					DIRECT_AUTHORED_VALTAN_PREFIX) :

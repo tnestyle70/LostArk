@@ -12,6 +12,31 @@
 
 NS_BEGIN(Client)
 
+enum class COMBAT_OBJECT_PRESENTATION_KIND : uint8_t
+{
+	NONE,
+	EFFECT_V1_WORLD_ROOT,
+	EFFECT_V2_GROUP
+};
+
+struct COMBAT_OBJECT_PRESENTATION_HANDLE final
+{
+	COMBAT_OBJECT_PRESENTATION_KIND eKind =
+		COMBAT_OBJECT_PRESENTATION_KIND::NONE;
+	uint64_t iValue = 0u;
+
+	[[nodiscard]] bool_t Is_Valid() const
+	{
+		return COMBAT_OBJECT_PRESENTATION_KIND::NONE != eKind && 0u != iValue;
+	}
+	void Reset()
+	{
+		eKind = COMBAT_OBJECT_PRESENTATION_KIND::NONE;
+		iValue = 0u;
+	}
+	bool operator==(const COMBAT_OBJECT_PRESENTATION_HANDLE&) const = default;
+};
+
 struct COMBAT_OBJECT_PROJECTION_RECORD final
 {
 	LostArk::Shared::COMBAT_OBJECT_ID iCombatObjectId =
@@ -25,7 +50,7 @@ struct COMBAT_OBJECT_PROJECTION_RECORD final
 	std::string strCombatObjectArchetypeId;
 	std::string strClientVisualId;
 	LostArk::Shared::COMBAT_OBJECT_SNAPSHOT Snapshot{};
-	uint64_t iPresentationHandle = 0u;
+	COMBAT_OBJECT_PRESENTATION_HANDLE PresentationHandle;
 };
 
 class CCombatObjectProjectionRuntime final
@@ -48,11 +73,11 @@ public:
 		}
 
 		std::string presentationStatus;
-		uint64_t presentationHandle = 0u;
+		COMBAT_OBJECT_PRESENTATION_HANDLE presentationHandle;
 		if (!sink.Spawn(message, presentationHandle, presentationStatus) ||
-			0u == presentationHandle)
+			!presentationHandle.Is_Valid())
 		{
-			presentationHandle = 0u;
+			presentationHandle.Reset();
 			staged.iPresentationAttemptCount = 1u;
 			staged.iNextPresentationRetryTick =
 				Next_RetryTick(message.iServerTick);
@@ -65,7 +90,7 @@ public:
 			staged.iPresentationAttemptCount = 1u;
 			outStatus = "Applied combat-object spawn";
 		}
-		staged.iPresentationHandle = presentationHandle;
+		staged.PresentationHandle = presentationHandle;
 		m_Records.emplace(staged.iCombatObjectId, std::move(staged));
 		return true;
 	}
@@ -90,7 +115,7 @@ public:
 		for (size_t index = 0u; index < orderedIds.size(); ++index)
 		{
 			auto record = m_Records.find(orderedIds[index]);
-			if (0u == record->second.iPresentationHandle &&
+			if (!record->second.PresentationHandle.Is_Valid() &&
 				record->second.iPresentationAttemptCount < 3u &&
 				Has_ReachedTick(
 					serverTick, record->second.iNextPresentationRetryTick))
@@ -110,12 +135,12 @@ public:
 				retry.PinnedDefinitionRevision =
 					record->second.Snapshot.PinnedDefinitionRevision;
 				std::string retryStatus;
-				uint64_t retryHandle = 0u;
+				COMBAT_OBJECT_PRESENTATION_HANDLE retryHandle;
 				++record->second.iPresentationAttemptCount;
 				if (sink.Spawn(retry, retryHandle, retryStatus) &&
-					0u != retryHandle)
+					retryHandle.Is_Valid())
 				{
-					record->second.iPresentationHandle = retryHandle;
+					record->second.PresentationHandle = retryHandle;
 				}
 				else
 				{
@@ -124,12 +149,12 @@ public:
 					presentationSucceeded = false;
 				}
 			}
-			if (record->second.iPresentationHandle != 0u &&
+			if (record->second.PresentationHandle.Is_Valid() &&
 				!sink.Update(
-					record->second.iPresentationHandle, objects[index]))
+					record->second.PresentationHandle, objects[index]))
 			{
-				sink.Stop(record->second.iPresentationHandle);
-				record->second.iPresentationHandle = 0u;
+				sink.Stop(record->second.PresentationHandle);
+				record->second.PresentationHandle.Reset();
 				record->second.iNextPresentationRetryTick =
 					Next_RetryTick(serverTick);
 				presentationSucceeded = false;
@@ -160,8 +185,8 @@ public:
 			outStatus = "Ignored duplicate combat-object despawn";
 			return true;
 		}
-		if (record->second.iPresentationHandle != 0u)
-			sink.Stop(record->second.iPresentationHandle);
+		if (record->second.PresentationHandle.Is_Valid())
+			sink.Stop(record->second.PresentationHandle);
 		m_Records.erase(record);
 		outStatus = "Applied combat-object despawn";
 		return true;
@@ -180,8 +205,8 @@ public:
 				++record;
 				continue;
 			}
-			if (record->second.iPresentationHandle != 0u)
-				sink.Stop(record->second.iPresentationHandle);
+			if (record->second.PresentationHandle.Is_Valid())
+				sink.Stop(record->second.PresentationHandle);
 			record = m_Records.erase(record);
 			++removed;
 		}
@@ -194,8 +219,8 @@ public:
 		for (const auto& [id, record] : m_Records)
 		{
 			(void)id;
-			if (record.iPresentationHandle != 0u)
-				sink.Stop(record.iPresentationHandle);
+			if (record.PresentationHandle.Is_Valid())
+				sink.Stop(record.PresentationHandle);
 		}
 		m_Records.clear();
 	}

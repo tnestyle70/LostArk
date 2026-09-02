@@ -118,6 +118,7 @@ namespace
 				~LostArk::Shared::BOSS_COMBAT_STATE_KNOWN_FLAG_MASK)) &&
 			state.iCurrentStagger <= state.iMaximumStagger &&
 			state.iCurrentShield <= state.iMaximumShield &&
+			state.iResponseProgress <= state.iResponseThreshold &&
 			(hasShield == (0u != state.iCurrentShield)) &&
 			(!isGhostHidden ||
 				(isInvulnerable && state.iGameplayPhase >= 3u)) &&
@@ -136,6 +137,8 @@ namespace
 			left.iMaximumStagger,
 			left.iCurrentShield,
 			left.iMaximumShield,
+			left.iResponseProgress,
+			left.iResponseThreshold,
 			left.iGameplayPhase) ==
 			std::tie(
 				right.iStateRevision,
@@ -145,6 +148,8 @@ namespace
 				right.iMaximumStagger,
 				right.iCurrentShield,
 				right.iMaximumShield,
+				right.iResponseProgress,
+				right.iResponseThreshold,
 				right.iGameplayPhase);
 	}
 
@@ -686,12 +691,22 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	}
 	CValtanCanonicalProductReadAdmission CanonicalAdmission;
 	Client::CValtanPresentationGenerationReadAdmission GenerationAdmission;
-	if (bExact ?
-		!GenerationAdmission.Acquire_Receipt(
-			*pExpectedServerRevision, *pExpectedReceipt, strOutStatus) :
-		!CanonicalAdmission.Acquire(strOutStatus))
+	if (bExact)
 	{
-		return false;
+		if (!GenerationAdmission.Acquire_Receipt(
+				*pExpectedServerRevision, *pExpectedReceipt, strOutStatus))
+		{
+			return false;
+		}
+	}
+	else
+	{
+		VALTAN_CANONICAL_READ_DIAGNOSTIC CanonicalDiagnostic;
+		if (!CanonicalAdmission.Acquire(CanonicalDiagnostic))
+		{
+			strOutStatus = std::move(CanonicalDiagnostic.strStatus);
+			return false;
+		}
 	}
 	Client::VALTAN_PRESENTATION_GENERATION_RECEIPT CurrentPresentationReceipt;
 	if (bExact && !GenerationAdmission.Try_Get_CurrentReceipt(

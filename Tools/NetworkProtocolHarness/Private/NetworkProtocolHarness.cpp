@@ -2286,8 +2286,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(52u == NETWORK_PROTOCOL_VERSION,
-				"Restart Replacement Revision And Existing Contracts Use Protocol 52");
+			testRunner.Require(53u == NETWORK_PROTOCOL_VERSION,
+				"Boss Response Progress And Existing Contracts Use Protocol 53");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -2601,6 +2601,8 @@ namespace
 		entity.BossCombat.iMaximumStagger = 1000u;
 		entity.BossCombat.iCurrentShield = 0u;
 		entity.BossCombat.iMaximumShield = 0u;
+		entity.BossCombat.iResponseProgress = 600u;
+		entity.BossCombat.iResponseThreshold = 1000u;
 		entity.BossCombat.iGameplayPhase = 1u;
 		entity.PinnedDefinitionRevision = source.ActiveGameplayRevision;
 		source.Entities.push_back(entity);
@@ -2648,7 +2650,7 @@ namespace
 		const std::size_t entityBytes =
 			4 + 1 + 2 + entity.strPatternId.size() + 2 +
 			entity.strActionId.size() + (4 * 4) + (4 * 6) + 1 + 1 + 1 +
-			4 + 4 + 2 + (4 * 4) + 1 + GAMEPLAY_DATA_REVISION_BYTES;
+			4 + 4 + 2 + (4 * 6) + 1 + GAMEPLAY_DATA_REVISION_BYTES;
 		constexpr std::size_t bossCombatEventBytes =
 			8 + 4 + 4 + 1 + 4;
 		constexpr std::size_t combatObjectBytes =
@@ -2851,6 +2853,8 @@ namespace
 					BOSS_COMBAT_STATE_FLAG::COUNTERABLE) &&
 			decoded.Entities[0].BossCombat.iCurrentStagger == 320u &&
 			decoded.Entities[0].BossCombat.iMaximumStagger == 1000u &&
+			decoded.Entities[0].BossCombat.iResponseProgress == 600u &&
+			decoded.Entities[0].BossCombat.iResponseThreshold == 1000u &&
 			decoded.Entities[0].BossCombat.iGameplayPhase == 1u,
 			"World Snapshot Entities Round Trip");
 
@@ -3291,6 +3295,13 @@ namespace
 			testRunner.Require(
 				!Write_Message(shieldFlagMismatchWriter, shieldFlagMismatch),
 				"Reject Boss Shield Without Flag");
+
+			S2C_WORLD_SNAPSHOT responseOverflow = source;
+			responseOverflow.Entities[0].BossCombat.iResponseProgress = 1001u;
+			CPacketWriter responseOverflowWriter;
+			testRunner.Require(
+				!Write_Message(responseOverflowWriter, responseOverflow),
+				"Reject Boss Response Progress Above Threshold");
 
 			S2C_WORLD_SNAPSHOT dirtyAbsentBossState = source;
 			dirtyAbsentBossState.Entities[0].hasBossCombatState = false;
@@ -5324,8 +5335,8 @@ namespace
 		}
 
 		testRunner.Require(
-			52u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 52");
+			53u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 53");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -5352,8 +5363,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			52u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 52");
+			53u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 53");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =

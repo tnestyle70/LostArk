@@ -10,6 +10,12 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 EFFECT_TOOL_CPP = REPOSITORY_ROOT / "Client/Private/Effect_Tool.cpp"
 EFFECT_TOOL_HEADER = REPOSITORY_ROOT / "Client/Public/Effect_Tool.h"
 PATTERN_TREE_CPP = REPOSITORY_ROOT / "Client/Private/ValtanPatternTree.cpp"
+ENCOUNTER_REFERENCE_CPP = (
+    REPOSITORY_ROOT / "Client/Private/EncounterPatternReference.cpp"
+)
+SERVER_GAMEPLAY_CATALOG_CPP = (
+    REPOSITORY_ROOT / "Server/Private/GameplayCatalog.cpp"
+)
 CHARACTER_PREVIEW_CPP = (
     REPOSITORY_ROOT / "Client/Private/CharacterPreviewPanel.cpp"
 )
@@ -25,6 +31,9 @@ OWNERSHIP_JSON = (
     REPOSITORY_ROOT / "Data/Effects/ValtanPatternAuthoringEffects.json"
 )
 GAMEPLAY_JSON = REPOSITORY_ROOT / "Data/Valtan/Valtan.gameplay.json"
+ENCOUNTER_JSON = (
+    REPOSITORY_ROOT / "Data/Encounters/Valtan/ValtanEncounter.json"
+)
 PATTERN_PRODUCT_JSON = REPOSITORY_ROOT / "Data/Valtan/Valtan.pattern.json"
 PRESENTATION_JSON = REPOSITORY_ROOT / "Data/Valtan/Valtan.presentation.json"
 PRODUCT_CUES_JSON = (
@@ -55,12 +64,21 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         cls.cpp = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
         cls.header = EFFECT_TOOL_HEADER.read_text(encoding="utf-8")
         cls.pattern_tree_cpp = PATTERN_TREE_CPP.read_text(encoding="utf-8")
+        cls.encounter_reference_cpp = ENCOUNTER_REFERENCE_CPP.read_text(
+            encoding="utf-8"
+        )
+        cls.server_gameplay_catalog_cpp = (
+            SERVER_GAMEPLAY_CATALOG_CPP.read_text(encoding="utf-8")
+        )
         cls.character_preview = CHARACTER_PREVIEW_CPP.read_text(
             encoding="utf-8"
         )
         cls.ownership_cpp = OWNERSHIP_CPP.read_text(encoding="utf-8")
         cls.ownership_header = OWNERSHIP_HEADER.read_text(encoding="utf-8")
         cls.gameplay = json.loads(GAMEPLAY_JSON.read_text(encoding="utf-8"))
+        cls.encounter = json.loads(
+            ENCOUNTER_JSON.read_text(encoding="utf-8")
+        )
         cls.pattern_product = json.loads(
             PATTERN_PRODUCT_JSON.read_text(encoding="utf-8")
         )
@@ -73,6 +91,57 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         cls.effect_catalog = json.loads(
             EFFECT_CATALOG_JSON.read_text(encoding="utf-8")
         )
+
+    def test_bind_lift_contract_keeps_all_effects_and_v4_admission_aligned(self) -> None:
+        gameplay_bind = next(
+            row for row in self.gameplay["patterns"]
+            if row["patternId"] == "VALTAN_BIND_SLOT"
+        )
+        bind_stage = next(
+            row for row in gameplay_bind["stages"]
+            if row["stageId"] == "STEP_01"
+        )
+        self.assertEqual(
+            [("ENTER", "SET_PLAYER_BIND", 5.0, 5000),
+             ("EXIT", "SET_PLAYER_BIND", 0.0, 0)],
+            [(row["trigger"], row["kind"], row["heightM"], row["durationMs"])
+             for row in bind_stage["events"]],
+        )
+
+        encounter_bind = next(
+            row for row in self.encounter["patterns"]
+            if row["patternId"] == "VALTAN_BIND_SLOT"
+        )
+        encounter_bind_stage = next(
+            row for row in encounter_bind["stages"]
+            if row["stageId"] == "STEP_01"
+        )
+        self.assertEqual(
+            [("ENTER", "SET_PLAYER_BIND", 5000, 5000),
+             ("EXIT", "SET_PLAYER_BIND", 0, 0)],
+            [(row["trigger"], row["kind"], row["value"], row["durationMs"])
+             for row in encounter_bind_stage["actions"]],
+        )
+
+        split_bind_reader = source_section(
+            self.pattern_tree_cpp,
+            'else if ("SET_PLAYER_BIND" == strKind)',
+            'else if ("SET_PLAYER_SILENCE" == strKind)',
+        )
+        self.assertIn("5.0 != pHeightM->Get_Number()", split_bind_reader)
+        self.assertNotIn("10.0 != pHeightM->Get_Number()", split_bind_reader)
+
+        for reader, start, end in (
+            (self.encounter_reference_cpp,
+             'else if (kind == "SET_PLAYER_BIND")',
+             'else if (kind == "SET_PLAYER_SILENCE")'),
+            (self.server_gameplay_catalog_cpp,
+             "if (BOSS_PATTERN_STAGE_ACTION_KIND::SET_PLAYER_BIND == kind)",
+             "if (BOSS_PATTERN_STAGE_ACTION_KIND::SET_PLAYER_SILENCE == kind)"),
+        ):
+            bind_reader = source_section(reader, start, end)
+            self.assertIn("5000u == value", bind_reader)
+            self.assertNotIn("10000u == value", bind_reader)
 
     def test_first_visible_frame_auto_joins_product_and_authored_indexes_once(self) -> None:
         render = source_section(
@@ -1393,11 +1462,13 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         )
         self.assertLess(
             tree.index("Render_ValtanExactAuthoredSourceSection(strSearch);"),
-            tree.index("if (!m_bValtanPatternTreeLoaded)"),
+            tree.index(
+                "if (!Can_DisplayValtanView(m_eValtanPatternTreeAdmission))"
+            ),
         )
         failed_join_branch = source_section(
             tree,
-            "if (!m_bValtanPatternTreeLoaded)",
+            "if (!Can_DisplayValtanView(m_eValtanPatternTreeAdmission))",
             "std::vector<const VALTAN_INDEPENDENT_EFFECT_VIEW*>",
         )
         self.assertIn("return;", failed_join_branch)

@@ -1036,12 +1036,22 @@ def _validate_product_effect_reachability(
     for index, visual in enumerate(visuals):
         if not isinstance(visual, dict):
             raise ContractError(f"BOSS_VALTAN combatObjectVisual {index} is invalid")
+        effect_asset_id = visual.get("effectAssetId")
+        effect_v2_group = visual.get("effectV2Group")
+        if effect_asset_id is None:
+            raise ContractError(
+                f"BOSS_VALTAN combatObjectVisual {index} must keep its V1 authoring payload"
+            )
         reachable_ids.add(
             _require_stable_id(
-                visual.get("effectAssetId"),
+                effect_asset_id,
                 f"BOSS_VALTAN combatObjectVisual {index}.effectAssetId",
             )
         )
+        if effect_v2_group is not None and not isinstance(effect_v2_group, dict):
+            raise ContractError(
+                f"BOSS_VALTAN combatObjectVisual {index}.effectV2Group is invalid"
+            )
         hit_effect_asset_id = visual.get("hitEffectAssetId")
         if hit_effect_asset_id is not None:
             reachable_ids.add(

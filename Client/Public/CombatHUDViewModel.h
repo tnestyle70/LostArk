@@ -83,6 +83,8 @@ namespace Client
 		std::uint32_t iMaximumStagger = 0;
 		std::uint32_t iCurrentShield = 0;
 		std::uint32_t iMaximumShield = 0;
+		std::uint32_t iResponseProgress = 0;
+		std::uint32_t iResponseThreshold = 0;
 		std::uint32_t iServerTick = 0;
 		LostArk::Shared::WORLD_ENTITY_ACTION eAction =
 			LostArk::Shared::WORLD_ENTITY_ACTION::IDLE;

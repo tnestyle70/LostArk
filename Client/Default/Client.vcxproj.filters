@@ -868,6 +868,9 @@
     <ClInclude Include="..\Public\ValtanPatternTree.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\ValtanViewAdmission.h">
+      <Filter>96.DataFiles</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\ValtanPresentationGenerationAdmission.h">
       <Filter>96.DataFiles</Filter>
     </ClInclude>

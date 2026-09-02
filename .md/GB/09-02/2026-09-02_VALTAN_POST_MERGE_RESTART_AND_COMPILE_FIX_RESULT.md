@@ -2,6 +2,14 @@
 
 작성일: 2026-09-02
 
+> 후속 계약 정정: 아래 3절의 `Restart Saved Pattern`은 one-slot Flow를 Pattern restart라는
+> 이름으로 노출했던 퇴역 alias의 당시 동작을 기록한다. 현재 Boss Verification의
+> `Play Selected Pattern (Keep Arena)` / `Restart Active Pattern (Keep Arena)`는 각각
+> `PLAY_PATTERN_ID` / `RESTART_PATTERN_ID`의 boss-only reset으로 Pattern 하나를 첫 Stage부터
+> 재생하며 arena를 복구하지 않는다. 전체 saved sequence와 fresh-arena reset은 Pattern Flow의
+> `Restart Saved Flow (Fresh Arena)`만 소유한다. 현재 계약은
+> `2026-09-02_VALTAN_PATTERN_FINALE_IMPLEMENTATION_RESULT.md`를 따른다.
+
 대응 계획서:
 `../08-30/2026-08-30_VALTAN_RESTART_FLOW_EFFECT_ANCHOR_SEQUENCER_IMPLEMENTATION_PLAN.md`
 
