@@ -534,12 +534,19 @@ namespace
 				const bool_t allowOverlap =
 					action.Find("allowOverlap")->Get_Boolean();
 				const bool_t isSingle = 1u == countPerResolvedTarget;
-				const bool_t isPerAliveArenaContract =
-					targetingPolicy == "PER_ALIVE_PLAYER" &&
+				const bool_t hasNoArenaSupplement =
+					0u == arenaRandomCount &&
+					0.0 == action.Find("arenaRandomRadiusM")->Get_Number() &&
+					0.0 == action.Find("arenaHeightToleranceM")->Get_Number() &&
+					arenaAnchorPolicy == "NONE";
+				const bool_t hasArenaSupplement =
 					arenaRandomCount > 0u &&
 					action.Find("arenaRandomRadiusM")->Get_Number() > 0.0 &&
 					action.Find("arenaHeightToleranceM")->Get_Number() > 0.0 &&
 					arenaAnchorPolicy == "BOSS_SPAWN_POSITION";
+				const bool_t isPerAliveArenaContract =
+					targetingPolicy == "PER_ALIVE_PLAYER" &&
+					(hasNoArenaSupplement || hasArenaSupplement);
 				const bool_t isBossRelativeContract =
 					targetingPolicy == "BOSS_RELATIVE" &&
 					countPerResolvedTarget >= 2u &&
@@ -1042,7 +1049,8 @@ bool_t Client::CEncounterPatternReference::Load(
 					"pushRangeM", "pushMs", "knockdown", "downMs" },
 					{ "hitOffsetsMs", "motion", "actions", "branches",
 					  "playerResponse", "attachmentSlot", "partDamagePolicy",
-					  "counterProxy", "bossResponse", "hitAnchor", "hitActivation" }))
+					  "gripLocalOffset", "counterProxy", "bossResponse",
+					  "hitAnchor", "hitActivation" }))
 			{
 				outStatus = "Encounter stage has unexpected properties: " +
 					pattern.patternId;
@@ -1188,7 +1196,10 @@ bool_t Client::CEncounterPatternReference::Load(
 				stageEntry.Find("playerResponse");
 			const DATA_JSON_VALUE* attachmentSlot =
 				stageEntry.Find("attachmentSlot");
-			if ((nullptr == playerResponse) != (nullptr == attachmentSlot))
+			const DATA_JSON_VALUE* gripLocalOffset =
+				stageEntry.Find("gripLocalOffset");
+			if ((nullptr == playerResponse) != (nullptr == attachmentSlot) ||
+				(nullptr == playerResponse) != (nullptr == gripLocalOffset))
 			{
 				outStatus = "Encounter capture hit fields are incomplete: " +
 					pattern.patternId + "/" + stage.stageId;
@@ -1199,8 +1210,17 @@ bool_t Client::CEncounterPatternReference::Load(
 				uint32_t pushMs = 0u;
 				uint32_t downMs = 0u;
 				const DATA_JSON_VALUE* knockdown = stageEntry.Find("knockdown");
+				PLAYER_HAND_GRIP_LOCAL_OFFSET gripOffset;
 				if (!playerResponse->Is_String() ||
 					!attachmentSlot->Is_String() ||
+					!Is_ExactObject(*gripLocalOffset,
+						{ "forwardM", "upM", "rightM" }) ||
+					!Read_Float(*gripLocalOffset, "forwardM",
+						gripOffset.fForwardM) ||
+					!Read_Float(*gripLocalOffset, "upM", gripOffset.fUpM) ||
+					!Read_Float(*gripLocalOffset, "rightM",
+						gripOffset.fRightM) ||
+					!CPlayerHandGripTransform::Is_ValidGripLocalOffset(gripOffset) ||
 					"CAPTURE" != playerResponse->Get_String() ||
 					"BOSS_LEFT_HAND" != attachmentSlot->Get_String() ||
 					"NONE" == stage.hitShape ||
@@ -1217,6 +1237,7 @@ bool_t Client::CEncounterPatternReference::Load(
 						pattern.patternId + "/" + stage.stageId;
 					return false;
 				}
+				stage.gripLocalOffset = gripOffset;
 			}
 			const bool_t hasExplicitHitOffsets = !stage.hitOffsetsMs.empty();
 			const bool_t validExplicitHitSchedule =

@@ -3119,45 +3119,21 @@
    "actionId": "valtan.reactive.triple-counter.first",
    "clipOccurrenceId": "valtan.reactive.triple-counter.first.clip.01",
    "soundBank": "S_Mob_G_Voltan2",
-   "soundEvent": "G_Voltan2_FreezeStart1",
+   "soundEvent": "G_Voltan2_Attack13_Cast2",
    "repeatPolicy": "once",
-   "startMs": 50
+   "startMs": 370
   },
   {
-   "bindingId": "cue.sound.valtan.reactive.triple-counter.first.clip.01.02",
-   "occurrenceId": "cue.sound.valtan.reactive.triple-counter.first.clip.01.02.occurrence.01",
+   "bindingId": "cue.sound.valtan.reactive.triple-counter.first.clip.02.01",
+   "occurrenceId": "cue.sound.valtan.reactive.triple-counter.first.clip.02.01.occurrence.01",
    "patternId": "VALTAN_TRIPLE_COUNTER",
    "stageId": "COUNTER_1",
    "actionId": "valtan.reactive.triple-counter.first",
-   "clipOccurrenceId": "valtan.reactive.triple-counter.first.clip.01",
+   "clipOccurrenceId": "valtan.reactive.triple-counter.first.clip.02",
    "soundBank": "S_Mob_G_Voltan2",
-   "soundEvent": "G_Voltan2_Attack11_Cast3",
+   "soundEvent": "G_Voltan2_Attack13_Cast2",
    "repeatPolicy": "once",
-   "startMs": 100
-  },
-  {
-   "bindingId": "cue.sound.valtan.reactive.triple-counter.first.clip.01.03",
-   "occurrenceId": "cue.sound.valtan.reactive.triple-counter.first.clip.01.03.occurrence.01",
-   "patternId": "VALTAN_TRIPLE_COUNTER",
-   "stageId": "COUNTER_1",
-   "actionId": "valtan.reactive.triple-counter.first",
-   "clipOccurrenceId": "valtan.reactive.triple-counter.first.clip.01",
-   "soundBank": "S_Mob_G_Voltan2",
-   "soundEvent": "G_Voltan2_FootStep1",
-   "repeatPolicy": "once",
-   "startMs": 400
-  },
-  {
-   "bindingId": "cue.sound.valtan.reactive.triple-counter.first.clip.01.04",
-   "occurrenceId": "cue.sound.valtan.reactive.triple-counter.first.clip.01.04.occurrence.01",
-   "patternId": "VALTAN_TRIPLE_COUNTER",
-   "stageId": "COUNTER_1",
-   "actionId": "valtan.reactive.triple-counter.first",
-   "clipOccurrenceId": "valtan.reactive.triple-counter.first.clip.01",
-   "soundBank": "S_Mob_G_Voltan2",
-   "soundEvent": "G_Voltan2_FootStep1",
-   "repeatPolicy": "once",
-   "startMs": 1050
+   "startMs": 370
   },
   {
    "bindingId": "cue.sound.valtan.reactive.triple-counter.first-fail.clip.01.01",
@@ -3167,57 +3143,21 @@
    "actionId": "valtan.reactive.triple-counter.first-fail",
    "clipOccurrenceId": "valtan.reactive.triple-counter.first-fail.clip.01",
    "soundBank": "S_Mob_G_Voltan2",
-   "soundEvent": "G_Voltan2_FreezeLoop1",
+   "soundEvent": "G_Voltan2_Attack13_Shot1",
    "repeatPolicy": "once",
-   "startMs": 1
+   "startMs": 900
   },
   {
-   "bindingId": "cue.sound.valtan.reactive.triple-counter.recovery.clip.01.01",
-   "occurrenceId": "cue.sound.valtan.reactive.triple-counter.recovery.clip.01.01.occurrence.01",
+   "bindingId": "cue.sound.valtan.reactive.triple-counter.first-fail.clip.01.02",
+   "occurrenceId": "cue.sound.valtan.reactive.triple-counter.first-fail.clip.01.02.occurrence.01",
    "patternId": "VALTAN_TRIPLE_COUNTER",
-   "stageId": "RECOVERY",
-   "actionId": "valtan.reactive.triple-counter.recovery",
-   "clipOccurrenceId": "valtan.reactive.triple-counter.recovery.clip.01",
+   "stageId": "FAIL_1",
+   "actionId": "valtan.reactive.triple-counter.first-fail",
+   "clipOccurrenceId": "valtan.reactive.triple-counter.first-fail.clip.01",
    "soundBank": "S_Mob_G_Voltan2",
-   "soundEvent": "G_Voltan2_FreezeEnd1",
-   "repeatPolicy": "once",
-   "startMs": 1
-  },
-  {
-   "bindingId": "cue.sound.valtan.reactive.triple-counter.recovery.clip.01.02",
-   "occurrenceId": "cue.sound.valtan.reactive.triple-counter.recovery.clip.01.02.occurrence.01",
-   "patternId": "VALTAN_TRIPLE_COUNTER",
-   "stageId": "RECOVERY",
-   "actionId": "valtan.reactive.triple-counter.recovery",
-   "clipOccurrenceId": "valtan.reactive.triple-counter.recovery.clip.01",
-   "soundBank": "S_Mob_G_Voltan2",
-   "soundEvent": "G_Voltan2_Attack11_Cast3",
-   "repeatPolicy": "once",
-   "startMs": 1
-  },
-  {
-   "bindingId": "cue.sound.valtan.reactive.triple-counter.recovery.clip.01.03",
-   "occurrenceId": "cue.sound.valtan.reactive.triple-counter.recovery.clip.01.03.occurrence.01",
-   "patternId": "VALTAN_TRIPLE_COUNTER",
-   "stageId": "RECOVERY",
-   "actionId": "valtan.reactive.triple-counter.recovery",
-   "clipOccurrenceId": "valtan.reactive.triple-counter.recovery.clip.01",
-   "soundBank": "S_Mob_G_Voltan2",
-   "soundEvent": "G_Voltan2_FootStep1",
+   "soundEvent": "G_Voltan2_Attack13_ShotVox1",
    "repeatPolicy": "once",
    "startMs": 1000
-  },
-  {
-   "bindingId": "cue.sound.valtan.reactive.triple-counter.recovery.clip.01.04",
-   "occurrenceId": "cue.sound.valtan.reactive.triple-counter.recovery.clip.01.04.occurrence.01",
-   "patternId": "VALTAN_TRIPLE_COUNTER",
-   "stageId": "RECOVERY",
-   "actionId": "valtan.reactive.triple-counter.recovery",
-   "clipOccurrenceId": "valtan.reactive.triple-counter.recovery.clip.01",
-   "soundBank": "S_Mob_G_Voltan2",
-   "soundEvent": "G_Voltan2_FootStep1",
-   "repeatPolicy": "once",
-   "startMs": 1650
   },
   {
    "bindingId": "cue.sound.valtan.reactive.triple-counter.second.clip.01.01",
@@ -3227,9 +3167,21 @@
    "actionId": "valtan.reactive.triple-counter.second",
    "clipOccurrenceId": "valtan.reactive.triple-counter.second.clip.01",
    "soundBank": "S_Mob_G_Voltan2",
-   "soundEvent": "G_Voltan2_FreezeLoop1",
+   "soundEvent": "G_Voltan2_Attack13_Cast2",
    "repeatPolicy": "once",
-   "startMs": 1
+   "startMs": 370
+  },
+  {
+   "bindingId": "cue.sound.valtan.reactive.triple-counter.second.clip.02.01",
+   "occurrenceId": "cue.sound.valtan.reactive.triple-counter.second.clip.02.01.occurrence.01",
+   "patternId": "VALTAN_TRIPLE_COUNTER",
+   "stageId": "COUNTER_2",
+   "actionId": "valtan.reactive.triple-counter.second",
+   "clipOccurrenceId": "valtan.reactive.triple-counter.second.clip.02",
+   "soundBank": "S_Mob_G_Voltan2",
+   "soundEvent": "G_Voltan2_Attack13_Cast2",
+   "repeatPolicy": "once",
+   "startMs": 370
   },
   {
    "bindingId": "cue.sound.valtan.reactive.triple-counter.second-fail.clip.01.01",
@@ -3239,9 +3191,69 @@
    "actionId": "valtan.reactive.triple-counter.second-fail",
    "clipOccurrenceId": "valtan.reactive.triple-counter.second-fail.clip.01",
    "soundBank": "S_Mob_G_Voltan2",
-   "soundEvent": "G_Voltan2_FreezeLoop1",
+   "soundEvent": "G_Voltan2_Attack13_Shot1",
+   "repeatPolicy": "once",
+   "startMs": 900
+  },
+  {
+   "bindingId": "cue.sound.valtan.reactive.triple-counter.second-fail.clip.01.02",
+   "occurrenceId": "cue.sound.valtan.reactive.triple-counter.second-fail.clip.01.02.occurrence.01",
+   "patternId": "VALTAN_TRIPLE_COUNTER",
+   "stageId": "FAIL_2",
+   "actionId": "valtan.reactive.triple-counter.second-fail",
+   "clipOccurrenceId": "valtan.reactive.triple-counter.second-fail.clip.01",
+   "soundBank": "S_Mob_G_Voltan2",
+   "soundEvent": "G_Voltan2_Attack13_ShotVox1",
+   "repeatPolicy": "once",
+   "startMs": 1000
+  },
+  {
+   "bindingId": "cue.sound.valtan.reactive.triple-counter.setup.clip.01.01",
+   "occurrenceId": "cue.sound.valtan.reactive.triple-counter.setup.clip.01.01.occurrence.01",
+   "patternId": "VALTAN_TRIPLE_COUNTER",
+   "stageId": "SETUP",
+   "actionId": "valtan.reactive.triple-counter.setup",
+   "clipOccurrenceId": "valtan.reactive.triple-counter.setup.clip.01",
+   "soundBank": "S_Mob_G_Voltan2",
+   "soundEvent": "G_Voltan2_Attack13_CastVox1",
    "repeatPolicy": "once",
    "startMs": 1
+  },
+  {
+   "bindingId": "cue.sound.valtan.reactive.triple-counter.setup.clip.01.02",
+   "occurrenceId": "cue.sound.valtan.reactive.triple-counter.setup.clip.01.02.occurrence.01",
+   "patternId": "VALTAN_TRIPLE_COUNTER",
+   "stageId": "SETUP",
+   "actionId": "valtan.reactive.triple-counter.setup",
+   "clipOccurrenceId": "valtan.reactive.triple-counter.setup.clip.01",
+   "soundBank": "S_Mob_G_Voltan2",
+   "soundEvent": "G_Voltan2_Attack13_Cast1",
+   "repeatPolicy": "once",
+   "startMs": 100
+  },
+  {
+   "bindingId": "cue.sound.valtan.reactive.triple-counter.setup.clip.01.03",
+   "occurrenceId": "cue.sound.valtan.reactive.triple-counter.setup.clip.01.03.occurrence.01",
+   "patternId": "VALTAN_TRIPLE_COUNTER",
+   "stageId": "SETUP",
+   "actionId": "valtan.reactive.triple-counter.setup",
+   "clipOccurrenceId": "valtan.reactive.triple-counter.setup.clip.01",
+   "soundBank": "S_Mob_G_Voltan2",
+   "soundEvent": "G_Voltan2_Attack11_Cast3",
+   "repeatPolicy": "once",
+   "startMs": 200
+  },
+  {
+   "bindingId": "cue.sound.valtan.reactive.triple-counter.setup.clip.01.04",
+   "occurrenceId": "cue.sound.valtan.reactive.triple-counter.setup.clip.01.04.occurrence.01",
+   "patternId": "VALTAN_TRIPLE_COUNTER",
+   "stageId": "SETUP",
+   "actionId": "valtan.reactive.triple-counter.setup",
+   "clipOccurrenceId": "valtan.reactive.triple-counter.setup.clip.01",
+   "soundBank": "S_Mob_G_Voltan2",
+   "soundEvent": "G_Voltan2_Attack13_Cast2",
+   "repeatPolicy": "once",
+   "startMs": 1700
   },
   {
    "bindingId": "cue.sound.valtan.reactive.triple-counter.third.clip.01.01",
@@ -3251,9 +3263,21 @@
    "actionId": "valtan.reactive.triple-counter.third",
    "clipOccurrenceId": "valtan.reactive.triple-counter.third.clip.01",
    "soundBank": "S_Mob_G_Voltan2",
-   "soundEvent": "G_Voltan2_FreezeLoop1",
+   "soundEvent": "G_Voltan2_Attack13_Cast2",
    "repeatPolicy": "once",
-   "startMs": 1
+   "startMs": 370
+  },
+  {
+   "bindingId": "cue.sound.valtan.reactive.triple-counter.third.clip.02.01",
+   "occurrenceId": "cue.sound.valtan.reactive.triple-counter.third.clip.02.01.occurrence.01",
+   "patternId": "VALTAN_TRIPLE_COUNTER",
+   "stageId": "COUNTER_3",
+   "actionId": "valtan.reactive.triple-counter.third",
+   "clipOccurrenceId": "valtan.reactive.triple-counter.third.clip.02",
+   "soundBank": "S_Mob_G_Voltan2",
+   "soundEvent": "G_Voltan2_Attack13_Cast2",
+   "repeatPolicy": "once",
+   "startMs": 370
   },
   {
    "bindingId": "cue.sound.valtan.reactive.triple-counter.third-fail.clip.01.01",
@@ -3263,9 +3287,21 @@
    "actionId": "valtan.reactive.triple-counter.third-fail",
    "clipOccurrenceId": "valtan.reactive.triple-counter.third-fail.clip.01",
    "soundBank": "S_Mob_G_Voltan2",
-   "soundEvent": "G_Voltan2_FreezeLoop1",
+   "soundEvent": "G_Voltan2_Attack13_Shot1",
    "repeatPolicy": "once",
-   "startMs": 1
+   "startMs": 900
+  },
+  {
+   "bindingId": "cue.sound.valtan.reactive.triple-counter.third-fail.clip.01.02",
+   "occurrenceId": "cue.sound.valtan.reactive.triple-counter.third-fail.clip.01.02.occurrence.01",
+   "patternId": "VALTAN_TRIPLE_COUNTER",
+   "stageId": "FAIL_3",
+   "actionId": "valtan.reactive.triple-counter.third-fail",
+   "clipOccurrenceId": "valtan.reactive.triple-counter.third-fail.clip.01",
+   "soundBank": "S_Mob_G_Voltan2",
+   "soundEvent": "G_Voltan2_Attack13_ShotVox1",
+   "repeatPolicy": "once",
+   "startMs": 1000
   },
   {
    "bindingId": "cue.sound.valtan.sequence.attack-whirlwind.step-01.clip-01.01",
@@ -4366,6 +4402,18 @@
    "stageId": "STEP_02",
    "actionId": "valtan.sequence.counter.step-02",
    "clipOccurrenceId": "valtan.sequence.counter.step-02.clip-01",
+   "soundBank": "S_Mob_G_Voltan2",
+   "soundEvent": "G_Voltan2_Attack13_Cast2",
+   "repeatPolicy": "once",
+   "startMs": 370
+  },
+  {
+   "bindingId": "cue.sound.valtan.sequence.counter.step-02.clip-02.01",
+   "occurrenceId": "cue.sound.valtan.sequence.counter.step-02.clip-02.01.occurrence.01",
+   "patternId": "VALTAN_COUNTER",
+   "stageId": "STEP_02",
+   "actionId": "valtan.sequence.counter.step-02",
+   "clipOccurrenceId": "valtan.sequence.counter.step-02.clip-02",
    "soundBank": "S_Mob_G_Voltan2",
    "soundEvent": "G_Voltan2_Attack13_Cast2",
    "repeatPolicy": "once",
@@ -6744,6 +6792,66 @@
    "clipOccurrenceId": "valtan.sequence.whirlwind.step-03.clip-01",
    "soundBank": "S_Mob_G_Voltan2",
    "soundEvent": "G_Voltan2_Attack06_Shot1",
+   "repeatPolicy": "once",
+   "startMs": 1
+  },
+  {
+   "bindingId": "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.01",
+   "occurrenceId": "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.01.occurrence.01",
+   "patternId": "VALTAN_GROUND_ROAR",
+   "stageId": "STEP_01",
+   "actionId": "valtan.sequence.sequence.400440.0.step-01",
+   "clipOccurrenceId": "valtan.sequence.sequence.400440.0.step-01.clip-01",
+   "soundBank": "S_Mob_G_Voltan2",
+   "soundEvent": "G_Voltan2_Attack09_ProjCreat1",
+   "repeatPolicy": "once",
+   "startMs": 1
+  },
+  {
+   "bindingId": "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.02",
+   "occurrenceId": "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.02.occurrence.01",
+   "patternId": "VALTAN_GROUND_ROAR",
+   "stageId": "STEP_01",
+   "actionId": "valtan.sequence.sequence.400440.0.step-01",
+   "clipOccurrenceId": "valtan.sequence.sequence.400440.0.step-01.clip-01",
+   "soundBank": "S_Mob_G_Voltan2",
+   "soundEvent": "G_Voltan2_FootStep1",
+   "repeatPolicy": "once",
+   "startMs": 600
+  },
+  {
+   "bindingId": "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.03",
+   "occurrenceId": "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.03.occurrence.01",
+   "patternId": "VALTAN_GROUND_ROAR",
+   "stageId": "STEP_01",
+   "actionId": "valtan.sequence.sequence.400440.0.step-01",
+   "clipOccurrenceId": "valtan.sequence.sequence.400440.0.step-01.clip-01",
+   "soundBank": "S_Mob_G_Voltan2",
+   "soundEvent": "G_Voltan2_FootStep1",
+   "repeatPolicy": "once",
+   "startMs": 1300
+  },
+  {
+   "bindingId": "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.04",
+   "occurrenceId": "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.04.occurrence.01",
+   "patternId": "VALTAN_GROUND_ROAR",
+   "stageId": "STEP_01",
+   "actionId": "valtan.sequence.sequence.400440.0.step-01",
+   "clipOccurrenceId": "valtan.sequence.sequence.400440.0.step-01.clip-01",
+   "soundBank": "S_Mob_G_Voltan2",
+   "soundEvent": "G_Voltan2_Attack02_Shot1",
+   "repeatPolicy": "once",
+   "startMs": 1300
+  },
+  {
+   "bindingId": "cue.sound.valtan.reaction.part-break.recovery.clip-01.01",
+   "occurrenceId": "cue.sound.valtan.reaction.part-break.recovery.clip-01.01.occurrence.01",
+   "patternId": "VALTAN_PART_BREAK",
+   "stageId": "PART_BREAK_RECOVERY",
+   "actionId": "valtan.reaction.part-break.recovery",
+   "clipOccurrenceId": "valtan.reaction.part-break.recovery.clip.01",
+   "soundBank": "S_Mob_G_Voltan2",
+   "soundEvent": "G_Voltan2_Attack09_ProjCreat1",
    "repeatPolicy": "once",
    "startMs": 1
   }

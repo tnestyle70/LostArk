@@ -124,7 +124,7 @@
     {
       "combatObjectArchetypeId": "combatobject.valtan.ground-roar.rock",
       "kind": "FIXED_AREA",
-      "lifetimeMs": 5000,
+      "lifetimeMs": 6200,
       "spawn": {
         "origin": {
           "kind": "BOSS_POSITION",
@@ -142,6 +142,90 @@
       "presentationEvents": [
         {
           "presentationEventId": "pulse.valtan.ground-roar.rock.explode",
+          "trigger": {
+            "kind": "TIMED",
+            "atMs": 5000
+          }
+        }
+      ]
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.six-pizza.rock-pillar",
+      "kind": "FIXED_AREA",
+      "lifetimeMs": 6200,
+      "spawn": {
+        "origin": {
+          "kind": "BOSS_POSITION",
+          "forwardOffsetM": 0.0,
+          "rightOffsetM": 0.0
+        },
+        "direction": {
+          "kind": "NONE"
+        }
+      },
+      "movement": {
+        "kind": "STATIC"
+      },
+      "hits": [],
+      "presentationEvents": [
+        {
+          "presentationEventId": "pulse.valtan.six-pizza.rock-pillar.explode",
+          "trigger": {
+            "kind": "TIMED",
+            "atMs": 5000
+          }
+        }
+      ]
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.struggling.rock-pillar",
+      "kind": "FIXED_AREA",
+      "lifetimeMs": 6200,
+      "spawn": {
+        "origin": {
+          "kind": "BOSS_POSITION",
+          "forwardOffsetM": 0.0,
+          "rightOffsetM": 0.0
+        },
+        "direction": {
+          "kind": "NONE"
+        }
+      },
+      "movement": {
+        "kind": "STATIC"
+      },
+      "hits": [],
+      "presentationEvents": [
+        {
+          "presentationEventId": "pulse.valtan.struggling.rock-pillar.explode",
+          "trigger": {
+            "kind": "TIMED",
+            "atMs": 5000
+          }
+        }
+      ]
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.part-break.rock",
+      "kind": "FIXED_AREA",
+      "lifetimeMs": 5000,
+      "spawn": {
+        "origin": {
+          "kind": "BOSS_POSITION",
+          "forwardOffsetM": 0.0,
+          "rightOffsetM": 0.0
+        },
+        "direction": {
+          "kind": "NONE"
+        }
+      },
+      "movement": {
+        "kind": "STATIC"
+      },
+      "hits": [],
+      "presentationEvents": [
+        {
+          "presentationEventId": "pulse.valtan.part-break.rock.explode",
           "trigger": {
             "kind": "TIMED",
             "atMs": 5000

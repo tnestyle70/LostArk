@@ -213,6 +213,66 @@ namespace
 		return true;
 	}
 
+	bool Build_EffectV2OccurrenceClocks(
+		const std::shared_ptr<Engine::CModel>& pModel,
+		const std::span<const Client::BOSS_PATTERN_ANIMATION_CLIP> Clips,
+		std::vector<Client::EFFECT_V2_CLIP_OCCURRENCE_CLOCK>& OutClocks)
+	{
+		OutClocks.clear();
+		if (Clips.empty())
+			return true;
+		std::vector<Client::ACTION_PRESENTATION_CLIP_TIMING> Timings;
+		if (!Build_PatternTimeline(pModel, Clips, Timings) ||
+			Timings.size() != Clips.size())
+		{
+			return false;
+		}
+		OutClocks.reserve(Clips.size());
+		f32_t fStageWallStartSeconds = 0.f;
+		for (std::size_t iClip = 0u; iClip < Clips.size(); ++iClip)
+		{
+			f32_t fSourceDurationSeconds = 0.f;
+			f32_t fWallDurationSeconds = 0.f;
+			if (!Client::CActionPresentationTimeline::Resolve_ClipDuration(
+					Timings[iClip], fSourceDurationSeconds,
+					fWallDurationSeconds) ||
+				(Clips[iClip].bLoop && iClip + 1u != Clips.size()))
+			{
+				OutClocks.clear();
+				return false;
+			}
+			Client::EFFECT_V2_CLIP_OCCURRENCE_CLOCK Clock;
+			Clock.strClipOccurrenceId = Clips[iClip].strClipOccurrenceId;
+			Clock.fStageWallStartSeconds = fStageWallStartSeconds;
+			Clock.fSourceStartSeconds = Timings[iClip].fSourceStartSeconds;
+			Clock.fSourceDurationSeconds = fSourceDurationSeconds;
+			Clock.fLoopWallDurationSeconds = fWallDurationSeconds;
+			Clock.fPlaybackRate = Timings[iClip].fPlayRate;
+			Clock.bLoop = Timings[iClip].bLoop;
+			OutClocks.push_back(std::move(Clock));
+			fStageWallStartSeconds += fWallDurationSeconds;
+		}
+		return true;
+	}
+
+	bool Build_EffectV2OccurrenceClocksForAction(
+		const std::shared_ptr<Engine::CModel>& pModel,
+		const std::unordered_map<std::string,
+			std::vector<Client::BOSS_PATTERN_ANIMATION_CLIP>>& Bindings,
+		const std::string_view strActionId,
+		std::vector<Client::EFFECT_V2_CLIP_OCCURRENCE_CLOCK>& OutClocks)
+	{
+		OutClocks.clear();
+		const auto Found = Bindings.find(std::string(strActionId));
+		if (Bindings.end() == Found || Found->second.empty())
+			return true;
+		return Build_EffectV2OccurrenceClocks(
+			pModel,
+			std::span<const Client::BOSS_PATTERN_ANIMATION_CLIP>(
+				Found->second.data(), Found->second.size()),
+			OutClocks);
+	}
+
 	const std::string* Resolve_ValtanPresentationClip(
 		const Client::BOSS_ACTOR_ENTRY& Actor,
 		const LostArk::Shared::WORLD_ENTITY_ACTION action)
@@ -380,7 +440,8 @@ void CValtan::Load_PatternHitAreaDebug()
 		for (const ENCOUNTER_STAGE_REFERENCE& stage : pattern.stages)
 		{
 			const bool_t bHasStageHit = !stage.hitShape.empty() &&
-				"NONE" != stage.hitShape && 0u != stage.iHitCount;
+				"NONE" != stage.hitShape &&
+				(0u != stage.iHitCount || stage.bHasHitActivation);
 			if (stage.actionId.empty() ||
 				(!bHasStageHit && !stage.bHasCounterProxy))
 			{
@@ -400,6 +461,10 @@ void CValtan::Load_PatternHitAreaDebug()
 				area.iHitDelayMs = stage.iHitDelayMs;
 				area.HitOffsetsMs = stage.hitOffsetsMs;
 				area.iStageDurationMs = stage.iDurationMs;
+				area.bHasActivation = stage.bHasHitActivation;
+				area.iActivationStartMs = stage.iHitActivationStartMs;
+				area.iActivationLifetimeMs =
+					stage.iHitActivationLifetimeMs;
 			}
 			area.bHasCounterProxy = stage.bHasCounterProxy;
 			area.strCounterProxyKind = stage.counterProxyKind;
@@ -431,34 +496,59 @@ void CValtan::Draw_PatternHitAreaDebug() const
 		return;
 	const PATTERN_HIT_AREA_DEBUG& area = iter->second;
 
-	/* Mirror the Server schedule exactly. Non-uniform source contacts own an
-	   ordered stage-relative offset vector; an empty vector retains the legacy
-	   delay + k * interval schedule. */
+	/* Mirror the Server hit clock exactly. An ACTIVE_WINDOW owns one half-open
+	   [start, start + lifetime) interval. Otherwise, non-uniform contacts own
+	   an ordered stage-relative offset vector and an empty vector retains the
+	   legacy delay + k * interval pulse schedule. */
 	constexpr f32_t MIN_VISIBLE_HIT_WINDOW_MS = 300.f;
 	const f32_t fAgeMs = (isPreviewDriven ?
 		m_fPreviewHitAgeSeconds : m_fServerActionAgeSeconds) * 1000.f;
 	bool_t isHitWindow = false;
-	for (uint32_t iTick = 0u; iTick < area.iHitCount; ++iTick)
+	if (area.bHasActivation)
 	{
-		const uint64_t iTickMs = area.HitOffsetsMs.empty() ?
-			static_cast<uint64_t>(area.iHitDelayMs) +
-				static_cast<uint64_t>(iTick) * area.iHitIntervalMs :
-			area.HitOffsetsMs[iTick];
-		const f32_t fTickMs = static_cast<f32_t>(iTickMs);
-		if (fAgeMs >= fTickMs && fAgeMs <= fTickMs + MIN_VISIBLE_HIT_WINDOW_MS)
+		const uint64_t iActivationEndMs =
+			static_cast<uint64_t>(area.iActivationStartMs) +
+			area.iActivationLifetimeMs;
+		if (fAgeMs >= static_cast<f32_t>(area.iActivationStartMs) &&
+			fAgeMs < static_cast<f32_t>(iActivationEndMs))
 		{
 			isHitWindow = true;
-			break;
 		}
 	}
-	/* A local authoring seek must keep the Server-authored geometry inspectable
-	   for the whole stage. Pink still marks the actual pulse window; the amber
-	   outline is geometry-only and never performs Client hit judgment. */
+	else
+	{
+		for (uint32_t iTick = 0u; iTick < area.iHitCount; ++iTick)
+		{
+			const uint64_t iTickMs = area.HitOffsetsMs.empty() ?
+				static_cast<uint64_t>(area.iHitDelayMs) +
+					static_cast<uint64_t>(iTick) * area.iHitIntervalMs :
+				area.HitOffsetsMs[iTick];
+			const f32_t fTickMs = static_cast<f32_t>(iTickMs);
+			if (fAgeMs >= fTickMs &&
+				fAgeMs <= fTickMs + MIN_VISIBLE_HIT_WINDOW_MS)
+			{
+				isHitWindow = true;
+				break;
+			}
+		}
+	}
+	/* Local authoring always keeps the Server-authored geometry inspectable for
+	   the whole stage. Live presentation uses three independent process-global
+	   switches: pulse, persistent stage geometry, and counter proxy. None of
+	   these wires participates in Client hit judgement. */
 	const bool_t isAuthoringGeometryWindow = isPreviewDriven &&
 		fAgeMs >= 0.f &&
 		fAgeMs <= static_cast<f32_t>(area.iStageDurationMs);
-	if (!isHitWindow && !isAuthoringGeometryWindow &&
-		!area.bHasCounterProxy)
+	const bool_t isLiveStageGeometryWindow = !isPreviewDriven &&
+		m_isPatternStageGeometryDebugVisible && fAgeMs >= 0.f &&
+		fAgeMs < static_cast<f32_t>(area.iStageDurationMs);
+	const bool_t bDrawHitPulse = isHitWindow &&
+		(isPreviewDriven || m_isPatternHitPulseDebugVisible);
+	const bool_t bDrawStageGeometry =
+		isAuthoringGeometryWindow || isLiveStageGeometryWindow;
+	const bool_t bDrawCounterProxy = area.bHasCounterProxy &&
+		(isPreviewDriven || m_isCounterProxyDebugVisible);
+	if (!bDrawHitPulse && !bDrawStageGeometry && !bDrawCounterProxy)
 		return;
 
 	constexpr uint32_t PATTERN_HIT_COLOR_RGBA =
@@ -503,8 +593,8 @@ void CValtan::Draw_PatternHitAreaDebug() const
 
 	HIT_AREA_SHAPE Shape{};
 	const bool_t bDrawHitGeometry =
-		isHitWindow || isAuthoringGeometryWindow;
-	const uint32_t iHitGeometryColor = isHitWindow ?
+		bDrawHitPulse || bDrawStageGeometry;
+	const uint32_t iHitGeometryColor = bDrawHitPulse ?
 		PATTERN_HIT_COLOR_RGBA : PATTERN_AUTHORING_GEOMETRY_COLOR_RGBA;
 	if (bDrawHitGeometry &&
 		("CIRCLE" == area.strHitShape || "RING" == area.strHitShape))
@@ -547,7 +637,7 @@ void CValtan::Draw_PatternHitAreaDebug() const
 			Draw_WithYawOffset(-60.f, 0.f, 0.f, Shape, iHitGeometryColor);
 		}
 	}
-	if (area.bHasCounterProxy)
+	if (bDrawCounterProxy)
 	{
 		HIT_AREA_SHAPE CounterShape{};
 		if ("BOSS_FORWARD_ARC" == area.strCounterProxyKind)
@@ -625,6 +715,8 @@ bool_t CValtan::Reload_PatternBindings_WhileAdmitted(
 	}
 	std::unordered_map<std::string,
 		std::vector<Client::BOSS_PATTERN_ANIMATION_CLIP>> staged;
+	std::unordered_map<std::string, PATTERN_BODY_VISIBILITY_WINDOW>
+		stagedBodyVisibility;
 	for (const Client::BOSS_PATTERN_ANIMATION_BINDING& binding :
 		document.Bindings)
 	{
@@ -632,6 +724,13 @@ bool_t CValtan::Reload_PatternBindings_WhileAdmitted(
 		{
 			staged.emplace(binding.strActionId,
 				std::vector<Client::BOSS_PATTERN_ANIMATION_CLIP>{});
+			if (binding.bHasBodyHiddenWindow)
+			{
+				stagedBodyVisibility.emplace(binding.strActionId,
+					PATTERN_BODY_VISIBILITY_WINDOW{
+						binding.iBodyHiddenFromMs,
+						binding.iBodyHiddenToMs });
+			}
 			continue;
 		}
 		std::vector<Client::ACTION_PRESENTATION_CLIP_TIMING> Timings;
@@ -645,13 +744,78 @@ bool_t CValtan::Reload_PatternBindings_WhileAdmitted(
 			return false;
 		}
 		staged.emplace(binding.strActionId, binding.Clips);
+		if (binding.bHasBodyHiddenWindow)
+		{
+			stagedBodyVisibility.emplace(binding.strActionId,
+				PATTERN_BODY_VISIBILITY_WINDOW{
+					binding.iBodyHiddenFromMs,
+					binding.iBodyHiddenToMs });
+		}
 	}
 	m_PatternClipByActionId = std::move(staged);
+	m_PatternBodyVisibilityByActionId = std::move(stagedBodyVisibility);
 	m_iPatternPresentationClipOccurrenceIndex =
 		(std::numeric_limits<std::size_t>::max)();
 	strOutStatus = "Reloaded " +
 		std::to_string(m_PatternClipByActionId.size()) +
 		" Valtan Product animation action binding(s).";
+	return true;
+}
+
+bool_t CValtan::Reload_PlayerHandGripLocalOffsets_WhileAdmitted(
+	std::string& strOutStatus)
+{
+	CEncounterPatternReference encounter;
+	if (!encounter.Load(CProjectDataRoot::Resolve(
+			std::filesystem::path(L"Encounters") / L"Valtan" /
+			L"ValtanEncounter.json"), strOutStatus))
+	{
+		strOutStatus =
+			"Valtan player hand-grip Product admission rejected: " +
+			strOutStatus;
+		return false;
+	}
+
+	std::unordered_map<std::string, PLAYER_HAND_GRIP_LOCAL_OFFSET> staged;
+	for (const ENCOUNTER_PATTERN_REFERENCE& pattern : encounter.Get_Patterns())
+	{
+		for (const ENCOUNTER_STAGE_REFERENCE& stage : pattern.stages)
+		{
+			if (!stage.gripLocalOffset.has_value())
+				continue;
+			if (stage.actionId.empty() ||
+				!CPlayerHandGripTransform::Is_ValidGripLocalOffset(
+					*stage.gripLocalOffset) ||
+				!staged.emplace(stage.actionId, *stage.gripLocalOffset).second)
+			{
+				strOutStatus =
+					"Valtan player hand-grip stable action identity is invalid: " +
+					pattern.patternId + "/" + stage.stageId;
+				return false;
+			}
+		}
+	}
+	m_PlayerHandGripLocalOffsetByActionId = std::move(staged);
+	strOutStatus = "Reloaded " +
+		std::to_string(m_PlayerHandGripLocalOffsetByActionId.size()) +
+		" Valtan player hand-grip action binding(s).";
+	return true;
+}
+
+bool_t CValtan::Try_Get_PlayerHandGripLocalOffset(
+	const std::string_view actionId,
+	Client::PLAYER_HAND_GRIP_LOCAL_OFFSET& outOffset) const
+{
+	if (actionId.empty())
+		return false;
+	const auto found = m_PlayerHandGripLocalOffsetByActionId.find(
+		std::string(actionId));
+	if (m_PlayerHandGripLocalOffsetByActionId.end() == found ||
+		!CPlayerHandGripTransform::Is_ValidGripLocalOffset(found->second))
+	{
+		return false;
+	}
+	outOffset = found->second;
 	return true;
 }
 
@@ -718,6 +882,10 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	}
 
 	const auto PreviousBindings = m_PatternClipByActionId;
+	const auto PreviousBodyVisibility =
+		m_PatternBodyVisibilityByActionId;
+	const auto PreviousGripLocalOffsets =
+		m_PlayerHandGripLocalOffsetByActionId;
 	const auto PreviousEffectCues = m_PatternEffectCuesByActionId;
 	const auto PreviousArenaCenters = m_PatternArenaCenterAnchors;
 	const auto PreviousEffectAttempts = m_AttemptedPatternEffectOccurrenceKeys;
@@ -740,7 +908,9 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 		m_PresentationGenerationReceipt;
 
 	const auto RestorePrevious = [this,
-		&PreviousBindings, &PreviousEffectCues, &PreviousArenaCenters,
+		&PreviousBindings, &PreviousBodyVisibility,
+		&PreviousGripLocalOffsets,
+		&PreviousEffectCues, &PreviousArenaCenters,
 		&PreviousEffectAttempts, PreviousEffectScanValid,
 		PreviousEffectScanAge, &PreviousSoundCues,
 		&PreviousSoundSourceReceipt, &PreviousSoundAttempts,
@@ -751,6 +921,8 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 		&PreviousPresentationReceipt]()
 	{
 		m_PatternClipByActionId = PreviousBindings;
+		m_PatternBodyVisibilityByActionId = PreviousBodyVisibility;
+		m_PlayerHandGripLocalOffsetByActionId = PreviousGripLocalOffsets;
 		m_PatternEffectCuesByActionId = PreviousEffectCues;
 		m_PatternArenaCenterAnchors = PreviousArenaCenters;
 		m_AttemptedPatternEffectOccurrenceKeys = PreviousEffectAttempts;
@@ -773,6 +945,7 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 
 	std::string StepStatus;
 	if (!Reload_PatternBindings_WhileAdmitted(StepStatus) ||
+		!Reload_PlayerHandGripLocalOffsets_WhileAdmitted(StepStatus) ||
 		!Reload_PatternEffectCues_WhileAdmitted(StepStatus) ||
 		!Reload_PatternSoundCues_WhileAdmitted(StepStatus) ||
 		!Reload_CombatObjectSoundCues_WhileAdmitted(StepStatus) ||
@@ -780,7 +953,7 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	{
 		RestorePrevious();
 		strOutStatus =
-			"Valtan joined presentation reload rejected; every previous animation/effect/sound/combat-sound/shake cache was preserved: " +
+			"Valtan joined presentation reload rejected; every previous animation/grip/effect/sound/combat-sound/shake cache was preserved: " +
 			StepStatus;
 		return false;
 	}
@@ -791,6 +964,10 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	   commit. Thus a late admission failure is byte/logically invisible to
 	   gameplay even though validation reuses the established typed loaders. */
 	auto StagedBindings = std::move(m_PatternClipByActionId);
+	auto StagedBodyVisibility =
+		std::move(m_PatternBodyVisibilityByActionId);
+	auto StagedGripLocalOffsets =
+		std::move(m_PlayerHandGripLocalOffsetByActionId);
 	auto StagedEffectCues = std::move(m_PatternEffectCuesByActionId);
 	auto StagedArenaCenters = std::move(m_PatternArenaCenterAnchors);
 	auto StagedSoundCues = std::move(m_PatternSoundCuesByActionId);
@@ -818,6 +995,10 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	}
 
 	m_PatternClipByActionId = std::move(StagedBindings);
+	m_PatternBodyVisibilityByActionId =
+		std::move(StagedBodyVisibility);
+	m_PlayerHandGripLocalOffsetByActionId =
+		std::move(StagedGripLocalOffsets);
 	m_PatternEffectCuesByActionId = std::move(StagedEffectCues);
 	m_PatternArenaCenterAnchors = std::move(StagedArenaCenters);
 	m_PatternSoundCuesByActionId = std::move(StagedSoundCues);
@@ -1055,10 +1236,23 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 		Client::EFFECT_V2_TARGET::From_Valtan(
 			static_pointer_cast<CValtan>(shared_from_this()));
 	const std::string StageActionId(actionId);
+	std::vector<Client::EFFECT_V2_CLIP_OCCURRENCE_CLOCK> EffectV2Clocks;
+	if (!Build_EffectV2OccurrenceClocksForAction(
+			m_pBodyModelCom,
+			m_bLocalPatternAuthoringPreview ?
+				m_LocalPreviewClipByActionId : m_PatternClipByActionId,
+			StageActionId, EffectV2Clocks))
+	{
+		OutputDebugStringA((
+			"[Client][Valtan] Effect V2 occurrence clock rejected for action: " +
+			StageActionId + "\n").c_str());
+		EffectV2Clocks.clear();
+	}
 	if (m_bLocalPatternAuthoringPreview)
 	{
 		Client::CEffectV2Runtime::Sync_StageAuthoring(
 			EffectV2Target, StageActionId.c_str(), fActionAgeSeconds,
+			EffectV2Clocks,
 			Client::CEffectV2Catalog::Get().Get_Snapshot(),
 			m_pDevice, m_pContext);
 	}
@@ -1066,6 +1260,7 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 	{
 		Client::CEffectV2Runtime::Sync_Stage(
 			EffectV2Target, StageActionId.c_str(), fActionAgeSeconds,
+			EffectV2Clocks,
 			m_pDevice, m_pContext);
 	}
 	return true;
@@ -1174,9 +1369,36 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 		m_strLocalPreviewCombatObjectStatus = Status;
 		return false;
 	};
+	const f32_t fStageAgeMs = fActionAgeSeconds * 1000.f;
 	for (LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE& Instance :
 		m_LocalPreviewCombatObjectInstances)
 	{
+		if (fStageAgeMs <
+			static_cast<f32_t>(Instance.Template.iFirstSpawnOffsetMs))
+		{
+			if (0u != Instance.iActiveHandle)
+			{
+				EFFECT_WORLD_ROOT_HANDLE Handle;
+				Handle.iValue = Instance.iActiveHandle;
+				CEffectPresentationService::Stop_WorldRoot(Handle);
+				Instance.iActiveHandle = 0u;
+			}
+			for (uint64_t& iTerminalHandle : Instance.TerminalHandles)
+			{
+				if (0u == iTerminalHandle)
+					continue;
+				EFFECT_WORLD_ROOT_HANDLE Handle;
+				Handle.iValue = iTerminalHandle;
+				CEffectPresentationService::Stop_WorldRoot(Handle);
+				iTerminalHandle = 0u;
+			}
+			std::fill(Instance.TerminalAttempts.begin(),
+				Instance.TerminalAttempts.end(), false);
+			continue;
+		}
+		const f32_t fObjectAgeSeconds = fActionAgeSeconds -
+			static_cast<f32_t>(Instance.Template.iFirstSpawnOffsetMs) * 0.001f;
+		const f32_t fObjectAgeMs = fObjectAgeSeconds * 1000.f;
 		const BOSS_COMBAT_OBJECT_VISUAL_ENTRY* Visual =
 			CActorCatalog::Find_BossCombatObjectVisual(
 				m_strArchetypeId,
@@ -1192,8 +1414,7 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 		}
 		const float4x4_t Root = Visual->Make_WorldRoot(
 			Instance.vPosition, Instance.fYawDegrees);
-		const f32_t fActionAgeMs = fActionAgeSeconds * 1000.f;
-		if (fActionAgeMs < static_cast<f32_t>(Instance.Template.iLifetimeMs))
+		if (fObjectAgeMs < static_cast<f32_t>(Instance.Template.iLifetimeMs))
 		{
 			if (0u == Instance.iActiveHandle)
 			{
@@ -1208,13 +1429,13 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 					Instance.Template.strCombatObjectArchetypeId + "/ordinal:" +
 					std::to_string(Instance.iOrdinal) + "/active";
 				Desc.iSpawnTick = m_iLocalPreviewEffectGeneration;
-				Desc.fInitialSampleTimeSeconds = fActionAgeSeconds;
+				Desc.fInitialSampleTimeSeconds = fObjectAgeSeconds;
 				EFFECT_WORLD_ROOT_HANDLE Handle;
 				std::string Status;
 				if (!CEffectPresentationService::Spawn_WorldRoot(
 						Desc, Handle, Status) ||
 					!CEffectPresentationService::Seek_WorldRoot(
-						Handle, fActionAgeSeconds))
+						Handle, fObjectAgeSeconds))
 				{
 					CEffectPresentationService::Stop_WorldRoot(Handle);
 					return Rollback(Status.empty() ?
@@ -1227,7 +1448,7 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 				EFFECT_WORLD_ROOT_HANDLE Handle;
 				Handle.iValue = Instance.iActiveHandle;
 				if (!CEffectPresentationService::Seek_WorldRoot(
-						Handle, fActionAgeSeconds))
+						Handle, fObjectAgeSeconds))
 				{
 					return Rollback(
 						"Local combat-object active Effect left its preview handle.");
@@ -1247,9 +1468,9 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 		{
 			const LOCAL_PATTERN_COMBAT_OBJECT_EVENT& Event =
 				Instance.Template.PresentationEvents[iEvent];
-			if (fActionAgeMs < static_cast<f32_t>(Event.iAtMs))
+			if (fObjectAgeMs < static_cast<f32_t>(Event.iAtMs))
 				continue;
-			const f32_t fTerminalAgeSeconds = fActionAgeSeconds -
+			const f32_t fTerminalAgeSeconds = fObjectAgeSeconds -
 				static_cast<f32_t>(Event.iAtMs) * 0.001f;
 			if (!Instance.TerminalAttempts[iEvent])
 			{
@@ -1469,7 +1690,8 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 				Source.fVolleyAngleStepDegrees <= 0.f ||
 				Source.fVolleyAngleStepDegrees *
 					static_cast<f32_t>(Source.iSpawnValue) > 360.00001f ||
-				0u == Source.iLifetimeMs)
+				0u == Source.iLifetimeMs ||
+				Source.iFirstSpawnOffsetMs >= Stage.iDurationMs)
 			{
 				strOutStatus =
 					"Local Pattern draft preview rejected a boss-relative combat-object volley: " +
@@ -1502,6 +1724,7 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 			Template.fStartAngleDegrees =
 				Source.fVolleyStartAngleDegrees;
 			Template.fAngleStepDegrees = Source.fVolleyAngleStepDegrees;
+			Template.iFirstSpawnOffsetMs = Source.iFirstSpawnOffsetMs;
 			Template.iLifetimeMs = Source.iLifetimeMs;
 			for (const Client::VALTAN_COMBAT_OBJECT_PRESENTATION_EVENT_VIEW&
 				Event : Source.PresentationEvents)
@@ -1529,7 +1752,8 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 		StagedBindings.emplace(Stage.strActionId, std::move(Clips));
 #ifdef _DEBUG
 		const bool_t bHasStageHit = !Stage.strHitShape.empty() &&
-			"NONE" != Stage.strHitShape && 0u != Stage.iHitCount;
+			"NONE" != Stage.strHitShape &&
+			(0u != Stage.iHitCount || Stage.bHasHitActivation);
 		if (bHasStageHit || Stage.CounterProxy.has_value())
 		{
 			PATTERN_HIT_AREA_DEBUG Area{};
@@ -1546,6 +1770,10 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 				Area.iHitDelayMs = Stage.iHitDelayMs;
 				Area.HitOffsetsMs = Stage.HitOffsetsMs;
 				Area.iStageDurationMs = Stage.iDurationMs;
+				Area.bHasActivation = Stage.bHasHitActivation;
+				Area.iActivationStartMs = Stage.iHitActivationStartMs;
+				Area.iActivationLifetimeMs =
+					Stage.iHitActivationLifetimeMs;
 			}
 			if (Stage.CounterProxy.has_value())
 			{
@@ -2520,8 +2748,10 @@ bool_t CValtan::Reload_CombatObjectSoundCues_WhileAdmitted(
 	staged.reserve(document.Cues.size());
 	for (const VALTAN_COMBAT_OBJECT_SOUND_CUE& cue : document.Cues)
 	{
+		const std::string& sourceId = cue.strHitId.empty() ?
+			cue.strPresentationEventId : cue.strHitId;
 		const std::string key = Make_CombatObjectSoundSourceKey(
-			cue.strCombatObjectArchetypeId, cue.strHitId);
+			cue.strCombatObjectArchetypeId, sourceId);
 		if (!staged.emplace(key, cue).second)
 		{
 			status = "Duplicate combat-object Sound source: " + cue.strBindingId;
@@ -2569,7 +2799,13 @@ bool_t CValtan::Apply_CombatObjectPresentationEvent(
 				return candidate.combatObjectArchetypeId ==
 					event.strCombatObjectArchetypeId;
 			});
+		/* A Product-owned V2 group owns its complete visual timeline, including
+		   any terminal child.  Keep hitEffectAssetId as the V1 authoring-preview
+		   fallback, but never layer that fallback over the live V2 group when the
+		   Server emits the semantic presentation event used by Sound. */
 		if (actor->combatObjectVisuals.end() != visual &&
+			BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V1 ==
+				visual->activeEffectKind &&
 			!visual->hitEffectAssetId.empty())
 		{
 			hitEffectConfigured = true;
@@ -2632,7 +2868,7 @@ bool_t CValtan::Apply_CombatObjectPresentationEvent(
 		outStatus = std::move(hitEffectStatus);
 		return false;
 	}
-	outStatus = "Played " + cue.strBindingId + " for Server hit " +
+	outStatus = "Played " + cue.strBindingId + " for Server event " +
 		event.strHitId + ".";
 	return true;
 }
@@ -2999,7 +3235,7 @@ void CValtan::Late_Update(f32_t fTimeDelta)
 	/* Container Update still advances the body animation and every Effect clock.
 	Only render submission is suppressed for the authoritative relocation edge;
 	clearing the snapshot flag therefore restores the same presentation group. */
-	if (!m_isGhostPresentationHidden)
+	if (!m_isGhostPresentationHidden && !m_isPatternBodyHidden)
 		__super::Late_Update(fTimeDelta);
 	Client::CEffectV2Runtime::Tick(
 		Client::EFFECT_V2_TARGET::From_Valtan(
@@ -3010,7 +3246,10 @@ void CValtan::Late_Update(f32_t fTimeDelta)
 		CGameInstance::Get().Add_DebugComponent(m_pNavigationCom);
 	if (m_isCombatColliderDebugVisible && nullptr != m_pColliderCom)
 		CGameInstance::Get().Add_DebugComponent(m_pColliderCom);
-	if (m_isPatternHitAreaDebugVisible || !m_strPreviewHitActionId.empty())
+	if (m_isPatternHitPulseDebugVisible ||
+		m_isPatternStageGeometryDebugVisible ||
+		m_isCounterProxyDebugVisible ||
+		!m_strPreviewHitActionId.empty())
 		Draw_PatternHitAreaDebug();
 #endif
 }
@@ -4076,6 +4315,18 @@ bool_t CValtan::Apply_NetworkState(
 		m_iServerPatternSequence = iPatternSequence;
 		m_iServerPatternStageIndex = iPatternStageIndex;
 		m_fServerActionAgeSeconds = fActionAgeSeconds;
+		m_isPatternBodyHidden = false;
+		const auto BodyVisibility =
+			m_PatternBodyVisibilityByActionId.find(m_strServerActionId);
+		if (m_PatternBodyVisibilityByActionId.end() != BodyVisibility)
+		{
+			const f32_t fActionAgeMs = fActionAgeSeconds * 1000.f;
+			m_isPatternBodyHidden =
+				fActionAgeMs >= static_cast<f32_t>(
+					BodyVisibility->second.iHiddenFromMs) &&
+				fActionAgeMs < static_cast<f32_t>(
+					BodyVisibility->second.iHiddenToMs);
+		}
 		const bool_t bIncomingTargetPoseFinite =
 			PatternTargetPose.bHasFinitePose &&
 			PatternTargetPose.iNetEntityId !=
@@ -4124,6 +4375,7 @@ bool_t CValtan::Apply_NetworkState(
 	}
 	else
 	{
+		m_isPatternBodyHidden = false;
 		m_iServerActionStartTick = 0u;
 		m_iServerPatternStageIndex = 0u;
 		m_fServerActionAgeSeconds = 0.f;
@@ -4155,10 +4407,21 @@ bool_t CValtan::Apply_NetworkState(
 		Spawn_DuePatternEffectCues(fActionAgeSeconds);
 		Spawn_DuePatternSoundCues(fActionAgeSeconds);
 		Spawn_DuePatternShakeCues(fActionAgeSeconds);
+		std::vector<Client::EFFECT_V2_CLIP_OCCURRENCE_CLOCK> EffectV2Clocks;
+		if (!Build_EffectV2OccurrenceClocksForAction(
+				m_pBodyModelCom, m_PatternClipByActionId,
+				m_strServerActionId, EffectV2Clocks))
+		{
+			OutputDebugStringA((
+				"[Client][Valtan] Effect V2 occurrence clock rejected for action: " +
+				m_strServerActionId + "\n").c_str());
+			EffectV2Clocks.clear();
+		}
 		Client::CEffectV2Runtime::Sync_Stage(
 			Client::EFFECT_V2_TARGET::From_Valtan(
 				static_pointer_cast<CValtan>(shared_from_this())),
 			m_strServerActionId.c_str(), fActionAgeSeconds,
+			EffectV2Clocks,
 			m_pDevice, m_pContext);
 	}
 	else

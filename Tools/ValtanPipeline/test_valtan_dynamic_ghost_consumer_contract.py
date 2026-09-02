@@ -72,7 +72,19 @@ class DynamicGhostConsumerContractTests(unittest.TestCase):
         self.assertIn("data-driven two-child reordered finale was rejected", client_test)
         self.assertIn('"maximumActiveGhosts", "2"', client_test)
         self.assertIn("finale-data-driven", server_test)
-        self.assertIn("10\\t10\\t2\\tVALTAN_FOUR_SLASH\\tVALTAN_WHIRLWIND", server_test)
+        self.assertIn("const std::string dynamicFinaleRow =", server_test)
+        self.assertIn(
+            'finalePrefix + "10\\t10\\t2" + finaleChildren;', server_test
+        )
+        for child_pattern_id in (
+            "VALTAN_SIX_PIZZA_106",
+            "VALTAN_GROUND_ROAR",
+            "VALTAN_STAGGER_SLOT",
+            "VALTAN_BIND_SLOT",
+            "VALTAN_SILENCE_SLOT",
+            "VALTAN_TRIPLE_COUNTER",
+        ):
+            self.assertIn(child_pattern_id, server_test)
         self.assertIn("finale-duplicate-child", server_test)
         self.assertIn("finale-missing-child", server_test)
 

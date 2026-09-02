@@ -6,6 +6,7 @@
 #include "Engine_Defines.h"
 
 #include <memory>
+#include <span>
 #include <string>
 
 NS_BEGIN(Client)
@@ -20,6 +21,23 @@ struct EFFECT_V2_GROUP_PLAYBACK_DESC final
 	f32_t fInitialAgeSeconds = 0.f;
 	f32_t fPlaybackRate = 1.f;
 	bool_t bProductOwned = false;
+};
+
+/* One authored animation occurrence expressed in the owning Stage wall clock.
+   Effect binding startMs stays in the model source clock; the runtime uses
+   this map to apply sourceStart/playRate and to distinguish repeated uses of
+   the same clip name. */
+struct EFFECT_V2_CLIP_OCCURRENCE_CLOCK final
+{
+	std::string strClipOccurrenceId;
+	f32_t fStageWallStartSeconds = 0.f;
+	f32_t fSourceStartSeconds = 0.f;
+	f32_t fSourceDurationSeconds = 0.f;
+	f32_t fLoopWallDurationSeconds = 0.f;
+	f32_t fPlaybackRate = 1.f;
+	bool_t bLoop = false;
+
+	bool operator==(const EFFECT_V2_CLIP_OCCURRENCE_CLOCK&) const = default;
 };
 
 class CEffectV2Runtime final
@@ -39,11 +57,28 @@ public:
 		const EFFECT_V2_TARGET& Target,
 		const char_t* pActionId,
 		f32_t fAgeSeconds,
+		std::span<const EFFECT_V2_CLIP_OCCURRENCE_CLOCK> ClipOccurrences,
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext);
+	/* Compatibility overload for a Stage-clock-only caller. Clip-occurrence
+	   rows fail closed until their typed occurrence map is supplied. */
+	static void Sync_Stage(
+		const EFFECT_V2_TARGET& Target,
+		const char_t* pActionId,
+		f32_t fAgeSeconds,
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext);
 	/* Local Action Composition preview only. The caller supplies the current
 	   parsed authoring snapshot, so saved groups/bindings can be reviewed on the
 	   next seek without a separate build or publish step. */
+	static void Sync_StageAuthoring(
+		const EFFECT_V2_TARGET& Target,
+		const char_t* pActionId,
+		f32_t fAgeSeconds,
+		std::span<const EFFECT_V2_CLIP_OCCURRENCE_CLOCK> ClipOccurrences,
+		std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext);
 	static void Sync_StageAuthoring(
 		const EFFECT_V2_TARGET& Target,
 		const char_t* pActionId,

@@ -86,21 +86,24 @@ class ActionCompositionCollisionAuthoringContractTests(unittest.TestCase):
         self.assertIn('"EXPLICIT_OFFSETS"', self.balance)
         self.assertIn("SET_STAGE_HIT", self.balance)
 
-    def test_stage_hit_trigger_result_uses_typed_damage_or_grab(self) -> None:
+    def test_stage_hit_collider_type_uses_typed_damage_or_grab(self) -> None:
         for marker in (
-            'const char_t* const TriggerResults[] = { "Damage", "Grab" }',
-            '"Trigger Result", &iTriggerResult',
+            'const char_t* const ColliderTypes[] = { "Damage", "Grab (Capture)" }',
+            '"Collider Type", &iColliderType',
+            "bDamageResponse && !bOwnsGrabReleasePath",
             'Draft.playerResponse = "CAPTURE"',
             'Draft.attachmentSlot = "BOSS_LEFT_HAND"',
             "Draft.pushRangeM = 0.0",
             "Draft.pushMs = 0u",
             "Draft.knockdown = false",
             "Draft.downMs = 0u",
-            "ImGui::BeginDisabled(bCaptureCollider)",
+            "ImGui::BeginDisabled(!Draft.colliderRemoveAdmitted)",
             "Removing Capture requires the whole typed grab topology transaction.",
             "a rejected Save keeps its exact reason.",
         ):
             self.assertIn(marker, self.gameplay_details)
+
+        self.assertNotIn('"Trigger Result",', self.gameplay_details)
 
         for marker in (
             "const bool responseChanged =",
@@ -112,6 +115,46 @@ class ActionCompositionCollisionAuthoringContractTests(unittest.TestCase):
             "stage->strAttachmentSlot = candidate.attachmentSlot",
             "stage.strPlayerResponse != loadedStage->strPlayerResponse",
             "stage.strAttachmentSlot != loadedStage->strAttachmentSlot",
+        ):
+            self.assertIn(marker, self.balance)
+
+    def test_box_add_active_window_and_damage_rate_use_typed_drafts(self) -> None:
+        for marker in (
+            "bool_t InitializeDefaultValtanColliderBoxDraft(",
+            'Draft.hitShape = "BOX"',
+            "Draft.hitLength = 8.0",
+            "Draft.hitHalfWidth = 2.5",
+            'ImGui::Button("Add Server Collider (BOX)")',
+            'ImGui::SeparatorText("Shape / Size")',
+            'ImGui::TextUnformatted("Timing Mode")',
+            '"Pulse Schedule", &iTimingMode, 0',
+            '"Active Window (lifetime)", &iTimingMode, 1',
+            '"Start (ms)"',
+            '"Lifetime (ms)"',
+            'ImGui::SeparatorText("Damage")',
+            '"Damage Rate (%)"',
+            "Get_ValtanDamageRateDraft(",
+            "Set_ValtanDamageRateDraft(",
+            "Get_ValtanDamageProfileStageUserCountDraft(",
+            "Get_ValtanBossAttackPowerDraft(",
+            "Raw damage before defense:",
+        ):
+            self.assertIn(marker, self.workbench)
+
+        self.assertGreaterEqual(
+            self.workbench.count("InitializeDefaultValtanColliderBoxDraft("),
+            3,
+            "the helper definition plus Details and lane-plus callers must share one BOX initializer",
+        )
+        for marker in (
+            "draft.colliderAddAdmitted =",
+            "draft.colliderTuneAdmitted =",
+            "draft.colliderRemoveAdmitted =",
+            "pattern.bManualServerAudition && hasCollider",
+            "Get_ValtanDamageRateDraft(",
+            "Set_ValtanDamageRateDraft(",
+            "Get_ValtanDamageProfileStageUserCountDraft(",
+            "Get_ValtanBossAttackPowerDraft(",
         ):
             self.assertIn(marker, self.balance)
 

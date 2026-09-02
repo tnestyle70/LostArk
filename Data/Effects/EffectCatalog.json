@@ -647,11 +647,6 @@
       "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.reactive.parry.stance.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.carrier-v1.reactive.triple-counter.first.clip-01",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
-      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.reactive.triple-counter.first.clip-01.effect.json"
-    },
-    {
       "effectAssetId": "effect.valtan.floor-wipe-130",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.valtan.floor-wipe-130.effect.json"
@@ -820,11 +815,6 @@
       "effectAssetId": "effect.valtan.project-tuned.sequence.counter",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
       "authoringPath": "Effects/Authored/effect.valtan.project-tuned.sequence.counter.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.project-tuned.sequence.trash",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT",
-      "authoringPath": "Effects/Authored/effect.valtan.project-tuned.sequence.trash.effect.json"
     },
     {
       "effectAssetId": "effect.valtan.ground-roar.rock.active",

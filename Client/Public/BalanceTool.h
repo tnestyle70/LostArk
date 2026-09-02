@@ -49,6 +49,14 @@ public:
 		std::uint32_t hitIntervalMs = 0;
 		std::uint32_t hitDelayMs = 0;
 		std::vector<std::uint32_t> hitOffsetsMs;
+		bool hasHitAnchor = false;
+		std::string hitAnchorKind = "BOSS_CURRENT";
+		double hitAnchorForwardOffsetM = 0.0;
+		double hitAnchorRightOffsetM = 0.0;
+		double hitAnchorYawOffsetDegrees = 0.0;
+		bool hasHitActivation = false;
+		std::uint32_t hitActivationStartMs = 0u;
+		std::uint32_t hitActivationLifetimeMs = 0u;
 		std::string damageProfileId;
 		double pushRangeM = 0.0;
 		std::uint32_t pushMs = 0;
@@ -56,6 +64,10 @@ public:
 		std::uint32_t downMs = 0;
 		std::string playerResponse = "DAMAGE";
 		std::string attachmentSlot = "NONE";
+		bool hasGripLocalOffset = false;
+		double gripForwardM = 0.0;
+		double gripUpM = 0.0;
+		double gripRightM = 0.0;
 		std::string motionKind;
 		std::uint32_t portalRetargetDelayMs = 0;
 		double portalSpeedMps = 0.0;
@@ -74,9 +86,25 @@ public:
 		   existing Stage for typed Counter -> Groggy composition. */
 		bool stageKindEditable = false;
 		bool durationEditable = false;
+		bool colliderAddAdmitted = false;
+		bool colliderTuneAdmitted = false;
+		bool colliderRemoveAdmitted = false;
+		/* Animation Tool still consumes the former tune-only view.  New Collider
+		   authoring must use the three operation-specific admissions above. */
 		bool hitEditable = false;
 		bool portalRushMotionEditable = false;
 		bool animationEditable = false;
+	};
+
+	/* One Server-owned combat-object RING hit.  The stable Pattern/Stage owner,
+	   combat-object archetype, and hit identity are immutable; only the two
+	   canonical radii may be staged through this narrow adapter. */
+	struct VALTAN_COMBAT_OBJECT_RING_HIT_EDIT final
+	{
+		std::string combatObjectArchetypeId;
+		std::string hitId;
+		double innerRadiusM = 0.0;
+		double outerRadiusM = 0.0;
 	};
 
 	/* VALTAN_WARP owns eight identical Server rush legs (STEP_02..STEP_09).
@@ -160,6 +188,18 @@ public:
 		const std::string& stageId,
 		PATTERN_STAGE_EDIT& stage,
 		std::string& status) const;
+	bool Get_ValtanCombatObjectRingHitDraft(
+		const std::string& patternId,
+		const std::string& stageId,
+		const std::string& combatObjectArchetypeId,
+		const std::string& hitId,
+		VALTAN_COMBAT_OBJECT_RING_HIT_EDIT& hit,
+		std::string& status) const;
+	bool Set_ValtanCombatObjectRingHitDraft(
+		const std::string& patternId,
+		const std::string& stageId,
+		const VALTAN_COMBAT_OBJECT_RING_HIT_EDIT& hit,
+		std::string& status);
 	/* Returns the effective in-memory authoring Pattern, including every typed
 	   draft staged through this owner.  The Action Composition Workbench uses a
 	   value copy so its Details, Sequencer, and local model preview can never
@@ -267,6 +307,14 @@ public:
 		const std::string& stageRole,
 		std::uint32_t durationMs,
 		std::string& status);
+	/* Promotion keeps the existing Stage/Action IDs and clock, but changes one
+	   dependency-free manual WAIT into a real authoring role. Animation remains
+	   NONE until Workbench assigns an exact Sequence in the same or later draft. */
+	bool Promote_ValtanManualWaitStage(
+		const std::string& patternId,
+		const std::string& stageId,
+		const std::string& stageRole,
+		std::string& status);
 	bool Can_Edit_ValtanManualStageTopology(
 		const std::string& patternId,
 		std::string& status) const;
@@ -281,6 +329,21 @@ public:
 		bool beforeAnchor,
 		std::string& status);
 	std::vector<std::string> Get_ValtanDamageProfileIds() const;
+	bool Get_ValtanDamageRateDraft(
+		const std::string& damageProfileId,
+		std::uint32_t& ratePercent,
+		std::string& status) const;
+	bool Get_ValtanDamageProfileStageUserCountDraft(
+		const std::string& damageProfileId,
+		std::size_t& stageUserCount,
+		std::string& status) const;
+	bool Set_ValtanDamageRateDraft(
+		const std::string& damageProfileId,
+		std::uint32_t ratePercent,
+		std::string& status);
+	bool Get_ValtanBossAttackPowerDraft(
+		std::uint32_t& attackPower,
+		std::string& status) const;
 	bool Get_ValtanCounterWindowDraft(
 		const std::string& patternId,
 		const std::string& stageId,

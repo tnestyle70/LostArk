@@ -1081,6 +1081,12 @@
     <ClInclude Include="..\Public\ClientReplication.h">
       <Filter>04. Network</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\CombatDebugVisibility.h">
+      <Filter>04. Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\PlayerHandGripTransform.h">
+      <Filter>04. Network</Filter>
+    </ClInclude>
 	<ClInclude Include="..\Public\CombatObjectProjectionRuntime.h">
 	  <Filter>04. Network</Filter>
 	</ClInclude>

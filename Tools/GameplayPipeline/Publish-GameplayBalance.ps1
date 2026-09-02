@@ -1381,8 +1381,18 @@ foreach ($visual in @($bossCatalogOwners[0].combatObjectVisuals)) {
 	Assert-JsonString $visual.effectAssetId 'boss combat object visual effectAssetId'
 	Assert-StableId $visual.effectAssetId 'boss combat object visual effectAssetId'
 	if ($hasEffectV2Group) {
-		Assert-ExactProperties $visual.effectV2Group @(
-			'groupId','playbackRate','visualHitMs','serverHitId') `
+		$hasVisualHitMs =
+			$null -ne $visual.effectV2Group.PSObject.Properties['visualHitMs']
+		$hasServerHitId =
+			$null -ne $visual.effectV2Group.PSObject.Properties['serverHitId']
+		if ($hasVisualHitMs -ne $hasServerHitId) {
+			throw 'Boss combat object Effect V2 group has a partial hit-sync contract.'
+		}
+		$effectV2GroupProperties = @('groupId','playbackRate')
+		if ($hasVisualHitMs) {
+			$effectV2GroupProperties += @('visualHitMs','serverHitId')
+		}
+		Assert-ExactProperties $visual.effectV2Group $effectV2GroupProperties `
 			'boss combat object Effect V2 group'
 		Assert-JsonString $visual.effectV2Group.groupId `
 			'boss combat object Effect V2 groupId'
@@ -1390,12 +1400,14 @@ foreach ($visual in @($bossCatalogOwners[0].combatObjectVisuals)) {
 			'boss combat object Effect V2 groupId'
 		Assert-JsonNumber $visual.effectV2Group.playbackRate `
 			'boss combat object Effect V2 playbackRate'
-		Assert-JsonInteger $visual.effectV2Group.visualHitMs `
-			'boss combat object Effect V2 visualHitMs' 1 60000
-		Assert-JsonString $visual.effectV2Group.serverHitId `
-			'boss combat object Effect V2 serverHitId'
-		Assert-StableId $visual.effectV2Group.serverHitId `
-			'boss combat object Effect V2 serverHitId'
+		if ($hasVisualHitMs) {
+			Assert-JsonInteger $visual.effectV2Group.visualHitMs `
+				'boss combat object Effect V2 visualHitMs' 1 60000
+			Assert-JsonString $visual.effectV2Group.serverHitId `
+				'boss combat object Effect V2 serverHitId'
+			Assert-StableId $visual.effectV2Group.serverHitId `
+				'boss combat object Effect V2 serverHitId'
+		}
 		$playbackRate = [double]$visual.effectV2Group.playbackRate
 		if ([double]::IsNaN($playbackRate) -or
 			[double]::IsInfinity($playbackRate) -or
@@ -1414,11 +1426,13 @@ foreach ($visual in @($bossCatalogOwners[0].combatObjectVisuals)) {
 			$groupDocument.children -isnot [Array]) {
 			throw "Boss combat object Effect V2 group document is invalid: $groupId"
 		}
-		$impactChildren = @($groupDocument.children | Where-Object {
-			[uint32]$_.startMs -eq [uint32]$visual.effectV2Group.visualHitMs
-		})
-		if ($impactChildren.Count -lt 1) {
-			throw "Boss combat object Effect V2 visualHitMs resolves to no group child: $groupId"
+		if ($hasVisualHitMs) {
+			$impactChildren = @($groupDocument.children | Where-Object {
+				[uint32]$_.startMs -eq [uint32]$visual.effectV2Group.visualHitMs
+			})
+			if ($impactChildren.Count -lt 1) {
+				throw "Boss combat object Effect V2 visualHitMs resolves to no group child: $groupId"
+			}
 		}
 		$combatObjectEffectV2GroupByArchetypeId[
 			[string]$visual.combatObjectArchetypeId] = $visual.effectV2Group
@@ -1914,12 +1928,17 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			$null -ne $stage.PSObject.Properties['counterProxy']
 		$hasBossResponse =
 			$null -ne $stage.PSObject.Properties['bossResponse']
+		$hasStageVerticalOffset =
+			$null -ne $stage.PSObject.Properties['verticalOffsetM']
 		$hasPlayerResponse =
 			$null -ne $stage.PSObject.Properties['playerResponse']
 		$hasAttachmentSlot =
 			$null -ne $stage.PSObject.Properties['attachmentSlot']
-		if ($hasPlayerResponse -ne $hasAttachmentSlot) {
-			throw "Pattern stage playerResponse and attachmentSlot must be authored together: $($pattern.patternId) stage $stageIndex"
+		$hasGripLocalOffset =
+			$null -ne $stage.PSObject.Properties['gripLocalOffset']
+		if ($hasPlayerResponse -ne $hasAttachmentSlot -or
+			$hasPlayerResponse -ne $hasGripLocalOffset) {
+			throw "Pattern stage playerResponse, attachmentSlot, and gripLocalOffset must be authored together: $($pattern.patternId) stage $stageIndex"
 		}
 		if ($hasStageBranches) { $stageProperties += 'branches' }
 		if ($hasStageActions) { $stageProperties += 'actions' }
@@ -1930,10 +1949,24 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		if ($hasPartDamagePolicy) { $stageProperties += 'partDamagePolicy' }
 		if ($hasCounterProxy) { $stageProperties += 'counterProxy' }
 		if ($hasBossResponse) { $stageProperties += 'bossResponse' }
+		if ($hasStageVerticalOffset) { $stageProperties += 'verticalOffsetM' }
 		if ($hasPlayerResponse) {
-			$stageProperties += @('playerResponse','attachmentSlot')
+			$stageProperties += @('playerResponse','attachmentSlot','gripLocalOffset')
 		}
 		Assert-ExactProperties $stage $stageProperties 'encounter pattern stage'
+		$stageVerticalOffsetM = 0.0
+		if ($hasStageVerticalOffset) {
+			Assert-JsonNumber $stage.verticalOffsetM `
+				"pattern $($pattern.patternId) stage $stageIndex verticalOffsetM"
+			$stageVerticalOffsetM = [double]$stage.verticalOffsetM
+			if ([double]::IsNaN($stageVerticalOffsetM) -or
+				[double]::IsInfinity($stageVerticalOffsetM) -or
+				$stageVerticalOffsetM -eq 0.0 -or
+				[Math]::Abs($stageVerticalOffsetM) -gt 100.0 -or
+				-not $hasBossResponse -or $hasServerMotion -or $hasStageMotion) {
+				throw "Pattern stage verticalOffsetM requires an active boss response without server motion: $($pattern.patternId) stage $stageIndex"
+			}
+		}
 		$partDamagePolicy = 'NORMAL'
 		if ($hasPartDamagePolicy) {
 			Assert-JsonString $stage.partDamagePolicy `
@@ -2149,6 +2182,17 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				"pattern $($pattern.patternId) stage $stageIndex attachmentSlot"
 			$playerResponse = [string]$stage.playerResponse
 			$attachmentSlot = [string]$stage.attachmentSlot
+			Assert-ExactProperties $stage.gripLocalOffset @(
+				'forwardM','upM','rightM') `
+				'encounter pattern stage gripLocalOffset'
+			foreach ($field in @('forwardM','upM','rightM')) {
+				Assert-JsonNumber $stage.gripLocalOffset.$field `
+					"pattern $($pattern.patternId) stage $stageIndex gripLocalOffset $field"
+				$gripComponent = [double]$stage.gripLocalOffset.$field
+				if ([math]::Abs($gripComponent) -gt 10.0) {
+					throw "Pattern stage gripLocalOffset component is out of range: $($pattern.patternId) stage $stageIndex $field"
+				}
+			}
 		}
 		if ([math]::Abs($pushRangeM) -gt 20.0 -or
 			($pushRangeM -ne 0.0 -and $pushMs -eq 0) -or
@@ -2186,6 +2230,13 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			$stageRowFields += @($playerResponse, $attachmentSlot)
 		}
 		$patternRows.Add(($stageRowFields -join "`t"))
+		if ($hasStageVerticalOffset) {
+			$patternRows.Add((@(
+				'PATTERNSTAGEVERTICALOFFSET', $encounterDocument.encounterId,
+				$pattern.patternId, $stage.actionId,
+				(Format-InvariantSignedFloat $stageVerticalOffsetM `
+					'pattern stage verticalOffsetM')) -join "`t"))
+		}
 		$patternStageDurationByKey[
 			("{0}/{1}" -f $pattern.patternId, $stageIndex)] = [uint32]$stage.durationMs
 		for ($hitOffsetIndex = 0; $hitOffsetIndex -lt $hitOffsetsMs.Count; $hitOffsetIndex++) {
@@ -2300,6 +2351,10 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				throw "Pattern stage actions must contain 1..8 closed typed actions: $($pattern.patternId) stage $stageIndex"
 			}
 			$stageActionKeys = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+			$hasScheduledVolleyClock = $false
+			$scheduledVolleyFirstOffsetMs = [uint32]0
+			$scheduledVolleySpawnCount = [uint32]0
+			$scheduledVolleyIntervalMs = [uint32]0
 			for ($actionIndex = 0; $actionIndex -lt @($stage.actions).Count; ++$actionIndex) {
 				$stageAction = $stage.actions[$actionIndex]
 				Assert-JsonString $stageAction.kind `
@@ -2310,7 +2365,8 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 						'trigger','kind','targetId','targetingPolicy',
 						'countPerResolvedTarget','layout','radiusM',
 						'startAngleDegrees','angleStepDegrees','allowOverlap',
-						'maximumTotalObjects','spawnCount','spawnIntervalMs',
+						'maximumTotalObjects','spawnCount','firstSpawnOffsetMs',
+						'spawnIntervalMs',
 						'arenaRandomCount','arenaRandomRadiusM',
 						'arenaHeightToleranceM','arenaAnchorPolicy') `
 						'encounter pattern stage volley'
@@ -2328,6 +2384,8 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 						'pattern stage volley maximumTotalObjects' 1 64
 					Assert-JsonInteger $stageAction.spawnCount `
 						'pattern stage volley spawnCount' 1 8
+					Assert-JsonInteger $stageAction.firstSpawnOffsetMs `
+						'pattern stage volley firstSpawnOffsetMs' 0 ([uint32]::MaxValue)
 					Assert-JsonInteger $stageAction.spawnIntervalMs `
 						'pattern stage volley spawnIntervalMs' 0 ([uint32]::MaxValue)
 					Assert-JsonInteger $stageAction.arenaRandomCount `
@@ -2351,6 +2409,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 					$angleStepDegrees = [double]$stageAction.angleStepDegrees
 					$allowOverlap = [bool]$stageAction.allowOverlap
 					$spawnCount = [uint32]$stageAction.spawnCount
+					$firstSpawnOffsetMs = [uint32]$stageAction.firstSpawnOffsetMs
 					$spawnIntervalMs = [uint32]$stageAction.spawnIntervalMs
 					$arenaRandomCount = [uint32]$stageAction.arenaRandomCount
 					$arenaRandomRadiusM = [double]$stageAction.arenaRandomRadiusM
@@ -2359,14 +2418,20 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 					$targetingPolicy = [string]$stageAction.targetingPolicy
 					$isPerAlivePlayer = $targetingPolicy -ceq 'PER_ALIVE_PLAYER'
 					$isBossRelative = $targetingPolicy -ceq 'BOSS_RELATIVE'
-					$lastSpawnOffsetMs =
+					$lastSpawnOffsetMs = [uint64]$firstSpawnOffsetMs +
 						[uint64]($spawnCount - 1) * [uint64]$spawnIntervalMs
 					$isSingle = [uint32]1 -eq $countPerTarget
-					$validPolicyTopology =
-						($isPerAlivePlayer -and $arenaRandomCount -gt 0 -and
+					$validArenaPolicy =
+						($arenaRandomCount -eq 0 -and
+							$arenaRandomRadiusM -eq 0.0 -and
+							$arenaHeightToleranceM -eq 0.0 -and
+							$arenaAnchorPolicy -ceq 'NONE') -or
+						($arenaRandomCount -gt 0 -and
 							$arenaRandomRadiusM -gt 0.0 -and
 							$arenaHeightToleranceM -gt 0.0 -and
-							$arenaAnchorPolicy -ceq 'BOSS_SPAWN_POSITION') -or
+							$arenaAnchorPolicy -ceq 'BOSS_SPAWN_POSITION')
+					$validPolicyTopology =
+						($isPerAlivePlayer -and $validArenaPolicy) -or
 						($isBossRelative -and -not $isSingle -and
 							$spawnCount -eq 1 -and $arenaRandomCount -eq 0 -and
 							$arenaRandomRadiusM -eq 0.0 -and
@@ -2388,6 +2453,20 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 						-not $validPolicyTopology -or
 						$lastSpawnOffsetMs -ge [uint64][uint32]$stage.durationMs) {
 						throw "Pattern stage volley contract is invalid: $($pattern.patternId) stage $stageIndex"
+					}
+					$isScheduledVolley = $firstSpawnOffsetMs -gt 0 -or $spawnCount -gt 1
+					if ($isScheduledVolley) {
+						if (-not $hasScheduledVolleyClock) {
+							$hasScheduledVolleyClock = $true
+							$scheduledVolleyFirstOffsetMs = $firstSpawnOffsetMs
+							$scheduledVolleySpawnCount = $spawnCount
+							$scheduledVolleyIntervalMs = $spawnIntervalMs
+						}
+						elseif ($scheduledVolleyFirstOffsetMs -ne $firstSpawnOffsetMs -or
+							$scheduledVolleySpawnCount -ne $spawnCount -or
+							$scheduledVolleyIntervalMs -ne $spawnIntervalMs) {
+							throw "Pattern stage scheduled volleys must share one clock: $($pattern.patternId) stage $stageIndex"
+						}
 					}
 					$actionKey = "$actionTrigger/$actionTargetId"
 					if (-not $stageActionKeys.Add($actionKey) -or
@@ -2411,7 +2490,8 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 						(Format-InvariantSignedFloat $angleStepDegrees `
 							'pattern stage volley angleStepDegrees'),
 						$(if ($allowOverlap) { 1 } else { 0 }),
-						$maximumTotalObjects, $spawnCount, $spawnIntervalMs,
+						$maximumTotalObjects, $spawnCount, $firstSpawnOffsetMs,
+						$spawnIntervalMs,
 						$arenaRandomCount,
 						(Format-InvariantFloat $arenaRandomRadiusM `
 							'pattern stage volley arenaRandomRadiusM'),
@@ -2530,6 +2610,16 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 						$validTypedAction = $actionTrigger -ceq 'ENTER' -and
 							$actionTargetId -ceq 'boss.arena.center' -and $actionValue -eq 1
 					}
+					'SUPPRESS_INTER_STEP_PURSUIT' {
+						$validTypedAction =
+							$actionTrigger -ceq 'EXIT' -and
+							$actionTargetId -ceq 'boss.sequence.inter-step-pursuit' -and
+							$actionValue -eq 0 -and
+							[string]$pattern.patternId -ceq 'VALTAN_GHOST_DEATH_AUDITION' -and
+							[string]$stage.stageId -ceq 'STEP_01' -and
+							[string]$stage.actionId -ceq 'valtan.sequence.dead.step-01' -and
+							$stageIndex -eq (@($pattern.stages).Count - 1)
+					}
 					'RELEASE_GRABBED_PLAYERS' {
 						$validTypedAction =
 							$actionTargetId -ceq 'boss.attachment.left-hand' -and
@@ -2560,6 +2650,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 					$actionKind -cne 'SET_GAMEPLAY_PHASE' -and
 					$actionKind -cne 'RETARGET_RANDOM_ALIVE' -and
 					$actionKind -cne 'RETURN_TO_ARENA_CENTER' -and
+					$actionKind -cne 'SUPPRESS_INTER_STEP_PURSUIT' -and
 					$actionKind -cne 'RELEASE_GRABBED_PLAYERS' -and
 					$actionKind -cne 'DAMAGE_GRABBED_PLAYERS' -and
 					$actionKind -cne 'EXECUTE_GRABBED_PLAYERS') {
@@ -2593,6 +2684,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				elseif ($actionKind -cne 'SET_PLAYER_SILENCE' -and
 					$actionKind -cne 'RETARGET_RANDOM_ALIVE' -and
 					$actionKind -cne 'RETURN_TO_ARENA_CENTER' -and
+					$actionKind -cne 'SUPPRESS_INTER_STEP_PURSUIT' -and
 					$actionKind -cne 'RELEASE_GRABBED_PLAYERS' -and
 					$actionKind -cne 'DAMAGE_GRABBED_PLAYERS' -and
 					$actionKind -cne 'EXECUTE_GRABBED_PLAYERS') {
@@ -2871,15 +2963,20 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 	}
 	if ($combatObjectEffectV2GroupByArchetypeId.ContainsKey($combatObjectId)) {
 		$v2Group = $combatObjectEffectV2GroupByArchetypeId[$combatObjectId]
-		$joinedHits = @($combatObject.hits | Where-Object {
-			[string]$_.hitId -ceq [string]$v2Group.serverHitId
-		})
-		$expectedHitMs = [double]$v2Group.visualHitMs /
-			[double]$v2Group.playbackRate
-		if ($joinedHits.Count -ne 1 -or
-			[string]$joinedHits[0].trigger -cne 'TIMED' -or
-			[Math]::Abs([double]$joinedHits[0].atMs - $expectedHitMs) -gt 0.001) {
-			throw "Valtan combat object Effect V2 visual/server hit timing join is invalid: $combatObjectId"
+		$hasHitSync =
+			$null -ne $v2Group.PSObject.Properties['visualHitMs'] -and
+			$null -ne $v2Group.PSObject.Properties['serverHitId']
+		if ($hasHitSync) {
+			$joinedHits = @($combatObject.hits | Where-Object {
+				[string]$_.hitId -ceq [string]$v2Group.serverHitId
+			})
+			$expectedHitMs = [double]$v2Group.visualHitMs /
+				[double]$v2Group.playbackRate
+			if ($joinedHits.Count -ne 1 -or
+				[string]$joinedHits[0].trigger -cne 'TIMED' -or
+				[Math]::Abs([double]$joinedHits[0].atMs - $expectedHitMs) -gt 0.001) {
+				throw "Valtan combat object Effect V2 visual/server hit timing join is invalid: $combatObjectId"
+			}
 		}
 	}
 	$ownerPattern = $patternById[$ownerPatternId]
@@ -4304,8 +4401,10 @@ if (Test-Path -LiteralPath $patternRootMotionPath) {
 }
 
 $skillDealsDamageById = @{}
+$skillClassById = @{}
 foreach ($skill in @($skillDocument.skills)) {
     $skillDealsDamageById[[string]$skill.skillId] = -not [string]::IsNullOrEmpty([string]$skill.serverDamageProfileId)
+	$skillClassById[[string]$skill.skillId] = [string]$skill.characterClass
 }
 
 function Assert-HitShapeExtent([object]$Hit, [string]$SkillId) {
@@ -4497,6 +4596,8 @@ function Format-HitShapes {
 
 $hitShapeRows = [Collections.Generic.List[string]]::new()
 $hitShapeSeen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$hitShapeDocumentClasses = [Collections.Generic.HashSet[string]]::new(
+	[StringComparer]::Ordinal)
 foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animation\HitShapes') `
         -Filter '*.hitshapes.json' -File -ErrorAction SilentlyContinue | Sort-Object Name)) {
     $document = Read-JsonDocument ('Data/Animation/HitShapes/' + $path.Name)
@@ -4506,6 +4607,11 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
         [uint32]$document.formatVersion -ne 3) {
         throw "Hit shape header is invalid: $($path.Name)"
     }
+	$documentClass = [string]$document.characterClass
+	if ($documentClass -notin $supportedPlayerClasses -or
+		-not $hitShapeDocumentClasses.Add($documentClass)) {
+		throw "Hit shape document class is unknown or duplicated: $documentClass"
+	}
     foreach ($entry in @($document.skills)) {
         $id = [string]$entry.skillId
         if (-not $skillDurationById.ContainsKey($id)) {
@@ -4514,6 +4620,9 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
         if (-not $skillDealsDamageById[$id]) {
             throw "Hit shapes target a skill without a damage profile: $id"
         }
+		if ([string]$skillClassById[$id] -cne $documentClass) {
+			throw "Hit shapes target another class's skill: $documentClass/$id"
+		}
         if (-not $hitShapeSeen.Add($id)) {
             throw "Duplicate hit shape entry: $id"
         }
@@ -4600,6 +4709,42 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
     }
 }
 
+# Partial source coverage is admitted intentionally: the Server preserves its
+# existing maximumRange single-target fallback for those skills. A whole class
+# with zero authored coverage is different -- that usually means its document
+# was omitted -- and is rejected rather than silently shipping no diagnostics.
+$hitShapeCoverageParts = [Collections.Generic.List[string]]::new()
+$totalDamagingSkills = 0
+$totalAuthoredHitShapeSkills = 0
+foreach ($characterClass in $supportedPlayerClasses) {
+	$damagingSkillIds = @($skillDocument.skills | Where-Object {
+		[string]$_.characterClass -ceq $characterClass -and
+		-not [string]::IsNullOrEmpty([string]$_.serverDamageProfileId)
+	} | ForEach-Object { [string]$_.skillId })
+	$authoredSkillIds = @($damagingSkillIds | Where-Object {
+		$hitShapeSeen.Contains($_)
+	})
+	$missingSkillIds = @($damagingSkillIds | Where-Object {
+		-not $hitShapeSeen.Contains($_)
+	})
+	if ($damagingSkillIds.Count -gt 0 -and $authoredSkillIds.Count -eq 0) {
+		throw "Player hit-shape coverage is zero for class: $characterClass"
+	}
+	if ($missingSkillIds.Count -gt 0) {
+		Write-Warning ("Player hit-shape coverage is partial: {0} {1}/{2}; " +
+			"maximumRange fallback skillIds=[{3}]" -f $characterClass,
+			$authoredSkillIds.Count, $damagingSkillIds.Count,
+			($missingSkillIds -join ','))
+	}
+	$totalDamagingSkills += $damagingSkillIds.Count
+	$totalAuthoredHitShapeSkills += $authoredSkillIds.Count
+	$hitShapeCoverageParts.Add(('{0}={1}/{2}' -f $characterClass,
+		$authoredSkillIds.Count, $damagingSkillIds.Count))
+}
+Write-Host ("Player hit-shape authored coverage: {0}; TOTAL={1}/{2}." -f
+	($hitShapeCoverageParts -join '; '), $totalAuthoredHitShapeSkills,
+	$totalDamagingSkills)
+
 # The loader reads an indexed row kind in file order and requires each index to
 # equal the count it has already appended. A plain text sort puts "10" between
 # "1" and "2", so a rotation, stage or hit list that reaches ten entries would
@@ -4685,7 +4830,7 @@ $rows = @($damageRows + $skillRows + $playerRows + $bossRows +
 	$bossPartRows + $combatObjectRows + $rootMotionRows + $hitShapeRows +
 	$patternRows + @($presentationGenerationRow) | Sort-Object -Property @{
 		Expression = { Get-BootstrapRowSortKey -Row $_ } })
-$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 30 } elseif (
+$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 32 } elseif (
 	$rotationFormatVersion -eq 3) { 21 } else { 18 }
 $lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t$gameplayBootstrapVersion`t$($rows.Count)") + $rows
 

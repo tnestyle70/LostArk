@@ -31,6 +31,83 @@ CUE_FIELDS = {
     "startMs",
 }
 
+PROJECT_AUTHORED_SEMANTIC_CUES = {
+    "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.01": {
+        "bindingId":
+            "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.01",
+        "occurrenceId":
+            "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.01.occurrence.01",
+        "patternId": "VALTAN_GROUND_ROAR",
+        "stageId": "STEP_01",
+        "actionId": "valtan.sequence.sequence.400440.0.step-01",
+        "clipOccurrenceId":
+            "valtan.sequence.sequence.400440.0.step-01.clip-01",
+        "soundBank": "S_Mob_G_Voltan2",
+        "soundEvent": "G_Voltan2_Attack09_ProjCreat1",
+        "repeatPolicy": "once",
+        "startMs": 1,
+    },
+    "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.02": {
+        "bindingId":
+            "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.02",
+        "occurrenceId":
+            "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.02.occurrence.01",
+        "patternId": "VALTAN_GROUND_ROAR",
+        "stageId": "STEP_01",
+        "actionId": "valtan.sequence.sequence.400440.0.step-01",
+        "clipOccurrenceId":
+            "valtan.sequence.sequence.400440.0.step-01.clip-01",
+        "soundBank": "S_Mob_G_Voltan2",
+        "soundEvent": "G_Voltan2_FootStep1",
+        "repeatPolicy": "once",
+        "startMs": 600,
+    },
+    "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.03": {
+        "bindingId":
+            "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.03",
+        "occurrenceId":
+            "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.03.occurrence.01",
+        "patternId": "VALTAN_GROUND_ROAR",
+        "stageId": "STEP_01",
+        "actionId": "valtan.sequence.sequence.400440.0.step-01",
+        "clipOccurrenceId":
+            "valtan.sequence.sequence.400440.0.step-01.clip-01",
+        "soundBank": "S_Mob_G_Voltan2",
+        "soundEvent": "G_Voltan2_FootStep1",
+        "repeatPolicy": "once",
+        "startMs": 1300,
+    },
+    "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.04": {
+        "bindingId":
+            "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.04",
+        "occurrenceId":
+            "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.04.occurrence.01",
+        "patternId": "VALTAN_GROUND_ROAR",
+        "stageId": "STEP_01",
+        "actionId": "valtan.sequence.sequence.400440.0.step-01",
+        "clipOccurrenceId":
+            "valtan.sequence.sequence.400440.0.step-01.clip-01",
+        "soundBank": "S_Mob_G_Voltan2",
+        "soundEvent": "G_Voltan2_Attack02_Shot1",
+        "repeatPolicy": "once",
+        "startMs": 1300,
+    },
+    "cue.sound.valtan.reaction.part-break.recovery.clip-01.01": {
+        "bindingId":
+            "cue.sound.valtan.reaction.part-break.recovery.clip-01.01",
+        "occurrenceId":
+            "cue.sound.valtan.reaction.part-break.recovery.clip-01.01.occurrence.01",
+        "patternId": "VALTAN_PART_BREAK",
+        "stageId": "PART_BREAK_RECOVERY",
+        "actionId": "valtan.reaction.part-break.recovery",
+        "clipOccurrenceId": "valtan.reaction.part-break.recovery.clip.01",
+        "soundBank": "S_Mob_G_Voltan2",
+        "soundEvent": "G_Voltan2_Attack09_ProjCreat1",
+        "repeatPolicy": "once",
+        "startMs": 1,
+    },
+}
+
 
 def validate_document(document: dict, pattern_bindings: dict, encounter: dict) -> None:
     if not isinstance(document, dict) or set(document) != ROOT_FIELDS:
@@ -110,7 +187,7 @@ class ValtanPatternSoundCueContractTests(unittest.TestCase):
     def test_authored_document_has_exact_join_and_identity_contract(self) -> None:
         validate_document(self.document, self.pattern_bindings, self.encounter)
 
-    def test_authored_document_is_the_deterministic_extracted_projection(self) -> None:
+    def test_authored_rows_are_deterministic_extracted_joins(self) -> None:
         rows = builder.parse_sound_rows(builder.ANIMEVENTS_PATH)
         cues, stats = builder.build_cues(
             rows,
@@ -125,8 +202,30 @@ class ValtanPatternSoundCueContractTests(unittest.TestCase):
                 cue["occurrenceId"],
             )
         )
-        self.assertEqual(cues, self.document["cues"])
-        self.assertEqual(len(cues), stats["matched"])
+        # Pattern Sound is an independently writable typed source: authors may
+        # intentionally isolate noisy native events from selected Product
+        # occurrences. Native rows remain exact deterministic extraction. The
+        # explicit Ground Roar/Part Break semantic rows have no matching
+        # animation notify; keep those exceptions closed over complete rows.
+        projected_by_binding = {row["bindingId"]: row for row in cues}
+        self.assertEqual(len(cues), len(projected_by_binding))
+        for authored in self.document["cues"]:
+            semantic = PROJECT_AUTHORED_SEMANTIC_CUES.get(
+                authored["bindingId"]
+            )
+            if semantic is not None:
+                self.assertEqual(semantic, authored, authored["bindingId"])
+                continue
+            self.assertEqual(
+                projected_by_binding.get(authored["bindingId"]),
+                authored,
+                authored["bindingId"],
+            )
+        self.assertGreaterEqual(
+            stats["matched"],
+            len(self.document["cues"]) -
+            len(PROJECT_AUTHORED_SEMANTIC_CUES),
+        )
         self.assertGreater(stats["matched"], 0)
 
     def test_invalid_identity_join_window_and_repeat_are_fail_closed(self) -> None:

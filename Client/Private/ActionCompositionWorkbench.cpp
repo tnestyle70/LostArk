@@ -408,8 +408,40 @@ namespace
 		return {};
 	}
 
+	std::string StageSequenceRoleLabel(
+		const Client::VALTAN_STAGE_VIEW& Stage)
+	{
+		const std::string& Role = Stage.strSequenceRole.empty() ?
+			Stage.strStageKind : Stage.strSequenceRole;
+		return "WAIT" == Role ? "WAIT (blank gap)" : Role;
+	}
+
+	bool_t IsRoleAwareHoldReplacementChain(
+		const std::vector<std::string>& Roles)
+	{
+		if (Roles.size() < 3u || "start" != Roles.front())
+			return false;
+		std::size_t iRole = 1u;
+		const std::size_t iLoopBegin = iRole;
+		while (iRole < Roles.size() && "loop" == Roles[iRole])
+			++iRole;
+		if (iRole == iLoopBegin || iRole >= Roles.size() ||
+			"end" != Roles[iRole])
+		{
+			return false;
+		}
+		++iRole;
+		return std::all_of(
+			Roles.begin() + static_cast<std::ptrdiff_t>(iRole), Roles.end(),
+			[](const std::string& Role)
+			{
+				return Role.empty();
+			});
+	}
+
 	bool_t FitCompositionSequenceCutsToStage(
 		const std::vector<uint32_t>& RequestedCutsMs,
+		const std::vector<std::string>& Roles,
 		const uint32_t iStageDurationMs,
 		std::vector<uint32_t>& OutFittedCutsMs,
 		std::string& Status)
@@ -419,33 +451,49 @@ namespace
 			RequestedCutsMs.begin(), RequestedCutsMs.end(), uint64_t{ 0u });
 		if (iRequestedTotalMs <= iStageDurationMs)
 			return true;
-		if (RequestedCutsMs.size() < 3u)
+		if (RequestedCutsMs.size() != Roles.size() ||
+			!IsRoleAwareHoldReplacementChain(Roles))
 		{
-			Status =
-				"Replace rejected: this Sequence is longer than the selected Server Stage. Only a start / loop / end HOLD chain can be fitted without guessing which authored edge to trim.";
+			Status = "Replace rejected: this Sequence requires " +
+				std::to_string(iRequestedTotalMs) +
+				" ms, but the selected Server Stage is " +
+				std::to_string(iStageDurationMs) +
+				" ms. Only start / one-or-more loop / end / optional untagged tail HOLD chains have a deterministic fit policy.";
 			return false;
 		}
 
-		const std::size_t iMiddleCount = RequestedCutsMs.size() - 2u;
-		const uint64_t iFixedEdgeMs =
-			static_cast<uint64_t>(RequestedCutsMs.front()) +
-			RequestedCutsMs.back();
-		if (iFixedEdgeMs + iMiddleCount > iStageDurationMs)
+		std::vector<std::size_t> LoopIndices;
+		uint64_t iFixedEdgeMs = 0u;
+		uint64_t iRequestedLoopMs = 0u;
+		for (std::size_t iClip = 0u; iClip < Roles.size(); ++iClip)
 		{
-			Status =
-				"Replace rejected: the Sequence start/end cuts leave no positive loop window inside the selected Server Stage clock.";
+			if ("loop" == Roles[iClip])
+			{
+				LoopIndices.push_back(iClip);
+				iRequestedLoopMs += RequestedCutsMs[iClip];
+			}
+			else
+			{
+				iFixedEdgeMs += RequestedCutsMs[iClip];
+			}
+		}
+		if (iFixedEdgeMs + LoopIndices.size() > iStageDurationMs)
+		{
+			Status = "Replace rejected: fixed start/end/tail clips require " +
+				std::to_string(iFixedEdgeMs) + " ms plus " +
+				std::to_string(LoopIndices.size()) +
+				" positive loop occurrence(s), but the selected Server Stage is " +
+				std::to_string(iStageDurationMs) + " ms.";
 			return false;
 		}
 
 		uint64_t iRemainingBudgetMs = iStageDurationMs - iFixedEdgeMs;
-		uint64_t iRemainingRequestedMs = std::accumulate(
-			RequestedCutsMs.begin() + 1u, RequestedCutsMs.end() - 1u,
-			uint64_t{ 0u });
-		for (std::size_t iClip = 1u;
-			iClip + 1u < RequestedCutsMs.size(); ++iClip)
+		uint64_t iRemainingRequestedMs = iRequestedLoopMs;
+		for (std::size_t iLoop = 0u; iLoop < LoopIndices.size(); ++iLoop)
 		{
+			const std::size_t iClip = LoopIndices[iLoop];
 			const std::size_t iRemainingClipCount =
-				RequestedCutsMs.size() - iClip - 2u;
+				LoopIndices.size() - iLoop - 1u;
 			uint64_t iAllocationMs = iRemainingBudgetMs;
 			if (0u != iRemainingClipCount)
 			{
@@ -464,7 +512,10 @@ namespace
 				iRemainingRequestedMs,
 				static_cast<uint64_t>(RequestedCutsMs[iClip]));
 		}
-		Status = "Fitted the extracted HOLD chain to the existing Server Stage clock.";
+		Status = "Fitted only the loop clip window of the extracted HOLD chain from " +
+			std::to_string(iRequestedTotalMs) + " ms to the existing " +
+			std::to_string(iStageDurationMs) +
+			" ms Server Stage clock; start/end/tail cuts were preserved.";
 		return true;
 	}
 
@@ -582,52 +633,6 @@ namespace
 			left.LocalTransform.vScale.z == right.LocalTransform.vScale.z;
 	}
 
-	bool_t BuildNextManualStageIdentity(
-		const Client::VALTAN_PATTERN_VIEW& Pattern,
-		std::string& strOutStageId,
-		std::string& strOutActionId)
-	{
-		for (std::size_t ordinal = 1u; ordinal <= 9999u; ++ordinal)
-		{
-			std::ostringstream suffix;
-			suffix << std::setw(2) << std::setfill('0') << ordinal;
-			const std::string stageId = "COMPOSITION_" + suffix.str();
-			std::string actionId = Pattern.strActionId +
-				".composition-stage." + suffix.str();
-			if (actionId.size() > 160u)
-			{
-				uint64_t hash = 1469598103934665603ull;
-				for (const unsigned char ch : Pattern.strPatternId)
-				{
-					hash ^= ch;
-					hash *= 1099511628211ull;
-				}
-				std::ostringstream compact;
-				compact << "valtan.composition." << std::hex <<
-					std::setw(16) << std::setfill('0') << hash <<
-					std::dec << ".stage." << suffix.str();
-				actionId = compact.str();
-			}
-			const bool_t stageExists = std::any_of(
-				Pattern.Stages.begin(), Pattern.Stages.end(),
-				[&stageId](const Client::VALTAN_STAGE_VIEW& Stage)
-				{ return Stage.strStageId == stageId; });
-			const bool_t actionExists = std::any_of(
-				Pattern.Stages.begin(), Pattern.Stages.end(),
-				[&actionId](const Client::VALTAN_STAGE_VIEW& Stage)
-				{ return Stage.strActionId == actionId; });
-			if (!stageExists && !actionExists)
-			{
-				strOutStageId = stageId;
-				strOutActionId = actionId;
-				return true;
-			}
-		}
-		strOutStageId.clear();
-		strOutActionId.clear();
-		return false;
-	}
-
 	bool_t ComputeExactAnimationWallMs(
 		const Client::CBalanceTool::PATTERN_STAGE_EDIT& Draft,
 		uint32_t& iOutWallMs)
@@ -725,14 +730,89 @@ namespace
 		return true;
 	}
 
+	bool_t InitializeDefaultValtanColliderBoxDraft(
+		Client::CBalanceTool::PATTERN_STAGE_EDIT& Draft,
+		const std::vector<std::string>& DamageProfiles,
+		const int32_t iRequestedDamageProfile,
+		std::string& Status)
+	{
+		if (!Draft.colliderAddAdmitted || "NONE" != Draft.hitShape)
+		{
+			Status =
+				"New Server collider BOX creation is not admitted for this Stage.";
+			return false;
+		}
+		if (DamageProfiles.empty())
+		{
+			Status =
+				"New Server collider BOX creation requires one admitted damage.valtan. profile.";
+			return false;
+		}
+
+		const int32_t iDamageProfile = (std::clamp)(
+			iRequestedDamageProfile, 0,
+			static_cast<int32_t>(DamageProfiles.size() - 1u));
+		Draft.hitShape = "BOX";
+		Draft.hitOuterRadius = 0.0;
+		Draft.hitInnerRadius = 0.0;
+		Draft.hitAngleDegrees = 0.0;
+		Draft.hitLength = 8.0;
+		Draft.hitHalfWidth = 2.5;
+		Draft.hitCount = 1u;
+		Draft.hitIntervalMs = 0u;
+		Draft.hitDelayMs = 0u;
+		Draft.hitOffsetsMs.clear();
+		Draft.hasHitActivation = false;
+		Draft.hitActivationStartMs = 0u;
+		Draft.hitActivationLifetimeMs = 0u;
+		Draft.hasHitAnchor = false;
+		Draft.hitAnchorKind = "BOSS_CURRENT";
+		Draft.hitAnchorForwardOffsetM = 0.0;
+		Draft.hitAnchorRightOffsetM = 0.0;
+		Draft.hitAnchorYawOffsetDegrees = 0.0;
+		Draft.damageProfileId = DamageProfiles[
+			static_cast<std::size_t>(iDamageProfile)];
+		Draft.pushRangeM = 0.0;
+		Draft.pushMs = 0u;
+		Draft.knockdown = false;
+		Draft.downMs = 0u;
+		Draft.playerResponse = "DAMAGE";
+		Draft.attachmentSlot = "NONE";
+		Status =
+			"Created a Server collider BOX draft (8.00 m x 2.50 m half-width).";
+		return true;
+	}
+
 	bool_t ResolveValtanColliderScheduleEndpoints(
 		const Client::CBalanceTool::PATTERN_STAGE_EDIT& Draft,
 		uint32_t& iOutFirstMs,
 		uint32_t& iOutLastMs,
 		std::string& Status)
 	{
-		if ("NONE" == Draft.hitShape || 0u == Draft.hitCount ||
-			0u == Draft.durationMs)
+		if ("NONE" == Draft.hitShape || 0u == Draft.durationMs)
+		{
+			Status =
+				"Collider timing edit requires one admitted Server hit schedule or active window.";
+			return false;
+		}
+		if (Draft.hasHitActivation)
+		{
+			const uint64_t iActivationEndMs =
+				static_cast<uint64_t>(Draft.hitActivationStartMs) +
+				Draft.hitActivationLifetimeMs;
+			if (0u == Draft.hitActivationLifetimeMs ||
+				Draft.hitActivationStartMs >= Draft.durationMs ||
+				iActivationEndMs > Draft.durationMs)
+			{
+				Status =
+					"Collider active window extends past its Server Stage clock.";
+				return false;
+			}
+			iOutFirstMs = Draft.hitActivationStartMs;
+			iOutLastMs = static_cast<uint32_t>(iActivationEndMs);
+			return true;
+		}
+		if (0u == Draft.hitCount)
 		{
 			Status =
 				"Collider timing edit requires one admitted Server hit schedule.";
@@ -787,13 +867,29 @@ namespace
 		{
 			return false;
 		}
+		const int64_t iLatestDeltaMs = Draft.hasHitActivation ?
+			static_cast<int64_t>(Draft.durationMs) - iLastMs :
+			static_cast<int64_t>(Draft.durationMs - 1u - iLastMs);
 		const int64_t iAppliedDeltaMs = (std::clamp)(
 			iRequestedDeltaMs,
 			-static_cast<int64_t>(iFirstMs),
-			static_cast<int64_t>(Draft.durationMs - 1u - iLastMs));
+			iLatestDeltaMs);
 		if (0 == iAppliedDeltaMs)
 		{
-			Status = "Collider pulse schedule start is unchanged.";
+			Status = Draft.hasHitActivation ?
+				"Collider active-window start is unchanged." :
+				"Collider pulse schedule start is unchanged.";
+			return true;
+		}
+		if (Draft.hasHitActivation)
+		{
+			Draft.hitActivationStartMs = static_cast<uint32_t>(
+				static_cast<int64_t>(Draft.hitActivationStartMs) +
+				iAppliedDeltaMs);
+			Status =
+				"Moved the Server collider active window by " +
+				std::to_string(iAppliedDeltaMs) +
+				" ms while preserving its lifetime. Use Save when ready.";
 			return true;
 		}
 		if (Draft.hitOffsetsMs.empty())
@@ -828,6 +924,35 @@ namespace
 				Draft, iFirstMs, iLastMs, Status))
 		{
 			return false;
+		}
+		if (Draft.hasHitActivation)
+		{
+			const uint32_t iClampedEndpointMs = bResizeStart ?
+				(std::clamp)(iRequestedEndpointMs, 0u, iLastMs - 1u) :
+				(std::clamp)(iRequestedEndpointMs,
+					iFirstMs + 1u, Draft.durationMs);
+			if ((bResizeStart && iFirstMs == iClampedEndpointMs) ||
+				(!bResizeStart && iLastMs == iClampedEndpointMs))
+			{
+				Status = bResizeStart ?
+					"Collider active-window start is unchanged." :
+					"Collider active-window end is unchanged.";
+				return true;
+			}
+			if (bResizeStart)
+			{
+				Draft.hitActivationStartMs = iClampedEndpointMs;
+				Draft.hitActivationLifetimeMs = iLastMs - iClampedEndpointMs;
+			}
+			else
+			{
+				Draft.hitActivationLifetimeMs =
+					iClampedEndpointMs - iFirstMs;
+			}
+			Status = bResizeStart ?
+				"Resized the Server collider active-window start while preserving its end. Use Save when ready." :
+				"Resized the Server collider active-window end while preserving its start. Use Save when ready.";
+			return true;
 		}
 		if (Draft.hitCount < 2u)
 		{
@@ -889,13 +1014,28 @@ namespace
 			Left.hitIntervalMs == Right.hitIntervalMs &&
 			Left.hitDelayMs == Right.hitDelayMs &&
 			Left.hitOffsetsMs == Right.hitOffsetsMs &&
+			Left.hasHitAnchor == Right.hasHitAnchor &&
+			Left.hitAnchorKind == Right.hitAnchorKind &&
+			Left.hitAnchorForwardOffsetM ==
+				Right.hitAnchorForwardOffsetM &&
+			Left.hitAnchorRightOffsetM == Right.hitAnchorRightOffsetM &&
+			Left.hitAnchorYawOffsetDegrees ==
+				Right.hitAnchorYawOffsetDegrees &&
+			Left.hasHitActivation == Right.hasHitActivation &&
+			Left.hitActivationStartMs == Right.hitActivationStartMs &&
+			Left.hitActivationLifetimeMs ==
+				Right.hitActivationLifetimeMs &&
 			Left.damageProfileId == Right.damageProfileId &&
 			Left.pushRangeM == Right.pushRangeM &&
 			Left.pushMs == Right.pushMs &&
 			Left.knockdown == Right.knockdown &&
 			Left.downMs == Right.downMs &&
 			Left.playerResponse == Right.playerResponse &&
-			Left.attachmentSlot == Right.attachmentSlot;
+			Left.attachmentSlot == Right.attachmentSlot &&
+			Left.hasGripLocalOffset == Right.hasGripLocalOffset &&
+			Left.gripForwardM == Right.gripForwardM &&
+			Left.gripUpM == Right.gripUpM &&
+			Left.gripRightM == Right.gripRightM;
 	}
 
 	Client::VALTAN_STAGE_VIEW BuildPatternSoundCandidateStage(
@@ -2188,21 +2328,12 @@ bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage(
 			"This Stage does not admit Animation slot edits." : std::move(Status);
 		return false;
 	}
-	if (bAppend && std::any_of(
-			Draft.animationSlots.begin(), Draft.animationSlots.end(),
-			[](const CBalanceTool::ANIMATION_SLOT_EDIT& Slot)
-			{
-				return 0u == Slot.playMs || Slot.repeatUntilStageEnd;
-			}))
-	{
-		m_strStatus =
-			"Append rejected: convert the current looping/native-duration slot to an exact wall-clock first.";
-		return false;
-	}
 	std::vector<uint32_t> NativeDurationsMs;
 	NativeDurationsMs.reserve(Selected->Clips.size());
 	std::vector<uint32_t> RequestedCutsMs;
 	RequestedCutsMs.reserve(Selected->Clips.size());
+	std::vector<std::string> ReplacementRoles;
+	ReplacementRoles.reserve(Selected->Clips.size());
 	for (std::size_t iClip = 0u; iClip < Selected->Clips.size(); ++iClip)
 	{
 		const CAnimation_Tool::COMPOSITION_SEQUENCE_CLIP_VIEW& Clip =
@@ -2223,28 +2354,41 @@ bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage(
 		}
 		NativeDurationsMs.push_back(iNativeDurationMs);
 		RequestedCutsMs.push_back(Clip.iDurationMs);
+		ReplacementRoles.push_back(ClipReplacementRole(Clip.strClipName));
 	}
 
 	std::vector<uint32_t> FittedCutsMs = RequestedCutsMs;
 	std::string FitStatus;
 	const uint64_t iRequestedSequenceMs = std::accumulate(
 		RequestedCutsMs.begin(), RequestedCutsMs.end(), uint64_t{ 0u });
+	if (bAppend && std::any_of(
+			Draft.animationSlots.begin(), Draft.animationSlots.end(),
+			[](const CBalanceTool::ANIMATION_SLOT_EDIT& Slot)
+			{
+				return 0u == Slot.playMs || Slot.repeatUntilStageEnd;
+			}))
+	{
+		m_strStatus = "Append rejected: the selected Sequence would require at least " +
+			std::to_string(static_cast<uint64_t>(Draft.durationMs) +
+				iRequestedSequenceMs) +
+			" ms. Convert the current looping/native-duration slot to an exact wall-clock first, then append.";
+		return false;
+	}
 	if (!bAppend && iRequestedSequenceMs > Draft.durationMs)
 	{
 		const bool_t bDeterministicHoldChain =
-			3u == Selected->Clips.size() &&
-			"start" == ClipReplacementRole(
-				Selected->Clips[0u].strClipName) &&
-			"loop" == ClipReplacementRole(
-				Selected->Clips[1u].strClipName) &&
-			"end" == ClipReplacementRole(
-				Selected->Clips[2u].strClipName);
+			IsRoleAwareHoldReplacementChain(ReplacementRoles);
 		if ("HOLD" != Selected->strMode || !bDeterministicHoldChain ||
 			!FitCompositionSequenceCutsToStage(
-				RequestedCutsMs, Draft.durationMs, FittedCutsMs, FitStatus))
+				RequestedCutsMs, ReplacementRoles, Draft.durationMs,
+				FittedCutsMs, FitStatus))
 		{
 			m_strStatus = FitStatus.empty() ?
-				"Replace rejected: the selected Sequence exceeds the existing Server Stage clock and has no deterministic HOLD-chain fit policy." :
+				"Replace rejected: the selected Sequence requires " +
+					std::to_string(iRequestedSequenceMs) +
+					" ms, but the selected Server Stage is " +
+					std::to_string(Draft.durationMs) +
+					" ms and has no deterministic role-aware HOLD-chain fit policy." :
 				std::move(FitStatus);
 			return false;
 		}
@@ -3709,7 +3853,7 @@ void Client::CActionCompositionWorkbench::Build_Timeline(
 		m_TimelineItems.push_back({
 			DETAIL_OWNER::GAMEPLAY_STAGE, TIMELINE_LANE::STAGE, Pattern.strPatternId,
 			Stage.strStageId, Stage.strStageId, {},
-			Stage.strStageId + " | " + Stage.strStageKind,
+			Stage.strStageId + " | " + StageSequenceRoleLabel(Stage),
 			iStageStartMs, iStageEndMs,
 			bHasStageDraft && StageDraft.durationEditable });
 
@@ -3717,6 +3861,12 @@ void Client::CActionCompositionWorkbench::Build_Timeline(
 			StageDraft.hitShape : Stage.strHitShape;
 		if (!strEffectiveHitShape.empty() && "NONE" != strEffectiveHitShape)
 		{
+			const bool_t bHasHitActivation = bHasStageDraft ?
+				StageDraft.hasHitActivation : Stage.bHasHitActivation;
+			const uint32_t iHitActivationStartMs = bHasStageDraft ?
+				StageDraft.hitActivationStartMs : Stage.iHitActivationStartMs;
+			const uint32_t iHitActivationLifetimeMs = bHasStageDraft ?
+				StageDraft.hitActivationLifetimeMs : Stage.iHitActivationLifetimeMs;
 			const uint32_t iHitDelayMs = bHasStageDraft ?
 				StageDraft.hitDelayMs : Stage.iHitDelayMs;
 			const uint32_t iHitIntervalMs = bHasStageDraft ?
@@ -3727,7 +3877,15 @@ void Client::CActionCompositionWorkbench::Build_Timeline(
 				StageDraft.hitOffsetsMs : Stage.HitOffsetsMs;
 			uint32_t iFirstHitMs = iHitDelayMs;
 			uint32_t iLastHitMs = iHitDelayMs;
-			if (!HitOffsets.empty())
+			if (bHasHitActivation)
+			{
+				iFirstHitMs = iHitActivationStartMs;
+				iLastHitMs = static_cast<uint32_t>((std::min)(
+					static_cast<uint64_t>(iStageDurationMs),
+					static_cast<uint64_t>(iHitActivationStartMs) +
+						iHitActivationLifetimeMs));
+			}
+			else if (!HitOffsets.empty())
 			{
 				iFirstHitMs = *std::min_element(
 					HitOffsets.begin(), HitOffsets.end());
@@ -3743,11 +3901,14 @@ void Client::CActionCompositionWorkbench::Build_Timeline(
 				Pattern.strPatternId, Stage.strStageId,
 				Stage.strStageId + "/collider", {},
 				strEffectiveHitShape + " | " +
-					std::to_string(iHitCount) + " hit(s)",
+					(bHasHitActivation ?
+						"active " + std::to_string(iHitActivationLifetimeMs) +
+							" ms" :
+						std::to_string(iHitCount) + " hit(s)"),
 				iStageStartMs + (std::min)(iFirstHitMs, iStageDurationMs),
 				iStageStartMs + (std::min)(
 					iLastHitMs, iStageDurationMs),
-				bHasStageDraft && StageDraft.hitEditable });
+				bHasStageDraft && StageDraft.colliderTuneAdmitted });
 		}
 
 		for (const VALTAN_STAGE_BRANCH_VIEW& Branch : Stage.Branches)
@@ -3932,17 +4093,26 @@ void Client::CActionCompositionWorkbench::Build_Timeline(
 		for (const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& Object :
 			Stage.CombatObjectEffects)
 		{
-			const uint32_t iObjectEndMs = static_cast<uint32_t>(
+			const uint32_t iObjectStartMs = static_cast<uint32_t>(
 				SaturatingU32(static_cast<uint64_t>(iStageStartMs) +
+					Object.iFirstSpawnOffsetMs));
+			const uint32_t iObjectEndMs = static_cast<uint32_t>(
+				SaturatingU32(static_cast<uint64_t>(iObjectStartMs) +
 					Object.iLifetimeMs));
+			const std::string& strTimelineResource =
+				Object.strEffectV2GroupId.empty() ? Object.strEffectAssetId :
+					Object.strEffectV2GroupId;
 			m_TimelineItems.push_back({
 				DETAIL_OWNER::COMBAT_OBJECT, TIMELINE_LANE::EFFECT, Pattern.strPatternId,
 				Stage.strStageId, Object.strCombatObjectArchetypeId,
-				Object.strEffectAssetId,
+				strTimelineResource,
 				"Server Combat Object (read-only) x" +
 					std::to_string(Object.iSpawnValue) +
-					" | " + Object.strEffectAssetId,
-				iStageStartMs,
+					" @+" + std::to_string(Object.iFirstSpawnOffsetMs) +
+					"ms | " +
+					(Object.strEffectV2GroupId.empty() ? "V1 " : "V2 Group ") +
+					strTimelineResource,
+				iObjectStartMs,
 				iObjectEndMs,
 				false });
 		}
@@ -4503,11 +4673,11 @@ Validate_ManualStageTopologySoundDependencies(
 
 bool_t Client::CActionCompositionWorkbench::Save_Reload()
 {
-	if (VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission || nullptr == m_pBalanceTool ||
-		nullptr == m_pBossTool)
+	if (VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission ||
+		nullptr == m_pBalanceTool)
 	{
 		m_strStatus =
-			"Save is not ready. Reload the Pattern list and try again; no file was changed.";
+			"[Pattern] Save is not ready. Reload the Pattern list and try again; no file was changed.";
 		return false;
 	}
 	std::string CurrentAuthoringRevision;
@@ -4524,62 +4694,86 @@ bool_t Client::CActionCompositionWorkbench::Save_Reload()
 	{
 		m_eAdmission = VALTAN_VIEW_ADMISSION::STALE_PRESERVED;
 		m_strStatus =
-			"The Pattern files changed after this window opened. Reload, then try again; no file was changed. " +
+			"[Pattern] The Pattern files changed after this window opened. Reload, then try again; no file was changed. " +
 			CurrentRevisionStatus;
 		return false;
 	}
+	const bool_t bSavePattern = bCurrentAuthoringDirty;
 	std::string SoundStatus;
 	const bool_t bSaveSound = Is_PatternSoundDraftDirty(SoundStatus);
-	if (nullptr == m_pAnimationTool)
+	const bool_t bSaveEffectV2 =
+		CEffectV2Catalog::Get().Has_BossValtanBindingDraft();
+	if (!bSavePattern && !bSaveSound && !bSaveEffectV2)
 	{
 		m_strStatus =
-			"Sound data is not ready. Reopen the Workbench and try again; no file was changed.";
+			"There are no staged Pattern, Sound, or Effect V2 changes to save.";
+		return true;
+	}
+	if (nullptr == m_pBossTool)
+	{
+		m_strStatus =
+			"[Pipeline] Save is not ready because the Boss Tool transaction/reload owner is unavailable; no file was changed.";
 		return false;
 	}
-	if (!m_pAnimationTool->
+	if (bSavePattern && nullptr == m_pAnimationTool)
+	{
+		m_strStatus =
+			"[Pattern] The changed Pattern owner cannot run native Animation dependency validation because Animation Tool is unavailable; no file was changed.";
+		return false;
+	}
+	if (bSaveSound && nullptr == m_pAnimationTool)
+	{
+		m_strStatus =
+			"[Sound] The changed Sound owner is unavailable; no file was changed.";
+		return false;
+	}
+	if (bSaveSound && !m_pAnimationTool->
 			Can_CommitValtanCompositionPatternSoundGeneration(SoundStatus))
 	{
 		m_strStatus =
-			"Save is pinned while a Server Pattern occurrence owns the current Sound generation; no file was changed. " +
+			"[Sound] Save is pinned while a Server Pattern occurrence owns the current Sound generation; no file was changed. " +
 			SoundStatus;
 		return false;
 	}
 	std::vector<VALTAN_PATTERN_VIEW> BaselinePatterns;
 	std::vector<VALTAN_PATTERN_VIEW> CandidatePatterns;
-	const std::vector<const VALTAN_PATTERN_VIEW*> Patterns =
-		Collect_CanonicalPatternsForDependencyValidation();
-	BaselinePatterns.reserve(Patterns.size());
-	CandidatePatterns.reserve(Patterns.size());
-	for (const VALTAN_PATTERN_VIEW* const pPattern : Patterns)
+	if (bSavePattern || bSaveSound)
 	{
-		BaselinePatterns.push_back(*pPattern);
-		VALTAN_PATTERN_VIEW Candidate = *pPattern;
-		if (pPattern->bAuthoringMasterManaged &&
-			!m_pBalanceTool->Get_ValtanPatternDraft(
-				pPattern->strPatternId, Candidate, SoundStatus))
+		const std::vector<const VALTAN_PATTERN_VIEW*> Patterns =
+			Collect_CanonicalPatternsForDependencyValidation();
+		BaselinePatterns.reserve(Patterns.size());
+		CandidatePatterns.reserve(Patterns.size());
+		for (const VALTAN_PATTERN_VIEW* const pPattern : Patterns)
 		{
-			m_strStatus =
-				"Pattern data could not be prepared; no file was changed. " +
-				SoundStatus;
-			return false;
+			BaselinePatterns.push_back(*pPattern);
+			VALTAN_PATTERN_VIEW Candidate = *pPattern;
+			if (pPattern->bAuthoringMasterManaged &&
+				!m_pBalanceTool->Get_ValtanPatternDraft(
+					pPattern->strPatternId, Candidate, SoundStatus))
+			{
+				m_strStatus =
+					"[Pattern] Pattern data could not be prepared; no file was changed. " +
+					SoundStatus;
+				return false;
+			}
+			CandidatePatterns.push_back(std::move(Candidate));
 		}
-		CandidatePatterns.push_back(std::move(Candidate));
 	}
-	if (!m_pAnimationTool->
+	if (bSavePattern && !m_pAnimationTool->
 			Validate_ValtanCompositionAnimationGraphMutations(
 				BaselinePatterns, CandidatePatterns, SoundStatus))
 	{
 		m_strStatus =
-			"The Animation links are invalid; no file was changed. " +
+			"[Pattern] The Animation links are invalid; no file was changed. " +
 			SoundStatus;
 		return false;
 	}
-	if (!m_pAnimationTool->
+	if (bSaveSound && !m_pAnimationTool->
 			Validate_ValtanCompositionPatternSoundGraphDependencies(
 				BaselinePatterns, CandidatePatterns, SoundStatus))
 	{
 		m_strStatus =
-			"The Sound links are invalid; no file was changed. " +
+			"[Sound] The Sound links are invalid; no file was changed. " +
 			SoundStatus;
 		return false;
 	}
@@ -4587,20 +4781,23 @@ bool_t Client::CActionCompositionWorkbench::Save_Reload()
 	std::string PatternSoundCandidateBytes;
 	uint64_t iPatternSoundDraftGeneration = 0u;
 	bool_t bPreparedPatternSoundDirty = false;
-	if (!m_pAnimationTool->Prepare_ValtanCompositionPatternSoundSave(
-			PatternSoundBaselineBytes, PatternSoundCandidateBytes,
-			iPatternSoundDraftGeneration, bPreparedPatternSoundDirty,
-			SoundStatus))
+	if (bSaveSound)
 	{
-		m_strStatus =
-			"Sound data could not be staged for the single Save transaction; no file was changed. " +
-			SoundStatus;
-		return false;
+		if (!m_pAnimationTool->Prepare_ValtanCompositionPatternSoundSave(
+				PatternSoundBaselineBytes, PatternSoundCandidateBytes,
+				iPatternSoundDraftGeneration, bPreparedPatternSoundDirty,
+				SoundStatus))
+		{
+			m_strStatus =
+				"[Sound] Sound data could not be staged for the single Save transaction; no file was changed. " +
+				SoundStatus;
+			return false;
+		}
 	}
 	if (bPreparedPatternSoundDirty != bSaveSound)
 	{
 		m_strStatus =
-			"Sound data changed while Save was being prepared; no file was changed. Try Save again.";
+			"[Sound] Sound data changed while Save was being prepared; no file was changed. Try Save again.";
 		return false;
 	}
 	std::string EffectV2BaselineBytes;
@@ -4608,20 +4805,23 @@ bool_t Client::CActionCompositionWorkbench::Save_Reload()
 	uint64_t iEffectV2DraftRevision = 0u;
 	bool_t bEffectV2Dirty = false;
 	std::string EffectV2Status;
-	if (!CEffectV2Catalog::Get().Prepare_BossValtanBindingDraftSave(
-			EffectV2BaselineBytes, EffectV2CandidateBytes,
-			iEffectV2DraftRevision, bEffectV2Dirty, EffectV2Status))
+	if (bSaveEffectV2)
+	{
+		if (!CEffectV2Catalog::Get().Prepare_BossValtanBindingDraftSave(
+				EffectV2BaselineBytes, EffectV2CandidateBytes,
+				iEffectV2DraftRevision, bEffectV2Dirty, EffectV2Status))
+		{
+			m_strStatus =
+				"[EffectV2] Effect V2 data could not be staged for the single Save transaction; no file was changed. " +
+				EffectV2Status;
+			return false;
+		}
+	}
+	if (bEffectV2Dirty != bSaveEffectV2)
 	{
 		m_strStatus =
-			"Effect V2 data could not be staged for the single Save transaction; no file was changed. " +
-			EffectV2Status;
+			"[EffectV2] Effect V2 data changed while Save was being prepared; no file was changed. Try Save again.";
 		return false;
-	}
-	if (!bCurrentAuthoringDirty && !bPreparedPatternSoundDirty &&
-		!bEffectV2Dirty)
-	{
-		m_strStatus = "There are no staged Pattern, Sound, or Effect V2 changes to save.";
-		return true;
 	}
 	CBalanceTool::VALTAN_COMPOSITION_OWNER_DRAFTS OwnerDrafts;
 	if (bPreparedPatternSoundDirty)
@@ -4639,7 +4839,7 @@ bool_t Client::CActionCompositionWorkbench::Save_Reload()
 	if (!m_pBalanceTool->Save_ValtanCompositionProduct(
 			OwnerDrafts, SaveStatus))
 	{
-		m_strStatus = "Nothing was saved. " +
+		m_strStatus = "[Pipeline] Nothing was saved. " +
 			SaveStatus;
 		return false;
 	}
@@ -4651,7 +4851,8 @@ bool_t Client::CActionCompositionWorkbench::Save_Reload()
 			SoundStatus))
 	{
 		bLocalReopenSucceeded = false;
-		LocalReopenStatus = " Pattern Sound reopen failed: " + SoundStatus;
+		LocalReopenStatus =
+			"[Sound] Pattern Sound reopen failed: " + SoundStatus;
 	}
 	if (bEffectV2Dirty &&
 		!CEffectV2Catalog::Get().Accept_BossValtanBindingDraftSave(
@@ -4659,7 +4860,12 @@ bool_t Client::CActionCompositionWorkbench::Save_Reload()
 			EffectV2Status))
 	{
 		bLocalReopenSucceeded = false;
-		LocalReopenStatus += " Effect V2 reopen failed: " + EffectV2Status;
+		if (LocalReopenStatus.empty())
+			LocalReopenStatus =
+				"[EffectV2] Effect V2 reopen failed: " + EffectV2Status;
+		else
+			LocalReopenStatus +=
+				" [EffectV2] Effect V2 reopen failed: " + EffectV2Status;
 	}
 	if (bPreparedPatternSoundDirty)
 		m_LastPatternSoundAutoApplyRevision = {};
@@ -4668,7 +4874,7 @@ bool_t Client::CActionCompositionWorkbench::Save_Reload()
 	{
 		const bool_t bWorkbenchReloaded = Reload_Canonical();
 		m_strStatus =
-			"Saved the canonical files. Boss Tool could not reopen the new revision; " +
+			"[Pipeline] Saved the canonical files. Boss Tool could not reopen the new revision; " +
 			std::string(bWorkbenchReloaded ?
 				"this Workbench did reload it. " :
 				"this Workbench also remains on its preserved snapshot. ") +
@@ -4678,19 +4884,18 @@ bool_t Client::CActionCompositionWorkbench::Save_Reload()
 	}
 	if (!Reload_Canonical())
 	{
-		m_strStatus = "Saved the canonical files. Close and reopen this Workbench. " +
+		m_strStatus = "[Pipeline] Saved the canonical files. Close and reopen this Workbench. " +
 			m_strStatus;
 		return true;
 	}
 	if (!bLocalReopenSucceeded)
 	{
-		m_strStatus =
-			"Saved every staged owner in one transaction, but an editor-local reopen failed. Close and reopen the Workbench." +
-			LocalReopenStatus;
+		m_strStatus = LocalReopenStatus +
+			" Saved every staged owner in one transaction, but an editor-local reopen failed. Close and reopen the Workbench.";
 		return true;
 	}
 	m_strStatus =
-		"Saved Pattern, Sound, and Effect V2 changes together and reloaded the saved data.";
+		"Saved every dirty Composition owner (Pattern, Sound, and/or Effect V2) and reloaded the saved data.";
 	return true;
 }
 
@@ -5008,7 +5213,7 @@ void Client::CActionCompositionWorkbench::Render_Browser(
 				const bool_t bStageSelected = bSelected &&
 					Stage.strStageId == m_strSelectedStageId;
 				const std::string StageLabel = Stage.strStageId + " | " +
-					Stage.strStageKind + " | " +
+					StageSequenceRoleLabel(Stage) + " | " +
 					std::to_string(Stage.iDurationMs) + " ms";
 				if (ImGui::Selectable(
 						StageLabel.c_str(), bStageSelected,
@@ -5877,17 +6082,60 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 	FocusDetailSection(bFocusStageClock);
 	const CBalanceTool::PATTERN_STAGE_EDIT ColliderBaseline = Draft;
 	bool_t bChanged = false;
+	if ("WAIT" == Stage.strSequenceRole)
+	{
+		ImGui::SeparatorText("WAIT Stage Promotion");
+		ImGui::TextDisabled(
+			"WAIT is a blank Server clock. Promotion preserves this Stage/Action identity and clock, then unlocks exact Animation, Collider, and Counter authoring.");
+		std::string RequestedRole;
+		ImGui::BeginDisabled(!bMutationAdmitted ||
+			!Pattern.bManualServerAudition);
+		if (ImGui::Button("Promote WAIT -> ACTIVE"))
+			RequestedRole = "ACTIVE";
+		ImGui::SameLine();
+		if (ImGui::Button("Promote WAIT -> WINDUP"))
+			RequestedRole = "WINDUP";
+		ImGui::SameLine();
+		if (ImGui::Button("Promote WAIT -> GROGGY"))
+			RequestedRole = "GROGGY";
+		ImGui::EndDisabled();
+		if (!RequestedRole.empty())
+		{
+			std::string PromotionStatus;
+			if (m_pBalanceTool->Promote_ValtanManualWaitStage(
+					Pattern.strPatternId, Stage.strStageId,
+					RequestedRole, PromotionStatus))
+			{
+				m_strSelectedStageId = Stage.strStageId;
+				m_strSelectedStableId = Stage.strStageId;
+				m_eDetailOwner = DETAIL_OWNER::GAMEPLAY_STAGE;
+				Invalidate_TimelineCache();
+				m_strStatus = std::move(PromotionStatus);
+				/* Pattern/Stage references belong to the immutable frame view that
+				   still labels this node WAIT. Stop rendering it after the draft
+				   generation advances; the next frame resolves the same stable ID. */
+				return;
+			}
+			m_strStatus = std::move(PromotionStatus);
+		}
+	}
 	ImGui::BeginDisabled(!bMutationAdmitted);
 	if (Draft.stageKindEditable)
 	{
 		const char_t* const StageKinds[] = { "ACTIVE", "WINDUP", "GROGGY" };
-		int32_t iStageKind = 0;
+		int32_t iStageKind = -1;
 		for (std::size_t iKind = 0u; iKind < std::size(StageKinds); ++iKind)
 		{
 			if (Draft.stageKind == StageKinds[iKind])
 				iStageKind = static_cast<int32_t>(iKind);
 		}
-		if (ImGui::Combo(
+		if (iStageKind < 0)
+		{
+			ImGui::TextDisabled(
+				"Stage Role: %s (read only; this typed gameplay kind is not a manual role)",
+				Draft.stageKind.c_str());
+		}
+		else if (ImGui::Combo(
 				"Stage Role", &iStageKind, StageKinds,
 				static_cast<int32_t>(std::size(StageKinds))))
 		{
@@ -5996,7 +6244,7 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 
 	ImGui::SeparatorText("Stage Hit (Boss -> Player)");
 	ImGui::TextDisabled(
-		"Each scheduled time is an instantaneous Server pulse. Effect geometry is presentation only and never becomes hit authority.");
+		"Timing is either instantaneous Server pulses or one per-target Active Window. Effect geometry is presentation only and never becomes hit authority.");
 	FocusDetailSection(bFocusCollider);
 	const std::vector<std::string> DamageProfiles =
 		m_pBalanceTool->Get_ValtanDamageProfileIds();
@@ -6012,14 +6260,12 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 			static_cast<int32_t>(DamageProfiles.size() - 1u));
 	}
 	const bool_t bHasExistingServerHit = "NONE" != Draft.hitShape;
-	const bool_t bManualColliderAddAdmitted =
-		Pattern.bManualServerAudition &&
-		"WAIT" != Stage.strSequenceRole && Draft.hitEditable;
+	const bool_t bColliderAddAdmitted = Draft.colliderAddAdmitted;
 	if (!bHasExistingServerHit)
 	{
 		ImGui::TextDisabled(
 			"No Server collider. A visible Effect never becomes hit authority by itself.");
-		ImGui::BeginDisabled(!bManualColliderAddAdmitted);
+		ImGui::BeginDisabled(!bColliderAddAdmitted);
 		if (!DamageProfiles.empty())
 		{
 			ImGui::SetNextItemWidth(-1.f);
@@ -6038,21 +6284,28 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 				}
 				ImGui::EndCombo();
 			}
-			if (ImGui::Button("Add Server Collider"))
+			if (ImGui::Button("Add Server Collider (BOX)"))
 			{
-				Draft.hitShape = "CIRCLE";
-				Draft.hitOuterRadius = 5.0;
-				Draft.hitCount = 1u;
-				Draft.hitIntervalMs = 0u;
-				Draft.hitDelayMs = 0u;
-				Draft.hitOffsetsMs.clear();
-				Draft.damageProfileId = DamageProfiles[
-					static_cast<std::size_t>(m_iDamageProfileSelection)];
-				bChanged = true;
+				std::string ColliderStatus;
+				if (InitializeDefaultValtanColliderBoxDraft(
+						Draft, DamageProfiles, m_iDamageProfileSelection,
+						ColliderStatus))
+				{
+					bChanged = true;
+				}
+				else
+				{
+					m_strStatus = std::move(ColliderStatus);
+				}
 			}
 		}
 		ImGui::EndDisabled();
-		if (bManualColliderAddAdmitted)
+		if (DamageProfiles.empty())
+		{
+			ImGui::TextDisabled(
+				"New Collider Add is unavailable until one admitted damage.valtan. profile is present.");
+		}
+		else if (bColliderAddAdmitted)
 		{
 			ImGui::TextDisabled(
 				"New Collider Add is admitted only because this is a non-WAIT manual audition Stage.");
@@ -6065,13 +6318,107 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 		else
 		{
 			ImGui::TextDisabled(
-				"New Collider Add is unavailable on a canonical Stage with no existing hit contract. Create or select a manual audition Stage instead.");
+				"New Collider Add is unavailable: %s is %s and this Stage has no existing hit contract. Create or select a manual audition Stage instead.",
+				Pattern.strPatternId.c_str(), Pattern.strAdmissionState.c_str());
 		}
 	}
-	if (bHasExistingServerHit && Draft.hitEditable)
+	if (bHasExistingServerHit && Draft.colliderTuneAdmitted)
 	{
 		ImGui::TextDisabled(
-			"Existing Server hit contract: tune its typed geometry/schedule, or remove it when no capture dependency owns it.");
+			"Existing Server hit contract: tune its typed geometry/timing. Remove is a separate manual-audition admission.");
+		const bool_t bDamageResponse = "DAMAGE" == Draft.playerResponse;
+		const bool_t bCaptureBeforeEdit = "CAPTURE" == Draft.playerResponse;
+		const bool_t bOwnsGrabReleasePath = std::any_of(
+			Pattern.Stages.begin(), Pattern.Stages.end(),
+			[](const VALTAN_STAGE_VIEW& CandidateStage)
+			{
+				return std::any_of(
+					CandidateStage.Actions.begin(), CandidateStage.Actions.end(),
+					[](const VALTAN_STAGE_ACTION_VIEW& Action)
+					{ return "RELEASE_GRABBED_PLAYERS" == Action.strKind; });
+			});
+		if (bDamageResponse || bCaptureBeforeEdit)
+		{
+			const char_t* const ColliderTypes[] = { "Damage", "Grab (Capture)" };
+			int32_t iColliderType = bCaptureBeforeEdit ? 1 : 0;
+			ImGui::BeginDisabled(
+				bCaptureBeforeEdit || (bDamageResponse && !bOwnsGrabReleasePath));
+			if (ImGui::Combo(
+					"Collider Type", &iColliderType, ColliderTypes,
+					static_cast<int32_t>(std::size(ColliderTypes))))
+			{
+				if (1 == iColliderType)
+				{
+					Draft.playerResponse = "CAPTURE";
+					Draft.attachmentSlot = "BOSS_LEFT_HAND";
+					Draft.hasGripLocalOffset = true;
+					Draft.gripForwardM = 0.0;
+					Draft.gripUpM = -0.9;
+					Draft.gripRightM = 0.0;
+					Draft.pushRangeM = 0.0;
+					Draft.pushMs = 0u;
+					Draft.knockdown = false;
+					Draft.downMs = 0u;
+				}
+				else
+				{
+					Draft.playerResponse = "DAMAGE";
+					Draft.attachmentSlot = "NONE";
+					Draft.hasGripLocalOffset = false;
+					Draft.gripForwardM = 0.0;
+					Draft.gripUpM = 0.0;
+					Draft.gripRightM = 0.0;
+				}
+				bChanged = true;
+			}
+			ImGui::EndDisabled();
+			if (bCaptureBeforeEdit)
+			{
+				ImGui::TextDisabled(
+					"Grab is fixed here. Removing Capture requires the whole typed grab topology transaction.");
+			}
+			else if (!bOwnsGrabReleasePath)
+			{
+				ImGui::TextDisabled(
+					"Grab (Capture) is unavailable: this Pattern has no RELEASE_GRABBED_PLAYERS action. Add the typed release topology first.");
+			}
+			else
+			{
+				ImGui::TextDisabled(
+					"Grab is admitted because this Pattern owns a typed left-hand release path; a rejected Save keeps its exact reason.");
+			}
+		}
+		else
+		{
+			ImGui::TextDisabled(
+				"Unsupported typed Collider Type: %s / %s",
+				Draft.playerResponse.c_str(), Draft.attachmentSlot.c_str());
+		}
+		if ("CAPTURE" == Draft.playerResponse)
+		{
+			ImGui::SeparatorText("Left-hand Grip");
+			ImGui::TextDisabled(
+				"Character feet-origin correction in normalized wrist-local metres. The runtime keeps local offset x animated left-hand world.");
+			constexpr double fMinimumGripOffset =
+				-Client::CPlayerHandGripTransform::MAX_GRIP_OFFSET_COMPONENT_M;
+			constexpr double fMaximumGripOffset =
+				Client::CPlayerHandGripTransform::MAX_GRIP_OFFSET_COMPONENT_M;
+			Draft.hasGripLocalOffset = true;
+			bChanged |= ImGui::DragScalar(
+				"Grip Forward (m)", ImGuiDataType_Double,
+				&Draft.gripForwardM, 0.01f, &fMinimumGripOffset,
+				&fMaximumGripOffset, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::DragScalar(
+				"Grip Up (m)", ImGuiDataType_Double,
+				&Draft.gripUpM, 0.01f, &fMinimumGripOffset,
+				&fMaximumGripOffset, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::DragScalar(
+				"Grip Right (m)", ImGuiDataType_Double,
+				&Draft.gripRightM, 0.01f, &fMinimumGripOffset,
+				&fMaximumGripOffset, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		}
+
+		ImGui::SeparatorText("Shape / Size");
 		const char_t* const HitShapes[] = {
 			"CIRCLE", "RING", "CONE", "BOX", "CROSS", "SIX_DIRECTIONS" };
 		int32_t iShape = 0;
@@ -6105,65 +6452,6 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 				Draft.hitHalfWidth = 2.0;
 			}
 			bChanged = true;
-		}
-		if (!DamageProfiles.empty() && ImGui::BeginCombo(
-				"Damage Profile", Draft.damageProfileId.c_str()))
-		{
-			for (const std::string& Profile : DamageProfiles)
-			{
-				const bool_t bSelected = Profile == Draft.damageProfileId;
-				if (ImGui::Selectable(Profile.c_str(), bSelected))
-				{
-					Draft.damageProfileId = Profile;
-					bChanged = true;
-				}
-			}
-			ImGui::EndCombo();
-		}
-		const bool_t bDamageResponse = "DAMAGE" == Draft.playerResponse;
-		const bool_t bCaptureBeforeEdit = "CAPTURE" == Draft.playerResponse;
-		if (bDamageResponse || bCaptureBeforeEdit)
-		{
-			const char_t* const TriggerResults[] = { "Damage", "Grab" };
-			int32_t iTriggerResult = bCaptureBeforeEdit ? 1 : 0;
-			ImGui::BeginDisabled(bCaptureBeforeEdit);
-			if (ImGui::Combo(
-					"Trigger Result", &iTriggerResult, TriggerResults,
-					static_cast<int32_t>(std::size(TriggerResults))))
-			{
-				if (1 == iTriggerResult)
-				{
-					Draft.playerResponse = "CAPTURE";
-					Draft.attachmentSlot = "BOSS_LEFT_HAND";
-					Draft.pushRangeM = 0.0;
-					Draft.pushMs = 0u;
-					Draft.knockdown = false;
-					Draft.downMs = 0u;
-				}
-				else
-				{
-					Draft.playerResponse = "DAMAGE";
-					Draft.attachmentSlot = "NONE";
-				}
-				bChanged = true;
-			}
-			ImGui::EndDisabled();
-			if (bCaptureBeforeEdit)
-			{
-				ImGui::TextDisabled(
-					"Grab is fixed here. Removing Capture requires the whole typed grab topology transaction.");
-			}
-			else
-			{
-				ImGui::TextDisabled(
-					"Grab is admitted only when this Pattern already owns a typed left-hand release path; a rejected Save keeps its exact reason.");
-			}
-		}
-		else
-		{
-			ImGui::TextDisabled(
-				"Unsupported typed trigger response: %s / %s",
-				Draft.playerResponse.c_str(), Draft.attachmentSlot.c_str());
 		}
 		const bool_t bCaptureCollider = "CAPTURE" == Draft.playerResponse;
 		constexpr double fMinimumColliderSize = 0.01;
@@ -6220,10 +6508,88 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 		}
 		ImGui::TextDisabled(
 			"Collider size is boss-local meters. The next Play/Restart restages its non-authoritative Arena Clone debug wire; Save writes these typed fields to the physical Pattern JSON.");
-		if (Draft.hitOffsetsMs.empty())
+
+		ImGui::SeparatorText("Timing");
+		ImGui::TextUnformatted("Timing Mode");
+		int32_t iTimingMode = Draft.hasHitActivation ? 1 : 0;
+		bool_t bTimingModeChanged = false;
+		bTimingModeChanged |= ImGui::RadioButton(
+			"Pulse Schedule", &iTimingMode, 0);
+		ImGui::SameLine();
+		bTimingModeChanged |= ImGui::RadioButton(
+			"Active Window (lifetime)", &iTimingMode, 1);
+		if (bTimingModeChanged)
+		{
+			const uint32_t iStageDurationMs = (std::max)(Draft.durationMs, 1u);
+			if (1 == iTimingMode)
+			{
+				const uint32_t iRequestedStartMs = Draft.hitOffsetsMs.empty() ?
+					Draft.hitDelayMs : Draft.hitOffsetsMs.front();
+				Draft.hasHitActivation = true;
+				Draft.hitActivationStartMs = (std::min)(
+					iRequestedStartMs, iStageDurationMs - 1u);
+				Draft.hitActivationLifetimeMs =
+					iStageDurationMs - Draft.hitActivationStartMs;
+				Draft.hitCount = 0u;
+				Draft.hitIntervalMs = 0u;
+				Draft.hitDelayMs = 0u;
+				Draft.hitOffsetsMs.clear();
+			}
+			else
+			{
+				const uint32_t iPulseOffsetMs = (std::min)(
+					Draft.hitActivationStartMs, iStageDurationMs - 1u);
+				Draft.hasHitActivation = false;
+				Draft.hitActivationStartMs = 0u;
+				Draft.hitActivationLifetimeMs = 0u;
+				Draft.hitCount = 1u;
+				Draft.hitIntervalMs = 0u;
+				Draft.hitDelayMs = iPulseOffsetMs;
+				Draft.hitOffsetsMs.clear();
+			}
+			bChanged = true;
+		}
+		if (Draft.hasHitActivation)
+		{
+			const uint32_t iStageDurationMs = (std::max)(Draft.durationMs, 1u);
+			const int32_t iMaximumStartMs = static_cast<int32_t>((std::min)(
+				iStageDurationMs - 1u, static_cast<uint32_t>(INT32_MAX)));
+			int32_t iActivationStartMs = static_cast<int32_t>((std::min)(
+				Draft.hitActivationStartMs,
+				static_cast<uint32_t>(INT32_MAX)));
+			if (ImGui::DragInt(
+					"Start (ms)", &iActivationStartMs, 5.f, 0,
+					iMaximumStartMs, "%d ms", ImGuiSliderFlags_AlwaysClamp))
+			{
+				Draft.hitActivationStartMs =
+					static_cast<uint32_t>(iActivationStartMs);
+				Draft.hitActivationLifetimeMs = (std::clamp)(
+					Draft.hitActivationLifetimeMs, 1u,
+					iStageDurationMs - Draft.hitActivationStartMs);
+				bChanged = true;
+			}
+			const uint32_t iMaximumLifetimeMs =
+				iStageDurationMs - Draft.hitActivationStartMs;
+			int32_t iActivationLifetimeMs = static_cast<int32_t>((std::min)(
+				Draft.hitActivationLifetimeMs,
+				static_cast<uint32_t>(INT32_MAX)));
+			if (ImGui::DragInt(
+					"Lifetime (ms)", &iActivationLifetimeMs, 5.f, 1,
+					static_cast<int32_t>((std::min)(
+						iMaximumLifetimeMs, static_cast<uint32_t>(INT32_MAX))),
+					"%d ms", ImGuiSliderFlags_AlwaysClamp))
+			{
+				Draft.hitActivationLifetimeMs =
+					static_cast<uint32_t>(iActivationLifetimeMs);
+				bChanged = true;
+			}
+			ImGui::TextDisabled(
+				"Each target may be admitted once while it overlaps this continuous Server window.");
+		}
+		else if (Draft.hitOffsetsMs.empty())
 		{
 			ImGui::TextDisabled(
-				"Schedule: INTERVAL. First offset plus interval/count defines every pulse; there is no persistent overlap lifetime.");
+				"Schedule: INTERVAL. Each scheduled time is an instantaneous Server pulse. There is no persistent overlap lifetime.");
 			int32_t iHitDelay = static_cast<int32_t>(Draft.hitDelayMs);
 			int32_t iHitInterval = static_cast<int32_t>(Draft.hitIntervalMs);
 			int32_t iHitCount = static_cast<int32_t>(Draft.hitCount);
@@ -6336,7 +6702,122 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 				ImGui::TextDisabled(
 					"No later unique offset fits this Stage, or the 64-pulse limit is reached.");
 		}
-		ImGui::BeginDisabled(bCaptureCollider);
+
+		if ("DAMAGE" == Draft.playerResponse)
+		{
+			ImGui::SeparatorText("Damage");
+			if (!DamageProfiles.empty())
+			{
+				ImGui::SetNextItemWidth(-1.f);
+				if (ImGui::BeginCombo(
+						"Damage Profile", Draft.damageProfileId.c_str()))
+				{
+					for (std::size_t iProfile = 0u;
+						iProfile < DamageProfiles.size(); ++iProfile)
+					{
+						const bool_t bSelected =
+							Draft.damageProfileId == DamageProfiles[iProfile];
+						if (ImGui::Selectable(
+								DamageProfiles[iProfile].c_str(), bSelected))
+						{
+							Draft.damageProfileId = DamageProfiles[iProfile];
+							m_iDamageProfileSelection =
+								static_cast<int32_t>(iProfile);
+							bChanged = true;
+						}
+						if (bSelected)
+							ImGui::SetItemDefaultFocus();
+					}
+					ImGui::EndCombo();
+				}
+			}
+			else
+			{
+				ImGui::TextDisabled(
+					"No admitted damage.valtan. profile is available.");
+			}
+
+			uint32_t iDamageRatePercent = 0u;
+			std::string DamageRateStatus;
+			const bool_t bDamageRateReady =
+				!Draft.damageProfileId.empty() &&
+				m_pBalanceTool->Get_ValtanDamageRateDraft(
+					Draft.damageProfileId, iDamageRatePercent,
+					DamageRateStatus);
+			if (bDamageRateReady)
+			{
+				int32_t iDamageRate = static_cast<int32_t>((std::clamp)(
+					iDamageRatePercent, 1u, 100000u));
+				if (ImGui::DragInt(
+						"Damage Rate (%)", &iDamageRate, 1.f, 1, 100000,
+						"%d %%", ImGuiSliderFlags_AlwaysClamp))
+				{
+					std::string SetDamageRateStatus;
+					if (m_pBalanceTool->Set_ValtanDamageRateDraft(
+							Draft.damageProfileId,
+							static_cast<uint32_t>(iDamageRate),
+							SetDamageRateStatus))
+					{
+						iDamageRatePercent = static_cast<uint32_t>(iDamageRate);
+						m_strStatus = std::move(SetDamageRateStatus);
+					}
+					else
+					{
+						m_strStatus = std::move(SetDamageRateStatus);
+					}
+				}
+
+				std::size_t iSharedStageUsers = 0u;
+				std::string StageUserCountStatus;
+				if (m_pBalanceTool->Get_ValtanDamageProfileStageUserCountDraft(
+						Draft.damageProfileId, iSharedStageUsers,
+						StageUserCountStatus))
+				{
+					ImGui::TextDisabled(
+						"Shared by %zu Valtan Stage(s). Editing the rate changes every user in this Save transaction.",
+						iSharedStageUsers);
+				}
+				else
+				{
+					ImGui::TextDisabled(
+						"Shared Stage count is unavailable: %s",
+						StageUserCountStatus.c_str());
+				}
+
+				uint32_t iBossAttackPower = 0u;
+				std::string AttackPowerStatus;
+				if (m_pBalanceTool->Get_ValtanBossAttackPowerDraft(
+						iBossAttackPower, AttackPowerStatus))
+				{
+					const uint64_t iRawDamageWide =
+						static_cast<uint64_t>(iBossAttackPower) *
+						iDamageRatePercent / 100u;
+					const uint32_t iRawDamage =
+						0u == iBossAttackPower || 0u == iDamageRatePercent ? 0u :
+						static_cast<uint32_t>((std::min)(
+							(std::max)(iRawDamageWide, uint64_t{ 1u }),
+							static_cast<uint64_t>(
+								(std::numeric_limits<uint32_t>::max)())));
+					ImGui::Text(
+						"Raw damage before defense: %u x %u%% / 100 = %u",
+						iBossAttackPower, iDamageRatePercent, iRawDamage);
+				}
+				else
+				{
+					ImGui::TextDisabled(
+						"Raw damage before defense is unavailable: %s",
+						AttackPowerStatus.c_str());
+				}
+			}
+			else if (!DamageRateStatus.empty())
+			{
+				ImGui::TextDisabled(
+					"Damage rate is unavailable: %s",
+					DamageRateStatus.c_str());
+			}
+		}
+
+		ImGui::BeginDisabled(!Draft.colliderRemoveAdmitted);
 		if (ImGui::Button("Remove Server Collider"))
 		{
 			Draft.hitShape = "NONE";
@@ -6344,11 +6825,21 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 			Draft.hitAngleDegrees = Draft.hitLength = Draft.hitHalfWidth = 0.0;
 			Draft.hitCount = Draft.hitIntervalMs = Draft.hitDelayMs = 0u;
 			Draft.hitOffsetsMs.clear();
+			Draft.hasHitAnchor = false;
+			Draft.hitAnchorKind = "BOSS_CURRENT";
+			Draft.hitAnchorForwardOffsetM = 0.0;
+			Draft.hitAnchorRightOffsetM = 0.0;
+			Draft.hitAnchorYawOffsetDegrees = 0.0;
+			Draft.hasHitActivation = false;
+			Draft.hitActivationStartMs = 0u;
+			Draft.hitActivationLifetimeMs = 0u;
 			Draft.damageProfileId.clear();
 			Draft.pushRangeM = 0.0;
 			Draft.pushMs = 0u;
 			Draft.knockdown = false;
 			Draft.downMs = 0u;
+			Draft.playerResponse = "DAMAGE";
+			Draft.attachmentSlot = "NONE";
 			bChanged = true;
 		}
 		ImGui::EndDisabled();
@@ -6357,11 +6848,18 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 			ImGui::TextDisabled(
 				"Capture collider removal is blocked: grab branches, left-hand attachment, and release actions form one typed transaction.");
 		}
+		else if (!Draft.colliderRemoveAdmitted)
+		{
+			ImGui::TextDisabled(
+				"Remove is unavailable: %s is %s. Tune this existing collider in place, or create/select a manual audition Stage for add/remove topology authoring.",
+				Pattern.strPatternId.c_str(), Pattern.strAdmissionState.c_str());
+		}
 	}
 	else if (bHasExistingServerHit)
 	{
 		ImGui::TextDisabled(
-			"This existing Server hit contract is not editable in the current Stage/admission state.");
+			"This existing Server hit contract is not editable: %s is %s. Reload Canonical or select an admitted Pattern draft.",
+			Pattern.strPatternId.c_str(), Pattern.strAdmissionState.c_str());
 	}
 
 	ImGui::SeparatorText("Player Reaction / Grab Release");
@@ -6689,7 +7187,7 @@ void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(
 			if (bColliderChanged)
 			{
 				Status +=
-					" Collider geometry/schedule is staged in the Pattern draft; Play/Restart restages the boss-local debug wire.";
+					" Collider geometry/timing is staged in the Pattern draft; Play/Restart restages the boss-local debug wire.";
 			}
 			m_strStatus = std::move(Status);
 			Invalidate_TimelineCache();
@@ -6993,12 +7491,50 @@ void Client::CActionCompositionWorkbench::Render_Details(
 		if (FirstSound != pPatternSounds->Cues.end())
 			strFirstSoundOccurrence = FirstSound->strOccurrenceId;
 	}
+	bool_t bStageSelectionChanged = false;
+	const char_t* const pStagePreview = nullptr == pStage ?
+		"Select stable Stage" : pStage->strStageId.c_str();
+	ImGui::SetNextItemWidth(-1.f);
+	if (ImGui::BeginCombo(
+			"Selected Stage##CompositionStableStage", pStagePreview))
+	{
+		for (const VALTAN_STAGE_VIEW& Candidate : pPattern->Stages)
+		{
+			const bool_t bSelected = nullptr != pStage &&
+				Candidate.strStageId == pStage->strStageId;
+			const std::string Label = Candidate.strStageId + " | " +
+				StageSequenceRoleLabel(Candidate) + " | " +
+				std::to_string(Candidate.iDurationMs) + " ms";
+			if (ImGui::Selectable(Label.c_str(), bSelected) && !bSelected)
+			{
+				Select_Stage(*pPattern, Candidate);
+				bStageSelectionChanged = true;
+			}
+			if (bSelected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+	if (bStageSelectionChanged)
+	{
+		ImGui::TextDisabled(
+			"Resolved the new Stage by stable ID; its Stage/Collider/Camera categories open on the next frame.");
+		return;
+	}
 	const auto OwnerButton = [this](const char_t* pLabel,
 		const DETAIL_OWNER eOwner, const bool_t bEnabled,
 		const std::string& strStableId)
 	{
 		ImGui::BeginDisabled(!bEnabled);
-		const bool_t bActive = m_eDetailOwner == eOwner;
+		bool_t bActive = m_eDetailOwner == eOwner;
+		if (bActive && DETAIL_OWNER::GAMEPLAY_STAGE == eOwner)
+		{
+			const bool_t bButtonCollider = std::string::npos !=
+				strStableId.find("/collider");
+			const bool_t bSelectionCollider = std::string::npos !=
+				m_strSelectedStableId.find("/collider");
+			bActive = bButtonCollider == bSelectionCollider;
+		}
 		if (bActive)
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.43f, 0.72f, 1.f));
 		if (ImGui::SmallButton(pLabel))
@@ -7014,9 +7550,14 @@ void Client::CActionCompositionWorkbench::Render_Details(
 	OwnerButton("Pattern Root", DETAIL_OWNER::PATTERN, true,
 		pPattern->strPatternId);
 	ImGui::SameLine();
-	OwnerButton("Gameplay / Logic / Collider", DETAIL_OWNER::GAMEPLAY_STAGE,
+	OwnerButton("Stage / Logic", DETAIL_OWNER::GAMEPLAY_STAGE,
 		nullptr != pStage,
 		nullptr == pStage ? std::string{} : pStage->strStageId);
+	ImGui::SameLine();
+	OwnerButton("Collider", DETAIL_OWNER::GAMEPLAY_STAGE,
+		nullptr != pStage,
+		nullptr == pStage ? std::string{} :
+			pStage->strStageId + "/collider");
 	ImGui::SameLine();
 	OwnerButton("Animation", DETAIL_OWNER::ANIMATION,
 		nullptr != pStage && (pPattern->bManualServerAudition ||
@@ -7692,26 +8233,46 @@ void Client::CActionCompositionWorkbench::Render_Details(
 		}
 		ImGui::EndDisabled();
 
-		const bool_t bHasServerCollider = pStage->Has_HitShape();
-		const bool_t bManualColliderAddAdmitted =
-			pPattern->bManualServerAudition &&
-			"WAIT" != pStage->strSequenceRole;
+		CBalanceTool::PATTERN_STAGE_EDIT ColliderDraft;
+		std::string ColliderDraftStatus;
+		const bool_t bColliderDraftReady = nullptr != m_pBalanceTool &&
+			m_pBalanceTool->Get_ValtanStageDraft(
+				pPattern->strPatternId, pStage->strStageId,
+				ColliderDraft, ColliderDraftStatus);
+		const bool_t bHasServerCollider = bColliderDraftReady ?
+			"NONE" != ColliderDraft.hitShape : pStage->Has_HitShape();
+		const bool_t bColliderAddAdmitted = bColliderDraftReady &&
+			ColliderDraft.colliderAddAdmitted;
+		const bool_t bColliderTuneAdmitted = bColliderDraftReady &&
+			ColliderDraft.colliderTuneAdmitted;
+		const bool_t bColliderRemoveAdmitted = bColliderDraftReady &&
+			ColliderDraft.colliderRemoveAdmitted;
 		const char_t* const pColliderOwnerLabel = bHasServerCollider ?
-			"Tune / Remove Existing Server Collider / Hit Schedule" :
-			(bManualColliderAddAdmitted ?
+			(bColliderRemoveAdmitted ?
+				"Tune / Remove Existing Server Collider / Hit Timing" :
+				(bColliderTuneAdmitted ?
+					"Tune Existing Server Collider / Hit Timing" :
+					"View Existing Server Collider Authority")) :
+			(bColliderAddAdmitted ?
 				"Add Manual Audition Server Collider / Hit Schedule" :
 				"View Collider Authority (New Add Unavailable)");
 		if (ImGui::Button(pColliderOwnerLabel))
 		{
 			m_eDetailOwner = DETAIL_OWNER::GAMEPLAY_STAGE;
-			m_strSelectedStableId = pStage->strStageId;
+			m_strSelectedStableId = pStage->strStageId + "/collider";
 		}
 		ImGui::TextDisabled(
 			bHasServerCollider ?
-				"Exact existing Stage hit only: tune/remove remains Server gameplay authority; Effect is visual." :
-				(bManualColliderAddAdmitted ?
+				(bColliderRemoveAdmitted ?
+					"This manual audition Stage admits collider tune/remove; Effect is visual only." :
+					(bColliderTuneAdmitted ?
+						"This existing collider admits typed tuning. Canonical removal remains unavailable; Effect is visual only." :
+						"This existing Server collider is inspection-only in the current admission state.")) :
+				(bColliderAddAdmitted ?
 					"No Server collider exists. New Add is available only because this is a non-WAIT manual audition Stage; no geometry is inferred from the Effect." :
 					"No Server collider exists. New Add is unavailable on this canonical/WAIT Stage; Workbench never infers hit geometry from a visual Effect or its anchor."));
+		if (!bColliderDraftReady && !ColliderDraftStatus.empty())
+			ImGui::TextWrapped("Collider admission: %s", ColliderDraftStatus.c_str());
 		return;
 	}
 	if (DETAIL_OWNER::SOUND == m_eDetailOwner)
@@ -7720,7 +8281,7 @@ void Client::CActionCompositionWorkbench::Render_Details(
 		ImGui::TextWrapped(
 			"Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json");
 		ImGui::TextDisabled(
-			"Edit Sound rows here. The Sequencer Save button stores Pattern, Animation, Effect and Sound changes together.");
+			"Edit Sound rows here. Sequencer Save joins only dirty Pattern, Sound, and Effect V2 owners; Camera stays in its typed read-only/deep-link boundary.");
 		if (nullptr == pStage || nullptr == pPatternSounds ||
 			nullptr == m_pAnimationTool)
 		{
@@ -8163,7 +8724,12 @@ void Client::CActionCompositionWorkbench::Render_Details(
 		if (Found != pStage->CombatObjectEffects.end())
 		{
 			ImGui::TextWrapped("%s", Found->strCombatObjectArchetypeId.c_str());
-			ImGui::Text("Effect: %s", Found->strEffectAssetId.c_str());
+			if (!Found->strEffectV2GroupId.empty())
+				ImGui::Text("Product Effect V2 Group: %s",
+					Found->strEffectV2GroupId.c_str());
+			ImGui::Text("Editor V1 fallback: %s", Found->strEffectAssetId.c_str());
+			ImGui::Text("Spawn +%u ms | count %u",
+				Found->iFirstSpawnOffsetMs, Found->iSpawnValue);
 			ImGui::Text("Motion %s | %.2f m/s | %.2f m | life %u ms",
 				Found->strKind.c_str(), Found->fSpeedMps,
 				Found->fMaximumDistanceM, Found->iLifetimeMs);
@@ -8408,94 +8974,13 @@ Apply_PatternSoundOccurrenceTiming(
 
 void Client::CActionCompositionWorkbench::Render_PatternDurationControl(
 	const VALTAN_PATTERN_VIEW& Pattern,
-	const bool_t bPatternMutationAdmitted)
+	const bool_t)
 {
-	int32_t iRequestedDurationMs = static_cast<int32_t>((std::min)(
-		m_iTimelineDurationMs, static_cast<uint32_t>(INT32_MAX)));
-	ImGui::SetNextItemWidth(220.f);
-	ImGui::BeginDisabled(!bPatternMutationAdmitted ||
-		!Pattern.bManualServerAudition || Pattern.Stages.empty() ||
-		nullptr == m_pBalanceTool);
-	(void)ImGui::InputInt(
-		"Pattern Total Duration (ms)", &iRequestedDurationMs, 10, 100);
-	const bool_t bDurationEditCommitted = ImGui::IsItemDeactivatedAfterEdit();
-	if (bDurationEditCommitted)
-	{
-		const uint32_t iRequested = static_cast<uint32_t>((std::clamp)(
-			iRequestedDurationMs, 1, 600000));
-		if (iRequested == m_iTimelineDurationMs)
-		{
-			m_strStatus = "Pattern duration is unchanged.";
-		}
-		else
-		{
-			const VALTAN_STAGE_VIEW& LastStage = Pattern.Stages.back();
-			const bool_t bTrailingWait =
-				"WAIT" == LastStage.strSequenceRole;
-			if (bTrailingWait)
-			{
-				CBalanceTool::PATTERN_STAGE_EDIT Draft;
-				std::string Status;
-				if (m_pBalanceTool->Get_ValtanStageDraft(
-						Pattern.strPatternId, LastStage.strStageId,
-						Draft, Status))
-				{
-					const uint32_t iPrefixMs = m_iTimelineDurationMs >
-						Draft.durationMs ?
-						m_iTimelineDurationMs - Draft.durationMs : 0u;
-					if (iRequested <= iPrefixMs)
-					{
-						Status =
-							"Pattern duration rejected: the requested total would trim a gameplay Stage. Reduce or edit that Stage explicitly.";
-					}
-					else
-					{
-						Draft.durationMs = iRequested - iPrefixMs;
-						if (SetValtanStageDraftWithSoundDependencyAdmission(
-								m_pAnimationTool, m_pBalanceTool,
-								m_bPatternShakesReady ? &m_PatternShakes : nullptr,
-								Pattern, LastStage, Draft, Status))
-						{
-							Invalidate_TimelineCache();
-						}
-					}
-				}
-				m_strStatus = std::move(Status);
-			}
-			else if (iRequested > m_iTimelineDurationMs)
-			{
-				std::string NewStageId;
-				std::string NewActionId;
-				std::string Status;
-				if (!BuildNextManualStageIdentity(
-						Pattern, NewStageId, NewActionId))
-				{
-					Status =
-						"Pattern duration rejected: no free stable Stage/Action identity remains for the trailing WAIT.";
-				}
-				else if (m_pBalanceTool->Insert_ValtanManualStageAfter(
-						Pattern.strPatternId, LastStage.strStageId,
-						NewStageId, NewActionId, "WAIT",
-						iRequested - m_iTimelineDurationMs, Status))
-				{
-					m_strSelectedStageId = NewStageId;
-					m_strSelectedStableId = NewStageId;
-					m_eDetailOwner = DETAIL_OWNER::GAMEPLAY_STAGE;
-					m_strTimelineCachePatternId.clear();
-				}
-				m_strStatus = std::move(Status);
-			}
-			else
-			{
-				m_strStatus =
-					"Pattern duration rejected: shortening requires a trailing WAIT Stage so gameplay clocks are never trimmed implicitly.";
-			}
-		}
-	}
-	ImGui::EndDisabled();
-	ImGui::SameLine();
 	ImGui::TextDisabled(
-		"Stage clock sum; growth creates/extends trailing WAIT, shrink trims WAIT only.");
+		"Pattern Total Duration (read only): %u ms | %zu Stage clock(s)",
+		m_iTimelineDurationMs, Pattern.Stages.size());
+	ImGui::TextDisabled(
+		"The total is derived from the selected branch. Add an explicit ACTIVE/WINDUP/GROGGY/WAIT Stage or edit one selected Stage clock; the total never creates a hidden WAIT.");
 }
 
 void Client::CActionCompositionWorkbench::Render_SelectedStageGapControl(
@@ -8567,20 +9052,54 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 	const bool_t bPatternMutationAdmitted)
 {
 	ImGui::SeparatorText("Sequencer");
+	const bool_t bEffectV2OwnerDirty =
+		CEffectV2Catalog::Get().Has_BossValtanBindingDraft();
 	const bool_t bHasUnsavedChanges =
 		m_bAuthoringDraftDirty || m_bPatternSoundDependencyDirty ||
-		CEffectV2Catalog::Get().Has_BossValtanBindingDraft();
+		bEffectV2OwnerDirty;
 	const bool_t bCanSave = nullptr != pPattern && bPatternMutationAdmitted &&
 		bHasUnsavedChanges && nullptr != m_pBalanceTool;
 	ImGui::BeginDisabled(!bCanSave);
 	if (ImGui::Button("Save##CompositionSequencer"))
 		m_bSavePatternRequested = true;
 	ImGui::EndDisabled();
+	const bool_t bPatternOwnerReady =
+		VALTAN_VIEW_ADMISSION::ADMITTED == m_eAdmission &&
+		nullptr != m_pBalanceTool;
 	ImGui::SameLine();
 	ImGui::TextColored(
-		bHasUnsavedChanges ? ImVec4(1.f, 0.72f, 0.25f, 1.f) :
+		!bPatternOwnerReady ? ImVec4(1.f, 0.45f, 0.35f, 1.f) :
+			(m_bAuthoringDraftDirty ? ImVec4(1.f, 0.72f, 0.25f, 1.f) :
+			 ImVec4(0.35f, 0.86f, 0.45f, 1.f)),
+		"Pattern: %s", !bPatternOwnerReady ? "read-only" :
+			(m_bAuthoringDraftDirty ? "dirty" : "clean"));
+	std::string SoundOwnerStatus;
+	const bool_t bSoundOwnerReady = nullptr != m_pAnimationTool;
+	bool_t bSoundOwnerCommitAdmitted = !m_bPatternSoundDependencyDirty;
+	if (m_bPatternSoundDependencyDirty && bSoundOwnerReady)
+	{
+		bSoundOwnerCommitAdmitted = m_pAnimationTool->
+			Can_CommitValtanCompositionPatternSoundGeneration(
+				SoundOwnerStatus);
+	}
+	ImGui::SameLine();
+	ImGui::TextColored(
+		m_bPatternSoundDependencyDirty &&
+			(!bSoundOwnerReady || !bSoundOwnerCommitAdmitted) ?
+			ImVec4(1.f, 0.45f, 0.35f, 1.f) :
+			(m_bPatternSoundDependencyDirty ?
+				ImVec4(1.f, 0.72f, 0.25f, 1.f) :
+				ImVec4(0.35f, 0.86f, 0.45f, 1.f)),
+		"Sound: %s", !m_bPatternSoundDependencyDirty ? "clean" :
+			(!bSoundOwnerReady ? "dirty / unavailable" :
+				(!bSoundOwnerCommitAdmitted ? "dirty / pinned" : "dirty")));
+	if (ImGui::IsItemHovered() && !SoundOwnerStatus.empty())
+		ImGui::SetTooltip("Sound Save admission: %s", SoundOwnerStatus.c_str());
+	ImGui::SameLine();
+	ImGui::TextColored(
+		bEffectV2OwnerDirty ? ImVec4(1.f, 0.72f, 0.25f, 1.f) :
 			ImVec4(0.35f, 0.86f, 0.45f, 1.f),
-		bHasUnsavedChanges ? "Unsaved changes" : "Saved");
+		"EffectV2: %s", bEffectV2OwnerDirty ? "dirty" : "clean");
 	if (m_bPatternSaveResultAvailable && !m_bPatternSaveSucceeded &&
 		!m_strPatternSaveStatus.empty())
 	{
@@ -8909,7 +9428,7 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 		ImGui::EndDisabled();
 	}
 	ImGui::TextDisabled(
-		"Animation body drag reorders or transfers a dependency-free box across Stage clocks; right-edge drag trims. Effect/Sound/V2 body drag changes occurrence time. Collider body drag moves every hit pulse without changing spacing; its left/right edges edit the first/last pulse. Pattern-owned boxes use Save.");
+		"Animation body drag reorders or transfers a dependency-free box across Stage clocks; right-edge drag trims. Effect/Sound/V2 body drag changes occurrence time. Collider body drag moves its full pulse schedule or active window; left/right edges edit the timing endpoints. Pattern-owned boxes use Save.");
 	Render_PatternDurationControl(
 		*pPattern, bPatternMutationAdmitted);
 	Render_SelectedStageGapControl(
@@ -9010,6 +9529,16 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 	const VALTAN_STAGE_VIEW* pLaneStage = Find_SelectedStage(pPattern);
 	if (nullptr == pLaneStage && !pPattern->Stages.empty())
 		pLaneStage = &pPattern->Stages.front();
+	CBalanceTool::PATTERN_STAGE_EDIT LaneColliderDraft;
+	std::string LaneColliderDraftStatus;
+	const bool_t bLaneColliderDraftReady = nullptr != pLaneStage &&
+		nullptr != m_pBalanceTool &&
+		m_pBalanceTool->Get_ValtanStageDraft(
+			pPattern->strPatternId, pLaneStage->strStageId,
+			LaneColliderDraft, LaneColliderDraftStatus);
+	const bool_t bLaneColliderExists = bLaneColliderDraftReady ?
+		"NONE" != LaneColliderDraft.hitShape :
+		(nullptr != pLaneStage && pLaneStage->Has_HitShape());
 	std::size_t iLaneOrdinal = 0u;
 	for (const TIMELINE_LANE eLane : TIMELINE_LANE_ORDER)
 	{
@@ -9021,15 +9550,64 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 		ImGui::TextUnformatted(Lane_Label(eLane));
 		ImGui::SameLine(TIMELINE_LANE_LABEL_WIDTH - 28.f, 0.f);
 		ImGui::PushID(static_cast<int32_t>(eLane));
-		ImGui::BeginDisabled(nullptr == pLaneStage);
+		const bool_t bColliderLaneButtonAdmitted =
+			TIMELINE_LANE::COLLIDER != eLane || bLaneColliderExists ||
+			(bPatternMutationAdmitted && bLaneColliderDraftReady &&
+			 LaneColliderDraft.colliderAddAdmitted);
+		ImGui::BeginDisabled(
+			nullptr == pLaneStage || !bColliderLaneButtonAdmitted);
 		if (ImGui::SmallButton("+##LaneAuthoring") && nullptr != pLaneStage)
 			Request_LaneAuthoring(eLane, *pPattern, *pLaneStage);
 		ImGui::EndDisabled();
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
 		{
-			ImGui::SetTooltip(
-				"Open %s authoring/detail for the selected Stage.",
-				Lane_Label(eLane));
+			if (TIMELINE_LANE::COLLIDER != eLane)
+			{
+				ImGui::SetTooltip(
+					"Open %s authoring/detail for the selected Stage.",
+					Lane_Label(eLane));
+			}
+			else if (bLaneColliderExists)
+			{
+				ImGui::SetTooltip(
+					"Open the existing Server collider geometry and timing Details.");
+			}
+			else if (bColliderLaneButtonAdmitted)
+			{
+				ImGui::SetTooltip(
+					"Create a Server collider box on the selected Stage.");
+			}
+			else if (nullptr != pLaneStage &&
+				"WAIT" == pLaneStage->strSequenceRole)
+			{
+				ImGui::SetTooltip(
+					"WAIT is clock-only; a Server collider cannot be added here.");
+			}
+			else if (bLaneColliderDraftReady &&
+				LaneColliderDraft.colliderAddAdmitted &&
+				!bPatternMutationAdmitted)
+			{
+				ImGui::SetTooltip(
+					"Collider Add requires the admitted mutable Pattern view. Reload Canonical before editing this manual audition Stage.");
+			}
+			else if (bLaneColliderDraftReady)
+			{
+				ImGui::SetTooltip(
+					"%s is %s. New collider Add is unavailable; create or select a non-WAIT manual audition Stage.",
+					pPattern->strPatternId.c_str(),
+					pPattern->strAdmissionState.c_str());
+			}
+			else if (!LaneColliderDraftStatus.empty())
+			{
+				ImGui::SetTooltip(
+					"Collider Add unavailable: %s",
+					LaneColliderDraftStatus.c_str());
+			}
+			else
+			{
+				ImGui::SetTooltip(
+					"Canonical Stages without a hit are add-locked. Create or select a non-WAIT manual audition Stage.");
+			}
 		}
 		ImGui::PopID();
 		ImGui::SameLine(TIMELINE_LANE_LABEL_WIDTH, 0.f);
@@ -9156,8 +9734,8 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 			DETAIL_OWNER::GAMEPLAY_STAGE == Item.eOwner &&
 			TIMELINE_LANE::COLLIDER == Item.eLane && Item.bEditable &&
 			ItemStage != pPattern->Stages.end();
-		/* A single pulse is an instant, not a duration.  Two distinct timeline
-		   endpoints prove that the admitted schedule has at least two pulses. */
+		/* A single pulse is an instant, not a duration.  An activation lifetime or
+		   two distinct pulses provides two independently resizable endpoints. */
 		const bool_t bColliderCanResize = bColliderSchedule &&
 			Item.iEndMs > Item.iStartMs;
 		const bool_t bTrimOwner =
@@ -9344,7 +9922,8 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 						Draft, m_bTimelineTrimStartEdge,
 						static_cast<uint32_t>((std::clamp)(
 							iRequestedEndpointMs, int64_t{ 0 },
-							static_cast<int64_t>(Draft.durationMs - 1u))),
+							static_cast<int64_t>(Draft.hasHitActivation ?
+								Draft.durationMs : Draft.durationMs - 1u))),
 						Status) &&
 					SetValtanStageDraftWithSoundDependencyAdmission(
 						m_pAnimationTool, m_pBalanceTool,
@@ -9460,7 +10039,7 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 				fMouseTimelineMs)) -
 				static_cast<int64_t>(m_iTimelineMoveMouseStartMs);
 			/* The same Pattern-global delta is the exact Stage-local translation;
-			   the typed helper clamps the complete pulse window to that Stage. */
+			   the typed helper clamps the complete timing window to that Stage. */
 			if (bColliderSchedule)
 			{
 				CBalanceTool::PATTERN_STAGE_EDIT Draft;
@@ -10331,8 +10910,43 @@ void Client::CActionCompositionWorkbench::Request_LaneAuthoring(
 		Select_Stage(
 			Pattern, Stage, DETAIL_OWNER::GAMEPLAY_STAGE,
 			Stage.strStageId + "/collider");
-		m_strStatus =
-			"Server Collider / Hit Schedule Details opened; visual Effect geometry is never copied into hit authority.";
+		if (nullptr == m_pBalanceTool)
+		{
+			m_strStatus =
+				"Server Collider Details opened read-only because the typed Pattern draft owner is unavailable.";
+			break;
+		}
+		{
+			CBalanceTool::PATTERN_STAGE_EDIT Draft;
+			std::string Status;
+			if (!m_pBalanceTool->Get_ValtanStageDraft(
+					Pattern.strPatternId, Stage.strStageId, Draft, Status))
+			{
+				m_strStatus = std::move(Status);
+				break;
+			}
+			if ("NONE" != Draft.hitShape)
+			{
+				m_strStatus =
+					"Server Collider geometry and timing Details opened; visual Effect geometry is never copied into hit authority.";
+				break;
+			}
+			const std::vector<std::string> DamageProfiles =
+				m_pBalanceTool->Get_ValtanDamageProfileIds();
+			if (!InitializeDefaultValtanColliderBoxDraft(
+					Draft, DamageProfiles, m_iDamageProfileSelection, Status) ||
+				!SetValtanStageDraftWithSoundDependencyAdmission(
+					m_pAnimationTool, m_pBalanceTool,
+					m_bPatternShakesReady ? &m_PatternShakes : nullptr,
+					Pattern, Stage, Draft, Status))
+			{
+				m_strStatus = std::move(Status);
+				break;
+			}
+			Refresh_PatternLocalPreviewAfterMutation(&Pattern, Status);
+			m_strStatus = std::move(Status);
+			Invalidate_TimelineCache();
+		}
 		break;
 	case TIMELINE_LANE::CAMERA:
 		OpenResources(RESOURCE_DOMAIN::CAMERA);

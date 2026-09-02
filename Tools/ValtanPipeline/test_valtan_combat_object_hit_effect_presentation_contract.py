@@ -37,7 +37,7 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
             }],
             rock["presentationEvents"],
         )
-        self.assertEqual(5000, rock["lifeMs"])
+        self.assertEqual(6200, rock["lifeMs"])
 
     def test_native_consumers_admit_presentation_only_carriers(self) -> None:
         tree = _read("Client/Private/ValtanPatternTree.cpp")
@@ -47,6 +47,20 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
         self.assertIn("0u == iEventRowCount || iEventRowCount > 16u", tree)
         self.assertIn("iEventOffsetMs > Reference->second.iLifetimeMs", tree)
         self.assertNotIn("hits->Get_Array().empty()", sound)
+
+    def test_animation_composition_joins_terminal_presentation_sound(self) -> None:
+        source = _read("Client/Private/Animation_Tool.cpp")
+        lanes = _function(
+            source,
+            "void Client::CAnimation_Tool::Render_ValtanPresentationLanes(",
+            "void Client::CAnimation_Tool::Render_ValtanPatternMasterUnavailableShell(",
+        )
+        self.assertIn("CombatObject.PresentationEvents", lanes)
+        self.assertIn("Cue.strPresentationEventId ==", lanes)
+        self.assertIn("Event.strPresentationEventId", lanes)
+        self.assertIn('"Server Semantic Event Sound"', lanes)
+        self.assertIn("presentation-event local", lanes)
+        self.assertNotIn('"Server Hit Sound"', lanes)
 
     def test_ground_roar_visual_owns_active_and_hit_effect_assets(self) -> None:
         catalog = json.loads(_read("Data/Actors/BossCatalog.json"))
@@ -66,6 +80,10 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
                 "clientVisualId":
                     "combatobject.visual.valtan.ground-roar.rock.v1",
                 "effectAssetId": "effect.valtan.ground-roar.rock.active",
+                "effectV2Group": {
+                    "groupId": "boss.valtan.rock-pillar.sequence",
+                    "playbackRate": 1.0,
+                },
                 "hitEffectAssetId":
                     "effect.valtan.ground-roar.rock.explode",
             },
@@ -228,6 +246,8 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
                 "valtan.independent-effect.target-axe",
                 "valtan.independent-effect.donut-in-out",
                 "valtan.independent-effect.ground-roar-cardinal-rocks",
+                "valtan.independent-effect.six-pizza-rock-pillars",
+                "valtan.independent-effect.struggling-rock-pillars",
                 "valtan.independent-effect.ghost-portal-once",
             ],
             [row["independentEffectId"] for row in presentation["independentEffects"]],
@@ -279,7 +299,7 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
             if row["combatObjectArchetypeId"]
             == event["combatObjectArchetypeId"]
         )
-        self.assertEqual(5000, authored_rock["lifetimeMs"])
+        self.assertEqual(6200, authored_rock["lifetimeMs"])
 
         combat_product = json.loads(
             _read("Data/Encounters/Valtan/ValtanCombatObjects.json")
@@ -412,14 +432,16 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
         for token in (
             "Template.fStartAngleDegrees +",
             "Template.fAngleStepDegrees * static_cast<f32_t>(iOrdinal)",
-            "fActionAgeMs < static_cast<f32_t>(Instance.Template.iLifetimeMs)",
+            "fStageAgeMs <",
+            "Instance.Template.iFirstSpawnOffsetMs",
+            "fObjectAgeMs < static_cast<f32_t>(Instance.Template.iLifetimeMs)",
             "CEffectPresentationService::Stop_WorldRoot(Handle);",
             "Desc.strEffectAssetId = Visual->hitEffectAssetId;",
             "Event.iAtMs",
         ):
             self.assertIn(token, sync)
         self.assertLess(
-            sync.index("fActionAgeMs < static_cast<f32_t>(Instance.Template.iLifetimeMs)"),
+            sync.index("fObjectAgeMs < static_cast<f32_t>(Instance.Template.iLifetimeMs)"),
             sync.index("Desc.strEffectAssetId = Visual->hitEffectAssetId;"),
         )
         staging = _function(
@@ -428,6 +450,9 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
             "bool_t CValtan::Apply_LocalCombatObjectAuthoringPreviewSample(",
         )
         self.assertIn("0u == Source.iLifetimeMs", staging)
+        self.assertIn(
+            "Template.iFirstSpawnOffsetMs = Source.iFirstSpawnOffsetMs", staging
+        )
         self.assertNotIn("Source.iLifetimeMs > Stage.iDurationMs", staging)
 
     def test_effect_tool_plays_ground_roar_as_one_locked_multi_root_lifecycle(self) -> None:

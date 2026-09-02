@@ -399,8 +399,14 @@ def shared_reaction_and_selection_contract_valid(
     binding_actions = {
         row["actionId"] for row in bindings["bindings"] if row["clips"]
     }
+    # Product admission rebuilds the compatibility master from the current
+    # split gameplay owner.  The frozen v1 monolith intentionally retains
+    # pre-migration triple-counter reaction rows, so using those rows here
+    # would resurrect an owner-internal success chain that the split graph
+    # replaced with VALTAN_GROGGY_FOLLOWUP cross-pattern branches.
     layer_owner_ids = {
-        layer["ownerPatternId"] for layer in master["counterReactionLayers"]
+        layer["ownerPatternId"]
+        for layer in gameplay["counterReactionLayers"]
     }
     product_counter_stages: set[tuple[str, str]] = set()
     for pattern in encounter["patterns"]:
@@ -419,10 +425,10 @@ def shared_reaction_and_selection_contract_valid(
                 product_counter_stages.add((pattern["patternId"], stage["stageId"]))
 
     master_counter_stages: set[tuple[str, str]] = set()
-    for layer in master["counterReactionLayers"]:
+    for layer in gameplay["counterReactionLayers"]:
         if (
             layer["admissionScope"] != "REFERENCE_ONLY_LEGACY"
-            or layer["ownerPatternId"] in managed_ids
+            or layer["ownerPatternId"] in gameplay_ids
             or layer["reactionLayerId"] == ""
         ):
             return False
@@ -927,6 +933,40 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             "the Product encounter parser must retain the same extensions",
         )
 
+    def test_warp_body_visibility_survives_split_and_product_tree_join(self) -> None:
+        presentation = next(
+            row for row in self.presentation["patterns"]
+            if row["patternId"] == "VALTAN_WARP"
+        )
+        bindings = {
+            row["actionId"]: row for row in self.bindings["bindings"]
+        }
+        hidden_stages = [
+            stage for stage in presentation["stages"]
+            if "bodyVisibility" in stage
+        ]
+        self.assertEqual(8, len(hidden_stages))
+        for stage in hidden_stages:
+            with self.subTest(stage=stage["stageId"]):
+                window = stage["bodyVisibility"]
+                self.assertEqual(
+                    {"hiddenFromMs", "hiddenToMs"}, set(window)
+                )
+                self.assertLess(window["hiddenFromMs"], window["hiddenToMs"])
+                self.assertLessEqual(window["hiddenToMs"], 1800)
+                self.assertEqual(window, bindings[stage["actionId"]]["bodyVisibility"])
+
+        for token in (
+            "Read_StageBodyVisibility",
+            'PresentationStage.Find("bodyVisibility")',
+            'LegacyStage.emplace(\n\t\t\t\t\t\t"bodyVisibility"',
+            "BodyHiddenWindowByAction",
+            "Stage.bHasBodyHiddenWindow",
+            "Stage.iBodyHiddenFromMs",
+            "Stage.iBodyHiddenToMs",
+        ):
+            self.assertIn(token, self.cpp + self.header)
+
     def test_server_motion_uses_the_ordered_entry_stage_not_a_literal_name(
         self,
     ) -> None:
@@ -1335,10 +1375,12 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             self.rotations
         ))
 
-        invented = copy.deepcopy(self.master)
-        invented["counterReactionLayers"][0]["successActionId"] = "invented.action"
+        invented_gameplay = copy.deepcopy(self.gameplay)
+        invented_gameplay["counterReactionLayers"][0][
+            "successActionId"
+        ] = "invented.action"
         self.assertFalse(shared_reaction_and_selection_contract_valid(
-            invented, self.gameplay, self.encounter, self.bindings,
+            self.master, invented_gameplay, self.encounter, self.bindings,
             self.rotations
         ))
 
@@ -1598,7 +1640,8 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
                 "trigger", "kind", "targetId", "targetingPolicy",
                 "countPerResolvedTarget", "layout", "radiusM",
                 "startAngleDegrees", "angleStepDegrees", "allowOverlap",
-                "maximumTotalObjects", "spawnCount", "spawnIntervalMs",
+                "maximumTotalObjects", "spawnCount", "firstSpawnOffsetMs",
+                "spawnIntervalMs",
                 "arenaRandomCount", "arenaRandomRadiusM",
                 "arenaHeightToleranceM", "arenaAnchorPolicy",
             }, set(volley))
@@ -1616,15 +1659,14 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             volley for volley in volleys
             if volley["targetingPolicy"] == "PER_ALIVE_PLAYER"
         )
-        self.assertEqual(3, axe_volley["spawnCount"])
-        self.assertEqual(1333, axe_volley["spawnIntervalMs"])
-        self.assertEqual(4, axe_volley["arenaRandomCount"])
-        self.assertEqual(14.0, axe_volley["arenaRandomRadiusM"])
-        self.assertEqual(1.0, axe_volley["arenaHeightToleranceM"])
-        self.assertEqual(
-            "BOSS_SPAWN_POSITION", axe_volley["arenaAnchorPolicy"]
-        )
-        self.assertEqual(36, axe_volley["maximumTotalObjects"])
+        self.assertEqual(1, axe_volley["spawnCount"])
+        self.assertEqual(0, axe_volley["firstSpawnOffsetMs"])
+        self.assertEqual(0, axe_volley["spawnIntervalMs"])
+        self.assertEqual(0, axe_volley["arenaRandomCount"])
+        self.assertEqual(0, axe_volley["arenaRandomRadiusM"])
+        self.assertEqual(0, axe_volley["arenaHeightToleranceM"])
+        self.assertEqual("NONE", axe_volley["arenaAnchorPolicy"])
+        self.assertEqual(4, axe_volley["maximumTotalObjects"])
 
         axe_source = next(
             event
@@ -1643,16 +1685,11 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             "maximumTotalObjects",
         }, set(axe_source))
         self.assertEqual(
-            {"kind": "INTERVAL", "count": 3, "firstOffsetMs": 0,
-             "intervalMs": 1333},
+            {"kind": "INTERVAL", "count": 1, "firstOffsetMs": 0,
+             "intervalMs": 0},
             axe_source["spawnSchedule"],
         )
-        self.assertEqual(
-            {"kind": "RANDOM_NAVIGABLE_CIRCLE",
-             "anchor": "BOSS_SPAWN_POSITION", "count": 4,
-             "radiusM": 14.0, "heightToleranceM": 1.0},
-            axe_source["arenaRandom"],
-        )
+        self.assertEqual({"kind": "NONE"}, axe_source["arenaRandom"])
         self.assertEqual([
             {
                 "trigger": "ENTER",

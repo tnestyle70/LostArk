@@ -3,6 +3,7 @@
 #include "ValtanPatternEffectCueDocument.h"
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "PlayerHandGripTransform.h"
 
 #include <array>
 #include <cstddef>
@@ -80,11 +81,27 @@ struct VALTAN_COMBAT_OBJECT_PRESENTATION_EVENT_VIEW final
 	uint32_t iAtMs = 0u;
 };
 
+/* One exact Server combat-object hit row.  Keep the stable hit identity and
+   typed geometry in the joined Pattern view so an owning Pattern can expose
+   the real combat-object authoring contract instead of a UI-only donut
+   approximation. */
+struct VALTAN_COMBAT_OBJECT_HIT_VIEW final
+{
+	std::string strHitId;
+	std::string strHitShape;
+	f32_t fInnerRadiusM = 0.f;
+	f32_t fOuterRadiusM = 0.f;
+};
+
 struct VALTAN_COMBAT_OBJECT_EFFECT_VIEW final
 {
 	std::string strCombatObjectArchetypeId;
 	std::string strClientVisualId;
 	std::string strEffectAssetId;
+	/* Product presentation may replace the V1 editor fallback with one complete
+	   Effect V2 group clock. Composition shows this stable group identity on the
+	   owner timeline while local legacy preview can still use strEffectAssetId. */
+	std::string strEffectV2GroupId;
 	std::string strTrigger;
 	uint32_t iSpawnValue = 0u;
 	/* Preserve the authored volley projection instead of reducing it to the
@@ -95,6 +112,7 @@ struct VALTAN_COMBAT_OBJECT_EFFECT_VIEW final
 	f32_t fVolleyRadiusM = 0.f;
 	f32_t fVolleyStartAngleDegrees = 0.f;
 	f32_t fVolleyAngleStepDegrees = 0.f;
+	uint32_t iFirstSpawnOffsetMs = 0u;
 	/* Read-only Product diagnostics.  Combat-object timing is authored and
 	   published by the Valtan combat-object pipeline, not by stage-duration
 	   editing, so Workbench must show these as a separate clock. */
@@ -109,6 +127,7 @@ struct VALTAN_COMBAT_OBJECT_EFFECT_VIEW final
 	   no Sound cue instead of merely showing that an object spawned. */
 	std::vector<std::string> HitIds;
 	std::vector<uint32_t> HitOffsetsMs;
+	std::vector<VALTAN_COMBAT_OBJECT_HIT_VIEW> Hits;
 	/* Semantic terminal presentation clocks are independent of Server hits.
 	   The catalog selects the visual asset; this joined row preserves only the
 	   combat-object-owned identity and clock. */
@@ -226,11 +245,19 @@ struct VALTAN_STAGE_VIEW final
 	std::string strActionId;
 	std::string strStageKind;
 	uint32_t iDurationMs = 0u;
+	/* Optional Server-authored height owned by this Stage only. */
+	f32_t fVerticalOffsetM = 0.f;
 	uint32_t iAuthoringRepeatCount = 0u;
 	std::string strAnimationEndPolicy;
 	/* Explicit presentation contract: keep the current body pose for the
 	   Server stage instead of resolving a clip or a fallback animation. */
 	bool_t bSuppressAnimation = false;
+	/* Optional half-open Stage-clock interval in which the boss body parts are
+	   not submitted for rendering.  Effect/camera presentation keeps running;
+	   this is presentation metadata, not a gameplay visibility flag. */
+	bool_t bHasBodyHiddenWindow = false;
+	uint32_t iBodyHiddenFromMs = 0u;
+	uint32_t iBodyHiddenToMs = 0u;
 
 	/* Server owns damage. These are copied for display so the person
 	   authoring the Effect can see the window they are filling. */
@@ -262,6 +289,7 @@ struct VALTAN_STAGE_VIEW final
 	   opt into the typed left-hand attachment as one inseparable pair. */
 	std::string strPlayerResponse = "DAMAGE";
 	std::string strAttachmentSlot = "NONE";
+	std::optional<PLAYER_HAND_GRIP_LOCAL_OFFSET> GripLocalOffset;
 	std::string strPartDamagePolicy = "NORMAL";
 	std::optional<VALTAN_COUNTER_PROXY_VIEW> CounterProxy;
 	std::optional<VALTAN_BOSS_RESPONSE_VIEW> BossResponse;

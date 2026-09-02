@@ -11,9 +11,10 @@
 #include "WorldDestructionProjectionDocument.h"
 #include "WorldDestructionProjectionRuntime.h"
 #include "ReplicatedPlayerHealth.h"
+#include "PlayerHandGripTransform.h"
+#include "CombatDebugVisibility.h"
 
 #include <chrono>
-#include <cmath>
 #include <cstdint>
 #include <deque>
 #include <functional>
@@ -123,94 +124,6 @@ namespace Client
 		COMMITTED,
 		RECOVERED_FAILURE,
 		FATAL_FAILURE
-	};
-
-	/* Pure presentation math shared by replication and the headless contract
-	   harness. Capture position never becomes a hand-local displacement. */
-	class CPlayerHandGripTransform final
-	{
-	public:
-		static bool_t Build_LocalOffset(
-			const float4x4_t& playerWorld,
-			const float4x4_t& handWorld,
-			float4x4_t& outLocalOffset)
-		{
-			if (!Is_UsableAffineMatrix(playerWorld) ||
-				!Is_UsableAffineMatrix(handWorld))
-				return false;
-
-			matrix_t playerBasis = DirectX::XMLoadFloat4x4(&playerWorld);
-			matrix_t handBasis = DirectX::XMLoadFloat4x4(&handWorld);
-			playerBasis.r[3] = DirectX::XMVectorSet(0.f, 0.f, 0.f, 1.f);
-			handBasis.r[3] = DirectX::XMVectorSet(0.f, 0.f, 0.f, 1.f);
-			matrix_t local = playerBasis *
-				DirectX::XMMatrixInverse(nullptr, handBasis);
-			local.r[3] = DirectX::XMVectorSet(0.f, 0.f, 0.f, 1.f);
-			float4x4_t staged{};
-			DirectX::XMStoreFloat4x4(&staged, local);
-			if (!Is_UsableAffineMatrix(staged))
-				return false;
-			outLocalOffset = staged;
-			return true;
-		}
-
-		static bool_t Compose_World(
-			const float4x4_t& localOffset,
-			const float4x4_t& handWorld,
-			float4x4_t& outWorld)
-		{
-			if (!Is_UsableAffineMatrix(localOffset) ||
-				!Is_UsableAffineMatrix(handWorld))
-				return false;
-			float4x4_t staged{};
-			DirectX::XMStoreFloat4x4(&staged,
-				DirectX::XMLoadFloat4x4(&localOffset) *
-				DirectX::XMLoadFloat4x4(&handWorld));
-			if (!Is_UsableAffineMatrix(staged))
-				return false;
-			outWorld = staged;
-			return true;
-		}
-
-	private:
-		static bool_t Is_UsableAffineMatrix(const float4x4_t& value)
-		{
-			for (std::size_t row = 0u; row < 4u; ++row)
-				for (std::size_t column = 0u; column < 4u; ++column)
-					if (!std::isfinite(value.m[row][column]))
-						return false;
-			if (std::abs(value._14) > 1.e-5f ||
-				std::abs(value._24) > 1.e-5f ||
-				std::abs(value._34) > 1.e-5f ||
-				std::abs(value._44 - 1.f) > 1.e-5f)
-				return false;
-
-			// Normal Valtan hand bones carry approximately 0.01 scale. Judge
-			// basis degeneracy independently of that valid model conversion.
-			double normalized[3u][3u]{};
-			for (std::size_t row = 0u; row < 3u; ++row)
-			{
-				double lengthSquared = 0.0;
-				for (std::size_t column = 0u; column < 3u; ++column)
-				{
-					const double component = value.m[row][column];
-					lengthSquared += component * component;
-				}
-				const double length = std::sqrt(lengthSquared);
-				if (!std::isfinite(length) || !(length > 0.0))
-					return false;
-				for (std::size_t column = 0u; column < 3u; ++column)
-					normalized[row][column] = value.m[row][column] / length;
-			}
-			const double determinant =
-				normalized[0u][0u] * (normalized[1u][1u] * normalized[2u][2u] -
-					normalized[1u][2u] * normalized[2u][1u]) -
-				normalized[0u][1u] * (normalized[1u][0u] * normalized[2u][2u] -
-					normalized[1u][2u] * normalized[2u][0u]) +
-				normalized[0u][2u] * (normalized[1u][0u] * normalized[2u][1u] -
-					normalized[1u][1u] * normalized[2u][0u]);
-			return std::isfinite(determinant) && std::abs(determinant) > 1.e-6;
-		}
 	};
 
 	struct VALTAN_PRESENTATION_STATE final
@@ -413,8 +326,12 @@ namespace Client
 		bool Try_Consume_WorldDestructionLiveEvent(
 			LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE& outEvent);
 #ifdef _DEBUG
-		void Set_CombatColliderDebugVisible(bool_t isVisible);
-		void Set_SkillHitAreaDebugVisible(bool_t isVisible);
+		/* F1 Developer Tools writes one process-global snapshot. Every Level-owned
+		   replication consumes it by revision, including while disconnected. */
+		static COMBAT_DEBUG_VISIBILITY_SNAPSHOT
+			Get_GlobalCombatDebugVisibility();
+		static void Set_GlobalCombatDebugVisibility(
+			const COMBAT_DEBUG_VISIBILITY_SNAPSHOT& Visibility);
 #endif
 
 		std::shared_ptr<CCharacter> Get_LocalCharacter() const;
@@ -501,6 +418,11 @@ namespace Client
 			std::string& outText) const;
 
 	private:
+#ifdef _DEBUG
+		void Sync_GlobalCombatDebugVisibility();
+		void Apply_CombatDebugVisibility(
+			const COMBAT_DEBUG_VISIBILITY_SNAPSHOT& Visibility);
+#endif
 		bool Create_Character(
 			LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 			std::string_view nickName,
@@ -630,6 +552,8 @@ namespace Client
 				LostArk::Shared::PLAYER_ATTACHMENT_SLOT::NONE;
 			float4x4_t LocalOffset{};
 			bool_t bHasLocalOffset = false;
+			PLAYER_HAND_GRIP_LOCAL_OFFSET GripLocalOffset{};
+			bool_t bHasGripLocalOffset = false;
 		};
 		std::unordered_map<
 			LostArk::Shared::NET_ENTITY_ID,
@@ -661,8 +585,7 @@ namespace Client
 		std::unordered_map<LostArk::Shared::NET_ENTITY_ID, CHAT_BUBBLE_ENTRY>
 			m_ChatBubblesByNetEntityId;
 #ifdef _DEBUG
-		bool_t m_isCombatColliderDebugVisible = false;
-		bool_t m_isSkillHitAreaDebugVisible = true;
+		COMBAT_DEBUG_VISIBILITY_SNAPSHOT m_CombatDebugVisibility{};
 #endif
 
 		struct WORLD_ENTITY_PRESENTATION

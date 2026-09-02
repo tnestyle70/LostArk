@@ -87,9 +87,15 @@ namespace
 	}
 
 	std::string Make_SourceKey(const std::string_view archetypeId,
-		const std::string_view hitId)
+		const std::string_view eventId)
 	{
-		return std::string(archetypeId) + "\n" + std::string(hitId);
+		return std::string(archetypeId) + "\n" + std::string(eventId);
+	}
+
+	std::string_view Resolve_SourceId(
+		const VALTAN_COMBAT_OBJECT_SOUND_CUE& cue)
+	{
+		return cue.strHitId.empty() ? cue.strPresentationEventId : cue.strHitId;
 	}
 
 	bool_t Is_ValidSoundAssetId(const std::string_view assetId)
@@ -133,8 +139,13 @@ namespace
 				"    {\n"
 				"      \"bindingId\": \"" << cue.strBindingId << "\",\n"
 				"      \"combatObjectArchetypeId\": \"" <<
-				cue.strCombatObjectArchetypeId << "\",\n"
-				"      \"hitId\": \"" << cue.strHitId << "\",\n"
+				cue.strCombatObjectArchetypeId << "\",\n";
+			if (!cue.strHitId.empty())
+				output << "      \"hitId\": \"" << cue.strHitId << "\",\n";
+			else
+				output << "      \"presentationEventId\": \"" <<
+					cue.strPresentationEventId << "\",\n";
+			output <<
 				"      \"soundBank\": \"" << cue.strSoundBank << "\",\n"
 				"      \"soundEvent\": \"" << cue.strSoundEvent << "\"\n"
 				"    }";
@@ -298,6 +309,31 @@ bool_t Client::CValtanCombatObjectSoundCueDocument::Parse_Text(
 				return false;
 			}
 		}
+		const DATA_JSON_VALUE* presentationEvents =
+			object.Find("presentationEvents");
+		if (nullptr != presentationEvents)
+		{
+			if (!presentationEvents->Is_Array())
+			{
+				outStatus =
+					"Valtan combat-object Product presentation events are invalid.";
+				return false;
+			}
+			for (const DATA_JSON_VALUE& presentationEvent :
+				presentationEvents->Get_Array())
+			{
+				std::string presentationEventId;
+				if (!Read_StableString(presentationEvent,
+						"presentationEventId", presentationEventId) ||
+					!productSources.insert(Make_SourceKey(
+						archetypeId, presentationEventId)).second)
+				{
+					outStatus =
+						"Valtan combat-object Product event identity is missing or duplicate.";
+					return false;
+				}
+			}
+		}
 	}
 
 	DATA_JSON_VALUE cueRoot;
@@ -333,19 +369,31 @@ bool_t Client::CValtanCombatObjectSoundCueDocument::Parse_Text(
 	std::unordered_set<std::string> boundSources;
 	for (const DATA_JSON_VALUE& value : cues->Get_Array())
 	{
-		if (!Is_ExactObject(value,
-			{ "bindingId", "combatObjectArchetypeId", "hitId",
-			  "soundBank", "soundEvent" }))
+		const bool_t bHasHitId = nullptr != value.Find("hitId");
+		const bool_t bHasPresentationEventId =
+			nullptr != value.Find("presentationEventId");
+		if (bHasHitId == bHasPresentationEventId ||
+			!Is_ExactObject(value,
+				bHasHitId ?
+					std::initializer_list<const char_t*>{
+						"bindingId", "combatObjectArchetypeId", "hitId",
+						"soundBank", "soundEvent" } :
+					std::initializer_list<const char_t*>{
+						"bindingId", "combatObjectArchetypeId",
+						"presentationEventId", "soundBank", "soundEvent" }))
 		{
 			outStatus =
-				"Valtan combat-object Sound cue has unexpected properties.";
+				"Valtan combat-object Sound cue must own exactly one of hitId or presentationEventId.";
 			return false;
 		}
 		VALTAN_COMBAT_OBJECT_SOUND_CUE cue;
 		if (!Read_StableString(value, "bindingId", cue.strBindingId) ||
 			!Read_StableString(value, "combatObjectArchetypeId",
 				cue.strCombatObjectArchetypeId) ||
-			!Read_StableString(value, "hitId", cue.strHitId) ||
+			(bHasHitId ?
+				!Read_StableString(value, "hitId", cue.strHitId) :
+				!Read_StableString(value, "presentationEventId",
+					cue.strPresentationEventId)) ||
 			!Read_StableString(value, "soundBank", cue.strSoundBank) ||
 			!Read_StableString(value, "soundEvent", cue.strSoundEvent) ||
 			SOUND_BANK != cue.strSoundBank ||
@@ -356,7 +404,7 @@ bool_t Client::CValtanCombatObjectSoundCueDocument::Parse_Text(
 			return false;
 		}
 		const std::string sourceKey = Make_SourceKey(
-			cue.strCombatObjectArchetypeId, cue.strHitId);
+			cue.strCombatObjectArchetypeId, Resolve_SourceId(cue));
 		if (!productSources.contains(sourceKey) ||
 			!boundSources.insert(sourceKey).second)
 		{
@@ -371,14 +419,14 @@ bool_t Client::CValtanCombatObjectSoundCueDocument::Parse_Text(
 		[](const VALTAN_COMBAT_OBJECT_SOUND_CUE& left,
 			const VALTAN_COMBAT_OBJECT_SOUND_CUE& right)
 		{
-			return std::tie(left.strCombatObjectArchetypeId, left.strHitId,
-				left.strBindingId) <
-				std::tie(right.strCombatObjectArchetypeId, right.strHitId,
-					right.strBindingId);
+			return std::tuple(left.strCombatObjectArchetypeId,
+				Resolve_SourceId(left), left.strBindingId) <
+				std::tuple(right.strCombatObjectArchetypeId,
+					Resolve_SourceId(right), right.strBindingId);
 		});
 	inOutDocument = std::move(staged);
 	outStatus = "Parsed " + std::to_string(inOutDocument.Cues.size()) +
-		" Server-hit-qualified Valtan combat-object Sound cue(s).";
+		" Server-event-qualified Valtan combat-object Sound cue(s).";
 	return true;
 }
 
@@ -428,7 +476,7 @@ bool_t Client::CValtanCombatObjectSoundCueDocument::Validate_SourceDraft(
 		return false;
 	}
 	outStatus = "Validated " + std::to_string(staged.Cues.size()) +
-		" Server-hit-qualified Valtan Sound cue(s).";
+		" Server-event-qualified Valtan Sound cue(s).";
 	return true;
 }
 
@@ -510,7 +558,7 @@ bool_t Client::CValtanCombatObjectSoundCueDocument::Begin_SourceReplacement(
 	transaction.bHadPrevious = hadPrevious;
 	transaction.bActive = true;
 	outStatus = "Prepared " + std::to_string(document.Cues.size()) +
-		" recoverable Server-hit-qualified Valtan Sound cue(s).";
+		" recoverable Server-event-qualified Valtan Sound cue(s).";
 	return true;
 #endif
 }
@@ -596,6 +644,6 @@ bool_t Client::CValtanCombatObjectSoundCueDocument::Save_Source(
 		return false;
 	}
 	outStatus = "Saved " + std::to_string(document.Cues.size()) +
-		" Server-hit-qualified Valtan Sound cue(s). " + commitStatus;
+		" Server-event-qualified Valtan Sound cue(s). " + commitStatus;
 	return true;
 }

@@ -115,11 +115,13 @@ class ValtanSkyAxeRedTelegraphContractTests(unittest.TestCase):
             spawn["spawnSchedule"],
             {
                 "kind": "INTERVAL",
-                "count": 3,
+                "count": 1,
                 "firstOffsetMs": 0,
-                "intervalMs": 1333,
+                "intervalMs": 0,
             },
         )
+        self.assertEqual(spawn["arenaRandom"], {"kind": "NONE"})
+        self.assertEqual(spawn["maximumTotalObjects"], 4)
 
         combat_objects = load_json(
             "Data/Encounters/Valtan/ValtanCombatObjects.json"
@@ -238,8 +240,8 @@ class ValtanSkyAxeRedTelegraphContractTests(unittest.TestCase):
                 row["patternId"] == "VALTAN_HIGH_JUMP"
                 for row in sky_axe_product_cues
             ),
-            "the three target-axe plays come from the one Server combat-object "
-            "schedule, not duplicate Pattern cue owners",
+            "the per-player target-axe plays come from the Server combat-object "
+            "owner, not duplicate Pattern cue owners",
         )
 
     def test_user_deleted_independent_red_floor_stays_absent(self) -> None:

@@ -546,7 +546,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             '"Replace Stage Slots"',
             '"Append to Stage Slots"',
             '"WAIT / GAP##BossPatternAdd"',
-            '"Add Server Collider"',
+            '"Add Server Collider (BOX)"',
             '"Counter Enabled"',
             '"Counter Hit -> Groggy"',
         ):
@@ -587,10 +587,12 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         )
         for token in (
             "bHasServerCollider",
-            "bManualColliderAddAdmitted",
+            "bColliderAddAdmitted",
+            "bColliderTuneAdmitted",
+            "bColliderRemoveAdmitted",
             '"Add Manual Audition Server Collider / Hit Schedule"',
             "m_eDetailOwner = DETAIL_OWNER::GAMEPLAY_STAGE",
-            "m_strSelectedStableId = pStage->strStageId",
+            'm_strSelectedStableId = pStage->strStageId + "/collider"',
             "no geometry is inferred from the Effect",
         ):
             self.assertIn(token, effect_owner)
@@ -1575,7 +1577,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "patternSoundCandidateBytes",
             "effectV2BaselineBytes",
             "effectV2CandidateBytes",
-            'm_strStatus = "Nothing was saved. "',
+            'm_strStatus = "[Pipeline] Nothing was saved. "',
         ):
             self.assertIn(token, canonical_save)
         self.assertIn("Observe_ServerActivePatternRevision(", toolbar)
@@ -1755,7 +1757,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "m_ValtanCombatObjectSoundCues",
             'CSoundCueCatalog::Find_Variants("Valtan"',
             "Preview_ValtanSoundAsset",
-            "COVERAGE GAP: %zu Server combat-object hit(s)",
+            "COVERAGE GAP: %zu Server combat-object semantic event(s)",
             'ImGui::SeparatorText("Camera / Shake")',
             'ImGui::SeparatorText("World Event / Runtime UI")',
         ):
@@ -1776,7 +1778,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         for forbidden in ("C:\\Users\\", "Client/Bin/Resources", "..\\"):
             self.assertNotIn(forbidden, preview)
 
-    def test_high_jump_impact_sound_joins_the_server_hit_identity(self) -> None:
+    def test_combat_object_sound_joins_exactly_one_server_event_identity(self) -> None:
         product = json.loads(
             read("Data/Encounters/Valtan/ValtanCombatObjects.json")
         )
@@ -1796,15 +1798,30 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             )
         )
         product_sources = {
-            (entry["combatObjectArchetypeId"], hit["hitId"])
+            (entry["combatObjectArchetypeId"], "hitId", hit["hitId"])
             for entry in product["objects"]
             for hit in entry["hits"]
+        } | {
+            (
+                entry["combatObjectArchetypeId"],
+                "presentationEventId",
+                event["presentationEventId"],
+            )
+            for entry in product["objects"]
+            for event in entry.get("presentationEvents", [])
         }
         self.assertEqual("lostark.valtan-combat-object-sound-cues", bindings["schema"])
         self.assertGreater(len(bindings["cues"]), 0)
-        bound_sources: set[tuple[str, str]] = set()
+        bound_sources: set[tuple[str, str, str]] = set()
         for cue in bindings["cues"]:
-            source = (cue["combatObjectArchetypeId"], cue["hitId"])
+            source_keys = {"hitId", "presentationEventId"} & cue.keys()
+            self.assertEqual(1, len(source_keys))
+            source_key = next(iter(source_keys))
+            source = (
+                cue["combatObjectArchetypeId"],
+                source_key,
+                cue[source_key],
+            )
             self.assertIn(source, product_sources)
             self.assertNotIn(source, bound_sources)
             bound_sources.add(source)
@@ -1818,6 +1835,22 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
                     (resource_root / Path(asset_id)).is_file(),
                     f"missing physical sound dependency: {asset_id}",
                 )
+
+        self.assertIn(
+            (
+                "combatobject.valtan.ground-roar.rock",
+                "presentationEventId",
+                "pulse.valtan.ground-roar.rock.explode",
+            ),
+            bound_sources,
+        )
+        valtan_events = sound_catalog["classes"]["Valtan"]
+        self.assertEqual(
+            4, len(valtan_events["G_Voltan2_Attack09_ProjCreat1"])
+        )
+        self.assertEqual(
+            1, len(valtan_events["G_Voltan2_Attack09_ProjExp2"])
+        )
 
         for token in (
             "S2C_COMBAT_OBJECT_PRESENTATION_EVENT",
@@ -1835,6 +1868,76 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "Play_Sound",
         ):
             self.assertIn(token, self.valtan_cpp)
+        for token in (
+            "strPresentationEventId",
+            "bHasHitId == bHasPresentationEventId",
+            "presentationEventId",
+        ):
+            self.assertIn(token, self.combat_sound_document_cpp)
+
+    def test_ground_roar_has_spawn_stomps_and_impact_sound(self) -> None:
+        sounds = json.loads(read(
+            "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json"
+        ))["cues"]
+        ground_roar = [
+            cue for cue in sounds
+            if cue["patternId"] == "VALTAN_GROUND_ROAR"
+            and cue["stageId"] == "STEP_01"
+        ]
+        self.assertEqual(
+            [
+                ("G_Voltan2_Attack09_ProjCreat1", 1),
+                ("G_Voltan2_FootStep1", 600),
+                ("G_Voltan2_FootStep1", 1300),
+                ("G_Voltan2_Attack02_Shot1", 1300),
+            ],
+            [(cue["soundEvent"], cue["startMs"]) for cue in ground_roar],
+        )
+        self.assertTrue(all(
+            cue["actionId"] == "valtan.sequence.sequence.400440.0.step-01"
+            and cue["clipOccurrenceId"]
+            == "valtan.sequence.sequence.400440.0.step-01.clip-01"
+            for cue in ground_roar
+        ))
+
+    def test_six_pizza_reuses_the_shout_groups_on_exact_clip_clocks(self) -> None:
+        bindings = json.loads(read(
+            "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"
+        ))["bindings"]
+        pizza = {
+            row["scope"]["stageId"]: row
+            for row in bindings
+            if row["scope"]["patternId"] == "VALTAN_SIX_PIZZA_106"
+            and row["resource"]["id"]
+            in {"boss.valtan.shout", "boss.valtan.shout.burst"}
+        }
+        self.assertEqual({"STEP_06", "STEP_07"}, pizza.keys())
+        loop = pizza["STEP_06"]
+        self.assertEqual("GROUP", loop["resource"]["kind"])
+        self.assertEqual("boss.valtan.shout", loop["resource"]["id"])
+        self.assertEqual("CLIP_OCCURRENCE", loop["clock"]["basis"])
+        self.assertEqual(
+            "valtan.sequence.center-six-pizza-charge.step-06.clip-01",
+            loop["clock"]["clipOccurrenceId"],
+        )
+        self.assertEqual("EACH_LOOP", loop["clock"]["repeatPolicy"])
+        self.assertEqual(0, loop["clock"]["startMs"])
+
+        burst = pizza["STEP_07"]
+        self.assertEqual("boss.valtan.shout.burst", burst["resource"]["id"])
+        self.assertEqual(
+            "valtan.sequence.center-six-pizza-charge.step-07.clip-01",
+            burst["clock"]["clipOccurrenceId"],
+        )
+        self.assertEqual("ONCE", burst["clock"]["repeatPolicy"])
+        self.assertEqual(733, burst["clock"]["startMs"])
+        for row in pizza.values():
+            self.assertEqual("b_effectroot", row["anchor"]["slotId"])
+            self.assertEqual(
+                "SNAPSHOT_AT_START", row["anchor"]["followPolicy"]
+            )
+            self.assertEqual("TARGET_YAW", row["anchor"]["rotationBasis"])
+            self.assertEqual("NATURAL", row["stopPolicy"])
 
     def test_trash_capture_preimpact_has_the_authored_slam_sound(self) -> None:
         sounds = json.loads(read(
@@ -2026,7 +2129,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         for token in (
             "FindValtanPattern",
             "FindValtanStage",
-            "stable identity, DamageProfile, response, and motion kind are read-only",
+            "stable identity, derived admission, and motion kind are read-only",
             "MANUAL_SERVER_AUDITION Stage admits ACTIVE, WINDUP, or GROGGY",
             "stageKindChanged",
             "IsValtanStageGeometryValid",

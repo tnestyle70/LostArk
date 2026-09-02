@@ -575,10 +575,19 @@ namespace
 					visual.Find("effectV2Group") : nullptr;
 				if (nullptr == group)
 					continue;
+				const bool_t hasVisualHitMs = group->Is_Object() &&
+					nullptr != group->Find("visualHitMs");
+				const bool_t hasServerHitId = group->Is_Object() &&
+					nullptr != group->Find("serverHitId");
+				const bool_t hasHitSync = hasVisualHitMs && hasServerHitId;
 				std::string groupId;
 				std::string ignoredRelative;
-				if (!Has_ExactProperties(*group,
-						{ "groupId", "playbackRate", "visualHitMs", "serverHitId" }) ||
+				if (hasVisualHitMs != hasServerHitId ||
+					!(hasHitSync ?
+						Has_ExactProperties(*group,
+							{ "groupId", "playbackRate", "visualHitMs", "serverHitId" }) :
+						Has_ExactProperties(*group,
+							{ "groupId", "playbackRate" })) ||
 					!Read_String(*group, "groupId", groupId) ||
 					!Build_EffectV2Relative(EFFECT_V2_GROUP_ROOT, groupId,
 						EFFECT_V2_GROUP_SUFFIX,

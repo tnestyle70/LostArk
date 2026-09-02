@@ -102,6 +102,8 @@
     <ClInclude Include="..\Public\NetworkWorldEntityCommandSink.h" />
     <ClInclude Include="..\Public\CharacterSpec.h" />
     <ClInclude Include="..\Public\ClientReplication.h" />
+    <ClInclude Include="..\Public\CombatDebugVisibility.h" />
+    <ClInclude Include="..\Public\PlayerHandGripTransform.h" />
     <ClInclude Include="..\Public\ClientReplicationEvent.h" />
 	<ClInclude Include="..\Public\CombatObjectProjectionRuntime.h" />
     <ClInclude Include="..\Public\CombatHUDViewModel.h" />

@@ -312,6 +312,8 @@ namespace LostArk::Server
 		never to the previous offset pose, so repeated finale cycles cannot drift. */
 		bool bPatternVerticalOffsetApplied = false;
 		float fPatternVerticalBaseY = 0.f;
+		bool bPatternStageVerticalOffsetApplied = false;
+		float fPatternStageVerticalBaseY = 0.f;
 		float fPatternHitOuterRadius = 0.f;
 		float fPatternHitInnerRadius = 0.f;
 		float fPatternHitAngleDegrees = 0.f;

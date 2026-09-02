@@ -444,7 +444,10 @@ namespace LostArk::Server
 		RELEASE_GRABBED_PLAYERS,
 		DAMAGE_GRABBED_PLAYERS,
 		EXECUTE_GRABBED_PLAYERS,
-		RETURN_TO_ARENA_CENTER
+		RETURN_TO_ARENA_CENTER,
+		/* Consume only the pursuit window that FinishPattern reserved for this
+		terminal edge. The ordered cursor and Debug completion hold are unchanged. */
+		SUPPRESS_INTER_STEP_PURSUIT
 	};
 
 	enum class BOSS_GRABBED_RELEASE_MODE : std::uint8_t
@@ -490,9 +493,10 @@ namespace LostArk::Server
 		float fAngleStepDegrees = 0.f;
 		bool bAllowOverlap = false;
 		std::uint32_t iMaximumTotalObjects = 1u;
-		/* Total waves, including the stage ENTER edge. Later waves are fixed-tick
-		stage-relative repeats; one means the legacy single ENTER spawn. */
+		/* Total waves on the stage-relative fixed-tick schedule. A zero first
+		offset preserves the legacy stage ENTER spawn for ordinal zero. */
 		std::uint32_t iSpawnCount = 1u;
+		std::uint32_t iFirstSpawnOffsetMs = 0u;
 		std::uint32_t iSpawnIntervalMs = 0u;
 		std::uint32_t iArenaRandomCount = 0u;
 		float fArenaRandomRadiusM = 0.f;
@@ -600,6 +604,9 @@ namespace LostArk::Server
 		BOSS_PATTERN_BOSS_RESPONSE_KIND eBossResponseKind =
 			BOSS_PATTERN_BOSS_RESPONSE_KIND::NONE;
 		std::uint32_t iBossResponseThreshold = 0u;
+		/* Optional Stage-owned vertical offset. A nonzero value is restored at
+		   the next Stage edge, independently of the legacy Pattern offset. */
+		float fVerticalOffsetM = 0.f;
 		std::uint32_t iDurationMs = 0;
 		float fHitOuterRadius = 0.f;
 		float fHitInnerRadius = 0.f;

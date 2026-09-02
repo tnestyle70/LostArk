@@ -114,13 +114,13 @@ class ValtanCrossPatternFollowupPipelineTests(unittest.TestCase):
 
     def test_followup_target_must_be_zero_bar_and_untargeted(self) -> None:
         invalid = copy.deepcopy(self.master)
-        target = pattern(invalid, "VALTAN_COUNTER_GROGGY")
+        target = pattern(invalid, "VALTAN_GROGGY_FOLLOWUP")
         target["eligibility"]["minimumHealthBarInclusive"] = 1
         with self.assertRaisesRegex(pipeline.PipelineError, "zero selection/health"):
             self.validate(invalid)
 
         invalid = copy.deepcopy(self.master)
-        target = pattern(invalid, "VALTAN_COUNTER_GROGGY")
+        target = pattern(invalid, "VALTAN_GROGGY_FOLLOWUP")
         target["targetPolicy"] = "LOCK_NEAREST_ON_START"
         target["aimPolicy"] = "LOCK_FACING_ON_START"
         with self.assertRaisesRegex(pipeline.PipelineError, "untargeted"):
@@ -134,7 +134,13 @@ class ValtanCrossPatternFollowupPipelineTests(unittest.TestCase):
         root["actionId"] = "valtan.reaction.followup-depth-root"
         root["entryActionId"] = root["actionId"] + ".active"
         root_stage = root["stages"][0]
+        # VALTAN_PART_BREAK now owns a second recovery Stage with a stable
+        # cardinal-rock event.  The synthetic depth fixture needs one neutral
+        # terminal Stage only; cloning the recovery Stage into every generated
+        # Pattern would duplicate that repository event identity.
+        root["stages"] = [root_stage]
         root_stage["actionId"] = root["entryActionId"]
+        root_stage["defaultNextActionId"] = None
         root_stage["animation"]["occurrences"][0][
             "clipOccurrenceId"
         ] = root["actionId"] + ".clip.01"
@@ -160,7 +166,9 @@ class ValtanCrossPatternFollowupPipelineTests(unittest.TestCase):
             owner["actionId"] = action_root
             owner["entryActionId"] = action_root + ".active"
             owner_stage = owner["stages"][0]
+            owner["stages"] = [owner_stage]
             owner_stage["actionId"] = owner["entryActionId"]
+            owner_stage["defaultNextActionId"] = None
             owner_stage["animation"]["occurrences"][0][
                 "clipOccurrenceId"
             ] = action_root + ".clip.01"
@@ -181,12 +189,20 @@ class ValtanCrossPatternFollowupPipelineTests(unittest.TestCase):
 
     def test_followup_graph_rejects_cycles_and_excessive_depth(self) -> None:
         invalid = copy.deepcopy(self.master)
-        terminal = stage(pattern(invalid, "VALTAN_PART_BREAK"), "PART_BREAK")
-        counter_groggy = stage(
-            pattern(invalid, "VALTAN_COUNTER_GROGGY"), "GROGGY"
+        terminal = stage(
+            pattern(invalid, "VALTAN_PART_BREAK"), "PART_BREAK_RECOVERY"
         )
-        terminal["branches"][0]["nextPatternId"] = "VALTAN_COUNTER_GROGGY"
-        counter_groggy["branches"][0]["nextPatternId"] = "VALTAN_PART_BREAK"
+        shared_groggy = stage(
+            pattern(invalid, "VALTAN_GROGGY_FOLLOWUP"), "GROGGY"
+        )
+        terminal["branches"] = [{
+            "outcome": "TIMEOUT",
+            "nextActionId": None,
+            "nextPatternId": "VALTAN_GROGGY_FOLLOWUP",
+        }]
+        # Preserve the current PART_DESTROYED follow-up while making the
+        # reverse terminal edge explicit for this cycle-only negative fixture.
+        shared_groggy["branches"][0]["nextPatternId"] = "VALTAN_PART_BREAK"
         with self.assertRaisesRegex(pipeline.PipelineError, "contains a cycle"):
             self.validate(invalid)
 
@@ -204,13 +220,13 @@ class ValtanCrossPatternFollowupPipelineTests(unittest.TestCase):
         )
         self.validate(boundary)
 
-    def test_publisher_uses_dedicated_followup_row_and_v30(self) -> None:
+    def test_publisher_uses_dedicated_followup_row_and_v32(self) -> None:
         source = PUBLISHER.read_text(encoding="utf-8")
         self.assertIn("'PATTERNSTAGEFOLLOWUP'", source)
-        self.assertIn("$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 30 }", source)
+        self.assertIn("$gameplayBootstrapVersion = if ($rotationFormatVersion -eq 4) { 32 }", source)
         self.assertIn("follow-up target must be an untargeted AUDITION_ONLY pattern", source)
         self.assertIn("Pattern follow-up graph exceeds maximum depth", source)
-        self.assertEqual(30, pipeline.GAMEPLAY_BOOTSTRAP_VERSION)
+        self.assertEqual(32, pipeline.GAMEPLAY_BOOTSTRAP_VERSION)
 
     def test_client_read_gate_revalidates_followup_shape_and_graph(self) -> None:
         source = CLIENT_PATTERN_TREE.read_text(encoding="utf-8")

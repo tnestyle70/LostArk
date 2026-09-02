@@ -1656,13 +1656,18 @@ def build_candidates(
             promotion["patternId"] == "VALTAN_COUNTER"
             and existing_gameplay_pattern is not None
             and existing_presentation_pattern is not None
-            and "VALTAN_COUNTER_GROGGY" in current_gameplay_ids
-            and "VALTAN_COUNTER_GROGGY" in current_presentation_ids
+            and "VALTAN_GROGGY_FOLLOWUP" in current_gameplay_ids
+            and "VALTAN_GROGGY_FOLLOWUP" in current_presentation_ids
+            and "VALTAN_COUNTER_GROGGY" not in current_gameplay_ids
+            and "VALTAN_COUNTER_GROGGY" not in current_presentation_ids
+            and "VALTAN_COUNTER_GROGGY" in set(
+                gameplay.get("retiredPatternIds", [])
+            )
         ):
-            # STEP_04 was promoted into its own reusable outcome Pattern.  The
-            # animation-chain receipt continues to prove the reviewed four-step
-            # source closure, while canonical gameplay deliberately owns the
-            # parent/result split and its cross-pattern branch identity.
+            # The reviewed source receipt retains its fourth, counter-specific
+            # groggy occurrence as immutable intake evidence. Canonical gameplay
+            # retires that duplicate result pattern and routes STEP_02 success
+            # to the shared Valtan groggy follow-up instead.
             gameplay_pattern = copy.deepcopy(existing_gameplay_pattern)
             presentation_pattern = copy.deepcopy(existing_presentation_pattern)
         else:
@@ -1790,6 +1795,7 @@ def validate_and_project(
     gameplay: dict[str, Any],
     presentation: dict[str, Any],
     *,
+    combat_authoring: dict[str, Any] | None = None,
     debug_document: dict[str, Any] | None = None,
     promotion_manifest: dict[str, Any] | None = None,
 ) -> dict[str, str]:
@@ -1799,6 +1805,8 @@ def validate_and_project(
         docs = pipeline.load_pipeline_documents(repo_root)
         docs[pipeline.GAMEPLAY_AUTHORING_REL] = gameplay
         docs[pipeline.PRESENTATION_AUTHORING_REL] = presentation
+        if combat_authoring is not None:
+            docs[pipeline.COMBAT_AUTHORING_REL] = combat_authoring
         pipeline.validate_valtan_native_animation_source(
             repo_root, presentation
         )
@@ -2308,9 +2316,13 @@ def _validate_effect_v2_bindings_v1_compatibility(
 
 
 def _load_effect_v2_binding_pipeline(repo_root: Path) -> Any:
-    root_text = str(repo_root)
-    if root_text not in sys.path:
-        sys.path.insert(0, root_text)
+    # Python tooling is owned by the checkout containing this module, while
+    # repo_root is the data transaction target and may be an isolated fixture.
+    # Resolve imports from the tooling checkout so CLI behavior does not vary
+    # with the caller's working directory or an incidental PYTHONPATH entry.
+    tooling_root = str(Path(__file__).resolve().parents[2])
+    if tooling_root not in sys.path:
+        sys.path.insert(0, tooling_root)
     try:
         from Tools.EffectToolV2 import effect_v2_binding_pipeline as binding_pipeline
     except ImportError as exc:
@@ -3381,7 +3393,20 @@ def commit_typed_authoring_patch(
                     docs,
                 )
             )
-            committed_master, committed_bosses, committed_damage, operation_count = (
+            committed_combat = pipeline.resolve_authoring_combat_base(
+                repo_root,
+                resolved_authoring_root,
+                base_revision,
+                current_sources,
+                docs,
+            )
+            (
+                committed_master,
+                committed_bosses,
+                committed_damage,
+                committed_combat,
+                operation_count,
+            ) = (
                 pipeline.apply_draft_patch(
                     committed_master,
                     committed_bosses,
@@ -3389,9 +3414,10 @@ def commit_typed_authoring_patch(
                     draft_patch,
                     base_revision,
                     docs[pipeline.WORLD_SET_REL],
-                    docs[pipeline.COMBAT_AUTHORING_REL],
+                    committed_combat,
                     repository_root=repo_root,
                     effect_catalog=docs[pipeline.EFFECT_CATALOG_REL],
+                    include_combat_authoring=True,
                 )
             )
             if (
@@ -3405,9 +3431,14 @@ def commit_typed_authoring_patch(
             gameplay, presentation = pipeline.split_v2_authoring(
                 committed_master,
                 docs[pipeline.WORLD_SET_REL],
-                docs[pipeline.COMBAT_AUTHORING_REL],
+                committed_combat,
             )
-            outputs = validate_and_project(repo_root, gameplay, presentation)
+            outputs = validate_and_project(
+                repo_root,
+                gameplay,
+                presentation,
+                combat_authoring=committed_combat,
+            )
             pattern_sound_pair = read_owner_pair(
                 "Pattern Sound",
                 pattern_sound_baseline_path,
@@ -3479,6 +3510,9 @@ def commit_typed_authoring_patch(
             target_payloads: dict[Path, bytes] = {
                 repo_root / GAMEPLAY_REL: _json_text(gameplay).encode("utf-8"),
                 repo_root / PRESENTATION_REL: _json_text(presentation).encode("utf-8"),
+                repo_root / pipeline.COMBAT_AUTHORING_REL: _json_text(
+                    committed_combat
+                ).encode("utf-8"),
             }
             for relative, text in outputs.items():
                 target_payloads[repo_root / relative] = text.encode("utf-8")

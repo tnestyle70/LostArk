@@ -399,21 +399,28 @@ namespace
 						pEffectV2Group->Find("visualHitMs") : nullptr;
 					const DATA_JSON_VALUE* pServerHitId = pEffectV2Group->Is_Object() ?
 						pEffectV2Group->Find("serverHitId") : nullptr;
+					const bool_t bHasVisualHitMs = nullptr != pVisualHitMs;
+					const bool_t bHasServerHitId = nullptr != pServerHitId;
+					const bool_t bHasHitSync =
+						bHasVisualHitMs && bHasServerHitId;
 					if (!pEffectV2Group->Is_Object() ||
-						4u != pEffectV2Group->Get_Object().size() ||
+						bHasVisualHitMs != bHasServerHitId ||
+						(bHasHitSync ? 4u : 2u) !=
+							pEffectV2Group->Get_Object().size() ||
 						nullptr == pGroupId || !pGroupId->Is_String() ||
 						!IsStableId(pGroupId->Get_String()) ||
 						nullptr == pPlaybackRate || !pPlaybackRate->Is_Number() ||
 						!std::isfinite(pPlaybackRate->Get_Number()) ||
 						pPlaybackRate->Get_Number() <= 0.0 ||
 						pPlaybackRate->Get_Number() > 16.0 ||
-						nullptr == pVisualHitMs || !pVisualHitMs->Is_Number() ||
-						pVisualHitMs->Get_Number() < 1.0 ||
-						pVisualHitMs->Get_Number() > 60000.0 ||
-						std::floor(pVisualHitMs->Get_Number()) !=
-							pVisualHitMs->Get_Number() ||
-						nullptr == pServerHitId || !pServerHitId->Is_String() ||
-						!IsStableId(pServerHitId->Get_String()))
+						(bHasHitSync &&
+							(!pVisualHitMs->Is_Number() ||
+							 pVisualHitMs->Get_Number() < 1.0 ||
+							 pVisualHitMs->Get_Number() > 60000.0 ||
+							 std::floor(pVisualHitMs->Get_Number()) !=
+								 pVisualHitMs->Get_Number() ||
+							 !pServerHitId->Is_String() ||
+							 !IsStableId(pServerHitId->Get_String()))))
 					{
 						return false;
 					}
@@ -422,9 +429,14 @@ namespace
 					entryVisual.effectV2Group.groupId = pGroupId->Get_String();
 					entryVisual.effectV2Group.playbackRate =
 						static_cast<f32_t>(pPlaybackRate->Get_Number());
-					entryVisual.effectV2Group.visualHitMs =
-						static_cast<uint32_t>(pVisualHitMs->Get_Number());
-					entryVisual.effectV2Group.serverHitId = pServerHitId->Get_String();
+					entryVisual.effectV2Group.bHasHitSync = bHasHitSync;
+					if (bHasHitSync)
+					{
+						entryVisual.effectV2Group.visualHitMs =
+							static_cast<uint32_t>(pVisualHitMs->Get_Number());
+						entryVisual.effectV2Group.serverHitId =
+							pServerHitId->Get_String();
+					}
 				}
 				if (nullptr != pHitEffectAssetId)
 					entryVisual.hitEffectAssetId =

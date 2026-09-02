@@ -570,11 +570,16 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
         counter = phase_two.stage(trash, "STEP_07")
         counter["counterProxy"]["radiusM"] = 1.75
         counter_p = phase_two.stage(trash_p, "CATCH_COUNTER")
-        cue = copy.deepcopy(phase_two.stage(trash_p, "STEP_01")["effectCues"][0])
+        cue = copy.deepcopy(next(
+            row for pattern in presentation["patterns"] for stage in pattern["stages"]
+            for row in stage["effectCues"]
+        ))
         cue.update(
             cueId="cue.valtan.fixture.capture-counter",
             occurrenceId="cue.valtan.fixture.capture-counter.occurrence.01",
             clipOccurrenceId=counter_p["animation"]["occurrences"][0]["clipOccurrenceId"],
+            sourceStartMs=0,
+            sourceEndMs=None,
         )
         counter_p["effectCues"] = [cue]
         camera = copy.deepcopy(next(

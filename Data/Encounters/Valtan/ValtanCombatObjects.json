@@ -117,7 +117,7 @@
       "offsetRightM": 0.0,
       "speedMps": 0.0,
       "maximumDistanceM": 0.0,
-      "lifeMs": 5000,
+      "lifeMs": 6200,
       "hits": [],
       "presentationEvents": [
         {
@@ -157,6 +157,69 @@
           "pushMs": 180,
           "knockdown": true,
           "downMs": 1500
+        }
+      ]
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.part-break.rock",
+      "clientVisualId": "combatobject.visual.valtan.part-break.rock.v1",
+      "ownerPatternId": "VALTAN_PART_BREAK",
+      "ownerStageActionId": "valtan.reaction.part-break.recovery",
+      "kind": "FIXED_AREA",
+      "originPolicy": "BOSS_POSITION",
+      "directionPolicy": "NONE",
+      "offsetForwardM": 0.0,
+      "offsetRightM": 0.0,
+      "speedMps": 0.0,
+      "maximumDistanceM": 0.0,
+      "lifeMs": 5000,
+      "hits": [],
+      "presentationEvents": [
+        {
+          "presentationEventId": "pulse.valtan.part-break.rock.explode",
+          "atMs": 5000
+        }
+      ]
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.six-pizza.rock-pillar",
+      "clientVisualId": "combatobject.visual.valtan.six-pizza.rock-pillar.v1",
+      "ownerPatternId": "VALTAN_SIX_PIZZA_106",
+      "ownerStageActionId": "valtan.sequence.center-six-pizza-charge.step-01",
+      "kind": "FIXED_AREA",
+      "originPolicy": "BOSS_POSITION",
+      "directionPolicy": "NONE",
+      "offsetForwardM": 0.0,
+      "offsetRightM": 0.0,
+      "speedMps": 0.0,
+      "maximumDistanceM": 0.0,
+      "lifeMs": 6200,
+      "hits": [],
+      "presentationEvents": [
+        {
+          "presentationEventId": "pulse.valtan.six-pizza.rock-pillar.explode",
+          "atMs": 5000
+        }
+      ]
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.struggling.rock-pillar",
+      "clientVisualId": "combatobject.visual.valtan.struggling.rock-pillar.v1",
+      "ownerPatternId": "VALTAN_STRUGGLING",
+      "ownerStageActionId": "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04",
+      "kind": "FIXED_AREA",
+      "originPolicy": "BOSS_POSITION",
+      "directionPolicy": "NONE",
+      "offsetForwardM": 0.0,
+      "offsetRightM": 0.0,
+      "speedMps": 0.0,
+      "maximumDistanceM": 0.0,
+      "lifeMs": 6200,
+      "hits": [],
+      "presentationEvents": [
+        {
+          "presentationEventId": "pulse.valtan.struggling.rock-pillar.explode",
+          "atMs": 5000
         }
       ]
     }

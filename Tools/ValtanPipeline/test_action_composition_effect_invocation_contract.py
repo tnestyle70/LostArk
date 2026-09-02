@@ -151,7 +151,7 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
             '"arena.center"',
             '"arena.center.facing"',
             '"arena.center.target-follow"',
-            '"Tune / Remove Existing Server Collider / Hit Schedule"',
+            '"Tune / Remove Existing Server Collider / Hit Timing"',
             '"Add Manual Audition Server Collider / Hit Schedule"',
             '"View Collider Authority (New Add Unavailable)"',
             "Add_ValtanStageEffectCue",
@@ -238,7 +238,7 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
         )
         gate = details[details.index("const VALTAN_PATTERN_VIEW* pSavedPattern") :]
         for token in (
-            "ADMISSION_STATE::ADMITTED == m_eAdmission",
+            "VALTAN_VIEW_ADMISSION::ADMITTED == m_eAdmission",
             "Find_SelectedPattern()",
             "iSavedOccurrenceCount",
             "1u == iSavedOccurrenceCount",
@@ -264,14 +264,15 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
         )
         for token in (
             'const bool_t bHasExistingServerHit = "NONE" != Draft.hitShape',
-            "Pattern.bManualServerAudition",
-            '"WAIT" != Stage.strSequenceRole && Draft.hitEditable',
-            "ImGui::BeginDisabled(!bManualColliderAddAdmitted)",
-            "if (bHasExistingServerHit && Draft.hitEditable)",
-            '"Add Server Collider"',
+            "Draft.colliderAddAdmitted",
+            "ImGui::BeginDisabled(!bColliderAddAdmitted)",
+            "if (bHasExistingServerHit && Draft.colliderTuneAdmitted)",
+            '"Add Server Collider (BOX)"',
             '"Remove Server Collider"',
-            "New Collider Add is unavailable on a canonical Stage with no existing hit contract",
-            "Existing Server hit contract: tune its typed geometry/schedule",
+            "ImGui::BeginDisabled(!Draft.colliderRemoveAdmitted)",
+            "New Collider Add is unavailable:",
+            "Existing Server hit contract: tune its typed geometry/timing",
+            "Remove is unavailable:",
         ):
             self.assertIn(token, gameplay)
 
@@ -317,7 +318,7 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
         self.assertIn("Reset_EffectCueEditor();", reload_body)
         self.assertIn("Reload_SemanticValtanEffects();", reload_body)
         self.assertLess(
-            reload_body.index("m_eAdmission = ADMISSION_STATE::ADMITTED;"),
+            reload_body.index("m_eAdmission = VALTAN_VIEW_ADMISSION::ADMITTED;"),
             reload_body.rindex("Reload_SemanticValtanEffects();"),
         )
         preview = body(

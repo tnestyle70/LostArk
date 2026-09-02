@@ -1,0 +1,23 @@
+{
+  "schema": "lostark.effect-v2-group",
+  "formatVersion": 2,
+  "groupId": "boss.valtan.project-tuned.sequence.trash.pulse-group",
+  "durationMs": 600,
+  "children": [
+    {
+      "childId": "child.project-tuned.trash.pulse.01",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.project-tuned.sequence.trash.pulse"
+      },
+      "startMs": 0,
+      "durationMs": 600,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [0.0, 0.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      }
+    }
+  ]
+}

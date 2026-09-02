@@ -362,6 +362,69 @@ class EffectV2ValidatorTests(unittest.TestCase):
         self.assertEqual(report["bindings"], 0)
         self.assertEqual(report["independent"], 0)
 
+    def test_boss_catalog_presentation_only_group_owner_passes(self) -> None:
+        self._write_group(self.group)
+        binding = copy.deepcopy(self.binding)
+        binding["bindings"] = []
+        self._write_fixture(self.document, binding)
+        self._write_json(
+            self.root / "Data/Actors/BossCatalog.json",
+            {
+                "schema": "lostark.boss-catalog",
+                "formatVersion": 6,
+                "bosses": [
+                    {
+                        "archetypeId": "BOSS_VALTAN",
+                        "combatObjectVisuals": [
+                            {
+                                "effectV2Group": {
+                                    "groupId": "group.test.one",
+                                    "playbackRate": 1.0,
+                                }
+                            }
+                        ],
+                    }
+                ],
+            },
+        )
+
+        report = VALIDATOR.validate(self.root, self.resource_root)
+
+        self.assertEqual(report["groups"], 1)
+        self.assertEqual(report["bindings"], 0)
+
+    def test_boss_catalog_partial_hit_sync_group_fails_closed(self) -> None:
+        self._write_group(self.group)
+        binding = copy.deepcopy(self.binding)
+        binding["bindings"] = []
+        self._write_fixture(self.document, binding)
+        self._write_json(
+            self.root / "Data/Actors/BossCatalog.json",
+            {
+                "schema": "lostark.boss-catalog",
+                "formatVersion": 6,
+                "bosses": [
+                    {
+                        "archetypeId": "BOSS_VALTAN",
+                        "combatObjectVisuals": [
+                            {
+                                "effectV2Group": {
+                                    "groupId": "group.test.one",
+                                    "playbackRate": 1.0,
+                                    "visualHitMs": 100,
+                                }
+                            }
+                        ],
+                    }
+                ],
+            },
+        )
+
+        with self.assertRaisesRegex(
+            VALIDATOR.ContractError, "effectV2Group contract is invalid"
+        ):
+            VALIDATOR.validate(self.root, self.resource_root)
+
     def test_present_invalid_boss_catalog_fails_closed(self) -> None:
         self._write_json(
             self.root / "Data/Actors/BossCatalog.json",

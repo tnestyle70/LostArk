@@ -1492,35 +1492,26 @@ bool_t Client::CBossTool::Retry_FlowProductPublishApply()
 
 void Client::CBossTool::Synchronize_LiveSelection()
 {
-	if (!m_bFollowLive)
-		return;
-	const VALTAN_PATTERN_FLOW_SNAPSHOT& FlowPlayback =
-		CValtanPatternFlowService::Get().Get_Snapshot();
-	const VALTAN_PATTERN_FLOW_DEFINITION* const pSavedFlow =
-		m_FlowDocument.Get_SavedDefaultFlow();
-	if (nullptr != pSavedFlow &&
-		!FlowPlayback.strCurrentSlotId.empty() &&
-		FlowPlayback.strFlowRevision == m_FlowDocument.Get_SourceRevision() &&
-		pSavedFlow->Slots.end() != std::find_if(
-			pSavedFlow->Slots.begin(), pSavedFlow->Slots.end(),
-			[&FlowPlayback](const VALTAN_PATTERN_FLOW_SLOT& Slot)
-			{
-				return Slot.strSlotId == FlowPlayback.strCurrentSlotId;
-			}))
-	{
-		m_strSelectedCurrentFlowSlotId = FlowPlayback.strCurrentSlotId;
-	}
 	const HUD_BOSS_STATE& Boss = CCombatHUDViewModel::Get().Get_Boss();
 	if (!Boss.isValid || Boss.strPatternId.empty())
+	{
+		m_strLivePatternId.clear();
+		m_strLiveStageId.clear();
+		m_strLastAutoRevealedLivePatternId.clear();
 		return;
+	}
 	const VALTAN_PATTERN_VIEW* pPattern =
 		Find_AuditionPattern(Boss.strPatternId);
 	if (nullptr == pPattern)
+	{
+		m_strLivePatternId.clear();
+		m_strLiveStageId.clear();
+		m_strLastAutoRevealedLivePatternId.clear();
 		return;
+	}
 	const VALTAN_STAGE_VIEW* pStage = Find_LiveStage(*pPattern);
-	m_strSelectedPatternId = pPattern->strPatternId;
-	if (nullptr != pStage)
-		m_strSelectedStageId = pStage->strStageId;
+	m_strLivePatternId = pPattern->strPatternId;
+	m_strLiveStageId = nullptr == pStage ? std::string{} : pStage->strStageId;
 }
 
 void Client::CBossTool::Render()
@@ -4162,38 +4153,58 @@ void Client::CBossTool::Render_PatternList()
 		}
 		return bMatches;
 	};
-	const auto HasVisible = [this, &Matches](
+	const auto IsVisible = [this, &Matches](const VALTAN_PATTERN_VIEW& Pattern)
+	{
+		return Matches(Pattern) ||
+			(m_bFollowLive && Pattern.strPatternId == m_strLivePatternId);
+	};
+	const auto HasVisible = [this, &IsVisible](
 		const std::vector<std::string>& PatternIds)
 	{
 		return std::any_of(
 			PatternIds.begin(), PatternIds.end(),
-			[this, &Matches](const std::string& strPatternId)
+			[this, &IsVisible](const std::string& strPatternId)
 			{
 				const VALTAN_PATTERN_VIEW* pPattern =
 					Find_AuditionPattern(strPatternId);
-				return nullptr != pPattern && Matches(*pPattern);
+				return nullptr != pPattern && IsVisible(*pPattern);
 			});
 	};
 	const auto RenderPatternIds =
-		[this, &Matches, &iVisiblePatternCount](
+		[this, &IsVisible, &iVisiblePatternCount](
 			const std::vector<std::string>& PatternIds)
 	{
 		for (const std::string& strPatternId : PatternIds)
 		{
 			const VALTAN_PATTERN_VIEW* pPattern =
 				Find_AuditionPattern(strPatternId);
-			if (nullptr == pPattern || !Matches(*pPattern))
+			if (nullptr == pPattern || !IsVisible(*pPattern))
 				continue;
 			++iVisiblePatternCount;
+			const bool_t bLive =
+				pPattern->strPatternId == m_strLivePatternId;
+			std::string Label = pPattern->strDisplayName.empty() ?
+				pPattern->strPatternId : pPattern->strDisplayName;
+			if (bLive)
+				Label += "  [LIVE]";
 
 			ImGui::PushID(pPattern->strPatternId.c_str());
+			if (bLive)
+				ImGui::PushStyleColor(
+					ImGuiCol_Text, ImVec4(0.30f, 0.92f, 1.f, 1.f));
 			if (ImGui::Selectable(
-					pPattern->strDisplayName.empty() ?
-						pPattern->strPatternId.c_str() :
-						pPattern->strDisplayName.c_str(),
+					Label.c_str(),
 					m_strSelectedPatternId == pPattern->strPatternId))
 			{
 				Select_Pattern(*pPattern);
+			}
+			if (bLive)
+				ImGui::PopStyleColor();
+			if (bLive && m_bFollowLive &&
+				m_strLastAutoRevealedLivePatternId != pPattern->strPatternId)
+			{
+				ImGui::SetScrollHereY(0.5f);
+				m_strLastAutoRevealedLivePatternId = pPattern->strPatternId;
 			}
 			if (ImGui::IsItemHovered())
 			{
@@ -4290,6 +4301,11 @@ void Client::CBossTool::Render_SelectedPattern()
 		pStage = &pPattern->Stages.front();
 	}
 	std::string Preview = pStage->strStageId + " / " + pStage->strActionId;
+	if (pPattern->strPatternId == m_strLivePatternId &&
+		pStage->strStageId == m_strLiveStageId)
+	{
+		Preview += "  [LIVE]";
+	}
 	ImGui::SetNextItemWidth(-1.f);
 	if (ImGui::BeginCombo("##bossStage", Preview.c_str()))
 	{
@@ -4298,13 +4314,22 @@ void Client::CBossTool::Render_SelectedPattern()
 			ImGui::PushID(Stage.strStageId.c_str());
 			const bool_t bSelected =
 				Stage.strStageId == m_strSelectedStageId;
-			const std::string Label =
-				Stage.strStageId + " / " + Stage.strActionId;
+			const bool_t bLiveStage =
+				pPattern->strPatternId == m_strLivePatternId &&
+				Stage.strStageId == m_strLiveStageId;
+			std::string Label = Stage.strStageId + " / " + Stage.strActionId;
+			if (bLiveStage)
+				Label += "  [LIVE]";
+			if (bLiveStage)
+				ImGui::PushStyleColor(
+					ImGuiCol_Text, ImVec4(0.30f, 0.92f, 1.f, 1.f));
 			if (ImGui::Selectable(Label.c_str(), bSelected))
 			{
 				m_strSelectedStageId = Stage.strStageId;
 				m_bFollowLive = false;
 			}
+			if (bLiveStage)
+				ImGui::PopStyleColor();
 			if (bSelected)
 				ImGui::SetItemDefaultFocus();
 			ImGui::PopID();
@@ -4324,7 +4349,221 @@ void Client::CBossTool::Render_SelectedPattern()
 			"current local gameplay authoring. Equality with the "
 			"Server-pinned gameplay generation is not proven.");
 	}
+	if (pPattern->strPatternId == m_strLivePatternId)
+	{
+		ImGui::TextColored(
+			ImVec4(0.30f, 0.92f, 1.f, 1.f),
+			"LIVE: %s / %s",
+			m_strLivePatternId.c_str(),
+			m_strLiveStageId.empty() ?
+				"stage unresolved" : m_strLiveStageId.c_str());
+	}
+	Render_SelectedPatternRingAuthoring(*pPattern);
 	Render_ConnectionSummary(*pPattern, *pStage);
+}
+
+void Client::CBossTool::Render_SelectedPatternRingAuthoring(
+	const VALTAN_PATTERN_VIEW& Pattern)
+{
+	std::size_t iRingCount = 0u;
+	for (const VALTAN_STAGE_VIEW& Stage : Pattern.Stages)
+	{
+		if ("RING" == Stage.strHitShape)
+			++iRingCount;
+		for (const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& Object :
+			Stage.CombatObjectEffects)
+		{
+			iRingCount += static_cast<std::size_t>(std::count_if(
+				Object.Hits.begin(), Object.Hits.end(),
+				[](const VALTAN_COMBAT_OBJECT_HIT_VIEW& Hit)
+				{ return "RING" == Hit.strHitShape; }));
+		}
+	}
+	if (0u == iRingCount)
+		return;
+
+	ImGui::SeparatorText("Canonical Donut / Ring Geometry");
+	ImGui::TextWrapped(
+		"These numeric slots edit the exact Server-owned RING hit. "
+		"Pattern, Stage, combat-object and hit IDs remain read-only.");
+	if (nullptr == m_pBalanceTool)
+	{
+		ImGui::TextDisabled(
+			"The shared canonical Valtan draft owner is unavailable.");
+		return;
+	}
+
+	const double Step = 0.1;
+	const double FastStep = 1.0;
+	for (const VALTAN_STAGE_VIEW& Stage : Pattern.Stages)
+	{
+		if ("RING" == Stage.strHitShape)
+		{
+			CBalanceTool::PATTERN_STAGE_EDIT Draft;
+			std::string Status;
+			ImGui::PushID((Stage.strStageId + "/stage-ring").c_str());
+			if (!m_pBalanceTool->Get_ValtanStageDraft(
+					Pattern.strPatternId, Stage.strStageId, Draft, Status) ||
+				"RING" != Draft.hitShape)
+			{
+				ImGui::TextDisabled(
+					"Stage RING unavailable: %s", Status.c_str());
+				ImGui::PopID();
+				continue;
+			}
+			ImGui::Text("Stage hit | %s / %s",
+				Stage.strStageId.c_str(), Stage.strActionId.c_str());
+			ImGui::SetNextItemWidth(180.f);
+			if (ImGui::InputDouble(
+					"Inner radius m", &Draft.hitInnerRadius,
+					Step, FastStep, "%.3f") &&
+				!m_pBalanceTool->Set_ValtanStageDraft(
+					Pattern.strPatternId, Stage.strStageId, Draft, Status))
+			{
+				m_strActionFeedback = Status;
+			}
+			else if (!Status.empty())
+			{
+				m_strActionFeedback = Status;
+			}
+			ImGui::SameLine();
+			ImGui::SetNextItemWidth(180.f);
+			Status.clear();
+			if (ImGui::InputDouble(
+					"Outer radius m", &Draft.hitOuterRadius,
+					Step, FastStep, "%.3f") &&
+				!m_pBalanceTool->Set_ValtanStageDraft(
+					Pattern.strPatternId, Stage.strStageId, Draft, Status))
+			{
+				m_strActionFeedback = Status;
+			}
+			else if (!Status.empty())
+			{
+				m_strActionFeedback = Status;
+			}
+			ImGui::PopID();
+		}
+
+		for (const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& Object :
+			Stage.CombatObjectEffects)
+		{
+			for (const VALTAN_COMBAT_OBJECT_HIT_VIEW& Hit : Object.Hits)
+			{
+				if ("RING" != Hit.strHitShape)
+					continue;
+				CBalanceTool::VALTAN_COMBAT_OBJECT_RING_HIT_EDIT Draft;
+				std::string Status;
+				ImGui::PushID((Stage.strStageId + "/" +
+					Object.strCombatObjectArchetypeId + "/" + Hit.strHitId).c_str());
+				if (!m_pBalanceTool->Get_ValtanCombatObjectRingHitDraft(
+						Pattern.strPatternId, Stage.strStageId,
+						Object.strCombatObjectArchetypeId, Hit.strHitId,
+						Draft, Status))
+				{
+					ImGui::TextDisabled(
+						"Combat-object RING unavailable: %s", Status.c_str());
+					ImGui::PopID();
+					continue;
+				}
+				ImGui::TextWrapped(
+					"Combat object | %s / %s / %s",
+					Stage.strStageId.c_str(),
+					Object.strCombatObjectArchetypeId.c_str(),
+					Hit.strHitId.c_str());
+				ImGui::SetNextItemWidth(180.f);
+				if (ImGui::InputDouble(
+						"Inner radius m", &Draft.innerRadiusM,
+						Step, FastStep, "%.3f") &&
+					!m_pBalanceTool->Set_ValtanCombatObjectRingHitDraft(
+						Pattern.strPatternId, Stage.strStageId, Draft, Status))
+				{
+					m_strActionFeedback = Status;
+				}
+				else if (!Status.empty())
+				{
+					m_strActionFeedback = Status;
+				}
+				ImGui::SameLine();
+				ImGui::SetNextItemWidth(180.f);
+				Status.clear();
+				if (ImGui::InputDouble(
+						"Outer radius m", &Draft.outerRadiusM,
+						Step, FastStep, "%.3f") &&
+					!m_pBalanceTool->Set_ValtanCombatObjectRingHitDraft(
+						Pattern.strPatternId, Stage.strStageId, Draft, Status))
+				{
+					m_strActionFeedback = Status;
+				}
+				else if (!Status.empty())
+				{
+					m_strActionFeedback = Status;
+				}
+				ImGui::PopID();
+			}
+		}
+	}
+
+	std::string SourceRevision;
+	std::string StateStatus;
+	bool_t bDirty = false;
+	const bool_t bStateReady = m_pBalanceTool->Get_ValtanAuthoringState(
+		SourceRevision, bDirty, StateStatus);
+	ImGui::BeginDisabled(!bStateReady || !bDirty);
+	if (ImGui::Button("Save Canonical Ring Geometry"))
+		(void)Save_SelectedPatternRingAuthoring();
+	ImGui::EndDisabled();
+	if (bStateReady)
+	{
+		ImGui::SameLine();
+		ImGui::TextDisabled("%s | source %.12s",
+			bDirty ? "UNSAVED" : "SAVED", SourceRevision.c_str());
+	}
+	else
+	{
+		ImGui::TextDisabled("Save unavailable: %s", StateStatus.c_str());
+	}
+	if (!m_strActionFeedback.empty())
+		ImGui::TextWrapped("%s", m_strActionFeedback.c_str());
+}
+
+bool_t Client::CBossTool::Save_SelectedPatternRingAuthoring()
+{
+	std::string Status;
+	if (!Can_MutateCanonicalGraph(Status))
+	{
+		m_strActionFeedback = std::move(Status);
+		return false;
+	}
+	if (nullptr == m_pBalanceTool)
+	{
+		m_strActionFeedback =
+			"Ring Save failed: the shared canonical Valtan draft owner is unavailable.";
+		return false;
+	}
+	if (!m_pBalanceTool->Save_ValtanCanonicalProduct(Status))
+	{
+		m_strActionFeedback =
+			"Canonical Ring Save failed atomically: " + Status;
+		return false;
+	}
+	const std::string SavedStatus = Status;
+	const bool_t bCanonicalReopened =
+		0u != SavedStatus.rfind("COMMIT_SUCCEEDED_REOPEN_FAILED:", 0u);
+	std::string ActivationStatus;
+	const bool_t bActivationPrepared = bCanonicalReopened &&
+		m_pBalanceTool->Save_ValtanProduct(ActivationStatus);
+	const bool_t bReloaded = Reload_Graph();
+	m_strActionFeedback =
+		"Canonical RING geometry was saved through the shared CAS transaction. " +
+		(bReloaded ? std::string("Boss Verification reloaded the saved revision. ") :
+			std::string("The physical Save succeeded, but Boss Verification could not reload it yet. ")) +
+		SavedStatus + " " +
+		(bActivationPrepared ? ActivationStatus :
+			(bCanonicalReopened ?
+				"Product candidate publication/activation preparation failed: " +
+					ActivationStatus :
+				"Product candidate publication was skipped until the committed revision can reopen."));
+	return true;
 }
 
 void Client::CBossTool::Render_ConnectionSummary(

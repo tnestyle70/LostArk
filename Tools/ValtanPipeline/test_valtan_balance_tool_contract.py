@@ -183,10 +183,12 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
             "AUDITION_ONLY keeps selection, repeat, and target range read-only",
             "edit Stage kind, Sequence slots, and gap in Action Composition Workbench",
             "Server replay is available in Boss Tool and Effect Tool; Repeat and Revive remain in Boss Tool",
-            'EditFloat("Hit outer radius m"',
+            "Collider geometry, timing, response, and damage are written only through Action Composition Workbench typed Details",
             "Pattern Presentation references (read-only)",
         ):
             self.assertIn(marker, managed_render)
+        self.assertNotIn('EditFloat("Hit outer radius m"', managed_render)
+        self.assertNotIn('EditU32("Hit count"', managed_render)
 
         draft = function_body(
             self.balance_cpp,

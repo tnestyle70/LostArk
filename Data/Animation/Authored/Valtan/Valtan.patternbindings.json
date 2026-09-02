@@ -1,6 +1,6 @@
 {
   "schema": "lostark.valtan-pattern-bindings",
-  "formatVersion": 3,
+  "formatVersion": 4,
   "bossArchetypeId": "BOSS_VALTAN",
   "bindings": [
     {
@@ -194,12 +194,21 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.attack.dash-charge.part-break.clip.01",
-          "clip": "mesh_dmg_parts_end_1",
+          "clip": "mesh_dmg_parts_start_1",
           "mappingBasis": "PATTERN_PR_REFERENCE",
           "sourceStartMs": 0,
-          "playMs": 0,
+          "playMs": 1400,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.attack.dash-charge.part-break.clip.02",
+          "clip": "mesh_dmg_parts_loop_1",
+          "mappingBasis": "PATTERN_PR_REFERENCE",
+          "sourceStartMs": 0,
+          "playMs": 400,
+          "playRate": 1.0,
+          "loop": false
         }
       ]
     },
@@ -1163,12 +1172,21 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.reactive.triple-counter.first.clip.01",
-          "clip": "mesh_abn_groggy_1_start",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "clip": "mesh_att_battle_14_02",
+          "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
-          "playMs": 0,
+          "playMs": 1000,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.reactive.triple-counter.first.clip.02",
+          "clip": "mesh_att_battle_14_02",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 800,
+          "playRate": 1.0,
+          "loop": false
         }
       ]
     },
@@ -1177,12 +1195,12 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.reactive.triple-counter.first-fail.clip.01",
-          "clip": "mesh_abn_groggy_1_loop",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "clip": "mesh_att_battle_14_03",
+          "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
-          "playMs": 0,
+          "playMs": 1667,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
         }
       ]
     },
@@ -1191,12 +1209,21 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.reactive.triple-counter.second.clip.01",
-          "clip": "mesh_abn_groggy_1_loop",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "clip": "mesh_att_battle_14_02",
+          "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
-          "playMs": 0,
+          "playMs": 1000,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.reactive.triple-counter.second.clip.02",
+          "clip": "mesh_att_battle_14_02",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 800,
+          "playRate": 1.0,
+          "loop": false
         }
       ]
     },
@@ -1205,12 +1232,12 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.reactive.triple-counter.second-fail.clip.01",
-          "clip": "mesh_abn_groggy_1_loop",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "clip": "mesh_att_battle_14_03",
+          "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
-          "playMs": 0,
+          "playMs": 1667,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
         }
       ]
     },
@@ -1219,12 +1246,21 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.reactive.triple-counter.third.clip.01",
-          "clip": "mesh_abn_groggy_1_loop",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "clip": "mesh_att_battle_14_02",
+          "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
-          "playMs": 0,
+          "playMs": 1000,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.reactive.triple-counter.third.clip.02",
+          "clip": "mesh_att_battle_14_02",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 800,
+          "playRate": 1.0,
+          "loop": false
         }
       ]
     },
@@ -1233,28 +1269,19 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.reactive.triple-counter.third-fail.clip.01",
-          "clip": "mesh_abn_groggy_1_loop",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "clip": "mesh_att_battle_14_03",
+          "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
-          "playMs": 0,
+          "playMs": 1667,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
         }
       ]
     },
     {
       "actionId": "valtan.reactive.triple-counter.recovery",
-      "clips": [
-        {
-          "clipOccurrenceId": "valtan.reactive.triple-counter.recovery.clip.01",
-          "clip": "mesh_abn_groggy_1_end",
-          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
-          "sourceStartMs": 0,
-          "playMs": 0,
-          "playRate": 1.0,
-          "loop": true
-        }
-      ]
+      "playbackMode": "NONE",
+      "clips": []
     },
     {
       "actionId": "valtan.mechanic.armor-break-opening.charge",
@@ -2616,7 +2643,11 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "bodyVisibility": {
+        "hiddenFromMs": 1300,
+        "hiddenToMs": 1800
+      }
     },
     {
       "actionId": "valtan.sequence.warp.step-03",
@@ -2630,7 +2661,11 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "bodyVisibility": {
+        "hiddenFromMs": 1300,
+        "hiddenToMs": 1800
+      }
     },
     {
       "actionId": "valtan.sequence.warp.step-04",
@@ -2644,7 +2679,11 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "bodyVisibility": {
+        "hiddenFromMs": 1300,
+        "hiddenToMs": 1800
+      }
     },
     {
       "actionId": "valtan.sequence.warp.step-05",
@@ -2658,7 +2697,11 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "bodyVisibility": {
+        "hiddenFromMs": 1300,
+        "hiddenToMs": 1800
+      }
     },
     {
       "actionId": "valtan.sequence.warp.step-06",
@@ -2672,7 +2715,11 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "bodyVisibility": {
+        "hiddenFromMs": 1300,
+        "hiddenToMs": 1800
+      }
     },
     {
       "actionId": "valtan.sequence.warp.step-07",
@@ -2686,7 +2733,11 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "bodyVisibility": {
+        "hiddenFromMs": 1300,
+        "hiddenToMs": 1800
+      }
     },
     {
       "actionId": "valtan.sequence.warp.step-08",
@@ -2700,7 +2751,11 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "bodyVisibility": {
+        "hiddenFromMs": 1300,
+        "hiddenToMs": 1800
+      }
     },
     {
       "actionId": "valtan.sequence.warp.step-09",
@@ -2714,7 +2769,11 @@
           "playRate": 1.0,
           "loop": true
         }
-      ]
+      ],
+      "bodyVisibility": {
+        "hiddenFromMs": 1300,
+        "hiddenToMs": 1800
+      }
     },
     {
       "actionId": "valtan.sequence.warp.step-10",
@@ -3015,9 +3074,18 @@
           "clip": "mesh_att_battle_14_02",
           "mappingBasis": "PROJECT_AUTHORED",
           "sourceStartMs": 0,
-          "playMs": 0,
+          "playMs": 1000,
           "playRate": 1.0,
-          "loop": true
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.sequence.counter.step-02.clip-02",
+          "clip": "mesh_att_battle_14_02",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 800,
+          "playRate": 1.0,
+          "loop": false
         }
       ]
     },
@@ -3037,17 +3105,8 @@
     },
     {
       "actionId": "valtan.sequence.counter.step-04",
-      "clips": [
-        {
-          "clipOccurrenceId": "valtan.sequence.counter.step-04.clip-01",
-          "clip": "mesh_att_battle_14_04-2",
-          "mappingBasis": "PROJECT_AUTHORED",
-          "sourceStartMs": 0,
-          "playMs": 1000,
-          "playRate": 1.0,
-          "loop": false
-        }
-      ]
+      "playbackMode": "NONE",
+      "clips": []
     },
     {
       "actionId": "valtan.sequence.charge2.step-01",
@@ -4342,6 +4401,43 @@
       "actionId": "valtan.authoring.silence-slot.apply",
       "playbackMode": "NONE",
       "clips": []
+    },
+    {
+      "actionId": "valtan.reactive.triple-counter.setup",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.reactive.triple-counter.setup.clip.01",
+          "clip": "mesh_att_battle_14_01",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 2000,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.reaction.part-break.recovery",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.reaction.part-break.recovery.clip.01",
+          "clip": "mesh_dmg_parts_end_1",
+          "mappingBasis": "PATTERN_PR_REFERENCE",
+          "sourceStartMs": 0,
+          "playMs": 2850,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.reaction.part-break.recovery.clip.02",
+          "clip": "mesh_idle_battle_1",
+          "mappingBasis": "PATTERN_PR_REFERENCE",
+          "sourceStartMs": 0,
+          "playMs": 2333,
+          "playRate": 1.0,
+          "loop": false
+        }
+      ]
     }
   ]
 }

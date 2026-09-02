@@ -506,8 +506,17 @@ void CLevel_Lobby::Render_StagePanel()
 
 	ImGui::TextWrapped("%s", m_strStatus.c_str());
 	if (m_hasRecoveryDiagnostic)
+	{
 		ImGui::TextDisabled(
-			"Server entry failed. Check that Server is running, then try again.");
+			"Failure source: %s",
+			m_RecoveryDiagnostic.strSource.empty() ?
+				"unavailable" : m_RecoveryDiagnostic.strSource.c_str());
+		ImGui::TextWrapped(
+			"Failure detail: %s",
+			m_RecoveryDiagnostic.strDetail.empty() ?
+				"No diagnostic detail was reported." :
+				m_RecoveryDiagnostic.strDetail.c_str());
+	}
 	ImGui::End();
 }
 #endif

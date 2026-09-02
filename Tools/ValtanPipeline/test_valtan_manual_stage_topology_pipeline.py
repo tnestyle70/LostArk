@@ -111,12 +111,23 @@ class ValtanManualStageTopologyPipelineTests(unittest.TestCase):
                 "durationMs": 1200,
             },
             {
+                "op": "INSERT_MANUAL_STAGE_AFTER",
+                "patternId": "VALTAN_SEQUENCE_FOUR",
+                "afterStageId": "STEP_01",
+                "stageId": "ACTIVE_02",
+                "actionId": "valtan.sequence.four.active-02",
+                "stageRole": "ACTIVE",
+                "durationMs": 1000,
+            },
+            {
                 "op": "SET_STAGE_COUNTER_WINDOW",
                 "patternId": "VALTAN_SEQUENCE_FOUR",
                 "stageId": "STEP_01",
                 "enabled": True,
                 "successStageId": "GROGGY_01",
                 "successActionId": "valtan.sequence.four.groggy-01",
+                "timeoutStageId": "ACTIVE_02",
+                "timeoutActionId": "valtan.sequence.four.active-02",
             },
         ]
 
@@ -150,6 +161,113 @@ class ValtanManualStageTopologyPipelineTests(unittest.TestCase):
         )
         self.assertEqual("NONE", binding["playbackMode"])
         self.assertEqual([], binding["clips"])
+
+    def test_wait_promotion_preserves_identity_clock_and_round_trips(self) -> None:
+        for role in ("ACTIVE", "WINDUP", "GROGGY"):
+            with self.subTest(role=role):
+                candidate = self.apply(
+                    self.master,
+                    [
+                        self.wait_insert(),
+                        {
+                            "op": "PROMOTE_MANUAL_WAIT_STAGE",
+                            "patternId": "VALTAN_SEQUENCE_FOUR",
+                            "stageId": "WAIT_01",
+                            "stageRole": role,
+                        },
+                    ],
+                )
+                promoted = find_stage(
+                    find_pattern(candidate, "VALTAN_SEQUENCE_FOUR"), "WAIT_01"
+                )
+                self.assertEqual("WAIT_01", promoted["stageId"])
+                self.assertEqual("valtan.sequence.four.wait-01", promoted["actionId"])
+                self.assertEqual(750, promoted["durationMs"])
+                self.assertEqual(role, promoted["sequenceRole"])
+                self.assertEqual(role, promoted["stageKind"])
+                self.assertEqual({"mode": "NONE"}, promoted["animation"])
+                if role == "GROGGY":
+                    self.assertEqual(
+                        "CLOSED",
+                        pipeline._stage_flag_contract(
+                            promoted, "boss.flag.groggy"
+                        ),
+                    )
+                else:
+                    self.assertEqual([], promoted["events"])
+                self.round_trip_and_validate_lineage(candidate)
+
+    def test_wait_can_promote_then_receive_animation_in_one_patch(self) -> None:
+        candidate = self.apply(
+            self.master,
+            [
+                self.wait_insert(),
+                {
+                    "op": "PROMOTE_MANUAL_WAIT_STAGE",
+                    "patternId": "VALTAN_SEQUENCE_FOUR",
+                    "stageId": "WAIT_01",
+                    "stageRole": "ACTIVE",
+                },
+                {
+                    "op": "SET_STAGE_ANIMATION",
+                    "patternId": "VALTAN_SEQUENCE_FOUR",
+                    "stageId": "WAIT_01",
+                    "animation": {
+                        "endPolicy": "HOLD_LAST_POSE",
+                        "repeatCount": 1,
+                        "occurrences": [
+                            {
+                                "clipOccurrenceId": (
+                                    "valtan.sequence.four.wait-01.clip-01"
+                                ),
+                                "clip": "mesh_att_battle_19_01",
+                                "mappingBasis": "PROJECT_AUTHORED",
+                                "sourceStartMs": 0,
+                                "playMs": 600,
+                                "playRate": 1.0,
+                                "repeatUntilStageEnd": False,
+                            }
+                        ],
+                    },
+                },
+            ],
+        )
+        promoted = find_stage(
+            find_pattern(candidate, "VALTAN_SEQUENCE_FOUR"), "WAIT_01"
+        )
+        self.assertEqual("ACTIVE", promoted["sequenceRole"])
+        self.assertEqual(
+            "valtan.sequence.four.wait-01.clip-01",
+            promoted["animation"]["occurrences"][0]["clipOccurrenceId"],
+        )
+        self.round_trip_and_validate_lineage(candidate)
+
+    def test_wait_promotion_rejects_wrong_owner_and_role_atomically(self) -> None:
+        for operation in (
+            {
+                "op": "PROMOTE_MANUAL_WAIT_STAGE",
+                "patternId": "VALTAN_SEQUENCE_FOUR",
+                "stageId": "STEP_01",
+                "stageRole": "ACTIVE",
+            },
+            {
+                "op": "PROMOTE_MANUAL_WAIT_STAGE",
+                "patternId": "VALTAN_SEQUENCE_FOUR",
+                "stageId": "WAIT_01",
+                "stageRole": "WAIT",
+            },
+        ):
+            baseline = (
+                self.master
+                if operation["stageId"] == "STEP_01"
+                else self.apply(self.master, [self.wait_insert()])
+            )
+            before = copy.deepcopy(baseline)
+            with self.subTest(operation=operation), self.assertRaises(
+                pipeline.DraftPatchError
+            ):
+                self.apply(baseline, [operation])
+            self.assertEqual(before, baseline)
 
     def test_groggy_insert_and_retag_are_independently_saveable(self) -> None:
         inserted = self.apply(
@@ -278,7 +396,13 @@ class ValtanManualStageTopologyPipelineTests(unittest.TestCase):
         self.assertEqual("GROGGY", target["stageKind"])
         self.assertEqual({"mode": "NONE"}, target["animation"])
         self.assertEqual(
-            [{"outcome": "COUNTER_HIT", "nextActionId": target["actionId"]}],
+            [
+                {"outcome": "COUNTER_HIT", "nextActionId": target["actionId"]},
+                {
+                    "outcome": "TIMEOUT",
+                    "nextActionId": "valtan.sequence.four.active-02",
+                },
+            ],
             source["branches"],
         )
         self.assertEqual("CLOSED", pipeline._stage_flag_contract(source, "boss.flag.counterable"))
@@ -509,6 +633,15 @@ class ValtanManualStageTopologyPipelineTests(unittest.TestCase):
                     "stageRole": "WINDUP",
                     "durationMs": 900,
                 },
+                {
+                    "op": "INSERT_MANUAL_STAGE_AFTER",
+                    "patternId": "VALTAN_SEQUENCE_FOUR",
+                    "afterStageId": "WINDUP_01",
+                    "stageId": "ACTIVE_02",
+                    "actionId": "valtan.sequence.four.active-02",
+                    "stageRole": "ACTIVE",
+                    "durationMs": 1000,
+                },
             ],
         )
         before_counter = copy.deepcopy(backward_candidate)
@@ -523,11 +656,16 @@ class ValtanManualStageTopologyPipelineTests(unittest.TestCase):
                         "enabled": True,
                         "successStageId": "GROGGY_01",
                         "successActionId": "valtan.sequence.four.groggy-01",
+                        "timeoutStageId": "ACTIVE_02",
+                        "timeoutActionId": "valtan.sequence.four.active-02",
                     }
                 ],
             )
-        self.assertEqual("CANDIDATE_VALIDATION_FAILED", raised.exception.error_code)
-        self.assertIn("finite stage graph contains a cycle", str(raised.exception))
+        self.assertEqual("COUNTER_TARGET_NOT_FORWARD", raised.exception.error_code)
+        self.assertIn(
+            "counter success and timeout targets must be later same-pattern stages",
+            str(raised.exception),
+        )
         self.assertEqual(backward_candidate, before_counter)
 
     def test_counter_retarget_precedes_old_target_removal(self) -> None:
@@ -548,6 +686,8 @@ class ValtanManualStageTopologyPipelineTests(unittest.TestCase):
             "enabled": True,
             "successStageId": "GROGGY_02",
             "successActionId": "valtan.sequence.four.groggy-02",
+            "timeoutStageId": "ACTIVE_02",
+            "timeoutActionId": "valtan.sequence.four.active-02",
         }
         remove_old_target = {
             "op": "REMOVE_MANUAL_STAGE",
@@ -559,7 +699,7 @@ class ValtanManualStageTopologyPipelineTests(unittest.TestCase):
         )
         pattern = find_pattern(candidate, "VALTAN_SEQUENCE_FOUR")
         self.assertEqual(
-            ["STEP_01", "GROGGY_02"],
+            ["STEP_01", "ACTIVE_02", "GROGGY_02"],
             [stage["stageId"] for stage in pattern["stages"]],
         )
         self.round_trip_and_validate_lineage(candidate)
@@ -647,6 +787,8 @@ class ValtanManualStageTopologyPipelineTests(unittest.TestCase):
                     "enabled": False,
                     "successStageId": "GROGGY_01",
                     "successActionId": "valtan.sequence.four.groggy-01",
+                    "timeoutStageId": "ACTIVE_02",
+                    "timeoutActionId": "valtan.sequence.four.active-02",
                 }
             ],
         )
@@ -662,7 +804,7 @@ class ValtanManualStageTopologyPipelineTests(unittest.TestCase):
             ],
         )
         self.assertEqual(
-            ["STEP_01"],
+            ["STEP_01", "ACTIVE_02"],
             [
                 row["stageId"]
                 for row in find_pattern(disabled_and_removed, "VALTAN_SEQUENCE_FOUR")["stages"]
@@ -682,6 +824,8 @@ class ValtanManualStageTopologyPipelineTests(unittest.TestCase):
                     "enabled": False,
                     "successStageId": "GROGGY_01",
                     "successActionId": "valtan.sequence.four.groggy-01",
+                    "timeoutStageId": "ACTIVE_02",
+                    "timeoutActionId": "valtan.sequence.four.active-02",
                 },
                 {
                     "op": "REMOVE_MANUAL_STAGE",
@@ -691,7 +835,7 @@ class ValtanManualStageTopologyPipelineTests(unittest.TestCase):
             ],
         )
         self.assertEqual(
-            ["STEP_01"],
+            ["STEP_01", "ACTIVE_02"],
             [
                 row["stageId"]
                 for row in find_pattern(
@@ -713,6 +857,8 @@ class ValtanManualStageTopologyPipelineTests(unittest.TestCase):
                     "enabled": False,
                     "successStageId": "GROGGY_01",
                     "successActionId": "valtan.sequence.four.groggy-01",
+                    "timeoutStageId": "ACTIVE_02",
+                    "timeoutActionId": "valtan.sequence.four.active-02",
                 },
                 {
                     "op": "SET_STAGE_KIND",

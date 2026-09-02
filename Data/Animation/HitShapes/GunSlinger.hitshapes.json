@@ -1,0 +1,208 @@
+{
+  "schema": "lostark.animation-hit-shapes",
+  "formatVersion": 3,
+  "animationAssetId": "GunSlinger",
+  "characterClass": "GUNSLINGER",
+  "skills": [
+    {
+      "skillId": 38000,
+      "stages": [
+        {
+          "stageIndex": 0,
+          "hits": [
+            {
+              "timeMs": 121,
+              "repeatCount": 2,
+              "repeatMs": 300,
+              "areaType": 2,
+              "range": 4.4,
+              "angle": 0,
+              "width": 0.9,
+              "height": 1.5,
+              "offset": -0.2,
+              "inner": 0.0,
+              "maxTargets": 0,
+              "pushMs": 5,
+              "pushRange": 0.05
+            }
+          ]
+        },
+        {
+          "stageIndex": 2,
+          "hits": [
+            {
+              "timeMs": 761,
+              "repeatCount": 4,
+              "repeatMs": 280,
+              "areaType": 2,
+              "range": 4.4,
+              "angle": 0,
+              "width": 0.9,
+              "height": 1.5,
+              "offset": -0.2,
+              "inner": 0.0,
+              "maxTargets": 0,
+              "pushMs": 5,
+              "pushRange": 0.05
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "skillId": 38020,
+      "hits": [
+        {
+          "timeMs": 1000,
+          "repeatCount": 3,
+          "repeatMs": 150,
+          "areaType": 2,
+          "range": 5.0,
+          "angle": 0,
+          "width": 1.2,
+          "height": 1.5,
+          "offset": -0.3,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05
+        }
+      ]
+    },
+    {
+      "skillId": 38050,
+      "hits": [
+        {
+          "timeMs": 1000,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 0.8,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2
+        }
+      ]
+    },
+    {
+      "skillId": 38140,
+      "hits": [
+        {
+          "timeMs": 1000,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 0.9,
+          "angle": 360,
+          "width": 0.0,
+          "height": 1.0,
+          "offset": 0.5,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2
+        }
+      ]
+    },
+    {
+      "skillId": 38200,
+      "hits": [
+        {
+          "timeMs": 200,
+          "repeatCount": 2,
+          "repeatMs": 200,
+          "areaType": 1,
+          "range": 2.5,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.4,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2
+        },
+        {
+          "timeMs": 1867,
+          "repeatCount": 2,
+          "repeatMs": 200,
+          "areaType": 1,
+          "range": 2.5,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.4,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2
+        }
+      ]
+    },
+    {
+      "skillId": 38210,
+      "hits": [
+        {
+          "timeMs": 450,
+          "repeatCount": 2,
+          "repeatMs": 200,
+          "areaType": 1,
+          "range": 1.0,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.6,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05
+        }
+      ]
+    },
+    {
+      "skillId": 38250,
+      "hits": [
+        {
+          "timeMs": 2088,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 6.1,
+          "angle": 0,
+          "width": 2.8,
+          "height": 1.5,
+          "offset": 0.7,
+          "inner": 0.0,
+          "maxTargets": 1,
+          "pushMs": 40,
+          "pushRange": 0.3
+        }
+      ]
+    },
+    {
+      "skillId": 38320,
+      "hits": [
+        {
+          "timeMs": 1451,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 10.0,
+          "angle": 0,
+          "width": 5.0,
+          "height": 2.0,
+          "offset": -0.2,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 0,
+          "pushRange": 0.0
+        }
+      ]
+    }
+  ]
+}

@@ -149,6 +149,38 @@ namespace LostArk::Server
 		std::uint64_t iMaximumSessionEnqueueMicroseconds = 0;
 	};
 
+	/* Receive-thread admission is not a bool: a full reliable queue, a room
+	   runtime failure, a sealed private arena, and cleanup already in flight
+	   require different session policy and diagnostics.  Keep success values
+	   explicit too so best-effort shedding remains non-terminal. */
+	enum class ROOM_COMMAND_ENQUEUE_RESULT : std::uint8_t
+	{
+		ACCEPTED,
+		DROPPED_BEST_EFFORT,
+		DEDUPLICATED_CLEANUP,
+		REJECTED_INVALID_COMMAND,
+		REJECTED_ROOM_NOT_READY,
+		REJECTED_ROOM_SEALED,
+		REJECTED_PENDING_CLEANUP,
+		REJECTED_RELIABLE_CAPACITY,
+		REJECTED_BINDING_MISSING
+	};
+
+	[[nodiscard]] constexpr bool Is_AcceptedRoomCommandEnqueueResult(
+		const ROOM_COMMAND_ENQUEUE_RESULT result) noexcept
+	{
+		return ROOM_COMMAND_ENQUEUE_RESULT::ACCEPTED == result ||
+			ROOM_COMMAND_ENQUEUE_RESULT::DROPPED_BEST_EFFORT == result ||
+			ROOM_COMMAND_ENQUEUE_RESULT::DEDUPLICATED_CLEANUP == result;
+	}
+
+	struct SERVER_ROOM_RUNTIME_FAILURE final
+	{
+		std::uint32_t iServerTick = 0u;
+		std::string strSource;
+		std::string strDetail;
+	};
+
 	class CGameRoom final
 	{
 		friend int Run_ServerGameplayContractTests(bool);
@@ -158,6 +190,12 @@ namespace LostArk::Server
 			std::shared_ptr<const CGameplayCatalog> initialGameplayGeneration = {});
 
 		bool Enqueue(ROOM_COMMAND command);
+		[[nodiscard]] ROOM_COMMAND_ENQUEUE_RESULT Enqueue_Detailed(
+			ROOM_COMMAND command);
+		[[nodiscard]] std::string Describe_EnqueueResult(
+			ROOM_COMMAND_ENQUEUE_RESULT result) const;
+		[[nodiscard]] bool Try_GetRuntimeFailure(
+			SERVER_ROOM_RUNTIME_FAILURE& outFailure) const;
 		void Tick(float fixedDeltaSeconds);
 		bool Try_DequeueWorldTransfer(
 			SERVER_WORLD_TRANSFER_REQUEST& outTransfer);
@@ -216,6 +254,7 @@ namespace LostArk::Server
 			LostArk::Shared::PARTY_TRANSFER_RESULT result);
 
 	private:
+		void Mark_RuntimeFailure(std::string_view source);
 		struct STAGED_PLAYER_ENTRY final
 		{
 			std::shared_ptr<CClientSession> pSession;
@@ -774,7 +813,8 @@ namespace LostArk::Server
 			const std::string& actionId,
 			BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
 			std::uint32_t serverTick,
-			std::uint32_t spawnWaveOrdinal = 0u);
+			std::uint32_t spawnWaveOrdinal = 0u,
+			bool scheduledSpawnWave = false);
 		bool Apply_BossPatternScheduledSpawnWave(
 			SERVER_WORLD_ENTITY& boss,
 			std::uint32_t serverTick);
@@ -798,7 +838,8 @@ namespace LostArk::Server
 			SERVER_BOSS_COMBAT_STATE& stagedCombat,
 			std::uint8_t& stagedGameplayPhase,
 			SERVER_COMBAT_OBJECT_TRANSACTION& combatObjectTransaction,
-			std::uint32_t spawnWaveOrdinal = 0u);
+			std::uint32_t spawnWaveOrdinal = 0u,
+			bool scheduledSpawnWave = false);
 		/* Runs only after every stage-action preflight transaction commits. These
 		actions own player/target state and therefore cannot be staged inside the
 		boss-combat or combat-object value transactions above. */
@@ -1080,6 +1121,7 @@ namespace LostArk::Server
 		std::vector<LostArk::Shared::BOSS_COMBAT_EVENT>
 			m_TickBossCombatEvents;
 		std::string m_strStatus;
+		SERVER_ROOM_RUNTIME_FAILURE m_RuntimeFailure;
 		bool m_isReady = false;
 
 		LostArk::Shared::PLAYER_ID m_iNextPlayerId = 1;

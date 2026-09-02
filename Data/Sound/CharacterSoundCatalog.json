@@ -4714,6 +4714,15 @@
     "Sound/Valtan/g_voltan2_attack09_projexp1__539645875.wav",
     "Sound/Valtan/g_voltan2_attack09_projexp1__557856096.wav"
    ],
+   "G_Voltan2_Attack09_ProjCreat1": [
+    "Sound/Valtan/g_voltan2_attack09_projcreat1__106218824.wav",
+    "Sound/Valtan/g_voltan2_attack09_projcreat1__282820102.wav",
+    "Sound/Valtan/g_voltan2_attack09_projcreat1__516386150.wav",
+    "Sound/Valtan/g_voltan2_attack09_projcreat1__760289133.wav"
+   ],
+   "G_Voltan2_Attack09_ProjExp2": [
+    "Sound/Valtan/g_voltan2_attack09_projexp2__382896943.wav"
+   ],
    "G_Voltan2_Attack09_CastVox1": [
     "Sound/Valtan/g_voltan2_attack09_castvox1__410258283.wav",
     "Sound/Valtan/g_voltan2_attack09_castvox1__872104708.wav"

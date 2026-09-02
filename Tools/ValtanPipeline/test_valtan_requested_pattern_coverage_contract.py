@@ -79,7 +79,12 @@ class ValtanRequestedPatternCoverageContractTests(unittest.TestCase):
             with self.subTest(pattern_id=pattern_id):
                 self.assertIn(pattern_id, self.report.product_ids)
                 self.assertIn(pattern_id, self.report.encounter_ids)
-                self.assertNotIn(pattern_id, self.report.scripted_pattern_ids)
+                self.assertEqual(
+                    STATUS_PATTERN_CONTRACTS[pattern_id][
+                        "scriptedSequenceMember"
+                    ],
+                    pattern_id in self.report.scripted_pattern_ids,
+                )
 
     def test_bind_slot_contract_tracks_saved_composition(self) -> None:
         bind = STATUS_PATTERN_CONTRACTS["VALTAN_BIND_SLOT"]

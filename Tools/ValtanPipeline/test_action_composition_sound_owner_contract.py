@@ -278,7 +278,8 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             'ImGui::Button("Save##CompositionSequencer")',
             "Add Sound Row",
             "Remove Selected Sound Row",
-            "Sequencer Save button stores Pattern, Animation, Effect and Sound changes together",
+            "Sequencer Save joins only dirty Pattern, Sound, and Effect V2 owners",
+            "Camera stays in its typed read-only/deep-link boundary",
             "Effect timing and Sound timing remain unsaved until Save",
         ):
             self.assertIn(token, self.workbench_cpp)
@@ -366,9 +367,9 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             "bPatternMutationAdmitted",
             "Prepare_ValtanCompositionPatternSoundSave(",
             "Accept_ValtanCompositionPatternSoundSave(",
-            "Tune / Remove Existing Server Collider / Hit Schedule",
+            "Tune / Remove Existing Server Collider / Hit Timing",
             "Add Manual Audition Server Collider / Hit Schedule",
-            "View Collider Authority (New Add Unavailable)",
+            "View Existing Server Collider Authority",
         ):
             self.assertIn(token, self.workbench_cpp)
 

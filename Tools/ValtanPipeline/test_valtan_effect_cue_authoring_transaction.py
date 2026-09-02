@@ -45,6 +45,11 @@ class ValtanEffectCueAuthoringTransactionTests(unittest.TestCase):
             self.root / "Tools/ValtanPipeline",
         )
         shutil.copytree(
+            REPOSITORY_ROOT / "Tools/EffectToolV2",
+            self.root / "Tools/EffectToolV2",
+            ignore=shutil.ignore_patterns("__pycache__"),
+        )
+        shutil.copytree(
             REPOSITORY_ROOT / "Tools/ValtanActionExtractor",
             self.root / "Tools/ValtanActionExtractor",
             ignore=shutil.ignore_patterns("__pycache__"),
@@ -74,8 +79,14 @@ class ValtanEffectCueAuthoringTransactionTests(unittest.TestCase):
             self.root / "Tools/ValtanPipeline/valtan_tuning_pipeline.py"
         )
         self.authoring_root = self.root / "Intermediate/ValtanTuningAuthoring"
+        self.process_cwd = self.root / "fixtures/process-cwd"
+        self.process_cwd.mkdir(parents=True)
         self.environment = dict(os.environ)
         self.environment["PYTHONDONTWRITEBYTECODE"] = "1"
+        self.environment.pop("PYTHONPATH", None)
+        self.environment["LOSTARK_RESOURCE_ROOT"] = str(
+            REPOSITORY_ROOT / "Client/Bin/Resources"
+        )
         self.repository_revision = self.source_manifest()["sourceRevision"]
 
     def tearDown(self) -> None:
@@ -125,7 +136,7 @@ class ValtanEffectCueAuthoringTransactionTests(unittest.TestCase):
                 str(self.root),
                 *(str(argument) for argument in arguments),
             ],
-            cwd=self.root,
+            cwd=self.process_cwd,
             env=self.environment,
             capture_output=True,
             text=True,

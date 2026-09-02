@@ -32,10 +32,15 @@ class ValtanGroundRoarClientLoaderSourceContractTests(unittest.TestCase):
     def test_product_reader_keeps_per_alive_player_contract(self) -> None:
         for marker in (
             '"PER_ALIVE_PLAYER" == strTargeting',
+            'const bool_t bNoArenaSupplement',
+            '"NONE" == pArenaAnchor->Get_String()',
+            '0.0 == Value.Find("arenaRandomCount")->Get_Number()',
+            'const bool_t bArenaSupplement',
             '"BOSS_SPAWN_POSITION" == pArenaAnchor->Get_String()',
             'Value.Find("arenaRandomCount")->Get_Number() > 0.0',
             'Value.Find("arenaRandomRadiusM")->Get_Number() > 0.0',
             'Value.Find("arenaHeightToleranceM")->Get_Number() > 0.0',
+            '(bNoArenaSupplement || bArenaSupplement)',
         ):
             self.assertIn(marker, self.product_reader)
 
@@ -49,6 +54,7 @@ class ValtanGroundRoarClientLoaderSourceContractTests(unittest.TestCase):
             "fAngleStep * fCount <= 360.000001",
             'Value.Find("maximumTotalObjects")->Get_Number() >= fCount',
             '1.0 == Value.Find("spawnCount")->Get_Number()',
+            'Value.Find("firstSpawnOffsetMs")->Get_Number()',
             '0.0 == Value.Find("spawnIntervalMs")->Get_Number()',
             '0.0 == Value.Find("arenaRandomCount")->Get_Number()',
             '0.0 == Value.Find("arenaRandomRadiusM")->Get_Number()',
@@ -64,11 +70,16 @@ class ValtanGroundRoarClientLoaderSourceContractTests(unittest.TestCase):
         for marker in (
             '"PER_ALIVE_PLAYER" == strVolleyPolicy',
             '"RADIAL_AROUND_TARGET" == strLayoutKind',
+            'const bool_t bNoArenaSupplement',
+            'Has_ExactProperties(*pArenaRandom, { "kind" })',
+            '"NONE" == Read_String(*pArenaRandom, "kind")',
+            'const bool_t bArenaSupplement',
             '"RANDOM_NAVIGABLE_CIRCLE" ==',
             '"BOSS_SPAWN_POSITION" == Read_String(*pArenaRandom, "anchor")',
             "fArenaRandomCount > 0.0",
             'pArenaRandom->Find("radiusM")->Get_Number() > 0.0',
             'pArenaRandom->Find("heightToleranceM")->Get_Number() > 0.0',
+            '(bNoArenaSupplement || bArenaSupplement)',
         ):
             self.assertIn(marker, self.authoring_projection)
 
@@ -85,8 +96,9 @@ class ValtanGroundRoarClientLoaderSourceContractTests(unittest.TestCase):
             'Has_ExactProperties(*pArenaRandom, { "kind" })',
             '"NONE" == Read_String(*pArenaRandom, "kind")',
             '1.0 == pSpawnSchedule->Find("count")->Get_Number()',
-            '0.0 != pSpawnSchedule->Find("firstOffsetMs")->Get_Number()',
+            'pSpawnSchedule->Find("firstOffsetMs")->Get_Number() +',
             '0.0 == pSpawnSchedule->Find("intervalMs")->Get_Number()',
+            'Action.emplace("firstSpawnOffsetMs"',
             'Event.Find("maximumTotalObjects")->Get_Number() >= fCount',
             "nullptr == pAllowOverlap || pAllowOverlap->Get_Boolean()",
             "!bPerAliveArenaContract && !bBossRelativeContract",

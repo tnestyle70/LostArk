@@ -128,7 +128,7 @@ class ValtanCounterAuthoringContractTests(unittest.TestCase):
             ),
             "VALTAN_COUNTER": (
                 "STEP_02",
-                "VALTAN_COUNTER_GROGGY",
+                "VALTAN_GROGGY_FOLLOWUP",
                 "GROGGY",
             ),
         }
@@ -451,10 +451,31 @@ class ValtanCounterAuthoringContractTests(unittest.TestCase):
             [{
                 "outcome": "COUNTER_HIT",
                 "nextActionId": None,
-                "nextPatternId": "VALTAN_COUNTER_GROGGY",
+                "nextPatternId": "VALTAN_GROGGY_FOLLOWUP",
             }],
             [row for row in source["branches"] if row["outcome"] == "COUNTER_HIT"],
         )
+        pattern_ids = {row["patternId"] for row in gameplay["patterns"]}
+        self.assertNotIn("VALTAN_COUNTER_GROGGY", pattern_ids)
+        self.assertIn("VALTAN_COUNTER_GROGGY", gameplay["retiredPatternIds"])
+
+        presentation = self.docs[pipeline.PRESENTATION_AUTHORING_REL]
+        counter_p = _pattern({"patterns": presentation["patterns"]}, "VALTAN_COUNTER")
+        animation = _stage(counter_p, "STEP_02")["animation"]
+        self.assertEqual("EXACT", animation["endPolicy"])
+        self.assertEqual(
+            [
+                ("valtan.sequence.counter.step-02.clip-01", 1000, False),
+                ("valtan.sequence.counter.step-02.clip-02", 800, False),
+            ],
+            [(row["clipOccurrenceId"], row["playMs"],
+              row["repeatUntilStageEnd"])
+             for row in animation["occurrences"]],
+        )
+        self.assertTrue(all(
+            row["clip"] == "mesh_att_battle_14_02"
+            for row in animation["occurrences"]
+        ))
 
         header = BALANCE_H.read_text(encoding="utf-8")
         balance = BALANCE_CPP.read_text(encoding="utf-8")

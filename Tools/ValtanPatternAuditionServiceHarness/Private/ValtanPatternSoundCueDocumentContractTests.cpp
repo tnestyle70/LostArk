@@ -2,6 +2,7 @@
 #include "Effect_DocumentCodec.h"
 #include "EncounterPatternReference.h"
 #include "SoundCueCatalog.h"
+#include "ValtanCombatObjectSoundCueDocument.h"
 #include "ValtanPatternSoundCueDocument.h"
 
 #include <Windows.h>
@@ -1178,6 +1179,136 @@ namespace
 		}
 		return true;
 	}
+
+	bool VerifyCombatObjectSoundEventIdentity()
+	{
+		using namespace Client;
+		constexpr std::string_view product = R"json({
+  "schema": "lostark.valtan-combat-objects",
+  "formatVersion": 1,
+  "encounterId": "ENCOUNTER_VALTAN",
+  "objects": [
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.contract",
+      "hits": [{ "hitId": "hit.valtan.contract.01" }],
+      "presentationEvents": [
+        { "presentationEventId": "pulse.valtan.contract.expire", "atMs": 10 }
+      ]
+    }
+  ]
+})json";
+		constexpr std::string_view valid = R"json({
+  "schema": "lostark.valtan-combat-object-sound-cues",
+  "formatVersion": 1,
+  "ownerArchetypeId": "BOSS_VALTAN",
+  "cues": [
+    {
+      "bindingId": "cue.contract.hit",
+      "combatObjectArchetypeId": "combatobject.valtan.contract",
+      "hitId": "hit.valtan.contract.01",
+      "soundBank": "S_Mob_G_Voltan2",
+      "soundEvent": "G_Voltan2_Attack09_ProjExp1"
+    },
+    {
+      "bindingId": "cue.contract.presentation",
+      "combatObjectArchetypeId": "combatobject.valtan.contract",
+      "presentationEventId": "pulse.valtan.contract.expire",
+      "soundBank": "S_Mob_G_Voltan2",
+      "soundEvent": "G_Voltan2_Attack09_ProjExp2"
+    }
+  ]
+})json";
+		VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT admitted;
+		std::string status;
+		if (!Require(CValtanCombatObjectSoundCueDocument::Parse_Text(
+				valid, product, admitted, status) && 2u == admitted.Cues.size(),
+			("combat-object hit/presentation Sound union was rejected: " +
+				status).c_str()))
+		{
+			return false;
+		}
+		const auto hit = std::find_if(admitted.Cues.begin(), admitted.Cues.end(),
+			[](const VALTAN_COMBAT_OBJECT_SOUND_CUE& cue)
+			{
+				return !cue.strHitId.empty();
+			});
+		const auto presentation = std::find_if(
+			admitted.Cues.begin(), admitted.Cues.end(),
+			[](const VALTAN_COMBAT_OBJECT_SOUND_CUE& cue)
+			{
+				return !cue.strPresentationEventId.empty();
+			});
+		if (!Require(admitted.Cues.end() != hit &&
+			admitted.Cues.end() != presentation &&
+			hit->strPresentationEventId.empty() &&
+			presentation->strHitId.empty(),
+			"combat-object Sound source union did not preserve exactly one identity"))
+		{
+			return false;
+		}
+
+		const auto RejectsWithoutMutation =
+			[&](const std::string_view candidate,
+				const std::string_view candidateProduct,
+				const char* label)
+		{
+				const std::size_t cueCountBefore = admitted.Cues.size();
+				const std::string ownerBefore = admitted.strOwnerArchetypeId;
+				return Require(!CValtanCombatObjectSoundCueDocument::Parse_Text(
+					candidate, candidateProduct, admitted, status) &&
+					cueCountBefore == admitted.Cues.size() &&
+					ownerBefore == admitted.strOwnerArchetypeId,
+					label);
+			};
+		constexpr std::string_view both = R"json({
+  "schema":"lostark.valtan-combat-object-sound-cues","formatVersion":1,
+  "ownerArchetypeId":"BOSS_VALTAN","cues":[{
+    "bindingId":"cue.contract.both",
+    "combatObjectArchetypeId":"combatobject.valtan.contract",
+    "hitId":"hit.valtan.contract.01",
+    "presentationEventId":"pulse.valtan.contract.expire",
+    "soundBank":"S_Mob_G_Voltan2","soundEvent":"G_Voltan2_Attack09_ProjExp1"
+  }]})json";
+		constexpr std::string_view neither = R"json({
+  "schema":"lostark.valtan-combat-object-sound-cues","formatVersion":1,
+  "ownerArchetypeId":"BOSS_VALTAN","cues":[{
+    "bindingId":"cue.contract.neither",
+    "combatObjectArchetypeId":"combatobject.valtan.contract",
+    "soundBank":"S_Mob_G_Voltan2","soundEvent":"G_Voltan2_Attack09_ProjExp1"
+  }]})json";
+		constexpr std::string_view missing = R"json({
+  "schema":"lostark.valtan-combat-object-sound-cues","formatVersion":1,
+  "ownerArchetypeId":"BOSS_VALTAN","cues":[{
+    "bindingId":"cue.contract.missing",
+    "combatObjectArchetypeId":"combatobject.valtan.contract",
+    "presentationEventId":"pulse.valtan.contract.missing",
+    "soundBank":"S_Mob_G_Voltan2","soundEvent":"G_Voltan2_Attack09_ProjExp1"
+  }]})json";
+		constexpr std::string_view wrongVersion = R"json({
+  "schema":"lostark.valtan-combat-object-sound-cues","formatVersion":2,
+  "ownerArchetypeId":"BOSS_VALTAN","cues":[{
+    "bindingId":"cue.contract.version",
+    "combatObjectArchetypeId":"combatobject.valtan.contract",
+    "hitId":"hit.valtan.contract.01",
+    "soundBank":"S_Mob_G_Voltan2","soundEvent":"G_Voltan2_Attack09_ProjExp1"
+  }]})json";
+		constexpr std::string_view malformedProduct = R"json({
+  "schema":"lostark.valtan-combat-objects","formatVersion":1,
+  "encounterId":"ENCOUNTER_VALTAN","objects":[{
+    "combatObjectArchetypeId":"combatobject.valtan.contract",
+    "hits":[],"presentationEvents":{}
+  }]})json";
+		return RejectsWithoutMutation(both, product,
+			"combat-object Sound cue admitted both hitId and presentationEventId") &&
+			RejectsWithoutMutation(neither, product,
+				"combat-object Sound cue admitted no Server event identity") &&
+			RejectsWithoutMutation(missing, product,
+				"combat-object Sound cue admitted a missing presentation event") &&
+			RejectsWithoutMutation(wrongVersion, product,
+				"combat-object Sound cue admitted an unsupported version") &&
+			RejectsWithoutMutation(valid, malformedProduct,
+				"combat-object Sound cue admitted malformed Product events");
+	}
 }
 
 int Run_ValtanPatternSoundCueDocumentContractTests()
@@ -1185,6 +1316,8 @@ int Run_ValtanPatternSoundCueDocumentContractTests()
 	if (!VerifySoundCueIsolation(std::filesystem::current_path()))
 		return 1;
 	if (!VerifyAuthoringSave(std::filesystem::current_path()))
+		return 1;
+	if (!VerifyCombatObjectSoundEventIdentity())
 		return 1;
 	std::cout << "Valtan pattern Sound cue document contracts: PASS\n";
 	return 0;

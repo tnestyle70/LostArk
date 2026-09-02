@@ -289,7 +289,7 @@ namespace
 			std::numeric_limits<f32_t>::max_digits10);
 		output << "{\n"
 			<< "  \"schema\": \"lostark.valtan-pattern-bindings\",\n"
-			<< "  \"formatVersion\": 3,\n"
+			<< "  \"formatVersion\": 4,\n"
 			<< "  \"bossArchetypeId\": \""
 			<< CDataJson::Escape(document.strBossArchetypeId) << "\",\n"
 			<< "  \"bindings\": [\n";
@@ -303,6 +303,12 @@ namespace
 				<< CDataJson::Escape(binding.strActionId) << "\",\n";
 			if (binding.bSuppressAnimation)
 				output << "      \"playbackMode\": \"NONE\",\n";
+			if (binding.bHasBodyHiddenWindow)
+			{
+				output << "      \"bodyVisibility\": { \"hiddenFromMs\": "
+					<< binding.iBodyHiddenFromMs << ", \"hiddenToMs\": "
+					<< binding.iBodyHiddenToMs << " },\n";
+			}
 			output << "      \"clips\": [\n";
 			for (std::size_t clipIndex = 0u;
 				clipIndex < binding.Clips.size(); ++clipIndex)
@@ -1245,7 +1251,8 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Parse_Text(
 	{
 		const double number = version->Get_Number();
 		if (std::isfinite(number) && std::floor(number) == number &&
-			(number == 1.0 || number == 2.0 || number == 3.0))
+				(number == 1.0 || number == 2.0 || number == 3.0 ||
+				 number == 4.0))
 		{
 			formatVersion = static_cast<uint32_t>(number);
 		}
@@ -1267,18 +1274,28 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Parse_Text(
 	for (const DATA_JSON_VALUE& value : bindings->Get_Array())
 	{
 		const bool isLegacy = 1u == formatVersion;
-		const bool supportsPlaybackMode = 3u == formatVersion;
+		const bool supportsPlaybackMode = formatVersion >= 3u;
+		const bool supportsBodyVisibility = formatVersion >= 4u;
 		const bool hasPlaybackMode =
 			nullptr != value.Find("playbackMode");
+		const bool hasBodyVisibility =
+			nullptr != value.Find("bodyVisibility");
 		if ((isLegacy &&
 			!Has_ExactProperties(value, { "actionId", "clip" })) ||
 			(!isLegacy &&
 			 ((!supportsPlaybackMode && hasPlaybackMode) ||
-			  (!hasPlaybackMode &&
+			  (!supportsBodyVisibility && hasBodyVisibility) ||
+			  (!hasPlaybackMode && !hasBodyVisibility &&
 			   !Has_ExactProperties(value, { "actionId", "clips" })) ||
-			  (hasPlaybackMode &&
+			  (hasPlaybackMode && !hasBodyVisibility &&
 			   !Has_ExactProperties(value,
-				   { "actionId", "playbackMode", "clips" })))))
+				   { "actionId", "playbackMode", "clips" })) ||
+			  (!hasPlaybackMode && hasBodyVisibility &&
+			   !Has_ExactProperties(value,
+				   { "actionId", "bodyVisibility", "clips" })) ||
+			  (hasPlaybackMode && hasBodyVisibility &&
+			   !Has_ExactProperties(value,
+				   { "actionId", "playbackMode", "bodyVisibility", "clips" })))))
 		{
 			outStatus = "Boss pattern binding row has an unexpected field set.";
 			return false;
@@ -1293,6 +1310,24 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Parse_Text(
 
 		BOSS_PATTERN_ANIMATION_BINDING stagedBinding;
 		stagedBinding.strActionId = actionId->Get_String();
+		if (hasBodyVisibility)
+		{
+			const DATA_JSON_VALUE* bodyVisibility = value.Find("bodyVisibility");
+			if (nullptr == bodyVisibility || !bodyVisibility->Is_Object() ||
+				!Has_ExactProperties(*bodyVisibility,
+					{ "hiddenFromMs", "hiddenToMs" }) ||
+				!Try_ParseSourceMs(*bodyVisibility->Find("hiddenFromMs"),
+					stagedBinding.iBodyHiddenFromMs) ||
+				!Try_ParseSourceMs(*bodyVisibility->Find("hiddenToMs"),
+					stagedBinding.iBodyHiddenToMs) ||
+				stagedBinding.iBodyHiddenFromMs >= stagedBinding.iBodyHiddenToMs)
+			{
+				outStatus =
+					"Boss pattern body visibility window is invalid.";
+				return false;
+			}
+			stagedBinding.bHasBodyHiddenWindow = true;
+		}
 		if (isLegacy)
 		{
 			const DATA_JSON_VALUE* clip = value.Find("clip");
@@ -1439,7 +1474,7 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Validate(
 	if (!Is_StableToken(expectedBossArchetypeId) ||
 		document.strBossArchetypeId != expectedBossArchetypeId ||
 		(document.iFormatVersion != 1u && document.iFormatVersion != 2u &&
-		 document.iFormatVersion != 3u) ||
+		 document.iFormatVersion != 3u && document.iFormatVersion != 4u) ||
 		document.Bindings.empty() || document.Bindings.size() > 512u)
 	{
 		outStatus = "Boss pattern binding owner does not match the target boss.";
@@ -1450,10 +1485,17 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Validate(
 	for (const BOSS_PATTERN_ANIMATION_BINDING& binding : document.Bindings)
 	{
 		const bool_t bValidPlaybackContract = binding.bSuppressAnimation ?
-			(3u == document.iFormatVersion && binding.Clips.empty()) :
+			(document.iFormatVersion >= 3u && binding.Clips.empty()) :
 			(!binding.Clips.empty() && binding.Clips.size() <= 16u);
+		const bool_t bValidBodyVisibilityContract =
+			binding.bHasBodyHiddenWindow ?
+				(document.iFormatVersion >= 4u &&
+				 binding.iBodyHiddenFromMs < binding.iBodyHiddenToMs) :
+				(0u == binding.iBodyHiddenFromMs &&
+				 0u == binding.iBodyHiddenToMs);
 		if (!Is_StableToken(binding.strActionId) ||
 			!bValidPlaybackContract ||
+			!bValidBodyVisibilityContract ||
 			!claimedActions.insert(binding.strActionId).second)
 		{
 			outStatus =

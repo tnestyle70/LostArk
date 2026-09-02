@@ -321,6 +321,39 @@ namespace
 			LostArk::Shared::PLAYER_ACTION_STATE::FALLING != player.eAction;
 	}
 
+	SERVER_PLAYER* SelectNearestEngageableTarget(
+		const SERVER_WORLD_ENTITY& boss,
+		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+		float* outDistanceSquared = nullptr)
+	{
+		float nearestDistanceSquared = (std::numeric_limits<float>::max)();
+		SERVER_PLAYER* nearest = nullptr;
+		if (std::isfinite(boss.fPositionX) && std::isfinite(boss.fPositionZ))
+		{
+			for (auto& [playerId, player] : players)
+			{
+				(void)playerId;
+				if (!IsEngageablePlayer(player) ||
+					!std::isfinite(player.fPositionX) ||
+					!std::isfinite(player.fPositionZ))
+				{
+					continue;
+				}
+				const float deltaX = player.fPositionX - boss.fPositionX;
+				const float deltaZ = player.fPositionZ - boss.fPositionZ;
+				const float distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
+				if (distanceSquared < nearestDistanceSquared)
+				{
+					nearest = &player;
+					nearestDistanceSquared = distanceSquared;
+				}
+			}
+		}
+		if (nullptr != outDistanceSquared)
+			*outDistanceSquared = nearestDistanceSquared;
+		return nearest;
+	}
+
 	bool IsSamePatternCooldownFamily(
 		const SERVER_BOSS_PATTERN_COOLDOWN& cooldown,
 		const BOSS_PATTERN_DEFINITION& pattern)
@@ -589,8 +622,20 @@ namespace
 		boss.fPatternTargetLastPositionZ = 0.f;
 	}
 
+	void RestorePatternStageVerticalOffset(SERVER_WORLD_ENTITY& boss)
+	{
+		if (boss.bPatternStageVerticalOffsetApplied &&
+			std::isfinite(boss.fPatternStageVerticalBaseY))
+		{
+			boss.fPositionY = boss.fPatternStageVerticalBaseY;
+		}
+		boss.bPatternStageVerticalOffsetApplied = false;
+		boss.fPatternStageVerticalBaseY = 0.f;
+	}
+
 	void RestorePatternVerticalOffset(SERVER_WORLD_ENTITY& boss)
 	{
+		RestorePatternStageVerticalOffset(boss);
 		if (boss.bPatternVerticalOffsetApplied &&
 			std::isfinite(boss.fPatternVerticalBaseY))
 		{
@@ -717,7 +762,8 @@ namespace
 		{
 		case BOSS_PATTERN_TARGET_POLICY::NEAREST_EACH_TICK:
 		case BOSS_PATTERN_TARGET_POLICY::LOCK_NEAREST_ON_START:
-			selected = nearestTarget;
+			selected = nullptr == nearestTarget ?
+				SelectNearestEngageableTarget(boss, players) : nearestTarget;
 			break;
 		case BOSS_PATTERN_TARGET_POLICY::LOCK_RANDOM_ALIVE_ON_START:
 			selected = SelectRandomTarget(players, boss.iPatternSequence);
@@ -1607,6 +1653,7 @@ namespace
 		const bool evaluatesOnEntryTick = false)
 	{
 		CompletePortalTargetRushAtDeadline(boss);
+		RestorePatternStageVerticalOffset(boss);
 		const std::string previousActionId = boss.strActionId;
 		if (!previousActionId.empty())
 			CBossCombatRuntime::Discard_PatternOutcomes(
@@ -1712,6 +1759,13 @@ namespace
 			boss.fLeapApexHeight = 0.f;
 		}
 		Advance_ArenaBreakLeap(boss);
+		if (0.f != stage.fVerticalOffsetM)
+		{
+			boss.fPatternStageVerticalBaseY = boss.fPositionY;
+			boss.fPositionY = boss.fPatternStageVerticalBaseY +
+				stage.fVerticalOffsetM;
+			boss.bPatternStageVerticalOffsetApplied = true;
+		}
 	}
 
 	void BeginPattern(
@@ -2609,22 +2663,9 @@ void LostArk::Server::CValtanBrain::Update(
 		return;
 	}
 
-	SERVER_PLAYER* target = nullptr;
 	float targetDistanceSquared = (std::numeric_limits<float>::max)();
-	for (auto& [playerId, player] : players)
-	{
-		(void)playerId;
-		if (!IsEngageablePlayer(player))
-			continue;
-		const float deltaX = player.fPositionX - boss.fPositionX;
-		const float deltaZ = player.fPositionZ - boss.fPositionZ;
-		const float distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
-		if (distanceSquared < targetDistanceSquared)
-		{
-			target = &player;
-			targetDistanceSquared = distanceSquared;
-		}
-	}
+	SERVER_PLAYER* target = SelectNearestEngageableTarget(
+		boss, players, &targetDistanceSquared);
 	const float engageDistance = (std::max)(
 		boss.fEngageDistance, MaximumPatternRange(*patterns));
 	const BOSS_PATTERN_SEQUENCE_DEFINITION* automaticSequence =
@@ -3186,18 +3227,11 @@ bool LostArk::Server::CValtanBrain::Restart_FinaleCycle(
 		0u == serverTick ||
 		(std::numeric_limits<std::uint32_t>::max)() == boss.iPatternSequence)
 		return false;
-	SERVER_PLAYER* target = nullptr;
-	for (auto& [playerId, player] : players)
-	{
-		(void)playerId;
-		if (IsEngageablePlayer(player))
-		{
-			target = &player;
-			break;
-		}
-	}
 	const auto revision = boss.PinnedDefinitionRevision;
-	BeginPattern(boss, pattern, players, target, revision, serverTick);
+	/* Restart has no precomputed nearest-target input. Route that null through
+	   the same target-policy admission as an ordinary occurrence so nearest
+	   locks use the boss's current position instead of map iteration order. */
+	BeginPattern(boss, pattern, players, nullptr, revision, serverTick);
 	return true;
 }
 

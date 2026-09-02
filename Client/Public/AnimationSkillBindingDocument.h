@@ -142,6 +142,13 @@ namespace Client
 		/* Explicit Product admission for a stage that intentionally starts no
 		   model animation.  An empty clip list without this tag remains invalid. */
 		bool_t bSuppressAnimation = false;
+		/* Product v4 can suppress only the boss part render submission for a
+		   bounded interval of the authoritative Stage clock. Effect runtimes keep
+		   ticking, so a portal/telegraph can outlive the visible body without a
+		   second gameplay or network flag. */
+		bool_t bHasBodyHiddenWindow = false;
+		uint32_t iBodyHiddenFromMs = 0u;
+		uint32_t iBodyHiddenToMs = 0u;
 
 		bool operator==(const BOSS_PATTERN_ANIMATION_BINDING&) const = default;
 	};

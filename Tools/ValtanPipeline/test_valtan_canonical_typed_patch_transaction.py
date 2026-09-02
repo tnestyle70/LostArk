@@ -361,6 +361,29 @@ finally:
             "downMs": 600,
         }
 
+    @staticmethod
+    def active_window_hit(outer_radius: float = 2.5) -> dict[str, Any]:
+        return {
+            "shape": {"kind": "CIRCLE", "outerRadiusM": outer_radius},
+            "activation": {
+                "kind": "ACTIVE_WINDOW",
+                "startMs": 100,
+                "lifetimeMs": 250,
+                "perTargetPolicy": "ONCE",
+            },
+            "anchor": {
+                "kind": "STAGE_ORIGIN",
+                "forwardOffsetM": 1.25,
+                "rightOffsetM": -0.5,
+                "yawOffsetDegrees": 30.0,
+            },
+            "serverDamageProfileId": "damage.valtan.circular-spin",
+            "pushRangeM": 0.0,
+            "pushMs": 0,
+            "knockdown": False,
+            "downMs": 0,
+        }
+
     def typed_operations(self) -> list[dict[str, Any]]:
         return [
             {
@@ -372,7 +395,7 @@ finally:
             {
                 "op": "SET_STAGE_HIT",
                 "patternId": "VALTAN_HIGH_JUMP",
-                "stageId": "RECOVERY",
+                "stageId": "LAND",
                 "hit": self.hit(),
             },
         ]
@@ -381,15 +404,111 @@ finally:
     def read_json(path: Path) -> dict[str, Any]:
         return json.loads(path.read_text(encoding="utf-8"))
 
+    def write_effect_v2_read_set(
+        self, candidate_path: Path, name: str
+    ) -> Path:
+        read_set_path = self.root / name
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-B",
+                str(
+                    self.root
+                    / "Tools/EffectToolV2/effect_v2_binding_pipeline.py"
+                ),
+                "--repository-root",
+                str(self.root),
+                "snapshot",
+                "--bindings",
+                str(candidate_path),
+                "--output",
+                str(read_set_path),
+            ],
+            cwd=self.root,
+            env=self.environment,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
+        return read_set_path
+
     @staticmethod
-    def stage(document: dict[str, Any]) -> dict[str, Any]:
+    def stage(
+        document: dict[str, Any],
+        pattern_id: str = "VALTAN_HIGH_JUMP",
+        stage_id: str = "RECOVERY",
+    ) -> dict[str, Any]:
         return next(
             stage
             for pattern in document["patterns"]
-            if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+            if pattern["patternId"] == pattern_id
             for stage in pattern["stages"]
-            if stage["stageId"] == "RECOVERY"
+            if stage["stageId"] == stage_id
         )
+
+    def assert_hit_commit_rejected_without_writes(
+        self,
+        *,
+        name: str,
+        pattern_id: str,
+        stage_id: str,
+        hit: dict[str, Any],
+        expected_message: str,
+    ) -> None:
+        baseline = self.data_manifest()
+        patch_path = self.write_patch(
+            f"{name}.json",
+            self.repository_revision,
+            [
+                {
+                    "op": "SET_STAGE_HIT",
+                    "patternId": pattern_id,
+                    "stageId": stage_id,
+                    "hit": hit,
+                }
+            ],
+        )
+        completed, result = self.run_pipeline(
+            "commit-canonical-draft",
+            "--authoring-root",
+            self.authoring_root,
+            "--draft-patch",
+            patch_path,
+        )
+        self.assertNotEqual(0, completed.returncode)
+        self.assertFalse(result["ok"])
+        error = result["errors"][0]
+        self.assertEqual("FIELD_NOT_ALLOWED", error["errorCode"])
+        self.assertEqual("draftPatch", error["document"])
+        self.assertEqual(pattern_id, error["patternId"])
+        self.assertEqual(stage_id, error["stageId"])
+        self.assertTrue(error["field"])
+        self.assertTrue(error["path"].startswith("operations[0]."))
+        self.assertIn(expected_message, error["message"])
+        self.assertEqual(baseline, self.data_manifest())
+
+    def test_generic_commit_exception_remains_generic_and_atomic(self) -> None:
+        baseline = self.data_manifest()
+        malformed_patch = self.root / "malformed-collider-patch.json"
+        malformed_patch.write_text("{", encoding="utf-8")
+        completed, result = self.run_pipeline(
+            "commit-canonical-draft",
+            "--authoring-root",
+            self.authoring_root,
+            "--draft-patch",
+            malformed_patch,
+        )
+        self.assertNotEqual(0, completed.returncode)
+        self.assertFalse(result["ok"])
+        error = result["errors"][0]
+        self.assertEqual("VALIDATION_FAILED", error["errorCode"])
+        self.assertEqual("", error["document"])
+        self.assertEqual("", error["patternId"])
+        self.assertEqual("", error["stageId"])
+        self.assertEqual(baseline, self.data_manifest())
 
     def test_scripted_sequence_commit_updates_canonical_and_generated_product(
         self,
@@ -501,6 +620,227 @@ finally:
                 self.assertFalse(result["ok"])
                 self.assertEqual(baseline, self.data_manifest())
 
+    def test_canonical_existing_collider_tune_preserves_active_window_contract(
+        self,
+    ) -> None:
+        hit = self.active_window_hit()
+        patch_path = self.write_patch(
+            "active-window-hit.json",
+            self.repository_revision,
+            [
+                {
+                    "op": "SET_STAGE_HIT",
+                    "patternId": "VALTAN_HIGH_JUMP",
+                    "stageId": "LAND",
+                    "hit": hit,
+                }
+            ],
+        )
+        _, result = self.run_pipeline(
+            "commit-canonical-draft",
+            "--authoring-root",
+            self.authoring_root,
+            "--draft-patch",
+            patch_path,
+            expected_returncode=0,
+        )
+        self.assertTrue(result["ok"])
+        self.assertEqual(1, result["payload"]["operationCount"])
+
+        gameplay_stage = self.stage(
+            self.read_json(self.root / "Data/Valtan/Valtan.gameplay.json"),
+            stage_id="LAND",
+        )
+        product_stage = self.stage(
+            self.read_json(
+                self.root / "Data/Encounters/Valtan/ValtanEncounter.json"
+            ),
+            stage_id="LAND",
+        )
+        self.assertEqual(hit, gameplay_stage["hit"])
+        self.assertEqual(hit["activation"], product_stage["hitActivation"])
+        self.assertEqual(hit["anchor"], product_stage["hitAnchor"])
+        self.assertEqual(0, product_stage["hitCount"])
+        self.assertEqual([], product_stage.get("hitOffsetsMs", []))
+
+    def test_active_window_hit_invalid_union_and_bounds_preserve_data(self) -> None:
+        baseline = self.data_manifest()
+        both_clocks = self.active_window_hit()
+        both_clocks["schedule"] = {
+            "kind": "INTERVAL",
+            "count": 1,
+            "firstOffsetMs": 0,
+            "intervalMs": 0,
+        }
+        zero_lifetime = self.active_window_hit()
+        zero_lifetime["activation"]["lifetimeMs"] = 0
+        escaping_window = self.active_window_hit()
+        escaping_window["activation"]["startMs"] = 350
+        escaping_window["activation"]["lifetimeMs"] = 5000
+        invalid_anchor = self.active_window_hit()
+        invalid_anchor["anchor"]["kind"] = "PLAYER_CURRENT"
+
+        for name, hit in (
+            ("both-clocks", both_clocks),
+            ("zero-lifetime", zero_lifetime),
+            ("escaping-window", escaping_window),
+            ("invalid-anchor", invalid_anchor),
+        ):
+            with self.subTest(name=name):
+                patch_path = self.write_patch(
+                    f"invalid-active-window-{name}.json",
+                    self.repository_revision,
+                    [
+                        {
+                            "op": "SET_STAGE_HIT",
+                            "patternId": "VALTAN_HIGH_JUMP",
+                            "stageId": "LAND",
+                            "hit": hit,
+                        }
+                    ],
+                )
+                _, result = self.run_pipeline(
+                    "validate-draft",
+                    "--authoring-root",
+                    self.authoring_root,
+                    "--draft-patch",
+                    patch_path,
+                    expected_returncode=1,
+                )
+                self.assertFalse(result["ok"])
+                self.assertEqual(baseline, self.data_manifest())
+
+    def test_canonical_stage_without_collider_rejects_add_atomically(self) -> None:
+        self.assert_hit_commit_rejected_without_writes(
+            name="canonical-collider-add",
+            pattern_id="VALTAN_HIGH_JUMP",
+            stage_id="RECOVERY",
+            hit=self.active_window_hit(),
+            expected_message="MANUAL_SERVER_AUDITION",
+        )
+
+    def test_canonical_existing_collider_rejects_remove_atomically(self) -> None:
+        self.assert_hit_commit_rejected_without_writes(
+            name="canonical-collider-remove",
+            pattern_id="VALTAN_HIGH_JUMP",
+            stage_id="LAND",
+            hit={"shape": {"kind": "NONE"}},
+            expected_message="canonical colliders may only be tuned in place",
+        )
+
+    def test_capture_collider_rejects_partial_remove_atomically(self) -> None:
+        capture_stage = self.stage(
+            self.read_json(self.root / "Data/Valtan/Valtan.gameplay.json"),
+            pattern_id="VALTAN_CATCH_BREATH",
+            stage_id="STEP_02",
+        )
+        response_removed = copy.deepcopy(capture_stage["hit"])
+        response_removed.pop("playerResponse")
+        response_removed.pop("attachmentSlot")
+        for name, hit in (
+            ("capture-collider-geometry-remove", {"shape": {"kind": "NONE"}}),
+            ("capture-collider-response-remove", response_removed),
+        ):
+            with self.subTest(name=name):
+                self.assert_hit_commit_rejected_without_writes(
+                    name=name,
+                    pattern_id="VALTAN_CATCH_BREATH",
+                    stage_id="STEP_02",
+                    hit=hit,
+                    expected_message="multi-owner transaction",
+                )
+
+    def test_capture_add_requires_existing_release_path_atomically(self) -> None:
+        capture_hit = self.active_window_hit()
+        capture_hit["playerResponse"] = "CAPTURE"
+        capture_hit["attachmentSlot"] = "BOSS_LEFT_HAND"
+        for name, pattern_id, stage_id in (
+            (
+                "manual-capture-add-without-release",
+                "VALTAN_GROUND_ROAR",
+                "STEP_01",
+            ),
+            (
+                "existing-damage-to-capture-without-release",
+                "VALTAN_HIGH_JUMP",
+                "LAND",
+            ),
+        ):
+            with self.subTest(name=name):
+                self.assert_hit_commit_rejected_without_writes(
+                    name=name,
+                    pattern_id=pattern_id,
+                    stage_id=stage_id,
+                    hit=copy.deepcopy(capture_hit),
+                    expected_message="existing typed left-hand capture/release Pattern",
+                )
+
+    def test_manual_audition_collider_add_and_remove_succeed(self) -> None:
+        added_hit = self.active_window_hit(3.25)
+        add_patch = self.write_patch(
+            "manual-collider-add.json",
+            self.repository_revision,
+            [
+                {
+                    "op": "SET_STAGE_HIT",
+                    "patternId": "VALTAN_GROUND_ROAR",
+                    "stageId": "STEP_01",
+                    "hit": added_hit,
+                }
+            ],
+        )
+        _, added = self.run_pipeline(
+            "commit-canonical-draft",
+            "--authoring-root",
+            self.authoring_root,
+            "--draft-patch",
+            add_patch,
+            expected_returncode=0,
+        )
+        self.assertTrue(added["ok"])
+        gameplay_stage = self.stage(
+            self.read_json(self.root / "Data/Valtan/Valtan.gameplay.json"),
+            pattern_id="VALTAN_GROUND_ROAR",
+            stage_id="STEP_01",
+        )
+        self.assertEqual(added_hit, gameplay_stage["hit"])
+
+        remove_patch = self.write_patch(
+            "manual-collider-remove.json",
+            added["sourceRevision"],
+            [
+                {
+                    "op": "SET_STAGE_HIT",
+                    "patternId": "VALTAN_GROUND_ROAR",
+                    "stageId": "STEP_01",
+                    "hit": {"shape": {"kind": "NONE"}},
+                }
+            ],
+        )
+        _, removed = self.run_pipeline(
+            "commit-canonical-draft",
+            "--authoring-root",
+            self.authoring_root,
+            "--draft-patch",
+            remove_patch,
+            expected_returncode=0,
+        )
+        self.assertTrue(removed["ok"])
+        gameplay_stage = self.stage(
+            self.read_json(self.root / "Data/Valtan/Valtan.gameplay.json"),
+            pattern_id="VALTAN_GROUND_ROAR",
+            stage_id="STEP_01",
+        )
+        product_stage = self.stage(
+            self.read_json(
+                self.root / "Data/Encounters/Valtan/ValtanEncounter.json"
+            ),
+            pattern_id="VALTAN_GROUND_ROAR",
+            stage_id="STEP_01",
+        )
+        self.assertEqual({"shape": {"kind": "NONE"}}, gameplay_stage["hit"])
+        self.assertEqual("NONE", product_stage["hitShape"])
+
     def test_animation_and_hit_commit_match_split_sources_and_products(self) -> None:
         animation = self.animation()
         hit = self.hit()
@@ -522,16 +862,21 @@ finally:
         self.assertEqual(6, result["payload"]["changedCount"])
         self.assertEqual("NOT_ACTIVATED", result["payload"]["runtimeActivation"])
 
-        gameplay_stage = self.stage(
+        gameplay_animation_stage = self.stage(
             self.read_json(self.root / "Data/Valtan/Valtan.gameplay.json")
         )
         presentation_stage = self.stage(
             self.read_json(self.root / "Data/Valtan/Valtan.presentation.json")
         )
-        product_stage = self.stage(
+        product_hit_stage = self.stage(
             self.read_json(
                 self.root / "Data/Encounters/Valtan/ValtanEncounter.json"
-            )
+            ),
+            stage_id="LAND",
+        )
+        gameplay_hit_stage = self.stage(
+            self.read_json(self.root / "Data/Valtan/Valtan.gameplay.json"),
+            stage_id="LAND",
         )
         bindings = self.read_json(
             self.root
@@ -540,7 +885,7 @@ finally:
         binding = next(
             row
             for row in bindings["bindings"]
-            if row["actionId"] == gameplay_stage["actionId"]
+            if row["actionId"] == gameplay_animation_stage["actionId"]
         )
         expected_product_clips = [
             {
@@ -553,20 +898,20 @@ finally:
             }
             for occurrence in animation["occurrences"]
         ]
-        self.assertEqual(hit, gameplay_stage["hit"])
+        self.assertEqual(hit, gameplay_hit_stage["hit"])
         self.assertEqual(animation, presentation_stage["animation"])
         self.assertEqual(expected_product_clips, binding["clips"])
-        self.assertEqual("CIRCLE", product_stage["hitShape"])
-        self.assertEqual(2.5, product_stage["hitOuterRadius"])
-        self.assertEqual([100, 300], product_stage["hitOffsetsMs"])
+        self.assertEqual("CIRCLE", product_hit_stage["hitShape"])
+        self.assertEqual(2.5, product_hit_stage["hitOuterRadius"])
+        self.assertEqual([100, 300], product_hit_stage["hitOffsetsMs"])
         self.assertEqual(
             "damage.valtan.circular-spin",
-            product_stage["serverDamageProfileId"],
+            product_hit_stage["serverDamageProfileId"],
         )
-        self.assertEqual(1.25, product_stage["pushRangeM"])
-        self.assertEqual(150, product_stage["pushMs"])
-        self.assertTrue(product_stage["knockdown"])
-        self.assertEqual(600, product_stage["downMs"])
+        self.assertEqual(1.25, product_hit_stage["pushRangeM"])
+        self.assertEqual(150, product_hit_stage["pushMs"])
+        self.assertTrue(product_hit_stage["knockdown"])
+        self.assertEqual(600, product_hit_stage["downMs"])
 
         root_motion_check = subprocess.run(
             [
@@ -771,7 +1116,7 @@ finally:
                 {
                     "op": "SET_STAGE_HIT",
                     "patternId": "VALTAN_HIGH_JUMP",
-                    "stageId": "RECOVERY",
+                    "stageId": "LAND",
                     "hit": self.hit(3.0),
                 }
             ],
@@ -802,12 +1147,28 @@ finally:
         canonical_revision = absorbed["sourceRevision"]
         self.assertNotEqual(self.repository_revision, canonical_revision)
         self.assertEqual(0, absorbed["payload"]["operationCount"])
-        self.assertEqual(3, absorbed["payload"]["changedCount"])
+        absorbed_manifest = self.data_manifest()
+        absorbed_paths = {
+            path
+            for path in baseline.keys() | absorbed_manifest.keys()
+            if baseline.get(path) != absorbed_manifest.get(path)
+        }
+        self.assertEqual(
+            len(absorbed_paths), absorbed["payload"]["changedCount"]
+        )
+        self.assertTrue(
+            {
+                "Valtan/Valtan.gameplay.json",
+                "Valtan/Valtan.presentation.json",
+                "Encounters/Valtan/ValtanEncounter.json",
+            }.issubset(absorbed_paths)
+        )
         self.assertEqual("NOT_ACTIVATED", absorbed["payload"]["runtimeActivation"])
         product_stage = self.stage(
             self.read_json(
                 self.root / "Data/Encounters/Valtan/ValtanEncounter.json"
-            )
+            ),
+            stage_id="LAND",
         )
         self.assertEqual(3.0, product_stage["hitOuterRadius"])
 
@@ -864,6 +1225,7 @@ finally:
         for script in (self.pipeline, self.promoter):
             compile(script.read_text(encoding="utf-8"), str(script), "exec")
 
+        baseline = self.data_manifest()
         patch_path = self.write_patch(
             "noop.json", self.repository_revision, []
         )
@@ -898,19 +1260,28 @@ finally:
         result = self.parse_command_result(completed)
         self.assertTrue(result["ok"])
         self.assertEqual("COMMIT_CANONICAL_DRAFT", result["command"])
-        self.assertEqual(self.repository_revision, result["sourceRevision"])
+        committed_manifest = self.data_manifest()
+        committed_paths = {
+            path
+            for path in baseline.keys() | committed_manifest.keys()
+            if baseline.get(path) != committed_manifest.get(path)
+        }
+        current_source = self.source_manifest()
+        self.assertEqual(current_source["sourceRevision"], result["sourceRevision"])
+        self.assertEqual(
+            self.repository_revision, result["payload"]["previousSourceRevision"]
+        )
         self.assertEqual(0, result["payload"]["operationCount"])
-        self.assertEqual(0, result["payload"]["changedCount"])
+        self.assertEqual(len(committed_paths), result["payload"]["changedCount"])
         self.assertEqual("NOT_ACTIVATED", result["payload"]["runtimeActivation"])
 
-    def test_public_wrapper_v1_effect_delete_commits_structured_result(self) -> None:
-        """The shipped v1 Client must stay writable until reviewed v2 migration.
+    def test_public_wrapper_v2_effect_delete_commits_structured_result(self) -> None:
+        """The reviewed v2 owner commits only with its pinned resource read-set.
 
         Composition sends the physical binding bytes it admitted at Reload and
-        one candidate document.  A v2 resource read-set is deliberately absent
-        for a formatVersion 1 owner; the shared writer still validates the
-        candidate against the projected Pattern closure and CASes the binding
-        file byte-for-byte.
+        one candidate document plus the exact Effect/group bodies it admitted.
+        The shared writer validates the candidate against the projected Pattern
+        closure and CASes the binding file byte-for-byte.
         """
 
         patch_path = self.write_patch(
@@ -925,7 +1296,7 @@ finally:
         binding_target.write_bytes(baseline_bytes)
         self.assertIn(b"\r\n", baseline_bytes)
         candidate_document = json.loads(baseline_bytes)
-        self.assertEqual(1, candidate_document["formatVersion"])
+        self.assertEqual(2, candidate_document["formatVersion"])
         self.assertGreater(len(candidate_document["bindings"]), 0)
         candidate_document["bindings"].pop()
         candidate_bytes = (
@@ -935,6 +1306,9 @@ finally:
         candidate_path = self.root / "v1-effect-candidate.json"
         baseline_path.write_bytes(baseline_bytes)
         candidate_path.write_bytes(candidate_bytes)
+        read_set_path = self.write_effect_v2_read_set(
+            candidate_path, "v2-effect-read-set.json"
+        )
 
         powershell = shutil.which("powershell.exe") or shutil.which("powershell")
         self.assertIsNotNone(powershell)
@@ -958,6 +1332,8 @@ finally:
                 str(baseline_path),
                 "-EffectV2CandidatePath",
                 str(candidate_path),
+                "-EffectV2ReadSetPath",
+                str(read_set_path),
             ],
             cwd=self.root,
             env=self.environment,
@@ -1013,6 +1389,36 @@ finally:
             ],
         )
         survivor = copy.deepcopy(stage["animation"]["occurrences"][0])
+        removed_clip_occurrence_id = stage["animation"]["occurrences"][1][
+            "clipOccurrenceId"
+        ]
+        effect_v2_target = (
+            self.root
+            / "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"
+        )
+        effect_v2_baseline = effect_v2_target.read_bytes()
+        effect_v2_candidate = json.loads(effect_v2_baseline)
+        removed_effect_bindings = [
+            row
+            for row in effect_v2_candidate["bindings"]
+            if row["clock"].get("clipOccurrenceId") == removed_clip_occurrence_id
+        ]
+        self.assertGreater(len(removed_effect_bindings), 0)
+        effect_v2_candidate["bindings"] = [
+            row
+            for row in effect_v2_candidate["bindings"]
+            if row["clock"].get("clipOccurrenceId") != removed_clip_occurrence_id
+        ]
+        effect_v2_baseline_path = self.root / "ground-roar-v2-baseline.json"
+        effect_v2_candidate_path = self.root / "ground-roar-v2-candidate.json"
+        effect_v2_baseline_path.write_bytes(effect_v2_baseline)
+        effect_v2_candidate_bytes = (
+            json.dumps(effect_v2_candidate, ensure_ascii=False, indent=2) + "\n"
+        ).encode("utf-8")
+        effect_v2_candidate_path.write_bytes(effect_v2_candidate_bytes)
+        effect_v2_read_set_path = self.write_effect_v2_read_set(
+            effect_v2_candidate_path, "ground-roar-v2-read-set.json"
+        )
         powershell = shutil.which("powershell.exe") or shutil.which("powershell")
         self.assertIsNotNone(powershell)
         patch_path = self.write_patch(
@@ -1048,6 +1454,12 @@ finally:
                 "Intermediate/ValtanTuningAuthoring",
                 "-DraftPatchPath",
                 str(patch_path),
+                "-EffectV2BaselinePath",
+                str(effect_v2_baseline_path),
+                "-EffectV2CandidatePath",
+                str(effect_v2_candidate_path),
+                "-EffectV2ReadSetPath",
+                str(effect_v2_read_set_path),
             ],
             cwd=self.root,
             env=self.environment,
@@ -1089,6 +1501,7 @@ finally:
             "SOURCE_REVIEWED_DELTA",
             committed_occurrences[0]["mappingBasis"],
         )
+        self.assertEqual(effect_v2_candidate_bytes, effect_v2_target.read_bytes())
 
         committed_gameplay = self.read_json(gameplay_target)
         committed_gameplay_ground_roar = next(

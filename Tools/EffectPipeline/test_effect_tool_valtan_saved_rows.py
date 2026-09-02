@@ -1490,7 +1490,7 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         self.assertEqual(15, document["version"])
         self.assertEqual(effect_id, document["effectAssetId"])
 
-    def test_failed_valtan_tree_cold_load_retries_only_on_explicit_refresh(self) -> None:
+    def test_failed_valtan_tree_cold_load_uses_typed_admission_and_bounded_retry(self) -> None:
         cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
         header_text = EFFECT_TOOL_HEADER.read_text(encoding="utf-8")
         refresh = function_slice(
@@ -1510,8 +1510,17 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         )
         self.assertIn("m_bValtanPatternTreeLoadAttempted = true;", refresh)
         self.assertIn(
-            "if (!m_bValtanPatternTreeLoaded && "
+            "if (VALTAN_VIEW_ADMISSION::UNLOADED ==\n"
+            "\t\t\tm_eValtanPatternTreeAdmission &&\n\t\t"
             "!m_bValtanPatternTreeLoadAttempted)",
+            render,
+        )
+        self.assertIn(
+            "if (m_bValtanPatternTreeReloadRetryPending &&",
+            render,
+        )
+        self.assertIn(
+            "ImGui::GetTime() >= m_dNextValtanPatternTreeReloadRetrySeconds",
             render,
         )
 
@@ -1810,13 +1819,14 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
                     "startAngleDegrees": 0,
                     "angleStepDegrees": 0,
                     "allowOverlap": False,
-                    "maximumTotalObjects": 36,
-                    "spawnCount": 3,
-                    "spawnIntervalMs": 1333,
-                    "arenaRandomCount": 4,
-                    "arenaRandomRadiusM": 14.0,
-                    "arenaHeightToleranceM": 1.0,
-                    "arenaAnchorPolicy": "BOSS_SPAWN_POSITION",
+                    "maximumTotalObjects": 4,
+                    "spawnCount": 1,
+                    "firstSpawnOffsetMs": 0,
+                    "spawnIntervalMs": 0,
+                    "arenaRandomCount": 0,
+                    "arenaRandomRadiusM": 0.0,
+                    "arenaHeightToleranceM": 0.0,
+                    "arenaAnchorPolicy": "NONE",
                 }
             ],
             stages["AIRBORNE"]["actions"],
@@ -2543,7 +2553,9 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         self.assertEqual([420627], part_break["sourceActionIds"])
         stages = {row["stageId"]: row for row in pattern["stages"]}
         groggy_stage = stages["GROGGY"]
-        part_break_stage = part_break["stages"][0]
+        part_break_stages = {
+            row["stageId"]: row for row in part_break["stages"]
+        }
         self.assertEqual(3650, stages["WINDUP"]["durationMs"])
         self.assertEqual("NONE", stages["WINDUP"]["hitShape"])
         self.assertEqual(0, stages["WINDUP"]["hitCount"])
@@ -2561,7 +2573,15 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             groggy_stage["partDamagePolicy"],
         )
         self.assertEqual("NONE", groggy_stage["hitShape"])
-        self.assertEqual(1400, part_break_stage["durationMs"])
+        self.assertEqual(1800, part_break_stages["PART_BREAK"]["durationMs"])
+        self.assertEqual(
+            5183,
+            part_break_stages["PART_BREAK_RECOVERY"]["durationMs"],
+        )
+        self.assertEqual(
+            6983,
+            sum(row["durationMs"] for row in part_break["stages"]),
+        )
 
         bindings = {
             row["actionId"]: row["clips"]
@@ -2982,7 +3002,6 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             "effect.valtan.project-tuned.sequence.four",
             "effect.valtan.project-tuned.sequence.six-pizza-106",
             "effect.valtan.project-tuned.sequence.three",
-            "effect.valtan.project-tuned.sequence.trash",
             "effect.valtan.project-tuned.sequence.trash-catch-fail",
             "effect.valtan.project-tuned.sequence.trash-catch-if",
             "effect.valtan.project-tuned.sequence.trash-catch-success",

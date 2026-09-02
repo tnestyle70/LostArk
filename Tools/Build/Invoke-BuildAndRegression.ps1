@@ -408,7 +408,8 @@ try {
 			@('Tools/ValtanPipeline/test_animation_tool_valtan_pattern_master.py')
 		Invoke-PythonGate `
 			'Valtan pattern sound cue exact-join gate' `
-			@('Tools/ValtanPipeline/test_valtan_pattern_sound_cue_contract.py')
+			@('-m', 'unittest',
+			  'Tools.ValtanPipeline.test_valtan_pattern_sound_cue_contract')
 		Invoke-PythonGate `
 			'Valtan Effect Tool master tree gate' `
 			@('Tools/EffectPipeline/test_effect_tool_valtan_saved_rows.py')

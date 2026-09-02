@@ -61,7 +61,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
             "bool_t Client::CActionCompositionWorkbench::Validate_TimelineDependencyWindows(",
         )
         for token in (
-            "ADMISSION_STATE::ADMITTED != m_eAdmission",
+            "VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission",
             "Get_ValtanCompositionPatternSoundDraft",
             "!m_bPatternShakesReady",
             "for (const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Existing",
