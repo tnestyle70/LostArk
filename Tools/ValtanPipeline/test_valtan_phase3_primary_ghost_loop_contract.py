@@ -88,6 +88,35 @@ class ValtanPhase3PrimaryGhostLoopContractTests(unittest.TestCase):
             projected["VALTAN_GHOST_RESPAWN_AUDITION"]["stages"][0]["actions"],
         )
 
+        for defect in ("wrong trigger", "wrong owner", "nonterminal branch"):
+            with self.subTest(defect=defect):
+                invalid = copy.deepcopy(gameplay)
+                invalid_patterns = {
+                    row["patternId"]: row for row in invalid["patterns"]
+                }
+                invalid_death = invalid_patterns["VALTAN_GHOST_DEATH_AUDITION"]
+                if defect == "wrong trigger":
+                    invalid_death["stages"][0]["events"][0]["trigger"] = "ENTER"
+                elif defect == "wrong owner":
+                    invalid_death["stages"][0]["events"] = []
+                    invalid_patterns["VALTAN_GHOST_RESPAWN_AUDITION"]["stages"][0][
+                        "events"
+                    ].append(death["stages"][0]["events"][0])
+                else:
+                    invalid_death["stages"][0]["branches"] = [
+                        {"outcome": "TIMEOUT", "nextActionId": None}
+                    ]
+                with self.assertRaisesRegex(
+                    pipeline.PipelineError,
+                    "inter-step pursuit suppression must be the terminal ghost-death EXIT event",
+                ):
+                    pipeline.join_v2_authoring(
+                        invalid,
+                        documents[pipeline.PRESENTATION_AUTHORING_REL],
+                        documents[pipeline.WORLD_SET_REL],
+                        documents[pipeline.COMBAT_AUTHORING_REL],
+                    )
+
     def test_phase_three_swap_uses_restored_primary_ghost_resources(self) -> None:
         bosses = {
             row["archetypeId"]: row

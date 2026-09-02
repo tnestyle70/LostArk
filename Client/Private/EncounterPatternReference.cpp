@@ -434,6 +434,8 @@ namespace
 
 	bool_t Validate_StageActions(
 		const DATA_JSON_VALUE& stage,
+		const std::string& currentPatternId,
+		const bool_t isTerminalStage,
 		std::unordered_set<std::string>& activeLifetimes,
 		bool_t& outHasCounterableEnter,
 		bool_t& outHasCounterableExit,
@@ -475,13 +477,15 @@ namespace
 				uint32_t countPerResolvedTarget = 0u;
 				uint32_t maximumTotalObjects = 0u;
 				uint32_t spawnCount = 0u;
+				uint32_t firstSpawnOffsetMs = 0u;
 				uint32_t spawnIntervalMs = 0u;
 				uint32_t arenaRandomCount = 0u;
 				if (!Is_ExactObject(action,
 						{ "trigger", "kind", "targetId", "targetingPolicy",
 						  "countPerResolvedTarget", "layout", "radiusM",
 						  "startAngleDegrees", "angleStepDegrees", "allowOverlap",
-						  "maximumTotalObjects", "spawnCount", "spawnIntervalMs",
+						  "maximumTotalObjects", "spawnCount", "firstSpawnOffsetMs",
+						  "spawnIntervalMs",
 						  "arenaRandomCount", "arenaRandomRadiusM",
 						  "arenaHeightToleranceM", "arenaAnchorPolicy" }) ||
 					!Read_String(action, "trigger", false, trigger) ||
@@ -500,11 +504,15 @@ namespace
 						maximumTotalObjects) ||
 					!Read_Unsigned(action, "spawnCount", 64u, spawnCount) ||
 					0u == spawnCount ||
+					!Read_Unsigned(action, "firstSpawnOffsetMs",
+						MAX_REFERENCE_STAGE_DURATION_MS, firstSpawnOffsetMs) ||
+					firstSpawnOffsetMs >= stageDurationMs ||
 					!Read_Unsigned(action, "spawnIntervalMs",
 						MAX_REFERENCE_STAGE_DURATION_MS, spawnIntervalMs) ||
 					(spawnCount > 1u && 0u == spawnIntervalMs) ||
 					(1u == spawnCount && 0u != spawnIntervalMs) ||
-					static_cast<uint64_t>(spawnCount - 1u) * spawnIntervalMs >=
+					static_cast<uint64_t>(firstSpawnOffsetMs) +
+						static_cast<uint64_t>(spawnCount - 1u) * spawnIntervalMs >=
 						static_cast<uint64_t>(stageDurationMs) ||
 					!Read_Unsigned(action, "arenaRandomCount", 32u,
 						arenaRandomCount) ||
@@ -569,6 +577,29 @@ namespace
 					(!isPerAliveArenaContract && !isBossRelativeContract))
 				{
 					return false;
+				}
+				if (currentPatternId == "VALTAN_GHOST_PORTAL_ONCE")
+				{
+					const DATA_JSON_VALUE* stageId = stage.Find("stageId");
+					const DATA_JSON_VALUE* actionId = stage.Find("actionId");
+					constexpr double PORTAL_TRIANGLE_RADIUS_M =
+						25.403411844343534;
+					if (nullptr == stageId || !stageId->Is_String() ||
+						stageId->Get_String() != "ACTIVE" ||
+						nullptr == actionId || !actionId->Is_String() ||
+						actionId->Get_String() != "valtan.ghost.portal-once.active" ||
+						actions->Get_Array().size() != 1u ||
+						targetId != "combatobject.valtan.ghost.portal-charge" ||
+						targetingPolicy != "BOSS_RELATIVE" ||
+						3u != countPerResolvedTarget || layout != "RADIAL" ||
+						std::fabs(radius - PORTAL_TRIANGLE_RADIUS_M) > 0.000001 ||
+						30.0 != startAngle || 120.0 != angleStep || allowOverlap ||
+						3u != maximumTotalObjects || 1u != spawnCount ||
+						0u != firstSpawnOffsetMs || 0u != spawnIntervalMs ||
+						0u != arenaRandomCount || !hasNoArenaSupplement)
+					{
+						return false;
+					}
 				}
 
 				const std::string actionKey = trigger + "\n" + targetId;
@@ -701,6 +732,23 @@ namespace
 				validKind = trigger == "ENTER" &&
 					targetId == "boss.arena.center" && 1u == value &&
 					0u == durationMs;
+			else if (kind == "SUPPRESS_INTER_STEP_PURSUIT")
+			{
+				const DATA_JSON_VALUE* stageId = stage.Find("stageId");
+				const DATA_JSON_VALUE* actionId = stage.Find("actionId");
+				const DATA_JSON_VALUE* branches = stage.Find("branches");
+				const bool_t hasNoBranches = nullptr == branches ||
+					(branches->Is_Array() && branches->Get_Array().empty());
+				validKind = trigger == "EXIT" &&
+					targetId == "boss.sequence.inter-step-pursuit" &&
+					0u == value && 0u == durationMs && isTerminalStage &&
+					currentPatternId == "VALTAN_GHOST_DEATH_AUDITION" &&
+					nullptr != stageId && stageId->Is_String() &&
+					stageId->Get_String() == "STEP_01" &&
+					nullptr != actionId && actionId->Is_String() &&
+					actionId->Get_String() == "valtan.sequence.dead.step-01" &&
+					hasNoBranches;
+			}
 			if (!validKind || (trigger == "ENTER" ? 0u == value : 0u != value))
 				return false;
 
@@ -711,6 +759,7 @@ namespace
 				kind == "SET_GAMEPLAY_PHASE" ||
 				kind == "RETARGET_RANDOM_ALIVE" ||
 				kind == "RETURN_TO_ARENA_CENTER" ||
+				kind == "SUPPRESS_INTER_STEP_PURSUIT" ||
 				/* Silence is an ENTER-only deadline-latched status. The Server
 				   owns expiry, so it intentionally has no paired EXIT action. */
 				kind == "SET_PLAYER_SILENCE")
@@ -1050,7 +1099,7 @@ bool_t Client::CEncounterPatternReference::Load(
 					{ "hitOffsetsMs", "motion", "actions", "branches",
 					  "playerResponse", "attachmentSlot", "partDamagePolicy",
 					  "gripLocalOffset", "counterProxy", "bossResponse",
-					  "hitAnchor", "hitActivation" }))
+					  "hitAnchor", "hitActivation", "verticalOffsetM" }))
 			{
 				outStatus = "Encounter stage has unexpected properties: " +
 					pattern.patternId;
@@ -1101,6 +1150,27 @@ bool_t Client::CEncounterPatternReference::Load(
 					return false;
 				}
 				stage.partDamagePolicy = partDamagePolicy->Get_String();
+			}
+			const DATA_JSON_VALUE* stageVerticalOffset =
+				stageEntry.Find("verticalOffsetM");
+			if (nullptr != stageVerticalOffset)
+			{
+				const DATA_JSON_VALUE* stageMotion = stageEntry.Find("motion");
+				const DATA_JSON_VALUE* patternMotion = entry.Find("serverMotion");
+				if (!stageVerticalOffset->Is_Number() ||
+					!std::isfinite(stageVerticalOffset->Get_Number()) ||
+					0.0 == stageVerticalOffset->Get_Number() ||
+					std::fabs(stageVerticalOffset->Get_Number()) > 100.0 ||
+					nullptr == stageEntry.Find("bossResponse") ||
+					(nullptr != stageMotion && !stageMotion->Is_Null()) ||
+					(nullptr != patternMotion && !patternMotion->Is_Null()))
+				{
+					outStatus = "Encounter stage v4 field is invalid: " +
+						pattern.patternId + "/" + stage.stageId;
+					return false;
+				}
+				stage.fVerticalOffsetM = static_cast<f32_t>(
+					stageVerticalOffset->Get_Number());
 			}
 			const DATA_JSON_VALUE* counterProxy = stageEntry.Find("counterProxy");
 			if (nullptr != counterProxy)
@@ -1279,16 +1349,28 @@ bool_t Client::CEncounterPatternReference::Load(
 			bool_t hasCounterableExit = false;
 			bool_t hasStaggerEnter = false;
 			bool_t hasStaggerExit = false;
-			if (!Validate_StageMotion(stageEntry, hasForwardMotion) ||
-				!Validate_StageActions(stageEntry, activeStageActionLifetimes,
+			if (!Validate_StageMotion(stageEntry, hasForwardMotion))
+			{
+				outStatus = "Encounter stage v4 motion is invalid: " +
+					pattern.patternId + "/" + stage.stageId;
+				return false;
+			}
+			if (!Validate_StageActions(stageEntry, pattern.patternId,
+					&stageEntry == &stages->Get_Array().back(),
+					activeStageActionLifetimes,
 					hasCounterableEnter, hasCounterableExit,
-					hasStaggerEnter, hasStaggerExit) ||
-				!Validate_StageBranches(stageEntry, stageActionIds, allPatternIds,
+					hasStaggerEnter, hasStaggerExit))
+			{
+				outStatus = "Encounter stage v4 actions are invalid: " +
+					pattern.patternId + "/" + stage.stageId;
+				return false;
+			}
+			if (!Validate_StageBranches(stageEntry, stageActionIds, allPatternIds,
 					pattern.patternId, stage.actionId,
 					hasForwardMotion, hasCounterableEnter, hasCounterableExit,
 					hasStaggerEnter, hasStaggerExit))
 			{
-				outStatus = "Encounter stage v4 field is invalid: " +
+				outStatus = "Encounter stage v4 branches are invalid: " +
 					pattern.patternId + "/" + stage.stageId;
 				return false;
 			}

@@ -459,6 +459,38 @@ namespace
 			"canonical graph pattern count does not match its stable-ID closure");
 		Require(!Patterns.contains("VALTAN_DASH_CHARGE_GROGGY"),
 			"retired split dash-groggy Pattern leaked back into the canonical inventory");
+		const VALTAN_PATTERN_VIEW& StaggerSlot =
+			*Patterns.at("VALTAN_STAGGER_SLOT");
+		const auto StaggerChannel = std::find_if(
+			StaggerSlot.Stages.begin(), StaggerSlot.Stages.end(),
+			[](const VALTAN_STAGE_VIEW& Stage)
+			{ return Stage.strStageId == "CHANNEL"; });
+		Require(StaggerChannel != StaggerSlot.Stages.end() &&
+			0.5f == StaggerChannel->fVerticalOffsetM &&
+			StaggerChannel->BossResponse.has_value() &&
+			StaggerChannel->BossResponse->strKind ==
+				"ACCUMULATED_HEALTH_DAMAGE" &&
+			1000u == StaggerChannel->BossResponse->iThreshold &&
+			!StaggerChannel->Motion.has_value(),
+			"nullable split motion rejected or erased the stagger channel response/height");
+		const VALTAN_PATTERN_VIEW& GhostDeath =
+			*Patterns.at("VALTAN_GHOST_DEATH_AUDITION");
+		Require(1u == GhostDeath.Stages.size() &&
+			1u == GhostDeath.Stages.front().Actions.size(),
+			"ghost-death terminal suppression action cardinality drifted");
+		const VALTAN_STAGE_ACTION_VIEW& PursuitSuppression =
+			GhostDeath.Stages.front().Actions.front();
+		Require("STEP_01" == GhostDeath.Stages.front().strStageId &&
+			"valtan.sequence.dead.step-01" ==
+				GhostDeath.Stages.front().strActionId &&
+			GhostDeath.Stages.front().Branches.empty() &&
+			"EXIT" == PursuitSuppression.strTrigger &&
+			"SUPPRESS_INTER_STEP_PURSUIT" == PursuitSuppression.strKind &&
+			"boss.sequence.inter-step-pursuit" ==
+				PursuitSuppression.strTargetId &&
+			0.f == PursuitSuppression.fValue &&
+			0u == PursuitSuppression.iDurationMs,
+			"split ghost-death pursuit suppression lost its exact typed action");
 		std::size_t iCrossPatternBranchCount = 0u;
 		for (const auto& [PatternId, pPattern] : Patterns)
 		{

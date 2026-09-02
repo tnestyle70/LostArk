@@ -88,6 +88,25 @@ namespace
 		if (!Require(7u == committedGripStageCount,
 			"encounter Product did not retain all seven stable capture actions"))
 			return false;
+		const auto* committedStagger =
+			reference.Find_Pattern("VALTAN_STAGGER_SLOT");
+		const ENCOUNTER_STAGE_REFERENCE* committedStaggerChannel = nullptr;
+		if (nullptr != committedStagger)
+		{
+			const auto channel = std::find_if(committedStagger->stages.begin(),
+				committedStagger->stages.end(),
+				[](const ENCOUNTER_STAGE_REFERENCE& stage)
+				{ return "CHANNEL" == stage.stageId; });
+			if (channel != committedStagger->stages.end())
+				committedStaggerChannel = &(*channel);
+		}
+		if (!Require(nullptr != committedStagger &&
+			nullptr != committedStaggerChannel &&
+			std::abs(committedStaggerChannel->fVerticalOffsetM - 0.5f) <= 1.e-6f,
+			"encounter Product did not retain the Stage-owned magic-orb offset"))
+		{
+			return false;
+		}
 		struct ScopedEncounterFixture
 		{
 			std::filesystem::path Directory, File;
@@ -118,6 +137,12 @@ namespace
 			return output.good();
 		};
 		size_t rejectionCount = 0u;
+		const char* stageMotionError =
+			"Encounter stage v4 motion is invalid:";
+		const char* stageActionsError =
+			"Encounter stage v4 actions are invalid:";
+		const char* stageBranchesError =
+			"Encounter stage v4 branches are invalid:";
 		const auto rejectedWithoutCommit = [&](const std::string& text, const char* label,
 			const char* errorPrefix = "Encounter stage v4 field is invalid:")
 		{
@@ -199,13 +224,13 @@ namespace
 			if (!Require(writeFixture(replaceAction(actionText(kind, "ENTER", target, 0u, 0u))) &&
 				validFixture.Load(fixture.File, status), "valid typed action fixture was rejected"))
 				return false;
-			if (!rejectedWithoutCommit(replaceAction(actionText(kind, "EXIT", target, 0u, 0u)), "typed impact EXIT") ||
-				!rejectedWithoutCommit(replaceAction(actionText(kind, "ENTER", "boss.attachment.right-hand", 0u, 0u)), "typed impact target") ||
-				!rejectedWithoutCommit(replaceAction(actionText(kind, "ENTER", target, 1u, 0u)), "typed impact value") ||
-				!rejectedWithoutCommit(replaceAction(actionText(kind, "ENTER", target, 0u, 1u)), "typed impact duration") ||
-				!rejectedWithoutCommit(replaceAction(actionText("UNKNOWN_GRABBED_ACTION", "ENTER", target, 0u, 0u)), "unknown typed impact") ||
+			if (!rejectedWithoutCommit(replaceAction(actionText(kind, "EXIT", target, 0u, 0u)), "typed impact EXIT", stageActionsError) ||
+				!rejectedWithoutCommit(replaceAction(actionText(kind, "ENTER", "boss.attachment.right-hand", 0u, 0u)), "typed impact target", stageActionsError) ||
+				!rejectedWithoutCommit(replaceAction(actionText(kind, "ENTER", target, 1u, 0u)), "typed impact value", stageActionsError) ||
+				!rejectedWithoutCommit(replaceAction(actionText(kind, "ENTER", target, 0u, 1u)), "typed impact duration", stageActionsError) ||
+				!rejectedWithoutCommit(replaceAction(actionText("UNKNOWN_GRABBED_ACTION", "ENTER", target, 0u, 0u)), "unknown typed impact", stageActionsError) ||
 				!rejectedWithoutCommit(replaceAction(actionText(kind, "ENTER", target, 0u, 0u) + ',' +
-					actionText("RETARGET_RANDOM_ALIVE", "ENTER", "boss.target.pattern", 1u, 0u)), "shared typed impact transaction"))
+					actionText("RETARGET_RANDOM_ALIVE", "ENTER", "boss.target.pattern", 1u, 0u)), "shared typed impact transaction", stageActionsError))
 				return false;
 			const auto stageAt = original.rfind("\"stageId\"", begin);
 			const auto hitAt = original.find("\"hitShape\"", stageAt);
@@ -215,7 +240,8 @@ namespace
 				return false;
 			auto hitConflict = original;
 			hitConflict.replace(noneAt, 6u, "\"BOX\"");
-			if (!rejectedWithoutCommit(hitConflict, "typed impact with ordinary hit shape"))
+			if (!rejectedWithoutCommit(hitConflict, "typed impact with ordinary hit shape",
+				stageActionsError))
 				return false;
 		}
 		const auto branchAt = original.find("\"ANY_PLAYER_GRABBED\"");
@@ -224,7 +250,8 @@ namespace
 		auto unknownBranch = original;
 		unknownBranch.replace(branchAt, std::string("\"ANY_PLAYER_GRABBED\"").size(),
 			"\"UNKNOWN_PLAYER_GRABBED\"");
-		if (!rejectedWithoutCommit(unknownBranch, "unknown grabbed-player branch"))
+		if (!rejectedWithoutCommit(unknownBranch, "unknown grabbed-player branch",
+			stageBranchesError))
 			return false;
 		if (!Require(nullptr != reference.Find_Pattern("VALTAN_GHOST_FINALE") &&
 			nullptr != reference.Find_Pattern("VALTAN_WARP") &&
@@ -286,7 +313,7 @@ namespace
 		if (!Require(!invalidGameplayPhase.empty(),
 				"ghost-respawn gameplay phase fixture was not staged") ||
 			!rejectedWithoutCommit(invalidGameplayPhase,
-				"ghost-respawn gameplay phase 4"))
+				"ghost-respawn gameplay phase 4", stageActionsError))
 		{
 			return false;
 		}
@@ -326,39 +353,57 @@ namespace
 			{ "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK", "serverMotion", "landingPosition", "[0,0,100001]", extensionError },
 			{ "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK", "serverMotion", "apexHeight", "0", extensionError },
 			{ "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK", "serverMotion", "moveToAnchorBeforeTakeoff", "true,\"unsupported\":1", extensionError },
-			{ "VALTAN_GHOST_FINALE", "STEP_02", "cornerIndex", "4" },
-			{ "VALTAN_GHOST_FINALE", "STEP_02", "cornerIndex", "-1" },
-			{ "VALTAN_GHOST_FINALE", "STEP_02", "cornerIndex", "true" },
-			{ "VALTAN_GHOST_FINALE", "STEP_02", "cornerIndex", "1.5" },
-			{ "VALTAN_GHOST_FINALE", "STEP_02", "halfExtentsM", "[0,22]" },
-			{ "VALTAN_GHOST_FINALE", "STEP_02", "halfExtentsM", "[22,101]" },
-			{ "VALTAN_GHOST_FINALE", "STEP_02", "halfExtentsM", "[22]" },
-			{ "VALTAN_WARP", "STEP_02", "kind", "\"UNKNOWN_MOTION\"" },
+			{ "VALTAN_GHOST_FINALE", "STEP_02", "cornerIndex", "4", stageMotionError },
+			{ "VALTAN_GHOST_FINALE", "STEP_02", "cornerIndex", "-1", stageMotionError },
+			{ "VALTAN_GHOST_FINALE", "STEP_02", "cornerIndex", "true", stageMotionError },
+			{ "VALTAN_GHOST_FINALE", "STEP_02", "cornerIndex", "1.5", stageMotionError },
+			{ "VALTAN_GHOST_FINALE", "STEP_02", "halfExtentsM", "[0,22]", stageMotionError },
+			{ "VALTAN_GHOST_FINALE", "STEP_02", "halfExtentsM", "[22,101]", stageMotionError },
+			{ "VALTAN_GHOST_FINALE", "STEP_02", "halfExtentsM", "[22]", stageMotionError },
+			{ "VALTAN_WARP", "STEP_02", "kind", "\"UNKNOWN_MOTION\"", stageMotionError },
 			{ "VALTAN_WARP", "STEP_02", "kind",
-				"\"PORTAL_TARGET_RUSH\",\"cornerIndex\":0" },
+				"\"PORTAL_TARGET_RUSH\",\"cornerIndex\":0", stageMotionError },
 			{ "VALTAN_WARP", "STEP_02", "kind",
-				"\"PORTAL_TARGET_RUSH\",\"halfExtentsM\":[22,22]" },
-			{ "VALTAN_WARP", "STEP_02", "retargetDelayMs", "2301" },
-			{ "VALTAN_WARP", "STEP_02", "retargetDelayMs", "true" },
-			{ "VALTAN_WARP", "STEP_02", "speedMps", "0" },
-			{ "VALTAN_WARP", "STEP_02", "speedMps", "1001" },
-			{ "VALTAN_WARP", "STEP_02", "distanceM", "0" },
-			{ "VALTAN_WARP", "STEP_02", "distanceM", "1001" },
-			{ "VALTAN_CATCH_BREATH", "RELEASE_GRABBED_PLAYERS", "releaseMode", "\"UNKNOWN_EJECTION\"" },
-			{ "VALTAN_CATCH_BREATH", "RELEASE_GRABBED_PLAYERS", "speedMps", "0" },
-			{ "VALTAN_CATCH_BREATH", "RELEASE_GRABBED_PLAYERS", "durationMs", "0" },
-			{ "VALTAN_FIST_IN_OUT", "SPAWN_COMBAT_OBJECT", "value", "2" },
-			{ "VALTAN_HIGH_JUMP", "AIRBORNE", "spawnCount", "9" },
-			{ "VALTAN_GHOST_PORTAL_ONCE", "ACTIVE", "angleStepDegrees", "100.0" },
-			{ "VALTAN_BIND_SLOT", "STEP_01", "value", "10000" },
-			{ "VALTAN_SILENCE_SLOT", "SILENCE_APPLY", "trigger", "\"EXIT\"" },
-			{ "VALTAN_SILENCE_SLOT", "SILENCE_APPLY", "value", "0" },
-			{ "VALTAN_SILENCE_SLOT", "SILENCE_APPLY", "durationMs", "5001" },
-			{ "VALTAN_TRASH_CATCH_IF", "STEP_07", "outcome", "\"NAVIGATION_BLOCKED\"" },
+				"\"PORTAL_TARGET_RUSH\",\"halfExtentsM\":[22,22]", stageMotionError },
+			{ "VALTAN_WARP", "STEP_02", "retargetDelayMs", "2301", stageMotionError },
+			{ "VALTAN_WARP", "STEP_02", "retargetDelayMs", "true", stageMotionError },
+			{ "VALTAN_WARP", "STEP_02", "speedMps", "0", stageMotionError },
+			{ "VALTAN_WARP", "STEP_02", "speedMps", "1001", stageMotionError },
+			{ "VALTAN_WARP", "STEP_02", "distanceM", "0", stageMotionError },
+			{ "VALTAN_WARP", "STEP_02", "distanceM", "1001", stageMotionError },
+			{ "VALTAN_CATCH_BREATH", "RELEASE_GRABBED_PLAYERS", "releaseMode", "\"UNKNOWN_EJECTION\"", stageActionsError },
+			{ "VALTAN_CATCH_BREATH", "RELEASE_GRABBED_PLAYERS", "speedMps", "0", stageActionsError },
+			{ "VALTAN_CATCH_BREATH", "RELEASE_GRABBED_PLAYERS", "durationMs", "0", stageActionsError },
+			{ "VALTAN_FIST_IN_OUT", "SPAWN_COMBAT_OBJECT", "value", "2", stageActionsError },
+			{ "VALTAN_HIGH_JUMP", "AIRBORNE", "spawnCount", "9", stageActionsError },
+			{ "VALTAN_HIGH_JUMP", "AIRBORNE", "firstSpawnOffsetMs", "8000", stageActionsError },
+			{ "VALTAN_HIGH_JUMP", "AIRBORNE", "firstSpawnOffsetMs", "true", stageActionsError },
+			{ "VALTAN_STAGGER_SLOT", "CHANNEL", "verticalOffsetM", "0" },
+			{ "VALTAN_STAGGER_SLOT", "CHANNEL", "verticalOffsetM", "100.1" },
+			{ "VALTAN_STAGGER_SLOT", "CHANNEL", "verticalOffsetM", "true" },
+			{ "VALTAN_STAGGER_SLOT", "CHANNEL", "verticalOffsetM",
+				"0.5,\"motion\":{\"kind\":\"FORWARD\",\"distance\":1}" },
+			{ "VALTAN_GHOST_DEATH_AUDITION", "STEP_01", "downMs",
+				"0,\"verticalOffsetM\":0.5" },
+			{ "VALTAN_GHOST_DEATH_AUDITION", "STEP_01", "actionId",
+				"\"valtan.sequence.dead.step-other\"", stageActionsError },
+			{ "VALTAN_GHOST_DEATH_AUDITION", "STEP_01", "trigger", "\"ENTER\"", stageActionsError },
+			{ "VALTAN_GHOST_DEATH_AUDITION", "SUPPRESS_INTER_STEP_PURSUIT",
+				"targetId", "\"boss.target.pattern\"", stageActionsError },
+			{ "VALTAN_GHOST_DEATH_AUDITION", "SUPPRESS_INTER_STEP_PURSUIT",
+				"value", "1", stageActionsError },
+			{ "VALTAN_GHOST_DEATH_AUDITION", "SUPPRESS_INTER_STEP_PURSUIT",
+				"durationMs", "1", stageActionsError },
+			{ "VALTAN_GHOST_PORTAL_ONCE", "ACTIVE", "angleStepDegrees", "100.0", stageActionsError },
+			{ "VALTAN_BIND_SLOT", "STEP_01", "value", "10000", stageActionsError },
+			{ "VALTAN_SILENCE_SLOT", "SILENCE_APPLY", "trigger", "\"EXIT\"", stageActionsError },
+			{ "VALTAN_SILENCE_SLOT", "SILENCE_APPLY", "value", "0", stageActionsError },
+			{ "VALTAN_SILENCE_SLOT", "SILENCE_APPLY", "durationMs", "5001", stageActionsError },
+			{ "VALTAN_TRASH_CATCH_IF", "STEP_07", "outcome", "\"NAVIGATION_BLOCKED\"", stageBranchesError },
 			{ "VALTAN_TRASH", "GROGGY", "nextActionId", "\"valtan.sequence.center-trash-rush-if.step-07\"", extensionError },
 			{ "VALTAN_TRASH_CATCH_IF", "GROGGY", "nextActionId", "\"valtan.sequence.rush-if.step-07\"", extensionError },
 			{ "VALTAN_TRASH_CATCH_SUCCESS", "EXECUTE_TAIL", "nextActionId", "\"valtan.sequence.rush-success.catch-pre-impact\"", extensionError },
-			{ "VALTAN_TRASH_CATCH_FAIL", "RUSH_MISS", "nextActionId", "\"valtan.sequence.rush-fail.rush-miss\"" },
+			{ "VALTAN_TRASH_CATCH_FAIL", "RUSH_MISS", "nextActionId", "\"valtan.sequence.rush-fail.rush-miss\"", stageBranchesError },
 			{ "VALTAN_GHOST_FINALE", "STEP_10", "durationMs",
 				"1667,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":\"valtan.sequence.ghost-finale.step-01\"}]", extensionError },
 			{ "VALTAN_SIX_PIZZA_106", "STEP_11", "durationMs",
@@ -403,7 +448,8 @@ namespace
 		{
 			auto text = original;
 			text.replace(returnBegin, returnEnd - returnBegin + 1u, action);
-			if (!rejectedWithoutCommit(text, "invalid arena-center recovery action"))
+			if (!rejectedWithoutCommit(text, "invalid arena-center recovery action",
+				stageActionsError))
 				return false;
 		}
 		std::cout << "EncounterPatternReference: latest Trash/portal/finale and " <<

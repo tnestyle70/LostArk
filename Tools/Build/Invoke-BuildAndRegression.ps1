@@ -311,8 +311,25 @@ try {
             'Effect Tool V2 Product transaction gate' `
             @('Tools/EffectToolV2/test_effect_v2_product_contract.py')
         Invoke-PythonGate `
+            'Effect Tool V2 catalog schema contract gate' `
+            @('Tools/EffectToolV2/test_effect_v2_catalog_contract.py')
+        Invoke-PythonGate `
+            'Effect Tool V2 occurrence runtime contract gate' `
+            @('Tools/EffectToolV2/test_effect_v2_occurrence_runtime_contract.py')
+        Invoke-PythonGate `
             'Team LAN endpoint contract gate' `
             @('Tools/Network/test_team_lan_endpoint_contract.py')
+        Invoke-PythonGate `
+            'Valtan status and response data-contract gate' `
+            @('-m', 'unittest',
+              'Tools.ValtanPipeline.test_valtan_status_pattern_contract')
+
+        $global:LASTEXITCODE = 0
+        & '.\Tools\WorldPipeline\Publish-ValtanWorldDestruction.ps1' `
+            -Mode ContractTest
+        if ($global:LASTEXITCODE -ne 0) {
+            throw 'Valtan world destruction contract tests failed.'
+        }
 
         $global:LASTEXITCODE = 0
         & '.\Tools\EffectPipeline\Validate-EffectSources.ps1' `
