@@ -1559,6 +1559,8 @@ namespace
 	{
 		std::string strType;
 		std::string strId;
+		bool_t bUsesStageClock = false;
+		uint32_t iStageOffsetMs = 0u;
 		std::string strClipOccurrenceId;
 		std::string strMappingBasis;
 		uint32_t iSourceStartMs = 0u;
@@ -2363,7 +2365,36 @@ namespace
 				}
 				const DATA_JSON_VALUE* pProjection = Required(
 					EffectValue, "cueProjection", DATA_JSON_TYPE::OBJECT);
-				if (nullptr == pProjection || !Has_ExactProperties(*pProjection,
+				if (nullptr == pProjection)
+				{
+					strOutError = "master cueProjection contract is invalid";
+					return false;
+				}
+				if (nullptr != pProjection->Find("timingBasis"))
+				{
+					const DATA_JSON_VALUE* pTimingBasis = Required(
+						*pProjection, "timingBasis", DATA_JSON_TYPE::STRING);
+					const DATA_JSON_VALUE* pStageOffset =
+						pProjection->Find("stageOffsetMs");
+					if (!Has_ExactProperties(
+							*pProjection, { "timingBasis", "stageOffsetMs" }) ||
+						nullptr == pTimingBasis ||
+						"STAGE_CLOCK" != pTimingBasis->Get_String() ||
+						!Is_NonNegativeInteger(pStageOffset) ||
+						pStageOffset->Get_Number() >=
+							static_cast<double>(Out.iDurationMs))
+					{
+						strOutError =
+							"master stage-clock cueProjection values are invalid";
+						return false;
+					}
+					Reference.bUsesStageClock = true;
+					Reference.iStageOffsetMs = static_cast<uint32_t>(
+						pStageOffset->Get_Number());
+					Out.EffectReferences.push_back(std::move(Reference));
+					continue;
+				}
+				if (!Has_ExactProperties(*pProjection,
 						{ "clipOccurrenceId", "sourceStartMs", "sourceEndMs",
 						  "mappingBasis" }))
 				{
@@ -5795,22 +5826,20 @@ namespace
 						return false;
 					const bool_t bUsesStageClock =
 						nullptr != Cue.Find("timingBasis");
-					const DATA_JSON_VALUE* pAnimation = Required(
-						PresentationStage, "animation", DATA_JSON_TYPE::OBJECT);
 					if (bUsesStageClock)
 					{
 						if (Cue.Find("stageOffsetMs")->Get_Number() >=
-								pDuration->Get_Number() ||
-							IndependentByCue.end() == IndependentByCue.find(
-								Read_String(Cue, "cueId")))
+								pDuration->Get_Number())
 						{
 							strOutError =
-								"split stage-clock cue must be an independent Effect inside its Stage wall";
+								"split stage-clock cue left its Stage wall";
 							return false;
 						}
 					}
 					else
 					{
+						const DATA_JSON_VALUE* pAnimation = Required(
+							PresentationStage, "animation", DATA_JSON_TYPE::OBJECT);
 						const DATA_JSON_VALUE* pOccurrences =
 							nullptr == pAnimation ? nullptr : Required(
 								*pAnimation, "occurrences", DATA_JSON_TYPE::ARRAY);
@@ -5875,11 +5904,22 @@ namespace
 							DATA_JSON_VALUE::String("CUE_BINDING"));
 						Reference.emplace("refId", DATA_JSON_VALUE::String(strCueId));
 						DATA_JSON_VALUE::OBJECT Projection;
-						Projection.emplace("clipOccurrenceId",
-							*Cue.Find("clipOccurrenceId"));
-						Projection.emplace("sourceStartMs", *Cue.Find("sourceStartMs"));
-						Projection.emplace("sourceEndMs", *Cue.Find("sourceEndMs"));
-						Projection.emplace("mappingBasis", *Cue.Find("mappingBasis"));
+						if (bUsesStageClock)
+						{
+							Projection.emplace("timingBasis", *Cue.Find("timingBasis"));
+							Projection.emplace("stageOffsetMs", *Cue.Find("stageOffsetMs"));
+						}
+						else
+						{
+							Projection.emplace("clipOccurrenceId",
+								*Cue.Find("clipOccurrenceId"));
+							Projection.emplace(
+								"sourceStartMs", *Cue.Find("sourceStartMs"));
+							Projection.emplace(
+								"sourceEndMs", *Cue.Find("sourceEndMs"));
+							Projection.emplace(
+								"mappingBasis", *Cue.Find("mappingBasis"));
+						}
 						Reference.emplace("cueProjection",
 							DATA_JSON_VALUE::Object(std::move(Projection)));
 					}
@@ -6644,12 +6684,20 @@ namespace
 								const Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue)
 							{
 								return Cue.strBindingId == Reference.strId &&
-									Cue.strClipOccurrenceId ==
-										Reference.strClipOccurrenceId &&
-									Cue.iSourceStartMs == Reference.iSourceStartMs &&
-									Cue.bHasSourceEnd == Reference.bHasSourceEnd &&
-									(!Reference.bHasSourceEnd ||
-									 Cue.iSourceEndMs == Reference.iSourceEndMs);
+									Cue.bUsesStageClock ==
+										Reference.bUsesStageClock &&
+									(Reference.bUsesStageClock ?
+										(Cue.iStageOffsetMs ==
+										 Reference.iStageOffsetMs) :
+										(Cue.strClipOccurrenceId ==
+											Reference.strClipOccurrenceId &&
+										 Cue.iSourceStartMs ==
+											Reference.iSourceStartMs &&
+										 Cue.bHasSourceEnd ==
+											Reference.bHasSourceEnd &&
+										 (!Reference.bHasSourceEnd ||
+										  Cue.iSourceEndMs ==
+											Reference.iSourceEndMs)));
 							});
 						if (!bFound)
 						{
