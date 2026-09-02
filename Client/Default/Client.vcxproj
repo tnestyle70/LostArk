@@ -106,6 +106,8 @@
 	<ClInclude Include="..\Public\CombatObjectProjectionRuntime.h" />
     <ClInclude Include="..\Public\CombatHUDViewModel.h" />
     <ClInclude Include="..\Public\EstherCutinPresentationService.h" />
+    <ClInclude Include="..\Public\RaidBossShowcaseService.h" />
+
     <ClInclude Include="..\Public\HUDRuntimeView.h" />
     <ClInclude Include="..\Public\InventoryView.h" />
     <ClInclude Include="..\Public\SkillWindowView.h" />
@@ -283,6 +285,8 @@
 	<ClCompile Include="..\Private\CombatObjectProjectionRuntime.cpp" />
     <ClCompile Include="..\Private\CombatHUDViewModel.cpp" />
     <ClCompile Include="..\Private\EstherCutinPresentationService.cpp" />
+    <ClCompile Include="..\Private\RaidBossShowcaseService.cpp" />
+
     <ClCompile Include="..\Private\HUDRuntimeView.cpp" />
     <ClCompile Include="..\Private\InventoryView.cpp" />
     <ClCompile Include="..\Private\SkillWindowView.cpp" />

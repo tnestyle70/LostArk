@@ -627,6 +627,9 @@
     <ClCompile Include="..\Private\EstherCutinPresentationService.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\RaidBossShowcaseService.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\HUDRuntimeView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -1085,6 +1088,9 @@
       <Filter>04. Network</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\EstherCutinPresentationService.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\RaidBossShowcaseService.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\HUDRuntimeView.h">

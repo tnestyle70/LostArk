@@ -592,23 +592,33 @@ class EffectV2BindingPipelineTests(unittest.TestCase):
         asset_leaf = self.leaf("boss.valtan.asset")
         asset_leaf["slots"]["base"] = "Effect/Test/missing.dds"
         asset_path = self.authored / "boss.valtan.asset.effectv2.json"
+        temporary_resource_root = self.root / "Client/Bin/Resources"
         with self.assertRaisesRegex(pipeline.BindingContractError, "resource is missing"):
             pipeline._validate_leaf_resource(
-                "boss.valtan.asset", asset_path, asset_leaf
+                "boss.valtan.asset",
+                asset_path,
+                asset_leaf,
+                resource_root=temporary_resource_root,
             )
-        physical = self.root / "Client/Bin/Resources/Effect/Test/missing.dds"
+        physical = temporary_resource_root / "Effect/Test/missing.dds"
         physical.parent.mkdir(parents=True)
         physical.write_bytes(b"dds")
         self.assertEqual(
             1000,
             pipeline._validate_leaf_resource(
-                "boss.valtan.asset", asset_path, asset_leaf
+                "boss.valtan.asset",
+                asset_path,
+                asset_leaf,
+                resource_root=temporary_resource_root,
             ),
         )
         asset_leaf["slots"]["base"] = "Effect/Test/missing.png"
         with self.assertRaisesRegex(pipeline.BindingContractError, r"\.dds"):
             pipeline._validate_leaf_resource(
-                "boss.valtan.asset", asset_path, asset_leaf
+                "boss.valtan.asset",
+                asset_path,
+                asset_leaf,
+                resource_root=temporary_resource_root,
             )
 
     def test_missing_optional_particle_and_trail_payload_uses_runtime_tail_defaults(self) -> None:
@@ -978,7 +988,9 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
             {
                 "boss.valtan.axe": 9,
                 "boss.valtan.impact": 17,
-                "boss.valtan.magicball": 2,
+                "boss.valtan.magicball": 4,
+                "boss.valtan.magicball.aura": 2,
+                "boss.valtan.portal": 2,
                 "boss.valtan.pounding": 2,
                 "boss.valtan.pounding.chase": 4,
                 "boss.valtan.shout": 20,
@@ -992,6 +1004,8 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
                 "boss.valtan.axe": 5600,
                 "boss.valtan.impact": 5000,
                 "boss.valtan.magicball": 10000,
+                "boss.valtan.magicball.aura": 10000,
+                "boss.valtan.portal": 3000,
                 "boss.valtan.pounding": 2000,
                 "boss.valtan.pounding.chase": 4100,
                 "boss.valtan.shout": 3000,
