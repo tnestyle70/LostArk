@@ -1,6 +1,9 @@
+#include "AnimationSkillBindingDocument.h"
 #include "Effect_Catalog.h"
 #include "DataJson.h"
+#include "EncounterPatternReference.h"
 #include "ProjectDataRoot.h"
+#include "ValtanPatternEffectCueDocument.h"
 #include "ValtanPatternFlowDocument.h"
 #include "ValtanPatternTree.h"
 
@@ -12,6 +15,7 @@
 #include <limits>
 #include <map>
 #include <set>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -55,6 +59,108 @@ namespace
 	{
 		if (!bCondition)
 			throw std::runtime_error(pMessage);
+	}
+
+	void VerifyStageClockEffectCueCanCoexistWithAnimation()
+	{
+		std::string Status;
+		CEncounterPatternReference Encounter;
+		Require(Encounter.Load(CProjectDataRoot::Resolve(
+				std::filesystem::path(L"Encounters") / L"Valtan" /
+				L"ValtanEncounter.json"), Status),
+			("stage-clock fixture could not load Encounter: " + Status).c_str());
+
+		const std::filesystem::path BindingPath =
+			CValtanPatternAnimationBindingDocument::Resolve_Path("Valtan");
+		std::ifstream BindingInput(BindingPath, std::ios::binary);
+		Require(static_cast<bool_t>(BindingInput),
+			"stage-clock fixture could not open animation bindings");
+		const std::string BindingText{
+			std::istreambuf_iterator<char>(BindingInput),
+			std::istreambuf_iterator<char>() };
+		BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT Bindings;
+		Require(CValtanPatternAnimationBindingDocument::Parse_Text(
+				BindingText, Bindings, Status),
+			("stage-clock fixture could not parse animation bindings: " +
+				Status).c_str());
+
+		const ENCOUNTER_PATTERN_REFERENCE* pPattern = nullptr;
+		const ENCOUNTER_STAGE_REFERENCE* pStage = nullptr;
+		for (const ENCOUNTER_PATTERN_REFERENCE& Pattern : Encounter.Get_Patterns())
+		{
+			for (const ENCOUNTER_STAGE_REFERENCE& Stage : Pattern.stages)
+			{
+				const auto Binding = std::find_if(
+					Bindings.Bindings.begin(), Bindings.Bindings.end(),
+					[&Stage](const BOSS_PATTERN_ANIMATION_BINDING& Candidate)
+					{
+						return Candidate.strActionId == Stage.actionId;
+					});
+				if (Bindings.Bindings.end() != Binding &&
+					!Binding->bSuppressAnimation && !Binding->Clips.empty() &&
+					Stage.iDurationMs > 1u)
+				{
+					pPattern = &Pattern;
+					pStage = &Stage;
+					break;
+				}
+			}
+			if (nullptr != pStage)
+				break;
+		}
+		Require(nullptr != pPattern && nullptr != pStage,
+			"stage-clock fixture found no animated Encounter Stage");
+
+		const auto BuildCue = [&](const uint32_t iStageOffsetMs,
+			const std::string_view strStopPolicy,
+			const std::string_view strRepeatPolicy,
+			const bool_t bAddClipOccurrence)
+		{
+			std::ostringstream Json;
+			Json << R"json({"schema":"lostark.valtan-pattern-effect-cues","formatVersion":4,"ownerArchetypeId":"BOSS_VALTAN","cues":[{"bindingId":"cue.valtan.test.stage-clock-animated","occurrenceId":"cue.valtan.test.stage-clock-animated.occurrence.01","patternId":")json"
+				<< pPattern->patternId << R"json(","stageId":")json"
+				<< pStage->stageId << R"json(","actionId":")json"
+				<< pStage->actionId
+				<< R"json(","timingBasis":"STAGE_CLOCK","stageOffsetMs":)json"
+				<< iStageOffsetMs
+				<< R"json(,"effectAssetId":"effect.valtan.test.stage-clock","anchorSlotId":"root","followPolicy":"follow","stopPolicy":")json"
+				<< strStopPolicy << R"json(","repeatPolicy":")json"
+				<< strRepeatPolicy << '"';
+			if (bAddClipOccurrence)
+				Json << R"json(,"clipOccurrenceId":"forbidden.clip.identity")json";
+			Json << R"json(,"localTransform":{"position":[0,0,0],"rotationDegrees":[0,0,0],"scale":[1,1,1]},"scalePolicy":{"kind":"OWNER_RELATIVE"}}]})json";
+			return Json.str();
+		};
+
+		const uint32_t iValidOffsetMs = pStage->iDurationMs - 1u;
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT Parsed;
+		Require(CValtanPatternEffectCueDocument::Parse_Text(
+				BuildCue(iValidOffsetMs, "natural", "once", false),
+				Encounter, Bindings, Parsed, Status) &&
+			1u == Parsed.Cues.size() && Parsed.Cues.front().bUsesStageClock &&
+			Parsed.Cues.front().strClipOccurrenceId.empty() &&
+			iValidOffsetMs == Parsed.Cues.front().iStartMs,
+			("animated Stage rejected an independent stage-clock cue: " +
+				Status).c_str());
+
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT Preserved = Parsed;
+		Require(!CValtanPatternEffectCueDocument::Parse_Text(
+				BuildCue(pStage->iDurationMs, "natural", "once", false),
+				Encounter, Bindings, Preserved, Status) &&
+			1u == Preserved.Cues.size() &&
+			iValidOffsetMs == Preserved.Cues.front().iStartMs,
+			"stage-clock cue at the Stage end did not fail transactionally");
+		Require(!CValtanPatternEffectCueDocument::Parse_Text(
+				BuildCue(iValidOffsetMs, "cue_end", "once", false),
+				Encounter, Bindings, Preserved, Status) &&
+			!CValtanPatternEffectCueDocument::Parse_Text(
+				BuildCue(iValidOffsetMs, "natural", "each_loop", false),
+				Encounter, Bindings, Preserved, Status),
+			"stage-clock cue admitted a non-natural or repeating policy");
+		Require(!CValtanPatternEffectCueDocument::Parse_Text(
+				BuildCue(iValidOffsetMs, "natural", "once", true),
+				Encounter, Bindings, Preserved, Status),
+			"stage-clock cue admitted a clip occurrence identity");
 	}
 
 	void AppendPatterns(
@@ -1268,6 +1374,7 @@ int Run_ValtanCanonicalGraphContractTests()
 {
 	try
 	{
+		VerifyStageClockEffectCueCanCoexistWithAnimation();
 		VerifyFlowDocumentV2AuthoringContract();
 		std::cout << "ValtanPatternFlowDocumentContractTests: PASS\n";
 		VerifyStaleProjectionReturnsTypedOwnerDiagnostic();
@@ -1275,7 +1382,7 @@ int Run_ValtanCanonicalGraphContractTests()
 		VerifyCanonicalProductReadAdmissionExcludesWriter();
 		VerifySixPizzaArenaTargetFollowRoot();
 		VerifyCanonicalGraphInventoryAndFlow();
-		std::cout << "ValtanCanonicalGraphContractTests: 6/6 passed\n";
+		std::cout << "ValtanCanonicalGraphContractTests: 7/7 passed\n";
 		return 0;
 	}
 	catch (const std::exception& Error)

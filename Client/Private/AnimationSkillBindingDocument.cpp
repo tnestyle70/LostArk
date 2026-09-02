@@ -473,7 +473,19 @@ namespace
 	{
 		if (DEPENDENT_CUE_KIND::EFFECT == kind)
 		{
-			const bool_t exact = Has_ExactProperties(row,
+			const bool_t stageClock = nullptr != row.Find("timingBasis");
+			const bool_t exact = (stageClock &&
+				(Has_ExactProperties(row,
+					{ "bindingId", "occurrenceId", "patternId", "stageId",
+					  "actionId", "timingBasis", "stageOffsetMs", "effectAssetId",
+					  "anchorSlotId", "followPolicy", "stopPolicy",
+					  "repeatPolicy", "localTransform" }) ||
+				 Has_ExactProperties(row,
+					{ "bindingId", "occurrenceId", "patternId", "stageId",
+					  "actionId", "timingBasis", "stageOffsetMs", "effectAssetId",
+					  "anchorSlotId", "followPolicy", "stopPolicy",
+					  "repeatPolicy", "localTransform", "scalePolicy" }))) ||
+				(!stageClock && (Has_ExactProperties(row,
 				{ "bindingId", "occurrenceId", "patternId", "stageId",
 				  "actionId", "clipOccurrenceId", "effectAssetId",
 				  "anchorSlotId", "followPolicy", "stopPolicy",
@@ -483,7 +495,7 @@ namespace
 				  "actionId", "clipOccurrenceId", "effectAssetId",
 				  "anchorSlotId", "followPolicy", "stopPolicy",
 				  "repeatPolicy", "sourceStartMs", "sourceEndMs",
-				  "localTransform", "scalePolicy" });
+				  "localTransform", "scalePolicy" })));
 			const DATA_JSON_VALUE* const transform = row.Find("localTransform");
 			if (!exact || nullptr == transform ||
 				!Has_ExactProperties(
@@ -494,13 +506,18 @@ namespace
 			{
 				return false;
 			}
-			const DATA_JSON_VALUE* const start = row.Find("sourceStartMs");
+			const DATA_JSON_VALUE* const timingBasis = row.Find("timingBasis");
+			const DATA_JSON_VALUE* const start = row.Find(
+				stageClock ? "stageOffsetMs" : "sourceStartMs");
 			const DATA_JSON_VALUE* const end = row.Find("sourceEndMs");
 			if (nullptr == start || !start->Is_Number() ||
 				!std::isfinite(start->Get_Number()) ||
-				(nullptr == end ||
+				(stageClock && (nullptr == timingBasis ||
+				 !timingBasis->Is_String() ||
+				 "STAGE_CLOCK" != timingBasis->Get_String())) ||
+				(!stageClock && (nullptr == end ||
 				 (!end->Is_Null() && (!end->Is_Number() ||
-				  !std::isfinite(end->Get_Number())))))
+				  !std::isfinite(end->Get_Number()))))))
 			{
 				return false;
 			}
@@ -600,21 +617,26 @@ namespace
 		std::unordered_set<std::string> occurrenceIds;
 		for (const DATA_JSON_VALUE& row : cues->Get_Array())
 		{
+			const bool_t stageClock =
+				DEPENDENT_CUE_KIND::EFFECT == kind &&
+				nullptr != row.Find("timingBasis");
 			const DATA_JSON_VALUE* const bindingId = Required(
 				row, "bindingId", DATA_JSON_TYPE::STRING);
 			const DATA_JSON_VALUE* const occurrenceId = Required(
 				row, "occurrenceId", DATA_JSON_TYPE::STRING);
 			const DATA_JSON_VALUE* const actionId = Required(
 				row, "actionId", DATA_JSON_TYPE::STRING);
-			const DATA_JSON_VALUE* const clipOccurrenceId = Required(
-				row, "clipOccurrenceId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* const clipOccurrenceId = stageClock ?
+				nullptr : Required(
+					row, "clipOccurrenceId", DATA_JSON_TYPE::STRING);
 			if (!Has_DependentCueRowShape(row, kind) ||
 				nullptr == bindingId || !Is_StableToken(bindingId->Get_String()) ||
 				nullptr == occurrenceId ||
 				!Is_StableToken(occurrenceId->Get_String()) ||
 				nullptr == actionId || !Is_StableToken(actionId->Get_String()) ||
-				nullptr == clipOccurrenceId ||
-				(!clipOccurrenceId->Get_String().empty() &&
+				(!stageClock && nullptr == clipOccurrenceId) ||
+				(nullptr != clipOccurrenceId &&
+				 !clipOccurrenceId->Get_String().empty() &&
 				 !Is_StableToken(clipOccurrenceId->Get_String())) ||
 				!bindingIds.insert(bindingId->Get_String()).second ||
 				!occurrenceIds.insert(occurrenceId->Get_String()).second)
@@ -644,35 +666,42 @@ namespace
 				{
 					return candidate.strActionId == actionId->Get_String();
 				});
-			if (clipOccurrenceId->Get_String().empty())
+			if (stageClock || clipOccurrenceId->Get_String().empty())
 			{
+				const DATA_JSON_VALUE* const stopPolicy =
+					row.Find("stopPolicy");
+				const DATA_JSON_VALUE* const repeatPolicy =
+					row.Find("repeatPolicy");
+				const DATA_JSON_VALUE* const sourceEnd =
+					row.Find("sourceEndMs");
 				if (DEPENDENT_CUE_KIND::EFFECT != kind ||
-					!binding->bSuppressAnimation)
+					nullptr == stopPolicy || !stopPolicy->Is_String() ||
+					"natural" != stopPolicy->Get_String() ||
+					nullptr == repeatPolicy || !repeatPolicy->Is_String() ||
+					"once" != repeatPolicy->Get_String() ||
+					(!stageClock &&
+					 (nullptr == sourceEnd || !sourceEnd->Is_Null())))
 				{
 					outStatus =
-						"Only an Effect stage-clock row may omit clipOccurrenceId on an explicit NONE action: " +
-						binding->strActionId;
+						"Only a natural/once Effect stage-clock row may omit clipOccurrenceId: " +
+							binding->strActionId;
 					return false;
 				}
-				if (baselineDocument.Bindings.end() == baselineBinding ||
-					*baselineBinding != *binding)
+				const auto stageDuration =
+					stageDurationMsByAction.find(binding->strActionId);
+				const DATA_JSON_VALUE* const start = row.Find(
+					stageClock ? "stageOffsetMs" : "sourceStartMs");
+				if (stageDurationMsByAction.end() == stageDuration ||
+					nullptr == start || !start->Is_Number() ||
+					!std::isfinite(start->Get_Number()) ||
+					start->Get_Number() < 0.0 ||
+					start->Get_Number() >=
+						static_cast<double>(stageDuration->second))
 				{
-					const auto stageDuration =
-						stageDurationMsByAction.find(binding->strActionId);
-					const DATA_JSON_VALUE* const start =
-						row.Find("sourceStartMs");
-					if (stageDurationMsByAction.end() == stageDuration ||
-						nullptr == start || !start->Is_Number() ||
-						!std::isfinite(start->Get_Number()) ||
-						start->Get_Number() < 0.0 ||
-						start->Get_Number() >=
-							static_cast<double>(stageDuration->second))
-					{
-						outStatus =
-							"Boss pattern stage-clock Effect is outside its Encounter stage wall: " +
+					outStatus =
+						"Boss pattern stage-clock Effect is outside its Encounter stage wall: " +
 							occurrenceId->Get_String();
-						return false;
-					}
+					return false;
 				}
 				continue;
 			}
