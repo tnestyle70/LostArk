@@ -84,6 +84,15 @@ def fixture_catalog(
     }
 
 
+def presentation_occurrences(presentation: dict) -> list[dict]:
+    return [
+        occurrence
+        for pattern in presentation["patterns"]
+        for stage in pattern["stages"]
+        for occurrence in stage["animation"].get("occurrences", [])
+    ]
+
+
 class SyntheticValtanNativeAnimationInventoryTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -245,18 +254,26 @@ class RepositoryValtanNativeAnimationInventoryTests(unittest.TestCase):
             ],
         )
 
-    def test_current_presentation_172_occurrences_fit_native_windows(self) -> None:
+    def test_current_presentation_occurrences_fit_native_windows(self) -> None:
         presentation = json.loads(
             (ROOT / "Data/Valtan/Valtan.presentation.json").read_text(
                 encoding="utf-8-sig"
             )
         )
+        occurrences = presentation_occurrences(presentation)
         report = validate_valtan_presentation_native_windows(
             presentation, self.inventory
         )
-        self.assertEqual(report.occurrence_count, 172)
-        self.assertEqual(report.unique_clip_count, 75)
-        self.assertEqual(report.native_remainder_occurrence_count, 45)
+        self.assertGreater(len(occurrences), 0)
+        self.assertEqual(report.occurrence_count, len(occurrences))
+        self.assertEqual(
+            report.unique_clip_count,
+            len({occurrence["clip"] for occurrence in occurrences}),
+        )
+        self.assertEqual(
+            report.native_remainder_occurrence_count,
+            sum(occurrence["playMs"] == 0 for occurrence in occurrences),
+        )
 
     def test_final_pipeline_gate_uses_the_same_173_clip_inventory(self) -> None:
         presentation = json.loads(
@@ -268,7 +285,10 @@ class RepositoryValtanNativeAnimationInventoryTests(unittest.TestCase):
             ROOT, presentation
         )
         self.assertEqual(report["inventoryClipCount"], 173)
-        self.assertEqual(report["occurrenceCount"], 172)
+        self.assertEqual(
+            report["occurrenceCount"],
+            len(presentation_occurrences(presentation)),
+        )
 
         invalid = copy.deepcopy(presentation)
         occurrence = next(

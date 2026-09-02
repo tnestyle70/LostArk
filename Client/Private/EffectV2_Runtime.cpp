@@ -10,8 +10,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <map>
 #include <set>
+#include <span>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -51,9 +54,17 @@ namespace
 	struct PENDING_SPAWN final
 	{
 		Client::EFFECT_V2_BINDING Binding;
-		bool_t bSpawned = false;
+		/* Epoch 0 is the first occurrence. ONCE/free/legacy lanes advance this
+		   to one after their single attempt; EACH_LOOP advances once per source
+		   loop. Spawn failures are attempts too, so they cannot flood every tick. */
+		uint64_t iNextLoopEpoch = 0u;
+		uint32_t iClockStartMs = 0u;
+		uint32_t iChildStartMs = 0u;
 		float4x4_t Local;
 		f32_t fStopSeconds = -1.f;
+		/* Group child stop in the group's own playback clock, relative to the
+		   binding occurrence. It is converted to Stage wall time per epoch. */
+		f32_t fRelativeStopSeconds = -1.f;
 		Client::EFFECT_V2_CHILD_STOP eStop = Client::EFFECT_V2_CHILD_STOP::KILL;
 		size_t iChildIndex = NO_CHILD;
 		float3_t vScale = { 1.f, 1.f, 1.f };
@@ -80,6 +91,7 @@ namespace
 		std::string strStage;
 		f32_t fStageLastSeconds = -1.f;
 		std::vector<PENDING_SPAWN> StagePending;
+		std::vector<Client::EFFECT_V2_CLIP_OCCURRENCE_CLOCK> StageClocks;
 		std::vector<SPAWNED_EFFECT> Spawned;
 		std::shared_ptr<const Client::EFFECT_V2_CATALOG_SNAPSHOT>
 			pAuthoringSnapshot;
@@ -291,6 +303,19 @@ namespace
 		return fStop;
 	}
 
+	f32_t Child_RelativeStopSeconds(
+		const Client::EFFECT_V2_GROUP& Group,
+		const Client::EFFECT_V2_GROUP_CHILD& Child)
+	{
+		const f32_t fGroupStop = Group.iDurationMs > 0u ?
+			Ms_ToSeconds(Group.iDurationMs) : -1.f;
+		f32_t fStop = Child.iDurationMs > 0u ?
+			Ms_ToSeconds(Child.iStartMs + Child.iDurationMs) : -1.f;
+		if (fGroupStop >= 0.f && (fStop < 0.f || fGroupStop < fStop))
+			fStop = fGroupStop;
+		return fStop;
+	}
+
 	void Retarget_Pending(
 		PENDING_SPAWN& Pending,
 		const Client::EFFECT_V2_GROUP& Group,
@@ -298,6 +323,8 @@ namespace
 		const uint32_t iBindingStartMs)
 	{
 		const Client::EFFECT_V2_GROUP_CHILD& Child = Group.Children[iChildIndex];
+		Pending.iClockStartMs = iBindingStartMs;
+		Pending.iChildStartMs = Child.iStartMs;
 		Pending.Binding.strGroupId.clear();
 		Pending.Binding.strEffectId = Child.strEffectId;
 		Pending.Binding.iStartMs = iBindingStartMs + Child.iStartMs;
@@ -306,6 +333,7 @@ namespace
 			XMLoadFloat4x4(&ChildLocal) * Binding_Local(Pending.Binding));
 		Pending.eStop = Child.eStop;
 		Pending.fStopSeconds = Child_StopSeconds(Group, Child, iBindingStartMs);
+		Pending.fRelativeStopSeconds = Child_RelativeStopSeconds(Group, Child);
 		Pending.iChildIndex = iChildIndex;
 		Pending.vScale = Child.vScale;
 	}
@@ -338,6 +366,7 @@ namespace
 		{
 			PENDING_SPAWN Pending;
 			Pending.Binding = Binding;
+			Pending.iClockStartMs = Binding.iStartMs;
 			XMStoreFloat4x4(&Pending.Local, Binding_Local(Binding));
 			Out.push_back(std::move(Pending));
 			return;
@@ -397,7 +426,6 @@ namespace
 		const f32_t fPlaybackRate = 1.f,
 		const f32_t fInitialElapsedSeconds = 0.f)
 	{
-		Pending.bSpawned = true;
 		const auto Reject = [pOutFailure](const std::string& strFailure)
 		{
 			Report(strFailure);
@@ -508,20 +536,22 @@ namespace
 		const Client::EFFECT_V2_TARGET_VIEW& View,
 		const bool_t bStageBound,
 		const ComPtr<ID3D11Device>& pDevice,
-		const ComPtr<ID3D11DeviceContext>& pContext)
+		const ComPtr<ID3D11DeviceContext>& pContext,
+		const f32_t fPlaybackRate = 1.f,
+		const f32_t fInitialElapsedSeconds = 0.f)
 	{
 		float4x4_t Pivot;
 		if (!Client::CEffectV2Object::Resolve_TargetPivot(
 			View, Pending.Binding.strBone, Pending.Binding.eRotation, Pivot))
 		{
-			Pending.bSpawned = true;
 			Report("pivot bone not found: " + Pending.Binding.strBone +
 				" for " + Pending.Binding.strEffectId);
 			return;
 		}
 		Spawn(
 			Pending, Pivot, State.Target, bStageBound, State.Spawned,
-			pDevice, pContext, State.pAuthoringSnapshot.get());
+			pDevice, pContext, State.pAuthoringSnapshot.get(), nullptr,
+			fPlaybackRate, fInitialElapsedSeconds);
 	}
 
 	/* Applies each child's stop once when the lane clock passes it. With
@@ -613,10 +643,210 @@ namespace
 		State.Spawned.clear();
 	}
 
+	void Reset_StageLane(TARGET_STATE& State)
+	{
+		for (SPAWNED_EFFECT& Effect : State.Spawned)
+		{
+			if (!Effect.bStageBound)
+				continue;
+			if (const std::shared_ptr<Client::CEffectV2Object> pObject =
+					Effect.pObject.lock())
+			{
+				pObject->Finish();
+			}
+		}
+		Prune_List(State.Spawned, false, false);
+	}
+
+	struct STAGE_SPAWN_CLOCK final
+	{
+		f32_t fStartSeconds = 0.f;
+		f32_t fStopSeconds = -1.f;
+		f32_t fPlaybackRate = 1.f;
+	};
+
+	const Client::EFFECT_V2_CLIP_OCCURRENCE_CLOCK* Find_OccurrenceClock(
+		const std::span<const Client::EFFECT_V2_CLIP_OCCURRENCE_CLOCK> Clocks,
+		const std::string_view strClipOccurrenceId)
+	{
+		const Client::EFFECT_V2_CLIP_OCCURRENCE_CLOCK* pFound = nullptr;
+		for (const Client::EFFECT_V2_CLIP_OCCURRENCE_CLOCK& Clock : Clocks)
+		{
+			if (Clock.strClipOccurrenceId != strClipOccurrenceId)
+				continue;
+			if (nullptr != pFound)
+				return nullptr;
+			pFound = &Clock;
+		}
+		return pFound;
+	}
+
+	bool_t Resolve_StageSpawnClock(
+		const PENDING_SPAWN& Pending,
+		const std::span<const Client::EFFECT_V2_CLIP_OCCURRENCE_CLOCK> Clocks,
+		const uint64_t iLoopEpoch,
+		STAGE_SPAWN_CLOCK& Out,
+		std::string& strOutError)
+	{
+		Out = {};
+		strOutError.clear();
+		if (Client::EFFECT_V2_CLOCK_BASIS::STAGE ==
+			Pending.Binding.eClockBasis)
+		{
+			if (0u != iLoopEpoch)
+			{
+				strOutError = "a Stage-clock binding cannot repeat by clip epoch";
+				return false;
+			}
+			const double fBindingStart =
+				static_cast<double>(Pending.iClockStartMs) * 0.001;
+			Out.fStartSeconds = static_cast<f32_t>(fBindingStart +
+				static_cast<double>(Pending.iChildStartMs) * 0.001);
+			if (Pending.fRelativeStopSeconds >= 0.f)
+			{
+				Out.fStopSeconds = static_cast<f32_t>(fBindingStart +
+					static_cast<double>(Pending.fRelativeStopSeconds));
+			}
+			return std::isfinite(Out.fStartSeconds) &&
+				(Out.fStopSeconds < 0.f || std::isfinite(Out.fStopSeconds));
+		}
+
+		const Client::EFFECT_V2_CLIP_OCCURRENCE_CLOCK* const pClock =
+			Find_OccurrenceClock(Clocks, Pending.Binding.strClipOccurrenceId);
+		if (nullptr == pClock)
+		{
+			strOutError = "clipOccurrenceId does not resolve exactly once: " +
+				Pending.Binding.strClipOccurrenceId;
+			return false;
+		}
+		if (!std::isfinite(pClock->fStageWallStartSeconds) ||
+			pClock->fStageWallStartSeconds < 0.f ||
+			!std::isfinite(pClock->fSourceStartSeconds) ||
+			pClock->fSourceStartSeconds < 0.f ||
+			!std::isfinite(pClock->fSourceDurationSeconds) ||
+			pClock->fSourceDurationSeconds <= 0.f ||
+			!std::isfinite(pClock->fLoopWallDurationSeconds) ||
+			pClock->fLoopWallDurationSeconds <= 0.f ||
+			!std::isfinite(pClock->fPlaybackRate) ||
+			pClock->fPlaybackRate <= 0.f)
+		{
+			strOutError = "clip occurrence clock is invalid: " +
+				Pending.Binding.strClipOccurrenceId;
+			return false;
+		}
+		if (Client::EFFECT_V2_REPEAT_POLICY::EACH_LOOP ==
+				Pending.Binding.eRepeatPolicy && !pClock->bLoop)
+		{
+			strOutError = "EACH_LOOP requires a looping clip occurrence: " +
+				Pending.Binding.strClipOccurrenceId;
+			return false;
+		}
+		if (!pClock->bLoop && 0u != iLoopEpoch)
+		{
+			strOutError = "a non-looping clip occurrence has only epoch zero: " +
+				Pending.Binding.strClipOccurrenceId;
+			return false;
+		}
+
+		constexpr double EpsilonSeconds = 0.000001;
+		const double fCueSourceSeconds =
+			static_cast<double>(Pending.iClockStartMs) * 0.001;
+		const double fSourceBegin = pClock->fSourceStartSeconds;
+		const double fSourceEnd = fSourceBegin + pClock->fSourceDurationSeconds;
+		if (fCueSourceSeconds + EpsilonSeconds < fSourceBegin ||
+			fCueSourceSeconds + EpsilonSeconds >= fSourceEnd)
+		{
+			strOutError = "binding startMs is outside its clip source window: " +
+				Pending.Binding.strBindingId;
+			return false;
+		}
+
+		const double fPlaybackRate = pClock->fPlaybackRate;
+		const double fEpochWallStart =
+			static_cast<double>(pClock->fStageWallStartSeconds) +
+			static_cast<double>(iLoopEpoch) *
+				static_cast<double>(pClock->fLoopWallDurationSeconds);
+		const double fBindingWallStart = fEpochWallStart +
+			(fCueSourceSeconds - fSourceBegin) / fPlaybackRate;
+		const double fChildWallStart = fBindingWallStart +
+			static_cast<double>(Pending.iChildStartMs) * 0.001 /
+				fPlaybackRate;
+		if (!std::isfinite(fChildWallStart) ||
+			fChildWallStart > static_cast<double>(
+				(std::numeric_limits<f32_t>::max)()))
+		{
+			strOutError = "binding occurrence wall clock overflowed: " +
+				Pending.Binding.strBindingId;
+			return false;
+		}
+		Out.fStartSeconds = static_cast<f32_t>(fChildWallStart);
+		Out.fPlaybackRate = pClock->fPlaybackRate;
+
+		if (Pending.fRelativeStopSeconds >= 0.f)
+		{
+			Out.fStopSeconds = static_cast<f32_t>(fBindingWallStart +
+				static_cast<double>(Pending.fRelativeStopSeconds) /
+					fPlaybackRate);
+		}
+		if (Client::EFFECT_V2_STOP_POLICY::CLIP_OCCURRENCE_END ==
+			Pending.Binding.eStopPolicy)
+		{
+			const f32_t fOccurrenceEnd = static_cast<f32_t>(
+				fEpochWallStart + pClock->fLoopWallDurationSeconds);
+			if (Out.fStopSeconds < 0.f || fOccurrenceEnd < Out.fStopSeconds)
+				Out.fStopSeconds = fOccurrenceEnd;
+		}
+		return Out.fStopSeconds < 0.f || std::isfinite(Out.fStopSeconds);
+	}
+
+	bool_t Resolve_LastDueLoopEpoch(
+		const PENDING_SPAWN& Pending,
+		const std::span<const Client::EFFECT_V2_CLIP_OCCURRENCE_CLOCK> Clocks,
+		const f32_t fAgeSeconds,
+		uint64_t& iOutEpoch,
+		std::string& strOutError)
+	{
+		iOutEpoch = 0u;
+		STAGE_SPAWN_CLOCK First;
+		if (!Resolve_StageSpawnClock(Pending, Clocks, 0u, First, strOutError))
+			return false;
+		if (fAgeSeconds + 0.00001f < First.fStartSeconds)
+			return true;
+		if (Client::EFFECT_V2_REPEAT_POLICY::EACH_LOOP !=
+			Pending.Binding.eRepeatPolicy)
+		{
+			return true;
+		}
+		const Client::EFFECT_V2_CLIP_OCCURRENCE_CLOCK* const pClock =
+			Find_OccurrenceClock(Clocks, Pending.Binding.strClipOccurrenceId);
+		if (nullptr == pClock)
+		{
+			strOutError = "clipOccurrenceId does not resolve exactly once: " +
+				Pending.Binding.strClipOccurrenceId;
+			return false;
+		}
+		const double fEpoch = std::floor(
+			(static_cast<double>(fAgeSeconds) + 0.00001 -
+				static_cast<double>(First.fStartSeconds)) /
+			static_cast<double>(pClock->fLoopWallDurationSeconds));
+		if (!std::isfinite(fEpoch) || fEpoch < 0.0 ||
+			fEpoch >= static_cast<double>(
+				(std::numeric_limits<uint64_t>::max)()))
+		{
+			strOutError = "binding loop epoch overflowed: " +
+				Pending.Binding.strBindingId;
+			return false;
+		}
+		iOutEpoch = static_cast<uint64_t>(fEpoch);
+		return true;
+	}
+
 	void Sync_Stage_Impl(
 		const Client::EFFECT_V2_TARGET& Target,
 		const char_t* const pActionId,
 		const f32_t fAgeSeconds,
+		const std::span<const Client::EFFECT_V2_CLIP_OCCURRENCE_CLOCK>
+			ClipOccurrences,
 		std::shared_ptr<const Client::EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext)
@@ -635,12 +865,22 @@ namespace
 		State.Target = Target;
 		State.strArchetypeId = *pArchetypeId;
 		const bool_t bSnapshotChanged = State.pAuthoringSnapshot != pSnapshot;
-		if (State.strStage != strActionId || bSnapshotChanged)
+		const bool_t bStageChanged = State.strStage != strActionId;
+		const bool_t bClocksChanged =
+			State.StageClocks.size() != ClipOccurrences.size() ||
+			!std::equal(
+				State.StageClocks.begin(), State.StageClocks.end(),
+				ClipOccurrences.begin(), ClipOccurrences.end());
+		if (bStageChanged || bSnapshotChanged || bClocksChanged)
 		{
+			if (!bStageChanged && (bSnapshotChanged || bClocksChanged))
+				Reset_StageLane(State);
 			State.strStage = strActionId;
 			State.fStageLastSeconds = -1.f;
 			Prune_Spawned(State, false, true);
 			State.StagePending.clear();
+			State.StageClocks.assign(
+				ClipOccurrences.begin(), ClipOccurrences.end());
 			State.pAuthoringSnapshot = std::move(pSnapshot);
 			if (!strActionId.empty())
 			{
@@ -678,10 +918,11 @@ namespace
 			Prune_Spawned(State, false, false);
 			return;
 		}
-		if (fAgeSeconds < State.fStageLastSeconds)
+		if (fAgeSeconds + 0.00001f < State.fStageLastSeconds)
 		{
+			Reset_StageLane(State);
 			for (PENDING_SPAWN& Pending : State.StagePending)
-				Pending.bSpawned = false;
+				Pending.iNextLoopEpoch = 0u;
 		}
 		State.fStageLastSeconds = fAgeSeconds;
 		Client::EFFECT_V2_TARGET_VIEW View;
@@ -689,11 +930,66 @@ namespace
 			return;
 		for (PENDING_SPAWN& Pending : State.StagePending)
 		{
-			if (!Pending.bSpawned &&
-				fAgeSeconds >= Ms_ToSeconds(Pending.Binding.iStartMs))
+			if ((std::numeric_limits<uint64_t>::max)() ==
+				Pending.iNextLoopEpoch)
 			{
+				continue;
+			}
+			uint64_t iLastDueEpoch = 0u;
+			std::string strClockError;
+			if (!Resolve_LastDueLoopEpoch(
+					Pending, ClipOccurrences, fAgeSeconds,
+					iLastDueEpoch, strClockError))
+			{
+				Pending.iNextLoopEpoch =
+					(std::numeric_limits<uint64_t>::max)();
+				Report("binding clock rejected " +
+					Pending.Binding.strBindingId + ": " + strClockError);
+				continue;
+			}
+			if (iLastDueEpoch < Pending.iNextLoopEpoch)
+				continue;
+
+			constexpr uint64_t MAX_EPOCHS_PER_SYNC = 256u;
+			if (iLastDueEpoch - Pending.iNextLoopEpoch >=
+				MAX_EPOCHS_PER_SYNC)
+			{
+				Pending.iNextLoopEpoch =
+					iLastDueEpoch - MAX_EPOCHS_PER_SYNC + 1u;
+			}
+			for (uint64_t iEpoch = Pending.iNextLoopEpoch;
+				iEpoch <= iLastDueEpoch; ++iEpoch)
+			{
+				STAGE_SPAWN_CLOCK Clock;
+				if (!Resolve_StageSpawnClock(
+						Pending, ClipOccurrences, iEpoch,
+						Clock, strClockError))
+				{
+					Pending.iNextLoopEpoch =
+						(std::numeric_limits<uint64_t>::max)();
+					Report("binding clock rejected " +
+						Pending.Binding.strBindingId + ": " + strClockError);
+					break;
+				}
+				if (fAgeSeconds + 0.00001f < Clock.fStartSeconds)
+					break;
+				Pending.iNextLoopEpoch =
+					iEpoch == (std::numeric_limits<uint64_t>::max)() ?
+						(std::numeric_limits<uint64_t>::max)() : iEpoch + 1u;
+				/* A late snapshot after a finite clip/group stop must not flash a
+				   just-created object for one frame. The epoch remains attempted. */
+				if (Clock.fStopSeconds >= 0.f &&
+					fAgeSeconds + 0.00001f >= Clock.fStopSeconds)
+				{
+					continue;
+				}
+				Pending.fStopSeconds = Clock.fStopSeconds;
 				Spawn_OnTarget(
-					State, Pending, View, true, pDevice, pContext);
+					State, Pending, View, true, pDevice, pContext,
+					Clock.fPlaybackRate,
+					(std::max)(0.f, fAgeSeconds - Clock.fStartSeconds));
+				if (iEpoch == (std::numeric_limits<uint64_t>::max)())
+					break;
 			}
 		}
 		Apply_ChildStops(State.Spawned, fAgeSeconds, true, true);
@@ -719,10 +1015,11 @@ namespace
 			Group.fSeconds += fTimeDelta * Group.fPlaybackRate;
 			for (PENDING_SPAWN& Pending : Group.Pending)
 			{
-				if (Pending.bSpawned)
+				if (0u != Pending.iNextLoopEpoch)
 					continue;
 				if (Group.fSeconds >= Ms_ToSeconds(Pending.Binding.iStartMs))
 				{
+					Pending.iNextLoopEpoch = 1u;
 					std::string SpawnFailure;
 					const f32_t fChildStartSeconds =
 						Ms_ToSeconds(Pending.Binding.iStartMs);
@@ -739,7 +1036,8 @@ namespace
 			Prune_List(Group.Spawned, false, false);
 			const bool_t bAllSpawned = std::all_of(
 				Group.Pending.begin(), Group.Pending.end(),
-				[](const PENDING_SPAWN& Pending) { return Pending.bSpawned; });
+				[](const PENDING_SPAWN& Pending)
+				{ return 0u != Pending.iNextLoopEpoch; });
 			if (bAllSpawned && Group.Spawned.empty())
 			{
 				if (!Group.strFailure.empty())
@@ -837,6 +1135,7 @@ void Client::CEffectV2Runtime::Invalidate_Caches()
 		State.strStage.clear();
 		State.fStageLastSeconds = -1.f;
 		State.StagePending.clear();
+		State.StageClocks.clear();
 		State.pAuthoringSnapshot.reset();
 	}
 }
@@ -851,6 +1150,11 @@ void Client::CEffectV2Runtime::Notify_Clip(
 	const char_t* pClipName)
 {
 	if (!Target.Is_Valid() || nullptr == pClipName || g_IgnoredTargets.contains(Target.pKey))
+		return;
+	/* Valtan's format-v2 bindings are keyed by stable clip occurrence ID and
+	   action ID, never by the reusable model clip name supplied here. Its typed
+	   Stage path is Sync_Stage; retain this lane only for NPC/legacy bindings. */
+	if (EFFECT_V2_TARGET_KIND::VALTAN == Target.eKind)
 		return;
 	const std::string* pArchetypeId = Resolve_Archetype(Target);
 	if (nullptr == pArchetypeId)
@@ -876,11 +1180,39 @@ void Client::CEffectV2Runtime::Sync_Stage(
 	const EFFECT_V2_TARGET& Target,
 	const char_t* pActionId,
 	const f32_t fAgeSeconds,
+	const std::span<const EFFECT_V2_CLIP_OCCURRENCE_CLOCK> ClipOccurrences,
 	const ComPtr<ID3D11Device>& pDevice,
 	const ComPtr<ID3D11DeviceContext>& pContext)
 {
 	Sync_Stage_Impl(
-		Target, pActionId, fAgeSeconds, nullptr, pDevice, pContext);
+		Target, pActionId, fAgeSeconds, ClipOccurrences,
+		nullptr, pDevice, pContext);
+}
+
+void Client::CEffectV2Runtime::Sync_Stage(
+	const EFFECT_V2_TARGET& Target,
+	const char_t* pActionId,
+	const f32_t fAgeSeconds,
+	const ComPtr<ID3D11Device>& pDevice,
+	const ComPtr<ID3D11DeviceContext>& pContext)
+{
+	Sync_Stage(Target, pActionId, fAgeSeconds,
+		std::span<const EFFECT_V2_CLIP_OCCURRENCE_CLOCK>{},
+		pDevice, pContext);
+}
+
+void Client::CEffectV2Runtime::Sync_StageAuthoring(
+	const EFFECT_V2_TARGET& Target,
+	const char_t* pActionId,
+	const f32_t fAgeSeconds,
+	const std::span<const EFFECT_V2_CLIP_OCCURRENCE_CLOCK> ClipOccurrences,
+	std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,
+	const ComPtr<ID3D11Device>& pDevice,
+	const ComPtr<ID3D11DeviceContext>& pContext)
+{
+	Sync_Stage_Impl(
+		Target, pActionId, fAgeSeconds, ClipOccurrences, std::move(pSnapshot),
+		pDevice, pContext);
 }
 
 void Client::CEffectV2Runtime::Sync_StageAuthoring(
@@ -891,9 +1223,9 @@ void Client::CEffectV2Runtime::Sync_StageAuthoring(
 	const ComPtr<ID3D11Device>& pDevice,
 	const ComPtr<ID3D11DeviceContext>& pContext)
 {
-	Sync_Stage_Impl(
-		Target, pActionId, fAgeSeconds, std::move(pSnapshot),
-		pDevice, pContext);
+	Sync_StageAuthoring(Target, pActionId, fAgeSeconds,
+		std::span<const EFFECT_V2_CLIP_OCCURRENCE_CLOCK>{},
+		std::move(pSnapshot), pDevice, pContext);
 }
 
 void Client::CEffectV2Runtime::Reset_LocalPreviewTarget(
@@ -955,15 +1287,18 @@ void Client::CEffectV2Runtime::Tick(
 	if (fSeconds < State.fLastSeconds)
 	{
 		for (PENDING_SPAWN& Pending : State.Pending)
-			Pending.bSpawned = false;
+			Pending.iNextLoopEpoch = 0u;
 	}
 	State.fLastSeconds = fSeconds;
 	for (PENDING_SPAWN& Pending : State.Pending)
 	{
-		if (Pending.bSpawned)
+		if (0u != Pending.iNextLoopEpoch)
 			continue;
 		if (fSeconds >= Ms_ToSeconds(Pending.Binding.iStartMs))
+		{
+			Pending.iNextLoopEpoch = 1u;
 			Spawn_OnTarget(State, Pending, View, false, pDevice, pContext);
+		}
 	}
 	Apply_ChildStops(State.Spawned, fSeconds, false, true);
 	Prune_Spawned(State, false);
@@ -1049,7 +1384,7 @@ void Client::CEffectV2Runtime::Update_Group(const uint32_t iHandle, const EFFECT
 	{
 		if (Pending.iChildIndex >= Group.Children.size())
 			continue;
-		if (Pending.bSpawned)
+		if (0u != Pending.iNextLoopEpoch)
 		{
 			Pending.Local = Child_Local(Group.Children[Pending.iChildIndex]);
 			Pending.vScale = Group.Children[Pending.iChildIndex].vScale;

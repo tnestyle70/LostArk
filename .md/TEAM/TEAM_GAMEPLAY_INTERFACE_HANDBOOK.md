@@ -329,8 +329,9 @@ stable action·occurrence ID로 join한다. Workbench는 새 Product JSON이나 
 stage·release·Counter/Groggy·Collider는 `CBalanceTool`의 joined gameplay draft를, animation slot과 Effect
 invocation은 `Data/Valtan/Valtan.presentation.json` source owner를 사용한다.
 `Valtan.patternbindings.json`과 `Valtan.patterneffectcues.json`은 projector가 만드는 read-only Product다.
-Counter enable은 paired counterable flag, `COUNTER_HIT` branch, same-pattern GROGGY stage와 paired groggy
-flag를 한 Server-authority 단위로 만들고 Animation notify가 결과를 확정하지 않는다. Save는 split source와
+Counter enable은 paired counterable flag, `COUNTER_HIT` branch, same-pattern GROGGY action 또는 typed
+cross-pattern GROGGY target과 paired groggy flag를 한 Server-authority 단위로 만들고 Animation notify가
+결과를 확정하지 않는다. Save는 split source와
 generated Product를 공통 writer generation으로 commit한 뒤 exact canonical reload까지 검사한다. 로컬 저장
 뒤에도 같은 immutable revision이 Server-active로 확인되기 전에는 Complete Play와 Restart를 실행하지 않는다.
 실제 seek/stop adapter가 연결된 lane만 local `PLAY`다. Effect invocation은 typed Details의
@@ -338,6 +339,23 @@ generated Product를 공통 writer generation으로 commit한 뒤 exact canonica
 Camera/World lane은 owner file과 stable row를 표시하는 `INSPECT` 상태로 남긴다. Sound는 별도
 typed owner에서 `EDIT/SAVE`하되 local seek/stop transport는 `INSPECT`다.
 `Animation Sequence Intake`는 review 원본이고 promotion transaction 전에는 Product/Server pattern이 아니다.
+
+Server collider의 mutation UI는 Action Composition Workbench의 typed `Stage Hit (Boss -> Player)` Details
+하나뿐이다. Balance Tool의 broad Valtan pattern panel은 같은 joined 값을 읽기 전용으로 표시한다. Collider
+lane `+`는 hit가 없는 non-WAIT `MANUAL_SERVER_AUDITION` Stage에 기본 `BOX`(length 8.0m,
+half-width 2.5m)를 만들고, 기존 non-WAIT hit는 canonical/manual 여부와 무관하게 제자리 Tune할 수 있다.
+Remove는 non-CAPTURE manual audition hit만 허용한다. canonical no-hit Add, canonical Remove, CAPTURE의
+geometry-only Remove는 C++ setter와 최종 `SET_STAGE_HIT` writer가 모두 거부한다. 모든 안정 Stage의
+Gameplay/Logic/Collider Details를 열어 보는 것과 Stage topology 또는 Add/Remove 권한을 주는 것은 다른
+admission이다. Details를 열기 위해 Pattern을 `manualAuditions`로 승격하지 않는다. selection candidate와
+manual audition의 교집합은 publisher/pipeline admission 오류다.
+
+hit timing은 pulse schedule과 `ACTIVE_WINDOW` 중 정확히 하나다. Active Window는 Stage-local 반열린 구간
+`[startMs, startMs + lifetimeMs)`이고 target당 한 번만 판정한다. `anchor`와 `activation`은 geometry Tune 때도
+lossless round-trip하며, `NONE`은 schedule/activation/anchor/damage/response까지 함께 비운다. Damage profile
+rate는 Workbench에서 같은 canonical draft의 `SET_DAMAGE_RATE`로 저장하고, 공유 Stage 수와 방어 전 raw damage를
+표시한다. Sequencer Save는 Pattern/Balance, Sound, EffectV2 owner와 pipeline/reload를 계속 all-or-nothing으로
+처리하고, 실패 문장은 `[Pattern]`, `[Sound]`, `[EffectV2]`, `[Pipeline]` 중 최초 차단 owner를 표시한다.
 
 Effect invocation Details는 exact clip occurrence와 source start/end, stop/repeat, anchor/follow,
 local transform, scale policy를 canonical `Valtan.presentation.json`에 add/update/remove한다. projector가

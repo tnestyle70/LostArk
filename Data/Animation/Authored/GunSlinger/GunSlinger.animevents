@@ -1,10 +1,10 @@
-LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
+LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2327
 "gdh_att_battle_1_01" CANCEL startms=0 endms=324 payload="[선스]" src=orig
 "gdh_att_battle_1_01" CANCEL startms=0 endms=418 payload="[선이]" src=orig
 "gdh_att_battle_1_01" SOUND startms=0 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_Att_Pistol1_1" src=orig
 "gdh_att_battle_1_01" SOUND startms=0 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_Att_Pistol1_Vox1_1" src=orig
 "gdh_att_battle_1_01" CANCEL startms=75 endms=360 payload="[선콤]" src=orig
-"gdh_att_battle_1_01" HIT startms=121 endms=271 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_att_battle_1_01" HIT startms=121 endms=271 rep=2 repms=300 fz=650 fzin=150 fzout=250 push=5 pushr=5 area=2 ar=440 aa=90 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "gdh_att_battle_1_01" EFFECT startms=127 payload="" src=orig
 "gdh_att_battle_1_01" EFFECT startms=136 payload="FX_PC_GDHF_00.Par_D_HandGun_GunFire_01" src=orig
 "gdh_att_battle_1_01" EFFECT startms=136 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
@@ -45,7 +45,7 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_att_battle_1_03" EFFECT startms=761 payload="" src=orig
 "gdh_att_battle_1_03" EFFECT startms=761 payload="FX_PC_GDHF_00.Par_D_HandGun_GunFire_02" src=orig
 "gdh_att_battle_1_03" EFFECT startms=761 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"gdh_att_battle_1_03" HIT startms=761 endms=912 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_att_battle_1_03" HIT startms=761 endms=912 rep=4 repms=280 fz=660 fzin=150 fzout=250 push=5 pushr=5 area=2 ar=440 aa=90 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "gdh_att_battle_1_03" SHAKE startms=766 payload="" src=orig
 "gdh_att_battle_1_03" CANCEL startms=800 endms=1767 payload="[입력캔슬]" src=orig
 "gdh_att_battle_1_03" CANCEL startms=1000 endms=1767 payload="[이동캔슬]" src=orig
@@ -109,7 +109,7 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_att_identity1_1_01" CANCEL startms=50 endms=620 payload="[선이]" src=orig
 "gdh_att_identity1_1_01" CANCEL startms=143 endms=500 payload="[선콤]" src=orig
 "gdh_att_identity1_1_01" SOUND startms=172 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_Att_ShotGun1_2" src=orig
-"gdh_att_identity1_1_01" HIT startms=220 endms=371 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_att_identity1_1_01" HIT startms=220 endms=371 rep=1 repms=0 fz=500 fzin=150 fzout=300 push=50 pushr=10 area=3 ar=300 aa=45 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "gdh_att_identity1_1_01" EFFECT startms=235 payload="" src=orig
 "gdh_att_identity1_1_01" EFFECT startms=235 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_att_identity1_1_01" EFFECT startms=235 payload="FX_PC_GDHF_00.Par_D_ShotGun_GunFire_01" src=orig
@@ -130,7 +130,7 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_att_identity1_1_02" EFFECT startms=564 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_att_identity1_1_02" SHAKE startms=573 payload="" src=orig
 "gdh_att_identity1_1_02" SOUND startms=650 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_Att_ShotGun1_2" src=orig
-"gdh_att_identity1_1_02" HIT startms=754 endms=905 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_att_identity1_1_02" HIT startms=754 endms=905 rep=1 repms=0 fz=500 fzin=150 fzout=300 push=50 pushr=20 area=3 ar=300 aa=45 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "gdh_att_identity1_1_02" SHAKE startms=766 payload="" src=orig
 "gdh_att_identity1_1_02" EFFECT startms=767 payload="" src=orig
 "gdh_att_identity1_1_02" EFFECT startms=768 payload="FX_PC_GDHF_00.Par_D_ShotGun_GunFire_01" src=orig
@@ -144,7 +144,7 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_att_identity2_1_01" CANCEL startms=150 endms=620 payload="[선이]" src=orig
 "gdh_att_identity2_1_01" CANCEL startms=150 endms=520 payload="[선스]" src=orig
 "gdh_att_identity2_1_01" SOUND startms=280 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_Att_Rifle1_2" src=orig
-"gdh_att_identity2_1_01" HIT startms=333 endms=484 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_att_identity2_1_01" HIT startms=333 endms=484 rep=1 repms=0 fz=500 fzin=150 fzout=300 push=30 pushr=20 area=2 ar=600 aa=60 ah=150 ax=0 arem=0 maxt=0 src=orig
 "gdh_att_identity2_1_01" EFFECT startms=373 payload="" src=orig
 "gdh_att_identity2_1_01" EFFECT startms=373 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_att_identity2_1_01" EFFECT startms=373 payload="FX_PC_GDHF_00.Par_D_Rifle_GunFire_02" src=orig
@@ -163,7 +163,7 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_att_identity2_1_02" EFFECT startms=14 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_att_identity2_1_02" EFFECT startms=15 payload="FX_PC_GDHF_00.Par_D_Rifle_GunFire_01" src=orig
 "gdh_att_identity2_1_02" SHAKE startms=20 payload="" src=orig
-"gdh_att_identity2_1_02" HIT startms=24 endms=177 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_att_identity2_1_02" HIT startms=24 endms=177 rep=1 repms=0 fz=500 fzin=150 fzout=300 push=5 pushr=5 area=2 ar=600 aa=60 ah=150 ax=0 arem=0 maxt=0 src=orig
 "gdh_att_identity2_1_02" CANCEL startms=229 endms=1100 payload="[입력캔슬]" src=orig
 "gdh_att_identity2_1_02" CANCEL startms=341 endms=1100 payload="[이동캔슬]" src=orig
 "gdh_att_identity2_1_02" CANCEL startms=378 endms=1100 payload="[입력시작]" src=orig
@@ -411,7 +411,7 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_death'seye_03" EFFECT startms=0 payload="FX_PC_GDHF_06.Par_N_GDHF_shot_Cast_02" src=orig
 "gdh_sk_death'seye_03" EFFECT startms=0 payload="FX_PC_GDHF_06.Par_N_GDHF_CastAim_02_02" src=orig
 "gdh_sk_death'seye_03" EFFECT startms=0 payload="FX_PC_GDHF_06.Par_N_TD_Atk_06_03" src=orig
-"gdh_sk_death'seye_03" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_death'seye_03" HIT startms=0 endms=200 rep=1 repms=0 fz=780 fzin=200 fzout=450 push=0 pushr=0 area=2 ar=1200 aa=250 ah=200 ax=-20 arem=0 maxt=0 src=orig
 "gdh_sk_death'seye_03" SHAKE startms=0 payload="" src=orig
 "gdh_sk_death'seye_03" SUPERARMOR startms=0 endms=900 payload="" src=orig
 "gdh_sk_death'seye_03" SOUND startms=100 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_EyeOfTwilight2_FX025_4" src=orig
@@ -437,11 +437,13 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_deathfire_custom_7_start_01" EFFECT startms=150 payload="FX_PC_GDH_03.Par_T_GDH_DFire_01" src=orig
 "gdh_sk_deathfire_custom_7_start_01" EFFECT startms=150 payload="FX_PC_GDH_00.Par_D_gdh_DFire_03" src=orig
 "gdh_sk_deathfire_custom_7_start_01" EFFECT startms=150 payload="FX_PC_GDH_03.Par_T_GDH_DFire_41" src=orig
-"gdh_sk_deathfire_custom_7_start_01" HIT startms=150 endms=233 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_deathfire_custom_7_start_01" HIT startms=150 endms=233 rep=1 repms=0 fz=600 fzin=150 fzout=300 push=5 pushr=5 area=3 ar=320 aa=360 ah=150 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_deathfire_custom_7_start_02" CANCEL startms=0 endms=2767 payload="" src=orig
 "gdh_sk_deathfire_custom_7_start_02" CANCEL startms=0 endms=2000 payload="" src=orig
 "gdh_sk_deathfire_custom_7_start_02" EFFECT startms=0 payload="" src=orig
-"gdh_sk_deathfire_custom_7_start_02" HIT startms=0 endms=50 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_deathfire_custom_7_start_02" HIT startms=0 endms=50 rep=1 repms=0 fz=600 fzin=150 fzout=300 push=5 pushr=5 area=3 ar=360 aa=360 ah=150 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_deathfire_custom_7_start_02" HIT startms=900 endms=1000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_deathfire_custom_7_start_02" HIT startms=1800 endms=1900 rep=1 repms=0 fz=600 fzin=150 fzout=300 push=20 pushr=20 area=3 ar=360 aa=360 ah=150 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_deathfire_custom_7_start_02" SUPERARMOR startms=0 endms=2767 payload="" src=orig
 "gdh_sk_deathfire_custom_7_start_02" SOUND startms=3 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_DeathFire1_Vox1_1" src=orig
 "gdh_sk_deathfire_custom_7_start_02" SOUND startms=10 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_DeathFire1_FX300_1" src=orig
@@ -459,7 +461,6 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_deathfire_custom_7_start_02" EFFECT startms=683 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_deathfire_custom_7_start_02" EFFECT startms=860 payload="FX_PC_GDH_03.Par_T_HandGun_GunFire_02_1" src=orig
 "gdh_sk_deathfire_custom_7_start_02" EFFECT startms=865 payload="FX_PC_GDH_03.Par_T_HandGun_GunFire_02_1" src=orig
-"gdh_sk_deathfire_custom_7_start_02" HIT startms=900 endms=1000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_deathfire_custom_7_start_02" EFFECT startms=1009 payload="FX_PC_GDH_03.Par_T_HandGun_GunFire_02_1" src=orig
 "gdh_sk_deathfire_custom_7_start_02" EFFECT startms=1010 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_deathfire_custom_7_start_02" EFFECT startms=1011 payload="FX_PC_GDH_03.Par_T_HandGun_GunFire_02_1" src=orig
@@ -469,7 +470,6 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_deathfire_custom_7_start_02" EFFECT startms=1691 payload="FX_PC_GDH_03.Par_T_HandGun_GunFire_02_1" src=orig
 "gdh_sk_deathfire_custom_7_start_02" EFFECT startms=1691 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_deathfire_custom_7_start_02" EFFECT startms=1698 payload="FX_PC_GDH_03.Par_T_HandGun_GunFire_02_1" src=orig
-"gdh_sk_deathfire_custom_7_start_02" HIT startms=1800 endms=1900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_deathfire_custom_7_start_02" CANCEL startms=2000 endms=2680 payload="" src=orig
 "gdh_sk_deathfire_custom_7_start_02" EFFECT startms=2243 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_deathfire_custom_7_start_02" EFFECT startms=2243 payload="FX_PC_GDH_03.Par_T_HandGun_GunFire_02_1" src=orig
@@ -481,7 +481,10 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_deathfire_custom_8_start" SOUND startms=3 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_DeathFire1_Vox1_1" src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=700 payload="FX_PC_GDH_03.Par_T_HandGun_Muzzle_01" src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=700 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"gdh_sk_deathfire_custom_8_start" HIT startms=700 endms=750 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_deathfire_custom_8_start" HIT startms=700 endms=750 rep=1 repms=0 fz=600 fzin=150 fzout=300 push=5 pushr=5 area=3 ar=320 aa=360 ah=150 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_deathfire_custom_8_start" HIT startms=1600 endms=1700 rep=1 repms=0 fz=600 fzin=150 fzout=300 push=5 pushr=5 area=3 ar=360 aa=360 ah=150 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_deathfire_custom_8_start" HIT startms=2800 endms=2900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_deathfire_custom_8_start" HIT startms=3400 endms=3500 rep=1 repms=0 fz=600 fzin=150 fzout=300 push=20 pushr=20 area=3 ar=360 aa=360 ah=150 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=707 payload="" src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=1000 payload="FX_PC_GDH_03.Par_T_HandGun_Muzzle_01" src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=1000 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
@@ -495,7 +498,6 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=1300 payload="FX_PC_GDH_00.Par_D_gdh_DFire_03" src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=1400 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=1400 payload="FX_PC_GDH_03.Par_T_HandGun_Muzzle_01" src=orig
-"gdh_sk_deathfire_custom_8_start" HIT startms=1600 endms=1700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=1700 payload="FX_PC_GDH_03.Par_T_HandGun_Muzzle_01" src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=1700 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=1900 payload="FX_PC_GDH_03.Par_T_HandGun_Muzzle_01" src=orig
@@ -506,7 +508,6 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=2430 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=2590 payload="FX_PC_GDH_03.Par_T_HandGun_Muzzle_01" src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=2590 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"gdh_sk_deathfire_custom_8_start" HIT startms=2800 endms=2900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=2850 payload="FX_PC_GDH_03.Par_T_HandGun_Muzzle_01" src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=2980 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=3000 payload="FX_PC_GDH_00.Par_D_gdh_DFire_Tr_81" src=orig
@@ -514,7 +515,6 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=3070 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=3170 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=3260 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"gdh_sk_deathfire_custom_8_start" HIT startms=3400 endms=3500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_deathfire_custom_8_start" CANCEL startms=3500 endms=4300 payload="" src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=3577 payload="FX_PC_GDH_03.Par_T_HandGun_Muzzle_01" src=orig
 "gdh_sk_deathfire_custom_8_start" EFFECT startms=3885 payload="FX_PC_GDH_03.Par_T_HandGun_Muzzle_01" src=orig
@@ -545,7 +545,9 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_deathfire_start" EFFECT startms=333 payload="FX_PC_GDH_00.Par_D_gdh_DFire_Tr_41" src=orig
 "gdh_sk_deathfire_start" EFFECT startms=700 payload="FX_PC_GDH_03.Par_T_HandGun_GunFire_02_1" src=orig
 "gdh_sk_deathfire_start" EFFECT startms=700 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"gdh_sk_deathfire_start" HIT startms=700 endms=750 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_deathfire_start" HIT startms=700 endms=750 rep=1 repms=0 fz=600 fzin=150 fzout=300 push=5 pushr=5 area=3 ar=320 aa=360 ah=150 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_deathfire_start" HIT startms=1600 endms=1700 rep=1 repms=0 fz=600 fzin=150 fzout=300 push=5 pushr=5 area=3 ar=360 aa=360 ah=150 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_deathfire_start" HIT startms=2500 endms=2600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_deathfire_start" EFFECT startms=707 payload="" src=orig
 "gdh_sk_deathfire_start" EFFECT startms=1000 payload="FX_PC_GDH_03.Par_T_HandGun_GunFire_02_1" src=orig
 "gdh_sk_deathfire_start" EFFECT startms=1000 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
@@ -556,7 +558,6 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_deathfire_start" EFFECT startms=1300 payload="FX_PC_GDH_00.Par_D_gdh_DFire_03" src=orig
 "gdh_sk_deathfire_start" EFFECT startms=1400 payload="FX_PC_GDH_03.Par_T_HandGun_GunFire_02_1" src=orig
 "gdh_sk_deathfire_start" EFFECT startms=1400 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"gdh_sk_deathfire_start" HIT startms=1600 endms=1700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_deathfire_start" EFFECT startms=1700 payload="FX_PC_GDH_03.Par_T_HandGun_GunFire_02_1" src=orig
 "gdh_sk_deathfire_start" EFFECT startms=1700 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_deathfire_start" EFFECT startms=1900 payload="FX_PC_GDH_03.Par_T_HandGun_GunFire_02_1" src=orig
@@ -565,7 +566,6 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_deathfire_start" EFFECT startms=2150 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_deathfire_start" EFFECT startms=2430 payload="FX_PC_GDH_03.Par_T_HandGun_GunFire_02_1" src=orig
 "gdh_sk_deathfire_start" EFFECT startms=2430 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"gdh_sk_deathfire_start" HIT startms=2500 endms=2600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_deathfire_start" EFFECT startms=2590 payload="FX_PC_GDH_03.Par_T_HandGun_GunFire_02_1" src=orig
 "gdh_sk_deathfire_start" EFFECT startms=2590 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_deathfire_start" CANCEL startms=2600 endms=3400 payload="" src=orig
@@ -594,11 +594,11 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_equilibrium" EFFECT startms=200 payload="FX_PC_GDHF_00.Par_D_Equilibrium_01_1" src=orig
 "gdh_sk_equilibrium" EFFECT startms=200 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_equilibrium" EFFECT startms=200 payload="FX_PC_GDHF_00.Par_D_Equilibrium_01_7" src=orig
-"gdh_sk_equilibrium" HIT startms=200 endms=500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_equilibrium" HIT startms=200 endms=500 rep=3 repms=300 fz=850 fzin=200 fzout=300 push=5 pushr=5 area=3 ar=300 aa=180 ah=150 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_equilibrium" HIT startms=500 endms=800 rep=3 repms=300 fz=850 fzin=200 fzout=300 push=5 pushr=5 area=1 ar=300 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_equilibrium" EFFECT startms=229 payload="FX_PC_GDHF_00.Par_D_Equilibrium_01_8" src=orig
 "gdh_sk_equilibrium" EFFECT startms=259 payload="FX_PC_GDHF_00.Par_D_Equilibrium_01_8" src=orig
 "gdh_sk_equilibrium" CANCEL startms=500 endms=2000 payload="[회피기]" src=orig
-"gdh_sk_equilibrium" HIT startms=500 endms=800 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_equilibrium" CANCEL startms=600 endms=1520 payload="[선스]" src=orig
 "gdh_sk_equilibrium" CANCEL startms=600 endms=1520 payload="[선이]" src=orig
 "gdh_sk_equilibrium" SOUND startms=1000 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_Equilibrium1_FX000_3" src=orig
@@ -611,19 +611,19 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_equilibrium_custom_1" EFFECT startms=200 payload="FX_PC_GDHF_00.Par_D_Equilibrium_01_1" src=orig
 "gdh_sk_equilibrium_custom_1" EFFECT startms=200 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_equilibrium_custom_1" EFFECT startms=200 payload="FX_PC_GDHF_00.Par_D_Equilibrium_01_7" src=orig
-"gdh_sk_equilibrium_custom_1" HIT startms=200 endms=500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_equilibrium_custom_1" HIT startms=200 endms=500 rep=3 repms=300 fz=850 fzin=200 fzout=300 push=5 pushr=5 area=3 ar=300 aa=180 ah=150 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_equilibrium_custom_1" HIT startms=500 endms=800 rep=3 repms=300 fz=850 fzin=200 fzout=300 push=5 pushr=5 area=1 ar=300 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_equilibrium_custom_1" HIT startms=800 endms=1100 rep=3 repms=300 fz=850 fzin=200 fzout=300 push=5 pushr=5 area=3 ar=300 aa=60 ah=150 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_equilibrium_custom_1" HIT startms=1100 endms=1400 rep=3 repms=300 fz=850 fzin=200 fzout=300 push=5 pushr=5 area=3 ar=300 aa=60 ah=150 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_equilibrium_custom_1" HIT startms=1400 endms=1700 rep=3 repms=300 fz=850 fzin=200 fzout=300 push=5 pushr=5 area=3 ar=300 aa=60 ah=150 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_equilibrium_custom_1" HIT startms=1700 endms=2000 rep=3 repms=300 fz=850 fzin=200 fzout=300 push=5 pushr=5 area=3 ar=300 aa=60 ah=150 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_equilibrium_custom_1" HIT startms=2000 endms=2300 rep=3 repms=300 fz=850 fzin=200 fzout=300 push=5 pushr=5 area=3 ar=300 aa=60 ah=150 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_equilibrium_custom_1" EFFECT startms=246 payload="FX_PC_GDHF_00.Par_D_Equilibrium_01_8" src=orig
 "gdh_sk_equilibrium_custom_1" EFFECT startms=276 payload="FX_PC_GDHF_00.Par_D_Equilibrium_01_8" src=orig
 "gdh_sk_equilibrium_custom_1" CANCEL startms=497 endms=2767 payload="[회피기]" src=orig
-"gdh_sk_equilibrium_custom_1" HIT startms=500 endms=800 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"gdh_sk_equilibrium_custom_1" HIT startms=800 endms=1100 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_equilibrium_custom_1" SOUND startms=1000 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_Equilibrium1_FX000_3" src=orig
-"gdh_sk_equilibrium_custom_1" HIT startms=1100 endms=1400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"gdh_sk_equilibrium_custom_1" HIT startms=1400 endms=1700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_equilibrium_custom_1" CANCEL startms=1500 endms=2220 payload="[선스]" src=orig
 "gdh_sk_equilibrium_custom_1" CANCEL startms=1500 endms=2220 payload="[선이]" src=orig
-"gdh_sk_equilibrium_custom_1" HIT startms=1700 endms=2000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"gdh_sk_equilibrium_custom_1" HIT startms=2000 endms=2300 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_equilibrium_custom_1" CANCEL startms=2200 endms=2767 payload="[입력캔슬]" src=orig
 "gdh_sk_equilibrium_custom_1" CANCEL startms=2200 endms=2767 payload="[이동캔슬]" src=orig
 "gdh_sk_equilibrium_custom_2" SOUND startms=0 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_Equilibrium1_Vox3_1" src=orig
@@ -640,11 +640,11 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_equilibrium_custom_2" EFFECT startms=272 payload="FX_PC_GDHF_00.Par_D_Equilibrium_01_8" src=orig
 "gdh_sk_equilibrium_custom_2" CANCEL startms=497 endms=2000 payload="[회피기]" src=orig
 "gdh_sk_equilibrium_custom_2" EFFECT startms=500 payload="" src=orig
-"gdh_sk_equilibrium_custom_2" HIT startms=500 endms=800 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_equilibrium_custom_2" HIT startms=500 endms=800 rep=3 repms=300 fz=850 fzin=200 fzout=300 push=5 pushr=5 area=3 ar=300 aa=180 ah=150 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_equilibrium_custom_2" HIT startms=800 endms=1100 rep=3 repms=300 fz=850 fzin=200 fzout=300 push=5 pushr=5 area=1 ar=300 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_equilibrium_custom_2" CANCEL startms=600 endms=1520 payload="[선스]" src=orig
 "gdh_sk_equilibrium_custom_2" CANCEL startms=600 endms=1520 payload="[선이]" src=orig
 "gdh_sk_equilibrium_custom_2" EFFECT startms=800 payload="" src=orig
-"gdh_sk_equilibrium_custom_2" HIT startms=800 endms=1100 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_equilibrium_custom_2" SOUND startms=1000 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_Equilibrium1_FX000_3" src=orig
 "gdh_sk_equilibrium_custom_2" EFFECT startms=1100 payload="" src=orig
 "gdh_sk_equilibrium_custom_2" EFFECT startms=1200 payload="FX_PC_GDHF_00.Par_D_Equilibrium_01_1" src=orig
@@ -687,7 +687,7 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_eyeoftwilight" CANCEL startms=1331 endms=2655 payload="[선스]" src=orig
 "gdh_sk_eyeoftwilight" SOUND startms=1850 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_EyeOfTwilight1_FX000_3" src=orig
 "gdh_sk_eyeoftwilight" EFFECT startms=2000 payload="FX_PC_GDHF_00.Par_D_SuperMove_01" src=orig
-"gdh_sk_eyeoftwilight" HIT startms=2088 endms=2239 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_eyeoftwilight" HIT startms=2088 endms=2239 rep=1 repms=0 fz=800 fzin=200 fzout=300 push=40 pushr=30 area=2 ar=610 aa=280 ah=150 ax=70 arem=0 maxt=1 src=orig
 "gdh_sk_eyeoftwilight" EFFECT startms=2108 payload="" src=orig
 "gdh_sk_eyeoftwilight" EFFECT startms=2108 payload="FX_PC_GDHF_00.Par_D_ShotGun_GunFire_02" src=orig
 "gdh_sk_eyeoftwilight" EFFECT startms=2108 payload="FX_PC_GDHF_00.Par_D_SuperMove_02" src=orig
@@ -1295,7 +1295,7 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_perfectshot_success" CANCEL startms=0 endms=398 payload="[선스]" src=orig
 "gdh_sk_perfectshot_success" CANCEL startms=0 endms=401 payload="[선이]" src=orig
 "gdh_sk_perfectshot_success" CANCEL startms=0 endms=1067 payload="[회피기]" src=orig
-"gdh_sk_perfectshot_success" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_perfectshot_success" HIT startms=0 endms=200 rep=1 repms=0 fz=500 fzin=150 fzout=300 push=30 pushr=20 area=2 ar=1000 aa=100 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "gdh_sk_perfectshot_success" SOUND startms=0 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_PerfectShot1_FX000_3" src=orig
 "gdh_sk_perfectshot_success" SOUND startms=0 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_PerfectShot1_FX048_3" src=orig
 "gdh_sk_perfectshot_success" SUPERARMOR startms=0 endms=417 payload="" src=orig
@@ -1348,7 +1348,7 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_rapidfire" EFFECT startms=150 payload="FX_PC_GDH_00.Par_H_GDH_AgileShot_01_1" src=orig
 "gdh_sk_rapidfire" EFFECT startms=199 payload="" src=orig
 "gdh_sk_rapidfire" EFFECT startms=200 payload="FX_PC_GDH_00.Par_H_GDH_AgileShot_01_1" src=orig
-"gdh_sk_rapidfire" HIT startms=200 endms=300 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_rapidfire" HIT startms=200 endms=300 rep=2 repms=200 fz=900 fzin=200 fzout=300 push=20 pushr=20 area=1 ar=250 aa=360 ah=150 ax=40 arem=0 maxt=0 src=orig
 "gdh_sk_rapidfire" CANCEL startms=202 endms=1058 payload="[선스]" src=orig
 "gdh_sk_rapidfire" CANCEL startms=202 endms=1058 payload="[선이]" src=orig
 "gdh_sk_rapidfire" EFFECT startms=250 payload="FX_PC_GDH_00.Par_H_GDH_AgileShot_01_1" src=orig
@@ -1539,7 +1539,7 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_somersaultshot" EFFECT startms=350 payload="FX_CM_00.Dust.Par_MP_Dust_High_01" src=orig
 "gdh_sk_somersaultshot" EFFECT startms=450 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_somersaultshot" EFFECT startms=450 payload="FX_PC_GDH_00.Par_H_HandGun_GunFire_02_1" src=orig
-"gdh_sk_somersaultshot" HIT startms=450 endms=750 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_somersaultshot" HIT startms=450 endms=750 rep=2 repms=200 fz=900 fzin=200 fzout=300 push=5 pushr=5 area=1 ar=100 aa=0 ah=150 ax=60 arem=0 maxt=0 src=orig
 "gdh_sk_somersaultshot" EFFECT startms=475 payload="FX_PC_GDH_01.Par_K_GDH_SomersaultShot_Exp_01" src=orig
 "gdh_sk_somersaultshot" EFFECT startms=475 payload="FX_PC_GDH_01.Par_K_GDH_SomersaultShot_Exp_05_01" src=orig
 "gdh_sk_somersaultshot" EFFECT startms=499 payload="" src=orig
@@ -1568,7 +1568,7 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_somersaultshot_custom_1" EFFECT startms=475 payload="FX_PC_GDH_01.Par_K_GDH_SomersaultShot_Exp_05_01" src=orig
 "gdh_sk_somersaultshot_custom_1" EFFECT startms=475 payload="FX_PC_GDH_01.Par_K_GDH_SomersaultShot_Exp_01" src=orig
 "gdh_sk_somersaultshot_custom_1" EFFECT startms=499 payload="" src=orig
-"gdh_sk_somersaultshot_custom_1" HIT startms=500 endms=700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_somersaultshot_custom_1" HIT startms=500 endms=700 rep=2 repms=200 fz=900 fzin=200 fzout=300 push=5 pushr=5 area=1 ar=100 aa=0 ah=150 ax=60 arem=0 maxt=0 src=orig
 "gdh_sk_somersaultshot_custom_1" EFFECT startms=550 payload="FX_PC_GDH_01.Par_K_GDH_SomersaultShot_Exp_01" src=orig
 "gdh_sk_somersaultshot_custom_1" EFFECT startms=550 payload="FX_PC_GDH_01.Par_K_GDH_SomersaultShot_Exp_05_01" src=orig
 "gdh_sk_somersaultshot_custom_1" SOUND startms=650 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_SomersaultShot1_FX000_2" src=orig
@@ -2215,7 +2215,9 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_tripleshot" SUPERARMOR startms=0 endms=3004 payload="" src=orig
 "gdh_sk_tripleshot" SOUND startms=100 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_TripleShot1_FX000_1" src=orig
 "gdh_sk_tripleshot" CANCEL startms=490 endms=3200 payload="[회피기]" src=orig
-"gdh_sk_tripleshot" HIT startms=950 endms=1150 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_tripleshot" HIT startms=950 endms=1150 rep=1 repms=0 fz=600 fzin=150 fzout=300 push=20 pushr=20 area=3 ar=400 aa=120 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"gdh_sk_tripleshot" HIT startms=1700 endms=1900 rep=1 repms=0 fz=500 fzin=200 fzout=300 push=200 pushr=180 area=3 ar=400 aa=120 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"gdh_sk_tripleshot" HIT startms=2400 endms=2600 rep=1 repms=0 fz=500 fzin=200 fzout=300 push=200 pushr=50 area=3 ar=400 aa=120 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "gdh_sk_tripleshot" EFFECT startms=984 payload="" src=orig
 "gdh_sk_tripleshot" SOUND startms=984 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_TripleShot1_FX000_2" src=orig
 "gdh_sk_tripleshot" EFFECT startms=1000 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
@@ -2230,7 +2232,6 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_tripleshot" EFFECT startms=1700 payload="FX_PC_GDH_01.Par_O_GDH_TripleShot_01_01" src=orig
 "gdh_sk_tripleshot" EFFECT startms=1700 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_tripleshot" EFFECT startms=1700 payload="FX_PC_GDH_01.Par_O_GDH_TripleShot_02_01" src=orig
-"gdh_sk_tripleshot" HIT startms=1700 endms=1900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_tripleshot" SHAKE startms=1700 payload="" src=orig
 "gdh_sk_tripleshot" SOUND startms=1720 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_TripleShot1_FX000_3" src=orig
 "gdh_sk_tripleshot" CANCEL startms=2000 endms=2520 payload="" src=orig
@@ -2241,7 +2242,6 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_tripleshot" EFFECT startms=2400 payload="FX_PC_GDH_01.Par_O_GDH_TripleShot_01_01" src=orig
 "gdh_sk_tripleshot" EFFECT startms=2400 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_tripleshot" EFFECT startms=2400 payload="FX_PC_GDH_01.Par_O_GDH_TripleShot_02_01" src=orig
-"gdh_sk_tripleshot" HIT startms=2400 endms=2600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "gdh_sk_tripleshot" SHAKE startms=2400 payload="" src=orig
 "gdh_sk_tripleshot" EFFECT startms=2441 payload="" src=orig
 "gdh_sk_tripleshot" SOUND startms=2441 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_TripleShot1_FX000_4" src=orig
@@ -2259,7 +2259,7 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_tripleshot_01" EFFECT startms=700 payload="FX_PC_GDH_01.Par_O_GDH_TripleShot_02_01" src=orig
 "gdh_sk_tripleshot_01" EFFECT startms=700 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
 "gdh_sk_tripleshot_01" EFFECT startms=700 payload="FX_PC_GDH_01.Par_O_GDH_TripleShot_Dust_01_01" src=orig
-"gdh_sk_tripleshot_01" HIT startms=700 endms=900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_tripleshot_01" HIT startms=700 endms=900 rep=1 repms=0 fz=600 fzin=150 fzout=300 push=20 pushr=20 area=3 ar=400 aa=120 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "gdh_sk_tripleshot_01" SHAKE startms=700 payload="" src=orig
 "gdh_sk_tripleshot_01" SOUND startms=746 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_TripleShot1_FX000_2" src=orig
 "gdh_sk_tripleshot_01" EFFECT startms=750 payload="" src=orig
@@ -2276,7 +2276,7 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_tripleshot_02" EFFECT startms=200 payload="FX_PC_GDH_01.Par_O_GDH_TripleShot_02_01" src=orig
 "gdh_sk_tripleshot_02" EFFECT startms=200 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
 "gdh_sk_tripleshot_02" EFFECT startms=200 payload="FX_PC_GDH_01.Par_O_GDH_TripleShot_Dust_01_01" src=orig
-"gdh_sk_tripleshot_02" HIT startms=200 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_tripleshot_02" HIT startms=200 endms=400 rep=1 repms=0 fz=500 fzin=200 fzout=300 push=200 pushr=180 area=3 ar=400 aa=120 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "gdh_sk_tripleshot_02" SHAKE startms=200 payload="" src=orig
 "gdh_sk_tripleshot_02" EFFECT startms=250 payload="" src=orig
 "gdh_sk_tripleshot_02" SOUND startms=252 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_TripleShot1_FX000_3" src=orig
@@ -2294,7 +2294,7 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_tripleshot_03" EFFECT startms=300 payload="FX_PC_GDH_01.Par_O_GDH_TripleShot_02_01" src=orig
 "gdh_sk_tripleshot_03" EFFECT startms=300 payload="FX_PC_GDH_01.Par_O_GDH_TripleShot_Dust_01_01" src=orig
 "gdh_sk_tripleshot_03" EFFECT startms=300 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
-"gdh_sk_tripleshot_03" HIT startms=300 endms=500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_tripleshot_03" HIT startms=300 endms=500 rep=1 repms=0 fz=500 fzin=200 fzout=300 push=200 pushr=50 area=3 ar=400 aa=120 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "gdh_sk_tripleshot_03" SHAKE startms=300 payload="" src=orig
 "gdh_sk_tripleshot_03" EFFECT startms=335 payload="" src=orig
 "gdh_sk_tripleshot_03" SOUND startms=335 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_TripleShot1_FX000_4" src=orig
@@ -2312,7 +2312,7 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_tripleshot_04" EFFECT startms=800 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "gdh_sk_tripleshot_04" EFFECT startms=800 payload="FX_PC_GDH_01.Par_O_GDH_TripleShot_02_01" src=orig
 "gdh_sk_tripleshot_04" EFFECT startms=800 payload="" src=orig
-"gdh_sk_tripleshot_04" HIT startms=800 endms=1000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_tripleshot_04" HIT startms=800 endms=1000 rep=1 repms=0 fz=500 fzin=150 fzout=300 push=5 pushr=5 area=3 ar=400 aa=120 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "gdh_sk_tripleshot_04" EFFECT startms=802 payload="FX_PC_GDH_01.Par_O_GDH_TripleShot_Dust_02_01" src=orig
 "gdh_sk_tripleshot_04" SHAKE startms=802 payload="" src=orig
 "gdh_sk_tripleshot_04" EFFECT startms=803 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
@@ -2321,3 +2321,7 @@ LOSTARK_ANIM_EVENTS 3 "GunSlinger" 2322
 "gdh_sk_tripleshot_04" CANCEL startms=1100 endms=1567 payload="[스킬캔슬]" src=orig
 "gdh_sk_tripleshot_04" CANCEL startms=1100 endms=1567 payload="[이동캔슬]" src=orig
 "gdh_sk_tripleshot_04" SOUND startms=1300 payload="PC_DEVILHUNTER_F.PC_DevilHunter_F_SK_TripleShot1_FX000_5" src=orig
+"gdh_sk_hallucination_02" HIT startms=100 endms=100 rep=3 repms=150 fz=1300 fzin=150 fzout=300 push=5 pushr=5 area=2 ar=500 aa=120 ah=150 ax=-30 arem=0 maxt=0 src=orig
+"gdh_sk_timeofjudgement" HIT startms=1000 endms=1000 rep=1 repms=0 fz=600 fzin=150 fzout=300 push=20 pushr=20 area=1 ar=80 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"gdh_sk_plasmabullet" HIT startms=1000 endms=1000 rep=1 repms=0 fz=400 fzin=150 fzout=250 push=20 pushr=20 area=3 ar=90 aa=360 ah=100 ax=50 arem=0 maxt=0 src=orig
+"gdh_sk_super_eyeoftwilight_01" HIT startms=1451 endms=1471 rep=1 repms=0 fz=780 fzin=200 fzout=450 push=0 pushr=0 area=2 ar=1000 aa=500 ah=200 ax=-20 arem=0 maxt=0 src=orig

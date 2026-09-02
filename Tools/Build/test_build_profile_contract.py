@@ -337,6 +337,7 @@ class BuildProfileContractTests(unittest.TestCase):
             "ProjectDataRoot.cpp",
             "RuntimeAssetRoot.cpp",
             "SoundCueCatalog.cpp",
+            "ValtanCombatObjectSoundCueDocument.cpp",
             "ValtanPatternSoundCueDocument.cpp",
             "ActionPresentationTimeline.cpp",
             "CameraShakeService.cpp",
@@ -386,7 +387,7 @@ class BuildProfileContractTests(unittest.TestCase):
             "VerifyPartyTransferNotice",
         ):
             self.assertIn(assertion, party_tests)
-        self.assertIn("test_authored_document_is_the_deterministic_extracted_projection", sound_tests)
+        self.assertIn("test_authored_rows_are_deterministic_extracted_joins", sound_tests)
         self.assertIn("test_invalid_identity_join_window_and_repeat_are_fail_closed", sound_tests)
 
 

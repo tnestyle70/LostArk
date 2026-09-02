@@ -209,6 +209,9 @@ private:
 	void Render_PatternList();
 	void Render_CurrentPatternList();
 	void Render_SelectedPattern();
+	void Render_SelectedPatternRingAuthoring(
+		const VALTAN_PATTERN_VIEW& Pattern);
+	bool_t Save_SelectedPatternRingAuthoring();
 	void Select_Pattern(const VALTAN_PATTERN_VIEW& Pattern);
 	void Normalize_CurrentFlowSelection();
 	void Render_ConnectionSummary(
@@ -255,6 +258,11 @@ private:
 	std::array<char_t, 128u> m_NextPatternSearch{};
 	std::string m_strSelectedPatternId;
 	std::string m_strSelectedStageId;
+	/* Replicated observation is deliberately separate from manual inspector
+	   selection. Follow Live controls reveal/scroll only. */
+	std::string m_strLivePatternId;
+	std::string m_strLiveStageId;
+	std::string m_strLastAutoRevealedLivePatternId;
 	std::string m_strSelectedFlowSlotId;
 	std::string m_strSelectedCurrentFlowSlotId;
 	std::string m_strSelectedFlowEdgeId;

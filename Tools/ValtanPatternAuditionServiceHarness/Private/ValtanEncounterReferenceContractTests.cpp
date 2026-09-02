@@ -65,6 +65,29 @@ namespace
 			return false;
 		}
 		const auto committedDuration = committedTrash->iTotalDurationMs;
+		std::size_t committedGripStageCount = 0u;
+		for (const char* const patternId : {
+			"VALTAN_TRASH", "VALTAN_TRASH_CATCH_IF", "VALTAN_CATCH_BREATH" })
+		{
+			const auto* capturePattern = reference.Find_Pattern(patternId);
+			if (!Require(nullptr != capturePattern,
+				"encounter Product lost a left-hand capture Pattern"))
+				return false;
+			for (const auto& stage : capturePattern->stages)
+			{
+				if (!stage.gripLocalOffset.has_value())
+					continue;
+				++committedGripStageCount;
+				if (!Require(std::abs(stage.gripLocalOffset->fForwardM) <= 1.e-6f &&
+					std::abs(stage.gripLocalOffset->fUpM + 0.9f) <= 1.e-6f &&
+					std::abs(stage.gripLocalOffset->fRightM) <= 1.e-6f,
+					"encounter Product changed the authored wrist-local correction"))
+					return false;
+			}
+		}
+		if (!Require(7u == committedGripStageCount,
+			"encounter Product did not retain all seven stable capture actions"))
+			return false;
 		struct ScopedEncounterFixture
 		{
 			std::filesystem::path Directory, File;
@@ -123,6 +146,39 @@ namespace
 				"\",\"targetId\":\"" + target + "\",\"value\":" +
 				std::to_string(value) + ",\"durationMs\":" + std::to_string(duration) + "}";
 		};
+		const auto firstGripKey = original.find("\"gripLocalOffset\"");
+		const auto firstGripObject = original.find('{', firstGripKey);
+		const auto firstGripEnd = original.find('}', firstGripObject);
+		const auto firstGripComma = original.rfind(',', firstGripKey);
+		if (!Require(firstGripKey != std::string::npos &&
+			firstGripObject != std::string::npos &&
+			firstGripEnd != std::string::npos &&
+			firstGripComma != std::string::npos,
+			"encounter Product has no gripLocalOffset fixture"))
+			return false;
+		auto missingGrip = original;
+		missingGrip.erase(firstGripComma, firstGripEnd - firstGripComma + 1u);
+		if (!rejectedWithoutCommit(missingGrip, "missing capture gripLocalOffset",
+			"Encounter capture hit fields are incomplete:"))
+			return false;
+		const auto firstGripUp = original.find("\"upM\"", firstGripObject);
+		const auto firstGripUpColon = original.find(':', firstGripUp);
+		const auto firstGripUpValue = original.find_first_not_of(
+			" \t\r\n", firstGripUpColon + 1u);
+		const auto firstGripUpEnd = original.find_first_of(
+			",}\r\n", firstGripUpValue);
+		if (!Require(firstGripUp != std::string::npos &&
+			firstGripUpColon != std::string::npos &&
+			firstGripUpValue != std::string::npos &&
+			firstGripUpEnd != std::string::npos,
+			"encounter Product grip up component could not be located"))
+			return false;
+		auto invalidGrip = original;
+		invalidGrip.replace(firstGripUpValue,
+			firstGripUpEnd - firstGripUpValue, "10.01");
+		if (!rejectedWithoutCommit(invalidGrip, "out-of-range capture gripLocalOffset",
+			"Encounter capture hit contract is invalid:"))
+			return false;
 		for (const auto& [kind, target] : std::array<std::pair<std::string, std::string>, 2>{
 			std::pair{ "DAMAGE_GRABBED_PLAYERS", "damage.valtan.charge-grab-roar" },
 			std::pair{ "EXECUTE_GRABBED_PLAYERS", "boss.attachment.left-hand" } })

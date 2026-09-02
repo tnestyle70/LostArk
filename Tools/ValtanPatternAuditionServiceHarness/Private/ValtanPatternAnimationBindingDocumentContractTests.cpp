@@ -133,9 +133,78 @@ namespace
 		}
 	}
 
+	bool_t VerifyBodyVisibilityV4Parser()
+	{
+		const std::string valid = R"json({
+  "schema": "lostark.valtan-pattern-bindings",
+  "formatVersion": 4,
+  "bossArchetypeId": "BOSS_VALTAN",
+  "bindings": [
+    {
+      "actionId": "valtan.test.warp-leg",
+      "bodyVisibility": { "hiddenFromMs": 1300, "hiddenToMs": 1800 },
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.test.warp-leg.clip-01",
+          "clip": "mesh_att_battle_18_02",
+          "mappingBasis": "PROJECT_AUTHORED",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
+    }
+  ]
+})json";
+		std::string status;
+		BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT document;
+		if (!Require(CValtanPatternAnimationBindingDocument::Parse_Text(
+			valid, document, status) && 1u == document.Bindings.size() &&
+			document.Bindings[0].bHasBodyHiddenWindow &&
+			1300u == document.Bindings[0].iBodyHiddenFromMs &&
+			1800u == document.Bindings[0].iBodyHiddenToMs,
+			"Product v4 body visibility window did not parse: " + status))
+		{
+			return false;
+		}
+		const std::vector<std::string> clips{ "mesh_att_battle_18_02" };
+		if (!Require(CValtanPatternAnimationBindingDocument::Validate(
+			document, "BOSS_VALTAN", clips, status),
+			"Product v4 body visibility window did not validate: " + status))
+		{
+			return false;
+		}
+
+		std::string legacyWithWindow = valid;
+		const std::string versionFour = "\"formatVersion\": 4";
+		const std::size_t versionOffset = legacyWithWindow.find(versionFour);
+		legacyWithWindow.replace(versionOffset, versionFour.size(),
+			"\"formatVersion\": 3");
+		BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT rejected;
+		if (!Require(!CValtanPatternAnimationBindingDocument::Parse_Text(
+			legacyWithWindow, rejected, status),
+			"Product v3 admitted a v4-only body visibility field"))
+		{
+			return false;
+		}
+
+		std::string inverted = valid;
+		const std::string validWindow =
+			"\"hiddenFromMs\": 1300, \"hiddenToMs\": 1800";
+		const std::size_t windowOffset = inverted.find(validWindow);
+		inverted.replace(windowOffset, validWindow.size(),
+			"\"hiddenFromMs\": 1800, \"hiddenToMs\": 1300");
+		return Require(!CValtanPatternAnimationBindingDocument::Parse_Text(
+			inverted, rejected, status),
+			"Product v4 admitted an inverted body visibility window");
+	}
+
 	bool_t VerifyContract()
 	{
 		if (!VerifyAuthoritativeFreshnessGate())
+			return false;
+		if (!VerifyBodyVisibilityV4Parser())
 			return false;
 		const std::filesystem::path repository =
 			std::filesystem::current_path();
@@ -172,6 +241,28 @@ namespace
 		if (!Require(CValtanPatternAnimationBindingDocument::Validate(
 			sourceDocument, "BOSS_VALTAN", availableClips, status),
 			"real Valtan binding/available-clip join failed: " + status))
+		{
+			return false;
+		}
+		std::size_t warpVisibilityCount = 0u;
+		for (const BOSS_PATTERN_ANIMATION_BINDING& binding :
+			sourceDocument.Bindings)
+		{
+			if (binding.strActionId.rfind("valtan.sequence.warp.step-", 0u) != 0u ||
+				!binding.bHasBodyHiddenWindow)
+			{
+				continue;
+			}
+			if (!Require(1300u == binding.iBodyHiddenFromMs &&
+				1800u == binding.iBodyHiddenToMs,
+				"real Warp leg has a drifted body visibility window"))
+			{
+				return false;
+			}
+			++warpVisibilityCount;
+		}
+		if (!Require(8u == warpVisibilityCount,
+			"real Warp Product does not expose exactly eight hidden body windows"))
 		{
 			return false;
 		}

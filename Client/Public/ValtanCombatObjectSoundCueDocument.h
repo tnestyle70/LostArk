@@ -15,7 +15,10 @@ struct VALTAN_COMBAT_OBJECT_SOUND_CUE final
 {
 	std::string strBindingId;
 	std::string strCombatObjectArchetypeId;
+	/* Exactly one semantic Server event identity is authored. Damage-backed
+	   pulses use hitId; visual-only terminal pulses use presentationEventId. */
 	std::string strHitId;
+	std::string strPresentationEventId;
 	std::string strSoundBank;
 	std::string strSoundEvent;
 	/* Runtime-only assets pinned from the exact admitted catalog snapshot. */
@@ -54,9 +57,10 @@ private:
 	bool_t bActive = false;
 };
 
-/* Joins a presentation-only Sound binding to the Server-owned semantic hit.
-The combat object Product document proves the source tuple exists; the Server
-still transmits only that tuple and never learns an asset path. */
+/* Joins a presentation-only Sound binding to one Server-owned semantic event.
+The combat object Product document proves either the hitId or the
+presentationEventId tuple exists; the Server still transmits only that stable
+identity and never learns an asset path. */
 class CValtanCombatObjectSoundCueDocument final
 {
 public:

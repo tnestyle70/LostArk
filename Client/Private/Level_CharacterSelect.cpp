@@ -1676,20 +1676,8 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 		else if (m_pArenaSpawnGate->Can_Retry())
 			ImGui::SameLine(), ImGui::TextDisabled("Retry available");
 #ifdef _DEBUG
-		if (ImGui::Checkbox(
-			"Show Combat Colliders",
-			&m_isCombatColliderDebugVisible))
-		{
-			m_Replication.Set_CombatColliderDebugVisible(
-				m_isCombatColliderDebugVisible);
-		}
-		if (ImGui::Checkbox(
-			"Show Skill Hit Areas",
-			&m_isSkillHitAreaDebugVisible))
-		{
-			m_Replication.Set_SkillHitAreaDebugVisible(
-				m_isSkillHitAreaDebugVisible);
-		}
+		ImGui::TextDisabled(
+			"Combat geometry: F1 > Diagnostics > Live Combat Geometry");
 #endif
 	}
 

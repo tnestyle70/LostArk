@@ -45,6 +45,7 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
     def test_typed_balance_api_is_manual_only_and_stages_on_a_copy(self) -> None:
         for name in (
             "Insert_ValtanManualStageAfter",
+            "Promote_ValtanManualWaitStage",
             "Remove_ValtanManualStage",
             "Move_ValtanManualStage",
         ):
@@ -67,6 +68,22 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
         self.assertIn("IsValtanStableAuthoringId(actionId)", insert)
         self.assertIn("IsValtanManualStageRole(stageRole)", insert)
         self.assertIn("current->Stages.size() >= 64u", insert)
+
+        promote = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Promote_ValtanManualWaitStage(",
+        )
+        self.assertIn('"WAIT" != currentStage->strSequenceRole', promote)
+        self.assertIn('"ACTIVE" != stageRole', promote)
+        self.assertIn('"WINDUP" != stageRole', promote)
+        self.assertIn('"GROGGY" != stageRole', promote)
+        self.assertIn("waitContractValid", promote)
+        self.assertIn("stagedStage->strSequenceRole = stageRole", promote)
+        self.assertIn("stagedStage->strStageKind = stageRole", promote)
+        self.assertIn(
+            'AddValtanClosedFlagActions(*stagedStage, "boss.flag.groggy")',
+            promote,
+        )
 
     def test_wait_reuses_active_none_contract(self) -> None:
         constructor = function_body(
@@ -92,6 +109,7 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
         )
         for operation in (
             "INSERT_MANUAL_STAGE_AFTER",
+            "PROMOTE_MANUAL_WAIT_STAGE",
             "REMOVE_MANUAL_STAGE",
             "MOVE_MANUAL_STAGE",
         ):
@@ -220,7 +238,11 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
         forward = function_body(
             self.balance_cpp, "bool IsValtanCounterTopologyFiniteForward("
         )
-        self.assertIn("ReadValtanCounterWindow(pattern, source, counter, status)", forward)
+        self.assertIn(
+            "ReadValtanCounterWindow(\n\t\t\t\t\ttree, pattern, source, "
+            "counter, status)",
+            forward,
+        )
         self.assertIn("sourceIndex", forward)
         self.assertIn("counter.successStageId", forward)
 
@@ -301,7 +323,10 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
         self.assertIn("pattern.bManualServerAudition ||", draft)
         self.assertIn('const bool isWaitStage = "WAIT" == stage.strSequenceRole', draft)
         self.assertIn("pattern.bManualServerAudition && !isWaitStage", draft)
-        self.assertIn("draft.hitEditable = !isWaitStage", draft)
+        self.assertIn("draft.colliderAddAdmitted = !isWaitStage", draft)
+        self.assertIn("draft.colliderTuneAdmitted = !isWaitStage", draft)
+        self.assertIn("draft.colliderRemoveAdmitted = !isWaitStage", draft)
+        self.assertIn("draft.hitEditable = draft.colliderTuneAdmitted", draft)
         self.assertIn("draft.animationEditable = !isWaitStage", draft)
         setter = function_body(
             self.balance_cpp, "bool Client::CBalanceTool::Set_ValtanStageDraft("
@@ -318,6 +343,10 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
         self.assertIn("ImGui::BeginDisabled(!bCounterSourceEditable)", details)
         self.assertIn("iCandidate = iCurrentStageIndex + 1u", details)
         self.assertIn("WAIT is a clock-only gap", details)
+        for role in ("ACTIVE", "WINDUP", "GROGGY"):
+            self.assertIn(f'"Promote WAIT -> {role}"', details)
+        self.assertIn("Promote_ValtanManualWaitStage(", details)
+        self.assertIn("m_strSelectedStageId = Stage.strStageId", details)
         sequence = function_body(
             self.workbench_cpp,
             "bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage(",
@@ -330,6 +359,10 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
         self.assertIn("FitCompositionSequenceCutsToStage(", sequence)
         self.assertIn("while (iRemainingMs > NativeDurationsMs[iClip])", sequence)
         self.assertIn("Slot.repeatUntilStageEnd = false", sequence)
+        self.assertNotIn("3u == Selected->Clips.size()", sequence)
+        self.assertIn(
+            "IsRoleAwareHoldReplacementChain(ReplacementRoles)", sequence
+        )
         clock = function_body(self.workbench_cpp, "bool_t ApplyStageClockPolicy(")
         self.assertIn("Draft.animationSlots.empty()", clock)
         self.assertIn('"NONE" == Draft.animationEndPolicy', clock)
@@ -373,6 +406,18 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
         self.assertIn("pEffectiveSelectedPattern", browser)
         self.assertIn("pDisplayPattern->Stages", browser)
         self.assertIn("Select_Stage(*pDisplayPattern, Stage)", browser)
+
+        details = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render_Details(",
+        )
+        self.assertIn('"Selected Stage##CompositionStableStage"', details)
+        self.assertIn("StageSequenceRoleLabel(Candidate)", details)
+        self.assertIn("Select_Stage(*pPattern, Candidate)", details)
+        self.assertIn('OwnerButton("Stage / Logic"', details)
+        self.assertIn('OwnerButton("Collider"', details)
+        self.assertIn('OwnerButton("Camera"', details)
+        self.assertIn('pStage->strStageId + "/collider"', details)
 
     def test_boss_graph_generation_belongs_to_the_immutable_pattern_view(self) -> None:
         render = function_body(

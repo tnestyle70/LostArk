@@ -127,9 +127,10 @@ namespace LostArk::Server
 			LostArk::Shared::SESSION_DIAGNOSTIC_REASON& outFailureReason,
 			int& outNativeErrorCode,
 			std::string& outFailureContext);
-		bool Enqueue_AssignedCommand(
+		ROOM_COMMAND_ENQUEUE_RESULT Enqueue_AssignedCommand(
 			SESSION_ID sessionId,
-			ROOM_COMMAND command);
+			ROOM_COMMAND command,
+			std::string& outContext);
 		void Tick_GameplaySimulations(float fixedDeltaSeconds);
 		void Advance_ServerControlTransactions();
 		void Process_ValtanDecisionTraceQuery(

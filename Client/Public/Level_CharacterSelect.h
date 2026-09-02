@@ -229,8 +229,6 @@ private:
 	   Product Level. Ordinary Back/failure destruction still owns the close. */
 	bool_t m_preserveServerConnectionForTransfer = false;
 #ifdef _DEBUG
-	bool_t m_isCombatColliderDebugVisible = false;
-	bool_t m_isSkillHitAreaDebugVisible = true;
 	unique_ptr<CRaidEntryPreviewView> m_pDebugRaidEntryPreviewView;
 	bool_t m_wasODownForRaidEntryDebugPreview = false;
 #endif

@@ -6548,7 +6548,9 @@ void Client::CAnimation_Tool::Render_ValtanPresentationLanes(
 	struct JOINED_COMBAT_OBJECT_SOUND final
 	{
 		VALTAN_COMBAT_OBJECT_SOUND_CUE* pCue = nullptr;
-		uint32_t iHitOffsetMs = 0u;
+		std::string strServerEventId;
+		uint32_t iEventOffsetMs = 0u;
+		bool_t bPresentationEvent = false;
 	};
 	const std::vector<std::string> ValtanSoundEventNames =
 		CSoundCueCatalog::Collect_EventNames("Valtan");
@@ -6644,7 +6646,37 @@ void Client::CAnimation_Tool::Render_ValtanPresentationLanes(
 					continue;
 				}
 				CombatObjectSoundCues.push_back(
-					{ pJoinedCue, CombatObject.HitOffsetsMs[iHit] });
+					{ pJoinedCue, CombatObject.HitIds[iHit],
+						CombatObject.HitOffsetsMs[iHit], false });
+			}
+			for (const VALTAN_COMBAT_OBJECT_PRESENTATION_EVENT_VIEW& Event :
+				CombatObject.PresentationEvents)
+			{
+				VALTAN_COMBAT_OBJECT_SOUND_CUE* pJoinedCue = nullptr;
+				if (m_bValtanCombatObjectSoundCuesReady)
+				{
+					const auto Found = std::find_if(
+						m_ValtanCombatObjectSoundCues.Cues.begin(),
+						m_ValtanCombatObjectSoundCues.Cues.end(),
+						[&CombatObject, &Event](
+							const VALTAN_COMBAT_OBJECT_SOUND_CUE& Cue)
+						{
+							return Cue.strCombatObjectArchetypeId ==
+									CombatObject.strCombatObjectArchetypeId &&
+								Cue.strPresentationEventId ==
+									Event.strPresentationEventId;
+						});
+					if (Found != m_ValtanCombatObjectSoundCues.Cues.end())
+						pJoinedCue = &*Found;
+				}
+				if (nullptr == pJoinedCue)
+				{
+					++iMissingCombatObjectSounds;
+					continue;
+				}
+				CombatObjectSoundCues.push_back(
+					{ pJoinedCue, Event.strPresentationEventId,
+						Event.iAtMs, true });
 			}
 		}
 
@@ -6821,9 +6853,12 @@ void Client::CAnimation_Tool::Render_ValtanPresentationLanes(
 				CombatObjectSoundCues)
 			{
 				TrackSegment(
-					"Sound", Joined.iHitOffsetMs, Joined.iHitOffsetMs,
+					"Sound", Joined.iEventOffsetMs, Joined.iEventOffsetMs,
 					Joined.pCue->strBindingId + " | " +
-						Joined.pCue->strSoundEvent + " (combat-object local)",
+						Joined.pCue->strSoundEvent +
+						(Joined.bPresentationEvent ?
+							" (presentation-event local)" :
+							" (server-hit local)"),
 					IM_COL32(55, 150, 103, 255));
 			}
 			for (const VALTAN_CAMERA_INVOCATION_VIEW& Invocation :
@@ -6985,8 +7020,8 @@ void Client::CAnimation_Tool::Render_ValtanPresentationLanes(
 				ImGui::PopID();
 			}
 			if (!CombatObjectSoundCues.empty())
-				ImGui::SeparatorText("Server Hit Sound");
-			ImGui::PushID("server-hit-sounds");
+				ImGui::SeparatorText("Server Semantic Event Sound");
+			ImGui::PushID("server-semantic-event-sounds");
 			for (std::size_t iCue = 0u;
 				iCue < CombatObjectSoundCues.size(); ++iCue)
 			{
@@ -6995,10 +7030,12 @@ void Client::CAnimation_Tool::Render_ValtanPresentationLanes(
 				VALTAN_COMBAT_OBJECT_SOUND_CUE& Cue = *Joined.pCue;
 				ImGui::PushID(static_cast<int32_t>(iCue));
 				ImGui::BulletText(
-					"%s | %s + %s | event %s | object +%u ms",
+					"%s | %s + %s (%s) | event %s | object +%u ms",
 					Cue.strBindingId.c_str(),
-					Cue.strCombatObjectArchetypeId.c_str(), Cue.strHitId.c_str(),
-					Cue.strSoundEvent.c_str(), Joined.iHitOffsetMs);
+					Cue.strCombatObjectArchetypeId.c_str(),
+					Joined.strServerEventId.c_str(),
+					Joined.bPresentationEvent ? "presentation" : "hit",
+					Cue.strSoundEvent.c_str(), Joined.iEventOffsetMs);
 				ImGui::SetNextItemWidth(360.f);
 				if (ImGui::BeginCombo("Impact Sound Event", Cue.strSoundEvent.c_str()))
 				{
@@ -7036,7 +7073,7 @@ void Client::CAnimation_Tool::Render_ValtanPresentationLanes(
 			{
 				ImGui::TextColored(
 					ImVec4(1.f, 0.25f, 0.20f, 1.f),
-					"COVERAGE GAP: %zu Server combat-object hit(s) have no exact Sound binding.",
+					"COVERAGE GAP: %zu Server combat-object semantic event(s) have no exact Sound binding.",
 					iMissingCombatObjectSounds);
 			}
 

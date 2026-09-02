@@ -1,0 +1,473 @@
+{
+  "schema": "lostark.animation-hit-shapes",
+  "formatVersion": 3,
+  "animationAssetId": "Slayer",
+  "characterClass": "SLAYER",
+  "skills": [
+    {
+      "skillId": 45050,
+      "hits": [
+        {
+          "timeMs": 250,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 1.8,
+          "angle": 150,
+          "width": 0.0,
+          "height": 2.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 40,
+          "pushRange": 0.4
+        },
+        {
+          "timeMs": 2618,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 1.5,
+          "angle": 0,
+          "width": 0.0,
+          "height": 3.0,
+          "offset": 1.3,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2
+        }
+      ]
+    },
+    {
+      "skillId": 45060,
+      "hits": [
+        {
+          "timeMs": 100,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 2.5,
+          "angle": 0,
+          "width": 1.4,
+          "height": 1.5,
+          "offset": -0.4,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2
+        },
+        {
+          "timeMs": 383,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 2.5,
+          "angle": 0,
+          "width": 1.4,
+          "height": 1.5,
+          "offset": -0.7,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2
+        },
+        {
+          "timeMs": 1383,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 2.5,
+          "angle": 0,
+          "width": 1.4,
+          "height": 1.5,
+          "offset": -1.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2
+        },
+        {
+          "timeMs": 2317,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 1.5,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 0,
+          "pushRange": 0.0
+        },
+        {
+          "timeMs": 3583,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 2.5,
+          "angle": 0,
+          "width": 1.8,
+          "height": 2.0,
+          "offset": 0.5,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2
+        }
+      ]
+    },
+    {
+      "skillId": 45070,
+      "hits": [
+        {
+          "timeMs": 100,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 2.0,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05
+        },
+        {
+          "timeMs": 400,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 2.8,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 2.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05
+        },
+        {
+          "timeMs": 700,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 1.9,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.5,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2
+        },
+        {
+          "timeMs": 1000,
+          "repeatCount": 3,
+          "repeatMs": 500,
+          "areaType": 1,
+          "range": 2.2,
+          "angle": 0,
+          "width": 0.0,
+          "height": 2.0,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05
+        },
+        {
+          "timeMs": 1293,
+          "repeatCount": 2,
+          "repeatMs": 150,
+          "areaType": 1,
+          "range": 2.8,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 2.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05
+        },
+        {
+          "timeMs": 1300,
+          "repeatCount": 2,
+          "repeatMs": 150,
+          "areaType": 1,
+          "range": 2.0,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05
+        },
+        {
+          "timeMs": 1900,
+          "repeatCount": 2,
+          "repeatMs": 150,
+          "areaType": 1,
+          "range": 2.8,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 2.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05
+        },
+        {
+          "timeMs": 2200,
+          "repeatCount": 2,
+          "repeatMs": 150,
+          "areaType": 1,
+          "range": 2.8,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 2.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05
+        },
+        {
+          "timeMs": 2500,
+          "repeatCount": 2,
+          "repeatMs": 150,
+          "areaType": 1,
+          "range": 2.8,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 2.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05
+        },
+        {
+          "timeMs": 2800,
+          "repeatCount": 2,
+          "repeatMs": 150,
+          "areaType": 1,
+          "range": 2.8,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 2.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05
+        },
+        {
+          "timeMs": 3000,
+          "repeatCount": 2,
+          "repeatMs": 150,
+          "areaType": 1,
+          "range": 2.8,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 2.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05
+        },
+        {
+          "timeMs": 3100,
+          "repeatCount": 2,
+          "repeatMs": 150,
+          "areaType": 1,
+          "range": 2.8,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 2.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05
+        },
+        {
+          "timeMs": 3600,
+          "repeatCount": 2,
+          "repeatMs": 150,
+          "areaType": 1,
+          "range": 2.8,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 2.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05
+        },
+        {
+          "timeMs": 3700,
+          "repeatCount": 2,
+          "repeatMs": 150,
+          "areaType": 1,
+          "range": 2.8,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 2.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05
+        },
+        {
+          "timeMs": 3800,
+          "repeatCount": 2,
+          "repeatMs": 150,
+          "areaType": 1,
+          "range": 2.8,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 2.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05
+        }
+      ]
+    },
+    {
+      "skillId": 45190,
+      "hits": [
+        {
+          "timeMs": 65,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 1.8,
+          "angle": 360,
+          "width": 0.0,
+          "height": 3.0,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 0,
+          "pushRange": 0.0
+        }
+      ]
+    },
+    {
+      "skillId": 45210,
+      "hits": [
+        {
+          "timeMs": 500,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 2.6,
+          "angle": 0,
+          "width": 1.6,
+          "height": 1.5,
+          "offset": 0.25,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2
+        }
+      ]
+    },
+    {
+      "skillId": 45300,
+      "hits": [
+        {
+          "timeMs": 1083,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 2.0,
+          "angle": 0,
+          "width": 0.0,
+          "height": 2.0,
+          "offset": 2.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2
+        }
+      ]
+    },
+    {
+      "skillId": 45600,
+      "hits": [
+        {
+          "timeMs": 1000,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 5.0,
+          "angle": 90,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 20,
+          "pushRange": 0.2
+        }
+      ]
+    },
+    {
+      "skillId": 45620,
+      "hits": [
+        {
+          "timeMs": 713,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 1.9,
+          "angle": 360,
+          "width": 0.0,
+          "height": 2.0,
+          "offset": 2.5,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 130,
+          "pushRange": 2.0
+        }
+      ]
+    },
+    {
+      "skillId": 45810,
+      "hits": [
+        {
+          "timeMs": 2200,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 9.0,
+          "angle": 0,
+          "width": 5.5,
+          "height": 4.5,
+          "offset": -0.5,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 0,
+          "pushRange": 0.0
+        }
+      ]
+    }
+  ]
+}

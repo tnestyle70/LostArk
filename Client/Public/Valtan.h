@@ -12,6 +12,7 @@
 #include "ValtanPatternSoundCueDocument.h"
 #include "ValtanCombatObjectSoundCueDocument.h"
 #include "ValtanPresentationGenerationAdmission.h"
+#include "PlayerHandGripTransform.h"
 
 #include <algorithm>
 #include <cmath>
@@ -337,17 +338,25 @@ public:
 		return m_PresentationGenerationReceipt;
 	}
 	const std::string& Get_ServerActionId() const { return m_strServerActionId; }
+	bool_t Try_Get_PlayerHandGripLocalOffset(
+		std::string_view actionId,
+		Client::PLAYER_HAND_GRIP_LOCAL_OFFSET& outOffset) const;
 #ifdef _DEBUG
 	/* Process-local visual A/B only.  Server pattern timing and the Product V0
 	   cue document remain authoritative in both modes. */
 	static void Set_PatternEffectV1AuditionEnabled(bool_t bEnabled);
 	static bool_t Is_PatternEffectV1AuditionEnabled();
 	void Set_NavigationDebugVisible(bool_t isVisible) { m_isNavigationDebugVisible = isVisible; }
-	void Set_CombatColliderDebugVisible(bool_t isVisible) {
-		m_isCombatColliderDebugVisible = isVisible;
-	}
-	void Set_PatternHitAreaDebugVisible(bool_t isVisible) {
-		m_isPatternHitAreaDebugVisible = isVisible;
+	void Set_CombatDebugVisibility(
+		bool_t bBossBodyCollider,
+		bool_t bPatternHitPulse,
+		bool_t bStageGeometry,
+		bool_t bCounterProxy)
+	{
+		m_isCombatColliderDebugVisible = bBossBodyCollider;
+		m_isPatternHitPulseDebugVisible = bPatternHitPulse;
+		m_isPatternStageGeometryDebugVisible = bStageGeometry;
+		m_isCounterProxyDebugVisible = bCounterProxy;
 	}
 	/* Animation Tool preview: draws the same pattern hit wires from a
 	   tool-driven stage clock instead of the server snapshot. */
@@ -388,6 +397,10 @@ private:
 	/* The Server keeps this primary boss alive and damage-authoritative while
 	one phase-three relocation snapshot suppresses only its part render queues. */
 	bool_t m_isGhostPresentationHidden = false;
+	/* Presentation-only window projected from the authored Stage. Unlike the
+	   replicated relocation flag, this hides part render submission while
+	   keeping the Stage's Effect clocks alive. */
+	bool_t m_isPatternBodyHidden = false;
 	uint8_t m_iBrokenArmorMask = 0u;
 	std::uint64_t m_iLastBossCombatEventSequence = 0u;
 	DEFERRED_EMISSIVE_OVERRIDE m_HitFlash;
@@ -471,6 +484,17 @@ private:
 	std::unordered_map<std::string,
 		std::vector<BOSS_PATTERN_ANIMATION_CLIP>>
 		m_PatternClipByActionId;
+	struct PATTERN_BODY_VISIBILITY_WINDOW final
+	{
+		uint32_t iHiddenFromMs = 0u;
+		uint32_t iHiddenToMs = 0u;
+	};
+	std::unordered_map<std::string, PATTERN_BODY_VISIBILITY_WINDOW>
+		m_PatternBodyVisibilityByActionId;
+	/* Product capture presentation, keyed by the same stable Stage actionId as
+	   the Server snapshot. Missing action IDs retain the legacy wrist origin. */
+	std::unordered_map<std::string, PLAYER_HAND_GRIP_LOCAL_OFFSET>
+		m_PlayerHandGripLocalOffsetByActionId;
 	bool_t m_bLocalPatternAuthoringPreview = false;
 	std::unordered_map<std::string,
 		std::vector<BOSS_PATTERN_ANIMATION_CLIP>>
@@ -497,6 +521,7 @@ private:
 		f32_t fRadiusM = 0.f;
 		f32_t fStartAngleDegrees = 0.f;
 		f32_t fAngleStepDegrees = 0.f;
+		uint32_t iFirstSpawnOffsetMs = 0u;
 		uint32_t iLifetimeMs = 0u;
 		std::vector<LOCAL_PATTERN_COMBAT_OBJECT_EVENT> PresentationEvents;
 	};
@@ -578,6 +603,9 @@ private:
 		uint32_t iHitDelayMs = 0u;
 		uint32_t iStageDurationMs = 0u;
 		std::vector<uint32_t> HitOffsetsMs;
+		bool_t bHasActivation = false;
+		uint32_t iActivationStartMs = 0u;
+		uint32_t iActivationLifetimeMs = 0u;
 		/* Separate player-attack -> boss hurt proxy.  It is active for the
 		   whole WINDUP Stage and must never be presented as a boss damage hit. */
 		bool_t bHasCounterProxy = false;
@@ -589,7 +617,9 @@ private:
 	};
 	bool_t m_isNavigationDebugVisible = { false };
 	bool_t m_isCombatColliderDebugVisible = { false };
-	bool_t m_isPatternHitAreaDebugVisible = { true };
+	bool_t m_isPatternHitPulseDebugVisible = { true };
+	bool_t m_isPatternStageGeometryDebugVisible = { true };
+	bool_t m_isCounterProxyDebugVisible = { true };
 	bool_t m_isPatternHitAreaDebugLoadAttempted = { false };
 	std::unordered_map<std::string, PATTERN_HIT_AREA_DEBUG>
 		m_PatternHitAreaByActionId;
@@ -616,6 +646,8 @@ private:
 	HRESULT Ready_Components(f32_t collisionRadius);
 	void Load_PatternBindings();
 	bool_t Reload_PatternBindings_WhileAdmitted(std::string& strOutStatus);
+	bool_t Reload_PlayerHandGripLocalOffsets_WhileAdmitted(
+		std::string& strOutStatus);
 	bool_t Apply_PatternPresentationSample(
 		std::string_view actionId,
 		std::string_view fallbackClipName,

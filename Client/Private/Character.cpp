@@ -2128,8 +2128,6 @@ void CCharacter::Draw_SkillHitAreaDebug() const
 			CHitAreaWire::Draw(Root, Shape, PROJECTILE_COLOR_RGBA);
 		}
 	}
-	if (m_EffectCueDocument.Hits.empty())
-		return;
 	const uint32_t iAnimation = m_pBodyModel->Get_CurrentAnimIndex();
 	const char_t* pClipName = m_pBodyModel->Get_AnimationName(iAnimation);
 	f32_t fPosition = 0.f;
@@ -2139,6 +2137,28 @@ void CCharacter::Draw_SkillHitAreaDebug() const
 	if (nullptr == pClipName || fTicksPerSecond <= 0.f ||
 		!m_pBodyModel->Get_AnimationProgress(iAnimation, fPosition, fDuration))
 		return;
+	f32_t fFallbackRangeMeters = 0.f;
+	if (Try_Get_CurrentFallbackHitRange(fFallbackRangeMeters))
+	{
+		/* HIT_AREA_SHAPE stores the source centimetre integer while
+		   PlayerSkills.maximumRange and Server collision are metres. The gray
+		   wire deliberately mirrors only the Server's existing single-target
+		   fallback radius; it never participates in Client collision. */
+		HIT_AREA_SHAPE Fallback{};
+		Fallback.iAreaType = 1;
+		Fallback.iAreaRange = static_cast<int32_t>(std::lround(
+			fFallbackRangeMeters * 100.f));
+		constexpr uint32_t FALLBACK_RANGE_COLOR_RGBA =
+			170u | (170u << 8) | (170u << 16) | (255u << 24);
+		float4x4_t Root = *m_pTransformCom->Get_WorldMatrixPtr();
+		if (m_hasNetworkSkillTarget)
+		{
+			Root._41 = m_NetworkSkillTarget.x;
+			Root._42 = m_NetworkSkillTarget.y;
+			Root._43 = m_NetworkSkillTarget.z;
+		}
+		CHitAreaWire::Draw(Root, Fallback, FALLBACK_RANGE_COLOR_RGBA);
+	}
 	const f32_t fNowMs = fPosition * 1000.f / fTicksPerSecond;
 	constexpr uint32_t ACTIVE_HIT_COLOR_RGBA =
 		255u | (70u << 8) | (60u << 16) | (255u << 24);
@@ -2162,6 +2182,57 @@ void CCharacter::Draw_SkillHitAreaDebug() const
 			}
 		}
 	}
+}
+
+bool_t CCharacter::Try_Get_CurrentFallbackHitRange(
+	f32_t& fOutRangeMeters) const
+{
+	fOutRangeMeters = 0.f;
+	if (LostArk::Shared::PLAYER_ACTION_STATE::SKILL != m_eNetworkAction ||
+		nullptr == m_pChain || m_iChainStage < 0 ||
+		static_cast<size_t>(m_iChainStage) >= m_pChain->stages.size())
+	{
+		return false;
+	}
+	const PLAYER_SKILL_DEFINITION* pSkill =
+		CPlayerSkillCatalog::Find_ById(m_iCurrentEffectSkillId);
+	if (nullptr == pSkill || 0u == pSkill->iDamageRatePercent ||
+		!std::isfinite(pSkill->fMaximumRange) || pSkill->fMaximumRange <= 0.f)
+	{
+		return false;
+	}
+	/* HOLD windup/loop and COUNTER guard carry the skill's damage profile but
+	   intentionally do not deal damage on the Server. Only their final/counter
+	   stage is eligible for either authored shapes or the range fallback. */
+	if ((LostArk::Shared::PLAYER_SKILL_KIND::HOLD == pSkill->eSkillKind &&
+		m_iChainStage != 2) ||
+		(LostArk::Shared::PLAYER_SKILL_KIND::COUNTER == pSkill->eSkillKind &&
+		m_iChainStage != 1))
+	{
+		return false;
+	}
+	const CLIP_STAGE& Stage = m_pChain->stages[m_iChainStage];
+	for (const CLIP_STEP& Step : Stage.clips)
+	{
+		const bool_t hasCasterHit = std::any_of(
+			m_EffectCueDocument.Hits.begin(), m_EffectCueDocument.Hits.end(),
+			[&Step](const ANIMATION_HIT_CUE& Hit)
+			{
+				return Hit.Shape.iAreaType > 0 && Hit.strClipName == Step.clip;
+			});
+		const bool_t hasProjectileHit = std::any_of(
+			m_EffectCueDocument.Projectiles.begin(),
+			m_EffectCueDocument.Projectiles.end(),
+			[&Step](const ANIMATION_PROJECTILE_CUE& Projectile)
+			{
+				return !Projectile.Shapes.empty() &&
+					Projectile.strClipName == Step.clip;
+			});
+		if (hasCasterHit || hasProjectileHit)
+			return false;
+	}
+	fOutRangeMeters = pSkill->fMaximumRange;
+	return true;
 }
 #endif
 

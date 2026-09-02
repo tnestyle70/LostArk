@@ -943,7 +943,7 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
             repository_root / "Client/Bin/Resources",
         )
         self.assertEqual(2, canonical["formatVersion"])
-        self.assertEqual(42, len(admitted["bindings"]))
+        self.assertEqual(65, len(admitted["bindings"]))
         binding_ids = [row["bindingId"] for row in admitted["bindings"]]
         self.assertEqual(sorted(binding_ids), binding_ids)
         self.assertEqual(len(binding_ids), len(set(binding_ids)))
@@ -993,6 +993,8 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
                 "boss.valtan.portal": 2,
                 "boss.valtan.pounding": 2,
                 "boss.valtan.pounding.chase": 4,
+                "boss.valtan.project-tuned.sequence.trash.pulse-group": 1,
+                "boss.valtan.rock-pillar.sequence": 2,
                 "boss.valtan.shout": 20,
                 "boss.valtan.shout.burst": 6,
                 "boss.valtan.twohand": 9,
@@ -1003,11 +1005,13 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
             {
                 "boss.valtan.axe": 5600,
                 "boss.valtan.impact": 5000,
-                "boss.valtan.magicball": 10000,
+                "boss.valtan.magicball": 12000,
                 "boss.valtan.magicball.aura": 10000,
                 "boss.valtan.portal": 3000,
                 "boss.valtan.pounding": 2000,
                 "boss.valtan.pounding.chase": 4100,
+                "boss.valtan.project-tuned.sequence.trash.pulse-group": 600,
+                "boss.valtan.rock-pillar.sequence": 6200,
                 "boss.valtan.shout": 3000,
                 "boss.valtan.shout.burst": 1000,
                 "boss.valtan.twohand": 2000,

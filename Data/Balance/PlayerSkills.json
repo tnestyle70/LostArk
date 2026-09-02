@@ -707,7 +707,7 @@
         {
           "actionDurationMs": 1000,
           "hitTimeMs": 121,
-          "comboAdvanceMs": 121,
+          "comboAdvanceMs": 421,
           "inputOpenMs": 75,
           "inputCloseMs": 360
         },

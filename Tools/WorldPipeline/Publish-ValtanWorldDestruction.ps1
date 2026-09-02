@@ -600,6 +600,8 @@ function Compile-ValtanWorldDestruction {
     foreach ($pattern in @($Encounter.patterns)) {
         Assert-StableId $pattern.patternId 'encounter patternId'
         Assert-UniqueId $patternIds ([string]$pattern.patternId) 'encounter patternId'
+        $hasPatternServerMotion =
+            $null -ne $pattern.PSObject.Properties['serverMotion']
         $stageIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         $stages = @{}
         $stageIndex = 0
@@ -615,7 +617,8 @@ function Compile-ValtanWorldDestruction {
 			if ($null -ne $stage.PSObject.Properties['actions']) {
 				$expectedStageProperties += 'actions'
 			}
-			if ($null -ne $stage.PSObject.Properties['motion']) {
+			$hasStageMotion = $null -ne $stage.PSObject.Properties['motion']
+			if ($hasStageMotion) {
 				$expectedStageProperties += 'motion'
 			}
 			if ($null -ne $stage.PSObject.Properties['hitOffsetsMs']) {
@@ -654,7 +657,9 @@ function Compile-ValtanWorldDestruction {
 					throw "Encounter counterProxy shape is invalid: $($pattern.patternId)/$($stage.stageId)"
 				}
 			}
-			if ($null -ne $stage.PSObject.Properties['bossResponse']) {
+			$hasBossResponse =
+				$null -ne $stage.PSObject.Properties['bossResponse']
+			if ($hasBossResponse) {
 				$expectedStageProperties += 'bossResponse'
 				Assert-ExactProperties -Value $stage.bossResponse -Expected @(
 					'kind','threshold') -Context "$($pattern.patternId) bossResponse"
@@ -664,18 +669,43 @@ function Compile-ValtanWorldDestruction {
 				$null = Assert-JsonInteger $stage.bossResponse.threshold `
 					"$($pattern.patternId) bossResponse threshold" 1 ([uint32]::MaxValue)
 			}
+			$hasStageVerticalOffset =
+				$null -ne $stage.PSObject.Properties['verticalOffsetM']
+			if ($hasStageVerticalOffset) {
+				$expectedStageProperties += 'verticalOffsetM'
+				$stageVerticalOffsetM = Assert-JsonNumber `
+					$stage.verticalOffsetM `
+					"$($pattern.patternId) stage $($stage.stageId) verticalOffsetM" `
+					-100.0 100.0
+				if ([double]$stageVerticalOffsetM -eq 0.0 -or
+					-not $hasBossResponse -or $hasPatternServerMotion -or
+					$hasStageMotion) {
+					throw "Encounter stage verticalOffsetM requires an active boss response without server motion: $($pattern.patternId)/$($stage.stageId)"
+				}
+			}
 			$hasPlayerResponse =
 				$null -ne $stage.PSObject.Properties['playerResponse']
 			$hasAttachmentSlot =
 				$null -ne $stage.PSObject.Properties['attachmentSlot']
-			if ($hasPlayerResponse -ne $hasAttachmentSlot) {
-				throw "Encounter capture fields must be authored together: $($pattern.patternId)/$($stage.stageId)"
+			$hasGripLocalOffset =
+				$null -ne $stage.PSObject.Properties['gripLocalOffset']
+			if ($hasPlayerResponse -ne $hasAttachmentSlot -or
+				$hasPlayerResponse -ne $hasGripLocalOffset) {
+				throw "Encounter capture fields and gripLocalOffset must be authored together: $($pattern.patternId)/$($stage.stageId)"
 			}
 			if ($hasPlayerResponse) {
-				$expectedStageProperties += @('playerResponse','attachmentSlot')
+				$expectedStageProperties += @(
+					'playerResponse','attachmentSlot','gripLocalOffset')
 				if ([string]$stage.playerResponse -cne 'CAPTURE' -or
 					[string]$stage.attachmentSlot -cne 'BOSS_LEFT_HAND') {
 					throw "Encounter capture fields are invalid: $($pattern.patternId)/$($stage.stageId)"
+				}
+				Assert-ExactProperties -Value $stage.gripLocalOffset -Expected @(
+					'forwardM','upM','rightM') `
+					-Context "$($pattern.patternId) gripLocalOffset"
+				foreach ($field in @('forwardM','upM','rightM')) {
+					$null = Assert-JsonNumber $stage.gripLocalOffset.$field `
+						"$($pattern.patternId) gripLocalOffset $field" -10.0 10.0
 				}
 			}
             Assert-ExactProperties -Value $stage -Expected $expectedStageProperties -Context "$($pattern.patternId) stage"
@@ -1747,6 +1777,48 @@ function Invoke-ContractTests {
         throw "World destruction compiler must return one artifact set, got $($compilerResults.Count)."
     }
     $canonical = $compilerResults[0]
+	$capturePatternId = 'VALTAN_TRASH'
+	$captureStageId = 'STEP_08'
+	$captureStage = ($encounter.patterns | Where-Object {
+		$_.patternId -ceq $capturePatternId
+	}).stages | Where-Object {
+		$_.stageId -ceq $captureStageId
+	} | Select-Object -First 1
+	if ($null -eq $captureStage -or
+		$null -eq $captureStage.PSObject.Properties['gripLocalOffset']) {
+		throw 'World destruction contract fixture has no typed capture gripLocalOffset.'
+	}
+
+	$missingCaptureGrip = Copy-JsonObject $encounter
+	$missingCaptureGripStage = ($missingCaptureGrip.patterns | Where-Object {
+		$_.patternId -ceq $capturePatternId
+	}).stages | Where-Object {
+		$_.stageId -ceq $captureStageId
+	} | Select-Object -First 1
+	$missingCaptureGripStage.PSObject.Properties.Remove('gripLocalOffset')
+	Assert-Throws {
+		Compile-ValtanWorldDestruction $source $missingCaptureGrip $simulation
+	} 'capture stage without gripLocalOffset'
+
+	$orphanCaptureGrip = Copy-JsonObject $encounter
+	$ordinaryStage = $orphanCaptureGrip.patterns[0].stages[0]
+	$ordinaryStage | Add-Member -NotePropertyName gripLocalOffset `
+		-NotePropertyValue (Copy-JsonObject $captureStage.gripLocalOffset)
+	Assert-Throws {
+		Compile-ValtanWorldDestruction $source $orphanCaptureGrip $simulation
+	} 'gripLocalOffset outside a typed capture stage'
+
+	$invalidCaptureGrip = Copy-JsonObject $encounter
+	$invalidCaptureGripStage = ($invalidCaptureGrip.patterns | Where-Object {
+		$_.patternId -ceq $capturePatternId
+	}).stages | Where-Object {
+		$_.stageId -ceq $captureStageId
+	} | Select-Object -First 1
+	$invalidCaptureGripStage.gripLocalOffset.upM = 10.01
+	Assert-Throws {
+		Compile-ValtanWorldDestruction $source $invalidCaptureGrip $simulation
+	} 'capture gripLocalOffset outside the bounded local-metre contract'
+
     $gameplay = Read-JsonDocument $GameplayWorldPath
     $wallMutationOwners = @($canonical.ServerLines | Where-Object {
         $_.StartsWith("M`t", [StringComparison]::Ordinal)
@@ -2154,6 +2226,60 @@ function Invoke-ContractTests {
         Where-Object stageId -CEQ $firstStageId | Select-Object -First 1
     $landing.actionId = 'valtan.mechanic.arena-break-109.mismatch'
     Assert-Throws { Compile-ValtanWorldDestruction $enabled $actionMismatchEncounter $simulation } 'action mismatch'
+
+    $zeroVerticalOffsetEncounter = Copy-JsonObject $encounter
+    $zeroVerticalOffsetStage =
+        ($zeroVerticalOffsetEncounter.patterns | Where-Object patternId -CEQ 'VALTAN_STAGGER_SLOT').stages |
+        Where-Object stageId -CEQ 'CHANNEL' | Select-Object -First 1
+    $zeroVerticalOffsetStage.verticalOffsetM = 0.0
+    Assert-Throws {
+        Compile-ValtanWorldDestruction $enabled $zeroVerticalOffsetEncounter $simulation
+    } 'zero stage vertical offset'
+
+    $unownedVerticalOffsetEncounter = Copy-JsonObject $encounter
+    $unownedVerticalOffsetStage =
+        ($unownedVerticalOffsetEncounter.patterns | Where-Object patternId -CEQ 'VALTAN_STAGGER_SLOT').stages |
+        Where-Object stageId -CEQ 'CHANNEL' | Select-Object -First 1
+    $unownedVerticalOffsetStage.PSObject.Properties.Remove('bossResponse')
+    Assert-Throws {
+        Compile-ValtanWorldDestruction $enabled $unownedVerticalOffsetEncounter $simulation
+    } 'stage vertical offset without boss response'
+
+    $movingVerticalOffsetEncounter = Copy-JsonObject $encounter
+    $movingVerticalOffsetStage =
+        ($movingVerticalOffsetEncounter.patterns | Where-Object patternId -CEQ 'VALTAN_STAGGER_SLOT').stages |
+        Where-Object stageId -CEQ 'CHANNEL' | Select-Object -First 1
+    $movingVerticalOffsetStage | Add-Member -NotePropertyName motion -NotePropertyValue ([pscustomobject]@{
+        kind = 'FORWARD'
+        distance = 1.0
+    })
+    Assert-Throws {
+        Compile-ValtanWorldDestruction $enabled $movingVerticalOffsetEncounter $simulation
+    } 'stage vertical offset with stage motion'
+
+    $serverMovingVerticalOffsetEncounter = Copy-JsonObject $encounter
+    $serverMovingVerticalOffsetPattern =
+        $serverMovingVerticalOffsetEncounter.patterns |
+        Where-Object patternId -CEQ 'VALTAN_STAGGER_SLOT' | Select-Object -First 1
+    $serverMotionTemplate =
+        $serverMovingVerticalOffsetEncounter.patterns |
+        Where-Object { $null -ne $_.PSObject.Properties['serverMotion'] } |
+        Select-Object -First 1
+    $serverMovingVerticalOffsetPattern | Add-Member `
+        -NotePropertyName serverMotion `
+        -NotePropertyValue (Copy-JsonObject $serverMotionTemplate.serverMotion)
+    Assert-Throws {
+        Compile-ValtanWorldDestruction $enabled $serverMovingVerticalOffsetEncounter $simulation
+    } 'stage vertical offset with pattern server motion'
+
+    $outOfRangeVerticalOffsetEncounter = Copy-JsonObject $encounter
+    $outOfRangeVerticalOffsetStage =
+        ($outOfRangeVerticalOffsetEncounter.patterns | Where-Object patternId -CEQ 'VALTAN_STAGGER_SLOT').stages |
+        Where-Object stageId -CEQ 'CHANNEL' | Select-Object -First 1
+    $outOfRangeVerticalOffsetStage.verticalOffsetM = 100.01
+    Assert-Throws {
+        Compile-ValtanWorldDestruction $enabled $outOfRangeVerticalOffsetEncounter $simulation
+    } 'out-of-range stage vertical offset'
 
     $unknownSimulationField = Copy-JsonObject $simulation
     $unknownSimulationField.profiles[0].elements[0] |

@@ -49,6 +49,7 @@
 #include "BossTool.h"
 #include "CameraTool.h"
 #include "CharacterPreviewPanel.h"
+#include "ClientReplication.h"
 #include "Effect_Tool.h"
 #include "Effect_Tool_V2.h"
 #include "EquipmentAuthoringTool.h"
@@ -340,21 +341,6 @@ namespace
 			static_cast<int32_t>(iServerTick - iDeadlineTick) < 0;
 	}
 
-	void Update_SilenceRSlotMask(
-		Client::CUILayoutRuntime* pView,
-		const Client::HUD_PLAYER_STATE& Player)
-	{
-		if (nullptr == pView)
-			return;
-
-		const bool_t bSilenced =
-			Is_ServerDeadlinePending(Player.iServerTick, Player.iSilenceEndTick);
-
-		/* Silence owns a dedicated read-only overlay.  The resolved R icon and its
-		ordinary cooldown sweep stay untouched, so the exact replicated deadline
-		can only reveal or hide this one stable mask slot. */
-		pView->Set_SlotVisible("Skill_R_SilenceMask", bSilenced);
-	}
 }
 
 CMainApp* CMainApp::s_pActiveInstance = nullptr;
@@ -1831,7 +1817,6 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	Update_ChargeGauge();
 	Update_SkillIcons();
 	Update_SkillCooldowns();
-	Update_SilenceRSlotMask(m_pHUDRuntimeView.get(), player);
 	Update_QuickSlotFlash();
 	Update_ItemQuickSlots();
 	if (nullptr != m_pInventoryView)
@@ -3014,8 +2999,16 @@ void CMainApp::Update_SkillCooldowns()
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
 	const float4_t vCooldownTint =
 		float4_t(0.f, 0.f, 0.f, 150.f / 255.f);
+	const float4_t vSilenceTint =
+		float4_t(0.85f, 0.f, 0.f, 150.f / 255.f);
+	const bool_t bSilenced =
+		Is_ServerDeadlinePending(player.iServerTick, player.iSilenceEndTick);
 
-	/* Default every overlay off; the loop below turns on just the ones actually cooling down.
+	/* Default every overlay to either the exact Server-owned silence mask or off;
+	then the cooldown loop below turns on just the ordinary cooldowns when silence
+	is not active.  Silence reuses the same White1x1 arc mask with only its R value
+	raised.  It never changes an icon or any replicated cooldown value.  Restrict
+	the full red mask to slots actually present in the current class/stance.
 	Sweeps clockwise from 12 o'clock as the *remaining* cooldown, shrinking back to nothing as
 	it expires -- the icon starts fully covered right after use and is revealed clockwise,
 	matching the reference cooldown swipe. The pie itself is the appended Skill_<X>_Cooldown
@@ -3025,9 +3018,21 @@ void CMainApp::Update_SkillCooldowns()
 	for (const char* pInputSlot : INPUT_SLOTS)
 	{
 		const string strOverlaySlot = string("Skill_") + pInputSlot + "_Cooldown";
-		m_pHUDRuntimeView->Set_SlotTint(strOverlaySlot, vCooldownTint);
-		m_pHUDRuntimeView->Set_SlotVisible(strOverlaySlot, false);
+		const bool_t bActiveSlot = std::any_of(
+			player.Skills.begin(), player.Skills.end(),
+			[pInputSlot](const HUD_SKILL_STATE& Skill)
+			{
+				return Skill.strInputSlot == pInputSlot;
+			});
+		m_pHUDRuntimeView->Set_SlotTint(
+			strOverlaySlot, bSilenced ? vSilenceTint : vCooldownTint);
+		m_pHUDRuntimeView->Set_SlotArcRatio(
+			strOverlaySlot, bSilenced && bActiveSlot ? 1.f : 0.f);
+		m_pHUDRuntimeView->Set_SlotVisible(
+			strOverlaySlot, bSilenced && bActiveSlot);
 	}
+	if (bSilenced)
+		return;
 
 	for (const HUD_SKILL_STATE& Skill : player.Skills)
 	{
@@ -6329,6 +6334,47 @@ void CMainApp::RenderDeveloperTools()
 			pProfiler->Set_Enabled(m_bProfilerVisible);
 		}
 	}
+	ImGui::SeparatorText("Live Combat Geometry");
+	Client::COMBAT_DEBUG_VISIBILITY_SNAPSHOT CombatDebug =
+		Client::CClientReplication::Get_GlobalCombatDebugVisibility();
+	bool_t bCombatDebugChanged = false;
+	if (ImGui::Checkbox(
+			"Boss Body Collider", &CombatDebug.bBossBodyCollider))
+	{
+		bCombatDebugChanged = true;
+	}
+	if (ImGui::Checkbox(
+			"Boss Pattern Hit Pulse", &CombatDebug.bBossPatternHitPulse))
+	{
+		bCombatDebugChanged = true;
+	}
+	if (ImGui::Checkbox(
+			"Boss Stage Geometry (whole Stage)",
+			&CombatDebug.bBossStageGeometry))
+	{
+		bCombatDebugChanged = true;
+	}
+	if (ImGui::Checkbox(
+			"Counter Proxy", &CombatDebug.bCounterProxy))
+	{
+		bCombatDebugChanged = true;
+	}
+	if (ImGui::Checkbox(
+			"Player Skill Hit Geometry",
+			&CombatDebug.bPlayerSkillHitGeometry))
+	{
+		bCombatDebugChanged = true;
+	}
+	if (bCombatDebugChanged)
+	{
+		Client::CClientReplication::Set_GlobalCombatDebugVisibility(
+			CombatDebug);
+		CombatDebug =
+			Client::CClientReplication::Get_GlobalCombatDebugVisibility();
+	}
+	ImGui::TextDisabled(
+		"Global revision %llu. Pink=pulse, amber=Stage, cyan=counter. Authoring preview remains independent.",
+		static_cast<unsigned long long>(CombatDebug.iRevision));
 	ImGui::SeparatorText("Inventory (Debug)");
 	const std::vector<Client::ITEM_DEFINITION>& debugItems =
 		Client::CItemCatalog::Get_Items();

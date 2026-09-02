@@ -42,6 +42,66 @@ class ActionCompositionAtomicSaveContractTests(unittest.TestCase):
         ):
             self.assertIn(staged_api, source)
 
+    def test_save_participants_are_selected_by_owner_dirty_state(self) -> None:
+        source = (
+            REPOSITORY_ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
+        ).read_text(encoding="utf-8")
+        save = source.split(
+            "bool_t Client::CActionCompositionWorkbench::Save_Reload()", 1
+        )[1].split(
+            "bool_t Client::CActionCompositionWorkbench::Render_Toolbar", 1
+        )[0]
+
+        self.assertIn(
+            "const bool_t bSaveSound = Is_PatternSoundDraftDirty(SoundStatus)",
+            save,
+        )
+        self.assertIn(
+            "const bool_t bSaveEffectV2 =\n"
+            "\t\tCEffectV2Catalog::Get().Has_BossValtanBindingDraft()",
+            save,
+        )
+        self.assertIn(
+            "if (bSaveSound && !m_pAnimationTool->\n"
+            "\t\t\tCan_CommitValtanCompositionPatternSoundGeneration(SoundStatus))",
+            save,
+        )
+
+        sound_stage_start = save.index(
+            "\tif (bSaveSound)\n\t{",
+            save.index("std::string PatternSoundBaselineBytes"),
+        )
+        sound_stage_end = save.index(
+            "\tif (bPreparedPatternSoundDirty != bSaveSound)", sound_stage_start
+        )
+        self.assertIn(
+            "Prepare_ValtanCompositionPatternSoundSave(",
+            save[sound_stage_start:sound_stage_end],
+        )
+
+        effect_stage_start = save.index(
+            "\tif (bSaveEffectV2)\n\t{",
+            save.index("std::string EffectV2BaselineBytes"),
+        )
+        effect_stage_end = save.index(
+            "\tif (bEffectV2Dirty != bSaveEffectV2)", effect_stage_start
+        )
+        self.assertIn(
+            "Prepare_BossValtanBindingDraftSave(",
+            save[effect_stage_start:effect_stage_end],
+        )
+        self.assertIn(
+            "if (bPreparedPatternSoundDirty &&\n"
+            "\t\t!m_pAnimationTool->Accept_ValtanCompositionPatternSoundSave(",
+            save,
+        )
+        self.assertIn(
+            "if (bEffectV2Dirty &&\n"
+            "\t\t!CEffectV2Catalog::Get().Accept_BossValtanBindingDraftSave(",
+            save,
+        )
+        self.assertNotIn("Camera", save)
+
     def test_all_owner_sidecars_reach_the_shared_generation_commit(self) -> None:
         balance = (REPOSITORY_ROOT / "Client/Private/BalanceTool.cpp").read_text(
             encoding="utf-8"
@@ -129,7 +189,7 @@ class ActionCompositionAtomicSaveContractTests(unittest.TestCase):
 
         for token in (
             "std::string* const pOutSourceBytes = nullptr",
-            "*pOutSourceBytes = strText",
+            "*pOutSourceBytes = std::move(strText)",
         ):
             self.assertIn(token, stage)
         self.assertIn("&strDiskSourceBytes", commit)
@@ -226,23 +286,28 @@ class ActionCompositionAtomicSaveContractTests(unittest.TestCase):
                 REPOSITORY_ROOT / promotion.PATTERN_SOUND_REL
             ).read_bytes(),
         )
-        promotion._validate_effect_v2_bindings_v1_compatibility(
+        gameplay = promotion._read_json(REPOSITORY_ROOT / promotion.GAMEPLAY_REL)
+        promotion._validate_effect_v2_bindings_against_candidate_products(
             REPOSITORY_ROOT,
             outputs,
             (
                 REPOSITORY_ROOT / promotion.EFFECT_V2_BINDINGS_REL
             ).read_bytes(),
+            gameplay,
         )
+
+        legacy_v2 = promotion._read_json(
+            REPOSITORY_ROOT / promotion.EFFECT_V2_BINDINGS_REL
+        )
+        legacy_v2["formatVersion"] = 1
         with self.assertRaisesRegex(
             promotion.PromotionError, "formatVersion 2.*explicit legacy migration"
         ):
             promotion._validate_effect_v2_bindings_against_candidate_products(
                 REPOSITORY_ROOT,
                 outputs,
-                (
-                    REPOSITORY_ROOT / promotion.EFFECT_V2_BINDINGS_REL
-                ).read_bytes(),
-                promotion._read_json(REPOSITORY_ROOT / promotion.GAMEPLAY_REL),
+                json.dumps(legacy_v2, ensure_ascii=False).encode("utf-8"),
+                gameplay,
             )
 
         sound_path = REPOSITORY_ROOT / promotion.PATTERN_SOUND_REL
@@ -264,10 +329,11 @@ class ActionCompositionAtomicSaveContractTests(unittest.TestCase):
         malformed_v2 = json.loads(v2_baseline)
         malformed_v2["bindings"][0]["startMs"] = 600001
         with self.assertRaises(promotion.PromotionError):
-            promotion._validate_effect_v2_bindings_v1_compatibility(
+            promotion._validate_effect_v2_bindings_against_candidate_products(
                 REPOSITORY_ROOT,
                 outputs,
                 json.dumps(malformed_v2, ensure_ascii=False).encode("utf-8"),
+                gameplay,
             )
         self.assertEqual(v2_baseline, v2_path.read_bytes())
 

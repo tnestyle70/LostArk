@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,8 @@ GAMEPLAY = ROOT / "Data/Valtan/Valtan.gameplay.json"
 PRESENTATION = ROOT / "Data/Valtan/Valtan.presentation.json"
 CUE_PREFIX = "cue.valtan.phase2."
 REQUESTED_CUE_PREFIX = "cue.valtan.requested.20260827."
+GHOST_PORTAL_EDGE_LENGTH_M = 44.0
+GHOST_PORTAL_CIRCUMRADIUS_M = GHOST_PORTAL_EDGE_LENGTH_M / math.sqrt(3.0)
 
 
 class AuthoringError(RuntimeError):
@@ -190,8 +193,6 @@ def author_existing_patterns(
     dash_presentation = presentation_by_id["VALTAN_DASH_CHARGE"]
     saved_dash_groggy = gameplay_by_id.get("VALTAN_DASH_CHARGE_GROGGY")
     saved_dash_groggy_p = presentation_by_id.get("VALTAN_DASH_CHARGE_GROGGY")
-    saved_part_break = gameplay_by_id.get("VALTAN_PART_BREAK")
-    saved_part_break_p = presentation_by_id.get("VALTAN_PART_BREAK")
     dash_groggy_stage = copy.deepcopy(
         stage(saved_dash_groggy, "GROGGY")
         if saved_dash_groggy is not None
@@ -201,15 +202,6 @@ def author_existing_patterns(
         stage(saved_dash_groggy_p, "GROGGY")
         if saved_dash_groggy_p is not None
         else stage(dash_presentation, "GROGGY")
-    )
-    dash_part_break_stage = copy.deepcopy(
-        stage(saved_part_break, "PART_BREAK")
-        if saved_part_break is not None else stage(dash, "PART_BREAK")
-    )
-    dash_part_break_p_stage = copy.deepcopy(
-        stage(saved_part_break_p, "PART_BREAK")
-        if saved_part_break_p is not None
-        else stage(dash_presentation, "PART_BREAK")
     )
     dash_charge = stage(dash, "CHARGE")
     dash_charge["branches"] = [
@@ -278,18 +270,117 @@ def author_existing_patterns(
     ]
     dash_groggy_p_stage["stageId"] = "GROGGY"
     dash_groggy_p_stage["sequenceRole"] = "GROGGY"
-    dash_part_break_stage["stageId"] = "PART_BREAK"
-    dash_part_break_stage["stageKind"] = "PART_BREAK"
-    dash_part_break_stage["durationMs"] = 1400
-    dash_part_break_stage["defaultNextActionId"] = None
-    dash_part_break_stage["hit"] = none_hit()
-    dash_part_break_stage["motion"] = None
-    dash_part_break_stage["events"] = []
-    dash_part_break_stage["branches"] = [
-        {"outcome": "TIMEOUT", "nextActionId": None}
-    ]
-    dash_part_break_p_stage["stageId"] = "PART_BREAK"
-    dash_part_break_p_stage["sequenceRole"] = "PART_BREAK"
+    dash_part_break_stage = {
+        "stageId": "PART_BREAK",
+        "actionId": "valtan.attack.dash-charge.part-break",
+        "stageKind": "PART_BREAK",
+        "durationMs": 1800,
+        "defaultNextActionId": "valtan.reaction.part-break.recovery",
+        "hit": none_hit(),
+        "motion": None,
+        "events": [],
+        "branches": [],
+    }
+    part_break_recovery_stage = {
+        "stageId": "PART_BREAK_RECOVERY",
+        "actionId": "valtan.reaction.part-break.recovery",
+        "stageKind": "RECOVERY",
+        "durationMs": 5183,
+        "defaultNextActionId": None,
+        "hit": none_hit(),
+        "motion": None,
+        "events": [{
+            "eventId": "valtan.part-break.cardinal-rocks",
+            "trigger": "ENTER",
+            "kind": "SPAWN_COMBAT_OBJECT_VOLLEY",
+            "combatObjectArchetypeId": "combatobject.valtan.part-break.rock",
+            "volleyPolicy": "BOSS_RELATIVE",
+            "countPerResolvedTarget": 4,
+            "layout": {
+                "kind": "RADIAL_AROUND_BOSS",
+                "radiusM": 4.9497475,
+                "startAngleDegrees": 45.0,
+                "angleStepDegrees": 90.0,
+                "mappingBasis": "PROJECT_TUNED",
+            },
+            "spawnSchedule": {
+                "kind": "INTERVAL",
+                "count": 1,
+                "firstOffsetMs": 0,
+                "intervalMs": 0,
+            },
+            "arenaRandom": {"kind": "NONE"},
+            "allowOverlap": False,
+            "maximumTotalObjects": 4,
+        }],
+        "branches": [],
+    }
+    dash_part_break_p_stage = {
+        "stageId": "PART_BREAK",
+        "actionId": "valtan.attack.dash-charge.part-break",
+        "sequenceRole": "PART_BREAK",
+        "animation": {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+                {
+                    "clipOccurrenceId":
+                        "valtan.attack.dash-charge.part-break.clip.01",
+                    "clip": "mesh_dmg_parts_start_1",
+                    "mappingBasis": "PATTERN_PR_REFERENCE",
+                    "sourceStartMs": 0,
+                    "playMs": 1400,
+                    "playRate": 1.0,
+                    "repeatUntilStageEnd": False,
+                },
+                {
+                    "clipOccurrenceId":
+                        "valtan.attack.dash-charge.part-break.clip.02",
+                    "clip": "mesh_dmg_parts_loop_1",
+                    "mappingBasis": "PATTERN_PR_REFERENCE",
+                    "sourceStartMs": 0,
+                    "playMs": 400,
+                    "playRate": 1.0,
+                    "repeatUntilStageEnd": False,
+                },
+            ],
+        },
+        "effectCues": [],
+        "cameraInvocations": [],
+    }
+    part_break_recovery_p_stage = {
+        "stageId": "PART_BREAK_RECOVERY",
+        "actionId": "valtan.reaction.part-break.recovery",
+        "sequenceRole": "RECOVERY",
+        "animation": {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+                {
+                    "clipOccurrenceId":
+                        "valtan.reaction.part-break.recovery.clip.01",
+                    "clip": "mesh_dmg_parts_end_1",
+                    "mappingBasis": "PATTERN_PR_REFERENCE",
+                    "sourceStartMs": 0,
+                    "playMs": 2850,
+                    "playRate": 1.0,
+                    "repeatUntilStageEnd": False,
+                },
+                {
+                    "clipOccurrenceId":
+                        "valtan.reaction.part-break.recovery.clip.02",
+                    "clip": "mesh_idle_battle_1",
+                    "mappingBasis": "PATTERN_PR_REFERENCE",
+                    "sourceStartMs": 0,
+                    "playMs": 2333,
+                    "playRate": 1.0,
+                    "repeatUntilStageEnd": False,
+                },
+            ],
+        },
+        "effectCues": [],
+        "cameraInvocations": [],
+    }
     part_break = {
         "patternId": "VALTAN_PART_BREAK",
         "displayName": "부위 파괴",
@@ -304,7 +395,7 @@ def author_existing_patterns(
         "sourceActionIds": [420627],
         "serverMotion": None,
         "reactions": [],
-        "stages": [dash_part_break_stage],
+        "stages": [dash_part_break_stage, part_break_recovery_stage],
     }
     part_break_p = {
         "patternId": "VALTAN_PART_BREAK",
@@ -314,7 +405,7 @@ def author_existing_patterns(
             "sequenceIndex": 1,
             "role": "PRIMARY",
         }],
-        "stages": [dash_part_break_p_stage],
+        "stages": [dash_part_break_p_stage, part_break_recovery_p_stage],
     }
     gameplay["patterns"][:] = [
         row for row in gameplay["patterns"]
@@ -375,7 +466,7 @@ def author_existing_patterns(
 
     charge = gameplay_by_id["VALTAN_CHARGE"]
     charge_p = presentation_by_id["VALTAN_CHARGE"]
-    charge["targetPolicy"] = "LOCK_NEAREST_ON_START"
+    charge["targetPolicy"] = "NEAREST_EACH_TICK"
     charge["aimPolicy"] = "TRACK_TARGET_EACH_TICK"
     stage(charge, "STEP_03")["hit"] = damage_hit(
         {"kind": "CONE", "angleDegrees": 90.0, "lengthM": 12.0},
@@ -470,7 +561,7 @@ def author_existing_patterns(
     for leg in range(2, 10):
         stage_id = f"STEP_{leg:02d}"
         gameplay_stage = stage(warp, stage_id)
-        gameplay_stage["durationMs"] = 2300
+        gameplay_stage["durationMs"] = 1800
         gameplay_stage["hit"] = damage_hit(
             {"kind": "BOX", "lengthM": 8.0, "halfWidthM": 2.5},
             list(range(500, 1300, 50)),
@@ -517,21 +608,13 @@ def author_existing_patterns(
 
     counter = gameplay_by_id["VALTAN_COUNTER"]
     counter_p = presentation_by_id["VALTAN_COUNTER"]
-    saved_counter_groggy = gameplay_by_id.get("VALTAN_COUNTER_GROGGY")
-    saved_counter_groggy_p = presentation_by_id.get("VALTAN_COUNTER_GROGGY")
-    counter_groggy_stage = copy.deepcopy(
-        stage(saved_counter_groggy, "GROGGY")
-        if saved_counter_groggy is not None else stage(counter, "STEP_04")
-    )
-    counter_groggy_p_stage = copy.deepcopy(
-        stage(saved_counter_groggy_p, "GROGGY")
-        if saved_counter_groggy_p is not None else stage(counter_p, "STEP_04")
-    )
     set_tracking(counter)
     counter_one = stage(counter, "STEP_01")
     counter_one["stageKind"] = "WINDUP"
+    counter_one["durationMs"] = 2000
     counter_two = stage(counter, "STEP_02")
     counter_two["stageKind"] = "WINDUP"
+    counter_two["durationMs"] = 1800
     counter_two["events"] = [
         {
             "eventId": "event.valtan.phase2.counter.window.enter",
@@ -552,7 +635,7 @@ def author_existing_patterns(
         {
             "outcome": "COUNTER_HIT",
             "nextActionId": None,
-            "nextPatternId": "VALTAN_COUNTER_GROGGY",
+            "nextPatternId": "VALTAN_GROGGY_FOLLOWUP",
         },
         {
             "outcome": "TIMEOUT",
@@ -561,6 +644,7 @@ def author_existing_patterns(
     ]
     counter_three = stage(counter, "STEP_03")
     counter_three["stageKind"] = "ACTIVE"
+    counter_three["durationMs"] = 1667
     counter_three["hit"] = damage_hit(
         {"kind": "CIRCLE", "outerRadiusM": 12.0},
         [900],
@@ -573,7 +657,57 @@ def author_existing_patterns(
     counter_three["branches"] = [
         {"outcome": "TIMEOUT", "nextActionId": None}
     ]
+    stage(counter_p, "STEP_01")["animation"] = {
+        "endPolicy": "EXACT",
+        "repeatCount": 1,
+        "occurrences": [{
+            "clipOccurrenceId": "valtan.sequence.counter.step-01.clip-01",
+            "clip": "mesh_att_battle_14_01",
+            "mappingBasis": "PROJECT_AUTHORED",
+            "sourceStartMs": 0,
+            "playMs": 2000,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": False,
+        }],
+    }
+    stage(counter_p, "STEP_02")["animation"] = {
+        "endPolicy": "EXACT",
+        "repeatCount": 1,
+        "occurrences": [
+            {
+                "clipOccurrenceId": "valtan.sequence.counter.step-02.clip-01",
+                "clip": "mesh_att_battle_14_02",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 1000,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": False,
+            },
+            {
+                "clipOccurrenceId": "valtan.sequence.counter.step-02.clip-02",
+                "clip": "mesh_att_battle_14_02",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 800,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": False,
+            },
+        ],
+    }
     counter_slam_p = stage(counter_p, "STEP_03")
+    counter_slam_p["animation"] = {
+        "endPolicy": "EXACT",
+        "repeatCount": 1,
+        "occurrences": [{
+            "clipOccurrenceId": "valtan.sequence.counter.step-03.clip-01",
+            "clip": "mesh_att_battle_14_03",
+            "mappingBasis": "PROJECT_AUTHORED",
+            "sourceStartMs": 0,
+            "playMs": 1667,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": False,
+        }],
+    }
     replace_phase_two_cues(
         counter_slam_p,
         [
@@ -596,46 +730,22 @@ def author_existing_patterns(
     counter_p["stages"] = [
         row for row in counter_p["stages"] if row["stageId"] != "STEP_04"
     ]
-    counter_groggy_stage["stageId"] = "GROGGY"
-    counter_groggy_stage["stageKind"] = "GROGGY"
-    counter_groggy_stage["defaultNextActionId"] = None
-    counter_groggy_stage["branches"] = [
-        {"outcome": "TIMEOUT", "nextActionId": None}
+    gameplay["patterns"][:] = [
+        row for row in gameplay["patterns"]
+        if row["patternId"] != "VALTAN_COUNTER_GROGGY"
     ]
-    counter_groggy_p_stage["stageId"] = "GROGGY"
-    counter_groggy_p_stage["sequenceRole"] = "GROGGY"
-    counter_groggy = {
-        "patternId": "VALTAN_COUNTER_GROGGY",
-        "displayName": "카운터 쳐야 하는 내려치기 - 성공 그로기",
-        "category": "NORMAL",
-        "compatibilitySelectionWeight": 0,
-        "actionId": "valtan.reaction.counter-groggy",
-        "entryActionId": counter_groggy_stage["actionId"],
-        "targetPolicy": "NONE",
-        "aimPolicy": "NONE",
-        "eligibility": audition_only_eligibility(),
-        "invulnerableWhileRunning": False,
-        "sourceActionIds": [420644],
-        "serverMotion": None,
-        "reactions": [],
-        "stages": [counter_groggy_stage],
-    }
-    counter_groggy_p = {
-        "patternId": "VALTAN_COUNTER_GROGGY",
-        "sourceSequenceIndex": 1,
-        "presentationSources": [{
-            "sourceActionId": 420644,
-            "sequenceIndex": 1,
-            "role": "PRIMARY",
-        }],
-        "stages": [counter_groggy_p_stage],
-    }
-    replace_pattern_after(
-        gameplay["patterns"], "VALTAN_COUNTER", counter_groggy
-    )
-    replace_pattern_after(
-        presentation["patterns"], "VALTAN_COUNTER", counter_groggy_p
-    )
+    presentation["patterns"][:] = [
+        row for row in presentation["patterns"]
+        if row["patternId"] != "VALTAN_COUNTER_GROGGY"
+    ]
+    retired = gameplay.setdefault("retiredPatternIds", [])
+    if "VALTAN_COUNTER_GROGGY" not in retired:
+        retired.append("VALTAN_COUNTER_GROGGY")
+    scripted = gameplay["decisionModel"]["scriptedSequence"]["patternIds"]
+    scripted[:] = [
+        pattern_id for pattern_id in scripted
+        if pattern_id != "VALTAN_COUNTER_GROGGY"
+    ]
     reaction_pattern_ids = {
         "VALTAN_DASH_CHARGE_GROGGY",
         "VALTAN_PART_BREAK",
@@ -648,12 +758,6 @@ def author_existing_patterns(
         {
             "patternId": "VALTAN_PART_BREAK",
             "sourceChainId": "derived.part-break",
-            "authoringPhase": 1,
-            "admissionState": "DERIVED_SERVER_PATTERN",
-        },
-        {
-            "patternId": "VALTAN_COUNTER_GROGGY",
-            "sourceChainId": "derived.counter-groggy",
             "authoringPhase": 1,
             "admissionState": "DERIVED_SERVER_PATTERN",
         },
@@ -730,17 +834,7 @@ def author_existing_patterns(
     )
 
     trash_p = stage(presentation_by_id["VALTAN_TRASH"], "STEP_01")
-    replace_phase_two_cues(
-        trash_p,
-        [
-            cue(
-                f"{REQUESTED_CUE_PREFIX}trash.composite",
-                "effect.valtan.project-tuned.sequence.trash",
-                trash_p,
-                scale_kind="OWNER_RELATIVE",
-            )
-        ],
-    )
+    replace_phase_two_cues(trash_p, [])
 
     catch_breath = gameplay_by_id["VALTAN_CATCH_BREATH"]
     catch_breath["targetPolicy"] = "LOCK_RANDOM_ALIVE_BEHIND_ON_START"
@@ -1526,8 +1620,8 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
         displayName="마력구 파괴 패턴",
         entryActionId="valtan.authoring.stagger-slot.channel",
         sourceActionIds=[420617],
-        verticalOffsetM=3.0,
     )
+    stagger.pop("verticalOffsetM", None)
     stagger["stages"] = [
         {
             "stageId": "CHANNEL",
@@ -1549,6 +1643,7 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
                     "nextActionId": "valtan.authoring.stagger-slot.final-attack",
                 },
             ],
+            "verticalOffsetM": 0.5,
             "bossResponse": {
                 "kind": "ACCUMULATED_HEALTH_DAMAGE",
                 "threshold": 1000,
@@ -1747,50 +1842,108 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
     })
 
     triple = pattern(gameplay, "VALTAN_TRIPLE_COUNTER")
+    triple_p = pattern(presentation, "VALTAN_TRIPLE_COUNTER")
+    single_counter = pattern(gameplay, "VALTAN_COUNTER")
+    single_counter_p = pattern(presentation, "VALTAN_COUNTER")
     triple["displayName"] = "3연속 내려치기 - 카운터"
-    # The counter response remains live from the first telegraph through the
-    # first two attack recoveries.  FAIL_3 is the committed third strike: its
-    # hit is the wipe and therefore it intentionally does not reopen counter.
-    for counter_stage_id in (
-        "COUNTER_1", "FAIL_1", "COUNTER_2", "FAIL_2", "COUNTER_3",
-    ):
+    triple["entryActionId"] = "valtan.reactive.triple-counter.setup"
+    setup = next(
+        (row for row in triple["stages"] if row["stageId"] == "SETUP"),
+        copy.deepcopy(stage(single_counter, "STEP_01")),
+    )
+    setup.update(
+        stageId="SETUP",
+        actionId="valtan.reactive.triple-counter.setup",
+        stageKind="WINDUP",
+        durationMs=2000,
+        defaultNextActionId="valtan.reactive.triple-counter.first",
+        hit=none_hit(),
+        motion=None,
+        events=[],
+        branches=[{
+            "outcome": "TIMEOUT",
+            "nextActionId": "valtan.reactive.triple-counter.first",
+        }],
+    )
+    setup.pop("counterProxy", None)
+
+    authored_stages = [setup]
+    authored_presentation_stages: list[dict[str, Any]] = []
+    setup_p = next(
+        (row for row in triple_p["stages"] if row["stageId"] == "SETUP"),
+        copy.deepcopy(stage(single_counter_p, "STEP_01")),
+    )
+    setup_p.update(
+        stageId="SETUP",
+        actionId="valtan.reactive.triple-counter.setup",
+        sequenceRole="SETUP",
+    )
+    setup_p["animation"] = {
+        "endPolicy": "EXACT",
+        "repeatCount": 1,
+        "occurrences": [{
+            "clipOccurrenceId":
+                "valtan.reactive.triple-counter.setup.clip.01",
+            "clip": "mesh_att_battle_14_01",
+            "mappingBasis": "PROJECT_AUTHORED",
+            "sourceStartMs": 0,
+            "playMs": 2000,
+            "playRate": 1.0,
+            "repeatUntilStageEnd": False,
+        }],
+    }
+    setup_p["effectCues"] = []
+    setup_p["cameraInvocations"] = []
+    authored_presentation_stages.append(setup_p)
+
+    # Each mesh_att_battle_14_02 occurrence is the complete counter window.
+    # The paired 14_03 stage is the committed slam and cannot consume counter.
+    topology = (
+        (1, "COUNTER_1", "valtan.reactive.triple-counter.first",
+         "FAIL_1", "valtan.reactive.triple-counter.first-fail",
+         "valtan.reactive.triple-counter.second"),
+        (2, "COUNTER_2", "valtan.reactive.triple-counter.second",
+         "FAIL_2", "valtan.reactive.triple-counter.second-fail",
+         "valtan.reactive.triple-counter.third"),
+        (3, "COUNTER_3", "valtan.reactive.triple-counter.third",
+         "FAIL_3", "valtan.reactive.triple-counter.third-fail", None),
+    )
+    for ordinal, counter_stage_id, counter_action_id, fail_stage_id, \
+            fail_action_id, next_action_id in topology:
         counter_stage = stage(triple, counter_stage_id)
-        timeout_branch = next(
-            branch for branch in counter_stage["branches"]
-            if branch["outcome"] == "TIMEOUT"
-        )
-        has_counter_flag = any(
-            event.get("kind") == "SET_BOSS_FLAG"
-            and event.get("flagId") == "boss.flag.counterable"
-            for event in counter_stage["events"]
-        )
-        if not has_counter_flag:
-            event_root = counter_stage_id.lower().replace("_", "-")
-            counter_stage["events"] += [
+        event_root = ("first", "second", "third")[ordinal - 1]
+        fail_stage = stage(triple, fail_stage_id)
+        counter_stage.update(
+            actionId=counter_action_id,
+            stageKind="WINDUP",
+            durationMs=1800,
+            defaultNextActionId=fail_action_id,
+            hit=none_hit(),
+            motion=None,
+            events=[
                 {
-                    "eventId":
-                        f"event.valtan.triple-counter.{event_root}.counter-window.enter",
+                    "eventId": f"event.valtan.triple-counter.{event_root}.counter-window.enter",
                     "trigger": "ENTER",
                     "kind": "SET_BOSS_FLAG",
                     "flagId": "boss.flag.counterable",
                     "enabled": True,
                 },
                 {
-                    "eventId":
-                        f"event.valtan.triple-counter.{event_root}.counter-window.exit",
+                    "eventId": f"event.valtan.triple-counter.{event_root}.counter-window.exit",
                     "trigger": "EXIT",
                     "kind": "SET_BOSS_FLAG",
                     "flagId": "boss.flag.counterable",
                     "enabled": False,
                 },
-            ]
+            ],
+        )
         counter_stage["branches"] = [
             {
                 "outcome": "COUNTER_HIT",
                 "nextActionId": None,
                 "nextPatternId": groggy_id,
             },
-            timeout_branch,
+            {"outcome": "TIMEOUT", "nextActionId": fail_action_id},
         ]
         counter_stage["counterProxy"] = {
             "kind": "BOSS_FORWARD_ARC",
@@ -1799,12 +1952,89 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
             "radiusM": 0.0,
             "arcDegrees": 180.0,
         }
+        fail_stage.update(
+            actionId=fail_action_id,
+            stageKind="ACTIVE",
+            durationMs=1667,
+            defaultNextActionId=next_action_id,
+            hit=damage_hit(
+                {"kind": "CIRCLE", "outerRadiusM": 12.0},
+                [900],
+                "damage.valtan.triple-counter",
+                push_range_m=0.0,
+                push_ms=0,
+                down_ms=2000,
+            ),
+            motion=None,
+            events=[],
+            branches=[{
+                "outcome": "TIMEOUT",
+                "nextActionId": next_action_id,
+            }],
+        )
+        fail_stage.pop("counterProxy", None)
+        authored_stages.extend((counter_stage, fail_stage))
+
+        counter_stage_p = stage(triple_p, counter_stage_id)
+        counter_stage_p.update(
+            actionId=counter_action_id,
+            sequenceRole=counter_stage_id,
+        )
+        occurrence_root = ("first", "second", "third")[ordinal - 1]
+        counter_stage_p["animation"] = {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [
+                {
+                    "clipOccurrenceId":
+                        f"valtan.reactive.triple-counter.{occurrence_root}.clip.01",
+                    "clip": "mesh_att_battle_14_02",
+                    "mappingBasis": "PROJECT_AUTHORED",
+                    "sourceStartMs": 0,
+                    "playMs": 1000,
+                    "playRate": 1.0,
+                    "repeatUntilStageEnd": False,
+                },
+                {
+                    "clipOccurrenceId":
+                        f"valtan.reactive.triple-counter.{occurrence_root}.clip.02",
+                    "clip": "mesh_att_battle_14_02",
+                    "mappingBasis": "PROJECT_AUTHORED",
+                    "sourceStartMs": 0,
+                    "playMs": 800,
+                    "playRate": 1.0,
+                    "repeatUntilStageEnd": False,
+                },
+            ],
+        }
+        fail_stage_p = stage(triple_p, fail_stage_id)
+        fail_stage_p.update(
+            actionId=fail_action_id,
+            sequenceRole=fail_stage_id,
+        )
+        fail_stage_p["animation"] = {
+            "endPolicy": "EXACT",
+            "repeatCount": 1,
+            "occurrences": [{
+                "clipOccurrenceId":
+                    f"valtan.reactive.triple-counter.{occurrence_root}-fail.clip.01",
+                "clip": "mesh_att_battle_14_03",
+                "mappingBasis": "PROJECT_AUTHORED",
+                "sourceStartMs": 0,
+                "playMs": 1667,
+                "playRate": 1.0,
+                "repeatUntilStageEnd": False,
+            }],
+        }
+        authored_presentation_stages.extend((counter_stage_p, fail_stage_p))
+    triple["stages"] = authored_stages
+    triple_p["stages"] = authored_presentation_stages
 
     warp = pattern(gameplay, "VALTAN_WARP")
     warp_p = pattern(presentation, "VALTAN_WARP")
     for leg in range(8):
         row = stage(warp, f"STEP_{leg + 2:02d}")
-        row["durationMs"] = 2300
+        row["durationMs"] = 1800
         row["motion"] = {
             "kind": "PORTAL_TARGET_RUSH",
             "retargetDelayMs": 500,
@@ -1841,6 +2071,78 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
                     if pattern_id == "VALTAN_SIX_PIZZA_106"
                     else "snapshot"
                 )
+
+    def rock_pillar_volley(
+        event_id: str,
+        combat_object_id: str,
+        radius_m: float,
+        first_offset_ms: int,
+    ) -> dict[str, Any]:
+        return {
+            "eventId": event_id,
+            "trigger": "ENTER",
+            "kind": "SPAWN_COMBAT_OBJECT_VOLLEY",
+            "combatObjectArchetypeId": combat_object_id,
+            "volleyPolicy": "BOSS_RELATIVE",
+            "countPerResolvedTarget": 4,
+            "layout": {
+                "kind": "RADIAL_AROUND_BOSS",
+                "radiusM": radius_m,
+                "startAngleDegrees": 45.0,
+                "angleStepDegrees": 90.0,
+                "mappingBasis": "PROJECT_TUNED",
+            },
+            "spawnSchedule": {
+                "kind": "INTERVAL",
+                "count": 1,
+                "firstOffsetMs": first_offset_ms,
+                "intervalMs": 0,
+            },
+            "arenaRandom": {"kind": "NONE"},
+            "allowOverlap": False,
+            "maximumTotalObjects": 4,
+        }
+
+    stage(pattern(gameplay, "VALTAN_SIX_PIZZA_106"), "STEP_01")["events"] = [
+        rock_pillar_volley(
+            "event.valtan.six-pizza.rock-pillars",
+            "combatobject.valtan.six-pizza.rock-pillar",
+            9.8994949366,
+            1000,
+        )
+    ]
+    stage(pattern(gameplay, "VALTAN_STRUGGLING"), "STEP_04")["events"] = [
+        rock_pillar_volley(
+            "event.valtan.struggling.rock-pillars",
+            "combatobject.valtan.struggling.rock-pillar",
+            4.9497474683,
+            833,
+        )
+    ]
+    rock_independent_effects = (
+        {
+            "independentEffectId":
+                "valtan.independent-effect.six-pizza-rock-pillars",
+            "displayName": "피자 패턴 / 1초 후 ±7m 돌 기둥 4개",
+            "ownership": "SERVER_COMBAT_OBJECT",
+            "spawnEventId": "event.valtan.six-pizza.rock-pillars",
+        },
+        {
+            "independentEffectId":
+                "valtan.independent-effect.struggling-rock-pillars",
+            "displayName": "발악 패턴 / 5초 지점 ±3.5m 돌 기둥 4개",
+            "ownership": "SERVER_COMBAT_OBJECT",
+            "spawnEventId": "event.valtan.struggling.rock-pillars",
+        },
+    )
+    rock_independent_ids = {
+        row["independentEffectId"] for row in rock_independent_effects
+    }
+    presentation["independentEffects"] = [
+        row for row in presentation["independentEffects"]
+        if row["independentEffectId"] not in rock_independent_ids
+    ]
+    presentation["independentEffects"].extend(rock_independent_effects)
 
     donut = stage(pattern(gameplay, "VALTAN_FIST_IN_OUT"), "INNER")
     donut["durationMs"] = 100
@@ -1963,12 +2265,12 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
                 "combatObjectArchetypeId":
                     "combatobject.valtan.ghost.portal-charge",
                 "volleyPolicy": "BOSS_RELATIVE",
-                "countPerResolvedTarget": 4,
+                "countPerResolvedTarget": 3,
                 "layout": {
                     "kind": "RADIAL_AROUND_BOSS",
-                    "radiusM": 31.112698,
-                    "startAngleDegrees": 45.0,
-                    "angleStepDegrees": 90.0,
+                    "radiusM": GHOST_PORTAL_CIRCUMRADIUS_M,
+                    "startAngleDegrees": 30.0,
+                    "angleStepDegrees": 120.0,
                     "mappingBasis": "PROJECT_TUNED",
                 },
                 "spawnSchedule": {
@@ -1977,7 +2279,7 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
                 },
                 "arenaRandom": {"kind": "NONE"},
                 "allowOverlap": False,
-                "maximumTotalObjects": 4,
+                "maximumTotalObjects": 3,
             }],
             "branches": [],
         }],
@@ -2032,7 +2334,7 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
     ]
     presentation["independentEffects"].append({
         "independentEffectId": independent_id,
-        "displayName": "망령 포탈 돌진 1회 / 4꼭짓점",
+        "displayName": "망령 포탈 돌진 1회 / 44m 정삼각형",
         "ownership": "SERVER_COMBAT_OBJECT",
         "spawnEventId": "event.valtan.ghost.portal-once.volley",
     })
@@ -2060,7 +2362,6 @@ def build(pattern_id: str | None = None) -> tuple[dict[str, Any], dict[str, Any]
             "VALTAN_DASH_CHARGE",
             "VALTAN_PART_BREAK",
             "VALTAN_COUNTER",
-            "VALTAN_COUNTER_GROGGY",
         }:
             continue
         promotion._preserve_manual_presentation_enrichment(

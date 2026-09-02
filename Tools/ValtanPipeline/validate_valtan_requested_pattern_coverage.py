@@ -27,6 +27,7 @@ STATUS_PATTERN_CONTRACTS: dict[str, dict[str, Any]] = {
         "actionId": "valtan.authoring.stagger-slot",
         "targetPolicy": "NONE",
         "aimPolicy": "NONE",
+        "scriptedSequenceMember": True,
     },
     "VALTAN_GROGGY_FOLLOWUP": {
         "displayName": "발탄 공용 그로기 후속",
@@ -40,6 +41,7 @@ STATUS_PATTERN_CONTRACTS: dict[str, dict[str, Any]] = {
         "actionId": "valtan.followup.groggy",
         "targetPolicy": "NONE",
         "aimPolicy": "NONE",
+        "scriptedSequenceMember": False,
     },
     "VALTAN_BIND_SLOT": {
         "displayName": "속박 패턴",
@@ -53,6 +55,7 @@ STATUS_PATTERN_CONTRACTS: dict[str, dict[str, Any]] = {
         "actionId": "valtan.authoring.bind-slot",
         "targetPolicy": "LOCK_RANDOM_ALIVE_ON_START",
         "aimPolicy": "LOCK_FACING_ON_START",
+        "scriptedSequenceMember": True,
     },
     "VALTAN_SILENCE_SLOT": {
         "displayName": "침묵 패턴",
@@ -66,6 +69,7 @@ STATUS_PATTERN_CONTRACTS: dict[str, dict[str, Any]] = {
         "actionId": "valtan.authoring.silence-slot",
         "targetPolicy": "NONE",
         "aimPolicy": "NONE",
+        "scriptedSequenceMember": True,
     },
 }
 
@@ -357,7 +361,9 @@ def _validate_status_patterns(
             if not isinstance(channel_branches, list) or len(channel_branches) != 2:
                 raise CoverageError("magic-orb response branches differ")
             success, timeout = channel_branches
-            if (gameplay_row.get("verticalOffsetM") != 3.0 or
+            if ("verticalOffsetM" in gameplay_row or
+                    channel.get("verticalOffsetM") != 0.5 or
+                    "verticalOffsetM" in final_attack or
                     channel.get("bossResponse") != {
                         "kind": "ACCUMULATED_HEALTH_DAMAGE",
                         "threshold": 1000,
@@ -606,13 +612,17 @@ def validate(root: Path) -> CoverageReport:
             "generated ValtanPatternRotations scriptedSequence differs from canonical gameplay"
         )
 
-    unexpected_scripted_status_patterns = (
-        status_pattern_ids & scripted_pattern_ids
+    expected_scripted_status_patterns = frozenset(
+        pattern_id
+        for pattern_id, contract in STATUS_PATTERN_CONTRACTS.items()
+        if contract["scriptedSequenceMember"]
     )
-    if unexpected_scripted_status_patterns:
+    actual_scripted_status_patterns = status_pattern_ids & scripted_pattern_ids
+    if actual_scripted_status_patterns != expected_scripted_status_patterns:
         raise CoverageError(
-            "derived status Pattern entered the canonical scriptedSequence: "
-            + ", ".join(sorted(unexpected_scripted_status_patterns))
+            "derived status Pattern scriptedSequence membership differs: "
+            f"expected={sorted(expected_scripted_status_patterns)} "
+            f"actual={sorted(actual_scripted_status_patterns)}"
         )
 
     _validate_runtime_inventory_source(root)

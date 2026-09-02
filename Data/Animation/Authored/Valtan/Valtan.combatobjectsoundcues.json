@@ -9,6 +9,34 @@
       "hitId": "hit.valtan.high-jump.target-axe.01",
       "soundBank": "S_Mob_G_Voltan2",
       "soundEvent": "G_Voltan2_Attack09_ProjExp1"
+    },
+    {
+      "bindingId": "cue.sound.valtan.combatobject.ground-roar.rock.explode.01",
+      "combatObjectArchetypeId": "combatobject.valtan.ground-roar.rock",
+      "presentationEventId": "pulse.valtan.ground-roar.rock.explode",
+      "soundBank": "S_Mob_G_Voltan2",
+      "soundEvent": "G_Voltan2_Attack09_ProjExp1"
+    },
+    {
+      "bindingId": "cue.sound.valtan.combatobject.six-pizza.rock-pillar.explode.01",
+      "combatObjectArchetypeId": "combatobject.valtan.six-pizza.rock-pillar",
+      "presentationEventId": "pulse.valtan.six-pizza.rock-pillar.explode",
+      "soundBank": "S_Mob_G_Voltan2",
+      "soundEvent": "G_Voltan2_Attack09_ProjExp1"
+    },
+    {
+      "bindingId": "cue.sound.valtan.combatobject.struggling.rock-pillar.explode.01",
+      "combatObjectArchetypeId": "combatobject.valtan.struggling.rock-pillar",
+      "presentationEventId": "pulse.valtan.struggling.rock-pillar.explode",
+      "soundBank": "S_Mob_G_Voltan2",
+      "soundEvent": "G_Voltan2_Attack09_ProjExp1"
+    },
+    {
+      "bindingId": "cue.sound.valtan.combatobject.part-break.rock.explode.01",
+      "combatObjectArchetypeId": "combatobject.valtan.part-break.rock",
+      "presentationEventId": "pulse.valtan.part-break.rock.explode",
+      "soundBank": "S_Mob_G_Voltan2",
+      "soundEvent": "G_Voltan2_Attack09_ProjExp1"
     }
   ]
 }

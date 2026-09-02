@@ -347,6 +347,10 @@ private:
 #ifdef _DEBUG
 	void Draw_SkillHitAreaDebug() const;
 	void Update_SkillProjectileDebug(f32_t fTimeDelta);
+	/* True only when the Server would use the legacy maximumRange fallback for
+	   this exact authoritative skill stage. This is presentation diagnostics;
+	   it never creates a Client hit or changes Server targeting. */
+	bool_t Try_Get_CurrentFallbackHitRange(f32_t& fOutRangeMeters) const;
 #endif
 	bool_t Load_EffectCues();
 	void Reset_EffectCueCursor(

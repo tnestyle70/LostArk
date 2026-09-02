@@ -20,7 +20,7 @@ BASELINE_MOTION = {
     "speedMps": 20.0,
     "distanceM": 16.0,
 }
-BASELINE_DURATION_MS = 2300
+BASELINE_DURATION_MS = 1800
 BASELINE_OFFSETS = list(range(500, 1300, 50))
 
 
@@ -89,7 +89,7 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
                     )
                     self.assertEqual(16, len(offsets))
                     self.assertEqual(
-                        1000.0,
+                        500.0,
                         stage["durationMs"]
                         - stage["motion"]["retargetDelayMs"]
                         - stage["motion"]["distanceM"]
@@ -115,6 +115,11 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
             )
             self.assertEqual(0, occurrence["playMs"])
             self.assertTrue(occurrence["repeatUntilStageEnd"])
+            self.assertEqual(
+                {"hiddenFromMs": 1300, "hiddenToMs": 1800},
+                stage["bodyVisibility"],
+            )
+            self.assertEqual(1300, stage["effectCues"][0]["sourceStartMs"])
 
     def test_each_rush_boundary_is_a_root_snapshot_not_a_predicted_endpoint(self) -> None:
         authored = pipeline.read_json(
@@ -199,10 +204,15 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
                         else stage["hitOffsetsMs"]
                     )
                     self.assertEqual(expected_offsets, offsets)
+                    if "bodyVisibility" in stage:
+                        self.assertEqual(
+                            {"hiddenFromMs": 1100, "hiddenToMs": 1350},
+                            stage["bodyVisibility"],
+                        )
 
     def test_each_warp_leg_clock_is_independently_authored(self) -> None:
         gameplay = copy.deepcopy(self.docs[pipeline.GAMEPLAY_AUTHORING_REL])
-        self.warp_legs(gameplay)[0]["durationMs"] = 2301
+        self.warp_legs(gameplay)[0]["durationMs"] = 1801
         pipeline.validate_gameplay_authoring(gameplay)
 
     def test_float_storage_is_canonical_before_50ms_boundary_sampling(self) -> None:

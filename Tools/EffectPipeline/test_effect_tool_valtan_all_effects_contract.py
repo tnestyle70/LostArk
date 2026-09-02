@@ -1606,7 +1606,12 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         self.assertEqual("BOSS_VALTAN", document["bossArchetypeId"])
         self.assertIsInstance(document["bindings"], list)
         self.assertEqual(
-            set(),
+            {
+                (
+                    "VALTAN_TRASH",
+                    "effect.valtan.project-tuned.sequence.trash",
+                )
+            },
             {
                 (binding["patternId"], binding["effectAssetId"])
                 for binding in document["bindings"]

@@ -451,6 +451,75 @@ canonical writer-lock 회귀와 Debug Core는 같은 checkout에서 병렬 실�
 이를 source/Product 손상으로 기록하거나 stale 파일을 삭제하지 말고 장기 writer 회귀를 종료한 뒤
 Core를 직렬 재실행한다. 제품 UI는 같은 상태에서 last-good을 보존하고 자동 재시도만 수행한다.
 
+### Valtan Composition 확장에서 함께 유지할 저작·투영 계약
+
+- `Data/Valtan/Valtan.gameplay.json`, `Valtan.presentation.json`,
+  `Valtan.combatobjects.json`이 split 저작 정본이고 `Data/Encounters/Valtan/*`와 Client/Server
+  bootstrap은 투영 생성물이다. source를 바꾼 직후 이전 Product와 다른 것은 정상 중간 상태이므로
+  Save 전에 물리 Product parity를 요구하지 않는다. candidate를 메모리에서 project·validate한 뒤
+  source/Product를 같은 CAS transaction으로 commit하고 post-validate한다. author helper가 같은 행을
+  재생성한다면 helper도 함께 갱신한다. 밸런스 수치 변경은
+  `2026-08-05.balance-provenance.receipt.json`의 해당 field를 `PROJECT_TUNED`로 동기화하고 정본
+  publisher로 bootstrap을 다시 만든다. generated JSON/bootstrap/receipt를 결과 맞추기용으로 직접
+  편집하지 않는다.
+- Composition Save의 참가자는 Save edge에서 고정한 dirty owner뿐이다. Pattern/Collider만 dirty이면
+  clean Pattern Sound에 `Can_Commit...Generation`, editor document load, candidate staging을 요구하지
+  않고, clean Effect V2에도 draft `Prepare/Accept`를 호출하지 않는다. 다만 두 clean 물리 문서는
+  candidate Product에 대한 read-set dependency로 writer 안에서 계속 strict 검증한다. dirty Sound/V2는
+  exact baseline/candidate와 draft generation/revision을 stage하고, 모든 참가자의 parse·validate가 끝난
+  뒤 한 번 commit하며, 실패하면 byte-exact rollback하고 성공 뒤 exact candidate로 reopen한다.
+  Camera는 typed 저장 owner가 연결되기 전까지 Composition의 read-only/deep-link 경계이며 이 Save에
+  빈 sidecar나 추측한 persistence를 추가하지 않는다.
+- Effect V2 binding은 header를 먼저 읽어 validator를 dispatch한다. formatVersion 1만 legacy
+  compatibility validator로 보내고, formatVersion 2는 exact binding pipeline과 resource read-set으로
+  검증한다. v2 문서를 v1 helper에 넣어 실패시킨 뒤 schema를 완화하지 않는다. 구현이 source bytes를
+  동일하게 보존하면서 copy 대신 `std::move`를 사용하도록 바뀌었으면 `*out = source` 같은 문자열을
+  고정한 낡은 oracle을 고친다. CAS baseline, candidate equality, rollback이라는 의미 계약을 production
+  코드의 불필요한 copy보다 우선한다.
+- Pattern total duration은 Stage를 생성하는 명령이 아니며 부족한 시간을 숨은 `WAIT` Stage로 채우거나
+  선택을 그 Stage로 이동시키지 않는다. Stage 추가·삭제·후속 선택은 stable Stage/action ID를 쓰는
+  명시적 topology 명령만 허용한다. Animation Replace/Append도 `clips.size()==3` 같은 개수 gate를
+  되살리지 않는다. HOLD 축약은 `start -> one-or-more loop -> end -> optional untagged tail` 역할을
+  검증하고 fixed edge/tail을 보존한 채 loop 예산만 Stage clock에 맞춘다. 양의 loop 시간을 보장할 수
+  없으면 draft를 바꾸기 전에 거부한다.
+- split source가 소유하는 counter Pattern은 legacy compatibility row나 reference-only reaction layer와
+  동시에 gameplay authority를 소유하지 않는다. active split owner가 Stage, `counterProxy`,
+  `boss.flag.counterable` ENTER/EXIT, `COUNTER_HIT` 성공 branch와 `TIMEOUT` 실패 branch를 함께 소유하며,
+  retired Pattern ID는 dangling 0건이어야 한다. Core rotation Pattern을 Details에 보이게 하려고
+  `manualAuditions`나 DERIVED row로 승격하지 않는다. manual inventory admission과 counter gameplay
+  ownership은 별도 계약이다.
+- combat-object `spawnSchedule.firstOffsetMs`는 source에서 Product의 `firstSpawnOffsetMs`, publisher/
+  bootstrap, Server scheduler, Client local preview와 Composition timeline까지 손실 없이 전달한다.
+  offset이 0이면 첫 spawn을 즉시 소비하고, 0보다 크면 emitted count를 0에서 시작해 Stage-local
+  clock이 offset에 도달하기 전에는 생성·표시하지 않는다. `StageStart + firstOffsetMs`가 authored
+  world time이며 count/interval만 보존하고 offset을 0으로 기본화하지 않는다.
+- combat-object visual이 `effectV2Group`과 V1 `effectAssetId/hitEffectAssetId`를 함께 가지면 V2는
+  Product live owner이고 V1은 editor/legacy preview fallback이다. live에서 둘을 동시에 spawn해
+  폭발을 이중 재생하지 않되, Server semantic presentation event는 Sound cue를 계속 구동한다. 하나의
+  V2 group을 여러 combat-object archetype이 참조하는 것은 정상 재사용이며 group definition ID의
+  중복과 visual reference 재사용을 같은 오류로 취급하지 않는다. Workbench는 선택된 live group과
+  object-local lifetime/offset을 표시하고 fallback을 Product owner처럼 라벨링하지 않는다.
+- `Client/Bin/Resources`는 Git/LFS 정본이 아니라 팀장 Drive가 전달하는 물리 runtime 입력이다.
+  Ghost Valtan은 catalog에 Resources-relative `Character/Valtan/Ghost/MN_RPBF_02.wmodel`과
+  `MN_RPBF_02_AnimSet.wmodel`만 저장하고, 두 WModel과 참조 DDS closure는 같은 물리 경로로 수동
+  전달한다. worktree 삭제, clone, `git lfs pull`로 이 파일들이 복구된다고 가정하거나 force-add하지
+  않는다. 누락 시 model-view/FullDiagnostic 차단을 코드 회귀와 구분하고 Drive 전달 prerequisite와
+  exact 상대 경로를 보고한다.
+- 이 절의 source/Product validate, native harness, Product/Core/FullDiagnostic PASS는 화면 품질 PASS가
+  아니다. Effect 반복·위치·색, collider wire, Ghost body와 Sound timing의 최종 판정은 0절의 사용자
+  전용 경계를 그대로 적용하며, 사용자의 서면 관찰 전에는 first pixel, eye smoke, visual PASS를
+  기록하지 않는다.
+- encounter Stage에 `verticalOffsetM` 같은 optional field를 추가할 때 정본 gameplay publisher만
+  고치면 끝나지 않는다. 같은 `ValtanEncounter.json`을 strict하게 다시 읽는
+  `Publish-ValtanWorldDestruction.ps1` 같은 보조 publisher도 exact property set과 의미 검증을 같은
+  변경 단위에서 갱신해야 한다. 그렇지 않으면 focused/source validation은 모두 통과해도 Product
+  pre-build에서 `missing or unknown fields`로 중단된다. 보조 reader에서 단순히 unknown field를
+  무시하지 말고 정본과 동일하게 finite/range, non-zero, active `bossResponse`, pattern/stage motion
+  배타 조건을 검증하며, 이 consumer를 포함한 negative 회귀와 Product build를 완료 증거로 남긴다.
+- 새 Client translation unit을 추가하면 `.vcxproj`/`.filters`뿐 아니라 Product build가 고정하는 native
+  source inventory oracle도 함께 갱신한다. 실제 컴파일 오류와 stale exact-count/source-list 실패를
+  구분하고, inventory 기대값을 약화하거나 새 파일을 빌드에서 빼서 통과시키지 않는다.
+
 ### Effect 세대를 한 화면에 합칠 때 backend catalog를 다시 직접 순회하지 않는다
 
 V1 authored 문서는 `elements[]` 전체가 하나의 원자적 composition이고, V2는 leaf와 ordered group을

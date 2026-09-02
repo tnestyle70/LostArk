@@ -357,9 +357,21 @@ def _effect_v2_artifact_paths(
             raise PresentationGenerationError(
                 f"BossCatalog combatObjectVisuals[{ordinal}].effectV2Group is invalid"
             )
+        group_fields = frozenset(v2_group)
+        base_group_fields = frozenset(("groupId", "playbackRate"))
+        hit_sync_fields = frozenset(("visualHitMs", "serverHitId"))
+        if group_fields not in (
+            base_group_fields,
+            base_group_fields | hit_sync_fields,
+        ):
+            raise PresentationGenerationError(
+                f"BossCatalog combatObjectVisuals[{ordinal}].effectV2Group "
+                "must contain either the exact presentation-only fields or "
+                "the complete hit-sync pair"
+            )
         _require_exact_properties(
             v2_group,
-            frozenset(("groupId", "playbackRate", "visualHitMs", "serverHitId")),
+            group_fields,
             f"BossCatalog combatObjectVisuals[{ordinal}].effectV2Group",
         )
         _effect_v2_relative(

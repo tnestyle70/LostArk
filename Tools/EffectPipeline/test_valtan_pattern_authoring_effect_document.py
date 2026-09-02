@@ -74,9 +74,22 @@ class ValtanPatternAuthoringEffectDocumentTests(unittest.TestCase):
     def setUp(self) -> None:
         self.seed = json.loads(DOCUMENT_PATH.read_text(encoding="utf-8"))
 
-    def test_repository_seed_has_no_product_promoted_cross_draft(self) -> None:
+    def test_repository_seed_preserves_the_v2_promoted_trash_source_as_draft(self) -> None:
         self.assertTrue(validates(self.seed))
-        self.assertEqual([], self.seed["bindings"])
+        self.assertEqual(
+            [
+                {
+                    "patternId": "VALTAN_TRASH",
+                    "effectAssetId": "effect.valtan.project-tuned.sequence.trash",
+                    "authoringPath": (
+                        "Effects/Authored/"
+                        "effect.valtan.project-tuned.sequence.trash.effect.json"
+                    ),
+                    "state": "DRAFT_ATTACHED",
+                }
+            ],
+            self.seed["bindings"],
+        )
 
     def test_one_binding_has_no_animation_or_runtime_fields(self) -> None:
         document = copy.deepcopy(self.seed)

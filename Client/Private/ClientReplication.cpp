@@ -33,6 +33,15 @@ namespace
 {
 	using Client::CValtan;
 
+#ifdef _DEBUG
+	Client::COMBAT_DEBUG_VISIBILITY_SNAPSHOT g_CombatDebugVisibility = []
+	{
+		Client::COMBAT_DEBUG_VISIBILITY_SNAPSHOT Visibility{};
+		Visibility.iRevision = 1u;
+		return Visibility;
+	}();
+#endif
+
 	bool_t Can_ReloadValtanPresentationWithoutResettingLiveSound(
 		std::string& strOutStatus)
 	{
@@ -144,6 +153,26 @@ namespace
 	}
 }
 
+#ifdef _DEBUG
+Client::COMBAT_DEBUG_VISIBILITY_SNAPSHOT
+Client::CClientReplication::Get_GlobalCombatDebugVisibility()
+{
+	return g_CombatDebugVisibility;
+}
+
+void Client::CClientReplication::Set_GlobalCombatDebugVisibility(
+	const COMBAT_DEBUG_VISIBILITY_SNAPSHOT& Visibility)
+{
+	if (g_CombatDebugVisibility.Has_SameVisibility(Visibility))
+		return;
+	const std::uint64_t iNextRevision =
+		COMBAT_DEBUG_VISIBILITY_SNAPSHOT::Next_Revision(
+			g_CombatDebugVisibility.iRevision);
+	g_CombatDebugVisibility = Visibility;
+	g_CombatDebugVisibility.iRevision = iNextRevision;
+}
+#endif
+
 bool Client::CClientReplication::Initialize(const DESC& desc)
 {
 	//Layer ?뺣낫媛 ?좏븳?쒖? 寃?ы븯怨? ?ㅼ젙????ν븳??
@@ -184,6 +213,9 @@ bool Client::CClientReplication::Initialize(const DESC& desc)
 	m_WorldDestructionProjectionRuntime.Reset();
 	Clear_DeferredLocalCharacterClassReplacement();
 	m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
+#ifdef _DEBUG
+	Sync_GlobalCombatDebugVisibility();
+#endif
 
 	return true;
 }
@@ -192,6 +224,12 @@ bool Client::CClientReplication::Update()
 {
 	if (!m_isInitialized)
 		return false;
+#ifdef _DEBUG
+	/* This must precede the disconnected early return. A Debug selection is a
+	   process setting, not state owned by whichever Level currently has a live
+	   socket. */
+	Sync_GlobalCombatDebugVisibility();
+#endif
 	//network manager媛 留뚮뱾?대넃? replication event瑜??ㅼ젣 engine 蹂寃쎌쑝濡??곸슜?쒕떎.
 	//baren main thread?먯꽌 留ㅽ봽?덉엫 ?몄텧?쒕떎.
 	//珥덇린???щ? 寃??-> ?꾩옱 network ?곌껐 ?곹깭 ?뺤씤
@@ -1049,41 +1087,37 @@ void Client::CClientReplication::Collect_PlayerViews(
 }
 
 #ifdef _DEBUG
-void Client::CClientReplication::Set_CombatColliderDebugVisible(
-	const bool_t isVisible)
+void Client::CClientReplication::Sync_GlobalCombatDebugVisibility()
 {
-	m_isCombatColliderDebugVisible = isVisible;
-	for (const std::shared_ptr<CCharacter>& character :
-		m_Registry.Get_LiveObjects())
-	{
-		if (nullptr != character)
-			character->Set_CombatColliderDebugVisible(isVisible);
-	}
-	for (auto& [netEntityId, presentation] : m_WorldEntities)
-	{
-		(void)netEntityId;
-		if (std::shared_ptr<CNpc> npc = presentation.pNpc.lock())
-			npc->Set_CombatColliderDebugVisible(isVisible);
-		if (std::shared_ptr<CValtan> valtan = presentation.pValtan.lock())
-			valtan->Set_CombatColliderDebugVisible(isVisible);
-	}
+	const COMBAT_DEBUG_VISIBILITY_SNAPSHOT Visibility =
+		Get_GlobalCombatDebugVisibility();
+	if (Visibility.iRevision == m_CombatDebugVisibility.iRevision)
+		return;
+	Apply_CombatDebugVisibility(Visibility);
 }
 
-void Client::CClientReplication::Set_SkillHitAreaDebugVisible(
-	const bool_t isVisible)
+void Client::CClientReplication::Apply_CombatDebugVisibility(
+	const COMBAT_DEBUG_VISIBILITY_SNAPSHOT& Visibility)
 {
-	m_isSkillHitAreaDebugVisible = isVisible;
+	m_CombatDebugVisibility = Visibility;
 	for (const std::shared_ptr<CCharacter>& character :
 		m_Registry.Get_LiveObjects())
 	{
 		if (nullptr != character)
-			character->Set_SkillHitAreaDebugVisible(isVisible);
+			character->Set_SkillHitAreaDebugVisible(
+				Visibility.bPlayerSkillHitGeometry);
 	}
 	for (auto& [netEntityId, presentation] : m_WorldEntities)
 	{
 		(void)netEntityId;
 		if (std::shared_ptr<CValtan> valtan = presentation.pValtan.lock())
-			valtan->Set_PatternHitAreaDebugVisible(isVisible);
+		{
+			valtan->Set_CombatDebugVisibility(
+				Visibility.bBossBodyCollider,
+				Visibility.bBossPatternHitPulse,
+				Visibility.bBossStageGeometry,
+				Visibility.bCounterProxy);
+		}
 	}
 }
 #endif
@@ -1148,10 +1182,8 @@ bool Client::CClientReplication::Create_Character(
 
 	character->Get_Transform()->Rotation(0.f, yawDegrees, 0.f);
 #ifdef _DEBUG
-	character->Set_CombatColliderDebugVisible(
-		m_isCombatColliderDebugVisible);
 	character->Set_SkillHitAreaDebugVisible(
-		m_isSkillHitAreaDebugVisible);
+		m_CombatDebugVisibility.bPlayerSkillHitGeometry);
 #endif
 	outCharacter = character;
 	return true;
@@ -1446,10 +1478,6 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 				},
 				presentation.strCurrentClip);
 		}
-#ifdef _DEBUG
-		npc->Set_CombatColliderDebugVisible(
-			m_isCombatColliderDebugVisible);
-#endif
 		const auto [iter, inserted] = m_WorldEntities.emplace(
 			spawned.iNetEntityId, std::move(presentation));
 		(void)iter;
@@ -1528,10 +1556,6 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		presentation.PinnedDefinitionRevision =
 			spawned.PinnedDefinitionRevision;
 		presentation.pNpc = monster;
-#ifdef _DEBUG
-		monster->Set_CombatColliderDebugVisible(
-			m_isCombatColliderDebugVisible);
-#endif
 		const auto [iter, inserted] = m_WorldEntities.emplace(
 			spawned.iNetEntityId, std::move(presentation));
 		(void)iter;
@@ -1645,10 +1669,11 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		presentation.bPresentationIsolated = true;
 	}
 #ifdef _DEBUG
-	valtan->Set_CombatColliderDebugVisible(
-		m_isCombatColliderDebugVisible);
-	valtan->Set_PatternHitAreaDebugVisible(
-		m_isSkillHitAreaDebugVisible);
+	valtan->Set_CombatDebugVisibility(
+		m_CombatDebugVisibility.bBossBodyCollider,
+		m_CombatDebugVisibility.bBossPatternHitPulse,
+		m_CombatDebugVisibility.bBossStageGeometry,
+		m_CombatDebugVisibility.bCounterProxy);
 #endif
 	if (!isPrimaryValtan && !joinedReloaded)
 	{
@@ -2112,6 +2137,7 @@ void Client::CClientReplication::Stage_PlayerAttachmentPresentation(
 		cannot be composed with a presentation bone. Capture the hand-local matrix
 		once both actual presentation transforms are available below. */
 		presentation.bHasLocalOffset = false;
+		presentation.bHasGripLocalOffset = false;
 	}
 }
 
@@ -2179,13 +2205,22 @@ void Client::CClientReplication::Update_PlayerAttachmentPresentations()
 			}
 			attachment->second.LocalOffset = localOffset;
 			attachment->second.bHasLocalOffset = true;
+			attachment->second.GripLocalOffset = {};
+			(void)valtan->Try_Get_PlayerHandGripLocalOffset(
+				valtan->Get_ServerActionId(),
+				attachment->second.GripLocalOffset);
+			attachment->second.bHasGripLocalOffset = true;
 		}
 
-		/* The grip origin is fixed for every captured player. Only the captured
-		   orientation/scale follows the animated hand, never the hit distance. */
+		/* The authored correction moves the character's feet-origin to the palm
+		   in normalized wrist-local axes. The captured orientation/scale still
+		   follows the H3 local * hand contract, never the hit distance. */
 		float4x4_t attachedStored{};
 		if (!CPlayerHandGripTransform::Compose_World(
-				attachment->second.LocalOffset, handWorldStored, attachedStored))
+				attachment->second.LocalOffset, handWorldStored,
+				attachment->second.bHasGripLocalOffset ?
+					attachment->second.GripLocalOffset :
+					PLAYER_HAND_GRIP_LOCAL_OFFSET{}, attachedStored))
 		{
 			++attachment;
 			continue;

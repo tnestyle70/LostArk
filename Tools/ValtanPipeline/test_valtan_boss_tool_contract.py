@@ -353,6 +353,17 @@ class ValtanBossToolContractTests(unittest.TestCase):
         )
         self.assertIn("Find_AuditionPattern(Boss.strPatternId)", sync)
         self.assertIn("Find_LiveStage(*pPattern)", sync)
+        self.assertIn("m_strLivePatternId = pPattern->strPatternId", sync)
+        self.assertIn("m_strLiveStageId =", sync)
+        self.assertNotIn("m_strSelectedPatternId =", sync)
+        self.assertNotIn("m_strSelectedStageId =", sync)
+        pattern_list = function_body(
+            self.boss_cpp,
+            "void Client::CBossTool::Render_PatternList()",
+        )
+        self.assertIn('Label += "  [LIVE]"', pattern_list)
+        self.assertIn("ImGui::SetScrollHereY(0.5f)", pattern_list)
+        self.assertIn("m_bFollowLive && Pattern.strPatternId == m_strLivePatternId", pattern_list)
         submit = function_body(
             self.boss_cpp,
             "bool_t Client::CBossTool::Submit_SelectedPattern()",

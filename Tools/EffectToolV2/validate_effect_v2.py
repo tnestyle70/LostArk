@@ -383,19 +383,23 @@ def _load_boss_combat_object_groups(
             group = visual.get("effectV2Group")
             if group is None:
                 continue
-            if not isinstance(group, dict) or set(group) != {
-                "groupId", "playbackRate", "visualHitMs", "serverHitId"
-            }:
+            base_fields = {"groupId", "playbackRate"}
+            hit_sync_fields = {"visualHitMs", "serverHitId"}
+            if not isinstance(group, dict) or set(group) not in (
+                base_fields,
+                base_fields | hit_sync_fields,
+            ):
                 raise ContractError("BOSS_VALTAN effectV2Group contract is invalid")
             group_id = group.get("groupId")
             if not isinstance(group_id, str) or group_id not in groups:
                 raise ContractError(
                     f"BOSS_VALTAN combat-object Effect V2 group is missing: {group_id}"
                 )
-            if group_id in owners:
-                raise ContractError(
-                    f"duplicate BOSS_VALTAN combat-object Effect V2 group: {group_id}"
-                )
+            # A group is a reusable presentation definition. Multiple distinct
+            # combat-object archetypes may intentionally instance the same
+            # authored clock (for example Ground Roar, Pizza, and Struggling
+            # rock pillars); uniqueness belongs to each catalog visual row,
+            # not to the referenced groupId.
             owners.add(group_id)
     return owners
 

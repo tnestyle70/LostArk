@@ -1,0 +1,38 @@
+{
+  "schema": "lostark.effect-v2-group",
+  "formatVersion": 2,
+  "groupId": "boss.valtan.rock-pillar.sequence",
+  "durationMs": 6200,
+  "children": [
+    {
+      "childId": "child.rock-pillar.active",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.rock-pillar.active"
+      },
+      "startMs": 0,
+      "durationMs": 5000,
+      "stop": "Kill",
+      "localTransform": {
+        "translation": [0.0, 0.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      }
+    },
+    {
+      "childId": "child.rock-pillar.explosion",
+      "resource": {
+        "kind": "LEAF",
+        "id": "boss.valtan.rock-pillar.explosion"
+      },
+      "startMs": 5000,
+      "durationMs": 1200,
+      "stop": "Deactivate",
+      "localTransform": {
+        "translation": [0.0, 0.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      }
+    }
+  ]
+}

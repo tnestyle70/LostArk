@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
+LOSTARK_ANIM_EVENTS 3 "Slayer" 2442
 "wbk_att_battle_2_01" SOUND startms=1 payload="PC_BERSERKER_F.PC_Berserker_F_Att_Battle2_Vox1_1" src=orig
 "wbk_att_battle_2_01" SOUND startms=1 payload="PC_BERSERKER_F.PC_Berserker_F_Att_Battle2_1" src=orig
 "wbk_att_battle_2_01" CANCEL startms=200 endms=620 payload="스킬선입력" src=orig
@@ -157,6 +157,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_att_identity1_1_03" CANCEL startms=550 endms=1600 payload="[스킬캔슬]" src=orig
 "wbk_att_identity1_1_03" CANCEL startms=700 endms=1600 payload="[이동캔슬]" src=orig
 "wbk_att_identity1_1_04" HIT startms=0 endms=1099 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_att_identity1_1_04" HIT startms=651 endms=1467 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "wbk_att_identity1_1_04" SOUND startms=87 payload="PC_BERSERKER_F.PC_Berserker_F_Att_Identity1_4" src=orig
 "wbk_att_identity1_1_04" SOUND startms=100 payload="PC_BERSERKER_F.PC_Berserker_F_Att_Identity1_Vox1_3" src=orig
 "wbk_att_identity1_1_04" CANCEL startms=200 endms=720 payload="[선스]" src=orig
@@ -168,7 +169,6 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_att_identity1_1_04" EFFECT startms=357 payload="FX_PC_WBKF_01.Par_N_WBKF_Swing_08_01" src=orig
 "wbk_att_identity1_1_04" EFFECT startms=358 payload="FX_Post.FX_Par.Par_C_MotionBlur_V_02" src=orig
 "wbk_att_identity1_1_04" CANCEL startms=450 endms=1700 payload="[회피캔슬]" src=orig
-"wbk_att_identity1_1_04" HIT startms=651 endms=1467 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "wbk_att_identity1_1_04" CANCEL startms=700 endms=1700 payload="[입력캔슬]" src=orig
 "wbk_att_identity1_1_04" CANCEL startms=800 endms=1700 payload="[이동캔슬]" src=orig
 "wbk_att_identity1_1_04" CANCEL startms=900 endms=1700 payload="[평타연결]" src=orig
@@ -210,7 +210,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_bladewave" EFFECT startms=300 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wbk_sk_bladewave" EFFECT startms=320 payload="FX_PC_WBK_05.Par_T_WBK_BladeWave_Smoke_01" src=orig
 "wbk_sk_bladewave" EFFECT startms=320 payload="FX_PC_WBK_05.Par_T_WBK_BladeWave_Spark_01" src=orig
-"wbk_sk_bladewave" HIT startms=350 endms=550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_bladewave" HIT startms=350 endms=550 rep=3 repms=300 fz=500 fzin=150 fzout=250 push=10 pushr=10 area=3 ar=240 aa=80 ah=150 ax=-30 arem=0 maxt=0 src=orig
 "wbk_sk_bladewave" CANCEL startms=398 endms=1400 payload="[회피캔슬]" src=orig
 "wbk_sk_bladewave" CANCEL startms=400 endms=1400 payload="콤보입력" src=orig
 "wbk_sk_bladewave" CANCEL startms=447 endms=1400 payload="콤보입력중" src=orig
@@ -222,7 +222,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_bladewave_custom01" SOUND startms=220 payload="PC_BERSERKER_F.PC_Berserker_F_SK_BladeWave1_FX000_1" src=orig
 "wbk_sk_bladewave_custom01" EFFECT startms=450 payload="FX_PC_WBK_05.Par_T_WBK_BladeWave_01" src=orig
 "wbk_sk_bladewave_custom01" EFFECT startms=500 payload="FX_PC_WBK_05.Par_T_WBK_BladeWave_01_02" src=orig
-"wbk_sk_bladewave_custom01" HIT startms=550 endms=750 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_bladewave_custom01" HIT startms=550 endms=750 rep=4 repms=350 fz=500 fzin=150 fzout=250 push=15 pushr=15 area=3 ar=240 aa=80 ah=150 ax=-30 arem=0 maxt=0 src=orig
 "wbk_sk_bladewave_custom01" EFFECT startms=555 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
 "wbk_sk_bladewave_custom01" SHAKE startms=561 payload="" src=orig
 "wbk_sk_bladewave_custom01" EFFECT startms=600 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
@@ -247,19 +247,19 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_bloodyrush" EFFECT startms=822 payload="FX_PC_WBK_00.Par_D_RevengeRush_13_LOC_INT" src=orig
 "wbk_sk_bloodyrush" EFFECT startms=850 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wbk_sk_bloodyrush" HIT startms=850 endms=1000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_bloodyrush" HIT startms=1224 endms=1375 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_bloodyrush" HIT startms=1568 endms=1718 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "wbk_sk_bloodyrush" EFFECT startms=877 payload="" src=orig
 "wbk_sk_bloodyrush" EFFECT startms=970 payload="FX_PC_WBK_00.Par_D_RevengeRush_12" src=orig
 "wbk_sk_bloodyrush" EFFECT startms=972 payload="FX_PC_WBK_00.Par_D_RevengeRush_13_LOC_INT" src=orig
 "wbk_sk_bloodyrush" EFFECT startms=1170 payload="FX_PC_WBK_00.Par_D_RevengeRush_12" src=orig
 "wbk_sk_bloodyrush" EFFECT startms=1176 payload="FX_PC_WBK_00.Par_D_RevengeRush_13_LOC_INT" src=orig
 "wbk_sk_bloodyrush" EFFECT startms=1179 payload="" src=orig
-"wbk_sk_bloodyrush" HIT startms=1224 endms=1375 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "wbk_sk_bloodyrush" EFFECT startms=1310 payload="FX_PC_WBK_00.Par_D_RevengeRush_12" src=orig
 "wbk_sk_bloodyrush" EFFECT startms=1318 payload="FX_PC_WBK_00.Par_D_RevengeRush_13_LOC_INT" src=orig
 "wbk_sk_bloodyrush" SOUND startms=1400 payload="PC_BERSERKER_F.PC_Berserker_F_SK_BloodyRush1_FX000_3" src=orig
 "wbk_sk_bloodyrush" EFFECT startms=1480 payload="FX_PC_WBK_00.Par_D_RevengeRush_12" src=orig
 "wbk_sk_bloodyrush" EFFECT startms=1489 payload="FX_PC_WBK_00.Par_D_RevengeRush_13_LOC_INT" src=orig
-"wbk_sk_bloodyrush" HIT startms=1568 endms=1718 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "wbk_sk_bloodyrush" EFFECT startms=1630 payload="FX_PC_WBK_00.Par_D_RevengeRush_12" src=orig
 "wbk_sk_bloodyrush" EFFECT startms=1638 payload="FX_PC_WBK_00.Par_D_RevengeRush_13_LOC_INT" src=orig
 "wbk_sk_bloodyrush" CANCEL startms=1905 endms=2845 payload="[선스]" src=orig
@@ -834,7 +834,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_finishstrike" EFFECT startms=559 payload="FX_PC_WBK_07.Par_U_WBK_FinishStrike_Cast_01" src=orig
 "wbk_sk_finishstrike" SOUND startms=600 payload="PC_BERSERKER_F.PC_Berserker_F_SK_FinishStrike1_FX300_2" src=orig
 "wbk_sk_finishstrike" CANCEL startms=900 endms=1920 payload="[선이]" src=orig
-"wbk_sk_finishstrike" HIT startms=1083 endms=1885 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_finishstrike" HIT startms=1083 endms=1885 rep=1 repms=0 fz=420 fzin=150 fzout=250 push=20 pushr=20 area=1 ar=200 aa=0 ah=200 ax=200 arem=0 maxt=0 src=orig
 "wbk_sk_finishstrike" SHAKE startms=1083 payload="" src=orig
 "wbk_sk_finishstrike" EFFECT startms=1100 payload="" src=orig
 "wbk_sk_finishstrike" EFFECT startms=1116 payload="FX_PC_WBK_07.Par_U_WBK_MailStorm_Fire_Exp_Blood_03" src=orig
@@ -858,7 +858,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_finishstrike_custom_1" EFFECT startms=1078 payload="FX_PC_WBK_07.Par_U_WBK_FinishStrike_Cast_01" src=orig
 "wbk_sk_finishstrike_custom_1" SOUND startms=1100 payload="PC_BERSERKER_F.PC_Berserker_F_SK_FinishStrike1_FX300_2" src=orig
 "wbk_sk_finishstrike_custom_1" CANCEL startms=1400 endms=2420 payload="[선이]" src=orig
-"wbk_sk_finishstrike_custom_1" HIT startms=1600 endms=2400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_finishstrike_custom_1" HIT startms=1600 endms=2400 rep=1 repms=0 fz=420 fzin=150 fzout=250 push=20 pushr=20 area=1 ar=200 aa=0 ah=200 ax=200 arem=0 maxt=0 src=orig
 "wbk_sk_finishstrike_custom_1" SHAKE startms=1600 payload="" src=orig
 "wbk_sk_finishstrike_custom_1" EFFECT startms=1620 payload="" src=orig
 "wbk_sk_finishstrike_custom_1" EFFECT startms=1633 payload="FX_PC_WBK_07.Par_U_WBK_MailStorm_Fire_Exp_Blood_03" src=orig
@@ -880,7 +880,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_finishstrike_custom_2" CANCEL startms=300 endms=1320 payload="[선이]" src=orig
 "wbk_sk_finishstrike_custom_2" SOUND startms=500 payload="PC_BERSERKER_F.PC_Berserker_F_SK_FinishStrike1_Vox2_2" src=orig
 "wbk_sk_finishstrike_custom_2" SOUND startms=600 payload="PC_BERSERKER_F.PC_Berserker_F_SK_FinishStrike1_FX008_3" src=orig
-"wbk_sk_finishstrike_custom_2" HIT startms=700 endms=1500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_finishstrike_custom_2" HIT startms=700 endms=1500 rep=1 repms=0 fz=420 fzin=150 fzout=250 push=20 pushr=20 area=1 ar=200 aa=0 ah=200 ax=200 arem=0 maxt=0 src=orig
 "wbk_sk_finishstrike_custom_2" SHAKE startms=700 payload="" src=orig
 "wbk_sk_finishstrike_custom_2" EFFECT startms=704 payload="" src=orig
 "wbk_sk_finishstrike_custom_2" EFFECT startms=732 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
@@ -1536,7 +1536,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_maelstorm_01" EFFECT startms=704 payload="FX_PC_WBK_07.Par_U_WBK_MailStorm_Exp_01" src=orig
 "wbk_sk_maelstorm_01" SHAKE startms=704 payload="" src=orig
 "wbk_sk_maelstorm_01" EFFECT startms=709 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
-"wbk_sk_maelstorm_01" HIT startms=713 endms=914 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_maelstorm_01" HIT startms=713 endms=914 rep=1 repms=0 fz=500 fzin=150 fzout=250 push=130 pushr=200 area=3 ar=190 aa=360 ah=200 ax=250 arem=0 maxt=0 src=orig
 "wbk_sk_maelstorm_01" EFFECT startms=732 payload="" src=orig
 "wbk_sk_maelstorm_01" EFFECT startms=738 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wbk_sk_maelstorm_01" CANCEL startms=900 endms=1200 payload="" src=orig
@@ -1889,7 +1889,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_tempestslashing_custom01" SOUND startms=0 payload="PC_BERSERKER_F.PC_Berserker_F_SK_TempestSlash1_Vox1_2" src=orig
 "wbk_sk_tempestslashing_custom01" SUPERARMOR startms=0 endms=1605 payload="" src=orig
 "wbk_sk_tempestslashing_custom01" SUPERARMOR startms=0 endms=1220 payload="" src=orig
-"wbk_sk_tempestslashing_custom01" HIT startms=65 endms=998 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_tempestslashing_custom01" HIT startms=65 endms=998 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=3 ar=180 aa=360 ah=300 ax=0 arem=0 maxt=0 src=orig
 "wbk_sk_tempestslashing_custom01" EFFECT startms=100 payload="FX_PC_WBK_15.Par_J_WBK_Dust_00_01" src=orig
 "wbk_sk_tempestslashing_custom01" EFFECT startms=100 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "wbk_sk_tempestslashing_custom01" EFFECT startms=100 payload="FX_PC_WBK_15.Par_J_WBK_Tempest_00_03" src=orig
@@ -1949,7 +1949,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_tempestslashing_custom_7" CANCEL startms=1000 endms=2233 payload="" src=orig
 "wbk_sk_thrust_01" SUPERARMOR startms=0 endms=100 payload="" src=orig
 "wbk_sk_thrust_01" CANCEL startms=100 endms=100 payload="" src=orig
-"wbk_sk_thrust_01" HIT startms=100 endms=100 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_thrust_01" HIT startms=100 endms=100 rep=1 repms=0 fz=270 fzin=100 fzout=150 push=20 pushr=20 area=2 ar=250 aa=140 ah=150 ax=-40 arem=0 maxt=0 src=orig
 "wbk_sk_thrust_02" EFFECT startms=0 payload="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_04" src=orig
 "wbk_sk_thrust_02" EFFECT startms=0 payload="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_05" src=orig
 "wbk_sk_thrust_02" EFFECT startms=0 payload="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_06_02" src=orig
@@ -1975,7 +1975,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_thrust_02" EFFECT startms=135 payload="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_06_02" src=orig
 "wbk_sk_thrust_02" EFFECT startms=135 payload="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_06_03" src=orig
 "wbk_sk_thrust_02" EFFECT startms=140 payload="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_06_04" src=orig
-"wbk_sk_thrust_02" HIT startms=150 endms=550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_thrust_02" HIT startms=150 endms=550 rep=1 repms=0 fz=400 fzin=100 fzout=150 push=20 pushr=20 area=2 ar=250 aa=140 ah=150 ax=-100 arem=0 maxt=0 src=orig
 "wbk_sk_thrust_02" EFFECT startms=155 payload="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_06_02" src=orig
 "wbk_sk_thrust_02" EFFECT startms=155 payload="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_06_03" src=orig
 "wbk_sk_thrust_02" EFFECT startms=180 payload="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_06_02" src=orig
@@ -1994,14 +1994,14 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_thrust_custom_1" EFFECT startms=0 payload="" src=orig
 "wbk_sk_thrust_custom_1" SUPERARMOR startms=0 endms=600 payload="" src=orig
 "wbk_sk_thrust_custom_1" SOUND startms=100 payload="PC_BERSERKER_F.PC_Berserker_F_SK_ShoulderCharge1_Vox1_1" src=orig
-"wbk_sk_thrust_custom_1" HIT startms=150 endms=233 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_thrust_custom_1" HIT startms=150 endms=233 rep=1 repms=0 fz=270 fzin=100 fzout=150 push=20 pushr=20 area=2 ar=250 aa=140 ah=150 ax=-70 arem=0 maxt=0 src=orig
 "wbk_sk_thrust_custom_1" CANCEL startms=599 endms=599 payload="" src=orig
 "wbk_sk_thrust_custom_5" CANCEL startms=0 endms=801 payload="스킬선입력" src=orig
 "wbk_sk_thrust_custom_5" CANCEL startms=0 endms=803 payload="이동선입력" src=orig
 "wbk_sk_thrust_custom_5" SUPERARMOR startms=0 endms=804 payload="" src=orig
 "wbk_sk_thrust_custom_5" SUPERARMOR startms=0 endms=820 payload="" src=orig
 "wbk_sk_thrust_custom_5" SOUND startms=100 payload="PC_BERSERKER_F.PC_Berserker_F_SK_ShoulderCharge1_FX000_3" src=orig
-"wbk_sk_thrust_custom_5" HIT startms=150 endms=550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_thrust_custom_5" HIT startms=150 endms=550 rep=1 repms=0 fz=420 fzin=150 fzout=250 push=20 pushr=20 area=2 ar=250 aa=180 ah=200 ax=50 arem=0 maxt=0 src=orig
 "wbk_sk_thrust_custom_5" EFFECT startms=246 payload="FX_PC_WBKF_01.Par_N_Trail_034" src=orig
 "wbk_sk_thrust_custom_5" EFFECT startms=350 payload="" src=orig
 "wbk_sk_thrust_custom_5" SHAKE startms=400 payload="" src=orig
@@ -2031,7 +2031,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_thrust_custom_6" EFFECT startms=55 payload="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_00_06_03" src=orig
 "wbk_sk_thrust_custom_6" EFFECT startms=75 payload="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_06_03" src=orig
 "wbk_sk_thrust_custom_6" EFFECT startms=97 payload="" src=orig
-"wbk_sk_thrust_custom_6" HIT startms=150 endms=550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_thrust_custom_6" HIT startms=150 endms=550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=1 ar=150 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
 "wbk_sk_thrust_custom_6" CANCEL startms=201 endms=701 payload="스킬선입력" src=orig
 "wbk_sk_thrust_custom_6" CANCEL startms=201 endms=702 payload="이동선입력" src=orig
 "wbk_sk_thrust_custom_6" EFFECT startms=297 payload="" src=orig
@@ -2042,7 +2042,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_thrust_custom_7" CANCEL startms=0 endms=800 payload="이동선입력" src=orig
 "wbk_sk_thrust_custom_7" SUPERARMOR startms=0 endms=803 payload="" src=orig
 "wbk_sk_thrust_custom_7" SUPERARMOR startms=0 endms=810 payload="" src=orig
-"wbk_sk_thrust_custom_7" HIT startms=150 endms=550 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_thrust_custom_7" HIT startms=150 endms=550 rep=1 repms=0 fz=420 fzin=150 fzout=250 push=20 pushr=20 area=2 ar=250 aa=180 ah=200 ax=50 arem=0 maxt=0 src=orig
 "wbk_sk_thrust_custom_7" SOUND startms=350 payload="PC_BERSERKER_F.PC_Berserker_F_SK_ShoulderCharge1_FX007_2" src=orig
 "wbk_sk_thrust_custom_7" SHAKE startms=464 payload="" src=orig
 "wbk_sk_thrust_custom_7" EFFECT startms=465 payload="fx_cm_01.Distortion_oneLayer.Par_MP_ConcaveDisOL_WBK_SC_01" src=orig
@@ -2061,7 +2061,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_thrust_custom_8" SOUND startms=200 payload="PC_BERSERKER_F.PC_Berserker_F_SK_ShoulderCharge1_FX008_2" src=orig
 "wbk_sk_thrust_custom_8" SHAKE startms=203 payload="" src=orig
 "wbk_sk_thrust_custom_8" EFFECT startms=283 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
-"wbk_sk_thrust_custom_8" HIT startms=283 endms=685 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_thrust_custom_8" HIT startms=283 endms=685 rep=1 repms=0 fz=420 fzin=150 fzout=250 push=20 pushr=20 area=2 ar=250 aa=180 ah=200 ax=50 arem=0 maxt=0 src=orig
 "wbk_sk_thrust_custom_8" SHAKE startms=290 payload="" src=orig
 "wbk_sk_thrust_custom_8" EFFECT startms=306 payload="FX_PC_WBK_10.Par_R_WBK_ShoulderCharge_08_03" src=orig
 "wbk_sk_thrust_custom_8" EFFECT startms=306 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
@@ -2073,7 +2073,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_updownslash_01" SUPERARMOR startms=0 endms=2500 payload="" src=orig
 "wbk_sk_updownslash_01" SOUND startms=10 payload="PC_BERSERKER_F.PC_Berserker_F_SK_CryHazard1_Vox1_1" src=orig
 "wbk_sk_updownslash_01" SOUND startms=100 payload="PC_BERSERKER_F.PC_Berserker_F_SK_CryHazard1_FX000_1" src=orig
-"wbk_sk_updownslash_01" HIT startms=250 endms=450 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_updownslash_01" HIT startms=250 endms=450 rep=1 repms=0 fz=420 fzin=150 fzout=250 push=40 pushr=40 area=3 ar=180 aa=150 ah=250 ax=0 arem=0 maxt=0 src=orig
 "wbk_sk_updownslash_01" EFFECT startms=273 payload="FX_PC_WBK_11.Par_X_WBK_Spike_00_02" src=orig
 "wbk_sk_updownslash_01" SHAKE startms=279 payload="" src=orig
 "wbk_sk_updownslash_01" EFFECT startms=285 payload="FX_PC_WBK_11.Par_X_WBK_CastWP_03_01" src=orig
@@ -2088,7 +2088,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_updownslash_02" SOUND startms=0 payload="PC_BERSERKER_F.PC_Berserker_F_SK_CryHazard1_FX000_2" src=orig
 "wbk_sk_updownslash_02" SOUND startms=0 payload="PC_BERSERKER_F.PC_Berserker_F_SK_CryHazard1_FX300_1" src=orig
 "wbk_sk_updownslash_02" SUPERARMOR startms=0 endms=820 payload="" src=orig
-"wbk_sk_updownslash_02" HIT startms=118 endms=319 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_updownslash_02" HIT startms=118 endms=319 rep=1 repms=0 fz=420 fzin=150 fzout=250 push=20 pushr=20 area=1 ar=150 aa=0 ah=300 ax=130 arem=0 maxt=0 src=orig
 "wbk_sk_updownslash_02" EFFECT startms=175 payload="" src=orig
 "wbk_sk_updownslash_02" EFFECT startms=191 payload="FX_PC_WBK_11.Par_X_WBK_Spike_00_01" src=orig
 "wbk_sk_updownslash_02" EFFECT startms=191 payload="FX_PC_WBK_11.Par_X_WBK_Lightning_03_01" src=orig
@@ -2103,7 +2103,8 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_updownslash_02_custom_1" SUPERARMOR startms=0 endms=1620 payload="" src=orig
 "wbk_sk_updownslash_02_custom_1" SOUND startms=9 payload="PC_BERSERKER_F.PC_Berserker_F_SK_CryHazard1_FX007_2" src=orig
 "wbk_sk_updownslash_02_custom_1" EFFECT startms=132 payload="FX_PC_WBK_11.Par_X_WBK_Swing_07_01" src=orig
-"wbk_sk_updownslash_02_custom_1" HIT startms=178 endms=385 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_updownslash_02_custom_1" HIT startms=178 endms=385 rep=1 repms=0 fz=420 fzin=150 fzout=250 push=20 pushr=20 area=1 ar=150 aa=0 ah=300 ax=130 arem=0 maxt=0 src=orig
+"wbk_sk_updownslash_02_custom_1" HIT startms=759 endms=966 rep=1 repms=0 fz=410 fzin=150 fzout=250 push=10 pushr=10 area=1 ar=150 aa=0 ah=300 ax=130 arem=0 maxt=0 src=orig
 "wbk_sk_updownslash_02_custom_1" EFFECT startms=235 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wbk_sk_updownslash_02_custom_1" EFFECT startms=235 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
 "wbk_sk_updownslash_02_custom_1" EFFECT startms=235 payload="FX_PC_WBK_11.Par_X_WBK_Spike_07_02" src=orig
@@ -2118,7 +2119,6 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_updownslash_02_custom_1" EFFECT startms=567 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
 "wbk_sk_updownslash_02_custom_1" CANCEL startms=588 endms=1600 payload="[선스]" src=orig
 "wbk_sk_updownslash_02_custom_1" CANCEL startms=598 endms=1612 payload="[선이]" src=orig
-"wbk_sk_updownslash_02_custom_1" HIT startms=759 endms=966 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "wbk_sk_updownslash_02_custom_1" SHAKE startms=816 payload="" src=orig
 "wbk_sk_updownslash_02_custom_1" EFFECT startms=818 payload="" src=orig
 "wbk_sk_updownslash_02_custom_1" EFFECT startms=818 payload="FX_PC_WBK_11.Par_X_WBK_Spike_07_01" src=orig
@@ -2136,7 +2136,8 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_updownslash_custom_2" SOUND startms=250 payload="PC_BERSERKER_F.PC_Berserker_F_SK_TempestSlash1_FX040_1" src=orig
 "wbk_sk_updownslash_custom_2" SOUND startms=250 payload="PC_BERSERKER_F.PC_Berserker_F_SK_CryHazard1_FX008_1" src=orig
 "wbk_sk_updownslash_custom_2" SOUND startms=500 payload="PC_BERSERKER_F.PC_Berserker_F_SK_CryHazard1_Vox1_1" src=orig
-"wbk_sk_updownslash_custom_2" HIT startms=600 endms=1000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_updownslash_custom_2" HIT startms=600 endms=1000 rep=1 repms=0 fz=420 fzin=150 fzout=250 push=40 pushr=40 area=3 ar=180 aa=150 ah=250 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_updownslash_custom_2" HIT startms=1050 endms=1300 rep=1 repms=0 fz=420 fzin=150 fzout=250 push=20 pushr=20 area=1 ar=150 aa=0 ah=300 ax=130 arem=0 maxt=0 src=orig
 "wbk_sk_updownslash_custom_2" SHAKE startms=660 payload="" src=orig
 "wbk_sk_updownslash_custom_2" EFFECT startms=672 payload="" src=orig
 "wbk_sk_updownslash_custom_2" EFFECT startms=692 payload="FX_PC_WBK_11.Par_X_WBK_Trail_08_01" src=orig
@@ -2146,7 +2147,6 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_updownslash_custom_2" EFFECT startms=977 payload="FX_PC_WBK_11.Par_X_WBK_Spin_08_01" src=orig
 "wbk_sk_updownslash_custom_2" CANCEL startms=1000 endms=2020 payload="[선스]" src=orig
 "wbk_sk_updownslash_custom_2" CANCEL startms=1000 endms=2020 payload="[선이]" src=orig
-"wbk_sk_updownslash_custom_2" HIT startms=1050 endms=1300 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "wbk_sk_updownslash_custom_2" EFFECT startms=1059 payload="FX_PC_WBK_11.Par_X_WBK_Spike_08_02" src=orig
 "wbk_sk_updownslash_custom_2" SHAKE startms=1070 payload="" src=orig
 "wbk_sk_updownslash_custom_2" EFFECT startms=1087 payload="" src=orig
@@ -2259,7 +2259,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_whirlwind_custom_1" EFFECT startms=100 payload="FX_PC_WBK_03.Par_O_WBK_Whirlwind_06_01" src=orig
 "wbk_sk_whirlwind_custom_1" EFFECT startms=100 payload="FX_PC_WBK_03.Par_O_WBK_TempestTrail_01_05" src=orig
 "wbk_sk_whirlwind_custom_1" SOUND startms=100 payload="PC_BERSERKER_F.PC_Berserker_F_Att_Identity1_3" src=orig
-"wbk_sk_whirlwind_custom_1" HIT startms=300 endms=350 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_whirlwind_custom_1" HIT startms=300 endms=350 rep=1 repms=0 fz=255 fzin=100 fzout=150 push=5 pushr=5 area=1 ar=200 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
 "wbk_sk_whirlwind_custom_1" EFFECT startms=350 payload="FX_CM_00.Dust.Par_D_Dust_001_pr" src=orig
 "wbk_sk_whirlwind_custom_1" EFFECT startms=399 payload="" src=orig
 "wbk_sk_whirlwind_fail" CANCEL startms=0 endms=300 payload="이동선입력" src=orig
@@ -2281,24 +2281,24 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_whirlwind_loop" EFFECT startms=100 payload="FX_PC_WBK_03.Par_O_WBK_Whirlwind_10_02" src=orig
 "wbk_sk_whirlwind_loop" EFFECT startms=100 payload="FX_PC_WBK_03.Par_O_WBK_WhirlwindTrail_01_01" src=orig
 "wbk_sk_whirlwind_loop" EFFECT startms=100 payload="FX_PC_WBK_03.Par_O_WBK_TempestTrail_01_05" src=orig
-"wbk_sk_whirlwind_loop" HIT startms=100 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_whirlwind_loop" HIT startms=100 endms=400 rep=1 repms=0 fz=255 fzin=100 fzout=150 push=5 pushr=5 area=1 ar=200 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_whirlwind_loop" HIT startms=400 endms=700 rep=1 repms=0 fz=255 fzin=100 fzout=150 push=5 pushr=5 area=1 ar=280 aa=0 ah=150 ax=0 arem=200 maxt=0 src=orig
+"wbk_sk_whirlwind_loop" HIT startms=700 endms=1000 rep=1 repms=0 fz=300 fzin=100 fzout=150 push=20 pushr=20 area=1 ar=190 aa=0 ah=150 ax=50 arem=0 maxt=0 src=orig
+"wbk_sk_whirlwind_loop" HIT startms=1000 endms=1300 rep=3 repms=500 fz=255 fzin=100 fzout=150 push=5 pushr=5 area=1 ar=220 aa=0 ah=200 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_whirlwind_loop" HIT startms=1300 endms=1600 rep=2 repms=150 fz=500 fzin=100 fzout=150 push=5 pushr=5 area=1 ar=200 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_whirlwind_loop" HIT startms=1900 endms=2200 rep=2 repms=150 fz=500 fzin=100 fzout=150 push=5 pushr=5 area=1 ar=280 aa=0 ah=150 ax=0 arem=200 maxt=0 src=orig
+"wbk_sk_whirlwind_loop" HIT startms=2200 endms=2500 rep=2 repms=150 fz=500 fzin=100 fzout=150 push=5 pushr=5 area=1 ar=280 aa=0 ah=150 ax=0 arem=200 maxt=0 src=orig
+"wbk_sk_whirlwind_loop" HIT startms=2500 endms=2801 rep=2 repms=150 fz=500 fzin=100 fzout=150 push=5 pushr=5 area=1 ar=280 aa=0 ah=150 ax=0 arem=200 maxt=0 src=orig
+"wbk_sk_whirlwind_loop" HIT startms=2800 endms=3000 rep=2 repms=150 fz=500 fzin=100 fzout=150 push=5 pushr=5 area=1 ar=280 aa=0 ah=150 ax=0 arem=200 maxt=0 src=orig
+"wbk_sk_whirlwind_loop" HIT startms=3000 endms=3301 rep=2 repms=150 fz=500 fzin=100 fzout=150 push=5 pushr=5 area=1 ar=280 aa=0 ah=150 ax=0 arem=200 maxt=0 src=orig
+"wbk_sk_whirlwind_loop" HIT startms=3100 endms=3401 rep=2 repms=150 fz=500 fzin=100 fzout=150 push=5 pushr=5 area=1 ar=280 aa=0 ah=150 ax=0 arem=200 maxt=0 src=orig
+"wbk_sk_whirlwind_loop" HIT startms=3600 endms=3800 rep=2 repms=150 fz=500 fzin=100 fzout=150 push=5 pushr=5 area=1 ar=280 aa=0 ah=150 ax=0 arem=200 maxt=0 src=orig
+"wbk_sk_whirlwind_loop" HIT startms=3700 endms=4000 rep=2 repms=150 fz=500 fzin=100 fzout=150 push=5 pushr=5 area=1 ar=280 aa=0 ah=150 ax=0 arem=200 maxt=0 src=orig
+"wbk_sk_whirlwind_loop" HIT startms=3800 endms=4000 rep=2 repms=150 fz=500 fzin=100 fzout=150 push=5 pushr=5 area=1 ar=280 aa=0 ah=150 ax=0 arem=200 maxt=0 src=orig
 "wbk_sk_whirlwind_loop" EFFECT startms=150 payload="FX_PC_WBK_03.Par_O_WBK_Whirlwind_03_01" src=orig
 "wbk_sk_whirlwind_loop" EFFECT startms=200 payload="FX_PC_WBK_03.Par_O_WBK_Whirlwind_04_01" src=orig
 "wbk_sk_whirlwind_loop" EFFECT startms=200 payload="FX_PC_WBK_03.Par_O_WBK_Whirlwind_02_01" src=orig
 "wbk_sk_whirlwind_loop" EFFECT startms=233 payload="" src=orig
-"wbk_sk_whirlwind_loop" HIT startms=400 endms=700 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"wbk_sk_whirlwind_loop" HIT startms=700 endms=1000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"wbk_sk_whirlwind_loop" HIT startms=1000 endms=1300 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"wbk_sk_whirlwind_loop" HIT startms=1300 endms=1600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"wbk_sk_whirlwind_loop" HIT startms=1900 endms=2200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"wbk_sk_whirlwind_loop" HIT startms=2200 endms=2500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"wbk_sk_whirlwind_loop" HIT startms=2500 endms=2801 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"wbk_sk_whirlwind_loop" HIT startms=2800 endms=3000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"wbk_sk_whirlwind_loop" HIT startms=3000 endms=3301 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"wbk_sk_whirlwind_loop" HIT startms=3100 endms=3401 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"wbk_sk_whirlwind_loop" HIT startms=3600 endms=3800 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"wbk_sk_whirlwind_loop" HIT startms=3700 endms=4000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"wbk_sk_whirlwind_loop" HIT startms=3800 endms=4000 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "wbk_sk_whirlwind_loop" CANCEL startms=3996 endms=3996 payload="" src=orig
 "wbk_sk_whirlwind_success" CANCEL startms=0 endms=1000 payload="이동선입력" src=orig
 "wbk_sk_whirlwind_success" CANCEL startms=0 endms=1000 payload="스킬선입력" src=orig
@@ -2307,7 +2307,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_whirlwind_success" SOUND startms=1 payload="PC_BERSERKER_F.PC_Berserker_F_SK_Guillotine1_Vox2_2" src=orig
 "wbk_sk_whirlwind_success" SOUND startms=1 payload="PC_BERSERKER_F.PC_Berserker_F_SK_WhirlWind1_FX000_4" src=orig
 "wbk_sk_whirlwind_success" SOUND startms=1 payload="PC_BERSERKER_F.PC_Berserker_F_SK_WhirlWind1_FX000_5" src=orig
-"wbk_sk_whirlwind_success" HIT startms=93 endms=590 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_whirlwind_success" HIT startms=93 endms=590 rep=2 repms=150 fz=500 fzin=100 fzout=150 push=5 pushr=5 area=1 ar=280 aa=0 ah=150 ax=0 arem=200 maxt=0 src=orig
 "wbk_sk_whirlwind_success" SHAKE startms=280 payload="" src=orig
 "wbk_sk_whirlwind_success" EFFECT startms=300 payload="" src=orig
 "wbk_sk_whirlwind_success" EFFECT startms=300 payload="FX_CM_02.Light.Par_MP_Light_04" src=orig
@@ -2324,7 +2324,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_windblade_02" SUPERARMOR startms=0 endms=520 payload="" src=orig
 "wbk_sk_windblade_02" SOUND startms=1 payload="PC_BERSERKER_F.PC_Berserker_F_SK_WindBlade1_FX000_3" src=orig
 "wbk_sk_windblade_02" SHAKE startms=96 payload="" src=orig
-"wbk_sk_windblade_02" HIT startms=97 endms=298 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_windblade_02" HIT startms=97 endms=298 rep=2 repms=250 fz=510 fzin=200 fzout=300 push=120 pushr=50 area=3 ar=180 aa=360 ah=180 ax=80 arem=0 maxt=0 src=orig
 "wbk_sk_windblade_02" EFFECT startms=135 payload="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_1" src=orig
 "wbk_sk_windblade_02" EFFECT startms=135 payload="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_2" src=orig
 "wbk_sk_windblade_02" EFFECT startms=135 payload="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_3" src=orig
@@ -2348,7 +2348,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_windblade_custom_1_02" EFFECT startms=550 payload="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_01_5" src=orig
 "wbk_sk_windblade_custom_1_02" EFFECT startms=550 payload="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_01_6" src=orig
 "wbk_sk_windblade_custom_1_02" SOUND startms=550 payload="PC_BERSERKER_F.PC_Berserker_F_SK_WindBlade1_FX007_4" src=orig
-"wbk_sk_windblade_custom_1_02" HIT startms=600 endms=800 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_windblade_custom_1_02" HIT startms=600 endms=800 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=3 ar=250 aa=90 ah=110 ax=130 arem=0 maxt=0 src=orig
 "wbk_sk_windblade_custom_1_02" EFFECT startms=610 payload="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_04_01" src=orig
 "wbk_sk_windblade_custom_1_02" EFFECT startms=610 payload="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_04_02" src=orig
 "wbk_sk_windblade_custom_1_02" EFFECT startms=610 payload="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_04_03" src=orig
@@ -2367,7 +2367,9 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_windblade_custom_2_02" EFFECT startms=0 payload="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_1" src=orig
 "wbk_sk_windblade_custom_2_02" EFFECT startms=0 payload="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_2" src=orig
 "wbk_sk_windblade_custom_2_02" EFFECT startms=0 payload="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_3" src=orig
-"wbk_sk_windblade_custom_2_02" HIT startms=0 endms=150 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_windblade_custom_2_02" HIT startms=0 endms=150 rep=2 repms=250 fz=510 fzin=200 fzout=300 push=120 pushr=50 area=3 ar=180 aa=360 ah=180 ax=80 arem=0 maxt=0 src=orig
+"wbk_sk_windblade_custom_2_02" HIT startms=200 endms=350 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=3 ar=250 aa=90 ah=110 ax=130 arem=0 maxt=0 src=orig
+"wbk_sk_windblade_custom_2_02" HIT startms=400 endms=533 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=3 ar=250 aa=90 ah=110 ax=130 arem=0 maxt=0 src=orig
 "wbk_sk_windblade_custom_2_02" SUPERARMOR startms=0 endms=533 payload="" src=orig
 "wbk_sk_windblade_custom_2_02" SOUND startms=1 payload="PC_BERSERKER_F.PC_Berserker_F_SK_WindBlade1_FX000_3" src=orig
 "wbk_sk_windblade_custom_2_02" EFFECT startms=50 payload="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_03_01" src=orig
@@ -2381,11 +2383,9 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_windblade_custom_2_02" EFFECT startms=199 payload="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_1" src=orig
 "wbk_sk_windblade_custom_2_02" EFFECT startms=199 payload="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_2" src=orig
 "wbk_sk_windblade_custom_2_02" EFFECT startms=199 payload="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_3" src=orig
-"wbk_sk_windblade_custom_2_02" HIT startms=200 endms=350 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "wbk_sk_windblade_custom_2_02" EFFECT startms=398 payload="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_1" src=orig
 "wbk_sk_windblade_custom_2_02" EFFECT startms=398 payload="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_2" src=orig
 "wbk_sk_windblade_custom_2_02" EFFECT startms=398 payload="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_3" src=orig
-"wbk_sk_windblade_custom_2_02" HIT startms=400 endms=533 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "wbk_sk_windblade_custom_2_02" EFFECT startms=478 payload="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_1" src=orig
 "wbk_sk_windblade_custom_2_02" EFFECT startms=478 payload="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_2" src=orig
 "wbk_sk_windblade_custom_2_02" EFFECT startms=478 payload="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_3" src=orig
@@ -2398,7 +2398,7 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_windblade_custom_2_03" EFFECT startms=0 payload="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_03_02" src=orig
 "wbk_sk_windblade_custom_2_03" EFFECT startms=0 payload="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_02_2" src=orig
 "wbk_sk_windblade_custom_2_03" SUPERARMOR startms=0 endms=220 payload="" src=orig
-"wbk_sk_windblade_custom_2_03" HIT startms=50 endms=250 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_windblade_custom_2_03" HIT startms=50 endms=250 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=3 ar=250 aa=90 ah=110 ax=130 arem=0 maxt=0 src=orig
 "wbk_sk_windblade_custom_2_03" EFFECT startms=70 payload="" src=orig
 "wbk_sk_windblade_custom_2_03" EFFECT startms=70 payload="FX_PC_WBK_14.Par_S_WBK_glow_01_2" src=orig
 "wbk_sk_windblade_custom_2_03" EFFECT startms=70 payload="FX_PC_WBK_14.Par_S_WBK_WindBlade_01_1" src=orig
@@ -2418,7 +2418,8 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_windblade_custom_7_02" EFFECT startms=150 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
 "wbk_sk_windblade_custom_7_02" EFFECT startms=150 payload="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_04_02" src=orig
 "wbk_sk_windblade_custom_7_02" EFFECT startms=150 payload="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_04_03" src=orig
-"wbk_sk_windblade_custom_7_02" HIT startms=150 endms=350 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_windblade_custom_7_02" HIT startms=150 endms=350 rep=2 repms=250 fz=510 fzin=200 fzout=300 push=120 pushr=50 area=3 ar=180 aa=360 ah=180 ax=80 arem=0 maxt=0 src=orig
+"wbk_sk_windblade_custom_7_02" HIT startms=520 endms=720 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=3 ar=250 aa=90 ah=110 ax=130 arem=0 maxt=0 src=orig
 "wbk_sk_windblade_custom_7_02" SHAKE startms=150 payload="" src=orig
 "wbk_sk_windblade_custom_7_02" SOUND startms=150 payload="PC_BERSERKER_F.PC_Berserker_F_SK_WindBlade1_FX007_3" src=orig
 "wbk_sk_windblade_custom_7_02" EFFECT startms=200 payload="" src=orig
@@ -2432,9 +2433,11 @@ LOSTARK_ANIM_EVENTS 3 "Slayer" 2439
 "wbk_sk_windblade_custom_7_02" EFFECT startms=520 payload="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_04_01" src=orig
 "wbk_sk_windblade_custom_7_02" EFFECT startms=520 payload="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_04_02" src=orig
 "wbk_sk_windblade_custom_7_02" EFFECT startms=520 payload="FX_PC_WBK_09.WindBlade.Par_Y_WBK_WindBlade_04_03" src=orig
-"wbk_sk_windblade_custom_7_02" HIT startms=520 endms=720 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
 "wbk_sk_windblade_custom_7_02" SHAKE startms=520 payload="" src=orig
 "wbk_sk_windblade_custom_7_02" CANCEL startms=550 endms=1700 payload="" src=orig
 "wbk_sk_windblade_custom_7_02" SOUND startms=550 payload="PC_BERSERKER_F.PC_Berserker_F_SK_WindBlade1_FX007_3" src=orig
 "wbk_sk_windblade_custom_7_02" SOUND startms=900 payload="PC_BERSERKER_F.PC_Berserker_F_SK_WindBlade1_FX007_2" src=orig
 "wbk_sk_windblade_custom_7_02" SOUND startms=1150 payload="PC_BERSERKER_F.PC_Berserker_F_SK_WindBlade1_FX007_3" src=orig
+"wbk_sk_divingslash_jump" HIT startms=500 endms=500 rep=1 repms=0 fz=420 fzin=150 fzout=250 push=20 pushr=20 area=2 ar=260 aa=160 ah=150 ax=25 arem=0 maxt=0 src=orig
+"wbk_sk_swordstrom_attack" HIT startms=33 endms=33 rep=1 repms=0 fz=420 fzin=150 fzout=250 push=20 pushr=20 area=3 ar=500 aa=90 ah=150 ax=0 arem=0 maxt=0 src=orig
+"wbk_sk_ragnarok_00" HIT startms=2200 endms=2300 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=2 ar=900 aa=550 ah=450 ax=-50 arem=0 maxt=0 src=orig

@@ -51,6 +51,11 @@ struct BOSS_COMBAT_OBJECT_EFFECT_V2_GROUP final
 {
 	std::string groupId;
 	f32_t playbackRate = 1.f;
+	/* Product presentation may be independent of Server damage.  When this is
+	   false, visualHitMs/serverHitId stay empty defaults and only the reusable
+	   group clock is consumed.  When true, both fields were present and passed
+	   the exact visual-to-Server hit synchronization contract. */
+	bool_t bHasHitSync = false;
 	uint32_t visualHitMs = 0u;
 	std::string serverHitId;
 };

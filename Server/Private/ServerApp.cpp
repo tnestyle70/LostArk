@@ -3213,14 +3213,45 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		return;
 	}
 
-	if (!Enqueue_AssignedCommand(sessionId, std::move(command)))
+	std::string enqueueContext;
+	const ROOM_COMMAND_ENQUEUE_RESULT enqueueResult =
+		Enqueue_AssignedCommand(
+			sessionId, std::move(command), enqueueContext);
+	if (Is_AcceptedRoomCommandEnqueueResult(enqueueResult) ||
+		ROOM_COMMAND_ENQUEUE_RESULT::REJECTED_PENDING_CLEANUP == enqueueResult)
+	{
+		return;
+	}
+
+	if (ROOM_COMMAND_ENQUEUE_RESULT::REJECTED_RELIABLE_CAPACITY ==
+		enqueueResult)
 	{
 		Request_SessionClose(
 			sessionId,
 			SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_INGRESS_OVERFLOW,
 			WSAENOBUFS,
-			"assigned room ingress rejected a reliable Client command");
+			"assigned room reliable ingress reached its hard bound; " +
+				enqueueContext);
+		return;
 	}
+	if (ROOM_COMMAND_ENQUEUE_RESULT::REJECTED_ROOM_NOT_READY == enqueueResult)
+	{
+		Request_SessionClose(
+			sessionId,
+			SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_RUNTIME_FAILED,
+			WSAESHUTDOWN,
+			"assigned room stopped after a runtime failure; " +
+				enqueueContext);
+		return;
+	}
+	Request_SessionClose(
+		sessionId,
+		ROOM_COMMAND_ENQUEUE_RESULT::REJECTED_INVALID_COMMAND == enqueueResult ?
+			SESSION_DIAGNOSTIC_REASON::SERVER_CLIENT_COMMAND_VALIDATION_FAILED :
+			SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED,
+		ROOM_COMMAND_ENQUEUE_RESULT::REJECTED_BINDING_MISSING == enqueueResult ?
+			WSAENOTCONN : WSAESHUTDOWN,
+		"assigned room command admission failed; " + enqueueContext);
 }
 
 void LostArk::Server::CServerApp::On_SessionClosed(const SESSION_ID sessionId)
@@ -3229,6 +3260,9 @@ void LostArk::Server::CServerApp::On_SessionClosed(const SESSION_ID sessionId)
 	LostArk::Shared::WORLD_ID worldId = LostArk::Shared::WORLD_ID::END;
 	bool wasBound = false;
 	bool leaveEnqueued = false;
+	ROOM_COMMAND_ENQUEUE_RESULT leaveEnqueueResult =
+		ROOM_COMMAND_ENQUEUE_RESULT::REJECTED_BINDING_MISSING;
+	std::string leaveEnqueueContext;
 	{
 		std::scoped_lock lock{ m_SessionsMutex };
 		const auto sessionIter = m_Sessions.find(sessionId);
@@ -3247,9 +3281,12 @@ void LostArk::Server::CServerApp::On_SessionClosed(const SESSION_ID sessionId)
 				command.iSessionId = sessionId;
 				command.eLeaveReason =
 					LostArk::Shared::PLAYER_DESPAWN_REASON::DISCONNECTED;
-				leaveEnqueued =
-					bindingIter->second.pSimulation->Enqueue(
-						std::move(command));
+				leaveEnqueueResult = bindingIter->second.pSimulation->
+					Enqueue_Detailed(std::move(command));
+				leaveEnqueued = Is_AcceptedRoomCommandEnqueueResult(
+					leaveEnqueueResult);
+				leaveEnqueueContext = bindingIter->second.pSimulation->
+					Describe_EnqueueResult(leaveEnqueueResult);
 			}
 			m_GameplayBindingBySessionId.erase(bindingIter);
 		}
@@ -3289,14 +3326,17 @@ void LostArk::Server::CServerApp::On_SessionClosed(const SESSION_ID sessionId)
 				sessionId << ", Status=" << jsonValidationStatus << '\n';
 		}
 		std::cout << "[SessionDiagnostic] " << json << '\n';
-		if (wasBound && !leaveEnqueued)
+		if (wasBound && !leaveEnqueued &&
+			ROOM_COMMAND_ENQUEUE_RESULT::REJECTED_ROOM_NOT_READY !=
+				leaveEnqueueResult)
 		{
 			std::cerr <<
 				"[SessionDiagnostic][LEAVE_ENQUEUE_INVARIANT_FAILED] SessionId="
 				<< sessionId << ", World=" <<
 				static_cast<std::uint16_t>(worldId) <<
 				". A live binding unexpectedly rejected its dedicated cleanup "
-				"queue; inspect room readiness/retirement invariants.\n";
+				"queue; inspect room readiness/retirement invariants. " <<
+				leaveEnqueueContext << '\n';
 		}
 		const std::filesystem::path logPath =
 			Resolve_ServerSessionDiagnosticPath();
@@ -3535,16 +3575,26 @@ bool LostArk::Server::CServerApp::Bind_AndEnqueueEntry(
 	registerCommand.eType = ROOM_COMMAND_TYPE::REGISTER_SESSION;
 	registerCommand.iSessionId = sessionId;
 	registerCommand.pSession = sessionIter->second;
-	if (!simulation->Enqueue(std::move(registerCommand)))
+	const ROOM_COMMAND_ENQUEUE_RESULT registerResult =
+		simulation->Enqueue_Detailed(std::move(registerCommand));
+	if (ROOM_COMMAND_ENQUEUE_RESULT::ACCEPTED != registerResult)
 	{
 		m_GameplayBindingBySessionId.erase(sessionId);
 		if (insertedPrivateArena)
 			m_CharacterSelectArenas.erase(sessionId);
-		outFailureReason =
-			SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_INGRESS_OVERFLOW;
-		outNativeErrorCode = WSAENOBUFS;
+		outFailureReason = ROOM_COMMAND_ENQUEUE_RESULT::
+			REJECTED_RELIABLE_CAPACITY == registerResult ?
+			SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_INGRESS_OVERFLOW :
+			ROOM_COMMAND_ENQUEUE_RESULT::REJECTED_ROOM_NOT_READY ==
+				registerResult ?
+			SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_RUNTIME_FAILED :
+			SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED;
+		outNativeErrorCode = ROOM_COMMAND_ENQUEUE_RESULT::
+			REJECTED_RELIABLE_CAPACITY == registerResult ?
+			WSAENOBUFS : WSAESHUTDOWN;
 		outFailureContext =
-			"entry stage=register-ingress packet=C2S_ENTER_WORLD";
+			"entry stage=register-ingress packet=C2S_ENTER_WORLD " +
+			simulation->Describe_EnqueueResult(registerResult);
 		return false;
 	}
 
@@ -3552,7 +3602,9 @@ bool LostArk::Server::CServerApp::Bind_AndEnqueueEntry(
 	enterCommand.eType = ROOM_COMMAND_TYPE::ENTER_WORLD;
 	enterCommand.iSessionId = sessionId;
 	enterCommand.EnterWorld = std::move(enterWorld);
-	if (!simulation->Enqueue(std::move(enterCommand)))
+	const ROOM_COMMAND_ENQUEUE_RESULT enterResult =
+		simulation->Enqueue_Detailed(std::move(enterCommand));
+	if (ROOM_COMMAND_ENQUEUE_RESULT::ACCEPTED != enterResult)
 	{
 		ROOM_COMMAND rollbackCommand{};
 		rollbackCommand.eType = ROOM_COMMAND_TYPE::LEAVE;
@@ -3561,11 +3613,18 @@ bool LostArk::Server::CServerApp::Bind_AndEnqueueEntry(
 		const bool rollbackEnqueued =
 			simulation->Enqueue(std::move(rollbackCommand));
 		m_GameplayBindingBySessionId.erase(sessionId);
-		outFailureReason =
-			SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_INGRESS_OVERFLOW;
-		outNativeErrorCode = WSAENOBUFS;
+		outFailureReason = ROOM_COMMAND_ENQUEUE_RESULT::
+			REJECTED_RELIABLE_CAPACITY == enterResult ?
+			SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_INGRESS_OVERFLOW :
+			ROOM_COMMAND_ENQUEUE_RESULT::REJECTED_ROOM_NOT_READY == enterResult ?
+			SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_RUNTIME_FAILED :
+			SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED;
+		outNativeErrorCode = ROOM_COMMAND_ENQUEUE_RESULT::
+			REJECTED_RELIABLE_CAPACITY == enterResult ?
+			WSAENOBUFS : WSAESHUTDOWN;
 		outFailureContext =
 			"entry stage=enter-ingress packet=C2S_ENTER_WORLD "
+			+ simulation->Describe_EnqueueResult(enterResult) + " "
 			"rollbackCleanupEnqueued=" +
 			std::string{ rollbackEnqueued ? "true" : "false" };
 		return false;
@@ -3573,20 +3632,33 @@ bool LostArk::Server::CServerApp::Bind_AndEnqueueEntry(
 	return true;
 }
 
-bool LostArk::Server::CServerApp::Enqueue_AssignedCommand(
+LostArk::Server::ROOM_COMMAND_ENQUEUE_RESULT
+LostArk::Server::CServerApp::Enqueue_AssignedCommand(
 	const SESSION_ID sessionId,
-	ROOM_COMMAND command)
+	ROOM_COMMAND command,
+	std::string& outContext)
 {
+	outContext.clear();
 	if (command.iSessionId != sessionId)
-		return false;
+	{
+		outContext = "enqueueResult=REJECTED_INVALID_COMMAND identityMismatch=true";
+		return ROOM_COMMAND_ENQUEUE_RESULT::REJECTED_INVALID_COMMAND;
+	}
 
 	// Keep lookup plus Enqueue atomic with Transfer_SessionWorld. Both paths
 	// use m_SessionsMutex -> CGameRoom::m_CommandMutex ordering.
 	std::scoped_lock lock{ m_SessionsMutex };
 	const auto iter = m_GameplayBindingBySessionId.find(sessionId);
-	return iter != m_GameplayBindingBySessionId.end() &&
-		nullptr != iter->second.pSimulation &&
-		iter->second.pSimulation->Enqueue(std::move(command));
+	if (iter == m_GameplayBindingBySessionId.end() ||
+		nullptr == iter->second.pSimulation)
+	{
+		outContext = "enqueueResult=REJECTED_BINDING_MISSING";
+		return ROOM_COMMAND_ENQUEUE_RESULT::REJECTED_BINDING_MISSING;
+	}
+	const ROOM_COMMAND_ENQUEUE_RESULT result =
+		iter->second.pSimulation->Enqueue_Detailed(std::move(command));
+	outContext = iter->second.pSimulation->Describe_EnqueueResult(result);
+	return result;
 }
 
 bool LostArk::Server::CServerApp::Queue_ServerControlEvent(
@@ -4643,12 +4715,22 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	registerCommand.eType = ROOM_COMMAND_TYPE::REGISTER_SESSION;
 	registerCommand.iSessionId = transfer.iSessionId;
 	registerCommand.pSession = sessionIter->second;
-	if (!targetSimulation->Enqueue(std::move(registerCommand)))
+	const ROOM_COMMAND_ENQUEUE_RESULT targetRegisterResult =
+		targetSimulation->Enqueue_Detailed(std::move(registerCommand));
+	if (ROOM_COMMAND_ENQUEUE_RESULT::ACCEPTED != targetRegisterResult)
 	{
 		setFailure(
-			SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_INGRESS_OVERFLOW,
-			WSAENOBUFS,
-			"target-register-ingress");
+			ROOM_COMMAND_ENQUEUE_RESULT::REJECTED_RELIABLE_CAPACITY ==
+				targetRegisterResult ?
+				SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_INGRESS_OVERFLOW :
+			ROOM_COMMAND_ENQUEUE_RESULT::REJECTED_ROOM_NOT_READY ==
+				targetRegisterResult ?
+				SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_RUNTIME_FAILED :
+				SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED,
+			ROOM_COMMAND_ENQUEUE_RESULT::REJECTED_RELIABLE_CAPACITY ==
+				targetRegisterResult ? WSAENOBUFS : WSAESHUTDOWN,
+			"target-register-ingress " +
+				targetSimulation->Describe_EnqueueResult(targetRegisterResult));
 		return false;
 	}
 
@@ -4663,7 +4745,9 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 	enterCommand.EnterWorld = std::move(enterWorld);
 	enterCommand.strSpawnPlacementOverrideId = transfer.strSpawnPlacementOverrideId;
 	enterCommand.CarriedInventory = transfer.CarriedInventory;
-	if (!targetSimulation->Enqueue(std::move(enterCommand)))
+	const ROOM_COMMAND_ENQUEUE_RESULT targetEnterResult =
+		targetSimulation->Enqueue_Detailed(std::move(enterCommand));
+	if (ROOM_COMMAND_ENQUEUE_RESULT::ACCEPTED != targetEnterResult)
 	{
 		ROOM_COMMAND targetRollback{};
 		targetRollback.eType = ROOM_COMMAND_TYPE::LEAVE;
@@ -4673,9 +4757,17 @@ bool LostArk::Server::CServerApp::Transfer_SessionWorld(
 		const bool rollbackEnqueued =
 			targetSimulation->Enqueue(std::move(targetRollback));
 		setFailure(
-			SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_INGRESS_OVERFLOW,
-			WSAENOBUFS,
-			"target-enter-ingress",
+			ROOM_COMMAND_ENQUEUE_RESULT::REJECTED_RELIABLE_CAPACITY ==
+				targetEnterResult ?
+				SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_INGRESS_OVERFLOW :
+			ROOM_COMMAND_ENQUEUE_RESULT::REJECTED_ROOM_NOT_READY ==
+				targetEnterResult ?
+				SESSION_DIAGNOSTIC_REASON::SERVER_ROOM_RUNTIME_FAILED :
+				SESSION_DIAGNOSTIC_REASON::SERVER_SESSION_BIND_FAILED,
+			ROOM_COMMAND_ENQUEUE_RESULT::REJECTED_RELIABLE_CAPACITY ==
+				targetEnterResult ? WSAENOBUFS : WSAESHUTDOWN,
+			"target-enter-ingress " +
+				targetSimulation->Describe_EnqueueResult(targetEnterResult),
 			true,
 			rollbackEnqueued);
 		return false;

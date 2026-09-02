@@ -91,22 +91,35 @@ def source_dependency_window_accepts(
     return not requires_loop or loop
 
 
-def fit_hold_chain_to_stage(cuts_ms: list[int], stage_ms: int) -> list[int]:
-    """Executable mirror of the Workbench's preserve-edges HOLD fitter."""
+def fit_hold_chain_to_stage(
+    cuts_ms: list[int], roles: list[str], stage_ms: int
+) -> list[int]:
+    """Executable mirror of the Workbench's role-aware HOLD fitter."""
 
     if sum(cuts_ms) <= stage_ms:
         return cuts_ms.copy()
-    if len(cuts_ms) < 3:
-        raise ValueError("no deterministic middle HOLD window")
-    middle_count = len(cuts_ms) - 2
-    edge_ms = cuts_ms[0] + cuts_ms[-1]
-    if edge_ms + middle_count > stage_ms:
-        raise ValueError("no positive middle HOLD window")
+    loop_indices = [index for index, role in enumerate(roles) if role == "loop"]
+    if (
+        len(cuts_ms) != len(roles)
+        or len(roles) < 3
+        or roles[0] != "start"
+        or not loop_indices
+        or loop_indices != list(range(1, 1 + len(loop_indices)))
+        or 1 + len(loop_indices) >= len(roles)
+        or roles[1 + len(loop_indices)] != "end"
+        or any(roles[2 + len(loop_indices) :])
+    ):
+        raise ValueError("no deterministic role-aware HOLD window")
+    fixed_ms = sum(
+        cut for cut, role in zip(cuts_ms, roles) if role != "loop"
+    )
+    if fixed_ms + len(loop_indices) > stage_ms:
+        raise ValueError("no positive loop HOLD window")
     fitted = cuts_ms.copy()
-    remaining_budget = stage_ms - edge_ms
-    remaining_requested = sum(cuts_ms[1:-1])
-    for index in range(1, len(cuts_ms) - 1):
-        remaining_count = len(cuts_ms) - index - 2
+    remaining_budget = stage_ms - fixed_ms
+    remaining_requested = sum(cuts_ms[index] for index in loop_indices)
+    for ordinal, index in enumerate(loop_indices):
+        remaining_count = len(loop_indices) - ordinal - 1
         allocation = remaining_budget
         if remaining_count:
             proportional = (
@@ -469,10 +482,9 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertIn("FitCompositionSequenceCutsToStage(", apply)
         self.assertIn('"HOLD" != Selected->strMode', apply)
         self.assertIn("bDeterministicHoldChain", apply)
-        self.assertIn("3u == Selected->Clips.size()", apply)
-        self.assertIn('"start" == ClipReplacementRole(', apply)
-        self.assertIn('"loop" == ClipReplacementRole(', apply)
-        self.assertIn('"end" == ClipReplacementRole(', apply)
+        self.assertIn("IsRoleAwareHoldReplacementChain(ReplacementRoles)", apply)
+        self.assertIn("ReplacementRoles.push_back(ClipReplacementRole", apply)
+        self.assertNotIn("3u == Selected->Clips.size()", apply)
         self.assertIn("while (iRemainingMs > NativeDurationsMs[iClip])", apply)
         self.assertIn('"loop" != ClipReplacementRole(', apply)
         self.assertIn("start/end/one-shot clips are never repeated", apply)
@@ -481,12 +493,20 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertNotIn("Draft.durationMs = static_cast<uint32_t>(iDurationMs);\n\tif (!Set", apply)
         self.assertNotIn("Insert_ValtanManualStageAfter", apply)
 
-        fitted = fit_hold_chain_to_stage([1833, 3000, 2000], 5000)
+        fitted = fit_hold_chain_to_stage(
+            [1833, 3000, 2000], ["start", "loop", "end"], 5000
+        )
         self.assertEqual([1833, 1167, 2000], fitted)
         self.assertEqual(5000, sum(fitted))
         self.assertTrue(all(value <= native for value, native in zip(
             fitted, [1833, 1333, 2000]
         )))
+        with_tail = fit_hold_chain_to_stage(
+            [1000, 4000, 1000, 983],
+            ["start", "loop", "end", ""],
+            5000,
+        )
+        self.assertEqual([1000, 2017, 1000, 983], with_tail)
 
     def test_no_model_sequence_intake_is_a_strict_265_row_join(self) -> None:
         sequence_lines = read(
@@ -919,7 +939,11 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertNotIn("Save Sound Owner", sound)
         self.assertNotIn("Retry Apply Saved Sound", sound)
         self.assertIn(
-            "The Sequencer Save button stores Pattern, Animation, Effect and Sound changes together.",
+            "Sequencer Save joins only dirty Pattern, Sound, and Effect V2 owners",
+            sound,
+        )
+        self.assertIn(
+            "Camera stays in its typed read-only/deep-link boundary",
             sound,
         )
 
@@ -1055,9 +1079,17 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             setter.index("stage->strServerDamageProfileId = candidate.damageProfileId"),
         )
 
-        self.assertIn("if (hitChanged && !current.hitEditable)", setter)
-        self.assertNotIn("hitContractTransition", setter)
-        self.assertIn("Add/remove is available only to a manual audition Stage", setter)
+        for marker in (
+            "const bool colliderAdded =",
+            "const bool colliderTuned =",
+            "const bool colliderRemoved =",
+            "if (colliderAdded && !current.colliderAddAdmitted)",
+            "if (colliderTuned && !current.colliderTuneAdmitted)",
+            "if (colliderRemoved && !current.colliderRemoveAdmitted)",
+            "canonical colliders may only be tuned in place",
+        ):
+            self.assertIn(marker, setter)
+        self.assertNotIn("if (hitChanged && !current.hitEditable)", setter)
 
     def test_local_preview_stages_draft_animation_and_hit_before_play(self) -> None:
         stage = function_body(
@@ -1163,7 +1195,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertLess(sound_accept, boss_reload)
         self.assertLess(boss_reload, workbench_reload)
         self.assertIn(
-            "Saved Pattern, Sound, and Effect V2 changes together",
+            "Saved every dirty Composition owner (Pattern, Sound, and/or Effect V2)",
             save,
         )
 
@@ -1934,7 +1966,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertIn('Stage.strStageId + "/branch/COUNTER_HIT/authoring"', request)
         self.assertIn('"Counter Box Detail opened for this Stage."', request)
         self.assertIn('Stage.strStageId + "/collider"', request)
-        self.assertIn('"Server Collider / Hit Schedule Details opened', request)
+        self.assertIn('"Server Collider geometry and timing Details opened', request)
         self.assertNotIn('"Open Counter -> Groggy Detail"', resources)
 
     def test_pattern_browser_is_the_complete_play_inventory_projection(self) -> None:
@@ -2217,15 +2249,13 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             self.workbench_cpp,
             "void Client::CActionCompositionWorkbench::Render_PatternDurationControl(",
         )
-        pattern_input = pattern_duration.index("ImGui::InputInt(")
-        pattern_commit_edge = pattern_duration.index(
-            "ImGui::IsItemDeactivatedAfterEdit()", pattern_input
+        self.assertIn("Pattern Total Duration (read only)", pattern_duration)
+        self.assertIn("the total never creates a hidden WAIT", pattern_duration)
+        self.assertNotIn("ImGui::InputInt(", pattern_duration)
+        self.assertNotIn("Insert_ValtanManualStageAfter", pattern_duration)
+        self.assertNotIn(
+            "SetValtanStageDraftWithSoundDependencyAdmission", pattern_duration
         )
-        pattern_mutation = pattern_duration.index(
-            "SetValtanStageDraftWithSoundDependencyAdmission", pattern_commit_edge
-        )
-        self.assertLess(pattern_input, pattern_commit_edge)
-        self.assertLess(pattern_commit_edge, pattern_mutation)
 
         stage_gap = function_body(
             self.workbench_cpp,
@@ -2262,14 +2292,15 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
                     f"{token} must commit on release, not mutate the owner every drag frame",
                 )
 
-    def test_scalar_duration_edit_never_uses_unsupported_enter_flag(self) -> None:
+    def test_pattern_duration_is_a_read_only_derived_branch_sum(self) -> None:
         duration = function_body(
             self.workbench_cpp,
             "void Client::CActionCompositionWorkbench::Render_PatternDurationControl(",
         )
-        self.assertIn("ImGui::InputInt(", duration)
-        self.assertIn("ImGui::IsItemDeactivatedAfterEdit()", duration)
-        self.assertNotIn("ImGuiInputTextFlags_EnterReturnsTrue", duration)
+        self.assertIn("Pattern Total Duration (read only)", duration)
+        self.assertIn("Pattern.Stages.size()", duration)
+        self.assertNotIn("ImGui::InputInt(", duration)
+        self.assertNotIn("BuildNextManualStageIdentity", self.workbench_cpp)
 
     def test_local_preview_transport_is_independent_from_server_save_admission(
         self,

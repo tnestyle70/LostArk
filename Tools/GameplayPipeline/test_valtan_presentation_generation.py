@@ -92,6 +92,20 @@ class ValtanPresentationGenerationTests(unittest.TestCase):
             for row in binding["bindings"]
             if row["resource"]["kind"] == "GROUP"
         }
+        boss_catalog = json.loads(
+            (REPOSITORY_ROOT / generation.BOSS_CATALOG_REL).read_text(
+                encoding="utf-8"
+            )
+        )
+        valtan = next(
+            boss for boss in boss_catalog["bosses"]
+            if boss["archetypeId"] == "BOSS_VALTAN"
+        )
+        pending_groups.update(
+            visual["effectV2Group"]["groupId"]
+            for visual in valtan["combatObjectVisuals"]
+            if "effectV2Group" in visual
+        )
         visited_groups: set[str] = set()
         while pending_groups:
             group_id = min(pending_groups)
@@ -138,6 +152,68 @@ class ValtanPresentationGenerationTests(unittest.TestCase):
                     REPOSITORY_ROOT, overlay
                 )
                 self.assertNotEqual(baseline.generation_id, changed.generation_id)
+
+    def test_presentation_only_combat_object_group_is_admitted(self) -> None:
+        boss_catalog = json.loads(
+            (REPOSITORY_ROOT / generation.BOSS_CATALOG_REL).read_text(
+                encoding="utf-8"
+            )
+        )
+        valtan = next(
+            boss for boss in boss_catalog["bosses"]
+            if boss["archetypeId"] == "BOSS_VALTAN"
+        )
+        axe = next(
+            visual for visual in valtan["combatObjectVisuals"]
+            if visual.get("effectV2Group", {}).get("groupId")
+            == "boss.valtan.axe"
+        )
+        axe["effectV2Group"] = {
+            "groupId": "boss.valtan.axe",
+            "playbackRate": 1.0,
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            overlay = Path(temporary)
+            self._write_overlay_json(
+                overlay, generation.BOSS_CATALOG_REL, boss_catalog
+            )
+            built = generation.build_presentation_generation(
+                REPOSITORY_ROOT, overlay
+            )
+
+        self.assertIn(
+            "Data/Effects/V2/Groups/boss.valtan.axe.effectv2group.json",
+            self._valtan_effect_v2_paths(built),
+        )
+
+    def test_partial_combat_object_group_hit_sync_fails_closed(self) -> None:
+        boss_catalog = json.loads(
+            (REPOSITORY_ROOT / generation.BOSS_CATALOG_REL).read_text(
+                encoding="utf-8"
+            )
+        )
+        valtan = next(
+            boss for boss in boss_catalog["bosses"]
+            if boss["archetypeId"] == "BOSS_VALTAN"
+        )
+        axe = next(
+            visual for visual in valtan["combatObjectVisuals"]
+            if visual.get("effectV2Group", {}).get("groupId")
+            == "boss.valtan.axe"
+        )
+        axe["effectV2Group"].pop("serverHitId")
+        with tempfile.TemporaryDirectory() as temporary:
+            overlay = Path(temporary)
+            self._write_overlay_json(
+                overlay, generation.BOSS_CATALOG_REL, boss_catalog
+            )
+            with self.assertRaisesRegex(
+                generation.PresentationGenerationError,
+                "complete hit-sync pair",
+            ):
+                generation.build_presentation_generation(
+                    REPOSITORY_ROOT, overlay
+                )
 
     def test_unreferenced_effect_v2_leaf_does_not_change_valtan_generation(self) -> None:
         baseline = generation.build_presentation_generation(REPOSITORY_ROOT)

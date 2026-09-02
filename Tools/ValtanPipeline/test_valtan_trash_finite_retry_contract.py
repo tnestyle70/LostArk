@@ -67,11 +67,14 @@ class ValtanTrashFiniteRetryContractTests(unittest.TestCase):
             )
 
     def test_both_product_sources_are_forward_only_finite_dags(self) -> None:
+        pattern_by_id = {
+            row["patternId"]: row for row in GAMEPLAY["patterns"]
+        }
         for pattern_id in self.PATTERN_IDS:
             gameplay = pattern(GAMEPLAY, pattern_id)
             tuning._validate_finite_pattern_graph(gameplay)
             tuning._validate_pattern_counter_groggy_contract(
-                gameplay, pattern_id
+                gameplay, pattern_by_id, f"pattern {pattern_id}"
             )
             positions = {
                 row["actionId"]: index

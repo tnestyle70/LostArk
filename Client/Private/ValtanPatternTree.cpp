@@ -417,6 +417,79 @@ namespace
 			std::isfinite(pValue->Get_Number());
 	}
 
+	bool_t Read_PlayerHandGripLocalOffset(
+		const DATA_JSON_VALUE* const pValue,
+		std::optional<Client::PLAYER_HAND_GRIP_LOCAL_OFFSET>& Out)
+	{
+		Out.reset();
+		if (nullptr == pValue)
+			return true;
+		if (!Has_ExactProperties(*pValue,
+				{ "forwardM", "upM", "rightM" }) ||
+			!Is_FiniteNumber(pValue->Find("forwardM")) ||
+			!Is_FiniteNumber(pValue->Find("upM")) ||
+			!Is_FiniteNumber(pValue->Find("rightM")))
+		{
+			return false;
+		}
+		Client::PLAYER_HAND_GRIP_LOCAL_OFFSET Offset;
+		Offset.fForwardM = static_cast<f32_t>(
+			pValue->Find("forwardM")->Get_Number());
+		Offset.fUpM = static_cast<f32_t>(
+			pValue->Find("upM")->Get_Number());
+		Offset.fRightM = static_cast<f32_t>(
+			pValue->Find("rightM")->Get_Number());
+		if (!Client::CPlayerHandGripTransform::Is_ValidGripLocalOffset(Offset))
+			return false;
+		Out = Offset;
+		return true;
+	}
+
+	bool_t Read_StageBodyVisibility(
+		const DATA_JSON_VALUE* const pValue,
+		const uint32_t iStageDurationMs,
+		bool_t& bOutHasWindow,
+		uint32_t& iOutHiddenFromMs,
+		uint32_t& iOutHiddenToMs)
+	{
+		bOutHasWindow = false;
+		iOutHiddenFromMs = 0u;
+		iOutHiddenToMs = 0u;
+		if (nullptr == pValue)
+			return true;
+		const DATA_JSON_VALUE* const pHiddenFromMs =
+			pValue->Find("hiddenFromMs");
+		const DATA_JSON_VALUE* const pHiddenToMs =
+			pValue->Find("hiddenToMs");
+		if (!Has_ExactProperties(
+				*pValue, { "hiddenFromMs", "hiddenToMs" }) ||
+			!Is_FiniteNumber(pHiddenFromMs) ||
+			!Is_FiniteNumber(pHiddenToMs) ||
+			pHiddenFromMs->Get_Number() < 0.0 ||
+			pHiddenToMs->Get_Number() < 0.0 ||
+			std::floor(pHiddenFromMs->Get_Number()) !=
+				pHiddenFromMs->Get_Number() ||
+			std::floor(pHiddenToMs->Get_Number()) !=
+				pHiddenToMs->Get_Number() ||
+			pHiddenFromMs->Get_Number() > static_cast<double>(
+				(std::numeric_limits<uint32_t>::max)()) ||
+			pHiddenToMs->Get_Number() > static_cast<double>(
+				(std::numeric_limits<uint32_t>::max)()))
+		{
+			return false;
+		}
+		const uint32_t iHiddenFromMs = static_cast<uint32_t>(
+			pHiddenFromMs->Get_Number());
+		const uint32_t iHiddenToMs = static_cast<uint32_t>(
+			pHiddenToMs->Get_Number());
+		if (iHiddenFromMs >= iHiddenToMs || iHiddenToMs > iStageDurationMs)
+			return false;
+		bOutHasWindow = true;
+		iOutHiddenFromMs = iHiddenFromMs;
+		iOutHiddenToMs = iHiddenToMs;
+		return true;
+	}
+
 	bool_t Is_NonNegativeInteger(const DATA_JSON_VALUE* pValue)
 	{
 		return Is_FiniteNumber(pValue) && pValue->Get_Number() >= 0.0 &&
@@ -514,6 +587,10 @@ namespace
 			return true;
 		if (!pValue->Is_Array())
 			return false;
+		bool_t bHasScheduledVolleyClock = false;
+		uint32_t iScheduledVolleyFirstOffsetMs = 0u;
+		uint32_t iScheduledVolleyCount = 0u;
+		uint32_t iScheduledVolleyIntervalMs = 0u;
 		for (const DATA_JSON_VALUE& Value : pValue->Get_Array())
 		{
 			if ("SPAWN_COMBAT_OBJECT_VOLLEY" == Read_String(Value, "kind"))
@@ -535,7 +612,8 @@ namespace
 						{ "trigger", "kind", "targetId", "targetingPolicy",
 						  "countPerResolvedTarget", "layout", "radiusM",
 						  "startAngleDegrees", "angleStepDegrees", "allowOverlap",
-						  "maximumTotalObjects", "spawnCount", "spawnIntervalMs",
+						  "maximumTotalObjects", "spawnCount", "firstSpawnOffsetMs",
+						  "spawnIntervalMs",
 						  "arenaRandomCount", "arenaRandomRadiusM",
 						  "arenaHeightToleranceM", "arenaAnchorPolicy" }) ||
 					nullptr == Required(Value, "trigger", DATA_JSON_TYPE::STRING) ||
@@ -559,6 +637,9 @@ namespace
 					!Is_NonNegativeInteger(Value.Find("spawnCount")) ||
 					0.0 == Value.Find("spawnCount")->Get_Number() ||
 					Value.Find("spawnCount")->Get_Number() > 8.0 ||
+					!Is_NonNegativeInteger(Value.Find("firstSpawnOffsetMs")) ||
+					Value.Find("firstSpawnOffsetMs")->Get_Number() >=
+						static_cast<double>(iStageDurationMs) ||
 					!Is_NonNegativeInteger(Value.Find("spawnIntervalMs")) ||
 					Value.Find("spawnIntervalMs")->Get_Number() >
 						static_cast<double>(iStageDurationMs) ||
@@ -566,7 +647,8 @@ namespace
 					 0.0 == Value.Find("spawnIntervalMs")->Get_Number()) ||
 					(Value.Find("spawnCount")->Get_Number() == 1.0 &&
 					 0.0 != Value.Find("spawnIntervalMs")->Get_Number()) ||
-					(Value.Find("spawnCount")->Get_Number() - 1.0) *
+					Value.Find("firstSpawnOffsetMs")->Get_Number() +
+						(Value.Find("spawnCount")->Get_Number() - 1.0) *
 						Value.Find("spawnIntervalMs")->Get_Number() >=
 						static_cast<double>(iStageDurationMs) ||
 					!Is_NonNegativeInteger(Value.Find("arenaRandomCount")) ||
@@ -602,11 +684,18 @@ namespace
 				{
 					return false;
 				}
-				const bool_t bPerAlivePlayerContract = bPerAlivePlayer &&
+				const bool_t bNoArenaSupplement =
+					"NONE" == pArenaAnchor->Get_String() &&
+					0.0 == Value.Find("arenaRandomCount")->Get_Number() &&
+					0.0 == Value.Find("arenaRandomRadiusM")->Get_Number() &&
+					0.0 == Value.Find("arenaHeightToleranceM")->Get_Number();
+				const bool_t bArenaSupplement =
 					"BOSS_SPAWN_POSITION" == pArenaAnchor->Get_String() &&
 					Value.Find("arenaRandomCount")->Get_Number() > 0.0 &&
 					Value.Find("arenaRandomRadiusM")->Get_Number() > 0.0 &&
 					Value.Find("arenaHeightToleranceM")->Get_Number() > 0.0;
+				const bool_t bPerAlivePlayerContract = bPerAlivePlayer &&
+					(bNoArenaSupplement || bArenaSupplement);
 				const bool_t bBossRelativeContract = bBossRelative &&
 					"RADIAL" == pLayout->Get_String() && fCount >= 2.0 &&
 					fRadius > 0.0 && fAngleStep > 0.0 &&
@@ -620,6 +709,28 @@ namespace
 					"NONE" == pArenaAnchor->Get_String();
 				if (!bPerAlivePlayerContract && !bBossRelativeContract)
 					return false;
+				const uint32_t iFirstSpawnOffsetMs = static_cast<uint32_t>(
+					Value.Find("firstSpawnOffsetMs")->Get_Number());
+				const uint32_t iSpawnCount = static_cast<uint32_t>(
+					Value.Find("spawnCount")->Get_Number());
+				const uint32_t iSpawnIntervalMs = static_cast<uint32_t>(
+					Value.Find("spawnIntervalMs")->Get_Number());
+				if (0u != iFirstSpawnOffsetMs || iSpawnCount > 1u)
+				{
+					if (!bHasScheduledVolleyClock)
+					{
+						bHasScheduledVolleyClock = true;
+						iScheduledVolleyFirstOffsetMs = iFirstSpawnOffsetMs;
+						iScheduledVolleyCount = iSpawnCount;
+						iScheduledVolleyIntervalMs = iSpawnIntervalMs;
+					}
+					else if (iScheduledVolleyFirstOffsetMs != iFirstSpawnOffsetMs ||
+						iScheduledVolleyCount != iSpawnCount ||
+						iScheduledVolleyIntervalMs != iSpawnIntervalMs)
+					{
+						return false;
+					}
+				}
 				/* The expanded volley is validated and joined separately as a
 				   combat-object owner. It is not lossy-packed into the legacy
 				   five-field stage-action display view. */
@@ -990,6 +1101,18 @@ namespace
 				Stage, strPartDamagePolicy, CounterProxy, BossResponse))
 		{
 			strOutError = "split gameplay stage extension values are invalid: " +
+				std::string(strPatternId) + "/" + std::string(strStageId);
+			return false;
+		}
+		const DATA_JSON_VALUE* pVerticalOffset = Stage.Find("verticalOffsetM");
+		if (nullptr != pVerticalOffset &&
+			(!Is_FiniteNumber(pVerticalOffset) ||
+			 0.0 == pVerticalOffset->Get_Number() ||
+			 std::fabs(pVerticalOffset->Get_Number()) > 100.0 ||
+			 !BossResponse.has_value() || nullptr != Stage.Find("motion")))
+		{
+			strOutError =
+				"split gameplay stage verticalOffsetM requires an active boss response: " +
 				std::string(strPatternId) + "/" + std::string(strStageId);
 			return false;
 		}
@@ -1441,9 +1564,13 @@ namespace
 		std::string strActionId;
 		std::string strStageKind;
 		uint32_t iDurationMs = 0u;
+		f32_t fVerticalOffsetM = 0.f;
 		uint32_t iRepeatCount = 0u;
 		std::string strAnimationEndPolicy;
 		bool_t bSuppressAnimation = false;
+		bool_t bHasBodyHiddenWindow = false;
+		uint32_t iBodyHiddenFromMs = 0u;
+		uint32_t iBodyHiddenToMs = 0u;
 		std::string strHitShape;
 		f32_t fHitOuterRadius = 0.f;
 		f32_t fHitInnerRadius = 0.f;
@@ -1465,6 +1592,7 @@ namespace
 		std::string strServerDamageProfileId;
 		std::string strPlayerResponse = "DAMAGE";
 		std::string strAttachmentSlot = "NONE";
+		std::optional<Client::PLAYER_HAND_GRIP_LOCAL_OFFSET> GripLocalOffset;
 		std::string strPartDamagePolicy = "NORMAL";
 		std::optional<Client::VALTAN_COUNTER_PROXY_VIEW> CounterProxy;
 		std::optional<Client::VALTAN_BOSS_RESPONSE_VIEW> BossResponse;
@@ -1708,9 +1836,13 @@ namespace
 			Value, "actions", DATA_JSON_TYPE::ARRAY);
 		const DATA_JSON_VALUE* pPlayerResponse = Value.Find("playerResponse");
 		const DATA_JSON_VALUE* pAttachmentSlot = Value.Find("attachmentSlot");
+		const DATA_JSON_VALUE* pGripLocalOffset = Value.Find("gripLocalOffset");
+		std::optional<Client::PLAYER_HAND_GRIP_LOCAL_OFFSET> GripLocalOffset;
 		if (nullptr == pOffsets || nullptr == pKnockdown || nullptr == pMotion ||
 			nullptr == pActions ||
-			(nullptr == pPlayerResponse) != (nullptr == pAttachmentSlot))
+			(nullptr == pPlayerResponse) != (nullptr == pAttachmentSlot) ||
+			(nullptr == pPlayerResponse) != (nullptr == pGripLocalOffset) ||
+			!Read_PlayerHandGripLocalOffset(pGripLocalOffset, GripLocalOffset))
 		{
 			strOutError = "master stage gameplay fields are invalid";
 			return false;
@@ -1881,18 +2013,19 @@ namespace
 				  "downMs", "motion", "actions", "branches", "animation",
 				  "effectRefs", "cameraInvocations" },
 				{ "partDamagePolicy", "counterProxy", "bossResponse", "hitAnchor",
-				  "hitActivation" });
+				  "hitActivation", "bodyVisibility", "verticalOffsetM" });
 		const bool_t bCaptureShape = Has_ExactPropertiesWithOptional(Value,
 				{ "stageId", "sequenceRole", "actionId", "stageKind",
 				  "durationMs", "hitShape", "hitOuterRadius", "hitInnerRadius",
 				  "hitAngleDegrees", "hitLength", "hitHalfWidth", "hitCount",
 				  "hitIntervalMs", "hitDelayMs", "hitOffsetsMs",
 				  "serverDamageProfileId", "playerResponse", "attachmentSlot",
+				  "gripLocalOffset",
 				  "pushRangeM", "pushMs", "knockdown", "downMs", "motion",
 				  "actions", "branches", "animation", "effectRefs",
 				  "cameraInvocations" },
 				{ "partDamagePolicy", "counterProxy", "bossResponse", "hitAnchor",
-				  "hitActivation" });
+				  "hitActivation", "bodyVisibility", "verticalOffsetM" });
 		if (!bBaseShape && !bCaptureShape)
 		{
 			strOutError = "master stage has unexpected properties";
@@ -1979,17 +2112,43 @@ namespace
 		Out.strActionId = pAction->Get_String();
 		Out.strStageKind = pKind->Get_String();
 		Out.iDurationMs = static_cast<uint32_t>(pDuration->Get_Number());
+		const DATA_JSON_VALUE* pVerticalOffset = Value.Find("verticalOffsetM");
+		if (nullptr != pVerticalOffset &&
+			(!Is_FiniteNumber(pVerticalOffset) ||
+			 0.0 == pVerticalOffset->Get_Number() ||
+			 std::fabs(pVerticalOffset->Get_Number()) > 100.0))
+		{
+			strOutError = "master stage verticalOffsetM is invalid";
+			return false;
+		}
+		Out.fVerticalOffsetM = nullptr == pVerticalOffset ? 0.f :
+			static_cast<f32_t>(pVerticalOffset->Get_Number());
 		Out.bSuppressAnimation = bSuppressAnimation;
 		Out.iRepeatCount = bSuppressAnimation ? 0u :
 			static_cast<uint32_t>(pRepeatCount->Get_Number());
 		Out.strAnimationEndPolicy = bSuppressAnimation ? "NONE" :
 			pEndPolicy->Get_String();
+		if (!Read_StageBodyVisibility(
+				Value.Find("bodyVisibility"), Out.iDurationMs,
+				Out.bHasBodyHiddenWindow, Out.iBodyHiddenFromMs,
+				Out.iBodyHiddenToMs))
+		{
+			strOutError = "master stage bodyVisibility is invalid";
+			return false;
+		}
 		Out.strHitShape = pShape->Get_String();
 		Out.strServerDamageProfileId = pDamage->Get_String();
 		Out.strPlayerResponse = bCaptureShape ?
 			Read_String(Value, "playerResponse") : "DAMAGE";
 		Out.strAttachmentSlot = bCaptureShape ?
 			Read_String(Value, "attachmentSlot") : "NONE";
+		if (!Read_PlayerHandGripLocalOffset(
+				Value.Find("gripLocalOffset"), Out.GripLocalOffset) ||
+			(bCaptureShape != Out.GripLocalOffset.has_value()))
+		{
+			strOutError = "master stage gripLocalOffset is invalid";
+			return false;
+		}
 		if (!Read_RequiredFiniteFloat(
 				Value, "hitOuterRadius", Out.fHitOuterRadius) ||
 			!Read_RequiredFiniteFloat(
@@ -2038,6 +2197,8 @@ namespace
 		if ((Out.BossResponse.has_value() &&
 			 ("ACTIVE" != Out.strStageKind || 1u != iHealthThresholdCount)) ||
 			(!Out.BossResponse.has_value() && 0u != iHealthThresholdCount) ||
+			(0.f != Out.fVerticalOffsetM &&
+			 (!Out.BossResponse.has_value() || Out.Motion.has_value())) ||
 			(Out.CounterProxy.has_value() &&
 			 (("BOSS_FORWARD_ARC" == Out.CounterProxy->strKind &&
 			   "WINDUP" != Out.strStageKind &&
@@ -2539,8 +2700,13 @@ namespace
 				Out.Stages.begin(), Out.Stages.end(),
 				[](const MASTER_STAGE& Stage)
 				{ return Stage.BossResponse.has_value(); }));
+		const bool_t bHasStageVerticalOffset = std::any_of(
+			Out.Stages.begin(), Out.Stages.end(),
+			[](const MASTER_STAGE& Stage)
+			{ return 0.f != Stage.fVerticalOffsetM; });
 		if (1u < iBossResponseCount ||
-			(0.f != Out.fVerticalOffsetM && 0u == iBossResponseCount))
+			(0.f != Out.fVerticalOffsetM && 0u == iBossResponseCount) ||
+			(bHasStageVerticalOffset && Out.ServerMotion.has_value()))
 		{
 			strOutError =
 				"master verticalOffsetM requires an active boss-response pattern: " +
@@ -3294,6 +3460,7 @@ namespace
 	{
 		std::string strClientVisualId;
 		std::string strEffectAssetId;
+		std::string strEffectV2GroupId;
 		std::string strOwnerPatternId;
 		std::string strOwnerStageActionId;
 		std::string strKind;
@@ -3304,6 +3471,7 @@ namespace
 		uint32_t iLifetimeMs = 0u;
 		std::vector<std::string> HitIds;
 		std::vector<uint32_t> HitOffsetsMs;
+		std::vector<Client::VALTAN_COMBAT_OBJECT_HIT_VIEW> Hits;
 		std::vector<Client::VALTAN_COMBAT_OBJECT_PRESENTATION_EVENT_VIEW>
 			PresentationEvents;
 	};
@@ -3513,6 +3681,7 @@ namespace
 			Product.strActionId == Master.strActionId &&
 			Product.strStageKind == Master.strStageKind &&
 			Product.iDurationMs == Master.iDurationMs &&
+			Product.fVerticalOffsetM == Master.fVerticalOffsetM &&
 			Product.strHitShape == Master.strHitShape &&
 			Product.fHitOuterRadius == Master.fHitOuterRadius &&
 			Product.fHitInnerRadius == Master.fHitInnerRadius &&
@@ -3538,6 +3707,7 @@ namespace
 				Master.strServerDamageProfileId &&
 			Product.strPlayerResponse == Master.strPlayerResponse &&
 			Product.strAttachmentSlot == Master.strAttachmentSlot &&
+			Product.GripLocalOffset == Master.GripLocalOffset &&
 			Product.strPartDamagePolicy == Master.strPartDamagePolicy &&
 			Equal_CounterProxy(Product.CounterProxy, ProductCounterProxy) &&
 			Product.BossResponse == Master.BossResponse &&
@@ -4119,8 +4289,11 @@ namespace
 			return true;
 		}
 
-		const bool_t bCaptureHit = nullptr != Hit.Find("playerResponse") ||
-			nullptr != Hit.Find("attachmentSlot");
+		const DATA_JSON_VALUE* pPlayerResponse = Hit.Find("playerResponse");
+		const DATA_JSON_VALUE* pAttachmentSlot = Hit.Find("attachmentSlot");
+		const DATA_JSON_VALUE* pGripLocalOffset = Hit.Find("gripLocalOffset");
+		const bool_t bCaptureHit = nullptr != pPlayerResponse ||
+			nullptr != pAttachmentSlot || nullptr != pGripLocalOffset;
 		const DATA_JSON_VALUE* pSchedule = Hit.Find("schedule");
 		const DATA_JSON_VALUE* pActivation = Hit.Find("activation");
 		const DATA_JSON_VALUE* pAnchor = Hit.Find("anchor");
@@ -4128,10 +4301,10 @@ namespace
 				{ "shape", "serverDamageProfileId", "pushRangeM", "pushMs",
 				  "knockdown", "downMs" },
 				{ "schedule", "activation", "anchor", "playerResponse",
-				  "attachmentSlot" }) ||
+				  "attachmentSlot", "gripLocalOffset" }) ||
 			((nullptr == pSchedule) == (nullptr == pActivation)) ||
-			((nullptr == Hit.Find("playerResponse")) !=
-			 (nullptr == Hit.Find("attachmentSlot"))))
+			((nullptr == pPlayerResponse) != (nullptr == pAttachmentSlot)) ||
+			((nullptr == pPlayerResponse) != (nullptr == pGripLocalOffset)))
 		{
 			strOutError = "split gameplay hit has unexpected properties";
 			return false;
@@ -4281,11 +4454,20 @@ namespace
 			strOutError = "split gameplay capture hit contract is invalid";
 			return false;
 		}
+		std::optional<Client::PLAYER_HAND_GRIP_LOCAL_OFFSET> GripLocalOffset;
+		if (!Read_PlayerHandGripLocalOffset(
+				pGripLocalOffset, GripLocalOffset) ||
+			(bCaptureHit != GripLocalOffset.has_value()))
+		{
+			strOutError = "split gameplay gripLocalOffset is invalid";
+			return false;
+		}
 		OutStage.emplace("serverDamageProfileId", *pDamage);
 		if (bCaptureHit)
 		{
 			OutStage.emplace("playerResponse", *Hit.Find("playerResponse"));
 			OutStage.emplace("attachmentSlot", *Hit.Find("attachmentSlot"));
+			OutStage.emplace("gripLocalOffset", *pGripLocalOffset);
 		}
 		OutStage.emplace("pushRangeM", *Hit.Find("pushRangeM"));
 		OutStage.emplace("pushMs", *Hit.Find("pushMs"));
@@ -4963,12 +5145,15 @@ namespace
 				0.0 == pSpawnSchedule->Find("count")->Get_Number() ||
 				pSpawnSchedule->Find("count")->Get_Number() > 8.0 ||
 				!Is_NonNegativeInteger(pSpawnSchedule->Find("firstOffsetMs")) ||
-				0.0 != pSpawnSchedule->Find("firstOffsetMs")->Get_Number() ||
 				!Is_NonNegativeInteger(pSpawnSchedule->Find("intervalMs")) ||
 				(pSpawnSchedule->Find("count")->Get_Number() > 1.0 &&
 				 0.0 == pSpawnSchedule->Find("intervalMs")->Get_Number()) ||
 				(pSpawnSchedule->Find("count")->Get_Number() == 1.0 &&
-				 0.0 != pSpawnSchedule->Find("intervalMs")->Get_Number()))
+				 0.0 != pSpawnSchedule->Find("intervalMs")->Get_Number()) ||
+				pSpawnSchedule->Find("firstOffsetMs")->Get_Number() +
+					(pSpawnSchedule->Find("count")->Get_Number() - 1.0) *
+						pSpawnSchedule->Find("intervalMs")->Get_Number() >=
+					static_cast<double>(iStageDurationMs))
 			{
 				strOutError =
 					"split gameplay combat-object volley spawn schedule is invalid";
@@ -4978,7 +5163,11 @@ namespace
 				pArenaRandom->Is_Object() && nullptr != pArenaRandom->Find("count") &&
 				Is_NonNegativeInteger(pArenaRandom->Find("count")) ?
 				pArenaRandom->Find("count")->Get_Number() : 0.0;
-			const bool_t bPerAliveArenaContract = bPerAlivePlayer &&
+			const bool_t bNoArenaSupplement =
+				Has_ExactProperties(*pArenaRandom, { "kind" }) &&
+				"NONE" == Read_String(*pArenaRandom, "kind") &&
+				Event.Find("maximumTotalObjects")->Get_Number() >= fCount;
+			const bool_t bArenaSupplement =
 				Has_ExactProperties(*pArenaRandom,
 					{ "kind", "anchor", "count", "radiusM",
 					  "heightToleranceM" }) &&
@@ -4994,9 +5183,10 @@ namespace
 				Event.Find("maximumTotalObjects")->Get_Number() >=
 					Event.Find("countPerResolvedTarget")->Get_Number() +
 						fArenaRandomCount;
+			const bool_t bPerAliveArenaContract = bPerAlivePlayer &&
+				(bNoArenaSupplement || bArenaSupplement);
 			const bool_t bBossRelativeContract = bBossRelative &&
-				Has_ExactProperties(*pArenaRandom, { "kind" }) &&
-				"NONE" == Read_String(*pArenaRandom, "kind") &&
+				bNoArenaSupplement &&
 				1.0 == pSpawnSchedule->Find("count")->Get_Number() &&
 				0.0 == pSpawnSchedule->Find("intervalMs")->Get_Number() &&
 				Event.Find("maximumTotalObjects")->Get_Number() >= fCount;
@@ -5029,17 +5219,19 @@ namespace
 			Action.emplace("maximumTotalObjects",
 				*Event.Find("maximumTotalObjects"));
 			Action.emplace("spawnCount", *pSpawnSchedule->Find("count"));
+			Action.emplace("firstSpawnOffsetMs",
+				*pSpawnSchedule->Find("firstOffsetMs"));
 			Action.emplace("spawnIntervalMs",
 				*pSpawnSchedule->Find("intervalMs"));
 			Action.emplace("arenaRandomCount", DATA_JSON_VALUE::Number(
-				bPerAlivePlayer ? Read_Number(*pArenaRandom, "count") : 0.0));
+				bArenaSupplement ? Read_Number(*pArenaRandom, "count") : 0.0));
 			Action.emplace("arenaRandomRadiusM", DATA_JSON_VALUE::Number(
-				bPerAlivePlayer ? Read_Number(*pArenaRandom, "radiusM") : 0.0));
+				bArenaSupplement ? Read_Number(*pArenaRandom, "radiusM") : 0.0));
 			Action.emplace("arenaHeightToleranceM", DATA_JSON_VALUE::Number(
-				bPerAlivePlayer ?
+				bArenaSupplement ?
 					Read_Number(*pArenaRandom, "heightToleranceM") : 0.0));
 			Action.emplace("arenaAnchorPolicy", DATA_JSON_VALUE::String(
-				bPerAlivePlayer ? Read_String(*pArenaRandom, "anchor") : "NONE"));
+				bArenaSupplement ? Read_String(*pArenaRandom, "anchor") : "NONE"));
 			strOutSpawnArchetypeId = Read_String(
 				Event, "combatObjectArchetypeId");
 			Action.emplace("trigger", DATA_JSON_VALUE::String(strTrigger));
@@ -5302,10 +5494,12 @@ namespace
 						{ "stageId", "actionId", "stageKind", "durationMs",
 						  "defaultNextActionId", "hit", "motion", "events",
 						  "branches" },
-						{ "partDamagePolicy", "counterProxy", "bossResponse" }) ||
-					!Has_ExactProperties(PresentationStage,
+						{ "partDamagePolicy", "counterProxy", "bossResponse",
+						  "verticalOffsetM" }) ||
+					!Has_ExactPropertiesWithOptional(PresentationStage,
 						{ "stageId", "actionId", "sequenceRole", "animation",
-						  "effectCues", "cameraInvocations" }))
+						  "effectCues", "cameraInvocations" },
+						{ "bodyVisibility" }))
 				{
 					strOutError = "split authoring stage has unexpected properties: " +
 						strPatternId;
@@ -5327,6 +5521,20 @@ namespace
 					0.0 == pDuration->Get_Number())
 				{
 					strOutError = "split gameplay stage duration is invalid: " +
+						strPatternId + "/" + strStageId;
+					return false;
+				}
+				bool_t bHasBodyHiddenWindow = false;
+				uint32_t iBodyHiddenFromMs = 0u;
+				uint32_t iBodyHiddenToMs = 0u;
+				if (!Read_StageBodyVisibility(
+						PresentationStage.Find("bodyVisibility"),
+						static_cast<uint32_t>(pDuration->Get_Number()),
+						bHasBodyHiddenWindow, iBodyHiddenFromMs,
+						iBodyHiddenToMs))
+				{
+					strOutError =
+						"split presentation bodyVisibility is invalid: " +
 						strPatternId + "/" + strStageId;
 					return false;
 				}
@@ -5403,6 +5611,11 @@ namespace
 				{
 					LegacyStage.emplace("bossResponse", *pBossResponse);
 				}
+				if (const DATA_JSON_VALUE* pVerticalOffset =
+						GameplayStage.Find("verticalOffsetM"))
+				{
+					LegacyStage.emplace("verticalOffsetM", *pVerticalOffset);
+				}
 				const DATA_JSON_VALUE* pHit = Required(
 					GameplayStage, "hit", DATA_JSON_TYPE::OBJECT);
 				if (nullptr == pHit || !Build_SplitHitProjection(
@@ -5419,6 +5632,10 @@ namespace
 
 				DATA_JSON_VALUE::ARRAY Actions;
 				DATA_JSON_VALUE::ARRAY EffectReferences;
+				bool_t bHasScheduledVolleyClock = false;
+				uint32_t iScheduledVolleyFirstOffsetMs = 0u;
+				uint32_t iScheduledVolleyCount = 0u;
+				uint32_t iScheduledVolleyIntervalMs = 0u;
 				const DATA_JSON_VALUE* pEvents = Required(
 					GameplayStage, "events", DATA_JSON_TYPE::ARRAY);
 				if (nullptr == pEvents)
@@ -5451,6 +5668,31 @@ namespace
 							strOutError =
 								"split gameplay volley Product projection is missing";
 							return false;
+						}
+						const uint32_t iFirstSpawnOffsetMs = static_cast<uint32_t>(
+							Read_Number(Action, "firstSpawnOffsetMs"));
+						const uint32_t iSpawnCount = static_cast<uint32_t>(
+							Read_Number(Action, "spawnCount"));
+						const uint32_t iSpawnIntervalMs = static_cast<uint32_t>(
+							Read_Number(Action, "spawnIntervalMs"));
+						if (0u != iFirstSpawnOffsetMs || iSpawnCount > 1u)
+						{
+							if (!bHasScheduledVolleyClock)
+							{
+								bHasScheduledVolleyClock = true;
+								iScheduledVolleyFirstOffsetMs = iFirstSpawnOffsetMs;
+								iScheduledVolleyCount = iSpawnCount;
+								iScheduledVolleyIntervalMs = iSpawnIntervalMs;
+							}
+							else if (iScheduledVolleyFirstOffsetMs !=
+									iFirstSpawnOffsetMs ||
+								iScheduledVolleyCount != iSpawnCount ||
+								iScheduledVolleyIntervalMs != iSpawnIntervalMs)
+							{
+								strOutError =
+									"split gameplay scheduled volleys do not share one clock";
+								return false;
+							}
 						}
 						VolleyProjections.push_back(MASTER_VOLLEY_PROJECTION{
 							strEventId,
@@ -5614,6 +5856,11 @@ namespace
 						DATA_JSON_VALUE::Object(std::move(Reference)));
 				}
 				LegacyStage.emplace("animation", *PresentationStage.Find("animation"));
+				if (bHasBodyHiddenWindow)
+				{
+					LegacyStage.emplace(
+						"bodyVisibility", *PresentationStage.Find("bodyVisibility"));
+				}
 				LegacyStage.emplace("effectRefs",
 					DATA_JSON_VALUE::Array(std::move(EffectReferences)));
 
@@ -6103,6 +6350,7 @@ namespace
 			Client::VALTAN_STAGE_VIEW& Stage = Out.Stages[iStage];
 			Stage.strStageKind = Source.strStageKind;
 			Stage.iDurationMs = Source.iDurationMs;
+			Stage.fVerticalOffsetM = Source.fVerticalOffsetM;
 			Stage.strHitShape = Source.strHitShape;
 			Stage.fHitOuterRadius = Source.fHitOuterRadius;
 			Stage.fHitInnerRadius = Source.fHitInnerRadius;
@@ -6126,6 +6374,7 @@ namespace
 			Stage.strServerDamageProfileId = Source.strServerDamageProfileId;
 			Stage.strPlayerResponse = Source.strPlayerResponse;
 			Stage.strAttachmentSlot = Source.strAttachmentSlot;
+			Stage.GripLocalOffset = Source.GripLocalOffset;
 			Stage.strPartDamagePolicy = Source.strPartDamagePolicy;
 			Stage.CounterProxy = Source.CounterProxy;
 			Stage.BossResponse = Source.BossResponse;
@@ -6136,6 +6385,9 @@ namespace
 			Stage.Motion = Source.Motion;
 			Stage.Actions = Source.Actions;
 			Stage.Branches = Source.Branches;
+			Stage.bHasBodyHiddenWindow = Source.bHasBodyHiddenWindow;
+			Stage.iBodyHiddenFromMs = Source.iBodyHiddenFromMs;
+			Stage.iBodyHiddenToMs = Source.iBodyHiddenToMs;
 		}
 	}
 
@@ -6258,6 +6510,12 @@ namespace
 					(!Equal_MasterStageGameplay(Stage, MasterStage) ||
 					 Stage.bSuppressAnimation !=
 						MasterStage.bSuppressAnimation ||
+					 Stage.bHasBodyHiddenWindow !=
+						MasterStage.bHasBodyHiddenWindow ||
+					 Stage.iBodyHiddenFromMs !=
+						MasterStage.iBodyHiddenFromMs ||
+					 Stage.iBodyHiddenToMs !=
+						MasterStage.iBodyHiddenToMs ||
 					 Stage.ClipOccurrences.size() !=
 						MasterStage.Occurrences.size() ||
 					 Stage.ProductCues.size() != MasterStage.AuthoredCues.size()))
@@ -6336,6 +6594,10 @@ namespace
 				Stage.strAnimationEndPolicy =
 					MasterStage.strAnimationEndPolicy;
 				Stage.bSuppressAnimation = MasterStage.bSuppressAnimation;
+				Stage.bHasBodyHiddenWindow =
+					MasterStage.bHasBodyHiddenWindow;
+				Stage.iBodyHiddenFromMs = MasterStage.iBodyHiddenFromMs;
+				Stage.iBodyHiddenToMs = MasterStage.iBodyHiddenToMs;
 				Stage.CameraInvocations = MasterStage.CameraInvocations;
 				if (!Assign_MasterWallBudgets(Stage, strOutError))
 					return false;
@@ -7831,6 +8093,38 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		COMBAT_OBJECT_EFFECT_REFERENCE Reference;
 		Reference.strClientVisualId = Read_String(Visual, "clientVisualId");
 		Reference.strEffectAssetId = Read_String(Visual, "effectAssetId");
+		if (const DATA_JSON_VALUE* pEffectV2Group =
+			Visual.Find("effectV2Group"); nullptr != pEffectV2Group)
+		{
+			if (!pEffectV2Group->Is_Object())
+			{
+				strOutStatus =
+					"BOSS_VALTAN combat-object Effect V2 group is invalid.";
+				return false;
+			}
+			const bool_t bHasVisualHit =
+				nullptr != pEffectV2Group->Find("visualHitMs");
+			const bool_t bHasServerHit =
+				nullptr != pEffectV2Group->Find("serverHitId");
+			const DATA_JSON_VALUE* pPlaybackRate =
+				pEffectV2Group->Find("playbackRate");
+			if (bHasVisualHit != bHasServerHit ||
+				!(bHasVisualHit ?
+					Has_ExactProperties(*pEffectV2Group,
+						{ "groupId", "playbackRate", "visualHitMs", "serverHitId" }) :
+					Has_ExactProperties(*pEffectV2Group,
+						{ "groupId", "playbackRate" })) ||
+				!Is_StableToken(Read_String(*pEffectV2Group, "groupId")) ||
+				nullptr == pPlaybackRate || !Is_FiniteNumber(pPlaybackRate) ||
+				pPlaybackRate->Get_Number() <= 0.0)
+			{
+				strOutStatus =
+					"BOSS_VALTAN combat-object Effect V2 group is invalid.";
+				return false;
+			}
+			Reference.strEffectV2GroupId =
+				Read_String(*pEffectV2Group, "groupId");
+		}
 		if (strArchetypeId.empty() || Reference.strClientVisualId.empty() ||
 			Reference.strEffectAssetId.empty() ||
 			!CombatObjectEffectsByArchetype.emplace(
@@ -7907,8 +8201,10 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		{
 			uint32_t iHitOffsetMs = 0u;
 			const std::string strHitId = Read_String(Hit, "hitId");
+			const std::string strHitShape = Read_String(Hit, "hitShape");
 			if (!Hit.Is_Object() ||
 				strHitId.empty() ||
+				strHitShape.empty() ||
 				!Read_RequiredUInt32(Hit, "atMs", iHitOffsetMs) ||
 				std::find(Reference->second.HitIds.begin(),
 					Reference->second.HitIds.end(), strHitId) !=
@@ -7919,8 +8215,26 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					strArchetypeId;
 				return false;
 			}
+			Client::VALTAN_COMBAT_OBJECT_HIT_VIEW HitView;
+			HitView.strHitId = strHitId;
+			HitView.strHitShape = strHitShape;
+			if ("RING" == strHitShape &&
+				(!Read_RequiredFiniteFloat(
+					Hit, "hitInnerRadius", HitView.fInnerRadiusM) ||
+				 !Read_RequiredFiniteFloat(
+					Hit, "hitOuterRadius", HitView.fOuterRadiusM) ||
+				 HitView.fInnerRadiusM < 0.f ||
+				 HitView.fInnerRadiusM >= HitView.fOuterRadiusM ||
+				 HitView.fOuterRadiusM > 100000.f))
+			{
+				strOutStatus =
+					"Valtan combat-object RING geometry is invalid: " +
+					strArchetypeId + "/" + strHitId;
+				return false;
+			}
 			Reference->second.HitIds.push_back(strHitId);
 			Reference->second.HitOffsetsMs.push_back(iHitOffsetMs);
+			Reference->second.Hits.push_back(std::move(HitView));
 		}
 		if (nullptr != pPresentationEvents)
 		{
@@ -8017,6 +8331,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 	std::map<std::string, std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>, std::less<>>
 		ClipsByAction;
 	std::set<std::string, std::less<>> SuppressedAnimationActions;
+	std::map<std::string, std::array<uint32_t, 2u>, std::less<>>
+		BodyHiddenWindowByAction;
 	for (const BOSS_PATTERN_ANIMATION_BINDING& Binding :
 		BindingDocument.Bindings)
 	{
@@ -8027,6 +8343,13 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		ClipsByAction.emplace(Binding.strActionId, std::move(Occurrences));
 		if (Binding.bSuppressAnimation)
 			SuppressedAnimationActions.insert(Binding.strActionId);
+		if (Binding.bHasBodyHiddenWindow)
+		{
+			BodyHiddenWindowByAction.emplace(
+				Binding.strActionId,
+				std::array<uint32_t, 2u>{ Binding.iBodyHiddenFromMs,
+					Binding.iBodyHiddenToMs });
+		}
 	}
 
 	std::map<std::string, std::vector<VALTAN_PRODUCT_EFFECT_CUE_VIEW>,
@@ -8187,6 +8510,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 				Stage.strActionId = Read_String(StageValue, "actionId");
 				Stage.strStageKind = Read_String(StageValue, "stageKind");
 				Stage.strHitShape = Read_String(StageValue, "hitShape");
+				const DATA_JSON_VALUE* pStageVerticalOffset =
+					StageValue.Find("verticalOffsetM");
 				const bool_t bValidStageKind =
 					"WINDUP" == Stage.strStageKind ||
 					"ACTIVE" == Stage.strStageKind ||
@@ -8208,7 +8533,11 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 						"Valtan encounter stage identity is missing or invalid";
 					return false;
 				}
-				if (!Read_RequiredUInt32(
+				if ((nullptr != pStageVerticalOffset &&
+					 (!Is_FiniteNumber(pStageVerticalOffset) ||
+					  0.0 == pStageVerticalOffset->Get_Number() ||
+					  std::fabs(pStageVerticalOffset->Get_Number()) > 100.0)) ||
+					!Read_RequiredUInt32(
 						StageValue, "durationMs", Stage.iDurationMs) ||
 					!Read_RequiredUInt32(
 						StageValue, "hitCount", Stage.iHitCount) ||
@@ -8232,6 +8561,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 						Stage.strActionId;
 					return false;
 				}
+				Stage.fVerticalOffsetM = nullptr == pStageVerticalOffset ? 0.f :
+					static_cast<f32_t>(pStageVerticalOffset->Get_Number());
 				if (!Read_OptionalOrderedHitOffsets(
 						StageValue, Stage.HitOffsetsMs))
 				{
@@ -8246,7 +8577,12 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					StageValue.Find("playerResponse");
 				const DATA_JSON_VALUE* pAttachmentSlot =
 					StageValue.Find("attachmentSlot");
+				const DATA_JSON_VALUE* pGripLocalOffset =
+					StageValue.Find("gripLocalOffset");
 				if ((nullptr == pPlayerResponse) != (nullptr == pAttachmentSlot) ||
+					(nullptr == pPlayerResponse) != (nullptr == pGripLocalOffset) ||
+					!Read_PlayerHandGripLocalOffset(
+						pGripLocalOffset, Stage.GripLocalOffset) ||
 					(nullptr != pPlayerResponse &&
 					 (!pPlayerResponse->Is_String() ||
 					  !pAttachmentSlot->Is_String())))
@@ -8310,6 +8646,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					  1u != iHealthThresholdCount)) ||
 					(!Stage.BossResponse.has_value() &&
 					 0u != iHealthThresholdCount) ||
+					(0.f != Stage.fVerticalOffsetM &&
+					 (!Stage.BossResponse.has_value() || Stage.Motion.has_value())) ||
 					(Stage.CounterProxy.has_value() &&
 					 (("BOSS_FORWARD_ARC" == Stage.CounterProxy->strKind &&
 					   "WINDUP" != Stage.strStageKind &&
@@ -8448,6 +8786,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 							Reference->second.strClientVisualId;
 						View.strEffectAssetId =
 							Reference->second.strEffectAssetId;
+						View.strEffectV2GroupId =
+							Reference->second.strEffectV2GroupId;
 						View.strTrigger = Read_String(Action, "trigger");
 						View.iSpawnValue = static_cast<uint32_t>(SpawnValue);
 						if ("SPAWN_COMBAT_OBJECT_VOLLEY" == strSpawnKind)
@@ -8461,6 +8801,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 								Read_Number(Action, "startAngleDegrees"));
 							View.fVolleyAngleStepDegrees = static_cast<f32_t>(
 								Read_Number(Action, "angleStepDegrees"));
+							View.iFirstSpawnOffsetMs = static_cast<uint32_t>(
+								Read_Number(Action, "firstSpawnOffsetMs"));
 						}
 						View.strKind = Reference->second.strKind;
 						View.strOriginPolicy =
@@ -8473,6 +8815,7 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 						View.iLifetimeMs = Reference->second.iLifetimeMs;
 						View.HitIds = Reference->second.HitIds;
 						View.HitOffsetsMs = Reference->second.HitOffsetsMs;
+						View.Hits = Reference->second.Hits;
 						View.PresentationEvents =
 							Reference->second.PresentationEvents;
 						Stage.CombatObjectEffects.push_back(std::move(View));
@@ -8503,6 +8846,23 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					}
 					Stage.strRuntimeClipName = Stage.RuntimeClipNames.empty() ?
 						std::string{} : Stage.RuntimeClipNames.front();
+				}
+				const auto BodyHiddenWindow =
+					BodyHiddenWindowByAction.find(Stage.strActionId);
+				if (BodyHiddenWindow != BodyHiddenWindowByAction.end())
+				{
+					if (BodyHiddenWindow->second[0] >=
+							BodyHiddenWindow->second[1] ||
+						BodyHiddenWindow->second[1] > Stage.iDurationMs)
+					{
+						strOutStatus =
+							"Valtan Product body visibility window exceeds its Stage: " +
+							Stage.strActionId;
+						return false;
+					}
+					Stage.bHasBodyHiddenWindow = true;
+					Stage.iBodyHiddenFromMs = BodyHiddenWindow->second[0];
+					Stage.iBodyHiddenToMs = BodyHiddenWindow->second[1];
 				}
 
 				const auto CueIterator = CueByAction.find(Stage.strActionId);
@@ -8635,10 +8995,15 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 				Pattern.strPatternId;
 			return false;
 		}
-		if (0.f != Pattern.fVerticalOffsetM &&
+		const bool_t bHasStageVerticalOffset = std::any_of(
+			Pattern.Stages.begin(), Pattern.Stages.end(),
+			[](const VALTAN_STAGE_VIEW& Stage)
+			{ return 0.f != Stage.fVerticalOffsetM; });
+		if ((0.f != Pattern.fVerticalOffsetM &&
 			std::none_of(Pattern.Stages.begin(), Pattern.Stages.end(),
 				[](const VALTAN_STAGE_VIEW& Stage)
-				{ return Stage.BossResponse.has_value(); }))
+				{ return Stage.BossResponse.has_value(); })) ||
+			(bHasStageVerticalOffset && Pattern.ServerMotion.has_value()))
 		{
 			strOutStatus =
 				"Valtan encounter verticalOffsetM has no active boss response: " +

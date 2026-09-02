@@ -1148,7 +1148,7 @@ namespace
 			DiagnosticDetail.c_str());
 	}
 
-	void VerifyStaleVolleyGeometryAndScheduleReturnTypedOwnerDiagnostic()
+	void VerifyStaleVolleyGeometryAndCapacityReturnTypedOwnerDiagnostic()
 	{
 		const std::filesystem::path GameplayPath = CProjectDataRoot::Resolve(
 			std::filesystem::path(L"Valtan") / L"Valtan.gameplay.json");
@@ -1223,11 +1223,11 @@ namespace
 
 		VerifyMutation("geometry",
 			"\"eventId\": \"event.valtan.ghost.portal-once.volley\"",
-			"\"radiusM\": 31.112698", "\"radiusM\": 30.112698",
+			"\"radiusM\": 25.403411844343534", "\"radiusM\": 24.403411844343534",
 			"VALTAN_GHOST_PORTAL_ONCE", "ACTIVE");
-		VerifyMutation("schedule",
+		VerifyMutation("capacity",
 			"\"eventId\": \"event.valtan.high-jump.airborne.spawn-target-axe\"",
-			"\"intervalMs\": 1333", "\"intervalMs\": 1334",
+			"\"maximumTotalObjects\": 4", "\"maximumTotalObjects\": 5",
 			"VALTAN_HIGH_JUMP", "AIRBORNE");
 	}
 }
@@ -1239,7 +1239,7 @@ int Run_ValtanCanonicalGraphContractTests()
 		VerifyFlowDocumentV2AuthoringContract();
 		std::cout << "ValtanPatternFlowDocumentContractTests: PASS\n";
 		VerifyStaleProjectionReturnsTypedOwnerDiagnostic();
-		VerifyStaleVolleyGeometryAndScheduleReturnTypedOwnerDiagnostic();
+		VerifyStaleVolleyGeometryAndCapacityReturnTypedOwnerDiagnostic();
 		VerifyCanonicalProductReadAdmissionExcludesWriter();
 		VerifySixPizzaArenaTargetFollowRoot();
 		VerifyCanonicalGraphInventoryAndFlow();

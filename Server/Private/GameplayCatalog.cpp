@@ -608,6 +608,8 @@ namespace
 			output = BOSS_PATTERN_STAGE_ACTION_KIND::RETURN_TO_ARENA_CENTER;
 		else if ("EXECUTE_GRABBED_PLAYERS" == value)
 			output = BOSS_PATTERN_STAGE_ACTION_KIND::EXECUTE_GRABBED_PLAYERS;
+		else if ("SUPPRESS_INTER_STEP_PURSUIT" == value)
+			output = BOSS_PATTERN_STAGE_ACTION_KIND::SUPPRESS_INTER_STEP_PURSUIT;
 		else
 			return false;
 		return true;
@@ -704,6 +706,14 @@ namespace
 					"boss.attachment.left-hand" == targetId :
 					0u == targetId.find("damage."));
 		}
+		if (BOSS_PATTERN_STAGE_ACTION_KIND::SUPPRESS_INTER_STEP_PURSUIT == kind)
+		{
+			return BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT == trigger &&
+				"boss.sequence.inter-step-pursuit" == targetId &&
+				0u == value && 0u == durationMs &&
+				BOSS_GRABBED_RELEASE_MODE::NONE == releaseMode &&
+				0.f == releaseSpeedMps && 0.f == releaseYawOffsetDegrees;
+		}
 		const bool isSet = BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger;
 		if ((isSet && 0u == value) || (!isSet && 0u != value))
 			return false;
@@ -733,6 +743,7 @@ namespace
 		case BOSS_PATTERN_STAGE_ACTION_KIND::RELEASE_GRABBED_PLAYERS:
 		case BOSS_PATTERN_STAGE_ACTION_KIND::DAMAGE_GRABBED_PLAYERS:
 		case BOSS_PATTERN_STAGE_ACTION_KIND::EXECUTE_GRABBED_PLAYERS:
+		case BOSS_PATTERN_STAGE_ACTION_KIND::SUPPRESS_INTER_STEP_PURSUIT:
 			return false;
 		}
 		return false;
@@ -755,6 +766,8 @@ namespace
 				DAMAGE_GRABBED_PLAYERS != kind &&
 			LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND::
 				EXECUTE_GRABBED_PLAYERS != kind &&
+			LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND::
+				SUPPRESS_INTER_STEP_PURSUIT != kind &&
 			/* Silence is a deadline-latched player status. Its authored ENTER
 			   schedules the exact Server expiry and intentionally has no matching
 			   pattern-occurrence EXIT action. */
@@ -1421,6 +1434,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 	std::unordered_set<LostArk::Shared::SKILL_ID> skillTargetOwners;
 	std::unordered_set<std::string> patternPolicyOwners;
 	std::unordered_set<std::string> patternVerticalOffsetOwners;
+	std::unordered_set<std::string> patternStageVerticalOffsetOwners;
 	std::unordered_set<std::string> patternStagePartDamageOwners;
 	std::unordered_set<std::string> patternStageCounterProxyOwners;
 	std::unordered_set<std::string> patternStageBossResponseOwners;
@@ -2270,6 +2284,50 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				return false;
 			}
 			owner->fVerticalOffsetM = verticalOffsetM;
+		}
+		else if (!fields.empty() && "PATTERNSTAGEVERTICALOFFSET" == fields[0])
+		{
+			float verticalOffsetM = 0.f;
+			if (5u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				!ParseNumber(fields[4], verticalOffsetM) ||
+				!std::isfinite(verticalOffsetM) || 0.f == verticalOffsetM ||
+				std::fabs(verticalOffsetM) > 100.f)
+			{
+				m_strStatus = "Boss pattern stage vertical-offset row is invalid";
+				return false;
+			}
+			const auto ownerMap = m_BossPatterns.find(std::string(fields[1]));
+			const std::string ownerKey = std::string(fields[1]) + "\n" +
+				std::string(fields[2]) + "\n" + std::string(fields[3]);
+			if (m_BossPatterns.end() == ownerMap ||
+				!patternStageVerticalOffsetOwners.insert(ownerKey).second)
+			{
+				m_strStatus =
+					"Boss pattern stage vertical-offset owner is missing or duplicated";
+				return false;
+			}
+			const auto owner = std::find_if(
+				ownerMap->second.begin(), ownerMap->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == fields[2]; });
+			if (ownerMap->second.end() == owner)
+			{
+				m_strStatus =
+					"Boss pattern stage vertical-offset has no pattern owner";
+				return false;
+			}
+			const auto stage = std::find_if(
+				owner->Stages.begin(), owner->Stages.end(),
+				[&fields](const BOSS_PATTERN_STAGE_DEFINITION& candidate)
+				{ return candidate.strActionId == fields[3]; });
+			if (owner->Stages.end() == stage || 0.f != stage->fVerticalOffsetM)
+			{
+				m_strStatus =
+					"Boss pattern stage vertical-offset has no stage owner or is duplicated";
+				return false;
+			}
+			stage->fVerticalOffsetM = verticalOffsetM;
 		}
 		else if (!fields.empty() && "PATTERNPOLICY" == fields[0])
 		{
@@ -3245,7 +3303,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			BOSS_PATTERN_STAGE_ACTION action{};
 			action.eKind =
 				BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT_VOLLEY;
-			if (21u != fields.size() || !IsStableId(fields[1]) ||
+			if (22u != fields.size() || !IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) || !IsStableId(fields[3]) ||
 				!ParseNumber(fields[4], actionOrder) ||
 				!ParseBossPatternStageActionTrigger(fields[5], action.eTrigger) ||
@@ -3261,10 +3319,11 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				!ParseNumber(fields[13], allowOverlap) || allowOverlap > 1u ||
 				!ParseNumber(fields[14], action.Volley.iMaximumTotalObjects) ||
 				!ParseNumber(fields[15], action.Volley.iSpawnCount) ||
-				!ParseNumber(fields[16], action.Volley.iSpawnIntervalMs) ||
-				!ParseNumber(fields[17], action.Volley.iArenaRandomCount) ||
-				!ParseNumber(fields[18], action.Volley.fArenaRandomRadiusM) ||
-				!ParseNumber(fields[19], action.Volley.fArenaHeightToleranceM) ||
+				!ParseNumber(fields[16], action.Volley.iFirstSpawnOffsetMs) ||
+				!ParseNumber(fields[17], action.Volley.iSpawnIntervalMs) ||
+				!ParseNumber(fields[18], action.Volley.iArenaRandomCount) ||
+				!ParseNumber(fields[19], action.Volley.fArenaRandomRadiusM) ||
+				!ParseNumber(fields[20], action.Volley.fArenaHeightToleranceM) ||
 				action.Volley.iCountPerResolvedTarget < 1u ||
 				action.Volley.iCountPerResolvedTarget > 8u ||
 				static_cast<std::uint64_t>(
@@ -3307,10 +3366,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				m_strStatus = "Boss pattern stage volley layout kind is invalid";
 				return false;
 			}
-			if ("NONE" == fields[20])
+			if ("NONE" == fields[21])
 				action.Volley.eArenaAnchorPolicy =
 					BOSS_COMBAT_OBJECT_ARENA_ANCHOR_POLICY::NONE;
-			else if ("BOSS_SPAWN_POSITION" == fields[20])
+			else if ("BOSS_SPAWN_POSITION" == fields[21])
 				action.Volley.eArenaAnchorPolicy =
 					BOSS_COMBAT_OBJECT_ARENA_ANCHOR_POLICY::BOSS_SPAWN_POSITION;
 			else
@@ -3330,7 +3389,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				(BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL !=
 					action.Volley.eLayout || action.Volley.fRadiusM <= 0.f ||
 				 action.Volley.fAngleStepDegrees == 0.f ||
-				 action.Volley.bAllowOverlap)) ||
+				 action.Volley.bAllowOverlap ||
+				 action.Volley.fAngleStepDegrees *
+					static_cast<float>(action.Volley.iCountPerResolvedTarget) >
+					360.000001f)) ||
 				(!isMulti &&
 					(BOSS_COMBAT_OBJECT_LAYOUT_KIND::SINGLE !=
 						action.Volley.eLayout ||
@@ -3348,7 +3410,6 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 						action.Volley.eArenaAnchorPolicy ||
 					 action.Volley.fArenaRandomRadiusM <= 0.f ||
 					 action.Volley.fArenaHeightToleranceM <= 0.f)) ||
-				(perAlivePlayer && 0u == action.Volley.iArenaRandomCount) ||
 				(bossRelative &&
 					(!isMulti || 1u != action.Volley.iSpawnCount ||
 					 0u != action.Volley.iArenaRandomCount)))
@@ -3378,8 +3439,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				[&fields](const BOSS_PATTERN_STAGE_DEFINITION& candidate)
 				{ return candidate.strActionId == fields[3]; });
 			const std::uint64_t lastSpawnOffsetMs =
+				static_cast<std::uint64_t>(action.Volley.iFirstSpawnOffsetMs) +
 				static_cast<std::uint64_t>(action.Volley.iSpawnCount - 1u) *
-				action.Volley.iSpawnIntervalMs;
+					action.Volley.iSpawnIntervalMs;
 			if (owner->Stages.end() == stage ||
 				lastSpawnOffsetMs >= stage->iDurationMs ||
 				actionOrder != stage->Actions.size() || actionOrder >= 8u ||
@@ -4452,9 +4514,24 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 					 !patternOwnsBossResponse);
 				if (hasBossResponse)
 					patternOwnsBossResponse = true;
+				const std::string stageVerticalOffsetKey =
+					pattern.strEncounterId + "\n" + pattern.strPatternId + "\n" +
+					stage.strActionId;
+				const bool hasStageVerticalOffset =
+					0.f != stage.fVerticalOffsetM;
+				const bool validStageVerticalOffset =
+					std::isfinite(stage.fVerticalOffsetM) &&
+					std::fabs(stage.fVerticalOffsetM) <= 100.f &&
+					(!hasStageVerticalOffset ||
+					 (hasBossResponse &&
+					  BOSS_PATTERN_MOTION_KIND::NONE == pattern.Motion.eKind &&
+					  BOSS_PATTERN_STAGE_MOTION_KIND::NONE == stage.Motion.eKind &&
+					  patternStageVerticalOffsetOwners.contains(
+						stageVerticalOffsetKey)));
 				if (!validShape || !validHitAnchor || !validPortalHitAuthority ||
 					!validPlayerResponse ||
 					!validCounterProxy || !validBossResponse ||
+					!validStageVerticalOffset ||
 					(stage.bWallContact &&
 						(BOSS_PATTERN_STAGE_KIND::ACTIVE != stage.eStageKind ||
 						 BOSS_PATTERN_HIT_SHAPE::NONE == stage.eHitShape ||
@@ -4552,6 +4629,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				if (stage.bChargeImpact && !hasWallContactOutcome)
 					validBranches = false;
 				bool validActions = true;
+				bool hasScheduledVolleyClock = false;
+				std::uint32_t scheduledVolleyFirstOffsetMs = 0u;
+				std::uint32_t scheduledVolleyCount = 0u;
+				std::uint32_t scheduledVolleyIntervalMs = 0u;
 				for (const BOSS_PATTERN_STAGE_ACTION& action : stage.Actions)
 				{
 					if (BOSS_PATTERN_STAGE_ACTION_KIND::
@@ -4634,6 +4715,29 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 						const bool isVolley =
 							BOSS_PATTERN_STAGE_ACTION_KIND::
 								SPAWN_COMBAT_OBJECT_VOLLEY == action.eKind;
+						const bool isScheduledVolley = isVolley &&
+							(0u != action.Volley.iFirstSpawnOffsetMs ||
+							 action.Volley.iSpawnCount > 1u);
+						if (isScheduledVolley)
+						{
+							if (!hasScheduledVolleyClock)
+							{
+								hasScheduledVolleyClock = true;
+								scheduledVolleyFirstOffsetMs =
+									action.Volley.iFirstSpawnOffsetMs;
+								scheduledVolleyCount = action.Volley.iSpawnCount;
+								scheduledVolleyIntervalMs =
+									action.Volley.iSpawnIntervalMs;
+							}
+							else if (scheduledVolleyFirstOffsetMs !=
+									action.Volley.iFirstSpawnOffsetMs ||
+								scheduledVolleyCount != action.Volley.iSpawnCount ||
+								scheduledVolleyIntervalMs !=
+									action.Volley.iSpawnIntervalMs)
+							{
+								validActions = false;
+							}
+						}
 						const bool isValtanGhostPortal = isVolley &&
 							"BOSS_VALTAN" == archetypeId &&
 							"ENCOUNTER_VALTAN" == boss.strEncounterId &&
@@ -4657,13 +4761,18 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 								action.strTargetId &&
 							BOSS_COMBAT_OBJECT_VOLLEY_POLICY::PER_ALIVE_PLAYER ==
 								action.Volley.ePolicy &&
-							3u == action.Volley.iSpawnCount &&
-							1333u == action.Volley.iSpawnIntervalMs &&
-							4u == action.Volley.iArenaRandomCount &&
-							14.f == action.Volley.fArenaRandomRadiusM &&
-							1.f == action.Volley.fArenaHeightToleranceM &&
-							BOSS_COMBAT_OBJECT_ARENA_ANCHOR_POLICY::
-								BOSS_SPAWN_POSITION ==
+							1u == action.Volley.iCountPerResolvedTarget &&
+							BOSS_COMBAT_OBJECT_LAYOUT_KIND::SINGLE ==
+								action.Volley.eLayout &&
+							!action.Volley.bAllowOverlap &&
+							4u == action.Volley.iMaximumTotalObjects &&
+							1u == action.Volley.iSpawnCount &&
+							0u == action.Volley.iFirstSpawnOffsetMs &&
+							0u == action.Volley.iSpawnIntervalMs &&
+							0u == action.Volley.iArenaRandomCount &&
+							0.f == action.Volley.fArenaRandomRadiusM &&
+							0.f == action.Volley.fArenaHeightToleranceM &&
+							BOSS_COMBAT_OBJECT_ARENA_ANCHOR_POLICY::NONE ==
 								action.Volley.eArenaAnchorPolicy)
 						{
 							hasExactValtanHighJumpTypedVolley = true;
@@ -4707,15 +4816,16 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 								action.strTargetId &&
 							BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
 								action.Volley.ePolicy &&
-							4u == action.Volley.iCountPerResolvedTarget &&
+							3u == action.Volley.iCountPerResolvedTarget &&
 							BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL ==
 								action.Volley.eLayout &&
-							std::fabs(action.Volley.fRadiusM - 31.112698f) < 0.0001f &&
-							45.f == action.Volley.fStartAngleDegrees &&
-							90.f == action.Volley.fAngleStepDegrees &&
+							std::fabs(action.Volley.fRadiusM - 25.4034119f) < 0.0001f &&
+							30.f == action.Volley.fStartAngleDegrees &&
+							120.f == action.Volley.fAngleStepDegrees &&
 							!action.Volley.bAllowOverlap &&
-							4u == action.Volley.iMaximumTotalObjects &&
+							3u == action.Volley.iMaximumTotalObjects &&
 							1u == action.Volley.iSpawnCount &&
+							0u == action.Volley.iFirstSpawnOffsetMs &&
 							0u == action.Volley.iSpawnIntervalMs &&
 							0u == action.Volley.iArenaRandomCount &&
 							validNextRadialSlotMissile)
@@ -5056,7 +5166,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			 !hasExactValtanGhostPortalTypedVolley))
 		{
 			m_strStatus =
-				"Valtan ghost portal does not own the exact four-corner volley";
+				"Valtan ghost portal does not own the exact 44m equilateral triangle volley";
 			return false;
 		}
 	}
