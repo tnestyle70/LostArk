@@ -6830,8 +6830,15 @@ void Client::CAnimation_Tool::Render_ValtanPresentationLanes(
 			for (const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& CombatObject :
 				Stage.CombatObjectEffects)
 			{
+				const std::uint32_t iObjectStartMs = (std::min)(
+					CombatObject.iFirstSpawnOffsetMs, Stage.iDurationMs);
+				const std::uint64_t iObjectEndMs = (std::min)(
+					static_cast<std::uint64_t>(iObjectStartMs) +
+						static_cast<std::uint64_t>(CombatObject.iLifetimeMs),
+					static_cast<std::uint64_t>(Stage.iDurationMs));
 				TrackSegment(
-					"Effect", 0u, CombatObject.iLifetimeMs,
+					"Effect", iObjectStartMs,
+					static_cast<std::uint32_t>(iObjectEndMs),
 					"Server combat object " +
 						CombatObject.strCombatObjectArchetypeId + " | " +
 						CombatObject.strEffectAssetId + " (local lifetime)",

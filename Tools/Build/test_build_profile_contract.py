@@ -107,13 +107,50 @@ class BuildProfileContractTests(unittest.TestCase):
         ):
             self.assertIn(token, guard)
 
-    def test_core_runs_effect_v2_binding_schema_migration_and_read_set_gate(self) -> None:
+    def test_core_runs_effect_v2_schema_transaction_and_runtime_gates(self) -> None:
         runner = read("Tools/Build/Invoke-BuildAndRegression.ps1")
         self.assertIn(
             "Effect Tool V2 binding schema, migration, and read-set gate", runner
         )
         self.assertIn(
             "Tools/EffectToolV2/test_effect_v2_binding_pipeline.py", runner
+        )
+        self.assertIn(
+            "Effect Tool V2 catalog schema contract gate", runner
+        )
+        self.assertIn(
+            "Tools/EffectToolV2/test_effect_v2_catalog_contract.py", runner
+        )
+        self.assertIn(
+            "Effect Tool V2 occurrence runtime contract gate", runner
+        )
+        self.assertIn(
+            "Tools/EffectToolV2/test_effect_v2_occurrence_runtime_contract.py",
+            runner,
+        )
+
+    def test_core_runs_valtan_status_and_world_destruction_contract_gates(self) -> None:
+        runner = read("Tools/Build/Invoke-BuildAndRegression.ps1")
+        canary = runner.index("DimensionMaster glass/water Tool audition canary gates")
+        core_start = runner.index("if ($includeCore) {", canary)
+        core_end = runner.index("\n    }\n\n    Invoke-SelectedBuildDomains", core_start)
+        core_block = runner[core_start:core_end]
+
+        self.assertIn(
+            "$includeCore = $Profile -in @('Core', 'FullDiagnostic')", runner
+        )
+        self.assertIn("Valtan status and response data-contract gate", core_block)
+        self.assertIn(
+            "Tools.ValtanPipeline.test_valtan_status_pattern_contract", core_block
+        )
+        self.assertIn(
+            "& '.\\Tools\\WorldPipeline\\Publish-ValtanWorldDestruction.ps1'",
+            core_block,
+        )
+        self.assertIn("-Mode ContractTest", core_block)
+        self.assertIn("Valtan world destruction contract tests failed.", core_block)
+        self.assertEqual(
+            1, runner.count("Publish-ValtanWorldDestruction.ps1")
         )
 
     def test_full_diagnostic_runs_valtan_cross_product_cue_gate(self) -> None:

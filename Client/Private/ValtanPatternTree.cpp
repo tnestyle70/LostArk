@@ -806,6 +806,13 @@ namespace
 			Action.strTrigger = pTrigger->Get_String();
 			Action.strKind = pKind->Get_String();
 			Action.strTargetId = pTarget->Get_String();
+			if ("SUPPRESS_INTER_STEP_PURSUIT" == Action.strKind &&
+				("EXIT" != Action.strTrigger ||
+				 "boss.sequence.inter-step-pursuit" != Action.strTargetId ||
+				 0.f != Action.fValue || 0u != Action.iDurationMs))
+			{
+				return false;
+			}
 			if ("RETURN_TO_ARENA_CENTER" == Action.strKind ||
 				"SPAWN_COMBAT_OBJECT" == Action.strKind)
 			{
@@ -1105,11 +1112,13 @@ namespace
 			return false;
 		}
 		const DATA_JSON_VALUE* pVerticalOffset = Stage.Find("verticalOffsetM");
+		const DATA_JSON_VALUE* pStageMotion = Stage.Find("motion");
 		if (nullptr != pVerticalOffset &&
 			(!Is_FiniteNumber(pVerticalOffset) ||
 			 0.0 == pVerticalOffset->Get_Number() ||
 			 std::fabs(pVerticalOffset->Get_Number()) > 100.0 ||
-			 !BossResponse.has_value() || nullptr != Stage.Find("motion")))
+			 !BossResponse.has_value() ||
+			 (nullptr != pStageMotion && !pStageMotion->Is_Null())))
 		{
 			strOutError =
 				"split gameplay stage verticalOffsetM requires an active boss response: " +
@@ -4857,6 +4866,10 @@ namespace
 
 	bool_t Build_SplitEventProjection(
 		const DATA_JSON_VALUE& Event,
+		const std::string_view strPatternId,
+		const std::string_view strStageId,
+		const std::string_view strStageActionId,
+		const bool_t bTerminalStage,
 		const uint32_t iStageDurationMs,
 		DATA_JSON_VALUE* pOutAction,
 		std::string& strOutSpawnArchetypeId,
@@ -4981,6 +4994,24 @@ namespace
 			}
 			bOutWorldEvent = true;
 			return true;
+		}
+		else if ("SUPPRESS_INTER_STEP_PURSUIT" == strKind)
+		{
+			if (!Has_ExactProperties(Event,
+					{ "eventId", "trigger", "kind" }) ||
+				"EXIT" != strTrigger ||
+				"VALTAN_GHOST_DEATH_AUDITION" != strPatternId ||
+				"STEP_01" != strStageId ||
+				"valtan.sequence.dead.step-01" != strStageActionId ||
+				!bTerminalStage)
+			{
+				strOutError =
+					"split gameplay inter-step pursuit suppression must be the terminal ghost-death EXIT event";
+				return false;
+			}
+			Action.emplace("targetId", DATA_JSON_VALUE::String(
+				"boss.sequence.inter-step-pursuit"));
+			Action.emplace("value", DATA_JSON_VALUE::Number(0));
 		}
 		else if ("RETARGET_RANDOM_ALIVE" == strKind ||
 			"RETURN_TO_ARENA_CENTER" == strKind)
@@ -5655,6 +5686,9 @@ namespace
 					std::string strSpawnArchetypeId;
 					bool_t bWorldEvent = false;
 					if (!Build_SplitEventProjection(Event,
+							strPatternId, strStageId, strActionId,
+							iStage + 1u == pGameplayStages->Get_Array().size() &&
+								BranchViews.empty() && strDefault.empty(),
 							static_cast<uint32_t>(pDuration->Get_Number()), &Action,
 							strSpawnArchetypeId, bWorldEvent, strOutError))
 						return false;
@@ -8658,6 +8692,26 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					strOutStatus =
 						"Valtan encounter stage response/proxy contract is invalid: " +
 						Stage.strActionId;
+					return false;
+				}
+				const std::size_t iPursuitSuppressionCount =
+					static_cast<std::size_t>(std::count_if(
+						Stage.Actions.begin(), Stage.Actions.end(),
+						[](const VALTAN_STAGE_ACTION_VIEW& Action)
+						{
+							return "SUPPRESS_INTER_STEP_PURSUIT" ==
+								Action.strKind;
+						}));
+				if (0u != iPursuitSuppressionCount &&
+					(1u != iPursuitSuppressionCount ||
+					 "VALTAN_GHOST_DEATH_AUDITION" != Pattern.strPatternId ||
+					 "STEP_01" != Stage.strStageId ||
+					 "valtan.sequence.dead.step-01" != Stage.strActionId ||
+					 &StageValue != &pStages->Get_Array().back() ||
+					 !Stage.Branches.empty()))
+				{
+					strOutStatus =
+						"Valtan encounter inter-step pursuit suppression owner is invalid";
 					return false;
 				}
 				if (("DAMAGE" == Stage.strPlayerResponse &&

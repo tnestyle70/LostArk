@@ -14,6 +14,9 @@ VALTAN_CPP_PATH = REPOSITORY_ROOT / "Client/Private/Valtan.cpp"
 MASTER_PATH = REPOSITORY_ROOT / "Data/Valtan/Valtan.pattern.json"
 PRESENTATION_PATH = REPOSITORY_ROOT / "Data/Valtan/Valtan.presentation.json"
 GAMEPLAY_PATH = REPOSITORY_ROOT / "Data/Valtan/Valtan.gameplay.json"
+COMBAT_OBJECT_PRODUCT_PATH = (
+    REPOSITORY_ROOT / "Data/Encounters/Valtan/ValtanCombatObjects.json"
+)
 PATTERN_BINDINGS_PATH = (
     REPOSITORY_ROOT
     / "Data/Animation/Authored/Valtan/Valtan.patternbindings.json"
@@ -47,6 +50,9 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
         cls.master = json.loads(MASTER_PATH.read_text(encoding="utf-8"))
         cls.presentation = json.loads(PRESENTATION_PATH.read_text(encoding="utf-8"))
         cls.gameplay = json.loads(GAMEPLAY_PATH.read_text(encoding="utf-8"))
+        cls.combat_objects = json.loads(
+            COMBAT_OBJECT_PRODUCT_PATH.read_text(encoding="utf-8")
+        )
         cls.pattern_bindings = json.loads(
             PATTERN_BINDINGS_PATH.read_text(encoding="utf-8")
         )
@@ -470,6 +476,45 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
         )
         self.assertNotIn("CActionPresentationTimeline::Resolve_Sample", apply_pose)
         self.assertIn('"Pattern Offline"', self.cpp)
+
+    def test_combat_object_effect_lane_uses_the_stage_local_spawn_clock(self) -> None:
+        render = function_slice(
+            self.cpp,
+            "void Client::CAnimation_Tool::Render_ValtanPresentationLanes(",
+            "void Client::CAnimation_Tool::Render_ValtanSelectedResourceUsage(",
+        )
+        for token in (
+            "CombatObject.iFirstSpawnOffsetMs, Stage.iDurationMs",
+            "static_cast<std::uint64_t>(iObjectStartMs) +",
+            "static_cast<std::uint64_t>(CombatObject.iLifetimeMs)",
+            "static_cast<std::uint64_t>(Stage.iDurationMs)",
+            '"Effect", iObjectStartMs,',
+            "static_cast<std::uint32_t>(iObjectEndMs)",
+        ):
+            self.assertIn(token, render)
+        self.assertNotIn('"Effect", 0u, CombatObject.iLifetimeMs', render)
+
+        objects = {
+            row["combatObjectArchetypeId"]: row
+            for row in self.combat_objects["objects"]
+        }
+        windows = {}
+        for pattern in self.gameplay["patterns"]:
+            for stage in pattern["stages"]:
+                for event in stage.get("events", []):
+                    if event.get("kind") != "SPAWN_COMBAT_OBJECT_VOLLEY":
+                        continue
+                    first_offset_ms = event["spawnSchedule"]["firstOffsetMs"]
+                    life_ms = objects[event["combatObjectArchetypeId"]]["lifeMs"]
+                    start_ms = min(first_offset_ms, stage["durationMs"])
+                    end_ms = min(start_ms + life_ms, stage["durationMs"])
+                    windows[(pattern["patternId"], stage["stageId"])] = (
+                        start_ms,
+                        end_ms,
+                    )
+
+        self.assertEqual((0, 8000), windows[("VALTAN_HIGH_JUMP", "AIRBORNE")])
+        self.assertEqual((1000, 1200), windows[("VALTAN_SIX_PIZZA_106", "STEP_01")])
 
     def test_stage_wall_conversion_matches_the_dash_server_timeline(self) -> None:
         gameplay_dash = next(

@@ -43,6 +43,7 @@ struct ENCOUNTER_STAGE_REFERENCE final
 	uint32_t iHitActivationStartMs = 0u;
 	uint32_t iHitActivationLifetimeMs = 0u;
 	std::string serverDamageProfileId;
+	f32_t fVerticalOffsetM = 0.f;
 	std::optional<PLAYER_HAND_GRIP_LOCAL_OFFSET> gripLocalOffset;
 	/* Optional Server-authored stage refinements are retained by this read-only
 	   reference so tools can diagnose the same contract that the Server loaded. */

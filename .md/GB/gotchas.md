@@ -520,6 +520,70 @@ Core를 직렬 재실행한다. 제품 UI는 같은 상태에서 last-good을 �
   source inventory oracle도 함께 갱신한다. 실제 컴파일 오류와 stale exact-count/source-list 실패를
   구분하고, inventory 기대값을 약화하거나 새 파일을 빌드에서 빼서 통과시키지 않는다.
 
+### Pattern/Effect schema evolution은 consumer closure matrix로 닫는다
+
+`Stage.verticalOffsetM` 추가 뒤 실제 Client에서 확인된 연쇄 실패는 데이터 한 줄의 오류가 아니었다.
+Python source validator와 projector는 새 필드를 승인했지만 Client split reader는 필수 nullable
+`motion:null`을 active motion으로 오판했고, 그 오류를 고친 뒤에는 generated Product의
+`SPAWN_COMBAT_OBJECT_VOLLEY.firstSpawnOffsetMs`를 모르는 read-only encounter fallback이 드러났다.
+다시 그 오류를 고치자 publisher/Server만 알던 `SUPPRESS_INTER_STEP_PURSUIT`와 삼각 portal의 exact
+3-point 규칙이 다음 Client reader drift로 나타났다. strict admission은 첫 실패에서 멈추므로 앞의
+오류 하나가 뒤의 모든 누락을 가린다.
+
+본질적인 원리는 다음과 같다.
+
+- 새 field/event/effect parameter는 한 JSON 객체의 optional key가 아니라
+  `source -> join/project -> generated Product -> secondary publisher -> Client source reader ->
+  Client Product fallback -> bootstrap/version -> Server runtime -> preview/tool` 전체의 schema evolution이다.
+- exact-property fail-close consumer는 서로 다른 목적의 로컬 schema를 가진다. primary publisher PASS나
+  generated JSON diff만으로 다른 native reader의 admission을 증명할 수 없다.
+- optional value는 `absent`, `present null`, `present value`를 구분한다. nullable 필드의 포인터 존재만으로
+  기능이 활성화됐다고 판정하지 않는다. `motion:null`은 no motion이고 non-null object만 active motion이다.
+- 시간 field는 저장/parse만의 계약이 아니다. `firstSpawnOffsetMs`는 Server spawn clock, Client preview,
+  Composition과 Animation Tool lane 시작 시각까지 같은 Stage-local clock을 사용해야 한다. UI에서 0으로
+  되돌리면 데이터는 맞아도 저작자가 잘못된 타임라인을 보게 된다.
+- Product profile은 제품 바이너리를 만들지만 Valtan native source reader와 Product fallback 하네스를
+  실행하지 않는다. Pattern/Effect schema 변경 완료 증거는 최소 fresh Core이며, bootstrap/runtime 의미가
+  바뀌면 FullDiagnostic Server contract까지 필요하다. 이전에 빌드된 harness EXE는 증거가 아니다.
+
+모든 새 Pattern/Effect field 또는 event kind는 아래 matrix의 각 행을 구현하거나, 소비하지 않는 이유를
+명시적 `N/A`로 남긴다. 한 행이라도 확인하지 않은 채 UI에서 보인다는 이유로 완료 처리하지 않는다.
+
+| 경계 | 필수 확인 |
+|---|---|
+| owner/writer/helper | stable owner ID, required/optional/null 의미, 단위와 clock, save/reload/CAS rollback |
+| source schema | exact key set, type/range, cross-field owner·배타 조건, generator 재실행 시 보존 |
+| join/project | source 의미를 generated Product의 exact field/row로 무손실 투영하고 provenance/revision 동기화 |
+| secondary publisher | 같은 Encounter/Effect 문서를 strict하게 읽는 모든 publisher의 key set과 의미 검증 동기화 |
+| Client strict source reader | 현재 split source 전체를 실제 C++ reader로 읽고 in-memory view에 보존 또는 의도적 validate-and-discard |
+| Client Product fallback | freshly projected Product 전체를 별도 fixture로 읽고 source reader와 같은 truth table 유지 |
+| bootstrap/admission | row layout 변경 시 format version, generation admission, exact field count를 같은 변경에서 갱신 |
+| Server | catalog parser, fixed-tick 실행, terminal/restore/rollback, late join snapshot 의미 확인 |
+| presentation/tools | live runtime, local preview, Workbench/Animation/Effect Tool timeline·label·selection에서 동일 단위/offset 사용 |
+| tests | positive survival, wrong type/range, missing owner, conflicting field, wrong trigger/stage, last-good 보존 |
+
+Effect V2 변경은 위 matrix에 더해 leaf/group/binding/BossCatalog owner lane,
+`validate_effect_v2.py`, binding read-set, v1/v2 transaction dispatch, presentation-generation closure,
+C++ Document/Catalog/ActorCatalog/Runtime을 모두 확인한다. inner slot/parameter/group timing 변경은 Product의
+reachable-root 검사만으로 닫히지 않으므로 Core의 catalog·occurrence runtime gate를 반드시 실행한다.
+현재 정본 `Invoke-BuildAndRegression.ps1`의 Core/FullDiagnostic 구간은 Effect V2 catalog와 occurrence
+runtime, Valtan status/response, WorldDestruction ContractTest를 자동 실행한다. Product profile은 빠른
+제품 컴파일이라는 기존 역할을 유지하므로 schema evolution 완료 증거로 Product만 제시하지 않는다.
+
+검증 순서는 오류 가림을 피하도록 고정한다.
+
+1. source validator와 generator/projector를 실행한다.
+2. 실제 현재 split source를 fresh native `CValtanPatternTree`로 끝까지 읽는다.
+3. freshly projected Product를 fresh native `CEncounterPatternReference`로 독립적으로 끝까지 읽는다.
+4. 첫 오류를 고친 뒤 2~3을 처음부터 다시 실행해 다음 가려진 drift를 찾는다.
+5. secondary publisher ContractTest, Effect V2 structural/runtime gates와 Core를 실행한다.
+6. Server 의미가 바뀌면 FullDiagnostic, 마지막으로 사용자 Client visual/audio/gameplay 확인을 수행한다.
+
+오류 메시지는 `v4 field is invalid` 하나로 motion/action/branch 실패를 뭉개지 않는다. 최소
+`document kind + patternId + stageId + field/action family + 위반 predicate`를 남기고, 실패 시 이전 admitted
+tree/reference를 보존한다. unknown key 무시, silent default, fallback schema 완화로 트리를 억지로 띄우면
+source와 Server가 다른 게임을 실행하게 되므로 금지한다.
+
 ### Effect 세대를 한 화면에 합칠 때 backend catalog를 다시 직접 순회하지 않는다
 
 V1 authored 문서는 `elements[]` 전체가 하나의 원자적 composition이고, V2는 leaf와 ordered group을

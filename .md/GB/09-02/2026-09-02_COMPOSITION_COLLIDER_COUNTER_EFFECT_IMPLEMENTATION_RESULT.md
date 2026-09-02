@@ -470,3 +470,53 @@ Balance Tool 화면 검증은 사용자 지시대로 생략한다. Kakul boss �
 - canonical Product 재빌드, FullDiagnostic과 사용자 수동 확인은 현재 PASS로 기록하지 않는다.
 - 대규모 공유 dirty worktree라 자동 stage/commit/push는 하지 않았다.
 - 이후 발견되는 누락은 이 절의 후속 수정 항목으로 추가하고, 이번 세션의 완료 수치에 소급해 섞지 않는다.
+
+## 13. 2026-09-03 Client graph admission 회귀 교정
+
+이 절은 12절 이후 사용자가 실제 Client에서 보고한 Lobby/Boss Tool/All Effects 회귀의 최신 판정이다.
+정본 Valtan 데이터나 Effect catalog가 유실된 것이 아니라, 새 schema를 읽는 C++ 소비자들이 서로 다른
+버전에 머물러 동일한 canonical graph의 admission이 실패했다. Boss Tool과 All Effects의 Valtan tree는
+같은 admitted pattern graph를 사용하므로 앞단 strict join이 실패하면 둘 다 비어 보인다.
+
+### 13.1 실제 실패 연쇄와 수정
+
+| 순서 | 실제 원인 | 수정 |
+|---:|---|---|
+| 1 | split gameplay의 필수 nullable `motion:null`을 Client source reader가 property 존재만 보고 active motion으로 오판 | non-null motion object만 active로 판정하고 `VALTAN_STAGGER_SLOT/CHANNEL`의 Stage-owned `verticalOffsetM:0.5`와 boss response를 보존 |
+| 2 | generated Product의 volley에 추가된 `firstSpawnOffsetMs`를 `CEncounterPatternReference` exact key set이 몰라 `VALTAN_HIGH_JUMP/AIRBORNE`를 거부 | required unsigned field, Stage-local 범위, 마지막 spawn 시각을 검증하고 Product fallback이 current v4를 수용 |
+| 3 | `SUPPRESS_INTER_STEP_PURSUIT`가 source publisher와 Server에는 있었지만 Client split projection/Product fallback에는 없음 | ghost-death terminal `EXIT`의 exact owner/target/value/duration 계약을 양쪽 reader에 추가 |
+| 4 | 유령 포털 Product fallback이 일반 RADIAL만 검사해 `VALTAN_GHOST_PORTAL_ONCE`의 삼각형을 exact하게 보호하지 못함 | 3점, 30도 시작, 120도 간격, radius 25.403411844343534m, 단일 volley/no supplement 규칙을 fail-close로 고정 |
+| 5 | Animation Tool combat-object Effect lane이 `firstSpawnOffsetMs`를 버리고 0ms부터 표시 | Stage-local spawn offset에서 시작하고 `start + lifeMs`를 overflow-safe 계산한 뒤 Stage 끝으로 clamp |
+| 6 | Product fallback의 단일 `v4 field is invalid` 메시지가 다음 실패를 가림 | motion/actions/branches를 분리해 `PATTERN/STAGE`와 실패 family가 바로 보이게 함 |
+
+정본 JSON 변경은 없다. unknown key 무시나 fallback 완화로 우회하지 않고 source reader와 Product fallback이
+동일한 truth table을 갖도록 고쳤다. 구체적인 재발 방지 원칙과 consumer closure matrix는
+`.md/GB/gotchas.md`의 `Pattern/Effect schema evolution은 consumer closure matrix로 닫는다` 절이 정본이다.
+
+### 13.2 재발 방지 게이트
+
+- Core/FullDiagnostic에 Effect V2 catalog schema와 occurrence runtime 계약을 추가했다.
+- Core/FullDiagnostic에 Valtan status/response 계약과 WorldDestruction `ContractTest`를 추가했다.
+- Product profile은 빠른 제품 컴파일 역할을 유지한다. Pattern/Effect schema 변경 완료 증거는 fresh Core이며,
+  Server 실행 의미가 바뀌면 FullDiagnostic까지 필요하다.
+- 네이티브 하네스는 current split source와 freshly projected Product를 독립적으로 전부 읽고, 잘못된
+  type/range/owner/trigger/conflict에서 last-good reference가 보존되는지 검사한다.
+
+### 13.3 이번 수정의 자동 검증
+
+| 검증 | 결과 |
+|---|---|
+| fresh Debug `ValtanPatternAuditionServiceHarness` build | **PASS** |
+| current source canonical graph | **PASS — 64 patterns / 279 stages** |
+| Product encounter reference 전체 하네스 | **PASS — 87 rejection/rollback + 후속 계약** |
+| 관련 Valtan/Effect V2/Build Python 묶음 | **PASS — 105/105** |
+| Animation Tool pattern master | **PASS — 14/14** |
+| rock-pillar group 연계 | **PASS — 6/6** |
+| WorldDestruction `ContractTest` / `Validate` | **PASS / PASS** |
+| Valtan Pattern Master `Validate` | **PASS — managed 41 / projected artifacts 9** |
+| Gameplay Balance `Validate -SkipValtanSplitProjection` | **PASS — 64 patterns / 279 stages** |
+| `git diff --check` | **PASS** |
+
+full Debug Product/Client build와 실제 Lobby 진입, Boss Tool Pattern 목록, All Effects Valtan tree 및
+visual/audio/gameplay는 사용자의 다음 `Ctrl+F5` 판정이 남아 있다. 이 수동 확인 전에는 화면 PASS로
+기록하지 않는다. 현재 PC는 `server-host`이며 Visual Studio 시작 대상은 `Server + Client` profile이다.
