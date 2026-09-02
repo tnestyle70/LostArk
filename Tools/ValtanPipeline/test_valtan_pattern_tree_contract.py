@@ -20,6 +20,10 @@ TREE_CPP = ROOT / "Client/Private/ValtanPatternTree.cpp"
 TREE_HEADER = ROOT / "Client/Public/ValtanPatternTree.h"
 BALANCE_TOOL_CPP = ROOT / "Client/Private/BalanceTool.cpp"
 EFFECT_CUE_CPP = ROOT / "Client/Private/ValtanPatternEffectCueDocument.cpp"
+VALTAN_CPP = ROOT / "Client/Private/Valtan.cpp"
+ANIMATION_BINDING_CPP = (
+    ROOT / "Client/Private/AnimationSkillBindingDocument.cpp"
+)
 EFFECT_SERVICE_CPP = ROOT / "Client/Private/Effect_PresentationService.cpp"
 EFFECT_TOOL_CPP = ROOT / "Client/Private/Effect_Tool.cpp"
 ENCOUNTER_REFERENCE_CPP = ROOT / "Client/Private/EncounterPatternReference.cpp"
@@ -490,6 +494,10 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         cls.header = TREE_HEADER.read_text(encoding="utf-8")
         cls.balance_tool_cpp = BALANCE_TOOL_CPP.read_text(encoding="utf-8")
         cls.effect_cue_cpp = EFFECT_CUE_CPP.read_text(encoding="utf-8")
+        cls.valtan_cpp = VALTAN_CPP.read_text(encoding="utf-8")
+        cls.animation_binding_cpp = ANIMATION_BINDING_CPP.read_text(
+            encoding="utf-8"
+        )
         cls.effect_service_cpp = EFFECT_SERVICE_CPP.read_text(encoding="utf-8")
         cls.effect_tool_cpp = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
         cls.encounter_reference_cpp = ENCOUNTER_REFERENCE_CPP.read_text(
@@ -726,7 +734,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         self.assertLess(load_body.index("Parse_SplitMasterDocument("), load_body.index(commit))
         self.assertLess(load_body.index("Apply_MasterDocument("), load_body.index(commit))
 
-    def test_tree_keeps_none_animation_and_stage_clock_cue_independent(self) -> None:
+    def test_stage_clock_cue_is_independent_of_animation_mode(self) -> None:
         fist = next(
             row for row in self.presentation["patterns"]
             if row["patternId"] == "VALTAN_FIST_IN_OUT"
@@ -742,10 +750,29 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             "bSuppressAnimation",
             "bUsesStageClock",
             "NONE animation cannot own a clip wall budget",
+            "split stage-clock cue must be an independent Effect inside its Stage wall",
+            "Valtan stage-clock Effect cue left its Stage wall",
+            "STAGE_CLOCK Valtan Effect cue requires its owning action binding",
+            "Valtan stage-clock Effect cue binding rejected",
+            "Only a natural/once Effect stage-clock row may omit clipOccurrenceId",
+        ):
+            self.assertIn(
+                token,
+                self.cpp + self.header + self.effect_cue_cpp +
+                self.valtan_cpp + self.animation_binding_cpp,
+            )
+        for stale_none_only_rule in (
             "split stage-clock cue must be an independent NONE-stage Effect",
             "Valtan stage-clock Effect cue left its NONE stage",
+            "STAGE_CLOCK Valtan Effect cue requires an explicit NONE animation binding",
+            "Only an Effect stage-clock row may omit clipOccurrenceId on an explicit NONE action",
+            "Valtan stage-clock Effect cue NONE binding rejected",
         ):
-            self.assertIn(token, self.cpp + self.header)
+            self.assertNotIn(
+                stale_none_only_rule,
+                self.cpp + self.effect_cue_cpp + self.valtan_cpp +
+                self.animation_binding_cpp,
+            )
 
     def test_optional_source_end_and_typed_scale_policy_fail_closed(self) -> None:
         self.assertIn('pSourceEnd->Is_Null()', self.cpp)

@@ -119,14 +119,26 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
                 {"hiddenFromMs": 1300, "hiddenToMs": 1800},
                 stage["bodyVisibility"],
             )
-            self.assertEqual(1300, stage["effectCues"][0]["sourceStartMs"])
+            cue = stage["effectCues"][0]
+            self.assertEqual("STAGE_CLOCK", cue["timingBasis"])
+            self.assertEqual(1300, cue["stageOffsetMs"])
+            for clip_field in (
+                "clipOccurrenceId",
+                "sourceStartMs",
+                "sourceEndMs",
+                "mappingBasis",
+            ):
+                self.assertNotIn(clip_field, cue)
 
     def test_each_rush_boundary_is_a_root_snapshot_not_a_predicted_endpoint(self) -> None:
-        authored = pipeline.read_json(
-            self.root
-            / "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
+        projected = json.loads(
+            pipeline.project_v2_products(
+                self.root, self.docs, self.joined_master()
+            )[pipeline.CUES_REL]
         )
-        warp_cues = [row for row in authored["cues"] if row["patternId"] == "VALTAN_WARP"]
+        warp_cues = [
+            row for row in projected["cues"] if row["patternId"] == "VALTAN_WARP"
+        ]
         self.assertEqual(9, len(warp_cues))
         self.assertEqual(
             {f"STEP_{index:02d}" for index in range(2, 11)},
@@ -148,6 +160,17 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
             self.assertEqual("root", cue["anchorSlotId"])
             self.assertEqual("snapshot", cue["followPolicy"])
             self.assertEqual([0.0, 0.0, 0.0], cue["localTransform"]["position"])
+            if 2 <= index <= 9:
+                self.assertEqual("STAGE_CLOCK", cue["timingBasis"])
+                self.assertEqual(1300, cue["stageOffsetMs"])
+                self.assertNotIn("clipOccurrenceId", cue)
+                self.assertNotIn("sourceStartMs", cue)
+            else:
+                self.assertEqual(
+                    "valtan.sequence.warp.step-10.clip-01",
+                    cue["clipOccurrenceId"],
+                )
+                self.assertEqual(0, cue["sourceStartMs"])
 
     def test_all_eight_rush_legs_project_one_derived_gap_contract(self) -> None:
         operations: list[dict] = []
@@ -184,6 +207,7 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
         candidate = self.apply(operations)
         product_outputs = pipeline.project_v2_products(self.root, self.docs, candidate)
         product = json.loads(product_outputs[pipeline.ENCOUNTER_REL])
+        projected_cues = json.loads(product_outputs[pipeline.CUES_REL])
 
         for owner in (candidate, product):
             with self.subTest(owner=owner.get("schema")):
@@ -209,6 +233,24 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
                             {"hiddenFromMs": 1100, "hiddenToMs": 1350},
                             stage["bodyVisibility"],
                         )
+
+        for stage in self.warp_legs(candidate):
+            cue = stage["effectCues"][0]
+            self.assertEqual("STAGE_CLOCK", cue["timingBasis"])
+            self.assertEqual(1100, cue["stageOffsetMs"])
+            self.assertNotIn("sourceStartMs", cue)
+        projected_rush_cues = [
+            cue
+            for cue in projected_cues["cues"]
+            if cue["patternId"] == "VALTAN_WARP"
+            and cue["stageId"] in {f"STEP_{index:02d}" for index in range(2, 10)}
+        ]
+        self.assertEqual(8, len(projected_rush_cues))
+        for cue in projected_rush_cues:
+            self.assertEqual("STAGE_CLOCK", cue["timingBasis"])
+            self.assertEqual(1100, cue["stageOffsetMs"])
+            self.assertNotIn("clipOccurrenceId", cue)
+            self.assertNotIn("sourceStartMs", cue)
 
     def test_each_warp_leg_clock_is_independently_authored(self) -> None:
         gameplay = copy.deepcopy(self.docs[pipeline.GAMEPLAY_AUTHORING_REL])
@@ -248,6 +290,13 @@ class ValtanPortalRushTuningContractTests(unittest.TestCase):
             pipeline.DraftPatchError, "delay plus travel exceeds"
         ):
             self.apply([overrun])
+
+        no_trailing_gap = copy.deepcopy(overrun)
+        no_trailing_gap["distanceM"] = 26.0
+        with self.assertRaisesRegex(
+            pipeline.DraftPatchError, "positive trailing Stage gap"
+        ):
+            self.apply([no_trailing_gap])
 
         wrong_owner = copy.deepcopy(overrun)
         wrong_owner.update(

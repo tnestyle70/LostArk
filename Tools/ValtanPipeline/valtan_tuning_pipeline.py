@@ -4765,11 +4765,6 @@ def validate_v2_master(
                         cue_common_fields + ("timingBasis", "stageOffsetMs"),
                         f"{pattern_id}/{stage_id}.effectCue",
                     )
-                    if animation_mode != ANIMATION_MODE_NONE:
-                        raise PipelineError(
-                            "stage-clock cue requires NONE animation mode: "
-                            f"{pattern_id}/{stage_id}"
-                        )
                     integer(
                         cue["stageOffsetMs"],
                         f"{pattern_id}/{stage_id}.effectCue.stageOffsetMs",
@@ -10026,13 +10021,27 @@ def apply_draft_patch(
                     }
                 else:
                     del stage["bodyVisibility"]
-                for cue in stage.get("effectCues", []):
-                    if (
-                        isinstance(cue, dict)
-                        and cue.get("effectAssetId")
-                        == "effect.valtan.project-tuned.sequence.warp.portal"
-                    ):
-                        cue["sourceStartMs"] = travel_end_ms
+            for cue in stage.get("effectCues", []):
+                if (
+                    isinstance(cue, dict)
+                    and cue.get("effectAssetId")
+                    == "effect.valtan.project-tuned.sequence.warp.portal"
+                ):
+                    if travel_end_ms >= stage["durationMs"]:
+                        raise _draft_error(
+                            "portal-rush Effect cue requires a positive trailing Stage gap",
+                            operation_ordinal=ordinal,
+                            pattern_id=pattern["patternId"],
+                            stage_id=stage["stageId"],
+                            field="distanceM",
+                            error_code="PORTAL_RUSH_CUE_OUTSIDE_STAGE",
+                        )
+                    cue.pop("clipOccurrenceId", None)
+                    cue.pop("sourceStartMs", None)
+                    cue.pop("sourceEndMs", None)
+                    cue.pop("mappingBasis", None)
+                    cue["timingBasis"] = CUE_TIMING_BASIS_STAGE_CLOCK
+                    cue["stageOffsetMs"] = travel_end_ms
         elif kind == "SET_STAGE_COUNTER_WINDOW":
             pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
             stage = _draft_stage(pattern, operation["stageId"], ordinal)

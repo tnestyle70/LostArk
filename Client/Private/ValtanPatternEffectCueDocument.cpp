@@ -694,13 +694,10 @@ bool_t Client::CValtanPatternEffectCueDocument::Parse_Text(
 			Find_ActionBinding(AnimationBindings, Cue.strActionId);
 		if (nullptr == pAnimationBinding ||
 			(bLegacy && 1u != pAnimationBinding->Clips.size()) ||
-			(bStageClock &&
-			 (!pAnimationBinding->bSuppressAnimation ||
-			  !pAnimationBinding->Clips.empty())) ||
 			(!bStageClock && pAnimationBinding->bSuppressAnimation))
 		{
 			strOutStatus = bStageClock ?
-				"STAGE_CLOCK Valtan Effect cue requires an explicit NONE animation binding: " +
+				"STAGE_CLOCK Valtan Effect cue requires its owning action binding: " +
 					Cue.strActionId : bLegacy ?
 				"Valtan pattern Effect cue v1 cannot migrate an ordered multi-clip action: " +
 					Cue.strActionId :

@@ -1609,9 +1609,10 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 				return false;
 			}
 			if (Source.bUsesStageClock &&
-				(!Stage.ClipOccurrences.empty() ||
-				 !Source.strClipOccurrenceId.empty() ||
-				 Source.iStageOffsetMs >= Stage.iDurationMs))
+				(!Source.strClipOccurrenceId.empty() ||
+				 Source.iStageOffsetMs >= Stage.iDurationMs ||
+				 EFFECT_STOP_POLICY::NATURAL != Source.eStopPolicy ||
+				 "once" != Source.strRepeatPolicy))
 			{
 				strOutStatus =
 					"Local Pattern draft preview rejected a stage-clock Effect cue binding: " +
@@ -2006,10 +2007,10 @@ bool_t CValtan::Reload_PatternEffectCues_WhileAdmitted(
 		}
 		if (Cue.bUsesStageClock)
 		{
-			if (!Binding->second.empty() || !Cue.strClipOccurrenceId.empty() ||
+			if (!Cue.strClipOccurrenceId.empty() ||
 				Cue.iStartMs >= Cue.iStageDurationMs)
 			{
-				Status = "Valtan stage-clock Effect cue NONE binding rejected: " +
+				Status = "Valtan stage-clock Effect cue binding rejected: " +
 					Cue.strOccurrenceId;
 				return false;
 			}
@@ -2167,7 +2168,8 @@ void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
 		std::size_t iClipIndex = 0u;
 		if (Cue.bUsesStageClock)
 		{
-			if (!Binding->second.empty())
+			if (!Cue.strClipOccurrenceId.empty() ||
+				Cue.iStartMs >= Cue.iStageDurationMs)
 				continue;
 		}
 		else

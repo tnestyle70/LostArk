@@ -683,7 +683,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             )
         self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
 
-    def test_animation_none_and_stage_clock_cue_tagged_unions_fail_closed(
+    def test_animation_and_stage_clock_cue_tagged_unions_fail_closed(
         self,
     ) -> None:
         base = pipeline.join_v2_authoring(
@@ -765,9 +765,10 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 "repeatUntilStageEnd": False,
             }],
         }
-        invalid_documents.append(
-            ("STAGE_CLOCK with animation", stage_clock_with_animation,
-             "stage-clock cue requires NONE animation mode")
+        pipeline.validate_v2_master(
+            stage_clock_with_animation,
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
         )
 
         escaped_stage_offset = copy.deepcopy(base)
@@ -1886,13 +1887,14 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             self.assertEqual("snapshot", cue["followPolicy"])
             self.assertEqual("root", cue["anchorSlotId"])
             self.assertEqual([0.0, 0.0, 0.0], cue["localTransform"]["position"])
-            self.assertEqual(
-                0 if stage["stageId"] == "STEP_10" else 1300,
-                cue["sourceStartMs"],
-            )
             if stage["stageId"] == "STEP_10":
+                self.assertEqual(0, cue["sourceStartMs"])
                 self.assertNotIn("bodyVisibility", stage)
             else:
+                self.assertEqual("STAGE_CLOCK", cue["timingBasis"])
+                self.assertEqual(1300, cue["stageOffsetMs"])
+                self.assertNotIn("clipOccurrenceId", cue)
+                self.assertNotIn("sourceStartMs", cue)
                 self.assertEqual(
                     {"hiddenFromMs": 1300, "hiddenToMs": 1800},
                     stage["bodyVisibility"],

@@ -5799,16 +5799,13 @@ namespace
 						PresentationStage, "animation", DATA_JSON_TYPE::OBJECT);
 					if (bUsesStageClock)
 					{
-						if (nullptr == pAnimation ||
-							!Has_ExactProperties(*pAnimation, { "mode" }) ||
-							"NONE" != Read_String(*pAnimation, "mode") ||
-							Cue.Find("stageOffsetMs")->Get_Number() >=
+						if (Cue.Find("stageOffsetMs")->Get_Number() >=
 								pDuration->Get_Number() ||
 							IndependentByCue.end() == IndependentByCue.find(
 								Read_String(Cue, "cueId")))
 						{
 							strOutError =
-								"split stage-clock cue must be an independent NONE-stage Effect";
+								"split stage-clock cue must be an independent Effect inside its Stage wall";
 							return false;
 						}
 					}
@@ -8935,12 +8932,11 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 						}
 						if (Cue.bUsesStageClock)
 						{
-							if (!Stage.bSuppressAnimation ||
-								!Stage.ClipOccurrences.empty() ||
+							if (!Cue.strClipOccurrenceId.empty() ||
 								Cue.iStageOffsetMs >= Stage.iDurationMs)
 							{
 								strOutStatus =
-									"Valtan stage-clock Effect cue left its NONE stage: " +
+									"Valtan stage-clock Effect cue left its Stage wall: " +
 									Cue.strBindingId;
 								return false;
 							}
