@@ -8,6 +8,7 @@
 #include "ValtanCinematicCameraDocument.h"
 #include "ValtanPatternFlowDocument.h"
 #include "ValtanPatternTree.h"
+#include "ValtanViewAdmission.h"
 
 #include <array>
 #include <filesystem>
@@ -139,6 +140,10 @@ public:
 
 private:
 	bool_t Reload_Graph();
+	/* A publisher owns the canonical byte-range lock only briefly. Retry only
+	   transient admission/generation races; semantic join failures remain
+	   fail-closed until their source data changes. */
+	void Schedule_CanonicalReloadRetry();
 	/* A strict split-authoring rejection must not erase the generated Product
 	   inventory on a fresh Tool launch.  This fallback has no mutation or
 	   playback authority; it exists only to resolve live Product identities
@@ -157,11 +162,10 @@ private:
 		CValtanPatternSoundSourceReadAdmission& SoundAdmission,
 		std::string& strOutStatus) const;
 	bool_t Submit_SelectedPattern();
+	/* Restarts only this Tool's exact active/completed single-Pattern
+	   occurrence. The Server performs a boss-only reset, preserves the current
+	   arena state, and starts that Pattern again from its first Stage. */
 	bool_t Restart_SelectedPattern();
-	/* Boss Verification's default replay is the canonical saved one-Pattern
-	   workflow. It deliberately reuses the Flow transaction so the Server
-	   restores the complete arena before starting saved Pattern 01. */
-	bool_t Restart_SavedSinglePatternFreshArena();
 	bool_t Preview_SelectedFlowSlotIsolated();
 	bool_t Start_Flow(
 		const LostArk::Shared::GameplayDataRevision*
@@ -170,11 +174,14 @@ private:
 		const std::string& strStartSlotId,
 		const LostArk::Shared::GameplayDataRevision*
 			pRequiredDefinitionRevision = nullptr);
+	/* Reloads the complete saved scriptedSequence and asks the Server to reset
+	   the authoritative arena before Pattern 01. This is intentionally distinct
+	   from Restart_SelectedPattern and retains every saved slot/order/wait. */
 	bool_t Restart_SavedFlow();
-	bool_t Restart_SavedFlow(bool_t bRequireSingleSavedPattern);
 	bool_t Request_RevivePlayer(std::string& strOutStatus);
 	bool_t Reload_FlowDocument();
 	bool_t Save_FlowDocument();
+	bool_t Retry_FlowProductPublishApply();
 	void Refresh_PresentationFreshness(bool_t bForce = false);
 	void Synchronize_LiveSelection();
 	void Render_BossVerificationTab();
@@ -274,9 +281,13 @@ private:
 	bool_t m_bLogicPatternOpenRequest = false;
 	bool_t m_bSelectPatternFlowTab = false;
 	bool_t m_bGraphLoadAttempted = false;
-	/* m_bGraphReady owns the preserved display snapshot. Mutation requires a
-	   successful reload of the current canonical generation as a separate gate. */
-	bool_t m_bGraphMutationAdmitted = false;
+	bool_t m_bCanonicalReloadRetryPending = false;
+	double m_dNextCanonicalReloadRetrySeconds = 0.0;
+	/* The graph/fallback payload and its authority are separate. A failed reload
+	   keeps the payload visible as STALE_PRESERVED, while every command remains
+	   gated by Can_MutateValtanView. */
+	VALTAN_VIEW_ADMISSION m_eGraphAdmission =
+		VALTAN_VIEW_ADMISSION::UNLOADED;
 	bool_t m_bGraphReady = false;
 	bool_t m_bProductFallbackReady = false;
 	bool_t m_bNextPatternInventoryReady = false;

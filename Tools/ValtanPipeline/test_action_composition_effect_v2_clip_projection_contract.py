@@ -114,6 +114,11 @@ class ActionCompositionEffectV2ClipProjectionContract(unittest.TestCase):
             for stage in struggling["stages"]
             for occurrence in stage["animation"]["occurrences"]
         }
+        occurrences_by_id = {
+            occurrence["clipOccurrenceId"]: occurrence
+            for stage in struggling["stages"]
+            for occurrence in stage["animation"]["occurrences"]
+        }
         expected_occurrences = {
             "mesh_att_battle_19_01": ("STEP_04", "EXACT", 5000, False),
             "mesh_att_battle_19_02": ("STEP_05", "EXACT", 1500, False),
@@ -129,12 +134,17 @@ class ActionCompositionEffectV2ClipProjectionContract(unittest.TestCase):
 
         joined_rows = sorted(
             (
-                row["clip"],
-                row["group"],
-                row["startMs"],
+                occurrences_by_id[row["clock"]["clipOccurrenceId"]]["clip"],
+                row["resource"]["id"],
+                row["clock"]["startMs"],
             )
             for row in bindings
-            if row.get("clip") in expected_occurrences and row.get("group")
+            if row["scope"]["patternId"] == "VALTAN_STRUGGLING"
+            and row["resource"]["kind"] == "GROUP"
+            and row["clock"]["basis"] == "CLIP_OCCURRENCE"
+            and row["clock"]["clipOccurrenceId"] in occurrences_by_id
+            and occurrences_by_id[row["clock"]["clipOccurrenceId"]]["clip"]
+            in expected_occurrences
         )
         self.assertEqual(
             sorted([

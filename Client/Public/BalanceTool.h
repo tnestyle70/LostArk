@@ -4,6 +4,7 @@
 #include "Engine_Defines.h"
 #include "Network/PacketMessages.h"
 #include "ValtanPatternTree.h"
+#include "ValtanViewAdmission.h"
 
 #include <cstdint>
 #include <string>
@@ -333,6 +334,12 @@ public:
 	   presentation sources plus every generated Product in one shared-writer
 	   transaction.  Runtime activation remains explicitly restart/version gated. */
 	bool Save_ValtanCanonicalProduct(std::string& status);
+	/* Resume only the post-commit Product path. A clean saved source is
+	   validated and published without another canonical source write. If the
+	   preceding canonical commit succeeded but its editor reopen failed, the
+	   exact committed revision may be reopened first while its unchanged draft
+	   generation is still pinned. New user edits are never discarded. */
+	bool Retry_ValtanProductPublishApply(std::string& status);
 	bool Validate_ValtanDraft(std::string& status);
 	bool Save_ValtanAuthoring(std::string& status);
 	bool Publish_ValtanCandidate(std::string& status);
@@ -619,7 +626,18 @@ private:
 	std::string m_valtanAuthoringRevision;
 	std::string m_valtanCandidateRevision;
 	std::string m_valtanCandidateApplyClass;
+	/* Durable CommitCanonicalDraft success may precede an in-process reopen
+	   failure. Keep that exact receipt separate from dirty authoring state so a
+	   typed retry can reopen it once, but only while no later edit advanced the
+	   draft generation. */
+	std::string m_valtanCommittedRevisionPendingReopen;
+	std::uint64_t m_valtanCommittedReopenDraftGeneration = 0u;
 	VALTAN_SOURCE_JOIN_STATUS m_valtanSourceJoin;
+	/* The editable snapshot and its command authority are separate. A failed
+	   reload preserves the last-good Balance/Workbench rows for inspection but
+	   revokes every mutation until one complete canonical reload commits. */
+	VALTAN_VIEW_ADMISSION m_eValtanViewAdmission =
+		VALTAN_VIEW_ADMISSION::UNLOADED;
 	bool m_valtanDraftValidated = false;
 	std::string m_encounterId;
 	std::string m_encounterBossArchetypeId;

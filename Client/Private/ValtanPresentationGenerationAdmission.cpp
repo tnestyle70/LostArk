@@ -926,8 +926,20 @@ bool Client::CValtanPresentationGenerationReadAdmission::
 		VALTAN_PRESENTATION_GENERATION_RECEIPT& OutReceipt,
 		std::string& strOutStatus)
 {
+	VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic;
+	const bool_t bAcquired = Acquire_PackagedBaseline(
+		OutReceipt, Diagnostic);
+	strOutStatus = std::move(Diagnostic.strStatus);
+	return bAcquired;
+}
+
+bool Client::CValtanPresentationGenerationReadAdmission::
+	Acquire_PackagedBaseline(
+		VALTAN_PRESENTATION_GENERATION_RECEIPT& OutReceipt,
+		VALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic)
+{
 	return Acquire_PackagedBaselineFromRoot(
-		CProjectDataRoot::Get().parent_path(), OutReceipt, strOutStatus);
+		CProjectDataRoot::Get().parent_path(), OutReceipt, OutDiagnostic);
 }
 
 bool Client::CValtanPresentationGenerationReadAdmission::
@@ -936,9 +948,26 @@ bool Client::CValtanPresentationGenerationReadAdmission::
 		VALTAN_PRESENTATION_GENERATION_RECEIPT& OutReceipt,
 		std::string& strOutStatus)
 {
+	VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic;
+	const bool_t bAcquired = Acquire_PackagedBaselineFromRoot(
+		RepositoryRoot, OutReceipt, Diagnostic);
+	strOutStatus = std::move(Diagnostic.strStatus);
+	return bAcquired;
+}
+
+bool Client::CValtanPresentationGenerationReadAdmission::
+	Acquire_PackagedBaselineFromRoot(
+		const std::filesystem::path& RepositoryRoot,
+		VALTAN_PRESENTATION_GENERATION_RECEIPT& OutReceipt,
+		VALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic)
+{
+	OutDiagnostic.Clear();
 	if (nullptr != m_pState)
 	{
-		strOutStatus = "Valtan presentation generation admission is already held.";
+		OutDiagnostic.eFailure = VALTAN_CANONICAL_READ_FAILURE_KIND::
+			ADMISSION_STATE_INVALID;
+		OutDiagnostic.strStatus =
+			"Valtan presentation generation admission is already held.";
 		return false;
 	}
 	auto staged = std::make_unique<STATE>();
@@ -946,20 +975,38 @@ bool Client::CValtanPresentationGenerationReadAdmission::
 	staged->CanonicalAdmission =
 		std::make_unique<CValtanCanonicalProductReadAdmission>();
 	if (nullptr == staged->CanonicalAdmission ||
-		!staged->CanonicalAdmission->Acquire(strOutStatus) ||
-		!Load_Receipt(RepositoryRoot, staged->Receipt, strOutStatus))
+		!staged->CanonicalAdmission->Acquire(OutDiagnostic))
 	{
+		if (nullptr == staged->CanonicalAdmission)
+		{
+			OutDiagnostic.eFailure = VALTAN_CANONICAL_READ_FAILURE_KIND::
+				ADMISSION_IO;
+			OutDiagnostic.strStatus =
+				"Valtan canonical presentation admission allocation failed.";
+		}
+		return false;
+	}
+	if (!Load_Receipt(
+			RepositoryRoot, staged->Receipt, OutDiagnostic.strStatus))
+	{
+		OutDiagnostic.eFailure =
+			VALTAN_CANONICAL_READ_FAILURE_KIND::PRODUCT_INVALID;
 		return false;
 	}
 	if (!staged->Receipt.Is_Valid())
 	{
-		strOutStatus = "Valtan presentation source receipt is incomplete.";
+		OutDiagnostic.eFailure =
+			VALTAN_CANONICAL_READ_FAILURE_KIND::PRODUCT_INVALID;
+		OutDiagnostic.strStatus =
+			"Valtan presentation source receipt is incomplete.";
 		return false;
 	}
 	const auto receipt = staged->Receipt;
 	m_pState = std::move(staged);
 	OutReceipt = receipt;
-	strOutStatus = "Admitted the current validated Valtan presentation sources.";
+	OutDiagnostic.Clear();
+	OutDiagnostic.strStatus =
+		"Admitted the current validated Valtan presentation sources.";
 	return true;
 }
 
@@ -1048,25 +1095,48 @@ bool Client::CValtanPresentationGenerationReadAdmission::
 bool Client::CValtanPresentationGenerationReadAdmission::
 	Validate_StillCurrent(std::string& strOutStatus) const
 {
+	VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic;
+	const bool_t bCurrent = Validate_StillCurrent(Diagnostic);
+	strOutStatus = std::move(Diagnostic.strStatus);
+	return bCurrent;
+}
+
+bool Client::CValtanPresentationGenerationReadAdmission::
+	Validate_StillCurrent(
+		VALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic) const
+{
+	OutDiagnostic.Clear();
 	if (nullptr == m_pState || nullptr == m_pState->CanonicalAdmission)
 	{
-		strOutStatus = "Valtan presentation generation admission is not held.";
+		OutDiagnostic.eFailure = VALTAN_CANONICAL_READ_FAILURE_KIND::
+			ADMISSION_STATE_INVALID;
+		OutDiagnostic.strStatus =
+			"Valtan presentation generation admission is not held.";
 		return false;
 	}
-	if (!m_pState->CanonicalAdmission->Validate_StillCurrent(strOutStatus))
+	if (!m_pState->CanonicalAdmission->Validate_StillCurrent(OutDiagnostic))
 		return false;
 	VALTAN_PRESENTATION_GENERATION_RECEIPT physical;
-	if (!Load_Receipt(m_pState->RepositoryRoot, physical, strOutStatus))
+	if (!Load_Receipt(
+			m_pState->RepositoryRoot, physical, OutDiagnostic.strStatus))
+	{
+		OutDiagnostic.eFailure =
+			VALTAN_CANONICAL_READ_FAILURE_KIND::PRODUCT_INVALID;
 		return false;
+	}
 	physical.ServerGameplayRevision =
 		m_pState->Receipt.ServerGameplayRevision;
 	if (physical != m_pState->Receipt)
 	{
-		strOutStatus =
+		OutDiagnostic.eFailure =
+			VALTAN_CANONICAL_READ_FAILURE_KIND::GENERATION_CHANGED;
+		OutDiagnostic.strStatus =
 			"Valtan presentation generation changed during typed cache staging.";
 		return false;
 	}
-	strOutStatus = "Valtan presentation sources remained unchanged through commit.";
+	OutDiagnostic.Clear();
+	OutDiagnostic.strStatus =
+		"Valtan presentation sources remained unchanged through commit.";
 	return true;
 }
 

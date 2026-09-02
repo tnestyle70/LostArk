@@ -127,6 +127,10 @@ namespace
 			Require(Service.Submit(
 				Consumer, BOSS, Pattern, ActiveRevision(), Status),
 				"initial Play failed");
+			Require(Status.find("only Valtan") != std::string::npos &&
+				Status.find("current arena") != std::string::npos &&
+				Status.find("first Stage") != std::string::npos,
+				"single Pattern Play status did not distinguish boss-only replay from Flow reset");
 			Current = Input().SentRequests.back();
 			Input().Results.push_back(Verdict(Current));
 			auto Active = Event(Current, VALTAN_AUDITION_LIFECYCLE_STATE::ACTIVE);
@@ -1024,6 +1028,10 @@ namespace
 		Require(F.Service.Restart_ActivePattern(
 			"Boss Tool", BOSS, A, ReplacementRevision(), F.Status),
 			"exact active restart was rejected");
+		Require(F.Status.find("one-Pattern occurrence") != std::string::npos &&
+			F.Status.find("first Stage") != std::string::npos &&
+			F.Status.find("current arena") != std::string::npos,
+			"Pattern Restart status did not distinguish exact boss-only replay from saved Flow restart");
 		const auto Restart = F.Input().SentRequests.back();
 		Require(Restart.eOperation ==
 				VALTAN_AUDITION_OPERATION::RESTART_PATTERN_ID &&

@@ -1718,12 +1718,12 @@ bool_t Client::CValtanPatternSoundCueDocument::Save_Atomic(
 	   validates and commits; the destination mutex/CAS below still serializes
 	   concurrent Sound writers. */
 	CValtanCanonicalProductReadAdmission CanonicalAdmission;
-	std::string CanonicalAdmissionStatus;
-	if (!CanonicalAdmission.Acquire(CanonicalAdmissionStatus))
+	VALTAN_CANONICAL_READ_DIAGNOSTIC CanonicalDiagnostic;
+	if (!CanonicalAdmission.Acquire(CanonicalDiagnostic))
 	{
 		strOutStatus =
 			"Valtan pattern Sound Save could not join canonical dependency-generation admission; source and draft were preserved: " +
-			CanonicalAdmissionStatus;
+			CanonicalDiagnostic.strStatus;
 		return false;
 	}
 
@@ -1843,12 +1843,13 @@ bool_t Client::CValtanPatternSoundCueDocument::Save_Atomic(
 		Remove_Temporary(Temporary);
 		return false;
 	}
-	if (!CanonicalAdmission.Validate_StillCurrent(CanonicalAdmissionStatus))
+	VALTAN_CANONICAL_READ_DIAGNOSTIC CommitDiagnostic;
+	if (!CanonicalAdmission.Validate_StillCurrent(CommitDiagnostic))
 	{
 		Remove_Temporary(Temporary);
 		strOutStatus =
 			"Valtan pattern Sound Save lost canonical dependency-generation admission before destination commit; previous source preserved: " +
-			CanonicalAdmissionStatus;
+			CommitDiagnostic.strStatus;
 		return false;
 	}
 	if (!Commit_Temporary(Destination, Temporary))

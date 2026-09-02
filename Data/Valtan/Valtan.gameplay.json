@@ -6998,8 +6998,8 @@
               "countPerResolvedTarget": 4,
               "layout": {
                 "kind": "RADIAL_AROUND_BOSS",
-                "radiusM": 3.5,
-                "startAngleDegrees": 0.0,
+                "radiusM": 4.9497475,
+                "startAngleDegrees": 45.0,
                 "angleStepDegrees": 90.0,
                 "mappingBasis": "PROJECT_TUNED"
               },

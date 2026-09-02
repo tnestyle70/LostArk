@@ -886,6 +886,27 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 self.docs[pipeline.COMBAT_AUTHORING_REL],
             )
 
+        excessive_schedule = copy.deepcopy(gameplay)
+        excessive_event = next(
+            event
+            for pattern in excessive_schedule["patterns"]
+            if pattern["patternId"] == "VALTAN_HIGH_JUMP"
+            for stage in pattern["stages"]
+            if stage["stageId"] == "AIRBORNE"
+            for event in stage["events"]
+            if event["kind"] == "SPAWN_COMBAT_OBJECT_VOLLEY"
+        )
+        excessive_event["spawnSchedule"]["count"] = 9
+        with self.assertRaisesRegex(
+            pipeline.PipelineError, "spawnSchedule.count out of range"
+        ):
+            pipeline.join_v2_authoring(
+                excessive_schedule,
+                copy.deepcopy(presentation),
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+
         single_schedule = copy.deepcopy(gameplay)
         single_event = next(
             event
@@ -951,6 +972,27 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         ):
             pipeline.join_v2_authoring(
                 wrong_arena_random,
+                copy.deepcopy(presentation),
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
+
+        wrapping_radial = copy.deepcopy(gameplay)
+        wrapping_event = next(
+            event
+            for pattern in wrapping_radial["patterns"]
+            if pattern["patternId"] == "VALTAN_GHOST_PORTAL_ONCE"
+            for stage in pattern["stages"]
+            if stage["stageId"] == "ACTIVE"
+            for event in stage["events"]
+            if event["kind"] == "SPAWN_COMBAT_OBJECT_VOLLEY"
+        )
+        wrapping_event["layout"]["angleStepDegrees"] = 100.0
+        with self.assertRaisesRegex(
+            pipeline.PipelineError, "radial volley wraps onto itself"
+        ):
+            pipeline.join_v2_authoring(
+                wrapping_radial,
                 copy.deepcopy(presentation),
                 self.docs[pipeline.WORLD_SET_REL],
                 self.docs[pipeline.COMBAT_AUTHORING_REL],

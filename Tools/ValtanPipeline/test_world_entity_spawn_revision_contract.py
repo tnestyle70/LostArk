@@ -213,7 +213,7 @@ class WorldEntitySpawnRevisionContractTests(unittest.TestCase):
         for token in (
             "ENTRY_PRESENTATION_BASELINE_RETRY_MILLISECONDS",
             "CapturePresentationArtifactBaseline(",
-            "Is_TransientCanonicalPresentationAdmissionFailure",
+            "captureDiagnostic.Is_AutomaticRetryable()",
             "BootstrapPresentationReceipt",
             "BootstrapPresentationRevision = activeRevision",
             '"presentation.baseline-recovered"',

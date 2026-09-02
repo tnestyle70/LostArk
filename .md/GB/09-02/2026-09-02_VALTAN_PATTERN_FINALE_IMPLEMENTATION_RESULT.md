@@ -6,7 +6,7 @@
   Client HUD는 R 슬롯 하나에만 기존 아이콘을 유지한 채 상태 표시를 한다.
 - `VALTAN_BIND_SLOT`은 랜덤 생존자를 Server 권위로 Y +5m에 고정하고 정확히 5초 동안 이동,
   스킬과 Esther 입력을 막은 뒤 원래 navigation-valid 위치로 복구한다.
-- 마력구 channel은 발탄을 기준 Y에서 +5m 올리고 확정 HP damage만 1000까지 누적한다.
+- 마력구 channel은 발탄을 기준 Y에서 +3m 올리고 확정 HP damage만 1000까지 누적한다.
   성공은 별도 `VALTAN_GROGGY_FOLLOWUP`으로 전환하며, 실패는 마지막 공격 contact frame에서
   wipe를 한 번 발생시킨다. 모든 종료 경로가 기준 Y를 복구한다.
 - 3연속 counter는 전방 180도 `BOSS_FORWARD_ARC` 판정을 사용한다. 세 구간 중 최초 성공은
@@ -20,11 +20,13 @@
 ## Effect authoring 통합
 
 - Valtan Effect V2 bindings와 여덟 group을 strict formatVersion 2 문서로 migration했다.
-- `CEffectResourceCatalog` facade가 V1과 V2 resource를 같은 목록 identity로 노출한다.
+- All Effects는 `CEffectResourceCatalog` facade가 노출하는 owner-kind/stable-ID로 V1과 V2
+  resource를 한 목록에 표시한다. Action Composition Workbench는 기존 V1/V2 picker와
+  저장 backend을 분리해 유지한다.
 - MainApp의 Effect Tool 진입을 하나로 합치고 기존 renderer/backend는 유지해 migration 중인
   V1과 typed V2를 모두 조회·append·preview할 수 있게 했다.
-- presentation generation admission은 BOSS_VALTAN binding에서 실제 도달 가능한 group/leaf만
-  transactional closure로 고정한다.
+- presentation generation admission은 BOSS_VALTAN animation binding과 BossCatalog combat-object
+  visual owner에서 실제 도달 가능한 group/leaf만 transactional closure로 고정한다.
 
 ## 데이터와 팀 pull 계약
 
@@ -44,11 +46,11 @@
 - `Server.exe --contract-test`: PASS, failures 0
 - Effect Tool V2 Python suite: PASS, 76 tests
 - Effect V2 repository/resource validator: PASS (110 authored, 111 bindings, 8 groups,
-  5 independent, 70 textures)
+  4 independent, 70 textures)
 - Valtan presentation generation Python suite: PASS, 9 tests
 - PatternTree focused contracts: PASS, 28 tests
 - Valtan canonical graph: PASS, 65 patterns / 279 stages
-- Valtan Pattern Audition 전체 실행형 harness: PASS (canonical 4/4,
+- Valtan Pattern Audition 전체 실행형 harness: PASS (canonical 6/6,
   Action Composition 10/10, Effect cue 11/11, presentation admission PASS)
 - Client x64 Debug 전체 build/link: PASS, compile errors 0
 - `git diff --check`: PASS
@@ -82,7 +84,9 @@ Silence R 표시, Bind Y +5m 5초 고정, 마력구 999/1000 damage 분기, 세 
 - counter 조건을 실제로 소유하는 `VALTAN_TRIPLE_COUNTER` 표시명을
   `3연속 내려치기 - 카운터`로 변경했다. 별도 비-counter `VALTAN_THREE`는 유지했다.
 - Ground Roar의 사용자 저작 돌+폭발 6-element Effect를 하나의 composition으로 유지하고,
-  Server가 boss-relative 반경 3.5m의 0/90/180/270도 네 root에 전체 composition을 생성하도록 했다.
+  Server가 boss-relative `radiusM=4.9497475`, 시작각 45도, 90도 간격의 네 root에
+  전체 composition을 생성하도록 했다. boss yaw 0도 기준 X/Z 배치는
+  `(3.5,3.5)`, `(3.5,-3.5)`, `(-3.5,-3.5)`, `(-3.5,3.5)`다.
 - Pattern Flow Save adapter가 합법적인 cross-pattern Counter target을 거부하던 구형
   same-pattern 전용 검사를 교정했다. 첫 candidate apply 중 두 번째 Save가 발생하면 최신
   candidate를 deferred queue에 보존하고 첫 exact terminal 뒤 자동 제출해 두 번째 Restart gate가
@@ -97,7 +101,7 @@ Silence R 표시, Bind Y +5m 5초 고정, 마력구 999/1000 damage 분기, 세 
 - Gameplay publisher Publish: PASS, 65 patterns / 279 stages / 52 timeline rows
 - Server x64 Debug build와 `Server.exe --contract-test`: PASS, failures 0
 - All Effects + Ground Roar combat-object Effect focused: PASS, 53 tests
-- Pattern Flow/Tuning native 회귀: PASS, Audition 30/30, Flow 13/13, Tuning 10/10
+- Pattern Flow/Tuning native 회귀: PASS, Audition 30/30, Flow 13/13, Tuning 11/11
 - Client 전체 실행과 화면 fidelity는 자동 판정하지 않았다. 최종 Product build와 사용자의
   F1/서버 재생 확인 결과를 아래 수동 경계와 분리한다.
 
@@ -120,12 +124,53 @@ Silence R 표시, Bind Y +5m 5초 고정, 마력구 999/1000 damage 분기, 세 
   identity, stale Product revision 등 목록 전체가 비던 과거 원인과 재발 방지 절차를
   `.md/GB/gotchas.md`에 기록했다.
 
-## 최종 자동 검증
+## Pattern replay와 Flow replay 분리
 
-- Debug Product: PASS
-  (`out/BuildPipeline/runs/20260902T052351700Z-debug-product-fba48ee5.json`)
-- `Server/Bin/Debug/Server.exe --contract-test`: PASS, `failures : 0`
-- Valtan Tool/Effect/Composition/Flow/Status Python 회귀: PASS, 191 tests
-- `git diff --check`: PASS (기존 line-ending warning만 출력)
+- 기존 Boss Verification의 `Restart Saved Pattern (Fresh Arena)`는
+  `Restart_SavedFlow(true)`를 호출하는 one-slot Flow alias였다. 따라서 saved slot이 하나일 때
+  `Restart Flow`와 wire/runtime/reset 의미가 같았고, Pattern restart처럼 보이는 이름만 달랐다.
+  이 alias와 one-slot 전용 overload를 제거했다.
+- `Play Selected Pattern (Keep Arena)`는 기존 `PLAY_PATTERN_ID`를 사용한다. Server는 Valtan만
+  boss-only reset하고 현재 arena destruction/prop/collision/Nav 상태를 유지한다. 교체되는 boss-source
+  combat object만 취소하고 player-source object는 유지한 채 선택 Pattern 하나를 첫 Stage부터 재생한다.
+- `Restart Active Pattern (Keep Arena)`는 기존 `RESTART_PATTERN_ID` exact predecessor CAS를
+  사용한다. 이 Tool이 소유한 ACTIVE/COMPLETED occurrence와 현재 선택 ID가 일치할 때만 활성화되며,
+  같은 Pattern 하나를 첫 Stage부터 교체 재생한다. saved Flow는 읽지 않는다.
+- Pattern Flow의 버튼은 `Restart Saved Flow (Fresh Arena)`로 명시했다. disk의 전체
+  `scriptedSequence`를 reload하고 authoritative arena를 복구한 뒤 Pattern 01부터 saved
+  Next/order/Wait를 실행한다.
+- focused Python contract 125 tests, native Audition 30/30와 Flow 13/13, Client Debug x64
+  `ClCompile`이 통과했다. Client 화면 문구와 실제 arena 차이는 사용자가 새 Debug EXE에서 확인한다.
+
+## 현재 변경 기준 자동 검증
+
+- `Project-ValtanPatternMaster.ps1 -Mode PublishV2`: PASS, changed 1 / artifacts 7
+- `Project-ValtanPatternMaster.ps1 -Mode Validate`: PASS, errors 0 / managed 42 / projected artifacts 9
+- Ground Roar combat-object focused: PASS, 17/17
+- Action Composition Workbench regression oracle: PASS, 55/55
+- Action presentation focused: PASS, 47/47
+- Effect V2 optional BossCatalog owner 회귀: PASS, 29/29. 제품 저장소에 BossCatalog가
+  존재하면 Valtan combat-object group owner를 strict 검증하고, 독립 Effect fixture에 문서가
+  없으면 owner lane 자체가 없는 것으로 처리한다.
+- Silence source/Product reader parity: PASS. `SILENCE_APPLY` 100ms에서 ENTER-only 5000ms
+  deadline을 승인하고 generic paired-EXIT lifetime closure에서는 제외했다.
+- `Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Core`: PASS.
+  Network failures 0, Valtan canonical 6/6, Action Composition 10/10,
+  Effect cue 11/11, presentation admission PASS, Character Select live isolation failures 0.
+  Build evidence는
+  `out/BuildPipeline/runs/20260902T085728666Z-debug-core-264bbae0.json`이다.
 - Client 화면과 Effect visual fidelity는 자동 판정하지 않았으며 아래 인게임 항목은 사용자가
   새 Debug EXE에서 직접 확인한다.
+
+## 최종 범위 정리
+
+- 탐색 중 추가했던 `EncounterDataset`, `BossPatternGraphRuntime`,
+  `ValtanStageActionSemantics`, presentation mutation coordinator와 Effect catalog slice는 현재
+  Valtan Flow 저장/재시작 완료에 필요한 소비자를 닫지 못했으므로 제거했다.
+  이 RESULT의 완료 구조로 주장하지 않는다.
+- 현재 Valtan은 기존 canonical source/Product, inline Client/Server reader, 기존 writer와
+  `VALTAN_VIEW_ADMISSION`을 사용한다. All Effects의 resource facade와 Workbench의 명시적
+  V1/V2 picker는 서로의 저장 backend을 혼합하지 않는다.
+- Ground Roar 새 기하는 `PublishV2` 재투영과 focused combat-object/Workbench 회귀로
+  검증했다. Client의 실제 네 위치, 크기, 폭발 timing은 사용자 육안 검증 대상이며
+  visual PASS로 기록하지 않았다.

@@ -767,21 +767,21 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
         for token in (
             '#include "ValtanPatternTree.h"',
             "CValtanCanonicalProductReadAdmission CanonicalAdmission;",
-            "CanonicalAdmission.Acquire(CanonicalAdmissionStatus)",
-            "CanonicalAdmission.Validate_StillCurrent(CanonicalAdmissionStatus)",
+            "VALTAN_CANONICAL_READ_DIAGNOSTIC CanonicalDiagnostic;",
+            "CanonicalAdmission.Acquire(CanonicalDiagnostic)",
+            "VALTAN_CANONICAL_READ_DIAGNOSTIC CommitDiagnostic;",
+            "CanonicalAdmission.Validate_StillCurrent(CommitDiagnostic)",
             "SOUND_JOINED_OWNER_COMMIT_GUARD CommitGuard;",
             "Commit_Temporary(Destination, Temporary)",
         ):
             self.assertIn(token, self.pattern_sound_cpp)
         self.assertLess(
-            save_body.index(
-                "CanonicalAdmission.Acquire(CanonicalAdmissionStatus)"
-            ),
+            save_body.index("CanonicalAdmission.Acquire(CanonicalDiagnostic)"),
             save_body.index("Read_File(Destination, PreviousBytes)"),
         )
         self.assertLess(
             save_body.index(
-                "CanonicalAdmission.Validate_StillCurrent(CanonicalAdmissionStatus)"
+                "CanonicalAdmission.Validate_StillCurrent(CommitDiagnostic)"
             ),
             save_body.index("Commit_Temporary(Destination, Temporary)"),
         )

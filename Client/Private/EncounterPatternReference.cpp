@@ -675,9 +675,9 @@ namespace
 			else if (kind == "SET_PLAYER_SILENCE")
 			{
 				validKind = targetId == "player.status.silence" &&
-					((trigger == "ENTER" && 1u == value &&
-					  durationMs >= 100u && durationMs <= 120000u) ||
-					 (trigger == "EXIT" && 0u == value && 0u == durationMs));
+					trigger == "ENTER" && 1u == value &&
+					durationMs >= stageDurationMs &&
+					durationMs >= 100u && durationMs <= 120000u;
 			}
 			else if (kind == "SPAWN_COMBAT_OBJECT")
 				validKind = trigger == "ENTER" && 1u == value && 0u == durationMs;
@@ -702,7 +702,11 @@ namespace
 				return false;
 			if (kind == "SPAWN_COMBAT_OBJECT" ||
 				kind == "SET_GAMEPLAY_PHASE" ||
-				kind == "RETARGET_RANDOM_ALIVE" || kind == "RETURN_TO_ARENA_CENTER")
+				kind == "RETARGET_RANDOM_ALIVE" ||
+				kind == "RETURN_TO_ARENA_CENTER" ||
+				/* Silence is an ENTER-only deadline-latched status. The Server
+				   owns expiry, so it intentionally has no paired EXIT action. */
+				kind == "SET_PLAYER_SILENCE")
 				continue;
 
 			const std::string lifetimeKey = kind + "\n" + targetId;

@@ -10,6 +10,7 @@
 #include <limits>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 NS_BEGIN(Client)
@@ -618,6 +619,58 @@ struct VALTAN_TOOL_AUDITION_INVENTORY final
 	bool_t Contains(const std::string& strPatternId) const;
 };
 
+/* Canonical Product admission and strict-join failures are control flow, not
+   UI text.  Keep the typed reason beside the human diagnostic so Tool
+   consumers never infer retry/reprojection policy by matching Win32 strings.
+   A stale source projection is recoverable by the canonical writer, but is
+   deliberately not an automatic read retry: readers must not mutate Product. */
+enum class VALTAN_CANONICAL_READ_FAILURE_KIND : uint8_t
+{
+	NONE,
+	WRITER_BUSY,
+	WRITER_RECOVERY_REQUIRED,
+	ADMISSION_IO,
+	ADMISSION_STATE_INVALID,
+	GENERATION_CHANGED,
+	SOURCE_INVALID,
+	PRODUCT_INVALID,
+	STALE_PROJECTION,
+	END
+};
+
+struct VALTAN_CANONICAL_READ_DIAGNOSTIC final
+{
+	static constexpr std::string_view PRODUCT_PROJECTION_COMMAND =
+		"powershell -ExecutionPolicy Bypass -File "
+		"Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1 -Mode PublishV2";
+
+	VALTAN_CANONICAL_READ_FAILURE_KIND eFailure =
+		VALTAN_CANONICAL_READ_FAILURE_KIND::NONE;
+	std::string strStatus;
+	/* Filled when a strict parity failure can be isolated to one stable owner.
+	   The generated Product fallback may still display that Pattern, but it
+	   remains read-only until the whole source generation is projected. */
+	std::string strRejectedPatternId;
+	std::string strRejectedStageId;
+
+	void Clear()
+	{
+		eFailure = VALTAN_CANONICAL_READ_FAILURE_KIND::NONE;
+		strStatus.clear();
+		strRejectedPatternId.clear();
+		strRejectedStageId.clear();
+	}
+	bool_t Is_AutomaticRetryable() const
+	{
+		return VALTAN_CANONICAL_READ_FAILURE_KIND::WRITER_BUSY == eFailure ||
+			VALTAN_CANONICAL_READ_FAILURE_KIND::GENERATION_CHANGED == eFailure;
+	}
+	bool_t Requires_ProductProjection() const
+	{
+		return VALTAN_CANONICAL_READ_FAILURE_KIND::STALE_PROJECTION == eFailure;
+	}
+};
+
 /* One bounded reader admission for the complete generated Valtan Product
    generation. Writers take byte 0 of create-pattern.lock exclusively and
    publish an active-generation journal while replacement/recovery is in
@@ -637,9 +690,16 @@ public:
 		const CValtanCanonicalProductReadAdmission&) = delete;
 
 	bool_t Acquire(std::string& strOutStatus);
+	bool_t Acquire(VALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic);
+	/* Only a live writer window is retried automatically. A durable recovery
+	   journal and a stale source projection require their owning writer path. */
+	static bool_t Is_TransientFailure(
+		VALTAN_CANONICAL_READ_FAILURE_KIND eFailure);
 	/* Re-check the durable writer journal before the staged caller commits its
 	   aggregate view. Failure leaves that caller's previous caches untouched. */
 	bool_t Validate_StillCurrent(std::string& strOutStatus) const;
+	bool_t Validate_StillCurrent(
+		VALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic) const;
 	bool_t Is_Acquired() const { return nullptr != m_pState; }
 
 private:
@@ -655,12 +715,19 @@ public:
 	static bool_t Load(
 		VALTAN_PATTERN_TREE_VIEW& OutView,
 		std::string& strOutStatus);
+	static bool_t Load(
+		VALTAN_PATTERN_TREE_VIEW& OutView,
+		VALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic);
 	/* Aggregate callers which already own canonical Product read admission use
 	   this overload to avoid recursively acquiring the byte-range lock. */
 	static bool_t Load_WhileAdmitted(
 		const CValtanCanonicalProductReadAdmission& Admission,
 		VALTAN_PATTERN_TREE_VIEW& OutView,
 		std::string& strOutStatus);
+	static bool_t Load_WhileAdmitted(
+		const CValtanCanonicalProductReadAdmission& Admission,
+		VALTAN_PATTERN_TREE_VIEW& OutView,
+		VALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic);
 	/* Authoring paths may be absolute. Active project Product data still owns
 	   actor/combat-object capability. The explicit policy decides whether its
 	   authored values must also match or a strict saved snapshot is overlaid. */
@@ -669,7 +736,8 @@ public:
 		const std::filesystem::path& PresentationPath,
 		VALTAN_PATTERN_TREE_VIEW& OutView,
 		std::string& strOutStatus,
-		VALTAN_PATTERN_TREE_LOAD_POLICY ePolicy);
+		VALTAN_PATTERN_TREE_LOAD_POLICY ePolicy,
+		VALTAN_CANONICAL_READ_DIAGNOSTIC* pOutDiagnostic = nullptr);
 	/* One admission contract for Boss Tool, All Effects, saved Flow and Next.
 	   Validates split-owned identity/stages and both sides of manual metadata;
 	   failure preserves the previously admitted inventory. */

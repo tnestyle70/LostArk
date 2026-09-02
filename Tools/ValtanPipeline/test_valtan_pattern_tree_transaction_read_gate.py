@@ -79,8 +79,12 @@ class ValtanPatternTreeTransactionReadGateTests(unittest.TestCase):
         self.assertNotIn(
             "LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY", source
         )
+        self.assertIn("VALTAN_CANONICAL_READ_DIAGNOSTIC final", header)
+        self.assertIn("Is_AutomaticRetryable() const", header)
+        self.assertIn("Requires_ProductProjection() const", header)
         self.assertIn("CValtanCanonicalProductReadAdmission Admission;", load_body)
-        self.assertIn("Admission.Acquire(strOutStatus)", load_body)
+        self.assertIn("VALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic", load_body)
+        self.assertIn("Admission.Acquire(OutDiagnostic)", load_body)
         self.assertIn("Load_WhileAdmitted(Admission", load_body)
         self.assertNotIn("Try_Acquire", load_body)
         self.assertEqual(
@@ -107,7 +111,10 @@ class ValtanPatternTreeTransactionReadGateTests(unittest.TestCase):
         )
         self.assertIn("GenerationAdmission.Acquire_Receipt(", body)
         self.assertNotIn("GenerationAdmission.Acquire_ExactReceipt(", body)
-        self.assertIn("CanonicalAdmission.Acquire(strOutStatus)", body)
+        self.assertIn(
+            "VALTAN_CANONICAL_READ_DIAGNOSTIC CanonicalDiagnostic", body
+        )
+        self.assertIn("CanonicalAdmission.Acquire(CanonicalDiagnostic)", body)
         for component in (
             "Reload_PatternBindings_WhileAdmitted",
             "Reload_PatternEffectCues_WhileAdmitted",

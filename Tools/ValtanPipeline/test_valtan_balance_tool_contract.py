@@ -432,11 +432,71 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         self.assertNotIn("return false;", reopen_failure)
         revision_mismatch = commit[
             commit.index("if (m_valtanSourceRevision != committedRevision") :
-            commit.index("if (0u != result.changedCount)")
+            commit.index('status = "COMMITTED_AND_RELOADED')
         ]
         self.assertIn("COMMIT_SUCCEEDED_REOPEN_FAILED", revision_mismatch)
         self.assertIn("return true;", revision_mismatch)
         self.assertIn("COMMITTED_AND_RELOADED", commit)
+
+    def test_clean_saved_source_has_typed_publish_apply_retry_without_recommit(self) -> None:
+        retry = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Retry_ValtanProductPublishApply(",
+        )
+        self.assertIn("m_valtanCommittedRevisionPendingReopen", retry)
+        self.assertIn("m_valtanCommittedReopenDraftGeneration", retry)
+        self.assertLess(
+            retry.index("m_valtanDraftGeneration !="),
+            retry.index("Reload()"),
+        )
+        self.assertIn("else if (m_dirty)", retry)
+        self.assertIn("Save_ValtanProduct(RetryStatus)", retry)
+        self.assertIn("without another canonical commit", retry)
+        self.assertNotIn("Save_ValtanCanonicalProduct", retry)
+        self.assertNotIn("RunValtanDraftCommand", retry)
+
+        command = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::RunValtanDraftCommand(",
+        )
+        commit = command[
+            command.index('if (0 == std::wcscmp(mode, L"CommitCanonicalDraft"))') :
+        ]
+        self.assertLess(
+            commit.index("m_valtanCommittedRevisionPendingReopen = committedRevision"),
+            commit.index("if (!Reload())"),
+        )
+        self.assertLess(
+            commit.index("Record_GameplaySourceActivationExpectation"),
+            commit.index("if (!Reload())"),
+        )
+        self.assertIn('{}, "NOT_ACTIVATED"', commit)
+        reload_body = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Reload()",
+        )
+        self.assertIn("m_valtanCommittedRevisionPendingReopen.clear()", reload_body)
+        self.assertIn("m_valtanCommittedReopenDraftGeneration = 0u", reload_body)
+
+        save_product = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)",
+        )
+        self.assertIn(
+            "m_dirty && !m_valtanCommittedRevisionPendingReopen.empty()",
+            save_product,
+        )
+        self.assertIn("will not repeat an already committed", save_product)
+        self.assertIn("COMMIT_SUCCEEDED_REOPEN_FAILED:", save_product)
+        render = function_body(
+            self.balance_cpp,
+            "void Client::CBalanceTool::Render()",
+        )
+        self.assertIn(
+            'ImGui::Button("Retry Product Publish / Apply##ValtanBalance")',
+            render,
+        )
+        self.assertIn("canRetryProduct", render)
 
     def test_candidate_apply_class_is_strict_and_blocks_hot_reload(self) -> None:
         self.assertIn("std::string applyClass;", self.balance_cpp)
@@ -525,6 +585,35 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         self.assertIn("Runtime active pointer is unchanged", self.balance_cpp)
         self.assertIn("m_valtanAuthoringRevision", self.balance_h)
         self.assertIn("m_valtanCandidateRevision", self.balance_h)
+
+    def test_balance_reload_preserves_rows_but_revokes_mutation_until_commit(self) -> None:
+        reload_balance = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Reload()",
+        )
+        admission_gate = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Require_ValtanAuthoringAdmission(",
+        )
+        self.assertIn('#include "ValtanViewAdmission.h"', self.balance_h)
+        self.assertIn("m_eValtanViewAdmission", self.balance_h)
+        revoke = (
+            "m_eValtanViewAdmission = bHadDisplayableValtanView ?"
+        )
+        self.assertIn(revoke, reload_balance)
+        self.assertLess(
+            reload_balance.index(revoke),
+            reload_balance.index("CanonicalAdmission.Acquire("),
+        )
+        self.assertIn(
+            "m_eValtanViewAdmission =\n\t\tVALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED",
+            reload_balance,
+        )
+        self.assertIn(
+            "Can_MutateValtanView(m_eValtanViewAdmission)", admission_gate
+        )
+        self.assertIn("m_valtanSourceJoin.state", admission_gate)
+        self.assertIn("m_valtanSourceRevision.empty()", admission_gate)
 
     def test_high_jump_axe_count_has_one_typed_normalization_boundary(self) -> None:
         getter = function_body(
@@ -694,8 +783,9 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
             "hasPendingEntryPresentationBaselineRecovery", entry
         )
         self.assertIn(
-            "Is_TransientCanonicalPresentationAdmissionFailure", entry
+            "stagedPresentationDiagnostic.Is_AutomaticRetryable()", entry
         )
+        self.assertNotIn("status.find(\"Win32 33\")", self.network_cpp)
         self.assertIn(
             "ENTRY_PRESENTATION_BASELINE_RETRY_MILLISECONDS", entry
         )
@@ -760,14 +850,21 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         ):
             self.assertNotIn(stale_gate, acquire)
 
-        validate = function_body(
+        validate_wrapper = function_body(
             self.presentation_admission_cpp,
             "Validate_StillCurrent(std::string& strOutStatus) const",
+        )
+        self.assertIn("Validate_StillCurrent(Diagnostic)", validate_wrapper)
+        validate = function_body(
+            self.presentation_admission_cpp,
+            "Validate_StillCurrent(\n"
+            "\t\tVALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic) const",
         )
         self.assertIn(
             "m_pState->CanonicalAdmission->Validate_StillCurrent", validate
         )
         self.assertIn("physical != m_pState->Receipt", validate)
+        self.assertIn("GENERATION_CHANGED", validate)
 
         exact = function_body(
             self.presentation_admission_cpp,

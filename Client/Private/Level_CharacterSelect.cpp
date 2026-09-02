@@ -1007,9 +1007,11 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 	{
 		CValtanCanonicalProductReadAdmission ProductAdmission;
 		std::string Status;
-		if (!ProductAdmission.Acquire(Status))
+		VALTAN_CANONICAL_READ_DIAGNOSTIC ProductDiagnostic;
+		if (!ProductAdmission.Acquire(ProductDiagnostic))
 		{
-			Isolate_ValtanSpawnPreparationFailure(Status, false);
+			Isolate_ValtanSpawnPreparationFailure(
+				ProductDiagnostic.strStatus, false);
 			return false;
 		}
 		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;

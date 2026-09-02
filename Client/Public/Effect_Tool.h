@@ -7,6 +7,7 @@
 #include "Effect_AuthoringDocument.h"
 #include "Effect_ComponentDocument.h"
 #include "Effect_DirectAuthoredSourceIndex.h"
+#include "EffectResourceCatalog.h"
 #include "Effect_OccurrenceTuning.h"
 #include "EffectAuthoringTransfer.h"
 #include "Engine_Defines.h"
@@ -15,6 +16,7 @@
 #include "EncounterPatternReference.h"
 #include "ValtanPatternAuthoringEffectDocument.h"
 #include "ValtanPatternTree.h"
+#include "ValtanViewAdmission.h"
 
 #include <array>
 #include <filesystem>
@@ -549,6 +551,11 @@ public:
 	bool_t Open_ValtanAllEffectsWorkspace();
 	bool_t Open_ValtanProductEffect(
 		const EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& Request);
+	/* All Effects browses one version-neutral resource namespace. V1 requests
+	   are opened locally; V2 requests are handed to the typed owner by MainApp
+	   so the browser never writes through the wrong codec. */
+	bool_t Consume_TypedEffectResourceOpenRequest(
+		EFFECT_RESOURCE_KEY& OutKey);
 
 private:
     void Render_EffectToolWindow();
@@ -583,6 +590,10 @@ private:
 	void Render_ValtanProductFallbackSection(const std::string& strSearch);
 	void Render_ValtanExactAuthoredSourceSection(
 		const std::string& strSearch);
+	void Render_ValtanEffectResourceSection(const std::string& strSearch);
+	bool_t Refresh_ValtanEffectResourceSnapshot();
+	bool_t Open_ValtanEffectResource(
+		const EFFECT_RESOURCE_DESCRIPTOR& Resource);
 	void Render_ValtanAreaStaticEffectSection(const std::string& strSearch);
 	bool_t Refresh_ValtanAreaStaticEffects();
 	bool_t Discard_ValtanAreaStaticEffectDraft();
@@ -823,8 +834,9 @@ private:
 		EFFECT_DOCUMENT_PREVIEW_INTENT ePreviewIntent =
 			EFFECT_DOCUMENT_PREVIEW_INTENT::SYNCHRONIZED_PRODUCT);
     bool_t Execute_PendingDocumentLoad(bool_t bSaveFirst);
-    bool_t Refresh_AllEffects(bool_t bReloadSkillCatalog = false);
+	bool_t Refresh_AllEffects(bool_t bReloadSkillCatalog = false);
 	bool_t Refresh_ValtanPatternTree();
+	void Schedule_ValtanPatternTreeReloadRetry();
 	bool_t Stage_ValtanProductFallback(
 		const CValtanCanonicalProductReadAdmission& Admission,
 		const std::string& strStrictFailure);
@@ -1148,6 +1160,13 @@ private:
 	   gated by the canonical tree; this list owns no replacement runtime. */
 	std::vector<EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY>
 		m_ValtanExactAuthoredSources;
+	std::shared_ptr<const EFFECT_RESOURCE_CATALOG_SNAPSHOT>
+		m_pValtanEffectResourceSnapshot;
+	VALTAN_VIEW_ADMISSION m_eValtanEffectResourceAdmission =
+		VALTAN_VIEW_ADMISSION::UNLOADED;
+	std::string m_strValtanEffectResourceStatus;
+	bool_t m_bValtanEffectResourceLoadAttempted = false;
+	std::optional<EFFECT_RESOURCE_KEY> m_PendingTypedEffectResourceOpen;
 	std::unordered_map<std::string, size_t>
 		m_BossProductCueMappingCounts;
 	shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
@@ -1191,9 +1210,13 @@ private:
 		m_UnpublishedStaticAreaWorldDraft;
 	VALTAN_TOOL_AUDITION_INVENTORY m_ValtanToolAuditionInventory;
 	std::string m_strValtanPatternTreeStatus;
+	VALTAN_VIEW_ADMISSION m_eValtanPatternTreeAdmission =
+		VALTAN_VIEW_ADMISSION::UNLOADED;
 	bool_t m_bValtanPatternTreeLoaded = false;
 	bool_t m_bValtanPatternTreeLoadAttempted = false;
 	bool_t m_bValtanPatternTreeLastRefreshSucceeded = false;
+	bool_t m_bValtanPatternTreeReloadRetryPending = false;
+	double m_dNextValtanPatternTreeReloadRetrySeconds = 0.0;
 	bool_t m_bValtanProductFallbackReady = false;
 	VALTAN_PATTERN_AUTHORING_EFFECT_DOCUMENT
 		m_ValtanPatternAuthoringEffects;

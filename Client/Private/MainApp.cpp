@@ -1004,7 +1004,18 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			m_bDeveloperToolsVisible && bAnimationPreviewOwned);
 	}
 	if (nullptr != m_pEffectTool)
+	{
 		m_pEffectTool->Update(fTimeDelta);
+		EFFECT_RESOURCE_KEY ResourceKey;
+		if (m_pEffectTool->Consume_TypedEffectResourceOpenRequest(ResourceKey))
+		{
+			const bool_t bOpened = nullptr != m_pEffectToolV2 &&
+				m_pEffectToolV2->Open_Resource(ResourceKey);
+			m_strToolStatus = bOpened ?
+				"Opened the selected resource in its typed Effect owner." :
+				"The typed Effect owner preserved its current draft; inspect the owner status.";
+		}
+	}
 	if (nullptr != m_pBossTool)
 	{
 		m_pBossTool->Update(

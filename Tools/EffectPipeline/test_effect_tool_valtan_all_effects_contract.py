@@ -1462,11 +1462,13 @@ class EffectToolValtanAllEffectsContractTests(unittest.TestCase):
         )
         self.assertLess(
             tree.index("Render_ValtanExactAuthoredSourceSection(strSearch);"),
-            tree.index("if (!m_bValtanPatternTreeLoaded)"),
+            tree.index(
+                "if (!Can_DisplayValtanView(m_eValtanPatternTreeAdmission))"
+            ),
         )
         failed_join_branch = source_section(
             tree,
-            "if (!m_bValtanPatternTreeLoaded)",
+            "if (!Can_DisplayValtanView(m_eValtanPatternTreeAdmission))",
             "std::vector<const VALTAN_INDEPENDENT_EFFECT_VIEW*>",
         )
         self.assertIn("return;", failed_join_branch)

@@ -153,6 +153,7 @@
     <ClInclude Include="..\Public\MapStaticBatchObject.h" />
     <ClInclude Include="..\Public\Body_Valtan.h" />
     <ClInclude Include="..\Public\ValtanPatternTree.h" />
+    <ClInclude Include="..\Public\ValtanViewAdmission.h" />
     <ClInclude Include="..\Public\ValtanPresentationGenerationAdmission.h" />
     <ClInclude Include="..\Public\ValtanPatternAuditionService.h" />
     <ClInclude Include="..\public\Camera_Free.h" />

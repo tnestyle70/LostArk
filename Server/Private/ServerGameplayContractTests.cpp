@@ -4544,6 +4544,34 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const bool madeDuplicateTrashCounterBranch = replaceBootstrapRow(
 			duplicateTrashCounterBranchBootstrap, trashCounterTimeoutRow,
 			trashCounterBranchRow);
+		const std::string portalVolleyRow =
+			"PATTERNSTAGEVOLLEY\tENCOUNTER_VALTAN\t"
+			"VALTAN_GHOST_PORTAL_ONCE\tvaltan.ghost.portal-once.active\t"
+			"0\tENTER\tcombatobject.valtan.ghost.portal-charge\t"
+			"BOSS_RELATIVE\t4\tRADIAL\t31.112698\t45\t90\t0\t4\t1\t0\t"
+			"0\t0\t0\tNONE";
+		std::string wrappingPortalVolleyBootstrap = bootstrapText;
+		const bool madeWrappingPortalVolley = replaceBootstrapRow(
+			wrappingPortalVolleyBootstrap, portalVolleyRow,
+			"PATTERNSTAGEVOLLEY\tENCOUNTER_VALTAN\t"
+			"VALTAN_GHOST_PORTAL_ONCE\tvaltan.ghost.portal-once.active\t"
+			"0\tENTER\tcombatobject.valtan.ghost.portal-charge\t"
+			"BOSS_RELATIVE\t4\tRADIAL\t31.112698\t45\t100\t0\t4\t1\t0\t"
+			"0\t0\t0\tNONE");
+		const std::string highJumpVolleyRow =
+			"PATTERNSTAGEVOLLEY\tENCOUNTER_VALTAN\tVALTAN_HIGH_JUMP\t"
+			"valtan.attack.high-jump.airborne\t0\tENTER\t"
+			"combatobject.valtan.high-jump.target-axe\tPER_ALIVE_PLAYER\t"
+			"1\tSINGLE\t0\t0\t0\t0\t36\t3\t1333\t4\t14\t1\t"
+			"BOSS_SPAWN_POSITION";
+		std::string excessiveHighJumpScheduleBootstrap = bootstrapText;
+		const bool madeExcessiveHighJumpSchedule = replaceBootstrapRow(
+			excessiveHighJumpScheduleBootstrap, highJumpVolleyRow,
+			"PATTERNSTAGEVOLLEY\tENCOUNTER_VALTAN\tVALTAN_HIGH_JUMP\t"
+			"valtan.attack.high-jump.airborne\t0\tENTER\t"
+			"combatobject.valtan.high-jump.target-axe\tPER_ALIVE_PLAYER\t"
+			"1\tSINGLE\t0\t0\t0\t0\t36\t9\t500\t4\t14\t1\t"
+			"BOSS_SPAWN_POSITION");
 		const auto rejectsSequenceVariant = [
 			&loadBootstrapVariant](const std::wstring_view suffix,
 				const std::string& bytes, const std::string_view statusNeedle)
@@ -4561,6 +4589,18 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				std::string::npos != rollbackCatalog->Get_Status().find(
 					statusNeedle);
 		};
+		tests.Require(
+			madeWrappingPortalVolley &&
+			rejectsSequenceVariant(
+				L"volley-radial-wrap", wrappingPortalVolleyBootstrap,
+				"Boss pattern stage volley layout is invalid"),
+			"Reject a radial volley whose count and angle step wrap beyond 360 degrees");
+		tests.Require(
+			madeExcessiveHighJumpSchedule &&
+			rejectsSequenceVariant(
+				L"volley-spawn-count", excessiveHighJumpScheduleBootstrap,
+				"Boss pattern stage volley row is invalid"),
+			"Reject a volley schedule whose spawnCount exceeds eight");
 		tests.Require(
 			!overflowSequenceBootstrap.empty() &&
 			rejectsSequenceVariant(
@@ -6439,9 +6479,10 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				iCountPerResolvedTarget &&
 			BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL ==
 				groundRoarStep->Actions.front().Volley.eLayout &&
-			std::abs(groundRoarStep->Actions.front().Volley.fRadiusM - 3.5f) <
+			std::abs(groundRoarStep->Actions.front().Volley.fRadiusM -
+				4.9497475f) <
 				1.0e-6f &&
-			0.f == groundRoarStep->Actions.front().Volley.fStartAngleDegrees &&
+			45.f == groundRoarStep->Actions.front().Volley.fStartAngleDegrees &&
 			90.f == groundRoarStep->Actions.front().Volley.fAngleStepDegrees &&
 			!groundRoarStep->Actions.front().Volley.bAllowOverlap &&
 			4u == groundRoarStep->Actions.front().Volley.iMaximumTotalObjects &&
@@ -6471,7 +6512,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		tests.Require(
 			hasExactGroundRoarCardinalRocks && nullptr != entranceEstablish &&
 				entranceEstablish->Actions.empty(),
-			"Own exactly one four-cardinal visual-only rock volley in GROUND_ROAR STEP_01 and never in the entrance cinematic");
+			"Own exactly one four-root diagonal visual-only rock volley in GROUND_ROAR STEP_01 and never in the entrance cinematic");
 		tests.Require(
 			nullptr != fourSlashPattern && nullptr != swingPattern &&
 			420609u == fourSlashPattern->iSourcePrimaryActionId &&
@@ -13974,9 +14015,12 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		}
 	}
 	{
-		/* Ground Roar owns one visual-only rock at each boss-relative cardinal
-		direction. The typed objects remain live for five seconds, then publish
-		their reliable terminal presentation pulse before the same-tick despawn. */
+		/* Ground Roar owns four boss-relative Server roots at the authored
+		45/135/225/315-degree diagonal slots. Radius sqrt(3.5^2 + 3.5^2)
+		places them at the requested X/Z +/-3.5 corners. Every root instantiates
+		the same six-element V1 visual document, remains live for five seconds,
+		then publishes its own reliable terminal presentation pulse before
+		same-tick despawn. */
 		CGameRoom groundRoarRoom{ LostArk::Shared::WORLD_ID::VALTAN_ARENA };
 		const bool initializedGroundRoarRoom =
 			groundRoarRoom.Initialize_WorldEntities();
@@ -14024,13 +14068,13 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			cardinalSpawnExact && ordinal < groundRoarObjects.size(); ++ordinal)
 		{
 			const SERVER_COMBAT_OBJECT& object = groundRoarObjects[ordinal];
-			const float yawDegrees = groundRoarBoss.fYawDegrees +
+			const float yawDegrees = groundRoarBoss.fYawDegrees + 45.f +
 				90.f * static_cast<float>(ordinal);
 			const float yawRadians = yawDegrees * 0.01745329251994329577f;
 			const float expectedX = groundRoarBoss.fPositionX +
-				std::sin(yawRadians) * 3.5f;
+				std::sin(yawRadians) * 4.9497475f;
 			const float expectedZ = groundRoarBoss.fPositionZ +
-				std::cos(yawRadians) * 3.5f;
+				std::cos(yawRadians) * 4.9497475f;
 			groundRoarObjectIds[ordinal] = object.iCombatObjectId;
 			groundRoarObjectPoses[ordinal] = object.LiveState.CurrentPose;
 			groundRoarPositions.emplace(
@@ -14081,7 +14125,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		tests.Require(
 			cardinalSpawnExact && 4u == groundRoarPositions.size() &&
 				reliableCardinalSpawns,
-			"Spawn exactly four reliable visual-only Ground Roar rocks at boss-relative yaw 0/90/180/270");
+			"Spawn exactly four reliable visual-only Ground Roar rocks at boss-relative yaw 45/135/225/315 and X/Z +/-3.5");
 
 		std::vector<DAMAGE_EVENT> groundRoarDamageEvents;
 		std::vector<S2C_COMBAT_OBJECT_PRESENTATION_EVENT>

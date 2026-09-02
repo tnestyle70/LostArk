@@ -41,6 +41,9 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.animation_h = read("Client/Public/Animation_Tool.h")
+        cls.valtan_view_admission_h = read(
+            "Client/Public/ValtanViewAdmission.h"
+        )
         cls.animation_cpp = read("Client/Private/Animation_Tool.cpp")
         cls.composition_h = read(
             "Client/Public/ActionCompositionWorkbench.h"
@@ -644,7 +647,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "Server Complete Play must not depend on a local preview model",
         )
         self.assertIn(
-            "VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED",
+            "Can_MutateValtanView(m_eValtanPatternMasterAdmission)",
             function_body(
                 self.animation_cpp,
                 "bool_t Client::CAnimation_Tool::Start_ValtanPatternMasterPreview(",
@@ -883,14 +886,23 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
     def test_valtan_canonical_admission_distinguishes_stale_preserved(self) -> None:
         for token in (
-            "VALTAN_PATTERN_MASTER_ADMISSION_STATE",
+            '#include "ValtanViewAdmission.h"',
+            "VALTAN_VIEW_ADMISSION",
+            "m_eValtanPatternMasterAdmission",
+        ):
+            self.assertIn(token, self.animation_h)
+        for token in (
+            "enum class VALTAN_VIEW_ADMISSION",
             "UNLOADED",
             "ADMITTED",
             "STALE_PRESERVED",
             "REJECTED",
-            "m_eValtanPatternMasterAdmission",
+            "Can_DisplayValtanView(",
+            "Can_MutateValtanView(",
+            "VALTAN_VIEW_ADMISSION::STALE_PRESERVED == eAdmission",
+            "VALTAN_VIEW_ADMISSION::ADMITTED == eAdmission",
         ):
-            self.assertIn(token, self.animation_h)
+            self.assertIn(token, self.valtan_view_admission_h)
         reload_master = function_body(
             self.animation_cpp,
             "bool_t Client::CAnimation_Tool::Reload_ValtanPatternMaster()",
@@ -1390,7 +1402,8 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "CValtanCanonicalProductReadAdmission CanonicalAdmission",
             "CValtanPresentationGenerationReadAdmission GenerationAdmission",
             "GenerationAdmission.Acquire_Receipt(",
-            "CanonicalAdmission.Acquire(strOutStatus)",
+            "VALTAN_CANONICAL_READ_DIAGNOSTIC CanonicalDiagnostic",
+            "CanonicalAdmission.Acquire(CanonicalDiagnostic)",
             "Reload_PatternBindings_WhileAdmitted(StepStatus)",
             "Reload_PatternEffectCues_WhileAdmitted(StepStatus)",
             "Reload_PatternSoundCues_WhileAdmitted(StepStatus)",
@@ -1606,8 +1619,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         self.assertIn("CValtanPatternFlowService::Get().Start(", flow_submit)
         restart_saved = self.boss_cpp[
             self.boss_cpp.index(
-                "bool_t Client::CBossTool::Restart_SavedFlow(\n"
-                "\tconst bool_t bRequireSingleSavedPattern)"
+                "bool_t Client::CBossTool::Restart_SavedFlow()"
             ) :
             self.boss_cpp.index(
                 "bool_t Client::CBossTool::Request_RevivePlayer("

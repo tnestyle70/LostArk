@@ -641,6 +641,20 @@ namespace
 			std::abs(BindEnter->fValue - 5000.f) < 0.001f &&
 			5000u == BindEnter->iDurationMs,
 			"Bind Product action lost its Y+5m for 5000 ms contract");
+		const auto SilenceDeadline = std::find_if(
+			Silence.Stages[1].Actions.begin(), Silence.Stages[1].Actions.end(),
+			[](const VALTAN_STAGE_ACTION_VIEW& Action)
+			{
+				return "ENTER" == Action.strTrigger &&
+					"SET_PLAYER_SILENCE" == Action.strKind &&
+					"player.status.silence" == Action.strTargetId;
+			});
+		Require(1u == Silence.Stages[1].Actions.size() &&
+			Silence.Stages[1].Actions.end() != SilenceDeadline &&
+			std::abs(SilenceDeadline->fValue - 1.f) < 0.001f &&
+			5000u == SilenceDeadline->iDurationMs &&
+			SilenceDeadline->iDurationMs >= Silence.Stages[1].iDurationMs,
+			"Silence Product action lost its ENTER-only 5000 ms deadline contract");
 		Require(!Stagger.Stages[0].bSuppressAnimation &&
 			ClipNames(Stagger.Stages[0]) == std::vector<std::string>{
 				"mesh_att_battle_17_start", "mesh_att_battle_17_loop" } &&
@@ -1046,6 +1060,16 @@ namespace
 				LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY,
 				0u, 1u, 0u, &WriterOverlap),
 				"exclusive writer did not acquire after canonical reader release");
+			{
+				CValtanCanonicalProductReadAdmission BlockedAdmission;
+				VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic;
+				Require(!BlockedAdmission.Acquire(Diagnostic) &&
+					VALTAN_CANONICAL_READ_FAILURE_KIND::WRITER_BUSY ==
+						Diagnostic.eFailure &&
+					Diagnostic.Is_AutomaticRetryable() &&
+					!Diagnostic.Requires_ProductProjection(),
+					"writer contention was not returned as a typed retryable failure");
+			}
 			Require(FALSE != UnlockFileEx(
 				hWriter, 0u, 1u, 0u, &WriterOverlap),
 				"canonical Product interleaving oracle could not release writer lock");
@@ -1057,6 +1081,155 @@ namespace
 			throw;
 		}
 	}
+
+	void VerifyStaleProjectionReturnsTypedOwnerDiagnostic()
+	{
+		const std::filesystem::path GameplayPath = CProjectDataRoot::Resolve(
+			std::filesystem::path(L"Valtan") / L"Valtan.gameplay.json");
+		const std::filesystem::path PresentationPath = CProjectDataRoot::Resolve(
+			std::filesystem::path(L"Valtan") / L"Valtan.presentation.json");
+		std::string Gameplay = ReadExactBytes(GameplayPath);
+		const std::string EventMarker =
+			"\"eventId\": \"event.valtan.silence-slot.apply.enter\"";
+		const size_t iEvent = Gameplay.find(EventMarker);
+		const std::string DurationMarker = "\"durationMs\": 5000";
+		const size_t iDuration = std::string::npos == iEvent ?
+			std::string::npos : Gameplay.find(DurationMarker, iEvent);
+		Require(std::string::npos != iDuration,
+			"typed stale-projection oracle could not find Silence deadline");
+		Gameplay.replace(iDuration, DurationMarker.size(),
+			"\"durationMs\": 6000");
+
+		const std::filesystem::path Temporary =
+			std::filesystem::temp_directory_path() /
+			("LostArk.ValtanTypedProjection." +
+			 std::to_string(GetCurrentProcessId()) + ".json");
+		struct SCOPED_TEMPORARY final
+		{
+			std::filesystem::path Path;
+			~SCOPED_TEMPORARY()
+			{
+				std::error_code Ignored;
+				std::filesystem::remove(Path, Ignored);
+			}
+		} Cleanup{ Temporary };
+		{
+			std::ofstream Output(Temporary, std::ios::binary | std::ios::trunc);
+			Require(static_cast<bool_t>(Output),
+				"typed stale-projection oracle could not create its source copy");
+			Output.write(Gameplay.data(),
+				static_cast<std::streamsize>(Gameplay.size()));
+			Output.flush();
+			Require(static_cast<bool_t>(Output),
+				"typed stale-projection oracle could not flush its source copy");
+		}
+
+		VALTAN_PATTERN_TREE_VIEW Preserved;
+		VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic;
+		std::string Status;
+		Require(!CValtanPatternTree::Load_FromAuthoringPaths(
+			Temporary, PresentationPath, Preserved, Status,
+			VALTAN_PATTERN_TREE_LOAD_POLICY::REQUIRE_ACTIVE_PRODUCT_PARITY,
+			&Diagnostic),
+			"stale source projection unexpectedly joined active Product");
+		const std::string DiagnosticDetail =
+			"stale source projection diagnostic mismatch: kind=" +
+			std::to_string(static_cast<uint32_t>(Diagnostic.eFailure)) +
+			" pattern=" + Diagnostic.strRejectedPatternId +
+			" stage=" + Diagnostic.strRejectedStageId +
+			" status=" + Status;
+		Require(VALTAN_CANONICAL_READ_FAILURE_KIND::STALE_PROJECTION ==
+				Diagnostic.eFailure &&
+			Diagnostic.Requires_ProductProjection() &&
+			!Diagnostic.Is_AutomaticRetryable() &&
+			"VALTAN_SILENCE_SLOT" == Diagnostic.strRejectedPatternId &&
+			"SILENCE_APPLY" == Diagnostic.strRejectedStageId &&
+			0u == Preserved.Get_PatternCount(),
+			DiagnosticDetail.c_str());
+	}
+
+	void VerifyStaleVolleyGeometryAndScheduleReturnTypedOwnerDiagnostic()
+	{
+		const std::filesystem::path GameplayPath = CProjectDataRoot::Resolve(
+			std::filesystem::path(L"Valtan") / L"Valtan.gameplay.json");
+		const std::filesystem::path PresentationPath = CProjectDataRoot::Resolve(
+			std::filesystem::path(L"Valtan") / L"Valtan.presentation.json");
+		const std::string CanonicalGameplay = ReadExactBytes(GameplayPath);
+		const auto VerifyMutation =
+			[&CanonicalGameplay, &PresentationPath](
+				const std::string_view strOracleName,
+				const std::string_view strEventMarker,
+				const std::string_view strFieldMarker,
+				const std::string_view strFieldReplacement,
+				const std::string_view strExpectedPatternId,
+				const std::string_view strExpectedStageId)
+			{
+				std::string Gameplay = CanonicalGameplay;
+				const size_t iEvent = Gameplay.find(strEventMarker);
+				const size_t iField = std::string::npos == iEvent ?
+					std::string::npos : Gameplay.find(strFieldMarker, iEvent);
+				Require(std::string::npos != iField,
+					"typed volley oracle could not find its source field");
+				Gameplay.replace(iField, strFieldMarker.size(),
+					strFieldReplacement);
+
+				const std::filesystem::path Temporary =
+					std::filesystem::temp_directory_path() /
+					("LostArk.ValtanTypedVolleyProjection." +
+					 std::string(strOracleName) + "." +
+					 std::to_string(GetCurrentProcessId()) + ".json");
+				struct SCOPED_TEMPORARY final
+				{
+					std::filesystem::path Path;
+					~SCOPED_TEMPORARY()
+					{
+						std::error_code Ignored;
+						std::filesystem::remove(Path, Ignored);
+					}
+				} Cleanup{ Temporary };
+				{
+					std::ofstream Output(
+						Temporary, std::ios::binary | std::ios::trunc);
+					Require(static_cast<bool_t>(Output),
+						"typed volley oracle could not create its source copy");
+					Output.write(Gameplay.data(),
+						static_cast<std::streamsize>(Gameplay.size()));
+					Output.flush();
+					Require(static_cast<bool_t>(Output),
+						"typed volley oracle could not flush its source copy");
+				}
+
+				VALTAN_PATTERN_TREE_VIEW Preserved;
+				VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic;
+				std::string Status;
+				Require(!CValtanPatternTree::Load_FromAuthoringPaths(
+					Temporary, PresentationPath, Preserved, Status,
+					VALTAN_PATTERN_TREE_LOAD_POLICY::
+						REQUIRE_ACTIVE_PRODUCT_PARITY,
+					&Diagnostic),
+					"stale source volley unexpectedly joined active Product");
+				const std::string Detail =
+					"stale volley " + std::string(strOracleName) +
+					" did not fail closed: " + Status;
+				Require(VALTAN_CANONICAL_READ_FAILURE_KIND::STALE_PROJECTION ==
+						Diagnostic.eFailure &&
+					Diagnostic.Requires_ProductProjection() &&
+					!Diagnostic.Is_AutomaticRetryable() &&
+					strExpectedPatternId == Diagnostic.strRejectedPatternId &&
+					strExpectedStageId == Diagnostic.strRejectedStageId &&
+					0u == Preserved.Get_PatternCount(),
+					Detail.c_str());
+			};
+
+		VerifyMutation("geometry",
+			"\"eventId\": \"event.valtan.ghost.portal-once.volley\"",
+			"\"radiusM\": 31.112698", "\"radiusM\": 30.112698",
+			"VALTAN_GHOST_PORTAL_ONCE", "ACTIVE");
+		VerifyMutation("schedule",
+			"\"eventId\": \"event.valtan.high-jump.airborne.spawn-target-axe\"",
+			"\"intervalMs\": 1333", "\"intervalMs\": 1334",
+			"VALTAN_HIGH_JUMP", "AIRBORNE");
+	}
 }
 
 int Run_ValtanCanonicalGraphContractTests()
@@ -1065,10 +1238,12 @@ int Run_ValtanCanonicalGraphContractTests()
 	{
 		VerifyFlowDocumentV2AuthoringContract();
 		std::cout << "ValtanPatternFlowDocumentContractTests: PASS\n";
+		VerifyStaleProjectionReturnsTypedOwnerDiagnostic();
+		VerifyStaleVolleyGeometryAndScheduleReturnTypedOwnerDiagnostic();
 		VerifyCanonicalProductReadAdmissionExcludesWriter();
 		VerifySixPizzaArenaTargetFollowRoot();
 		VerifyCanonicalGraphInventoryAndFlow();
-		std::cout << "ValtanCanonicalGraphContractTests: 4/4 passed\n";
+		std::cout << "ValtanCanonicalGraphContractTests: 6/6 passed\n";
 		return 0;
 	}
 	catch (const std::exception& Error)

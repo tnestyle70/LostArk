@@ -86,33 +86,11 @@ public:
 	   user chooses Discard; staging failure preserves the previous snapshot. */
 	bool_t Discard_BossValtanBindingDraftAndReload(
 		std::string& strOutError);
-	/* Writes one exact Server-stage binding into the BOSS_VALTAN authoring
-	   owner.  The candidate is cross-validated and serialized/parsed before
-	   the atomic file replacement; success also commits the matching immutable
-	   in-memory snapshot so the Workbench can render it without another scan. */
-	bool_t Append_BossValtanStageBinding(
-		const std::string& strResourceId,
-		bool_t bGroup,
-		const std::string& strPatternId,
-		const std::string& strStageId,
-		const std::string& strActionId,
-		uint32_t iStartMs,
-		std::string& strOutError);
-	bool_t Remove_BossValtanStageBinding(
-		const EFFECT_V2_STAGE_BINDING_KEY& Key,
-		std::string& strOutError);
-	bool_t Duplicate_BossValtanStageBinding(
-		const EFFECT_V2_STAGE_BINDING_KEY& SourceKey,
-		uint32_t iDuplicateStartMs,
-		std::string& strOutError);
-	bool_t Update_BossValtanStageBindingStart(
-		const EFFECT_V2_STAGE_BINDING_KEY& SourceKey,
-		uint32_t iNewStartMs,
-		std::string& strOutError);
 	/* Action Composition stages V2 bindings in the immutable catalog snapshot
 	   so the Sequencer and local preview see the draft immediately, but the
 	   typed owner is not written until the Workbench's single Save transaction
-	   commits Pattern, Sound and V2 together. */
+	   commits Pattern, Sound and V2 together. There is deliberately no public
+	   immediate-write API for the BOSS_VALTAN owner. */
 	bool_t Stage_AppendBossValtanStageBinding(
 		const std::string& strResourceId,
 		bool_t bGroup,
@@ -164,13 +142,11 @@ private:
 	bool_t Commit_BossValtanBindingsLocked(
 		std::vector<EFFECT_V2_BINDING> CandidateBindings,
 		const char* pOperation,
-		bool_t bWriteOwner,
 		std::string& strOutError);
 	bool_t Mutate_BossValtanStageBinding(
 		const EFFECT_V2_STAGE_BINDING_KEY& SourceKey,
 		uint32_t iTargetStartMs,
 		BOSS_VALTAN_BINDING_MUTATION eMutation,
-		bool_t bWriteOwner,
 		std::string& strOutError);
 
 private:

@@ -370,7 +370,8 @@ presentation이다. authored world angle은 45/135/225/315도이고 ordinal next
 - 실제 counter 조건을 소유하는 `VALTAN_TRIPLE_COUNTER` 표시명은
   `3연속 내려치기 - 카운터`로 바꾼다. counter가 없는 `VALTAN_THREE` 이름은 유지한다.
 - Ground Roar의 사용자 저작 돌+폭발 Effect 문서 전체를 하나의 composition으로 유지한다.
-  Server combat-object volley가 boss-relative 반경 3.5m, 0/90/180/270도에 네 root를 만들고
+  Server combat-object volley가 boss-relative `radiusM=4.9497475`, 시작각 45도, 90도 간격에
+  네 root를 만든다. boss yaw 0도 기준 X/Z는 `±3.5`의 축 정렬 사각형 꼭짓점이며,
   각 root가 동일한 Effect element closure를 생성한다. V1 `groupId`를 transform parent로
   오해하거나 element를 네 벌로 수동 복제하지 않는다.
 - canonical Save adapter는 local `nextActionId`뿐 아니라 합법적인 cross-pattern Counter

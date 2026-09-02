@@ -29,6 +29,153 @@ def function_tail(text: str, signature: str, next_signature: str) -> str:
 
 
 class EffectV2CatalogContractTests(unittest.TestCase):
+    def test_valtan_pattern_view_preserves_last_good_and_separates_display_from_mutation(self) -> None:
+        header = read(EFFECT_TOOL_V2_HEADER)
+        source = read(EFFECT_TOOL_V2_SOURCE)
+        reload_body = function_tail(
+            source,
+            "bool_t Client::CEffect_Tool_V2::Reload_ValtanTree(",
+            "bool_t Client::CEffect_Tool_V2::Build_ValtanTimeline(",
+        )
+        render_body = function_tail(
+            source,
+            "void Client::CEffect_Tool_V2::Render_ValtanPatternSection()",
+            "bool_t Client::CEffect_Tool_V2::Try_PlayValtanServerPattern()",
+        )
+
+        for token in (
+            '#include "ValtanViewAdmission.h"',
+            "VALTAN_VIEW_ADMISSION m_eValtanTreeAdmission",
+            "m_bValtanTreeReloadRetryPending",
+            "m_iValtanTreeAutomaticRetryCount",
+        ):
+            self.assertIn(token, header)
+        self.assertNotIn("m_bValtanTreeLoaded", header + source)
+
+        for token in (
+            "VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic;",
+            "CValtanPatternTree::Load(Staged, Diagnostic)",
+            "Diagnostic.Is_AutomaticRetryable()",
+            "Diagnostic.Requires_ProductProjection()",
+            "VALTAN_CANONICAL_READ_DIAGNOSTIC::PRODUCT_PROJECTION_COMMAND",
+            "VALTAN_VIEW_ADMISSION::STALE_PRESERVED",
+            "STALE_PRESERVED / READ ONLY",
+            "m_ValtanTree = std::move(Staged);",
+            "m_eValtanTreeAdmission = VALTAN_VIEW_ADMISSION::ADMITTED;",
+        ):
+            self.assertIn(token, reload_body)
+        failure_region = reload_body[
+            reload_body.index("if (!CValtanPatternTree::Load(Staged, Diagnostic))") :
+            reload_body.index("m_ValtanTree = std::move(Staged);")
+        ]
+        self.assertNotIn("m_ValtanTree = {}", failure_region)
+        self.assertNotIn("m_ValtanPatterns.clear()", failure_region)
+
+        for token in (
+            "Can_DisplayValtanView(m_eValtanTreeAdmission)",
+            "Can_MutateValtanView(m_eValtanTreeAdmission)",
+            '"STALE_PRESERVED / READ ONLY"',
+            "!bHasPattern || !bMutationAdmitted",
+            '"Refresh Pattern View"',
+        ):
+            self.assertIn(token, render_body)
+
+        for signature in (
+            "bool_t Client::CEffect_Tool_V2::Build_ValtanTimeline(",
+            "bool_t Client::CEffect_Tool_V2::Apply_ValtanTimeline(",
+            "bool_t Client::CEffect_Tool_V2::Try_PlayValtanServerPattern(",
+        ):
+            body = source[source.index(signature) :]
+            body = body[: body.index("\n}") + 2]
+            self.assertIn("Can_MutateValtanView(m_eValtanTreeAdmission)", body)
+
+    def test_valtan_pattern_view_automatic_retry_is_bounded_and_render_driven(self) -> None:
+        source = read(EFFECT_TOOL_V2_SOURCE)
+        schedule = function_tail(
+            source,
+            "bool_t Client::CEffect_Tool_V2::Schedule_ValtanTreeReloadRetry()",
+            "bool_t Client::CEffect_Tool_V2::Reload_ValtanTree(",
+        )
+        render = function_tail(
+            source,
+            "void Client::CEffect_Tool_V2::Render()",
+            "void Client::CEffect_Tool_V2::Scan_Resources()",
+        )
+        for token in (
+            "VALTAN_TREE_MAX_AUTOMATIC_RETRY_COUNT",
+            "m_iValtanTreeAutomaticRetryCount",
+            "m_bValtanTreeReloadRetryPending = false",
+            "m_dNextValtanTreeReloadRetrySeconds",
+        ):
+            self.assertIn(token, schedule)
+        self.assertIn("ImGui::GetTime()", schedule)
+        self.assertIn("m_bValtanTreeReloadRetryPending", render)
+        self.assertIn("Reload_ValtanTree(false)", render)
+
+    def test_effect_attach_never_writes_the_boss_valtan_binding_owner_directly(self) -> None:
+        catalog_header = read(HEADER)
+        catalog_source = read(SOURCE)
+        tool_source = read(EFFECT_TOOL_V2_SOURCE)
+        save = function_tail(
+            tool_source,
+            "bool_t Client::CEffect_Tool_V2::Save_Bindings()",
+            "void Client::CEffect_Tool_V2::Render_AttachWindow()",
+        )
+        render = function_tail(
+            tool_source,
+            "void Client::CEffect_Tool_V2::Render_AttachWindow()",
+            "void Client::CEffect_Tool_V2::Scan_Groups()",
+        )
+
+        valtan_guard = save.index(
+            "if (VALTAN_TARGET_ARCHETYPE_ID == m_strTargetArchetypeId)"
+        )
+        generic_write = save.index("CEffectV2Document::Write_AtomicFile(")
+        self.assertLess(valtan_guard, generic_write)
+        self.assertIn("return false;", save[valtan_guard:generic_write])
+        for token in (
+            "BOSS_VALTAN bindings are read-only in Effect Attach v2",
+            "stage them in Action Composition",
+            "one canonical transaction",
+            "No binding owner was written",
+        ):
+            self.assertIn(token, save)
+        self.assertIn(
+            "CEffectV2Document::Binding_Path(m_strTargetArchetypeId)", save
+        )
+        self.assertNotIn(
+            "CEffectV2Document::Binding_Path(VALTAN_TARGET_ARCHETYPE_ID)",
+            tool_source,
+        )
+
+        for token in (
+            "const bool_t bDirectBindingMutationAllowed =",
+            "VALTAN_TARGET_ARCHETYPE_ID != m_strTargetArchetypeId",
+            "BOSS_VALTAN bindings are READ ONLY here",
+            "!bDirectBindingMutationAllowed",
+        ):
+            self.assertIn(token, render)
+
+        self.assertNotIn("CEffectV2Document::Write_AtomicFile(", catalog_source)
+        self.assertNotIn("bWriteOwner", catalog_header + catalog_source)
+        for forbidden in (
+            "bool_t Append_BossValtanStageBinding(",
+            "bool_t Remove_BossValtanStageBinding(",
+            "bool_t Duplicate_BossValtanStageBinding(",
+            "bool_t Update_BossValtanStageBindingStart(",
+        ):
+            self.assertNotIn(forbidden, catalog_header + catalog_source)
+
+        for required in (
+            "Stage_AppendBossValtanStageBinding(",
+            "Stage_RemoveBossValtanStageBinding(",
+            "Stage_DuplicateBossValtanStageBinding(",
+            "Stage_UpdateBossValtanStageBindingStart(",
+            "Prepare_BossValtanBindingDraftSave(",
+            "Accept_BossValtanBindingDraftSave(",
+        ):
+            self.assertIn(required, catalog_header)
+
     def test_effect_tool_v2_data_files_lists_groups_and_openable_children(self) -> None:
         header = read(EFFECT_TOOL_V2_HEADER)
         source = read(EFFECT_TOOL_V2_SOURCE)
@@ -170,7 +317,8 @@ class EffectV2CatalogContractTests(unittest.TestCase):
         self.assertIn("failed before commit", discard)
         self.assertIn("CEffectV2Runtime::Invalidate_Caches();", discard)
 
-    def test_binding_commit_self_validates_then_atomically_commits(self) -> None:
+    def test_binding_mutation_self_validates_then_stages_for_canonical_commit(self) -> None:
+        header = read(HEADER)
         source = read(SOURCE)
         commit_body = function_tail(
             source,
@@ -186,13 +334,13 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             "Stage_BossValtanBindings(",
             "Isolate_InvalidCrossReferences(",
             "const bool_t bBindingBaselineMatches =",
-            "CEffectV2Document::Write_AtomicFile(",
             "m_pSnapshot = std::move(pCandidate);",
+            "m_bBossValtanBindingDraftDirty = true;",
         )
         positions = [commit_body.index(token) for token in ordered]
         self.assertEqual(positions, sorted(positions))
-        self.assertIn("BOSS_VALTAN.effectv2bindings.json", commit_body)
-        self.assertIn("Runtime caches were refreshed", commit_body)
+        self.assertIn("Staged Effect V2 binding", commit_body)
+        self.assertIn("Use Save to commit every owner together", commit_body)
         self.assertIn("CEffectV2Runtime::Invalidate_Caches();", commit_body)
         self.assertIn("source changed; reload", commit_body)
         self.assertIn("Matches_DocumentBaseline(", commit_body)
@@ -200,6 +348,8 @@ class EffectV2CatalogContractTests(unittest.TestCase):
         self.assertIn("DiskDocuments, DiskGroups,", commit_body)
         self.assertIn("Validate_NoLeafGroupClockOverlap(", commit_body)
         self.assertEqual(commit_body.count("m_pSnapshot ="), 1)
+        self.assertNotIn("CEffectV2Document::Write_AtomicFile(", commit_body)
+        self.assertNotIn("bWriteOwner", header + source)
 
     def test_binding_owner_is_parsed_whole_and_never_row_isolated(self) -> None:
         source = read(SOURCE)
@@ -283,16 +433,26 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             "std::string strStageId;",
             "std::string strActionId;",
             "uint32_t iStartMs = 0u;",
-            "Remove_BossValtanStageBinding(",
-            "Duplicate_BossValtanStageBinding(",
-            "Update_BossValtanStageBindingStart(",
+            "Stage_RemoveBossValtanStageBinding(",
+            "Stage_DuplicateBossValtanStageBinding(",
+            "Stage_UpdateBossValtanStageBindingStart(",
+            "Prepare_BossValtanBindingDraftSave(",
+            "Accept_BossValtanBindingDraftSave(",
         ):
             self.assertIn(token, header)
+
+        for forbidden in (
+            "bool_t Append_BossValtanStageBinding(",
+            "bool_t Remove_BossValtanStageBinding(",
+            "bool_t Duplicate_BossValtanStageBinding(",
+            "bool_t Update_BossValtanStageBindingStart(",
+        ):
+            self.assertNotIn(forbidden, header + source)
 
         mutation_body = function_tail(
             source,
             "bool_t Client::CEffectV2Catalog::Mutate_BossValtanStageBinding(",
-            "bool_t Client::CEffectV2Catalog::Append_BossValtanStageBinding(",
+            "bool_t Client::CEffectV2Catalog::Stage_AppendBossValtanStageBinding(",
         )
         for token in (
             "Resolve_UniqueStageBindingIndex(",
@@ -331,11 +491,11 @@ class EffectV2CatalogContractTests(unittest.TestCase):
             self.assertIn(field, key_factory)
 
         wrapper_region = source[source.index(
-            "bool_t Client::CEffectV2Catalog::Append_BossValtanStageBinding("
+            "bool_t Client::CEffectV2Catalog::Stage_AppendBossValtanStageBinding("
         ) : source.index(
             "std::shared_ptr<const Client::EFFECT_V2_CATALOG_SNAPSHOT>"
         )]
-        self.assertEqual(wrapper_region.count("Mutate_BossValtanStageBinding("), 8)
+        self.assertEqual(wrapper_region.count("Mutate_BossValtanStageBinding("), 4)
         for token in (
             "Stage_AppendBossValtanStageBinding(",
             "Stage_RemoveBossValtanStageBinding(",
@@ -344,37 +504,28 @@ class EffectV2CatalogContractTests(unittest.TestCase):
         ):
             self.assertIn(token, wrapper_region)
 
-        append_bodies = (
-            function_tail(
-                source,
-                "bool_t Client::CEffectV2Catalog::Append_BossValtanStageBinding(",
-                "bool_t Client::CEffectV2Catalog::Remove_BossValtanStageBinding(",
-            ),
-            function_tail(
-                source,
-                "bool_t Client::CEffectV2Catalog::Stage_AppendBossValtanStageBinding(",
-                "bool_t Client::CEffectV2Catalog::Stage_RemoveBossValtanStageBinding(",
-            ),
+        append_body = function_tail(
+            source,
+            "bool_t Client::CEffectV2Catalog::Stage_AppendBossValtanStageBinding(",
+            "bool_t Client::CEffectV2Catalog::Stage_RemoveBossValtanStageBinding(",
         )
-        for append_body in append_bodies:
-            for token in (
-                "EFFECT_V2_STAGE_BINDING_KEY Key{};",
-                "Key.strResourceId = strResourceId;",
-                "Key.bGroup = bGroup;",
-                "Key.strPatternId = strPatternId;",
-                "Key.strStageId = strStageId;",
-                "Key.strActionId = strActionId;",
-                "Key.iStartMs = iStartMs;",
-            ):
-                self.assertIn(token, append_body)
-
-        for signature in (
-            "Append_BossValtanStageBinding(",
-            "Stage_AppendBossValtanStageBinding(",
+        for token in (
+            "EFFECT_V2_STAGE_BINDING_KEY Key{};",
+            "Key.strResourceId = strResourceId;",
+            "Key.bGroup = bGroup;",
+            "Key.strPatternId = strPatternId;",
+            "Key.strStageId = strStageId;",
+            "Key.strActionId = strActionId;",
+            "Key.iStartMs = iStartMs;",
         ):
-            declaration = header[header.index(signature) : header.index(");", header.index(signature))]
-            for parameter in ("strPatternId", "strStageId", "strActionId"):
-                self.assertIn(parameter, declaration)
+            self.assertIn(token, append_body)
+
+        signature = "Stage_AppendBossValtanStageBinding("
+        declaration = header[
+            header.index(signature) : header.index(");", header.index(signature))
+        ]
+        for parameter in ("strPatternId", "strStageId", "strActionId"):
+            self.assertIn(parameter, declaration)
 
     def test_new_boss_mutations_reject_foreign_subjects_and_overlaps(self) -> None:
         source = read(SOURCE)
@@ -405,7 +556,7 @@ class EffectV2CatalogContractTests(unittest.TestCase):
         mutation_body = function_tail(
             source,
             "bool_t Client::CEffectV2Catalog::Mutate_BossValtanStageBinding(",
-            "bool_t Client::CEffectV2Catalog::Append_BossValtanStageBinding(",
+            "bool_t Client::CEffectV2Catalog::Stage_AppendBossValtanStageBinding(",
         )
         self.assertIn(
             "BOSS_VALTAN_BINDING_MUTATION::APPEND_BINDING == eMutation",

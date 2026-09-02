@@ -1953,7 +1953,8 @@ bool Client::CBalanceTool::Require_ValtanAuthoringAdmission(
 	const char* const operation,
 	std::string& status) const
 {
-	if (VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED ==
+	if (Can_MutateValtanView(m_eValtanViewAdmission) &&
+		VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED ==
 			m_valtanSourceJoin.state &&
 		!m_valtanSourceRevision.empty())
 	{
@@ -4108,6 +4109,12 @@ bool Client::CBalanceTool::Set_ValtanCounterProxyDraft(
 bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)
 {
 	std::string stepStatus;
+	if (m_dirty && !m_valtanCommittedRevisionPendingReopen.empty())
+	{
+		status =
+			"Save & Apply will not repeat an already committed Valtan source write. Use Retry Product Publish / Apply to reopen that exact commit, or explicitly discard/save newer edits.";
+		return false;
+	}
 	const bool hadDirtyDraft = m_dirty;
 	if (hadDirtyDraft)
 	{
@@ -4117,6 +4124,14 @@ bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)
 				"Save & Apply could not commit the canonical Pattern JSON/Product closure; the previous admitted generation remains active: " +
 				stepStatus;
 			return false;
+		}
+		if (0u == stepStatus.rfind(
+				"COMMIT_SUCCEEDED_REOPEN_FAILED:", 0u))
+		{
+			status =
+				"Canonical Pattern source/Product files were committed, but their exact editor reopen did not complete. No candidate was published or applied; use Retry Product Publish / Apply after fixing the diagnostic. " +
+				stepStatus;
+			return true;
 		}
 	}
 	else if (!Validate_ValtanDraft(stepStatus))
@@ -4218,6 +4233,63 @@ bool Client::CBalanceTool::Save_ValtanCanonicalProduct(std::string& status)
 	return true;
 }
 
+bool Client::CBalanceTool::Retry_ValtanProductPublishApply(
+	std::string& status)
+{
+	/* CommitCanonicalDraft is the only source writer. A successful commit may
+	   have returned its durable receipt before this editor could reopen the new
+	   Product. Reopen exactly that receipt only while no subsequent authoring
+	   command advanced the preserved in-memory draft. */
+	if (!m_valtanCommittedRevisionPendingReopen.empty())
+	{
+		if (m_valtanDraftGeneration !=
+			m_valtanCommittedReopenDraftGeneration)
+		{
+			status =
+				"Retry Publish / Apply preserved newer unsaved Valtan edits. Save or discard those edits before reopening the earlier committed revision.";
+			return false;
+		}
+		const std::string ExpectedRevision =
+			m_valtanCommittedRevisionPendingReopen;
+		if (!Reload())
+		{
+			status =
+				"Retry Publish / Apply could not reopen the already committed Valtan revision; no source file was rewritten: " +
+				m_status;
+			return false;
+		}
+		if (m_valtanSourceRevision != ExpectedRevision ||
+			VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED !=
+				m_valtanSourceJoin.state)
+		{
+			status =
+				"Retry Publish / Apply reopened a different canonical Valtan revision; no candidate was published or applied.";
+			return false;
+		}
+	}
+	else if (m_dirty)
+	{
+		status =
+			"Retry Publish / Apply requires a clean saved Valtan source. Existing unsaved edits were preserved.";
+		return false;
+	}
+
+	/* Save_ValtanProduct writes canonical source only when m_dirty is true. The
+	   guards above make this a typed publish/apply-only continuation. */
+	std::string RetryStatus;
+	if (!Save_ValtanProduct(RetryStatus))
+	{
+		status =
+			"Retry Publish / Apply failed without rewriting the saved Valtan source: " +
+			RetryStatus;
+		return false;
+	}
+	status =
+		"Retry Publish / Apply reused the clean saved Valtan source without another canonical commit. " +
+		RetryStatus;
+	return true;
+}
+
 bool Client::CBalanceTool::Save_ValtanCompositionProduct(
 	const VALTAN_COMPOSITION_OWNER_DRAFTS& ownerDrafts,
 	std::string& status)
@@ -4286,13 +4358,21 @@ void Client::CBalanceTool::MarkDirty(const bool changed)
 
 bool Client::CBalanceTool::Reload()
 {
+	/* Revoke write authority before any I/O. Every early return below keeps the
+	   prior committed vectors intact, but they are diagnostic-only until this
+	   exact parse/validate/stage transaction reaches the final commit. */
+	const bool_t bHadDisplayableValtanView =
+		Can_DisplayValtanView(m_eValtanViewAdmission);
+	m_eValtanViewAdmission = bHadDisplayableValtanView ?
+		VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
+		VALTAN_VIEW_ADMISSION::REJECTED;
 	CValtanCanonicalProductReadAdmission CanonicalAdmission;
-	std::string CanonicalAdmissionStatus;
-	if (!CanonicalAdmission.Acquire(CanonicalAdmissionStatus))
+	VALTAN_CANONICAL_READ_DIAGNOSTIC CanonicalDiagnostic;
+	if (!CanonicalAdmission.Acquire(CanonicalDiagnostic))
 	{
 		m_status =
 			"Reload failed before staging; the previous Balance/Workbench draft was preserved: " +
-			CanonicalAdmissionStatus;
+			CanonicalDiagnostic.strStatus;
 		return false;
 	}
 	DATA_JSON_VALUE playerRoot;
@@ -4739,11 +4819,11 @@ bool Client::CBalanceTool::Reload()
 			status;
 		return false;
 	}
-	if (!CanonicalAdmission.Validate_StillCurrent(CanonicalAdmissionStatus))
+	if (!CanonicalAdmission.Validate_StillCurrent(CanonicalDiagnostic))
 	{
 		m_status =
 			"Reload failed before commit; the previous Balance/Workbench draft was preserved: " +
-			CanonicalAdmissionStatus;
+			CanonicalDiagnostic.strStatus;
 		return false;
 	}
 
@@ -4778,8 +4858,16 @@ bool Client::CBalanceTool::Reload()
 	m_valtanSourceRevision = std::move(valtanSourceRevision);
 	m_valtanAuthoringRevision = std::move(valtanAuthoringRevision);
 	m_valtanSourceJoin = std::move(valtanSourceJoin);
+	m_eValtanViewAdmission =
+		VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED ==
+			m_valtanSourceJoin.state &&
+		!m_valtanSourceRevision.empty() ?
+			VALTAN_VIEW_ADMISSION::ADMITTED :
+			VALTAN_VIEW_ADMISSION::REJECTED;
 	m_valtanCandidateRevision.clear();
 	m_valtanCandidateApplyClass.clear();
+	m_valtanCommittedRevisionPendingReopen.clear();
+	m_valtanCommittedReopenDraftGeneration = 0u;
 	if (!m_valtanAuthoringRevision.empty() &&
 		!CValtanTuningCommandService::Get().
 			Has_GameplaySourceActivationExpectation())
@@ -9129,6 +9217,18 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 			return false;
 		}
 		const std::string committedRevision = result.sourceRevision;
+		/* The durable source receipt must gate Server replay even when the
+		   following editor reopen fails. Candidate publication will replace this
+		   revision-less NOT_ACTIVATED expectation with its exact Product hash. */
+		if (0u != result.changedCount)
+		{
+			CValtanTuningCommandService::Get().
+				Record_GameplaySourceActivationExpectation(
+					{}, "NOT_ACTIVATED",
+					"Pattern data was saved locally. Retry Product Publish / Apply, restart, or re-enter the Server arena before playback.");
+		}
+		m_valtanCommittedRevisionPendingReopen = committedRevision;
+		m_valtanCommittedReopenDraftGeneration = m_valtanDraftGeneration;
 		if (!Reload())
 		{
 			status =
@@ -9150,13 +9250,6 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 				committedRevision.substr(0u, 12u) +
 				". Reload the current files before editing again.";
 			return true;
-		}
-		if (0u != result.changedCount)
-		{
-			CValtanTuningCommandService::Get().
-				Record_GameplaySourceActivationExpectation(
-					{}, "NOT_ACTIVATED",
-					"Pattern data was saved locally. Restart or re-enter the Server arena to load the saved revision.");
 		}
 		status = "COMMITTED_AND_RELOADED: Saved Valtan Pattern data " +
 			committedRevision.substr(0u, 12u) +
@@ -10150,8 +10243,14 @@ void Client::CBalanceTool::Render()
 		const bool splitJoinValidated =
 			VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED ==
 				m_valtanSourceJoin.state;
+		const bool hasCommittedReopen =
+			!m_valtanCommittedRevisionPendingReopen.empty();
+		const bool canRetryProduct = !m_dirty ||
+			(hasCommittedReopen && m_valtanDraftGeneration ==
+				m_valtanCommittedReopenDraftGeneration);
 		ImGui::BeginDisabled(
-			m_valtanSourceRevision.empty() || !splitJoinValidated);
+			m_valtanSourceRevision.empty() || !splitJoinValidated ||
+			hasCommittedReopen);
 		if (ImGui::Button("Save & Apply##ValtanBalance"))
 		{
 			std::string status;
@@ -10163,6 +10262,22 @@ void Client::CBalanceTool::Render()
 		{
 			ImGui::SetTooltip(
 				"One action: validate joined stable IDs, save authoring, build Product data, and request a fail-closed live update when supported.");
+		}
+		ImGui::SameLine();
+		ImGui::BeginDisabled(
+			m_valtanSourceRevision.empty() || !splitJoinValidated ||
+			!canRetryProduct);
+		if (ImGui::Button("Retry Product Publish / Apply##ValtanBalance"))
+		{
+			std::string status;
+			(void)Retry_ValtanProductPublishApply(status);
+			m_status = std::move(status);
+		}
+		ImGui::EndDisabled();
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		{
+			ImGui::SetTooltip(
+				"Reopen a completed canonical commit when needed, then retry only Product publication/runtime apply. It never repeats the source write and never discards newer edits.");
 		}
 		const CNetworkManager::GAMEPLAY_REVISION_CLIENT_STATE& revisionState =
 			CNetworkManager::Get().Get_GameplayRevisionState();

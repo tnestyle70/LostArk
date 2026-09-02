@@ -50,11 +50,16 @@ namespace
 
 		bool_t Try_Acquire(
 			const std::filesystem::path& ProjectRoot,
-			std::string& strOutError)
+			std::string& strOutError,
+			Client::VALTAN_CANONICAL_READ_FAILURE_KIND& eOutFailure)
 		{
+			eOutFailure =
+				Client::VALTAN_CANONICAL_READ_FAILURE_KIND::ADMISSION_IO;
 			if (ProjectRoot.empty())
 			{
 				strOutError = "project root is unavailable";
+				eOutFailure = Client::VALTAN_CANONICAL_READ_FAILURE_KIND::
+					ADMISSION_STATE_INVALID;
 				return false;
 			}
 			const std::filesystem::path LockPath =
@@ -118,13 +123,18 @@ namespace
 			if (FALSE == LockFileEx(m_hFile, LOCKFILE_FAIL_IMMEDIATELY,
 				0u, 1u, 0u, &m_Overlap))
 			{
+				const DWORD iError = GetLastError();
+				eOutFailure = ERROR_LOCK_VIOLATION == iError ?
+					Client::VALTAN_CANONICAL_READ_FAILURE_KIND::WRITER_BUSY :
+					Client::VALTAN_CANONICAL_READ_FAILURE_KIND::ADMISSION_IO;
 				strOutError =
 					"Create/Project transaction is active (Win32 " +
-					std::to_string(GetLastError()) + ")";
+					std::to_string(iError) + ")";
 				CloseHandle(m_hFile);
 				m_hFile = INVALID_HANDLE_VALUE;
 				return false;
 			}
+			eOutFailure = Client::VALTAN_CANONICAL_READ_FAILURE_KIND::NONE;
 			return true;
 		}
 
@@ -141,8 +151,11 @@ namespace
 
 	bool_t Require_NoActiveValtanPatternGeneration(
 		const std::filesystem::path& ProjectRoot,
-		std::string& strOutError)
+		std::string& strOutError,
+		Client::VALTAN_CANONICAL_READ_FAILURE_KIND& eOutFailure)
 	{
+		eOutFailure =
+			Client::VALTAN_CANONICAL_READ_FAILURE_KIND::ADMISSION_IO;
 		const std::filesystem::path ActiveGeneration =
 			ProjectRoot / VALTAN_PATTERN_ACTIVE_GENERATION_RELATIVE;
 		std::error_code ExistsError;
@@ -156,11 +169,14 @@ namespace
 		}
 		if (bExists)
 		{
+			eOutFailure = Client::VALTAN_CANONICAL_READ_FAILURE_KIND::
+				WRITER_RECOVERY_REQUIRED;
 			strOutError =
 				"active-generation journal requires writer recovery: " +
 				ActiveGeneration.generic_string();
 			return false;
 		}
+		eOutFailure = Client::VALTAN_CANONICAL_READ_FAILURE_KIND::NONE;
 		return true;
 	}
 
@@ -309,6 +325,52 @@ namespace
 				return false;
 		}
 		return true;
+	}
+
+	bool_t Equal_JsonSemanticValue(
+		const DATA_JSON_VALUE& Left,
+		const DATA_JSON_VALUE& Right)
+	{
+		if (Left.Get_Type() != Right.Get_Type())
+			return false;
+		switch (Left.Get_Type())
+		{
+		case DATA_JSON_TYPE::NULL_VALUE:
+			return true;
+		case DATA_JSON_TYPE::BOOLEAN:
+			return Left.Get_Boolean() == Right.Get_Boolean();
+		case DATA_JSON_TYPE::NUMBER:
+			return Left.Get_Number() == Right.Get_Number();
+		case DATA_JSON_TYPE::STRING:
+			return Left.Get_String() == Right.Get_String();
+		case DATA_JSON_TYPE::ARRAY:
+		{
+			const auto& LeftValues = Left.Get_Array();
+			const auto& RightValues = Right.Get_Array();
+			return LeftValues.size() == RightValues.size() &&
+				std::equal(LeftValues.begin(), LeftValues.end(),
+					RightValues.begin(), Equal_JsonSemanticValue);
+		}
+		case DATA_JSON_TYPE::OBJECT:
+		{
+			const auto& LeftFields = Left.Get_Object();
+			const auto& RightFields = Right.Get_Object();
+			if (LeftFields.size() != RightFields.size())
+				return false;
+			for (const auto& [Name, LeftValue] : LeftFields)
+			{
+				const auto RightField = RightFields.find(Name);
+				if (RightFields.end() == RightField ||
+					!Equal_JsonSemanticValue(LeftValue, RightField->second))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+		default:
+			return false;
+		}
 	}
 
 	bool_t Has_ExactPropertiesWithOptional(
@@ -1549,6 +1611,16 @@ namespace
 		std::vector<std::string> PatternIds;
 	};
 
+	struct MASTER_VOLLEY_PROJECTION final
+	{
+		std::string strEventId;
+		std::string strPatternId;
+		std::string strStageId;
+		std::string strActionId;
+		std::string strCombatObjectArchetypeId;
+		DATA_JSON_VALUE ProductAction;
+	};
+
 	struct MASTER_DOCUMENT final
 	{
 		std::vector<std::string> RetiredPatternIds;
@@ -1561,6 +1633,7 @@ namespace
 		std::vector<Client::VALTAN_COUNTER_REACTION_LAYER_VIEW>
 			CounterReactionLayers;
 		std::vector<Client::VALTAN_INDEPENDENT_EFFECT_VIEW> IndependentEffects;
+		std::vector<MASTER_VOLLEY_PROJECTION> VolleyProjections;
 		std::vector<MASTER_PATTERN> Patterns;
 	};
 
@@ -4688,21 +4761,18 @@ namespace
 			const DATA_JSON_VALUE* pDurationMs = Event.Find("durationMs");
 			if (!Has_ExactProperties(Event,
 					{ "eventId", "trigger", "kind", "durationMs" }) ||
-				("ENTER" != strTrigger && "EXIT" != strTrigger) ||
+				"ENTER" != strTrigger ||
 				!Is_NonNegativeInteger(pDurationMs) ||
-				(("ENTER" == strTrigger &&
-				  (pDurationMs->Get_Number() != iStageDurationMs ||
-				   pDurationMs->Get_Number() < 100.0 ||
-				   pDurationMs->Get_Number() > 120000.0)) ||
-				 ("EXIT" == strTrigger && 0.0 != pDurationMs->Get_Number())))
+				pDurationMs->Get_Number() < iStageDurationMs ||
+				pDurationMs->Get_Number() < 100.0 ||
+				pDurationMs->Get_Number() > 120000.0)
 			{
 				strOutError = "split gameplay SET_PLAYER_SILENCE event is invalid";
 				return false;
 			}
 			Action.emplace("targetId",
 				DATA_JSON_VALUE::String("player.status.silence"));
-			Action.emplace("value", DATA_JSON_VALUE::Number(
-				"ENTER" == strTrigger ? 1.0 : 0.0));
+			Action.emplace("value", DATA_JSON_VALUE::Number(1.0));
 			Action.emplace("durationMs", *pDurationMs);
 		}
 		else if ("SET_GAMEPLAY_PHASE" == strKind)
@@ -4972,6 +5042,9 @@ namespace
 				bPerAlivePlayer ? Read_String(*pArenaRandom, "anchor") : "NONE"));
 			strOutSpawnArchetypeId = Read_String(
 				Event, "combatObjectArchetypeId");
+			Action.emplace("trigger", DATA_JSON_VALUE::String(strTrigger));
+			Action.emplace("kind", DATA_JSON_VALUE::String(strKind));
+			*pOutAction = DATA_JSON_VALUE::Object(std::move(Action));
 			return true;
 		}
 		else if ("SPAWN_COMBAT_OBJECT" == strKind)
@@ -5139,6 +5212,7 @@ namespace
 
 		std::map<std::string, SPLIT_CUE_OWNER, std::less<>> CueOwners;
 		std::map<std::string, SPLIT_SPAWN_OWNER, std::less<>> SpawnOwners;
+		std::vector<MASTER_VOLLEY_PROJECTION> VolleyProjections;
 		std::set<std::string, std::less<>> CueOccurrenceIds;
 		std::set<std::string, std::less<>> EventIds;
 		std::set<std::string, std::less<>> CameraInvocationIds;
@@ -5367,7 +5441,26 @@ namespace
 							static_cast<uint32_t>(pDuration->Get_Number()), &Action,
 							strSpawnArchetypeId, bWorldEvent, strOutError))
 						return false;
-					if (!Action.Is_Null())
+					const bool_t bVolleyEvent =
+						"SPAWN_COMBAT_OBJECT_VOLLEY" ==
+							Read_String(Event, "kind");
+					if (bVolleyEvent)
+					{
+						if (Action.Is_Null())
+						{
+							strOutError =
+								"split gameplay volley Product projection is missing";
+							return false;
+						}
+						VolleyProjections.push_back(MASTER_VOLLEY_PROJECTION{
+							strEventId,
+							strPatternId,
+							strStageId,
+							strActionId,
+							strSpawnArchetypeId,
+							Action });
+					}
+					if (!Action.Is_Null() && !bVolleyEvent)
 						Actions.push_back(std::move(Action));
 					if (!strSpawnArchetypeId.empty())
 					{
@@ -5853,6 +5946,7 @@ namespace
 		Out.Mechanics = std::move(MechanicViews);
 		Out.ManualAuditions = std::move(ManualViews);
 		Out.ScriptedSequence = std::move(ScriptedSequence);
+		Out.VolleyProjections = std::move(VolleyProjections);
 		for (size_t iPattern = 0u; iPattern < Out.Patterns.size(); ++iPattern)
 		{
 			MASTER_PATTERN& Pattern = Out.Patterns[iPattern];
@@ -6045,13 +6139,43 @@ namespace
 		}
 	}
 
+	void Set_CanonicalReadFailure(
+		Client::VALTAN_CANONICAL_READ_DIAGNOSTIC* const pDiagnostic,
+		const Client::VALTAN_CANONICAL_READ_FAILURE_KIND eFailure,
+		const std::string& strStatus,
+		const std::string_view strPatternId = {},
+		const std::string_view strStageId = {})
+	{
+		if (nullptr == pDiagnostic)
+			return;
+		pDiagnostic->eFailure = eFailure;
+		pDiagnostic->strStatus = strStatus;
+		pDiagnostic->strRejectedPatternId.assign(strPatternId);
+		pDiagnostic->strRejectedStageId.assign(strStageId);
+	}
+
 	bool_t Apply_MasterDocument(
 		const MASTER_DOCUMENT& Master,
 		const DATA_JSON_VALUE& PatternRotations,
 		Client::VALTAN_PATTERN_TREE_VIEW& View,
 		std::string& strOutError,
-		const Client::VALTAN_PATTERN_TREE_LOAD_POLICY ePolicy)
+		const Client::VALTAN_PATTERN_TREE_LOAD_POLICY ePolicy,
+		Client::VALTAN_CANONICAL_READ_DIAGNOSTIC* const pOutDiagnostic)
 	{
+		const auto RejectStaleProjection =
+			[&strOutError, pOutDiagnostic](
+				std::string strError,
+				const std::string_view strPatternId = {},
+				const std::string_view strStageId = {})
+			{
+				strOutError = std::move(strError);
+				Set_CanonicalReadFailure(
+					pOutDiagnostic,
+					Client::VALTAN_CANONICAL_READ_FAILURE_KIND::
+						STALE_PROJECTION,
+					strOutError, strPatternId, strStageId);
+				return false;
+			};
 		if (Client::VALTAN_PATTERN_TREE_LOAD_POLICY::
 				REQUIRE_ACTIVE_PRODUCT_PARITY != ePolicy &&
 			Client::VALTAN_PATTERN_TREE_LOAD_POLICY::
@@ -6067,9 +6191,10 @@ namespace
 		{
 			if (nullptr != Find_Pattern(View, strRetiredPatternId))
 			{
-				strOutError = "retired master pattern still exists in Product: " +
-					strRetiredPatternId;
-				return false;
+				return RejectStaleProjection(
+					"retired master pattern still exists in Product: " +
+						strRetiredPatternId,
+					strRetiredPatternId);
 			}
 		}
 
@@ -6094,10 +6219,14 @@ namespace
 				(!bRequireProductParity &&
 				 !Has_StableRestoreTopology(*pPattern, MasterPattern)))
 			{
-				strOutError = bRequireProductParity ?
-					"master/Product pattern projection changed: " +
-						MasterPattern.strPatternId :
-					"saved authoring pattern topology changed: " +
+				if (bRequireProductParity)
+				{
+					return RejectStaleProjection(
+						"master/Product pattern projection changed: " +
+							MasterPattern.strPatternId,
+						MasterPattern.strPatternId);
+				}
+				strOutError = "saved authoring pattern topology changed: " +
 					MasterPattern.strPatternId;
 				return false;
 			}
@@ -6133,9 +6262,11 @@ namespace
 						MasterStage.Occurrences.size() ||
 					 Stage.ProductCues.size() != MasterStage.AuthoredCues.size()))
 				{
-					strOutError = "master/Product stage projection changed: " +
-						MasterPattern.strPatternId + "/" + MasterStage.strStageId;
-					return false;
+					return RejectStaleProjection(
+						"master/Product stage projection changed: " +
+							MasterPattern.strPatternId + "/" +
+							MasterStage.strStageId,
+						MasterPattern.strPatternId, MasterStage.strStageId);
 				}
 				if (bRequireProductParity)
 				{
@@ -6146,10 +6277,12 @@ namespace
 								Stage.ClipOccurrences[iClip],
 								MasterStage.Occurrences[iClip]))
 						{
-							strOutError =
+							return RejectStaleProjection(
 								"master/Product animation occurrence changed: " +
-								MasterStage.Occurrences[iClip].strClipOccurrenceId;
-							return false;
+									MasterStage.Occurrences[iClip].
+										strClipOccurrenceId,
+								MasterPattern.strPatternId,
+								MasterStage.strStageId);
 						}
 					}
 					for (size_t iCue = 0u;
@@ -6159,10 +6292,11 @@ namespace
 								Stage.ProductCues[iCue],
 								MasterStage.AuthoredCues[iCue]))
 						{
-							strOutError =
+							return RejectStaleProjection(
 								"master/Product Effect cue changed: " +
-								MasterStage.AuthoredCues[iCue].strBindingId;
-							return false;
+									MasterStage.AuthoredCues[iCue].strBindingId,
+								MasterPattern.strPatternId,
+								MasterStage.strStageId);
 						}
 					}
 				}
@@ -6226,10 +6360,11 @@ namespace
 							});
 						if (!bFound)
 						{
-							strOutError =
+							return RejectStaleProjection(
 								"master cue reference left its Product stage: " +
-								Reference.strId;
-							return false;
+									Reference.strId,
+								MasterPattern.strPatternId,
+								MasterStage.strStageId);
 						}
 						continue;
 					}
@@ -6239,9 +6374,11 @@ namespace
 							pPattern->strPatternId ||
 						Independent->second->strOwnerStageId != Stage.strStageId)
 					{
-						strOutError = "master independent Effect reference is stale: " +
-							Reference.strId;
-						return false;
+						return RejectStaleProjection(
+							"master independent Effect reference is stale: " +
+								Reference.strId,
+							MasterPattern.strPatternId,
+							MasterStage.strStageId);
 					}
 					Stage.IndependentEffectIds.push_back(Reference.strId);
 					ReferencedIndependentIds.insert(Reference.strId);
@@ -6319,8 +6456,8 @@ namespace
 				 ProductScriptedPatternIds !=
 					Master.ScriptedSequence.PatternIds))
 		{
-			strOutError = "Valtan scripted-sequence Product parity drifted";
-			return false;
+			return RejectStaleProjection(
+				"Valtan scripted-sequence Product parity drifted");
 		}
 		View.strScriptedSequenceId = Master.ScriptedSequence.strSequenceId;
 		View.strScriptedSequenceMode = Master.ScriptedSequence.strMode;
@@ -6376,9 +6513,8 @@ namespace
 					strRotationId != Master.SelectionWindows[
 						iManagedRotationOrdinal].strCompatibilityRotationId)
 				{
-					strOutError =
-						"Valtan managed Product rotation order drifted";
-					return false;
+					return RejectStaleProjection(
+						"Valtan managed Product rotation order drifted");
 				}
 				++iManagedRotationOrdinal;
 				if (!Has_ExactProperties(Row,
@@ -6413,9 +6549,9 @@ namespace
 					nullptr == pCandidates || pCandidates->Get_Array().size() !=
 						Set->second->Candidates.size())
 				{
-					strOutError = "Valtan managed Product window/set projection drifted: " +
-						strRotationId;
-					return false;
+					return RejectStaleProjection(
+						"Valtan managed Product window/set projection drifted: " +
+							strRotationId);
 				}
 				for (size_t i = 0u; i < Set->second->Candidates.size(); ++i)
 				{
@@ -6435,9 +6571,10 @@ namespace
 						nullptr == pEnabled ||
 						Candidate.bEnabled != pEnabled->Get_Boolean())
 					{
-						strOutError = "Valtan managed Product candidate projection drifted: " +
-							strRotationId;
-						return false;
+						return RejectStaleProjection(
+							"Valtan managed Product candidate projection drifted: " +
+								strRotationId,
+							Candidate.strPatternId);
 					}
 				}
 				continue;
@@ -6448,8 +6585,8 @@ namespace
 				strRotationId != LegacyRotationOrder[
 					iLegacyRotationOrdinal].strRotationId)
 			{
-				strOutError = "Valtan legacy Product rotation order/identity drifted";
-				return false;
+				return RejectStaleProjection(
+					"Valtan legacy Product rotation order/identity drifted");
 			}
 			const LEGACY_ROTATION_IDENTITY& ExpectedLegacy =
 				LegacyRotationOrder[iLegacyRotationOrdinal];
@@ -6495,9 +6632,8 @@ namespace
 			iManagedRotationOrdinal != Master.SelectionWindows.size() ||
 			iLegacyRotationOrdinal != iLegacyRotationCount)
 		{
-			strOutError =
-				"Valtan Product selection-window/legacy rotation coverage is incomplete";
-			return false;
+			return RejectStaleProjection(
+				"Valtan Product selection-window/legacy rotation coverage is incomplete");
 		}
 		View.SelectionSets = Master.SelectionSets;
 		View.SelectionWindows = Master.SelectionWindows;
@@ -6510,10 +6646,10 @@ namespace
 			if (nullptr == pPattern || !pPattern->bAuthoringMasterManaged ||
 				"NORMAL" != pPattern->strSelectionMode)
 			{
-				strOutError =
+				return RejectStaleProjection(
 					"Valtan normal-selection pool left the managed normal set: " +
-					PatternId;
-				return false;
+						PatternId,
+					PatternId);
 			}
 		}
 		for (const Client::VALTAN_MANUAL_AUDITION_VIEW& Manual :
@@ -6528,10 +6664,10 @@ namespace
 				pPattern->iAuthoringPhase != Manual.iAuthoringPhase ||
 				pPattern->strAdmissionState != Manual.strAdmissionState)
 			{
-				strOutError =
+				return RejectStaleProjection(
 					"Valtan manual audition left its managed Product pattern: " +
-					Manual.strPatternId;
-				return false;
+						Manual.strPatternId,
+					Manual.strPatternId);
 			}
 		}
 
@@ -6633,10 +6769,11 @@ namespace
 				!HasBranch("COUNTER_HIT", MasterLayer.Success.strActionId) ||
 				!HasBranch("TIMEOUT", MasterLayer.Failure.strActionId))
 			{
-				strOutError =
+				return RejectStaleProjection(
 					"reference-only counter reaction Product join changed: " +
-					MasterLayer.strReactionLayerId;
-				return false;
+						MasterLayer.strReactionLayerId,
+					MasterLayer.strOwnerPatternId,
+					MasterLayer.strOwnerStageId);
 			}
 			Client::VALTAN_COUNTER_REACTION_LAYER_VIEW Layer = MasterLayer;
 			Layer.Window.ClipOccurrences = pWindow->ClipOccurrences;
@@ -6649,16 +6786,14 @@ namespace
 		}
 		if (ProductCounterOwnerStages != MasterCounterOwnerStages)
 		{
-			strOutError =
-				"counter reaction master does not cover exact Product counter stages";
-			return false;
+			return RejectStaleProjection(
+				"counter reaction master does not cover exact Product counter stages");
 		}
 
 		if (ReferencedIndependentIds.size() != Master.IndependentEffects.size())
 		{
-			strOutError =
-				"master independent Effect inventory contains an unreferenced identity";
-			return false;
+			return RejectStaleProjection(
+				"master independent Effect inventory contains an unreferenced identity");
 		}
 		for (const Client::VALTAN_INDEPENDENT_EFFECT_VIEW& Independent :
 			Master.IndependentEffects)
@@ -6670,9 +6805,11 @@ namespace
 			if (nullptr == pOwnerPattern || !pOwnerPattern->bAuthoringMasterManaged ||
 				nullptr == pOwnerStage)
 			{
-				strOutError = "master independent Effect owner is stale: " +
-					Independent.strIndependentEffectId;
-				return false;
+				return RejectStaleProjection(
+					"master independent Effect owner is stale: " +
+						Independent.strIndependentEffectId,
+					Independent.strOwnerPatternId,
+					Independent.strOwnerStageId);
 			}
 			bool_t bOwnerJoined = false;
 			if ("SERVER_COMBAT_OBJECT" == Independent.strOwnership)
@@ -6727,10 +6864,11 @@ namespace
 			if (!bOwnerJoined || EffectDocument.empty() ||
 				!std::filesystem::is_regular_file(EffectDocument, FileError))
 			{
-				strOutError =
+				return RejectStaleProjection(
 					"master independent Effect did not resolve to one Product owner/document: " +
-					Independent.strIndependentEffectId;
-				return false;
+						Independent.strIndependentEffectId,
+					Independent.strOwnerPatternId,
+					Independent.strOwnerStageId);
 			}
 		}
 
@@ -6798,50 +6936,93 @@ Client::CValtanCanonicalProductReadAdmission::
 bool_t Client::CValtanCanonicalProductReadAdmission::Acquire(
 	std::string& strOutStatus)
 {
+	VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic;
+	const bool_t bAcquired = Acquire(Diagnostic);
+	strOutStatus = std::move(Diagnostic.strStatus);
+	return bAcquired;
+}
+
+bool_t Client::CValtanCanonicalProductReadAdmission::Acquire(
+	VALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic)
+{
+	OutDiagnostic.Clear();
 	if (nullptr != m_pState)
 	{
-		strOutStatus = "Valtan canonical Product read admission is already held.";
+		OutDiagnostic.eFailure =
+			VALTAN_CANONICAL_READ_FAILURE_KIND::ADMISSION_STATE_INVALID;
+		OutDiagnostic.strStatus =
+			"Valtan canonical Product read admission is already held.";
 		return false;
 	}
 	std::unique_ptr<VALTAN_CANONICAL_PRODUCT_READ_STATE> State =
 		std::make_unique<VALTAN_CANONICAL_PRODUCT_READ_STATE>();
 	State->ProjectRoot = CProjectDataRoot::Get().parent_path();
 	std::string AdmissionError;
-	if (!State->Lock.Try_Acquire(State->ProjectRoot, AdmissionError) ||
+	VALTAN_CANONICAL_READ_FAILURE_KIND eFailure =
+		VALTAN_CANONICAL_READ_FAILURE_KIND::ADMISSION_IO;
+	if (!State->Lock.Try_Acquire(
+			State->ProjectRoot, AdmissionError, eFailure) ||
 		!Require_NoActiveValtanPatternGeneration(
-			State->ProjectRoot, AdmissionError))
+			State->ProjectRoot, AdmissionError, eFailure))
 	{
-		strOutStatus =
+		OutDiagnostic.eFailure = eFailure;
+		OutDiagnostic.strStatus =
 			"Valtan canonical Product read admission failed: " +
 			AdmissionError;
 		return false;
 	}
 	m_pState = State.release();
-	strOutStatus =
+	OutDiagnostic.strStatus =
 		"Valtan canonical Product generation admitted for a shared read.";
 	return true;
+}
+
+bool_t Client::CValtanCanonicalProductReadAdmission::Is_TransientFailure(
+	const VALTAN_CANONICAL_READ_FAILURE_KIND eFailure)
+{
+	return VALTAN_CANONICAL_READ_FAILURE_KIND::WRITER_BUSY == eFailure ||
+		VALTAN_CANONICAL_READ_FAILURE_KIND::GENERATION_CHANGED == eFailure;
 }
 
 bool_t Client::CValtanCanonicalProductReadAdmission::Validate_StillCurrent(
 	std::string& strOutStatus) const
 {
+	VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic;
+	const bool_t bCurrent = Validate_StillCurrent(Diagnostic);
+	strOutStatus = std::move(Diagnostic.strStatus);
+	return bCurrent;
+}
+
+bool_t Client::CValtanCanonicalProductReadAdmission::Validate_StillCurrent(
+	VALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic) const
+{
+	OutDiagnostic.Clear();
 	const auto* const pState =
 		static_cast<const VALTAN_CANONICAL_PRODUCT_READ_STATE*>(m_pState);
 	if (nullptr == pState)
 	{
-		strOutStatus = "Valtan canonical Product read admission is not held.";
+		OutDiagnostic.eFailure =
+			VALTAN_CANONICAL_READ_FAILURE_KIND::ADMISSION_STATE_INVALID;
+		OutDiagnostic.strStatus =
+			"Valtan canonical Product read admission is not held.";
 		return false;
 	}
 	std::string AdmissionError;
+	VALTAN_CANONICAL_READ_FAILURE_KIND eFailure =
+		VALTAN_CANONICAL_READ_FAILURE_KIND::ADMISSION_IO;
 	if (!Require_NoActiveValtanPatternGeneration(
-			pState->ProjectRoot, AdmissionError))
+			pState->ProjectRoot, AdmissionError, eFailure))
 	{
-		strOutStatus =
+		OutDiagnostic.eFailure =
+			VALTAN_CANONICAL_READ_FAILURE_KIND::
+				WRITER_RECOVERY_REQUIRED == eFailure ?
+			VALTAN_CANONICAL_READ_FAILURE_KIND::GENERATION_CHANGED : eFailure;
+		OutDiagnostic.strStatus =
 			"Valtan canonical Product read admission became stale: " +
 			AdmissionError;
 		return false;
 	}
-	strOutStatus =
+	OutDiagnostic.strStatus =
 		"Valtan canonical Product generation remained stable through the read.";
 	return true;
 }
@@ -7382,10 +7563,20 @@ bool_t Client::CValtanPatternTree::Load(
 	VALTAN_PATTERN_TREE_VIEW& OutView,
 	std::string& strOutStatus)
 {
+	VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic;
+	const bool_t bLoaded = Load(OutView, Diagnostic);
+	strOutStatus = std::move(Diagnostic.strStatus);
+	return bLoaded;
+}
+
+bool_t Client::CValtanPatternTree::Load(
+	VALTAN_PATTERN_TREE_VIEW& OutView,
+	VALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic)
+{
 	CValtanCanonicalProductReadAdmission Admission;
-	if (!Admission.Acquire(strOutStatus))
+	if (!Admission.Acquire(OutDiagnostic))
 		return false;
-	return Load_WhileAdmitted(Admission, OutView, strOutStatus);
+	return Load_WhileAdmitted(Admission, OutView, OutDiagnostic);
 }
 
 bool_t Client::CValtanPatternTree::Load_WhileAdmitted(
@@ -7393,40 +7584,65 @@ bool_t Client::CValtanPatternTree::Load_WhileAdmitted(
 	VALTAN_PATTERN_TREE_VIEW& OutView,
 	std::string& strOutStatus)
 {
-	std::string AdmissionStatus;
+	VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic;
+	const bool_t bLoaded = Load_WhileAdmitted(
+		Admission, OutView, Diagnostic);
+	strOutStatus = std::move(Diagnostic.strStatus);
+	return bLoaded;
+}
+
+bool_t Client::CValtanPatternTree::Load_WhileAdmitted(
+	const CValtanCanonicalProductReadAdmission& Admission,
+	VALTAN_PATTERN_TREE_VIEW& OutView,
+	VALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic)
+{
+	OutDiagnostic.Clear();
+	VALTAN_CANONICAL_READ_DIAGNOSTIC AdmissionDiagnostic;
 	if (!Admission.Is_Acquired() ||
-		!Admission.Validate_StillCurrent(AdmissionStatus))
+		!Admission.Validate_StillCurrent(AdmissionDiagnostic))
 	{
-		strOutStatus =
+		OutDiagnostic = std::move(AdmissionDiagnostic);
+		if (VALTAN_CANONICAL_READ_FAILURE_KIND::NONE ==
+			OutDiagnostic.eFailure)
+		{
+			OutDiagnostic.eFailure = VALTAN_CANONICAL_READ_FAILURE_KIND::
+				ADMISSION_STATE_INVALID;
+		}
+		OutDiagnostic.strStatus =
 			"Valtan canonical graph read admission failed: " +
-			AdmissionStatus;
+			OutDiagnostic.strStatus;
 		return false;
 	}
 
 	VALTAN_PATTERN_TREE_VIEW StagedView;
+	std::string LoadStatus;
 	if (!Load_FromAuthoringPaths(
 		CProjectDataRoot::Resolve(
 			std::filesystem::path(L"Valtan") / L"Valtan.gameplay.json"),
 		CProjectDataRoot::Resolve(
 			std::filesystem::path(L"Valtan") / L"Valtan.presentation.json"),
-		StagedView,
-		strOutStatus,
-		VALTAN_PATTERN_TREE_LOAD_POLICY::REQUIRE_ACTIVE_PRODUCT_PARITY))
+		StagedView, LoadStatus,
+		VALTAN_PATTERN_TREE_LOAD_POLICY::REQUIRE_ACTIVE_PRODUCT_PARITY,
+		&OutDiagnostic))
 	{
+		OutDiagnostic.strStatus = std::move(LoadStatus);
 		return false;
 	}
 	/* The post-join check makes a non-cooperating journal writer visible while
 	   preserving the caller's previously admitted view. Cooperating writers
 	   cannot reach this point because the shared byte-range lock is still held. */
-	if (!Admission.Validate_StillCurrent(AdmissionStatus))
+	if (!Admission.Validate_StillCurrent(AdmissionDiagnostic))
 	{
-		strOutStatus =
+		OutDiagnostic = std::move(AdmissionDiagnostic);
+		OutDiagnostic.strStatus =
 			"Valtan canonical graph read admission failed: " +
-			AdmissionStatus;
+			OutDiagnostic.strStatus;
 		return false;
 	}
 
 	OutView = std::move(StagedView);
+	OutDiagnostic.Clear();
+	OutDiagnostic.strStatus = std::move(LoadStatus);
 	return true;
 }
 
@@ -7435,13 +7651,27 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 	const std::filesystem::path& PresentationPath,
 	VALTAN_PATTERN_TREE_VIEW& OutView,
 	std::string& strOutStatus,
-	const VALTAN_PATTERN_TREE_LOAD_POLICY ePolicy)
+	const VALTAN_PATTERN_TREE_LOAD_POLICY ePolicy,
+	VALTAN_CANONICAL_READ_DIAGNOSTIC* const pOutDiagnostic)
 {
+	if (nullptr != pOutDiagnostic)
+	{
+		pOutDiagnostic->Clear();
+		/* Once policy admission succeeds, a failure is conservatively a
+		   Product/document failure unless a source parser or an exact parity
+		   check below assigns a more precise typed reason. */
+		pOutDiagnostic->eFailure =
+			VALTAN_CANONICAL_READ_FAILURE_KIND::PRODUCT_INVALID;
+	}
 	if (VALTAN_PATTERN_TREE_LOAD_POLICY::REQUIRE_ACTIVE_PRODUCT_PARITY !=
 			ePolicy &&
 		VALTAN_PATTERN_TREE_LOAD_POLICY::RESTORE_AUTHORING_SNAPSHOT != ePolicy)
 	{
 		strOutStatus = "Valtan pattern-tree load policy is invalid.";
+		Set_CanonicalReadFailure(
+			pOutDiagnostic,
+			VALTAN_CANONICAL_READ_FAILURE_KIND::ADMISSION_STATE_INVALID,
+			strOutStatus);
 		return false;
 	}
 	DATA_JSON_VALUE Encounter;
@@ -7458,23 +7688,39 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 	if (!Parse_Document(EncounterRelative, Encounter, Error))
 	{
 		strOutStatus = "Valtan encounter load failed: " + Error;
+		Set_CanonicalReadFailure(
+			pOutDiagnostic,
+			VALTAN_CANONICAL_READ_FAILURE_KIND::PRODUCT_INVALID,
+			strOutStatus);
 		return false;
 	}
 	if (!Parse_DocumentPath(GameplayPath, GameplayRoot, Error))
 	{
 		strOutStatus = "Valtan split gameplay authoring load failed: " + Error;
+		Set_CanonicalReadFailure(
+			pOutDiagnostic,
+			VALTAN_CANONICAL_READ_FAILURE_KIND::SOURCE_INVALID,
+			strOutStatus);
 		return false;
 	}
 	if (!Parse_DocumentPath(PresentationPath, PresentationRoot, Error))
 	{
 		strOutStatus =
 			"Valtan split presentation authoring load failed: " + Error;
+		Set_CanonicalReadFailure(
+			pOutDiagnostic,
+			VALTAN_CANONICAL_READ_FAILURE_KIND::SOURCE_INVALID,
+			strOutStatus);
 		return false;
 	}
 	if (!Parse_Document(std::filesystem::path(L"Encounters") / L"Valtan" /
 			L"ValtanPatternRotations.json", PatternRotations, Error))
 	{
 		strOutStatus = "Valtan normal-selection product load failed: " + Error;
+		Set_CanonicalReadFailure(
+			pOutDiagnostic,
+			VALTAN_CANONICAL_READ_FAILURE_KIND::PRODUCT_INVALID,
+			strOutStatus);
 		return false;
 	}
 	MASTER_DOCUMENT MasterDocument;
@@ -7482,6 +7728,10 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			GameplayRoot, PresentationRoot, MasterDocument, Error))
 	{
 		strOutStatus = "Valtan split authoring strict join failed: " + Error;
+		Set_CanonicalReadFailure(
+			pOutDiagnostic,
+			VALTAN_CANONICAL_READ_FAILURE_KIND::SOURCE_INVALID,
+			strOutStatus);
 		return false;
 	}
 
@@ -7505,7 +7755,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			DeclaredClipNames.push_back(Clip.strClipName);
 	}
 	if (!CValtanPatternAnimationBindingDocument::Validate(
-			BindingDocument, "BOSS_VALTAN", DeclaredClipNames, Error))
+			BindingDocument, "BOSS_VALTAN",
+			DeclaredClipNames, Error))
 	{
 		strOutStatus = "Valtan pattern bindings validation failed: " + Error;
 		return false;
@@ -7744,7 +7995,7 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		EffectByAction;
 	DATA_JSON_VALUE Effects;
 	if (Parse_Document(std::filesystem::path(L"Animation") / L"Authored" /
-			L"Valtan" / L"Valtan.patterneffects.json", Effects, Error))
+		L"Valtan" / L"Valtan.patterneffects.json", Effects, Error))
 	{
 		const DATA_JSON_VALUE* pRows = Effects.Find("bindings");
 		if (nullptr != pRows && pRows->Is_Array())
@@ -7824,12 +8075,15 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 	VALTAN_PATTERN_TREE_VIEW Staged;
 	size_t iResolvedCueCount = 0u;
 	std::set<std::string, std::less<>> ResolvedCombatObjectEffects;
+	std::set<std::string, std::less<>> ResolvedVolleyProjectionIds;
 	const std::string strEncounterBossArchetypeId = Read_String(
 		Encounter, "bossArchetypeId");
-	if (!Is_StableToken(strEncounterBossArchetypeId) ||
+	const std::string strEncounterId = Read_String(Encounter, "encounterId");
+	if (strEncounterBossArchetypeId != "BOSS_VALTAN" ||
+		strEncounterId != "ENCOUNTER_VALTAN" ||
 		!BossArchetypeIds.contains(strEncounterBossArchetypeId))
 	{
-		strOutStatus = "Valtan encounter boss archetype reference is invalid.";
+		strOutStatus = "Valtan encounter dataset identity is invalid.";
 		return false;
 	}
 	for (const DATA_JSON_VALUE& PatternValue : pPatterns->Get_Array())
@@ -8134,6 +8388,44 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 							"SPAWN_COMBAT_OBJECT_VOLLEY" == strSpawnKind ?
 								Read_Number(Action, "countPerResolvedTarget") :
 								Read_Number(Action, "value");
+						const auto ExpectedVolley = std::find_if(
+							MasterDocument.VolleyProjections.begin(),
+							MasterDocument.VolleyProjections.end(),
+							[&Pattern, &Stage, &strTargetId](
+								const MASTER_VOLLEY_PROJECTION& Projection)
+							{
+								return Projection.strPatternId ==
+										Pattern.strPatternId &&
+									Projection.strActionId == Stage.strActionId &&
+									Projection.strCombatObjectArchetypeId ==
+										strTargetId;
+							});
+						const bool_t bProductVolley =
+							"SPAWN_COMBAT_OBJECT_VOLLEY" == strSpawnKind;
+						if (VALTAN_PATTERN_TREE_LOAD_POLICY::
+								REQUIRE_ACTIVE_PRODUCT_PARITY == ePolicy &&
+							((bProductVolley &&
+								(MasterDocument.VolleyProjections.end() ==
+										ExpectedVolley ||
+								 !Equal_JsonSemanticValue(
+									ExpectedVolley->ProductAction, Action) ||
+								 !ResolvedVolleyProjectionIds.insert(
+									ExpectedVolley->strEventId).second)) ||
+							(!bProductVolley &&
+							 MasterDocument.VolleyProjections.end() != ExpectedVolley)))
+						{
+							strOutStatus =
+								"Valtan split authoring/Product volley projection changed: " +
+								(MasterDocument.VolleyProjections.end() ==
+									ExpectedVolley ? strTargetId :
+									ExpectedVolley->strEventId);
+							Set_CanonicalReadFailure(
+								pOutDiagnostic,
+								VALTAN_CANONICAL_READ_FAILURE_KIND::STALE_PROJECTION,
+								strOutStatus, Pattern.strPatternId,
+								Stage.strStageId);
+							return false;
+						}
 						if (Reference == CombatObjectEffectsByArchetype.end() ||
 							Reference->second.strOwnerPatternId !=
 								Pattern.strPatternId ||
@@ -8366,6 +8658,34 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			std::to_string(iCueCount) + ".";
 		return false;
 	}
+	if (VALTAN_PATTERN_TREE_LOAD_POLICY::REQUIRE_ACTIVE_PRODUCT_PARITY ==
+			ePolicy &&
+		ResolvedVolleyProjectionIds.size() !=
+		MasterDocument.VolleyProjections.size())
+	{
+		const auto Missing = std::find_if(
+			MasterDocument.VolleyProjections.begin(),
+			MasterDocument.VolleyProjections.end(),
+			[&ResolvedVolleyProjectionIds](
+				const MASTER_VOLLEY_PROJECTION& Projection)
+			{
+				return !ResolvedVolleyProjectionIds.contains(
+					Projection.strEventId);
+			});
+		strOutStatus =
+			"Valtan split authoring/Product volley projection coverage changed";
+		if (MasterDocument.VolleyProjections.end() != Missing)
+			strOutStatus += ": " + Missing->strEventId;
+		Set_CanonicalReadFailure(
+			pOutDiagnostic,
+			VALTAN_CANONICAL_READ_FAILURE_KIND::STALE_PROJECTION,
+			strOutStatus,
+			MasterDocument.VolleyProjections.end() == Missing ?
+				std::string_view{} : Missing->strPatternId,
+			MasterDocument.VolleyProjections.end() == Missing ?
+				std::string_view{} : Missing->strStageId);
+		return false;
+	}
 	if (ResolvedCombatObjectEffects.size() !=
 		CombatObjectEffectsByArchetype.size())
 	{
@@ -8374,9 +8694,20 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		return false;
 	}
 	if (!Apply_MasterDocument(
-			MasterDocument, PatternRotations, Staged, Error, ePolicy))
+			MasterDocument, PatternRotations, Staged, Error, ePolicy,
+			pOutDiagnostic))
 	{
 		strOutStatus = "Valtan split authoring/Product join failed: " + Error;
+		if (nullptr != pOutDiagnostic)
+		{
+			if (VALTAN_CANONICAL_READ_FAILURE_KIND::NONE ==
+				pOutDiagnostic->eFailure)
+			{
+				pOutDiagnostic->eFailure =
+					VALTAN_CANONICAL_READ_FAILURE_KIND::PRODUCT_INVALID;
+			}
+			pOutDiagnostic->strStatus = strOutStatus;
+		}
 		return false;
 	}
 	if (Staged.Gimmicks.empty() && Staged.Rotation.empty())
@@ -8482,5 +8813,10 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		" independent Effects, " +
 		std::to_string(OutView.Get_EffectCount()) + " with an Effect (" +
 		std::to_string(OutView.Get_EffectDocumentCount()) + " documents).";
+	if (nullptr != pOutDiagnostic)
+	{
+		pOutDiagnostic->Clear();
+		pOutDiagnostic->strStatus = strOutStatus;
+	}
 	return true;
 }

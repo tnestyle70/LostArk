@@ -19,9 +19,9 @@ NS_BEGIN(Client)
    category labels from the descriptor rather than exposing storage versions. */
 enum class EFFECT_RESOURCE_OWNER_KIND : uint8_t
 {
-	DIRECT_AUTHORED_DOCUMENT,
-	TYPED_DOCUMENT,
-	TYPED_GROUP,
+	V1_DOCUMENT,
+	V2_LEAF,
+	V2_GROUP,
 	END
 };
 

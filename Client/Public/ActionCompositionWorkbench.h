@@ -9,6 +9,7 @@
 #include "ValtanPatternShakeCueDocument.h"
 #include "ValtanPatternSoundCueDocument.h"
 #include "ValtanPatternTree.h"
+#include "ValtanViewAdmission.h"
 
 #include <array>
 #include <cstdint>
@@ -43,14 +44,6 @@ struct COMPOSITION_RESOURCE_TREE_NODE final
 class CActionCompositionWorkbench final
 {
 private:
-	enum class ADMISSION_STATE : uint8_t
-	{
-		UNLOADED,
-		ADMITTED,
-		STALE_PRESERVED,
-		REJECTED,
-	};
-
 	enum class DETAIL_OWNER : uint8_t
 	{
 		PATTERN,
@@ -157,7 +150,7 @@ public:
 	}
 	[[nodiscard]] bool_t Is_FullyAdmitted() const
 	{
-		return ADMISSION_STATE::ADMITTED == m_eAdmission;
+		return Can_MutateValtanView(m_eAdmission);
 	}
 	void On_LevelChanged();
 	void Render();
@@ -410,7 +403,7 @@ private:
 		~std::uint64_t{ 0u };
 	VALTAN_PATTERN_SHAKE_CUE_DOCUMENT m_PatternShakes;
 	VALTAN_COMBAT_OBJECT_SOUND_CUE_DOCUMENT m_CombatObjectSounds;
-	ADMISSION_STATE m_eAdmission = ADMISSION_STATE::UNLOADED;
+	VALTAN_VIEW_ADMISSION m_eAdmission = VALTAN_VIEW_ADMISSION::UNLOADED;
 	DETAIL_OWNER m_eDetailOwner = DETAIL_OWNER::PATTERN;
 	bool_t m_bLoadAttempted = false;
 	bool_t m_bProductFallbackReady = false;

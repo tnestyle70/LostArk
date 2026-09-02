@@ -535,8 +535,9 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		if (bValtanArena)
 		{
 			CValtanCanonicalProductReadAdmission ProductAdmission;
-			if (!ProductAdmission.Acquire(Status))
-				return IsolateFailure(Status);
+			VALTAN_CANONICAL_READ_DIAGNOSTIC ProductDiagnostic;
+			if (!ProductAdmission.Acquire(ProductDiagnostic))
+				return IsolateFailure(ProductDiagnostic.strStatus);
 			VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
 			if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
 					CueDocument, Status) || CueDocument.Cues.empty())

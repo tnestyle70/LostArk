@@ -358,6 +358,11 @@ def _load_boss_combat_object_groups(
     repository_root: Path, groups: dict[str, list[tuple[str, int]]]
 ) -> set[str]:
     path = repository_root / "Data/Actors/BossCatalog.json"
+    # BossCatalog is an optional owner lane for reusable Effect V2 repositories.
+    # Product repositories that carry the document still validate it strictly,
+    # while isolated Effect V2 fixtures have no boss ownership to admit.
+    if not path.is_file():
+        return set()
     document = _require_object(_read_json(path), path.as_posix())
     if (
         document.get("schema") != "lostark.boss-catalog"

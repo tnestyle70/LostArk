@@ -1644,8 +1644,8 @@ bool_t Client::CAnimation_Tool::Play_ValtanCompositionPattern(
 	}
 	if (!Stage_ValtanCompositionPreview(strOutStatus))
 		return false;
-	if (VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED !=
-		m_eValtanPatternMasterAdmission && !Reload_ValtanPatternMaster())
+	if (!Can_MutateValtanView(m_eValtanPatternMasterAdmission) &&
+		!Reload_ValtanPatternMaster())
 	{
 		strOutStatus = m_strValtanPatternMasterStatus;
 		return false;
@@ -1682,8 +1682,8 @@ bool_t Client::CAnimation_Tool::Play_ValtanCompositionDraftPattern(
 	}
 	if (!Stage_ValtanCompositionPreview(strOutStatus))
 		return false;
-	if (VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED !=
-		m_eValtanPatternMasterAdmission && !Reload_ValtanPatternMaster())
+	if (!Can_MutateValtanView(m_eValtanPatternMasterAdmission) &&
+		!Reload_ValtanPatternMaster())
 	{
 		strOutStatus = m_strValtanPatternMasterStatus;
 		return false;
@@ -3411,7 +3411,7 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	m_ValtanPatternMasterPlaylist.clear();
 	m_bValtanPatternMasterLoadAttempted = false;
 	m_eValtanPatternMasterAdmission =
-		VALTAN_PATTERN_MASTER_ADMISSION_STATE::UNLOADED;
+		VALTAN_VIEW_ADMISSION::UNLOADED;
 	m_bValtanPatternMasterPlaying = false;
 	m_bValtanPatternMasterPaused = false;
 	m_bShowValtanSourceReferenceWindow = false;
@@ -4245,13 +4245,13 @@ const char_t* Client::CAnimation_Tool::ValtanPatternMasterAdmissionLabel() const
 {
 	switch (m_eValtanPatternMasterAdmission)
 	{
-	case VALTAN_PATTERN_MASTER_ADMISSION_STATE::UNLOADED:
+	case VALTAN_VIEW_ADMISSION::UNLOADED:
 		return "NOT LOADED";
-	case VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED:
+	case VALTAN_VIEW_ADMISSION::ADMITTED:
 		return "READY";
-	case VALTAN_PATTERN_MASTER_ADMISSION_STATE::STALE_PRESERVED:
+	case VALTAN_VIEW_ADMISSION::STALE_PRESERVED:
 		return "PREVIOUS DATA / LOAD FAILED";
-	case VALTAN_PATTERN_MASTER_ADMISSION_STATE::REJECTED:
+	case VALTAN_VIEW_ADMISSION::REJECTED:
 		return "LOAD FAILED";
 	default:
 		return "INVALID";
@@ -4289,8 +4289,8 @@ bool_t Client::CAnimation_Tool::Reload_ValtanPatternMaster()
 		const bool_t bHasPreservedAdmission =
 			!Collect_ValtanPatternMasterPatterns().empty();
 		m_eValtanPatternMasterAdmission = bHasPreservedAdmission ?
-			VALTAN_PATTERN_MASTER_ADMISSION_STATE::STALE_PRESERVED :
-			VALTAN_PATTERN_MASTER_ADMISSION_STATE::REJECTED;
+			VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
+			VALTAN_VIEW_ADMISSION::REJECTED;
 		m_strValtanPatternMasterStatus = bHasPreservedAdmission ?
 			"Pattern data could not be loaded; the previous read-only view and pose were preserved: " + Diagnostic :
 			"Pattern data could not be loaded: " + Diagnostic;
@@ -4326,7 +4326,7 @@ bool_t Client::CAnimation_Tool::Reload_ValtanPatternMaster()
 	m_bValtanCompositionDraftPreviewReady = false;
 	m_ValtanCompositionDraftPreview = {};
 	m_eValtanPatternMasterAdmission =
-		VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED;
+		VALTAN_VIEW_ADMISSION::ADMITTED;
 	/* Sound is a fail-open presentation lane.  Its loader still stages the
 	   complete document and only commits on a valid gameplay/animation join;
 	   a rejected refresh preserves the last admitted lane while animation and
@@ -4700,8 +4700,7 @@ bool_t Client::CAnimation_Tool::Start_ValtanPatternMasterPreview(
 	const VALTAN_PATTERN_VIEW& Pattern,
 	const VALTAN_PATTERN_PREVIEW_PATH ePath)
 {
-	if (VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED !=
-		m_eValtanPatternMasterAdmission)
+	if (!Can_MutateValtanView(m_eValtanPatternMasterAdmission))
 	{
 		m_strValtanPatternMasterStatus =
 			"Valtan Pattern Offline play rejected: the preserved graph is display-only until a fresh canonical reload is ADMITTED.";
@@ -7487,8 +7486,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 		(void)Reload_ValtanPatternMaster();
 	}
 	const bool_t bMutationAdmitted =
-		VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED ==
-			m_eValtanPatternMasterAdmission;
+		Can_MutateValtanView(m_eValtanPatternMasterAdmission);
 	ImGui::SeparatorText("Valtan Action Presentation Workbench");
 	ImGui::TextWrapped(
 		"One joined view over Server Stage, Animation, Effect, Sound Asset, and Combat Object. Pattern Offline samples the Product animation locally; Server Replay/Live submits the same stable pattern ID to the real Arena authority, where movement, hit, grab, damage, Effect, and Sound run.");
@@ -7635,10 +7633,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternMaster(
 		Collect_ValtanPatternMasterPatterns();
 	const bool_t bHasLoadedPatterns = !Patterns.empty();
 	const bool_t bReady = bHasLoadedPatterns &&
-		(VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED ==
-			m_eValtanPatternMasterAdmission ||
-		 VALTAN_PATTERN_MASTER_ADMISSION_STATE::STALE_PRESERVED ==
-			m_eValtanPatternMasterAdmission);
+		Can_DisplayValtanView(m_eValtanPatternMasterAdmission);
 	ImGui::SeparatorText("Workbench Data");
 	ImGui::Text(
 		"Preview Model: %s | Pattern Data: %s | Inventory: %zu editable patterns",
@@ -9561,8 +9556,7 @@ void Client::CAnimation_Tool::Render_ValtanPatternCreatePanel()
 		m_pBalanceTool->Is_ValtanDraftDirty();
 	const bool_t bOtherValtanOwnerDirty = Is_ValtanDocumentDirty();
 	const bool_t bMutationAdmitted =
-		VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED ==
-			m_eValtanPatternMasterAdmission;
+		Can_MutateValtanView(m_eValtanPatternMasterAdmission);
 	if (bBalanceDirty || bOtherValtanOwnerDirty)
 	{
 		ImGui::TextColored(
@@ -9842,8 +9836,7 @@ bool_t Client::CAnimation_Tool::Start_ValtanPatternCreateCommand(
 			"Apply rejected before mutation: save or discard every Balance / Valtan Animation-Sound owner draft first.";
 		return false;
 	}
-	if (bApply && VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED !=
-		m_eValtanPatternMasterAdmission)
+	if (bApply && !Can_MutateValtanView(m_eValtanPatternMasterAdmission))
 	{
 		m_strValtanPatternCreateStatus =
 			"Create stopped before writing: Pattern data is " +
@@ -10194,8 +10187,7 @@ void Client::CAnimation_Tool::Poll_ValtanPatternCreateCommand()
 		nullptr != m_pBossTool &&
 		m_pBossTool->Reload_CanonicalGraph(strBossStatus);
 	const bool_t bAnimationAdmitted = bAnimationReloaded &&
-		VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED ==
-			m_eValtanPatternMasterAdmission;
+		Can_MutateValtanView(m_eValtanPatternMasterAdmission);
 	bool_t bSelected = false;
 	if (bAnimationAdmitted)
 	{

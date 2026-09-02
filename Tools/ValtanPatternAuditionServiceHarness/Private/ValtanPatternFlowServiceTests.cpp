@@ -132,6 +132,10 @@ namespace
 			Require(Service.Start(BOSS, Flow, std::string(64u, Revision),
 				Flow.Slots.front().strSlotId, ExpectedDefinitionRevision,
 				Status), "Flow start failed");
+			Require(Status.find("complete saved Flow") != std::string::npos &&
+				Status.find("resets the arena") != std::string::npos &&
+				Status.find("saved Pattern 01") != std::string::npos,
+				"Flow restart status did not distinguish full saved-sequence replay from one Pattern");
 			return Input().SentStarts.back();
 		}
 

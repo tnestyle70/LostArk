@@ -81,15 +81,19 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
             "effect.valtan.ground-roar.rock.active",
             document["effectAssetId"],
         )
-        # The Server clones this whole effect document at each radial combat-
-        # object root.  Keep the user's stone plus five authored particles as
-        # one composition; the elements themselves must not be copied four
-        # times in the effect asset.
+        # This whole six-element authored document is one atomic group. The
+        # Server instances the group at four roots; elements are never copied.
         self.assertEqual(6, len(document["elements"]))
         self.assertEqual(
             ["mesh", "particle", "particle", "particle", "particle", "particle"],
             [row["kind"] for row in document["elements"]],
         )
+        self.assertEqual(
+            6, len({row["id"] for row in document["elements"]})
+        )
+        self.assertTrue(all(not row["id"].endswith(
+            (".q0", ".q1", ".q2", ".q3")
+        ) for row in document["elements"]))
         element = document["elements"][0]
         self.assertEqual("mesh", element["kind"])
         self.assertEqual("valtan.ground-roar.rock", element["groupId"])
@@ -166,6 +170,57 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
             overrides,
         )
 
+    def test_ground_roar_explode_effect_is_one_atomic_group_payload(
+        self,
+    ) -> None:
+        document = json.loads(_read(
+            "Data/Effects/Authored/"
+            "effect.valtan.ground-roar.rock.explode.effect.json"
+        ))
+        self.assertEqual(
+            "effect.valtan.ground-roar.rock.explode",
+            document["effectAssetId"],
+        )
+        self.assertEqual(["particle"], [
+            row["kind"] for row in document["elements"]
+        ])
+        self.assertTrue(all(
+            row["groupId"] == "valtan.ground-roar.rock"
+            for row in document["elements"]
+        ))
+        self.assertEqual(
+            "ground-roar.rock.explode.debris",
+            document["elements"][0]["id"],
+        )
+        self.assertEqual(
+            [0.0, 0.0, 0.0],
+            document["elements"][0]["detail"]["transform"]["position"],
+        )
+
+    def test_native_ground_roar_runtime_owns_four_group_root_instances(
+        self,
+    ) -> None:
+        source = _read("Server/Private/ServerGameplayContractTests.cpp")
+        body = _function(
+            source,
+            "/* Ground Roar owns",
+            "/* Phase-three portal charges start together",
+        )
+        for expected in (
+            "4u == groundRoarObjects.size()",
+            "4u == groundRoarSpawned.size()",
+            "4u == groundRoarTerminalPresentation.size()",
+            "4u == groundRoarTerminalDespawned.size()",
+        ):
+            self.assertIn(expected, body)
+        for stale in (
+            "1u == groundRoarObjects.size()",
+            "1u == groundRoarSpawned.size()",
+            "1u == groundRoarTerminalPresentation.size()",
+            "1u == groundRoarTerminalDespawned.size()",
+        ):
+            self.assertNotIn(stale, body)
+
     def test_ground_roar_independent_effect_joins_exact_cardinal_instances(self) -> None:
         presentation = json.loads(_read("Data/Valtan/Valtan.presentation.json"))
         self.assertEqual(
@@ -208,14 +263,13 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
             "combatobject.valtan.ground-roar.rock",
             event["combatObjectArchetypeId"],
         )
+        self.assertEqual("BOSS_RELATIVE", event["volleyPolicy"])
         self.assertEqual(4, event["countPerResolvedTarget"])
         self.assertEqual("RADIAL_AROUND_BOSS", event["layout"]["kind"])
-        angles = [
-            event["layout"]["startAngleDegrees"]
-            + index * event["layout"]["angleStepDegrees"]
-            for index in range(event["countPerResolvedTarget"])
-        ]
-        self.assertEqual([0.0, 90.0, 180.0, 270.0], angles)
+        self.assertEqual(4.9497475, event["layout"]["radiusM"])
+        self.assertEqual(45.0, event["layout"]["startAngleDegrees"])
+        self.assertEqual(90.0, event["layout"]["angleStepDegrees"])
+        self.assertEqual(4, event["maximumTotalObjects"])
 
         combat_authoring = json.loads(
             _read("Data/Valtan/Valtan.combatobjects.json")

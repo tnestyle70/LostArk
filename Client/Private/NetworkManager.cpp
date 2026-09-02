@@ -2,6 +2,7 @@
 
 #include "DataJson.h"
 #include "ProjectDataRoot.h"
+#include "ValtanPatternTree.h"
 
 #include "Network/PacketReader.h"
 #include "Network/PacketWriter.h"
@@ -28,14 +29,6 @@
 namespace
 {
 	constexpr std::uint64_t ENTRY_PRESENTATION_BASELINE_RETRY_MILLISECONDS = 250u;
-
-	bool Is_TransientCanonicalPresentationAdmissionFailure(
-		const std::string_view status)
-	{
-		return std::string_view::npos !=
-			status.find("Create/Project transaction is active") ||
-			std::string_view::npos != status.find("Win32 33");
-	}
 
 #ifdef _DEBUG
 	std::string Resolve_DebugLocalServerHost()
@@ -418,13 +411,18 @@ namespace
 	bool CapturePresentationArtifactBaseline(
 		std::vector<CNetworkManager::PRESENTATION_ARTIFACT_BASELINE>& output,
 		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& receipt,
-		std::string& status)
+		std::string& status,
+		Client::VALTAN_CANONICAL_READ_DIAGNOSTIC* const pOutDiagnostic = nullptr)
 	{
 		Client::CValtanPresentationGenerationReadAdmission admission;
 		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT stagedReceipt;
-		if (!admission.Acquire_PackagedBaseline(stagedReceipt, status) ||
-			!admission.Validate_StillCurrent(status))
+		Client::VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic;
+		if (!admission.Acquire_PackagedBaseline(stagedReceipt, Diagnostic) ||
+			!admission.Validate_StillCurrent(Diagnostic))
 		{
+			status = Diagnostic.strStatus;
+			if (nullptr != pOutDiagnostic)
+				*pOutDiagnostic = std::move(Diagnostic);
 			return false;
 		}
 		std::vector<CNetworkManager::PRESENTATION_ARTIFACT_BASELINE> staged;
@@ -442,6 +440,11 @@ namespace
 		output = std::move(staged);
 		receipt = std::move(stagedReceipt);
 		status = "Captured the current validated Client presentation sources.";
+		if (nullptr != pOutDiagnostic)
+		{
+			pOutDiagnostic->Clear();
+			pOutDiagnostic->strStatus = status;
+		}
 		return true;
 	}
 
@@ -715,13 +718,18 @@ namespace
 	bool CapturePresentationArtifactBaseline(
 		std::vector<CNetworkManager::PRESENTATION_ARTIFACT_BASELINE>& output,
 		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& receipt,
-		std::string& status)
+		std::string& status,
+		Client::VALTAN_CANONICAL_READ_DIAGNOSTIC* const pOutDiagnostic = nullptr)
 	{
 		Client::CValtanPresentationGenerationReadAdmission admission;
 		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT stagedReceipt;
-		if (!admission.Acquire_PackagedBaseline(stagedReceipt, status) ||
-			!admission.Validate_StillCurrent(status))
+		Client::VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic;
+		if (!admission.Acquire_PackagedBaseline(stagedReceipt, Diagnostic) ||
+			!admission.Validate_StillCurrent(Diagnostic))
 		{
+			status = Diagnostic.strStatus;
+			if (nullptr != pOutDiagnostic)
+				*pOutDiagnostic = std::move(Diagnostic);
 			return false;
 		}
 		std::vector<CNetworkManager::PRESENTATION_ARTIFACT_BASELINE> staged;
@@ -739,6 +747,11 @@ namespace
 		output = std::move(staged);
 		receipt = std::move(stagedReceipt);
 		status = "Captured the current validated Client presentation sources.";
+		if (nullptr != pOutDiagnostic)
+		{
+			pOutDiagnostic->Clear();
+			pOutDiagnostic->strStatus = status;
+		}
 		return true;
 	}
 #endif
@@ -2093,11 +2106,13 @@ bool CNetworkManager::Try_Recover_EntryPresentationBaseline(
 
 	std::vector<PRESENTATION_ARTIFACT_BASELINE> stagedArtifacts;
 	Client::VALTAN_PRESENTATION_GENERATION_RECEIPT stagedReceipt;
+	Client::VALTAN_CANONICAL_READ_DIAGNOSTIC captureDiagnostic;
 	std::string captureStatus;
 	if (!CapturePresentationArtifactBaseline(
-			stagedArtifacts, stagedReceipt, captureStatus))
+			stagedArtifacts, stagedReceipt, captureStatus,
+			&captureDiagnostic))
 	{
-		if (Is_TransientCanonicalPresentationAdmissionFailure(captureStatus))
+		if (captureDiagnostic.Is_AutomaticRetryable())
 		{
 			m_GameplayRevisionState.
 				iNextEntryPresentationBaselineRecoveryAtMilliseconds =
@@ -2783,11 +2798,14 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			stagedPresentationArtifactBaseline;
 		Client::VALTAN_PRESENTATION_GENERATION_RECEIPT
 			stagedPresentationReceipt;
+		Client::VALTAN_CANONICAL_READ_DIAGNOSTIC
+			stagedPresentationDiagnostic;
 		std::string baselineStatus;
 		const bool hasPresentationArtifactBaseline =
 			CapturePresentationArtifactBaseline(
 				stagedPresentationArtifactBaseline,
-				stagedPresentationReceipt, baselineStatus);
+				stagedPresentationReceipt, baselineStatus,
+				&stagedPresentationDiagnostic);
 		if (!hasPresentationArtifactBaseline)
 		{
 			/* Presentation source skew is not a gameplay protocol violation. Keep
@@ -2913,8 +2931,7 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		{
 			m_GameplayRevisionState.
 				hasPendingEntryPresentationBaselineRecovery =
-				Is_TransientCanonicalPresentationAdmissionFailure(
-					baselineStatus);
+					stagedPresentationDiagnostic.Is_AutomaticRetryable();
 			m_GameplayRevisionState.
 				iNextEntryPresentationBaselineRecoveryAtMilliseconds =
 				m_GameplayRevisionState.

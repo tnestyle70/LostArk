@@ -691,12 +691,22 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	}
 	CValtanCanonicalProductReadAdmission CanonicalAdmission;
 	Client::CValtanPresentationGenerationReadAdmission GenerationAdmission;
-	if (bExact ?
-		!GenerationAdmission.Acquire_Receipt(
-			*pExpectedServerRevision, *pExpectedReceipt, strOutStatus) :
-		!CanonicalAdmission.Acquire(strOutStatus))
+	if (bExact)
 	{
-		return false;
+		if (!GenerationAdmission.Acquire_Receipt(
+				*pExpectedServerRevision, *pExpectedReceipt, strOutStatus))
+		{
+			return false;
+		}
+	}
+	else
+	{
+		VALTAN_CANONICAL_READ_DIAGNOSTIC CanonicalDiagnostic;
+		if (!CanonicalAdmission.Acquire(CanonicalDiagnostic))
+		{
+			strOutStatus = std::move(CanonicalDiagnostic.strStatus);
+			return false;
+		}
 	}
 	Client::VALTAN_PRESENTATION_GENERATION_RECEIPT CurrentPresentationReceipt;
 	if (bExact && !GenerationAdmission.Try_Get_CurrentReceipt(

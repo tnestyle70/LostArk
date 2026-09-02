@@ -249,8 +249,8 @@ class ValtanF1ArenaPreservationContractTests(unittest.TestCase):
             server, "LostArk::Server::CGameRoom::Evaluate_ValtanAudition("
         )
 
-        self.assertNotIn("Restart Pattern (Preserve Arena)", action_bar)
-        self.assertNotIn("Restart_SelectedPattern()", action_bar)
+        self.assertIn("Restart Active Pattern (Keep Arena)", action_bar)
+        self.assertIn("Restart_SelectedPattern()", action_bar)
         self.assertIn("Restart_SelectedPattern", header)
         self.assertIn("Restart_ServerPattern", header)
         restart_submit = function_body(
@@ -283,37 +283,40 @@ class ValtanF1ArenaPreservationContractTests(unittest.TestCase):
         )
         self.assertNotIn("Reset_ValtanAuditionState(", evaluate[pattern_start:pattern_end])
 
-    def test_boss_verification_default_restart_uses_one_saved_pattern_and_fresh_arena(self) -> None:
+    def test_pattern_restart_and_saved_flow_restart_are_distinct(self) -> None:
         boss = read("Client/Private/BossTool.cpp")
         action_bar = function_body(boss, "void Client::CBossTool::Render_ActionBar()")
-        restart_single = function_body(
-            boss,
-            "bool_t Client::CBossTool::Restart_SavedSinglePatternFreshArena()",
-        )
         restart_flow = function_body(
             boss,
-            "bool_t Client::CBossTool::Restart_SavedFlow(\n"
-            "\tconst bool_t bRequireSingleSavedPattern)",
+            "bool_t Client::CBossTool::Restart_SavedFlow()",
         )
         server = read("Server/Private/GameRoom.cpp")
+        pattern_start = function_body(
+            server, "LostArk::Server::CGameRoom::Evaluate_ValtanAudition("
+        )
         flow_start = function_body(
             server, "LostArk::Server::CGameRoom::Evaluate_ValtanPatternFlowStart("
         )
 
-        self.assertIn("Restart Saved Pattern (Fresh Arena)", action_bar)
-        self.assertIn("Restart_SavedSinglePatternFreshArena", action_bar)
-        self.assertIn("Get_SavedDefaultFlow", restart_single)
-        self.assertIn("1u != iSavedSlotCount", restart_single)
-        self.assertIn("exactly one saved scriptedSequence slot", restart_single)
-        self.assertIn("Restart_SavedFlow(true)", restart_single)
+        self.assertIn("Play Selected Pattern (Keep Arena)", action_bar)
+        self.assertIn("Restart Active Pattern (Keep Arena)", action_bar)
+        self.assertIn("Restart_SelectedPattern()", action_bar)
+        self.assertIn("PLAY_PATTERN_ID", action_bar)
+        self.assertIn("RESTART_PATTERN_ID", action_bar)
+        self.assertIn("does not reload the saved Flow", action_bar)
         for marker in (
-            "bRequireSingleSavedPattern",
-            "Pending.Request.Slots.size() != 1u",
-            "exact saved one-slot scriptedSequence request",
             "Reload_FlowDocument()",
             "Start_Flow(",
         ):
             self.assertIn(marker, restart_flow)
+        self.assertNotIn("Restart_SavedSinglePatternFreshArena", boss)
+        self.assertNotIn("bRequireSingleSavedPattern", boss)
+        self.assertIn("Reset_ValtanBossOnlyAuditionState", pattern_start)
+        pattern_command = pattern_start[
+            pattern_start.index("if (isPatternIdCommand)") :
+            pattern_start.index("SET_ARENA_PRESET is the only consumer")
+        ]
+        self.assertNotIn("Reset_ValtanAuditionState(", pattern_command)
         self.assertIn("Reset_ValtanAuditionState(*boss", flow_start)
         self.assertIn("m_WorldDestructionRuntime", flow_start)
         self.assertIn("m_EncounterPropRuntime", flow_start)

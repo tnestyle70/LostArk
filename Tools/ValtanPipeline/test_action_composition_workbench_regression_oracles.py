@@ -128,6 +128,9 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.animation_cpp = read("Client/Private/Animation_Tool.cpp")
         cls.animation_h = read("Client/Public/Animation_Tool.h")
+        cls.valtan_view_admission_h = read(
+            "Client/Public/ValtanViewAdmission.h"
+        )
         cls.workbench_h = read("Client/Public/ActionCompositionWorkbench.h")
         cls.workbench_cpp = read("Client/Private/ActionCompositionWorkbench.cpp")
         cls.blueprint_cpp = read(
@@ -147,6 +150,20 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         cls.effect_tool_v2_cpp = read("Client/Private/Effect_Tool_V2.cpp")
         cls.presentation = json.loads(read("Data/Valtan/Valtan.presentation.json"))
         cls.gameplay = json.loads(read("Data/Valtan/Valtan.gameplay.json"))
+
+    def test_shared_view_admission_separates_display_from_mutation(self) -> None:
+        for token in (
+            "enum class VALTAN_VIEW_ADMISSION",
+            "Can_DisplayValtanView(",
+            "Can_MutateValtanView(",
+            "VALTAN_VIEW_ADMISSION::STALE_PRESERVED == eAdmission",
+            "VALTAN_VIEW_ADMISSION::ADMITTED == eAdmission",
+        ):
+            self.assertIn(token, self.valtan_view_admission_h)
+        self.assertIn('#include "ValtanViewAdmission.h"', self.workbench_h)
+        self.assertIn(
+            "return Can_MutateValtanView(m_eAdmission);", self.workbench_h
+        )
 
     def test_create_pattern_tab_latches_its_canonical_load_before_reload(self) -> None:
         creator = function_body(
@@ -187,20 +204,20 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertLess(route_to_browser, reload_canonical)
 
     def test_transient_canonical_writer_lock_recovers_without_reopening(self) -> None:
-        self.assertIn(
-            'status.find("Create/Project transaction is active")',
-            self.workbench_cpp,
-        )
-        self.assertIn('status.find("Win32 33")', self.workbench_cpp)
         reload_body = function_body(
             self.workbench_cpp,
             "bool_t Client::CActionCompositionWorkbench::Reload_Canonical()",
         )
-        self.assertIn(
-            "m_bCanonicalReloadRetryPending =\n"
-            "\t\t\tIsTransientCanonicalReadAdmissionFailure(",
-            reload_body,
-        )
+        for token in (
+            "VALTAN_CANONICAL_READ_DIAGNOSTIC CanonicalDiagnostic;",
+            "CanonicalAdmission.Acquire(CanonicalDiagnostic)",
+            "CanonicalDiagnostic.Is_AutomaticRetryable()",
+            "CanonicalDiagnostic.Requires_ProductProjection()",
+            "REPROJECTION_REQUIRED:",
+            "Stage_ProductFallback(CanonicalAdmission, LoadFailure)",
+        ):
+            self.assertIn(token, reload_body)
+        self.assertNotIn("status.find(", reload_body)
         self.assertIn(
             "ImGui::GetTime() + CANONICAL_RELOAD_RETRY_SECONDS",
             reload_body,
@@ -714,23 +731,23 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         effective_ready = render.index("bool_t bEffectivePatternReady =")
         effective_lookup = render.index("Get_ValtanPatternDraft", effective_ready)
         self.assertIn(
-            "ADMISSION_STATE::ADMITTED == m_eAdmission",
+            "VALTAN_VIEW_ADMISSION::ADMITTED == m_eAdmission",
             render[effective_ready:effective_lookup],
         )
         draft_dirty = render.index("m_bAuthoringDraftDirty =")
         self.assertIn(
-            "ADMISSION_STATE::ADMITTED == m_eAdmission",
+            "VALTAN_VIEW_ADMISSION::ADMITTED == m_eAdmission",
             render[draft_dirty:effective_ready],
         )
 
         timeline_lookup = build_timeline.index("Get_ValtanStageDraft")
         self.assertIn(
-            "ADMISSION_STATE::ADMITTED == m_eAdmission",
+            "VALTAN_VIEW_ADMISSION::ADMITTED == m_eAdmission",
             build_timeline[:timeline_lookup],
         )
         for body in (gameplay_details, animation_details, inline_timing):
             stale_gate = body.index(
-                "ADMISSION_STATE::ADMITTED != m_eAdmission"
+                "VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission"
             )
             draft_lookup = body.index("Get_ValtanStageDraft")
             self.assertLess(stale_gate, draft_lookup)
@@ -744,7 +761,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
                 "Get_ValtanCompositionPatternSoundDraft"
             )
             self.assertIn(
-                "ADMISSION_STATE::ADMITTED != m_eAdmission",
+                "VALTAN_VIEW_ADMISSION::ADMITTED != m_eAdmission",
                 body[:sound_lookup],
             )
         self.assertNotIn("Get_ValtanStageDurationDraft", browser)
@@ -777,7 +794,9 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         canonical_pin = reload_body.index(
             "m_strPinnedCanonicalSourceRevision ="
         )
-        admitted = reload_body.rindex("m_eAdmission = ADMISSION_STATE::ADMITTED")
+        admitted = reload_body.rindex(
+            "m_eAdmission = VALTAN_VIEW_ADMISSION::ADMITTED"
+        )
         self.assertLess(product_load, inventory)
         self.assertLess(inventory, source_reload)
         self.assertLess(source_reload, authoring_revision)
@@ -824,7 +843,10 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         self.assertIn("PRODUCT_ONLY / canonical Product read admission", read_only)
         self.assertIn("previous display snapshot was preserved", read_only)
-        self.assertIn("m_eAdmission = ADMISSION_STATE::STALE_PRESERVED", read_only)
+        self.assertIn(
+            "m_eAdmission = VALTAN_VIEW_ADMISSION::STALE_PRESERVED",
+            read_only,
+        )
         self.assertNotIn("m_strPinnedAuthoringSourceRevision =", read_only)
         self.assertIn("m_strPinnedAuthoringSourceRevision.clear()", read_only)
         self.assertIn("FULL_JOIN / canonical Product", reload_body)
@@ -852,7 +874,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         effective_ready = render.index("bool_t bEffectivePatternReady =")
         effective_lookup = render.index("Get_ValtanPatternDraft", effective_ready)
         self.assertIn(
-            "ADMISSION_STATE::ADMITTED == m_eAdmission",
+            "VALTAN_VIEW_ADMISSION::ADMITTED == m_eAdmission",
             render[effective_ready:effective_lookup],
         )
         for pin in (
@@ -871,7 +893,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         sound = details[sound_start:]
         self.assertIn(
-            "ADMISSION_STATE::ADMITTED == m_eAdmission && bMutationAdmitted",
+            "VALTAN_VIEW_ADMISSION::ADMITTED == m_eAdmission && bMutationAdmitted",
             sound,
         )
         self.assertIn(
@@ -1072,10 +1094,12 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             self.animation_cpp,
             "bool_t Client::CAnimation_Tool::Start_ValtanPatternMasterPreview(",
         )
-        self.assertIn("VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED", start)
+        self.assertIn(
+            "Can_MutateValtanView(m_eValtanPatternMasterAdmission)", start
+        )
         self.assertIn("display-only", start)
         self.assertLess(
-            start.index("VALTAN_PATTERN_MASTER_ADMISSION_STATE::ADMITTED"),
+            start.index("Can_MutateValtanView(m_eValtanPatternMasterAdmission)"),
             start.index("Build_ValtanPatternMasterTimeline"),
         )
 
@@ -1112,7 +1136,9 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             render.index("Consume_ValtanCompositionPatternCreated"),
             render.index("Select_Pattern(*pCreated)"),
         )
-        self.assertIn("m_eAdmission = ADMISSION_STATE::STALE_PRESERVED", render)
+        self.assertIn(
+            "m_eAdmission = VALTAN_VIEW_ADMISSION::STALE_PRESERVED", render
+        )
 
     def test_one_save_commits_pattern_and_sound_before_local_consumer_reload(self) -> None:
         save = function_body(
@@ -1662,7 +1688,9 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             self.assertNotIn("Reload_SemanticValtanEffects(", body)
         self.assertIn("Reload_SemanticValtanEffects();", reload_canonical)
         self.assertLess(
-            reload_canonical.index("m_eAdmission = ADMISSION_STATE::ADMITTED;"),
+            reload_canonical.index(
+                "m_eAdmission = VALTAN_VIEW_ADMISSION::ADMITTED;"
+            ),
             reload_canonical.rindex("Reload_SemanticValtanEffects();"),
         )
 
@@ -1780,7 +1808,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertNotIn('ImGui::Button("Reload Canonical"', toolbar)
         self.assertNotIn("bCanonicalViewMayHaveChanged", toolbar)
         self.assertIn("return false", toolbar)
-        self.assertIn("ADMISSION_STATE::ADMITTED != m_eAdmission", open_valtan)
+        self.assertIn("!Can_MutateValtanView(m_eAdmission)", open_valtan)
 
         self.assertNotIn('ImGui::Button("Save Sound Owner")', details)
         self.assertNotIn('ImGui::Button("Retry Apply Saved Sound")', details)
@@ -2254,7 +2282,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         mutation_gate_at = render.index("const bool_t bMutationAdmitted")
         local_gate = render[local_gate_at:mutation_gate_at]
         self.assertIn("nullptr != pPattern", local_gate)
-        self.assertIn("ADMISSION_STATE::REJECTED != m_eAdmission", local_gate)
+        self.assertIn("Can_DisplayValtanView(m_eAdmission)", local_gate)
         self.assertNotIn("bEffectivePatternReady", local_gate)
         self.assertNotIn("bPatternSoundDependencyDirty", local_gate)
         self.assertIn(
@@ -2474,8 +2502,15 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         events = gameplay["stages"][0]["events"]
         self.assertEqual(1, len(events))
         self.assertEqual("SPAWN_COMBAT_OBJECT_VOLLEY", events[0]["kind"])
+        self.assertEqual(
+            "combatobject.valtan.ground-roar.rock",
+            events[0]["combatObjectArchetypeId"],
+        )
+        self.assertEqual("BOSS_RELATIVE", events[0]["volleyPolicy"])
         self.assertEqual(4, events[0]["countPerResolvedTarget"])
         self.assertEqual("RADIAL_AROUND_BOSS", events[0]["layout"]["kind"])
+        self.assertEqual(4.9497475, events[0]["layout"]["radiusM"])
+        self.assertEqual(45.0, events[0]["layout"]["startAngleDegrees"])
         self.assertEqual(90.0, events[0]["layout"]["angleStepDegrees"])
 
     def test_sequence_append_submits_selected_source_tuple_with_stage_draft(

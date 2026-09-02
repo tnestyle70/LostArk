@@ -328,6 +328,55 @@ class EffectV2ValidatorTests(unittest.TestCase):
         with self.assertRaisesRegex(VALIDATOR.ContractError, "has no document"):
             VALIDATOR.validate(self.root, self.resource_root)
 
+    def test_boss_catalog_group_owner_passes_when_document_exists(self) -> None:
+        self._write_group(self.group)
+        binding = copy.deepcopy(self.binding)
+        binding["bindings"] = []
+        self._write_fixture(self.document, binding)
+        self._write_json(
+            self.root / "Data/Actors/BossCatalog.json",
+            {
+                "schema": "lostark.boss-catalog",
+                "formatVersion": 6,
+                "bosses": [
+                    {
+                        "archetypeId": "BOSS_VALTAN",
+                        "combatObjectVisuals": [
+                            {
+                                "effectV2Group": {
+                                    "groupId": "group.test.one",
+                                    "playbackRate": 1.0,
+                                    "visualHitMs": 100,
+                                    "serverHitId": "hit.test.one",
+                                }
+                            }
+                        ],
+                    }
+                ],
+            },
+        )
+
+        report = VALIDATOR.validate(self.root, self.resource_root)
+
+        self.assertEqual(report["groups"], 1)
+        self.assertEqual(report["bindings"], 0)
+        self.assertEqual(report["independent"], 0)
+
+    def test_present_invalid_boss_catalog_fails_closed(self) -> None:
+        self._write_json(
+            self.root / "Data/Actors/BossCatalog.json",
+            {
+                "schema": "lostark.boss-catalog",
+                "formatVersion": 5,
+                "bosses": [],
+            },
+        )
+
+        with self.assertRaisesRegex(
+            VALIDATOR.ContractError, "unsupported BossCatalog Effect V2 owner"
+        ):
+            VALIDATOR.validate(self.root, self.resource_root)
+
     def test_binding_offset_and_yaw_pass(self) -> None:
         binding = copy.deepcopy(self.binding)
         binding["bindings"][0]["offset"] = [1.5, 0.0, -2.0]

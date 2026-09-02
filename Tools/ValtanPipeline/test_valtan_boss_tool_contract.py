@@ -321,7 +321,8 @@ class ValtanBossToolContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, verification)
         for marker in (
-            'ImGui::Button("Complete Play Selected")',
+            'ImGui::Button("Play Selected Pattern (Keep Arena)")',
+            'ImGui::Button("Restart Active Pattern (Keep Arena)")',
             'ImGui::Checkbox("Repeat"',
             'ImGui::Button("Stop After Current")',
             '"Animation"',
@@ -722,7 +723,9 @@ class ValtanBossToolContractTests(unittest.TestCase):
             "CanonicalAdmission.Validate_StillCurrent"
         )
         graph_commit = reload_graph.index("m_Graph =")
-        mutation_admitted = reload_graph.index("m_bGraphMutationAdmitted = true")
+        mutation_admitted = reload_graph.index(
+            "m_eGraphAdmission = VALTAN_VIEW_ADMISSION::ADMITTED"
+        )
         self.assertLess(acquire, load)
         self.assertLess(load, camera_stage)
         self.assertLess(camera_stage, final_generation_check)
@@ -865,10 +868,12 @@ class ValtanBossToolContractTests(unittest.TestCase):
             self.boss_cpp, "bool_t Client::CBossTool::Reload_Graph()"
         )
         self.assertLess(
-            reload_graph.index("CanonicalAdmission.Acquire(Status)"),
+            reload_graph.index("CanonicalAdmission.Acquire(Diagnostic)"),
             reload_graph.index("Load_WhileAdmitted("),
         )
-        self.assertIn("Fail_GraphReload(Status, nullptr)", reload_graph)
+        self.assertIn(
+            "Fail_GraphReload(Diagnostic.strStatus, nullptr)", reload_graph
+        )
         self.assertIn("Fail_GraphReload(Status, &CanonicalAdmission)", reload_graph)
         fallback = function_body(
             self.boss_cpp, "bool_t Client::CBossTool::Fail_GraphReload("
@@ -885,14 +890,18 @@ class ValtanBossToolContractTests(unittest.TestCase):
         self.assertIn("no files were reopened", fallback)
         self.assertIn("Save, Restart, Play", fallback)
         self.assertIn("READ-ONLY PRODUCT FALLBACK", self.boss_cpp)
-        self.assertIn("m_bGraphMutationAdmitted", self.boss_cpp)
+        self.assertIn(
+            "m_eGraphAdmission = VALTAN_VIEW_ADMISSION::STALE_PRESERVED",
+            fallback,
+        )
+        self.assertIn("Can_MutateValtanView(m_eGraphAdmission)", self.boss_cpp)
 
         effect_refresh = function_body(
             self.effect_cpp,
             "bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()",
         )
         self.assertLess(
-            effect_refresh.index("CanonicalAdmission.Acquire(Status)"),
+            effect_refresh.index("CanonicalAdmission.Acquire(Diagnostic)"),
             effect_refresh.index("Load_WhileAdmitted("),
         )
         effect_fallback = function_body(
@@ -919,7 +928,109 @@ class ValtanBossToolContractTests(unittest.TestCase):
             composition_fallback.index("m_ProductFallbackEncounter ="),
         )
         self.assertIn("Render_ProductFallbackBrowser()", workbench)
-        self.assertIn("ADMISSION_STATE::REJECTED", workbench)
+        self.assertIn("VALTAN_VIEW_ADMISSION::REJECTED", workbench)
+
+    def test_boss_and_effect_views_share_display_and_mutation_admission(self) -> None:
+        admission = (
+            ROOT / "Client/Public/ValtanViewAdmission.h"
+        ).read_text(encoding="utf-8")
+        for token in (
+            "enum class VALTAN_VIEW_ADMISSION",
+            "Can_DisplayValtanView(",
+            "Can_MutateValtanView(",
+        ):
+            self.assertIn(token, admission)
+        for header in (self.boss_h, self.effect_h):
+            self.assertIn('#include "ValtanViewAdmission.h"', header)
+
+        effect_reload = function_body(
+            self.effect_cpp,
+            "bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()",
+        )
+        for token in (
+            "VALTAN_VIEW_ADMISSION::ADMITTED",
+            "VALTAN_VIEW_ADMISSION::STALE_PRESERVED",
+            "VALTAN_VIEW_ADMISSION::REJECTED",
+        ):
+            self.assertIn(token, effect_reload)
+        effect_render = function_body(
+            self.effect_cpp,
+            "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+        )
+        self.assertIn(
+            "Can_DisplayValtanView(m_eValtanPatternTreeAdmission)",
+            effect_render,
+        )
+        for signature in (
+            "bool_t Client::CEffect_Tool::Can_PlayValtanServerPattern(",
+            "bool_t Client::CEffect_Tool::Try_CreateValtanPatternEffect(",
+            "bool_t Client::CEffect_Tool::Can_DeleteSelectedValtanPatternEffect(",
+            "bool_t Client::CEffect_Tool::Try_SaveDocument()",
+        ):
+            body = function_body(self.effect_cpp, signature)
+            self.assertIn(
+                "Can_MutateValtanView(m_eValtanPatternTreeAdmission)", body
+            )
+        save = function_body(
+            self.effect_cpp, "bool_t Client::CEffect_Tool::Try_SaveDocument()"
+        )
+        self.assertIn("m_iValtanWorldOwnerStageDurationMs", save)
+
+    def test_boss_graph_transient_reload_retries_without_dropping_last_good(self) -> None:
+        update = function_body(
+            self.boss_cpp, "void Client::CBossTool::Update("
+        )
+        reload_graph = function_body(
+            self.boss_cpp, "bool_t Client::CBossTool::Reload_Graph()"
+        )
+        schedule = function_body(
+            self.boss_cpp,
+            "void Client::CBossTool::Schedule_CanonicalReloadRetry()",
+        )
+        fallback = function_body(
+            self.boss_cpp, "bool_t Client::CBossTool::Fail_GraphReload("
+        )
+
+        self.assertIn("CANONICAL_RELOAD_RETRY_SECONDS = 0.25", self.boss_cpp)
+        self.assertIn("m_bCanonicalReloadRetryPending", self.boss_h)
+        self.assertIn("m_dNextCanonicalReloadRetrySeconds", self.boss_h)
+        self.assertIn(
+            "ImGui::GetTime() >= m_dNextCanonicalReloadRetrySeconds", update
+        )
+        self.assertIn("(void)Reload_Graph();", update)
+        self.assertIn("m_bCanonicalReloadRetryPending = true", schedule)
+        self.assertIn("m_bCanonicalReloadRetryPending = false", reload_graph)
+        self.assertIn("VALTAN_CANONICAL_READ_DIAGNOSTIC Diagnostic", reload_graph)
+        self.assertGreaterEqual(
+            reload_graph.count("Diagnostic.Is_AutomaticRetryable()"), 2
+        )
+        self.assertIn("Diagnostic.Requires_ProductProjection()", reload_graph)
+        self.assertIn("REPROJECTION_REQUIRED", reload_graph)
+        self.assertIn(
+            "VALTAN_CANONICAL_READ_DIAGNOSTIC::PRODUCT_PROJECTION_COMMAND",
+            reload_graph,
+        )
+        effect_reload = function_body(
+            self.effect_cpp,
+            "bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()",
+        )
+        self.assertIn(
+            "VALTAN_CANONICAL_READ_DIAGNOSTIC::PRODUCT_PROJECTION_COMMAND",
+            effect_reload,
+        )
+        self.assertIn(
+            '"powershell -ExecutionPolicy Bypass -File "', self.tree_h
+        )
+        self.assertIn(
+            '"Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1 -Mode PublishV2"',
+            self.tree_h,
+        )
+        self.assertGreaterEqual(
+            reload_graph.count("Schedule_CanonicalReloadRetry();"), 2
+        )
+        self.assertIn("Schedule_CanonicalReloadRetry();", fallback)
+        self.assertNotIn("m_bGraphReady = false", reload_graph + fallback)
+        self.assertNotIn("m_bProductFallbackReady = false", fallback)
 
 
 if __name__ == "__main__":
