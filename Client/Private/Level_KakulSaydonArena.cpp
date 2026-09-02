@@ -6,6 +6,7 @@
 #include "GameInstance.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
+#include "MapAssetCatalog.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
 #include "NetworkWorldEntityCommandSink.h"
@@ -50,14 +51,35 @@ namespace
 	   instead of letting the arena open with the finale already assembled. The
 	   paper wall is deliberately absent: it must stand until the sequence
 	   topples it. */
-	constexpr std::array<uint64_t, 18> KAKULSAYDON_CIRCUS_FINALE_PLACEMENT_IDS = {
+	constexpr std::array<uint64_t, 22> KAKULSAYDON_CIRCUS_FINALE_PLACEMENT_IDS = {
 		8ull, 10ull, 11ull, 12ull, 13ull, 14ull, 15ull, 16ull, 18ull,
 		19ull, 20ull, 21ull, 23ull, 24ull, 25ull, 26ull, 27ull, 28ull,
+		/* The four stage curtains sweep in at the end of the finale, so they
+		   stay hidden with the rest instead of framing an empty plaza. */
+		33ull, 35ull, 38ull, 39ull,
 	};
 	constexpr std::string_view STAGE_MARKER_SCHEMA =
 		"lostark.kakul-stage-markers-runtime";
 	constexpr std::string_view STAGE_SEMANTIC_STATUS =
 		"SOURCE_LEVEL_ID_ONLY";
+
+	constexpr std::string_view CAMERA_SHOT_SCHEMA = "lostark.camera-shots";
+	constexpr size_t CAMERA_SHOT_MAX_COUNT = 64u;
+	constexpr uint32_t CAMERA_SHOT_MAX_BLEND_MS = 10000u;
+	constexpr uint32_t CAMERA_SHOT_MAX_PRIORITY = 1000u;
+	constexpr f32_t CAMERA_SHOT_MAX_HALF_EXTENT = 1000.f;
+	constexpr f32_t CAMERA_SHOT_MAX_COORDINATE = 100000.f;
+	/* A shot is released only once the Character stands this far outside its
+	   box, so walking the boundary cannot flip the camera every frame. */
+	constexpr f32_t CAMERA_SHOT_EXIT_MARGIN = 0.5f;
+	/* Distinct from the Bern and Valtan cinematic owners so the engine's
+	   single-owner override never confuses this arena with theirs. */
+	constexpr uint64_t KAKULSAYDON_CAMERA_SHOT_OWNER_ID = 0x4B414B554C534854ull;
+	/* The follow camera this level installs. Reused when a shot hands the
+	   camera back so the released pose matches the follow pose exactly. */
+	const float3_t KAKULSAYDON_FOLLOW_POSITION_OFFSET(0.4f, 7.5f, 4.5f);
+	const float3_t KAKULSAYDON_FOLLOW_LOOK_OFFSET(0.f, 1.2f, 0.f);
+	constexpr f32_t KAKULSAYDON_FOLLOW_FOV_DEGREES = 60.f;
 
 	const Client::DATA_JSON_VALUE* Required(
 		const Client::DATA_JSON_VALUE& object,
@@ -103,6 +125,82 @@ namespace
 			{
 				return c < 0x20u;
 			});
+	}
+
+	std::filesystem::path Find_CameraShotDocument()
+	{
+		return Client::CMapAssetCatalog::Get_MapDataRoot() /
+			(std::filesystem::path(std::string(KAKULSAYDON_AREA_ID)).wstring() +
+				L".camerashots.json");
+	}
+
+	bool Read_Float3(
+		const Client::DATA_JSON_VALUE* value,
+		const f32_t limit,
+		float3_t& out)
+	{
+		if (nullptr == value || !value->Is_Array() ||
+			3u != value->Get_Array().size())
+		{
+			return false;
+		}
+		f32_t parts[3]{};
+		for (size_t index = 0; index < 3u; ++index)
+		{
+			const Client::DATA_JSON_VALUE& part = value->Get_Array()[index];
+			if (!part.Is_Number() || !std::isfinite(part.Get_Number()) ||
+				std::abs(part.Get_Number()) > limit)
+			{
+				return false;
+			}
+			parts[index] = static_cast<f32_t>(part.Get_Number());
+		}
+		out = float3_t(parts[0], parts[1], parts[2]);
+		return true;
+	}
+
+	bool Read_Uint(
+		const Client::DATA_JSON_VALUE* value,
+		const uint32_t maximum,
+		uint32_t& out)
+	{
+		if (nullptr == value || !value->Is_Number())
+			return false;
+		const double number = value->Get_Number();
+		if (!std::isfinite(number) || number < 0.0 || number > maximum ||
+			std::floor(number) != number)
+		{
+			return false;
+		}
+		out = static_cast<uint32_t>(number);
+		return true;
+	}
+
+	/* Same yawed box test the Server applies to trigger boxes, so a shot
+	   authored with the trigger tools covers the ground it appears to. */
+	bool Contains_CameraShot(
+		const Client::CLevel_KakulSaydonArena::KAKUL_CAMERA_SHOT& shot,
+		const float3_t& position,
+		const f32_t margin)
+	{
+		const f32_t deltaX = position.x - shot.vCenter.x;
+		const f32_t deltaZ = position.z - shot.vCenter.z;
+		const f32_t yaw = XMConvertToRadians(shot.fYawDegrees);
+		const f32_t cosine = std::cos(yaw);
+		const f32_t sine = std::sin(yaw);
+		const f32_t localX = cosine * deltaX - sine * deltaZ;
+		const f32_t localZ = sine * deltaX + cosine * deltaZ;
+		return std::abs(localX) <= shot.vHalfExtents.x + margin &&
+			std::abs(position.y - shot.vCenter.y) <= shot.vHalfExtents.y + margin &&
+			std::abs(localZ) <= shot.vHalfExtents.z + margin;
+	}
+
+	float3_t Lerp_Float3(const float3_t& from, const float3_t& to, const f32_t t)
+	{
+		return float3_t(
+			from.x + (to.x - from.x) * t,
+			from.y + (to.y - from.y) * t,
+			from.z + (to.z - from.z) * t);
 	}
 
 	std::filesystem::path Find_StageMarkerDocument()
@@ -258,6 +356,15 @@ HRESULT Client::CLevel_KakulSaydonArena::Initialize()
 		return E_FAIL;
 	}
 
+	/* A missing or rejected shot document costs the arena its authored camera
+	   only. Entry never depends on it, so report and keep the follow view. */
+	if (!Load_CameraShots(m_strCameraShotStatus))
+	{
+		OutputDebugStringA((
+			"[Level_KakulSaydonArena][CameraShot] " +
+			m_strCameraShotStatus + "\n").c_str());
+	}
+
 	if (FAILED(Ready_Layer_Camera(TEXT("Layer_Camera"))))
 		return E_FAIL;
 
@@ -350,6 +457,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 		}
 	}
 	m_SequencePlayer.Update(fTimeDelta, targets);
+	Update_CameraShots(fTimeDelta);
 }
 
 bool_t Client::CLevel_KakulSaydonArena::Start_ServerRequestedSequence(
@@ -628,8 +736,8 @@ HRESULT Client::CLevel_KakulSaydonArena::Ready_Layer_Camera(
 	cameraDesc.fRotationPerSec = 90.f;
 	cameraDesc.fMouseSensor = 0.1f;
 	cameraDesc.pFollowTarget = nullptr;
-	cameraDesc.vPositionOffset = float3_t(0.4f, 7.5f, 4.5f);
-	cameraDesc.vLookOffset = float3_t(0.f, 1.2f, 0.f);
+	cameraDesc.vPositionOffset = KAKULSAYDON_FOLLOW_POSITION_OFFSET;
+	cameraDesc.vLookOffset = KAKULSAYDON_FOLLOW_LOOK_OFFSET;
 	cameraDesc.fFollowResponse = 0.f;
 	cameraDesc.isFollowEnabled = false;
 
@@ -677,10 +785,344 @@ bool_t Client::CLevel_KakulSaydonArena::Bind_CameraToLocalCharacter()
 	if (nullptr == transform)
 		return false;
 	m_pCameraTarget = localCharacter;
-	m_pCamera->Set_PositionOffset(float3_t(0.4f, 7.5f, 4.5f));
+	m_pCamera->Set_PositionOffset(KAKULSAYDON_FOLLOW_POSITION_OFFSET);
 	m_pCamera->Set_FollowTarget(transform);
 	m_pCamera->Set_FollowEnabled(true);
 	return true;
+}
+
+bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
+	std::string& outStatus)
+{
+	m_CameraShots.clear();
+	Release_CameraShot();
+
+	const std::filesystem::path path = Find_CameraShotDocument();
+	std::error_code fileError;
+	if (!std::filesystem::is_regular_file(path, fileError) || fileError)
+	{
+		outStatus = "KoukuSaton camera shot document is absent; follow view only.";
+		return true;
+	}
+	const std::uintmax_t fileBytes = std::filesystem::file_size(path, fileError);
+	if (fileError || 0u == fileBytes || fileBytes > 256u * 1024u)
+	{
+		outStatus = "KoukuSaton camera shot document is empty or exceeds 256 KiB.";
+		return false;
+	}
+	std::ifstream input(path, std::ios::binary);
+	if (!input)
+	{
+		outStatus = "KoukuSaton camera shot document could not be opened.";
+		return false;
+	}
+	const std::string text{
+		std::istreambuf_iterator<char>(input),
+		std::istreambuf_iterator<char>() };
+	if (input.bad() || text.size() != fileBytes)
+	{
+		outStatus = "KoukuSaton camera shot document could not be read completely.";
+		return false;
+	}
+
+	DATA_JSON_VALUE root;
+	std::string parseError;
+	DATA_JSON_PARSE_LIMITS limits{};
+	limits.iMaximumBytes = 256u * 1024u;
+	limits.iMaximumDepth = 12u;
+	limits.iMaximumValues = 4096u;
+	if (!CDataJson::Parse(text, root, parseError, limits) ||
+		!Has_ExactProperties(root,
+			{ "schema", "formatVersion", "areaId", "revision", "shots" }))
+	{
+		outStatus = "KoukuSaton camera shot root is invalid: " + parseError;
+		return false;
+	}
+
+	const DATA_JSON_VALUE* schema = Required(root, "schema", DATA_JSON_TYPE::STRING);
+	const DATA_JSON_VALUE* version = Required(root, "formatVersion", DATA_JSON_TYPE::NUMBER);
+	const DATA_JSON_VALUE* area = Required(root, "areaId", DATA_JSON_TYPE::STRING);
+	const DATA_JSON_VALUE* revision = Required(root, "revision", DATA_JSON_TYPE::NUMBER);
+	const DATA_JSON_VALUE* shots = Required(root, "shots", DATA_JSON_TYPE::ARRAY);
+	if (nullptr == schema || CAMERA_SHOT_SCHEMA != schema->Get_String() ||
+		nullptr == version || version->Get_Number() != 1.0 ||
+		nullptr == area || KAKULSAYDON_AREA_ID != area->Get_String() ||
+		nullptr == revision || !std::isfinite(revision->Get_Number()) ||
+		revision->Get_Number() < 1.0 ||
+		std::floor(revision->Get_Number()) != revision->Get_Number() ||
+		nullptr == shots || shots->Get_Array().size() > CAMERA_SHOT_MAX_COUNT)
+	{
+		outStatus = "KoukuSaton camera shot header is invalid.";
+		return false;
+	}
+
+	std::vector<KAKUL_CAMERA_SHOT> stagedShots;
+	std::unordered_set<std::string> stagedIds;
+	stagedShots.reserve(shots->Get_Array().size());
+	for (const DATA_JSON_VALUE& value : shots->Get_Array())
+	{
+		if (!Has_ExactProperties(value,
+			{ "shotId", "sequenceInstanceId", "box", "eye", "lookAt",
+				"fovYDegrees", "blendInMs", "blendOutMs", "priority" }))
+		{
+			outStatus = "KoukuSaton camera shot has unexpected properties.";
+			return false;
+		}
+		KAKUL_CAMERA_SHOT shot;
+		const DATA_JSON_VALUE* shotId = Required(value, "shotId", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* box = Required(value, "box", DATA_JSON_TYPE::OBJECT);
+		if (nullptr == shotId || !Is_StableId(shotId->Get_String()) ||
+			!stagedIds.emplace(shotId->Get_String()).second ||
+			nullptr == box ||
+			!Has_ExactProperties(*box, { "center", "halfExtents", "yawDegrees" }))
+		{
+			outStatus = "KoukuSaton camera shot identity or box is invalid.";
+			return false;
+		}
+		shot.strShotId = shotId->Get_String();
+		const DATA_JSON_VALUE* sequenceId =
+			Required(value, "sequenceInstanceId", DATA_JSON_TYPE::STRING);
+		if (nullptr == sequenceId ||
+			(!sequenceId->Get_String().empty() &&
+				!Is_StableId(sequenceId->Get_String())))
+		{
+			outStatus = "KoukuSaton camera shot sequence binding is invalid: " +
+				shot.strShotId;
+			return false;
+		}
+		shot.strSequenceInstanceId = sequenceId->Get_String();
+
+		const DATA_JSON_VALUE* yaw = Required(*box, "yawDegrees", DATA_JSON_TYPE::NUMBER);
+		const DATA_JSON_VALUE* fov = Required(value, "fovYDegrees", DATA_JSON_TYPE::NUMBER);
+		if (!Read_Float3(box->Find("center"), CAMERA_SHOT_MAX_COORDINATE, shot.vCenter) ||
+			!Read_Float3(box->Find("halfExtents"), CAMERA_SHOT_MAX_HALF_EXTENT,
+				shot.vHalfExtents) ||
+			shot.vHalfExtents.x <= 0.f || shot.vHalfExtents.y <= 0.f ||
+			shot.vHalfExtents.z <= 0.f ||
+			nullptr == yaw || !std::isfinite(yaw->Get_Number()) ||
+			std::abs(yaw->Get_Number()) > 360.0 ||
+			!Read_Float3(value.Find("eye"), CAMERA_SHOT_MAX_COORDINATE, shot.vEye) ||
+			!Read_Float3(value.Find("lookAt"), CAMERA_SHOT_MAX_COORDINATE, shot.vLookAt) ||
+			nullptr == fov || !std::isfinite(fov->Get_Number()) ||
+			fov->Get_Number() <= 1.0 || fov->Get_Number() >= 179.0 ||
+			!Read_Uint(value.Find("blendInMs"), CAMERA_SHOT_MAX_BLEND_MS, shot.iBlendInMs) ||
+			!Read_Uint(value.Find("blendOutMs"), CAMERA_SHOT_MAX_BLEND_MS, shot.iBlendOutMs) ||
+			!Read_Uint(value.Find("priority"), CAMERA_SHOT_MAX_PRIORITY, shot.iPriority))
+		{
+			outStatus = "KoukuSaton camera shot values are out of range: " +
+				shot.strShotId;
+			return false;
+		}
+		shot.fYawDegrees = static_cast<f32_t>(yaw->Get_Number());
+		shot.fFovYDegrees = static_cast<f32_t>(fov->Get_Number());
+		/* A pose whose eye sits on its own target has no direction, and the
+		   engine would reject it every frame. Refuse it at load instead. */
+		const float3_t forward(
+			shot.vLookAt.x - shot.vEye.x,
+			shot.vLookAt.y - shot.vEye.y,
+			shot.vLookAt.z - shot.vEye.z);
+		if (forward.x * forward.x + forward.y * forward.y +
+			forward.z * forward.z <= 0.000001f)
+		{
+			outStatus = "KoukuSaton camera shot eye and lookAt coincide: " +
+				shot.strShotId;
+			return false;
+		}
+		stagedShots.push_back(std::move(shot));
+	}
+
+	m_CameraShots = std::move(stagedShots);
+	outStatus = "KoukuSaton camera shots loaded: " +
+		std::to_string(m_CameraShots.size());
+	return true;
+}
+
+const Client::CLevel_KakulSaydonArena::KAKUL_CAMERA_SHOT*
+Client::CLevel_KakulSaydonArena::Find_ActiveCameraShot(
+	const float3_t& vPosition) const
+{
+	const KAKUL_CAMERA_SHOT* best = nullptr;
+	for (const KAKUL_CAMERA_SHOT& shot : m_CameraShots)
+	{
+		const bool_t isHeldNow = shot.strShotId == m_strActiveCameraShotId;
+		bool_t isActive = false;
+		if (!shot.strSequenceInstanceId.empty())
+		{
+			/* The sequence starts the shot on the frame its trigger fires, even
+			   though the party is still far from the box. Once the sequence
+			   ends the box keeps the framing until they walk on to the next
+			   stage, so the camera does not snap back mid scene. */
+			isActive = m_SequencePlayer.Is_Playing(shot.strSequenceInstanceId);
+			if (!isActive && isHeldNow)
+			{
+				isActive = Contains_CameraShot(
+					shot, vPosition, CAMERA_SHOT_EXIT_MARGIN);
+			}
+		}
+		else
+		{
+			isActive = Contains_CameraShot(shot, vPosition,
+				isHeldNow ? CAMERA_SHOT_EXIT_MARGIN : 0.f);
+		}
+		if (!isActive)
+			continue;
+		if (nullptr == best || shot.iPriority > best->iPriority)
+			best = &shot;
+	}
+	return best;
+}
+
+void Client::CLevel_KakulSaydonArena::Release_CameraShot()
+{
+	if (m_bCameraShotHeld && nullptr != m_pCamera)
+	{
+		m_pCamera->End_PresentationOverride(
+			KAKULSAYDON_CAMERA_SHOT_OWNER_ID);
+	}
+	m_bCameraShotHeld = false;
+	m_strActiveCameraShotId.clear();
+	m_fCameraBlendSeconds = 0.f;
+	m_fCameraBlendElapsed = 0.f;
+}
+
+void Client::CLevel_KakulSaydonArena::Update_CameraShots(const f32_t fTimeDelta)
+{
+	if (nullptr == m_pCamera || m_CameraShots.empty())
+		return;
+	if (!m_pCamera->Is_FollowEnabled())
+	{
+		/* The free camera owns the view while it is on. */
+		Release_CameraShot();
+		return;
+	}
+	const shared_ptr<CCharacter> localCharacter =
+		m_Replication.Get_LocalCharacter();
+	const shared_ptr<CTransform> transform =
+		nullptr != localCharacter ? localCharacter->Get_Transform() : nullptr;
+	float3_t position{};
+	if (nullptr != transform)
+		XMStoreFloat3(&position, transform->Get_State(STATE::POSITION));
+	else if (!m_bCameraShotHeld)
+	{
+		/* Without a Character there is no follow pose to hand back to, so a
+		   shot may only start once the local player exists. */
+		return;
+	}
+
+	/* The pose the follow camera would hold this frame. This level installs a
+	   zero response follow, so it lands exactly here and a released shot hands
+	   over without a step. */
+	const float3_t followEye(
+		position.x + KAKULSAYDON_FOLLOW_POSITION_OFFSET.x,
+		position.y + KAKULSAYDON_FOLLOW_POSITION_OFFSET.y,
+		position.z + KAKULSAYDON_FOLLOW_POSITION_OFFSET.z);
+	const float3_t followLook(
+		position.x + KAKULSAYDON_FOLLOW_LOOK_OFFSET.x,
+		position.y + KAKULSAYDON_FOLLOW_LOOK_OFFSET.y,
+		position.z + KAKULSAYDON_FOLLOW_LOOK_OFFSET.z);
+
+	const KAKUL_CAMERA_SHOT* shot = Find_ActiveCameraShot(position);
+	const std::string shotId = nullptr != shot ? shot->strShotId : std::string();
+	if (shotId != m_strActiveCameraShotId)
+	{
+		uint32_t blendMs = 0u;
+		if (nullptr != shot)
+		{
+			blendMs = shot->iBlendInMs;
+		}
+		else
+		{
+			const auto previous = std::find_if(
+				m_CameraShots.begin(), m_CameraShots.end(),
+				[this](const KAKUL_CAMERA_SHOT& value)
+				{
+					return value.strShotId == m_strActiveCameraShotId;
+				});
+			blendMs = m_CameraShots.end() != previous ?
+				previous->iBlendOutMs : 0u;
+		}
+		/* Freeze the starting pose once per hand-over. Advancing both the
+		   start and the ratio would shorten every blend. */
+		if (m_bCameraShotHeld)
+		{
+			m_vCameraEyeFrom = m_vCameraEyeApplied;
+			m_vCameraLookFrom = m_vCameraLookApplied;
+			m_fCameraFovFrom = m_fCameraFovApplied;
+		}
+		else
+		{
+			m_vCameraEyeFrom = followEye;
+			m_vCameraLookFrom = followLook;
+			m_fCameraFovFrom = KAKULSAYDON_FOLLOW_FOV_DEGREES;
+		}
+		m_strActiveCameraShotId = shotId;
+		m_fCameraBlendSeconds = static_cast<f32_t>(blendMs) / 1000.f;
+		m_fCameraBlendElapsed = 0.f;
+	}
+
+	if (nullptr != shot)
+	{
+		m_vCameraEyeTo = shot->vEye;
+		m_vCameraLookTo = shot->vLookAt;
+		m_fCameraFovTo = shot->fFovYDegrees;
+	}
+	else
+	{
+		if (!m_bCameraShotHeld)
+			return;
+		if (nullptr == transform)
+		{
+			Release_CameraShot();
+			return;
+		}
+		m_vCameraEyeTo = followEye;
+		m_vCameraLookTo = followLook;
+		m_fCameraFovTo = KAKULSAYDON_FOLLOW_FOV_DEGREES;
+	}
+
+	if (!m_bCameraShotHeld)
+	{
+		if (!m_pCamera->Begin_PresentationOverride(
+			KAKULSAYDON_CAMERA_SHOT_OWNER_ID))
+		{
+			/* A cinematic outranks an authored shot; try again once it ends. */
+			m_strActiveCameraShotId.clear();
+			return;
+		}
+		m_bCameraShotHeld = true;
+	}
+
+	f32_t ratio = 1.f;
+	if (m_fCameraBlendSeconds > 0.f)
+	{
+		m_fCameraBlendElapsed = (std::min)(
+			m_fCameraBlendSeconds,
+			m_fCameraBlendElapsed + (std::max)(0.f, fTimeDelta));
+		const f32_t linear = m_fCameraBlendElapsed / m_fCameraBlendSeconds;
+		ratio = linear * linear * (3.f - 2.f * linear);
+	}
+	const bool_t isBlendFinished = m_fCameraBlendSeconds <= 0.f ||
+		m_fCameraBlendElapsed >= m_fCameraBlendSeconds;
+	const float3_t eye = Lerp_Float3(m_vCameraEyeFrom, m_vCameraEyeTo, ratio);
+	const float3_t lookAt = Lerp_Float3(m_vCameraLookFrom, m_vCameraLookTo, ratio);
+	const f32_t fov = m_fCameraFovFrom +
+		(m_fCameraFovTo - m_fCameraFovFrom) * ratio;
+	if (!m_pCamera->Apply_PresentationPose(
+		KAKULSAYDON_CAMERA_SHOT_OWNER_ID, eye, lookAt, fov))
+	{
+		/* Ownership was taken or the pose was rejected: fall back rather than
+		   hold a stale frame. */
+		m_bCameraShotHeld = false;
+		Release_CameraShot();
+		return;
+	}
+	m_vCameraEyeApplied = eye;
+	m_vCameraLookApplied = lookAt;
+	m_fCameraFovApplied = fov;
+
+	/* The hand-back finishes only once the blend has fully played. */
+	if (nullptr == shot && isBlendFinished)
+		Release_CameraShot();
 }
 
 unique_ptr<Client::CLevel_KakulSaydonArena>

@@ -97,6 +97,8 @@
       "placements": "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.mapplacements",
       "sourceSequences": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
       "sequences": "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
+      "sourceCameraShots": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json",
+      "cameraShots": "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.camerashots.json",
       "sourceDeployCatalog": "Data/Maps/Imported/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.deployassets",
       "sourceDeployPlacements": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.deployplacements",
       "deployCatalog": "Client/Bin/DataFiles/Map/LV_LUT_MIDNIGHTC_ED.deployassets",
