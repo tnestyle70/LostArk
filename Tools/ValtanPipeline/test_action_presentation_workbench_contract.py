@@ -363,6 +363,57 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "a missing preview owner may disable transport, not erase data panels",
         )
 
+    def test_first_dirty_balance_open_preserves_draft_and_stages_product_browser(
+        self,
+    ) -> None:
+        reload_canonical = function_body(
+            self.composition_cpp,
+            "bool_t Client::CActionCompositionWorkbench::Reload_Canonical()",
+        )
+        for token in (
+            "const bool_t bBalanceDraftDirty",
+            "const bool_t bHasDisplaySnapshot",
+            "if (bBalanceDraftDirty && bHasDisplaySnapshot)",
+            "if (bBalanceDraftDirty)",
+            "The draft was left untouched",
+            "only the last saved canonical Product was staged for read-only browsing",
+        ):
+            self.assertIn(token, reload_canonical)
+        first_open_fallback = reload_canonical[
+            reload_canonical.rindex("if (bBalanceDraftDirty)") :
+            reload_canonical.index("std::string AuthoringStatus;")
+        ]
+        self.assertIn("PreserveOrCommitReadOnlyProduct(", first_open_fallback)
+        self.assertNotIn("Reload_ValtanSource", first_open_fallback)
+        self.assertNotIn("Discard", first_open_fallback)
+        self.assertLess(
+            reload_canonical.index("Build_PlayablePatternInventory("),
+            reload_canonical.rindex("if (bBalanceDraftDirty)"),
+            "the saved Product and playable inventory must stage before the dirty-draft read-only commit",
+        )
+        self.assertLess(
+            reload_canonical.rindex("if (bBalanceDraftDirty)"),
+            reload_canonical.index("Reload_ValtanSource("),
+            "a dirty Balance draft must return through Product-only admission before source reload can replace it",
+        )
+
+    def test_patterns_window_exposes_canonical_admission_status_and_reload(self) -> None:
+        patterns_window = function_body(
+            self.composition_cpp,
+            "void Client::CActionCompositionWorkbench::Render_PatternsWindow(",
+        )
+        for token in (
+            'ImGui::TextDisabled("Canonical admission: %s", Admission_Label())',
+            'ImGui::SmallButton("Reload Canonical")',
+            "(void)Reload_Canonical();",
+            'ImGui::TextWrapped("Canonical status: %s", m_strStatus.c_str())',
+        ):
+            self.assertIn(token, patterns_window)
+        self.assertLess(
+            patterns_window.index("Admission_Label()"),
+            patterns_window.index('ImGui::BeginTabBar("##CompositionPatternDomainTabs")'),
+        )
+
     def test_workbench_can_reclaim_preview_owner_after_domain_deep_link(
         self,
     ) -> None:
@@ -1758,7 +1809,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
         for token in (
             "S2C_COMBAT_OBJECT_PRESENTATION_EVENT",
-            "NETWORK_PROTOCOL_VERSION = 52;",
+            "NETWORK_PROTOCOL_VERSION = 53;",
         ):
             self.assertIn(token, self.packet_type_h)
         for token in (

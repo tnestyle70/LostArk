@@ -466,20 +466,25 @@ class ValtanManualStageAuthoringContractTests(unittest.TestCase):
             "mesh_abn_groggy_1_end",
         ]
         dash = pattern(self.master, "VALTAN_DASH_CHARGE")
-        groggy = pattern(self.master, "VALTAN_DASH_CHARGE_GROGGY")
         part_break = pattern(self.master, "VALTAN_PART_BREAK")
-        self.assertEqual([420604], dash["sourceActionIds"])
-        self.assertEqual([400430], groggy["sourceActionIds"])
+        self.assertEqual([420604, 400430], dash["sourceActionIds"])
         self.assertEqual([420627], part_break["sourceActionIds"])
         self.assertEqual(
-            [{"sourceActionId": 400430, "sequenceIndex": 0, "role": "PRIMARY"}],
-            groggy["presentationSources"],
+            [
+                {"sourceActionId": 420604, "sequenceIndex": 2, "role": "PRIMARY"},
+                {
+                    "sourceActionId": 400430,
+                    "sequenceIndex": 0,
+                    "role": "REFERENCE_400430_0",
+                },
+            ],
+            dash["presentationSources"],
         )
         self.assertEqual(
             [{"sourceActionId": 420627, "sequenceIndex": 1, "role": "PRIMARY"}],
             part_break["presentationSources"],
         )
-        recovery = stage(groggy, "GROGGY")
+        recovery = stage(dash, "GROGGY")
         self.assertEqual(6833, recovery["durationMs"])
         self.assertEqual("GROGGY", recovery["stageKind"])
         self.assertEqual(

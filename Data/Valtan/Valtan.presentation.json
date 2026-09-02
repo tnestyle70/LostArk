@@ -275,6 +275,11 @@
           "sourceActionId": 420604,
           "sequenceIndex": 2,
           "role": "PRIMARY"
+        },
+        {
+          "sourceActionId": 400430,
+          "sequenceIndex": 0,
+          "role": "REFERENCE_400430_0"
         }
       ],
       "stages": [
@@ -412,20 +417,7 @@
             }
           ],
           "cameraInvocations": []
-        }
-      ]
-    },
-    {
-      "patternId": "VALTAN_DASH_CHARGE_GROGGY",
-      "sourceSequenceIndex": 0,
-      "presentationSources": [
-        {
-          "sourceActionId": 400430,
-          "sequenceIndex": 0,
-          "role": "PRIMARY"
-        }
-      ],
-      "stages": [
+        },
         {
           "stageId": "GROGGY",
           "actionId": "valtan.attack.dash-charge.recovery",
@@ -2526,9 +2518,9 @@
           "cameraInvocations": []
         },
         {
-          "stageId": "SILENCE_HOLD",
-          "actionId": "valtan.authoring.silence-slot.hold",
-          "sequenceRole": "SILENCE_HOLD",
+          "stageId": "SILENCE_APPLY",
+          "actionId": "valtan.authoring.silence-slot.apply",
+          "sequenceRole": "SILENCE_APPLY",
           "animation": {
             "mode": "NONE"
           },

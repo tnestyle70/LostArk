@@ -4,6 +4,7 @@
 #include "Engine_Defines.h"
 #include "ActionCompositionGraphModel.h"
 #include "Animation_Tool.h"
+#include "EncounterPatternReference.h"
 #include "ValtanCombatObjectSoundCueDocument.h"
 #include "ValtanPatternShakeCueDocument.h"
 #include "ValtanPatternSoundCueDocument.h"
@@ -173,6 +174,9 @@ public:
 
 private:
 	bool_t Reload_Canonical();
+	bool_t Stage_ProductFallback(
+		const CValtanCanonicalProductReadAdmission& Admission,
+		const std::string& strStrictFailure);
 	bool_t Save_Reload();
 	bool_t Is_PatternSoundDraftDirty(std::string& strOutStatus) const;
 	bool_t Has_UnsavedCompositionDrafts(std::string& strOutStatus) const;
@@ -222,6 +226,7 @@ private:
 		bool_t bMutationAdmitted);
 	void Render_Browser(
 		const VALTAN_PATTERN_VIEW* pEffectiveSelectedPattern);
+	void Render_ProductFallbackBrowser();
 	void Render_SequenceBrowser(
 		const VALTAN_PATTERN_VIEW* pPattern,
 		const VALTAN_STAGE_VIEW* pStage,
@@ -393,6 +398,7 @@ private:
 	CBossTool* m_pBossTool = nullptr;
 
 	VALTAN_PATTERN_TREE_VIEW m_CanonicalView;
+	CEncounterPatternReference m_ProductFallbackEncounter;
 	/* The Browser is the same admitted Product inventory used by Boss Tool
 	   Complete Play.  Reference/legacy compatibility rows remain available to
 	   the canonical loader for validation, but never become authoring choices. */
@@ -407,6 +413,7 @@ private:
 	ADMISSION_STATE m_eAdmission = ADMISSION_STATE::UNLOADED;
 	DETAIL_OWNER m_eDetailOwner = DETAIL_OWNER::PATTERN;
 	bool_t m_bLoadAttempted = false;
+	bool_t m_bProductFallbackReady = false;
 	/* A publisher owns the canonical byte-range lock only briefly.  A load that
 	   lands in that window must not freeze the Browser at zero rows for the
 	   lifetime of the Workbench; Render retries after the writer releases it. */

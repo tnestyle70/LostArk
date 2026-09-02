@@ -929,11 +929,16 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             self.workbench_cpp,
             "bool_t Client::CActionCompositionWorkbench::Reload_Canonical()",
         )
-        dirty_start = reload_body.index("if (m_pBalanceTool->Is_ValtanDraftDirty())")
-        dirty_end = reload_body.index("\n\t\t}", dirty_start)
+        dirty_start = reload_body.index(
+            "if (bBalanceDraftDirty && bHasDisplaySnapshot)"
+        )
+        dirty_end = reload_body.index("\n\t}", dirty_start)
         dirty_branch = reload_body[dirty_start:dirty_end]
         self.assertIn("return false", dirty_branch)
-        self.assertIn("current admitted draft remains editable", dirty_branch)
+        self.assertIn(
+            "current admitted draft and read-only Product display were preserved",
+            dirty_branch,
+        )
         for forbidden in (
             "m_eAdmission =",
             "m_CanonicalView =",
@@ -1372,7 +1377,10 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         runtime_group_play = function_body(
             self.effect_v2_runtime_cpp,
-            "uint32_t Client::CEffectV2Runtime::Play_Group(",
+            "uint32_t Client::CEffectV2Runtime::Play_Group(\n"
+            "\tconst EFFECT_V2_GROUP& Group,\n"
+            "\tstd::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pSnapshot,\n"
+            "\tconst EFFECT_V2_GROUP_PLAYBACK_DESC& Playback,",
         )
         runtime_group_update = function_body(
             self.effect_v2_runtime_cpp,
@@ -1380,7 +1388,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         runtime_group_advance = function_body(
             self.effect_v2_runtime_cpp,
-            "void Client::CEffectV2Runtime::Advance_FreeGroups(",
+            "void Advance_FreeGroupLanes(",
         )
 
         append = resources.index("Stage_AppendBossValtanStageBinding(")

@@ -457,6 +457,8 @@ namespace
 		AppendPatterns(View.Rotation, Patterns);
 		Require(!Patterns.empty() && Patterns.size() == View.Get_PatternCount(),
 			"canonical graph pattern count does not match its stable-ID closure");
+		Require(!Patterns.contains("VALTAN_DASH_CHARGE_GROGGY"),
+			"retired split dash-groggy Pattern leaked back into the canonical inventory");
 		std::size_t iCrossPatternBranchCount = 0u;
 		for (const auto& [PatternId, pPattern] : Patterns)
 		{
@@ -473,8 +475,29 @@ namespace
 				}
 			}
 		}
-		Require(iCrossPatternBranchCount >= 3u,
-			"canonical graph did not preserve the dash/groggy/part-break Pattern boundaries");
+		Require(iCrossPatternBranchCount >= 1u,
+			"canonical graph did not preserve its typed cross-Pattern boundaries");
+		const auto RequireLocalTarget = [&Patterns](
+			const char* const pPatternId, const char* const pStageId,
+			const char* const pOutcome, const char* const pTargetActionId)
+		{
+			const VALTAN_PATTERN_VIEW& Pattern = *Patterns.at(pPatternId);
+			const auto Stage = std::find_if(
+				Pattern.Stages.begin(), Pattern.Stages.end(),
+				[pStageId](const VALTAN_STAGE_VIEW& Candidate)
+				{ return Candidate.strStageId == pStageId; });
+			Require(Stage != Pattern.Stages.end(),
+				"canonical local branch source Stage is missing");
+			const auto Branch = std::find_if(
+				Stage->Branches.begin(), Stage->Branches.end(),
+				[pOutcome](const VALTAN_STAGE_BRANCH_VIEW& Candidate)
+				{ return Candidate.strOutcome == pOutcome; });
+			Require(Branch != Stage->Branches.end() &&
+				Branch->strNextActionId.has_value() &&
+				*Branch->strNextActionId == pTargetActionId &&
+				!Branch->strNextPatternId.has_value(),
+				"canonical local branch target drifted");
+		};
 		const auto RequireCrossTarget = [&Patterns](
 			const char* const pPatternId, const char* const pStageId,
 			const char* const pOutcome, const char* const pTargetPatternId)
@@ -496,14 +519,14 @@ namespace
 				*Branch->strNextPatternId == pTargetPatternId,
 				"canonical cross-Pattern branch target drifted");
 		};
-		RequireCrossTarget(
+		RequireLocalTarget(
 			"VALTAN_DASH_CHARGE", "CHARGE", "WALL_CONTACT",
-			"VALTAN_DASH_CHARGE_GROGGY");
-		RequireCrossTarget(
+			"valtan.attack.dash-charge.recovery");
+		RequireLocalTarget(
 			"VALTAN_DASH_CHARGE", "CHARGE", "TIMEOUT",
-			"VALTAN_DASH_CHARGE_GROGGY");
+			"valtan.attack.dash-charge.recovery");
 		RequireCrossTarget(
-			"VALTAN_DASH_CHARGE_GROGGY", "GROGGY", "PART_DESTROYED",
+			"VALTAN_DASH_CHARGE", "GROGGY", "PART_DESTROYED",
 			"VALTAN_PART_BREAK");
 		std::vector<const VALTAN_STAGE_VIEW*> DashWallBoundaryPath;
 		if (!CValtanPatternTree::Build_PreviewStagePath(
@@ -513,9 +536,9 @@ namespace
 		{
 			throw std::runtime_error(Status);
 		}
-		Require(!DashWallBoundaryPath.empty() &&
-			"CHARGE" == DashWallBoundaryPath.back()->strStageId,
-			"local dash preview did not stop cleanly at its cross-Pattern boundary");
+		Require(3u == DashWallBoundaryPath.size() &&
+			"GROGGY" == DashWallBoundaryPath.back()->strStageId,
+			"local dash preview did not include its same-Pattern groggy continuation");
 		std::set<std::string, std::less<>> ManagedPatternIds;
 		std::set<std::string, std::less<>> ReferencePatternIds;
 		for (const auto& [PatternId, pPattern] : Patterns)
@@ -606,6 +629,18 @@ namespace
 			*Patterns.at("VALTAN_GROGGY_FOLLOWUP");
 		const VALTAN_PATTERN_VIEW& Bind = *Patterns.at("VALTAN_BIND_SLOT");
 		const VALTAN_PATTERN_VIEW& Silence = *Patterns.at("VALTAN_SILENCE_SLOT");
+		const auto BindEnter = std::find_if(
+			Bind.Stages[0].Actions.begin(), Bind.Stages[0].Actions.end(),
+			[](const VALTAN_STAGE_ACTION_VIEW& Action)
+			{
+				return "ENTER" == Action.strTrigger &&
+					"SET_PLAYER_BIND" == Action.strKind &&
+					"player.status.bind" == Action.strTargetId;
+			});
+		Require(Bind.Stages[0].Actions.end() != BindEnter &&
+			std::abs(BindEnter->fValue - 5000.f) < 0.001f &&
+			5000u == BindEnter->iDurationMs,
+			"Bind Product action lost its Y+5m for 5000 ms contract");
 		Require(!Stagger.Stages[0].bSuppressAnimation &&
 			ClipNames(Stagger.Stages[0]) == std::vector<std::string>{
 				"mesh_att_battle_17_start", "mesh_att_battle_17_loop" } &&

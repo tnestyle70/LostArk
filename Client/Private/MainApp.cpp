@@ -11,6 +11,7 @@
 #include "EstherActionSoundCueDocument.h"
 #include "Effect_Object.h"
 #include "Effect_PresentationService.h"
+#include "EffectV2_Runtime.h"
 #include "GameInstance.h"
 #include "ImGuiLayer.h"
 #include "ItemCatalog.h"
@@ -338,7 +339,7 @@ namespace
 			static_cast<int32_t>(iServerTick - iDeadlineTick) < 0;
 	}
 
-	void Apply_SilenceRSlotTint(
+	void Update_SilenceRSlotMask(
 		Client::CUILayoutRuntime* pView,
 		const Client::HUD_PLAYER_STATE& Player)
 	{
@@ -347,14 +348,11 @@ namespace
 
 		const bool_t bSilenced =
 			Is_ServerDeadlinePending(Player.iServerTick, Player.iSilenceEndTick);
-		const float4_t vIconTint = bSilenced ?
-			float4_t(1.f, 0.2f, 0.2f, 1.f) :
-			float4_t(1.f, 1.f, 1.f, 1.f);
 
-		/* Silence is presented on the already-resolved R icon only. The texture
-		remains the live class/stance skill icon; this multiplier is reset at the
-		exact replicated deadline and never mutates any other quick slot. */
-		pView->Set_SlotTintMultiplier("Skill_R_Icon", vIconTint);
+		/* Silence owns a dedicated read-only overlay.  The resolved R icon and its
+		ordinary cooldown sweep stay untouched, so the exact replicated deadline
+		can only reveal or hide this one stable mask slot. */
+		pView->Set_SlotVisible("Skill_R_SilenceMask", bSilenced);
 	}
 }
 
@@ -961,6 +959,9 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	CEffectPresentationService::Commit_PendingSpawns();
 	CEffectPresentationService::Synchronize_FollowAnchors();
 	CEffectPresentationService::Update(fTimeDelta);
+	/* Product combat-object groups and Effect Tool previews share one free-group
+	   clock. MainApp advances it exactly once after the Engine object tick. */
+	CEffectV2Runtime::Advance_ProductGroups(fTimeDelta, m_pDevice, m_pContext);
 
 	#ifdef _DEBUG
 	if (nullptr != m_pMapTool)
@@ -1008,7 +1009,13 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	{
 		m_pBossTool->Update(
 			m_bDeveloperToolsVisible &&
-			IsDebugToolVisible(DEBUG_TOOL::BOSS));
+				IsDebugToolVisible(DEBUG_TOOL::BOSS),
+			m_bDeveloperToolsVisible &&
+				IsDebugToolVisible(DEBUG_TOOL::LOGIC_PATTERN));
+		if (m_pBossTool->Consume_LogicPatternOpenRequest())
+		{
+			(void)EnsureDebugTool(DEBUG_TOOL::LOGIC_PATTERN);
+		}
 		CAMERA_TOOL_OPEN_REQUEST cameraRequest;
 		if (m_pBossTool->Consume_CameraToolOpenRequest(cameraRequest))
 		{
@@ -1299,6 +1306,15 @@ HRESULT CMainApp::Render()
 			{
 				focusNextWindow(DEBUG_TOOL::BOSS);
 				m_pBossTool->Render();
+				if (!m_pBossTool->Is_Open())
+					SetDebugToolVisible(DEBUG_TOOL::BOSS, false);
+			}
+			if (IsDebugToolVisible(DEBUG_TOOL::LOGIC_PATTERN) && nullptr != m_pBossTool)
+			{
+				focusNextWindow(DEBUG_TOOL::LOGIC_PATTERN);
+				m_pBossTool->Render_LogicPatternWindow();
+				if (!m_pBossTool->Is_LogicPatternOpen())
+					SetDebugToolVisible(DEBUG_TOOL::LOGIC_PATTERN, false);
 			}
 			if (IsDebugToolVisible(DEBUG_TOOL::CAMERA) && nullptr != m_pCameraTool)
 			{
@@ -1800,7 +1816,7 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	Update_ChargeGauge();
 	Update_SkillIcons();
 	Update_SkillCooldowns();
-	Apply_SilenceRSlotTint(m_pHUDRuntimeView.get(), player);
+	Update_SilenceRSlotMask(m_pHUDRuntimeView.get(), player);
 	Update_QuickSlotFlash();
 	Update_ItemQuickSlots();
 	if (nullptr != m_pInventoryView)
@@ -3026,25 +3042,6 @@ void CMainApp::Update_SkillCooldowns()
 		m_pHUDRuntimeView->Set_SlotVisible(strOverlaySlot, true);
 	}
 
-	/* Silence is not written into HUD_SKILL_STATE cooldowns. While its Server
-	deadline is pending it temporarily owns only R's existing pie overlay. If R
-	also has a real cooldown, that ordinary black sweep resumes on the first tick
-	after silence without changing the underlying cooldown state. */
-	if (Is_ServerDeadlinePending(player.iServerTick, player.iSilenceEndTick))
-	{
-		const uint32_t iRemainingTicks =
-			player.iSilenceEndTick - player.iServerTick;
-		const uint32_t iTotalTicks = player.iSilenceDurationTicks > 0u ?
-			player.iSilenceDurationTicks : iRemainingTicks;
-		const f32_t fFraction = iTotalTicks > 0u ?
-			(std::min)(1.f, static_cast<f32_t>(iRemainingTicks) /
-				static_cast<f32_t>(iTotalTicks)) : 0.f;
-		constexpr const char* SILENCE_OVERLAY_SLOT = "Skill_R_Cooldown";
-		m_pHUDRuntimeView->Set_SlotTint(
-			SILENCE_OVERLAY_SLOT, float4_t(0.85f, 0.04f, 0.04f, 0.7f));
-		m_pHUDRuntimeView->Set_SlotArcRatio(SILENCE_OVERLAY_SLOT, fFraction);
-		m_pHUDRuntimeView->Set_SlotVisible(SILENCE_OVERLAY_SLOT, true);
-	}
 }
 
 void CMainApp::RenderSkillCooldownText()
@@ -4975,6 +4972,15 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 				m_pBalanceTool.get());
 		m_pBossTool->Open();
 		break;
+	case DEBUG_TOOL::LOGIC_PATTERN:
+		if (nullptr == m_pBalanceTool)
+			m_pBalanceTool = make_unique<CBalanceTool>();
+		if (nullptr == m_pBossTool)
+			m_pBossTool = make_unique<CBossTool>(
+				make_shared<CNetworkPlayerCommandSink>(),
+				m_pBalanceTool.get());
+		m_pBossTool->Open_LogicPattern();
+		break;
 	case DEBUG_TOOL::CAMERA:
 		if (nullptr == m_pCameraTool)
 			m_pCameraTool = make_unique<CCameraTool>();
@@ -4994,7 +5000,10 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 	}
 
 	SetDebugToolVisible(eTool, true);
-	m_eDebugInputOwner = eTool;
+	/* Logic Pattern is a read-only Server-state blueprint. Opening or focusing
+	it must not steal the explicit world/preview input owner. */
+	if (DEBUG_TOOL::LOGIC_PATTERN != eTool)
+		m_eDebugInputOwner = eTool;
 	m_eDebugWindowFocusPending = eTool;
 	return S_OK;
 }
@@ -6217,6 +6226,7 @@ void CMainApp::RenderDeveloperTools()
 			toolButton(pLabel, eTool, true);
 		};
 		toolCell("Boss Tool", DEBUG_TOOL::BOSS);
+		toolCell("Logic Pattern", DEBUG_TOOL::LOGIC_PATTERN);
 		toolCell("Camera Tool", DEBUG_TOOL::CAMERA);
 		toolCell("Action Composition Workbench", DEBUG_TOOL::COMPOSITION);
 		toolCell("Animation Clip Tool", DEBUG_TOOL::ANIMATION);

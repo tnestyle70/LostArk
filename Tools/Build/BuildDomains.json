@@ -80,7 +80,7 @@
       "id": "effect.v2",
       "kind": "validation",
       "profiles": ["Core", "FullDiagnostic"],
-      "inputs": ["Data/Effects/V2/**"],
+      "inputs": ["Data/Effects/V2/**", "Data/Actors/BossCatalog.json"],
       "tools": [
         "Tools/EffectToolV2/validate_effect_v2.py",
         "Tools/EffectToolV2/effect_v2_binding_pipeline.py",

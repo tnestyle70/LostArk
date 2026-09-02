@@ -51,6 +51,7 @@ private:
 		UI,
 		BALANCE,
 		BOSS,
+		LOGIC_PATTERN,
 		CAMERA,
 		EQUIPMENT,
 		COUNT

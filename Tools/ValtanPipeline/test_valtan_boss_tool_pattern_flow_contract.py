@@ -751,7 +751,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
             reload_body.index("CValtanPatternTree::Load_WhileAdmitted("),
         )
         self.assertIn("STALE_PRESERVED", reload_body)
-        self.assertIn("previous rows are display-only", reload_body)
+        self.assertIn("Previous rows are display-only", reload_body)
         self.assertLess(
             reload_body.index("m_bGraphReady = true"),
             reload_body.index("m_bGraphMutationAdmitted = true"),
@@ -1122,7 +1122,7 @@ class ValtanBossToolPatternFlowDocumentContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, self.server_room)
         for marker in (
-            "Run a saved slot-two suffix through duplicate ordered patterns with one reset, revive pause, preserved between-slot state, terminal hold, and correlated lifecycle",
+            "Run a saved slot-two suffix through a targetless IDLE retry and duplicate ordered patterns with preserved between-slot state, terminal hold, and correlated lifecycle",
             "Stop a running Boss Tool flow after its current occurrence and reject a stale flow epoch without starting the next slot",
             "Reject Boss Tool pattern-flow start and stop commands in a Release Server without staging room state",
         ):

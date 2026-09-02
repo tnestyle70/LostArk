@@ -8459,6 +8459,15 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 				entity.BossCombat.iShieldCurrent;
 			snapshot.BossCombat.iMaximumShield =
 				entity.BossCombat.iShieldMaximum;
+			if (BOSS_PATTERN_BOSS_RESPONSE_KIND::ACCUMULATED_HEALTH_DAMAGE ==
+				entity.ePatternBossResponseKind)
+			{
+				snapshot.BossCombat.iResponseThreshold =
+					entity.iPatternBossResponseThreshold;
+				snapshot.BossCombat.iResponseProgress = (std::min)(
+					entity.iPatternBossResponseAccumulatedHealthDamage,
+					entity.iPatternBossResponseThreshold);
+			}
 			/* The existing gameplay phase remains the one authority. The boss
 			payload mirrors it rather than introducing a second phase clock. */
 			snapshot.BossCombat.iGameplayPhase = entity.iPhase;
@@ -9568,7 +9577,7 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger;
 			if ("player.status.bind" != action.strTargetId ||
 				(entering ?
-					(10000u != action.iValue || action.iDurationMs < 100u ||
+					(5000u != action.iValue || action.iDurationMs < 100u ||
 					 action.iDurationMs > 120000u) :
 					(0u != action.iValue || 0u != action.iDurationMs)))
 			{
@@ -9602,7 +9611,7 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 			if (!m_ServerNavigation.Sample_Position(
 				target->second.fPositionX, target->second.fPositionZ, ground) ||
 				std::abs(ground.y - target->second.fPositionY) > 1.5f ||
-				!std::isfinite(target->second.fPositionY + 10.f))
+				!std::isfinite(target->second.fPositionY + 5.f))
 			{
 				m_strStatus = "Boss player-bind restore pose is not navigable";
 				return false;
@@ -9611,13 +9620,10 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 		}
 		case BOSS_PATTERN_STAGE_ACTION_KIND::SET_PLAYER_SILENCE:
 		{
-			const bool entering =
-				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger;
 			if ("player.status.silence" != action.strTargetId ||
-				(entering ?
-					(1u != action.iValue || action.iDurationMs < 100u ||
-					 action.iDurationMs > 120000u) :
-					(0u != action.iValue || 0u != action.iDurationMs)))
+				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER != trigger ||
+				1u != action.iValue || action.iDurationMs < stage->iDurationMs ||
+				action.iDurationMs < 100u || action.iDurationMs > 120000u)
 			{
 				m_strStatus = "Boss player-silence stage action is invalid";
 				return false;
@@ -10348,37 +10354,23 @@ bool LostArk::Server::CGameRoom::Commit_BossPatternPlayerStageActions(
 			std::map<PLAYER_ID, SERVER_PLAYER> stagedPlayers;
 			for (const auto& [playerId, player] : m_Players)
 			{
-				if (BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger &&
-					(0u == player.iCurrentHp ||
-					 PLAYER_ACTION_STATE::DEAD == player.eAction))
-				{
-					continue;
-				}
-				if (BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT == trigger &&
-					(player.iSilenceOwnerNetEntityId != boss.iNetEntityId ||
-					 player.iSilencePatternSequence != boss.iPatternSequence))
+				if (0u == player.iCurrentHp ||
+					PLAYER_ACTION_STATE::DEAD == player.eAction)
 				{
 					continue;
 				}
 				SERVER_PLAYER staged = player;
-				if (BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger)
+				staged.iSilenceOwnerNetEntityId = boss.iNetEntityId;
+				staged.iSilencePatternSequence = boss.iPatternSequence;
+				staged.iSilenceEndTick = Add_ServerTicksSkippingReservedZero(
+					0u == serverTick ? 1u : serverTick,
+					DurationMillisecondsToServerTicks(action.iDurationMs));
+				staged.iSilenceDurationTicks =
+					DurationMillisecondsToServerTicks(action.iDurationMs);
+				if (PLAYER_PENDING_COMMAND_KIND::SKILL ==
+					staged.PendingCommand.eKind)
 				{
-					staged.iSilenceOwnerNetEntityId = boss.iNetEntityId;
-					staged.iSilencePatternSequence = boss.iPatternSequence;
-					staged.iSilenceEndTick = Add_ServerTicksSkippingReservedZero(
-						0u == serverTick ? 1u : serverTick,
-						DurationMillisecondsToServerTicks(action.iDurationMs));
-					staged.iSilenceDurationTicks =
-						DurationMillisecondsToServerTicks(action.iDurationMs);
-					if (PLAYER_PENDING_COMMAND_KIND::SKILL ==
-						staged.PendingCommand.eKind)
-					{
-						staged.PendingCommand.Clear();
-					}
-				}
-				else
-				{
-					staged.Clear_SilenceStatus();
+					staged.PendingCommand.Clear();
 				}
 				stagedPlayers.emplace(playerId, std::move(staged));
 			}
@@ -11749,7 +11741,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 		if (0u == player.iCurrentHp ||
 			LostArk::Shared::PLAYER_ACTION_STATE::DEAD == player.eAction)
 		{
-			/* A lethal hit does not strand the replicated body ten metres above
+			/* A lethal hit does not strand the replicated body five metres above
 			the arena. Restore the admitted pose first, while preserving DEAD and
 			combat-disabled state, then release both occurrence owners. */
 			if (player.bPatternBound)
@@ -11767,10 +11759,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 				(void)Restore_PatternBoundPlayer(player);
 			}
 			if (0u != player.iSilenceEndTick &&
-				(Has_ReachedServerTick(updateTick, player.iSilenceEndTick) ||
-				 !ownsLivePatternOccurrence(
-					player.iSilenceOwnerNetEntityId,
-					player.iSilencePatternSequence)))
+				Has_ReachedServerTick(updateTick, player.iSilenceEndTick))
 			{
 				player.Clear_SilenceStatus();
 			}

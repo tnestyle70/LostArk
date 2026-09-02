@@ -24,6 +24,11 @@ namespace Client
 		std::string strSequenceRole;
 		std::string strStageKind;
 		std::vector<std::string> ClipNames;
+		/* Human-readable, read-only projection of the authored condition inputs.
+		   These strings never drive gameplay; they let the large Logic Pattern
+		   inspector show the same proxy/response/status/hit contract the Server
+		   consumed from the admitted Pattern. */
+		std::vector<std::string> ConditionSummaries;
 		bool bCounterWindow = false;
 		bool bCounterProxy = false;
 		bool bCounterContractIncomplete = false;
@@ -41,6 +46,11 @@ namespace Client
 	{
 		std::string strPatternId;
 		std::string strPatternDisplayName;
+		/* Pattern-level authoring fact used by Sequence-line UI badges. This is
+		   true for any admitted Stage branch with the exact COUNTER_HIT outcome;
+		   it is intentionally independent of the stricter per-node closed Counter
+		   contract diagnostics below. */
+		bool bHasCounterHitBranch = false;
 		ACTION_COMPOSITION_GRAPH_SNAPSHOT Graph;
 		std::vector<BOSS_LOGIC_FLOW_NODE_VIEW> Nodes;
 		std::vector<BOSS_LOGIC_FLOW_EDGE_VIEW> Edges;
@@ -51,6 +61,8 @@ namespace Client
 	class CBossLogicFlowViewModel final
 	{
 	public:
+		[[nodiscard]] static bool Has_CounterHitBranch(
+			const VALTAN_PATTERN_VIEW& Pattern) noexcept;
 		static bool Project(
 			const VALTAN_PATTERN_VIEW& Pattern,
 			std::uint64_t iSourceGeneration,
@@ -76,10 +88,74 @@ namespace Client
 		std::string strActionId;
 		std::string strOutcome;
 		std::string strTargetActionId;
+		std::string strTargetPatternId;
 		bool bTerminal = false;
 		bool bAuthored = false;
 
 		void Clear();
+	};
+
+	/* One immutable Client observation of the already-replicated boss cursor.
+	   This is deliberately smaller than WORLD_ENTITY_SNAPSHOT: Logic Pattern
+	   must not grow a second replication/runtime path. */
+	struct BOSS_LOGIC_FLOW_LIVE_SNAPSHOT final
+	{
+		bool bValid = false;
+		std::uint32_t iServerTick = 0u;
+		std::uint32_t iPatternSequence = 0u;
+		std::string strPatternId;
+		std::string strActionId;
+	};
+
+	/* A branch inferred only from two consecutive authoritative snapshot
+	   cursors and one unique immutable graph edge. It is an observation label,
+	   never an input to gameplay or Pattern selection. */
+	struct BOSS_LOGIC_FLOW_OBSERVED_EDGE final
+	{
+		std::uint64_t iObservationSequence = 0u;
+		std::uint64_t iSourceGeneration = 0u;
+		std::uint32_t iSourceServerTick = 0u;
+		std::uint32_t iTargetServerTick = 0u;
+		std::uint32_t iSourcePatternSequence = 0u;
+		std::uint32_t iTargetPatternSequence = 0u;
+		std::string strSourcePatternId;
+		std::string strSourceStageId;
+		std::string strSourceActionId;
+		std::string strOutcome;
+		std::string strTargetActionId;
+		std::string strTargetPatternId;
+		bool bTerminal = false;
+		bool bCrossPattern = false;
+	};
+
+	/* Fail-closed observer over snapshots the Client already admitted. Missing
+	   ticks, idle gaps, graph mismatches and ambiguous edges clear the anchor and
+	   never manufacture an outcome. History is bounded so an always-open debug
+	   window cannot become an unbounded encounter log. */
+	class CBossLogicFlowObservedEdgeResolver final
+	{
+	public:
+		static constexpr std::size_t MAX_HISTORY_COUNT = 32u;
+
+		bool Observe(
+			const BOSS_LOGIC_FLOW_LIVE_SNAPSHOT& Snapshot,
+			const BOSS_LOGIC_FLOW_VIEW* pCurrentView,
+			BOSS_LOGIC_FLOW_OBSERVED_EDGE* pOutObserved = nullptr);
+		void Reset();
+		[[nodiscard]] const std::vector<BOSS_LOGIC_FLOW_OBSERVED_EDGE>&
+			Get_History() const noexcept
+		{
+			return m_History;
+		}
+
+	private:
+		void Clear_Anchor();
+
+		BOSS_LOGIC_FLOW_LIVE_SNAPSHOT m_PreviousSnapshot;
+		BOSS_LOGIC_FLOW_VIEW m_PreviousView;
+		std::vector<BOSS_LOGIC_FLOW_OBSERVED_EDGE> m_History;
+		std::uint64_t m_iNextObservationSequence = 1u;
+		bool m_bHasAnchor = false;
 	};
 
 	struct BOSS_LOGIC_FLOW_CANVAS_STATE final
@@ -96,6 +172,7 @@ namespace Client
 	{
 		std::string_view strSelectedStageId;
 		std::string_view strLiveActionId;
+		const BOSS_LOGIC_FLOW_OBSERVED_EDGE* pObservedEdge = nullptr;
 		bool bLivePattern = false;
 		bool bAllowSelection = false;
 		float fMinimumCanvasHeight = 320.f;

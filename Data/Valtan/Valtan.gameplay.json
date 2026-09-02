@@ -25,7 +25,8 @@
     "VALTAN_ROTATION_SLASH",
     "VALTAN_ARENA_BREAK_84",
     "VALTAN_ARENA_BREAK_33",
-    "VALTAN_SEQUENCE_FRONT_BACK_FRONT"
+    "VALTAN_SEQUENCE_FRONT_BACK_FRONT",
+    "VALTAN_DASH_CHARGE_GROGGY"
   ],
   "decisionModel": {
     "scriptedSequence": {
@@ -34,6 +35,23 @@
       "interStepPursuitMs": 1000,
       "patternIds": [
         "VALTAN_WHIRLWIND",
+        "VALTAN_SILENCE_SLOT",
+        "VALTAN_BIND_SLOT",
+        "VALTAN_STAGGER_SLOT",
+        "VALTAN_GROUND_ROAR",
+        "VALTAN_CROSS",
+        "VALTAN_TRASH",
+        "VALTAN_WARP",
+        "VALTAN_TRIPLE_COUNTER",
+        "VALTAN_DASH_CHARGE",
+        "VALTAN_FIST_IN_OUT",
+        "VALTAN_HIGH_JUMP",
+        "VALTAN_SIX_PIZZA_106",
+        "VALTAN_STRUGGLING",
+        "VALTAN_GHOST_DEATH_AUDITION",
+        "VALTAN_GHOST_RESPAWN_AUDITION",
+        "VALTAN_GHOST_FINALE",
+        "VALTAN_COUNTER_GROGGY",
         "VALTAN_CROSS",
         "VALTAN_SIX_PIZZA_106",
         "VALTAN_SIX_PIZZA_106",
@@ -384,12 +402,6 @@
         "admissionState": "MANUAL_SERVER_AUDITION"
       },
       {
-        "patternId": "VALTAN_DASH_CHARGE_GROGGY",
-        "sourceChainId": "derived.dash-charge-groggy",
-        "authoringPhase": 1,
-        "admissionState": "DERIVED_SERVER_PATTERN"
-      },
-      {
         "patternId": "VALTAN_PART_BREAK",
         "sourceChainId": "derived.part-break",
         "authoringPhase": 1,
@@ -615,7 +627,8 @@
       },
       "invulnerableWhileRunning": false,
       "sourceActionIds": [
-        420604
+        420604,
+        400430
       ],
       "serverMotion": null,
       "reactions": [],
@@ -640,7 +653,7 @@
           "actionId": "valtan.attack.dash-charge.active",
           "stageKind": "ACTIVE",
           "durationMs": 1500,
-          "defaultNextActionId": null,
+          "defaultNextActionId": "valtan.attack.dash-charge.recovery",
           "hit": {
             "shape": {
               "kind": "BOX",
@@ -667,51 +680,14 @@
           "branches": [
             {
               "outcome": "WALL_CONTACT",
-              "nextActionId": null,
-              "nextPatternId": "VALTAN_DASH_CHARGE_GROGGY"
+              "nextActionId": "valtan.attack.dash-charge.recovery"
             },
             {
               "outcome": "TIMEOUT",
-              "nextActionId": null,
-              "nextPatternId": "VALTAN_DASH_CHARGE_GROGGY"
+              "nextActionId": "valtan.attack.dash-charge.recovery"
             }
           ]
-        }
-      ]
-    },
-    {
-      "patternId": "VALTAN_DASH_CHARGE_GROGGY",
-      "displayName": "3회 땅 치기 후 돌진 - 그로기",
-      "category": "NORMAL",
-      "compatibilitySelectionWeight": 0,
-      "actionId": "valtan.reaction.dash-charge-groggy",
-      "entryActionId": "valtan.attack.dash-charge.recovery",
-      "targetPolicy": "NONE",
-      "aimPolicy": "NONE",
-      "eligibility": {
-        "armorRequirement": "ANY",
-        "phaseRequirement": "ANY",
-        "minimumGameplayPhase": 1,
-        "maximumGameplayPhase": 3,
-        "minimumHealthBarInclusive": 0,
-        "maximumHealthBarInclusive": 0,
-        "minimumRangeM": 0.0,
-        "maximumRangeM": 1.0,
-        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
-        "selectionCooldownMs": null,
-        "cooldownGroupId": null,
-        "repeatPolicy": {
-          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
-          "limit": 0
-        }
-      },
-      "invulnerableWhileRunning": false,
-      "sourceActionIds": [
-        400430
-      ],
-      "serverMotion": null,
-      "reactions": [],
-      "stages": [
+        },
         {
           "stageId": "GROGGY",
           "actionId": "valtan.attack.dash-charge.recovery",
@@ -2432,7 +2408,7 @@
           "branches": []
         }
       ],
-      "verticalOffsetM": 5.0
+      "verticalOffsetM": 3.0
     },
     {
       "patternId": "VALTAN_GROGGY_FOLLOWUP",
@@ -2561,7 +2537,7 @@
               "eventId": "event.valtan.bind-slot.step-01.enter",
               "trigger": "ENTER",
               "kind": "SET_PLAYER_BIND",
-              "heightM": 10.0,
+              "heightM": 5.0,
               "durationMs": 5000
             },
             {
@@ -2630,7 +2606,7 @@
           "actionId": "valtan.authoring.silence-slot.step-01",
           "stageKind": "ACTIVE",
           "durationMs": 2633,
-          "defaultNextActionId": "valtan.authoring.silence-slot.hold",
+          "defaultNextActionId": "valtan.authoring.silence-slot.apply",
           "hit": {
             "shape": {
               "kind": "NONE"
@@ -2641,10 +2617,10 @@
           "branches": []
         },
         {
-          "stageId": "SILENCE_HOLD",
-          "actionId": "valtan.authoring.silence-slot.hold",
+          "stageId": "SILENCE_APPLY",
+          "actionId": "valtan.authoring.silence-slot.apply",
           "stageKind": "ACTIVE",
-          "durationMs": 5000,
+          "durationMs": 100,
           "defaultNextActionId": null,
           "hit": {
             "shape": {
@@ -2654,16 +2630,10 @@
           "motion": null,
           "events": [
             {
-              "eventId": "event.valtan.silence-slot.hold.enter",
+              "eventId": "event.valtan.silence-slot.apply.enter",
               "trigger": "ENTER",
               "kind": "SET_PLAYER_SILENCE",
               "durationMs": 5000
-            },
-            {
-              "eventId": "event.valtan.silence-slot.hold.exit",
-              "trigger": "EXIT",
-              "kind": "SET_PLAYER_SILENCE",
-              "durationMs": 0
             }
           ],
           "branches": []
@@ -2672,7 +2642,7 @@
     },
     {
       "patternId": "VALTAN_TRIPLE_COUNTER",
-      "displayName": "연속 카운터 내려찍기",
+      "displayName": "3연속 내려치기 - 카운터",
       "category": "IMPORTANT",
       "compatibilitySelectionWeight": 4,
       "actionId": "valtan.reactive.triple-counter",
@@ -6233,7 +6203,7 @@
           "actionId": "valtan.sequence.catch-breath.step-02",
           "stageKind": "ACTIVE",
           "durationMs": 500,
-          "defaultNextActionId": "valtan.sequence.catch-breath.step-03",
+          "defaultNextActionId": null,
           "hit": {
             "shape": {
               "kind": "CONE",
@@ -6256,7 +6226,16 @@
           },
           "motion": null,
           "events": [],
-          "branches": []
+          "branches": [
+            {
+              "outcome": "ANY_PLAYER_GRABBED",
+              "nextActionId": "valtan.sequence.catch-breath.step-03"
+            },
+            {
+              "outcome": "TIMEOUT",
+              "nextActionId": null
+            }
+          ]
         },
         {
           "stageId": "STEP_03",
@@ -7019,7 +6998,7 @@
               "countPerResolvedTarget": 4,
               "layout": {
                 "kind": "RADIAL_AROUND_BOSS",
-                "radiusM": 2.25,
+                "radiusM": 3.5,
                 "startAngleDegrees": 0.0,
                 "angleStepDegrees": 90.0,
                 "mappingBasis": "PROJECT_TUNED"

@@ -482,16 +482,6 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
             for pattern in self.presentation["patterns"]
             if pattern["patternId"] == "VALTAN_DASH_CHARGE"
         )
-        gameplay_groggy = next(
-            pattern
-            for pattern in self.gameplay["patterns"]
-            if pattern["patternId"] == "VALTAN_DASH_CHARGE_GROGGY"
-        )
-        presentation_groggy = next(
-            pattern
-            for pattern in self.presentation["patterns"]
-            if pattern["patternId"] == "VALTAN_DASH_CHARGE_GROGGY"
-        )
         gameplay_by_stage = {
             stage["stageId"]: stage for stage in gameplay_dash["stages"]
         }
@@ -521,11 +511,11 @@ class AnimationToolValtanPatternMasterContractTests(unittest.TestCase):
 
         groggy_timeline_ms = sum(
             occurrence["playMs"] / occurrence["playRate"]
-            for occurrence in presentation_groggy["stages"][0]["animation"][
+            for occurrence in presentation_by_stage["GROGGY"]["animation"][
                 "occurrences"
             ]
         )
-        self.assertEqual("GROGGY", gameplay_groggy["stages"][0]["stageId"])
+        self.assertEqual("GROGGY", gameplay_by_stage["GROGGY"]["stageId"])
         self.assertAlmostEqual(6833.0, groggy_timeline_ms, delta=0.1)
 
         # Apply_ValtanPatternMasterPose converts occurrence-local wall time to

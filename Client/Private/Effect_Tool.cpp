@@ -12838,11 +12838,28 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 	m_bValtanPatternTreeLastRefreshSucceeded = false;
 	VALTAN_PATTERN_TREE_VIEW Staged;
 	std::string Status;
-	if (!CValtanPatternTree::Load(Staged, Status))
+	CValtanCanonicalProductReadAdmission CanonicalAdmission;
+	if (!CanonicalAdmission.Acquire(Status))
 	{
 		m_strValtanPatternTreeStatus = m_bValtanPatternTreeLoaded ?
-			("Valtan tree reload preserved the previous tree: " + Status) :
-			Status;
+			("Valtan tree reload preserved the previous tree; canonical Product read admission failed: " + Status) :
+			(m_bValtanProductFallbackReady ?
+				"READ-ONLY PRODUCT FALLBACK STALE_PRESERVED; admission failed, so no unpinned Product files were reopened: " + Status :
+				"Valtan canonical Product read admission failed; no unpinned fallback read was attempted: " + Status);
+		return false;
+	}
+	if (!CValtanPatternTree::Load_WhileAdmitted(
+			CanonicalAdmission, Staged, Status))
+	{
+		if (m_bValtanPatternTreeLoaded)
+		{
+			m_strValtanPatternTreeStatus =
+				"Valtan tree reload preserved the previous tree: " + Status;
+		}
+		else
+		{
+			(void)Stage_ValtanProductFallback(CanonicalAdmission, Status);
+		}
 		return false;
 	}
 	VALTAN_TOOL_AUDITION_INVENTORY StagedAuditionInventory;
@@ -12850,14 +12867,34 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 	if (!CValtanPatternTree::Build_PlayablePatternInventory(
 			Staged, StagedAuditionInventory, InventoryError))
 	{
+		if (m_bValtanPatternTreeLoaded)
+		{
+			m_strValtanPatternTreeStatus =
+				"Valtan tree reload preserved the previous tree: " +
+				InventoryError;
+		}
+		else
+		{
+			(void)Stage_ValtanProductFallback(
+				CanonicalAdmission, InventoryError);
+		}
+		return false;
+	}
+	std::string CurrentStatus;
+	if (!CanonicalAdmission.Validate_StillCurrent(CurrentStatus))
+	{
 		m_strValtanPatternTreeStatus = m_bValtanPatternTreeLoaded ?
-			("Valtan tree reload preserved the previous tree: " +
-			 InventoryError) : InventoryError;
+			"Valtan tree generation changed before commit; previous tree was preserved: " + CurrentStatus :
+			(m_bValtanProductFallbackReady ?
+				"READ-ONLY PRODUCT FALLBACK STALE_PRESERVED; strict tree generation changed before commit: " + CurrentStatus :
+				"Valtan tree generation changed before commit: " + CurrentStatus);
 		return false;
 	}
 	m_ValtanPatternTree = std::move(Staged);
 	m_ValtanToolAuditionInventory = std::move(StagedAuditionInventory);
 	m_bValtanPatternTreeLoaded = true;
+	m_ValtanProductFallbackEncounter.Clear();
+	m_bValtanProductFallbackReady = false;
 	m_strValtanPatternTreeStatus = Status;
 	if (!Refresh_ValtanPatternAuthoringEffects())
 	{
@@ -12879,6 +12916,44 @@ bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()
 			m_strSelectedValtanPatternId.clear();
 	}
 	m_bValtanPatternTreeLastRefreshSucceeded = true;
+	return true;
+}
+
+bool_t Client::CEffect_Tool::Stage_ValtanProductFallback(
+	const CValtanCanonicalProductReadAdmission& Admission,
+	const std::string& strStrictFailure)
+{
+	CEncounterPatternReference Staged;
+	std::string ProductStatus;
+	if (!Staged.Load(
+			CProjectDataRoot::Resolve(
+				L"Encounters/Valtan/ValtanEncounter.json"),
+			ProductStatus))
+	{
+		m_strValtanPatternTreeStatus = m_bValtanProductFallbackReady ?
+			"READ-ONLY PRODUCT FALLBACK STALE_PRESERVED; strict join and fallback refresh failed. Strict failure: " +
+				strStrictFailure + " | Product failure: " + ProductStatus :
+			"Valtan strict join failed and generated Product fallback could not load: " +
+				strStrictFailure + " | " + ProductStatus;
+		return false;
+	}
+	std::string CurrentStatus;
+	if (!Admission.Validate_StillCurrent(CurrentStatus))
+	{
+		m_strValtanPatternTreeStatus = m_bValtanProductFallbackReady ?
+			"READ-ONLY PRODUCT FALLBACK STALE_PRESERVED; Product generation changed before fallback commit: " + CurrentStatus :
+			"Generated Product fallback generation changed before commit: " +
+				CurrentStatus;
+		return false;
+	}
+	m_ValtanProductFallbackEncounter = std::move(Staged);
+	m_bValtanProductFallbackReady = true;
+	m_strValtanPatternTreeStatus =
+		"READ-ONLY PRODUCT FALLBACK: " +
+		std::to_string(
+			m_ValtanProductFallbackEncounter.Get_Patterns().size()) +
+		" generated Product patterns remain visible. Product-linked Pattern editing and Server playback stay blocked. Strict failure: " +
+		strStrictFailure;
 	return true;
 }
 
@@ -17062,8 +17137,13 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 	}
 	if (!m_bValtanPatternTreeLoaded)
 	{
-		ImGui::TextDisabled(
-			"No Valtan pattern inventory was staged; press Refresh for the reason.");
+		if (m_bValtanProductFallbackReady)
+			Render_ValtanProductFallbackSection(strSearch);
+		else
+		{
+			ImGui::TextDisabled(
+				"No Valtan pattern inventory was staged; press Refresh for the reason.");
+		}
 		if (m_ValtanAreaMapEffectDocument.Is_Ready())
 		{
 			if (!strSearch.empty())
@@ -17511,6 +17591,86 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 			ImGui::TreePop();
 		}
 	}
+}
+
+void Client::CEffect_Tool::Render_ValtanProductFallbackSection(
+	const std::string& strSearch)
+{
+	ImGui::TextColored(
+		ImVec4(1.f, 0.72f, 0.18f, 1.f),
+		"READ-ONLY PRODUCT FALLBACK");
+	ImGui::TextWrapped(
+		"Generated Product pattern identities remain browsable. Exact authored Effect documents are listed above; Product cue ownership, Open/Play, Create/Delete, and Server playback stay blocked until the strict split join succeeds.");
+	const auto Matches = [&strSearch](
+		const ENCOUNTER_PATTERN_REFERENCE& Pattern)
+	{
+		if (strSearch.empty() ||
+			Contains_NoCase(Pattern.patternId, strSearch) ||
+			Contains_NoCase(Pattern.displayName, strSearch) ||
+			Contains_NoCase(Pattern.actionId, strSearch))
+		{
+			return true;
+		}
+		return std::any_of(
+			Pattern.stages.begin(), Pattern.stages.end(),
+			[&strSearch](const ENCOUNTER_STAGE_REFERENCE& Stage)
+			{
+				return Contains_NoCase(Stage.stageId, strSearch) ||
+					Contains_NoCase(Stage.actionId, strSearch);
+			});
+	};
+	const auto RenderGroup = [&Matches](
+		const char_t* const pLabel,
+		const std::vector<const ENCOUNTER_PATTERN_REFERENCE*>& Patterns)
+	{
+		const size_t iVisible = std::count_if(
+			Patterns.begin(), Patterns.end(),
+			[&Matches](const ENCOUNTER_PATTERN_REFERENCE* const pPattern)
+			{ return nullptr != pPattern && Matches(*pPattern); });
+		if (0u == iVisible)
+			return;
+		const std::string Label = std::string(pLabel) + " (" +
+			std::to_string(Patterns.size()) + ")";
+		if (!ImGui::TreeNodeEx(Label.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
+			return;
+		for (const ENCOUNTER_PATTERN_REFERENCE* const pPattern : Patterns)
+		{
+			if (nullptr == pPattern || !Matches(*pPattern))
+				continue;
+			ImGui::PushID(pPattern->patternId.c_str());
+			const std::string PatternLabel =
+				(pPattern->displayName.empty() ? pPattern->patternId :
+					pPattern->displayName) + "###productFallbackPattern";
+			if (ImGui::TreeNodeEx(
+					PatternLabel.c_str(), ImGuiTreeNodeFlags_OpenOnArrow))
+			{
+				ImGui::TextDisabled("%s | entry %s | %u ms",
+					pPattern->patternId.c_str(), pPattern->actionId.c_str(),
+					pPattern->iTotalDurationMs);
+				for (const ENCOUNTER_STAGE_REFERENCE& Stage : pPattern->stages)
+				{
+					ImGui::BulletText("%s | %s | %s | %u ms%s",
+						Stage.stageId.c_str(), Stage.stageKind.c_str(),
+						Stage.actionId.c_str(), Stage.iDurationMs,
+						Stage.bHasCounterHitBranch ? " | COUNTER" : "");
+				}
+				ImGui::TreePop();
+			}
+			ImGui::PopID();
+		}
+		ImGui::TreePop();
+	};
+
+	std::vector<const ENCOUNTER_PATTERN_REFERENCE*> Gimmicks;
+	std::vector<const ENCOUNTER_PATTERN_REFERENCE*> Rotation;
+	for (const ENCOUNTER_PATTERN_REFERENCE& Pattern :
+		m_ValtanProductFallbackEncounter.Get_Patterns())
+	{
+		(0u != Pattern.iTriggerHealthBar ? Gimmicks : Rotation).push_back(
+			&Pattern);
+	}
+	RenderGroup("PRODUCT GIMMICK PATTERNS / READ-ONLY", Gimmicks);
+	RenderGroup("PRODUCT ROTATION PATTERNS / READ-ONLY", Rotation);
 }
 
 void Client::CEffect_Tool::Render_AllEffectsWindow()

@@ -187,6 +187,8 @@ LostArk::Server::CBossCombatRuntime::Apply_PlayerHit(
 		0u != boss.iPatternBossResponseThreshold &&
 		0u != result.iHealthDamage)
 	{
+		const std::uint32_t previousResponseProgress =
+			boss.iPatternBossResponseAccumulatedHealthDamage;
 		const std::uint64_t accumulated =
 			static_cast<std::uint64_t>(
 				boss.iPatternBossResponseAccumulatedHealthDamage) +
@@ -195,6 +197,9 @@ LostArk::Server::CBossCombatRuntime::Apply_PlayerHit(
 			static_cast<std::uint32_t>((std::min)(
 				accumulated,
 				static_cast<std::uint64_t>(boss.iPatternBossResponseThreshold)));
+		combatStateChanged = combatStateChanged ||
+			previousResponseProgress !=
+				boss.iPatternBossResponseAccumulatedHealthDamage;
 		if (boss.iPatternBossResponseAccumulatedHealthDamage >=
 			boss.iPatternBossResponseThreshold)
 		{

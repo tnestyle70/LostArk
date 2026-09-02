@@ -12,6 +12,7 @@
 #include "Engine_Defines.h"
 #include "MapEffectDocument.h"
 #include "PlayerSkillCatalog.h"
+#include "EncounterPatternReference.h"
 #include "ValtanPatternAuthoringEffectDocument.h"
 #include "ValtanPatternTree.h"
 
@@ -579,6 +580,7 @@ private:
 	   keeps repeat/revive/diagnostics. Canonical Product Effects remain editable
 	   and locally replayable with their joined Model View animation. */
 	void Render_ValtanPatternTreeSection(const std::string& strSearch);
+	void Render_ValtanProductFallbackSection(const std::string& strSearch);
 	void Render_ValtanExactAuthoredSourceSection(
 		const std::string& strSearch);
 	void Render_ValtanAreaStaticEffectSection(const std::string& strSearch);
@@ -823,6 +825,9 @@ private:
     bool_t Execute_PendingDocumentLoad(bool_t bSaveFirst);
     bool_t Refresh_AllEffects(bool_t bReloadSkillCatalog = false);
 	bool_t Refresh_ValtanPatternTree();
+	bool_t Stage_ValtanProductFallback(
+		const CValtanCanonicalProductReadAdmission& Admission,
+		const std::string& strStrictFailure);
     bool_t Refresh_DataFiles();
 	bool_t Ensure_DataFileDocumentParsed(EFFECT_DATA_FILE_ENTRY& Entry);
 	bool_t Try_AppendSavedElementToActiveDocument(
@@ -1172,6 +1177,7 @@ private:
 	/* Session state, rebuilt by Refresh. A failed reload keeps the previous
 	   tree so the window never empties on a transient read error. */
 	VALTAN_PATTERN_TREE_VIEW m_ValtanPatternTree;
+	CEncounterPatternReference m_ValtanProductFallbackEncounter;
 	CMapEffectDocument m_ValtanAreaMapEffectDocument;
 	std::filesystem::path m_ValtanAreaMapEffectPath;
 	std::string m_strValtanAreaMapEffectBaseline;
@@ -1188,6 +1194,7 @@ private:
 	bool_t m_bValtanPatternTreeLoaded = false;
 	bool_t m_bValtanPatternTreeLoadAttempted = false;
 	bool_t m_bValtanPatternTreeLastRefreshSucceeded = false;
+	bool_t m_bValtanProductFallbackReady = false;
 	VALTAN_PATTERN_AUTHORING_EFFECT_DOCUMENT
 		m_ValtanPatternAuthoringEffects;
 	std::string m_strValtanPatternAuthoringEffectsBaseline;

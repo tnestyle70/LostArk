@@ -101,6 +101,8 @@ namespace
 			"source generation should remain exact");
 		Require(View.strPatternId == Pattern.strPatternId && 3u == View.Nodes.size(),
 			"Pattern identity and Stage count should project");
+		Require(View.bHasCounterHitBranch,
+			"Pattern-level Sequence badge should project from COUNTER_HIT");
 		Require(View.Nodes[0].strStageKind == "WINDUP" &&
 			View.Nodes[0].ClipNames == std::vector<std::string>{
 				"mesh_att_counter_start", "mesh_att_counter_hold" },
@@ -138,6 +140,8 @@ namespace
 		Require(!View.Nodes.front().bCounterWindow &&
 			View.Nodes.front().bCounterContractIncomplete,
 			"incomplete Counter contract must not receive the admitted badge");
+		Require(View.bHasCounterHitBranch,
+			"Sequence badge should remain a direct COUNTER_HIT branch fact");
 		std::size_t iCounterTimeoutEdges = 0u;
 		for (const BOSS_LOGIC_FLOW_EDGE_VIEW& Edge : View.Edges)
 			iCounterTimeoutEdges += Edge.bCounterTimeout ? 1u : 0u;

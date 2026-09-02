@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Focused contracts for Valtan stage-result cross-pattern follow-ups."""
+"""Focused contracts for Valtan local and cross-pattern stage follow-ups."""
 
 from __future__ import annotations
 
@@ -50,25 +50,22 @@ class ValtanCrossPatternFollowupPipelineTests(unittest.TestCase):
             [
                 {
                     "outcome": "WALL_CONTACT",
-                    "nextActionId": None,
-                    "nextPatternId": "VALTAN_DASH_CHARGE_GROGGY",
+                    "nextActionId": "valtan.attack.dash-charge.recovery",
                 },
                 {
                     "outcome": "TIMEOUT",
-                    "nextActionId": None,
-                    "nextPatternId": "VALTAN_DASH_CHARGE_GROGGY",
+                    "nextActionId": "valtan.attack.dash-charge.recovery",
                 },
             ],
             charge["branches"],
         )
-        groggy = pattern(self.master, "VALTAN_DASH_CHARGE_GROGGY")
         self.assertEqual(
             {
                 "outcome": "PART_DESTROYED",
                 "nextActionId": None,
                 "nextPatternId": "VALTAN_PART_BREAK",
             },
-            stage(groggy, "GROGGY")["branches"][0],
+            stage(dash, "GROGGY")["branches"][0],
         )
 
         gameplay, presentation = pipeline.split_v2_authoring(
@@ -100,7 +97,7 @@ class ValtanCrossPatternFollowupPipelineTests(unittest.TestCase):
             self.validate(invalid)
 
         invalid = copy.deepcopy(self.master)
-        branch = stage(pattern(invalid, "VALTAN_DASH_CHARGE"), "CHARGE")[
+        branch = stage(pattern(invalid, "VALTAN_COUNTER"), "STEP_02")[
             "branches"
         ][0]
         branch["nextPatternId"] = "VALTAN_MISSING_FOLLOWUP"
@@ -108,7 +105,7 @@ class ValtanCrossPatternFollowupPipelineTests(unittest.TestCase):
             self.validate(invalid)
 
         invalid = copy.deepcopy(self.master)
-        branch = stage(pattern(invalid, "VALTAN_DASH_CHARGE"), "CHARGE")[
+        branch = stage(pattern(invalid, "VALTAN_COUNTER"), "STEP_02")[
             "branches"
         ][0]
         branch["nextPatternId"] = "VALTAN_WHIRLWIND"
@@ -117,13 +114,13 @@ class ValtanCrossPatternFollowupPipelineTests(unittest.TestCase):
 
     def test_followup_target_must_be_zero_bar_and_untargeted(self) -> None:
         invalid = copy.deepcopy(self.master)
-        target = pattern(invalid, "VALTAN_DASH_CHARGE_GROGGY")
+        target = pattern(invalid, "VALTAN_COUNTER_GROGGY")
         target["eligibility"]["minimumHealthBarInclusive"] = 1
         with self.assertRaisesRegex(pipeline.PipelineError, "zero selection/health"):
             self.validate(invalid)
 
         invalid = copy.deepcopy(self.master)
-        target = pattern(invalid, "VALTAN_DASH_CHARGE_GROGGY")
+        target = pattern(invalid, "VALTAN_COUNTER_GROGGY")
         target["targetPolicy"] = "LOCK_NEAREST_ON_START"
         target["aimPolicy"] = "LOCK_FACING_ON_START"
         with self.assertRaisesRegex(pipeline.PipelineError, "untargeted"):
@@ -185,9 +182,11 @@ class ValtanCrossPatternFollowupPipelineTests(unittest.TestCase):
     def test_followup_graph_rejects_cycles_and_excessive_depth(self) -> None:
         invalid = copy.deepcopy(self.master)
         terminal = stage(pattern(invalid, "VALTAN_PART_BREAK"), "PART_BREAK")
-        terminal["branches"][0]["nextPatternId"] = (
-            "VALTAN_DASH_CHARGE_GROGGY"
+        counter_groggy = stage(
+            pattern(invalid, "VALTAN_COUNTER_GROGGY"), "GROGGY"
         )
+        terminal["branches"][0]["nextPatternId"] = "VALTAN_COUNTER_GROGGY"
+        counter_groggy["branches"][0]["nextPatternId"] = "VALTAN_PART_BREAK"
         with self.assertRaisesRegex(pipeline.PipelineError, "contains a cycle"):
             self.validate(invalid)
 

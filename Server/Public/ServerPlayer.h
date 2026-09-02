@@ -208,8 +208,8 @@ namespace LostArk::Server
 		float fPatternBindRestoreZ = 0.f;
 		float fPatternBindRestoreYawDegrees = 0.f;
 		bool bPatternBindRestoreCombatReady = false;
-		/* Silence never blocks movement. Only the Server skill-command gate reads
-		this occurrence-bound deadline; the Client receives it for presentation. */
+		/* Silence never blocks movement. Its deadline may outlive the applying boss
+		occurrence; only deadline, death, or an explicit room/reset boundary clears it. */
 		LostArk::Shared::NET_ENTITY_ID iSilenceOwnerNetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
 		std::uint32_t iSilencePatternSequence = 0u;

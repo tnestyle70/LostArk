@@ -532,6 +532,69 @@ namespace
 			else
 				groupIds.insert(binding.strResourceId);
 		}
+
+		DATA_JSON_VALUE bossCatalog;
+		if (!Read_EffectV2Json(root, "Data/Actors/BossCatalog.json",
+				"BossCatalog Effect V2 owners", bossCatalog, status))
+		{
+			return false;
+		}
+		std::string bossSchema;
+		std::uint64_t bossVersion = 0u;
+		const DATA_JSON_VALUE* bosses = bossCatalog.Find("bosses");
+		if (!Has_ExactProperties(bossCatalog,
+				{ "schema", "formatVersion", "bosses" }) ||
+			!Read_String(bossCatalog, "schema", bossSchema) ||
+			"lostark.boss-catalog" != bossSchema ||
+			!Read_Unsigned(bossCatalog, "formatVersion", bossVersion) ||
+			6u != bossVersion || nullptr == bosses || !bosses->Is_Array())
+		{
+			status = "BossCatalog Effect V2 owner header is invalid.";
+			return false;
+		}
+		std::size_t valtanOwnerCount = 0u;
+		for (const DATA_JSON_VALUE& boss : bosses->Get_Array())
+		{
+			std::string bossArchetypeId;
+			if (!boss.Is_Object() ||
+				!Read_String(boss, "archetypeId", bossArchetypeId) ||
+				"BOSS_VALTAN" != bossArchetypeId)
+			{
+				continue;
+			}
+			++valtanOwnerCount;
+			const DATA_JSON_VALUE* visuals = boss.Find("combatObjectVisuals");
+			if (nullptr == visuals || !visuals->Is_Array())
+			{
+				status = "BOSS_VALTAN combatObjectVisuals are invalid.";
+				return false;
+			}
+			for (const DATA_JSON_VALUE& visual : visuals->Get_Array())
+			{
+				const DATA_JSON_VALUE* group = visual.Is_Object() ?
+					visual.Find("effectV2Group") : nullptr;
+				if (nullptr == group)
+					continue;
+				std::string groupId;
+				std::string ignoredRelative;
+				if (!Has_ExactProperties(*group,
+						{ "groupId", "playbackRate", "visualHitMs", "serverHitId" }) ||
+					!Read_String(*group, "groupId", groupId) ||
+					!Build_EffectV2Relative(EFFECT_V2_GROUP_ROOT, groupId,
+						EFFECT_V2_GROUP_SUFFIX,
+						"BossCatalog combat-object Effect V2 groupId",
+						ignoredRelative, status))
+				{
+					return false;
+				}
+				groupIds.insert(groupId);
+			}
+		}
+		if (1u != valtanOwnerCount)
+		{
+			status = "BossCatalog has no unique BOSS_VALTAN owner.";
+			return false;
+		}
 		for (const std::string& leafId : leafIds)
 		{
 			if (groupIds.contains(leafId))

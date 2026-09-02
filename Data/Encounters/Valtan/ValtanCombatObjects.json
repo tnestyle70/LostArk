@@ -5,7 +5,7 @@
   "objects": [
     {
       "combatObjectArchetypeId": "combatobject.valtan.high-jump.target-axe",
-      "clientVisualId": "combatobject.visual.valtan.high-jump.target-axe.v1",
+      "clientVisualId": "combatobject.visual.valtan.high-jump.target-axe.v2",
       "ownerPatternId": "VALTAN_HIGH_JUMP",
       "ownerStageActionId": "valtan.attack.high-jump.airborne",
       "kind": "FIXED_AREA",

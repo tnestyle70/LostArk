@@ -5358,6 +5358,51 @@
       }
     },
     {
+      "id": "Skill_R_SilenceMask",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 572.711487,
+        "y": 644.702026,
+        "width": 34.5,
+        "height": 34.5
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/buildup_lock_icon.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": [],
+        "loop": true,
+        "additive": false
+      }
+    },
+    {
       "id": "Skill_A_Icon",
       "ownerClass": null,
       "type": 0,

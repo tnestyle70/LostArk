@@ -292,6 +292,7 @@ namespace
 			{ "VALTAN_CATCH_BREATH", "RELEASE_GRABBED_PLAYERS", "speedMps", "0" },
 			{ "VALTAN_CATCH_BREATH", "RELEASE_GRABBED_PLAYERS", "durationMs", "0" },
 			{ "VALTAN_FIST_IN_OUT", "SPAWN_COMBAT_OBJECT", "value", "2" },
+			{ "VALTAN_BIND_SLOT", "STEP_01", "value", "10000" },
 			{ "VALTAN_TRASH_CATCH_IF", "STEP_07", "outcome", "\"NAVIGATION_BLOCKED\"" },
 			{ "VALTAN_TRASH", "GROGGY", "nextActionId", "\"valtan.sequence.center-trash-rush-if.step-07\"", extensionError },
 			{ "VALTAN_TRASH_CATCH_IF", "GROGGY", "nextActionId", "\"valtan.sequence.rush-if.step-07\"", extensionError },

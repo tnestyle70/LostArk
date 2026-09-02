@@ -35699,9 +35699,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": "combatobject.visual.valtan.high-jump.target-axe.v1",
+      "sourceValue": "combatobject.visual.valtan.high-jump.target-axe.v2",
       "transform": "Balance Tool authored override",
-      "resultValue": "combatobject.visual.valtan.high-jump.target-axe.v1",
+      "resultValue": "combatobject.visual.valtan.high-jump.target-axe.v2",
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -36219,9 +36219,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 66,
+      "sourceValue": 65,
       "transform": "Balance Tool authored override",
-      "resultValue": 66,
+      "resultValue": 65,
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
@@ -39892,11 +39892,13 @@
         "policyId": "balance-tool-authored-override-v1"
       },
       "sourceValue": [
-        420604
+        420604,
+        400430
       ],
       "transform": "Balance Tool authored override",
       "resultValue": [
-        420604
+        420604,
+        400430
       ],
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
@@ -39956,15 +39958,61 @@
           "branches": [
             {
               "outcome": "WALL_CONTACT",
-              "nextActionId": null,
-              "nextPatternId": "VALTAN_DASH_CHARGE_GROGGY"
+              "nextActionId": "valtan.attack.dash-charge.recovery"
             },
             {
               "outcome": "TIMEOUT",
-              "nextActionId": null,
-              "nextPatternId": "VALTAN_DASH_CHARGE_GROGGY"
+              "nextActionId": "valtan.attack.dash-charge.recovery"
             }
           ]
+        },
+        {
+          "stageId": "GROGGY",
+          "actionId": "valtan.attack.dash-charge.recovery",
+          "stageKind": "GROGGY",
+          "durationMs": 6833,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "SET_BOSS_FLAG",
+              "targetId": "boss.flag.groggy",
+              "value": 1,
+              "durationMs": 0
+            },
+            {
+              "trigger": "EXIT",
+              "kind": "SET_BOSS_FLAG",
+              "targetId": "boss.flag.groggy",
+              "value": 0,
+              "durationMs": 0
+            }
+          ],
+          "branches": [
+            {
+              "outcome": "PART_DESTROYED",
+              "nextActionId": null,
+              "nextPatternId": "VALTAN_PART_BREAK"
+            },
+            {
+              "outcome": "TIMEOUT",
+              "nextActionId": null
+            }
+          ],
+          "partDamagePolicy": "DESTROY_FIRST_ELIGIBLE"
         }
       ],
       "transform": "Balance Tool authored override",
@@ -40015,15 +40063,61 @@
           "branches": [
             {
               "outcome": "WALL_CONTACT",
-              "nextActionId": null,
-              "nextPatternId": "VALTAN_DASH_CHARGE_GROGGY"
+              "nextActionId": "valtan.attack.dash-charge.recovery"
             },
             {
               "outcome": "TIMEOUT",
-              "nextActionId": null,
-              "nextPatternId": "VALTAN_DASH_CHARGE_GROGGY"
+              "nextActionId": "valtan.attack.dash-charge.recovery"
             }
           ]
+        },
+        {
+          "stageId": "GROGGY",
+          "actionId": "valtan.attack.dash-charge.recovery",
+          "stageKind": "GROGGY",
+          "durationMs": 6833,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "SET_BOSS_FLAG",
+              "targetId": "boss.flag.groggy",
+              "value": 1,
+              "durationMs": 0
+            },
+            {
+              "trigger": "EXIT",
+              "kind": "SET_BOSS_FLAG",
+              "targetId": "boss.flag.groggy",
+              "value": 0,
+              "durationMs": 0
+            }
+          ],
+          "branches": [
+            {
+              "outcome": "PART_DESTROYED",
+              "nextActionId": null,
+              "nextPatternId": "VALTAN_PART_BREAK"
+            },
+            {
+              "outcome": "TIMEOUT",
+              "nextActionId": null
+            }
+          ],
+          "partDamagePolicy": "DESTROY_FIRST_ELIGIBLE"
         }
       ],
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
@@ -52195,10 +52289,10 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": "연속 카운터 내려찍기",
+      "sourceValue": "3연속 내려치기 - 카운터",
       "transform": "Balance Tool authored override",
-      "resultValue": "연속 카운터 내려찍기",
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "resultValue": "3연속 내려치기 - 카운터",
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",

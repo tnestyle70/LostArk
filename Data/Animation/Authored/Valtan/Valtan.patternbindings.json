@@ -4339,7 +4339,7 @@
       ]
     },
     {
-      "actionId": "valtan.authoring.silence-slot.hold",
+      "actionId": "valtan.authoring.silence-slot.apply",
       "playbackMode": "NONE",
       "clips": []
     }

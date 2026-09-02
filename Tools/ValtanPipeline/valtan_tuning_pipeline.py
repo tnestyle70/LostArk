@@ -3101,6 +3101,48 @@ def _validate_pattern_stage_branch(
         )
 
 
+def _validate_stage_default_next_invariant(
+    pattern: Mapping[str, Any], context: str
+) -> None:
+    """Keep the serialized default edge identical to the live Stage order."""
+
+    stages = pattern.get("stages")
+    if not isinstance(stages, list):
+        raise PipelineError(f"{context}.stages must be an array")
+    for ordinal, stage in enumerate(stages):
+        if not isinstance(stage, dict):
+            raise PipelineError(f"{context}.stages[{ordinal}] must be an object")
+        branches = stage.get("branches")
+        if not isinstance(branches, list):
+            raise PipelineError(
+                f"{context}/{stage.get('stageId')}.branches must be an array"
+            )
+        timeout_branches = [
+            branch
+            for branch in branches
+            if isinstance(branch, dict) and branch.get("outcome") == "TIMEOUT"
+        ]
+        if len(timeout_branches) > 1:
+            raise PipelineError(
+                f"{context}/{stage.get('stageId')} has duplicate TIMEOUT branches"
+            )
+        ordered_next = (
+            stages[ordinal + 1].get("actionId")
+            if ordinal + 1 < len(stages)
+            else None
+        )
+        expected_next = (
+            timeout_branches[0].get("nextActionId")
+            if timeout_branches
+            else ordered_next
+        )
+        if stage.get("defaultNextActionId") != expected_next:
+            raise PipelineError(
+                f"{context}/{stage.get('stageId')} defaultNextActionId must "
+                "match explicit TIMEOUT nextActionId or ordered Stage successor"
+            )
+
+
 def _validate_pattern_followup_graph(
     pattern_by_id: Mapping[str, dict[str, Any]],
 ) -> None:
@@ -4294,7 +4336,7 @@ def validate_v2_master(
                     )
                     enabled = event["trigger"] == "ENTER"
                     if enabled:
-                        if (height_m != 10.0 or status_duration_ms != duration or
+                        if (height_m != 5.0 or status_duration_ms != duration or
                                 status_duration_ms < 100 or status_duration_ms > 120000):
                             raise PipelineError(
                                 f"player bind ENTER must match the Stage clock: {event_id}"
@@ -4310,15 +4352,13 @@ def validate_v2_master(
                         0,
                         600000,
                     )
-                    if event["trigger"] == "ENTER":
-                        if (status_duration_ms != duration or
-                                status_duration_ms < 100 or status_duration_ms > 120000):
-                            raise PipelineError(
-                                f"player silence ENTER must match the Stage clock: {event_id}"
-                            )
-                    elif status_duration_ms != 0:
+                    if (event["trigger"] != "ENTER" or
+                            status_duration_ms < duration or
+                            status_duration_ms < 100 or
+                            status_duration_ms > 120000):
                         raise PipelineError(
-                            f"player silence EXIT must clear the status: {event_id}"
+                            "player silence must be one ENTER-only deadline "
+                            f"that outlives its apply Stage: {event_id}"
                         )
                 elif event["kind"] == "SPAWN_COMBAT_OBJECT":
                     archetype = stable_id(event["combatObjectArchetypeId"], f"event {event_id}.archetype")
@@ -4509,7 +4549,6 @@ def validate_v2_master(
             for stateful_kind in (
                 "SET_STAGGER_GAUGE",
                 "SET_PLAYER_BIND",
-                "SET_PLAYER_SILENCE",
             ):
                 stateful_events = [
                     event for event in stage["events"] if event["kind"] == stateful_kind
@@ -4520,6 +4559,16 @@ def validate_v2_master(
                     raise PipelineError(
                         f"{stateful_kind} requires one ENTER and one EXIT: {pattern_id}/{stage_id}"
                     )
+            silence_events = [
+                event
+                for event in stage["events"]
+                if event["kind"] == "SET_PLAYER_SILENCE"
+            ]
+            if len(silence_events) > 1:
+                raise PipelineError(
+                    "SET_PLAYER_SILENCE allows one ENTER-only deadline per Stage: "
+                    f"{pattern_id}/{stage_id}"
+                )
             for cue in stage["effectCues"]:
                 cue_timing_basis = cue.get(
                     "timingBasis", CUE_TIMING_BASIS_CLIP_OCCURRENCE
@@ -4712,6 +4761,9 @@ def validate_v2_master(
                 if invocation["durationPolicy"] != "EXPLICIT":
                     raise PipelineError("initial camera migration uses EXPLICIT duration")
                 integer(invocation["durationMs"], "camera invocation durationMs", 1, duration)
+        _validate_stage_default_next_invariant(
+            pattern, f"pattern {pattern_id}"
+        )
         _validate_pattern_counter_groggy_contract(
             pattern, pattern_by_id, f"pattern {pattern_id}"
         )
@@ -5211,6 +5263,10 @@ def validate_gameplay_authoring(document: dict[str, Any]) -> None:
                     pattern_by_id=patterns,
                     manual_pattern_ids=manual_patterns,
                 )
+
+        _validate_stage_default_next_invariant(
+            pattern, f"gameplay pattern {pattern_id}"
+        )
 
 
     _validate_pattern_followup_graph(patterns)
@@ -9204,8 +9260,7 @@ def apply_draft_patch(
             for event in stage.get("events", []):
                 if (
                     event.get("trigger") == "ENTER"
-                    and event.get("kind")
-                    in ("SET_PLAYER_BIND", "SET_PLAYER_SILENCE")
+                    and event.get("kind") == "SET_PLAYER_BIND"
                 ):
                     event["durationMs"] = stage_duration_ms
             if _is_manual_server_audition(

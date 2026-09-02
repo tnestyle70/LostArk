@@ -213,12 +213,12 @@ def _validate_status_patterns(
             ("GROGGY", "SET_BOSS_FLAG", True, 6833),
         ),
         "VALTAN_BIND_SLOT": (
-            ("STEP_01", "SET_PLAYER_BIND", 10000, 5000),
+            ("STEP_01", "SET_PLAYER_BIND", 5000, 5000),
             ("RECOVERY", None, 0, 3533),
         ),
         "VALTAN_SILENCE_SLOT": (
             ("STEP_01", None, 0, 2633),
-            ("SILENCE_HOLD", "SET_PLAYER_SILENCE", 1, 5000),
+            ("SILENCE_APPLY", "SET_PLAYER_SILENCE", 1, 100),
         ),
     }
 
@@ -343,7 +343,8 @@ def _validate_status_patterns(
                     enter.get("durationMs") != expected_duration):
                 raise CoverageError(f"status bind contract differs: {pattern_id}")
             elif expected_kind == "SET_PLAYER_SILENCE" and (
-                    enter.get("durationMs") != expected_duration):
+                    enter.get("durationMs") != 5000 or
+                    len(stage.get("events", [])) != 1):
                 raise CoverageError(f"status silence contract differs: {pattern_id}")
             elif expected_kind == "SET_BOSS_FLAG" and (
                     enter.get("flagId") != "boss.flag.groggy" or
@@ -356,7 +357,7 @@ def _validate_status_patterns(
             if not isinstance(channel_branches, list) or len(channel_branches) != 2:
                 raise CoverageError("magic-orb response branches differ")
             success, timeout = channel_branches
-            if (gameplay_row.get("verticalOffsetM") != 5.0 or
+            if (gameplay_row.get("verticalOffsetM") != 3.0 or
                     channel.get("bossResponse") != {
                         "kind": "ACCUMULATED_HEALTH_DAMAGE",
                         "threshold": 1000,

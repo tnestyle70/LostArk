@@ -4666,7 +4666,7 @@ namespace
 				!Is_FiniteNumber(pHeightM) ||
 				!Is_NonNegativeInteger(pDurationMs) ||
 				(("ENTER" == strTrigger &&
-				  (10.0 != pHeightM->Get_Number() ||
+				  (5.0 != pHeightM->Get_Number() ||
 				   pDurationMs->Get_Number() != iStageDurationMs ||
 				   pDurationMs->Get_Number() < 100.0 ||
 				   pDurationMs->Get_Number() > 120000.0)) ||

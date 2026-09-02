@@ -3,7 +3,6 @@
   "formatVersion": 1,
   "effects": [],
   "groups": [
-    "boss.valtan.axe",
     "boss.valtan.impact",
     "boss.valtan.pounding",
     "boss.valtan.pounding.chase",

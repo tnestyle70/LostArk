@@ -254,7 +254,7 @@ namespace
 		if (nullptr == pSchema || !pSchema->Is_String() ||
 			pSchema->Get_String() != "lostark.boss-catalog" ||
 			nullptr == pVersion || !pVersion->Is_Number() ||
-			pVersion->Get_Number() != 5.0 ||
+			pVersion->Get_Number() != 6.0 ||
 			nullptr == pEntries || !pEntries->Is_Array() ||
 			3u != root.Get_Object().size())
 		{
@@ -353,12 +353,18 @@ namespace
 				pCombatObjectVisuals->Get_Array())
 			{
 				BOSS_COMBAT_OBJECT_VISUAL_ENTRY entryVisual;
+				const DATA_JSON_VALUE* pEffectAssetId =
+					visual.Is_Object() ? visual.Find("effectAssetId") : nullptr;
+				const DATA_JSON_VALUE* pEffectV2Group =
+					visual.Is_Object() ? visual.Find("effectV2Group") : nullptr;
 				const DATA_JSON_VALUE* pHitEffectAssetId =
 					visual.Is_Object() ? visual.Find("hitEffectAssetId") : nullptr;
 				const size_t expectedVisualFields = 3u +
+					(nullptr != pEffectV2Group ? 1u : 0u) +
 					(visual.Is_Object() && nullptr != visual.Find("worldScale") ? 1u : 0u) +
 					(nullptr != pHitEffectAssetId ? 1u : 0u);
-				if (!visual.Is_Object() || expectedVisualFields != visual.Get_Object().size() ||
+				if (!visual.Is_Object() ||
+					expectedVisualFields != visual.Get_Object().size() ||
 					!ReadRequiredString(
 						visual, "combatObjectArchetypeId",
 						entryVisual.combatObjectArchetypeId) ||
@@ -380,6 +386,45 @@ namespace
 					!clientVisualIds.insert(entryVisual.clientVisualId).second)
 				{
 					return false;
+				}
+				entryVisual.activeEffectKind =
+					BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V1;
+				if (nullptr != pEffectV2Group)
+				{
+					const DATA_JSON_VALUE* pGroupId = pEffectV2Group->Is_Object() ?
+						pEffectV2Group->Find("groupId") : nullptr;
+					const DATA_JSON_VALUE* pPlaybackRate = pEffectV2Group->Is_Object() ?
+						pEffectV2Group->Find("playbackRate") : nullptr;
+					const DATA_JSON_VALUE* pVisualHitMs = pEffectV2Group->Is_Object() ?
+						pEffectV2Group->Find("visualHitMs") : nullptr;
+					const DATA_JSON_VALUE* pServerHitId = pEffectV2Group->Is_Object() ?
+						pEffectV2Group->Find("serverHitId") : nullptr;
+					if (!pEffectV2Group->Is_Object() ||
+						4u != pEffectV2Group->Get_Object().size() ||
+						nullptr == pGroupId || !pGroupId->Is_String() ||
+						!IsStableId(pGroupId->Get_String()) ||
+						nullptr == pPlaybackRate || !pPlaybackRate->Is_Number() ||
+						!std::isfinite(pPlaybackRate->Get_Number()) ||
+						pPlaybackRate->Get_Number() <= 0.0 ||
+						pPlaybackRate->Get_Number() > 16.0 ||
+						nullptr == pVisualHitMs || !pVisualHitMs->Is_Number() ||
+						pVisualHitMs->Get_Number() < 1.0 ||
+						pVisualHitMs->Get_Number() > 60000.0 ||
+						std::floor(pVisualHitMs->Get_Number()) !=
+							pVisualHitMs->Get_Number() ||
+						nullptr == pServerHitId || !pServerHitId->Is_String() ||
+						!IsStableId(pServerHitId->Get_String()))
+					{
+						return false;
+					}
+					entryVisual.activeEffectKind =
+						BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V2_GROUP;
+					entryVisual.effectV2Group.groupId = pGroupId->Get_String();
+					entryVisual.effectV2Group.playbackRate =
+						static_cast<f32_t>(pPlaybackRate->Get_Number());
+					entryVisual.effectV2Group.visualHitMs =
+						static_cast<uint32_t>(pVisualHitMs->Get_Number());
+					entryVisual.effectV2Group.serverHitId = pServerHitId->Get_String();
 				}
 				if (nullptr != pHitEffectAssetId)
 					entryVisual.hitEffectAssetId =

@@ -71,6 +71,21 @@ namespace
 			return Value;
 		return Value.substr(0u, MAX_LABEL_BYTES - 3u) + "...";
 	}
+
+	bool IsObservedEdge(
+		const Client::BOSS_LOGIC_FLOW_VIEW& View,
+		const Client::ACTION_COMPOSITION_GRAPH_EDGE& Edge,
+		const Client::BOSS_LOGIC_FLOW_OBSERVED_EDGE* const pObserved)
+	{
+		return nullptr != pObserved &&
+			pObserved->iSourceGeneration == View.Graph.iSourceGeneration &&
+			pObserved->strSourcePatternId == View.strPatternId &&
+			pObserved->strSourceActionId == Edge.strSourceActionId &&
+			pObserved->strOutcome == Edge.strOutcome &&
+			pObserved->strTargetActionId == Edge.strTargetActionId &&
+			pObserved->strTargetPatternId == Edge.strTargetPatternId &&
+			pObserved->bTerminal == Edge.bTerminal;
+	}
 }
 
 bool Client::CBossLogicFlowRenderer::Render(
@@ -173,11 +188,14 @@ bool Client::CBossLogicFlowRenderer::Render(
 	{
 		const ACTION_COMPOSITION_GRAPH_EDGE& GraphEdge = View.Graph.Edges[iEdge];
 		const BOSS_LOGIC_FLOW_EDGE_VIEW& Edge = View.Edges[iEdge];
-		const ImU32 Color = Edge.bCounterSuccess ?
+		const bool bObserved = IsObservedEdge(
+			View, GraphEdge, Context.pObservedEdge);
+		const ImU32 Color = bObserved ? IM_COL32(92, 224, 142, 255) :
+			(Edge.bCounterSuccess ?
 			IM_COL32(70, 190, 232, 255) :
 			(Edge.bCounterTimeout ? IM_COL32(236, 142, 76, 255) :
 				(Edge.bAuthored ? IM_COL32(188, 132, 92, 255) :
-					IM_COL32(108, 120, 138, 210)));
+					IM_COL32(108, 120, 138, 210))));
 		std::vector<ImVec2> Points;
 		Points.reserve(GraphEdge.Polyline.size());
 		for (const ACTION_COMPOSITION_GRAPH_POINT& Point : GraphEdge.Polyline)
@@ -186,14 +204,21 @@ bool Client::CBossLogicFlowRenderer::Render(
 		{
 			pDrawList->AddPolyline(
 				Points.data(), static_cast<int>(Points.size()), Color, 0,
-				Edge.bCounterSuccess || Edge.bCounterTimeout ? 3.f : 2.f);
+				bObserved ? 5.f :
+					(Edge.bCounterSuccess || Edge.bCounterTimeout ? 3.f : 2.f));
 		}
 		DrawArrow(
 			pDrawList, GraphEdge.Polyline, CanvasOrigin, InOutState, Color);
 		if (!Points.empty())
 		{
-			const std::string Label = GraphEdge.strOutcome +
+			std::string Label = GraphEdge.strOutcome +
 				(Edge.bAuthored ? std::string{} : " (derived)");
+			if (!GraphEdge.strTargetPatternId.empty())
+				Label += " -> " + ShortLabel(GraphEdge.strTargetPatternId);
+			else if (GraphEdge.bTerminal)
+				Label += " -> END";
+			if (bObserved)
+				Label += " [OBSERVED]";
 			pDrawList->AddText(
 				ImVec2(Points.front().x + 6.f, Points.front().y - 17.f),
 				Color, Label.c_str());
@@ -281,9 +306,37 @@ bool Client::CBossLogicFlowRenderer::Render(
 					ImVec2(Maximum.x - 54.f, Maximum.y - 18.f),
 					IM_COL32(132, 208, 220, 255), "PROXY");
 			}
+			if (!Node.ConditionSummaries.empty())
+			{
+				const std::string Label = "COND " +
+					std::to_string(Node.ConditionSummaries.size());
+				pDrawList->AddText(
+					ImVec2(TextOrigin.x, Maximum.y - 18.f),
+					IM_COL32(236, 202, 124, 255), Label.c_str());
+			}
 		}
 	}
 	pDrawList->PopClipRect();
+
+	if (bCanvasHovered)
+	{
+		const ACTION_COMPOSITION_GRAPH_POINT GraphPoint = ScreenToGraph(
+			ImGui::GetMousePos(), CanvasOrigin, InOutState);
+		const std::size_t iHoveredNode =
+			CActionCompositionGraphModel::Hit_TestNode(View.Graph, GraphPoint);
+		if (ACTION_COMPOSITION_GRAPH_INVALID_INDEX != iHoveredNode &&
+			iHoveredNode < View.Nodes.size() &&
+			!View.Nodes[iHoveredNode].ConditionSummaries.empty())
+		{
+			const BOSS_LOGIC_FLOW_NODE_VIEW& Node = View.Nodes[iHoveredNode];
+			ImGui::BeginTooltip();
+			ImGui::TextUnformatted(Node.strStageId.c_str());
+			ImGui::Separator();
+			for (const std::string& Summary : Node.ConditionSummaries)
+				ImGui::BulletText("%s", Summary.c_str());
+			ImGui::EndTooltip();
+		}
+	}
 
 	if (Context.bAllowSelection && bCanvasHovered &&
 		ImGui::IsMouseClicked(ImGuiMouseButton_Left))
@@ -321,6 +374,8 @@ bool Client::CBossLogicFlowRenderer::Render(
 					OutSelection.strActionId = Source.strActionId;
 					OutSelection.strOutcome = Edge.strOutcome;
 					OutSelection.strTargetActionId = Edge.strTargetActionId;
+					OutSelection.strTargetPatternId =
+						Edge.strTargetPatternId;
 					OutSelection.bTerminal = Edge.bTerminal;
 					OutSelection.bAuthored = View.Edges[iEdge].bAuthored;
 				}

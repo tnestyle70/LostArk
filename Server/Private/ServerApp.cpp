@@ -855,7 +855,12 @@ namespace
 				algorithm, &hash, object.data(), objectBytes,
 				nullptr, 0u, 0u);
 		}
-		std::array<std::uint8_t, 1024u * 1024u> buffer{};
+		/* Candidate admission runs on Server.exe's normal 1 MiB thread stack.
+		   Keeping a full 1 MiB hashing chunk as a local array makes this
+		   function's prologue larger than that reserve and faults in __chkstk
+		   before the first artifact can be validated. Preserve the bounded
+		   streaming chunk size, but own its storage on the heap. */
+		std::vector<std::uint8_t> buffer(1024u * 1024u);
 		while (succeeded && stream)
 		{
 			stream.read(reinterpret_cast<char*>(buffer.data()), buffer.size());

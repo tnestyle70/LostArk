@@ -247,6 +247,16 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
             [2000, 500, 4000, 2000],
             [stage["durationMs"] for stage in gameplay_pattern["stages"]],
         )
+        self.assertEqual(
+            [
+                {
+                    "outcome": "ANY_PLAYER_GRABBED",
+                    "nextActionId": "valtan.sequence.catch-breath.step-03",
+                },
+                {"outcome": "TIMEOUT", "nextActionId": None},
+            ],
+            gameplay_pattern["stages"][1]["branches"],
+        )
 
         presentation_pattern = next(
             pattern

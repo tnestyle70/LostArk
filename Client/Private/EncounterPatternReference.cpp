@@ -668,7 +668,7 @@ namespace
 			else if (kind == "SET_PLAYER_BIND")
 			{
 				validKind = targetId == "player.status.bind" &&
-					((trigger == "ENTER" && 10000u == value &&
+					((trigger == "ENTER" && 5000u == value &&
 					  durationMs >= 100u && durationMs <= 120000u) ||
 					 (trigger == "EXIT" && 0u == value && 0u == durationMs));
 			}
@@ -1266,6 +1266,18 @@ bool_t Client::CEncounterPatternReference::Load(
 				outStatus = "Encounter stage v4 field is invalid: " +
 					pattern.patternId + "/" + stage.stageId;
 				return false;
+			}
+			const DATA_JSON_VALUE* branches = stageEntry.Find("branches");
+			if (nullptr != branches)
+			{
+				stage.bHasCounterHitBranch = std::any_of(
+					branches->Get_Array().begin(), branches->Get_Array().end(),
+					[](const DATA_JSON_VALUE& branch)
+					{
+						const DATA_JSON_VALUE* outcome = branch.Find("outcome");
+						return nullptr != outcome && outcome->Is_String() &&
+							"COUNTER_HIT" == outcome->Get_String();
+					});
 			}
 
 			stage.iStartOffsetMs = pattern.iTotalDurationMs;

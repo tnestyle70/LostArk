@@ -94,13 +94,15 @@ public:
 		std::uint32_t hitCount = 0u;
 	};
 
-	/* One typed Server-gameplay fork: a WINDUP stage owns the paired
-	   counterable flag plus COUNTER_HIT/TIMEOUT branches.  Success resolves to
-	   a later same-pattern WINDUP, GROGGY, or RECOVERY Stage; only a GROGGY
-	   success target owns the paired groggy flag transition. */
+	/* One typed Server-gameplay fork: a WINDUP Stage, or an authored ACTIVE
+	   BOSS_FORWARD_ARC Stage, owns paired COUNTER_HIT/TIMEOUT branches. Success
+	   may resolve to a later local Stage or a typed cross-Pattern entry. The
+	   generic Counter editor mutates local targets only; cross-Pattern targets
+	   are retained as read-only stable identities during unrelated saves. */
 	struct VALTAN_COUNTER_WINDOW_EDIT final
 	{
 		bool enabled = false;
+		std::string successPatternId;
 		std::string successStageId;
 		std::string successActionId;
 		std::string timeoutStageId;

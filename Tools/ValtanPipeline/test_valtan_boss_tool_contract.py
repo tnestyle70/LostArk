@@ -100,6 +100,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
             self.assertEqual(1, source.count("BossTool.h"))
             self.assertEqual(1, source.count("BossTool.cpp"))
         self.assertIn("BOSS", self.main_h)
+        self.assertIn("LOGIC_PATTERN", self.main_h)
         self.assertIn("unique_ptr<CBossTool>", self.main_h)
         ensure = function_body(
             self.main_cpp,
@@ -107,12 +108,20 @@ class ValtanBossToolContractTests(unittest.TestCase):
         )
         self.assertIn("case DEBUG_TOOL::BOSS", ensure)
         self.assertIn("m_pBossTool->Open()", ensure)
+        self.assertIn("case DEBUG_TOOL::LOGIC_PATTERN", ensure)
+        self.assertIn("m_pBossTool->Open_LogicPattern()", ensure)
         self.assertEqual(
             1,
             self.main_cpp.count('toolCell("Boss Tool", DEBUG_TOOL::BOSS)'),
         )
+        self.assertEqual(
+            1,
+            self.main_cpp.count(
+                'toolCell("Logic Pattern", DEBUG_TOOL::LOGIC_PATTERN)'
+            ),
+        )
 
-    def test_logic_flow_tab_is_live_synchronized_and_read_only(self) -> None:
+    def test_logic_pattern_is_a_large_live_read_only_sibling_window(self) -> None:
         for source in (self.project, self.filters):
             for file_name in (
                 "BossLogicFlowView.h",
@@ -122,20 +131,33 @@ class ValtanBossToolContractTests(unittest.TestCase):
                 self.assertEqual(1, source.count(file_name))
         self.assertIn('ImGui::BeginTabItem("Logic Flow")', self.boss_cpp)
         self.assertIn("void Render_LogicFlowTab();", self.boss_h)
-        render = function_body(
+        deep_link = function_body(
             self.boss_cpp,
             "void Client::CBossTool::Render_LogicFlowTab()",
         )
+        self.assertIn(
+            'ImGui::Button("Open Large Logic Pattern Window")', deep_link
+        )
+        self.assertIn("Open_LogicPattern()", deep_link)
+        window = function_body(
+            self.boss_cpp,
+            "void Client::CBossTool::Render_LogicPatternWindow()",
+        )
+        self.assertIn('ImGui::Begin("Valtan Logic Pattern"', window)
+        self.assertIn("Render_LogicPatternContent()", window)
+        render = function_body(
+            self.boss_cpp,
+            "void Client::CBossTool::Render_LogicPatternContent()",
+        )
         for marker in (
             '"Current Flow: %s | Slot %u / %u | %s"',
-            '"Current Pattern: %s%s"',
             "FlowPlayback.iPatternSequence == Boss.iPatternSequence",
-            "CBossLogicFlowViewModel::Project(",
             "CBossLogicFlowRenderer::Render(",
-            "Context.bAllowSelection = false",
-            "COUNTER_HIT and TIMEOUT branches",
+            "Context.bAllowSelection = true",
+            "Render_LogicPatternInspector",
         ):
             self.assertIn(marker, render)
+        self.assertIn("CBossLogicFlowViewModel::Project(", self.boss_cpp)
         for forbidden in (
             "m_FlowDocument.Move_",
             "m_FlowDocument.Remove_",
@@ -144,6 +166,48 @@ class ValtanBossToolContractTests(unittest.TestCase):
             "CValtanPatternAuditionService::Get().Submit(",
         ):
             self.assertNotIn(forbidden, render)
+
+    def test_counter_badge_is_data_driven_and_adjacent_to_sequence(self) -> None:
+        flow_h = (ROOT / "Client/Public/BossLogicFlowView.h").read_text(
+            encoding="utf-8"
+        )
+        flow_cpp = (
+            ROOT / "Client/Private/BossLogicFlowViewModel.cpp"
+        ).read_text(encoding="utf-8")
+        query = function_body(
+            flow_cpp,
+            "bool Client::CBossLogicFlowViewModel::Has_CounterHitBranch(",
+        )
+        self.assertIn("Pattern.Stages", query)
+        self.assertIn("Stage.Branches", query)
+        self.assertIn('"COUNTER_HIT" == Branch.strOutcome', query)
+        self.assertNotRegex(query, r'"VALTAN_[A-Z0-9_]+"')
+        self.assertIn("bool bHasCounterHitBranch = false;", flow_h)
+
+        projection = function_body(
+            flow_cpp, "bool Client::CBossLogicFlowViewModel::Project("
+        )
+        self.assertIn(
+            "Staged.bHasCounterHitBranch = Has_CounterHitBranch(Pattern);",
+            projection,
+        )
+
+        logic_tab = function_body(
+            self.boss_cpp, "void Client::CBossTool::Render_LogicFlowTab()"
+        )
+        self.assertIn("Find_AuditionPattern(Boss.strPatternId)", logic_tab)
+        self.assertIn('ImGui::Text("Server live: %s | Sequence %u"', logic_tab)
+        self.assertIn("Render_LogicCounterBadge(bHasCounterHitBranch)", logic_tab)
+
+        inspector = function_body(
+            self.boss_cpp,
+            "void Client::CBossTool::Render_LogicPatternInspector(",
+        )
+        self.assertIn('ImGui::Text("Sequence %u"', inspector)
+        self.assertIn(
+            "Render_LogicCounterBadge(m_LogicFlowView.bHasCounterHitBranch)",
+            inspector,
+        )
 
     def test_tool_reuses_product_views_and_typed_server_commands(self) -> None:
         for marker in (
@@ -489,7 +553,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
 
         update = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Update(const bool_t bToolVisible)",
+            "void Client::CBossTool::Update(",
         )
         self.assertLess(
             update.index("Find_AuditionPattern(m_strRepeatPatternId)"),
@@ -522,9 +586,14 @@ class ValtanBossToolContractTests(unittest.TestCase):
     def test_repeat_stops_when_hidden_or_closed_and_waits_for_revive(self) -> None:
         update = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Update(const bool_t bToolVisible)",
+            "void Client::CBossTool::Update(",
         )
-        self.assertIn("if (!bToolVisible || !m_bOpen)", update)
+        self.assertIn("if (!bBossToolVisible || !m_bOpen)", update)
+        self.assertIn("bLogicPatternVisible", update)
+        self.assertLess(
+            update.index("Update_LogicFlowObservation()"),
+            update.index("if (!bBossToolVisible || !m_bOpen)"),
+        )
         self.assertIn("m_strRepeatPatternId.clear()", update)
         self.assertIn("0u == Player.iCurrentHp", update)
         self.assertIn("Revive the player to continue Repeat", update)
@@ -743,7 +812,7 @@ class ValtanBossToolContractTests(unittest.TestCase):
 
     def test_next_ownership_guards_repeat_flow_and_other_tools(self) -> None:
         for signature in (
-            "void Client::CBossTool::Update(const bool_t bToolVisible)",
+            "void Client::CBossTool::Update(",
             "void Client::CBossTool::Render_ActionBar()",
             "void Client::CBossTool::Render_FlowSelectedSlot()",
         ):
@@ -790,6 +859,67 @@ class ValtanBossToolContractTests(unittest.TestCase):
             "Hold a completed stable-ID audition idle without advancing the Product rotation",
             self.server_tests,
         )
+
+    def test_product_fallback_is_generation_pinned_read_only_and_shared(self) -> None:
+        reload_graph = function_body(
+            self.boss_cpp, "bool_t Client::CBossTool::Reload_Graph()"
+        )
+        self.assertLess(
+            reload_graph.index("CanonicalAdmission.Acquire(Status)"),
+            reload_graph.index("Load_WhileAdmitted("),
+        )
+        self.assertIn("Fail_GraphReload(Status, nullptr)", reload_graph)
+        self.assertIn("Fail_GraphReload(Status, &CanonicalAdmission)", reload_graph)
+        fallback = function_body(
+            self.boss_cpp, "bool_t Client::CBossTool::Fail_GraphReload("
+        )
+        self.assertLess(
+            fallback.index("StagedProduct.Load("),
+            fallback.index("Validate_StillCurrent(CurrentStatus)"),
+        )
+        self.assertLess(
+            fallback.index("Validate_StillCurrent(CurrentStatus)"),
+            fallback.index("m_ProductFallbackEncounterReference ="),
+        )
+        self.assertIn("nullptr == pCanonicalAdmission", fallback)
+        self.assertIn("no files were reopened", fallback)
+        self.assertIn("Save, Restart, Play", fallback)
+        self.assertIn("READ-ONLY PRODUCT FALLBACK", self.boss_cpp)
+        self.assertIn("m_bGraphMutationAdmitted", self.boss_cpp)
+
+        effect_refresh = function_body(
+            self.effect_cpp,
+            "bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree()",
+        )
+        self.assertLess(
+            effect_refresh.index("CanonicalAdmission.Acquire(Status)"),
+            effect_refresh.index("Load_WhileAdmitted("),
+        )
+        effect_fallback = function_body(
+            self.effect_cpp,
+            "bool_t Client::CEffect_Tool::Stage_ValtanProductFallback(",
+        )
+        self.assertLess(
+            effect_fallback.index("Validate_StillCurrent(CurrentStatus)"),
+            effect_fallback.index("m_ValtanProductFallbackEncounter ="),
+        )
+        self.assertIn(
+            "Render_ValtanProductFallbackSection(strSearch)", self.effect_cpp
+        )
+
+        workbench = (
+            ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
+        ).read_text(encoding="utf-8")
+        composition_fallback = function_body(
+            workbench,
+            "bool_t Client::CActionCompositionWorkbench::Stage_ProductFallback(",
+        )
+        self.assertLess(
+            composition_fallback.index("Validate_StillCurrent(CurrentStatus)"),
+            composition_fallback.index("m_ProductFallbackEncounter ="),
+        )
+        self.assertIn("Render_ProductFallbackBrowser()", workbench)
+        self.assertIn("ADMISSION_STATE::REJECTED", workbench)
 
 
 if __name__ == "__main__":

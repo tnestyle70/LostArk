@@ -85,7 +85,7 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
             )
         )
         self.assertEqual(catalog["schema"], "lostark.boss-catalog")
-        self.assertEqual(catalog["formatVersion"], 5)
+        self.assertEqual(catalog["formatVersion"], 6)
         self.assertEqual({row["archetypeId"] for row in catalog["bosses"]},
                          {"BOSS_VALTAN", "BOSS_VALTAN_GHOST"})
         valtan = next(row for row in catalog["bosses"]
@@ -122,8 +122,14 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
                     "combatObjectArchetypeId":
                         "combatobject.valtan.high-jump.target-axe",
                     "clientVisualId":
-                        "combatobject.visual.valtan.high-jump.target-axe.v1",
+                        "combatobject.visual.valtan.high-jump.target-axe.v2",
                     "effectAssetId": "effect.valtan.sky-axe.active",
+                    "effectV2Group": {
+                        "groupId": "boss.valtan.axe",
+                        "playbackRate": 47 / 24,
+                        "visualHitMs": 2350,
+                        "serverHitId": "hit.valtan.high-jump.target-axe.01",
+                    },
                 },
                 {
                     "combatObjectArchetypeId":
@@ -140,6 +146,23 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
                     "effectAssetId":
                         "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01",
                     "worldScale": [1.5, 1.5, 1.5],
+                },
+                {
+                    "combatObjectArchetypeId":
+                        "combatobject.valtan.ground-roar.rock",
+                    "clientVisualId":
+                        "combatobject.visual.valtan.ground-roar.rock.v1",
+                    "effectAssetId": "effect.valtan.ground-roar.rock.active",
+                    "hitEffectAssetId":
+                        "effect.valtan.ground-roar.rock.explode",
+                },
+                {
+                    "combatObjectArchetypeId":
+                        "combatobject.valtan.ghost.portal-charge",
+                    "clientVisualId":
+                        "combatobject.visual.valtan.ghost.portal-charge.v1",
+                    "effectAssetId":
+                        "effect.valtan.project-tuned.sequence.warp.portal",
                 },
             ],
         )

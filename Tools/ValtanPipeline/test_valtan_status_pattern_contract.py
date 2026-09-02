@@ -54,11 +54,40 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
             documents[pipeline.COMBAT_AUTHORING_REL],
         )
 
+    def test_split_rejects_catch_timeout_default_edge_drift(self) -> None:
+        documents = pipeline.load_pipeline_documents(ROOT)
+        invalid = copy.deepcopy(documents[pipeline.GAMEPLAY_AUTHORING_REL])
+        catch = next(
+            row for row in invalid["patterns"]
+            if row["patternId"] == "VALTAN_CATCH_BREATH"
+        )
+        grab = next(row for row in catch["stages"] if row["stageId"] == "STEP_02")
+        self.assertIsNone(next(
+            branch["nextActionId"] for branch in grab["branches"]
+            if branch["outcome"] == "TIMEOUT"
+        ))
+        grab["defaultNextActionId"] = "valtan.sequence.catch-breath.step-03"
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "defaultNextActionId must match explicit TIMEOUT",
+        ):
+            pipeline.validate_gameplay_authoring(invalid)
+        with self.assertRaisesRegex(
+            pipeline.PipelineError,
+            "defaultNextActionId must match explicit TIMEOUT",
+        ):
+            pipeline.join_v2_authoring(
+                invalid,
+                documents[pipeline.PRESENTATION_AUTHORING_REL],
+                documents[pipeline.WORLD_SET_REL],
+                documents[pipeline.COMBAT_AUTHORING_REL],
+            )
+
     def test_magic_orb_damage_threshold_and_wipe_are_exact_typed_edges(self) -> None:
         pattern = self.gameplay_by_id["VALTAN_STAGGER_SLOT"]
         self.assertEqual("마력구 파괴 패턴", pattern["displayName"])
         self.assertEqual("NONE", pattern["targetPolicy"])
-        self.assertEqual(5.0, pattern["verticalOffsetM"])
+        self.assertEqual(3.0, pattern["verticalOffsetM"])
         self.assertEqual(["CHANNEL", "FINAL_ATTACK"],
                          [row["stageId"] for row in pattern["stages"]])
         channel, final_attack = pattern["stages"]
@@ -123,7 +152,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
             ],
         )
 
-    def test_bind_and_silence_follow_their_authored_stage_clocks(self) -> None:
+    def test_bind_clock_and_nonblocking_silence_deadline_are_authored(self) -> None:
         bind = self.gameplay_by_id["VALTAN_BIND_SLOT"]
         self.assertEqual("속박 패턴", bind["displayName"])
         self.assertEqual("LOCK_RANDOM_ALIVE_ON_START", bind["targetPolicy"])
@@ -134,7 +163,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         )
         bind_events = bind["stages"][0]["events"]
         self.assertEqual(
-            [("ENTER", "SET_PLAYER_BIND", 10.0, 5000),
+            [("ENTER", "SET_PLAYER_BIND", 5.0, 5000),
              ("EXIT", "SET_PLAYER_BIND", 0.0, 0)],
             [(row["trigger"], row["kind"], row["heightM"], row["durationMs"])
              for row in bind_events],
@@ -142,17 +171,23 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         silence = self.gameplay_by_id["VALTAN_SILENCE_SLOT"]
         self.assertEqual("침묵 패턴", silence["displayName"])
         self.assertEqual(
-            [("STEP_01", 2633), ("SILENCE_HOLD", 5000)],
+            [("STEP_01", 2633), ("SILENCE_APPLY", 100)],
             [(row["stageId"], row["durationMs"]) for row in silence["stages"]],
         )
         self.assertEqual([], silence["stages"][0]["events"])
         silence_events = silence["stages"][1]["events"]
         self.assertEqual(
-            [("ENTER", "SET_PLAYER_SILENCE", 5000),
-             ("EXIT", "SET_PLAYER_SILENCE", 0)],
+            [("ENTER", "SET_PLAYER_SILENCE", 5000)],
             [(row["trigger"], row["kind"], row["durationMs"])
              for row in silence_events],
         )
+
+    def test_server_catalog_treats_silence_as_deadline_latched_not_exit_closed(self) -> None:
+        catalog = read_text("Server/Private/GameplayCatalog.cpp")
+        start = catalog.index("bool IsStatefulBossPatternStageAction(")
+        end = catalog.index("bool HasFiniteBossStageGraph", start)
+        lifetime_classifier = catalog[start:end]
+        self.assertIn("SET_PLAYER_SILENCE != kind", lifetime_classifier)
 
     def test_status_presentation_owns_only_the_selected_animation_stages(self) -> None:
         bind = self.presentation_by_id["VALTAN_BIND_SLOT"]
@@ -312,14 +347,14 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         invalid = copy.deepcopy(gameplay)
         silence = next(row for row in invalid["patterns"]
                        if row["patternId"] == "VALTAN_SILENCE_SLOT")
-        silence["stages"][1]["events"][1]["durationMs"] = 1
+        silence["stages"][1]["events"][0]["trigger"] = "EXIT"
         with self.assertRaises(pipeline.PipelineError):
             pipeline.join_v2_authoring(
                 invalid, documents[pipeline.PRESENTATION_AUTHORING_REL],
                 documents[pipeline.WORLD_SET_REL],
                 documents[pipeline.COMBAT_AUTHORING_REL])
 
-    def test_stage_duration_patch_cascades_whole_stage_status_clock(self) -> None:
+    def test_stage_duration_patch_preserves_deadline_latched_silence(self) -> None:
         documents = pipeline.load_pipeline_documents(ROOT)
         source_revision = pipeline.source_manifest(ROOT)["sourceManifestId"]
         master = pipeline.join_v2_authoring(
@@ -331,7 +366,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
 
         for pattern_id, stage_id, status_kind, duration_ms, resize_animation in (
             ("VALTAN_BIND_SLOT", "STEP_01", "SET_PLAYER_BIND", 8000, True),
-            ("VALTAN_SILENCE_SLOT", "SILENCE_HOLD",
+            ("VALTAN_SILENCE_SLOT", "SILENCE_APPLY",
              "SET_PLAYER_SILENCE", 2000, False),
         ):
             with self.subTest(pattern_id=pattern_id):
@@ -394,14 +429,16 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
                     )
                 else:
                     self.assertEqual({"mode": "NONE"}, patched_stage["animation"])
-                self.assertEqual(
-                    [("ENTER", duration_ms), ("EXIT", 0)],
-                    [
-                        (event["trigger"], event["durationMs"])
-                        for event in patched_stage["events"]
-                        if event["kind"] == status_kind
-                    ],
+                expected_events = (
+                    [("ENTER", duration_ms), ("EXIT", 0)]
+                    if status_kind == "SET_PLAYER_BIND"
+                    else [("ENTER", 5000)]
                 )
+                self.assertEqual(expected_events, [
+                    (event["trigger"], event["durationMs"])
+                    for event in patched_stage["events"]
+                    if event["kind"] == status_kind
+                ])
 
     def test_server_wire_hud_and_composition_consumers_are_connected(self) -> None:
         player = read_text("Server/Public/ServerPlayer.h")
@@ -433,11 +470,17 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
             "Clear_SilenceStatus", "Has_ReachedServerTick",
         ):
             self.assertIn(marker, room)
+        silence_deadline_clear = room[
+            room.index("if (0u != player.iSilenceEndTick"):
+            room.index("#ifdef _DEBUG", room.index("if (0u != player.iSilenceEndTick"))
+        ]
+        self.assertIn("Has_ReachedServerTick", silence_deadline_clear)
+        self.assertNotIn("ownsLivePatternOccurrence", silence_deadline_clear)
         self.assertIn('"player.status.bind" == targetId', catalog)
         self.assertIn('"player.status.silence" == targetId', catalog)
         self.assertIn("writer.Write_U8(player.isPatternBound ? 1u : 0u)", packet_cpp)
         self.assertIn("player.isPatternBound = 0u != rawPatternBound", packet_cpp)
-        self.assertIn("NETWORK_PROTOCOL_VERSION = 52", protocol)
+        self.assertIn("NETWORK_PROTOCOL_VERSION = 53", protocol)
         self.assertIn("Pattern-Bound Player Snapshot Round Trip", harness)
         self.assertIn("iSilenceDurationTicks", harness)
         skill_build = hud[
@@ -454,12 +497,37 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, composition)
 
-    def test_silence_tints_existing_cooldown_and_icon_slots(self) -> None:
+    def test_single_player_bind_remains_a_live_boss_targetless_occurrence(self) -> None:
+        brain = read_text("Server/Private/ValtanBrain.cpp")
+        bind_guard = brain[
+            brain.index("bool PatternOwnsBindLifecycle"):
+            brain.index("const BOSS_PATTERN_STAGE_DEFINITION* FindStageByActionId")
+        ]
+        for marker in (
+            "BOSS_PATTERN_STAGE_ACTION_KIND::SET_PLAYER_BIND",
+            "BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER",
+            "BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT",
+            "bool CanContinueTargetlessOwnedBindPattern",
+            "player.bPatternBound",
+            "player.iPatternBindOwnerNetEntityId == boss.iNetEntityId",
+            "player.iPatternBindSequence == boss.iPatternSequence",
+        ):
+            self.assertIn(marker, bind_guard)
+        self.assertNotIn("VALTAN_BIND_SLOT", bind_guard)
+
+        update = brain[brain.index("void LostArk::Server::CValtanBrain::Update("):]
+        self.assertIn(
+            "CanContinueTargetlessOwnedBindPattern(boss, players, *patterns)",
+            update,
+        )
+        self.assertGreaterEqual(
+            update.count("continueTargetlessOwnedBindPattern"),
+            2,
+        )
+        self.assertNotIn("pauseOrderedStepForRevive", update)
+
+    def test_silence_uses_a_dedicated_r_mask_without_mutating_cooldown_or_icon(self) -> None:
         main_app = read_text("Client/Private/MainApp.cpp")
-        runtime_h = read_text("Client/Public/UILayoutRuntime.h")
-        runtime_cpp = read_text("Client/Private/UILayoutRuntime.cpp")
-        sprite_h = read_text("Client/Public/UI_Sprite.h")
-        sprite_cpp = read_text("Client/Private/UI_Sprite.cpp")
         hud_layout = json.loads(read_text("Data/UI/HUD/HUD_Layout.json"))
 
         cooldown_start = main_app.index("void CMainApp::Update_SkillCooldowns()")
@@ -468,8 +536,6 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         )
         cooldown = main_app[cooldown_start:cooldown_end]
         for marker in (
-            "Is_ServerDeadlinePending(player.iServerTick, player.iSilenceEndTick)",
-            "float4_t(0.85f, 0.04f, 0.04f, 0.7f)",
             "float4_t(0.f, 0.f, 0.f, 150.f / 255.f)",
             'string("Skill_") + pInputSlot + "_Cooldown"',
             "Set_SlotTint(strOverlaySlot, vCooldownTint)",
@@ -477,34 +543,40 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
             "Set_SlotVisible(strOverlaySlot, true)",
         ):
             self.assertIn(marker, cooldown)
+        self.assertNotIn("iSilenceEndTick", cooldown)
+        self.assertNotIn("Skill_R_SilenceMask", cooldown)
         self.assertNotIn("5000", cooldown)
         self.assertNotIn("150u", cooldown)
 
         for marker in (
             "Is_ServerDeadlinePending(Player.iServerTick, Player.iSilenceEndTick)",
-            "Apply_SilenceRSlotTint(m_pHUDRuntimeView.get(), player)",
-            "float4_t(1.f, 0.2f, 0.2f, 1.f)",
-            'Set_SlotTintMultiplier("Skill_R_Icon", vIconTint)',
+            "Update_SilenceRSlotMask(m_pHUDRuntimeView.get(), player)",
+            'Set_SlotVisible("Skill_R_SilenceMask", bSilenced)',
         ):
             self.assertIn(marker, main_app)
-        silence_tint = main_app[
-            main_app.index("void Apply_SilenceRSlotTint"):
+        silence_mask = main_app[
+            main_app.index("void Update_SilenceRSlotMask"):
             main_app.index("CMainApp* CMainApp::s_pActiveInstance")
         ]
-        self.assertNotIn("Skill_Q_Icon", silence_tint)
-        self.assertNotIn("for (", silence_tint)
-
-        self.assertIn("Set_SlotTintMultiplier", runtime_h)
-        self.assertIn("pKeySprite->Set_TintMultiplier", runtime_cpp)
-        self.assertIn("m_vTintMultiplier", sprite_h)
-        self.assertIn("m_vTint.x * m_vTintMultiplier.x", sprite_cpp)
-        self.assertIn("m_vTint.w * m_vTintMultiplier.w", sprite_cpp)
+        self.assertNotIn("Skill_R_Icon", silence_mask)
+        self.assertNotIn("Skill_R_Cooldown", silence_mask)
+        self.assertNotIn("Set_SlotTint", silence_mask)
+        self.assertNotIn("for (", silence_mask)
 
         slots_by_id = {slot["id"]: slot for slot in hud_layout["slots"]}
         for input_slot in ("Q", "W", "E", "R", "A", "S", "D", "F", "T", "V"):
             layer = slots_by_id[f"Skill_{input_slot}_Cooldown"]["layers"][0]
             self.assertEqual("UI/Common/White1x1.png", layer["path"])
             self.assertEqual([0, 0, 0, 150 / 255], layer["tint"])
+
+        r_icon = slots_by_id["Skill_R_Icon"]
+        r_mask = slots_by_id["Skill_R_SilenceMask"]
+        self.assertEqual(r_icon["rect"], r_mask["rect"])
+        self.assertEqual(
+            "UI/ItemUpgrade/buildup_lock_icon.png",
+            r_mask["layers"][0]["path"],
+        )
+        self.assertEqual([1, 1, 1, 1], r_mask["layers"][0]["tint"])
 
 
 if __name__ == "__main__":

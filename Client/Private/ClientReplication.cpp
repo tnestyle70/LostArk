@@ -6,6 +6,8 @@
 #include "CharacterCatalog.h"
 #include "CombatHUDViewModel.h"
 #include "Effect_PresentationService.h"
+#include "EffectV2_Catalog.h"
+#include "EffectV2_Runtime.h"
 #include "EstherActionSoundCueDocument.h"
 #include "GameInstance.h"
 #include "MapNavigationContract.h"
@@ -1848,7 +1850,7 @@ bool Client::CClientReplication::Apply_CombatObjectSpawn(
 	}
 	const COMBAT_OBJECT_PROJECTION_RECORD* record =
 		m_CombatObjectProjectionRuntime.Find(spawned.iCombatObjectId);
-	if (nullptr != record && 0u == record->iPresentationHandle)
+	if (nullptr != record && !record->PresentationHandle.Is_Valid())
 		m_strPendingPresentationFailure = std::move(status);
 	return true;
 }
@@ -1902,10 +1904,10 @@ bool Client::CClientReplication::Apply_CombatObjectDespawn(
 
 bool Client::CClientReplication::Spawn_CombatObjectPresentation(
 	const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned,
-	uint64_t& outHandle,
+	COMBAT_OBJECT_PRESENTATION_HANDLE& outHandle,
 	std::string& outStatus)
 {
-	outHandle = 0u;
+	outHandle.Reset();
 	const auto source = m_WorldEntities.find(spawned.iSourceNetEntityId);
 	if (source == m_WorldEntities.end() ||
 		source->second.eKind != LostArk::Shared::WORLD_ENTITY_KIND::BOSS)
@@ -1950,11 +1952,50 @@ bool Client::CClientReplication::Spawn_CombatObjectPresentation(
 	}
 
 	EFFECT_WORLD_ROOT_SPAWN_DESC desc;
-	desc.strEffectAssetId = visual->effectAssetId;
-	desc.pBossBudgetAndLifetimeOwner = boss;
-	desc.RootWorld = visual->Make_WorldRoot(
+	const float4x4_t rootWorld = visual->Make_WorldRoot(
 		float3_t(spawned.fPositionX, spawned.fPositionY, spawned.fPositionZ),
 		spawned.fYawDegrees);
+	if (BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V2_GROUP ==
+		visual->activeEffectKind)
+	{
+		CEffectV2Catalog& catalog = CEffectV2Catalog::Get();
+		std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> snapshot =
+			catalog.Get_Snapshot();
+		if (nullptr == snapshot || !snapshot->Is_Ready())
+		{
+			if (!catalog.Reload_BossValtan(outStatus))
+				return false;
+			snapshot = catalog.Get_Snapshot();
+		}
+		const EFFECT_V2_GROUP* group = nullptr == snapshot ? nullptr :
+			snapshot->Find_Group(visual->effectV2Group.groupId);
+		if (nullptr == group)
+		{
+			outStatus = "Combat-object Effect V2 group is missing from the pinned catalog.";
+			return false;
+		}
+		EFFECT_V2_GROUP_PLAYBACK_DESC playback;
+		playback.PivotWorld = rootWorld;
+		playback.fInitialAgeSeconds = actionAgeSeconds;
+		playback.fPlaybackRate = visual->effectV2Group.playbackRate;
+		playback.bProductOwned = true;
+		const uint32_t groupHandle = CEffectV2Runtime::Play_Group(
+			*group, std::move(snapshot), playback, m_Desc.pDevice,
+			m_Desc.pContext);
+		if (0u == groupHandle)
+		{
+			outStatus = CEffectV2Runtime::Last_Error();
+			return false;
+		}
+		outHandle.eKind = COMBAT_OBJECT_PRESENTATION_KIND::EFFECT_V2_GROUP;
+		outHandle.iValue = groupHandle;
+		outStatus = "Spawned combat-object Effect V2 group.";
+		return true;
+	}
+
+	desc.strEffectAssetId = visual->effectAssetId;
+	desc.pBossBudgetAndLifetimeOwner = boss;
+	desc.RootWorld = rootWorld;
 	desc.strOccurrenceId = "combatobject.instance." +
 		std::to_string(spawned.iCombatObjectId);
 	desc.iSpawnTick = spawned.iSpawnTick;
@@ -1965,12 +2006,13 @@ bool Client::CClientReplication::Spawn_CombatObjectPresentation(
 	{
 		return false;
 	}
-	outHandle = handle.iValue;
+	outHandle.eKind = COMBAT_OBJECT_PRESENTATION_KIND::EFFECT_V1_WORLD_ROOT;
+	outHandle.iValue = handle.iValue;
 	return true;
 }
 
 bool Client::CClientReplication::Update_CombatObjectPresentation(
-	const uint64_t handle,
+	const COMBAT_OBJECT_PRESENTATION_HANDLE handle,
 	const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot)
 {
 	const COMBAT_OBJECT_PROJECTION_RECORD* record =
@@ -1978,7 +2020,7 @@ bool Client::CClientReplication::Update_CombatObjectPresentation(
 	const auto source = m_WorldEntities.find(snapshot.iSourceNetEntityId);
 	if (nullptr == record || source == m_WorldEntities.end() ||
 		record->iSourceNetEntityId != snapshot.iSourceNetEntityId ||
-		record->iPresentationHandle != handle)
+		record->PresentationHandle != handle)
 	{
 		return false;
 	}
@@ -1994,19 +2036,55 @@ bool Client::CClientReplication::Update_CombatObjectPresentation(
 			record->strCombatObjectArchetypeId, record->strClientVisualId);
 	if (nullptr == visual)
 		return false;
+	const float4x4_t rootWorld = visual->Make_WorldRoot(
+		float3_t(snapshot.fPositionX, snapshot.fPositionY, snapshot.fPositionZ),
+		snapshot.fYawDegrees);
+	if (COMBAT_OBJECT_PRESENTATION_KIND::EFFECT_V2_GROUP == handle.eKind)
+	{
+		if (BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V2_GROUP !=
+			visual->activeEffectKind)
+		{
+			return false;
+		}
+		std::string failure;
+		if (CEffectV2Runtime::Consume_GroupFailure(
+				static_cast<uint32_t>(handle.iValue), failure))
+		{
+			m_strPendingPresentationFailure = std::move(failure);
+			return false;
+		}
+		/* Natural completion is successful while the logical combat object remains
+		   alive; do not restart the one-shot group on every later snapshot. */
+		if (CEffectV2Runtime::Group_Seconds(
+				static_cast<uint32_t>(handle.iValue)) < 0.f)
+		{
+			return true;
+		}
+		CEffectV2Runtime::Set_GroupPivot(
+			static_cast<uint32_t>(handle.iValue), rootWorld);
+		return true;
+	}
+	if (COMBAT_OBJECT_PRESENTATION_KIND::EFFECT_V1_WORLD_ROOT != handle.eKind ||
+		BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V1 !=
+			visual->activeEffectKind)
+	{
+		return false;
+	}
 	EFFECT_WORLD_ROOT_HANDLE effectHandle;
-	effectHandle.iValue = handle;
-	return CEffectPresentationService::Update_WorldRoot(effectHandle,
-		visual->Make_WorldRoot(
-			float3_t(snapshot.fPositionX, snapshot.fPositionY, snapshot.fPositionZ),
-			snapshot.fYawDegrees));
+	effectHandle.iValue = handle.iValue;
+	return CEffectPresentationService::Update_WorldRoot(effectHandle, rootWorld);
 }
 
 void Client::CClientReplication::Stop_CombatObjectPresentation(
-	const uint64_t handle)
+	const COMBAT_OBJECT_PRESENTATION_HANDLE handle)
 {
+	if (COMBAT_OBJECT_PRESENTATION_KIND::EFFECT_V2_GROUP == handle.eKind)
+	{
+		CEffectV2Runtime::Stop_Group(static_cast<uint32_t>(handle.iValue));
+		return;
+	}
 	EFFECT_WORLD_ROOT_HANDLE effectHandle;
-	effectHandle.iValue = handle;
+	effectHandle.iValue = handle.iValue;
 	CEffectPresentationService::Stop_WorldRoot(effectHandle);
 }
 

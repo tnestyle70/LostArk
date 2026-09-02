@@ -346,6 +346,9 @@ public:
 	bool_t Is_Hidden() const { return m_bHidden; }
 	void Set_Hidden(const bool_t bHidden) { m_bHidden = bHidden; }
 	void Restart();
+	/* Deterministic late-occurrence seek used by owner-linked free groups. The
+	   argument is real elapsed time; Params().fPlayRate remains authoritative. */
+	void Seek_ElapsedSeconds(f32_t fElapsedSeconds);
 	static HRESULT Prewarm(
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext,

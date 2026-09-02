@@ -1050,7 +1050,11 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 		for (const BOSS_COMBAT_OBJECT_VISUAL_ENTRY& Visual :
 			pBossActor->combatObjectVisuals)
 		{
-			EffectAssetIds.push_back(Visual.effectAssetId);
+			if (BOSS_COMBAT_OBJECT_ACTIVE_EFFECT_KIND::EFFECT_V1 ==
+				Visual.activeEffectKind)
+			{
+				EffectAssetIds.push_back(Visual.effectAssetId);
+			}
 			if (!Visual.hitEffectAssetId.empty())
 				EffectAssetIds.push_back(Visual.hitEffectAssetId);
 		}

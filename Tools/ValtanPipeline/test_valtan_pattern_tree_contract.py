@@ -435,16 +435,25 @@ def shared_reaction_and_selection_contract_valid(
         if window is None or window["actionId"] != layer["windowActionId"]:
             return False
         branches = {
-            row["outcome"]: row.get("nextActionId")
+            row["outcome"]: row
             for row in window.get("branches", [])
         }
+        counter_hit = branches.get("COUNTER_HIT", {})
+        timeout = branches.get("TIMEOUT", {})
+        success_target_is_admitted = (
+            counter_hit.get("nextActionId") == layer["successActionId"]
+            or (
+                counter_hit.get("nextActionId") is None
+                and counter_hit.get("nextPatternId") in patterns
+            )
+        )
         actions = (
             layer["windowActionId"], layer["successActionId"],
             layer["failureActionId"],
         )
         if (
-            branches.get("COUNTER_HIT") != layer["successActionId"]
-            or branches.get("TIMEOUT") != layer["failureActionId"]
+            not success_target_is_admitted
+            or timeout.get("nextActionId") != layer["failureActionId"]
             or any(action not in stages_by_action for action in actions)
             or any(action not in binding_actions for action in actions)
         ):
@@ -452,7 +461,10 @@ def shared_reaction_and_selection_contract_valid(
         master_counter_stages.add(
             (layer["ownerPatternId"], layer["ownerStageId"])
         )
-    return master_counter_stages == product_counter_stages
+    # Reference-only layers identify the three authored counter beats.  The
+    # Product may expose additional counterable fail windows without adding
+    # legacy reference rows, so exact equality would reject the current graph.
+    return master_counter_stages <= product_counter_stages
 
 
 class ValtanPatternTreeContractTests(unittest.TestCase):
@@ -588,15 +600,13 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         ):
             self.assertNotIn(retired_marker, self.pattern_master_projector)
 
-    def test_first_scripted_entry_owner_matches_publisher_without_weighted_admission(self) -> None:
+    def test_optional_entrance_stays_dormant_while_saved_flow_owns_first_slot(self) -> None:
         joined = tuning_pipeline.join_v2_authoring(
             self.gameplay, self.presentation, self.world_sets,
             self.combat_authoring,
         )
         decision = joined["decisionModel"]
-        original_entry_id = "VALTAN_ENTRANCE_CINEMATIC"
-        idle_entry_id = "VALTAN_ENTRANCE_CINEMATIC_IDLE"
-        entry_ids = (original_entry_id, idle_entry_id)
+        entry_id = "VALTAN_ENTRANCE_CINEMATIC"
         owned_ids = {
             row["patternId"]
             for selection_set in decision["selectionSets"]
@@ -606,24 +616,26 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         } | {
             row["patternId"] for row in decision["manualAuditions"]
         }
-        for entry_id in entry_ids:
-            self.assertNotIn(entry_id, owned_ids)
-            entry = next(
-                row for row in joined["patterns"]
-                if row["patternId"] == entry_id
-            )
-            product = next(
-                row for row in self.encounter["patterns"]
-                if row["patternId"] == entry_id
-            )
-            self.assertEqual("NORMAL", product["selectionMode"])
-            self.assertEqual(
-                tuning_pipeline.compile_pattern_product(joined, entry), product
-            )
+        self.assertNotIn(entry_id, owned_ids)
+        entry = next(
+            row for row in joined["patterns"]
+            if row["patternId"] == entry_id
+        )
+        product = next(
+            row for row in self.encounter["patterns"]
+            if row["patternId"] == entry_id
+        )
+        self.assertEqual("NORMAL", product["selectionMode"])
+        self.assertEqual(
+            tuning_pipeline.compile_pattern_product(joined, entry), product
+        )
         sequence_ids = decision["scriptedSequence"]["patternIds"]
-        self.assertEqual(idle_entry_id, sequence_ids[0])
-        self.assertEqual(1, sum(row in entry_ids for row in sequence_ids))
-        self.assertNotIn(original_entry_id, sequence_ids)
+        self.assertEqual("VALTAN_WHIRLWIND", sequence_ids[0])
+        self.assertNotIn(entry_id, sequence_ids)
+        self.assertNotIn(
+            "VALTAN_ENTRANCE_CINEMATIC_IDLE",
+            {row["patternId"] for row in joined["patterns"]},
+        )
 
         split = self.cpp[
             self.cpp.index("bool_t Parse_SplitMasterDocument("):
@@ -642,7 +654,10 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             "ScriptedEntryOnlyPatternIds.insert(strPatternId)",
         ):
             self.assertIn(token, owner)
-        for entry_id in entry_ids:
+        for entry_id in (
+            "VALTAN_ENTRANCE_CINEMATIC",
+            "VALTAN_ENTRANCE_CINEMATIC_IDLE",
+        ):
             self.assertIn(entry_id, self.cpp)
         self.assertIn("ScriptedEntryOnlyPatternIds, Out, strOutError", split)
         compatibility = self.cpp[
@@ -658,10 +673,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         self.assertIn("WeightedPatternIds != ManagedNormalPatternIds", compatibility)
 
     def test_scripted_entry_owner_failures_keep_the_staged_load_boundary(self) -> None:
-        entry_ids = (
-            "VALTAN_ENTRANCE_CINEMATIC",
-            "VALTAN_ENTRANCE_CINEMATIC_IDLE",
-        )
+        entry_ids = ("VALTAN_ENTRANCE_CINEMATIC",)
         invalid_sources: list[tuple[str, dict, str]] = []
         for entry_id in entry_ids:
             later_entry = copy.deepcopy(self.gameplay)
@@ -680,14 +692,6 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
                 f"{entry_id} has zero compatibility weight", zero_weight,
                 "compatibilitySelectionWeight must be positive",
             ))
-        mixed_entries = copy.deepcopy(self.gameplay)
-        mixed_entries["decisionModel"]["scriptedSequence"]["patternIds"][:] = [
-            entry_ids[0], entry_ids[1], "VALTAN_WHIRLWIND",
-        ]
-        invalid_sources.append((
-            "both optional entrances are present", mixed_entries,
-            "optional entry cinematic",
-        ))
         overlap = copy.deepcopy(self.gameplay)
         candidate_id = overlap["decisionModel"]["selectionSets"][0]["candidates"][0]["patternId"]
         manual = copy.deepcopy(overlap["decisionModel"]["manualAuditions"][0])
@@ -1736,7 +1740,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             ("VALTAN_WHIRLWIND", "SPIN", "hitOuterRadius", 999.0),
             ("VALTAN_WHIRLWIND", "SPIN", "serverDamageProfileId", "drift"),
             ("VALTAN_DASH_CHARGE", "CHARGE", "motion", {"kind": "FORWARD", "distance": 19.0}),
-            ("VALTAN_DASH_CHARGE_GROGGY", "GROGGY", "stageKind", "ACTIVE"),
+            ("VALTAN_DASH_CHARGE", "GROGGY", "stageKind", "ACTIVE"),
             ("VALTAN_DASH_CHARGE", "CHARGE", "branches", []),
         )
         for pattern_id, stage_id, field, value in mutations:

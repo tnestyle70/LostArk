@@ -354,6 +354,47 @@ def _load_independent(
     return independent_effects, independent_groups
 
 
+def _load_boss_combat_object_groups(
+    repository_root: Path, groups: dict[str, list[tuple[str, int]]]
+) -> set[str]:
+    path = repository_root / "Data/Actors/BossCatalog.json"
+    document = _require_object(_read_json(path), path.as_posix())
+    if (
+        document.get("schema") != "lostark.boss-catalog"
+        or not binding_v2._is_format_version(document.get("formatVersion"), 6)
+        or not isinstance(document.get("bosses"), list)
+    ):
+        raise ContractError(f"unsupported BossCatalog Effect V2 owner: {path}")
+    owners: set[str] = set()
+    for boss in document["bosses"]:
+        if not isinstance(boss, dict) or boss.get("archetypeId") != "BOSS_VALTAN":
+            continue
+        visuals = boss.get("combatObjectVisuals")
+        if not isinstance(visuals, list):
+            raise ContractError("BOSS_VALTAN combatObjectVisuals must be an array")
+        for visual in visuals:
+            if not isinstance(visual, dict):
+                raise ContractError("BOSS_VALTAN combat-object visual must be an object")
+            group = visual.get("effectV2Group")
+            if group is None:
+                continue
+            if not isinstance(group, dict) or set(group) != {
+                "groupId", "playbackRate", "visualHitMs", "serverHitId"
+            }:
+                raise ContractError("BOSS_VALTAN effectV2Group contract is invalid")
+            group_id = group.get("groupId")
+            if not isinstance(group_id, str) or group_id not in groups:
+                raise ContractError(
+                    f"BOSS_VALTAN combat-object Effect V2 group is missing: {group_id}"
+                )
+            if group_id in owners:
+                raise ContractError(
+                    f"duplicate BOSS_VALTAN combat-object Effect V2 group: {group_id}"
+                )
+            owners.add(group_id)
+    return owners
+
+
 def _validate_bindings(
     repository_root: Path,
     resource_root: Path,
@@ -518,6 +559,8 @@ def validate(repository_root: Path, resource_root: Path) -> dict[str, int]:
         repository_root, binding_root
     )
     independent_effects, independent_groups = _load_independent(v2_root, authored, groups)
+    combat_object_groups = _load_boss_combat_object_groups(repository_root, groups)
+    admitted_groups = independent_groups | combat_object_groups
     binding_count, boss_v1_compatibility_count = _validate_bindings(
         repository_root,
         resource_root,
@@ -526,7 +569,7 @@ def validate(repository_root: Path, resource_root: Path) -> dict[str, int]:
         groups,
         canonical_clips,
         independent_effects,
-        independent_groups,
+        admitted_groups,
     )
     return {
         "authored": len(authored),

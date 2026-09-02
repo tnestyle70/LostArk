@@ -72,7 +72,7 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
             visual,
         )
 
-    def test_ground_roar_active_effect_reuses_one_cross_stone_for_each_root(self) -> None:
+    def test_ground_roar_active_effect_reuses_the_authored_group_for_each_root(self) -> None:
         document = json.loads(_read(
             "Data/Effects/Authored/"
             "effect.valtan.ground-roar.rock.active.effect.json"
@@ -81,7 +81,15 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
             "effect.valtan.ground-roar.rock.active",
             document["effectAssetId"],
         )
-        self.assertEqual(1, len(document["elements"]))
+        # The Server clones this whole effect document at each radial combat-
+        # object root.  Keep the user's stone plus five authored particles as
+        # one composition; the elements themselves must not be copied four
+        # times in the effect asset.
+        self.assertEqual(6, len(document["elements"]))
+        self.assertEqual(
+            ["mesh", "particle", "particle", "particle", "particle", "particle"],
+            [row["kind"] for row in document["elements"]],
+        )
         element = document["elements"][0]
         self.assertEqual("mesh", element["kind"])
         self.assertEqual("valtan.ground-roar.rock", element["groupId"])
@@ -95,8 +103,8 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
                     "Effect/Valtan/Meshes/FX_SM_00/"
                     "fm_d_stoneparts_003.wmodel",
                 "base":
-                    "Effect/Valtan/Textures/FX_TEX_02/"
-                    "fx_d_electric_013_ycl.dds",
+                    "Effect/Valtan/Textures/FX_TEX_05/"
+                    "fx_k_turtlespec_01.dds",
                 "noise":
                     "Effect/Valtan/Textures/FX_TEX_02/"
                     "fx_d_stoneparts_002.dds",
@@ -124,7 +132,7 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
             detail["transform"]["velocityPerSecond"],
         )
         self.assertEqual(
-            [0.400000006, 0.400000006, 0.699999988],
+            [0.600000024, 0.600000024, 0.600000024],
             detail["transform"]["scale"],
         )
         self.assertEqual(5.0, detail["timing"]["lifeTimeSeconds"])
@@ -133,7 +141,7 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
             detail["timing"]["transformMotionDurationSeconds"],
         )
         self.assertEqual(
-            0.96,
+            0.959999979,
             detail["timing"]["dissolveStartNormalized"],
         )
         overrides = {
@@ -149,8 +157,8 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
                     "fx_h_noise_001.dds",
                 ),
                 "base": (
-                    "Effect/Valtan/Textures/FX_TEX_02/"
-                    "fx_d_electric_013_ycl.dds",
+                    "Effect/Valtan/Textures/FX_TEX_05/"
+                    "fx_k_turtlespec_01.dds",
                     "Effect/Valtan/Textures/FX_TEX_02/"
                     "fx_d_fluid_020.dds",
                 ),
@@ -165,6 +173,7 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
                 "valtan.independent-effect.target-axe",
                 "valtan.independent-effect.donut-in-out",
                 "valtan.independent-effect.ground-roar-cardinal-rocks",
+                "valtan.independent-effect.ghost-portal-once",
             ],
             [row["independentEffectId"] for row in presentation["independentEffects"]],
         )
@@ -460,7 +469,9 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
         )
         self.assertIn("m_CombatObjectProjectionRuntime.Apply_Despawn(", body)
         runtime = _read("Client/Public/CombatObjectProjectionRuntime.h")
-        self.assertIn("sink.Stop(record->second.iPresentationHandle);", runtime)
+        self.assertIn(
+            "sink.Stop(record->second.PresentationHandle);", runtime
+        )
         self.assertIn("m_Records.erase(record);", runtime)
 
     def test_composition_shows_four_independent_instances_through_explosion_time(self) -> None:
