@@ -59,6 +59,26 @@ private:
 		REQUIRED,
 	};
 
+	/* One authored camera shot. The product level holds this exact pose while
+	   the local Character stands inside the box, so what is framed here is
+	   what ships. */
+	struct EDITOR_CAMERA_SHOT final
+	{
+		std::string shotId;
+		/* Empty means the box decides. Naming a sequence instance makes
+		   the shot hold for exactly that sequence. */
+		std::string sequenceInstanceId;
+		float3_t center = {};
+		float3_t halfExtents = float3_t(8.f, 4.f, 8.f);
+		f32_t yawDegrees = 0.f;
+		float3_t eye = {};
+		float3_t lookAt = {};
+		f32_t fovYDegrees = 60.f;
+		int32_t blendInMs = 2000;
+		int32_t blendOutMs = 1000;
+		int32_t priority = 10;
+	};
+
 	struct EDITOR_AREA_DESCRIPTOR
 	{
 		std::string areaId;
@@ -75,6 +95,7 @@ private:
 		std::filesystem::path encounterReference;
 		std::filesystem::path worldEventsDocument;
 		std::filesystem::path destructionSimulationDocument;
+		std::filesystem::path cameraShotDocument;
 		EDITOR_NAVIGATION_POLICY navigationPolicy =
 			EDITOR_NAVIGATION_POLICY::NONE;
 		EDITOR_GAMEPLAY_POLICY gameplayPolicy =
@@ -235,6 +256,10 @@ private:
 		const std::string& conditionId,
 		bool_t value);
 	bool_t Save_Navigation();
+	bool_t Load_CameraShots(const EDITOR_AREA_DESCRIPTOR& descriptor);
+	bool_t Save_CameraShots();
+	void Render_CameraShotSection();
+	void End_CameraShotPreview();
 	bool_t Try_PickNavigationCell(
 		int32_t& outCellX,
 		int32_t& outCellZ) const;
@@ -613,6 +638,10 @@ private:
 
 	/* Camera State */
 	weak_ptr<CCamera_Free> m_pAssetTestCamera;
+	std::vector<EDITOR_CAMERA_SHOT> m_CameraShots;
+	size_t m_iSelectedCameraShot = 0u;
+	std::string m_CameraShotStatus = "No camera shot document for this Area";
+	bool_t m_bCameraShotPreviewActive = false;
 	std::string m_CameraStatus = "Open ASSET_TEST with F2";
 	/* One camera jump target per authored source sublevel of the active
 	Area, rebuilt from the committed placements. An Area whose placements

@@ -707,6 +707,10 @@ namespace
 		return left.lexically_normal() == right.lexically_normal();
 	}
 
+	/* Distinct from the product level and the cinematic owners so an editor
+	   preview never collides with a shipped override. */
+	constexpr uint64_t CAMERA_SHOT_PREVIEW_OWNER_ID = 0x4D54434D53485450ull;
+
 	bool_t ReadTextFile(
 		const std::filesystem::path& path,
 		std::string& outText)
@@ -5930,6 +5934,12 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 			}
 		}
 
+		/* Camera shots are an optional Client presentation layer. The document
+		   is named per Area and is simply absent where none is authored. */
+		descriptor.cameraShotDocument = CProjectDataRoot::Resolve(
+			std::filesystem::path("Maps") / "Authoring" / descriptor.areaId /
+			(descriptor.areaId + ".camerashots.json"));
+
 		if (descriptor.areaId == "LV_LOBBY_CLASSSELECT_SL00" ||
 			descriptor.areaId == "LV_BER_BERNCASTLE" ||
 			descriptor.areaId == "LV_LUT_HEARTRB_ED" ||
@@ -6384,6 +6394,10 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 			return false;
 		}
 	}
+
+	/* Read-only here: a rejected shot document must never block the Area, it
+	   only leaves the list empty with a reported reason. */
+	(void)Load_CameraShots(descriptor);
 
 	if (!Ensure_AuthoringPrototypes(stagedCatalog))
 		return false;
@@ -12407,6 +12421,402 @@ void Client::CMapTool::Render_CameraPanel()
 		"Tab: toggle Free Camera mouse look");
 	ImGui::TextDisabled(
 		"Free Camera: WASD move");
+
+	ImGui::Separator();
+	Render_CameraShotSection();
+}
+
+bool_t Client::CMapTool::Load_CameraShots(
+	const EDITOR_AREA_DESCRIPTOR& descriptor)
+{
+	End_CameraShotPreview();
+	m_CameraShots.clear();
+	m_iSelectedCameraShot = 0u;
+	if (descriptor.cameraShotDocument.empty())
+	{
+		m_CameraShotStatus = "No camera shot document for this Area";
+		return false;
+	}
+	std::error_code error;
+	if (!std::filesystem::is_regular_file(descriptor.cameraShotDocument, error) ||
+		error)
+	{
+		m_CameraShotStatus =
+			"No shots authored yet. Add Shot From Camera creates the first one.";
+		return true;
+	}
+
+	std::string text;
+	std::string parseError;
+	DATA_JSON_VALUE root;
+	if (!ReadTextFile(descriptor.cameraShotDocument, text) ||
+		!CDataJson::Parse(text, root, parseError) || !root.Is_Object())
+	{
+		m_CameraShotStatus = "Camera shot parse failed: " + parseError;
+		return false;
+	}
+	const DATA_JSON_VALUE* schema = root.Find("schema");
+	const DATA_JSON_VALUE* version = root.Find("formatVersion");
+	const DATA_JSON_VALUE* area = root.Find("areaId");
+	const DATA_JSON_VALUE* shots = root.Find("shots");
+	if (nullptr == schema || !schema->Is_String() ||
+		schema->Get_String() != "lostark.camera-shots" ||
+		nullptr == version || !version->Is_Number() ||
+		version->Get_Number() != 1.0 ||
+		nullptr == area || !area->Is_String() ||
+		area->Get_String() != descriptor.areaId ||
+		nullptr == shots || !shots->Is_Array())
+	{
+		m_CameraShotStatus = "Camera shot header is invalid";
+		return false;
+	}
+
+	const auto readFloat3 = [](const DATA_JSON_VALUE* value, float3_t& out)
+	{
+		if (nullptr == value || !value->Is_Array() ||
+			3u != value->Get_Array().size())
+		{
+			return false;
+		}
+		f32_t parts[3]{};
+		for (size_t index = 0; index < 3u; ++index)
+		{
+			const DATA_JSON_VALUE& part = value->Get_Array()[index];
+			if (!part.Is_Number())
+				return false;
+			parts[index] = static_cast<f32_t>(part.Get_Number());
+		}
+		out = float3_t(parts[0], parts[1], parts[2]);
+		return true;
+	};
+
+	std::vector<EDITOR_CAMERA_SHOT> staged;
+	for (const DATA_JSON_VALUE& value : shots->Get_Array())
+	{
+		EDITOR_CAMERA_SHOT shot;
+		const DATA_JSON_VALUE* shotId = value.Find("shotId");
+		const DATA_JSON_VALUE* sequenceId = value.Find("sequenceInstanceId");
+		const DATA_JSON_VALUE* box = value.Find("box");
+		if (nullptr == shotId || !shotId->Is_String() ||
+			nullptr == box || !box->Is_Object() ||
+			!readFloat3(box->Find("center"), shot.center) ||
+			!readFloat3(box->Find("halfExtents"), shot.halfExtents) ||
+			!readFloat3(value.Find("eye"), shot.eye) ||
+			!readFloat3(value.Find("lookAt"), shot.lookAt))
+		{
+			m_CameraShotStatus = "Camera shot row is invalid";
+			return false;
+		}
+		if (nullptr == sequenceId || !sequenceId->Is_String())
+		{
+			m_CameraShotStatus = "Camera shot sequence binding is invalid";
+			return false;
+		}
+		shot.shotId = shotId->Get_String();
+		shot.sequenceInstanceId = sequenceId->Get_String();
+		const DATA_JSON_VALUE* yaw = box->Find("yawDegrees");
+		const DATA_JSON_VALUE* fov = value.Find("fovYDegrees");
+		const DATA_JSON_VALUE* blendIn = value.Find("blendInMs");
+		const DATA_JSON_VALUE* blendOut = value.Find("blendOutMs");
+		const DATA_JSON_VALUE* priority = value.Find("priority");
+		if (nullptr == yaw || !yaw->Is_Number() ||
+			nullptr == fov || !fov->Is_Number() ||
+			nullptr == blendIn || !blendIn->Is_Number() ||
+			nullptr == blendOut || !blendOut->Is_Number() ||
+			nullptr == priority || !priority->Is_Number())
+		{
+			m_CameraShotStatus = "Camera shot numbers are invalid";
+			return false;
+		}
+		shot.yawDegrees = static_cast<f32_t>(yaw->Get_Number());
+		shot.fovYDegrees = static_cast<f32_t>(fov->Get_Number());
+		shot.blendInMs = static_cast<int32_t>(blendIn->Get_Number());
+		shot.blendOutMs = static_cast<int32_t>(blendOut->Get_Number());
+		shot.priority = static_cast<int32_t>(priority->Get_Number());
+		staged.push_back(std::move(shot));
+	}
+
+	m_CameraShots = std::move(staged);
+	m_CameraShotStatus =
+		"Loaded " + std::to_string(m_CameraShots.size()) + " shot(s)";
+	return true;
+}
+
+bool_t Client::CMapTool::Save_CameraShots()
+{
+	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
+	if (nullptr == descriptor || descriptor->cameraShotDocument.empty())
+	{
+		m_CameraShotStatus = "No camera shot document for this Area";
+		return false;
+	}
+	std::unordered_set<std::string> ids;
+	for (const EDITOR_CAMERA_SHOT& shot : m_CameraShots)
+	{
+		if (shot.shotId.empty() || !ids.emplace(shot.shotId).second)
+		{
+			m_CameraShotStatus = "Shot IDs must be unique and non-empty";
+			return false;
+		}
+		if (shot.halfExtents.x <= 0.f || shot.halfExtents.y <= 0.f ||
+			shot.halfExtents.z <= 0.f)
+		{
+			m_CameraShotStatus = "Half extents must be positive: " + shot.shotId;
+			return false;
+		}
+	}
+
+	const auto number = [](const f32_t value)
+	{
+		char buffer[32]{};
+		std::snprintf(buffer, sizeof(buffer), "%.6g",
+			static_cast<double>(value));
+		return std::string(buffer);
+	};
+	const auto vector3 = [&number](const float3_t& value)
+	{
+		return "[" + number(value.x) + ", " + number(value.y) + ", " +
+			number(value.z) + "]";
+	};
+
+	/* Revision follows the document on disk so two saves never collide. */
+	uint32_t revision = 1u;
+	std::string existingText;
+	if (ReadTextFile(descriptor->cameraShotDocument, existingText))
+	{
+		DATA_JSON_VALUE existing;
+		std::string ignored;
+		if (CDataJson::Parse(existingText, existing, ignored) &&
+			existing.Is_Object())
+		{
+			const DATA_JSON_VALUE* current = existing.Find("revision");
+			if (nullptr != current && current->Is_Number() &&
+				current->Get_Number() >= 1.0 &&
+				current->Get_Number() < 4294967295.0)
+			{
+				revision = static_cast<uint32_t>(current->Get_Number()) + 1u;
+			}
+		}
+	}
+
+	std::string text;
+	text += "{\n  \"schema\": \"lostark.camera-shots\",\n";
+	text += "  \"formatVersion\": 1,\n";
+	text += "  \"areaId\": \"" + descriptor->areaId + "\",\n";
+	text += "  \"revision\": " + std::to_string(revision) + ",\n";
+	text += "  \"shots\": [";
+	for (size_t index = 0; index < m_CameraShots.size(); ++index)
+	{
+		const EDITOR_CAMERA_SHOT& shot = m_CameraShots[index];
+		text += 0u == index ? "\n" : ",\n";
+		text += "    {\n";
+		text += "      \"shotId\": \"" + shot.shotId + "\",\n";
+		text += "      \"sequenceInstanceId\": \"" +
+			shot.sequenceInstanceId + "\",\n";
+		text += "      \"box\": { \"center\": " + vector3(shot.center) +
+			", \"halfExtents\": " + vector3(shot.halfExtents) +
+			", \"yawDegrees\": " + number(shot.yawDegrees) + " },\n";
+		text += "      \"eye\": " + vector3(shot.eye) + ",\n";
+		text += "      \"lookAt\": " + vector3(shot.lookAt) + ",\n";
+		text += "      \"fovYDegrees\": " + number(shot.fovYDegrees) + ",\n";
+		text += "      \"blendInMs\": " + std::to_string(shot.blendInMs) + ",\n";
+		text += "      \"blendOutMs\": " + std::to_string(shot.blendOutMs) + ",\n";
+		text += "      \"priority\": " + std::to_string(shot.priority) + "\n";
+		text += "    }";
+	}
+	text += m_CameraShots.empty() ? "]\n}\n" : "\n  ]\n}\n";
+
+	std::error_code error;
+	std::filesystem::create_directories(
+		descriptor->cameraShotDocument.parent_path(), error);
+	std::filesystem::path temporary = descriptor->cameraShotDocument;
+	temporary += L".tmp";
+	{
+		std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+		if (!output)
+		{
+			m_CameraShotStatus = "Could not create the temporary shot document";
+			return false;
+		}
+		output << text;
+		output.flush();
+		if (!output.good())
+		{
+			m_CameraShotStatus = "Could not write the temporary shot document";
+			return false;
+		}
+	}
+	if (!MoveFileExW(temporary.c_str(),
+		descriptor->cameraShotDocument.c_str(),
+		MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+	{
+		std::filesystem::remove(temporary, error);
+		m_CameraShotStatus = "Could not commit the shot document";
+		return false;
+	}
+	m_CameraShotStatus = "Saved " + std::to_string(m_CameraShots.size()) +
+		" shot(s) as revision " + std::to_string(revision) +
+		". Publish the Area to ship it.";
+	return true;
+}
+
+void Client::CMapTool::End_CameraShotPreview()
+{
+	const shared_ptr<CCamera_Free> camera = m_pAssetTestCamera.lock();
+	if (m_bCameraShotPreviewActive && nullptr != camera)
+		camera->End_PresentationOverride(CAMERA_SHOT_PREVIEW_OWNER_ID);
+	m_bCameraShotPreviewActive = false;
+}
+
+void Client::CMapTool::Render_CameraShotSection()
+{
+	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
+	ImGui::TextUnformatted("Camera Shots");
+	if (nullptr == descriptor || descriptor->cameraShotDocument.empty())
+	{
+		ImGui::TextDisabled("This Area declares no camera shot document.");
+		return;
+	}
+	const shared_ptr<CCamera_Free> camera = m_pAssetTestCamera.lock();
+	ImGui::TextDisabled(
+		"Fly the Free Camera to the framing you want, then capture. The product level holds that pose while a player stands in the box.");
+	ImGui::TextWrapped("%s", m_CameraShotStatus.c_str());
+
+	/* The workspace camera pose is the authored pose, so read it from the
+	   pipeline and a capture records exactly what is on screen. */
+	const float4_t* cameraPosition = CGameInstance::Get().Get_CamPosition();
+	const float4x4_t* viewMatrix =
+		CGameInstance::Get().Get_Transform(D3DTS::VIEW);
+	float3_t editorEye{};
+	float3_t editorLookAt{};
+	bool_t hasEditorPose = false;
+	if (nullptr != cameraPosition && nullptr != viewMatrix)
+	{
+		editorEye = float3_t(
+			cameraPosition->x, cameraPosition->y, cameraPosition->z);
+		const vector_t forward = XMVector3Normalize(XMVectorSet(
+			viewMatrix->_13, viewMatrix->_23, viewMatrix->_33, 0.f));
+		XMStoreFloat3(&editorLookAt,
+			XMLoadFloat3(&editorEye) + forward * 10.f);
+		hasEditorPose = true;
+		ImGui::Text("Editor camera: %.2f, %.2f, %.2f",
+			editorEye.x, editorEye.y, editorEye.z);
+	}
+
+	ImGui::BeginDisabled(!hasEditorPose || m_CameraShots.size() >= 64u);
+	if (ImGui::Button("Add Shot From Camera"))
+	{
+		EDITOR_CAMERA_SHOT shot;
+		size_t suffix = m_CameraShots.size() + 1u;
+		do
+		{
+			shot.shotId = "shot." + std::to_string(suffix++);
+		}
+		while (m_CameraShots.end() != std::find_if(
+			m_CameraShots.begin(), m_CameraShots.end(),
+			[&shot](const EDITOR_CAMERA_SHOT& value)
+			{
+				return value.shotId == shot.shotId;
+			}));
+		shot.eye = editorEye;
+		shot.lookAt = editorLookAt;
+		/* The box starts where the shot looks, which is the ground the shot
+		   was framed for. */
+		shot.center = editorLookAt;
+		m_CameraShots.push_back(std::move(shot));
+		m_iSelectedCameraShot = m_CameraShots.size() - 1u;
+		m_CameraShotStatus = "Added a shot from the editor camera";
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	if (ImGui::Button("Save Shots"))
+		(void)Save_CameraShots();
+	ImGui::SameLine();
+	if (ImGui::Button("Reload Shots"))
+		(void)Load_CameraShots(*descriptor);
+	if (m_bCameraShotPreviewActive)
+	{
+		ImGui::SameLine();
+		if (ImGui::Button("Stop Preview"))
+			End_CameraShotPreview();
+	}
+
+	bool_t hasRemoval = false;
+	size_t removeIndex = 0u;
+	for (size_t index = 0; index < m_CameraShots.size(); ++index)
+	{
+		EDITOR_CAMERA_SHOT& shot = m_CameraShots[index];
+		ImGui::PushID(static_cast<int>(index));
+		if (ImGui::CollapsingHeader(shot.shotId.c_str()))
+		{
+			char idBuffer[129]{};
+			std::snprintf(idBuffer, sizeof(idBuffer), "%s", shot.shotId.c_str());
+			if (ImGui::InputText("Shot ID", idBuffer, sizeof(idBuffer)))
+				shot.shotId = idBuffer;
+			char sequenceBuffer[129]{};
+			std::snprintf(sequenceBuffer, sizeof(sequenceBuffer), "%s",
+				shot.sequenceInstanceId.c_str());
+			if (ImGui::InputText("Sequence Instance (empty = use box)",
+				sequenceBuffer, sizeof(sequenceBuffer)))
+			{
+				shot.sequenceInstanceId = sequenceBuffer;
+			}
+			ImGui::DragFloat3("Box Center", &shot.center.x, 0.1f);
+			ImGui::DragFloat3("Box Half Extents", &shot.halfExtents.x,
+				0.1f, 0.1f, 1000.f);
+			ImGui::DragFloat("Box Yaw", &shot.yawDegrees, 0.5f, -360.f, 360.f);
+			ImGui::DragFloat3("Eye", &shot.eye.x, 0.1f);
+			ImGui::DragFloat3("Look At", &shot.lookAt.x, 0.1f);
+			ImGui::DragFloat("Fov Y", &shot.fovYDegrees, 0.25f, 5.f, 170.f);
+			ImGui::DragInt("Blend In (ms)", &shot.blendInMs, 10.f, 0, 10000);
+			ImGui::DragInt("Blend Out (ms)", &shot.blendOutMs, 10.f, 0, 10000);
+			ImGui::DragInt("Priority", &shot.priority, 1.f, 0, 1000);
+
+			ImGui::BeginDisabled(!hasEditorPose);
+			if (ImGui::Button("Capture Camera Into Shot"))
+			{
+				shot.eye = editorEye;
+				shot.lookAt = editorLookAt;
+				m_CameraShotStatus = "Captured the editor camera into " +
+					shot.shotId;
+			}
+			ImGui::EndDisabled();
+			ImGui::SameLine();
+			ImGui::BeginDisabled(nullptr == camera);
+			if (ImGui::Button("Preview Shot"))
+			{
+				if (nullptr != camera &&
+					camera->Begin_PresentationOverride(
+						CAMERA_SHOT_PREVIEW_OWNER_ID,
+						CCamera::PRESENTATION_PRIORITY::AUTHORING_PREVIEW) &&
+					camera->Apply_PresentationPose(
+						CAMERA_SHOT_PREVIEW_OWNER_ID,
+						shot.eye, shot.lookAt, shot.fovYDegrees))
+				{
+					m_bCameraShotPreviewActive = true;
+					m_CameraShotStatus = "Previewing " + shot.shotId;
+				}
+				else
+				{
+					m_CameraShotStatus = "Preview was rejected: " + shot.shotId;
+				}
+			}
+			ImGui::EndDisabled();
+			ImGui::SameLine();
+			if (ImGui::Button("Remove Shot"))
+			{
+				hasRemoval = true;
+				removeIndex = index;
+			}
+		}
+		ImGui::PopID();
+	}
+	if (hasRemoval)
+	{
+		m_CameraShots.erase(
+			m_CameraShots.begin() + static_cast<std::ptrdiff_t>(removeIndex));
+		m_CameraShotStatus = "Removed a shot";
+	}
 }
 
 void Client::CMapTool::Render_NavigationPanel()

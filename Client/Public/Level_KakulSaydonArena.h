@@ -35,6 +35,28 @@ public:
 		std::string strSourceLevelId;
 	};
 
+	/* One authored camera shot. While the local Character stands inside the
+	   box the camera holds this exact pose - the reference footage keeps the
+	   background pinned while the party walks - and leaving the box hands the
+	   camera back to the ordinary follow view. */
+	struct KAKUL_CAMERA_SHOT final
+	{
+		std::string strShotId;
+		/* Empty means the box decides. When it names a sequence the
+		   shot holds for exactly as long as that sequence plays, so a
+		   trigger that starts the sequence also starts the shot. */
+		std::string strSequenceInstanceId;
+		float3_t vCenter = {};
+		float3_t vHalfExtents = {};
+		f32_t fYawDegrees = 0.f;
+		float3_t vEye = {};
+		float3_t vLookAt = {};
+		f32_t fFovYDegrees = 60.f;
+		uint32_t iBlendInMs = 0u;
+		uint32_t iBlendOutMs = 0u;
+		uint32_t iPriority = 0u;
+	};
+
 private:
 	CLevel_KakulSaydonArena(
 		ComPtr<ID3D11Device> pDevice,
@@ -63,6 +85,10 @@ public:
 	{
 		return m_StageMarkers;
 	}
+	const std::vector<KAKUL_CAMERA_SHOT>& Get_CameraShots() const
+	{
+		return m_CameraShots;
+	}
 
 	/* Raises one paper stage bridge: the Deploy prop leaves DESPAWNED and its
 	   authored unfold sequence starts on the same frame, so the bridge is
@@ -78,6 +104,11 @@ private:
 		const CWorldSequencePlayer::TARGET_SET& targets,
 		std::string& outStatus);
 	bool_t Load_StageMarkers(std::string& outStatus);
+	bool_t Load_CameraShots(std::string& outStatus);
+	void Update_CameraShots(f32_t fTimeDelta);
+	const KAKUL_CAMERA_SHOT* Find_ActiveCameraShot(
+		const float3_t& vPosition) const;
+	void Release_CameraShot();
 	HRESULT Ready_Layer_Camera(const wstring_t& strLayerTag);
 	bool_t Bind_CameraToLocalCharacter();
 
@@ -98,6 +129,23 @@ private:
 	CPlayerController m_PlayerController;
 	std::vector<KAKUL_STAGE_MARKER> m_StageMarkers;
 	std::unordered_set<std::string> m_StageMarkerPlacementIds;
+	std::vector<KAKUL_CAMERA_SHOT> m_CameraShots;
+	std::string m_strActiveCameraShotId;
+	/* The pose written last frame. A hand-over starts from this, so entering,
+	   swapping and leaving all begin at what the player already sees. */
+	float3_t m_vCameraEyeApplied = {};
+	float3_t m_vCameraLookApplied = {};
+	f32_t m_fCameraFovApplied = 60.f;
+	float3_t m_vCameraEyeFrom = {};
+	float3_t m_vCameraLookFrom = {};
+	f32_t m_fCameraFovFrom = 60.f;
+	float3_t m_vCameraEyeTo = {};
+	float3_t m_vCameraLookTo = {};
+	f32_t m_fCameraFovTo = 60.f;
+	f32_t m_fCameraBlendSeconds = 0.f;
+	f32_t m_fCameraBlendElapsed = 0.f;
+	bool_t m_bCameraShotHeld = false;
+	std::string m_strCameraShotStatus;
 	static CLevel_KakulSaydonArena* s_pActiveInstance;
 
 public:

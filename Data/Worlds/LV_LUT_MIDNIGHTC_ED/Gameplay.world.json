@@ -2,12 +2,12 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 6,
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 1652,
+  "revision": 1787,
   "placements": [
     {
       "placementId": "1Stage_Final",
       "kind": "triggerBox",
-      "position": [33.5, 0.449999988, -70],
+      "position": [27.7999992, 0.449999988, -67.6999969],
       "yawDegrees": 123.5,
       "enabled": true,
       "halfExtents": [6, 1, 1],

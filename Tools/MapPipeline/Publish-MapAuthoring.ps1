@@ -27,6 +27,7 @@ $authoringLightPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaI
 $authoringEffectPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.mapeffects.json"
 $authoringWaterPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.mapwater.json"
 $authoringSequencePath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.worldsequences.json"
+$authoringCameraShotPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.camerashots.json"
 $importRoot = Join-Path $ProjectRoot "Data\Maps\Imported\$AreaId"
 $sourceCatalogPath = Join-Path $importRoot "$AreaId.mapassets"
 $sourceShardSetPath = Join-Path $importRoot "$AreaId.mapset"
@@ -37,6 +38,7 @@ $runtimeLightPath = Join-Path $runtimeRoot "$AreaId.maplights.json"
 $runtimeEffectPath = Join-Path $runtimeRoot "$AreaId.mapeffects.json"
 $runtimeWaterPath = Join-Path $runtimeRoot "$AreaId.mapwater.json"
 $runtimeSequencePath = Join-Path $runtimeRoot "$AreaId.worldsequences.json"
+$runtimeCameraShotPath = Join-Path $runtimeRoot "$AreaId.camerashots.json"
 $mapCatalogPath = Join-Path $ProjectRoot 'Data\Maps\MapCatalog.json'
 $worldDestructionPath = Join-Path $ProjectRoot "Client\Bin\DataFiles\World\$AreaId.worlddestruction.json"
 $worldDestructionSourcePath = Join-Path $ProjectRoot 'Data\Encounters\Valtan\ValtanWorldEvents.json'
@@ -1478,6 +1480,104 @@ function Add-WorldSequencePublishFile {
     }
 }
 
+function Read-CameraShotDocument {
+    param([string]$Path)
+    $text = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8)
+    try { $document = $text | ConvertFrom-Json }
+    catch { throw "Camera shot JSON parse failed: $Path" }
+    Assert-ExactJsonProperties $document `
+        @('schema','formatVersion','areaId','revision','shots') 'Camera shot root'
+    if ($document.schema -ne 'lostark.camera-shots' -or
+        -not (Test-JsonNumber $document.formatVersion) -or
+        [double]$document.formatVersion -ne 1 -or
+        $document.areaId -ne $AreaId -or
+        -not (Test-JsonNumber $document.revision) -or
+        [double]$document.revision -lt 1 -or
+        [math]::Floor([double]$document.revision) -ne [double]$document.revision) {
+        throw "Camera shot header is invalid: $Path"
+    }
+    # Level_KakulSaydonArena.cpp 의 상한과 동일하게 검사한다.
+    $shots = @($document.shots)
+    if ($shots.Count -gt 64) {
+        throw "Camera shot document exceeds its limits: $Path"
+    }
+    $stableId = '^[A-Za-z0-9._-]{1,128}$'
+    $shotIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($shot in $shots) {
+        Assert-ExactJsonProperties $shot `
+            @('shotId','sequenceInstanceId','box','eye','lookAt','fovYDegrees','blendInMs','blendOutMs','priority') `
+            'Camera shot'
+        if ($shot.shotId -isnot [string] -or
+            $shot.shotId -notmatch $stableId -or
+            -not $shotIds.Add([string]$shot.shotId)) {
+            throw "Camera shot id is invalid or duplicated: $($shot.shotId)"
+        }
+        if ($shot.sequenceInstanceId -isnot [string] -or
+            ($shot.sequenceInstanceId -ne '' -and
+                $shot.sequenceInstanceId -notmatch $stableId)) {
+            throw "Camera shot sequence binding is invalid: $($shot.shotId)"
+        }
+        Assert-ExactJsonProperties $shot.box `
+            @('center','halfExtents','yawDegrees') "Camera shot box $($shot.shotId)"
+        foreach ($triplet in @(@($shot.box.center), @($shot.box.halfExtents),
+                @($shot.eye), @($shot.lookAt))) {
+            if ($triplet.Count -ne 3) {
+                throw "Camera shot vector must hold three numbers: $($shot.shotId)"
+            }
+            foreach ($component in $triplet) {
+                if (-not (Test-JsonNumber $component)) {
+                    throw "Camera shot vector component is not finite: $($shot.shotId)"
+                }
+            }
+        }
+        foreach ($extent in @($shot.box.halfExtents)) {
+            if ([double]$extent -le 0 -or [double]$extent -gt 1000) {
+                throw "Camera shot half extent is out of range: $($shot.shotId)"
+            }
+        }
+        # An eye sitting on its own target has no direction and the engine
+        # would reject the pose every frame.
+        $delta = 0.0
+        for ($axis = 0; $axis -lt 3; $axis++) {
+            $step = [double]$shot.lookAt[$axis] - [double]$shot.eye[$axis]
+            $delta += $step * $step
+        }
+        if ($delta -le 0.000001) {
+            throw "Camera shot eye and lookAt coincide: $($shot.shotId)"
+        }
+        if (-not (Test-JsonNumber $shot.box.yawDegrees) -or
+            [math]::Abs([double]$shot.box.yawDegrees) -gt 360) {
+            throw "Camera shot yaw is out of range: $($shot.shotId)"
+        }
+        if (-not (Test-JsonNumber $shot.fovYDegrees) -or
+            [double]$shot.fovYDegrees -le 1 -or [double]$shot.fovYDegrees -ge 179) {
+            throw "Camera shot field of view is out of range: $($shot.shotId)"
+        }
+        foreach ($pair in @(@('blendInMs', 10000), @('blendOutMs', 10000), @('priority', 1000))) {
+            $value = $shot.($pair[0])
+            if (-not (Test-JsonNumber $value) -or
+                [double]$value -lt 0 -or [double]$value -gt $pair[1] -or
+                [math]::Floor([double]$value) -ne [double]$value) {
+                throw "Camera shot $($pair[0]) is out of range: $($shot.shotId)"
+            }
+        }
+    }
+    return @([IO.File]::ReadAllLines($Path, [Text.Encoding]::UTF8))
+}
+
+function Add-CameraShotPublishFile {
+    param([Collections.Generic.List[object]]$Files)
+    if ($script:cameraShotsDeclared) {
+        if (-not [IO.File]::Exists($authoringCameraShotPath)) {
+            throw "Declared camera shot authoring source is missing: $authoringCameraShotPath"
+        }
+        $Files.Add([pscustomobject]@{
+            Name = "$AreaId.camerashots.json"
+            Lines = Read-CameraShotDocument $authoringCameraShotPath
+        })
+    }
+}
+
 function Add-MapWaterPublishFile {
     param([Collections.Generic.List[object]]$Files)
     if ($script:mapWaterDeclared) {
@@ -1586,6 +1686,26 @@ if ($script:worldSequencesDeclared) {
 }
 elseif ([IO.File]::Exists($authoringSequencePath)) {
     throw "World sequence source exists without a MapCatalog declaration: $AreaId"
+}
+
+$sourceCameraShotsProperty = $areaEntry.PSObject.Properties['sourceCameraShots']
+$runtimeCameraShotsProperty = $areaEntry.PSObject.Properties['cameraShots']
+if (($null -eq $sourceCameraShotsProperty) -ne ($null -eq $runtimeCameraShotsProperty)) {
+    throw "Map catalog camera shot source/runtime declaration is incomplete: $AreaId"
+}
+$script:cameraShotsDeclared = $null -ne $sourceCameraShotsProperty
+if ($script:cameraShotsDeclared) {
+    $expectedSourceCameraShots = "Data/Maps/Authoring/$AreaId/$AreaId.camerashots.json"
+    $expectedRuntimeCameraShots = "Client/Bin/DataFiles/Map/$AreaId.camerashots.json"
+    if ($areaEntry.sourceCameraShots -isnot [string] -or
+        $areaEntry.sourceCameraShots -ne $expectedSourceCameraShots -or
+        $areaEntry.cameraShots -isnot [string] -or
+        $areaEntry.cameraShots -ne $expectedRuntimeCameraShots) {
+        throw "Map catalog camera shot paths are not canonical: $AreaId"
+    }
+}
+elseif ([IO.File]::Exists($authoringCameraShotPath)) {
+    throw "Camera shot source exists without a MapCatalog declaration: $AreaId"
 }
 
 function Invoke-FileSetTransaction {
@@ -1782,6 +1902,7 @@ if (-not [IO.File]::Exists($sourceShardSetPath)) {
     Add-MapEffectPublishFile $files
     Add-MapWaterPublishFile $files
     Add-WorldSequencePublishFile $files
+    Add-CameraShotPublishFile $files
 
     Complete-MapPublish $files 'single' $runtimePath
     return
@@ -1907,4 +2028,5 @@ Add-MapLightPublishFile $files
 Add-MapEffectPublishFile $files
 Add-MapWaterPublishFile $files
 Add-WorldSequencePublishFile $files
+Add-CameraShotPublishFile $files
 Complete-MapPublish $files 'shard-set' $shardSetPath $shards.Count
