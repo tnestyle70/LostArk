@@ -1021,13 +1021,9 @@ namespace
 				{
 					Pending.iNextLoopEpoch = 1u;
 					std::string SpawnFailure;
-					const f32_t fChildStartSeconds =
-						Ms_ToSeconds(Pending.Binding.iStartMs);
-					const f32_t fInitialElapsedSeconds =
-						(Group.fSeconds - fChildStartSeconds) / Group.fPlaybackRate;
 					Spawn(Pending, Group.Pivot, Client::EFFECT_V2_TARGET{}, false,
 						Group.Spawned, pDevice, pContext, Group.pSnapshot.get(),
-						&SpawnFailure, Group.fPlaybackRate, fInitialElapsedSeconds);
+						&SpawnFailure, Group.fPlaybackRate, 0.f);
 					if (Group.strFailure.empty() && !SpawnFailure.empty())
 						Group.strFailure = std::move(SpawnFailure);
 				}
