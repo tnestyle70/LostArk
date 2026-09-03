@@ -685,6 +685,54 @@ namespace LostArk::Server
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_PARTY_INVITE_RESPOND& request);
 		void Broadcast_PartyRoster(std::uint32_t partyId);
+
+		/* 파티 레이드 입장 전원 수락 투표. 한 플레이어는 동시에 하나의 열린 proposal에만
+		   속한다(propose가 그 불변식을 검사). iProposalId는 이 방에서 발급하는 단조 증가
+		   식별자로 pointer/index가 아니다. Voters는 발의 시점 멤버 스냅샷(솔로는 1명),
+		   Accepted는 그 부분집합. m_iServerTick이 iDeadlineTick을 넘으면 TIMEOUT으로 닫는다. */
+		struct RAID_ENTRY_PROPOSAL
+		{
+			std::uint32_t iProposalId = 0u;
+			std::uint32_t iPartyId = 0u;
+			std::uint32_t iRequestSequence = 0u;
+			LostArk::Shared::RAID_ENTRY_TARGET eTarget =
+				LostArk::Shared::RAID_ENTRY_TARGET::VALTAN;
+			std::string strNpcPlacementId;
+			std::vector<LostArk::Shared::PLAYER_ID> Voters;
+			std::vector<LostArk::Shared::PLAYER_ID> Accepted;
+			std::uint32_t iDeadlineTick = 0u;
+		};
+
+		// 리더/솔로가 입장하기로 발의 -> 대상 전원(솔로는 본인)에게 프롬프트, 투표 개시.
+		void Handle_RaidEntryPropose(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_RAID_ENTRY_PROPOSE& request);
+		// 개별 수락/거절 반영. 거절이면 즉시 DECLINED 종료, 전원 수락이면 ALL_ACCEPTED 종료.
+		void Handle_RaidEntryRespond(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_RAID_ENTRY_RESPOND& request);
+		// 투표를 result로 종료해 전원에 통지하고 proposal을 제거한다. ALL_ACCEPTED면
+		// Stage_PartyWorldTransfer로 batch 전송을 stage하고, stage 실패면 CANCELLED로 낮춘다.
+		void Close_RaidEntryVote(
+			RAID_ENTRY_PROPOSAL& proposal,
+			LostArk::Shared::RAID_ENTRY_VOTE_RESULT result);
+		// 진행/종료 S2C_RAID_ENTRY_VOTE를 proposal의 present voters에게 보낸다.
+		void Broadcast_RaidEntryVote(
+			const RAID_ENTRY_PROPOSAL& proposal, bool bClosed,
+			LostArk::Shared::RAID_ENTRY_VOTE_RESULT result);
+		// m_iServerTick 기준 만료 proposal을 TIMEOUT으로 닫는다(tick 루프에서 호출).
+		void Expire_RaidEntryProposals();
+		// playerId가 voter인 열린 proposal을 CANCELLED로 닫는다(이탈/파티 해산 시).
+		void Cancel_RaidEntryProposalsInvolving(LostArk::Shared::PLAYER_ID playerId);
+		// 검증된 batch 멤버(front=리더)를 기존 SERVER_WORLD_TRANSFER_REQUEST 경로로 stage.
+		// 멤버 unavailable/이미 staged면 false(호출자가 투표를 CANCELLED로 닫는다).
+		bool Stage_PartyWorldTransfer(
+			const std::vector<LostArk::Shared::PLAYER_ID>& batchMemberIds,
+			LostArk::Shared::WORLD_ID targetWorldId,
+			std::uint32_t requestSequence);
+		// player가 알려진 Valtan 입장 guide NPC 근처(proximity)인지 검증한다.
+		bool Is_PlayerNearValtanEntryNpc(
+			const SERVER_PLAYER& player, const std::string& npcPlacementId) const;
 		/* Tells every session in this room that an authored world sequence
 		   instance started. Presentation only: the Server keeps no sequence
 		   state, so a session that joins later simply misses a played edge. */
@@ -1079,6 +1127,10 @@ namespace LostArk::Server
 		// delays the notice instead of disconnecting a rejected source party.
 		std::unordered_map<SESSION_ID, LostArk::Shared::S2C_PARTY_TRANSFER_RESULT>
 			m_PendingPartyTransferResults;
+
+		// 파티 레이드 입장 투표 상태. struct RAID_ENTRY_PROPOSAL은 위 메서드 선언부에 정의한다.
+		std::vector<RAID_ENTRY_PROPOSAL> m_RaidEntryProposals;
+		std::uint32_t m_iNextRaidEntryProposalId = 1u;
 
 		LostArk::Shared::WORLD_ID m_eWorldId = LostArk::Shared::WORLD_ID::END;
 		CWorldBootstrap m_WorldBootstrap;
