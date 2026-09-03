@@ -115,6 +115,24 @@ bool Client::CNetworkPlayerCommandSink::Request_ConfirmNpcEntry(
 		clientSequence, npcPlacementId);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_RaidEntryPropose(
+	const std::uint32_t clientSequence,
+	const std::string& npcPlacementId,
+	const LostArk::Shared::RAID_ENTRY_TARGET target)
+{
+	return CNetworkManager::Get().Send_RaidEntryPropose(
+		clientSequence, npcPlacementId, target);
+}
+
+bool Client::CNetworkPlayerCommandSink::Request_RaidEntryRespond(
+	const std::uint32_t clientSequence,
+	const std::uint32_t proposalId,
+	const bool accepted)
+{
+	return CNetworkManager::Get().Send_RaidEntryRespond(
+		clientSequence, proposalId, accepted);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_ReturnToBern(
 	const std::uint32_t clientSequence)
 {

@@ -58,6 +58,14 @@ public:
 	bool Request_ConfirmNpcEntry(
 		std::uint32_t clientSequence,
 		const std::string& npcPlacementId) override;
+	bool Request_RaidEntryPropose(
+		std::uint32_t clientSequence,
+		const std::string& npcPlacementId,
+		LostArk::Shared::RAID_ENTRY_TARGET target) override;
+	bool Request_RaidEntryRespond(
+		std::uint32_t clientSequence,
+		std::uint32_t proposalId,
+		bool accepted) override;
 	bool Request_ReturnToBern(
 		std::uint32_t clientSequence) override;
 	bool Request_PartyInvite(

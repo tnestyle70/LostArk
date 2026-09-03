@@ -134,6 +134,9 @@ namespace
 		   path minus the "_NNN.dds" suffix; nullptr keeps the static key art. */
 		const char_t*	pBgMoviePrefix;
 		int32_t			iBgMovieFrames;
+		/* 입장하기 투표 발의 시 이 탭이 고르는 목표 레이드. Server가 이 값으로 target world를
+		   결정한다(발탄->VALTAN_ARENA, 쿠크->KAKULSAYDON_ARENA). */
+		LostArk::Shared::RAID_ENTRY_TARGET eTarget;
 	};
 	const RAID_DEF RAID_DEFS[] =
 	{
@@ -161,6 +164,7 @@ namespace
 			  "UI/ItemUpgrade/lm_head_icon.png", "UI/ItemUpgrade/lm_weapon_icon.png" },
 			{ 5, 5, 5, 5, 5, 5, 4, 4 },
 			"UI/RaidEntry/RaidEntry_BG_Kukusaton/RaidEntry_BG_Kukusaton", 300,
+			LostArk::Shared::RAID_ENTRY_TARGET::KAKULSAYDON,
 		},
 		{
 			0,
@@ -191,6 +195,7 @@ namespace
 			  "UI/ItemUpgrade/lm_weapon_icon.png", "UI/ItemUpgrade/lm_head_icon.png" },
 			{ 4, 4, 4, 4, 4, 4, 3, 3 },
 			"UI/RaidEntry/RaidEntry_BG_Valtan/RaidEntry_BG_Valtan", 300,
+			LostArk::Shared::RAID_ENTRY_TARGET::VALTAN,
 		},
 	};
 	constexpr int32_t RAID_COUNT = static_cast<int32_t>(sizeof(RAID_DEFS) / sizeof(RAID_DEFS[0]));
@@ -566,9 +571,14 @@ bool_t CRaidEntryPreviewView::Render()
 	}
 	else if (confirmClicked)
 	{
-		// Opens the small 수락/거절 step on the next Render() call instead of
-		// reporting Entrance back immediately -- see Render_ConfirmStep().
-		m_isConfirmStepOpen = true;
+		// 입장하기 = 투표 발의. 로컬 confirm을 바로 열지 않고 PROPOSE 의도만 남긴다.
+		// 수락/거절 창은 서버 프롬프트(Open_VoteConfirm)로 열리며 리더 본인도 프롬프트를
+		// 받는다(솔로는 인원 1명 투표).
+		if (m_iSelectedRaid >= 0 && m_iSelectedRaid < RAID_COUNT)
+		{
+			m_Intent.eKind = RAID_ENTRY_INTENT::PROPOSE;
+			m_Intent.eTarget = RAID_DEFS[m_iSelectedRaid].eTarget;
+		}
 	}
 
 	return false;
@@ -911,21 +921,48 @@ bool_t CRaidEntryPreviewView::Render_ConfirmStep()
 		}
 	}
 
-	if (cancelClicked)
+	if (cancelClicked || confirmClicked)
 	{
+		// 수락·거절 둘 다 서버에 응답을 보낸다(거절도 투표를 종료시켜 전원이 Bern에 남게 함).
+		m_Intent.eKind = RAID_ENTRY_INTENT::RESPOND;
+		m_Intent.iProposalId = m_iVoteProposalId;
+		m_Intent.bAccepted = confirmClicked;
 		m_isConfirmStepOpen = false;
 		m_isOpen = false;
+		m_iVoteProposalId = 0u;
 		Hide_ConfirmSlots();
-		return false;
-	}
-	if (confirmClicked)
-	{
-		m_isConfirmStepOpen = false;
-		m_isOpen = false;
-		Hide_ConfirmSlots();
-		return true;
+		return confirmClicked;
 	}
 	return false;
+}
+
+CRaidEntryPreviewView::RAID_ENTRY_INTENT CRaidEntryPreviewView::Consume_Intent()
+{
+	const RAID_ENTRY_INTENT intent = m_Intent;
+	m_Intent = RAID_ENTRY_INTENT{};
+	return intent;
+}
+
+void CRaidEntryPreviewView::Open_VoteConfirm(
+	const std::uint32_t iProposalId,
+	const LostArk::Shared::RAID_ENTRY_TARGET target)
+{
+	// target은 표시용 문구 확장 여지로만 받는다 -- 응답에는 필요 없다.
+	(void)target;
+	m_iVoteProposalId = iProposalId;
+	m_isOpen = true;
+	m_isConfirmStepOpen = true;
+	m_hasJustOpened = true;
+}
+
+void CRaidEntryPreviewView::Close_VoteConfirm()
+{
+	m_isConfirmStepOpen = false;
+	m_isOpen = false;
+	m_iVoteProposalId = 0u;
+	m_Intent = RAID_ENTRY_INTENT{};
+	Hide_ConfirmSlots();
+	Hide_AllSlots();
 }
 
 void CRaidEntryPreviewView::RenderText_ConfirmStep()
