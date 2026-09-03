@@ -1,0 +1,13 @@
+{
+  "schema": "lostark.effect-v2-group",
+  "formatVersion": 2,
+  "groupId": "boss.valtan.breathe",
+  "durationMs": 0,
+  "children": [
+    { "childId": "child.breathe.001", "resource": { "kind": "LEAF", "id": "boss.valtan.breathe_1" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } },
+    { "childId": "child.breathe.002", "resource": { "kind": "LEAF", "id": "boss.valtan.breathe_2" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } },
+    { "childId": "child.breathe.003", "resource": { "kind": "LEAF", "id": "boss.valtan.breathe_3" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 1.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } },
+    { "childId": "child.breathe.004", "resource": { "kind": "LEAF", "id": "boss.valtan.breathe_4" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 1.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } },
+    { "childId": "child.breathe.005", "resource": { "kind": "LEAF", "id": "boss.valtan.blur_1" }, "startMs": 500, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } }
+  ]
+}

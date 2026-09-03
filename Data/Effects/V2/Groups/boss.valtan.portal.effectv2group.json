@@ -5,6 +5,6 @@
   "durationMs": 0,
   "children": [
     { "childId": "child.portal.black_1", "resource": { "kind": "LEAF", "id": "boss.valtan.portal.black_1" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } },
-    { "childId": "child.portal.cyan_1", "resource": { "kind": "LEAF", "id": "boss.valtan.portal.cyan_1" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } }
+    { "childId": "child.portal.cyan_1", "resource": { "kind": "LEAF", "id": "boss.valtan.portal.cyan_1" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [-0.25, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } }
   ]
 }

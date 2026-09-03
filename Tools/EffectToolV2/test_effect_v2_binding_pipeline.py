@@ -987,6 +987,9 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
         self.assertEqual(
             {
                 "boss.valtan.axe": 9,
+                "boss.valtan.blackhole": 1,
+                "boss.valtan.breathe": 5,
+                "boss.valtan.breathe.red": 5,
                 "boss.valtan.impact": 17,
                 "boss.valtan.magicball": 4,
                 "boss.valtan.magicball.aura": 2,
@@ -1004,6 +1007,9 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
         self.assertEqual(
             {
                 "boss.valtan.axe": 5600,
+                "boss.valtan.blackhole": 10000,
+                "boss.valtan.breathe": 1500,
+                "boss.valtan.breathe.red": 1500,
                 "boss.valtan.impact": 5000,
                 "boss.valtan.magicball": 12000,
                 "boss.valtan.magicball.aura": 10000,
