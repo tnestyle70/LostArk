@@ -106,6 +106,9 @@ private:
 	the local character's live position is back within interaction range of
 	the target NPC. */
 	void Advance_ValtanEntryWalk();
+	/* 매 프레임 파티 레이드 입장 투표 replication 이벤트를 소비한다. 프롬프트면 수락/거절
+	   창을 열고(모달이 안 열려 있어도), 거절/타임아웃/취소 종료면 창을 닫아 Bern에 남는다. */
+	void Poll_RaidEntryVote();
 
 	/* npc.bern.schmidt's authored position (real placement in Data/Worlds/
 	LV_BER_BERNCASTLE/Gameplay.world.json, archetype NPC_SCHMIDT), loaded the same
