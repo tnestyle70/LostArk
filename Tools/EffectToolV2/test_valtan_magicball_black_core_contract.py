@@ -63,16 +63,16 @@ class ValtanMagicballBlackCoreContractTests(unittest.TestCase):
         }
         self.assertEqual(12.0, lifetimes["boss.valtan.egg.black_3"])
         self.assertEqual(12.0, lifetimes["boss.valtan.egg.cyan_1"])
-        self.assertEqual(10.0, lifetimes["boss.valtan.egg.aura_1"])
-        self.assertEqual(10.0, lifetimes["boss.valtan.egg.aura_2"])
+        self.assertEqual(12.0, lifetimes["boss.valtan.egg.black_1"])
+        self.assertEqual(12.0, lifetimes["boss.valtan.egg.black_2"])
 
     def test_black_multiply_layer_is_composited_after_the_cyan_shell(self) -> None:
         group = load_json(GROUP_PATH)
         child_ids = [child["resource"]["id"] for child in group["children"]]
         self.assertEqual(
             [
-                "boss.valtan.egg.aura_1",
-                "boss.valtan.egg.aura_2",
+                "boss.valtan.egg.black_1",
+                "boss.valtan.egg.black_2",
                 "boss.valtan.egg.cyan_1",
                 "boss.valtan.egg.black_3",
             ],

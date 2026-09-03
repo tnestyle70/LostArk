@@ -44,7 +44,7 @@
     "dissolveWarp": false,
     "maskWarp": false,
     "alphaInEnd": 0.032,
-    "alphaOutStart": 1.0,
+    "alphaOutStart": 0.901,
     "blend": "Additive",
     "billboard": true,
     "depthTest": true,

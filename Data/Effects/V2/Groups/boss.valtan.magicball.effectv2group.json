@@ -4,8 +4,8 @@
   "groupId": "boss.valtan.magicball",
   "durationMs": 12000,
   "children": [
-    { "childId": "child.migrated.000.13cc8c721c0a7ccc", "resource": { "kind": "LEAF", "id": "boss.valtan.egg.aura_1" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } },
-    { "childId": "child.migrated.001.8fb6df815d51672c", "resource": { "kind": "LEAF", "id": "boss.valtan.egg.aura_2" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } },
+    { "childId": "child.migrated.000.13cc8c721c0a7ccc", "resource": { "kind": "LEAF", "id": "boss.valtan.egg.black_1" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } },
+    { "childId": "child.migrated.001.8fb6df815d51672c", "resource": { "kind": "LEAF", "id": "boss.valtan.egg.black_2" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } },
     { "childId": "child.egg.cyan_1", "resource": { "kind": "LEAF", "id": "boss.valtan.egg.cyan_1" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } },
     { "childId": "child.egg.black_3", "resource": { "kind": "LEAF", "id": "boss.valtan.egg.black_3" }, "startMs": 0, "durationMs": 0, "stop": "Deactivate", "localTransform": { "translation": [0.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0] } }
   ]
