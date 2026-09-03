@@ -1093,7 +1093,29 @@ bool_t Client::CEffect_Tool_V2::Try_CreatePreview()
 			iSlot - static_cast<int32_t>(RESOURCE_SLOT::BASE))] =
 			Bindings[static_cast<size_t>(iSlot)];
 	}
-	return Spawn_Preview(Desc, {}, std::string());
+	std::vector<PART_OVERRIDE> Parts;
+	std::string strAnimationClip;
+	const std::shared_ptr<CEffectV2Object> pPrevious = m_pPreview.lock();
+	if (nullptr != pPrevious &&
+		pPrevious->Creation_Desc().eShape == Desc.eShape)
+	{
+		Desc.Params = pPrevious->Params();
+		Desc.bParamsAuthored = true;
+		if (pPrevious->Creation_Desc().strMeshAssetId == Desc.strMeshAssetId)
+		{
+			for (uint32_t iPart = 0u; iPart < pPrevious->Part_Count(); ++iPart)
+			{
+				PART_OVERRIDE Part;
+				Part.bVisible = pPrevious->Part_Visible(iPart);
+				Part.strBaseAssetId = pPrevious->Part_BaseAssetId(iPart);
+				Parts.push_back(std::move(Part));
+			}
+			const char_t* pClip = pPrevious->Animation_Name(
+				pPrevious->Params().iAnimationIndex);
+			strAnimationClip = nullptr != pClip ? pClip : "";
+		}
+	}
+	return Spawn_Preview(Desc, Parts, strAnimationClip);
 }
 
 bool_t Client::CEffect_Tool_V2::Spawn_Preview(
@@ -2933,6 +2955,22 @@ bool_t Client::CEffect_Tool_V2::Load_Group(const std::string& strGroupId)
 	return true;
 }
 
+std::string Client::CEffect_Tool_V2::Make_GroupChildId() const
+{
+	for (uint32_t iCandidate = 0u; iCandidate < 100000u; ++iCandidate)
+	{
+		char_t szChildId[32]{};
+		std::snprintf(szChildId, sizeof(szChildId), "child.authored.%05u", iCandidate);
+		const bool_t bTaken = std::any_of(
+			m_Group.Children.begin(), m_Group.Children.end(),
+			[&szChildId](const EFFECT_V2_GROUP_CHILD& Child)
+			{ return Child.strChildId == szChildId; });
+		if (!bTaken)
+			return szChildId;
+	}
+	return {};
+}
+
 bool_t Client::CEffect_Tool_V2::Save_Group()
 {
 	const std::string strGroupId = m_szGroupId;
@@ -2956,6 +2994,11 @@ bool_t Client::CEffect_Tool_V2::Save_Group()
 		}
 	}
 	m_Group.strGroupId = strGroupId;
+	for (EFFECT_V2_GROUP_CHILD& Child : m_Group.Children)
+	{
+		if (Child.strChildId.empty())
+			Child.strChildId = Make_GroupChildId();
+	}
 	std::error_code Error;
 	std::filesystem::create_directories(CEffectV2Document::Group_Directory(), Error);
 	std::string strError;
@@ -3127,6 +3170,9 @@ void Client::CEffect_Tool_V2::Render_GroupWindow()
 	{
 		EFFECT_V2_GROUP_CHILD Child;
 		Child.strEffectId = m_szEffectId;
+		Child.strResourceId = m_szEffectId;
+		Child.eResourceKind = EFFECT_V2_RESOURCE_KIND::LEAF;
+		Child.strChildId = Make_GroupChildId();
 		m_Group.Children.push_back(std::move(Child));
 	}
 	ImGui::EndDisabled();
@@ -3382,7 +3428,7 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		CEffectV2Object::SCREEN_POST_PARAMS& S = P.ScreenPost;
 		ImGui::SeparatorText("Screen Post (full-screen)");
 		int32_t iProfile = static_cast<int32_t>(S.eProfile);
-		if (ImGui::Combo("Profile", &iProfile, "Zoom Blur\0RGB Noise (chromatic)\0Film Noise\0"))
+		if (ImGui::Combo("Profile", &iProfile, "Zoom Blur\0RGB Noise (chromatic)\0Film Noise\0Chromatic Aberration (radial)\0"))
 			S.eProfile = static_cast<CEffectV2Object::SCREEN_POST_PROFILE>(iProfile);
 		const char* pIntensityLabel = "Intensity";
 		const char* pSecondaryLabel = "Secondary";
@@ -3398,6 +3444,11 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 			pIntensityLabel = "Grain (0-8)";
 			pSecondaryLabel = "Scanline (0-8)";
 			pHint = "Tinted grain + horizontal scanlines. Frequency scales both.";
+			break;
+		case CEffectV2Object::SCREEN_POST_PROFILE::CHROMATIC_ABERRATION:
+			pIntensityLabel = "Fringe Width (0-8)";
+			pSecondaryLabel = "Edge Falloff Exp (0 = 2.0)";
+			pHint = "Smooth lens-style RGB split that grows toward the screen edge. Secondary is the radial falloff exponent; Tint multiplies the result.";
 			break;
 		default:
 			pIntensityLabel = "Blur Strength (0-8)";
