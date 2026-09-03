@@ -9077,6 +9077,206 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				"Atomically transfer the full party and preserve leader-first roster for every member");
 		}
 		{
+			// 파티 레이드 입장 전원 수락 투표 (G2)
+			const auto findGuide = [](CGameRoom& room)
+			{
+				return std::find_if(room.m_WorldEntities.begin(),
+					room.m_WorldEntities.end(), [](const SERVER_WORLD_ENTITY& e)
+					{ return "npc.bern.beda.guide" == e.strPlacementId; });
+			};
+			const auto placeAtGuide = [](PARTY_FIXTURE& fixture, float x, float z)
+			{
+				for (const auto& s : fixture.Sessions)
+				{
+					auto& p = fixture.Source->m_Players.at(s->Get_PlayerId());
+					p.fPositionX = x;
+					p.fPositionZ = z;
+				}
+			};
+			// 4인 전원 수락 -> Valtan batch 전송 stage
+			{
+				auto fixture = makeParty(4u, true);
+				tests.Require(fixture->Ready, "Create raid-entry-vote party fixture");
+				const auto guide = findGuide(*fixture->Source);
+				if (fixture->Ready && guide != fixture->Source->m_WorldEntities.end())
+				{
+					placeAtGuide(*fixture, guide->fPositionX, guide->fPositionZ);
+					for (const auto& s : fixture->Sessions) clearOutbound(*s);
+					C2S_RAID_ENTRY_PROPOSE propose{};
+					propose.iRequestSequence = 81u;
+					propose.strNpcPlacementId = guide->strPlacementId;
+					propose.eTarget = RAID_ENTRY_TARGET::VALTAN;
+					fixture->Source->Handle_RaidEntryPropose(
+						fixture->Sessions.front()->Get_SessionId(), propose);
+					bool allPrompted = true;
+					for (const auto& s : fixture->Sessions)
+					{
+						bool got = false;
+						for (const auto& f : s->m_OutboundFrames)
+							if (PACKET_TYPE::S2C_RAID_ENTRY_PROMPT == f.ePacketType) got = true;
+						allPrompted = allPrompted && got;
+					}
+					tests.Require(allPrompted &&
+						1u == fixture->Source->m_RaidEntryProposals.size() &&
+						fixture->Source->m_PendingWorldTransfers.empty(),
+						"Leader propose prompts every member and stages no transfer yet");
+					const std::uint32_t proposalId =
+						fixture->Source->m_RaidEntryProposals.front().iProposalId;
+					for (const auto& s : fixture->Sessions)
+					{
+						C2S_RAID_ENTRY_RESPOND respond{};
+						respond.iRequestSequence = 1u;
+						respond.iProposalId = proposalId;
+						respond.bAccepted = true;
+						fixture->Source->Handle_RaidEntryRespond(
+							s->Get_SessionId(), respond);
+					}
+					tests.Require(fixture->Source->m_RaidEntryProposals.empty() &&
+						1u == fixture->Source->m_PendingWorldTransfers.size() &&
+						WORLD_ID::VALTAN_ARENA ==
+							fixture->Source->m_PendingWorldTransfers.front().eTargetWorldId &&
+						4u == fixture->Source->m_PendingWorldTransfers.front()
+							.PartyBatchSessionIds.size(),
+						"All members accepting stages exactly one Valtan batch transfer");
+				}
+			}
+			// 한 명 거절 -> 전송 없음, 투표 종료
+			{
+				auto fixture = makeParty(4u, true);
+				const auto guide = findGuide(*fixture->Source);
+				if (fixture->Ready && guide != fixture->Source->m_WorldEntities.end())
+				{
+					placeAtGuide(*fixture, guide->fPositionX, guide->fPositionZ);
+					C2S_RAID_ENTRY_PROPOSE propose{};
+					propose.iRequestSequence = 82u;
+					propose.strNpcPlacementId = guide->strPlacementId;
+					fixture->Source->Handle_RaidEntryPropose(
+						fixture->Sessions.front()->Get_SessionId(), propose);
+					const std::uint32_t proposalId =
+						fixture->Source->m_RaidEntryProposals.front().iProposalId;
+					for (std::size_t i = 0; i < 3u; ++i)
+					{
+						C2S_RAID_ENTRY_RESPOND r{};
+						r.iRequestSequence = 1u; r.iProposalId = proposalId;
+						r.bAccepted = true;
+						fixture->Source->Handle_RaidEntryRespond(
+							fixture->Sessions[i]->Get_SessionId(), r);
+					}
+					C2S_RAID_ENTRY_RESPOND decline{};
+					decline.iRequestSequence = 1u; decline.iProposalId = proposalId;
+					decline.bAccepted = false;
+					fixture->Source->Handle_RaidEntryRespond(
+						fixture->Sessions[3]->Get_SessionId(), decline);
+					tests.Require(fixture->Source->m_RaidEntryProposals.empty() &&
+						fixture->Source->m_PendingWorldTransfers.empty(),
+						"One decline closes the vote and stages no transfer");
+				}
+			}
+			// 비리더 발의 -> 무시(투표 안 열림)
+			{
+				auto fixture = makeParty(4u, true);
+				const auto guide = findGuide(*fixture->Source);
+				if (fixture->Ready && guide != fixture->Source->m_WorldEntities.end())
+				{
+					placeAtGuide(*fixture, guide->fPositionX, guide->fPositionZ);
+					C2S_RAID_ENTRY_PROPOSE propose{};
+					propose.iRequestSequence = 83u;
+					propose.strNpcPlacementId = guide->strPlacementId;
+					fixture->Source->Handle_RaidEntryPropose(
+						fixture->Sessions[1]->Get_SessionId(), propose);
+					tests.Require(fixture->Source->m_RaidEntryProposals.empty(),
+						"Non-leader propose is ignored without opening a vote");
+				}
+			}
+			// 쿠크세이튼 타겟 -> KAKULSAYDON_ARENA 전송
+			{
+				auto fixture = makeParty(2u, true);
+				const auto guide = findGuide(*fixture->Source);
+				if (fixture->Ready && guide != fixture->Source->m_WorldEntities.end())
+				{
+					placeAtGuide(*fixture, guide->fPositionX, guide->fPositionZ);
+					C2S_RAID_ENTRY_PROPOSE propose{};
+					propose.iRequestSequence = 84u;
+					propose.strNpcPlacementId = guide->strPlacementId;
+					propose.eTarget = RAID_ENTRY_TARGET::KAKULSAYDON;
+					fixture->Source->Handle_RaidEntryPropose(
+						fixture->Sessions.front()->Get_SessionId(), propose);
+					const std::uint32_t proposalId =
+						fixture->Source->m_RaidEntryProposals.front().iProposalId;
+					for (const auto& s : fixture->Sessions)
+					{
+						C2S_RAID_ENTRY_RESPOND r{};
+						r.iRequestSequence = 1u; r.iProposalId = proposalId;
+						r.bAccepted = true;
+						fixture->Source->Handle_RaidEntryRespond(s->Get_SessionId(), r);
+					}
+					tests.Require(1u == fixture->Source->m_PendingWorldTransfers.size() &&
+						WORLD_ID::KAKULSAYDON_ARENA ==
+							fixture->Source->m_PendingWorldTransfers.front().eTargetWorldId,
+						"Kukusaton target stages a KakulSaydon batch transfer");
+				}
+			}
+			// 타임아웃 -> Expire가 TIMEOUT으로 닫고 전송 없음
+			{
+				auto fixture = makeParty(2u, true);
+				const auto guide = findGuide(*fixture->Source);
+				if (fixture->Ready && guide != fixture->Source->m_WorldEntities.end())
+				{
+					placeAtGuide(*fixture, guide->fPositionX, guide->fPositionZ);
+					C2S_RAID_ENTRY_PROPOSE propose{};
+					propose.iRequestSequence = 85u;
+					propose.strNpcPlacementId = guide->strPlacementId;
+					fixture->Source->Handle_RaidEntryPropose(
+						fixture->Sessions.front()->Get_SessionId(), propose);
+					tests.Require(1u == fixture->Source->m_RaidEntryProposals.size(),
+						"Vote opens before timeout");
+					fixture->Source->m_iServerTick =
+						fixture->Source->m_RaidEntryProposals.front().iDeadlineTick + 1u;
+					fixture->Source->Expire_RaidEntryProposals();
+					tests.Require(fixture->Source->m_RaidEntryProposals.empty() &&
+						fixture->Source->m_PendingWorldTransfers.empty(),
+						"Deadline expiry closes the vote with no transfer");
+				}
+			}
+			// voter 이탈 -> Cancel이 CANCELLED로 닫음
+			{
+				auto fixture = makeParty(2u, true);
+				const auto guide = findGuide(*fixture->Source);
+				if (fixture->Ready && guide != fixture->Source->m_WorldEntities.end())
+				{
+					placeAtGuide(*fixture, guide->fPositionX, guide->fPositionZ);
+					C2S_RAID_ENTRY_PROPOSE propose{};
+					propose.iRequestSequence = 86u;
+					propose.strNpcPlacementId = guide->strPlacementId;
+					fixture->Source->Handle_RaidEntryPropose(
+						fixture->Sessions.front()->Get_SessionId(), propose);
+					fixture->Source->Cancel_RaidEntryProposalsInvolving(
+						fixture->Sessions[1]->Get_PlayerId());
+					tests.Require(fixture->Source->m_RaidEntryProposals.empty() &&
+						fixture->Source->m_PendingWorldTransfers.empty(),
+						"A voter leaving cancels the vote with no transfer");
+				}
+			}
+			// 중복 발의(열린 투표 존재) -> 무시
+			{
+				auto fixture = makeParty(2u, true);
+				const auto guide = findGuide(*fixture->Source);
+				if (fixture->Ready && guide != fixture->Source->m_WorldEntities.end())
+				{
+					placeAtGuide(*fixture, guide->fPositionX, guide->fPositionZ);
+					C2S_RAID_ENTRY_PROPOSE propose{};
+					propose.iRequestSequence = 87u;
+					propose.strNpcPlacementId = guide->strPlacementId;
+					fixture->Source->Handle_RaidEntryPropose(
+						fixture->Sessions.front()->Get_SessionId(), propose);
+					fixture->Source->Handle_RaidEntryPropose(
+						fixture->Sessions.front()->Get_SessionId(), propose);
+					tests.Require(1u == fixture->Source->m_RaidEntryProposals.size(),
+						"A second propose while a vote is open is ignored");
+				}
+			}
+		}
+		{
 			auto fixture = makeParty(2u, true);
 			tests.Require(fixture->Ready, "Create party transfer rollback fixture");
 			if (fixture->Ready)

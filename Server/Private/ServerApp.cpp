@@ -3192,6 +3192,28 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::PARTY_INVITE_RESPOND;
 		command.PartyInviteRespond = request;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_RAID_ENTRY_PROPOSE)
+	{
+		C2S_RAID_ENTRY_PROPOSE request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			Request_SessionClose(sessionId);
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::RAID_ENTRY_PROPOSE;
+		command.RaidEntryPropose = request;
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_RAID_ENTRY_RESPOND)
+	{
+		C2S_RAID_ENTRY_RESPOND request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			Request_SessionClose(sessionId);
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::RAID_ENTRY_RESPOND;
+		command.RaidEntryRespond = request;
+	}
 	else if (frame.ePacketType == PACKET_TYPE::C2S_CHAT)
 	{
 		C2S_CHAT request{};
