@@ -35,10 +35,11 @@ namespace Engine
 		PRESENTATION_FILM_NOISE = 11,
 		SSAO_RAW = 12,
 		SSAO_BLUR = 13,
+		PRESENTATION_CHROMATIC_ABERRATION = 15,
 		END
 	};
 
-	//// Dynamic ÄÄÆ÷³ÍÆ® °æ¿ì ¸Å ÇÁ·¹ÀÓ¸¶´Ù °»½ÅÇØ¾ßÇÏ´Â ÄÄÆ÷³ÍÆ® Áý´Ü
+	//// Dynamic ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ó¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ø¾ï¿½ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½ï¿½ï¿½
 	//enum COMPONENTID { ID_DYNAMIC, ID_STATIC, ID_END };
 
 

@@ -50,6 +50,7 @@ public:
 		ZOOM_BLUR,
 		RGB_NOISE,
 		FILM_NOISE,
+		CHROMATIC_ABERRATION,
 		END
 	};
 

@@ -52,6 +52,8 @@ namespace
 		ETOUI(DEFERRED::PRESENTATION_FILM_NOISE);
 	constexpr uint32_t DEFERRED_PASS_TEXTURED_OVERLAY =
 		PRESENTATION_TEXTURED_OVERLAY_PASS_INDEX;
+	constexpr uint32_t DEFERRED_PASS_CHROMATIC_ABERRATION =
+		ETOUI(DEFERRED::PRESENTATION_CHROMATIC_ABERRATION);
 
 	static_assert(8u == DEFERRED_PASS_SCENE_RESOLVE);
 	static_assert(9u == DEFERRED_PASS_RGB_NOISE);
@@ -60,7 +62,8 @@ namespace
 	static_assert(14u == DEFERRED_PASS_TEXTURED_OVERLAY);
 	static_assert(12u == ETOUI(DEFERRED::SSAO_RAW));
 	static_assert(13u == ETOUI(DEFERRED::SSAO_BLUR));
-	static_assert(14u == ETOUI(DEFERRED::END));
+	static_assert(15u == DEFERRED_PASS_CHROMATIC_ABERRATION);
+	static_assert(16u == ETOUI(DEFERRED::END));
 
 	bool_t IsFiniteInRange(const f32_t fValue, const f32_t fMinimum,
 		const f32_t fMaximum)
@@ -1000,6 +1003,9 @@ HRESULT CRenderer::Render_ScreenPosts()
 			break;
 		case PRESENTATION_SCREEN_POST_PROFILE::FILM_NOISE_RECONSTRUCTED:
 			iPassIndex = DEFERRED_PASS_FILM_NOISE;
+			break;
+		case PRESENTATION_SCREEN_POST_PROFILE::CHROMATIC_ABERRATION_RECONSTRUCTED:
+			iPassIndex = DEFERRED_PASS_CHROMATIC_ABERRATION;
 			break;
 		default:
 			hResult = E_FAIL;
