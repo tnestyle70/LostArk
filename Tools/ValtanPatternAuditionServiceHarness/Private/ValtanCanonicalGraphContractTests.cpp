@@ -868,6 +868,7 @@ namespace
 				View.strScriptedSequenceId,
 				View.strScriptedSequenceMode,
 				View.iScriptedSequenceInterStepPursuitMs,
+				View.ScriptedSequenceTransitionPursuitMs,
 				View.ScriptedSequencePatternIds,
 				AdmittedPatternIds, Status))
 			throw std::runtime_error(Status);
@@ -911,6 +912,8 @@ namespace
 			"VALTAN_DASH_CHARGE", "VALTAN_FOUR_SLASH",
 			"VALTAN_HIGH_JUMP", "VALTAN_COUNTER",
 			"VALTAN_WARP", "VALTAN_TRASH" };
+		const std::vector<std::uint32_t> SequenceTransitionPursuitMs{
+			1000u, 100u, 1000u, 1000u, 1000u, 1000u, 1000u };
 		std::vector<std::string> AdmittedPatternIds = SequencePatternIds;
 		std::sort(AdmittedPatternIds.begin(), AdmittedPatternIds.end());
 		AdmittedPatternIds.erase(std::unique(
@@ -922,6 +925,7 @@ namespace
 		Require(Document.Load_CanonicalSequence(
 				"sequence.valtan.server-authored.v1",
 				"ORDERED_ONCE_THEN_IDLE", 1000u,
+				SequenceTransitionPursuitMs,
 				SequencePatternIds, AdmittedPatternIds, Status),
 			"canonical sequence adapter did not load");
 		const VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT Canonical =
@@ -941,7 +945,13 @@ namespace
 				{ return Node.strPatternId == PatternId; }),
 			"canonical sequence adapter changed order or topology");
 		Require(CValtanPatternFlowDocument::Has_LegacyLinearProjection(Flow) &&
-			Flow.Slots.size() == Flow.Nodes.size(),
+			Flow.Slots.size() == Flow.Nodes.size() &&
+			std::equal(
+				Flow.Edges.begin(), Flow.Edges.end(),
+				SequenceTransitionPursuitMs.begin(),
+				[](const VALTAN_PATTERN_FLOW_EDGE& Edge,
+					const std::uint32_t PursuitMs)
+				{ return Edge.iPursuitMs == PursuitMs; }),
 			"canonical sequence adapter did not expose its ordered projection");
 		for (const VALTAN_PATTERN_FLOW_NODE& Node : Flow.Nodes)
 			Require(0u == Node.iWatchdogMs,
@@ -1051,12 +1061,24 @@ namespace
 		Require(GraphEditor.Load_CanonicalSequence(
 				"sequence.valtan.server-authored.v1",
 				"ORDERED_ONCE_THEN_IDLE", 1000u,
+				SequenceTransitionPursuitMs,
 				SequencePatternIds, AdmittedPatternIds, Status),
 			"v2 graph editor contract could not stage the canonical sequence");
 		const VALTAN_PATTERN_FLOW_DEFINITION* EditorFlow =
 			GraphEditor.Get_DefaultFlow();
 		Require(nullptr != EditorFlow && !EditorFlow->Nodes.empty(),
 			"v2 graph editor contract loaded no nodes");
+		const std::string SelectedTransitionId =
+			EditorFlow->Edges[1u].strEdgeId;
+		Require(GraphEditor.Set_EdgePursuitMs(
+				SelectedTransitionId, 250u, AdmittedPatternIds, Status) &&
+			CValtanPatternFlowDocument::Has_LegacyLinearProjection(
+				*GraphEditor.Get_DefaultFlow()) &&
+			250u == GraphEditor.Get_DefaultFlow()->Edges[1u].iPursuitMs &&
+			1000u == GraphEditor.Get_DefaultFlow()->Edges[0u].iPursuitMs &&
+			1000u == GraphEditor.Get_DefaultFlow()->Edges[2u].iPursuitMs,
+			"selected transition pursuit edit changed another wait or lost Save projection");
+		EditorFlow = GraphEditor.Get_DefaultFlow();
 		const std::size_t OriginalNodeCount = EditorFlow->Nodes.size();
 		const std::string OriginalEntryId = EditorFlow->strEntryNodeId;
 		const std::string InsertAfterId = EditorFlow->Nodes.back().strNodeId;
@@ -1363,9 +1385,11 @@ namespace
 			"\"eventId\": \"event.valtan.ghost.portal-once.volley\"",
 			"\"radiusM\": 25.403411844343534", "\"radiusM\": 24.403411844343534",
 			"VALTAN_GHOST_PORTAL_ONCE", "ACTIVE");
+		/* The restored three-wave volley caps at 36 objects; the marker must
+		   match the high-jump event's own field, not a later event's "4". */
 		VerifyMutation("capacity",
 			"\"eventId\": \"event.valtan.high-jump.airborne.spawn-target-axe\"",
-			"\"maximumTotalObjects\": 4", "\"maximumTotalObjects\": 5",
+			"\"maximumTotalObjects\": 36", "\"maximumTotalObjects\": 37",
 			"VALTAN_HIGH_JUMP", "AIRBORNE");
 	}
 }

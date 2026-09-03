@@ -181,6 +181,9 @@
     <ClInclude Include="..\Public\ItemCatalog.h" />
     <ClInclude Include="..\Public\NetworkPlayerCommandSink.h" />
     <ClInclude Include="..\Public\ProfilerCaptureIO.h" />
+    <ClInclude Include="..\Public\ProfilerTool.h" />
+    <ClInclude Include="..\Public\RenderingBenchmark.h" />
+    <ClInclude Include="..\Public\SequencerTool.h" />
     <ClInclude Include="..\Public\MapAssetCatalog.h" />
     <ClInclude Include="..\Public\MapEffectDocument.h" />
     <ClInclude Include="..\Public\MapEffectPresentationRuntime.h" />
@@ -357,6 +360,9 @@
     <ClCompile Include="..\Private\ItemCatalog.cpp" />
     <ClCompile Include="..\Private\NetworkPlayerCommandSink.cpp" />
     <ClCompile Include="..\Private\ProfilerCaptureIO.cpp" />
+    <ClCompile Include="..\Private\ProfilerTool.cpp" />
+    <ClCompile Include="..\Private\RenderingBenchmark.cpp" />
+    <ClCompile Include="..\Private\SequencerTool.cpp" />
     <ClCompile Include="..\Private\MapAssetCatalog.cpp" />
     <ClCompile Include="..\Private\MapEffectDocument.cpp" />
     <ClCompile Include="..\Private\MapEffectPresentationRuntime.cpp" />

@@ -32,6 +32,10 @@ MAIN_APP_CPP = ROOT / "Client/Private/MainApp.cpp"
 SERVER_GAME_ROOM_CPP = ROOT / "Server/Private/GameRoom.cpp"
 SERVER_PROJECT = ROOT / "Server/Default/Server.vcxproj"
 GAMEPLAY_PUBLISHER = ROOT / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1"
+FULL_PIPELINE_RUNNER = ROOT / "Tools/Build/Run-FullPipeline.ps1"
+VALTAN_ASYNC_SAVE_RUNNER = (
+    ROOT / "Tools/ValtanPipeline/Run-ValtanAuthoringSaveJob.ps1"
+)
 VALTAN_PROJECTOR = ROOT / "Tools/ValtanPipeline/Project-ValtanPatternMaster.ps1"
 BUILD_DOMAINS = ROOT / "Tools/Build/BuildDomains.json"
 
@@ -75,6 +79,10 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         cls.server_game_room_cpp = SERVER_GAME_ROOM_CPP.read_text(encoding="utf-8")
         cls.server_project = SERVER_PROJECT.read_text(encoding="utf-8")
         cls.gameplay_publisher = GAMEPLAY_PUBLISHER.read_text(encoding="utf-8")
+        cls.full_pipeline_runner = FULL_PIPELINE_RUNNER.read_text(encoding="utf-8")
+        cls.valtan_async_save_runner = VALTAN_ASYNC_SAVE_RUNNER.read_text(
+            encoding="utf-8"
+        )
         cls.valtan_projector = VALTAN_PROJECTOR.read_text(encoding="utf-8")
         cls.build_domains = json.loads(BUILD_DOMAINS.read_text(encoding="utf-8"))
 
@@ -500,6 +508,186 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         )
         self.assertIn("canRetryProduct", render)
 
+    def test_runtime_publish_is_bound_to_one_exact_canonical_source_receipt(self) -> None:
+        publish = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Publish_ServerRuntimeSet(",
+        )
+        self.assertIn("expectedValtanSourceRevision", publish)
+        self.assertIn("Get_ValtanPublishSourceRevision", publish)
+        self.assertIn("publishableRevision != expectedValtanSourceRevision", publish)
+        self.assertIn("-DataOnly -ExpectedValtanSourceRevision", publish)
+        self.assertIn('Build\\\\Run-FullPipeline.ps1', publish)
+        self.assertNotIn("Publish-BalanceRuntimeSet.ps1", publish)
+        self.assertIn("m_publishJobExpectedRevision =", publish)
+
+        poll = function_body(
+            self.balance_cpp,
+            "void Client::CBalanceTool::Update_ServerRuntimeSetPublishJob()",
+        )
+        self.assertIn("FULL_PIPELINE_SOURCE_REVISION\\t", poll)
+        self.assertIn("m_publishJobExpectedRevision", poll)
+        self.assertIn("OBSERVATION_LOST", poll)
+        observation_failure = poll[poll.index("if (WAIT_FAILED == wait)") :]
+        self.assertIn("CloseHandle(process)", observation_failure)
+        self.assertIn("will not start a duplicate transaction", observation_failure)
+        self.assertNotIn("TerminateProcess", observation_failure)
+        self.assertNotIn(
+            "std::filesystem::remove(m_publishJobOutputPath", poll
+        )
+
+        publishable = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Get_ValtanPublishSourceRevision(",
+        )
+        self.assertIn("m_valtanCommittedRevisionPendingReopen", publishable)
+        self.assertIn("m_valtanCommittedReopenDraftGeneration", publishable)
+        self.assertIn("if (m_dirty)", publishable)
+
+        destructor = function_body(
+            self.balance_cpp,
+            "Client::CBalanceTool::~CBalanceTool()",
+        )
+        self.assertIn("CloseHandle", destructor)
+        self.assertNotIn("TerminateProcess", destructor)
+        self.assertNotIn("std::filesystem::remove", destructor)
+
+        script = self.full_pipeline_runner
+        self.assertIn("[switch]$DataOnly", script)
+        self.assertIn("ExpectedValtanSourceRevision", script)
+        pinned_revision = script.index(
+            "$pinnedValtanSourceRevision = Get-ValtanRepositorySourceRevision"
+        )
+        first_publish_guard = script.index(
+            "Assert-ValtanSourceRevision $pinnedValtanSourceRevision 'PublishV2 start'"
+        )
+        first_publish = script.index("Project-ValtanPatternMaster.ps1")
+        completion_guard = script.index(
+            "Assert-ValtanSourceRevision $pinnedValtanSourceRevision 'PublishV2 completion'"
+        )
+        receipt_guard = script.index("'full pipeline receipt'")
+        receipt = script.index("FULL_PIPELINE_SOURCE_REVISION")
+        self.assertLess(pinned_revision, first_publish_guard)
+        self.assertLess(first_publish_guard, first_publish)
+        self.assertLess(first_publish, completion_guard)
+        self.assertLess(completion_guard, receipt_guard)
+        self.assertLess(receipt_guard, receipt)
+
+    def test_valtan_save_has_one_nonblocking_exact_receipt_state_machine(self) -> None:
+        for api in (
+            "Begin_ValtanProductSave",
+            "Begin_ValtanCompositionSave",
+            "Begin_ValtanProductPublishRetry",
+            "Update_ValtanSaveJob",
+            "Get_ValtanSaveJobState",
+            "Consume_ValtanSaveJobReceipt",
+        ):
+            self.assertIn(api, self.balance_h)
+
+        begin = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Begin_ValtanSaveJob(",
+        )
+        self.assertIn("PUBLISH_BUSY", begin)
+        self.assertIn("BuildValtanDraftPatch", self.balance_cpp)
+        self.assertIn("DurableWrite", self.balance_cpp)
+        self.assertIn("Run-ValtanAuthoringSaveJob.ps1", self.balance_cpp)
+        self.assertNotIn("RunPipeline(", begin)
+        self.assertNotIn("WaitForSingleObject", begin)
+
+        update = function_body(
+            self.balance_cpp,
+            "void Client::CBalanceTool::Update_ValtanSaveJob()",
+        )
+        self.assertIn("WaitForSingleObject(process, 0u)", update)
+        self.assertIn("ParseValtanSaveCommandResult", update)
+        self.assertIn("ParseValtanPipelineResult", update)
+        self.assertIn("m_valtanSaveJobReadAdmission", update)
+        self.assertIn("m_valtanVerifiedReloadSourceRevision", update)
+        self.assertIn("const bool reloaded = Reload()", update)
+        publishable = update.index("Get_ValtanPublishSourceRevision")
+        activation = update.index("Complete_ValtanCandidateActivation")
+        self.assertLess(publishable, activation)
+        self.assertNotIn("Publish_ServerRuntimeSet", update)
+        self.assertIn("runtimePublishRequested", self.balance_h)
+        self.assertIn("m_valtanSaveJobCommittedSourceRevision", update)
+        self.assertNotIn("RunPipeline(", update)
+        self.assertNotIn("TerminateProcess", update)
+
+        consume = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Consume_ValtanSaveJobReceipt(",
+        )
+        self.assertIn("jobId != m_valtanSaveJobId", consume)
+        self.assertIn("OBSERVATION_LOST", consume)
+        self.assertIn("Reset_ValtanSaveJob", consume)
+
+        script = self.valtan_async_save_runner
+        for token in (
+            "ExpectedSourceRevision",
+            "previousSourceRevision",
+            "COMMIT_CANONICAL_DRAFT",
+            "SourceManifestPath",
+            "PUBLISH_CANDIDATE",
+            "canonicalCommitted",
+            "candidateRevision",
+            "CommitOnly",
+        ):
+            self.assertIn(token, script)
+        commit = script.index("$canonicalCommitted = $true")
+        durable_commit = script.index(
+            "Canonical commit succeeded; candidate publication is pending."
+        )
+        candidate = script.index("'PUBLISH_CANDIDATE'")
+        self.assertLess(commit, durable_commit)
+        self.assertLess(durable_commit, candidate)
+
+    def test_valtan_save_and_full_data_publish_are_mutually_exclusive(self) -> None:
+        publish = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Publish_ServerRuntimeSet(",
+        )
+        command = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::RunValtanDraftCommand(",
+        )
+        admission = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Require_ValtanAuthoringAdmission(",
+        )
+        reload_body = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Reload()",
+        )
+        self.assertIn("SAVE_BUSY", publish)
+        self.assertIn("PUBLISH_BUSY", command)
+        self.assertIn("SAVE_BUSY", command)
+        self.assertIn("Is_ServerRuntimeSetPublishRunning", admission)
+        self.assertIn("PUBLISH_BUSY", reload_body)
+        self.assertIn("m_valtanVerifiedReloadSourceRevision", reload_body)
+
+    def test_balance_post_commit_retry_and_runtime_publish_do_not_conflate_success(self) -> None:
+        apply_committed = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Apply_CommittedValtanProduct(",
+        )
+        self.assertIn("Retry_ValtanProductPublishApply", apply_committed)
+        self.assertNotIn("return Save_ValtanProduct", apply_committed)
+
+        render = function_body(
+            self.balance_cpp,
+            "void Client::CBalanceTool::Render()",
+        )
+        self.assertIn(
+            "applied && m_valtanCommittedRevisionPendingReopen.empty()", render
+        )
+        retry_button = render[render.index(
+            'ImGui::Button("Retry Product Publish / Apply##ValtanBalance")'
+        ) :]
+        self.assertIn("Retry_ValtanProductPublishApply", retry_button)
+        self.assertIn("Get_ValtanPublishSourceRevision", retry_button)
+        self.assertIn("Publish_ServerRuntimeSet(", retry_button)
+
     def test_candidate_apply_class_is_strict_and_blocks_hot_reload(self) -> None:
         self.assertIn("std::string applyClass;", self.balance_cpp)
         self.assertIn("bool hasApplyClassField = false;", self.balance_cpp)
@@ -649,6 +837,32 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         )
         self.assertIn("Set_ValtanHighJumpAxeCountDraft", render)
         self.assertIn("SET_AXE_VOLLEY", self.balance_cpp)
+
+        reload_body = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Reload()",
+        )
+        for token in (
+            "object->iVolleyMaximumTotalObjects",
+            "object->iSpawnScheduleCount",
+            "object->iSpawnIntervalMs",
+            "object->strArenaRandomKind",
+            "object->iArenaRandomCount",
+            "object->fArenaRandomRadiusM",
+            "object->fArenaHeightToleranceM",
+        ):
+            self.assertIn(token, reload_body)
+        restore = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::RestoreValtanSavedAuthoring(",
+        )
+        self.assertNotIn("3u != spawnCount", restore)
+        self.assertNotIn("1333u != spawnIntervalMs", restore)
+        self.assertNotIn("4u != arenaRandomCount", restore)
+        self.assertIn("noArenaSupplement", restore)
+        self.assertIn("hasArenaSupplement", restore)
+        self.assertIn("countPerResolvedTarget = 0u", self.balance_h)
+        self.assertNotIn("maximumTotalObjects = 36u", self.balance_h)
 
     def test_client_current_generation_requires_exact_all_lane_artifacts(self) -> None:
         self.assertIn("ValidateCurrentCandidatePresentationGeneration", self.network_cpp)
@@ -1055,6 +1269,37 @@ class ValtanBalanceToolContractTests(unittest.TestCase):
         )
         self.assertIn("candidate.iWeight != loadedCandidate->iWeight", draft)
         self.assertIn("candidate.bEnabled != loadedCandidate->bEnabled", draft)
+
+    def test_ordinary_branch_retarget_is_forward_and_has_one_mutable_field(self) -> None:
+        getter = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Get_ValtanStageBranchDrafts(",
+        )
+        setter = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::Set_ValtanStageBranchDraft(",
+        )
+        draft = function_body(
+            self.balance_cpp,
+            "bool Client::CBalanceTool::BuildValtanDraftPatch(",
+        )
+        self.assertIn("auto candidate = source", getter)
+        self.assertIn("for (++candidate; candidate != pattern->Stages.end()", getter)
+        self.assertIn("IsForwardValtanStageActionTarget(", setter)
+        self.assertIn("forward same-pattern Stage action", setter)
+        self.assertIn('"COUNTER_HIT" == branch.outcome', setter)
+        self.assertIn('"TIMEOUT" == branch.outcome', setter)
+        self.assertIn('operation << "    { \\"op\\": \\"SET_STAGE_BRANCH\\"', draft)
+        self.assertIn("IsForwardValtanStageActionTarget(", draft)
+        self.assertIn(
+            "branch.strNextPatternId != loadedBranch.strNextPatternId",
+            draft,
+        )
+        self.assertNotIn(
+            "branches[branchIndex]->strNextActionId !=",
+            draft,
+            "the branch target is mutable; Stage/outcome remain the stable identity",
+        )
 
     def test_all_valtan_v2_authoring_sources_are_project_data_items(self) -> None:
         for relative in (

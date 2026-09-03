@@ -43,6 +43,18 @@
     <Filter Include="02.GameObjects\00. Character">
       <UniqueIdentifier>{d5864814-d199-42de-9bce-7329814f62a7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="03. Tools\07. Balance">
+      <UniqueIdentifier>{2d1ffcb7-3167-4dbb-9a42-4e3de9f2c3a3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03. Tools\08. Camera">
+      <UniqueIdentifier>{06d4acd2-79b2-40f7-ad78-e8edf14fafc8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03. Tools\09. Profiler">
+      <UniqueIdentifier>{54438a9a-db59-4b03-b528-eed43569c670}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03. Tools\10. Rendering">
+      <UniqueIdentifier>{712047c8-13b6-47cf-9076-061b23819598}</UniqueIdentifier>
+    </Filter>
     <Filter Include="03. Tools\05. Sequencer">
       <UniqueIdentifier>{6f28d0c9-bbd3-42f8-9b77-040d9c18034e}</UniqueIdentifier>
     </Filter>
@@ -199,7 +211,7 @@
       <Filter>01.Levels</Filter>
     </ClCompile>
 	<ClCompile Include="..\Private\RenderingProfileService.cpp">
-	  <Filter>00.MainApp</Filter>
+	  <Filter>03. Tools\10. Rendering</Filter>
 	</ClCompile>
     <ClCompile Include="..\Private\AnimationTargetService.cpp">
       <Filter>03. Tools\04. Animation</Filter>
@@ -232,13 +244,13 @@
 	  <Filter>03. Tools\04. Animation</Filter>
 	</ClCompile>
 	<ClCompile Include="..\Private\ValtanPatternFlowDocument.cpp">
-	  <Filter>03. Tools\03. UI</Filter>
+	  <Filter>03. Tools\01. Boss</Filter>
 	</ClCompile>
 	<ClCompile Include="..\Private\ValtanPatternFlowService.cpp">
-	  <Filter>03. Tools\03. UI</Filter>
+	  <Filter>03. Tools\01. Boss</Filter>
 	</ClCompile>
 	<ClCompile Include="..\Private\ValtanTuningCommandService.cpp">
-	  <Filter>03. Tools\03. UI</Filter>
+	  <Filter>03. Tools\01. Boss</Filter>
 	</ClCompile>
 	<ClCompile Include="..\Private\ValtanPatternPreviewDocument.cpp">
 	  <Filter>03. Tools\04. Animation</Filter>
@@ -262,13 +274,13 @@
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\BalanceTool.cpp">
-      <Filter>03. Tools\03. UI</Filter>
+      <Filter>03. Tools\07. Balance</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\BossTool.cpp">
-      <Filter>03. Tools\03. UI</Filter>
+      <Filter>03. Tools\01. Boss</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\CameraTool.cpp">
-      <Filter>03. Tools\03. UI</Filter>
+      <Filter>03. Tools\08. Camera</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\LobbyCommandService.cpp">
       <Filter>01.Levels</Filter>
@@ -280,7 +292,16 @@
       <Filter>01.Levels\06. Development</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\ProfilerCaptureIO.cpp">
-      <Filter>00.MainApp</Filter>
+      <Filter>03. Tools\09. Profiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ProfilerTool.cpp">
+      <Filter>03. Tools\09. Profiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\RenderingBenchmark.cpp">
+      <Filter>03. Tools\10. Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\SequencerTool.cpp">
+      <Filter>03. Tools\05. Sequencer</Filter>
     </ClCompile>
     <ClCompile Include="Client.cpp">
       <Filter>98.Default</Filter>
@@ -385,13 +406,13 @@
       <Filter>02.GameObjects\01. Boss</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\ValtanPatternTree.cpp">
-      <Filter>03. Tools\02. Effect</Filter>
+      <Filter>03. Tools\01. Boss</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\ValtanPresentationGenerationAdmission.cpp">
       <Filter>96.DataFiles</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\ValtanPatternAuditionService.cpp">
-      <Filter>03. Tools\02. Effect</Filter>
+      <Filter>03. Tools\01. Boss</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\RuntimeAssetRoot.cpp">
       <Filter>03. Tools\00. Map</Filter>
@@ -481,10 +502,10 @@
 	  <Filter>03. Tools\05. Sequencer</Filter>
 	</ClCompile>
 	<ClCompile Include="..\Private\BossLogicFlowViewModel.cpp">
-	  <Filter>03. Tools\05. Sequencer</Filter>
+	  <Filter>03. Tools\01. Boss</Filter>
 	</ClCompile>
 	<ClCompile Include="..\Private\BossLogicFlowRenderer.cpp">
-	  <Filter>03. Tools\05. Sequencer</Filter>
+	  <Filter>03. Tools\01. Boss</Filter>
 	</ClCompile>
     <ClCompile Include="..\Private\Effect_PresentationService.cpp">
       <Filter>03. Tools\02. Effect</Filter>
@@ -710,7 +731,16 @@
       <Filter>00.MainApp</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\ProfilerCaptureIO.h">
-      <Filter>00.MainApp</Filter>
+      <Filter>03. Tools\09. Profiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ProfilerTool.h">
+      <Filter>03. Tools\09. Profiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\RenderingBenchmark.h">
+      <Filter>03. Tools\10. Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\SequencerTool.h">
+      <Filter>03. Tools\05. Sequencer</Filter>
     </ClInclude>
     <ClInclude Include="framework.h">
       <Filter>98.Default</Filter>
@@ -731,7 +761,7 @@
       <Filter>01.Levels</Filter>
     </ClInclude>
 	<ClInclude Include="..\Public\RenderingProfileService.h">
-	  <Filter>00.MainApp</Filter>
+	  <Filter>03. Tools\10. Rendering</Filter>
 	</ClInclude>
     <ClInclude Include="..\Public\AnimationTargetService.h">
       <Filter>03. Tools\04. Animation</Filter>
@@ -866,7 +896,7 @@
       <Filter>02.GameObjects\01. Boss</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\ValtanPatternTree.h">
-      <Filter>03. Tools\02. Effect</Filter>
+      <Filter>03. Tools\01. Boss</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\ValtanViewAdmission.h">
       <Filter>96.DataFiles</Filter>
@@ -875,7 +905,7 @@
       <Filter>96.DataFiles</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\ValtanPatternAuditionService.h">
-      <Filter>03. Tools\02. Effect</Filter>
+      <Filter>03. Tools\01. Boss</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\RuntimeAssetRoot.h">
       <Filter>03. Tools\00. Map</Filter>
@@ -899,7 +929,7 @@
 	  <Filter>03. Tools\05. Sequencer</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\BossLogicFlowView.h">
-	  <Filter>03. Tools\05. Sequencer</Filter>
+	  <Filter>03. Tools\01. Boss</Filter>
 	</ClInclude>
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h">
       <Filter>03. Tools\04. Animation</Filter>
@@ -911,13 +941,13 @@
 	  <Filter>03. Tools\04. Animation</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\ValtanPatternFlowDocument.h">
-	  <Filter>03. Tools\03. UI</Filter>
+	  <Filter>03. Tools\01. Boss</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\ValtanPatternFlowService.h">
-	  <Filter>03. Tools\03. UI</Filter>
+	  <Filter>03. Tools\01. Boss</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\ValtanTuningCommandService.h">
-	  <Filter>03. Tools\03. UI</Filter>
+	  <Filter>03. Tools\01. Boss</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\ValtanPatternPreviewDocument.h">
 	  <Filter>03. Tools\04. Animation</Filter>
@@ -941,13 +971,13 @@
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\BalanceTool.h">
-      <Filter>03. Tools\03. UI</Filter>
+      <Filter>03. Tools\07. Balance</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\BossTool.h">
-      <Filter>03. Tools\03. UI</Filter>
+      <Filter>03. Tools\01. Boss</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\CameraTool.h">
-      <Filter>03. Tools\03. UI</Filter>
+      <Filter>03. Tools\08. Camera</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\AnimationPreviewAssets.h">
       <Filter>03. Tools\04. Animation</Filter>

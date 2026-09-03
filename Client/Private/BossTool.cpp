@@ -2,6 +2,9 @@
 
 #include "BossTool.h"
 
+#include "GameInstance.h"
+#include "Profiler.h"
+
 #include "BalanceTool.h"
 #include "CombatHUDViewModel.h"
 #include "Effect_Tool.h"
@@ -36,6 +39,63 @@ namespace
 	constexpr const char_t* VALTAN_IDLE_CINEMATIC_ENTRANCE_PATTERN_ID =
 		"VALTAN_ENTRANCE_CINEMATIC_IDLE";
 	constexpr double CANONICAL_RELOAD_RETRY_SECONDS = 0.25;
+
+	bool_t Has_ValtanAuthoringTransactionBarrier(
+		const Client::CBalanceTool* const pBalanceTool)
+	{
+		return nullptr != pBalanceTool &&
+			(pBalanceTool->Is_ValtanSaveJobBlockingAuthoring() ||
+			 pBalanceTool->Is_ServerRuntimeSetPublishRunning());
+	}
+
+	bool_t Is_RuntimePublishMutationBlocked(
+		const Client::CBalanceTool* const pBalanceTool,
+		const char_t* const pCommand,
+		std::string& strOutStatus)
+	{
+		if (nullptr == pBalanceTool)
+		{
+			return false;
+		}
+		if (pBalanceTool->Is_ValtanSaveJobBlockingAuthoring())
+		{
+			Client::CBalanceTool::VALTAN_SAVE_JOB_RECEIPT Receipt;
+			const Client::CBalanceTool::VALTAN_SAVE_JOB_STATE State =
+				pBalanceTool->Get_ValtanSaveJobState(Receipt);
+			strOutStatus = nullptr == pCommand ? "Boss command" : pCommand;
+			if (Client::CBalanceTool::VALTAN_SAVE_JOB_STATE::OBSERVATION_LOST ==
+				State)
+			{
+				strOutStatus +=
+					" blocked: the asynchronous Valtan Save can no longer be observed and may still own its canonical transaction. This Client will not start gameplay or another mutation until the child exits. ";
+			}
+			else
+			{
+				strOutStatus +=
+					" blocked until asynchronous Valtan Save receipt " +
+					std::to_string(Receipt.jobId) +
+					" reaches a terminal result and its owner consumes it. ";
+			}
+			strOutStatus += Receipt.status;
+			return true;
+		}
+		if (!pBalanceTool->Is_ServerRuntimeSetPublishRunning())
+			return false;
+
+		std::string PublishStatus;
+		double fElapsedSeconds = 0.0;
+		const Client::CBalanceTool::SERVER_RUNTIME_PUBLISH_STATE State =
+			pBalanceTool->Get_ServerRuntimeSetPublishState(
+				PublishStatus, fElapsedSeconds);
+		strOutStatus = std::string(nullptr == pCommand ?
+			"Boss command" : pCommand) +
+			(Client::CBalanceTool::SERVER_RUNTIME_PUBLISH_STATE::OBSERVATION_LOST ==
+				State ?
+				" blocked: the exact-revision Data-only publisher can no longer be observed and may still own its transaction. This Client will not start a duplicate transaction; restart it only after that child exits. " :
+				" blocked while the exact-revision Data-only publish transaction is running. Wait for its terminal receipt. ") +
+			PublishStatus;
+		return true;
+	}
 
 	bool_t Is_OptionalEntryPatternId(const std::string& PatternId)
 	{
@@ -364,6 +424,7 @@ bool_t Client::CBossTool::Reload_Graph()
 			StagedGraph.strScriptedSequenceId,
 			StagedGraph.strScriptedSequenceMode,
 			StagedGraph.iScriptedSequenceInterStepPursuitMs,
+			StagedGraph.ScriptedSequenceTransitionPursuitMs,
 			StagedGraph.ScriptedSequencePatternIds,
 			StagedAdmittedPatternIds, StagedFlowStatus))
 	{
@@ -555,6 +616,13 @@ bool_t Client::CBossTool::Submit_SelectedPattern()
 {
 	m_bReviveFeedbackPending = false;
 	m_strActionFeedback.clear();
+	if (Is_RuntimePublishMutationBlocked(
+			m_pBalanceTool, "Pattern Play", m_strStatus))
+	{
+		m_bRepeat = false;
+		m_strRepeatPatternId.clear();
+		return false;
+	}
 	if (nullptr == Find_AuditionPattern(m_strSelectedPatternId))
 	{
 		m_strStatus = "Select a valid Valtan pattern first.";
@@ -603,6 +671,11 @@ bool_t Client::CBossTool::Submit_SelectedPattern()
 
 bool_t Client::CBossTool::Restart_SelectedPattern()
 {
+	if (Is_RuntimePublishMutationBlocked(
+			m_pBalanceTool, "Pattern Restart", m_strStatus))
+	{
+		return false;
+	}
 	m_bReviveFeedbackPending = false;
 	m_strActionFeedback.clear();
 	LostArk::Shared::GameplayDataRevision ReplacementRevision{};
@@ -643,6 +716,11 @@ bool_t Client::CBossTool::Restart_ServerPattern(
 	const std::string& strPatternId,
 	std::string& strOutStatus)
 {
+	if (Is_RuntimePublishMutationBlocked(
+			m_pBalanceTool, "Pattern Restart", strOutStatus))
+	{
+		return false;
+	}
 	if (strPatternId.empty())
 	{
 		strOutStatus = "Select one stable Valtan Pattern before Restart.";
@@ -684,6 +762,11 @@ bool_t Client::CBossTool::Queue_NextServerPattern(
 	const std::string& strPatternId,
 	std::string& strOutStatus)
 {
+	if (Is_RuntimePublishMutationBlocked(
+			m_pBalanceTool, "Queue Next Pattern", strOutStatus))
+	{
+		return false;
+	}
 	if (strPatternId.empty())
 	{
 		strOutStatus = "Next Pattern requires one stable Pattern ID.";
@@ -743,6 +826,11 @@ bool_t Client::CBossTool::Queue_NextServerPattern(
 bool_t Client::CBossTool::Can_Play_ServerPattern(
 	std::string& strOutStatus) const
 {
+	if (Is_RuntimePublishMutationBlocked(
+			m_pBalanceTool, "Pattern Play", strOutStatus))
+	{
+		return false;
+	}
 	LostArk::Shared::GameplayDataRevision Revision{};
 	VALTAN_PATTERN_SOUND_SOURCE_RECEIPT SoundReceipt;
 	CValtanPatternSoundSourceReadAdmission SoundAdmission;
@@ -862,6 +950,11 @@ bool_t Client::CBossTool::Acquire_ServerPlaybackAdmission(
 {
 	OutRevision = {};
 	OutSoundReceipt = {};
+	if (Is_RuntimePublishMutationBlocked(
+			m_pBalanceTool, "Server Pattern playback", strOutStatus))
+	{
+		return false;
+	}
 	LostArk::Shared::GameplayDataRevision PreAdmissionRevision{};
 	if (!Get_ServerActivePatternRevision(
 			PreAdmissionRevision, strOutStatus))
@@ -955,6 +1048,8 @@ bool_t Client::CBossTool::Get_ServerPatternOptions(
 bool_t Client::CBossTool::Reload_CanonicalGraph(
 	std::string& strOutStatus)
 {
+	Engine::CProfilerScope reloadScope(
+		CGameInstance::Get().Get_Profiler(), "Tool.BossTool.ReloadCanonicalGraph");
 	const bool_t bReloaded = Reload_Graph();
 	strOutStatus = m_strStatus.empty() ?
 		(bReloaded ? "Boss canonical graph and audition inventory reloaded." :
@@ -967,6 +1062,11 @@ bool_t Client::CBossTool::Play_ServerPattern(
 	const std::string& strPatternId,
 	std::string& strOutStatus)
 {
+	if (Is_RuntimePublishMutationBlocked(
+			m_pBalanceTool, "Pattern Play", strOutStatus))
+	{
+		return false;
+	}
 	if (strPatternId.empty())
 	{
 		strOutStatus = "Complete Play requires a stable pattern ID.";
@@ -1013,6 +1113,11 @@ bool_t Client::CBossTool::Set_ServerArenaPreset(
 	std::string& strOutStatus)
 {
 #ifdef _DEBUG
+	if (Is_RuntimePublishMutationBlocked(
+			m_pBalanceTool, "Arena Preset", strOutStatus))
+	{
+		return false;
+	}
 	if (!Can_MutateCanonicalGraph(strOutStatus))
 		return false;
 	CLevel_ValtanArena* const arena = CLevel_ValtanArena::Get_Active();
@@ -1090,6 +1195,11 @@ bool_t Client::CBossTool::Is_ServerArenaPresetPending() const
 
 bool_t Client::CBossTool::Preview_SelectedFlowSlotIsolated()
 {
+	if (Is_RuntimePublishMutationBlocked(
+			m_pBalanceTool, "Flow Isolated Preview", m_strFlowStatus))
+	{
+		return false;
+	}
 	const VALTAN_PATTERN_FLOW_NODE* pNode = Find_SelectedFlowNode();
 	if (nullptr == pNode || nullptr == Find_AuditionPattern(pNode->strPatternId))
 	{
@@ -1152,6 +1262,11 @@ bool_t Client::CBossTool::Start_FlowAtSlot(
 	const LostArk::Shared::GameplayDataRevision*
 		pRequiredDefinitionRevision)
 {
+	if (Is_RuntimePublishMutationBlocked(
+			m_pBalanceTool, "Restart Saved Flow", m_strFlowStatus))
+	{
+		return false;
+	}
 	const VALTAN_PATTERN_FLOW_DEFINITION* pFlow =
 		m_FlowDocument.Get_DefaultFlow();
 	if (nullptr == pFlow || pFlow->Slots.empty())
@@ -1245,6 +1360,11 @@ bool_t Client::CBossTool::Start_FlowAtSlot(
 
 bool_t Client::CBossTool::Restart_SavedFlow()
 {
+	if (Is_RuntimePublishMutationBlocked(
+			m_pBalanceTool, "Restart Saved Flow", m_strFlowStatus))
+	{
+		return false;
+	}
 	CValtanPatternFlowService& FlowService =
 		CValtanPatternFlowService::Get();
 	FlowService.Update();
@@ -1349,6 +1469,11 @@ bool_t Client::CBossTool::Request_RevivePlayer(
 
 bool_t Client::CBossTool::Reload_FlowDocument()
 {
+	if (Is_RuntimePublishMutationBlocked(
+			m_pBalanceTool, "Flow Load/Discard", m_strFlowStatus))
+	{
+		return false;
+	}
 	CValtanPatternFlowDocument PreviousFlow = m_FlowDocument;
 	m_FlowDocument = CValtanPatternFlowDocument{};
 	if (!Reload_Graph())
@@ -1374,6 +1499,11 @@ bool_t Client::CBossTool::Reload_FlowDocument()
 
 bool_t Client::CBossTool::Save_FlowDocument()
 {
+	if (Is_RuntimePublishMutationBlocked(
+			m_pBalanceTool, "Flow Save", m_strFlowStatus))
+	{
+		return false;
+	}
 	std::string MutationStatus;
 	if (!Can_MutateCanonicalGraph(MutationStatus))
 	{
@@ -1400,9 +1530,32 @@ bool_t Client::CBossTool::Save_FlowDocument()
 	PatternIds.reserve(pFlow->Slots.size());
 	for (const VALTAN_PATTERN_FLOW_SLOT& Slot : pFlow->Slots)
 		PatternIds.push_back(Slot.strPatternId);
+	std::vector<std::uint32_t> TransitionPursuitMs;
+	TransitionPursuitMs.reserve(pFlow->Slots.size() - 1u);
+	for (std::size_t index = 0u; index + 1u < pFlow->Slots.size(); ++index)
+	{
+		const VALTAN_PATTERN_FLOW_SLOT& From = pFlow->Slots[index];
+		const VALTAN_PATTERN_FLOW_SLOT& To = pFlow->Slots[index + 1u];
+		const auto Edge = std::find_if(
+			pFlow->Edges.begin(), pFlow->Edges.end(),
+			[&From, &To](const VALTAN_PATTERN_FLOW_EDGE& Candidate)
+			{
+				return Candidate.strFromNodeId == From.strSlotId &&
+					Candidate.strToNodeId == To.strSlotId &&
+					!Candidate.iMaxTraversals.has_value();
+			});
+		if (pFlow->Edges.end() == Edge)
+		{
+			m_strFlowStatus =
+				"Flow save failed: an ordered transition lost its stable edge identity.";
+			return false;
+		}
+		TransitionPursuitMs.push_back(Edge->iPursuitMs);
+	}
 	std::string Status;
 	if (!m_pBalanceTool->Set_ValtanScriptedSequenceDraft(
-			PatternIds, pFlow->iInterStepPursuitMs, Status))
+			PatternIds, pFlow->iInterStepPursuitMs,
+			TransitionPursuitMs, Status))
 	{
 		m_strFlowStatus =
 			"Canonical gameplay Save was rejected before the physical transaction: " +
@@ -1444,11 +1597,36 @@ bool_t Client::CBossTool::Save_FlowDocument()
 					ActivationStatus + " " :
 				ActivationStatus + " ")) +
 		"The running Flow was not changed. Restart Saved Flow (Fresh Arena) is admitted only after that exact saved Product revision is Server-active.";
+	if (bActivationPrepared)
+	{
+		/* Same refresh the Balance Tool's Publish Server Data button performs,
+		   so the next Server start already loads this saved Flow. */
+		std::string PublishStatus;
+		std::string PublishRevision;
+		std::string RevisionStatus;
+		if (!m_pBalanceTool->Get_ValtanPublishSourceRevision(
+				PublishRevision, RevisionStatus))
+		{
+			m_strFlowStatus += " [Publish] FAILED: " + RevisionStatus;
+		}
+		else
+		{
+			m_strFlowStatus += m_pBalanceTool->Publish_ServerRuntimeSet(
+				PublishRevision, PublishStatus) ?
+				" [Publish] " + PublishStatus :
+				" [Publish] FAILED: " + PublishStatus;
+		}
+	}
 	return true;
 }
 
 bool_t Client::CBossTool::Retry_FlowProductPublishApply()
 {
+	if (Is_RuntimePublishMutationBlocked(
+			m_pBalanceTool, "Flow Publish Retry", m_strFlowStatus))
+	{
+		return false;
+	}
 	if (m_FlowDocument.Is_Dirty() ||
 		m_FlowDocument.Has_ExternalConflict())
 	{
@@ -1476,6 +1654,21 @@ bool_t Client::CBossTool::Retry_FlowProductPublishApply()
 	const bool_t bGraphReopened =
 		Can_MutateValtanView(m_eGraphAdmission) || Reload_Graph();
 	m_strFlowStatus = std::move(RetryStatus);
+	std::string PublishRevision;
+	std::string RevisionStatus;
+	std::string PublishStatus;
+	if (!m_pBalanceTool->Get_ValtanPublishSourceRevision(
+			PublishRevision, RevisionStatus))
+	{
+		m_strFlowStatus += " [Publish] FAILED: " + RevisionStatus;
+	}
+	else
+	{
+		m_strFlowStatus += m_pBalanceTool->Publish_ServerRuntimeSet(
+			PublishRevision, PublishStatus) ?
+			" [Publish] " + PublishStatus :
+			" [Publish] FAILED: " + PublishStatus;
+	}
 	if (bGraphReopened)
 	{
 		m_strFlowStatus +=
@@ -1677,8 +1870,6 @@ void Client::CBossTool::Render_BossVerificationTab()
 void Client::CBossTool::Render_LogicFlowTab()
 {
 	const HUD_BOSS_STATE& Boss = CCombatHUDViewModel::Get().Get_Boss();
-	ImGui::TextWrapped(
-		"The canonical Logic canvas now lives in its own large Logic Pattern window. This tab keeps only the Boss Tool context and deep link.");
 	if (Boss.isValid && !Boss.strPatternId.empty())
 	{
 		const VALTAN_PATTERN_VIEW* const pLivePattern =
@@ -1735,8 +1926,6 @@ void Client::CBossTool::Render_LogicFlowTab()
 		Open_LogicPattern();
 		m_bLogicPatternOpenRequest = true;
 	}
-	ImGui::TextDisabled(
-		"F1 > Logic Pattern opens the same window directly; no graph or playback owner is cloned.");
 }
 
 void Client::CBossTool::Render_LogicPatternContent()
@@ -2170,13 +2359,17 @@ void Client::CBossTool::Render_PatternFlowTab()
 		FlowService.Get_PendingStart();
 	const bool_t bPatternPlaybackOwnership =
 		CValtanPatternAuditionService::Get().Has_PlaybackOwnership();
+	const bool_t bAuthoringTransactionBlocked =
+		Has_ValtanAuthoringTransactionBarrier(m_pBalanceTool);
 	const bool_t bOtherCommandPending =
 		Is_ServerArenaPresetPending() || bPatternPlaybackOwnership;
 	const bool_t bDocumentCommandPending =
-		FlowService.Has_PendingStart() || bOtherCommandPending;
+		FlowService.Has_PendingStart() || bOtherCommandPending ||
+		bAuthoringTransactionBlocked;
 	const bool_t bRestartWaiting =
 		VALTAN_PATTERN_FLOW_START_STATE::WAITING_VERDICT ==
-			PendingFlowStart.eState || bOtherCommandPending;
+			PendingFlowStart.eState || bOtherCommandPending ||
+		bAuthoringTransactionBlocked;
 	const char_t* pDocumentState = !m_FlowDocument.Is_Ready() ?
 		"NOT LOADED" :
 		(m_FlowDocument.Has_ExternalConflict() ? "EXTERNAL CONFLICT" :
@@ -2267,6 +2460,31 @@ void Client::CBossTool::Render_PatternFlowTab()
 
 	if (!m_strFlowStatus.empty())
 		ImGui::TextWrapped("%s", m_strFlowStatus.c_str());
+		if (nullptr != m_pBalanceTool)
+		{
+			std::string PublishJobStatus;
+			double fPublishElapsedSeconds = 0.0;
+			const CBalanceTool::SERVER_RUNTIME_PUBLISH_STATE ePublishState =
+				m_pBalanceTool->Get_ServerRuntimeSetPublishState(
+					PublishJobStatus, fPublishElapsedSeconds);
+			if (CBalanceTool::SERVER_RUNTIME_PUBLISH_STATE::IDLE != ePublishState)
+			{
+				ImGui::TextColored(
+					(CBalanceTool::SERVER_RUNTIME_PUBLISH_STATE::FAILED ==
+							ePublishState ||
+					 CBalanceTool::SERVER_RUNTIME_PUBLISH_STATE::OBSERVATION_LOST ==
+							ePublishState) ?
+						ImVec4(1.f, 0.45f, 0.35f, 1.f) :
+						(CBalanceTool::SERVER_RUNTIME_PUBLISH_STATE::RUNNING ==
+								ePublishState ?
+							ImVec4(1.f, 0.72f, 0.25f, 1.f) :
+							ImVec4(0.35f, 0.86f, 0.45f, 1.f)),
+					"Runtime publish: %s%s",
+					CBalanceTool::SERVER_RUNTIME_PUBLISH_STATE::RUNNING ==
+							ePublishState ? "running " : "",
+					PublishJobStatus.c_str());
+			}
+		}
 	ImGui::Checkbox("Pattern Route Editor", &m_bFlowGraphEditor);
 	ImGui::SameLine();
 	ImGui::TextDisabled(m_bFlowGraphEditor ?
@@ -2365,7 +2583,13 @@ void Client::CBossTool::Render_NextPatternCard()
 	LostArk::Shared::GameplayDataRevision ExpectedNextRevision{};
 	const bool_t bRevisionAdmitted = Observe_ServerActivePatternRevision(
 		ExpectedNextRevision, SelectionStatus);
-	const bool_t bRuntimeCanChoose = bRevisionAdmitted &&
+	const bool_t bAuthoringTransactionBlocked =
+		Has_ValtanAuthoringTransactionBarrier(m_pBalanceTool);
+	if (bAuthoringTransactionBlocked)
+		(void)Is_RuntimePublishMutationBlocked(
+			m_pBalanceTool, "Queue Next Pattern", SelectionStatus);
+	const bool_t bRuntimeCanChoose = !bAuthoringTransactionBlocked &&
+		bRevisionAdmitted &&
 		Service.Can_QueueNextPattern(
 			BOSS_PLACEMENT_ID, ExpectedNextRevision, SelectionStatus);
 	const bool_t bCanChoose = Can_MutateValtanView(m_eGraphAdmission) &&
@@ -2388,6 +2612,7 @@ void Client::CBossTool::Render_NextPatternCard()
 	ImGui::EndDisabled();
 	if (VALTAN_NEXT_COMMAND_STATE::UNCONFIRMED == Command.eState)
 	{
+		ImGui::BeginDisabled(bAuthoringTransactionBlocked);
 		if (ImGui::Button("Retry Same Next Command"))
 		{
 			LostArk::Shared::GameplayDataRevision ExpectedRevision{};
@@ -2408,6 +2633,7 @@ void Client::CBossTool::Render_NextPatternCard()
 				(void)Service.Retry_NextPatternCommand(
 					PinnedSoundReceipt, m_strNextPatternStatus);
 		}
+		ImGui::EndDisabled();
 	}
 	const HUD_PLAYER_STATE& Player = CCombatHUDViewModel::Get().Get_Player();
 	if (Next.Is_Live() && Player.isValid && 0u == Player.iCurrentHp)
@@ -2455,7 +2681,9 @@ void Client::CBossTool::Render_NextPatternPicker()
 	   admission runs once when Queue_NextServerPattern submits the command. */
 	const bool_t bPlaybackAdmitted = Observe_ServerActivePatternRevision(
 		ExpectedRevision, SelectionStatus);
-	ImGui::BeginDisabled(!Can_MutateValtanView(m_eGraphAdmission) ||
+	ImGui::BeginDisabled(
+		Has_ValtanAuthoringTransactionBarrier(m_pBalanceTool) ||
+		!Can_MutateValtanView(m_eGraphAdmission) ||
 		!m_bNextPatternInventoryReady ||
 		!bPlaybackAdmitted ||
 		!Service.Can_QueueNextPattern(
@@ -2507,6 +2735,7 @@ void Client::CBossTool::Render_FlowGraphEditor()
 	const VALTAN_PATTERN_FLOW_SNAPSHOT& Playback =
 		CValtanPatternFlowService::Get().Get_Snapshot();
 	const bool_t bEditingLocked =
+		Has_ValtanAuthoringTransactionBarrier(m_pBalanceTool) ||
 		!Can_MutateValtanView(m_eGraphAdmission) ||
 		CValtanPatternFlowService::Get().Has_PendingStart() ||
 		CValtanPatternAuditionService::Get().Has_PlaybackOwnership() ||
@@ -2688,6 +2917,7 @@ bool_t Client::CBossTool::Render_AddPatternNodePopup()
 		return false;
 	bool_t bDocumentMutated = false;
 	const bool_t bEditingLocked =
+		Has_ValtanAuthoringTransactionBarrier(m_pBalanceTool) ||
 		!Can_MutateValtanView(m_eGraphAdmission) ||
 		CValtanPatternFlowService::Get().Has_PendingStart() ||
 		CValtanPatternAuditionService::Get().Has_PlaybackOwnership() ||
@@ -2770,6 +3000,7 @@ void Client::CBossTool::Render_FlowSlotList()
 	const VALTAN_PATTERN_FLOW_SNAPSHOT& Playback =
 		CValtanPatternFlowService::Get().Get_Snapshot();
 	const bool_t bEditingLocked =
+		Has_ValtanAuthoringTransactionBarrier(m_pBalanceTool) ||
 		!Can_MutateValtanView(m_eGraphAdmission) ||
 		CValtanPatternFlowService::Get().Has_PendingStart() ||
 		CValtanPatternAuditionService::Get().Has_PlaybackOwnership() ||
@@ -2905,6 +3136,7 @@ void Client::CBossTool::Render_AddPatternPopup()
 	if (!ImGui::BeginPopup("##addBossFlowPattern"))
 		return;
 	const bool_t bEditingLocked =
+		Has_ValtanAuthoringTransactionBarrier(m_pBalanceTool) ||
 		!Can_MutateValtanView(m_eGraphAdmission) ||
 		CValtanPatternFlowService::Get().Has_PendingStart() ||
 		CValtanPatternAuditionService::Get().Has_PlaybackOwnership() ||
@@ -2985,6 +3217,7 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 		Find_AuditionPattern(pNode->strPatternId);
 	CValtanPatternFlowService& FlowService = CValtanPatternFlowService::Get();
 	const bool_t bEditingLocked =
+		Has_ValtanAuthoringTransactionBarrier(m_pBalanceTool) ||
 		!Can_MutateValtanView(m_eGraphAdmission) ||
 		FlowService.Has_PendingStart() ||
 		CValtanPatternAuditionService::Get().Has_PlaybackOwnership() ||
@@ -3364,7 +3597,8 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 	const bool_t bCanPreview = Can_MutateValtanView(m_eGraphAdmission) &&
 		nullptr != pNode && nullptr != pPattern &&
 		bRuntimeReady && !FlowService.Has_PlaybackOwnership() &&
-		!CValtanPatternAuditionService::Get().Has_PlaybackOwnership();
+		!CValtanPatternAuditionService::Get().Has_PlaybackOwnership() &&
+		!Has_ValtanAuthoringTransactionBarrier(m_pBalanceTool);
 	ImGui::BeginDisabled(!bCanPreview);
 	if (ImGui::Button("Preview Isolated"))
 		(void)Preview_SelectedFlowSlotIsolated();
@@ -3377,7 +3611,7 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 	ImGui::BeginDisabled(bEditingLocked);
 	ImGui::SetNextItemWidth(190.f);
 	if (ImGui::SliderInt(
-			"Inter-step pursuit (ms)", &PursuitMs,
+			"Set every transition wait (ms)", &PursuitMs,
 			100, 10000, "%d ms", ImGuiSliderFlags_AlwaysClamp))
 	{
 		std::string Status;
@@ -3391,6 +3625,8 @@ void Client::CBossTool::Render_FlowSelectedSlot()
 		m_strFlowStatus = std::move(Status);
 	}
 	ImGui::EndDisabled();
+	ImGui::TextDisabled(
+		"Bulk edit only. Use Wait before next on a selected transition to change one gap.");
 	const bool_t bSavedClean = m_FlowDocument.Is_Ready() &&
 		!m_FlowDocument.Is_Dirty() &&
 		!m_FlowDocument.Has_ExternalConflict();
@@ -3578,7 +3814,10 @@ void Client::CBossTool::Render_ActionBar()
 	const HUD_PLAYER_STATE& Player = CCombatHUDViewModel::Get().Get_Player();
 	const VALTAN_PATTERN_VIEW* pSelected =
 		Find_AuditionPattern(m_strSelectedPatternId);
-	const bool_t bCanPlay = Can_MutateValtanView(m_eGraphAdmission) &&
+	const bool_t bAuthoringTransactionBlocked =
+		Has_ValtanAuthoringTransactionBarrier(m_pBalanceTool);
+	const bool_t bCanPlay = !bAuthoringTransactionBlocked &&
+		Can_MutateValtanView(m_eGraphAdmission) &&
 		nullptr != pSelected &&
 		CNetworkManager::Get().Is_Connected() && Boss.isValid &&
 		Player.isValid && 0u != Player.iCurrentHp && Player.isCombatReady &&
@@ -3591,6 +3830,7 @@ void Client::CBossTool::Render_ActionBar()
 		VALTAN_PATTERN_AUDITION_STATE::ACTIVE == Audition.eState ||
 		VALTAN_PATTERN_AUDITION_STATE::COMPLETED == Audition.eState;
 	const bool_t bCanRestartActivePattern =
+		!bAuthoringTransactionBlocked &&
 		Can_MutateValtanView(m_eGraphAdmission) && nullptr != pSelected &&
 		m_strSelectedPatternId == Audition.strPatternId &&
 		CNetworkManager::Get().Is_Connected() && Boss.isValid &&
@@ -3599,7 +3839,8 @@ void Client::CBossTool::Render_ActionBar()
 		!bNextOwnsPlayback && bRestartablePatternOccurrence &&
 		CONSUMER_ID == Audition.strConsumerId &&
 		BOSS_PLACEMENT_ID == Audition.strBossPlacementId;
-	const bool_t bCanRetryRestart = CNetworkManager::Get().Is_Connected() &&
+	const bool_t bCanRetryRestart = !bAuthoringTransactionBlocked &&
+		CNetworkManager::Get().Is_Connected() &&
 		VALTAN_PATTERN_AUDITION_STATE::RESTART_UNCONFIRMED ==
 			Audition.eState &&
 		CONSUMER_ID == Audition.strConsumerId &&
@@ -3679,7 +3920,9 @@ void Client::CBossTool::Render_ActionBar()
 	}
 	ImGui::EndDisabled();
 	ImGui::SameLine();
-	ImGui::BeginDisabled(!Can_MutateValtanView(m_eGraphAdmission) ||
+	ImGui::BeginDisabled(
+		(!m_bRepeat && bAuthoringTransactionBlocked) ||
+		!Can_MutateValtanView(m_eGraphAdmission) ||
 		nullptr == pSelected ||
 		bNextOwnsPlayback || bFlowOwnsPlayback);
 	if (ImGui::Checkbox("Repeat", &m_bRepeat))
@@ -3717,7 +3960,10 @@ void Client::CBossTool::Render_ActionBar()
 		m_strStatus : m_strActionFeedback;
 	if (m_strActionFeedback.empty())
 	{
-		if (!Can_DisplayValtanView(m_eGraphAdmission) || !m_bGraphReady)
+		if (bAuthoringTransactionBlocked)
+			(void)Is_RuntimePublishMutationBlocked(
+				m_pBalanceTool, "Pattern Play / Restart", Status);
+		else if (!Can_DisplayValtanView(m_eGraphAdmission) || !m_bGraphReady)
 			Status = "Play unavailable: canonical Valtan graph did not load.";
 		else if (nullptr == pSelected)
 			Status = "Play unavailable: select one pattern from the list.";
@@ -4358,11 +4604,14 @@ void Client::CBossTool::Render_SelectedPattern()
 			m_strLiveStageId.empty() ?
 				"stage unresolved" : m_strLiveStageId.c_str());
 	}
-	Render_SelectedPatternRingAuthoring(*pPattern);
+	/* A successful ring Save reloads m_Graph and invalidates pPattern/pStage.
+	   End this frame before either pre-reload pointer is consumed again. */
+	if (Render_SelectedPatternRingAuthoring(*pPattern))
+		return;
 	Render_ConnectionSummary(*pPattern, *pStage);
 }
 
-void Client::CBossTool::Render_SelectedPatternRingAuthoring(
+bool_t Client::CBossTool::Render_SelectedPatternRingAuthoring(
 	const VALTAN_PATTERN_VIEW& Pattern)
 {
 	std::size_t iRingCount = 0u;
@@ -4380,21 +4629,30 @@ void Client::CBossTool::Render_SelectedPatternRingAuthoring(
 		}
 	}
 	if (0u == iRingCount)
-		return;
+		return false;
 
 	ImGui::SeparatorText("Canonical Donut / Ring Geometry");
 	ImGui::TextWrapped(
 		"These numeric slots edit the exact Server-owned RING hit. "
 		"Pattern, Stage, combat-object and hit IDs remain read-only.");
+	ImGui::TextDisabled(
+		"Shared Pattern definition: every Flow occurrence of %s uses these same radii. Different radii require a different stable Pattern definition.",
+		Pattern.strPatternId.c_str());
 	if (nullptr == m_pBalanceTool)
 	{
 		ImGui::TextDisabled(
 			"The shared canonical Valtan draft owner is unavailable.");
-		return;
+		return false;
 	}
 
+	const bool_t bAuthoringTransactionBlocked =
+		Has_ValtanAuthoringTransactionBarrier(m_pBalanceTool);
 	const double Step = 0.1;
 	const double FastStep = 1.0;
+	/* Draft reads remain visible for diagnosis, but no numeric authoring control
+	   may submit a second mutation while Save or runtime publish owns the
+	   canonical transaction. */
+	ImGui::BeginDisabled(bAuthoringTransactionBlocked);
 	for (const VALTAN_STAGE_VIEW& Stage : Pattern.Stages)
 	{
 		if ("RING" == Stage.strHitShape)
@@ -4502,16 +4760,26 @@ void Client::CBossTool::Render_SelectedPatternRingAuthoring(
 			}
 		}
 	}
+	ImGui::EndDisabled();
 
 	std::string SourceRevision;
 	std::string StateStatus;
 	bool_t bDirty = false;
 	const bool_t bStateReady = m_pBalanceTool->Get_ValtanAuthoringState(
 		SourceRevision, bDirty, StateStatus);
-	ImGui::BeginDisabled(!bStateReady || !bDirty);
-	if (ImGui::Button("Save Canonical Ring Geometry"))
-		(void)Save_SelectedPatternRingAuthoring();
+	if (bAuthoringTransactionBlocked)
+		(void)Is_RuntimePublishMutationBlocked(
+			m_pBalanceTool, "Canonical Ring Save", StateStatus);
+	ImGui::BeginDisabled(
+		bAuthoringTransactionBlocked || !bStateReady || !bDirty);
+	const bool_t bSaveRequested =
+		ImGui::Button("Save Canonical Ring Geometry");
 	ImGui::EndDisabled();
+	if (bSaveRequested)
+	{
+		(void)Save_SelectedPatternRingAuthoring();
+		return true;
+	}
 	if (bStateReady)
 	{
 		ImGui::SameLine();
@@ -4524,11 +4792,18 @@ void Client::CBossTool::Render_SelectedPatternRingAuthoring(
 	}
 	if (!m_strActionFeedback.empty())
 		ImGui::TextWrapped("%s", m_strActionFeedback.c_str());
+	return false;
 }
 
 bool_t Client::CBossTool::Save_SelectedPatternRingAuthoring()
 {
 	std::string Status;
+	if (Is_RuntimePublishMutationBlocked(
+			m_pBalanceTool, "Canonical Ring Save", Status))
+	{
+		m_strActionFeedback = std::move(Status);
+		return false;
+	}
 	if (!Can_MutateCanonicalGraph(Status))
 	{
 		m_strActionFeedback = std::move(Status);

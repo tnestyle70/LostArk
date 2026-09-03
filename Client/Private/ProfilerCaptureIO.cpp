@@ -107,9 +107,11 @@ bool_t Client::CProfilerCaptureIO::Save_Json(
 
 	Stream << fixed << setprecision(6);
 	Stream << "{\n";
-	Stream << "  \"schema\": \"LostArkProfilerCapture.v1\",\n";
+	Stream << "  \"schema\": \"LostArkProfilerCapture.v2\",\n";
 	Stream << "  \"droppedCpuScopes\": " << Snapshot.DroppedCpuScopes << ",\n";
 	Stream << "  \"droppedGpuFrames\": " << Snapshot.DroppedGpuFrames << ",\n";
+	Stream << "  \"mainThreadId\": " << Snapshot.MainThreadId << ",\n";
+	Stream << "  \"ticksPerSecond\": " << Snapshot.TicksPerSecond << ",\n";
 	Stream << "  \"scopeNames\": [";
 	for (size_t i = 0; i < Snapshot.ScopeNames.size(); ++i)
 	{
@@ -157,6 +159,7 @@ bool_t Client::CProfilerCaptureIO::Save_Json(
 			const Engine::FProfilerScopeSample& Scope = Frame.CpuScopes[iScope];
 			Stream << "        {\"nameId\": " << Scope.NameId
 				<< ", \"depth\": " << Scope.Depth
+				<< ", \"threadId\": " << Scope.ThreadId
 				<< ", \"beginTick\": " << Scope.BeginTick
 				<< ", \"endTick\": " << Scope.EndTick << "}"
 				<< (iScope + 1 < Frame.CpuScopes.size() ? "," : "")

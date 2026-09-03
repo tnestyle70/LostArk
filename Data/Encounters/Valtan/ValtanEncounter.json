@@ -499,14 +499,14 @@
               "startAngleDegrees": 0,
               "angleStepDegrees": 0,
               "allowOverlap": false,
-              "maximumTotalObjects": 4,
-              "spawnCount": 1,
+              "maximumTotalObjects": 36,
+              "spawnCount": 3,
               "firstSpawnOffsetMs": 0,
-              "spawnIntervalMs": 0,
-              "arenaRandomCount": 0,
-              "arenaRandomRadiusM": 0,
-              "arenaHeightToleranceM": 0,
-              "arenaAnchorPolicy": "NONE"
+              "spawnIntervalMs": 1333,
+              "arenaRandomCount": 4,
+              "arenaRandomRadiusM": 14.0,
+              "arenaHeightToleranceM": 1.0,
+              "arenaAnchorPolicy": "BOSS_SPAWN_POSITION"
             }
           ]
         },
@@ -7502,6 +7502,62 @@
             }
           ],
           "partDamagePolicy": "DESTROY_FIRST_ELIGIBLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_FIST_IN_OUT_LARGE",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
+      "displayName": "큰 도넛",
+      "actionId": "valtan.attack.fist-in-out-large",
+      "sourceActionIds": [
+        420638
+      ],
+      "selectionMode": "AUDITION_ONLY",
+      "minimumHealthBar": 0,
+      "maximumHealthBar": 0,
+      "triggerHealthBar": 0,
+      "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
+      "selectionWeight": 0,
+      "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0,
+      "maximumRange": 16.0,
+      "stages": [
+        {
+          "stageId": "INNER",
+          "actionId": "valtan.attack.fist-in-out-large.inner",
+          "stageKind": "ACTIVE",
+          "durationMs": 100,
+          "hitShape": "NONE",
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitCount": 0,
+          "hitIntervalMs": 0,
+          "hitDelayMs": 0,
+          "serverDamageProfileId": "",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0,
+          "actions": [
+            {
+              "trigger": "ENTER",
+              "kind": "SPAWN_COMBAT_OBJECT",
+              "targetId": "combatobject.valtan.fist-in-out.donut-large",
+              "value": 1,
+              "durationMs": 0
+            }
+          ]
         }
       ]
     }

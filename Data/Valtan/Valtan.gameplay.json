@@ -46,6 +46,7 @@
         "VALTAN_TRIPLE_COUNTER",
         "VALTAN_DASH_CHARGE",
         "VALTAN_FIST_IN_OUT",
+        "VALTAN_FIST_IN_OUT_LARGE",
         "VALTAN_HIGH_JUMP",
         "VALTAN_SIX_PIZZA_106",
         "VALTAN_STRUGGLING",
@@ -86,6 +87,59 @@
         "VALTAN_STRUGGLING",
         "VALTAN_GHOST_RESPAWN_AUDITION",
         "VALTAN_GHOST_FINALE"
+      ],
+      "transitionPursuitMs": [
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        100,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000
       ]
     },
     "selectionSets": [
@@ -404,6 +458,12 @@
       {
         "patternId": "VALTAN_PART_BREAK",
         "sourceChainId": "derived.part-break",
+        "authoringPhase": 1,
+        "admissionState": "DERIVED_SERVER_PATTERN"
+      },
+      {
+        "patternId": "VALTAN_FIST_IN_OUT_LARGE",
+        "sourceChainId": "derived.fist-in-out-large",
         "authoringPhase": 1,
         "admissionState": "DERIVED_SERVER_PATTERN"
       }
@@ -999,6 +1059,64 @@
       ]
     },
     {
+      "patternId": "VALTAN_FIST_IN_OUT_LARGE",
+      "displayName": "큰 도넛",
+      "category": "NORMAL",
+      "compatibilitySelectionWeight": 0,
+      "actionId": "valtan.attack.fist-in-out-large",
+      "entryActionId": "valtan.attack.fist-in-out-large.inner",
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
+      "eligibility": {
+        "armorRequirement": "ANY",
+        "phaseRequirement": "ANY",
+        "minimumGameplayPhase": 1,
+        "maximumGameplayPhase": 3,
+        "minimumHealthBarInclusive": 0,
+        "maximumHealthBarInclusive": 0,
+        "minimumRangeM": 0.0,
+        "maximumRangeM": 16.0,
+        "cooldownPolicy": "DERIVED_SOURCE_ACTION",
+        "selectionCooldownMs": null,
+        "cooldownGroupId": null,
+        "repeatPolicy": {
+          "kind": "SOFT_AVOID_UNLESS_ONLY_ELIGIBLE",
+          "limit": 0
+        }
+      },
+      "invulnerableWhileRunning": false,
+      "sourceActionIds": [
+        420638
+      ],
+      "serverMotion": null,
+      "reactions": [],
+      "stages": [
+        {
+          "stageId": "INNER",
+          "actionId": "valtan.attack.fist-in-out-large.inner",
+          "stageKind": "ACTIVE",
+          "durationMs": 100,
+          "defaultNextActionId": null,
+          "hit": {
+            "shape": {
+              "kind": "NONE"
+            }
+          },
+          "motion": null,
+          "events": [
+            {
+              "eventId": "event.valtan.fist-in-out-large.spawn-donut",
+              "trigger": "ENTER",
+              "kind": "SPAWN_COMBAT_OBJECT",
+              "combatObjectArchetypeId": "combatobject.valtan.fist-in-out.donut-large",
+              "count": 1
+            }
+          ],
+          "branches": []
+        }
+      ]
+    },
+    {
       "patternId": "VALTAN_HIGH_JUMP",
       "displayName": "점프 후 플레이어 추적 도끼",
       "category": "NORMAL",
@@ -1085,15 +1203,19 @@
               },
               "spawnSchedule": {
                 "kind": "INTERVAL",
-                "count": 1,
+                "count": 3,
                 "firstOffsetMs": 0,
-                "intervalMs": 0
+                "intervalMs": 1333
               },
               "arenaRandom": {
-                "kind": "NONE"
+                "kind": "RANDOM_NAVIGABLE_CIRCLE",
+                "anchor": "BOSS_SPAWN_POSITION",
+                "count": 4,
+                "radiusM": 14.0,
+                "heightToleranceM": 1.0
               },
               "allowOverlap": false,
-              "maximumTotalObjects": 4
+              "maximumTotalObjects": 36
             }
           ],
           "branches": []
@@ -2402,11 +2524,11 @@
               "nextActionId": "valtan.authoring.stagger-slot.final-attack"
             }
           ],
-          "verticalOffsetM": 0.5,
           "bossResponse": {
             "kind": "ACCUMULATED_HEALTH_DAMAGE",
             "threshold": 1000
-          }
+          },
+          "verticalOffsetM": 0.5
         },
         {
           "stageId": "FINAL_ATTACK",

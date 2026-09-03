@@ -587,18 +587,35 @@ def validate(root: Path) -> CoverageReport:
         if isinstance(decision_model, dict)
         else None
     )
-    if not isinstance(sequence, dict) or set(sequence) != {
-        "sequenceId",
-        "mode",
-        "interStepPursuitMs",
-        "patternIds",
-    }:
+    required_sequence_fields = {
+        "sequenceId", "mode", "interStepPursuitMs", "patternIds",
+    }
+    allowed_sequence_shapes = (
+        required_sequence_fields,
+        required_sequence_fields | {"transitionPursuitMs"},
+    )
+    if not isinstance(sequence, dict) or set(sequence) not in allowed_sequence_shapes:
         raise CoverageError(
             "Valtan.gameplay scriptedSequence must be the inline canonical contract"
         )
     rows = sequence.get("patternIds")
     if not isinstance(rows, list) or not rows:
         raise CoverageError("Valtan.gameplay scriptedSequence.patternIds is empty")
+    transition_pursuit_ms = sequence.get("transitionPursuitMs")
+    if transition_pursuit_ms is not None and (
+        not isinstance(transition_pursuit_ms, list)
+        or len(transition_pursuit_ms) + 1 != len(rows)
+        or any(
+            not isinstance(value, int)
+            or isinstance(value, bool)
+            or value < 100
+            or value > 10000
+            for value in transition_pursuit_ms
+        )
+    ):
+        raise CoverageError(
+            "Valtan.gameplay scriptedSequence.transitionPursuitMs is invalid"
+        )
     scripted_pattern_ids: set[str] = set()
     for ordinal, pattern_id in enumerate(rows):
         if not isinstance(pattern_id, str) or pattern_id not in product_ids:

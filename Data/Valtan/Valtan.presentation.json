@@ -756,6 +756,29 @@
       ]
     },
     {
+      "patternId": "VALTAN_FIST_IN_OUT_LARGE",
+      "sourceSequenceIndex": 2,
+      "presentationSources": [
+        {
+          "sourceActionId": 420638,
+          "sequenceIndex": 2,
+          "role": "PRIMARY"
+        }
+      ],
+      "stages": [
+        {
+          "stageId": "INNER",
+          "actionId": "valtan.attack.fist-in-out-large.inner",
+          "sequenceRole": "INNER",
+          "animation": {
+            "mode": "NONE"
+          },
+          "effectCues": [],
+          "cameraInvocations": []
+        }
+      ]
+    },
+    {
       "patternId": "VALTAN_HIGH_JUMP",
       "sourceSequenceIndex": 2,
       "presentationSources": [
@@ -4411,10 +4434,6 @@
           "stageId": "STEP_02",
           "actionId": "valtan.sequence.warp.step-02",
           "sequenceRole": "STEP",
-          "bodyVisibility": {
-            "hiddenFromMs": 1300,
-            "hiddenToMs": 1800
-          },
           "animation": {
             "endPolicy": "LOOP_TO_STAGE_END",
             "repeatCount": 1,
@@ -4463,16 +4482,16 @@
               }
             }
           ],
-          "cameraInvocations": []
+          "cameraInvocations": [],
+          "bodyVisibility": {
+            "hiddenFromMs": 1300,
+            "hiddenToMs": 1800
+          }
         },
         {
           "stageId": "STEP_03",
           "actionId": "valtan.sequence.warp.step-03",
           "sequenceRole": "STEP",
-          "bodyVisibility": {
-            "hiddenFromMs": 1300,
-            "hiddenToMs": 1800
-          },
           "animation": {
             "endPolicy": "LOOP_TO_STAGE_END",
             "repeatCount": 1,
@@ -4521,16 +4540,16 @@
               }
             }
           ],
-          "cameraInvocations": []
+          "cameraInvocations": [],
+          "bodyVisibility": {
+            "hiddenFromMs": 1300,
+            "hiddenToMs": 1800
+          }
         },
         {
           "stageId": "STEP_04",
           "actionId": "valtan.sequence.warp.step-04",
           "sequenceRole": "STEP",
-          "bodyVisibility": {
-            "hiddenFromMs": 1300,
-            "hiddenToMs": 1800
-          },
           "animation": {
             "endPolicy": "LOOP_TO_STAGE_END",
             "repeatCount": 1,
@@ -4579,16 +4598,16 @@
               }
             }
           ],
-          "cameraInvocations": []
+          "cameraInvocations": [],
+          "bodyVisibility": {
+            "hiddenFromMs": 1300,
+            "hiddenToMs": 1800
+          }
         },
         {
           "stageId": "STEP_05",
           "actionId": "valtan.sequence.warp.step-05",
           "sequenceRole": "STEP",
-          "bodyVisibility": {
-            "hiddenFromMs": 1300,
-            "hiddenToMs": 1800
-          },
           "animation": {
             "endPolicy": "LOOP_TO_STAGE_END",
             "repeatCount": 1,
@@ -4637,16 +4656,16 @@
               }
             }
           ],
-          "cameraInvocations": []
+          "cameraInvocations": [],
+          "bodyVisibility": {
+            "hiddenFromMs": 1300,
+            "hiddenToMs": 1800
+          }
         },
         {
           "stageId": "STEP_06",
           "actionId": "valtan.sequence.warp.step-06",
           "sequenceRole": "STEP",
-          "bodyVisibility": {
-            "hiddenFromMs": 1300,
-            "hiddenToMs": 1800
-          },
           "animation": {
             "endPolicy": "LOOP_TO_STAGE_END",
             "repeatCount": 1,
@@ -4695,16 +4714,16 @@
               }
             }
           ],
-          "cameraInvocations": []
+          "cameraInvocations": [],
+          "bodyVisibility": {
+            "hiddenFromMs": 1300,
+            "hiddenToMs": 1800
+          }
         },
         {
           "stageId": "STEP_07",
           "actionId": "valtan.sequence.warp.step-07",
           "sequenceRole": "STEP",
-          "bodyVisibility": {
-            "hiddenFromMs": 1300,
-            "hiddenToMs": 1800
-          },
           "animation": {
             "endPolicy": "LOOP_TO_STAGE_END",
             "repeatCount": 1,
@@ -4753,16 +4772,16 @@
               }
             }
           ],
-          "cameraInvocations": []
+          "cameraInvocations": [],
+          "bodyVisibility": {
+            "hiddenFromMs": 1300,
+            "hiddenToMs": 1800
+          }
         },
         {
           "stageId": "STEP_08",
           "actionId": "valtan.sequence.warp.step-08",
           "sequenceRole": "STEP",
-          "bodyVisibility": {
-            "hiddenFromMs": 1300,
-            "hiddenToMs": 1800
-          },
           "animation": {
             "endPolicy": "LOOP_TO_STAGE_END",
             "repeatCount": 1,
@@ -4811,16 +4830,16 @@
               }
             }
           ],
-          "cameraInvocations": []
+          "cameraInvocations": [],
+          "bodyVisibility": {
+            "hiddenFromMs": 1300,
+            "hiddenToMs": 1800
+          }
         },
         {
           "stageId": "STEP_09",
           "actionId": "valtan.sequence.warp.step-09",
           "sequenceRole": "STEP",
-          "bodyVisibility": {
-            "hiddenFromMs": 1300,
-            "hiddenToMs": 1800
-          },
           "animation": {
             "endPolicy": "LOOP_TO_STAGE_END",
             "repeatCount": 1,
@@ -4869,7 +4888,11 @@
               }
             }
           ],
-          "cameraInvocations": []
+          "cameraInvocations": [],
+          "bodyVisibility": {
+            "hiddenFromMs": 1300,
+            "hiddenToMs": 1800
+          }
         },
         {
           "stageId": "STEP_10",
@@ -7129,6 +7152,12 @@
       "displayName": "INNER / OUTER 도넛",
       "ownership": "SERVER_COMBAT_OBJECT",
       "spawnEventId": "event.valtan.fist-in-out.spawn-donut"
+    },
+    {
+      "independentEffectId": "valtan.independent-effect.donut-large",
+      "displayName": "큰 도넛",
+      "ownership": "SERVER_COMBAT_OBJECT",
+      "spawnEventId": "event.valtan.fist-in-out-large.spawn-donut"
     },
     {
       "independentEffectId": "valtan.independent-effect.ground-roar-cardinal-rocks",

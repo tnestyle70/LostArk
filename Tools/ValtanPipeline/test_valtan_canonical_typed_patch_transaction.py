@@ -529,6 +529,7 @@ finally:
                 "VALTAN_WHIRLWIND",
                 "VALTAN_FOUR_SLASH",
             ],
+            "transitionPursuitMs": [100, 900],
         }
         patch_path = self.write_patch(
             "sequence.json",
@@ -544,6 +545,7 @@ finally:
             **expected,
             "interStepPursuitMs": 100,
             "patternIds": ["VALTAN_WHIRLWIND"],
+            "transitionPursuitMs": [],
         }
         rotations_path.write_text(
             json.dumps(stale_rotations, ensure_ascii=False, indent=2) + "\n",
@@ -583,12 +585,15 @@ finally:
             "sequenceId": "sequence.valtan.server-authored.v1",
             "mode": "ORDERED_ONCE_THEN_IDLE",
             "interStepPursuitMs": 900,
-            "patternIds": ["VALTAN_WHIRLWIND"],
+            "patternIds": ["VALTAN_WHIRLWIND", "VALTAN_FOUR_SLASH"],
+            "transitionPursuitMs": [100],
         }
         cases = (
             ("identity", {**valid, "sequenceId": "sequence.other"}),
             ("mode", {**valid, "mode": "ORDERED_REPEAT"}),
             ("pursuit", {**valid, "interStepPursuitMs": 0}),
+            ("transition-count", {**valid, "transitionPursuitMs": []}),
+            ("transition-range", {**valid, "transitionPursuitMs": [0]}),
             ("unknown", {**valid, "patternIds": ["VALTAN_UNKNOWN"]}),
             ("malformed", {**valid, "patternIds": ["../invalid"]}),
             (
@@ -1156,12 +1161,14 @@ finally:
         self.assertEqual(
             len(absorbed_paths), absorbed["payload"]["changedCount"]
         )
+        # A gameplay-only overlay leaves the presentation source byte-identical,
+        # so only the gameplay owner and the projected Product are rewritten.
         self.assertTrue(
             {
                 "Valtan/Valtan.gameplay.json",
-                "Valtan/Valtan.presentation.json",
                 "Encounters/Valtan/ValtanEncounter.json",
-            }.issubset(absorbed_paths)
+            }.issubset(absorbed_paths),
+            sorted(absorbed_paths),
         )
         self.assertEqual("NOT_ACTIVATED", absorbed["payload"]["runtimeActivation"])
         product_stage = self.stage(
@@ -1561,13 +1568,17 @@ finally:
         seed_sound_candidate_path = self.root / "dash-charge-seed-sound-candidate.json"
         seed_sound_baseline_path.write_bytes(sound_target.read_bytes())
         seed_sound_candidate = self.read_json(sound_target)
-        self.assertFalse(
-            any(
+        # The repository may already carry authored sounds for the replacement
+        # Groggy chain.  Build the legacy seed deterministically by removing
+        # that stage's current rows inside the same atomic owner candidate.
+        seed_sound_candidate["cues"] = [
+            cue
+            for cue in seed_sound_candidate["cues"]
+            if not (
                 cue.get("patternId") == "VALTAN_DASH_CHARGE"
                 and cue.get("stageId") == "GROGGY"
-                for cue in seed_sound_candidate["cues"]
             )
-        )
+        ]
         seed_sound_candidate["cues"].append(
             {
                 "bindingId": (

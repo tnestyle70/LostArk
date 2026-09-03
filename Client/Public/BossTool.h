@@ -209,7 +209,7 @@ private:
 	void Render_PatternList();
 	void Render_CurrentPatternList();
 	void Render_SelectedPattern();
-	void Render_SelectedPatternRingAuthoring(
+	bool_t Render_SelectedPatternRingAuthoring(
 		const VALTAN_PATTERN_VIEW& Pattern);
 	bool_t Save_SelectedPatternRingAuthoring();
 	void Select_Pattern(const VALTAN_PATTERN_VIEW& Pattern);

@@ -5349,6 +5349,17 @@ void LostArk::Server::CGameRoom::Queue_ValtanPatternFlowLifecycle(
 	   pair when Stop arrives before it starts or the authoritative boss disappears. */
 	flow.iReportedSequenceIndex = sequenceIndex;
 	flow.iReportedPatternSequence = message.iPatternSequence;
+	const auto receipt = m_ValtanPatternFlowStartSequenceBySessionId.find(
+		flow.iOwnerSessionId);
+	if (m_ValtanPatternFlowStartSequenceBySessionId.end() != receipt &&
+		receipt->second.iSequence == flow.iRequestSequence &&
+		receipt->second.iRoomFlowEpoch == flow.iRoomFlowEpoch &&
+		receipt->second.strFlowId == flow.strFlowId &&
+		receipt->second.strFlowRevision == flow.strFlowRevision &&
+		receipt->second.PinnedDefinitionRevision == flow.PinnedDefinitionRevision)
+	{
+		receipt->second.LastLifecycle = message;
+	}
 	m_PendingValtanPatternFlowLifecycle.push_back({
 		flow.iOwnerSessionId, std::move(message) });
 }
@@ -6762,6 +6773,14 @@ LostArk::Server::CGameRoom::Evaluate_ValtanPatternFlowStart(
 			{
 				outRoomFlowEpoch = receipt->second.iRoomFlowEpoch;
 				outPinnedRevision = receipt->second.PinnedDefinitionRevision;
+				/* The same identity is a receipt recovery, not another Restart. Replay
+				   only its last edge so an UNCONFIRMED Client can recover ACTIVE or a
+				   terminal hold after the original result/lifecycle was not observed. */
+				if (receipt->second.LastLifecycle.has_value())
+				{
+					m_PendingValtanPatternFlowLifecycle.push_back({
+						sessionId, *receipt->second.LastLifecycle });
+				}
 				return VALTAN_PATTERN_FLOW_RESULT::DUPLICATE_IGNORED;
 			}
 			outReason = receipt->second.strReason;
@@ -6894,21 +6913,24 @@ LostArk::Server::CGameRoom::Evaluate_ValtanPatternFlowStart(
 		outReason = "Valtan pattern-flow start slot is not in the flow";
 		return VALTAN_PATTERN_FLOW_RESULT::REJECTED_INVALID_FLOW;
 	}
+	const BOSS_PATTERN_SEQUENCE_DEFINITION* savedCanonicalSequence = nullptr;
 	if (CANONICAL_BOSS_TOOL_FLOW_ID == request.strFlowId)
 	{
-		const BOSS_PATTERN_SEQUENCE_DEFINITION* const savedSequence =
+		savedCanonicalSequence =
 			pinnedCatalog->Find_BossPatternSequence(boss->strEncounterId);
-		const bool bMatchesSavedSequence = nullptr != savedSequence &&
+		const bool bMatchesSavedSequence = nullptr != savedCanonicalSequence &&
 			BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE ==
-				savedSequence->eMode &&
+				savedCanonicalSequence->eMode &&
 			!request.Slots.empty() &&
 			request.strStartSlotId == request.Slots.front().strSlotId &&
-			savedSequence->iInterStepPursuitMs ==
+			savedCanonicalSequence->iInterStepPursuitMs ==
 				request.iInterStepPursuitMs &&
-			savedSequence->PatternIds.size() == request.Slots.size() &&
+			savedCanonicalSequence->TransitionPursuitMs.size() + 1u ==
+				savedCanonicalSequence->PatternIds.size() &&
+			savedCanonicalSequence->PatternIds.size() == request.Slots.size() &&
 			std::equal(
-				savedSequence->PatternIds.begin(),
-				savedSequence->PatternIds.end(), request.Slots.begin(),
+				savedCanonicalSequence->PatternIds.begin(),
+				savedCanonicalSequence->PatternIds.end(), request.Slots.begin(),
 				[](const std::string& patternId,
 					const VALTAN_PATTERN_FLOW_SLOT_WIRE& slot)
 				{
@@ -7002,6 +7024,17 @@ LostArk::Server::CGameRoom::Evaluate_ValtanPatternFlowStart(
 	{
 		stagedFlow.Sequence.PatternIds.push_back(
 			request.Slots[index].strPatternId);
+		if (index + 1u < request.Slots.size())
+		{
+			const std::uint32_t pursuitMs = nullptr == savedCanonicalSequence ?
+				request.iInterStepPursuitMs :
+				savedCanonicalSequence->TransitionPursuitMs[index];
+			stagedFlow.Sequence.TransitionPursuitMs.push_back(pursuitMs);
+			stagedFlow.Sequence.TransitionPursuitTicks.push_back(
+				static_cast<std::uint32_t>((
+					static_cast<std::uint64_t>(pursuitMs) * SERVER_TICK_HZ +
+					999u) / 1000u));
+		}
 	}
 	stagedFlow.Sequence.iExpectedStepCount = static_cast<std::uint32_t>(
 		stagedFlow.Sequence.PatternIds.size());
@@ -9961,10 +9994,11 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 						boss.iOwnerBossNetEntityId &&
 					"BOSS_VALTAN" == boss.strArchetypeId && 3u == count;
 				/* The four-rock presentation volleys may straddle the arena boundary when
-				   either owner starts its authored radial set near an edge. Part Break is
-				   expected to begin at the charge wall. Keep the exception tied to the
-				   exact owner IDs and an empty damage list; adding gameplay hits makes
-				   navigation admission strict again. */
+				   an owner starts its authored radial set near an edge. Part Break is
+				   expected to begin at the charge wall, while Six Pizza and Struggling
+				   intentionally preserve their centered corner layouts. Keep the exception
+				   tied to the exact owner IDs and an empty damage list; adding gameplay hits
+				   makes navigation admission strict again. */
 				const bool visualCardinalRocksMayStartOffNavigation =
 					BOSS_COMBAT_OBJECT_KIND::FIXED_AREA == definition->eKind &&
 					BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NONE ==
@@ -9977,7 +10011,16 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 					 ("combatobject.valtan.part-break.rock" ==
 							definition->strCombatObjectArchetypeId &&
 					  "VALTAN_PART_BREAK" == patternId &&
-					  "valtan.reaction.part-break.recovery" == actionId)) &&
+					  "valtan.reaction.part-break.recovery" == actionId) ||
+					 ("combatobject.valtan.six-pizza.rock-pillar" ==
+							definition->strCombatObjectArchetypeId &&
+					  "VALTAN_SIX_PIZZA_106" == patternId &&
+					  "valtan.sequence.center-six-pizza-charge.step-01" == actionId) ||
+					 ("combatobject.valtan.struggling.rock-pillar" ==
+							definition->strCombatObjectArchetypeId &&
+					  "VALTAN_STRUGGLING" == patternId &&
+					  "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04" ==
+						actionId)) &&
 					4u == count;
 				const bool authoredVolleyMayStartOffNavigation =
 					phaseThreePortalTriangleMayStartOffNavigation ||
@@ -9996,6 +10039,7 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 					return false;
 				}
 				std::array<std::pair<float, float>, 8u> points{};
+				bool skipPresentationOnlyVolley = false;
 				for (std::uint32_t ordinal = 0u; ordinal < count; ++ordinal)
 				{
 					const float degrees = boss.fYawDegrees +
@@ -10019,6 +10063,23 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 							std::to_string(boss.fPositionX) + " bossZ=" +
 							std::to_string(boss.fPositionZ) + " spawnX=" +
 							std::to_string(x) + " spawnZ=" + std::to_string(z);
+						/* A presentation-only object (no gameplay hit, only pulses) never
+						   owns damage or navigation authority, so one authored root that
+						   lands inside a still-standing wall must not latch the whole room
+						   into a runtime failure and close every session. The wave is
+						   skipped without staging anything, the exact diagnostic stays in
+						   m_strStatus and the Server log, and the wave counter still
+						   advances so the skip is not retried every tick. Definitions with
+						   any hit keep the strict room-failure path. */
+						if (std::isfinite(x) && std::isfinite(z) &&
+							definition->Hits.empty() &&
+							!definition->PresentationPulses.empty())
+						{
+							std::cerr << "[PresentationVolleySkipped] " << m_strStatus
+								<< '\n';
+							skipPresentationOnlyVolley = true;
+							break;
+						}
 						return false;
 					}
 					for (std::uint32_t existingOrdinal = 0u;
@@ -10037,6 +10098,10 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 						}
 					}
 					points[ordinal] = { x, z };
+				}
+				if (skipPresentationOnlyVolley)
+				{
+					break;
 				}
 				if (!m_CombatObjectRuntime.Stage_BossCombatObject(
 					combatObjectTransaction, boss, nullptr, *definition,

@@ -112,7 +112,16 @@ struct VALTAN_COMBAT_OBJECT_EFFECT_VIEW final
 	f32_t fVolleyRadiusM = 0.f;
 	f32_t fVolleyStartAngleDegrees = 0.f;
 	f32_t fVolleyAngleStepDegrees = 0.f;
+	bool_t bVolleyAllowOverlap = false;
+	uint32_t iVolleyMaximumTotalObjects = 0u;
+	uint32_t iSpawnScheduleCount = 0u;
 	uint32_t iFirstSpawnOffsetMs = 0u;
+	uint32_t iSpawnIntervalMs = 0u;
+	std::string strArenaRandomKind;
+	std::string strArenaAnchor;
+	uint32_t iArenaRandomCount = 0u;
+	f32_t fArenaRandomRadiusM = 0.f;
+	f32_t fArenaHeightToleranceM = 0.f;
 	/* Read-only Product diagnostics.  Combat-object timing is authored and
 	   published by the Valtan combat-object pipeline, not by stage-duration
 	   editing, so Workbench must show these as a separate clock. */
@@ -602,6 +611,9 @@ struct VALTAN_PATTERN_TREE_VIEW final
 	std::string strScriptedSequenceMode;
 	uint32_t iScriptedSequenceInterStepPursuitMs = 0u;
 	std::vector<std::string> ScriptedSequencePatternIds;
+	/* One value for each transition after PatternIds[index]. Legacy canonical
+	   sources without the optional array are expanded from the global default. */
+	std::vector<uint32_t> ScriptedSequenceTransitionPursuitMs;
 	std::vector<VALTAN_PATTERN_VIEW> Gimmicks;
 	std::vector<VALTAN_PATTERN_VIEW> Rotation;
 	std::vector<VALTAN_INDEPENDENT_EFFECT_VIEW> IndependentEffects;

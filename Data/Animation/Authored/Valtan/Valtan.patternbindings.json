@@ -4438,6 +4438,11 @@
           "loop": false
         }
       ]
+    },
+    {
+      "actionId": "valtan.attack.fist-in-out-large.inner",
+      "playbackMode": "NONE",
+      "clips": []
     }
   ]
 }

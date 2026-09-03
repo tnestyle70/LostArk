@@ -329,9 +329,15 @@ class ValtanAnimationChainPromotionTests(unittest.TestCase):
         expected_reference = copy.deepcopy(
             saved_gameplay["decisionModel"]["scriptedSequence"]
         )
-        self.assertEqual(
-            {"sequenceId", "mode", "interStepPursuitMs", "patternIds"},
+        self.assertIn(
             set(expected_reference),
+            (
+                {"sequenceId", "mode", "interStepPursuitMs", "patternIds"},
+                {
+                    "sequenceId", "mode", "interStepPursuitMs", "patternIds",
+                    "transitionPursuitMs",
+                },
+            ),
         )
         promoted_gameplay, promoted_presentation, _receipt = promotion.build_candidates(self.root)
         self.assertEqual(

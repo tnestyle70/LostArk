@@ -251,10 +251,16 @@ class BuildDomainManifestContractTests(unittest.TestCase):
             "UpdateLib.bat",
             "Publish-BalanceRuntimeSet.ps1",
             "Publish-ServerNavigation.ps1",
-            "Publish-ValtanWorldDestruction.ps1",
             "Project-ValtanPatternMaster.ps1",
         ):
             self.assertNotIn(duplicate, runner)
+        # The world-destruction publisher is owned by BuildDomains.json. The runner
+        # may only invoke its ContractTest mode (a harness, not a second publish).
+        self.assertEqual(1, runner.count("Publish-ValtanWorldDestruction.ps1"))
+        self.assertRegex(
+            runner,
+            r"Publish-ValtanWorldDestruction\.ps1'\s*`\s*-Mode ContractTest",
+        )
 
         client = (ROOT / "Client/Default/Client.vcxproj").read_text(
             encoding="utf-8-sig"
