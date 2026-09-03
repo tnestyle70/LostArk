@@ -12,7 +12,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_ScreenDim.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_ScreenDim.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -25,7 +25,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_WindowBg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_WindowBg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -38,7 +38,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_BossNameBar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_BossNameBar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -51,7 +51,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_TopDeco.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_TopDeco.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -64,7 +64,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_BossPortrait.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_BossPortrait.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -77,7 +77,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_TabSelectedPlate.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_TabSelectedPlate.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -90,7 +90,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_TabThumb_0.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_TabThumb_0.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -103,7 +103,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_TabThumb_1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_TabThumb_1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -116,7 +116,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_TabThumb_2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_TabThumb_2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -129,7 +129,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_TabThumb_3.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_TabThumb_3.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -142,7 +142,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_TopTitleArt.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_TopTitleArt.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -155,7 +155,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_TabThumb_4.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_TabThumb_4.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -168,7 +168,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_TabNamePlate.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": true, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_TabNamePlate.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": true, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -181,7 +181,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_TabSelected.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": true, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_TabSelected.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": true, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -194,7 +194,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_CloseBar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_CloseBar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -207,7 +207,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_LeftPanelBg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_LeftPanelBg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -220,7 +220,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_LeftPanelEmblem.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_LeftPanelEmblem.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -233,7 +233,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_EstherPanelBg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_EstherPanelBg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -402,7 +402,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_Arrow.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_Arrow.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -415,7 +415,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_Arrow.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": true }
+        { "path": "UI/RaidEntry/RaidEntry_Arrow.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": true }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -753,7 +753,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_SoloBadge.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_SoloBadge.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -766,7 +766,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_GateGroup.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_GateGroup.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -779,7 +779,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_GateLine.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_GateLine.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -792,7 +792,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_GateLine.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_GateLine.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -805,7 +805,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_GateIcon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_GateIcon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -818,7 +818,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_GateIcon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_GateIcon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -831,7 +831,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_GateIcon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_GateIcon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -844,7 +844,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_ButtonSteel.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_ButtonSteel.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -987,7 +987,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_ButtonSteel.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_ButtonSteel.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -1000,7 +1000,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_ButtonSteel.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_ButtonSteel.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
@@ -1013,7 +1013,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/Bern/RaidEntry_ButtonGold.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/RaidEntry/RaidEntry_ButtonGold.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }

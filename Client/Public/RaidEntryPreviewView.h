@@ -15,7 +15,7 @@ class CUILayoutRuntime;
    instance purely so its O-key visual-only preview doesn't duplicate this
    ~230-line draw path for a screen with no real entry there (see
    .md/TJ/08-30/2026-08-30_레이드입장창_PLAN.md). Both owners point at the same
-   Data/UI/Bern/ValtanRaidEntry_Layout.json and share this one runtime path --
+   Data/UI/RaidEntry/ValtanRaidEntry_Layout.json and share this one runtime path --
    this is not a second runtime of the same role, only what happens on Entrance
    differs, and that decision stays with the caller (Render() only reports
    whether Entrance was clicked, never sends a command itself).
@@ -50,7 +50,7 @@ public:
 	   anymore -- that is what the ImGui foreground drawlist version needed).
 	   Clicking Entrance does not report back immediately -- it opens a second,
 	   small confirm step (the original simple 수락/거절 dialog, reusing
-	   Data/UI/Bern/BernValtanEntry_Layout.json) on top; this function only
+	   Data/UI/RaidEntry/BernValtanEntry_Layout.json) on top; this function only
 	   returns true on the frame that inner dialog's own 수락 is clicked
 	   (already closed internally by then). Decline on either step always
 	   closes internally and never reports back. */

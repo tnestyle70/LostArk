@@ -147,8 +147,8 @@ namespace
 			// "아이템 레벨 1475 미만 매칭 불가"
 			L"\xC544\xC774\xD15C \xB808\xBCA8 1475 \xBBF8\xB9CC \xB9E4\xCE6D \xBD88\xAC00",
 			nullptr,
-			"UI/Bern/RaidEntry_BossPortrait.png",
-			"UI/Bern/RaidEntry_LeftPanel_2.png", false,
+			"UI/RaidEntry/RaidEntry_BossPortrait.png",
+			"UI/RaidEntry/RaidEntry_LeftPanel_2.png", false,
 			/* Kakul's three esther skills, in the order the real window lists them.
 			   esther_icon_3/4 are cut from EFUI_ICONATLAS_E/esther_0.dds; only the three
 			   already on disk had names, so the rest keep their atlas index. */
@@ -160,7 +160,7 @@ namespace
 			  "UI/ItemUpgrade/lm_glove_icon.png", "UI/ItemUpgrade/lm_weapon_icon.png",
 			  "UI/ItemUpgrade/lm_head_icon.png", "UI/ItemUpgrade/lm_weapon_icon.png" },
 			{ 5, 5, 5, 5, 5, 5, 4, 4 },
-			"UI/Bern/RaidEntry_BG_Kukusaton/RaidEntry_BG_Kukusaton", 300,
+			"UI/RaidEntry/RaidEntry_BG_Kukusaton/RaidEntry_BG_Kukusaton", 300,
 		},
 		{
 			0,
@@ -180,8 +180,8 @@ namespace
 			   decrypted and cooked to pBgMoviePrefix -- set it back to "BOSS_VALTAN" to prefer the
 			   live model over the movie. */
 			nullptr,
-			"UI/Bern/RaidEntry_BossPortrait_Valtan.png",
-			"UI/Bern/RaidEntry_LeftPanel_0.png", true,
+			"UI/RaidEntry/RaidEntry_BossPortrait_Valtan.png",
+			"UI/RaidEntry/RaidEntry_LeftPanel_0.png", true,
 			{ "UI/Esther/esther_portrait_sillian.png",
 			  "UI/Esther/esther_portrait_wei.png",
 			  "UI/Esther/esther_portrait_bahuntur.png" },
@@ -190,7 +190,7 @@ namespace
 			  "UI/ItemUpgrade/lm_shoulder_icon.png", "UI/ItemUpgrade/lm_bottom_icon.png",
 			  "UI/ItemUpgrade/lm_weapon_icon.png", "UI/ItemUpgrade/lm_head_icon.png" },
 			{ 4, 4, 4, 4, 4, 4, 3, 3 },
-			"UI/Bern/RaidEntry_BG_Valtan/RaidEntry_BG_Valtan", 300,
+			"UI/RaidEntry/RaidEntry_BG_Valtan/RaidEntry_BG_Valtan", 300,
 		},
 	};
 	constexpr int32_t RAID_COUNT = static_cast<int32_t>(sizeof(RAID_DEFS) / sizeof(RAID_DEFS[0]));
@@ -218,10 +218,10 @@ CRaidEntryPreviewView::CRaidEntryPreviewView(
 	uint32_t iOwnerLevelIndex)
 	: m_pView(std::make_unique<CUILayoutRuntime>(
 		pDevice, pContext, iOwnerLevelIndex, TEXT("Layer_UI"),
-		L"UI/Bern/ValtanRaidEntry_Layout.json"))
+		L"UI/RaidEntry/ValtanRaidEntry_Layout.json"))
 	, m_pConfirmView(std::make_unique<CUILayoutRuntime>(
 		pDevice, pContext, iOwnerLevelIndex, TEXT("Layer_UI"),
-		L"UI/Bern/BernValtanEntry_Layout.json"))
+		L"UI/RaidEntry/BernValtanEntry_Layout.json"))
 {
 	/* A CUI_Sprite is visible from construction, unlike the old ImGui path that simply did not
 	   draw while closed -- this popup starts closed. */
@@ -531,7 +531,7 @@ bool_t CRaidEntryPreviewView::Render()
 	};
 	static constexpr MODAL_BUTTON BUTTONS[2] =
 	{
-		{ "RaidEntry_EntranceButton", "UI/Bern/RaidEntry_ButtonGoldHover.png", true },
+		{ "RaidEntry_EntranceButton", "UI/RaidEntry/RaidEntry_ButtonGoldHover.png", true },
 		/* The reference has no separate "거절" text button on this screen -- only the
 		   top-right "닫기 (Esc)" X closes it. */
 		{ "RaidEntry_CloseButtonSlot", "", false },
@@ -864,7 +864,7 @@ void CRaidEntryPreviewView::RenderText()
 }
 
 /* Second-step simple confirm dialog opened by the main screen's own Entrance
-   button. Reuses Data/UI/Bern/BernValtanEntry_Layout.json (still on disk,
+   button. Reuses Data/UI/RaidEntry/BernValtanEntry_Layout.json (still on disk,
    pre-dates the rich screen) and the exact same panel/button/icon art as the
    original single-step Bern flow -- this is not a second runtime, just the
    pre-existing simple dialog surfaced one step later. */
