@@ -76,7 +76,7 @@ HEAD는 `fbd30c8e`이며 working tree는 `Data/Valtan/Valtan.presentation.json`,
 | # | 원문 요구 | G | 상태 |
 |---|---|---|---|
 | P1 | "모아치기 플레이어 기준 반대로 돌아가는 버그 수정. 플레이어 따라가게 피자 패턴 로직대로" | G09 | 가설 — `LOCK_NEAREST_ON_START`가 caller 포인터만 씀. 진단 1단계 필요 |
-| P2 | "39 2페이즈 4방향 공격이 무조건 server entry failed. 가끔 원인 모를 것도. 플레이어 죽고 나서 pending/idle 전환 작업 때문인 것 같다" | G16 | 문자열 정체 확정 — **TCP 단절 전용이 아님.** Valtan 경로 4가지 표 + JSONL 진단 절차 |
+| P2 | "39 2페이즈 4방향 공격이 무조건 server entry failed. 가끔 원인 모를 것도. 플레이어 죽고 나서 pending/idle 전환 작업 때문인 것 같다" | G16 | **원인 확정** — Six Pizza/Struggling의 delayed visual-only 돌기둥 owner가 Server off-navigation exact 허용 집합에서 누락돼 room runtime failure → orderly FIN → Lobby recovery가 발생 |
 | P3 | "발탄 사망 이후 stage 남아 있는 것 때문에 플레이어 추적함. 시퀀스 이후 스테이지 잘라야 함" | G11 (M) | 원인 확정 — death audition이 HP를 0으로 만들지 않아 CHASE 복귀 |
 | P4 | "발탄 부활시 유령 발탄이 부활해야 하는데 그냥 발탄 모델이 부활해서 패턴 재생" | G11 (N) | 부분확정 — 스왑 조건은 `iGameplayPhase >= 3`, 실패 시 격리 로그. 로그 먼저 |
 | P5 | "부위 파괴 애니메이션 이후 recovery 시퀀스까지 넣어서 구현, 4방향 돌생성 및 파괴 사운드까지" | G13 | 원인 확정 — 원본 4 clip 6983ms 중 `_end_1` 하나만 쓰고 Stage 시계는 `_start` 길이(1400ms) |
@@ -377,7 +377,7 @@ LANCE_MASTER  슬롯 A  skillId 34580  절룡세  counterPower 1
 | G | 잡힌 플레이어가 정확히 왼손이 아니다 | 부분확정 | `ClientReplication.cpp:2161` 계약 자체는 맞음. bone 선택/원점 보정/서버 좌표 경합이 남은 변수 |
 | H | 잡기 판정 기준을 모르겠다 | 확정 | `VALTAN_TRASH STEP_08` BOX 6.0m×2.5m, `VALTAN_CATCH_BREATH STEP_02` CONE 120°/8.0m. 토글 미노출보다 **S1(300ms만 번쩍임)이 결정적**이다 |
 | I | 모아치기가 플레이어 반대로 돈다 | 가설 | `VALTAN_CHARGE`만 `LOCK_NEAREST_ON_START`. 시작 시 `nearestTarget==nullptr`이면 영구히 조준 실패 |
-| J | 2페이즈 4방향 진입 시 Server entry failed | 확정(원인 미확정) | 문자열은 `Level_Lobby.cpp:89`이고 **TCP 단절 전용이 아니다.** `Try_ConsumeRecovery`가 소비하는 모든 Lobby bounce가 같은 한 줄을 쓴다. Valtan Arena 경로만 4가지 (3.14 표) |
+| J | 2페이즈 4방향 진입 시 Server entry failed | **원인 확정** | `world-update.pattern-scheduled-spawn-wave`가 Six Pizza/Struggling의 피해 없는 돌기둥 root를 exact nav 밖이라는 이유로 거절해 room을 fail-close하고, Client가 FIN 뒤 Lobby로 복귀하며 공통 문구를 표시했다 |
 | K | 워프 1회 돌진이 2000ms 넘게 지속 | 확정 | leg 2300ms = 재조준 500 + 이동 800 + 후행 gap 1000. gap 동안 body가 계속 보이고 loop clip이 돈다. Client는 이미 stage 시계를 snapshot으로 알고 있어 protocol 변경 없이 닫을 수 있다 |
 | L | 침묵 자물쇠 -> 쿨타임 마스크 | 확정 | 자물쇠는 발탄 Effect가 아니라 HUD다. S4/S5 참조. `VALTAN_SILENCE_SLOT`의 V2 binding·effectCue가 0개인 것은 별개 항목 |
 | M | 사망 후 stage가 남아 추적 | 확정 | `VALTAN_GHOST_DEATH_AUDITION`은 3667ms 1 Stage. HP가 0이 아니면 종료 후 CHASE 복귀 |
@@ -1263,6 +1263,26 @@ offsets 1790/2560/3330, `damage.valtan.four-slash`, knockdown 1200ms)이고
 | 데이터 소견 | `VALTAN_SEQUENCE_FOUR`는 Stage 1개(`STEP_01`, 5000ms, CROSS 18.0 × 2.5, offsets 1790/2560/3330, `damage.valtan.four-slash`, knockdown 1200ms)이고 `events`/`branches`가 비어 있다. `CROSS`는 Server가 정식 지원한다(`GameplayCatalog.cpp:282`, `ServerCollisionSystem.cpp:1022`). **데이터만으로는 어떤 bounce 경로도 설명되지 않는다** |
 | 금지 | 이 진단 결과 없이 코드를 고치지 않는다 |
 
+#### 4.4.1 2026-09-03 진단 확정과 수정 계약
+
+Client/Server JSONL의 동일 시각·동일 socket tuple을 대조한 결과, 이 occurrence는 플레이어 사망,
+패킷 포화 또는 Client replication parser가 원인이 아니다. `VALTAN_SIX_PIZZA_106`과
+`VALTAN_STRUGGLING`의 delayed four-rock wave가 정확한 예정 tick에 실행될 때 일부 authored root가
+navgrid 밖에 놓인다. 두 정의는 `FIXED_AREA + direction NONE + hits=[] + presentation pulse`인 순수
+표현 오브젝트인데 기존 exact owner 집합에는 Ground Roar와 Part Break만 있어 Server가 room runtime
+failure를 latch했다.
+
+수정은 기존 의미 조건과 `count == 4`를 그대로 둔 채 아래 두 `(object, pattern, action)` 튜플만
+추가한다. 좌표를 navgrid로 project/clamp하지 않고, 모든 visual object를 포괄 허용하지 않으며,
+`hits`가 하나라도 생기면 strict navigation admission으로 복귀한다.
+
+- `combatobject.valtan.six-pizza.rock-pillar / VALTAN_SIX_PIZZA_106 / valtan.sequence.center-six-pizza-charge.step-01`
+- `combatobject.valtan.struggling.rock-pillar / VALTAN_STRUGGLING / valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04`
+
+회귀 계약은 두 owner 모두 ENTER 시 무생성, `1000ms=30 tick` 또는 `833ms=25 tick` 직전 no-op,
+예정 tick의 정확한 4개 atomic spawn, 다음 tick 중복 없음, off-nav authored root·wire serialization을
+검사한다. 같은 정의에 damage hit를 주입하면 실패하고 live/pending lifecycle이 모두 비어 있어야 한다.
+
 ---
 
 ## 5. 실행 순서와 의존성
@@ -1359,7 +1379,7 @@ Tools/NetworkProtocolHarness            (G05, G10 검토 시)
 | G13 | Stage 2개 6983ms, 돌 4개 spawn | 회복 동작이 자연스러운지 |
 | G14 | clip 이름이 groggy가 아님, 3 Stage 판정 3회 | 내려찍기가 맞는지 |
 | G15 | 슬롯 visible 토글, tint 값 | 붉은 마스크 가독성 |
-| G16 | JSONL의 `strSource` 확정 | — |
+| G16 | 동일 socket의 Client/Server JSONL, delayed scheduler 두 owner native contract, narrow owner source contract | Six Pizza/Struggling 재현에서 Lobby 복귀가 사라지는지 |
 
 **수동 검증은 사용자 전용이다.** 에이전트는 빌드, 로그, 수치 진단, 실행 준비까지만 수행한다.
 `manual first pixel`, `eye smoke`, `visual PASS`는 사용자의 서면 관찰이 있어야 기록한다.

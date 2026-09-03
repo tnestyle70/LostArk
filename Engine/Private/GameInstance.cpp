@@ -167,18 +167,37 @@ void CGameInstance::Update_Engine(f32_t fTimeDelta)
 	m_pSound_Manager->Update();
 #endif
 
-	m_pObject_Manager->Priority_Update(fTimeDelta);
+	CProfiler* const pProfiler = m_pProfiler.get();
+	{
+		CProfilerScope scope(pProfiler, "Engine.PriorityUpdate");
+		m_pObject_Manager->Priority_Update(fTimeDelta);
+	}
 
 	Refresh_CameraState();
 
-	m_pObject_Manager->Update(fTimeDelta);
-	m_pPhysics_Manager->Update(fTimeDelta);
-	m_pObject_Manager->Post_Physics_Update(fTimeDelta);
+	{
+		CProfilerScope scope(pProfiler, "Engine.ObjectUpdate");
+		m_pObject_Manager->Update(fTimeDelta);
+	}
+	{
+		CProfilerScope scope(pProfiler, "Engine.Physics");
+		m_pPhysics_Manager->Update(fTimeDelta);
+	}
+	{
+		CProfilerScope scope(pProfiler, "Engine.PostPhysicsUpdate");
+		m_pObject_Manager->Post_Physics_Update(fTimeDelta);
+	}
 
 	/* Level gameplay can commit authoritative transforms and bind the
 	follow camera. Run it before render submission and frustum culling. */
-	m_pLevel_Manager->Update(fTimeDelta);
-	m_pObject_Manager->Late_Update(fTimeDelta);
+	{
+		CProfilerScope scope(pProfiler, "Engine.LevelUpdate");
+		m_pLevel_Manager->Update(fTimeDelta);
+	}
+	{
+		CProfilerScope scope(pProfiler, "Engine.LateUpdate");
+		m_pObject_Manager->Late_Update(fTimeDelta);
+	}
 }
 
 void CGameInstance::Refresh_CameraState()

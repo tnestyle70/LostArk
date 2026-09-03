@@ -159,7 +159,7 @@ class ValtanBossToolRingAuthoringContractTests(unittest.TestCase):
     def test_boss_slots_use_shared_typed_draft_and_canonical_save(self) -> None:
         render = function_body(
             self.boss_cpp,
-            "void Client::CBossTool::Render_SelectedPatternRingAuthoring(",
+            "bool_t Client::CBossTool::Render_SelectedPatternRingAuthoring(",
         )
         for marker in (
             "ImGui::InputDouble",
@@ -172,6 +172,27 @@ class ValtanBossToolRingAuthoringContractTests(unittest.TestCase):
             self.assertIn(marker, render)
         self.assertNotIn("static double", render)
         self.assertNotRegex(self.boss_h, r"m_\w*(?:Inner|Outer)Radius")
+        self.assertIn(
+            "every Flow occurrence of %s uses these same radii", render
+        )
+        self.assertIn("Different radii require a different stable Pattern definition", render)
+
+        selected = function_body(
+            self.boss_cpp,
+            "void Client::CBossTool::Render_SelectedPattern()",
+        )
+        self.assertRegex(
+            selected,
+            r"if \(Render_SelectedPatternRingAuthoring\(\*pPattern\)\)\s*"
+            r"return;\s*Render_ConnectionSummary\(\*pPattern, \*pStage\)",
+        )
+        save_button = render.index(
+            'ImGui::Button("Save Canonical Ring Geometry")'
+        )
+        end_disabled = render.index("ImGui::EndDisabled();", save_button)
+        early_return = render.index("return true;", save_button)
+        self.assertLess(save_button, end_disabled)
+        self.assertLess(end_disabled, early_return)
 
         save = function_body(
             self.boss_cpp,

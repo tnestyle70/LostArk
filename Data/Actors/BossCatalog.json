@@ -52,6 +52,16 @@
           ]
         },
         {
+          "combatObjectArchetypeId": "combatobject.valtan.fist-in-out.donut-large",
+          "clientVisualId": "combatobject.visual.valtan.fist-in-out.donut-large.v1",
+          "effectAssetId": "effect.valtan.project-tuned.large-donut",
+          "worldScale": [
+            1.5,
+            1.5,
+            1.5
+          ]
+        },
+        {
           "combatObjectArchetypeId": "combatobject.valtan.ground-roar.rock",
           "clientVisualId": "combatobject.visual.valtan.ground-roar.rock.v1",
           "effectAssetId": "effect.valtan.ground-roar.rock.active",

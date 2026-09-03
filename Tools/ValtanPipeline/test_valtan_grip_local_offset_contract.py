@@ -9,6 +9,9 @@ from Tools.ValtanPipeline import valtan_tuning_pipeline as pipeline
 
 ROOT = Path(__file__).resolve().parents[2]
 GAMEPLAY = ROOT / "Data/Valtan/Valtan.gameplay.json"
+VALTAN_HEADER = ROOT / "Client/Public/Valtan.h"
+VALTAN_SOURCE = ROOT / "Client/Private/Valtan.cpp"
+REPLICATION_SOURCE = ROOT / "Client/Private/ClientReplication.cpp"
 
 
 def load_gameplay() -> dict:
@@ -37,6 +40,41 @@ class ValtanGripLocalOffsetContractTests(unittest.TestCase):
             self.assertEqual(expected, projected["gripLocalOffset"])
             self.assertEqual("CAPTURE", projected["playerResponse"])
             self.assertEqual("BOSS_LEFT_HAND", projected["attachmentSlot"])
+
+    def test_capture_grip_is_deterministic_per_pattern(self) -> None:
+        bindings = {}
+        for pattern in load_gameplay()["patterns"]:
+            grips = [
+                stage["hit"]["gripLocalOffset"]
+                for stage in pattern["stages"]
+                if stage["hit"].get("playerResponse") == "CAPTURE"
+            ]
+            if not grips:
+                continue
+            self.assertTrue(all(grip == grips[0] for grip in grips))
+            bindings[pattern["patternId"]] = grips[0]
+        self.assertEqual(
+            {"VALTAN_TRASH", "VALTAN_TRASH_CATCH_IF", "VALTAN_CATCH_BREATH"},
+            set(bindings),
+        )
+
+    def test_client_lookup_is_pattern_keyed_and_fail_closed(self) -> None:
+        header = VALTAN_HEADER.read_text(encoding="utf-8-sig")
+        valtan = VALTAN_SOURCE.read_text(encoding="utf-8-sig")
+        replication = REPLICATION_SOURCE.read_text(encoding="utf-8-sig")
+        self.assertIn("m_PlayerHandGripLocalOffsetByPatternId", header)
+        self.assertIn("Try_Get_PlayerHandGripLocalOffsetByPatternId", header)
+        self.assertIn(
+            "Pattern has conflicting CAPTURE gripLocalOffset values", valtan
+        )
+        self.assertIn("Get_ServerPatternId()", replication)
+        self.assertIn(
+            "bHasGripLocalOffset =\n"
+            "\t\t\t\tvaltan->Try_Get_PlayerHandGripLocalOffsetByPatternId(",
+            replication,
+        )
+        self.assertIn("retained its Server fallback", replication)
+        self.assertNotIn("(void)valtan->Try_Get_PlayerHandGripLocalOffset(", replication)
 
     def test_missing_grip_rejects_without_mutating_committed_source(self) -> None:
         committed = load_gameplay()

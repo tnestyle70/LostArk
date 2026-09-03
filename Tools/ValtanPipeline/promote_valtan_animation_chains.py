@@ -1796,6 +1796,7 @@ def validate_and_project(
     presentation: dict[str, Any],
     *,
     combat_authoring: dict[str, Any] | None = None,
+    boss_catalog: dict[str, Any] | None = None,
     debug_document: dict[str, Any] | None = None,
     promotion_manifest: dict[str, Any] | None = None,
 ) -> dict[str, str]:
@@ -1807,6 +1808,8 @@ def validate_and_project(
         docs[pipeline.PRESENTATION_AUTHORING_REL] = presentation
         if combat_authoring is not None:
             docs[pipeline.COMBAT_AUTHORING_REL] = combat_authoring
+        if boss_catalog is not None:
+            docs[pipeline.BOSS_CATALOG_REL] = boss_catalog
         pipeline.validate_valtan_native_animation_source(
             repo_root, presentation
         )
@@ -3303,8 +3306,9 @@ def commit_typed_authoring_patch(
     presentation bytes.  Action Composition therefore needs a distinct
     repository-authoring transaction: resolve the effective saved authoring
     head, apply the typed patch once, split it back into the gameplay and
-    presentation owners, project every generated Product, and CAS the complete
-    closure under the same writer lock used by Create New Pattern and PublishV2.
+    presentation owners, keep combat-object definitions and BOSS_VALTAN visual
+    rows in the same typed closure, project every generated Product, and CAS all
+    owners under the same writer lock used by Create New Pattern and PublishV2.
 
     Boss-profile and damage-profile edits are excluded here because those
     owners have their own balance publisher/bootstrap transaction.  Pattern,
@@ -3400,11 +3404,19 @@ def commit_typed_authoring_patch(
                 current_sources,
                 docs,
             )
+            committed_boss_catalog = pipeline.resolve_authoring_boss_catalog_base(
+                repo_root,
+                resolved_authoring_root,
+                base_revision,
+                current_sources,
+                docs,
+            )
             (
                 committed_master,
                 committed_bosses,
                 committed_damage,
                 committed_combat,
+                committed_boss_catalog,
                 operation_count,
             ) = (
                 pipeline.apply_draft_patch(
@@ -3417,7 +3429,9 @@ def commit_typed_authoring_patch(
                     committed_combat,
                     repository_root=repo_root,
                     effect_catalog=docs[pipeline.EFFECT_CATALOG_REL],
+                    boss_catalog=committed_boss_catalog,
                     include_combat_authoring=True,
+                    include_boss_catalog=True,
                 )
             )
             if (
@@ -3438,6 +3452,7 @@ def commit_typed_authoring_patch(
                 gameplay,
                 presentation,
                 combat_authoring=committed_combat,
+                boss_catalog=committed_boss_catalog,
             )
             pattern_sound_pair = read_owner_pair(
                 "Pattern Sound",
@@ -3512,6 +3527,9 @@ def commit_typed_authoring_patch(
                 repo_root / PRESENTATION_REL: _json_text(presentation).encode("utf-8"),
                 repo_root / pipeline.COMBAT_AUTHORING_REL: _json_text(
                     committed_combat
+                ).encode("utf-8"),
+                repo_root / pipeline.BOSS_CATALOG_REL: _json_text(
+                    committed_boss_catalog
                 ).encode("utf-8"),
             }
             for relative, text in outputs.items():

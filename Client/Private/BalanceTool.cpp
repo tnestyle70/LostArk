@@ -725,6 +725,79 @@ namespace
 		return true;
 	}
 
+	struct VALTAN_SAVE_COMMAND_RESULT final
+	{
+		bool ok = false;
+		bool canonicalCommitted = false;
+		std::string expectedSourceRevision;
+		std::string sourceRevision;
+		std::string candidateRevision;
+		std::string applyClass;
+		std::uint32_t changedCount = 0u;
+		std::string failureClass;
+		std::string diagnostic;
+	};
+
+	bool ParseValtanSaveCommandResult(const std::string& captured,
+		VALTAN_SAVE_COMMAND_RESULT& output, std::string& status)
+	{
+		DATA_JSON_VALUE root;
+		const std::string text = TrimWhitespace(captured);
+		if (!CDataJson::Parse(text, root, status) || !root.Is_Object() ||
+			!IsExactObject(root, { "schema", "formatVersion", "ok",
+				"expectedSourceRevision", "canonicalCommitted",
+				"sourceRevision", "candidateRevision", "applyClass",
+				"changedCount", "failureClass", "diagnostic" }) ||
+			!HasSchemaVersion(root,
+				"lostark.valtan-authoring-save-job-result", 1u) ||
+			!ReadBoolean(root, "ok", output.ok) ||
+			!ReadBoolean(root, "canonicalCommitted",
+				output.canonicalCommitted) ||
+			!ReadString(root, "expectedSourceRevision",
+				output.expectedSourceRevision) ||
+			!ReadString(root, "sourceRevision", output.sourceRevision) ||
+			!ReadU32(root, "changedCount", output.changedCount) ||
+			!ReadString(root, "diagnostic", output.diagnostic))
+		{
+			status =
+				"Valtan Save child returned a malformed durable receipt: " +
+				status;
+			return false;
+		}
+		const auto ReadNullableString = [&root, &status](
+			const char* const name, std::string& value) -> bool
+		{
+			const DATA_JSON_VALUE* field = root.Find(name);
+			if (nullptr == field)
+			{
+				status = std::string("Valtan Save receipt is missing ") + name + ".";
+				return false;
+			}
+			if (field->Is_Null())
+			{
+				value.clear();
+				return true;
+			}
+			if (!field->Is_String())
+			{
+				status = std::string("Valtan Save receipt field is invalid: ") +
+					name + ".";
+				return false;
+			}
+			value = field->Get_String();
+			return true;
+		};
+		if (!ReadNullableString("candidateRevision",
+				output.candidateRevision) ||
+			!ReadNullableString("applyClass", output.applyClass) ||
+			!ReadNullableString("failureClass", output.failureClass))
+		{
+			return false;
+		}
+		status.clear();
+		return true;
+	}
+
 	const VALTAN_PATTERN_VIEW* FindValtanPattern(
 		const VALTAN_PATTERN_TREE_VIEW& tree, const std::string& patternId)
 	{
@@ -785,6 +858,23 @@ namespace
 			[&](const VALTAN_STAGE_VIEW& stage)
 			{ return stage.strStageId == stageId; });
 		return pattern.Stages.end() == found ? nullptr : &*found;
+	}
+
+	bool IsForwardValtanStageActionTarget(
+		const VALTAN_PATTERN_VIEW& pattern,
+		const std::string& sourceStageId,
+		const std::string& targetActionId)
+	{
+		const auto source = std::find_if(
+			pattern.Stages.begin(), pattern.Stages.end(),
+			[&sourceStageId](const VALTAN_STAGE_VIEW& stage)
+			{ return stage.strStageId == sourceStageId; });
+		const auto target = std::find_if(
+			pattern.Stages.begin(), pattern.Stages.end(),
+			[&targetActionId](const VALTAN_STAGE_VIEW& stage)
+			{ return stage.strActionId == targetActionId; });
+		return source != pattern.Stages.end() &&
+			target != pattern.Stages.end() && target > source;
 	}
 
 	const VALTAN_COMBAT_OBJECT_EFFECT_VIEW* FindValtanCombatObject(
@@ -1987,6 +2077,28 @@ Client::CBalanceTool::CBalanceTool()
 	}
 }
 
+Client::CBalanceTool::~CBalanceTool()
+{
+	/* The publisher owns a rollback-safe transaction. Detaching the editor must
+	   never terminate that process or delete the only durable diagnostic. The
+	   canonical writer admission held by the child prevents another writer from
+	   overlapping while it finishes. */
+	if (nullptr != m_publishJobProcess)
+	{
+		CloseHandle(static_cast<HANDLE>(m_publishJobProcess));
+		m_publishJobProcess = nullptr;
+	}
+	/* A Save child has the same transaction ownership rule. Closing our
+	   observation handle never terminates it; its immutable input and logs stay
+	   under Intermediate/Logs for recovery. */
+	if (nullptr != m_valtanSaveJobProcess)
+	{
+		CloseHandle(static_cast<HANDLE>(m_valtanSaveJobProcess));
+		m_valtanSaveJobProcess = nullptr;
+	}
+	m_valtanSaveJobReadAdmission.reset();
+}
+
 void Client::CBalanceTool::Open()
 {
 	m_open = true;
@@ -2014,6 +2126,20 @@ bool Client::CBalanceTool::Require_ValtanAuthoringAdmission(
 	const char* const operation,
 	std::string& status) const
 {
+	if (VALTAN_SAVE_JOB_STATE::IDLE != m_valtanSaveJobState)
+	{
+		status = std::string(nullptr == operation ?
+			"Valtan authoring" : operation) +
+			" blocked: an asynchronous Save receipt is still active.";
+		return false;
+	}
+	if (Is_ServerRuntimeSetPublishRunning())
+	{
+		status = std::string(nullptr == operation ?
+			"Valtan authoring" : operation) +
+			" blocked: PUBLISH_BUSY protects the canonical generation while the full DataOnly publisher is running or unobservable.";
+		return false;
+	}
 	if (Can_MutateValtanView(m_eValtanViewAdmission) &&
 		VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED ==
 			m_valtanSourceJoin.state &&
@@ -2711,6 +2837,7 @@ bool Client::CBalanceTool::Get_ValtanAuthoringState(
 bool Client::CBalanceTool::Get_ValtanScriptedSequenceDraft(
 	std::vector<std::string>& patternIds,
 	std::uint32_t& interStepPursuitMs,
+	std::vector<std::uint32_t>& transitionPursuitMs,
 	std::string& status) const
 {
 	if (!Require_ValtanAuthoringAdmission(
@@ -2731,6 +2858,8 @@ bool Client::CBalanceTool::Get_ValtanScriptedSequenceDraft(
 	patternIds = m_valtanPatternTree.ScriptedSequencePatternIds;
 	interStepPursuitMs =
 		m_valtanPatternTree.iScriptedSequenceInterStepPursuitMs;
+	transitionPursuitMs =
+		m_valtanPatternTree.ScriptedSequenceTransitionPursuitMs;
 	status = "Valtan gameplay scriptedSequence draft is ready.";
 	return true;
 }
@@ -2738,6 +2867,7 @@ bool Client::CBalanceTool::Get_ValtanScriptedSequenceDraft(
 bool Client::CBalanceTool::Set_ValtanScriptedSequenceDraft(
 	const std::vector<std::string>& patternIds,
 	const std::uint32_t interStepPursuitMs,
+	const std::vector<std::uint32_t>& transitionPursuitMs,
 	std::string& status)
 {
 	if (!Require_ValtanAuthoringAdmission(
@@ -2750,6 +2880,18 @@ bool Client::CBalanceTool::Set_ValtanScriptedSequenceDraft(
 	{
 		status =
 			"Valtan scriptedSequence requires 1..255 Patterns and a 100..10000 ms pursuit interval.";
+		return false;
+	}
+	if (transitionPursuitMs.size() + 1u != patternIds.size() ||
+		!std::all_of(
+			transitionPursuitMs.begin(), transitionPursuitMs.end(),
+			[](const std::uint32_t pursuitMs)
+			{
+				return pursuitMs >= 100u && pursuitMs <= 10000u;
+			}))
+	{
+		status =
+			"Valtan scriptedSequence requires one valid pursuit interval for every adjacent Pattern transition.";
 		return false;
 	}
 	for (std::size_t index = 0u; index < patternIds.size(); ++index)
@@ -2773,7 +2915,9 @@ bool Client::CBalanceTool::Set_ValtanScriptedSequenceDraft(
 	}
 	if (m_valtanPatternTree.ScriptedSequencePatternIds == patternIds &&
 		m_valtanPatternTree.iScriptedSequenceInterStepPursuitMs ==
-			interStepPursuitMs)
+			interStepPursuitMs &&
+		m_valtanPatternTree.ScriptedSequenceTransitionPursuitMs ==
+			transitionPursuitMs)
 	{
 		status = "Valtan gameplay scriptedSequence is unchanged.";
 		return true;
@@ -2781,6 +2925,8 @@ bool Client::CBalanceTool::Set_ValtanScriptedSequenceDraft(
 	m_valtanPatternTree.ScriptedSequencePatternIds = patternIds;
 	m_valtanPatternTree.iScriptedSequenceInterStepPursuitMs =
 		interStepPursuitMs;
+	m_valtanPatternTree.ScriptedSequenceTransitionPursuitMs =
+		transitionPursuitMs;
 	MarkDirty(true);
 	status =
 		"Staged the Valtan gameplay scriptedSequence. Save commits this order with the Pattern definitions and generated Products.";
@@ -2802,6 +2948,38 @@ bool Client::CBalanceTool::Get_ValtanCanonicalSourceRevision(
 	}
 	status = "Valtan canonical repository source identity is pinned.";
 	return true;
+}
+
+bool Client::CBalanceTool::Get_ValtanPublishSourceRevision(
+	std::string& sourceRevision,
+	std::string& status) const
+{
+	if (!m_valtanCommittedRevisionPendingReopen.empty())
+	{
+		if (m_valtanDraftGeneration !=
+			m_valtanCommittedReopenDraftGeneration)
+		{
+			status =
+				"A newer Valtan draft exists after the committed source receipt; publish was rejected without discarding either revision.";
+			return false;
+		}
+		sourceRevision = m_valtanCommittedRevisionPendingReopen;
+		if (!IsLowerSha256(sourceRevision))
+		{
+			status = "The pending Valtan commit receipt is invalid.";
+			return false;
+		}
+		status =
+			"Pinned the exact Valtan source receipt whose editor reopen is pending.";
+		return true;
+	}
+	if (m_dirty)
+	{
+		status =
+			"Runtime publish requires a saved Valtan source; unsaved edits were preserved.";
+		return false;
+	}
+	return Get_ValtanCanonicalSourceRevision(sourceRevision, status);
 }
 
 bool Client::CBalanceTool::Add_ValtanStageEffectCue(
@@ -4364,6 +4542,140 @@ bool Client::CBalanceTool::Get_ValtanCounterWindowDraft(
 	return true;
 }
 
+bool Client::CBalanceTool::Get_ValtanStageBranchDrafts(
+	const std::string& patternId,
+	const std::string& stageId,
+	std::vector<VALTAN_STAGE_BRANCH_EDIT>& branches,
+	std::vector<std::string>& targetActionIds,
+	std::string& status) const
+{
+	branches.clear();
+	targetActionIds.clear();
+	if (!Require_ValtanAuthoringAdmission("Valtan branch draft", status))
+		return false;
+	const VALTAN_PATTERN_VIEW* pattern =
+		FindValtanPattern(m_valtanPatternTree, patternId);
+	if (nullptr == pattern || !pattern->bAuthoringMasterManaged)
+	{
+		status = "Valtan branch draft pattern is not authoring-master managed: " +
+			patternId + ".";
+		return false;
+	}
+	const auto source = std::find_if(
+		pattern->Stages.begin(), pattern->Stages.end(),
+		[&stageId](const VALTAN_STAGE_VIEW& candidate)
+		{ return candidate.strStageId == stageId; });
+	if (source == pattern->Stages.end())
+	{
+		status = "Valtan branch draft stage is stale or missing: " + patternId +
+			"/" + stageId + ".";
+		return false;
+	}
+	for (const VALTAN_STAGE_BRANCH_VIEW& branch : source->Branches)
+	{
+		VALTAN_STAGE_BRANCH_EDIT edit;
+		edit.outcome = branch.strOutcome;
+		edit.nextActionId = branch.strNextActionId.value_or(std::string());
+		edit.crossPattern = branch.strNextPatternId.has_value();
+		branches.push_back(std::move(edit));
+	}
+	auto candidate = source;
+	for (++candidate; candidate != pattern->Stages.end(); ++candidate)
+	{
+		targetActionIds.push_back(candidate->strActionId);
+	}
+	status.clear();
+	return true;
+}
+
+bool Client::CBalanceTool::Set_ValtanStageBranchDraft(
+	const std::string& patternId,
+	const std::string& stageId,
+	const VALTAN_STAGE_BRANCH_EDIT& branch,
+	std::string& status)
+{
+	if (!Require_ValtanAuthoringAdmission("Valtan branch edit", status))
+		return false;
+	VALTAN_PATTERN_VIEW* pattern =
+		FindValtanPattern(m_valtanPatternTree, patternId);
+	if (nullptr == pattern || !pattern->bAuthoringMasterManaged)
+	{
+		status = "Valtan branch edit rejected: pattern is not authoring-master managed: " +
+			patternId + ".";
+		return false;
+	}
+	VALTAN_STAGE_VIEW* stage = FindValtanStage(*pattern, stageId);
+	if (nullptr == stage)
+	{
+		status = "Valtan branch edit rejected: stage is stale or missing: " +
+			patternId + "/" + stageId + ".";
+		return false;
+	}
+	if ("COUNTER_HIT" == branch.outcome)
+	{
+		status =
+			"Valtan branch edit rejected: COUNTER_HIT is owned by the typed Counter window editor.";
+		return false;
+	}
+	if ("TIMEOUT" == branch.outcome)
+	{
+		status =
+			"Valtan branch edit rejected: TIMEOUT is owned by the typed Counter or Stage topology editor.";
+		return false;
+	}
+	const auto matching = std::count_if(
+		stage->Branches.begin(), stage->Branches.end(),
+		[&branch](const VALTAN_STAGE_BRANCH_VIEW& candidate)
+		{ return candidate.strOutcome == branch.outcome; });
+	if (1 != matching)
+	{
+		status = "Valtan branch edit rejected: outcome does not resolve exactly once: " +
+			patternId + "/" + stageId + "/" + branch.outcome + ".";
+		return false;
+	}
+	VALTAN_STAGE_BRANCH_VIEW& target = *std::find_if(
+		stage->Branches.begin(), stage->Branches.end(),
+		[&branch](const VALTAN_STAGE_BRANCH_VIEW& candidate)
+		{ return candidate.strOutcome == branch.outcome; });
+	if (target.strNextPatternId.has_value())
+	{
+		status =
+			"Valtan branch edit rejected: cross-pattern follow-up branches are read-only here.";
+		return false;
+	}
+	if (!branch.nextActionId.empty())
+	{
+		if (branch.nextActionId == stage->strActionId)
+		{
+			status = "Valtan branch edit rejected: a Stage cannot branch to itself.";
+			return false;
+		}
+		if (!IsForwardValtanStageActionTarget(
+				*pattern, stageId, branch.nextActionId))
+		{
+			status = "Valtan branch edit rejected: target is not a forward same-pattern Stage action: " +
+				branch.nextActionId + ".";
+			return false;
+		}
+	}
+	const std::string currentTarget =
+		target.strNextActionId.value_or(std::string());
+	if (currentTarget == branch.nextActionId)
+	{
+		status = "Valtan branch draft is unchanged.";
+		return true;
+	}
+	if (branch.nextActionId.empty())
+		target.strNextActionId.reset();
+	else
+		target.strNextActionId = branch.nextActionId;
+	MarkDirty(true);
+	status = "Staged branch " + patternId + "/" + stageId + "/" + branch.outcome +
+		" -> " + (branch.nextActionId.empty() ? "(pattern end)" : branch.nextActionId) +
+		". Press Save to validate the graph (cycles and dangling targets are rejected there) and publish.";
+	return true;
+}
+
 bool Client::CBalanceTool::Set_ValtanCounterWindowDraft(
 	const std::string& patternId,
 	const std::string& stageId,
@@ -4655,8 +4967,836 @@ bool Client::CBalanceTool::Set_ValtanCounterProxyDraft(
 	return true;
 }
 
+bool Client::CBalanceTool::Apply_CommittedValtanProduct(std::string& status)
+{
+	/* Route every post-commit continuation through the receipt-aware retry.
+	   In particular, COMMIT_SUCCEEDED_REOPEN_FAILED deliberately retains the
+	   pre-reopen dirty snapshot and cannot pass Save_ValtanProduct's clean gate
+	   until this path reopens the exact durable commit receipt. */
+	return Retry_ValtanProductPublishApply(status);
+}
+
+bool Client::CBalanceTool::Publish_ServerRuntimeSet(
+	const std::string& expectedValtanSourceRevision,
+	std::string& status)
+{
+	if (VALTAN_SAVE_JOB_STATE::IDLE != m_valtanSaveJobState)
+	{
+		status =
+			"SAVE_BUSY: runtime publish cannot overlap an active or unobservable canonical Save transaction.";
+		return false;
+	}
+	if (SERVER_RUNTIME_PUBLISH_STATE::RUNNING == m_publishJobState ||
+		SERVER_RUNTIME_PUBLISH_STATE::OBSERVATION_LOST == m_publishJobState)
+	{
+		status = SERVER_RUNTIME_PUBLISH_STATE::OBSERVATION_LOST ==
+			m_publishJobState ?
+			"The previous runtime publisher can no longer be observed and may still own its transaction. This Client will not start a duplicate job; inspect the durable log and restart the Client only after that child exits." :
+			"A Server runtime publish is already running; wait for it to finish.";
+		return false;
+	}
+	if (!IsLowerSha256(expectedValtanSourceRevision))
+	{
+		status =
+			"Runtime publish requires one exact lowercase SHA-256 Valtan source revision.";
+		return false;
+	}
+	std::string publishableRevision;
+	std::string revisionStatus;
+	if (!Get_ValtanPublishSourceRevision(
+			publishableRevision, revisionStatus) ||
+		publishableRevision != expectedValtanSourceRevision)
+	{
+		status =
+			"STALE_REVISION: runtime publish expected Valtan source " +
+			expectedValtanSourceRevision.substr(0u, 12u) +
+			", but the current durable publish receipt is " +
+			(publishableRevision.empty() ? std::string("unavailable") :
+				publishableRevision.substr(0u, 12u)) + ". " + revisionStatus;
+		return false;
+	}
+	void* processHandle = nullptr;
+	std::filesystem::path outputPath;
+	const std::wstring arguments =
+		L"-DataOnly -ExpectedValtanSourceRevision " +
+		std::wstring(
+			expectedValtanSourceRevision.begin(),
+			expectedValtanSourceRevision.end());
+	m_publishJobExpectedRevision = expectedValtanSourceRevision;
+	m_publishJobOutputPath.clear();
+	if (!LaunchPipelineProcess(L"Build\\Run-FullPipeline.ps1",
+			arguments.c_str(), processHandle, outputPath, status))
+	{
+		m_publishJobState = SERVER_RUNTIME_PUBLISH_STATE::FAILED;
+		m_publishJobStatus = status;
+		return false;
+	}
+	m_publishJobProcess = processHandle;
+	m_publishJobOutputPath = std::move(outputPath);
+	m_publishJobStartTick = GetTickCount64();
+	m_publishJobWarned = false;
+	m_publishJobState = SERVER_RUNTIME_PUBLISH_STATE::RUNNING;
+	m_publishJobStatus =
+		"Publishing all canonical data domains for exact Valtan source " +
+		expectedValtanSourceRevision.substr(0u, 12u) +
+		" in the background. Durable log: " +
+		m_publishJobOutputPath.string();
+	status = m_publishJobStatus;
+	return true;
+}
+
+void Client::CBalanceTool::Update_ServerRuntimeSetPublishJob()
+{
+	if (SERVER_RUNTIME_PUBLISH_STATE::RUNNING != m_publishJobState ||
+		nullptr == m_publishJobProcess)
+	{
+		return;
+	}
+	const HANDLE process = static_cast<HANDLE>(m_publishJobProcess);
+	const DWORD wait = WaitForSingleObject(process, 0u);
+	if (WAIT_TIMEOUT == wait)
+	{
+		const std::uint64_t elapsedMs =
+			GetTickCount64() - m_publishJobStartTick;
+		if (!m_publishJobWarned && elapsedMs >= 180000u)
+		{
+			/* A warning only: the transactional publisher must finish or roll
+			   back by itself, so it is never terminated from here. */
+			m_publishJobWarned = true;
+			m_publishJobStatus =
+				"Server runtime publish is still running after 180 s; it will finish or roll back on its own.";
+		}
+		return;
+	}
+	if (WAIT_FAILED == wait)
+	{
+		const DWORD waitError = GetLastError();
+		CloseHandle(process);
+		m_publishJobProcess = nullptr;
+		m_publishJobState = SERVER_RUNTIME_PUBLISH_STATE::OBSERVATION_LOST;
+		m_publishJobStatus =
+			"Runtime publisher observation failed (Win32 " +
+			std::to_string(waitError) +
+			"). The child was not terminated and this Client will not start a duplicate transaction. Durable log: " +
+			m_publishJobOutputPath.string();
+		return;
+	}
+	DWORD exitCode = 1u;
+	const bool readExitCode = WAIT_OBJECT_0 == wait &&
+		0 != GetExitCodeProcess(process, &exitCode);
+	CloseHandle(process);
+	m_publishJobProcess = nullptr;
+	const std::string output = ReadTextFile(m_publishJobOutputPath);
+	const std::string tail = output.size() > 600u ?
+		output.substr(output.size() - 600u) : output;
+	const std::string expectedReceipt =
+		"FULL_PIPELINE_SOURCE_REVISION\t" + m_publishJobExpectedRevision;
+	const bool exactReceipt =
+		!m_publishJobExpectedRevision.empty() &&
+		std::string::npos != output.find(expectedReceipt);
+	if (readExitCode && 0u == exitCode && exactReceipt)
+	{
+		m_publishJobState = SERVER_RUNTIME_PUBLISH_STATE::SUCCEEDED;
+		m_publishJobStatus =
+			"Published all canonical data domains for exact Valtan source " +
+			m_publishJobExpectedRevision.substr(0u, 12u) +
+			"; restart Server.exe to load it. Durable log: " +
+			m_publishJobOutputPath.string();
+	}
+	else if (!readExitCode || 0u != exitCode)
+	{
+		m_publishJobState = SERVER_RUNTIME_PUBLISH_STATE::FAILED;
+		m_publishJobStatus = "Server runtime publish failed (exit " +
+			std::to_string(readExitCode ? exitCode : 0xFFFFFFFFu) +
+			"). " + tail + " Durable log: " +
+			m_publishJobOutputPath.string();
+	}
+	else
+	{
+		m_publishJobState = SERVER_RUNTIME_PUBLISH_STATE::FAILED;
+		m_publishJobStatus =
+			"STALE_REVISION: runtime publisher exited successfully without the exact source receipt " +
+			m_publishJobExpectedRevision.substr(0u, 12u) +
+			"; runtime activation was not acknowledged. Durable log: " +
+			m_publishJobOutputPath.string();
+	}
+}
+
+Client::CBalanceTool::SERVER_RUNTIME_PUBLISH_STATE
+Client::CBalanceTool::Get_ServerRuntimeSetPublishState(
+	std::string& status,
+	double& elapsedSeconds,
+	std::string* const expectedValtanSourceRevision) const
+{
+	status = m_publishJobStatus;
+	if (nullptr != expectedValtanSourceRevision)
+		*expectedValtanSourceRevision = m_publishJobExpectedRevision;
+	elapsedSeconds = SERVER_RUNTIME_PUBLISH_STATE::RUNNING == m_publishJobState ?
+		static_cast<double>(GetTickCount64() - m_publishJobStartTick) / 1000.0 :
+		0.0;
+	return m_publishJobState;
+}
+
+bool Client::CBalanceTool::Begin_ValtanProductSave(
+	std::uint64_t& jobId, std::string& status)
+{
+	return Begin_ValtanSaveJob(m_dirty, true, nullptr, jobId, status);
+}
+
+bool Client::CBalanceTool::Begin_ValtanCompositionSave(
+	const VALTAN_COMPOSITION_OWNER_DRAFTS& ownerDrafts,
+	const bool publishAfterSave,
+	std::uint64_t& jobId, std::string& status)
+{
+	return Begin_ValtanSaveJob(
+		true, publishAfterSave, &ownerDrafts, jobId, status);
+}
+
+bool Client::CBalanceTool::Begin_ValtanProductPublishRetry(
+	const bool publishAfterSave,
+	std::uint64_t& jobId, std::string& status)
+{
+	if (m_dirty && m_valtanCommittedRevisionPendingReopen.empty())
+	{
+		status =
+			"Retry requires a clean saved Valtan source; unsaved edits were preserved.";
+		return false;
+	}
+	return Begin_ValtanSaveJob(
+		false, publishAfterSave, nullptr, jobId, status);
+}
+
+bool Client::CBalanceTool::Begin_ValtanSaveJob(
+	const bool commitCanonical,
+	const bool publishAfterSave,
+	const VALTAN_COMPOSITION_OWNER_DRAFTS* const ownerDrafts,
+	std::uint64_t& jobId, std::string& status)
+{
+	jobId = 0u;
+	if (VALTAN_SAVE_JOB_STATE::IDLE != m_valtanSaveJobState)
+	{
+		status =
+			"SAVE_BUSY: consume the existing Valtan Save receipt before starting another transaction.";
+		return false;
+	}
+	if (Is_ServerRuntimeSetPublishRunning())
+	{
+		status =
+			"PUBLISH_BUSY: canonical Save is blocked while the full DataOnly publisher is running or cannot be observed.";
+		return false;
+	}
+	const bool retryingPendingCommit = !commitCanonical &&
+		!m_valtanCommittedRevisionPendingReopen.empty();
+	if (!retryingPendingCommit &&
+		!Require_ValtanAuthoringAdmission("Valtan asynchronous Save", status))
+	{
+		return false;
+	}
+	if (commitCanonical &&
+		!m_valtanCommittedRevisionPendingReopen.empty())
+	{
+		status =
+			"Save will not repeat an already committed source write; retry its exact publish receipt first.";
+		return false;
+	}
+	if (!commitCanonical &&
+		!m_valtanCommittedRevisionPendingReopen.empty() &&
+		m_valtanDraftGeneration !=
+			m_valtanCommittedReopenDraftGeneration)
+	{
+		status =
+			"Retry preserved a newer in-memory draft and will not reopen an earlier committed revision.";
+		return false;
+	}
+	const std::string expectedSourceRevision =
+		!commitCanonical &&
+		!m_valtanCommittedRevisionPendingReopen.empty() ?
+		m_valtanCommittedRevisionPendingReopen : m_valtanSourceRevision;
+	if (!IsLowerSha256(expectedSourceRevision))
+	{
+		status = "Save requires one admitted lowercase SHA-256 source revision.";
+		return false;
+	}
+
+	const std::uint64_t requestedId = m_valtanSaveJobNextId++;
+	m_valtanSaveJobId = requestedId;
+	m_valtanSaveJobExpectedSourceRevision = expectedSourceRevision;
+	m_valtanSaveJobCommittedSourceRevision = commitCanonical ?
+		std::string{} : expectedSourceRevision;
+	m_valtanSaveJobCandidateRevision.clear();
+	m_valtanSaveJobApplyClass.clear();
+	m_valtanSaveJobCommitCanonicalRequested = commitCanonical;
+	m_valtanSaveJobCanonicalCommitted = !commitCanonical &&
+		!m_valtanCommittedRevisionPendingReopen.empty();
+	m_valtanSaveJobPublishAfterSave = publishAfterSave;
+	m_valtanSaveJobDraftGeneration = m_valtanDraftGeneration;
+	m_valtanSaveJobOutputPaths.clear();
+	m_valtanSaveJobWarned = false;
+	m_valtanSaveJobReadAdmission.reset();
+	m_valtanVerifiedReloadSourceRevision.clear();
+	m_valtanVerifiedReloadSourceJoin = {};
+	const std::filesystem::path projectRoot =
+		CProjectDataRoot::Get().parent_path();
+	m_valtanSaveJobDirectory = projectRoot / L"Intermediate" / L"Logs" /
+		L"ValtanAuthoringSave" /
+		(L"job-" + std::to_wstring(GetCurrentProcessId()) + L"-" +
+			std::to_wstring(requestedId) + L"-" +
+			std::to_wstring(GetTickCount64()));
+	std::error_code directoryError;
+	std::filesystem::create_directories(
+		m_valtanSaveJobDirectory, directoryError);
+	if (directoryError)
+	{
+		status = "Could not create the durable Valtan Save job directory: " +
+			directoryError.message() + ".";
+		Reset_ValtanSaveJob();
+		return false;
+	}
+	m_valtanSaveJobResultPath =
+		m_valtanSaveJobDirectory / L"save-result.json";
+	if (!Launch_ValtanSaveCommand(commitCanonical, ownerDrafts, status))
+	{
+		Reset_ValtanSaveJob();
+		return false;
+	}
+	m_valtanSaveJobState = VALTAN_SAVE_JOB_STATE::RUNNING;
+	m_valtanSaveJobPhase = VALTAN_SAVE_JOB_PHASE::SAVE_COMMAND_RUNNING;
+	m_valtanSaveJobStatus =
+		"Valtan Save job " + std::to_string(requestedId) +
+		" is running for exact source " +
+		expectedSourceRevision.substr(0u, 12u) + ". Durable log: " +
+		m_valtanSaveJobCurrentOutputPath.string();
+	jobId = requestedId;
+	status = m_valtanSaveJobStatus;
+	return true;
+}
+
+bool Client::CBalanceTool::Launch_ValtanSaveCommand(
+	const bool commitCanonical,
+	const VALTAN_COMPOSITION_OWNER_DRAFTS* const ownerDrafts,
+	std::string& status)
+{
+	std::wstring arguments = L"-ExpectedSourceRevision " +
+		std::wstring(m_valtanSaveJobExpectedSourceRevision.begin(),
+			m_valtanSaveJobExpectedSourceRevision.end()) +
+		L" -ResultPath \"" + m_valtanSaveJobResultPath.wstring() + L"\"";
+	if (!m_valtanSaveJobPublishAfterSave)
+		arguments += L" -CommitOnly";
+	if (commitCanonical)
+	{
+		std::string patchText;
+		if (!BuildValtanDraftPatch(patchText, status))
+			return false;
+		const std::filesystem::path patchPath =
+			m_valtanSaveJobDirectory / L"draft-patch.json";
+		if (!DurableWrite(patchPath, patchText, status))
+			return false;
+		arguments += L" -DraftPatchPath \"" + patchPath.wstring() + L"\"";
+	}
+	if (nullptr != ownerDrafts)
+	{
+		const bool hasSoundBaseline =
+			!ownerDrafts->patternSoundBaselineBytes.empty();
+		const bool hasSoundCandidate =
+			!ownerDrafts->patternSoundCandidateBytes.empty();
+		const bool hasEffectBaseline =
+			!ownerDrafts->effectV2BaselineBytes.empty();
+		const bool hasEffectCandidate =
+			!ownerDrafts->effectV2CandidateBytes.empty();
+		if (hasSoundBaseline != hasSoundCandidate ||
+			hasEffectBaseline != hasEffectCandidate)
+		{
+			status =
+				"Composition owner baseline/candidate pairs are incomplete.";
+			return false;
+		}
+		const auto StageOwnerPair = [&](const wchar_t* const stem,
+			const std::string& baseline,
+			const std::string& candidate,
+			const wchar_t* const baselineArgument,
+			const wchar_t* const candidateArgument) -> bool
+		{
+			if (baseline.empty())
+				return true;
+			const std::filesystem::path baselinePath =
+				m_valtanSaveJobDirectory /
+				(std::wstring(stem) + L"-baseline.json");
+			const std::filesystem::path candidatePath =
+				m_valtanSaveJobDirectory /
+				(std::wstring(stem) + L"-candidate.json");
+			if (!DurableWrite(baselinePath, baseline, status) ||
+				!DurableWrite(candidatePath, candidate, status))
+			{
+				return false;
+			}
+			arguments += L" ";
+			arguments += baselineArgument;
+			arguments += L" \"" + baselinePath.wstring() + L"\" ";
+			arguments += candidateArgument;
+			arguments += L" \"" + candidatePath.wstring() + L"\"";
+			return true;
+		};
+		if (!StageOwnerPair(L"pattern-sound",
+				ownerDrafts->patternSoundBaselineBytes,
+				ownerDrafts->patternSoundCandidateBytes,
+				L"-PatternSoundBaselinePath",
+				L"-PatternSoundCandidatePath") ||
+			!StageOwnerPair(L"effect-v2",
+				ownerDrafts->effectV2BaselineBytes,
+				ownerDrafts->effectV2CandidateBytes,
+				L"-EffectV2BaselinePath",
+				L"-EffectV2CandidatePath"))
+		{
+			return false;
+		}
+	}
+	void* processHandle = nullptr;
+	std::filesystem::path outputPath;
+	if (!LaunchPipelineProcess(
+			L"ValtanPipeline\\Run-ValtanAuthoringSaveJob.ps1",
+			arguments.c_str(), processHandle, outputPath, status))
+	{
+		return false;
+	}
+	m_valtanSaveJobProcess = processHandle;
+	m_valtanSaveJobCurrentOutputPath = std::move(outputPath);
+	m_valtanSaveJobOutputPaths.push_back(m_valtanSaveJobCurrentOutputPath);
+	m_valtanSaveJobStartTick = GetTickCount64();
+	return true;
+}
+
+bool Client::CBalanceTool::TryLaunch_ValtanSaveReloadManifest(
+	std::string& status)
+{
+	m_valtanSaveJobReadAdmission =
+		std::make_unique<CValtanCanonicalProductReadAdmission>();
+	VALTAN_CANONICAL_READ_DIAGNOSTIC diagnostic;
+	if (!m_valtanSaveJobReadAdmission->Acquire(diagnostic))
+	{
+		m_valtanSaveJobReadAdmission.reset();
+		if (diagnostic.Is_AutomaticRetryable())
+		{
+			status =
+				"Waiting for the exact committed Product read admission: " +
+				diagnostic.strStatus;
+			return true;
+		}
+		status =
+			"COMMIT_SUCCEEDED_REOPEN_FAILED: canonical read admission was rejected: " +
+			diagnostic.strStatus;
+		return false;
+	}
+	void* processHandle = nullptr;
+	std::filesystem::path outputPath;
+	if (!LaunchPipelineProcess(
+			L"ValtanPipeline\\Publish-ValtanTuningRuntimeSet.ps1",
+			L"-Mode SourceManifest", processHandle, outputPath, status))
+	{
+		m_valtanSaveJobReadAdmission.reset();
+		return false;
+	}
+	m_valtanSaveJobProcess = processHandle;
+	m_valtanSaveJobCurrentOutputPath = std::move(outputPath);
+	m_valtanSaveJobOutputPaths.push_back(m_valtanSaveJobCurrentOutputPath);
+	m_valtanSaveJobStartTick = GetTickCount64();
+	m_valtanSaveJobWarned = false;
+	m_valtanSaveJobPhase = VALTAN_SAVE_JOB_PHASE::RELOAD_MANIFEST_RUNNING;
+	status =
+		"Verifying the committed source under one shared canonical read admission.";
+	return true;
+}
+
+void Client::CBalanceTool::Fail_ValtanSaveJob(
+	std::string status, const bool observationLost)
+{
+	m_valtanSaveJobReadAdmission.reset();
+	m_valtanSaveJobProcess = nullptr;
+	m_valtanSaveJobPhase = VALTAN_SAVE_JOB_PHASE::NONE;
+	m_valtanSaveJobState = observationLost ?
+		VALTAN_SAVE_JOB_STATE::OBSERVATION_LOST :
+		VALTAN_SAVE_JOB_STATE::FAILED;
+	if (!m_valtanSaveJobCurrentOutputPath.empty())
+		status += " Durable log: " +
+			m_valtanSaveJobCurrentOutputPath.string();
+	m_valtanSaveJobStatus = std::move(status);
+}
+
+void Client::CBalanceTool::Update_ValtanSaveJob()
+{
+	if (VALTAN_SAVE_JOB_STATE::RUNNING != m_valtanSaveJobState)
+		return;
+	if (VALTAN_SAVE_JOB_PHASE::WAITING_RELOAD_MANIFEST_ADMISSION ==
+		m_valtanSaveJobPhase)
+	{
+		std::string launchStatus;
+		if (!TryLaunch_ValtanSaveReloadManifest(launchStatus))
+		{
+			Fail_ValtanSaveJob(std::move(launchStatus));
+			return;
+		}
+		m_valtanSaveJobStatus = std::move(launchStatus);
+		return;
+	}
+	if (nullptr == m_valtanSaveJobProcess)
+	{
+		Fail_ValtanSaveJob(
+			"Valtan Save state lost its child process handle.");
+		return;
+	}
+	const HANDLE process = static_cast<HANDLE>(m_valtanSaveJobProcess);
+	const DWORD wait = WaitForSingleObject(process, 0u);
+	if (WAIT_TIMEOUT == wait)
+	{
+		if (!m_valtanSaveJobWarned &&
+			GetTickCount64() - m_valtanSaveJobStartTick >= 180000u)
+		{
+			m_valtanSaveJobWarned = true;
+			m_valtanSaveJobStatus =
+				"Valtan Save is still running after 180 s; the child remains responsible for commit or rollback.";
+		}
+		return;
+	}
+	if (WAIT_FAILED == wait)
+	{
+		const DWORD waitError = GetLastError();
+		CloseHandle(process);
+		m_valtanSaveJobProcess = nullptr;
+		Fail_ValtanSaveJob(
+			"OBSERVATION_LOST: Valtan Save child wait failed (Win32 " +
+			std::to_string(waitError) +
+			"). The child was not terminated and another writer will not start.",
+			true);
+		return;
+	}
+	DWORD exitCode = 1u;
+	const bool readExitCode = WAIT_OBJECT_0 == wait &&
+		0 != GetExitCodeProcess(process, &exitCode);
+	CloseHandle(process);
+	m_valtanSaveJobProcess = nullptr;
+	const std::string output = ReadTextFile(m_valtanSaveJobCurrentOutputPath);
+	if (VALTAN_SAVE_JOB_PHASE::SAVE_COMMAND_RUNNING ==
+		m_valtanSaveJobPhase)
+	{
+		const std::string receiptText =
+			ReadTextFile(m_valtanSaveJobResultPath);
+		VALTAN_SAVE_COMMAND_RESULT result;
+		std::string parseStatus;
+		const bool parsed = ParseValtanSaveCommandResult(
+			receiptText, result, parseStatus);
+		if (parsed &&
+			result.expectedSourceRevision ==
+				m_valtanSaveJobExpectedSourceRevision &&
+			IsLowerSha256(result.sourceRevision) &&
+			result.canonicalCommitted)
+		{
+			m_valtanSaveJobCanonicalCommitted = true;
+			m_valtanSaveJobCommittedSourceRevision = result.sourceRevision;
+			m_valtanCommittedRevisionPendingReopen = result.sourceRevision;
+			m_valtanCommittedReopenDraftGeneration =
+				m_valtanSaveJobDraftGeneration;
+			if (0u != result.changedCount)
+			{
+				CValtanTuningCommandService::Get().
+					Record_GameplaySourceActivationExpectation(
+						{}, "NOT_ACTIVATED",
+						"Pattern data was saved asynchronously. Its exact Product/runtime publication is still pending.");
+			}
+		}
+		const bool invalidCandidateReceipt =
+			m_valtanSaveJobPublishAfterSave ?
+			(!IsLowerSha256(result.candidateRevision) ||
+				(result.applyClass != "HOT_RELOAD" &&
+				 result.applyClass != "ENCOUNTER_RESET" &&
+				 result.applyClass != "SERVER_RESTART")) :
+			(!result.candidateRevision.empty() || !result.applyClass.empty());
+		if (!readExitCode || 0u != exitCode || !parsed || !result.ok ||
+			result.expectedSourceRevision !=
+				m_valtanSaveJobExpectedSourceRevision ||
+			result.canonicalCommitted !=
+				m_valtanSaveJobCommitCanonicalRequested ||
+			!IsLowerSha256(result.sourceRevision) ||
+			(!m_valtanSaveJobCommitCanonicalRequested &&
+			 result.sourceRevision !=
+				m_valtanSaveJobExpectedSourceRevision) ||
+			invalidCandidateReceipt)
+		{
+			const std::string raw = SummarizePipelineOutput(output);
+			Fail_ValtanSaveJob(
+				(parsed && !result.failureClass.empty() ?
+					result.failureClass + ": " + result.diagnostic :
+					(!parseStatus.empty() ? parseStatus :
+						"Valtan Save child failed (exit " +
+						std::to_string(readExitCode ? exitCode :
+							0xFFFFFFFFu) + "): " + raw)));
+			return;
+		}
+		m_valtanSaveJobCommittedSourceRevision = result.sourceRevision;
+		m_valtanSaveJobCandidateRevision = result.candidateRevision;
+		m_valtanSaveJobApplyClass = result.applyClass;
+		m_valtanSaveJobPhase =
+			VALTAN_SAVE_JOB_PHASE::WAITING_RELOAD_MANIFEST_ADMISSION;
+		m_valtanSaveJobStatus =
+			"Candidate receipt is complete; waiting to reopen exact canonical source " +
+			result.sourceRevision.substr(0u, 12u) + ".";
+		return;
+	}
+
+	VALTAN_PIPELINE_RESULT manifest;
+	std::string parseStatus;
+	if (!readExitCode || 0u != exitCode ||
+		!ParseValtanPipelineResult(output, manifest, parseStatus) ||
+		!manifest.ok || manifest.command != "SOURCE_MANIFEST" ||
+		manifest.sourceRevision != m_valtanSaveJobCommittedSourceRevision ||
+		manifest.repositorySourceRevision !=
+			m_valtanSaveJobCommittedSourceRevision ||
+		!manifest.hasAuthoringRevisionField ||
+		!manifest.authoringRevision.empty() ||
+		!manifest.hasSplitJoinValidatedField ||
+		!manifest.splitJoinValidated ||
+		!IsLowerSha256(manifest.gameplaySourceRevision) ||
+		!IsLowerSha256(manifest.presentationSourceRevision))
+	{
+		Fail_ValtanSaveJob(
+			"STALE_REVISION: exact post-candidate source verification failed: " +
+			(!parseStatus.empty() ? parseStatus : SummarizePipelineOutput(output)));
+		return;
+	}
+	if (m_valtanDraftGeneration != m_valtanSaveJobDraftGeneration)
+	{
+		Fail_ValtanSaveJob(
+			"DRAFT_ADVANCED: the immutable Save finished, but a newer in-memory draft exists; canonical reload was not allowed to discard it.");
+		return;
+	}
+	m_valtanVerifiedReloadSourceRevision = manifest.sourceRevision;
+	m_valtanVerifiedReloadSourceJoin = {};
+	m_valtanVerifiedReloadSourceJoin.gameplaySourcePath =
+		VALTAN_GAMEPLAY_SOURCE_PATH;
+	m_valtanVerifiedReloadSourceJoin.presentationSourcePath =
+		VALTAN_PRESENTATION_SOURCE_PATH;
+	m_valtanVerifiedReloadSourceJoin.gameplayRevision =
+		manifest.gameplaySourceRevision;
+	m_valtanVerifiedReloadSourceJoin.presentationRevision =
+		manifest.presentationSourceRevision;
+	m_valtanVerifiedReloadSourceJoin.repositoryRevision =
+		manifest.repositorySourceRevision;
+	m_valtanVerifiedReloadSourceJoin.joinedRevision = manifest.sourceRevision;
+	m_valtanVerifiedReloadSourceJoin.state =
+		VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED;
+	m_valtanVerifiedReloadSourceJoin.diagnostic =
+		"Strict join was reverified under the Save job's shared canonical read admission.";
+	const bool reloaded = Reload();
+	m_valtanVerifiedReloadSourceRevision.clear();
+	m_valtanVerifiedReloadSourceJoin = {};
+	m_valtanSaveJobReadAdmission.reset();
+	if (!reloaded ||
+		m_valtanSourceRevision != m_valtanSaveJobCommittedSourceRevision)
+	{
+		Fail_ValtanSaveJob(
+			"COMMIT_SUCCEEDED_REOPEN_FAILED: exact canonical reload failed after candidate publication: " +
+			m_status);
+		return;
+	}
+	std::string publishableRevision;
+	std::string publishableStatus;
+	if (!Get_ValtanPublishSourceRevision(
+			publishableRevision, publishableStatus) ||
+		publishableRevision != m_valtanSaveJobCommittedSourceRevision)
+	{
+		Fail_ValtanSaveJob(
+			"STALE_REVISION: the canonical reload does not match Save receipt " +
+			m_valtanSaveJobCommittedSourceRevision.substr(0u, 12u) + ". " +
+			publishableStatus);
+		return;
+	}
+	if (!m_valtanSaveJobPublishAfterSave)
+	{
+		m_valtanSaveJobPhase = VALTAN_SAVE_JOB_PHASE::NONE;
+		m_valtanSaveJobState = VALTAN_SAVE_JOB_STATE::SUCCEEDED;
+		m_valtanSaveJobStatus =
+			"Saved and reopened exact Valtan source " +
+			m_valtanSaveJobCommittedSourceRevision.substr(0u, 12u) +
+			". Automatic candidate/runtime publish is disabled for this Save.";
+		return;
+	}
+	m_valtanCandidateRevision = m_valtanSaveJobCandidateRevision;
+	m_valtanCandidateApplyClass = m_valtanSaveJobApplyClass;
+	std::string activationStatus;
+	if (!Complete_ValtanCandidateActivation(activationStatus))
+	{
+		Fail_ValtanSaveJob(
+			"ACTIVATION_PREPARATION_FAILED: " + activationStatus);
+		return;
+	}
+	m_valtanSaveJobPhase = VALTAN_SAVE_JOB_PHASE::NONE;
+	m_valtanSaveJobState = VALTAN_SAVE_JOB_STATE::SUCCEEDED;
+	m_valtanSaveJobStatus =
+		"Saved and reopened exact Valtan source " +
+		m_valtanSaveJobCommittedSourceRevision.substr(0u, 12u) +
+		", published candidate " +
+		m_valtanSaveJobCandidateRevision.substr(0u, 12u) + ". " +
+		activationStatus +
+		" Accept local owner bytes, consume this receipt, reopen Composition/Boss graphs, then start Full DataOnly for the same source revision.";
+}
+
+Client::CBalanceTool::VALTAN_SAVE_JOB_STATE
+Client::CBalanceTool::Get_ValtanSaveJobState(
+	VALTAN_SAVE_JOB_RECEIPT& receipt) const
+{
+	receipt = {};
+	receipt.jobId = m_valtanSaveJobId;
+	receipt.state = m_valtanSaveJobState;
+	receipt.canonicalCommitted = m_valtanSaveJobCanonicalCommitted;
+	receipt.runtimePublishRequested = m_valtanSaveJobPublishAfterSave;
+	receipt.expectedSourceRevision = m_valtanSaveJobExpectedSourceRevision;
+	receipt.committedSourceRevision =
+		m_valtanSaveJobCommittedSourceRevision;
+	receipt.candidateRevision = m_valtanSaveJobCandidateRevision;
+	receipt.applyClass = m_valtanSaveJobApplyClass;
+	receipt.status = m_valtanSaveJobStatus;
+	for (const std::filesystem::path& path : m_valtanSaveJobOutputPaths)
+		receipt.durableLogs.push_back(path.string());
+	return m_valtanSaveJobState;
+}
+
+bool Client::CBalanceTool::Consume_ValtanSaveJobReceipt(
+	const std::uint64_t jobId,
+	VALTAN_SAVE_JOB_RECEIPT& receipt,
+	std::string& status)
+{
+	if (0u == jobId || jobId != m_valtanSaveJobId)
+	{
+		status = "Valtan Save receipt job id is stale or unknown.";
+		return false;
+	}
+	if (VALTAN_SAVE_JOB_STATE::RUNNING == m_valtanSaveJobState ||
+		VALTAN_SAVE_JOB_STATE::IDLE == m_valtanSaveJobState)
+	{
+		status = "Valtan Save receipt is not terminal yet.";
+		return false;
+	}
+	if (VALTAN_SAVE_JOB_STATE::OBSERVATION_LOST == m_valtanSaveJobState)
+	{
+		status =
+			"OBSERVATION_LOST receipt cannot be consumed while its child may still own the writer; inspect the durable log and restart only after it exits.";
+		return false;
+	}
+	(void)Get_ValtanSaveJobState(receipt);
+	status = receipt.status;
+	Reset_ValtanSaveJob();
+	return true;
+}
+
+void Client::CBalanceTool::Reset_ValtanSaveJob()
+{
+	if (nullptr != m_valtanSaveJobProcess)
+	{
+		CloseHandle(static_cast<HANDLE>(m_valtanSaveJobProcess));
+		m_valtanSaveJobProcess = nullptr;
+	}
+	m_valtanSaveJobReadAdmission.reset();
+	m_valtanSaveJobDirectory.clear();
+	m_valtanSaveJobResultPath.clear();
+	m_valtanSaveJobCurrentOutputPath.clear();
+	m_valtanSaveJobOutputPaths.clear();
+	m_valtanSaveJobId = 0u;
+	m_valtanSaveJobDraftGeneration = 0u;
+	m_valtanSaveJobStartTick = 0u;
+	m_valtanSaveJobWarned = false;
+	m_valtanSaveJobCommitCanonicalRequested = false;
+	m_valtanSaveJobCanonicalCommitted = false;
+	m_valtanSaveJobPublishAfterSave = true;
+	m_valtanSaveJobExpectedSourceRevision.clear();
+	m_valtanSaveJobCommittedSourceRevision.clear();
+	m_valtanSaveJobCandidateRevision.clear();
+	m_valtanSaveJobApplyClass.clear();
+	m_valtanSaveJobStatus.clear();
+	m_valtanSaveJobState = VALTAN_SAVE_JOB_STATE::IDLE;
+	m_valtanSaveJobPhase = VALTAN_SAVE_JOB_PHASE::NONE;
+	m_valtanVerifiedReloadSourceRevision.clear();
+	m_valtanVerifiedReloadSourceJoin = {};
+}
+
+bool Client::CBalanceTool::Complete_ValtanCandidateActivation(
+	std::string& status)
+{
+	if (!IsLowerSha256(m_valtanCandidateRevision) ||
+		(m_valtanCandidateApplyClass != "HOT_RELOAD" &&
+		 m_valtanCandidateApplyClass != "ENCOUNTER_RESET" &&
+		 m_valtanCandidateApplyClass != "SERVER_RESTART"))
+	{
+		status =
+			"Candidate activation requires one exact candidate receipt and apply class.";
+		return false;
+	}
+	const std::string revisionLabel =
+		m_valtanCandidateRevision.substr(0u, 12u);
+	CValtanTuningCommandService& tuningService =
+		CValtanTuningCommandService::Get();
+	std::string expectationStatus;
+	tuningService.Record_GameplaySourceActivationExpectation(
+		m_valtanCandidateRevision, m_valtanCandidateApplyClass,
+		expectationStatus);
+	if ("HOT_RELOAD" != m_valtanCandidateApplyClass)
+	{
+		status = "Saved Product revision " + revisionLabel +
+			". This change requires " + m_valtanCandidateApplyClass +
+			"; the currently running encounter was left unchanged.";
+		return true;
+	}
+	const CNetworkManager::GAMEPLAY_REVISION_CLIENT_STATE& revisionState =
+		CNetworkManager::Get().Get_GameplayRevisionState();
+	if (!CNetworkManager::Get().Is_Connected() ||
+		!revisionState.ServerActiveRevision.Is_Valid())
+	{
+		status = "Saved Product revision " + revisionLabel +
+			". No admitted Debug Server revision is connected, so it will be active after Server restart/re-entry.";
+		return true;
+	}
+	if (tuningService.Has_PendingCommand())
+	{
+		std::string queueStatus;
+		if (!tuningService.Queue_GameplaySourceCandidateAfterPending(
+				m_valtanCandidateRevision, m_valtanCandidateApplyClass,
+				queueStatus))
+		{
+			status = "Saved Product revision " + revisionLabel +
+				". The previous live-update transaction is still pending and the latest candidate could not be queued: " +
+				queueStatus;
+			return true;
+		}
+		status = "Saved Product revision " + revisionLabel + ". " +
+			queueStatus;
+		return true;
+	}
+	std::string applyStatus;
+	if (!Apply_ValtanRevision(applyStatus))
+	{
+		tuningService.Record_GameplaySourceActivationExpectation(
+			m_valtanCandidateRevision, m_valtanCandidateApplyClass,
+			applyStatus);
+		status = "Saved Product revision " + revisionLabel +
+			". Live apply was not submitted and the active runtime was preserved: " +
+			applyStatus;
+		return true;
+	}
+	status = "Saved Product revision " + revisionLabel +
+		" and submitted the Server/Client tick-boundary live update. Runtime becomes active only after the coordinator reports COMMITTED.";
+	return true;
+}
+
 bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)
 {
+	if (VALTAN_SAVE_JOB_STATE::IDLE != m_valtanSaveJobState)
+	{
+		status = "SAVE_BUSY: a Valtan Save receipt is already active.";
+		return false;
+	}
+	if (Is_ServerRuntimeSetPublishRunning())
+	{
+		status =
+			"PUBLISH_BUSY: Save cannot overlap the full DataOnly publisher.";
+		return false;
+	}
 	std::string stepStatus;
 	if (m_dirty && !m_valtanCommittedRevisionPendingReopen.empty())
 	{
@@ -4763,6 +5903,14 @@ bool Client::CBalanceTool::Save_ValtanProduct(std::string& status)
 
 bool Client::CBalanceTool::Save_ValtanCanonicalProduct(std::string& status)
 {
+	if (VALTAN_SAVE_JOB_STATE::IDLE != m_valtanSaveJobState ||
+		Is_ServerRuntimeSetPublishRunning())
+	{
+		status = Is_ServerRuntimeSetPublishRunning() ?
+			"PUBLISH_BUSY: canonical Save cannot overlap the full DataOnly publisher." :
+			"SAVE_BUSY: canonical Save cannot overlap an asynchronous Save receipt.";
+		return false;
+	}
 	std::string stepStatus;
 	if (!Validate_ValtanDraft(stepStatus))
 	{
@@ -4785,6 +5933,14 @@ bool Client::CBalanceTool::Save_ValtanCanonicalProduct(std::string& status)
 bool Client::CBalanceTool::Retry_ValtanProductPublishApply(
 	std::string& status)
 {
+	if (VALTAN_SAVE_JOB_STATE::IDLE != m_valtanSaveJobState ||
+		Is_ServerRuntimeSetPublishRunning())
+	{
+		status = Is_ServerRuntimeSetPublishRunning() ?
+			"PUBLISH_BUSY: Retry cannot overlap the full DataOnly publisher." :
+			"SAVE_BUSY: Retry cannot overlap an asynchronous Save receipt.";
+		return false;
+	}
 	/* CommitCanonicalDraft is the only source writer. A successful commit may
 	   have returned its durable receipt before this editor could reopen the new
 	   Product. Reopen exactly that receipt only while no subsequent authoring
@@ -4843,6 +5999,14 @@ bool Client::CBalanceTool::Save_ValtanCompositionProduct(
 	const VALTAN_COMPOSITION_OWNER_DRAFTS& ownerDrafts,
 	std::string& status)
 {
+	if (VALTAN_SAVE_JOB_STATE::IDLE != m_valtanSaveJobState ||
+		Is_ServerRuntimeSetPublishRunning())
+	{
+		status = Is_ServerRuntimeSetPublishRunning() ?
+			"PUBLISH_BUSY: Composition Save cannot overlap the full DataOnly publisher." :
+			"SAVE_BUSY: Composition Save cannot overlap an asynchronous Save receipt.";
+		return false;
+	}
 	std::string stepStatus;
 	if (!RunValtanDraftCommand(
 			L"CommitCanonicalDraft", stepStatus, &ownerDrafts))
@@ -4907,6 +6071,19 @@ void Client::CBalanceTool::MarkDirty(const bool changed)
 
 bool Client::CBalanceTool::Reload()
 {
+	if (VALTAN_SAVE_JOB_STATE::IDLE != m_valtanSaveJobState &&
+		m_valtanVerifiedReloadSourceRevision.empty())
+	{
+		m_status =
+			"SAVE_BUSY: canonical reload is blocked until the asynchronous Save receipt is terminal and consumed.";
+		return false;
+	}
+	if (Is_ServerRuntimeSetPublishRunning())
+	{
+		m_status =
+			"PUBLISH_BUSY: canonical reload is blocked while the full DataOnly publisher is running or cannot be observed.";
+		return false;
+	}
 	/* Revoke write authority before any I/O. Every early return below keeps the
 	   prior committed vectors intact, but they are diagnostic-only until this
 	   exact parse/validate/stage transaction reaches the final commit. */
@@ -5345,14 +6522,61 @@ bool Client::CBalanceTool::Reload()
 						"combatobject.valtan.high-jump.target-axe";
 				});
 			if (airborne->CombatObjectEffects.end() != object)
+			{
 				valtanAxeVolley.countPerResolvedTarget = object->iSpawnValue;
+				valtanAxeVolley.layoutKind = object->strVolleyLayout == "SINGLE" ?
+					"TARGET_CENTER" : "RADIAL_AROUND_TARGET";
+				valtanAxeVolley.radiusM = object->fVolleyRadiusM;
+				valtanAxeVolley.startAngleDegrees =
+					object->fVolleyStartAngleDegrees;
+				valtanAxeVolley.angleStepDegrees =
+					object->fVolleyAngleStepDegrees;
+				valtanAxeVolley.allowOverlap = object->bVolleyAllowOverlap;
+				valtanAxeVolley.maximumTotalObjects =
+					object->iVolleyMaximumTotalObjects;
+				valtanAxeVolley.spawnScheduleKind = "INTERVAL";
+				valtanAxeVolley.spawnCount = object->iSpawnScheduleCount;
+				valtanAxeVolley.spawnFirstOffsetMs =
+					object->iFirstSpawnOffsetMs;
+				valtanAxeVolley.spawnIntervalMs = object->iSpawnIntervalMs;
+				valtanAxeVolley.arenaRandomKind = object->strArenaRandomKind;
+				valtanAxeVolley.arenaAnchor = object->strArenaAnchor;
+				valtanAxeVolley.arenaRandomCount = object->iArenaRandomCount;
+				valtanAxeVolley.arenaRandomRadiusM =
+					object->fArenaRandomRadiusM;
+				valtanAxeVolley.arenaHeightToleranceM =
+					object->fArenaHeightToleranceM;
+			}
 		}
 	}
 
 	std::string valtanSourceRevision;
 	std::string valtanAuthoringRevision;
 	VALTAN_SOURCE_JOIN_STATUS valtanSourceJoin;
-	if (!QueryValtanSourceRevision(valtanSourceRevision,
+	if (!m_valtanVerifiedReloadSourceRevision.empty())
+	{
+		if (!IsLowerSha256(m_valtanVerifiedReloadSourceRevision) ||
+			VALTAN_SOURCE_JOIN_STATE::JOINED_VALIDATED !=
+				m_valtanVerifiedReloadSourceJoin.state ||
+			m_valtanVerifiedReloadSourceJoin.repositoryRevision !=
+				m_valtanVerifiedReloadSourceRevision ||
+			m_valtanVerifiedReloadSourceJoin.joinedRevision !=
+				m_valtanVerifiedReloadSourceRevision ||
+			!IsLowerSha256(
+				m_valtanVerifiedReloadSourceJoin.gameplayRevision) ||
+			!IsLowerSha256(
+				m_valtanVerifiedReloadSourceJoin.presentationRevision) ||
+			nullptr == m_valtanSaveJobReadAdmission ||
+			!m_valtanSaveJobReadAdmission->Is_Acquired())
+		{
+			m_status =
+				"Reload failed: the asynchronous Save supplied an invalid or unlocked source receipt.";
+			return false;
+		}
+		valtanSourceRevision = m_valtanVerifiedReloadSourceRevision;
+		valtanSourceJoin = m_valtanVerifiedReloadSourceJoin;
+	}
+	else if (!QueryValtanSourceRevision(valtanSourceRevision,
 		valtanAuthoringRevision, valtanSourceJoin, status))
 	{
 		m_status = "Reload failed: Valtan source revision admission failed: " +
@@ -6309,9 +7533,9 @@ bool Client::CBalanceTool::RestoreValtanSavedAuthoring(
 			savedAxeStageDurationMs, spawnIntervalMs) ||
 		(spawnCount > 1u && 0u == spawnIntervalMs) ||
 		(1u == spawnCount && 0u != spawnIntervalMs) ||
-		static_cast<std::uint64_t>(spawnCount - 1u) * spawnIntervalMs >=
-			savedAxeStageDurationMs ||
-		3u != spawnCount || 1333u != spawnIntervalMs)
+		static_cast<std::uint64_t>(spawnFirstOffsetMs) +
+			static_cast<std::uint64_t>(spawnCount - 1u) * spawnIntervalMs >=
+			savedAxeStageDurationMs)
 	{
 		if (status.empty())
 			status = "Saved Valtan axe-volley spawn schedule is invalid.";
@@ -6322,21 +7546,25 @@ bool Client::CBalanceTool::RestoreValtanSavedAuthoring(
 	std::uint32_t arenaRandomCount = 0u;
 	double arenaRandomRadiusM = 0.0;
 	double arenaHeightToleranceM = 0.0;
-	if (!IsExactObject(*arenaRandom,
-			{ "kind", "anchor", "count", "radiusM", "heightToleranceM" }) ||
-		!ReadString(*arenaRandom, "kind", arenaRandomKind) ||
-		arenaRandomKind != "RANDOM_NAVIGABLE_CIRCLE" ||
-		!ReadString(*arenaRandom, "anchor", arenaAnchor) ||
-		arenaAnchor != "BOSS_SPAWN_POSITION" ||
-		!readBoundedU32(*arenaRandom, "count", 1u, 32u,
-			arenaRandomCount) ||
-		!readBoundedDouble(*arenaRandom, "radiusM", 0.01, 1000.0,
-			arenaRandomRadiusM) ||
-		!readBoundedDouble(*arenaRandom, "heightToleranceM", 0.0, 1000.0,
-			arenaHeightToleranceM) ||
-		axeMaximum < axeCount + arenaRandomCount ||
-		4u != arenaRandomCount || 14.0 != arenaRandomRadiusM ||
-		1.0 != arenaHeightToleranceM)
+	const bool noArenaSupplement =
+		IsExactObject(*arenaRandom, { "kind" }) &&
+		ReadString(*arenaRandom, "kind", arenaRandomKind) &&
+		"NONE" == arenaRandomKind;
+	const bool hasArenaSupplement =
+		IsExactObject(*arenaRandom,
+			{ "kind", "anchor", "count", "radiusM", "heightToleranceM" }) &&
+		ReadString(*arenaRandom, "kind", arenaRandomKind) &&
+		"RANDOM_NAVIGABLE_CIRCLE" == arenaRandomKind &&
+		ReadString(*arenaRandom, "anchor", arenaAnchor) &&
+		"BOSS_SPAWN_POSITION" == arenaAnchor &&
+		readBoundedU32(*arenaRandom, "count", 1u, 32u,
+			arenaRandomCount) &&
+		readBoundedDouble(*arenaRandom, "radiusM", 0.01, 1000.0,
+			arenaRandomRadiusM) &&
+		readBoundedDouble(*arenaRandom, "heightToleranceM", 0.0, 1000.0,
+			arenaHeightToleranceM);
+	if ((!noArenaSupplement && !hasArenaSupplement) ||
+		axeMaximum < axeCount + arenaRandomCount)
 	{
 		if (status.empty())
 			status = "Saved Valtan axe-volley arena random contract is invalid.";
@@ -6375,6 +7603,25 @@ bool Client::CBalanceTool::RestoreValtanSavedAuthoring(
 				return false;
 			}
 			object->iSpawnValue = axeCount;
+			object->strVolleyLayout = "TARGET_CENTER" == axeVolley.layoutKind ?
+				"SINGLE" : "RADIAL";
+			object->fVolleyRadiusM = static_cast<f32_t>(axeVolley.radiusM);
+			object->fVolleyStartAngleDegrees = static_cast<f32_t>(
+				axeVolley.startAngleDegrees);
+			object->fVolleyAngleStepDegrees = static_cast<f32_t>(
+				axeVolley.angleStepDegrees);
+			object->bVolleyAllowOverlap = axeVolley.allowOverlap;
+			object->iVolleyMaximumTotalObjects = axeVolley.maximumTotalObjects;
+			object->iSpawnScheduleCount = axeVolley.spawnCount;
+			object->iFirstSpawnOffsetMs = axeVolley.spawnFirstOffsetMs;
+			object->iSpawnIntervalMs = axeVolley.spawnIntervalMs;
+			object->strArenaRandomKind = axeVolley.arenaRandomKind;
+			object->strArenaAnchor = axeVolley.arenaAnchor;
+			object->iArenaRandomCount = axeVolley.arenaRandomCount;
+			object->fArenaRandomRadiusM = static_cast<f32_t>(
+				axeVolley.arenaRandomRadiusM);
+			object->fArenaHeightToleranceM = static_cast<f32_t>(
+				axeVolley.arenaHeightToleranceM);
 		}
 	}
 
@@ -8151,6 +9398,89 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 	return true;
 }
 
+bool Client::CBalanceTool::LaunchPipelineProcess(const wchar_t* scriptName,
+	const wchar_t* arguments, void*& outProcessHandle,
+	std::filesystem::path& outOutputPath, std::string& status) const
+{
+	outProcessHandle = nullptr;
+	outOutputPath.clear();
+	const std::filesystem::path projectRoot = CProjectDataRoot::Get().parent_path();
+	const std::filesystem::path script = projectRoot / L"Tools" / scriptName;
+	if (!std::filesystem::is_regular_file(script))
+	{
+		status = "Pipeline script is missing.";
+		return false;
+	}
+	std::wstring command = L"powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"" +
+		script.wstring() + L"\"";
+	if (nullptr != arguments && L'\0' != arguments[0])
+		command += L" " + std::wstring(arguments);
+	std::vector<wchar_t> mutableCommand(command.begin(), command.end());
+	mutableCommand.push_back(L'\0');
+	std::error_code pathError;
+	const std::filesystem::path outputDirectory = projectRoot /
+		L"Intermediate" / L"Logs" / L"ValtanRuntimePublish";
+	std::filesystem::create_directories(outputDirectory, pathError);
+	if (pathError)
+	{
+		status = "Could not create durable runtime publish log directory: " +
+			pathError.message() + ".";
+		return false;
+	}
+	const std::filesystem::path outputPath = outputDirectory /
+		(L"LostArk.ValtanBalancePipeline." + std::to_wstring(GetCurrentProcessId()) +
+			L"." + std::to_wstring(GetTickCount64()) + L".log");
+	SECURITY_ATTRIBUTES security{};
+	security.nLength = sizeof(security);
+	security.bInheritHandle = TRUE;
+	const HANDLE outputHandle = CreateFileW(
+		outputPath.c_str(), GENERIC_WRITE,
+		FILE_SHARE_READ | FILE_SHARE_DELETE, &security, CREATE_ALWAYS,
+		FILE_ATTRIBUTE_NORMAL, nullptr);
+	if (INVALID_HANDLE_VALUE == outputHandle)
+	{
+		status = "Could not create pipeline output capture (Win32 " +
+			std::to_string(GetLastError()) + ").";
+		return false;
+	}
+	const HANDLE inputHandle = CreateFileW(
+		L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+		&security, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+	if (INVALID_HANDLE_VALUE == inputHandle)
+	{
+		const DWORD error = GetLastError();
+		CloseHandle(outputHandle);
+		std::filesystem::remove(outputPath, pathError);
+		status = "Could not create pipeline input handle (Win32 " +
+			std::to_string(error) + ").";
+		return false;
+	}
+	STARTUPINFOW startup{};
+	startup.cb = sizeof(startup);
+	startup.dwFlags = STARTF_USESTDHANDLES;
+	startup.hStdInput = inputHandle;
+	startup.hStdOutput = outputHandle;
+	startup.hStdError = outputHandle;
+	PROCESS_INFORMATION process{};
+	const BOOL created = CreateProcessW(nullptr, mutableCommand.data(), nullptr,
+		nullptr, TRUE, CREATE_NO_WINDOW, nullptr, projectRoot.c_str(), &startup,
+		&process);
+	const DWORD createError = created ? ERROR_SUCCESS : GetLastError();
+	CloseHandle(inputHandle);
+	CloseHandle(outputHandle);
+	if (!created)
+	{
+		std::filesystem::remove(outputPath, pathError);
+		status = "Could not start the balance pipeline (Win32 " +
+			std::to_string(createError) + ").";
+		return false;
+	}
+	CloseHandle(process.hThread);
+	outProcessHandle = process.hProcess;
+	outOutputPath = outputPath;
+	return true;
+}
+
 bool Client::CBalanceTool::RunPipeline(const wchar_t* scriptName,
 	const wchar_t* arguments, std::string& status,
 	std::string* const capturedOutput) const
@@ -8418,7 +9748,9 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 	if (m_valtanPatternTree.ScriptedSequencePatternIds !=
 			m_loadedValtanPatternTree.ScriptedSequencePatternIds ||
 		m_valtanPatternTree.iScriptedSequenceInterStepPursuitMs !=
-			m_loadedValtanPatternTree.iScriptedSequenceInterStepPursuitMs)
+			m_loadedValtanPatternTree.iScriptedSequenceInterStepPursuitMs ||
+		m_valtanPatternTree.ScriptedSequenceTransitionPursuitMs !=
+			m_loadedValtanPatternTree.ScriptedSequenceTransitionPursuitMs)
 	{
 		std::ostringstream operation;
 		operation << "    { \"op\": \"SET_SCRIPTED_SEQUENCE\", "
@@ -8437,6 +9769,16 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 				operation << ", ";
 			operation << Quote(
 				m_valtanPatternTree.ScriptedSequencePatternIds[index]);
+		}
+		operation << "], \"transitionPursuitMs\": [";
+		for (std::size_t index = 0u;
+			index < m_valtanPatternTree.ScriptedSequenceTransitionPursuitMs.size();
+			++index)
+		{
+			if (0u != index)
+				operation << ", ";
+			operation <<
+				m_valtanPatternTree.ScriptedSequenceTransitionPursuitMs[index];
 		}
 		operation << "] }";
 		append(operation);
@@ -9012,6 +10354,51 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 						<< ", \"durationMs\": " << stage.iDurationMs << " }";
 					append(operation);
 				}
+				for (const VALTAN_STAGE_BRANCH_VIEW& branch : stage.Branches)
+				{
+					/* COUNTER_HIT/TIMEOUT and cross-pattern follow-ups keep their
+					   typed owners; only an ordinary forward same-pattern retarget
+					   is a SET_STAGE_BRANCH edit. */
+					if ("COUNTER_HIT" == branch.strOutcome ||
+						"TIMEOUT" == branch.strOutcome ||
+						branch.strNextPatternId.has_value())
+					{
+						continue;
+					}
+					const auto loadedBranch = std::find_if(
+						loadedStage->Branches.begin(), loadedStage->Branches.end(),
+						[&branch](const VALTAN_STAGE_BRANCH_VIEW& candidate)
+						{ return candidate.strOutcome == branch.strOutcome; });
+					if (loadedStage->Branches.end() == loadedBranch ||
+						loadedBranch->strNextPatternId.has_value() ||
+						loadedBranch->strNextActionId == branch.strNextActionId)
+					{
+						continue;
+					}
+					if (branch.strNextActionId.has_value() &&
+						!IsForwardValtanStageActionTarget(
+							pattern, stage.strStageId,
+							*branch.strNextActionId))
+					{
+						status =
+							"Branch retarget target must be a forward same-pattern Stage action: " +
+							pattern.strPatternId + "/" + stage.strStageId + "/" +
+							branch.strOutcome + ".";
+						return false;
+					}
+					std::ostringstream operation;
+					operation << "    { \"op\": \"SET_STAGE_BRANCH\", "
+						"\"patternId\": " << Quote(pattern.strPatternId)
+						<< ", \"stageId\": " << Quote(stage.strStageId)
+						<< ", \"outcome\": " << Quote(branch.strOutcome)
+						<< ", \"nextActionId\": ";
+					if (branch.strNextActionId.has_value())
+						operation << Quote(*branch.strNextActionId);
+					else
+						operation << "null";
+					operation << " }";
+					append(operation);
+				}
 				if (!EqualValtanAnimation(stage, *loadedStage))
 				{
 					if (stage.bSuppressAnimation || stage.ClipOccurrences.empty())
@@ -9153,10 +10540,17 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 				for (std::size_t branchIndex = 0u;
 					branchIndex < branches.size(); ++branchIndex)
 				{
-					if (branches[branchIndex]->strOutcome !=
-							loadedBranches[branchIndex]->strOutcome ||
-						branches[branchIndex]->strNextActionId !=
-							loadedBranches[branchIndex]->strNextActionId)
+					const VALTAN_STAGE_BRANCH_VIEW& branch =
+						*branches[branchIndex];
+					const VALTAN_STAGE_BRANCH_VIEW& loadedBranch =
+						*loadedBranches[branchIndex];
+					const bool_t bImmutableTarget =
+						"TIMEOUT" == branch.strOutcome ||
+						branch.strNextPatternId.has_value();
+					if (branch.strOutcome != loadedBranch.strOutcome ||
+						branch.strNextPatternId != loadedBranch.strNextPatternId ||
+						(bImmutableTarget &&
+						 branch.strNextActionId != loadedBranch.strNextActionId))
 					{
 						status = "Loaded non-Counter branch stable identity changed: " +
 							pattern.strPatternId + "/" + stage.strStageId + ".";
@@ -9667,14 +11061,17 @@ bool Client::CBalanceTool::BuildValtanDraftPatch(
 			<< m_valtanAxeVolley.spawnFirstOffsetMs
 			<< ", \"intervalMs\": " << m_valtanAxeVolley.spawnIntervalMs
 			<< " }, \"arenaRandom\": { \"kind\": "
-			<< Quote(m_valtanAxeVolley.arenaRandomKind)
-			<< ", \"anchor\": " << Quote(m_valtanAxeVolley.arenaAnchor)
-			<< ", \"count\": " << m_valtanAxeVolley.arenaRandomCount
-			<< ", \"radiusM\": "
-			<< FormatJsonNumber(m_valtanAxeVolley.arenaRandomRadiusM)
-			<< ", \"heightToleranceM\": "
-			<< FormatJsonNumber(m_valtanAxeVolley.arenaHeightToleranceM)
-			<< " } }";
+			<< Quote(m_valtanAxeVolley.arenaRandomKind);
+		if ("RANDOM_NAVIGABLE_CIRCLE" == m_valtanAxeVolley.arenaRandomKind)
+		{
+			operation << ", \"anchor\": " << Quote(m_valtanAxeVolley.arenaAnchor)
+				<< ", \"count\": " << m_valtanAxeVolley.arenaRandomCount
+				<< ", \"radiusM\": "
+				<< FormatJsonNumber(m_valtanAxeVolley.arenaRandomRadiusM)
+				<< ", \"heightToleranceM\": "
+				<< FormatJsonNumber(m_valtanAxeVolley.arenaHeightToleranceM);
+		}
+		operation << " } }";
 		append(operation);
 	}
 
@@ -9742,6 +11139,23 @@ bool Client::CBalanceTool::RunValtanDraftCommand(
 		0 != std::wcscmp(mode, L"PublishCandidate")))
 	{
 		status = "Unsupported Valtan draft command.";
+		return false;
+	}
+	const bool writesCanonicalOrCandidate =
+		0 == std::wcscmp(mode, L"SaveAuthoring") ||
+		0 == std::wcscmp(mode, L"CommitCanonicalDraft") ||
+		0 == std::wcscmp(mode, L"PublishCandidate");
+	if (writesCanonicalOrCandidate && Is_ServerRuntimeSetPublishRunning())
+	{
+		status =
+			"PUBLISH_BUSY: the synchronous Valtan writer is blocked while the full DataOnly publisher is running or unobservable.";
+		return false;
+	}
+	if (writesCanonicalOrCandidate &&
+		VALTAN_SAVE_JOB_STATE::IDLE != m_valtanSaveJobState)
+	{
+		status =
+			"SAVE_BUSY: the legacy synchronous writer cannot overlap an asynchronous Valtan Save receipt.";
 		return false;
 	}
 	const bool requiresValidatedSplitJoin =
@@ -10995,8 +12409,33 @@ void Client::CBalanceTool::Render()
 		if (ImGui::Button("Save & Apply##ValtanBalance"))
 		{
 			std::string status;
-			(void)Save_ValtanProduct(status);
+			const bool applied = Save_ValtanProduct(status);
 			m_status = std::move(status);
+			if (applied && m_valtanCommittedRevisionPendingReopen.empty())
+			{
+				/* Same refresh as Publish Server Data, so the next Server start
+				   loads the revision that was just saved and applied. */
+				std::string publishStatus;
+				std::string publishRevision;
+				std::string revisionStatus;
+				if (!Get_ValtanPublishSourceRevision(
+						publishRevision, revisionStatus))
+				{
+					m_status += " [Publish] FAILED: " + revisionStatus;
+				}
+				else
+				{
+					m_status += Publish_ServerRuntimeSet(
+						publishRevision, publishStatus) ?
+						" [Publish] " + publishStatus :
+						" [Publish] FAILED: " + publishStatus;
+				}
+			}
+			else if (applied)
+			{
+				m_status +=
+					" [Publish] PENDING: reopen the exact committed revision with Retry Product Publish / Apply before publishing runtime data.";
+			}
 		}
 		ImGui::EndDisabled();
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
@@ -11011,8 +12450,26 @@ void Client::CBalanceTool::Render()
 		if (ImGui::Button("Retry Product Publish / Apply##ValtanBalance"))
 		{
 			std::string status;
-			(void)Retry_ValtanProductPublishApply(status);
+			const bool_t retried = Retry_ValtanProductPublishApply(status);
 			m_status = std::move(status);
+			if (retried)
+			{
+				std::string publishRevision;
+				std::string revisionStatus;
+				std::string publishStatus;
+				if (!Get_ValtanPublishSourceRevision(
+						publishRevision, revisionStatus))
+				{
+					m_status += " [Publish] FAILED: " + revisionStatus;
+				}
+				else
+				{
+					m_status += Publish_ServerRuntimeSet(
+						publishRevision, publishStatus) ?
+						" [Publish] " + publishStatus :
+						" [Publish] FAILED: " + publishStatus;
+				}
+			}
 		}
 		ImGui::EndDisabled();
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
@@ -11097,13 +12554,47 @@ void Client::CBalanceTool::Render()
 		if (ImGui::Button("Publish Server Data"))
 		{
 			std::string status;
-			m_status = RunPipeline(L"GameplayPipeline\\Publish-BalanceRuntimeSet.ps1",
-				L"-Mode Publish", status) ?
-				"Published. Restart Server.exe to apply." : status;
+			std::string publishRevision;
+			std::string revisionStatus;
+			if (!Get_ValtanPublishSourceRevision(
+					publishRevision, revisionStatus))
+			{
+				status = std::move(revisionStatus);
+			}
+			else
+			{
+				(void)Publish_ServerRuntimeSet(publishRevision, status);
+			}
+			m_status = std::move(status);
 		}
 		ImGui::EndDisabled();
 	}
 	ImGui::TextWrapped("%s", m_status.c_str());
+	{
+		std::string publishStatus;
+		double publishElapsed = 0.0;
+		const SERVER_RUNTIME_PUBLISH_STATE publishState =
+			Get_ServerRuntimeSetPublishState(publishStatus, publishElapsed);
+		if (SERVER_RUNTIME_PUBLISH_STATE::IDLE != publishState)
+		{
+			ImGui::TextColored(
+				(SERVER_RUNTIME_PUBLISH_STATE::FAILED == publishState ||
+				 SERVER_RUNTIME_PUBLISH_STATE::OBSERVATION_LOST == publishState) ?
+					ImVec4(1.f, 0.45f, 0.35f, 1.f) :
+					(SERVER_RUNTIME_PUBLISH_STATE::RUNNING == publishState ?
+						ImVec4(1.f, 0.72f, 0.25f, 1.f) :
+						ImVec4(0.35f, 0.86f, 0.45f, 1.f)),
+				"Runtime publish: %s%s",
+				SERVER_RUNTIME_PUBLISH_STATE::RUNNING == publishState ?
+					"running " : "",
+				publishStatus.c_str());
+			if (SERVER_RUNTIME_PUBLISH_STATE::RUNNING == publishState)
+			{
+				ImGui::SameLine();
+				ImGui::Text("(%.0f s)", publishElapsed);
+			}
+		}
+	}
 
 	const float listWidth = 210.f;
 	const float liveWidth = 300.f;

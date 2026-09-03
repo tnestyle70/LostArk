@@ -149,9 +149,56 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
                 },
                 {
                     "combatObjectArchetypeId":
+                        "combatobject.valtan.fist-in-out.donut-large",
+                    "clientVisualId":
+                        "combatobject.visual.valtan.fist-in-out.donut-large.v1",
+                    "effectAssetId": "effect.valtan.project-tuned.large-donut",
+                    "worldScale": [1.5, 1.5, 1.5],
+                },
+                {
+                    "combatObjectArchetypeId":
                         "combatobject.valtan.ground-roar.rock",
                     "clientVisualId":
                         "combatobject.visual.valtan.ground-roar.rock.v1",
+                    "effectAssetId": "effect.valtan.ground-roar.rock.active",
+                    "effectV2Group": {
+                        "groupId": "boss.valtan.rock-pillar.sequence",
+                        "playbackRate": 1.0,
+                    },
+                    "hitEffectAssetId":
+                        "effect.valtan.ground-roar.rock.explode",
+                },
+                {
+                    "combatObjectArchetypeId":
+                        "combatobject.valtan.six-pizza.rock-pillar",
+                    "clientVisualId":
+                        "combatobject.visual.valtan.six-pizza.rock-pillar.v1",
+                    "effectAssetId": "effect.valtan.ground-roar.rock.active",
+                    "effectV2Group": {
+                        "groupId": "boss.valtan.rock-pillar.sequence",
+                        "playbackRate": 1.0,
+                    },
+                    "hitEffectAssetId":
+                        "effect.valtan.ground-roar.rock.explode",
+                },
+                {
+                    "combatObjectArchetypeId":
+                        "combatobject.valtan.struggling.rock-pillar",
+                    "clientVisualId":
+                        "combatobject.visual.valtan.struggling.rock-pillar.v1",
+                    "effectAssetId": "effect.valtan.ground-roar.rock.active",
+                    "effectV2Group": {
+                        "groupId": "boss.valtan.rock-pillar.sequence",
+                        "playbackRate": 1.0,
+                    },
+                    "hitEffectAssetId":
+                        "effect.valtan.ground-roar.rock.explode",
+                },
+                {
+                    "combatObjectArchetypeId":
+                        "combatobject.valtan.part-break.rock",
+                    "clientVisualId":
+                        "combatobject.visual.valtan.part-break.rock.v1",
                     "effectAssetId": "effect.valtan.ground-roar.rock.active",
                     "hitEffectAssetId":
                         "effect.valtan.ground-roar.rock.explode",

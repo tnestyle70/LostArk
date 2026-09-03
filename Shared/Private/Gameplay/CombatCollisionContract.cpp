@@ -31,6 +31,7 @@ namespace
 	}
 
 	template<typename TCircle>
+
 	bool IsValidCircle(const TCircle& circle) noexcept
 	{
 		return IsFinite(circle.fCenterX) &&

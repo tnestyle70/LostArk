@@ -1165,6 +1165,11 @@ namespace LostArk::Server
 			LostArk::Shared::VALTAN_PATTERN_FLOW_RESULT eResult =
 				LostArk::Shared::VALTAN_PATTERN_FLOW_RESULT::REJECTED_STALE_FLOW;
 			std::string strReason;
+			/* Exact Start retries replay the latest authoritative edge for that
+			   admitted program. This settles an unconfirmed Client even when the
+			   Flow already reached COMPLETED_HOLD; it never starts a second run. */
+			std::optional<LostArk::Shared::S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE>
+				LastLifecycle;
 		};
 		std::unordered_map<SESSION_ID, VALTAN_PATTERN_FLOW_COMMAND_RECEIPT>
 			m_ValtanPatternFlowStartSequenceBySessionId;

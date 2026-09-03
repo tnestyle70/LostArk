@@ -27,6 +27,9 @@ class CBossTool;
 class CCameraTool;
 class CCharacterPreviewPanel;
 class CEquipmentAuthoringTool;
+class CProfilerTool;
+class CSequencerTool;
+class CRenderingBenchmark;
 class CSkillWindowView;
 class CInventoryView;
 class CChatWindowView;
@@ -54,6 +57,8 @@ private:
 		LOGIC_PATTERN,
 		CAMERA,
 		EQUIPMENT,
+		SEQUENCER,
+		PROFILER,
 		COUNT
 	};
 
@@ -542,6 +547,9 @@ private:
 	unique_ptr<CBalanceTool> m_pBalanceTool = { nullptr };
 	unique_ptr<CBossTool> m_pBossTool = { nullptr };
 	unique_ptr<CCameraTool> m_pCameraTool = { nullptr };
+	unique_ptr<CSequencerTool> m_pSequencerTool = { nullptr };
+	unique_ptr<CProfilerTool> m_pProfilerTool = { nullptr };
+	unique_ptr<CRenderingBenchmark> m_pRenderingBenchmark = { nullptr };
 	bool_t m_bF1Down = false;
 	bool_t m_bDeveloperToolsVisible = false;
 	bool_t m_bProfilerVisible = false;

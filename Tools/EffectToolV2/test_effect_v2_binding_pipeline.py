@@ -943,7 +943,11 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
             repository_root / "Client/Bin/Resources",
         )
         self.assertEqual(2, canonical["formatVersion"])
-        self.assertEqual(65, len(admitted["bindings"]))
+        # 2026-09-03: VALTAN_THREE and VALTAN_TRIPLE_COUNTER gained six smash
+        # bindings and the six-pizza shout loop was removed (65 -> 70). Every
+        # repository row must still be admitted; none may be silently dropped.
+        self.assertEqual(70, len(canonical["bindings"]))
+        self.assertEqual(len(canonical["bindings"]), len(admitted["bindings"]))
         binding_ids = [row["bindingId"] for row in admitted["bindings"]]
         self.assertEqual(sorted(binding_ids), binding_ids)
         self.assertEqual(len(binding_ids), len(set(binding_ids)))

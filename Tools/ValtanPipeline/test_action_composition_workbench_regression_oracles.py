@@ -273,7 +273,8 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertLess(consume, save)
         self.assertNotIn("Render_", render[save:])
 
-        self.assertIn("m_bPatternSaveSucceeded = Save_Reload()", render)
+        self.assertIn("const bool_t bSaveStarted = Save_Reload()", render)
+        self.assertIn("m_bPatternSaveResultAvailable = !bSaveStarted", render)
         self.assertLess(
             save,
             render.index("m_strPatternSaveStatus = m_strStatus", save),
@@ -332,13 +333,24 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertIn("m_PendingPatternSelection.reset()", cancel)
         self.assertNotIn("Select_Pattern(", cancel)
 
-        save = resolve.index("m_bPatternSaveSucceeded = Save_Reload()")
-        save_failure = resolve.index("if (!m_bPatternSaveSucceeded)", save)
+        save = resolve.index("const bool_t bSaveStarted = Save_Reload()")
+        save_failure = resolve.index("if (!bSaveStarted)", save)
+        wait_for_receipt = resolve.index("if (0u != m_iPendingSaveJobId)", save)
         target = resolve.index("Find_PatternById(Pending.strPatternId)")
         select = resolve.index("Select_Pattern(*pTarget)", target)
         self.assertLess(save, save_failure)
-        self.assertLess(save_failure, target)
+        self.assertLess(save_failure, wait_for_receipt)
+        self.assertLess(wait_for_receipt, target)
         self.assertLess(target, select)
+        self.assertIn("m_bSelectAfterPendingSave = true", resolve)
+        completion = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Update_SaveState()",
+        )
+        self.assertIn(
+            "PENDING_PATTERN_SELECTION_DECISION::SELECT", completion
+        )
+        self.assertIn("m_bPendingPatternSelectionModalRequested = true", completion)
         self.assertIn("m_bPendingPatternSelectionModalRequested = true", resolve)
         self.assertIn("m_PendingPatternSelection.reset()", resolve)
 
@@ -465,7 +477,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         )
         self.assertLess(
             save.index("Validate_ValtanCompositionPatternSoundGraphDependencies"),
-            save.index("Save_ValtanCompositionProduct"),
+            save.index("Begin_ValtanCompositionSave"),
         )
 
     def test_extracted_hold_chain_fits_the_existing_stage_with_exact_slots(self) -> None:
@@ -686,7 +698,16 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             "Animation timing owner edits must commit after each scalar interaction ends",
         )
         self.assertIn("Apply_AnimationOccurrenceTiming", inline_editor)
-        self.assertIn("StageDraft.animationEditable && !Slot.repeatUntilStageEnd", build_timeline)
+        # Loop slots are selectable/editable boxes; their loop identity rides on
+        # the item so the right-edge trim maps to the Stage clock instead of a
+        # play duration, and they never move across Stages.
+        self.assertIn("StageDraft.animationEditable });", build_timeline)
+        self.assertIn(
+            "m_TimelineItems.back().bLoopsToStageEnd = Slot.repeatUntilStageEnd",
+            build_timeline,
+        )
+        self.assertIn("!Item.bLoopsToStageEnd &&", timeline)
+        self.assertIn("Slot->repeatUntilStageEnd)", timeline)
         self.assertIn("DETAIL_OWNER::ANIMATION == Item.eOwner", timeline)
         self.assertIn("m_strTimelineTrimStableId == Item.strStableId", timeline)
         self.assertIn("iNewWallMs) *\n\t\t\t\t\t\t\t\tSlot->playRate", timeline)
@@ -1184,19 +1205,24 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             "Validate_ValtanCompositionPatternSoundGraphDependencies"
         )
         sound_prepare = save.index("Prepare_ValtanCompositionPatternSoundSave")
-        product_save = save.index("Save_ValtanCompositionProduct")
-        sound_accept = save.index("Accept_ValtanCompositionPatternSoundSave")
-        boss_reload = save.index("Reload_CanonicalGraph")
-        workbench_reload = save.index("if (!Reload_Canonical())")
+        product_save = save.index("Begin_ValtanCompositionSave")
+        complete = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Update_SaveState()",
+        )
+        sound_accept = complete.index("Accept_PendingSaveOwners")
+        consume = complete.index("Consume_ValtanSaveJobReceipt")
+        graph_reload = complete.index("Reload_AfterPendingSave", consume)
+        full_data = complete.index("Publish_ServerRuntimeSet", graph_reload)
         self.assertLess(animation_validation, sound_validation)
         self.assertLess(sound_validation, sound_prepare)
         self.assertLess(sound_prepare, product_save)
-        self.assertLess(product_save, sound_accept)
-        self.assertLess(sound_accept, boss_reload)
-        self.assertLess(boss_reload, workbench_reload)
+        self.assertLess(sound_accept, consume)
+        self.assertLess(consume, graph_reload)
+        self.assertLess(graph_reload, full_data)
         self.assertIn(
-            "Saved every dirty Composition owner (Pattern, Sound, and/or Effect V2)",
-            save,
+            "Saved every staged Composition owner and reopened the exact committed revision",
+            complete,
         )
 
         balance_save = function_body(
@@ -1857,7 +1883,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             render.index("Render_ResourcesWindow("),
             render.index("if (m_bSavePatternRequested)"),
         )
-        self.assertIn("m_bPatternSaveSucceeded = Save_Reload()", render)
+        self.assertIn("const bool_t bSaveStarted = Save_Reload()", render)
 
     def test_session_keeps_actions_visible_and_hides_raw_diagnostics_by_default(self) -> None:
         toolbar = function_body(
@@ -1963,7 +1989,9 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
             self.assertIn(f"TIMELINE_LANE::{lane}", request)
         self.assertIn("m_bResourceDomainSelectionRequested = true", request)
         self.assertIn("ImGuiTabItemFlags_SetSelected", resources)
-        self.assertIn('Stage.strStageId + "/branch/COUNTER_HIT/authoring"', request)
+        self.assertIn(
+            'BuildBranchStableId(Stage.strStageId, "COUNTER_HIT")', request
+        )
         self.assertIn('"Counter Box Detail opened for this Stage."', request)
         self.assertIn('Stage.strStageId + "/collider"', request)
         self.assertIn('"Server Collider geometry and timing Details opened', request)
@@ -2575,6 +2603,88 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         ]
         self.assertIn("Set_ValtanStageSequenceDraft(", helper)
         self.assertIn("iSourceActionId, iSourceSequenceIndex", helper)
+
+    def test_logic_branch_selection_identity_does_not_embed_mutable_target(self) -> None:
+        select_stage = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Select_Stage(",
+        )
+        build_timeline = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Build_Timeline(",
+        )
+        details = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(",
+        )
+        self.assertIn("NormalizeBranchStableId(", select_stage)
+        self.assertIn(
+            "BuildBranchStableId(Stage.strStageId, Branch.strOutcome)",
+            build_timeline,
+        )
+        self.assertIn("Get_ValtanStageBranchDrafts(", details)
+        self.assertIn("Set_ValtanStageBranchDraft(", details)
+        self.assertIn("TIMEOUT is owned by the typed Counter or Stage topology editor", details)
+        self.assertNotIn(
+            'Stage.strStageId + "/branch/" + Branch.strOutcome + "/" + strTarget',
+            build_timeline,
+        )
+
+    def test_post_commit_publish_retries_exact_receipt_without_rewriting_source(self) -> None:
+        mark_committed = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Mark_SourceCommitted(",
+        )
+        publish = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Publish_AfterSave()",
+        )
+        update = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Update_SaveState()",
+        )
+        self.assertIn("strExactSourceRevision", mark_committed)
+        self.assertNotIn("Get_ValtanPublishSourceRevision", mark_committed)
+        self.assertIn("Begin_ValtanProductPublishRetry", publish)
+        self.assertNotIn("Retry_ValtanProductPublishApply", publish)
+        self.assertNotIn("Apply_CommittedValtanProduct", publish)
+        self.assertIn(
+            "PublishableRevision != m_strPostSaveRevision", publish
+        )
+        self.assertIn("Observed.jobId != m_iPendingSaveJobId", update)
+        self.assertIn("OBSERVATION_LOST", update)
+        accept = update.index("Accept_PendingSaveOwners")
+        consume = update.index("Consume_ValtanSaveJobReceipt")
+        reload_graphs = update.index("Reload_AfterPendingSave", consume)
+        publish_runtime = update.index("Publish_ServerRuntimeSet", reload_graphs)
+        self.assertLess(accept, consume)
+        self.assertLess(consume, reload_graphs)
+        self.assertLess(reload_graphs, publish_runtime)
+        self.assertIn(
+            "Receipt.committedSourceRevision", update
+        )
+        post_publish = function_body(
+            self.workbench_cpp,
+            "void Client::CActionCompositionWorkbench::Update_PostSaveState()",
+        )
+        self.assertIn("&JobRevision", post_publish)
+        self.assertIn("JobRevision != m_strPostSaveRevision", post_publish)
+
+        main_update = function_body(
+            self.main_cpp,
+            "void CMainApp::Update(const f32_t fTimeDelta)",
+        )
+        save_poll = main_update.index("Update_ValtanSaveJob()")
+        hidden_completion = main_update.index("Update_SaveState()", save_poll)
+        runtime_poll = main_update.index(
+            "Update_ServerRuntimeSetPublishJob()", hidden_completion
+        )
+        effect_refresh = main_update.index(
+            "Consume_EffectGraphRefreshRequest", runtime_poll
+        )
+        self.assertLess(save_poll, hidden_completion)
+        self.assertLess(hidden_completion, runtime_poll)
+        self.assertLess(runtime_poll, effect_refresh)
 
 
 if __name__ == "__main__":

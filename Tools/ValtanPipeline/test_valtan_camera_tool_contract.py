@@ -321,9 +321,11 @@ scripted_sequence = gameplay["decisionModel"]["scriptedSequence"]
 product_sequence = json.loads(read(
     "Data/Encounters/Valtan/ValtanPatternRotations.json"))["scriptedSequence"]
 require(
-    set(scripted_sequence) == {
-        "sequenceId", "mode", "interStepPursuitMs", "patternIds"
-    } and product_sequence == scripted_sequence,
+    set(scripted_sequence) in (
+        {"sequenceId", "mode", "interStepPursuitMs", "patternIds"},
+        {"sequenceId", "mode", "interStepPursuitMs", "patternIds",
+         "transitionPursuitMs"},
+    ) and product_sequence == scripted_sequence,
     "generated Server sequence must equal the canonical gameplay sequence",
 )
 entrance_gameplay = next(

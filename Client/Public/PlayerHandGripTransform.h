@@ -10,8 +10,8 @@ NS_BEGIN(Client)
 
 /* Authored in metres in the wrist-bone frame.  Valtan model bones can carry
    either the imported 0.01 conversion scale or an already-normalized basis,
-   so the translation is applied through normalized hand axes and converted
-   to the Client world centimetre convention exactly once. */
+   so the translation is applied through normalized hand axes in the Client's
+   metre-based world coordinates. */
 struct PLAYER_HAND_GRIP_LOCAL_OFFSET final
 {
 	f32_t fForwardM = 0.f;
@@ -27,7 +27,6 @@ class CPlayerHandGripTransform final
 {
 public:
 	static constexpr f32_t MAX_GRIP_OFFSET_COMPONENT_M = 10.f;
-	static constexpr f32_t WORLD_UNITS_PER_METRE = 100.f;
 
 	static bool_t Is_ValidGripLocalOffset(
 		const PLAYER_HAND_GRIP_LOCAL_OFFSET& gripLocalOffset)
@@ -103,9 +102,9 @@ public:
 		const vector_t up = DirectX::XMVector3Normalize(adjustedHand.r[1]);
 		const vector_t forward = DirectX::XMVector3Normalize(adjustedHand.r[2]);
 		const vector_t displacement =
-			right * (gripLocalOffset.fRightM * WORLD_UNITS_PER_METRE) +
-			up * (gripLocalOffset.fUpM * WORLD_UNITS_PER_METRE) +
-			forward * (gripLocalOffset.fForwardM * WORLD_UNITS_PER_METRE);
+			right * gripLocalOffset.fRightM +
+			up * gripLocalOffset.fUpM +
+			forward * gripLocalOffset.fForwardM;
 		adjustedHand.r[3] = DirectX::XMVectorSetW(
 			adjustedHand.r[3] + displacement, 1.f);
 

@@ -2168,6 +2168,9 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		elseif ($hasHitOffsets -or $hasHitAnchor -or $hasHitActivation) {
 			$validShape = $false
 		}
+		if ($hasCounterProxy -and $shape -cne 'NONE') {
+			throw "Pattern stage counter proxy must be damage-less: $($pattern.patternId) stage $stageIndex"
+		}
 		if (-not $validShape) { throw "Pattern stage hit contract is invalid: $($pattern.patternId) stage $stageIndex" }
 		$pushRangeM = [double]$stage.pushRangeM
 		$pushMs = [uint32]$stage.pushMs
@@ -3755,8 +3758,14 @@ foreach ($rotation in @($rotationDocument.rotations)) {
 }
 
 $scriptedSequence = $rotationDocument.scriptedSequence
-Assert-ExactProperties $scriptedSequence @(
-	'sequenceId','mode','interStepPursuitMs','patternIds') `
+$hasTransitionPursuit = $null -ne `
+	$scriptedSequence.PSObject.Properties['transitionPursuitMs']
+$scriptedSequenceFields = @(
+	'sequenceId','mode','interStepPursuitMs','patternIds')
+if ($hasTransitionPursuit) {
+	$scriptedSequenceFields += 'transitionPursuitMs'
+}
+Assert-ExactProperties $scriptedSequence $scriptedSequenceFields `
 	'Valtan scripted pattern sequence'
 Assert-JsonString $scriptedSequence.sequenceId `
 	'Valtan scripted pattern sequenceId'
@@ -3771,6 +3780,28 @@ if ([string]$scriptedSequence.mode -cne 'ORDERED_ONCE_THEN_IDLE' -or
 	@($scriptedSequence.patternIds).Count -gt $maximumValtanPatternFlowSlots) {
 	throw 'Valtan scripted pattern sequence contract is invalid.'
 }
+$scriptedPatternCount = @($scriptedSequence.patternIds).Count
+$transitionPursuitMs = @()
+if ($hasTransitionPursuit) {
+	if ($scriptedSequence.transitionPursuitMs -isnot [Array] -or
+		@($scriptedSequence.transitionPursuitMs).Count + 1 -ne
+			$scriptedPatternCount) {
+		throw 'Valtan scripted transition pursuit count is invalid.'
+	}
+	foreach ($transitionPursuitValue in @(
+		$scriptedSequence.transitionPursuitMs)) {
+		Assert-JsonInteger $transitionPursuitValue `
+			'Valtan scripted transition pursuit milliseconds' 100 10000
+		$transitionPursuitMs += [uint32]$transitionPursuitValue
+	}
+}
+else {
+	for ($transitionIndex = 0;
+		$transitionIndex + 1 -lt $scriptedPatternCount;
+		++$transitionIndex) {
+		$transitionPursuitMs += [uint32]$scriptedSequence.interStepPursuitMs
+	}
+}
 $scriptedStepIndex = 0
 foreach ($scriptedPatternIdValue in @($scriptedSequence.patternIds)) {
 	Assert-JsonString $scriptedPatternIdValue 'Valtan scripted patternId'
@@ -3784,10 +3815,17 @@ foreach ($scriptedPatternIdValue in @($scriptedSequence.patternIds)) {
 		 $scriptedStepIndex -ne 0)) {
 		throw "Valtan scripted sequence step is invalid: $scriptedPatternId"
 	}
+	$scriptedPursuitAfterMs = if (
+		$scriptedStepIndex + 1 -lt $scriptedPatternCount) {
+		[uint32]$transitionPursuitMs[$scriptedStepIndex]
+	}
+	else {
+		[uint32]0
+	}
 	$patternRows.Add((@(
 		'PATTERNSEQUENCESTEP', $encounterDocument.encounterId,
 		$scriptedSequence.sequenceId, $scriptedStepIndex,
-		$scriptedPatternId) -join "`t"))
+		$scriptedPatternId, $scriptedPursuitAfterMs) -join "`t"))
 	++$scriptedStepIndex
 }
 $patternRows.Add((@(

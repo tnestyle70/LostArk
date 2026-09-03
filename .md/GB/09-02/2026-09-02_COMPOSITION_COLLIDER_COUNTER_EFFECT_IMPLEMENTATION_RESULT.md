@@ -519,4 +519,53 @@ Balance Tool 화면 검증은 사용자 지시대로 생략한다. Kakul boss �
 
 full Debug Product/Client build와 실제 Lobby 진입, Boss Tool Pattern 목록, All Effects Valtan tree 및
 visual/audio/gameplay는 사용자의 다음 `Ctrl+F5` 판정이 남아 있다. 이 수동 확인 전에는 화면 PASS로
-기록하지 않는다. 현재 PC는 `server-host`이며 Visual Studio 시작 대상은 `Server + Client` profile이다.
+기록하지 않는다. 13절 검증 당시 PC는 `server-host`였으며 Visual Studio 시작 대상은
+`Server + Client` profile이었다.
+
+## 14. 2026-09-03 delayed 돌기둥 Server session 종료 회귀 수정
+
+### 14.1 확정 원인
+
+Client의 `Valtan replication observed a disconnected Server session.`과 Lobby의
+`Server entry failed.`는 서로 다른 실패가 아니었다. 동일 socket과 시각의 Client/Server JSONL을
+대조하면 다음 한 연쇄다.
+
+1. Six Pizza 또는 Struggling의 delayed rock-pillar wave가 예정 tick에 실행된다.
+2. authored boss-relative 네 root 중 하나가 exact navgrid 밖에 놓인다.
+3. Server가 `world-update.pattern-scheduled-spawn-wave`를 room runtime failure로 latch한다.
+4. 다음 정상 Client 입력이 not-ready room에서 거절되고 Server가 TCP FIN으로 session을 닫는다.
+5. Client는 `CLIENT_PEER_CLOSED` 뒤 Valtan replication state를 정리하고 Lobby로 복귀한다.
+6. Lobby가 recovery의 상세 원인과 별개로 공통 상태 문자열 `Server entry failed.`를 표시한다.
+
+실패 session에서 send failure/reliable rejection/drop은 모두 0이고 queue HWM도 한도보다 충분히
+낮았다. 따라서 패킷 크기, Client queue overflow, timeout이나 network congestion은 배제했다.
+또한 같은 failure source가 Six Pizza와 Struggling 양쪽 실제 session에서 반복돼 한 패턴만의 문제가
+아님을 확인했다.
+
+### 14.2 반영한 수정과 안전 경계
+
+`Server/Private/GameRoom.cpp`의 기존 visual four-rock off-navigation admission에 다음 exact owner
+두 개를 추가했다.
+
+- `combatobject.valtan.six-pizza.rock-pillar / VALTAN_SIX_PIZZA_106 / valtan.sequence.center-six-pizza-charge.step-01`
+- `combatobject.valtan.struggling.rock-pillar / VALTAN_STRUGGLING / valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04`
+
+기존 `FIXED_AREA`, direction `NONE`, 빈 `Hits`, 하나 이상의 presentation pulse, 정확히 4개라는 의미
+조건은 유지했다. 모든 visual object를 허용하거나 authored root를 navgrid 안으로 project/clamp하지
+않는다. 두 정의 중 하나라도 gameplay hit를 가지면 다시 strict navigation admission을 적용한다.
+
+`ServerGameplayContractTests.cpp`에는 두 owner의 실제 delayed scheduler 경로를 추가했다. ENTER 직후
+무생성, due 직전 no-op, `1000ms=30 tick` 및 `833ms=25 tick`의 due에서 정확히 4개 atomic spawn,
+다음 tick 중복 없음, authored 좌표와 off-nav root, spawn wire serialization을 확인한다. 각 정의에
+damage hit를 주입한 negative에서는 live object와 pending spawn/presentation/despawn이 모두 0이어야
+한다. Python rock-pillar 계약도 두 exact tuple과 좁은 의미 guard를 함께 고정한다.
+
+### 14.3 브랜치와 검증 상태
+
+- 작업 시작 시 현재 `HEAD`와 `origin/main`은 모두 `063e1a1a`였다. 모든 ref/reflog와 unreachable
+  commit을 조사했지만 이 두 owner 수정이 들어간 main 미동기화 commit은 없었다.
+- 기억한 전날 수정 `0e2e84b0`은 이미 main에 merge됐지만 Ground Roar/Part Break 두 owner만 허용했고,
+  같은 변경에서 추가된 Six Pizza/Struggling owner가 누락된 불완전한 수정이었다.
+- 사용자 요청에 따라 이번 source 반영 뒤 build, publisher와 실행형 harness는 실행하지 않았다.
+- `git diff --check`만 **PASS — exit 0**으로 확인했다. 자동 검증과 Client 수동 gameplay/visual 판정은
+  아직 PASS로 기록하지 않는다.

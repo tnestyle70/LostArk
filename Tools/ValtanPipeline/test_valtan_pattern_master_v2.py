@@ -22,6 +22,17 @@ import valtan_tuning_pipeline as pipeline
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
+def sync_transition_pursuit(scripted_sequence: dict) -> None:
+    """Keep the per-edge wait array one shorter than patternIds after a fixture
+    inserts or removes a Pattern, preserving the leading authored values."""
+    if "transitionPursuitMs" not in scripted_sequence:
+        return
+    required = max(0, len(scripted_sequence["patternIds"]) - 1)
+    values = list(scripted_sequence["transitionPursuitMs"])[:required]
+    values += [scripted_sequence["interStepPursuitMs"]] * (required - len(values))
+    scripted_sequence["transitionPursuitMs"] = values
+
+
 EXPECTED_SCRIPTED_SEQUENCE = {
     "sequenceId": "sequence.valtan.server-authored.v1",
     "mode": "ORDERED_ONCE_THEN_IDLE",
@@ -38,6 +49,7 @@ EXPECTED_SCRIPTED_SEQUENCE = {
         "VALTAN_TRIPLE_COUNTER",
         "VALTAN_DASH_CHARGE",
         "VALTAN_FIST_IN_OUT",
+        "VALTAN_FIST_IN_OUT_LARGE",
         "VALTAN_HIGH_JUMP",
         "VALTAN_SIX_PIZZA_106",
         "VALTAN_STRUGGLING",
@@ -77,7 +89,60 @@ EXPECTED_SCRIPTED_SEQUENCE = {
         "VALTAN_CHARGE_2",
         "VALTAN_STRUGGLING",
         "VALTAN_GHOST_RESPAWN_AUDITION",
-        "VALTAN_GHOST_FINALE",
+        "VALTAN_GHOST_FINALE"
+    ],
+    "transitionPursuitMs": [
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        100,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000
     ],
 }
 
@@ -678,7 +743,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 cwd=self.root,
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
         self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
@@ -1277,6 +1342,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         self.assertEqual({"combatobject.valtan.high-jump.target-axe",
                           "combatobject.valtan.red-blade-wave.projectile",
                           "combatobject.valtan.fist-in-out.donut",
+                          "combatobject.valtan.fist-in-out.donut-large",
                           "combatobject.valtan.ground-roar.rock",
                           "combatobject.valtan.six-pizza.rock-pillar",
                           "combatobject.valtan.struggling.rock-pillar",
@@ -2146,13 +2212,19 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 "layout": {"kind": "TARGET_CENTER"},
                 "spawnSchedule": {
                     "kind": "INTERVAL",
-                    "count": 1,
+                    "count": 3,
                     "firstOffsetMs": 0,
-                    "intervalMs": 0,
+                    "intervalMs": 1333,
                 },
-                "arenaRandom": {"kind": "NONE"},
+                "arenaRandom": {
+                    "kind": "RANDOM_NAVIGABLE_CIRCLE",
+                    "anchor": "BOSS_SPAWN_POSITION",
+                    "count": 4,
+                    "radiusM": 14.0,
+                    "heightToleranceM": 1.0,
+                },
                 "allowOverlap": False,
-                "maximumTotalObjects": 4,
+                "maximumTotalObjects": 36,
             },
             gameplay_airborne["events"][0],
         )
@@ -2204,13 +2276,13 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         self.assertEqual(8000, target_axe["lifeMs"])
         self.assertEqual(
             {
-                "spawnCount": 1,
+                "spawnCount": 3,
                 "firstSpawnOffsetMs": 0,
-                "spawnIntervalMs": 0,
-                "arenaRandomCount": 0,
-                "arenaRandomRadiusM": 0.0,
-                "arenaHeightToleranceM": 0.0,
-                "arenaAnchorPolicy": "NONE",
+                "spawnIntervalMs": 1333,
+                "arenaRandomCount": 4,
+                "arenaRandomRadiusM": 14.0,
+                "arenaHeightToleranceM": 1.0,
+                "arenaAnchorPolicy": "BOSS_SPAWN_POSITION",
             },
             {
                 field: product_airborne["actions"][0][field]
@@ -3374,14 +3446,21 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             sequence_id = EXPECTED_SCRIPTED_SEQUENCE["sequenceId"]
             self.assertIn(
                 "PATTERNSEQUENCE\tENCOUNTER_VALTAN\t"
-                f"{sequence_id}\tORDERED_ONCE_THEN_IDLE\t1000\t"
+                f"{sequence_id}\tORDERED_ONCE_THEN_IDLE\t"
+                f"{EXPECTED_SCRIPTED_SEQUENCE['interStepPursuitMs']}\t"
                 f"{len(EXPECTED_SCRIPTED_SEQUENCE['patternIds'])}",
                 bootstrap_lines,
+            )
+            sequence_transition_pursuit_ms = EXPECTED_SCRIPTED_SEQUENCE.get(
+                "transitionPursuitMs",
+                [EXPECTED_SCRIPTED_SEQUENCE["interStepPursuitMs"]]
+                * (len(EXPECTED_SCRIPTED_SEQUENCE["patternIds"]) - 1),
             )
             self.assertEqual(
                 [
                     "PATTERNSEQUENCESTEP\tENCOUNTER_VALTAN\t"
-                    f"{sequence_id}\t{ordinal}\t{pattern_id}"
+                    f"{sequence_id}\t{ordinal}\t{pattern_id}\t"
+                    f"{sequence_transition_pursuit_ms[ordinal] if ordinal + 1 < len(EXPECTED_SCRIPTED_SEQUENCE['patternIds']) else 0}"
                     for ordinal, pattern_id in enumerate(
                         EXPECTED_SCRIPTED_SEQUENCE["patternIds"]
                     )
@@ -3434,9 +3513,15 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
     def test_inline_scripted_sequence_is_the_only_product_order_source(self) -> None:
         gameplay = self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
         sequence = gameplay["decisionModel"]["scriptedSequence"]
-        self.assertEqual(
-            {"sequenceId", "mode", "interStepPursuitMs", "patternIds"},
+        self.assertIn(
             set(sequence),
+            (
+                {"sequenceId", "mode", "interStepPursuitMs", "patternIds"},
+                {
+                    "sequenceId", "mode", "interStepPursuitMs", "patternIds",
+                    "transitionPursuitMs",
+                },
+            ),
         )
         self.assertEqual(EXPECTED_SCRIPTED_SEQUENCE, sequence)
         self.assertNotIn(
@@ -3469,6 +3554,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             "VALTAN_WHIRLWIND",
             "VALTAN_FOUR_SLASH",
         ]
+        expected["transitionPursuitMs"] = [100, 900]
         patch = {
             "schema": pipeline.DRAFT_PATCH_SCHEMA,
             "formatVersion": 1,
@@ -3498,6 +3584,8 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             {**expected, "sequenceId": "sequence.other"},
             {**expected, "mode": "ORDERED_REPEAT"},
             {**expected, "interStepPursuitMs": 0},
+            {**expected, "transitionPursuitMs": [100]},
+            {**expected, "transitionPursuitMs": [100, 0]},
             {**expected, "patternIds": []},
             {**expected, "patternIds": ["VALTAN_UNKNOWN"]},
             {**expected, "patternIds": ["../invalid-pattern-id"]},
@@ -3867,6 +3955,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         explicit_entry["decisionModel"]["scriptedSequence"]["patternIds"].insert(
             0, pipeline.OPTIONAL_ENTRY_PATTERN_ID
         )
+        sync_transition_pursuit(explicit_entry["decisionModel"]["scriptedSequence"])
         pipeline.validate_v2_master(
             explicit_entry, self.docs[pipeline.WORLD_SET_REL],
             self.docs[pipeline.COMBAT_AUTHORING_REL],
@@ -4105,6 +4194,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             row for row in staged["decisionModel"]["manualAuditions"] if row["patternId"] != retired_id
         ]
         staged["decisionModel"]["scriptedSequence"]["patternIds"].remove(retired_id)
+        sync_transition_pursuit(staged["decisionModel"]["scriptedSequence"])
 
         first = pipeline.project_v2_products(self.root, self.docs, staged)
         encounter = json.loads(first[pipeline.ENCOUNTER_REL])
@@ -4133,6 +4223,15 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(text.encode("utf-8"))
                 projected_docs[relative] = json.loads(text)
+            # BossCatalog combat-object visuals now resolve their Effect V2
+            # groups against the physical repository root.  The second-pass
+            # fixture must therefore carry that unchanged read-only closure;
+            # projection outputs alone intentionally do not duplicate groups.
+            shutil.copytree(
+                self.root / "Data/Effects/V2/Groups",
+                root / "Data/Effects/V2/Groups",
+                dirs_exist_ok=True,
+            )
             self.assertEqual(first, pipeline.project_v2_products(root, projected_docs, staged))
 
         for retired_rows in ([*staged["retiredPatternIds"], retired_id], ["VALTAN_WHIRLWIND"], "not-an-array"):
@@ -4164,11 +4263,25 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             for branch in stage["branches"]
             if branch.get("nextPatternId") is not None
         }
+        # A Pattern that owns an independent Effect spawn event (donut, large
+        # donut) fails first at the independent spawn closure; this test isolates
+        # the stale Product ownership boundary, so skip those owners too.
+        independent_spawn_event_ids = {
+            row.get("spawnEventId") for row in staged["independentEffects"]
+        }
+        independent_owner_ids = {
+            pattern["patternId"]
+            for pattern in staged["patterns"]
+            for stage in pattern["stages"]
+            for event in stage.get("events", [])
+            if event.get("eventId") in independent_spawn_event_ids
+        }
         removed_id = next(
             row["patternId"]
             for row in reversed(staged["decisionModel"]["manualAuditions"])
             if row["patternId"] not in finale_children
             and row["patternId"] not in followup_targets
+            and row["patternId"] not in independent_owner_ids
             and row["patternId"] != "VALTAN_GHOST_FINALE"
         )
         self.assertNotIn(removed_id, finale_children)
@@ -4193,6 +4306,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             for pattern_id in staged["decisionModel"]["scriptedSequence"]["patternIds"]
             if pattern_id != removed_id
         ]
+        sync_transition_pursuit(staged["decisionModel"]["scriptedSequence"])
 
         remaining_cue_policies = {
             cue_id: policy
@@ -4244,7 +4358,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 cwd=self.root,
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
         self.assertNotEqual(0, completed.returncode)
@@ -4282,7 +4396,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                  str(self.root / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1"),
                  "-Mode", "Validate", "-InputOverlayRoot", str(overlay_root)],
-                cwd=self.root, capture_output=True, text=True, encoding="utf-8", check=False,
+                cwd=self.root, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
             )
             self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
 
@@ -4315,7 +4429,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                      str(self.root / "Tools/GameplayPipeline/Publish-GameplayBalance.ps1"),
                      "-Mode", "Validate", "-InputOverlayRoot", str(overlay_root)],
-                    cwd=self.root, capture_output=True, text=True, encoding="utf-8", check=False,
+                    cwd=self.root, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
                 )
                 self.assertNotEqual(0, completed.returncode)
                 self.assertIn(expected, completed.stdout + completed.stderr)
@@ -4384,7 +4498,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             ]
             baseline = subprocess.run(
                 command, cwd=repository_root, capture_output=True, text=True,
-                encoding="utf-8", check=False,
+                encoding="utf-8", errors="replace", check=False,
             )
             self.assertEqual(0, baseline.returncode, baseline.stdout + baseline.stderr)
             self.assertEqual(original_runtime, runtime_bytes(repository_root))
@@ -4400,7 +4514,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             )
             rejected = subprocess.run(
                 command, cwd=repository_root, capture_output=True, text=True,
-                encoding="utf-8", check=False,
+                encoding="utf-8", errors="replace", check=False,
             )
             self.assertNotEqual(0, rejected.returncode)
             self.assertIn(
@@ -4769,7 +4883,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(pipeline.HARD_CRASH_EXIT_CODE, staged_crash.returncode)
@@ -4780,7 +4894,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 [*base_command, "--draft-patch", str(invalid_path)],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(1, recovered.returncode)
@@ -4800,7 +4914,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(pipeline.HARD_CRASH_EXIT_CODE, promoted_crash.returncode)
@@ -4811,7 +4925,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 [*base_command, "--draft-patch", str(invalid_path)],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(1, recovered.returncode)
@@ -4849,7 +4963,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(pipeline.HARD_CRASH_EXIT_CODE, pointer_crash.returncode)
@@ -4860,7 +4974,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 [*base_command, "--draft-patch", str(invalid_path)],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(1, recovered.returncode)
@@ -4904,7 +5018,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     ],
                     capture_output=True,
                     text=True,
-                    encoding="utf-8",
+                    encoding="utf-8", errors="replace",
                     check=False,
                 )
                 self.assertEqual(
@@ -4975,7 +5089,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 [*base_command, "--crash-at", "after_journal_staged"],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(pipeline.HARD_CRASH_EXIT_CODE, crashed.returncode)
@@ -5018,7 +5132,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 [*base_command, "--crash-at", "after_pointer"],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(pipeline.HARD_CRASH_EXIT_CODE, crashed.returncode)
@@ -5096,7 +5210,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(pipeline.HARD_CRASH_EXIT_CODE, crashed.returncode)
@@ -5112,7 +5226,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(0, source_reader.returncode, source_reader.stderr)
@@ -5134,7 +5248,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(pipeline.HARD_CRASH_EXIT_CODE, crashed.returncode)
@@ -5171,7 +5285,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(0, draft_reader.returncode, draft_reader.stderr)
@@ -5192,7 +5306,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(pipeline.HARD_CRASH_EXIT_CODE, crashed.returncode)
@@ -5215,7 +5329,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(0, candidate_reader.returncode, candidate_reader.stderr)
@@ -5264,7 +5378,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 command,
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(0, no_pointer.returncode, no_pointer.stderr)
@@ -5295,7 +5409,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     live_command,
                     capture_output=True,
                     text=True,
-                    encoding="utf-8",
+                    encoding="utf-8", errors="replace",
                     check=False,
                 )
                 self.assertEqual(1, rejected.returncode)
@@ -5314,7 +5428,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 command,
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(0, current.returncode, current.stderr)
@@ -5337,7 +5451,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 command,
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(1, rejected.returncode)
@@ -5356,7 +5470,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 command,
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(1, rejected.returncode)
@@ -5395,7 +5509,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(pipeline.HARD_CRASH_EXIT_CODE, crashed.returncode)
@@ -5423,7 +5537,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(0, recovered.returncode, recovered.stderr)
@@ -5488,7 +5602,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(pipeline.HARD_CRASH_EXIT_CODE, staged_crash.returncode)
@@ -5503,7 +5617,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(1, recovered.returncode)
@@ -5523,7 +5637,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(pipeline.HARD_CRASH_EXIT_CODE, promoted_crash.returncode)
@@ -5538,7 +5652,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(1, recovered.returncode)
@@ -5583,7 +5697,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     ],
                     capture_output=True,
                     text=True,
-                    encoding="utf-8",
+                    encoding="utf-8", errors="replace",
                     check=False,
                 )
                 self.assertEqual(
@@ -5651,7 +5765,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 command,
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(pipeline.HARD_CRASH_EXIT_CODE, crashed.returncode)
@@ -5696,7 +5810,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 command,
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(pipeline.HARD_CRASH_EXIT_CODE, crashed.returncode)
@@ -5898,7 +6012,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(1, missing.returncode)
@@ -5913,7 +6027,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(0, completed.returncode, completed.stderr)
@@ -5929,7 +6043,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(0, completed.returncode, completed.stderr)
@@ -5949,7 +6063,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
-                encoding="utf-8",
+                encoding="utf-8", errors="replace",
                 check=False,
             )
             self.assertEqual(0, completed.returncode, completed.stderr)

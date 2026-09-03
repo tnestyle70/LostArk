@@ -1,5 +1,6 @@
 #include "Renderer.h"
 #include "Render_OutputContract.h"
+#include "Profiler.h"
 
 #include <fstream>
 #include <iomanip>
@@ -353,7 +354,13 @@ HRESULT CRenderer::Draw()
 			RenderGroup.clear();
 		return FAILED(hResult) ? hResult : E_FAIL;
 	};
-	HRESULT hResult = Presentation.Submit_FrameProviders();
+	CProfiler* const pProfiler = CGameInstance::Get().Get_Profiler();
+	CProfilerScope drawScope(pProfiler, "Render.Draw");
+	HRESULT hResult = S_OK;
+	{
+		CProfilerScope scope(pProfiler, "Render.SubmitFrameProviders");
+		hResult = Presentation.Submit_FrameProviders();
+	}
 	if (FAILED(hResult))
 		return FailFrame("Submit_FrameProviders", hResult);
 	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
@@ -366,19 +373,29 @@ HRESULT CRenderer::Draw()
 		static_cast<uint32_t>(vViewportSize.y));
 	if (FAILED(hResult))
 		return FailFrame("Ready_ScenePostTargets", hResult);
-	hResult = Render_Shadow();
+	{
+		CProfilerScope scope(pProfiler, "Render.Shadow");
+		hResult = Render_Shadow();
+	}
 	if (FAILED(hResult))
 		return FailFrame("Render_Shadow", hResult);
-	hResult = Render_NonBlend();
+	{
+		CProfilerScope scope(pProfiler, "Render.NonBlend");
+		hResult = Render_NonBlend();
+	}
 	if (FAILED(hResult))
 		return FailFrame("Render_NonBlend", hResult);
 	if (m_RenderQualitySettings.bSSAOEnabled)
 	{
+		CProfilerScope scope(pProfiler, "Render.SSAO");
 		hResult = Render_SSAO();
 		if (FAILED(hResult))
 			return FailFrame("Render_SSAO", hResult);
 	}
-	hResult = Render_Lights();
+	{
+		CProfilerScope scope(pProfiler, "Render.Lights");
+		hResult = Render_Lights();
+	}
 	if (FAILED(hResult))
 		return FailFrame("Render_Lights", hResult);
 
@@ -395,6 +412,7 @@ HRESULT CRenderer::Draw()
 			RENDER_OUTPUT_CONTRACT::
 			SCENE_HDR_RT0_SCENE_COLOR_RT1_DISTORTION,
 			m_pContext.Get());
+		CProfilerScope scope(pProfiler, "Render.SceneHDR");
 		hSceneResult = Render_Priority();
 		if (SUCCEEDED(hSceneResult))
 			hSceneResult = Render_Combined();
@@ -411,29 +429,42 @@ HRESULT CRenderer::Draw()
 			FAILED(hSceneResult) ? "Render_Scene" : "End_MRT_SceneHDR",
 			FAILED(hSceneResult) ? hSceneResult : hEndSceneResult);
 
-	hResult = Render_ScreenPosts();
+	{
+		CProfilerScope scope(pProfiler, "Render.ScreenPosts");
+		hResult = Render_ScreenPosts();
+	}
 	if (FAILED(hResult))
 		return FailFrame("Render_ScreenPosts", hResult);
 
 	if (m_RenderQualitySettings.bBloomEnabled)
 	{
+		CProfilerScope scope(pProfiler, "Render.Bloom");
 		hResult = Render_Bloom();
 		if (FAILED(hResult))
 			return FailFrame("Render_Bloom", hResult);
 	}
 
 	/* The one and only place tone mapping and gamma are applied. */
-	hResult = Render_Final();
+	{
+		CProfilerScope scope(pProfiler, "Render.Final");
+		hResult = Render_Final();
+	}
 	if (FAILED(hResult))
 		return FailFrame("Render_Final", hResult);
 
 	/* UI is authored in display space, so it stays out of the HDR target. */
-	hResult = Render_UI();
+	{
+		CProfilerScope scope(pProfiler, "Render.UI");
+		hResult = Render_UI();
+	}
 	if (FAILED(hResult))
 		return FailFrame("Render_UI", hResult);
 
 #ifdef _DEBUG
-	hResult = Render_Debug();
+	{
+		CProfilerScope scope(pProfiler, "Render.Debug");
+		hResult = Render_Debug();
+	}
 	if (FAILED(hResult))
 		return FailFrame("Render_Debug", hResult);
 #endif

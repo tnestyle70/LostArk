@@ -1181,6 +1181,20 @@ namespace
 		return { candidates.back().pPattern, std::move(trace) };
 	}
 
+	std::uint32_t ResolveSequencePursuitTicksAfter(
+		const BOSS_PATTERN_SEQUENCE_DEFINITION& sequence,
+		const std::uint32_t stepIndex)
+	{
+		if (stepIndex + 1u >= sequence.PatternIds.size())
+			return 0u;
+		if (sequence.TransitionPursuitTicks.size() + 1u ==
+			sequence.PatternIds.size())
+		{
+			return sequence.TransitionPursuitTicks[stepIndex];
+		}
+		return sequence.iInterStepPursuitTicks;
+	}
+
 	const BOSS_PATTERN_DEFINITION* SelectPattern(
 		SERVER_WORLD_ENTITY& boss,
 		const std::vector<BOSS_PATTERN_DEFINITION>& patterns,
@@ -1267,8 +1281,7 @@ namespace
 			{
 				boss.strRotationId = scriptedSequence->strSequenceId;
 				boss.iRotationStepIndex = 0u;
-				boss.iAutomaticPatternSequenceInterStepPursuitTicks =
-					scriptedSequence->iInterStepPursuitTicks;
+				boss.iAutomaticPatternSequenceInterStepPursuitTicks = 0u;
 				boss.iAutomaticPatternSequencePursuitTicksRemaining = 0u;
 			}
 			if (boss.iRotationStepIndex >=
@@ -1313,7 +1326,8 @@ namespace
 				return nullptr;
 			}
 			boss.iAutomaticPatternSequenceInterStepPursuitTicks =
-				scriptedSequence->iInterStepPursuitTicks;
+				ResolveSequencePursuitTicksAfter(
+					*scriptedSequence, boss.iRotationStepIndex);
 			boss.bAutomaticPatternSequenceStepRunning = true;
 			trace.iRotationStepIndex = boss.iRotationStepIndex;
 			trace.eSource = VALTAN_DECISION_SOURCE::ORDERED;
@@ -2147,6 +2161,104 @@ namespace
 		return false;
 	}
 
+	bool TryConsumeDamageLessCounterProxy(
+		SERVER_WORLD_ENTITY& boss,
+		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+		const CGameplayCatalog& catalog,
+		const BOSS_PATTERN_STAGE_DEFINITION& stage,
+		const std::uint32_t serverTick)
+	{
+		const bool ownsCounterBranch = std::any_of(
+			stage.Branches.begin(), stage.Branches.end(),
+			[](const BOSS_PATTERN_STAGE_BRANCH& branch)
+			{
+				return BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT ==
+					branch.eOutcome;
+			});
+		/* A counter proxy represents an incoming, damage-less interaction for a
+		   guard-style COUNTER skill. The ordinary player-hit path remains the
+		   authority for counter power and proxy geometry; this bridge only supplies
+		   the hit that a NONE stage deliberately does not own. Exact stage/runtime
+		   agreement makes a stale or partially restored proxy fail closed. */
+		if (!ownsCounterBranch ||
+			BOSS_PATTERN_HIT_SHAPE::NONE != stage.eHitShape ||
+			!stage.bHasCounterProxy || !boss.bPatternHasCounterProxy ||
+			boss.strActionId != stage.strActionId ||
+			boss.ePatternCounterProxyKind != stage.eCounterProxyKind ||
+			boss.fPatternCounterProxyForwardOffsetM !=
+				stage.fCounterProxyForwardOffsetM ||
+			boss.fPatternCounterProxyRightOffsetM !=
+				stage.fCounterProxyRightOffsetM ||
+			boss.fPatternCounterProxyRadiusM != stage.fCounterProxyRadiusM ||
+			boss.fPatternCounterProxyArcDegrees != stage.fCounterProxyArcDegrees ||
+			!CBossCombatRuntime::Has_Flag(
+				boss.BossCombat, SERVER_BOSS_COMBAT_FLAG::COUNTERABLE))
+		{
+			return false;
+		}
+
+		const BOSS_RUNTIME_PROFILE* bossProfile =
+			catalog.Find_Boss(boss.strArchetypeId);
+		if (nullptr == bossProfile ||
+			!std::isfinite(bossProfile->fCollisionRadius) ||
+			bossProfile->fCollisionRadius <= 0.f)
+		{
+			return false;
+		}
+
+		for (auto& [playerId, player] : players)
+		{
+			(void)playerId;
+			if (0u == player.iCurrentHp || !player.isCombatReady ||
+				!std::isfinite(player.fPositionX) ||
+				!std::isfinite(player.fPositionZ))
+			{
+				continue;
+			}
+			const PLAYER_SKILL_DEFINITION* skill =
+				catalog.Find_Skill(player.iCurrentSkillId);
+			if (nullptr == skill || 0u == skill->iCounterPower ||
+				LostArk::Shared::PLAYER_SKILL_KIND::COUNTER !=
+					skill->eSkillKind ||
+				!std::isfinite(skill->fMaximumRange) ||
+				skill->fMaximumRange <= 0.f ||
+				!LostArk::Shared::CombatCollision::Circles_Overlap(
+					LostArk::Shared::CombatCollision::CIRCLE_XZ{
+						player.fPositionX, player.fPositionZ,
+						skill->fMaximumRange },
+					LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ{
+						boss.fPositionX, boss.fPositionZ,
+						bossProfile->fCollisionRadius }))
+			{
+				continue;
+			}
+
+			/* Try_Counter mutates the action to stage two. Stage that mutation until
+			   the existing boss counter authority accepts the same source position. */
+			SERVER_PLAYER stagedPlayer = player;
+			if (!CPlayerSkillSystem::Try_Counter(
+				stagedPlayer, catalog, serverTick))
+			{
+				continue;
+			}
+			BOSS_INCOMING_HIT counterInteraction{};
+			counterInteraction.iSourcePlayerId = player.iPlayerId;
+			counterInteraction.iSkillId = skill->iSkillId;
+			counterInteraction.iCounterPower = skill->iCounterPower;
+			counterInteraction.iServerTick = serverTick;
+			counterInteraction.fSourceX = player.fPositionX;
+			counterInteraction.fSourceZ = player.fPositionZ;
+			if (!CBossCombatRuntime::Apply_PlayerHit(
+				boss, counterInteraction).bCounterTriggered)
+			{
+				continue;
+			}
+			player = std::move(stagedPlayer);
+			return true;
+		}
+		return false;
+	}
+
 	bool ApplyTimeoutBranch(
 		SERVER_WORLD_ENTITY& boss,
 		const BOSS_PATTERN_DEFINITION& pattern,
@@ -2687,9 +2799,12 @@ void LostArk::Server::CValtanBrain::Update(
 		(boss.PendingPatternFollowup.Is_Pending() ||
 		 (boss.iPatternFollowupDepth > 0u && !boss.strPatternId.empty()));
 	const auto* runningDefinition = FindPattern(*patterns, boss.strPatternId);
-	const bool verticalOffsetTerminalDamageCommitted =
+	/* A terminal stage whose every scheduled hit has already been applied has
+	   no target-dependent work left: a wipe that killed every raider completes
+	   on its own clock instead of aborting as NO_VALID_TARGET. */
+	const bool terminalStageDamageCommitted =
 		nullptr == target && !players.empty() &&
-		boss.bPatternVerticalOffsetApplied && nullptr != runningDefinition &&
+		nullptr != runningDefinition &&
 		boss.iPatternStageIndex + 1u == runningDefinition->Stages.size() &&
 		0u != boss.iPatternHitCount &&
 		boss.iAppliedPatternHitCount >= boss.iPatternHitCount;
@@ -2722,7 +2837,7 @@ void LostArk::Server::CValtanBrain::Update(
 		continueTargetlessOwnedGrabPattern ||
 		continueTargetlessOwnedBindPattern ||
 		continueTargetlessOrderedFloorWipe ||
-		verticalOffsetTerminalDamageCommitted ||
+		terminalStageDamageCommitted ||
 		continueTargetlessPatternFollowup ||
 		independentFinaleOrChild;
 	/* An explicitly terminal stage may finish its already-committed arena work
@@ -2895,6 +3010,8 @@ void LostArk::Server::CValtanBrain::Update(
 	UpdatePatternTargetAndAim(boss, *currentPattern, players, target);
 	const BOSS_PATTERN_STAGE_DEFINITION& currentStage =
 		currentPattern->Stages[boss.iPatternStageIndex];
+	(void)TryConsumeDamageLessCounterProxy(
+		boss, players, catalog, currentStage, serverTick);
 	if (ApplyPublishedOutcomeBranch(
 		boss, *currentPattern, currentStage, serverTick))
 	{

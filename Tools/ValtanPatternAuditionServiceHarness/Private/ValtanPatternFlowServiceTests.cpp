@@ -331,9 +331,18 @@ namespace
 			"retry allocated a different request or changed its ordered payload");
 		F.Input().Results.push_back(Verdict(Replacement, EPOCH + 1u,
 			VALTAN_PATTERN_FLOW_RESULT::DUPLICATE_IGNORED));
+		F.Input().Lifecycles.push_back(Event(
+			Replacement,
+			VALTAN_PATTERN_FLOW_LIFECYCLE_STATE::COMPLETED_HOLD,
+			3u, EPOCH + 1u));
 		F.Service.Update();
-		Require(!F.Service.Has_PendingStart() && F.Service.Get_Snapshot().iRoomFlowEpoch == EPOCH + 1u,
-			"replayed acceptance did not settle restart");
+		Require(!F.Service.Has_PendingStart() &&
+			!F.Service.Has_PlaybackOwnership() &&
+			F.Service.Get_Snapshot().iRoomFlowEpoch == EPOCH + 1u &&
+			F.Service.Get_Snapshot().eState ==
+				VALTAN_PATTERN_FLOW_STATE::COMPLETED_HOLD &&
+			F.Input().SentStarts.size() == 3u,
+			"replayed acceptance and terminal lifecycle did not settle without issuing another restart");
 	}
 
 	void VerifyInitialUnknownAndLongServerWait()

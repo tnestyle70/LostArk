@@ -766,6 +766,10 @@ namespace LostArk::Server
 		std::uint32_t iInterStepPursuitTicks = 0u;
 		std::uint32_t iExpectedStepCount = 0u;
 		std::vector<std::string> PatternIds;
+		/* One duration after each non-terminal Pattern occurrence. Catalog load
+		   expands legacy rows from iInterStepPursuitMs. */
+		std::vector<std::uint32_t> TransitionPursuitMs;
+		std::vector<std::uint32_t> TransitionPursuitTicks;
 	};
 
 	enum class BOSS_PATTERN_FINALE_KIND : std::uint8_t
