@@ -162,9 +162,9 @@ namespace
 		{ "Dead Scene",     "UI/DeadScene/DeadSceneUI.json", "UI/DeadScene/", false },
 		/* Bern's Valtan-entry confirm window (CLevel_Bern::Render_ValtanEntryModal).
 		Panel/Confirm/Cancel currently reuse Class Select's create-character modal
-		assets (UI/ClassSelect/Common/); szTextureRoot points at UI/Bern/ instead so
+		assets (UI/ClassSelect/Common/); szTextureRoot points at UI/RaidEntry/ instead so
 		this window's own art (e.g. Accept.png/Decline.png) shows in the palette. */
-		{ "Valtan Entry",   "UI/Bern/BernValtanEntry_Layout.json", "UI/Bern/", false },
+		{ "Valtan Entry",   "UI/RaidEntry/BernValtanEntry_Layout.json", "UI/RaidEntry/", false },
 		/* Same-room party invite popup (CPartyInteractionView::Render_InvitePopup).
 		Cloned from Valtan Entry at 0.7x -- see that document's own comment for
 		why Panel/Confirm/Cancel reuse Class Select's create-character modal art. */
@@ -195,7 +195,7 @@ namespace
 		are scratch positions, not final layout: the tab frames sit at a regular 123px x spacing but
 		at three different y values (116/156.1/187), because the component repositions them itself
 		at runtime. Those are placed by hand here rather than guessed from the shipped art. */
-		{ "Raid Entry",     "UI/Bern/ValtanRaidEntry_Layout.json", "UI/Bern/", false },
+		{ "Raid Entry",     "UI/RaidEntry/ValtanRaidEntry_Layout.json", "UI/RaidEntry/", false },
 	};
 
 	constexpr int32_t g_iDocumentCount = static_cast<int32_t>(sizeof(g_Documents) / sizeof(g_Documents[0]));

@@ -113,6 +113,12 @@ public:
 	drift out of phase. iFrame is clamped to the slot's real frame count. No-op if the slot
 	doesn't exist or has no animation frames. */
 	void Set_Animation_Frame(const string& strId, int32_t iFrame);
+	/* Swaps a slot's "animation.frames" flipbook list at runtime and rewinds it to frame 0 --
+	the raid-entry popup switches the boss-portrait commander movie per tab this way. An empty
+	Frames list clears the flipbook so the slot falls back to its static Set_SlotTexture art.
+	fFps <= 0 keeps the slot's current fps. No-op if the slot doesn't exist. */
+	void Set_SlotAnimation(const string& strId, const vector<string>& Frames,
+		f32_t fFps, bool_t bLoop);
 
 	f32_t Get_ResolutionWidth() const { return m_fResolutionWidth; }
 	f32_t Get_ResolutionHeight() const { return m_fResolutionHeight; }
