@@ -161,10 +161,6 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
                     "clientVisualId":
                         "combatobject.visual.valtan.ground-roar.rock.v1",
                     "effectAssetId": "effect.valtan.ground-roar.rock.active",
-                    "effectV2Group": {
-                        "groupId": "boss.valtan.rock-pillar.sequence",
-                        "playbackRate": 1.0,
-                    },
                     "hitEffectAssetId":
                         "effect.valtan.ground-roar.rock.explode",
                 },
@@ -173,26 +169,18 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
                         "combatobject.valtan.six-pizza.rock-pillar",
                     "clientVisualId":
                         "combatobject.visual.valtan.six-pizza.rock-pillar.v1",
-                    "effectAssetId": "effect.valtan.ground-roar.rock.active",
-                    "effectV2Group": {
-                        "groupId": "boss.valtan.rock-pillar.sequence",
-                        "playbackRate": 1.0,
-                    },
+                    "effectAssetId": "effect.valtan.six-pizza.rock.active",
                     "hitEffectAssetId":
-                        "effect.valtan.ground-roar.rock.explode",
+                        "effect.valtan.six-pizza.rock.explode",
                 },
                 {
                     "combatObjectArchetypeId":
                         "combatobject.valtan.struggling.rock-pillar",
                     "clientVisualId":
                         "combatobject.visual.valtan.struggling.rock-pillar.v1",
-                    "effectAssetId": "effect.valtan.ground-roar.rock.active",
-                    "effectV2Group": {
-                        "groupId": "boss.valtan.rock-pillar.sequence",
-                        "playbackRate": 1.0,
-                    },
+                    "effectAssetId": "effect.valtan.struggling.rock.active",
                     "hitEffectAssetId":
-                        "effect.valtan.ground-roar.rock.explode",
+                        "effect.valtan.struggling.rock.explode",
                 },
                 {
                     "combatObjectArchetypeId":
@@ -207,9 +195,13 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
                     "combatObjectArchetypeId":
                         "combatobject.valtan.ghost.portal-charge",
                     "clientVisualId":
-                        "combatobject.visual.valtan.ghost.portal-charge.v1",
+                        "combatobject.visual.valtan.ghost.portal-charge.v2",
                     "effectAssetId":
                         "effect.valtan.project-tuned.sequence.warp.portal",
+                    "effectV2Group": {
+                        "groupId": "boss.valtan.portal",
+                        "playbackRate": 1.0,
+                    },
                 },
             ],
         )

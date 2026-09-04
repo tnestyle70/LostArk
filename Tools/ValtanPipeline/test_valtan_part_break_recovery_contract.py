@@ -169,23 +169,24 @@ class ValtanPartBreakRecoveryContractTests(unittest.TestCase):
             product_recovery["actions"][0],
         )
 
-    def test_distinct_carrier_has_exact_owner_visual_and_terminal_sound(self) -> None:
+    def test_distinct_carrier_has_exact_owner_damage_visual_and_sound(self) -> None:
         authoring = _json("Data/Valtan/Valtan.combatobjects.json")
         authored = _one(
             authoring["objects"],
             "combatObjectArchetypeId",
             "combatobject.valtan.part-break.rock",
         )
-        self.assertEqual(5000, authored["lifetimeMs"])
-        self.assertEqual([], authored["hits"])
+        self.assertEqual(6200, authored["lifetimeMs"])
+        self.assertEqual(1.5, authored["coverRadiusM"])
+        self.assertEqual([], authored["presentationEvents"])
+        self.assertEqual(1, len(authored["hits"]))
+        authored_hit = authored["hits"][0]
         self.assertEqual(
-            [{
-                "presentationEventId":
-                    "pulse.valtan.part-break.rock.explode",
-                "trigger": {"kind": "TIMED", "atMs": 5000},
-            }],
-            authored["presentationEvents"],
+            "hit.valtan.part-break.rock.explode", authored_hit["hitId"]
         )
+        self.assertEqual({"kind": "TIMED", "atMs": 5000}, authored_hit["trigger"])
+        self.assertEqual({"kind": "CIRCLE", "outerRadiusM": 3.0}, authored_hit["shape"])
+        self.assertEqual("damage.valtan.stomp", authored_hit["serverDamageProfileId"])
 
         product = _json("Data/Encounters/Valtan/ValtanCombatObjects.json")
         carrier = _one(
@@ -201,16 +202,19 @@ class ValtanPartBreakRecoveryContractTests(unittest.TestCase):
         self.assertEqual("FIXED_AREA", carrier["kind"])
         self.assertEqual("BOSS_POSITION", carrier["originPolicy"])
         self.assertEqual("NONE", carrier["directionPolicy"])
-        self.assertEqual(5000, carrier["lifeMs"])
-        self.assertEqual([], carrier["hits"])
+        self.assertEqual(6200, carrier["lifeMs"])
+        self.assertEqual(1.5, carrier["coverRadiusM"])
+        self.assertNotIn("presentationEvents", carrier)
+        self.assertEqual(1, len(carrier["hits"]))
+        carrier_hit = carrier["hits"][0]
         self.assertEqual(
-            [{
-                "presentationEventId":
-                    "pulse.valtan.part-break.rock.explode",
-                "atMs": 5000,
-            }],
-            carrier["presentationEvents"],
+            "hit.valtan.part-break.rock.explode", carrier_hit["hitId"]
         )
+        self.assertEqual("TIMED", carrier_hit["trigger"])
+        self.assertEqual(5000, carrier_hit["atMs"])
+        self.assertEqual("CIRCLE", carrier_hit["hitShape"])
+        self.assertEqual(3.0, carrier_hit["hitOuterRadius"])
+        self.assertEqual("damage.valtan.stomp", carrier_hit["serverDamageProfileId"])
 
         catalog = _json("Data/Actors/BossCatalog.json")
         boss = _one(catalog["bosses"], "archetypeId", "BOSS_VALTAN")
@@ -247,8 +251,7 @@ class ValtanPartBreakRecoveryContractTests(unittest.TestCase):
                     "cue.sound.valtan.combatobject.part-break.rock.explode.01",
                 "combatObjectArchetypeId":
                     "combatobject.valtan.part-break.rock",
-                "presentationEventId":
-                    "pulse.valtan.part-break.rock.explode",
+                "hitId": "hit.valtan.part-break.rock.explode",
                 "soundBank": "S_Mob_G_Voltan2",
                 "soundEvent": "G_Voltan2_Attack09_ProjExp1",
             },
@@ -280,28 +283,35 @@ class ValtanPartBreakRecoveryContractTests(unittest.TestCase):
         self.assertEqual(4, len(bank["G_Voltan2_Attack09_ProjCreat1"]))
         self.assertEqual(4, len(bank["G_Voltan2_Attack09_ProjExp1"]))
 
-    def test_runtime_keeps_the_exception_and_semantic_cue_path_narrow(self) -> None:
+    def test_runtime_projects_damage_cover_and_uses_one_hit_pulse(self) -> None:
         room = _text("Server/Private/GameRoom.cpp")
-        start = room.index("visualCardinalRocksMayStartOffNavigation")
+        start = room.index("damagingCoverVolleyMayProject")
         body = room[start:room.index(
-            "authoredVolleyMayStartOffNavigation", start
+            "if (count < 2u", start
         )]
         for token in (
             "BOSS_COMBAT_OBJECT_KIND::FIXED_AREA",
             "BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NONE",
-            "definition->Hits.empty()",
-            "!definition->PresentationPulses.empty()",
-            '"combatobject.valtan.part-break.rock"',
-            '"VALTAN_PART_BREAK"',
-            '"valtan.reaction.part-break.recovery"',
-            "4u == count",
+            "definition->fCoverRadiusM > 0.f",
+            "!definition->Hits.empty()",
         ):
             self.assertIn(token, body)
+        projection = room[room.index(
+            "damagingCoverVolleyMayProject &&", start
+        ):room.index("if (!std::isfinite(resolvedPoint.x)", start)]
+        self.assertIn("Project_PointOnSameLevel", projection)
+        self.assertIn("MAX_COVER_PROJECTION_METERS = 2.f", projection)
+        self.assertIn("projectionDistance > MAX_COVER_PROJECTION_METERS", projection)
+        self.assertIn(
+            "m_ServerNavigation.Is_PointWalkableExact(boundedX, boundedZ)",
+            projection,
+        )
+        self.assertIn("projectionDistance > 2.f", projection)
 
         runtime = _text("Server/Private/CombatObjectRuntime.cpp")
         self.assertIn("event.strHitId = pulseId;", runtime)
         self.assertIn(
-            "QueuePresentationPulse(pulse.strPresentationEventId, 0u);",
+            "QueuePresentationPulse(hit.strHitId, hit.iAppliedTimedCount);",
             runtime,
         )
 

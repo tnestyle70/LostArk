@@ -923,6 +923,42 @@ class EffectV2BindingPipelineTests(unittest.TestCase):
 
 
 class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
+    def test_high_jump_axe_impact_cluster_is_rebased_to_the_combat_object_pivot(self) -> None:
+        repository_root = Path(__file__).resolve().parents[2]
+        group_path = (
+            repository_root
+            / "Data/Effects/V2/Groups/boss.valtan.axe.effectv2group.json"
+        )
+        group = pipeline.read_json(group_path)
+        effective_z: dict[str, float] = {}
+        for child in group["children"]:
+            leaf_id = child["resource"]["id"]
+            leaf = pipeline.read_json(
+                repository_root
+                / "Data/Effects/V2/Authored"
+                / f"{leaf_id}.effectv2.json"
+            )
+            effective_z[leaf_id] = (
+                child["localTransform"]["translation"][2]
+                + leaf["params"]["position"]["start"][2]
+            )
+
+        impact_cluster = {
+            leaf_id: offset
+            for leaf_id, offset in effective_z.items()
+            if leaf_id != "boss.valtan.axe_fall_1"
+        }
+        self.assertEqual(8, len(impact_cluster))
+        for leaf_id, offset in impact_cluster.items():
+            with self.subTest(leaf=leaf_id):
+                self.assertLessEqual(abs(offset), 0.71)
+        for leaf_id in (
+            "boss.valtan.axe_stuck_1",
+            "boss.valtan.hit_3",
+            "boss.valtan.blur_2",
+        ):
+            self.assertAlmostEqual(0.0, effective_z[leaf_id], places=6)
+
     def test_repository_binding_owner_is_canonical_v2_and_fully_admitted(self) -> None:
         repository_root = Path(__file__).resolve().parents[2]
         canonical = pipeline.read_json(
@@ -943,10 +979,12 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
             repository_root / "Client/Bin/Resources",
         )
         self.assertEqual(2, canonical["formatVersion"])
-        # 2026-09-03: VALTAN_THREE and VALTAN_TRIPLE_COUNTER gained six smash
-        # bindings and the six-pizza shout loop was removed (65 -> 70). Every
-        # repository row must still be admitted; none may be silently dropped.
-        self.assertEqual(70, len(canonical["bindings"]))
+        # 2026-09-04: clip-template parity adds twelve authored impact,
+        # landing, stomp, and finisher rows, plus the reviewed THREE STEP_03
+        # legacy first pulse, STAGGER wipe, and the CHANNEL aura, on top of the
+        # 86-row portal owner.
+        # Every repository row must still be admitted; none may be dropped.
+        self.assertEqual(102, len(canonical["bindings"]))
         self.assertEqual(len(canonical["bindings"]), len(admitted["bindings"]))
         binding_ids = [row["bindingId"] for row in admitted["bindings"]]
         self.assertEqual(sorted(binding_ids), binding_ids)
@@ -1004,6 +1042,7 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
                 "boss.valtan.rock-pillar.sequence": 2,
                 "boss.valtan.shout": 20,
                 "boss.valtan.shout.burst": 6,
+                "boss.valtan.six.sonic": 3,
                 "boss.valtan.twohand": 9,
             },
             child_counts,
@@ -1016,14 +1055,15 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
                 "boss.valtan.breathe.red": 1500,
                 "boss.valtan.impact": 5000,
                 "boss.valtan.magicball": 12000,
-                "boss.valtan.magicball.aura": 10000,
-                "boss.valtan.portal": 3000,
+                "boss.valtan.magicball.aura": 12000,
+                "boss.valtan.portal": 1900,
                 "boss.valtan.pounding": 2000,
                 "boss.valtan.pounding.chase": 4100,
                 "boss.valtan.project-tuned.sequence.trash.pulse-group": 600,
                 "boss.valtan.rock-pillar.sequence": 6200,
                 "boss.valtan.shout": 3000,
                 "boss.valtan.shout.burst": 1000,
+                "boss.valtan.six.sonic": 300,
                 "boss.valtan.twohand": 2000,
             },
             spans,

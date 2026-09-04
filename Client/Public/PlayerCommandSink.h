@@ -81,6 +81,17 @@ public:
 	virtual bool Request_ConfirmNpcEntry(
 		std::uint32_t clientSequence,
 		const std::string& npcPlacementId) = 0;
+	// 파티 레이드 입장 투표 발의(리더/솔로). eTarget으로 발탄/쿠크를 고른다 -- NPC가
+	// 아니라 UI 탭이 소유하며 Server가 이 값으로 target world를 결정한다.
+	virtual bool Request_RaidEntryPropose(
+		std::uint32_t clientSequence,
+		const std::string& npcPlacementId,
+		LostArk::Shared::RAID_ENTRY_TARGET target) = 0;
+	// 투표 프롬프트에 대한 개별 수락/거절 응답. proposalId는 프롬프트가 준 값 그대로.
+	virtual bool Request_RaidEntryRespond(
+		std::uint32_t clientSequence,
+		std::uint32_t proposalId,
+		bool accepted) = 0;
 	// Raid Clear screen's own "돌아가기" (return) button, Valtan Arena only --
 	// the reverse trip of Request_ConfirmNpcEntry. No target NPC to name (the
 	// button has no proximity requirement); the Server lands the player back

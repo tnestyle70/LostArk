@@ -608,6 +608,7 @@ namespace
 				const bool_t bPerAlivePlayer =
 					"PER_ALIVE_PLAYER" == strTargeting;
 				const bool_t bBossRelative = "BOSS_RELATIVE" == strTargeting;
+				const bool_t bArenaCenter = "ARENA_CENTER" == strTargeting;
 				if (!Has_ExactProperties(Value,
 						{ "trigger", "kind", "targetId", "targetingPolicy",
 						  "countPerResolvedTarget", "layout", "radiusM",
@@ -620,7 +621,7 @@ namespace
 					"ENTER" != Read_String(Value, "trigger") ||
 					nullptr == Required(Value, "targetId", DATA_JSON_TYPE::STRING) ||
 					nullptr == pTargeting ||
-					(!bPerAlivePlayer && !bBossRelative) ||
+					(!bPerAlivePlayer && !bBossRelative && !bArenaCenter) ||
 					nullptr == pLayout ||
 					("SINGLE" != pLayout->Get_String() &&
 					 "RADIAL" != pLayout->Get_String()) ||
@@ -696,7 +697,7 @@ namespace
 					Value.Find("arenaHeightToleranceM")->Get_Number() > 0.0;
 				const bool_t bPerAlivePlayerContract = bPerAlivePlayer &&
 					(bNoArenaSupplement || bArenaSupplement);
-				const bool_t bBossRelativeContract = bBossRelative &&
+				const bool_t bBossRelativeContract = (bBossRelative || bArenaCenter) &&
 					"RADIAL" == pLayout->Get_String() && fCount >= 2.0 &&
 					fRadius > 0.0 && fAngleStep > 0.0 &&
 					fAngleStep * fCount <= 360.000001 &&
@@ -5179,6 +5180,7 @@ namespace
 			const bool_t bPerAlivePlayer =
 				"PER_ALIVE_PLAYER" == strVolleyPolicy;
 			const bool_t bBossRelative = "BOSS_RELATIVE" == strVolleyPolicy;
+			const bool_t bArenaCenter = "ARENA_CENTER" == strVolleyPolicy;
 			if (!Has_ExactProperties(Event,
 					{ "eventId", "trigger", "kind", "combatObjectArchetypeId",
 					  "volleyPolicy", "countPerResolvedTarget", "layout",
@@ -5187,7 +5189,7 @@ namespace
 				"ENTER" != strTrigger ||
 				!Is_StableToken(Read_String(
 					Event, "combatObjectArchetypeId")) ||
-				(!bPerAlivePlayer && !bBossRelative) ||
+				(!bPerAlivePlayer && !bBossRelative && !bArenaCenter) ||
 				!Is_NonNegativeInteger(Event.Find("countPerResolvedTarget")) ||
 				0.0 == Event.Find("countPerResolvedTarget")->Get_Number() ||
 				Event.Find("countPerResolvedTarget")->Get_Number() > 8.0 ||
@@ -5219,16 +5221,28 @@ namespace
 				Is_FiniteNumber(pLayout->Find("radiusM")) &&
 				Is_FiniteNumber(pLayout->Find("startAngleDegrees")) &&
 				Is_FiniteNumber(pLayout->Find("angleStepDegrees"));
+			/* ARENA_CENTER reuses the boss radial layout fields around the authored
+			   arena centre with world-absolute angles. */
+			const bool_t bArenaCenterRadial =
+				"RADIAL_AROUND_ARENA_CENTER" == strLayoutKind &&
+				Has_ExactProperties(*pLayout,
+					{ "kind", "radiusM", "startAngleDegrees",
+					  "angleStepDegrees", "mappingBasis" }) &&
+				"PROJECT_TUNED" == Read_String(*pLayout, "mappingBasis") &&
+				Is_FiniteNumber(pLayout->Find("radiusM")) &&
+				Is_FiniteNumber(pLayout->Find("startAngleDegrees")) &&
+				Is_FiniteNumber(pLayout->Find("angleStepDegrees"));
 			const double fCount =
 				Event.Find("countPerResolvedTarget")->Get_Number();
 			if ((bPerAlivePlayer && !bTargetCenter && !bRadial) ||
-				(bBossRelative && !bBossRadial))
+				(bBossRelative && !bBossRadial) ||
+				(bArenaCenter && !bArenaCenterRadial))
 			{
 				strOutError = "split gameplay combat-object volley layout is invalid";
 				return false;
 			}
 			if ((bPerAlivePlayer && bTargetCenter && 1.0 != fCount) ||
-				((bRadial || bBossRadial) && (fCount < 2.0 ||
+				((bRadial || bBossRadial || bArenaCenterRadial) && (fCount < 2.0 ||
 					pLayout->Find("radiusM")->Get_Number() <= 0.0 ||
 					pLayout->Find("angleStepDegrees")->Get_Number() <= 0.0 ||
 					pLayout->Find("angleStepDegrees")->Get_Number() * fCount >
@@ -5285,8 +5299,8 @@ namespace
 						fArenaRandomCount;
 			const bool_t bPerAliveArenaContract = bPerAlivePlayer &&
 				(bNoArenaSupplement || bArenaSupplement);
-			const bool_t bBossRelativeContract = bBossRelative &&
-				bNoArenaSupplement &&
+			const bool_t bBossRelativeContract =
+				(bBossRelative || bArenaCenter) && bNoArenaSupplement &&
 				1.0 == pSpawnSchedule->Find("count")->Get_Number() &&
 				0.0 == pSpawnSchedule->Find("intervalMs")->Get_Number() &&
 				Event.Find("maximumTotalObjects")->Get_Number() >= fCount;
@@ -6359,11 +6373,19 @@ namespace
 							"arena.center.facing" == Anchor;
 						const bool_t bTargetFollow =
 							"arena.center.target-follow" == Anchor;
+						const bool_t bFixedCenter = "arena.center" == Anchor;
+						const bool_t bHasFixedCenterMotion =
+							Pattern.ServerMotion.has_value() &&
+							("LEAP_TO_ANCHOR" == Pattern.ServerMotion->strKind ||
+							 "LEAP_TO_TARGET" == Pattern.ServerMotion->strKind);
+						const bool_t bHasCenterApproach =
+							Pattern.ServerMotion.has_value() &&
+							"LEAP_TO_ANCHOR" == Pattern.ServerMotion->strKind &&
+							Pattern.ServerMotion->bMoveToAnchorBeforeTakeoff;
 						if (("arena.center" != Anchor && !bFixedFacing &&
 							 !bTargetFollow) ||
-							!Pattern.ServerMotion.has_value() ||
-							Pattern.ServerMotion->strKind != "LEAP_TO_ANCHOR" ||
-							!Pattern.ServerMotion->bMoveToAnchorBeforeTakeoff ||
+							(bFixedCenter && !bHasFixedCenterMotion) ||
+							(!bFixedCenter && !bHasCenterApproach) ||
 							Read_String(Cue, "followPolicy") !=
 								(bTargetFollow ? "follow" : "snapshot") ||
 							(bFixedFacing &&

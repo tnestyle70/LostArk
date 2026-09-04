@@ -70,6 +70,9 @@ namespace
 	constexpr f32_t NETWORK_PLAYBACK_DRIFT_GAIN = 4.f;
 	constexpr f32_t NETWORK_TELEPORT_DISTANCE_SQ = 100.f;
 	constexpr f32_t NETWORK_TURN_DEGREES_PER_SECOND = 720.f;
+	constexpr f32_t VALTAN_GHOST_PORTAL_RUSH_START_SECONDS = 0.3f;
+	constexpr f32_t VALTAN_GHOST_PORTAL_RUSH_END_SECONDS = 1.6f;
+	constexpr f32_t VALTAN_GHOST_PORTAL_BODY_TERMINAL_HIDE_MS = 1600.f;
 	constexpr f32_t VALTAN_TARGET_FOLLOW_ROOT_YAW_OFFSET_DEGREES = 180.f;
 	constexpr const char_t* ROOT_MOTION_BONE = "b_root";
 	constexpr int32_t ROOT_MOTION_VERTICAL_AXIS = 2;
@@ -355,7 +358,10 @@ HRESULT CValtan::Initialize(void* pArg)
 	if (nullptr == actor || actor->clientPresentationId != "boss.valtan.client.v1" ||
 		(desc.isServerAuthoritative &&
 			(("BOSS_VALTAN_GHOST" == desc.strArchetypeId) !=
-			 (LostArk::Shared::INVALID_NET_ENTITY_ID != desc.iOwnerBossNetEntityId))))
+			 (LostArk::Shared::INVALID_NET_ENTITY_ID != desc.iOwnerBossNetEntityId))) ||
+		(desc.bStartReplicationDormant &&
+			(!desc.isServerAuthoritative ||
+			 "BOSS_VALTAN_GHOST" != desc.strArchetypeId)))
 	{
 		return E_INVALIDARG;
 	}
@@ -372,6 +378,7 @@ HRESULT CValtan::Initialize(void* pArg)
 	m_fMoveSpeed = desc.fSpeedPerSec;
 	m_iPrototypeLevelIndex = desc.iPrototypeLevelIndex;
 	m_isServerAuthoritative = desc.isServerAuthoritative;
+	m_isReplicationDormant = desc.bStartReplicationDormant;
 	m_strArchetypeId = desc.strArchetypeId;
 	m_strPresentationPartArchetypeId = desc.strArchetypeId;
 	m_iOwnerBossNetEntityId = desc.iOwnerBossNetEntityId;
@@ -404,6 +411,8 @@ HRESULT CValtan::Initialize(void* pArg)
 
 	if (FAILED(Ready_PartObjects()))
 		return E_FAIL;
+	if (m_isReplicationDormant && nullptr != m_pBodyModelCom)
+		m_pBodyModelCom->Set_AnimPaused(true);
 	std::string PatternPresentationStatus;
 	if (!m_isServerAuthoritative &&
 		!Reload_PatternPresentationAuthoring(PatternPresentationStatus))
@@ -762,110 +771,6 @@ bool_t CValtan::Reload_PatternBindings_WhileAdmitted(
 	return true;
 }
 
-bool_t CValtan::Reload_PlayerHandGripLocalOffsets_WhileAdmitted(
-	std::string& strOutStatus)
-{
-	CEncounterPatternReference encounter;
-	if (!encounter.Load(CProjectDataRoot::Resolve(
-			std::filesystem::path(L"Encounters") / L"Valtan" /
-			L"ValtanEncounter.json"), strOutStatus))
-	{
-		strOutStatus =
-			"Valtan player hand-grip Product admission rejected: " +
-			strOutStatus;
-		return false;
-	}
-
-	std::unordered_map<std::string, PLAYER_HAND_GRIP_LOCAL_OFFSET>
-		stagedByActionId;
-	std::unordered_map<std::string, PLAYER_HAND_GRIP_LOCAL_OFFSET>
-		stagedByPatternId;
-	for (const ENCOUNTER_PATTERN_REFERENCE& pattern : encounter.Get_Patterns())
-	{
-		bool_t bHasPatternGripLocalOffset = false;
-		PLAYER_HAND_GRIP_LOCAL_OFFSET patternGripLocalOffset{};
-		for (const ENCOUNTER_STAGE_REFERENCE& stage : pattern.stages)
-		{
-			if (!stage.gripLocalOffset.has_value())
-				continue;
-			if (pattern.patternId.empty() || stage.actionId.empty() ||
-				!CPlayerHandGripTransform::Is_ValidGripLocalOffset(
-					*stage.gripLocalOffset) ||
-				!stagedByActionId.emplace(
-					stage.actionId, *stage.gripLocalOffset).second)
-			{
-				strOutStatus =
-					"Valtan player hand-grip stable action identity is invalid: " +
-					pattern.patternId + "/" + stage.stageId;
-				return false;
-			}
-			if (!bHasPatternGripLocalOffset)
-			{
-				patternGripLocalOffset = *stage.gripLocalOffset;
-				bHasPatternGripLocalOffset = true;
-			}
-			else if (patternGripLocalOffset != *stage.gripLocalOffset)
-			{
-				strOutStatus =
-					"Valtan player hand-grip Pattern has conflicting CAPTURE gripLocalOffset values: " +
-					pattern.patternId;
-				return false;
-			}
-		}
-		if (bHasPatternGripLocalOffset &&
-			!stagedByPatternId.emplace(
-				pattern.patternId, patternGripLocalOffset).second)
-		{
-			strOutStatus =
-				"Valtan player hand-grip stable Pattern identity is duplicated: " +
-				pattern.patternId;
-			return false;
-		}
-	}
-	m_PlayerHandGripLocalOffsetByActionId = std::move(stagedByActionId);
-	m_PlayerHandGripLocalOffsetByPatternId = std::move(stagedByPatternId);
-	strOutStatus = "Reloaded " +
-		std::to_string(m_PlayerHandGripLocalOffsetByActionId.size()) +
-		" Valtan player hand-grip action binding(s) and " +
-		std::to_string(m_PlayerHandGripLocalOffsetByPatternId.size()) +
-		" Pattern binding(s).";
-	return true;
-}
-
-bool_t CValtan::Try_Get_PlayerHandGripLocalOffset(
-	const std::string_view actionId,
-	Client::PLAYER_HAND_GRIP_LOCAL_OFFSET& outOffset) const
-{
-	if (actionId.empty())
-		return false;
-	const auto found = m_PlayerHandGripLocalOffsetByActionId.find(
-		std::string(actionId));
-	if (m_PlayerHandGripLocalOffsetByActionId.end() == found ||
-		!CPlayerHandGripTransform::Is_ValidGripLocalOffset(found->second))
-	{
-		return false;
-	}
-	outOffset = found->second;
-	return true;
-}
-
-bool_t CValtan::Try_Get_PlayerHandGripLocalOffsetByPatternId(
-	const std::string_view patternId,
-	Client::PLAYER_HAND_GRIP_LOCAL_OFFSET& outOffset) const
-{
-	if (patternId.empty())
-		return false;
-	const auto found = m_PlayerHandGripLocalOffsetByPatternId.find(
-		std::string(patternId));
-	if (m_PlayerHandGripLocalOffsetByPatternId.end() == found ||
-		!CPlayerHandGripTransform::Is_ValidGripLocalOffset(found->second))
-	{
-		return false;
-	}
-	outOffset = found->second;
-	return true;
-}
-
 bool_t CValtan::Reload_PatternPresentationAuthoring(
 	std::string& strOutStatus)
 {
@@ -931,10 +836,6 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	const auto PreviousBindings = m_PatternClipByActionId;
 	const auto PreviousBodyVisibility =
 		m_PatternBodyVisibilityByActionId;
-	const auto PreviousGripLocalOffsetsByActionId =
-		m_PlayerHandGripLocalOffsetByActionId;
-	const auto PreviousGripLocalOffsetsByPatternId =
-		m_PlayerHandGripLocalOffsetByPatternId;
 	const auto PreviousEffectCues = m_PatternEffectCuesByActionId;
 	const auto PreviousArenaCenters = m_PatternArenaCenterAnchors;
 	const auto PreviousEffectAttempts = m_AttemptedPatternEffectOccurrenceKeys;
@@ -958,8 +859,6 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 
 	const auto RestorePrevious = [this,
 		&PreviousBindings, &PreviousBodyVisibility,
-		&PreviousGripLocalOffsetsByActionId,
-		&PreviousGripLocalOffsetsByPatternId,
 		&PreviousEffectCues, &PreviousArenaCenters,
 		&PreviousEffectAttempts, PreviousEffectScanValid,
 		PreviousEffectScanAge, &PreviousSoundCues,
@@ -972,10 +871,6 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	{
 		m_PatternClipByActionId = PreviousBindings;
 		m_PatternBodyVisibilityByActionId = PreviousBodyVisibility;
-		m_PlayerHandGripLocalOffsetByActionId =
-			PreviousGripLocalOffsetsByActionId;
-		m_PlayerHandGripLocalOffsetByPatternId =
-			PreviousGripLocalOffsetsByPatternId;
 		m_PatternEffectCuesByActionId = PreviousEffectCues;
 		m_PatternArenaCenterAnchors = PreviousArenaCenters;
 		m_AttemptedPatternEffectOccurrenceKeys = PreviousEffectAttempts;
@@ -998,7 +893,6 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 
 	std::string StepStatus;
 	if (!Reload_PatternBindings_WhileAdmitted(StepStatus) ||
-		!Reload_PlayerHandGripLocalOffsets_WhileAdmitted(StepStatus) ||
 		!Reload_PatternEffectCues_WhileAdmitted(StepStatus) ||
 		!Reload_PatternSoundCues_WhileAdmitted(StepStatus) ||
 		!Reload_CombatObjectSoundCues_WhileAdmitted(StepStatus) ||
@@ -1006,7 +900,7 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	{
 		RestorePrevious();
 		strOutStatus =
-			"Valtan joined presentation reload rejected; every previous animation/grip/effect/sound/combat-sound/shake cache was preserved: " +
+			"Valtan joined presentation reload rejected; every previous animation/effect/sound/combat-sound/shake cache was preserved: " +
 			StepStatus;
 		return false;
 	}
@@ -1019,10 +913,6 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	auto StagedBindings = std::move(m_PatternClipByActionId);
 	auto StagedBodyVisibility =
 		std::move(m_PatternBodyVisibilityByActionId);
-	auto StagedGripLocalOffsetsByActionId =
-		std::move(m_PlayerHandGripLocalOffsetByActionId);
-	auto StagedGripLocalOffsetsByPatternId =
-		std::move(m_PlayerHandGripLocalOffsetByPatternId);
 	auto StagedEffectCues = std::move(m_PatternEffectCuesByActionId);
 	auto StagedArenaCenters = std::move(m_PatternArenaCenterAnchors);
 	auto StagedSoundCues = std::move(m_PatternSoundCuesByActionId);
@@ -1052,10 +942,6 @@ bool_t CValtan::Reload_PatternPresentationAuthoring_Impl(
 	m_PatternClipByActionId = std::move(StagedBindings);
 	m_PatternBodyVisibilityByActionId =
 		std::move(StagedBodyVisibility);
-	m_PlayerHandGripLocalOffsetByActionId =
-		std::move(StagedGripLocalOffsetsByActionId);
-	m_PlayerHandGripLocalOffsetByPatternId =
-		std::move(StagedGripLocalOffsetsByPatternId);
 	m_PatternEffectCuesByActionId = std::move(StagedEffectCues);
 	m_PatternArenaCenterAnchors = std::move(StagedArenaCenters);
 	m_PatternSoundCuesByActionId = std::move(StagedSoundCues);
@@ -1289,10 +1175,57 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 		}
 		Spawn_DuePatternEffectCues(fActionAgeSeconds);
 	}
+	m_PortalRushRoute = {};
+	if (m_bLocalPatternAuthoringPreview)
+	{
+		const auto PortalDistance =
+			m_LocalPreviewPortalRushDistanceByActionId.find(std::string(actionId));
+		if (m_LocalPreviewPortalRushDistanceByActionId.end() != PortalDistance)
+		{
+			float3_t Start{};
+			XMStoreFloat3(&Start, m_pTransformCom->Get_State(STATE::POSITION));
+			const vector_t Look =
+				XMVector3Normalize(m_pTransformCom->Get_State(STATE::LOOK));
+			float3_t Direction{};
+			XMStoreFloat3(&Direction, Look);
+			if (!std::isfinite(Start.x) || !std::isfinite(Start.y) ||
+				!std::isfinite(Start.z) || !std::isfinite(Direction.x) ||
+				!std::isfinite(Direction.z) ||
+				Direction.x * Direction.x + Direction.z * Direction.z <= 0.000001f)
+			{
+				return false;
+			}
+			m_PortalRushRoute.isValid = true;
+			m_PortalRushRoute.fStartX = Start.x;
+			m_PortalRushRoute.fStartY = Start.y;
+			m_PortalRushRoute.fStartZ = Start.z;
+			m_PortalRushRoute.fEndX =
+				Start.x + Direction.x * PortalDistance->second;
+			m_PortalRushRoute.fEndY = Start.y;
+			m_PortalRushRoute.fEndZ =
+				Start.z + Direction.z * PortalDistance->second;
+		}
+	}
 	const Client::EFFECT_V2_TARGET EffectV2Target =
 		Client::EFFECT_V2_TARGET::From_Valtan(
 			static_pointer_cast<CValtan>(shared_from_this()));
 	const std::string StageActionId(actionId);
+	bool_t bPatternBodyHidden = false;
+	const auto& BodyVisibilityByActionId =
+		m_bLocalPatternAuthoringPreview ?
+			m_LocalPreviewBodyVisibilityByActionId :
+			m_PatternBodyVisibilityByActionId;
+	const auto BodyVisibility =
+		BodyVisibilityByActionId.find(StageActionId);
+	if (BodyVisibilityByActionId.end() != BodyVisibility)
+	{
+		const f32_t fActionAgeMs = fActionAgeSeconds * 1000.f;
+		bPatternBodyHidden =
+			fActionAgeMs >= static_cast<f32_t>(
+				BodyVisibility->second.iHiddenFromMs) &&
+			fActionAgeMs < static_cast<f32_t>(
+				BodyVisibility->second.iHiddenToMs);
+	}
 	std::vector<Client::EFFECT_V2_CLIP_OCCURRENCE_CLOCK> EffectV2Clocks;
 	if (!Build_EffectV2OccurrenceClocksForAction(
 			m_pBodyModelCom,
@@ -1320,6 +1253,106 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 			EffectV2Clocks,
 			m_pDevice, m_pContext);
 	}
+	m_isPatternBodyHidden = bPatternBodyHidden;
+	return true;
+}
+
+bool_t CValtan::Copy_AdmittedPatternPresentationFrom(
+	const CValtan& Source,
+	const LostArk::Shared::GameplayDataRevision& ExpectedServerRevision,
+	const Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& ExpectedReceipt,
+	std::string& strOutStatus)
+{
+	strOutStatus.clear();
+	if (!m_isServerAuthoritative || !m_isReplicationDormant ||
+		"BOSS_VALTAN_GHOST" != m_strArchetypeId ||
+		LostArk::Shared::INVALID_NET_ENTITY_ID == m_iOwnerBossNetEntityId ||
+		!Source.m_isServerAuthoritative || Source.m_isReplicationDormant ||
+		"BOSS_VALTAN" != Source.m_strArchetypeId ||
+		LostArk::Shared::INVALID_NET_ENTITY_ID !=
+			Source.m_iOwnerBossNetEntityId ||
+		nullptr == m_pBodyModelCom || !ExpectedServerRevision.Is_Valid() ||
+		!ExpectedReceipt.Is_Valid() ||
+		ExpectedReceipt.ServerGameplayRevision != ExpectedServerRevision ||
+		Source.m_PresentationGenerationReceipt != ExpectedReceipt)
+	{
+		strOutStatus =
+			"Ghost pool copy requires one dormant dependent and the exact-admitted live primary generation.";
+		return false;
+	}
+
+	/* The two rigs consume the same encounter authoring, but animation and bone
+	compatibility still belongs to the concrete destination model.  Validate it
+	before copying any cache so a mismatched ghost donor leaves this slot wholly
+	dormant and unadmitted. */
+	for (const auto& [actionId, clips] : Source.m_PatternClipByActionId)
+	{
+		(void)actionId;
+		if (clips.empty())
+			continue;
+		std::vector<Client::ACTION_PRESENTATION_CLIP_TIMING> Timings;
+		if (!Build_PatternTimeline(
+				m_pBodyModelCom,
+				std::span<const Client::BOSS_PATTERN_ANIMATION_CLIP>(
+					clips.data(), clips.size()),
+				Timings))
+		{
+			strOutStatus =
+				"Ghost pool animation donor is incompatible with an admitted primary pattern binding.";
+			return false;
+		}
+	}
+	for (const auto& [actionId, cues] : Source.m_PatternEffectCuesByActionId)
+	{
+		(void)actionId;
+		for (const Client::VALTAN_PATTERN_EFFECT_CUE& Cue : cues)
+		{
+			if ("root" == Cue.strAnchorSlotId ||
+				Is_ArenaCenterCueAnchor(Cue.strAnchorSlotId) ||
+				Is_PatternTargetSnapshotCueAnchor(Cue.strAnchorSlotId))
+			{
+				continue;
+			}
+			if (!m_pBodyModelCom->Has_Bone(Cue.strAnchorSlotId.c_str()))
+			{
+				strOutStatus =
+					"Ghost pool animation donor is missing an admitted Effect cue bone anchor: " +
+					Cue.strAnchorSlotId + ".";
+				return false;
+			}
+		}
+	}
+
+	auto StagedBindings = Source.m_PatternClipByActionId;
+	auto StagedBodyVisibility = Source.m_PatternBodyVisibilityByActionId;
+	auto StagedEffectCues = Source.m_PatternEffectCuesByActionId;
+	auto StagedArenaCenters = Source.m_PatternArenaCenterAnchors;
+	auto StagedSoundCues = Source.m_PatternSoundCuesByActionId;
+	auto StagedSoundReceipt = Source.m_PatternSoundSourceReceipt;
+	auto StagedCombatObjectSoundCues = Source.m_CombatObjectSoundCuesBySource;
+	auto StagedShakeCues = Source.m_PatternShakeCuesByActionId;
+#ifdef _DEBUG
+	auto StagedHitAreas = Source.m_PatternHitAreaByActionId;
+#endif
+
+	m_PatternClipByActionId = std::move(StagedBindings);
+	m_PatternBodyVisibilityByActionId = std::move(StagedBodyVisibility);
+	m_PatternEffectCuesByActionId = std::move(StagedEffectCues);
+	m_PatternArenaCenterAnchors = std::move(StagedArenaCenters);
+	m_PatternSoundCuesByActionId = std::move(StagedSoundCues);
+	m_PatternSoundSourceReceipt = std::move(StagedSoundReceipt);
+	m_CombatObjectSoundCuesBySource =
+		std::move(StagedCombatObjectSoundCues);
+	m_PatternShakeCuesByActionId = std::move(StagedShakeCues);
+	m_PresentationGenerationReceipt = ExpectedReceipt;
+#ifdef _DEBUG
+	m_PatternHitAreaByActionId = std::move(StagedHitAreas);
+	m_isPatternHitAreaDebugLoadAttempted =
+		Source.m_isPatternHitAreaDebugLoadAttempted;
+#endif
+	Reset_ReplicatedOccurrenceState();
+	strOutStatus =
+		"Copied the exact-admitted primary joined presentation into one dormant ghost pool slot.";
 	return true;
 }
 
@@ -1391,20 +1424,38 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 		std::vector<LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE> StagedInstances;
 		for (const LOCAL_PATTERN_COMBAT_OBJECT_TEMPLATE& Template : Found->second)
 		{
+			/* BOSS_RELATIVE mirrors the Server: live boss pose and yaw-relative
+			   angles. ARENA_CENTER mirrors boss.fSpawnPosition through the pattern's
+			   admitted landing anchor and uses world-absolute angles. */
+			float3_t Origin = BossPosition;
+			f32_t fYawBasisDegrees = m_fPresentationYawDegrees;
+			if (Template.bArenaCenterOrigin)
+			{
+				const auto Anchor = m_LocalPreviewArenaCenterAnchors.find(
+					m_strLocalPreviewPatternId);
+				if (m_LocalPreviewArenaCenterAnchors.end() == Anchor)
+				{
+					strOutStatus =
+						"Local combat-object preview has no admitted arena-center anchor.";
+					return false;
+				}
+				Origin = Anchor->second;
+				fYawBasisDegrees = 0.f;
+			}
 			for (uint32_t iOrdinal = 0u; iOrdinal < Template.iCount; ++iOrdinal)
 			{
 				const f32_t fRelativeDegrees = Template.fStartAngleDegrees +
 					Template.fAngleStepDegrees * static_cast<f32_t>(iOrdinal);
 				const f32_t fWorldDegrees =
-					m_fPresentationYawDegrees + fRelativeDegrees;
+					fYawBasisDegrees + fRelativeDegrees;
 				const f32_t fRadians = XMConvertToRadians(fWorldDegrees);
 				LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE Instance;
 				Instance.Template = Template;
 				Instance.iOrdinal = iOrdinal;
 				Instance.vPosition = {
-					BossPosition.x + std::sin(fRadians) * Template.fRadiusM,
-					BossPosition.y,
-					BossPosition.z + std::cos(fRadians) * Template.fRadiusM };
+					Origin.x + std::sin(fRadians) * Template.fRadiusM,
+					Origin.y,
+					Origin.z + std::cos(fRadians) * Template.fRadiusM };
 				Instance.fYawDegrees = fWorldDegrees;
 				Instance.TerminalHandles.resize(
 					Template.PresentationEvents.size(), 0u);
@@ -1440,6 +1491,7 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 				CEffectPresentationService::Stop_WorldRoot(Handle);
 				Instance.iActiveHandle = 0u;
 			}
+			Instance.bActiveAttempted = false;
 			for (uint64_t& iTerminalHandle : Instance.TerminalHandles)
 			{
 				if (0u == iTerminalHandle)
@@ -1471,53 +1523,47 @@ bool_t CValtan::Sync_LocalPatternCombatObjectPreview(
 		}
 		const float4x4_t Root = Visual->Make_WorldRoot(
 			Instance.vPosition, Instance.fYawDegrees);
-		if (fObjectAgeMs < static_cast<f32_t>(Instance.Template.iLifetimeMs))
+		/* The Server despawn at iLifetimeMs releases the root without cutting the
+		   visual, so the active root keeps its authored NATURAL lifetime here too.
+		   A vanished handle after the first spawn is natural completion, not a
+		   preview failure, and stays consumed until an explicit rewind. */
+		if (!Instance.bActiveAttempted)
 		{
-			if (0u == Instance.iActiveHandle)
+			Instance.bActiveAttempted = true;
+			EFFECT_WORLD_ROOT_SPAWN_DESC Desc;
+			Desc.strEffectAssetId = Visual->effectAssetId;
+			Desc.pBossBudgetAndLifetimeOwner = Owner;
+			Desc.RootWorld = Root;
+			Desc.strOccurrenceId =
+				"valtan:local-preview:combat-object:generation:" +
+				std::to_string(m_iLocalPreviewEffectGeneration) + "/stage:" +
+				std::to_string(m_iLocalPreviewStageIndex) + "/archetype:" +
+				Instance.Template.strCombatObjectArchetypeId + "/ordinal:" +
+				std::to_string(Instance.iOrdinal) + "/active";
+			Desc.iSpawnTick = m_iLocalPreviewEffectGeneration;
+			Desc.fInitialSampleTimeSeconds = fObjectAgeSeconds;
+			EFFECT_WORLD_ROOT_HANDLE Handle;
+			std::string Status;
+			if (!CEffectPresentationService::Spawn_WorldRoot(
+					Desc, Handle, Status) ||
+				!CEffectPresentationService::Seek_WorldRoot(
+					Handle, fObjectAgeSeconds))
 			{
-				EFFECT_WORLD_ROOT_SPAWN_DESC Desc;
-				Desc.strEffectAssetId = Visual->effectAssetId;
-				Desc.pBossBudgetAndLifetimeOwner = Owner;
-				Desc.RootWorld = Root;
-				Desc.strOccurrenceId =
-					"valtan:local-preview:combat-object:generation:" +
-					std::to_string(m_iLocalPreviewEffectGeneration) + "/stage:" +
-					std::to_string(m_iLocalPreviewStageIndex) + "/archetype:" +
-					Instance.Template.strCombatObjectArchetypeId + "/ordinal:" +
-					std::to_string(Instance.iOrdinal) + "/active";
-				Desc.iSpawnTick = m_iLocalPreviewEffectGeneration;
-				Desc.fInitialSampleTimeSeconds = fObjectAgeSeconds;
-				EFFECT_WORLD_ROOT_HANDLE Handle;
-				std::string Status;
-				if (!CEffectPresentationService::Spawn_WorldRoot(
-						Desc, Handle, Status) ||
-					!CEffectPresentationService::Seek_WorldRoot(
-						Handle, fObjectAgeSeconds))
-				{
-					CEffectPresentationService::Stop_WorldRoot(Handle);
-					return Rollback(Status.empty() ?
-						"Local combat-object active Effect seek failed." : Status);
-				}
-				Instance.iActiveHandle = Handle.iValue;
+				CEffectPresentationService::Stop_WorldRoot(Handle);
+				return Rollback(Status.empty() ?
+					"Local combat-object active Effect seek failed." : Status);
 			}
-			else
-			{
-				EFFECT_WORLD_ROOT_HANDLE Handle;
-				Handle.iValue = Instance.iActiveHandle;
-				if (!CEffectPresentationService::Seek_WorldRoot(
-						Handle, fObjectAgeSeconds))
-				{
-					return Rollback(
-						"Local combat-object active Effect left its preview handle.");
-				}
-			}
+			Instance.iActiveHandle = Handle.iValue;
 		}
 		else if (0u != Instance.iActiveHandle)
 		{
 			EFFECT_WORLD_ROOT_HANDLE Handle;
 			Handle.iValue = Instance.iActiveHandle;
-			CEffectPresentationService::Stop_WorldRoot(Handle);
-			Instance.iActiveHandle = 0u;
+			if (!CEffectPresentationService::Seek_WorldRoot(
+					Handle, fObjectAgeSeconds))
+			{
+				Instance.iActiveHandle = 0u;
+			}
 		}
 
 		for (size_t iEvent = 0u;
@@ -1596,7 +1642,10 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 	std::unordered_map<std::string,
 		std::vector<Client::VALTAN_PATTERN_EFFECT_CUE>> StagedEffectCues;
 	std::unordered_map<std::string, uint32_t> StagedStageIndices;
+	std::unordered_map<std::string, PATTERN_BODY_VISIBILITY_WINDOW>
+		StagedBodyVisibility;
 	std::unordered_map<std::string, float3_t> StagedArenaCenters;
+	std::unordered_map<std::string, f32_t> StagedPortalRushDistances;
 	std::unordered_map<std::string,
 		std::vector<LOCAL_PATTERN_COMBAT_OBJECT_TEMPLATE>>
 		StagedCombatObjects;
@@ -1614,6 +1663,44 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 				"Local Pattern draft preview rejected a missing or duplicated action: " +
 				Stage.strActionId + ".";
 			return false;
+		}
+		if (Stage.bHasBodyHiddenWindow)
+		{
+			if (Stage.iBodyHiddenFromMs >= Stage.iBodyHiddenToMs ||
+				Stage.iBodyHiddenToMs > Stage.iDurationMs ||
+				!StagedBodyVisibility.emplace(
+					Stage.strActionId,
+					PATTERN_BODY_VISIBILITY_WINDOW{
+						Stage.iBodyHiddenFromMs,
+						Stage.iBodyHiddenToMs }).second)
+			{
+				strOutStatus =
+					"Local Pattern draft preview rejected a body visibility window for " +
+					Stage.strActionId + ".";
+				return false;
+			}
+		}
+		else if (0u != Stage.iBodyHiddenFromMs ||
+			0u != Stage.iBodyHiddenToMs)
+		{
+			strOutStatus =
+				"Local Pattern draft preview rejected disabled body visibility values for " +
+				Stage.strActionId + ".";
+			return false;
+		}
+		if (Stage.Motion.has_value() &&
+			"PORTAL_TARGET_RUSH" == Stage.Motion->strKind)
+		{
+			if (!std::isfinite(Stage.Motion->fDistance) ||
+				Stage.Motion->fDistance <= 0.f ||
+				!StagedPortalRushDistances.emplace(
+					Stage.strActionId, Stage.Motion->fDistance).second)
+			{
+				strOutStatus =
+					"Local Pattern draft preview rejected a Portal rush route for " +
+					Stage.strActionId + ".";
+				return false;
+			}
 		}
 		std::vector<Client::BOSS_PATTERN_ANIMATION_CLIP> Clips;
 		if (!Stage.bSuppressAnimation)
@@ -1733,7 +1820,10 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 			/* Player-relative volleys need Server-resolved player poses and remain
 			   intentionally absent from local preview. Boss-relative radial rows are
 			   fully deterministic from the fixed stage-enter boss pose. */
-			if ("BOSS_RELATIVE" != Source.strVolleyPolicy ||
+			const bool_t bArenaCenterOrigin =
+				"ARENA_CENTER" == Source.strVolleyPolicy;
+			if (("BOSS_RELATIVE" != Source.strVolleyPolicy &&
+				 !bArenaCenterOrigin) ||
 				"RADIAL" != Source.strVolleyLayout)
 			{
 				continue;
@@ -1784,6 +1874,7 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 			Template.fAngleStepDegrees = Source.fVolleyAngleStepDegrees;
 			Template.iFirstSpawnOffsetMs = Source.iFirstSpawnOffsetMs;
 			Template.iLifetimeMs = Source.iLifetimeMs;
+			Template.bArenaCenterOrigin = bArenaCenterOrigin;
 			for (const Client::VALTAN_COMBAT_OBJECT_PRESENTATION_EVENT_VIEW&
 				Event : Source.PresentationEvents)
 			{
@@ -1851,7 +1942,8 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 #endif
 	}
 	if (Pattern.ServerMotion.has_value() &&
-		"LEAP_TO_ANCHOR" == Pattern.ServerMotion->strKind)
+		("LEAP_TO_ANCHOR" == Pattern.ServerMotion->strKind ||
+		 "LEAP_TO_TARGET" == Pattern.ServerMotion->strKind))
 	{
 		const auto& Landing = Pattern.ServerMotion->LandingPosition;
 		if (!std::isfinite(Landing[0]) || !std::isfinite(Landing[1]) ||
@@ -1878,17 +1970,36 @@ bool_t CValtan::Stage_LocalPatternAuthoringPreview(
 			}
 		}
 	}
+	for (const auto& [ActionId, Templates] : StagedCombatObjects)
+	{
+		for (const LOCAL_PATTERN_COMBAT_OBJECT_TEMPLATE& Template : Templates)
+		{
+			if (Template.bArenaCenterOrigin &&
+				!StagedArenaCenters.contains(Pattern.strPatternId))
+			{
+				strOutStatus =
+					"Local Pattern draft preview has no admitted arena anchor for combat-object volley: " +
+					Template.strCombatObjectArchetypeId + ".";
+				return false;
+			}
+		}
+	}
 
 	if (m_bLocalPatternAuthoringPreview)
 		Reset_LocalPatternPreviewTransport();
 	m_LocalPreviewClipByActionId = std::move(StagedBindings);
 	m_LocalPreviewEffectCuesByActionId = std::move(StagedEffectCues);
 	m_LocalPreviewStageIndexByActionId = std::move(StagedStageIndices);
+	m_LocalPreviewBodyVisibilityByActionId =
+		std::move(StagedBodyVisibility);
 	m_LocalPreviewArenaCenterAnchors = std::move(StagedArenaCenters);
+	m_LocalPreviewPortalRushDistanceByActionId =
+		std::move(StagedPortalRushDistances);
 	m_LocalPreviewCombatObjectsByActionId = std::move(StagedCombatObjects);
 	m_strLocalPreviewPatternId = Pattern.strPatternId;
 	m_strLocalPreviewActionId.clear();
 	m_iLocalPreviewStageIndex = 0u;
+	m_isPatternBodyHidden = false;
 	m_iLocalPreviewEffectGeneration =
 		m_iLocalPreviewEffectGeneration == (std::numeric_limits<uint32_t>::max)() ?
 			1u : m_iLocalPreviewEffectGeneration + 1u;
@@ -1946,6 +2057,8 @@ void CValtan::Reset_LocalPatternPreviewTransport()
 	m_AttemptedPatternEffectOccurrenceKeys.clear();
 	m_bPatternEffectCueScanAgeValid = false;
 	m_fPatternEffectCueScanAgeSeconds = 0.f;
+	m_isPatternBodyHidden = false;
+	m_PortalRushRoute = {};
 	m_strLocalPreviewActionId.clear();
 	m_iLocalPreviewStageIndex = 0u;
 	if (nullptr != m_pBodyModelCom)
@@ -1962,11 +2075,15 @@ void CValtan::Reset_LocalPatternPresentationSample()
 	Reset_LocalPatternPreviewTransport();
 	m_iPatternPresentationClipOccurrenceIndex =
 		(std::numeric_limits<std::size_t>::max)();
+	m_isPatternBodyHidden = false;
 	m_bLocalPatternAuthoringPreview = false;
 	m_LocalPreviewClipByActionId.clear();
 	m_LocalPreviewEffectCuesByActionId.clear();
 	m_LocalPreviewStageIndexByActionId.clear();
+	m_LocalPreviewBodyVisibilityByActionId.clear();
 	m_LocalPreviewArenaCenterAnchors.clear();
+	m_LocalPreviewPortalRushDistanceByActionId.clear();
+	m_PortalRushRoute = {};
 	m_LocalPreviewCombatObjectsByActionId.clear();
 	m_LocalPreviewCombatObjectInstances.clear();
 	m_strLocalPreviewCombatObjectActionId.clear();
@@ -2022,7 +2139,8 @@ bool_t CValtan::Reload_PatternEffectCues_WhileAdmitted(
 			encounter.Get_Patterns())
 		{
 			if (!pattern.serverMotion.has_value() ||
-				pattern.serverMotion->kind != "LEAP_TO_ANCHOR")
+				(pattern.serverMotion->kind != "LEAP_TO_ANCHOR" &&
+				 pattern.serverMotion->kind != "LEAP_TO_TARGET"))
 				continue;
 			const std::array<f32_t, 3u>& landing =
 				pattern.serverMotion->landingPosition;
@@ -2830,7 +2948,8 @@ bool_t CValtan::Apply_CombatObjectPresentationEvent(
 {
 	using namespace LostArk::Shared;
 	outStatus.clear();
-	if (!m_isServerAuthoritative || 0u == event.iEventSequence ||
+	if (!m_isServerAuthoritative || m_isReplicationDormant ||
+		0u == event.iEventSequence ||
 		COMBAT_OBJECT_PRESENTATION_EVENT_KIND::HIT_PULSE != event.eKind)
 	{
 		outStatus = "Combat-object presentation event is invalid for this boss.";
@@ -3177,11 +3296,15 @@ void CValtan::Spawn_DuePatternShakeCues(const f32_t fActionAgeSeconds)
 
 void CValtan::Priority_Update(f32_t fTimeDelta)
 {
+	if (m_isReplicationDormant)
+		return;
 	__super::Priority_Update(fTimeDelta);
 }
 
 void CValtan::Trigger_HitFlash()
 {
+	if (m_isReplicationDormant)
+		return;
 	m_fHitFlashRemainingSeconds = HIT_FLASH_DURATION_SECONDS;
 	m_HitFlash.isEnabled = true;
 	m_HitFlash.vColor = float4_t(1.f, 1.f, 1.f, 1.f);
@@ -3189,8 +3312,79 @@ void CValtan::Trigger_HitFlash()
 	m_HitFlash.usesSurfaceDetailMask = true;
 }
 
+void CValtan::Update_PatternBodyVisibilityAtAge(
+	const std::string& actionId,
+	const f32_t actionAgeSeconds,
+	const bool_t bGhostPortalRushStage)
+{
+	m_isPatternBodyHidden = false;
+	if (!std::isfinite(actionAgeSeconds) || actionAgeSeconds < 0.f)
+		return;
+	const f32_t fActionAgeMs = actionAgeSeconds * 1000.f;
+	const auto BodyVisibility =
+		m_PatternBodyVisibilityByActionId.find(actionId);
+	if (m_PatternBodyVisibilityByActionId.end() != BodyVisibility)
+	{
+		m_isPatternBodyHidden =
+			fActionAgeMs >= static_cast<f32_t>(
+				BodyVisibility->second.iHiddenFromMs) &&
+			fActionAgeMs < static_cast<f32_t>(
+				BodyVisibility->second.iHiddenToMs);
+	}
+	if (bGhostPortalRushStage &&
+		fActionAgeMs >= VALTAN_GHOST_PORTAL_BODY_TERMINAL_HIDE_MS)
+	{
+		m_isPatternBodyHidden = true;
+	}
+}
+
+void CValtan::Update_GhostPortalRoutePresentation(const f32_t fTimeDelta)
+{
+	if (!m_bGhostPortalRoutePresentationActive ||
+		!m_PortalRushRoute.isValid || nullptr == m_pTransformCom ||
+		!std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
+	{
+		return;
+	}
+	m_fGhostPortalRoutePresentationAgeSeconds = (std::min)(
+		VALTAN_GHOST_PORTAL_RUSH_END_SECONDS,
+		m_fGhostPortalRoutePresentationAgeSeconds + fTimeDelta);
+	const f32_t fRushRatio = std::clamp(
+		(m_fGhostPortalRoutePresentationAgeSeconds -
+			VALTAN_GHOST_PORTAL_RUSH_START_SECONDS) /
+			(VALTAN_GHOST_PORTAL_RUSH_END_SECONDS -
+				VALTAN_GHOST_PORTAL_RUSH_START_SECONDS),
+		0.f, 1.f);
+	const vector_t vStart = XMVectorSet(
+		m_PortalRushRoute.fStartX,
+		m_PortalRushRoute.fStartY,
+		m_PortalRushRoute.fStartZ,
+		1.f);
+	const vector_t vEnd = XMVectorSet(
+		m_PortalRushRoute.fEndX,
+		m_PortalRushRoute.fEndY,
+		m_PortalRushRoute.fEndZ,
+		1.f);
+	m_pTransformCom->Set_State(
+		STATE::POSITION,
+		XMVectorSetW(XMVectorLerp(vStart, vEnd, fRushRatio), 1.f));
+	m_fPresentationYawDegrees = m_fServerPatternCurrentYawDegrees;
+	m_pTransformCom->Rotation(0.f, m_fPresentationYawDegrees, 0.f);
+	if (nullptr != m_pColliderCom)
+	{
+		m_pColliderCom->Update(XMMatrixTranslationFromVector(
+			m_pTransformCom->Get_State(STATE::POSITION)));
+	}
+	Update_PatternBodyVisibilityAtAge(
+		m_strServerActionId,
+		m_fGhostPortalRoutePresentationAgeSeconds,
+		true);
+}
+
 void CValtan::Update(f32_t fTimeDelta)
 {
+	if (m_isReplicationDormant)
+		return;
 	if (m_fHitFlashRemainingSeconds > 0.f)
 	{
 		m_fHitFlashRemainingSeconds -= fTimeDelta;
@@ -3209,6 +3403,8 @@ void CValtan::Update(f32_t fTimeDelta)
 	{
 		if (m_DeathPresentationClock.Has_Started())
 			m_DeathPresentationClock.Advance(fTimeDelta);
+		else if (m_bGhostPortalRoutePresentationActive)
+			Update_GhostPortalRoutePresentation(fTimeDelta);
 		else
 			Update_NetworkTransform(fTimeDelta);
 		__super::Update(fTimeDelta);
@@ -3291,6 +3487,8 @@ void CValtan::Update(f32_t fTimeDelta)
 
 void CValtan::Late_Update(f32_t fTimeDelta)
 {
+	if (m_isReplicationDormant)
+		return;
 	/* Container Update still advances the body animation and every Effect clock.
 	Only render submission is suppressed for the authoritative relocation edge;
 	clearing the snapshot flag therefore restores the same presentation group. */
@@ -3320,7 +3518,8 @@ HRESULT CValtan::Render()
 
 bool_t CValtan::Try_Get_PresentationRootMatrix(float4x4_t* pOut) const
 {
-	if (nullptr == pOut || nullptr == m_pBodyVisualRootCom ||
+	if (m_isReplicationDormant || nullptr == pOut ||
+		nullptr == m_pBodyVisualRootCom ||
 		nullptr == m_pTransformCom)
 	{
 		return false;
@@ -3330,6 +3529,41 @@ bool_t CValtan::Try_Get_PresentationRootMatrix(float4x4_t* pOut) const
 		pOut,
 		XMLoadFloat4x4(m_pBodyVisualRootCom->Get_WorldMatrixPtr()) *
 		XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()));
+	return true;
+}
+
+bool_t CValtan::Try_Get_PortalRushAnchorMatrices(
+	float4x4_t* pStartOut, float4x4_t* pEndOut) const
+{
+	if (m_isReplicationDormant || nullptr == pStartOut ||
+		nullptr == pEndOut ||
+		!m_PortalRushRoute.isValid)
+	{
+		return false;
+	}
+	const float deltaX =
+		m_PortalRushRoute.fEndX - m_PortalRushRoute.fStartX;
+	const float deltaZ =
+		m_PortalRushRoute.fEndZ - m_PortalRushRoute.fStartZ;
+	if (!std::isfinite(deltaX) || !std::isfinite(deltaZ) ||
+		deltaX * deltaX + deltaZ * deltaZ <= 0.000001f)
+	{
+		return false;
+	}
+	const float yawRadians = std::atan2(deltaX, deltaZ);
+	const matrix_t Rotation = XMMatrixRotationY(yawRadians);
+	XMStoreFloat4x4(
+		pStartOut,
+		Rotation * XMMatrixTranslation(
+			m_PortalRushRoute.fStartX,
+			m_PortalRushRoute.fStartY,
+			m_PortalRushRoute.fStartZ));
+	XMStoreFloat4x4(
+		pEndOut,
+		Rotation * XMMatrixTranslation(
+			m_PortalRushRoute.fEndX,
+			m_PortalRushRoute.fEndY,
+			m_PortalRushRoute.fEndZ));
 	return true;
 }
 
@@ -3850,7 +4084,8 @@ void CValtan::Set_ArmorPartVisible(
 bool_t CValtan::Apply_BossCombatState(
 	const LostArk::Shared::BOSS_COMBAT_SNAPSHOT& state)
 {
-	if (!m_isServerAuthoritative || !Is_ValidBossCombatState(state))
+	if (!m_isServerAuthoritative || m_isReplicationDormant ||
+		!Is_ValidBossCombatState(state))
 		return false;
 	const bool_t isGhostHidden = LostArk::Shared::Has_BossCombatFlag(
 		state.iFlags,
@@ -3913,7 +4148,7 @@ bool_t CValtan::Apply_BossCombatState(
 
 bool_t CValtan::Apply_BrokenArmorMask(const uint8_t iBrokenArmorMask)
 {
-	if (!m_isServerAuthoritative)
+	if (!m_isServerAuthoritative || m_isReplicationDormant)
 		return false;
 	if (iBrokenArmorMask == m_iBrokenArmorMask)
 		return true;
@@ -3950,7 +4185,8 @@ void CValtan::Refresh_ArmorPartVisibility()
 bool_t CValtan::Apply_BossCombatEvent(
 	const LostArk::Shared::BOSS_COMBAT_EVENT& event)
 {
-	if (!m_isServerAuthoritative || 0u == event.iEventSequence ||
+	if (!m_isServerAuthoritative || m_isReplicationDormant ||
+		0u == event.iEventSequence ||
 		0u == event.iEventTick || 0u == event.iPartMask ||
 		LostArk::Shared::BOSS_COMBAT_EVENT_KIND::PART_BROKEN != event.eKind)
 	{
@@ -4103,9 +4339,136 @@ void CValtan::Update_RaidBgm(
 	}
 }
 
+void CValtan::Reset_ReplicatedOccurrenceState()
+{
+	m_iState = 0u;
+	m_PathFollower.Cancel();
+	m_hasLastPathGoal = false;
+	m_fRepathTime = 0.f;
+	m_vLastPathGoal = {};
+	m_BossCombatState = {};
+	m_hasBossCombatState = false;
+	m_isGhostPresentationHidden = false;
+	m_isPatternBodyHidden = false;
+	m_bHoldSpawnBodyHiddenUntilPatternSnapshot = false;
+	m_bGhostPortalRoutePresentationActive = false;
+	m_fGhostPortalRoutePresentationAgeSeconds = 0.f;
+	m_iBrokenArmorMask = 0u;
+	m_iLastBossCombatEventSequence = 0u;
+	m_fHitFlashRemainingSeconds = 0.f;
+	m_HitFlash = {};
+	m_iNetworkSampleCount = 0u;
+	for (NETWORK_TRANSFORM_SAMPLE& Sample : m_NetworkSamples)
+		Sample = {};
+	m_fPlaybackServerTick = 0.f;
+	m_fPresentationYawDegrees = 0.f;
+	m_hasNetworkTransformState = false;
+	m_strServerPatternId.clear();
+	m_strServerActionId.clear();
+	m_iLastServerTick = 0u;
+	m_iServerActionStartTick = 0u;
+	m_iServerPatternSequence = 0u;
+	m_iServerPatternStageIndex = 0u;
+	m_fServerActionAgeSeconds = 0.f;
+	m_fServerPatternFacingYawDegrees = 0.f;
+	m_fServerPatternCurrentYawDegrees = 0.f;
+	m_iServerPatternTargetNetEntityId =
+		LostArk::Shared::INVALID_NET_ENTITY_ID;
+	m_iServerPatternTargetPoseSequence = 0u;
+	m_vServerPatternTargetSnapshotPosition = {};
+	m_fServerPatternTargetSnapshotYawDegrees = 0.f;
+	m_bHasServerPatternTargetSnapshotPose = false;
+	m_bServerPatternTargetIdentityStable = false;
+	m_PortalRushRoute = {};
+	m_iPatternPresentationClipOccurrenceIndex =
+		(std::numeric_limits<std::size_t>::max)();
+	m_AttemptedPatternEffectOccurrenceKeys.clear();
+	m_bPatternEffectCueScanAgeValid = false;
+	m_fPatternEffectCueScanAgeSeconds = 0.f;
+	m_AttemptedPatternSoundOccurrenceKeys.clear();
+	m_bPatternSoundCueScanAgeValid = false;
+	m_fPatternSoundCueScanAgeSeconds = 0.f;
+	m_AttemptedPatternShakeOccurrenceKeys.clear();
+	m_bPatternShakeCueScanAgeValid = false;
+	m_fPatternShakeCueScanAgeSeconds = 0.f;
+	m_iLastCombatObjectPresentationEventSequence = 0u;
+	m_iDeathAnimationIndex = (std::numeric_limits<uint32_t>::max)();
+#ifdef _DEBUG
+	m_strPreviewHitActionId.clear();
+	m_fPreviewHitAgeSeconds = 0.f;
+#endif
+	Refresh_ArmorPartVisibility();
+}
+
+bool_t CValtan::Activate_ReplicatedPoolOccurrence(
+	const float3_t& position, const f32_t yawDegrees,
+	const bool_t bHoldBodyHiddenUntilPatternSnapshot)
+{
+	if (!m_isServerAuthoritative || !m_isReplicationDormant ||
+		"BOSS_VALTAN_GHOST" != m_strArchetypeId ||
+		LostArk::Shared::INVALID_NET_ENTITY_ID == m_iOwnerBossNetEntityId ||
+		m_DeathPresentationClock.Has_Started() || nullptr == m_pTransformCom ||
+		!std::isfinite(position.x) || !std::isfinite(position.y) ||
+		!std::isfinite(position.z) || !std::isfinite(yawDegrees))
+	{
+		return false;
+	}
+
+	Reset_ReplicatedOccurrenceState();
+	m_bHoldSpawnBodyHiddenUntilPatternSnapshot =
+		bHoldBodyHiddenUntilPatternSnapshot;
+	m_isPatternBodyHidden = bHoldBodyHiddenUntilPatternSnapshot;
+	m_pTransformCom->Set_State(
+		STATE::POSITION,
+		XMVectorSet(position.x, position.y, position.z, 1.f));
+	m_pTransformCom->Rotation(0.f, yawDegrees, 0.f);
+	m_fPresentationYawDegrees = yawDegrees;
+	if (nullptr != m_pColliderCom)
+	{
+		m_pColliderCom->Update(XMMatrixTranslationFromVector(
+			m_pTransformCom->Get_State(STATE::POSITION)));
+	}
+	if (nullptr != m_pBodyModelCom)
+	{
+		m_pBodyModelCom->Set_AnimationSpeed(1.f);
+		m_pBodyModelCom->Set_AnimPaused(false);
+	}
+	m_isReplicationDormant = false;
+	Client::CEffectV2Runtime::Set_Ignored(
+		Client::EFFECT_V2_TARGET::From_Valtan(
+			static_pointer_cast<CValtan>(shared_from_this())),
+		false);
+	return true;
+}
+
+bool_t CValtan::Return_ToReplicatedPool()
+{
+	if (!m_isServerAuthoritative || m_isReplicationDormant ||
+		"BOSS_VALTAN_GHOST" != m_strArchetypeId ||
+		LostArk::Shared::INVALID_NET_ENTITY_ID == m_iOwnerBossNetEntityId ||
+		m_DeathPresentationClock.Has_Started())
+	{
+		return false;
+	}
+
+	m_isReplicationDormant = true;
+	const auto Owner = static_pointer_cast<CValtan>(shared_from_this());
+	Detach_PatternTargetFollowEffectRoots();
+	CEffectPresentationService::Stop_BossOwner(Owner);
+	Client::CEffectV2Runtime::Set_Ignored(
+		Client::EFFECT_V2_TARGET::From_Valtan(Owner), true);
+	Reset_ReplicatedOccurrenceState();
+	if (nullptr != m_pBodyModelCom)
+	{
+		m_pBodyModelCom->Set_AnimationSpeed(1.f);
+		m_pBodyModelCom->Set_AnimPaused(true);
+	}
+	return true;
+}
+
 bool_t CValtan::Begin_NetworkDeathPresentation()
 {
-	if (!m_isServerAuthoritative)
+	if (!m_isServerAuthoritative || m_isReplicationDormant)
 		return false;
 	if (m_DeathPresentationClock.Has_Started())
 		return !Is_NetworkDeathPresentationComplete();
@@ -4182,9 +4545,11 @@ bool_t CValtan::Apply_NetworkState(
 	const uint32_t iActionStartTick,
 	const uint32_t iPatternSequence,
 	const uint32_t iPatternStageIndex,
-	const PATTERN_TARGET_SNAPSHOT_POSE& PatternTargetPose)
+	const PATTERN_TARGET_SNAPSHOT_POSE& PatternTargetPose,
+	const LostArk::Shared::PORTAL_RUSH_ROUTE_SNAPSHOT& PortalRushRoute)
 {
-	if (!m_isServerAuthoritative || nullptr == m_pTransformCom ||
+	if (!m_isServerAuthoritative || m_isReplicationDormant ||
+		nullptr == m_pTransformCom ||
 		!std::isfinite(position.x) || !std::isfinite(position.y) ||
 		!std::isfinite(position.z) || !std::isfinite(yawDegrees))
 	{
@@ -4220,6 +4585,33 @@ bool_t CValtan::Apply_NetworkState(
 		VALTAN_STATE::PATTERN_WINDUP == nextState ||
 		VALTAN_STATE::PATTERN_ACTIVE == nextState ||
 		VALTAN_STATE::PATTERN_RECOVERY == nextState;
+	const bool_t bWarpPortalRushStage =
+		isPatternState && "VALTAN_WARP" == patternId &&
+		iPatternStageIndex >= 1u && iPatternStageIndex <= 8u &&
+		actionId.starts_with("valtan.sequence.warp.step-");
+	const bool_t bGhostPortalRushStage =
+		isPatternState && "BOSS_VALTAN_GHOST" == m_strArchetypeId &&
+		LostArk::Shared::INVALID_NET_ENTITY_ID != m_iOwnerBossNetEntityId &&
+		0u == iPatternStageIndex &&
+		"VALTAN_GHOST_PORTAL_ONCE" == patternId &&
+		"valtan.ghost.portal-once.active" == actionId;
+	const bool_t bPortalRushStage =
+		bWarpPortalRushStage || bGhostPortalRushStage;
+	const float portalDeltaX = PortalRushRoute.fEndX - PortalRushRoute.fStartX;
+	const float portalDeltaZ = PortalRushRoute.fEndZ - PortalRushRoute.fStartZ;
+	if (bPortalRushStage != PortalRushRoute.isValid ||
+		(PortalRushRoute.isValid &&
+		 (!std::isfinite(PortalRushRoute.fStartX) ||
+		  !std::isfinite(PortalRushRoute.fStartY) ||
+		  !std::isfinite(PortalRushRoute.fStartZ) ||
+		  !std::isfinite(PortalRushRoute.fEndX) ||
+		  !std::isfinite(PortalRushRoute.fEndY) ||
+		  !std::isfinite(PortalRushRoute.fEndZ) ||
+		  !std::isfinite(portalDeltaX) || !std::isfinite(portalDeltaZ) ||
+		  portalDeltaX * portalDeltaX + portalDeltaZ * portalDeltaZ <= 0.000001f)))
+	{
+		return false;
+	}
 	if (0u != m_iLastServerTick &&
 		(0u == iServerTick ||
 		 (iServerTick != m_iLastServerTick &&
@@ -4236,6 +4628,7 @@ bool_t CValtan::Apply_NetworkState(
 		m_iServerPatternTargetPoseSequence = 0u;
 		m_bHasServerPatternTargetSnapshotPose = false;
 		m_bServerPatternTargetIdentityStable = false;
+		m_PortalRushRoute = {};
 		if (!m_DeathPresentationClock.Has_Started())
 		{
 			m_pTransformCom->Set_State(STATE::POSITION,
@@ -4288,6 +4681,11 @@ bool_t CValtan::Apply_NetworkState(
 		 iPatternSequence != m_iServerPatternSequence ||
 		 iPatternStageIndex != m_iServerPatternStageIndex ||
 		 iActionStartTick != m_iServerActionStartTick);
+	if (!patternEdgeChanged && bPortalRushStage &&
+		m_PortalRushRoute.isValid && m_PortalRushRoute != PortalRushRoute)
+	{
+		return false;
+	}
 	/* A pattern's stages can share one entity action kind (two ACTIVE stages in
 	a row), so the stage's actionId is what marks a clip change there. */
 	const bool_t bAnimationEdgeChanged =
@@ -4366,6 +4764,10 @@ bool_t CValtan::Apply_NetworkState(
 		m_iLastServerTick = iServerTick;
 	if (isPatternState)
 	{
+		/* Validation above has admitted the exact pattern/action/route tuple.
+		The spawn-only conservative hide can now hand ownership to the authored
+		bodyVisibility interval without ever exposing an idle frame. */
+		m_bHoldSpawnBodyHiddenUntilPatternSnapshot = false;
 		if (iPatternSequence != m_iServerPatternSequence)
 			m_fServerPatternFacingYawDegrees = yawDegrees;
 		m_fServerPatternCurrentYawDegrees = yawDegrees;
@@ -4374,18 +4776,37 @@ bool_t CValtan::Apply_NetworkState(
 		m_iServerPatternSequence = iPatternSequence;
 		m_iServerPatternStageIndex = iPatternStageIndex;
 		m_fServerActionAgeSeconds = fActionAgeSeconds;
-		m_isPatternBodyHidden = false;
-		const auto BodyVisibility =
-			m_PatternBodyVisibilityByActionId.find(m_strServerActionId);
-		if (m_PatternBodyVisibilityByActionId.end() != BodyVisibility)
+		m_PortalRushRoute = PortalRushRoute;
+		if (bGhostPortalRushStage)
 		{
-			const f32_t fActionAgeMs = fActionAgeSeconds * 1000.f;
-			m_isPatternBodyHidden =
-				fActionAgeMs >= static_cast<f32_t>(
-					BodyVisibility->second.iHiddenFromMs) &&
-				fActionAgeMs < static_cast<f32_t>(
-					BodyVisibility->second.iHiddenToMs);
+			const f32_t fAdmittedRouteAge = (std::min)(
+				VALTAN_GHOST_PORTAL_RUSH_END_SECONDS,
+				fActionAgeSeconds);
+			if (!m_bGhostPortalRoutePresentationActive ||
+				patternEdgeChanged)
+			{
+				m_fGhostPortalRoutePresentationAgeSeconds =
+					fAdmittedRouteAge;
+			}
+			else
+			{
+				m_fGhostPortalRoutePresentationAgeSeconds = (std::max)(
+					m_fGhostPortalRoutePresentationAgeSeconds,
+					fAdmittedRouteAge);
+			}
+			m_bGhostPortalRoutePresentationActive = true;
 		}
+		else
+		{
+			m_bGhostPortalRoutePresentationActive = false;
+			m_fGhostPortalRoutePresentationAgeSeconds = 0.f;
+		}
+		Update_PatternBodyVisibilityAtAge(
+			m_strServerActionId,
+			bGhostPortalRushStage ?
+				m_fGhostPortalRoutePresentationAgeSeconds :
+				fActionAgeSeconds,
+			bGhostPortalRushStage);
 		const bool_t bIncomingTargetPoseFinite =
 			PatternTargetPose.bHasFinitePose &&
 			PatternTargetPose.iNetEntityId !=
@@ -4434,7 +4855,10 @@ bool_t CValtan::Apply_NetworkState(
 	}
 	else
 	{
-		m_isPatternBodyHidden = false;
+		if (!m_bHoldSpawnBodyHiddenUntilPatternSnapshot)
+			m_isPatternBodyHidden = false;
+		m_bGhostPortalRoutePresentationActive = false;
+		m_fGhostPortalRoutePresentationAgeSeconds = 0.f;
 		m_iServerActionStartTick = 0u;
 		m_iServerPatternStageIndex = 0u;
 		m_fServerActionAgeSeconds = 0.f;
@@ -4444,6 +4868,7 @@ bool_t CValtan::Apply_NetworkState(
 		m_fServerPatternCurrentYawDegrees = 0.f;
 		m_bHasServerPatternTargetSnapshotPose = false;
 		m_bServerPatternTargetIdentityStable = false;
+		m_PortalRushRoute = {};
 		m_iPatternPresentationClipOccurrenceIndex =
 			(std::numeric_limits<std::size_t>::max)();
 		m_bPatternEffectCueScanAgeValid = false;

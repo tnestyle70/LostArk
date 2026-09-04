@@ -1844,6 +1844,14 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			Handle_PartyInviteRespond(
 				command.iSessionId, command.PartyInviteRespond);
 			break;
+		case ROOM_COMMAND_TYPE::RAID_ENTRY_PROPOSE:
+			Handle_RaidEntryPropose(
+				command.iSessionId, command.RaidEntryPropose);
+			break;
+		case ROOM_COMMAND_TYPE::RAID_ENTRY_RESPOND:
+			Handle_RaidEntryRespond(
+				command.iSessionId, command.RaidEntryRespond);
+			break;
 		case ROOM_COMMAND_TYPE::CHAT:
 			Handle_Chat(command.iSessionId, command.Chat);
 			break;
@@ -2003,6 +2011,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		return;
 	}
 	m_iServerTick = updateTick;
+	Expire_RaidEntryProposals();
 	if (!m_Players.empty())
 		Broadcast_WorldSnapshot();
 	std::vector<LostArk::Shared::GameplayDataRevision> liveGenerationPins;
@@ -2643,6 +2652,7 @@ void LostArk::Server::CGameRoom::Leave(
 	m_PendingPartyInviteByTargetPlayerId.erase(playerId);
 	std::erase_if(m_PendingPartyInviteByTargetPlayerId,
 		[playerId](const auto& invite) { return invite.second == playerId; });
+	Cancel_RaidEntryProposalsInvolving(playerId);
 	Remove_FromParty(playerId);
 	m_Players.erase(playerIter);
 	m_Sessions.erase(sessionId);
@@ -4133,6 +4143,319 @@ void LostArk::Server::CGameRoom::Remove_FromParty(
 		return;
 	}
 	Broadcast_PartyRoster(partyId);
+}
+
+bool LostArk::Server::CGameRoom::Is_PlayerNearValtanEntryNpc(
+	const SERVER_PLAYER& player, const std::string& npcPlacementId) const
+{
+	using namespace LostArk::Shared;
+	// Handle_ConfirmNpcEntry의 VALTAN_ENTRY_GUIDE_NPCS와 같은 placement 집합. 여기서는
+	// proximity만 검증하고, target world는 NPC가 아니라 propose의 eTarget이 소유한다.
+	static constexpr const char* GUIDE_NPC_PLACEMENT_IDS[] = {
+		"npc.bern.beda.guide", "npc.bern.aylara" };
+	constexpr float INTERACTION_RADIUS = 3.f;
+	const bool isGuide = std::any_of(
+		std::begin(GUIDE_NPC_PLACEMENT_IDS), std::end(GUIDE_NPC_PLACEMENT_IDS),
+		[&npcPlacementId](const char* id) { return npcPlacementId == id; });
+	if (!isGuide)
+		return false;
+	const auto entityIter = std::find_if(
+		m_WorldEntities.begin(), m_WorldEntities.end(),
+		[&npcPlacementId](const SERVER_WORLD_ENTITY& entity)
+		{
+			return WORLD_BOOTSTRAP_KIND::NPC == entity.eKind &&
+				entity.strPlacementId == npcPlacementId;
+		});
+	if (m_WorldEntities.end() == entityIter)
+		return false;
+	const float deltaX = player.fPositionX - entityIter->fPositionX;
+	const float deltaZ = player.fPositionZ - entityIter->fPositionZ;
+	return deltaX * deltaX + deltaZ * deltaZ <=
+		INTERACTION_RADIUS * INTERACTION_RADIUS;
+}
+
+bool LostArk::Server::CGameRoom::Stage_PartyWorldTransfer(
+	const std::vector<LostArk::Shared::PLAYER_ID>& batchMemberIds,
+	const LostArk::Shared::WORLD_ID targetWorldId,
+	const std::uint32_t requestSequence)
+{
+	using namespace LostArk::Shared;
+	if (batchMemberIds.empty())
+		return false;
+	const auto leaderIter = m_Players.find(batchMemberIds.front());
+	if (leaderIter == m_Players.end())
+		return false;
+	const SERVER_PLAYER& leader = leaderIter->second;
+
+	const auto isAlreadyStaged = [this](SESSION_ID sid)
+	{
+		return std::any_of(
+			m_PendingWorldTransfers.begin(), m_PendingWorldTransfers.end(),
+			[sid](const SERVER_WORLD_TRANSFER_REQUEST& pending)
+			{
+				return pending.iSessionId == sid ||
+					std::find(pending.PartyBatchSessionIds.begin(),
+						pending.PartyBatchSessionIds.end(), sid) !=
+						pending.PartyBatchSessionIds.end();
+			});
+	};
+
+	SERVER_WORLD_TRANSFER_REQUEST transfer{};
+	transfer.iSessionId = leader.iSessionId;
+	transfer.eTargetWorldId = targetWorldId;
+	transfer.eCharacterClass = leader.eCharacterClass;
+	transfer.strNickName = leader.strNickName;
+	transfer.iPartyRequestSequence = requestSequence;
+	for (const PLAYER_ID memberId : batchMemberIds)
+	{
+		const auto memberIter = m_Players.find(memberId);
+		if (memberIter == m_Players.end() ||
+			CHARACTER_CLASS_ID::END == memberIter->second.eCharacterClass ||
+			memberIter->second.strNickName.empty() ||
+			isAlreadyStaged(memberIter->second.iSessionId))
+		{
+			return false;
+		}
+		if (batchMemberIds.size() > 1u)
+			transfer.PartyBatchSessionIds.push_back(memberIter->second.iSessionId);
+	}
+	m_PendingWorldTransfers.push_back(std::move(transfer));
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Broadcast_RaidEntryVote(
+	const RAID_ENTRY_PROPOSAL& proposal, const bool bClosed,
+	const LostArk::Shared::RAID_ENTRY_VOTE_RESULT result)
+{
+	using namespace LostArk::Shared;
+	S2C_RAID_ENTRY_VOTE message{};
+	message.iProposalId = proposal.iProposalId;
+	message.iAccepted = static_cast<std::uint8_t>(proposal.Accepted.size());
+	message.iTotal = static_cast<std::uint8_t>(proposal.Voters.size());
+	message.bClosed = bClosed;
+	message.eResult = bClosed ? result : RAID_ENTRY_VOTE_RESULT::END;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return;
+	for (const PLAYER_ID memberId : proposal.Voters)
+	{
+		const auto playerIter = m_Players.find(memberId);
+		if (playerIter == m_Players.end())
+			continue;
+		const std::shared_ptr<CClientSession> session =
+			Find_Session(playerIter->second.iSessionId);
+		if (nullptr != session &&
+			!session->Send_Frame(
+				PACKET_TYPE::S2C_RAID_ENTRY_VOTE, writer.Get_Buffer()))
+		{
+			session->Request_Close();
+		}
+	}
+}
+
+void LostArk::Server::CGameRoom::Handle_RaidEntryPropose(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_RAID_ENTRY_PROPOSE& request)
+{
+	using namespace LostArk::Shared;
+	// 30Hz 기준 30초 미응답이면 tick 루프가 TIMEOUT으로 닫는다.
+	constexpr std::uint32_t VOTE_TIMEOUT_TICKS = 30u * 30u;
+
+	if (WORLD_ID::BERN != m_eWorldId || request.eTarget >= RAID_ENTRY_TARGET::END)
+		return;
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (sessionIter == m_PlayerIdBySessionId.end())
+		return;
+	const PLAYER_ID proposerId = sessionIter->second;
+	const auto playerIter = m_Players.find(proposerId);
+	if (playerIter == m_Players.end())
+		return;
+	const SERVER_PLAYER& proposer = playerIter->second;
+	if (0u == proposer.iCurrentHp || PLAYER_ACTION_STATE::NONE != proposer.eAction ||
+		INVALID_SESSION_ID == proposer.iSessionId ||
+		CHARACTER_CLASS_ID::END == proposer.eCharacterClass ||
+		proposer.strNickName.empty())
+	{
+		return;
+	}
+	if (!Is_PlayerNearValtanEntryNpc(proposer, request.strNpcPlacementId))
+		return;
+
+	// 한 플레이어는 동시에 하나의 열린 proposal에만 속한다.
+	const bool alreadyInVote = std::any_of(
+		m_RaidEntryProposals.begin(), m_RaidEntryProposals.end(),
+		[proposerId](const RAID_ENTRY_PROPOSAL& p)
+		{
+			return std::find(p.Voters.begin(), p.Voters.end(), proposerId) !=
+				p.Voters.end();
+		});
+	if (alreadyInVote)
+		return;
+
+	std::uint32_t partyId = 0u;
+	std::vector<PLAYER_ID> voters{ proposerId };
+	const auto partyIdIter = m_PartyIdByPlayerId.find(proposerId);
+	if (partyIdIter != m_PartyIdByPlayerId.end())
+	{
+		const auto membersIter = m_PartyMembersByPartyId.find(partyIdIter->second);
+		if (membersIter != m_PartyMembersByPartyId.end() &&
+			membersIter->second.size() > 1u)
+		{
+			// 파티 발의는 리더(members.front())만 가능. 비리더는 조용히 거절한다
+			// (Client UI가 입장하기를 리더에게만 노출하므로 정상 경로에서 오지 않는다).
+			if (membersIter->second.front() != proposerId)
+				return;
+			partyId = partyIdIter->second;
+			voters = membersIter->second;
+		}
+	}
+
+	RAID_ENTRY_PROPOSAL proposal{};
+	proposal.iProposalId = m_iNextRaidEntryProposalId++;
+	if (0u == m_iNextRaidEntryProposalId)
+		m_iNextRaidEntryProposalId = 1u;
+	proposal.iPartyId = partyId;
+	proposal.iRequestSequence = request.iRequestSequence;
+	proposal.eTarget = request.eTarget;
+	proposal.strNpcPlacementId = request.strNpcPlacementId;
+	proposal.Voters = voters;
+	proposal.iDeadlineTick = m_iServerTick + VOTE_TIMEOUT_TICKS;
+
+	S2C_RAID_ENTRY_PROMPT prompt{};
+	prompt.iProposalId = proposal.iProposalId;
+	prompt.iProposerNetEntityId = proposer.iNetEntityId;
+	prompt.eTarget = proposal.eTarget;
+	prompt.strProposerNickname = proposer.strNickName;
+	CPacketWriter promptWriter;
+	if (!Write_Message(promptWriter, prompt))
+		return;
+	for (const PLAYER_ID memberId : proposal.Voters)
+	{
+		const auto memberPlayerIter = m_Players.find(memberId);
+		if (memberPlayerIter == m_Players.end())
+			continue;
+		const std::shared_ptr<CClientSession> session =
+			Find_Session(memberPlayerIter->second.iSessionId);
+		if (nullptr != session &&
+			!session->Send_Frame(
+				PACKET_TYPE::S2C_RAID_ENTRY_PROMPT, promptWriter.Get_Buffer()))
+		{
+			session->Request_Close();
+		}
+	}
+
+	m_RaidEntryProposals.push_back(std::move(proposal));
+	Broadcast_RaidEntryVote(
+		m_RaidEntryProposals.back(), false, RAID_ENTRY_VOTE_RESULT::END);
+}
+
+void LostArk::Server::CGameRoom::Handle_RaidEntryRespond(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_RAID_ENTRY_RESPOND& request)
+{
+	using namespace LostArk::Shared;
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (sessionIter == m_PlayerIdBySessionId.end())
+		return;
+	const PLAYER_ID responderId = sessionIter->second;
+
+	const auto proposalIter = std::find_if(
+		m_RaidEntryProposals.begin(), m_RaidEntryProposals.end(),
+		[&request](const RAID_ENTRY_PROPOSAL& p)
+		{
+			return p.iProposalId == request.iProposalId;
+		});
+	if (proposalIter == m_RaidEntryProposals.end())
+		return;
+	if (std::find(proposalIter->Voters.begin(), proposalIter->Voters.end(),
+			responderId) == proposalIter->Voters.end())
+	{
+		return;
+	}
+	if (!request.bAccepted)
+	{
+		Close_RaidEntryVote(*proposalIter, RAID_ENTRY_VOTE_RESULT::DECLINED);
+		return;
+	}
+	if (std::find(proposalIter->Accepted.begin(), proposalIter->Accepted.end(),
+			responderId) == proposalIter->Accepted.end())
+	{
+		proposalIter->Accepted.push_back(responderId);
+	}
+	if (proposalIter->Accepted.size() >= proposalIter->Voters.size())
+		Close_RaidEntryVote(*proposalIter, RAID_ENTRY_VOTE_RESULT::ALL_ACCEPTED);
+	else
+		Broadcast_RaidEntryVote(*proposalIter, false, RAID_ENTRY_VOTE_RESULT::END);
+}
+
+void LostArk::Server::CGameRoom::Close_RaidEntryVote(
+	RAID_ENTRY_PROPOSAL& proposal,
+	const LostArk::Shared::RAID_ENTRY_VOTE_RESULT result)
+{
+	using namespace LostArk::Shared;
+	RAID_ENTRY_VOTE_RESULT finalResult = result;
+	if (RAID_ENTRY_VOTE_RESULT::ALL_ACCEPTED == result)
+	{
+		const WORLD_ID targetWorld =
+			(RAID_ENTRY_TARGET::KAKULSAYDON == proposal.eTarget)
+			? WORLD_ID::KAKULSAYDON_ARENA : WORLD_ID::VALTAN_ARENA;
+		// 수락 완료와 실제 stage 사이에 멤버가 unavailable해졌으면 전송하지 않고
+		// CANCELLED로 낮춰 전원이 Bern에 남게 한다(부분 이동 금지).
+		if (!Stage_PartyWorldTransfer(
+				proposal.Voters, targetWorld, proposal.iRequestSequence))
+		{
+			finalResult = RAID_ENTRY_VOTE_RESULT::CANCELLED;
+		}
+	}
+	Broadcast_RaidEntryVote(proposal, true, finalResult);
+	const std::uint32_t closedId = proposal.iProposalId;
+	m_RaidEntryProposals.erase(
+		std::remove_if(m_RaidEntryProposals.begin(), m_RaidEntryProposals.end(),
+			[closedId](const RAID_ENTRY_PROPOSAL& p)
+			{
+				return p.iProposalId == closedId;
+			}),
+		m_RaidEntryProposals.end());
+}
+
+void LostArk::Server::CGameRoom::Expire_RaidEntryProposals()
+{
+	using namespace LostArk::Shared;
+	// Close_RaidEntryVote가 벡터를 수정하므로 만료 id를 먼저 모은 뒤 닫는다.
+	std::vector<std::uint32_t> expiredIds;
+	for (const RAID_ENTRY_PROPOSAL& p : m_RaidEntryProposals)
+	{
+		if (m_iServerTick >= p.iDeadlineTick)
+			expiredIds.push_back(p.iProposalId);
+	}
+	for (const std::uint32_t id : expiredIds)
+	{
+		const auto it = std::find_if(
+			m_RaidEntryProposals.begin(), m_RaidEntryProposals.end(),
+			[id](const RAID_ENTRY_PROPOSAL& p) { return p.iProposalId == id; });
+		if (it != m_RaidEntryProposals.end())
+			Close_RaidEntryVote(*it, RAID_ENTRY_VOTE_RESULT::TIMEOUT);
+	}
+}
+
+void LostArk::Server::CGameRoom::Cancel_RaidEntryProposalsInvolving(
+	const LostArk::Shared::PLAYER_ID playerId)
+{
+	using namespace LostArk::Shared;
+	std::vector<std::uint32_t> ids;
+	for (const RAID_ENTRY_PROPOSAL& p : m_RaidEntryProposals)
+	{
+		if (std::find(p.Voters.begin(), p.Voters.end(), playerId) != p.Voters.end())
+			ids.push_back(p.iProposalId);
+	}
+	for (const std::uint32_t id : ids)
+	{
+		const auto it = std::find_if(
+			m_RaidEntryProposals.begin(), m_RaidEntryProposals.end(),
+			[id](const RAID_ENTRY_PROPOSAL& p) { return p.iProposalId == id; });
+		if (it != m_RaidEntryProposals.end())
+			Close_RaidEntryVote(*it, RAID_ENTRY_VOTE_RESULT::CANCELLED);
+	}
 }
 
 bool LostArk::Server::CGameRoom::Transfer_PartyTo(
@@ -8572,6 +8895,19 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		{
 			snapshot.iPatternTargetNetEntityId =
 				entity.iPatternTargetEntityId;
+			if (entity.bPortalMotionActive &&
+				entity.bPortalRushTargetLocked &&
+				BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH ==
+					entity.ePatternStageMotionKind)
+			{
+				snapshot.PortalRushRoute.isValid = true;
+				snapshot.PortalRushRoute.fStartX = entity.fPortalStartX;
+				snapshot.PortalRushRoute.fStartY = entity.fSpawnPositionY;
+				snapshot.PortalRushRoute.fStartZ = entity.fPortalStartZ;
+				snapshot.PortalRushRoute.fEndX = entity.fPortalEndX;
+				snapshot.PortalRushRoute.fEndY = entity.fSpawnPositionY;
+				snapshot.PortalRushRoute.fEndZ = entity.fPortalEndZ;
+			}
 			snapshot.hasBossCombatState = true;
 			snapshot.BossCombat.iStateRevision =
 				entity.BossCombat.iStateRevision;
@@ -8846,7 +9182,14 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 			const bool ownerRunsFinale = std::any_of(patterns->begin(), patterns->end(),
 				[&owner, &staged](const BOSS_PATTERN_DEFINITION& pattern)
 				{
-					return pattern.strPatternId == owner->strPatternId &&
+					const bool directFinaleOccurrence =
+						pattern.strPatternId == owner->strPatternId;
+					const bool phaseThreeFinaleController =
+						owner->bGhostPhasePatternLoopActive && 3u == owner->iPhase &&
+						"BOSS_VALTAN" == owner->strArchetypeId &&
+						"boss.valtan.center" == owner->strPlacementId &&
+						"VALTAN_GHOST_FINALE" == pattern.strPatternId;
+					return (directFinaleOccurrence || phaseThreeFinaleController) &&
 						BOSS_PATTERN_FINALE_KIND::GHOST_PORTAL_LOOP == pattern.Finale.eKind &&
 						pattern.Finale.strGhostArchetypeId == staged.strArchetypeId;
 				});
@@ -9914,13 +10257,24 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 			const bool bossRelativeVolley = isTypedVolley &&
 				BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
 					action.Volley.ePolicy;
+			const bool arenaCenterVolley = isTypedVolley &&
+				BOSS_COMBAT_OBJECT_VOLLEY_POLICY::ARENA_CENTER ==
+					action.Volley.ePolicy;
+			const bool navIndependentPortalVolley =
+				"BOSS_VALTAN" == boss.strArchetypeId &&
+				bossRelativeVolley &&
+				"VALTAN_GHOST_PORTAL_ONCE" == patternId &&
+				"valtan.ghost.portal-once.active" == actionId &&
+				"combatobject.valtan.ghost.portal-charge" ==
+					definition->strCombatObjectArchetypeId;
 			if (isTypedVolley &&
-				((!perAlivePlayerVolley && !bossRelativeVolley) ||
+				((!perAlivePlayerVolley && !bossRelativeVolley &&
+				  !arenaCenterVolley) ||
 				 (perAlivePlayerVolley &&
 					BOSS_COMBAT_OBJECT_ORIGIN_POLICY::
 						LOCKED_TARGET_PER_ALIVE_PLAYER !=
 						definition->eOriginPolicy) ||
-				 (bossRelativeVolley &&
+				 ((bossRelativeVolley || arenaCenterVolley) &&
 					BOSS_COMBAT_OBJECT_ORIGIN_POLICY::BOSS_POSITION !=
 						definition->eOriginPolicy) ||
 				 action.Volley.iSpawnCount < 1u ||
@@ -9978,21 +10332,19 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 					break;
 				}
 			}
-			if (bossRelativeVolley)
+			if (bossRelativeVolley || arenaCenterVolley)
 			{
 				const std::uint32_t count =
 					action.Volley.iCountPerResolvedTarget;
-				const bool phaseThreePortalTriangleMayStartOffNavigation =
-					BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NEXT_RADIAL_SLOT ==
-						definition->eDirectionPolicy &&
-					"combatobject.valtan.ghost.portal-charge" ==
-						definition->strCombatObjectArchetypeId &&
-					"VALTAN_GHOST_PORTAL_ONCE" == patternId &&
-					"valtan.ghost.portal-once.active" == actionId &&
-					boss.bGhostPhasePatternLoopActive && 3u == boss.iPhase &&
-					LostArk::Shared::INVALID_NET_ENTITY_ID ==
-						boss.iOwnerBossNetEntityId &&
-					"BOSS_VALTAN" == boss.strArchetypeId && 3u == count;
+				/* ARENA_CENTER anchors on the boss spawn placement (the authored arena
+				   centre) with world-absolute angles; BOSS_RELATIVE keeps the live boss
+				   pose and yaw. Stage_BossCombatObject resolves the same origin. */
+				const float volleyOriginX =
+					arenaCenterVolley ? boss.fSpawnPositionX : boss.fPositionX;
+				const float volleyOriginZ =
+					arenaCenterVolley ? boss.fSpawnPositionZ : boss.fPositionZ;
+				const float volleyYawBasisDegrees =
+					arenaCenterVolley ? 0.f : boss.fYawDegrees;
 				/* The four-rock presentation volleys may straddle the arena boundary when
 				   an owner starts its authored radial set near an edge. Part Break is
 				   expected to begin at the charge wall, while Six Pizza and Struggling
@@ -10022,9 +10374,17 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 					  "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04" ==
 						actionId)) &&
 					4u == count;
+				/* The exact ghost-portal owner is a world-transform rush rather than
+				a walking actor. Unlike the presentation-only rock exception, it may
+				own gameplay hits while its authored vertices cross missing nav. */
 				const bool authoredVolleyMayStartOffNavigation =
-					phaseThreePortalTriangleMayStartOffNavigation ||
-					visualCardinalRocksMayStartOffNavigation;
+					visualCardinalRocksMayStartOffNavigation ||
+					navIndependentPortalVolley;
+				const bool damagingCoverVolleyMayProject =
+					BOSS_COMBAT_OBJECT_KIND::FIXED_AREA == definition->eKind &&
+					BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NONE ==
+						definition->eDirectionPolicy &&
+					definition->fCoverRadiusM > 0.f && !definition->Hits.empty();
 				if (count < 2u || count > 8u || action.iValue != count ||
 					BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL !=
 						action.Volley.eLayout ||
@@ -10032,28 +10392,84 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 					action.Volley.bAllowOverlap ||
 					1u != action.Volley.iSpawnCount ||
 					0u != action.Volley.iArenaRandomCount ||
-					!m_ServerNavigation.Is_Loaded())
+					(!navIndependentPortalVolley &&
+					 !m_ServerNavigation.Is_Loaded()))
 				{
 					m_strStatus =
 						"Boss-relative combat object volley is invalid";
 					return false;
 				}
 				std::array<std::pair<float, float>, 8u> points{};
-				bool skipPresentationOnlyVolley = false;
+				std::array<SERVER_NAV_POINT, 8u> resolvedPoints{};
+				bool skipVolley = false;
 				for (std::uint32_t ordinal = 0u; ordinal < count; ++ordinal)
 				{
-					const float degrees = boss.fYawDegrees +
+					const float degrees = volleyYawBasisDegrees +
 						action.Volley.fStartAngleDegrees +
 						action.Volley.fAngleStepDegrees *
 							static_cast<float>(ordinal);
 					const float radians = degrees * DEGREES_TO_RADIANS;
-					const float x = boss.fPositionX +
+					const float x = volleyOriginX +
 						std::sin(radians) * action.Volley.fRadiusM;
-					const float z = boss.fPositionZ +
+					const float z = volleyOriginZ +
 						std::cos(radians) * action.Volley.fRadiusM;
-					if (!std::isfinite(x) || !std::isfinite(z) ||
+					SERVER_NAV_POINT resolvedPoint{
+						x, arenaCenterVolley ? boss.fSpawnPositionY : boss.fPositionY, z };
+					if (std::isfinite(x) && std::isfinite(z) &&
+						damagingCoverVolleyMayProject &&
+						!m_ServerNavigation.Is_PointWalkableExact(x, z))
+					{
+						SERVER_NAV_POINT projected{};
+						const bool hasProjection =
+							m_ServerNavigation.Project_PointOnSameLevel(x, z, projected);
+						float projectionDistance = hasProjection ?
+							std::hypot(projected.x - x, projected.z - z) :
+							(std::numeric_limits<float>::max)();
+						constexpr float MAX_COVER_PROJECTION_METERS = 2.f;
+						/* Project_PointOnSameLevel returns a walkable cell centre. When
+						   the centre is just beyond the authored two-metre cap, retain
+						   the same cell but move toward the authored point until the
+						   world displacement is exactly two metres. This removes grid
+						   centre quantization without admitting a farther cell. */
+						if (hasProjection &&
+							projectionDistance > MAX_COVER_PROJECTION_METERS)
+						{
+							const float ratio = MAX_COVER_PROJECTION_METERS /
+								projectionDistance;
+							const float boundedX = x + (projected.x - x) * ratio;
+							const float boundedZ = z + (projected.z - z) * ratio;
+							if (m_ServerNavigation.Is_PointWalkableExact(boundedX, boundedZ))
+							{
+								projected.x = boundedX;
+								projected.z = boundedZ;
+								projectionDistance = MAX_COVER_PROJECTION_METERS;
+							}
+						}
+						if (!hasProjection || projectionDistance > 2.f)
+						{
+							m_strStatus =
+								"Damaging cover volley has no nearby navigation projection: patternId=" +
+								patternId + " actionId=" + actionId + " combatObject=" +
+								definition->strCombatObjectArchetypeId + " ordinal=" +
+								std::to_string(ordinal) + " authoredX=" +
+								std::to_string(x) + " authoredZ=" + std::to_string(z) +
+								" projectedX=" + std::to_string(projected.x) +
+								" projectedZ=" + std::to_string(projected.z) +
+								" projectionDistance=" +
+								std::to_string(projectionDistance);
+							std::cerr << "[DamagingCoverVolleySkipped] " << m_strStatus
+								<< '\n';
+							skipVolley = true;
+							break;
+						}
+						resolvedPoint = projected;
+					}
+					if (!std::isfinite(resolvedPoint.x) ||
+						!std::isfinite(resolvedPoint.y) ||
+						!std::isfinite(resolvedPoint.z) ||
 						(!authoredVolleyMayStartOffNavigation &&
-						 !m_ServerNavigation.Is_PointWalkableExact(x, z)))
+						 !m_ServerNavigation.Is_PointWalkableExact(
+							 resolvedPoint.x, resolvedPoint.z)))
 					{
 						m_strStatus =
 							"Boss-relative combat object leaves navigable arena: patternId=" +
@@ -10071,13 +10487,14 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 						   m_strStatus and the Server log, and the wave counter still
 						   advances so the skip is not retried every tick. Definitions with
 						   any hit keep the strict room-failure path. */
-						if (std::isfinite(x) && std::isfinite(z) &&
+						if (std::isfinite(resolvedPoint.x) &&
+							std::isfinite(resolvedPoint.z) &&
 							definition->Hits.empty() &&
 							!definition->PresentationPulses.empty())
 						{
 							std::cerr << "[PresentationVolleySkipped] " << m_strStatus
 								<< '\n';
-							skipPresentationOnlyVolley = true;
+							skipVolley = true;
 							break;
 						}
 						return false;
@@ -10087,8 +10504,8 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 					{
 						const auto& [existingX, existingZ] =
 							points[existingOrdinal];
-						const float deltaX = x - existingX;
-						const float deltaZ = z - existingZ;
+						const float deltaX = resolvedPoint.x - existingX;
+						const float deltaZ = resolvedPoint.z - existingZ;
 						if (deltaX * deltaX + deltaZ * deltaZ <=
 							VOLLEY_SPACING_EPSILON)
 						{
@@ -10097,17 +10514,47 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 							return false;
 						}
 					}
-					points[ordinal] = { x, z };
+					points[ordinal] = { resolvedPoint.x, resolvedPoint.z };
+					resolvedPoints[ordinal] = resolvedPoint;
 				}
-				if (skipPresentationOnlyVolley)
+				if (skipVolley)
 				{
 					break;
 				}
+				const std::size_t firstStagedObject =
+					combatObjectTransaction.Objects.size();
+				const std::size_t firstStagedSpawn =
+					combatObjectTransaction.Spawned.size();
 				if (!m_CombatObjectRuntime.Stage_BossCombatObject(
 					combatObjectTransaction, boss, nullptr, *definition,
 					&action.Volley, catalog, count, serverTick, m_strStatus))
 				{
 					return false;
+				}
+				if (combatObjectTransaction.Objects.size() !=
+						firstStagedObject + count ||
+					combatObjectTransaction.Spawned.size() !=
+						firstStagedSpawn + count)
+				{
+					m_strStatus = "Boss-relative combat object staging count is invalid";
+					return false;
+				}
+				for (std::uint32_t ordinal = 0u; ordinal < count; ++ordinal)
+				{
+					SERVER_COMBAT_OBJECT& staged =
+						combatObjectTransaction.Objects[firstStagedObject + ordinal];
+					staged.LiveState.CurrentPose.fPositionX =
+						resolvedPoints[ordinal].x;
+					staged.LiveState.CurrentPose.fPositionY =
+						resolvedPoints[ordinal].y;
+					staged.LiveState.CurrentPose.fPositionZ =
+						resolvedPoints[ordinal].z;
+					staged.LiveState.PreviousPose = staged.LiveState.CurrentPose;
+					auto& spawned =
+						combatObjectTransaction.Spawned[firstStagedSpawn + ordinal];
+					spawned.fPositionX = resolvedPoints[ordinal].x;
+					spawned.fPositionY = resolvedPoints[ordinal].y;
+					spawned.fPositionZ = resolvedPoints[ordinal].z;
 				}
 				break;
 			}
@@ -10593,14 +11040,8 @@ bool LostArk::Server::CGameRoom::Commit_BossPatternPlayerStageActions(
 			boss.fPatternTargetLastPositionX = selected.fPositionX;
 			boss.fPatternTargetLastPositionY = selected.fPositionY;
 			boss.fPatternTargetLastPositionZ = selected.fPositionZ;
-			if (BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH ==
+			if (BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH !=
 				stage->Motion.eKind)
-			{
-				/* Select the leg target now, but keep the previous facing through the
-				   authored wait. A zero-delay leg locks on this same ENTER commit. */
-				CValtanBrain::Try_LockPortalTargetRush(boss, 0u);
-			}
-			else
 			{
 				const float deltaX = selected.fPositionX - boss.fPositionX;
 				const float deltaZ = selected.fPositionZ - boss.fPositionZ;
@@ -10755,8 +11196,16 @@ bool LostArk::Server::CGameRoom::Commit_BossPatternPlayerStageActions(
 		}
 	}
 	if (BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger &&
-		(BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH == stage->Motion.eKind ||
-		 BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_CROSS_ARENA == stage->Motion.eKind))
+		BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH == stage->Motion.eKind)
+	{
+		if (!CValtanBrain::Lock_PortalTargetRushAtStageStart(boss))
+		{
+			m_strStatus = "Portal target rush Stage entered without a valid locked route";
+			return false;
+		}
+	}
+	else if (BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER == trigger &&
+		BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_CROSS_ARENA == stage->Motion.eKind)
 		CValtanBrain::Configure_PortalMotion(boss, *stage);
 	return true;
 }
@@ -12541,6 +12990,8 @@ bool LostArk::Server::CGameRoom::Activate_ValtanGhostPhaseLoop(
 	sequence.PatternIds = finale->Finale.GhostPatternIds;
 	boss.GhostPhasePatternSequence = std::move(sequence);
 	boss.bGhostPhasePatternLoopActive = true;
+	boss.iGhostAuxiliaryOccurrenceSequence = 0u;
+	boss.iGhostAuxiliaryNextSpawnTick = 0u;
 	boss.strRotationId.clear();
 	boss.iRotationStepIndex = 0u;
 	boss.bAutomaticPatternSequenceStepRunning = false;
@@ -12747,7 +13198,13 @@ bool LostArk::Server::CGameRoom::Update_ValtanGhostPortalScheduler(
 	const std::uint32_t serverTick)
 {
 	using namespace LostArk::Shared;
-	constexpr std::uint32_t PORTAL_INTERVAL_TICKS = 5u * SERVER_TICK_HZ;
+	constexpr std::uint32_t PORTAL_OCCURRENCE_INTERVAL_MS = 4900u;
+	constexpr std::uint32_t PORTAL_RUNNER_START_DELAY_MS = 300u;
+	constexpr float TRIANGLE_CIRCUMRADIUS_M = 7.5f;
+	constexpr float TRIANGLE_EDGE_LENGTH_M = 12.9903810568f;
+	constexpr float PORTAL_RUNNER_SPEED_MPS = 9.9926008129f;
+	constexpr float TRIANGLE_START_ANGLE_DEGREES = 30.f;
+	constexpr float TRIANGLE_ANGLE_STEP_DEGREES = 120.f;
 	if (!boss.bGhostPhasePatternLoopActive)
 		return true;
 	if (WORLD_ID::VALTAN_ARENA != m_eWorldId ||
@@ -12760,10 +13217,21 @@ bool LostArk::Server::CGameRoom::Update_ValtanGhostPortalScheduler(
 	}
 	if (0u != boss.iGhostPortalLastSpawnTick &&
 		Elapsed_ServerTicksSkippingReservedZero(
-			boss.iGhostPortalLastSpawnTick, serverTick) < PORTAL_INTERVAL_TICKS)
+			boss.iGhostPortalLastSpawnTick, serverTick) <
+			DurationMillisecondsToServerTicks(PORTAL_OCCURRENCE_INTERVAL_MS))
 	{
 		return true;
 	}
+	const bool runnerStillActive = std::any_of(
+		m_WorldEntities.begin(), m_WorldEntities.end(),
+		[&boss](const SERVER_WORLD_ENTITY& candidate)
+		{
+			return SERVER_DEPENDENT_BOSS_ROLE::PORTAL_RUNNER ==
+					candidate.eDependentBossRole &&
+				candidate.iOwnerBossNetEntityId == boss.iNetEntityId;
+		});
+	if (runnerStillActive)
+		return true;
 	const auto* patterns = catalog.Find_BossPatterns(boss.strEncounterId);
 	if (nullptr == patterns)
 	{
@@ -12776,7 +13244,8 @@ bool LostArk::Server::CGameRoom::Update_ValtanGhostPortalScheduler(
 		{ return "VALTAN_GHOST_PORTAL_ONCE" == definition.strPatternId; });
 	if (patterns->end() == portal ||
 		1u != portal->Stages.size() ||
-		"valtan.ghost.portal-once.active" != portal->Stages.front().strActionId)
+		"valtan.ghost.portal-once.active" != portal->Stages.front().strActionId ||
+		1900u != portal->Stages.front().iDurationMs)
 	{
 		m_strStatus = "Valtan ghost portal occurrence definition is unavailable";
 		return false;
@@ -12787,50 +13256,196 @@ bool LostArk::Server::CGameRoom::Update_ValtanGhostPortalScheduler(
 			1u : boss.iGhostPortalOccurrenceSequence + 1u;
 	if (0u == occurrenceSequence)
 		occurrenceSequence = 1u;
+	/* Validate and stage the authored world-space geometry before opening the
+	combat-object transaction. Like VALTAN_WARP, neither the proxy nor its visible
+	runner is a navigation-walking actor: an exact triangle edge may cross missing
+	navigation. All three retain the immutable encounter-anchor Y. */
+	std::array<SERVER_NAV_POINT, 3u> vertices{};
+	for (std::size_t ordinal = 0u; ordinal < vertices.size(); ++ordinal)
+	{
+		const float degrees = TRIANGLE_START_ANGLE_DEGREES +
+			TRIANGLE_ANGLE_STEP_DEGREES * static_cast<float>(ordinal);
+		const float radians = degrees * DEGREES_TO_RADIANS;
+		const float x = boss.fSpawnPositionX +
+			std::sin(radians) * TRIANGLE_CIRCUMRADIUS_M;
+		const float z = boss.fSpawnPositionZ +
+			std::cos(radians) * TRIANGLE_CIRCUMRADIUS_M;
+		if (!std::isfinite(x) || !std::isfinite(boss.fSpawnPositionY) ||
+			!std::isfinite(z))
+		{
+			m_strStatus = "Valtan ghost portal triangle vertex is not finite";
+			return false;
+		}
+		vertices[ordinal] = { x, boss.fSpawnPositionY, z };
+	}
+	for (std::size_t ordinal = 0u; ordinal < vertices.size(); ++ordinal)
+	{
+		const SERVER_NAV_POINT& start = vertices[ordinal];
+		const SERVER_NAV_POINT& end =
+			vertices[(ordinal + 1u) % vertices.size()];
+		const float routeLength = std::hypot(end.x - start.x, end.z - start.z);
+		if (!std::isfinite(routeLength) ||
+			std::fabs(routeLength - TRIANGLE_EDGE_LENGTH_M) > 0.001f)
+		{
+			m_strStatus = "Valtan ghost portal triangle edge geometry is invalid";
+			return false;
+		}
+	}
+	std::vector<SERVER_WORLD_ENTITY> stagedRunners;
+	stagedRunners.reserve(vertices.size());
+	NET_ENTITY_ID nextId = m_iNextNetEntityId;
+	for (std::size_t ordinal = 0u; ordinal < vertices.size(); ++ordinal)
+	{
+		if (INVALID_NET_ENTITY_ID == nextId)
+		{
+			m_strStatus = "Portal runner entity ID space is exhausted";
+			return false;
+		}
+		const SERVER_NAV_POINT& start = vertices[ordinal];
+		const SERVER_NAV_POINT& end =
+			vertices[(ordinal + 1u) % vertices.size()];
+		const float yawDegrees =
+			std::atan2(end.x - start.x, end.z - start.z) *
+			RADIANS_TO_DEGREES;
+		WORLD_BOOTSTRAP_PLACEMENT placement{};
+		placement.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		placement.strPlacementId = boss.strPlacementId + ".portal-runner." +
+			std::to_string(occurrenceSequence) + "." +
+			std::to_string(ordinal);
+		placement.strArchetypeId = "BOSS_VALTAN_GHOST";
+		placement.strEncounterId = boss.strEncounterId;
+		/* Build at the admitted encounter anchor, then commit the exact edge pose.
+		This prevents generic boss construction from projecting a runner vertex
+		back onto navigation. */
+		placement.fPositionX = boss.fSpawnPositionX;
+		placement.fPositionY = boss.fSpawnPositionY;
+		placement.fPositionZ = boss.fSpawnPositionZ;
+		placement.fYawDegrees = yawDegrees;
+		SERVER_WORLD_ENTITY runner{};
+		if (!Build_WorldEntity(
+			placement, nextId, runner, &catalog, boss.iNetEntityId))
+		{
+			return false;
+		}
+		runner.eDependentBossRole =
+			SERVER_DEPENDENT_BOSS_ROLE::PORTAL_RUNNER;
+		runner.fPositionX = runner.fSpawnPositionX = start.x;
+		runner.fPositionY = runner.fSpawnPositionY = start.y;
+		runner.fPositionZ = runner.fSpawnPositionZ = start.z;
+		runner.fYawDegrees = yawDegrees;
+		runner.eAction = SERVER_ENTITY_ACTION::PATTERN_ACTIVE;
+		runner.strPatternId = portal->strPatternId;
+		runner.strPatternStageId = portal->Stages.front().strStageId;
+		runner.strActionId = portal->Stages.front().strActionId;
+		runner.iActionStartTick = serverTick;
+		runner.iPatternSequence = occurrenceSequence;
+		runner.iPatternStageIndex = 0u;
+		runner.iPatternStageDurationMs = portal->Stages.front().iDurationMs;
+		runner.iPatternStageFirstEvaluationTick = serverTick;
+		runner.PinnedDefinitionRevision = catalog.Get_ActiveRevision();
+		runner.ProductSequencePinnedDefinitionRevision =
+			runner.PinnedDefinitionRevision;
+		runner.bIntroPatternConsumed = true;
+		runner.iPhase = boss.iPhase;
+		runner.bPortalMotionActive = true;
+		runner.bPortalRushTargetLocked = true;
+		runner.iPortalRushRetargetDelayMs =
+			PORTAL_RUNNER_START_DELAY_MS;
+		runner.fPortalRushSpeedMps = PORTAL_RUNNER_SPEED_MPS;
+		runner.fPortalRushDistanceM = TRIANGLE_EDGE_LENGTH_M;
+		runner.fPortalStartX = start.x;
+		runner.fPortalStartZ = start.z;
+		runner.fPortalEndX = end.x;
+		runner.fPortalEndZ = end.z;
+		runner.fPortalLastHitSampleX = start.x;
+		runner.fPortalLastHitSampleZ = start.z;
+		runner.ePatternStageMotionKind =
+			BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH;
+		std::vector<std::uint8_t> payload;
+		if (!Build_WorldEntitySpawnedPayload(runner, payload))
+		{
+			m_strStatus = "Portal runner spawn wire admission failed";
+			return false;
+		}
+		stagedRunners.push_back(std::move(runner));
+		++nextId;
+	}
+	const NET_ENTITY_ID ownerId = boss.iNetEntityId;
 	SERVER_WORLD_ENTITY synthetic = boss;
 	synthetic.strPatternId = portal->strPatternId;
 	synthetic.strPatternStageId = portal->Stages.front().strStageId;
 	synthetic.strActionId = portal->Stages.front().strActionId;
 	synthetic.iPatternSequence = occurrenceSequence;
+	synthetic.iPatternStageIndex = 0u;
+	synthetic.iActionStartTick = serverTick;
 	synthetic.PinnedDefinitionRevision = catalog.Get_ActiveRevision();
 	synthetic.ProductSequencePinnedDefinitionRevision = catalog.Get_ActiveRevision();
-	/* The triangle is authored around the immutable encounter centre, not around
-	where a foreground attack happened to move the damageable primary body. */
+	/* One atomic radial volley owns the three simultaneous edge damage proxies.
+	The primary and auxiliary ghost action clocks remain independent. */
 	synthetic.fPositionX = boss.fSpawnPositionX;
 	synthetic.fPositionY = boss.fSpawnPositionY;
 	synthetic.fPositionZ = boss.fSpawnPositionZ;
 	synthetic.fYawDegrees = 0.f;
+	/* Reserve before the central volley is committed. The owner is re-resolved
+	by stable ID after these three preflighted appends, so vector relocation
+	cannot turn one occurrence into a portal-only partial spawn. */
+	m_WorldEntities.reserve(m_WorldEntities.size() + stagedRunners.size());
 	if (!Apply_BossPatternStageActions(
 		synthetic, portal->strPatternId, portal->Stages.front().strActionId,
 		BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, serverTick))
 	{
 		return false;
 	}
-	boss.iGhostPortalOccurrenceSequence = occurrenceSequence;
-	boss.iGhostPortalLastSpawnTick = serverTick;
+	for (SERVER_WORLD_ENTITY& runner : stagedRunners)
+	{
+		m_WorldEntities.push_back(std::move(runner));
+		Broadcast_WorldEntitySpawned(m_WorldEntities.back());
+	}
+	m_iNextNetEntityId = nextId;
+	const auto committedOwner = std::find_if(
+		m_WorldEntities.begin(), m_WorldEntities.end(),
+		[ownerId](const SERVER_WORLD_ENTITY& candidate)
+		{ return candidate.iNetEntityId == ownerId; });
+	if (m_WorldEntities.end() == committedOwner)
+	{
+		m_strStatus = "Portal runner owner disappeared during commit";
+		return false;
+	}
+	committedOwner->iGhostPortalOccurrenceSequence = occurrenceSequence;
+	committedOwner->iGhostPortalLastSpawnTick = serverTick;
 	return true;
 }
 
 bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serverTick)
 {
 	using namespace LostArk::Shared;
+	constexpr std::uint32_t PORTAL_RUNNER_START_DELAY_MS = 300u;
+	constexpr std::uint32_t PORTAL_RUNNER_TRAVEL_MS = 1300u;
+	constexpr std::uint32_t PORTAL_RUNNER_DESPAWN_MS = 1600u;
 	const auto finaleOf = [this](const SERVER_WORLD_ENTITY& owner)
 		-> const BOSS_PATTERN_FINALE*
 	{
 		if (WORLD_BOOTSTRAP_KIND::BOSS != owner.eKind ||
 			INVALID_NET_ENTITY_ID != owner.iOwnerBossNetEntityId ||
 			0u == owner.iCurrentHp || SERVER_ENTITY_ACTION::DEAD == owner.eAction ||
-			owner.strPatternId.empty() || owner.bMechanicLedgerRequiresReset ||
-			owner.bGhostPhasePatternLoopActive)
+			owner.bMechanicLedgerRequiresReset)
+			return nullptr;
+		const bool phaseThreeFinaleController =
+			owner.bGhostPhasePatternLoopActive && 3u == owner.iPhase &&
+			"BOSS_VALTAN" == owner.strArchetypeId &&
+			"boss.valtan.center" == owner.strPlacementId;
+		if (!phaseThreeFinaleController && owner.strPatternId.empty())
 			return nullptr;
 		const CGameplayCatalog* catalog = Resolve_ValtanGameplayCatalog(owner);
 		const auto* patterns = nullptr == catalog ? nullptr :
 			catalog->Find_BossPatterns(owner.strEncounterId);
 		if (nullptr == patterns)
 			return nullptr;
+		const std::string finalePatternId = phaseThreeFinaleController ?
+			std::string("VALTAN_GHOST_FINALE") : owner.strPatternId;
 		const auto pattern = std::find_if(patterns->begin(), patterns->end(),
-			[&owner](const BOSS_PATTERN_DEFINITION& candidate)
-			{ return candidate.strPatternId == owner.strPatternId; });
+			[&finalePatternId](const BOSS_PATTERN_DEFINITION& candidate)
+			{ return candidate.strPatternId == finalePatternId; });
 		return pattern != patterns->end() &&
 			BOSS_PATTERN_FINALE_KIND::GHOST_PORTAL_LOOP == pattern->Finale.eKind ?
 			&pattern->Finale : nullptr;
@@ -12842,11 +13457,52 @@ bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serv
 			++child;
 			continue;
 		}
-		const auto owner = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
+		auto owner = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
 			[&child](const SERVER_WORLD_ENTITY& candidate)
 			{ return candidate.iNetEntityId == child->iOwnerBossNetEntityId; });
 		const bool ownerLive = owner != m_WorldEntities.end() &&
 			nullptr != finaleOf(*owner) && owner->strEncounterId == child->strEncounterId;
+		if (SERVER_DEPENDENT_BOSS_ROLE::PORTAL_RUNNER ==
+			child->eDependentBossRole)
+		{
+			const std::uint64_t elapsedTicks =
+				Elapsed_ServerTicksSkippingReservedZero(
+					child->iActionStartTick, serverTick);
+			/* Keep the exact 1600 ms endpoint alive for one authoritative snapshot.
+			The Client's portal-route presentation hides the runner at that same
+			visual boundary; the following fixed tick only retires wire identity. */
+			if (ownerLive &&
+				elapsedTicks <=
+					DurationMillisecondsToServerTicks(PORTAL_RUNNER_DESPAWN_MS))
+			{
+				const float elapsedMs = static_cast<float>(elapsedTicks) *
+					1000.f / static_cast<float>(SERVER_TICK_HZ);
+				const float routeRatio = std::clamp(
+					(elapsedMs - static_cast<float>(PORTAL_RUNNER_START_DELAY_MS)) /
+						static_cast<float>(PORTAL_RUNNER_TRAVEL_MS),
+					0.f, 1.f);
+				child->fPositionX = child->fPortalStartX +
+					(child->fPortalEndX - child->fPortalStartX) * routeRatio;
+				child->fPositionY = child->fSpawnPositionY;
+				child->fPositionZ = child->fPortalStartZ +
+					(child->fPortalEndZ - child->fPortalStartZ) * routeRatio;
+				child->fActionElapsedSeconds = elapsedMs / 1000.f;
+				++child;
+				continue;
+			}
+			m_CombatObjectRuntime.Cancel_Source(child->iNetEntityId);
+			if (!Broadcast_CombatObjectLifecycle())
+				return false;
+			Broadcast_WorldEntityDespawned(child->iNetEntityId);
+			child = m_WorldEntities.erase(child);
+			continue;
+		}
+		if (SERVER_DEPENDENT_BOSS_ROLE::AUXILIARY !=
+			child->eDependentBossRole)
+		{
+			m_strStatus = "Dependent boss runtime role is invalid";
+			return false;
+		}
 		const bool finished = child->strPatternId.empty() &&
 			child->iRotationStepIndex >= child->DependentPatternSequence.PatternIds.size();
 		if (ownerLive && child->bMechanicLedgerRequiresReset)
@@ -12860,22 +13516,66 @@ bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serv
 			++child;
 			continue;
 		}
+		if (ownerLive)
+		{
+			/* Make despawn and replacement distinct fixed-tick edges. The due tick
+			belongs only to the auxiliary lane and never stalls the primary loop. */
+			owner->iGhostAuxiliaryNextSpawnTick =
+				Add_ServerTicksSkippingReservedZero(serverTick, 1u);
+		}
 		m_CombatObjectRuntime.Cancel_Source(child->iNetEntityId);
 		if (!Broadcast_CombatObjectLifecycle())
 			return false;
 		Broadcast_WorldEntityDespawned(child->iNetEntityId);
 		child = m_WorldEntities.erase(child);
 	}
+	/* Portal occurrences append three runners, so schedule them only from this
+	iterator-free seam. Re-resolve the owner by stable ID after every call because
+	the scheduler reserves and may relocate the world-entity vector. */
+	std::vector<NET_ENTITY_ID> portalOwnerIds;
+	for (const SERVER_WORLD_ENTITY& candidate : m_WorldEntities)
+	{
+		if (candidate.bGhostPhasePatternLoopActive &&
+			INVALID_NET_ENTITY_ID == candidate.iOwnerBossNetEntityId)
+		{
+			portalOwnerIds.push_back(candidate.iNetEntityId);
+		}
+	}
+	for (const NET_ENTITY_ID ownerId : portalOwnerIds)
+	{
+		auto owner = std::find_if(
+			m_WorldEntities.begin(), m_WorldEntities.end(),
+			[ownerId](const SERVER_WORLD_ENTITY& candidate)
+			{ return candidate.iNetEntityId == ownerId; });
+		if (m_WorldEntities.end() == owner)
+			continue;
+		const CGameplayCatalog* catalog = Resolve_ValtanGameplayCatalog(*owner);
+		if (nullptr == catalog ||
+			!Update_ValtanGhostPortalScheduler(*owner, *catalog, serverTick))
+		{
+			return false;
+		}
+	}
 	std::vector<SERVER_WORLD_ENTITY> stagedGhosts;
 	NET_ENTITY_ID nextId = m_iNextNetEntityId;
-	for (const SERVER_WORLD_ENTITY& owner : m_WorldEntities)
+	for (SERVER_WORLD_ENTITY& owner : m_WorldEntities)
 	{
 		const BOSS_PATTERN_FINALE* finale = finaleOf(owner);
 		if (nullptr == finale || m_Players.empty())
 			continue;
+		if (0u != owner.iGhostAuxiliaryNextSpawnTick &&
+			!Has_ReachedServerTick(serverTick,
+				owner.iGhostAuxiliaryNextSpawnTick))
+		{
+			continue;
+		}
 		const auto activeCount = std::count_if(m_WorldEntities.begin(), m_WorldEntities.end(),
 			[&owner](const SERVER_WORLD_ENTITY& child)
-			{ return child.iOwnerBossNetEntityId == owner.iNetEntityId; });
+			{
+				return SERVER_DEPENDENT_BOSS_ROLE::AUXILIARY ==
+						child.eDependentBossRole &&
+					child.iOwnerBossNetEntityId == owner.iNetEntityId;
+			});
 		if (activeCount >= finale->iMaximumActiveGhosts)
 			continue;
 		if (INVALID_NET_ENTITY_ID == nextId)
@@ -12893,6 +13593,18 @@ bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serv
 			m_strStatus = "Ghost finale profile disappeared from its pinned generation";
 			return false;
 		}
+		const std::uint32_t auxiliaryOccurrenceSequence =
+			(std::numeric_limits<std::uint32_t>::max)() ==
+				owner.iGhostAuxiliaryOccurrenceSequence ?
+			1u : owner.iGhostAuxiliaryOccurrenceSequence + 1u;
+		const std::uint64_t auxiliaryIdentity =
+			(static_cast<std::uint64_t>(owner.iNetEntityId) << 32u) ^
+			static_cast<std::uint64_t>(auxiliaryOccurrenceSequence);
+		const std::uint64_t skillSeed = Mix_DeterministicRandom(
+			auxiliaryIdentity ^ Hash_StableId(
+				"valtan.ghost-phase.auxiliary.skill"));
+		const std::string& selectedPatternId = finale->GhostPatternIds[
+			static_cast<std::size_t>(skillSeed % finale->GhostPatternIds.size())];
 		const auto hasSpawnClearance = [this, &owner, ghostProfile](const SERVER_NAV_POINT& center)
 		{
 			/* Conservatively cover the entire body square, including the circle
@@ -12919,8 +13631,8 @@ bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serv
 		SERVER_NAV_POINT spawn{};
 		bool foundSpawn = false;
 		const std::uint64_t seed = Mix_DeterministicRandom(
-			(static_cast<std::uint64_t>(owner.iNetEntityId) << 32u) ^
-			nextId ^ static_cast<std::uint64_t>(serverTick));
+			auxiliaryIdentity ^ Hash_StableId(
+				"valtan.ghost-phase.auxiliary.spawn"));
 		for (std::uint32_t attempt = 0u; attempt < 128u && !foundSpawn; ++attempt)
 		{
 			const float x = owner.fSpawnPositionX +
@@ -12936,8 +13648,14 @@ bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serv
 		}
 		if (!foundSpawn)
 		{
-			m_strStatus = "Ghost finale has no live same-deck spawn inside its arena rectangle";
-			return false;
+			/* Dynamic destruction can temporarily remove every candidate. Preserve
+			the occurrence identity and entity ID, then retry the same deterministic
+			candidate set on the next fixed tick without failing the room. */
+			owner.iGhostAuxiliaryNextSpawnTick =
+				Add_ServerTicksSkippingReservedZero(serverTick, 1u);
+			m_strStatus =
+				"Ghost finale auxiliary spawn retry deferred: no live same-deck footprint";
+			continue;
 		}
 		WORLD_BOOTSTRAP_PLACEMENT placement{};
 		placement.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
@@ -12951,6 +13669,7 @@ bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serv
 		SERVER_WORLD_ENTITY child{};
 		if (!Build_WorldEntity(placement, nextId, child, catalog, owner.iNetEntityId))
 			return false;
+		child.eDependentBossRole = SERVER_DEPENDENT_BOSS_ROLE::AUXILIARY;
 		/* Build_WorldEntity projects static placements to a cell centre. This
 		candidate already passed exact live clearance; retain that admitted pose. */
 		child.fPositionX = child.fSpawnPositionX = spawn.x;
@@ -12961,10 +13680,10 @@ bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serv
 		child.bIntroPatternConsumed = true;
 		child.iPhase = owner.iPhase;
 		child.DependentPatternSequence.strEncounterId = owner.strEncounterId;
-		child.DependentPatternSequence.strSequenceId = owner.strPatternId + ".ghost-attacks";
-		child.DependentPatternSequence.PatternIds = finale->GhostPatternIds;
-		child.DependentPatternSequence.iExpectedStepCount =
-			static_cast<std::uint32_t>(finale->GhostPatternIds.size());
+		child.DependentPatternSequence.strSequenceId =
+			"sequence.valtan.ghost-phase.auxiliary";
+		child.DependentPatternSequence.PatternIds = { selectedPatternId };
+		child.DependentPatternSequence.iExpectedStepCount = 1u;
 		std::vector<std::uint8_t> payload;
 		if (!Build_WorldEntitySpawnedPayload(child, payload))
 		{
@@ -12972,6 +13691,10 @@ bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serv
 			return false;
 		}
 		stagedGhosts.push_back(std::move(child));
+		/* Commit the random occurrence only after every spawn precondition and
+		wire admission has succeeded. */
+		owner.iGhostAuxiliaryOccurrenceSequence = auxiliaryOccurrenceSequence;
+		owner.iGhostAuxiliaryNextSpawnTick = 0u;
 		++nextId;
 	}
 	/* Appending only after iteration preserves every primary and child reference. */
@@ -13014,6 +13737,13 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			/* The clip carries its own entrance and exit; the room only clocks
 			the strike so the sweep below despawns it the moment it ends. */
 			entity.fActionElapsedSeconds += fixedDeltaSeconds;
+			continue;
+		}
+		if (SERVER_DEPENDENT_BOSS_ROLE::PORTAL_RUNNER ==
+			entity.eDependentBossRole)
+		{
+			/* The dependent scheduler owns this actor's exact world transform and
+			lifetime. It never enters target selection, navigation or boss combat. */
 			continue;
 		}
 		if (entity.eKind == WORLD_BOOTSTRAP_KIND::NPC)
@@ -13222,6 +13952,41 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 						}
 						coverCircles.push_back({
 							slot.fPositionX, slot.fPositionZ, coverRadius });
+					}
+				}
+				/* Authored fixed combat objects become cover only until their first
+				   timed damage pulse. Restrict the lookup to this boss occurrence so
+				   another encounter entity cannot contribute foreign cover. */
+				for (const SERVER_COMBAT_OBJECT& combatObject :
+					m_CombatObjectRuntime.Get_LiveObjects())
+				{
+					if (combatObject.eSourceKind !=
+							SERVER_COMBAT_OBJECT_SOURCE_KIND::WORLD_ENTITY ||
+						combatObject.iSourceNetEntityId != entity.iNetEntityId ||
+						!std::isfinite(combatObject.fCoverRadiusM) ||
+						combatObject.fCoverRadiusM <= 0.f)
+					{
+						continue;
+					}
+					bool pendingTimedDamage = false;
+					for (const SERVER_COMBAT_OBJECT_HIT_RUNTIME& hit :
+						combatObject.Hits)
+					{
+						if (SERVER_COMBAT_OBJECT_HIT_TRIGGER::TIMED == hit.eTrigger &&
+							0u == hit.iAppliedTimedCount &&
+							combatObject.fElapsedMilliseconds <
+								static_cast<float>(hit.iAtMs))
+						{
+							pendingTimedDamage = true;
+							break;
+						}
+					}
+					if (pendingTimedDamage)
+					{
+						coverCircles.push_back({
+							combatObject.LiveState.CurrentPose.fPositionX,
+							combatObject.LiveState.CurrentPose.fPositionZ,
+							combatObject.fCoverRadiusM });
 					}
 				}
 				CValtanBrain& brain = LostArk::Shared::INVALID_NET_ENTITY_ID ==
@@ -13503,23 +14268,6 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				{
 					entity.iRotationStepIndex = 0u;
 				}
-				if (!Begin_ValtanGhostRelocation(
-						entity, *occurrenceCatalog, updateTick))
-				{
-					/* Keep the completed root group authoritative while a transient
-					relocation precondition retries. The selector remains paused. */
-					entity.bGhostRelocationRetryPending = true;
-					entity.iGhostRelocationRetryTick =
-						Add_ServerTicksSkippingReservedZero(updateTick, 1u);
-					m_strStatus = "Valtan ghost relocation retry deferred";
-				}
-			}
-			if (!Update_ValtanGhostPortalScheduler(
-				entity, *occurrenceCatalog, updateTick))
-			{
-				releaseBossAttachments(entity);
-				Mark_RuntimeFailure("world-update.ghost-portal-scheduler");
-				return;
 			}
 			if (!previousPatternId.empty() &&
 				previousPatternId != entity.strPatternId)

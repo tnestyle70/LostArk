@@ -70,9 +70,16 @@ HRESULT CLevel_Loading::Initialize(
 	placeholder title/tip. Written as \x escapes -- this source file has no BOM and the
 	project builds without /utf-8, so literal Korean text here would be misread as CP949.
 	Valtan Arena: "Revived Heart of the Beast" / "From the Revived Heart of the Beast, the
-	howls of beasts can be heard." Everything else keeps Bern's placeholder: "Bern Castle" /
-	"Bern Castle is the capital of Bern, where many races live mixed together." */
-	if (LEVEL::VALTAN_ARENA == m_eNextLevelID)
+	howls of beasts can be heard." Character Select (creation): retail's prologue loading
+	screen "Destiny Begins" / "Prepare for the start of a new journey." Everything else keeps
+	Bern's placeholder: "Bern Castle" / "Bern Castle is the capital of Bern, where many races
+	live mixed together." */
+	if (LEVEL::CHARACTER_SELECT == m_eNextLevelID)
+	{
+		m_strTitleText = L"\xC2DC\xC791\xB418\xB294 \xC6B4\xBA85";
+		m_strTipText = L"\xC0C8\xB85C\xC6B4 \xC5EC\xC815\xC758 \xC2DC\xC791\xC744 \xC900\xBE44\xD558\xC138\xC694.";
+	}
+	else if (LEVEL::VALTAN_ARENA == m_eNextLevelID)
 	{
 		m_strTitleText = L"\xBD80\xD65C\xD55C \xB9C8\xC218\xC758 \xC2EC\xC7A5";
 		m_strTipText = L"\xBD80\xD65C\xD55C \xB9C8\xC218\xC758 \xC2EC\xC7A5\xC5D0\xC11C \xC9D0\xC2B9\xB4E4\xC758 \xC6B8\xBD80\xC9D6\xC74C\xC774 \xB4E4\xB824\xC635\xB2C8\xB2E4.";
@@ -833,6 +840,9 @@ HRESULT CLevel_Loading::Ready_Layer_Chrome()
 		texture path. */
 		if ("Background" == strId && LEVEL::VALTAN_ARENA == m_eNextLevelID)
 			strTexturePath = "UI/Loading/Loading_Background_Valtan.png";
+		/* Character Select (creation) shows retail's prologue nebula ("시작되는 운명"). */
+		if ("Background" == strId && LEVEL::CHARACTER_SELECT == m_eNextLevelID)
+			strTexturePath = "UI/Loading/Loading_Background_Prologue.png";
 
 		/* Texture-less slots (empty "layers") are position-only markers the HUD Layout Tool
 		can still drag -- pull text draw positions from them instead of creating a sprite. */

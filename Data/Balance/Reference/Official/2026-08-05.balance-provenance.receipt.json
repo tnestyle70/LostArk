@@ -48,7 +48,7 @@
     "damageProfileCount": 109,
     "bossProfileCount": 2,
     "encounterPatternCount": 34,
-    "fieldEntryCount": 3418,
+    "fieldEntryCount": 3420,
     "bossPartCount": 2,
     "bossCombatObjectCount": 9
   },
@@ -5982,9 +5982,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -6566,9 +6566,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -6990,9 +6990,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -7866,9 +7866,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -11495,9 +11495,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -11787,9 +11787,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -12079,9 +12079,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -12371,9 +12371,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -16437,9 +16437,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -16927,9 +16927,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -17511,9 +17511,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -18387,9 +18387,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -21269,9 +21269,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -21561,9 +21561,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -21853,9 +21853,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -23577,9 +23577,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -24897,9 +24897,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -25174,9 +25174,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -25451,9 +25451,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -25728,9 +25728,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -28259,9 +28259,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -28551,9 +28551,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -28843,9 +28843,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -29719,9 +29719,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -32031,9 +32031,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -32323,9 +32323,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -33199,9 +33199,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -34075,9 +34075,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 0,
+      "sourceValue": 1,
       "transform": "Balance Tool authored override",
-      "resultValue": 0,
+      "resultValue": 1,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -35493,10 +35493,10 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": "combatobject.visual.valtan.ghost.portal-charge.v1",
+      "sourceValue": "combatobject.visual.valtan.ghost.portal-charge.v2",
       "transform": "Balance Tool authored override",
-      "resultValue": "combatobject.visual.valtan.ghost.portal-charge.v1",
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "resultValue": "combatobject.visual.valtan.ghost.portal-charge.v2",
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
@@ -35601,10 +35601,10 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 5000,
+      "sourceValue": 1900,
       "transform": "Balance Tool authored override",
-      "resultValue": 5000,
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "resultValue": 1900,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
@@ -35615,9 +35615,9 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 44.0,
+      "sourceValue": 12.9903810568,
       "transform": "Balance Tool authored override",
-      "resultValue": 44.0,
+      "resultValue": 12.9903810568,
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
@@ -35699,10 +35699,38 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 8.8,
+      "sourceValue": 9.9926008129,
       "transform": "Balance Tool authored override",
-      "resultValue": 8.8,
+      "resultValue": 9.9926008129,
       "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.ghost.portal-charge",
+      "targetField": "movementStartDelayMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 300,
+      "transform": "Balance Tool authored override",
+      "resultValue": 300,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.ghost.portal-charge",
+      "targetField": "expireOnDistanceEnd",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": false,
+      "transform": "Balance Tool authored override",
+      "resultValue": false,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
@@ -35755,10 +35783,48 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": [],
+      "sourceValue": [
+        {
+          "hitShape": "CIRCLE",
+          "hitOuterRadius": 3.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.ground-roar.rock.explode",
+          "trigger": "TIMED",
+          "atMs": 5000,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
+        }
+      ],
       "transform": "Balance Tool authored override",
-      "resultValue": [],
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "resultValue": [
+        {
+          "hitShape": "CIRCLE",
+          "hitOuterRadius": 3.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.ground-roar.rock.explode",
+          "trigger": "TIMED",
+          "atMs": 5000,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
+        }
+      ],
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
@@ -35875,30 +35941,6 @@
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
       "targetId": "combat-object:combatobject.valtan.ground-roar.rock",
-      "targetField": "presentationEvents",
-      "basis": "PROJECT_TUNED",
-      "source": {
-        "type": "project-policy",
-        "policyId": "balance-tool-authored-override-v1"
-      },
-      "sourceValue": [
-        {
-          "presentationEventId": "pulse.valtan.ground-roar.rock.explode",
-          "atMs": 5000
-        }
-      ],
-      "transform": "Balance Tool authored override",
-      "resultValue": [
-        {
-          "presentationEventId": "pulse.valtan.ground-roar.rock.explode",
-          "atMs": 5000
-        }
-      ],
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-    },
-    {
-      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
-      "targetId": "combat-object:combatobject.valtan.ground-roar.rock",
       "targetField": "speedMps",
       "basis": "PROJECT_TUNED",
       "source": {
@@ -35908,6 +35950,20 @@
       "sourceValue": 0.0,
       "transform": "Balance Tool authored override",
       "resultValue": 0.0,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.ground-roar.rock",
+      "targetField": "coverRadiusM",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 1.5,
+      "transform": "Balance Tool authored override",
+      "resultValue": 1.5,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -36181,10 +36237,48 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": [],
+      "sourceValue": [
+        {
+          "hitShape": "CIRCLE",
+          "hitOuterRadius": 3.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.part-break.rock.explode",
+          "trigger": "TIMED",
+          "atMs": 5000,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
+        }
+      ],
       "transform": "Balance Tool authored override",
-      "resultValue": [],
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "resultValue": [
+        {
+          "hitShape": "CIRCLE",
+          "hitOuterRadius": 3.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.part-break.rock.explode",
+          "trigger": "TIMED",
+          "atMs": 5000,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
+        }
+      ],
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
@@ -36209,10 +36303,10 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 5000,
+      "sourceValue": 6200,
       "transform": "Balance Tool authored override",
-      "resultValue": 5000,
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "resultValue": 6200,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
@@ -36301,30 +36395,6 @@
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
       "targetId": "combat-object:combatobject.valtan.part-break.rock",
-      "targetField": "presentationEvents",
-      "basis": "PROJECT_TUNED",
-      "source": {
-        "type": "project-policy",
-        "policyId": "balance-tool-authored-override-v1"
-      },
-      "sourceValue": [
-        {
-          "presentationEventId": "pulse.valtan.part-break.rock.explode",
-          "atMs": 5000
-        }
-      ],
-      "transform": "Balance Tool authored override",
-      "resultValue": [
-        {
-          "presentationEventId": "pulse.valtan.part-break.rock.explode",
-          "atMs": 5000
-        }
-      ],
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-    },
-    {
-      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
-      "targetId": "combat-object:combatobject.valtan.part-break.rock",
       "targetField": "speedMps",
       "basis": "PROJECT_TUNED",
       "source": {
@@ -36334,6 +36404,20 @@
       "sourceValue": 0.0,
       "transform": "Balance Tool authored override",
       "resultValue": 0.0,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.part-break.rock",
+      "targetField": "coverRadiusM",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 1.5,
+      "transform": "Balance Tool authored override",
+      "resultValue": 1.5,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -36607,10 +36691,48 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": [],
+      "sourceValue": [
+        {
+          "hitShape": "CIRCLE",
+          "hitOuterRadius": 3.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.six-pizza.rock-pillar.explode",
+          "trigger": "TIMED",
+          "atMs": 19500,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
+        }
+      ],
       "transform": "Balance Tool authored override",
-      "resultValue": [],
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "resultValue": [
+        {
+          "hitShape": "CIRCLE",
+          "hitOuterRadius": 3.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.six-pizza.rock-pillar.explode",
+          "trigger": "TIMED",
+          "atMs": 19500,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
+        }
+      ],
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
@@ -36635,10 +36757,10 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": 6200,
+      "sourceValue": 20700,
       "transform": "Balance Tool authored override",
-      "resultValue": 6200,
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "resultValue": 20700,
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
@@ -36727,30 +36849,6 @@
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
       "targetId": "combat-object:combatobject.valtan.six-pizza.rock-pillar",
-      "targetField": "presentationEvents",
-      "basis": "PROJECT_TUNED",
-      "source": {
-        "type": "project-policy",
-        "policyId": "balance-tool-authored-override-v1"
-      },
-      "sourceValue": [
-        {
-          "presentationEventId": "pulse.valtan.six-pizza.rock-pillar.explode",
-          "atMs": 5000
-        }
-      ],
-      "transform": "Balance Tool authored override",
-      "resultValue": [
-        {
-          "presentationEventId": "pulse.valtan.six-pizza.rock-pillar.explode",
-          "atMs": 5000
-        }
-      ],
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-    },
-    {
-      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
-      "targetId": "combat-object:combatobject.valtan.six-pizza.rock-pillar",
       "targetField": "speedMps",
       "basis": "PROJECT_TUNED",
       "source": {
@@ -36760,6 +36858,20 @@
       "sourceValue": 0.0,
       "transform": "Balance Tool authored override",
       "resultValue": 0.0,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.six-pizza.rock-pillar",
+      "targetField": "coverRadiusM",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 1.5,
+      "transform": "Balance Tool authored override",
+      "resultValue": 1.5,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -36813,10 +36925,48 @@
         "type": "project-policy",
         "policyId": "balance-tool-authored-override-v1"
       },
-      "sourceValue": [],
+      "sourceValue": [
+        {
+          "hitShape": "CIRCLE",
+          "hitOuterRadius": 3.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.struggling.rock-pillar.explode",
+          "trigger": "TIMED",
+          "atMs": 5000,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
+        }
+      ],
       "transform": "Balance Tool authored override",
-      "resultValue": [],
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "resultValue": [
+        {
+          "hitShape": "CIRCLE",
+          "hitOuterRadius": 3.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.struggling.rock-pillar.explode",
+          "trigger": "TIMED",
+          "atMs": 5000,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
+        }
+      ],
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
@@ -36933,30 +37083,6 @@
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
       "targetId": "combat-object:combatobject.valtan.struggling.rock-pillar",
-      "targetField": "presentationEvents",
-      "basis": "PROJECT_TUNED",
-      "source": {
-        "type": "project-policy",
-        "policyId": "balance-tool-authored-override-v1"
-      },
-      "sourceValue": [
-        {
-          "presentationEventId": "pulse.valtan.struggling.rock-pillar.explode",
-          "atMs": 5000
-        }
-      ],
-      "transform": "Balance Tool authored override",
-      "resultValue": [
-        {
-          "presentationEventId": "pulse.valtan.struggling.rock-pillar.explode",
-          "atMs": 5000
-        }
-      ],
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
-    },
-    {
-      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
-      "targetId": "combat-object:combatobject.valtan.struggling.rock-pillar",
       "targetField": "speedMps",
       "basis": "PROJECT_TUNED",
       "source": {
@@ -36966,6 +37092,20 @@
       "sourceValue": 0.0,
       "transform": "Balance Tool authored override",
       "resultValue": 0.0,
+      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+    },
+    {
+      "targetDocument": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "targetId": "combat-object:combatobject.valtan.struggling.rock-pillar",
+      "targetField": "coverRadiusM",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "balance-tool-authored-override-v1"
+      },
+      "sourceValue": 1.5,
+      "transform": "Balance Tool authored override",
+      "resultValue": 1.5,
       "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
     },
     {
@@ -37731,16 +37871,16 @@
           "stageKind": "ACTIVE",
           "durationMs": 1100,
           "hitShape": "NONE",
-          "hitOuterRadius": 0,
-          "hitInnerRadius": 0,
-          "hitAngleDegrees": 0,
-          "hitLength": 0,
-          "hitHalfWidth": 0,
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
           "hitCount": 0,
           "hitIntervalMs": 0,
           "hitDelayMs": 0,
           "serverDamageProfileId": "",
-          "pushRangeM": 0,
+          "pushRangeM": 0.0,
           "pushMs": 0,
           "knockdown": false,
           "downMs": 0
@@ -37863,16 +38003,16 @@
           "stageKind": "ACTIVE",
           "durationMs": 1100,
           "hitShape": "NONE",
-          "hitOuterRadius": 0,
-          "hitInnerRadius": 0,
-          "hitAngleDegrees": 0,
-          "hitLength": 0,
-          "hitHalfWidth": 0,
+          "hitOuterRadius": 0.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
           "hitCount": 0,
           "hitIntervalMs": 0,
           "hitDelayMs": 0,
           "serverDamageProfileId": "",
-          "pushRangeM": 0,
+          "pushRangeM": 0.0,
           "pushMs": 0,
           "knockdown": false,
           "downMs": 0
@@ -52385,7 +52525,7 @@
           "hitIntervalMs": 0,
           "hitDelayMs": 0,
           "hitOffsetsMs": [
-            0
+            67
           ],
           "serverDamageProfileId": "damage.valtan.jump-spin",
           "pushRangeM": 3.0,
@@ -52471,7 +52611,7 @@
           "hitIntervalMs": 0,
           "hitDelayMs": 0,
           "hitOffsetsMs": [
-            0
+            67
           ],
           "serverDamageProfileId": "damage.valtan.jump-spin",
           "pushRangeM": 3.0,
@@ -52480,7 +52620,7 @@
           "downMs": 2000
         }
       ],
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -52925,7 +53065,7 @@
           "hitIntervalMs": 0,
           "hitDelayMs": 0,
           "hitOffsetsMs": [
-            0
+            67
           ],
           "serverDamageProfileId": "damage.valtan.jump-spin",
           "pushRangeM": 3.0,
@@ -53011,7 +53151,7 @@
           "hitIntervalMs": 0,
           "hitDelayMs": 0,
           "hitOffsetsMs": [
-            0
+            67
           ],
           "serverDamageProfileId": "damage.valtan.jump-spin",
           "pushRangeM": 3.0,
@@ -53020,7 +53160,7 @@
           "downMs": 2000
         }
       ],
-      "note": "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+      "note": "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
     },
     {
       "targetDocument": "Data/Encounters/Valtan/ValtanEncounter.json",

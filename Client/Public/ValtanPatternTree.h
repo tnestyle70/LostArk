@@ -106,7 +106,8 @@ struct VALTAN_COMBAT_OBJECT_EFFECT_VIEW final
 	uint32_t iSpawnValue = 0u;
 	/* Preserve the authored volley projection instead of reducing it to the
 	   display-only spawn count. Local Arena Clone preview consumes only the
-	   BOSS_RELATIVE/RADIAL form; the other forms remain visible to diagnostics. */
+	   BOSS_RELATIVE and ARENA_CENTER RADIAL forms; the other forms remain visible
+	   to diagnostics. */
 	std::string strVolleyPolicy;
 	std::string strVolleyLayout;
 	f32_t fVolleyRadiusM = 0.f;

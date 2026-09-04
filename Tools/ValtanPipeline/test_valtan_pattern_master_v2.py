@@ -18,6 +18,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import valtan_tuning_pipeline as pipeline
+import author_valtan_phase_two_mechanics as phase_two_authoring
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -1930,13 +1931,19 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                      if stage["motion"] is not None]
         finale_legs = [stage for stage in owners["VALTAN_GHOST_FINALE"]["stages"]
                        if stage["motion"] is not None]
-        self.assertEqual([{
-            "kind": "PORTAL_TARGET_RUSH", "retargetDelayMs": 500,
-            "speedMps": 20.0, "distanceM": 16.0,
-        }] * 8,
-                         [stage["motion"] for stage in warp_legs])
         self.assertEqual(
-            [list(range(500, 1300, 50))] * 8,
+            [{
+                "kind": "PORTAL_TARGET_RUSH", "retargetDelayMs": 300,
+                "speedMps": 12.3076925, "distanceM": 16.0,
+            }] + [{
+                "kind": "PORTAL_TARGET_RUSH", "retargetDelayMs": 600,
+                "speedMps": 12.3076925, "distanceM": 16.0,
+            }] * 7,
+            [stage["motion"] for stage in warp_legs],
+        )
+        self.assertEqual(
+            [list(range(300, 1600, 50))] +
+            [list(range(600, 1900, 50))] * 7,
             [stage["hit"]["schedule"]["offsetsMs"] for stage in warp_legs],
         )
         self.assertEqual([
@@ -1948,23 +1955,24 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             row["patternId"]: row
             for row in self.docs[pipeline.PRESENTATION_AUTHORING_REL]["patterns"]
         }
-        for stage in presentation["VALTAN_WARP"]["stages"][1:10]:
-            cue = stage["effectCues"][0]
-            self.assertEqual("snapshot", cue["followPolicy"])
-            self.assertEqual("root", cue["anchorSlotId"])
-            self.assertEqual([0.0, 0.0, 0.0], cue["localTransform"]["position"])
-            if stage["stageId"] == "STEP_10":
-                self.assertEqual(0, cue["sourceStartMs"])
-                self.assertNotIn("bodyVisibility", stage)
-            else:
-                self.assertEqual("STAGE_CLOCK", cue["timingBasis"])
-                self.assertEqual(1300, cue["stageOffsetMs"])
-                self.assertNotIn("clipOccurrenceId", cue)
-                self.assertNotIn("sourceStartMs", cue)
-                self.assertEqual(
-                    {"hiddenFromMs": 1300, "hiddenToMs": 1800},
-                    stage["bodyVisibility"],
-                )
+        for index, stage in enumerate(
+            presentation["VALTAN_WARP"]["stages"][1:9]
+        ):
+            self.assertEqual([], stage["effectCues"])
+            self.assertEqual(
+                {
+                    "hiddenFromMs": 0,
+                    "hiddenToMs": 300 if index == 0 else 600,
+                },
+                stage["bodyVisibility"],
+            )
+        warp_return = presentation["VALTAN_WARP"]["stages"][9]
+        self.assertEqual("STEP_10", warp_return["stageId"])
+        self.assertEqual([], warp_return["effectCues"])
+        self.assertEqual(
+            {"hiddenFromMs": 0, "hiddenToMs": 300},
+            warp_return["bodyVisibility"],
+        )
         for stage in presentation["VALTAN_GHOST_FINALE"]["stages"][1:9]:
             cue = stage["effectCues"][0]
             self.assertEqual("snapshot", cue["followPolicy"])
@@ -1974,9 +1982,15 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             with self.subTest(pattern=pattern_id):
                 owner = owners[pattern_id]
                 legs = [stage for stage in owner["stages"] if stage["motion"] is not None]
-                expected_leg_duration_ms = 1800 if pattern_id == "VALTAN_WARP" else 900
-                self.assertEqual([2000, *([expected_leg_duration_ms] * 8), 1667],
-                                 [stage["durationMs"] for stage in owner["stages"]])
+                expected_durations_ms = (
+                    [2000, 1600, *([1900] * 7), 1667]
+                    if pattern_id == "VALTAN_WARP"
+                    else [2000, *([900] * 8), 1667]
+                )
+                self.assertEqual(
+                    expected_durations_ms,
+                    [stage["durationMs"] for stage in owner["stages"]],
+                )
                 self.assertIsNone(owner["stages"][-1]["defaultNextActionId"])
                 self.assertEqual("RETURN_TO_ARENA_CENTER", owner["stages"][-1]["events"][0]["kind"])
                 projected_stages = {row["stageId"]: row for row in product[pattern_id]["stages"]}
@@ -2033,12 +2047,12 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         self.assertEqual({
             "kind": "GHOST_PORTAL_LOOP", "ghostArchetypeId": "BOSS_VALTAN_GHOST",
             "ghostPatternIds": [
-                "VALTAN_SIX_PIZZA_106",
-                "VALTAN_GROUND_ROAR",
-                "VALTAN_STAGGER_SLOT",
-                "VALTAN_BIND_SLOT",
-                "VALTAN_SILENCE_SLOT",
-                "VALTAN_TRIPLE_COUNTER",
+                "VALTAN_WHIRLWIND",
+                "VALTAN_FOUR_SLASH",
+                "VALTAN_SEQUENCE_FOUR",
+                "VALTAN_CROSS",
+                "VALTAN_CHARGE",
+                "VALTAN_CHARGE_2",
             ],
             "spawnHalfExtentsM": [10.0, 10.0], "maximumActiveGhosts": 1}, finale["finale"])
         self.assertIsNone(finale["stages"][-1]["defaultNextActionId"],
@@ -2116,6 +2130,22 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             pipeline.validate_gameplay_authoring(invalid)
 
     def test_center_jump_and_pizza_target_follow_anchor_project_without_world_rotation_loss(self) -> None:
+        _, rebuilt_presentation = phase_two_authoring.build()
+        rebuilt_pizza = next(
+            row for row in rebuilt_presentation["patterns"]
+            if row["patternId"] == "VALTAN_SIX_PIZZA_106"
+        )
+        rebuilt_cues = [
+            cue for stage in rebuilt_pizza["stages"]
+            for cue in stage["effectCues"]
+        ]
+        self.assertEqual(1, len(rebuilt_cues))
+        self.assertEqual(
+            ("arena.center.target-follow", "follow"),
+            (rebuilt_cues[0]["anchorSlotId"], rebuilt_cues[0]["followPolicy"]),
+            "phase-two authoring must not overwrite the mutable pizza root",
+        )
+
         master = pipeline.join_v2_authoring(
             self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
             self.docs[pipeline.PRESENTATION_AUTHORING_REL],
@@ -2153,7 +2183,7 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                                 cue["localTransform"]["rotationDegrees"][1] == 37.0
                                 for cue in projected))
 
-    def test_center_anchor_rejects_missing_motion_moving_roots_and_unlocked_facing(self) -> None:
+    def test_center_anchor_rejects_missing_motion_and_unlocked_facing(self) -> None:
         base = pipeline.join_v2_authoring(
             self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
             self.docs[pipeline.PRESENTATION_AUTHORING_REL],
@@ -2161,8 +2191,6 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
         mutations = [
             ("VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK", "missing landing authority",
              lambda row, cue: row.update(serverMotion=None)),
-            ("VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK", "no preposition",
-             lambda row, cue: row["serverMotion"].update(moveToAnchorBeforeTakeoff=False)),
             ("VALTAN_SIX_PIZZA_106", "fixed effect root",
              lambda row, cue: cue.update(followPolicy="snapshot")),
             ("VALTAN_SIX_PIZZA_106", "fixed occurrence facing",
@@ -2180,6 +2208,18 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             with self.subTest(case=name), self.assertRaises(pipeline.PipelineError):
                 pipeline.validate_v2_master(invalid, self.docs[pipeline.WORLD_SET_REL],
                                             self.docs[pipeline.COMBAT_AUTHORING_REL])
+
+        fixed_center_without_preposition = copy.deepcopy(base)
+        terrain = next(
+            row for row in fixed_center_without_preposition["patterns"]
+            if row["patternId"] == "VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK"
+        )
+        terrain["serverMotion"]["moveToAnchorBeforeTakeoff"] = False
+        pipeline.validate_v2_master(
+            fixed_center_without_preposition,
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
 
     def test_high_jump_clock_and_motion_project_losslessly(self) -> None:
         gameplay = self.docs[pipeline.GAMEPLAY_AUTHORING_REL]
@@ -4232,6 +4272,19 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                 root / "Data/Effects/V2/Groups",
                 dirs_exist_ok=True,
             )
+            authored_effect_relatives = (
+                Path(
+                    "Data/Effects/Authored/"
+                    "effect.valtan.project-tuned.dash-charge.active-shield.effect.json"
+                ),
+                Path(
+                    "Data/Effects/Authored/"
+                    "effect.valtan.project-tuned.sequence.warp.portal.effect.json"
+                ),
+            )
+            for effect_relative in authored_effect_relatives:
+                (root / effect_relative).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(self.root / effect_relative, root / effect_relative)
             self.assertEqual(first, pipeline.project_v2_products(root, projected_docs, staged))
 
         for retired_rows in ([*staged["retiredPatternIds"], retired_id], ["VALTAN_WHIRLWIND"], "not-an-array"):
@@ -4377,12 +4430,12 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
             finale = next(row for row in encounter["patterns"]
                           if row["patternId"] == "VALTAN_GHOST_FINALE")
             finale["finale"]["ghostPatternIds"] = [
-                "VALTAN_SIX_PIZZA_106",
-                "VALTAN_GROUND_ROAR",
-                "VALTAN_STAGGER_SLOT",
-                "VALTAN_BIND_SLOT",
-                "VALTAN_SILENCE_SLOT",
-                "VALTAN_TRIPLE_COUNTER",
+                "VALTAN_WHIRLWIND",
+                "VALTAN_FOUR_SLASH",
+                "VALTAN_SEQUENCE_FOUR",
+                "VALTAN_CROSS",
+                "VALTAN_CHARGE",
+                "VALTAN_CHARGE_2",
             ]
             finale["finale"]["maximumActiveGhosts"] = 2
             overlay_root = Path(temporary)
@@ -4410,14 +4463,14 @@ class ValtanPatternMasterV2Tests(unittest.TestCase):
                     finale["invulnerableWhileRunning"] = True
                 else:
                     child = next(row for row in encounter["patterns"]
-                                 if row["patternId"] == "VALTAN_STAGGER_SLOT")
-                    # Keep the channel's paired health/timeout branch shape
-                    # intact and close its timeout -> final edge back to the
-                    # channel.  This is a validly shaped two-node cycle.
+                                 if row["patternId"] == "VALTAN_FOUR_SLASH")
+                    # Preserve the normal ordered attack chain and close its
+                    # terminal recovery back to SPIN. This is a validly shaped
+                    # late two-node cycle in one current finale child.
                     tail = child["stages"][-1]
                     tail["branches"] = [
                         {"outcome": "TIMEOUT", "nextActionId": child["stages"][-2]["actionId"]}]
-                    expected = "Finite pattern stage graph contains a cycle: VALTAN_STAGGER_SLOT"
+                    expected = "Finite pattern stage graph contains a cycle: VALTAN_FOUR_SLASH"
                 overlay_root = Path(temporary)
                 encounter_path = overlay_root / pipeline.ENCOUNTER_REL
                 encounter_path.parent.mkdir(parents=True)

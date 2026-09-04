@@ -37,6 +37,8 @@ namespace LostArk::Server
 		RETURN_TO_BERN,
 		PARTY_INVITE,
 		PARTY_INVITE_RESPOND,
+		RAID_ENTRY_PROPOSE,
+		RAID_ENTRY_RESPOND,
 		CHAT,
 		LEAVE
 	};
@@ -91,6 +93,8 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_RETURN_TO_BERN ReturnToBern;
 		LostArk::Shared::C2S_PARTY_INVITE PartyInvite;
 		LostArk::Shared::C2S_PARTY_INVITE_RESPOND PartyInviteRespond;
+		LostArk::Shared::C2S_RAID_ENTRY_PROPOSE RaidEntryPropose;
+		LostArk::Shared::C2S_RAID_ENTRY_RESPOND RaidEntryRespond;
 		LostArk::Shared::C2S_CHAT Chat;
 
 		LostArk::Shared::PLAYER_DESPAWN_REASON eLeaveReason =

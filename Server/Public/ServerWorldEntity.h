@@ -86,6 +86,13 @@ namespace LostArk::Server
 		DEAD
 	};
 
+	enum class SERVER_DEPENDENT_BOSS_ROLE : std::uint8_t
+	{
+		NONE,
+		AUXILIARY,
+		PORTAL_RUNNER
+	};
+
 	enum class SERVER_BOSS_PATTERN_TERMINAL_RESULT : std::uint8_t
 	{
 		NONE,
@@ -130,16 +137,26 @@ namespace LostArk::Server
 		identity or damage target set. This relation outlives a pattern cycle. */
 		LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		/* Server-only lifecycle routing. Auxiliary ghosts run one normal authored
+		attack through the dependent brain; portal runners only present and
+		interpolate one nav-independent triangle edge. */
+		SERVER_DEPENDENT_BOSS_ROLE eDependentBossRole =
+			SERVER_DEPENDENT_BOSS_ROLE::NONE;
 		BOSS_PATTERN_SEQUENCE_DEFINITION DependentPatternSequence;
 		/* Phase-three keeps the primary Valtan entity as the sole HP, damage,
 		HUD, and reward authority. The finale-authored list becomes its ordered
 		foreground loop while the portal occurrence runs on an independent clock. */
 		BOSS_PATTERN_SEQUENCE_DEFINITION GhostPhasePatternSequence;
 		bool bGhostPhasePatternLoopActive = false;
+		/* Auxiliary ghosts use their own deterministic occurrence identity and
+		next-spawn edge. Neither value is derived from the primary attack cursor,
+		portal cadence, entity allocation order, or the wall clock. */
+		std::uint32_t iGhostAuxiliaryOccurrenceSequence = 0u;
+		std::uint32_t iGhostAuxiliaryNextSpawnTick = 0u;
 		std::uint32_t iGhostPortalLastSpawnTick = 0u;
 		std::uint32_t iGhostPortalOccurrenceSequence = 0u;
-		/* A completed phase-three foreground reserves exactly one hidden tick.
-		The room commits relocation and then clears this latch at reappearTick. */
+		/* Explicit/debug relocation transaction state. The product phase-three
+		foreground loop does not begin this transaction after an attack. */
 		bool bGhostRepositionPending = false;
 		std::uint32_t iGhostReappearTick = 0u;
 		std::uint32_t iGhostRelocationSequence = 0u;
@@ -176,9 +193,9 @@ namespace LostArk::Server
 		stepped along it and ignores fPatternForcedMotionSpeed. */
 		std::vector<ROOT_MOTION_SAMPLE> PatternStageRootMotion;
 		bool bPortalMotionActive = false;
-		/* PORTAL_TARGET_RUSH captures its target exactly once when the authored
-		   retarget delay expires. Until then no yaw, endpoint, movement, or hit
-		   sweep is committed for the leg. */
+		/* PORTAL_TARGET_RUSH captures its target, facing and endpoint on Stage
+		   entry so presentation can place both portals on the same edge. The
+		   authored delay still gates movement and hit sweeps. */
 		bool bPortalRushTargetLocked = false;
 		std::uint32_t iPortalRushRetargetDelayMs = 0u;
 		float fPortalRushSpeedMps = 0.f;

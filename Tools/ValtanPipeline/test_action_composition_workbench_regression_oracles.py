@@ -2568,7 +2568,7 @@ class ActionCompositionWorkbenchRegressionOracles(unittest.TestCase):
         self.assertEqual("BOSS_RELATIVE", events[0]["volleyPolicy"])
         self.assertEqual(4, events[0]["countPerResolvedTarget"])
         self.assertEqual("RADIAL_AROUND_BOSS", events[0]["layout"]["kind"])
-        self.assertEqual(4.9497475, events[0]["layout"]["radiusM"])
+        self.assertEqual(6.3639610307, events[0]["layout"]["radiusM"])
         self.assertEqual(45.0, events[0]["layout"]["startAngleDegrees"])
         self.assertEqual(90.0, events[0]["layout"]["angleStepDegrees"])
 

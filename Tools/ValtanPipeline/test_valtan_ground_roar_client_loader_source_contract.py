@@ -113,11 +113,11 @@ class ValtanGroundRoarClientLoaderSourceContractTests(unittest.TestCase):
 
     def test_both_readers_reject_unknown_policy_before_projection(self) -> None:
         self.assertIn(
-            "(!bPerAlivePlayer && !bBossRelative)",
+            "(!bPerAlivePlayer && !bBossRelative && !bArenaCenter)",
             self.product_reader,
         )
         self.assertIn(
-            "(!bPerAlivePlayer && !bBossRelative)",
+            "(!bPerAlivePlayer && !bBossRelative && !bArenaCenter)",
             self.authoring_projection,
         )
 

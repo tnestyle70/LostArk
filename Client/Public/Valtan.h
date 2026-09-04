@@ -12,8 +12,6 @@
 #include "ValtanPatternSoundCueDocument.h"
 #include "ValtanCombatObjectSoundCueDocument.h"
 #include "ValtanPresentationGenerationAdmission.h"
-#include "PlayerHandGripTransform.h"
-
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -208,6 +206,11 @@ public:
 		float3_t vPosition = {};
 		f32_t fScale = {};
 		bool_t isServerAuthoritative = false;
+		/* Replication may construct dependent ghost presentations during the
+		arena admission window.  A dormant clone remains in its Layer but does
+		not update, render, or own an Effect target until a Server spawn checks
+		it out. */
+		bool_t bStartReplicationDormant = false;
 		std::string strArchetypeId = "BOSS_VALTAN";
 		LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
@@ -268,6 +271,11 @@ public:
 	   socketed weapon consumes: Valtan body local (-90 degree source-axis
 	   correction) composed with the owning actor world transform. */
 	bool_t Try_Get_PresentationRootMatrix(float4x4_t* pOut) const;
+	/* Warp portal bindings use Server-locked virtual anchors instead of the
+	current interpolated body root, which may already be mid-rush when a
+	coalesced Stage snapshot is first applied. */
+	bool_t Try_Get_PortalRushAnchorMatrices(
+		float4x4_t* pStartOut, float4x4_t* pEndOut) const;
 	/* The world entity snapshot reports a plate that lost its durability as
 	   one bit per authored plate index, and presentation only has to hide
 	   the part wearing that index. */
@@ -282,7 +290,21 @@ public:
 		uint32_t iActionStartTick,
 		uint32_t iPatternSequence,
 		uint32_t iPatternStageIndex,
-		const PATTERN_TARGET_SNAPSHOT_POSE& PatternTargetPose);
+		const PATTERN_TARGET_SNAPSHOT_POSE& PatternTargetPose,
+		const LostArk::Shared::PORTAL_RUSH_ROUTE_SNAPSHOT& PortalRushRoute);
+	/* A pool slot copies only the immutable, already exact-admitted joined
+	presentation.  Model/animation compatibility is revalidated against this
+	ghost instance; occurrence cursors and Effect state are never copied. */
+	bool_t Copy_AdmittedPatternPresentationFrom(
+		const CValtan& Source,
+		const LostArk::Shared::GameplayDataRevision& ExpectedServerRevision,
+		const Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& ExpectedReceipt,
+		std::string& strOutStatus);
+	bool_t Activate_ReplicatedPoolOccurrence(
+		const float3_t& position, f32_t yawDegrees,
+		bool_t bHoldBodyHiddenUntilPatternSnapshot);
+	bool_t Return_ToReplicatedPool();
+	bool_t Is_ReplicationDormant() const { return m_isReplicationDormant; }
 	/* Animation Tool-only local audition.  It deliberately bypasses network,
 	   Effect, Sound, hit and movement, but samples the same admitted Product
 	   binding through the exact helper Apply_NetworkState uses. */
@@ -339,12 +361,6 @@ public:
 	}
 	const std::string& Get_ServerPatternId() const { return m_strServerPatternId; }
 	const std::string& Get_ServerActionId() const { return m_strServerActionId; }
-	bool_t Try_Get_PlayerHandGripLocalOffset(
-		std::string_view actionId,
-		Client::PLAYER_HAND_GRIP_LOCAL_OFFSET& outOffset) const;
-	bool_t Try_Get_PlayerHandGripLocalOffsetByPatternId(
-		std::string_view patternId,
-		Client::PLAYER_HAND_GRIP_LOCAL_OFFSET& outOffset) const;
 #ifdef _DEBUG
 	/* Process-local visual A/B only.  Server pattern timing and the Product V0
 	   cue document remain authoritative in both modes. */
@@ -412,6 +428,13 @@ private:
 	CNavPathFollower m_PathFollower;
 	uint32_t m_iPrototypeLevelIndex = {};
 	bool_t m_isServerAuthoritative = false;
+	bool_t m_isReplicationDormant = false;
+	/* A portal runner is born already inside its authored [0, 300ms) hidden
+	window.  Reliable spawn has the action id but no pattern clock, so retain
+	that conservative hidden state until the first exact pattern snapshot. */
+	bool_t m_bHoldSpawnBodyHiddenUntilPatternSnapshot = false;
+	bool_t m_bGhostPortalRoutePresentationActive = false;
+	f32_t m_fGhostPortalRoutePresentationAgeSeconds = 0.f;
 	std::string m_strArchetypeId = "BOSS_VALTAN";
 	/* Gameplay/network identity stays m_strArchetypeId.  This second ID names
 	   only the atomically committed body/weapon/armour presentation group. */
@@ -460,6 +483,7 @@ private:
 	f32_t m_fServerPatternTargetSnapshotYawDegrees = 0.f;
 	bool_t m_bHasServerPatternTargetSnapshotPose = false;
 	bool_t m_bServerPatternTargetIdentityStable = false;
+	LostArk::Shared::PORTAL_RUSH_ROUTE_SNAPSHOT m_PortalRushRoute;
 	/* One composite invocation owns one root handle.  The Server pattern keeps
 	   the target identity fixed while current yaw changes per fixed tick; late
 	   Effect elements therefore inherit the same updated root rather than
@@ -495,13 +519,6 @@ private:
 	};
 	std::unordered_map<std::string, PATTERN_BODY_VISIBILITY_WINDOW>
 		m_PatternBodyVisibilityByActionId;
-	/* Product capture presentation retains action bindings for authoring
-	   diagnostics. Runtime attachment lookup uses the replicated patternId,
-	   which survives a same-tick branch away from the CAPTURE stage. */
-	std::unordered_map<std::string, PLAYER_HAND_GRIP_LOCAL_OFFSET>
-		m_PlayerHandGripLocalOffsetByActionId;
-	std::unordered_map<std::string, PLAYER_HAND_GRIP_LOCAL_OFFSET>
-		m_PlayerHandGripLocalOffsetByPatternId;
 	bool_t m_bLocalPatternAuthoringPreview = false;
 	std::unordered_map<std::string,
 		std::vector<BOSS_PATTERN_ANIMATION_CLIP>>
@@ -511,6 +528,10 @@ private:
 		m_LocalPreviewEffectCuesByActionId;
 	std::unordered_map<std::string, uint32_t>
 		m_LocalPreviewStageIndexByActionId;
+	std::unordered_map<std::string, PATTERN_BODY_VISIBILITY_WINDOW>
+		m_LocalPreviewBodyVisibilityByActionId;
+	std::unordered_map<std::string, f32_t>
+		m_LocalPreviewPortalRushDistanceByActionId;
 	std::unordered_map<std::string, float3_t>
 		m_LocalPreviewArenaCenterAnchors;
 	struct LOCAL_PATTERN_COMBAT_OBJECT_EVENT final
@@ -530,6 +551,9 @@ private:
 		f32_t fAngleStepDegrees = 0.f;
 		uint32_t iFirstSpawnOffsetMs = 0u;
 		uint32_t iLifetimeMs = 0u;
+		/* ARENA_CENTER volleys place their roots around the pattern's admitted
+		   arena-center anchor with world-absolute angles instead of the boss pose. */
+		bool_t bArenaCenterOrigin = false;
 		std::vector<LOCAL_PATTERN_COMBAT_OBJECT_EVENT> PresentationEvents;
 	};
 	struct LOCAL_PATTERN_COMBAT_OBJECT_INSTANCE final
@@ -539,6 +563,9 @@ private:
 		float3_t vPosition = {};
 		f32_t fYawDegrees = 0.f;
 		uint64_t iActiveHandle = 0u;
+		/* The active root spawns once per rewind and keeps its authored NATURAL
+		   lifetime past iLifetimeMs, mirroring the Server despawn Release path. */
+		bool_t bActiveAttempted = false;
 		std::vector<uint64_t> TerminalHandles;
 		std::vector<bool_t> TerminalAttempts;
 	};
@@ -653,8 +680,6 @@ private:
 	HRESULT Ready_Components(f32_t collisionRadius);
 	void Load_PatternBindings();
 	bool_t Reload_PatternBindings_WhileAdmitted(std::string& strOutStatus);
-	bool_t Reload_PlayerHandGripLocalOffsets_WhileAdmitted(
-		std::string& strOutStatus);
 	bool_t Apply_PatternPresentationSample(
 		std::string_view actionId,
 		std::string_view fallbackClipName,
@@ -697,6 +722,12 @@ private:
 		std::string_view patternId,
 		std::string_view actionId);
 	void Transition_RaidBgm(RAID_BGM_STATE nextState);
+	void Reset_ReplicatedOccurrenceState();
+	void Update_PatternBodyVisibilityAtAge(
+		const std::string& actionId,
+		f32_t actionAgeSeconds,
+		bool_t bGhostPortalRushStage);
+	void Update_GhostPortalRoutePresentation(f32_t fTimeDelta);
 
 public:
 	static unique_ptr<CValtan> Create(ComPtr<ID3D11Device> pDevice,

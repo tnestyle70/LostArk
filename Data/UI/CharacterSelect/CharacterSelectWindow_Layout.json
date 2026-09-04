@@ -1,0 +1,164 @@
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": { "width": 1280, "height": 720 },
+  "classes": ["Default"],
+  "slots": [
+    {
+      "id": "CharSel_Wallpaper",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 0, "y": 0, "width": 1280, "height": 720 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/CharacterSelect/charsel_wallpaper.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "CharSel_FooterBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 0, "y": 597.33, "width": 1280, "height": 122.67 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/CharacterSelect/charsel_footer_gradient.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "CharSel_CardSlot_0",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 158.44, "y": 585.66, "width": 152.00, "height": 40.00 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/CharacterSelect/charsel_card_new.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "CharSel_CardSlot_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 320.67, "y": 585.66, "width": 152.00, "height": 40.00 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/CharacterSelect/charsel_card_new.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "CharSel_CardSlot_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 482.89, "y": 585.66, "width": 152.00, "height": 40.00 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/CharacterSelect/charsel_card_new.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "CharSel_CardSlot_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 645.11, "y": 585.66, "width": 152.00, "height": 40.00 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/CharacterSelect/charsel_card_new.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "CharSel_CardSlot_4",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 807.33, "y": 585.66, "width": 152.00, "height": 40.00 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/CharacterSelect/charsel_card_new.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "CharSel_CardSlot_5",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 969.56, "y": 585.66, "width": 152.00, "height": 40.00 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/CharacterSelect/charsel_card_new.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "CharSel_StartButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 571.5, "y": 660, "width": 137, "height": 36.67 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/CharacterSelect/charsel_start_btn.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "CharSel_ServerBackIcon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 30, "y": 652, "width": 27.33, "height": 27.33 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/CharacterSelect/charsel_server_back_icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "CharSel_ServerBackLabelBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 4, "y": 684, "width": 80, "height": 20 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/CharacterSelect/charsel_server_back_icon.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    },
+    {
+      "id": "CharSel_SlotCountTextBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1102, "y": 585, "width": 80, "height": 20 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/CharacterSelect/charsel_server_back_icon.png", "hoverPath": null, "tint": [1, 1, 1, 0], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
+    }
+  ]
+}

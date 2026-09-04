@@ -12,6 +12,18 @@
 
 NS_BEGIN(Client)
 
+/* Raw resource identity captured by the explicit catalog Reload boundary.
+   A Composition draft may later reference any admitted leaf/group, so the
+   snapshot retains the whole valid catalog and filters the exact candidate
+   closure only when Save is prepared. */
+struct EFFECT_V2_RESOURCE_READ_ROW final
+{
+	EFFECT_V2_RESOURCE_KIND eKind = EFFECT_V2_RESOURCE_KIND::LEAF;
+	std::string strResourceId;
+	std::string strRepositoryPath;
+	std::string strSha256;
+};
+
 /* Immutable authoring view used by tools after an explicit catalog reload.
    Consumers retain the shared snapshot for the whole UI operation; no query
    below touches the filesystem or the runtime's lazy playback caches. */
@@ -42,6 +54,7 @@ private:
 	std::vector<EFFECT_V2_DOCUMENT> m_Documents;
 	std::vector<EFFECT_V2_GROUP> m_Groups;
 	std::vector<EFFECT_V2_BINDING> m_BossValtanBindings;
+	std::vector<EFFECT_V2_RESOURCE_READ_ROW> m_ResourceReadRows;
 	std::vector<std::string> m_Diagnostics;
 	/* The canonical v2 bindings owner is admitted as one strict document.
 	   False is retained as a compatibility guard for snapshots created before
@@ -113,6 +126,7 @@ public:
 	bool_t Prepare_BossValtanBindingDraftSave(
 		std::string& strOutBaselineBytes,
 		std::string& strOutCandidateBytes,
+		std::string& strOutResourceReadSetBytes,
 		uint64_t& iOutDraftRevision,
 		bool_t& bOutDirty,
 		std::string& strOutError) const;

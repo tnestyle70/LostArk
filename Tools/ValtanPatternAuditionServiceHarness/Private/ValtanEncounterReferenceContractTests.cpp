@@ -396,9 +396,9 @@ namespace
 				"durationMs", "1", stageActionsError },
 			{ "VALTAN_GHOST_PORTAL_ONCE", "ACTIVE", "angleStepDegrees", "100.0", stageActionsError },
 			{ "VALTAN_BIND_SLOT", "STEP_01", "value", "10000", stageActionsError },
-			{ "VALTAN_SILENCE_SLOT", "SILENCE_APPLY", "trigger", "\"EXIT\"", stageActionsError },
-			{ "VALTAN_SILENCE_SLOT", "SILENCE_APPLY", "value", "0", stageActionsError },
-			{ "VALTAN_SILENCE_SLOT", "SILENCE_APPLY", "durationMs", "5001", stageActionsError },
+			{ "VALTAN_SILENCE_SLOT", "STEP_01", "trigger", "\"EXIT\"", stageActionsError },
+			{ "VALTAN_SILENCE_SLOT", "STEP_01", "value", "0", stageActionsError },
+			{ "VALTAN_SILENCE_SLOT", "SET_PLAYER_SILENCE", "durationMs", "99", stageActionsError },
 			{ "VALTAN_TRASH_CATCH_IF", "STEP_07", "outcome", "\"NAVIGATION_BLOCKED\"", stageBranchesError },
 			{ "VALTAN_TRASH", "GROGGY", "nextActionId", "\"valtan.sequence.center-trash-rush-if.step-07\"", extensionError },
 			{ "VALTAN_TRASH_CATCH_IF", "GROGGY", "nextActionId", "\"valtan.sequence.rush-if.step-07\"", extensionError },
@@ -406,8 +406,8 @@ namespace
 			{ "VALTAN_TRASH_CATCH_FAIL", "RUSH_MISS", "nextActionId", "\"valtan.sequence.rush-fail.rush-miss\"", stageBranchesError },
 			{ "VALTAN_GHOST_FINALE", "STEP_10", "durationMs",
 				"1667,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":\"valtan.sequence.ghost-finale.step-01\"}]", extensionError },
-			{ "VALTAN_SIX_PIZZA_106", "STEP_11", "durationMs",
-				"1300,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":\"valtan.sequence.center-six-pizza-charge.step-01\"}]", extensionError }
+			{ "VALTAN_WHIRLWIND", "RECOVERY", "durationMs",
+				"1467,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":\"valtan.attack.whirlwind.windup\"}]", extensionError }
 		};
 		for (const auto& mutation : malformedFields)
 		{
@@ -418,15 +418,15 @@ namespace
 				return false;
 		}
 		// TIMEOUT null ends the entry stage. Cycles in the now-unreachable
-		// tail still cannot be admitted as a finite ghost animation graph.
+		// tail of a current finale child still cannot be admitted.
 		auto unreachableCycle = original;
 		for (const auto& mutation : std::array<FieldMutation, 3>{
-			FieldMutation{ "VALTAN_SIX_PIZZA_106", "STEP_01", "durationMs",
-				"1200,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":null}]" },
-			FieldMutation{ "VALTAN_SIX_PIZZA_106", "STEP_02", "durationMs",
-				"1000,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":\"valtan.sequence.center-six-pizza-charge.step-03\"}]" },
-			FieldMutation{ "VALTAN_SIX_PIZZA_106", "STEP_03", "durationMs",
-				"1200,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":\"valtan.sequence.center-six-pizza-charge.step-02\"}]" } })
+			FieldMutation{ "VALTAN_WHIRLWIND", "WINDUP", "durationMs",
+				"1333,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":null}]" },
+			FieldMutation{ "VALTAN_WHIRLWIND", "SPIN", "durationMs",
+				"1200,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":\"valtan.attack.whirlwind.recovery\"}]" },
+			FieldMutation{ "VALTAN_WHIRLWIND", "RECOVERY", "durationMs",
+				"1467,\"branches\":[{\"outcome\":\"TIMEOUT\",\"nextActionId\":\"valtan.attack.whirlwind.active\"}]" } })
 		{
 			unreachableCycle = replaceField(std::move(unreachableCycle), mutation);
 			if (!Require(!unreachableCycle.empty(), "unreachable-cycle fixture was not staged"))

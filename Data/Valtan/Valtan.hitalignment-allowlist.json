@@ -1,0 +1,307 @@
+{
+  "schema": "lostark.valtan-hit-presentation-alignment-allowlist",
+  "formatVersion": 1,
+  "ownerArchetypeId": "BOSS_VALTAN",
+  "exceptions": [
+    {
+      "exceptionId": "exception.valtan.alignment.external.migrated.006.c528dcfd46892776",
+      "rule": "EXTERNAL_V2_BINDING_SCOPE",
+      "patternId": "VALTAN_FRONT_BACK_FRONT",
+      "stageId": "SMASHES",
+      "actionId": "valtan.attack.front-back-front.active",
+      "bindingId": "binding.valtan.migrated.006.c528dcfd46892776",
+      "expectedHitOffsetsMs": [],
+      "reason": "Legacy Product-only V2 binding is not represented by the current split Valtan authoring source."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.external.migrated.007.8d01fb677d7f0a8d",
+      "rule": "EXTERNAL_V2_BINDING_SCOPE",
+      "patternId": "VALTAN_FRONT_BACK_FRONT",
+      "stageId": "SMASHES",
+      "actionId": "valtan.attack.front-back-front.active",
+      "bindingId": "binding.valtan.migrated.007.8d01fb677d7f0a8d",
+      "expectedHitOffsetsMs": [],
+      "reason": "Legacy Product-only V2 binding is not represented by the current split Valtan authoring source."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.external.migrated.008.d8a7847ad6fe5964",
+      "rule": "EXTERNAL_V2_BINDING_SCOPE",
+      "patternId": "VALTAN_FRONT_BACK_FRONT",
+      "stageId": "SMASHES",
+      "actionId": "valtan.attack.front-back-front.active",
+      "bindingId": "binding.valtan.migrated.008.d8a7847ad6fe5964",
+      "expectedHitOffsetsMs": [],
+      "reason": "Legacy Product-only V2 binding is not represented by the current split Valtan authoring source."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.external.migrated.009.240b1c1e169c5c2f",
+      "rule": "EXTERNAL_V2_BINDING_SCOPE",
+      "patternId": "VALTAN_FRONT_BACK_FRONT",
+      "stageId": "SMASHES",
+      "actionId": "valtan.attack.front-back-front.active",
+      "bindingId": "binding.valtan.migrated.009.240b1c1e169c5c2f",
+      "expectedHitOffsetsMs": [],
+      "reason": "Legacy Product-only V2 binding is not represented by the current split Valtan authoring source."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.external.migrated.015.ac407ba8b6d6a072",
+      "rule": "EXTERNAL_V2_BINDING_SCOPE",
+      "patternId": "VALTAN_IMPRISON_ROAR",
+      "stageId": "ROAR",
+      "actionId": "valtan.attack.imprison-roar.active",
+      "bindingId": "binding.valtan.migrated.015.ac407ba8b6d6a072",
+      "expectedHitOffsetsMs": [],
+      "reason": "Legacy Product-only V2 binding is not represented by the current split Valtan authoring source."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.external.migrated.015.ded356fa1b155e06",
+      "rule": "EXTERNAL_V2_BINDING_SCOPE",
+      "patternId": "VALTAN_GHOST_TRANSITION_15",
+      "stageId": "FOUR_DIRECTIONS",
+      "actionId": "valtan.mechanic.ghost-transition-15.four-directions",
+      "bindingId": "binding.valtan.migrated.015.ded356fa1b155e06",
+      "expectedHitOffsetsMs": [],
+      "reason": "Legacy Product-only V2 binding is not represented by the current split Valtan authoring source."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.external.migrated.016.59e9eccbabd0afc4",
+      "rule": "EXTERNAL_V2_BINDING_SCOPE",
+      "patternId": "VALTAN_IMPRISON_ROAR",
+      "stageId": "RECOVERY",
+      "actionId": "valtan.attack.imprison-roar.recovery",
+      "bindingId": "binding.valtan.migrated.016.59e9eccbabd0afc4",
+      "expectedHitOffsetsMs": [],
+      "reason": "Legacy Product-only V2 binding is not represented by the current split Valtan authoring source."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.external.migrated.016.9f8473febadd8dbc",
+      "rule": "EXTERNAL_V2_BINDING_SCOPE",
+      "patternId": "VALTAN_GHOST_TRANSITION_15",
+      "stageId": "TRACKING_EXPLOSIONS",
+      "actionId": "valtan.mechanic.ghost-transition-15.tracking",
+      "bindingId": "binding.valtan.migrated.016.9f8473febadd8dbc",
+      "expectedHitOffsetsMs": [],
+      "reason": "Legacy Product-only V2 binding is not represented by the current split Valtan authoring source."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-ghost-finale.step-02",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_GHOST_FINALE",
+      "stageId": "STEP_02",
+      "actionId": "valtan.sequence.ghost-finale.step-02",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850],
+      "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-ghost-finale.step-03",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_GHOST_FINALE",
+      "stageId": "STEP_03",
+      "actionId": "valtan.sequence.ghost-finale.step-03",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850],
+      "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-ghost-finale.step-04",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_GHOST_FINALE",
+      "stageId": "STEP_04",
+      "actionId": "valtan.sequence.ghost-finale.step-04",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850],
+      "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-ghost-finale.step-05",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_GHOST_FINALE",
+      "stageId": "STEP_05",
+      "actionId": "valtan.sequence.ghost-finale.step-05",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850],
+      "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-ghost-finale.step-06",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_GHOST_FINALE",
+      "stageId": "STEP_06",
+      "actionId": "valtan.sequence.ghost-finale.step-06",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850],
+      "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-ghost-finale.step-07",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_GHOST_FINALE",
+      "stageId": "STEP_07",
+      "actionId": "valtan.sequence.ghost-finale.step-07",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850],
+      "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-ghost-finale.step-08",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_GHOST_FINALE",
+      "stageId": "STEP_08",
+      "actionId": "valtan.sequence.ghost-finale.step-08",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850],
+      "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-ghost-finale.step-09",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_GHOST_FINALE",
+      "stageId": "STEP_09",
+      "actionId": "valtan.sequence.ghost-finale.step-09",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850],
+      "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-warp.step-02",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_WARP",
+      "stageId": "STEP_02",
+      "actionId": "valtan.sequence.warp.step-02",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 1550],
+      "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-warp.step-03",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_WARP",
+      "stageId": "STEP_03",
+      "actionId": "valtan.sequence.warp.step-03",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 1550, 1600, 1650, 1700, 1750, 1800, 1850],
+      "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-warp.step-04",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_WARP",
+      "stageId": "STEP_04",
+      "actionId": "valtan.sequence.warp.step-04",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 1550, 1600, 1650, 1700, 1750, 1800, 1850],
+      "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-warp.step-05",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_WARP",
+      "stageId": "STEP_05",
+      "actionId": "valtan.sequence.warp.step-05",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 1550, 1600, 1650, 1700, 1750, 1800, 1850],
+      "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-warp.step-06",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_WARP",
+      "stageId": "STEP_06",
+      "actionId": "valtan.sequence.warp.step-06",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 1550, 1600, 1650, 1700, 1750, 1800, 1850],
+      "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-warp.step-07",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_WARP",
+      "stageId": "STEP_07",
+      "actionId": "valtan.sequence.warp.step-07",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 1550, 1600, 1650, 1700, 1750, 1800, 1850],
+      "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-warp.step-08",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_WARP",
+      "stageId": "STEP_08",
+      "actionId": "valtan.sequence.warp.step-08",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 1550, 1600, 1650, 1700, 1750, 1800, 1850],
+      "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-warp.step-09",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_WARP",
+      "stageId": "STEP_09",
+      "actionId": "valtan.sequence.warp.step-09",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 1550, 1600, 1650, 1700, 1750, 1800, 1850],
+      "reason": "Portal rush collision is sampled every 50ms; one representative attack sound is intentionally shared by the continuous damage window."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-trash.step-08",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_TRASH",
+      "stageId": "STEP_08",
+      "actionId": "valtan.sequence.center-trash-rush-if.step-08",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [0, 100, 200, 300, 400, 500, 600],
+      "reason": "Capture rush collision is sampled every 100ms until one target is captured; the stage intentionally uses one representative rush sound."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-trash.retry-rush-02",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_TRASH",
+      "stageId": "RETRY_RUSH_02",
+      "actionId": "valtan.sequence.center-trash-rush-if.retry-rush-02",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [0, 100, 200, 300, 400, 500, 600],
+      "reason": "Capture rush collision is sampled every 100ms until one target is captured; the stage intentionally uses one representative rush sound."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-trash.retry-rush-03",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_TRASH",
+      "stageId": "RETRY_RUSH_03",
+      "actionId": "valtan.sequence.center-trash-rush-if.retry-rush-03",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [0, 100, 200, 300, 400, 500, 600],
+      "reason": "Capture rush collision is sampled every 100ms until one target is captured; the stage intentionally uses one representative rush sound."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-trash-catch-if.step-08",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_TRASH_CATCH_IF",
+      "stageId": "STEP_08",
+      "actionId": "valtan.sequence.rush-if.step-08",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [0, 100, 200, 300, 400, 500, 600],
+      "reason": "Capture rush collision is sampled every 100ms until one target is captured; the stage intentionally uses one representative rush sound."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-trash-catch-if.retry-rush-02",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_TRASH_CATCH_IF",
+      "stageId": "RETRY_RUSH_02",
+      "actionId": "valtan.sequence.rush-if.retry-rush-02",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [0, 100, 200, 300, 400, 500, 600],
+      "reason": "Capture rush collision is sampled every 100ms until one target is captured; the stage intentionally uses one representative rush sound."
+    },
+    {
+      "exceptionId": "exception.valtan.alignment.sound-track.valtan-trash-catch-if.retry-rush-03",
+      "rule": "STAGE_HIT_SOUND_TRACK",
+      "patternId": "VALTAN_TRASH_CATCH_IF",
+      "stageId": "RETRY_RUSH_03",
+      "actionId": "valtan.sequence.rush-if.retry-rush-03",
+      "bindingId": null,
+      "expectedHitOffsetsMs": [0, 100, 200, 300, 400, 500, 600],
+      "reason": "Capture rush collision is sampled every 100ms until one target is captured; the stage intentionally uses one representative rush sound."
+    }
+  ]
+}

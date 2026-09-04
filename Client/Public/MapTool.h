@@ -5,6 +5,7 @@
 #include "MapAssetPreview.h"
 #include "MapPlacementDocument.h"
 #include "MapPlacementRuntime.h"
+#include "WorldSequencePlayer.h"
 #include "MapLightPresentationRuntime.h"
 #include "DeployPropRuntime.h"
 #include "DestructionSimulationDocument.h"
@@ -235,6 +236,19 @@ private:
 	void Render_NavigationBoundsOverlay();
 	void Render_Toolbar();
 	void Render_AnimatedPropsAuthoring();
+	/* Authoring keeps the arena visible so it can be edited. This previews the
+	   product level's cutscene start state without touching a saved document. */
+	void Render_CutsceneArenaPreview();
+	void Apply_CutsceneArenaVisibility(bool_t hidden);
+	bool_t Is_CutsceneOriginalPlaying() const;
+	void Hide_CutsceneSet();
+	void Release_CutsceneBookPreview(uint64_t placementId);
+	void Update_CutsceneArenaRise(
+		f32_t fTimeDelta, bool_t isMapAuthoringLevel);
+	/* The generated rise is split across instances by the 32-track template
+	   limit, so previewing the whole arena starts all of them together. */
+	bool_t Play_CutsceneArenaRise();
+	bool_t Play_CutsceneOriginalRise();
 	void Render_Palette(f32_t childHeight);
 	void Render_Hierarchy(f32_t childHeight);
 	void Render_Inspector();
@@ -480,6 +494,21 @@ private:
 	DEPLOY_PROP_STATE m_DeployPhase = DEPLOY_PROP_STATE::INTACT;
 	ENVIRONMENT_PHASE m_EnvironmentPhase = ENVIRONMENT_PHASE::BASELINE;
 	bool_t m_bShowBernLandscape = false;
+	/* Preview-only. Never saved, so reopening the Area restores full visibility. */
+	bool_t m_bCutsceneArenaHidden = false;
+	/* Visibility each arena placement had before the preview hid it. Culling
+	   boxes are invisible helpers, so a blanket restore would reveal them. */
+	vector<std::pair<uint64_t, bool_t>> m_CutsceneArenaRestoreVisibility;
+	/* Same playback path the product level uses, so the preview cannot drift
+	   from what the cutscene will actually do. */
+	CWorldSequencePlayer m_ArenaRisePlayer;
+	bool_t m_bArenaRiseAreaLoaded = false;
+	/* Negative means no cutscene is running. Stays at zero while the arena
+	   instances play and counts up once they have settled, so the book can be
+	   despawned after a short hold. */
+	f32_t m_fCutsceneBookHoldMs = -1.f;
+	/* True while the original cutscene owes the arena back. */
+	bool_t m_bCutsceneOriginalRunning = false;
 	uint64_t m_iSelectedPlacementId = {};
 	uint64_t m_iNextPlacementId = 1;
 

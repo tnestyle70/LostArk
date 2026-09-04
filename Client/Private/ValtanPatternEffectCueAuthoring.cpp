@@ -224,14 +224,21 @@ namespace
 			 "LOCK_RANDOM_ALIVE_BEHIND_ON_START" == Pattern.strTargetPolicy);
 		const bool_t bArenaTargetFollow =
 			"arena.center.target-follow" == Cue.strAnchorSlotId;
+		const bool_t bFixedArenaCenter =
+			"arena.center" == Cue.strAnchorSlotId;
+		const bool_t bHasFixedCenterMotion = Pattern.ServerMotion.has_value() &&
+			("LEAP_TO_ANCHOR" == Pattern.ServerMotion->strKind ||
+			 "LEAP_TO_TARGET" == Pattern.ServerMotion->strKind);
+		const bool_t bHasCenterApproach = Pattern.ServerMotion.has_value() &&
+			"LEAP_TO_ANCHOR" == Pattern.ServerMotion->strKind &&
+			Pattern.ServerMotion->bMoveToAnchorBeforeTakeoff;
 		const bool_t bArenaCenterAnchor =
-			("arena.center" == Cue.strAnchorSlotId ||
+			(bFixedArenaCenter ||
 			 "arena.center.facing" == Cue.strAnchorSlotId ||
 			 bArenaTargetFollow) &&
 			(bArenaTargetFollow ? "follow" : "snapshot") ==
-				Cue.strFollowPolicy && Pattern.ServerMotion.has_value() &&
-			"LEAP_TO_ANCHOR" == Pattern.ServerMotion->strKind &&
-			Pattern.ServerMotion->bMoveToAnchorBeforeTakeoff &&
+				Cue.strFollowPolicy &&
+			(bFixedArenaCenter ? bHasFixedCenterMotion : bHasCenterApproach) &&
 			("arena.center.facing" != Cue.strAnchorSlotId ||
 			 ("LOCK_FACING_ON_START" == Pattern.strAimPolicy &&
 			  "LOCK_RANDOM_ALIVE_ON_START" == Pattern.strTargetPolicy)) &&

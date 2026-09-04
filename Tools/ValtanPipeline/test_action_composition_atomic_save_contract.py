@@ -39,6 +39,8 @@ class ActionCompositionAtomicSaveContractTests(unittest.TestCase):
         self.assertNotIn("Save_ValtanCompositionPatternSounds", save)
         self.assertIn("Prepare_ValtanCompositionPatternSoundSave", save)
         self.assertIn("Prepare_BossValtanBindingDraftSave", save)
+        self.assertIn("EffectV2ReadSetBytes", save)
+        self.assertIn("OwnerDrafts.effectV2ReadSetBytes", save)
         self.assertIn("Accept_ValtanCompositionPatternSoundSave", accept)
         self.assertIn("Accept_BossValtanBindingDraftSave", accept)
         self.assertIn("Accept_PendingSaveOwners(LocalOwnerStatus)", source)
@@ -120,6 +122,16 @@ class ActionCompositionAtomicSaveContractTests(unittest.TestCase):
         balance = (REPOSITORY_ROOT / "Client/Private/BalanceTool.cpp").read_text(
             encoding="utf-8"
         )
+        balance_header = (
+            REPOSITORY_ROOT / "Client/Public/BalanceTool.h"
+        ).read_text(encoding="utf-8")
+        catalog = (
+            REPOSITORY_ROOT / "Client/Private/EffectV2_Catalog.cpp"
+        ).read_text(encoding="utf-8")
+        save_job = (
+            REPOSITORY_ROOT
+            / "Tools/ValtanPipeline/Run-ValtanAuthoringSaveJob.ps1"
+        ).read_text(encoding="utf-8")
         wrapper = (
             REPOSITORY_ROOT
             / "Tools/ValtanPipeline/Publish-ValtanTuningRuntimeSet.ps1"
@@ -136,9 +148,11 @@ class ActionCompositionAtomicSaveContractTests(unittest.TestCase):
             "PatternSoundCandidatePath",
             "EffectV2BaselinePath",
             "EffectV2CandidatePath",
+            "EffectV2ReadSetPath",
         ):
             self.assertIn(token, balance)
             self.assertIn(token, wrapper)
+            self.assertIn(token, save_job)
         for token in (
             "--pattern-sound-baseline",
             "--pattern-sound-candidate",
@@ -150,6 +164,13 @@ class ActionCompositionAtomicSaveContractTests(unittest.TestCase):
         self.assertIn("EffectV2ReadSetPath", wrapper)
         self.assertIn("--effect-v2-read-set", wrapper)
         self.assertIn("--effect-v2-read-set", cli)
+        self.assertIn("effectV2ReadSetBytes", balance_header)
+        self.assertIn("effectV2ReadSetBytes", balance)
+        self.assertIn("m_ResourceReadRows", catalog)
+        self.assertIn("ReadSetDocument", catalog)
+        self.assertIn("Reload before Save", catalog)
+        self.assertNotIn("effect_v2_binding_pipeline.py", save_job)
+        self.assertNotIn("'snapshot'", save_job)
         self.assertIn("provided_baselines", promote)
         self.assertIn("target_payloads[pattern_sound_target]", promote)
         self.assertIn("target_payloads[effect_v2_target]", promote)

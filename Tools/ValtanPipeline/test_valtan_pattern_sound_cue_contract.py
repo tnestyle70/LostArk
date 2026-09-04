@@ -31,82 +31,7 @@ CUE_FIELDS = {
     "startMs",
 }
 
-PROJECT_AUTHORED_SEMANTIC_CUES = {
-    "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.01": {
-        "bindingId":
-            "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.01",
-        "occurrenceId":
-            "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.01.occurrence.01",
-        "patternId": "VALTAN_GROUND_ROAR",
-        "stageId": "STEP_01",
-        "actionId": "valtan.sequence.sequence.400440.0.step-01",
-        "clipOccurrenceId":
-            "valtan.sequence.sequence.400440.0.step-01.clip-01",
-        "soundBank": "S_Mob_G_Voltan2",
-        "soundEvent": "G_Voltan2_Attack09_ProjCreat1",
-        "repeatPolicy": "once",
-        "startMs": 1,
-    },
-    "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.02": {
-        "bindingId":
-            "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.02",
-        "occurrenceId":
-            "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.02.occurrence.01",
-        "patternId": "VALTAN_GROUND_ROAR",
-        "stageId": "STEP_01",
-        "actionId": "valtan.sequence.sequence.400440.0.step-01",
-        "clipOccurrenceId":
-            "valtan.sequence.sequence.400440.0.step-01.clip-01",
-        "soundBank": "S_Mob_G_Voltan2",
-        "soundEvent": "G_Voltan2_FootStep1",
-        "repeatPolicy": "once",
-        "startMs": 600,
-    },
-    "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.03": {
-        "bindingId":
-            "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.03",
-        "occurrenceId":
-            "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.03.occurrence.01",
-        "patternId": "VALTAN_GROUND_ROAR",
-        "stageId": "STEP_01",
-        "actionId": "valtan.sequence.sequence.400440.0.step-01",
-        "clipOccurrenceId":
-            "valtan.sequence.sequence.400440.0.step-01.clip-01",
-        "soundBank": "S_Mob_G_Voltan2",
-        "soundEvent": "G_Voltan2_FootStep1",
-        "repeatPolicy": "once",
-        "startMs": 1300,
-    },
-    "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.04": {
-        "bindingId":
-            "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.04",
-        "occurrenceId":
-            "cue.sound.valtan.sequence.ground-roar.step-01.clip-01.04.occurrence.01",
-        "patternId": "VALTAN_GROUND_ROAR",
-        "stageId": "STEP_01",
-        "actionId": "valtan.sequence.sequence.400440.0.step-01",
-        "clipOccurrenceId":
-            "valtan.sequence.sequence.400440.0.step-01.clip-01",
-        "soundBank": "S_Mob_G_Voltan2",
-        "soundEvent": "G_Voltan2_Attack02_Shot1",
-        "repeatPolicy": "once",
-        "startMs": 1300,
-    },
-    "cue.sound.valtan.reaction.part-break.recovery.clip-01.01": {
-        "bindingId":
-            "cue.sound.valtan.reaction.part-break.recovery.clip-01.01",
-        "occurrenceId":
-            "cue.sound.valtan.reaction.part-break.recovery.clip-01.01.occurrence.01",
-        "patternId": "VALTAN_PART_BREAK",
-        "stageId": "PART_BREAK_RECOVERY",
-        "actionId": "valtan.reaction.part-break.recovery",
-        "clipOccurrenceId": "valtan.reaction.part-break.recovery.clip.01",
-        "soundBank": "S_Mob_G_Voltan2",
-        "soundEvent": "G_Voltan2_Attack09_ProjCreat1",
-        "repeatPolicy": "once",
-        "startMs": 1,
-    },
-}
+PROJECT_AUTHORED_SEMANTIC_CUES = builder.PROJECT_AUTHORED_SEMANTIC_CUES
 
 
 def validate_document(document: dict, pattern_bindings: dict, encounter: dict) -> None:
@@ -227,6 +152,68 @@ class ValtanPatternSoundCueContractTests(unittest.TestCase):
             len(PROJECT_AUTHORED_SEMANTIC_CUES),
         )
         self.assertGreater(stats["matched"], 0)
+
+    def test_grabbed_player_terminal_events_have_enter_sounds(self) -> None:
+        by_scope = {
+            (row["patternId"], row["stageId"]): row
+            for row in self.document["cues"]
+            if row["bindingId"].endswith((
+                ".catch-slam.enter", ".execute-tail.enter"))
+        }
+        for pattern_id in (
+            "VALTAN_TRASH",
+            "VALTAN_TRASH_CATCH_IF",
+            "VALTAN_TRASH_CATCH_SUCCESS",
+        ):
+            for stage_id in ("CATCH_SLAM", "EXECUTE_TAIL"):
+                with self.subTest(pattern_id=pattern_id, stage_id=stage_id):
+                    cue = by_scope[(pattern_id, stage_id)]
+                    self.assertEqual("G_Voltan2_Attack13_Shot1", cue["soundEvent"])
+                    # The stage starts at source 1500ms inside the sliced catch clip.
+                    self.assertEqual(1500, cue["startMs"])
+                    self.assertEqual("once", cue["repeatPolicy"])
+                    pattern = next(
+                        row for row in self.encounter["patterns"]
+                        if row["patternId"] == pattern_id
+                    )
+                    stage = next(
+                        row for row in pattern["stages"]
+                        if row["stageId"] == stage_id
+                    )
+                    expected_event = (
+                        "DAMAGE_GRABBED_PLAYERS"
+                        if stage_id == "CATCH_SLAM"
+                        else "EXECUTE_GRABBED_PLAYERS"
+                    )
+                    self.assertIn(
+                        ("ENTER", expected_event),
+                        {
+                            (event["trigger"], event["kind"])
+                            for event in stage["actions"]
+                        },
+                    )
+                    binding = next(
+                        row for row in self.pattern_bindings["bindings"]
+                        if row["actionId"] == cue["actionId"]
+                    )
+                    clip = next(
+                        row for row in binding["clips"]
+                        if row["clipOccurrenceId"] == cue["clipOccurrenceId"]
+                    )
+                    self.assertEqual(clip["sourceStartMs"], cue["startMs"])
+
+    def test_stagger_slot_uses_available_runtime_impact_sound(self) -> None:
+        unavailable = builder.UNAVAILABLE_RUNTIME_EVENTS
+        self.assertFalse({
+            row["soundEvent"] for row in self.document["cues"]
+        } & unavailable)
+        cue = next(
+            row for row in self.document["cues"]
+            if row["bindingId"] ==
+            "cue.sound.valtan.semantic.stagger-slot.final-attack.impact-2900"
+        )
+        self.assertEqual("G_Voltan2_Attack25_Shot2", cue["soundEvent"])
+        self.assertEqual(2900, cue["startMs"])
 
     def test_invalid_identity_join_window_and_repeat_are_fail_closed(self) -> None:
         mutations = []

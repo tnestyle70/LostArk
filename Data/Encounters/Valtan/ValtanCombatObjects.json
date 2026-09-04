@@ -118,17 +118,31 @@
       "speedMps": 0.0,
       "maximumDistanceM": 0.0,
       "lifeMs": 6200,
-      "hits": [],
-      "presentationEvents": [
+      "hits": [
         {
-          "presentationEventId": "pulse.valtan.ground-roar.rock.explode",
-          "atMs": 5000
+          "hitShape": "CIRCLE",
+          "hitOuterRadius": 3.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.ground-roar.rock.explode",
+          "trigger": "TIMED",
+          "atMs": 5000,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
         }
-      ]
+      ],
+      "coverRadiusM": 1.5
     },
     {
       "combatObjectArchetypeId": "combatobject.valtan.ghost.portal-charge",
-      "clientVisualId": "combatobject.visual.valtan.ghost.portal-charge.v1",
+      "clientVisualId": "combatobject.visual.valtan.ghost.portal-charge.v2",
       "ownerPatternId": "VALTAN_GHOST_PORTAL_ONCE",
       "ownerStageActionId": "valtan.ghost.portal-once.active",
       "kind": "MISSILE",
@@ -136,9 +150,9 @@
       "directionPolicy": "NEXT_RADIAL_SLOT",
       "offsetForwardM": 0.0,
       "offsetRightM": 0.0,
-      "speedMps": 8.8,
-      "maximumDistanceM": 44.0,
-      "lifeMs": 5000,
+      "speedMps": 9.9926008129,
+      "maximumDistanceM": 12.9903810568,
+      "lifeMs": 1900,
       "hits": [
         {
           "hitShape": "CIRCLE",
@@ -158,7 +172,9 @@
           "knockdown": true,
           "downMs": 1500
         }
-      ]
+      ],
+      "movementStartDelayMs": 300,
+      "expireOnDistanceEnd": false
     },
     {
       "combatObjectArchetypeId": "combatobject.valtan.part-break.rock",
@@ -172,14 +188,28 @@
       "offsetRightM": 0.0,
       "speedMps": 0.0,
       "maximumDistanceM": 0.0,
-      "lifeMs": 5000,
-      "hits": [],
-      "presentationEvents": [
+      "lifeMs": 6200,
+      "hits": [
         {
-          "presentationEventId": "pulse.valtan.part-break.rock.explode",
-          "atMs": 5000
+          "hitShape": "CIRCLE",
+          "hitOuterRadius": 3.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.part-break.rock.explode",
+          "trigger": "TIMED",
+          "atMs": 5000,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
         }
-      ]
+      ],
+      "coverRadiusM": 1.5
     },
     {
       "combatObjectArchetypeId": "combatobject.valtan.six-pizza.rock-pillar",
@@ -193,14 +223,28 @@
       "offsetRightM": 0.0,
       "speedMps": 0.0,
       "maximumDistanceM": 0.0,
-      "lifeMs": 6200,
-      "hits": [],
-      "presentationEvents": [
+      "lifeMs": 20700,
+      "hits": [
         {
-          "presentationEventId": "pulse.valtan.six-pizza.rock-pillar.explode",
-          "atMs": 5000
+          "hitShape": "CIRCLE",
+          "hitOuterRadius": 3.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.six-pizza.rock-pillar.explode",
+          "trigger": "TIMED",
+          "atMs": 19500,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
         }
-      ]
+      ],
+      "coverRadiusM": 1.5
     },
     {
       "combatObjectArchetypeId": "combatobject.valtan.struggling.rock-pillar",
@@ -215,13 +259,27 @@
       "speedMps": 0.0,
       "maximumDistanceM": 0.0,
       "lifeMs": 6200,
-      "hits": [],
-      "presentationEvents": [
+      "hits": [
         {
-          "presentationEventId": "pulse.valtan.struggling.rock-pillar.explode",
-          "atMs": 5000
+          "hitShape": "CIRCLE",
+          "hitOuterRadius": 3.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "hitId": "hit.valtan.struggling.rock-pillar.explode",
+          "trigger": "TIMED",
+          "atMs": 5000,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
         }
-      ]
+      ],
+      "coverRadiusM": 1.5
     },
     {
       "combatObjectArchetypeId": "combatobject.valtan.fist-in-out.donut-large",

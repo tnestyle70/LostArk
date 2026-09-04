@@ -769,7 +769,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
         self.assertLess(load_body.index("Parse_SplitMasterDocument("), load_body.index(commit))
         self.assertLess(load_body.index("Apply_MasterDocument("), load_body.index(commit))
 
-    def test_stage_clock_cue_stays_a_direct_binding_unless_promoted(self) -> None:
+    def test_stage_clock_cue_parser_stays_a_direct_binding_unless_promoted(self) -> None:
         fist = next(
             row for row in self.presentation["patterns"]
             if row["patternId"] == "VALTAN_FIST_IN_OUT"
@@ -822,14 +822,8 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             for cue in stage["effectCues"]
             if cue.get("timingBasis") == "STAGE_CLOCK"
         ]
-        self.assertEqual(8, len(stage_clock_cues))
-        for stage, cue in stage_clock_cues:
-            with self.subTest(stage=stage["stageId"], cue=cue["cueId"]):
-                self.assertTrue(stage["animation"]["occurrences"])
-                self.assertLess(
-                    cue["stageOffsetMs"], duration_by_stage[stage["stageId"]]
-                )
-                self.assertNotIn(cue["cueId"], independent_cue_ids)
+        self.assertEqual([], stage_clock_cues)
+        self.assertTrue(duration_by_stage)
 
         split_cue_join_start = self.cpp.index(
             "for (const DATA_JSON_VALUE& Cue : pCues->Get_Array())"
@@ -1089,7 +1083,24 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             stage for stage in presentation["stages"]
             if "bodyVisibility" in stage
         ]
-        self.assertEqual(8, len(hidden_stages))
+        expected_windows = {
+            "STEP_02": {"hiddenFromMs": 0, "hiddenToMs": 300},
+            **{
+                f"STEP_{index:02d}": {"hiddenFromMs": 0, "hiddenToMs": 600}
+                for index in range(3, 10)
+            },
+            "STEP_10": {"hiddenFromMs": 0, "hiddenToMs": 300},
+        }
+        self.assertEqual(expected_windows, {
+            stage["stageId"]: stage["bodyVisibility"]
+            for stage in hidden_stages
+        })
+        gameplay_stages = {
+            stage["stageId"]: stage
+            for pattern in self.gameplay["patterns"]
+            if pattern["patternId"] == "VALTAN_WARP"
+            for stage in pattern["stages"]
+        }
         for stage in hidden_stages:
             with self.subTest(stage=stage["stageId"]):
                 window = stage["bodyVisibility"]
@@ -1097,8 +1108,13 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
                     {"hiddenFromMs", "hiddenToMs"}, set(window)
                 )
                 self.assertLess(window["hiddenFromMs"], window["hiddenToMs"])
-                self.assertLessEqual(window["hiddenToMs"], 1800)
-                self.assertEqual(window, bindings[stage["actionId"]]["bodyVisibility"])
+                self.assertLessEqual(
+                    window["hiddenToMs"],
+                    gameplay_stages[stage["stageId"]]["durationMs"],
+                )
+                binding = bindings[stage["actionId"]]
+                self.assertIn("bodyVisibility", binding)
+                self.assertEqual(window, binding.get("bodyVisibility"))
 
         for token in (
             "Read_StageBodyVisibility",
@@ -1792,7 +1808,7 @@ class ValtanPatternTreeContractTests(unittest.TestCase):
             self.assertEqual("ENTER", volley["trigger"])
             self.assertIn(
                 volley["targetingPolicy"],
-                ("PER_ALIVE_PLAYER", "BOSS_RELATIVE"),
+                ("PER_ALIVE_PLAYER", "BOSS_RELATIVE", "ARENA_CENTER"),
             )
             self.assertGreaterEqual(
                 volley["maximumTotalObjects"],

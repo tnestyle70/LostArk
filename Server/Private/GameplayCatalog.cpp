@@ -1537,11 +1537,16 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				return false;
 			}
 			const auto owner = m_Skills.find(ownerSkillId);
+			const bool isQuickCounterSlot = m_Skills.end() != owner &&
+				("Q" == owner->second.strInputSlot ||
+				 "W" == owner->second.strInputSlot ||
+				 "E" == owner->second.strInputSlot ||
+				 "R" == owner->second.strInputSlot);
 			if (m_Skills.end() == owner ||
 				!skillCombatTraitOwners.insert(ownerSkillId).second ||
 				(0u != counterPower &&
 				 LostArk::Shared::PLAYER_SKILL_KIND::COUNTER !=
-					owner->second.eSkillKind))
+					owner->second.eSkillKind && !isQuickCounterSlot))
 			{
 				m_strStatus =
 					"Player skill combat traits have no owner or are duplicated";
@@ -1949,7 +1954,19 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		else if (!fields.empty() && "BOSSCOMBATOBJECT" == fields[0])
 		{
 			BOSS_COMBAT_OBJECT_DEFINITION definition{};
-			if (15u != fields.size() || !IsStableId(fields[1]) ||
+			const bool hasMovementLifetimePolicy =
+				17u == fields.size() || 18u == fields.size();
+			const bool hasCoverRadius =
+				16u == fields.size() || 18u == fields.size();
+			std::uint32_t expireOnDistanceEnd = 1u;
+			const std::size_t coverRadiusIndex =
+				hasMovementLifetimePolicy ? 15u : 13u;
+			const std::size_t lifeIndex = coverRadiusIndex +
+				(hasCoverRadius ? 1u : 0u);
+			const std::size_t eventCountIndex = lifeIndex + 1u;
+			if ((15u != fields.size() && 16u != fields.size() &&
+				 17u != fields.size() && 18u != fields.size()) ||
+				!IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) || !IsStableId(fields[3]) ||
 				!IsStableId(fields[4]) || !IsStableId(fields[5]) ||
 				!ParseBossCombatObjectKind(fields[6], definition.eKind) ||
@@ -1961,17 +1978,27 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				!ParseNumber(fields[10], definition.fOffsetRightM) ||
 				!ParseNumber(fields[11], definition.fSpeedMps) ||
 				!ParseNumber(fields[12], definition.fMaximumDistanceM) ||
-				!ParseNumber(fields[13], definition.iLifeMs) ||
-				!ParseNumber(fields[14], definition.iExpectedEventCount) ||
+				(hasMovementLifetimePolicy &&
+					(!ParseNumber(fields[13], definition.iMovementStartDelayMs) ||
+					 !ParseNumber(fields[14], expireOnDistanceEnd) ||
+					 expireOnDistanceEnd > 1u)) ||
+				(hasCoverRadius &&
+					!ParseNumber(fields[coverRadiusIndex], definition.fCoverRadiusM)) ||
+				!ParseNumber(fields[lifeIndex], definition.iLifeMs) ||
+				!ParseNumber(fields[eventCountIndex], definition.iExpectedEventCount) ||
 				!std::isfinite(definition.fOffsetForwardM) ||
 				!std::isfinite(definition.fOffsetRightM) ||
 				!std::isfinite(definition.fSpeedMps) ||
 				!std::isfinite(definition.fMaximumDistanceM) ||
+				!std::isfinite(definition.fCoverRadiusM) ||
 				std::abs(definition.fOffsetForwardM) > 100.f ||
 				std::abs(definition.fOffsetRightM) > 100.f ||
 				definition.fSpeedMps < 0.f || definition.fSpeedMps > 1000.f ||
 				definition.fMaximumDistanceM < 0.f ||
 				definition.fMaximumDistanceM > 1000.f ||
+				definition.iMovementStartDelayMs > 600000u ||
+				definition.fCoverRadiusM < 0.f ||
+				definition.fCoverRadiusM > 100.f ||
 				0u == definition.iLifeMs || definition.iLifeMs > 600000u ||
 				0u == definition.iExpectedEventCount ||
 				definition.iExpectedEventCount > 16u)
@@ -1979,6 +2006,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				m_strStatus = "Boss combat object row is invalid";
 				return false;
 			}
+			definition.bExpireOnDistanceEnd = 0u != expireOnDistanceEnd;
 			const bool fixedArea = BOSS_COMBAT_OBJECT_KIND::FIXED_AREA ==
 				definition.eKind;
 			/* A fixed area is placed on a player, either the boss's single
@@ -1995,10 +2023,13 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 					definition.eDirectionPolicy &&
 				0.f == definition.fOffsetForwardM &&
 				0.f == definition.fOffsetRightM && 0.f == definition.fSpeedMps &&
-				0.f == definition.fMaximumDistanceM;
+				0.f == definition.fMaximumDistanceM &&
+				0u == definition.iMovementStartDelayMs &&
+				definition.bExpireOnDistanceEnd;
 			const double maximumTravelM =
 				static_cast<double>(definition.fSpeedMps) *
-				(static_cast<double>(definition.iLifeMs) / 1000.0);
+				(static_cast<double>(definition.iLifeMs -
+					definition.iMovementStartDelayMs) / 1000.0);
 			const bool validMissileDirection =
 				BOSS_COMBAT_OBJECT_DIRECTION_POLICY::PATTERN_FACING_AT_SPAWN ==
 					definition.eDirectionPolicy ||
@@ -2010,6 +2041,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				BOSS_COMBAT_OBJECT_ORIGIN_POLICY::BOSS_POSITION ==
 					definition.eOriginPolicy &&
 				validMissileDirection &&
+				definition.iMovementStartDelayMs < definition.iLifeMs &&
 				definition.fSpeedMps > 0.f && definition.fMaximumDistanceM > 0.f &&
 				maximumTravelM + 0.00001 >= definition.fMaximumDistanceM;
 			if (!validFixedArea && !validMissile)
@@ -3335,7 +3367,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER != action.eTrigger ||
 				!IsStableId(fields[6]) ||
 				("PER_ALIVE_PLAYER" != fields[7] &&
-				 "BOSS_RELATIVE" != fields[7]) ||
+				 "BOSS_RELATIVE" != fields[7] &&
+				 "ARENA_CENTER" != fields[7]) ||
 				!ParseNumber(fields[8],
 					action.Volley.iCountPerResolvedTarget) ||
 				!ParseNumber(fields[10], action.Volley.fRadiusM) ||
@@ -3378,7 +3411,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			}
 			action.Volley.ePolicy = "PER_ALIVE_PLAYER" == fields[7] ?
 				BOSS_COMBAT_OBJECT_VOLLEY_POLICY::PER_ALIVE_PLAYER :
-				BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE;
+				("ARENA_CENTER" == fields[7] ?
+					BOSS_COMBAT_OBJECT_VOLLEY_POLICY::ARENA_CENTER :
+					BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE);
 			action.Volley.bAllowOverlap = 0u != allowOverlap;
 			if ("SINGLE" == fields[9])
 				action.Volley.eLayout =
@@ -3407,8 +3442,12 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			const bool perAlivePlayer =
 				BOSS_COMBAT_OBJECT_VOLLEY_POLICY::PER_ALIVE_PLAYER ==
 					action.Volley.ePolicy;
+			/* ARENA_CENTER shares the BOSS_RELATIVE topology: one deterministic
+			multi-root radial wave without an arena-random supplement. */
 			const bool bossRelative =
 				BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
+					action.Volley.ePolicy ||
+				BOSS_COMBAT_OBJECT_VOLLEY_POLICY::ARENA_CENTER ==
 					action.Volley.ePolicy;
 			if ((isMulti &&
 				(BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL !=
@@ -4184,12 +4223,12 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 				"VALTAN_GHOST_FINALE" == pattern.strPatternId)
 			{
 				const std::vector<std::string> expectedGhostPatterns = {
-					"VALTAN_SIX_PIZZA_106",
-					"VALTAN_GROUND_ROAR",
-					"VALTAN_STAGGER_SLOT",
-					"VALTAN_BIND_SLOT",
-					"VALTAN_SILENCE_SLOT",
-					"VALTAN_TRIPLE_COUNTER"
+					"VALTAN_WHIRLWIND",
+					"VALTAN_FOUR_SLASH",
+					"VALTAN_SEQUENCE_FOUR",
+					"VALTAN_CROSS",
+					"VALTAN_CHARGE",
+					"VALTAN_CHARGE_2"
 				};
 				if (pattern.Finale.GhostPatternIds != expectedGhostPatterns)
 				{
@@ -4741,6 +4780,20 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 						const bool isVolley =
 							BOSS_PATTERN_STAGE_ACTION_KIND::
 								SPAWN_COMBAT_OBJECT_VOLLEY == action.eKind;
+						const bool allowsIndependentInlineHitRockVolley =
+							isVolley && 1u == stage.Actions.size() &&
+							(("VALTAN_GROUND_ROAR" == pattern.strPatternId &&
+							  "STEP_01" == stage.strStageId &&
+							  "valtan.sequence.sequence.400440.0.step-01" ==
+								stage.strActionId &&
+							  "combatobject.valtan.ground-roar.rock" ==
+								action.strTargetId) ||
+							 ("VALTAN_STRUGGLING" == pattern.strPatternId &&
+							  "STEP_04" == stage.strStageId &&
+							  "valtan.sequence.warp-jump-four-hand-twohand-roar-roar-dead.step-04" ==
+								stage.strActionId &&
+							  "combatobject.valtan.struggling.rock-pillar" ==
+								action.strTargetId));
 						const bool isScheduledVolley = isVolley &&
 							(0u != action.Volley.iFirstSpawnOffsetMs ||
 							 action.Volley.iSpawnCount > 1u);
@@ -4814,17 +4867,6 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 								combatObject->second.eDirectionPolicy) &&
 							BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
 								action.Volley.ePolicy;
-						const bool validNextRadialSlotMissile =
-							m_BossCombatObjects.end() != combatObject &&
-							BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NEXT_RADIAL_SLOT ==
-								combatObject->second.eDirectionPolicy &&
-							std::fabs(combatObject->second.fSpeedMps - 8.8f) <
-								0.0001f &&
-							std::fabs(combatObject->second.fMaximumDistanceM - 44.f) <
-								0.0001f &&
-							5000u == combatObject->second.iLifeMs &&
-							BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
-								action.Volley.ePolicy;
 						const bool validNextRadialSlotLayout =
 							m_BossCombatObjects.end() == combatObject ||
 							BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NEXT_RADIAL_SLOT !=
@@ -4839,7 +4881,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 						if (isValtanGhostPortal &&
 							"ACTIVE" == stage.strStageId &&
 							"valtan.ghost.portal-once.active" == stage.strActionId &&
-							5000u == stage.iDurationMs &&
+							1900u == stage.iDurationMs &&
 							!stage.Actions.empty() && &action == &stage.Actions.front() &&
 							"combatobject.valtan.ghost.portal-charge" ==
 								action.strTargetId &&
@@ -4848,7 +4890,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 							3u == action.Volley.iCountPerResolvedTarget &&
 							BOSS_COMBAT_OBJECT_LAYOUT_KIND::RADIAL ==
 								action.Volley.eLayout &&
-							std::fabs(action.Volley.fRadiusM - 25.4034119f) < 0.0001f &&
+							std::fabs(action.Volley.fRadiusM - 7.5f) < 0.0001f &&
 							30.f == action.Volley.fStartAngleDegrees &&
 							120.f == action.Volley.fAngleStepDegrees &&
 							!action.Volley.bAllowOverlap &&
@@ -4857,7 +4899,13 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 							0u == action.Volley.iFirstSpawnOffsetMs &&
 							0u == action.Volley.iSpawnIntervalMs &&
 							0u == action.Volley.iArenaRandomCount &&
-							validNextRadialSlotMissile)
+							std::fabs(combatObject->second.fSpeedMps - 9.9926008129f) <
+								0.0001f &&
+							std::fabs(combatObject->second.fMaximumDistanceM -
+								12.9903810568f) < 0.0001f &&
+							300u == combatObject->second.iMovementStartDelayMs &&
+							!combatObject->second.bExpireOnDistanceEnd &&
+							1900u == combatObject->second.iLifeMs)
 						{
 							hasExactValtanGhostPortalTypedVolley = true;
 						}
@@ -4866,7 +4914,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 							combatObject->second.strOwnerPatternId != pattern.strPatternId ||
 							combatObject->second.strOwnerStageActionId !=
 								stage.strActionId ||
-							BOSS_PATTERN_HIT_SHAPE::NONE != stage.eHitShape ||
+							(!allowsIndependentInlineHitRockVolley &&
+							 BOSS_PATTERN_HIT_SHAPE::NONE != stage.eHitShape) ||
 							!spawnedBossCombatObjectIds.insert(
 								action.strTargetId).second ||
 							!validNextRadialSlotLayout ||
@@ -4879,8 +4928,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 								BOSS_COMBAT_OBJECT_ORIGIN_POLICY::
 									LOCKED_TARGET_PER_ALIVE_PLAYER !=
 									combatObject->second.eOriginPolicy) ||
-							  (BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
-									action.Volley.ePolicy &&
+							  ((BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
+									action.Volley.ePolicy ||
+								BOSS_COMBAT_OBJECT_VOLLEY_POLICY::ARENA_CENTER ==
+									action.Volley.ePolicy) &&
 								BOSS_COMBAT_OBJECT_ORIGIN_POLICY::BOSS_POSITION !=
 									combatObject->second.eOriginPolicy) ||
 							  BOSS_COMBAT_OBJECT_VOLLEY_POLICY::NONE ==
@@ -5195,7 +5246,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 			 !hasExactValtanGhostPortalTypedVolley))
 		{
 			m_strStatus =
-				"Valtan ghost portal does not own the exact 44m equilateral triangle volley";
+				"Valtan ghost portal does not own the exact simultaneous triangle volley";
 			return false;
 		}
 	}
@@ -5206,6 +5257,14 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapPath(
 		(void)combatObjectArchetypeId;
 		if (combatObject.Hits.size() + combatObject.PresentationPulses.size() !=
 				combatObject.iExpectedEventCount ||
+			(combatObject.fCoverRadiusM > 0.f &&
+				(BOSS_COMBAT_OBJECT_KIND::FIXED_AREA != combatObject.eKind ||
+				 combatObject.Hits.empty() ||
+				 std::any_of(combatObject.Hits.begin(), combatObject.Hits.end(),
+					[](const BOSS_COMBAT_OBJECT_HIT& hit)
+					{
+						return BOSS_COMBAT_OBJECT_HIT_TRIGGER::TIMED != hit.eTrigger;
+					}))) ||
 			!bossCombatObjectVisualIds.insert(combatObject.strClientVisualId).second)
 		{
 			m_strStatus = "Boss combat object event count or visual ID is invalid";
