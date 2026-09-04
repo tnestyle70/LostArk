@@ -1844,6 +1844,14 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			Handle_PartyInviteRespond(
 				command.iSessionId, command.PartyInviteRespond);
 			break;
+		case ROOM_COMMAND_TYPE::RAID_ENTRY_PROPOSE:
+			Handle_RaidEntryPropose(
+				command.iSessionId, command.RaidEntryPropose);
+			break;
+		case ROOM_COMMAND_TYPE::RAID_ENTRY_RESPOND:
+			Handle_RaidEntryRespond(
+				command.iSessionId, command.RaidEntryRespond);
+			break;
 		case ROOM_COMMAND_TYPE::CHAT:
 			Handle_Chat(command.iSessionId, command.Chat);
 			break;
@@ -2003,6 +2011,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		return;
 	}
 	m_iServerTick = updateTick;
+	Expire_RaidEntryProposals();
 	if (!m_Players.empty())
 		Broadcast_WorldSnapshot();
 	std::vector<LostArk::Shared::GameplayDataRevision> liveGenerationPins;
@@ -2643,6 +2652,7 @@ void LostArk::Server::CGameRoom::Leave(
 	m_PendingPartyInviteByTargetPlayerId.erase(playerId);
 	std::erase_if(m_PendingPartyInviteByTargetPlayerId,
 		[playerId](const auto& invite) { return invite.second == playerId; });
+	Cancel_RaidEntryProposalsInvolving(playerId);
 	Remove_FromParty(playerId);
 	m_Players.erase(playerIter);
 	m_Sessions.erase(sessionId);
@@ -4133,6 +4143,319 @@ void LostArk::Server::CGameRoom::Remove_FromParty(
 		return;
 	}
 	Broadcast_PartyRoster(partyId);
+}
+
+bool LostArk::Server::CGameRoom::Is_PlayerNearValtanEntryNpc(
+	const SERVER_PLAYER& player, const std::string& npcPlacementId) const
+{
+	using namespace LostArk::Shared;
+	// Handle_ConfirmNpcEntry의 VALTAN_ENTRY_GUIDE_NPCS와 같은 placement 집합. 여기서는
+	// proximity만 검증하고, target world는 NPC가 아니라 propose의 eTarget이 소유한다.
+	static constexpr const char* GUIDE_NPC_PLACEMENT_IDS[] = {
+		"npc.bern.beda.guide", "npc.bern.aylara" };
+	constexpr float INTERACTION_RADIUS = 3.f;
+	const bool isGuide = std::any_of(
+		std::begin(GUIDE_NPC_PLACEMENT_IDS), std::end(GUIDE_NPC_PLACEMENT_IDS),
+		[&npcPlacementId](const char* id) { return npcPlacementId == id; });
+	if (!isGuide)
+		return false;
+	const auto entityIter = std::find_if(
+		m_WorldEntities.begin(), m_WorldEntities.end(),
+		[&npcPlacementId](const SERVER_WORLD_ENTITY& entity)
+		{
+			return WORLD_BOOTSTRAP_KIND::NPC == entity.eKind &&
+				entity.strPlacementId == npcPlacementId;
+		});
+	if (m_WorldEntities.end() == entityIter)
+		return false;
+	const float deltaX = player.fPositionX - entityIter->fPositionX;
+	const float deltaZ = player.fPositionZ - entityIter->fPositionZ;
+	return deltaX * deltaX + deltaZ * deltaZ <=
+		INTERACTION_RADIUS * INTERACTION_RADIUS;
+}
+
+bool LostArk::Server::CGameRoom::Stage_PartyWorldTransfer(
+	const std::vector<LostArk::Shared::PLAYER_ID>& batchMemberIds,
+	const LostArk::Shared::WORLD_ID targetWorldId,
+	const std::uint32_t requestSequence)
+{
+	using namespace LostArk::Shared;
+	if (batchMemberIds.empty())
+		return false;
+	const auto leaderIter = m_Players.find(batchMemberIds.front());
+	if (leaderIter == m_Players.end())
+		return false;
+	const SERVER_PLAYER& leader = leaderIter->second;
+
+	const auto isAlreadyStaged = [this](SESSION_ID sid)
+	{
+		return std::any_of(
+			m_PendingWorldTransfers.begin(), m_PendingWorldTransfers.end(),
+			[sid](const SERVER_WORLD_TRANSFER_REQUEST& pending)
+			{
+				return pending.iSessionId == sid ||
+					std::find(pending.PartyBatchSessionIds.begin(),
+						pending.PartyBatchSessionIds.end(), sid) !=
+						pending.PartyBatchSessionIds.end();
+			});
+	};
+
+	SERVER_WORLD_TRANSFER_REQUEST transfer{};
+	transfer.iSessionId = leader.iSessionId;
+	transfer.eTargetWorldId = targetWorldId;
+	transfer.eCharacterClass = leader.eCharacterClass;
+	transfer.strNickName = leader.strNickName;
+	transfer.iPartyRequestSequence = requestSequence;
+	for (const PLAYER_ID memberId : batchMemberIds)
+	{
+		const auto memberIter = m_Players.find(memberId);
+		if (memberIter == m_Players.end() ||
+			CHARACTER_CLASS_ID::END == memberIter->second.eCharacterClass ||
+			memberIter->second.strNickName.empty() ||
+			isAlreadyStaged(memberIter->second.iSessionId))
+		{
+			return false;
+		}
+		if (batchMemberIds.size() > 1u)
+			transfer.PartyBatchSessionIds.push_back(memberIter->second.iSessionId);
+	}
+	m_PendingWorldTransfers.push_back(std::move(transfer));
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Broadcast_RaidEntryVote(
+	const RAID_ENTRY_PROPOSAL& proposal, const bool bClosed,
+	const LostArk::Shared::RAID_ENTRY_VOTE_RESULT result)
+{
+	using namespace LostArk::Shared;
+	S2C_RAID_ENTRY_VOTE message{};
+	message.iProposalId = proposal.iProposalId;
+	message.iAccepted = static_cast<std::uint8_t>(proposal.Accepted.size());
+	message.iTotal = static_cast<std::uint8_t>(proposal.Voters.size());
+	message.bClosed = bClosed;
+	message.eResult = bClosed ? result : RAID_ENTRY_VOTE_RESULT::END;
+	CPacketWriter writer;
+	if (!Write_Message(writer, message))
+		return;
+	for (const PLAYER_ID memberId : proposal.Voters)
+	{
+		const auto playerIter = m_Players.find(memberId);
+		if (playerIter == m_Players.end())
+			continue;
+		const std::shared_ptr<CClientSession> session =
+			Find_Session(playerIter->second.iSessionId);
+		if (nullptr != session &&
+			!session->Send_Frame(
+				PACKET_TYPE::S2C_RAID_ENTRY_VOTE, writer.Get_Buffer()))
+		{
+			session->Request_Close();
+		}
+	}
+}
+
+void LostArk::Server::CGameRoom::Handle_RaidEntryPropose(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_RAID_ENTRY_PROPOSE& request)
+{
+	using namespace LostArk::Shared;
+	// 30Hz 기준 30초 미응답이면 tick 루프가 TIMEOUT으로 닫는다.
+	constexpr std::uint32_t VOTE_TIMEOUT_TICKS = 30u * 30u;
+
+	if (WORLD_ID::BERN != m_eWorldId || request.eTarget >= RAID_ENTRY_TARGET::END)
+		return;
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (sessionIter == m_PlayerIdBySessionId.end())
+		return;
+	const PLAYER_ID proposerId = sessionIter->second;
+	const auto playerIter = m_Players.find(proposerId);
+	if (playerIter == m_Players.end())
+		return;
+	const SERVER_PLAYER& proposer = playerIter->second;
+	if (0u == proposer.iCurrentHp || PLAYER_ACTION_STATE::NONE != proposer.eAction ||
+		INVALID_SESSION_ID == proposer.iSessionId ||
+		CHARACTER_CLASS_ID::END == proposer.eCharacterClass ||
+		proposer.strNickName.empty())
+	{
+		return;
+	}
+	if (!Is_PlayerNearValtanEntryNpc(proposer, request.strNpcPlacementId))
+		return;
+
+	// 한 플레이어는 동시에 하나의 열린 proposal에만 속한다.
+	const bool alreadyInVote = std::any_of(
+		m_RaidEntryProposals.begin(), m_RaidEntryProposals.end(),
+		[proposerId](const RAID_ENTRY_PROPOSAL& p)
+		{
+			return std::find(p.Voters.begin(), p.Voters.end(), proposerId) !=
+				p.Voters.end();
+		});
+	if (alreadyInVote)
+		return;
+
+	std::uint32_t partyId = 0u;
+	std::vector<PLAYER_ID> voters{ proposerId };
+	const auto partyIdIter = m_PartyIdByPlayerId.find(proposerId);
+	if (partyIdIter != m_PartyIdByPlayerId.end())
+	{
+		const auto membersIter = m_PartyMembersByPartyId.find(partyIdIter->second);
+		if (membersIter != m_PartyMembersByPartyId.end() &&
+			membersIter->second.size() > 1u)
+		{
+			// 파티 발의는 리더(members.front())만 가능. 비리더는 조용히 거절한다
+			// (Client UI가 입장하기를 리더에게만 노출하므로 정상 경로에서 오지 않는다).
+			if (membersIter->second.front() != proposerId)
+				return;
+			partyId = partyIdIter->second;
+			voters = membersIter->second;
+		}
+	}
+
+	RAID_ENTRY_PROPOSAL proposal{};
+	proposal.iProposalId = m_iNextRaidEntryProposalId++;
+	if (0u == m_iNextRaidEntryProposalId)
+		m_iNextRaidEntryProposalId = 1u;
+	proposal.iPartyId = partyId;
+	proposal.iRequestSequence = request.iRequestSequence;
+	proposal.eTarget = request.eTarget;
+	proposal.strNpcPlacementId = request.strNpcPlacementId;
+	proposal.Voters = voters;
+	proposal.iDeadlineTick = m_iServerTick + VOTE_TIMEOUT_TICKS;
+
+	S2C_RAID_ENTRY_PROMPT prompt{};
+	prompt.iProposalId = proposal.iProposalId;
+	prompt.iProposerNetEntityId = proposer.iNetEntityId;
+	prompt.eTarget = proposal.eTarget;
+	prompt.strProposerNickname = proposer.strNickName;
+	CPacketWriter promptWriter;
+	if (!Write_Message(promptWriter, prompt))
+		return;
+	for (const PLAYER_ID memberId : proposal.Voters)
+	{
+		const auto memberPlayerIter = m_Players.find(memberId);
+		if (memberPlayerIter == m_Players.end())
+			continue;
+		const std::shared_ptr<CClientSession> session =
+			Find_Session(memberPlayerIter->second.iSessionId);
+		if (nullptr != session &&
+			!session->Send_Frame(
+				PACKET_TYPE::S2C_RAID_ENTRY_PROMPT, promptWriter.Get_Buffer()))
+		{
+			session->Request_Close();
+		}
+	}
+
+	m_RaidEntryProposals.push_back(std::move(proposal));
+	Broadcast_RaidEntryVote(
+		m_RaidEntryProposals.back(), false, RAID_ENTRY_VOTE_RESULT::END);
+}
+
+void LostArk::Server::CGameRoom::Handle_RaidEntryRespond(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_RAID_ENTRY_RESPOND& request)
+{
+	using namespace LostArk::Shared;
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (sessionIter == m_PlayerIdBySessionId.end())
+		return;
+	const PLAYER_ID responderId = sessionIter->second;
+
+	const auto proposalIter = std::find_if(
+		m_RaidEntryProposals.begin(), m_RaidEntryProposals.end(),
+		[&request](const RAID_ENTRY_PROPOSAL& p)
+		{
+			return p.iProposalId == request.iProposalId;
+		});
+	if (proposalIter == m_RaidEntryProposals.end())
+		return;
+	if (std::find(proposalIter->Voters.begin(), proposalIter->Voters.end(),
+			responderId) == proposalIter->Voters.end())
+	{
+		return;
+	}
+	if (!request.bAccepted)
+	{
+		Close_RaidEntryVote(*proposalIter, RAID_ENTRY_VOTE_RESULT::DECLINED);
+		return;
+	}
+	if (std::find(proposalIter->Accepted.begin(), proposalIter->Accepted.end(),
+			responderId) == proposalIter->Accepted.end())
+	{
+		proposalIter->Accepted.push_back(responderId);
+	}
+	if (proposalIter->Accepted.size() >= proposalIter->Voters.size())
+		Close_RaidEntryVote(*proposalIter, RAID_ENTRY_VOTE_RESULT::ALL_ACCEPTED);
+	else
+		Broadcast_RaidEntryVote(*proposalIter, false, RAID_ENTRY_VOTE_RESULT::END);
+}
+
+void LostArk::Server::CGameRoom::Close_RaidEntryVote(
+	RAID_ENTRY_PROPOSAL& proposal,
+	const LostArk::Shared::RAID_ENTRY_VOTE_RESULT result)
+{
+	using namespace LostArk::Shared;
+	RAID_ENTRY_VOTE_RESULT finalResult = result;
+	if (RAID_ENTRY_VOTE_RESULT::ALL_ACCEPTED == result)
+	{
+		const WORLD_ID targetWorld =
+			(RAID_ENTRY_TARGET::KAKULSAYDON == proposal.eTarget)
+			? WORLD_ID::KAKULSAYDON_ARENA : WORLD_ID::VALTAN_ARENA;
+		// 수락 완료와 실제 stage 사이에 멤버가 unavailable해졌으면 전송하지 않고
+		// CANCELLED로 낮춰 전원이 Bern에 남게 한다(부분 이동 금지).
+		if (!Stage_PartyWorldTransfer(
+				proposal.Voters, targetWorld, proposal.iRequestSequence))
+		{
+			finalResult = RAID_ENTRY_VOTE_RESULT::CANCELLED;
+		}
+	}
+	Broadcast_RaidEntryVote(proposal, true, finalResult);
+	const std::uint32_t closedId = proposal.iProposalId;
+	m_RaidEntryProposals.erase(
+		std::remove_if(m_RaidEntryProposals.begin(), m_RaidEntryProposals.end(),
+			[closedId](const RAID_ENTRY_PROPOSAL& p)
+			{
+				return p.iProposalId == closedId;
+			}),
+		m_RaidEntryProposals.end());
+}
+
+void LostArk::Server::CGameRoom::Expire_RaidEntryProposals()
+{
+	using namespace LostArk::Shared;
+	// Close_RaidEntryVote가 벡터를 수정하므로 만료 id를 먼저 모은 뒤 닫는다.
+	std::vector<std::uint32_t> expiredIds;
+	for (const RAID_ENTRY_PROPOSAL& p : m_RaidEntryProposals)
+	{
+		if (m_iServerTick >= p.iDeadlineTick)
+			expiredIds.push_back(p.iProposalId);
+	}
+	for (const std::uint32_t id : expiredIds)
+	{
+		const auto it = std::find_if(
+			m_RaidEntryProposals.begin(), m_RaidEntryProposals.end(),
+			[id](const RAID_ENTRY_PROPOSAL& p) { return p.iProposalId == id; });
+		if (it != m_RaidEntryProposals.end())
+			Close_RaidEntryVote(*it, RAID_ENTRY_VOTE_RESULT::TIMEOUT);
+	}
+}
+
+void LostArk::Server::CGameRoom::Cancel_RaidEntryProposalsInvolving(
+	const LostArk::Shared::PLAYER_ID playerId)
+{
+	using namespace LostArk::Shared;
+	std::vector<std::uint32_t> ids;
+	for (const RAID_ENTRY_PROPOSAL& p : m_RaidEntryProposals)
+	{
+		if (std::find(p.Voters.begin(), p.Voters.end(), playerId) != p.Voters.end())
+			ids.push_back(p.iProposalId);
+	}
+	for (const std::uint32_t id : ids)
+	{
+		const auto it = std::find_if(
+			m_RaidEntryProposals.begin(), m_RaidEntryProposals.end(),
+			[id](const RAID_ENTRY_PROPOSAL& p) { return p.iProposalId == id; });
+		if (it != m_RaidEntryProposals.end())
+			Close_RaidEntryVote(*it, RAID_ENTRY_VOTE_RESULT::CANCELLED);
+	}
 }
 
 bool LostArk::Server::CGameRoom::Transfer_PartyTo(

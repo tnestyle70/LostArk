@@ -409,6 +409,12 @@ namespace Client
 		}
 		bool Try_Consume_PartyTransferResult(
 			LostArk::Shared::S2C_PARTY_TRANSFER_RESULT& outResult);
+		// 파티 레이드 입장 투표. 프롬프트 수신 시 Bern이 수락/거절 창을 열고, vote는
+		// 진행/종료 통지다. 각 한 번만 소비된다(read-only view).
+		bool Try_Consume_RaidEntryPrompt(
+			LostArk::Shared::S2C_RAID_ENTRY_PROMPT& outPrompt);
+		bool Try_Consume_RaidEntryVote(
+			LostArk::Shared::S2C_RAID_ENTRY_VOTE& outVote);
 		/* Head-bubble text for whoever last chatted, while their line is still
 		   within CHAT_BUBBLE_DURATION of arriving -- false (text left
 		   untouched) once it has aged out, so the renderer only ever draws a
@@ -577,6 +583,10 @@ namespace Client
 		CReplicatedPlayerHealth m_PlayerHealth;
 		bool m_hasPendingPartyTransferResult = false;
 		LostArk::Shared::S2C_PARTY_TRANSFER_RESULT m_PendingPartyTransferResult{};
+		bool m_hasPendingRaidEntryPrompt = false;
+		LostArk::Shared::S2C_RAID_ENTRY_PROMPT m_PendingRaidEntryPrompt{};
+		bool m_hasPendingRaidEntryVote = false;
+		LostArk::Shared::S2C_RAID_ENTRY_VOTE m_PendingRaidEntryVote{};
 		std::vector<std::string> m_PendingWorldSequencePlays;
 
 		struct CHAT_BUBBLE_ENTRY

@@ -340,6 +340,16 @@ bool Client::CClientReplication::Update()
 			m_hasPendingPartyTransferResult = true;
 			break;
 
+		case CLIENT_REPLICATION_EVENT_TYPE::RAID_ENTRY_PROMPT:
+			m_PendingRaidEntryPrompt = event.RaidEntryPrompt;
+			m_hasPendingRaidEntryPrompt = true;
+			break;
+
+		case CLIENT_REPLICATION_EVENT_TYPE::RAID_ENTRY_VOTE:
+			m_PendingRaidEntryVote = event.RaidEntryVote;
+			m_hasPendingRaidEntryVote = true;
+			break;
+
 		case CLIENT_REPLICATION_EVENT_TYPE::CHAT_RECEIVED:
 			Apply_ChatReceived(event.ChatReceived);
 			break;
@@ -453,6 +463,26 @@ bool Client::CClientReplication::Try_Consume_PartyTransferResult(
 		return false;
 	outResult = m_PendingPartyTransferResult;
 	m_hasPendingPartyTransferResult = false;
+	return true;
+}
+
+bool Client::CClientReplication::Try_Consume_RaidEntryPrompt(
+	LostArk::Shared::S2C_RAID_ENTRY_PROMPT& outPrompt)
+{
+	if (!m_hasPendingRaidEntryPrompt)
+		return false;
+	outPrompt = m_PendingRaidEntryPrompt;
+	m_hasPendingRaidEntryPrompt = false;
+	return true;
+}
+
+bool Client::CClientReplication::Try_Consume_RaidEntryVote(
+	LostArk::Shared::S2C_RAID_ENTRY_VOTE& outVote)
+{
+	if (!m_hasPendingRaidEntryVote)
+		return false;
+	outVote = m_PendingRaidEntryVote;
+	m_hasPendingRaidEntryVote = false;
 	return true;
 }
 
@@ -1727,7 +1757,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 				model->Play_Animation(0.f);
 			}
 			CCombatHUDViewModel::Get().Apply_EstherCutinAction(
-				spawned.strArchetypeId, spawnActionClip->second);
+				spawned.strArchetypeId);
 		}
 		else if (hasPlacementPresentation)
 		{
@@ -2596,7 +2626,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 					iter->second.iActionClipIndex = 0u;
 					iter->second.strCurrentClip = chain.front();
 					CCombatHUDViewModel::Get().Apply_EstherCutinAction(
-						iter->second.strArchetypeId, chain);
+						iter->second.strArchetypeId);
 				}
 				else if (iter->second.iActionClipIndex + 1u < chain.size())
 				{
@@ -3113,6 +3143,10 @@ void Client::CClientReplication::Reset_World()
 	m_PendingPartyInvite = {};
 	m_hasPendingPartyTransferResult = false;
 	m_PendingPartyTransferResult = {};
+	m_hasPendingRaidEntryPrompt = false;
+	m_PendingRaidEntryPrompt = {};
+	m_hasPendingRaidEntryVote = false;
+	m_PendingRaidEntryVote = {};
 	m_ChatBubblesByNetEntityId.clear();
 	++m_iWorldDestructionPresentationGeneration;
 	if (0u == m_iWorldDestructionPresentationGeneration)

@@ -137,13 +137,21 @@ struct NPC_ACTOR_ENTRY final
 	plays once and the next starts when it finishes, mirroring the source
 	action's stage list. Actions not listed here present with idleClip. */
 	std::map<std::string, std::vector<std::string>, std::less<>> actionClips;
-	/* Optional screen-cutin visibility window in milliseconds from the strike
-	clip's start. The start seeds from the source EpicSkill SkillDecoDelayTime
-	minus its 500ms cast offset; the end is a visual-tuning value because the
-	source cutin length lives in the undecoded epicskill.gfx timeline. An end
-	of 0 shows until the clip chain finishes. */
-	std::uint32_t cutinStartMs = 0;
-	std::uint32_t cutinEndMs = 0;
+	/* Optional full-screen cutin flipbook fired with the strike action: the
+	source Esther_Skill_<Name> Bink movie cooked to <framePrefix>_NNN.dds
+	(NNN = 000..frameCount-1) at the layout reference resolution, played once at
+	fps, starting delayMs after the strike clip (the summon spawn) begins. The
+	delay is the source EFTable_EpicSkill SkillDecoDelayTime -- measured from the
+	caster's call -- minus the Server's 1000ms summon landing delay, floored at 0.
+	frameCount 0 means this NPC has no cutin. */
+	struct CUTIN_MOVIE final
+	{
+		std::string framePrefix;
+		std::uint32_t frameCount = 0;
+		f32_t fps = 0.f;
+		std::uint32_t delayMs = 0;
+	};
+	CUTIN_MOVIE cutinMovie;
 	/* Optional pinned shader family. "esther" renders with the dedicated
 	esther NPC shader instead of the shared animated-mesh shader; empty keeps
 	the shared one. Unknown values are rejected at parse. */

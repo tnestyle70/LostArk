@@ -102,11 +102,12 @@ namespace Client
 		LostArk::Shared::DAMAGE_EVENT Event;
 	};
 
+	/* One raid Esther strike -> one full-screen cutin movie. iGeneration bumps
+	per request so the presentation consumer replays even the same archetype. */
 	struct HUD_ESTHER_CUTIN_REQUEST
 	{
 		std::uint32_t iGeneration = 0;
 		std::string strArchetypeId;
-		std::vector<std::string> Clips;
 	};
 
 	/* Reference-resolution rects for the DeadScene labels CMainApp::RenderDeadSceneText() draws
@@ -195,13 +196,10 @@ namespace Client
 			m_iEstherGauge = gauge;
 			m_iEstherGaugeMaximum = gaugeMaximum;
 		}
-		void Apply_EstherCutinAction(
-			const std::string& archetypeId,
-			const std::vector<std::string>& clips)
+		void Apply_EstherCutinAction(const std::string& archetypeId)
 		{
 			++m_EstherCutinRequest.iGeneration;
 			m_EstherCutinRequest.strArchetypeId = archetypeId;
-			m_EstherCutinRequest.Clips = clips;
 		}
 		void Reset_RuntimeState();
 

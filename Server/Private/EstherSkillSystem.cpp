@@ -5,7 +5,9 @@
 void LostArk::Server::CEstherSkillSystem::Initialize(
 	const LostArk::Shared::WORLD_ID worldId)
 {
-	m_isEnabled = LostArk::Shared::WORLD_ID::VALTAN_ARENA == worldId;
+	m_isEnabled =
+		LostArk::Shared::WORLD_ID::VALTAN_ARENA == worldId ||
+		LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA == worldId;
 	Reset();
 }
 

@@ -387,8 +387,10 @@ bool_t CWorldSequencePlayer::Is_Playing(const std::string& instanceId) const
 		});
 }
 
-void CWorldSequencePlayer::Stop_All()
+void CWorldSequencePlayer::Stop_All(const TARGET_SET& targets)
 {
+	for (const ACTIVE_INSTANCE& active : m_Active)
+		Release_DeployPreviews(active, targets);
 	m_Active.clear();
 }
 

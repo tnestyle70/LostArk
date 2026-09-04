@@ -525,6 +525,7 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 #endif
 	Update_ValtanEntryInteraction();
 	Advance_ValtanEntryWalk();
+	Poll_RaidEntryVote();
 	Update_ItemUpgradeNpcInteraction();
 	Advance_ItemUpgradeNpcWalk();
 	if (Is_ValtanEntryModalOpen())
@@ -1178,15 +1179,46 @@ void CLevel_Bern::Render_ValtanEntryModal()
 	if (nullptr == m_pValtanEntryView)
 		return;
 
-	if (!m_pValtanEntryView->Render())
-		return;
+	m_pValtanEntryView->Render();
 
-	// Entrance was clicked -- submit the real NPC-entry command.
-	if (nullptr != m_pPlayerCommandSink)
+	if (nullptr == m_pPlayerCommandSink)
+		return;
+	const CRaidEntryPreviewView::RAID_ENTRY_INTENT intent =
+		m_pValtanEntryView->Consume_Intent();
+	if (CRaidEntryPreviewView::RAID_ENTRY_INTENT::PROPOSE == intent.eKind)
 	{
-		m_pPlayerCommandSink->Request_ConfirmNpcEntry(
+		// 입장하기 -> 파티 전원 수락 투표 발의(솔로는 인원 1명 투표). 즉시 전송하지 않고
+		// 서버가 파티 전원에게 프롬프트를 보낸다.
+		m_pPlayerCommandSink->Request_RaidEntryPropose(
 			m_iNextNpcEntryConfirmSequence++,
-			m_strValtanEntryNpcPlacementId);
+			m_strValtanEntryNpcPlacementId,
+			intent.eTarget);
+	}
+	else if (CRaidEntryPreviewView::RAID_ENTRY_INTENT::RESPOND == intent.eKind)
+	{
+		m_pPlayerCommandSink->Request_RaidEntryRespond(
+			m_iNextNpcEntryConfirmSequence++,
+			intent.iProposalId,
+			intent.bAccepted);
+	}
+}
+
+void CLevel_Bern::Poll_RaidEntryVote()
+{
+	if (nullptr == m_pValtanEntryView)
+		return;
+	using namespace LostArk::Shared;
+	// 프롬프트 수신 -> 수락/거절 창을 연다(파티원은 입장 UI를 안 열었어도 이 창만 뜬다).
+	S2C_RAID_ENTRY_PROMPT prompt{};
+	if (m_Replication.Try_Consume_RaidEntryPrompt(prompt))
+		m_pValtanEntryView->Open_VoteConfirm(prompt.iProposalId, prompt.eTarget);
+	// 종료 통지 -> 거절/타임아웃/취소면 창을 닫고 Bern에 남는다. ALL_ACCEPTED는 서버가
+	// 이어서 S2C_ENTER_ACCEPTED를 보내 Pump_ServerApprovedWorldTransfer가 레벨을 전환한다.
+	S2C_RAID_ENTRY_VOTE vote{};
+	if (m_Replication.Try_Consume_RaidEntryVote(vote) && vote.bClosed &&
+		RAID_ENTRY_VOTE_RESULT::ALL_ACCEPTED != vote.eResult)
+	{
+		m_pValtanEntryView->Close_VoteConfirm();
 	}
 }
 

@@ -71,7 +71,10 @@ public:
 	   rewinds it against the baseline captured by the first start. */
 	bool_t Play(const std::string& instanceId, const TARGET_SET& targets);
 	bool_t Is_Playing(const std::string& instanceId) const;
-	void Stop_All();
+	/* Stopping hands every animated Deploy target back: an authoring preview
+	   left running blocks the prop's state from being set, so a second play
+	   could never restore it. */
+	void Stop_All(const TARGET_SET& targets);
 
 	/* Advances every playing instance and writes the sampled presentation. A
 	   target that disappears stops only its own instance. */

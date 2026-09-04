@@ -3,6 +3,7 @@
 #include "MainApp.h"
 
 #include "CharacterSelectionState.h"
+#include "CharacterSelectWindowView.h"
 #include "ChatWindowView.h"
 #include "CombatHUDViewModel.h"
 #include "DataJson.h"
@@ -106,8 +107,11 @@ namespace
 	{{
 		{ "Lobby_TestButton", LOBBY_STAGE::TEST, L"\xD14C\xC2A4\xD2B8",
 			338.f, 632.f, 142.f, 48.f },
+		/* "게임 시작" -- Phase 1 start-sequence rework: this button now opens the retail-style
+		character-select window instead of submitting CHARACTER_SELECT directly (the window's
+		own 신규 캐릭터 생성 card submits it). Slot id stays stable for the authored layout. */
 		{ "Lobby_CreateCharacterButton", LOBBY_STAGE::CHARACTER_SELECT,
-			L"\xCE90\xB9AD\xD130 \xC0DD\xC131", 488.f, 632.f, 142.f, 48.f },
+			L"\xAC8C\xC784 \xC2DC\xC791", 488.f, 632.f, 142.f, 48.f },
 		{ "Lobby_ValtanButton", LOBBY_STAGE::VALTAN, L"\xBC1C\xD0C4",
 			638.f, 632.f, 142.f, 48.f },
 		{ "Lobby_BernButton", LOBBY_STAGE::BERN, L"\xBCA0\xB978",
@@ -751,6 +755,8 @@ HRESULT CMainApp::Initialize()
 	/* Same reasoning as Hide_BossHealthBar just above -- hidden until Update_EstherGauge finds a
 	real Esther roster in a Valtan room. */
 	Hide_EstherUI();
+	m_pEstherCutinService = std::make_unique<CEstherCutinPresentationService>(
+		m_pDevice, m_pContext);
 	m_pItemUpgradeView = std::make_unique<CUILayoutRuntime>(
 		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
 		L"UI/ItemUpgrade/ItemUpgradeUI.json");
@@ -765,6 +771,11 @@ HRESULT CMainApp::Initialize()
 	by construction (engine sprites render before ImGui), which is all the old BACKGROUND draw
 	target actually guaranteed here. */
 	m_pLobbyBackgroundView->Set_AllSlotsVisible(false);
+	/* After the Lobby view on purpose: created later means its sprites join Layer_UI later and
+	draw on top of the Lobby backdrop/buttons while the window is open. Its own constructor
+	hides every slot. */
+	m_pCharacterSelectWindowView = std::make_unique<CCharacterSelectWindowView>(
+		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
 	/* m_pSkillWindowView is intentionally never constructed anymore: the K keybind that opened
 	it was removed by product decision (see the migrated keybind block below), so the window can
 	never open, and constructing it would stand up the last ImGui product-path renderer for
@@ -841,10 +852,13 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		m_bPDown = pDown;
 	}
 	Update_LobbyButtons(fTimeDelta);
+	Update_CharacterSelectWindow(fTimeDelta);
 	Update_CombatHUD(fTimeDelta);
 	Update_ItemUpgrade(fTimeDelta);
 	Update_BossHealthBar();
 	Update_EstherGauge();
+	if (nullptr != m_pEstherCutinService)
+		m_pEstherCutinService->Update(fTimeDelta);
 
 	/* 1/2/3/4 use whatever item is registered on Item_1..4 (drag-drop from the inventory --
 	see Update_ItemQuickSlots). Same gating as K/I; the Server is the one that actually
@@ -1399,9 +1413,8 @@ HRESULT CMainApp::Render()
 #endif
 		m_pImGuiLayer->EndFrame();
 	}
-	CEstherCutinPresentationService::Render(m_pDevice, m_pContext);
-	/* Raid entry popup's live boss: same slot in the frame as the cutin -- over the popup's
-	   own sprites, under the Draw_Text pass that letters it. */
+	/* Raid entry popup's live boss: over the popup's own sprites, under the Draw_Text pass
+	   that letters it. */
 	CRaidBossShowcaseService::Render(m_pDevice, m_pContext);
 	/* Same reasoning as the old combat-HUD/boss-bar/charge-gauge
 	   image gate above (isCharSelectDebugPreviewOpen there) -- these are that
@@ -1440,6 +1453,7 @@ HRESULT CMainApp::Render()
 	if (nullptr != m_pInventoryView)
 		m_pInventoryView->Render_Text();
 	RenderLobbyButtonText();
+	RenderCharacterSelectWindowText();
 	RenderItemUpgradeButtonText();
 	RenderItemUpgradeLevelText();
 	RenderItemUpgradeMaterialCounts();
@@ -1969,6 +1983,16 @@ void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 		return;
 	}
 
+	/* The character-select window is modal over the Lobby: while it is open the Lobby
+	backdrop/buttons hide and skip their own hover/click pass entirely --
+	Update_CharacterSelectWindow owns the frame's pointer. */
+	if (nullptr != m_pCharacterSelectWindowView &&
+		m_pCharacterSelectWindowView->Is_Open())
+	{
+		m_pLobbyBackgroundView->Set_AllSlotsVisible(false);
+		return;
+	}
+
 	/* Resolve the required four-slot set first. An old or corrupt external Data checkout may
 	contain only the legacy Create button; forcing every button onto the same four default
 	rects atomically (runtime-creating any missing slot, repositioning any invalid one) avoids
@@ -2012,10 +2036,25 @@ void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 		{
 			Router.Claim_Mouse_This_Frame();
 			if (Router.Is_Clicked(Rect.fX, Rect.fY, Rect.fWidth, Rect.fHeight,
-					fRefWidth, fRefHeight) &&
-				CLevel_Lobby::Submit_ProductCommand(Button.eStage))
+					fRefWidth, fRefHeight))
 			{
-				Play_UIButtonClickSound();
+				/* 게임 시작 opens the character-select window; the window's own card is
+				what submits CHARACTER_SELECT now. Everything else submits directly, as
+				before. Both share the Lobby-idle gate so a pending approval can't be
+				double-driven. */
+				if (LOBBY_STAGE::CHARACTER_SELECT == Button.eStage)
+				{
+					if (nullptr != m_pCharacterSelectWindowView &&
+						CLevel_Lobby::Can_SubmitProductCommand())
+					{
+						m_pCharacterSelectWindowView->Open();
+						Play_UIButtonClickSound();
+					}
+				}
+				else if (CLevel_Lobby::Submit_ProductCommand(Button.eStage))
+				{
+					Play_UIButtonClickSound();
+				}
 			}
 		}
 	}
@@ -2024,11 +2063,58 @@ void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 	m_pLobbyBackgroundView->Update(fTimeDelta);
 }
 
+void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
+{
+	if (nullptr == m_pCharacterSelectWindowView)
+		return;
+	if (ETOUI(LEVEL::LOBBY) != CGameInstance::Get().Get_CurrentLevelID())
+	{
+		/* A level change while open (the submitted CHARACTER_SELECT approval landing) must
+		not leave the window's sprites showing under the next level -- they live on
+		LEVEL::STATIC. */
+		if (m_pCharacterSelectWindowView->Is_Open())
+			m_pCharacterSelectWindowView->Close();
+		return;
+	}
+
+	m_pCharacterSelectWindowView->Update(fTimeDelta);
+
+	switch (m_pCharacterSelectWindowView->Consume_Intent())
+	{
+	case CCharacterSelectWindowView::INTENT::NEW_CHARACTER:
+		/* The same product command the Lobby button used to submit directly. The window
+		stays open while the Server approval runs -- success changes the level (the branch
+		above closes it), a rejection leaves the window up and the user can ESC back to the
+		Lobby's status line. */
+		(void)CLevel_Lobby::Submit_ProductCommand(LOBBY_STAGE::CHARACTER_SELECT);
+		break;
+	case CCharacterSelectWindowView::INTENT::CLOSE:
+		m_pCharacterSelectWindowView->Close();
+		break;
+	default:
+		break;
+	}
+}
+
+void CMainApp::RenderCharacterSelectWindowText()
+{
+	if (nullptr == m_pCharacterSelectWindowView)
+		return;
+	if (ETOUI(LEVEL::LOBBY) != CGameInstance::Get().Get_CurrentLevelID())
+		return;
+	m_pCharacterSelectWindowView->RenderText();
+}
+
 void CMainApp::RenderLobbyButtonText()
 {
 	if (ETOUI(LEVEL::LOBBY) != CGameInstance::Get().Get_CurrentLevelID())
 		return;
 	if (nullptr == m_pLobbyBackgroundView)
+		return;
+	/* The Lobby's sprites are hidden while the character-select window is open -- their
+	labels (and the Release status line) must not float over it either. */
+	if (nullptr != m_pCharacterSelectWindowView &&
+		m_pCharacterSelectWindowView->Is_Open())
 		return;
 
 	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
@@ -2435,11 +2521,15 @@ void CMainApp::Update_ItemUpgradeResultWaitClick()
 	// circle) stays visible all the way through burst-playing and the settled result -- it's the
 	// one background for this whole screen, not something to swap out mid-flow. Only the dismiss
 	// (OK button) turns it off, back to the normal reforge window.
-	// Real in-game capture: while the burst plays, ONLY the SmeltLoding circle + SmeltSuccess/Fail
-	// burst show -- no icon/name/result text/OK button yet (those would sit on top of the burst
-	// otherwise). Once the burst's own real one-shot duration finishes, the per-frame settle check
-	// in Update() hides the circle+burst and reveals the icon/name/result content in their place.
-	constexpr f64_t RESULT_BURST_DURATION_SECONDS = 90.0 / 30.0;
+	// While the burst plays, ONLY the SmeltSuccess/Fail burst shows (the SmeltLoding wait loop is
+	// switched off below as the burst starts) -- no icon/name/result text/OK button yet (those
+	// would sit on top of the burst otherwise). Once the burst's own real one-shot duration
+	// finishes, the per-frame settle check in Update() hides the burst and reveals the
+	// icon/name/result content in its place.
+	/* Real smelt_SWeffect / smelt_FailEffectComp movies (ItemUpgradeUI.json SmeltSuccess/
+	SmeltFail flipbooks) are 120 frames at 30 fps -- must match the JSON frame count so the
+	result content reveals exactly when the burst's last frame lands. */
+	constexpr f64_t RESULT_BURST_DURATION_SECONDS = 120.0 / 30.0;
 	m_dItemUpgradeResultSettleAt = Product_Now_Seconds() + RESULT_BURST_DURATION_SECONDS;
 
 	const bool_t bSuccess = m_bItemUpgradePendingAttemptSuccess;
@@ -2447,6 +2537,10 @@ void CMainApp::Update_ItemUpgradeResultWaitClick()
 		ITEM_UPGRADE_ATTEMPT_RESULT::SUCCESS : ITEM_UPGRADE_ATTEMPT_RESULT::FAIL;
 	// Real reforge result screens dim the reforge window itself (drawn above, in Update()) instead
 	// of an opaque bounded panel image -- SuccessModalBg/FailModalBg are never shown.
+	// The wait loop (SmeltLoding) stops the moment the result burst starts -- the real
+	// smelt_SWeffect / smelt_FailEffectComp clips are distinct art from the loading loop, so
+	// leaving it additively underneath would double-expose the burst.
+	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", false);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessEffect", bSuccess);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailEffect", !bSuccess);
 	if (bSuccess)
@@ -6569,27 +6663,8 @@ void CMainApp::RenderDeveloperTools()
 
 	if (ImGui::CollapsingHeader("Esther Cutin (Debug)"))
 	{
-		ESTHER_CUTIN_TUNING& cutinTuning =
-			CEstherCutinPresentationService::Debug_Tuning();
-		ImGui::DragFloat("Model Yaw (deg)",
-			&cutinTuning.fModelYawDegrees, 1.f, -360.f, 360.f);
-		ImGui::DragFloat("Eye X / Height",
-			&cutinTuning.fEyeXPerHeight, 0.01f, -2.f, 2.f);
-		ImGui::DragFloat("Eye Y / Height",
-			&cutinTuning.fEyeYPerHeight, 0.01f, -1.f, 3.f);
-		ImGui::DragFloat("Distance / Height",
-			&cutinTuning.fDistancePerHeight, 0.02f, 0.3f, 6.f);
-		ImGui::DragFloat("Target Y / Height",
-			&cutinTuning.fAtYPerHeight, 0.01f, 0.f, 2.f);
-		ImGui::DragFloat("FOV (deg)",
-			&cutinTuning.fFovDegrees, 0.5f, 10.f, 90.f);
-		ImGui::DragFloat4("Rect X/Y/W/H (720p)",
-			&cutinTuning.fRectX, 2.f, -400.f, 1600.f);
-		if (ImGui::Button("Reset Tuning"))
-			CEstherCutinPresentationService::Debug_ResetTuning();
 		ImGui::TextDisabled(
-			"Preview replays the cutin only; prototypes must be loaded"
-			" (enter Valtan first).");
+			"Replays the full-screen cutin movie (NpcCatalog cutinMovie) once.");
 		const auto previewButton = [](
 			const char_t* pLabel, const char_t* pArchetypeId)
 		{
@@ -6601,20 +6676,6 @@ void CMainApp::RenderDeveloperTools()
 		previewButton("Preview Wei", "NPC_58700");
 		ImGui::SameLine();
 		previewButton("Preview Bahuntur", "NPC_59060");
-		ImGui::Text(
-			"yaw %.1f  eye(%.2f, %.2f)  dist %.2f  target %.2f  fov %.1f",
-			cutinTuning.fModelYawDegrees,
-			cutinTuning.fEyeXPerHeight,
-			cutinTuning.fEyeYPerHeight,
-			cutinTuning.fDistancePerHeight,
-			cutinTuning.fAtYPerHeight,
-			cutinTuning.fFovDegrees);
-		ImGui::Text(
-			"rect (%.0f, %.0f, %.0f, %.0f)",
-			cutinTuning.fRectX,
-			cutinTuning.fRectY,
-			cutinTuning.fRectWidth,
-			cutinTuning.fRectHeight);
 	}
 
 	if (ImGui::CollapsingHeader("Raid Boss Showcase (Debug)"))

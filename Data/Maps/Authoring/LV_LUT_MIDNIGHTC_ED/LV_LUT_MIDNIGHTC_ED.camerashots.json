@@ -1,39 +1,70 @@
 {
-  "schema": "lostark.camera-shots",
-  "formatVersion": 1,
-  "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "revision": 12,
-  "shots": [
-    {
-      "shotId": "shot.1",
-      "sequenceInstanceId": "world.sequence.instance.circusfinale",
-      "box": {
-        "center": [
-          52.5,
-          10.0,
-          -87.5
-        ],
-        "halfExtents": [
-          32.5,
-          15.0,
-          27.5
-        ],
-        "yawDegrees": 0
-      },
-      "eye": [
-        38.8578,
-        4.65774,
-        -75.0091
-      ],
-      "lookAt": [
-        46.3628,
-        4.30222,
-        -81.6082
-      ],
-      "fovYDegrees": 60,
-      "blendInMs": 6000,
-      "blendOutMs": 1500,
-      "priority": 10
-    }
-  ]
+ "schema": "lostark.camera-shots",
+ "formatVersion": 1,
+ "areaId": "LV_LUT_MIDNIGHTC_ED",
+ "revision": 14,
+ "shots": [
+  {
+   "shotId": "shot.1",
+   "sequenceInstanceId": "world.sequence.instance.circusfinale",
+   "box": {
+    "center": [
+     52.5,
+     10.0,
+     -87.5
+    ],
+    "halfExtents": [
+     32.5,
+     15.0,
+     27.5
+    ],
+    "yawDegrees": 0
+   },
+   "eye": [
+    38.8578,
+    4.65774,
+    -75.0091
+   ],
+   "lookAt": [
+    46.3628,
+    4.30222,
+    -81.6082
+   ],
+   "fovYDegrees": 60,
+   "blendInMs": 6000,
+   "blendOutMs": 1500,
+   "priority": 10
+  },
+  {
+   "shotId": "shot.original",
+   "sequenceInstanceId": "world.sequence.instance.original_8T6_00",
+   "box": {
+    "center": [
+     -1.8,
+     111.6,
+     736.3
+    ],
+    "halfExtents": [
+     80.0,
+     60.0,
+     80.0
+    ],
+    "yawDegrees": 0
+   },
+   "eye": [
+    39.2169,
+    103.9091,
+    713.1845
+   ],
+   "lookAt": [
+    -1.8,
+    109.6,
+    736.3
+   ],
+   "fovYDegrees": 50,
+   "blendInMs": 2000,
+   "blendOutMs": 1500,
+   "priority": 10
+  }
+ ]
 }

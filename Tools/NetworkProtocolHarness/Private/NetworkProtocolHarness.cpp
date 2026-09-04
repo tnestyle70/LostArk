@@ -2286,8 +2286,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(54u == NETWORK_PROTOCOL_VERSION,
-				"Portal Rush Route And Existing Contracts Use Protocol 54");
+			testRunner.Require(55u == NETWORK_PROTOCOL_VERSION,
+				"Portal Rush Route Raid Entry Vote And Existing Contracts Use Protocol 55");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -5406,8 +5406,8 @@ namespace
 		}
 
 		testRunner.Require(
-			54u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 53");
+			55u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 55");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -5434,8 +5434,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			54u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 54");
+			55u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 55");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
@@ -6303,6 +6303,162 @@ namespace
 			1000u == unchangedResponse.iRequestSequence,
 			"Reject Truncated Valtan Decision Trace Response Atomically");
 	}
+
+	void Test_RaidEntryVoteProtocol(TEST_RUNNER& testRunner)
+	{
+		C2S_RAID_ENTRY_PROPOSE propose{};
+		propose.iRequestSequence = 7u;
+		propose.strNpcPlacementId = "npc.bern.beda.guide";
+		propose.eTarget = RAID_ENTRY_TARGET::KAKULSAYDON;
+		CPacketWriter proposeWriter;
+		testRunner.Require(
+			Write_Message(proposeWriter, propose), "Writer Raid Entry Propose");
+		CPacketReader proposeReader{ proposeWriter.Get_Buffer() };
+		C2S_RAID_ENTRY_PROPOSE decodedPropose{};
+		testRunner.Require(
+			Read_Message(proposeReader, decodedPropose) &&
+			7u == decodedPropose.iRequestSequence &&
+			decodedPropose.strNpcPlacementId == "npc.bern.beda.guide" &&
+			RAID_ENTRY_TARGET::KAKULSAYDON == decodedPropose.eTarget &&
+			0u == proposeReader.Get_RemainingSize(),
+			"Raid Entry Propose Round Trip");
+
+		C2S_RAID_ENTRY_PROPOSE badPropose = propose;
+		badPropose.eTarget = RAID_ENTRY_TARGET::END;
+		CPacketWriter badTargetWriter;
+		testRunner.Require(
+			!Write_Message(badTargetWriter, badPropose),
+			"Reject Raid Entry Propose Unknown Target");
+		badPropose = propose;
+		badPropose.strNpcPlacementId.clear();
+		CPacketWriter emptyNpcWriter;
+		testRunner.Require(
+			!Write_Message(emptyNpcWriter, badPropose),
+			"Reject Raid Entry Propose Empty Npc");
+
+		std::vector<std::uint8_t> proposeBytes = proposeWriter.Get_Buffer();
+		proposeBytes.pop_back();
+		CPacketReader truncatedPropose{ proposeBytes };
+		C2S_RAID_ENTRY_PROPOSE unchangedPropose{};
+		unchangedPropose.iRequestSequence = 99u;
+		testRunner.Require(
+			!Read_Message(truncatedPropose, unchangedPropose) &&
+			99u == unchangedPropose.iRequestSequence,
+			"Reject Truncated Raid Entry Propose Atomically");
+
+		S2C_RAID_ENTRY_PROMPT prompt{};
+		prompt.iProposalId = 3u;
+		prompt.iProposerNetEntityId = 42u;
+		prompt.eTarget = RAID_ENTRY_TARGET::VALTAN;
+		prompt.strProposerNickname = "Leader";
+		CPacketWriter promptWriter;
+		testRunner.Require(
+			Write_Message(promptWriter, prompt), "Writer Raid Entry Prompt");
+		CPacketReader promptReader{ promptWriter.Get_Buffer() };
+		S2C_RAID_ENTRY_PROMPT decodedPrompt{};
+		testRunner.Require(
+			Read_Message(promptReader, decodedPrompt) &&
+			3u == decodedPrompt.iProposalId &&
+			42u == decodedPrompt.iProposerNetEntityId &&
+			RAID_ENTRY_TARGET::VALTAN == decodedPrompt.eTarget &&
+			decodedPrompt.strProposerNickname == "Leader" &&
+			0u == promptReader.Get_RemainingSize(),
+			"Raid Entry Prompt Round Trip");
+		S2C_RAID_ENTRY_PROMPT badPrompt = prompt;
+		badPrompt.iProposalId = 0u;
+		CPacketWriter zeroProposalWriter;
+		testRunner.Require(
+			!Write_Message(zeroProposalWriter, badPrompt),
+			"Reject Raid Entry Prompt Zero Proposal");
+
+		for (bool accepted : { true, false })
+		{
+			C2S_RAID_ENTRY_RESPOND respond{};
+			respond.iRequestSequence = 5u;
+			respond.iProposalId = 3u;
+			respond.bAccepted = accepted;
+			CPacketWriter respondWriter;
+			testRunner.Require(
+				Write_Message(respondWriter, respond),
+				"Writer Raid Entry Respond");
+			CPacketReader respondReader{ respondWriter.Get_Buffer() };
+			C2S_RAID_ENTRY_RESPOND decodedRespond{};
+			testRunner.Require(
+				Read_Message(respondReader, decodedRespond) &&
+				5u == decodedRespond.iRequestSequence &&
+				3u == decodedRespond.iProposalId &&
+				accepted == decodedRespond.bAccepted &&
+				0u == respondReader.Get_RemainingSize(),
+				"Raid Entry Respond Round Trip");
+		}
+
+		S2C_RAID_ENTRY_VOTE openVote{};
+		openVote.iProposalId = 3u;
+		openVote.iAccepted = 2u;
+		openVote.iTotal = 4u;
+		openVote.bClosed = false;
+		openVote.eResult = RAID_ENTRY_VOTE_RESULT::END;
+		CPacketWriter openWriter;
+		testRunner.Require(
+			Write_Message(openWriter, openVote), "Writer Raid Entry Vote Open");
+		CPacketReader openReader{ openWriter.Get_Buffer() };
+		S2C_RAID_ENTRY_VOTE decodedOpen{};
+		testRunner.Require(
+			Read_Message(openReader, decodedOpen) &&
+			3u == decodedOpen.iProposalId && 2u == decodedOpen.iAccepted &&
+			4u == decodedOpen.iTotal && !decodedOpen.bClosed &&
+			RAID_ENTRY_VOTE_RESULT::END == decodedOpen.eResult &&
+			0u == openReader.Get_RemainingSize(),
+			"Raid Entry Vote Open Round Trip");
+
+		S2C_RAID_ENTRY_VOTE closedVote = openVote;
+		closedVote.iAccepted = 4u;
+		closedVote.bClosed = true;
+		closedVote.eResult = RAID_ENTRY_VOTE_RESULT::ALL_ACCEPTED;
+		CPacketWriter closedWriter;
+		testRunner.Require(
+			Write_Message(closedWriter, closedVote),
+			"Writer Raid Entry Vote Closed");
+		CPacketReader closedReader{ closedWriter.Get_Buffer() };
+		S2C_RAID_ENTRY_VOTE decodedClosed{};
+		testRunner.Require(
+			Read_Message(closedReader, decodedClosed) &&
+			decodedClosed.bClosed &&
+			RAID_ENTRY_VOTE_RESULT::ALL_ACCEPTED == decodedClosed.eResult,
+			"Raid Entry Vote Closed Round Trip");
+
+		S2C_RAID_ENTRY_VOTE badVote = openVote;
+		badVote.eResult = RAID_ENTRY_VOTE_RESULT::DECLINED;
+		CPacketWriter openWithResultWriter;
+		testRunner.Require(
+			!Write_Message(openWithResultWriter, badVote),
+			"Reject Raid Entry Vote Open Carrying Result");
+		badVote = closedVote;
+		badVote.eResult = RAID_ENTRY_VOTE_RESULT::END;
+		CPacketWriter closedWithoutResultWriter;
+		testRunner.Require(
+			!Write_Message(closedWithoutResultWriter, badVote),
+			"Reject Raid Entry Vote Closed Without Result");
+		badVote = openVote;
+		badVote.iAccepted = 5u;
+		CPacketWriter acceptOverflowWriter;
+		testRunner.Require(
+			!Write_Message(acceptOverflowWriter, badVote),
+			"Reject Raid Entry Vote Accepted Over Total");
+		badVote = openVote;
+		badVote.iTotal = 0u;
+		CPacketWriter zeroTotalWriter;
+		testRunner.Require(
+			!Write_Message(zeroTotalWriter, badVote),
+			"Reject Raid Entry Vote Zero Total");
+
+		testRunner.Require(
+			Is_Known_Packet_Type(PACKET_TYPE::C2S_RAID_ENTRY_PROPOSE) &&
+			Is_Known_Packet_Type(PACKET_TYPE::S2C_RAID_ENTRY_PROMPT) &&
+			Is_Known_Packet_Type(PACKET_TYPE::C2S_RAID_ENTRY_RESPOND) &&
+			Is_Known_Packet_Type(PACKET_TYPE::S2C_RAID_ENTRY_VOTE),
+			"Register Raid Entry Vote Packet Types");
+	}
 }
 
 int main()
@@ -6349,6 +6505,7 @@ int main()
 	Test_ValtanDecisionTraceProtocol(testRunner);
 	Test_ReturnToBernProtocol(testRunner);
 	Test_PartyInviteProtocol(testRunner);
+	Test_RaidEntryVoteProtocol(testRunner);
 	Test_ChatProtocol(testRunner);
 
 	Test_StreamFraming(testRunner);

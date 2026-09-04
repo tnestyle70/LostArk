@@ -1455,6 +1455,54 @@ bool CNetworkManager::Send_ConfirmNpcEntry(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_RaidEntryPropose(
+	const std::uint32_t requestSequence,
+	const std::string_view npcPlacementId,
+	const LostArk::Shared::RAID_ENTRY_TARGET target)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_RAID_ENTRY_PROPOSE message{};
+	message.iRequestSequence = requestSequence;
+	message.strNpcPlacementId = std::string{ npcPlacementId };
+	message.eTarget = target;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_RAID_ENTRY_PROPOSE,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_RaidEntryRespond(
+	const std::uint32_t requestSequence,
+	const std::uint32_t proposalId,
+	const bool accepted)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_RAID_ENTRY_RESPOND message{};
+	message.iRequestSequence = requestSequence;
+	message.iProposalId = proposalId;
+	message.bAccepted = accepted;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_RAID_ENTRY_RESPOND,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_ReturnToBern(const std::uint32_t requestSequence)
 {
 	using namespace LostArk::Shared;
@@ -3455,6 +3503,40 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		Client::CLIENT_REPLICATION_EVENT event{};
 		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::PARTY_TRANSFER_RESULT;
 		event.PartyTransferResult = result;
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_RAID_ENTRY_PROMPT:
+	{
+		S2C_RAID_ENTRY_PROMPT prompt{};
+		if (!Read_Message(reader, prompt) || 0 != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_RAID_ENTRY_PROMPT,
+				"S2C_RAID_ENTRY_PROMPT payload decode or trailing-byte validation failed.");
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::RAID_ENTRY_PROMPT;
+		event.RaidEntryPrompt = std::move(prompt);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_RAID_ENTRY_VOTE:
+	{
+		S2C_RAID_ENTRY_VOTE vote{};
+		if (!Read_Message(reader, vote) || 0 != reader.Get_RemainingSize())
+		{
+			Fail_Protocol(WSAEINVAL,
+				SESSION_DIAGNOSTIC_REASON::CLIENT_MESSAGE_DECODE_FAILED,
+				PACKET_TYPE::S2C_RAID_ENTRY_VOTE,
+				"S2C_RAID_ENTRY_VOTE payload decode or trailing-byte validation failed.");
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::RAID_ENTRY_VOTE;
+		event.RaidEntryVote = vote;
 		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}
