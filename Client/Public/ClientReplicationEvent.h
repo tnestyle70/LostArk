@@ -29,6 +29,8 @@ namespace Client
 		PARTY_INVITE_RECEIVED,
 		PARTY_ROSTER,
 		PARTY_TRANSFER_RESULT,
+		RAID_ENTRY_PROMPT,
+		RAID_ENTRY_VOTE,
 		CHAT_RECEIVED,
 		WORLD_SEQUENCE_PLAY
 	};
@@ -77,6 +79,8 @@ namespace Client
 		LostArk::Shared::S2C_PARTY_INVITE_RECEIVED PartyInviteReceived;
 		LostArk::Shared::S2C_PARTY_ROSTER PartyRoster;
 		LostArk::Shared::S2C_PARTY_TRANSFER_RESULT PartyTransferResult;
+		LostArk::Shared::S2C_RAID_ENTRY_PROMPT RaidEntryPrompt;
+		LostArk::Shared::S2C_RAID_ENTRY_VOTE RaidEntryVote;
 		LostArk::Shared::S2C_CHAT ChatReceived;
 		LostArk::Shared::S2C_WORLD_SEQUENCE_PLAY WorldSequencePlay;
 	};

@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "Network/PacketMessages.h"
 
 #include <memory>
 
@@ -61,6 +62,26 @@ public:
 	   Render_XModalText() split in this codebase. */
 	void RenderText();
 
+	/* 파티 레이드 입장 투표에서 이번 프레임에 발생한 사용자 의도. Level_Bern이 Render 뒤
+	   Consume_Intent로 한 번 가져가 command sink로 제출한다(UI는 socket을 모른다).
+	   입장하기 = PROPOSE(선택 탭의 target), 수락/거절 창의 수락·거절 = RESPOND. */
+	struct RAID_ENTRY_INTENT
+	{
+		enum KIND { NONE, PROPOSE, RESPOND } eKind = NONE;
+		LostArk::Shared::RAID_ENTRY_TARGET eTarget =
+			LostArk::Shared::RAID_ENTRY_TARGET::VALTAN;
+		std::uint32_t iProposalId = 0u;
+		bool_t bAccepted = false;
+	};
+	RAID_ENTRY_INTENT Consume_Intent();
+
+	/* 서버 프롬프트 수신 시 수락/거절 창만 연다 -- 파티원은 입장 UI를 안 열었을 수 있으므로
+	   메인 화면 없이 confirm step만 표시한다. iProposalId는 응답에 그대로 되돌린다. */
+	void Open_VoteConfirm(std::uint32_t iProposalId,
+		LostArk::Shared::RAID_ENTRY_TARGET target);
+	/* 투표가 거절/타임아웃/취소로 종료되면 수락/거절 창을 닫고 Bern에 남는다. */
+	void Close_VoteConfirm();
+
 private:
 	bool_t Render_ConfirmStep();
 	void RenderText_ConfirmStep();
@@ -105,6 +126,11 @@ private:
 	   Entrance button -- see the PLAN follow-up on this two-step flow. */
 	unique_ptr<CUILayoutRuntime> m_pConfirmView;
 	bool_t m_isConfirmStepOpen = false;
+	/* 이번 프레임의 투표 의도. Render/Render_ConfirmStep가 설정하고 Consume_Intent가
+	   가져가며 비운다. */
+	RAID_ENTRY_INTENT m_Intent{};
+	/* 열린 투표의 proposalId(프롬프트가 준 값). 수락/거절 응답에 되돌린다. */
+	std::uint32_t m_iVoteProposalId = 0u;
 };
 
 NS_END

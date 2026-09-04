@@ -4802,6 +4802,160 @@ bool LostArk::Shared::Read_Message(
 }
 
 bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_RAID_ENTRY_PROPOSE& message)
+{
+	if (0u == message.iRequestSequence || message.strNpcPlacementId.empty() ||
+		message.strNpcPlacementId.size() > MAX_NPC_PLACEMENT_ID_BYTES ||
+		message.eTarget >= RAID_ENTRY_TARGET::END)
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	if (!writer.Write_String(message.strNpcPlacementId, MAX_NPC_PLACEMENT_ID_BYTES))
+		return false;
+	writer.Write_U8(static_cast<std::uint8_t>(message.eTarget));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_RAID_ENTRY_PROPOSE& message)
+{
+	C2S_RAID_ENTRY_PROPOSE decoded{};
+	std::uint8_t target = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_String(decoded.strNpcPlacementId, MAX_NPC_PLACEMENT_ID_BYTES) ||
+		!reader.Read_U8(target) ||
+		0u == decoded.iRequestSequence || decoded.strNpcPlacementId.empty() ||
+		target >= static_cast<std::uint8_t>(RAID_ENTRY_TARGET::END))
+	{
+		return false;
+	}
+	decoded.eTarget = static_cast<RAID_ENTRY_TARGET>(target);
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const S2C_RAID_ENTRY_PROMPT& message)
+{
+	if (0u == message.iProposalId ||
+		INVALID_NET_ENTITY_ID == message.iProposerNetEntityId ||
+		message.eTarget >= RAID_ENTRY_TARGET::END ||
+		!Is_Valid_PlayerNickname(message.strProposerNickname))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iProposalId);
+	writer.Write_U32(message.iProposerNetEntityId);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eTarget));
+	if (!writer.Write_String(message.strProposerNickname, MAX_NICKNAME_BYTES))
+		return false;
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, S2C_RAID_ENTRY_PROMPT& message)
+{
+	S2C_RAID_ENTRY_PROMPT decoded{};
+	std::uint8_t target = 0u;
+	if (!reader.Read_U32(decoded.iProposalId) ||
+		!reader.Read_U32(decoded.iProposerNetEntityId) ||
+		!reader.Read_U8(target) ||
+		!reader.Read_String(decoded.strProposerNickname, MAX_NICKNAME_BYTES) ||
+		0u == decoded.iProposalId ||
+		INVALID_NET_ENTITY_ID == decoded.iProposerNetEntityId ||
+		target >= static_cast<std::uint8_t>(RAID_ENTRY_TARGET::END) ||
+		!Is_Valid_PlayerNickname(decoded.strProposerNickname))
+	{
+		return false;
+	}
+	decoded.eTarget = static_cast<RAID_ENTRY_TARGET>(target);
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const C2S_RAID_ENTRY_RESPOND& message)
+{
+	if (0u == message.iRequestSequence || 0u == message.iProposalId)
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U32(message.iProposalId);
+	writer.Write_U8(message.bAccepted ? 1u : 0u);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, C2S_RAID_ENTRY_RESPOND& message)
+{
+	C2S_RAID_ENTRY_RESPOND decoded{};
+	std::uint8_t rawAccepted = 0u;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_U32(decoded.iProposalId) ||
+		!reader.Read_U8(rawAccepted) ||
+		0u == decoded.iRequestSequence || 0u == decoded.iProposalId ||
+		rawAccepted > 1u)
+	{
+		return false;
+	}
+	decoded.bAccepted = (1u == rawAccepted);
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer, const S2C_RAID_ENTRY_VOTE& message)
+{
+	const bool validOpen = !message.bClosed &&
+		message.eResult == RAID_ENTRY_VOTE_RESULT::END;
+	const bool validClosed = message.bClosed &&
+		message.eResult < RAID_ENTRY_VOTE_RESULT::END;
+	if (0u == message.iProposalId ||
+		message.iTotal < 1u || message.iTotal > MAX_PARTY_MEMBERS ||
+		message.iAccepted > message.iTotal ||
+		!(validOpen || validClosed))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iProposalId);
+	writer.Write_U8(message.iAccepted);
+	writer.Write_U8(message.iTotal);
+	writer.Write_U8(message.bClosed ? 1u : 0u);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eResult));
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader, S2C_RAID_ENTRY_VOTE& message)
+{
+	S2C_RAID_ENTRY_VOTE decoded{};
+	std::uint8_t rawClosed = 0u;
+	std::uint8_t result = 0u;
+	if (!reader.Read_U32(decoded.iProposalId) ||
+		!reader.Read_U8(decoded.iAccepted) ||
+		!reader.Read_U8(decoded.iTotal) ||
+		!reader.Read_U8(rawClosed) ||
+		!reader.Read_U8(result) ||
+		0u == decoded.iProposalId ||
+		decoded.iTotal < 1u || decoded.iTotal > MAX_PARTY_MEMBERS ||
+		decoded.iAccepted > decoded.iTotal || rawClosed > 1u ||
+		result > static_cast<std::uint8_t>(RAID_ENTRY_VOTE_RESULT::END))
+	{
+		return false;
+	}
+	decoded.bClosed = (1u == rawClosed);
+	decoded.eResult = static_cast<RAID_ENTRY_VOTE_RESULT>(result);
+	const bool validOpen = !decoded.bClosed &&
+		decoded.eResult == RAID_ENTRY_VOTE_RESULT::END;
+	const bool validClosed = decoded.bClosed &&
+		decoded.eResult < RAID_ENTRY_VOTE_RESULT::END;
+	if (!(validOpen || validClosed))
+		return false;
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer, const S2C_WORLD_SEQUENCE_PLAY& message)
 {
 	if (!Is_Valid_SequenceInstanceId(message.strSequenceInstanceId))
