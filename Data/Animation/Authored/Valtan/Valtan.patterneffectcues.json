@@ -2658,6 +2658,41 @@
           1.5
         ]
       }
+    },
+    {
+      "bindingId": "cue.valtan.ghost.portal-once.dash-floor",
+      "occurrenceId": "cue.valtan.ghost.portal-once.dash-floor.occurrence.01",
+      "patternId": "VALTAN_GHOST_PORTAL_ONCE",
+      "stageId": "ACTIVE",
+      "actionId": "valtan.ghost.portal-once.active",
+      "clipOccurrenceId": "valtan.ghost.portal-once.active.clip-01",
+      "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
+      "anchorSlotId": "root",
+      "followPolicy": "snapshot",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "scalePolicy": {
+        "kind": "OWNER_RELATIVE"
+      }
     }
   ]
 }

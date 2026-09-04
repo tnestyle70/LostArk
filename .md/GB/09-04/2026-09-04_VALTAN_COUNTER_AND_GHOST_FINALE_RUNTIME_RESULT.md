@@ -7,8 +7,8 @@
 `2026-09-04_VALTAN_GRAB_SERVER_ANCHOR_AND_STAGGER_AURA_STAGE_END_IMPLEMENTATION_PLAN.md`가 범위를 소유한다.
 
 이 문서는 위 세 범위가 현재 Product에 함께 들어간 통합 상태와 실제로 전달받은 실행 증거만 기록한다.
-현재 상태는 **구현·projection·Debug Product·Debug Core·Debug FullDiagnostic PASS,
-신규 화면·소리·조작 검증 NOT RUN**이다.
+현재 상태는 **구현·projection·Debug Product PASS, FullDiagnostic 구성 gate 전수 PASS
+(최종 수정 뒤 segmented closure), 신규 화면·소리·조작 검증 NOT RUN**이다.
 
 ---
 
@@ -23,8 +23,9 @@
 | `VALTAN_SILENCE_SLOT` 진입 즉시 침묵 | 완료 | status contract, Gameplay publish, Server/Core PASS | NOT RUN |
 | 부활한 본체 유령의 6-pattern 순차 loop | 완료 | phase3 focused contract, Server/Core PASS | NOT RUN |
 | walkable random 보조 유령의 1-skill loop | 완료 | phase3 focused contract, Server/Core PASS | NOT RUN |
-| 외접반지름 7m 동시 정삼각 포탈 loop | 완료 | V2/model-view/phase3, Server/Core PASS | NOT RUN |
-| Debug FullDiagnostic | 완료 | **PASS** | 해당 없음 |
+| 외접반지름 7.5m 동시 정삼각 포탈 loop | 완료 | V2/model-view/phase3, Server/Core PASS | NOT RUN |
+| 유령 presentation 선적재와 4-slot dormant pool | 완료 | Client compile, spawn contract, Product PASS | NOT RUN |
+| Debug FullDiagnostic 구성 gate | 완료 | **전수 PASS (segmented final closure)** | 해당 없음 |
 
 기존 일반 Warp rush의 V2 포탈과 1.9초 cadence는 사용자가 별도 RESULT에서 육안 승인했다. 이번에 추가한
 유령 최종전의 **동시 3변 정삼각 포탈 occurrence**는 다른 런타임 경로이므로 그 과거 승인을 재사용하지 않고
@@ -43,6 +44,11 @@ NOT RUN으로 둔다.
   `FINAL_ATTACK`에 진입하면 두 group은 같은 stage edge에서 끝난다.
 - aura는 `STATE / NONE` 표현이다. aura 자체는 Server hit 또는 damage collider를 만들지 않는다.
 - 현재 Mesh stop은 즉시 종료이며 별도 fade-out tail은 이번 범위가 아니다.
+
+실패 분기인 `FINAL_ATTACK`은 2900ms 한 시점에 기존 반경 100m 전멸 hit,
+`G_Voltan2_Attack25_Shot2` impact sound, 기존 `boss.valtan.six.sonic`과 신규
+`boss.valtan.twohand` V2 group을 함께 재생한다. 누적 damage 1000을 달성해
+`VALTAN_GROGGY_FOLLOWUP`으로 가는 성공 분기는 이 실패 연출과 sound를 타지 않는다.
 
 ### 2.2 피자 sector 회전과 마지막 decal 위치
 
@@ -138,16 +144,16 @@ pattern cursor는 random seed가 아니다.
 - despawn과 다음 spawn은 서로 다른 fixed-tick edge다. 보조 lane 실패나 대기는 primary loop와 portal clock을
   멈추지 않는다.
 
-### 4.3 외접반지름 7m 동시 정삼각 포탈
+### 4.3 외접반지름 7.5m 동시 정삼각 포탈
 
 포탈 scheduler는 primary/auxiliary action과 독립된 occurrence clock을 쓴다. immutable arena center와 world yaw
 0을 기준으로 start angle 30°, step 120°의 세 vertex를 만든다.
 
 ```text
-circumradius = 7.0m
-edge = 7 * sqrt(3) = 12.12435565298m
+circumradius = 7.5m
+edge = 7.5 * sqrt(3) = 12.9903810568m
 three routes = V0→V1, V1→V2, V2→V0
-speed = edge / 1.3s = 9.32642742537m/s
+speed = edge / 1.3s = 9.9926008129m/s
 ```
 
 포탈은 `VALTAN_WARP`와 같은 authored world-transform 이동이며 navigation을 전혀 소비하지 않는다. boss spawn
@@ -155,18 +161,19 @@ XYZ를 그대로 기준으로 만든 세 vertex의 finite 값과 정확한 반�
 exact-walkable, same-deck, height-transition, line-of-sight 검사나 projection은 하지 않는다. 한 vertex/edge라도
 finite·geometry 검증에 실패하면 일부만 spawn하지 않고 occurrence 전체를 거부하며, 검증 뒤 하나의 radial volley
 transaction으로 combat object 세 개를 동시에 만든다. full-footprint walkable-nav 검증은 보조 유령 spawn에만
-남아 있다. 사용자 육안 검증에서는 R7 세 변이 축소 아레나의 nav gap을 의도대로 살짝 가로지르는지도 확인한다.
+남아 있다. 사용자 육안 검증에서는 R7.5 세 변이 축소 아레나의 nav gap을 의도대로 살짝 가로지르는지도 확인한다.
 
 각 leg의 시간 계약은 다음과 같다.
 
 | 시각 | 상태 |
 |---:|---|
-| 0ms | 세 vertex의 black+cyan 포탈과 damage proxy 3개 동시 생성 |
-| 0~300ms | 포탈 유지, proxy 정지 |
-| 300~1600ms | 세 proxy가 각 다음 vertex까지 동시 이동 |
-| 1600~1900ms | 도착 뒤 포탈 dissolve tail, proxy lifetime 유지 |
-| 1900~2200ms | 포탈이 없는 300ms gap |
-| 2200ms | 다음 정삼각 occurrence 동시 시작 |
+| 0ms | 세 vertex의 black+cyan 포탈·red floor와 runner/proxy 3개 동시 생성 |
+| 0~300ms | 포탈 유지, runner body hidden, proxy 정지 |
+| 300~1600ms | 세 runner/proxy가 각 다음 vertex까지 동시에 이동 |
+| 1600ms | runner가 정확한 endpoint snapshot을 발행하면서 hidden, 다음 fixed tick에 entity 제거 |
+| 1600~1900ms | 도착 뒤 primary-owned 포탈 dissolve tail 유지 |
+| 1900~4900ms | 포탈이 없는 3000ms 간격 |
+| 4900ms | 다음 정삼각 occurrence 동시 시작 |
 
 combat object의 일반화된 `movement.startDelayMs=300`, `expireOnDistanceEnd=false`가 이동 종료와 lifetime 종료를
 분리한다. 다른 object는 기본값 `0/true`로 기존 의미를 유지한다. Server hit/damage는 이동하는 세 combat-object
@@ -178,7 +185,19 @@ destination이 다음 leg의 start와 같으므로 세 root만으로 세 꼭짓�
 leaf를 중복 배치해 같은 vertex를 두 번 그리는 overdraw는 만들지 않았다. visual root는 spawn pose에 고정되고
 이동 damage proxy snapshot에 끌려가지 않는다.
 
-### 4.4 시작·중단·reset 소유권
+### 4.4 유령 presentation 선적재와 재사용 pool
+
+Loader는 `BOSS_VALTAN`과 `BOSS_VALTAN_GHOST` prototype을 모두 Valtan 진입 batch에서 등록한다. primary Valtan의
+정확한 presentation admission이 끝나면 그 검증된 in-memory 문서를 복사해 layer-resident dormant `CValtan`
+4개를 한 번 준비한다. 용량 4는 동시 포탈 runner 3개와 보조 유령 1개를 함께 수용하는 현재 최대치다.
+
+visible spawn은 이 pool에서 exact owner/radius/revision/full-receipt가 맞는 slot만 checkout하며 model clone이나
+authoring file 재읽기를 하지 않는다. checkout 첫 frame은 IDLE pre-apply보다 먼저 hidden 상태를 잡고, 첫 exact
+portal pattern/action/route snapshot이 검증된 뒤에만 저작 visibility를 적용한다. check-in은 V1/V2, transform,
+occurrence와 target 상태를 비우고 model을 pause한 뒤 slot을 돌려놓는다. generation 변경이 active slot 때문에
+미뤄지면 마지막 slot 반납 시 pool refresh를 transactionally 재시도한다.
+
+### 4.5 시작·중단·reset 소유권
 
 phase3 activation이 primary sequence, auxiliary occurrence/due tick, portal occurrence/last-spawn tick을 함께
 초기화한다. primary owner가 죽거나 reset/teardown되어 finale owner 조건을 잃으면 dependent child를 despawn하고
@@ -192,37 +211,44 @@ phase3 activation이 primary sequence, auxiliary occurrence/due tick, portal occ
 |---|---|
 | Valtan RootMotion `--check` | PASS: 51 patterns / 126 stages / 8064 samples |
 | RootMotion unit | 5/5 PASS |
-| `Project-ValtanPatternMaster.ps1 -Mode Validate` | PASS: clip parity 13 templates / 34 occurrences / 30 hits / 28 effects / 30 sounds; alignment 18 roles / 44 ATTACK bindings / 472 hit points / 9 combat-object hits |
+| `Project-ValtanPatternMaster.ps1 -Mode Validate` | PASS: clip parity 13 templates / 34 occurrences / 30 hits / 28 effects / 30 sounds; alignment 18 roles / 45 ATTACK bindings / 472 hit points / 9 combat-object hits |
 | `Publish-GameplayBalance.ps1 -Mode Validate`와 `-Mode Publish` | PASS: 65 patterns / 280 stages / 9 combat objects |
 | V2 focused + grip/status/portal 묶음 | 66/66 PASS |
 | Effect model-view | 16/16 PASS |
 | Action Presentation Workbench 묶음 | 49/49 PASS |
 
-첫 FullDiagnostic 시도는 오래된 Valtan master mutation fixture 네 건에서 중단됐다. 이를 현행 계약으로
-국소 교정했고 대상 test `2 + 1 + 1`이 모두 PASS했다. 다음 실행에서 구 phase3 Server fixture와 portal의
-navigation 결합을 발견해, 본체·보조 유령 계약을 현행화하고 portal을 WARP와 같은 nav-independent transform
-경로로 고쳤다. Server 전체 계약 `failures : 0` 확인 후 최종 FullDiagnostic 전체를 다시 실행해 PASS했다.
+초기 FullDiagnostic 시도에서 드러난 오래된 Valtan master mutation fixture와 구 phase3 Server fixture를
+현행 계약으로 교정했고, portal을 WARP와 같은 nav-independent transform 경로로 고쳤다. 최종 시도에서는
+Valtan master 70/70까지 PASS한 뒤 새 cue를 몰랐던 후반 fixture와 Client의 7.0m parser 상수 두 곳을 차례로
+찾았다. 이 두 read/admission 계약을 국소 교정한 뒤 영향 모듈, Debug Product와 남은 FullDiagnostic gate를
+분할 재실행해 모두 PASS했다.
 
 ### 5.2 Debug Product와 Core
 
 | 검증 | 결과 |
 |---|---|
 | `Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product` | PASS. Engine / Shared / Server / Client compile·link와 product CSO closure PASS; WARP readback V1=1352, V2=1352 pixels |
-| Product evidence | `out/BuildPipeline/runs/20260904T092236649Z-debug-product-02a1ac7c.json` |
+| Product evidence | `out/BuildPipeline/runs/20260904T121822473Z-debug-product-eb06f606.json` |
 | `Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Core` | PASS, exit code 0 |
 | Core Valtan suites | harness 30/30, flow 13/13, tuning 11/11, canonical 7/7 PASS |
 | Core network/session | NetworkProtocol build/run과 Character Select isolation live scenario PASS |
 | Core evidence | `out/BuildPipeline/runs/20260904T094506332Z-debug-core-b2b37399.json` |
 
-### 5.3 Debug FullDiagnostic
+### 5.3 Debug FullDiagnostic 구성 gate 최종 closure
 
 | 검증 | 상태 |
 |---|---|
-| `Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile FullDiagnostic` | **PASS, exit code 0** |
-| FullDiagnostic evidence | `out/BuildPipeline/runs/20260904T103406014Z-debug-fulldiagnostic-da9fe4da.json` |
+| `Run-FullPipeline.ps1 -Configuration Debug -Profile FullDiagnostic` | PublishV2, Product, compiled shader, Valtan master 70/70까지 PASS. 후반의 낡은 source-slicing test에서 중단 |
+| combat-object hit Effect presentation module | sentinel 교정 뒤 19/19 PASS |
+| 7.5m Encounter Client admission | parser 상수 교정, Client와 audition harness 재빌드 뒤 PASS |
+| 최종 Debug Product | PASS, exit code 0; 위 Product evidence 기록 |
+| FullDiagnostic 후반 continuation | Valtan audition/canonical, Server, Character Select Core/Party2/Party4, PointLight, Physics, WModel **ALL PASS** |
 
-최종 실행에서 Valtan master 70/70, Server gameplay `failures : 0`, Character Select Core/Party2/Party4,
-PointLight, physics/destruction과 WModel 진단까지 모두 통과했다.
+최종 top-level FullDiagnostic evidence 파일 하나를 새로 만들기 위해 앞의 70개 장기 suite를 다시 반복하지는 않았다.
+대신 같은 source 상태에서 실패 지점 전까지 통과한 결과, 수정한 gate의 모듈 전체, 영향받은 Product 재빌드와
+실패 지점 이후 모든 gate를 순서대로 실행했다. 최종 결과는 Valtan master 70/70, audition harness 30/30,
+flow 13/13, tuning 11/11, canonical 7/7, Server gameplay `failures : 0`, Character Select Core/Party2/Party4,
+PointLight, physics/destruction과 WModel PASS다.
 
 ## 6. 사용자 육안·청각·조작 검증
 
@@ -242,8 +268,9 @@ FullDiagnostic를 통과한 새 Debug Server+Client에서 사용자가 직접 �
 6. 부활한 본체가 여섯 pattern을 정해진 순서로 반복하고 공격 사이 임의 teleport가 없는지 확인한다.
 7. 보조 유령이 walkable random 위치에 최대 하나만 나타나 여섯 pattern 중 하나만 사용한 뒤 사라지고 다음
    occurrence로 반복하는지 확인한다.
-8. 세 포탈이 외접반지름 7m 정삼각형의 꼭짓점에 동시에 생기고, damage wire 세 개가 0.3초 뒤 동시에 출발해
-   1.6초에 도착하며, 포탈이 1.9초에 완전히 사라진 뒤 0.3초 gap을 두고 반복하는지 확인한다.
+8. 세 포탈이 외접반지름 7.5m 정삼각형의 꼭짓점에 동시에 생기고, runner/damage wire 세 개가 0.3초 뒤
+   동시에 출발해 1.6초에 도착하며, 포탈이 1.9초에 완전히 사라진 뒤 3초 간격을 두고 반복하는지 확인한다.
+   첫 생성과 반복 생성 모두에서 유령 spawn frame hitch나 한 frame body flash가 없는지도 함께 확인한다.
 9. 본체 사망, encounter reset 또는 방 종료 뒤 보조 유령과 portal combat object/effect가 남지 않는지 확인한다.
 
 ## 7. 남은 경계

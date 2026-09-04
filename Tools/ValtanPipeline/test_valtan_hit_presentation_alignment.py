@@ -55,21 +55,31 @@ class ValtanHitPresentationAlignmentTests(unittest.TestCase):
         self.assertGreater(stats["combatV2Contracts"], 0)
 
     def test_stagger_slot_wipe_effect_is_bound_to_damage_clock(self) -> None:
-        binding = next(
-            row for row in self.bindings["bindings"]
-            if row["bindingId"] ==
-            "binding.valtan.project-tuned.stagger-slot.final-attack.wipe"
-        )
-        self.assertEqual("boss.valtan.six.sonic", binding["resource"]["id"])
-        self.assertEqual("VALTAN_STAGGER_SLOT", binding["scope"]["patternId"])
-        self.assertEqual("FINAL_ATTACK", binding["scope"]["stageId"])
-        self.assertEqual("CLIP_OCCURRENCE", binding["clock"]["basis"])
-        self.assertEqual(2900, binding["clock"]["startMs"])
+        binding_ids = {
+            "binding.valtan.project-tuned.stagger-slot.final-attack.wipe":
+                "boss.valtan.six.sonic",
+            "binding.valtan.project-tuned.stagger-slot.final-attack.twohand":
+                "boss.valtan.twohand",
+        }
+        bindings = {
+            row["bindingId"]: row
+            for row in self.bindings["bindings"]
+            if row["bindingId"] in binding_ids
+        }
+        self.assertEqual(binding_ids.keys(), bindings.keys())
+        for binding_id, resource_id in binding_ids.items():
+            binding = bindings[binding_id]
+            self.assertEqual(resource_id, binding["resource"]["id"])
+            self.assertEqual("VALTAN_STAGGER_SLOT", binding["scope"]["patternId"])
+            self.assertEqual("FINAL_ATTACK", binding["scope"]["stageId"])
+            self.assertEqual("CLIP_OCCURRENCE", binding["clock"]["basis"])
+            self.assertEqual(2900, binding["clock"]["startMs"])
 
         malformed = copy.deepcopy(self.bindings)
         target = next(
             row for row in malformed["bindings"]
-            if row["bindingId"] == binding["bindingId"]
+            if row["bindingId"] ==
+            "binding.valtan.project-tuned.stagger-slot.final-attack.twohand"
         )
         target["clock"]["startMs"] = 2800
         with self.assertRaisesRegex(

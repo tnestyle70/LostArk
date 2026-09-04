@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "compositionId": "boss.composition.valtan",
   "sourceRevision": 1,
-  "compositionRevision": "f5351920ac68d8a3c86a1abcf1ce63b7bf41adc13e44322f9144d2f9b244e28e",
+  "compositionRevision": "1e02813f098d85e3e25a12616df0ba271209220cebc10baf8944899c29ca6e8e",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "Valtan Boss Composition",
@@ -13,7 +13,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "f5351920ac68d8a3c86a1abcf1ce63b7bf41adc13e44322f9144d2f9b244e28e",
+    "sourceManifestId": "1e02813f098d85e3e25a12616df0ba271209220cebc10baf8944899c29ca6e8e",
     "files": [
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.combatobjectsoundcues.json",
@@ -22,13 +22,13 @@
       },
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.patternbindings.json",
-        "sha256": "d79131cff03bcd6cbdb46013301fbc1aa85efa0592a5a887e48af481eb840004",
-        "bytes": 127534
+        "sha256": "a9937d1b3a270e1389853c6d87ccf962bfc2316850c9293f2ee7dc80eaf87408",
+        "bytes": 127622
       },
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json",
-        "sha256": "585140a1e4138e9496d48aded2fb30a4ec1e6814a89a28f7b8b09372268ad5be",
-        "bytes": 72108
+        "sha256": "e11327d07b4d023ee42a53d79241dde8aa88e5f9049df0249cb79f8366a3c178",
+        "bytes": 73044
       },
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json",
@@ -1042,8 +1042,8 @@
       },
       {
         "path": "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json",
-        "sha256": "ba112997f1af7ce02e03ee0fd5402c52735536dc533dd79037de79ef0647f982",
-        "bytes": 87650
+        "sha256": "4aabc45c9a41c0ec35243f39255d6c9a0624e4211a7e30334350b31178f948ce",
+        "bytes": 88333
       },
       {
         "path": "Data/Effects/V2/Groups/boss.valtan.axe.effectv2group.json",
@@ -1132,7 +1132,7 @@
       },
       {
         "path": "Data/Encounters/Valtan/ValtanEncounter.json",
-        "sha256": "77ae67f3bd47f023dc202f07faf07c30f599dbc45f506b591f04302617bb2262",
+        "sha256": "d93118c6f00bdce8921ae7f4694211ef407594c7a28e59c7d364a71f9961dc9b",
         "bytes": 262342
       },
       {
@@ -1142,12 +1142,12 @@
       },
       {
         "path": "Data/Valtan/Valtan.combatobjects.json",
-        "sha256": "a344c907406f15afd06a6ac390ed423cf191e1fa72b6ba92e15f87b884100302",
-        "bytes": 9115
+        "sha256": "6f20b22b394e393fadb013cf68b5b8a29b0335207ace758148b67425f316cd57",
+        "bytes": 9113
       },
       {
         "path": "Data/Valtan/Valtan.gameplay.json",
-        "sha256": "52e46c719f52a4ca366435e204fd47d8824b5f326e58f33713a4b84da393f130",
+        "sha256": "d4ef706868cfd8aef56c699d2df4518e40a0a8e3f7106c393b40744fca655ff5",
         "bytes": 221156
       },
       {
@@ -1157,8 +1157,8 @@
       },
       {
         "path": "Data/Valtan/Valtan.presentation.json",
-        "sha256": "547a35905cfe2e6c44de2d02f37607944d75d89baf12a170423b421f90c80307",
-        "bytes": 225588
+        "sha256": "b48bcc90bc412b89677baa52f39bc07d7375b0b4b5597cbd576a1b0c79d69c38",
+        "bytes": 226815
       },
       {
         "path": "Data/Valtan/Valtan.worldeventsets.json",
@@ -1823,7 +1823,7 @@
         },
         {
           "independentEffectId": "valtan.independent-effect.ghost-portal-once",
-          "displayName": "망령 포탈 동시 돌진 / 외접반지름 7m 정삼각형",
+          "displayName": "망령 포탈 동시 돌진 / 외접반지름 7.5m 정삼각형",
           "ownership": "SERVER_COMBAT_OBJECT",
           "spawnEventId": "event.valtan.ghost.portal-once.volley"
         }
@@ -5804,7 +5804,7 @@
                   "countPerResolvedTarget": 3,
                   "layout": {
                     "kind": "RADIAL_AROUND_BOSS",
-                    "radiusM": 7.0,
+                    "radiusM": 7.5,
                     "startAngleDegrees": 30.0,
                     "angleStepDegrees": 120.0,
                     "mappingBasis": "PROJECT_TUNED"
@@ -5838,8 +5838,46 @@
                   }
                 ]
               },
-              "effectCues": [],
-              "cameraInvocations": []
+              "effectCues": [
+                {
+                  "cueId": "cue.valtan.ghost.portal-once.dash-floor",
+                  "scalePolicy": {
+                    "kind": "OWNER_RELATIVE"
+                  },
+                  "occurrenceId": "cue.valtan.ghost.portal-once.dash-floor.occurrence.01",
+                  "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
+                  "clipOccurrenceId": "valtan.ghost.portal-once.active.clip-01",
+                  "sourceStartMs": 0,
+                  "sourceEndMs": null,
+                  "anchorSlotId": "root",
+                  "followPolicy": "snapshot",
+                  "stopPolicy": "natural",
+                  "repeatPolicy": "once",
+                  "localTransform": {
+                    "position": [
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "rotationDegrees": [
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "scale": [
+                      1.0,
+                      1.0,
+                      1.0
+                    ]
+                  },
+                  "mappingBasis": "PROJECT_AUTHORED"
+                }
+              ],
+              "cameraInvocations": [],
+              "bodyVisibility": {
+                "hiddenFromMs": 0,
+                "hiddenToMs": 300
+              }
             }
           ]
         },
@@ -29608,7 +29646,7 @@
                 "countPerResolvedTarget": 3,
                 "layout": {
                   "kind": "RADIAL_AROUND_BOSS",
-                  "radiusM": 7.0,
+                  "radiusM": 7.5,
                   "startAngleDegrees": 30.0,
                   "angleStepDegrees": 120.0,
                   "mappingBasis": "PROJECT_TUNED"
@@ -29701,7 +29739,7 @@
                   "countPerResolvedTarget": 3,
                   "layout": {
                     "kind": "RADIAL_AROUND_BOSS",
-                    "radiusM": 7.0,
+                    "radiusM": 7.5,
                     "startAngleDegrees": 30.0,
                     "angleStepDegrees": 120.0,
                     "mappingBasis": "PROJECT_TUNED"
@@ -29717,6 +29755,57 @@
                   },
                   "allowOverlap": false,
                   "maximumTotalObjects": 3
+                }
+              },
+              {
+                "cueId": "cue.valtan.ghost.portal-once.dash-floor",
+                "kind": "EFFECT_V1",
+                "scope": {
+                  "patternId": "VALTAN_GHOST_PORTAL_ONCE",
+                  "stageId": "ACTIVE",
+                  "actionId": "valtan.ghost.portal-once.active"
+                },
+                "clock": {
+                  "basis": "STAGE",
+                  "startMs": 0,
+                  "repeatPolicy": "ONCE",
+                  "clipOccurrenceId": "valtan.ghost.portal-once.active.clip-01"
+                },
+                "stopPolicy": "NATURAL",
+                "anchor": {
+                  "kind": "BOSS_SLOT",
+                  "slotId": "root",
+                  "followPolicy": "SNAPSHOT",
+                  "rotationBasis": "BOSS_YAW",
+                  "localTransform": {
+                    "translation": [
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "rotation": [
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "scale": [
+                      1.0,
+                      1.0,
+                      1.0
+                    ]
+                  }
+                },
+                "payload": {
+                  "scalePolicy": {
+                    "kind": "OWNER_RELATIVE"
+                  },
+                  "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
+                  "mappingBasis": "PROJECT_AUTHORED",
+                  "sourceClock": {
+                    "basis": "CLIP_OCCURRENCE",
+                    "startMs": 0,
+                    "clipOccurrenceId": "valtan.ghost.portal-once.active.clip-01"
+                  }
                 }
               },
               {
@@ -29815,7 +29904,11 @@
                   }
                 }
               }
-            ]
+            ],
+            "bodyVisibility": {
+              "hiddenFromMs": 0,
+              "hiddenToMs": 300
+            }
           }
         ]
       },
@@ -30167,6 +30260,57 @@
                   "playRate": 1.0,
                   "repeatUntilStageEnd": false,
                   "wallDurationMs": 3000
+                }
+              },
+              {
+                "cueId": "binding.valtan.project-tuned.stagger-slot.final-attack.twohand",
+                "kind": "EFFECT_V2",
+                "scope": {
+                  "patternId": "VALTAN_STAGGER_SLOT",
+                  "stageId": "FINAL_ATTACK",
+                  "actionId": "valtan.authoring.stagger-slot.final-attack"
+                },
+                "clock": {
+                  "basis": "STAGE",
+                  "startMs": 2900,
+                  "repeatPolicy": "ONCE",
+                  "clipOccurrenceId": "VALTAN_STAGGER_SLOT.FINAL_ATTACK.composition.clip.01"
+                },
+                "stopPolicy": "NATURAL",
+                "anchor": {
+                  "slotId": "b_effectroot",
+                  "followPolicy": "SNAPSHOT_AT_START",
+                  "rotationBasis": "TARGET_YAW",
+                  "localTransform": {
+                    "translation": [
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "rotation": [
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "scale": [
+                      1.0,
+                      1.0,
+                      1.0
+                    ]
+                  },
+                  "kind": "BOSS_SLOT"
+                },
+                "payload": {
+                  "resource": {
+                    "kind": "GROUP",
+                    "id": "boss.valtan.twohand"
+                  },
+                  "sourceClock": {
+                    "basis": "CLIP_OCCURRENCE",
+                    "clipOccurrenceId": "VALTAN_STAGGER_SLOT.FINAL_ATTACK.composition.clip.01",
+                    "startMs": 2900,
+                    "repeatPolicy": "ONCE"
+                  }
                 }
               },
               {
@@ -101136,6 +101280,41 @@
               1.5
             ]
           }
+        },
+        {
+          "bindingId": "cue.valtan.ghost.portal-once.dash-floor",
+          "occurrenceId": "cue.valtan.ghost.portal-once.dash-floor.occurrence.01",
+          "patternId": "VALTAN_GHOST_PORTAL_ONCE",
+          "stageId": "ACTIVE",
+          "actionId": "valtan.ghost.portal-once.active",
+          "clipOccurrenceId": "valtan.ghost.portal-once.active.clip-01",
+          "effectAssetId": "effect.valtan.project-tuned.sequence.warp.portal",
+          "anchorSlotId": "root",
+          "followPolicy": "snapshot",
+          "stopPolicy": "natural",
+          "repeatPolicy": "once",
+          "sourceStartMs": 0,
+          "sourceEndMs": null,
+          "localTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "scalePolicy": {
+            "kind": "OWNER_RELATIVE"
+          }
         }
       ]
     },
@@ -104136,6 +104315,47 @@
             }
           },
           "stopPolicy": "STAGE_END"
+        },
+        {
+          "bindingId": "binding.valtan.project-tuned.stagger-slot.final-attack.twohand",
+          "resource": {
+            "kind": "GROUP",
+            "id": "boss.valtan.twohand"
+          },
+          "scope": {
+            "patternId": "VALTAN_STAGGER_SLOT",
+            "stageId": "FINAL_ATTACK",
+            "actionId": "valtan.authoring.stagger-slot.final-attack"
+          },
+          "clock": {
+            "basis": "CLIP_OCCURRENCE",
+            "clipOccurrenceId": "VALTAN_STAGGER_SLOT.FINAL_ATTACK.composition.clip.01",
+            "startMs": 2900,
+            "repeatPolicy": "ONCE"
+          },
+          "anchor": {
+            "slotId": "b_effectroot",
+            "followPolicy": "SNAPSHOT_AT_START",
+            "rotationBasis": "TARGET_YAW",
+            "localTransform": {
+              "translation": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ]
+            }
+          },
+          "stopPolicy": "NATURAL"
         },
         {
           "bindingId": "binding.valtan.project-tuned.stagger-slot.final-attack.wipe",

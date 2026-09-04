@@ -984,7 +984,7 @@ class BossValtanLegacyBindingDryRunTests(unittest.TestCase):
         # legacy first pulse, STAGGER wipe, and the CHANNEL aura, on top of the
         # 86-row portal owner.
         # Every repository row must still be admitted; none may be dropped.
-        self.assertEqual(101, len(canonical["bindings"]))
+        self.assertEqual(102, len(canonical["bindings"]))
         self.assertEqual(len(canonical["bindings"]), len(admitted["bindings"]))
         binding_ids = [row["bindingId"] for row in admitted["bindings"]]
         self.assertEqual(sorted(binding_ids), binding_ids)

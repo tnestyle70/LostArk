@@ -584,7 +584,7 @@ namespace
 				{
 					const DATA_JSON_VALUE* stageId = stage.Find("stageId");
 					const DATA_JSON_VALUE* actionId = stage.Find("actionId");
-					constexpr double PORTAL_TRIANGLE_RADIUS_M = 7.0;
+					constexpr double PORTAL_TRIANGLE_RADIUS_M = 7.5;
 					if (nullptr == stageId || !stageId->Is_String() ||
 						stageId->Get_String() != "ACTIVE" ||
 						nullptr == actionId || !actionId->Is_String() ||

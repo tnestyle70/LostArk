@@ -13198,9 +13198,11 @@ bool LostArk::Server::CGameRoom::Update_ValtanGhostPortalScheduler(
 	const std::uint32_t serverTick)
 {
 	using namespace LostArk::Shared;
-	constexpr std::uint32_t PORTAL_INTERVAL_TICKS =
-		2200u * SERVER_TICK_HZ / 1000u;
-	constexpr float TRIANGLE_CIRCUMRADIUS_M = 7.f;
+	constexpr std::uint32_t PORTAL_OCCURRENCE_INTERVAL_MS = 4900u;
+	constexpr std::uint32_t PORTAL_RUNNER_START_DELAY_MS = 300u;
+	constexpr float TRIANGLE_CIRCUMRADIUS_M = 7.5f;
+	constexpr float TRIANGLE_EDGE_LENGTH_M = 12.9903810568f;
+	constexpr float PORTAL_RUNNER_SPEED_MPS = 9.9926008129f;
 	constexpr float TRIANGLE_START_ANGLE_DEGREES = 30.f;
 	constexpr float TRIANGLE_ANGLE_STEP_DEGREES = 120.f;
 	if (!boss.bGhostPhasePatternLoopActive)
@@ -13215,10 +13217,21 @@ bool LostArk::Server::CGameRoom::Update_ValtanGhostPortalScheduler(
 	}
 	if (0u != boss.iGhostPortalLastSpawnTick &&
 		Elapsed_ServerTicksSkippingReservedZero(
-			boss.iGhostPortalLastSpawnTick, serverTick) < PORTAL_INTERVAL_TICKS)
+			boss.iGhostPortalLastSpawnTick, serverTick) <
+			DurationMillisecondsToServerTicks(PORTAL_OCCURRENCE_INTERVAL_MS))
 	{
 		return true;
 	}
+	const bool runnerStillActive = std::any_of(
+		m_WorldEntities.begin(), m_WorldEntities.end(),
+		[&boss](const SERVER_WORLD_ENTITY& candidate)
+		{
+			return SERVER_DEPENDENT_BOSS_ROLE::PORTAL_RUNNER ==
+					candidate.eDependentBossRole &&
+				candidate.iOwnerBossNetEntityId == boss.iNetEntityId;
+		});
+	if (runnerStillActive)
+		return true;
 	const auto* patterns = catalog.Find_BossPatterns(boss.strEncounterId);
 	if (nullptr == patterns)
 	{
@@ -13243,10 +13256,10 @@ bool LostArk::Server::CGameRoom::Update_ValtanGhostPortalScheduler(
 			1u : boss.iGhostPortalOccurrenceSequence + 1u;
 	if (0u == occurrenceSequence)
 		occurrenceSequence = 1u;
-	/* Validate the authored world-space geometry before opening the combat-object
-	transaction. Like VALTAN_WARP, a portal missile is not a navigation-walking
-	actor: its exact radius-seven vertices and edges may cross missing navigation.
-	All three retain the boss spawn Y and are admitted or rejected atomically. */
+	/* Validate and stage the authored world-space geometry before opening the
+	combat-object transaction. Like VALTAN_WARP, neither the proxy nor its visible
+	runner is a navigation-walking actor: an exact triangle edge may cross missing
+	navigation. All three retain the immutable encounter-anchor Y. */
 	std::array<SERVER_NAV_POINT, 3u> vertices{};
 	for (std::size_t ordinal = 0u; ordinal < vertices.size(); ++ordinal)
 	{
@@ -13272,17 +13285,99 @@ bool LostArk::Server::CGameRoom::Update_ValtanGhostPortalScheduler(
 			vertices[(ordinal + 1u) % vertices.size()];
 		const float routeLength = std::hypot(end.x - start.x, end.z - start.z);
 		if (!std::isfinite(routeLength) ||
-			std::fabs(routeLength - 12.12435565298f) > 0.001f)
+			std::fabs(routeLength - TRIANGLE_EDGE_LENGTH_M) > 0.001f)
 		{
 			m_strStatus = "Valtan ghost portal triangle edge geometry is invalid";
 			return false;
 		}
 	}
+	std::vector<SERVER_WORLD_ENTITY> stagedRunners;
+	stagedRunners.reserve(vertices.size());
+	NET_ENTITY_ID nextId = m_iNextNetEntityId;
+	for (std::size_t ordinal = 0u; ordinal < vertices.size(); ++ordinal)
+	{
+		if (INVALID_NET_ENTITY_ID == nextId)
+		{
+			m_strStatus = "Portal runner entity ID space is exhausted";
+			return false;
+		}
+		const SERVER_NAV_POINT& start = vertices[ordinal];
+		const SERVER_NAV_POINT& end =
+			vertices[(ordinal + 1u) % vertices.size()];
+		const float yawDegrees =
+			std::atan2(end.x - start.x, end.z - start.z) *
+			RADIANS_TO_DEGREES;
+		WORLD_BOOTSTRAP_PLACEMENT placement{};
+		placement.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		placement.strPlacementId = boss.strPlacementId + ".portal-runner." +
+			std::to_string(occurrenceSequence) + "." +
+			std::to_string(ordinal);
+		placement.strArchetypeId = "BOSS_VALTAN_GHOST";
+		placement.strEncounterId = boss.strEncounterId;
+		/* Build at the admitted encounter anchor, then commit the exact edge pose.
+		This prevents generic boss construction from projecting a runner vertex
+		back onto navigation. */
+		placement.fPositionX = boss.fSpawnPositionX;
+		placement.fPositionY = boss.fSpawnPositionY;
+		placement.fPositionZ = boss.fSpawnPositionZ;
+		placement.fYawDegrees = yawDegrees;
+		SERVER_WORLD_ENTITY runner{};
+		if (!Build_WorldEntity(
+			placement, nextId, runner, &catalog, boss.iNetEntityId))
+		{
+			return false;
+		}
+		runner.eDependentBossRole =
+			SERVER_DEPENDENT_BOSS_ROLE::PORTAL_RUNNER;
+		runner.fPositionX = runner.fSpawnPositionX = start.x;
+		runner.fPositionY = runner.fSpawnPositionY = start.y;
+		runner.fPositionZ = runner.fSpawnPositionZ = start.z;
+		runner.fYawDegrees = yawDegrees;
+		runner.eAction = SERVER_ENTITY_ACTION::PATTERN_ACTIVE;
+		runner.strPatternId = portal->strPatternId;
+		runner.strPatternStageId = portal->Stages.front().strStageId;
+		runner.strActionId = portal->Stages.front().strActionId;
+		runner.iActionStartTick = serverTick;
+		runner.iPatternSequence = occurrenceSequence;
+		runner.iPatternStageIndex = 0u;
+		runner.iPatternStageDurationMs = portal->Stages.front().iDurationMs;
+		runner.iPatternStageFirstEvaluationTick = serverTick;
+		runner.PinnedDefinitionRevision = catalog.Get_ActiveRevision();
+		runner.ProductSequencePinnedDefinitionRevision =
+			runner.PinnedDefinitionRevision;
+		runner.bIntroPatternConsumed = true;
+		runner.iPhase = boss.iPhase;
+		runner.bPortalMotionActive = true;
+		runner.bPortalRushTargetLocked = true;
+		runner.iPortalRushRetargetDelayMs =
+			PORTAL_RUNNER_START_DELAY_MS;
+		runner.fPortalRushSpeedMps = PORTAL_RUNNER_SPEED_MPS;
+		runner.fPortalRushDistanceM = TRIANGLE_EDGE_LENGTH_M;
+		runner.fPortalStartX = start.x;
+		runner.fPortalStartZ = start.z;
+		runner.fPortalEndX = end.x;
+		runner.fPortalEndZ = end.z;
+		runner.fPortalLastHitSampleX = start.x;
+		runner.fPortalLastHitSampleZ = start.z;
+		runner.ePatternStageMotionKind =
+			BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH;
+		std::vector<std::uint8_t> payload;
+		if (!Build_WorldEntitySpawnedPayload(runner, payload))
+		{
+			m_strStatus = "Portal runner spawn wire admission failed";
+			return false;
+		}
+		stagedRunners.push_back(std::move(runner));
+		++nextId;
+	}
+	const NET_ENTITY_ID ownerId = boss.iNetEntityId;
 	SERVER_WORLD_ENTITY synthetic = boss;
 	synthetic.strPatternId = portal->strPatternId;
 	synthetic.strPatternStageId = portal->Stages.front().strStageId;
 	synthetic.strActionId = portal->Stages.front().strActionId;
 	synthetic.iPatternSequence = occurrenceSequence;
+	synthetic.iPatternStageIndex = 0u;
+	synthetic.iActionStartTick = serverTick;
 	synthetic.PinnedDefinitionRevision = catalog.Get_ActiveRevision();
 	synthetic.ProductSequencePinnedDefinitionRevision = catalog.Get_ActiveRevision();
 	/* One atomic radial volley owns the three simultaneous edge damage proxies.
@@ -13291,20 +13386,42 @@ bool LostArk::Server::CGameRoom::Update_ValtanGhostPortalScheduler(
 	synthetic.fPositionY = boss.fSpawnPositionY;
 	synthetic.fPositionZ = boss.fSpawnPositionZ;
 	synthetic.fYawDegrees = 0.f;
+	/* Reserve before the central volley is committed. The owner is re-resolved
+	by stable ID after these three preflighted appends, so vector relocation
+	cannot turn one occurrence into a portal-only partial spawn. */
+	m_WorldEntities.reserve(m_WorldEntities.size() + stagedRunners.size());
 	if (!Apply_BossPatternStageActions(
 		synthetic, portal->strPatternId, portal->Stages.front().strActionId,
 		BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, serverTick))
 	{
 		return false;
 	}
-	boss.iGhostPortalOccurrenceSequence = occurrenceSequence;
-	boss.iGhostPortalLastSpawnTick = serverTick;
+	for (SERVER_WORLD_ENTITY& runner : stagedRunners)
+	{
+		m_WorldEntities.push_back(std::move(runner));
+		Broadcast_WorldEntitySpawned(m_WorldEntities.back());
+	}
+	m_iNextNetEntityId = nextId;
+	const auto committedOwner = std::find_if(
+		m_WorldEntities.begin(), m_WorldEntities.end(),
+		[ownerId](const SERVER_WORLD_ENTITY& candidate)
+		{ return candidate.iNetEntityId == ownerId; });
+	if (m_WorldEntities.end() == committedOwner)
+	{
+		m_strStatus = "Portal runner owner disappeared during commit";
+		return false;
+	}
+	committedOwner->iGhostPortalOccurrenceSequence = occurrenceSequence;
+	committedOwner->iGhostPortalLastSpawnTick = serverTick;
 	return true;
 }
 
 bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serverTick)
 {
 	using namespace LostArk::Shared;
+	constexpr std::uint32_t PORTAL_RUNNER_START_DELAY_MS = 300u;
+	constexpr std::uint32_t PORTAL_RUNNER_TRAVEL_MS = 1300u;
+	constexpr std::uint32_t PORTAL_RUNNER_DESPAWN_MS = 1600u;
 	const auto finaleOf = [this](const SERVER_WORLD_ENTITY& owner)
 		-> const BOSS_PATTERN_FINALE*
 	{
@@ -13345,6 +13462,47 @@ bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serv
 			{ return candidate.iNetEntityId == child->iOwnerBossNetEntityId; });
 		const bool ownerLive = owner != m_WorldEntities.end() &&
 			nullptr != finaleOf(*owner) && owner->strEncounterId == child->strEncounterId;
+		if (SERVER_DEPENDENT_BOSS_ROLE::PORTAL_RUNNER ==
+			child->eDependentBossRole)
+		{
+			const std::uint64_t elapsedTicks =
+				Elapsed_ServerTicksSkippingReservedZero(
+					child->iActionStartTick, serverTick);
+			/* Keep the exact 1600 ms endpoint alive for one authoritative snapshot.
+			The Client's portal-route presentation hides the runner at that same
+			visual boundary; the following fixed tick only retires wire identity. */
+			if (ownerLive &&
+				elapsedTicks <=
+					DurationMillisecondsToServerTicks(PORTAL_RUNNER_DESPAWN_MS))
+			{
+				const float elapsedMs = static_cast<float>(elapsedTicks) *
+					1000.f / static_cast<float>(SERVER_TICK_HZ);
+				const float routeRatio = std::clamp(
+					(elapsedMs - static_cast<float>(PORTAL_RUNNER_START_DELAY_MS)) /
+						static_cast<float>(PORTAL_RUNNER_TRAVEL_MS),
+					0.f, 1.f);
+				child->fPositionX = child->fPortalStartX +
+					(child->fPortalEndX - child->fPortalStartX) * routeRatio;
+				child->fPositionY = child->fSpawnPositionY;
+				child->fPositionZ = child->fPortalStartZ +
+					(child->fPortalEndZ - child->fPortalStartZ) * routeRatio;
+				child->fActionElapsedSeconds = elapsedMs / 1000.f;
+				++child;
+				continue;
+			}
+			m_CombatObjectRuntime.Cancel_Source(child->iNetEntityId);
+			if (!Broadcast_CombatObjectLifecycle())
+				return false;
+			Broadcast_WorldEntityDespawned(child->iNetEntityId);
+			child = m_WorldEntities.erase(child);
+			continue;
+		}
+		if (SERVER_DEPENDENT_BOSS_ROLE::AUXILIARY !=
+			child->eDependentBossRole)
+		{
+			m_strStatus = "Dependent boss runtime role is invalid";
+			return false;
+		}
 		const bool finished = child->strPatternId.empty() &&
 			child->iRotationStepIndex >= child->DependentPatternSequence.PatternIds.size();
 		if (ownerLive && child->bMechanicLedgerRequiresReset)
@@ -13371,6 +13529,33 @@ bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serv
 		Broadcast_WorldEntityDespawned(child->iNetEntityId);
 		child = m_WorldEntities.erase(child);
 	}
+	/* Portal occurrences append three runners, so schedule them only from this
+	iterator-free seam. Re-resolve the owner by stable ID after every call because
+	the scheduler reserves and may relocate the world-entity vector. */
+	std::vector<NET_ENTITY_ID> portalOwnerIds;
+	for (const SERVER_WORLD_ENTITY& candidate : m_WorldEntities)
+	{
+		if (candidate.bGhostPhasePatternLoopActive &&
+			INVALID_NET_ENTITY_ID == candidate.iOwnerBossNetEntityId)
+		{
+			portalOwnerIds.push_back(candidate.iNetEntityId);
+		}
+	}
+	for (const NET_ENTITY_ID ownerId : portalOwnerIds)
+	{
+		auto owner = std::find_if(
+			m_WorldEntities.begin(), m_WorldEntities.end(),
+			[ownerId](const SERVER_WORLD_ENTITY& candidate)
+			{ return candidate.iNetEntityId == ownerId; });
+		if (m_WorldEntities.end() == owner)
+			continue;
+		const CGameplayCatalog* catalog = Resolve_ValtanGameplayCatalog(*owner);
+		if (nullptr == catalog ||
+			!Update_ValtanGhostPortalScheduler(*owner, *catalog, serverTick))
+		{
+			return false;
+		}
+	}
 	std::vector<SERVER_WORLD_ENTITY> stagedGhosts;
 	NET_ENTITY_ID nextId = m_iNextNetEntityId;
 	for (SERVER_WORLD_ENTITY& owner : m_WorldEntities)
@@ -13386,7 +13571,11 @@ bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serv
 		}
 		const auto activeCount = std::count_if(m_WorldEntities.begin(), m_WorldEntities.end(),
 			[&owner](const SERVER_WORLD_ENTITY& child)
-			{ return child.iOwnerBossNetEntityId == owner.iNetEntityId; });
+			{
+				return SERVER_DEPENDENT_BOSS_ROLE::AUXILIARY ==
+						child.eDependentBossRole &&
+					child.iOwnerBossNetEntityId == owner.iNetEntityId;
+			});
 		if (activeCount >= finale->iMaximumActiveGhosts)
 			continue;
 		if (INVALID_NET_ENTITY_ID == nextId)
@@ -13480,6 +13669,7 @@ bool LostArk::Server::CGameRoom::Update_DependentBosses(const std::uint32_t serv
 		SERVER_WORLD_ENTITY child{};
 		if (!Build_WorldEntity(placement, nextId, child, catalog, owner.iNetEntityId))
 			return false;
+		child.eDependentBossRole = SERVER_DEPENDENT_BOSS_ROLE::AUXILIARY;
 		/* Build_WorldEntity projects static placements to a cell centre. This
 		candidate already passed exact live clearance; retain that admitted pose. */
 		child.fPositionX = child.fSpawnPositionX = spawn.x;
@@ -13547,6 +13737,13 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			/* The clip carries its own entrance and exit; the room only clocks
 			the strike so the sweep below despawns it the moment it ends. */
 			entity.fActionElapsedSeconds += fixedDeltaSeconds;
+			continue;
+		}
+		if (SERVER_DEPENDENT_BOSS_ROLE::PORTAL_RUNNER ==
+			entity.eDependentBossRole)
+		{
+			/* The dependent scheduler owns this actor's exact world transform and
+			lifetime. It never enters target selection, navigation or boss combat. */
 			continue;
 		}
 		if (entity.eKind == WORLD_BOOTSTRAP_KIND::NPC)
@@ -14071,13 +14268,6 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				{
 					entity.iRotationStepIndex = 0u;
 				}
-			}
-			if (!Update_ValtanGhostPortalScheduler(
-				entity, *occurrenceCatalog, updateTick))
-			{
-				releaseBossAttachments(entity);
-				Mark_RuntimeFailure("world-update.ghost-portal-scheduler");
-				return;
 			}
 			if (!previousPatternId.empty() &&
 				previousPatternId != entity.strPatternId)

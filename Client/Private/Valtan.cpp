@@ -70,6 +70,9 @@ namespace
 	constexpr f32_t NETWORK_PLAYBACK_DRIFT_GAIN = 4.f;
 	constexpr f32_t NETWORK_TELEPORT_DISTANCE_SQ = 100.f;
 	constexpr f32_t NETWORK_TURN_DEGREES_PER_SECOND = 720.f;
+	constexpr f32_t VALTAN_GHOST_PORTAL_RUSH_START_SECONDS = 0.3f;
+	constexpr f32_t VALTAN_GHOST_PORTAL_RUSH_END_SECONDS = 1.6f;
+	constexpr f32_t VALTAN_GHOST_PORTAL_BODY_TERMINAL_HIDE_MS = 1600.f;
 	constexpr f32_t VALTAN_TARGET_FOLLOW_ROOT_YAW_OFFSET_DEGREES = 180.f;
 	constexpr const char_t* ROOT_MOTION_BONE = "b_root";
 	constexpr int32_t ROOT_MOTION_VERTICAL_AXIS = 2;
@@ -355,7 +358,10 @@ HRESULT CValtan::Initialize(void* pArg)
 	if (nullptr == actor || actor->clientPresentationId != "boss.valtan.client.v1" ||
 		(desc.isServerAuthoritative &&
 			(("BOSS_VALTAN_GHOST" == desc.strArchetypeId) !=
-			 (LostArk::Shared::INVALID_NET_ENTITY_ID != desc.iOwnerBossNetEntityId))))
+			 (LostArk::Shared::INVALID_NET_ENTITY_ID != desc.iOwnerBossNetEntityId))) ||
+		(desc.bStartReplicationDormant &&
+			(!desc.isServerAuthoritative ||
+			 "BOSS_VALTAN_GHOST" != desc.strArchetypeId)))
 	{
 		return E_INVALIDARG;
 	}
@@ -372,6 +378,7 @@ HRESULT CValtan::Initialize(void* pArg)
 	m_fMoveSpeed = desc.fSpeedPerSec;
 	m_iPrototypeLevelIndex = desc.iPrototypeLevelIndex;
 	m_isServerAuthoritative = desc.isServerAuthoritative;
+	m_isReplicationDormant = desc.bStartReplicationDormant;
 	m_strArchetypeId = desc.strArchetypeId;
 	m_strPresentationPartArchetypeId = desc.strArchetypeId;
 	m_iOwnerBossNetEntityId = desc.iOwnerBossNetEntityId;
@@ -404,6 +411,8 @@ HRESULT CValtan::Initialize(void* pArg)
 
 	if (FAILED(Ready_PartObjects()))
 		return E_FAIL;
+	if (m_isReplicationDormant && nullptr != m_pBodyModelCom)
+		m_pBodyModelCom->Set_AnimPaused(true);
 	std::string PatternPresentationStatus;
 	if (!m_isServerAuthoritative &&
 		!Reload_PatternPresentationAuthoring(PatternPresentationStatus))
@@ -1245,6 +1254,105 @@ bool_t CValtan::Apply_LocalPatternPresentationSample(
 			m_pDevice, m_pContext);
 	}
 	m_isPatternBodyHidden = bPatternBodyHidden;
+	return true;
+}
+
+bool_t CValtan::Copy_AdmittedPatternPresentationFrom(
+	const CValtan& Source,
+	const LostArk::Shared::GameplayDataRevision& ExpectedServerRevision,
+	const Client::VALTAN_PRESENTATION_GENERATION_RECEIPT& ExpectedReceipt,
+	std::string& strOutStatus)
+{
+	strOutStatus.clear();
+	if (!m_isServerAuthoritative || !m_isReplicationDormant ||
+		"BOSS_VALTAN_GHOST" != m_strArchetypeId ||
+		LostArk::Shared::INVALID_NET_ENTITY_ID == m_iOwnerBossNetEntityId ||
+		!Source.m_isServerAuthoritative || Source.m_isReplicationDormant ||
+		"BOSS_VALTAN" != Source.m_strArchetypeId ||
+		LostArk::Shared::INVALID_NET_ENTITY_ID !=
+			Source.m_iOwnerBossNetEntityId ||
+		nullptr == m_pBodyModelCom || !ExpectedServerRevision.Is_Valid() ||
+		!ExpectedReceipt.Is_Valid() ||
+		ExpectedReceipt.ServerGameplayRevision != ExpectedServerRevision ||
+		Source.m_PresentationGenerationReceipt != ExpectedReceipt)
+	{
+		strOutStatus =
+			"Ghost pool copy requires one dormant dependent and the exact-admitted live primary generation.";
+		return false;
+	}
+
+	/* The two rigs consume the same encounter authoring, but animation and bone
+	compatibility still belongs to the concrete destination model.  Validate it
+	before copying any cache so a mismatched ghost donor leaves this slot wholly
+	dormant and unadmitted. */
+	for (const auto& [actionId, clips] : Source.m_PatternClipByActionId)
+	{
+		(void)actionId;
+		if (clips.empty())
+			continue;
+		std::vector<Client::ACTION_PRESENTATION_CLIP_TIMING> Timings;
+		if (!Build_PatternTimeline(
+				m_pBodyModelCom,
+				std::span<const Client::BOSS_PATTERN_ANIMATION_CLIP>(
+					clips.data(), clips.size()),
+				Timings))
+		{
+			strOutStatus =
+				"Ghost pool animation donor is incompatible with an admitted primary pattern binding.";
+			return false;
+		}
+	}
+	for (const auto& [actionId, cues] : Source.m_PatternEffectCuesByActionId)
+	{
+		(void)actionId;
+		for (const Client::VALTAN_PATTERN_EFFECT_CUE& Cue : cues)
+		{
+			if ("root" == Cue.strAnchorSlotId ||
+				Is_ArenaCenterCueAnchor(Cue.strAnchorSlotId) ||
+				Is_PatternTargetSnapshotCueAnchor(Cue.strAnchorSlotId))
+			{
+				continue;
+			}
+			if (!m_pBodyModelCom->Has_Bone(Cue.strAnchorSlotId.c_str()))
+			{
+				strOutStatus =
+					"Ghost pool animation donor is missing an admitted Effect cue bone anchor: " +
+					Cue.strAnchorSlotId + ".";
+				return false;
+			}
+		}
+	}
+
+	auto StagedBindings = Source.m_PatternClipByActionId;
+	auto StagedBodyVisibility = Source.m_PatternBodyVisibilityByActionId;
+	auto StagedEffectCues = Source.m_PatternEffectCuesByActionId;
+	auto StagedArenaCenters = Source.m_PatternArenaCenterAnchors;
+	auto StagedSoundCues = Source.m_PatternSoundCuesByActionId;
+	auto StagedSoundReceipt = Source.m_PatternSoundSourceReceipt;
+	auto StagedCombatObjectSoundCues = Source.m_CombatObjectSoundCuesBySource;
+	auto StagedShakeCues = Source.m_PatternShakeCuesByActionId;
+#ifdef _DEBUG
+	auto StagedHitAreas = Source.m_PatternHitAreaByActionId;
+#endif
+
+	m_PatternClipByActionId = std::move(StagedBindings);
+	m_PatternBodyVisibilityByActionId = std::move(StagedBodyVisibility);
+	m_PatternEffectCuesByActionId = std::move(StagedEffectCues);
+	m_PatternArenaCenterAnchors = std::move(StagedArenaCenters);
+	m_PatternSoundCuesByActionId = std::move(StagedSoundCues);
+	m_PatternSoundSourceReceipt = std::move(StagedSoundReceipt);
+	m_CombatObjectSoundCuesBySource =
+		std::move(StagedCombatObjectSoundCues);
+	m_PatternShakeCuesByActionId = std::move(StagedShakeCues);
+	m_PresentationGenerationReceipt = ExpectedReceipt;
+#ifdef _DEBUG
+	m_PatternHitAreaByActionId = std::move(StagedHitAreas);
+	m_isPatternHitAreaDebugLoadAttempted =
+		Source.m_isPatternHitAreaDebugLoadAttempted;
+#endif
+	Reset_ReplicatedOccurrenceState();
+	strOutStatus =
+		"Copied the exact-admitted primary joined presentation into one dormant ghost pool slot.";
 	return true;
 }
 
@@ -2840,7 +2948,8 @@ bool_t CValtan::Apply_CombatObjectPresentationEvent(
 {
 	using namespace LostArk::Shared;
 	outStatus.clear();
-	if (!m_isServerAuthoritative || 0u == event.iEventSequence ||
+	if (!m_isServerAuthoritative || m_isReplicationDormant ||
+		0u == event.iEventSequence ||
 		COMBAT_OBJECT_PRESENTATION_EVENT_KIND::HIT_PULSE != event.eKind)
 	{
 		outStatus = "Combat-object presentation event is invalid for this boss.";
@@ -3187,11 +3296,15 @@ void CValtan::Spawn_DuePatternShakeCues(const f32_t fActionAgeSeconds)
 
 void CValtan::Priority_Update(f32_t fTimeDelta)
 {
+	if (m_isReplicationDormant)
+		return;
 	__super::Priority_Update(fTimeDelta);
 }
 
 void CValtan::Trigger_HitFlash()
 {
+	if (m_isReplicationDormant)
+		return;
 	m_fHitFlashRemainingSeconds = HIT_FLASH_DURATION_SECONDS;
 	m_HitFlash.isEnabled = true;
 	m_HitFlash.vColor = float4_t(1.f, 1.f, 1.f, 1.f);
@@ -3199,8 +3312,79 @@ void CValtan::Trigger_HitFlash()
 	m_HitFlash.usesSurfaceDetailMask = true;
 }
 
+void CValtan::Update_PatternBodyVisibilityAtAge(
+	const std::string& actionId,
+	const f32_t actionAgeSeconds,
+	const bool_t bGhostPortalRushStage)
+{
+	m_isPatternBodyHidden = false;
+	if (!std::isfinite(actionAgeSeconds) || actionAgeSeconds < 0.f)
+		return;
+	const f32_t fActionAgeMs = actionAgeSeconds * 1000.f;
+	const auto BodyVisibility =
+		m_PatternBodyVisibilityByActionId.find(actionId);
+	if (m_PatternBodyVisibilityByActionId.end() != BodyVisibility)
+	{
+		m_isPatternBodyHidden =
+			fActionAgeMs >= static_cast<f32_t>(
+				BodyVisibility->second.iHiddenFromMs) &&
+			fActionAgeMs < static_cast<f32_t>(
+				BodyVisibility->second.iHiddenToMs);
+	}
+	if (bGhostPortalRushStage &&
+		fActionAgeMs >= VALTAN_GHOST_PORTAL_BODY_TERMINAL_HIDE_MS)
+	{
+		m_isPatternBodyHidden = true;
+	}
+}
+
+void CValtan::Update_GhostPortalRoutePresentation(const f32_t fTimeDelta)
+{
+	if (!m_bGhostPortalRoutePresentationActive ||
+		!m_PortalRushRoute.isValid || nullptr == m_pTransformCom ||
+		!std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
+	{
+		return;
+	}
+	m_fGhostPortalRoutePresentationAgeSeconds = (std::min)(
+		VALTAN_GHOST_PORTAL_RUSH_END_SECONDS,
+		m_fGhostPortalRoutePresentationAgeSeconds + fTimeDelta);
+	const f32_t fRushRatio = std::clamp(
+		(m_fGhostPortalRoutePresentationAgeSeconds -
+			VALTAN_GHOST_PORTAL_RUSH_START_SECONDS) /
+			(VALTAN_GHOST_PORTAL_RUSH_END_SECONDS -
+				VALTAN_GHOST_PORTAL_RUSH_START_SECONDS),
+		0.f, 1.f);
+	const vector_t vStart = XMVectorSet(
+		m_PortalRushRoute.fStartX,
+		m_PortalRushRoute.fStartY,
+		m_PortalRushRoute.fStartZ,
+		1.f);
+	const vector_t vEnd = XMVectorSet(
+		m_PortalRushRoute.fEndX,
+		m_PortalRushRoute.fEndY,
+		m_PortalRushRoute.fEndZ,
+		1.f);
+	m_pTransformCom->Set_State(
+		STATE::POSITION,
+		XMVectorSetW(XMVectorLerp(vStart, vEnd, fRushRatio), 1.f));
+	m_fPresentationYawDegrees = m_fServerPatternCurrentYawDegrees;
+	m_pTransformCom->Rotation(0.f, m_fPresentationYawDegrees, 0.f);
+	if (nullptr != m_pColliderCom)
+	{
+		m_pColliderCom->Update(XMMatrixTranslationFromVector(
+			m_pTransformCom->Get_State(STATE::POSITION)));
+	}
+	Update_PatternBodyVisibilityAtAge(
+		m_strServerActionId,
+		m_fGhostPortalRoutePresentationAgeSeconds,
+		true);
+}
+
 void CValtan::Update(f32_t fTimeDelta)
 {
+	if (m_isReplicationDormant)
+		return;
 	if (m_fHitFlashRemainingSeconds > 0.f)
 	{
 		m_fHitFlashRemainingSeconds -= fTimeDelta;
@@ -3219,6 +3403,8 @@ void CValtan::Update(f32_t fTimeDelta)
 	{
 		if (m_DeathPresentationClock.Has_Started())
 			m_DeathPresentationClock.Advance(fTimeDelta);
+		else if (m_bGhostPortalRoutePresentationActive)
+			Update_GhostPortalRoutePresentation(fTimeDelta);
 		else
 			Update_NetworkTransform(fTimeDelta);
 		__super::Update(fTimeDelta);
@@ -3301,6 +3487,8 @@ void CValtan::Update(f32_t fTimeDelta)
 
 void CValtan::Late_Update(f32_t fTimeDelta)
 {
+	if (m_isReplicationDormant)
+		return;
 	/* Container Update still advances the body animation and every Effect clock.
 	Only render submission is suppressed for the authoritative relocation edge;
 	clearing the snapshot flag therefore restores the same presentation group. */
@@ -3330,7 +3518,8 @@ HRESULT CValtan::Render()
 
 bool_t CValtan::Try_Get_PresentationRootMatrix(float4x4_t* pOut) const
 {
-	if (nullptr == pOut || nullptr == m_pBodyVisualRootCom ||
+	if (m_isReplicationDormant || nullptr == pOut ||
+		nullptr == m_pBodyVisualRootCom ||
 		nullptr == m_pTransformCom)
 	{
 		return false;
@@ -3346,7 +3535,8 @@ bool_t CValtan::Try_Get_PresentationRootMatrix(float4x4_t* pOut) const
 bool_t CValtan::Try_Get_PortalRushAnchorMatrices(
 	float4x4_t* pStartOut, float4x4_t* pEndOut) const
 {
-	if (nullptr == pStartOut || nullptr == pEndOut ||
+	if (m_isReplicationDormant || nullptr == pStartOut ||
+		nullptr == pEndOut ||
 		!m_PortalRushRoute.isValid)
 	{
 		return false;
@@ -3894,7 +4084,8 @@ void CValtan::Set_ArmorPartVisible(
 bool_t CValtan::Apply_BossCombatState(
 	const LostArk::Shared::BOSS_COMBAT_SNAPSHOT& state)
 {
-	if (!m_isServerAuthoritative || !Is_ValidBossCombatState(state))
+	if (!m_isServerAuthoritative || m_isReplicationDormant ||
+		!Is_ValidBossCombatState(state))
 		return false;
 	const bool_t isGhostHidden = LostArk::Shared::Has_BossCombatFlag(
 		state.iFlags,
@@ -3957,7 +4148,7 @@ bool_t CValtan::Apply_BossCombatState(
 
 bool_t CValtan::Apply_BrokenArmorMask(const uint8_t iBrokenArmorMask)
 {
-	if (!m_isServerAuthoritative)
+	if (!m_isServerAuthoritative || m_isReplicationDormant)
 		return false;
 	if (iBrokenArmorMask == m_iBrokenArmorMask)
 		return true;
@@ -3994,7 +4185,8 @@ void CValtan::Refresh_ArmorPartVisibility()
 bool_t CValtan::Apply_BossCombatEvent(
 	const LostArk::Shared::BOSS_COMBAT_EVENT& event)
 {
-	if (!m_isServerAuthoritative || 0u == event.iEventSequence ||
+	if (!m_isServerAuthoritative || m_isReplicationDormant ||
+		0u == event.iEventSequence ||
 		0u == event.iEventTick || 0u == event.iPartMask ||
 		LostArk::Shared::BOSS_COMBAT_EVENT_KIND::PART_BROKEN != event.eKind)
 	{
@@ -4147,9 +4339,136 @@ void CValtan::Update_RaidBgm(
 	}
 }
 
+void CValtan::Reset_ReplicatedOccurrenceState()
+{
+	m_iState = 0u;
+	m_PathFollower.Cancel();
+	m_hasLastPathGoal = false;
+	m_fRepathTime = 0.f;
+	m_vLastPathGoal = {};
+	m_BossCombatState = {};
+	m_hasBossCombatState = false;
+	m_isGhostPresentationHidden = false;
+	m_isPatternBodyHidden = false;
+	m_bHoldSpawnBodyHiddenUntilPatternSnapshot = false;
+	m_bGhostPortalRoutePresentationActive = false;
+	m_fGhostPortalRoutePresentationAgeSeconds = 0.f;
+	m_iBrokenArmorMask = 0u;
+	m_iLastBossCombatEventSequence = 0u;
+	m_fHitFlashRemainingSeconds = 0.f;
+	m_HitFlash = {};
+	m_iNetworkSampleCount = 0u;
+	for (NETWORK_TRANSFORM_SAMPLE& Sample : m_NetworkSamples)
+		Sample = {};
+	m_fPlaybackServerTick = 0.f;
+	m_fPresentationYawDegrees = 0.f;
+	m_hasNetworkTransformState = false;
+	m_strServerPatternId.clear();
+	m_strServerActionId.clear();
+	m_iLastServerTick = 0u;
+	m_iServerActionStartTick = 0u;
+	m_iServerPatternSequence = 0u;
+	m_iServerPatternStageIndex = 0u;
+	m_fServerActionAgeSeconds = 0.f;
+	m_fServerPatternFacingYawDegrees = 0.f;
+	m_fServerPatternCurrentYawDegrees = 0.f;
+	m_iServerPatternTargetNetEntityId =
+		LostArk::Shared::INVALID_NET_ENTITY_ID;
+	m_iServerPatternTargetPoseSequence = 0u;
+	m_vServerPatternTargetSnapshotPosition = {};
+	m_fServerPatternTargetSnapshotYawDegrees = 0.f;
+	m_bHasServerPatternTargetSnapshotPose = false;
+	m_bServerPatternTargetIdentityStable = false;
+	m_PortalRushRoute = {};
+	m_iPatternPresentationClipOccurrenceIndex =
+		(std::numeric_limits<std::size_t>::max)();
+	m_AttemptedPatternEffectOccurrenceKeys.clear();
+	m_bPatternEffectCueScanAgeValid = false;
+	m_fPatternEffectCueScanAgeSeconds = 0.f;
+	m_AttemptedPatternSoundOccurrenceKeys.clear();
+	m_bPatternSoundCueScanAgeValid = false;
+	m_fPatternSoundCueScanAgeSeconds = 0.f;
+	m_AttemptedPatternShakeOccurrenceKeys.clear();
+	m_bPatternShakeCueScanAgeValid = false;
+	m_fPatternShakeCueScanAgeSeconds = 0.f;
+	m_iLastCombatObjectPresentationEventSequence = 0u;
+	m_iDeathAnimationIndex = (std::numeric_limits<uint32_t>::max)();
+#ifdef _DEBUG
+	m_strPreviewHitActionId.clear();
+	m_fPreviewHitAgeSeconds = 0.f;
+#endif
+	Refresh_ArmorPartVisibility();
+}
+
+bool_t CValtan::Activate_ReplicatedPoolOccurrence(
+	const float3_t& position, const f32_t yawDegrees,
+	const bool_t bHoldBodyHiddenUntilPatternSnapshot)
+{
+	if (!m_isServerAuthoritative || !m_isReplicationDormant ||
+		"BOSS_VALTAN_GHOST" != m_strArchetypeId ||
+		LostArk::Shared::INVALID_NET_ENTITY_ID == m_iOwnerBossNetEntityId ||
+		m_DeathPresentationClock.Has_Started() || nullptr == m_pTransformCom ||
+		!std::isfinite(position.x) || !std::isfinite(position.y) ||
+		!std::isfinite(position.z) || !std::isfinite(yawDegrees))
+	{
+		return false;
+	}
+
+	Reset_ReplicatedOccurrenceState();
+	m_bHoldSpawnBodyHiddenUntilPatternSnapshot =
+		bHoldBodyHiddenUntilPatternSnapshot;
+	m_isPatternBodyHidden = bHoldBodyHiddenUntilPatternSnapshot;
+	m_pTransformCom->Set_State(
+		STATE::POSITION,
+		XMVectorSet(position.x, position.y, position.z, 1.f));
+	m_pTransformCom->Rotation(0.f, yawDegrees, 0.f);
+	m_fPresentationYawDegrees = yawDegrees;
+	if (nullptr != m_pColliderCom)
+	{
+		m_pColliderCom->Update(XMMatrixTranslationFromVector(
+			m_pTransformCom->Get_State(STATE::POSITION)));
+	}
+	if (nullptr != m_pBodyModelCom)
+	{
+		m_pBodyModelCom->Set_AnimationSpeed(1.f);
+		m_pBodyModelCom->Set_AnimPaused(false);
+	}
+	m_isReplicationDormant = false;
+	Client::CEffectV2Runtime::Set_Ignored(
+		Client::EFFECT_V2_TARGET::From_Valtan(
+			static_pointer_cast<CValtan>(shared_from_this())),
+		false);
+	return true;
+}
+
+bool_t CValtan::Return_ToReplicatedPool()
+{
+	if (!m_isServerAuthoritative || m_isReplicationDormant ||
+		"BOSS_VALTAN_GHOST" != m_strArchetypeId ||
+		LostArk::Shared::INVALID_NET_ENTITY_ID == m_iOwnerBossNetEntityId ||
+		m_DeathPresentationClock.Has_Started())
+	{
+		return false;
+	}
+
+	m_isReplicationDormant = true;
+	const auto Owner = static_pointer_cast<CValtan>(shared_from_this());
+	Detach_PatternTargetFollowEffectRoots();
+	CEffectPresentationService::Stop_BossOwner(Owner);
+	Client::CEffectV2Runtime::Set_Ignored(
+		Client::EFFECT_V2_TARGET::From_Valtan(Owner), true);
+	Reset_ReplicatedOccurrenceState();
+	if (nullptr != m_pBodyModelCom)
+	{
+		m_pBodyModelCom->Set_AnimationSpeed(1.f);
+		m_pBodyModelCom->Set_AnimPaused(true);
+	}
+	return true;
+}
+
 bool_t CValtan::Begin_NetworkDeathPresentation()
 {
-	if (!m_isServerAuthoritative)
+	if (!m_isServerAuthoritative || m_isReplicationDormant)
 		return false;
 	if (m_DeathPresentationClock.Has_Started())
 		return !Is_NetworkDeathPresentationComplete();
@@ -4229,7 +4548,8 @@ bool_t CValtan::Apply_NetworkState(
 	const PATTERN_TARGET_SNAPSHOT_POSE& PatternTargetPose,
 	const LostArk::Shared::PORTAL_RUSH_ROUTE_SNAPSHOT& PortalRushRoute)
 {
-	if (!m_isServerAuthoritative || nullptr == m_pTransformCom ||
+	if (!m_isServerAuthoritative || m_isReplicationDormant ||
+		nullptr == m_pTransformCom ||
 		!std::isfinite(position.x) || !std::isfinite(position.y) ||
 		!std::isfinite(position.z) || !std::isfinite(yawDegrees))
 	{
@@ -4269,9 +4589,17 @@ bool_t CValtan::Apply_NetworkState(
 		isPatternState && "VALTAN_WARP" == patternId &&
 		iPatternStageIndex >= 1u && iPatternStageIndex <= 8u &&
 		actionId.starts_with("valtan.sequence.warp.step-");
+	const bool_t bGhostPortalRushStage =
+		isPatternState && "BOSS_VALTAN_GHOST" == m_strArchetypeId &&
+		LostArk::Shared::INVALID_NET_ENTITY_ID != m_iOwnerBossNetEntityId &&
+		0u == iPatternStageIndex &&
+		"VALTAN_GHOST_PORTAL_ONCE" == patternId &&
+		"valtan.ghost.portal-once.active" == actionId;
+	const bool_t bPortalRushStage =
+		bWarpPortalRushStage || bGhostPortalRushStage;
 	const float portalDeltaX = PortalRushRoute.fEndX - PortalRushRoute.fStartX;
 	const float portalDeltaZ = PortalRushRoute.fEndZ - PortalRushRoute.fStartZ;
-	if (bWarpPortalRushStage != PortalRushRoute.isValid ||
+	if (bPortalRushStage != PortalRushRoute.isValid ||
 		(PortalRushRoute.isValid &&
 		 (!std::isfinite(PortalRushRoute.fStartX) ||
 		  !std::isfinite(PortalRushRoute.fStartY) ||
@@ -4353,7 +4681,7 @@ bool_t CValtan::Apply_NetworkState(
 		 iPatternSequence != m_iServerPatternSequence ||
 		 iPatternStageIndex != m_iServerPatternStageIndex ||
 		 iActionStartTick != m_iServerActionStartTick);
-	if (!patternEdgeChanged && bWarpPortalRushStage &&
+	if (!patternEdgeChanged && bPortalRushStage &&
 		m_PortalRushRoute.isValid && m_PortalRushRoute != PortalRushRoute)
 	{
 		return false;
@@ -4436,6 +4764,10 @@ bool_t CValtan::Apply_NetworkState(
 		m_iLastServerTick = iServerTick;
 	if (isPatternState)
 	{
+		/* Validation above has admitted the exact pattern/action/route tuple.
+		The spawn-only conservative hide can now hand ownership to the authored
+		bodyVisibility interval without ever exposing an idle frame. */
+		m_bHoldSpawnBodyHiddenUntilPatternSnapshot = false;
 		if (iPatternSequence != m_iServerPatternSequence)
 			m_fServerPatternFacingYawDegrees = yawDegrees;
 		m_fServerPatternCurrentYawDegrees = yawDegrees;
@@ -4445,18 +4777,36 @@ bool_t CValtan::Apply_NetworkState(
 		m_iServerPatternStageIndex = iPatternStageIndex;
 		m_fServerActionAgeSeconds = fActionAgeSeconds;
 		m_PortalRushRoute = PortalRushRoute;
-		m_isPatternBodyHidden = false;
-		const auto BodyVisibility =
-			m_PatternBodyVisibilityByActionId.find(m_strServerActionId);
-		if (m_PatternBodyVisibilityByActionId.end() != BodyVisibility)
+		if (bGhostPortalRushStage)
 		{
-			const f32_t fActionAgeMs = fActionAgeSeconds * 1000.f;
-			m_isPatternBodyHidden =
-				fActionAgeMs >= static_cast<f32_t>(
-					BodyVisibility->second.iHiddenFromMs) &&
-				fActionAgeMs < static_cast<f32_t>(
-					BodyVisibility->second.iHiddenToMs);
+			const f32_t fAdmittedRouteAge = (std::min)(
+				VALTAN_GHOST_PORTAL_RUSH_END_SECONDS,
+				fActionAgeSeconds);
+			if (!m_bGhostPortalRoutePresentationActive ||
+				patternEdgeChanged)
+			{
+				m_fGhostPortalRoutePresentationAgeSeconds =
+					fAdmittedRouteAge;
+			}
+			else
+			{
+				m_fGhostPortalRoutePresentationAgeSeconds = (std::max)(
+					m_fGhostPortalRoutePresentationAgeSeconds,
+					fAdmittedRouteAge);
+			}
+			m_bGhostPortalRoutePresentationActive = true;
 		}
+		else
+		{
+			m_bGhostPortalRoutePresentationActive = false;
+			m_fGhostPortalRoutePresentationAgeSeconds = 0.f;
+		}
+		Update_PatternBodyVisibilityAtAge(
+			m_strServerActionId,
+			bGhostPortalRushStage ?
+				m_fGhostPortalRoutePresentationAgeSeconds :
+				fActionAgeSeconds,
+			bGhostPortalRushStage);
 		const bool_t bIncomingTargetPoseFinite =
 			PatternTargetPose.bHasFinitePose &&
 			PatternTargetPose.iNetEntityId !=
@@ -4505,7 +4855,10 @@ bool_t CValtan::Apply_NetworkState(
 	}
 	else
 	{
-		m_isPatternBodyHidden = false;
+		if (!m_bHoldSpawnBodyHiddenUntilPatternSnapshot)
+			m_isPatternBodyHidden = false;
+		m_bGhostPortalRoutePresentationActive = false;
+		m_fGhostPortalRoutePresentationAgeSeconds = 0.f;
 		m_iServerActionStartTick = 0u;
 		m_iServerPatternStageIndex = 0u;
 		m_fServerActionAgeSeconds = 0.f;

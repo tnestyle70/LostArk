@@ -205,7 +205,7 @@ class ValtanPhase3PrimaryGhostLoopContractTests(unittest.TestCase):
         )
         layout = event["layout"]
         self.assertEqual("RADIAL_AROUND_BOSS", layout["kind"])
-        self.assertAlmostEqual(7.0, layout["radiusM"], places=12)
+        self.assertAlmostEqual(7.5, layout["radiusM"], places=12)
         self.assertEqual(30.0, layout["startAngleDegrees"])
         self.assertEqual(120.0, layout["angleStepDegrees"])
 
@@ -221,12 +221,12 @@ class ValtanPhase3PrimaryGhostLoopContractTests(unittest.TestCase):
         )
         self.assertEqual("LINEAR", charge["movement"]["kind"])
         self.assertAlmostEqual(
-            7.0 * math.sqrt(3.0) / 1.3,
+            7.5 * math.sqrt(3.0) / 1.3,
             charge["movement"]["speedMps"],
             places=9,
         )
         self.assertAlmostEqual(
-            7.0 * math.sqrt(3.0),
+            7.5 * math.sqrt(3.0),
             charge["movement"]["maximumDistanceM"],
             places=9,
         )
@@ -250,7 +250,7 @@ class ValtanPhase3PrimaryGhostLoopContractTests(unittest.TestCase):
             delta_x = end[0] - start[0]
             delta_z = end[1] - start[1]
             self.assertAlmostEqual(
-                7.0 * math.sqrt(3.0),
+                7.5 * math.sqrt(3.0),
                 math.hypot(delta_x, delta_z),
                 places=9,
             )
@@ -270,9 +270,26 @@ class ValtanPhase3PrimaryGhostLoopContractTests(unittest.TestCase):
             == "valtan.independent-effect.ghost-portal-once"
         )
         self.assertEqual(
-            "망령 포탈 동시 돌진 / 외접반지름 7m 정삼각형",
+            "망령 포탈 동시 돌진 / 외접반지름 7.5m 정삼각형",
             independent["displayName"],
         )
+
+        presentation = next(
+            row
+            for row in load_json(PRESENTATION_PATH)["patterns"]
+            if row["patternId"] == "VALTAN_GHOST_PORTAL_ONCE"
+        )
+        active = presentation["stages"][0]
+        self.assertEqual(
+            {"hiddenFromMs": 0, "hiddenToMs": 300},
+            active["bodyVisibility"],
+        )
+        self.assertEqual(1, len(active["effectCues"]))
+        self.assertEqual(
+            "effect.valtan.project-tuned.sequence.warp.portal",
+            active["effectCues"][0]["effectAssetId"],
+        )
+        self.assertEqual("snapshot", active["effectCues"][0]["followPolicy"])
 
     def test_primary_valtan_reuses_portal_effect_mapping(self) -> None:
         bosses = {
@@ -345,10 +362,15 @@ class ValtanPhase3PrimaryGhostLoopContractTests(unittest.TestCase):
         self.assertIn("boss.bGhostPhasePatternLoopActive = true", room)
         self.assertIn("entity.iRotationStepIndex = 0u", room)
         self.assertIn("Update_ValtanGhostPortalScheduler", room)
-        self.assertIn("2200u * SERVER_TICK_HZ / 1000u", room)
+        self.assertIn("PORTAL_OCCURRENCE_INTERVAL_MS = 4900u", room)
+        self.assertIn("TRIANGLE_CIRCUMRADIUS_M = 7.5f", room)
+        self.assertIn("TRIANGLE_EDGE_LENGTH_M = 12.9903810568f", room)
+        self.assertIn("PORTAL_RUNNER_SPEED_MPS = 9.9926008129f", room)
         self.assertIn("synthetic.fPositionX = boss.fSpawnPositionX", room)
         self.assertIn("synthetic.fPositionZ = boss.fSpawnPositionZ", room)
         self.assertIn("owner.bGhostPhasePatternLoopActive", room)
+        self.assertIn("SERVER_DEPENDENT_BOSS_ROLE::PORTAL_RUNNER", room)
+        self.assertIn("SERVER_DEPENDENT_BOSS_ROLE::AUXILIARY", room)
         self.assertIn(
             "BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NEXT_RADIAL_SLOT", runtime
         )
@@ -400,15 +422,42 @@ class ValtanPhase3PrimaryGhostLoopContractTests(unittest.TestCase):
         self.assertIn("bool bGhostRepositionPending = false;", world_entity)
         self.assertIn("std::uint32_t iGhostReappearTick = 0u;", world_entity)
 
-    def test_portal_triangle_is_atomically_navigation_admitted(self) -> None:
+    def test_portal_triangle_is_atomically_staged_without_navigation(self) -> None:
         room = GAME_ROOM_PATH.read_text(encoding="utf-8")
+        scheduler = room.split(
+            "bool LostArk::Server::CGameRoom::Update_ValtanGhostPortalScheduler(",
+            1,
+        )[1].split(
+            "bool LostArk::Server::CGameRoom::Update_DependentBosses(",
+            1,
+        )[0]
 
         self.assertNotIn("phaseThreePortalTriangleMayStartOffNavigation", room)
-        self.assertIn("std::array<SERVER_NAV_POINT, 3u> vertices", room)
-        self.assertIn("Is_PointWalkableExact(x, z)", room)
-        self.assertIn("Sample_Position(x, z, resolved)", room)
-        self.assertIn("Has_LineOfSight(start.x, start.z, end.x, end.z)", room)
-        self.assertIn("synthetic.fYawDegrees = 0.f", room)
+        self.assertIn("std::array<SERVER_NAV_POINT, 3u> vertices", scheduler)
+        self.assertNotIn("Is_PointWalkableExact", scheduler)
+        self.assertNotIn("Sample_Position", scheduler)
+        self.assertNotIn("Has_LineOfSight", scheduler)
+        self.assertIn("runner.fPositionX = runner.fSpawnPositionX = start.x", scheduler)
+        self.assertIn("BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH", scheduler)
+        self.assertIn("synthetic.fYawDegrees = 0.f", scheduler)
+
+        dependent_runtime = room.split(
+            "bool LostArk::Server::CGameRoom::Update_DependentBosses(",
+            1,
+        )[1].split("void LostArk::Server::CGameRoom::Update_WorldEntities(", 1)[0]
+        self.assertIn("elapsedTicks <=", dependent_runtime)
+        self.assertIn(
+            "DurationMillisecondsToServerTicks(PORTAL_RUNNER_DESPAWN_MS)",
+            dependent_runtime,
+        )
+
+        server_contract = (
+            REPOSITORY_ROOT / "Server/Private/ServerGameplayContractTests.cpp"
+        ).read_text(encoding="utf-8")
+        self.assertIn("runnersReachExactEndpoint", server_contract)
+        self.assertIn("Update_DependentBosses(2148u)", server_contract)
+        self.assertIn("runnersDespawnAfterEndpointSnapshot", server_contract)
+        self.assertIn("Update_DependentBosses(2149u)", server_contract)
 
 
 if __name__ == "__main__":

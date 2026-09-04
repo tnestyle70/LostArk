@@ -19,7 +19,7 @@ GAMEPLAY = ROOT / "Data/Valtan/Valtan.gameplay.json"
 PRESENTATION = ROOT / "Data/Valtan/Valtan.presentation.json"
 CUE_PREFIX = "cue.valtan.phase2."
 REQUESTED_CUE_PREFIX = "cue.valtan.requested.20260827."
-GHOST_PORTAL_CIRCUMRADIUS_M = 7.0
+GHOST_PORTAL_CIRCUMRADIUS_M = 7.5
 GHOST_PORTAL_EDGE_LENGTH_M = GHOST_PORTAL_CIRCUMRADIUS_M * math.sqrt(3.0)
 WARP_PORTAL_DISTANCE_M = 16.0
 WARP_PORTAL_TRAVEL_MS = 1300
@@ -2553,7 +2553,32 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
                     "repeatUntilStageEnd": True,
                 }],
             },
-            "effectCues": [],
+            "bodyVisibility": {
+                "hiddenFromMs": 0,
+                "hiddenToMs": 300,
+            },
+            "effectCues": [{
+                "cueId": "cue.valtan.ghost.portal-once.dash-floor",
+                "scalePolicy": {"kind": "OWNER_RELATIVE"},
+                "occurrenceId":
+                    "cue.valtan.ghost.portal-once.dash-floor.occurrence.01",
+                "effectAssetId":
+                    "effect.valtan.project-tuned.sequence.warp.portal",
+                "clipOccurrenceId":
+                    "valtan.ghost.portal-once.active.clip-01",
+                "sourceStartMs": 0,
+                "sourceEndMs": None,
+                "anchorSlotId": "root",
+                "followPolicy": "snapshot",
+                "stopPolicy": "natural",
+                "repeatPolicy": "once",
+                "localTransform": {
+                    "position": [0.0, 0.0, 0.0],
+                    "rotationDegrees": [0.0, 0.0, 0.0],
+                    "scale": [1.0, 1.0, 1.0],
+                },
+                "mappingBasis": "PROJECT_AUTHORED",
+            }],
             "cameraInvocations": [],
         }],
     }
@@ -2583,7 +2608,7 @@ def author_runtime_completion(gameplay: dict[str, Any], presentation: dict[str, 
     ]
     presentation["independentEffects"].append({
         "independentEffectId": independent_id,
-        "displayName": "망령 포탈 동시 돌진 / 외접반지름 7m 정삼각형",
+        "displayName": "망령 포탈 동시 돌진 / 외접반지름 7.5m 정삼각형",
         "ownership": "SERVER_COMBAT_OBJECT",
         "spawnEventId": "event.valtan.ghost.portal-once.volley",
     })

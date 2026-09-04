@@ -86,6 +86,13 @@ namespace LostArk::Server
 		DEAD
 	};
 
+	enum class SERVER_DEPENDENT_BOSS_ROLE : std::uint8_t
+	{
+		NONE,
+		AUXILIARY,
+		PORTAL_RUNNER
+	};
+
 	enum class SERVER_BOSS_PATTERN_TERMINAL_RESULT : std::uint8_t
 	{
 		NONE,
@@ -130,6 +137,11 @@ namespace LostArk::Server
 		identity or damage target set. This relation outlives a pattern cycle. */
 		LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		/* Server-only lifecycle routing. Auxiliary ghosts run one normal authored
+		attack through the dependent brain; portal runners only present and
+		interpolate one nav-independent triangle edge. */
+		SERVER_DEPENDENT_BOSS_ROLE eDependentBossRole =
+			SERVER_DEPENDENT_BOSS_ROLE::NONE;
 		BOSS_PATTERN_SEQUENCE_DEFINITION DependentPatternSequence;
 		/* Phase-three keeps the primary Valtan entity as the sole HP, damage,
 		HUD, and reward authority. The finale-authored list becomes its ordered
