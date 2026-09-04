@@ -226,19 +226,31 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             "Composition must not turn its default size into a hard bound",
         )
         for token in (
-            "COMPOSITION_RESOURCES_DEFAULT_HEIGHT_SCALE = 2.f",
-            "COMPOSITION_SEQUENCER_DEFAULT_HEIGHT_SCALE = 2.f",
             "COMPOSITION_LEFT_COLUMN_WIDTH_RATIO = 0.18f",
             "COMPOSITION_RIGHT_COLUMN_WIDTH_RATIO = 0.20f",
-            "TIMELINE_ROW_HEIGHT = 48.f",
-            "TIMELINE_BLOCK_VERTICAL_PADDING = 6.f",
-            "TIMELINE_CANVAS_MINIMUM_HEIGHT = 420.f",
-            "leftBottomHeight * COMPOSITION_RESOURCES_DEFAULT_HEIGHT_SCALE",
-            "sequencerHeight * COMPOSITION_SEQUENCER_DEFAULT_HEIGHT_SCALE",
+            "TIMELINE_ROW_HEIGHT = 24.f",
+            "TIMELINE_BLOCK_VERTICAL_PADDING = 2.f",
             '"Composition Resources###CompositionResourcesWindowResizableV2"',
             '"Composition Sequencer###CompositionSequencerWindowResizableV3"',
         ):
             self.assertIn(token, self.composition_cpp)
+        for removed_fixed_height in (
+            "COMPOSITION_RESOURCES_DEFAULT_HEIGHT_SCALE",
+            "COMPOSITION_SEQUENCER_DEFAULT_HEIGHT_SCALE",
+            "TIMELINE_CANVAS_MINIMUM_HEIGHT",
+            "TIMELINE_ROW_HEIGHT = 48.f",
+            "TIMELINE_BLOCK_VERTICAL_PADDING = 6.f",
+        ):
+            self.assertNotIn(removed_fixed_height, self.composition_cpp)
+        default_layout = function_body(
+            self.composition_cpp,
+            "COMPOSITION_DEFAULT_LAYOUT BuildCompositionDefaultLayout(",
+        )
+        for unscaled_owner_size in (
+            "layout.ResourcesSize = ImVec2(leftWidth, leftBottomHeight)",
+            "layout.SequencerSize = ImVec2(centerWidth, sequencerHeight)",
+        ):
+            self.assertIn(unscaled_owner_size, default_layout)
         column_ratios = re.search(
             r"COMPOSITION_LEFT_COLUMN_WIDTH_RATIO\s*=\s*([0-9.]+)f;"
             r"[\s\S]*?COMPOSITION_RIGHT_COLUMN_WIDTH_RATIO\s*=\s*([0-9.]+)f;",
@@ -272,6 +284,175 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
             '"##KakulActionDetail"',
         ):
             self.assertIn(token, kakul)
+
+    def test_sequencer_uses_compact_dynamic_rows_and_explicit_fit_maximize(
+        self,
+    ) -> None:
+        timeline = function_body(
+            self.composition_cpp,
+            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+        )
+        self.assertRegex(
+            timeline,
+            r'ImGui::SliderFloat\(\s*"Zoom \(px/sec\)",\s*'
+            r"&m_fTimelinePixelsPerSecond,\s*40\.f,\s*1200\.f,",
+        )
+        self.assertIn(
+            "m_fTimelinePixelsPerSecond, 40.f, 1200.f", timeline
+        )
+        fit_duration = timeline[
+            timeline.index("const uint32_t iFitDurationMs") :
+            timeline.index("const float fFitClockWidth")
+        ]
+        self.assertIn("m_iTimelineDurationMs", fit_duration)
+        self.assertIn("MAX_TIMELINE_RENDER_DURATION_MS", fit_duration)
+        fit_width = timeline[
+            timeline.index("const float fFitClockWidth") :
+            timeline.index("ImGui::SetNextItemWidth(220.f)")
+        ]
+        for fit_inset in (
+            "TIMELINE_LANE_LABEL_WIDTH",
+            "TIMELINE_LABEL_MAXIMUM_WIDTH_PX",
+            "ImGui::GetStyle().ScrollbarSize",
+            "ImGui::GetStyle().ChildBorderSize * 2.f",
+        ):
+            self.assertIn(fit_inset, fit_width)
+
+        fit_at = timeline.index('ImGui::Button("Fit Timeline")')
+        maximize_at = timeline.index(
+            'm_bTimelineMaximized ? "Restore Timeline" : "Maximize Timeline"'
+        )
+        self.assertLess(fit_at, maximize_at)
+        fit_gate = timeline[timeline.rfind("ImGui::BeginDisabled", 0, fit_at) : fit_at]
+        self.assertIn("0u == m_iTimelineDurationMs", fit_gate)
+        fit_action = timeline[fit_at:maximize_at]
+        self.assertIn("fFitClockWidth * 1000.f", fit_action)
+        self.assertIn("static_cast<float>(iFitDurationMs)", fit_action)
+        self.assertIn("40.f, 1200.f", fit_action)
+        self.assertIn("Pack_TimelineSubrows()", fit_action)
+
+        desired_at = timeline.index("const float fDesiredCanvasHeight")
+        child_at = timeline.index("ImGui::BeginChild", desired_at)
+        dynamic_height = timeline[desired_at:child_at]
+        for token in (
+            "TIMELINE_ROW_HEIGHT",
+            "1.f + static_cast<float>(std::accumulate(",
+            "m_TimelineLaneSubrowCounts.begin()",
+            "m_TimelineLaneSubrowCounts.end()",
+            "ImGui::GetStyle().ItemSpacing.y",
+            "static_cast<float>(m_TimelineLaneSubrowCounts.size())",
+            "ImGui::GetStyle().ScrollbarSize",
+            "(std::min)(fDesiredCanvasHeight, ImGui::GetContentRegionAvail().y)",
+        ):
+            self.assertIn(token, dynamic_height)
+        self.assertNotIn("420", dynamic_height)
+        clock_width = timeline[
+            timeline.index("const float fClockCanvasWidth") : desired_at
+        ]
+        self.assertIn("const float fClockCanvasWidth = (std::max)(\n\t\t1.f,", clock_width)
+        self.assertNotIn("520.f", clock_width)
+        self.assertIn(
+            '"##ActionCompositionTimelineCanvas", ImVec2(0.f, fAvailableHeight)',
+            timeline[child_at : timeline.index("ImGui::EndChild()", child_at)],
+        )
+
+        box_at = timeline.index("const ImVec2 BlockMin(")
+        hover_at = timeline.index("const bool_t bBlockHovered", box_at)
+        self.assertIn(
+            "const bool_t bLaneRowHovered = ImGui::IsItemHovered();",
+            timeline[:box_at],
+        )
+        hit_geometry = timeline[box_at:hover_at]
+        for visual_box in (
+            "fSubrowY + TIMELINE_BLOCK_VERTICAL_PADDING",
+            "fSubrowY + TIMELINE_ROW_HEIGHT -",
+            "TIMELINE_BLOCK_VERTICAL_PADDING",
+        ):
+            self.assertIn(visual_box, hit_geometry)
+        for full_row_hit in (
+            "const ImVec2 HitMin(fStartX, fSubrowY)",
+            "const ImVec2 HitMax(",
+            "fSubrowY + TIMELINE_ROW_HEIGHT",
+        ):
+            self.assertIn(full_row_hit, hit_geometry)
+        hover = timeline[hover_at : timeline.index("const auto ItemStage", hover_at)]
+        self.assertIn("bLaneRowHovered", hover)
+        self.assertIn(
+            "ImGui::IsMouseHoveringRect(HitMin, HitMax, true)", hover
+        )
+        self.assertNotIn("BlockMin, BlockMax, true", hover)
+        self.assertLess(
+            hover_at,
+            timeline.index(
+                "if (bBlockHovered && ImGui::IsMouseClicked", hover_at
+            ),
+        )
+
+        for removed_explanation in (
+            "One Server Pattern clock.",
+            "LIVE: Animation + V1/V2 Effect",
+            "Effect timing and Sound timing remain unsaved",
+        ):
+            self.assertNotIn(removed_explanation, timeline)
+
+        self.assertIn(
+            "bool_t m_bTimelineMaximized = false;", self.composition_h
+        )
+        for removed_rect_state in (
+            "m_bTimelineRestoreWindowRectRequested",
+            "m_bTimelineWindowRectCaptured",
+            "m_vTimelineWindowPosition",
+            "m_vTimelineWindowSize",
+        ):
+            self.assertNotIn(removed_rect_state, self.composition_h)
+        sequencer_window = function_body(
+            self.composition_cpp,
+            "void Client::CActionCompositionWorkbench::Render_SequencerWindow(",
+        )
+        for maximize_contract in (
+            '"Composition Timeline###CompositionTimelineMaximizedOverlay"',
+            "ImGuiWindowFlags_NoDocking",
+            "ImGuiWindowFlags_NoSavedSettings",
+            "pViewport->WorkPos.x + pViewport->WorkSize.x * 0.02f",
+            "pViewport->WorkPos.y + pViewport->WorkSize.y * 0.02f",
+            "pViewport->WorkSize.x * 0.96f",
+            "pViewport->WorkSize.y * 0.96f",
+            "ImGui::SetNextWindowCollapsed(false, ImGuiCond_Always)",
+            "ImGui::SetNextWindowPos(Layout.SequencerPos, Condition)",
+            "ImGui::SetNextWindowSize(Layout.SequencerSize, Condition)",
+            "bool_t bMaximizedOverlayOpen = true",
+            "m_bTimelineMaximized ?",
+            "&bMaximizedOverlayOpen : &m_bSequencerWindowVisible",
+            "ImGui::Begin(\n\t\tpWindowTitle, pWindowOpen, WindowFlags)",
+            "if (m_bTimelineMaximized && !bMaximizedOverlayOpen)",
+            "m_bTimelineMaximized = false",
+        ):
+            self.assertIn(maximize_contract, sequencer_window)
+        for forbidden_normal_rect_mutation in (
+            "ImGui::GetWindowPos()",
+            "ImGui::GetWindowSize()",
+            "m_bTimelineRestoreWindowRectRequested",
+        ):
+            self.assertNotIn(
+                forbidden_normal_rect_mutation, sequencer_window
+            )
+        render = function_body(
+            self.composition_cpp,
+            "void Client::CActionCompositionWorkbench::Render()",
+        )
+        self.assertLess(
+            render.index("Render_SequencerWindow("),
+            render.index("if (!m_bTimelineMaximized)"),
+        )
+        sibling_gate = function_body(render, "if (!m_bTimelineMaximized)")
+        for sibling in (
+            "Render_BossPatternWindow(",
+            "Render_PatternsWindow(",
+            "Render_PreviewWindow(",
+            "Render_DetailsWindow(",
+            "Render_ResourcesWindow(",
+        ):
+            self.assertIn(sibling, sibling_gate)
 
     def test_valtan_workbench_has_stable_three_plus_one_pane_shell(self) -> None:
         for token in (

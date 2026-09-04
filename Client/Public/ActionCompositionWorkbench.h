@@ -511,6 +511,7 @@ private:
 	int32_t m_iRequestedPatternTab = -1;
 	bool_t m_bPreviewWindowVisible = true;
 	bool_t m_bSequencerWindowVisible = true;
+	bool_t m_bTimelineMaximized = false;
 	bool_t m_bDetailsWindowVisible = true;
 	bool_t m_bResourcesWindowVisible = true;
 	bool_t m_bSessionWindowVisible = false;

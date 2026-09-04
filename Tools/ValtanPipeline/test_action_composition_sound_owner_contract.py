@@ -309,9 +309,12 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
             "Remove Selected Sound Row",
             "Sequencer Save joins only dirty Pattern, Sound, and Effect V2 owners",
             "Camera stays in its typed read-only/deep-link boundary",
-            "Effect timing and Sound timing remain unsaved until Save",
         ):
             self.assertIn(token, self.workbench_cpp)
+        self.assertNotIn(
+            "Effect timing and Sound timing remain unsaved until Save",
+            self.workbench_cpp,
+        )
 
         sound_owner = re.search(
             r'OwnerButton\("Sound",\s*DETAIL_OWNER::SOUND,([\s\S]*?)\);',

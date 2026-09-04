@@ -228,11 +228,26 @@ void Client::CSequencerTool::Render_SourceDocumentHeader()
 		}
 		ImGui::EndCombo();
 	}
-	ImGui::SameLine();
-	if (ImGui::SmallButton("Reload Sources##UnifiedComposition"))
-		Reload_SourceDocuments();
 	Synchronize_SourceDocumentsWithCanonicalGeneration();
 
+	if (!m_bSourceDocumentsParsed)
+	{
+		ImGui::TextDisabled(
+			"Source descriptor unavailable; last-good owner view preserved. See Advanced Source Inspector.");
+		return;
+	}
+}
+
+void Client::CSequencerTool::Render_AdvancedSourceInspector()
+{
+	if (!ImGui::CollapsingHeader(
+			"Advanced Source Inspector##UnifiedCompositionAdvanced"))
+	{
+		return;
+	}
+
+	if (ImGui::SmallButton("Reload Sources##UnifiedComposition"))
+		Reload_SourceDocuments();
 	if (!m_strSourceDocumentStatus.empty())
 		ImGui::TextWrapped("%s", m_strSourceDocumentStatus.c_str());
 	if (!m_bSourceDocumentsParsed)
@@ -241,6 +256,7 @@ void Client::CSequencerTool::Render_SourceDocumentHeader()
 			"The legacy owner view remains unchanged; an invalid source descriptor cannot replace it.");
 		return;
 	}
+
 	ImGui::Text("Boss %s | %s | descriptor revision %u | %zu Patterns",
 		m_BossComposition.Get_CompositionId().c_str(),
 		CBossCompositionDocument::Status_ToString(
@@ -273,6 +289,10 @@ void Client::CSequencerTool::Render_SourceDocumentHeader()
 		}
 		ImGui::TreePop();
 	}
+
+	ImGui::SeparatorText("Boss Composition Projection");
+	Render_SourcePatternSummary();
+	Render_ArenaSequencerSummary();
 }
 
 void Client::CSequencerTool::Render_SourcePatternSummary()
@@ -420,7 +440,7 @@ void Client::CSequencerTool::Render()
 {
 	if (!m_bOpen)
 		return;
-	ImGui::SetNextWindowSize(ImVec2(1100.f, 520.f), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(960.f, 460.f), ImGuiCond_FirstUseEver);
 	if (!ImGui::Begin("Sequencer###LostArkSequencerV0", &m_bOpen))
 	{
 		ImGui::End();
@@ -430,14 +450,16 @@ void Client::CSequencerTool::Render()
 	ImGui::Separator();
 	if (SOURCE_BOSS::KAKUL_SAYDON == m_eSourceBoss)
 	{
-		Render_SourcePatternSummary();
-		Render_ArenaSequencerSummary();
+		ImGui::TextDisabled(
+			"Pattern: no Product Pattern index; source profiles remain available in Advanced Source Inspector.");
+		Render_AdvancedSourceInspector();
 		ImGui::End();
 		return;
 	}
 	if (nullptr == m_pWorkbench)
 	{
 		ImGui::TextUnformatted("Action Composition Workbench is unavailable.");
+		Render_AdvancedSourceInspector();
 		ImGui::End();
 		return;
 	}
@@ -449,6 +471,7 @@ void Client::CSequencerTool::Render()
 	{
 		ImGui::TextWrapped("Composition session is unavailable: %s",
 			SessionStatus.c_str());
+		Render_AdvancedSourceInspector();
 		ImGui::End();
 		return;
 	}
@@ -484,12 +507,14 @@ void Client::CSequencerTool::Render()
 	if (strPatternId.empty())
 	{
 		ImGui::TextDisabled("Choose a Pattern to lay out its lanes.");
+		Render_AdvancedSourceInspector();
 		ImGui::End();
 		return;
 	}
 	if (!m_pWorkbench->Ensure_SelectedTimeline(SessionStatus))
 	{
 		ImGui::TextWrapped("%s", SessionStatus.c_str());
+		Render_AdvancedSourceInspector();
 		ImGui::End();
 		return;
 	}
@@ -499,18 +524,14 @@ void Client::CSequencerTool::Render()
 	if (Items.empty())
 	{
 		ImGui::TextDisabled("The selected Pattern has no timeline items.");
+		Render_AdvancedSourceInspector();
 		ImGui::End();
 		return;
 	}
 	Render_Transport(iDurationMs);
 	Render_Lanes(Items, iDurationMs);
 	Render_Selection(Items);
-	if (ImGui::CollapsingHeader(
-		"Boss Composition Source Projection##UnifiedCompositionPattern"))
-	{
-		Render_SourcePatternSummary();
-	}
-	Render_ArenaSequencerSummary();
+	Render_AdvancedSourceInspector();
 	ImGui::End();
 }
 
@@ -666,12 +687,21 @@ void Client::CSequencerTool::Render_Selection(
 		return;
 	}
 	ImGui::SeparatorText("Selected");
-	ImGui::Text("%s | %s", Lane_Label(Found->eLane), Found->strLabel.c_str());
-	ImGui::Text("Stage %s | id %s", Found->strStageId.c_str(),
-		Found->strStableId.c_str());
+	ImGui::Text("%s | %s | %u .. %u ms (%u ms)",
+		Lane_Label(Found->eLane), Found->strLabel.c_str(), Found->iStartMs,
+		Found->iEndMs, Found->iEndMs >= Found->iStartMs ?
+			Found->iEndMs - Found->iStartMs : 0u);
 	if (!Found->strAssetId.empty())
-		ImGui::Text("Asset %s", Found->strAssetId.c_str());
-	ImGui::Text("%u .. %u ms (%u ms)", Found->iStartMs, Found->iEndMs,
-		Found->iEndMs >= Found->iStartMs ? Found->iEndMs - Found->iStartMs : 0u);
-	ImGui::Text("%s", Found->bEditable ? "editable in Composition" : "read-only");
+	{
+		ImGui::TextWrapped("Stage %s | id %s | asset %s | %s",
+			Found->strStageId.c_str(), Found->strStableId.c_str(),
+			Found->strAssetId.c_str(), Found->bEditable ?
+				"editable in Composition" : "read-only");
+	}
+	else
+	{
+		ImGui::TextWrapped("Stage %s | id %s | %s",
+			Found->strStageId.c_str(), Found->strStableId.c_str(),
+			Found->bEditable ? "editable in Composition" : "read-only");
+	}
 }

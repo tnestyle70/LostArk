@@ -130,6 +130,65 @@ class NativeCompositionFacadeContractTests(unittest.TestCase):
         ):
             self.assertIn(token, self.sequencer_cpp)
 
+    def test_source_details_live_only_in_the_collapsed_advanced_inspector(
+        self,
+    ) -> None:
+        self.assertIn(
+            "void Render_AdvancedSourceInspector();", self.sequencer_h
+        )
+        header = body(
+            self.sequencer_cpp,
+            "void Client::CSequencerTool::Render_SourceDocumentHeader()",
+        )
+        advanced = body(
+            self.sequencer_cpp,
+            "void Client::CSequencerTool::Render_AdvancedSourceInspector()",
+        )
+        render = body(
+            self.sequencer_cpp,
+            "void Client::CSequencerTool::Render()",
+        )
+
+        self.assertIn(
+            '"Advanced Source Inspector##UnifiedCompositionAdvanced"',
+            advanced,
+        )
+        collapsed_at = advanced.index("ImGui::CollapsingHeader(")
+        early_return_at = advanced.index("return;", collapsed_at)
+        reload_at = advanced.index(
+            'ImGui::SmallButton("Reload Sources##UnifiedComposition")'
+        )
+        self.assertLess(collapsed_at, early_return_at)
+        self.assertLess(early_return_at, reload_at)
+        for advanced_only in (
+            'ImGui::TextWrapped("%s", m_strSourceDocumentStatus.c_str())',
+            "descriptor revision",
+            'ImGui::TreeNode("Source References##UnifiedComposition")',
+            'ImGui::SeparatorText("Boss Composition Projection")',
+            "Render_SourcePatternSummary();",
+            "Render_ArenaSequencerSummary();",
+        ):
+            self.assertIn(advanced_only, advanced)
+            self.assertNotIn(advanced_only, header)
+
+        self.assertIn(
+            "Source descriptor unavailable; last-good owner view preserved. "
+            "See Advanced Source Inspector.",
+            header,
+        )
+        self.assertIn(
+            "ImGui::SetNextWindowSize(ImVec2(960.f, 460.f), "
+            "ImGuiCond_FirstUseEver)",
+            render,
+        )
+        self.assertNotIn("Render_SourcePatternSummary();", render)
+        self.assertNotIn("Render_ArenaSequencerSummary();", render)
+        self.assertEqual(
+            7,
+            render.count("Render_AdvancedSourceInspector();"),
+            "every normal and early-return surface must keep the inspector reachable",
+        )
+
     def test_kakul_profiles_deep_link_to_the_single_animation_writer(self) -> None:
         for token in (
             "Consume_KakulAnimationOpenRequest",

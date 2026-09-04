@@ -30,13 +30,11 @@
 namespace
 {
 	constexpr float TIMELINE_LANE_LABEL_WIDTH = 112.f;
-	/* The timeline is a direct-manipulation authoring surface.  A 24 px lane
-	   left the actual boxes (18 px after padding) too small to select and drag,
-	   even when the outer Sequencer window was enlarged.  Keep the requested
-	   2x geometry in the row and its hit rectangle, not only in window layout. */
-	constexpr float TIMELINE_ROW_HEIGHT = 48.f;
-	constexpr float TIMELINE_BLOCK_VERTICAL_PADDING = 6.f;
-	constexpr float TIMELINE_CANVAS_MINIMUM_HEIGHT = 420.f;
+	/* The visual box stays compact while hit-testing uses the complete subrow.
+	   This keeps dense authoring readable without making a 20 px box the only
+	   place from which a designer can select or begin a body drag. */
+	constexpr float TIMELINE_ROW_HEIGHT = 24.f;
+	constexpr float TIMELINE_BLOCK_VERTICAL_PADDING = 2.f;
 	constexpr float TIMELINE_POINT_MINIMUM_WIDTH_PX = 4.f;
 	/* Pattern Sound is authored through this timeline.  Treating its point
 	   occurrence as a four-pixel tick made the cross-owner row effectively
@@ -48,8 +46,6 @@ namespace
 	constexpr float EFFECT_V2_GROUP_MINIMUM_WIDTH_PX = 240.f;
 	constexpr float TIMELINE_LABEL_MAXIMUM_WIDTH_PX = 360.f;
 	constexpr double CANONICAL_RELOAD_RETRY_SECONDS = 0.25;
-	constexpr float COMPOSITION_RESOURCES_DEFAULT_HEIGHT_SCALE = 2.f;
-	constexpr float COMPOSITION_SEQUENCER_DEFAULT_HEIGHT_SCALE = 2.f;
 	constexpr float COMPOSITION_LEFT_COLUMN_WIDTH_RATIO = 0.18f;
 	constexpr float COMPOSITION_RIGHT_COLUMN_WIDTH_RATIO = 0.20f;
 	constexpr std::array<const char_t*, 4u>
@@ -111,21 +107,14 @@ namespace
 		COMPOSITION_DEFAULT_LAYOUT layout;
 		layout.PatternsPos = ImVec2(leftX, topY);
 		layout.PatternsSize = ImVec2(leftWidth, leftTopHeight);
-		const float resourcesHeight = (std::min)(
-			contentHeight,
-			leftBottomHeight * COMPOSITION_RESOURCES_DEFAULT_HEIGHT_SCALE);
 		layout.ResourcesPos = ImVec2(
-			leftX, topY + (std::max)(0.f, contentHeight - resourcesHeight));
-		layout.ResourcesSize = ImVec2(leftWidth, resourcesHeight);
+			leftX, topY + leftTopHeight + gap);
+		layout.ResourcesSize = ImVec2(leftWidth, leftBottomHeight);
 		layout.PreviewPos = ImVec2(centerX, topY);
 		layout.PreviewSize = ImVec2(centerWidth, centerTopHeight);
-		const float expandedSequencerHeight = (std::min)(
-			contentHeight,
-			sequencerHeight * COMPOSITION_SEQUENCER_DEFAULT_HEIGHT_SCALE);
 		layout.SequencerPos = ImVec2(
-			centerX,
-			topY + (std::max)(0.f, contentHeight - expandedSequencerHeight));
-		layout.SequencerSize = ImVec2(centerWidth, expandedSequencerHeight);
+			centerX, topY + centerTopHeight + gap);
+		layout.SequencerSize = ImVec2(centerWidth, sequencerHeight);
 		layout.SessionPos = ImVec2(
 			centerX, layout.SequencerPos.y + sequencerHeight + gap);
 		layout.SessionSize = ImVec2(centerWidth, sessionHeight);
@@ -9998,12 +9987,6 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 		ImGui::SameLine();
 		ImGui::TextWrapped("%s", m_strPatternSaveStatus.c_str());
 	}
-	ImGui::TextDisabled(
-		"One Server Pattern clock. Drag an Effect/Sound body to move its exact occurrence; Effect right trim is available only for once + cue_end. Stage/Animation right trims keep their existing typed clocks.");
-	ImGui::TextDisabled(
-		"LIVE: Animation + V1/V2 Effect + collider mirror on the Arena Clone. Logic/Stage are clock rows; Sound/Camera/World remain inspection-only during local seek.");
-	ImGui::TextDisabled(
-		"Effect timing and Sound timing remain unsaved until Save; Camera/World are inspection only.");
 	CAnimation_Tool::COMPOSITION_PREVIEW_STATE Preview;
 	if (nullptr != m_pAnimationTool)
 	{
@@ -10079,14 +10062,45 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 	}
 	ImGui::SameLine();
 	ImGui::TextDisabled("%s", PreviewPathLabel(m_ePreviewPath));
+	const uint32_t iFitDurationMs = (std::min)(
+		m_iTimelineDurationMs, MAX_TIMELINE_RENDER_DURATION_MS);
+	const float fFitClockWidth = (std::max)(
+		1.f, ImGui::GetContentRegionAvail().x -
+			TIMELINE_LANE_LABEL_WIDTH - TIMELINE_LABEL_MAXIMUM_WIDTH_PX -
+			ImGui::GetStyle().ScrollbarSize -
+			ImGui::GetStyle().ChildBorderSize * 2.f);
 	ImGui::SetNextItemWidth(220.f);
 	if (ImGui::SliderFloat(
 			"Zoom (px/sec)", &m_fTimelinePixelsPerSecond,
-			40.f, 500.f, "%.0f", ImGuiSliderFlags_Logarithmic))
+			40.f, 1200.f, "%.0f", ImGuiSliderFlags_Logarithmic))
 	{
 		m_fTimelinePixelsPerSecond = (std::clamp)(
-			m_fTimelinePixelsPerSecond, 40.f, 500.f);
+			m_fTimelinePixelsPerSecond, 40.f, 1200.f);
 		Pack_TimelineSubrows();
+	}
+	ImGui::SameLine();
+	ImGui::BeginDisabled(0u == m_iTimelineDurationMs);
+	if (ImGui::Button("Fit Timeline") && 0u < iFitDurationMs)
+	{
+		m_fTimelinePixelsPerSecond = (std::clamp)(
+			fFitClockWidth * 1000.f /
+				static_cast<float>(iFitDurationMs),
+			40.f, 1200.f);
+		Pack_TimelineSubrows();
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	if (ImGui::Button(
+		m_bTimelineMaximized ? "Restore Timeline" : "Maximize Timeline"))
+	{
+		if (m_bTimelineMaximized)
+		{
+			m_bTimelineMaximized = false;
+		}
+		else
+		{
+			m_bTimelineMaximized = true;
+		}
 	}
 	if (nullptr == pPattern)
 	{
@@ -10336,15 +10350,22 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 			iRenderDurationMs, m_iTimelineDurationMs);
 	}
 	const float fClockCanvasWidth = (std::max)(
-		520.f,
+		1.f,
 		static_cast<float>((std::max)(iRenderDurationMs, 1u)) *
 			m_fTimelinePixelsPerSecond * 0.001f);
 	/* Keep a point occurrence at the end of the Stage fully clickable without
 	   changing its authored clock or extending the ruler's semantic duration. */
 	const float fCanvasWidth = fClockCanvasWidth +
 		TIMELINE_LABEL_MAXIMUM_WIDTH_PX;
+	const float fDesiredCanvasHeight = TIMELINE_ROW_HEIGHT *
+		(1.f + static_cast<float>(std::accumulate(
+			m_TimelineLaneSubrowCounts.begin(),
+			m_TimelineLaneSubrowCounts.end(), std::size_t{ 0u }))) +
+		ImGui::GetStyle().ItemSpacing.y *
+			static_cast<float>(m_TimelineLaneSubrowCounts.size()) +
+		ImGui::GetStyle().ScrollbarSize;
 	const float fAvailableHeight = (std::max)(
-		TIMELINE_CANVAS_MINIMUM_HEIGHT, ImGui::GetContentRegionAvail().y);
+		1.f, (std::min)(fDesiredCanvasHeight, ImGui::GetContentRegionAvail().y));
 	if (!ImGui::BeginChild(
 			"##ActionCompositionTimelineCanvas", ImVec2(0.f, fAvailableHeight),
 			ImGuiChildFlags_Borders,
@@ -10506,6 +10527,7 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 		ImGui::PushID(static_cast<int32_t>(eLane));
 		ImGui::InvisibleButton(
 			"##TimelineLaneRow", ImVec2(fCanvasWidth, fLaneHeight));
+		const bool_t bLaneRowHovered = ImGui::IsItemHovered();
 		const ImVec2 RowMin = ImGui::GetItemRectMin();
 		const ImVec2 RowMax = ImGui::GetItemRectMax();
 		pDrawList->AddRectFilled(RowMin, RowMax,
@@ -10546,6 +10568,10 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 			(std::min)(fEndX, RowMax.x),
 			fSubrowY + TIMELINE_ROW_HEIGHT -
 				TIMELINE_BLOCK_VERTICAL_PADDING);
+		const ImVec2 HitMin(fStartX, fSubrowY);
+		const ImVec2 HitMax(
+			(std::min)(fEndX, RowMax.x),
+			fSubrowY + TIMELINE_ROW_HEIGHT);
 		pDrawList->AddRectFilled(
 			BlockMin, BlockMax, Lane_Color(Item.eLane), 3.f);
 		const bool_t bSelectedBlock =
@@ -10569,8 +10595,8 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 			ImVec2(BlockMin.x + 4.f, fBlockTextY),
 			IM_COL32(247, 247, 249, 255), Item.strLabel.c_str(),
 			nullptr, 0.f, &TextClipRect);
-		const bool_t bBlockHovered = ImGui::IsMouseHoveringRect(
-			BlockMin, BlockMax, true);
+		const bool_t bBlockHovered = bLaneRowHovered &&
+			ImGui::IsMouseHoveringRect(HitMin, HitMax, true);
 		if (bBlockHovered)
 		{
 			ImGui::SetTooltip(
@@ -10643,11 +10669,12 @@ void Client::CActionCompositionWorkbench::Render_Timeline(
 			std::abs(ImGui::GetIO().MousePos.x - BlockMin.x);
 		const float fEndTrimDistance =
 			std::abs(ImGui::GetIO().MousePos.x - fEndTrimHandleX);
-		const bool_t bStartTrimCandidate = bColliderCanResize &&
+		const bool_t bStartTrimCandidate = bLaneRowHovered && bColliderCanResize &&
 			fStartTrimDistance <= 7.f &&
 			ImGui::GetIO().MousePos.y >= BlockMin.y &&
 			ImGui::GetIO().MousePos.y <= BlockMax.y;
-		const bool_t bEndTrimCandidate = Item.bEditable && bTrimOwner &&
+		const bool_t bEndTrimCandidate = bLaneRowHovered &&
+			Item.bEditable && bTrimOwner &&
 			fEndTrimDistance <= 7.f &&
 			ImGui::GetIO().MousePos.y >= BlockMin.y &&
 			ImGui::GetIO().MousePos.y <= BlockMax.y;
@@ -11543,7 +11570,10 @@ void Client::CActionCompositionWorkbench::Render_WindowMenu()
 			m_bBossPatternWindowVisible = true;
 		}
 		if (ImGui::MenuItem("Reset Window Layout"))
+		{
+			m_bTimelineMaximized = false;
 			m_bResetLayoutRequested = true;
+		}
 		ImGui::EndMenu();
 	}
 	ImGui::EndMenuBar();
@@ -11681,17 +11711,45 @@ void Client::CActionCompositionWorkbench::Render_SequencerWindow(
 	const bool_t bPatternMutationAdmitted)
 {
 	if (!m_bSequencerWindowVisible)
+	{
+		m_bTimelineMaximized = false;
 		return;
+	}
 	const ImGuiViewport* const pViewport = ImGui::GetMainViewport();
 	const COMPOSITION_DEFAULT_LAYOUT Layout =
 		BuildCompositionDefaultLayout(pViewport);
 	const ImGuiCond Condition = m_bApplyResetLayoutThisFrame ?
 		ImGuiCond_Always : ImGuiCond_FirstUseEver;
-	ImGui::SetNextWindowPos(Layout.SequencerPos, Condition);
-	ImGui::SetNextWindowSize(Layout.SequencerSize, Condition);
-	if (ImGui::Begin(
-			"Composition Sequencer###CompositionSequencerWindowResizableV3",
-			&m_bSequencerWindowVisible, ImGuiWindowFlags_MenuBar))
+	const char_t* pWindowTitle =
+		"Composition Sequencer###CompositionSequencerWindowResizableV3";
+	ImGuiWindowFlags WindowFlags = ImGuiWindowFlags_MenuBar;
+	if (m_bTimelineMaximized && nullptr != pViewport)
+	{
+		pWindowTitle =
+			"Composition Timeline###CompositionTimelineMaximizedOverlay";
+		WindowFlags |= ImGuiWindowFlags_NoDocking |
+			ImGuiWindowFlags_NoSavedSettings;
+		const ImVec2 MaximizedPos(
+			pViewport->WorkPos.x + pViewport->WorkSize.x * 0.02f,
+			pViewport->WorkPos.y + pViewport->WorkSize.y * 0.02f);
+		const ImVec2 MaximizedSize(
+			pViewport->WorkSize.x * 0.96f,
+			pViewport->WorkSize.y * 0.96f);
+		ImGui::SetNextWindowPos(MaximizedPos, ImGuiCond_Always);
+		ImGui::SetNextWindowSize(MaximizedSize, ImGuiCond_Always);
+		ImGui::SetNextWindowCollapsed(false, ImGuiCond_Always);
+	}
+	else
+	{
+		ImGui::SetNextWindowPos(Layout.SequencerPos, Condition);
+		ImGui::SetNextWindowSize(Layout.SequencerSize, Condition);
+	}
+	bool_t bMaximizedOverlayOpen = true;
+	bool_t* const pWindowOpen = m_bTimelineMaximized ?
+		&bMaximizedOverlayOpen : &m_bSequencerWindowVisible;
+	const bool_t bWindowVisible = ImGui::Begin(
+		pWindowTitle, pWindowOpen, WindowFlags);
+	if (bWindowVisible)
 	{
 		Render_WindowMenu();
 		Render_Timeline(
@@ -11703,6 +11761,8 @@ void Client::CActionCompositionWorkbench::Render_SequencerWindow(
 		Render_WindowMenu();
 	}
 	ImGui::End();
+	if (m_bTimelineMaximized && !bMaximizedOverlayOpen)
+		m_bTimelineMaximized = false;
 }
 
 void Client::CActionCompositionWorkbench::Render_DetailsWindow(
@@ -12613,16 +12673,19 @@ void Client::CActionCompositionWorkbench::Render()
 	Render_SequencerWindow(
 		pPattern, bLocalPreviewAdmitted,
 		bMutationAdmitted, bPatternMutationAdmitted);
-	Render_BossPatternWindow(
-		pPattern, iPatternViewDraftGeneration,
-		bMutationAdmitted, bPatternMutationAdmitted);
-	Render_PatternsWindow(
-		pPattern, pStage, bPatternMutationAdmitted);
-	Render_PreviewWindow(pPattern, bLocalPreviewAdmitted);
-	Render_DetailsWindow(
-		pPattern, pStage, bMutationAdmitted, bPatternMutationAdmitted);
-	Render_ResourcesWindow(
-		pPattern, pStage, bMutationAdmitted, bPatternMutationAdmitted);
+	if (!m_bTimelineMaximized)
+	{
+		Render_BossPatternWindow(
+			pPattern, iPatternViewDraftGeneration,
+			bMutationAdmitted, bPatternMutationAdmitted);
+		Render_PatternsWindow(
+			pPattern, pStage, bPatternMutationAdmitted);
+		Render_PreviewWindow(pPattern, bLocalPreviewAdmitted);
+		Render_DetailsWindow(
+			pPattern, pStage, bMutationAdmitted, bPatternMutationAdmitted);
+		Render_ResourcesWindow(
+			pPattern, pStage, bMutationAdmitted, bPatternMutationAdmitted);
+	}
 	if (m_bSavePatternRequested)
 	{
 		/* Details only queues this command.  All windows finish using this

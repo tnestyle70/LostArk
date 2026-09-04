@@ -43,6 +43,7 @@ private:
 	void Reload_SourceDocuments();
 	void Synchronize_SourceDocumentsWithCanonicalGeneration();
 	void Render_SourceDocumentHeader();
+	void Render_AdvancedSourceInspector();
 	void Render_SourcePatternSummary();
 	void Render_ArenaSequencerSummary() const;
 	void Render_Transport(uint32_t iDurationMs);
