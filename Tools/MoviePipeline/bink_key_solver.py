@@ -109,7 +109,8 @@ def _frame_ok(raw: bytes, key: _Key, e: int, size: int | None, sig: int, is_kb2:
             if w <= prev or (size is not None and w >= size):
                 return False
             prev = w
-    elif words[0] is not None and (words[0] == 0 or (size is not None and words[0] >= size)):
+    elif is_kb2 is not None and words[0] is not None and \
+            (words[0] == 0 or (size is not None and words[0] >= size)):
         return False
     return True
 
@@ -135,11 +136,18 @@ def _solve_layout(raw: bytes, magic: bytes, audio: int) -> tuple[bytes, dict]:
     key = _Key()
     key.crib(raw, 0x00, magic)
     key.crib(raw, 0x04, _u32(n - 8))
-    hdr_len = 0x2C + 12 * audio
     is_kb2 = magic == b"KB2"
-    table_off = hdr_len + (4 if is_kb2 else 0)
+    # Bink 2 puts its extra dword (0x02050F00 on most files) right after the audio-track
+    # count, BEFORE the audio block; the block itself is grouped by field (A x max decoded
+    # size, A x rate/flags, A x track id), and the frame table follows it. Bink 1 has no
+    # extra dword. Class-select loop movies (one audio track) confirmed this layout.
+    hdr_len = 0x2C + (4 if is_kb2 else 0)
+    audio_base = hdr_len
+    table_off = hdr_len + 12 * audio
     if is_kb2:
-        key.crib(raw, hdr_len, _u32(0x02050F00))
+        # crib only the low three bytes; the top byte column is already pinned by the
+        # num_frames top byte.
+        key.crib(raw, 0x2C, b"\x00\x0F\x05")
     # zero top bytes of num_frames, largest_frame, frames_again, width, height,
     # fps_num, fps_den, video_flags, audio_tracks
     for off in (0x0B, 0x0F, 0x13, 0x17, 0x1B, 0x1F, 0x23, 0x27, 0x2B):
@@ -149,9 +157,8 @@ def _solve_layout(raw: bytes, magic: bytes, audio: int) -> tuple[bytes, dict]:
         key.set(off, raw[off])
     key.crib(raw, 0x28, _u32(audio))
     for t in range(audio):
-        base = 0x2C + 12 * t
-        key.set(base + 3, raw[base + 3])    # per-track max packet size
-        key.set(base + 11, raw[base + 11])  # per-track id
+        # per-track max decoded size is far below 16 MB; rate/flags and id are not cribbed
+        key.set(audio_base + 4 * t + 3, raw[audio_base + 4 * t + 3])
     # remaining top-byte columns: the first table entries are far below 16 MB
     for col in range(3, KEY_LEN, 4):
         if key.known(col):
@@ -163,7 +170,13 @@ def _solve_layout(raw: bytes, magic: bytes, audio: int) -> tuple[bytes, dict]:
             raise SolveError("file too small")
         key.set(col, max(set(votes), key=votes.count))
 
-    frames = _find_frame_count(raw, key, table_off, is_kb2)
+    # The Bink 2 "slice offsets increase" frame check only holds for silent files: with
+    # audio, each frame starts with the audio packet size followed by audio data, so
+    # only the first zero-top word is a usable signature there.
+    slice_check = (audio == 0) if is_kb2 else False
+    if is_kb2 and audio > 0:
+        slice_check = None  # see _frame_ok: no per-frame content check at all
+    frames = _find_frame_count(raw, key, table_off, slice_check)
     key.crib(raw, 0x08, _u32(frames))
     key.crib(raw, 0x10, _u32(frames))
     key.crib(raw, table_off, _u32(table_off + (frames + 1) * 4 | 1))
@@ -171,7 +184,7 @@ def _solve_layout(raw: bytes, magic: bytes, audio: int) -> tuple[bytes, dict]:
 
     entries = _entries_known(raw, key, table_off, frames)
     sig = _signature_words(raw, key, [entries[i] for i in (0, 1) if i in entries])
-    solved = _solve_lanes(raw, key, table_off, frames, sig, is_kb2)
+    solved = _solve_lanes(raw, key, table_off, frames, sig, slice_check)
     kb = bytes(solved.k)  # type: ignore[arg-type]
     info = {"magic": magic + bytes([raw[3] ^ kb[3]]), "audio": audio, "frames": frames,
             "table_off": table_off, "signature_words": sig}
@@ -382,7 +395,7 @@ def _lane_candidates(raw, key: _Key, table_off, frames, entries, idx, g, sig, is
             for w, wk in words[1:]:
                 mask &= ~wk | (w > prev)
                 prev = np.where(wk, w, prev)
-        else:
+        elif is_kb2 is not None:
             w, wk = words[0]
             mask &= ~wk | (w > 0)
         e = e[mask]
@@ -416,7 +429,8 @@ def _lane_candidates(raw, key: _Key, table_off, frames, entries, idx, g, sig, is
 def solve_key(raw: bytes) -> tuple[bytes, dict]:
     errors = []
     for magic in (b"KB2", b"BIK"):
-        for audio in (0, 1):
+        # class-select loop movies carry two audio tracks (BGM + ambience); try up to 4
+        for audio in range(0, 5):
             try:
                 return _solve_layout(raw, magic, audio)
             except SolveError as e:

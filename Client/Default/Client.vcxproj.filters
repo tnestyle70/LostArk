@@ -1951,6 +1951,9 @@
     <None Include="..\..\Data\UI\Lobby\Lobby_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
+    <None Include="..\..\Data\UI\Lobby\LobbyServers.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
     <None Include="..\..\Data\UI\ScreenUI\ScreenUI.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>

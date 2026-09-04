@@ -119,9 +119,10 @@ void CCharacterSelectWindowView::Update(f32_t fTimeDelta)
 	const f32_t fRefWidth = m_pView->Get_ResolutionWidth();
 	const f32_t fRefHeight = m_pView->Get_ResolutionHeight();
 
-	/* Empty-slot cards: hover swaps to the source's lit addSlotMc art; a click is the
-	   original's RequestNewCharacter -- report it and let CMainApp submit the Lobby
-	   command (approval failure keeps the Lobby status line, not this view). */
+	/* Empty-slot cards: the renderer's bgMc plate (228x58) with its 'over' glow overlay
+	   swapped in on hover; a click is the original's RequestNewCharacter -- report it and
+	   let CMainApp submit the Lobby command (approval failure keeps the Lobby status
+	   line, not this view). */
 	m_iHoveredCard = -1;
 	char_t szSlot[64] = {};
 	for (int32_t i = 0; i < CARD_COUNT; ++i)
@@ -205,8 +206,8 @@ void CCharacterSelectWindowView::RenderText()
 
 	f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
 
-	// "신규 캐릭터 생성" on every empty-slot card; the hovered card's label lights up
-	// with its art.
+	// "신규 캐릭터 생성" on every empty-slot card -- new_txt is plain white ($YoonGasiIIM
+	// 18px) in every renderer state; only the plate glows on hover.
 	char_t szSlot[64] = {};
 	for (int32_t i = 0; i < CARD_COUNT; ++i)
 	{

@@ -2173,62 +2173,54 @@ void CLevel_CharacterSelect::Render_ClassListText()
 		return wide;
 	};
 
-	/* fSize is the reference-resolution pixel height the old ImGui AddText call asked for, so
-	the glyphs stay the same size as before -- Draw_Text scales relative to the font's own
-	measured height instead of taking a size directly. Anchored top-left (0,0 pivot), matching
-	AddText's own contract. Bold is the same faux-bold trick as before (the LOA font ships one
-	weight too): the same glyphs redrawn a pixel apart so their strokes thicken. */
-	const auto Fn_DrawBoldTextAt = [&](f32_t fX, f32_t fY, f32_t fSize,
-		const fvector_t& vColor, const char* pUtf8, const float2_t& vPivot)
+	/* fSize is the reference-resolution pixel height -- Draw_Text scales relative to the font's
+	own measured height instead of taking a size directly. Anchored top-left (0,0 pivot) unless
+	a pivot is given. One draw per label with the real weight the retail classselect.gfx uses
+	(section headers $YoonGasiIIM, identity blurb $YG760) -- the earlier four-offset faux-bold
+	pass on YG330 read as smeared/fat. bShadow adds the 1px dark drop the retail
+	LabelEx_*_shadow labels carry. */
+	const auto Fn_DrawPanelTextAt = [&](const wstring& strFont, f32_t fX, f32_t fY,
+		f32_t fSize, const fvector_t& vColor, const char* pUtf8, const float2_t& vPivot,
+		bool_t bShadow)
 	{
 		const wstring_t wide = Fn_Widen(pUtf8);
 		if (wide.empty())
 			return;
 		const float2_t vMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), wide.c_str());
+			CGameInstance::Get().Measure_Text(strFont, wide.c_str());
 		if (vMeasured.y <= 0.f)
 			return;
 		const f32_t fScale = (fSize / vMeasured.y) * fUiScale;
 		const float2_t vPos(fX * fScaleX, fY * fScaleY);
-		constexpr f32_t fOffsets[][2] = { {0.f, 0.f}, {1.f, 0.f}, {0.f, 1.f}, {1.f, 1.f} };
-		for (const f32_t (&Offset)[2] : fOffsets)
+		if (bShadow)
 		{
-			CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), wide.c_str(),
-				float2_t(vPos.x + Offset[0], vPos.y + Offset[1]),
-				vColor, 0.f, vPivot, fScale);
+			CGameInstance::Get().Draw_Text(strFont, wide.c_str(),
+				float2_t(vPos.x + 1.f, vPos.y + 1.f),
+				XMVectorSet(0.f, 0.f, 0.f, 0.8f), 0.f, vPivot, fScale);
 		}
+		CGameInstance::Get().Draw_Text(strFont, wide.c_str(), vPos, vColor, 0.f, vPivot, fScale);
 	};
 
-	const auto Fn_DrawBoldText = [&](f32_t fX, f32_t fY, f32_t fSize,
+	const auto Fn_DrawPanelText = [&](const wstring& strFont, f32_t fX, f32_t fY, f32_t fSize,
 		const fvector_t& vColor, const char* pUtf8)
 	{
-		Fn_DrawBoldTextAt(fX, fY, fSize, vColor, pUtf8, float2_t(0.f, 0.f));
+		Fn_DrawPanelTextAt(strFont, fX, fY, fSize, vColor, pUtf8, float2_t(0.f, 0.f), false);
 	};
 
 	/* Centers pText within [fRectX, fRectX + fRectWidth) at reference scale -- a 0.5 x-pivot
 	does what the old explicit CalcTextSizeA half-width offset did. */
-	const auto Fn_DrawBoldTextCentered = [&](f32_t fRectX, f32_t fRectWidth, f32_t fY, f32_t fSize,
-		const fvector_t& vColor, const char* pUtf8)
+	const auto Fn_DrawPanelTextCentered = [&](const wstring& strFont, f32_t fRectX,
+		f32_t fRectWidth, f32_t fY, f32_t fSize, const fvector_t& vColor, const char* pUtf8)
 	{
-		Fn_DrawBoldTextAt(fRectX + fRectWidth * 0.5f, fY, fSize, vColor, pUtf8,
-			float2_t(0.5f, 0.f));
+		Fn_DrawPanelTextAt(strFont, fRectX + fRectWidth * 0.5f, fY, fSize, vColor, pUtf8,
+			float2_t(0.5f, 0.f), false);
 	};
 
-	/* Plain (non-bold) single draw, for the two list labels that were never faux-bolded. */
+	/* Class list row / thumbnail labels: retail ClassSelectClassButtonTop/Bottom textField is
+	$YoonGasiIIM 16px at 1080p -> 10.667px in 1280 reference units, single draw. */
 	const auto Fn_DrawText = [&](f32_t fX, f32_t fY, const fvector_t& vColor, const char* pUtf8)
 	{
-		const wstring_t wide = Fn_Widen(pUtf8);
-		if (wide.empty())
-			return;
-		const float2_t vMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), wide.c_str());
-		if (vMeasured.y <= 0.f)
-			return;
-		/* ImGui's own AddText used the atlas's default 16px size for these. */
-		const f32_t fScale = (16.f / vMeasured.y) * fUiScale;
-		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), wide.c_str(),
-			float2_t(fX * fScaleX, fY * fScaleY),
-			vColor, 0.f, float2_t(0.f, 0.f), fScale);
+		Fn_DrawPanelText(TEXT("Font_YoonGasiIIM"), fX, fY, 16.f, vColor, pUtf8);
 	};
 
 	/* Left panel text: JSON slots only carry images, so the class name, the three yellow section
@@ -2246,12 +2238,13 @@ void CLevel_CharacterSelect::Render_ClassListText()
 		/* Same IM_COL32 values the ImGui draws used, as normalized RGBA. */
 		const fvector_t vSectionLabelColor =
 			XMVectorSet(1.f, 220.f / 255.f, 140.f / 255.f, 1.f);
-		Fn_DrawBoldText(72.f, 203.f, 32.f, Colors::White, Entry.pClassLabel);
-		Fn_DrawBoldText(15.f, 262.f, 20.f, vSectionLabelColor,
+		Fn_DrawPanelText(TEXT("Font_YoonGasiIIM"), 72.f, 203.f, 32.f, Colors::White,
+			Entry.pClassLabel);
+		Fn_DrawPanelText(TEXT("Font_YoonGasiIIM"), 15.f, 262.f, 20.f, vSectionLabelColor,
 			"\xec\xa1\xb0\xec\x9e\x91 \xeb\x82\x9c\xec\x9d\xb4\xeb\x8f\x84");
-		Fn_DrawBoldText(15.f, 335.f, 20.f, vSectionLabelColor,
+		Fn_DrawPanelText(TEXT("Font_YoonGasiIIM"), 15.f, 335.f, 20.f, vSectionLabelColor,
 			"\xea\xb8\xb0\xeb\xb3\xb8 \xec\xa0\x95\xeb\xb3\xb4");
-		Fn_DrawBoldText(15.f, 453.f, 20.f, vSectionLabelColor,
+		Fn_DrawPanelText(TEXT("Font_YoonGasiIIM"), 15.f, 453.f, 20.f, vSectionLabelColor,
 			"\xec\x95\x84\xec\x9d\xb4\xeb\x8d\xb4\xed\x8b\xb0\xed\x8b\xb0");
 
 		for (const IDENTITY_DESCRIPTION& Desc : IDENTITY_DESCRIPTIONS)
@@ -2261,7 +2254,7 @@ void CLevel_CharacterSelect::Render_ClassListText()
 
 			for (int32_t iLine = 0; iLine < Desc.iLineCount; ++iLine)
 			{
-				Fn_DrawBoldTextCentered(IDENTITY_DESC_X, IDENTITY_DESC_WIDTH,
+				Fn_DrawPanelTextCentered(TEXT("Font_YG760"), IDENTITY_DESC_X, IDENTITY_DESC_WIDTH,
 					IDENTITY_DESC_Y + static_cast<f32_t>(iLine) * IDENTITY_DESC_LINE_HEIGHT,
 					16.f,
 					XMVectorSet(220.f / 255.f, 220.f / 255.f, 220.f / 255.f, 1.f),
@@ -2272,8 +2265,17 @@ void CLevel_CharacterSelect::Render_ClassListText()
 		break;
 	}
 
-	Fn_DrawText(1000.f, 20.f, XMVectorSet(1.f, 220.f / 255.f, 140.f / 255.f, 1.f),
-		"\xed\x81\xb4\xeb\x9e\x98\xec\x8a\xa4 \xec\x84\xa0\xed\x83\x9d");
+	/* "클래스 선택" -- retail classselect.gfx puts it as a LabelEx_YGasiIIM_shadow label
+	scaled 2.7x (about 32px at 1080p, 22px here) centered over the frame art's title band;
+	centered on the authored Frame slot so it stays aligned if the tool moves the frame. */
+	{
+		f32_t fFrameX = 940.f, fFrameY = -8.57f, fFrameW = 381.f, fFrameH = 67.f;
+		(void)m_pClassSelectView->Get_SlotRect("Frame", fFrameX, fFrameY, fFrameW, fFrameH);
+		Fn_DrawPanelTextAt(TEXT("Font_YoonGasiIIM"), fFrameX + fFrameW * 0.5f, fFrameY + 36.f,
+			24.f, XMVectorSet(1.f, 220.f / 255.f, 140.f / 255.f, 1.f),
+			"\xed\x81\xb4\xeb\x9e\x98\xec\x8a\xa4 \xec\x84\xa0\xed\x83\x9d",
+			float2_t(0.5f, 0.5f), true);
+	}
 
 	/* Same fRowY recompute as Update_ClassList's own accordion loop, purely for these two text
 	draws -- see that function's comment for why recomputing instead of caching stays safe. */
@@ -2529,6 +2531,8 @@ void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
 			Width cap tightened from 1.3x to 0.75x icon width -- the icons themselves sit only ~63px
 			apart center-to-center (real extracted rects), so the wider cap let neighboring labels'
 			edges overlap and read as one run-on string. */
+			/* Retail caption size ($YoonGasiIIM 16 at 1080p -> 10.667 here); the width cap
+			only guards against a neighbour overlap. */
 			const f32_t fScaleByHeight = (vMeasured.y > 0.f) ?
 				(fHeight * 0.2f / vMeasured.y) : 1.f;
 			const f32_t fScaleByWidth = (vMeasured.x > 0.f) ?
