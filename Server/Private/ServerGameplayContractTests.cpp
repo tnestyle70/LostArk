@@ -25176,13 +25176,17 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	{
 		CGameRoom valtanRoom{ WORLD_ID::VALTAN_ARENA };
 		CGameRoom bernRoom{ WORLD_ID::BERN };
+		CGameRoom charSelectRoom{ WORLD_ID::CHARACTER_SELECT_ARENA };
 		tests.Require(
 			valtanRoom.Is_Ready() && bernRoom.Is_Ready() &&
+			charSelectRoom.Is_Ready() &&
 			valtanRoom.m_EstherSkillSystem.Is_Enabled() &&
 			1000u == valtanRoom.m_EstherSkillSystem.Get_GaugeMaximum() &&
+			charSelectRoom.m_EstherSkillSystem.Is_Enabled() &&
+			1000u == charSelectRoom.m_EstherSkillSystem.Get_GaugeMaximum() &&
 			!bernRoom.m_EstherSkillSystem.Is_Enabled() &&
 			0u == bernRoom.m_EstherSkillSystem.Get_GaugeMaximum(),
-			"Own a shared Esther gauge only in the Valtan raid room");
+			"Own a shared Esther gauge in the Valtan raid room and the Character Select test arena only");
 
 		valtanRoom.m_EstherSkillSystem.Update(2.f, false);
 		const std::uint32_t emptyRoomGauge =

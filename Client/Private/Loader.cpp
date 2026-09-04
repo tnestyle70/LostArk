@@ -535,6 +535,8 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 {
 	CValtanPresentationAssetService::Begin_LevelLoad(
 		ETOUI(LEVEL::CHARACTER_SELECT));
+	CNpcPresentationAssetService::Begin_LevelLoad(
+		ETOUI(LEVEL::CHARACTER_SELECT));
 	CNpcPlacementPresentationService::Begin_LevelLoad(
 		ETOUI(LEVEL::CHARACTER_SELECT));
 	if (FAILED(CNpcPlacementPresentationService::Load(
@@ -577,6 +579,25 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 			characterClasses)))
 	{
 		return E_FAIL;
+	}
+	/* The Server enables the Esther gauge in this test arena too, so the same
+	summon roster as VALTAN is admitted here: a lazy first-spawn admission stalls
+	the frame the caster presses the key. Missing payload isolates only the summon. */
+	Set_Status(TEXT("CHARACTER SELECT: esther summon presentation"));
+	for (const char* pEstherArchetypeId :
+		{ "NPC_59030", "NPC_58700", "NPC_59060" })
+	{
+		if (FAILED(CNpcPresentationAssetService::Ensure_Prototypes(
+			m_pDevice,
+			m_pContext,
+			ETOUI(LEVEL::CHARACTER_SELECT),
+			pEstherArchetypeId)))
+		{
+			OutputDebugStringA(
+				(std::string("[Loader][NpcPresentation] CHARACTER SELECT esther "
+					"summon presentation is unavailable (") + pEstherArchetypeId +
+					"); the arena loads without it.\n").c_str());
+		}
 	}
 	Set_Status(TEXT("Character Select loading complete"));
 	rollback.Commit();

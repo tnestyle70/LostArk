@@ -1485,7 +1485,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 				model->Play_Animation(0.f);
 			}
 			CCombatHUDViewModel::Get().Apply_EstherCutinAction(
-				spawned.strArchetypeId, spawnActionClip->second);
+				spawned.strArchetypeId);
 		}
 		else if (hasPlacementPresentation)
 		{
@@ -2477,7 +2477,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 					iter->second.iActionClipIndex = 0u;
 					iter->second.strCurrentClip = chain.front();
 					CCombatHUDViewModel::Get().Apply_EstherCutinAction(
-						iter->second.strArchetypeId, chain);
+						iter->second.strArchetypeId);
 				}
 				else if (iter->second.iActionClipIndex + 1u < chain.size())
 				{

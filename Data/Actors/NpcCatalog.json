@@ -588,7 +588,7 @@
       "actionClips": {
         "esther.strike": "npc_evt1_sk_swordofchampion_bk"
       },
-      "cutinWindow": { "startMs": 0, "endMs": 3400 },
+      "cutinMovie": { "framePrefix": "UI/EstherCutin/Silian/Silian", "frameCount": 130, "fps": 30, "delayMs": 0 },
       "shaderProfile": "esther"
     },
     {
@@ -601,7 +601,7 @@
       "actionClips": {
         "esther.strike": "npc_sk_dochul"
       },
-      "cutinWindow": { "startMs": 2300 },
+      "cutinMovie": { "framePrefix": "UI/EstherCutin/Waye/Waye", "frameCount": 111, "fps": 30, "delayMs": 2600 },
       "shaderProfile": "esther"
     },
     {
@@ -614,7 +614,7 @@
       "actionClips": {
         "esther.strike": "npc_sk_breathofarcturus"
       },
-      "cutinWindow": { "startMs": 1500 },
+      "cutinMovie": { "framePrefix": "UI/EstherCutin/Bahunturr/Bahunturr", "frameCount": 107, "fps": 30, "delayMs": 500 },
       "shaderProfile": "esther"
     }
   ]

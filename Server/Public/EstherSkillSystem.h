@@ -59,8 +59,10 @@ namespace LostArk::Server
 	class CEstherSkillSystem final
 	{
 	public:
-		// Only a raid room owns an Esther roster. Every other world keeps the
-		// maximum at 0, which the snapshot contract reads as "no Esther here".
+		// The Valtan raid room owns the Esther roster; the private Character
+		// Select test arena also enables it so a summon (and its client cutin)
+		// can be exercised without a raid. Every other world keeps the maximum
+		// at 0, which the snapshot contract reads as "no Esther here".
 		void Initialize(LostArk::Shared::WORLD_ID worldId);
 
 		[[nodiscard]] bool Is_Enabled() const { return m_isEnabled; }

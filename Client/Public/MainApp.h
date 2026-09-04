@@ -34,6 +34,8 @@ class CSkillWindowView;
 class CInventoryView;
 class CChatWindowView;
 class CPartyWindowView;
+class CCharacterSelectWindowView;
+class CEstherCutinPresentationService;
 
 
 class CMainApp final
@@ -175,10 +177,18 @@ private:
 	atomically falls back to the same four default rects and product textures via runtime-created
 	slots, so the entry gate can never lose its buttons. Hidden entirely outside LOBBY. */
 	void Update_LobbyButtons(f32_t fTimeDelta);
+	/* Drives the character-select window while it is open (modal over the Lobby -- the Lobby
+	buttons skip their own pass then): NEW_CHARACTER intent submits the same
+	LOBBY_STAGE::CHARACTER_SELECT product command the old direct button did, CLOSE returns to
+	the Lobby. Hidden entirely outside LOBBY. */
+	void Update_CharacterSelectWindow(f32_t fTimeDelta);
 	/* White labels for the four Lobby command buttons, plus the Release product status line.
 	Called after EndFrame() like the other LOA-font text, for the same z-order reason as
 	RenderQuickSlotKeyLabels. */
 	void RenderLobbyButtonText();
+	/* 게임 시작/서버 선택/카드 라벨 -- after EndFrame(), same reasoning as
+	RenderLobbyButtonText. */
+	void RenderCharacterSelectWindowText();
 	/* White "장비 재련" label for ItemUpgrade_ReforgeButton, same reasoning/pattern as
 	RenderLobbyButtonText() -- the button image itself is blank (reused from
 	UI/Lobby/create_character_button.png), text drawn separately on top. */
@@ -371,6 +381,9 @@ private:
 	shared across every class, not tied to Combat HUD or Screen UI, so it gets its own
 	document/tab too. */
 	unique_ptr<CUILayoutRuntime> m_pEstherUIView = { nullptr };
+	/* UI/Esther/EstherCutin.json's owner: the full-screen Esther strike movie flipbook,
+	created right after m_pEstherUIView so it draws over the gauge window and the combat HUD. */
+	unique_ptr<CEstherCutinPresentationService> m_pEstherCutinService = { nullptr };
 	/* UI/ItemUpgrade/ItemUpgradeUI.json's runtime consumer -- real CUI_Sprite GameObjects under
 	LEVEL::STATIC (Update_ItemUpgrade drives the gauge/effect state machine and hover/click; no
 	real Server-side 재련/enhancement data exists yet, so there is still no per-slot balance
@@ -513,6 +526,10 @@ private:
 	every ImGui window (the Debug Lobby panel stays ImGui, on top). Release-safe, like the HUD
 	view. */
 	unique_ptr<CUILayoutRuntime> m_pLobbyBackgroundView = { nullptr };
+	/* Retail-style character-select window (Phase 1 start-sequence rework), opened by the
+	Lobby's "게임 시작" product button over the Lobby. Sprites under LEVEL::STATIC like the
+	Lobby view; Update_CharacterSelectWindow drives it and consumes its intents. */
+	unique_ptr<CCharacterSelectWindowView> m_pCharacterSelectWindowView = { nullptr };
 	/* Intentionally never constructed anymore -- the K keybind that opened it was removed by
 	product decision, so the window can never open; see the constructor comment. */
 	unique_ptr<CSkillWindowView> m_pSkillWindowView = { nullptr };
