@@ -100,9 +100,15 @@ CUE_TIMING_BASIS_STAGE_CLOCK = "STAGE_CLOCK"
 COMPOSITION_CUE_ID_PREFIX = "cue.valtan.composition."
 DIRECT_AUTHORED_EFFECT_KIND = "DIRECT_AUTHORED_DOCUMENT"
 SUPPORTED_AUTHORED_EFFECT_VERSIONS = frozenset((13, 15))
-GHOST_PORTAL_EDGE_LENGTH_M = 44.0
-GHOST_PORTAL_CIRCUMRADIUS_M = GHOST_PORTAL_EDGE_LENGTH_M / math.sqrt(3.0)
-GHOST_PORTAL_INDEPENDENT_DISPLAY_NAME = "망령 포탈 돌진 1회 / 44m 정삼각형"
+GHOST_PORTAL_CIRCUMRADIUS_M = 7.0
+GHOST_PORTAL_EDGE_LENGTH_M = GHOST_PORTAL_CIRCUMRADIUS_M * math.sqrt(3.0)
+GHOST_PORTAL_TRAVEL_MS = 1300
+GHOST_PORTAL_START_DELAY_MS = 300
+GHOST_PORTAL_LIFETIME_MS = 1900
+GHOST_PORTAL_SPEED_MPS = GHOST_PORTAL_EDGE_LENGTH_M / (GHOST_PORTAL_TRAVEL_MS / 1000.0)
+GHOST_PORTAL_INDEPENDENT_DISPLAY_NAME = (
+    "망령 포탈 동시 돌진 / 외접반지름 7m 정삼각형"
+)
 REQUIRED_LIVE_INDEPENDENT_EFFECT_IDS = frozenset(
     (
         "valtan.independent-effect.target-axe",
@@ -234,6 +240,17 @@ OWNER_RELATIVE = "OWNER_RELATIVE"
 GAMEPLAY_FOOTPRINT = "GAMEPLAY_FOOTPRINT"
 ARENA_ABSOLUTE = "ARENA_ABSOLUTE"
 WORLD_SCALE_POLICY_KINDS = frozenset((GAMEPLAY_FOOTPRINT, ARENA_ABSOLUTE))
+# Radial volley layouts keyed by the volley policy that resolves their origin.
+# BOSS_RELATIVE and ARENA_CENTER carry an explicit PROJECT_TUNED mapping basis
+# because their radius is a tuned value rather than a source-derived one.
+RADIAL_LAYOUT_KIND_BY_VOLLEY_POLICY = {
+    "PER_ALIVE_PLAYER": "RADIAL_AROUND_TARGET",
+    "BOSS_RELATIVE": "RADIAL_AROUND_BOSS",
+    "ARENA_CENTER": "RADIAL_AROUND_ARENA_CENTER",
+}
+PROJECT_TUNED_RADIAL_LAYOUT_KINDS = frozenset(
+    ("RADIAL_AROUND_BOSS", "RADIAL_AROUND_ARENA_CENTER")
+)
 MANAGED_CUE_SCALE_POLICIES = {
     "cue.valtan.carrier-v1.attack.whirlwind.recovery.clip-01": GAMEPLAY_FOOTPRINT,
     "cue.valtan.whirlwind.active": GAMEPLAY_FOOTPRINT,
@@ -252,6 +269,9 @@ MANAGED_CUE_SCALE_POLICIES = {
     "cue.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01": ARENA_ABSOLUTE,
     "cue.valtan.carrier-v1.mechanic.arena-break-109.roar-recovery.clip-01": OWNER_RELATIVE,
     "cue.valtan.phase2.four.slashes": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.phase2.sequence-rush.step-03.active": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.phase2.sequence-whirlwind.step_02.active": GAMEPLAY_FOOTPRINT,
+    "cue.valtan.phase2.sequence-whirlwind.step_03.active": GAMEPLAY_FOOTPRINT,
     **{
         f"cue.valtan.phase2.warp.step-{leg:02d}.composite": OWNER_RELATIVE
         for leg in range(2, 11)
@@ -1580,6 +1600,11 @@ def build_combat_authoring(product: dict[str, Any]) -> dict[str, Any]:
                 "speedMps": source["speedMps"],
                 "maximumDistanceM": source["maximumDistanceM"],
             }
+            if "movementStartDelayMs" in source:
+                movement["startDelayMs"] = source["movementStartDelayMs"]
+                movement["expireOnDistanceEnd"] = source[
+                    "expireOnDistanceEnd"
+                ]
         else:
             raise PipelineError(f"unsupported combat object kind: {source['kind']}")
         hits: list[dict[str, Any]] = []
@@ -1620,8 +1645,11 @@ def build_combat_authoring(product: dict[str, Any]) -> dict[str, Any]:
             "movement": movement,
             "hits": hits,
         }
-        if presentation_events:
+        if "coverRadiusM" in source:
+            authored_object["coverRadiusM"] = source["coverRadiusM"]
+        if presentation_events or "coverRadiusM" in source:
             authored_object["lifetimeMs"] = source["lifeMs"]
+        if presentation_events:
             authored_object["presentationEvents"] = presentation_events
         objects.append(authored_object)
     result = {
@@ -2198,6 +2226,9 @@ def validate_combat_authoring(document: dict[str, Any]) -> None:
         if "lifetimeMs" in obj:
             object_fields += ("lifetimeMs",)
             integer(obj["lifetimeMs"], f"{context}.lifetimeMs", 1, 600000)
+        if "coverRadiusM" in obj:
+            object_fields += ("coverRadiusM",)
+            number(obj["coverRadiusM"], f"{context}.coverRadiusM", 0.000001, 100.0)
         if "presentationEvents" in obj:
             object_fields += ("presentationEvents",)
         exact(obj, object_fields, context)
@@ -2228,28 +2259,54 @@ def validate_combat_authoring(document: dict[str, Any]) -> None:
         if movement.get("kind") == "STATIC":
             exact(movement, ("kind",), f"{context}.movement")
         elif movement.get("kind") == "LINEAR":
-            exact(movement, ("kind", "speedMps", "maximumDistanceM"), f"{context}.movement")
+            movement_fields = ("kind", "speedMps", "maximumDistanceM")
+            if ("startDelayMs" in movement) != (
+                "expireOnDistanceEnd" in movement
+            ):
+                raise PipelineError(
+                    f"{context}.movement lifetime policy fields must be paired"
+                )
+            if "startDelayMs" in movement:
+                movement_fields += ("startDelayMs",)
+                integer(
+                    movement["startDelayMs"],
+                    f"{context}.movement.startDelayMs",
+                    0,
+                    600000,
+                )
+            if "expireOnDistanceEnd" in movement:
+                movement_fields += ("expireOnDistanceEnd",)
+                if not isinstance(movement["expireOnDistanceEnd"], bool):
+                    raise PipelineError(
+                        f"{context}.movement.expireOnDistanceEnd must be boolean"
+                    )
+            exact(movement, movement_fields, f"{context}.movement")
             number(movement["speedMps"], f"{context}.speedMps", 0.000001, 10000.0)
             number(movement["maximumDistanceM"], f"{context}.maximumDistanceM", 0.000001, 10000.0)
         else:
             raise PipelineError(f"{context} movement kind is unsupported")
-        next_radial_slot = direction["kind"] == "NEXT_RADIAL_SLOT"
         is_ghost_portal = (
             archetype == "combatobject.valtan.ghost.portal-charge"
         )
-        if next_radial_slot != is_ghost_portal or (
-            is_ghost_portal
-            and (
-                obj["kind"] != "MISSILE"
-                or origin["kind"] != "BOSS_POSITION"
-                or movement["kind"] != "LINEAR"
-                or obj.get("lifetimeMs") != 5000
-                or abs(movement["speedMps"] - 8.8) > 0.000001
-                or abs(movement["maximumDistanceM"] - 44.0) > 0.000001
+        if is_ghost_portal and (
+            obj["kind"] != "MISSILE"
+            or origin["kind"] != "BOSS_POSITION"
+            or direction["kind"] != "NEXT_RADIAL_SLOT"
+            or movement["kind"] != "LINEAR"
+            or obj.get("lifetimeMs") != GHOST_PORTAL_LIFETIME_MS
+            or movement.get("startDelayMs") != GHOST_PORTAL_START_DELAY_MS
+            or movement.get("expireOnDistanceEnd") is not False
+            or not math.isclose(
+                movement["speedMps"], GHOST_PORTAL_SPEED_MPS,
+                rel_tol=0.0, abs_tol=1e-7,
+            )
+            or not math.isclose(
+                movement["maximumDistanceM"], GHOST_PORTAL_EDGE_LENGTH_M,
+                rel_tol=0.0, abs_tol=1e-7,
             )
         ):
             raise PipelineError(
-                "NEXT_RADIAL_SLOT is reserved for the exact ghost portal missile"
+                "ghost portal missile cadence or triangle edge contract drifted"
             )
         presentation_events = obj.get("presentationEvents", [])
         if (
@@ -2329,6 +2386,14 @@ def validate_combat_authoring(document: dict[str, Any]) -> None:
                 raise PipelineError(
                     f"{event_context} escapes the combat-object lifetime"
                 )
+        if "coverRadiusM" in obj and (
+            obj["kind"] != "FIXED_AREA"
+            or not obj["hits"]
+            or any(hit["trigger"]["kind"] != "TIMED" for hit in obj["hits"])
+        ):
+            raise PipelineError(
+                f"{context}.coverRadiusM requires a fixed area with timed damage hits"
+            )
 
 
 def build_legacy_manifest(root: Path, docs: dict[str, Any]) -> dict[str, Any]:
@@ -4816,6 +4881,7 @@ def validate_v2_master(
                     if archetype not in combat_archetypes or volley_policy not in (
                         "PER_ALIVE_PLAYER",
                         "BOSS_RELATIVE",
+                        "ARENA_CENTER",
                     ):
                         raise PipelineError(f"spawn event has unresolved/unsupported archetype: {event_id}")
                     definition = next(
@@ -4828,7 +4894,7 @@ def validate_v2_master(
                         volley_policy == "PER_ALIVE_PLAYER"
                         and origin_kind != "RESOLVED_VOLLEY_POSITION"
                     ) or (
-                        volley_policy == "BOSS_RELATIVE"
+                        volley_policy in ("BOSS_RELATIVE", "ARENA_CENTER")
                         and origin_kind != "BOSS_POSITION"
                     ):
                         raise PipelineError(
@@ -4873,7 +4939,7 @@ def validate_v2_master(
                         raise PipelineError(f"volley layout must be an object: {event_id}")
                     if event["allowOverlap"] is not False:
                         raise PipelineError(f"current Server volley contract forbids overlap: {event_id}")
-                    if volley_policy == "BOSS_RELATIVE" and (
+                    if volley_policy in ("BOSS_RELATIVE", "ARENA_CENTER") and (
                         spawn_count != 1 or arena_random_count != 0
                     ):
                         raise PipelineError(
@@ -4886,6 +4952,7 @@ def validate_v2_master(
                     elif event["layout"].get("kind") in (
                         "RADIAL_AROUND_TARGET",
                         "RADIAL_AROUND_BOSS",
+                        "RADIAL_AROUND_ARENA_CENTER",
                     ):
                         layout_kind = event["layout"]["kind"]
                         layout_fields = (
@@ -4894,7 +4961,7 @@ def validate_v2_master(
                             "startAngleDegrees",
                             "angleStepDegrees",
                         )
-                        if layout_kind == "RADIAL_AROUND_BOSS":
+                        if layout_kind in PROJECT_TUNED_RADIAL_LAYOUT_KINDS:
                             layout_fields += ("mappingBasis",)
                         exact(
                             event["layout"],
@@ -4902,13 +4969,13 @@ def validate_v2_master(
                             f"event {event_id}.layout",
                         )
                         if (
-                            (volley_policy == "BOSS_RELATIVE")
-                            != (layout_kind == "RADIAL_AROUND_BOSS")
+                            RADIAL_LAYOUT_KIND_BY_VOLLEY_POLICY.get(volley_policy)
+                            != layout_kind
                         ):
                             raise PipelineError(
                                 f"volley policy/layout mismatch: {event_id}"
                             )
-                        if layout_kind == "RADIAL_AROUND_BOSS" and (
+                        if layout_kind in PROJECT_TUNED_RADIAL_LAYOUT_KINDS and (
                             event["layout"]["mappingBasis"] != "PROJECT_TUNED"
                         ):
                             raise PipelineError(
@@ -5154,6 +5221,15 @@ def validate_v2_master(
                         )
                 elif anchor_slot.startswith("arena.center"):
                     motion = pattern.get("serverMotion")
+                    fixed_center_motion = (
+                        isinstance(motion, dict)
+                        and motion.get("kind") in ("LEAP_TO_ANCHOR", "LEAP_TO_TARGET")
+                    )
+                    center_approach = (
+                        isinstance(motion, dict)
+                        and motion.get("kind") == "LEAP_TO_ANCHOR"
+                        and motion.get("moveToAnchorBeforeTakeoff") is True
+                    )
                     if (
                         anchor_slot
                         not in (
@@ -5161,12 +5237,11 @@ def validate_v2_master(
                             "arena.center.facing",
                             "arena.center.target-follow",
                         )
-                        or not isinstance(motion, dict)
-                        or motion.get("kind") != "LEAP_TO_ANCHOR"
-                        or motion.get("moveToAnchorBeforeTakeoff") is not True
+                        or (anchor_slot == "arena.center" and not fixed_center_motion)
+                        or (anchor_slot != "arena.center" and not center_approach)
                     ):
                         raise PipelineError(
-                            f"{cue_id} arena center anchor requires a fixed center approach"
+                            f"{cue_id} arena center anchor requires an admitted leap motion"
                         )
                     if anchor_slot == "arena.center.facing" and (
                         cue["followPolicy"] != "snapshot"
@@ -5278,7 +5353,7 @@ def validate_v2_master(
             or portal["aimPolicy"] != "NONE"
             or portal_stage["stageId"] != "ACTIVE"
             or portal_stage["actionId"] != "valtan.ghost.portal-once.active"
-            or portal_stage["durationMs"] != 5000
+            or portal_stage["durationMs"] != GHOST_PORTAL_LIFETIME_MS
             or len(portal_events) != 1
         ):
             raise PipelineError("live ghost portal pattern topology drifted")
@@ -5307,50 +5382,31 @@ def validate_v2_master(
             or portal_event["maximumTotalObjects"] != 3
         ):
             raise PipelineError("live ghost portal volley contract drifted")
-        portal_layout = portal_event["layout"]
         portal_vertices = []
         for ordinal in range(3):
-            radians = math.radians(
-                portal_layout["startAngleDegrees"]
-                + portal_layout["angleStepDegrees"] * ordinal
-            )
+            radians = math.radians(30.0 + 120.0 * ordinal)
             portal_vertices.append(
                 (
-                    math.sin(radians) * portal_layout["radiusM"],
-                    math.cos(radians) * portal_layout["radiusM"],
+                    math.sin(radians) * GHOST_PORTAL_CIRCUMRADIUS_M,
+                    math.cos(radians) * GHOST_PORTAL_CIRCUMRADIUS_M,
                 )
             )
-        portal_edge_lengths: list[float] = []
-        portal_undirected_headings: list[float] = []
-        for ordinal, start in enumerate(portal_vertices):
-            end = portal_vertices[(ordinal + 1) % len(portal_vertices)]
-            delta_x = end[0] - start[0]
-            delta_z = end[1] - start[1]
-            portal_edge_lengths.append(math.hypot(delta_x, delta_z))
-            heading = math.degrees(math.atan2(delta_x, delta_z)) % 180.0
-            if math.isclose(heading, 180.0, rel_tol=0.0, abs_tol=1e-9):
-                heading = 0.0
-            portal_undirected_headings.append(heading)
-        if (
-            any(
-                not math.isclose(
-                    edge_length,
-                    GHOST_PORTAL_EDGE_LENGTH_M,
-                    rel_tol=0.0,
-                    abs_tol=1e-9,
-                )
-                for edge_length in portal_edge_lengths
+        portal_edge_lengths = [
+            math.hypot(
+                portal_vertices[(ordinal + 1) % 3][0] - portal_vertices[ordinal][0],
+                portal_vertices[(ordinal + 1) % 3][1] - portal_vertices[ordinal][1],
             )
-            or any(
-                not math.isclose(actual, expected, rel_tol=0.0, abs_tol=1e-9)
-                for actual, expected in zip(
-                    sorted(portal_undirected_headings), (0.0, 60.0, 120.0)
-                )
+            for ordinal in range(3)
+        ]
+        if any(
+            not math.isclose(
+                edge_length, GHOST_PORTAL_EDGE_LENGTH_M,
+                rel_tol=0.0, abs_tol=1e-9,
             )
+            for edge_length in portal_edge_lengths
         ):
             raise PipelineError(
-                "live ghost portal must be a closed 44m equilateral triangle "
-                "with undirected edge headings 0/60/120 degrees"
+                "live ghost portal must be a closed radius-7m equilateral triangle"
             )
     independent_ids: set[str] = set()
     referenced_cues: set[str] = set()
@@ -5459,12 +5515,12 @@ def _validate_finale(
     if len(set(children)) != len(children):
         raise PipelineError(f"{context}.ghostPatternIds has duplicate IDs")
     if pattern["patternId"] == "VALTAN_GHOST_FINALE" and children != [
-        "VALTAN_SIX_PIZZA_106",
-        "VALTAN_GROUND_ROAR",
-        "VALTAN_STAGGER_SLOT",
-        "VALTAN_BIND_SLOT",
-        "VALTAN_SILENCE_SLOT",
-        "VALTAN_TRIPLE_COUNTER",
+        "VALTAN_WHIRLWIND",
+        "VALTAN_FOUR_SLASH",
+        "VALTAN_SEQUENCE_FOUR",
+        "VALTAN_CROSS",
+        "VALTAN_CHARGE",
+        "VALTAN_CHARGE_2",
     ]:
         raise PipelineError(f"{context}.ghostPatternIds primary-loop order drifted")
     for child_id in children:
@@ -6292,7 +6348,11 @@ def _compile_event(
             radius_m = 0
             start_angle_degrees = 0
             angle_step_degrees = 0
-        elif layout["kind"] in ("RADIAL_AROUND_TARGET", "RADIAL_AROUND_BOSS"):
+        elif layout["kind"] in (
+            "RADIAL_AROUND_TARGET",
+            "RADIAL_AROUND_BOSS",
+            "RADIAL_AROUND_ARENA_CENTER",
+        ):
             product_layout = "RADIAL"
             radius_m = layout["radiusM"]
             start_angle_degrees = layout["startAngleDegrees"]
@@ -7009,6 +7069,13 @@ def _compile_combat_products(
             "lifeMs": life_ms,
             "hits": hits,
         }
+        if "startDelayMs" in movement:
+            product_object["movementStartDelayMs"] = movement["startDelayMs"]
+            product_object["expireOnDistanceEnd"] = movement[
+                "expireOnDistanceEnd"
+            ]
+        if "coverRadiusM" in obj:
+            product_object["coverRadiusM"] = obj["coverRadiusM"]
         if presentation_events:
             product_object["presentationEvents"] = presentation_events
         rows.append(
@@ -8190,6 +8257,15 @@ def _validate_draft_effect_cue_payload(
             )
     elif anchor_slot.startswith("arena.center"):
         motion = pattern.get("serverMotion")
+        fixed_center_motion = (
+            isinstance(motion, dict)
+            and motion.get("kind") in ("LEAP_TO_ANCHOR", "LEAP_TO_TARGET")
+        )
+        center_approach = (
+            isinstance(motion, dict)
+            and motion.get("kind") == "LEAP_TO_ANCHOR"
+            and motion.get("moveToAnchorBeforeTakeoff") is True
+        )
         if (
             anchor_slot
             not in (
@@ -8197,12 +8273,11 @@ def _validate_draft_effect_cue_payload(
                 "arena.center.facing",
                 "arena.center.target-follow",
             )
-            or not isinstance(motion, dict)
-            or motion.get("kind") != "LEAP_TO_ANCHOR"
-            or motion.get("moveToAnchorBeforeTakeoff") is not True
+            or (anchor_slot == "arena.center" and not fixed_center_motion)
+            or (anchor_slot != "arena.center" and not center_approach)
         ):
             raise PipelineError(
-                f"{context}.anchorSlotId requires a fixed center approach"
+                f"{context}.anchorSlotId requires an admitted leap motion"
             )
         if anchor_slot == "arena.center.facing" and (
             follow_policy != "snapshot"
@@ -8680,12 +8755,16 @@ def _validate_volley_layout(layout: Any, count: int, context: str) -> dict[str, 
         exact(layout, ("kind",), context)
         if count != 1:
             raise DraftPatchError("TARGET_CENTER only admits count 1", field="layout")
-    elif kind in ("RADIAL_AROUND_TARGET", "RADIAL_AROUND_BOSS"):
+    elif kind in (
+        "RADIAL_AROUND_TARGET",
+        "RADIAL_AROUND_BOSS",
+        "RADIAL_AROUND_ARENA_CENTER",
+    ):
         fields = ("kind", "radiusM", "startAngleDegrees", "angleStepDegrees")
-        if kind == "RADIAL_AROUND_BOSS":
+        if kind in PROJECT_TUNED_RADIAL_LAYOUT_KINDS:
             fields += ("mappingBasis",)
         exact(layout, fields, context)
-        if kind == "RADIAL_AROUND_BOSS" and layout["mappingBasis"] != "PROJECT_TUNED":
+        if kind in PROJECT_TUNED_RADIAL_LAYOUT_KINDS and layout["mappingBasis"] != "PROJECT_TUNED":
             raise DraftPatchError(
                 "boss-relative radius requires PROJECT_TUNED basis",
                 field="layout",
@@ -11123,35 +11202,25 @@ def apply_draft_patch(
                 "speedMps": speed_mps,
                 "distanceM": distance_m,
             }
-            if "bodyVisibility" in stage:
-                if travel_end_ms < stage["durationMs"]:
-                    stage["bodyVisibility"] = {
-                        "hiddenFromMs": travel_end_ms,
-                        "hiddenToMs": stage["durationMs"],
-                    }
-                else:
-                    del stage["bodyVisibility"]
-            for cue in stage.get("effectCues", []):
-                if (
+            if retarget_delay_ms > 0:
+                stage["bodyVisibility"] = {
+                    "hiddenFromMs": 0,
+                    "hiddenToMs": retarget_delay_ms,
+                }
+            else:
+                stage.pop("bodyVisibility", None)
+            # Warp portals are owned by the Effect V2 binding document.  Drop
+            # the retired V1 cue whenever the typed motion writer touches a leg
+            # so a later Workbench Save cannot restore a double-render lane.
+            stage["effectCues"] = [
+                cue
+                for cue in stage.get("effectCues", [])
+                if not (
                     isinstance(cue, dict)
                     and cue.get("effectAssetId")
                     == "effect.valtan.project-tuned.sequence.warp.portal"
-                ):
-                    if travel_end_ms >= stage["durationMs"]:
-                        raise _draft_error(
-                            "portal-rush Effect cue requires a positive trailing Stage gap",
-                            operation_ordinal=ordinal,
-                            pattern_id=pattern["patternId"],
-                            stage_id=stage["stageId"],
-                            field="distanceM",
-                            error_code="PORTAL_RUSH_CUE_OUTSIDE_STAGE",
-                        )
-                    cue.pop("clipOccurrenceId", None)
-                    cue.pop("sourceStartMs", None)
-                    cue.pop("sourceEndMs", None)
-                    cue.pop("mappingBasis", None)
-                    cue["timingBasis"] = CUE_TIMING_BASIS_STAGE_CLOCK
-                    cue["stageOffsetMs"] = travel_end_ms
+                )
+            ]
         elif kind == "SET_STAGE_COUNTER_WINDOW":
             pattern = _draft_pattern(patched_master, operation["patternId"], ordinal)
             stage = _draft_stage(pattern, operation["stageId"], ordinal)
@@ -12091,6 +12160,79 @@ def project_provenance_receipt(root: Path, projected_outputs: Mapping[str, str])
         if relative in (ENCOUNTER_REL, COMBAT_PRODUCT_REL, BOSS_PROFILES_REL, DAMAGE_REL)
     }
     changed = 0
+
+    # Combat-object properties are optional Product fields.  A presentation-only
+    # carrier becoming a hit-driven carrier can therefore remove one property and
+    # add another in the same projection.  Reconcile that row-local field
+    # inventory before resolving receipt paths, using the same PROJECT_TUNED
+    # metadata as the canonical balance receipt updater.
+    combat_product = projected_documents.get(COMBAT_PRODUCT_REL)
+    if combat_product is not None:
+        combat_rows = {
+            row["combatObjectArchetypeId"]: row
+            for row in combat_product["objects"]
+        }
+        retained_entries: list[dict[str, Any]] = []
+        existing_combat_keys: set[tuple[str, str, str]] = set()
+        for entry in receipt["entries"]:
+            target_id = entry.get("targetId")
+            if (
+                entry.get("targetDocument") == COMBAT_PRODUCT_REL
+                and isinstance(target_id, str)
+                and target_id.startswith("combat-object:")
+            ):
+                archetype = target_id.removeprefix("combat-object:")
+                row = combat_rows.get(archetype)
+                if row is None or entry.get("targetField") not in row:
+                    changed += 1
+                    continue
+                existing_combat_keys.add(
+                    (COMBAT_PRODUCT_REL, target_id, entry["targetField"])
+                )
+            retained_entries.append(entry)
+        receipt["entries"] = retained_entries
+        for archetype, row in combat_rows.items():
+            target_id = f"combat-object:{archetype}"
+            missing_entries: list[dict[str, Any]] = []
+            for field, value in row.items():
+                key = (COMBAT_PRODUCT_REL, target_id, field)
+                if key in existing_combat_keys:
+                    continue
+                missing_entries.append(
+                    {
+                        "targetDocument": COMBAT_PRODUCT_REL,
+                        "targetId": target_id,
+                        "targetField": field,
+                        "basis": "PROJECT_TUNED",
+                        "source": {
+                            "type": "project-policy",
+                            "policyId": "balance-tool-authored-override-v1",
+                        },
+                        "sourceValue": copy.deepcopy(value),
+                        "transform": "Balance Tool authored override",
+                        "resultValue": copy.deepcopy(value),
+                        "note": (
+                            "Added through the F1 Balance Tool authoring contract; "
+                            "official source binding is not claimed."
+                        ),
+                    }
+                )
+                existing_combat_keys.add(key)
+                changed += 1
+            if missing_entries:
+                target_entry_indices = [
+                    index
+                    for index, entry in enumerate(receipt["entries"])
+                    if entry.get("targetDocument") == COMBAT_PRODUCT_REL
+                    and entry.get("targetId") == target_id
+                ]
+                insert_at = (
+                    target_entry_indices[-1] + 1
+                    if target_entry_indices
+                    else len(receipt["entries"])
+                )
+                receipt["entries"][insert_at:insert_at] = missing_entries
+        receipt["coverage"]["fieldEntryCount"] = len(receipt["entries"])
     seen: set[tuple[str, str, str]] = set()
     for entry in receipt["entries"]:
         key = (entry.get("targetDocument"), entry.get("targetId"), entry.get("targetField"))

@@ -1430,6 +1430,8 @@ finally:
         not yet emit a separate provenance-removal operation.  The canonical
         writer must therefore remove the exact deterministic REFERENCE tuple
         and its now-unreferenced sourceActionId in the same physical commit.
+        Effect and Sound owners provide the matching occurrence-qualified
+        cascade candidates produced by that same Composition delete action.
         """
 
         presentation_target = self.root / "Data/Valtan/Valtan.presentation.json"
@@ -1463,6 +1465,44 @@ finally:
         removed_clip_occurrence_id = stage["animation"]["occurrences"][1][
             "clipOccurrenceId"
         ]
+        pattern_sound_target = (
+            self.root
+            / "Data/Animation/Authored/Valtan/Valtan.patternsoundcues.json"
+        )
+        pattern_sound_baseline = pattern_sound_target.read_bytes()
+        pattern_sound_candidate = json.loads(pattern_sound_baseline)
+
+        def owns_removed_clip_occurrence(row: dict[str, Any]) -> bool:
+            return (
+                row.get("patternId") == ground_roar["patternId"]
+                and row.get("stageId") == stage["stageId"]
+                and row.get("actionId") == stage["actionId"]
+                and row.get("clipOccurrenceId") == removed_clip_occurrence_id
+            )
+
+        removed_sound_cues = [
+            row
+            for row in pattern_sound_candidate["cues"]
+            if owns_removed_clip_occurrence(row)
+        ]
+        self.assertGreater(len(removed_sound_cues), 0)
+        pattern_sound_candidate["cues"] = [
+            row
+            for row in pattern_sound_candidate["cues"]
+            if not owns_removed_clip_occurrence(row)
+        ]
+        pattern_sound_baseline_path = (
+            self.root / "ground-roar-sound-baseline.json"
+        )
+        pattern_sound_candidate_path = (
+            self.root / "ground-roar-sound-candidate.json"
+        )
+        pattern_sound_baseline_path.write_bytes(pattern_sound_baseline)
+        pattern_sound_candidate_bytes = (
+            json.dumps(pattern_sound_candidate, ensure_ascii=False, indent=2) + "\n"
+        ).encode("utf-8")
+        pattern_sound_candidate_path.write_bytes(pattern_sound_candidate_bytes)
+
         effect_v2_target = (
             self.root
             / "Data/Effects/V2/Bindings/BOSS_VALTAN.effectv2bindings.json"
@@ -1525,6 +1565,10 @@ finally:
                 "Intermediate/ValtanTuningAuthoring",
                 "-DraftPatchPath",
                 str(patch_path),
+                "-PatternSoundBaselinePath",
+                str(pattern_sound_baseline_path),
+                "-PatternSoundCandidatePath",
+                str(pattern_sound_candidate_path),
                 "-EffectV2BaselinePath",
                 str(effect_v2_baseline_path),
                 "-EffectV2CandidatePath",
@@ -1571,6 +1615,10 @@ finally:
         self.assertEqual(
             "SOURCE_REVIEWED_DELTA",
             committed_occurrences[0]["mappingBasis"],
+        )
+        self.assertEqual(
+            pattern_sound_candidate_bytes,
+            pattern_sound_target.read_bytes(),
         )
         self.assertEqual(effect_v2_candidate_bytes, effect_v2_target.read_bytes())
 

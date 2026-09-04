@@ -166,6 +166,7 @@
       "combatObjectArchetypeId": "combatobject.valtan.ground-roar.rock",
       "kind": "FIXED_AREA",
       "lifetimeMs": 6200,
+      "coverRadiusM": 1.5,
       "spawn": {
         "origin": {
           "kind": "BOSS_POSITION",
@@ -179,21 +180,35 @@
       "movement": {
         "kind": "STATIC"
       },
-      "hits": [],
-      "presentationEvents": [
+      "hits": [
         {
-          "presentationEventId": "pulse.valtan.ground-roar.rock.explode",
+          "hitId": "hit.valtan.ground-roar.rock.explode",
           "trigger": {
             "kind": "TIMED",
             "atMs": 5000
-          }
+          },
+          "repeat": {
+            "count": 1,
+            "intervalMs": 0
+          },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 3.0
+          },
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
         }
-      ]
+      ],
+      "presentationEvents": []
     },
     {
       "combatObjectArchetypeId": "combatobject.valtan.six-pizza.rock-pillar",
       "kind": "FIXED_AREA",
-      "lifetimeMs": 6200,
+      "lifetimeMs": 20700,
+      "coverRadiusM": 1.5,
       "spawn": {
         "origin": {
           "kind": "BOSS_POSITION",
@@ -207,21 +222,35 @@
       "movement": {
         "kind": "STATIC"
       },
-      "hits": [],
-      "presentationEvents": [
+      "hits": [
         {
-          "presentationEventId": "pulse.valtan.six-pizza.rock-pillar.explode",
+          "hitId": "hit.valtan.six-pizza.rock-pillar.explode",
           "trigger": {
             "kind": "TIMED",
-            "atMs": 5000
-          }
+            "atMs": 19500
+          },
+          "repeat": {
+            "count": 1,
+            "intervalMs": 0
+          },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 3.0
+          },
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
         }
-      ]
+      ],
+      "presentationEvents": []
     },
     {
       "combatObjectArchetypeId": "combatobject.valtan.struggling.rock-pillar",
       "kind": "FIXED_AREA",
       "lifetimeMs": 6200,
+      "coverRadiusM": 1.5,
       "spawn": {
         "origin": {
           "kind": "BOSS_POSITION",
@@ -235,21 +264,35 @@
       "movement": {
         "kind": "STATIC"
       },
-      "hits": [],
-      "presentationEvents": [
+      "hits": [
         {
-          "presentationEventId": "pulse.valtan.struggling.rock-pillar.explode",
+          "hitId": "hit.valtan.struggling.rock-pillar.explode",
           "trigger": {
             "kind": "TIMED",
             "atMs": 5000
-          }
+          },
+          "repeat": {
+            "count": 1,
+            "intervalMs": 0
+          },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 3.0
+          },
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
         }
-      ]
+      ],
+      "presentationEvents": []
     },
     {
       "combatObjectArchetypeId": "combatobject.valtan.part-break.rock",
       "kind": "FIXED_AREA",
-      "lifetimeMs": 5000,
+      "lifetimeMs": 6200,
+      "coverRadiusM": 1.5,
       "spawn": {
         "origin": {
           "kind": "BOSS_POSITION",
@@ -263,21 +306,34 @@
       "movement": {
         "kind": "STATIC"
       },
-      "hits": [],
-      "presentationEvents": [
+      "hits": [
         {
-          "presentationEventId": "pulse.valtan.part-break.rock.explode",
+          "hitId": "hit.valtan.part-break.rock.explode",
           "trigger": {
             "kind": "TIMED",
             "atMs": 5000
-          }
+          },
+          "repeat": {
+            "count": 1,
+            "intervalMs": 0
+          },
+          "shape": {
+            "kind": "CIRCLE",
+            "outerRadiusM": 3.0
+          },
+          "serverDamageProfileId": "damage.valtan.stomp",
+          "pushRangeM": 1.5,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
         }
-      ]
+      ],
+      "presentationEvents": []
     },
     {
       "combatObjectArchetypeId": "combatobject.valtan.ghost.portal-charge",
       "kind": "MISSILE",
-      "lifetimeMs": 5000,
+      "lifetimeMs": 1900,
       "spawn": {
         "origin": {
           "kind": "BOSS_POSITION",
@@ -290,8 +346,10 @@
       },
       "movement": {
         "kind": "LINEAR",
-        "speedMps": 8.8,
-        "maximumDistanceM": 44.0
+        "speedMps": 9.32642742537,
+        "maximumDistanceM": 12.12435565298,
+        "startDelayMs": 300,
+        "expireOnDistanceEnd": false
       },
       "hits": [
         {

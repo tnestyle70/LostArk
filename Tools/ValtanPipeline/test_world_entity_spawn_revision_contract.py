@@ -43,7 +43,7 @@ class WorldEntitySpawnRevisionContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
     def test_wire_requires_one_exact_spawn_revision(self) -> None:
-        self.assertIn("NETWORK_PROTOCOL_VERSION = 53;", self.packet_type)
+        self.assertIn("NETWORK_PROTOCOL_VERSION = 55;", self.packet_type)
         spawned_start = self.messages_h.index("struct S2C_WORLD_ENTITY_SPAWNED")
         spawned_end = self.messages_h.index("bool Write_Message", spawned_start)
         spawned = self.messages_h[spawned_start:spawned_end]

@@ -374,6 +374,16 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 	if (0u == count ||
 		(definition.Hits.empty() && definition.PresentationPulses.empty()) ||
 		0u == definition.iLifeMs ||
+		!std::isfinite(definition.fCoverRadiusM) ||
+		definition.fCoverRadiusM < 0.f || definition.fCoverRadiusM > 100.f ||
+		(definition.fCoverRadiusM > 0.f &&
+			(BOSS_COMBAT_OBJECT_KIND::FIXED_AREA != definition.eKind ||
+			 definition.Hits.empty() ||
+			 std::any_of(definition.Hits.begin(), definition.Hits.end(),
+				[](const BOSS_COMBAT_OBJECT_HIT& hit)
+				{
+					return BOSS_COMBAT_OBJECT_HIT_TRIGGER::TIMED != hit.eTrigger;
+				}))) ||
 		definition.strCombatObjectArchetypeId.empty() ||
 		definition.strClientVisualId.empty() ||
 		definition.strOwnerPatternId.empty() ||
@@ -396,7 +406,10 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 		const bool bossRelative =
 			BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
 				volley->ePolicy;
-		if ((!perAlivePlayer && !bossRelative) ||
+		const bool arenaCenter =
+			BOSS_COMBAT_OBJECT_VOLLEY_POLICY::ARENA_CENTER ==
+				volley->ePolicy;
+		if ((!perAlivePlayer && !bossRelative && !arenaCenter) ||
 			count != volley->iCountPerResolvedTarget || count < 1u || count > 8u ||
 			static_cast<std::uint64_t>(volley->iMaximumTotalObjects) <
 				static_cast<std::uint64_t>(count) +
@@ -480,6 +493,9 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 		object.LiveState.CurrentPose.fDirectionZ = directionZ;
 		object.LiveState.CurrentPose.fYawDegrees = boss.fYawDegrees;
 		object.fSpeedMps = definition.fSpeedMps;
+		object.iMovementStartDelayMs = definition.iMovementStartDelayMs;
+		object.bExpireOnDistanceEnd = definition.bExpireOnDistanceEnd;
+		object.fCoverRadiusM = definition.fCoverRadiusM;
 		object.fRemainingDistanceM =
 			BOSS_COMBAT_OBJECT_KIND::MISSILE == definition.eKind ?
 			definition.fMaximumDistanceM : 0.f;
@@ -529,22 +545,35 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 		}
 		else
 		{
+			/* ARENA_CENTER anchors on the boss spawn placement (the authored arena
+			centre) with world-absolute angles; every other policy keeps the live
+			boss pose and yaw. */
+			const bool arenaCenterVolley = nullptr != volley &&
+				BOSS_COMBAT_OBJECT_VOLLEY_POLICY::ARENA_CENTER == volley->ePolicy;
+			const float originX =
+				arenaCenterVolley ? boss.fSpawnPositionX : boss.fPositionX;
+			const float originY =
+				arenaCenterVolley ? boss.fSpawnPositionY : boss.fPositionY;
+			const float originZ =
+				arenaCenterVolley ? boss.fSpawnPositionZ : boss.fPositionZ;
+			const float yawBasisDegrees =
+				arenaCenterVolley ? 0.f : boss.fYawDegrees;
 			const float rightX = directionZ;
 			const float rightZ = -directionX;
-			object.LiveState.CurrentPose.fPositionX = boss.fPositionX +
+			object.LiveState.CurrentPose.fPositionX = originX +
 				directionX * definition.fOffsetForwardM +
 				rightX * definition.fOffsetRightM;
-			object.LiveState.CurrentPose.fPositionY = boss.fPositionY;
-			object.LiveState.CurrentPose.fPositionZ = boss.fPositionZ +
+			object.LiveState.CurrentPose.fPositionY = originY;
+			object.LiveState.CurrentPose.fPositionZ = originZ +
 				directionZ * definition.fOffsetForwardM +
 				rightZ * definition.fOffsetRightM;
 			if (nullptr != volley &&
-				BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
-					volley->ePolicy)
+				(BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
+					volley->ePolicy || arenaCenterVolley))
 			{
 				const float relativeDegrees = volley->fStartAngleDegrees +
 					volley->fAngleStepDegrees * static_cast<float>(ordinal);
-				const float worldDegrees = boss.fYawDegrees + relativeDegrees;
+				const float worldDegrees = yawBasisDegrees + relativeDegrees;
 				const float worldRadians = worldDegrees * DEGREES_TO_RADIANS;
 				const float radialDirectionX = std::sin(worldRadians);
 				const float radialDirectionZ = std::cos(worldRadians);
@@ -564,7 +593,7 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 					the exact chord to the following authored slot, including the final
 					ordinal's natural angular wrap back to slot zero. */
 					const std::uint32_t nextOrdinal = (ordinal + 1u) % count;
-					const float nextWorldDegrees = boss.fYawDegrees +
+					const float nextWorldDegrees = yawBasisDegrees +
 						volley->fStartAngleDegrees +
 						volley->fAngleStepDegrees *
 							static_cast<float>(nextOrdinal);
@@ -772,16 +801,25 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 				}
 			}
 		}
+		const float previousElapsedMilliseconds = object.fElapsedMilliseconds;
 		object.fElapsedMilliseconds += deltaMilliseconds;
 		object.fRemainingMilliseconds -= deltaMilliseconds;
-		if (object.fSpeedMps > 0.f)
+		float movementStep = 0.f;
+		if (object.fSpeedMps > 0.f && object.fRemainingDistanceM > 0.f)
 		{
-			float step = object.fSpeedMps * fixedDeltaSeconds;
+			const float movementStartMilliseconds =
+				static_cast<float>(object.iMovementStartDelayMs);
+			const float activeMilliseconds =
+				(std::max)(0.f, object.fElapsedMilliseconds - movementStartMilliseconds) -
+				(std::max)(0.f, previousElapsedMilliseconds - movementStartMilliseconds);
+			float step = object.fSpeedMps * activeMilliseconds /
+				SECONDS_TO_MILLISECONDS;
 			if (object.fRemainingDistanceM >= 0.f)
 			{
 				step = (std::min)(step, object.fRemainingDistanceM);
 				object.fRemainingDistanceM -= step;
 			}
+			movementStep = step;
 			object.LiveState.CurrentPose.fPositionX +=
 				object.LiveState.CurrentPose.fDirectionX * step;
 			object.LiveState.CurrentPose.fPositionZ +=
@@ -789,7 +827,12 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 		}
 		const bool lifetimeExpired = object.fRemainingMilliseconds <= 0.f;
 		const bool expired = lifetimeExpired ||
-			(object.fSpeedMps > 0.f && object.fRemainingDistanceM <= 0.f);
+			(object.bExpireOnDistanceEnd && object.fSpeedMps > 0.f &&
+			 object.fRemainingDistanceM <= 0.f);
+		const bool contactMotionActive = object.fSpeedMps <= 0.f ||
+			(object.fElapsedMilliseconds >=
+				static_cast<float>(object.iMovementStartDelayMs) &&
+			 (movementStep > 0.f || object.fRemainingDistanceM > 0.f));
 		bool firedFirstTimedPulse = false;
 		const auto QueuePresentationPulse =
 			[this, &object, serverTick](
@@ -844,6 +887,8 @@ void LostArk::Server::CCombatObjectRuntime::Update(
 			SERVER_COMBAT_OBJECT_HIT_RUNTIME& hit = object.Hits[hitIndex];
 			if (SERVER_COMBAT_OBJECT_HIT_TRIGGER::CONTACT == hit.eTrigger)
 			{
+				if (!contactMotionActive)
+					continue;
 				if (nullptr != sourcePlayer)
 				{
 					for (SERVER_WORLD_ENTITY& target : worldEntities)

@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "compositionId": "boss.composition.kakulsaydon",
   "sourceRevision": 1,
-  "compositionRevision": "376d55189d3af2a98bfd866c2e39a9e3c46de70db996070c8eb4984a127cd6bc",
+  "compositionRevision": "da039055a56a00cbbbd1a34a1498b65faec0e899e9c9fdac81992e2ae10911eb",
   "status": "REFERENCE_ONLY",
   "runtimeEligible": false,
   "displayName": "KakulSaydon Boss Composition",
@@ -13,7 +13,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "376d55189d3af2a98bfd866c2e39a9e3c46de70db996070c8eb4984a127cd6bc",
+    "sourceManifestId": "da039055a56a00cbbbd1a34a1498b65faec0e899e9c9fdac81992e2ae10911eb",
     "files": [
       {
         "path": "Data/Animation/Authored/KakulSaydon/MN_RPCT_05.actionbindings.json",
@@ -77,8 +77,8 @@
       },
       {
         "path": "Data/Compositions/Bosses/KakulSaydon.bosscomposition.json",
-        "sha256": "cd51b33cf3f87163834d7ec08eece4f09771110d3e670438224fcab28912d0ef",
-        "bytes": 4255
+        "sha256": "09bb7bb8bc936413fa204243b0e42d2041c50aee87de480cfb59d72e4e84b50e",
+        "bytes": 4357
       }
     ]
   },

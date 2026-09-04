@@ -5479,16 +5479,17 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 		}
 		const auto SubmitPortalRush = [&]()
 		{
-			Draft.portalRetargetDelayMs = RushDraft.retargetDelayMs;
+			const bool_t bFirstRushLeg = "STEP_02" == Draft.stageId;
+			Draft.portalRetargetDelayMs = RushDraft.retargetDelayMs +
+				(bFirstRushLeg ? 0u : RushDraft.trailingGapMs);
 			Draft.portalSpeedMps = RushDraft.speedMps;
 			Draft.portalDistanceM = RushDraft.distanceM;
 			if (!CBalanceTool::Normalize_ValtanPortalRushDraft(
-					Draft, RushDraft.trailingGapMs, RushStatus))
+					Draft, 0u, RushStatus))
 			{
 				m_strValtanPatternMasterStatus = RushStatus;
 				return;
 			}
-			RushDraft.retargetDelayMs = Draft.portalRetargetDelayMs;
 			RushDraft.speedMps = Draft.portalSpeedMps;
 			RushDraft.distanceM = Draft.portalDistanceM;
 			if (m_pBalanceTool->Set_ValtanWarpRushDraft(
@@ -5501,8 +5502,11 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 						Refreshed, RefreshStatus))
 				{
 					RushDraft = Refreshed;
-					Draft.durationMs = Refreshed.legDurationMs;
-					Draft.portalRetargetDelayMs = Refreshed.retargetDelayMs;
+					Draft.durationMs = bFirstRushLeg ?
+						Refreshed.legDurationMs - Refreshed.trailingGapMs :
+						Refreshed.legDurationMs;
+					Draft.portalRetargetDelayMs = Refreshed.retargetDelayMs +
+						(bFirstRushLeg ? 0u : Refreshed.trailingGapMs);
 					Draft.portalSpeedMps = Refreshed.speedMps;
 					Draft.portalDistanceM = Refreshed.distanceM;
 					Draft.hitCount = Refreshed.hitCount;
@@ -5512,12 +5516,12 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 			m_strValtanPatternMasterStatus = RushStatus;
 		};
 		ImGui::TextWrapped(
-			"Typed WARP rush - All 8 Legs: one edit atomically updates STEP_02..STEP_09. The Server waits, travels, and regenerates 50 ms swept-hit samples; portal boundaries remain boss-root snapshots, not predicted endpoints.");
+			"Typed WARP rush - All 8 Legs: STEP_02 owns the first portal lead; later legs add the next-portal offset before the same lead. The Server aligns every Stage boundary to arrival and regenerates 50 ms swept-hit samples.");
 		ImGui::BeginDisabled(!RushStatus.empty());
 		const std::uint32_t iDelayStepMs = 50u;
 		const std::uint32_t iDelayFastStepMs = 100u;
 		ImGui::SetNextItemWidth(210.f);
-		if (ImGui::InputScalar("Retarget / wait delay ms", ImGuiDataType_U32,
+		if (ImGui::InputScalar("Portal lead before rush ms", ImGuiDataType_U32,
 			&RushDraft.retargetDelayMs, &iDelayStepMs,
 			&iDelayFastStepMs, "%u"))
 		{
@@ -5541,7 +5545,7 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 		}
 		ImGui::SetNextItemWidth(210.f);
 		if (ImGui::InputScalar(
-			"Portal Gap After Rush (ms)", ImGuiDataType_U32,
+			"Next portal offset after arrival ms", ImGuiDataType_U32,
 			&RushDraft.trailingGapMs, &iDelayStepMs,
 			&iDelayFastStepMs, "%u"))
 		{
@@ -5549,10 +5553,14 @@ void Client::CAnimation_Tool::Render_ValtanStageDraftInspector(
 				RushDraft.trailingGapMs, 120000u);
 			SubmitPortalRush();
 		}
+		const std::uint32_t iFirstLegDurationMs =
+			RushDraft.legDurationMs >= RushDraft.trailingGapMs ?
+			RushDraft.legDurationMs - RushDraft.trailingGapMs : 0u;
 		ImGui::TextDisabled(
-			"Computed leg total %u ms | travel %.3f ms | portal gap %u ms | swept hits %u",
-			RushDraft.legDurationMs, RushDraft.travelMs,
-			RushDraft.trailingGapMs, RushDraft.hitCount);
+			"First %u ms | repeat %u ms | travel %.3f ms | next portal offset %u ms | swept hits %u",
+			iFirstLegDurationMs, RushDraft.legDurationMs,
+			RushDraft.travelMs, RushDraft.trailingGapMs,
+			RushDraft.hitCount);
 		ImGui::TextColored(
 			ImVec4(1.f, 0.70f, 0.20f, 1.f),
 			"Distance endpoint currently bypasses navigation clamp; keep it inside the arena.");

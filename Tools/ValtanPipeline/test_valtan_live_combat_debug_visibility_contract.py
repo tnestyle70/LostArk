@@ -19,16 +19,20 @@ class LiveCombatDebugVisibilityContractTests(unittest.TestCase):
         cls.contract = read("Client/Public/CombatDebugVisibility.h")
         cls.replication_h = read("Client/Public/ClientReplication.h")
         cls.replication_cpp = read("Client/Private/ClientReplication.cpp")
+        cls.combat_object_runtime = read(
+            "Client/Public/CombatObjectProjectionRuntime.h"
+        )
         cls.main_app = read("Client/Private/MainApp.cpp")
         cls.valtan_h = read("Client/Public/Valtan.h")
         cls.valtan_cpp = read("Client/Private/Valtan.cpp")
         cls.character_select = read("Client/Private/Level_CharacterSelect.cpp")
 
-    def test_snapshot_owns_exactly_five_independent_visibility_values(self) -> None:
+    def test_snapshot_owns_exactly_six_independent_visibility_values(self) -> None:
         for name in (
             "bBossBodyCollider",
             "bBossPatternHitPulse",
             "bBossStageGeometry",
+            "bCombatObjectHit",
             "bCounterProxy",
             "bPlayerSkillHitGeometry",
         ):
@@ -37,12 +41,13 @@ class LiveCombatDebugVisibilityContractTests(unittest.TestCase):
         self.assertIn("Has_SameVisibility", self.contract)
         self.assertIn("Next_Revision", self.contract)
 
-    def test_f1_developer_tools_exposes_all_five_global_switches(self) -> None:
+    def test_f1_developer_tools_exposes_all_six_global_switches(self) -> None:
         self.assertIn('SeparatorText("Live Combat Geometry")', self.main_app)
         for label in (
             "Boss Body Collider",
             "Boss Pattern Hit Pulse",
             "Boss Stage Geometry (whole Stage)",
+            "Combat Object Hit",
             "Counter Proxy",
             "Player Skill Hit Geometry",
         ):
@@ -73,7 +78,19 @@ class LiveCombatDebugVisibilityContractTests(unittest.TestCase):
         self.assertIn("Visibility.bBossBodyCollider", self.replication_cpp)
         self.assertIn("Visibility.bBossPatternHitPulse", self.replication_cpp)
         self.assertIn("Visibility.bBossStageGeometry", self.replication_cpp)
+        self.assertIn("bCombatObjectHit", self.replication_cpp)
         self.assertIn("Visibility.bCounterProxy", self.replication_cpp)
+
+    def test_combat_object_wire_uses_product_hits_and_last_snapshot_pose(self) -> None:
+        self.assertIn("Visit_Records", self.combat_object_runtime)
+        self.assertIn("Draw_CombatObjectHitAreaDebug", self.replication_h)
+        self.assertIn("ValtanCombatObjects.json", self.replication_cpp)
+        self.assertIn("Record.Snapshot.fPositionX", self.replication_cpp)
+        self.assertIn("Record.Snapshot.fYawDegrees", self.replication_cpp)
+        self.assertIn("COMBAT_OBJECT_HIT_DEBUG_CLOCK::Is_Visible", self.replication_cpp)
+        self.assertIn("COMBAT_OBJECT_HIT_COLOR_RGBA", self.replication_cpp)
+        for shape in ("CIRCLE", "RING", "CONE", "BOX"):
+            self.assertIn(f'"{shape}" == Area.strHitShape', self.replication_cpp)
 
     def test_live_boss_draw_paths_are_separate_but_preview_stays_independent(self) -> None:
         for name in (

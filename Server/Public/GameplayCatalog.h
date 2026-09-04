@@ -319,6 +319,9 @@ namespace LostArk::Server
 		float fOffsetRightM = 0.f;
 		float fSpeedMps = 0.f;
 		float fMaximumDistanceM = 0.f;
+		std::uint32_t iMovementStartDelayMs = 0u;
+		bool bExpireOnDistanceEnd = true;
+		float fCoverRadiusM = 0.f;
 		std::uint32_t iLifeMs = 0;
 		std::uint32_t iExpectedEventCount = 0;
 		std::vector<BOSS_COMBAT_OBJECT_HIT> Hits;
@@ -464,7 +467,11 @@ namespace LostArk::Server
 		PER_ALIVE_PLAYER,
 		/* Resolve one radial layout around the live Server boss pose. Authored
 		angles are relative to the boss yaw, never world-absolute. */
-		BOSS_RELATIVE
+		BOSS_RELATIVE,
+		/* Resolve one radial layout around the authored arena centre: the boss
+		spawn placement pose kept through room admission. Authored angles are
+		world-absolute so the corners stay fixed while the boss moves. */
+		ARENA_CENTER
 	};
 
 	enum class BOSS_COMBAT_OBJECT_LAYOUT_KIND : std::uint8_t

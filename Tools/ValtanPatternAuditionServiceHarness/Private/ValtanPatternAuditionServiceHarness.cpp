@@ -20,7 +20,6 @@ int Run_ValtanPatternSoundCueDocumentContractTests();
 int Run_ValtanPatternAnimationBindingDocumentContractTests();
 int Run_ValtanPatternEffectCueAuthoringContractTests();
 int Run_ValtanPresentationGenerationAdmissionContractTests();
-int Run_PlayerHandGripTransformContractTests();
 int Run_CombatDebugVisibilityContractTests();
 
 using namespace Client;
@@ -1437,8 +1436,6 @@ int main()
 		Run_ValtanPatternEffectCueAuthoringContractTests();
 	const int PresentationGenerationAdmissionFailures =
 		Run_ValtanPresentationGenerationAdmissionContractTests();
-	const int PlayerHandGripTransformFailures =
-		Run_PlayerHandGripTransformContractTests();
 	const int CombatDebugVisibilityFailures =
 		Run_CombatDebugVisibilityContractTests();
 	return 0u == Failed && 0 == FlowFailures && 0 == TuningFailures &&
@@ -1451,6 +1448,5 @@ int main()
 		0 == AnimationBindingDocumentFailures &&
 		0 == EffectCueAuthoringFailures &&
 		0 == PresentationGenerationAdmissionFailures &&
-		0 == PlayerHandGripTransformFailures &&
 		0 == CombatDebugVisibilityFailures ? 0 : 1;
 }

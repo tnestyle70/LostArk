@@ -1866,11 +1866,26 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         self.assertIn(
             (
                 "combatobject.valtan.ground-roar.rock",
-                "presentationEventId",
-                "pulse.valtan.ground-roar.rock.explode",
+                "hitId",
+                "hit.valtan.ground-roar.rock.explode",
             ),
             bound_sources,
         )
+        self.assertIn(
+            (
+                "combatobject.valtan.red-blade-wave.projectile",
+                "hitId",
+                "hit.valtan.red-blade-wave.projectile.01",
+            ),
+            bound_sources,
+        )
+        red_blade_cue = next(
+            cue
+            for cue in bindings["cues"]
+            if cue["combatObjectArchetypeId"]
+            == "combatobject.valtan.red-blade-wave.projectile"
+        )
+        self.assertEqual("G_Voltan2_Attack29_Shot1", red_blade_cue["soundEvent"])
         valtan_events = sound_catalog["classes"]["Valtan"]
         self.assertEqual(
             4, len(valtan_events["G_Voltan2_Attack09_ProjCreat1"])
@@ -1881,7 +1896,7 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
 
         for token in (
             "S2C_COMBAT_OBJECT_PRESENTATION_EVENT",
-            "NETWORK_PROTOCOL_VERSION = 53;",
+            "NETWORK_PROTOCOL_VERSION = 55;",
         ):
             self.assertIn(token, self.packet_type_h)
         for token in (
@@ -1913,17 +1928,62 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         ]
         self.assertEqual(
             [
-                ("G_Voltan2_Attack09_ProjCreat1", 1),
-                ("G_Voltan2_FootStep1", 600),
-                ("G_Voltan2_FootStep1", 1300),
-                ("G_Voltan2_Attack02_Shot1", 1300),
+                (
+                    "G_Voltan2_Attack09_ProjCreat1", 1,
+                    "valtan.sequence.sequence.400440.0.step-01.clip-01",
+                ),
+                (
+                    "G_Voltan2_Attack10_CastVox1", 1,
+                    "valtan.sequence.sequence.400440.0.step-01.clip-01",
+                ),
+                (
+                    "G_Voltan2_Attack02_Shot1", 600,
+                    "valtan.sequence.sequence.400440.0.step-01.clip-01",
+                ),
+                (
+                    "G_Voltan2_FootStep1", 600,
+                    "valtan.sequence.sequence.400440.0.step-01.clip-01",
+                ),
+                (
+                    "G_Voltan2_Attack10_Cast1", 600,
+                    "valtan.sequence.sequence.400440.0.step-01.clip-01",
+                ),
+                (
+                    "G_Voltan2_FootStep1", 1300,
+                    "valtan.sequence.sequence.400440.0.step-01.clip-01",
+                ),
+                (
+                    "G_Voltan2_Attack02_Shot1", 1300,
+                    "valtan.sequence.sequence.400440.0.step-01.clip-01",
+                ),
+                (
+                    "G_Voltan2_Attack10_Cast1", 1300,
+                    "valtan.sequence.sequence.400440.0.step-01.clip-01",
+                ),
+                (
+                    "G_Voltan2_Attack18_Cast1", 1,
+                    "valtan.sequence.sequence.400440.0.step-01.roar.clip-05",
+                ),
+                (
+                    "G_Voltan2_Attack18_Shot7", 100,
+                    "valtan.sequence.sequence.400440.0.step-01.roar.clip-05",
+                ),
+                (
+                    "G_Voltan2_Attack18_ShotVox4", 100,
+                    "valtan.sequence.sequence.400440.0.step-01.roar.clip-05",
+                ),
+                (
+                    "G_Voltan2_Attack18_Shot7", 900,
+                    "valtan.sequence.sequence.400440.0.step-01.roar.clip-05",
+                ),
             ],
-            [(cue["soundEvent"], cue["startMs"]) for cue in ground_roar],
+            [
+                (cue["soundEvent"], cue["startMs"], cue["clipOccurrenceId"])
+                for cue in ground_roar
+            ],
         )
         self.assertTrue(all(
             cue["actionId"] == "valtan.sequence.sequence.400440.0.step-01"
-            and cue["clipOccurrenceId"]
-            == "valtan.sequence.sequence.400440.0.step-01.clip-01"
             for cue in ground_roar
         ))
 
@@ -1940,16 +2000,16 @@ class ActionPresentationWorkbenchContractTests(unittest.TestCase):
         ]
         self.assertEqual(1, len(pizza))
         burst = pizza[0]
-        self.assertEqual("STEP_07", burst["scope"]["stageId"])
+        self.assertEqual("STEP_05", burst["scope"]["stageId"])
         self.assertEqual("GROUP", burst["resource"]["kind"])
         self.assertEqual("boss.valtan.shout.burst", burst["resource"]["id"])
         self.assertEqual("CLIP_OCCURRENCE", burst["clock"]["basis"])
         self.assertEqual(
-            "valtan.sequence.center-six-pizza-charge.step-07.clip-01",
+            "valtan.sequence.center-six-pizza-charge.step-05.clip-01",
             burst["clock"]["clipOccurrenceId"],
         )
         self.assertEqual("ONCE", burst["clock"]["repeatPolicy"])
-        self.assertEqual(733, burst["clock"]["startMs"])
+        self.assertEqual(1300, burst["clock"]["startMs"])
         self.assertEqual("b_effectroot", burst["anchor"]["slotId"])
         self.assertEqual(
             "SNAPSHOT_AT_START", burst["anchor"]["followPolicy"]

@@ -218,13 +218,92 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
             [("STEP_01", 2633), ("SILENCE_APPLY", 100)],
             [(row["stageId"], row["durationMs"]) for row in silence["stages"]],
         )
-        self.assertEqual([], silence["stages"][0]["events"])
-        silence_events = silence["stages"][1]["events"]
+        silence_events = silence["stages"][0]["events"]
         self.assertEqual(
-            [("ENTER", "SET_PLAYER_SILENCE", 5000)],
+            [("ENTER", "SET_PLAYER_SILENCE", 7633)],
             [(row["trigger"], row["kind"], row["durationMs"])
              for row in silence_events],
         )
+        self.assertEqual([], silence["stages"][1]["events"])
+
+    def test_reviewed_clip_contacts_author_stage_hits_at_exact_times(self) -> None:
+        expected = (
+            ("VALTAN_THREE", "STEP_01", {"kind": "CONE", "angleDegrees": 75.0, "lengthM": 15.0}, [1617], "damage.valtan.ground-wave-smash"),
+            ("VALTAN_THREE", "STEP_02", {"kind": "CONE", "angleDegrees": 75.0, "lengthM": 15.0}, [963], "damage.valtan.ground-wave-smash"),
+            ("VALTAN_THREE", "STEP_03", {"kind": "CONE", "angleDegrees": 75.0, "lengthM": 15.0}, [500, 1300], "damage.valtan.ground-wave-smash"),
+            ("VALTAN_SEQUENCE_TWOHAND", "STEP_02", {"kind": "CONE", "angleDegrees": 75.0, "lengthM": 15.0}, [1000], "damage.valtan.ground-wave-smash"),
+            ("VALTAN_ROAR_CHARGE", "STEP_01", {"kind": "CIRCLE", "outerRadiusM": 8.0}, [1200], "damage.valtan.stomp"),
+            ("VALTAN_ROAR_CHARGE", "STEP_03", {"kind": "CIRCLE", "outerRadiusM": 12.0}, [900], "damage.valtan.ledge-roar"),
+            ("VALTAN_ROAR_CHARGE", "STEP_06", {"kind": "CONE", "angleDegrees": 90.0, "lengthM": 12.0}, [200], "damage.valtan.swing"),
+            ("VALTAN_SEQUENCE_RUSH", "STEP_03", {"kind": "BOX", "lengthM": 6.0, "halfWidthM": 2.5}, [2450, 2650, 2850, 3050, 3250, 4600], "damage.valtan.dash-charge"),
+            ("VALTAN_SEQUENCE_WHIRLWIND", "STEP_02", {"kind": "CIRCLE", "outerRadiusM": 10.0}, [0, 210, 420], "damage.valtan.jump-spin"),
+            ("VALTAN_SEQUENCE_WHIRLWIND", "STEP_03", {"kind": "CIRCLE", "outerRadiusM": 10.0}, [0, 350, 700, 1050], "damage.valtan.jump-spin"),
+            ("VALTAN_SEQUENCE_FOUR", "STEP_01", {"kind": "CROSS", "lengthM": 18.0, "halfWidthM": 2.5}, [1233, 2233, 3233, 4200], "damage.valtan.four-slash"),
+            ("VALTAN_STRUGGLING", "STEP_04", {"kind": "CIRCLE", "outerRadiusM": 8.0}, [1233, 2233, 3233, 4200], "damage.valtan.stomp"),
+            ("VALTAN_STRUGGLING", "STEP_06", {"kind": "CONE", "angleDegrees": 90.0, "lengthM": 10.0}, [200, 400], "damage.valtan.down-smash"),
+            ("VALTAN_STRUGGLING", "STEP_07", {"kind": "CONE", "angleDegrees": 75.0, "lengthM": 15.0}, [1000], "damage.valtan.ground-wave-smash"),
+            ("VALTAN_STRUGGLING", "STEP_08", {"kind": "CIRCLE", "outerRadiusM": 8.0}, [1200], "damage.valtan.stomp"),
+            ("VALTAN_STRUGGLING", "STEP_10", {"kind": "CIRCLE", "outerRadiusM": 12.0}, [900], "damage.valtan.ledge-roar"),
+            ("VALTAN_GROUND_ROAR", "STEP_01", {"kind": "CIRCLE", "outerRadiusM": 12.0}, [600, 1300, 2700], "damage.valtan.ledge-roar"),
+            ("VALTAN_BIND_SLOT", "STEP_01", {"kind": "CIRCLE", "outerRadiusM": 8.0}, [1200], "damage.valtan.stomp"),
+            ("VALTAN_BIND_SLOT", "RECOVERY", {"kind": "CIRCLE", "outerRadiusM": 12.0}, [900], "damage.valtan.ledge-roar"),
+            ("VALTAN_SIX_PIZZA_106", "STEP_03", {"kind": "CIRCLE", "outerRadiusM": 8.0}, [267], "damage.valtan.jump-spin"),
+            ("VALTAN_SIX_PIZZA_106", "STEP_04", {"kind": "CIRCLE", "outerRadiusM": 8.0}, [2100], "damage.valtan.stomp"),
+            ("VALTAN_SIX_PIZZA_106", "STEP_05", {"kind": "CIRCLE", "outerRadiusM": 12.0}, [1300], "damage.valtan.ledge-roar"),
+            ("VALTAN_SIX_PIZZA_106", "STEP_07", {"kind": "CIRCLE", "outerRadiusM": 25.0}, [250], "damage.valtan.super-smash"),
+            ("VALTAN_SIX_PIZZA_106", "STEP_11", {"kind": "CONE", "angleDegrees": 90.0, "lengthM": 12.0}, [150, 700, 1150], "damage.valtan.ground-wave-smash"),
+            ("VALTAN_TERRAIN_DESTRUCTION_3_OCLOCK", "IMPACT", {"kind": "CIRCLE", "outerRadiusM": 8.0}, [67], "damage.valtan.jump-spin"),
+            ("VALTAN_TERRAIN_DESTRUCTION_9_OCLOCK", "IMPACT", {"kind": "CIRCLE", "outerRadiusM": 8.0}, [67], "damage.valtan.jump-spin"),
+        )
+        for pattern_id, stage_id, shape, offsets, damage_profile in expected:
+            with self.subTest(pattern_id=pattern_id, stage_id=stage_id):
+                authored_stage = next(
+                    row for row in self.gameplay_by_id[pattern_id]["stages"]
+                    if row["stageId"] == stage_id
+                )
+                hit = authored_stage["hit"]
+                self.assertEqual(shape, hit["shape"])
+                self.assertEqual(
+                    {"kind": "EXPLICIT_OFFSETS", "offsetsMs": offsets},
+                    hit["schedule"],
+                )
+                self.assertEqual(damage_profile, hit["serverDamageProfileId"])
+
+        for pattern_id, stage_id in (
+            ("VALTAN_TRASH", "STEP_03"),
+            ("VALTAN_TERRAIN_DESTRUCTION", "STEP_03"),
+            ("VALTAN_ARENA_BREAK_109", "IMPACT_HOLD"),
+        ):
+            with self.subTest(pattern_id=pattern_id, stage_id=stage_id):
+                authored_stage = next(
+                    row for row in self.gameplay_by_id[pattern_id]["stages"]
+                    if row["stageId"] == stage_id
+                )
+                self.assertEqual({"shape": {"kind": "NONE"}}, authored_stage["hit"])
+
+        cross = next(
+            row for row in self.gameplay_by_id["VALTAN_CROSS"]["stages"]
+            if row["stageId"] == "STEP_01"
+        )["hit"]
+        self.assertEqual(
+            {"kind": "CROSS", "lengthM": 10.0, "halfWidthM": 0.75},
+            cross["shape"],
+        )
+        self.assertEqual(
+            {
+                "kind": "ACTIVE_WINDOW",
+                "startMs": 1617,
+                "lifetimeMs": 500,
+                "perTargetPolicy": "ONCE",
+            },
+            cross["activation"],
+        )
+        for stage_id in ("STEP_01", "STEP_02"):
+            authored_stage = next(
+                row for row in self.gameplay_by_id["VALTAN_SEQUENCE_RUSH"]["stages"]
+                if row["stageId"] == stage_id
+            )
+            self.assertEqual({"kind": "NONE"}, authored_stage["hit"]["shape"])
 
     def test_server_catalog_treats_silence_as_deadline_latched_not_exit_closed(self) -> None:
         catalog = read_text("Server/Private/GameplayCatalog.cpp")
@@ -271,7 +350,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         bind_recovery = bind["stages"][1]["animation"]
         self.assertEqual("EXACT", bind_recovery["endPolicy"])
         self.assertEqual(
-            [("mesh_att_battle_5_01_end", 900, 3533)],
+            [("mesh_att_battle_5_01_end", 0, 3533)],
             [
                 (row["clip"], row["sourceStartMs"], row["playMs"])
                 for row in bind_recovery["occurrences"]
@@ -391,7 +470,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         invalid = copy.deepcopy(gameplay)
         silence = next(row for row in invalid["patterns"]
                        if row["patternId"] == "VALTAN_SILENCE_SLOT")
-        silence["stages"][1]["events"][0]["trigger"] = "EXIT"
+        silence["stages"][0]["events"][0]["trigger"] = "EXIT"
         with self.assertRaises(pipeline.PipelineError):
             pipeline.join_v2_authoring(
                 invalid, documents[pipeline.PRESENTATION_AUTHORING_REL],
@@ -410,8 +489,8 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
 
         for pattern_id, stage_id, status_kind, duration_ms, resize_animation in (
             ("VALTAN_BIND_SLOT", "STEP_01", "SET_PLAYER_BIND", 8000, True),
-            ("VALTAN_SILENCE_SLOT", "SILENCE_APPLY",
-             "SET_PLAYER_SILENCE", 2000, False),
+            ("VALTAN_SILENCE_SLOT", "STEP_01",
+             "SET_PLAYER_SILENCE", 3000, True),
         ):
             with self.subTest(pattern_id=pattern_id):
                 current_stage = next(
@@ -476,7 +555,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
                 expected_events = (
                     [("ENTER", duration_ms), ("EXIT", 0)]
                     if status_kind == "SET_PLAYER_BIND"
-                    else [("ENTER", 5000)]
+                    else [("ENTER", 7633)]
                 )
                 self.assertEqual(expected_events, [
                     (event["trigger"], event["durationMs"])
@@ -524,7 +603,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         self.assertIn('"player.status.silence" == targetId', catalog)
         self.assertIn("writer.Write_U8(player.isPatternBound ? 1u : 0u)", packet_cpp)
         self.assertIn("player.isPatternBound = 0u != rawPatternBound", packet_cpp)
-        self.assertIn("NETWORK_PROTOCOL_VERSION = 53", protocol)
+        self.assertIn("NETWORK_PROTOCOL_VERSION = 55", protocol)
         self.assertIn("Pattern-Bound Player Snapshot Round Trip", harness)
         self.assertIn("iSilenceDurationTicks", harness)
         skill_build = hud[

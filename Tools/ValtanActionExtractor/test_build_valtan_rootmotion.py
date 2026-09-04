@@ -306,12 +306,22 @@ class ExplicitClipSegmentTests(unittest.TestCase):
 
         self.assertEqual([
             "valtan.attack.dash-charge.windup",
+            "valtan.attack.dash-charge.part-break",
+            "valtan.attack.dash-charge.recovery",
+            "valtan.reactive.triple-counter.first",
+            "valtan.reactive.triple-counter.second",
+            "valtan.reactive.triple-counter.third",
             "valtan.mechanic.floor-wipe-130.interval",
             "valtan.mechanic.arena-break-109.drop",
             "valtan.mechanic.arena-break-109.impact-hold",
             "valtan.mechanic.arena-break-109.wide-reveal",
+            "valtan.sequence.counter.step-02",
             "valtan.sequence.center-trash-rush-if.groggy",
             "valtan.sequence.rush-if.groggy",
+            "valtan.sequence.sequence.400440.0.step-01",
+            "valtan.authoring.bind-slot.step-01",
+            "valtan.followup.groggy.active",
+            "valtan.reaction.part-break.recovery",
         ], explicit_multi_actions)
 
 

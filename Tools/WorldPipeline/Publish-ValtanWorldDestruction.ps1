@@ -624,6 +624,11 @@ function Compile-ValtanWorldDestruction {
 			if ($null -ne $stage.PSObject.Properties['hitOffsetsMs']) {
 				$expectedStageProperties += 'hitOffsetsMs'
 			}
+			$hasHitActivation =
+				$null -ne $stage.PSObject.Properties['hitActivation']
+			if ($hasHitActivation) {
+				$expectedStageProperties += 'hitActivation'
+			}
 			if ($null -ne $stage.PSObject.Properties['partDamagePolicy']) {
 				$expectedStageProperties += 'partDamagePolicy'
 				if ([string]$stage.partDamagePolicy -cnotin @(
@@ -712,6 +717,34 @@ function Compile-ValtanWorldDestruction {
             Assert-StableId $stage.stageId "$($pattern.patternId) stageId"
             Assert-StableId $stage.actionId "$($pattern.patternId) actionId"
             Assert-JsonInteger $stage.durationMs "$($pattern.patternId) durationMs" 1 600000
+			if ($hasHitActivation) {
+				Assert-ExactProperties -Value $stage.hitActivation -Expected @(
+					'kind','startMs','lifetimeMs','perTargetPolicy') `
+					-Context "$($pattern.patternId) hitActivation"
+				if ($stage.hitActivation.kind -isnot [string] -or
+					$stage.hitActivation.perTargetPolicy -isnot [string]) {
+					throw "Encounter hitActivation kind and perTargetPolicy must be JSON strings: $($pattern.patternId)/$($stage.stageId)"
+				}
+				$null = Assert-JsonInteger `
+					$stage.hitActivation.startMs `
+					"$($pattern.patternId) hitActivation startMs" 0 ([uint32]::MaxValue)
+				$null = Assert-JsonInteger `
+					$stage.hitActivation.lifetimeMs `
+					"$($pattern.patternId) hitActivation lifetimeMs" 1 ([uint32]::MaxValue)
+				$hasHitOffsets =
+					$null -ne $stage.PSObject.Properties['hitOffsetsMs']
+				if ([string]$stage.hitActivation.kind -cne 'ACTIVE_WINDOW' -or
+					[string]$stage.hitActivation.perTargetPolicy -cne 'ONCE' -or
+					[uint64][uint32]$stage.hitActivation.startMs +
+						[uint64][uint32]$stage.hitActivation.lifetimeMs -gt
+						[uint64][uint32]$stage.durationMs -or
+					[string]$stage.hitShape -ceq 'NONE' -or $hasHitOffsets -or
+					[uint32]$stage.hitCount -ne 0 -or
+					[uint32]$stage.hitIntervalMs -ne 0 -or
+					[uint32]$stage.hitDelayMs -ne 0) {
+					throw "Encounter hitActivation is invalid: $($pattern.patternId)/$($stage.stageId)"
+				}
+			}
             Assert-UniqueId $stageIds ([string]$stage.stageId) "$($pattern.patternId) stageId"
             $stages[[string]$stage.stageId] = [ordered]@{
                 ActionId = [string]$stage.actionId
@@ -2226,6 +2259,63 @@ function Invoke-ContractTests {
         Where-Object stageId -CEQ $firstStageId | Select-Object -First 1
     $landing.actionId = 'valtan.mechanic.arena-break-109.mismatch'
     Assert-Throws { Compile-ValtanWorldDestruction $enabled $actionMismatchEncounter $simulation } 'action mismatch'
+
+	$unknownHitActivationEncounter = Copy-JsonObject $encounter
+	$unknownHitActivationStage =
+		($unknownHitActivationEncounter.patterns |
+			Where-Object patternId -CEQ 'VALTAN_CROSS').stages |
+		Where-Object stageId -CEQ 'STEP_01' | Select-Object -First 1
+	$unknownHitActivationStage.hitActivation |
+		Add-Member -NotePropertyName unexpected -NotePropertyValue 1
+	Assert-Throws {
+		Compile-ValtanWorldDestruction `
+			$enabled $unknownHitActivationEncounter $simulation
+	} 'hit activation unknown field'
+
+	$invalidHitActivationKindEncounter = Copy-JsonObject $encounter
+	$invalidHitActivationKindStage =
+		($invalidHitActivationKindEncounter.patterns |
+			Where-Object patternId -CEQ 'VALTAN_CROSS').stages |
+		Where-Object stageId -CEQ 'STEP_01' | Select-Object -First 1
+	$invalidHitActivationKindStage.hitActivation.kind = 'PULSE_SCHEDULE'
+	Assert-Throws {
+		Compile-ValtanWorldDestruction `
+			$enabled $invalidHitActivationKindEncounter $simulation
+	} 'hit activation kind'
+
+	$invalidHitActivationPolicyEncounter = Copy-JsonObject $encounter
+	$invalidHitActivationPolicyStage =
+		($invalidHitActivationPolicyEncounter.patterns |
+			Where-Object patternId -CEQ 'VALTAN_CROSS').stages |
+		Where-Object stageId -CEQ 'STEP_01' | Select-Object -First 1
+	$invalidHitActivationPolicyStage.hitActivation.perTargetPolicy = 'EVERY_TICK'
+	Assert-Throws {
+		Compile-ValtanWorldDestruction `
+			$enabled $invalidHitActivationPolicyEncounter $simulation
+	} 'hit activation per-target policy'
+
+	$overrunningHitActivationEncounter = Copy-JsonObject $encounter
+	$overrunningHitActivationStage =
+		($overrunningHitActivationEncounter.patterns |
+			Where-Object patternId -CEQ 'VALTAN_CROSS').stages |
+		Where-Object stageId -CEQ 'STEP_01' | Select-Object -First 1
+	$overrunningHitActivationStage.hitActivation.startMs =
+		[uint32]$overrunningHitActivationStage.durationMs
+	Assert-Throws {
+		Compile-ValtanWorldDestruction `
+			$enabled $overrunningHitActivationEncounter $simulation
+	} 'hit activation beyond stage duration'
+
+	$mixedHitActivationScheduleEncounter = Copy-JsonObject $encounter
+	$mixedHitActivationScheduleStage =
+		($mixedHitActivationScheduleEncounter.patterns |
+			Where-Object patternId -CEQ 'VALTAN_CROSS').stages |
+		Where-Object stageId -CEQ 'STEP_01' | Select-Object -First 1
+	$mixedHitActivationScheduleStage.hitCount = 1
+	Assert-Throws {
+		Compile-ValtanWorldDestruction `
+			$enabled $mixedHitActivationScheduleEncounter $simulation
+	} 'active window mixed with pulse schedule'
 
     $zeroVerticalOffsetEncounter = Copy-JsonObject $encounter
     $zeroVerticalOffsetStage =

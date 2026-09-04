@@ -6,12 +6,16 @@
     "boss.valtan.egg.black_2"
   ],
   "groups": [
+    "boss.valtan.blackhole",
+    "boss.valtan.breathe",
+    "boss.valtan.breathe.red",
     "boss.valtan.impact",
     "boss.valtan.magicball.aura",
     "boss.valtan.portal",
     "boss.valtan.pounding",
     "boss.valtan.pounding.chase",
     "boss.valtan.rock-pillar.sequence",
+    "boss.valtan.six.sonic",
     "boss.valtan.twohand"
   ]
 }

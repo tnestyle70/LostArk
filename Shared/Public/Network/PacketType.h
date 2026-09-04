@@ -5,7 +5,10 @@
 
 namespace LostArk::Shared
 {
-	/* 53 adds generic boss response progress and threshold levels to the
+	/* 55 integrates the independently shipped v54 portal-rush route fields
+	and raid-entry vote packet family. Neither v54 peer is wire-compatible
+	with the combined contract.
+	53 adds generic boss response progress and threshold levels to the
 	world-entity boss combat snapshot.
 	52 adds the Server-active replacement definition revision to exact
 	Valtan Restart requests and verdict echoes.
@@ -27,7 +30,7 @@ namespace LostArk::Shared
 	used 40 before integration, so neither v40 peer is wire-compatible.
 	39 adds bounded Debug Valtan pattern-flow authoring playback.
 	51 adds Server-owned Pattern bind and silence deadlines to player snapshots. */
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 54;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 55;
 
 	enum class WORLD_ID : std::uint16_t
 	{

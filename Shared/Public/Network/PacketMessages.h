@@ -587,15 +587,16 @@ namespace LostArk::Shared
 		slot, not a balance skill. Appended last, same wire rule as FALLING. */
 		ESTHER_CAST,
 		/* A boss owns the player's gameplay transform until it releases the
-		attachment. The Server still publishes a boss-relative fallback position;
-		the Client may replace only presentation with the typed attachment slot. */
+		attachment. The Server recomputes the world position and yaw from its
+		boss-local attachment snapshot; the Client presents that transform without
+		replacing it with a model-bone composition. */
 		GRABBED,
 		END
 	};
 
-	/* Typed replicated attachment sockets. This is deliberately not a model
-	bone name: Shared and Server never consume Client assets, while the Client
-	maps the stable slot to the admitted presentation rig. */
+	/* Typed replicated attachment identity. This is deliberately not a model
+	bone name: Shared and Server never consume Client assets, and the Client does
+	not map it to a presentation bone. */
 	enum class PLAYER_ATTACHMENT_SLOT : std::uint8_t
 	{
 		NONE,
@@ -639,14 +640,15 @@ namespace LostArk::Shared
 		SKILL_ID iSkillId = INVALID_SKILL_ID;
 		std::uint32_t iActionStartTick = 0;
 		/* Canonical only while eAction is GRABBED. The owner is a replicated
-		world entity and the typed slot resolves on the Client; every other action
-		must carry INVALID/NONE so a stale attachment cannot survive release. */
+		world entity and the typed slot identifies the Server attachment contract;
+		every other action must carry INVALID/NONE so a stale attachment cannot
+		survive release. */
 		NET_ENTITY_ID iAttachmentOwnerNetEntityId = INVALID_NET_ENTITY_ID;
 		PLAYER_ATTACHMENT_SLOT eAttachmentSlot = PLAYER_ATTACHMENT_SLOT::NONE;
-		/* Captured once in the owner's gameplay-root frame for the authoritative
-		Server fallback. The Client resolves the typed slot and separately captures
-		an actual-bone-local presentation matrix; it never composes these gameplay
-		offsets with a model bone. Canonical zero outside GRABBED. */
+		/* Captured once in the owner's gameplay-root frame. The Server uses these
+		offsets each tick to publish the authoritative player world transform; the
+		Client consumes that position and yaw and never composes a hand bone.
+		Canonical zero outside GRABBED. */
 		float fAttachmentLocalOffsetX = 0.f;
 		float fAttachmentLocalOffsetY = 0.f;
 		float fAttachmentLocalOffsetZ = 0.f;
@@ -724,6 +726,22 @@ namespace LostArk::Shared
 		std::uint8_t iGameplayPhase = 1;
 	};
 
+	/* Immutable Server route for one delayed Portal target-rush Stage.  The
+	Client cannot reconstruct this from the current boss pose because snapshot
+	coalescing may first expose the Stage after travel has already started. */
+	struct PORTAL_RUSH_ROUTE_SNAPSHOT
+	{
+		bool isValid = false;
+		float fStartX = 0.f;
+		float fStartY = 0.f;
+		float fStartZ = 0.f;
+		float fEndX = 0.f;
+		float fEndY = 0.f;
+		float fEndZ = 0.f;
+
+		bool operator==(const PORTAL_RUSH_ROUTE_SNAPSHOT&) const = default;
+	};
+
 	struct WORLD_ENTITY_SNAPSHOT
 	{
 		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
@@ -735,6 +753,7 @@ namespace LostArk::Shared
 		// Server-selected player locked by the running boss pattern. Non-boss
 		// entities must leave this invalid; Client presentation never reselects it.
 		NET_ENTITY_ID iPatternTargetNetEntityId = INVALID_NET_ENTITY_ID;
+		PORTAL_RUSH_ROUTE_SNAPSHOT PortalRushRoute;
 		float fPositionX = 0.f;
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;

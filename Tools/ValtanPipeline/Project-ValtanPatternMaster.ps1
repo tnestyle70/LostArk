@@ -69,6 +69,20 @@ if ($Mode -in @('Validate', 'MigrateV2Preview')) {
     if ($global:LASTEXITCODE -ne 0) {
         throw "Valtan v2 pipeline failed with exit code $global:LASTEXITCODE."
     }
+    if ($Mode -eq 'Validate') {
+        foreach ($validatorName in @(
+            'validate_valtan_clip_template_parity.py',
+            'validate_valtan_hit_presentation_alignment.py')) {
+            $validatorPath = Join-Path $PSScriptRoot $validatorName
+            if (-not [IO.File]::Exists($validatorPath)) {
+                throw "Missing Valtan product validator: $validatorPath"
+            }
+            & python $validatorPath --repository-root $repoRoot --check
+            if ($global:LASTEXITCODE -ne 0) {
+                throw "$validatorName failed with exit code $global:LASTEXITCODE."
+            }
+        }
+    }
     return
 }
 $stableIdPattern = '^[A-Za-z0-9_.-]{1,160}$'

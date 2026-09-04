@@ -33,6 +33,10 @@ class ValtanPatternTargetEffectAnchorContractTests(unittest.TestCase):
         cls.valtan_cpp = read("Client/Private/Valtan.cpp")
         cls.cue_cpp = read("Client/Private/ValtanPatternEffectCueDocument.cpp")
         cls.tree_cpp = read("Client/Private/ValtanPatternTree.cpp")
+        cls.cue_authoring_cpp = read(
+            "Client/Private/ValtanPatternEffectCueAuthoring.cpp"
+        )
+        cls.workbench_cpp = read("Client/Private/ActionCompositionWorkbench.cpp")
         cls.six_pizza_effect = json.loads(read(
             "Data/Effects/Authored/"
             "effect.valtan.project-tuned.sequence.six-pizza-106.effect.json"
@@ -82,6 +86,65 @@ class ValtanPatternTargetEffectAnchorContractTests(unittest.TestCase):
         for cue in source_cues + product_cues:
             self.assertEqual("arena.center.target-follow", cue["anchorSlotId"])
             self.assertEqual("follow", cue["followPolicy"])
+
+    def test_high_jump_keeps_target_landing_but_places_takeoff_and_land_at_fixed_center(self) -> None:
+        gameplay_pattern = next(
+            row for row in self.docs[pipeline.GAMEPLAY_AUTHORING_REL]["patterns"]
+            if row["patternId"] == "VALTAN_HIGH_JUMP"
+        )
+        presentation_pattern = next(
+            row for row in self.presentation["patterns"]
+            if row["patternId"] == "VALTAN_HIGH_JUMP"
+        )
+        self.assertEqual("LEAP_TO_TARGET", gameplay_pattern["serverMotion"]["kind"])
+        source_cues = {
+            stage["stageId"]: stage["effectCues"][0]
+            for stage in presentation_pattern["stages"]
+            if stage["stageId"] in {"TAKEOFF", "LAND"}
+        }
+        self.assertEqual({"TAKEOFF", "LAND"}, set(source_cues))
+        for cue in source_cues.values():
+            self.assertEqual("arena.center", cue["anchorSlotId"])
+            self.assertEqual("snapshot", cue["followPolicy"])
+
+        master = pipeline.join_v2_authoring(
+            self.docs[pipeline.GAMEPLAY_AUTHORING_REL],
+            self.docs[pipeline.PRESENTATION_AUTHORING_REL],
+            self.docs[pipeline.WORLD_SET_REL],
+            self.docs[pipeline.COMBAT_AUTHORING_REL],
+        )
+        joined_pattern = next(
+            row for row in master["patterns"]
+            if row["patternId"] == "VALTAN_HIGH_JUMP"
+        )
+        self.assertEqual("LEAP_TO_TARGET", joined_pattern["serverMotion"]["kind"])
+        outputs = pipeline.project_v2_products(ROOT, self.docs, master)
+        product_cues = [
+            cue for cue in json.loads(outputs[pipeline.CUES_REL])["cues"]
+            if cue["patternId"] == "VALTAN_HIGH_JUMP"
+            and cue["stageId"] in {"TAKEOFF", "LAND"}
+        ]
+        self.assertEqual(2, len(product_cues))
+        for cue in product_cues:
+            self.assertEqual("arena.center", cue["anchorSlotId"])
+            self.assertEqual("snapshot", cue["followPolicy"])
+
+        invalid = copy.deepcopy(master)
+        invalid_pattern = next(
+            row for row in invalid["patterns"]
+            if row["patternId"] == "VALTAN_HIGH_JUMP"
+        )
+        invalid_cue = next(
+            cue for stage in invalid_pattern["stages"]
+            for cue in stage["effectCues"]
+        )
+        invalid_cue["anchorSlotId"] = "arena.center.facing"
+        with self.assertRaises(pipeline.PipelineError):
+            pipeline.validate_v2_master(
+                invalid,
+                self.docs[pipeline.WORLD_SET_REL],
+                self.docs[pipeline.COMBAT_AUTHORING_REL],
+            )
 
     def test_split_pipeline_rejects_fixed_unknown_or_untracked_target_follow_anchor(self) -> None:
         joined = pipeline.join_v2_authoring(
@@ -141,6 +204,26 @@ class ValtanPatternTargetEffectAnchorContractTests(unittest.TestCase):
                     "static sectors must observe later updates to their shared root",
                 )
 
+        overlay = next(
+            row for row in self.six_pizza_effect["elements"]
+            if row["id"] ==
+            "requested.20260827.six-pizza.sector.red-roar-overlay"
+        )
+        self.assertEqual("decal", overlay["kind"])
+        self.assertEqual(
+            (19.5, 0.779999971),
+            (
+                overlay["detail"]["timing"]["startDelaySeconds"],
+                overlay["detail"]["timing"]["lifeTimeSeconds"],
+            ),
+        )
+        self.assertEqual(
+            [0, -182.75, 0],
+            overlay["detail"]["transform"]["rotationDegrees"],
+        )
+        self.assertIs(False, overlay["actionCueAttachment"]["enabled"])
+        self.assertIs(False, overlay["transformInheritance"]["enabled"])
+
     def test_client_resolves_target_pose_from_the_same_snapshot_player_rows(self) -> None:
         helper = function_slice(
             self.client_replication,
@@ -165,7 +248,8 @@ class ValtanPatternTargetEffectAnchorContractTests(unittest.TestCase):
         self.assertIn("snapshot.Players.data()", apply)
         self.assertIn("snapshot.Players.size()", apply)
         self.assertIn("entity.iPatternTargetNetEntityId", apply)
-        self.assertIn("PatternTargetPose)", apply)
+        self.assertIn("PatternTargetPose,", apply)
+        self.assertIn("entity.PortalRushRoute)", apply)
 
     def test_valtan_reuses_one_world_root_handle_across_server_yaw_ticks(self) -> None:
         apply = function_slice(
@@ -254,6 +338,9 @@ class ValtanPatternTargetEffectAnchorContractTests(unittest.TestCase):
             self.assertIn('"TRACK_TARGET_EACH_TICK"', text)
             self.assertIn('"follow"', text)
             self.assertIn('"snapshot"', text)
+            self.assertIn('"LEAP_TO_TARGET"', text)
+        self.assertIn('"LEAP_TO_TARGET"', self.cue_authoring_cpp)
+        self.assertIn('"LEAP_TO_TARGET"', self.workbench_cpp)
 
 
 if __name__ == "__main__":

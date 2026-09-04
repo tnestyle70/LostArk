@@ -142,7 +142,7 @@ namespace
   "bindings": [
     {
       "actionId": "valtan.test.warp-leg",
-      "bodyVisibility": { "hiddenFromMs": 1300, "hiddenToMs": 1800 },
+      "bodyVisibility": { "hiddenFromMs": 0, "hiddenToMs": 300 },
       "clips": [
         {
           "clipOccurrenceId": "valtan.test.warp-leg.clip-01",
@@ -162,8 +162,8 @@ namespace
 		if (!Require(CValtanPatternAnimationBindingDocument::Parse_Text(
 			valid, document, status) && 1u == document.Bindings.size() &&
 			document.Bindings[0].bHasBodyHiddenWindow &&
-			1300u == document.Bindings[0].iBodyHiddenFromMs &&
-			1800u == document.Bindings[0].iBodyHiddenToMs,
+			0u == document.Bindings[0].iBodyHiddenFromMs &&
+			300u == document.Bindings[0].iBodyHiddenToMs,
 			"Product v4 body visibility window did not parse: " + status))
 		{
 			return false;
@@ -191,10 +191,10 @@ namespace
 
 		std::string inverted = valid;
 		const std::string validWindow =
-			"\"hiddenFromMs\": 1300, \"hiddenToMs\": 1800";
+			"\"hiddenFromMs\": 0, \"hiddenToMs\": 300";
 		const std::size_t windowOffset = inverted.find(validWindow);
 		inverted.replace(windowOffset, validWindow.size(),
-			"\"hiddenFromMs\": 1800, \"hiddenToMs\": 1300");
+			"\"hiddenFromMs\": 300, \"hiddenToMs\": 0");
 		return Require(!CValtanPatternAnimationBindingDocument::Parse_Text(
 			inverted, rejected, status),
 			"Product v4 admitted an inverted body visibility window");
@@ -244,6 +244,18 @@ namespace
 		{
 			return false;
 		}
+		const std::unordered_map<std::string, std::uint32_t>
+			expectedWarpVisibilityToMs{
+				{ "valtan.sequence.warp.step-02", 300u },
+				{ "valtan.sequence.warp.step-03", 600u },
+				{ "valtan.sequence.warp.step-04", 600u },
+				{ "valtan.sequence.warp.step-05", 600u },
+				{ "valtan.sequence.warp.step-06", 600u },
+				{ "valtan.sequence.warp.step-07", 600u },
+				{ "valtan.sequence.warp.step-08", 600u },
+				{ "valtan.sequence.warp.step-09", 600u },
+				{ "valtan.sequence.warp.step-10", 300u },
+			};
 		std::size_t warpVisibilityCount = 0u;
 		for (const BOSS_PATTERN_ANIMATION_BINDING& binding :
 			sourceDocument.Bindings)
@@ -253,16 +265,19 @@ namespace
 			{
 				continue;
 			}
-			if (!Require(1300u == binding.iBodyHiddenFromMs &&
-				1800u == binding.iBodyHiddenToMs,
+			const auto expected = expectedWarpVisibilityToMs.find(
+				binding.strActionId);
+			if (!Require(expectedWarpVisibilityToMs.end() != expected &&
+				0u == binding.iBodyHiddenFromMs &&
+				expected->second == binding.iBodyHiddenToMs,
 				"real Warp leg has a drifted body visibility window"))
 			{
 				return false;
 			}
 			++warpVisibilityCount;
 		}
-		if (!Require(8u == warpVisibilityCount,
-			"real Warp Product does not expose exactly eight hidden body windows"))
+		if (!Require(expectedWarpVisibilityToMs.size() == warpVisibilityCount,
+			"real Warp Product does not expose the nine authored hidden body windows"))
 		{
 			return false;
 		}

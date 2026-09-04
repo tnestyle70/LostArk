@@ -238,9 +238,10 @@ namespace LostArk::Server
 			iSilenceEndTick = 0u;
 			iSilenceDurationTicks = 0u;
 		}
-		/* GRABBED is Server authority. The slot is a Shared typed identity, while
-		these offsets are only a gameplay fallback relative to the boss root; the
-		Client may present the same attachment on the admitted left-hand bone. */
+		/* GRABBED is Server authority. The slot is a Shared typed identity and
+		these boss-local offsets are the canonical attachment snapshot used to
+		recompute player world position and yaw. The Client does not compose a
+		presentation hand bone. */
 		LostArk::Shared::NET_ENTITY_ID iAttachmentOwnerNetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
 		LostArk::Shared::PLAYER_ATTACHMENT_SLOT eAttachmentSlot =

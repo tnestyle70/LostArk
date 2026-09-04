@@ -2286,8 +2286,8 @@ namespace
 	void Test_PartyInviteProtocol(TEST_RUNNER& testRunner)
 	{
 		{
-			testRunner.Require(54u == NETWORK_PROTOCOL_VERSION,
-				"Boss Response Progress And Existing Contracts Use Protocol 54");
+			testRunner.Require(55u == NETWORK_PROTOCOL_VERSION,
+				"Portal Rush Route Raid Entry Vote And Existing Contracts Use Protocol 55");
 			C2S_ENTER_WORLD oldPeer{};
 			oldPeer.iProtocolVersion = 40u;
 			oldPeer.eWorldId = WORLD_ID::BERN;
@@ -2644,12 +2644,13 @@ namespace
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + (4 * 3) +
 			1 + 1 + 1 + playerAttachmentBytes + playerPatternStatusBytes;
 		constexpr std::size_t cooldownBytes = 4 + 4;
-		/* Trailing 1 + 1 + 1 is iPhase, iBrokenArmorMask and the
-		hasBossCombatState flag. The block after it is the boss combat
-		snapshot the flag guards. */
+		/* The first trailing 1 is the optional Portal rush route flag.
+		   The final 1 + 1 + 1 is iPhase, iBrokenArmorMask and the
+		   hasBossCombatState flag. The block after it is the boss combat
+		   snapshot the flag guards. */
 		const std::size_t entityBytes =
 			4 + 1 + 2 + entity.strPatternId.size() + 2 +
-			entity.strActionId.size() + (4 * 4) + (4 * 6) + 1 + 1 + 1 +
+			entity.strActionId.size() + (4 * 4) + 1 + (4 * 6) + 1 + 1 + 1 +
 			4 + 4 + 2 + (4 * 6) + 1 + GAMEPLAY_DATA_REVISION_BYTES;
 		constexpr std::size_t bossCombatEventBytes =
 			8 + 4 + 4 + 1 + 4;
@@ -2857,6 +2858,75 @@ namespace
 			decoded.Entities[0].BossCombat.iResponseThreshold == 1000u &&
 			decoded.Entities[0].BossCombat.iGameplayPhase == 1u,
 			"World Snapshot Entities Round Trip");
+
+		S2C_WORLD_SNAPSHOT portalRush = source;
+		portalRush.Entities[0].strPatternId = "VALTAN_WARP";
+		portalRush.Entities[0].strActionId = "valtan.sequence.warp.step-02";
+		portalRush.Entities[0].PortalRushRoute.isValid = true;
+		portalRush.Entities[0].PortalRushRoute.fStartX = 150.f;
+		portalRush.Entities[0].PortalRushRoute.fStartY = 22.97f;
+		portalRush.Entities[0].PortalRushRoute.fStartZ = -122.f;
+		portalRush.Entities[0].PortalRushRoute.fEndX = 166.f;
+		portalRush.Entities[0].PortalRushRoute.fEndY = 22.97f;
+		portalRush.Entities[0].PortalRushRoute.fEndZ = -122.f;
+		S2C_WORLD_SNAPSHOT portalRushWithoutRoute = portalRush;
+		portalRushWithoutRoute.Entities[0].PortalRushRoute = {};
+		std::vector<std::uint8_t> portalRushWithoutRoutePayload;
+		std::vector<std::uint8_t> portalRushPayload;
+		S2C_WORLD_SNAPSHOT decodedPortalRush{};
+		bool portalRushRoundTrip = Build_WorldSnapshotPayload(
+			portalRushWithoutRoute, portalRushWithoutRoutePayload) &&
+			Build_WorldSnapshotPayload(portalRush, portalRushPayload);
+		if (portalRushRoundTrip)
+		{
+			CPacketReader portalRushReader{ portalRushPayload };
+			portalRushRoundTrip = Read_Message(
+				portalRushReader, decodedPortalRush) &&
+				0u == portalRushReader.Get_RemainingSize();
+		}
+		testRunner.Require(
+			portalRushRoundTrip &&
+			portalRushPayload.size() ==
+				portalRushWithoutRoutePayload.size() + (6u * sizeof(float)) &&
+			1u == decodedPortalRush.Entities.size() &&
+			decodedPortalRush.Entities[0].PortalRushRoute ==
+				portalRush.Entities[0].PortalRushRoute,
+			"Portal Rush Route Snapshot Round Trip");
+
+		S2C_WORLD_SNAPSHOT zeroLengthPortalRush = portalRush;
+		zeroLengthPortalRush.Entities[0].PortalRushRoute.fEndX =
+			zeroLengthPortalRush.Entities[0].PortalRushRoute.fStartX;
+		zeroLengthPortalRush.Entities[0].PortalRushRoute.fEndZ =
+			zeroLengthPortalRush.Entities[0].PortalRushRoute.fStartZ;
+		CPacketWriter zeroLengthPortalRushWriter;
+		testRunner.Require(
+			!Write_Message(zeroLengthPortalRushWriter, zeroLengthPortalRush),
+			"Reject Zero-Length Portal Rush Route Snapshot");
+
+		S2C_WORLD_SNAPSHOT nonFinitePortalRush = portalRush;
+		nonFinitePortalRush.Entities[0].PortalRushRoute.fEndX =
+			std::numeric_limits<float>::quiet_NaN();
+		CPacketWriter nonFinitePortalRushWriter;
+		testRunner.Require(
+			!Write_Message(nonFinitePortalRushWriter, nonFinitePortalRush),
+			"Reject Non-Finite Portal Rush Route Snapshot");
+
+		S2C_WORLD_SNAPSHOT dirtyAbsentPortalRush = source;
+		dirtyAbsentPortalRush.Entities[0].PortalRushRoute.fStartX = 1.f;
+		CPacketWriter dirtyAbsentPortalRushWriter;
+		testRunner.Require(
+			!Write_Message(dirtyAbsentPortalRushWriter, dirtyAbsentPortalRush),
+			"Reject Dirty Absent Portal Rush Route Snapshot");
+
+		S2C_WORLD_SNAPSHOT nonBossPortalRush = portalRush;
+		nonBossPortalRush.Entities[0].hasBossCombatState = false;
+		nonBossPortalRush.Entities[0].BossCombat = {};
+		nonBossPortalRush.Entities[0].iPatternTargetNetEntityId =
+			INVALID_NET_ENTITY_ID;
+		CPacketWriter nonBossPortalRushWriter;
+		testRunner.Require(
+			!Write_Message(nonBossPortalRushWriter, nonBossPortalRush),
+			"Reject Portal Rush Route On A Non-Boss World Entity");
 
 		S2C_WORLD_SNAPSHOT hiddenGhost = source;
 		hiddenGhost.Entities[0].iPhase = 3u;
@@ -5336,8 +5406,8 @@ namespace
 		}
 
 		testRunner.Require(
-			54u == NETWORK_PROTOCOL_VERSION,
-			"Session Diagnostics Use Current Protocol Version 54");
+			55u == NETWORK_PROTOCOL_VERSION,
+			"Session Diagnostics Use Current Protocol Version 55");
 		testRunner.Require(
 			allReasonsAreKnown && allValuesAreContiguous,
 			"Every Session Diagnostic Reason Is Known And Append Only");
@@ -5364,8 +5434,8 @@ namespace
 	void Test_DataRevisionHotReloadProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			54u == NETWORK_PROTOCOL_VERSION,
-			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 54");
+			55u == NETWORK_PROTOCOL_VERSION,
+			"World Spawn Pin Complete Play And Two-Revision Restart CAS Use Protocol 55");
 		const GameplayDataRevision base = Make_GameplayDataRevision(10u);
 		const GameplayDataRevision candidate = Make_GameplayDataRevision(40u);
 		const std::uint32_t required =
