@@ -779,7 +779,7 @@ public:
 		std::string& strOutStatus,
 		VALTAN_PATTERN_TREE_LOAD_POLICY ePolicy,
 		VALTAN_CANONICAL_READ_DIAGNOSTIC* pOutDiagnostic = nullptr);
-	/* One admission contract for Boss Tool, All Effects, saved Flow and Next.
+	/* One admission contract for Valtan Boss Tool, All Effects, saved Flow and Next.
 	   Validates split-owned identity/stages and both sides of manual metadata;
 	   failure preserves the previously admitted inventory. */
 	static bool_t Build_PlayablePatternInventory(

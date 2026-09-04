@@ -17,8 +17,8 @@ if str(PIPELINE_ROOT) not in sys.path:
 import test_valtan_canonical_typed_patch_transaction as canonical_fixture  # noqa: E402
 
 
-WORKBENCH_CPP = ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
-WORKBENCH_H = ROOT / "Client/Public/ActionCompositionWorkbench.h"
+WORKBENCH_CPP = ROOT / "Client/Private/ValtanActionWorkbench.cpp"
+WORKBENCH_H = ROOT / "Client/Public/ValtanActionWorkbench.h"
 ANIMATION_TOOL_CPP = ROOT / "Client/Private/Animation_Tool.cpp"
 VALTAN_CPP = ROOT / "Client/Private/Valtan.cpp"
 
@@ -82,7 +82,7 @@ class ActionCompositionColliderTimelineAuthoringTests(unittest.TestCase):
 
         timeline = function_body(
             self.source,
-            "void Client::CActionCompositionWorkbench::Render_Timeline(",
+            "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         for token in (
             "bColliderSchedule",
@@ -103,7 +103,7 @@ class ActionCompositionColliderTimelineAuthoringTests(unittest.TestCase):
     def test_preview_restage_reads_fresh_effective_pattern_value(self) -> None:
         refresh = function_body(
             self.source,
-            "void Client::CActionCompositionWorkbench::\nRefresh_PatternLocalPreviewAfterMutation(",
+            "void Client::CValtanActionWorkbench::\nRefresh_PatternLocalPreviewAfterMutation(",
         )
         for token in (
             "m_pBalanceTool->Get_ValtanPatternDraft(",
@@ -118,7 +118,7 @@ class ActionCompositionColliderTimelineAuthoringTests(unittest.TestCase):
     def test_box_detail_sizes_are_clamped_and_staged_for_physical_save(self) -> None:
         details = function_body(
             self.source,
-            "void Client::CActionCompositionWorkbench::Render_GameplayStageDetails(",
+            "void Client::CValtanActionWorkbench::Render_GameplayStageDetails(",
         )
         for token in (
             '"Outer Radius (m)"',

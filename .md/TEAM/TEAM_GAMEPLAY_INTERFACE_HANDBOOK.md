@@ -197,7 +197,7 @@ roster와 leader를 재구성한다. 실제 commit 뒤 발생하는 연결 종�
 | Character/Animation | `Client/Public/Character.h`, `CharacterSpec.h`, `AnimationTargetService.h` | `Data/Actors`, `Data/Animation` |
 | Server/Player | `Server/Public/GameRoom.h`, `PlayerSkillSystem.h`, `ServerNavigation.h` | `Data/Balance`, `Data/Navigation`, `Data/Worlds` |
 | Boss | `Server/Public/ValtanBrain.h`, `ServerWorldEntity.h` | `Data/Balance/BossProfiles.json`, `Data/Encounters` |
-| Boss Composition/Sequencer | `Client/Public/BossCompositionDocument.h`, `Client/Private/SequencerTool.cpp`, `ActionCompositionWorkbench` | `Data/Compositions`와 manifest가 참조하는 기존 typed owner |
+| Boss Composition/Sequencer | `Client/Public/BossCompositionDocument.h`, `Client/Private/SequencerTool.cpp`, `Client/Public/ValtanActionWorkbench.h` | `Data/Compositions`와 manifest가 참조하는 `CValtanActionWorkbench` typed owner |
 | Map/Encounter | `Client/Public/MapTool.h`, `WorldGameplayDocument.h` | `Data/Maps/Authoring`, `Data/Worlds`, `Data/Navigation` |
 | 통합/검증 | `AGENTS.md`, `CLAUDE.md` | `Tools/Build`, 각 domain publisher, 실행형 harness |
 
@@ -324,7 +324,7 @@ Character/Animation 담당자는 clip mapping, part, notify, blend와 재생 결
 
 Animation Tool은 Scene Character의 현재 model에 실제 존재하는 clip만 저장할 수 있다. 작업자는 key/skill row에서 ACTIVE의 순차 clip 또는 COMBO의 BA1/BA2/BA3/BA4 clip을 지정하고 atomic Save한다. `inputSlot`, `skillId`, `skillKind`, timing, damage와 combo 단계 수는 Tool에서 바꾸지 않는다. `.skilltiming/.clipmap/.animnotify/.clipseq` 및 `Data/Animation/Reference`는 read-only 참고 자료다.
 
-F1 진입 이름은 `Action Composition Workbench`다. 기존 Animation Clip Tool과 독립된 resizable 창에서
+F1 진입 이름은 `Valtan Action Workbench`다. 기존 Animation Clip Tool과 독립된 resizable 창에서
 Valtan의 Server stage, animation occurrence, Effect, Pattern Sound, Shake/Camera와 world/combat-object를
 stable action·occurrence ID로 join한다. Workbench는 새 Product JSON이나 두 번째 runtime을 소유하지 않는다.
 stage·release·Counter/Groggy·Collider는 `CBalanceTool`의 joined gameplay draft를, animation slot과 Effect
@@ -341,7 +341,7 @@ Camera/World lane은 owner file과 stable row를 표시하는 `INSPECT` 상태�
 typed owner에서 `EDIT/SAVE`하되 local seek/stop transport는 `INSPECT`다.
 `Animation Sequence Intake`는 review 원본이고 promotion transaction 전에는 Product/Server pattern이 아니다.
 
-Server collider의 mutation UI는 Action Composition Workbench의 typed `Stage Hit (Boss -> Player)` Details
+Server collider의 mutation UI는 Valtan Action Workbench의 typed `Stage Hit (Boss -> Player)` Details
 하나뿐이다. Balance Tool의 broad Valtan pattern panel은 같은 joined 값을 읽기 전용으로 표시한다. Collider
 lane `+`는 hit가 없는 non-WAIT `MANUAL_SERVER_AUDITION` Stage에 기본 `BOX`(length 8.0m,
 half-width 2.5m)를 만들고, 기존 non-WAIT hit는 canonical/manual 여부와 무관하게 제자리 Tune할 수 있다.
@@ -401,7 +401,7 @@ Particle을 복사할 때는 본 부착을 초기화하며 새 대상에서 `Att
 SourceRecipe/FOLLOW 이력과 Trail을 임의로 떼어 복사하는 기능은 아니다. 기존 Data Files는 V2 문서를 직접
 읽지 않으며, 모아치기에 옮긴 손 불꽃·연기는 일반 authored Element이므로 같은 저장/복사 경로를 사용한다.
 
-Valtan 연결 Effect의 편집 진입은 `F1 → Boss Tool → Boss Verification → Pattern →
+Valtan 연결 Effect의 편집 진입은 `F1 → Valtan Boss Tool → Boss Verification → Pattern →
 Stage → Edit Linked Effect`다. `patternId/stageId/cueOccurrenceId/effectAssetId`의
 exact tuple을 현재 Product tree와 다시 대조해 문서를 연다. clip-bound cue는 기존
 전체 Pattern timeline의 t=0 pause로, `STAGE_CLOCK`은 static Valtan target으로 연결한다.
@@ -608,15 +608,16 @@ Shake owner의 경로·coverage·Pattern index를 묶는 `SHADOW` source manifes
 
 | 화면/런타임 | 현재 역할 |
 |---|---|
-| Boss Tool | Server Product Pattern inventory, live state, Next/Restart/Flow command |
+| Valtan Boss Tool | Server Product Pattern inventory, live state, Next/Restart/Flow command |
 | Composition/Sequencer | Boss/Arena source manifest와 track inspection, 기존 Valtan joined timeline 진입 |
-| Action Composition Workbench | 기존 Valtan split owner의 상세 box 편집, Play와 Save |
+| Valtan Action Workbench | 기존 Valtan split owner의 상세 box 편집, Play와 Save |
 | Effect Tool | V1 Effect asset과 V2 leaf/group body 편집 |
 | Server | branch, motion, hit, combat object, phase의 gameplay 권위 |
 
-Valtan Composition은 `SHADOW`, KakulSaydon Composition은 `REFERENCE_ONLY`, 두 Arena Sequencer는
-`SHADOW`다. 현재 Sequencer는 source manifest를 staged load해 inspection만 제공하며 generated resolved
-Product를 timeline runtime으로 읽지 않는다. KakulSaydon은 reference inventory와 authored arena track만
+`Valtan.bosscomposition.json`은 `SHADOW`, `KoukuSaydonGate1.bosscomposition.json`은 `REFERENCE_ONLY`,
+`ValtanArena.sequencer.json`과 `KoukuSaydonArena.sequencer.json`은 `SHADOW`다. 현재 Sequencer는 source
+manifest를 staged load해 inspection만 제공하며 generated resolved
+Product를 timeline runtime으로 읽지 않는다. KoukuSaydon은 reference inventory와 authored arena track만
 보이며 generic Composition Save/Play, arena scene runner와 Server encounter는 아직 없다.
 
 `Data/Actors/BossCatalog.json` format v5의 현재 Valtan `presentationScale: 1.0`은 replicated Arena와 Character/Boss
@@ -655,7 +656,7 @@ Gameplay bootstrap v26은 `PORTAL_CROSS_ARENA`, `RETURN_TO_ARENA_CENTER`, `ARENA
 Six Pizza의 정적 sector처럼 root를 계속 따라야 하는 particle만 authored local-space를 명시한다. element 자체의
 scale curve는 계속 진행한다. 세부 ID와 실패 경계는 `발탄인수인계서.md` 11.9~11.10을 따른다.
 
-Boss Tool의 Next는 live Product, 같은 owner의 Flow/isolated 또는 idle에서 선택하는 Server 권위 예약 한 칸이다.
+Valtan Boss Tool의 Next는 live Product, 같은 owner의 Flow/isolated 또는 idle에서 선택하는 Server 권위 예약 한 칸이다.
 현재 패턴의 최종 world/prop/hit commit 뒤 다음 fixed tick에서 시작하며 맵·플레이어·HP·cooldown을 reset하지 않는다.
 Flow 중에는 현재 occurrence 뒤 남은 재생만 종료하며 저장 배열을 수정하지 않는다. 공용
 `CValtanPatternAuditionService`가 isolated/Next lifecycle을, `CValtanPatternFlowService`가 Ordered Flow lifecycle을
@@ -671,8 +672,8 @@ commit한다. 물리 commit 성공과 editor reopen/candidate apply 상태를 �
 중복 Pattern을 보존하고 admission/reset 실패 시 새 playback을 시작하지 않는다.
 예약·적용 상태·전멸 대기·취소와 Trash 포획 분기의 상세 계약은 `보스툴.md`와 `발탄인수인계서.md`의 10.4, 11.9를 따른다.
 
-F1의 `Logic Pattern`은 Boss Tool과 동급인 독립 대형 창이지만, 소유자는 같은 하나의
-`CBossTool`이다. 선택 또는 live Pattern의 Stage role, 실제 clip, authored/cross-pattern branch,
+F1의 `Valtan Logic Pattern`은 Valtan Boss Tool과 동급인 독립 대형 창이지만, 소유자는 같은 하나의
+`CValtanBossTool`이다. 선택 또는 live Pattern의 Stage role, 실제 clip, authored/cross-pattern branch,
 counter proxy, response threshold/progress, status action과 damage profile을 읽기 전용으로 그린다.
 연속 Server snapshot의 source/target이 단 하나의 저작 edge와 맞을 때만 observed branch로 표시하며,
 여러 outcome이 같은 target을 가리키면 추측하지 않는다. graph, Server 상태와 world/preview를
@@ -682,7 +683,7 @@ live 강조·시각 가독성은 사용자가 Debug Server와 Client에서 직�
 visual PASS를 대신 판정하지 않는다.
 
 패턴 선택은 `Build_PlayablePatternInventory`가 strict joined split 정의에서 만든 공통 집합을 사용한다.
-Boss Tool·Play/Repeat·Next·Flow·All Effects와 publisher 사이에 별도 고정 개수나 Core ID 목록을 두지 않는다.
+Valtan Boss Tool·Play/Repeat·Next·Flow·All Effects와 publisher 사이에 별도 고정 개수나 Core ID 목록을 두지 않는다.
 Core/Animator/Derived는 표시 분류이며 등록 총수는 Flow의 1~255슬롯 U8 전송 용량과 별개다. 256슬롯은
 저장·Product 투영·Client 전송·Server catalog에서 거부한다. 유령 finale와 도넛도
 같은 집합으로 선택한다. 새 패턴의 stable ID·stage/action 연결·소유자 검증은 유지하며 상세 확장 규격은
@@ -904,6 +905,6 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - Valtan destroyable publisher, Server 상태/동적 collision·navigation, Shared replication과 제품 debris/effect cue
 - generic Boss Composition writer와 multi-owner Save transaction
 - resolved Composition Product의 Client/Server runtime consumer와 공통 Sound/Camera/UI transport
-- KakulSaydon gameplay/encounter 승격과 Arena Sequencer scene runner
+- KoukuSaydon gameplay/encounter 승격과 Arena Sequencer scene runner
 
 이 항목들은 현재 인터페이스를 우회해 임시 구현하지 않는다.

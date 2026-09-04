@@ -311,7 +311,7 @@ namespace Client
 		/* Authoring reloads target the primary replicated Server-authoritative
 		   Valtan, never only the Development preview returned by
 		   CAnimationTargetService. A rejected active reload latches the freshness
-		   gate consumed by Boss Tool Complete Play. */
+		   gate consumed by Valtan Boss Tool Complete Play. */
 		bool_t Reload_PrimaryValtanPresentationAuthoring(
 			const LostArk::Shared::GameplayDataRevision& ExpectedRevision,
 			std::string& strOutStatus);

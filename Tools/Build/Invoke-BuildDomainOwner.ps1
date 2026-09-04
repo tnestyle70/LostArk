@@ -29,7 +29,7 @@ Import-Module $modulePath -Force
 $manifest = Read-BuildDomainManifest $manifestPath
 $domainIds = if ($Owner -eq 'Client') {
     @(
-        'map.kakul',
+        'map.kakulsaydon',
         'composition.presentation',
         'world.gameplay',
         'navigation',

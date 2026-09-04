@@ -598,7 +598,7 @@ private:
 	std::unordered_map<std::string,
 		std::vector<VALTAN_PATTERN_SOUND_CUE>> m_PatternSoundCuesByActionId;
 	/* Commits with m_PatternSoundCuesByActionId inside the joined presentation
-	   transaction. Boss Tool compares it with a locked current-source receipt
+	   transaction. Valtan Boss Tool compares it with a locked current-source receipt
 	   before any Server playback command is emitted. */
 	Client::VALTAN_PATTERN_SOUND_SOURCE_RECEIPT
 		m_PatternSoundSourceReceipt;

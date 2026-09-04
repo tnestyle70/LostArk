@@ -9,6 +9,19 @@ from typing import Any
 
 import numpy as np
 
+if __package__:
+    from .placement_transform import (
+        apply_placement,
+        placement_matrix,
+        quaternion_matrix,
+    )
+else:
+    from placement_transform import (
+        apply_placement,
+        placement_matrix,
+        quaternion_matrix,
+    )
+
 
 # 파괴 가능한 외곽 바닥.
 # overlay 문서에는 각 메시가 0도/180도로 두 번씩 배치되어 있다.
@@ -179,57 +192,6 @@ def read_accessor(
         offset=offset,
         strides=(stride, data_type.itemsize),
     ).copy()
-
-
-def quaternion_matrix(
-    quaternion: list[float],
-) -> np.ndarray:
-    x, y, z, w = (
-        float(value)
-        for value in quaternion
-    )
-
-    length = math.sqrt(
-        x * x + y * y + z * z + w * w
-    )
-
-    if (
-        not math.isfinite(length)
-        or length <= 1e-12
-    ):
-        raise ValueError(
-            "invalid quaternion"
-        )
-
-    x /= length
-    y /= length
-    z /= length
-    w /= length
-
-    return np.array(
-        [
-            [
-                1 - 2 * (y * y + z * z),
-                2 * (x * y - z * w),
-                2 * (x * z + y * w),
-                0,
-            ],
-            [
-                2 * (x * y + z * w),
-                1 - 2 * (x * x + z * z),
-                2 * (y * z - x * w),
-                0,
-            ],
-            [
-                2 * (x * z - y * w),
-                2 * (y * z + x * w),
-                1 - 2 * (x * x + y * y),
-                0,
-            ],
-            [0, 0, 0, 1],
-        ],
-        dtype=np.float64,
-    )
 
 
 def node_matrix(
@@ -425,77 +387,6 @@ def load_triangles(
         triangle_blocks,
         axis=0,
     )
-
-
-def placement_matrix(
-    placement: dict[str, Any],
-) -> np.ndarray:
-    position = np.asarray(
-        placement["position"],
-        dtype=np.float64,
-    )
-
-    scale_values = np.asarray(
-        placement["scale"],
-        dtype=np.float64,
-    )
-
-    if position.shape != (3,):
-        raise ValueError(
-            "placement position must have 3 values"
-        )
-
-    if scale_values.shape != (3,):
-        raise ValueError(
-            "placement scale must have 3 values"
-        )
-
-    translation = np.eye(
-        4,
-        dtype=np.float64,
-    )
-
-    translation[:3, 3] = position
-
-    scale = np.eye(
-        4,
-        dtype=np.float64,
-    )
-
-    scale[0, 0] = scale_values[0]
-    scale[1, 1] = scale_values[1]
-    scale[2, 2] = scale_values[2]
-
-    rotation = quaternion_matrix(
-        placement["quaternion"]
-    )
-
-    return translation @ rotation @ scale
-
-
-def apply_placement(
-    triangles: np.ndarray,
-    transform: np.ndarray,
-) -> np.ndarray:
-    vertices = triangles.reshape((-1, 3))
-
-    homogeneous = np.concatenate(
-        [
-            vertices,
-            np.ones(
-                (len(vertices), 1),
-                dtype=np.float64,
-            ),
-        ],
-        axis=1,
-    )
-
-    transformed = (
-        transform
-        @ homogeneous.T
-    ).T[:, :3]
-
-    return transformed.reshape((-1, 3, 3))
 
 
 def load_overlay_placements(

@@ -3,8 +3,8 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "AnimationSkillBindingDocument.h"
-#include "KakulAnimationActionDocument.h"
-#include "KakulAnimationPatternDocument.h"
+#include "KoukuSaydonAnimationActionDocument.h"
+#include "KoukuSaydonAnimationPatternDocument.h"
 #include "AnimationEffectCueDocument.h"
 #include "CharacterPreviewPanel.h"
 #include "EncounterPatternReference.h"
@@ -30,14 +30,14 @@ NS_BEGIN(Client)
 class CCharacter;
 class CValtan;
 class CBalanceTool;
-class CBossTool;
+class CValtanBossTool;
 struct EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST;
 struct CAMERA_TOOL_OPEN_REQUEST;
 
 class CAnimation_Tool final
 {
 public:
-	/* Action Composition Workbench consumes only this preview transport.  The
+	/* Valtan Action Workbench consumes only this preview transport.  The
 	   Workbench owns Pattern/Sequencer/Details UI and canonical selection; this
 	   class remains the one owner of the real CModel pose and clip playlist. */
 	struct COMPOSITION_PREVIEW_STATE final
@@ -296,7 +296,7 @@ public:
 	explicit CAnimation_Tool(
 		shared_ptr<CCharacterPreviewPanel> pPreviewPanel,
 		CBalanceTool* pBalanceTool,
-		CBossTool* pBossTool);
+		CValtanBossTool* pValtanBossTool);
 	~CAnimation_Tool();
 
 	void Update(f32_t fTimeDelta, bool_t bIsActiveTool);
@@ -310,10 +310,10 @@ public:
 	   cannot be staged. The Product data shell and Server Complete Play remain
 	   available; only model-dependent preview/edit capabilities are disabled. */
 	bool_t Open_ValtanWorkspace();
-	/* Typed Resource Files handoff for one extracted Kakul profile. 07 is an
+	/* Typed Resource Files handoff for one extracted KoukuSaydon profile. 07 is an
 	   authoring profile alias whose physical preview body is MN_RPCT_05. */
-	bool_t Open_KakulProfile(const std::string& profileId);
-	bool_t Open_KakulAction(
+	bool_t Open_KoukuSaydonProfile(const std::string& profileId);
+	bool_t Open_KoukuSaydonAction(
 		const std::string& profileId,
 		std::uint32_t iSourceActionId);
 	bool_t Stage_ValtanCompositionPreview(std::string& strOutStatus);
@@ -339,7 +339,7 @@ public:
 		std::vector<COMPOSITION_SEQUENCE_VIEW>& OutSequences,
 		std::string& strOutStatus);
 	/* One model-independent authoring catalog assembled only from the fixed
-	   Valtan and Kakul/Saydon typed source documents. It never scans Resources
+	   Valtan and Kouku/Saydon typed source documents. It never scans Resources
 	   or the repository, and is re-read only when its owning UI explicitly
 	   reloads the catalog. */
 	bool_t Get_ActionCompositionSequenceCatalog(
@@ -376,7 +376,7 @@ public:
 		std::string& strOutPatternId);
 	bool_t Is_ValtanCompositionPatternTransactionActive() const;
 	/* Pattern Sound is a separate typed authoring owner from the split
-	   gameplay/presentation Pattern transaction.  Action Composition Workbench
+	   gameplay/presentation Pattern transaction.  Valtan Action Workbench
 	   borrows this one draft instead of loading a second editable document. */
 	bool_t Ensure_ValtanCompositionPatternSounds(std::string& strOutStatus);
 	bool_t Reload_ValtanCompositionPatternSounds(std::string& strOutStatus);
@@ -653,24 +653,24 @@ private:
 	void Render_SkillBindingReloadConfirmation(
 		const shared_ptr<Engine::CModel>& pModel,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass);
-	void Render_KakulActionBindings(
+	void Render_KoukuSaydonActionBindings(
 		const shared_ptr<Engine::CModel>& pModel);
-	bool_t Load_KakulActionBindings(
+	bool_t Load_KoukuSaydonActionBindings(
 		const shared_ptr<Engine::CModel>& pModel);
-	bool_t Save_KakulActionBindings(
+	bool_t Save_KoukuSaydonActionBindings(
 		const shared_ptr<Engine::CModel>& pModel);
-	bool_t Save_KakulAnimationPatterns(
+	bool_t Save_KoukuSaydonAnimationPatterns(
 		const shared_ptr<Engine::CModel>& pModel);
-	KAKUL_ANIMATION_ACTION_BINDING* Find_KakulActionBinding(
+	KOUKU_SAYDON_ANIMATION_ACTION_BINDING* Find_KoukuSaydonActionBinding(
 		std::uint32_t iSourceActionId,
 		const std::string& strStageId,
 		const std::string& strSlotId);
-	const KAKUL_ANIMATION_ACTION_BINDING* Find_KakulActionBinding(
+	const KOUKU_SAYDON_ANIMATION_ACTION_BINDING* Find_KoukuSaydonActionBinding(
 		std::uint32_t iSourceActionId,
 		const std::string& strStageId,
 		const std::string& strSlotId) const;
-	void Upsert_KakulActionBinding(
-		const KAKUL_ANIMATION_ACTION_SLOT_REFERENCE& ReferenceSlot,
+	void Upsert_KoukuSaydonActionBinding(
+		const KOUKU_SAYDON_ANIMATION_ACTION_SLOT_REFERENCE& ReferenceSlot,
 		std::uint32_t iSourceActionId,
 		const std::string& strStageId,
 		const std::string& strRuntimeClip,
@@ -678,32 +678,32 @@ private:
 		std::uint32_t iPlayMs,
 		f32_t fPlayRate,
 		bool_t bLoop);
-	void Remove_KakulActionBinding(
+	void Remove_KoukuSaydonActionBinding(
 		std::uint32_t iSourceActionId,
 		const std::string& strStageId,
 		const std::string& strSlotId);
-	void Render_KakulPatternAuthoring(
+	void Render_KoukuSaydonPatternAuthoring(
 		const shared_ptr<Engine::CModel>& pModel);
-	bool_t Build_KakulPatternFromAction(
+	bool_t Build_KoukuSaydonPatternFromAction(
 		const shared_ptr<Engine::CModel>& pModel,
-		const KAKUL_ANIMATION_ACTION_REFERENCE& Action,
+		const KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE& Action,
 		const std::string& strPatternId,
-		KAKUL_ANIMATION_PATTERN& outPattern,
+		KOUKU_SAYDON_ANIMATION_PATTERN& outPattern,
 		std::string& strOutStatus) const;
-	bool_t Start_KakulPatternPreview(
+	bool_t Start_KoukuSaydonPatternPreview(
 		const shared_ptr<Engine::CModel>& pModel,
-		const KAKUL_ANIMATION_PATTERN& Pattern,
+		const KOUKU_SAYDON_ANIMATION_PATTERN& Pattern,
 		const std::string& strLabel);
-	bool_t Activate_KakulPatternPreviewClip(
+	bool_t Activate_KoukuSaydonPatternPreviewClip(
 		const shared_ptr<Engine::CModel>& pModel);
-	void Advance_KakulPatternPreview(
+	void Advance_KoukuSaydonPatternPreview(
 		const shared_ptr<Engine::CModel>& pModel);
-	void Stop_KakulPatternPreview(
+	void Stop_KoukuSaydonPatternPreview(
 		const shared_ptr<Engine::CModel>& pModel,
 		const std::string& strStatus);
-	void Reset_KakulPatternPreviewState(const std::string& strStatus);
-	std::string Resolve_KakulIdleClip() const;
-	void Reset_KakulActionDocumentState(bool_t bClearProfile);
+	void Reset_KoukuSaydonPatternPreviewState(const std::string& strStatus);
+	std::string Resolve_KoukuSaydonIdleClip() const;
+	void Reset_KoukuSaydonActionDocumentState(bool_t bClearProfile);
 
 	bool_t Save_Events(const shared_ptr<Engine::CModel>& pModel);
 	bool_t Load_Events(const shared_ptr<Engine::CModel>& pModel);
@@ -926,7 +926,7 @@ private:
 	/* Non-owning orchestration endpoints. MainApp creates these before the
 	   Workbench and owns all three until Client shutdown. */
 	CBalanceTool* m_pBalanceTool = nullptr;
-	CBossTool* m_pBossTool = nullptr;
+	CValtanBossTool* m_pValtanBossTool = nullptr;
 	bool_t m_bResetWorkbenchLayoutRequested = false;
 	bool_t m_bValtanDataWorkspaceRequested = false;
 	bool_t m_bValtanWorkspaceTabInitialized = false;
@@ -975,36 +975,36 @@ private:
 	int32_t m_iSelectedSkillStage = 0;
 	int32_t m_iSelectedSkillClip = 0;
 	std::string m_SkillBindingStatus;
-	std::string m_strKakulProfileId;
-	KAKUL_ANIMATION_ACTION_REFERENCE_DOCUMENT m_KakulActionReference;
-	KAKUL_ANIMATION_ACTION_AUTHORED_DOCUMENT m_KakulActionAuthored;
-	KAKUL_ANIMATION_PATTERN_DOCUMENT m_KakulAnimationPatterns;
-	bool_t m_bKakulActionLoadAttempted = false;
-	bool_t m_bKakulActionDirty = false;
-	bool_t m_bKakulPatternDirty = false;
-	bool_t m_bKakulActionReloadConfirmationRequested = false;
-	int32_t m_iSelectedKakulAction = -1;
-	std::uint32_t m_iRequestedKakulSourceActionId = 0u;
-	int32_t m_iSelectedKakulStage = 0;
-	int32_t m_iSelectedKakulSlot = 0;
-	int32_t m_iSelectedKakulActionClip = 0;
-	int32_t m_iSelectedKakulPattern = -1;
-	int32_t m_iSelectedKakulPatternClip = 0;
-	f32_t m_fKakulActionListWidth = 320.f;
-	char m_KakulActionFilter[128]{};
-	char m_KakulPatternFilter[128]{};
-	std::string m_strKakulActionStatus;
-	std::string m_strKakulPatternStatus;
-	std::vector<KAKUL_ANIMATION_PATTERN_CLIP> m_KakulPatternPreviewClips;
-	std::string m_strKakulPatternPreviewId;
-	std::string m_strKakulPatternPreviewLabel;
-	std::weak_ptr<Engine::CModel> m_KakulPatternPreviewModel;
-	std::uint64_t m_iKakulPatternPreviewTargetGeneration = 0u;
-	std::size_t m_iKakulPatternPreviewClip = 0u;
-	f32_t m_fKakulPatternPreviewElapsedSeconds = 0.f;
-	f32_t m_fKakulPatternPreviewClipDurationSeconds = 0.f;
-	bool_t m_bKakulPatternPreviewPlaying = false;
-	bool_t m_bKakulPatternPreviewPaused = false;
+	std::string m_strKoukuSaydonProfileId;
+	KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT m_KoukuSaydonActionReference;
+	KOUKU_SAYDON_ANIMATION_ACTION_AUTHORED_DOCUMENT m_KoukuSaydonActionAuthored;
+	KOUKU_SAYDON_ANIMATION_PATTERN_DOCUMENT m_KoukuSaydonAnimationPatterns;
+	bool_t m_bKoukuSaydonActionLoadAttempted = false;
+	bool_t m_bKoukuSaydonActionDirty = false;
+	bool_t m_bKoukuSaydonPatternDirty = false;
+	bool_t m_bKoukuSaydonActionReloadConfirmationRequested = false;
+	int32_t m_iSelectedKoukuSaydonAction = -1;
+	std::uint32_t m_iRequestedKoukuSaydonSourceActionId = 0u;
+	int32_t m_iSelectedKoukuSaydonStage = 0;
+	int32_t m_iSelectedKoukuSaydonSlot = 0;
+	int32_t m_iSelectedKoukuSaydonActionClip = 0;
+	int32_t m_iSelectedKoukuSaydonPattern = -1;
+	int32_t m_iSelectedKoukuSaydonPatternClip = 0;
+	f32_t m_fKoukuSaydonActionListWidth = 320.f;
+	char m_KoukuSaydonActionFilter[128]{};
+	char m_KoukuSaydonPatternFilter[128]{};
+	std::string m_strKoukuSaydonActionStatus;
+	std::string m_strKoukuSaydonPatternStatus;
+	std::vector<KOUKU_SAYDON_ANIMATION_PATTERN_CLIP> m_KoukuSaydonPatternPreviewClips;
+	std::string m_strKoukuSaydonPatternPreviewId;
+	std::string m_strKoukuSaydonPatternPreviewLabel;
+	std::weak_ptr<Engine::CModel> m_KoukuSaydonPatternPreviewModel;
+	std::uint64_t m_iKoukuSaydonPatternPreviewTargetGeneration = 0u;
+	std::size_t m_iKoukuSaydonPatternPreviewClip = 0u;
+	f32_t m_fKoukuSaydonPatternPreviewElapsedSeconds = 0.f;
+	f32_t m_fKoukuSaydonPatternPreviewClipDurationSeconds = 0.f;
+	bool_t m_bKoukuSaydonPatternPreviewPlaying = false;
+	bool_t m_bKoukuSaydonPatternPreviewPaused = false;
 	/* Which kinds Import_Notifies takes. Effects alone run to a few thousand
 	rows, so being able to pull in just hits and cancels matters. */
 	bool_t m_bImportKind[ETOI(EVENT_KIND::END)]{};

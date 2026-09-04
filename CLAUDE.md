@@ -221,7 +221,7 @@ enum class LEVEL { STATIC, LOADING, LOBBY, CHARACTER_SELECT, BERN, VALTAN_ARENA,
 
 시작 Level은 항상 `LOBBY`다. Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령을 제공하고 `CLevelRegistry`가 각 `LEVEL`의 생성 함수, Loader 함수, map area와 load scope를 연결한다. 별도 실행 시나리오 catalog, 문자열 기반 Level 분기, direct `Change_Level` 호출을 추가하지 않는다.
 
-`LEVEL::STATIC`은 전환 시에도 살아남는 영구 레벨이고, 나머지는 `Change_Level`에서 정리된다. KakulSaydon은 Lobby 버튼을 늘리지 않고 Debug Character Select의 typed Server transfer로 진입한다. 각 레벨 인덱스는 `map<wstring_t, shared_ptr<CLayer>>`를 가지며, `CLayer`는 `list<shared_ptr<CGameObject>>`를 들고 매 프레임 `Priority_Update → Update → Late_Update`를 구동한다.
+`LEVEL::STATIC`은 전환 시에도 살아남는 영구 레벨이고, 나머지는 `Change_Level`에서 정리된다. `LEVEL::KAKULSAYDON_ARENA`는 Lobby 버튼을 늘리지 않고 Debug Character Select의 typed Server transfer로 진입한다. 각 레벨 인덱스는 `map<wstring_t, shared_ptr<CLayer>>`를 가지며, `CLayer`는 `list<shared_ptr<CGameObject>>`를 들고 매 프레임 `Priority_Update → Update → Late_Update`를 구동한다.
 
 ### 레벨 전환 흐름
 
@@ -305,7 +305,7 @@ Tool에서 직접 저장하지 않는다. 제품 Arena와 `CValtan`은 admitted 
 두 번째 runtime으로 해석하지 않는다. 각 stage animation은 `EXACT`, `HOLD_LAST_POSE`,
 `LOOP_TO_STAGE_END` 중 하나의 종료 정책을 사용한다.
 
-F1의 `Action Composition Workbench`는 기존 Animation Clip Tool과 독립적으로 열리는 resizable ImGui
+F1의 `Valtan Action Workbench`는 기존 Animation Clip Tool과 독립적으로 열리는 resizable ImGui
 저작 셸이다. Pattern/Stage와 model-independent Valtan Sequence intake를 의미 단위로 나열하고, 하나의
 playhead 위에 Animation·Collider·Effect·Sound·Camera·World 관계를 표시한다. `CBalanceTool`의 동일
 joined draft를 통해 Sequence slot, Stage clock/gap, Server collider/hit schedule, Counter→Groggy edge,
@@ -331,11 +331,12 @@ arena clock과 stable owner reference만 소유하는 scheduling facade다.
 `Client/Bin/DataFiles/Compositions`에 resolved read model과 receipt를 만든다. 생성물 안에 함께 보이는
 Stage와 cue 값은 파생 projection이며 새 정본이 아니다.
 
-현재 Valtan Boss Composition은 `SHADOW`, KakulSaydon Boss Composition은 `REFERENCE_ONLY`, 두 Arena
-Sequencer는 `SHADOW`이고 모두 `runtimeEligible=false`다. `CSequencerTool`은 `CProjectDataRoot`를 통해
+현재 `Valtan.bosscomposition.json`은 `SHADOW`, `KoukuSaydonGate1.bosscomposition.json`은
+`REFERENCE_ONLY`, `ValtanArena.sequencer.json`과 `KoukuSaydonArena.sequencer.json`은 `SHADOW`이고 모두
+`runtimeEligible=false`다. `CSequencerTool`은 `CProjectDataRoot`를 통해
 source manifest를 staged load하여 inspection만 제공하며 generated resolved Product를 두 번째 timeline
-runtime으로 읽지 않는다. Valtan의 상세 box 편집, Play와 Save는 기존 `CActionCompositionWorkbench`와
-split owner가 계속 담당한다. KakulSaydon은 reference inventory와 authored arena track을 표시할 뿐
+runtime으로 읽지 않는다. Valtan의 상세 box 편집, Play와 Save는 `CValtanActionWorkbench`와
+split owner가 계속 담당한다. KoukuSaydon은 reference inventory와 authored arena track을 표시할 뿐
 generic Composition Save/Play나 Server encounter를 제공하지 않는다.
 
 Pattern Sound cue는 exact occurrence dependency와 canonical read generation을 확인한 뒤 Sound owner에

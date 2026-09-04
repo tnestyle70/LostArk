@@ -575,7 +575,7 @@ class ValtanStatusPatternContractTests(unittest.TestCase):
         )
         hud = read_text("Client/Private/CombatHUDViewModel.cpp")
         main_app = read_text("Client/Private/MainApp.cpp")
-        composition = read_text("Client/Private/ActionCompositionWorkbench.cpp")
+        composition = read_text("Client/Private/ValtanActionWorkbench.cpp")
         for marker in (
             "bPatternBound", "iPatternBindEndTick", "fPatternBindRestoreX",
             "iSilenceEndTick", "iSilenceDurationTicks",

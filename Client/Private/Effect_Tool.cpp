@@ -3191,7 +3191,7 @@ bool_t Client::CEffect_Tool::Open_ValtanProductEffect(
 	const auto Reject = [this](std::string Reason)
 	{
 		m_strValtanPatternEffectStatus =
-			"Boss Tool Product Effect open rejected: " + std::move(Reason);
+			"Valtan Boss Tool Product Effect open rejected: " + std::move(Reason);
 		m_strPreviewStatus = m_strValtanPatternEffectStatus;
 		return false;
 	};
@@ -3210,7 +3210,7 @@ bool_t Client::CEffect_Tool::Open_ValtanProductEffect(
 		return Reject("the stable Product identity is incomplete.");
 	}
 
-	/* Boss Tool and Effect Tool deliberately own separate staged views.  Stage
+	/* Valtan Boss Tool and Effect Tool deliberately own separate staged views.  Stage
 	   only the catalog-owned stable ID/path metadata here; the exact selected
 	   document is decoded below by Try_OpenValtan* after the Product tuple has
 	   been resolved again. */
@@ -14490,7 +14490,7 @@ bool_t Client::CEffect_Tool::Can_PlayValtanServerPattern(
 	if (0u == Player.iCurrentHp)
 	{
 		strOutReason =
-			"Player is dead. Open Boss Tool and use Revive Player first.";
+			"Player is dead. Open Valtan Boss Tool and use Revive Player first.";
 		return false;
 	}
 	if (!Player.isCombatReady)
@@ -17591,7 +17591,7 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 	/* Retired local-preview labels are intentionally not rendered:
 	   "Manual Audition | P"
 	   "Animation-first manual audition | phase %u | source chain %s | automatic rotation disabled"
-	   Animator order now comes from ManualAuditions. All Effects and Boss Tool
+	   Animator order now comes from ManualAuditions. All Effects and Valtan Boss Tool
 	   both submit the one shared typed Server audition service. */
 	Render_ValtanEffectResourceSection(strSearch);
 	Render_ValtanExactAuthoredSourceSection(strSearch);
@@ -18198,7 +18198,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 		ImGui::TextWrapped(
 			"Choose a Valtan Pattern and use Play Server for one Arena fixed-tick replay.");
 		ImGui::TextDisabled(
-			"Open Editor and local Play keep the Model View authoring timeline. Boss Tool owns Repeat and Revive.");
+			"Open Editor and local Play keep the Model View authoring timeline. Valtan Boss Tool owns Repeat and Revive.");
 		if (Has_UnsavedWork())
 		{
 			ImGui::TextDisabled(

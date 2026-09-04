@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
-#include "ActionCompositionWorkbench.h"
+#include "ValtanActionWorkbench.h"
 #include "BossCompositionDocument.h"
 
 #include <cstdint>
@@ -10,7 +10,7 @@
 
 NS_BEGIN(Client)
 
-class CBossTool;
+class CValtanBossTool;
 
 /* Sequencer: one playhead over every lane of the Composition Workbench's
    selected Pattern (Stage, Animation, Collider, Effect, Sound, Logic, Camera).
@@ -21,24 +21,24 @@ class CSequencerTool final
 {
 public:
 	CSequencerTool(
-		CActionCompositionWorkbench* pWorkbench,
-		CBossTool* pBossTool);
+		CValtanActionWorkbench* pValtanWorkbench,
+		CValtanBossTool* pValtanBossTool);
 
 	void Open() { m_bOpen = true; }
 	[[nodiscard]] bool_t Is_Open() const noexcept { return m_bOpen; }
 	void Render();
 	bool_t Consume_CompositionOpenRequest();
-	bool_t Consume_KakulAnimationOpenRequest(std::string& outProfileId);
+	bool_t Consume_KoukuSaydonAnimationOpenRequest(std::string& outProfileId);
 
 private:
 	enum class SOURCE_BOSS : uint8_t
 	{
 		VALTAN,
-		KAKUL_SAYDON,
+		KOUKU_SAYDON,
 	};
 
-	static const char_t* Lane_Label(CActionCompositionWorkbench::TIMELINE_LANE eLane);
-	static uint32_t Lane_Color(CActionCompositionWorkbench::TIMELINE_LANE eLane);
+	static const char_t* Lane_Label(CValtanActionWorkbench::TIMELINE_LANE eLane);
+	static uint32_t Lane_Color(CValtanActionWorkbench::TIMELINE_LANE eLane);
 	static const char_t* SourceBoss_Label(SOURCE_BOSS boss);
 	void Reload_SourceDocuments();
 	void Synchronize_SourceDocumentsWithCanonicalGeneration();
@@ -48,17 +48,17 @@ private:
 	void Render_ArenaSequencerSummary() const;
 	void Render_Transport(uint32_t iDurationMs);
 	void Render_Lanes(
-		const std::vector<CActionCompositionWorkbench::TIMELINE_ITEM>& Items,
+		const std::vector<CValtanActionWorkbench::TIMELINE_ITEM>& Items,
 		uint32_t iDurationMs);
 	void Render_Selection(
-		const std::vector<CActionCompositionWorkbench::TIMELINE_ITEM>& Items) const;
+		const std::vector<CValtanActionWorkbench::TIMELINE_ITEM>& Items) const;
 
 private:
-	CActionCompositionWorkbench* m_pWorkbench = nullptr;
-	CBossTool* m_pBossTool = nullptr;
+	CValtanActionWorkbench* m_pValtanWorkbench = nullptr;
+	CValtanBossTool* m_pValtanBossTool = nullptr;
 	bool_t m_bOpen = true;
 	bool_t m_bCompositionOpenRequested = false;
-	std::string m_strKakulAnimationOpenProfileId;
+	std::string m_strKoukuSaydonAnimationOpenProfileId;
 	bool_t m_bSourceDocumentsLoaded = false;
 	bool_t m_bSourceDocumentsParsed = false;
 	SOURCE_BOSS m_eSourceBoss = SOURCE_BOSS::VALTAN;
@@ -73,8 +73,8 @@ private:
 	float m_fPixelsPerSecond = 160.f;
 	std::string m_strSelectedStableId;
 	std::string m_strSelectedStageId;
-	CActionCompositionWorkbench::TIMELINE_LANE m_eSelectedLane =
-		CActionCompositionWorkbench::TIMELINE_LANE::STAGE;
+	CValtanActionWorkbench::TIMELINE_LANE m_eSelectedLane =
+		CValtanActionWorkbench::TIMELINE_LANE::STAGE;
 };
 
 NS_END

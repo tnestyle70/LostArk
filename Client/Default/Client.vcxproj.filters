@@ -94,13 +94,13 @@
     <Filter Include="96.DataFiles\Animation\Authored\Valtan">
       <UniqueIdentifier>{29249b04-68b3-43f4-9782-7d6435d7a9bb}</UniqueIdentifier>
     </Filter>
-	<Filter Include="96.DataFiles\Animation\Authored\KakulSaydon">
+	<Filter Include="96.DataFiles\Animation\Authored\KoukuSaydon">
 	  <UniqueIdentifier>{f48d9034-9d19-4725-8cab-0584ae5d6e95}</UniqueIdentifier>
 	</Filter>
     <Filter Include="96.DataFiles\Animation\Reference">
       <UniqueIdentifier>{4402f87c-21c5-4861-a522-78384ae40740}</UniqueIdentifier>
     </Filter>
-	<Filter Include="96.DataFiles\Animation\Reference\KakulSaydon">
+	<Filter Include="96.DataFiles\Animation\Reference\KoukuSaydon">
 	  <UniqueIdentifier>{461e3d79-aeef-4655-b7c8-cc964a1d807c}</UniqueIdentifier>
 	</Filter>
     <Filter Include="96.DataFiles\Animation\RootMotion">
@@ -190,7 +190,7 @@
     <Filter Include="01.Levels\04. ValtanArena">
       <UniqueIdentifier>{a4c9a668-668d-40d1-95bb-17c06b9257fa}</UniqueIdentifier>
     </Filter>
-    <Filter Include="01.Levels\04. KakulSaydonArena">
+    <Filter Include="01.Levels\04. KoukuSaydonArena">
       <UniqueIdentifier>{1b61a221-773c-4b61-9693-50cfdfd47852}</UniqueIdentifier>
     </Filter>
     <Filter Include="04. Network">
@@ -246,10 +246,10 @@
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
-	<ClCompile Include="..\Private\KakulAnimationActionDocument.cpp">
+	<ClCompile Include="..\Private\KoukuSaydonAnimationActionDocument.cpp">
 	  <Filter>03. Tools\04. Animation</Filter>
 	</ClCompile>
-	<ClCompile Include="..\Private\KakulAnimationPatternDocument.cpp">
+	<ClCompile Include="..\Private\KoukuSaydonAnimationPatternDocument.cpp">
 	  <Filter>03. Tools\04. Animation</Filter>
 	</ClCompile>
 	<ClCompile Include="..\Private\ValtanPatternFlowDocument.cpp">
@@ -285,7 +285,7 @@
     <ClCompile Include="..\Private\BalanceTool.cpp">
       <Filter>03. Tools\07. Balance</Filter>
     </ClCompile>
-    <ClCompile Include="..\Private\BossTool.cpp">
+    <ClCompile Include="..\Private\ValtanBossTool.cpp">
       <Filter>03. Tools\01. Boss</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\CameraTool.cpp">
@@ -504,10 +504,10 @@
 	<ClCompile Include="..\Private\EstherActionSoundCueDocument.cpp">
 	  <Filter>03. Tools\02. Effect</Filter>
 	</ClCompile>
-	<ClCompile Include="..\Private\ActionCompositionWorkbench.cpp">
+	<ClCompile Include="..\Private\ValtanActionWorkbench.cpp">
 	  <Filter>03. Tools\05. Sequencer</Filter>
 	</ClCompile>
-	<ClCompile Include="..\Private\ActionCompositionWorkbench_Blueprint.cpp">
+	<ClCompile Include="..\Private\ValtanActionWorkbench_Blueprint.cpp">
 	  <Filter>03. Tools\05. Sequencer</Filter>
 	</ClCompile>
 	<ClCompile Include="..\Private\ActionCompositionGraphModel.cpp">
@@ -601,7 +601,7 @@
       <Filter>01.Levels\02. Bern</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Level_KakulSaydonArena.cpp">
-      <Filter>01.Levels\04. KakulSaydonArena</Filter>
+      <Filter>01.Levels\04. KoukuSaydonArena</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Level_ValtanArena.cpp">
       <Filter>01.Levels\04. ValtanArena</Filter>
@@ -940,7 +940,7 @@
     <ClInclude Include="..\Public\Animation_Tool.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
-	<ClInclude Include="..\Public\ActionCompositionWorkbench.h">
+	<ClInclude Include="..\Public\ValtanActionWorkbench.h">
 	  <Filter>03. Tools\05. Sequencer</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\ActionCompositionGraphModel.h">
@@ -952,10 +952,10 @@
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
-	<ClInclude Include="..\Public\KakulAnimationActionDocument.h">
+	<ClInclude Include="..\Public\KoukuSaydonAnimationActionDocument.h">
 	  <Filter>03. Tools\04. Animation</Filter>
 	</ClInclude>
-	<ClInclude Include="..\Public\KakulAnimationPatternDocument.h">
+	<ClInclude Include="..\Public\KoukuSaydonAnimationPatternDocument.h">
 	  <Filter>03. Tools\04. Animation</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\ValtanPatternFlowDocument.h">
@@ -991,7 +991,7 @@
     <ClInclude Include="..\Public\BalanceTool.h">
       <Filter>03. Tools\07. Balance</Filter>
     </ClInclude>
-    <ClInclude Include="..\Public\BossTool.h">
+    <ClInclude Include="..\Public\ValtanBossTool.h">
       <Filter>03. Tools\01. Boss</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\CameraTool.h">
@@ -1079,7 +1079,7 @@
       <Filter>01.Levels\02. Bern</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Level_KakulSaydonArena.h">
-      <Filter>01.Levels\04. KakulSaydonArena</Filter>
+      <Filter>01.Levels\04. KoukuSaydonArena</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Level_ValtanArena.h">
       <Filter>01.Levels\04. ValtanArena</Filter>
@@ -1381,13 +1381,13 @@
 	<None Include="..\..\Data\Compositions\Bosses\Valtan.bosscomposition.json">
 	  <Filter>96.DataFiles\Compositions\Bosses</Filter>
 	</None>
-	<None Include="..\..\Data\Compositions\Bosses\KakulSaydon.bosscomposition.json">
+	<None Include="..\..\Data\Compositions\Bosses\KoukuSaydonGate1.bosscomposition.json">
 	  <Filter>96.DataFiles\Compositions\Bosses</Filter>
 	</None>
 	<None Include="..\..\Data\Compositions\Sequences\ValtanArena.sequencer.json">
 	  <Filter>96.DataFiles\Compositions\Sequences</Filter>
 	</None>
-	<None Include="..\..\Data\Compositions\Sequences\KakulSaydonArena.sequencer.json">
+	<None Include="..\..\Data\Compositions\Sequences\KoukuSaydonArena.sequencer.json">
 	  <Filter>96.DataFiles\Compositions\Sequences</Filter>
 	</None>
     <None Include="..\..\Data\Animation\Authored\Artist\Artist.animevents">
@@ -1501,41 +1501,41 @@
 	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patternpreview.json">
 	  <Filter>96.DataFiles\Animation\Authored\Valtan</Filter>
 	</None>
-	<None Include="..\..\Data\Animation\Reference\KakulSaydon\MN_RPCT_05.actionreference.json">
-	  <Filter>96.DataFiles\Animation\Reference\KakulSaydon</Filter>
+	<None Include="..\..\Data\Animation\Reference\KoukuSaydon\MN_RPCT_05.actionreference.json">
+	  <Filter>96.DataFiles\Animation\Reference\KoukuSaydon</Filter>
 	</None>
-	<None Include="..\..\Data\Animation\Reference\KakulSaydon\MN_RPCT_06.actionreference.json">
-	  <Filter>96.DataFiles\Animation\Reference\KakulSaydon</Filter>
+	<None Include="..\..\Data\Animation\Reference\KoukuSaydon\MN_RPCT_06.actionreference.json">
+	  <Filter>96.DataFiles\Animation\Reference\KoukuSaydon</Filter>
 	</None>
-	<None Include="..\..\Data\Animation\Reference\KakulSaydon\MN_RPCT_07.actionreference.json">
-	  <Filter>96.DataFiles\Animation\Reference\KakulSaydon</Filter>
+	<None Include="..\..\Data\Animation\Reference\KoukuSaydon\MN_RPCT_07.actionreference.json">
+	  <Filter>96.DataFiles\Animation\Reference\KoukuSaydon</Filter>
 	</None>
-	<None Include="..\..\Data\Animation\Reference\KakulSaydon\MN_RPCZ_00.actionreference.json">
-	  <Filter>96.DataFiles\Animation\Reference\KakulSaydon</Filter>
+	<None Include="..\..\Data\Animation\Reference\KoukuSaydon\MN_RPCZ_00.actionreference.json">
+	  <Filter>96.DataFiles\Animation\Reference\KoukuSaydon</Filter>
 	</None>
-	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_05.actionbindings.json">
-	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\MN_RPCT_05.actionbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KoukuSaydon</Filter>
 	</None>
-	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_06.actionbindings.json">
-	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\MN_RPCT_06.actionbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KoukuSaydon</Filter>
 	</None>
-	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_07.actionbindings.json">
-	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\MN_RPCT_07.actionbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KoukuSaydon</Filter>
 	</None>
-	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCZ_00.actionbindings.json">
-	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\MN_RPCZ_00.actionbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KoukuSaydon</Filter>
 	</None>
-	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_05.patternbindings.json">
-	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\MN_RPCT_05.patternbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KoukuSaydon</Filter>
 	</None>
-	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_06.patternbindings.json">
-	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\MN_RPCT_06.patternbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KoukuSaydon</Filter>
 	</None>
-	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCT_07.patternbindings.json">
-	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\MN_RPCT_07.patternbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KoukuSaydon</Filter>
 	</None>
-	<None Include="..\..\Data\Animation\Authored\KakulSaydon\MN_RPCZ_00.patternbindings.json">
-	  <Filter>96.DataFiles\Animation\Authored\KakulSaydon</Filter>
+	<None Include="..\..\Data\Animation\Authored\KoukuSaydon\MN_RPCZ_00.patternbindings.json">
+	  <Filter>96.DataFiles\Animation\Authored\KoukuSaydon</Filter>
 	</None>
     <None Include="..\..\Data\Animation\Reference\Artist\Artist.animnotify">
       <Filter>96.DataFiles\Animation\Reference</Filter>

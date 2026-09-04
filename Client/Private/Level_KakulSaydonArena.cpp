@@ -432,7 +432,7 @@ void Client::CLevel_KakulSaydonArena::Update(const f32_t fTimeDelta)
 	{
 		CLevelTransitionService::Report_NetworkRecovery(
 			"level-kakul-saydon.network-connection-lost",
-			"KoukuSaton replication observed a disconnected Server session.");
+			"KoukuSaydon replication observed a disconnected Server session.");
 		CNetworkManager::Get().Close_ServerConnection();
 		if (CLevelTransitionService::Request_Load(
 			LEVEL::LOBBY,
@@ -577,14 +577,14 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 	const std::uintmax_t fileBytes = std::filesystem::file_size(path, fileError);
 	if (path.empty() || fileError || 0u == fileBytes || fileBytes > 256u * 1024u)
 	{
-		outStatus = "KoukuSaton StageMarkers document is missing or exceeds 256 KiB.";
+		outStatus = "KoukuSaydon StageMarkers document is missing or exceeds 256 KiB.";
 		return false;
 	}
 
 	std::ifstream input(path, std::ios::binary);
 	if (!input)
 	{
-		outStatus = "KoukuSaton StageMarkers document could not be opened.";
+		outStatus = "KoukuSaydon StageMarkers document could not be opened.";
 		return false;
 	}
 	const std::string text{
@@ -592,7 +592,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 		std::istreambuf_iterator<char>() };
 	if (input.bad() || text.size() != fileBytes)
 	{
-		outStatus = "KoukuSaton StageMarkers document could not be read completely.";
+		outStatus = "KoukuSaydon StageMarkers document could not be read completely.";
 		return false;
 	}
 
@@ -607,7 +607,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 			{ "schema", "formatVersion", "worldId", "areaId", "revision",
 				"semanticStatus", "stages" }))
 	{
-		outStatus = "KoukuSaton StageMarkers root is invalid: " + parseError;
+		outStatus = "KoukuSaydon StageMarkers root is invalid: " + parseError;
 		return false;
 	}
 
@@ -631,7 +631,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 		nullptr == stages || stages->Get_Array().empty() ||
 		stages->Get_Array().size() > 64u)
 	{
-		outStatus = "KoukuSaton StageMarkers header is invalid.";
+		outStatus = "KoukuSaydon StageMarkers header is invalid.";
 		return false;
 	}
 
@@ -644,7 +644,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 		if (!Has_ExactProperties(value,
 			{ "stageId", "placementId", "displayNameKo", "sourceLevelId" }))
 		{
-			outStatus = "KoukuSaton StageMarkers stage has unexpected properties.";
+			outStatus = "KoukuSaydon StageMarkers stage has unexpected properties.";
 			return false;
 		}
 		const DATA_JSON_VALUE* stageId = Required(value, "stageId", DATA_JSON_TYPE::STRING);
@@ -661,7 +661,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 			!stagedIds.emplace(stageId->Get_String()).second ||
 			!stagedPlacementIds.emplace(placementId->Get_String()).second)
 		{
-			outStatus = "KoukuSaton StageMarkers stage identity or evidence is invalid.";
+			outStatus = "KoukuSaydon StageMarkers stage identity or evidence is invalid.";
 			return false;
 		}
 		stagedMarkers.push_back({
@@ -671,7 +671,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_StageMarkers(
 
 	m_StageMarkers = std::move(stagedMarkers);
 	m_StageMarkerPlacementIds = std::move(stagedPlacementIds);
-	outStatus = "KoukuSaton StageMarkers loaded.";
+	outStatus = "KoukuSaydon StageMarkers loaded.";
 	return true;
 }
 
@@ -682,27 +682,27 @@ bool_t Client::CLevel_KakulSaydonArena::Request_StageTeleport(
 {
 	if (0u == requestSequence || placementId.empty())
 	{
-		outStatus = "KoukuSaton stage teleport request identity is invalid.";
+		outStatus = "KoukuSaydon stage teleport request identity is invalid.";
 		return false;
 	}
 	if (m_StageMarkerPlacementIds.empty())
 	{
-		outStatus = "KoukuSaton StageMarkers are not authored; teleport is isolated.";
+		outStatus = "KoukuSaydon StageMarkers are not authored; teleport is isolated.";
 		return false;
 	}
 	if (!m_StageMarkerPlacementIds.contains(std::string(placementId)))
 	{
-		outStatus = "KoukuSaton stage marker placement ID is not authored.";
+		outStatus = "KoukuSaydon stage marker placement ID is not authored.";
 		return false;
 	}
 	if (nullptr == m_pWorldEntityCommandSink ||
 		!m_pWorldEntityCommandSink->Request_StageTeleport(
 			requestSequence, placementId))
 	{
-		outStatus = "KoukuSaton stage teleport command was rejected.";
+		outStatus = "KoukuSaydon stage teleport command was rejected.";
 		return false;
 	}
-	outStatus = "KoukuSaton stage teleport command submitted.";
+	outStatus = "KoukuSaydon stage teleport command submitted.";
 	return true;
 }
 
@@ -819,19 +819,19 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 	std::error_code fileError;
 	if (!std::filesystem::is_regular_file(path, fileError) || fileError)
 	{
-		outStatus = "KoukuSaton camera shot document is absent; follow view only.";
+		outStatus = "KoukuSaydon camera shot document is absent; follow view only.";
 		return true;
 	}
 	const std::uintmax_t fileBytes = std::filesystem::file_size(path, fileError);
 	if (fileError || 0u == fileBytes || fileBytes > 256u * 1024u)
 	{
-		outStatus = "KoukuSaton camera shot document is empty or exceeds 256 KiB.";
+		outStatus = "KoukuSaydon camera shot document is empty or exceeds 256 KiB.";
 		return false;
 	}
 	std::ifstream input(path, std::ios::binary);
 	if (!input)
 	{
-		outStatus = "KoukuSaton camera shot document could not be opened.";
+		outStatus = "KoukuSaydon camera shot document could not be opened.";
 		return false;
 	}
 	const std::string text{
@@ -839,7 +839,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 		std::istreambuf_iterator<char>() };
 	if (input.bad() || text.size() != fileBytes)
 	{
-		outStatus = "KoukuSaton camera shot document could not be read completely.";
+		outStatus = "KoukuSaydon camera shot document could not be read completely.";
 		return false;
 	}
 
@@ -853,7 +853,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 		!Has_ExactProperties(root,
 			{ "schema", "formatVersion", "areaId", "revision", "shots" }))
 	{
-		outStatus = "KoukuSaton camera shot root is invalid: " + parseError;
+		outStatus = "KoukuSaydon camera shot root is invalid: " + parseError;
 		return false;
 	}
 
@@ -870,7 +870,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 		std::floor(revision->Get_Number()) != revision->Get_Number() ||
 		nullptr == shots || shots->Get_Array().size() > CAMERA_SHOT_MAX_COUNT)
 	{
-		outStatus = "KoukuSaton camera shot header is invalid.";
+		outStatus = "KoukuSaydon camera shot header is invalid.";
 		return false;
 	}
 
@@ -883,7 +883,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 			{ "shotId", "sequenceInstanceId", "box", "eye", "lookAt",
 				"fovYDegrees", "blendInMs", "blendOutMs", "priority" }))
 		{
-			outStatus = "KoukuSaton camera shot has unexpected properties.";
+			outStatus = "KoukuSaydon camera shot has unexpected properties.";
 			return false;
 		}
 		KAKUL_CAMERA_SHOT shot;
@@ -894,7 +894,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 			nullptr == box ||
 			!Has_ExactProperties(*box, { "center", "halfExtents", "yawDegrees" }))
 		{
-			outStatus = "KoukuSaton camera shot identity or box is invalid.";
+			outStatus = "KoukuSaydon camera shot identity or box is invalid.";
 			return false;
 		}
 		shot.strShotId = shotId->Get_String();
@@ -904,7 +904,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 			(!sequenceId->Get_String().empty() &&
 				!Is_StableId(sequenceId->Get_String())))
 		{
-			outStatus = "KoukuSaton camera shot sequence binding is invalid: " +
+			outStatus = "KoukuSaydon camera shot sequence binding is invalid: " +
 				shot.strShotId;
 			return false;
 		}
@@ -927,7 +927,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 			!Read_Uint(value.Find("blendOutMs"), CAMERA_SHOT_MAX_BLEND_MS, shot.iBlendOutMs) ||
 			!Read_Uint(value.Find("priority"), CAMERA_SHOT_MAX_PRIORITY, shot.iPriority))
 		{
-			outStatus = "KoukuSaton camera shot values are out of range: " +
+			outStatus = "KoukuSaydon camera shot values are out of range: " +
 				shot.strShotId;
 			return false;
 		}
@@ -942,7 +942,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 		if (forward.x * forward.x + forward.y * forward.y +
 			forward.z * forward.z <= 0.000001f)
 		{
-			outStatus = "KoukuSaton camera shot eye and lookAt coincide: " +
+			outStatus = "KoukuSaydon camera shot eye and lookAt coincide: " +
 				shot.strShotId;
 			return false;
 		}
@@ -950,7 +950,7 @@ bool_t Client::CLevel_KakulSaydonArena::Load_CameraShots(
 	}
 
 	m_CameraShots = std::move(stagedShots);
-	outStatus = "KoukuSaton camera shots loaded: " +
+	outStatus = "KoukuSaydon camera shots loaded: " +
 		std::to_string(m_CameraShots.size());
 	return true;
 }

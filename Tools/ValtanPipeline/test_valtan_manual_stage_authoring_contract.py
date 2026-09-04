@@ -17,7 +17,7 @@ import valtan_tuning_pipeline as pipeline
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 BALANCE_H = ROOT / "Client/Public/BalanceTool.h"
 BALANCE_CPP = ROOT / "Client/Private/BalanceTool.cpp"
-WORKBENCH_CPP = ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
+WORKBENCH_CPP = ROOT / "Client/Private/ValtanActionWorkbench.cpp"
 
 
 def pattern(master: dict, pattern_id: str) -> dict:
@@ -960,8 +960,8 @@ class ValtanManualStageAuthoringContractTests(unittest.TestCase):
         self.assertIn("ordinal <= Slots.size()", allocator)
         self.assertIn("Slot.clipOccurrenceId == candidate", allocator)
         append = source[
-            source.index("bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage(") :
-            source.index("bool_t Client::CActionCompositionWorkbench::Seek_EffectivePreview(")
+            source.index("bool_t Client::CValtanActionWorkbench::Apply_SelectedSequenceToStage(") :
+            source.index("bool_t Client::CValtanActionWorkbench::Seek_EffectivePreview(")
         ]
         self.assertIn("BuildNextCompositionSlotId(", append)
         self.assertNotIn(
@@ -997,9 +997,9 @@ class ValtanManualStageAuthoringContractTests(unittest.TestCase):
         workbench = WORKBENCH_CPP.read_text(encoding="utf-8")
         details = workbench[
             workbench.index(
-                "void Client::CActionCompositionWorkbench::Render_AnimationStageDetails("
+                "void Client::CValtanActionWorkbench::Render_AnimationStageDetails("
             ) : workbench.index(
-                "void Client::CActionCompositionWorkbench::Render_Details("
+                "void Client::CValtanActionWorkbench::Render_Details("
             )
         ]
         self.assertIn("if (iRemove < Draft.animationSlots.size())", details)

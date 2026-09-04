@@ -6227,7 +6227,7 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 		{ "LV_LOBBY_CLASSSELECT_SL00", "Character Select" },
 		{ "LV_BER_BERNCASTLE", "Bern" },
 		{ "LV_LUT_HEARTRB_ED", "Valtan" },
-		{ "LV_LUT_MIDNIGHTC_ED", "KoukuSaton / MidnightC ED" },
+		{ "LV_LUT_MIDNIGHTC_ED", "KoukuSaydon / MidnightC ED" },
 		{ "LV_SHS_RCARENA_D", "Training Map" },
 	}};
 	std::vector<EDITOR_AREA_DESCRIPTOR> staged;

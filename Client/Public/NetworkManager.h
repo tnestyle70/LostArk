@@ -273,7 +273,7 @@ public:
 	   identity. The shared audition service owns all three stable-ID results. */
 	bool Send_ValtanNextPatternCommand(
 		const LostArk::Shared::C2S_VALTAN_AUDITION_REQUEST& message);
-	/* Debug Boss Tool ordered Flow. The UI supplies one admitted saved
+	/* Debug Valtan Boss Tool ordered Flow. The UI supplies one admitted saved
 	   revision; the Server preflights the full slot list and owns every
 	   occurrence after the single reset. */
 	bool Send_ValtanPatternFlowStart(

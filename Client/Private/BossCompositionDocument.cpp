@@ -315,7 +315,7 @@ namespace
 			});
 	}
 
-	bool_t Has_KakulSourceClosure(
+	bool_t Has_KoukuSaydonSourceClosure(
 		const std::vector<BOSS_COMPOSITION_SOURCE_DOCUMENT>& sources,
 		const std::vector<BOSS_COMPOSITION_REFERENCE_PROFILE>& profiles)
 	{
@@ -532,7 +532,7 @@ bool_t Client::CBossCompositionDocument::Load(
 		if (!Has_ExactRequiredProperties(*coverage,
 			{ "kind", "expectedProfileCount", "expectedActionCount",
 			  "expectedIdentitySha256", "profiles" }) ||
-			"KAKUL_ACTION_REFERENCE" != staged.m_Coverage.kind ||
+			"KOUKU_SAYDON_ACTION_REFERENCE" != staged.m_Coverage.kind ||
 			COMPOSITION_SOURCE_STATUS::REFERENCE_ONLY != staged.m_Status ||
 			!staged.m_BossArchetypeId.empty() || !staged.m_EncounterId.empty() ||
 			"LV_LUT_MIDNIGHTC_ED" != staged.m_AreaId ||
@@ -544,7 +544,7 @@ bool_t Client::CBossCompositionDocument::Load(
 			!Read_U32(coverage->Find("expectedActionCount"),
 				staged.m_Coverage.expectedActionCount))
 		{
-			outStatus = "KakulSaydon Boss Composition identity or coverage is invalid";
+			outStatus = "KoukuSaydon Boss Composition identity or coverage is invalid";
 			return false;
 		}
 		std::unordered_set<std::string> profileIds;
@@ -562,7 +562,7 @@ bool_t Client::CBossCompositionDocument::Load(
 				  "patternBindingPath", "expectedActionCount",
 				  "expectedReferenceRevision" }))
 			{
-				outStatus = "KakulSaydon coverage profile shape is invalid";
+				outStatus = "KoukuSaydon coverage profile shape is invalid";
 				return false;
 			}
 			const DATA_JSON_VALUE* profileId = Required(
@@ -592,7 +592,7 @@ bool_t Client::CBossCompositionDocument::Load(
 				!Read_U32(profile.Find("expectedActionCount"),
 					parsed.expectedActionCount) || 0u == parsed.expectedActionCount)
 			{
-				outStatus = "KakulSaydon coverage profile is invalid or duplicated";
+				outStatus = "KoukuSaydon coverage profile is invalid or duplicated";
 				return false;
 			}
 			parsed.profileId = profileId->Get_String();
@@ -606,11 +606,11 @@ bool_t Client::CBossCompositionDocument::Load(
 		if (staged.m_Coverage.expectedProfileCount !=
 				staged.m_Coverage.profiles.size() ||
 			actionCount != staged.m_Coverage.expectedActionCount ||
-			!Has_KakulSourceClosure(staged.m_SourceDocuments,
+			!Has_KoukuSaydonSourceClosure(staged.m_SourceDocuments,
 				staged.m_Coverage.profiles))
 		{
 			outStatus =
-				"KakulSaydon coverage totals or source role/path closure disagree with its profiles";
+				"KoukuSaydon coverage totals or source role/path closure disagree with its profiles";
 			return false;
 		}
 	}
@@ -737,7 +737,7 @@ bool_t Client::CArenaSequencerDocument::Load(
 		("arena.sequencer.kakulsaydon" == staged.m_SequencerId &&
 			Has_ExactSourceClosure(staged.m_SourceDocuments,
 				{
-					{ "BOSS_COMPOSITION", "Data/Compositions/Bosses/KakulSaydon.bosscomposition.json" },
+					{ "BOSS_COMPOSITION", "Data/Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json" },
 					{ "WORLD_SEQUENCES", "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json" },
 					{ "CAMERA_SHOTS", "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json" },
 					{ "SCENE_PROFILES", "Data/Rendering/Authored/RenderingProfiles.json" },
@@ -841,9 +841,9 @@ bool_t Client::CCompositionDocumentCatalog::Load_Pair(
 		"arena.sequencer.kakulsaydon" == sequencerId)
 	{
 		bossRelativePath =
-			L"Compositions/Bosses/KakulSaydon.bosscomposition.json";
+			L"Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json";
 		arenaRelativePath =
-			L"Compositions/Sequences/KakulSaydonArena.sequencer.json";
+			L"Compositions/Sequences/KoukuSaydonArena.sequencer.json";
 	}
 	else
 	{

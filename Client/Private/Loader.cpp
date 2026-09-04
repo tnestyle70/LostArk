@@ -761,7 +761,7 @@ HRESULT CLoader::Ready_For_KakulSaydonArena()
 
 	CLevelResourceRollbackScope rollback(
 		ETOUI(LEVEL::KAKULSAYDON_ARENA));
-	Set_Status(TEXT("KoukuSaton: arena map"));
+	Set_Status(TEXT("KoukuSaydon: arena map"));
 
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
 		CLevelRegistry::Find(LEVEL::KAKULSAYDON_ARENA);
@@ -774,7 +774,7 @@ HRESULT CLoader::Ready_For_KakulSaydonArena()
 		return E_FAIL;
 	}
 
-	Set_Status(TEXT("KoukuSaton: server-approved character rendering"));
+	Set_Status(TEXT("KoukuSaydon: server-approved character rendering"));
 	const std::array selectedClass =
 	{
 		CNetworkManager::Get().Get_LocalCharacterClass()
@@ -786,7 +786,7 @@ HRESULT CLoader::Ready_For_KakulSaydonArena()
 		return E_FAIL;
 	}
 
-	Set_Status(TEXT("KoukuSaton arena loading complete"));
+	Set_Status(TEXT("KoukuSaydon arena loading complete"));
 	rollback.Commit();
 	return S_OK;
 }

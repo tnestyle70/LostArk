@@ -49,9 +49,9 @@
         "Data/Compositions/**",
         "Data/Valtan/**",
         "Data/Animation/Authored/Valtan/**",
-        "Data/Animation/Reference/KakulSaydon/*.actionreference.json",
-        "Data/Animation/Authored/KakulSaydon/*.actionbindings.json",
-          "Data/Animation/Authored/KakulSaydon/*.patternbindings.json",
+        "Data/Animation/Reference/KoukuSaydon/*.actionreference.json",
+        "Data/Animation/Authored/KoukuSaydon/*.actionbindings.json",
+          "Data/Animation/Authored/KoukuSaydon/*.patternbindings.json",
           "Data/Effects/V2/**",
           "Data/Effects/EffectCatalog.json",
           "Data/Effects/Authored/effect.valtan.*.effect.json",
@@ -68,22 +68,22 @@
         "Tools/CompositionPipeline/composition_pipeline.py",
           "Tools/CompositionPipeline/Publish-Compositions.ps1",
           "Tools/EffectToolV2/effect_v2_binding_pipeline.py",
-          "Tools/KakulSaydonPipeline/build_kakul_animation_reference.py",
+          "Tools/KoukuSaydonPipeline/build_kouku_saydon_animation_reference.py",
           "Tools/GameplayPipeline/valtan_presentation_generation.py",
           "Tools/ValtanPipeline/valtan_tuning_pipeline.py"
       ],
       "outputs": [
         "Client/Bin/DataFiles/Compositions/Bosses/Valtan.bosscomposition.json",
-        "Client/Bin/DataFiles/Compositions/Bosses/KakulSaydon.bosscomposition.json",
+        "Client/Bin/DataFiles/Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json",
         "Client/Bin/DataFiles/Compositions/Sequences/ValtanArena.sequencer.json",
-        "Client/Bin/DataFiles/Compositions/Sequences/KakulSaydonArena.sequencer.json",
+        "Client/Bin/DataFiles/Compositions/Sequences/KoukuSaydonArena.sequencer.json",
         "Client/Bin/DataFiles/Compositions/Composition.publish.receipt.json"
       ],
       "requiredOutputPatterns": [
         "Client/Bin/DataFiles/Compositions/Bosses/Valtan.bosscomposition.json",
-        "Client/Bin/DataFiles/Compositions/Bosses/KakulSaydon.bosscomposition.json",
+        "Client/Bin/DataFiles/Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json",
         "Client/Bin/DataFiles/Compositions/Sequences/ValtanArena.sequencer.json",
-        "Client/Bin/DataFiles/Compositions/Sequences/KakulSaydonArena.sequencer.json",
+        "Client/Bin/DataFiles/Compositions/Sequences/KoukuSaydonArena.sequencer.json",
         "Client/Bin/DataFiles/Compositions/Composition.publish.receipt.json"
       ],
       "action": {
@@ -102,7 +102,7 @@
       }
     },
     {
-      "id": "map.kakul",
+      "id": "map.kakulsaydon",
       "kind": "publisher",
       "profiles": ["Product", "Core", "FullDiagnostic"],
       "inputs": [

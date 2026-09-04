@@ -1,7 +1,7 @@
 #include "imgui.h"
 
 #include "SequencerTool.h"
-#include "BossTool.h"
+#include "ValtanBossTool.h"
 
 #include <algorithm>
 #include <array>
@@ -13,46 +13,46 @@ namespace
 	constexpr float LANE_LABEL_WIDTH = 96.f;
 	constexpr float ROW_HEIGHT = 22.f;
 	constexpr float RULER_HEIGHT = 18.f;
-	using LANE = Client::CActionCompositionWorkbench::TIMELINE_LANE;
+	using LANE = Client::CValtanActionWorkbench::TIMELINE_LANE;
 	constexpr std::array<LANE, 7u> LANE_ORDER = {
 		LANE::STAGE, LANE::ANIMATION, LANE::COLLIDER, LANE::EFFECT,
 		LANE::SOUND, LANE::LOGIC, LANE::CAMERA,
 	};
 
-	struct KAKUL_PROFILE_PRESENTATION final
+	struct KOUKU_SAYDON_PROFILE_PRESENTATION final
 	{
 		const char_t* profileId;
 		const char_t* category;
 		const char_t* modelPolicy;
 	};
 
-	constexpr std::array<KAKUL_PROFILE_PRESENTATION, 4u>
-		KAKUL_PROFILE_PRESENTATIONS = {
-			KAKUL_PROFILE_PRESENTATION{
-				"MN_RPCZ_00", "Kakul",
+	constexpr std::array<KOUKU_SAYDON_PROFILE_PRESENTATION, 4u>
+		KOUKU_SAYDON_PROFILE_PRESENTATIONS = {
+			KOUKU_SAYDON_PROFILE_PRESENTATION{
+				"MN_RPCZ_00", "Kouku",
 				"Dedicated MN_RPCZ_00 body, authored scale 1.0x" },
-			KAKUL_PROFILE_PRESENTATION{
+			KOUKU_SAYDON_PROFILE_PRESENTATION{
 				"MN_RPCT_05", "Saydon",
 				"Dedicated MN_RPCT_05 body, authored scale 1.0x" },
-			KAKUL_PROFILE_PRESENTATION{
+			KOUKU_SAYDON_PROFILE_PRESENTATION{
 				"MN_RPCT_06", "Large Saydon",
 				"Dedicated MN_RPCT_06 body/skeleton, scale 1.0x; not a scaled MN_RPCT_05" },
-			KAKUL_PROFILE_PRESENTATION{
-				"MN_RPCT_07", "Kakul + Saydon",
+			KOUKU_SAYDON_PROFILE_PRESENTATION{
+				"MN_RPCT_07", "Kouku + Saydon",
 				"Authoring profile alias on the shared MN_RPCT_05 physical body, scale 1.0x" },
 		};
 
-	const KAKUL_PROFILE_PRESENTATION* Find_KakulProfilePresentation(
+	const KOUKU_SAYDON_PROFILE_PRESENTATION* Find_KoukuSaydonProfilePresentation(
 		const std::string_view profileId)
 	{
 		const auto found = std::find_if(
-			KAKUL_PROFILE_PRESENTATIONS.begin(),
-			KAKUL_PROFILE_PRESENTATIONS.end(),
-			[profileId](const KAKUL_PROFILE_PRESENTATION& candidate)
+			KOUKU_SAYDON_PROFILE_PRESENTATIONS.begin(),
+			KOUKU_SAYDON_PROFILE_PRESENTATIONS.end(),
+			[profileId](const KOUKU_SAYDON_PROFILE_PRESENTATION& candidate)
 			{
 				return profileId == candidate.profileId;
 			});
-		return found == KAKUL_PROFILE_PRESENTATIONS.end() ? nullptr : &*found;
+		return found == KOUKU_SAYDON_PROFILE_PRESENTATIONS.end() ? nullptr : &*found;
 	}
 
 	std::string Track_ReferenceLabel(
@@ -81,10 +81,10 @@ namespace
 }
 
 Client::CSequencerTool::CSequencerTool(
-	CActionCompositionWorkbench* pWorkbench,
-	CBossTool* pBossTool)
-	: m_pWorkbench(pWorkbench)
-	, m_pBossTool(pBossTool)
+	CValtanActionWorkbench* pValtanWorkbench,
+	CValtanBossTool* pValtanBossTool)
+	: m_pValtanWorkbench(pValtanWorkbench)
+	, m_pValtanBossTool(pValtanBossTool)
 {
 }
 
@@ -125,13 +125,13 @@ bool_t Client::CSequencerTool::Consume_CompositionOpenRequest()
 	return bRequested;
 }
 
-bool_t Client::CSequencerTool::Consume_KakulAnimationOpenRequest(
+bool_t Client::CSequencerTool::Consume_KoukuSaydonAnimationOpenRequest(
 	std::string& outProfileId)
 {
-	if (m_strKakulAnimationOpenProfileId.empty())
+	if (m_strKoukuSaydonAnimationOpenProfileId.empty())
 		return false;
-	outProfileId = std::move(m_strKakulAnimationOpenProfileId);
-	m_strKakulAnimationOpenProfileId.clear();
+	outProfileId = std::move(m_strKoukuSaydonAnimationOpenProfileId);
+	m_strKoukuSaydonAnimationOpenProfileId.clear();
 	return true;
 }
 
@@ -141,7 +141,7 @@ const char_t* Client::CSequencerTool::SourceBoss_Label(
 	switch (boss)
 	{
 	case SOURCE_BOSS::VALTAN: return "Valtan";
-	case SOURCE_BOSS::KAKUL_SAYDON: return "Kakul Saydon";
+	case SOURCE_BOSS::KOUKU_SAYDON: return "KoukuSaydon";
 	default: return "?";
 	}
 }
@@ -149,8 +149,8 @@ const char_t* Client::CSequencerTool::SourceBoss_Label(
 void Client::CSequencerTool::Reload_SourceDocuments()
 {
 	m_bSourceDocumentsLoaded = true;
-	m_iObservedCanonicalDisplayGeneration = nullptr == m_pWorkbench ? 0u :
-		m_pWorkbench->Get_CanonicalDisplayGeneration();
+	m_iObservedCanonicalDisplayGeneration = nullptr == m_pValtanWorkbench ? 0u :
+		m_pValtanWorkbench->Get_CanonicalDisplayGeneration();
 	CCompositionDocumentCatalog stagedCatalog;
 	std::string catalogStatus;
 	const std::string bossId = SOURCE_BOSS::VALTAN == m_eSourceBoss ?
@@ -191,8 +191,8 @@ void Client::CSequencerTool::Reload_SourceDocuments()
 void Client::CSequencerTool::
 Synchronize_SourceDocumentsWithCanonicalGeneration()
 {
-	const std::uint64_t generation = nullptr == m_pWorkbench ? 0u :
-		m_pWorkbench->Get_CanonicalDisplayGeneration();
+	const std::uint64_t generation = nullptr == m_pValtanWorkbench ? 0u :
+		m_pValtanWorkbench->Get_CanonicalDisplayGeneration();
 	if (!m_bSourceDocumentsLoaded ||
 		generation != m_iObservedCanonicalDisplayGeneration)
 	{
@@ -207,7 +207,7 @@ void Client::CSequencerTool::Render_SourceDocumentHeader()
 		SourceBoss_Label(m_eSourceBoss)))
 	{
 		for (const SOURCE_BOSS candidate :
-			{ SOURCE_BOSS::VALTAN, SOURCE_BOSS::KAKUL_SAYDON })
+			{ SOURCE_BOSS::VALTAN, SOURCE_BOSS::KOUKU_SAYDON })
 		{
 			const bool_t selected = candidate == m_eSourceBoss;
 			if (ImGui::Selectable(SourceBoss_Label(candidate), selected) &&
@@ -319,8 +319,8 @@ void Client::CSequencerTool::Render_SourcePatternSummary()
 			for (const BOSS_COMPOSITION_REFERENCE_PROFILE& profile :
 				coverage.profiles)
 			{
-				const KAKUL_PROFILE_PRESENTATION* presentation =
-					Find_KakulProfilePresentation(profile.profileId);
+				const KOUKU_SAYDON_PROFILE_PRESENTATION* presentation =
+					Find_KoukuSaydonProfilePresentation(profile.profileId);
 				ImGui::TableNextRow();
 				ImGui::TableNextColumn();
 				ImGui::TextUnformatted(nullptr == presentation ?
@@ -335,12 +335,12 @@ void Client::CSequencerTool::Render_SourcePatternSummary()
 				const std::string buttonLabel =
 					"Open Create / Append / Preview##" + profile.profileId;
 				if (ImGui::SmallButton(buttonLabel.c_str()))
-					m_strKakulAnimationOpenProfileId = profile.profileId;
+					m_strKoukuSaydonAnimationOpenProfileId = profile.profileId;
 			}
 			ImGui::EndTable();
 		}
 		ImGui::TextDisabled(
-			"Kakul authoring stays in the existing Animation owner: Create Pattern, duplicate/append clip occurrence, Play/Pause/Stop, and atomic Save. Full BAT then validates and publishes this Composition join.");
+			"KoukuSaydon authoring stays in the existing Animation owner: Create Pattern, duplicate/append clip occurrence, Play/Pause/Stop, and atomic Save. Full BAT then validates and publishes this Composition join.");
 		return;
 	}
 	if (nullptr == m_BossComposition.Find_Pattern(m_strSourcePatternId))
@@ -355,14 +355,14 @@ void Client::CSequencerTool::Render_SourcePatternSummary()
 			if (ImGui::Selectable(pattern.patternId.c_str(), selected) &&
 				!selected)
 			{
-				if (SOURCE_BOSS::VALTAN != m_eSourceBoss || nullptr == m_pWorkbench)
+				if (SOURCE_BOSS::VALTAN != m_eSourceBoss || nullptr == m_pValtanWorkbench)
 				{
 					m_strSourcePatternId = pattern.patternId;
 				}
 				else
 				{
 					std::string status;
-					if (m_pWorkbench->Select_PatternById(pattern.patternId, status))
+					if (m_pValtanWorkbench->Select_PatternById(pattern.patternId, status))
 						m_strSourcePatternId = pattern.patternId;
 					else
 						m_strStatus = std::move(status);
@@ -448,7 +448,7 @@ void Client::CSequencerTool::Render()
 	}
 	Render_SourceDocumentHeader();
 	ImGui::Separator();
-	if (SOURCE_BOSS::KAKUL_SAYDON == m_eSourceBoss)
+	if (SOURCE_BOSS::KOUKU_SAYDON == m_eSourceBoss)
 	{
 		ImGui::TextDisabled(
 			"Pattern: no Product Pattern index; source profiles remain available in Advanced Source Inspector.");
@@ -456,9 +456,9 @@ void Client::CSequencerTool::Render()
 		ImGui::End();
 		return;
 	}
-	if (nullptr == m_pWorkbench)
+	if (nullptr == m_pValtanWorkbench)
 	{
-		ImGui::TextUnformatted("Action Composition Workbench is unavailable.");
+		ImGui::TextUnformatted("Valtan Action Workbench is unavailable.");
 		Render_AdvancedSourceInspector();
 		ImGui::End();
 		return;
@@ -467,7 +467,7 @@ void Client::CSequencerTool::Render()
 	   and the timeline cache; this window only chooses which Pattern that
 	   shared session shows and never writes a second document. */
 	std::string SessionStatus;
-	if (!m_pWorkbench->Ensure_CanonicalLoaded(SessionStatus))
+	if (!m_pValtanWorkbench->Ensure_CanonicalLoaded(SessionStatus))
 	{
 		ImGui::TextWrapped("Composition session is unavailable: %s",
 			SessionStatus.c_str());
@@ -475,8 +475,8 @@ void Client::CSequencerTool::Render()
 		ImGui::End();
 		return;
 	}
-	const std::vector<std::string> PatternIds = m_pWorkbench->Get_PatternIds();
-	const std::string strPatternId = m_pWorkbench->Get_SelectedPatternId();
+	const std::vector<std::string> PatternIds = m_pValtanWorkbench->Get_PatternIds();
+	const std::string strPatternId = m_pValtanWorkbench->Get_SelectedPatternId();
 	if (!strPatternId.empty() &&
 		nullptr != m_BossComposition.Find_Pattern(strPatternId))
 	{
@@ -490,7 +490,7 @@ void Client::CSequencerTool::Render()
 		{
 			const bool_t bSelected = strCandidate == strPatternId;
 			if (ImGui::Selectable(strCandidate.c_str(), bSelected) &&
-				!m_pWorkbench->Select_PatternById(strCandidate, SessionStatus))
+				!m_pValtanWorkbench->Select_PatternById(strCandidate, SessionStatus))
 			{
 				m_strStatus = SessionStatus;
 			}
@@ -511,16 +511,16 @@ void Client::CSequencerTool::Render()
 		ImGui::End();
 		return;
 	}
-	if (!m_pWorkbench->Ensure_SelectedTimeline(SessionStatus))
+	if (!m_pValtanWorkbench->Ensure_SelectedTimeline(SessionStatus))
 	{
 		ImGui::TextWrapped("%s", SessionStatus.c_str());
 		Render_AdvancedSourceInspector();
 		ImGui::End();
 		return;
 	}
-	const std::vector<CActionCompositionWorkbench::TIMELINE_ITEM>& Items =
-		m_pWorkbench->Get_TimelineItems();
-	const uint32_t iDurationMs = m_pWorkbench->Get_TimelineDurationMs();
+	const std::vector<CValtanActionWorkbench::TIMELINE_ITEM>& Items =
+		m_pValtanWorkbench->Get_TimelineItems();
+	const uint32_t iDurationMs = m_pValtanWorkbench->Get_TimelineDurationMs();
 	if (Items.empty())
 	{
 		ImGui::TextDisabled("The selected Pattern has no timeline items.");
@@ -538,18 +538,18 @@ void Client::CSequencerTool::Render()
 void Client::CSequencerTool::Render_Transport(const uint32_t iDurationMs)
 {
 	int32_t iPlayheadMs = static_cast<int32_t>((std::min)(
-		m_pWorkbench->Get_PlayheadMs(), static_cast<uint32_t>(INT32_MAX)));
+		m_pValtanWorkbench->Get_PlayheadMs(), static_cast<uint32_t>(INT32_MAX)));
 	ImGui::SetNextItemWidth(-220.f);
 	if (ImGui::SliderInt("##SequencerPlayhead", &iPlayheadMs, 0,
 			static_cast<int32_t>((std::min)(iDurationMs,
 				static_cast<uint32_t>(INT32_MAX))), "%d ms",
 			ImGuiSliderFlags_AlwaysClamp))
 	{
-		(void)m_pWorkbench->Set_PlayheadMs(
+		(void)m_pValtanWorkbench->Set_PlayheadMs(
 			static_cast<uint32_t>((std::max)(iPlayheadMs, 0)));
 	}
 	ImGui::SameLine();
-	ImGui::Text("%u / %u ms", m_pWorkbench->Get_PlayheadMs(), iDurationMs);
+	ImGui::Text("%u / %u ms", m_pValtanWorkbench->Get_PlayheadMs(), iDurationMs);
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(90.f);
 	ImGui::DragFloat("px/s", &m_fPixelsPerSecond, 2.f, 20.f, 1200.f, "%.0f",
@@ -557,11 +557,11 @@ void Client::CSequencerTool::Render_Transport(const uint32_t iDurationMs)
 }
 
 void Client::CSequencerTool::Render_Lanes(
-	const std::vector<CActionCompositionWorkbench::TIMELINE_ITEM>& Items,
+	const std::vector<CValtanActionWorkbench::TIMELINE_ITEM>& Items,
 	const uint32_t iDurationMs)
 {
 	std::array<std::size_t, static_cast<std::size_t>(LANE::COUNT)> SubrowCounts{};
-	for (const CActionCompositionWorkbench::TIMELINE_ITEM& Item : Items)
+	for (const CValtanActionWorkbench::TIMELINE_ITEM& Item : Items)
 	{
 		std::size_t& iCount = SubrowCounts[static_cast<std::size_t>(Item.eLane)];
 		iCount = (std::max)(iCount, Item.iSubrow + 1u);
@@ -620,7 +620,7 @@ void Client::CSequencerTool::Render_Lanes(
 			IM_COL32(220, 220, 230, 255), Lane_Label(eLane));
 		for (std::size_t iItem = 0u; iItem < Items.size(); ++iItem)
 		{
-			const CActionCompositionWorkbench::TIMELINE_ITEM& Item = Items[iItem];
+			const CValtanActionWorkbench::TIMELINE_ITEM& Item = Items[iItem];
 			if (Item.eLane != eLane)
 				continue;
 			const float fX0 = fCanvasX +
@@ -648,7 +648,7 @@ void Client::CSequencerTool::Render_Lanes(
 				m_strSelectedStableId = Item.strStableId;
 				m_strSelectedStageId = Item.strStageId;
 				m_eSelectedLane = Item.eLane;
-				(void)m_pWorkbench->Set_PlayheadMs(Item.iStartMs);
+				(void)m_pValtanWorkbench->Set_PlayheadMs(Item.iStartMs);
 			}
 			if (ImGui::IsItemHovered())
 			{
@@ -663,7 +663,7 @@ void Client::CSequencerTool::Render_Lanes(
 
 	/* Playhead over every lane. */
 	const float fPlayheadX = fCanvasX +
-		static_cast<float>(m_pWorkbench->Get_PlayheadMs()) *
+		static_cast<float>(m_pValtanWorkbench->Get_PlayheadMs()) *
 			m_fPixelsPerSecond * 0.001f;
 	pDraw->AddLine(ImVec2(fPlayheadX, Origin.y),
 		ImVec2(fPlayheadX, Origin.y + fTotalHeight),
@@ -672,10 +672,10 @@ void Client::CSequencerTool::Render_Lanes(
 }
 
 void Client::CSequencerTool::Render_Selection(
-	const std::vector<CActionCompositionWorkbench::TIMELINE_ITEM>& Items) const
+	const std::vector<CValtanActionWorkbench::TIMELINE_ITEM>& Items) const
 {
 	const auto Found = std::find_if(Items.begin(), Items.end(),
-		[this](const CActionCompositionWorkbench::TIMELINE_ITEM& Item)
+		[this](const CValtanActionWorkbench::TIMELINE_ITEM& Item)
 		{
 			return Item.strStableId == m_strSelectedStableId &&
 				Item.strStageId == m_strSelectedStageId &&

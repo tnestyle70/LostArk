@@ -8,7 +8,7 @@ import unittest
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-WORKBENCH_CPP = ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
+WORKBENCH_CPP = ROOT / "Client/Private/ValtanActionWorkbench.cpp"
 BALANCE_CPP = ROOT / "Client/Private/BalanceTool.cpp"
 ANIMATION_CPP = ROOT / "Client/Private/Animation_Tool.cpp"
 
@@ -122,7 +122,7 @@ class ActionCompositionSequenceIdentityContractTests(unittest.TestCase):
     ) -> None:
         apply = function_body(
             self.workbench,
-            "bool_t Client::CActionCompositionWorkbench::Apply_SelectedSequenceToStage(",
+            "bool_t Client::CValtanActionWorkbench::Apply_SelectedSequenceToStage(",
         )
         for token in (
             "ReservedSlots =\n\t\tDraft.animationSlots",

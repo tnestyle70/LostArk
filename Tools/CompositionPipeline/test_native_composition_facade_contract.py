@@ -35,7 +35,7 @@ def body(source: str, signature: str) -> str:
 class NativeCompositionFacadeContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.workbench_h = read("Client/Public/ActionCompositionWorkbench.h")
+        cls.workbench_h = read("Client/Public/ValtanActionWorkbench.h")
         cls.sequencer_h = read("Client/Public/SequencerTool.h")
         cls.sequencer_cpp = read("Client/Private/SequencerTool.cpp")
         cls.main_cpp = read("Client/Private/MainApp.cpp")
@@ -88,12 +88,15 @@ class NativeCompositionFacadeContractTests(unittest.TestCase):
         for token in (
             '"boss.composition.valtan" == compositionId',
             '"boss.composition.kakulsaydon" == compositionId',
+            'L"Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json"',
+            'L"Compositions/Sequences/KoukuSaydonArena.sequencer.json"',
             "stagedBoss.Load(bossPath, status)",
             "stagedArena.Load(arenaPath, status)",
             "m_BossDocuments = std::move(stagedBosses)",
             "m_ArenaDocuments = std::move(stagedArenas)",
         ):
             self.assertIn(token, load_pair)
+        self.assertNotIn("KakulSaydon", load_pair)
         self.assertLess(
             load_pair.index("stagedArena.Load(arenaPath, status)"),
             load_pair.index("m_BossDocuments = std::move(stagedBosses)"),
@@ -189,32 +192,36 @@ class NativeCompositionFacadeContractTests(unittest.TestCase):
             "every normal and early-return surface must keep the inspector reachable",
         )
 
-    def test_kakul_profiles_deep_link_to_the_single_animation_writer(self) -> None:
+    def test_kouku_saydon_profiles_deep_link_to_single_animation_writer(self) -> None:
         for token in (
-            "Consume_KakulAnimationOpenRequest",
-            '"Kakul"',
+            "Consume_KoukuSaydonAnimationOpenRequest",
+            '"Kouku"',
             '"Saydon"',
             '"Large Saydon"',
-            '"Kakul + Saydon"',
+            '"Kouku + Saydon"',
             "Open Create / Append / Preview",
             "not a scaled MN_RPCT_05",
         ):
             self.assertIn(token, self.sequencer_cpp)
         for token in (
-            "Consume_KakulAnimationOpenRequest",
+            "Consume_KoukuSaydonAnimationOpenRequest",
             "EnsureDebugTool(DEBUG_TOOL::ANIMATION)",
-            "m_pAnimationTool->Open_KakulProfile(kakulProfileId)",
+            "m_pAnimationTool->Open_KoukuSaydonProfile(",
+            "koukuSaydonProfileId",
             "m_eDebugWindowFocusPending = DEBUG_TOOL::ANIMATION",
         ):
             self.assertIn(token, self.main_cpp)
 
     def test_fixed_source_closure_has_an_executable_native_contract(self) -> None:
-        for token in ("Has_ExactSourceClosure", "Has_KakulSourceClosure"):
+        for token in (
+            "Has_ExactSourceClosure",
+            "Has_KoukuSaydonSourceClosure",
+        ):
             self.assertIn(token, self.document_cpp)
         for source_contract in (
             pipeline.VALTAN_SOURCE_DOCUMENTS,
             pipeline.VALTAN_ARENA_SOURCE_DOCUMENTS,
-            pipeline.KAKUL_ARENA_SOURCE_DOCUMENTS,
+            pipeline.KOUKU_SAYDON_ARENA_SOURCE_DOCUMENTS,
         ):
             for role, path in source_contract.items():
                 self.assertIn(f'{{ "{role}", "{path}" }}', self.document_cpp)

@@ -288,7 +288,7 @@ bool_t Client::CCameraTool::Open_Cue(
 	}
 	Select_Cue(request.strCueId);
 	m_strPendingOpenCueId.clear();
-	m_strStatus = "Opened camera cue from Boss Tool: " + request.strCueId;
+	m_strStatus = "Opened camera cue from Valtan Boss Tool: " + request.strCueId;
 	return true;
 }
 

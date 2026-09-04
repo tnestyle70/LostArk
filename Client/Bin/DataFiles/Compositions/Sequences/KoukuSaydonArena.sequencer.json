@@ -1,0 +1,64 @@
+{
+  "schema": "lostark.arena-sequencer-product",
+  "formatVersion": 1,
+  "sequencerId": "arena.sequencer.kakulsaydon",
+  "sourceRevision": 2,
+  "compositionRevision": "618e9f042663bea01a23463743bee2a08dc96dc4dda41541f99167f7ebeddb62",
+  "status": "SHADOW",
+  "runtimeEligible": false,
+  "displayName": "KoukuSaydon Arena Sequencer",
+  "areaId": "LV_LUT_MIDNIGHTC_ED",
+  "bossCompositionId": "boss.composition.kakulsaydon",
+  "durationMs": 21010,
+  "sourceManifest": {
+    "schema": "lostark.composition-source-manifest",
+    "formatVersion": 1,
+    "sourceManifestId": "618e9f042663bea01a23463743bee2a08dc96dc4dda41541f99167f7ebeddb62",
+    "files": [
+      {
+        "path": "Data/Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json",
+        "sha256": "4ae1c0e85b3240e6174beb519307910a687a46fce98d6759c14734852b1aec74",
+        "bytes": 4339
+      },
+      {
+        "path": "Data/Compositions/Sequences/KoukuSaydonArena.sequencer.json",
+        "sha256": "a565ad70cc1381b86584b4461cf7b0ea882c18bae59948aba5bc988e243bd105",
+        "bytes": 1320
+      },
+      {
+        "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json",
+        "sha256": "f69fa1c1c41d1443db0ba64a27bee442720752f0ff6d57cb3107e7d934c379b7",
+        "bytes": 1103
+      },
+      {
+        "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
+        "sha256": "cbd5b96cbfeec6d4c6ecdc46f962b9f32c3d223a3f0e51ff456f1b1048cf9b76",
+        "bytes": 2153834
+      },
+      {
+        "path": "Data/Rendering/Authored/RenderingProfiles.json",
+        "sha256": "9cd6bb32a3cdcc99e7d5cc9d90566320aa713514addbbfa1d2a10b4414d53932",
+        "bytes": 8130
+      }
+    ]
+  },
+  "tracks": [
+    {
+      "trackId": "track.kakulsaydon.circus-finale.world",
+      "kind": "WORLD_SEQUENCE",
+      "startMs": 0,
+      "payload": {
+        "instanceId": "world.sequence.instance.circusfinale"
+      }
+    },
+    {
+      "trackId": "track.kakulsaydon.circus-finale.camera",
+      "kind": "CAMERA_SHOT",
+      "startMs": 0,
+      "endMs": 21010,
+      "payload": {
+        "shotId": "shot.1"
+      }
+    }
+  ]
+}

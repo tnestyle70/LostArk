@@ -8200,7 +8200,7 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 		}
 
 		ImGui::TextDisabled(
-			"Server replay is available in Boss Tool and Effect Tool; Repeat and Revive remain in Boss Tool.");
+			"Server replay is available in Valtan Boss Tool and Effect Tool; Repeat and Revive remain in Valtan Boss Tool.");
 
 		if (pattern.ServerMotion.has_value())
 		{
@@ -8248,7 +8248,7 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 				if (bManualAudition)
 				{
 					ImGui::TextDisabled(
-						"Duration %u ms | edit Stage kind, Sequence slots, and gap in Action Composition Workbench",
+						"Duration %u ms | edit Stage kind, Sequence slots, and gap in Valtan Action Workbench",
 						stage.iDurationMs);
 				}
 				else
@@ -8454,7 +8454,7 @@ void Client::CBalanceTool::RenderValtanManagedPattern(
 						ImGui::Text("Damage rate: %u%%", *rate);
 					}
 					ImGui::TextDisabled(
-						"Collider geometry, timing, response, and damage are written only through Action Composition Workbench typed Details.");
+						"Collider geometry, timing, response, and damage are written only through Valtan Action Workbench typed Details.");
 				}
 				for (const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& object :
 					stage.CombatObjectEffects)
@@ -8841,7 +8841,7 @@ void Client::CBalanceTool::RenderValtanPatternAuthoring()
 				pattern.selectionMode.c_str(), pattern.phaseRequirement.c_str(),
 				pattern.selectionWeight, pattern.stageCount);
 			ImGui::TextDisabled(
-				"Read-only legacy row. Use Boss Tool or Effect Tool for Server replay.");
+				"Read-only legacy row. Use Valtan Boss Tool or Effect Tool for Server replay.");
 			ImGui::TreePop();
 		}
 		ImGui::PopID();
@@ -9054,7 +9054,7 @@ void Client::CBalanceTool::RenderLiveVerification()
 		ImGui::Text("Server tick %u", player.iServerTick);
 		ImGui::Text("Combat ready: %s", player.isCombatReady ? "YES" : "PROTECTED");
 		if (0u == player.iCurrentHp)
-			ImGui::TextDisabled("Revive is available in F1 -> Boss Tool.");
+			ImGui::TextDisabled("Revive is available in F1 -> Valtan Boss Tool.");
 	}
 	else
 		ImGui::TextDisabled("No replicated player snapshot");

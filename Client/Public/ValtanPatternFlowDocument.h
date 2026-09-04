@@ -56,7 +56,7 @@ namespace Client
 		std::vector<VALTAN_PATTERN_FLOW_NODE> Nodes;
 		std::vector<VALTAN_PATTERN_FLOW_EDGE> Edges;
 
-		/* Transitional read-only projection for the existing Boss Tool and
+		/* Transitional read-only projection for the existing Valtan Boss Tool and
 		   ordered Server audition command. It is populated only when the v2
 		   graph is one acyclic COMPLETED chain. Per-transition pursuit remains
 		   owned by Edges and is projected into the canonical scriptedSequence.
@@ -77,7 +77,7 @@ namespace Client
 			const VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT&) const = default;
 	};
 
-	/* In-memory Boss Tool projection of the canonical gameplay
+	/* In-memory Valtan Boss Tool projection of the canonical gameplay
 	   scriptedSequence.  Durable authoring is owned exclusively by the shared
 	   Valtan gameplay transaction; this adapter never reads or writes a second
 	   Flow file. */
@@ -115,7 +115,7 @@ namespace Client
 			const VALTAN_PATTERN_FLOW_AUTHORING_DOCUMENT& document);
 
 		/* Stage the canonical gameplay scriptedSequence as the existing linear
-		   Boss Tool view.  Node/edge IDs are deterministic editor projections and
+		   Valtan Boss Tool view.  Node/edge IDs are deterministic editor projections and
 		   are never another durable source document. */
 		bool Load_CanonicalSequence(
 			std::string_view sequenceId,
@@ -126,7 +126,7 @@ namespace Client
 			const std::vector<std::string>& admittedPatternIds,
 			std::string& outStatus);
 		/* Read-only preflight for the staged canonical sequence. The complete
-		   Product/source revision is separately admitted by Boss Tool before the
+		   Product/source revision is separately admitted by Valtan Boss Tool before the
 		   Server command. */
 		bool Verify_SourceRevision(std::string& outStatus);
 

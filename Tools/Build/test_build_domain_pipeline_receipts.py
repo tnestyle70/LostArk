@@ -95,7 +95,7 @@ class BuildDomainManifestContractTests(unittest.TestCase):
         self.assertEqual(
             publishers,
             {
-                "map.kakul",
+                "map.kakulsaydon",
                 "composition.presentation",
                 "world.gameplay",
                 "navigation",
@@ -143,8 +143,8 @@ class BuildDomainManifestContractTests(unittest.TestCase):
         )
         self.assertIn("Publish-Compositions.ps1", json.dumps(composition))
 
-    def test_kakul_map_publisher_has_exact_clean_checkout_closure(self) -> None:
-        domain = self.domains["map.kakul"]
+    def test_kouku_saydon_map_publisher_has_exact_clean_checkout_closure(self) -> None:
+        domain = self.domains["map.kakulsaydon"]
         self.assertEqual(domain["kind"], "publisher")
         self.assertEqual(domain["profiles"], ["Product", "Core", "FullDiagnostic"])
         self.assertEqual(
@@ -175,7 +175,7 @@ class BuildDomainManifestContractTests(unittest.TestCase):
         ):
             self.assertIn(token, arguments)
 
-    def test_client_owner_materializes_kakul_map_world_and_navigation(self) -> None:
+    def test_client_owner_materializes_kouku_saydon_map_world_and_navigation(self) -> None:
         owner = (ROOT / "Tools/Build/Invoke-BuildDomainOwner.ps1").read_text(
             encoding="utf-8-sig"
         )
@@ -183,7 +183,7 @@ class BuildDomainManifestContractTests(unittest.TestCase):
             "else {", 1
         )[0]
         for domain_id in (
-            "map.kakul",
+            "map.kakulsaydon",
             "composition.presentation",
             "world.gameplay",
             "navigation",
@@ -192,9 +192,9 @@ class BuildDomainManifestContractTests(unittest.TestCase):
             self.assertIn(f"'{domain_id}'", client_block)
 
         server_block = owner.split("else {", 1)[1].split("}", 1)[0]
-        self.assertNotIn("'map.kakul'", server_block)
+        self.assertNotIn("'map.kakulsaydon'", server_block)
 
-    def test_client_project_exposes_kakul_world_and_navigation_authoring(self) -> None:
+    def test_client_project_exposes_kouku_saydon_world_and_navigation_authoring(self) -> None:
         project = (ROOT / "Client/Default/Client.vcxproj").read_text(
             encoding="utf-8-sig"
         )

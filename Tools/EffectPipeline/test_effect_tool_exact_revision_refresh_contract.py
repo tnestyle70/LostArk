@@ -7,8 +7,8 @@ from pathlib import Path
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
-WORKBENCH_HEADER = REPOSITORY_ROOT / "Client/Public/ActionCompositionWorkbench.h"
-WORKBENCH_SOURCE = REPOSITORY_ROOT / "Client/Private/ActionCompositionWorkbench.cpp"
+WORKBENCH_HEADER = REPOSITORY_ROOT / "Client/Public/ValtanActionWorkbench.h"
+WORKBENCH_SOURCE = REPOSITORY_ROOT / "Client/Private/ValtanActionWorkbench.cpp"
 EFFECT_HEADER = REPOSITORY_ROOT / "Client/Public/Effect_Tool.h"
 EFFECT_SOURCE = REPOSITORY_ROOT / "Client/Private/Effect_Tool.cpp"
 MAIN_SOURCE = REPOSITORY_ROOT / "Client/Private/MainApp.cpp"
@@ -71,7 +71,7 @@ class EffectToolExactRevisionRefreshContractTests(unittest.TestCase):
     def test_committed_save_queues_its_exact_receipt(self) -> None:
         mark = function_body(
             self.workbench_source,
-            "void Client::CActionCompositionWorkbench::Mark_SourceCommitted(\n",
+            "void Client::CValtanActionWorkbench::Mark_SourceCommitted(\n",
         )
         self.assertIn("const std::string& strExactSourceRevision", mark)
         self.assertIn(

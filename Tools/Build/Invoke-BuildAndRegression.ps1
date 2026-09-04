@@ -317,6 +317,12 @@ try {
         'Build-domain fingerprint, receipt, and freshness gate' `
         @('Tools/Build/test_build_domain_pipeline_receipts.py')
     Invoke-PythonGate `
+        'KoukuSaydon authored-tool naming boundary gate' `
+        @('Tools/KoukuSaydonPipeline/test_kouku_saydon_naming_boundary.py')
+    Invoke-PythonGate `
+        'Shared map placement transform seam gate' `
+        @('Tools/LevelPlacementExtractor/test_placement_transform.py')
+    Invoke-PythonGate `
         'DimensionMaster glass/water Tool audition canary gates' `
         @(
             '-m',
@@ -334,11 +340,11 @@ try {
             'Bern entrance camera authored runtime gate' `
             @('Tools/ValtanPipeline/test_bern_entrance_camera_contract.py')
         Invoke-PythonGate `
-            'KoukuSaton resource intake and world admission gate' `
-            @('Tools/KakulSaydonPipeline/test_kakul_world_admission.py')
+            'KoukuSaydon world and protected resource-alias admission gate' `
+            @('Tools/KoukuSaydonPipeline/test_kouku_saydon_world_admission.py')
         Invoke-PythonGate `
-            'KoukuSaton Client product level contract gate' `
-            @('Tools/KakulSaydonPipeline/test_kakul_client_product_level_contract.py')
+            'KoukuSaydon Client product level contract gate' `
+            @('Tools/KoukuSaydonPipeline/test_kouku_saydon_client_product_level_contract.py')
         Invoke-PythonGate `
             'Valtan eight-player raid capacity gate' `
             @('Tools/Network/test_valtan_raid_capacity_contract.py')

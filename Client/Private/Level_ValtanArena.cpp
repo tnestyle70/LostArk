@@ -1036,7 +1036,7 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 
 	/* The old Level-owned Pattern/health-bar/timeline browser was removed. This
 	   bounded receipt owner remains solely for the visible Server arena presets;
-	   Product Pattern playback must go through BossTool's stable-ID revision CAS. */
+	   Product Pattern playback must go through ValtanBossTool's stable-ID revision CAS. */
 	if (LostArk::Shared::VALTAN_AUDITION_OPERATION::SET_ARENA_PRESET !=
 		operation)
 	{

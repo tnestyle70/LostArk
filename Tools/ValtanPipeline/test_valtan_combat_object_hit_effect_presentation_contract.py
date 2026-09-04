@@ -729,11 +729,11 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
         self.assertIn("CEffectV2Runtime::Stop_Group(", release)
 
     def test_composition_shows_four_independent_instances_through_explosion_time(self) -> None:
-        source = _read("Client/Private/ActionCompositionWorkbench.cpp")
+        source = _read("Client/Private/ValtanActionWorkbench.cpp")
         timeline = _function(
             source,
-            "void Client::CActionCompositionWorkbench::Build_Timeline(",
-            "void Client::CActionCompositionWorkbench::Pack_TimelineSubrows()",
+            "void Client::CValtanActionWorkbench::Build_Timeline(",
+            "void Client::CValtanActionWorkbench::Pack_TimelineSubrows()",
         )
         self.assertIn(
             '"Server Combat Object (read-only)" + strSpawnSummary',
@@ -749,7 +749,7 @@ class ValtanCombatObjectHitEffectPresentationContractTests(unittest.TestCase):
         self.assertIn("Item.iEndMs", timeline)
 
     def test_composition_combat_object_selection_is_visible_but_read_only(self) -> None:
-        source = _read("Client/Private/ActionCompositionWorkbench.cpp")
+        source = _read("Client/Private/ValtanActionWorkbench.cpp")
         self.assertIn(
             "Item.eOwner == DETAIL_OWNER::COMBAT_OBJECT ||",
             source,

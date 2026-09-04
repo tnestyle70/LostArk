@@ -205,7 +205,7 @@ public:
 		const VALTAN_COMBAT_OBJECT_RING_HIT_EDIT& hit,
 		std::string& status);
 	/* Returns the effective in-memory authoring Pattern, including every typed
-	   draft staged through this owner.  The Action Composition Workbench uses a
+	   draft staged through this owner.  The Valtan Action Workbench uses a
 	   value copy so its Details, Sequencer, and local model preview can never
 	   fall back to a stale repository-only projection while edits are pending. */
 	bool Get_ValtanPatternDraft(
