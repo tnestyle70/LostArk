@@ -8,6 +8,7 @@
 #include "Camera_Free.h"
 #include "DataJson.h"
 #include "GameInstance.h"
+#include "KakulArenaHiddenPlacements.h"
 #include "LevelTransitionService.h"
 #include "MainApp.h"
 #include "MapAssetObject.h"
@@ -46,6 +47,34 @@
 
 namespace
 {
+	constexpr const char* KAKUL_AREA_ID = "LV_LUT_MIDNIGHTC_ED";
+	/* build_arena_rise.py splits the 430 visible arena placements into
+	   32-track templates. Every instance has to start on the same frame; their
+	   own startDelayMs staggers the rise from the floor upward. */
+	constexpr uint32_t KAKUL_ARENA_RISE_INSTANCE_COUNT = 14u;
+	/* Instances converted straight from the original UE3 Matinee source are
+	   named after the sequence they came from, so the whole import plays by
+	   walking the document instead of a hand written list. */
+	constexpr const char* KAKUL_ORIGINAL_INSTANCE_PREFIX =
+		"world.sequence.instance.original_";
+	/* The pop-up book. Its unfold clip runs 2370ms; the arena instances start
+	   with it and hold their folded pose until each group is due. */
+	constexpr const char* KAKUL_BOOK_INSTANCE_ID =
+		"world.sequence.instance.book_open";
+	/* Deploy placement 7: the one book, at the original's own pose and scale.
+	   The arena no longer carries a second copy. */
+	constexpr uint64_t KAKUL_BOOK_PLACEMENT_ID = 7ull;
+	/* The cutscene set is authored hidden and shown only while the unfold
+	   runs; hand-authored arena placements start at the end of the range. */
+	constexpr uint64_t KAKUL_CUTSCENE_SET_FIRST_ID = 41ull;
+	constexpr uint64_t KAKUL_CUTSCENE_SET_END_ID = 300ull;
+	/* The reference holds the finished miniature inside the book for a camera
+	   push-in before it cuts to the arena. The book leaves this long after the
+	   last arena_rise instance has settled, whatever the sheet timing is. */
+	constexpr f32_t KAKUL_BOOK_HOLD_AFTER_ARENA_MS = 1500.f;
+	/* One slow frame of cutscene time; a stall longer than this is a load
+	   hitch, not elapsed animation. */
+	constexpr f32_t KAKUL_CUTSCENE_MAX_STEP_SECONDS = 0.1f;
 	struct AUTHORING_FILE_BACKUP
 	{
 		std::filesystem::path destination;
@@ -992,6 +1021,7 @@ void Client::CMapTool::Update(
 		OutputDebugStringA(("[MapTool][MapLight] " +
 			m_pMapLightPresentation->Get_Status() + "\n").c_str());
 	}
+	Update_CutsceneArenaRise(fTimeDelta, isMapAuthoringLevel);
 	Update_DestructionSimulation(fTimeDelta, isMapAuthoringLevel);
 	Update_WorldInteraction(
 		bAllowWorldInput && isMapAuthoringLevel &&
@@ -1720,6 +1750,8 @@ void Client::CMapTool::Render_WorldSequencePanel(const bool_t isAssetTest)
 	{
 		Render_AnimatedPropsAuthoring();
 		ImGui::Separator();
+		Render_CutsceneArenaPreview();
+		ImGui::Separator();
 	}
 	m_pWorldSequenceToolPanel->Render(
 		isAssetTest,
@@ -1742,6 +1774,362 @@ void Client::CMapTool::Render_WorldSequencePanel(const bool_t isAssetTest)
 		const bool_t saved = Save_AllAuthoring();
 		m_pWorldSequenceToolPanel->Report_SaveAllResult(saved, m_Status);
 	}
+}
+
+void Client::CMapTool::Apply_CutsceneArenaVisibility(const bool_t hidden)
+{
+	size_t applied = 0;
+	size_t missing = 0;
+	m_bCutsceneArenaHidden = hidden;
+	if (hidden)
+	{
+		/* A second hide while one is already standing would capture the hidden
+		   state as the thing to restore, and the arena would never come back. */
+		if (!m_CutsceneArenaRestoreVisibility.empty())
+		{
+			m_Status = "Cutscene arena already hidden";
+			return;
+		}
+		/* Culling boxes and other helpers are already invisible. Capture what
+		   each placement was before hiding so restoring cannot reveal
+		   something the Area never showed. */
+		for (const uint64_t placementId : KAKUL_ARENA_HIDDEN_PLACEMENT_IDS)
+		{
+			const auto found = std::find_if(m_Placements.begin(),
+				m_Placements.end(),
+				[placementId](const PLACED_ENTRY& value)
+				{
+					return value.record.placementId == placementId;
+				});
+			bool_t wasVisible = false;
+			if (m_Placements.end() == found ||
+				!CMapPlacementRuntime::Try_GetRuntimeVisible(*found, wasVisible))
+			{
+				++missing;
+				continue;
+			}
+			m_CutsceneArenaRestoreVisibility.emplace_back(placementId, wasVisible);
+			if (!wasVisible)
+				continue;
+			if (!Set_RuntimeVisible(*found, false))
+			{
+				++missing;
+				continue;
+			}
+			++applied;
+		}
+	}
+	else
+	{
+		for (const auto& restore : m_CutsceneArenaRestoreVisibility)
+		{
+			const auto found = std::find_if(m_Placements.begin(),
+				m_Placements.end(),
+				[&restore](const PLACED_ENTRY& value)
+				{
+					return value.record.placementId == restore.first;
+				});
+			if (m_Placements.end() == found ||
+				!Set_RuntimeVisible(*found, restore.second))
+			{
+				++missing;
+				continue;
+			}
+			++applied;
+		}
+		m_CutsceneArenaRestoreVisibility.clear();
+	}
+	m_Status = (hidden ? "Cutscene arena hidden: " : "Cutscene arena restored: ") +
+		std::to_string(applied) + " placements, " +
+		std::to_string(missing) + " unavailable";
+}
+
+bool_t Client::CMapTool::Is_CutsceneOriginalPlaying() const
+{
+	const size_t prefixLength = strlen(KAKUL_ORIGINAL_INSTANCE_PREFIX);
+	for (const WORLD_SEQUENCE_INSTANCE& instance :
+		m_ArenaRisePlayer.Get_Document().Get_Instances())
+	{
+		if (0 != instance.instanceId.compare(0, prefixLength,
+			KAKUL_ORIGINAL_INSTANCE_PREFIX))
+		{
+			continue;
+		}
+		if (m_ArenaRisePlayer.Is_Playing(instance.instanceId))
+			return true;
+	}
+	return false;
+}
+
+void Client::CMapTool::Hide_CutsceneSet()
+{
+	/* The unfold ends where the arena stands, so the cutscene copies step aside
+	   instead of overlapping it. */
+	for (PLACED_ENTRY& entry : m_Placements)
+	{
+		const uint64_t placementId = entry.record.placementId;
+		if (placementId < KAKUL_CUTSCENE_SET_FIRST_ID ||
+			placementId >= KAKUL_CUTSCENE_SET_END_ID)
+		{
+			continue;
+		}
+		(void)Set_RuntimeVisible(entry, false);
+	}
+}
+
+void Client::CMapTool::Release_CutsceneBookPreview(const uint64_t placementId)
+{
+	/* A finished animation instance keeps its authoring preview open, and a
+	   prop under preview refuses every state change, so the next play could
+	   not restore the book. Hand it back before touching its state. */
+	const shared_ptr<CDeployPropObject> book = m_DeployRuntime.Find(placementId);
+	if (nullptr != book)
+		book->End_AnimationAuthoringPreview();
+}
+
+void Client::CMapTool::Update_CutsceneArenaRise(
+	const f32_t fTimeDelta,
+	const bool_t isMapAuthoringLevel)
+{
+	if (!isMapAuthoringLevel || !m_Catalog.Is_Ready())
+		return;
+	CWorldSequencePlayer::TARGET_SET targets{};
+	targets.levelIndex = m_iAuthoringLevelIndex;
+	targets.pCatalog = &m_Catalog;
+	targets.pPlacements = &m_Placements;
+	targets.pDeployRuntime = &m_DeployRuntime;
+	/* Showing a hidden placement for the first time clones its model, so the
+	   frame that starts a cutscene is long. Feeding that whole frame to the
+	   sequence clock would skip most of the authored motion, so advance the
+	   preview by at most one slow frame at a time. */
+	m_ArenaRisePlayer.Update(
+		(std::min)(fTimeDelta, KAKUL_CUTSCENE_MAX_STEP_SECONDS), targets);
+
+	/* The original recycles its cutscene props on the frame the unfold ends and
+	   lets the persistent arena stand in their place; do the same here. */
+	if (m_bCutsceneOriginalRunning && !Is_CutsceneOriginalPlaying())
+	{
+		m_bCutsceneOriginalRunning = false;
+		Hide_CutsceneSet();
+		Apply_CutsceneArenaVisibility(false);
+		m_Status = "Original cutscene finished: arena handed back";
+	}
+
+	/* The reference does not leave the book standing in the finished arena, so
+	   despawn it shortly after every arena_rise instance has settled. A transform
+	   track cannot target a Deploy prop, so the state is what controls its
+	   visibility. */
+	if (m_fCutsceneBookHoldMs < 0.f)
+		return;
+	for (uint32_t index = 0; index < KAKUL_ARENA_RISE_INSTANCE_COUNT; ++index)
+	{
+		char instanceId[64] = {};
+		(void)snprintf(instanceId, sizeof(instanceId),
+			"world.sequence.instance.arena_rise_%02u", index);
+		if (m_ArenaRisePlayer.Is_Playing(instanceId))
+		{
+			m_fCutsceneBookHoldMs = 0.f;
+			return;
+		}
+	}
+	m_fCutsceneBookHoldMs += (std::max)(0.f, fTimeDelta) * 1000.f;
+	if (m_fCutsceneBookHoldMs < KAKUL_BOOK_HOLD_AFTER_ARENA_MS)
+		return;
+	m_fCutsceneBookHoldMs = -1.f;
+	if (!m_DeployRuntime.Set_States({ { KAKUL_BOOK_PLACEMENT_ID,
+		DEPLOY_PROP_STATE::DESPAWNED } }))
+	{
+		OutputDebugStringA(("[MapTool][CutsceneArena] book despawn failed: " +
+			m_DeployRuntime.Get_Status() + "\n").c_str());
+	}
+}
+
+bool_t Client::CMapTool::Play_CutsceneArenaRise()
+{
+	CWorldSequencePlayer::TARGET_SET targets{};
+	targets.levelIndex = m_iAuthoringLevelIndex;
+	targets.pCatalog = &m_Catalog;
+	targets.pPlacements = &m_Placements;
+	targets.pDeployRuntime = &m_DeployRuntime;
+	if (!targets.Is_Complete())
+	{
+		m_Status = "Arena rise needs a loaded Area";
+		return false;
+	}
+	if (!m_bArenaRiseAreaLoaded)
+	{
+		if (!m_ArenaRisePlayer.Load_Area(KAKUL_AREA_ID, targets))
+		{
+			m_Status = "Arena rise document load failed: " +
+				m_ArenaRisePlayer.Get_Status();
+			return false;
+		}
+		m_bArenaRiseAreaLoaded = true;
+	}
+	/* The generated instances are split by the 32-track template limit, so the
+	   whole arena needs every one of them started on the same frame. Their own
+	   startDelayMs staggers the rise from the floor upward. */
+	m_ArenaRisePlayer.Stop_All(targets);
+	size_t started = 0;
+	size_t rejected = 0;
+	Release_CutsceneBookPreview(KAKUL_BOOK_PLACEMENT_ID);
+	/* The book carries its own covers and pages, so it is one asset. The arena
+	   spreads out of it once the unfold is under way. Restore it first: a
+	   previous run despawns it when the arena settles. */
+	if (!m_DeployRuntime.Set_States({ { KAKUL_BOOK_PLACEMENT_ID,
+		DEPLOY_PROP_STATE::INTACT } }))
+	{
+		m_Status = "Arena rise could not restore the book: " +
+			m_DeployRuntime.Get_Status();
+		return false;
+	}
+	m_fCutsceneBookHoldMs = 0.f;
+	if (m_ArenaRisePlayer.Play(KAKUL_BOOK_INSTANCE_ID, targets))
+		++started;
+	else
+		++rejected;
+	for (uint32_t index = 0; index < KAKUL_ARENA_RISE_INSTANCE_COUNT; ++index)
+	{
+		char instanceId[64] = {};
+		(void)snprintf(instanceId, sizeof(instanceId),
+			"world.sequence.instance.arena_rise_%02u", index);
+		if (m_ArenaRisePlayer.Play(instanceId, targets))
+			++started;
+		else
+			++rejected;
+	}
+	m_Status = "Arena rise started: " + std::to_string(started) +
+		" instances, " + std::to_string(rejected) + " rejected";
+	return 0 == rejected;
+}
+
+bool_t Client::CMapTool::Play_CutsceneOriginalRise()
+{
+	CWorldSequencePlayer::TARGET_SET targets{};
+	targets.levelIndex = m_iAuthoringLevelIndex;
+	targets.pCatalog = &m_Catalog;
+	targets.pPlacements = &m_Placements;
+	targets.pDeployRuntime = &m_DeployRuntime;
+	if (!targets.Is_Complete())
+	{
+		m_Status = "Original cutscene needs a loaded Area";
+		return false;
+	}
+	if (!m_bArenaRiseAreaLoaded)
+	{
+		if (!m_ArenaRisePlayer.Load_Area(KAKUL_AREA_ID, targets))
+		{
+			m_Status = "Original cutscene document load failed: " +
+				m_ArenaRisePlayer.Get_Status();
+			return false;
+		}
+		m_bArenaRiseAreaLoaded = true;
+	}
+	m_ArenaRisePlayer.Stop_All(targets);
+	Release_CutsceneBookPreview(KAKUL_BOOK_PLACEMENT_ID);
+	/* The replicated cutscene assembles on its own book, and the original
+	   keeps that book under the finished arena, so restore it and leave the
+	   arena_rise despawn timer disarmed. */
+	if (!m_DeployRuntime.Set_States({ { KAKUL_BOOK_PLACEMENT_ID,
+		DEPLOY_PROP_STATE::INTACT } }))
+	{
+		m_Status = "Original cutscene could not restore the book: " +
+			m_DeployRuntime.Get_Status();
+		return false;
+	}
+	m_fCutsceneBookHoldMs = -1.f;
+	std::vector<std::string> instanceIds;
+	const size_t prefixLength = strlen(KAKUL_ORIGINAL_INSTANCE_PREFIX);
+	for (const WORLD_SEQUENCE_INSTANCE& instance :
+		m_ArenaRisePlayer.Get_Document().Get_Instances())
+	{
+		if (0 == instance.instanceId.compare(0, prefixLength,
+			KAKUL_ORIGINAL_INSTANCE_PREFIX))
+		{
+			instanceIds.push_back(instance.instanceId);
+		}
+	}
+	if (instanceIds.empty())
+	{
+		m_Status = "No original cutscene instances in this Area";
+		return false;
+	}
+	size_t started = 0;
+	std::string rejected;
+	for (const std::string& instanceId : instanceIds)
+	{
+		if (m_ArenaRisePlayer.Play(instanceId, targets))
+		{
+			++started;
+			continue;
+		}
+		if (!rejected.empty())
+			rejected += ", ";
+		rejected += instanceId.substr(prefixLength);
+	}
+	if (0 == started)
+	{
+		m_Status = "Original cutscene could not start: " + rejected;
+		return false;
+	}
+	/* The arena the unfold builds stands here already, so clear it for the
+	   cutscene set and take it back when the unfold is spent. */
+	Apply_CutsceneArenaVisibility(true);
+	m_bCutsceneOriginalRunning = true;
+	m_Status = "Original cutscene started: " + std::to_string(started) +
+		" / " + std::to_string(instanceIds.size()) +
+		(rejected.empty() ? "" : "  rejected: " + rejected);
+	return rejected.empty();
+}
+
+void Client::CMapTool::Render_CutsceneArenaPreview()
+{
+	if (!ImGui::CollapsingHeader("Cutscene Arena Preview"))
+		return;
+	ImGui::TextWrapped(
+		"The pop-up book cutscene raises the tent arena, so the product level "
+		"opens with these placements hidden. Authoring keeps them visible; this "
+		"toggle previews the hidden state without changing any saved document.");
+	ImGui::Text("Arena placements: %zu",
+		KAKUL_ARENA_HIDDEN_PLACEMENT_IDS.size());
+	if (ImGui::Checkbox("Hide arena (cutscene start state)",
+		&m_bCutsceneArenaHidden))
+	{
+		Apply_CutsceneArenaVisibility(m_bCutsceneArenaHidden);
+	}
+	ImGui::Separator();
+	ImGui::TextWrapped(
+		"Play raises the arena from the floor upward using the generated "
+		"arena_rise instances. Hide it first, otherwise there is nothing to "
+		"raise.");
+	ImGui::BeginDisabled(!m_bCutsceneArenaHidden);
+	if (ImGui::Button("Play arena rise"))
+		(void)Play_CutsceneArenaRise();
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	if (ImGui::Button("Play 2 (original)"))
+		(void)Play_CutsceneOriginalRise();
+	ImGui::SameLine();
+	if (ImGui::Button("Stop arena rise"))
+	{
+		CWorldSequencePlayer::TARGET_SET targets{};
+		targets.levelIndex = m_iAuthoringLevelIndex;
+		targets.pCatalog = &m_Catalog;
+		targets.pPlacements = &m_Placements;
+		targets.pDeployRuntime = &m_DeployRuntime;
+		m_ArenaRisePlayer.Stop_All(targets);
+		m_fCutsceneBookHoldMs = -1.f;
+		(void)m_DeployRuntime.Set_States({ { KAKUL_BOOK_PLACEMENT_ID,
+			DEPLOY_PROP_STATE::DESPAWNED } });
+		if (m_bCutsceneOriginalRunning)
+		{
+			m_bCutsceneOriginalRunning = false;
+			Hide_CutsceneSet();
+			Apply_CutsceneArenaVisibility(false);
+		}
+		m_Status = "Arena rise stopped";
+	}
+	ImGui::TextDisabled("%s", m_Status.c_str());
 }
 
 void Client::CMapTool::Render_AnimatedPropsAuthoring()
